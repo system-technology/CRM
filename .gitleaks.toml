@@ -33,12 +33,14 @@ useDefault = true
 # -----------------------------------------------------------------------------
 [allowlist]
 description = "Marcadores de plantilla y contraseña local pública, nunca credenciales reales"
-regexTarget = "line"
-# El `\+?` del principio NO sobra: gitleaks escanea la SALIDA DE `git log -p`, donde toda línea
-# añadida empieza por `+`. Con el ancla `^` a secas ninguna de las tres coincidía, y el job
-# marcaba los propios marcadores que estas líneas deberían permitir.
+# Estas expresiones se comparan contra **el secreto detectado**, no contra la línea. Intentarlo
+# con la línea completa (`regexTarget = "line"` y un ancla `^NOMBRE=`) no funcionó: el job seguía
+# marcando los propios marcadores que debía permitir.
+#
+# Por eso aquí van los literales a secas. Son dos cadenas fijas de este repositorio, lo bastante
+# específicas para no enmascarar nada real: ninguna credencial de verdad contiene «cambiar-por-»
+# ni «desarrollo-local-sin-valor».
 regexes = [
-  '''^\+?[A-Z0-9_]+=[ \t]*(#.*)?$''',
-  '''^\+?[A-Z0-9_]+=cambiar-por-[a-z0-9-]+''',
-  '''^\+?[A-Z0-9_]+=.*desarrollo-local-sin-valor''',
+  '''cambiar-por-[a-z0-9-]+''',
+  '''desarrollo-local-sin-valor''',
 ]
