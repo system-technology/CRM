@@ -30,7 +30,7 @@ Qué hay, concretamente:
 |---|---|
 | Configuración del monorepo | Escrita, **sin ejecutar** (`pnpm install` nunca corrió) |
 | Documentación | 33 documentos completos + 22 marcadores con responsable y fase |
-| ADR | 0001 stack · 0002 WhatsApp · 0003 multi-tenancy · 0004 monolito modular · 0005 ramas |
+| ADR | 0001 stack · 0002 WhatsApp · 0003 multi-tenancy · 0004 monolito modular · 0005 ramas · 0006 parametrización |
 | Agentes de IA | 17 definidos en `.claude/agents/`, incluido `integrador` |
 | Skills | `ciclo-funcionalidad`, `auditoria-integral`, `handoff-ia-externa`, `cerrar-sesion`, `nuevo-modulo` |
 | Comandos | `/estado` `/auditoria` `/funcionalidad` `/handoff` `/adr` `/contexto` `/integrar` |
@@ -49,6 +49,7 @@ Qué hay, concretamente:
 | Arquitectura | Monolito modular por contexto delimitado, tres procesos | ADR-0004 |
 | Multi-tenancy | Esquema compartido + `tenant_id` + Row Level Security forzada | ADR-0003 |
 | **Mercado base** | **Colombia.** Moneda COP, normativa colombiana, TRM, pasarelas locales | Decisión del propietario, 2026-10-06 |
+| **Parametrización** | **Vertical configurable, no plataforma genérica.** Se parametriza la política de negocio, nunca los invariantes del dominio. Código abierto: no por ahora | ADR-0006 |
 | **Modelo de ramas** | **`main` protegida. Solo el agente `integrador` escribe ahí**, tras siete compuertas. Trabajo en ramas de 1-3 días | ADR-0005 |
 | Alcance v1 | Los cuatro bloques, secuenciados en fases. Primer cobro al mes 4 | `docs/01-producto/01-alcance-mvp.md` |
 | Diseño | Stitch para explorar; shadcn/ui en `packages/ui` para producir | `docs/01-producto/06-diseno-y-ux.md` |

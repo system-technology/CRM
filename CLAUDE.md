@@ -40,6 +40,7 @@ Estado actual: **Fase 0 — Fundaciones.** Hay andamiaje documental y de configu
 | R9 | **Fechas en UTC en la base; la zona horaria del tenant solo en presentación.** | Agencias en varios husos; los vuelos cruzan fechas. |
 | R10 | **PII de viajeros (pasaporte, fecha de nacimiento) se trata como dato sensible**: cifrado y acceso auditado. | Ley 1581 de 2012. Ver `docs/05-seguridad/02-proteccion-de-datos.md`. |
 | R11 | **En `main` solo escribe el agente `integrador`**, y solo tras superar las siete compuertas. Todo el trabajo va en ramas. | Los agentes producen más rápido de lo que nadie revisa. Sin compuerta, entra a producción lo que nadie miró. Ver ADR-0005. |
+| R12 | **Se parametriza la política de negocio; nunca los invariantes del dominio.** Lo que cada agencia define distinto es tabla por tenant, no `enum`. | Sin configurabilidad perdemos clientes; con configurabilidad infinita nos volvemos un CRM genérico y perdemos la ventaja. Ver ADR-0006. |
 
 ## 4. Stack
 
