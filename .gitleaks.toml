@@ -8,36 +8,34 @@
 useDefault = true
 
 # -----------------------------------------------------------------------------
-# `.env.example` es una PLANTILLA: existe para enseñar qué variables hacen falta.
-# Sus valores son marcadores, no credenciales.
+# Marcadores de plantilla, permitidos POR LA FORMA DEL VALOR y en cualquier archivo.
 #
-# **No se silencia el archivo entero, a propósito.** Si alguien pega ahí un secreto de verdad
-# —que es un error fácil y ya nos ha pasado con credenciales en otros sitios—, tiene que saltar.
-# Por eso el permiso es por FORMA del valor, no por nombre de archivo:
+# **Deliberadamente NO se usa `paths`.** Se intentó dos veces y las dos estaban mal:
 #
-#   - vacío              → no hay nada que filtrar
-#   - `cambiar-por-...`  → la convención del propio archivo para «pon aquí lo tuyo»
-#   - la contraseña de desarrollo local, que es pública a propósito y solo vale contra localhost
+#   1. Con `paths` + `regexes` y el `condition` por omisión —que es **OR**—, bastaba coincidir
+#      en la ruta: el archivo quedaba exento entero y las expresiones eran decorativas.
+#   2. Añadir `condition = "AND"` tampoco bastó. Se comprobó empujando una clave de AWS con
+#      forma válida a `.env.example`: **el job siguió en verde.** `paths` actúa como filtro de
+#      archivo *antes* de aplicar las reglas, así que nombrar la ruta excluye ese archivo pase
+#      lo que pase.
 #
-# Cualquier otro valor en ese archivo se sigue escaneando con las reglas por defecto.
+# La consecuencia importaba de verdad: el hook local **también** exceptúa `.env.example`, así
+# que un secreto pegado ahí no lo habría visto ninguna de las dos capas.
+#
+# Permitir por forma del valor, y no por archivo, resuelve las dos cosas. Las tres expresiones
+# son inofensivas en cualquier sitio —un valor vacío no filtra nada, y las otras dos son
+# literales fijos de este repositorio—, y `.env.example` **se sigue escaneando entero** con las
+# reglas por defecto.
+#
+# Si alguien añade aquí una entrada nueva, la prueba es la misma que descubrió esto: pegar una
+# credencial con forma válida en el archivo que se quiera exceptuar y comprobar que el job se
+# pone ROJO. Una lista de permitidos que nadie ha intentado romper no está verificada.
 # -----------------------------------------------------------------------------
 [allowlist]
-description = "Marcadores de la plantilla de entorno, nunca credenciales reales"
-
-# `condition = "AND"` NO es opcional, y omitirlo volvía falsa la promesa de arriba.
-# El valor por omisión de gitleaks es **OR**: con `paths` y `regexes` declarados a la vez,
-# bastaba coincidir en la ruta para permitir CUALQUIER línea del archivo, y las tres
-# expresiones de abajo quedaban de adorno. Es decir, la versión anterior silenciaba el
-# archivo entero — exactamente lo que su propio comentario decía no hacer.
-#
-# Lo encontró el agente `integrador` leyendo el archivo, no ejecutándolo, y lo dejó como
-# hipótesis falsable. Confirmado después en la documentación de gitleaks.
-condition = "AND"
-
-paths = ['''\.env\.example$''']
+description = "Marcadores de plantilla y contraseña local pública, nunca credenciales reales"
 regexTarget = "line"
 regexes = [
-  '''^[A-Z0-9_]+=\s*(#.*)?$''',
+  '''^[A-Z0-9_]+=[ \t]*(#.*)?$''',
   '''^[A-Z0-9_]+=cambiar-por-[a-z0-9-]+''',
-  '''^[A-Z0-9_]+=desarrollo-local-sin-valor''',
+  '''^[A-Z0-9_]+=.*desarrollo-local-sin-valor''',
 ]
