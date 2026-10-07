@@ -33,20 +33,26 @@ operaciones de la API de Stitch como herramientas invocables desde una sesión d
 **Herramientas que expone:** `generate_screen_from_text`, `get_screen_image`, `get_screen_code`,
 `extract_design_context`, `build_site`, `list_projects`, `list_screens`.
 
-**Instalación** (requiere sesión interactiva — el flujo de autenticación con Google no se puede
-completar en una sesión automatizada):
+**Instalación.** Stitch MCP es un servidor HTTP remoto autenticado con clave de API.
 
-```bash
-# 1. Autenticar contra Google Cloud
-gcloud auth application-default login
+1. Entra a [stitch.withgoogle.com/settings](https://stitch.withgoogle.com/settings) → sección
+   **API Keys** → **Create API Key**. Cópiala: solo se muestra una vez.
+2. Añádela a tu `.env`:
+   ```bash
+   STITCH_API_KEY=la-clave-que-copiaste
+   ```
+3. El servidor ya está declarado en `.mcp.json`; al abrir el proyecto, Claude Code pedirá
+   aprobarlo.
 
-# 2. Exportar el proyecto de Google Cloud
-export GOOGLE_CLOUD_PROJECT=<tu-proyecto>
-
-# 3. El servidor ya está declarado en .mcp.json; basta aprobarlo al abrir el proyecto.
-#    Para instalarlo a nivel de usuario en lugar del proyecto:
-claude mcp add -e GOOGLE_CLOUD_PROJECT=<tu-proyecto> -s user stitch -- npx -y @_davideast/stitch-mcp proxy
-```
+> **Corrección registrada (2026-10-07).** La primera versión de este documento describía una
+> instalación local con `npx @_davideast/stitch-mcp proxy` y autenticación por `gcloud`. Esa
+> información venía de una guía de terceros y estaba **desactualizada**: el paquete pide
+> `STITCH_API_KEY` y falla con las credenciales de Google Cloud. Costó una instalación de
+> gcloud y la creación de un proyecto que no hacían falta.
+>
+> Es exactamente el fallo contra el que advierte el agente `investigador`: **fuente primaria
+> o nada.** Un blog de hace unos meses sobre una herramienta de Google Labs es desinformación,
+> no contexto.
 
 **Reglas de uso.** El flujo completo está en
 [`docs/01-producto/06-diseno-y-ux.md`](../01-producto/06-diseno-y-ux.md) §5. Lo esencial:

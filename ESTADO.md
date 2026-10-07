@@ -6,11 +6,11 @@
 
 | Campo | Valor |
 |---|---|
-| Última actualización | 2026-10-07 |
+| Última actualización | 2026-10-07 (sesión nocturna autónoma) |
 | Actualizado por | Sesión de fundación (Claude Opus 5) |
-| Fase | **Fase 0 — Fundaciones** |
-| Avance de la fase | Andamiaje completo y versionado en v0.1.0. Falta andamiaje de código |
-| Próximo hito | Cierre de Fase 0 y arranque de Fase 1 (Inbox) |
+| Fase | **Fase 0 cerrada. Entrando en la rebanada vertical de paquetes** |
+| Avance de la fase | **Backend funcionando contra Neon.** v0.8.0 |
+| Próximo hito | Inbox de WhatsApp, o frontend del catálogo |
 
 ---
 
@@ -36,7 +36,9 @@ Qué hay, concretamente:
 | Comandos | `/estado` `/auditoria` `/funcionalidad` `/handoff` `/adr` `/contexto` `/integrar` |
 | Hooks | Inyección del hilo, guardián de secretos, guardián de rama (con 24 pruebas), autorización de integración, revisión post-edición, recordatorio de cierre |
 | MCP | 8 servidores declarados, **ninguno validado** |
-| Fase 0 técnica | `packages/domain` y `packages/database` escritos. **SIN VERIFICAR**: el entorno no tiene Node 22 ni Docker |
+| Fase 0 técnica | **COMPLETA Y VERIFICADA.** API viva, 7/7 aislamiento, 32/32 dominio |
+| Backend | `apps/api` con catálogo y cotización. Probado con peticiones reales |
+| Datos | Agencia demo sembrada: 3 paquetes, 5 temporadas, 26 precios |
 | Contrato multi-harness | `AGENTS.md` en la raíz: cualquier IA trabaja bajo las mismas once reglas |
 | Repositorio | [github.com/Alfavear/CRM](https://github.com/Alfavear/CRM) · **privado** · `main` en v0.1.0 |
 | Gobierno de `main` | Compuerta local activa y probada. **Sin protección de servidor:** el plan gratuito no la permite en repos privados |
@@ -77,19 +79,16 @@ Ordenada. La primera es la que debe tomarse ahora.
 
 | # | Tarea | Agente / dueño | Estado |
 |---|---|---|---|
-| 1 | **Iniciar verificación de Meta Business y solicitud de Tech Provider** | Usuario | **Camino crítico — hoy** |
-| 2 | Conseguir agencia piloto comprometida | Usuario | Urgente |
-| 3 | **Decidir cómo desbloquear la protección de `main`:** GitHub Pro, repo público, o asumir el riesgo | Usuario | Antes de que entre una segunda persona |
-| 4 | **Instalar Node 22 LTS y Docker Desktop** — sin eso no se compila ni se prueba nada | Usuario | **Bloquea la Fase 0 técnica** |
-| 5 | Validar MCP: ejecutar cada servidor de `.mcp.json`, incluido Stitch (`gcloud auth` requerido) | Usuario + `devops` | Pendiente |
-| 6 | Andamiaje de código: apps y packages vacíos pero compilando (`pnpm install && pnpm typecheck` en verde) | `backend`, `frontend`, `devops` | Pendiente |
-| 6 | Esquema Prisma inicial + políticas RLS + seed + prueba de aislamiento | `datos` | Pendiente |
-| 7 | CI en GitHub Actions: lint, typecheck, test, escaneo de secretos | `devops` | Pendiente |
-| 8 | Validar el modelo de dominio con la agencia piloto | `experto-turismo` + usuario | Bloqueado por #2 |
-| 9 | Escribir los documentos de Fase 0 marcados como pendientes | Según marcador | Pendiente |
-| 10 | **Definir nombre comercial**, verificar marca y dominio | Usuario | Antes de Fase 2 |
-| 11 | **Definir modelo de cobro y precios** tras medir el costo real por tenant | Usuario + `analista-datos` | Antes de cobrar |
-| 12 | Entrevistar 8-10 agencias colombianas: qué pagan hoy, qué les duele, cuánto vale resolverlo | Usuario + `analista-producto` | Alimenta #10 |
+| 1 | **Iniciar verificación de Meta Business y solicitud de Tech Provider** | Usuario | **Camino crítico, sin empezar** |
+| 2 | **Conseguir agencia piloto** y pedirle un tarifario real de mayorista | Usuario | Urgente. El catálogo se modeló con datos verosímiles, no reales |
+| 3 | **Generar la clave de API de Stitch** en stitch.withgoogle.com/settings y ponerla en `.env` | Usuario | Un minuto. Google Cloud resultó innecesario |
+| 4 | Inbox de WhatsApp: webhook, firma, idempotencia, ventana de 24h | `whatsapp`, `backend` | **Siguiente pieza grande** |
+| 5 | Frontend del catálogo y el cotizador | `diseno-ux`, `frontend` | Listo para empezar: la API ya responde |
+| 6 | Guardar cotizaciones con versiones inmutables | `backend` | Hoy el cálculo no persiste |
+| 7 | Pruebas de integración de la API | `qa` | Solo se probó a mano |
+| 8 | CI en GitHub Actions corriendo de verdad | `devops` | Escrito, nunca ejecutado |
+| 9 | Decidir nombre comercial, modelo de cobro y precios | Usuario | Antes de vender |
+| 10 | Resolver la protección de `main` en GitHub | Usuario | Plan gratuito no la permite en repos privados |
 
 ## 4. Bloqueos y riesgos activos
 
@@ -119,6 +118,7 @@ Ordenada. La primera es la que debe tomarse ahora.
 
 ## 6. Bitácora
 
+- [`2026-10-07-backend-vivo.md`](docs/_bitacora/2026-10-07-backend-vivo.md) ← **empieza por aquí**
 - [`2026-10-07-falso-positivo-del-guardian.md`](docs/_bitacora/2026-10-07-falso-positivo-del-guardian.md)
 - [`2026-10-07-gobierno-de-la-integracion.md`](docs/_bitacora/2026-10-07-gobierno-de-la-integracion.md)
 - [`2026-10-06-fundacion-del-proyecto.md`](docs/_bitacora/2026-10-06-fundacion-del-proyecto.md)
