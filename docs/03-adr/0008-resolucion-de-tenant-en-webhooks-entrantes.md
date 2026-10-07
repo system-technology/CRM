@@ -1,6 +1,8 @@
 # ADR-0008 — Resolución de tenant en webhooks entrantes
 
-- **Estado:** Propuesto — corregido tras auditoría de seguridad, pendiente de aprobación del propietario
+- **Estado:** **Aceptado** el 2026-10-07 por el propietario del producto, tras tres pasadas de
+  auditoría de seguridad con dictamen final favorable. La aprobación es del **diseño**: su alcance
+  está delimitado al final de §5 y caduca si alguna de las verificaciones de allí se desactiva.
 - **Fecha:** 2026-10-07
 - **Decide:** Propietario del producto
 - **Consultados:** `arquitecto`, `whatsapp`, `datos`, `auditor-seguridad`
