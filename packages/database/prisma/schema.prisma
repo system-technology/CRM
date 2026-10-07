@@ -1,0 +1,536 @@
+// =============================================================================
+// ViajaPro — esquema de datos
+//
+// Reglas que este archivo hace cumplir (ver CLAUDE.md):
+//   R1  Toda tabla de negocio lleva tenantId y política RLS con USING y WITH CHECK.
+//   R8  Dinero en enteros (unidad mínima de la moneda) + código ISO-4217. Nunca Float.
+//   R9  Instantes en UTC (timestamptz). Las fechas de viaje son `date`, sin hora.
+//   R12 Lo que cada agencia define distinto es TABLA por tenant, nunca enum en el código.
+//
+// Las políticas RLS NO viven aquí: Prisma no las modela. Están en prisma/policies/ y se
+// aplican por migración. La prueba de aislamiento (tests/aislamiento.spec.ts) falla si una
+// tabla de negocio nueva aparece sin su política.
+//
+// Alcance: cabeza de playa — la agencia que revende paquetes.
+// Ver docs/01-producto/07-cabeza-de-playa-paquetes.md
+// =============================================================================
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["relationJoins"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// =============================================================================
+// PLATAFORMA — tablas globales, SIN tenantId y SIN RLS.
+//
+// Son las únicas excepciones permitidas a R1, y cada una está justificada aquí.
+// Una tabla sin tenantId que no esté en esta sección es un defecto bloqueante.
+// =============================================================================
+
+/// La agencia cliente. Es la unidad de aislamiento: define qué es "un tenant".
+/// Global por necesidad — es la tabla que da sentido a todas las demás.
+model Tenant {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  /// Identificador legible para URLs y soporte: "viajes-del-caribe"
+  slug      String   @unique @db.VarChar(63)
+  nombre    String   @db.VarChar(200)
+
+  /// Mercado de operación. Decide moneda, impuestos y normativa por defecto.
+  paisIso   String   @default("CO") @map("pais_iso") @db.Char(2)
+  monedaIso String   @default("COP") @map("moneda_iso") @db.Char(3)
+  zonaHoraria String @default("America/Bogota") @map("zona_horaria") @db.VarChar(64)
+
+  estado    EstadoTenant @default(EN_PRUEBA)
+
+  creadoEn     DateTime  @default(now()) @map("creado_en") @db.Timestamptz(3)
+  actualizadoEn DateTime @updatedAt @map("actualizado_en") @db.Timestamptz(3)
+
+  usuarios       Usuario[]
+  etapas         EtapaPipeline[]
+  mayoristas     Mayorista[]
+  paquetes       Paquete[]
+  contactos      Contacto[]
+  oportunidades  Oportunidad[]
+  definicionesCampo DefinicionCampoPersonalizado[]
+
+  @@map("tenants")
+}
+
+enum EstadoTenant {
+  EN_PRUEBA
+  ACTIVO
+  SUSPENDIDO
+  CANCELADO
+
+  @@map("estado_tenant")
+}
+
+/// Monedas habilitadas. Dato de referencia universal, igual para todos.
+model Moneda {
+  codigoIso String @id @map("codigo_iso") @db.Char(3)
+  nombre    String @db.VarChar(80)
+  /// Cuántos decimales tiene la moneda. COP = 0, USD = 2.
+  /// Es lo que convierte `unidades` en un importe legible. Ver packages/domain/money.ts.
+  decimales Int    @db.SmallInt
+
+  @@map("monedas")
+}
+
+// =============================================================================
+// IDENTIDAD
+// =============================================================================
+
+/// Usuario de una agencia.
+///
+/// Decisión: el usuario pertenece a UN tenant. Una persona que trabaje en dos agencias
+/// tiene dos cuentas. La alternativa —usuario global con membresías— obliga a una tabla
+/// global con datos personales y complica cada consulta, a cambio de resolver un caso
+/// que en este mercado es raro. Si deja de serlo, se revisa con un ADR.
+model Usuario {
+  id       String @id @default(uuid(7)) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  correo         String  @db.VarChar(255)
+  nombre         String  @db.VarChar(200)
+  hashContrasena String? @map("hash_contrasena") @db.VarChar(255)
+  rol            RolUsuario @default(ASESOR)
+  activo         Boolean @default(true)
+
+  ultimoAccesoEn DateTime? @map("ultimo_acceso_en") @db.Timestamptz(3)
+  creadoEn       DateTime  @default(now()) @map("creado_en") @db.Timestamptz(3)
+  actualizadoEn  DateTime  @updatedAt @map("actualizado_en") @db.Timestamptz(3)
+  eliminadoEn    DateTime? @map("eliminado_en") @db.Timestamptz(3)
+
+  oportunidadesAsignadas Oportunidad[] @relation("AsesorAsignado")
+
+  /// El correo es único dentro de la agencia, no globalmente: ver la decisión de arriba.
+  @@unique([tenantId, correo])
+  @@index([tenantId, activo])
+  @@map("usuarios")
+}
+
+enum RolUsuario {
+  DUENO
+  ADMINISTRADOR
+  ASESOR
+  SOLO_LECTURA
+
+  @@map("rol_usuario")
+}
+
+// =============================================================================
+// CONFIGURACIÓN POR TENANT — R12 en acción
+// =============================================================================
+
+/// Etapas del embudo. **Tabla, no enum.**
+///
+/// Cada agencia tiene su proceso de venta. Un enum en el código obligaría a una migración
+/// con reasignación de filas el día que la primera agencia pida una etapa distinta —
+/// y ese día llega siempre. Ver ADR-0006.
+model EtapaPipeline {
+  id       String @id @default(uuid(7)) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  nombre      String  @db.VarChar(80)
+  orden       Int     @db.SmallInt
+  /// Probabilidad de cierre asociada a la etapa, para proyectar ingresos.
+  probabilidad Int    @default(0) @db.SmallInt
+  /// Etapas terminales: la oportunidad sale del embudo.
+  esGanada    Boolean @default(false) @map("es_ganada")
+  esPerdida   Boolean @default(false) @map("es_perdida")
+
+  creadoEn DateTime @default(now()) @map("creado_en") @db.Timestamptz(3)
+
+  oportunidades Oportunidad[]
+
+  @@unique([tenantId, orden])
+  @@index([tenantId])
+  @@map("etapas_pipeline")
+}
+
+/// Definición de un campo personalizado.
+///
+/// Se diseña desde la PRIMERA migración aunque la interfaz llegue después: añadirlo más
+/// tarde significa migrar datos de producción. Misma categoría que tenantId, el versionado
+/// de cotizaciones y los time limits. Ver ADR-0006.
+///
+/// Las definiciones son relacionales (se consultan, validan y ordenan); los valores viven
+/// en una columna jsonb de la propia entidad, con índice GIN. Así se evita la tabla genérica
+/// clave-valor, que se degrada en cuanto hay volumen.
+model DefinicionCampoPersonalizado {
+  id       String @id @default(uuid(7)) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  entidad     EntidadPersonalizable
+  /// Clave dentro del jsonb. Estable: renombrarla rompe los datos ya guardados.
+  clave       String  @db.VarChar(64)
+  etiqueta    String  @db.VarChar(120)
+  tipo        TipoCampoPersonalizado
+  obligatorio Boolean @default(false)
+  orden       Int     @default(0) @db.SmallInt
+  /// Opciones para los tipos de selección.
+  opciones    Json?   @db.JsonB
+
+  creadoEn DateTime @default(now()) @map("creado_en") @db.Timestamptz(3)
+
+  @@unique([tenantId, entidad, clave])
+  @@index([tenantId, entidad])
+  @@map("definiciones_campo_personalizado")
+}
+
+enum EntidadPersonalizable {
+  CONTACTO
+  VIAJERO
+  OPORTUNIDAD
+  ARCHIVO_VIAJE
+
+  @@map("entidad_personalizable")
+}
+
+enum TipoCampoPersonalizado {
+  TEXTO
+  NUMERO
+  FECHA
+  BOOLEANO
+  SELECCION
+  SELECCION_MULTIPLE
+
+  @@map("tipo_campo_personalizado")
+}
+
+// =============================================================================
+// CATÁLOGO — el corazón de la cabeza de playa
+// =============================================================================
+
+/// Quien arma el paquete y se lo vende a la agencia.
+model Mayorista {
+  id       String @id @default(uuid(7)) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  nombre          String  @db.VarChar(200)
+  /// Identificador canónico global del proveedor.
+  ///
+  /// Hoy no se usa. Existe porque sin él, el "Hotel Las Américas" de una agencia y el de otra
+  /// son entidades distintas para siempre, y la calificación compartida de proveedores
+  /// —el horizonte de la red entre agencias— sería imposible sin reconciliar a mano.
+  /// Cuesta una columna ahora; cuesta un proyecto después.
+  proveedorCanonicoId String? @map("proveedor_canonico_id") @db.Uuid
+
+  contactoNombre  String? @map("contacto_nombre") @db.VarChar(200)
+  contactoCorreo  String? @map("contacto_correo") @db.VarChar(255)
+  contactoTelefono String? @map("contacto_telefono") @db.VarChar(32)
+  /// Días que da el mayorista para pagar antes de liberar el cupo. Valor por defecto
+  /// del time limit cuando se crea una reserva con él.
+  diasTimeLimit   Int?    @map("dias_time_limit") @db.SmallInt
+  notas           String? @db.Text
+
+  creadoEn      DateTime  @default(now()) @map("creado_en") @db.Timestamptz(3)
+  actualizadoEn DateTime  @updatedAt @map("actualizado_en") @db.Timestamptz(3)
+  eliminadoEn   DateTime? @map("eliminado_en") @db.Timestamptz(3)
+
+  paquetes Paquete[]
+
+  @@index([tenantId, eliminadoEn])
+  @@index([tenantId, nombre])
+  @@map("mayoristas")
+}
+
+/// Un paquete turístico: producto ya armado que la agencia revende.
+model Paquete {
+  id       String @id @default(uuid(7)) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  mayoristaId String?    @map("mayorista_id") @db.Uuid
+  mayorista   Mayorista? @relation(fields: [mayoristaId], references: [id], onDelete: SetNull)
+
+  nombre       String  @db.VarChar(200)
+  destino      String  @db.VarChar(120)
+  paisIso      String? @map("pais_iso") @db.Char(2)
+  /// Duración declarada. Se guardan ambas porque el sector habla de "7 días / 6 noches"
+  /// y no siempre se deduce una de la otra (vuelos nocturnos, salidas de madrugada).
+  dias         Int     @db.SmallInt
+  noches       Int     @db.SmallInt
+
+  planAlimentacion PlanAlimentacion @map("plan_alimentacion")
+  /// Qué incluye, como lista de líneas legibles. No se modela cada servicio por separado:
+  /// el paquete ya viene armado. Cuando llegue el armado a medida, serán QuoteItem.
+  inclusiones  Json    @default("[]") @db.JsonB
+  exclusiones  Json    @default("[]") @db.JsonB
+  descripcion  String? @db.Text
+
+  activo       Boolean @default(true)
+  creadoEn      DateTime  @default(now()) @map("creado_en") @db.Timestamptz(3)
+  actualizadoEn DateTime  @updatedAt @map("actualizado_en") @db.Timestamptz(3)
+  eliminadoEn   DateTime? @map("eliminado_en") @db.Timestamptz(3)
+
+  temporadas Temporada[]
+  salidas    Salida[]
+
+  @@index([tenantId, activo, eliminadoEn])
+  @@index([tenantId, destino])
+  @@map("paquetes")
+}
+
+enum PlanAlimentacion {
+  TODO_INCLUIDO
+  DESAYUNO
+  MEDIA_PENSION
+  PENSION_COMPLETA
+  SIN_ALIMENTACION
+
+  @@map("plan_alimentacion")
+}
+
+/// Rango de fechas con precio propio: temporada alta, baja, puente festivo.
+///
+/// En Colombia los puentes festivos son su propia temporada y pueden costar como la alta.
+model Temporada {
+  id       String @id @default(uuid(7)) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+
+  paqueteId String  @map("paquete_id") @db.Uuid
+  paquete   Paquete @relation(fields: [paqueteId], references: [id], onDelete: Cascade)
+
+  nombre String @db.VarChar(80)
+  /// Fechas de viaje, sin hora: el 24 de diciembre es el 24 en cualquier huso. R9.
+  desde  DateTime @db.Date
+  hasta  DateTime @db.Date
+
+  creadoEn DateTime @default(now()) @map("creado_en") @db.Timestamptz(3)
+
+  precios Precio[]
+
+  @@index([tenantId, paqueteId])
+  @@index([tenantId, desde, hasta])
+  @@map("temporadas")
+}
+
+/// Precio de un paquete, por temporada, acomodación y tipo de pasajero.
+///
+/// **Aquí está la trampa del dominio.** El precio NO es "por pasajero": es *por persona en
+/// acomodación X*, y baja cuanto más gente comparte la habitación. Cuatro personas en dos
+/// dobles no cuestan lo mismo que cuatro en una cuádruple.
+///
+/// Un modelo con un solo precio por pasajero está mal y se descubre con el primer cliente.
+/// Ver packages/domain/ocupacion.ts y docs/01-producto/02-lenguaje-ubicuo.md.
+model Precio {
+  id       String @id @default(uuid(7)) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+
+  temporadaId String    @map("temporada_id") @db.Uuid
+  temporada   Temporada @relation(fields: [temporadaId], references: [id], onDelete: Cascade)
+
+  acomodacion   Acomodacion
+  tipoPasajero  TipoPasajero @map("tipo_pasajero")
+
+  /// Dinero en la unidad mínima de la moneda. R8. Ver packages/domain/money.ts.
+  /// La tarifa neta es lo que cobra el mayorista: NUNCA se muestra al cliente.
+  netoUnidades  BigInt @map("neto_unidades")
+  /// La venta sugerida. El markup efectivo es venta - neto, y puede ajustarse por cotización.
+  ventaUnidades BigInt @map("venta_unidades")
+  monedaIso     String @map("moneda_iso") @db.Char(3)
+
+  /// Edad de corte para este tipo de pasajero. "Niño de 2 a 11 años" es condición comercial
+  /// real del tarifario y cambia entre mayoristas.
+  edadMinima Int? @map("edad_minima") @db.SmallInt
+  edadMaxima Int? @map("edad_maxima") @db.SmallInt
+
+  creadoEn      DateTime @default(now()) @map("creado_en") @db.Timestamptz(3)
+  actualizadoEn DateTime @updatedAt @map("actualizado_en") @db.Timestamptz(3)
+
+  @@unique([tenantId, temporadaId, acomodacion, tipoPasajero, edadMinima, edadMaxima])
+  @@index([tenantId, temporadaId])
+  @@map("precios")
+}
+
+enum Acomodacion {
+  SENCILLA
+  DOBLE
+  TRIPLE
+  CUADRUPLE
+
+  @@map("acomodacion")
+}
+
+enum TipoPasajero {
+  ADT
+  CHD
+  INF
+
+  @@map("tipo_pasajero")
+}
+
+/// Fecha concreta en que opera un paquete, con su cupo.
+model Salida {
+  id       String @id @default(uuid(7)) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+
+  paqueteId String  @map("paquete_id") @db.Uuid
+  paquete   Paquete @relation(fields: [paqueteId], references: [id], onDelete: Cascade)
+
+  fecha        DateTime @db.Date
+  /// Plazas que el mayorista tiene bloqueadas. Nulo = sin límite declarado.
+  cupoTotal    Int?     @map("cupo_total") @db.SmallInt
+  cupoVendido  Int      @default(0) @map("cupo_vendido") @db.SmallInt
+  activa       Boolean  @default(true)
+
+  creadoEn DateTime @default(now()) @map("creado_en") @db.Timestamptz(3)
+
+  @@unique([tenantId, paqueteId, fecha])
+  @@index([tenantId, fecha, activa])
+  @@map("salidas")
+}
+
+// =============================================================================
+// CRM
+// =============================================================================
+
+/// Persona con la que la agencia conversa. Puede o no viajar.
+///
+/// `Contacto` ≠ `Viajero`: quien paga no siempre viaja. Fusionarlos parece una simplificación
+/// razonable hasta el primer viaje familiar, y entonces hay que rehacer el modelo con datos
+/// en producción. Ver docs/01-producto/02-lenguaje-ubicuo.md.
+model Contacto {
+  id       String @id @default(uuid(7)) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  /// En formato E.164 (+573001234567). Es la llave natural del canal de WhatsApp.
+  telefonoE164 String  @map("telefono_e164") @db.VarChar(20)
+  nombre       String? @db.VarChar(200)
+  correo       String? @db.VarChar(255)
+
+  /// Consentimiento para contactar. Obligatorio y auditable: Ley 1581 de 2012 y políticas
+  /// de Meta. Sin esto no se puede iniciar conversación.
+  consentimientoEn     DateTime? @map("consentimiento_en") @db.Timestamptz(3)
+  consentimientoCanal  String?   @map("consentimiento_canal") @db.VarChar(40)
+  consentimientoRevocadoEn DateTime? @map("consentimiento_revocado_en") @db.Timestamptz(3)
+
+  /// Valores de los campos personalizados. Las definiciones están en
+  /// DefinicionCampoPersonalizado; aquí van los datos, con índice GIN.
+  camposPersonalizados Json @default("{}") @map("campos_personalizados") @db.JsonB
+
+  creadoEn      DateTime  @default(now()) @map("creado_en") @db.Timestamptz(3)
+  actualizadoEn DateTime  @updatedAt @map("actualizado_en") @db.Timestamptz(3)
+  eliminadoEn   DateTime? @map("eliminado_en") @db.Timestamptz(3)
+
+  oportunidades Oportunidad[]
+
+  /// Dos agencias distintas pueden tener el mismo teléfono de cliente: la unicidad
+  /// es POR TENANT, nunca global.
+  @@unique([tenantId, telefonoE164])
+  @@index([tenantId, eliminadoEn])
+  @@map("contactos")
+}
+
+/// Una intención de compra en el embudo.
+model Oportunidad {
+  id       String @id @default(uuid(7)) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  contactoId String   @map("contacto_id") @db.Uuid
+  contacto   Contacto @relation(fields: [contactoId], references: [id], onDelete: Cascade)
+
+  etapaId String        @map("etapa_id") @db.Uuid
+  etapa   EtapaPipeline @relation(fields: [etapaId], references: [id])
+
+  asesorId String?  @map("asesor_id") @db.Uuid
+  asesor   Usuario? @relation("AsesorAsignado", fields: [asesorId], references: [id], onDelete: SetNull)
+
+  titulo  String  @db.VarChar(200)
+  destino String? @db.VarChar(120)
+
+  /// Intención de viaje extraída de la conversación: fechas aproximadas y composición.
+  /// Nulas al principio: el asesor (o la IA, más adelante) las completa.
+  fechaViajeDesde DateTime? @map("fecha_viaje_desde") @db.Date
+  fechaViajeHasta DateTime? @map("fecha_viaje_hasta") @db.Date
+  adultos         Int?      @db.SmallInt
+  ninos           Int?      @db.SmallInt
+  infantes        Int?      @db.SmallInt
+
+  /// Valor estimado, en la unidad mínima de la moneda. R8.
+  valorEstimadoUnidades BigInt? @map("valor_estimado_unidades")
+  monedaIso             String? @map("moneda_iso") @db.Char(3)
+
+  /// Obligatorio al marcar perdida. Sin motivo no hay aprendizaje.
+  motivoPerdida String? @map("motivo_perdida") @db.VarChar(200)
+
+  camposPersonalizados Json @default("{}") @map("campos_personalizados") @db.JsonB
+
+  creadoEn      DateTime  @default(now()) @map("creado_en") @db.Timestamptz(3)
+  actualizadoEn DateTime  @updatedAt @map("actualizado_en") @db.Timestamptz(3)
+  cerradaEn     DateTime? @map("cerrada_en") @db.Timestamptz(3)
+  eliminadoEn   DateTime? @map("eliminado_en") @db.Timestamptz(3)
+
+  @@index([tenantId, etapaId, actualizadoEn(sort: Desc)])
+  @@index([tenantId, asesorId])
+  @@index([tenantId, contactoId])
+  @@map("oportunidades")
+}
+
+// =============================================================================
+// AUDITORÍA
+// =============================================================================
+
+/// Bitácora de acciones. Solo escritura: nadie modifica ni borra un registro de auditoría.
+model RegistroAuditoria {
+  id       BigInt @id @default(autoincrement())
+  tenantId String @map("tenant_id") @db.Uuid
+
+  usuarioId String? @map("usuario_id") @db.Uuid
+  accion    String  @db.VarChar(80)
+  entidad   String  @db.VarChar(80)
+  entidadId String? @map("entidad_id") @db.Uuid
+  /// Qué cambió. Nunca contenido de mensajes ni números de documento: R10.
+  detalle   Json?   @db.JsonB
+  ip        String? @db.Inet
+
+  ocurridoEn DateTime @default(now()) @map("ocurrido_en") @db.Timestamptz(3)
+
+  @@index([tenantId, ocurridoEn(sort: Desc)])
+  @@index([tenantId, entidad, entidadId])
+  @@map("registros_auditoria")
+}
+
+// =============================================================================
+// EVENTOS — patrón outbox
+// =============================================================================
+
+/// Eventos de dominio pendientes de publicar.
+///
+/// Se escriben en la MISMA transacción que el cambio de estado; un relay los envía a BullMQ.
+/// Sin esto: publicas el evento, la transacción revierte, y acabas de notificar un hecho que
+/// nunca ocurrió.
+model Outbox {
+  id       BigInt @id @default(autoincrement())
+  tenantId String @map("tenant_id") @db.Uuid
+
+  agregado     String @db.VarChar(80)
+  agregadoId   String @map("agregado_id") @db.Uuid
+  tipoEvento   String @map("tipo_evento") @db.VarChar(120)
+  /// Los eventos son contrato público: cambiar su forma rompe a los consumidores,
+  /// igual que cambiar una API. Por eso la versión existe desde el primer día.
+  versionEvento Int   @default(1) @map("version_evento") @db.SmallInt
+  payload      Json   @db.JsonB
+
+  ocurridoEn   DateTime  @default(now()) @map("ocurrido_en") @db.Timestamptz(3)
+  publicadoEn  DateTime? @map("publicado_en") @db.Timestamptz(3)
+  intentos     Int       @default(0) @db.SmallInt
+
+  /// Índice parcial: el relay solo busca lo no publicado, que es una fracción diminuta
+  /// de la tabla. Sin `where`, el índice crecería con todo el histórico.
+  @@index([ocurridoEn], map: "idx_outbox_pendientes")
+  @@index([tenantId, agregado, agregadoId])
+  @@map("outbox")
+}
