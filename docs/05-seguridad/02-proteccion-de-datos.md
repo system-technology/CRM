@@ -120,6 +120,19 @@ retención: es una ausencia de política, y aumenta el daño de cualquier incide
 
 ---
 
+## 5.1 Transferencia internacional de datos
+
+Desarrollo, `dev` y `staging` corren sobre PostgreSQL gestionado fuera de Colombia
+([ADR-0007](../03-adr/0007-postgres-gestionado-neon.md)). Para esos entornos es irrelevante
+**porque los datos son sintéticos** — y esa regla pasa de ser buena práctica a ser una obligación
+legal: **nunca datos reales de clientes fuera de producción.**
+
+Si producción acabara también fuera del país, la Ley 1581 de 2012 exige resolver la transferencia
+internacional por una de estas vías: destino con nivel adecuado de protección declarado por la
+SIC, cláusulas contractuales con el encargado, o consentimiento expreso e informado del titular.
+
+**Pendiente para la revisión legal.** No bloquea el desarrollo; bloquea producción.
+
 ## 6. Respuesta a incidentes
 
 1. **Contener** — cortar el acceso, rotar credenciales.
@@ -145,3 +158,4 @@ once de la noche.
 - [ ] Política de retención implementada como trabajo programado
 - [ ] Procedimiento de respuesta a incidentes escrito, con contactos y plazos
 - [ ] Pipeline de anonimización para staging
+- [ ] Resolver la transferencia internacional de datos si producción queda fuera del país

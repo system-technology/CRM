@@ -57,6 +57,7 @@ Toda la documentación del proyecto. Si una decisión no está aquí (o en `ESTA
 | [0004](03-adr/0004-monolito-modular.md) | Monolito modular, no microservicios | Aceptado |
 | [0005](03-adr/0005-modelo-de-ramas.md) | Rama principal protegida con compuerta de integración | Aceptado |
 | [0006](03-adr/0006-parametrizacion-y-extensibilidad.md) | Vertical configurable, no plataforma genérica. Sin código abierto por ahora | Aceptado |
+| [0007](03-adr/0007-postgres-gestionado-neon.md) | PostgreSQL gestionado (Neon) en desarrollo, dev y staging | Aceptado |
 
 ## 04 · Integraciones
 
