@@ -19,7 +19,9 @@ Ejecuta las siete etapas de `.claude/agents/integrador.md` **sin saltarte ningun
    credenciales, pagos o PII de viajeros.
 5. **Hilo documental** — `ESTADO.md`, bitácora, ADR si hubo decisión estructural, documentos que
    el cambio dejó desactualizados.
-6. **Integrar** — solo si todo lo anterior pasó: autorizar, `merge --no-ff`, etiquetar.
+6. **Integrar** — solo si todo lo anterior pasó: autorizar, `merge --no-ff`, y etiquetar **si el
+   cambio altera el artefacto desplegable**. El cierre documental de una versión ya publicada no
+   lleva etiqueta: ver `docs/07-ingenieria/03-git.md` §5.
 7. **Cerrar** — registro en `docs/_integraciones/`, borrar la rama, avisar a ramas abiertas.
 
 **Tu trabajo es decir que no.** Una integración que no debió pasar cuesta mucho más que una que se
