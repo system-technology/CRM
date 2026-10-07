@@ -141,6 +141,11 @@ model EnrutamientoCanal {
   tenantResueltoId String @map("tenant_resuelto_id") @db.Uuid
   /// Nulo en las filas de tipo WABA: un evento de gestión apunta a la cuenta, no a un número.
   canalId          String? @map("canal_id") @db.Uuid
+  /// Al revés: relleno solo en las filas de tipo WABA. Una restricción `CHECK` exige que
+  /// exactamente una de las dos esté presente, y así **ninguna fila queda sin respaldo del
+  /// motor**. La primera versión solo tenía `canal_id`, y las filas WABA —las que gobiernan
+  /// todos los eventos de gestión— entraban sin que nada comprobara de quién era la cuenta.
+  cuentaId         String? @map("cuenta_id") @db.Uuid
 
   /// Clave foránea **compuesta**: `(canal_id, tenant_resuelto_id)` contra
   /// `canales (id, tenant_id)`. Escrita simple apuntaría al canal de otro tenant sin
@@ -148,12 +153,16 @@ model EnrutamientoCanal {
   /// Es el patrón de toda referencia cruzada entre tablas con tenant. Aserción 25.
   canal Canal? @relation(fields: [canalId, tenantResueltoId], references: [id, tenantId], onDelete: Restrict, onUpdate: Restrict)
 
+  /// La misma protección para las filas WABA. Aserción 25bis.
+  cuenta CuentaWhatsapp? @relation(fields: [cuentaId, tenantResueltoId], references: [id, tenantId], onDelete: Restrict, onUpdate: Restrict)
+
   estado          EstadoEnrutamiento
   /// Con qué pimienta se calculó la clave. Es lo que permite saber, durante una
   /// rotación, qué filas están reconstruidas y cuáles no.
   pimientaVersion Int @map("pimienta_version") @db.SmallInt
 
   @@index([tenantResueltoId])
+  @@index([cuentaId])
   @@map("enrutamiento_canales")
 }
 
@@ -188,7 +197,10 @@ model EnrutamientoHistorial {
   actorUsuarioId String? @map("actor_usuario_id") @db.Uuid
   actorTenantId  String? @map("actor_tenant_id") @db.Uuid
   motivo         String  @db.VarChar(200)
-  ocurridoEn     DateTime @default(now()) @map("ocurrido_en") @db.Timestamptz(3)
+  /// `clock_timestamp()` y no `now()`: `CURRENT_TIMESTAMP` es constante durante toda la
+  /// transacción, así que los dos asientos de un mismo alta —la fila WABA y la del
+  /// número— empataban y «el último» era arbitrario.
+  ocurridoEn     DateTime @default(dbgenerated("clock_timestamp()")) @map("ocurrido_en") @db.Timestamptz(3)
 
   /// La clave primaria incluye la columna de particionado porque PostgreSQL lo exige.
   @@id([id, ocurridoEn])
@@ -247,6 +259,17 @@ model RecepcionWebhookChange {
   @@map("recepciones_webhook_changes")
 }
 
+/// Deliberadamente **gemelo** de `EstadoCanal`, y nada en el motor los ata.
+///
+/// Son dos conceptos distintos que hoy coinciden: uno es el estado del canal bajo RLS
+/// —la verdad— y el otro el del directorio global, que es su proyección derivada. Nada
+/// garantiza que no diverjan: si el camino de baja marca `canales.estado = 'REVOCADO'` y
+/// no llama a `registrar_enrutamiento`, el directorio sigue resolviendo `ACTIVO` y los
+/// mensajes de una agencia **sin contrato** se siguen persistiendo. Sin contrato no hay
+/// finalidad (Ley 1581), y nada lo pone en rojo desde la base.
+///
+/// Mantenerlos sincronizados es responsabilidad del camino de baja, **en la misma
+/// transacción**, y le toca a la tarea 4b con su métrica de reconciliación.
 enum EstadoEnrutamiento {
   ACTIVO
   SUSPENDIDO
@@ -619,10 +642,11 @@ model CuentaWhatsapp {
   creadoPor      String?   @map("creado_por") @db.Uuid
   actualizadoPor String?   @map("actualizado_por") @db.Uuid
 
-  canales Canal[]
+  canales       Canal[]
+  enrutamientos EnrutamientoCanal[]
 
-  /// Sostiene la clave foránea compuesta de `canales`. Sin esta unicidad, PostgreSQL
-  /// no admite `(cuenta_id, tenant_id) REFERENCES cuentas_whatsapp (id, tenant_id)`.
+  /// Sostiene la clave foránea compuesta de `canales` **y la del directorio**: la misma
+  /// unicidad que ya existía es la que respalda ahora las filas WABA.
   @@unique([id, tenantId])
   @@unique([tenantId, wabaId])
   @@index([tenantId, estado])

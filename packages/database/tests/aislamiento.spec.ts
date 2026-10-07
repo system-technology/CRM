@@ -24,8 +24,26 @@ import { randomBytes, randomUUID } from 'node:crypto';
 import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-const URL_APP = process.env['DATABASE_APP_URL'] ?? process.env['DATABASE_URL'] ?? '';
+// SIN `??` hacia DATABASE_URL, y eso es media compuerta.
+//
+// Con el respaldo, un entorno que no definiera DATABASE_APP_URL —exactamente lo que
+// pasaba en CI— conectaba la supuesta «conexión de aplicación» al rol propietario. En el
+// contenedor de CI ese rol es SUPERUSUARIO, y la única comprobación que lo vigilaba
+// miraba `rolbypassrls`, que en un superusuario es `false`. Las 25 aserciones pasaban sin
+// probar absolutamente nada. Si falta la variable, esto tiene que reventar.
+const URL_APP = process.env['DATABASE_APP_URL'] ?? '';
 const URL_ADMIN = process.env['DATABASE_URL'] ?? '';
+
+if (!URL_APP) {
+  throw new Error(
+    'Falta DATABASE_APP_URL. La prueba de aislamiento NO cae al rol propietario: ' +
+      'probar el aislamiento con un rol que puede saltárselo no prueba nada. ' +
+      'En local: pnpm --filter @viajapro/database run roles:dev',
+  );
+}
+if (!URL_ADMIN) {
+  throw new Error('Falta DATABASE_URL (rol propietario, para las comprobaciones de catálogo).');
+}
 
 const TENANT_A = '01932000-0000-7000-8000-00000000000a';
 const TENANT_B = '01932000-0000-7000-8000-00000000000b';
@@ -56,6 +74,24 @@ beforeAll(async () => {
   app = new Client({ connectionString: URL_APP });
   await admin.connect();
   await app.connect();
+
+  // Afirmar QUÉ rol es la conexión de aplicación, no solo qué atributos tiene.
+  //
+  // Los tres roles de login se distinguen únicamente en qué funciones ejecutan, así que
+  // «no tiene BYPASSRLS» no identifica a ninguno: apuntar DATABASE_APP_URL a
+  // `viajapro_altas` —un copiar y pegar entre dos líneas contiguas de .env— pasaría
+  // desapercibido y devolvería a toda la API la capacidad de repuntar un número.
+  const identidad = await app.query(
+    `SELECT current_user AS usuario, r.rolsuper, r.rolbypassrls
+     FROM pg_roles r WHERE r.rolname = current_user`,
+  );
+  const quien = identidad.rows[0] as { usuario: string; rolsuper: boolean; rolbypassrls: boolean };
+  if (quien.usuario !== 'viajapro_app' || quien.rolsuper || quien.rolbypassrls) {
+    throw new Error(
+      `DATABASE_APP_URL conecta como "${quien.usuario}" (rolsuper=${quien.rolsuper}, ` +
+        `rolbypassrls=${quien.rolbypassrls}). Tiene que ser viajapro_app, sin ninguno de los dos.`,
+    );
+  }
 
   for (const [id, slug] of [
     [TENANT_A, 'agencia-a'],
@@ -175,6 +211,17 @@ describe('aislamiento entre tenants', () => {
 // ADR-0008 — aserciones 8 a 25
 // =============================================================================
 
+/**
+ * Los tres roles de aplicación, declarados en el repositorio.
+ *
+ * El literal existe por la misma razón que el de `excepciones_rls`: la vista
+ * `roles_de_login_vigilados` gobierna seis aserciones, y un rol que desaparece de la vista
+ * desaparecía también del lado esperado de la 20, que recalculaba su expectativa
+ * filtrándola por el conjunto que audita. **25/25 en verde con el aislamiento perdido.**
+ * Con el literal, que un rol salga de la vigilancia es rojo.
+ */
+const ROLES_DE_APLICACION = ['viajapro_app', 'viajapro_altas', 'viajapro_webhook'] as const;
+
 /** Las cuatro tablas globales del ADR. `recepciones_webhook_changes` es la tabla hija. */
 const TABLAS_GLOBALES_ADR_0008 = [
   'enrutamiento_canales',
@@ -236,6 +283,9 @@ const MATRIZ_FUNCIONES: Readonly<Record<string, readonly string[]>> = {
   tomar_recepcion: ['viajapro_webhook'],
   anular_payload: ['viajapro_webhook'],
   purgar_recepciones: ['viajapro_webhook'],
+  // Séptima. La añadió la auditoría de implementación: sin ella, un `change` que agota
+  // sus reintentos conservaba el contenido para siempre.
+  purgar_payloads: ['viajapro_webhook'],
 };
 
 const PROPIETARIO_ESPERADO: Readonly<Record<string, string>> = {
@@ -245,6 +295,35 @@ const PROPIETARIO_ESPERADO: Readonly<Record<string, string>> = {
   tomar_recepcion: 'viajapro_staging',
   anular_payload: 'viajapro_staging',
   purgar_recepciones: 'viajapro_staging',
+  purgar_payloads: 'viajapro_staging',
+};
+
+/**
+ * Cómo se escribe en cada tabla global. Las aserciones 8 y 9 son las únicas de
+ * COMPORTAMIENTO, y cubrían una sola de las cuatro: `recepciones_webhook`, que contiene
+ * PII de viajeros de varias agencias, estaba cubierta solo por comparación de catálogo.
+ */
+const ESCRITURAS_POR_TABLA: Readonly<Record<string, readonly string[]>> = {
+  enrutamiento_canales: [
+    "INSERT INTO enrutamiento_canales (clave_canal_hmac, tenant_resuelto_id, estado, pimienta_version) VALUES ('\\x00'::bytea, '00000000-0000-7000-8000-000000000000', 'ACTIVO', 1)",
+    "UPDATE enrutamiento_canales SET tenant_resuelto_id = '00000000-0000-7000-8000-000000000000'",
+    'DELETE FROM enrutamiento_canales',
+  ],
+  enrutamiento_historial: [
+    "INSERT INTO enrutamiento_historial (canal_id, clave_canal_hmac, pimienta_version, tenant_nuevo, estado_nuevo, motivo) VALUES ('00000000-0000-7000-8000-000000000000', '\\x00'::bytea, 1, '00000000-0000-7000-8000-000000000000', 'ACTIVO', 'x')",
+    "UPDATE enrutamiento_historial SET motivo = 'alterado'",
+    'DELETE FROM enrutamiento_historial',
+  ],
+  recepciones_webhook: [
+    "INSERT INTO recepciones_webhook (recepcion_id, clave_version) VALUES ('\\x00'::bytea, 1)",
+    'UPDATE recepciones_webhook SET payload_cifrado = NULL',
+    'DELETE FROM recepciones_webhook',
+  ],
+  recepciones_webhook_changes: [
+    "INSERT INTO recepciones_webhook_changes (recepcion_id, indice) VALUES ('\\x00'::bytea, 0)",
+    "UPDATE recepciones_webhook_changes SET estado = 'PROCESADO'",
+    'DELETE FROM recepciones_webhook_changes',
+  ],
 };
 
 const ident = (nombre: string) => `"${nombre.replace(/"/g, '""')}"`;
@@ -256,6 +335,22 @@ const rutaMigraciones = fileURLToPath(new URL('../prisma/migrations/', import.me
 async function rolesVigilados(cliente: Client): Promise<string[]> {
   const { rows } = await cliente.query('SELECT rolname FROM roles_de_login_vigilados ORDER BY 1');
   return rows.map((r) => r.rolname as string);
+}
+
+/**
+ * Lo vigilado MÁS lo declarado.
+ *
+ * Las aserciones de comportamiento se hacen sobre esta unión y no sobre la vista: si un
+ * rol declarado se cayera de la vigilancia, seguiría probándose su comportamiento y la
+ * prueba se pondría en rojo en vez de encogerse hasta coincidir con el daño.
+ */
+async function rolesAVigilar(cliente: Client): Promise<string[]> {
+  const vigilados = await rolesVigilados(cliente);
+  const existentes = await cliente.query('SELECT rolname FROM pg_roles WHERE rolname = ANY($1)', [
+    [...ROLES_DE_APLICACION],
+  ]);
+  const declarados = existentes.rows.map((r) => r.rolname as string);
+  return [...new Set([...vigilados, ...declarados])].sort();
 }
 
 /** Ejecuta con el rol puesto. Es la única forma de probar COMPORTAMIENTO y no catálogo. */
@@ -320,46 +415,37 @@ async function conRol(rol: string, sql: string, params: unknown[] = []) {
 // base nueva. La 22 atrapa la regresión que ya sabemos que existe; la 23 atrapa la que
 // todavía no se ha escrito. No se sustituyen.
 
-/** 8 — leer el directorio está prohibido para todo rol de login. */
+/** 8 — leer las tablas globales está prohibido para todo rol de login. */
 async function comprobarLecturaDenegada(cliente: Client) {
-  const roles = await rolesVigilados(cliente);
+  const roles = await rolesAVigilar(cliente);
   expect(roles.length, 'la enumeración de roles no puede quedar vacía').toBeGreaterThan(0);
   for (const rol of roles) {
-    await comoRol(cliente, rol, () =>
-      esperarPermisoDenegado(
-        cliente,
-        () => cliente.query('SELECT * FROM enrutamiento_canales'),
-        `SELECT sobre enrutamiento_canales como ${rol}`,
-      ),
-    );
+    await comoRol(cliente, rol, async () => {
+      for (const tabla of TABLAS_GLOBALES_ADR_0008) {
+        await esperarPermisoDenegado(
+          cliente,
+          () => cliente.query(`SELECT * FROM ${tabla}`),
+          `SELECT sobre ${tabla} como ${rol}`,
+        );
+      }
+    });
   }
 }
 
-/** 9 — escribir el directorio está prohibido para todo rol de login. */
+/** 9 — escribir las tablas globales está prohibido para todo rol de login. */
 async function comprobarEscrituraDenegada(cliente: Client) {
-  const roles = await rolesVigilados(cliente);
+  const roles = await rolesAVigilar(cliente);
   for (const rol of roles) {
     await comoRol(cliente, rol, async () => {
-      await esperarPermisoDenegado(
-        cliente,
-        () =>
-          cliente.query(
-            `INSERT INTO enrutamiento_canales (clave_canal_hmac, tenant_resuelto_id, estado, pimienta_version)
-             VALUES ('\\x00'::bytea, $1, 'ACTIVO', 1)`,
-            [TENANT_A],
-          ),
-        `INSERT sobre enrutamiento_canales como ${rol}`,
-      );
-      await esperarPermisoDenegado(
-        cliente,
-        () => cliente.query('UPDATE enrutamiento_canales SET tenant_resuelto_id = $1', [TENANT_A]),
-        `UPDATE sobre enrutamiento_canales como ${rol}`,
-      );
-      await esperarPermisoDenegado(
-        cliente,
-        () => cliente.query('DELETE FROM enrutamiento_canales'),
-        `DELETE sobre enrutamiento_canales como ${rol}`,
-      );
+      for (const [tabla, sentencias] of Object.entries(ESCRITURAS_POR_TABLA)) {
+        for (const sentencia of sentencias) {
+          await esperarPermisoDenegado(
+            cliente,
+            () => cliente.query(sentencia),
+            `${sentencia.split(' ')[0]} sobre ${tabla} como ${rol}`,
+          );
+        }
+      }
     });
   }
 }
@@ -407,7 +493,7 @@ async function comprobarPrivilegiosDeclarados(cliente: Client) {
 
 /** 20 — la matriz rol × función, exacta en ambos sentidos. */
 async function comprobarMatrizDeFunciones(cliente: Client) {
-  const roles = await rolesVigilados(cliente);
+  const roles = await rolesAVigilar(cliente);
   const { rows } = await cliente.query(
     `SELECT p.proname, p.oid FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
      WHERE n.nspname = 'public' AND p.proname = ANY($1)`,
@@ -428,11 +514,11 @@ async function comprobarMatrizDeFunciones(cliente: Client) {
     real[fila.proname as string] = concedidos.sort();
   }
 
+  // La expectativa es el literal, SIN filtrar por los roles que se acaban de enumerar.
+  // Filtrarla era el defecto: si `viajapro_altas` desaparecía de la vigilancia, lo
+  // esperado para `registrar_enrutamiento` pasaba a `[]` y lo real también.
   const esperada = Object.fromEntries(
-    Object.entries(MATRIZ_FUNCIONES).map(([f, r]) => [
-      f,
-      [...r].filter((rol) => roles.includes(rol)).sort(),
-    ]),
+    Object.entries(MATRIZ_FUNCIONES).map(([f, r]) => [f, [...r].sort()]),
   );
 
   expect(
@@ -454,12 +540,14 @@ describe('ADR-0008 — directorio de enrutamiento, staging y separación de role
   const claveA = randomBytes(32);
   const claveB = randomBytes(32);
   const claveC = randomBytes(32);
+  /** Fila de tipo WABA: `canal_id` nulo, `cuenta_id` relleno. */
+  const claveWabaA = randomBytes(32);
 
   /** Lo que haría el camino de alta tras el canje del `code`: escribir en el directorio. */
   async function registrar(
     tenant: string,
     clave: Buffer,
-    canal: string,
+    canal: string | null,
     cuenta: string,
     estado = 'ACTIVO',
   ) {
@@ -499,6 +587,9 @@ describe('ADR-0008 — directorio de enrutamiento, staging y separación de role
     await registrar(TENANT_A, claveA, canalA, cuentaA);
     await registrar(TENANT_B, claveB, canalB, cuentaB);
     await registrar(TENANT_C, claveC, canalC, cuentaC);
+    // La fila de gestión: sin canal, con cuenta. Ejercita la restricción de exclusividad
+    // y la clave foránea compuesta nueva por el camino bueno.
+    await registrar(TENANT_A, claveWabaA, null, cuentaA);
   }, 60_000);
 
   afterAll(async () => {
@@ -507,7 +598,7 @@ describe('ADR-0008 — directorio de enrutamiento, staging y separación de role
     // invariante que lo hace probatorio, y la prueba lo paga dejando sus asientos.
     await admin.query('SET ROLE "viajapro_enrutador"');
     await admin.query('DELETE FROM enrutamiento_canales WHERE clave_canal_hmac = ANY($1)', [
-      [claveA, claveB, claveC],
+      [claveA, claveB, claveC, claveWabaA],
     ]);
     await admin.query('RESET ROLE');
     await admin.query('SET ROLE "viajapro_staging"');
@@ -519,6 +610,31 @@ describe('ADR-0008 — directorio de enrutamiento, staging y separación de role
     ]);
   }, 60_000);
 
+  it('extra — los tres roles de aplicación declarados están realmente vigilados', async () => {
+    // El contrapeso del literal. La vista gobierna seis aserciones, así que un rol que
+    // se cae de ella las vacía de contenido sin dejarlas en rojo: basta un
+    // `ALTER ROLE viajapro_app CREATEDB` con el predicado anterior. Esto lo pone rojo.
+    const vigilados = await rolesVigilados(admin);
+    const existentes = (
+      await admin.query('SELECT rolname FROM pg_roles WHERE rolname = ANY($1) ORDER BY 1', [
+        [...ROLES_DE_APLICACION],
+      ])
+    ).rows.map((r) => r.rolname as string);
+
+    expect(existentes, 'faltan roles de aplicación en la base').toEqual(
+      [...ROLES_DE_APLICACION].sort(),
+    );
+    const fuera = existentes.filter((rol) => !vigilados.includes(rol));
+    expect(
+      fuera,
+      `Roles de aplicación fuera de roles_de_login_vigilados: ${JSON.stringify(fuera)}. ` +
+        'Reciben privilegios que nadie revoca y seis aserciones dejan de preguntar por ellos.',
+    ).toEqual([]);
+  });
+
+  // Va PRIMERA a propósito: la aserción 22 reaplica `001` y `002`, lo que **repara** la
+  // vista de roles. Puesta después, una degradación real del predicado quedaba curada
+  // antes de que nadie preguntara por ella, y la prueba pasaba en verde.
   it('8 — ningún rol de login puede LEER el directorio', async () => {
     // Es la prueba clave: es de COMPORTAMIENTO, no de catálogo, así que falla sin
     // importar cómo se concedió el privilegio. Y al enumerar los roles desde pg_roles
@@ -569,7 +685,10 @@ describe('ADR-0008 — directorio de enrutamiento, staging y separación de role
        WHERE n.nspname = 'public' AND p.proname = ANY($1) ORDER BY 1`,
       [Object.keys(MATRIZ_FUNCIONES)],
     );
-    expect(rows.length, 'faltan funciones de ADR-0008: son SEIS').toBe(6);
+    expect(
+      rows.length,
+      'faltan funciones de ADR-0008: eran seis y la auditoría de implementación añadió purgar_payloads',
+    ).toBe(7);
     expect(rows.filter((r) => r.publico)).toEqual([]);
   });
 
@@ -582,7 +701,7 @@ describe('ADR-0008 — directorio de enrutamiento, staging y separación de role
        WHERE n.nspname = 'public' AND p.proname = ANY($1) ORDER BY 1`,
       [Object.keys(MATRIZ_FUNCIONES)],
     );
-    expect(rows.length).toBe(6);
+    expect(rows.length).toBe(7);
 
     for (const fila of rows) {
       const config = (fila.proconfig as string[] | null) ?? [];
@@ -629,7 +748,7 @@ describe('ADR-0008 — directorio de enrutamiento, staging y separación de role
     expect(rows[0]?.tenant_resuelto_id).toBe(TENANT_B);
   });
 
-  it('16 — un POST con tres changes de tres tenants no cruza ni un mensaje', async () => {
+  it('16 (mitad de base de datos) — un POST con tres changes de tres tenants no cruza ni un mensaje', async () => {
     // AVISO EXPLÍCITO, para que nadie lo dé por hecho: esta es la MITAD de base de datos
     // de la aserción 16. El ADR la exige "a través de la cola real", porque el defecto
     // que nombra —BullMQ descartando en silencio dos de tres trabajos con el mismo
@@ -895,25 +1014,177 @@ describe('ADR-0008 — directorio de enrutamiento, staging y separación de role
     }
   }, 300_000);
 
-  it('24 — nadie puede modificar ni borrar el historial, ni su propietario', async () => {
+  it('24 — nadie puede modificar ni borrar el historial, ni su propietario, ni por partición', async () => {
     // Un GRANT sobrante lo haría editable y el valor probatorio desaparecería sin ninguna
     // señal. La retención a cinco años no necesita DELETE: suelta particiones anuales.
-    const roles = [...(await rolesVigilados(admin)), 'viajapro_enrutador', 'viajapro_staging'];
+    //
+    // **Y se enumeran las particiones.** Preguntar solo por el padre no bastaba:
+    // PostgreSQL comprueba los privilegios de la tabla particionada cuando se accede a
+    // través de ella y NUNCA los de la partición, así que una partición nueva —que nace
+    // con UPDATE y DELETE para los tres roles por las default privileges— habría dejado
+    // `UPDATE enrutamiento_historial_2028 SET tenant_nuevo = '<atacante>'` abierto con la
+    // aserción en verde.
+    const { rows: objetivos } = await admin.query(`
+      WITH RECURSIVE arbol AS (
+        SELECT c.oid FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' AND c.relname = 'enrutamiento_historial'
+        UNION ALL
+        SELECT h.inhrelid FROM pg_inherits h JOIN arbol a ON a.oid = h.inhparent
+      )
+      SELECT a.oid::regclass::text AS nombre FROM arbol a ORDER BY 1
+    `);
+    expect(
+      objetivos.length,
+      'el historial debe estar particionado: si no hay particiones, la retención por años no existe',
+    ).toBeGreaterThan(1);
+
+    const roles = [...(await rolesAVigilar(admin)), 'viajapro_enrutador', 'viajapro_staging'];
     for (const rol of roles) {
       await comoRol(admin, rol, async () => {
-        await esperarPermisoDenegado(
-          admin,
-          () => admin.query("UPDATE enrutamiento_historial SET motivo = 'alterado'"),
-          `UPDATE sobre enrutamiento_historial como ${rol}`,
-        );
-        await esperarPermisoDenegado(
-          admin,
-          () => admin.query('DELETE FROM enrutamiento_historial'),
-          `DELETE sobre enrutamiento_historial como ${rol}`,
-        );
+        for (const objetivo of objetivos) {
+          const tabla = objetivo.nombre as string;
+          await esperarPermisoDenegado(
+            admin,
+            () => admin.query(`UPDATE ${tabla} SET motivo = 'alterado'`),
+            `UPDATE sobre ${tabla} como ${rol}`,
+          );
+          await esperarPermisoDenegado(
+            admin,
+            () => admin.query(`DELETE FROM ${tabla}`),
+            `DELETE sobre ${tabla} como ${rol}`,
+          );
+        }
       });
     }
+  }, 120_000);
+
+  it('extra — un change sin resolver no condena el contenido a quedarse para siempre', async () => {
+    // El contenido se anula cuando no queda ningún change pendiente, y la purga se niega
+    // —con razón— a borrar una recepción con alguno pendiente. Las dos juntas producían un
+    // tercer comportamiento que nadie decidió: un change que agota sus reintentos dejaba
+    // datos personales de viajeros de varias agencias en una tabla sin RLS, indefinidamente.
+    const recepcionId = randomBytes(32);
+    await conRol(
+      'viajapro_app',
+      'SELECT registrar_recepcion($1, $2, $3, $4, 1::smallint, 2::smallint)',
+      [recepcionId, randomBytes(32), randomBytes(12), randomBytes(16)],
+    );
+    await conRol(
+      'viajapro_webhook',
+      'SELECT anular_payload($1, 0::smallint, $2::estado_change_recepcion)',
+      [recepcionId, 'PROCESADO'],
+    );
+
+    const atascado = await admin.query(
+      'SELECT payload_cifrado FROM recepciones_webhook WHERE recepcion_id = $1',
+      [recepcionId],
+    );
+    expect(
+      atascado.rows[0]?.payload_cifrado,
+      'con un change pendiente el contenido sigue ahí',
+    ).not.toBeNull();
+
+    const futuro = new Date(Date.now() + 86_400_000);
+    const anulados = await conRol('viajapro_webhook', 'SELECT purgar_payloads($1) AS n', [futuro]);
+    expect(Number(anulados.rows[0]?.n)).toBeGreaterThan(0);
+
+    const { rows } = await admin.query(
+      `SELECT r.payload_cifrado,
+              (SELECT count(*) FROM recepciones_webhook_changes c
+                WHERE c.recepcion_id = r.recepcion_id AND c.estado = 'PENDIENTE') AS pendientes
+       FROM recepciones_webhook r WHERE r.recepcion_id = $1`,
+      [recepcionId],
+    );
+    expect(rows.length, 'la fila y su recepcion_id se conservan: la evidencia no se destruye').toBe(
+      1,
+    );
+    expect(rows[0]?.payload_cifrado).toBeNull();
+    expect(Number(rows[0]?.pendientes), 'el change sin resolver sigue marcado como pendiente').toBe(
+      1,
+    );
+
+    // Y la purga de filas sigue respetando lo no resuelto (invariante de la 18 intacto).
+    await conRol('viajapro_webhook', 'SELECT purgar_recepciones($1)', [futuro]);
+    const sigue = await admin.query('SELECT 1 FROM recepciones_webhook WHERE recepcion_id = $1', [
+      recepcionId,
+    ]);
+    expect(sigue.rowCount).toBe(1);
   }, 60_000);
+
+  it('extra — dos trabajadores que terminan a la vez SÍ anulan el contenido', async () => {
+    // La carrera que C-3 pedía cerrar es entre dos TRANSACCIONES, no entre dos sentencias.
+    // Sin el `FOR UPDATE` sobre la fila padre, bajo READ COMMITTED cada trabajador ve el
+    // change del otro como PENDIENTE —su instantánea no ve lo no confirmado—, el UPDATE no
+    // toca filas, no toma bloqueo, y NINGUNO anula: el contenido sobrevive hasta la purga,
+    // treinta días en vez de minutos. Es el único plazo que decide la legalidad del
+    // apartado, así que no puede depender de una carrera.
+    const recepcionId = randomBytes(32);
+    await conRol(
+      'viajapro_app',
+      'SELECT registrar_recepcion($1, $2, $3, $4, 1::smallint, 2::smallint)',
+      [recepcionId, randomBytes(32), randomBytes(12), randomBytes(16)],
+    );
+
+    const w1 = new Client({ connectionString: URL_ADMIN });
+    const w2 = new Client({ connectionString: URL_ADMIN });
+    await w1.connect();
+    await w2.connect();
+    try {
+      await w1.query('BEGIN');
+      await w1.query('SET LOCAL ROLE "viajapro_webhook"');
+      await w1.query('SELECT anular_payload($1, 0::smallint, $2::estado_change_recepcion)', [
+        recepcionId,
+        'PROCESADO',
+      ]);
+
+      await w2.query('BEGIN');
+      await w2.query('SET LOCAL ROLE "viajapro_webhook"');
+      // No se espera todavía: con el bloqueo sobre la fila padre esta llamada se queda
+      // esperando a que W1 confirme. Sin él, devolvería en el acto y sin anular nada.
+      const enEspera = w2.query(
+        'SELECT anular_payload($1, 1::smallint, $2::estado_change_recepcion)',
+        [recepcionId, 'PROCESADO'],
+      );
+
+      await w1.query('COMMIT');
+      await enEspera;
+      await w2.query('COMMIT');
+
+      const { rows } = await admin.query(
+        'SELECT payload_cifrado, anulado_en FROM recepciones_webhook WHERE recepcion_id = $1',
+        [recepcionId],
+      );
+      expect(
+        rows[0]?.payload_cifrado,
+        'ninguno de los dos trabajadores anuló el contenido: la carrera sigue abierta',
+      ).toBeNull();
+      expect(rows[0]?.anulado_en).not.toBeNull();
+    } finally {
+      await w1.end().catch(() => undefined);
+      await w2.end().catch(() => undefined);
+    }
+  }, 60_000);
+
+  it('extra — un token cifrado a medias no es representable', async () => {
+    // Nada distinguía un BYTEA cifrado de uno con el token en claro: un atajo de
+    // depuración incumplía R6 sin romper ninguna restricción.
+    const cuenta = randomUUID();
+    await expect(
+      admin.query(
+        `INSERT INTO cuentas_whatsapp (id, tenant_id, waba_id, token_cifrado, actualizado_en)
+         VALUES ($1, $2, $3, '\\xdeadbeef'::bytea, now())`,
+        [cuenta, TENANT_A, `waba-medias-${cuenta.slice(0, 8)}`],
+      ),
+    ).rejects.toThrow(/cuentas_whatsapp_token_completo/);
+
+    await expect(
+      admin.query(
+        `INSERT INTO cuentas_whatsapp (id, tenant_id, waba_id, token_cifrado, token_nonce, token_tag, clave_version, actualizado_en)
+         VALUES ($1, $2, $3, '\\xdeadbeef'::bytea, '\\x0102'::bytea, '\\xaa'::bytea, 1, now())`,
+        [cuenta, TENANT_A, `waba-nonce-${cuenta.slice(0, 8)}`],
+      ),
+    ).rejects.toThrow(/cuentas_whatsapp_nonce_96_bits/);
+  });
 
   it('25 — el motor rechaza emparejar un tenant con el canal de otro', async () => {
     // Una clave foránea escrita simple en vez de compuesta sigue funcionando y nadie lo
@@ -933,5 +1204,45 @@ describe('ADR-0008 — directorio de enrutamiento, staging y separación de role
       await admin.query('ROLLBACK');
     }
     expect(codigo, 'se esperaba una violación de clave foránea (23503)').toBe('23503');
+  });
+
+  it('25bis — el motor rechaza emparejar un tenant con la CUENTA de otro', async () => {
+    // Simétrica de la 25, y la que faltaba. Las filas WABA son las que gobiernan todos
+    // los eventos de gestión, y eran las únicas sin respaldo del motor: su única defensa
+    // era una comprobación contra el último asiento del historial, que no existe la
+    // primera vez. Un defecto en el camino de alta bastaba para quedarse con los eventos
+    // de plantillas y de cuenta de una agencia ajena.
+    let codigo: string | undefined;
+    await admin.query('BEGIN');
+    try {
+      await admin.query('SET LOCAL ROLE "viajapro_enrutador"');
+      await admin.query(
+        `INSERT INTO enrutamiento_canales (clave_canal_hmac, tenant_resuelto_id, cuenta_id, estado, pimienta_version)
+         VALUES ($1, $2, $3, 'ACTIVO', 1)`,
+        [randomBytes(32), TENANT_A, cuentaB],
+      );
+    } catch (error) {
+      codigo = (error as { code?: string }).code;
+    } finally {
+      await admin.query('ROLLBACK');
+    }
+    expect(codigo, 'se esperaba una violación de clave foránea (23503)').toBe('23503');
+
+    // Y una fila no puede ser de las dos clases a la vez ni de ninguna.
+    let codigoCheck: string | undefined;
+    await admin.query('BEGIN');
+    try {
+      await admin.query('SET LOCAL ROLE "viajapro_enrutador"');
+      await admin.query(
+        `INSERT INTO enrutamiento_canales (clave_canal_hmac, tenant_resuelto_id, canal_id, cuenta_id, estado, pimienta_version)
+         VALUES ($1, $2, $3, $4, 'ACTIVO', 1)`,
+        [randomBytes(32), TENANT_A, canalA, cuentaA],
+      );
+    } catch (error) {
+      codigoCheck = (error as { code?: string }).code;
+    } finally {
+      await admin.query('ROLLBACK');
+    }
+    expect(codigoCheck, 'se esperaba una violación de CHECK (23514)').toBe('23514');
   });
 });

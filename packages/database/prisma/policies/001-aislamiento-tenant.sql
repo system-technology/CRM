@@ -75,6 +75,8 @@ CREATE OR REPLACE FUNCTION aplicar_aislamiento_tenant(nombre_tabla text)
 RETURNS void
 LANGUAGE plpgsql
 AS $$
+DECLARE
+  particion record;
 BEGIN
   -- FORCE incluye al dueño de la tabla. Sin él, el rol propietario se la salta.
   EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', nombre_tabla);
@@ -94,6 +96,24 @@ BEGIN
       USING      (tenant_id = NULLIF(current_setting('app.current_tenant', true), '')::uuid)
       WITH CHECK (tenant_id = NULLIF(current_setting('app.current_tenant', true), '')::uuid)
   $politica$, nombre_tabla);
+
+  -- Y baja a las particiones, una por una.
+  --
+  -- PostgreSQL **no** hereda la configuración de RLS del padre: una consulta que ataque
+  -- la partición directamente usa la suya, que nadie habilitó. Mientras la única tabla
+  -- particionada sea global esto no cambia nada; el día que se particione `mensajes`
+  -- —que es inevitable— sería una fuga completa entre agencias sin un solo error. Se
+  -- hace ahora, que es barato, y no el día que haga falta.
+  FOR particion IN
+    SELECT c.relname AS tabla
+    FROM pg_inherits h
+    JOIN pg_class c ON c.oid = h.inhrelid
+    JOIN pg_class padre ON padre.oid = h.inhparent
+    JOIN pg_namespace n ON n.oid = padre.relnamespace
+    WHERE n.nspname = 'public' AND padre.relname = nombre_tabla
+  LOOP
+    PERFORM aplicar_aislamiento_tenant(particion.tabla);
+  END LOOP;
 END;
 $$;
 
@@ -147,6 +167,20 @@ $$;
 -- habían divergido, y el ADR se apoyaba en la decorativa como mecanismo de control.
 -- -----------------------------------------------------------------------------
 CREATE OR REPLACE VIEW tablas_sin_aislamiento AS
+WITH RECURSIVE raices AS (
+  -- Una partición no se juzga por su nombre sino por el de su tabla raíz: es la raíz la
+  -- que está declarada —o no— en `excepciones_rls`. Sin esto, excluir las particiones
+  -- dejaba fuera de vigilancia a la mitad del esquema el día que se particione una tabla
+  -- de negocio, e incluirlas a secas marcaría como defecto las particiones del historial.
+  SELECT c.oid, c.relname AS raiz
+  FROM pg_class c
+  JOIN pg_namespace n ON n.oid = c.relnamespace
+  WHERE n.nspname = 'public' AND c.relkind IN ('r', 'p') AND NOT c.relispartition
+  UNION ALL
+  SELECT h.inhrelid, r.raiz
+  FROM pg_inherits h
+  JOIN raices r ON r.oid = h.inhparent
+)
 SELECT
   c.relname AS tabla,
   CASE
@@ -168,13 +202,11 @@ SELECT
     ) THEN 'política sin WITH CHECK: permite escribir filas de otro tenant'
     ELSE NULL
   END AS problema
-FROM pg_class c
-JOIN pg_namespace n ON n.oid = c.relnamespace
-WHERE n.nspname = 'public'
-  AND c.relkind IN ('r', 'p')
-  AND NOT c.relispartition
+FROM raices r
+JOIN pg_class c ON c.oid = r.oid
+WHERE
   -- Excepciones declaradas, en datos y no en un literal. Cada una con su motivo.
-  AND NOT EXISTS (SELECT 1 FROM excepciones_rls e WHERE e.tabla = c.relname);
+  NOT EXISTS (SELECT 1 FROM excepciones_rls e WHERE e.tabla = r.raiz);
 
 COMMENT ON VIEW tablas_sin_aislamiento IS
   'Filas = defectos de aislamiento. Debe estar vacía. La verifica la prueba de CI.';
@@ -188,13 +220,29 @@ COMMENT ON VIEW tablas_sin_aislamiento IS
 -- en ninguna fila, nadie le revocaría nada y ninguna aserción preguntaría por él.
 -- Lo que no está en la lista nace desprotegido.
 --
--- Se excluyen por ATRIBUTO, no por nombre:
---   · `rolsuper` y `rolbypassrls`: a esos no los arregla ningún REVOKE. Un rol que se
---     salta RLS es el problema de ADR-0007, no el de este archivo, y está cubierto por
---     el guardia de arranque de la aplicación. En Neon entran aquí `cloud_admin`,
---     `neon_service` y el propio rol propietario.
---   · `rolcreaterole` / `rolcreatedb`: son roles de administración, no de aplicación.
---     El rol de las migraciones es uno de ellos y es quien concede.
+-- Se excluye **lo mínimo**, y aquí hubo un error que costó una auditoría: la primera
+-- versión excluía también `rolcreaterole` y `rolcreatedb`, y eso convertía un atributo
+-- inocuo en un interruptor de apagado. La **concesión** no sale de esta vista —sale del
+-- literal `roles_de_aplicacion` de abajo—, así que un simple
+-- `ALTER ROLE viajapro_app CREATEDB` lo dejaba fuera de la vigilancia mientras seguía
+-- recibiendo `GRANT ... ON ALL TABLES`: nadie volvía a revocarle nada sobre las cuatro
+-- tablas globales y seis aserciones dejaban de preguntar por él. Es el mismo crítico de
+-- siempre girado sobre el otro eje: **lo que sale de la lista nace desprotegido.**
+--
+-- Lo que queda fuera, y por qué:
+--   · `rolsuper` y `rolbypassrls`: a esos no los arregla ningún `REVOKE`. Un rol que se
+--     salta RLS es el problema de ADR-0007, no el de este archivo, y lo cubre el guardia
+--     de arranque de la aplicación. En Neon entran aquí `cloud_admin`, `neon_service` y
+--     el propio rol propietario.
+--   · `pg_%`: roles predefinidos del motor, que no inician sesión de verdad.
+--   · **El rol de migraciones, por identidad y no por atributo**: es el dueño de
+--     `_prisma_migrations`, es quien concede y quien traspasa propiedad, y vigilarlo
+--     sería exigirle que no pueda hacer su trabajo. `IS DISTINCT FROM` y no `<>` a
+--     propósito: si esa tabla no existiera, la comparación con NULL vaciaría la vista
+--     entera y todas las aserciones se volverían huecas sin quedar en rojo.
+--
+-- `CREATEDB` y `CREATEROLE` son ortogonales a «esto es un rol de aplicación», y a esos
+-- sí los arregla un `REVOKE`. Por eso ahora se vigilan.
 -- -----------------------------------------------------------------------------
 CREATE OR REPLACE VIEW roles_de_login_vigilados AS
 SELECT r.rolname
@@ -202,9 +250,13 @@ FROM pg_roles r
 WHERE r.rolcanlogin
   AND NOT r.rolsuper
   AND NOT r.rolbypassrls
-  AND NOT r.rolcreaterole
-  AND NOT r.rolcreatedb
-  AND r.rolname NOT LIKE 'pg\_%';
+  AND r.rolname NOT LIKE 'pg\_%'
+  AND r.rolname IS DISTINCT FROM (
+    SELECT pg_get_userbyid(c.relowner)
+    FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'public' AND c.relname = '_prisma_migrations'
+  );
 
 COMMENT ON VIEW roles_de_login_vigilados IS
   'Roles de login de aplicación, enumerados por atributo. Los usan el bucle de privilegios y las aserciones 8, 9, 10 y 20.';
@@ -248,7 +300,23 @@ DECLARE
   objetivo  record;
   privilegio text;
   lista     text;
+  -- El rol con el que se entró, que NO es `current_user` una vez dentro del bucle.
+  rol_sesion CONSTANT text := session_user;
 BEGIN
+  -- Guardia: concesión y vigilancia tienen que hablar del mismo conjunto.
+  --
+  -- Si un rol de aplicación recibe el GRANT general pero se queda fuera de
+  -- `roles_de_login_vigilados`, nadie le revoca nada sobre las tablas globales y las
+  -- aserciones dejan de preguntar por él. No hay forma de que eso produzca un error por
+  -- sí solo, así que el error se produce aquí, a propósito, y detiene la migración.
+  FOREACH rol_app IN ARRAY roles_de_aplicacion LOOP
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = rol_app)
+       AND NOT EXISTS (SELECT 1 FROM roles_de_login_vigilados WHERE rolname = rol_app) THEN
+      RAISE EXCEPTION
+        'El rol de aplicación % existe pero no está vigilado: recibiría privilegios que nadie revoca. Revisa sus atributos (¿SUPERUSER, BYPASSRLS?).',
+        rol_app;
+    END IF;
+  END LOOP;
   -- 5.1 Concesión general sobre todo lo que hay en el esquema.
   FOREACH rol_app IN ARRAY roles_de_aplicacion LOOP
     IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = rol_app) THEN
@@ -317,7 +385,14 @@ BEGIN
       JOIN pg_class c ON c.oid = a.oid
     LOOP
       -- Ver la sutileza (a) de la cabecera: sin esto el REVOKE es un no-op con aviso.
-      IF objetivo.dueno <> current_user THEN
+      --
+      -- Se compara contra `session_user` y no contra `current_user`: dentro del bucle,
+      -- después del primer `SET LOCAL ROLE`, `current_user` **es** el dueño, de modo que
+      -- la condición de volver atrás era siempre falsa y la función retornaba con el rol
+      -- puesto hasta el fin de la transacción. Hoy era inocuo de casualidad; la próxima
+      -- sentencia que alguien añadiera después de la llamada se habría ejecutado como
+      -- `viajapro_enrutador`.
+      IF objetivo.dueno <> rol_sesion THEN
         EXECUTE format('SET LOCAL ROLE %I', objetivo.dueno);
       END IF;
 
@@ -326,9 +401,9 @@ BEGIN
         EXECUTE format('GRANT %s ON TABLE %s TO %I', lista, objetivo.nombre, fila.rol);
       END IF;
 
-      IF objetivo.dueno <> current_user THEN
-        EXECUTE 'RESET ROLE';
-      END IF;
+      -- Incondicional: volver al rol de sesión no tiene coste y no depende de que la
+      -- condición de arriba siga siendo correcta dentro de seis meses.
+      EXECUTE 'RESET ROLE';
     END LOOP;
   END LOOP;
 END;

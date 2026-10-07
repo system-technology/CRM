@@ -82,7 +82,7 @@ erDiagram
 |---|---|---|
 | `cuentas_whatsapp` | **Sí** | El WABA de la agencia y su token cifrado. Es la **verdad**: el directorio es derivado de aquí |
 | `canales` | **Sí** | El número conectado, con `phone_number_id` **en claro** bajo aislamiento |
-| `enrutamiento_canales` | **No** | Solo claves de ruteo en HMAC → `tenant_resuelto_id`. Es lo que rompe el ciclo huevo-gallina |
+| `enrutamiento_canales` | **No** | Solo claves de ruteo en HMAC → `tenant_resuelto_id`, más `canal_id` **o** `cuenta_id`. Es lo que rompe el ciclo huevo-gallina |
 | `enrutamiento_historial` | **No** | Bitácora del directorio, particionada por año. Global porque `registros_auditoria` archivaría el ataque bajo el atacante |
 | `recepciones_webhook` (+ hija) | **No** | El cuerpo cifrado del webhook, durante segundos, antes de saber de quién es |
 | `excepciones_rls` | **No** | La declaración que gobierna los privilegios. Se declara a sí misma |
@@ -105,9 +105,16 @@ Una regla general que merece quedar escrita, y que ADR-0008 obliga a aplicar:
 
 Escrita simple, la referencia puede apuntar a la fila de otro tenant y **nadie lo nota
 hasta que una fila cruza agencias**: RLS no interviene, porque la comprobación de
-integridad referencial se ejecuta por encima de las políticas. Lo verifica la aserción 25
-de la prueba de aislamiento. Ya está aplicada en `canales → cuentas_whatsapp` y en
-`enrutamiento_canales → canales`.
+integridad referencial se ejecuta por encima de las políticas. Lo verifican las aserciones
+25 y 25bis. Está aplicada en `canales → cuentas_whatsapp`, en
+`enrutamiento_canales → canales` y en `enrutamiento_canales → cuentas_whatsapp`.
+
+**Y se aplica a TODAS las variantes de la referencia, no a la más visible.** La primera
+versión solo la puso en `canal_id`, de modo que las filas de tipo WABA —`canal_id` nulo,
+`cuenta_id` relleno, las que gobiernan todos los eventos de plantillas y de cuenta— se
+quedaron sin respaldo del motor: entraban sin que nada comprobara de quién era la cuenta.
+Un `CHECK (num_nonnulls(canal_id, cuenta_id) = 1)` cierra la figura: **toda fila es de una
+de las dos clases, y las dos tienen clave foránea compuesta.**
 
 ---
 
@@ -299,6 +306,44 @@ cosmético: el aplicador de políticas es dirigido por datos y se la pondría RL
 automáticamente, devolviendo el ciclo huevo-gallina sin producir ningún error y en
 producción. Por eso la columna del directorio se llama `tenant_resuelto_id`. Lo vigila la
 aserción 17.
+
+### Y las particiones cuentan como tablas
+
+`enrutamiento_historial` está particionada por año, y una partición **es una tabla con su
+propia lista de permisos y su propia configuración de RLS**. Dos consecuencias que no son
+teóricas:
+
+- Revocar sobre la tabla particionada **no** alcanza a sus particiones: hay que descender
+  por `pg_inherits`. Lo hace `aplicar_privilegios_declarados()`, y la aserción 24 enumera
+  todas las particiones en vez de preguntar solo por el padre — PostgreSQL comprueba los
+  privilegios del padre cuando se accede a través de él y nunca los de la partición, así
+  que un `UPDATE enrutamiento_historial_2028` habría pasado por encima de la bitácora con
+  la aserción en verde.
+- Una partición creada por el rol de migraciones **nace** con los privilegios que concede
+  `ALTER DEFAULT PRIVILEGES`. Por eso no se crean a mano: `crear_particion_historial(año)`
+  las crea, les pone el propietario, repite la revocación del dueño y reaplica los
+  privilegios declarados. **Crear la del año siguiente es trabajo de plataforma con dueño
+  y fecha**; hay particiones hasta 2030 y, si faltara, las escrituras fallan de forma
+  ruidosa —ninguna agencia podría conectar su canal—, que es preferible a una partición por
+  defecto que luego impide adjuntar el año nuevo sin mover filas.
+
+Lo mismo vale para RLS el día que se particione una tabla de negocio —`mensajes` lo será—:
+la política va al padre **y a cada partición**, o un `SELECT` directo contra la partición
+usa su propia configuración, que nadie habilitó. `aplicar_aislamiento_tenant` ya desciende,
+y `tablas_sin_aislamiento` imputa cada partición a su tabla raíz.
+
+### Lo que todavía no tiene camino, dicho aquí para que no se pierda
+
+- **Borrar una fila del directorio no lo puede hacer nadie.** Ningún rol de login tiene
+  `DELETE` sobre `enrutamiento_canales` y ninguna función lo ofrece; además, borrar un
+  tenant cascadea a `canales` y choca con el `ON DELETE RESTRICT` del directorio. La
+  retención de 5 años de las filas `REVOCADO` y un derecho de supresión no tienen hoy
+  ejecutante que no sea el rol propietario, que es justo lo que ADR-0008 no acepta como
+  control. Pendiente: una función `purgar_directorio(p_anteriores_a)` acotada a filas
+  `REVOCADO` de más de cinco años y con asiento en el historial, **o** la decisión
+  explícita de que es una operación manual con procedimiento escrito.
+- **Nada ata `canales.estado` con `enrutamiento_canales.estado`.** Es responsabilidad del
+  camino de baja, en la misma transacción, con una métrica de reconciliación. Tarea 4b.
 
 ---
 
