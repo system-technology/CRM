@@ -10,7 +10,7 @@
 | Actualizado por | Claude Opus 5 |
 | Fase | **Rebanada vertical de paquetes, en construcción** |
 | Avance de la fase | **Cotizador funcionando de punta a punta: web → API → Neon.** v0.9.1 |
-| Próximo hito | Implementar el inbox. **Bloqueado hasta que el propietario apruebe el ADR-0008** |
+| Próximo hito | **Implementar el inbox.** ADR-0008 aceptado el 2026-10-07: 4a (esquema) puede empezar |
 
 ---
 
@@ -39,7 +39,7 @@ Qué hay, concretamente:
 |---|---|
 | Monorepo | **Instalado y compilando.** Node 22.20, pnpm 9.12 |
 | Documentación | 33 documentos completos + 22 marcadores con responsable y fase |
-| ADR | 0001 stack · 0002 WhatsApp · 0003 multi-tenancy · 0004 monolito modular · 0005 ramas · 0006 parametrización · 0007 Neon · **0008 resolución de tenant en webhooks (Propuesto)** |
+| ADR | 0001 stack · 0002 WhatsApp · 0003 multi-tenancy · 0004 monolito modular · 0005 ramas · 0006 parametrización · 0007 Neon · **0008 resolución de tenant en webhooks (Aceptado)** |
 | Agentes de IA | 17 definidos en `.claude/agents/`, incluido `integrador` |
 | Skills | Propias: `ciclo-funcionalidad`, `auditoria-integral`, `handoff-ia-externa`, `cerrar-sesion`, `nuevo-modulo`. De terceros, auditadas: `neon`, `neon-postgres` |
 | Comandos | `/estado` `/auditoria` `/funcionalidad` `/handoff` `/adr` `/contexto` `/integrar` |
@@ -95,11 +95,10 @@ Ordenada. La primera es la que debe tomarse ahora.
 | 2 | **Recibir el tarifario real del mayorista** de la agencia piloto | Usuario | La agencia ya está tramitando la información (2026-10-07). Hasta que llegue, el catálogo sigue modelado con datos verosímiles |
 | 2b | **Bajar el tarifario de Meta para Colombia en COP** del CSV oficial | Usuario | Cinco minutos con un navegador. Sin esa cifra el plan de entrada se fija a ciegas |
 | 3 | Reparar la conexión del MCP `postgres` o retirarlo de `.mcp.json` | `devops` | Falla con `CONNECTION_CLOSED` |
-| 4 | **Aprobar o devolver el ADR-0008** | Usuario | **Bloquea toda la implementación del inbox.** Seguridad dictaminó favorable tras tres pasadas |
-| 4a | Inbox — esquema: 4 tablas, 6 funciones, 5 roles, rehacer `001`/`002`, y `canales` **antes** | `datos` | Esperando el ADR |
+| 4a | **Inbox — esquema**, y en el MISMO commit: 4 tablas, 6 funciones, 5 roles, rehacer `001`/`002`, `canales` **antes**, **las 18 aserciones de aislamiento**, y la actualización de R1 y de `03-modelo-de-datos.md` §4 | `datos` | **Lista para empezar.** ADR-0008 aceptado el 2026-10-07 |
 | 4b | Inbox — API: tres orígenes de conexión, guardia de identidad, puerto a `crm`, relay por `change` | `backend` | Esperando 4a |
-| 4c | Inbox — las 18 aserciones de aislamiento + 3 verificaciones que no son de base de datos | `qa` | **Es lo que convierte el ADR en evidencia.** Sin esto el diseño es una intención |
-| 4d | Alinear `05-seguridad/02-proteccion-de-datos.md` y `03-modelo-de-datos.md` con el ADR-0008 | `documentador` | La redacción de consentimiento contradice hoy al ADR |
+| 4c | Las 3 verificaciones que **no** son de base de datos: arranque del proceso, alta de extremo a extremo, ensayo de rotación de la pimienta | `backend`, `qa`, `devops` | Cada una respalda un crítico. Son las que más fácil se quedan sin hacer |
+| 4d | Alinear `05-seguridad/02-proteccion-de-datos.md` con el ADR-0008 | `documentador` | La redacción de consentimiento contradice hoy al ADR |
 | 5 | Bandeja de conversaciones en la web | `frontend` | El diseño existe; falta el backend del inbox (tarea 4) |
 | 6 | Guardar cotizaciones con versiones inmutables | `backend` | Hoy el cálculo no persiste |
 | 7 | Pruebas de integración de la API | `qa` | Solo se probó a mano. **La verificación del cotizador fue manual: no hay prueba automática que la repita** |
@@ -117,7 +116,6 @@ Ordenada. La primera es la que debe tomarse ahora.
 |---|---|---|---|
 | Verificación de Meta Business sin iniciar | **Bloquea lanzar con clientes reales, NO bloquea construir.** Tarda semanas | Usuario | Arrancar el trámite en paralelo. Mientras tanto se desarrolla con el número de prueba de Meta |
 | **Tarifario real sin llegar** | El modelo de precios se sigue validando contra datos que inventamos nosotros. Hay piloto desde el 2026-10-07, falta su catálogo | Usuario | Pedirlo aunque sea parcial: un solo paquete real vale más que tres verosímiles |
-| **ADR-0008 sin aprobar** | **Bloquea escribir una sola línea del inbox.** Toda la implementación cuelga de él | Usuario | Aprobarlo o devolverlo. Seguridad ya dio dictamen favorable tras tres pasadas |
 | **Meta cobra los mensajes de servicio desde el 2026-10-01** | El costo variable por agencia cambia de orden de magnitud justo donde está nuestro tráfico. **Puede invalidar el plan de entrada** | Usuario | Bajar el tarifario de Colombia en COP del CSV oficial. Cinco minutos con un navegador; la herramienta del agente no pudo abrirlo |
 | Alcance de v1 vs. expectativa de calendario | Riesgo de cinco cosas a medias | Usuario | Roadmap por fases ya escrito; decidir dónde cortar |
 | MCP sin validar | Los agentes no tienen las herramientas que el método asume | Usuario | Requiere sesión interactiva — no se puede hacer automatizado |

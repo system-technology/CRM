@@ -30,9 +30,10 @@ Extiende [ADR-0002](0002-whatsapp-cloud-api.md) y [ADR-0003](0003-multitenancy.m
 > aserción que la ponga en rojo no es una protección, aunque esté escrita en el ADR que fija esa
 > regla**.
 >
-> Se corrige el borrador en vez de escribir un ADR nuevo porque **este nunca estuvo aceptado**: la
-> inmutabilidad empieza con la aceptación. Y queda en **Propuesto**: lo aprueba el propietario del
-> producto, no el arquitecto que lo escribe ni el auditor que lo revisa.
+> Se corrigió el borrador en vez de escribir un ADR nuevo porque **mientras tanto nunca estuvo
+> aceptado**: la inmutabilidad empieza con la aceptación. El propietario del producto lo aceptó el
+> 2026-10-07, tras el dictamen favorable; no lo aprobó el arquitecto que lo escribió ni el auditor
+> que lo revisó. **A partir de esa fecha este documento es inmutable: lo que cambie se supersede.**
 
 ---
 
