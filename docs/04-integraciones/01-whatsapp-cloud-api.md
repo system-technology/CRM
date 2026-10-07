@@ -75,6 +75,40 @@ camino feliz:
 El canal tiene estado explícito —`PENDING`, `CONNECTED`, `DISCONNECTED`, `SUSPENDED`— visible en la
 interfaz. Una agencia nunca debe descubrir que está desconectada porque un cliente le reclamó.
 
+### Lo que la agencia NO necesita — y es una ventaja comercial
+
+*Verificado contra la documentación oficial el 2026-10-07. Revisar cada trimestre.*
+
+**La verificación del negocio ante Meta no es requisito para empezar a enviar mensajes.** Una
+agencia puede conectar su número y operar sin verificarse, durante el tiempo que quiera:
+
+| Sin verificar, la agencia puede | Límite |
+|---|---|
+| Responder conversaciones iniciadas por el cliente | **Ilimitado** |
+| Iniciar conversación (plantillas) | 250 destinatarios únicos por 24 h |
+| Plantillas de mensaje | Hasta 250 |
+
+Para una agencia minorista eso sobra durante meses: la inmensa mayoría de sus conversaciones las
+inicia el viajero, y esas no tienen tope.
+
+**Lo que sí necesita, y hay que decirlo desde el primer contacto comercial:**
+
+1. Un número **sin cuenta activa en la app de WhatsApp**. Es la causa número uno de fricción en el
+   alta, y si lo borra sin preparación pierde su historial.
+2. Una cuenta de Facebook y un portafolio de negocio en Meta.
+3. **Un medio de pago asociado a su WABA.** Como Tech Provider, Meta exige que el cliente adjunte
+   una tarjeta antes de poder enviar. Es un requisito de Meta, no nuestro, y conviene anticiparlo
+   para que no aparezca como sorpresa a mitad del alta.
+
+**Consecuencia de producto.** Esto es un argumento de venta real frente a cualquier competidor:
+*«conectas tu WhatsApp hoy y atiendes clientes hoy; no tienes que verificar nada ni tener página
+web»*. El producto debe reflejarlo: el alta no puede pedir ni un documento más de los que Meta
+exige, y la verificación debe presentarse como un paso posterior opcional, con su beneficio
+explicado (más límite, más plantillas, nombre verificado) y sugerida **solo cuando el límite empiece
+a estorbar**.
+
+Guía para enviar al cliente: [`docs/10-onboarding/01-requisitos-para-la-agencia.md`](../10-onboarding/01-requisitos-para-la-agencia.md).
+
 ---
 
 ## 3. Webhooks

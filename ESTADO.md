@@ -53,6 +53,7 @@ Qué hay, concretamente:
 | **Modelo de ramas** | **`main` protegida. Solo el agente `integrador` escribe ahí**, tras siete compuertas. Trabajo en ramas de 1-3 días | ADR-0005 |
 | **Cabeza de playa** | **La agencia que revende paquetes turísticos.** Rebanada vertical completa y estrecha, no fases horizontales | `docs/01-producto/07-cabeza-de-playa-paquetes.md` |
 | **Entorno de desarrollo** | **Número de prueba de Meta.** La verificación del negocio NO bloquea construir, solo lanzar | ADR-0002 |
+| **Alta de la agencia cliente** | **No requiere verificación de Meta ni página web.** Sin verificar: conversaciones entrantes ilimitadas, 250 iniciadas/24h, 250 plantillas. Verificado 2026-10-07 | `docs/10-onboarding/01-requisitos-para-la-agencia.md` |
 | Alcance v1 | Los cuatro bloques siguen siendo el mapa del alcance total | `docs/01-producto/01-alcance-mvp.md` |
 | Diseño | Stitch para explorar; shadcn/ui en `packages/ui` para producir | `docs/01-producto/06-diseno-y-ux.md` |
 | Norte de producto | El brochure fija la dirección: qué módulos, qué flujo, qué tono | `docs/00-vision/05-norte-del-producto.md` |
