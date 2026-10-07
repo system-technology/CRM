@@ -100,6 +100,12 @@ Toda la documentación del proyecto. Si una decisión no está aquí (o en `ESTA
 | [Roadmap](08-roadmap/01-roadmap.md) | Fases, hitos, criterios de salida, estimaciones honestas |
 | [Riesgos](08-roadmap/03-riesgos.md) | Qué puede hundir el proyecto y qué hacemos al respecto |
 
+## 10 · Onboarding de agencias
+
+| Documento | Qué contiene |
+|---|---|
+| [Requisitos para la agencia](10-onboarding/01-requisitos-para-la-agencia.md) | **Documento para enviar al cliente.** Qué necesita para conectar su WhatsApp. Sin verificación ni web |
+
 ## 09 · Ingeniería asistida por IA
 
 | Documento | Qué contiene |
