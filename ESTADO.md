@@ -6,7 +6,7 @@
 
 | Campo | Valor |
 |---|---|
-| Última actualización | 2026-10-07 (sesión nocturna autónoma — diseño y frontend) |
+| Última actualización | 2026-10-07 (sesión nocturna autónoma — diseño, frontend y compuertas) |
 | Actualizado por | Claude Opus 5 |
 | Fase | **Rebanada vertical de paquetes, en construcción** |
 | Avance de la fase | **Cotizador funcionando de punta a punta: web → API → Neon.** v0.9.1 |
@@ -92,7 +92,7 @@ Ordenada. La primera es la que debe tomarse ahora.
 | # | Tarea | Agente / dueño | Estado |
 |---|---|---|---|
 | 1 | **Iniciar verificación de Meta Business y solicitud de Tech Provider** | Usuario | **Camino crítico, sin empezar** |
-| 2 | **Conseguir agencia piloto** y pedirle un tarifario real de mayorista | Usuario | Urgente. El catálogo se modeló con datos verosímiles, no reales |
+| 2 | **Recibir el tarifario real del mayorista** de la agencia piloto | Usuario | **La agencia piloto ya está tramitando la información** (2026-10-07). Hasta que llegue, el catálogo sigue modelado con datos verosímiles, no reales |
 | 3 | Reparar la conexión del MCP `postgres` o retirarlo de `.mcp.json` | `devops` | Falla con `CONNECTION_CLOSED` |
 | 4 | Inbox de WhatsApp: webhook, firma, idempotencia, ventana de 24h | `whatsapp`, `backend` | **Siguiente pieza grande** |
 | 5 | Bandeja de conversaciones en la web | `frontend` | El diseño existe; falta el backend del inbox (tarea 4) |
@@ -111,17 +111,19 @@ Ordenada. La primera es la que debe tomarse ahora.
 | Bloqueo | Impacto | Dueño | Mitigación |
 |---|---|---|---|
 | Verificación de Meta Business sin iniciar | **Bloquea lanzar con clientes reales, NO bloquea construir.** Tarda semanas | Usuario | Arrancar el trámite en paralelo. Mientras tanto se desarrolla con el número de prueba de Meta |
-| Sin agencia piloto confirmada | Riesgo de construir nueve meses a ciegas | Usuario | Conseguirla antes de terminar la Fase 1 |
+| ~~Sin agencia piloto confirmada~~ **Resuelto el 2026-10-07: hay piloto y está tramitando la información.** Queda el riesgo menor de que el tarifario tarde | Mientras no llegue el tarifario real, el modelo de precios se valida contra datos inventados por nosotros | Usuario | Pedir el tarifario en cuanto se pueda, aunque sea parcial: un solo paquete real vale más que tres verosímiles |
 | Alcance de v1 vs. expectativa de calendario | Riesgo de cinco cosas a medias | Usuario | Roadmap por fases ya escrito; decidir dónde cortar |
 | MCP sin validar | Los agentes no tienen las herramientas que el método asume | Usuario | Requiere sesión interactiva — no se puede hacer automatizado |
 | **`main` sin protección de servidor** — el plan gratuito de GitHub no permite proteger ramas en repos privados | La regla R11 depende hoy solo de disciplina y de hooks locales. Tolerable con una persona; **no lo es con dos** | Usuario | GitHub Pro (recomendado), o repo público, o riesgo asumido. Ver `.github/PROTECCION-DE-RAMA.md` |
-| Nada comercial está definido: nombre, precios, planes | No se puede vender ni proyectar ingresos | Usuario | Definirlo con datos del piloto, no antes |
+| Nada comercial está definido: nombre, precios, planes | No se puede vender ni proyectar ingresos | Usuario | Definirlo con datos del piloto, no antes. **Ahora es posible: ya hay piloto** |
 | Nombre en clave `ViajaPro` extendido por todo el repositorio | Si se decide otro nombre hay que renombrar | Usuario | Barato mientras no haya código. Un comando `sed`. Caro con clientes |
 | Revisión legal de protección de datos pendiente | No se puede salir a producción sin ella | Usuario | Abogado del país de operación, antes de Fase 4 |
 
 ## 5. Preguntas abiertas
 
-1. **¿Qué agencia colombiana será el piloto?** Sin un cliente real, la Fase 1 se construye a ciegas.
+1. ~~¿Qué agencia colombiana será el piloto?~~ **Respondida el 2026-10-07: hay agencia piloto y está
+   tramitando la información.** Lo que sigue abierto es **cuándo llega su tarifario real**, que es lo
+   que de verdad cambia el catálogo.
 2. **¿Nombre comercial?** Hoy `ViajaPro` es solo un identificador técnico.
 3. **¿Modelo de cobro?** Por asesor, por conversación, por tramos, o base + consumo. Cada uno cambia
    qué hay que medir en el producto desde el primer día.
