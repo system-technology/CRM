@@ -9,11 +9,18 @@ Extiende [ADR-0002](0002-whatsapp-cloud-api.md) y [ADR-0003](0003-multitenancy.m
 
 > **Este documento fue auditado antes de aceptarse y corregido en consecuencia.** Informe completo:
 > [`docs/_auditorias/2026-10-07-adr-0008-aislamiento-en-webhooks.md`](../_auditorias/2026-10-07-adr-0008-aislamiento-en-webhooks.md)
-> — 3 críticos, 8 altos, 13 medios, 5 bajos; diez bloqueantes y quince recomendados. El veredicto fue
-> *«la dirección es correcta; lo que falla es la especificación»*: la opción A sigue siendo la elegida,
-> y los descartes de C y E se dieron por buenos sin reservas. **Están aplicados los diez bloqueantes y
-> los quince recomendados**; el detalle de qué cambió y por qué está en
-> [§6](#6-qué-cambió-por-la-auditoría).
+> — **dos pasadas**. La primera: 3 críticos, 8 altos, 13 medios, 5 bajos; diez bloqueantes y quince
+> recomendados. La segunda, sobre el texto ya corregido: una regresión introducida por las propias
+> correcciones y cinco debilidades en la capa de verificación, más nueve hallazgos no bloqueantes.
+>
+> El veredicto de fondo no cambió en ninguna de las dos: *«la dirección es correcta; lo que falla es la
+> especificación»*. La opción A sigue siendo la elegida y los descartes de C y E se dieron por buenos
+> sin reservas. **Están aplicados los diez bloqueantes, los quince recomendados y RV-1 a RV-15**; el
+> detalle de qué cambió y por qué está en [§6](#6-qué-cambió-por-la-auditoría).
+>
+> Vale la pena registrar la lección de la segunda pasada, porque es generalizable: **dos correcciones
+> correctas por separado pueden anularse entre sí** (RV-1), y **una protección sin aserción que la
+> ponga en rojo no es una protección, aunque esté escrita en el ADR que fija esa regla**.
 >
 > Se corrige el borrador en vez de escribir un ADR nuevo porque **este nunca estuvo aceptado**: la
 > inmutabilidad empieza con la aceptación. Y queda en **Propuesto**: lo aprueba el propietario del
@@ -81,9 +88,9 @@ escribe por otra función que solo alcanza al rol del camino de alta.
   una proyección mínima de ruteo; con la clave en HMAC y la pimienta fuera de la base, **un volcado de
   la base no revela ni un solo identificador**; la escritura queda acotada a un único camino HTTP en
   vez de a toda la API.
-- **Cuesta:** tres tablas más en la lista de excepciones a R1, que es una lista que debe crecer muy
-  despacio; funciones `SECURITY DEFINER` y cuatro roles de base de datos que hay que crear, separar y
-  vigilar; **el mecanismo de concesión de privilegios del proyecto hay que rehacerlo** (ver §1.2), lo
+- **Cuesta:** cuatro tablas más en la lista de excepciones a R1, que es una lista que debe crecer muy
+  despacio; seis funciones `SECURITY DEFINER` y cinco roles de base de datos que hay que crear,
+  separar y vigilar; **el mecanismo de concesión de privilegios del proyecto hay que rehacerlo** (ver §1.2), lo
   que toca archivos que hoy funcionan; una pimienta más que custodiar y rotar.
 - **Cierra:** nada. Si mañana el directorio se mueve a otro almacén, es una implementación detrás de
   la misma función de resolución.
@@ -203,25 +210,38 @@ durabilidad.** En detalle:
 
 #### 1.1 Las tablas
 
-Tres tablas globales, declaradas como excepción a R1 **en `excepciones_rls`, que es dato en la base**
+Tablas globales, declaradas como excepción a R1 **en `excepciones_rls`, que es dato en la base**
 (ver §1.2) y reflejadas en `docs/02-arquitectura/03-modelo-de-datos.md` §4:
 
 ```
-enrutamiento_canales                 -- cuatro columnas de ruteo. Nada más.
-  clave_canal_hmac    bytea PRIMARY KEY   -- HMAC-SHA256(pimienta, '<tipo>:<id de Meta>')
-  tenant_resuelto_id  uuid  NOT NULL
-  canal_id            uuid  NULL          -- NULL en las filas de tipo WABA
+enrutamiento_canales              -- cuatro columnas de ruteo, más la versión de pimienta
+  clave_canal_hmac    bytea PRIMARY KEY   -- HMAC-SHA256(pimienta, '<tipo>:' || <id de Meta>)
+  tenant_resuelto_id  uuid     NOT NULL
+  canal_id            uuid     NULL       -- NULL en las filas de tipo WABA
   estado              ACTIVO | SUSPENDIDO | REVOCADO
-  waba_cifrado        bytea NULL          -- solo en filas WABA; único camino que necesita el claro
+  pimienta_version    smallint NOT NULL   -- con qué pimienta se calculó la clave
 
-enrutamiento_historial               -- solo inserción. Nadie tiene UPDATE ni DELETE, ni el propietario
-  id · clave_canal_hmac
+enrutamiento_historial            -- solo inserción, particionada por año (ver retenciones, §4)
+  id · canal_id                   -- se indexa por el UUID del canal, NUNCA por el HMAC
+  clave_canal_hmac · pimienta_version      -- atributos informativos, no clave de búsqueda
   tenant_anterior · tenant_nuevo
   estado_anterior · estado_nuevo
   actor_usuario_id · actor_tenant_id · motivo · ocurrido_en
 
-recepciones_webhook                  -- ver §4
+recepciones_webhook               -- ver §4
+recepciones_webhook_changes       -- ver §4: el grano real del procesamiento es el `change`
+excepciones_rls                   -- ver §1.2: tabla de control, y se declara a sí misma
 ```
+
+**Son cuatro tablas globales**, no tres: `excepciones_rls` también vive en `public` sin `tenant_id` y
+también la crea este ADR. Contarla importa porque la regla de parada de Consecuencias se apoya en el
+número, y una regla que nace incumplida es inoperante.
+
+**El historial se indexa por `canal_id`, no por el HMAC.** El canal tiene UUID propio y estable; el
+HMAC depende de un secreto rotable. Indexar la tabla cuya razón de existir es que un secuestro sea
+demostrable por un valor que cambia al rotar la pimienta —en una tabla donde nadie puede
+actualizar nada— dejaría la historia de cada número inconsultable para siempre después de la primera
+rotación. El HMAC queda como atributo informativo, con su versión de pimienta al lado.
 
 **Las claves van en HMAC, no en claro, y un hash simple no serviría.** `phone_number_id` es numérico y
 de espacio pequeño: un SHA-256 se invierte por fuerza bruta en minutos. Con HMAC-SHA256 y una
@@ -232,13 +252,33 @@ le estorba, porque tiene la pimienta. Pero el escenario que crea una tabla sin R
 lectura a la base— queda neutralizado por el costo de dos líneas de código.
 
 El tipo entra **dentro** del HMAC (`'pn:'` o `'waba:'`), lo que separa dominios sin necesidad de una
-columna de tipo y hace imposible que un identificador de número colisione con uno de cuenta.
+columna de tipo y hace imposible que un identificador de número colisione con uno de cuenta. Es
+separación de dominios, no criptografía improvisada: la misma idea que el campo `info` de HKDF. Su
+corrección depende de una sola condición, y por eso queda escrita: **el prefijo de dominio termina en
+un carácter que el identificador no puede contener** —dos puntos, que un identificador numérico de
+Meta nunca lleva—, de modo que el mensaje no es ambiguo. Si algún día el mensaje tuviera un tercer
+campo variable, habría que prefijar longitudes; hoy no. Y la fortaleza viene de la pimienta, no del
+prefijo: el prefijo separa, no oculta.
 
-**Rotación de la pimienta y recuperación ante su pérdida:** el directorio es **derivado**, no es la
+**Rotación de la pimienta y recuperación ante su pérdida.** El directorio es **derivado**, no es la
 verdad. La verdad son `canales` (tenant-scoped, con los identificadores en claro bajo RLS) y el
 historial. Rotar la pimienta es reconstruir el directorio recorriendo tenants, fijando el contexto de
-cada uno. Es un trabajo de plataforma, no una migración de datos, y existe desde el día uno porque es
+cada uno: un trabajo de plataforma, no una migración de datos, que existe desde el día uno porque es
 también el procedimiento de recuperación.
+
+Pero la reconstrucción no es instantánea, y de ahí salen dos obligaciones que no son opcionales —sin
+ellas, **una operación de mantenimiento de seguridad destruye mensajes de clientes**, porque un
+directorio incompleto no responde "espera", responde "desconocido", y el caso desconocido borra el
+contenido en el acto (§2):
+
+1. **Ventana de dos pimientas**, igual que la que §2 define para el App Secret.
+   `resolver_enrutamiento` acepta la clave calculada con la pimienta actual y, durante la ventana,
+   también con la anterior. `pimienta_version` en cada fila es lo que permite saber qué está
+   reconstruido y qué no. **La rotación termina cuando la reconstrucción acaba, no cuando se cambia
+   el secreto.**
+2. **Mientras haya una reconstrucción en curso, la rama "desconocido" retiene en vez de borrar.** Lo
+   gobierna un indicador de plataforma explícito, y la métrica de resoluciones fallidas por minuto es
+   la que debe disparar la alerta si alguien rota sin levantarlo.
 
 **Dos claves de resolución, no una.** Verificado contra la documentación oficial
 ([integración, §4.1](../04-integraciones/01-whatsapp-cloud-api.md)): `metadata.phone_number_id` solo
@@ -252,13 +292,19 @@ fila WABA y todas las filas de número de ese WABA apuntan al mismo tenant.
 —tenant-scoped— y a `enrutamiento_historial`. En el directorio eran el libro de clientes servido a
 quien lo leyera.
 
+**Y fuera también el WABA cifrado.** El único camino que necesita ese identificador en claro es la
+desuscripción, y el directorio **conoce el tenant** de la fila: ese camino fija el tenant y lo lee de
+`canales`, que es donde está la verdad. Guardarlo aquí lo habría dejado cinco años bajo una clave
+cuya rotación se diseñó para datos que viven minutos (§4) — es decir, ilegible justo el día que hace
+falta, que es el día de responder a un incidente.
+
 **El identificador de Meta no es la clave primaria del canal, y eso importa.** La misma fuente
 verifica que un número borrado y vuelto a añadir **no conserva su `phone_number_id`**, y que migrar un
 número entre WABAs cambia su WABA. El canal es una entidad nuestra con UUID propio en `canales`; estos
 identificadores son atributos reasignables. Tratarlos como clave primaria convertiría la migración de
 número de un cliente en una cirugía de claves foráneas.
 
-**Ninguna columna se llama `tenant_id`, en ninguna de las tres tablas, y eso no es cosmético.** Si
+**Ninguna columna se llama `tenant_id`, en ninguna de las cuatro tablas, y eso no es cosmético.** Si
 alguna se llamara así, el aplicador de políticas le pondría RLS automáticamente y la tabla volvería a
 ser ilegible sin contexto — el ciclo otra vez, descubierto en producción. El nombre incómodo es la
 señal de que estas tablas **no están aisladas** y de que nadie debe asumir que lo están. La aserción
@@ -295,15 +341,32 @@ Por eso **el `REVOKE` no puede vivir en una migración puntual: tiene que ser di
 ejecutarse en el mismo bloque que el `GRANT`**, igual que la política RLS:
 
 ```
-excepciones_rls(tabla text PRIMARY KEY, motivo text NOT NULL, privilegios_app text[] NOT NULL)
+excepciones_rls(tabla text, rol text, privilegios text[], motivo text NOT NULL,
+                PRIMARY KEY (tabla, rol))
 ```
 
+**Una fila por par `(tabla, rol)`, no una lista única.** Hay tres roles de login con privilegios
+idénticos sobre las tablas de negocio, y el `GRANT ... ON ALL TABLES` los alcanza a los tres. Una
+columna llamada `privilegios_app` induce a implementar el `REVOKE` para `viajapro_app` y olvidar los
+otros dos — y el olvidado sería `viajapro_webhook`, el rol del proceso que más código ejecuta contra
+el directorio. El nombre de la columna es parte del defecto, así que el nombre cambia.
+
 `001` y `002`, después del `GRANT ... ON ALL TABLES`, recorren esa tabla y ejecutan
-`REVOKE ALL ON <tabla> FROM <roles de aplicación>` seguido del `GRANT` de exactamente los privilegios
-declarados. Concesión y revocación pasan a ser el mismo mecanismo y **no pueden desincronizarse**. Las
-tres tablas globales de este ADR entran con `privilegios_app = '{}'`. El `ALTER DEFAULT PRIVILEGES` se
-mantiene: su cobertura de tablas futuras es deseable, y el problema no era él sino la ausencia de
-contrapeso declarativo.
+`REVOKE ALL ON <tabla> FROM <rol>` seguido del `GRANT` de exactamente los privilegios declarados para
+ese par. Concesión y revocación pasan a ser el mismo mecanismo y **no pueden desincronizarse**. Las
+cuatro tablas globales entran con `privilegios = '{}'` para los tres roles. El
+`ALTER DEFAULT PRIVILEGES` se mantiene: su cobertura de tablas futuras es deseable, y el problema no
+era él sino la ausencia de contrapeso declarativo.
+
+**`excepciones_rls` se declara a sí misma, y es superficie de confianza, no un catálogo inocuo.** Si
+no lo hiciera, el `GRANT ... ON ALL TABLES` le concedería `INSERT, UPDATE, DELETE` a los roles de
+aplicación, y entonces el mecanismo que reemplazó al crítico 1 se convertiría en su vehículo: una
+inyección SQL que escriba `privilegios = '{SELECT,INSERT,UPDATE}'` para `enrutamiento_canales` no
+rompe nada ese día, pero **el siguiente despliegue concede esos privilegios por sí solo** —porque
+`001` ahora aplica lo que esa tabla declara— y una comprobación que contrastara lo real contra lo
+declarado los validaría como correctos. Con firma de legitimidad. De ahí que la aserción 11 fije las
+tripletas `(tabla, rol, privilegios)` contra un literal escrito **en el archivo de prueba**, que vive
+en el repositorio y no en la base.
 
 **Esa misma tabla pasa a ser la única fuente de la lista de excepciones.** Hoy hay dos y ya
 divergieron: la del SQL (`tenants`, `monedas`, `_prisma_migrations`) y la del documento de modelo de
@@ -318,24 +381,49 @@ que nadie escriba un `GRANT`. En el instante de crearse, `registrar_enrutamiento
 todos los roles de aplicación y por cualquier rol que se cree mañana para analítica o que añada el
 proveedor gestionado. **Toda la separación de privilegios de §1.3 no vale nada si esto no se revoca.**
 La migración que crea cada función revoca `ALL ON FUNCTION ... FROM PUBLIC` inmediatamente después
-del `CREATE`, y el proyecto añade
-`ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC` para que la
-próxima función no repita el defecto.
+del `CREATE`, para **las seis** funciones de este ADR, y el proyecto añade
+`ALTER DEFAULT PRIVILEGES FOR ROLE <rol de migraciones> IN SCHEMA public REVOKE EXECUTE ON FUNCTIONS
+FROM PUBLIC` para que la próxima función no repita el defecto.
+
+**El `FOR ROLE` no es decorativo:** sin él, `ALTER DEFAULT PRIVILEGES` solo alcanza a los objetos
+creados por el rol que ejecuta la sentencia. Si alguna vez las migraciones corrieran con otro rol, la
+protección no aplicaría — sin error, que es el género de omisión de todo este apartado.
 
 #### 1.3 Los roles: la frontera real es el rol de conexión
 
-Cuatro roles, ninguno con `BYPASSRLS`:
+Cinco roles, ninguno con `BYPASSRLS`. **Esta tabla es normativa**: la aserción 20 la compara, entrada
+por entrada y en ambos sentidos, contra los privilegios reales.
 
 | Rol | Quién lo usa | Qué puede ejecutar de más |
 |---|---|---|
 | `viajapro_app` | `apps/api`, todo el resto de la API | `registrar_recepcion` |
 | `viajapro_altas` | **solo** el caso de uso de Embedded Signup | `registrar_enrutamiento` |
-| `viajapro_webhook` | `apps/worker` | `resolver_enrutamiento`, `tomar_recepcion`, anulación y purga |
-| `viajapro_enrutador` | nadie: **`NOLOGIN`** | Es el propietario de las funciones y de las tablas globales |
+| `viajapro_webhook` | `apps/worker` | `resolver_enrutamiento`, `tomar_recepcion`, `anular_payload`, `purgar_recepciones` |
+| `viajapro_enrutador` | nadie: **`NOLOGIN`** | Propietario de `enrutamiento_canales`, `enrutamiento_historial` y sus dos funciones |
+| `viajapro_staging` | nadie: **`NOLOGIN`** | Propietario de `recepciones_webhook`, su tabla hija y sus cuatro funciones. **Sin ningún privilegio sobre el directorio** |
 
-Los tres primeros tienen privilegios idénticos sobre las tablas de negocio y se diferencian
+Los tres de login tienen privilegios idénticos sobre las tablas de negocio y se diferencian
 **únicamente** en qué funciones pueden ejecutar. Esa es toda la idea: **el rol de conexión es lo único
 que una inyección SQL no puede falsear.**
+
+**Dos propietarios y no uno**, porque `viajapro_app` sí puede ejecutar `registrar_recepcion`, y si esa
+función perteneciera al dueño del directorio, su usuario efectivo tendría todos los privilegios sobre
+`enrutamiento_canales`. Hoy su cuerpo solo inserta y el control declarado sería "toda ampliación pasa
+por revisión" — una revisión humana, justo lo que este ADR no acepta como protección. Dentro de seis
+meses alguien amplía esa función para "resolver el tenant de una vez y ahorrar un viaje", ningún
+`GRANT` cambia, ninguna aserción se entera, y `viajapro_app` recupera el directorio a través de una
+función que siempre pudo ejecutar. Con propietarios separados, **aunque amplíen el cuerpo, la función
+no alcanza el directorio**. Es la misma lógica por la que el propietario no puede ser el del esquema.
+
+**Cada proceso afirma al arrancar qué rol espera ser.** Con tres roles de login que no se distinguen
+en nada salvo en qué funciones ejecutan, apuntar `DATABASE_APP_URL` a `viajapro_altas` —un error de
+variable de entorno, un copiar y pegar entre entornos— devuelve a toda la API la capacidad de ejecutar
+`registrar_enrutamiento`, y el guardia de arranque de `prisma.service.ts` no dice nada porque solo
+comprueba `BYPASSRLS`: ninguno de los dos roles lo tiene. La aplicación arranca, todo funciona, y el
+crítico 2 vuelve a estar abierto en producción. Por tanto la API aborta si `current_user` no es
+`viajapro_app`, el trabajador si no es `viajapro_webhook`, y el caso de uso de alta verifica
+`viajapro_altas` antes de su primera llamada. Es la línea de código que ya existe, con una comparación
+más. **Sin esto, la separación de roles es una convención de despliegue.**
 
 Porque la protección que parecía suficiente no lo es. `registrar_enrutamiento` comprueba
 `app.current_tenant` y rechaza filas de otro tenant — pero **ese GUC lo fija el propio rol con
@@ -346,12 +434,12 @@ contra la fila; aquí se compara contra un valor que el atacante controla.
 > **La comprobación de tenant dentro de la función es una comprobación de consistencia, no una
 > frontera de seguridad.** La frontera es el `EXECUTE`, y por eso el rol general de la API no lo tiene.
 
-`viajapro_enrutador` se crea
+**Los dos propietarios** se crean
 `NOLOGIN NOBYPASSRLS NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT`, con el `REVOKE neon_superuser`
 condicional que `002-rol-aplicacion.sql` ya aplica a `viajapro_app` — en el proveedor gestionado la
 herencia por omisión reintroduce `BYPASSRLS` (ADR-0007), y el propietario de una función
 `SECURITY DEFINER` con `BYPASSRLS` es una escalada silenciosa el día que alguien amplíe su cuerpo.
-**Este rol no tiene contraseña y nunca la tendrá: no es una credencial, es un propietario.** Con
+**Estos roles no tienen contraseña y nunca la tendrán: no son credenciales, son propietarios.** Con
 `NOLOGIN`, "comprometer `viajapro_enrutador`" no existe como escenario independiente: para actuar como
 él hay que ser ya propietario del esquema o superusuario, y ahí el aislamiento está perdido con o sin
 este ADR. Con `LOGIN`, sería una contraseña en un `.env` cuya posesión concede el secuestro de
@@ -361,6 +449,12 @@ Y el peor caso sigue acotado: aunque la función fallara, no puede leer ninguna 
 porque tienen `FORCE RLS` y nadie fijó el tenant.
 
 #### 1.4 Cómo se escriben las funciones
+
+Son **seis** funciones `SECURITY DEFINER`, no dos: `resolver_enrutamiento` y `registrar_enrutamiento`
+en el directorio, y `registrar_recepcion`, `tomar_recepcion`, `anular_payload` y `purgar_recepciones`
+en el staging (§4). Las reglas de abajo aplican a las seis, y el inventario importa: el control
+declarado —"toda modificación de su cuerpo exige revisión"— enunciado sobre dos dejaría cuatro fuera
+por un error de conteo, incluidas las dos que pueden borrar evidencia.
 
 `SECURITY DEFINER` sin más es una vulnerabilidad conocida. Las cuatro reglas son parte de la decisión,
 no del detalle de implementación:
@@ -427,7 +521,10 @@ la víctima no podría verlo nunca. Por eso el historial es una tabla global má
 RLS, igual que el directorio al que acompaña.
 
 `registrar_enrutamiento` escribe en `enrutamiento_historial` dentro de su misma transacción. **Ningún
-rol tiene `UPDATE` ni `DELETE` sobre esa tabla, ni siquiera su propietario.** Todo cambio de
+rol tiene `UPDATE` ni `DELETE` sobre esa tabla, ni siquiera su propietario** — lo verifica la aserción
+24, porque un `GRANT` sobrante la haría editable y el valor probatorio desaparecería sin ninguna
+señal. Su retención de cinco años se ejecuta **soltando particiones anuales**, no borrando filas: así
+el plazo es aplicable sin conceder a nadie el `DELETE` que lo invalidaría todo (§4, retenciones). Todo cambio de
 `tenant_resuelto_id` sobre una fila existente **notifica a los dos tenants** y escribe además un
 registro de auditoría bajo cada uno: un repunte legítimo no molesta a nadie, uno ilegítimo deja de ser
 invisible para la víctima, que es el punto. Métrica: cambios de titularidad por día; en operación
@@ -445,7 +542,7 @@ ninguno queda sin decidir:
 | **Firma inválida** | `403`; contador por IP y bloqueo temporal tras N; nada encolado, nada persistido. En el registro: longitud del cuerpo, los **ocho primeros bytes de su hash** e IP — **nunca el cuerpo ni la cabecera de firma** | No es tráfico de Meta. Un 200 enseñaría al que prueba que el endpoint existe. Y el cuerpo contiene mensajes de clientes: registrarlo está prohibido sin matices |
 | **`SUSPENDIDO`** — impago o investigación | `200`; **se persiste** el mensaje bajo su tenant; **no** se emite por Socket.IO y **no** dispara automatización | El cliente vuelve y su historial debe estar completo. Lo peligroso no era procesarlos: era que **nadie lo hubiera decidido** |
 | **`REVOCADO`** — agencia dada de baja | `200`; **el contenido se borra de `recepciones_webhook` en el acto** y el `recepcion_id` permanece; contador por clave | Devolver error haría que Meta degradara la entrega **para todos los tenants**. Y conservar contenido de un excliente no tiene base legal: sin contrato no hay finalidad (Ley 1581) |
-| **Desconocido** — no hay fila | `200`; **el contenido se borra en el acto**; cuarentena de metadatos 7 días; alerta | La causa real casi siempre es un alta a medio terminar: la suscripción al WABA quedó hecha y nuestra fila no |
+| **Desconocido** — no hay fila | `200`; **el contenido se borra en el acto** —salvo que haya una reconstrucción del directorio en curso, y entonces **retiene**, ver §1.1—; cuarentena de metadatos 7 días; alerta | La causa real casi siempre es un alta a medio terminar: la suscripción al WABA quedó hecha y nuestra fila no |
 
 **Borrar el contenido es el primer paso de las dos últimas ramas, antes de cualquier otra cosa.** No
 es un matiz: el corte de §4 persiste el cuerpo **antes** de saber de quién es, y un evento que nunca
@@ -559,7 +656,8 @@ Cinco propiedades no negociables:
    era nueva. El payload va **cifrado desde el proceso de Node**, nunca con `pgcrypto` pasando la clave
    dentro del SQL: acabaría en `pg_stat_statements` y en los registros del proveedor. Prohibido
    explícitamente, porque es el atajo que alguien tomará.
-5. Encolar en BullMQ **un trabajo por `change`**, no uno por POST.
+5. Encolar en BullMQ **un trabajo por `change`**, no uno por POST, con
+   `jobId = recepcion_id || ':' || <índice del change dentro del POST>`.
 6. `200`.
 
 **El invariante, que es lo único que hay que recordar de este apartado:**
@@ -578,28 +676,44 @@ las agencias en Redis **en claro, sin RLS, sin cifrado**, con la retención que 
 trabajos completados y visibles en cualquier panel de inspección de colas. Va acompañado de política
 explícita de eliminación de trabajos completados y fallidos.
 
-**El criterio del relay es "no procesado", no "no encolado".** La diferencia decide si el invariante
-es real: con `jobId = recepcion_id`, BullMQ **rechaza en silencio** un trabajo cuyo identificador ya
-existe, incluidos los del conjunto de fallidos. Un evento que agota sus reintentos quedaría como
-fallido, el relay lo vería como "ya encolado", y Meta ya devolvió su 200: el mensaje se pierde y nadie
-se entera — exactamente el modo de fallo que este ADR declara inaceptable. Por tanto:
+**El grano del trabajo, el del identificador y el del estado de proceso tienen que ser el mismo: el
+`change`.** Es la lección más cara de esta revisión, porque dos correcciones correctas por separado
+—encolar por `change`, y conservar el hash como identificador— **se anulan entre sí**. `recepcion_id`
+es el `sha256` del cuerpo **entero** del POST; si ese POST trae tres `changes` de tres agencias
+distintas —algo que la documentación oficial confirma como real—, se encolan tres trabajos con el
+mismo identificador y BullMQ **descarta dos en silencio**. Se procesa el de la agencia A, se marca la
+recepción como procesada, se anula el payload, y **los mensajes de B y de C no existieron nunca**: el
+relay no los recupera porque su criterio ya está satisfecho, no hay payload del que reconstruirlos, y
+Meta devolvió su 200. Es exactamente el fallo que este apartado existe para evitar, reintroducido por
+su propia corrección. Por tanto:
 
-- `recepciones_webhook` lleva `procesado_en timestamptz NULL`, y el relay barre las filas con
-  `procesado_en` nulo y más de treinta segundos. Es la única señal que no depende del estado interno
-  de Redis.
-- **Al reencolar, el relay elimina antes el trabajo fallido**; el identificador sigue siendo el hash.
-- Contador y alerta sobre filas con `procesado_en` nulo y más de cinco minutos. Esa métrica es lo que
-  convierte el invariante en algo observable.
-- **La purga nunca borra una fila sin procesar.** Borrar un evento no procesado es destruir la
-  evidencia del fallo.
+- `recepciones_webhook_changes(recepcion_id, indice, estado, procesado_en)` es donde vive el estado
+  de proceso. **`procesado_en` no puede estar en la fila de la recepción**, que es una sola para N
+  `changes`. El índice es estable porque el cuerpo es el mismo que produjo el hash.
+- El relay barre **`changes`** con `procesado_en` nulo y más de treinta segundos. Es la única señal
+  que no depende del estado interno de Redis.
+- **Al reencolar, el relay elimina antes el trabajo fallido.** Con el identificador por `change`,
+  BullMQ seguiría rechazando en silencio un trabajo cuyo identificador ya existe en el conjunto de
+  fallidos: un evento que agota sus reintentos quedaría fallido, el relay lo vería como "ya encolado",
+  y el mensaje se perdería igual.
+- **El payload se anula cuando todos los `changes` de esa recepción están procesados o clasificados**,
+  nunca cuando termina el primero.
+- Contador y alerta sobre `changes` con `procesado_en` nulo y más de cinco minutos. Esa métrica es lo
+  que convierte el invariante en algo observable.
+- **La purga nunca borra una recepción con algún `change` sin resolver.** Borrar un evento no
+  procesado es destruir la evidencia del fallo.
+- La aserción 16 **pasa por la cola real**, no solo contra la base: una prueba que inserte filas a
+  mano no detecta nada de esto, porque el defecto vive en el deduplicador de la cola.
 
-**`recepciones_webhook` recibe la misma disciplina que el directorio**, porque es la única tabla con
-contenido de varios tenants sin RLS y el cifrado en reposo no protege de quien tiene la clave:
+**`recepciones_webhook` y su tabla hija reciben la misma disciplina que el directorio**, porque son
+las únicas con contenido de varios tenants sin RLS y el cifrado en reposo no protege de quien tiene la
+clave. Las cuatro funciones son `SECURITY DEFINER` y su propietario es **`viajapro_staging`**, que no
+tiene ningún privilegio sobre las tablas del directorio (§1.3):
 
 | Función | Rol | Qué permite |
 |---|---|---|
-| `registrar_recepcion` | `viajapro_app` | Insertar. Nada más |
-| `tomar_recepcion(recepcion_id)` | `viajapro_webhook` | **Una** fila por su identificador exacto. Un barrido masivo deja de existir como operación |
+| `registrar_recepcion` | `viajapro_app` | Insertar la recepción y una fila hija por `change`. Nada más |
+| `tomar_recepcion(recepcion_id, indice)` | `viajapro_webhook` | **Un `change`** por su identificador exacto. Un barrido masivo deja de existir como operación |
 | `anular_payload`, `purgar_recepciones` | `viajapro_webhook` | Acotadas por identificador o por antigüedad, nunca con filtro libre |
 
 Y la separación que cierra el agujero: **la clave de descifrado vive en el proceso del trabajador, no
@@ -621,17 +735,18 @@ igual que la pimienta del directorio:
   agencias— y el fallo aparecería como errores de descifrado dispersos que nadie relacionaría con el
   cambio de clave.
 
-**Retenciones.** Tres plazos nuevos, cada uno con su finalidad, y ninguno es "para siempre" — el propio
-documento de protección de datos dice que *guardar todo para siempre no es una política de retención:
-es una ausencia de política*. Las tres filas se añaden a `02-proteccion-de-datos.md` §4 y al trabajo
-programado de retención:
+**Retenciones.** Cinco plazos nuevos, cada uno con su finalidad, y ninguno es "para siempre" — el
+propio documento de protección de datos dice que *guardar todo para siempre no es una política de
+retención: es una ausencia de política*. Las cinco filas se añaden a `02-proteccion-de-datos.md` §4 y
+al trabajo programado de retención:
 
 | Dato | Plazo | Finalidad |
 |---|---|---|
-| Contenido cifrado en `recepciones_webhook` | **Minutos**: se borra al procesar o al clasificar | Su finalidad se agota ahí |
-| `recepcion_id` y marca de recepción | **30 días**, luego se borra la fila | Idempotencia frente a reintentos del proveedor |
+| Contenido cifrado en `recepciones_webhook` | **Minutos**: se borra al procesar o al clasificar | Su finalidad se agota ahí. **Es el único plazo que decide la legalidad del apartado**: ahí están el teléfono del viajero, el texto y a veces un pasaporte |
+| `recepcion_id` y marca de recepción | **30 días**, luego se borra la fila | Idempotencia frente a reintentos del proveedor. No es dato personal —es un `sha256` irreversible—, así que el número es una decisión técnica: cubre con holgura la ventana de reintentos de Meta, que hay que anclar al valor vigente de la documentación oficial. La garantía de corrección no depende de él, sino de `UNIQUE (tenant_id, provider_message_id)`, que es permanente |
 | Cuarentena de metadatos | **7 días**, purga automática | Completar un alta a medias |
 | Fila del directorio `REVOCADO` | **5 años** | Deber de prueba, alineado con la bitácora de auditoría |
+| `enrutamiento_historial` | **5 años**, **por particiones anuales** | Guarda `actor_usuario_id`, dato personal de un empleado identificado. Y como nadie tiene `DELETE` sobre la tabla —es lo que la hace probatoria—, una retención por filas sería literalmente inaplicable: no hay rol que pueda ejecutarla. **Soltar una partición no es un `DELETE` sobre filas**: el invariante de inmutabilidad se conserva intacto y el plazo pasa a ser ejecutable |
 
 Los 5 años sustituyen al "nunca se borra" del borrador: si la agencia es persona natural —habitual en
 agencias pequeñas colombianas—, "para siempre" es insostenible frente a un derecho de supresión;
@@ -657,7 +772,8 @@ agencias pequeñas colombianas—, "para siempre" es insostenible frente a un de
    tenant fijado en la sesión es igual al tenant resuelto para ese `change`.
 3. `asegurarContacto` por el puerto, insertar el mensaje, actualizar los campos denormalizados de la
    conversación, reiniciar la ventana de 24 h, escribir el evento en el `outbox`. Una transacción.
-4. Marcar `procesado_en` y anular el payload.
+4. Marcar `procesado_en` **de ese `change`**. Si era el último pendiente de su recepción, anular el
+   payload.
 5. Emitir por Socket.IO **después del commit**, a una sala con prefijo de tenant: Redis no está
    cubierto por RLS y su aislamiento es responsabilidad de la aplicación. No se emite para tenants
    `SUSPENDIDO`.
@@ -688,27 +804,33 @@ siete que ya existen, y son compuerta de integración:
 
 | # | Aserción | Qué atrapa |
 |---|---|---|
-| 8 | Un `SELECT` sobre `enrutamiento_canales` con `viajapro_app` lanza `42501` | El `REVOKE` olvidado **o revertido**. Es la prueba clave: es de comportamiento, no de catálogo, y falla sin importar cómo se concedió el privilegio |
-| 9 | `INSERT`, `UPDATE` y `DELETE` directos sobre `enrutamiento_canales` lanzan `42501` | La primitiva de secuestro al alcance del rol general |
-| 10 | Para toda tabla de `excepciones_rls` y todo privilegio, `has_table_privilege` coincide **exactamente** con lo declarado | Cualquier privilegio sobrante en cualquier tabla global, hoy y en el futuro. **Es la que sobrevive al paso del tiempo: no enumera tablas, compara contra una declaración** |
-| 11 | El conjunto de tablas de `excepciones_rls` es exactamente el literal escrito en el archivo de prueba | Que alguien añada una excepción a RLS sin que nadie la revise |
-| 12 | `has_function_privilege('public', …, 'EXECUTE')` es falso para ambas funciones | El `EXECUTE` a `PUBLIC` que PostgreSQL concede por omisión |
-| 13 | El `proconfig` de ambas funciones contiene `search_path`, y su `proowner` es `viajapro_enrutador` | `search_path` sin fijar, y una función recreada sin `ALTER OWNER` —que la devolvería al propietario del esquema, con `BYPASSRLS` heredado en Neon— |
-| 14 | `rolcanlogin`, `rolbypassrls` y `rolsuper` de `viajapro_enrutador` son falsos, y no es miembro de `neon_superuser` | El propietario convertido en credencial, o con evasión heredada del proveedor |
+| 8 | Un `SELECT` sobre `enrutamiento_canales` lanza `42501` **para los tres roles de login** | El `REVOKE` olvidado **o revertido**. Es la prueba clave: es de comportamiento, no de catálogo, y falla sin importar cómo se concedió el privilegio |
+| 9 | `INSERT`, `UPDATE` y `DELETE` directos sobre `enrutamiento_canales` lanzan `42501`, **para los tres roles** | La primitiva de secuestro al alcance de cualquier rol de la aplicación |
+| 10 | Para todo par `(tabla, rol)` de `excepciones_rls` y todo privilegio, `has_table_privilege` coincide **exactamente** con lo declarado | Cualquier privilegio sobrante en cualquier tabla global y para cualquier rol. **Es la que sobrevive al paso del tiempo: no enumera tablas, compara contra una declaración** |
+| 11 | El conjunto de tripletas `(tabla, rol, privilegios)` de `excepciones_rls` es exactamente el literal escrito **en el archivo de prueba** | Una declaración manipulada. Es lo único que la 10 no puede atrapar, porque la 10 confía en esa declaración y el literal vive en el repositorio |
+| 12 | `has_function_privilege('public', …, 'EXECUTE')` es falso para **las seis** funciones | El `EXECUTE` a `PUBLIC` que PostgreSQL concede por omisión. Con `PUBLIC` reteniéndolo sobre `purgar_recepciones` o `anular_payload`, cualquier rol borra evidencia y mensajes sin procesar |
+| 13 | El `proconfig` de las seis funciones contiene `search_path=` con **valor vacío**, y el `proowner` de cada una es el que le corresponde (`viajapro_enrutador` o `viajapro_staging`) | Un `search_path` fijado a `public`, que es la implementación que §1.4 rechaza por insegura y que una comprobación de mera presencia aprobaría. Y una función recreada sin `ALTER OWNER`, que la devolvería al propietario del esquema, con `BYPASSRLS` heredado en Neon |
+| 14 | `rolcanlogin`, `rolbypassrls` y `rolsuper` son falsos para `viajapro_enrutador` y `viajapro_staging`, y ninguno es miembro de `neon_superuser` | Un propietario convertido en credencial, o con evasión heredada del proveedor |
 | 15 | Con el tenant A fijado, `registrar_enrutamiento` sobre una clave de B lanza excepción **y la fila sigue apuntando a B** | La reimplementación de RLS dentro de la función |
-| 16 | Un payload con dos `entry` de dos tenants deja cada mensaje en su tenant: A ve uno, B ve el otro, ninguno ve el del otro | El cruce por reutilización de la transacción entre `entry` |
-| 17 | Ninguna de las tres tablas globales tiene columna llamada exactamente `tenant_id` | Que alguien la añada "por coherencia" y el aplicador las vuelva ilegibles: el ciclo regresa |
-| 18 | `purgar_recepciones` no borra ninguna fila con `procesado_en` nulo | Destruir la evidencia de un fallo |
+| 16 | **A través de la cola real**: un POST con tres `changes` de tres tenants deja los tres mensajes, cada uno en el suyo, y ninguno ve los de los otros | RV-1: el deduplicador de la cola descartando `changes` con el mismo identificador, y el cruce por reutilización de la transacción |
+| 17 | Ninguna de las **cuatro** tablas globales tiene columna llamada exactamente `tenant_id`, y las cuatro están declaradas en `excepciones_rls` —incluida ella misma— | Que alguien añada la columna "por coherencia" y el aplicador las vuelva ilegibles: el ciclo regresa. Y que `excepciones_rls` quede escribible, que convierte el remedio del crítico 1 en su vehículo |
+| 18 | `purgar_recepciones` no borra ninguna recepción con algún `change` sin resolver | Destruir la evidencia de un fallo |
 | 19 | Un evento clasificado como desconocido o revocado deja el payload en `NULL` y el `recepcion_id` intacto | La contradicción entre §2 y §4 |
+| 20 | **La matriz completa rol × función** coincide exactamente con la tabla de §1.3, en ambos sentidos: ni falta ni sobra un `EXECUTE` | La frontera que sustituyó al crítico 2. Sin esta aserción, un `GRANT EXECUTE ON ALL FUNCTIONS ... TO viajapro_app` añadido para desatascar un despliegue reabre el crítico entero y las demás aserciones siguen en verde |
+| 21 | Ningún rol de login tiene `CREATE` sobre el esquema `public` | La mitad complementaria del `search_path` vacío, que §1.4 promete y nada verificaba |
+| 22 | **Tras reaplicar `001` y `002` completos**, las aserciones 8, 9, 10 y 20 siguen pasando | La regresión concreta ya conocida: el aplicador de políticas reconcediendo privilegios |
+| 23 | **Tras aplicar la cadena completa de migraciones desde cero**, las aserciones 8, 9, 10 y 20 pasan | La **clase** de fallo, no el archivo: una tercera migración que escriba su propio `GRANT ... ON ALL TABLES` o `ON ALL FUNCTIONS` —que es el idioma de este repositorio— y que la 22 no vería |
+| 24 | `UPDATE` y `DELETE` sobre `enrutamiento_historial` lanzan `42501` para los tres roles de login **y para los dos propietarios** | Un `GRANT` sobrante que haga editable la tabla probatoria. El valor probatorio desaparecería sin ninguna señal |
+| 25 | Insertar en el directorio una fila que empareje el tenant A con un `canal_id` de B es rechazada por el motor | Una clave foránea escrita simple en vez de compuesta: sigue funcionando y nadie lo nota hasta que una fila cruza tenants |
 
-La 8 y la 10 son las que sostienen el conjunto: la 8 porque falla en rojo ante cualquier regresión del
-privilegio, venga de donde venga; la 10 porque no hay que acordarse de actualizarla cuando aparezca la
-tabla global número cuatro. Y **la 8, la 9 y la 10 deben ejecutarse también después de reaplicar `001`
-y `002` completos**: esa reejecución es el crítico de este ADR y ninguna otra prueba la detecta.
+Tres observaciones sobre el conjunto. La **8** falla en rojo ante cualquier regresión del privilegio,
+venga de donde venga, porque es de comportamiento y no de catálogo. La **10** no hay que acordarse de
+actualizarla cuando aparezca una tabla global nueva. Y la **22 y la 23 no se sustituyen**: la 22
+atrapa la regresión que ya sabemos que existe; la 23 atrapa la que todavía no se ha escrito.
 
 Cuatro métricas, porque un invariante sin observabilidad es una intención:
 
-- Filas con `procesado_en` nulo y más de cinco minutos. En operación normal: **cero**.
+- `changes` con `procesado_en` nulo y más de cinco minutos. En operación normal: **cero**.
 - Cambios de titularidad en el directorio por día. En operación normal: **cero**.
 - Resoluciones fallidas por minuto, con alerta. Es lo que acota el oráculo de pertenencia.
 - Tiempo desde la inserción en `recepciones_webhook` hasta la clasificación. Presupuesto en segundos.
@@ -732,6 +854,19 @@ Para que nadie repita el razonamiento original creyendo que no se había pensado
 | ALTO — clave de plataforma | "Cifrado con la clave de plataforma" | Versión por fila, nonce, AAD, rotación sin recifrado, prohibición de `pgcrypto` con la clave en el SQL |
 | R-1, R-2, R-3 — superficie | Cuatro columnas más fechas, claves en claro; "enumerar deja de ser posible"; lectura "molesta, no fatal" | Claves en **HMAC con pimienta fuera de la base**, fechas movidas a `canales`, y la evaluación corregida: el directorio es la lista de objetivos del token de plataforma y el acelerador de cualquier bug futuro de suplantación. La enumeración sigue siendo posible y se vigila con métrica |
 | R-4 a R-15 | `SUSPENDIDO` sin decidir; `canales` inexistente; `canal_id` sin integridad; retenciones ausentes; `nombrePerfil` sobrescribible; sin tope de cuerpo; sin rotación del App Secret; desuscripción automática; payload posible en Redis; `sinTenantPorqueEsPlataforma` en `inbox`; cuarentena sin cerrar; alta sin RBAC | Todos resueltos en §1 a §4, cada uno en su sitio |
+
+Y lo que cambió en la **segunda pasada**, que fue de otra naturaleza: no faltaban decisiones, faltaban
+pruebas que las sostuvieran — el criterio que este mismo ADR se había impuesto.
+
+| Hallazgo | Qué decía la primera corrección | Qué dice ahora |
+|---|---|---|
+| RV-1 — regresión | "Un trabajo por `change`" **y** "el identificador sigue siendo el hash", aplicados por separado | **Se anulaban entre sí**: tres `changes` de tres agencias, tres trabajos con el mismo identificador, dos descartados en silencio y sus mensajes inexistentes. Identificador y estado bajan al grano del `change`; el payload se anula cuando todos están resueltos; la aserción 16 pasa por la cola real |
+| RV-2 — la frontera sin prueba | La frontera del crítico 2 solo existía en el texto | Aserción 20: matriz rol × función exacta en ambos sentidos. Y el `EXECUTE` a `PUBLIC` se revoca sobre **seis** funciones, no dos |
+| RV-3 — `search_path` | La aserción comprobaba la **presencia** de la clave | Comprueba el **valor vacío**, que es lo que §1.4 exige: una función con `search_path = public` habría pasado la prueba que debía impedirla. Más la aserción 21, el `CREATE` sobre `public` |
+| RV-4 — un rol de tres | Aserciones y columna `privilegios_app` en singular | Tres roles de login en las aserciones 8, 9 y 10, y `excepciones_rls` con una fila por par `(tabla, rol)`. El nombre de la columna inducía el error |
+| RV-5 — declaración escribible | `excepciones_rls` no se declaraba a sí misma | Se declara, entra en la 17, y la 11 fija las tripletas contra un literal del repositorio. Sin eso, el remedio del crítico 1 era su vehículo |
+| RV-6 — rotación de la pimienta | "El directorio es derivado" sin seguir sus consecuencias | Ventana de dos pimientas, `pimienta_version` por fila, historial indexado por `canal_id`, y la rama "desconocido" **retiene** mientras haya reconstrucción. Sin esto, rotar destruía mensajes de clientes |
+| RV-7 a RV-15 | `waba_cifrado`; historial sin retención; un solo propietario; guardia de arranque ciego a la identidad; reejecución en prosa; `ALTER DEFAULT PRIVILEGES` sin `FOR ROLE`; conteos de funciones y tablas | Columna eliminada —el claro se lee de `canales`—; historial a 5 años por particiones; `viajapro_staging` como segundo propietario; cada proceso afirma qué rol espera ser; aserciones 22 y 23; `FOR ROLE` explícito; seis funciones y cuatro tablas contadas |
 
 ### Hechos verificados y lo que sigue abierto
 
@@ -772,16 +907,21 @@ reasignables con historial.
 
 ### Negativas
 
-- **Tres tablas globales sin RLS.** Es una grieta en la propiedad número uno del producto y hay que
+- **Cuatro tablas globales sin RLS**, de las cuales **tres con datos de ruteo o de negocio** y una de
+  control del propio mecanismo. Es una grieta en la propiedad número uno del producto y hay que
   tratarla como tal: declaradas en `excepciones_rls`, verificadas por las aserciones 10, 11 y 17, y
-  revisadas en cada auditoría integral. **Si aparece la tabla global número cuatro, el patrón está
-  mal** y hay que revisar la decisión, no añadirla a la lista.
-- **Dos funciones `SECURITY DEFINER` son, por definición, una escalada de privilegios.** Acotadas a un
-  propietario sin login y sin privilegios sobre nada más, pero existen. Toda modificación de su cuerpo
-  exige revisión de `auditor-seguridad`, igual que una política RLS.
-- **Cuatro roles y tres orígenes de conexión** donde hoy hay uno. Más configuración, más secretos que
-  custodiar, más superficie de error en despliegue. Es el precio de que la frontera sea el rol de
-  conexión, que es lo único no falsificable desde SQL.
+  revisadas en cada auditoría integral. **Si aparece una cuarta tabla global con datos de ruteo o de
+  negocio, el patrón está mal** y hay que revisar la decisión, no añadirla a la lista. La regla se
+  enuncia así a propósito: una regla de parada que nace incumplida no la invoca nadie.
+- **Seis funciones `SECURITY DEFINER` son, por definición, una escalada de privilegios.** Están
+  enumeradas en §1.4 y repartidas entre dos propietarios sin login y sin privilegios cruzados, pero
+  existen. Toda modificación del cuerpo de cualquiera de las seis exige revisión de
+  `auditor-seguridad`, igual que una política RLS — y el inventario tiene que estar bien, porque un
+  control enunciado sobre dos deja cuatro fuera sin que nadie lo note.
+- **Cinco roles y tres orígenes de conexión** donde hoy hay uno. Más configuración, más secretos que
+  custodiar, más superficie de error en despliegue — y un modo de fallo nuevo, apuntar una variable de
+  entorno al rol equivocado, que se cierra con la verificación de identidad al arrancar de §1.3. Es el
+  precio de que la frontera sea el rol de conexión, que es lo único no falsificable desde SQL.
 - **Dos secretos nuevos que custodiar y rotar**: la pimienta del directorio y la clave de plataforma.
   Perder la pimienta no pierde datos —el directorio se reconstruye desde `canales`—, pero es una
   operación de plataforma que hay que tener escrita antes de necesitarla.
@@ -811,11 +951,14 @@ línea de corte.
   identificadores dejó de estar garantizado.
 - **Cuando llegue el primer webhook de pasarela de pago** (Fase 4): o se reutiliza este patrón tal
   cual, o este ADR estaba mal generalizado y hace falta uno nuevo.
-- **Si alguna de las doce aserciones de §5 se desactiva o se marca como omitida**: la decisión queda
+- **Si alguna de las dieciocho aserciones de §5 se desactiva o se marca como omitida**: la decisión queda
   suspendida hasta entender por qué, igual que ADR-0007 con la prueba de aislamiento. Las protecciones
   de este ADR **son** sus pruebas, y el texto corregido no es evidencia: la evidencia es verlas en
   verde contra una base real.
-- **Si aparece una cuarta tabla global sin RLS.**
+- **Si aparece una cuarta tabla global con datos de ruteo o de negocio.**
+- **Si hay que rotar la pimienta del directorio**: la ventana de dos pimientas y el indicador de
+  reconstrucción se ejercitan antes en un entorno no productivo. Una rotación sin ensayar destruye
+  mensajes de clientes, y es una operación de seguridad, no de desarrollo.
 - **Si la resolución del tenant aparece en el perfil de latencia del trabajador**: entonces, y solo
   entonces, la caché en Redis.
 - **Si el criterio puerto/evento de §3 se invoca más de tres veces en otros módulos**: ha dejado de
