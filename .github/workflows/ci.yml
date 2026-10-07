@@ -199,6 +199,22 @@ jobs:
           echo "Sin importaciones cruzadas entre módulos."
 
   # ---------------------------------------------------------------------------
+  # Los hooks de gobierno son código, y código sin pruebas se rompe en silencio.
+  # Esta suite existe porque el guardián de rama tuvo un falso positivo en producción.
+  hooks:
+    name: politica-de-rama
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Política de protección de rama
+        run: node .claude/hooks/lib/politica-rama.test.mjs
+
+  # ---------------------------------------------------------------------------
   commits:
     name: convencion-de-commits
     runs-on: ubuntu-latest

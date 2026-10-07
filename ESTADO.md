@@ -34,7 +34,7 @@ Qué hay, concretamente:
 | Agentes de IA | 17 definidos en `.claude/agents/`, incluido `integrador` |
 | Skills | `ciclo-funcionalidad`, `auditoria-integral`, `handoff-ia-externa`, `cerrar-sesion`, `nuevo-modulo` |
 | Comandos | `/estado` `/auditoria` `/funcionalidad` `/handoff` `/adr` `/contexto` `/integrar` |
-| Hooks | Inyección del hilo, guardián de secretos, guardián de rama, autorización de integración, revisión post-edición, recordatorio de cierre |
+| Hooks | Inyección del hilo, guardián de secretos, guardián de rama (con 24 pruebas), autorización de integración, revisión post-edición, recordatorio de cierre |
 | MCP | 8 servidores declarados, **ninguno validado** |
 | Repositorio | [github.com/Alfavear/CRM](https://github.com/Alfavear/CRM) · **privado** · `main` en v0.1.0 |
 | Gobierno de `main` | Compuerta local activa y probada. **Sin protección de servidor:** el plan gratuito no la permite en repos privados |
@@ -112,6 +112,7 @@ Ordenada. La primera es la que debe tomarse ahora.
 
 ## 6. Bitácora
 
+- [`2026-10-07-falso-positivo-del-guardian.md`](docs/_bitacora/2026-10-07-falso-positivo-del-guardian.md)
 - [`2026-10-07-gobierno-de-la-integracion.md`](docs/_bitacora/2026-10-07-gobierno-de-la-integracion.md)
 - [`2026-10-06-fundacion-del-proyecto.md`](docs/_bitacora/2026-10-06-fundacion-del-proyecto.md)
 
