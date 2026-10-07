@@ -19,7 +19,15 @@
       "dependsOn": ["^build"]
     },
     "test": {
-      "dependsOn": ["^build"]
+      "dependsOn": ["^build"],
+      "env": [
+        "DATABASE_URL",
+        "DATABASE_APP_URL",
+        "DATABASE_ALTAS_URL",
+        "DATABASE_WEBHOOK_URL",
+        "REDIS_URL"
+      ],
+      "cache": false
     },
     "test:e2e": {
       "dependsOn": ["^build"],

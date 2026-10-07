@@ -39,20 +39,31 @@ if (!url) {
   process.exit(1);
 }
 
-const esCI = process.env['CI'] === 'true';
 const anfitrion = new URL(url).hostname;
 const esLocal = ['localhost', '127.0.0.1', '::1', 'postgres'].includes(anfitrion);
 
-if (!esLocal && !esCI) {
+// El anfitrión decide, y nada más. La versión anterior aceptaba `CI=true` como escape, y
+// GitHub Actions define esa variable en TODO runner: cualquier workflow futuro que apuntara a
+// una base real —un despliegue de staging, una prueba de humo de migraciones— habría rotado
+// las contraseñas de los tres roles a una cadena publicada en este repositorio, y
+// `viajapro_altas` es el único que puede repuntar el número de cualquier agencia. Es la misma
+// forma que el `??` que esta tanda vino a quitar: el respaldo cómodo ES el agujero.
+if (!esLocal) {
   console.error(
-    `Negado: "${anfitrion}" no es local y CI no está activo.\n` +
+    `Negado: "${anfitrion}" no es un anfitrión local.\n` +
       'Este script pone contraseñas conocidas. Para un entorno real:\n' +
       '  pnpm --filter @viajapro/database run rol:crear',
   );
   process.exit(1);
 }
 
-const CLAVE = process.env['DB_DEV_PASSWORD'] ?? 'desarrollo-local-sin-valor';
+// Sin valor por omisión: una variable ausente es un error, no una contraseña que cualquiera
+// pueda adivinar leyendo el repositorio.
+const CLAVE = process.env['DB_DEV_PASSWORD'];
+if (!CLAVE) {
+  console.error('Falta DB_DEV_PASSWORD. Este script no inventa contraseñas.');
+  process.exit(1);
+}
 const ROLES = [
   ['viajapro_app', 'DATABASE_APP_URL'],
   ['viajapro_altas', 'DATABASE_ALTAS_URL'],
