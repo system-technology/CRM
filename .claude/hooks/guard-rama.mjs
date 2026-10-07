@@ -54,8 +54,9 @@ try {
   process.exit(0); // Sin repositorio git no hay nada que proteger.
 }
 
-const cmd = comando.replace(/\s+/g, ' ').trim();
-const { accion, esCommit } = evaluar(cmd, ramaActual);
+// Se pasa el comando CRUDO: la política lo tokeniza respetando comillas y heredocs.
+// Normalizar los espacios aquí destruiría los saltos de línea que delimitan un heredoc.
+const { accion, esCommit } = evaluar(comando, ramaActual);
 
 if (accion === 'permitir') process.exit(0);
 

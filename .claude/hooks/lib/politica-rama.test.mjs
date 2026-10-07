@@ -80,6 +80,45 @@ const casos = [
     'exigir-autorizacion',
     'push a main con la rama entrecomillada',
   ],
+
+  // --- Tercer falso positivo: texto que PARECE un comando ------------------
+  [
+    'feat/x',
+    'for p in "git push" "main"; do grep -ril "$p" .; done',
+    'permitir',
+    'patrones de busqueda entrecomillados que mencionan git push y main',
+  ],
+  [
+    'main',
+    'echo "no hagas git commit en main"',
+    'permitir',
+    'echo que menciona un comando git',
+  ],
+  [
+    'main',
+    "grep -rn 'git push origin main' docs/",
+    'permitir',
+    'buscar literalmente un comando peligroso en la documentacion',
+  ],
+  [
+    'feat/x',
+    'node -e "console.log(\'git push origin main\')"',
+    'permitir',
+    'script que imprime un comando git',
+  ],
+
+  // --- Prefijos y formas de refspec ----------------------------------------
+  ['feat/x', 'timeout 60 git push origin main', 'exigir-autorizacion', 'push a main con prefijo timeout'],
+  ['feat/x', 'git push origin HEAD:main', 'exigir-autorizacion', 'push con refspec HEAD:main'],
+  ['feat/x', 'git push origin refs/heads/main', 'exigir-autorizacion', 'push con ref completa'],
+  ['feat/x', 'git push origin feat/x:feat/x', 'permitir', 'refspec de otra rama'],
+  ['main', 'git fetch origin && git status', 'permitir', 'lecturas encadenadas en main'],
+  [
+    'main',
+    'git checkout -b feat/y && git commit -m "x"',
+    'exigir-autorizacion',
+    'conservador: no simula que la rama cambia a mitad del comando',
+  ],
 ];
 
 let fallos = 0;
