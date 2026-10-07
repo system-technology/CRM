@@ -22,8 +22,22 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+  // Conexión de las MIGRACIONES y el DDL, con el rol propietario.
+  // Con un PostgreSQL gestionado que tiene agrupador de conexiones (Neon), debe apuntar al
+  // endpoint DIRECTO: las migraciones no funcionan contra el agrupado.
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
+
+// ADVERTENCIA
+//
+// La cadena de arriba es la del rol PROPIETARIO y solo la usan las migraciones.
+// La aplicación en ejecución se conecta SIEMPRE con DATABASE_APP_URL, que apunta al rol
+// `viajapro_app`: sin BYPASSRLS y sin pertenecer a neon_superuser.
+//
+// Si la aplicación usara esta cadena se saltaría todas las políticas RLS, y el aislamiento
+// entre agencias sería ficticio: sin error, sin aviso, hasta que una agencia vea los datos
+// de otra. Ver ADR-0003 y ADR-0007.
 
 // =============================================================================
 // PLATAFORMA — tablas globales, SIN tenantId y SIN RLS.
