@@ -34,8 +34,11 @@ useDefault = true
 [allowlist]
 description = "Marcadores de plantilla y contraseña local pública, nunca credenciales reales"
 regexTarget = "line"
+# El `\+?` del principio NO sobra: gitleaks escanea la SALIDA DE `git log -p`, donde toda línea
+# añadida empieza por `+`. Con el ancla `^` a secas ninguna de las tres coincidía, y el job
+# marcaba los propios marcadores que estas líneas deberían permitir.
 regexes = [
-  '''^[A-Z0-9_]+=[ \t]*(#.*)?$''',
-  '''^[A-Z0-9_]+=cambiar-por-[a-z0-9-]+''',
-  '''^[A-Z0-9_]+=.*desarrollo-local-sin-valor''',
+  '''^\+?[A-Z0-9_]+=[ \t]*(#.*)?$''',
+  '''^\+?[A-Z0-9_]+=cambiar-por-[a-z0-9-]+''',
+  '''^\+?[A-Z0-9_]+=.*desarrollo-local-sin-valor''',
 ]
