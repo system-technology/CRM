@@ -6,11 +6,11 @@
 
 | Campo | Valor |
 |---|---|
-| Última actualización | 2026-10-07 (sesión nocturna autónoma — diseño, frontend y compuertas) |
+| Última actualización | 2026-10-07 (sesión nocturna autónoma — diseño, frontend, compuertas y ADR-0008) |
 | Actualizado por | Claude Opus 5 |
 | Fase | **Rebanada vertical de paquetes, en construcción** |
 | Avance de la fase | **Cotizador funcionando de punta a punta: web → API → Neon.** v0.9.1 |
-| Próximo hito | Inbox de WhatsApp |
+| Próximo hito | **Implementar el inbox.** ADR-0008 aceptado el 2026-10-07: 4a (esquema) puede empezar |
 
 ---
 
@@ -39,7 +39,7 @@ Qué hay, concretamente:
 |---|---|
 | Monorepo | **Instalado y compilando.** Node 22.20, pnpm 9.12 |
 | Documentación | 33 documentos completos + 22 marcadores con responsable y fase |
-| ADR | 0001 stack · 0002 WhatsApp · 0003 multi-tenancy · 0004 monolito modular · 0005 ramas · 0006 parametrización · 0007 Neon |
+| ADR | 0001 stack · 0002 WhatsApp · 0003 multi-tenancy · 0004 monolito modular · 0005 ramas · 0006 parametrización · 0007 Neon · **0008 resolución de tenant en webhooks (Aceptado)** |
 | Agentes de IA | 17 definidos en `.claude/agents/`, incluido `integrador` |
 | Skills | Propias: `ciclo-funcionalidad`, `auditoria-integral`, `handoff-ia-externa`, `cerrar-sesion`, `nuevo-modulo`. De terceros, auditadas: `neon`, `neon-postgres` |
 | Comandos | `/estado` `/auditoria` `/funcionalidad` `/handoff` `/adr` `/contexto` `/integrar` |
@@ -92,9 +92,13 @@ Ordenada. La primera es la que debe tomarse ahora.
 | # | Tarea | Agente / dueño | Estado |
 |---|---|---|---|
 | 1 | **Iniciar verificación de Meta Business y solicitud de Tech Provider** | Usuario | **Camino crítico, sin empezar** |
-| 2 | **Recibir el tarifario real del mayorista** de la agencia piloto | Usuario | **La agencia piloto ya está tramitando la información** (2026-10-07). Hasta que llegue, el catálogo sigue modelado con datos verosímiles, no reales |
+| 2 | **Recibir el tarifario real del mayorista** de la agencia piloto | Usuario | La agencia ya está tramitando la información (2026-10-07). Hasta que llegue, el catálogo sigue modelado con datos verosímiles |
+| 2b | **Bajar el tarifario de Meta para Colombia en COP** del CSV oficial | Usuario | Cinco minutos con un navegador. Sin esa cifra el plan de entrada se fija a ciegas |
 | 3 | Reparar la conexión del MCP `postgres` o retirarlo de `.mcp.json` | `devops` | Falla con `CONNECTION_CLOSED` |
-| 4 | Inbox de WhatsApp: webhook, firma, idempotencia, ventana de 24h | `whatsapp`, `backend` | **Siguiente pieza grande** |
+| 4a | **Inbox — esquema**, y en el MISMO commit: 4 tablas, 6 funciones, 5 roles, rehacer `001`/`002`, `canales` **antes**, **las 18 aserciones de aislamiento**, y la actualización de R1 y de `03-modelo-de-datos.md` §4 | `datos` | **Lista para empezar.** ADR-0008 aceptado el 2026-10-07 |
+| 4b | Inbox — API: tres orígenes de conexión, guardia de identidad, puerto a `crm`, relay por `change` | `backend` | Esperando 4a |
+| 4c | Las 3 verificaciones que **no** son de base de datos: arranque del proceso, alta de extremo a extremo, ensayo de rotación de la pimienta | `backend`, `qa`, `devops` | Cada una respalda un crítico. Son las que más fácil se quedan sin hacer |
+| 4d | Alinear `05-seguridad/02-proteccion-de-datos.md` con el ADR-0008 | `documentador` | La redacción de consentimiento contradice hoy al ADR |
 | 5 | Bandeja de conversaciones en la web | `frontend` | El diseño existe; falta el backend del inbox (tarea 4) |
 | 6 | Guardar cotizaciones con versiones inmutables | `backend` | Hoy el cálculo no persiste |
 | 7 | Pruebas de integración de la API | `qa` | Solo se probó a mano. **La verificación del cotizador fue manual: no hay prueba automática que la repita** |
@@ -111,22 +115,23 @@ Ordenada. La primera es la que debe tomarse ahora.
 | Bloqueo | Impacto | Dueño | Mitigación |
 |---|---|---|---|
 | Verificación de Meta Business sin iniciar | **Bloquea lanzar con clientes reales, NO bloquea construir.** Tarda semanas | Usuario | Arrancar el trámite en paralelo. Mientras tanto se desarrolla con el número de prueba de Meta |
-| ~~Sin agencia piloto confirmada~~ **Resuelto el 2026-10-07: hay piloto y está tramitando la información.** Queda el riesgo menor de que el tarifario tarde | Mientras no llegue el tarifario real, el modelo de precios se valida contra datos inventados por nosotros | Usuario | Pedir el tarifario en cuanto se pueda, aunque sea parcial: un solo paquete real vale más que tres verosímiles |
+| **Tarifario real sin llegar** | El modelo de precios se sigue validando contra datos que inventamos nosotros. Hay piloto desde el 2026-10-07, falta su catálogo | Usuario | Pedirlo aunque sea parcial: un solo paquete real vale más que tres verosímiles |
+| **Meta cobra los mensajes de servicio desde el 2026-10-01** | El costo variable por agencia cambia de orden de magnitud justo donde está nuestro tráfico. **Puede invalidar el plan de entrada** | Usuario | Bajar el tarifario de Colombia en COP del CSV oficial. Cinco minutos con un navegador; la herramienta del agente no pudo abrirlo |
 | Alcance de v1 vs. expectativa de calendario | Riesgo de cinco cosas a medias | Usuario | Roadmap por fases ya escrito; decidir dónde cortar |
 | MCP sin validar | Los agentes no tienen las herramientas que el método asume | Usuario | Requiere sesión interactiva — no se puede hacer automatizado |
 | **`main` sin protección de servidor** — el plan gratuito de GitHub no permite proteger ramas en repos privados | La regla R11 depende hoy solo de disciplina y de hooks locales. Tolerable con una persona; **no lo es con dos** | Usuario | GitHub Pro (recomendado), o repo público, o riesgo asumido. Ver `.github/PROTECCION-DE-RAMA.md` |
-| Nada comercial está definido: nombre, precios, planes | No se puede vender ni proyectar ingresos | Usuario | Definirlo con datos del piloto, no antes. **Ahora es posible: ya hay piloto** |
+| Nada comercial está definido: nombre, precios, planes | No se puede vender ni proyectar ingresos | Usuario | Hay piloto, así que ya es posible. Pero no antes de tener la tarifa de Meta en COP: sin ella el precio de entrada se fija a ciegas |
 | Nombre en clave `ViajaPro` extendido por todo el repositorio | Si se decide otro nombre hay que renombrar | Usuario | Barato mientras no haya código. Un comando `sed`. Caro con clientes |
 | Revisión legal de protección de datos pendiente | No se puede salir a producción sin ella | Usuario | Abogado del país de operación, antes de Fase 4 |
 
 ## 5. Preguntas abiertas
 
-1. ~~¿Qué agencia colombiana será el piloto?~~ **Respondida el 2026-10-07: hay agencia piloto y está
-   tramitando la información.** Lo que sigue abierto es **cuándo llega su tarifario real**, que es lo
-   que de verdad cambia el catálogo.
+1. **¿Cuándo llega el tarifario real del piloto?** Es lo que de verdad cambia el catálogo. La
+   agencia ya está tramitando la información.
 2. **¿Nombre comercial?** Hoy `ViajaPro` es solo un identificador técnico.
 3. **¿Modelo de cobro?** Por asesor, por conversación, por tramos, o base + consumo. Cada uno cambia
-   qué hay que medir en el producto desde el primer día.
+   qué hay que medir en el producto desde el primer día. **Ahora pesa más:** desde el 2026-10-01 los
+   mensajes de servicio se cobran, así que el costo variable ya no es ruido.
 4. ¿Qué pasarela usan hoy las agencias colombianas: Wompi, PayU, ePayco o Mercado Pago? Bloquea la Fase 4.
 5. ¿Facturación electrónica DIAN desde v1, o se delega al ERP de la agencia?
 6. ¿Agencias minoristas, operadores receptivos, o ambos? El brochure sugiere minoristas; confirmarlo
@@ -136,7 +141,8 @@ Ordenada. La primera es la que debe tomarse ahora.
 
 ## 6. Bitácora
 
-- [`2026-10-07-primera-interfaz.md`](docs/_bitacora/2026-10-07-primera-interfaz.md) ← **empieza por aquí**
+- [`2026-10-07-el-adr-que-se-defendio-tres-veces.md`](docs/_bitacora/2026-10-07-el-adr-que-se-defendio-tres-veces.md) ← **empieza por aquí**
+- [`2026-10-07-primera-interfaz.md`](docs/_bitacora/2026-10-07-primera-interfaz.md)
 - [`_integraciones/2026-10-07-v0.9.1.md`](docs/_integraciones/2026-10-07-v0.9.1.md) — por qué cuatro compuertas nunca pudieron correr
 - [`2026-10-07-backend-vivo.md`](docs/_bitacora/2026-10-07-backend-vivo.md)
 - [`2026-10-07-falso-positivo-del-guardian.md`](docs/_bitacora/2026-10-07-falso-positivo-del-guardian.md)
