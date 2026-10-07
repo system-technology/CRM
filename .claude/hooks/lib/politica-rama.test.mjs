@@ -50,12 +50,7 @@ const casos = [
     'permitir',
     'commit cuyo MENSAJE menciona main',
   ],
-  [
-    'feat/x',
-    'git push -u origin feat/x',
-    'permitir',
-    'push de rama de trabajo con -u',
-  ],
+  ['feat/x', 'git push -u origin feat/x', 'permitir', 'push de rama de trabajo con -u'],
   [
     'feat/x',
     "git commit -m 'fix: corrige la guarda de main' && git push origin feat/x",
@@ -64,7 +59,7 @@ const casos = [
   ],
   [
     'feat/x',
-    'git commit -F - <<\'MSG\'\nfeat: algo\n\nEsta rama no se integra a main todavía.\nMSG\ngit log --oneline -1',
+    "git commit -F - <<'MSG'\nfeat: algo\n\nEsta rama no se integra a main todavía.\nMSG\ngit log --oneline -1",
     'permitir',
     'mensaje en heredoc que menciona main',
   ],
@@ -88,12 +83,7 @@ const casos = [
     'permitir',
     'patrones de busqueda entrecomillados que mencionan git push y main',
   ],
-  [
-    'main',
-    'echo "no hagas git commit en main"',
-    'permitir',
-    'echo que menciona un comando git',
-  ],
+  ['main', 'echo "no hagas git commit en main"', 'permitir', 'echo que menciona un comando git'],
   [
     'main',
     "grep -rn 'git push origin main' docs/",
@@ -108,7 +98,12 @@ const casos = [
   ],
 
   // --- Prefijos y formas de refspec ----------------------------------------
-  ['feat/x', 'timeout 60 git push origin main', 'exigir-autorizacion', 'push a main con prefijo timeout'],
+  [
+    'feat/x',
+    'timeout 60 git push origin main',
+    'exigir-autorizacion',
+    'push a main con prefijo timeout',
+  ],
   ['feat/x', 'git push origin HEAD:main', 'exigir-autorizacion', 'push con refspec HEAD:main'],
   ['feat/x', 'git push origin refs/heads/main', 'exigir-autorizacion', 'push con ref completa'],
   ['feat/x', 'git push origin feat/x:feat/x', 'permitir', 'refspec de otra rama'],

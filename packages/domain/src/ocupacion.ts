@@ -55,14 +55,20 @@ export class ComposicionPasajeros {
     readonly infantes: number,
   ) {}
 
-  static crear(params: { adultos: number; ninos?: number; infantes?: number }): ComposicionPasajeros {
+  static crear(params: {
+    adultos: number;
+    ninos?: number;
+    infantes?: number;
+  }): ComposicionPasajeros {
     const adultos = params.adultos;
     const ninos = params.ninos ?? 0;
     const infantes = params.infantes ?? 0;
 
     for (const [nombre, valor] of Object.entries({ adultos, ninos, infantes })) {
       if (!Number.isInteger(valor) || valor < 0) {
-        throw new ComposicionInvalidaError(`${nombre} debe ser un entero no negativo, no '${valor}'`);
+        throw new ComposicionInvalidaError(
+          `${nombre} debe ser un entero no negativo, no '${valor}'`,
+        );
       }
     }
 

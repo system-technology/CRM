@@ -2,43 +2,26 @@
   "mcpServers": {
     "memoria": {
       "command": "npx",
-      "args": [
-        "-y",
-        "@modelcontextprotocol/server-memory"
-      ],
+      "args": ["-y", "@modelcontextprotocol/server-memory"],
       "env": {
         "MEMORY_FILE_PATH": "./.claude/memoria/grafo-del-proyecto.json"
       }
     },
     "postgres": {
       "command": "npx",
-      "args": [
-        "-y",
-        "@modelcontextprotocol/server-postgres",
-        "${DATABASE_URL}"
-      ]
+      "args": ["-y", "@modelcontextprotocol/server-postgres", "${DATABASE_URL}"]
     },
     "docs-librerias": {
       "command": "npx",
-      "args": [
-        "-y",
-        "@upstash/context7-mcp"
-      ]
+      "args": ["-y", "@upstash/context7-mcp"]
     },
     "navegador": {
       "command": "npx",
-      "args": [
-        "-y",
-        "@playwright/mcp@latest",
-        "--headless"
-      ]
+      "args": ["-y", "@playwright/mcp@latest", "--headless"]
     },
     "razonamiento": {
       "command": "npx",
-      "args": [
-        "-y",
-        "@modelcontextprotocol/server-sequential-thinking"
-      ]
+      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"]
     },
     "github": {
       "type": "http",

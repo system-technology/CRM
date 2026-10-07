@@ -16,8 +16,8 @@
     "test": "turbo run test",
     "test:e2e": "turbo run test:e2e",
     "test:hooks": "node .claude/hooks/lib/politica-rama.test.mjs && node .claude/hooks/lib/guard-secretos.test.mjs",
-    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\"",
-    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\"",
+    "format": "prettier --write \"**/*.{ts,tsx,js,mjs,jsx,json,yml,yaml}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,mjs,jsx,json,yml,yaml}\"",
     "db:generate": "pnpm --filter @viajapro/database generate",
     "db:migrate": "pnpm --filter @viajapro/database migrate:dev",
     "db:seed": "pnpm --filter @viajapro/database seed",
@@ -34,19 +34,25 @@
   "devDependencies": {
     "@commitlint/cli": "^19.5.0",
     "@commitlint/config-conventional": "^19.5.0",
+    "@eslint/js": "^10",
+    "eslint": "^10.12.0",
+    "eslint-config-prettier": "^9",
+    "globals": "^17.13.0",
     "husky": "^9.1.6",
     "lint-staged": "^15.2.10",
+    "pnpm": "9.12.0",
     "prettier": "^3.3.3",
+    "prettier-plugin-tailwindcss": "^0.8.1",
     "turbo": "^2.3.0",
     "typescript": "^5.6.3",
-    "pnpm": "9.12.0"
+    "typescript-eslint": "^8"
   },
   "lint-staged": {
     "*.{ts,tsx}": [
       "eslint --fix",
       "prettier --write"
     ],
-    "*.{json,md,yml,yaml}": [
+    "*.{json,yml,yaml}": [
       "prettier --write"
     ]
   }

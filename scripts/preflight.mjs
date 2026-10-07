@@ -14,7 +14,11 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 
-const VERDE = '\x1b[32m', ROJO = '\x1b[31m', AMARILLO = '\x1b[33m', GRIS = '\x1b[90m', FIN = '\x1b[0m';
+const VERDE = '\x1b[32m',
+  ROJO = '\x1b[31m',
+  AMARILLO = '\x1b[33m',
+  GRIS = '\x1b[90m',
+  FIN = '\x1b[0m';
 const OK = `${VERDE}OK  ${FIN}`;
 const MAL = `${ROJO}MAL ${FIN}`;
 const AVISO = `${AMARILLO}AVISO${FIN}`;
@@ -50,10 +54,18 @@ const hoy = new Date().toISOString().slice(0, 10);
 
 if (finDeSoporte[maj] && finDeSoporte[maj] < hoy) {
   linea(MAL, `Node ${actual}`, `fuera de soporte desde ${finDeSoporte[maj]}`);
-  problemas.push(`Node ${maj} no recibe parches de seguridad.\n     nvm install ${requerida} && nvm use ${requerida}`);
-} else if (requerida && (maj < Number(requerida.split('.')[0]) || (maj === Number(requerida.split('.')[0]) && min < Number(requerida.split('.')[1])))) {
+  problemas.push(
+    `Node ${maj} no recibe parches de seguridad.\n     nvm install ${requerida} && nvm use ${requerida}`,
+  );
+} else if (
+  requerida &&
+  (maj < Number(requerida.split('.')[0]) ||
+    (maj === Number(requerida.split('.')[0]) && min < Number(requerida.split('.')[1])))
+) {
   linea(MAL, `Node ${actual}`, `el proyecto fija ${requerida}`);
-  problemas.push(`Versión de Node por debajo de la fijada.\n     nvm install ${requerida} && nvm use ${requerida}`);
+  problemas.push(
+    `Versión de Node por debajo de la fijada.\n     nvm install ${requerida} && nvm use ${requerida}`,
+  );
 } else {
   linea(OK, `Node ${actual}`, requerida ? `fijada ${requerida}` : '');
 }
@@ -76,7 +88,11 @@ if (pnpmDirecto) {
 }
 
 // --- Dependencias --------------------------------------------------------
-linea(existsSync('node_modules') ? OK : MAL, 'Dependencias', existsSync('node_modules') ? '' : 'falta pnpm install');
+linea(
+  existsSync('node_modules') ? OK : MAL,
+  'Dependencias',
+  existsSync('node_modules') ? '' : 'falta pnpm install',
+);
 if (!existsSync('node_modules')) problemas.push('Dependencias sin instalar.\n     pnpm install');
 
 // --- .env ----------------------------------------------------------------
@@ -85,11 +101,13 @@ if (!existsSync('.env')) {
   problemas.push('Falta el archivo de entorno.\n     cp .env.example .env  y completar');
 } else {
   const activas = {};
-  readFileSync('.env', 'utf8').split(/\r?\n/).forEach((l) => {
-    if (/^\s*#/.test(l)) return;
-    const m = l.match(/^\s*([A-Z_]+)\s*=\s*(.+)$/);
-    if (m) activas[m[1]] = m[2].trim();
-  });
+  readFileSync('.env', 'utf8')
+    .split(/\r?\n/)
+    .forEach((l) => {
+      if (/^\s*#/.test(l)) return;
+      const m = l.match(/^\s*([A-Z_]+)\s*=\s*(.+)$/);
+      if (m) activas[m[1]] = m[2].trim();
+    });
 
   const describir = (valor) => {
     try {
@@ -100,7 +118,11 @@ if (!existsSync('.env')) {
     }
   };
 
-  for (const [clave, debePooler] of [['DATABASE_URL', false], ['DIRECT_URL', false], ['DATABASE_APP_URL', true]]) {
+  for (const [clave, debePooler] of [
+    ['DATABASE_URL', false],
+    ['DIRECT_URL', false],
+    ['DATABASE_APP_URL', true],
+  ]) {
     const valor = activas[clave];
     if (!valor) {
       linea(MAL, clave, 'no definida');
@@ -143,7 +165,9 @@ if (!existsSync('.env')) {
             '     pnpm --filter @viajapro/database run rol:crear',
         );
       }
-    } catch { /* ya reportado arriba */ }
+    } catch {
+      /* ya reportado arriba */
+    }
   }
 }
 
@@ -151,7 +175,9 @@ if (!existsSync('.env')) {
 const rama = comando('git', ['branch', '--show-current']);
 if (rama === 'main') {
   linea(AVISO, 'Rama actual', 'main — el trabajo va en ramas (R11)');
-  avisos.push('Estás en main. Antes de trabajar:\n     git checkout -b feat/<contexto>-<descripcion>');
+  avisos.push(
+    'Estás en main. Antes de trabajar:\n     git checkout -b feat/<contexto>-<descripcion>',
+  );
 } else if (rama) {
   linea(OK, 'Rama actual', rama);
 }

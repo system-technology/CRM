@@ -109,7 +109,8 @@ try {
   );
   const rol = rows[0];
   if (!rol) throw new Error('El rol viajapro_app no existe tras crearlo.');
-  if (rol.rolbypassrls) throw new Error('viajapro_app tiene BYPASSRLS: el aislamiento sería ficticio.');
+  if (rol.rolbypassrls)
+    throw new Error('viajapro_app tiene BYPASSRLS: el aislamiento sería ficticio.');
   if (rol.rolsuper) throw new Error('viajapro_app es superusuario: el aislamiento sería ficticio.');
 
   const u = new URL(url);
@@ -135,7 +136,9 @@ try {
   console.log('  ' + lineaEnv);
   console.log('');
   console.log('  Luego comprueba con:  pnpm preflight  y  pnpm db:aislamiento');
-  console.log('  La contrasena no se guarda en ningun sitio. Si la pierdes, vuelve a ejecutar esto.');
+  console.log(
+    '  La contrasena no se guarda en ningun sitio. Si la pierdes, vuelve a ejecutar esto.',
+  );
 } finally {
   await cliente.end();
 }

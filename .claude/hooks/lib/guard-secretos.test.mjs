@@ -45,7 +45,11 @@ const github = 'gh' + 'p_' + 'b'.repeat(36);
 
 const casos = [
   // --- DEBE bloquear: parecen credenciales reales ------------------------
-  [dsn + 'neondb_owner:npg7Kd9sLmQ2xVb4RtY8wZc' + host, true, 'contraseña real en cadena de conexión'],
+  [
+    dsn + 'neondb_owner:npg7Kd9sLmQ2xVb4RtY8wZc' + host,
+    true,
+    'contraseña real en cadena de conexión',
+  ],
   [`const t = "${meta}";`, true, 'token de Meta'],
   [`const k = "${anthropic}";`, true, 'clave de Anthropic'],
   [`const k = "${aws}";`, true, 'clave de acceso de AWS'],
@@ -53,7 +57,11 @@ const casos = [
   [`const t = "${github}";`, true, 'token de GitHub'],
 
   // --- NO debe bloquear: plantillas y código legítimo --------------------
-  ['const url = `' + dsn + 'usuario:' + '${clave}' + host + '`;', false, 'interpolación de plantilla'],
+  [
+    'const url = `' + dsn + 'usuario:' + '${clave}' + host + '`;',
+    false,
+    'interpolación de plantilla',
+  ],
   [dsn + 'neondb_owner:TU_CLAVE_ROTADA' + host, false, 'marcador en mayúsculas'],
   [dsn + 'viajapro_app:PENDIENTE' + host, false, 'marcador PENDIENTE'],
   [dsn + 'usuario:{{password}}' + host, false, 'plantilla de bigotes'],

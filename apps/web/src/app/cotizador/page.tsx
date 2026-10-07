@@ -157,7 +157,7 @@ export default function Cotizador() {
                     onClick={() => setAcomodacion('')}
                     className={`rounded-sm border px-2.5 py-1 text-sm ${
                       acomodacion === ''
-                        ? 'border-acento-700 bg-acento-50 font-medium text-acento-800'
+                        ? 'border-acento-700 bg-acento-50 text-acento-800 font-medium'
                         : 'border-neutral-300 text-neutral-600'
                     }`}
                   >
@@ -169,7 +169,7 @@ export default function Cotizador() {
                       onClick={() => setAcomodacion(a)}
                       className={`rounded-sm border px-2.5 py-1 text-sm ${
                         acomodacion === a
-                          ? 'border-acento-700 bg-acento-50 font-medium text-acento-800'
+                          ? 'border-acento-700 bg-acento-50 text-acento-800 font-medium'
                           : 'border-neutral-300 text-neutral-600'
                       }`}
                     >
@@ -180,9 +180,9 @@ export default function Cotizador() {
               </div>
 
               <button
-                onClick={cotizar}
+                onClick={() => void cotizar()}
                 disabled={calculando}
-                className="mt-4 rounded-sm bg-acento-700 px-4 py-2 text-base font-medium text-white hover:bg-acento-800 disabled:opacity-50"
+                className="bg-acento-700 hover:bg-acento-800 mt-4 rounded-sm px-4 py-2 text-base font-medium text-white disabled:opacity-50"
               >
                 {calculando ? 'Calculando…' : 'Calcular precio'}
               </button>
@@ -192,7 +192,7 @@ export default function Cotizador() {
               // El error dice QUÉ pasó y QUÉ hacer. Nunca "algo salió mal".
               <div
                 role="alert"
-                className="rounded-md border border-alerta-600/30 bg-alerta-50 p-4 text-base text-alerta-700"
+                className="border-alerta-600/30 bg-alerta-50 text-alerta-700 rounded-md border p-4 text-base"
               >
                 <strong className="block font-semibold">{error.message}</strong>
                 {error.details && (
@@ -228,9 +228,9 @@ export default function Cotizador() {
           {cotizacion.margen && (
             // El margen es lo más visible del panel a propósito: es el dato que ningún dueño
             // de agencia puede responder hoy sin abrir Excel.
-            <div className="mt-3 rounded-md bg-ok-50 p-3">
-              <p className="text-xs text-ok-700">Margen</p>
-              <p className="cifra text-lg font-semibold text-ok-700">
+            <div className="bg-ok-50 mt-3 rounded-md p-3">
+              <p className="text-ok-700 text-xs">Margen</p>
+              <p className="cifra text-ok-700 text-lg font-semibold">
                 {formatearDinero(cotizacion.margen)}
                 <span className="ml-1 text-sm font-normal">
                   ({cotizacion.margenPorcentaje?.toFixed(1)}%)
@@ -245,13 +245,13 @@ export default function Cotizador() {
               type="number"
               value={markupExtra}
               onChange={(e) => setMarkupExtra(Number(e.target.value))}
-              onBlur={cotizar}
+              onBlur={() => void cotizar()}
               className="cifra mt-1 w-full rounded-sm border border-neutral-300 px-2 py-1.5 text-base"
             />
           </label>
 
           <div className="mt-5 space-y-2">
-            <button className="w-full rounded-sm bg-acento-700 px-3 py-2 text-base font-medium text-white hover:bg-acento-800">
+            <button className="bg-acento-700 hover:bg-acento-800 w-full rounded-sm px-3 py-2 text-base font-medium text-white">
               Enviar por WhatsApp
             </button>
             <button className="w-full rounded-sm border border-neutral-300 px-3 py-2 text-base">
@@ -269,7 +269,7 @@ function Desglose({ c }: { c: CotizacionCalculada }) {
     <section className="rounded-md border border-neutral-200 bg-white p-4">
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <h2 className="text-sm font-semibold">Desglose</h2>
-        <span className="rounded-sm bg-aviso-50 px-2 py-0.5 text-xs text-aviso-700">
+        <span className="bg-aviso-50 text-aviso-700 rounded-sm px-2 py-0.5 text-xs">
           {c.temporadaNombre}
         </span>
         <span className="rounded-sm bg-neutral-100 px-2 py-0.5 text-xs text-neutral-600">
@@ -277,7 +277,7 @@ function Desglose({ c }: { c: CotizacionCalculada }) {
         </span>
         {/* Las plazas vacías se pagan igual. Es la pregunta que el viajero hace siempre. */}
         {c.plazasSinUsar > 0 && (
-          <span className="rounded-sm bg-aviso-50 px-2 py-0.5 text-xs text-aviso-700">
+          <span className="bg-aviso-50 text-aviso-700 rounded-sm px-2 py-0.5 text-xs">
             {c.plazasSinUsar} plaza{c.plazasSinUsar > 1 ? 's' : ''} sin usar, se paga igual
           </span>
         )}
@@ -300,12 +300,14 @@ function Desglose({ c }: { c: CotizacionCalculada }) {
           {c.lineas.map((l) => (
             <tr key={l.tipoPasajero} className="border-b border-neutral-100">
               <td className="py-1.5">
-                {l.tipoPasajero === 'ADT' ? 'Adulto' : l.tipoPasajero === 'CHD' ? 'Niño' : 'Infante'}
+                {l.tipoPasajero === 'ADT'
+                  ? 'Adulto'
+                  : l.tipoPasajero === 'CHD'
+                    ? 'Niño'
+                    : 'Infante'}
               </td>
               <td className="cifra py-1.5 text-right">{l.cantidad}</td>
-              <td className="cifra py-1.5 text-right">
-                {formatearDinero(l.precioUnitarioVenta)}
-              </td>
+              <td className="cifra py-1.5 text-right">{formatearDinero(l.precioUnitarioVenta)}</td>
               <td className="cifra py-1.5 text-right font-medium">
                 {formatearDinero(l.subtotalVenta)}
               </td>

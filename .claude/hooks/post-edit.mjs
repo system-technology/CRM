@@ -47,7 +47,8 @@ try {
 
 // Migración o esquema que crea una tabla sin dejar rastro de política RLS.
 if (/\.(sql|prisma)$/.test(ruta)) {
-  const creaTabla = /CREATE TABLE\s+(?:IF NOT EXISTS\s+)?["\w.]+/i.test(contenido) ||
+  const creaTabla =
+    /CREATE TABLE\s+(?:IF NOT EXISTS\s+)?["\w.]+/i.test(contenido) ||
     /^\s*model\s+\w+\s*\{/m.test(contenido);
   const mencionaRls = /ROW LEVEL SECURITY|tenant_isolation|tenantId|tenant_id/i.test(contenido);
   if (creaTabla && !mencionaRls) {
@@ -69,7 +70,7 @@ if (moduloActual) {
     .filter((m) => m && m !== moduloActual);
   if (cruzados.length > 0) {
     avisos.push(
-      `Importación directa desde el módulo '${moduloActual}' hacia '${[...new Set(cruzados)].join(", ")}'. ` +
+      `Importación directa desde el módulo '${moduloActual}' hacia '${[...new Set(cruzados)].join(', ')}'. ` +
         'Regla R4 de CLAUDE.md: los módulos se comunican por eventos de dominio o por puertos ' +
         'explícitos, no por importación directa. Es lo que permitirá extraer servicios después.',
     );
