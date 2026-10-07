@@ -17,7 +17,8 @@
     "test:aislamiento": "dotenv -e ../../.env -- vitest run tests/aislamiento.spec.ts",
     "lint": "eslint prisma tests",
     "db:push": "dotenv -e ../../.env -- prisma db push",
-    "validate": "dotenv -e ../../.env -- prisma validate"
+    "validate": "dotenv -e ../../.env -- prisma validate",
+    "rol:crear": "dotenv -e ../../.env -- node scripts/crear-rol-aplicacion.mjs"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0"

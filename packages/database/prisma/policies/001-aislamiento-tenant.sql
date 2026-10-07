@@ -24,12 +24,17 @@ BEGIN
 
   EXECUTE format('DROP POLICY IF EXISTS tenant_isolation ON %I', nombre_tabla);
 
+  -- NULLIF(..., '') NO es cosmético: cuando no hay contexto de tenant, current_setting
+  -- devuelve CADENA VACÍA, no NULL — y ''::uuid lanza una excepción en vez de no devolver
+  -- filas. Lo encontró la prueba de aislamiento contra Neon. Con NULLIF, la comparación da
+  -- NULL y la consulta devuelve cero filas: el sistema se queda ciego, que es lo correcto.
+  --
   -- WITH CHECK NO es opcional. Sin él, un tenant puede ESCRIBIR filas con el
   -- tenant_id de otro, aunque luego no pueda leerlas. Es el error clásico.
   EXECUTE format($politica$
     CREATE POLICY tenant_isolation ON %I
-      USING      (tenant_id = current_setting('app.current_tenant', true)::uuid)
-      WITH CHECK (tenant_id = current_setting('app.current_tenant', true)::uuid)
+      USING      (tenant_id = NULLIF(current_setting('app.current_tenant', true), '')::uuid)
+      WITH CHECK (tenant_id = NULLIF(current_setting('app.current_tenant', true), '')::uuid)
   $politica$, nombre_tabla);
 END;
 $$;
