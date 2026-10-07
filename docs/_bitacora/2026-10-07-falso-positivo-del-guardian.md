@@ -61,6 +61,34 @@ garantizan que un push real a `main` **sigue detectándose** pese al mensaje, y 
 Decisión explícita: **no** se eliminan todas las comillas. Perder una detección real es peor
 que mantener un falso positivo.
 
+## Tercer caso, y cambio de enfoque
+
+El mismo día, un tercero:
+
+```bash
+for p in "git push" "main"; do grep -ril "$p" .claude/skills; done
+```
+
+Los **patrones de búsqueda** dispararon la guarda. No había ningún comando git en esa línea.
+
+En la sección anterior quedó escrito: *«si aparece un tercero, la respuesta no es otro parche sino
+cambiar el enfoque»*. Se cumplió.
+
+**Enfoque nuevo.** La política ya no reconoce patrones sobre la cadena completa. Ahora:
+
+1. **Tokeniza** respetando comillas simples, dobles y escapes.
+2. **Descarta** los cuerpos de heredoc.
+3. **Parte** por los separadores del shell (`&&`, `||`, `;`, `|`).
+4. Analiza **solo** los segmentos cuyo primer token, sin comillas, es `git`.
+5. Examina los argumentos reales: subcomando, banderas, refspecs.
+
+Un token entrecomillado nunca puede ser el nombre de un comando. Con eso,
+`grep "git push origin main"` deja de parecer un push, y sigue detectándose
+`timeout 60 git push origin HEAD:main`.
+
+De 30 a **40 casos de prueba**, incluidos los tres falsos positivos históricos y formas de refspec
+que antes no se cubrían.
+
 ## Qué aprendimos
 
 **Un guardián que bloquea lo legítimo acaba desactivado.** Ese es el modo de fallo real de este
@@ -80,10 +108,13 @@ incomoda no es un proceso.
 habría abierto un camino para saltarse el guardián. Separar la lógica pura dio pruebas honestas
 sin debilitar el control.
 
-**Dos falsos positivos el mismo día, de la misma causa: el enfoque es frágil.** Reconocer patrones
-sobre cadenas de shell es adivinar la intención a partir del texto, y el texto incluye prosa,
-heredocs y comillas. Ha aguantado dos parches; si aparece un tercero, la respuesta no es otro
-parche sino cambiar el enfoque —analizar los argumentos ya separados en lugar de la línea cruda—.
+**Tres falsos positivos el mismo día, de la misma causa: reconocer patrones sobre cadenas de shell
+es adivinar la intención a partir del texto.** Y el texto incluye prosa, heredocs, comillas y
+patrones de búsqueda. Dos parches no bastaron porque atacaban síntomas.
+
+**El compromiso escrito se cumplió.** Cuando apareció el tercero no se parcheó: se reescribió con
+un tokenizador. Dejar escrito *cuándo* cambiar de enfoque —antes de necesitarlo— es lo que impidió
+seguir parcheando por inercia.
 
 Dicho eso, el balance sigue siendo correcto: **el control ha bloqueado lo que debía bloquear en
 todos los intentos reales**, y los falsos positivos se descubrieron usándolo, no en revisión.
