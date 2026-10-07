@@ -13,8 +13,9 @@ mueve a `docs/` y aquí queda solo el enlace.
 WhatsApp: el dominio del turismo (pasajeros, tarifas netas, itinerarios, archivos de viaje,
 proveedores) está en el núcleo del modelo.
 
-Estado actual: **Fase 0 — Fundaciones.** Hay andamiaje documental y de configuración.
-**No hay código de aplicación todavía.** Ver `ESTADO.md` para el punto exacto del hilo.
+Estado actual: **rebanada vertical de paquetes, en construcción.** La Fase 0 está cerrada y
+verificada: el dominio, la base de datos con RLS y la API del catálogo funcionan contra Neon.
+Falta el frontend y el inbox de WhatsApp. Ver `ESTADO.md` para el punto exacto del hilo.
 
 ## 2. Antes de hacer cualquier cosa
 
@@ -139,7 +140,6 @@ la conversación ni en la de ningún modelo.
 ## 10. Límites
 
 - **Nunca commitear en `main`.** Si la sesión arranca ahí, lo primero es crear la rama de trabajo.
-- No escribir código de aplicación mientras el proyecto esté en Fase 0 sin decirlo explícitamente.
 - No agregar dependencias sin justificarlas; cada una es deuda. Preferir la biblioteca estándar.
 - No tocar migraciones ya aplicadas en `packages/database/migrations/`: se corrigen con una nueva.
 - No integrar servicios externos sin un ADR y sin un adaptador detrás de un puerto.

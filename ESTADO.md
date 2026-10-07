@@ -21,26 +21,27 @@ documentación de visión, producto, arquitectura, seguridad y roadmap, cinco AD
 de ingeniería asistida por IA (17 agentes, 5 skills, 7 comandos, 6 hooks, MCP) y el gobierno de la
 integración a `main`.
 
-**No existe código de aplicación.** Nada está desplegado. No hay base de datos creada.
+**El backend funciona contra Neon** y está probado con peticiones reales. Lo que NO existe todavía:
+frontend, inbox de WhatsApp, persistencia de cotizaciones, y nada desplegado en un servidor.
 No hay cuenta de Meta Business iniciada.
 
 Qué hay, concretamente:
 
 | Área | Estado |
 |---|---|
-| Configuración del monorepo | Escrita, **sin ejecutar** (`pnpm install` nunca corrió) |
+| Monorepo | **Instalado y compilando.** Node 22.20, pnpm 9.12 |
 | Documentación | 33 documentos completos + 22 marcadores con responsable y fase |
 | ADR | 0001 stack · 0002 WhatsApp · 0003 multi-tenancy · 0004 monolito modular · 0005 ramas · 0006 parametrización · 0007 Neon |
 | Agentes de IA | 17 definidos en `.claude/agents/`, incluido `integrador` |
 | Skills | `ciclo-funcionalidad`, `auditoria-integral`, `handoff-ia-externa`, `cerrar-sesion`, `nuevo-modulo` |
 | Comandos | `/estado` `/auditoria` `/funcionalidad` `/handoff` `/adr` `/contexto` `/integrar` |
 | Hooks | Inyección del hilo, guardián de secretos, guardián de rama (con 24 pruebas), autorización de integración, revisión post-edición, recordatorio de cierre |
-| MCP | 8 declarados. **Stitch verificado**: HTTP 200 y 15 herramientas. Los demás sin validar |
+| MCP | **Stitch conectado** (ámbito de usuario, 15 herramientas). `memoria`, `docs-librerias`, `navegador`, `razonamiento` cargados. **`postgres` falla al conectar.** `github` y `sentry` sin autorizar |
 | Fase 0 técnica | **COMPLETA Y VERIFICADA.** API viva, 7/7 aislamiento, 32/32 dominio |
 | Backend | `apps/api` con catálogo y cotización. Probado con peticiones reales |
 | Datos | Agencia demo sembrada: 3 paquetes, 5 temporadas, 26 precios |
 | Contrato multi-harness | `AGENTS.md` en la raíz: cualquier IA trabaja bajo las mismas once reglas |
-| Repositorio | [github.com/Alfavear/CRM](https://github.com/Alfavear/CRM) · **privado** · `main` en v0.1.0 |
+| Repositorio | [github.com/Alfavear/CRM](https://github.com/Alfavear/CRM) · **privado** · `main` en **v0.8.3** |
 | Gobierno de `main` | Compuerta local activa y probada. **Sin protección de servidor:** el plan gratuito no la permite en repos privados |
 
 ## 2. Decisiones ya tomadas (no reabrir sin ADR que las supersede)
@@ -81,7 +82,7 @@ Ordenada. La primera es la que debe tomarse ahora.
 |---|---|---|---|
 | 1 | **Iniciar verificación de Meta Business y solicitud de Tech Provider** | Usuario | **Camino crítico, sin empezar** |
 | 2 | **Conseguir agencia piloto** y pedirle un tarifario real de mayorista | Usuario | Urgente. El catálogo se modeló con datos verosímiles, no reales |
-| 3 | **Registrar Stitch en ámbito de usuario** (`claude mcp add ... -s user`) y reiniciar | Usuario | La clave funciona; falla la expansión desde `.env` |
+| 3 | Reparar la conexión del MCP `postgres` o retirarlo de `.mcp.json` | `devops` | Falla con `CONNECTION_CLOSED` |
 | 4 | Inbox de WhatsApp: webhook, firma, idempotencia, ventana de 24h | `whatsapp`, `backend` | **Siguiente pieza grande** |
 | 5 | Frontend del catálogo y el cotizador | `diseno-ux`, `frontend` | Listo para empezar: la API ya responde |
 | 6 | Guardar cotizaciones con versiones inmutables | `backend` | Hoy el cálculo no persiste |
