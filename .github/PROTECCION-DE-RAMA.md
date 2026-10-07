@@ -1,10 +1,35 @@
 # Protección de la rama `main` en GitHub
 
-> **Tarea pendiente, y es la mitad que falta de [ADR-0005](../docs/03-adr/0005-modelo-de-ramas.md).**
->
-> Los hooks locales (`.claude/hooks/guard-rama.mjs`) son una barandilla contra el accidente.
-> **La protección real es de servidor** y hay que configurarla en cuanto exista el repositorio
-> remoto. Mientras no esté, la regla depende de disciplina, no de un mecanismo.
+> **Estado: BLOQUEADO por el plan de la cuenta.** Es la mitad que falta de
+> [ADR-0005](../docs/03-adr/0005-modelo-de-ramas.md).
+
+## El problema, en una línea
+
+El repositorio es **privado** (`Alfavear/CRM`) y la cuenta está en el **plan gratuito**.
+GitHub no permite proteger ramas ni crear *rulesets* en repositorios privados del plan gratuito:
+
+```
+403: Upgrade to GitHub Pro or make this repository public to enable this feature.
+```
+
+Resultado: hoy **`main` no tiene ninguna protección de servidor**. Lo único que hay son los hooks
+locales, que son una barandilla contra el accidente, **no seguridad**.
+
+## Las tres salidas
+
+| Opción | Protección de `main` | Estrategia expuesta | Costo |
+|---|---|---|---|
+| **GitHub Pro** y seguir privado | ✅ Completa | No | De pago, mensual — verificar precio vigente |
+| **Repositorio público** | ✅ Completa, gratis | **Sí**, todo visible | Gratis |
+| **Seguir como está** | ❌ Solo hooks locales | No | Gratis, con riesgo asumido |
+
+**Recomendación: GitHub Pro.** Es la única que da las dos cosas. Mientras el proyecto siga siendo
+una sola persona con disciplina, la tercera opción es tolerable; en cuanto entre una segunda
+persona al repositorio, deja de serlo — porque la protección existe precisamente para los días en
+que alguien tiene prisa.
+
+Mientras tanto, la regla R11 la sostienen el agente `integrador` y los hooks. **Riesgo registrado
+en `ESTADO.md`.**
 
 ---
 
@@ -60,12 +85,23 @@ probado no está configurada, está declarada.**
 
 ---
 
-## Mientras no haya remoto
+## Qué hacer en cuanto se desbloquee
 
-El repositorio es local y sin remoto. Hasta que exista:
+Si se activa GitHub Pro (o el repositorio pasa a público), aplicar la configuración de arriba
+**el mismo día**. Se puede hacer desde la terminal:
 
-- Los hooks locales son toda la protección que hay.
-- El agente `integrador` es la compuerta real, por procedimiento.
+```bash
+gh api -X PUT repos/Alfavear/CRM/branches/main/protection \
+  --input .github/proteccion-main.json
+```
+
+Y después **probar que falla lo que debe fallar** — las tres comprobaciones de la sección anterior.
+Una protección sin probar está declarada, no configurada.
+
+## Mientras tanto
+
+- Los hooks locales son toda la protección que hay. Son una barandilla, **no un muro**.
+- El agente `integrador` es la compuerta real, por procedimiento, no por mecanismo.
+- Funciona mientras el repositorio lo toque una sola persona con disciplina.
+  **Deja de funcionar el día que entre alguien más.**
 - **Riesgo asumido y registrado en `ESTADO.md`.**
-
-Primer paso cuando se cree el remoto: configurar esto **antes** del primer `push`.
