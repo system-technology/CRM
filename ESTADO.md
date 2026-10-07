@@ -36,6 +36,7 @@ Qué hay, concretamente:
 | Comandos | `/estado` `/auditoria` `/funcionalidad` `/handoff` `/adr` `/contexto` `/integrar` |
 | Hooks | Inyección del hilo, guardián de secretos, guardián de rama (con 24 pruebas), autorización de integración, revisión post-edición, recordatorio de cierre |
 | MCP | 8 servidores declarados, **ninguno validado** |
+| Contrato multi-harness | `AGENTS.md` en la raíz: cualquier IA trabaja bajo las mismas once reglas |
 | Repositorio | [github.com/Alfavear/CRM](https://github.com/Alfavear/CRM) · **privado** · `main` en v0.1.0 |
 | Gobierno de `main` | Compuerta local activa y probada. **Sin protección de servidor:** el plan gratuito no la permite en repos privados |
 

@@ -122,7 +122,48 @@ puede haber nacido obsoleto. Se verifica al recibir, antes de integrar.
 
 ---
 
-## 6. Riesgos y cómo se controlan
+## 6. Herramientas evaluadas
+
+Decisiones concretas sobre herramientas que se han considerado para este proyecto.
+Se revisan al cerrar cada fase.
+
+### Google Antigravity — **sí, desde Fase 1, con rol acotado**
+
+IDE agéntico con control nativo del navegador y modelos de otra familia.
+
+| | |
+|---|---|
+| **Dónde gana** | **Verificación en navegador.** Comprobar que la bandeja aguanta 500 conversaciones, que el estado del mensaje avanza, que el móvil no se rompe. Eso se hace mejor manejando Chrome que describiendo pasos |
+| **Segundo uso válido** | **Segunda opinión** de otra familia de modelos sobre una decisión de arquitectura. Si dos modelos con el mismo contexto proponen estructuras distintas, el desacuerdo señala dónde está la tensión real del diseño |
+| **Dónde NO** | Aislamiento entre tenants, credenciales, esquema de datos, lógica de pagos, decisiones de arquitectura |
+| **Riesgo** | Es **otro harness con sus propias convenciones y su propia memoria**. Dos IDEs agénticos sobre el mismo repositorio sin protocolo es exactamente la deriva que los cuatro artefactos del hilo evitan |
+| **Condición previa** | **`AGENTS.md`** en la raíz. Antigravity no lee `CLAUDE.md`; sin ese archivo trabajaría sin conocer ninguna de las once reglas. **Ya está hecho** |
+| **Cuándo entra** | Fase 1, cuando exista interfaz que verificar. Antes no tiene a qué dedicarse |
+
+### Modelos de pesos abiertos — **todavía no; después, por el canal del traspaso**
+
+Qwen3-Coder, DeepSeek, GLM, gpt-oss y similares, en local o por API barata.
+
+| | |
+|---|---|
+| **Dónde ganan** | Volumen alto, riesgo bajo, especificación cerrada: generación de pruebas, datos de prueba realistas, traducciones, plantillas de mensajes. Ahí el costo por token importa y la calidad marginal no |
+| **Dónde NO** | Nada que toque `tenant_id`, RLS, pagos o la integración con Meta |
+| **El porqué del límite** | Su modo de fallo es **«plausible pero incorrecto»**, y los fallos más caros de este proyecto son justo de ese tipo: una política RLS que parece bien escrita, un webhook que parece idempotente. No se ven en una revisión rápida; se ven en producción |
+| **Cómo entrarían** | Por la skill `handoff-ia-externa`: paquete autosuficiente, criterios objetivos, **auditoría obligatoria** de lo que vuelve y pruebas escritas por nosotros |
+| **Cuándo entran** | Fase 2 en adelante, cuando exista trabajo de volumen que delegar |
+
+### El criterio de fondo
+
+**La capacidad de generar código no es el cuello de botella de este proyecto.** En Fase 0 los
+bloqueos son la verificación de Meta, la agencia piloto y decisiones pendientes del propietario.
+Ninguna herramienta de IA mueve ninguno de los tres.
+
+Añadir herramientas antes de tener el problema que resuelven tiene un costo real y poco visible:
+más superficie de convenciones que mantener sincronizadas, más sitios donde el hilo puede
+romperse, y más contexto que consumir. **Cada herramienta nueva entra cuando hay un trabajo
+concreto esperándola, no antes.**
+
+## 7. Riesgos y cómo se controlan
 
 | Riesgo | Control |
 |---|---|
