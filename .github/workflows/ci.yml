@@ -61,7 +61,20 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      # Sin cliente de Prisma generado, sus tipos son `any` y `typecheck` falla con
+      # TS7006 en cada `.map()` sobre un modelo. No hace falta base viva: `generate`
+      # solo lee el esquema, pero el esquema declara las dos URLs y Prisma valida que
+      # existan antes de mirar nada (P1012).
+      - name: Generar el cliente de Prisma
+        run: pnpm db:generate
+        env:
+          DATABASE_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'viajapro_test') }}
+          DIRECT_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'viajapro_test') }}
+
       - run: pnpm ${{ matrix.tarea }}
+        env:
+          DATABASE_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'viajapro_test') }}
+          DIRECT_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'viajapro_test') }}
 
   # ---------------------------------------------------------------------------
   test:
@@ -107,6 +120,7 @@ jobs:
         run: pnpm db:migrate
         env:
           DATABASE_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'viajapro_test') }}
+          DIRECT_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'viajapro_test') }}
 
       # `pnpm test` incluye la prueba de aislamiento, que ya NO acepta caer al rol
       # propietario: sin este paso no habría DATABASE_APP_URL y abortaría, que es
@@ -115,12 +129,14 @@ jobs:
         run: node packages/database/scripts/roles-de-desarrollo.mjs
         env:
           DATABASE_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'viajapro_test') }}
+          DIRECT_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'viajapro_test') }}
           DB_DEV_PASSWORD: clave-de-integracion-continua
 
       - name: Pruebas
         run: pnpm test
         env:
           DATABASE_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'viajapro_test') }}
+          DIRECT_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'viajapro_test') }}
           REDIS_URL: redis://localhost:6379
 
   # ---------------------------------------------------------------------------
@@ -164,6 +180,7 @@ jobs:
         run: pnpm db:migrate
         env:
           DATABASE_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'viajapro_test') }}
+          DIRECT_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'viajapro_test') }}
 
       # Sin este paso la compuerta NO SE PUEDE PONER EN VERDE, y eso fue un hallazgo
       # crítico: las migraciones crean los tres roles de login SIN contraseña —un LOGIN sin
@@ -174,6 +191,7 @@ jobs:
         run: node packages/database/scripts/roles-de-desarrollo.mjs
         env:
           DATABASE_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'viajapro_test') }}
+          DIRECT_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'viajapro_test') }}
           DB_DEV_PASSWORD: clave-de-integracion-continua
 
       # Corre con `viajapro_app`, que NO puede saltarse RLS. Antes caía al rol del
@@ -184,6 +202,7 @@ jobs:
         run: pnpm --filter @viajapro/database test:aislamiento
         env:
           DATABASE_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'viajapro_test') }}
+          DIRECT_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'viajapro_test') }}
 
   # ---------------------------------------------------------------------------
   # Regla R4: los módulos no se importan entre sí. Es lo que permite extraer
@@ -229,10 +248,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
 
+      # Salía con 127 —orden no encontrada— porque este job nunca instaló pnpm.
+      # Las pruebas de los hooks son Node puro y no necesitan dependencias, así que
+      # basta con que exista el gestor para resolver el script.
       - name: Política de protección de rama
         run: pnpm test:hooks
 
