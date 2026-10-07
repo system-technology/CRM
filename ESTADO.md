@@ -6,10 +6,10 @@
 
 | Campo | Valor |
 |---|---|
-| Última actualización | 2026-10-06 |
+| Última actualización | 2026-10-07 |
 | Actualizado por | Sesión de fundación (Claude Opus 5) |
 | Fase | **Fase 0 — Fundaciones** |
-| Avance de la fase | Andamiaje documental completo. Falta andamiaje de código |
+| Avance de la fase | Andamiaje completo y versionado en v0.1.0. Falta andamiaje de código |
 | Próximo hito | Cierre de Fase 0 y arranque de Fase 1 (Inbox) |
 
 ---
@@ -35,6 +35,8 @@ Qué hay, concretamente:
 | Comandos | `/estado` `/auditoria` `/funcionalidad` `/handoff` `/adr` `/contexto` |
 | Hooks | Inyección del hilo, guardián de secretos, revisión post-edición, recordatorio de cierre |
 | MCP | 8 servidores declarados, **ninguno validado** |
+| Repositorio | Commit de génesis `v0.1.0` en `main`. **Sin remoto todavía** |
+| Gobierno de `main` | Compuerta activa y probada: commit sin autorizar y reescritura de historial, ambos rechazados |
 
 ## 2. Decisiones ya tomadas (no reabrir sin ADR que las supersede)
 
@@ -109,6 +111,7 @@ Ordenada. La primera es la que debe tomarse ahora.
 
 ## 6. Bitácora
 
+- [`2026-10-07-gobierno-de-la-integracion.md`](docs/_bitacora/2026-10-07-gobierno-de-la-integracion.md)
 - [`2026-10-06-fundacion-del-proyecto.md`](docs/_bitacora/2026-10-06-fundacion-del-proyecto.md)
 
 ---
