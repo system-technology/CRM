@@ -107,6 +107,12 @@ Toda la documentación del proyecto. Si una decisión no está aquí (o en `ESTA
 |---|---|
 | [Requisitos para la agencia](10-onboarding/01-requisitos-para-la-agencia.md) | **Documento para enviar al cliente.** Qué necesita para conectar su WhatsApp. Sin verificación ni web |
 
+## 11 · Entregables
+
+| Documento | Qué contiene |
+|---|---|
+| [Entregables](11-entregables/README.md) | Documentos `.docx` y `.pdf` para enviar fuera del repositorio. Todo entregable debe rastrearse hasta sus documentos fuente |
+
 ## 09 · Ingeniería asistida por IA
 
 | Documento | Qué contiene |
@@ -129,6 +135,7 @@ Toda la documentación del proyecto. Si una decisión no está aquí (o en `ESTA
 | `_traspasos/` | Tareas delegadas a IAs o colaboradores externos, y qué volvió. |
 | `_incidentes/` | Postmortems de producción. |
 | `_integraciones/` | Una entrada por integración a `main`, y el registro de autorizaciones. |
+| `11-entregables/` | Documentos para enviar fuera: `.docx`, `.pdf`. No sustituyen a la documentación fuente. |
 | `_assets/` | Imágenes y recursos de la documentación. |
 
 ## Cómo se escribe aquí
