@@ -103,6 +103,30 @@ activo consume contexto y amplía la superficie de riesgo.
 
 ---
 
+## 2.5 Skills de terceros instaladas
+
+| Skill | Origen | Qué aporta |
+|---|---|---|
+| `neon` | CLI oficial de Neon (`npx neon skills`) | Visión general de la plataforma, CLI, ramas de base de datos |
+| `neon-postgres` | Idem | Conexiones, migraciones, autoescalado, réplicas, búsqueda |
+
+Se versionan en `.claude/skills/` con `skills-lock.json`, igual que una dependencia.
+
+**Auditadas antes de aceptarlas** (2026-10-07, 12 archivos, 1573 líneas). Una skill es una
+**instrucción** que un agente va a seguir, no un dato: merece la misma revisión que el código que
+entra de fuera. Resultado: sin operaciones destructivas, sin exposición de credenciales, sin
+llamadas de red más allá de la documentación de Neon.
+
+**Dos observaciones del contraste con nuestras decisiones:**
+
+- **Confirman el [ADR-0007](../03-adr/0007-postgres-gestionado-neon.md)** de forma independiente:
+  migraciones por conexión directa, aplicaciones por conexión agrupada. Llegamos a lo mismo por
+  nuestra cuenta.
+- **No mencionan `BYPASSRLS` ni `neon_superuser` ni una sola vez.** La trampa que encontramos —el
+  rol por defecto puede saltarse RLS— no está advertida por el propio proveedor. Si hay
+  contradicción entre una skill y un ADR nuestro, **manda el ADR**: nosotros lo verificamos contra
+  la base de datos, la skill es documentación general.
+
 ## 3. Lo que MCP no debe hacer aquí
 
 - **No reemplaza al `sdk` del proyecto.** La aplicación no habla con sus propios servicios por MCP:
