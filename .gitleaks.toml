@@ -1,0 +1,32 @@
+# Configuración del escáner de secretos.
+#
+# Parte de las reglas por defecto de gitleaks y solo les quita ruido concreto. La regla R6 del
+# proyecto dice que ningún secreto entra al repositorio, así que esta compuerta tiene que poder
+# ponerse en rojo de verdad: lo que se silencie aquí hay que justificarlo.
+
+[extend]
+useDefault = true
+
+# -----------------------------------------------------------------------------
+# `.env.example` es una PLANTILLA: existe para enseñar qué variables hacen falta.
+# Sus valores son marcadores, no credenciales.
+#
+# **No se silencia el archivo entero, a propósito.** Si alguien pega ahí un secreto de verdad
+# —que es un error fácil y ya nos ha pasado con credenciales en otros sitios—, tiene que saltar.
+# Por eso el permiso es por FORMA del valor, no por nombre de archivo:
+#
+#   - vacío              → no hay nada que filtrar
+#   - `cambiar-por-...`  → la convención del propio archivo para «pon aquí lo tuyo»
+#   - la contraseña de desarrollo local, que es pública a propósito y solo vale contra localhost
+#
+# Cualquier otro valor en ese archivo se sigue escaneando con las reglas por defecto.
+# -----------------------------------------------------------------------------
+[allowlist]
+description = "Marcadores de la plantilla de entorno, nunca credenciales reales"
+paths = ['''\.env\.example$''']
+regexTarget = "line"
+regexes = [
+  '''^[A-Z0-9_]+=\s*(#.*)?$''',
+  '''^[A-Z0-9_]+=cambiar-por-[a-z0-9-]+''',
+  '''^[A-Z0-9_]+=desarrollo-local-sin-valor''',
+]

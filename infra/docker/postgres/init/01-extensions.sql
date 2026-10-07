@@ -4,19 +4,18 @@ CREATE EXTENSION IF NOT EXISTS "pg_trgm";       -- busqueda difusa de contactos
 CREATE EXTENSION IF NOT EXISTS "unaccent";      -- busqueda sin tildes
 CREATE EXTENSION IF NOT EXISTS "btree_gin";     -- indices compuestos jsonb + escalares
 
--- Rol de aplicacion: NO es superusuario y NO puede saltarse Row Level Security.
--- Todo acceso desde la API pasa por este rol.
-DO $$
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'viajapro_app') THEN
-    CREATE ROLE viajapro_app LOGIN PASSWORD 'viajapro_app' NOBYPASSRLS;
-  END IF;
-END
-$$;
-
-GRANT CONNECT ON DATABASE viajapro TO viajapro_app;
-GRANT USAGE ON SCHEMA public TO viajapro_app;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public
-  GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO viajapro_app;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public
-  GRANT USAGE, SELECT ON SEQUENCES TO viajapro_app;
+-- Los roles NO se crean aqui.
+--
+-- Antes este archivo hacia `CREATE ROLE viajapro_app LOGIN PASSWORD 'viajapro_app'`, y eso
+-- ensenaba a poner como contrasena el nombre del rol. Con ADR-0008 hay tres roles de
+-- login, y uno de ellos —`viajapro_altas`— es el unico que puede repuntar el numero de
+-- WhatsApp de cualquier agencia: la peor primitiva del sistema despues de BYPASSRLS. Una
+-- contrasena igual al nombre del rol, publicada en el repositorio, sobre eso.
+--
+-- Una sola fuente, y es esta:
+--
+--   pnpm infra:up
+--   pnpm db:migrate                                   # crea los cinco roles, SIN contrasena
+--   pnpm --filter @viajapro/database run roles:dev    # contrasenas de desarrollo + .env
+--
+-- Un rol LOGIN sin contrasena no se conecta: el estado por defecto es el seguro.

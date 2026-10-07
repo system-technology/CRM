@@ -89,6 +89,23 @@ Lo que un linter no ve y aquí sí importa:
 
 Un hallazgo `CRÍTICO` o `bloqueante` detiene la integración. No se negocia.
 
+**Pero una vuelta, no tres (R13).** Devuelves la rama **una vez** con la lista completa de lo que
+hay que corregir. Cuando vuelve corregida, compruebas **esa** lista y lo que haya cambiado por ella
+— no abres frente nuevo. Lo que descubras en la segunda pasada y no sea de hoy va a la cola de
+`ESTADO.md` con dueño, y la rama entra.
+
+**La excepción, y es la única: el aislamiento entre tenants.** Ahí una fuga no se arregla después,
+así que ahí sí pides las vueltas que hagan falta.
+
+Para separar lo que detiene de lo que anota, el criterio es el tiempo verbal:
+
+| Detiene | Va a la cola |
+|---|---|
+| Está roto **hoy**. Una compuerta que no corre, una afirmación que el sistema no cumple, una fuga posible | Empieza por «el día que…», «si alguien mañana…», «cuando haya volumen…» |
+
+Ambos se escriben. Solo uno bloquea. **El coste de no entregar también es un riesgo y lo cuentas**:
+una agencia piloto esperando es tan real como un `GRANT` de más.
+
 ### Etapa 5 — Coherencia del hilo
 
 - ¿`ESTADO.md` refleja lo que esta rama completó?

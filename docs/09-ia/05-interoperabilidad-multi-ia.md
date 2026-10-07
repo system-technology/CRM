@@ -137,7 +137,7 @@ IDE agéntico con control nativo del navegador y modelos de otra familia.
 | **Segundo uso válido** | **Segunda opinión** de otra familia de modelos sobre una decisión de arquitectura. Si dos modelos con el mismo contexto proponen estructuras distintas, el desacuerdo señala dónde está la tensión real del diseño |
 | **Dónde NO** | Aislamiento entre tenants, credenciales, esquema de datos, lógica de pagos, decisiones de arquitectura |
 | **Riesgo** | Es **otro harness con sus propias convenciones y su propia memoria**. Dos IDEs agénticos sobre el mismo repositorio sin protocolo es exactamente la deriva que los cuatro artefactos del hilo evitan |
-| **Condición previa** | **`AGENTS.md`** en la raíz. Antigravity no lee `CLAUDE.md`; sin ese archivo trabajaría sin conocer ninguna de las doce reglas. **Ya está hecho** |
+| **Condición previa** | **`AGENTS.md`** en la raíz. Antigravity no lee `CLAUDE.md`; sin ese archivo trabajaría sin conocer ninguna de las trece reglas. **Ya está hecho** |
 | **Cuándo entra** | Fase 1, cuando exista interfaz que verificar. Antes no tiene a qué dedicarse |
 
 ### Modelos de pesos abiertos — **todavía no; después, por el canal del traspaso**

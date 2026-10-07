@@ -18,7 +18,8 @@
     "lint": "eslint prisma tests scripts",
     "db:push": "dotenv -e ../../.env -- prisma db push",
     "validate": "dotenv -e ../../.env -- prisma validate",
-    "rol:crear": "dotenv -e ../../.env -- node scripts/crear-rol-aplicacion.mjs"
+    "rol:crear": "dotenv -e ../../.env -- node scripts/crear-rol-aplicacion.mjs",
+    "roles:dev": "dotenv -e ../../.env -- node scripts/roles-de-desarrollo.mjs"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0"

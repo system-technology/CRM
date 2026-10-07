@@ -31,8 +31,8 @@ punto exacto del hilo.
 
 | # | Regla | Por qué |
 |---|---|---|
-| R1 | **Toda tabla de negocio lleva `tenant_id` y política RLS.** Sin excepción. | Una fuga entre agencias mata el producto. Ver ADR-0003. |
-| R2 | **Ninguna consulta usa el rol `postgres`.** La app entra con `viajapro_app`, que no puede saltarse RLS. | Defensa en profundidad: un bug de `WHERE` no se vuelve una brecha. |
+| R1 | **Toda tabla de negocio lleva `tenant_id` y política RLS.** Las únicas excepciones son las tablas globales declaradas **en `excepciones_rls`**, que es dato en la base y no una lista en un documento: lo que no esté ahí y no tenga `tenant_id` es un defecto bloqueante que pone en rojo la prueba de aislamiento. Añadir una excepción exige editar también el literal de `aislamiento.spec.ts`. | Una fuga entre agencias mata el producto. Ver ADR-0003 y ADR-0008 §1.2. |
+| R2 | **Ninguna consulta usa el rol `postgres`.** La app entra con uno de los tres roles de aplicación —`viajapro_app`, `viajapro_altas`, `viajapro_webhook`—, ninguno de los cuales puede saltarse RLS, y **cada proceso aborta al arrancar si no es el rol que esperaba ser**. | Defensa en profundidad: un bug de `WHERE` no se vuelve una brecha. Y con tres roles que solo se distinguen en qué funciones ejecutan, apuntar una variable de entorno al rol equivocado sería una brecha silenciosa. Ver ADR-0008 §1.3. |
 | R3 | **Los contratos viven en `packages/contracts` como esquemas Zod.** API y web importan de ahí; nadie redefine tipos. | Una sola fuente de verdad entre back y front. |
 | R4 | **Los módulos no se importan entre sí directamente.** Se comunican por eventos de dominio o por puertos explícitos. | Es lo que permite extraer servicios después sin reescribir. Ver ADR-0004. |
 | R5 | **Todo efecto externo (WhatsApp, pagos, correo) es idempotente y pasa por cola.** | Meta reintenta webhooks; las pasarelas también. Duplicar un cobro es imperdonable. |
@@ -43,6 +43,37 @@ punto exacto del hilo.
 | R10 | **PII de viajeros (pasaporte, fecha de nacimiento) se trata como dato sensible**: cifrado y acceso auditado. | Ley 1581 de 2012. Ver `docs/05-seguridad/02-proteccion-de-datos.md`. |
 | R11 | **En `main` solo escribe el agente `integrador`**, y solo tras superar las siete compuertas. Todo el trabajo va en ramas. | Los agentes producen más rápido de lo que nadie revisa. Sin compuerta, entra a producción lo que nadie miró. Ver ADR-0005. |
 | R12 | **Se parametriza la política de negocio; nunca los invariantes del dominio.** Lo que cada agencia define distinto es tabla por tenant, no `enum`. | Sin configurabilidad perdemos clientes; con configurabilidad infinita nos volvemos un CRM genérico y perdemos la ventaja. Ver ADR-0006. |
+| R13 | **Una sola vuelta de revisión, salvo en aislamiento entre tenants.** Lo que no se corrige en esa vuelta va a la cola de `ESTADO.md` con dueño, no bloquea. | Un revisor siempre encuentra algo: ese es su encargo. Revisar revisiones tiene rendimientos decrecientes y consume el tiempo que el producto necesita. Ver §3.1. |
+
+### 3.1 La regla de parada
+
+**Esto se escribió el 2026-10-07, después de un día entero sin entregar nada.** Veintitantos commits,
+tres rondas de revisión de un ADR que creció a mil líneas, dos auditorías de su implementación, y
+cero funcionalidad nueva — con una agencia piloto esperando y el canal de WhatsApp vivo sin una sola
+línea que recibiera un mensaje.
+
+Los hallazgos eran reales. El proceso, no.
+
+**Dos categorías, y hay que separarlas en voz alta:**
+
+| | Qué es | Qué se hace |
+|---|---|---|
+| **Bloqueante** | Algo que **hoy** está roto o es falso: una compuerta que no corre, una afirmación que el sistema no cumple, una fuga posible entre agencias | Se corrige antes de integrar |
+| **Cola** | Algo que empieza por «el día que…», «si alguien mañana…», «cuando haya volumen…» | Va a `ESTADO.md` con dueño. **No bloquea** |
+
+Ambos se escriben. Solo uno detiene la entrega.
+
+**Dónde no se recorta nunca:** el aislamiento entre agencias. Una fuga ahí no se arregla después —
+mata el producto. Ahí sí van las vueltas que hagan falta.
+
+**Dónde sí se recorta:** todo lo demás. Una pasada de revisión, una vuelta de correcciones, y se
+integra.
+
+**Y lo que no se hace:** auditar auditorías. Si una segunda pasada encuentra solo cosas de la columna
+derecha, es señal de que la primera ya cumplió.
+
+**El coste de no entregar también es un riesgo, y hay que contarlo.** Un inbox feo que recibe
+mensajes reales enseña más que un diseño perfecto que no existe.
 
 ## 4. Stack
 

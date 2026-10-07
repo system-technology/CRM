@@ -13,7 +13,7 @@
 ## 1. Antes de tocar nada
 
 1. Lee **`ESTADO.md`** — dónde estamos, qué sigue, qué está bloqueado. Es obligatorio.
-2. Lee **`CLAUDE.md`** — las doce reglas completas y el mapa del sistema.
+2. Lee **`CLAUDE.md`** — las trece reglas completas y el mapa del sistema.
 3. Si la tarea toca arquitectura, lee el ADR correspondiente en `docs/03-adr/`.
 4. Si la tarea toca dominio, lee `docs/01-producto/02-lenguaje-ubicuo.md`.
 
@@ -34,7 +34,7 @@ WhatsApp, la autenticación y la persistencia de cotizaciones.
 Stack: TypeScript estricto · NestJS · Next.js · PostgreSQL + Prisma · Redis + BullMQ ·
 monorepo pnpm + Turborepo.
 
-## 3. Las doce reglas que no se rompen
+## 3. Las trece reglas que no se rompen
 
 | # | Regla |
 |---|---|
@@ -50,6 +50,7 @@ monorepo pnpm + Turborepo.
 | R10 | PII de viajeros (pasaporte, fecha de nacimiento) es **dato sensible**: cifrado y auditado |
 | R11 | **En `main` solo escribe el agente `integrador`.** Todo el trabajo va en ramas |
 | R12 | **Se parametriza la política de negocio; nunca los invariantes del dominio.** Lo que cada agencia define distinto es tabla por tenant, no `enum` |
+| R13 | **Una sola vuelta de revisión, salvo en aislamiento entre tenants.** Lo que no se corrige en esa vuelta va a la cola de `ESTADO.md` con dueño, no bloquea |
 
 ## 4. Git — esto es lo que más se incumple
 

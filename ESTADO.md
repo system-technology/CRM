@@ -6,10 +6,10 @@
 
 | Campo | Valor |
 |---|---|
-| Última actualización | 2026-10-07 (sesión nocturna autónoma — diseño, frontend, compuertas y ADR-0008) |
+| Última actualización | 2026-10-07 (sesión larga — diseño, frontend, compuertas, ADR-0008 y esquema del inbox) |
 | Actualizado por | Claude Opus 5 |
 | Fase | **Rebanada vertical de paquetes, en construcción** |
-| Avance de la fase | **Cotizador funcionando de punta a punta: web → API → Neon.** v0.9.1 |
+| Avance de la fase | Cotizador de punta a punta. **Esquema del inbox con aislamiento, 30/30 contra Neon.** Canal de WhatsApp vivo |
 | Próximo hito | **Implementar el inbox.** ADR-0008 aceptado el 2026-10-07: 4a (esquema) puede empezar |
 
 ---
@@ -45,13 +45,14 @@ Qué hay, concretamente:
 | Comandos | `/estado` `/auditoria` `/funcionalidad` `/handoff` `/adr` `/contexto` `/integrar` |
 | Hooks | **De Claude Code:** inyección del hilo, guardián de secretos (19/19), guardián de rama (40/40), autorización de integración, revisión post-edición, recordatorio de cierre. **De git, desde v0.9.1:** `commit-msg` (commitlint) y `pre-commit` (lint-staged) — antes estaban configurados pero nunca se ejecutaban |
 | MCP | **Stitch conectado y usado** (ámbito de usuario, 15 herramientas). `navegador` usado para verificar la interfaz. `memoria`, `docs-librerias`, `razonamiento` cargados. **`postgres` falla al conectar.** `github` y `sentry` sin autorizar |
-| Fase 0 técnica | **COMPLETA Y VERIFICADA.** API viva, 7/7 aislamiento, 32/32 dominio, 25/25 contratos |
+| Fase 0 técnica | **COMPLETA Y VERIFICADA.** API viva, **30/30 aislamiento**, 32/32 dominio, 25/25 contratos |
 | Compuertas de calidad | **Funcionando por primera vez desde v0.9.1.** `lint` 7/7 · `typecheck` 7/7 · `test` 6/6 · `build` 5/5 · `format:check` limpio. Antes cuatro de ellas eran imposibles de poner en verde |
 | Backend | `apps/api` con catálogo y cotización. Probado con peticiones reales |
 | Frontend | `apps/web`: Next.js 15 + Tailwind 4. **Cotizador verificado en navegador.** No hay autenticación: el tenant va por cabecera de desarrollo, solo con `APP_ENV=local` |
+| Canal de WhatsApp | **Vivo.** App `1968557404100610`, número de prueba, mensaje recibido en un teléfono real el 2026-10-07. Ver `docs/10-onboarding/03-valores-del-entorno-de-pruebas.md` |
 | Diseño | Sistema de diseño subido a Stitch (proyecto `8333038101997719867`). Tokens replicados en `apps/web/src/app/globals.css`. Capturas en `docs/_assets/diseno/` |
 | Datos | Agencia demo sembrada: 3 paquetes, 5 temporadas, 26 precios |
-| Contrato multi-harness | `AGENTS.md` en la raíz: cualquier IA trabaja bajo las mismas **doce** reglas. R12 faltaba hasta v0.9.1 |
+| Contrato multi-harness | `AGENTS.md` en la raíz: cualquier IA trabaja bajo las mismas **trece** reglas. R12 faltaba hasta v0.9.1; R13 se añadió el 2026-10-07 |
 | Repositorio | [github.com/Alfavear/CRM](https://github.com/Alfavear/CRM) · **privado** · `main` en **v0.9.1** |
 | Gobierno de `main` | Compuerta local activa y probada. **Sin protección de servidor:** el plan gratuito no la permite en repos privados |
 
@@ -95,11 +96,17 @@ Ordenada. La primera es la que debe tomarse ahora.
 | 2 | **Recibir el tarifario real del mayorista** de la agencia piloto | Usuario | La agencia ya está tramitando la información (2026-10-07). Hasta que llegue, el catálogo sigue modelado con datos verosímiles |
 | 2b | **Bajar el tarifario de Meta para Colombia en COP** del CSV oficial | Usuario | Cinco minutos con un navegador. Sin esa cifra el plan de entrada se fija a ciegas |
 | 3 | Reparar la conexión del MCP `postgres` o retirarlo de `.mcp.json` | `devops` | Falla con `CONNECTION_CLOSED` |
-| 4a | **Inbox — esquema**, y en el MISMO commit: 4 tablas, 6 funciones, 5 roles, rehacer `001`/`002`, `canales` **antes**, **las 18 aserciones de aislamiento**, y la actualización de R1 y de `03-modelo-de-datos.md` §4 | `datos` | **Lista para empezar.** ADR-0008 aceptado el 2026-10-07 |
+| 4a | Inbox — esquema, roles, funciones y aserciones | `datos` | **Hecho.** 30/30 contra Neon, dos auditorías de seguridad, seis mutaciones verificadas en rojo |
+| 4a.1 | **Ver en verde los jobs `aislamiento-tenants` y `test` en CI** antes de integrar | `devops` | **Condición del auditor.** Nunca han corrido: ejecutarlos una vez es la única forma honesta de cerrar ese hallazgo |
 | 4b | Inbox — API: tres orígenes de conexión, guardia de identidad, puerto a `crm`, relay por `change` | `backend` | Esperando 4a |
-| 4c | Las 3 verificaciones que **no** son de base de datos: arranque del proceso, alta de extremo a extremo, ensayo de rotación de la pimienta | `backend`, `qa`, `devops` | Cada una respalda un crítico. Son las que más fácil se quedan sin hacer |
-| 4d | Alinear `05-seguridad/02-proteccion-de-datos.md` con el ADR-0008 | `documentador` | La redacción de consentimiento contradice hoy al ADR |
-| 5 | Bandeja de conversaciones en la web | `frontend` | El diseño existe; falta el backend del inbox (tarea 4) |
+| 4c | Las 3 verificaciones que **no** son de base de datos: arranque del proceso, alta de extremo a extremo, ensayo de rotación de la pimienta | `backend`, `qa`, `devops` | Cada una respalda un crítico. La de arranque sube a **primera tarea de 4b**: tres roles que solo difieren en qué funciones ejecutan, y ninguna aserción detecta cuál se conectó |
+| 4d | Alinear `05-seguridad/02-proteccion-de-datos.md` con el ADR-0008 | `documentador` | La redacción de consentimiento lo contradice. Faltan pimienta y clave de plataforma en el inventario §5 |
+| 4e | **ADR que enmiende el ADR-0008 en cinco puntos** | `arquitecto` | Un ADR es inmutable y hoy describe un sistema que no existe: tokens en `cuentas_whatsapp`, `cuenta_id` en el directorio, una **séptima** función, `crear_particion_historial` fuera del inventario, y el hueco de `purgar_directorio`. **Lo más fácil de olvidar y lo más caro en seis meses** |
+| 4f | Reconciliación directorio ↔ verdad | `backend` | Una agencia marcada `REVOCADO` en `canales` se sigue resolviendo como `ACTIVO`: se persistirían mensajes de una agencia sin contrato |
+| 4g | `purgar_directorio`, o decidir que es manual | `arquitecto`, `datos` | Hoy ninguna fila del directorio se puede borrar por ningún camino de código. **No bloquea un esquema vacío; bloquea el primer tenant en producción** |
+| 4h | Trabajo anual de creación de particiones del historial | `devops` | Si falta la del año siguiente, **ninguna agencia puede conectar su canal**. Mejor: un *event trigger* que lo haga imposible de olvidar |
+| 4i | Aserción de concurrencia determinista y orden de las aserciones | `qa` | La de la carrera falla hacia el verde; y 22/23 reparan privilegios, así que enmascaran a cualquier aserción declarada después |
+| 5 | Bandeja de conversaciones en la web | `frontend` | El diseño existe; falta el backend del inbox (tarea 4b) |
 | 6 | Guardar cotizaciones con versiones inmutables | `backend` | Hoy el cálculo no persiste |
 | 7 | Pruebas de integración de la API | `qa` | Solo se probó a mano. **La verificación del cotizador fue manual: no hay prueba automática que la repita** |
 | 8 | CI en GitHub Actions corriendo de verdad | `devops` | Escrito, nunca ejecutado |
@@ -141,7 +148,8 @@ Ordenada. La primera es la que debe tomarse ahora.
 
 ## 6. Bitácora
 
-- [`2026-10-07-el-adr-que-se-defendio-tres-veces.md`](docs/_bitacora/2026-10-07-el-adr-que-se-defendio-tres-veces.md) ← **empieza por aquí**
+- [`2026-10-07-el-dia-que-nos-pusimos-un-freno.md`](docs/_bitacora/2026-10-07-el-dia-que-nos-pusimos-un-freno.md) ← **empieza por aquí**
+- [`2026-10-07-el-adr-que-se-defendio-tres-veces.md`](docs/_bitacora/2026-10-07-el-adr-que-se-defendio-tres-veces.md)
 - [`2026-10-07-primera-interfaz.md`](docs/_bitacora/2026-10-07-primera-interfaz.md)
 - [`_integraciones/2026-10-07-v0.9.1.md`](docs/_integraciones/2026-10-07-v0.9.1.md) — por qué cuatro compuertas nunca pudieron correr
 - [`2026-10-07-backend-vivo.md`](docs/_bitacora/2026-10-07-backend-vivo.md)
