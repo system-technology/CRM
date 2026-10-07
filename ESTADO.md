@@ -6,11 +6,11 @@
 
 | Campo | Valor |
 |---|---|
-| Última actualización | 2026-10-07 (sesión nocturna autónoma) |
-| Actualizado por | Sesión de fundación (Claude Opus 5) |
-| Fase | **Fase 0 cerrada. Entrando en la rebanada vertical de paquetes** |
-| Avance de la fase | **Backend funcionando contra Neon.** v0.8.0 |
-| Próximo hito | Inbox de WhatsApp, o frontend del catálogo |
+| Última actualización | 2026-10-07 (sesión nocturna autónoma — diseño y frontend) |
+| Actualizado por | Claude Opus 5 |
+| Fase | **Rebanada vertical de paquetes, en construcción** |
+| Avance de la fase | **Cotizador funcionando de punta a punta: web → API → Neon.** v0.9.0 |
+| Próximo hito | Inbox de WhatsApp |
 
 ---
 
@@ -21,9 +21,17 @@ documentación de visión, producto, arquitectura, seguridad y roadmap, cinco AD
 de ingeniería asistida por IA (17 agentes, 5 skills, 7 comandos, 6 hooks, MCP) y el gobierno de la
 integración a `main`.
 
-**El backend funciona contra Neon** y está probado con peticiones reales. Lo que NO existe todavía:
-frontend, inbox de WhatsApp, persistencia de cotizaciones, y nada desplegado en un servidor.
-No hay cuenta de Meta Business iniciada.
+**El cotizador funciona de punta a punta** —navegador, API, Neon— y está verificado abriéndolo en
+un navegador real, no solo compilando. Lo que NO existe todavía: inbox de WhatsApp, persistencia de
+cotizaciones, autenticación, y nada desplegado en un servidor. No hay cuenta de Meta Business
+iniciada.
+
+Las dos pruebas que respaldan la afirmación anterior, con el catálogo sembrado:
+
+| Caso | Resultado |
+|---|---|
+| 2 adultos + 2 niños en diciembre | Temporada alta, doble, 2 habitaciones, **$9.100.000 COP**, margen **20,0 %** |
+| 3 adultos en doble | Avisa **"1 plaza sin usar, se paga igual"** |
 
 Qué hay, concretamente:
 
@@ -36,12 +44,14 @@ Qué hay, concretamente:
 | Skills | `ciclo-funcionalidad`, `auditoria-integral`, `handoff-ia-externa`, `cerrar-sesion`, `nuevo-modulo` |
 | Comandos | `/estado` `/auditoria` `/funcionalidad` `/handoff` `/adr` `/contexto` `/integrar` |
 | Hooks | Inyección del hilo, guardián de secretos, guardián de rama (con 24 pruebas), autorización de integración, revisión post-edición, recordatorio de cierre |
-| MCP | **Stitch conectado** (ámbito de usuario, 15 herramientas). `memoria`, `docs-librerias`, `navegador`, `razonamiento` cargados. **`postgres` falla al conectar.** `github` y `sentry` sin autorizar |
+| MCP | **Stitch conectado y usado** (ámbito de usuario, 15 herramientas). `navegador` usado para verificar la interfaz. `memoria`, `docs-librerias`, `razonamiento` cargados. **`postgres` falla al conectar.** `github` y `sentry` sin autorizar |
 | Fase 0 técnica | **COMPLETA Y VERIFICADA.** API viva, 7/7 aislamiento, 32/32 dominio |
 | Backend | `apps/api` con catálogo y cotización. Probado con peticiones reales |
+| Frontend | `apps/web`: Next.js 15 + Tailwind 4. **Cotizador verificado en navegador.** No hay autenticación: el tenant va por cabecera de desarrollo, solo con `APP_ENV=local` |
+| Diseño | Sistema de diseño subido a Stitch (proyecto `8333038101997719867`). Tokens replicados en `apps/web/src/app/globals.css`. Capturas en `docs/_assets/diseno/` |
 | Datos | Agencia demo sembrada: 3 paquetes, 5 temporadas, 26 precios |
 | Contrato multi-harness | `AGENTS.md` en la raíz: cualquier IA trabaja bajo las mismas once reglas |
-| Repositorio | [github.com/Alfavear/CRM](https://github.com/Alfavear/CRM) · **privado** · `main` en **v0.8.3** |
+| Repositorio | [github.com/Alfavear/CRM](https://github.com/Alfavear/CRM) · **privado** · `main` en **v0.9.0** |
 | Gobierno de `main` | Compuerta local activa y probada. **Sin protección de servidor:** el plan gratuito no la permite en repos privados |
 
 ## 2. Decisiones ya tomadas (no reabrir sin ADR que las supersede)
@@ -84,12 +94,14 @@ Ordenada. La primera es la que debe tomarse ahora.
 | 2 | **Conseguir agencia piloto** y pedirle un tarifario real de mayorista | Usuario | Urgente. El catálogo se modeló con datos verosímiles, no reales |
 | 3 | Reparar la conexión del MCP `postgres` o retirarlo de `.mcp.json` | `devops` | Falla con `CONNECTION_CLOSED` |
 | 4 | Inbox de WhatsApp: webhook, firma, idempotencia, ventana de 24h | `whatsapp`, `backend` | **Siguiente pieza grande** |
-| 5 | Frontend del catálogo y el cotizador | `diseno-ux`, `frontend` | Listo para empezar: la API ya responde |
+| 5 | Bandeja de conversaciones en la web | `frontend` | El diseño existe; falta el backend del inbox (tarea 4) |
 | 6 | Guardar cotizaciones con versiones inmutables | `backend` | Hoy el cálculo no persiste |
-| 7 | Pruebas de integración de la API | `qa` | Solo se probó a mano |
+| 7 | Pruebas de integración de la API | `qa` | Solo se probó a mano. **La verificación del cotizador fue manual: no hay prueba automática que la repita** |
 | 8 | CI en GitHub Actions corriendo de verdad | `devops` | Escrito, nunca ejecutado |
 | 9 | Decidir nombre comercial, modelo de cobro y precios | Usuario | Antes de vender |
 | 10 | Resolver la protección de `main` en GitHub | Usuario | Plan gratuito no la permite en repos privados |
+| 11 | **Rotar la contraseña de Neon y la clave de API de Stitch** | Usuario | Ambas se pegaron en el chat. Un secreto expuesto no se borra, se rota |
+| 12 | Autenticación: el `tenant_id` debe salir del token de sesión | `backend` | Hoy la web lo envía por cabecera. Solo funciona con `APP_ENV=local`, pero es deuda que bloquea desplegar |
 
 ## 4. Bloqueos y riesgos activos
 
@@ -119,7 +131,8 @@ Ordenada. La primera es la que debe tomarse ahora.
 
 ## 6. Bitácora
 
-- [`2026-10-07-backend-vivo.md`](docs/_bitacora/2026-10-07-backend-vivo.md) ← **empieza por aquí**
+- [`2026-10-07-primera-interfaz.md`](docs/_bitacora/2026-10-07-primera-interfaz.md) ← **empieza por aquí**
+- [`2026-10-07-backend-vivo.md`](docs/_bitacora/2026-10-07-backend-vivo.md)
 - [`2026-10-07-falso-positivo-del-guardian.md`](docs/_bitacora/2026-10-07-falso-positivo-del-guardian.md)
 - [`2026-10-07-gobierno-de-la-integracion.md`](docs/_bitacora/2026-10-07-gobierno-de-la-integracion.md)
 - [`2026-10-06-fundacion-del-proyecto.md`](docs/_bitacora/2026-10-06-fundacion-del-proyecto.md)

@@ -13,9 +13,10 @@ mueve a `docs/` y aquí queda solo el enlace.
 WhatsApp: el dominio del turismo (pasajeros, tarifas netas, itinerarios, archivos de viaje,
 proveedores) está en el núcleo del modelo.
 
-Estado actual: **rebanada vertical de paquetes, en construcción.** La Fase 0 está cerrada y
-verificada: el dominio, la base de datos con RLS y la API del catálogo funcionan contra Neon.
-Falta el frontend y el inbox de WhatsApp. Ver `ESTADO.md` para el punto exacto del hilo.
+Estado actual: **rebanada vertical de paquetes, en construcción.** El cotizador funciona de punta
+a punta —web, API, PostgreSQL con RLS en Neon— y está verificado en un navegador real. Falta el
+inbox de WhatsApp, la autenticación y la persistencia de cotizaciones. Ver `ESTADO.md` para el
+punto exacto del hilo.
 
 ## 2. Antes de hacer cualquier cosa
 
