@@ -105,7 +105,8 @@ Toda la documentación del proyecto. Si una decisión no está aquí (o en `ESTA
 | [Loops de trabajo](09-ia/02-loops-de-trabajo.md) | Los cinco ciclos: sesión, funcionalidad, auditoría, investigación, incidente |
 | [Continuidad del hilo](09-ia/03-continuidad-del-hilo.md) | Cómo no perder el contexto entre sesiones ni entre modelos |
 | [MCP](09-ia/04-mcp.md) | Servidores de contexto y herramientas |
-| [Interoperabilidad multi-IA](09-ia/05-interoperabilidad-multi-ia.md) | Cómo entra otra IA al proyecto sin romperlo |
+| [Interoperabilidad multi-IA](09-ia/05-interoperabilidad-multi-ia.md) | Cómo entra otra IA al proyecto sin romperlo. Decisiones sobre Antigravity y modelos abiertos |
+| [Cronograma de loops](09-ia/06-cronograma-de-loops.md) | Qué corre solo, cuándo, y por qué el calendario crece con el proyecto |
 
 ---
 
