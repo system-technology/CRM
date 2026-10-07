@@ -81,7 +81,7 @@ Ordenada. La primera es la que debe tomarse ahora.
 |---|---|---|---|
 | 1 | **Iniciar verificación de Meta Business y solicitud de Tech Provider** | Usuario | **Camino crítico, sin empezar** |
 | 2 | **Conseguir agencia piloto** y pedirle un tarifario real de mayorista | Usuario | Urgente. El catálogo se modeló con datos verosímiles, no reales |
-| 3 | **Reiniciar la sesión** para que Stitch quede disponible como herramienta | Usuario | La clave ya está y el servidor responde: 15 herramientas verificadas |
+| 3 | **Registrar Stitch en ámbito de usuario** (`claude mcp add ... -s user`) y reiniciar | Usuario | La clave funciona; falla la expansión desde `.env` |
 | 4 | Inbox de WhatsApp: webhook, firma, idempotencia, ventana de 24h | `whatsapp`, `backend` | **Siguiente pieza grande** |
 | 5 | Frontend del catálogo y el cotizador | `diseno-ux`, `frontend` | Listo para empezar: la API ya responde |
 | 6 | Guardar cotizaciones con versiones inmutables | `backend` | Hoy el cálculo no persiste |

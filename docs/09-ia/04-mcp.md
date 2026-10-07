@@ -33,37 +33,34 @@ operaciones de la API de Stitch como herramientas invocables desde una sesión d
 **Herramientas que expone:** `generate_screen_from_text`, `get_screen_image`, `get_screen_code`,
 `extract_design_context`, `build_site`, `list_projects`, `list_screens`.
 
-**Instalación.** Stitch MCP es un servidor HTTP remoto autenticado con clave de API.
+**Instalación.** Stitch MCP es un servidor HTTP remoto autenticado con clave de API, y se
+registra **a nivel de usuario, no de proyecto**.
 
-1. Entra a [stitch.withgoogle.com/settings](https://stitch.withgoogle.com/settings) → sección
-   **API Keys** → **Create API Key**. Cópiala: solo se muestra una vez.
-2. Añádela a tu `.env`:
+1. Entra a [stitch.withgoogle.com/settings](https://stitch.withgoogle.com/settings) → **API Keys**
+   → **Create API Key**. Cópiala: solo se muestra una vez.
+2. Regístralo con la clave incrustada, en ámbito de usuario:
+
    ```bash
-   STITCH_API_KEY=la-clave-que-copiaste
+   claude mcp add stitch --transport http https://stitch.googleapis.com/mcp \
+     --header "X-Goog-Api-Key: TU_CLAVE" -s user
    ```
-3. El servidor ya está declarado en `.mcp.json`; al abrir el proyecto, Claude Code pedirá
-   aprobarlo.
 
-> **Corrección registrada (2026-10-07).** La primera versión de este documento describía una
-> instalación local con `npx @_davideast/stitch-mcp proxy` y autenticación por `gcloud`. Esa
-> información venía de una guía de terceros y estaba **desactualizada**: el paquete pide
-> `STITCH_API_KEY` y falla con las credenciales de Google Cloud. Costó una instalación de
-> gcloud y la creación de un proyecto que no hacían falta.
->
-> Es exactamente el fallo contra el que advierte el agente `investigador`: **fuente primaria
-> o nada.** Un blog de hace unos meses sobre una herramienta de Google Labs es desinformación,
-> no contexto.
+3. **Reinicia Claude Code.** Los servidores MCP se cargan al iniciar la sesión.
 
-**Reglas de uso.** El flujo completo está en
-[`docs/01-producto/06-diseno-y-ux.md`](../01-producto/06-diseno-y-ux.md) §5. Lo esencial:
+**Por qué a nivel de usuario y no en `.mcp.json`.** Es la lección de dos intentos fallidos:
 
-1. **El flujo se piensa en texto antes de abrir Stitch.** Un prompt sin el flujo definido produce
-   pantallas bonitas que no resuelven el trabajo del asesor.
-2. **El código que genera Stitch no se copia al repositorio.** Se usa como referencia visual.
-   Nuestro código vive en `packages/ui` con shadcn/ui, donde la accesibilidad y la consistencia ya
-   están resueltas; pegar HTML generado las rompe en silencio.
-3. **Los tokens de nuestro sistema de diseño mandan.** Si Stitch propone otro azul, gana el nuestro.
-4. Agente responsable: `diseno-ux`.
+- La clave **no puede ir literal en `.mcp.json`**: ese archivo está versionado y sería un secreto
+  en el repositorio (regla R6).
+- Y **`${STITCH_API_KEY}` tampoco funciona**: `.mcp.json` expande variables desde el entorno del
+  proceso, **no desde el `.env` del proyecto**. Con la clave solo en `.env`, la cabecera sale
+  vacía y la conexión falla en silencio — el servidor aparece como "not connected" sin decir por qué.
+
+El ámbito de usuario resuelve las dos cosas: la clave vive en la configuración personal, fuera del
+repositorio, y no depende de ninguna variable de entorno.
+
+> Esto vale para **cualquier** servidor MCP que necesite una credencial. Si en el futuro se añade
+> otro, va al ámbito de usuario por el mismo motivo. En `.mcp.json` solo entran servidores que no
+> requieren secretos.
 
 **VERIFICADO el 2026-10-07.** El servidor responde HTTP 200 a `initialize` y expone 15
 herramientas:
