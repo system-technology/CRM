@@ -28,7 +28,7 @@ Una sola rama permanente. El trabajo sale de `main`, vive poco, y vuelve por la 
 
 | Rama | Quién escribe | Vida | Regla |
 |---|---|---|---|
-| **`main`** | **Solo `integrador`** | Permanente | Siempre desplegable. Cada commit es un release etiquetado |
+| **`main`** | **Solo `integrador`** | Permanente | Siempre desplegable. Cada commit que cambia el artefacto desplegable es un release etiquetado — ver §5 |
 | `feat/<contexto>-<descripción>` | Cualquier agente o persona | 1-3 días | Una funcionalidad, un propósito |
 | `fix/<contexto>-<descripción>` | Idem | Horas | Una corrección |
 | `refactor/<contexto>-<descripción>` | Idem | 1-2 días | Sin cambio de comportamiento |
@@ -136,6 +136,26 @@ fast-forward la borra y hace imposible revertir el conjunto de un solo golpe.
 | Corrección compatible | **PARCHE** | `0.2.0` → `0.2.1` |
 
 Antes de la Fase 1 estamos en `0.x`: la versión menor sube con cada fase del roadmap.
+
+### Commits que NO producen versión
+
+Un commit que **no cambia el artefacto desplegable** entra en `main` sin etiqueta. En la práctica,
+solo una cosa cumple eso: el cierre documental de una versión ya publicada —actualizar `ESTADO.md`,
+escribir la bitácora, registrar la integración.
+
+Etiquetar eso como versión nueva vaciaría de significado los tags: dejarían de responder «qué hay
+desplegado» para responder «cuántas veces se tocó el repositorio». Un tag debe seguir siendo la
+respuesta a la primera pregunta.
+
+**El criterio no es el tipo de archivo, es el efecto.** Un cambio en `docs/` que modifica una
+política que el código aplica —un umbral, un plazo, una regla de negocio parametrizada— sí cambia
+el comportamiento del sistema y sí lleva versión. Y a la inversa: un cambio en un `*.md` que solo
+afecta a quien lee, no. En la duda, etiqueta: un tag de más es ruido, un tag de menos es una
+versión desplegada que nadie puede nombrar.
+
+Esta excepción se escribió después de aplicarla por primera vez, en el cierre documental de
+v0.9.1. Lo señaló el propio `integrador` al detectar que la regla escrita decía «cada commit» y la
+práctica acababa de hacer otra cosa.
 
 ---
 
