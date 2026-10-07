@@ -958,3 +958,553 @@ Cuando `arquitecto` aplique B-1 a B-10, este auditor revisa **solo** esos puntos
 posterior exige una segunda revisión independiente: el texto corregido no es evidencia, y en este ADR
 hay tres mecanismos cuyo fallo es silencioso por naturaleza. **La evidencia aceptable son las nueve
 aserciones en verde contra una base real**, igual que ADR-0007 estableció para `BYPASSRLS`.
+
+---
+
+# Reverificación — 2026-10-07 (segunda pasada)
+
+- **Objeto:** `docs/03-adr/0008-resolucion-de-tenant-en-webhooks-entrantes.md` tras `ad7a08a`
+  (387 → 824 líneas). Sigue en **Propuesto**.
+- **Qué se comprobó:** el texto nuevo completo, línea a línea, contra los diez bloqueantes y los
+  quince recomendados de la primera pasada; más `docs/04-integraciones/01-whatsapp-cloud-api.md`
+  §2.3 y §4 para validar las afirmaciones de hecho que el ADR ahora cita, y los archivos de políticas
+  y la prueba de aislamiento, sin cambios desde la primera pasada.
+- **Nota operativa:** la primera pasada del arquitecto trabajó con 373 de las 960 líneas del informe
+  porque este se commiteó a medio escribir. Se revisó si eso dejó algo aplicado a medias: **no es la
+  causa de ninguno de los hallazgos de abajo.** Todo lo que falta es de la segunda pasada o nace de
+  las correcciones mismas.
+- **Resultado:** los tres críticos están resueltos **en el fondo**. Hay **una regresión nueva** y
+  **cinco debilidades en la capa de verificación** —la que el propio ADR declara que decide si una
+  protección cuenta—. Seis hallazgos nuevos bloqueantes, nueve no bloqueantes.
+
+## Estado de los diez bloqueantes
+
+| # | Estado | Observación |
+|---|---|---|
+| B-1 reconcesión dirigida por datos | **Corregido** | §1.2(a) es correcto y va más lejos de lo pedido: `excepciones_rls` unifica la lista de excepciones, que estaba duplicada y divergida. Condicionado a RV-5 y RV-11 |
+| B-2 `EXECUTE` a `PUBLIC` | **Corregido** | §1.2(b). La frase "toda la separación de privilegios no vale nada si esto no se revoca" es exacta. Su verificación, no: RV-2 |
+| B-3 roles separados por camino | **Corregido en el diseño, parcial en la verificación** | La frontera elegida es la correcta y la frase falsa está reescrita. Pero la frontera **no tiene aserción**: RV-2. Y quedan dos caminos residuales: RV-9 y RV-10 |
+| B-4 titularidad del número | **Corregido** | §1.5 completo, los cinco puntos. El documento de integración está alineado (§2.3) y registra la desviación del tutorial de Meta. Es el bloqueante mejor cerrado |
+| B-5 `search_path` y `NOLOGIN` | **Corregido en el texto, débil en la prueba** | §1.4 fija el vacío con cualificación y §1.3 el conjunto completo de atributos. La aserción 13 no comprueba el valor: RV-3. Más RV-12 |
+| B-6 payload del desconocido | **Corregido** | §2 y §4 ya no se contradicen; el borrado en el acto es el primer paso de ambas ramas, con ventana de exposición declarada y presupuestada |
+| B-7 historial del directorio | **Corregido** | Tabla global de solo inserción, notificación a ambos tenants, métrica a cero. Le falta plazo de retención (RV-8) y aserción del invariante de inmutabilidad (RV-15) |
+| B-8 relay por "no procesado" | **Corregido y regresionado** | El criterio del relay es correcto. Pero el cambio a un trabajo por `change` dejó el identificador de trabajo sin tocar: **RV-1**, el hallazgo más grave de esta pasada |
+| B-9 clave de plataforma | **Corregido** | Versión, nonce, AAD, verificación del hash tras descifrar, rotación sin recifrado, prohibición de cifrar en SQL. Choca con una columna nueva: RV-7 |
+| B-10 aserciones enumeradas | **Corregido parcialmente** | Doce en vez de nueve, y las tres añadidas son buenas. Pero cinco de ellas pueden pasar en verde con el defecto presente: RV-2, RV-3, RV-4, RV-5, RV-11; y faltan dos: RV-15 |
+
+## Estado de los quince recomendados
+
+Todos aplicados. Tres merecen comentario, los demás están correctos y no se repiten aquí:
+
+- **R-1 (minimizar el directorio).** Aplicado y mejorado: HMAC con pimienta fuera de la base, fechas
+  movidas a `canales`, y la segunda clave de resolución por WABA que no estaba en mi informe y que la
+  verificación del payload hacía necesaria. Introduce `waba_cifrado`, que trae RV-7.
+- **R-5 (`canales`).** Resuelto por la vía honesta: dependencia de orden declarada en §1.1, con la
+  clave foránea compuesta especificada. Falta su aserción (RV-15).
+- **R-13 (retenciones).** Ver la respuesta a la pregunta 3 del coordinador, más abajo. La lectura del
+  arquitecto es la correcta.
+
+## Hallazgos nuevos
+
+### [ALTO · bloqueante] RV-1 — Un trabajo por `change` con el identificador del POST: dos tenants de cada tres pierden sus mensajes en silencio
+
+- **Dónde:** ADR §4, línea 562 ("Encolar en BullMQ **un trabajo por `change`**, no uno por POST")
+  contra líneas 582 y 590 ("con `jobId = recepcion_id`…"; "**el identificador sigue siendo el
+  hash**"); y línea 587 (`procesado_en` como columna única de la recepción).
+- **Qué pasa:** la corrección de B-8 y la de la resolución por `change` se aplicaron por separado y
+  se contradicen. `recepcion_id` es `sha256` del **cuerpo entero del POST**. Si ese POST trae tres
+  `changes` —de tres agencias distintas, cosa que el documento de integración confirma como real
+  (§4, "un payload puede traer varios `entry[]` y varios `changes[]`, de WABAs distintos")— se
+  encolan tres trabajos con **el mismo identificador**, y BullMQ descarta dos **en silencio**: es el
+  mismo mecanismo que el ADR acaba de documentar en el párrafo de arriba para justificar el relay.
+- **Escenario:** Meta agrupa en un POST un mensaje de la agencia A, uno de B y uno de C. Se procesa
+  el de A. Se marca `procesado_en` —la columna es una sola para toda la recepción— y se anula el
+  payload. **Los mensajes de B y de C no existieron nunca.** El relay no los recupera: su criterio es
+  `procesado_en` nulo, y ya no lo está. El payload está anulado, así que no hay de dónde
+  reconstruirlos. Meta devolvió su 200. Dos agencias pierden mensajes de clientes y no hay ni una
+  línea de registro que lo diga. Es exactamente el fallo que §4 declara inaceptable, y es nuevo:
+  el borrador encolaba un trabajo por POST y no lo tenía.
+- **Corrección:** el identificador y el estado de proceso tienen que bajar al mismo grano que el
+  trabajo:
+  1. `jobId = recepcion_id || ':' || <índice del change dentro del POST>`. El índice es estable
+     porque el cuerpo es el mismo que produjo el hash.
+  2. `procesado_en` **no puede vivir en la fila de la recepción**: o pasa a una tabla hija
+     `recepciones_webhook_changes(recepcion_id, indice, procesado_en)`, o la recepción lleva un
+     contador de `changes` pendientes. El relay y la métrica de los cinco minutos se apoyan en eso.
+  3. El payload se anula **cuando todos los `changes` de esa recepción están procesados o
+     clasificados**, nunca cuando termina el primero. Hoy el texto dice "marcar `procesado_en` y
+     anular el payload" como paso 4 del trabajador, es decir, por trabajo.
+  4. La aserción 16 debe ejecutarse **a través de la cola real**, no solo contra la base: tal como
+     está redactada —una prueba en `aislamiento.spec.ts`— no detecta nada de esto.
+- **Verificación:** CONFIRMADO por lectura cruzada de las tres líneas citadas.
+
+### [ALTO · bloqueante] RV-2 — La frontera del crítico 2 es la única protección del ADR sin aserción que la ponga en rojo
+
+- **Dónde:** ADR §1.3 (tabla de roles) y §5 (aserciones 12 y 15).
+- **Qué pasa:** el ADR establece que *"la frontera es el `EXECUTE`, y por eso el rol general de la
+  API no lo tiene"*, y a renglón seguido declara la regla que ordena el documento: *"cada protección
+  que no se pueda poner en rojo automáticamente no cuenta como protección"*. **No hay ninguna
+  aserción que compruebe que `viajapro_app` carece de `EXECUTE` sobre `registrar_enrutamiento`.** La
+  12 solo comprueba `PUBLIC`; la 15 comprueba la coherencia de tenant dentro de la función, que el
+  propio ADR degrada a "comprobación de consistencia, no frontera". La frontera que sustituyó al
+  crítico 2 está sin verificar.
+- **Escenario:** aparece una función nueva, la API falla con "permission denied for function", y
+  alguien añade `GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO viajapro_app` — una línea que
+  este repositorio ya escribe dos veces con la misma forma para tablas y secuencias
+  (`001-aislamiento-tenant.sql:124-125`, `002-rol-aplicacion.sql:68-69`), de modo que es el idioma
+  local, no una hipótesis. El crítico 2 vuelve entero, las doce aserciones siguen en verde, y la
+  única protección perdida es la que el ADR llama "la frontera real".
+- **Corrección:**
+  1. Aserción nueva: **la matriz completa rol × función coincide exactamente con la tabla de §1.3**,
+     comprobada con `has_function_privilege` para los tres roles de login y las seis funciones. No
+     "ninguno de más": exacta en ambos sentidos, igual que la aserción 10 hace con las tablas.
+  2. Corregir la aserción 12: dice "**ambas** funciones" y hay **seis** (`resolver_enrutamiento`,
+     `registrar_enrutamiento`, `registrar_recepcion`, `tomar_recepcion`, `anular_payload`,
+     `purgar_recepciones`). Con `PUBLIC` reteniendo `EXECUTE` sobre `purgar_recepciones` o
+     `anular_payload`, cualquier rol borra evidencia y mensajes no procesados.
+  3. Esa matriz entra también en la reejecución de `001`/`002` de RV-11.
+- **Verificación:** CONFIRMADO.
+
+### [ALTO · bloqueante] RV-3 — La aserción 13 pasa en verde con el `search_path` que el propio ADR declara inseguro
+
+- **Dónde:** ADR §5, aserción 13 ("el `proconfig` de ambas funciones **contiene** `search_path`")
+  contra §1.4 punto 1 ("**`search_path` vacío**… decir «`search_path` fijado» admite implementaciones
+  inseguras: fijarlo a `public` sigue siendo vulnerable").
+- **Qué pasa:** la aserción comprueba la **presencia** de la clave, no su **valor**. Una función con
+  `SET search_path = public` tiene `proconfig = {search_path=public}` y la aserción pasa. Es
+  literalmente la implementación que §1.4 rechaza por insegura, declarada conforme por la prueba que
+  debía impedirla. El ADR diagnosticó el problema de redacción en su propio texto y lo reintrodujo en
+  su propia aserción.
+- **Corrección:** la aserción compara el **valor exacto**: `proconfig` contiene `search_path=` con
+  cadena vacía, para las seis funciones, no para dos. Y añadir la mitad complementaria que §1.4
+  promete y ninguna aserción cubre: `has_schema_privilege(<cada rol de login>, 'public', 'CREATE')`
+  es falso.
+- **Verificación:** CONFIRMADO.
+
+### [ALTO · bloqueante] RV-4 — Las aserciones 8 y 9 solo miran `viajapro_app`, y ahora hay tres roles con privilegios idénticos sobre tablas
+
+- **Dónde:** ADR §5, aserciones 8 y 9 ("…con `viajapro_app`") contra §1.3 ("los tres primeros tienen
+  privilegios **idénticos** sobre las tablas de negocio") y §1.2 (`REVOKE ALL ON <tabla> FROM <roles
+  de aplicación>`).
+- **Qué pasa:** el `GRANT ... ON ALL TABLES` alcanza a los tres roles de login, no solo a uno. El
+  texto del `REVOKE` dice "roles de aplicación" en plural —correcto—, pero **la columna que lo
+  gobierna se llama `privilegios_app` y es una sola lista**, lo que induce a implementarlo para
+  `viajapro_app` y nada más. Y las aserciones que lo verifican nombran solo a `viajapro_app`.
+- **Escenario:** la implementación revoca sobre `viajapro_app`. `viajapro_webhook` —el rol del
+  trabajador, el proceso que más código ejecuta contra el directorio— conserva `SELECT, INSERT,
+  UPDATE, DELETE` directos sobre `enrutamiento_canales` por la vía del `GRANT ... ON ALL TABLES`. La
+  primitiva de secuestro queda al alcance del trabajador, y las aserciones 8, 9 y 10 pasan en verde
+  porque todas preguntan por el rol equivocado.
+- **Corrección:**
+  1. Las aserciones 8, 9 y 10 se parametrizan sobre **los tres roles de login**, no sobre uno.
+  2. `excepciones_rls` debe poder expresar privilegios **por rol**: `privilegios_por_rol jsonb` o una
+     fila por par `(tabla, rol)`. Con una sola lista no se puede declarar lo que hay que verificar.
+     El nombre `privilegios_app` debe cambiar: induce al error que esta aserción no detectaría.
+- **Verificación:** CONFIRMADO.
+
+### [ALTO · bloqueante] RV-5 — La aserción 10 compara contra una declaración que el atacante puede editar
+
+- **Dónde:** ADR §1.2 (`excepciones_rls` como dato en la base) y §5, aserciones 10 y 11.
+- **Qué pasa:** `excepciones_rls` es una tabla del esquema `public` sin columna `tenant_id`. Por
+  tanto: (a) el `GRANT ... ON ALL TABLES` le concede `INSERT, UPDATE, DELETE` a los roles de
+  aplicación, salvo que la tabla **se liste a sí misma** con privilegios vacíos — y el ADR no lo
+  dice; (b) la vista `tablas_sin_aislamiento`, que ahora la consulta, la marcará como defecto si no
+  está declarada. La consecuencia seria es la primera: **la aserción 10 compara los privilegios
+  reales contra una declaración almacenada en una tabla escribible**. Quien pueda escribirla hace que
+  la prueba apruebe cualquier configuración, y además siembra privilegios que el siguiente despliegue
+  aplicará por sí solo, porque `001` y `002` ahora conceden lo que esa tabla declara.
+- **Escenario:** una inyección SQL ejecuta
+  `UPDATE excepciones_rls SET privilegios_app = '{SELECT,INSERT,UPDATE}' WHERE tabla = 'enrutamiento_canales';`
+  No pasa nada ese día: las aserciones 8 y 9 siguen fallando correctamente si se ejecutan. Pero en el
+  siguiente despliegue, `001` recorre la tabla y **concede** esos privilegios, y la aserción 10 los
+  valida como correctos porque coinciden con la declaración. El mecanismo que reemplazó al crítico 1
+  se convierte en el vehículo del crítico 1, con firma de legitimidad.
+- **Corrección:**
+  1. `excepciones_rls` se declara a sí misma con privilegios vacíos para los tres roles de login, y
+     entra en el conjunto de la aserción 17.
+  2. **La aserción 11 deja de comparar solo nombres de tabla**: fija los pares completos
+     `(tabla, rol, privilegios)` contra un literal escrito en el archivo de prueba. Es lo único que
+     hace que una declaración manipulada ponga la prueba en rojo, porque el literal vive en el
+     repositorio y no en la base.
+  3. Mencionar en §1.2 que la tabla es parte de la superficie de confianza y no un catálogo inocuo.
+- **Verificación:** CONFIRMADO.
+
+### [ALTO · bloqueante] RV-6 — Rotar la pimienta rompe el historial y, mientras tanto, borra mensajes de clientes
+
+- **Dónde:** ADR §1.1 ("Rotación de la pimienta y recuperación ante su pérdida"), §1.1
+  (`enrutamiento_historial` con `clave_canal_hmac`), §1.6 ("ningún rol tiene `UPDATE` ni `DELETE`")
+  y §2 (desconocido → "el contenido se borra en el acto").
+- **Qué pasa:** la idea de que el directorio es **derivado y reconstruible desde `canales`** es
+  correcta y buena: convierte la pérdida de la pimienta en una operación, no en una catástrofe. Pero
+  no se siguieron sus dos consecuencias.
+  1. **El historial queda huérfano.** `enrutamiento_historial` se indexa por `clave_canal_hmac`, es
+     de solo inserción y **nadie tiene `UPDATE`, ni siquiera el propietario**. Tras rotar la pimienta,
+     las claves nuevas no coinciden con ninguna fila histórica: la historia de un número deja de ser
+     consultable para siempre. Es la tabla cuya razón de existir es que un secuestro sea demostrable.
+  2. **Durante la reconstrucción, el directorio está incompleto, y un directorio incompleto no
+     devuelve "espera": devuelve "desconocido".** Y el caso desconocido ahora **borra el contenido en
+     el acto**, que es la corrección correcta de B-6. Combinadas, las dos decisiones producen esto:
+     mientras se reconstruye, los webhooks de los tenants aún no reconstruidos se clasifican como
+     desconocidos y **su contenido se destruye antes de que nadie pueda notarlo**.
+- **Escenario:** se rota la pimienta un martes. La reconstrucción recorre 300 tenants y tarda unos
+  minutos. Durante esos minutos, cada mensaje entrante de un tenant todavía no reconstruido entra,
+  resuelve a vacío, se clasifica como desconocido y se le borra el payload. No hay error, no hay
+  reintento —Meta ya recibió su 200—, y la cuarentena solo guarda metadatos. Son mensajes de clientes
+  destruidos por una operación de mantenimiento de seguridad.
+- **Corrección:** es el mismo patrón que el ADR ya resolvió bien para el App Secret, aplicado a la
+  pimienta:
+  1. **Ventana de dos pimientas.** `resolver_enrutamiento` acepta la clave calculada con la pimienta
+     actual y, durante la ventana, también con la anterior. La rotación termina cuando la
+     reconstrucción ha acabado, no cuando se cambia el secreto.
+  2. **El historial no se indexa por un valor derivado de un secreto rotable.** Se indexa por
+     `canal_id` —UUID propio, estable, que §1.1 ya declara la identidad real del canal— y guarda el
+     HMAC como atributo informativo con su versión de pimienta.
+  3. **Mientras haya una reconstrucción en curso, la rama "desconocido" no borra: retiene.** Un
+     indicador de plataforma lo gobierna, y la métrica de resoluciones fallidas por minuto —que el
+     ADR ya define— es la que debe disparar la alerta si alguien rota sin levantarlo.
+  4. Añadir `clave_pimienta_version` a las filas del directorio: sin ella no se puede saber qué está
+     reconstruido y qué no.
+- **Verificación:** CONFIRMADO por composición de tres secciones del ADR.
+
+### [MEDIO] RV-7 — `waba_cifrado` vive hasta cinco años bajo una clave cuya rotación se diseñó para datos que viven minutos
+
+- **Dónde:** ADR §1.1 (`waba_cifrado bytea NULL`) contra §4 ("**Rotación sin recifrado**,
+  aprovechando que el dato vive minutos") y §4, retenciones (fila del directorio `REVOCADO`: 5 años).
+- **Qué pasa:** la rotación de la clave de plataforma está justificada por el plazo corto del
+  staging: versión nueva para filas nuevas, versión vieja viva solo hasta que la purga vacíe su
+  última fila. `waba_cifrado` vive en el directorio, cuya retención es de cinco años. O se mantiene
+  viva cada versión de la clave durante cinco años —que es no rotar—, o al rotar queda ilegible.
+  Además la columna no declara con qué clave se cifra ni lleva versión, a diferencia de
+  `recepciones_webhook`, que sí la lleva.
+- **Escenario:** se rota la clave de plataforma. Meses después hay sospecha de compromiso del App
+  Secret y hay que desuscribir un WABA: es el **único** camino que necesita ese valor en claro, y es
+  justo el camino de respuesta a incidente. No descifra. La contención falla en el peor momento
+  posible, y el error aparece como un fallo de descifrado que nadie relaciona con una rotación de
+  hace meses.
+- **Corrección:** quitar la columna. El WABA en claro ya vive en `canales`, tenant-scoped y bajo RLS,
+  y el directorio **conoce el tenant** de la fila: el camino de desuscripción puede fijar ese tenant y
+  leerlo de donde es la verdad, que es además lo que §1.1 afirma del directorio ("es derivado, no es
+  la verdad"). Si por alguna razón hay que conservarla, necesita versión de clave propia y un
+  procedimiento de recifrado — es decir, deja de ser "rotación sin recifrado" y hay que escribirlo.
+- **Verificación:** CONFIRMADO.
+
+### [MEDIO] RV-8 — El historial no tiene plazo de retención y, por construcción, no se le puede aplicar ninguno
+
+- **Dónde:** ADR §1.6 ("ningún rol tiene `UPDATE` ni `DELETE` sobre esa tabla, ni siquiera su
+  propietario") contra §4, tabla de retenciones —que no lo incluye— y
+  `docs/05-seguridad/02-proteccion-de-datos.md:92-103`.
+- **Qué pasa:** `enrutamiento_historial` guarda `actor_usuario_id`: dato personal de una persona
+  natural identificada, un empleado de la agencia. La tabla de retenciones recoge cuatro plazos y
+  ninguno es este. Y la propiedad que lo hace útil —nadie puede borrar— hace que **una política de
+  retención sea literalmente inaplicable**: no hay rol que pueda ejecutarla. El ADR corrigió bien el
+  "nunca se borra" del directorio y dejó un "nunca se borra" nuevo, esta vez estructural.
+- **Corrección:** cinco años, alineado con la bitácora de auditoría y con la fila `REVOCADO`, y
+  aplicado **particionando por año y soltando particiones**. Un `DROP TABLE` de partición no es un
+  `DELETE` sobre filas: el invariante de inmutabilidad por fila se conserva intacto y la retención
+  pasa a ser ejecutable. Añadir la fila a la tabla de §4 y a `02-proteccion-de-datos.md` §4.
+- **Verificación:** CONFIRMADO.
+
+### [MEDIO] RV-9 — Camino residual al crítico 2: el staging y el directorio comparten propietario
+
+- **Dónde:** ADR §1.3 (`viajapro_enrutador` es "el propietario de las funciones y de las tablas
+  globales") y §4 (tabla de funciones de `recepciones_webhook`, con `registrar_recepcion` ejecutable
+  por `viajapro_app`).
+- **Qué pasa:** `viajapro_app` sí puede ejecutar una función `SECURITY DEFINER` cuyo propietario es el
+  mismo que posee el directorio. Dentro de esa función el usuario efectivo es `viajapro_enrutador`,
+  que tiene todos los privilegios sobre `enrutamiento_canales`. Hoy el cuerpo de `registrar_recepcion`
+  solo inserta, y el control declarado es que toda modificación de su cuerpo pase por revisión. Pero
+  **el único control es una revisión humana**, mientras que para el resto del ADR el criterio
+  explícito es que una protección sin prueba en rojo no cuenta.
+- **Escenario:** dentro de seis meses alguien amplía `registrar_recepcion` para "resolver el tenant de
+  una vez y ahorrar un viaje". El cuerpo ahora toca el directorio. Ningún `GRANT` cambió, ninguna
+  aserción se entera, y `viajapro_app` acaba de recuperar acceso al directorio a través de una función
+  que siempre pudo ejecutar.
+- **Corrección:** propietario distinto para el staging —`viajapro_staging`, también `NOLOGIN`— sin
+  ningún privilegio sobre las tablas del directorio. Entonces la separación deja de depender de que
+  nadie amplíe un cuerpo: aunque lo amplíe, la función no alcanza el directorio. Es la misma lógica
+  por la que §1.3 ya rechaza que el propietario sea el del esquema.
+- **Verificación:** PLAUSIBLE.
+
+### [MEDIO] RV-10 — El guardia de arranque comprueba `BYPASSRLS` pero no identidad, y ahora hay cuatro roles
+
+- **Dónde:** `apps/api/src/shared/prisma/prisma.service.ts:49-69` contra ADR §1.3.
+- **Qué pasa:** la aplicación aborta el arranque si el rol tiene `BYPASSRLS`. Con un solo rol eso
+  bastaba. Con tres roles de login que **no se distinguen en nada salvo en qué funciones ejecutan**,
+  apuntar `DATABASE_APP_URL` a `viajapro_altas` —un error de variable de entorno, un copiar y pegar
+  entre entornos— devuelve a toda la API la capacidad de ejecutar `registrar_enrutamiento`. Ninguno
+  de los dos roles tiene `BYPASSRLS`, así que el guardia no dice nada, la aplicación arranca, todo
+  funciona y el crítico 2 está otra vez abierto en producción. Es un modo de fallo **creado por la
+  corrección**.
+- **Corrección:** cada proceso afirma al arrancar **qué rol espera ser** y aborta si no coincide:
+  `current_user = 'viajapro_app'` en la API, `'viajapro_webhook'` en el trabajador, y el caso de uso
+  de alta verifica `'viajapro_altas'` antes de su primera llamada. Es la misma línea de código que ya
+  existe, con una comparación más. El ADR debe exigirlo en §1.3, porque sin eso la separación de roles
+  es una convención de despliegue.
+- **Verificación:** CONFIRMADO.
+
+### [MEDIO] RV-11 — La reejecución de `001` y `002` es prosa, no aserción, y solo cubre esos dos archivos
+
+- **Dónde:** ADR §5, párrafo que sigue a la tabla ("la 8, la 9 y la 10 deben ejecutarse también
+  después de reaplicar `001` y `002` completos").
+- **Qué pasa:** dos problemas distintos.
+  1. **No está numerada.** Las doce aserciones son una tabla; esto es una frase suelta detrás. Quien
+     implemente la prueba implementará la tabla. Lo que no tiene número no tiene dueño.
+  2. **Cubre el archivo, no la clase de fallo.** Reaplicar `001` y `002` detecta una regresión dentro
+     de esos dos archivos. No detecta una **tercera** migración que escriba su propio
+     `GRANT ... ON ALL TABLES` —que es tan probable como la regresión original, porque es el idioma
+     del repositorio— ni una que conceda `EXECUTE ON ALL FUNCTIONS`.
+- **Corrección:**
+  1. Numerarla como aserción 20 y describir qué atrapa, igual que las demás.
+  2. Añadir la comprobación que cubre la clase entera: **tras aplicar la cadena completa de
+     migraciones desde cero**, las aserciones de privilegios (8, 9, 10, la matriz de funciones de
+     RV-2) deben pasar. Esa es la que atrapa cualquier migración futura, venga de donde venga; la
+     reejecución de `001`/`002` atrapa la regresión concreta ya conocida. Hacen falta las dos y no se
+     sustituyen.
+- **Verificación:** CONFIRMADO.
+
+### [MEDIO] RV-15 — Dos invariantes declarados en el texto sin aserción que los sostenga
+
+- **Dónde:** ADR §1.6 ("ningún rol tiene `UPDATE` ni `DELETE`" sobre el historial) y §1.1 (clave
+  foránea compuesta `(canal_id, tenant_resuelto_id)`).
+- **Qué pasa:** ambos son invariantes impuestos por el motor y ambos se pierden con un error de
+  migración silencioso: una clave foránea escrita simple en vez de compuesta sigue funcionando y
+  nadie lo nota hasta que una fila cruza tenants; un `GRANT` sobrante sobre el historial lo hace
+  editable y el valor probatorio desaparece sin señal.
+- **Corrección:** dos aserciones más:
+  - **21:** `UPDATE` y `DELETE` sobre `enrutamiento_historial` lanzan `42501` para los tres roles de
+    login **y** para `viajapro_enrutador`.
+  - **22:** insertar en el directorio una fila que empareje el tenant A con un `canal_id` de B es
+    rechazada por el motor.
+- **Verificación:** CONFIRMADO por omisión en §5.
+
+### [BAJO] RV-12 — `ALTER DEFAULT PRIVILEGES` sin `FOR ROLE` solo alcanza a los objetos del rol que lo ejecuta
+
+- **Dónde:** ADR §1.2(b).
+- **Qué pasa:** `ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC`
+  se aplica a los objetos creados **por el rol que ejecuta la sentencia**, no a los creados por
+  cualquiera. Si las migraciones corrieran alguna vez con otro rol, la protección simplemente no
+  aplica, sin error. Es el mismo género de omisión silenciosa que el resto del apartado.
+- **Corrección:** escribirlo con `FOR ROLE <rol de migraciones>` explícito, y dejar dicho en el ADR
+  que esa cláusula no es decorativa.
+- **Verificación:** CONFIRMADO.
+
+### [BAJO] RV-13 — Consecuencias habla de "dos funciones `SECURITY DEFINER`"; hay seis
+
+- **Dónde:** ADR, Consecuencias negativas, contra §1.3 y §4.
+- **Qué pasa:** el control declarado —"toda modificación de su cuerpo exige revisión de
+  `auditor-seguridad`"— se enuncia sobre un inventario incorrecto. Las cuatro funciones de
+  `recepciones_webhook` son también `SECURITY DEFINER` del mismo propietario (ver RV-9) y quedan
+  fuera del control por un error de conteo.
+- **Corrección:** corregir el número y enumerarlas, o remitir a la tabla de §4.
+- **Verificación:** CONFIRMADO.
+
+### [BAJO] RV-14 — La cuenta de tablas globales es de cuatro, no de tres, y la regla de parada nace incumplida
+
+- **Dónde:** ADR §1.1, §5 aserción 17, Consecuencias ("**si aparece la tabla global número cuatro, el
+  patrón está mal**").
+- **Qué pasa:** `excepciones_rls` es también una tabla sin `tenant_id` en `public`, creada por este
+  mismo ADR. Son cuatro. La regla de parada —buena regla— se incumple el día que se escribe, lo que
+  la vuelve inoperante: la próxima vez que alguien la invoque, le responderán que ya se incumplió.
+- **Corrección:** contarla, declararla, incluirla en la aserción 17, y reformular la regla sobre lo
+  que de verdad importa: *"tablas globales **con datos de negocio o de ruteo**: tres. Si aparece la
+  cuarta, el patrón está mal."* Las tablas de control del propio mecanismo son otra categoría.
+- **Verificación:** CONFIRMADO.
+
+## Respuesta a las cinco preguntas de la reverificación
+
+### 1. Los tres críticos, contra el texto nuevo
+
+**Crítico 1 (reconcesión): cerrado.** §1.2(a) describe el mecanismo real —no el riesgo de olvido— y
+lo sustituye por una revocación dirigida por datos en el mismo bloque que la concesión. La frase
+*"la revocación debe sobrevivir a la reejecución del aplicador de políticas. Hoy no lo haría"* es la
+correcta. Condicionado a RV-5 (la declaración no puede ser escribible por aquello que la prueba
+verifica) y RV-11 (la reejecución tiene que ser una aserción numerada).
+
+**Crítico 3 (titularidad): cerrado, y es el mejor resuelto.** Los cinco puntos de §1.5 están, la
+frase simétrica a ADR-0003 §5 tiene el mismo rango, y el documento de integración §2.3 lo implementa
+aguas abajo. El dato que llegó después —que la guía oficial de Meta recomienda justo el patrón
+inseguro, capturar los identificadores del navegador— **aumenta** el valor de haberlo escrito como
+desviación deliberada: sin esa nota, el siguiente que siga el tutorial reintroduce un crítico creyendo
+que hace lo correcto. Es exactamente el tipo de cosa que justifica que un ADR exista.
+
+**Crítico 2 (GUC): cerrado en el diseño; la frontera no está verificada.** La respuesta directa a la
+pregunta del coordinador —si la separación de cuatro roles **de verdad** cierra el agujero— es **sí,
+el razonamiento es correcto**: el rol de conexión es lo único que una inyección SQL no puede falsear,
+y degradar explícitamente la comprobación del GUC a "comprobación de consistencia, no frontera de
+seguridad" es la formulación exacta. Pero quedan **cuatro caminos** por los que `viajapro_app` vuelve
+a alcanzar `registrar_enrutamiento`, y ninguno produce un error:
+
+1. **Un `GRANT EXECUTE ON ALL FUNCTIONS` añadido para desatascar un despliegue.** Nada lo detecta:
+   RV-2. Es el más probable de los cuatro, porque el repositorio ya escribe esa misma forma para
+   tablas y secuencias.
+2. **`DATABASE_APP_URL` apuntando a `viajapro_altas`.** El guardia de arranque no lo ve: RV-10.
+3. **A través de `registrar_recepcion`**, que `viajapro_app` sí puede ejecutar y cuyo propietario es
+   el dueño del directorio: basta que su cuerpo crezca: RV-9.
+4. **Editando `excepciones_rls`**, que no se declara a sí misma protegida: RV-5.
+
+El 1 y el 2 son los que cierran el crítico de verdad, y son baratos. Mientras no estén, la frontera
+existe en el texto y no en nada que falle en rojo — que es el criterio que el propio ADR fija.
+
+### 2. Lo que el arquitecto hizo de más
+
+**(a) «El directorio es derivado, no la verdad». La idea es buena; las dos consecuencias que arrastra
+no se siguieron.** Es un acierto real: convierte la pérdida de la pimienta en una operación de
+plataforma y da un procedimiento de recuperación que antes no existía. Pero rompe el historial
+—indexado por un valor derivado de un secreto rotable, en una tabla donde nadie puede actualizar
+nada— y, por su interacción con la rama "desconocido borra el contenido en el acto", **destruye
+mensajes de clientes mientras la reconstrucción está en curso**. Detalle y corrección en RV-6. La
+corrección es el mismo patrón de ventana de dos secretos que el ADR ya aplicó bien al App Secret.
+
+**(b) El tipo dentro del HMAC: es correcto y no introduce nada.** Opinión explícita, porque se pidió:
+**no es criptografía improvisada, es separación de dominios**, la práctica estándar para reutilizar
+una misma clave con propósitos distintos — la misma idea que el campo `info` de HKDF o las cadenas de
+contexto de las firmas. HMAC es una función pseudoaleatoria sobre mensajes de longitud arbitraria;
+anteponer una etiqueta de dominio es la forma canónica de garantizar que un identificador de número y
+uno de cuenta no puedan colisionar ni intercambiarse. Ahorra una columna y elimina una clase de
+confusión. **Dos condiciones, que son las únicas de las que depende su corrección:**
+
+- **El delimitador tiene que ser inambiguo.** Con un solo campo variable y dos puntos como separador
+  —carácter que un identificador numérico de Meta no puede contener— no hay ambigüedad posible.
+  Escribirlo así en el ADR: *"el prefijo de dominio termina en un carácter que el identificador no
+  puede contener"*. Si algún día se añadiera un tercer campo al mensaje, haría falta prefijar
+  longitudes; hoy no.
+- **Sirve para separar dominios, no para ocultar.** La fortaleza sigue viniendo de la pimienta, no
+  del prefijo. El ADR no lo confunde, y hace bien en no confundirlo.
+
+Sin objeción. Es de las pocas cosas de este ADR donde el "de más" fue de más en el buen sentido.
+
+### 3. El conflicto de retenciones: la lectura del arquitecto es la correcta
+
+Sí, y el conflicto era mío: escribí "hash, 7 días" en el hallazgo MEDIO y "identificador, 30 días" en
+el BAJO. **Tomó la lectura buena, y la mejoró.** El razonamiento que la sostiene, para que quede
+escrito y no haya que reconstruirlo:
+
+- **El contenido es lo único que decide la legalidad, y va en minutos.** Ahí están el teléfono del
+  viajero, el texto del mensaje y a veces un número de pasaporte. Que se borre al procesar o al
+  clasificar —no a los siete días— es lo que hace defendible todo el apartado frente a la Ley 1581.
+  Es el plazo que importa y está bien puesto.
+- **El `recepcion_id` no es dato personal.** Es un `sha256` irreversible que solo sirve para no
+  procesar dos veces el mismo cuerpo. Su plazo es una decisión técnica, no legal: 30 días es generoso
+  e inocuo, y la garantía de corrección no depende de él sino de
+  `UNIQUE (tenant_id, provider_message_id)`, que es permanente. Si alguien quisiera bajarlo a 7 no
+  habría objeción de seguridad; subirlo tampoco crea riesgo. **Lo único que falta es decir en qué se
+  apoya el número**: la celda "Finalidad" dice "idempotencia frente a reintentos del proveedor" sin
+  anclarlo a la ventana real de reintentos de Meta. Una línea.
+- **Cuarentena 7 días y directorio 5 años** están bien justificados: el primero por la finalidad
+  declarada, el segundo por deber de prueba.
+
+La partición en cuatro plazos con finalidad explícita en cada uno es mejor que lo que pedí. El único
+hueco de la tabla es el historial, que no aparece: RV-8.
+
+### 4. Las doce aserciones
+
+**Las tres añadidas cubren lo que creían cubrir.** La 17 resuelve algo que en el borrador era solo una
+frase: que ninguna de las tablas globales tenga columna `tenant_id` es justo el candado que impide que
+el ciclo huevo-gallina regrese por la vía de "añadirla por coherencia". La 18 y la 19 atan los dos
+ALTOs —durabilidad y base legal— a algo que se pone en rojo.
+
+**Faltan cuatro y dos están mal planteadas.** Faltan: la matriz rol × función (RV-2, la que sostiene
+el crítico 2), la inmutabilidad del historial y la clave foránea compuesta (RV-15). Mal planteadas: la
+13 pasa con el `search_path` inseguro (RV-3), y las 8, 9 y 10 preguntan por un solo rol de tres
+(RV-4). A eso se suma que la 12 habla de dos funciones cuando hay seis.
+
+**Sobre la reejecución de `001` y `002`, que es lo que más se preguntó:** tal como está escrita **no
+falla en rojo de forma fiable, por dos motivos distintos**. Primero, no es una aserción: es una frase
+de cierre detrás de la tabla, sin número y sin celda de "qué atrapa", y lo que se implementará es la
+tabla. Segundo, y más de fondo, comprueba **los dos archivos conocidos** en vez de la clase de fallo:
+una tercera migración que escriba su propio `GRANT ... ON ALL TABLES` —la forma que este repositorio
+ya usa dos veces— pasaría sin que nadie se entere. La versión que sí falla en rojo son dos
+comprobaciones, no una: reaplicar `001` y `002`, **y** verificar los privilegios después de aplicar la
+cadena completa de migraciones desde cero. Detalle en RV-11.
+
+### 5. Hallazgos aplicados solo en apariencia
+
+Tres, y los tres por la misma razón: el texto afirma una protección y la aserción que debía
+sostenerla mira a otro lado.
+
+- **La frontera del `EXECUTE`** (RV-2): la corrección del crítico 2 es correcta y no tiene prueba.
+- **El `search_path` vacío** (RV-3): §1.4 rechaza expresamente fijarlo a `public`, y la aserción 13
+  lo aprobaría.
+- **El `REVOKE` sobre "los roles de aplicación"** (RV-4): el texto dice tres roles, la columna que lo
+  gobierna admite uno, y las aserciones preguntan por uno.
+
+Y una cuarta de otra clase, que no es apariencia sino regresión: **RV-1**, donde dos correcciones
+buenas aplicadas por separado se anulan entre sí y producen pérdida silenciosa de mensajes de dos
+tenants de cada tres cuando Meta agrupa. Es el hallazgo que más importa de esta pasada, y es nuevo.
+
+## Lo que se volvió a comprobar y sigue limpio
+
+- **La dirección de la decisión.** Opción A, G y staging de B: sin cambios y sin reservas. Nada en el
+  texto nuevo la debilita.
+- **La prueba de titularidad (§1.5)** y su bajada al documento de integración. Es el bloqueante mejor
+  cerrado del lote.
+- **El borrado del contenido como primer paso de las ramas "revocado" y "desconocido" (§2).** La
+  contradicción entre §2 y §4 desapareció de verdad, no de palabra.
+- **La separación de la clave de descifrado en el trabajador (§4).** Cierra lo que el cifrado en
+  reposo no cerraba.
+- **La cuarentena cerrada por esquema** y la distinción entre identificador de agencia y teléfono de
+  remitente. Es la formulación legalmente correcta.
+- **El `NOLOGIN` de `viajapro_enrutador`** con el conjunto completo de atributos y el `REVOKE
+  neon_superuser`. La frase "no es una credencial, es un propietario" deja la intención sin margen.
+- **Las dos claves de resolución (número y WABA).** No estaba en mi informe; sale de la verificación
+  del payload y es correcta: sin ella los eventos de gestión quedaban sin tenant. El invariante de que
+  la fila WABA y las de sus números apunten al mismo tenant es el añadido correcto.
+- **No tratar `phone_number_id` como clave primaria del canal.** Verificado contra la documentación
+  oficial y bien razonado.
+- **Lo que quedó fuera del perímetro** sigue fuera y sin revisar: rotación de tokens de refresco,
+  límites de intentos en autenticación, RBAC completo más allá de la restricción del alta, aislamiento
+  en S3, y Redis más allá de lo que este ADR toca.
+
+---
+
+## Dictamen de la reverificación
+
+**Todavía no. Pero a una pasada corta de distancia, y la última.**
+
+Los tres críticos están resueltos en el fondo: el crítico 1 con un mecanismo mejor que el que pedí, el
+crítico 3 completo y bajado al documento de integración, y el crítico 2 con la frontera correcta
+—el rol de conexión— bien razonada y bien escrita. La dirección de la decisión no se discute y el
+documento es ahora considerablemente mejor que el borrador.
+
+Lo que impide aceptarlo es de una sola clase, y es la que el propio ADR eligió como criterio:
+**protecciones que el texto afirma y que ninguna prueba puede poner en rojo.** Si el ADR se acepta
+así, lo que se implementará será la tabla de §5, y la tabla de §5 no cubre la frontera que sustituyó
+al crítico 2. A eso se suma una regresión introducida por las propias correcciones, RV-1, que pierde
+mensajes de clientes en silencio — el fallo que este ADR existe para evitar.
+
+### Condiciones para pasar a Aceptado
+
+Seis, todas de texto, todas acotadas:
+
+- **RV-1.** Identificador de trabajo y estado de proceso al grano del `change`; el payload se anula
+  cuando todos los `changes` de la recepción están resueltos; la aserción 16 pasa por la cola real.
+- **RV-2.** Aserción de la matriz completa rol × función, exacta en ambos sentidos. Corregir "ambas
+  funciones" por las seis.
+- **RV-3.** La aserción 13 compara el **valor** del `search_path`, no su presencia; más la aserción
+  de que ningún rol de login tiene `CREATE` sobre `public`.
+- **RV-4.** Aserciones 8, 9 y 10 sobre los tres roles de login; `excepciones_rls` capaz de declarar
+  privilegios por rol.
+- **RV-5.** `excepciones_rls` se declara a sí misma sin privilegios, y la aserción 11 fija los pares
+  `(tabla, rol, privilegios)` contra un literal del repositorio.
+- **RV-6.** Ventana de dos pimientas durante la rotación; el historial indexado por `canal_id`; la
+  rama "desconocido" retiene en vez de borrar mientras haya reconstrucción en curso.
+
+### Que entren en la misma pasada, sin bloquear
+
+RV-7 a RV-15: `waba_cifrado` fuera, retención del historial por particiones, propietario distinto para
+el staging, verificación de identidad del rol al arrancar, la reejecución como aserción numerada más
+la comprobación sobre la cadena completa de migraciones, `FOR ROLE` explícito, el conteo de funciones
+y el de tablas globales, y las dos aserciones que faltan.
+
+### Qué no hace falta volver a mirar
+
+Los diez bloqueantes y los quince recomendados de la primera pasada están aplicados. **La tercera
+pasada, si la hay, debe revisar únicamente RV-1 a RV-6**, y no volver sobre lo ya cerrado: reabrir
+cosas resueltas es como se pierde la confianza en una auditoría.
+
+### Y lo que no decide este informe
+
+El ADR lo aprueba el propietario del producto. Lo que este auditor dictamina es que **con RV-1 a RV-6
+aplicados, no quedan objeciones de seguridad**, y que la evidencia final no es el texto sino las
+aserciones en verde contra una base real — incluidas las que faltan. Hasta entonces, el documento
+describe un sistema seguro; no demuestra que se vaya a construir uno.
