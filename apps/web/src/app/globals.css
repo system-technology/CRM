@@ -1,0 +1,71 @@
+@import 'tailwindcss';
+
+/**
+ * Tokens del sistema de diseño de ViajaPro.
+ *
+ * Los mismos que se subieron a Stitch, para que lo que se genera allí y lo que se construye
+ * aquí hablen el mismo idioma. Ver docs/01-producto/06-diseno-y-ux.md.
+ *
+ * Criterio rector: esto es una HERRAMIENTA DE TRABAJO. Densidad sobre aire, radio mínimo,
+ * neutro dominante con un solo acento.
+ */
+
+@theme {
+  /* Acento. Verde azulado: evoca el Caribe sin ser el azul por defecto de todo SaaS,
+     y tiene contraste AA sobre blanco en el tono 700. */
+  --color-acento-50: #f0fdfa;
+  --color-acento-100: #ccfbf1;
+  --color-acento-500: #14b8a6;
+  --color-acento-600: #0d9488;
+  --color-acento-700: #0f766e;
+  --color-acento-800: #115e59;
+
+  /* Semánticos con significado FIJO en todo el producto. No se usan por estética. */
+  --color-ok-50: #f0fdf4; /* confirmado, pagado, dentro de plazo */
+  --color-ok-600: #16a34a;
+  --color-ok-700: #15803d;
+  --color-aviso-50: #fffbeb; /* por vencer, requiere atención pronto */
+  --color-aviso-600: #d97706;
+  --color-aviso-700: #b45309;
+  --color-alerta-50: #fef2f2; /* vencido, fallido, fuera de plazo */
+  --color-alerta-600: #dc2626;
+  --color-alerta-700: #b91c1c;
+
+  --font-sans: Inter, ui-sans-serif, system-ui, sans-serif;
+
+  /* Escala de texto para densidad alta. El cuerpo es 13px, no 16px:
+     en una bandeja, cada píxel de alto de fila es una conversación menos visible. */
+  --text-xs: 0.6875rem; /* 11px — etiquetas */
+  --text-sm: 0.75rem; /* 12px — secundario */
+  --text-base: 0.8125rem; /* 13px — cuerpo */
+  --text-lg: 0.9375rem; /* 15px — títulos de sección */
+  --text-xl: 1.125rem; /* 18px — cifras destacadas */
+
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+}
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  font-feature-settings: 'cv11', 'ss01';
+  -webkit-font-smoothing: antialiased;
+}
+
+/**
+ * Cifras tabulares. NO es cosmético: sin esto, los montos de una columna no se alinean por
+ * posición decimal y comparar precios de un vistazo deja de ser posible — que es exactamente
+ * lo que un asesor hace todo el día.
+ */
+.cifra {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum';
+}
+
+/* Foco visible siempre. Un CRM se usa con teclado o no se usa. */
+*:focus-visible {
+  outline: 2px solid var(--color-acento-600);
+  outline-offset: 2px;
+}
