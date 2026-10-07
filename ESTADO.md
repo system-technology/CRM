@@ -35,7 +35,7 @@ Qué hay, concretamente:
 | Skills | `ciclo-funcionalidad`, `auditoria-integral`, `handoff-ia-externa`, `cerrar-sesion`, `nuevo-modulo` |
 | Comandos | `/estado` `/auditoria` `/funcionalidad` `/handoff` `/adr` `/contexto` `/integrar` |
 | Hooks | Inyección del hilo, guardián de secretos, guardián de rama (con 24 pruebas), autorización de integración, revisión post-edición, recordatorio de cierre |
-| MCP | 8 servidores declarados, **ninguno validado** |
+| MCP | 8 declarados. **Stitch verificado**: HTTP 200 y 15 herramientas. Los demás sin validar |
 | Fase 0 técnica | **COMPLETA Y VERIFICADA.** API viva, 7/7 aislamiento, 32/32 dominio |
 | Backend | `apps/api` con catálogo y cotización. Probado con peticiones reales |
 | Datos | Agencia demo sembrada: 3 paquetes, 5 temporadas, 26 precios |
@@ -81,7 +81,7 @@ Ordenada. La primera es la que debe tomarse ahora.
 |---|---|---|---|
 | 1 | **Iniciar verificación de Meta Business y solicitud de Tech Provider** | Usuario | **Camino crítico, sin empezar** |
 | 2 | **Conseguir agencia piloto** y pedirle un tarifario real de mayorista | Usuario | Urgente. El catálogo se modeló con datos verosímiles, no reales |
-| 3 | **Generar la clave de API de Stitch** en stitch.withgoogle.com/settings y ponerla en `.env` | Usuario | Un minuto. Google Cloud resultó innecesario |
+| 3 | **Reiniciar la sesión** para que Stitch quede disponible como herramienta | Usuario | La clave ya está y el servidor responde: 15 herramientas verificadas |
 | 4 | Inbox de WhatsApp: webhook, firma, idempotencia, ventana de 24h | `whatsapp`, `backend` | **Siguiente pieza grande** |
 | 5 | Frontend del catálogo y el cotizador | `diseno-ux`, `frontend` | Listo para empezar: la API ya responde |
 | 6 | Guardar cotizaciones con versiones inmutables | `backend` | Hoy el cálculo no persiste |
