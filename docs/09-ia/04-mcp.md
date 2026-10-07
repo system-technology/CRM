@@ -80,6 +80,15 @@ reconciliación del paso 5 casi desaparece.
 > **Los servidores MCP se cargan al iniciar la sesión.** Configurar uno a mitad de sesión no lo
 > hace aparecer: hay que reiniciar Claude Code o recargar con `/mcp`.
 
+**Limitación conocida, encontrada al usarlo el 2026-10-07.** `list_screens` devuelve una respuesta
+vacía aunque el proyecto tenga pantallas generadas. Sin los identificadores no se puede llamar a
+`get_screen` ni a `get_screen_code`: lo único recuperable es la miniatura que trae `get_project`.
+
+Esto **no bloquea el flujo**, y conviene recordar por qué: el código que genera Stitch nunca entra
+al repositorio. Sirve como dirección visual; la interfaz se construye a mano contra los contratos
+de `packages/contracts`. La limitación encarece la exploración, no la producción. Si en el futuro
+`list_screens` empieza a responder, vale la pena reevaluar `extract_design_context`.
+
 ### Reglas de uso
 
 1. **`postgres` apunta a `DATABASE_URL` del entorno local.** Apuntarlo a producción desde una

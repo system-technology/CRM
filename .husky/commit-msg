@@ -1,4 +1,4 @@
-# Valida el mensaje de commit contra commitlint.config.js.
+# Valida el mensaje de commit contra commitlint.config.mjs.
 #
 # Sin este archivo la convención era decorativa: estaba escrita y nunca se aplicaba.
 npx --no -- commitlint --edit "$1"
