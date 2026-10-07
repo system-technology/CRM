@@ -57,6 +57,7 @@ Toda la documentación del proyecto. Si una decisión no está aquí (o en `ESTA
 | [0004](03-adr/0004-monolito-modular.md) | Monolito modular, no microservicios | Aceptado |
 | [0005](03-adr/0005-modelo-de-ramas.md) | Rama principal protegida con compuerta de integración | Aceptado |
 | [0006](03-adr/0006-parametrizacion-y-extensibilidad.md) | Vertical configurable, no plataforma genérica. Sin código abierto por ahora | Aceptado |
+| [0007](03-adr/0007-postgres-gestionado-neon.md) | PostgreSQL gestionado (Neon) en desarrollo, dev y staging | Aceptado |
 
 ## 04 · Integraciones
 
@@ -100,12 +101,6 @@ Toda la documentación del proyecto. Si una decisión no está aquí (o en `ESTA
 | [Roadmap](08-roadmap/01-roadmap.md) | Fases, hitos, criterios de salida, estimaciones honestas |
 | [Riesgos](08-roadmap/03-riesgos.md) | Qué puede hundir el proyecto y qué hacemos al respecto |
 
-## 10 · Onboarding de agencias
-
-| Documento | Qué contiene |
-|---|---|
-| [Requisitos para la agencia](10-onboarding/01-requisitos-para-la-agencia.md) | **Documento para enviar al cliente.** Qué necesita para conectar su WhatsApp. Sin verificación ni web |
-
 ## 09 · Ingeniería asistida por IA
 
 | Documento | Qué contiene |
@@ -116,6 +111,18 @@ Toda la documentación del proyecto. Si una decisión no está aquí (o en `ESTA
 | [MCP](09-ia/04-mcp.md) | Servidores de contexto y herramientas |
 | [Interoperabilidad multi-IA](09-ia/05-interoperabilidad-multi-ia.md) | Cómo entra otra IA al proyecto sin romperlo. Decisiones sobre Antigravity y modelos abiertos |
 | [Cronograma de loops](09-ia/06-cronograma-de-loops.md) | Qué corre solo, cuándo, y por qué el calendario crece con el proyecto |
+
+## 10 · Onboarding de agencias
+
+| Documento | Qué contiene |
+|---|---|
+| [Requisitos para la agencia](10-onboarding/01-requisitos-para-la-agencia.md) | **Documento para enviar al cliente.** Qué necesita para conectar su WhatsApp. Sin verificación ni web |
+
+## 11 · Entregables
+
+| Documento | Qué contiene |
+|---|---|
+| [Entregables](11-entregables/README.md) | Documentos `.docx` y `.pdf` para enviar fuera del repositorio. Todo entregable debe rastrearse hasta sus documentos fuente |
 
 ---
 

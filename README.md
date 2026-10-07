@@ -90,7 +90,7 @@ El indice completo de la documentacion esta en [`docs/README.md`](docs/README.md
 > roadmap los deje funcionando sin discusion.
 
 ```bash
-# 1. Requisitos: Node 22.11+, pnpm 9+, Docker Desktop
+# 1. Requisitos: Node 22.11+ y pnpm 9+. Docker es opcional (ver paso 4).
 corepack enable && corepack prepare pnpm@9.12.0 --activate
 
 # 2. Dependencias
@@ -99,24 +99,49 @@ pnpm install
 # 3. Variables de entorno
 cp .env.example .env     # completar los valores marcados
 
-# 4. Infraestructura local
-pnpm infra:up            # Postgres, Redis, MinIO, Mailpit, Jaeger
-
-# 5. Base de datos
-pnpm db:migrate
-pnpm db:seed             # agencia demo + usuarios + catalogo de ejemplo
-
-# 6. Arrancar todo
+# 4. Arrancar todo
 pnpm dev                 # api :3333 | web :3000
 ```
 
+### Paso 4 — Base de datos: dos caminos
+
+**a) PostgreSQL gestionado en Neon** *(recomendado: no hay que instalar nada)*
+
+Crear un proyecto en [neon.tech](https://neon.tech), copiar las cadenas al `.env` y crear el rol
+de aplicación — el que **no puede saltarse Row Level Security**:
+
+```bash
+psql "$DATABASE_URL" -v app_password="$(openssl rand -base64 24)" \
+     -f packages/database/prisma/policies/002-rol-aplicacion.sql
+```
+
+> **No te saltes ese script.** El rol que Neon crea por defecto hereda `neon_superuser`, que tiene
+> `BYPASSRLS`: conectando la aplicación con él, el aislamiento entre agencias sería ficticio —
+> sin error y sin aviso. Ver [ADR-0007](docs/03-adr/0007-postgres-gestionado-neon.md).
+
+**b) PostgreSQL local con Docker**
+
+```bash
+pnpm infra:up            # Postgres, Redis, MinIO, Mailpit, Jaeger
+```
+
 Servicios auxiliares en local: MinIO `:9001`, Mailpit `:8025`, Jaeger `:16686`.
+
+### Paso 5 — Migraciones y datos de ejemplo
+
+```bash
+pnpm db:migrate
+pnpm db:seed             # agencia demo + usuarios + catálogo de ejemplo
+pnpm --filter @viajapro/database test:aislamiento   # la compuerta que importa
+```
 
 ## Convenciones
 
 - **Commits:** [Conventional Commits](https://www.conventionalcommits.org/) con el scope restringido
   a los contextos del dominio (`feat(quoting): ...`). Ver `commitlint.config.js`.
-- **Ramas:** trunk-based. `main` siempre desplegable; ramas cortas `feat/`, `fix/`, `chore/`.
+- **Ramas:** `main` es intocable — solo el agente `integrador` escribe ahí, tras siete compuertas.
+  Todo el trabajo va en ramas cortas `feat/`, `fix/`, `chore/`, `docs/`. Ver
+  [git y ramas](docs/07-ingenieria/03-git.md).
 - **Codigo:** ver [convenciones de ingenieria](docs/07-ingenieria/01-convenciones.md).
 - **Decisiones de arquitectura:** toda decision estructural se registra como ADR en `docs/03-adr/`.
 

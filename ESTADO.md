@@ -30,7 +30,7 @@ Qué hay, concretamente:
 |---|---|
 | Configuración del monorepo | Escrita, **sin ejecutar** (`pnpm install` nunca corrió) |
 | Documentación | 33 documentos completos + 22 marcadores con responsable y fase |
-| ADR | 0001 stack · 0002 WhatsApp · 0003 multi-tenancy · 0004 monolito modular · 0005 ramas · 0006 parametrización |
+| ADR | 0001 stack · 0002 WhatsApp · 0003 multi-tenancy · 0004 monolito modular · 0005 ramas · 0006 parametrización · 0007 Neon |
 | Agentes de IA | 17 definidos en `.claude/agents/`, incluido `integrador` |
 | Skills | `ciclo-funcionalidad`, `auditoria-integral`, `handoff-ia-externa`, `cerrar-sesion`, `nuevo-modulo` |
 | Comandos | `/estado` `/auditoria` `/funcionalidad` `/handoff` `/adr` `/contexto` `/integrar` |
