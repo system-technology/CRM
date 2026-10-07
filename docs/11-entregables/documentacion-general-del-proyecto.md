@@ -2,7 +2,19 @@
 
 **Versión:** 1.0  
 **Fecha:** octubre de 2026  
-**Tipo:** documento maestro de orientación
+**Tipo:** entregable de orientación
+
+> ⚠️ **Esto es una fotografía, no una fuente.**
+>
+> Sintetiza la documentación del repositorio **en la fecha indicada**. Los documentos fuente
+> cambian; este no. Si algo aquí contradice a `docs/`, **manda `docs/`** y este documento está
+> desactualizado.
+>
+> **Para qué sirve:** orientar a alguien de fuera —un inversionista, un aliado, una persona que
+> entra al equipo— sin obligarle a leer treinta documentos.
+> **Para qué no:** tomar decisiones técnicas ni de producto. Para eso están las fuentes.
+>
+> Procedencia detallada al final. Índice completo: [`docs/README.md`](../README.md).
 
 ## 1. Resumen ejecutivo
 ViajaPro es un CRM vertical para agencias de turismo que nace alrededor de WhatsApp y conecta la conversación comercial con todo el ciclo del viaje: oportunidad, cotización, reserva, pagos y post-venta. La tesis del producto es convertir conversaciones en viajes reales.
