@@ -34,7 +34,7 @@ fecha. Los documentos fuente cambian; el PDF enviado el martes no.
 
 | Documento | Para quién | Sale de | Fecha |
 |---|---|---|---|
-| *(ninguno todavía)* | | | |
+| [Documentación general del proyecto](documentacion-general-del-proyecto.md) | Inversionistas, aliados, gente que entra al equipo | Visión, norte, alcance, lenguaje ubicuo, arquitectura, modelo de datos, WhatsApp, protección de datos, roadmap | Octubre 2026 |
 
 ---
 
