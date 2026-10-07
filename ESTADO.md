@@ -36,8 +36,8 @@ Qué hay, concretamente:
 | Comandos | `/estado` `/auditoria` `/funcionalidad` `/handoff` `/adr` `/contexto` `/integrar` |
 | Hooks | Inyección del hilo, guardián de secretos, guardián de rama, autorización de integración, revisión post-edición, recordatorio de cierre |
 | MCP | 8 servidores declarados, **ninguno validado** |
-| Repositorio | Commit de génesis `v0.1.0` en `main`. **Sin remoto todavía** |
-| Gobierno de `main` | Compuerta activa y probada: commit sin autorizar y reescritura de historial, ambos rechazados |
+| Repositorio | [github.com/Alfavear/CRM](https://github.com/Alfavear/CRM) · **privado** · `main` en v0.1.0 |
+| Gobierno de `main` | Compuerta local activa y probada. **Sin protección de servidor:** el plan gratuito no la permite en repos privados |
 
 ## 2. Decisiones ya tomadas (no reabrir sin ADR que las supersede)
 
@@ -73,7 +73,7 @@ Ordenada. La primera es la que debe tomarse ahora.
 |---|---|---|---|
 | 1 | **Iniciar verificación de Meta Business y solicitud de Tech Provider** | Usuario | **Camino crítico — hoy** |
 | 2 | Conseguir agencia piloto comprometida | Usuario | Urgente |
-| 3 | **Crear repositorio remoto y configurar la protección de `main` en GitHub** | Usuario | Antes del primer push |
+| 3 | **Decidir cómo desbloquear la protección de `main`:** GitHub Pro, repo público, o asumir el riesgo | Usuario | Antes de que entre una segunda persona |
 | 4 | Validar MCP: ejecutar cada servidor de `.mcp.json`, incluido Stitch (`gcloud auth` requerido) | Usuario + `devops` | Pendiente |
 | 5 | Andamiaje de código: apps y packages vacíos pero compilando (`pnpm install && pnpm typecheck` en verde) | `backend`, `frontend`, `devops` | Pendiente |
 | 6 | Esquema Prisma inicial + políticas RLS + seed + prueba de aislamiento | `datos` | Pendiente |
@@ -92,7 +92,7 @@ Ordenada. La primera es la que debe tomarse ahora.
 | Sin agencia piloto confirmada | Riesgo de construir nueve meses a ciegas | Usuario | Conseguirla antes de terminar la Fase 1 |
 | Alcance de v1 vs. expectativa de calendario | Riesgo de cinco cosas a medias | Usuario | Roadmap por fases ya escrito; decidir dónde cortar |
 | MCP sin validar | Los agentes no tienen las herramientas que el método asume | Usuario | Requiere sesión interactiva — no se puede hacer automatizado |
-| **Sin repositorio remoto: `main` no tiene protección de servidor** | Los hooks locales son barandilla, no muro. La regla R11 depende hoy de disciplina | Usuario | Crear el remoto y configurar branch protection **antes del primer push**. Ver `.github/PROTECCION-DE-RAMA.md` |
+| **`main` sin protección de servidor** — el plan gratuito de GitHub no permite proteger ramas en repos privados | La regla R11 depende hoy solo de disciplina y de hooks locales. Tolerable con una persona; **no lo es con dos** | Usuario | GitHub Pro (recomendado), o repo público, o riesgo asumido. Ver `.github/PROTECCION-DE-RAMA.md` |
 | Nada comercial está definido: nombre, precios, planes | No se puede vender ni proyectar ingresos | Usuario | Definirlo con datos del piloto, no antes |
 | Nombre en clave `ViajaPro` extendido por todo el repositorio | Si se decide otro nombre hay que renombrar | Usuario | Barato mientras no haya código. Un comando `sed`. Caro con clientes |
 | Revisión legal de protección de datos pendiente | No se puede salir a producción sin ella | Usuario | Abogado del país de operación, antes de Fase 4 |
