@@ -23,6 +23,17 @@ useDefault = true
 # -----------------------------------------------------------------------------
 [allowlist]
 description = "Marcadores de la plantilla de entorno, nunca credenciales reales"
+
+# `condition = "AND"` NO es opcional, y omitirlo volvía falsa la promesa de arriba.
+# El valor por omisión de gitleaks es **OR**: con `paths` y `regexes` declarados a la vez,
+# bastaba coincidir en la ruta para permitir CUALQUIER línea del archivo, y las tres
+# expresiones de abajo quedaban de adorno. Es decir, la versión anterior silenciaba el
+# archivo entero — exactamente lo que su propio comentario decía no hacer.
+#
+# Lo encontró el agente `integrador` leyendo el archivo, no ejecutándolo, y lo dejó como
+# hipótesis falsable. Confirmado después en la documentación de gitleaks.
+condition = "AND"
+
 paths = ['''\.env\.example$''']
 regexTarget = "line"
 regexes = [
