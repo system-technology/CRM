@@ -52,3 +52,6 @@ Thumbs.db
 *.key
 *.p12
 secrets/
+
+# Salidas del MCP de navegador (capturas y trazas de depuracion)
+.playwright-mcp/
