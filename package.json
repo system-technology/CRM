@@ -1,0 +1,42 @@
+{
+  "name": "viajapro",
+  "version": "0.1.0",
+  "private": true,
+  "description": "CRM vertical para agencias de turismo con WhatsApp Cloud API nativo",
+  "packageManager": "pnpm@9.12.0",
+  "engines": {
+    "node": ">=22.11.0",
+    "pnpm": ">=9.12.0"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "test:e2e": "turbo run test:e2e",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\"",
+    "db:generate": "pnpm --filter @viajapro/database generate",
+    "db:migrate": "pnpm --filter @viajapro/database migrate:dev",
+    "db:seed": "pnpm --filter @viajapro/database seed",
+    "db:studio": "pnpm --filter @viajapro/database studio",
+    "infra:up": "docker compose -f infra/docker/docker-compose.yml up -d",
+    "infra:down": "docker compose -f infra/docker/docker-compose.yml down",
+    "infra:reset": "docker compose -f infra/docker/docker-compose.yml down -v && pnpm infra:up",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^19.5.0",
+    "@commitlint/config-conventional": "^19.5.0",
+    "husky": "^9.1.6",
+    "lint-staged": "^15.2.10",
+    "prettier": "^3.3.3",
+    "turbo": "^2.3.0",
+    "typescript": "^5.6.3"
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": ["eslint --fix", "prettier --write"],
+    "*.{json,md,yml,yaml}": ["prettier --write"]
+  }
+}

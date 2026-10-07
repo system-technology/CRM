@@ -1,0 +1,227 @@
+# Compuertas de integración, en servidor.
+#
+# Los hooks locales son una barandilla contra el accidente; esto es lo que de verdad impide que
+# entre algo roto a `main`. Configurar estos checks como obligatorios en la protección de rama:
+# ver .github/PROTECCION-DE-RAMA.md
+#
+# NOTA: mientras el proyecto esté en Fase 0 no hay código de aplicación, así que varios pasos
+# no tienen nada que hacer. Se dejan escritos para que la compuerta exista desde el primer commit
+# y no haya que "acordarse" de montarla después.
+
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '22.11.0'
+  PNPM_VERSION: '9.12.0'
+
+jobs:
+  # ---------------------------------------------------------------------------
+  secretos:
+    name: secretos
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # historial completo: un secreto en un commit intermedio cuenta igual
+
+      - name: Escanear el historial en busca de secretos
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ---------------------------------------------------------------------------
+  calidad:
+    name: ${{ matrix.tarea }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false # queremos ver TODAS las que fallan, no solo la primera
+      matrix:
+        tarea: [typecheck, lint, build]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm ${{ matrix.tarea }}
+
+  # ---------------------------------------------------------------------------
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: viajapro
+          POSTGRES_PASSWORD: viajapro
+          POSTGRES_DB: viajapro_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Migraciones
+        run: pnpm db:migrate
+        env:
+          DATABASE_URL: postgresql://viajapro:viajapro@localhost:5432/viajapro_test
+
+      - name: Pruebas
+        run: pnpm test
+        env:
+          DATABASE_URL: postgresql://viajapro:viajapro@localhost:5432/viajapro_test
+          REDIS_URL: redis://localhost:6379
+
+  # ---------------------------------------------------------------------------
+  # La compuerta propia de este producto. Si falla, da igual lo demás:
+  # una fuga entre agencias es el fallo que mata el negocio.
+  aislamiento-tenants:
+    name: aislamiento-tenants
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: viajapro
+          POSTGRES_PASSWORD: viajapro
+          POSTGRES_DB: viajapro_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Migraciones y políticas RLS
+        run: pnpm db:migrate
+        env:
+          DATABASE_URL: postgresql://viajapro:viajapro@localhost:5432/viajapro_test
+
+      - name: Toda tabla de negocio tiene RLS habilitada y forzada
+        run: pnpm --filter @viajapro/database test:rls
+        env:
+          DATABASE_URL: postgresql://viajapro:viajapro@localhost:5432/viajapro_test
+
+      - name: Un tenant no puede leer ni escribir datos de otro
+        run: pnpm --filter @viajapro/database test:aislamiento
+        env:
+          DATABASE_URL: postgresql://viajapro:viajapro@localhost:5432/viajapro_test
+
+  # ---------------------------------------------------------------------------
+  # Regla R4: los módulos no se importan entre sí. Es lo que permite extraer
+  # servicios después, y lo primero que se erosiona.
+  fronteras:
+    name: fronteras-entre-modulos
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Buscar importaciones directas entre módulos
+        run: |
+          set -o pipefail
+          if [ ! -d apps/api/src/modules ]; then
+            echo "Todavía no hay módulos. Nada que verificar."
+            exit 0
+          fi
+          fallos=0
+          for dir in apps/api/src/modules/*/; do
+            modulo=$(basename "$dir")
+            cruzadas=$(grep -rnE "from ['\"].*modules/" "$dir" \
+              | grep -vE "modules/${modulo}/" || true)
+            if [ -n "$cruzadas" ]; then
+              echo "::error::El módulo '${modulo}' importa directamente de otro módulo:"
+              echo "$cruzadas"
+              fallos=1
+            fi
+          done
+          if [ "$fallos" -ne 0 ]; then
+            echo ""
+            echo "Regla R4 de CLAUDE.md: los módulos se comunican por eventos de dominio o por"
+            echo "puertos explícitos, nunca por importación directa."
+            exit 1
+          fi
+          echo "Sin importaciones cruzadas entre módulos."
+
+  # ---------------------------------------------------------------------------
+  commits:
+    name: convencion-de-commits
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Verificar Conventional Commits del PR
+        run: >-
+          pnpm exec commitlint
+          --from ${{ github.event.pull_request.base.sha }}
+          --to ${{ github.event.pull_request.head.sha }}
+          --verbose

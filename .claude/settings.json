@@ -1,0 +1,128 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Read(//d/Projects/CRM/**)",
+      "Glob(//d/Projects/CRM/**)",
+      "Grep(//d/Projects/CRM/**)",
+      "Bash(pnpm install)",
+      "Bash(pnpm run:*)",
+      "Bash(pnpm lint:*)",
+      "Bash(pnpm test:*)",
+      "Bash(pnpm typecheck:*)",
+      "Bash(pnpm build:*)",
+      "Bash(pnpm db:generate:*)",
+      "Bash(pnpm db:migrate:*)",
+      "Bash(pnpm db:seed:*)",
+      "Bash(pnpm format:*)",
+      "Bash(npx prettier:*)",
+      "Bash(npx tsc:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git show:*)",
+      "Bash(git branch:*)",
+      "Bash(ls:*)",
+      "Bash(cat:*)",
+      "Bash(head:*)",
+      "Bash(tail:*)",
+      "Bash(find:*)",
+      "Bash(wc:*)",
+      "Bash(docker compose -f infra/docker/docker-compose.yml ps:*)",
+      "Bash(docker compose -f infra/docker/docker-compose.yml logs:*)",
+      "WebFetch(domain:developers.facebook.com)",
+      "WebFetch(domain:docs.anthropic.com)",
+      "WebFetch(domain:www.prisma.io)",
+      "WebFetch(domain:docs.nestjs.com)",
+      "WebFetch(domain:nextjs.org)",
+      "WebFetch(domain:www.postgresql.org)"
+    ],
+    "ask": [
+      "Bash(git commit:*)",
+      "Bash(git checkout -b:*)",
+      "Bash(git switch:*)",
+      "Bash(git merge:*)",
+      "Bash(git tag:*)",
+      "Bash(git push:*)",
+      "Bash(gh pr create:*)",
+      "Bash(node .claude/hooks/autorizar-integracion.mjs:*)",
+      "Bash(docker compose:*)",
+      "Bash(terraform:*)",
+      "Bash(pnpm add:*)",
+      "Bash(npm install:*)"
+    ],
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(./secrets/**)",
+      "Read(./**/*.pem)",
+      "Read(./**/*.key)",
+      "Bash(rm -rf:*)",
+      "Bash(git push --force:*)",
+      "Bash(git push -f:*)",
+      "Bash(git reset --hard:*)",
+      "Bash(git rebase:*)",
+      "Bash(git filter-branch:*)",
+      "Bash(pnpm db:reset:*)",
+      "Bash(psql:*)",
+      "Bash(curl:*)"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/session-start.mjs"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/guard-secretos.mjs"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/guard-rama.mjs"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/post-edit.mjs"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/recordatorio-estado.mjs"
+          }
+        ]
+      }
+    ]
+  },
+  "env": {
+    "APP_ENV": "local"
+  },
+  "includeCoAuthoredBy": true
+}
