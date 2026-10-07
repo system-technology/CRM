@@ -163,6 +163,40 @@ Ver [protección de datos](../05-seguridad/02-proteccion-de-datos.md).
 
 ---
 
+### Configuración y campos personalizados por tenant
+
+Consecuencia directa de [ADR-0006](../03-adr/0006-parametrizacion-y-extensibilidad.md): el producto
+se parametriza por agencia, y **eso hay que preverlo en el esquema desde la primera migración**.
+
+**Nada de `enum` en el código para lo que cada agencia define distinto.** Las etapas del pipeline,
+los motivos de pérdida, las reglas de markup y los tipos de proveedor son **tablas por tenant**,
+no constantes de TypeScript. Convertir un `enum` en tabla cuando ya hay datos en producción es una
+migración con reasignación de filas; nacer como tabla no cuesta nada.
+
+**Campos personalizados.** Cada agencia tendrá siempre un dato que no previmos. El diseño:
+
+```
+custom_field_definitions          tenant_id · entidad · clave · etiqueta · tipo · obligatorio · orden
+<entidad>.custom_fields jsonb     los valores, en la fila de la entidad
+```
+
+Las definiciones son relacionales (se consultan, se validan, se ordenan en la interfaz); los
+valores van en una columna `jsonb` de la propia entidad, con índice GIN para poder filtrar por
+ellos. Separarlo así evita la tabla genérica clave-valor, que degrada el rendimiento en cuanto hay
+volumen.
+
+Entidades que los llevan desde v1: `contacts`, `travelers`, `deals`, `travel_files`.
+
+**Por qué ahora y no después.** Los campos personalizados están en la misma categoría que
+`tenant_id`, el versionado de cotizaciones y los *time limits*: **añadirlos más tarde significa
+migrar datos de producción.** La interfaz para gestionarlos puede llegar en la Fase 2; la columna
+y la tabla de definiciones, no.
+
+**Resolución de valores por defecto.** El alta de una agencia siembra configuración opinada que ya
+sirve para operar —etapas, plantillas, roles, reglas de markup—. La agencia cambia solo lo que le
+estorba. Un sistema que exige configurar cuarenta cosas antes del primer mensaje se abandona en la
+semana dos.
+
 ### Preparar la agregación anónima entre tenants
 
 El [norte del producto](../00-vision/05-norte-del-producto.md#27-el-horizonte-lejano-la-red-entre-agencias)
