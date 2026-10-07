@@ -42,6 +42,44 @@ const casos = [
   ['feat/x', 'git push origin feat/x', 'permitir', 'push de rama de trabajo'],
   ['feat/x', 'git push', 'permitir', 'push sin refspec desde rama de trabajo'],
   ['feat/x', 'git merge main', 'permitir', 'traer main a la rama de trabajo'],
+
+  // --- Texto libre que menciona main (segundo falso positivo encontrado) ---
+  [
+    'feat/x',
+    'git commit -m "docs: esta rama no se integra a main hasta que compile"',
+    'permitir',
+    'commit cuyo MENSAJE menciona main',
+  ],
+  [
+    'feat/x',
+    'git push -u origin feat/x',
+    'permitir',
+    'push de rama de trabajo con -u',
+  ],
+  [
+    'feat/x',
+    "git commit -m 'fix: corrige la guarda de main' && git push origin feat/x",
+    'permitir',
+    'commit con main en el mensaje, seguido de push de otra rama',
+  ],
+  [
+    'feat/x',
+    'git commit -F - <<\'MSG\'\nfeat: algo\n\nEsta rama no se integra a main todavía.\nMSG\ngit log --oneline -1',
+    'permitir',
+    'mensaje en heredoc que menciona main',
+  ],
+  [
+    'feat/x',
+    'git commit -m "wip" && git push origin main',
+    'exigir-autorizacion',
+    'el push real a main sigue detectándose pese al mensaje',
+  ],
+  [
+    'feat/x',
+    'git push origin "main"',
+    'exigir-autorizacion',
+    'push a main con la rama entrecomillada',
+  ],
 ];
 
 let fallos = 0;
