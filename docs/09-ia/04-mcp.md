@@ -65,9 +65,23 @@ operaciones de la API de Stitch como herramientas invocables desde una sesión d
 3. **Los tokens de nuestro sistema de diseño mandan.** Si Stitch propone otro azul, gana el nuestro.
 4. Agente responsable: `diseno-ux`.
 
-> **Pendiente de validación.** La configuración está tomada de documentación de terceros
-> (`sotaaz.com`), no de documentación oficial de Google. Verificar el nombre del paquete y el
-> método de autenticación en una sesión interactiva antes de darla por buena.
+**VERIFICADO el 2026-10-07.** El servidor responde HTTP 200 a `initialize` y expone 15
+herramientas:
+
+| Grupo | Herramientas |
+|---|---|
+| Proyectos | `create_project` · `get_project` · `list_projects` · `delete_project` |
+| Pantallas | `generate_screen_from_text` · `edit_screens` · `generate_variants` · `get_screen` · `list_screens` |
+| Sistema de diseño | `create_design_system` · `create_design_system_from_design_md` · `update_design_system` · `list_design_systems` · `apply_design_system` · `upload_design_md` |
+
+La existencia de `create_design_system` y `apply_design_system` cambia el flujo descrito en
+[diseño y UX](../01-producto/06-diseno-y-ux.md): en vez de extraer tokens de cada pantalla y
+reconciliarlos a mano, conviene **subir nuestro sistema de diseño a Stitch una vez** y aplicarlo a
+todas las pantallas que genere. Así lo que vuelve ya nace con nuestros colores y tipografía, y la
+reconciliación del paso 5 casi desaparece.
+
+> **Los servidores MCP se cargan al iniciar la sesión.** Configurar uno a mitad de sesión no lo
+> hace aparecer: hay que reiniciar Claude Code o recargar con `/mcp`.
 
 ### Reglas de uso
 
