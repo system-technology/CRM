@@ -1,0 +1,32 @@
+# Lo que Prettier no debe tocar.
+#
+# Faltaba este archivo, así que `format` intentaba reescribir el lockfile y el cliente
+# generado por Prisma — justo los archivos que ninguna herramienta debe reformatear.
+
+node_modules/
+dist/
+.next/
+.turbo/
+coverage/
+
+# Generado por el gestor de paquetes: lo reescribe pnpm, no nosotros.
+pnpm-lock.yaml
+
+# Generado por Prisma.
+packages/database/generated/
+packages/database/src/generated/
+
+# Migraciones ya aplicadas: no se tocan (CLAUDE.md §10).
+packages/database/prisma/migrations/
+
+# Capturas y binarios.
+docs/_assets/
+images/
+
+# Markdown, a propósito.
+#
+# Prettier alinea las tablas rellenando con espacios. En un proyecto cuyo gobierno vive en
+# documentos con tablas —ESTADO.md, los ADR, la bitácora— eso significa que cambiar una celda
+# reescribe la tabla entera: el diff deja de mostrar qué cambió de verdad, que es justamente
+# para lo que se revisan esos archivos. La prosa se escribe a mano, a 100 columnas.
+*.md

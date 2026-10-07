@@ -6,11 +6,7 @@
  */
 
 import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
-import {
-  CotizarPaquete,
-  type CotizacionCalculada,
-  ParametrosPagina,
-} from '@viajapro/contracts';
+import { CotizarPaquete, type CotizacionCalculada, ParametrosPagina } from '@viajapro/contracts';
 import { ZodValidationPipe } from '../../../shared/validacion/zod-validation.pipe.js';
 import { CotizarPaqueteUseCase } from '../application/cotizar-paquete.use-case.js';
 import { ListarPaquetesUseCase } from '../application/listar-paquetes.use-case.js';

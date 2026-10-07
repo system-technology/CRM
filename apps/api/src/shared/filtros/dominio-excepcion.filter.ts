@@ -29,11 +29,13 @@ export class DominioExcepcionFilter implements ExceptionFilter {
 
     if (excepcion instanceof HttpException) {
       const cuerpo = excepcion.getResponse();
-      res.status(excepcion.getStatus()).json(
-        typeof cuerpo === 'object' && cuerpo !== null && 'error' in cuerpo
-          ? cuerpo
-          : { error: { code: 'HTTP_ERROR', message: excepcion.message } },
-      );
+      res
+        .status(excepcion.getStatus())
+        .json(
+          typeof cuerpo === 'object' && cuerpo !== null && 'error' in cuerpo
+            ? cuerpo
+            : { error: { code: 'HTTP_ERROR', message: excepcion.message } },
+        );
       return;
     }
 

@@ -13,7 +13,7 @@
 ## 1. Antes de tocar nada
 
 1. Lee **`ESTADO.md`** — dónde estamos, qué sigue, qué está bloqueado. Es obligatorio.
-2. Lee **`CLAUDE.md`** — las once reglas completas y el mapa del sistema.
+2. Lee **`CLAUDE.md`** — las doce reglas completas y el mapa del sistema.
 3. Si la tarea toca arquitectura, lee el ADR correspondiente en `docs/03-adr/`.
 4. Si la tarea toca dominio, lee `docs/01-producto/02-lenguaje-ubicuo.md`.
 
@@ -25,12 +25,16 @@ archivos, no en conversaciones.
 **ViajaPro** (nombre en clave, no comercial): SaaS multi-tenant, CRM vertical para agencias de
 turismo, con WhatsApp Cloud API como canal nativo. Mercado base: Colombia.
 
-Estado: **Fase 0.** Hay andamiaje documental y de gobierno. **No hay código de aplicación.**
+Estado: **rebanada vertical de paquetes, en construcción.** El cotizador funciona de punta a
+punta —web, API, PostgreSQL con RLS en Neon— y está verificado en navegador. Falta el inbox de
+WhatsApp, la autenticación y la persistencia de cotizaciones.
+
+> Este párrafo caduca. **La fuente de verdad del estado es `ESTADO.md`**, no este resumen.
 
 Stack: TypeScript estricto · NestJS · Next.js · PostgreSQL + Prisma · Redis + BullMQ ·
 monorepo pnpm + Turborepo.
 
-## 3. Las once reglas que no se rompen
+## 3. Las doce reglas que no se rompen
 
 | # | Regla |
 |---|---|
@@ -45,6 +49,7 @@ monorepo pnpm + Turborepo.
 | R9 | Fechas en **UTC** en la base; la zona del tenant solo en presentación |
 | R10 | PII de viajeros (pasaporte, fecha de nacimiento) es **dato sensible**: cifrado y auditado |
 | R11 | **En `main` solo escribe el agente `integrador`.** Todo el trabajo va en ramas |
+| R12 | **Se parametriza la política de negocio; nunca los invariantes del dominio.** Lo que cada agencia define distinto es tabla por tenant, no `enum` |
 
 ## 4. Git — esto es lo que más se incumple
 
@@ -119,3 +124,20 @@ harness, lo esencial:
   sobre decisiones de diseño, y trabajo acotado de alto volumen con criterio de aceptación objetivo.
 - **Dónde no:** aislamiento entre tenants, credenciales, esquema de datos, lógica de pagos y
   decisiones de arquitectura. Ahí el modo de fallo «plausible pero incorrecto» es demasiado caro.
+
+---
+
+## Nota sobre las herramientas del monorepo
+
+`turbo` y el resto de la cadena de construcción cambian de comportamiento entre versiones, y la
+memoria de cualquier modelo sobre ellas envejece. Antes de modificar `turbo.json` o un script de
+`package.json`, consulta la documentación de la versión **instalada**, no la que recuerdes:
+
+```bash
+node -p "require.resolve('turbo/package.json')"   # y lee docs/README.md dentro de ese paquete
+```
+
+Turborepo inyecta por su cuenta un bloque de instrucciones al final de este archivo cuando detecta
+que lo lee un agente. Se desactivó con `"agentGuidance": false` en `turbo.json`: **este documento es
+el contrato de gobierno del proyecto**, y lo que diga lo decide el proyecto. Lo útil de ese bloque
+es justamente el párrafo de arriba, ya recogido aquí en nuestros términos.

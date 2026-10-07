@@ -130,9 +130,7 @@ function nombraMain(args) {
   return args.some((a) => {
     const v = a.valor;
     // Formas posibles: main · origin/main · refs/heads/main · :main · main:main · HEAD:main
-    return v
-      .split(/[:\s]/)
-      .some((parte) => parte.replace(/^.*\//, '') === RAMA_PROTEGIDA);
+    return v.split(/[:\s]/).some((parte) => parte.replace(/^.*\//, '') === RAMA_PROTEGIDA);
   });
 }
 
@@ -153,7 +151,8 @@ export function esDestructivoSobreMain(args, ramaActual) {
   }
   if (sub === 'reset' && tieneBandera(args, '--hard')) return enMain || nombraMain(args);
   if (sub === 'branch' && tieneBandera(args, '-D') && nombraMain(args)) return true;
-  if (sub === 'branch' && tieneBandera(args, '--delete', '--force') && nombraMain(args)) return true;
+  if (sub === 'branch' && tieneBandera(args, '--delete', '--force') && nombraMain(args))
+    return true;
 
   return false;
 }
@@ -209,5 +208,7 @@ export function evaluar(linea, ramaActual) {
     if (pushTocaMain(args, ramaActual)) exigir = true;
   }
 
-  return exigir ? { accion: 'exigir-autorizacion', esCommit } : { accion: 'permitir', esCommit: false };
+  return exigir
+    ? { accion: 'exigir-autorizacion', esCommit }
+    : { accion: 'permitir', esCommit: false };
 }

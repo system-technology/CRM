@@ -65,7 +65,9 @@ export class Money {
 
     if (typeof unidades === 'number') {
       if (!Number.isInteger(unidades)) {
-        throw new ImporteInvalidoError(`${unidades} no es entero; usa la unidad mínima de la moneda`);
+        throw new ImporteInvalidoError(
+          `${unidades} no es entero; usa la unidad mínima de la moneda`,
+        );
       }
       if (!Number.isSafeInteger(unidades)) {
         throw new ImporteInvalidoError(`${unidades} excede el entero seguro de JavaScript`);
@@ -128,7 +130,9 @@ export class Money {
   /** Multiplica por una cantidad entera: 3 pasajeros, 2 habitaciones. */
   porCantidad(cantidad: number): Money {
     if (!Number.isInteger(cantidad) || cantidad < 0) {
-      throw new ImporteInvalidoError(`la cantidad debe ser un entero no negativo, no '${cantidad}'`);
+      throw new ImporteInvalidoError(
+        `la cantidad debe ser un entero no negativo, no '${cantidad}'`,
+      );
     }
     return new Money(this.unidades * BigInt(cantidad), this.moneda);
   }
