@@ -10,6 +10,7 @@ import {
   type CotizacionCalculada,
   type CotizarPaquete,
   CotizacionCalculada as EsquemaCotizacion,
+  ErrorApi as EsquemaError,
   type Paquete,
 } from '@viajapro/contracts';
 
@@ -45,17 +46,20 @@ async function pedir<T>(ruta: string, init?: RequestInit): Promise<T> {
     cache: 'no-store',
   });
 
-  const cuerpo = await res.json().catch(() => null);
+  const cuerpo: unknown = await res.json().catch(() => null);
 
   if (!res.ok) {
-    // El servidor responde siempre con la forma { error: { code, message, details } }.
-    // Se conserva el `code`: es contrato estable y la interfaz decide qué mostrar según él.
-    const e = cuerpo?.error;
-    throw new ErrorApi(
-      e?.code ?? 'ERROR_DESCONOCIDO',
-      e?.message ?? `La API respondió ${res.status}`,
-      e?.details,
-    );
+    // El sobre de error también es contrato: { error: { code, message, details } }. Se valida
+    // con su esquema en vez de leerlo a tientas, porque la ruta de error es justamente la que
+    // menos se ejercita — si el servidor cambiara su forma, nadie lo notaría hasta que algo
+    // fallara en producción y el usuario viera "undefined".
+    const analizado = EsquemaError.safeParse(cuerpo);
+    if (analizado.success) {
+      const { code, message, details } = analizado.data.error;
+      throw new ErrorApi(code, message, details);
+    }
+    // Un error que no respeta el contrato: pasarela caída, 502 en HTML, tiempo agotado.
+    throw new ErrorApi('RESPUESTA_NO_RECONOCIDA', `La API respondió ${res.status}`);
   }
 
   return cuerpo as T;

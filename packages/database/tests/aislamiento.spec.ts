@@ -76,7 +76,9 @@ describe('aislamiento entre tenants', () => {
 
   it('el rol de aplicación NO puede saltarse RLS', async () => {
     // Si este rol tuviera BYPASSRLS, todas las demás pruebas pasarían sin probar nada.
-    const { rows } = await app.query('SELECT rolbypassrls FROM pg_roles WHERE rolname = current_user');
+    const { rows } = await app.query(
+      'SELECT rolbypassrls FROM pg_roles WHERE rolname = current_user',
+    );
     expect(rows[0]?.rolbypassrls).toBe(false);
   });
 

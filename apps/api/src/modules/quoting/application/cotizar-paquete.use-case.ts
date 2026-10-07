@@ -58,7 +58,8 @@ export class CotizarPaqueteUseCase {
       });
       if (!temporada) throw new SinTemporadaParaLaFechaError(paquete.nombre, entrada.fechaSalida);
 
-      const acomodacion = entrada.acomodacion ?? this.sugerirAcomodacion(composicion, temporada.precios);
+      const acomodacion =
+        entrada.acomodacion ?? this.sugerirAcomodacion(composicion, temporada.precios);
       const reparto = distribuirEnHabitaciones(composicion, acomodacion);
 
       const moneda = (temporada.precios[0]?.monedaIso ?? 'COP') as CodigoMoneda;

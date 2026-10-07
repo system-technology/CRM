@@ -11,11 +11,11 @@
     "migrate:deploy": "dotenv -e ../../.env -- prisma migrate deploy",
     "seed": "dotenv -e ../../.env -- tsx prisma/seed.ts",
     "studio": "dotenv -e ../../.env -- prisma studio",
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "dotenv -e ../../.env -- vitest run",
     "test:aislamiento": "dotenv -e ../../.env -- vitest run tests/aislamiento.spec.ts",
-    "lint": "eslint prisma tests",
+    "lint": "eslint prisma tests scripts",
     "db:push": "dotenv -e ../../.env -- prisma db push",
     "validate": "dotenv -e ../../.env -- prisma validate",
     "rol:crear": "dotenv -e ../../.env -- node scripts/crear-rol-aplicacion.mjs"

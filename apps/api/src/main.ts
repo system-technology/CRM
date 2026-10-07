@@ -40,6 +40,9 @@ async function arrancar(): Promise<void> {
 arrancar().catch((error) => {
   // Si el arranque falla —por ejemplo, porque el rol puede saltarse RLS— el proceso NO debe
   // quedarse vivo a medias: es preferible que el despliegue falle de forma visible.
-  new Logger('arranque').error('La API no pudo arrancar', error instanceof Error ? error.stack : error);
+  new Logger('arranque').error(
+    'La API no pudo arrancar',
+    error instanceof Error ? error.stack : error,
+  );
   process.exit(1);
 });

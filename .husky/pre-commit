@@ -1,0 +1,5 @@
+# Pasa ESLint y Prettier sobre lo que está en el índice, antes de que entre al historial.
+#
+# `lint-staged` estaba configurado en package.json desde el primer día, pero sin este archivo
+# nunca se ejecutó — y además invocaba un `eslint` que no estaba instalado.
+npx --no -- lint-staged

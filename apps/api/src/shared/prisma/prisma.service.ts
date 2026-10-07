@@ -39,7 +39,10 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
         // y no habría ningún error que lo delatara. Regla R2, ADR-0003 y ADR-0007.
         db: { url: process.env['DATABASE_APP_URL'] ?? process.env['DATABASE_URL'] ?? '' },
       },
-      log: [{ emit: 'event', level: 'warn' }, { emit: 'event', level: 'error' }],
+      log: [
+        { emit: 'event', level: 'warn' },
+        { emit: 'event', level: 'error' },
+      ],
     });
   }
 
