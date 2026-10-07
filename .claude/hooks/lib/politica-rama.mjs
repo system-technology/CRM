@@ -11,6 +11,40 @@
 export const RAMA_PROTEGIDA = 'main';
 
 /**
+ * Quita del comando el texto libre que no son argumentos de git.
+ *
+ * Por qué existe: un mensaje de commit que menciona «main» —cosa normal al documentar una
+ * integración— hacía saltar la guarda del push. Es el mismo error que el falso positivo del
+ * borrado de ramas: analizar la cadena entera trata como argumento lo que es prosa.
+ *
+ * Se eliminan, en este orden:
+ *   1. Cuerpos de heredoc (`<<'MSG' … MSG`), que es donde viajan los mensajes largos.
+ *   2. Lo que sigue a `-m`, `--message` o `-F`, que es el mensaje y nunca una refspec.
+ *
+ * NO se quitan todas las comillas: `git push origin "main"` debe seguir detectándose.
+ * Perder una detección real es peor que mantener un falso positivo.
+ */
+export function limpiarTextoLibre(cmd) {
+  let limpio = cmd;
+
+  // 1. Heredocs: <<EOF … EOF  /  <<'EOF' … EOF  /  <<-"EOF" … EOF
+  limpio = limpio.replace(
+    /<<-?\s*(['"]?)([A-Za-z_][A-Za-z0-9_]*)\1[\s\S]*?(?:\n|\s)\2\b/g,
+    ' <<MENSAJE> ',
+  );
+  // Heredoc abierto sin terminador visible (comando truncado): se corta desde su inicio.
+  limpio = limpio.replace(/<<-?\s*(['"]?)[A-Za-z_][A-Za-z0-9_]*\1[\s\S]*$/, ' <<MENSAJE> ');
+
+  // 2. Mensajes: -m "…", -m '…', --message=…, -F archivo
+  limpio = limpio.replace(/(^|\s)(-m|--message)(=|\s+)"(?:[^"\\]|\\.)*"/g, '$1$2 <MENSAJE>');
+  limpio = limpio.replace(/(^|\s)(-m|--message)(=|\s+)'(?:[^'\\]|\\.)*'/g, '$1$2 <MENSAJE>');
+  limpio = limpio.replace(/(^|\s)(-m|--message)(=|\s+)\S+/g, '$1$2 <MENSAJE>');
+  limpio = limpio.replace(/(^|\s)-F(=|\s+)\S+/g, '$1-F <MENSAJE>');
+
+  return limpio.replace(/\s+/g, ' ').trim();
+}
+
+/**
  * ¿El comando reescribe el historial de la rama protegida?
  * Esto se bloquea siempre, haya o no autorización: no existe caso legítimo.
  */
@@ -52,8 +86,11 @@ export function pushTocaMain(cmd, ramaActual) {
  * Decide qué hacer con un comando.
  * @returns {{accion: 'permitir'|'bloquear-destructivo'|'exigir-autorizacion', esCommit: boolean}}
  */
-export function evaluar(cmd, ramaActual) {
-  if (!/\bgit\b/.test(cmd)) return { accion: 'permitir', esCommit: false };
+export function evaluar(cmdCrudo, ramaActual) {
+  if (!/\bgit\b/.test(cmdCrudo)) return { accion: 'permitir', esCommit: false };
+
+  // Se analiza solo lo que son argumentos de git, nunca el texto de un mensaje.
+  const cmd = limpiarTextoLibre(cmdCrudo);
 
   if (esDestructivoSobreMain(cmd, ramaActual)) {
     return { accion: 'bloquear-destructivo', esCommit: false };
