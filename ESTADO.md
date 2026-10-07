@@ -17,8 +17,9 @@
 ## 1. Dónde estamos
 
 El repositorio tiene el **andamiaje completo**: estructura de monorepo con su configuración,
-documentación de visión, producto, arquitectura, seguridad y roadmap, cuatro ADR aceptados, y la
-capa de ingeniería asistida por IA (14 agentes, 5 skills, 6 comandos, 4 hooks, MCP).
+documentación de visión, producto, arquitectura, seguridad y roadmap, cinco ADR aceptados, la capa
+de ingeniería asistida por IA (17 agentes, 5 skills, 7 comandos, 6 hooks, MCP) y el gobierno de la
+integración a `main`.
 
 **No existe código de aplicación.** Nada está desplegado. No hay base de datos creada.
 No hay cuenta de Meta Business iniciada.
@@ -28,12 +29,12 @@ Qué hay, concretamente:
 | Área | Estado |
 |---|---|
 | Configuración del monorepo | Escrita, **sin ejecutar** (`pnpm install` nunca corrió) |
-| Documentación | 20 documentos completos + 22 marcadores con responsable y fase |
-| ADR | 0001 stack · 0002 WhatsApp · 0003 multi-tenancy · 0004 monolito modular |
-| Agentes de IA | 14 definidos en `.claude/agents/` |
+| Documentación | 33 documentos completos + 22 marcadores con responsable y fase |
+| ADR | 0001 stack · 0002 WhatsApp · 0003 multi-tenancy · 0004 monolito modular · 0005 ramas |
+| Agentes de IA | 17 definidos en `.claude/agents/`, incluido `integrador` |
 | Skills | `ciclo-funcionalidad`, `auditoria-integral`, `handoff-ia-externa`, `cerrar-sesion`, `nuevo-modulo` |
-| Comandos | `/estado` `/auditoria` `/funcionalidad` `/handoff` `/adr` `/contexto` |
-| Hooks | Inyección del hilo, guardián de secretos, revisión post-edición, recordatorio de cierre |
+| Comandos | `/estado` `/auditoria` `/funcionalidad` `/handoff` `/adr` `/contexto` `/integrar` |
+| Hooks | Inyección del hilo, guardián de secretos, guardián de rama, autorización de integración, revisión post-edición, recordatorio de cierre |
 | MCP | 8 servidores declarados, **ninguno validado** |
 | Repositorio | Commit de génesis `v0.1.0` en `main`. **Sin remoto todavía** |
 | Gobierno de `main` | Compuerta activa y probada: commit sin autorizar y reescritura de historial, ambos rechazados |
@@ -74,14 +75,14 @@ Ordenada. La primera es la que debe tomarse ahora.
 | 2 | Conseguir agencia piloto comprometida | Usuario | Urgente |
 | 3 | **Crear repositorio remoto y configurar la protección de `main` en GitHub** | Usuario | Antes del primer push |
 | 4 | Validar MCP: ejecutar cada servidor de `.mcp.json`, incluido Stitch (`gcloud auth` requerido) | Usuario + `devops` | Pendiente |
-| 4 | Andamiaje de código: apps y packages vacíos pero compilando (`pnpm install && pnpm typecheck` en verde) | `backend`, `frontend`, `devops` | Pendiente |
-| 5 | Esquema Prisma inicial + políticas RLS + seed + prueba de aislamiento | `datos` | Pendiente |
-| 6 | CI en GitHub Actions: lint, typecheck, test, escaneo de secretos | `devops` | Pendiente |
-| 7 | Validar el modelo de dominio con la agencia piloto | `experto-turismo` + usuario | Bloqueado por #2 |
-| 8 | Escribir los documentos de Fase 0 marcados como pendientes | Según marcador | Pendiente |
-| 9 | **Definir nombre comercial**, verificar marca y dominio | Usuario | Antes de Fase 2 |
-| 10 | **Definir modelo de cobro y precios** tras medir el costo real por tenant | Usuario + `analista-datos` | Antes de cobrar |
-| 11 | Entrevistar 8-10 agencias colombianas: qué pagan hoy, qué les duele, cuánto vale resolverlo | Usuario + `analista-producto` | Alimenta #10 |
+| 5 | Andamiaje de código: apps y packages vacíos pero compilando (`pnpm install && pnpm typecheck` en verde) | `backend`, `frontend`, `devops` | Pendiente |
+| 6 | Esquema Prisma inicial + políticas RLS + seed + prueba de aislamiento | `datos` | Pendiente |
+| 7 | CI en GitHub Actions: lint, typecheck, test, escaneo de secretos | `devops` | Pendiente |
+| 8 | Validar el modelo de dominio con la agencia piloto | `experto-turismo` + usuario | Bloqueado por #2 |
+| 9 | Escribir los documentos de Fase 0 marcados como pendientes | Según marcador | Pendiente |
+| 10 | **Definir nombre comercial**, verificar marca y dominio | Usuario | Antes de Fase 2 |
+| 11 | **Definir modelo de cobro y precios** tras medir el costo real por tenant | Usuario + `analista-datos` | Antes de cobrar |
+| 12 | Entrevistar 8-10 agencias colombianas: qué pagan hoy, qué les duele, cuánto vale resolverlo | Usuario + `analista-producto` | Alimenta #10 |
 
 ## 4. Bloqueos y riesgos activos
 
