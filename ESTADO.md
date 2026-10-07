@@ -99,7 +99,7 @@ Ordenada. La primera es la que debe tomarse ahora.
 | 4b | Inbox — API: tres orígenes de conexión, guardia de identidad, puerto a `crm`, relay por `change` | `backend` | Esperando 4a |
 | 4c | Las 3 verificaciones que **no** son de base de datos: arranque del proceso, alta de extremo a extremo, ensayo de rotación de la pimienta | `backend`, `qa`, `devops` | Cada una respalda un crítico. Son las que más fácil se quedan sin hacer |
 | 4d | Alinear `05-seguridad/02-proteccion-de-datos.md` con el ADR-0008 | `documentador` | La redacción de consentimiento contradice hoy al ADR |
-| 5 | Bandeja de conversaciones en la web | `frontend` | El diseño existe; falta el backend del inbox (tarea 4) |
+| 5 | Bandeja de conversaciones en la web | `frontend` | El diseño existe; falta el backend del inbox (tarea 4b) |
 | 6 | Guardar cotizaciones con versiones inmutables | `backend` | Hoy el cálculo no persiste |
 | 7 | Pruebas de integración de la API | `qa` | Solo se probó a mano. **La verificación del cotizador fue manual: no hay prueba automática que la repita** |
 | 8 | CI en GitHub Actions corriendo de verdad | `devops` | Escrito, nunca ejecutado |

@@ -1,17 +1,29 @@
 #!/usr/bin/env node
 /**
- * Crea el rol de aplicación `viajapro_app` y verifica que NO pueda saltarse RLS.
+ * Pone contraseña a los TRES roles de login y verifica que ninguno pueda saltarse RLS.
  *
  *   pnpm --filter @viajapro/database run rol:crear
  *
- * Equivale a ejecutar `policies/002-rol-aplicacion.sql` con psql, pero sin depender de tenerlo
- * instalado. Usa DATABASE_URL (rol propietario, endpoint directo).
+ * Los roles ya no los crea este script: los crea la migración
+ * `..._roles_de_conexion_y_propietarios`, generada desde `policies/002-rol-aplicacion.sql`.
+ * Aquí solo ocurre lo que NO puede vivir en el repositorio: las contraseñas. Se generan,
+ * se imprimen **una sola vez** y no se guardan en ningún sitio.
  *
- * La contraseña se genera aquí y se imprime **una sola vez**. No se guarda en ningún sitio.
+ * Por qué hay tres y no uno (ADR-0008 §1.3): los tres tienen privilegios idénticos sobre
+ * las tablas de negocio y se diferencian ÚNICAMENTE en qué funciones pueden ejecutar.
+ * `viajapro_altas` es el único que puede repuntar un número en el directorio, y por eso no
+ * es el rol con el que corre toda la API. El rol de conexión es lo único que una inyección
+ * SQL no puede falsear: ahí está la frontera.
  *
- * Por qué esto importa: en PostgreSQL gestionado, el rol que el proveedor crea por defecto puede
- * tener BYPASSRLS — en Neon, por herencia de `neon_superuser`. Una aplicación conectada con ese
- * rol se salta TODAS las políticas de aislamiento, sin error y sin aviso. Ver ADR-0007.
+ * Y por qué este script ya NO concede privilegios sobre tablas: los concedía con su propio
+ * `GRANT ... ON ALL TABLES IN SCHEMA public`, por fuera del mecanismo que los revoca. Eso
+ * es exactamente el defecto crítico que corrige ADR-0008: la concesión y la revocación
+ * tienen que ser el mismo mecanismo o acaban desincronizadas sin que nadie se entere. Aquí
+ * se invoca `aplicar_privilegios_declarados()`, que es ese mecanismo.
+ *
+ * En PostgreSQL gestionado esto importa el doble: el rol que el proveedor crea por defecto
+ * puede tener BYPASSRLS — en Neon, por herencia de `neon_superuser`. Una aplicación
+ * conectada con ese rol se salta TODAS las políticas, sin error y sin aviso. Ver ADR-0007.
  */
 
 import { randomBytes } from 'node:crypto';
@@ -33,112 +45,81 @@ if (url.includes('-pooler')) {
   process.exit(1);
 }
 
-// Hexadecimal y no base64: evita los caracteres que complican una cadena de conexión (+ / =).
-const clave = randomBytes(24).toString('hex');
+/** Los tres roles de login y la variable de entorno de cada proceso. */
+const ROLES = [
+  ['viajapro_app', 'DATABASE_APP_URL', 'apps/api — toda la API salvo el alta de canales'],
+  ['viajapro_altas', 'DATABASE_ALTAS_URL', 'SOLO el caso de uso de Embedded Signup'],
+  ['viajapro_webhook', 'DATABASE_WEBHOOK_URL', 'apps/worker — webhooks entrantes'],
+];
 
 const cliente = new Client({ connectionString: url });
 await cliente.connect();
 
+const lineas = [];
+
 try {
-  // Se crea con lo mínimo: LOGIN y nada más.
-  //
-  // NO se declaran NOSUPERUSER ni NOBYPASSRLS a propósito. Son los valores por defecto de
-  // PostgreSQL, y fijarlos explícitamente exige ser superusuario — algo que el rol propietario
-  // de un PostgreSQL gestionado no es. Intentarlo falla con 42501.
-  //
-  // La garantía no viene de declararlo, viene de la VERIFICACIÓN del final: si el rol acabara
-  // pudiendo saltarse RLS, este script aborta. Comprobar es mejor que afirmar.
-  await cliente.query(`
-    DO $$
-    BEGIN
-      IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'viajapro_app') THEN
-        CREATE ROLE viajapro_app LOGIN;
-        RAISE NOTICE 'Rol viajapro_app creado.';
-      ELSE
-        RAISE NOTICE 'El rol viajapro_app ya existe.';
-      END IF;
-    END;
-    $$;
-  `);
+  for (const [rol, variable, proposito] of ROLES) {
+    const { rowCount } = await cliente.query('SELECT 1 FROM pg_roles WHERE rolname = $1', [rol]);
+    if (rowCount === 0) {
+      throw new Error(
+        `El rol ${rol} no existe. Lo crea la migración de roles: ejecuta antes "pnpm db:migrate:deploy".`,
+      );
+    }
 
-  // `ALTER ROLE ... PASSWORD` no admite parámetros vinculados: es DDL. Hay que interpolar.
-  //
-  // Es seguro aquí porque la contraseña la genera este mismo script y es hexadecimal pura.
-  // La comprobación de abajo no es decorativa: si alguien cambiara la generación a algo que
-  // pudiera contener comillas, esto detiene el script antes de construir SQL inyectable.
-  if (!/^[0-9a-f]{48}$/.test(clave)) {
-    throw new Error('La contraseña generada no es hexadecimal pura; no se interpola en DDL.');
+    // Hexadecimal y no base64: evita los caracteres que complican una cadena de conexión.
+    const clave = randomBytes(24).toString('hex');
+
+    // `ALTER ROLE ... PASSWORD` no admite parámetros vinculados: es DDL. Hay que interpolar,
+    // y esta comprobación no es decorativa: si alguien cambiara la generación a algo que
+    // pudiera contener comillas, el script se detiene antes de construir SQL inyectable.
+    if (!/^[0-9a-f]{48}$/.test(clave)) {
+      throw new Error('La contraseña generada no es hexadecimal pura; no se interpola en DDL.');
+    }
+    await cliente.query(`ALTER ROLE ${rol} WITH PASSWORD '${clave}'`);
+
+    const u = new URL(url);
+    // La aplicación sí usa el endpoint AGRUPADO: el directo es solo para DDL.
+    const hostAgrupado = u.hostname.replace(/^(ep-[^.]+)/, '$1-pooler');
+    const base = u.pathname.replace('/', '');
+    lineas.push(
+      `${variable}=postgresql://${rol}:${clave}@${hostAgrupado}/${base}?sslmode=require   # ${proposito}`,
+    );
   }
-  await cliente.query(`ALTER ROLE viajapro_app WITH PASSWORD '${clave}'`);
 
-  // En Neon el rol propietario hereda neon_superuser, que tiene BYPASSRLS.
-  // Si viajapro_app lo heredara, el aislamiento se evapora.
-  await cliente.query(`
-    DO $$
-    BEGIN
-      IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'neon_superuser')
-         AND pg_has_role('viajapro_app', 'neon_superuser', 'MEMBER') THEN
-        REVOKE neon_superuser FROM viajapro_app;
-        RAISE NOTICE 'Revocada la membresia de neon_superuser.';
-      END IF;
-    END;
-    $$;
-  `);
+  // El ÚNICO mecanismo de privilegios del proyecto. Concede a los roles de aplicación y
+  // revoca lo que declara `excepciones_rls`, en el mismo bloque.
+  await cliente.query('SELECT aplicar_privilegios_declarados()');
 
-  await cliente.query(`
-    DO $$ BEGIN
-      EXECUTE format('GRANT CONNECT ON DATABASE %I TO viajapro_app', current_database());
-    END; $$;
-  `);
-  await cliente.query('GRANT USAGE ON SCHEMA public TO viajapro_app');
-  await cliente.query(
-    'GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO viajapro_app',
-  );
-  await cliente.query('GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO viajapro_app');
-  await cliente.query(
-    'ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO viajapro_app',
-  );
-  await cliente.query(
-    'ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO viajapro_app',
-  );
-
-  // Verificación. Si falla, la configuración NO es segura y es mejor enterarse aquí.
+  // Verificación. Si algo de esto falla, la configuración NO es segura y es mejor
+  // enterarse aquí que en producción. Comprobar es mejor que afirmar.
   const { rows } = await cliente.query(
-    'SELECT rolbypassrls, rolsuper FROM pg_roles WHERE rolname = $1',
-    ['viajapro_app'],
+    `SELECT rolname, rolbypassrls, rolsuper,
+            has_table_privilege(rolname, 'enrutamiento_canales', 'SELECT') AS ve_directorio
+     FROM pg_roles WHERE rolname = ANY($1)`,
+    [ROLES.map(([rol]) => rol)],
   );
-  const rol = rows[0];
-  if (!rol) throw new Error('El rol viajapro_app no existe tras crearlo.');
-  if (rol.rolbypassrls)
-    throw new Error('viajapro_app tiene BYPASSRLS: el aislamiento sería ficticio.');
-  if (rol.rolsuper) throw new Error('viajapro_app es superusuario: el aislamiento sería ficticio.');
-
-  const u = new URL(url);
-  const hostAgrupado = u.hostname.replace(/^(ep-[^.]+)/, '$1-pooler');
-  const base = u.pathname.replace('/', '');
-
-  // Se imprime la línea entera, lista para pegar. Armarla a mano por piezas resultó ser una
-  // fuente de errores: un carácter de menos y la autenticación falla sin pista de por qué.
-  const lineaEnv =
-    'DATABASE_APP_URL=postgresql://viajapro_app:' +
-    clave +
-    '@' +
-    hostAgrupado +
-    '/' +
-    base +
-    '?sslmode=require';
+  for (const rol of rows) {
+    if (rol.rolbypassrls)
+      throw new Error(`${rol.rolname} tiene BYPASSRLS: el aislamiento sería ficticio.`);
+    if (rol.rolsuper)
+      throw new Error(`${rol.rolname} es superusuario: el aislamiento sería ficticio.`);
+    if (rol.ve_directorio) {
+      throw new Error(
+        `${rol.rolname} puede LEER enrutamiento_canales. Es el fallo que ADR-0008 existe para impedir.`,
+      );
+    }
+  }
 
   console.log('');
-  console.log('  Verificado: viajapro_app NO puede saltarse RLS.');
+  console.log('  Verificado: los tres roles de login no pueden saltarse RLS');
+  console.log('  ni tocar el directorio de enrutamiento.');
   console.log('');
-  console.log('  Reemplaza la linea DATABASE_APP_URL de tu .env por esta, tal cual:');
+  console.log('  Reemplaza estas lineas en tu .env, tal cual:');
   console.log('');
-  console.log('  ' + lineaEnv);
+  for (const linea of lineas) console.log('  ' + linea);
   console.log('');
   console.log('  Luego comprueba con:  pnpm preflight  y  pnpm db:aislamiento');
-  console.log(
-    '  La contrasena no se guarda en ningun sitio. Si la pierdes, vuelve a ejecutar esto.',
-  );
+  console.log('  Las contrasenas no se guardan en ningun sitio. Si las pierdes, repite esto.');
 } finally {
   await cliente.end();
 }

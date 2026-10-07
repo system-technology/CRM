@@ -64,6 +64,51 @@ erDiagram
     INSTALLMENT ||--o{ PAYMENT : "se salda con"
 ```
 
+### El mapa del enrutamiento entrante (ADR-0008)
+
+Va aparte porque cruza la frontera del aislamiento, y conviene verlo de un vistazo: a la
+izquierda, lo que está **bajo RLS**; a la derecha, lo que **no puede estarlo** y por qué.
+
+```mermaid
+erDiagram
+    TENANT ||--o{ CUENTA_WHATSAPP : "conecta"
+    CUENTA_WHATSAPP ||--o{ CANAL : "agrupa"
+    CANAL ||--o{ ENRUTAMIENTO_CANALES : "se proyecta en"
+    RECEPCIONES_WEBHOOK ||--o{ RECEPCIONES_WEBHOOK_CHANGES : "se parte en"
+    EXCEPCIONES_RLS ||--o{ ENRUTAMIENTO_CANALES : "declara"
+```
+
+| Tabla | ¿RLS? | Qué guarda |
+|---|---|---|
+| `cuentas_whatsapp` | **Sí** | El WABA de la agencia y su token cifrado. Es la **verdad**: el directorio es derivado de aquí |
+| `canales` | **Sí** | El número conectado, con `phone_number_id` **en claro** bajo aislamiento |
+| `enrutamiento_canales` | **No** | Solo claves de ruteo en HMAC → `tenant_resuelto_id`. Es lo que rompe el ciclo huevo-gallina |
+| `enrutamiento_historial` | **No** | Bitácora del directorio, particionada por año. Global porque `registros_auditoria` archivaría el ataque bajo el atacante |
+| `recepciones_webhook` (+ hija) | **No** | El cuerpo cifrado del webhook, durante segundos, antes de saber de quién es |
+| `excepciones_rls` | **No** | La declaración que gobierna los privilegios. Se declara a sí misma |
+
+El ciclo que esto rompe, en una frase: **para saber de qué agencia es el webhook hay que
+leer una tabla, y si esa tabla está protegida por tenant, hay que saber la agencia para
+leerla.** Meta manda todos los webhooks de todas las agencias al mismo endpoint.
+
+**La zona sin RLS queda acotada a una franja exacta y descriptible: entre la validación de
+la firma y la resolución del tenant. En esa franja no se lee ni se escribe ninguna tabla de
+negocio.** Esa frase es la que hace compatible el diseño con ADR-0003.
+
+### Referencias cruzadas entre tablas con tenant: clave foránea COMPUESTA
+
+Una regla general que merece quedar escrita, y que ADR-0008 obliga a aplicar:
+
+> Cuando una tabla referencia a otra que también tiene `tenant_id`, **la clave foránea
+> incluye el tenant**: `UNIQUE (id, tenant_id)` en la referenciada y
+> `FOREIGN KEY (otra_id, tenant_id) REFERENCES otra (id, tenant_id)`.
+
+Escrita simple, la referencia puede apuntar a la fila de otro tenant y **nadie lo nota
+hasta que una fila cruza agencias**: RLS no interviene, porque la comprobación de
+integridad referencial se ejecuta por encima de las políticas. Lo verifica la aserción 25
+de la prueba de aislamiento. Ya está aplicada en `canales → cuentas_whatsapp` y en
+`enrutamiento_canales → canales`.
+
 ---
 
 ## 3. Decisiones de modelado y su porqué
@@ -219,12 +264,41 @@ producción y reconciliar proveedores a mano.
 Solo estas. Cada una documentada aquí por obligación: una tabla sin `tenant_id` que no esté en esta
 lista es un defecto bloqueante.
 
-| Tabla | Por qué es global |
-|---|---|
-| `tenants` | Define los tenants. Acceso solo desde el contexto de plataforma |
-| `plans` | Catálogo de planes del SaaS, igual para todos |
-| `countries`, `currencies`, `timezones` | Datos de referencia universales |
-| `system_message_templates` | Plantillas base sugeridas, que cada tenant copia y adapta |
+**Esta lista es la canónica, y desde ADR-0008 no es la fuente.** La fuente es la tabla
+`excepciones_rls`, que vive **en la base** y que `001-aislamiento-tenant.sql` aplica
+literalmente: la vista `tablas_sin_aislamiento` la consulta, y la aserción 11 de la prueba
+de aislamiento compara su contenido contra un literal escrito en el archivo de prueba.
+Antes había dos listas —una en el SQL y otra aquí— y **ya habían divergido**; el ADR se
+apoyaba en la decorativa como mecanismo de control. Si este documento y `excepciones_rls`
+discrepan, el defecto está en este documento.
+
+Importa mantenerla corta porque **una tabla que entra en esta lista deja de estar vigilada
+para siempre.**
+
+| Tabla | ¿Existe hoy? | Por qué es global |
+|---|---|---|
+| `tenants` | Sí | Define los tenants: es la unidad de aislamiento y no puede estar aislada. La aplicación solo la lee |
+| `monedas` | Sí | Dato de referencia universal, igual para todas las agencias |
+| `_prisma_migrations` | Sí | Historial de migraciones de Prisma. Lo gestiona el rol propietario; ningún rol de aplicación tiene privilegios sobre ella |
+| `excepciones_rls` | Sí — **ADR-0008** | La declaración que gobierna los privilegios de todas las demás. Se declara **a sí misma** con privilegios vacíos: si no lo hiciera, el `GRANT ... ON ALL TABLES` le daría `INSERT/UPDATE` a los roles de aplicación y el remedio del fallo crítico se convertiría en su vehículo — una fila manipulada se concedería sola en el siguiente despliegue, y una comprobación que contrastara lo real contra lo declarado la validaría como correcta |
+| `enrutamiento_canales` | Sí — **ADR-0008** | El mapa `identificador de Meta → tenant`. Es lo que rompe el ciclo: leerlo es el paso previo a saber de qué agencia es el webhook. Claves en HMAC con pimienta fuera de la base; **ningún rol de login tiene un solo privilegio sobre ella** |
+| `enrutamiento_historial` | Sí — **ADR-0008** | Bitácora del directorio, particionada por año. Es global porque `registros_auditoria` tiene `tenant_id` y RLS forzada: el registro de un secuestro quedaría archivado bajo el **atacante**, invisible para la víctima. Solo inserción, ni su propietario puede modificarla |
+| `recepciones_webhook` y `recepciones_webhook_changes` | Sí — **ADR-0008** | El staging del webhook: contenido de varios tenants durante segundos, **antes** de saber de quién es. Cifrado con AAD, borrado al clasificar y purgado. Se cuentan como una: la hija existe porque el grano real del procesamiento es el `change` |
+| `plans` | Todavía no | Catálogo de planes del SaaS, igual para todos |
+| `countries`, `timezones` | Todavía no | Datos de referencia universales |
+| `system_message_templates` | Todavía no | Plantillas base sugeridas, que cada tenant copia y adapta |
+
+**Regla de parada, y se enuncia sobre lo que de verdad importa:** tablas globales **con
+datos de negocio o de ruteo**, tres (`enrutamiento_canales`, `enrutamiento_historial`,
+`recepciones_webhook` con su hija). Si aparece una cuarta, **el patrón está mal** y hay que
+revisar la decisión, no añadirla a la lista. Las tablas de control del propio mecanismo
+—`excepciones_rls`— y los catálogos de referencia son otra categoría.
+
+**Ninguna de ellas tiene ni tendrá una columna llamada `tenant_id`**, y eso no es
+cosmético: el aplicador de políticas es dirigido por datos y se la pondría RLS
+automáticamente, devolviendo el ciclo huevo-gallina sin producir ningún error y en
+producción. Por eso la columna del directorio se llama `tenant_resuelto_id`. Lo vigila la
+aserción 17.
 
 ---
 

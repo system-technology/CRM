@@ -420,6 +420,42 @@ async function main() {
     });
   }
 
+  // --- Canal de WhatsApp (ADR-0008) ---------------------------------------
+  //
+  // Se siembran la CUENTA y el CANAL, que son la verdad y viven bajo RLS. **No se siembra
+  // el directorio global**, y no es un olvido: su clave es un HMAC calculado con una
+  // pimienta que vive en el almacén de secretos de la aplicación y que NUNCA entra en la
+  // base. Sembrarlo desde aquí exigiría meter ese secreto en el repositorio o inventarse
+  // uno, y entonces la semilla de desarrollo enseñaría a saltarse la regla. El directorio
+  // es derivado: lo escribe el camino de alta y lo reconstruye el trabajo de plataforma
+  // recorriendo estas dos tablas.
+  //
+  // Sin token y en SUSPENDIDO, a propósito: el canje de Embedded Signup no ha ocurrido y
+  // un canal demo en ACTIVO invitaría a creer que hay una conexión real con Meta.
+  const cuenta = await prisma.cuentaWhatsapp.upsert({
+    where: { tenantId_wabaId: { tenantId: tenant.id, wabaId: '000000000000001' } },
+    update: {},
+    create: {
+      tenantId: tenant.id,
+      wabaId: '000000000000001',
+      nombre: 'WABA de demostración (sin conexión real)',
+      estado: 'SUSPENDIDO',
+    },
+  });
+
+  await prisma.canal.upsert({
+    where: { tenantId_phoneNumberId: { tenantId: tenant.id, phoneNumberId: '100000000000001' } },
+    update: {},
+    create: {
+      tenantId: tenant.id,
+      cuentaId: cuenta.id,
+      phoneNumberId: '100000000000001',
+      numeroE164: '+573001234000',
+      nombreVisible: 'Agencia Demo',
+      estado: 'SUSPENDIDO',
+    },
+  });
+
   const resumen = {
     paquetes: await prisma.paquete.count({ where: { tenantId: tenant.id } }),
     temporadas: await prisma.temporada.count({ where: { tenantId: tenant.id } }),
@@ -427,6 +463,7 @@ async function main() {
     salidas: await prisma.salida.count({ where: { tenantId: tenant.id } }),
     contactos: await prisma.contacto.count({ where: { tenantId: tenant.id } }),
     etapas: await prisma.etapaPipeline.count({ where: { tenantId: tenant.id } }),
+    canales: await prisma.canal.count({ where: { tenantId: tenant.id } }),
   };
 
   console.log('\nAgencia demo lista:');
