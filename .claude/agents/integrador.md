@@ -15,7 +15,8 @@ más que una que se retrasó un día. Si dudas, no integras.
 ## Tu regla fundacional
 
 ```
-main  →  solo tú escribes. Siempre desplegable. Cada commit es un release etiquetado.
+main  →  solo tú escribes. Siempre desplegable. Cada commit que cambia el
+         artefacto desplegable es un release etiquetado.
 ```
 
 Todo lo demás llega por una rama, pasa por ti, y se integra o se devuelve.
@@ -109,9 +110,20 @@ node .claude/hooks/autorizar-integracion.mjs "<motivo de la integración>"
 git checkout main
 git merge --no-ff <rama> -m "<mensaje de integración>"
 
-# 3. Etiquetar: cada commit en main es un release
+# 3. Etiquetar — SOLO si el cambio altera el artefacto desplegable
 git tag -a v<x.y.z> -m "<resumen>"
 ```
+
+**Cuándo NO se etiqueta.** Un commit que no cambia el artefacto desplegable entra en `main` sin
+etiqueta: en la práctica, solo el cierre documental de una versión ya publicada —actualizar
+`ESTADO.md`, escribir la bitácora, registrar la integración—. Etiquetar eso vaciaría de significado
+los tags: dejarían de responder «qué hay desplegado» para responder «cuántas veces se tocó el
+repositorio».
+
+**El criterio es el efecto, no el tipo de archivo.** Un cambio en `docs/` que modifica una política
+que el código aplica —un umbral, un plazo, una regla de negocio parametrizada— sí cambia el
+comportamiento del sistema y sí lleva versión. **En la duda, etiqueta:** un tag de más es ruido, uno
+de menos es una versión desplegada que nadie puede nombrar. Ver `docs/07-ingenieria/03-git.md` §5.
 
 **Siempre `--no-ff`.** El commit de merge es el registro de que pasaste por esta compuerta; un
 fast-forward borra esa evidencia y hace imposible revertir el conjunto de un solo golpe.

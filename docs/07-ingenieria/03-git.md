@@ -107,7 +107,7 @@ El agente [`integrador`](../../.claude/agents/integrador.md) ejecuta siete etapa
 | 3 | Compuertas del proyecto | RLS, secretos, fronteras entre módulos, contratos, migraciones, `any`, dinero, idempotencia |
 | 4 | Auditorías | `auditor-seguridad` obligatorio si toca datos, credenciales, pagos o PII |
 | 5 | Hilo documental | `ESTADO.md`, bitácora, ADR, documentos que quedaron mintiendo |
-| 6 | Integrar | `merge --no-ff` + etiqueta de versión |
+| 6 | Integrar | `merge --no-ff` + etiqueta de versión, **salvo cierre documental** — ver §5 |
 | 7 | Cerrar | Registro, borrado de rama, aviso a ramas abiertas |
 
 **Siempre `--no-ff`.** El commit de merge es la evidencia de que se pasó por la compuerta; un
