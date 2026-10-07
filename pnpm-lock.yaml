@@ -20,6 +20,9 @@ importers:
       lint-staged:
         specifier: ^15.2.10
         version: 15.5.2
+      pnpm:
+        specifier: 9.12.0
+        version: 9.12.0
       prettier:
         specifier: ^3.3.3
         version: 3.9.9
@@ -1168,6 +1171,11 @@ packages:
   pidtree@0.6.1:
     resolution: {integrity: sha512-e0F9AOF1JMrCfBsyJOwU9lNvQ0WtXTq0j/4jk0BQ5JSI9VAybPXmDpPRw/2FQ3e5d3ZFN1mLh7jW99m/jjaptw==}
     engines: {node: '>=0.10'}
+    hasBin: true
+
+  pnpm@9.12.0:
+    resolution: {integrity: sha512-Sr9yUITXvLr71yi/x77mHy95H5d/2HVCs1edyyNQTRcNRjN5ReTGZIXNEtWIoMDlcO2cR358zdhQfPBfP5Lqyg==}
+    engines: {node: '>=18.12'}
     hasBin: true
 
   postcss@8.5.29:
@@ -2377,6 +2385,8 @@ snapshots:
   picomatch@2.3.2: {}
 
   pidtree@0.6.1: {}
+
+  pnpm@9.12.0: {}
 
   postcss@8.5.29:
     dependencies:

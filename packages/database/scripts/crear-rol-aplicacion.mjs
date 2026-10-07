@@ -116,18 +116,26 @@ try {
   const hostAgrupado = u.hostname.replace(/^(ep-[^.]+)/, '$1-pooler');
   const base = u.pathname.replace('/', '');
 
+  // Se imprime la línea entera, lista para pegar. Armarla a mano por piezas resultó ser una
+  // fuente de errores: un carácter de menos y la autenticación falla sin pista de por qué.
+  const lineaEnv =
+    'DATABASE_APP_URL=postgresql://viajapro_app:' +
+    clave +
+    '@' +
+    hostAgrupado +
+    '/' +
+    base +
+    '?sslmode=require';
+
   console.log('');
   console.log('  Verificado: viajapro_app NO puede saltarse RLS.');
   console.log('');
-  console.log('  Arma DATABASE_APP_URL en tu .env con estas piezas:');
+  console.log('  Reemplaza la linea DATABASE_APP_URL de tu .env por esta, tal cual:');
   console.log('');
-  console.log('    usuario      viajapro_app');
-  console.log('    contrasena   ' + clave);
-  console.log('    host         ' + hostAgrupado + '   (AGRUPADO, con -pooler)');
-  console.log('    base         ' + base);
-  console.log('    parametros   sslmode=require');
+  console.log('  ' + lineaEnv);
   console.log('');
-  console.log('  La contrasena no se guarda. Si la pierdes, vuelve a ejecutar este script.');
+  console.log('  Luego comprueba con:  pnpm preflight  y  pnpm db:aislamiento');
+  console.log('  La contrasena no se guarda en ningun sitio. Si la pierdes, vuelve a ejecutar esto.');
 } finally {
   await cliente.end();
 }
