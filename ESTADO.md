@@ -36,6 +36,7 @@ Qué hay, concretamente:
 | Comandos | `/estado` `/auditoria` `/funcionalidad` `/handoff` `/adr` `/contexto` `/integrar` |
 | Hooks | Inyección del hilo, guardián de secretos, guardián de rama (con 24 pruebas), autorización de integración, revisión post-edición, recordatorio de cierre |
 | MCP | 8 servidores declarados, **ninguno validado** |
+| Fase 0 técnica | `packages/domain` y `packages/database` escritos. **SIN VERIFICAR**: el entorno no tiene Node 22 ni Docker |
 | Contrato multi-harness | `AGENTS.md` en la raíz: cualquier IA trabaja bajo las mismas once reglas |
 | Repositorio | [github.com/Alfavear/CRM](https://github.com/Alfavear/CRM) · **privado** · `main` en v0.1.0 |
 | Gobierno de `main` | Compuerta local activa y probada. **Sin protección de servidor:** el plan gratuito no la permite en repos privados |
@@ -79,8 +80,9 @@ Ordenada. La primera es la que debe tomarse ahora.
 | 1 | **Iniciar verificación de Meta Business y solicitud de Tech Provider** | Usuario | **Camino crítico — hoy** |
 | 2 | Conseguir agencia piloto comprometida | Usuario | Urgente |
 | 3 | **Decidir cómo desbloquear la protección de `main`:** GitHub Pro, repo público, o asumir el riesgo | Usuario | Antes de que entre una segunda persona |
-| 4 | Validar MCP: ejecutar cada servidor de `.mcp.json`, incluido Stitch (`gcloud auth` requerido) | Usuario + `devops` | Pendiente |
-| 5 | Andamiaje de código: apps y packages vacíos pero compilando (`pnpm install && pnpm typecheck` en verde) | `backend`, `frontend`, `devops` | Pendiente |
+| 4 | **Instalar Node 22 LTS y Docker Desktop** — sin eso no se compila ni se prueba nada | Usuario | **Bloquea la Fase 0 técnica** |
+| 5 | Validar MCP: ejecutar cada servidor de `.mcp.json`, incluido Stitch (`gcloud auth` requerido) | Usuario + `devops` | Pendiente |
+| 6 | Andamiaje de código: apps y packages vacíos pero compilando (`pnpm install && pnpm typecheck` en verde) | `backend`, `frontend`, `devops` | Pendiente |
 | 6 | Esquema Prisma inicial + políticas RLS + seed + prueba de aislamiento | `datos` | Pendiente |
 | 7 | CI en GitHub Actions: lint, typecheck, test, escaneo de secretos | `devops` | Pendiente |
 | 8 | Validar el modelo de dominio con la agencia piloto | `experto-turismo` + usuario | Bloqueado por #2 |

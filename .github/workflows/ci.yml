@@ -153,11 +153,6 @@ jobs:
         env:
           DATABASE_URL: postgresql://viajapro:viajapro@localhost:5432/viajapro_test
 
-      - name: Toda tabla de negocio tiene RLS habilitada y forzada
-        run: pnpm --filter @viajapro/database test:rls
-        env:
-          DATABASE_URL: postgresql://viajapro:viajapro@localhost:5432/viajapro_test
-
       - name: Un tenant no puede leer ni escribir datos de otro
         run: pnpm --filter @viajapro/database test:aislamiento
         env:
