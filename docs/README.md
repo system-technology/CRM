@@ -101,6 +101,17 @@ Toda la documentación del proyecto. Si una decisión no está aquí (o en `ESTA
 | [Roadmap](08-roadmap/01-roadmap.md) | Fases, hitos, criterios de salida, estimaciones honestas |
 | [Riesgos](08-roadmap/03-riesgos.md) | Qué puede hundir el proyecto y qué hacemos al respecto |
 
+## 09 · Ingeniería asistida por IA
+
+| Documento | Qué contiene |
+|---|---|
+| [Modelo operativo](09-ia/01-modelo-operativo.md) | Cómo se construye este producto: equipo de agentes y reglas |
+| [Loops de trabajo](09-ia/02-loops-de-trabajo.md) | Los cinco ciclos: sesión, funcionalidad, auditoría, investigación, incidente |
+| [Continuidad del hilo](09-ia/03-continuidad-del-hilo.md) | Cómo no perder el contexto entre sesiones ni entre modelos |
+| [MCP](09-ia/04-mcp.md) | Servidores de contexto y herramientas |
+| [Interoperabilidad multi-IA](09-ia/05-interoperabilidad-multi-ia.md) | Cómo entra otra IA al proyecto sin romperlo. Decisiones sobre Antigravity y modelos abiertos |
+| [Cronograma de loops](09-ia/06-cronograma-de-loops.md) | Qué corre solo, cuándo, y por qué el calendario crece con el proyecto |
+
 ## 10 · Onboarding de agencias
 
 | Documento | Qué contiene |
@@ -113,17 +124,6 @@ Toda la documentación del proyecto. Si una decisión no está aquí (o en `ESTA
 |---|---|
 | [Entregables](11-entregables/README.md) | Documentos `.docx` y `.pdf` para enviar fuera del repositorio. Todo entregable debe rastrearse hasta sus documentos fuente |
 
-## 09 · Ingeniería asistida por IA
-
-| Documento | Qué contiene |
-|---|---|
-| [Modelo operativo](09-ia/01-modelo-operativo.md) | Cómo se construye este producto: equipo de agentes y reglas |
-| [Loops de trabajo](09-ia/02-loops-de-trabajo.md) | Los cinco ciclos: sesión, funcionalidad, auditoría, investigación, incidente |
-| [Continuidad del hilo](09-ia/03-continuidad-del-hilo.md) | Cómo no perder el contexto entre sesiones ni entre modelos |
-| [MCP](09-ia/04-mcp.md) | Servidores de contexto y herramientas |
-| [Interoperabilidad multi-IA](09-ia/05-interoperabilidad-multi-ia.md) | Cómo entra otra IA al proyecto sin romperlo. Decisiones sobre Antigravity y modelos abiertos |
-| [Cronograma de loops](09-ia/06-cronograma-de-loops.md) | Qué corre solo, cuándo, y por qué el calendario crece con el proyecto |
-
 ---
 
 ## Carpetas que se acumulan
@@ -135,7 +135,6 @@ Toda la documentación del proyecto. Si una decisión no está aquí (o en `ESTA
 | `_traspasos/` | Tareas delegadas a IAs o colaboradores externos, y qué volvió. |
 | `_incidentes/` | Postmortems de producción. |
 | `_integraciones/` | Una entrada por integración a `main`, y el registro de autorizaciones. |
-| `11-entregables/` | Documentos para enviar fuera: `.docx`, `.pdf`. No sustituyen a la documentación fuente. |
 | `_assets/` | Imágenes y recursos de la documentación. |
 
 ## Cómo se escribe aquí
