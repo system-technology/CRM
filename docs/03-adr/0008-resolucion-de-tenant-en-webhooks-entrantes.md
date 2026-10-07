@@ -18,9 +18,15 @@ Extiende [ADR-0002](0002-whatsapp-cloud-api.md) y [ADR-0003](0003-multitenancy.m
 > sin reservas. **Están aplicados los diez bloqueantes, los quince recomendados y RV-1 a RV-15**; el
 > detalle de qué cambió y por qué está en [§6](#6-qué-cambió-por-la-auditoría).
 >
-> Vale la pena registrar la lección de la segunda pasada, porque es generalizable: **dos correcciones
-> correctas por separado pueden anularse entre sí** (RV-1), y **una protección sin aserción que la
-> ponga en rojo no es una protección, aunque esté escrita en el ADR que fija esa regla**.
+> La tercera pasada dio **dictamen favorable**: aplicadas C-1 a C-6, no quedan objeciones de seguridad
+> sobre el diseño. Lo que esa aprobación **no** cubre está escrito en
+> [§5](#qué-parte-de-la-aprobación-de-seguridad-es-condicional), y conviene leerlo antes de
+> implementar.
+>
+> Vale la pena registrar dos lecciones de las pasadas intermedias, porque son generalizables: **dos
+> correcciones correctas por separado pueden anularse entre sí** (RV-1), y **una protección sin
+> aserción que la ponga en rojo no es una protección, aunque esté escrita en el ADR que fija esa
+> regla**.
 >
 > Se corrige el borrador en vez de escribir un ADR nuevo porque **este nunca estuvo aceptado**: la
 > inmutabilidad empieza con la aceptación. Y queda en **Propuesto**: lo aprueba el propietario del
@@ -222,7 +228,9 @@ enrutamiento_canales              -- cuatro columnas de ruteo, más la versión 
   pimienta_version    smallint NOT NULL   -- con qué pimienta se calculó la clave
 
 enrutamiento_historial            -- solo inserción, particionada por año (ver retenciones, §4)
-  id · canal_id                   -- se indexa por el UUID del canal, NUNCA por el HMAC
+  id
+  canal_id   uuid NULL            -- filas de número
+  cuenta_id  uuid NULL            -- filas WABA. CHECK: uno de los dos, no nulo
   clave_canal_hmac · pimienta_version      -- atributos informativos, no clave de búsqueda
   tenant_anterior · tenant_nuevo
   estado_anterior · estado_nuevo
@@ -237,11 +245,18 @@ excepciones_rls                   -- ver §1.2: tabla de control, y se declara a
 también la crea este ADR. Contarla importa porque la regla de parada de Consecuencias se apoya en el
 número, y una regla que nace incumplida es inoperante.
 
-**El historial se indexa por `canal_id`, no por el HMAC.** El canal tiene UUID propio y estable; el
-HMAC depende de un secreto rotable. Indexar la tabla cuya razón de existir es que un secuestro sea
-demostrable por un valor que cambia al rotar la pimienta —en una tabla donde nadie puede
-actualizar nada— dejaría la historia de cada número inconsultable para siempre después de la primera
-rotación. El HMAC queda como atributo informativo, con su versión de pimienta al lado.
+**El historial se indexa por un identificador propio y estable, nunca por el HMAC.** El HMAC depende
+de un secreto rotable: indexar por él la tabla cuya razón de existir es que un secuestro sea
+demostrable —en una tabla donde nadie puede actualizar nada— dejaría la historia inconsultable para
+siempre después de la primera rotación. El HMAC queda como atributo informativo, con su versión de
+pimienta al lado.
+
+Y hacen falta **dos** identificadores, no uno, porque `canal_id` es nulo en las filas WABA: para ellas
+el canal no existe como entidad —el evento de gestión apunta a la cuenta— y el historial volvería a
+quedar huérfano justo para las filas que gobiernan los eventos de gestión. Por eso `cuenta_id`, una
+referencia propia y estable a la cuenta de WhatsApp Business, con una restricción que exige que uno de
+los dos esté presente. La regla general detrás: **ninguna tabla probatoria se indexa por un valor
+derivado de un secreto**, y si el identificador natural puede ser nulo, hay que dar el otro.
 
 **Las claves van en HMAC, no en claro, y un hash simple no serviría.** `phone_number_id` es numérico y
 de espacio pequeño: un SHA-256 se invierte por fuerza bruta en minutos. Con HMAC-SHA256 y una
@@ -354,9 +369,18 @@ el directorio. El nombre de la columna es parte del defecto, así que el nombre 
 `001` y `002`, después del `GRANT ... ON ALL TABLES`, recorren esa tabla y ejecutan
 `REVOKE ALL ON <tabla> FROM <rol>` seguido del `GRANT` de exactamente los privilegios declarados para
 ese par. Concesión y revocación pasan a ser el mismo mecanismo y **no pueden desincronizarse**. Las
-cuatro tablas globales entran con `privilegios = '{}'` para los tres roles. El
-`ALTER DEFAULT PRIVILEGES` se mantiene: su cobertura de tablas futuras es deseable, y el problema no
-era él sino la ausencia de contrapeso declarativo.
+cuatro tablas globales entran con `privilegios = '{}'`. El `ALTER DEFAULT PRIVILEGES` se mantiene: su
+cobertura de tablas futuras es deseable, y el problema no era él sino la ausencia de contrapeso
+declarativo.
+
+**El bucle enumera los roles desde `pg_roles WHERE rolcanlogin`, no desde una lista fija, y un rol no
+declarado queda con cero privilegios sobre las cuatro tablas globales.** Es el mismo defecto del
+crítico 1 en el otro eje: una lista fija protege a los roles que alguien recordó escribir. Un rol de
+login creado mañana —`viajapro_reportes` para analítica, o uno que añada el proveedor gestionado—
+recibiría el `GRANT ... ON ALL TABLES`, no estaría en ninguna fila de `excepciones_rls`, nadie le
+revocaría nada y ninguna aserción preguntaría por él. **Lo que no está en la lista nace
+desprotegido.** Es la misma filosofía que hace correcta la aserción 10 —no enumerar, comparar contra
+una declaración— aplicada también a los roles.
 
 **`excepciones_rls` se declara a sí misma, y es superficie de confianza, no un catálogo inocuo.** Si
 no lo hiciera, el `GRANT ... ON ALL TABLES` le concedería `INSERT, UPDATE, DELETE` a los roles de
@@ -374,7 +398,7 @@ datos (seis tablas, otros nombres, otro idioma). La que manda es la del SQL; la 
 decorativa, y este ADR se apoyaba en la decorativa como mecanismo de control. La vista
 `tablas_sin_aislamiento` pasa a consultar `excepciones_rls` en vez de llevar una lista literal, y el
 documento se corrige para coincidir. Importa porque **una tabla que entra en esa lista deja de estar
-vigilada para siempre**, y este ADR está metiendo tres.
+vigilada para siempre**, y este ADR está metiendo cuatro.
 
 **(b) El `EXECUTE` sobre funciones nace concedido a `PUBLIC`.** PostgreSQL lo hace por omisión, sin
 que nadie escriba un `GRANT`. En el instante de crearse, `registrar_enrutamiento` es ejecutable por
@@ -647,8 +671,10 @@ Cinco propiedades no negociables:
    validación de firma no puede protegernos de un cuerpo gigante**: cuando se sabe que la firma es
    inválida, ya se leyó todo. Sin este paso, cuerpos de 50 MB en paralelo degradan la API y con ella
    **la recepción de webhooks legítimos de todas las agencias**.
-1. Leer el **cuerpo crudo**. El parseo de JSON está desactivado en esta ruta: parsear antes rompe la
-   firma, y es el error número uno de esta integración.
+1. Leer el **cuerpo crudo**. El parseo automático de JSON está desactivado en esta ruta. Lo prohibido
+   es parsear **antes** de validar la firma —cualquier *middleware* que lo haga rompe el HMAC, y es el
+   error número uno de esta integración—; después del paso 2 el cuerpo se parsea con normalidad, con
+   el tope de 1 MiB ya aplicado.
 2. HMAC-SHA256 sobre el cuerpo crudo, comparación en tiempo constante, contra la lista de secretos
    válidos. Inválida → `403` y se acaba.
 3. `recepcion_id = sha256(cuerpo crudo)`.
@@ -657,7 +683,10 @@ Cinco propiedades no negociables:
    dentro del SQL: acabaría en `pg_stat_statements` y en los registros del proveedor. Prohibido
    explícitamente, porque es el atajo que alguien tomará.
 5. Encolar en BullMQ **un trabajo por `change`**, no uno por POST, con
-   `jobId = recepcion_id || ':' || <índice del change dentro del POST>`.
+   `jobId = recepcion_id || ':' || <índice del change>`. **El índice es el orden aplanado sobre
+   `entry[].changes[]`**, definido aquí de una vez: dos convenciones distintas producirían
+   identificadores distintos para el mismo reintento, y la idempotencia dejaría de existir sin que
+   nada fallara.
 6. `200`.
 
 **El invariante, que es lo único que hay que recordar de este apartado:**
@@ -772,8 +801,12 @@ agencias pequeñas colombianas—, "para siempre" es insostenible frente a un de
    tenant fijado en la sesión es igual al tenant resuelto para ese `change`.
 3. `asegurarContacto` por el puerto, insertar el mensaje, actualizar los campos denormalizados de la
    conversación, reiniciar la ventana de 24 h, escribir el evento en el `outbox`. Una transacción.
-4. Marcar `procesado_en` **de ese `change`**. Si era el último pendiente de su recepción, anular el
-   payload.
+4. Marcar `procesado_en` **de ese `change`** e invocar `anular_payload` **incondicionalmente**. La
+   condición "¿era el último?" se resuelve **dentro de una sola sentencia** —anula donde no exista
+   ningún `change` pendiente de esa recepción—, nunca comprobando y decidiendo en el trabajador: dos
+   trabajadores que terminen los dos últimos a la vez pueden verse mutuamente como pendientes y **no
+   anularlo nunca**, dejando el contenido hasta la purga en vez de minutos. Es el único plazo que
+   decide la legalidad del apartado, así que no puede depender de una carrera.
 5. Emitir por Socket.IO **después del commit**, a una sala con prefijo de tenant: Redis no está
    cubierto por RLS y su aislamiento es responsabilidad de la aplicación. No se emite para tenants
    `SUSPENDIDO`.
@@ -804,8 +837,8 @@ siete que ya existen, y son compuerta de integración:
 
 | # | Aserción | Qué atrapa |
 |---|---|---|
-| 8 | Un `SELECT` sobre `enrutamiento_canales` lanza `42501` **para los tres roles de login** | El `REVOKE` olvidado **o revertido**. Es la prueba clave: es de comportamiento, no de catálogo, y falla sin importar cómo se concedió el privilegio |
-| 9 | `INSERT`, `UPDATE` y `DELETE` directos sobre `enrutamiento_canales` lanzan `42501`, **para los tres roles** | La primitiva de secuestro al alcance de cualquier rol de la aplicación |
+| 8 | Un `SELECT` sobre `enrutamiento_canales` lanza `42501` **para todo rol de login**, enumerados desde `pg_roles WHERE rolcanlogin` y no desde una lista fija | El `REVOKE` olvidado **o revertido**. Es la prueba clave: es de comportamiento, no de catálogo, y falla sin importar cómo se concedió el privilegio. Y al enumerar, atrapa también al rol que se cree mañana y que nadie declaró |
+| 9 | `INSERT`, `UPDATE` y `DELETE` directos sobre `enrutamiento_canales` lanzan `42501`, **para todo rol de login** | La primitiva de secuestro al alcance de cualquier rol de la aplicación, declarado o no |
 | 10 | Para todo par `(tabla, rol)` de `excepciones_rls` y todo privilegio, `has_table_privilege` coincide **exactamente** con lo declarado | Cualquier privilegio sobrante en cualquier tabla global y para cualquier rol. **Es la que sobrevive al paso del tiempo: no enumera tablas, compara contra una declaración** |
 | 11 | El conjunto de tripletas `(tabla, rol, privilegios)` de `excepciones_rls` es exactamente el literal escrito **en el archivo de prueba** | Una declaración manipulada. Es lo único que la 10 no puede atrapar, porque la 10 confía en esa declaración y el literal vive en el repositorio |
 | 12 | `has_function_privilege('public', …, 'EXECUTE')` es falso para **las seis** funciones | El `EXECUTE` a `PUBLIC` que PostgreSQL concede por omisión. Con `PUBLIC` reteniéndolo sobre `purgar_recepciones` o `anular_payload`, cualquier rol borra evidencia y mensajes sin procesar |
@@ -816,11 +849,11 @@ siete que ya existen, y son compuerta de integración:
 | 17 | Ninguna de las **cuatro** tablas globales tiene columna llamada exactamente `tenant_id`, y las cuatro están declaradas en `excepciones_rls` —incluida ella misma— | Que alguien añada la columna "por coherencia" y el aplicador las vuelva ilegibles: el ciclo regresa. Y que `excepciones_rls` quede escribible, que convierte el remedio del crítico 1 en su vehículo |
 | 18 | `purgar_recepciones` no borra ninguna recepción con algún `change` sin resolver | Destruir la evidencia de un fallo |
 | 19 | Un evento clasificado como desconocido o revocado deja el payload en `NULL` y el `recepcion_id` intacto | La contradicción entre §2 y §4 |
-| 20 | **La matriz completa rol × función** coincide exactamente con la tabla de §1.3, en ambos sentidos: ni falta ni sobra un `EXECUTE` | La frontera que sustituyó al crítico 2. Sin esta aserción, un `GRANT EXECUTE ON ALL FUNCTIONS ... TO viajapro_app` añadido para desatascar un despliegue reabre el crítico entero y las demás aserciones siguen en verde |
+| 20 | **La matriz completa rol × función**, sobre **todos los roles de login** —enumerados desde `pg_roles`, no desde una lista—, coincide exactamente con la tabla de §1.3 en ambos sentidos: ni falta ni sobra un `EXECUTE`. Los dos propietarios quedan fuera: tienen `EXECUTE` por propiedad | La frontera que sustituyó al crítico 2. Sin esta aserción, un `GRANT EXECUTE ON ALL FUNCTIONS ... TO viajapro_app` añadido para desatascar un despliegue reabre el crítico entero y las demás aserciones siguen en verde |
 | 21 | Ningún rol de login tiene `CREATE` sobre el esquema `public` | La mitad complementaria del `search_path` vacío, que §1.4 promete y nada verificaba |
 | 22 | **Tras reaplicar `001` y `002` completos**, las aserciones 8, 9, 10 y 20 siguen pasando | La regresión concreta ya conocida: el aplicador de políticas reconcediendo privilegios |
 | 23 | **Tras aplicar la cadena completa de migraciones desde cero**, las aserciones 8, 9, 10 y 20 pasan | La **clase** de fallo, no el archivo: una tercera migración que escriba su propio `GRANT ... ON ALL TABLES` o `ON ALL FUNCTIONS` —que es el idioma de este repositorio— y que la 22 no vería |
-| 24 | `UPDATE` y `DELETE` sobre `enrutamiento_historial` lanzan `42501` para los tres roles de login **y para los dos propietarios** | Un `GRANT` sobrante que haga editable la tabla probatoria. El valor probatorio desaparecería sin ninguna señal |
+| 24 | `UPDATE` y `DELETE` sobre `enrutamiento_historial` lanzan `42501` para **todo rol de login y para los dos propietarios** | Un `GRANT` sobrante que haga editable la tabla probatoria. El valor probatorio desaparecería sin ninguna señal |
 | 25 | Insertar en el directorio una fila que empareje el tenant A con un `canal_id` de B es rechazada por el motor | Una clave foránea escrita simple en vez de compuesta: sigue funcionando y nadie lo nota hasta que una fila cruza tenants |
 
 Tres observaciones sobre el conjunto. La **8** falla en rojo ante cualquier regresión del privilegio,
@@ -834,6 +867,32 @@ Cuatro métricas, porque un invariante sin observabilidad es una intención:
 - Cambios de titularidad en el directorio por día. En operación normal: **cero**.
 - Resoluciones fallidas por minuto, con alerta. Es lo que acota el oráculo de pertenencia.
 - Tiempo desde la inserción en `recepciones_webhook` hasta la clasificación. Presupuesto en segundos.
+
+#### Las tres que no son aserciones de base de datos
+
+Son las que más fácil se quedan sin hacer, precisamente porque no caen en el archivo donde están las
+otras dieciocho. **Las tres respaldan un hallazgo crítico**, así que se nombran aquí con dueño y con
+la misma obligación: si se desactivan, la decisión queda suspendida.
+
+| Verificación | Qué sostiene | Dueño |
+|---|---|---|
+| **Prueba de arranque por proceso**: la API aborta si `current_user` no es `viajapro_app`, el trabajador si no es `viajapro_webhook`, el alta si no es `viajapro_altas` | El camino del crítico 2 por configuración: `DATABASE_APP_URL` apuntando al rol de altas. Ninguna consulta lo detecta, porque ninguno de los dos roles tiene `BYPASSRLS` | `backend` |
+| **Prueba de extremo a extremo del alta**: un `phone_number_id` puesto en el cuerpo de la petición **no** llega al directorio; solo llegan los identificadores devueltos por el canje | El crítico 3. Es la única forma de verificar "el `phone_number_id` jamás viene del cliente", que no es una propiedad del esquema | `qa` |
+| **Ensayo de rotación de la pimienta en entorno no productivo**, con la ventana de dos pimientas y el indicador de reconstrucción levantados | Que una operación de mantenimiento de seguridad no destruya mensajes de clientes. Ninguna aserción puede sustituirlo: el fallo solo aparece con tiempo y volumen | `devops` |
+
+#### Qué parte de la aprobación de seguridad es condicional
+
+El `auditor-seguridad` dio dictamen favorable **sobre el diseño, no sobre el sistema**, y pidió que
+quedara escrito aquí antes de implementar. La lista de arriba y la tabla de las dieciocho son
+exactamente lo que convierte este texto en evidencia. Mientras no estén en verde contra una base real,
+**este documento describe un sistema seguro; no demuestra que se vaya a construir uno.**
+
+Dos reglas atadas a esa aprobación, que no se aflojan:
+
+- **Si alguna de las dieciocho aserciones, o alguna de las tres verificaciones de arriba, se desactiva
+  o se marca como omitida, la aprobación caduca** — igual que ADR-0007 con la prueba de aislamiento.
+- **Toda modificación del cuerpo de cualquiera de las seis funciones `SECURITY DEFINER` vuelve a pasar
+  por auditoría de seguridad**, igual que una política RLS.
 
 ### 6. Qué cambió por la auditoría
 
@@ -867,6 +926,15 @@ pruebas que las sostuvieran — el criterio que este mismo ADR se había impuest
 | RV-5 — declaración escribible | `excepciones_rls` no se declaraba a sí misma | Se declara, entra en la 17, y la 11 fija las tripletas contra un literal del repositorio. Sin eso, el remedio del crítico 1 era su vehículo |
 | RV-6 — rotación de la pimienta | "El directorio es derivado" sin seguir sus consecuencias | Ventana de dos pimientas, `pimienta_version` por fila, historial indexado por `canal_id`, y la rama "desconocido" **retiene** mientras haya reconstrucción. Sin esto, rotar destruía mensajes de clientes |
 | RV-7 a RV-15 | `waba_cifrado`; historial sin retención; un solo propietario; guardia de arranque ciego a la identidad; reejecución en prosa; `ALTER DEFAULT PRIVILEGES` sin `FOR ROLE`; conteos de funciones y tablas | Columna eliminada —el claro se lee de `canales`—; historial a 5 años por particiones; `viajapro_staging` como segundo propietario; cada proceso afirma qué rol espera ser; aserciones 22 y 23; `FOR ROLE` explícito; seis funciones y cuatro tablas contadas |
+
+Y en la tercera pasada, seis correcciones de una línea. Dos merecen quedar explicadas, porque las dos
+son un acierto parcial que no llegaba hasta el final:
+
+| Hallazgo | Qué fallaba | Qué dice ahora |
+|---|---|---|
+| C-1 — roles no declarados | El `REVOKE` por par `(tabla, rol)` protegía a los roles que alguien recordó listar | **Es el crítico 1 en el otro eje.** El bucle y las aserciones 8, 9 y 20 enumeran desde `pg_roles WHERE rolcanlogin`: un rol creado mañana nace con cero privilegios sobre las cuatro tablas globales, en vez de nacer desprotegido |
+| C-2 — historial y filas WABA | Indexar por `canal_id` resolvía RV-6… para las filas de número. `canal_id` es nulo en las filas WABA, que son las que gobiernan los eventos de gestión | `cuenta_id` junto a `canal_id`, con restricción de que uno no sea nulo. Regla general: **ninguna tabla probatoria se indexa por un valor derivado de un secreto**, y si el identificador natural puede ser nulo, hay que dar el otro |
+| C-3 a C-6 | Carrera al anular el payload; el paso 1 prohibía parsear y el 4 lo necesitaba; el guardia de arranque sin prueba nombrada; dos restos de conteo | Anulación resuelta dentro de una sola sentencia; parseo permitido **después** de la firma e índice definido como orden aplanado; las tres verificaciones que no son de base de datos, nombradas en §5 con dueño; conteos corregidos |
 
 ### Hechos verificados y lo que sigue abierto
 
@@ -951,10 +1019,10 @@ línea de corte.
   identificadores dejó de estar garantizado.
 - **Cuando llegue el primer webhook de pasarela de pago** (Fase 4): o se reutiliza este patrón tal
   cual, o este ADR estaba mal generalizado y hace falta uno nuevo.
-- **Si alguna de las dieciocho aserciones de §5 se desactiva o se marca como omitida**: la decisión queda
-  suspendida hasta entender por qué, igual que ADR-0007 con la prueba de aislamiento. Las protecciones
-  de este ADR **son** sus pruebas, y el texto corregido no es evidencia: la evidencia es verlas en
-  verde contra una base real.
+- **Si alguna de las dieciocho aserciones de §5, o alguna de sus tres verificaciones que no son de
+  base de datos, se desactiva o se marca como omitida**: la decisión queda suspendida hasta entender
+  por qué, igual que ADR-0007 con la prueba de aislamiento. Las protecciones de este ADR **son** sus
+  pruebas, y el texto corregido no es evidencia: la evidencia es verlas en verde contra una base real.
 - **Si aparece una cuarta tabla global con datos de ruteo o de negocio.**
 - **Si hay que rotar la pimienta del directorio**: la ventana de dos pimientas y el indicador de
   reconstrucción se ejercitan antes en un entorno no productivo. Una rotación sin ensayar destruye
