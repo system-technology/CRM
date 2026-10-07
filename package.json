@@ -5,7 +5,7 @@
   "description": "CRM vertical para agencias de turismo con WhatsApp Cloud API nativo",
   "packageManager": "pnpm@9.12.0",
   "engines": {
-    "node": ">=22.11.0",
+    "node": ">=22.20.0",
     "pnpm": ">=9.12.0"
   },
   "scripts": {
@@ -15,7 +15,7 @@
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
     "test:e2e": "turbo run test:e2e",
-    "test:hooks": "node .claude/hooks/lib/politica-rama.test.mjs",
+    "test:hooks": "node .claude/hooks/lib/politica-rama.test.mjs && node .claude/hooks/lib/guard-secretos.test.mjs",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\"",
     "db:generate": "pnpm --filter @viajapro/database generate",
@@ -25,7 +25,11 @@
     "infra:up": "docker compose -f infra/docker/docker-compose.yml up -d",
     "infra:down": "docker compose -f infra/docker/docker-compose.yml down",
     "infra:reset": "docker compose -f infra/docker/docker-compose.yml down -v && pnpm infra:up",
-    "prepare": "husky"
+    "prepare": "husky",
+    "preflight": "node scripts/preflight.mjs",
+    "db:setup": "pnpm db:migrate:deploy && pnpm --filter @viajapro/database run rol:crear",
+    "db:migrate:deploy": "pnpm --filter @viajapro/database run migrate:deploy",
+    "db:aislamiento": "pnpm --filter @viajapro/database run test:aislamiento"
   },
   "devDependencies": {
     "@commitlint/cli": "^19.5.0",
@@ -34,10 +38,16 @@
     "lint-staged": "^15.2.10",
     "prettier": "^3.3.3",
     "turbo": "^2.3.0",
-    "typescript": "^5.6.3"
+    "typescript": "^5.6.3",
+    "pnpm": "9.12.0"
   },
   "lint-staged": {
-    "*.{ts,tsx}": ["eslint --fix", "prettier --write"],
-    "*.{json,md,yml,yaml}": ["prettier --write"]
+    "*.{ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md,yml,yaml}": [
+      "prettier --write"
+    ]
   }
 }

@@ -22,7 +22,12 @@ const PATRONES = [
   { nombre: 'Clave de acceso de AWS', re: /\b(AKIA|ASIA)[A-Z0-9]{16}\b/ },
   { nombre: 'Token de GitHub', re: /\bgh[pousr]_[A-Za-z0-9]{30,}\b/ },
   { nombre: 'Clave privada PEM', re: /-----BEGIN (RSA |EC |OPENSSH |PGP )?PRIVATE KEY-----/ },
-  { nombre: 'URL de base de datos con contraseña real', re: /postgres(ql)?:\/\/[^:\s]+:(?!viajapro|viajapro_app|password|postgres|changeme)[^@\s]{8,}@/ },
+  {
+    nombre: 'URL de base de datos con contraseña real',
+    // La contraseña se captura aparte para poder descartar plantillas en `esPlantilla()`.
+    re: /postgres(ql)?:\/\/[^:\s]+:([^@\s]{8,})@/,
+    capturaClave: 2,
+  },
 ];
 
 /** Archivos que nunca deben escribirse desde una sesión de agente. */
@@ -76,9 +81,30 @@ if (!contenido) process.exit(0);
 // lo que esté marcado explícitamente como ficticio; todo lo demás se bloquea igual.
 const esMaterialDeEjemplo = /\.env\.example$/.test(ruta) || /[\\/]docs[\\/]/.test(ruta);
 
-for (const { nombre, re } of PATRONES) {
+/**
+ * ¿Lo capturado es una plantilla y no una credencial?
+ *
+ * Existe porque este guardián llegó a bloquear código legítimo: una cadena de conexión cuyo
+ * segmento de contraseña era una interpolación de plantilla, es decir, algo que se resuelve en
+ * tiempo de ejecución y no un valor escrito en el archivo. Cualquier código que arme una cadena
+ * de conexión a partir de variables tropezaría con lo mismo.
+ *
+ * Una credencial real nunca contiene una interpolación ni un marcador en mayúsculas.
+ * El filtro es estrecho a propósito: dejar pasar un secreto es mucho peor que un falso positivo.
+ */
+function esPlantilla(clave) {
+  if (!clave) return false;
+  const interpolacion = /[$][{(]|[{][{]|%[sd]\b|<[^>]*>/;
+  const marcador = /^[A-Z][A-Z0-9_]{3,}$/;
+  const generico = /^(x{3,}|placeholder|password|secret|clave|changeme|pendiente|tu_clave)$/i;
+  return interpolacion.test(clave) || marcador.test(clave) || generico.test(clave);
+}
+
+for (const { nombre, re, capturaClave } of PATRONES) {
   const coincidencia = contenido.match(re);
   if (coincidencia) {
+    if (capturaClave && esPlantilla(coincidencia[capturaClave])) continue;
+
     if (esMaterialDeEjemplo && /ejemplo|example|ficticio|placeholder|xxxx/i.test(contenido)) {
       continue;
     }
