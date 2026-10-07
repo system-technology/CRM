@@ -88,12 +88,18 @@ sequenceDiagram
     A->>W: "Conectar mi WhatsApp"
     W->>M: FB.login con config_id, response_type=code
     M->>A: Login · elegir o crear WABA · verificar número
-    M-->>W: message event (waba_id, phone_number_id, business_id)
+    M-->>W: message event (waba_id, phone_number_id, business_id) → SOLO TELEMETRÍA
     M-->>W: authResponse.code  ← CADUCA EN 30 SEGUNDOS
-    W->>S: POST /channels/whatsapp/connect {code, waba_id, phone_number_id}
+    W->>S: POST /channels/whatsapp/connect {code}
+    Note over W,S: SOLO el code. Ningún identificador de Meta<br/>viaja en la petición (ADR-0008 §1.4)
     S->>M: Intercambiar code por business token (server-to-server)
     M-->>S: access_token
+    S->>M: GET /debug_token?input_token=<token>
+    M-->>S: granular_scopes[].target_ids → WABA ID
+    S->>M: GET /{waba_id}/phone_numbers
+    M-->>S: números del WABA ← PRUEBA DE TITULARIDAD
     S->>S: Cifrar token (AES-256-GCM) y asociarlo al tenant
+    S->>S: registrar_enrutamiento(solo con IDs salidos de Meta)
     S->>M: POST /{waba_id}/subscribed_apps
     S->>M: POST /{phone_number_id}/register (messaging_product, pin)
     S->>M: Sincronizar plantillas existentes
@@ -118,10 +124,34 @@ FB.login(fbLoginCallback, {
 `phone_number_id`, `waba_id`, `business_id`, `event: 'FINISH'`. El código de intercambio llega
 aparte, en `response.authResponse.code`.
 
+> **Esos identificadores son telemetría, no entrada.** Sirven para pintar la interfaz mientras el
+> alta termina y para diagnosticar. **Nunca se envían al backend como parámetros de escritura, y si
+> llegan se ignoran.** Ver [§2.3](#23-prueba-de-titularidad-el-phone_number_id-jamás-viene-del-cliente).
+
 **[V] El `code` caduca en 30 segundos.** Esto obliga a un diseño concreto: el frontend **no** puede
 guardar el código, mostrar una pantalla de confirmación y enviarlo después. Lo manda al backend de
 inmediato y el backend lo intercambia de forma síncrona en esa misma petición. El resto del
 onboarding (suscripción, registro, sincronización de plantillas) sí va por cola.
+
+**[V] Descubrir el WABA desde el token, sin preguntarle al navegador.** Este es el paso que hace
+posible que el cliente no mande ningún identificador. De
+[Manage Messaging accounts](https://developers.facebook.com/documentation/business-messaging/whatsapp/solution-providers/manage-accounts),
+consultado 2026-10-07:
+
+```http
+GET https://graph.facebook.com/v26.0/debug_token?input_token=<BUSINESS_TOKEN_DEL_TENANT>
+Authorization: Bearer <NUESTRO_SYSTEM_USER_TOKEN>
+```
+
+La respuesta trae `granular_scopes[]`, y cada entrada tiene un `scope` y un `target_ids[]` con los
+WABA que han concedido ese permiso a nuestra app. Meta:
+
+> «IDs for the most recently onboarded WABAs appear first, so capture the first ID in the
+> `target_ids` array for the `whatsapp_business_management` scope.»
+
+**[?]** Listar los números de ese WABA: `GET /v26.0/<WABA_ID>/phone_numbers` con el token del
+negocio. Es el endpoint conocido y estable, pero **no pude confirmarlo verbatim** en la página
+consultada. Verificar la forma exacta de la respuesta antes de implementar.
 
 **[V]** Suscribir nuestra app al WABA del cliente:
 
@@ -162,7 +192,53 @@ los problemas de elegibilidad aparecen antes
 ([Changelog](https://developers.facebook.com/documentation/business-messaging/whatsapp/changelog)).
 Decisión pendiente de `arquitecto`: arrancar en v3 estable o en v4 preview.
 
-### 2.3 Dónde falla esto en la vida real
+### 2.3 Prueba de titularidad: el `phone_number_id` jamás viene del cliente
+
+> **Regla inviolable, simétrica a la de ADR-0003 §5 y con el mismo rango:
+> el `phone_number_id` y el `waba_id` jamás vienen del cliente.**
+> Un identificador de Meta tomado del cuerpo de la petición y escrito en el directorio de
+> enrutamiento es un hallazgo crítico de auditoría. Ver
+> [ADR-0008 §1.4](../03-adr/0008-resolucion-de-tenant-en-webhooks-entrantes.md) y la
+> [auditoría del 2026-10-07](../_auditorias/2026-10-07-adr-0008-aislamiento-en-webhooks.md).
+
+**Cuál es el ataque, porque no es el obvio.** Validar el `tenant_id` contra la sesión resuelve una
+pregunta que nadie estaba haciendo. El ataque no es reclamar un número *para otro tenant* —la sesión
+lo impide— sino **reclamar el número de otra agencia para el tenant propio**. El atacante es un
+cliente legítimo, con sesión válida y rol de administrador, que llama al endpoint de conexión con el
+`phone_number_id` de una agencia competidora. Ese dato no es secreto: aparece en integraciones, en
+tickets de soporte, y basta un empleado que pasó por las dos agencias.
+
+Si no existía fila para ese identificador, se crea apuntando al atacante, y **desde el siguiente
+webhook las conversaciones de la víctima entran en la bandeja del atacante**: nombres de clientes,
+itinerarios, pasaportes enviados por chat. En un CRM de turismo eso es exactamente el material del
+R10. Y hay variante de denegación de servicio: registrar en lote los identificadores de veinte
+competidores para que no puedan darse de alta.
+
+**De dónde salen entonces los identificadores:**
+
+1. El cliente envía **solo el `code`** del Embedded Signup. Lo que venga además en el cuerpo se
+   ignora: sirve para telemetría, nunca para escribir.
+2. El servidor canjea el `code` por el token de negocio y, **con ese token**, pide a Meta el WABA
+   (`debug_token` → `granular_scopes[].target_ids`) y sus números.
+3. **Esa respuesta de Meta es la prueba de titularidad**, y es la única que no se puede falsear desde
+   el navegador: el token se emitió sobre el WABA que ese usuario administra de verdad.
+4. El registro en el directorio de enrutamiento se invoca **únicamente** con identificadores salidos
+   de esa respuesta.
+5. Si la fila existe y pertenece a otro tenant, se rechaza **y se emite un evento de seguridad**, no
+   un error de usuario: intentar reclamar un número ajeno es una señal, no una equivocación.
+6. Una fila revocada cuyo número Meta reasignó a otra agencia puede reasignarse, pero **solo con la
+   prueba del punto 2**, y queda en el historial con ambos tenants.
+
+**Un apunte que importa al implementar, y que no es cómodo: la ruta documentada por Meta no sirve
+para nuestro modelo de amenaza.** La guía oficial de onboarding dice «capture the customer's asset
+IDs and exchangeable token code and use them to onboard the customer», es decir, trata como
+utilizables los identificadores que llegan al navegador. Eso es razonable para quien integra **su
+propio** WABA, y es inseguro para un SaaS multi-tenant donde el emisor de la petición es un cliente
+más. **Nos desviamos de la guía de Meta deliberadamente**, y el paso 2 es lo que nos permite hacerlo
+sin perder nada: `debug_token` está igualmente documentado por Meta y nos da el mismo dato sin
+confiar en el navegador.
+
+### 2.4 Dónde falla esto en la vida real
 
 | Fallo | Qué hacer |
 |---|---|
@@ -170,13 +246,14 @@ Decisión pendiente de `arquitecto`: arrancar en v3 estable o en v4 preview.
 | El negocio de la agencia no está verificado en Meta | Explicar el trámite y sus tiempos. No podemos hacerlo por ellos |
 | El número está en uso en la app de WhatsApp Business | Debe desvincularlo primero. Advertirlo **antes** de empezar |
 | El `code` expira antes de llegar al backend | Reintentar el flujo completo. Un code caducado no se recupera |
+| El número que devuelve Meta ya está registrado para otro tenant | Rechazar el alta **y emitir evento de seguridad** (§2.3). Al usuario, un mensaje neutro: nunca confirmarle si ese número está o no en la plataforma |
 | Registro fallido por el PIN (`133005`) | Reintento con PIN nuevo, guiando paso a paso. Ojo con `133008`/`133009`: hay throttling de intentos |
 | El token se revoca (`190`, `10`, `131005`) | Marcar el canal como desconectado y avisar al dueño **antes** de que pierda mensajes |
 
 El canal tiene estado explícito —`PENDING`, `CONNECTED`, `DISCONNECTED`, `SUSPENDED`— visible en la
 interfaz. Una agencia nunca debe descubrir que está desconectada porque un cliente le reclamó.
 
-### 2.4 Lo que la agencia NO necesita — y es una ventaja comercial
+### 2.5 Lo que la agencia NO necesita — y es una ventaja comercial
 
 **[V]** La verificación del negocio ante Meta **no** es requisito para empezar a enviar. Una agencia
 puede conectar su número y operar sin verificarse.
@@ -429,7 +506,8 @@ Evento desencolado
   │     NO → buscar canal(es) por (waba_id = entry[].id)  ← eventos de gestión
   │
   ├─ Encontrado → tenant_id = canal.tenant_id
-  │               Abrir transacción con SET LOCAL app.tenant_id = <tenant_id>
+  │               Abrir transacción fijando app.current_tenant = <tenant_id>
+  │               (set_config('app.current_tenant', $1, true) — local a la transacción)
   │               A partir de aquí, RLS protege todo (R1, R2)
   │
   └─ No encontrado → DESCONOCIDO
@@ -910,27 +988,54 @@ apareciendo en los webhooks de estado.
 
 **[V]** Las tarifas se actualizan trimestralmente: 1 de enero, 1 de abril, 1 de julio, 1 de octubre.
 
-#### El cambio del 2026-10-01 — **[S], y afecta al producto ahora mismo**
+#### El cambio del 2026-10-01 — confirmado en fuente primaria
 
-> **Atención: esto es lo más relevante de toda esta revisión, y es también lo menos verificado.**
+> **Lo más relevante de toda esta revisión.** Está vigente desde hace seis días.
 
-Según múltiples BSPs (360dialog, Zenvia, Courier, charles, Picky Assist, entre otros), desde el
-**1 de octubre de 2026** —hace seis días—:
+**[V]** Hay una página oficial de Meta, **distinta de la página general de precios**:
+[Upcoming pricing updates for Meta Business Agent, service and utility messages](https://developers.facebook.com/documentation/business-messaging/whatsapp/pricing/non-template-messages),
+consultada 2026-10-07. Dice literalmente:
 
-1. **Los mensajes de servicio dejan de ser gratuitos.** Hay una franquicia de **1.000 mensajes de
-   servicio gratis por número de negocio y por mes**, que no se acumula y se reinicia cada mes por
-   número. Desde el mensaje 1.001 se cobra.
-2. La tarifa del mensaje de servicio es **la misma que la de `UTILITY`/`AUTHENTICATION`** del mercado
-   correspondiente, sin escalones por volumen.
-3. **Las plantillas `UTILITY` enviadas dentro de una ventana de 24 h abierta dejan de ser gratuitas**
-   y pasan a cobrarse por unidad.
-4. Siguen siendo gratuitos: los mensajes que envía el cliente, y todo lo que ocurre dentro de la
-   ventana de entrada gratuita de 72 h.
+> «Effective October 1, 2026, Meta will charge on a per-message basis for service messages.»
 
-**No pude confirmar esto literalmente en la página oficial de precios de Meta** (ver
-[§13](#13-lo-que-no-pude-verificar)): la versión que obtuve de esa página sigue describiendo los
-mensajes de servicio y las plantillas `UTILITY` en ventana abierta como gratuitos. Pero la
-concordancia entre fuentes independientes es alta y las fechas coinciden.
+Y define qué cuenta como mensaje de servicio:
+
+> «Service messages are any non-template message not powered by the Meta Business Agent Platform,
+> and can be powered by a 3rd-party AI solution or people like customer service representatives.»
+
+De esa misma página:
+
+1. **[V]** Los mensajes de servicio se cobran **por mensaje entregado**, no por conversación, a la
+   tarifa de `UTILITY`/`AUTHENTICATION` del mercado del destinatario.
+2. **[V] Las plantillas `UTILITY` entregadas dentro de la ventana de 24 h abierta dejan de ser
+   gratuitas** desde esa misma fecha.
+3. **[V]** Sigue gratis la ventana de entrada gratuita de 72 h, y todo lo que envía el cliente.
+4. **[V]** Las plantillas `MARKETING` no cambian con esta actualización, y el cargo por mensaje de
+   servicio es único: no se duplica si además hay IA de por medio.
+5. **[S]** La **franquicia de 1.000 mensajes de servicio gratis por número de negocio y por mes**,
+   sin acumulación, con reinicio mensual y cobro desde el mensaje 1.001. Consenso unánime de más de
+   diez BSPs independientes que citan esa página, pero el párrafo **no** se pudo extraer de la
+   página oficial de forma reproducible. Es el único punto del cambio que sigue sin fuente primaria
+   citable.
+
+**[V] La contradicción entre páginas oficiales de Meta es real, y conviene saberlo:** mientras esa
+página anuncia el cobro, la **página general de precios sigue describiendo los mensajes de servicio
+como gratuitos** («Service conversations are now free for all businesses», vigente desde 2024-11-01)
+con un rate card que dice estar vigente desde 2026-07-01; y el **changelog oficial no tiene ninguna
+entrada** sobre el cambio —su entrada más reciente es del 2026-05-12—. Tres páginas oficiales dicen
+cosas distintas a la vez. **Moraleja operativa: la página general de precios no es fuente suficiente,
+y el changelog tampoco.** Verificación completa en
+[`docs/_auditorias/2026-10-07-precios-de-meta.md`](../_auditorias/2026-10-07-precios-de-meta.md).
+
+**[?] Dos cosas relacionadas que quedan sin confirmar y conviene vigilar:**
+
+- Varias fuentes secundarias afirman que Meta exige **medio de pago registrado antes del
+  2026-09-30** o deja de entregar mensajes de servicio desde el 2026-10-01. No aparece en la página
+  oficial. Si fuera cierto, afecta al alta de toda agencia nueva: confianza baja-media, verificar.
+- Desde el **2026-08-01** Meta cobra **por token** ($2,00 USD por millón) los mensajes generados por
+  su **Meta Business Agent Platform** **[V]**. Es un producto de Meta, distinto de que una agencia
+  use su propio agente o un asesor humano: **no nos aplica hoy**, pero sí nos aplicaría si algún día
+  integramos ese producto. No confundirlo con el cobro de mensajes de servicio.
 
 **Por qué importa aunque esté marcado [S], y por qué no se pospone:**
 
@@ -1283,14 +1388,19 @@ nuevo y el resto del sistema no se entera.
 
 ## 13. Lo que NO pude verificar
 
-Todo lo marcado **[S]** o **[?]** en este documento. Resumen, por orden de riesgo:
+Todo lo marcado **[S]** o **[?]** en este documento, por orden de riesgo. Las filas que se resuelven
+no se borran: se tachan y se deja la fuente, para que la próxima revisión trimestral sepa qué ya se
+comprobó y contra qué.
 
 | # | Afirmación | Marca | Riesgo si es falsa | Quién lo resuelve |
 |---|---|---|---|---|
-| 1 | Cobro de mensajes de servicio desde 2026-10-01, franquicia de 1.000/número/mes, y fin de la gratuidad de plantillas `UTILITY` dentro de la ventana | **[S]** | **Alto.** El *unit economics* del plan de entrada puede estar mal calculado | `investigador` + `analista-datos` |
+| 1 | ~~Cobro de mensajes de servicio desde 2026-10-01 y fin de la gratuidad de plantillas `UTILITY` dentro de la ventana~~ **Confirmado en fuente primaria** el 2026-10-07 ([página oficial](https://developers.facebook.com/documentation/business-messaging/whatsapp/pricing/non-template-messages)) | **[V]** | Resuelto. Queda **recalcular el *unit economics*** del plan de entrada | `analista-datos` |
+| 1b | La **franquicia de 1.000 mensajes de servicio/número/mes** — consenso de >10 BSPs, sin párrafo citable en la página oficial | **[S]** | Medio. Cambia el umbral a partir del cual el tráfico cuesta, no el hecho de que cueste | `investigador` |
+| 1c | Exigencia de medio de pago registrado antes del 2026-09-30 so pena de no entregar mensajes de servicio | **[?]** | Medio. Afectaría al alta de toda agencia nueva | `investigador` |
 | 2 | El objeto `conversation` desapareció de los webhooks de estado en v24.0+ salvo en Free Entry Point | **[S]** | **Alto.** Define cómo calculamos la ventana de 24 h | `whatsapp` |
 | 3 | Ejemplos JSON de media, interactivos, reacciones, ubicación, contactos y de los estados `sent`/`read`/`failed` | **[?]** | **Alto.** Son el contrato de los esquemas Zod | `whatsapp` + `qa`, capturando payloads reales |
 | 4 | Forma exacta del intercambio `code → business token` | **[?]** | Alto. Bloquea el onboarding | `whatsapp` |
+| 4b | `GET /<WABA_ID>/phone_numbers` y la forma de su respuesta | **[?]** | **Alto.** Es el paso que materializa la prueba de titularidad de §2.3 | `whatsapp` |
 | 5 | Un mismo mensaje puede producir `delivered` y `failed` | **[S]** | Medio. Define la máquina de estados | `whatsapp` |
 | 6 | Lista completa de campos de suscripción y payloads de `phone_number_quality_update` y `account_update` | **[?]** | Medio | `whatsapp` |
 | 7 | Cómo **bajan** los límites de mensajería y qué los dispara | **[?]** | Medio. Afecta las alertas al dueño | `investigador` |
@@ -1326,9 +1436,23 @@ integración, pero necesitan su documento de política. Responsable: `whatsapp`,
 
 - [ ] Resolución de tenant por `phone_number_id`, con respaldo por `waba_id`
 - [ ] `tenant_id` **nunca** tomado del payload sin pasar por la tabla de canales
-- [ ] `SET LOCAL app.tenant_id` antes de toda escritura; RLS activa (R1, R2)
+- [ ] `app.current_tenant` fijado (local a la transacción) antes de toda escritura; RLS activa (R1, R2)
+- [ ] El nombre del GUC es **`app.current_tenant`**, el mismo que usan `001-aislamiento-tenant.sql` y
+      `prisma.service.ts`. Un nombre distinto no da error: deja el contexto sin fijar y RLS devuelve
+      cero filas
 - [ ] Evento de tenant desconocido: descartado, registrado **sin contenido del mensaje**, alertado
 - [ ] Probado: un webhook con `phone_number_id` de la Agencia B no escribe nada de la Agencia A
+
+**Alta del canal (§2.3)**
+
+- [ ] El endpoint de conexión acepta **solo el `code`**; cualquier otro identificador del cuerpo se
+      ignora explícitamente (no se valida: se descarta)
+- [ ] `phone_number_id` y `waba_id` derivados de `debug_token` y de la lista de números de Meta,
+      nunca de la petición
+- [ ] Probado: una petición de la Agencia A con el `phone_number_id` de la Agencia B no crea ni
+      reasigna ninguna fila de enrutamiento
+- [ ] Intento de reclamar un número ajeno emite **evento de seguridad**, no error de usuario
+- [ ] El mensaje de error al usuario no revela si el número existe en la plataforma (oráculo)
 
 **Idempotencia y orden**
 
