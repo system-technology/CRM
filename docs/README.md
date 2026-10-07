@@ -31,6 +31,8 @@ Toda la documentación del proyecto. Si una decisión no está aquí (o en `ESTA
 | [Lenguaje ubicuo](01-producto/02-lenguaje-ubicuo.md) | **El diccionario del dominio.** Término del negocio ↔ nombre en el código |
 | [Flujos críticos](01-producto/04-flujos-criticos.md) | Los cinco recorridos que deben funcionar siempre |
 | [Métricas de éxito](01-producto/05-metricas.md) | Qué medimos y cómo sabemos si el producto sirve |
+| [Diseño y UX](01-producto/06-diseno-y-ux.md) | Principios, sistema de diseño y flujo de trabajo con Stitch |
+| [**Cabeza de playa: paquetes**](01-producto/07-cabeza-de-playa-paquetes.md) | **Por dónde se empieza: la agencia que revende paquetes, en rebanada vertical** |
 
 ## 02 · Arquitectura
 

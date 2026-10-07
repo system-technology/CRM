@@ -56,6 +56,30 @@ Término nuevo del dominio → entrada nueva aquí, antes de escribir la primera
 | **Itinerario** | `Itinerary` | Secuencia de días y servicios del viaje. |
 | **Segmento** | `Segment` | Tramo dentro de un itinerario: un vuelo, una noche, un traslado. |
 
+## Paquetes (la cabeza de playa)
+
+Términos del producto que vende una agencia minorista. Ver
+[cabeza de playa](07-cabeza-de-playa-paquetes.md).
+
+| Término | Código | Qué es |
+|---|---|---|
+| **Paquete** | `TravelPackage` | Producto ya armado por un mayorista: destino, duración, inclusiones y precio. **Es el ítem de cotización de la primera rebanada.** |
+| **Mayorista** | `Wholesaler` | Quien arma el paquete y se lo vende a la agencia. Un tipo de `Supplier` |
+| **Inclusiones** | `inclusions` | Qué trae el paquete: vuelo, hotel, traslados, alimentación, tours, seguro |
+| **Acomodación** | `Occupancy` | Cuántas personas por habitación: `SINGLE`, `DOUBLE`, `TRIPLE`, `QUADRUPLE`. **El precio por persona cambia con la acomodación**, y es un error clásico modelarlo como precio fijo por pasajero |
+| **Plan de alimentación** | `MealPlan` | `ALL_INCLUSIVE`, `BREAKFAST`, `HALF_BOARD`, `FULL_BOARD`, `ROOM_ONLY` |
+| **Temporada** | `Season` | Rango de fechas con precio propio: alta, baja, puente festivo. En Colombia los puentes son su propia temporada |
+| **Cupo** | `Allotment` | Plazas que el mayorista tiene bloqueadas. Se agotan |
+| **Tarifario** | `RateSheet` | El documento del mayorista con precios por temporada y acomodación. Hoy llega en Excel o PDF |
+| **Salida** | `Departure` | Fecha concreta en que opera un paquete. Un paquete tiene muchas |
+
+Dos cosas que un modelo hecho desde fuera del sector siempre olvida:
+
+- **El precio depende de la acomodación, no solo del número de pasajeros.** Cuatro personas en dos
+  habitaciones dobles no cuestan lo mismo que cuatro en una cuádruple.
+- **Los niños tienen edad de corte y cupo por habitación.** «Niño gratis compartiendo habitación con
+  dos adultos» es una condición comercial real que el modelo debe poder expresar.
+
 ## Reserva y operación
 
 | Término | Código | Qué es |

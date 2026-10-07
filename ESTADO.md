@@ -51,7 +51,9 @@ Qué hay, concretamente:
 | **Mercado base** | **Colombia.** Moneda COP, normativa colombiana, TRM, pasarelas locales | Decisión del propietario, 2026-10-06 |
 | **Parametrización** | **Vertical configurable, no plataforma genérica.** Se parametriza la política de negocio, nunca los invariantes del dominio. Código abierto: no por ahora | ADR-0006 |
 | **Modelo de ramas** | **`main` protegida. Solo el agente `integrador` escribe ahí**, tras siete compuertas. Trabajo en ramas de 1-3 días | ADR-0005 |
-| Alcance v1 | Los cuatro bloques, secuenciados en fases. Primer cobro al mes 4 | `docs/01-producto/01-alcance-mvp.md` |
+| **Cabeza de playa** | **La agencia que revende paquetes turísticos.** Rebanada vertical completa y estrecha, no fases horizontales | `docs/01-producto/07-cabeza-de-playa-paquetes.md` |
+| **Entorno de desarrollo** | **Número de prueba de Meta.** La verificación del negocio NO bloquea construir, solo lanzar | ADR-0002 |
+| Alcance v1 | Los cuatro bloques siguen siendo el mapa del alcance total | `docs/01-producto/01-alcance-mvp.md` |
 | Diseño | Stitch para explorar; shadcn/ui en `packages/ui` para producir | `docs/01-producto/06-diseno-y-ux.md` |
 | Norte de producto | El brochure fija la dirección: qué módulos, qué flujo, qué tono | `docs/00-vision/05-norte-del-producto.md` |
 
@@ -90,7 +92,7 @@ Ordenada. La primera es la que debe tomarse ahora.
 
 | Bloqueo | Impacto | Dueño | Mitigación |
 |---|---|---|---|
-| Verificación de Meta Business sin iniciar | **Bloquea toda la Fase 1 en producción.** Puede tardar semanas | Usuario | Iniciar el trámite ya; desarrollar contra números de prueba de Meta mientras tanto |
+| Verificación de Meta Business sin iniciar | **Bloquea lanzar con clientes reales, NO bloquea construir.** Tarda semanas | Usuario | Arrancar el trámite en paralelo. Mientras tanto se desarrolla con el número de prueba de Meta |
 | Sin agencia piloto confirmada | Riesgo de construir nueve meses a ciegas | Usuario | Conseguirla antes de terminar la Fase 1 |
 | Alcance de v1 vs. expectativa de calendario | Riesgo de cinco cosas a medias | Usuario | Roadmap por fases ya escrito; decidir dónde cortar |
 | MCP sin validar | Los agentes no tienen las herramientas que el método asume | Usuario | Requiere sesión interactiva — no se puede hacer automatizado |

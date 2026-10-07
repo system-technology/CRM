@@ -1,5 +1,13 @@
 # Roadmap
 
+> ⚠️ **Revisado el 2026-10-07.** Las fases horizontales de abajo siguen siendo válidas como mapa
+> del alcance total, pero **el orden de construcción cambió**: se empieza por una rebanada
+> vertical estrecha para la agencia que revende paquetes. Ver
+> [cabeza de playa](../01-producto/07-cabeza-de-playa-paquetes.md).
+>
+> El motivo: una rebanada completa que una agencia pueda usar en semanas vale más que tres fases
+> horizontales impecables que no sirven para vender hasta el mes siete.
+
 > **Lee esto primero.** El alcance aprobado para v1 incluye los cuatro bloques: inbox + pipeline,
 > cotizador, reservas/pagos y automatización/IA. Este documento no recorta ese alcance: lo
 > **secuencia con fechas honestas**, para que la decisión de dónde cortar sea tuya y esté informada.
