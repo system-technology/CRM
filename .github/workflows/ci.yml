@@ -29,6 +29,13 @@ jobs:
   secretos:
     name: secretos
     runs-on: ubuntu-latest
+    # El escaneo de un PR necesita leer la lista de commits del PR por la API, y el token
+    # por omisión solo trae `contents`. Sin esto el job muere con un 403 «Resource not
+    # accessible by integration» — que NO es un hallazgo de secreto, pero se ve igual de
+    # rojo. Peor: parece que la compuerta funciona cuando en realidad no llegó a escanear.
+    permissions:
+      contents: read
+      pull-requests: read
     steps:
       - uses: actions/checkout@v4
         with:
