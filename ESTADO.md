@@ -9,7 +9,7 @@
 | Última actualización | 2026-10-07 (sesión nocturna autónoma — diseño y frontend) |
 | Actualizado por | Claude Opus 5 |
 | Fase | **Rebanada vertical de paquetes, en construcción** |
-| Avance de la fase | **Cotizador funcionando de punta a punta: web → API → Neon.** v0.9.0 |
+| Avance de la fase | **Cotizador funcionando de punta a punta: web → API → Neon.** v0.9.1 |
 | Próximo hito | Inbox de WhatsApp |
 
 ---
@@ -17,8 +17,8 @@
 ## 1. Dónde estamos
 
 El repositorio tiene el **andamiaje completo**: estructura de monorepo con su configuración,
-documentación de visión, producto, arquitectura, seguridad y roadmap, cinco ADR aceptados, la capa
-de ingeniería asistida por IA (17 agentes, 5 skills, 7 comandos, 6 hooks, MCP) y el gobierno de la
+documentación de visión, producto, arquitectura, seguridad y roadmap, siete ADR aceptados, la capa
+de ingeniería asistida por IA (17 agentes, 7 skills, 7 comandos, 6 hooks, MCP) y el gobierno de la
 integración a `main`.
 
 **El cotizador funciona de punta a punta** —navegador, API, Neon— y está verificado abriéndolo en
@@ -41,17 +41,18 @@ Qué hay, concretamente:
 | Documentación | 33 documentos completos + 22 marcadores con responsable y fase |
 | ADR | 0001 stack · 0002 WhatsApp · 0003 multi-tenancy · 0004 monolito modular · 0005 ramas · 0006 parametrización · 0007 Neon |
 | Agentes de IA | 17 definidos en `.claude/agents/`, incluido `integrador` |
-| Skills | `ciclo-funcionalidad`, `auditoria-integral`, `handoff-ia-externa`, `cerrar-sesion`, `nuevo-modulo` |
+| Skills | Propias: `ciclo-funcionalidad`, `auditoria-integral`, `handoff-ia-externa`, `cerrar-sesion`, `nuevo-modulo`. De terceros, auditadas: `neon`, `neon-postgres` |
 | Comandos | `/estado` `/auditoria` `/funcionalidad` `/handoff` `/adr` `/contexto` `/integrar` |
-| Hooks | Inyección del hilo, guardián de secretos, guardián de rama (con 24 pruebas), autorización de integración, revisión post-edición, recordatorio de cierre |
+| Hooks | **De Claude Code:** inyección del hilo, guardián de secretos (19/19), guardián de rama (40/40), autorización de integración, revisión post-edición, recordatorio de cierre. **De git, desde v0.9.1:** `commit-msg` (commitlint) y `pre-commit` (lint-staged) — antes estaban configurados pero nunca se ejecutaban |
 | MCP | **Stitch conectado y usado** (ámbito de usuario, 15 herramientas). `navegador` usado para verificar la interfaz. `memoria`, `docs-librerias`, `razonamiento` cargados. **`postgres` falla al conectar.** `github` y `sentry` sin autorizar |
-| Fase 0 técnica | **COMPLETA Y VERIFICADA.** API viva, 7/7 aislamiento, 32/32 dominio |
+| Fase 0 técnica | **COMPLETA Y VERIFICADA.** API viva, 7/7 aislamiento, 32/32 dominio, 25/25 contratos |
+| Compuertas de calidad | **Funcionando por primera vez desde v0.9.1.** `lint` 7/7 · `typecheck` 7/7 · `test` 6/6 · `build` 5/5 · `format:check` limpio. Antes cuatro de ellas eran imposibles de poner en verde |
 | Backend | `apps/api` con catálogo y cotización. Probado con peticiones reales |
 | Frontend | `apps/web`: Next.js 15 + Tailwind 4. **Cotizador verificado en navegador.** No hay autenticación: el tenant va por cabecera de desarrollo, solo con `APP_ENV=local` |
 | Diseño | Sistema de diseño subido a Stitch (proyecto `8333038101997719867`). Tokens replicados en `apps/web/src/app/globals.css`. Capturas en `docs/_assets/diseno/` |
 | Datos | Agencia demo sembrada: 3 paquetes, 5 temporadas, 26 precios |
-| Contrato multi-harness | `AGENTS.md` en la raíz: cualquier IA trabaja bajo las mismas once reglas |
-| Repositorio | [github.com/Alfavear/CRM](https://github.com/Alfavear/CRM) · **privado** · `main` en **v0.9.0** |
+| Contrato multi-harness | `AGENTS.md` en la raíz: cualquier IA trabaja bajo las mismas **doce** reglas. R12 faltaba hasta v0.9.1 |
+| Repositorio | [github.com/Alfavear/CRM](https://github.com/Alfavear/CRM) · **privado** · `main` en **v0.9.1** |
 | Gobierno de `main` | Compuerta local activa y probada. **Sin protección de servidor:** el plan gratuito no la permite en repos privados |
 
 ## 2. Decisiones ya tomadas (no reabrir sin ADR que las supersede)
@@ -102,6 +103,8 @@ Ordenada. La primera es la que debe tomarse ahora.
 | 10 | Resolver la protección de `main` en GitHub | Usuario | Plan gratuito no la permite en repos privados |
 | 11 | **Rotar la contraseña de Neon y la clave de API de Stitch** | Usuario | Ambas se pegaron en el chat. Un secreto expuesto no se borra, se rota |
 | 12 | Autenticación: el `tenant_id` debe salir del token de sesión | `backend` | Hoy la web lo envía por cabecera. Solo funciona con `APP_ENV=local`, pero es deuda que bloquea desplegar |
+| 13 | **La carrera de `turbo` entre `build` y `typecheck` de la web** | `devops` | `next build` reescribe `.next/types` mientras `tsc` lo lee. Por separado pasan; en paralelo da un rojo falso. **Morderá en CI**, que es justo donde corren en paralelo |
+| 14 | El aviso de `any` no es una compuerta | `devops` | `no-explicit-any` está en `warn` y ningún script lleva `--max-warnings 0`: hoy hay cero `any`, pero el primero entraría sin que lint falle |
 
 ## 4. Bloqueos y riesgos activos
 
@@ -132,6 +135,7 @@ Ordenada. La primera es la que debe tomarse ahora.
 ## 6. Bitácora
 
 - [`2026-10-07-primera-interfaz.md`](docs/_bitacora/2026-10-07-primera-interfaz.md) ← **empieza por aquí**
+- [`_integraciones/2026-10-07-v0.9.1.md`](docs/_integraciones/2026-10-07-v0.9.1.md) — por qué cuatro compuertas nunca pudieron correr
 - [`2026-10-07-backend-vivo.md`](docs/_bitacora/2026-10-07-backend-vivo.md)
 - [`2026-10-07-falso-positivo-del-guardian.md`](docs/_bitacora/2026-10-07-falso-positivo-del-guardian.md)
 - [`2026-10-07-gobierno-de-la-integracion.md`](docs/_bitacora/2026-10-07-gobierno-de-la-integracion.md)

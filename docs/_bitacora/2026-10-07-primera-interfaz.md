@@ -66,3 +66,32 @@ limitación encarece la exploración, no la producción.
 **Compilar no es funcionar, y esta vez tampoco bastaba con que la API respondiera.** Los dos
 defectos de entorno —la variable incrustada y el proceso zombi— pasaban el `typecheck` sin una
 queja. La única evidencia aceptable fue abrir el navegador y leer la cifra en pantalla.
+
+---
+
+## Epílogo: el guardián devolvió la rama, y tenía razón
+
+Al cerrar esta sesión, el agente `integrador` **rechazó** la rama de documentación. Al ejecutar sus
+compuertas sobre ella descubrió algo que ninguna sesión anterior había visto: **v0.9.0 se etiquetó
+declarando verificaciones que nunca se habían ejecutado.** Cuatro de las siete compuertas eran
+imposibles de poner en verde desde el primer commit del proyecto — `lint` invocaba un ESLint que no
+estaba instalado, `test` fallaba por los paquetes sin pruebas, `commitlint` no tenía hook, y
+`format` referenciaba un plugin ausente.
+
+Eso se reparó en **v0.9.1**, y la decisión de fondo quedó en
+[`docs/_integraciones/2026-10-07-v0.9.1.md`](../_integraciones/2026-10-07-v0.9.1.md).
+
+### Lo que esto enseña sobre el método
+
+**Una compuerta que no puede ponerse en verde es peor que no tener compuerta.** No solo no
+verifica: produce la impresión documentada de que algo se verificó. El registro de autorizaciones
+de v0.9.0 lista `typecheck` y `build` y no menciona `lint` ni `test` — la ausencia estaba a la
+vista y nadie la leyó como ausencia.
+
+**El valor del `integrador` no es que integre: es que devuelva.** Un revisor que aprueba todo lo que
+le llega no añade información al sistema. Esta es la primera vez que el guardián rechaza algo, y lo
+que encontró no estaba en la rama que revisaba, sino debajo de ella.
+
+**Y la confirmación de siempre:** el linter, en su primerísima pasada, encontró dos defectos reales
+—el sobre de error leído a tientas, dos promesas sueltas— que llevaban publicados desde la víspera
+y que `typecheck` daba por buenos. Compilar sigue sin ser funcionar.
