@@ -1,0 +1,368 @@
+/**
+ * Semilla de desarrollo: una agencia demo con catálogo de paquetes.
+ *
+ *   pnpm db:seed
+ *
+ * Los datos son **verosímiles, no reales**: destinos, temporadas y estructura de precios tal
+ * como los publica un mayorista colombiano, con cifras inventadas. Sirven para desarrollar y
+ * demostrar; no para tomar decisiones de precio.
+ *
+ * Por qué importa que sean verosímiles y no `test1`, `test2`: casi todos los defectos de
+ * modelado de este dominio aparecen al cargar un tarifario de verdad —precio por acomodación,
+ * temporadas que se solapan, niños con edad de corte—. Con datos de juguete no se ven.
+ *
+ * Es idempotente: se puede ejecutar varias veces.
+ */
+
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
+
+const TENANT_DEMO = '01932000-0000-7000-8000-0000000000d0';
+
+/** Pesos colombianos: cero decimales, así que la unidad mínima es el peso. R8. */
+const cop = (pesos: number) => BigInt(pesos);
+
+async function main() {
+  console.log('Sembrando la agencia demo…');
+
+  // --- Datos de referencia globales --------------------------------------
+  await prisma.moneda.createMany({
+    data: [
+      { codigoIso: 'COP', nombre: 'Peso colombiano', decimales: 0 },
+      { codigoIso: 'USD', nombre: 'Dólar estadounidense', decimales: 2 },
+      { codigoIso: 'EUR', nombre: 'Euro', decimales: 2 },
+      { codigoIso: 'MXN', nombre: 'Peso mexicano', decimales: 2 },
+    ],
+    skipDuplicates: true,
+  });
+
+  // --- La agencia ---------------------------------------------------------
+  const tenant = await prisma.tenant.upsert({
+    where: { id: TENANT_DEMO },
+    update: {},
+    create: {
+      id: TENANT_DEMO,
+      slug: 'agencia-demo',
+      nombre: 'Agencia Demo — Viajes del Caribe',
+      paisIso: 'CO',
+      monedaIso: 'COP',
+      zonaHoraria: 'America/Bogota',
+      estado: 'ACTIVO',
+    },
+  });
+
+  // --- Equipo -------------------------------------------------------------
+  // Sin contraseña: la autenticación todavía no existe. Cuando exista, el seed
+  // deberá poner un hash conocido y documentarlo como credencial de desarrollo.
+  await prisma.usuario.createMany({
+    data: [
+      { tenantId: tenant.id, correo: 'dueno@agenciademo.test', nombre: 'Marcela Duarte', rol: 'DUENO' },
+      { tenantId: tenant.id, correo: 'ana@agenciademo.test', nombre: 'Ana Lucía Pérez', rol: 'ASESOR' },
+      { tenantId: tenant.id, correo: 'carlos@agenciademo.test', nombre: 'Carlos Mejía', rol: 'ASESOR' },
+    ],
+    skipDuplicates: true,
+  });
+
+  // --- Embudo -------------------------------------------------------------
+  // Tabla, no enum: cada agencia define su proceso. R12 y ADR-0006.
+  const etapas = [
+    { nombre: 'Consulta nueva', orden: 1, probabilidad: 10 },
+    { nombre: 'Calificado', orden: 2, probabilidad: 25 },
+    { nombre: 'Cotizado', orden: 3, probabilidad: 50 },
+    { nombre: 'En negociación', orden: 4, probabilidad: 70 },
+    { nombre: 'Bloqueo / reserva', orden: 5, probabilidad: 90 },
+    { nombre: 'Ganada', orden: 6, probabilidad: 100, esGanada: true },
+    { nombre: 'Perdida', orden: 7, probabilidad: 0, esPerdida: true },
+  ];
+  for (const e of etapas) {
+    await prisma.etapaPipeline.upsert({
+      where: { tenantId_orden: { tenantId: tenant.id, orden: e.orden } },
+      update: { nombre: e.nombre, probabilidad: e.probabilidad },
+      create: { tenantId: tenant.id, ...e },
+    });
+  }
+
+  // --- Campos personalizados ---------------------------------------------
+  // Se siembran para que la columna jsonb y las definiciones se ejerciten desde el principio.
+  await prisma.definicionCampoPersonalizado.createMany({
+    data: [
+      {
+        tenantId: tenant.id,
+        entidad: 'CONTACTO',
+        clave: 'como_nos_conocio',
+        etiqueta: '¿Cómo nos conoció?',
+        tipo: 'SELECCION',
+        orden: 1,
+        opciones: ['Instagram', 'Referido', 'Google', 'Cliente anterior', 'Otro'],
+      },
+      {
+        tenantId: tenant.id,
+        entidad: 'OPORTUNIDAD',
+        clave: 'motivo_del_viaje',
+        etiqueta: 'Motivo del viaje',
+        tipo: 'SELECCION',
+        orden: 1,
+        opciones: ['Vacaciones', 'Luna de miel', 'Negocios', 'Familiar', 'Celebración'],
+      },
+    ],
+    skipDuplicates: true,
+  });
+
+  // --- Mayoristas ---------------------------------------------------------
+  const mayoristas = [
+    { nombre: 'Mayorista Caribe S.A.S.', diasTimeLimit: 5, contactoNombre: 'Jorge Restrepo' },
+    { nombre: 'Operadora Andina', diasTimeLimit: 3, contactoNombre: 'Liliana Gómez' },
+  ];
+  const mayoristasCreados = [];
+  for (const m of mayoristas) {
+    const existente = await prisma.mayorista.findFirst({
+      where: { tenantId: tenant.id, nombre: m.nombre },
+    });
+    mayoristasCreados.push(
+      existente ?? (await prisma.mayorista.create({ data: { tenantId: tenant.id, ...m } })),
+    );
+  }
+
+  // --- Catálogo de paquetes ----------------------------------------------
+  //
+  // Tres patrones reales del tarifario colombiano, elegidos a propósito:
+  //   · San Andrés: el destino más vendido. Temporada alta de diciembre y puente festivo.
+  //   · Cartagena: cercano, precios por acomodación muy marcados.
+  //   · Punta Cana: internacional, todo incluido, con infante gratis.
+  const paquetes = [
+    {
+      nombre: 'San Andrés — 4 días / 3 noches, todo incluido',
+      destino: 'San Andrés',
+      paisIso: 'CO',
+      dias: 4,
+      noches: 3,
+      planAlimentacion: 'TODO_INCLUIDO' as const,
+      mayoristaId: mayoristasCreados[0]!.id,
+      inclusiones: [
+        'Tiquetes aéreos Bogotá — San Andrés — Bogotá',
+        'Traslados aeropuerto — hotel — aeropuerto',
+        'Alojamiento 3 noches con todo incluido',
+        'Tarjeta de turismo',
+        'Seguro de asistencia médica',
+      ],
+      exclusiones: [
+        'Impuesto de ingreso a la isla',
+        'Tours opcionales',
+        'Gastos no especificados',
+      ],
+      temporadas: [
+        {
+          nombre: 'Temporada baja',
+          desde: '2027-02-01',
+          hasta: '2027-06-15',
+          precios: [
+            { acomodacion: 'DOBLE', tipoPasajero: 'ADT', neto: 1_280_000, venta: 1_590_000 },
+            { acomodacion: 'TRIPLE', tipoPasajero: 'ADT', neto: 1_150_000, venta: 1_430_000 },
+            { acomodacion: 'CUADRUPLE', tipoPasajero: 'ADT', neto: 1_080_000, venta: 1_340_000 },
+            { acomodacion: 'SENCILLA', tipoPasajero: 'ADT', neto: 1_850_000, venta: 2_290_000 },
+            { acomodacion: 'DOBLE', tipoPasajero: 'CHD', neto: 890_000, venta: 1_110_000, edadMinima: 2, edadMaxima: 11 },
+            { acomodacion: 'TRIPLE', tipoPasajero: 'CHD', neto: 820_000, venta: 1_020_000, edadMinima: 2, edadMaxima: 11 },
+            { acomodacion: 'DOBLE', tipoPasajero: 'INF', neto: 180_000, venta: 220_000, edadMinima: 0, edadMaxima: 1 },
+          ],
+        },
+        {
+          nombre: 'Temporada alta — diciembre',
+          desde: '2027-12-15',
+          hasta: '2028-01-15',
+          precios: [
+            { acomodacion: 'DOBLE', tipoPasajero: 'ADT', neto: 2_150_000, venta: 2_690_000 },
+            { acomodacion: 'TRIPLE', tipoPasajero: 'ADT', neto: 1_980_000, venta: 2_480_000 },
+            { acomodacion: 'CUADRUPLE', tipoPasajero: 'ADT', neto: 1_850_000, venta: 2_310_000 },
+            { acomodacion: 'SENCILLA', tipoPasajero: 'ADT', neto: 3_100_000, venta: 3_870_000 },
+            { acomodacion: 'DOBLE', tipoPasajero: 'CHD', neto: 1_490_000, venta: 1_860_000, edadMinima: 2, edadMaxima: 11 },
+            { acomodacion: 'DOBLE', tipoPasajero: 'INF', neto: 220_000, venta: 270_000, edadMinima: 0, edadMaxima: 1 },
+          ],
+        },
+        {
+          // En Colombia los puentes festivos son su propia temporada y cuestan como la alta.
+          nombre: 'Puente de Reyes',
+          desde: '2028-01-06',
+          hasta: '2028-01-09',
+          precios: [
+            { acomodacion: 'DOBLE', tipoPasajero: 'ADT', neto: 1_890_000, venta: 2_360_000 },
+            { acomodacion: 'TRIPLE', tipoPasajero: 'ADT', neto: 1_740_000, venta: 2_170_000 },
+            { acomodacion: 'DOBLE', tipoPasajero: 'CHD', neto: 1_310_000, venta: 1_640_000, edadMinima: 2, edadMaxima: 11 },
+          ],
+        },
+      ],
+    },
+    {
+      nombre: 'Cartagena — 4 días / 3 noches con desayuno',
+      destino: 'Cartagena',
+      paisIso: 'CO',
+      dias: 4,
+      noches: 3,
+      planAlimentacion: 'DESAYUNO' as const,
+      mayoristaId: mayoristasCreados[1]!.id,
+      inclusiones: [
+        'Tiquetes aéreos ida y regreso',
+        'Traslados aeropuerto — hotel — aeropuerto',
+        'Alojamiento 3 noches con desayuno',
+        'City tour por la ciudad amurallada',
+        'Seguro de asistencia médica',
+      ],
+      exclusiones: ['Almuerzos y cenas', 'Tour a Islas del Rosario', 'Propinas'],
+      temporadas: [
+        {
+          nombre: 'Temporada baja',
+          desde: '2027-02-01',
+          hasta: '2027-06-15',
+          precios: [
+            { acomodacion: 'DOBLE', tipoPasajero: 'ADT', neto: 980_000, venta: 1_250_000 },
+            { acomodacion: 'TRIPLE', tipoPasajero: 'ADT', neto: 880_000, venta: 1_120_000 },
+            { acomodacion: 'CUADRUPLE', tipoPasajero: 'ADT', neto: 820_000, venta: 1_040_000 },
+            { acomodacion: 'SENCILLA', tipoPasajero: 'ADT', neto: 1_480_000, venta: 1_890_000 },
+            { acomodacion: 'DOBLE', tipoPasajero: 'CHD', neto: 690_000, venta: 880_000, edadMinima: 2, edadMaxima: 11 },
+          ],
+        },
+      ],
+    },
+    {
+      nombre: 'Punta Cana — 6 días / 5 noches, todo incluido',
+      destino: 'Punta Cana',
+      paisIso: 'DO',
+      dias: 6,
+      noches: 5,
+      planAlimentacion: 'TODO_INCLUIDO' as const,
+      mayoristaId: mayoristasCreados[0]!.id,
+      inclusiones: [
+        'Tiquetes aéreos Bogotá — Punta Cana — Bogotá',
+        'Traslados de llegada y salida',
+        'Alojamiento 5 noches todo incluido',
+        'Impuestos aéreos',
+        'Seguro de asistencia médica internacional',
+      ],
+      exclusiones: ['Tarjeta de turista dominicana', 'Excursiones', 'Gastos personales'],
+      temporadas: [
+        {
+          nombre: 'Temporada media',
+          desde: '2027-05-01',
+          hasta: '2027-11-30',
+          precios: [
+            { acomodacion: 'DOBLE', tipoPasajero: 'ADT', neto: 4_280_000, venta: 5_350_000 },
+            { acomodacion: 'TRIPLE', tipoPasajero: 'ADT', neto: 3_990_000, venta: 4_990_000 },
+            { acomodacion: 'SENCILLA', tipoPasajero: 'ADT', neto: 6_150_000, venta: 7_690_000 },
+            { acomodacion: 'DOBLE', tipoPasajero: 'CHD', neto: 2_890_000, venta: 3_610_000, edadMinima: 2, edadMaxima: 12 },
+            // Infante gratis compartiendo habitación: condición comercial real,
+            // y el modelo tiene que poder expresarla sin trucos.
+            { acomodacion: 'DOBLE', tipoPasajero: 'INF', neto: 0, venta: 0, edadMinima: 0, edadMaxima: 1 },
+          ],
+        },
+      ],
+    },
+  ];
+
+  for (const p of paquetes) {
+    const existente = await prisma.paquete.findFirst({
+      where: { tenantId: tenant.id, nombre: p.nombre },
+    });
+    if (existente) {
+      console.log(`  ya existe: ${p.nombre}`);
+      continue;
+    }
+
+    const { temporadas, ...datosPaquete } = p;
+    const paquete = await prisma.paquete.create({
+      data: { tenantId: tenant.id, ...datosPaquete },
+    });
+
+    for (const t of temporadas) {
+      const temporada = await prisma.temporada.create({
+        data: {
+          tenantId: tenant.id,
+          paqueteId: paquete.id,
+          nombre: t.nombre,
+          desde: new Date(t.desde),
+          hasta: new Date(t.hasta),
+        },
+      });
+      await prisma.precio.createMany({
+        data: t.precios.map((pr) => ({
+          tenantId: tenant.id,
+          temporadaId: temporada.id,
+          acomodacion: pr.acomodacion as never,
+          tipoPasajero: pr.tipoPasajero as never,
+          netoUnidades: cop(pr.neto),
+          ventaUnidades: cop(pr.venta),
+          monedaIso: 'COP',
+          edadMinima: pr.edadMinima ?? null,
+          edadMaxima: pr.edadMaxima ?? null,
+        })),
+      });
+    }
+    console.log(`  creado: ${p.nombre}  (${temporadas.length} temporadas)`);
+  }
+
+  // --- Salidas ------------------------------------------------------------
+  // Fechas concretas con cupo, para poder ejercitar el agotamiento.
+  const sanAndres = await prisma.paquete.findFirst({
+    where: { tenantId: tenant.id, destino: 'San Andrés' },
+  });
+  if (sanAndres) {
+    for (const fecha of ['2027-12-18', '2027-12-26', '2028-01-06']) {
+      await prisma.salida.upsert({
+        where: {
+          tenantId_paqueteId_fecha: {
+            tenantId: tenant.id,
+            paqueteId: sanAndres.id,
+            fecha: new Date(fecha),
+          },
+        },
+        update: {},
+        create: {
+          tenantId: tenant.id,
+          paqueteId: sanAndres.id,
+          fecha: new Date(fecha),
+          cupoTotal: 20,
+          cupoVendido: fecha === '2027-12-26' ? 18 : 0,
+        },
+      });
+    }
+  }
+
+  // --- Contactos ----------------------------------------------------------
+  const contactos = [
+    { telefonoE164: '+573001234567', nombre: 'Laura Giraldo', correo: 'laura@ejemplo.test' },
+    { telefonoE164: '+573109876543', nombre: 'Familia Ramírez', correo: null },
+    { telefonoE164: '+573155551234', nombre: 'Diego Morales', correo: 'diego@ejemplo.test' },
+  ];
+  for (const c of contactos) {
+    await prisma.contacto.upsert({
+      where: { tenantId_telefonoE164: { tenantId: tenant.id, telefonoE164: c.telefonoE164 } },
+      update: {},
+      create: {
+        tenantId: tenant.id,
+        ...c,
+        consentimientoEn: new Date(),
+        consentimientoCanal: 'WHATSAPP',
+        camposPersonalizados: { como_nos_conocio: 'Instagram' },
+      },
+    });
+  }
+
+  const resumen = {
+    paquetes: await prisma.paquete.count({ where: { tenantId: tenant.id } }),
+    temporadas: await prisma.temporada.count({ where: { tenantId: tenant.id } }),
+    precios: await prisma.precio.count({ where: { tenantId: tenant.id } }),
+    salidas: await prisma.salida.count({ where: { tenantId: tenant.id } }),
+    contactos: await prisma.contacto.count({ where: { tenantId: tenant.id } }),
+    etapas: await prisma.etapaPipeline.count({ where: { tenantId: tenant.id } }),
+  };
+
+  console.log('\nAgencia demo lista:');
+  for (const [k, v] of Object.entries(resumen)) console.log(`  ${k.padEnd(12)} ${v}`);
+  console.log(`\n  tenantId: ${tenant.id}`);
+}
+
+main()
+  .catch((e) => {
+    console.error(e);
+    process.exit(1);
+  })
+  .finally(() => prisma.$disconnect());
