@@ -1508,3 +1508,193 @@ El ADR lo aprueba el propietario del producto. Lo que este auditor dictamina es 
 aplicados, no quedan objeciones de seguridad**, y que la evidencia final no es el texto sino las
 aserciones en verde contra una base real — incluidas las que faltan. Hasta entonces, el documento
 describe un sistema seguro; no demuestra que se vaya a construir uno.
+
+---
+
+# Verificación final — 2026-10-07 (tercera pasada)
+
+- **Objeto:** el ADR tras `d0cff54` (824 → 967 líneas).
+- **Qué se comprobó:** RV-1 a RV-6 contra el texto nuevo, las nueve no bloqueantes de pasada —porque
+  viven en el mismo texto y una de ellas ya rompió una bloqueante—, y las dieciocho aserciones de §5
+  una por una buscando el patrón que el arquitecto encontró en la suya: **comprobar presencia en vez
+  de valor**.
+- **Resultado:** las seis bloqueantes están cerradas; una de ellas, cerrada para el caso principal y
+  no para un caso de borde. Las nueve no bloqueantes, aplicadas. Quedan **seis correcciones de una
+  línea**, ninguna de las cuales justifica otra pasada de auditoría.
+
+## Estado de las quince
+
+| # | Estado | Observación |
+|---|---|---|
+| RV-1 regresión del `jobId` | **Corregido** | Los cuatro cambios acoplados están y **no se anulan entre sí**: identificador por `change`, estado en `recepciones_webhook_changes`, anulación del payload solo al resolverse el último, y purga que respeta cualquier recepción con uno sin resolver. El párrafo de §4 explica además *por qué* se rompió, que es lo que impide que vuelva a pasar |
+| RV-2 matriz rol × función | **Corregido** | Aserción 20, en ambos sentidos, contra una tabla de §1.3 declarada **normativa**. Cubre los cuatro caminos. El de `DATABASE_APP_URL` se cierra con el guardia de identidad de §1.3, que es correcto pero no tiene prueba nombrada: C-5 |
+| RV-3 `search_path` por valor | **Corregido** | Aserción 13 compara el valor vacío y el propietario, para las seis funciones. Lo encontró el arquitecto; el diagnóstico es el correcto |
+| RV-4 tres roles, no uno | **Corregido** | Aserciones 8, 9 y 10 sobre los tres roles, y `excepciones_rls` con clave `(tabla, rol)`. El razonamiento sobre el nombre de la columna —"el nombre es parte del defecto"— es exacto. Queda el borde de C-1 |
+| RV-5 `excepciones_rls` autodeclarada | **Corregido** | Se declara a sí misma, entra en la aserción 17, y la 11 fija las tripletas contra un literal del repositorio. El párrafo de §1.2 describe el ataque completo, incluida la parte que importa: que el siguiente despliegue concede por sí solo lo escrito |
+| RV-6 rotación de la pimienta | **Corregido para filas de número; abierto para filas WABA** | Ventana de dos pimientas, `pimienta_version` por fila, indicador de reconstrucción que hace retener en vez de borrar, e historial indexado por `canal_id`. Pero las filas WABA tienen `canal_id` nulo: C-2 |
+| RV-7 `waba_cifrado` | **Corregido** | Resuelto mejor de lo que pedí: la columna desaparece y el claro se lee de `canales` bajo el tenant de la propia fila |
+| RV-8 retención del historial | **Corregido** | 5 años por particiones anuales. Soltar una partición no es un `DELETE` sobre filas: el invariante probatorio sobrevive y el plazo pasa a ser ejecutable |
+| RV-9 propietario del staging | **Corregido** | `viajapro_staging`, sin privilegios sobre el directorio. Cierra el camino aunque el cuerpo de la función crezca |
+| RV-10 identidad del rol al arrancar | **Corregido en el texto** | §1.3 lo exige por proceso. Es código que aún no existe: C-5 |
+| RV-11 reejecución | **Corregido** | Aserciones 22 y 23 separadas, con la frase que importa: "no se sustituyen" |
+| RV-12 `FOR ROLE` | **Corregido** | Con la explicación de por qué no es decorativo |
+| RV-13 conteo de funciones | **Corregido** | Seis, enumeradas, con el motivo: un inventario corto deja cuatro fuera del control, incluidas las dos que borran evidencia |
+| RV-14 conteo de tablas | **Corregido** | Cuatro, contada `excepciones_rls`, y la regla de parada reformulada sobre "datos de ruteo o de negocio". Queda un "tres" suelto: C-6 |
+| RV-15 dos aserciones que faltaban | **Corregido** | 24 (historial inmutable, también para los propietarios) y 25, que sí distingue la clave foránea compuesta de la simple porque el canal de B existe |
+
+## Lo que queda: seis correcciones de una línea
+
+Ninguna abre un camino de explotación nuevo. Se enumeran acotadas y **no requieren otra pasada de
+auditoría**: se aplican y se acepta.
+
+- **C-1 [MEDIO] — El mecanismo protege a los roles que alguien recordó listar.** §1.2 revoca por par
+  `(tabla, rol)` y las aserciones 8, 9 y 20 hablan de "los tres roles de login". Un rol de login
+  creado mañana —`viajapro_reportes` para analítica, o uno que añada el proveedor— recibe el
+  `GRANT ... ON ALL TABLES`, **no está en ninguna fila de `excepciones_rls`, nadie le revoca nada, y
+  ninguna aserción pregunta por él**. Es la misma forma del crítico 1: lo que no está en la lista nace
+  desprotegido. Y el ADR ya nombra ese escenario para funciones (§1.2b) sin cubrirlo para tablas.
+  **Corrección:** el bucle de revocación y las aserciones 8, 9 y 20 enumeran los roles desde
+  `pg_roles where rolcanlogin`, no desde una lista fija; un rol no declarado debe quedar con cero
+  privilegios sobre las cuatro tablas globales. Es la misma filosofía que hizo correcta la aserción
+  10 —"no enumera tablas, compara contra una declaración"—, aplicada también al otro eje.
+
+- **C-2 [MEDIO] — El historial sigue huérfano para las filas WABA.** §1.1 lo indexa por `canal_id`
+  "nunca por el HMAC", que es la corrección correcta; pero la misma sección define `canal_id` como
+  **nulo en las filas de tipo WABA**. Para esas filas el único identificador que queda es el HMAC con
+  su versión de pimienta, es decir, exactamente lo que RV-6 vino a evitar: tras una rotación, la
+  historia de los cambios de titularidad a nivel de cuenta deja de ser consultable. Y la fila WABA es
+  la que gobierna los eventos de gestión. **Corrección:** el historial se indexa por un identificador
+  propio y estable en los dos casos —`canal_id` para filas de número y una referencia propia de WABA
+  para las otras—, con una restricción que exija que uno de los dos esté presente.
+
+- **C-3 [MEDIO] — Carrera al anular el payload.** §4 paso 4: "marcar `procesado_en` de ese `change`;
+  si era el último pendiente de su recepción, anular el payload". Dos trabajadores que terminen los
+  dos últimos `changes` a la vez pueden ver cada uno al otro como pendiente y **no anularlo nunca**:
+  el contenido se queda hasta la purga en vez de minutos. Es el plazo que el propio ADR llama *"el
+  único que decide la legalidad del apartado"*. **Corrección:** `anular_payload` se invoca
+  incondicionalmente tras cada `change` y resuelve la condición **dentro de una sola sentencia**
+  —anula donde no exista ningún `change` pendiente de esa recepción—, en vez de comprobar y decidir
+  en el trabajador.
+
+- **C-4 [BAJO] — El paso 1 prohíbe parsear y el paso 4 necesita parsear.** §4 dice "el parseo de JSON
+  está desactivado en esta ruta", y ahora `registrar_recepcion` inserta "una fila hija por `change`",
+  lo que exige enumerarlos. Leído al pie de la letra, los dos pasos no son compatibles y el
+  implementador tendrá que inventar algo. **Corrección:** precisar que lo prohibido es parsear
+  **antes** de validar la firma; después, el cuerpo se parsea para enumerar los `changes`, con el
+  tope de 1 MiB ya puesto. Y definir el índice de una vez —orden aplanado sobre
+  `entry[].changes[]`—, porque dos convenciones distintas producirían identificadores distintos para
+  el mismo reintento.
+
+- **C-5 [BAJO] — El guardia de identidad del rol no tiene prueba nombrada.** §1.3 exige que cada
+  proceso aborte si `current_user` no es el esperado, y es la mitad que cierra el camino de
+  `DATABASE_APP_URL` apuntando al rol de altas. Pero no es una comprobación de base de datos, así que
+  no está en §5 — y §5 es lo que, por la regla del propio ADR, "cuenta". **Corrección:** nombrarla en
+  §5 como prueba de arranque por proceso, fuera de la tabla si hace falta, con la misma obligación:
+  si se desactiva, la decisión queda suspendida.
+
+- **C-6 [BAJO] — Dos restos de conteo.** §1.2 cierra con "este ADR está metiendo tres" cuando son
+  cuatro, y la aserción 20 debería decir que la matriz es sobre los roles de login: los dos
+  propietarios tienen `EXECUTE` por propiedad y una lectura literal los haría fallar.
+
+## Respuesta a los cinco puntos
+
+**1. RV-1.** Los cuatro cambios están y son coherentes entre sí: el identificador baja al `change`, el
+estado se muda a `recepciones_webhook_changes` porque la recepción es una para N, el payload se anula
+solo al resolverse el último, y la purga respeta cualquier recepción con uno pendiente. Comprobado
+que no se anulan: ya no queda ningún `procesado_en` a nivel de recepción, el paso 4 del trabajador
+marca "de ese `change`", el relay barre `changes` y la aserción 18 mira el estado de los hijos. **La
+aserción 16 está escrita como pedí** —"a través de la cola real", con tres `changes` de tres tenants—
+y §4 explica por qué una prueba que inserte filas a mano no vería nada: el defecto vive en el
+deduplicador de la cola, no en la base. Queda C-3, que es una carrera, y C-4, que es una frase.
+
+**2. RV-2.** La matriz cubre los cuatro caminos: el `GRANT EXECUTE ON ALL FUNCTIONS` con la aserción
+20 en ambos sentidos; `registrar_recepcion` con el segundo propietario; `excepciones_rls` con la
+autodeclaración y la aserción 11; y el de `DATABASE_APP_URL` con el guardia de identidad. Sobre ese
+último, que es el que preguntabas: **el texto es correcto y suficiente** —aborta si `current_user` no
+es el esperado, por proceso, y la frase "sin esto, la separación de roles es una convención de
+despliegue" fija bien el rango—, pero tienes razón en que es código que no existe. Mi aprobación de
+ese camino es condicional a que exista, y por eso pido C-5: que la prueba se nombre, para que no se
+quede en una intención bienintencionada entre dieciocho aserciones que sí están numeradas.
+
+**3. La reejecución.** Ahora comprueba la clase de fallo, no los dos archivos. La 22 reaplica `001` y
+`002` y atrapa la regresión conocida; la 23 aplica la cadena completa desde cero y **sí atrapa la
+migración que todavía no se ha escrito**: si una migración futura escribe su propio
+`GRANT ... ON ALL TABLES` o `ON ALL FUNCTIONS` sin el contrapeso declarativo, al final de la cadena
+los privilegios no coinciden y las aserciones 8, 9, 10 y 20 fallan. La frase "la 22 y la 23 no se
+sustituyen" es exactamente la distinción que hacía falta.
+
+**4. RV-6.** Una rotación ya no puede destruir mensajes: la ventana de dos pimientas permite resolver
+con la anterior mientras se reconstruye, `pimienta_version` dice qué está reconstruido, y el indicador
+de reconstrucción hace que la rama "desconocido" retenga en vez de borrar. Las tres piezas se
+necesitan y las tres están. Además el ADR añadió por su cuenta algo que no pedí y que es acertado:
+ensayar la rotación en un entorno no productivo antes de ejecutarla, listado en "cuándo revisar". **El
+historial ya no queda huérfano para las filas de número. Para las filas WABA sí**, y eso es C-2.
+
+**5. `excepciones_rls` declarándose a sí misma.** Resuelto, y el párrafo de §1.2 reconstruye el ataque
+entero, incluida la parte que no se ve: que una inyección no rompe nada el día que escribe, sino que
+**el siguiente despliegue concede por sí solo lo que quedó escrito**, con firma de legitimidad. La
+defensa es la correcta y es de dos capas: la aserción 10 contrasta lo real contra lo declarado, y la
+11 contrasta lo declarado contra un literal del repositorio, que es lo único que una inyección no
+alcanza. Queda el eje que nadie cubrió —los roles, no las tablas—, que es C-1.
+
+**Sobre el patrón presencia-contra-valor.** Lo busqué en las dieciocho. **No se repite.** Las ocho de
+comportamiento (8, 9, 15, 16, 18, 19, 24, 25) comprueban efecto y estado posterior, no solo que algo
+lance; la 15 verifica además que la fila siga apuntando a B, y la 25 distingue de verdad una clave
+foránea compuesta de una simple porque el canal ajeno existe. Las de catálogo (10, 11, 12, 13, 14, 20,
+21) comparan valores exactos o conjuntos exactos. La 17 comprueba una ausencia, pero ahí la ausencia
+**es** la propiedad. El error que el arquitecto encontró en la suya era el único de esa familia.
+
+## Dictamen final
+
+**Sí. Sin condiciones blandas: por parte de seguridad, el ADR-0008 puede pasar a Aceptado**, aplicando
+C-1 a C-6, que son seis líneas y no necesitan otra revisión. No quedan objeciones de seguridad sobre
+el diseño. La aprobación formal es del propietario del producto; esto es el insumo.
+
+Los tres críticos están cerrados por mecanismos, no por promesas: el crítico 1 por una revocación
+dirigida por datos que no puede desincronizarse del `GRANT`; el crítico 2 por el rol de conexión, que
+es lo único que una inyección SQL no puede falsear, con la frase falsa del borrador corregida y la
+comprobación del GUC degradada a lo que es; el crítico 3 por la prueba de titularidad del canje, con
+la desviación respecto del tutorial de Meta escrita donde alguien la leerá antes de repetir el fallo.
+
+Y el documento mejoró en algo que no era un hallazgo: ahora explica **por qué** cada protección existe
+y qué pasó cuando no estaba. El párrafo de §4 sobre dos correcciones correctas que se anulan entre sí
+vale más que la corrección misma, porque es lo que impide repetirla.
+
+### Qué parte de esta aprobación es condicional, dicho antes de implementar
+
+Lo pedido, explícito. **Apruebo un diseño; no certifico un sistema.** Estas son las afirmaciones de
+seguridad que hoy solo están sostenidas por texto, y el artefacto que las convierte en evidencia:
+
+| Afirmación | Sostenida por | Si eso no existe |
+|---|---|---|
+| El rol de la aplicación no puede leer ni escribir el directorio | Aserciones 8, 9, 10, 11 | Crítico 1 abierto |
+| La revocación sobrevive al aplicador de políticas y a cualquier migración futura | Aserciones 22 y 23 | Crítico 1 abierto, y silencioso |
+| El rol general de la API no puede repuntar un número | **Aserción 20** | **Crítico 2 abierto** |
+| Un proceso no puede conectarse con el rol equivocado | Prueba de arranque por proceso (C-5), **que no es de base de datos** | Crítico 2 abierto por la vía de configuración |
+| Las funciones no son escalables ni secuestrables | Aserciones 12, 13, 14, 21 | Escalada por `search_path` o por `PUBLIC` |
+| Un POST con varios tenants no los mezcla ni pierde mensajes | **Aserción 16, a través de la cola real** | RV-1 vuelve: pérdida silenciosa multi-tenant |
+| El secuestro es detectable y demostrable | Aserciones 24 y 25 | Un repunte deja de ser probable |
+| El contenido no sobrevive a su finalidad | Aserciones 18 y 19 | Problema legal, no técnico |
+| El `phone_number_id` no viene del cliente | **Prueba de extremo a extremo del alta**, que tampoco es de base de datos | **Crítico 3 abierto** |
+| La rotación de la pimienta no destruye mensajes | **Un ensayo en entorno no productivo**, que ninguna aserción puede sustituir | Pérdida masiva el día de la rotación |
+
+Las tres filas sin aserción de base de datos son las que más fácil se quedan sin hacer, porque no caen
+en el archivo donde están las otras dieciocho: la de arranque, la del alta y el ensayo de rotación.
+**Son trabajo de `backend`, `qa` y `devops`, y las tres respaldan un crítico.**
+
+Dos reglas que quedan atadas a esta aprobación, ambas ya escritas en el ADR y que conviene no aflojar:
+**si alguna de las dieciocho se desactiva o se marca como omitida, esta aprobación caduca** —igual que
+ADR-0007 con la prueba de aislamiento—; y **toda modificación del cuerpo de cualquiera de las seis
+funciones `SECURITY DEFINER` vuelve a pasar por aquí**, igual que una política RLS.
+
+### Sobre el tamaño
+
+967 líneas son muchas y la preocupación es legítima. No recomiendo recortar ahora: la mitad del
+volumen es el *porqué* de cada protección, que es justamente lo que impide que la siguiente persona
+las deshaga por no entenderlas. Pero sí hay una salida barata, y es trabajo de `documentador`, no de
+`arquitecto`: **§5 y las retenciones de §4 son operativas, no decisionales.** Mover las dieciocho
+aserciones a `packages/database/tests/` como documento vivo junto a la prueba, y las retenciones a
+`02-proteccion-de-datos.md` §4, dejaría el ADR en torno a 700 líneas sin perder nada — y además
+pondría cada cosa donde quien la necesita va a buscarla. Que se haga **después** de que las aserciones
+estén en verde, no antes: mover una especificación que todavía nadie implementó es como se pierden
+los requisitos.
