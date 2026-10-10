@@ -112,41 +112,53 @@ export default function BandejaPage() {
     };
   }, []);
 
-  // Manejo de navegación por teclado
-  const manejarKeyDown = (e: React.KeyboardEvent) => {
-    if (conversaciones.length === 0) return;
+  // Manejo de navegación por teclado global (funciona sin pulsar Tab primero)
+  useEffect(() => {
+    const manejarKeyDown = (e: KeyboardEvent) => {
+      if (conversaciones.length === 0) return;
 
-    if (e.key === 'ArrowDown' || e.key === 'j') {
-      e.preventDefault();
-      setIndiceSeleccionado((prev) => {
-        const sig = Math.min(prev + 1, conversaciones.length - 1);
-        itemRefs.current[sig]?.scrollIntoView({ block: 'nearest' });
-        return sig;
-      });
-    } else if (e.key === 'ArrowUp' || e.key === 'k') {
-      e.preventDefault();
-      setIndiceSeleccionado((prev) => {
-        const ant = Math.max(prev - 1, 0);
-        itemRefs.current[ant]?.scrollIntoView({ block: 'nearest' });
-        return ant;
-      });
-    } else if (e.key === 'Home') {
-      e.preventDefault();
-      setIndiceSeleccionado(0);
-      itemRefs.current[0]?.scrollIntoView({ block: 'nearest' });
-    } else if (e.key === 'End') {
-      e.preventDefault();
-      const ultimo = conversaciones.length - 1;
-      setIndiceSeleccionado(ultimo);
-      itemRefs.current[ultimo]?.scrollIntoView({ block: 'nearest' });
-    }
-  };
+      // No interceptar flechas si el foco está en un campo de texto o selección
+      const tag = (document.activeElement?.tagName ?? '').toUpperCase();
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+
+      if (e.key === 'ArrowDown' || e.key === 'j') {
+        e.preventDefault();
+        setIndiceSeleccionado((prev) => {
+          const sig = Math.min(prev + 1, conversaciones.length - 1);
+          itemRefs.current[sig]?.focus();
+          itemRefs.current[sig]?.scrollIntoView({ block: 'nearest' });
+          return sig;
+        });
+      } else if (e.key === 'ArrowUp' || e.key === 'k') {
+        e.preventDefault();
+        setIndiceSeleccionado((prev) => {
+          const ant = Math.max(prev - 1, 0);
+          itemRefs.current[ant]?.focus();
+          itemRefs.current[ant]?.scrollIntoView({ block: 'nearest' });
+          return ant;
+        });
+      } else if (e.key === 'Home') {
+        e.preventDefault();
+        setIndiceSeleccionado(0);
+        itemRefs.current[0]?.focus();
+        itemRefs.current[0]?.scrollIntoView({ block: 'nearest' });
+      } else if (e.key === 'End') {
+        e.preventDefault();
+        const ultimo = conversaciones.length - 1;
+        setIndiceSeleccionado(ultimo);
+        itemRefs.current[ultimo]?.focus();
+        itemRefs.current[ultimo]?.scrollIntoView({ block: 'nearest' });
+      }
+    };
+
+    window.addEventListener('keydown', manejarKeyDown);
+    return () => window.removeEventListener('keydown', manejarKeyDown);
+  }, [conversaciones.length]);
 
   return (
     <div
       className="flex h-screen flex-col bg-neutral-100 text-neutral-900 focus:outline-none"
-      onKeyDown={manejarKeyDown}
-      tabIndex={0}
+
       aria-label="Bandeja de conversaciones de WhatsApp"
     >
       {/* Barra superior de filtros y búsqueda (Alta densidad) */}
@@ -285,7 +297,7 @@ export default function BandejaPage() {
 
         {/* LISTA CON VOLUMEN DE 500 CONVERSACIONES (Alta densidad) */}
         {!cargando && !error && conversaciones.length > 0 && (
-          <div className="space-y-1">
+          <div className="space-y-1" role="listbox" aria-label="Lista de conversaciones">
             {conversaciones.map((conv, idx) => {
               const esSeleccionada = idx === indiceSeleccionado;
               return (
@@ -387,6 +399,9 @@ function ConversacionFila({
       href={`/bandeja/${c.id}`}
       ref={ref}
       onClick={onClick}
+      role="option"
+      aria-selected={esSeleccionada}
+      tabIndex={esSeleccionada ? 0 : -1}
       className={`group relative flex cursor-pointer flex-col gap-1.5 rounded-sm border p-2.5 transition-all sm:flex-row sm:items-center sm:justify-between ${
         esSeleccionada
           ? 'border-acento-600 bg-acento-50/50 ring-acento-600 shadow-xs ring-2'
