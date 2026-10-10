@@ -9,7 +9,7 @@
  * Un guardián que bloquea lo legítimo acaba desactivado, y entonces no protege nada.
  */
 
-import { evaluar } from './politica-rama.mjs';
+import { directorioDelComando, evaluar } from './politica-rama.mjs';
 
 /** [rama actual, comando, acción esperada, descripción] */
 const casos = [
@@ -128,5 +128,34 @@ for (const [rama, cmd, esperada, descripcion] of casos) {
   );
 }
 
-console.log(`\n${casos.length - fallos}/${casos.length} casos correctos.`);
+// ---------------------------------------------------------------------------
+// Directorio sobre el que actúa el comando — necesario desde que hay worktrees.
+//
+// El caso que importa no es el falso positivo (trabajar en un worktree y quedar
+// bloqueado porque la carpeta de la sesión está en `main`), sino el inverso: sesión
+// en una rama de trabajo y `cd` a un worktree que tiene `main`. Mirando la rama de
+// la sesión, el guardián dejaría pasar una escritura en la rama protegida.
+// ---------------------------------------------------------------------------
+const casosDirectorio = [
+  ['cd /d/Projects/CRM-api && git commit -m x', '/d/Projects/CRM-api'],
+  ['cd "/ruta con espacios" && git commit', '/ruta con espacios'],
+  ['cd .. && git merge main', '..'],
+  ['git commit -m x', null],
+  ['cd', null],
+  ['cd - && git status', null],
+  ['cd ~/otro && git push', null],
+  ['git status && cd /otro', null],
+];
+
+for (const [entrada, esperado] of casosDirectorio) {
+  const real = directorioDelComando(entrada);
+  const ok = real === esperado;
+  if (!ok) fallos++;
+  console.log(
+    `${ok ? 'OK   ' : 'FALLA'} [cd    ] ${JSON.stringify(entrada).padEnd(42)} → ${JSON.stringify(real)}`,
+  );
+}
+
+const total = casos.length + casosDirectorio.length;
+console.log(`\n${total - fallos}/${total} casos correctos.`);
 process.exit(fallos === 0 ? 0 : 1);
