@@ -37,7 +37,11 @@ describe('WebhookWhatsappController — alta de suscripción', () => {
   beforeEach(() => {
     tokenPrevio = process.env['WHATSAPP_WEBHOOK_VERIFY_TOKEN'];
     process.env['WHATSAPP_WEBHOOK_VERIFY_TOKEN'] = TOKEN;
-    controlador = new WebhookWhatsappController();
+    // El alta de suscripción no toca la persistencia; el caso de uso solo hace falta para
+    // construir el controlador.
+    controlador = new WebhookWhatsappController(
+      null as unknown as ConstructorParameters<typeof WebhookWhatsappController>[0],
+    );
     res = respuestaFalsa();
   });
 

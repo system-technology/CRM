@@ -20,8 +20,22 @@
  *     y no en las pruebas.
  */
 
-import { Controller, Get, HttpException, HttpStatus, Logger, Query, Res } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Headers,
+  HttpException,
+  Inject,
+  HttpCode,
+  HttpStatus,
+  Logger,
+  Post,
+  Query,
+  Res,
+} from '@nestjs/common';
 import type { Response } from 'express';
+import { RegistrarRecepcion } from '../application/registrar-recepcion.js';
 import {
   type ResultadoSuscripcion,
   verificarSuscripcion,
@@ -33,6 +47,13 @@ type ParametrosDeAlta = Record<string, string | undefined>;
 @Controller('webhooks/whatsapp')
 export class WebhookWhatsappController {
   private readonly log = new Logger(WebhookWhatsappController.name);
+
+  // `@Inject` explícito, y no solo el tipo del parámetro. Medido en el arranque: sin él, Nest
+  // construye este controlador **con cero dependencias y sin quejarse**, y el fallo no aparece
+  // hasta la primera petición real, como un `undefined` en mitad del manejador. Los metadatos
+  // de decorador no siempre llegan con el transpilador que usamos en desarrollo; un token
+  // explícito no depende de ellos.
+  constructor(@Inject(RegistrarRecepcion) private readonly registrar: RegistrarRecepcion) {}
 
   /**
    * `GET /webhooks/whatsapp` — alta de la suscripción.
@@ -93,5 +114,42 @@ export class WebhookWhatsappController {
       return;
     }
     this.log.warn(`Alta de suscripción rechazada: ${resultado.motivo}.`);
+  }
+
+  /**
+   * `POST /webhooks/whatsapp` — la llegada de un mensaje.
+   *
+   * **Qué se devuelve y por qué.** El código de estado es lo único que Meta escucha, y lo
+   * interpreta de una sola manera: 200 es «lo tengo, no lo reintentes». Todo lo demás provoca
+   * reintentos durante 24 horas.
+   *
+   *   · **200** cuando el mensaje está guardado — o cuando ya lo estaba, que es el reintento
+   *     funcionando. También cuando el sobre no trae ningún `change`: no hay nada que guardar y
+   *     reintentar no lo cambiaría.
+   *   · **403** cuando la firma no cuadra. No es nuestro, y no queremos que insista.
+   *   · **500**, dejando subir la excepción, cuando falla la escritura. Es el único caso en que
+   *     el reintento de Meta es exactamente lo que queremos: **callar y devolver 200 ahí
+   *     perdería el mensaje del viajero para siempre.**
+   *
+   * El cuerpo llega como `Buffer` porque `main.ts` monta `express.raw()` sobre `/webhooks`. Es
+   * deliberado: la firma se calcula sobre esos bytes y reserializar el JSON la rompe — solo
+   * cuando el mensaje lleva tildes, es decir, en producción y no en las pruebas.
+   */
+  @Post()
+  @HttpCode(HttpStatus.OK)
+  async recibir(
+    @Body() cuerpo: Buffer,
+    @Headers('x-hub-signature-256') firma: string | undefined,
+  ): Promise<void> {
+    const bytes = Buffer.isBuffer(cuerpo) ? cuerpo : Buffer.alloc(0);
+    const resultado = await this.registrar.ejecutar(bytes, firma);
+
+    if (resultado.estado === 'FIRMA_INVALIDA') {
+      this.log.warn(`POST rechazado: firma inválida (${resultado.motivo}).`);
+      throw new HttpException(
+        { error: { code: 'FIRMA_INVALIDA', message: 'La firma no corresponde.' } },
+        HttpStatus.FORBIDDEN,
+      );
+    }
   }
 }

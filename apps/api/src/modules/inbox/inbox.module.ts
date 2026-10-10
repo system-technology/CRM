@@ -8,9 +8,13 @@
  */
 
 import { Module } from '@nestjs/common';
+import { PuertoRecepciones } from './application/puerto-recepciones.js';
+import { RegistrarRecepcion } from './application/registrar-recepcion.js';
+import { RecepcionesPrisma } from './infrastructure/recepciones.prisma.js';
 import { WebhookWhatsappController } from './interface/webhook-whatsapp.controller.js';
 
 @Module({
   controllers: [WebhookWhatsappController],
+  providers: [RegistrarRecepcion, { provide: PuertoRecepciones, useClass: RecepcionesPrisma }],
 })
 export class InboxModule {}
