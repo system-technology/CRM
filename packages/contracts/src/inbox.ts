@@ -90,6 +90,17 @@ export const Mensaje = z.object({
   autorNombre: z.string().max(200).nullable(),
   /** Instante del evento según Meta, no el de nuestra base. Llegan desordenados. */
   ocurridoEn: Instante,
+  /**
+   * La cotización que este mensaje llevaba, si llevaba alguna.
+   *
+   * **No es un tipo de contenido.** Para Meta esto es un `DOCUMENTO`: un PDF como cualquier
+   * otro, y `TipoContenido` solo admite lo que Meta entrega. Lo que convierte ese PDF en una
+   * tarjeta de propuesta dentro del hilo —con precio, vigencia y un botón para abrirla— es que
+   * **nuestro** registro recuerda cuál era. Esa memoria vive aquí.
+   *
+   * Lleva `default(null)` para que los mensajes que ya existen sigan validando sin tocarlos.
+   */
+  cotizacionId: Id.nullable().default(null),
 });
 export type Mensaje = z.infer<typeof Mensaje>;
 
