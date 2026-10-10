@@ -19,6 +19,7 @@
  *     muestra un aviso "Hay mensajes nuevos ↓".
  * - Accesibilidad total con teclado (ArrowUp/ArrowDown, role="log", role="article").
  * - Validación estricta de la Ventana de Servicio 24h.
+ * - Cliente HTTP unificado (`inboxApi`): Switch por variable de entorno a API real NestJS.
  */
 
 import { use, useCallback, useEffect, useRef, useState } from 'react';
@@ -29,11 +30,8 @@ import {
   type ConversacionDetalle,
   type Mensaje as TipoMensaje,
 } from '@viajapro/contracts';
-import {
-  ID_ASESOR_ACTUAL,
-  NOMBRE_ASESOR_ACTUAL,
-  obtenerConversacionDetalleMock,
-} from '../../../lib/mock-inbox';
+import { ID_ASESOR_ACTUAL, NOMBRE_ASESOR_ACTUAL } from '../../../lib/mock-inbox';
+import { inboxApi, InboxErrorApi } from '../../../lib/inbox-api';
 import { realtimeMockBus } from '../../../lib/realtime-mock';
 import { SimuladorTiempoReal } from '../../../components/SimuladorTiempoReal';
 
@@ -87,12 +85,12 @@ export default function ConversacionPage({ params }: { params: Promise<{ id: str
     }
   };
 
-  // Carga inicial de la conversación
+  // Carga inicial de la conversación a través de inboxApi
   const cargarHistorial = useCallback(async () => {
     setCargando(true);
     setErrorHistorial(null);
     try {
-      const data = await obtenerConversacionDetalleMock(id, 400);
+      const data = await inboxApi.obtenerConversacionDetalle(id);
       if (!data) {
         setErrorHistorial('No se encontró la conversación solicitada.');
         setDetalle(null);
@@ -101,9 +99,13 @@ export default function ConversacionPage({ params }: { params: Promise<{ id: str
         setTimeout(() => scrollToBottom('auto'), 100);
       }
     } catch (e) {
-      setErrorHistorial(
-        e instanceof Error ? e.message : 'Error desconocido al cargar el historial.',
-      );
+      if (e instanceof InboxErrorApi) {
+        setErrorHistorial(`[${e.code}] ${e.message}`);
+      } else {
+        setErrorHistorial(
+          e instanceof Error ? e.message : 'Error desconocido al cargar el historial.',
+        );
+      }
       setDetalle(null);
     } finally {
       setCargando(false);
@@ -237,40 +239,76 @@ export default function ConversacionPage({ params }: { params: Promise<{ id: str
       );
     }
 
-    setTimeout(() => {
-      setEnviando(false);
+    // Ejecutar envío real o simulado mediante inboxApi.enviarTexto
+    if (inboxApi.isModoReal()) {
+      inboxApi
+        .enviarTexto({
+          conversacionId: detalle.id,
+          texto: textoEnviar,
+          claveIdempotencia: claveIdemFinal,
+        })
+        .then((msgConfirmado) => {
+          setEnviando(false);
+          setDetalle((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  mensajes: prev.mensajes.map((m) => (m.id === mensajeId ? msgConfirmado : m)),
+                }
+              : null,
+          );
+        })
+        .catch((err) => {
+          setEnviando(false);
+          const msgErr =
+            err instanceof InboxErrorApi ? `[${err.code}] ${err.message}` : String(err);
+          setDetalle((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  mensajes: prev.mensajes.map((m) =>
+                    m.id === mensajeId ? { ...m, estado: 'FALLIDO', motivoFallo: msgErr } : m,
+                  ),
+                }
+              : null,
+          );
+        });
+    } else {
+      setTimeout(() => {
+        setEnviando(false);
 
-      if (simularFallo) {
-        setDetalle((prev) =>
-          prev
-            ? {
-                ...prev,
-                mensajes: prev.mensajes.map((m) =>
-                  m.id === mensajeId
-                    ? {
-                        ...m,
-                        estado: 'FALLIDO',
-                        motivoFallo:
-                          'Simulación R5: Error 503 en WhatsApp Cloud API. Reintenta con la misma clave.',
-                      }
-                    : m,
-                ),
-              }
-            : null,
-        );
-      } else {
-        setDetalle((prev) =>
-          prev
-            ? {
-                ...prev,
-                mensajes: prev.mensajes.map((m) =>
-                  m.id === mensajeId ? { ...m, estado: 'ENTREGADO', motivoFallo: null } : m,
-                ),
-              }
-            : null,
-        );
-      }
-    }, 1200);
+        if (simularFallo) {
+          setDetalle((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  mensajes: prev.mensajes.map((m) =>
+                    m.id === mensajeId
+                      ? {
+                          ...m,
+                          estado: 'FALLIDO',
+                          motivoFallo:
+                            'Simulación R5: Error 503 en WhatsApp Cloud API. Reintenta con la misma clave.',
+                        }
+                      : m,
+                  ),
+                }
+              : null,
+          );
+        } else {
+          setDetalle((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  mensajes: prev.mensajes.map((m) =>
+                    m.id === mensajeId ? { ...m, estado: 'ENTREGADO', motivoFallo: null } : m,
+                  ),
+                }
+              : null,
+          );
+        }
+      }, 1200);
+    }
   };
 
   const manejarEnvio = (e: React.FormEvent) => {
@@ -278,16 +316,27 @@ export default function ConversacionPage({ params }: { params: Promise<{ id: str
     if (!textoMensaje.trim() || !detalle) return;
 
     if (modoNota) {
-      const nuevaNota = {
-        id: `nota-${Date.now()}`,
-        texto: textoMensaje.trim(),
-        autorId: ID_ASESOR_ACTUAL,
-        autorNombre: NOMBRE_ASESOR_ACTUAL,
-        creadaEn: new Date().toISOString(),
-      };
-      setDetalle((prev) => (prev ? { ...prev, notas: [...prev.notas, nuevaNota] } : null));
-      setTextoMensaje('');
-      setTimeout(() => scrollToBottom('smooth'), 50);
+      if (inboxApi.isModoReal()) {
+        inboxApi
+          .crearNota({ conversacionId: detalle.id, texto: textoMensaje.trim() })
+          .then((nuevaNota) => {
+            setDetalle((prev) => (prev ? { ...prev, notas: [...prev.notas, nuevaNota] } : null));
+            setTextoMensaje('');
+            setTimeout(() => scrollToBottom('smooth'), 50);
+          })
+          .catch((e) => setErrorEnvio(e instanceof Error ? e.message : 'Error al guardar nota'));
+      } else {
+        const nuevaNota = {
+          id: `nota-${Date.now()}`,
+          texto: textoMensaje.trim(),
+          autorId: ID_ASESOR_ACTUAL,
+          autorNombre: NOMBRE_ASESOR_ACTUAL,
+          creadaEn: new Date().toISOString(),
+        };
+        setDetalle((prev) => (prev ? { ...prev, notas: [...prev.notas, nuevaNota] } : null));
+        setTextoMensaje('');
+        setTimeout(() => scrollToBottom('smooth'), 50);
+      }
     } else {
       ejecutarEnvioMensaje(textoMensaje.trim());
     }

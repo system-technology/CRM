@@ -68,7 +68,7 @@ Los tres eventos: `MENSAJE_NUEVO`, `MENSAJE_ACTUALIZADO` y `CONVERSACION_ACTUALI
 
 ---
 
-## [ ] 3. Conectar con la API real, detrás de un interruptor
+## [x] 3. Conectar con la API real, detrás de un interruptor
 
 Para cuando el backend exista. **Haz primero la parte que no depende de él.**
 

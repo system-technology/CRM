@@ -14,6 +14,7 @@
  *   * safeParse para descartar en silencio eventos desconocidos.
  *   * Guard de Mouse Hover: no reordena las filas mientras el ratón esté encima para
  *     evitar clicks erróneos del asesor.
+ * - Cliente HTTP unificado (`inboxApi`): Interruptor por variable de entorno para cambiar a API real NestJS.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -24,7 +25,8 @@ import type {
   FiltroBandeja,
   PaginaBandeja,
 } from '@viajapro/contracts';
-import { consultarBandejaMock, ID_ASESOR_ACTUAL, MOCK_CONVERSACIONES } from '../../lib/mock-inbox';
+import { ID_ASESOR_ACTUAL, MOCK_CONVERSACIONES } from '../../lib/mock-inbox';
+import { inboxApi, InboxErrorApi } from '../../lib/inbox-api';
 import { realtimeMockBus } from '../../lib/realtime-mock';
 import { SimuladorTiempoReal } from '../../components/SimuladorTiempoReal';
 
@@ -65,26 +67,27 @@ export default function BandejaPage() {
     return () => clearTimeout(timer);
   }, [buscar]);
 
-  // Carga inicial y cambio de filtro / búsqueda
+  // Carga inicial y cambio de filtro / búsqueda a través de inboxApi
   const cargarInicial = useCallback(async () => {
     setCargando(true);
     setError(null);
     try {
-      const res = await consultarBandejaMock(
-        {
-          filtro,
-          buscar: buscarDebounced,
-          limite: 30,
-        },
-        300,
-      );
+      const res = await inboxApi.consultarBandeja({
+        filtro,
+        buscar: buscarDebounced,
+        limite: 30,
+      });
       setPagina(res);
       setConversaciones(res.datos);
       setIndiceSeleccionado(0);
       setPendientesReorden(0);
       bufferConversacionesRef.current = null;
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Error desconocido al cargar conversaciones');
+      if (e instanceof InboxErrorApi) {
+        setError(`[${e.code}] ${e.message}`);
+      } else {
+        setError(e instanceof Error ? e.message : 'Error desconocido al cargar conversaciones');
+      }
       setConversaciones([]);
       setPagina(null);
     } finally {
@@ -143,7 +146,6 @@ export default function BandejaPage() {
           }
         }
 
-        // REGLA DE PRODUCTO: Si el ratón está encima de la lista, NO reordenar el DOM inmediatamente.
         if (isHoveringListRef.current) {
           bufferConversacionesRef.current = listaActualizada;
           setPendientesReorden((p) => p + 1);
@@ -166,7 +168,7 @@ export default function BandejaPage() {
     if (!pagina?.pageInfo.nextCursor || cargandoMas) return;
     setCargandoMas(true);
     try {
-      const res = await consultarBandejaMock({
+      const res = await inboxApi.consultarBandeja({
         filtro,
         buscar: buscarDebounced,
         cursor: pagina.pageInfo.nextCursor,
@@ -235,7 +237,8 @@ export default function BandejaPage() {
                 Bandeja de Entrada — WhatsApp
               </h1>
               <p className="text-[11px] text-neutral-500">
-                Monitoreo multi-tenant · Tiempo real simulado · 390px responsive
+                Monitoreo multi-tenant · Modos:{' '}
+                {inboxApi.isModoReal() ? '🔌 API NestJS Real' : '⚡ Mock Simulador'} · 390px
               </p>
             </div>
           </div>
