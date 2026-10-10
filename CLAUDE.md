@@ -139,6 +139,7 @@ corresponde, definido en `.claude/agents/`.
 |---|---|
 | `arquitecto` | Diseño de sistema, ADRs, límites entre contextos |
 | `experto-turismo` | Validar que el modelo refleja cómo opera una agencia real |
+| **`director-de-producto`** | **Rumbo del producto y tablero.** Qué se construye y en qué orden, ceremonias, Jira. Ver §8.1 |
 | `analista-producto` | Historias de usuario, criterios de aceptación, alcance |
 | `backend` | Módulos NestJS, casos de uso, puertos y adaptadores |
 | `frontend` | Next.js, componentes, estados de UI |
@@ -156,6 +157,21 @@ corresponde, definido en `.claude/agents/`.
 | **`integrador`** | **Guardián de `main`. Única vía de integración.** Ver R11 |
 
 Modelo operativo completo, loops y protocolo de traspaso: `docs/09-ia/01-modelo-operativo.md`.
+Trabajo en paralelo con Antigravity: `docs/09-ia/06-flujo-con-antigravity.md`.
+
+### 8.1 Quién decide qué
+
+Conviene no confundirlos, porque los tres pueden decir «no» y ninguno puede anular al otro:
+
+| Quién | Decide |
+|---|---|
+| `director-de-producto` | **Qué** se construye y en qué orden |
+| `arquitecto` | **Cómo** se construye |
+| `auditor-seguridad` | Si es **seguro** |
+| `integrador` | Si **entra en `main`** |
+
+El `director-de-producto` no negocia el veredicto del `integrador` con argumentos de calendario, y
+el `integrador` no decide prioridades. Un «terminado» solo lo es cuando está integrado.
 
 ## 9. Cómo no perder el hilo
 
