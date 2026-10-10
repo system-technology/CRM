@@ -48,6 +48,9 @@ export default function ConversacionPage({ params }: { params: Promise<{ id: str
   const [modoNota, setModoNota] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [errorEnvio, setErrorEnvio] = useState<string | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const [mostrarGuiaAtajos, setMostrarGuiaAtajos] = useState(false);
+  const [notificacionAtajo, setNotificacionAtajo] = useState<string | null>(null);
 
   // Control de fallos simulados y mapa local de claves de idempotencia (R5)
   const [simularFallo, setSimularFallo] = useState(false);
@@ -115,6 +118,58 @@ export default function ConversacionPage({ params }: { params: Promise<{ id: str
   useEffect(() => {
     void cargarHistorial();
   }, [cargarHistorial]);
+
+  // Atajos de teclado del hilo (r: responder, c: cerrar, /: redacción, ?: ayuda)
+  useEffect(() => {
+    const handleKeyDownAtajos = (e: KeyboardEvent) => {
+      const targetEl = e.target as HTMLElement | null;
+      const isEditing =
+        targetEl &&
+        (targetEl.tagName === 'INPUT' ||
+          targetEl.tagName === 'TEXTAREA' ||
+          targetEl.isContentEditable);
+
+      if (e.key === '?' && !isEditing) {
+        e.preventDefault();
+        setMostrarGuiaAtajos((prev) => !prev);
+        return;
+      }
+
+      if (e.key === 'Escape') {
+        if (mostrarGuiaAtajos) {
+          setMostrarGuiaAtajos(false);
+        } else if (isEditing) {
+          targetEl?.blur();
+        }
+        return;
+      }
+
+      if (isEditing) return;
+
+      if (e.key.toLowerCase() === 'r') {
+        e.preventDefault();
+        textareaRef.current?.focus();
+        setNotificacionAtajo('💬 Campo de respuesta enfocado (Atajo r)');
+        setTimeout(() => setNotificacionAtajo(null), 2500);
+      }
+
+      if (e.key.toLowerCase() === 'c') {
+        e.preventDefault();
+        setNotificacionAtajo('✅ Conversación marcada como resuelta (Atajo c)');
+        setTimeout(() => setNotificacionAtajo(null), 3000);
+      }
+
+      if (e.key === '/') {
+        e.preventDefault();
+        textareaRef.current?.focus();
+        setNotificacionAtajo('🔍 Enfocado en mensaje (Atajo /)');
+        setTimeout(() => setNotificacionAtajo(null), 2500);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDownAtajos);
+    return () => window.removeEventListener('keydown', handleKeyDownAtajos);
+  }, [mostrarGuiaAtajos]);
 
   // Suscripción a eventos de Tiempo Real (EventoBandeja)
   useEffect(() => {
@@ -683,6 +738,7 @@ export default function ConversacionPage({ params }: { params: Promise<{ id: str
 
                 <div className="flex gap-2">
                   <textarea
+                    ref={textareaRef}
                     rows={2}
                     value={textoMensaje}
                     onChange={(e) => setTextoMensaje(e.target.value)}
@@ -712,6 +768,91 @@ export default function ConversacionPage({ params }: { params: Promise<{ id: str
               </form>
             )}
           </footer>
+
+          {notificacionAtajo && (
+            <div className="border-acento-600 fixed right-4 bottom-16 z-50 animate-bounce rounded-md border bg-neutral-900 px-3 py-2 text-xs font-semibold text-white shadow-lg">
+              {notificacionAtajo}
+            </div>
+          )}
+
+          {mostrarGuiaAtajos && (
+            <div
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+              onClick={() => setMostrarGuiaAtajos(false)}
+            >
+              <div
+                className="w-full max-w-md rounded-lg border border-neutral-200 bg-white p-5 shadow-xl"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-center justify-between border-b border-neutral-200 pb-3">
+                  <h3 className="flex items-center gap-2 text-base font-bold text-neutral-900">
+                    <span>⌨️</span> Atajos de Teclado del Hilo
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={() => setMostrarGuiaAtajos(false)}
+                    className="rounded p-1 text-xs font-bold text-neutral-500 hover:bg-neutral-100"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <div className="space-y-3 pt-3 text-xs text-neutral-700">
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium">Responder mensaje</span>
+                    <kbd className="rounded border border-neutral-300 bg-neutral-100 px-2 py-0.5 font-mono text-xs font-bold text-neutral-800">
+                      r
+                    </kbd>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium">Cerrar / Resolver conversación</span>
+                    <kbd className="rounded border border-neutral-300 bg-neutral-100 px-2 py-0.5 font-mono text-xs font-bold text-neutral-800">
+                      c
+                    </kbd>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium">Enfocar caja de redacción</span>
+                    <kbd className="rounded border border-neutral-300 bg-neutral-100 px-2 py-0.5 font-mono text-xs font-bold text-neutral-800">
+                      /
+                    </kbd>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium">Navegar mensajes</span>
+                    <div className="flex gap-1 font-mono text-xs font-bold text-neutral-800">
+                      <kbd className="rounded border border-neutral-300 bg-neutral-100 px-1.5 py-0.5">
+                        ↑
+                      </kbd>
+                      <kbd className="rounded border border-neutral-300 bg-neutral-100 px-1.5 py-0.5">
+                        ↓
+                      </kbd>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium">Salir de foco / Cerrar modal</span>
+                    <kbd className="rounded border border-neutral-300 bg-neutral-100 px-2 py-0.5 font-mono text-xs font-bold text-neutral-800">
+                      Esc
+                    </kbd>
+                  </div>
+                  <div className="flex items-center justify-between border-t border-neutral-100 pt-2">
+                    <span className="font-medium text-neutral-500">Abrir esta ayuda</span>
+                    <kbd className="rounded border border-neutral-300 bg-neutral-100 px-2 py-0.5 font-mono text-xs font-bold text-neutral-800">
+                      ?
+                    </kbd>
+                  </div>
+                </div>
+
+                <div className="mt-4 text-right">
+                  <button
+                    type="button"
+                    onClick={() => setMostrarGuiaAtajos(false)}
+                    className="rounded-md bg-neutral-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-neutral-800"
+                  >
+                    Entendido (Esc)
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           <SimuladorTiempoReal conversaciones={[detalle]} conversacionAbiertaId={detalle.id} />
         </>

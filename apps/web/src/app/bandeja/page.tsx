@@ -81,6 +81,7 @@ export default function BandejaPage() {
   // Selección activa para teclado
   const [indiceSeleccionado, setIndiceSeleccionado] = useState<number>(0);
   const itemRefs = useRef<(HTMLAnchorElement | null)[]>([]);
+  const busquedaInputRef = useRef<HTMLInputElement | null>(null);
 
   // Debounce para la búsqueda de texto
   useEffect(() => {
@@ -217,7 +218,16 @@ export default function BandejaPage() {
         itemRefs.current[nxt]?.focus();
         return nxt;
       });
-    } else if (e.key === 'ArrowUp' || e.key === 'k') {
+    } else if (e.key === '/' && document.activeElement !== busquedaInputRef.current) {
+      e.preventDefault();
+      busquedaInputRef.current?.focus();
+      return;
+    }
+    if (e.key === 'Escape' && document.activeElement === busquedaInputRef.current) {
+      busquedaInputRef.current?.blur();
+      return;
+    }
+    if (e.key === 'ArrowUp' || e.key === 'k') {
       e.preventDefault();
       setIndiceSeleccionado((prev) => {
         const nxt = Math.max(prev - 1, 0);
@@ -310,8 +320,9 @@ export default function BandejaPage() {
             <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
               <div className="relative flex-1 sm:w-64">
                 <input
+                  ref={busquedaInputRef}
                   type="text"
-                  placeholder="Buscar cliente, tel o mensaje..."
+                  placeholder="Buscar cliente, tel o mensaje... (pulsa /)"
                   value={buscar}
                   onChange={(e) => setBuscar(e.target.value)}
                   className="focus:border-acento-600 focus:ring-acento-600 w-full rounded-md border border-neutral-300 bg-white py-1.5 pr-3 pl-8 text-xs text-neutral-900 placeholder:text-neutral-400 focus:ring-1 focus:outline-hidden"
