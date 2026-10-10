@@ -6,25 +6,36 @@
 
 | Campo | Valor |
 |---|---|
-| Última actualización | 2026-10-07 (sesión larga — diseño, frontend, compuertas, ADR-0008 y esquema del inbox) |
+| Última actualización | 2026-10-10 (dos IA en paralelo: webhook de WhatsApp y bandeja web; tablero de Jira; guardián de rama arreglado) |
 | Actualizado por | Claude Opus 5 |
 | Fase | **Rebanada vertical de paquetes, en construcción** |
-| Avance de la fase | Cotizador de punta a punta. **Esquema del inbox con aislamiento, 30/30 contra Neon.** Canal de WhatsApp vivo |
-| Próximo hito | **Implementar el inbox.** ADR-0008 aceptado el 2026-10-07: 4a (esquema) puede empezar |
+| Avance de la fase | Cotizador de punta a punta. Esquema del inbox, 30/30 contra Neon. **Apretón de manos del webhook vivo y verificado contra la API corriendo.** Bandeja web en construcción |
+| Próximo hito | **Recibir el primer mensaje real de WhatsApp y guardarlo.** Falta el `POST` con la persistencia durable del ADR-0008 §4 |
 
 ---
 
 ## 1. Dónde estamos
 
 El repositorio tiene el **andamiaje completo**: estructura de monorepo con su configuración,
-documentación de visión, producto, arquitectura, seguridad y roadmap, siete ADR aceptados, la capa
-de ingeniería asistida por IA (17 agentes, 7 skills, 7 comandos, 6 hooks, MCP) y el gobierno de la
-integración a `main`.
+documentación de visión, producto, arquitectura, seguridad y roadmap, **ocho** ADR aceptados, la capa
+de ingeniería asistida por IA (17 agentes en `main` y 3 más —producto, dueño y facilitador— retenidos
+en la compuerta; 7 skills, 7 comandos, 6 hooks, MCP) y el gobierno de la integración a `main`.
 
 **El cotizador funciona de punta a punta** —navegador, API, Neon— y está verificado abriéndolo en
 un navegador real, no solo compilando. Lo que NO existe todavía: inbox de WhatsApp, persistencia de
 cotizaciones, autenticación, y nada desplegado en un servidor. No hay cuenta de Meta Business
 iniciada.
+
+**Desde el 2026-10-08 se trabaja con dos IA en paralelo**, cada una en su propio worktree y su
+propia rama: esta sesión en `feat/inbox-webhook` (`D:\Projects\CRM-api`) y Antigravity en
+`feat/bandeja-web` (`D:\Projects\CRM-bandeja`). El traspaso es por archivo —`ENTREGA.md` y
+`REVISION.md` en la rama— sin cartero humano. Ver `docs/09-ia/06-flujo-con-antigravity.md`.
+
+**Del inbox existe ya, en ramas:** los contratos Zod de la bandeja (`packages/contracts/src/inbox.ts`,
+en `main` desde v0.11.0), las tres piezas puras del webhook —firma HMAC sobre el cuerpo crudo,
+apretón de manos y desglose del sobre— y el controlador del `GET`, con 62 pruebas y verificado
+contra la API corriendo. La pantalla de conversación de la bandeja está construida y su primera
+entrega de tiempo real **fue rechazada en revisión**.
 
 Las dos pruebas que respaldan la afirmación anterior, con el catálogo sembrado:
 
@@ -40,12 +51,12 @@ Qué hay, concretamente:
 | Monorepo | **Instalado y compilando.** Node 22.20, pnpm 9.12 |
 | Documentación | 33 documentos completos + 22 marcadores con responsable y fase |
 | ADR | 0001 stack · 0002 WhatsApp · 0003 multi-tenancy · 0004 monolito modular · 0005 ramas · 0006 parametrización · 0007 Neon · **0008 resolución de tenant en webhooks (Aceptado)** |
-| Agentes de IA | 17 definidos en `.claude/agents/`, incluido `integrador` |
+| Agentes de IA | 17 en `main`, incluido `integrador`. Tres más —`jefe-de-producto`, `dueno-de-producto`, `facilitador`— esperando en la compuerta |
 | Skills | Propias: `ciclo-funcionalidad`, `auditoria-integral`, `handoff-ia-externa`, `cerrar-sesion`, `nuevo-modulo`. De terceros, auditadas: `neon`, `neon-postgres` |
 | Comandos | `/estado` `/auditoria` `/funcionalidad` `/handoff` `/adr` `/contexto` `/integrar` |
-| Hooks | **De Claude Code:** inyección del hilo, guardián de secretos (19/19), guardián de rama (40/40), autorización de integración, revisión post-edición, recordatorio de cierre. **De git, desde v0.9.1:** `commit-msg` (commitlint) y `pre-commit` (lint-staged) — antes estaban configurados pero nunca se ejecutaban |
+| Hooks | **De Claude Code:** inyección del hilo, guardián de secretos (19/19), guardián de rama (48/48), autorización de integración, revisión post-edición, recordatorio de cierre. **De git, desde v0.9.1:** `commit-msg` (commitlint) y `pre-commit` (lint-staged) — antes estaban configurados pero nunca se ejecutaban |
 | MCP | **Stitch conectado y usado** (ámbito de usuario, 15 herramientas). `navegador` usado para verificar la interfaz. `memoria`, `docs-librerias`, `razonamiento` cargados. **`postgres` falla al conectar.** `github` y `sentry` sin autorizar |
-| Fase 0 técnica | **COMPLETA Y VERIFICADA.** API viva, **30/30 aislamiento**, 32/32 dominio, 25/25 contratos |
+| Fase 0 técnica | API viva, **30/30 aislamiento**, 32/32 dominio, 25/25 contratos. **No es "completa": su criterio de salida —aislamiento en verde en CI— no se ha cumplido nunca** (tarea 4a.1) |
 | Compuertas de calidad | **Funcionando por primera vez desde v0.9.1.** `lint` 7/7 · `typecheck` 7/7 · `test` 6/6 · `build` 5/5 · `format:check` limpio. Antes cuatro de ellas eran imposibles de poner en verde |
 | Backend | `apps/api` con catálogo y cotización. Probado con peticiones reales |
 | Frontend | `apps/web`: Next.js 15 + Tailwind 4. **Cotizador verificado en navegador.** No hay autenticación: el tenant va por cabecera de desarrollo, solo con `APP_ENV=local` |
@@ -53,7 +64,7 @@ Qué hay, concretamente:
 | Diseño | Sistema de diseño subido a Stitch (proyecto `8333038101997719867`). Tokens replicados en `apps/web/src/app/globals.css`. Capturas en `docs/_assets/diseno/` |
 | Datos | Agencia demo sembrada: 3 paquetes, 5 temporadas, 26 precios |
 | Contrato multi-harness | `AGENTS.md` en la raíz: cualquier IA trabaja bajo las mismas **trece** reglas. R12 faltaba hasta v0.9.1; R13 se añadió el 2026-10-07 |
-| Repositorio | [github.com/Alfavear/CRM](https://github.com/Alfavear/CRM) · **privado** · `main` en **v0.9.1** |
+| Repositorio | [github.com/Alfavear/CRM](https://github.com/Alfavear/CRM) · **privado** · `main` en **v0.11.0** (`9b3a872`, cuatro commits después del tag: utillaje, sin versión) |
 | Gobierno de `main` | Compuerta local activa y probada. **Sin protección de servidor:** el plan gratuito no la permite en repos privados |
 
 ## 2. Decisiones ya tomadas (no reabrir sin ADR que las supersede)
@@ -98,21 +109,21 @@ Ordenada. La primera es la que debe tomarse ahora.
 | 3 | Reparar la conexión del MCP `postgres` o retirarlo de `.mcp.json` | `devops` | Falla con `CONNECTION_CLOSED` |
 | 4a | Inbox — esquema, roles, funciones y aserciones | `datos` | **Hecho.** 30/30 contra Neon, dos auditorías de seguridad, seis mutaciones verificadas en rojo |
 | 4a.1 | **Ver en verde los jobs `aislamiento-tenants` y `test` en CI** antes de integrar | `devops` | **Condición del auditor.** Nunca han corrido: ejecutarlos una vez es la única forma honesta de cerrar ese hallazgo |
-| 4b | Inbox — API: tres orígenes de conexión, guardia de identidad, puerto a `crm`, relay por `change` | `backend` | Esperando 4a |
-| 4c | Las 3 verificaciones que **no** son de base de datos: arranque del proceso, alta de extremo a extremo, ensayo de rotación de la pimienta | `backend`, `qa`, `devops` | Cada una respalda un crítico. La de arranque sube a **primera tarea de 4b**: tres roles que solo difieren en qué funciones ejecutan, y ninguna aserción detecta cuál se conectó |
+| 4b | Inbox — API: tres orígenes de conexión, guardia de identidad, puerto a `crm`, relay por `change` | `backend` | **En curso** en `feat/inbox-webhook`. Hechos: guardia de identidad del rol, firma HMAC, apretón de manos (`GET` vivo y verificado), desglose del sobre. Falta el `POST` con persistencia durable |
+| 4c | Las 3 verificaciones que **no** son de base de datos: arranque del proceso, alta de extremo a extremo, ensayo de rotación de la pimienta | `backend`, `qa`, `devops` | **En curso.** La de arranque está hecha: `guardia-de-rol.ts` comprueba identidad, `rolsuper` y `rolbypassrls`, y la API registra al arrancar «Conectado como 'viajapro_app', verificado». Faltan las otras dos |
 | 4d | Alinear `05-seguridad/02-proteccion-de-datos.md` con el ADR-0008 | `documentador` | La redacción de consentimiento lo contradice. Faltan pimienta y clave de plataforma en el inventario §5 |
 | 4e | **ADR que enmiende el ADR-0008 en cinco puntos** | `arquitecto` | Un ADR es inmutable y hoy describe un sistema que no existe: tokens en `cuentas_whatsapp`, `cuenta_id` en el directorio, una **séptima** función, `crear_particion_historial` fuera del inventario, y el hueco de `purgar_directorio`. **Lo más fácil de olvidar y lo más caro en seis meses** |
 | 4f | Reconciliación directorio ↔ verdad | `backend` | Una agencia marcada `REVOCADO` en `canales` se sigue resolviendo como `ACTIVO`: se persistirían mensajes de una agencia sin contrato |
 | 4g | `purgar_directorio`, o decidir que es manual | `arquitecto`, `datos` | Hoy ninguna fila del directorio se puede borrar por ningún camino de código. **No bloquea un esquema vacío; bloquea el primer tenant en producción** |
 | 4h | Trabajo anual de creación de particiones del historial | `devops` | Si falta la del año siguiente, **ninguna agencia puede conectar su canal**. Mejor: un *event trigger* que lo haga imposible de olvidar |
 | 4i | Aserción de concurrencia determinista y orden de las aserciones | `qa` | La de la carrera falla hacia el verde; y 22/23 reparan privilegios, así que enmascaran a cualquier aserción declarada después |
-| 5 | Bandeja de conversaciones en la web | `frontend` | El diseño existe; falta el backend del inbox (tarea 4b) |
+| 5 | Bandeja de conversaciones en la web | Antigravity, en `feat/bandeja-web` | **En curso.** Lista y pantalla de conversación construidas, con idempotencia R5 verificada en navegador. La entrega de tiempo real fue rechazada: su emisor genera un UUID inválido y ningún evento llega a la pantalla |
 | 6 | Guardar cotizaciones con versiones inmutables | `backend` | Hoy el cálculo no persiste |
 | 7 | Pruebas de integración de la API | `qa` | Solo se probó a mano. **La verificación del cotizador fue manual: no hay prueba automática que la repita** |
 | 8 | CI en GitHub Actions corriendo de verdad | `devops` | Escrito, nunca ejecutado |
 | 9 | Decidir nombre comercial, modelo de cobro y precios | Usuario | Antes de vender |
 | 10 | Resolver la protección de `main` en GitHub | Usuario | Plan gratuito no la permite en repos privados |
-| 11 | **Rotar la contraseña de Neon y la clave de API de Stitch** | Usuario | Ambas se pegaron en el chat. Un secreto expuesto no se borra, se rota |
+| 11 | **Rotar la contraseña de Neon y la clave de API de Stitch** | Usuario | **Sigue pendiente.** `ac7fb99` rotó los tres roles de PostgreSQL, que es otra cosa. Ambas se pegaron en el chat; un secreto expuesto no se borra, se rota |
 | 12 | Autenticación: el `tenant_id` debe salir del token de sesión | `backend` | Hoy la web lo envía por cabecera. Solo funciona con `APP_ENV=local`, pero es deuda que bloquea desplegar |
 | 13 | **La carrera de `turbo` entre `build` y `typecheck` de la web** | `devops` | `next build` reescribe `.next/types` mientras `tsc` lo lee. Por separado pasan; en paralelo da un rojo falso. **Morderá en CI**, que es justo donde corren en paralelo |
 | 14 | El aviso de `any` no es una compuerta | `devops` | `no-explicit-any` está en `warn` y ningún script lleva `--max-warnings 0`: hoy hay cero `any`, pero el primero entraría sin que lint falle |
@@ -121,6 +132,8 @@ Ordenada. La primera es la que debe tomarse ahora.
 
 | Bloqueo | Impacto | Dueño | Mitigación |
 |---|---|---|---|
+| **Modo desatendido detenido en la compuerta** — el commit `59a52d8` amplía los permisos de los propios agentes | Cada commit y cada push siguen pidiendo autorización al propietario, con dos IA trabajando en paralelo | Usuario | **Solo el propietario puede aprobarlo, en su propia sesión**: el integrador no acepta de segunda mano un cambio a la configuración que define lo que los agentes pueden hacer sin preguntar. Y antes hay que sacar `git clean -xdf` de la lista de permitidos: borra lo no rastreado **y** lo ignorado, incluidos los tres `.env` |
+| **`Bash(cat:*)` permitido hace decorativo el `deny` de `Read(./.env)`** | `cat .env` funciona hoy. O ese `deny` significa algo, o sobra por honestidad | Usuario | Decidirlo al tocar los permisos |
 | Verificación de Meta Business sin iniciar | **Bloquea lanzar con clientes reales, NO bloquea construir.** Tarda semanas | Usuario | Arrancar el trámite en paralelo. Mientras tanto se desarrolla con el número de prueba de Meta |
 | **Tarifario real sin llegar** | El modelo de precios se sigue validando contra datos que inventamos nosotros. Hay piloto desde el 2026-10-07, falta su catálogo | Usuario | Pedirlo aunque sea parcial: un solo paquete real vale más que tres verosímiles |
 | **Meta cobra los mensajes de servicio desde el 2026-10-01** | El costo variable por agencia cambia de orden de magnitud justo donde está nuestro tráfico. **Puede invalidar el plan de entrada** | Usuario | Bajar el tarifario de Colombia en COP del CSV oficial. Cinco minutos con un navegador; la herramienta del agente no pudo abrirlo |
