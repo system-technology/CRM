@@ -57,7 +57,7 @@ class RealtimeMockBus {
     direccion: 'ENTRANTE' | 'SALIENTE' = 'ENTRANTE',
   ): Mensaje {
     const ahora = new Date().toISOString();
-    const id = '00000000-0000-4000-8000-' + Date.now().toString(16).slice(-12);
+    const id = crypto.randomUUID();
 
     const mensaje: Mensaje = {
       id,

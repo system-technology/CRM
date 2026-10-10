@@ -176,8 +176,12 @@ export default function BandejaPage() {
   // Suscripción a eventos de Tiempo Real (EventoBandeja)
   useEffect(() => {
     const unsubscribe = realtimeMockBus.subscribe((evento: EventoBandeja) => {
+      let fueBuffered = false;
+
       setConversaciones((prev) => {
-        let listaActualizada = [...prev];
+        // Bloqueante 2: Derivar de bufferConversacionesRef si existe para acumular múltiples eventos sin pisar
+        const base = bufferConversacionesRef.current ?? prev;
+        let listaActualizada = [...base];
 
         if (evento.tipo === 'MENSAJE_NUEVO') {
           const idx = listaActualizada.findIndex((c) => c.id === evento.conversacionId);
@@ -208,7 +212,7 @@ export default function BandejaPage() {
 
         if (isHoveringListRef.current) {
           bufferConversacionesRef.current = listaActualizada;
-          setPendientesReorden((p) => p + 1);
+          fueBuffered = true;
           return prev;
         }
 
@@ -218,6 +222,11 @@ export default function BandejaPage() {
           return tB - tA;
         });
       });
+
+      // Bloqueante 3: Incrementar contador fuera de la función de estado pura para no contar doble en React StrictMode
+      if (fueBuffered) {
+        setPendientesReorden((p) => p + 1);
+      }
     });
 
     return () => unsubscribe();

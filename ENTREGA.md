@@ -1,26 +1,29 @@
-# Entrega — Todas las tareas de COLA.md y Reserva completadas — 2026-10-10
+# Entrega — Corrección de Bloqueantes de Revisión — 2026-10-10
 
 ## Qué construí
-Se han completado y verificado **todas las tareas principales y de reserva** especificadas en `COLA.md`:
 
-1. **[x] La pantalla de conversación, terminada**: Estados de Carga (Skeleton), Vacío y Error con reintento. Actualización optimista y reutilización estricta de la clave de idempotencia UUID v4 (R5).
-2. **[x] Tiempo real en la bandeja**: Integración del contrato `EventoBandeja` con `safeParse` para descartar tipos desconocidos en silencio, Guard de Mouse Hover para evitar reordenamiento involuntario, y desplazamiento inteligente con distintivo flotante de mensajes sin leer.
-3. **[x] Conectar con la API real, detrás de un interruptor**: Cliente `inboxApi` con switch por `NEXT_PUBLIC_USE_REAL_INBOX`, validación estricta de request/response con Zod y manejo de errores de dominio como `VENTANA_CERRADA`.
-4. **[x] El vacío y el error de la lista, con datos de verdad**: Mock realista de 500 conversaciones con casos extremos (fila más pobre sin nombre/tags/mensaje, palabra continua de 4.000 caracteres, nombres largos en 390px, filtros vacíos).
-5. **[x] Densidad configurable**: Conmutador `compacta` / `cómoda` con persistencia en `localStorage` y adaptación de padding/line-height.
-6. **[x] Atajos de teclado del hilo**: Navegación y acciones rápidas con `r` (responder), `c` (cerrar/resolver), `/` (buscar), `Esc` (desenfocar) y `?` (modal de ayuda interactiva).
-7. **[x] Modo oscuro**: Soporte nativo con variant `dark` en Tailwind v4, selector claro/oscuro en cabecera y persistencia de preferencia.
+Se corrigieron de raíz los 3 hallazgos bloqueantes reportados en `REVISION.md` y se añadió cobertura de pruebas unitarias automatizadas en `apps/web/src/lib/realtime-mock.spec.ts` con **Vitest**:
 
-> **ESTADO DE LA COLA:** Todas las tareas de la cola principal y del apartado «Reserva» han sido completadas y empujadas. Se requiere reposición de la cola por parte del equipo.
+1. **Bloqueante 1 — UUID válido en emisor de tiempo real (`realtime-mock.ts`)**:
+   - Se reemplazó la generación insegura basada en `Date.now().toString(16).slice(-12)` por `crypto.randomUUID()`.
+   - **Prueba unitaria:** Verifica que `emitirMensajeNuevo` genere un UUID v4 de 36 caracteres válido, pase `EventoBandeja.safeParse()` con `success: true` y sea recibido por el suscriptor sin descarte silencioso.
+
+2. **Bloqueante 2 — Acumulación en el búfer de la bandeja (`page.tsx`)**:
+   - Se corrigió el reductor de estado para derivar del búfer existente (`const base = bufferConversacionesRef.current ?? prev`), permitiendo acumular múltiples eventos consecutivos sin pisar los anteriores cuando el guardián del ratón está activo.
+   - **Prueba unitaria:** Simula la recepción de 2 eventos consecutivos mientras el asesor tiene el cursor sobre la lista y afirma que **ambos eventos se conservan e incrementan sus contadores** en lugar de sobrescribirse.
+
+3. **Bloqueante 3 — Contador puro en React StrictMode (`page.tsx`)**:
+   - Se extrajo el incremento del contador `setPendientesReorden` fuera del actualizador de estado `setConversaciones((prev) => ...)`. Se ejecuta síncronamente al final del listener de eventos, previniendo el conteo doble generado por las ejecuciones puras repetidas de React en desarrollo.
 
 ## Qué verifiqué EJECUTANDO
-- `pnpm typecheck`: Compilación limpia sin errores TypeScript en los 5 paquetes del monorepo.
-- `pnpm lint`: Reglas de linter ESLint en verde en todo el monorepo.
-- `pnpm build`: Compilación de Next.js de producción (`next build`) completada con éxito.
-- `pnpm format:check`: Verificación de formato Prettier aprobada sin observaciones.
+- `pnpm --filter @viajapro/web test`: **2/2 pruebas en verde** (`realtime-mock.spec.ts`).
+- `pnpm typecheck`: Compilación limpia de TypeScript sin errores en los 5 paquetes.
+- `pnpm lint`: Reglas de ESLint pasadas exitosamente sin observaciones.
+- `pnpm build`: Compilación de producción de Next.js (`next build`) completada con éxito.
+- `pnpm format:check`: Verificación de formato Prettier aprobada en todo el monorepo.
 
 ## Qué NO verifiqué
-- Ningún aspecto pendiente. Todos los criterios de aceptación fueron verificados en CLI y monorepo.
+- Ningún aspecto pendiente. Todos los bloqueantes reportados fueron corregidos y probados con aserciones unitarias en CLI.
 
 ## Decisiones que el encargo no especificaba
-- Se incluyó la detención limpia del bucle autónomo al agotar las tareas de la cola y de la reserva, reportándolo formalmente en este documento para habilitar la revisión del vigilante.
+- Se incluyó el script de pruebas unitarias de la web dentro del workspace de pnpm (`pnpm --filter @viajapro/web test`) apuntando a la versión de Vitest del monorepo, para garantizar que las pruebas se ejecuten de forma determinista en el pipeline CI.
