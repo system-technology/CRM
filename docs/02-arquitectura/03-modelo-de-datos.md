@@ -376,3 +376,43 @@ de consistencia asumido y documentado.
 - Las migraciones corren **antes** del despliegue de la aplicación y deben ser compatibles con la
   versión anterior en ejecución. Sin eso, cada despliegue es una ventana de caída.
 - Una migración irreversible se declara como tal, con su plan de reversión escrito.
+
+---
+
+## 7. CRM — contactos y oportunidades (2026-10-10)
+
+Lo que hace que la pantalla de pipeline deje de ser una maqueta. Sirve los contratos de
+`packages/contracts/src/crm.ts` sin cambiarlos.
+
+```mermaid
+erDiagram
+    TENANT ||--o{ CONTACTO : "gestiona"
+    TENANT ||--o{ ETAPA_PIPELINE : "configura"
+    CONTACTO ||--o{ CONSENTIMIENTO_CONTACTO : "otorga y revoca"
+    CONTACTO ||--o{ NOTA_INTERNA : "acumula"
+    CONTACTO ||--o{ OPORTUNIDAD : "origina"
+    ETAPA_PIPELINE ||--o{ OPORTUNIDAD : "clasifica"
+    USUARIO ||--o{ OPORTUNIDAD : "asesora"
+    PAQUETE ||--o{ OPORTUNIDAD : "se cotiza en"
+```
+
+### Por qué así
+
+| Decisión | Porqué |
+|---|---|
+| **Etapas: tabla por tenant con columna `clave`** | Ya era tabla (R12). La `clave` —`NUEVO_LEAD`…`PERDIDA`— es el puente con el enum cerrado del contrato. Nullable a propósito: una agencia puede tener más etapas que las cinco del contrato, y una etapa sin clave existe pero hoy no es representable en la API. Forzar un valor metería dos etapas en la misma columna del tablero |
+| **Consentimiento: tabla, no columnas** | La Ley 1581 de 2012 no pide saber *si* hay consentimiento: pide demostrar cuándo, con qué finalidad y por qué canal, y registrar la revocación. Tres columnas sobrescribibles no demuestran nada. Índice único **parcial**: una finalidad vigente por contacto, histórico completo de las revocadas |
+| **Motivo de pérdida: enum del motor** | Al revés que las etapas, y no es incoherencia: la etapa es el proceso de venta de cada agencia; el motivo es la taxonomía con la que se compara el rendimiento entre agencias y se decide si tocar el markup o el SLA. Si cada una inventa la suya, esa comparación no existe. `OTRO` + explicación obligatoria es la válvula |
+| **La regla de pérdida, partida entre base y contrato** | «`OTRO` exige explicación» y «no hay nota sin motivo» son comprobaciones de **la fila** y van en `CHECK`. «Perdida ⇒ hay motivo» y «hay motivo ⇒ está perdida» **no pueden** ser un `CHECK`: la etapa vive en otra tabla y un `CHECK` no mira otra tabla. Hacerlo con un disparador sería esconder una regla de negocio donde nadie la busca y pagarla en cada movimiento de tarjeta. Esas dos se quedan en el contrato, que las aplica a la web, a la API y a cualquier integración |
+| **Próxima tarea: tres columnas, no tabla `tareas`** | El contrato expone UNA próxima tarea. Una tabla para una fila por oportunidad añade un join a la consulta más caliente a cambio de nada que hoy se use. `CHECK`: las tres o ninguna. El día que haga falta historial, es una tabla nueva |
+| **Notas internas colgando del contacto** | `conversaciones` todavía no existe como tabla y el panel lateral las pide por contacto. Cuando el inbox la cree, `conversacion_id UUID NULL` con clave foránea compuesta es una migración aditiva de un minuto. Al revés habría forzado al inbox a existir antes que el pipeline |
+| **Todas las claves foráneas, COMPUESTAS con el tenant** | Estaban escritas simples: la oportunidad de una agencia podía colgar del contacto, la etapa o el asesor de otra. RLS no lo impide —la integridad referencial se comprueba por encima de las políticas—. Mismo defecto que ADR-0008 cerró en el directorio. Aserciones 29 y 30 |
+| **Búsqueda con `pg_trgm` + `unaccent` + `btree_gin`** | El filtro de tenant y el texto entran en el **mismo** índice. `preferencias` queda fuera a propósito (R10): indexar por trigramas un campo que puede contener una alergia convierte el buscador en una herramienta para minar datos de salud |
+
+### Enlace con el inbox
+
+`contactos` y las futuras `conversaciones` se enlazan por **`contacto_id`**, nunca por teléfono.
+El teléfono es único por tenant (`UNIQUE (tenant_id, telefono_e164)`) y es la llave natural para
+*resolver* quién escribe, pero no es la clave de la relación: cambia, se reasigna, y una agencia
+puede tener dos canales. `contactos` ya expone `UNIQUE (id, tenant_id)`, que es lo que permite a
+`conversaciones` declarar `FOREIGN KEY (contacto_id, tenant_id)` el día que se cree.
