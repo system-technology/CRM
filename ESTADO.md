@@ -10,7 +10,7 @@
 | Actualizado por | Claude Opus 5 |
 | Fase | **Rebanada vertical de paquetes, en construcción** |
 | Avance de la fase | Cotizador de punta a punta. Esquema del inbox, 30/30 contra Neon. **Apretón de manos del webhook vivo y verificado contra la API corriendo.** Bandeja web en construcción |
-| Próximo hito | **Recibir el primer mensaje real de WhatsApp y guardarlo.** Falta el `POST` con la persistencia durable del ADR-0008 §4 |
+| Próximo hito | **El trabajador que resuelve de qué agencia es cada mensaje.** El `POST` ya guarda cifrado y verificado contra Neon; falta tomar los `change` pendientes |
 
 ---
 
@@ -124,6 +124,9 @@ Ordenada. La primera es la que debe tomarse ahora.
 | 9 | Decidir nombre comercial, modelo de cobro y precios | Usuario | Antes de vender |
 | 10 | Resolver la protección de `main` en GitHub | Usuario | Plan gratuito no la permite en repos privados |
 | 11 | **Rotar la contraseña de Neon y la clave de API de Stitch** | Usuario | **Sigue pendiente.** `ac7fb99` rotó los tres roles de PostgreSQL, que es otra cosa. Ambas se pegaron en el chat; un secreto expuesto no se borra, se rota |
+| 11b | **`META_APP_SECRET` y `WEBHOOK_PAYLOAD_KEY_VERSION` no están en `.env`** | Usuario | Sin el primero el `POST` rechaza **todo** con 403, y sin el segundo lanza al cifrar. El `POST` se verificó con un secreto temporal en memoria. El secreto va al `.env`, nunca al chat |
+| 11c | Los metadatos de decorador no siempre llegan con el transpilador de desarrollo | `backend` | Nest construyó un controlador **con cero dependencias y sin quejarse**; el fallo salió como un `undefined` en la primera petición real. El módulo `inbox` usa ya `@Inject` explícito; **falta revisar `quoting` y `shared`, donde el mismo silencio es posible** |
+| 11d | El aviso «Acceso sin contexto de tenant» se emite **una vez por mensaje** | `backend` | Es deliberadamente incómodo para que llame la atención en una revisión, pero en el webhook es legítimo y a volumen real inunda el registro |
 | 12 | Autenticación: el `tenant_id` debe salir del token de sesión | `backend` | Hoy la web lo envía por cabecera. Solo funciona con `APP_ENV=local`, pero es deuda que bloquea desplegar |
 | 13 | **La carrera de `turbo` entre `build` y `typecheck` de la web** | `devops` | `next build` reescribe `.next/types` mientras `tsc` lo lee. Por separado pasan; en paralelo da un rojo falso. **Morderá en CI**, que es justo donde corren en paralelo |
 | 14 | El aviso de `any` no es una compuerta | `devops` | `no-explicit-any` está en `warn` y ningún script lleva `--max-warnings 0`: hoy hay cero `any`, pero el primero entraría sin que lint falle |
@@ -161,7 +164,8 @@ Ordenada. La primera es la que debe tomarse ahora.
 
 ## 6. Bitácora
 
-- [`2026-10-07-el-dia-que-nos-pusimos-un-freno.md`](docs/_bitacora/2026-10-07-el-dia-que-nos-pusimos-un-freno.md) ← **empieza por aquí**
+- [`2026-10-10-el-dia-que-medimos-todo.md`](docs/_bitacora/2026-10-10-el-dia-que-medimos-todo.md) ← **empieza por aquí**
+- [`2026-10-07-el-dia-que-nos-pusimos-un-freno.md`](docs/_bitacora/2026-10-07-el-dia-que-nos-pusimos-un-freno.md)
 - [`2026-10-07-el-adr-que-se-defendio-tres-veces.md`](docs/_bitacora/2026-10-07-el-adr-que-se-defendio-tres-veces.md)
 - [`2026-10-07-primera-interfaz.md`](docs/_bitacora/2026-10-07-primera-interfaz.md)
 - [`_integraciones/2026-10-07-v0.9.1.md`](docs/_integraciones/2026-10-07-v0.9.1.md) — por qué cuatro compuertas nunca pudieron correr
