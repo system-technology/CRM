@@ -88,7 +88,18 @@ PASA · PASA CON CORRECCIONES · VUELVE
 
 ## Lo que verifiqué y cómo
 <para que no haya que creerme>
+
+## Siguiente bloque
+<el encargo completo del trabajo que viene: qué construir, contra qué
+contratos, qué criterios tiene que cumplir. Autosuficiente.>
 ```
+
+> **El apartado «Siguiente bloque» es el que cierra el ciclo.** Sin él, alguien tiene que
+> componer el encargo siguiente cada vez, y ese alguien acaba siendo el propietario. Con él, su
+> intervención se reduce a decirle a Antigravity que continúe: el qué ya está escrito.
+>
+> Se redacta **autosuficiente**, como si quien lo lee no hubiera visto esta conversación —
+> porque es literalmente el caso: Antigravity empieza cada sesión sin memoria de la anterior.
 
 4. Si pasa, va a la compuerta del `integrador`. Si no, Antigravity lee `REVISION.md` al empezar
    su siguiente sesión.
