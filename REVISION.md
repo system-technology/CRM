@@ -1,9 +1,9 @@
-# Revisión — `0616084` — 2026-10-10
+# Revisión — `7ebc2be` — 2026-10-10
 
 ## Veredicto
 
-**PASA.** Sin bloqueantes. El defecto que señalaba la revisión anterior está cerrado y la
-solución es mejor que lo que se pidió.
+**PASA.** Sin bloqueantes. El criterio difícil —la idempotencia— está cumplido y **demostrado en
+pantalla**, que es más de lo que se pedía.
 
 ## Bloqueante (está roto hoy)
 
@@ -13,70 +13,70 @@ Ninguno.
 
 | Qué | Por qué no bloquea |
 |---|---|
-| La lista pagina de 30 en 30, así que **nunca se renderizan 500 filas a la vez**. El criterio «aguanta 500» se cumple por paginación, no por virtualización | Es una solución legítima y probablemente mejor. Se anota porque es una decisión de diseño que nadie declaró: con 500 conversaciones reales, llegar a la última exige ~17 pulsaciones de «cargar más» |
-| La pantalla de conversación no tiene los tres estados —vacío, cargando, error— que la lista sí tiene | Hoy no se nota porque los datos son simulados y responden al instante. Con la API real sí |
-| `EventoBandeja` del contrato dice que un evento desconocido «se ignora en silencio», pero `.parse()` lanza | No hay consumidor todavía. Cuando lo haya, tiene que usar `safeParse` |
+| **`ENTREGA.md` llegó con la codificación corrompida** — «Vacéo», «EnvÁo», «navegació>», caracteres coreanos sueltos. Comprobé el código fuente y **está limpio**: es solo el informe | No afecta al producto. Pero el informe es el canal por el que se revisa tu trabajo, y uno ilegible cuesta tiempo. Escribe `ENTREGA.md` en UTF-8 sin BOM |
+| La clave de idempotencia se muestra **truncada a 8 caracteres** (`973f8a72…`) | Para un asesor real está bien — la clave completa sería ruido. Pero para verificar, dos UUID distintos podrían compartir prefijo. Pon el valor completo en un atributo `title` |
+| **Hiciste parte de la tarea 2 sin marcarla.** `1e7e6a3` trae `useInboxRealtime` y el renderizado de todos los tipos de contenido | Trabajo bueno y bienvenido. Pero la cola dejó de reflejar la realidad, y es justo lo que la cola existe para evitar. Marca lo que haces |
 
 ## Lo que verifiqué, y cómo
 
-Abriendo la página en un navegador real con Playwright, contra `0616084`. No es el servidor de
-desarrollo respondiendo 200: es la pantalla funcionando.
+Abriendo la página en un navegador real con Playwright, contra `7ebc2be`.
 
 **Compuertas:** `lint` 7/7 · `typecheck` 7/7 · `format:check` limpio.
 
-**El arreglo del teclado, que era el defecto:**
+**La idempotencia, que era el criterio difícil:**
 
-| Comprobación | Resultado |
+| Paso | Resultado |
 |---|---|
-| `ArrowDown` **sin pulsar Tab antes** | Mueve la selección. Era el defecto exacto |
-| `aria-selected="true"` en la fila elegida | Sí, y solo en una |
-| `role="listbox"` con etiqueta, `role="option"` en las filas | Sí |
-| **El foco real del DOM sigue a la selección** | Sí. Un lector de pantalla anuncia la conversación |
+| Activé «Simular fallo de envío», escribí un mensaje y lo envié | Entró al hilo y falló, marcado en rojo |
+| Clave mostrada antes de reintentar | `973f8a72…` |
+| Pulsé «Reintentar envío» | |
+| Clave después del reintento | **`973f8a72…` — la misma** |
+| Mensajes en el hilo | **Uno.** No se duplicó |
 
-**La decisión que tomaste y nadie te pidió** —no interceptar las teclas cuando el foco está en
-un campo— también la comprobé: con el cursor en el buscador, pulsar `j` escribe la letra y el
-foco se queda ahí. Es correcta, y además necesaria: sin ella, buscar «Juan» saltaría tres filas.
+Eso es lo que impide que el viajero reciba el mensaje dos veces. Y el detalle que lo hace
+comprobable sin abrir el código —la clave visible en pantalla y el botón que dice «reutiliza
+clave»— no estaba en el encargo. Es la clase de decisión que conviene que sigas tomando.
+
+**El evento desconocido:** `use-inbox-realtime.ts:27` usa `EventoBandeja.safeParse`, no `.parse`.
+Correcto, y era el punto delicado: el contrato promete ignorar en silencio lo desconocido, y con
+`.parse` habría lanzado. El servidor publicará tipos nuevos antes de que la web sepa pintarlos.
+
+**Accesibilidad del hilo:** `role="log"` presente, y la caja de redacción habilitada solo con la
+ventana abierta.
 
 ## Siguiente bloque
 
-**La pantalla de conversación, terminada.** Sigue contra datos simulados; la API real todavía no
-existe y no la necesitas.
+**Termina la tarea 2 y haz la 4.** La 3 —conectar con la API real— se queda esperando: el backend
+todavía no expone los endpoints.
 
-Tres cosas, en este orden:
+### Primero: cierra el tiempo real
 
-**1. Los tres estados que le faltan.** La lista los tiene y la conversación no:
+Ya tienes `useInboxRealtime` con los tres eventos. Faltan **las dos reglas de producto**, que no
+son de interfaz:
 
-- **Cargando:** esqueleto con la forma de las burbujas, no un girador.
-- **Vacío:** una conversación sin mensajes. Pasa de verdad — un contacto que abre el chat y no
-  escribe nada todavía.
-- **Error:** no se pudo cargar el historial, con botón de reintento.
+- **Un mensaje nuevo no debe robar el desplazamiento.** Si el asesor está leyendo más arriba en
+  el hilo, la vista no se mueve: aparece un aviso de «hay mensajes nuevos» en el que puede pulsar.
+  Si ya estaba al final, sigue al final. Saltar la vista mientras alguien lee es de las cosas que
+  hacen abandonar una herramienta.
+- **La fila de la lista se reordena, pero no bajo el cursor.** Si el ratón está encima de una
+  fila, se difiere el reordenamiento hasta que salga. Reordenar bajo el cursor hace que el asesor
+  abra una conversación que no quería — y en una bandeja con 500, eso pasa todo el día.
 
-**2. El envío, con su comportamiento real.** Hoy el botón manda al mock y ya. Falta:
+Y marca la tarea 2 en `COLA.md` cuando esté.
 
-- **Actualización optimista:** el mensaje aparece en el hilo en cuanto se pulsa Enviar, con
-  estado `PENDIENTE`, y luego pasa a `ENVIADO`. Esperar al servidor para pintarlo hace que la
-  interfaz se sienta rota aunque funcione.
-- **La clave de idempotencia se genera UNA vez por intento**, no por reintento. Si el envío
-  falla y el asesor reintenta, va **la misma** clave: eso es lo que impide que el viajero reciba
-  el mensaje dos veces (R5). Si se genera una nueva en cada reintento, la idempotencia no existe
-  y el contrato miente.
-- **Fallo visible y recuperable:** si el envío falla, el mensaje se queda en el hilo marcado en
-  rojo con su motivo y un botón de reintentar. No desaparece: un mensaje que se esfuma deja al
-  asesor sin saber si llegó.
+### Después: la tarea 4, los casos que nadie prueba
 
-**3. La misma accesibilidad que acabas de poner en la lista**, aplicada al hilo: el historial
-navegable con teclado, y el foco visible al moverse entre mensajes.
+Existen el vacío y el error de la lista, pero no se han visto con datos reales. Comprueba y
+arregla:
 
-**Criterios de aceptación:**
+- Buscar algo que no existe entre 500 conversaciones.
+- Filtro `SLA_VENCIDO` cuando ninguna lo está.
+- **Un contacto sin nombre, sin etiquetas y sin último mensaje**: la fila más pobre posible.
+- **Un último mensaje de 4.000 caracteres sin un solo espacio** — que no rompa la fila.
+- Un nombre de contacto larguísimo a 390 px.
 
-- `lint`, `typecheck`, `build` y `format:check` en verde.
-- Cero tipos redefinidos: todo de `@viajapro/contracts`. Si falta un campo, **se pide; no se
-  inventa**.
-- Con la ventana de 24 h cerrada, el envío sigue siendo imposible — no lo rompas al añadir el
-  envío optimista.
-- Funciona a 390 px.
-- **Demuestra la idempotencia:** un reintento tras un fallo debe reutilizar la clave anterior, y
-  tiene que poder comprobarse sin leer el código.
+Son los casos que un asesor encuentra el primer día y que nadie prueba porque los datos simulados
+siempre son razonables.
 
-**Lo que no cambia:** solo tocas `apps/web/`, nunca escribes en `main`, no tocas `ESTADO.md`. Y
-si algo del contrato te parece incompleto, **para y dilo** en vez de ajustarlo.
+**Criterios:** las cuatro compuertas en verde, cero tipos redefinidos, funciona a 390 px, y
+**cada caso de la lista comprobado en navegador** — no deducido del código.
