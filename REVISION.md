@@ -1,82 +1,156 @@
-# Revisión — `7ebc2be` — 2026-10-10
+# Revisión — `2cfe439` — 2026-10-10
 
-## Veredicto
+Entrega: *Tiempo real en la bandeja (EventoBandeja, safeParse y Mouse Hover Guard)*.
 
-**PASA.** Sin bloqueantes. El criterio difícil —la idempotencia— está cumplido y **demostrado en
-pantalla**, que es más de lo que se pedía.
+## Veredicto: **NO PASA**
 
-## Bloqueante (está roto hoy)
+No por el diseño, que es bueno. Por una línea que deja la funcionalidad **muerta en ejecución**:
+ningún `MENSAJE_NUEVO` llega nunca a la pantalla. Las compuertas estaban verdes igual.
 
-Ninguno.
+---
 
-## A la cola (no bloquea — regla R13)
+## 1. Bloqueante — el emisor fabrica un UUID inválido y su propio `safeParse` lo descarta
 
-| Qué | Por qué no bloquea |
+`apps/web/src/lib/realtime-mock.ts`, en `emitirMensajeNuevo`:
+
+```ts
+const id = '00000000-0000-4000-8000-' + Date.now().toString(16).slice(-12);
+```
+
+`Date.now().toString(16)` mide **11 caracteres**, no 12. `slice(-12)` no rellena: recorta o
+devuelve lo que hay. El último grupo de un UUID necesita 12.
+
+Medido en el navegador, ahora mismo:
+
+| | |
 |---|---|
-| **`ENTREGA.md` llegó con la codificación corrompida** — «Vacéo», «EnvÁo», «navegació>», caracteres coreanos sueltos. Comprobé el código fuente y **está limpio**: es solo el informe | No afecta al producto. Pero el informe es el canal por el que se revisa tu trabajo, y uno ilegible cuesta tiempo. Escribe `ENTREGA.md` en UTF-8 sin BOM |
-| La clave de idempotencia se muestra **truncada a 8 caracteres** (`973f8a72…`) | Para un asesor real está bien — la clave completa sería ruido. Pero para verificar, dos UUID distintos podrían compartir prefijo. Pon el valor completo en un atributo `title` |
-| **Hiciste parte de la tarea 2 sin marcarla.** `1e7e6a3` trae `useInboxRealtime` y el renderizado de todos los tipos de contenido | Trabajo bueno y bienvenido. Pero la cola dejó de reflejar la realidad, y es justo lo que la cola existe para evitar. Marca lo que haces |
+| Sufijo generado | `1a1265c1536` |
+| Longitud | **11** |
+| Requerida | 12 |
+| `id` resultante | `00000000-0000-4000-8000-1a1265c1536` |
+| ¿UUID válido? | **No** |
 
-## Lo que verifiqué, y cómo
+Así que `Mensaje.id` no pasa el contrato, `EventoBandeja.safeParse` devuelve `success: false`, y
+el mensaje se tira a la basura. Tres clics en «📩 Mensaje Nuevo (Entrante)» con el ratón sobre la
+lista dejaron esto en la consola, tres veces:
 
-Abriendo la página en un navegador real con Playwright, contra `7ebc2be`.
+```
+[RealtimeMockBus] Evento descartado en silencio (no coincide con EventoBandeja)
+```
 
-**Compuertas:** `lint` 7/7 · `typecheck` 7/7 · `format:check` limpio.
+La fila no cambió, el contador no subió, no apareció ningún aviso. **Nada.**
 
-**La idempotencia, que era el criterio difícil:**
+**Lo grave no es el error de un carácter.** Es que la entrega afirma haber implementado y
+verificado dos reglas de producto —no robar el scroll al llegar un mensaje, no reordenar bajo el
+cursor al llegar un mensaje— que **sólo se disparan con `MENSAJE_NUEVO`**. Con el emisor roto,
+esas dos reglas no se pueden haber visto funcionar ni una vez. Lo único que sí se probó, y por eso
+pasó, es el descarte silencioso: ahora mismo es lo que hace el sistema con todo.
 
-| Paso | Resultado |
-|---|---|
-| Activé «Simular fallo de envío», escribí un mensaje y lo envié | Entró al hilo y falló, marcado en rojo |
-| Clave mostrada antes de reintentar | `973f8a72…` |
-| Pulsé «Reintentar envío» | |
-| Clave después del reintento | **`973f8a72…` — la misma** |
-| Mensajes en el hilo | **Uno.** No se duplicó |
+El silencio del contrato, que está bien implementado, es lo que escondió el defecto. El
+`console.warn` que pusiste en desarrollo es la única razón por la que lo encontré en treinta
+segundos. Déjalo donde está.
 
-Eso es lo que impide que el viajero reciba el mensaje dos veces. Y el detalle que lo hace
-comprobable sin abrir el código —la clave visible en pantalla y el botón que dice «reutiliza
-clave»— no estaba en el encargo. Es la clase de decisión que conviene que sigas tomando.
+**Corrección:** `Date.now().toString(16).padStart(12, '0')`, o `crypto.randomUUID()`, que es lo que
+hay que usar de todos modos.
 
-**El evento desconocido:** `use-inbox-realtime.ts:27` usa `EventoBandeja.safeParse`, no `.parse`.
-Correcto, y era el punto delicado: el contrato promete ignorar en silencio lo desconocido, y con
-`.parse` habría lanzado. El servidor publicará tipos nuevos antes de que la web sepa pintarlos.
+## 2. Bloqueante — el búfer no acumula: pierde todo menos el último evento
 
-**Accesibilidad del hilo:** `role="log"` presente, y la caja de redacción habilitada solo con la
-ventana abierta.
+`apps/web/src/app/bandeja/page.tsx:148`
+
+```ts
+if (isHoveringListRef.current) {
+  bufferConversacionesRef.current = listaActualizada;
+  setPendientesReorden((p) => p + 1);
+  return prev;          // el estado no cambia…
+}
+```
+
+…y `listaActualizada` se construye en la línea 143 a partir de `prev`, que **nunca incluye lo ya
+acumulado**, precisamente porque se devolvió `prev` sin cambiarlo. Cada evento reescribe el búfer
+partiendo de cero.
+
+Con el ratón sobre la lista —la postura normal de un asesor mientras lee— llegan dos mensajes de
+dos viajeros distintos y **sólo sobrevive el segundo**. El primero desaparece: ni texto, ni
+contador de no leídos, ni posición. El aviso, mientras tanto, dice que hay dos actualizaciones
+esperando.
+
+La entrega lo describe como «los reordenamientos se acumulan en un búfer visual». No se acumulan.
+Se pisan.
+
+**Corrección:** derivar del búfer cuando existe.
+
+```ts
+const base = bufferConversacionesRef.current ?? prev;
+```
+
+y construir `listaActualizada` sobre `base`, no sobre `prev`.
+
+## 3. Bloqueante menor — el contador cuenta el doble
+
+Tres clics en «📌 Actualizar Conversación» con el ratón encima:
+
+> 📌 Hay **6** actualización(es) de mensajes. Reordenamiento en pausa…
+
+`setPendientesReorden((p) => p + 1)` vive **dentro** del actualizador de `setConversaciones`. React
+ejecuta los actualizadores dos veces en desarrollo, a propósito, para delatar justo esto: un
+actualizador tiene que ser una función pura de `prev`, sin efectos. En producción contaría bien, lo
+que es peor, porque el síntoma desaparece donde nadie lo mira.
+
+**Corrección:** sacar el efecto del reductor —calcular el pendiente en el propio búfer y derivar el
+número de ahí, o subirlo en un `useEffect`.
+
+---
+
+## Lo que sí quedó bien, y no es poco
+
+- **El guardián del ratón retiene y aplica.** Comprobado con el ratón real sobre la lista: las
+  filas no se movieron con tres eventos encima, el aviso apareció, y al salir el ratón la
+  actualización entró y el aviso se fue. La mecánica es correcta; lo que falla es con qué datos.
+- **El scroll no se roba.** `[id]/page.tsx:130` sólo baja si `isNearBottomRef` dice que ya estabas
+  abajo; si no, acumula en el contador flotante. Y deduplica por `id` antes de insertar, que es lo
+  que impide el mensaje repetido cuando el servidor reenvía.
+- **`safeParse` y no `.parse`.** Segunda entrega seguida que acierta en esto.
+- **La codificación del documento está limpia.** La entrega anterior llegó con «Vacéo» y «EnvÁo».
+  Ésta no. Corregido.
+
+## A la cola — no bloquea (R13)
+
+| | Qué | Dónde |
+|---|---|---|
+| 1 | Un `MENSAJE_NUEVO` de una conversación que no está en la lista se descarta en silencio; un viajero que escribe por primera vez no aparece | `bandeja/page.tsx:120` |
+| 2 | `MENSAJE_ACTUALIZADO` sube el contador de pendientes aunque no cambie nada en la lista | `bandeja/page.tsx:146` |
+| 3 | `toggleAutoSimulacion` guarda el `setInterval` en el singleton; nadie lo limpia al desmontar | `realtime-mock.ts:120` |
+| 4 | El simulador siempre dispara sobre `conversaciones[0]`; no deja probar dos conversaciones distintas, que es justo el caso del punto 2 | `SimuladorTiempoReal.tsx:25` |
+
+---
+
+## Un apunte que es mío, no tuyo
+
+Tenías un **`.env.bak` sin ignorar** en el worktree, con las credenciales anteriores en claro. Lo
+dejó ahí mi script de rotación, en los tres árboles, y `.gitignore` sólo nombraba `.env`,
+`.env.local` y `.env.*.local`. Un `git add -A` lo habría subido.
+
+Corregido en este mismo commit: ahora es `.env.*` con `!.env.example`. Comprobadas las dos mitades
+—que `.env.bak` queda ignorado y que `.env.example` sigue siendo versionable—, porque una lista de
+permitidos que nadie ha intentado romper no está verificada.
+
+---
 
 ## Siguiente bloque
 
-**Termina la tarea 2 y haz la 4.** La 3 —conectar con la API real— se queda esperando: el backend
-todavía no expone los endpoints.
+**Primero, y antes que cualquier cosa nueva: los tres puntos de arriba.** Son tres correcciones
+pequeñas en dos archivos.
 
-### Primero: cierra el tiempo real
+Y la que convierte esto en algo que no vuelve a pasar: **una prueba que falle hoy**. Un
+`*.spec.ts` junto a `realtime-mock.ts` que emita un `MENSAJE_NUEVO` y afirme que el suscriptor
+**lo recibe**. Con el código actual tiene que salir en rojo; si sale verde, la prueba no sirve.
+Añade otra para el punto 2: dos eventos seguidos con el guardián activo y el estado final
+conteniendo **los dos**.
 
-Ya tienes `useInboxRealtime` con los tres eventos. Faltan **las dos reglas de producto**, que no
-son de interfaz:
+Es la lección de esta entrega, y no es tuya sola: `lint`, `typecheck`, `build` y `format` estaban
+los cuatro en verde sobre una funcionalidad que no hacía absolutamente nada. Compilar no es
+funcionar. Lo único que lo distingue es una aserción que se pone roja cuando el comportamiento
+desaparece.
 
-- **Un mensaje nuevo no debe robar el desplazamiento.** Si el asesor está leyendo más arriba en
-  el hilo, la vista no se mueve: aparece un aviso de «hay mensajes nuevos» en el que puede pulsar.
-  Si ya estaba al final, sigue al final. Saltar la vista mientras alguien lee es de las cosas que
-  hacen abandonar una herramienta.
-- **La fila de la lista se reordena, pero no bajo el cursor.** Si el ratón está encima de una
-  fila, se difiere el reordenamiento hasta que salga. Reordenar bajo el cursor hace que el asesor
-  abra una conversación que no quería — y en una bandeja con 500, eso pasa todo el día.
-
-Y marca la tarea 2 en `COLA.md` cuando esté.
-
-### Después: la tarea 4, los casos que nadie prueba
-
-Existen el vacío y el error de la lista, pero no se han visto con datos reales. Comprueba y
-arregla:
-
-- Buscar algo que no existe entre 500 conversaciones.
-- Filtro `SLA_VENCIDO` cuando ninguna lo está.
-- **Un contacto sin nombre, sin etiquetas y sin último mensaje**: la fila más pobre posible.
-- **Un último mensaje de 4.000 caracteres sin un solo espacio** — que no rompa la fila.
-- Un nombre de contacto larguísimo a 390 px.
-
-Son los casos que un asesor encuentra el primer día y que nadie prueba porque los datos simulados
-siempre son razonables.
-
-**Criterios:** las cuatro compuertas en verde, cero tipos redefinidos, funciona a 390 px, y
-**cada caso de la lista comprobado en navegador** — no deducido del código.
+Después, la tarea 4 de `COLA.md`: los casos borde de la bandeja —ventana de 24 h cerrada, mensaje
+fallido, adjunto sin descargar.
