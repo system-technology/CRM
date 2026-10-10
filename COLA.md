@@ -12,6 +12,24 @@
 > **Si una entrega tuya fue rechazada, su corrección entra aquí arriba y bloquea todo lo demás.**
 > No se construye encima de algo que no funciona: lo que se apile sobre ello hay que rehacerlo.
 
+**El diseño no es opcional y hasta ahora faltaba en esta cola — culpa mía.** Antes de dar por
+lista cualquier pantalla, mira `docs/_assets/diseno/01-bandeja.png`, que es la bandeja acordada, y
+pasa la lista de `docs/01-producto/06-diseno-y-ux.md` §6:
+
+- [ ] La acción principal es la más prominente. *(En la bandeja es «Crear cotización»: una
+      conversación que no se convierte en cotización no le sirve a la agencia.)*
+- [ ] Clics hasta responder un mensaje: contados y ≤ 3.
+- [ ] Funciona a 375 px.
+- [ ] Navegable por teclado, con foco visible.
+- [ ] Contraste AA, en claro y en oscuro.
+- [ ] Los tres estados: vacío, cargando, error.
+- [ ] Probada con volumen real: 500 conversaciones, nombres largos, cero resultados.
+- [ ] El estado que cuesta dinero está visible sin abrir nada.
+- [ ] Un asesor nuevo entiende qué hacer sin que nadie le explique.
+
+Los tokens y la tipografía ya están en `globals.css`. Si Stitch propone otro azul, gana el nuestro.
+El código que genera Stitch **no se copia**: es referencia visual.
+
 **Siempre, en cada tarea:** solo tocas `apps/web/`. Nunca escribes en `main`. No tocas
 `ESTADO.md`. Cero tipos redefinidos: todo de `@viajapro/contracts` — si falta un campo, **para y
 dilo**, no lo inventes. `lint`, `typecheck`, `build` y `format:check` en verde antes de cada
