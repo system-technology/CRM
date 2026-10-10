@@ -10,3 +10,4 @@
 export * from './comunes.js';
 export * from './catalogo.js';
 export * from './inbox.js';
+export * from './plantillas.js';
