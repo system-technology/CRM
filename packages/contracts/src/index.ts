@@ -9,4 +9,5 @@
 
 export * from './comunes.js';
 export * from './catalogo.js';
+export * from './crm.js';
 export * from './inbox.js';
