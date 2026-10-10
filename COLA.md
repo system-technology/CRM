@@ -84,7 +84,7 @@ Para cuando el backend exista. **Haz primero la parte que no depende de él.**
 
 ---
 
-## [ ] 4. El vacío y el error de la lista, con datos de verdad
+## [x] 4. El vacío y el error de la lista, con datos de verdad
 
 Hoy existen pero no se han visto con casos reales. Comprueba y arregla:
 
