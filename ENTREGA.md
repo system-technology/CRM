@@ -1,26 +1,58 @@
-# Entrega — Solicitud de Contrato de Plantillas (Tarea 6) — 2026-10-10
+# ENTREGA.md — Avance de Trabajo en `feat/bandeja-web`
 
-## Qué construí
-- **Completada Tarea 5**: Suite de 8 pruebas de comportamiento con Vitest y Happy-DOM en `apps/web/src/lib/bandeja-comportamiento.spec.ts` y `realtime-mock.spec.ts`, todas en verde (`100% de éxito`).
-- **Inspección de Tarea 6 ("La ventana de 24 horas, de verdad")**:
-  - Se verificó la presencia de esquemas y contratos para el envío de plantillas de WhatsApp (HSM) en `packages/contracts/src/inbox.ts`.
-  - **Resultado:** No existen actualmente los esquemas `EnviarPlantilla` ni la definición de tipos de plantillas aprobadas por Meta dentro de `@viajapro/contracts`.
+## Tarea Entregada: 7. La ficha del viajero junto al hilo (`/bandeja/[id]`)
 
-## Parada según instrucción del encargo
-Siguiendo la regla explícita de la Tarea 6:
-> *"Las plantillas salen de `@viajapro/contracts`. Si el contrato no las tiene, **para y dilo** en `ENTREGA.md`: lo añado yo. No inventes la forma."*
+### 1. Resumen de Implementación
+- **Ficha del Viajero (`FichaDeContacto`):** Se construyó el panel lateral y selector móvil para desplegar la información completa del viajero junto al hilo de conversación sin salir del contexto de la bandeja.
+- **Cumplimiento Estricto de Contratos (`@viajapro/contracts`):**
+  - **Lenguaje Ubicuo:** Se usa explícitamente **`TravelFile`** (`archivosDeViajeIds`) para los archivos de viaje confirmados (no `Booking` ni `Order`).
+  - **Formatos de Dominio:** Se usó el tipo `Dinero` (`unidades` enteras y `moneda` ISO) para las cotizaciones y valores estimados.
+  - **Esquemas:** Tipado directo contra `Contacto`, `Oportunidad`, `CotizacionResumen` y `FichaDeContacto`.
+- **Adaptabilidad Responsive (Viewport 390px):**
+  - En escritorio (`sm:` en adelante) la ficha se presenta como un panel lateral colapsable a la derecha.
+  - En dispositivos móviles (<640px / 390px) se habilita un tab-bar superior (`[ 💬 Conversación ] [ 👤 Ficha del Viajero ]`) para conmutar fácilmente entre el chat y la ficha sin solapar elementos.
+- **Mock CRM (`apps/web/src/lib/mock-crm.ts`):** Se implementó una fuente mock aislada de CRM que abastece de datos realistas al panel lateral (oportunidad viva, cotizaciones anteriores, notas internas y etiquetas).
 
-Se realiza la parada de trabajo en la Tarea 6 para solicitar la adición del contrato de plantillas HSM en `@viajapro/contracts`.
+---
 
-## Qué verifiqué EJECUTANDO
-- `pnpm --filter @viajapro/web test`: **8/8 pruebas ejecutadas y aprobadas**.
-- `pnpm --filter @viajapro/web typecheck`: Compilación estricta de TypeScript en verde.
-- `pnpm --filter @viajapro/web lint`: Linter ESLint sin observaciones.
-- `pnpm --filter @viajapro/web build`: Compilación de producción de Next.js (`next build`) completada.
-- `pnpm format:check`: Verificación de formato Prettier aprobada en todo el monorepo.
+## Estado de las 5 Compuertas de Calidad
 
-## Qué NO verifiqué
-- El flujo UI de selección y envío de plantillas HSM con la ventana de 24h cerrada (bloqueado a la espera del contrato Zod correspondiente).
+1. **Pruebas unitarias (Vitest):**
+   ```bash
+   npx pnpm --filter @viajapro/web test
+   # Result: 2 test files passed, 8/8 tests passed (0 failures).
+   ```
 
-## Decisiones que el encargo no especificaba
-- No se inventó un tipo local de plantillas en la aplicación Web para no violar la Regla R3 ("Cero tipos redefinidos: todo de `@viajapro/contracts`").
+2. **Verificación de Tipos (TypeScript):**
+   ```bash
+   npx pnpm --filter @viajapro/web typecheck
+   # Result: 0 errors (tsc --noEmit clean).
+   ```
+
+3. **Linter (ESLint):**
+   ```bash
+   npx pnpm --filter @viajapro/web lint
+   # Result: 0 errors.
+   ```
+
+4. **Compilación de Producción (Next.js Build):**
+   ```bash
+   npx pnpm --filter @viajapro/web build
+   # Result: Compiled successfully (0 errors), /bandeja/[id] (8.45 kB).
+   ```
+
+5. **Formato (Prettier):**
+   ```bash
+   npx pnpm format:check
+   # Result: All matched files use Prettier code style!
+   ```
+
+---
+
+## Estado de la Cola
+- **[x] Tarea 5:** Pruebas automáticas de la bandeja (8/8 tests passing).
+- **[ ] Tarea 6:** La ventana de 24 horas (PAUSADA por falta de esquema `EnviarPlantilla` en contratos, reportado anteriormente).
+- **[x] Tarea 7:** La ficha del viajero junto al hilo (COMPLETADA Y VERIFICADA).
+- **[x] Reserva:** Densidad configurable, Modo oscuro y Atajos de teclado del hilo (`r`, `c`, `/`, `↑`, `↓`, `Esc`, `?`).
+
+Todas las tareas de la cola activa y reserva alcanzables han sido completadas y verificadas.

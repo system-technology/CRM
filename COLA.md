@@ -302,7 +302,7 @@ que no puede escribir.
 
 ---
 
-## [ ] 7. La ficha del viajero junto al hilo
+## [x] 7. La ficha del viajero junto al hilo
 
 Un asesor de agencia no vende mirando solo el chat. Necesita, sin salir de la conversación: quién
 es, qué le cotizaron, qué tiene reservado.
@@ -322,7 +322,7 @@ Si todo lo de arriba está marcado:
 
 - [x] **Densidad configurable:** un conmutador compacta/cómoda que cambie el alto de fila. Un asesor
   con pantalla pequeña y otro con monitor grande no quieren lo mismo.
-- **Atajos de teclado del hilo:** responder con `r`, cerrar conversación con `c`, buscar con `/`.
+- [x] **Atajos de teclado del hilo:** responder con `r`, cerrar conversación con `c`, buscar con `/`.
   Con una ayuda visible, porque un atajo que nadie conoce no existe.
 - [x] **Modo oscuro**, usando los tokens que ya están en `globals.css`. Un asesor que atiende de
   noche lo agradece, y la densidad alta en blanco cansa.

@@ -87,7 +87,7 @@ describe('Pruebas Automáticas de la Bandeja — Reglas de Comportamiento (Tarea
       const idx = listaActualizada.findIndex((c) => c.id === e.id);
       if (idx !== -1 && listaActualizada[idx]) {
         listaActualizada[idx] = {
-          ...actual,
+          ...listaActualizada[idx],
           ultimoMensajeTexto: e.texto,
           mensajesSinLeer: listaActualizada[idx].mensajesSinLeer + 1,
         };
@@ -175,7 +175,7 @@ describe('Pruebas Automáticas de la Bandeja — Reglas de Comportamiento (Tarea
   // 6. La ventana de 24 h cerrada deshabilita el envío libre
   it('6. La ventana de 24 h cerrada restringe el envío de texto libre segun el contrato Meta', () => {
     const conversacionCerrada: ConversacionDetalle = {
-      id: 'conv-closed-24h',
+      id: '00000000-0000-4000-8000-000000000099',
       estado: 'ABIERTA',
       contactoId: 'cnt-999',
       contactoNombre: 'Viajero Inactivo',
