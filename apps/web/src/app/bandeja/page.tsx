@@ -30,6 +30,8 @@ import { inboxApi, InboxErrorApi } from '../../lib/inbox-api';
 import { realtimeMockBus } from '../../lib/realtime-mock';
 import { SimuladorTiempoReal } from '../../components/SimuladorTiempoReal';
 
+export type DensidadBandeja = 'compacta' | 'comoda';
+
 const FILTROS: { id: FiltroBandeja; etiqueta: string }[] = [
   { id: 'TODAS', etiqueta: 'Todas' },
   { id: 'MIAS', etiqueta: 'Mías' },
@@ -47,6 +49,27 @@ export default function BandejaPage() {
   const [conversaciones, setConversaciones] = useState<ConversacionResumen[]>([]);
   const [cargando, setCargando] = useState(true);
   const [cargandoMas, setCargandoMas] = useState(false);
+  const [densidad, setDensidad] = useState<DensidadBandeja>('comoda');
+
+  useEffect(() => {
+    try {
+      const guardado = localStorage.getItem('viajapro:bandeja:densidad');
+      if (guardado === 'compacta' || guardado === 'comoda') {
+        setDensidad(guardado);
+      }
+    } catch {
+      // Ignorar errores de storage
+    }
+  }, []);
+
+  const cambiarDensidad = (nueva: DensidadBandeja) => {
+    setDensidad(nueva);
+    try {
+      localStorage.setItem('viajapro:bandeja:densidad', nueva);
+    } catch {
+      // Ignorar
+    }
+  };
   const [error, setError] = useState<string | null>(null);
 
   // Guard de Mouse Hover para no reordenar bajo el cursor
@@ -284,23 +307,56 @@ export default function BandejaPage() {
               </div>
             </div>
 
-            <div className="relative w-full sm:w-72">
-              <input
-                type="text"
-                placeholder="Buscar por cliente, teléfono o mensaje..."
-                value={buscar}
-                onChange={(e) => setBuscar(e.target.value)}
-                className="focus:border-acento-600 focus:ring-acento-600 w-full rounded-md border border-neutral-300 bg-white py-1.5 pr-3 pl-8 text-xs text-neutral-900 placeholder:text-neutral-400 focus:ring-1 focus:outline-hidden"
-              />
-              <span className="absolute top-2 left-2.5 text-neutral-400">🔍</span>
-              {buscar && (
+            <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+              <div className="relative flex-1 sm:w-64">
+                <input
+                  type="text"
+                  placeholder="Buscar cliente, tel o mensaje..."
+                  value={buscar}
+                  onChange={(e) => setBuscar(e.target.value)}
+                  className="focus:border-acento-600 focus:ring-acento-600 w-full rounded-md border border-neutral-300 bg-white py-1.5 pr-3 pl-8 text-xs text-neutral-900 placeholder:text-neutral-400 focus:ring-1 focus:outline-hidden"
+                />
+                <span className="absolute top-2 left-2.5 text-neutral-400">🔍</span>
+                {buscar && (
+                  <button
+                    onClick={() => setBuscar('')}
+                    className="absolute top-1.5 right-2 text-xs font-bold text-neutral-400 hover:text-neutral-600"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+
+              <div
+                className="flex shrink-0 items-center rounded-md border border-neutral-200 bg-white p-0.5 shadow-2xs"
+                role="group"
+                aria-label="Densidad de la lista"
+              >
                 <button
-                  onClick={() => setBuscar('')}
-                  className="absolute top-1.5 right-2 text-xs font-bold text-neutral-400 hover:text-neutral-600"
+                  type="button"
+                  onClick={() => cambiarDensidad('compacta')}
+                  title="Densidad compacta (más elementos)"
+                  className={`rounded-sm px-2 py-1 text-xs transition-colors ${
+                    densidad === 'compacta'
+                      ? 'bg-neutral-900 font-semibold text-white shadow-2xs'
+                      : 'text-neutral-600 hover:bg-neutral-100'
+                  }`}
                 >
-                  ✕
+                  ⚡ Compacta
                 </button>
-              )}
+                <button
+                  type="button"
+                  onClick={() => cambiarDensidad('comoda')}
+                  title="Densidad cómoda (lectura amplia)"
+                  className={`rounded-sm px-2 py-1 text-xs transition-colors ${
+                    densidad === 'comoda'
+                      ? 'bg-neutral-900 font-semibold text-white shadow-2xs'
+                      : 'text-neutral-600 hover:bg-neutral-100'
+                  }`}
+                >
+                  📖 Cómoda
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -387,6 +443,7 @@ export default function BandejaPage() {
               return (
                 <ConversacionFila
                   key={conv.id}
+                  densidad={densidad}
                   ref={(el) => {
                     itemRefs.current[idx] = el;
                   }}
@@ -443,6 +500,7 @@ export default function BandejaPage() {
 
 interface ConversacionFilaProps {
   conversacion: ConversacionResumen;
+  densidad?: DensidadBandeja;
   esSeleccionada: boolean;
   onClick: () => void;
   ref: (el: HTMLAnchorElement | null) => void;
@@ -453,6 +511,7 @@ function ConversacionFila({
   esSeleccionada,
   onClick,
   ref,
+  densidad = 'comoda',
 }: ConversacionFilaProps) {
   const ahora = Date.now();
 
@@ -484,7 +543,9 @@ function ConversacionFila({
       role="option"
       aria-selected={esSeleccionada}
       tabIndex={esSeleccionada ? 0 : -1}
-      className={`group relative flex cursor-pointer flex-col gap-1.5 rounded-sm border p-2.5 transition-all sm:flex-row sm:items-center sm:justify-between ${
+      className={`group relative flex cursor-pointer flex-col rounded-sm border transition-all sm:flex-row sm:items-center sm:justify-between ${
+        densidad === 'compacta' ? 'gap-1 p-1.5 sm:p-2' : 'gap-1.5 p-2.5 sm:p-3'
+      } ${
         esSeleccionada
           ? 'border-acento-600 bg-acento-50/50 ring-acento-600 shadow-xs ring-2'
           : c.mensajesSinLeer > 0
@@ -494,7 +555,11 @@ function ConversacionFila({
     >
       <div className="min-w-0 flex-1 space-y-1">
         <div className="flex flex-wrap items-center gap-1.5">
-          <span className="truncate text-base font-semibold text-neutral-900">
+          <span
+            className={`truncate font-semibold text-neutral-900 ${
+              densidad === 'compacta' ? 'text-sm' : 'text-base'
+            }`}
+          >
             {c.contactoNombre ? c.contactoNombre : c.contactoTelefono}
           </span>
 
