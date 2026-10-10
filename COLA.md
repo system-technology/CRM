@@ -254,7 +254,7 @@ Son los casos que nadie prueba y que un asesor encuentra el primer día.
 
 ---
 
-## [ ] 5. Pruebas automáticas de la bandeja — la deuda más cara que tenemos
+## [x] 5. Pruebas automáticas de la bandeja — la deuda más cara que tenemos
 
 Hoy **`apps/web` no tiene una sola prueba**. Todo lo construido se ha verificado mirándolo, y la
 tarea 0 es exactamente lo que pasa cuando eso es todo lo que hay: cuatro compuertas en verde

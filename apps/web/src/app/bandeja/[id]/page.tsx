@@ -301,6 +301,7 @@ export default function ConversacionPage({ params }: { params: Promise<{ id: str
         motivoFallo: null,
         autorId: ID_ASESOR_ACTUAL,
         autorNombre: NOMBRE_ASESOR_ACTUAL,
+        cotizacionId: null,
         ocurridoEn: ahora,
       };
 

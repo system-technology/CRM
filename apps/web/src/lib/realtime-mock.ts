@@ -70,6 +70,7 @@ class RealtimeMockBus {
       motivoFallo: null,
       autorId: direccion === 'SALIENTE' ? '00000000-0000-4000-a000-000000000001' : null,
       autorNombre: direccion === 'SALIENTE' ? 'Asesor Actual' : null,
+      cotizacionId: null,
       ocurridoEn: ahora,
     };
 
