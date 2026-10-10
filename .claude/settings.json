@@ -44,7 +44,6 @@
       "Bash(git push:*)",
       "Bash(gh pr create:*)",
       "Bash(pnpm add:*)",
-      "Bash(node .claude/hooks/autorizar-integracion.mjs:*)",
       "Bash(git fetch:*)",
       "Bash(git worktree:*)",
       "Bash(git stash:*)",
@@ -52,7 +51,6 @@
       "Bash(git rev-parse:*)",
       "Bash(git merge-base:*)",
       "Bash(git check-ignore:*)",
-      "Bash(git clean -xdf:*)",
       "Bash(git mv:*)",
       "Bash(git restore:*)",
       "Bash(corepack pnpm lint:*)",
@@ -74,9 +72,15 @@
       "Bash(gh pr list:*)",
       "Bash(taskkill:*)",
       "Bash(cp:*)",
-      "Bash(mkdir:*)"
+      "Bash(mkdir:*)",
+      "Bash(git clean -xdfn:*)"
     ],
-    "ask": ["Bash(docker compose:*)", "Bash(terraform:*)", "Bash(npm install:*)"],
+    "ask": [
+      "Bash(node .claude/hooks/autorizar-integracion.mjs:*)",
+      "Bash(docker compose:*)",
+      "Bash(terraform:*)",
+      "Bash(npm install:*)"
+    ],
     "deny": [
       "Read(./.env)",
       "Read(./.env.local)",
@@ -95,7 +99,21 @@
       "Bash(git filter-branch:*)",
       "Bash(pnpm db:reset:*)",
       "Bash(psql:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(git clean -xdf:*)",
+      "Bash(git clean -fdx:*)",
+      "Bash(git clean -xfd:*)",
+      "Bash(git clean -dfx:*)",
+      "Bash(git clean -df:*)",
+      "Bash(git clean -fd:*)",
+      "Bash(cat .env:*)",
+      "Bash(cat ./.env:*)",
+      "Bash(head .env:*)",
+      "Bash(tail .env:*)",
+      "Bash(less .env:*)",
+      "Bash(more .env:*)",
+      "Bash(type .env:*)",
+      "Bash(powershell -NoProfile -Command Get-Content .env:*)"
     ]
   },
   "hooks": {
