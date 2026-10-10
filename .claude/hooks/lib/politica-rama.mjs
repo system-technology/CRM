@@ -212,3 +212,58 @@ export function evaluar(linea, ramaActual) {
     ? { accion: 'exigir-autorizacion', esCommit }
     : { accion: 'permitir', esCommit: false };
 }
+
+/**
+ * Directorio sobre el que va a actuar el comando, si lo cambia con un `cd` al principio.
+ *
+ * **Por qué hace falta.** El hook averiguaba la rama ejecutando `git branch --show-current` en
+ * su propio directorio, que es el de la sesión. Con un solo árbol de trabajo eso coincidía
+ * siempre. Con *worktrees* —varias carpetas del mismo repositorio, cada una en su rama— deja
+ * de coincidir, y falla en los dos sentidos:
+ *
+ *   · **Falso positivo:** trabajar en un worktree sobre una rama de funcionalidad queda
+ *     bloqueado porque la carpeta de la sesión está en `main`. Molesto.
+ *   · **Falso negativo, que es el grave:** si la sesión está en una rama de trabajo y el
+ *     comando entra con `cd` en un worktree que tiene `main`, el guardián mira la rama
+ *     equivocada y **deja pasar la escritura en la rama protegida**.
+ *
+ * Devuelve `null` si el comando no cambia de directorio, y entonces vale el de la sesión.
+ *
+ * Solo se mira el **primer** segmento: un `cd` posterior a un `&&` ya no decide dónde corre el
+ * `git` que viene antes, y encadenar varios `cd` en un mismo comando es raro. Ante la duda se
+ * devuelve `null`, que hace al llamador usar el directorio de la sesión — el comportamiento
+ * anterior, que es el conservador.
+ */
+export function directorioDelComando(linea) {
+  // `tokenizar` devuelve objetos { valor, entrecomillado }, no cadenas.
+  const tokens = tokenizar(linea);
+  if (tokens.length < 2) return null;
+  if (tokens[0].valor !== 'cd') return null;
+
+  const destino = tokens[1].valor;
+  // `cd` a secas, `cd -` o `cd ~`: no se puede resolver aquí sin adivinar. Conservador.
+  if (!destino || destino === '-' || destino.startsWith('~')) return null;
+  // Si lo que sigue es un separador, el `cd` no tenía argumento.
+  if (SEPARADORES.has(destino)) return null;
+
+  return destino;
+}
+
+/**
+ * Traduce una ruta estilo MSYS/Git Bash a ruta de Windows.
+ *
+ * En Windows la consola de este proyecto es Git Bash, que habla `/d/Projects/CRM`. Node no
+ * entiende esa forma: `execFileSync` con ese `cwd` falla con ENOENT. Y ahí estaba el defecto
+ * que importaba — el guardián caía a su respaldo y volvía a mirar la rama de la sesión, que es
+ * justo lo que esta corrección venía a evitar. **Un respaldo silencioso delante de una
+ * comprobación de seguridad la apaga sin avisar.**
+ *
+ * Devuelve la ruta sin tocar cuando no aplica, para que el llamador no tenga que distinguir.
+ */
+export function rutaDeSistema(ruta, esWindows) {
+  if (!ruta || !esWindows) return ruta;
+  const m = /^\/([A-Za-z])\/(.*)$/.exec(ruta);
+  if (!m) return ruta;
+  const barra = String.fromCharCode(92);
+  return m[1].toUpperCase() + ':' + barra + m[2].split('/').join(barra);
+}
