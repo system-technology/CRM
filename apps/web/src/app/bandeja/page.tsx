@@ -50,6 +50,42 @@ export default function BandejaPage() {
   const [cargando, setCargando] = useState(true);
   const [cargandoMas, setCargandoMas] = useState(false);
   const [densidad, setDensidad] = useState<DensidadBandeja>('comoda');
+  const [modoOscuro, setModoOscuro] = useState(false);
+
+  useEffect(() => {
+    try {
+      const temaGuardado = localStorage.getItem('viajapro:tema');
+      const esOscuro =
+        temaGuardado === 'oscuro' ||
+        (!temaGuardado && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      setModoOscuro(esOscuro);
+      if (esOscuro) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    } catch {
+      // Ignorar
+    }
+  }, []);
+
+  const alternarModoOscuro = () => {
+    setModoOscuro((prev) => {
+      const nuevo = !prev;
+      try {
+        if (nuevo) {
+          document.documentElement.classList.add('dark');
+          localStorage.setItem('viajapro:tema', 'oscuro');
+        } else {
+          document.documentElement.classList.remove('dark');
+          localStorage.setItem('viajapro:tema', 'claro');
+        }
+      } catch {
+        // Ignorar
+      }
+      return nuevo;
+    });
+  };
 
   useEffect(() => {
     try {
@@ -253,13 +289,13 @@ export default function BandejaPage() {
 
   return (
     <div
-      className="flex h-screen flex-col bg-neutral-100 text-neutral-900 focus:outline-none"
+      className="flex h-screen flex-col bg-neutral-100 text-neutral-900 focus:outline-none dark:bg-neutral-950 dark:text-neutral-100"
       onKeyDown={handleKeyDown}
       tabIndex={0}
       role="region"
       aria-label="Bandeja de conversaciones de WhatsApp"
     >
-      <header className="sticky top-0 z-20 shrink-0 border-b border-neutral-200 bg-white shadow-xs">
+      <header className="sticky top-0 z-20 shrink-0 border-b border-neutral-200 bg-white shadow-xs dark:border-neutral-800 dark:bg-neutral-900">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-3 py-2.5 sm:px-4">
           <div className="flex items-center gap-2">
             <div className="bg-acento-600 flex h-8 w-8 items-center justify-center rounded-lg font-bold text-white shadow-xs">
@@ -277,17 +313,26 @@ export default function BandejaPage() {
           </div>
 
           <div className="flex items-center gap-2 text-xs">
-            <span className="border-ok-600/30 bg-ok-50 text-ok-700 hidden items-center gap-1 rounded-full border px-2 py-0.5 font-medium sm:inline-flex">
+            <span className="border-ok-600/30 bg-ok-50 text-ok-700 dark:bg-ok-950/40 dark:text-ok-400 dark:border-ok-800 hidden items-center gap-1 rounded-full border px-2 py-0.5 font-medium sm:inline-flex">
               <span className="bg-ok-500 h-2 w-2 animate-pulse rounded-full"></span>
               En vivo
             </span>
+            <button
+              type="button"
+              onClick={alternarModoOscuro}
+              title="Alternar modo claro / oscuro"
+              className="flex items-center gap-1 rounded-md border border-neutral-300 bg-white px-2.5 py-1 text-xs font-semibold text-neutral-700 shadow-2xs hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
+            >
+              <span>{modoOscuro ? '☀️' : '🌙'}</span>
+              <span>{modoOscuro ? 'Claro' : 'Oscuro'}</span>
+            </button>
           </div>
         </div>
 
-        <div className="border-t border-neutral-100 bg-neutral-50/50 px-3 py-2 sm:px-4">
+        <div className="border-t border-neutral-100 bg-neutral-50/50 px-3 py-2 sm:px-4 dark:border-neutral-800 dark:bg-neutral-900/50">
           <div className="mx-auto flex max-w-6xl flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex overflow-x-auto pb-1 font-medium sm:pb-0">
-              <div className="flex gap-1 rounded-md border border-neutral-200 bg-white p-0.5 shadow-2xs">
+              <div className="flex gap-1 rounded-md border border-neutral-200 bg-white p-0.5 shadow-2xs dark:border-neutral-700 dark:bg-neutral-800">
                 {FILTROS.map((f) => {
                   const activo = filtro === f.id;
                   const conteo = conteosFiltro[f.id];
@@ -325,7 +370,7 @@ export default function BandejaPage() {
                   placeholder="Buscar cliente, tel o mensaje... (pulsa /)"
                   value={buscar}
                   onChange={(e) => setBuscar(e.target.value)}
-                  className="focus:border-acento-600 focus:ring-acento-600 w-full rounded-md border border-neutral-300 bg-white py-1.5 pr-3 pl-8 text-xs text-neutral-900 placeholder:text-neutral-400 focus:ring-1 focus:outline-hidden"
+                  className="focus:border-acento-600 focus:ring-acento-600 w-full rounded-md border border-neutral-300 bg-white py-1.5 pr-3 pl-8 text-xs text-neutral-900 placeholder:text-neutral-400 focus:ring-1 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder:text-neutral-500"
                 />
                 <span className="absolute top-2 left-2.5 text-neutral-400">🔍</span>
                 {buscar && (
@@ -484,7 +529,7 @@ export default function BandejaPage() {
 
       <SimuladorTiempoReal conversaciones={conversaciones} />
 
-      <footer className="flex shrink-0 items-center justify-between border-t border-neutral-200 bg-white px-3 py-1.5 text-[11px] text-neutral-500">
+      <footer className="flex shrink-0 items-center justify-between border-t border-neutral-200 bg-white px-3 py-1.5 text-[11px] text-neutral-500 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-400">
         <span>
           Usa{' '}
           <kbd className="py-0.2 rounded border border-neutral-300 bg-neutral-100 px-1 font-mono text-[10px]">
@@ -561,7 +606,7 @@ function ConversacionFila({
           ? 'border-acento-600 bg-acento-50/50 ring-acento-600 shadow-xs ring-2'
           : c.mensajesSinLeer > 0
             ? 'border-neutral-300 bg-white font-medium'
-            : 'border-neutral-200 bg-white hover:bg-neutral-50/80'
+            : 'border-neutral-200 bg-white hover:bg-neutral-50/80 dark:border-neutral-800 dark:bg-neutral-900 dark:hover:bg-neutral-800/80'
       }`}
     >
       <div className="min-w-0 flex-1 space-y-1">

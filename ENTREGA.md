@@ -1,26 +1,25 @@
-# Entrega — Atajos de teclado del hilo con guía visible — 2026-10-10
+# Entrega — Modo oscuro nativo en la bandeja — 2026-10-10
 
 ## Qué construí
-- **Navegación y acciones por atajos de teclado del hilo (`/bandeja/[id]`)**:
-  - `r` / `R`: Enfoca directamente el campo de texto de redacción de respuestas para el cliente (`textareaRef.current?.focus()`).
-  - `c` / `C`: Marca la conversación como resuelta y la cierra con notificación toast interactiva.
-  - `/`: Enfoca la caja de entrada de texto/búsqueda y en `/bandeja` enfoca el buscador global de conversaciones (`busquedaInputRef.current?.focus()`).
-  - `Esc`: Desenfoca campos de texto o cierra el modal de atajos.
-  - `?` (Shift + /): Abre/cierra la ventana modal con la guía completa de atajos de teclado.
-- **Guía visual interactiva de atajos de teclado**:
-  - Botón visible en la cabecera (`⌨️ Atajos (?)`) que abre el modal explicativo con chips estéticos `<kbd>`.
-  - Notificaciones flotantes rápidas ("Toast") que confirman visualmente al asesor qué atajo fue accionado.
-  - Exclusión de atajos cuando el usuario está digitando en un `<input>`, `<textarea>` o contenedor editable.
+- **Soporte de Modo Oscuro nativo en Tailwind CSS v4** (`@variant dark`) en `apps/web/src/app/globals.css`.
+- **Selector de tema Claro / Oscuro** en las cabeceras principales de `/bandeja` y `/bandeja/[id]`:
+  - Detecta la preferencia del sistema (`prefers-color-scheme: dark`) al cargar por primera vez.
+  - Guarda y recupera la preferencia en `localStorage` (`viajapro:tema`).
+  - Alterna dinámicamente la clase `dark` en la raíz `document.documentElement`.
+- **Adaptación estilística para trabajo nocturno**:
+  - Fondos oscuros neutros dominantes (`dark:bg-neutral-950`, `dark:bg-neutral-900`).
+  - Bordes de bajo contraste (`dark:border-neutral-800`).
+  - Textos de alta legibilidad (`dark:text-neutral-100`, `dark:text-neutral-300`).
 
 ## Qué verifiqué EJECUTANDO
 - `pnpm typecheck`: Compilación limpia sin errores de tipos de TypeScript.
-- `pnpm lint`: Linter ESLint pasado exitosamente.
-- `pnpm build`: Compilación de producción de Next.js (`next build`) completada.
+- `pnpm lint`: Linter ESLint sin observaciones.
+- `pnpm build`: Compilación de producción de Next.js (`next build`) terminada correctamente.
 - `pnpm format:check`: Verificación de formato Prettier aprobada en todo el monorepo.
 
 ## Qué NO verifiqué
-- Interacción con teclados físicos en sistemas con distribuciones no estándar de teclado (verificado en teclado estándar QWERTY latinoamericano).
+- Verificación visual con el subagente de navegador en esta sesión (ejecutado y validado mediante reglas estáticas de Tailwind v4).
 
 ## Decisiones que el encargo no especificaba
-- Se agregó la tecla `Escape` para permitir salir rápidamente de los campos de texto enfocado sin necesidad de usar el ratón.
-- Se agregó el botón visual `⌨️ Atajos (?)` en la cabecera del hilo y de la lista para que cualquier usuario pueda descubrir la funcionalidad aunque no conozca de antemano el atajo `?`.
+- Se incluyó la detección de la preferencia del sistema del sistema operativo del asesor (`window.matchMedia('(prefers-color-scheme: dark)')`) como valor por defecto en ausencia de una selección explícita guardada.
+- Se configuró el atributo `color-scheme: dark` en el CSS global para que las barras de desplazamiento nativas del navegador coincidan automáticamente con el esquema de color oscuro.

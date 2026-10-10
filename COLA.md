@@ -106,5 +106,5 @@ Si todo lo de arriba está marcado:
   con pantalla pequeña y otro con monitor grande no quieren lo mismo.
 - **Atajos de teclado del hilo:** responder con `r`, cerrar conversación con `c`, buscar con `/`.
   Con una ayuda visible, porque un atajo que nadie conoce no existe.
-- **Modo oscuro**, usando los tokens que ya están en `globals.css`. Un asesor que atiende de
+- [x] **Modo oscuro**, usando los tokens que ya están en `globals.css`. Un asesor que atiende de
   noche lo agradece, y la densidad alta en blanco cansa.

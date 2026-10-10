@@ -50,6 +50,42 @@ export default function ConversacionPage({ params }: { params: Promise<{ id: str
   const [errorEnvio, setErrorEnvio] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const [mostrarGuiaAtajos, setMostrarGuiaAtajos] = useState(false);
+  const [modoOscuro, setModoOscuro] = useState(false);
+
+  useEffect(() => {
+    try {
+      const temaGuardado = localStorage.getItem('viajapro:tema');
+      const esOscuro =
+        temaGuardado === 'oscuro' ||
+        (!temaGuardado && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      setModoOscuro(esOscuro);
+      if (esOscuro) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    } catch {
+      // Ignorar
+    }
+  }, []);
+
+  const alternarModoOscuro = () => {
+    setModoOscuro((prev) => {
+      const nuevo = !prev;
+      try {
+        if (nuevo) {
+          document.documentElement.classList.add('dark');
+          localStorage.setItem('viajapro:tema', 'oscuro');
+        } else {
+          document.documentElement.classList.remove('dark');
+          localStorage.setItem('viajapro:tema', 'claro');
+        }
+      } catch {
+        // Ignorar
+      }
+      return nuevo;
+    });
+  };
   const [notificacionAtajo, setNotificacionAtajo] = useState<string | null>(null);
 
   // Control de fallos simulados y mapa local de claves de idempotencia (R5)
@@ -425,11 +461,11 @@ export default function ConversacionPage({ params }: { params: Promise<{ id: str
 
   return (
     <div
-      className="flex h-screen flex-col bg-neutral-100 text-neutral-900 focus:outline-none"
+      className="flex h-screen flex-col bg-neutral-100 text-neutral-900 focus:outline-none dark:bg-neutral-950 dark:text-neutral-100"
       onKeyDown={handleKeyDownChat}
       tabIndex={0}
     >
-      <header className="sticky top-0 z-10 shrink-0 border-b border-neutral-200 bg-white shadow-xs">
+      <header className="sticky top-0 z-10 shrink-0 border-b border-neutral-200 bg-white shadow-xs dark:border-neutral-800 dark:bg-neutral-900">
         <div className="mx-auto flex max-w-4xl items-center justify-between px-3 py-2.5 sm:px-4">
           <div className="flex items-center gap-3">
             <Link
@@ -462,6 +498,14 @@ export default function ConversacionPage({ params }: { params: Promise<{ id: str
 
           {detalle && (
             <div className="flex items-center gap-2 text-xs">
+              <button
+                type="button"
+                onClick={alternarModoOscuro}
+                title="Alternar modo claro / oscuro"
+                className="flex items-center gap-1 rounded border border-neutral-300 bg-neutral-100 px-2 py-1 text-xs font-medium text-neutral-700 hover:bg-neutral-200 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
+              >
+                <span>{modoOscuro ? '☀️' : '🌙'}</span>
+              </button>
               {!detalle.ventana.abierta ? (
                 <span className="rounded-xs border border-neutral-300 bg-neutral-100 px-2 py-1 font-semibold text-neutral-600">
                   Ventana 24h Cerrada
