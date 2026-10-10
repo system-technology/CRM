@@ -8,15 +8,25 @@
  * - Soporta 500 conversaciones sin degradar el desplazamiento ni el renderizado.
  * - Filtros rápidos: TODAS, MIAS, SIN_ASIGNAR, SIN_LEER, SLA_VENCIDO.
  * - Búsqueda por texto (nombre, teléfono y contenido del mensaje).
- * - Indicadores clave de un vistazo: SLA vencido (rojo) / por vencer (ámbar),
- *   ventana de 24h cerrada / por vencer, y badge destacado de "Sin asignar".
- * - Navegación por teclado completa (flechas arriba/abajo, Enter).
+ * - Indicadores clave de un vistazo: SLA vencido / por vencer, ventana 24h.
+ * - Navegación por teclado completa.
+ * - Soporte de TIEMPO REAL (`EventoBandeja`):
+ *   * safeParse para descartar en silencio eventos desconocidos.
+ *   * Guard de Mouse Hover: no reordena las filas mientras el ratón esté encima para
+ *     evitar clicks erróneos del asesor.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import type { ConversacionResumen, FiltroBandeja, PaginaBandeja } from '@viajapro/contracts';
+import type {
+  ConversacionResumen,
+  EventoBandeja,
+  FiltroBandeja,
+  PaginaBandeja,
+} from '@viajapro/contracts';
 import { consultarBandejaMock, ID_ASESOR_ACTUAL, MOCK_CONVERSACIONES } from '../../lib/mock-inbox';
+import { realtimeMockBus } from '../../lib/realtime-mock';
+import { SimuladorTiempoReal } from '../../components/SimuladorTiempoReal';
 
 const FILTROS: { id: FiltroBandeja; etiqueta: string }[] = [
   { id: 'TODAS', etiqueta: 'Todas' },
@@ -36,6 +46,12 @@ export default function BandejaPage() {
   const [cargando, setCargando] = useState(true);
   const [cargandoMas, setCargandoMas] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Guard de Mouse Hover para no reordenar bajo el cursor
+  const [_isHoveringList, setIsHoveringList] = useState(false);
+  const isHoveringListRef = useRef(false);
+  const [pendientesReorden, setPendientesReorden] = useState<number>(0);
+  const bufferConversacionesRef = useRef<ConversacionResumen[] | null>(null);
 
   // Selección activa para teclado
   const [indiceSeleccionado, setIndiceSeleccionado] = useState<number>(0);
@@ -60,11 +76,13 @@ export default function BandejaPage() {
           buscar: buscarDebounced,
           limite: 30,
         },
-        300, // Latencia simulada
+        300,
       );
       setPagina(res);
       setConversaciones(res.datos);
       setIndiceSeleccionado(0);
+      setPendientesReorden(0);
+      bufferConversacionesRef.current = null;
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error desconocido al cargar conversaciones');
       setConversaciones([]);
@@ -77,6 +95,71 @@ export default function BandejaPage() {
   useEffect(() => {
     void cargarInicial();
   }, [cargarInicial]);
+
+  // Aplicar reordenamiento diferido al salir el mouse de la lista
+  const aplicarReordenDiferido = useCallback(() => {
+    if (bufferConversacionesRef.current) {
+      const ordenadas = [...bufferConversacionesRef.current].sort((a, b) => {
+        const tA = a.ultimoMensajeEn ? new Date(a.ultimoMensajeEn).getTime() : 0;
+        const tB = b.ultimoMensajeEn ? new Date(b.ultimoMensajeEn).getTime() : 0;
+        return tB - tA;
+      });
+      setConversaciones(ordenadas);
+      bufferConversacionesRef.current = null;
+      setPendientesReorden(0);
+    }
+  }, []);
+
+  // Suscripción a eventos de Tiempo Real (EventoBandeja)
+  useEffect(() => {
+    const unsubscribe = realtimeMockBus.subscribe((evento: EventoBandeja) => {
+      setConversaciones((prev) => {
+        let listaActualizada = [...prev];
+
+        if (evento.tipo === 'MENSAJE_NUEVO') {
+          const idx = listaActualizada.findIndex((c) => c.id === evento.conversacionId);
+          if (idx !== -1) {
+            const actual = listaActualizada[idx];
+            if (actual) {
+              const convUpdated: ConversacionResumen = {
+                ...actual,
+                ultimoMensajeTexto: evento.mensaje.texto || 'Mensaje de adjunto',
+                ultimoMensajeEn: evento.mensaje.ocurridoEn,
+                ultimoMensajeDireccion: evento.mensaje.direccion,
+                mensajesSinLeer:
+                  evento.mensaje.direccion === 'ENTRANTE'
+                    ? actual.mensajesSinLeer + 1
+                    : actual.mensajesSinLeer,
+              };
+              listaActualizada[idx] = convUpdated;
+            }
+          }
+        } else if (evento.tipo === 'CONVERSACION_ACTUALIZADA') {
+          const idx = listaActualizada.findIndex((c) => c.id === evento.conversacion.id);
+          if (idx !== -1) {
+            listaActualizada[idx] = evento.conversacion;
+          } else {
+            listaActualizada = [evento.conversacion, ...listaActualizada];
+          }
+        }
+
+        // REGLA DE PRODUCTO: Si el ratón está encima de la lista, NO reordenar el DOM inmediatamente.
+        if (isHoveringListRef.current) {
+          bufferConversacionesRef.current = listaActualizada;
+          setPendientesReorden((p) => p + 1);
+          return prev;
+        }
+
+        return listaActualizada.sort((a, b) => {
+          const tA = a.ultimoMensajeEn ? new Date(a.ultimoMensajeEn).getTime() : 0;
+          const tB = b.ultimoMensajeEn ? new Date(b.ultimoMensajeEn).getTime() : 0;
+          return tB - tA;
+        });
+      });
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   // Cargar más páginas por cursor
   const cargarMas = async () => {
@@ -98,206 +181,204 @@ export default function BandejaPage() {
     }
   };
 
-  // Conteo total local para los badges de los botones de filtro
+  // Manejo de Teclado
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (conversaciones.length === 0) return;
+
+    if (e.key === 'ArrowDown' || e.key === 'j') {
+      e.preventDefault();
+      setIndiceSeleccionado((prev) => {
+        const nxt = Math.min(prev + 1, conversaciones.length - 1);
+        itemRefs.current[nxt]?.focus();
+        return nxt;
+      });
+    } else if (e.key === 'ArrowUp' || e.key === 'k') {
+      e.preventDefault();
+      setIndiceSeleccionado((prev) => {
+        const nxt = Math.max(prev - 1, 0);
+        itemRefs.current[nxt]?.focus();
+        return nxt;
+      });
+    }
+  };
+
+  // Conteos rápidos por filtro
   const conteosFiltro = useMemo(() => {
-    const ahora = Date.now();
+    const todos = MOCK_CONVERSACIONES;
     return {
-      TODAS: MOCK_CONVERSACIONES.length,
-      MIAS: MOCK_CONVERSACIONES.filter((c) => c.asignadoAId === ID_ASESOR_ACTUAL).length,
-      SIN_ASIGNAR: MOCK_CONVERSACIONES.filter((c) => c.asignadoAId === null).length,
-      SIN_LEER: MOCK_CONVERSACIONES.filter((c) => c.mensajesSinLeer > 0).length,
-      SLA_VENCIDO: MOCK_CONVERSACIONES.filter(
-        (c) => c.slaVenceEn !== null && new Date(c.slaVenceEn).getTime() < ahora,
+      TODAS: todos.length,
+      MIAS: todos.filter((c) => c.asignadoAId === ID_ASESOR_ACTUAL).length,
+      SIN_ASIGNAR: todos.filter((c) => c.asignadoAId === null).length,
+      SIN_LEER: todos.filter((c) => c.mensajesSinLeer > 0).length,
+      SLA_VENCIDO: todos.filter(
+        (c) => c.slaVenceEn !== null && new Date(c.slaVenceEn).getTime() < Date.now(),
       ).length,
     };
   }, []);
 
-  // Manejo de navegación por teclado global (funciona sin pulsar Tab primero)
-  useEffect(() => {
-    const manejarKeyDown = (e: KeyboardEvent) => {
-      if (conversaciones.length === 0) return;
-
-      // No interceptar flechas si el foco está en un campo de texto o selección
-      const tag = (document.activeElement?.tagName ?? '').toUpperCase();
-      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
-
-      if (e.key === 'ArrowDown' || e.key === 'j') {
-        e.preventDefault();
-        setIndiceSeleccionado((prev) => {
-          const sig = Math.min(prev + 1, conversaciones.length - 1);
-          itemRefs.current[sig]?.focus();
-          itemRefs.current[sig]?.scrollIntoView({ block: 'nearest' });
-          return sig;
-        });
-      } else if (e.key === 'ArrowUp' || e.key === 'k') {
-        e.preventDefault();
-        setIndiceSeleccionado((prev) => {
-          const ant = Math.max(prev - 1, 0);
-          itemRefs.current[ant]?.focus();
-          itemRefs.current[ant]?.scrollIntoView({ block: 'nearest' });
-          return ant;
-        });
-      } else if (e.key === 'Home') {
-        e.preventDefault();
-        setIndiceSeleccionado(0);
-        itemRefs.current[0]?.focus();
-        itemRefs.current[0]?.scrollIntoView({ block: 'nearest' });
-      } else if (e.key === 'End') {
-        e.preventDefault();
-        const ultimo = conversaciones.length - 1;
-        setIndiceSeleccionado(ultimo);
-        itemRefs.current[ultimo]?.focus();
-        itemRefs.current[ultimo]?.scrollIntoView({ block: 'nearest' });
-      }
-    };
-
-    window.addEventListener('keydown', manejarKeyDown);
-    return () => window.removeEventListener('keydown', manejarKeyDown);
-  }, [conversaciones.length]);
-
   return (
     <div
       className="flex h-screen flex-col bg-neutral-100 text-neutral-900 focus:outline-none"
-
+      onKeyDown={handleKeyDown}
+      tabIndex={0}
+      role="region"
       aria-label="Bandeja de conversaciones de WhatsApp"
     >
-      {/* Barra superior de filtros y búsqueda (Alta densidad) */}
-      <header className="shrink-0 border-b border-neutral-200 bg-white px-3 py-2.5 shadow-xs">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+      <header className="sticky top-0 z-20 shrink-0 border-b border-neutral-200 bg-white shadow-xs">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-3 py-2.5 sm:px-4">
           <div className="flex items-center gap-2">
-            <h1 className="text-lg font-bold tracking-tight text-neutral-800">
-              Bandeja de entrada
-            </h1>
-            <span className="rounded-full border border-neutral-200 bg-neutral-100 px-2 py-0.5 text-xs font-semibold text-neutral-600">
-              {pagina ? `${conversaciones.length} visibles` : '...'}
-            </span>
+            <div className="bg-acento-600 flex h-8 w-8 items-center justify-center rounded-lg font-bold text-white shadow-xs">
+              💬
+            </div>
+            <div>
+              <h1 className="text-base font-bold tracking-tight text-neutral-900 sm:text-lg">
+                Bandeja de Entrada — WhatsApp
+              </h1>
+              <p className="text-[11px] text-neutral-500">
+                Monitoreo multi-tenant · Tiempo real simulado · 390px responsive
+              </p>
+            </div>
           </div>
 
-          {/* Búsqueda rápida */}
-          <div className="relative w-full sm:w-72">
-            <input
-              type="text"
-              value={buscar}
-              onChange={(e) => setBuscar(e.target.value)}
-              placeholder="Buscar por cliente, teléfono o texto…"
-              className="focus:border-acento-600 w-full rounded-sm border border-neutral-300 bg-neutral-50 px-2.5 py-1 text-base text-neutral-800 placeholder-neutral-400 focus:bg-white focus:outline-none"
-            />
-            {buscar && (
-              <button
-                onClick={() => setBuscar('')}
-                className="absolute top-1/2 right-2 -translate-y-1/2 text-xs text-neutral-400 hover:text-neutral-700"
-                title="Limpiar búsqueda"
-              >
-                ✕
-              </button>
-            )}
+          <div className="flex items-center gap-2 text-xs">
+            <span className="border-ok-600/30 bg-ok-50 text-ok-700 hidden items-center gap-1 rounded-full border px-2 py-0.5 font-medium sm:inline-flex">
+              <span className="bg-ok-500 h-2 w-2 animate-pulse rounded-full"></span>
+              En vivo
+            </span>
           </div>
         </div>
 
-        {/* Pestañas de filtros */}
-        <nav
-          className="mt-2.5 flex flex-wrap gap-1 border-t border-neutral-100 pt-2"
-          aria-label="Filtros"
-        >
-          {FILTROS.map((f) => {
-            const activo = filtro === f.id;
-            const cantidad = conteosFiltro[f.id];
-            return (
-              <button
-                key={f.id}
-                onClick={() => setFiltro(f.id)}
-                className={`flex items-center gap-1.5 rounded-sm px-2.5 py-1 text-xs font-medium transition-colors ${
-                  activo
-                    ? 'bg-acento-700 font-semibold text-white shadow-xs'
-                    : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
-                }`}
-              >
-                <span>{f.etiqueta}</span>
-                <span
-                  className={`py-0.2 rounded-full px-1.5 text-[10px] ${
-                    activo ? 'bg-white/20 font-bold text-white' : 'bg-neutral-200 text-neutral-600'
-                  }`}
-                >
-                  {cantidad}
-                </span>
-              </button>
-            );
-          })}
-        </nav>
-      </header>
-
-      {/* Contenido principal: Lista de conversaciones */}
-      <main className="flex-1 overflow-y-auto p-2 sm:p-3">
-        {/* ESTADO 1: ERROR */}
-        {error && (
-          <div
-            role="alert"
-            className="border-alerta-600/30 bg-alerta-50 text-alerta-700 mx-auto my-4 max-w-lg rounded-md border p-4 text-base shadow-xs"
-          >
-            <div className="flex items-start justify-between">
-              <div>
-                <strong className="font-semibold">Error al cargar la bandeja</strong>
-                <p className="mt-1 text-sm">{error}</p>
+        <div className="border-t border-neutral-100 bg-neutral-50/50 px-3 py-2 sm:px-4">
+          <div className="mx-auto flex max-w-6xl flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex overflow-x-auto pb-1 font-medium sm:pb-0">
+              <div className="flex gap-1 rounded-md border border-neutral-200 bg-white p-0.5 shadow-2xs">
+                {FILTROS.map((f) => {
+                  const activo = filtro === f.id;
+                  const conteo = conteosFiltro[f.id];
+                  return (
+                    <button
+                      key={f.id}
+                      onClick={() => setFiltro(f.id)}
+                      className={`flex items-center gap-1.5 rounded-sm px-2.5 py-1 text-xs whitespace-nowrap transition-colors ${
+                        activo
+                          ? 'bg-neutral-900 font-semibold text-white shadow-2xs'
+                          : 'text-neutral-600 hover:bg-neutral-100'
+                      }`}
+                    >
+                      <span>{f.etiqueta}</span>
+                      <span
+                        className={`py-0.2 rounded-full px-1.5 text-[10px] ${
+                          activo
+                            ? 'bg-neutral-700 text-neutral-100'
+                            : 'bg-neutral-100 text-neutral-500'
+                        }`}
+                      >
+                        {conteo}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
-              <button
-                onClick={() => void cargarInicial()}
-                className="bg-alerta-700 hover:bg-alerta-800 rounded-sm px-3 py-1 text-xs font-medium text-white"
-              >
-                Reintentar
-              </button>
+            </div>
+
+            <div className="relative w-full sm:w-72">
+              <input
+                type="text"
+                placeholder="Buscar por cliente, teléfono o mensaje..."
+                value={buscar}
+                onChange={(e) => setBuscar(e.target.value)}
+                className="focus:border-acento-600 focus:ring-acento-600 w-full rounded-md border border-neutral-300 bg-white py-1.5 pr-3 pl-8 text-xs text-neutral-900 placeholder:text-neutral-400 focus:ring-1 focus:outline-hidden"
+              />
+              <span className="absolute top-2 left-2.5 text-neutral-400">🔍</span>
+              {buscar && (
+                <button
+                  onClick={() => setBuscar('')}
+                  className="absolute top-1.5 right-2 text-xs font-bold text-neutral-400 hover:text-neutral-600"
+                >
+                  ✕
+                </button>
+              )}
             </div>
           </div>
-        )}
+        </div>
+      </header>
 
-        {/* ESTADO 2: CARGANDO (Esqueleto, sin girador) */}
-        {cargando && !error && (
-          <div className="space-y-1.5" aria-busy="true" aria-label="Cargando conversaciones">
-            {Array.from({ length: 12 }).map((_, idx) => (
+      {pendientesReorden > 0 && (
+        <div className="animate-in slide-in-from-top sticky top-[105px] z-30 flex items-center justify-between border-b border-amber-300 bg-amber-50 px-4 py-2 text-xs font-medium text-amber-900 shadow-sm">
+          <span className="flex items-center gap-1.5">
+            <span className="h-2 w-2 animate-ping rounded-full bg-amber-500"></span>
+            📌 Hay {pendientesReorden} actualización(es) de mensajes. Reordenamiento en pausa
+            mientras el ratón esté sobre la lista (Guard R5/UI).
+          </span>
+          <button
+            onClick={aplicarReordenDiferido}
+            className="rounded border border-amber-400 bg-white px-2.5 py-1 text-xs font-bold text-amber-950 shadow-2xs hover:bg-amber-100"
+          >
+            Reordenar ahora
+          </button>
+        </div>
+      )}
+
+      <main className="mx-auto w-full max-w-6xl flex-1 overflow-y-auto px-3 py-3 sm:px-4">
+        {cargando ? (
+          <div className="space-y-2">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
               <div
-                key={idx}
-                className="flex animate-pulse items-center justify-between rounded-sm border border-neutral-200 bg-white p-3 shadow-2xs"
+                key={i}
+                className="flex animate-pulse flex-col gap-2 rounded-sm border border-neutral-200 bg-white p-3 shadow-2xs"
               >
-                <div className="w-2/3 space-y-2">
-                  <div className="h-4 w-1/3 rounded-xs bg-neutral-200" />
-                  <div className="h-3 w-3/4 rounded-xs bg-neutral-200" />
+                <div className="flex justify-between">
+                  <div className="h-4 w-1/3 rounded bg-neutral-200"></div>
+                  <div className="h-4 w-16 rounded bg-neutral-200"></div>
                 </div>
-                <div className="flex w-1/4 flex-col items-end space-y-2">
-                  <div className="h-3 w-12 rounded-xs bg-neutral-200" />
-                  <div className="h-4 w-20 rounded-xs bg-neutral-200" />
-                </div>
+                <div className="h-3 w-2/3 rounded bg-neutral-100"></div>
               </div>
             ))}
           </div>
-        )}
-
-        {/* ESTADO 3: VACÍO */}
-        {!cargando && !error && conversaciones.length === 0 && (
-          <div className="mx-auto my-12 max-w-md rounded-md border border-neutral-200 bg-white p-8 text-center shadow-2xs">
-            <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-neutral-100 text-neutral-400">
-              💬
-            </div>
-            <h2 className="text-base font-semibold text-neutral-800">
-              No hay conversaciones en esta vista
-            </h2>
+        ) : error ? (
+          <div className="border-alerta-600/30 bg-alerta-50 rounded-md border p-4 text-center">
+            <p className="text-alerta-800 text-sm font-semibold">Error al cargar la bandeja</p>
+            <p className="text-alerta-700 mt-1 text-xs">{error}</p>
+            <button
+              onClick={() => void cargarInicial()}
+              className="bg-alerta-700 hover:bg-alerta-800 mt-3 rounded-md px-3 py-1.5 text-xs font-medium text-white shadow-2xs"
+            >
+              Reintentar
+            </button>
+          </div>
+        ) : conversaciones.length === 0 ? (
+          <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-neutral-300 bg-white py-12 text-center">
+            <div className="text-3xl">📥</div>
+            <h3 className="mt-2 text-sm font-bold text-neutral-800">No hay conversaciones</h3>
             <p className="mt-1 text-xs text-neutral-500">
               {buscar
-                ? `No encontramos coincidencias para "${buscar}". Prueba con otro término.`
-                : 'No existen conversaciones que coincidan con el filtro seleccionado.'}
+                ? `No se encontraron resultados para "${buscar}"`
+                : 'No hay mensajes correspondientes al filtro seleccionado.'}
             </p>
             {buscar && (
               <button
                 onClick={() => setBuscar('')}
-                className="mt-4 rounded-sm border border-neutral-300 bg-white px-3 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-50"
+                className="text-acento-600 mt-3 text-xs font-semibold hover:underline"
               >
-                Limpiar filtro de búsqueda
+                Limpiar búsqueda
               </button>
             )}
           </div>
-        )}
-
-        {/* LISTA CON VOLUMEN DE 500 CONVERSACIONES (Alta densidad) */}
-        {!cargando && !error && conversaciones.length > 0 && (
-          <div className="space-y-1" role="listbox" aria-label="Lista de conversaciones">
+        ) : (
+          <div
+            role="listbox"
+            aria-label="Lista de conversaciones"
+            className="space-y-2"
+            onMouseEnter={() => {
+              setIsHoveringList(true);
+              isHoveringListRef.current = true;
+            }}
+            onMouseLeave={() => {
+              setIsHoveringList(false);
+              isHoveringListRef.current = false;
+              aplicarReordenDiferido();
+            }}
+          >
             {conversaciones.map((conv, idx) => {
               const esSeleccionada = idx === indiceSeleccionado;
               return (
@@ -313,7 +394,6 @@ export default function BandejaPage() {
               );
             })}
 
-            {/* Paginación por Cursor: Cargar más */}
             {pagina?.pageInfo.hasMore && (
               <div className="pt-3 pb-6 text-center">
                 <button
@@ -322,7 +402,7 @@ export default function BandejaPage() {
                   className="rounded-sm border border-neutral-300 bg-white px-4 py-2 text-xs font-medium text-neutral-700 shadow-2xs hover:bg-neutral-50 disabled:opacity-50"
                 >
                   {cargandoMas
-                    ? 'Cargando más conversaciones…'
+                    ? 'Cargando más conversaciones...'
                     : `Cargar más (cargadas ${conversaciones.length} de ${conteosFiltro[filtro]})`}
                 </button>
               </div>
@@ -331,7 +411,8 @@ export default function BandejaPage() {
         )}
       </main>
 
-      {/* Pie con ayuda de atajos de teclado */}
+      <SimuladorTiempoReal conversaciones={conversaciones} />
+
       <footer className="flex shrink-0 items-center justify-between border-t border-neutral-200 bg-white px-3 py-1.5 text-[11px] text-neutral-500">
         <span>
           Usa{' '}
@@ -372,7 +453,6 @@ function ConversacionFila({
 }: ConversacionFilaProps) {
   const ahora = Date.now();
 
-  // Cálculo visual de estado SLA
   const slaEstado = useMemo(() => {
     if (!c.slaVenceEn) return null;
     const tiempoMs = new Date(c.slaVenceEn).getTime() - ahora;
@@ -387,7 +467,6 @@ function ConversacionFila({
     return { tipo: 'NORMAL' as const, texto: `SLA ${minRestantes}m` };
   }, [c.slaVenceEn, ahora]);
 
-  // Formato de hora del último mensaje
   const horaFormateada = useMemo(() => {
     if (!c.ultimoMensajeEn) return '';
     const d = new Date(c.ultimoMensajeEn);
@@ -410,29 +489,24 @@ function ConversacionFila({
             : 'border-neutral-200 bg-white hover:bg-neutral-50/80'
       }`}
     >
-      {/* Izquierda: Cliente y mensaje preview */}
       <div className="min-w-0 flex-1 space-y-1">
         <div className="flex flex-wrap items-center gap-1.5">
-          {/* Nombre o Teléfono prioritario */}
           <span className="truncate text-base font-semibold text-neutral-900">
             {c.contactoNombre ? c.contactoNombre : c.contactoTelefono}
           </span>
 
-          {/* Teléfono secundario si hay nombre */}
           {c.contactoNombre && (
             <span className="cifra text-xs font-normal text-neutral-400">{c.contactoTelefono}</span>
           )}
 
-          {/* BADGE CRÍTICO 1: Sin Asignar */}
           {c.asignadoAId === null ? (
             <span className="py-0.2 rounded-xs border border-amber-600/40 bg-amber-50 px-1.5 text-[11px] font-bold text-amber-800 shadow-2xs">
               Sin asignar
             </span>
           ) : (
-            <span className="text-xs font-normal text-neutral-500">• {c.asignadoANombre}</span>
+            <span className="text-xs font-normal text-neutral-500">· {c.asignadoANombre}</span>
           )}
 
-          {/* BADGE CRÍTICO 2: SLA Vencido / Por vencer */}
           {slaEstado?.tipo === 'VENCIDO' && (
             <span className="border-alerta-600/40 bg-alerta-50 py-0.2 text-alerta-700 rounded-xs border px-1.5 text-[11px] font-bold shadow-2xs">
               {slaEstado.texto}
@@ -445,7 +519,6 @@ function ConversacionFila({
           )}
         </div>
 
-        {/* Vista previa del último mensaje */}
         <p className="truncate text-xs text-neutral-600">
           <span className="font-semibold text-neutral-400">
             {c.ultimoMensajeDireccion === 'ENTRANTE' ? '← ' : 'Tú: '}
@@ -453,7 +526,6 @@ function ConversacionFila({
           {c.ultimoMensajeTexto ?? 'Sin mensajes'}
         </p>
 
-        {/* Etiquetas de la conversación */}
         {c.etiquetas.length > 0 && (
           <div className="flex flex-wrap gap-1 pt-0.5">
             {c.etiquetas.map((e) => (
@@ -468,10 +540,8 @@ function ConversacionFila({
         )}
       </div>
 
-      {/* Derecha: Ventana 24h, mensajes sin leer y timestamp */}
       <div className="flex shrink-0 items-center justify-between gap-2 border-t border-neutral-100 pt-1.5 sm:flex-col sm:items-end sm:justify-center sm:border-t-0 sm:pt-0">
         <div className="flex items-center gap-1.5">
-          {/* BADGE CRÍTICO 3: Ventana de Servicio 24h (Visible sin abrir) */}
           {!c.ventana.abierta ? (
             <span
               title="Fuera de la ventana de 24h: solo plantillas aprobadas"
@@ -484,12 +554,11 @@ function ConversacionFila({
               24h: {c.ventana.minutosRestantes}m
             </span>
           ) : (
-            <span className="border-ok-600/30 bg-ok-50 py-0.2 text-ok-700 rounded-xs border px-1.5 text-[11px] font-medium">
+            <span className="border-ok-600/30 bg-ok-50 text-ok-700 rounded-xs border px-1.5 text-[11px] font-medium">
               24h activa
             </span>
           )}
 
-          {/* Contador de mensajes sin leer */}
           {c.mensajesSinLeer > 0 && (
             <span className="bg-acento-600 py-0.2 rounded-full px-2 text-xs font-bold text-white shadow-2xs">
               {c.mensajesSinLeer}
@@ -497,7 +566,6 @@ function ConversacionFila({
           )}
         </div>
 
-        {/* Hora del último evento */}
         <span className="cifra text-xs font-normal text-neutral-400">{horaFormateada}</span>
       </div>
     </Link>

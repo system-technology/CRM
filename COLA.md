@@ -47,7 +47,7 @@ la clave anterior.
 
 ---
 
-## [ ] 2. Tiempo real en la bandeja
+## [x] 2. Tiempo real en la bandeja
 
 El contrato `EventoBandeja` ya existe en `@viajapro/contracts`. Todavía no hay servidor que lo
 emita, así que **móntalo contra un emisor simulado** que puedas disparar a mano desde la propia
