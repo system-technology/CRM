@@ -73,6 +73,8 @@ model Tenant {
   definicionesCampo DefinicionCampoPersonalizado[]
   cuentasWhatsapp   CuentaWhatsapp[]
   canales           Canal[]
+  notasInternas     NotaInterna[]
+  consentimientos   ConsentimientoContacto[]
 
   @@map("tenants")
 }
@@ -315,10 +317,17 @@ model Usuario {
   eliminadoEn    DateTime? @map("eliminado_en") @db.Timestamptz(3)
 
   oportunidadesAsignadas Oportunidad[] @relation("AsesorAsignado")
+  contactosCreados           Contacto[]               @relation("ContactoCreadoPor")
+  contactosActualizados      Contacto[]               @relation("ContactoActualizadoPor")
+  oportunidadesCreadas       Oportunidad[]            @relation("OportunidadCreadoPor")
+  oportunidadesActualizadas  Oportunidad[]            @relation("OportunidadActualizadoPor")
+  notasEscritas              NotaInterna[]            @relation("NotaInternaAutor")
+  consentimientosRegistrados ConsentimientoContacto[] @relation("ConsentimientoRegistradoPor")
 
   /// El correo es único dentro de la agencia, no globalmente: ver la decisión de arriba.
   @@unique([tenantId, correo])
   @@index([tenantId, activo])
+  @@unique([id, tenantId])
   @@map("usuarios")
 }
 
@@ -346,6 +355,11 @@ model EtapaPipeline {
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   nombre      String  @db.VarChar(80)
+  /// Lo que el contrato llama `EtapaPipeline`. **Nullable a proposito**: una agencia puede
+  /// tener mas etapas que las cinco del contrato, y una etapa sin clave existe en la base
+  /// pero hoy no es representable en la API. Forzar un valor meteria dos etapas distintas
+  /// en la misma columna del tablero, que es peor que decir la verdad.
+  clave       String? @db.VarChar(32)
   orden       Int     @db.SmallInt
   /// Probabilidad de cierre asociada a la etapa, para proyectar ingresos.
   probabilidad Int    @default(0) @db.SmallInt
@@ -359,6 +373,7 @@ model EtapaPipeline {
 
   @@unique([tenantId, orden])
   @@index([tenantId])
+  @@unique([id, tenantId])
   @@map("etapas_pipeline")
 }
 
@@ -485,6 +500,8 @@ model Paquete {
 
   @@index([tenantId, activo, eliminadoEn])
   @@index([tenantId, destino])
+  oportunidades Oportunidad[]
+  @@unique([id, tenantId])
   @@map("paquetes")
 }
 
@@ -715,11 +732,16 @@ enum EstadoCanal {
 
 // =============================================================================
 // CRM
+//
+// Sirve los contratos de `packages/contracts/src/crm.ts`. Lo que el contrato llama
+// `EtapaPipeline` (enum cerrado de cinco) aquí es TABLA por tenant con una columna
+// `clave`: la forma es parametrizable desde el primer día —R12— y los valores están
+// cerrados mientras el contrato lo esté. Abrirlos es borrar un CHECK, no migrar filas.
 // =============================================================================
 
 /// Persona con la que la agencia conversa. Puede o no viajar.
 ///
-/// `Contacto` ≠ `Viajero`: quien paga no siempre viaja. Fusionarlos parece una simplificación
+/// `Contacto` != `Viajero`: quien paga no siempre viaja. Fusionarlos parece una simplificación
 /// razonable hasta el primer viaje familiar, y entonces hay que rehacer el modelo con datos
 /// en producción. Ver docs/01-producto/02-lenguaje-ubicuo.md.
 model Contacto {
@@ -730,29 +752,96 @@ model Contacto {
   /// En formato E.164 (+573001234567). Es la llave natural del canal de WhatsApp.
   telefonoE164 String  @map("telefono_e164") @db.VarChar(20)
   nombre       String? @db.VarChar(200)
-  correo       String? @db.VarChar(255)
+  /// 320 y no 255: es la longitud máxima real de una dirección de correo, y la que
+  /// declara el contrato.
+  correo       String? @db.VarChar(320)
 
-  /// Consentimiento para contactar. Obligatorio y auditable: Ley 1581 de 2012 y políticas
-  /// de Meta. Sin esto no se puede iniciar conversación.
-  consentimientoEn     DateTime? @map("consentimiento_en") @db.Timestamptz(3)
-  consentimientoCanal  String?   @map("consentimiento_canal") @db.VarChar(40)
-  consentimientoRevocadoEn DateTime? @map("consentimiento_revocado_en") @db.Timestamptz(3)
+  /// Etiquetas libres por agencia: «VIP», «Luna de miel». Política de negocio, R12: no son
+  /// un enum porque cada agencia inventa las suyas y ninguna migración debería hacer falta.
+  etiquetas String[] @default([])
+
+  /// Lo que conviene recordar para atender y para recomprar.
+  ///
+  /// **R10 — campo de riesgo.** El contrato lo describe como «alergias, asiento, aerolínea»:
+  /// una alergia es dato de salud, y el dato de salud es sensible en la Ley 1581 de 2012.
+  /// No se cifra por columna —el panel lateral lo lee en cada apertura de conversación y
+  /// cifrarlo lo volvería ilegible para el filtro y lento de pintar—, pero sí se le niegan
+  /// las dos cosas que convierten un campo así en una fuga: NO entra en el índice de
+  /// búsqueda (no se puede minar preguntando) y NO viaja a `registros_auditoria.detalle`.
+  preferencias String? @db.VarChar(2000)
 
   /// Valores de los campos personalizados. Las definiciones están en
   /// DefinicionCampoPersonalizado; aquí van los datos, con índice GIN.
   camposPersonalizados Json @default("{}") @map("campos_personalizados") @db.JsonB
 
+  /// Lo mantiene el inbox cuando entra o sale un mensaje. Denormalizado a propósito:
+  /// ordenar contactos por actividad no debe costar un recorrido de mensajes.
+  ultimoContactoEn DateTime? @map("ultimo_contacto_en") @db.Timestamptz(3)
+
   creadoEn      DateTime  @default(now()) @map("creado_en") @db.Timestamptz(3)
   actualizadoEn DateTime  @updatedAt @map("actualizado_en") @db.Timestamptz(3)
   eliminadoEn   DateTime? @map("eliminado_en") @db.Timestamptz(3)
 
-  oportunidades Oportunidad[]
+  /// Nulos a propósito: al contacto que llega por webhook no lo crea ningún usuario.
+  creadoPorId      String? @map("creado_por") @db.Uuid
+  actualizadoPorId String? @map("actualizado_por") @db.Uuid
+  creadoPor      Usuario? @relation("ContactoCreadoPor", fields: [creadoPorId, tenantId], references: [id, tenantId], onDelete: Restrict, onUpdate: Restrict)
+  actualizadoPor Usuario? @relation("ContactoActualizadoPor", fields: [actualizadoPorId, tenantId], references: [id, tenantId], onDelete: Restrict, onUpdate: Restrict)
+
+  oportunidades   Oportunidad[]
+  notasInternas   NotaInterna[]
+  consentimientos ConsentimientoContacto[]
 
   /// Dos agencias distintas pueden tener el mismo teléfono de cliente: la unicidad
   /// es POR TENANT, nunca global.
   @@unique([tenantId, telefonoE164])
+  /// Lo que permite que quien lo referencie lleve clave foránea COMPUESTA. Sin esto, una
+  /// oportunidad puede colgar del contacto de otra agencia y nadie lo nota.
+  @@unique([id, tenantId])
   @@index([tenantId, eliminadoEn])
+  @@index([tenantId, ultimoContactoEn(sort: Desc)])
   @@map("contactos")
+}
+
+/// Para qué nos dio permiso el contacto, con su prueba y su fecha.
+///
+/// **Tabla y no un arreglo de enums en `contactos`.** La Ley 1581 de 2012 no pide saber si
+/// hay consentimiento: pide poder demostrar cuándo, por qué canal y con qué finalidad se
+/// obtuvo, y que la revocación quede registrada. Un arreglo de dos valores no demuestra
+/// nada y se sobrescribe sin dejar rastro. El contrato expone
+/// `consentimientos: Consentimiento[]`, que es la proyección de las filas vigentes.
+model ConsentimientoContacto {
+  id       String @id @default(uuid(7)) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  contactoId String   @map("contacto_id") @db.Uuid
+  contacto   Contacto @relation(fields: [contactoId, tenantId], references: [id, tenantId], onDelete: Cascade, onUpdate: Restrict)
+
+  finalidad Consentimiento
+  /// De dónde salió: «whatsapp:wamid...», «formulario-web», «importacion-csv». Es la prueba.
+  prueba    String  @db.VarChar(200)
+  canal     String? @db.VarChar(40)
+
+  otorgadoEn DateTime  @default(now()) @map("otorgado_en") @db.Timestamptz(3)
+  revocadoEn DateTime? @map("revocado_en") @db.Timestamptz(3)
+
+  registradoPorId String?  @map("registrado_por") @db.Uuid
+  registradoPor   Usuario? @relation("ConsentimientoRegistradoPor", fields: [registradoPorId, tenantId], references: [id, tenantId], onDelete: Restrict, onUpdate: Restrict)
+
+  /// En la base es un índice PARCIAL (`WHERE revocado_en IS NULL`): una finalidad vigente
+  /// por contacto, conservando entero el histórico de las revocadas. Prisma no modela el
+  /// `WHERE`; lo pone la migración con este mismo nombre, igual que `idx_outbox_pendientes`.
+  @@unique([tenantId, contactoId, finalidad], map: "ux_consentimiento_vigente")
+  @@index([tenantId, contactoId])
+  @@map("consentimientos_contacto")
+}
+
+enum Consentimiento {
+  TRANSACCIONAL
+  PROMOCIONAL
+
+  @@map("consentimiento")
 }
 
 /// Una intención de compra en el embudo.
@@ -761,44 +850,117 @@ model Oportunidad {
   tenantId String @map("tenant_id") @db.Uuid
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
+  /// Clave foránea COMPUESTA con el tenant, como todas las de aquí abajo. Escrita simple
+  /// —como estaba— la oportunidad de una agencia podía colgar del contacto de otra: RLS no
+  /// interviene, porque la integridad referencial se comprueba por encima de las políticas.
   contactoId String   @map("contacto_id") @db.Uuid
-  contacto   Contacto @relation(fields: [contactoId], references: [id], onDelete: Cascade)
+  contacto   Contacto @relation(fields: [contactoId, tenantId], references: [id, tenantId], onDelete: Cascade, onUpdate: Restrict)
 
   etapaId String        @map("etapa_id") @db.Uuid
-  etapa   EtapaPipeline @relation(fields: [etapaId], references: [id])
+  etapa   EtapaPipeline @relation(fields: [etapaId, tenantId], references: [id, tenantId], onDelete: Restrict, onUpdate: Restrict)
 
+  /// `Restrict` y no `SetNull`: la clave compuesta incluye `tenant_id`, que es NOT NULL, y
+  /// PostgreSQL no puede anular media clave. No estorba: los usuarios se borran lógicamente.
   asesorId String?  @map("asesor_id") @db.Uuid
-  asesor   Usuario? @relation("AsesorAsignado", fields: [asesorId], references: [id], onDelete: SetNull)
+  asesor   Usuario? @relation("AsesorAsignado", fields: [asesorId, tenantId], references: [id, tenantId], onDelete: Restrict, onUpdate: Restrict)
+
+  /// El paquete del catálogo, si ya se eligió uno. Null mientras se explora.
+  paqueteId String?  @map("paquete_id") @db.Uuid
+  paquete   Paquete? @relation(fields: [paqueteId, tenantId], references: [id, tenantId], onDelete: Restrict, onUpdate: Restrict)
 
   titulo  String  @db.VarChar(200)
   destino String? @db.VarChar(120)
 
-  /// Intención de viaje extraída de la conversación: fechas aproximadas y composición.
-  /// Nulas al principio: el asesor (o la IA, más adelante) las completa.
+  /// Intención de viaje extraída de la conversación. `fecha_viaje_desde` es lo que el
+  /// contrato llama `fechaSalida`. `date` y no `timestamptz`: un vuelo del 24 es del 24
+  /// en cualquier huso. R9.
   fechaViajeDesde DateTime? @map("fecha_viaje_desde") @db.Date
   fechaViajeHasta DateTime? @map("fecha_viaje_hasta") @db.Date
   adultos         Int?      @db.SmallInt
   ninos           Int?      @db.SmallInt
   infantes        Int?      @db.SmallInt
 
-  /// Valor estimado, en la unidad mínima de la moneda. R8.
+  /// Valor estimado, en la unidad mínima de la moneda. R8: entero de 64 bits, nunca coma
+  /// flotante. Viaja por la API como cadena porque JSON no tiene enteros de 64 bits.
   valorEstimadoUnidades BigInt? @map("valor_estimado_unidades")
   monedaIso             String? @map("moneda_iso") @db.Char(3)
 
-  /// Obligatorio al marcar perdida. Sin motivo no hay aprendizaje.
-  motivoPerdida String? @map("motivo_perdida") @db.VarChar(200)
+  /// Probabilidad de cierre de ESTA oportunidad. La de la etapa es el valor por defecto;
+  /// esta es la del asesor cuando la corrige. CHECK entre 0 y 100 en la migración.
+  probabilidad Int? @db.SmallInt
+
+  /// Lo siguiente que hay que hacer, y cuándo. Tres columnas y no una tabla `tareas`: el
+  /// contrato expone UNA próxima tarea, y una tabla para una fila por oportunidad añade un
+  /// join a la consulta más caliente del producto a cambio de nada que hoy se use. Un CHECK
+  /// exige que estén las tres o ninguna. El día que haga falta historial de tareas es una
+  /// tabla nueva y una migración, no un rediseño.
+  proximaTareaDescripcion String?   @map("proxima_tarea_descripcion") @db.VarChar(200)
+  proximaTareaVenceEn     DateTime? @map("proxima_tarea_vence_en") @db.Timestamptz(3)
+  proximaTareaCompletada  Boolean?  @map("proxima_tarea_completada")
+
+  /// Por qué se perdió. Enum del motor y no tabla por tenant: ver el informe de la
+  /// migración. El texto libre es obligatorio cuando el motivo es OTRO, y lo exige un CHECK.
+  motivoPerdida MotivoPerdida? @map("motivo_perdida")
+  notaPerdida   String?        @map("nota_perdida") @db.VarChar(500)
 
   camposPersonalizados Json @default("{}") @map("campos_personalizados") @db.JsonB
+
+  ultimoContactoEn DateTime? @map("ultimo_contacto_en") @db.Timestamptz(3)
 
   creadoEn      DateTime  @default(now()) @map("creado_en") @db.Timestamptz(3)
   actualizadoEn DateTime  @updatedAt @map("actualizado_en") @db.Timestamptz(3)
   cerradaEn     DateTime? @map("cerrada_en") @db.Timestamptz(3)
   eliminadoEn   DateTime? @map("eliminado_en") @db.Timestamptz(3)
 
+  creadoPorId      String? @map("creado_por") @db.Uuid
+  actualizadoPorId String? @map("actualizado_por") @db.Uuid
+  creadoPor      Usuario? @relation("OportunidadCreadoPor", fields: [creadoPorId, tenantId], references: [id, tenantId], onDelete: Restrict, onUpdate: Restrict)
+  actualizadoPor Usuario? @relation("OportunidadActualizadoPor", fields: [actualizadoPorId, tenantId], references: [id, tenantId], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([id, tenantId])
+  /// El tablero: una consulta por columna, filtrada por tenant y ordenada por actividad.
   @@index([tenantId, etapaId, actualizadoEn(sort: Desc)])
   @@index([tenantId, asesorId])
   @@index([tenantId, contactoId])
+  @@index([tenantId, paqueteId])
+  /// Las tareas que vencen. Parcial en la migración: solo las no completadas y vivas.
+  @@index([tenantId, proximaTareaVenceEn], map: "idx_oportunidades_tareas_pendientes")
   @@map("oportunidades")
+}
+
+/// Por qué se perdió una oportunidad.
+enum MotivoPerdida {
+  PRECIO
+  TIEMPO_DE_RESPUESTA
+  SIN_DISPONIBILIDAD
+  COMPRO_EN_OTRA_AGENCIA
+  VIAJE_APLAZADO
+  NO_RESPONDE
+  OTRO
+
+  @@map("motivo_perdida")
+}
+
+/// Nota interna sobre un contacto. La escribe el asesor; el cliente no la ve jamás.
+model NotaInterna {
+  id       String @id @default(uuid(7)) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  contactoId String   @map("contacto_id") @db.Uuid
+  contacto   Contacto @relation(fields: [contactoId, tenantId], references: [id, tenantId], onDelete: Cascade, onUpdate: Restrict)
+
+  /// Nulo si la escribió una automatización. El contrato pide `autorNombre`, que sale del join.
+  autorId String?  @map("autor_id") @db.Uuid
+  autor   Usuario? @relation("NotaInternaAutor", fields: [autorId, tenantId], references: [id, tenantId], onDelete: Restrict, onUpdate: Restrict)
+
+  texto String @db.VarChar(2000)
+
+  escritaEn   DateTime  @default(now()) @map("escrita_en") @db.Timestamptz(3)
+  eliminadaEn DateTime? @map("eliminada_en") @db.Timestamptz(3)
+
+  @@index([tenantId, contactoId, escritaEn(sort: Desc)])
+  @@map("notas_internas")
 }
 
 // =============================================================================
