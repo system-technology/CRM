@@ -1,5 +1,11 @@
 # Cola de trabajo — Antigravity
 
+> ## AHORA MISMO: la tarea **0b**. Nada más hasta que esté.
+>
+> Se saltó dos veces. La bandeja sigue enseñando «Mock Simulador» y «v0.1.0» al asesor, y elegir
+> plantilla fuera de la ventana de 24 h sigue siendo un `alert()` del navegador. Es lo que el
+> propietario ve al abrir la aplicación.
+
 > **Cómo funciona.** Al empezar una sesión: `git pull`, lee `REVISION.md` si existe, y toma de
 > aquí **la primera tarea sin marcar**. Al terminarla, márcala `[x]`, escribe `ENTREGA.md` y
 > empuja. Claude verifica, escribe la revisión y rellena esta cola.

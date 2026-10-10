@@ -1,156 +1,101 @@
-# Revisión — `2cfe439` — 2026-10-10
+# Revisión — `52865d5` — 2026-10-10
 
-Entrega: *Tiempo real en la bandeja (EventoBandeja, safeParse y Mouse Hover Guard)*.
+Entrega: *Pruebas automáticas de la bandeja*.
 
 ## Veredicto: **NO PASA**
 
-No por el diseño, que es bueno. Por una línea que deja la funcionalidad **muerta en ejecución**:
-ningún `MENSAJE_NUEVO` llega nunca a la pantalla. Las compuertas estaban verdes igual.
+Y no principalmente porque dos pruebas estén en rojo —que lo están—, sino porque **cuatro de
+las seis no prueban el producto**. Prueban una copia del código escrita dentro del propio
+archivo de pruebas.
 
 ---
 
-## 1. Bloqueante — el emisor fabrica un UUID inválido y su propio `safeParse` lo descarta
+## 1. La entrega llega con la compuerta en rojo
 
-`apps/web/src/lib/realtime-mock.ts`, en `emitirMensajeNuevo`:
+```
+Test Files  1 failed | 1 passed (2)
+     Tests  2 failed | 6 passed (8)
+```
+
+- **Prueba 2** — `actual is not defined`. No es una aserción que falla: es un `ReferenceError`.
+  En la línea 90 hay `...actual` donde debía ir `...listaActualizada[idx]`. Un archivo de
+  pruebas que revienta no es una prueba.
+- **Prueba 6** — espera que `EnviarTexto.safeParse` devuelva éxito con
+  `conversacionId: 'conv-closed-24h'`. `Id` es `z.string().uuid()`. No lo es.
+
+`lint`, `typecheck` y `build` pueden estar verdes con esto. `test` no lo estaba, y el informe
+no lo dice.
+
+## 2. Lo de fondo: cuatro pruebas no importan el código que dicen proteger
+
+El archivo importa exactamente dos cosas: los contratos y `realtimeMockBus`. **No importa nada
+de `bandeja/page.tsx` ni de `bandeja/[id]/page.tsx`**, que es donde vive todo lo que las seis
+pruebas afirman cubrir.
+
+Lo que hacen en su lugar es **reescribir la lógica dentro del `it`**:
+
+**Prueba 3, la de idempotencia R5.** Esta es la más clara, así que la cito entera:
 
 ```ts
-const id = '00000000-0000-4000-8000-' + Date.now().toString(16).slice(-12);
+const idempotenciaKeys: Record<string, string> = {};
+let claveOriginal = idempotenciaKeys[mensajeId];
+if (!claveOriginal) { claveOriginal = '0000…999'; idempotenciaKeys[mensajeId] = claveOriginal; }
+let claveReintento = idempotenciaKeys[mensajeId];
+if (!claveReintento) { claveReintento = '1111…111'; idempotenciaKeys[mensajeId] = claveReintento; }
+expect(claveReintento).toBe(claveOriginal);
 ```
 
-`Date.now().toString(16)` mide **11 caracteres**, no 12. `slice(-12)` no rellena: recorta o
-devuelve lo que hay. El último grupo de un UUID necesita 12.
+Escribe en un diccionario, lo lee dos veces y afirma que las dos lecturas coinciden. **Eso es
+una propiedad de JavaScript, no de nuestra bandeja.**
 
-Medido en el navegador, ahora mismo:
+La prueba de que no sirve no necesita ejecutarse: **borra entera la idempotencia del producto
+—quita el botón, quita la clave, manda dos mensajes— y esta prueba sigue verde.** Una
+protección que no se pone roja cuando desaparece lo que protege no existe. Es la frase que
+llevamos toda la semana repitiendo, y esta vez la escribió una prueba.
 
-| | |
-|---|---|
-| Sufijo generado | `1a1265c1536` |
-| Longitud | **11** |
-| Requerida | 12 |
-| `id` resultante | `00000000-0000-4000-8000-1a1265c1536` |
-| ¿UUID válido? | **No** |
+**Prueba 2** copia el algoritmo del búfer (`const base = bufferConversaciones ?? estadoInicial`)
+dentro del `it` y lo ejecuta ahí. Falla por una errata en **la copia**, no en el producto: el
+código real está bien. **Prueba 5** y **prueba 6**, lo mismo: construyen un objeto literal y
+afirman que tiene los valores que acaban de escribirle.
 
-Así que `Mensaje.id` no pasa el contrato, `EventoBandeja.safeParse` devuelve `success: false`, y
-el mensaje se tira a la basura. Tres clics en «📩 Mensaje Nuevo (Entrante)» con el ratón sobre la
-lista dejaron esto en la consola, tres veces:
+**Las dos que sí valen son la 1 y la 4**, y valen porque importan `realtimeMockBus` de verdad.
+La 1 ya la verifiqué por mutación: reintroduje el UUID roto y se puso roja. Ésa protege.
 
-```
-[RealtimeMockBus] Evento descartado en silencio (no coincide con EventoBandeja)
-```
+## 3. Y la causa no es tuya: no había nada que importar
 
-La fila no cambió, el contador no subió, no apareció ningún aviso. **Nada.**
+Esto es lo importante, y es responsabilidad compartida. **La lógica vive dentro de los
+componentes**: 1 678 líneas entre dos archivos, con el guardián del ratón, el cálculo del
+scroll y la reutilización de la clave escritos en medio del JSX. Desde un archivo de pruebas no
+hay nada que llamar. Ante eso, copiar la lógica es una salida comprensible — pero produce
+pruebas que acompañan en vez de morder.
 
-**Lo grave no es el error de un carácter.** Es que la entrega afirma haber implementado y
-verificado dos reglas de producto —no robar el scroll al llegar un mensaje, no reordenar bajo el
-cursor al llegar un mensaje— que **sólo se disparan con `MENSAJE_NUEVO`**. Con el emisor roto,
-esas dos reglas no se pueden haber visto funcionar ni una vez. Lo único que sí se probó, y por eso
-pasó, es el descarte silencioso: ahora mismo es lo que hace el sistema con todo.
-
-El silencio del contrato, que está bien implementado, es lo que escondió el defecto. El
-`console.warn` que pusiste en desarrollo es la única razón por la que lo encontré en treinta
-segundos. Déjalo donde está.
-
-**Corrección:** `Date.now().toString(16).padStart(12, '0')`, o `crypto.randomUUID()`, que es lo que
-hay que usar de todos modos.
-
-## 2. Bloqueante — el búfer no acumula: pierde todo menos el último evento
-
-`apps/web/src/app/bandeja/page.tsx:148`
-
-```ts
-if (isHoveringListRef.current) {
-  bufferConversacionesRef.current = listaActualizada;
-  setPendientesReorden((p) => p + 1);
-  return prev;          // el estado no cambia…
-}
-```
-
-…y `listaActualizada` se construye en la línea 143 a partir de `prev`, que **nunca incluye lo ya
-acumulado**, precisamente porque se devolvió `prev` sin cambiarlo. Cada evento reescribe el búfer
-partiendo de cero.
-
-Con el ratón sobre la lista —la postura normal de un asesor mientras lee— llegan dos mensajes de
-dos viajeros distintos y **sólo sobrevive el segundo**. El primero desaparece: ni texto, ni
-contador de no leídos, ni posición. El aviso, mientras tanto, dice que hay dos actualizaciones
-esperando.
-
-La entrega lo describe como «los reordenamientos se acumulan en un búfer visual». No se acumulan.
-Se pisan.
-
-**Corrección:** derivar del búfer cuando existe.
-
-```ts
-const base = bufferConversacionesRef.current ?? prev;
-```
-
-y construir `listaActualizada` sobre `base`, no sobre `prev`.
-
-## 3. Bloqueante menor — el contador cuenta el doble
-
-Tres clics en «📌 Actualizar Conversación» con el ratón encima:
-
-> 📌 Hay **6** actualización(es) de mensajes. Reordenamiento en pausa…
-
-`setPendientesReorden((p) => p + 1)` vive **dentro** del actualizador de `setConversaciones`. React
-ejecuta los actualizadores dos veces en desarrollo, a propósito, para delatar justo esto: un
-actualizador tiene que ser una función pura de `prev`, sin efectos. En producción contaría bien, lo
-que es peor, porque el síntoma desaparece donde nadie lo mira.
-
-**Corrección:** sacar el efecto del reductor —calcular el pendiente en el propio búfer y derivar el
-número de ahí, o subirlo en un `useEffect`.
+La salida real es extraer. Va como tarea, abajo.
 
 ---
 
-## Lo que sí quedó bien, y no es poco
+## Siguiente bloque, y esta vez en un solo orden
 
-- **El guardián del ratón retiene y aplica.** Comprobado con el ratón real sobre la lista: las
-  filas no se movieron con tres eventos encima, el aviso apareció, y al salir el ratón la
-  actualización entró y el aviso se fue. La mecánica es correcta; lo que falla es con qué datos.
-- **El scroll no se roba.** `[id]/page.tsx:130` sólo baja si `isNearBottomRef` dice que ya estabas
-  abajo; si no, acumula en el contador flotante. Y deduplica por `id` antes de insertar, que es lo
-  que impide el mensaje repetido cuando el servidor reenvía.
-- **`safeParse` y no `.parse`.** Segunda entrega seguida que acierta en esto.
-- **La codificación del documento está limpia.** La entrega anterior llegó con «Vacéo» y «EnvÁo».
-  Ésta no. Corregido.
+**0b, la corrección de diseño, sigue sin hacer.** Está marcada como bloqueante desde hace horas:
+el asesor sigue leyendo «Mock Simulador», «Guard R5/UI» y «v0.1.0» en pantalla, elegir plantilla
+fuera de la ventana de 24 h sigue siendo un `alert()` del navegador, y no existe
+`app/bandeja/layout.tsx`. **Nada nuevo hasta que eso esté.** Es lo que el propietario mira
+cuando abre la aplicación.
 
-## A la cola — no bloquea (R13)
+Después, y solo después, se rehacen las pruebas. En este orden:
 
-| | Qué | Dónde |
-|---|---|---|
-| 1 | Un `MENSAJE_NUEVO` de una conversación que no está en la lista se descarta en silencio; un viajero que escribe por primera vez no aparece | `bandeja/page.tsx:120` |
-| 2 | `MENSAJE_ACTUALIZADO` sube el contador de pendientes aunque no cambie nada en la lista | `bandeja/page.tsx:146` |
-| 3 | `toggleAutoSimulacion` guarda el `setInterval` en el singleton; nadie lo limpia al desmontar | `realtime-mock.ts:120` |
-| 4 | El simulador siempre dispara sobre `conversaciones[0]`; no deja probar dos conversaciones distintas, que es justo el caso del punto 2 | `SimuladorTiempoReal.tsx:25` |
+1. **Extraer la lógica a funciones puras** en `apps/web/src/lib/`, importables y sin React:
+   `reordenarConGuardia(prev, buffer, evento, ratonEncima)`, `debeBajarElScroll(distanciaAlFondo)`,
+   `claveDeReintento(estadoPrevio, mensajeId)`. El componente las llama; la prueba las llama.
+   **Una sola implementación, no dos.**
+2. **Reescribir las cuatro pruebas** contra esas funciones.
+3. **Verificar cada una por mutación**, y contarlo en `ENTREGA.md`: qué rompiste, qué prueba se
+   puso roja. Si rompes algo y todo sigue verde, esa prueba no existe todavía.
 
----
+Y arregla las dos rojas antes de nada: `...actual` → `...listaActualizada[idx]`, y un UUID de
+verdad en la prueba 6.
 
-## Un apunte que es mío, no tuyo
-
-Tenías un **`.env.bak` sin ignorar** en el worktree, con las credenciales anteriores en claro. Lo
-dejó ahí mi script de rotación, en los tres árboles, y `.gitignore` sólo nombraba `.env`,
-`.env.local` y `.env.*.local`. Un `git add -A` lo habría subido.
-
-Corregido en este mismo commit: ahora es `.env.*` con `!.env.example`. Comprobadas las dos mitades
-—que `.env.bak` queda ignorado y que `.env.example` sigue siendo versionable—, porque una lista de
-permitidos que nadie ha intentado romper no está verificada.
-
----
-
-## Siguiente bloque
-
-**Primero, y antes que cualquier cosa nueva: los tres puntos de arriba.** Son tres correcciones
-pequeñas en dos archivos.
-
-Y la que convierte esto en algo que no vuelve a pasar: **una prueba que falle hoy**. Un
-`*.spec.ts` junto a `realtime-mock.ts` que emita un `MENSAJE_NUEVO` y afirme que el suscriptor
-**lo recibe**. Con el código actual tiene que salir en rojo; si sale verde, la prueba no sirve.
-Añade otra para el punto 2: dos eventos seguidos con el guardián activo y el estado final
-conteniendo **los dos**.
-
-Es la lección de esta entrega, y no es tuya sola: `lint`, `typecheck`, `build` y `format` estaban
-los cuatro en verde sobre una funcionalidad que no hacía absolutamente nada. Compilar no es
-funcionar. Lo único que lo distingue es una aserción que se pone roja cuando el comportamiento
-desaparece.
-
-Después, la tarea 4 de `COLA.md`: los casos borde de la bandeja —ventana de 24 h cerrada, mensaje
-fallido, adjunto sin descargar.
+**Una petición sobre el informe, que no es menor:** `ENTREGA.md` dice que las compuertas pasan y
+`test` estaba en rojo al hacer `git push`. Eso me cuesta más que el defecto, porque si no puedo
+fiarme del informe tengo que ejecutarlo todo yo, y entonces el informe no sirve para nada.
+Ejecuta `pnpm test` antes de escribirlo, y si algo está rojo dilo: una entrega que avisa de su
+propio rojo es útil. Una que lo oculta, no.
