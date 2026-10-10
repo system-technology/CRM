@@ -10,15 +10,21 @@
  */
 
 import {
+  ConversacionDetalle,
   ConversacionResumen,
+  Mensaje,
+  type AsignarConversacion,
+  type CambiarEstadoConversacion,
   type ConsultarBandeja,
+  type CrearNota,
+  type EnviarTexto,
   type PaginaBandeja,
 } from '@viajapro/contracts';
 
 export const ID_ASESOR_ACTUAL = '00000000-0000-4000-a000-000000000001';
 export const NOMBRE_ASESOR_ACTUAL = 'Asesor Actual';
 
-const ASESORES = [
+export const ASESORES = [
   { id: ID_ASESOR_ACTUAL, nombre: NOMBRE_ASESOR_ACTUAL },
   { id: '00000000-0000-4000-a000-000000000002', nombre: 'Laura Gómez' },
   { id: '00000000-0000-4000-a000-000000000003', nombre: 'Carlos Rodríguez' },
@@ -181,6 +187,175 @@ function generar500Conversaciones(): ConversacionResumen[] {
 // Instancia en memoria de los 500 datos simulados
 export const MOCK_CONVERSACIONES = generar500Conversaciones();
 
+// Mapa para almacenar el detalle de mensajes y notas de las conversaciones abiertas
+const MOCK_DETALLES = new Map<string, ConversacionDetalle>();
+
+/**
+ * Genera el detalle completo (mensajes y notas) para una conversación.
+ */
+function generarDetalleConversacion(resumen: ConversacionResumen): ConversacionDetalle {
+  const ahora = Date.now();
+  const idx = Number(resumen.id.split('-').pop() ?? '1');
+
+  // Historial de mensajes
+  const mensajesBrutos: Array<{
+    id: string;
+    conversacionId: string;
+    direccion: 'ENTRANTE' | 'SALIENTE';
+    tipo:
+      | 'TEXTO'
+      | 'IMAGEN'
+      | 'DOCUMENTO'
+      | 'AUDIO'
+      | 'VIDEO'
+      | 'UBICACION'
+      | 'CONTACTO'
+      | 'PLANTILLA'
+      | 'INTERACTIVO'
+      | 'REACCION'
+      | 'NO_SOPORTADO';
+    texto: string | null;
+    adjuntos: Array<{
+      id: string;
+      tipo:
+        | 'TEXTO'
+        | 'IMAGEN'
+        | 'DOCUMENTO'
+        | 'AUDIO'
+        | 'VIDEO'
+        | 'UBICACION'
+        | 'CONTACTO'
+        | 'PLANTILLA'
+        | 'INTERACTIVO'
+        | 'REACCION'
+        | 'NO_SOPORTADO';
+      url: string;
+      nombreArchivo: string | null;
+      tamanoBytes: number | null;
+      mimeType: string | null;
+    }>;
+    estado: 'PENDIENTE' | 'ENVIADO' | 'ENTREGADO' | 'LEIDO' | 'REPRODUCIDO' | 'FALLIDO';
+    motivoFallo: string | null;
+    autorId: string | null;
+    autorNombre: string | null;
+    ocurridoEn: string;
+  }> = [
+    {
+      id: generarUuid(idx * 10 + 1, 100),
+      conversacionId: resumen.id,
+      direccion: 'ENTRANTE' as const,
+      tipo: 'TEXTO' as const,
+      texto: 'Hola buenas tardes, me gustaría recibir información de paquetes turísticos.',
+      adjuntos: [],
+      estado: 'LEIDO' as const,
+      motivoFallo: null,
+      autorId: null,
+      autorNombre: null,
+      ocurridoEn: new Date(ahora - 120 * 60 * 1000).toISOString(),
+    },
+    {
+      id: generarUuid(idx * 10 + 2, 100),
+      conversacionId: resumen.id,
+      direccion: 'SALIENTE' as const,
+      tipo: 'TEXTO' as const,
+      texto: `¡Hola ${resumen.contactoNombre ?? 'estimado cliente'}! Con gusto te asesoro. ¿Para cuántos viajeros y qué destino tienes en mente?`,
+      adjuntos: [],
+      estado: 'LEIDO' as const,
+      motivoFallo: null,
+      autorId: resumen.asignadoAId ?? ID_ASESOR_ACTUAL,
+      autorNombre: resumen.asignadoANombre ?? NOMBRE_ASESOR_ACTUAL,
+      ocurridoEn: new Date(ahora - 110 * 60 * 1000).toISOString(),
+    },
+    {
+      id: generarUuid(idx * 10 + 3, 100),
+      conversacionId: resumen.id,
+      direccion: 'ENTRANTE' as const,
+      tipo: 'TEXTO' as const,
+      texto: resumen.ultimoMensajeTexto ?? 'Quisiera viajar en diciembre con mi familia.',
+      adjuntos: [],
+      estado: 'LEIDO' as const,
+      motivoFallo: null,
+      autorId: null,
+      autorNombre: null,
+      ocurridoEn: new Date(ahora - 60 * 60 * 1000).toISOString(),
+    },
+  ];
+
+  // Si la conversación tiene mensaje con adjunto de imagen (1 de cada 4)
+  if (idx % 4 === 0) {
+    mensajesBrutos.push({
+      id: generarUuid(idx * 10 + 4, 100),
+      conversacionId: resumen.id,
+      direccion: 'ENTRANTE' as const,
+      tipo: 'IMAGEN' as const,
+      texto: 'Les comparto la foto de los pasaportes para avanzar con la reserva.',
+      adjuntos: [
+        {
+          id: generarUuid(idx * 10 + 5, 101),
+          tipo: 'IMAGEN' as const,
+          url: 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=600&auto=format&fit=crop',
+          nombreArchivo: 'pasaportes_familia.jpg',
+          tamanoBytes: 1048576,
+          mimeType: 'image/jpeg',
+        },
+      ],
+      estado: 'LEIDO' as const,
+      motivoFallo: null,
+      autorId: null,
+      autorNombre: null,
+      ocurridoEn: new Date(ahora - 45 * 60 * 1000).toISOString(),
+    });
+  }
+
+  // Si la conversación tiene un mensaje FALLIDO para probar el requerimiento de Meta
+  if (idx % 6 === 0) {
+    mensajesBrutos.push({
+      id: generarUuid(idx * 10 + 6, 100),
+      conversacionId: resumen.id,
+      direccion: 'SALIENTE' as const,
+      tipo: 'TEXTO' as const,
+      texto: 'Intenté enviarle el itinerario en PDF pero falló la entrega.',
+      adjuntos: [],
+      estado: 'FALLIDO' as const,
+      motivoFallo:
+        'Fuera de la ventana de 24 horas: el número no ha iniciado conversación en el plazo permitido.',
+      autorId: resumen.asignadoAId ?? ID_ASESOR_ACTUAL,
+      autorNombre: resumen.asignadoANombre ?? NOMBRE_ASESOR_ACTUAL,
+      ocurridoEn: new Date(ahora - 30 * 60 * 1000).toISOString(),
+    });
+  }
+
+  // Notas internas
+  const notasBrutas = [
+    {
+      id: generarUuid(idx * 10 + 7, 200),
+      texto:
+        'El cliente prefiere hoteles de 5 estrellas con opción Todo Incluido. Presupuesto aproximado $8.000.000 COP.',
+      autorId: ID_ASESOR_ACTUAL,
+      autorNombre: NOMBRE_ASESOR_ACTUAL,
+      creadaEn: new Date(ahora - 90 * 60 * 1000).toISOString(),
+    },
+  ];
+
+  if (idx % 3 === 0) {
+    notasBrutas.push({
+      id: generarUuid(idx * 10 + 8, 200),
+      texto: 'Hablé con la aerolínea: hay cupos confirmados para la fecha solicitada.',
+      autorId: '00000000-0000-4000-a000-000000000002',
+      autorNombre: 'Laura Gómez',
+      creadaEn: new Date(ahora - 15 * 60 * 1000).toISOString(),
+    });
+  }
+
+  const detalleBruto = {
+    ...resumen,
+    mensajes: mensajesBrutos.map((m) => Mensaje.parse(m)),
+    notas: notasBrutas,
+  };
+
+  return ConversacionDetalle.parse(detalleBruto);
+}
+
 /**
  * Simula la consulta paginada por cursor contra la API.
  */
@@ -247,4 +422,133 @@ export async function consultarBandejaMock(
       hasMore,
     },
   };
+}
+
+/**
+ * Obtiene una conversación abierta con su historial completo.
+ */
+export async function obtenerConversacionDetalleMock(
+  id: string,
+  simularLatenciaMs = 150,
+): Promise<ConversacionDetalle | null> {
+  if (simularLatenciaMs > 0) {
+    await new Promise((resolve) => setTimeout(resolve, simularLatenciaMs));
+  }
+
+  const resumen = MOCK_CONVERSACIONES.find((c) => c.id === id);
+  if (!resumen) return null;
+
+  let detalle = MOCK_DETALLES.get(id);
+  if (!detalle) {
+    detalle = generarDetalleConversacion(resumen);
+    MOCK_DETALLES.set(id, detalle);
+  }
+
+  return detalle;
+}
+
+/**
+ * Simula el envío de un mensaje de texto con clave de idempotencia.
+ */
+export async function enviarTextoMock(entrada: EnviarTexto): Promise<Mensaje> {
+  const detalle = await obtenerConversacionDetalleMock(entrada.conversacionId, 100);
+  if (!detalle) {
+    throw new Error('Conversación no encontrada');
+  }
+
+  if (!detalle.ventana.abierta) {
+    throw new Error(
+      'VENTANA_CERRADA: No se puede enviar texto libre fuera de la ventana de 24 horas',
+    );
+  }
+
+  const ahora = new Date().toISOString();
+  const nuevoMensaje = Mensaje.parse({
+    id: crypto.randomUUID(),
+    conversacionId: entrada.conversacionId,
+    direccion: 'SALIENTE',
+    tipo: 'TEXTO',
+    texto: entrada.texto,
+    adjuntos: [],
+    estado: 'ENTREGADO',
+    motivoFallo: null,
+    autorId: ID_ASESOR_ACTUAL,
+    autorNombre: NOMBRE_ASESOR_ACTUAL,
+    ocurridoEn: ahora,
+  });
+
+  detalle.mensajes.push(nuevoMensaje);
+  detalle.ultimoMensajeTexto = entrada.texto;
+  detalle.ultimoMensajeEn = ahora;
+  detalle.ultimoMensajeDireccion = 'SALIENTE';
+
+  // Actualizar también la lista resumen
+  const resumen = MOCK_CONVERSACIONES.find((c) => c.id === entrada.conversacionId);
+  if (resumen) {
+    resumen.ultimoMensajeTexto = entrada.texto;
+    resumen.ultimoMensajeEn = ahora;
+    resumen.ultimoMensajeDireccion = 'SALIENTE';
+  }
+
+  return nuevoMensaje;
+}
+
+/**
+ * Simula la creación de una nota interna para el equipo.
+ */
+export async function crearNotaMock(entrada: CrearNota) {
+  const detalle = await obtenerConversacionDetalleMock(entrada.conversacionId, 100);
+  if (!detalle) {
+    throw new Error('Conversación no encontrada');
+  }
+
+  const nuevaNota = {
+    id: crypto.randomUUID(),
+    texto: entrada.texto,
+    autorId: ID_ASESOR_ACTUAL,
+    autorNombre: NOMBRE_ASESOR_ACTUAL,
+    creadaEn: new Date().toISOString(),
+  };
+
+  detalle.notas.push(nuevaNota);
+  return nuevaNota;
+}
+
+/**
+ * Simula la asignación de un asesor a la conversación.
+ */
+export async function asignarConversacionMock(entrada: AsignarConversacion) {
+  await Promise.resolve();
+  const resumen = MOCK_CONVERSACIONES.find((c) => c.id === entrada.conversacionId);
+  if (!resumen) throw new Error('Conversación no encontrada');
+
+  const asesor = ASESORES.find((a) => a.id === entrada.usuarioId);
+  resumen.asignadoAId = asesor ? asesor.id : null;
+  resumen.asignadoANombre = asesor ? asesor.nombre : null;
+
+  const detalle = MOCK_DETALLES.get(entrada.conversacionId);
+  if (detalle) {
+    detalle.asignadoAId = resumen.asignadoAId;
+    detalle.asignadoANombre = resumen.asignadoANombre;
+  }
+
+  return resumen;
+}
+
+/**
+ * Simula el cambio de estado de la conversación (ABIERTA, EN_ESPERA, CERRADA).
+ */
+export async function cambiarEstadoConversacionMock(entrada: CambiarEstadoConversacion) {
+  await Promise.resolve();
+  const resumen = MOCK_CONVERSACIONES.find((c) => c.id === entrada.conversacionId);
+  if (!resumen) throw new Error('Conversación no encontrada');
+
+  resumen.estado = entrada.estado;
+
+  const detalle = MOCK_DETALLES.get(entrada.conversacionId);
+  if (detalle) {
+    detalle.estado = entrada.estado;
+  }
+
+  return resumen;
 }

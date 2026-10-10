@@ -14,6 +14,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import Link from 'next/link';
 import type { ConversacionResumen, FiltroBandeja, PaginaBandeja } from '@viajapro/contracts';
 import { consultarBandejaMock, ID_ASESOR_ACTUAL, MOCK_CONVERSACIONES } from '../../lib/mock-inbox';
 
@@ -38,7 +39,7 @@ export default function BandejaPage() {
 
   // Selección activa para teclado
   const [indiceSeleccionado, setIndiceSeleccionado] = useState<number>(0);
-  const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const itemRefs = useRef<(HTMLAnchorElement | null)[]>([]);
 
   // Debounce para la búsqueda de texto
   useEffect(() => {
@@ -348,7 +349,7 @@ interface ConversacionFilaProps {
   conversacion: ConversacionResumen;
   esSeleccionada: boolean;
   onClick: () => void;
-  ref: (el: HTMLDivElement | null) => void;
+  ref: (el: HTMLAnchorElement | null) => void;
 }
 
 function ConversacionFila({
@@ -382,7 +383,8 @@ function ConversacionFila({
   }, [c.ultimoMensajeEn]);
 
   return (
-    <div
+    <Link
+      href={`/bandeja/${c.id}`}
       ref={ref}
       onClick={onClick}
       className={`group relative flex cursor-pointer flex-col gap-1.5 rounded-sm border p-2.5 transition-all sm:flex-row sm:items-center sm:justify-between ${
@@ -483,6 +485,6 @@ function ConversacionFila({
         {/* Hora del último evento */}
         <span className="cifra text-xs font-normal text-neutral-400">{horaFormateada}</span>
       </div>
-    </div>
+    </Link>
   );
 }
