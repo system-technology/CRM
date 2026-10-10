@@ -1,16 +1,22 @@
-# Entrega — Correcciones de Accesibilidad y Navegación de la Bandeja — 2026-10-10
+# Entrega — Rebanada Vertical Completa de la Bandeja Web — 2026-10-10
 
 ## Qué construí
 
-1. **Navegación por teclado inmediata (sin requerir Tab previo):**
-   - Se removió la necesidad de presionar `Tab` primero para dar foco al contenedor raíz.
-   - Implementado listener global de teclado en `window` mediante `useEffect` en `apps/web/src/app/bandeja/page.tsx`.
-   - Ignora la navegación con flechas/teclas cuando el foco está activo sobre campos de entrada (`INPUT`, `TEXTAREA`, `SELECT`).
+1. **Navegación por teclado inmediata y Accesibilidad WAI-ARIA:**
+   - Listener global de teclado en `window` mediante `useEffect` en `apps/web/src/app/bandeja/page.tsx` (funciona sin pulsar Tab previo).
+   - Ignora la navegación por flechas cuando el foco está activo sobre campos de entrada (`INPUT`, `TEXTAREA`, `SELECT`).
+   - La lista declara `role="listbox"` y cada fila `<Link>` declara `role="option"`, `aria-selected={esSeleccionada}` y `tabIndex={esSeleccionada ? 0 : -1}`.
+   - Invoca `.focus()` en el DOM al seleccionar por teclado para que los lectores de pantalla anuncien el elemento.
 
-2. **Accesibilidad WAI-ARIA y Foco DOM Real:**
-   - La lista de conversaciones declara `role="listbox"` con `aria-label="Lista de conversaciones"`.
-   - Cada fila de conversación (`<Link>`) declara `role="option"`, `aria-selected={esSeleccionada}` y `tabIndex={esSeleccionada ? 0 : -1}`.
-   - Al cambiar la fila seleccionada por teclado (`ArrowDown`, `ArrowUp`, `j`, `k`, `Home`, `End`), la aplicación ejecuta `.focus()` sobre el elemento en el DOM, permitiendo que los lectores de pantalla anuncien la conversación seleccionada.
+2. **Soporte Completo de Tipos de Contenido (`TipoContenido`):**
+   - Renderizado enriquecido para `TEXTO`, `IMAGEN`, `DOCUMENTO` (con peso KB/MB), `AUDIO` (reproductor HTML5), `VIDEO`, `UBICACION`, `CONTACTO`, `PLANTILLA`, `INTERACTIVO`, `REACCION` y fallback `NO_SOPORTADO`.
+
+3. **Eventos de Tiempo Real (`EventoBandeja` & `useInboxRealtime`):**
+   - Hook `useInboxRealtime` que escucha eventos de websocket/SSE (`MENSAJE_NUEVO`, `MENSAJE_ACTUALIZADO`, `CONVERSACION_ACTUALIZADA`).
+   - **Regla del contrato R3:** Ignora tipos de eventos desconocidos en silencio con `safeParse` sin romper la interfaz.
+
+4. **TypeScript Estricto (Sin `any`):**
+   - Se eliminaron todos los tipos `any` o aserciones inseguras en la capa de interfaz y tiempo real.
 
 ## Qué verifiqué EJECUTANDO
 
@@ -25,4 +31,5 @@
 
 ## Decisiones que el encargo no especificaba
 
-- **Exclusión inteligente de atajos de teclado:** Se condicionó el manejador global para no interceptar pulsaciones si el foco está activo en la barra de búsqueda u otros campos de formulario, permitiendo escribir palabras con letras como 'j' o 'k' sin saltar de fila en la lista.
+- **Exclusión inteligente de atajos de teclado:** Se condicionó el manejador global para no interceptar pulsaciones si el foco está activo en la barra de búsqueda u otros campos de formulario.
+- **Renderizado nativo de audio:** Se utilizó la etiqueta HTML5 `<audio controls>` para notas de voz de WhatsApp recibidas.

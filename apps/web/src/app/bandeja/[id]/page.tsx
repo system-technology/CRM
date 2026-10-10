@@ -4,18 +4,22 @@
  * Pantalla de conversación abierta de WhatsApp (`/bandeja/[id]`).
  *
  * Muestra el historial completo de mensajes y notas internas:
- * - Mensajes del cliente (entrantes, izquierda) y del asesor (salientes, derecha).
+ * - Renderizado enriquecido para todos los tipos de contenido (Texto, Imagen, Documento, Audio, Video, Ubicación, Contacto, Plantilla, Interactivo, Reacción).
  * - Mensajes fallidos con su motivo explícito (`motivoFallo`) según contrato de Meta.
  * - Validación previa de la ventana de servicio de 24h: deshabilita el texto libre si está cerrada.
  * - Caja de redacción con alternancia clara entre "Mensaje a cliente" y "Nota interna".
- * - Las notas internas destacan en amarillo post-it con la etiqueta `🔒 NOTA INTERNA - SOLO EQUIPO`
- *   para evitar cualquier confusión visual con un mensaje enviado al cliente.
+ * - Las notas internas destacan en amarillo post-it con la etiqueta `🔒 NOTA INTERNA — SOLO EQUIPO`.
  * - Clave de idempotencia única (UUID v4) generada en el cliente al enviar (R5).
+ * - Escucha de eventos de tiempo real (`useInboxRealtime`) ignorando silenciosamente tipos desconocidos.
  */
 
 import { use, useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import type { ConversacionDetalle } from '@viajapro/contracts';
+import type {
+  ConversacionDetalle,
+  EstadoMensaje,
+  Mensaje as TipoMensaje,
+} from '@viajapro/contracts';
 import {
   ASESORES,
   asignarConversacionMock,
@@ -24,6 +28,7 @@ import {
   enviarTextoMock,
   obtenerConversacionDetalleMock,
 } from '../../../lib/mock-inbox';
+import { useInboxRealtime } from '../../../lib/use-inbox-realtime';
 
 export default function ConversacionDetallePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -37,6 +42,29 @@ export default function ConversacionDetallePage({ params }: { params: Promise<{ 
   const [textoMensaje, setTextoMensaje] = useState('');
   const [enviando, setEnviando] = useState(false);
   const [errorEnvio, setErrorEnvio] = useState<string | null>(null);
+
+  // Escucha de tiempo real para nuevos mensajes o actualizaciones de estado
+  useInboxRealtime({
+    onMensajeNuevo: (conversacionId, mensaje) => {
+      if (conversacionId === id) {
+        setDetalle((prev) => (prev ? { ...prev, mensajes: [...prev.mensajes, mensaje] } : null));
+      }
+    },
+    onMensajeActualizado: (conversacionId, mensajeId, estado, motivoFallo) => {
+      if (conversacionId === id) {
+        setDetalle((prev) =>
+          prev
+            ? {
+                ...prev,
+                mensajes: prev.mensajes.map((m) =>
+                  m.id === mensajeId ? { ...m, estado: estado as EstadoMensaje, motivoFallo } : m,
+                ),
+              }
+            : null,
+        );
+      }
+    },
+  });
 
   // Carga inicial de los datos de la conversación
   const cargarDetalle = useCallback(async () => {
@@ -266,7 +294,7 @@ export default function ConversacionDetallePage({ params }: { params: Promise<{ 
 
           {/* HISTORIAL DE MENSAJES Y NOTAS INTERNAS */}
           <main className="flex-1 space-y-3 overflow-y-auto p-3 sm:p-4">
-            {/* Lista unificada cronológicamente */}
+            {/* Lista de mensajes */}
             {detalle.mensajes.map((m) => {
               const esEntrante = m.direccion === 'ENTRANTE';
               const esFallido = m.estado === 'FALLIDO';
@@ -300,43 +328,8 @@ export default function ConversacionDetallePage({ params }: { params: Promise<{ 
                       </span>
                     </div>
 
-                    {/* Texto del mensaje */}
-                    {m.texto && <p className="text-base whitespace-pre-wrap">{m.texto}</p>}
-
-                    {/* Adjuntos (Imágenes, Documentos) */}
-                    {m.adjuntos.length > 0 && (
-                      <div className="space-y-1 pt-1">
-                        {m.adjuntos.map((adj) => (
-                          <div
-                            key={adj.id}
-                            className="rounded border border-neutral-200 bg-white/80 p-2 text-xs"
-                          >
-                            {adj.tipo === 'IMAGEN' ? (
-                              <div className="space-y-1">
-                                <img
-                                  src={adj.url}
-                                  alt={adj.nombreArchivo ?? 'Adjunto'}
-                                  className="max-h-48 rounded object-cover"
-                                />
-                                <span className="text-[10px] text-neutral-400">
-                                  {adj.nombreArchivo}
-                                </span>
-                              </div>
-                            ) : (
-                              <a
-                                href={adj.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-acento-700 font-medium underline"
-                              >
-                                📄 {adj.nombreArchivo ?? 'Archivo adjunto'} (
-                                {Math.round((adj.tamanoBytes ?? 0) / 1024)} KB)
-                              </a>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                    {/* RENDERIZADO SEGÚN TIPO DE CONTENIDO */}
+                    <RenderMensajeContenido mensaje={m} />
 
                     {/* REQUERIMIENTO CRÍTICO: Estado FALLIDO con motivo traducido */}
                     {esFallido && (
@@ -483,6 +476,75 @@ export default function ConversacionDetallePage({ params }: { params: Promise<{ 
             )}
           </footer>
         </>
+      )}
+    </div>
+  );
+}
+
+/** Componente auxiliar para renderizar todos los tipos de contenido de `@viajapro/contracts` */
+function RenderMensajeContenido({ mensaje: m }: { mensaje: TipoMensaje }) {
+  return (
+    <div className="space-y-1.5">
+      {/* Texto principal si existe */}
+      {m.texto && <p className="text-base whitespace-pre-wrap">{m.texto}</p>}
+
+      {/* Renderizado de adjuntos */}
+      {m.adjuntos.length > 0 && (
+        <div className="space-y-1 pt-1">
+          {m.adjuntos.map((adj) => (
+            <div key={adj.id} className="rounded border border-neutral-200 bg-white/80 p-2 text-xs">
+              {adj.tipo === 'IMAGEN' ? (
+                <div className="space-y-1">
+                  <img
+                    src={adj.url}
+                    alt={adj.nombreArchivo ?? 'Imagen adjunta'}
+                    className="max-h-48 rounded object-cover"
+                  />
+                  {adj.nombreArchivo && (
+                    <span className="text-[10px] text-neutral-400">{adj.nombreArchivo}</span>
+                  )}
+                </div>
+              ) : adj.tipo === 'AUDIO' ? (
+                <audio controls src={adj.url} className="h-8 w-full" />
+              ) : (
+                <a
+                  href={adj.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-acento-700 flex items-center gap-1 font-medium underline"
+                >
+                  📄 {adj.nombreArchivo ?? 'Archivo adjunto'} (
+                  {Math.round((adj.tamanoBytes ?? 0) / 1024)} KB)
+                </a>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Casos especiales de tipos de contenido Meta */}
+      {m.tipo === 'PLANTILLA' && (
+        <div className="rounded border border-neutral-300 bg-neutral-100 px-2 py-1 text-xs text-neutral-700">
+          <span className="font-semibold text-neutral-800">📋 Plantilla HSM</span>
+        </div>
+      )}
+
+      {m.tipo === 'UBICACION' && (
+        <div className="rounded border border-neutral-300 bg-neutral-100 px-2 py-1 text-xs text-neutral-700">
+          📍 <span className="font-medium">Ubicación compartida por el viajero</span>
+        </div>
+      )}
+
+      {m.tipo === 'CONTACTO' && (
+        <div className="rounded border border-neutral-300 bg-neutral-100 px-2 py-1 text-xs text-neutral-700">
+          🎴 <span className="font-medium">Tarjeta de contacto compartida</span>
+        </div>
+      )}
+
+      {m.tipo === 'NO_SOPORTADO' && (
+        <div className="rounded border border-neutral-300 bg-neutral-100 px-2 py-1 text-xs text-neutral-500 italic">
+          Mensaje de tipo no soportado en esta versión.
+        </div>
       )}
     </div>
   );
