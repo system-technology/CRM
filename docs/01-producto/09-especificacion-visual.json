@@ -1,0 +1,464 @@
+{
+  "_procedencia": "Entregada por el propietario el 2026-10-10 junto a docs/_assets/diseno/04-producto-completo.png. Es la referencia visual y de alcance de la interfaz. Los nombres, cifras y metricas de la imagen son ilustrativos, no datos reales ni decisiones comerciales.",
+  "project": {
+    "name": "ViajaPro",
+    "type": "CRM vertical para agencias de turismo",
+    "market": "Colombia",
+    "language": "es-CO",
+    "currency": "COP",
+    "product_promise": "Convierte conversaciones en viajes reales.",
+    "design_status": "Propuesta visual inicial; validar con agencias piloto antes de cerrar decisiones."
+  },
+  "design_goals": [
+    "Ayudar al asesor a responder rapido y vender mas, reduciendo la digitacion repetitiva.",
+    "Mantener WhatsApp como centro del trabajo; oportunidad, cotizacion y archivo de viaje accesibles desde la conversacion.",
+    "Mostrar de forma visible los estados que pueden costar dinero: SLA vencido, ventana de 24 horas, time limits y pagos pendientes.",
+    "Permitir que las acciones frecuentes se completen en tres clics o menos.",
+    "Equilibrar densidad de informacion de una herramienta de trabajo con una marca calida y aspiracional de turismo."
+  ],
+  "visual_direction": {
+    "style": "SaaS moderno, limpio, profesional, calido y orientado a productividad",
+    "palette": {
+      "brand_primary": "#2563EB",
+      "brand_primary_hover": "#1D4ED8",
+      "brand_soft": "#DBEAFE",
+      "success": "#16A34A",
+      "success_soft": "#DCFCE7",
+      "warning": "#D97706",
+      "warning_soft": "#FEF3C7",
+      "danger": "#DC2626",
+      "danger_soft": "#FEE2E2",
+      "info": "#0891B2",
+      "background": "#F8FAFC",
+      "surface": "#FFFFFF",
+      "surface_muted": "#F1F5F9",
+      "border": "#E2E8F0",
+      "text_primary": "#0F172A",
+      "text_secondary": "#475569",
+      "text_muted": "#64748B"
+    },
+    "color_note": "CONFLICTO ABIERTO: globals.css usa hoy un acento teal (#0d9488). Esta propuesta es azul. Decide el propietario; hasta entonces no se cambian los tokens.",
+    "typography": {
+      "direction": "Una familia sans-serif legible, escala de seis tamanos",
+      "recommended_stack": "Inter, ui-sans-serif, system-ui, sans-serif",
+      "numeric_style": "Cifras tabulares para precios, porcentajes y metricas"
+    },
+    "shape_and_depth": {
+      "corner_radius": "8-12 px en controles y tarjetas; evitar exceso de redondeo",
+      "shadows": "Sutiles, solo para separar capas",
+      "borders": "Lineas neutras y discretas"
+    },
+    "spacing": {
+      "base_unit": "4 px",
+      "dense_lists": "Espaciado compacto para ver mas conversaciones y filas",
+      "forms": "Espaciado medio para facilitar lectura y edicion"
+    },
+    "icons": "Iconografia lineal consistente; no mezclar estilos",
+    "imagery": "Fotografias de destinos solo donde ayuden a comparar paquetes o reconocer viajes; evitar decoracion que quite espacio al trabajo"
+  },
+  "layout": {
+    "desktop": {
+      "pattern": "Aplicacion con navegacion lateral, area de trabajo principal y panel contextual cuando aplique",
+      "sidebar": {
+        "width_px": 184,
+        "items": [
+          { "label": "Bandeja", "icon": "inbox" },
+          { "label": "Pipeline", "icon": "kanban" },
+          { "label": "Cotizador", "icon": "file-text" },
+          { "label": "Viajes", "icon": "briefcase-travel" },
+          { "label": "Contactos", "icon": "users" },
+          { "label": "Catalogo", "icon": "package" },
+          { "label": "Reportes", "icon": "chart-no-axes-combined" },
+          { "label": "Equipo", "icon": "user-round" },
+          { "label": "Configuracion", "icon": "settings" }
+        ],
+        "note": "Campanas no se muestra como modulo principal hasta resolver su alcance; si se incorpora, debe disenarse como reactivacion segmentada con consentimiento, no como difusion masiva."
+      },
+      "topbar": [
+        "Busqueda global",
+        "Notificaciones",
+        "Selector de tema claro/oscuro",
+        "Perfil de usuario"
+      ],
+      "content": "Area central con encabezado claro, accion primaria visible, filtros y contenido denso pero escaneable"
+    },
+    "mobile": {
+      "principle": "Responsive real; priorizar conversacion al abrir una conversacion",
+      "navigation": "Navegacion compacta y vistas separadas para lista, chat y panel de contacto; no comprimir las tres columnas del escritorio",
+      "minimum_test_width_px": 375,
+      "touch_targets": "Controles tactiles comodos, foco visible y acciones esenciales accesibles"
+    }
+  },
+  "screens": [
+    {
+      "id": "inbox",
+      "name": "Bandeja de conversaciones",
+      "priority": "P0",
+      "purpose": "Atender consultas de WhatsApp sin perder contexto ni oportunidades.",
+      "desktop_layout": "Tres zonas: lista de conversaciones, hilo del chat y panel contextual del contacto.",
+      "zones": [
+        {
+          "name": "Lista",
+          "content": [
+            "Filtros: Todas, Sin leer, Mis conversaciones, Vence SLA",
+            "Busqueda",
+            "Nombre y avatar",
+            "Ultimo mensaje",
+            "Hora",
+            "Contador de no leidos",
+            "Indicador de SLA"
+          ]
+        },
+        {
+          "name": "Chat",
+          "content": [
+            "Nombre del contacto",
+            "Estado de conexion/canal",
+            "Mensajes entrantes y salientes",
+            "Adjuntos y documentos",
+            "Compositor de mensaje",
+            "Plantillas cuando la ventana de 24 h este cerrada",
+            "Estado del mensaje: enviando, enviado, entregado, leido o error"
+          ]
+        },
+        {
+          "name": "Panel contextual",
+          "content": [
+            "Datos del contacto",
+            "Oportunidad vinculada",
+            "Cotizaciones",
+            "Archivos de viaje",
+            "Proxima tarea",
+            "Notas internas"
+          ]
+        }
+      ],
+      "primary_actions": [
+        "Responder",
+        "Asignar asesor",
+        "Crear oportunidad",
+        "Abrir cotizador",
+        "Enviar propuesta",
+        "Anadir nota interna"
+      ],
+      "ux_rules": [
+        "Cambiar de conversacion con un clic.",
+        "Mostrar claramente el vencimiento del SLA y la ventana de servicio.",
+        "Las notas internas nunca deben confundirse visualmente con mensajes enviados al viajero.",
+        "No abandonar el chat para crear una oportunidad o iniciar una cotizacion.",
+        "Optimismo en mensajeria: mostrar estado temporal del mensaje y recuperacion clara si falla."
+      ],
+      "empty_loading_error_states": {
+        "empty": "No hay conversaciones para estos filtros; ofrecer limpiar filtros o iniciar una conversacion permitida.",
+        "loading": "Mostrar esqueletos de lista y chat, no solo un spinner.",
+        "error": "Explicar que fallo y ofrecer reintentar; no borrar el texto escrito."
+      }
+    },
+    {
+      "id": "pipeline",
+      "name": "Pipeline de oportunidades",
+      "priority": "P0",
+      "purpose": "Ver el estado comercial y la siguiente accion de cada oportunidad.",
+      "views": ["Tablero por etapas", "Tabla compacta"],
+      "suggested_stages": ["Nuevo lead", "En cotizacion", "En negociacion", "Ganada", "Perdida"],
+      "card_fields": [
+        "Contacto/viajero",
+        "Destino o paquete",
+        "Valor estimado",
+        "Tiempo desde ultimo contacto",
+        "Proxima tarea",
+        "Asesor asignado"
+      ],
+      "actions": [
+        "Crear oportunidad",
+        "Mover de etapa",
+        "Abrir conversacion",
+        "Registrar siguiente tarea",
+        "Marcar ganada o perdida"
+      ],
+      "rules": [
+        "Permitir arrastrar tarjetas y ofrecer alternativa accesible por teclado.",
+        "Al marcar como perdida, exigir motivo de perdida.",
+        "No saturar las tarjetas con mas campos de los necesarios.",
+        "Mostrar alertas de seguimiento atrasado."
+      ]
+    },
+    {
+      "id": "quote_builder",
+      "name": "Cotizador de paquetes",
+      "priority": "P0",
+      "purpose": "Convertir una consulta en una propuesta clara y rentable.",
+      "initial_slice_scope": "Paquete de mayorista, fechas, composicion de pasajeros y precio; no cotizacion tramo a tramo en la primera rebanada.",
+      "steps": ["Elegir paquete", "Fechas", "Pasajeros", "Precio", "Vista previa"],
+      "quote_options": ["Economica", "Estandar", "Premium"],
+      "fields": [
+        "Destino",
+        "Paquete",
+        "Mayorista/proveedor",
+        "Fecha de salida y regreso",
+        "Adultos",
+        "Ninos y edades",
+        "Infantes",
+        "Acomodacion",
+        "Plan de alimentacion",
+        "Inclusiones",
+        "Costo neto",
+        "Markup o comision segun aplique",
+        "Precio de venta",
+        "Margen",
+        "Vigencia de la propuesta"
+      ],
+      "rules": [
+        "La tarifa neta es interna y nunca se muestra en la propuesta al cliente.",
+        "Mostrar margen al asesor mientras cotiza.",
+        "Calcular precio segun temporada, acomodacion y composicion de pasajeros.",
+        "No asumir que el precio por persona es fijo: la acomodacion puede cambiarlo.",
+        "Guardar una version inmutable de cada cotizacion enviada.",
+        "Previsualizar el PDF antes de enviarlo por WhatsApp.",
+        "La IA puede sugerir, pero un asesor revisa antes de enviar."
+      ],
+      "proposal_pdf": {
+        "branding": "Logo y color de acento de la agencia",
+        "content": [
+          "Nombre de la agencia",
+          "Destino y paquete",
+          "Fechas",
+          "Pasajeros",
+          "Inclusiones",
+          "Precio final",
+          "Vigencia",
+          "Condiciones relevantes"
+        ],
+        "exclude": ["Tarifa neta", "Markup interno", "Margen interno"]
+      },
+      "success_target": "De conversacion a propuesta enviada en menos de cinco minutos."
+    },
+    {
+      "id": "travel_file",
+      "name": "Archivo de viaje",
+      "priority": "P1",
+      "purpose": "Centralizar el expediente operativo desde la cotizacion aceptada.",
+      "sections": [
+        "Resumen",
+        "Pasajeros",
+        "Documentos",
+        "Reservas por proveedor",
+        "Pagos",
+        "Itinerario",
+        "Notas/bitacora"
+      ],
+      "summary_fields": [
+        "Titular",
+        "Destino",
+        "Fechas",
+        "Paquete",
+        "Estado",
+        "Pasajeros",
+        "Valor total",
+        "Pagado",
+        "Saldo pendiente"
+      ],
+      "alerts": [
+        "Time limit proximo a vencer",
+        "Pago pendiente",
+        "Documento faltante",
+        "Cambio o cancelacion"
+      ],
+      "rules": [
+        "Crear el archivo a partir de una cotizacion aceptada.",
+        "Distinguir el archivo de viaje completo de cada reserva individual con proveedor.",
+        "Proteger documentos personales con cifrado y acceso auditado.",
+        "Mostrar el estado que puede costar dinero sin obligar a abrir un submenu.",
+        "El archivo es principalmente de consulta: optimizar para encontrar informacion rapido."
+      ]
+    },
+    {
+      "id": "reports",
+      "name": "Reportes",
+      "priority": "P1",
+      "purpose": "Dar al dueno una lectura rapida de resultados y cuellos de botella.",
+      "kpis": [
+        {
+          "name": "Ventas",
+          "definition": "Valor vendido en el periodo seleccionado",
+          "note": "No confundir ventas con utilidad/margen"
+        },
+        {
+          "name": "Oportunidades",
+          "definition": "Cantidad de oportunidades creadas en el periodo"
+        },
+        {
+          "name": "Tasa de conversion",
+          "definition": "Oportunidades ganadas / oportunidades cerradas o cohorte definida; fijar definicion de producto"
+        },
+        {
+          "name": "Tiempo de respuesta",
+          "definition": "Tiempo entre entrada de consulta y primera respuesta humana"
+        },
+        {
+          "name": "Margen",
+          "definition": "Venta menos costo neto, por archivo; mostrar cuando haya datos confiables"
+        }
+      ],
+      "visualizations": [
+        "Ventas por mes",
+        "Ventas por destino",
+        "Conversion por etapa",
+        "Tiempo de respuesta por asesor"
+      ],
+      "rules": [
+        "Comparar contra el periodo anterior.",
+        "Usar pocas metricas, con definiciones visibles.",
+        "Separar vista operativa del asesor y vista gerencial del dueno.",
+        "No mostrar margen como dato fiable si faltan costos netos."
+      ]
+    },
+    {
+      "id": "catalog",
+      "name": "Catalogo de paquetes",
+      "priority": "P0",
+      "purpose": "Encontrar y mantener los paquetes de mayoristas que la agencia revende.",
+      "fields": [
+        "Nombre del paquete",
+        "Destino",
+        "Mayorista",
+        "Duracion",
+        "Inclusiones",
+        "Temporadas",
+        "Tarifa por tipo de pasajero",
+        "Acomodacion",
+        "Plan de alimentacion",
+        "Condiciones de ninos",
+        "Cupo/salida cuando aplique",
+        "Vigencia del tarifario"
+      ],
+      "rules": [
+        "La primera version prioriza paquetes prearmados de mayorista.",
+        "Permitir importar o registrar datos segun lo que revele el piloto; formato definitivo pendiente.",
+        "Diferenciar temporada alta, baja y puentes festivos cuando aplique.",
+        "Indicar vigencia de la tarifa y evitar cotizar silenciosamente con datos vencidos."
+      ]
+    },
+    {
+      "id": "contacts",
+      "name": "Contactos y viajeros",
+      "priority": "P0",
+      "purpose": "Conservar historial comercial y de viajes asociado a la persona correcta.",
+      "sections": [
+        "Datos de contacto",
+        "Historial de conversaciones",
+        "Oportunidades",
+        "Cotizaciones",
+        "Historial de viajes",
+        "Preferencias",
+        "Consentimientos"
+      ],
+      "rules": [
+        "Contacto, viajero y pasajero son conceptos distintos.",
+        "Guardar preferencias utiles para atencion y recompra.",
+        "Registrar consentimiento y finalidad para comunicaciones promocionales.",
+        "Limitar acceso a datos y documentos personales."
+      ]
+    },
+    {
+      "id": "settings_team",
+      "name": "Equipo y configuracion",
+      "priority": "P1",
+      "purpose": "Administrar usuarios, roles, etapas, SLA, plantillas y conexion de WhatsApp.",
+      "sections": [
+        "Miembros y roles",
+        "Etapas del pipeline",
+        "SLA",
+        "Plantillas de WhatsApp",
+        "Conexion de WhatsApp",
+        "Marca de la agencia",
+        "Preferencias de tema"
+      ],
+      "rules": [
+        "Permisos por rol y aislamiento de datos por agencia.",
+        "Mostrar estado de conexion e incidencias de WhatsApp.",
+        "No presentar funciones aun no disponibles como si ya operaran."
+      ]
+    }
+  ],
+  "interaction_patterns": {
+    "global_search": "Buscar contactos, conversaciones, oportunidades, cotizaciones y archivos de viaje.",
+    "notifications": [
+      "SLA vencido",
+      "Time limit proximo",
+      "Pago pendiente",
+      "Seguimiento atrasado",
+      "Error de envio"
+    ],
+    "keyboard": "Atajos para navegar y responder; foco visible y orden logico.",
+    "feedback": "Confirmacion clara para acciones completadas y mensajes accionables para errores.",
+    "forms": "Validacion junto al campo, conservar datos ante errores y evitar pedir dos veces informacion ya extraida del chat.",
+    "ai": {
+      "initial_use": "Extraer destino, fechas, pasajeros y presupuesto del mensaje; crear borrador de oportunidad.",
+      "other_uses": [
+        "Calificacion de lead con justificacion",
+        "Resumen de conversacion",
+        "Respuesta sugerida"
+      ],
+      "human_review": "En v1, ninguna salida de IA se envia al cliente sin revision humana."
+    }
+  },
+  "responsive_and_accessibility": {
+    "breakpoints_proposal_px": { "mobile_max": 767, "tablet_max": 1023, "desktop_min": 1024 },
+    "requirements": [
+      "Probar a 375 px de ancho.",
+      "Contraste WCAG AA.",
+      "Navegacion por teclado completa.",
+      "Foco visible.",
+      "No depender solo del color para indicar estado.",
+      "Etiquetas accesibles en iconos y botones.",
+      "Listas y formularios utilizables con zoom.",
+      "Estados vacios, de carga y error en cada pantalla."
+    ]
+  },
+  "design_tokens_implementation": {
+    "framework_reference": "Tailwind CSS + shadcn/ui, segun la documentacion del proyecto",
+    "component_library": "packages/ui",
+    "source_of_truth": "Tokens centralizados en packages/ui/src/tokens.css",
+    "rules": [
+      "No anadir otra libreria de componentes sin decision explicita.",
+      "La implementacion final debe reconciliar esta propuesta con los tokens del repositorio.",
+      "La imagen generada sirve como referencia visual, no como codigo de produccion.",
+      "No copiar HTML generado automaticamente directamente al repositorio.",
+      "Mantener tema claro y oscuro desde el inicio."
+    ]
+  },
+  "states_and_business_rules": {
+    "conversation_service_window_hours": 24,
+    "loss_reason_required": true,
+    "quote_versions_immutable_after_send": true,
+    "net_rate_visible_to_customer": false,
+    "human_approval_required_for_ai_outbound": true,
+    "travel_documents_encrypted_and_audited": true,
+    "campaigns_scope": "Pendiente; si se incluye, disenar para reactivacion segmentada con consentimiento verificable.",
+    "payments_first_slice": "Registro manual de anticipo y saldo; pasarela en una fase posterior segun alcance documentado."
+  },
+  "not_in_first_slice_or_pending": [
+    "Instagram, Messenger y correo en la bandeja",
+    "Bot autonomo que conversa y cierra ventas",
+    "Cotizador completo pieza por pieza",
+    "Integracion con GDS o disponibilidad de proveedores en tiempo real",
+    "Pasarela de pagos en la primera rebanada",
+    "Portal del viajero",
+    "Aplicacion movil nativa",
+    "Campanas masivas; alcance de reactivacion segmentada pendiente",
+    "Nombre comercial definitivo, precios y planes: no decididos"
+  ],
+  "validation_checklist": [
+    "La accion principal es la mas prominente.",
+    "Responder un mensaje requiere tres clics o menos.",
+    "La pantalla funciona a 375 px.",
+    "Se puede navegar por teclado con foco visible.",
+    "Contraste AA en tema claro y oscuro.",
+    "Estados vacio, cargando y error implementados.",
+    "Probada con 500 conversaciones, nombres largos y busquedas sin resultados.",
+    "SLA, ventana de 24 horas, time limits y pagos pendientes son visibles.",
+    "Un asesor nuevo entiende que hacer sin capacitacion extensa.",
+    "Validar flujo y lenguaje con una agencia piloto."
+  ]
+}

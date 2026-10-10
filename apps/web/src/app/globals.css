@@ -13,14 +13,19 @@
  */
 
 @theme {
-  /* Acento. Verde azulado: evoca el Caribe sin ser el azul por defecto de todo SaaS,
-     y tiene contraste AA sobre blanco en el tono 700. */
-  --color-acento-50: #f0fdfa;
-  --color-acento-100: #ccfbf1;
-  --color-acento-500: #14b8a6;
-  --color-acento-600: #0d9488;
-  --color-acento-700: #0f766e;
-  --color-acento-800: #115e59;
+  /* Acento. Azul, decidido por el propietario el 2026-10-10 al entregar la especificación
+     visual (docs/01-producto/09-especificacion-visual.json). Sustituye al verde azulado
+     anterior, que se eligió antes de que existiera esa referencia.
+
+     Contraste medido sobre blanco, no estimado:
+       600 → 5.17  ·  700 → 6.70  ·  800 → 8.72   (AA pide 4.5 para texto normal)
+       500 → 3.68  ·  NO vale para texto. Solo bordes, fondos y elementos no textuales. */
+  --color-acento-50: #eff6ff;
+  --color-acento-100: #dbeafe;
+  --color-acento-500: #3b82f6;
+  --color-acento-600: #2563eb;
+  --color-acento-700: #1d4ed8;
+  --color-acento-800: #1e40af;
 
   /* Semánticos con significado FIJO en todo el producto. No se usan por estética. */
   --color-ok-50: #f0fdf4; /* confirmado, pagado, dentro de plazo */
