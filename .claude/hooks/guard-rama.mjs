@@ -24,7 +24,12 @@
 
 import { readFileSync, existsSync, unlinkSync, statSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
-import { evaluar, RAMA_PROTEGIDA } from './lib/politica-rama.mjs';
+import {
+  directorioDelComando,
+  evaluar,
+  RAMA_PROTEGIDA,
+  rutaDeSistema,
+} from './lib/politica-rama.mjs';
 
 const MARCADOR = '.git/INTEGRACION-AUTORIZADA';
 const VIGENCIA_MS = 30 * 60 * 1000;
@@ -44,14 +49,32 @@ try {
 const comando = datos.tool_input?.command;
 if (typeof comando !== 'string') process.exit(0);
 
+// La rama se averigua en el directorio sobre el que ACTÚA el comando, no en el de la sesión.
+// Con un solo árbol de trabajo da igual; con worktrees —varias carpetas del mismo repositorio,
+// cada una en su rama— no, y falla en los dos sentidos. El peligroso es el falso negativo: si
+// la sesión está en una rama de trabajo y el comando entra con `cd` en un worktree que tiene
+// `main`, mirar la rama de la sesión deja pasar la escritura en la rama protegida.
+const directorio = rutaDeSistema(directorioDelComando(comando), process.platform === 'win32');
+
 let ramaActual;
 try {
   ramaActual = execFileSync('git', ['branch', '--show-current'], {
     encoding: 'utf8',
     timeout: 10_000,
+    ...(directorio ? { cwd: directorio } : {}),
   }).trim();
 } catch {
-  process.exit(0); // Sin repositorio git no hay nada que proteger.
+  // Si el `cd` apuntaba a algo que no es un repositorio, se reintenta en el de la sesión antes
+  // de rendirse: quedarse sin rama significa no proteger nada.
+  if (!directorio) process.exit(0);
+  try {
+    ramaActual = execFileSync('git', ['branch', '--show-current'], {
+      encoding: 'utf8',
+      timeout: 10_000,
+    }).trim();
+  } catch {
+    process.exit(0);
+  }
 }
 
 // Se pasa el comando CRUDO: la política lo tokeniza respetando comillas y heredocs.
