@@ -139,7 +139,9 @@ corresponde, definido en `.claude/agents/`.
 |---|---|
 | `arquitecto` | Diseño de sistema, ADRs, límites entre contextos |
 | `experto-turismo` | Validar que el modelo refleja cómo opera una agencia real |
-| **`director-de-producto`** | **Rumbo del producto y tablero.** Qué se construye y en qué orden, ceremonias, Jira. Ver §8.1 |
+| **`jefe-de-producto`** | Estrategia: mercado, competencia, modelo de cobro, precio. Horizonte de meses |
+| **`dueno-de-producto`** | Dueño de la cola. Qué se construye y en qué orden. Acepta o devuelve entregas |
+| **`facilitador`** | Ceremonias, bloqueos y tablero. Protege al equipo del alcance |
 | `analista-producto` | Historias de usuario, criterios de aceptación, alcance |
 | `backend` | Módulos NestJS, casos de uso, puertos y adaptadores |
 | `frontend` | Next.js, componentes, estados de UI |
@@ -165,13 +167,21 @@ Conviene no confundirlos, porque los tres pueden decir «no» y ninguno puede an
 
 | Quién | Decide |
 |---|---|
-| `director-de-producto` | **Qué** se construye y en qué orden |
+| `jefe-de-producto` | **Hacia dónde** va el producto, y cómo gana dinero |
+| `dueno-de-producto` | **Qué** se construye y en qué orden |
 | `arquitecto` | **Cómo** se construye |
 | `auditor-seguridad` | Si es **seguro** |
 | `integrador` | Si **entra en `main`** |
+| `facilitador` | Que el proceso **no mienta** |
 
-El `director-de-producto` no negocia el veredicto del `integrador` con argumentos de calendario, y
-el `integrador` no decide prioridades. Un «terminado» solo lo es cuando está integrado.
+Ninguno anula a otro. El `dueno-de-producto` no negocia el veredicto de una auditoría con
+argumentos de calendario; el `integrador` no decide prioridades; el `facilitador` no decide
+alcance, pero **sí defiende que se recorte el alcance antes que la verificación**.
+
+Los tres primeros están separados a propósito. Dueño y facilitador reunidos en uno solo eliminan
+la fricción que impide prometer de más — y esa fricción es justo lo que protege al equipo.
+
+Un «terminado» solo lo es cuando está integrado en `main`.
 
 ## 9. Cómo no perder el hilo
 
