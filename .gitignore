@@ -10,12 +10,12 @@ out/
 *.tsbuildinfo
 
 # Entorno
+# Un patron por extension deja fuera lo que no se nombro: el script de rotacion
+# dejaba un .env.bak con las credenciales ANTERIORES en claro, sin ignorar, y un
+# `git add -A` lo habria subido. Se ignora todo lo que empiece por .env salvo el
+# ejemplo. R6.
 .env
-.env.local
-.env.*.local
-# Respaldo que deja el rotador de roles: contiene las credenciales ANTERIORES,
-# que siguen siendo credenciales hasta que alguien las borre.
-.env.bak
+.env.*
 !.env.example
 
 # Logs

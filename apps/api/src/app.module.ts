@@ -1,11 +1,12 @@
 import { type MiddlewareConsumer, Module, type NestModule } from '@nestjs/common';
+import { InboxModule } from './modules/inbox/inbox.module.js';
 import { QuotingModule } from './modules/quoting/quoting.module.js';
 import { SaludController } from './salud.controller.js';
 import { SharedModule } from './shared/shared.module.js';
 import { TenantMiddleware } from './shared/tenant/tenant.middleware.js';
 
 @Module({
-  imports: [SharedModule, QuotingModule],
+  imports: [SharedModule, QuotingModule, InboxModule],
   controllers: [SaludController],
 })
 export class AppModule implements NestModule {
