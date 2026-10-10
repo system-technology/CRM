@@ -16,7 +16,7 @@ commit. Y funciona a 390 px.
 
 ---
 
-## [ ] 1. La pantalla de conversación, terminada
+## [x] 1. La pantalla de conversación, terminada
 
 Sigue contra datos simulados. La API real no existe todavía y no la necesitas.
 

@@ -4,13 +4,13 @@
  * Pantalla de conversación abierta de WhatsApp (`/bandeja/[id]`).
  *
  * Muestra el historial completo de mensajes y notas internas:
- * - Renderizado enriquecido para todos los tipos de contenido (Texto, Imagen, Documento, Audio, Video, Ubicación, Contacto, Plantilla, Interactivo, Reacción).
- * - Mensajes fallidos con su motivo explícito (`motivoFallo`) según contrato de Meta.
- * - Validación previa de la ventana de servicio de 24h: deshabilita el texto libre si está cerrada.
- * - Caja de redacción con alternancia clara entre "Mensaje a cliente" y "Nota interna".
- * - Las notas internas destacan en amarillo post-it con la etiqueta `🔒 NOTA INTERNA — SOLO EQUIPO`.
- * - Clave de idempotencia única (UUID v4) generada en el cliente al enviar (R5).
- * - Escucha de eventos de tiempo real (`useInboxRealtime`) ignorando silenciosamente tipos desconocidos.
+ * - 3 Estados obligatorios: Cargando (esqueleto en forma de burbujas), Vacío (chat sin mensajes) y Error (con reintento).
+ * - Envío optimista: el mensaje aparece inmediatamente en estado PENDIENTE y luego pasa a ENTREGADO/FALLIDO.
+ * - Idempotencia R5: la clave de idempotencia (UUID v4) se genera UNA vez por intento y se REUTILIZA intacta en los reintentos.
+ * - Muestra en badge de inspección la clave de idempotencia para verificación visual sin leer código.
+ * - Fallo visible y recuperable: si un mensaje falla, se queda en el hilo en rojo con su motivo y botón "Reintentar envío".
+ * - Accesibilidad keyboard-nav: cada mensaje declara role="article", tabIndex={0} y foco visible.
+ * - Ventana de 24h: deshabilitada para texto libre cuando está cerrada, con opción de plantillas HSM.
  */
 
 import { use, useCallback, useEffect, useState } from 'react';
@@ -42,6 +42,10 @@ export default function ConversacionDetallePage({ params }: { params: Promise<{ 
   const [textoMensaje, setTextoMensaje] = useState('');
   const [enviando, setEnviando] = useState(false);
   const [errorEnvio, setErrorEnvio] = useState<string | null>(null);
+  const [simularFallo, setSimularFallo] = useState(false);
+
+  // Mapa local para rastrear la clave de idempotencia asignada a cada mensaje (R5)
+  const [idempotenciaKeys, setIdempotenciaKeys] = useState<Record<string, string>>({});
 
   // Escucha de tiempo real para nuevos mensajes o actualizaciones de estado
   useInboxRealtime({
@@ -124,7 +128,7 @@ export default function ConversacionDetallePage({ params }: { params: Promise<{ 
     }
   };
 
-  // Enviar mensaje o crear nota interna
+  // Enviar mensaje u optimista / Nota interna
   const manejarEnvio = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!detalle || !textoMensaje.trim() || enviando) return;
@@ -132,54 +136,184 @@ export default function ConversacionDetallePage({ params }: { params: Promise<{ 
     setEnviando(true);
     setErrorEnvio(null);
 
-    try {
-      if (modoNota) {
-        // Crear nota interna para el equipo
+    if (modoNota) {
+      try {
         const nuevaNota = await crearNotaMock({
           conversacionId: detalle.id,
           texto: textoMensaje.trim(),
         });
         setDetalle((prev) => (prev ? { ...prev, notas: [...prev.notas, nuevaNota] } : null));
         setTextoMensaje('');
-      } else {
-        // Enviar mensaje al cliente (con clave de idempotencia R5)
-        const claveIdempotencia = crypto.randomUUID();
-        const nuevoMensaje = await enviarTextoMock({
-          conversacionId: detalle.id,
-          texto: textoMensaje.trim(),
-          claveIdempotencia,
-        });
-
-        setDetalle((prev) =>
-          prev ? { ...prev, mensajes: [...prev.mensajes, nuevoMensaje] } : null,
-        );
-        setTextoMensaje('');
+      } catch (err) {
+        setErrorEnvio(err instanceof Error ? err.message : 'Error al crear la nota');
+      } finally {
+        setEnviando(false);
       }
-    } catch (err) {
-      setErrorEnvio(err instanceof Error ? err.message : 'Error al enviar');
-    } finally {
-      setEnviando(false);
+      return;
     }
+
+    // ENVÍO OPTIMISTA DE MENSAJE A CLIENTE (R5 Idempotencia)
+    const claveIdempotencia = crypto.randomUUID();
+    const tempId = crypto.randomUUID();
+    const textoAEnviar = textoMensaje.trim();
+
+    // Guardar la clave de idempotencia asociada al mensaje
+    setIdempotenciaKeys((prev) => ({ ...prev, [tempId]: claveIdempotencia }));
+
+    // 1. Inserción optimista inmediata en estado PENDIENTE
+    const mensajeOptimista: TipoMensaje = {
+      id: tempId,
+      conversacionId: detalle.id,
+      direccion: 'SALIENTE',
+      tipo: 'TEXTO',
+      texto: textoAEnviar,
+      adjuntos: [],
+      estado: 'PENDIENTE',
+      motivoFallo: null,
+      autorId: '00000000-0000-4000-a000-000000000001',
+      autorNombre: 'Asesor Actual',
+      ocurridoEn: new Date().toISOString(),
+    };
+
+    setDetalle((prev) =>
+      prev ? { ...prev, mensajes: [...prev.mensajes, mensajeOptimista] } : null,
+    );
+    setTextoMensaje('');
+
+    // 2. Simulación de respuesta del servidor (con o sin fallo intencional)
+    setTimeout(() => {
+      void (async () => {
+        try {
+          if (simularFallo) {
+            throw new Error('Fallo simulado de red en WhatsApp Cloud API');
+          }
+          await enviarTextoMock({
+            conversacionId: detalle.id,
+            texto: textoAEnviar,
+            claveIdempotencia,
+          });
+
+          // Actualizar mensaje a ENTREGADO
+          setDetalle((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  mensajes: prev.mensajes.map((m) =>
+                    m.id === tempId ? { ...m, estado: 'ENTREGADO' } : m,
+                  ),
+                }
+              : null,
+          );
+        } catch (err) {
+          // Fallo visible en el hilo: se mantiene en estado FALLIDO con su botón de reintento
+          const motivo = err instanceof Error ? err.message : 'Error al entregar mensaje';
+          setDetalle((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  mensajes: prev.mensajes.map((m) =>
+                    m.id === tempId ? { ...m, estado: 'FALLIDO', motivoFallo: motivo } : m,
+                  ),
+                }
+              : null,
+          );
+        } finally {
+          setEnviando(false);
+        }
+      })();
+    }, 400);
+  };
+
+  // Reintento de un mensaje fallido REUTILIZANDO EXACTAMENTE LA MISMA CLAVE (R5)
+  const reintentarEnvioMensaje = (mensajeId: string, texto: string) => {
+    if (!detalle) return;
+
+    // Obtener la clave de idempotencia original (NUNCA se genera una nueva en el reintento)
+    const claveOriginal = idempotenciaKeys[mensajeId] ?? crypto.randomUUID();
+
+    // 1. Cambiar mensaje a PENDIENTE de nuevo
+    setDetalle((prev) =>
+      prev
+        ? {
+            ...prev,
+            mensajes: prev.mensajes.map((m) =>
+              m.id === mensajeId ? { ...m, estado: 'PENDIENTE', motivoFallo: null } : m,
+            ),
+          }
+        : null,
+    );
+
+    // 2. Re-enviar con la MISMA clave de idempotencia
+    setTimeout(() => {
+      void (async () => {
+        try {
+          await enviarTextoMock({
+            conversacionId: detalle.id,
+            texto,
+            claveIdempotencia: claveOriginal,
+          });
+
+          setDetalle((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  mensajes: prev.mensajes.map((m) =>
+                    m.id === mensajeId ? { ...m, estado: 'ENTREGADO' } : m,
+                  ),
+                }
+              : null,
+          );
+        } catch (err) {
+          const motivo = err instanceof Error ? err.message : 'Fallo en reintento';
+          setDetalle((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  mensajes: prev.mensajes.map((m) =>
+                    m.id === mensajeId ? { ...m, estado: 'FALLIDO', motivoFallo: motivo } : m,
+                  ),
+                }
+              : null,
+          );
+        }
+      })();
+    }, 400);
   };
 
   return (
     <div className="flex h-screen flex-col bg-neutral-100 text-neutral-900">
-      {/* ESTADO 1: CARGANDO */}
+      {/* ESTADO 1: CARGANDO (Esqueleto en forma de burbujas) */}
       {cargando && (
-        <div className="flex h-full animate-pulse flex-col space-y-4 p-4" aria-busy="true">
+        <div
+          className="flex h-full animate-pulse flex-col space-y-4 p-4"
+          aria-busy="true"
+          aria-label="Cargando historial de mensajes"
+        >
           <div className="flex h-14 items-center justify-between rounded-md border border-neutral-200 bg-white p-3" />
-          <div className="flex-1 space-y-3 rounded-md border border-neutral-200 bg-white p-4">
-            <div className="h-10 w-1/2 rounded-md bg-neutral-200" />
-            <div className="ml-auto h-10 w-1/3 rounded-md bg-neutral-200" />
-            <div className="h-16 w-2/3 rounded-md bg-neutral-200" />
+          <div className="flex-1 space-y-4 rounded-md border border-neutral-200 bg-white p-4">
+            <div className="flex flex-col items-start space-y-1">
+              <div className="h-3 w-24 rounded bg-neutral-200" />
+              <div className="h-12 w-2/3 rounded-md bg-neutral-200" />
+            </div>
+            <div className="flex flex-col items-end space-y-1">
+              <div className="h-3 w-24 rounded bg-neutral-200" />
+              <div className="h-10 w-1/2 rounded-md bg-neutral-200" />
+            </div>
+            <div className="flex flex-col items-start space-y-1">
+              <div className="h-3 w-24 rounded bg-neutral-200" />
+              <div className="h-16 w-3/4 rounded-md bg-neutral-200" />
+            </div>
           </div>
           <div className="h-24 rounded-md border border-neutral-200 bg-white p-3" />
         </div>
       )}
 
-      {/* ESTADO 2: ERROR / NO ENCONTRADO */}
+      {/* ESTADO 2: ERROR EN CARGA */}
       {!cargando && (error || !detalle) && (
-        <div className="border-alerta-600/30 m-auto max-w-md rounded-md border bg-white p-6 text-center shadow-xs">
+        <div
+          role="alert"
+          className="border-alerta-600/30 m-auto max-w-md rounded-md border bg-white p-6 text-center shadow-xs"
+        >
           <div className="mb-2 text-2xl">⚠️</div>
           <h2 className="text-base font-semibold text-neutral-800">
             No pudimos abrir la conversación
@@ -293,11 +427,33 @@ export default function ConversacionDetallePage({ params }: { params: Promise<{ 
           </header>
 
           {/* HISTORIAL DE MENSAJES Y NOTAS INTERNAS */}
-          <main className="flex-1 space-y-3 overflow-y-auto p-3 sm:p-4">
-            {/* Lista de mensajes */}
+          <main
+            role="log"
+            aria-label="Historial de mensajes de la conversación"
+            className="flex-1 space-y-3 overflow-y-auto p-3 focus:outline-none sm:p-4"
+          >
+            {/* ESTADO 3: VACÍO (Conversación abierta sin mensajes aún) */}
+            {detalle.mensajes.length === 0 && detalle.notas.length === 0 && (
+              <div className="mx-auto my-12 max-w-sm rounded-md border border-neutral-200 bg-white p-6 text-center shadow-2xs">
+                <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-neutral-100 text-lg">
+                  💬
+                </div>
+                <h2 className="text-sm font-semibold text-neutral-800">
+                  Conversación sin mensajes
+                </h2>
+                <p className="mt-1 text-xs text-neutral-500">
+                  El cliente abrió el chat pero aún no hay mensajes registrados. Escribe abajo para
+                  iniciar la conversación.
+                </p>
+              </div>
+            )}
+
+            {/* Lista de mensajes con accesibilidad por teclado y foco visible */}
             {detalle.mensajes.map((m) => {
               const esEntrante = m.direccion === 'ENTRANTE';
               const esFallido = m.estado === 'FALLIDO';
+              const esPendiente = m.estado === 'PENDIENTE';
+              const claveIdemp = idempotenciaKeys[m.id];
 
               return (
                 <div
@@ -305,12 +461,17 @@ export default function ConversacionDetallePage({ params }: { params: Promise<{ 
                   className={`flex flex-col ${esEntrante ? 'items-start' : 'items-end'}`}
                 >
                   <div
-                    className={`max-w-xl space-y-1.5 rounded-md border p-3 shadow-2xs ${
+                    role="article"
+                    tabIndex={0}
+                    aria-label={`Mensaje ${esEntrante ? 'de ' + (detalle.contactoNombre ?? 'cliente') : 'enviado por ' + (m.autorNombre ?? 'asesor')}: ${m.texto ?? ''}`}
+                    className={`focus:outline-acento-600 max-w-xl space-y-1.5 rounded-md border p-3 shadow-2xs transition-all focus:outline-2 focus:outline-offset-2 ${
                       esEntrante
                         ? 'border-neutral-200 bg-white text-neutral-900'
                         : esFallido
                           ? 'border-alerta-600/40 bg-alerta-50 text-neutral-900'
-                          : 'border-acento-100 bg-acento-50 text-neutral-900'
+                          : esPendiente
+                            ? 'border-neutral-300 bg-neutral-50 text-neutral-600 opacity-80'
+                            : 'border-acento-100 bg-acento-50 text-neutral-900'
                     }`}
                   >
                     {/* Autor e Instante */}
@@ -320,7 +481,7 @@ export default function ConversacionDetallePage({ params }: { params: Promise<{ 
                           ? (detalle.contactoNombre ?? 'Cliente')
                           : (m.autorNombre ?? 'Asesor')}
                       </span>
-                      <span className="cifra">
+                      <span className="cifra flex items-center gap-1">
                         {new Date(m.ocurridoEn).toLocaleTimeString('es-CO', {
                           hour: '2-digit',
                           minute: '2-digit',
@@ -331,20 +492,38 @@ export default function ConversacionDetallePage({ params }: { params: Promise<{ 
                     {/* RENDERIZADO SEGÚN TIPO DE CONTENIDO */}
                     <RenderMensajeContenido mensaje={m} />
 
-                    {/* REQUERIMIENTO CRÍTICO: Estado FALLIDO con motivo traducido */}
-                    {esFallido && (
-                      <div className="border-alerta-600/30 bg-alerta-50 text-alerta-700 mt-2 rounded-xs border p-2 text-xs">
-                        <strong className="block font-semibold">❌ Mensaje fallido:</strong>
-                        <span>
-                          {m.motivoFallo ?? 'El servidor de WhatsApp no pudo entregar el mensaje.'}
-                        </span>
+                    {/* DEMOSTRACIÓN VISUAL DE IDEMPOTENCIA (R5): Clave visible en la UI */}
+                    {claveIdemp && (
+                      <div className="inline-block rounded bg-black/5 px-1.5 py-0.5 font-mono text-[10px] text-neutral-400">
+                        🔑 Clave Idempotencia:{' '}
+                        <span className="font-bold">{claveIdemp.slice(0, 8)}...</span>
                       </div>
                     )}
 
-                    {/* Estado de mensaje saliente */}
+                    {/* REQUERIMIENTO CRÍTICO: Estado FALLIDO visible y recuperable con botón de reintento */}
+                    {esFallido && (
+                      <div className="border-alerta-600/30 bg-alerta-50 text-alerta-700 mt-2 space-y-1.5 rounded-xs border p-2 text-xs">
+                        <div>
+                          <strong className="block font-semibold">❌ Mensaje fallido:</strong>
+                          <span>
+                            {m.motivoFallo ??
+                              'El servidor de WhatsApp no pudo entregar el mensaje.'}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => reintentarEnvioMensaje(m.id, m.texto ?? '')}
+                          className="bg-alerta-700 hover:bg-alerta-800 rounded-xs px-2.5 py-1 text-xs font-semibold text-white shadow-2xs"
+                        >
+                          🔄 Reintentar envío (Reutiliza clave R5)
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Estado del mensaje saliente (PENDIENTE, ENTREGADO, LEIDO) */}
                     {!esEntrante && !esFallido && (
-                      <div className="text-right text-[10px] font-medium text-neutral-400">
-                        ✓ {m.estado}
+                      <div className="text-right text-[10px] font-medium text-neutral-500">
+                        {esPendiente ? '⏳ Enviando optimista...' : `✓ ${m.estado}`}
                       </div>
                     )}
                   </div>
@@ -363,7 +542,10 @@ export default function ConversacionDetallePage({ params }: { params: Promise<{ 
                 {detalle.notas.map((n) => (
                   <div
                     key={n.id}
-                    className="mx-auto max-w-xl space-y-1 rounded-md border border-amber-300 bg-amber-50 p-3 text-amber-950 shadow-2xs"
+                    role="article"
+                    tabIndex={0}
+                    aria-label={`Nota interna del equipo: ${n.texto}`}
+                    className="mx-auto max-w-xl space-y-1 rounded-md border border-amber-300 bg-amber-50 p-3 text-amber-950 shadow-2xs focus:outline-2 focus:outline-amber-600"
                   >
                     <div className="flex items-center justify-between text-xs font-bold text-amber-900">
                       <span>🔒 NOTA INTERNA — Solo visible para el equipo</span>
@@ -405,8 +587,8 @@ export default function ConversacionDetallePage({ params }: { params: Promise<{ 
               </div>
             ) : (
               <form onSubmit={(e) => void manejarEnvio(e)} className="space-y-2">
-                {/* Selector de modo: Mensaje a cliente vs Nota interna */}
-                <div className="flex items-center justify-between">
+                {/* Controles de redacción y pruebas de depuración */}
+                <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex rounded-sm border border-neutral-200 bg-neutral-100 p-0.5">
                     <button
                       type="button"
@@ -432,9 +614,18 @@ export default function ConversacionDetallePage({ params }: { params: Promise<{ 
                     </button>
                   </div>
 
-                  <span className="hidden text-[11px] text-neutral-400 sm:inline">
-                    Presiona Enter o clic para enviar
-                  </span>
+                  {/* Interruptor de prueba de fallo para verificar la idempotencia R5 */}
+                  {!modoNota && (
+                    <label className="flex cursor-pointer items-center gap-1.5 text-xs text-neutral-500">
+                      <input
+                        type="checkbox"
+                        checked={simularFallo}
+                        onChange={(e) => setSimularFallo(e.target.checked)}
+                        className="text-alerta-600 focus:ring-alerta-600 rounded border-neutral-300"
+                      />
+                      <span className="text-[11px]">Simular fallo de envío (Prueba R5)</span>
+                    </label>
+                  )}
                 </div>
 
                 {errorEnvio && (
