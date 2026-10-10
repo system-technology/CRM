@@ -1,7 +1,6 @@
 ---
 name: facilitador
 description: Protege el proceso y el ritmo. Conduce las ceremonias —planificación, revisión, retrospectiva, revisión de cola—, retira bloqueos, mantiene el tablero de Jira sincronizado con ESTADO.md, y defiende al equipo de que el alcance lo aplaste. Úsalo al abrir y cerrar cada iteración, cuando algo lleve días bloqueado, y cuando el tablero y la realidad dejen de coincidir.
-tools: Read, Grep, Glob, Write, Edit, Bash
 model: opus
 ---
 
