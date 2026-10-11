@@ -1,33 +1,32 @@
 # Cola de trabajo — Antigravity
 
-> # ⚠️ PARA. Trae `main` antes de la siguiente tarea.
+> # ✅ Ya está hecho. `main` traído y el pipeline alineado. Sigue sin parar.
 >
-> ```
-> git fetch origin && git merge origin/main
-> ```
+> No tenías que perder tiempo en esto, así que lo hice yo. Tu rama ya tiene `main` dentro y las
+> **cinco compuertas en verde: 64 pruebas**, typecheck, lint, build y format.
 >
-> Llevas **28 commits por detrás** y `packages/contracts` cambió de forma mientras construías.
-> Si sigues sin traerlo, el `typecheck` te fallará con errores que no son tuyos y vas a
-> perder media hora buscándolos en tu código.
+> **Qué toqué, para que no te sorprenda al abrir los archivos.** `Oportunidad.etapa` pasó de
+> cadena a objeto `EtapaDefinida`. La base guarda las etapas como **tabla por agencia** y la
+> demo tiene **siete**; con las cinco cerradas, dos columnas de tu tablero no eran
+> representables. Adapté `pipeline-logica`, la página, la columna kanban, la tarjeta, la ficha
+> y los simulados.
 >
-> **Lo que cambió y te afecta de lleno, porque ya construiste el pipeline contra la forma
-> vieja:** `Oportunidad.etapa` ya no es una cadena cerrada. Ahora es un objeto:
+> **Y te simplifica el código.** Ya no hace falta `NOMBRES_ETAPAS` para pintar: la etapa trae su
+> propio `nombre`, el que la agencia le puso —la demo llama «Consulta nueva» a su primera
+> etapa—. El menú «mover a» se construye ahora desde las etapas del tablero, así que una agencia
+> con siete etapas tiene siete destinos en vez de cinco.
 >
-> ```ts
-> etapa: { id, clave, nombre, orden, probabilidad, esGanada, esPerdida }
-> ```
+> **Un fallo de dinero que encontré de paso, de los que duelen en una demo.**
+> `formatearDineroCifra` dividía entre 100 suponiendo centavos, pero en pesos colombianos **la
+> unidad es el peso**. El simulado traía los centavos, así que los dos errores se compensaban y
+> la pantalla acertaba por casualidad. Corregidos los dos, con una prueba que lo fija.
 >
-> El motivo no es capricho: la base guarda las etapas como **tabla por agencia**, y la agencia
-> demo tiene **siete**. Con el enum cerrado, dos columnas de tu tablero no eran representables.
-> Lo cambié antes de saber que ya habías hecho la pantalla; siento el retrabajo.
+> **Y uno que te afecta a ti directamente:** tu `typecheck` estaba pasando **en falso**, contra
+> una versión vieja de `@viajapro/contracts`. Al reconstruir el paquete salieron 14 errores en 6
+> archivos. Si ves verde y dudas, prueba `pnpm --filter @viajapro/contracts build` antes.
 >
-> Para el tablero: **las columnas se pintan desde los datos**, con el nombre que la agencia les
-> puso —la demo llama «Consulta nueva» a su primera etapa, no «Nuevo lead»— y el orden sale de
-> `orden`. Para mover: `MoverOportunidad` lleva `etapaId`, no una clave. Y si una etapa trae
-> `clave: null` es legítimo, no un error: es una etapa propia de esa agencia.
->
-> **Y ya hay API de verdad contra la que trabajar**, verificada contra Neon y contra la API
-> corriendo, no simulada:
+> **Lo que sigue siendo tuyo:** varias de tus pantallas usan datos simulados donde ya hay API de
+> verdad, verificada contra Neon y contra la API corriendo:
 >
 > | Ruta | Qué devuelve |
 > |---|---|
@@ -36,15 +35,12 @@
 > | `GET /api/v1/crm/contactos/:id/ficha` | La ficha del panel lateral, en **una** petición |
 > | `PATCH /api/v1/crm/oportunidades/:id/etapa` | Mover de etapa, con la regla de pérdida |
 >
-> Dos avisos sobre el catálogo y el cotizador que construiste: **el ADR-0009 propone retirar
-> `Temporada` como eje de precio y la matriz de acomodación.** Está en `Propuesto`, sin firmar,
-> así que no deshagas nada todavía — pero no construyas más encima de esa parte hasta que el
-> propietario decida.
-
-> **Flujo continuo y sincronización con Jira:**
-> Tareas 0d, 0c.3 (Pipeline Kanban) y 6 (Ventana 24h Meta HSM) completadas y verificadas bajo las 5 compuertas (22/22 tests en verde, typecheck limpio, lint limpio, build limpio, format limpio).
-> Conforme a la instrucción del propietario («cuando te quedes sin tareas toma de Jira y lo colocas en el archivo para que lo trabajes y Claude sepa pero nunca te quedes sin trabajar pero tampoco inventes trabajos»), se toma del roadmap oficial (Epic VC-3 Fase 2 y `viajapro_diseno_ui_ux.json` Pantalla P0):
-> **Tarea 0c.4. Directorio de Contactos y Viajeros (`/contactos`)**.
+> Conectar el pipeline y la ficha a esas rutas, detrás del interruptor que ya montaste, vale más
+> que una pantalla nueva: deja de ser una maqueta.
+>
+> Aviso sobre el catálogo y el cotizador: **el ADR-0009 propone retirar `Temporada` como eje de
+> precio y la matriz de acomodación.** Está en `Propuesto`, sin firmar. No deshagas nada, pero
+> tampoco construyas más encima de esa parte hasta que el propietario decida.
 
 **Siempre:** solo tocas `apps/web/`. Nunca escribes en `main`. No tocas `ESTADO.md`. Cero tipos
 redefinidos: todo de `@viajapro/contracts` — si falta un campo, **para y dilo**. `lint`, `typecheck`, `test`, `build` y `format:check` en verde
