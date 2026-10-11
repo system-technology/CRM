@@ -226,3 +226,14 @@ haya salida de peticiones reales contra la API corriendo o una prueba que monte 
 |---|---|---|
 | No existe ninguna prueba que arranque el `AppModule` real. El riesgo no es del CRM: es de cualquier módulo futuro. Hace falta un `*.e2e-spec.ts` que monte la aplicación aunque sea con la base de pruebas | `qa` | Para `feat/crm-api` **sí bloquea**; como deuda transversal del resto de módulos, va a la cola |
 | La regla «perdida exige motivo» se mudó del esquema al caso de uso al pasar la etapa a id. Está aislada en función pura y verificada por mutación, pero ahora la base **ya no la impone**: una escritura que no pase por el caso de uso puede dejar una oportunidad perdida sin motivo | `datos` | Hoy no hay otra ruta de escritura; cuando la haya, toca `CHECK` o disparador |
+
+## Integración del 2026-10-11 (cierre) — v0.16.0
+
+`feat/crm-api` **integrada** (`6c843b0`, `v0.16.0`): el módulo `crm` de la API con la primera
+prueba que arranca el `AppModule` ensamblado contra Neon. api `112 passed`, aislamiento
+**39/39**. Las cinco ramas del día quedaron integradas.
+
+| Cola nueva | Dueño | Por qué no bloqueó |
+|---|---|---|
+| **La prueba del `AppModule` certifica el montaje bajo el runtime de vitest, no bajo el del servidor.** Quitar el `@Inject` explícito del controlador del webhook —el defecto del 2026-10-11 por la mañana— no la pone en rojo: vitest transpila con metadatos de decorador y `tsx` no. Falta ejecutar la aplicación como se ejecuta de verdad: `pnpm build` y arrancar el `dist` | `devops` | El límite está declarado en la cabecera del propio archivo de prueba, así que nadie puede leer la red como más ancha de lo que es. El `@Inject` explícito sigue siendo obligatorio **por convención, no por compuerta** |
+| `apps/api` corre con `vitest run --passWithNoTests`. Si el `include` se rompiera otra vez, la suite pasaría con cero pruebas en vez de avisar. Conviene un umbral mínimo de pruebas o quitar la bandera | `qa` | Hoy el `include` es explícito y la cuenta es visible (112) |
