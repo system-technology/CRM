@@ -1,9 +1,9 @@
 # Cola de trabajo — Antigravity
 
 > **Flujo continuo y sincronización con Jira:**
-> Tarea 0d completada y verificada bajo las 5 compuertas (test 9/9 en verde, typecheck limpio, lint limpio, build limpio, format limpio).
-> Conforme a la instrucción del propietario («cuando te quedes sin tareas toma de Jira y lo colocas en el archivo para que lo trabajes y Claude sepa pero nunca te quedes sin trabajar pero tampoco inventes trabajos»), se toma de Jira (Epic VC-3 / Fase 2 — CRM y pipeline) y de `COLA-DESPUES.md §0c.3` la siguiente pantalla oficial del roadmap:
-> **Pantalla de Pipeline de Oportunidades (`/pipeline`) — Tablero Kanban**.
+> Tareas 0d y 0c.3 (Pipeline Kanban) completadas y verificadas bajo las 5 compuertas (16/16 tests en verde, typecheck limpio, lint limpio, build limpio, format limpio).
+> Conforme a la instrucción del propietario («cuando te quedes sin tareas toma de Jira y lo colocas en el archivo para que lo trabajes y Claude sepa pero nunca te quedes sin trabajar pero tampoco inventes trabajos»), se toma de Jira (VC-13 / Bandeja de conversaciones) y de `COLA-DESPUES.md §6`:
+> **Tarea 6. La ventana de 24 horas, de verdad (Plantillas Meta HSM y Restricción Estricta)**.
 
 **Siempre:** solo tocas `apps/web/`. Nunca escribes en `main`. No tocas `ESTADO.md`. Cero tipos
 redefinidos: todo de `@viajapro/contracts` — si falta un campo, **para y dilo**. `lint`, `typecheck`, `test`, `build` y `format:check` en verde
@@ -11,6 +11,31 @@ redefinidos: todo de `@viajapro/contracts` — si falta un campo, **para y dilo*
 
 ---
 
+## [x] 6. La ventana de 24 horas, de verdad
+
+Origen: Jira (VC-13) · `COLA-DESPUES.md §6` · `packages/contracts/src/plantillas.ts` (`PlantillaWhatsApp`, `EnviarPlantilla`, `PlantillasDisponibles`).
+
+**Objetivo:** Transformar el estado «24h Cerrada» de una etiqueta pasiva a una restricción activa del producto con soporte completo para plantillas aprobadas por Meta.
+
+**Invariantes y criterios:**
+1. **Restricción estricta:** Con la ventana cerrada, el campo de texto libre se deshabilita y se activa el selector de plantillas.
+2. **Aviso preventivo (<2h):** Mostrar claramente cuánto falta cuando quedan menos de 2 horas (tiempo decisivo para que el asesor escriba antes del cierre).
+3. **Preservación de borrador:** Si la ventana se cierra mientras hay un texto escrito, no se pierde; se avisa y se permite reutilizarlo.
+4. **Cero tipos redefinidos (R3):** Utilizar `PlantillaWhatsApp`, `EnviarPlantilla` y `PlantillasDisponibles` de `@viajapro/contracts`.
+5. **Formulario de variables interactivo:** Permitir rellenar `{{1}}`, `{{2}}`... validando que ningún hueco quede vacío antes de enviar (`EnviarPlantilla.superRefine`).
+6. **Idempotencia (R5):** Generación de `claveIdempotencia` UUID v4 en cada envío.
+7. **Compuertas:** `test`, `typecheck`, `lint`, `build` y `format:check` en verde.
+- **Completado y verificado al 100%:**
+  - **Restricción estricta:** Con la ventana cerrada, el redactor de texto libre se bloquea completamente con icono de candado y aviso de políticas de Meta.
+  - **Aviso preventivo (<2h):** Banner ámbar visible en la parte superior del chat cuando quedan menos de 120 minutos, alertando al asesor para responder antes del cierre.
+  - **Preservación de borrador:** Si el asesor tenía texto escrito al momento de vencer la ventana o abrir el selector, el borrador se conserva y se muestra en el modal como referencia.
+  - **Cero tipos redefinidos (R3):** Uso estricto de `PlantillaWhatsApp`, `EnviarPlantilla` y `PlantillasDisponibles` de `@viajapro/contracts`.
+  - **Formulario de variables interactivo:** Formulario dinámico para variables `{{1}}`, `{{2}}`... con validación Zod (`EnviarPlantilla.superRefine`) que impide enviar huecos vacíos.
+  - **Idempotencia (R5):** Clave UUID v4 única generada para cada intento de envío.
+  - **Pruebas automáticas (6/6 en `plantillas-logica.spec.ts`):** 22/22 pruebas totales en verde en Vitest.
+
+
+---
 ## [x] 0c.3. Pantalla de Pipeline de Oportunidades (`/pipeline`)
 
 Origen: Jira (Epic VC-3 / Fase 2 — CRM y pipeline) · `COLA-DESPUES.md §0c.3` · `viajapro_diseno_ui_ux.json` (Pantalla 2) · Contratos en `@viajapro/contracts` (`TableroPipeline`, `ColumnaPipeline`, `Oportunidad`, `MoverOportunidad`, `EtapaPipeline`).

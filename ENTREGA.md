@@ -1,43 +1,40 @@
-# ENTREGA.md — Tareas 0d y 0c.3 (Pipeline de Oportunidades /pipeline) y Sincronización Jira
+# ENTREGA.md — Tareas 0d, 0c.3 (Pipeline Kanban) y 6 (Ventana 24h Meta HSM) y Sincronización Jira
 
-## 1. Entrega de Tarea 0c.3: Pantalla de Pipeline de Oportunidades (`/pipeline`)
+## 1. Entrega de Tarea 6: La Ventana de 24 Horas, de Verdad (Meta HSM)
 
-Tomada directamente del roadmap oficial (Jira Epic VC-3 Fase 2, `COLA-DESPUES.md §0c.3` y `viajapro_diseno_ui_ux.json`) para garantizar el trabajo continuo sin detener el desarrollo.
+Se transformó el estado pasivo de la ventana de servicio de Meta en una restricción activa del producto con soporte integral de plantillas HSM según los esquemas oficiales de `@viajapro/contracts`.
 
-### Implementación y Componentes Construidos:
-1. **Ruta y Armazón (`apps/web/src/app/pipeline/page.tsx`):**
-   - Integrada en el armazón de la aplicación con la `BarraModulos` a la izquierda (acceso activo a `/pipeline` e icono Kanban).
-   - Cabecera con estadísticas en tiempo real (oportunidades activas, ganadas y perdidas).
-   - Barra de herramientas con buscador predictivo por cliente, destino o título, selector de asesor asignado y conmutador de vistas duales: **Tablero Kanban** y **Tabla compacta**.
-2. **Tablero y Columnas (`apps/web/src/components/pipeline/columna-kanban.tsx`):**
-   - 5 etapas de negocio: `NUEVO_LEAD`, `EN_COTIZACION`, `EN_NEGOCIACION`, `GANADA`, `PERDIDA`.
-   - **Invariante 1 — Totales de servidor:** Cada columna muestra su cantidad de tarjetas y el `valorTotal` monetario denormalizado provisto por el servidor en formato `.cifra` ($18.5M, $28.3M, $23.5M, $16.2M, $8.9M). No se recalcula sumando tarjetas visibles en el cliente.
-   - Zona de drop para drag-and-drop con indicador visual punteado.
-3. **Tarjetas de Oportunidad (`apps/web/src/components/pipeline/tarjeta-oportunidad.tsx`):**
-   - Nombre de cliente y avatar determinista, destino con icono de mapa, título, valor estimado en clase `.cifra`, probabilidad (badge según nivel), tiempo relativo desde el último contacto y asesor asignado.
-   - **Alertas de Próxima Tarea:** Detección de tareas atrasadas con icono de alerta rojo y fecha de vencimiento resaltada.
-   - **Invariante 2 — Alternativa accesible por teclado:** Menú contextual desplegable («Mover a...») con navegación por flechas para trasladar la oportunidad a cualquier otra etapa sin requerir ratón.
-   - Enlace directo al chat de WhatsApp del cliente (`/bandeja`).
-4. **Modal de Pérdida Obligatorio (`apps/web/src/components/pipeline/modal-motivo-perdida.tsx`):**
-   - **Invariante 3 — Regla de Contrato R3:** Soltar o mover una tarjeta a `PERDIDA` detiene la operación y abre un diálogo modal accesible que exige seleccionar el motivo (`PRECIO`, `TIEMPO_DE_RESPUESTA`, `SIN_DISPONIBILIDAD`, `COMPRO_EN_OTRA_AGENCIA`, `VIAJE_APLAZADO`, `NO_RESPONDE`, `OTRO`).
-   - Si se selecciona `OTRO`, el campo de texto es estrictamente obligatorio según el refinamiento `exigirMotivoDePerdida` del esquema Zod.
-5. **Lógica Pura y Simulador (`apps/web/src/lib/pipeline-logica.ts` y `mock-pipeline.ts`):**
-   - Función inmutable `moverOportunidadEnTablero`.
-   - Formateador de moneda segura y cálculo de tareas vencidas.
-   - Fuente de datos simulada conforme al esquema `TableroPipeline` de `@viajapro/contracts`.
+### Implementación Realizada:
+1. **Restricción Estricta al Cierre de Ventana (`apps/web/src/app/bandeja/[id]/page.tsx`):**
+   - Cuando la ventana está cerrada (`!detalle.ventana.abierta`), el redactor de texto libre queda deshabilitado y se muestra un panel con candado explicando la política de Meta.
+   - El botón «Seleccionar plantilla aprobada» abre el modal especializado.
+2. **Aviso Preventivo (<2 horas):**
+   - Banner ámbar visible al tope del chat cuando restan menos de 120 minutos: `⚠️ Ventana de Meta por cerrar: quedan X min. Envía tu respuesta ahora o la reapertura exigirá una plantilla aprobada.`
+3. **Preservación de Borrador:**
+   - Si el asesor tenía texto escrito al momento del vencimiento o al abrir el modal, el borrador se preserva como `borradorPrevio` y se muestra dentro del modal como referencia para no perder el trabajo.
+4. **Selector y Formulario de Plantillas (`apps/web/src/components/bandeja/modal-plantillas.tsx`):**
+   - Utiliza exclusivamente los contratos `PlantillaWhatsApp`, `EnviarPlantilla` y `PlantillasDisponibles` (R3). Cero tipos locales redefinidos.
+   - Presenta las plantillas con sus categorías (`UTILIDAD` y `MARKETING`) y sus estados en Meta (`APROBADA`, `PAUSADA`, `RECHAZADA`).
+   - Las plantillas no aprobadas aparecen deshabilitadas con el motivo exacto registrado por Meta (ej. pausada por quejas de spam).
+   - Formulario interactivo para rellenar variables `{{1}}`, `{{2}}`... con marcadores de posición basados en ejemplos.
+   - Vista previa en tiempo real del texto final interpolado antes de despachar.
+   - Validación Zod estricta (`EnviarPlantilla.superRefine`): rechaza el envío si algún hueco queda vacío o en blanco.
+   - Generación criptográfica de UUID v4 para la clave de idempotencia (R5).
+5. **Simulador y Lógica Pura (`apps/web/src/lib/mock-plantillas.ts` y `plantillas-logica.ts`):**
+   - Catálogo de plantillas pre-registradas conforme al contrato.
+   - Funciones puras de interpolación y cálculo de tiempo restante.
 
 ---
 
-## 2. Pruebas Automáticas y Verificación por Mutación (`pipeline-logica.spec.ts`)
+## 2. Pruebas Automáticas y Calidad (22/22 Pruebas en Verde)
 
-7 pruebas unitarias nuevas añadidas en `apps/web/src/lib/pipeline-logica.spec.ts` (16/16 pruebas pasando en total):
-- **Prueba 1:** Mover a `PERDIDA` sin motivo es rechazado por Zod (`exigirMotivoDePerdida`).
-- **Prueba 2:** Mover a `PERDIDA` con motivo `OTRO` sin nota de explicación es rechazado por Zod.
-- **Prueba 3:** Mover a `PERDIDA` con motivo válido (ej. `PRECIO`) pasa con éxito.
-- **Prueba 4:** Asignar `motivoPerdida` a etapas no perdidas (ej. `GANADA`) es rechazado por Zod.
-- **Prueba 5:** `moverOportunidadEnTablero` traslada la tarjeta a la columna destino inmutablemente.
-- **Prueba 6:** El `valorTotal` monetario de la columna se preserva del servidor y no se recalcula en cliente.
-- **Prueba 7:** `esTareaAtrasada` detecta vencimientos en el pasado.
+Se añadieron 6 pruebas unitarias nuevas en `apps/web/src/lib/plantillas-logica.spec.ts`:
+- **Prueba 1:** Interpolación correcta de marcadores `{{1}}` y `{{2}}`.
+- **Prueba 2:** Rechazo estricto de variables vacías o con espacios en blanco por Zod (`superRefine`).
+- **Prueba 3:** Validación exitosa con variables completas y clave UUID v4 (R5).
+- **Prueba 4:** Detección de ventana urgente (<2h / <=120 min).
+- **Prueba 5:** Detección de ventana cerrada en fechas expiradas.
+- **Prueba 6:** Catálogo simulado incluye plantillas aprobadas y pausadas con sus motivos.
 
 ---
 
@@ -46,7 +43,7 @@ Tomada directamente del roadmap oficial (Jira Epic VC-3 Fase 2, `COLA-DESPUES.md
 1. **Pruebas (Vitest):**
    ```bash
    npx pnpm --filter @viajapro/web test
-   # Result: 3 passed (3), 16 passed (16)
+   # Result: 4 passed (4 suites), 22 passed (22 tests)
    ```
 2. **Tipos (TypeScript):**
    ```bash
@@ -61,7 +58,7 @@ Tomada directamente del roadmap oficial (Jira Epic VC-3 Fase 2, `COLA-DESPUES.md
 4. **Construcción (Next.js):**
    ```bash
    npx pnpm --filter @viajapro/web build
-   # Result: ✓ Compiled successfully in 3.8s, 8 static routes (/pipeline 10.4 kB)
+   # Result: ✓ Compiled successfully in 3.8s, 8 static routes (/bandeja/[id] a 13.8 kB)
    ```
 5. **Formato (Prettier):**
    ```bash
@@ -71,7 +68,7 @@ Tomada directamente del roadmap oficial (Jira Epic VC-3 Fase 2, `COLA-DESPUES.md
 
 ---
 
-## 4. Sincronización Jira Cloud (VC-13 y Epic VC-3)
+## 4. Sincronización Jira Cloud (VC-13 y VC-3)
 
-- Comentarios y estado registrados en Jira Cloud con evidencia de pruebas y compuertas.
-- Commits en rama `feat/bandeja-web` listos para inspección.
+- Comentarios y avances registrados en Jira Cloud vía REST API.
+- Commits en `origin/feat/bandeja-web` listos para inspección.

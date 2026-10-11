@@ -17,6 +17,7 @@ import {
   RotateCcw,
   Check,
   CheckCheck,
+  Lock,
   PlusCircle,
   PanelRight,
 } from 'lucide-react';
@@ -31,7 +32,8 @@ import {
   obtenerIniciales,
 } from '../../../lib/bandeja-logica';
 import { FichaCliente } from '../../../components/bandeja/ficha-cliente';
-import { ModalPlantillas, PlantillaHSM } from '../../../components/bandeja/modal-plantillas';
+import { ModalPlantillas } from '../../../components/bandeja/modal-plantillas';
+import { EnviarPlantilla } from '@viajapro/contracts';
 import { TarjetaCotizacion } from '../../../components/bandeja/tarjeta-cotizacion';
 
 export default function BandejaConversacionPage() {
@@ -305,12 +307,45 @@ export default function BandejaConversacionPage() {
     }
   };
 
-  const manejarEnvioPlantilla = (plantilla: PlantillaHSM) => {
-    setTextoMensaje(plantilla.texto);
-    setModoNota(false);
-    setTimeout(() => {
-      void manejarEnvio();
-    }, 50);
+  const manejarEnvioPlantilla = async (envio: EnviarPlantilla, textoInterpolado: string) => {
+    try {
+      setEnviando(true);
+      const mensajeEnviado = await inboxApi.enviarTexto({
+        conversacionId: envio.conversacionId,
+        texto: textoInterpolado,
+        claveIdempotencia: envio.claveIdempotencia,
+      });
+
+      setDetalle((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          mensajes: [...prev.mensajes, mensajeEnviado],
+          ultimoMensajeTexto: textoInterpolado,
+          ultimoMensajeEn: mensajeEnviado.ocurridoEn,
+          ultimoMensajeDireccion: 'SALIENTE',
+          ventana: {
+            abierta: true,
+            expiraEn: new Date(Date.now() + 24 * 3600000).toISOString(),
+            minutosRestantes: 1440,
+          },
+        };
+      });
+
+      setTiempoVentana({
+        minutos: 1440,
+        horas: 24,
+        cerrada: false,
+        texto: '24 h 0 min',
+      });
+
+      setTextoMensaje('');
+      setTimeout(() => scrollToBottom('smooth'), 50);
+    } catch (e) {
+      console.error('Error al enviar plantilla:', e);
+    } finally {
+      setEnviando(false);
+    }
   };
 
   if (cargando) {
@@ -433,6 +468,27 @@ export default function BandejaConversacionPage() {
         </header>
 
         {/* Historial de Mensajes: único contenedor con scroll propio */}
+        {/* Banner de advertencia si la ventana está por cerrar (<2h) */}
+        {tiempoVentana.minutos <= 120 && !tiempoVentana.cerrada && (
+          <div className="flex shrink-0 items-center justify-between border-b border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-300">
+            <div className="flex items-center space-x-2">
+              <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+              <span>
+                <strong>Ventana de Meta por cerrar: </strong>
+                Quedan {tiempoVentana.texto}. Envía tu respuesta ahora o la reapertura exigirá una
+                plantilla aprobada.
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setModalPlantillasAbierto(true)}
+              className="text-[11px] font-semibold underline hover:text-amber-950 dark:hover:text-amber-100"
+            >
+              Ver plantillas
+            </button>
+          </div>
+        )}
+
         <main
           ref={chatContainerRef}
           onScroll={checkIsNearBottom}
@@ -563,17 +619,19 @@ export default function BandejaConversacionPage() {
         {/* Pie de redacción */}
         <footer className="shrink-0 border-t border-neutral-200 bg-white p-3 dark:border-neutral-800 dark:bg-neutral-900">
           {!detalle.ventana.abierta ? (
-            <div className="space-y-2 rounded-xl border border-neutral-200 bg-neutral-50 p-3.5 text-center text-xs dark:border-neutral-800 dark:bg-neutral-800/40">
-              <p className="font-semibold text-neutral-800 dark:text-neutral-200">
-                ⚠️ Ventana de 24 horas cerrada
-              </p>
+            <div className="space-y-2 rounded-xl border border-neutral-200 bg-neutral-50 p-4 text-center text-xs dark:border-neutral-800 dark:bg-neutral-800/40">
+              <div className="flex items-center justify-center space-x-1.5 font-semibold text-neutral-800 dark:text-neutral-200">
+                <Lock className="h-4 w-4 text-neutral-500" />
+                <span>Ventana de 24 horas cerrada por Meta</span>
+              </div>
               <p className="text-neutral-500 dark:text-neutral-400">
-                Solo es posible reanudar la conversación mediante una plantilla aprobada por Meta.
+                No es posible enviar mensajes de texto libre pasadas 24 horas desde el último
+                mensaje del viajero. Utiliza una plantilla HSM aprobada.
               </p>
               <button
                 type="button"
                 onClick={() => setModalPlantillasAbierto(true)}
-                className="bg-acento-700 hover:bg-acento-800 rounded-lg px-4 py-2 font-semibold text-white shadow-sm"
+                className="bg-acento-700 hover:bg-acento-800 rounded-lg px-4 py-2 font-semibold text-white shadow-sm transition-colors"
               >
                 Seleccionar plantilla aprobada
               </button>
@@ -672,8 +730,12 @@ export default function BandejaConversacionPage() {
       {/* Modal de Plantillas HSM */}
       <ModalPlantillas
         abierto={modalPlantillasAbierto}
+        conversacionId={id}
+        borradorPrevio={textoMensaje}
         onCerrar={() => setModalPlantillasAbierto(false)}
-        onSeleccionarPlantilla={manejarEnvioPlantilla}
+        onEnviarPlantilla={(envio, texto) => {
+          void manejarEnvioPlantilla(envio, texto);
+        }}
       />
     </div>
   );
