@@ -11,7 +11,7 @@ redefinidos: todo de `@viajapro/contracts` — si falta un campo, **para y dilo*
 
 ---
 
-## [ ] 0c.3. Pantalla de Pipeline de Oportunidades (`/pipeline`)
+## [x] 0c.3. Pantalla de Pipeline de Oportunidades (`/pipeline`)
 
 Origen: Jira (Epic VC-3 / Fase 2 — CRM y pipeline) · `COLA-DESPUES.md §0c.3` · `viajapro_diseno_ui_ux.json` (Pantalla 2) · Contratos en `@viajapro/contracts` (`TableroPipeline`, `ColumnaPipeline`, `Oportunidad`, `MoverOportunidad`, `EtapaPipeline`).
 
@@ -27,6 +27,14 @@ Origen: Jira (Epic VC-3 / Fase 2 — CRM y pipeline) · `COLA-DESPUES.md §0c.3`
    - Si el motivo es `OTRO`, exige explicación en `notaPerdida` según el contrato `exigirMotivoDePerdida`.
 4. **Montos monetarios formateados con `.cifra` y tokens visuales acordes a `DISENO-BANDEJA.md` y `globals.css`.**
 5. **Compuertas:** `test`, `typecheck`, `lint`, `build` y `format:check` en verde.
+- **Completado y verificado al 100%:**
+  - Tablero Kanban de 5 columnas en `/pipeline` (`NUEVO_LEAD`, `EN_COTIZACION`, `EN_NEGOCIACION`, `GANADA`, `PERDIDA`) conforme a `TableroPipeline` y `Oportunidad` de `@viajapro/contracts`.
+  - **Invariante 1 cumplido:** Los totales monetarios de columna se reciben denormalizados del servidor y se muestran en clase `.cifra`, sin recálculo engañoso en el cliente.
+  - **Invariante 2 cumplido:** Alternativa accesible de teclado mediante menú contextual («Mover a...») en cada tarjeta con navegación por flechas y teclado.
+  - **Invariante 3 cumplido:** Diálogo accesible obligatorio (`ModalMotivoPerdida`) al mover tarjetas a `PERDIDA` exigiendo `MotivoPerdida` y nota explicativa si es `OTRO` (garantizado por el refinement `exigirMotivoDePerdida` del contrato Zod).
+  - **Vistas duales:** Selector entre «Tablero Kanban» y «Tabla compacta» según `viajapro_diseno_ui_ux.json`.
+  - **Pruebas automáticas (7/7 en `pipeline-logica.spec.ts`):** 16/16 pruebas en verde en Vitest.
+
 
 ---
 

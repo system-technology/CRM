@@ -68,7 +68,7 @@ export function BarraModulos() {
       href: '/pipeline',
       icon: Kanban,
       activo: pathname === '/pipeline',
-      disponible: false,
+      disponible: true,
     },
     {
       id: 'cotizador',
