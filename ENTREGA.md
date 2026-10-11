@@ -110,3 +110,11 @@ Las pruebas automáticas en `apps/web/src/lib/bandeja-comportamiento.spec.ts` ah
 - **Reserva:** Densidad configurable, Atajos de teclado del hilo y Modo oscuro completados al 100%.
 - **Tarea 6 (Ventana 24h Meta):** Pausada a la espera del esquema `EnviarPlantilla` en backend / contratos.
 - **Siguiente paso para Claude:** Reponer la cola con la siguiente pantalla (`/pipeline` — Tablero Kanban de Oportunidades según `viajapro_diseno_ui_ux.json` y `packages/contracts/src/crm.ts`), o indicar las tareas siguientes del roadmap.
+
+
+---
+
+## 5. Actualización en Jira Cloud (VC-13)
+
+- **Ticket:** [VC-13] 5 — Bandeja de conversaciones en la web.
+- **Acción realizada:** Se registró el comentario formal de entrega en Jira detallando la implementación de la Tarea 0b, el armazón de tres columnas, la extracción de funciones puras, los commits `685ec53` y `10f5a96`, y el paso exitoso de las 5 compuertas de calidad.

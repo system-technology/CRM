@@ -90,3 +90,13 @@ primitivos que propone el documento según los necesites. Moverlos a `packages/u
 cambiar una ruta de importación.
 
 ---
+
+---
+
+## 📌 Sincronización Jira Cloud — Proyecto VIAJAPRO CRM (VC)
+
+- **Ticket de Frontend activo:** [VC-13] (5 — Bandeja de conversaciones en la web).
+- **Estado:** Entregado en `feat/bandeja-web` (Commits `685ec53` y `10f5a96`). Comentario formal registrado en Jira con evidencia de las 5 compuertas.
+- **Próximas tareas en Jira identificadas para Frontend:**
+  1. Pantalla de Pipeline (`/pipeline`) — Tablero Kanban de Oportunidades contra contratos de `crm.ts` (`TableroPipeline`, `Oportunidad`), según `viajapro_diseno_ui_ux.json`.
+  2. [VC-21] Carrera de `turbo` entre `build` y `typecheck` de la web: evitar falso rojo en CI.
