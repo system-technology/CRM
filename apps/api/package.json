@@ -8,7 +8,7 @@
     "build": "tsc -p tsconfig.build.json",
     "start": "node dist/main.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "dotenv -e ../../.env -- vitest run --passWithNoTests",
+    "test": "dotenv -e ../../.env -- vitest run",
     "lint": "eslint src"
   },
   "dependencies": {
