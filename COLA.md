@@ -48,6 +48,40 @@ redefinidos: todo de `@viajapro/contracts` — si falta un campo, **para y dilo*
 
 ---
 
+## [x] 0c.11. Centro de Búsqueda Global Omnicanal (Cmd+K) y Centro de Alertas Operativas Críticas
+
+Origen: `viajapro_diseno_ui_ux.json` (§`interaction_patterns.global_search` y §`interaction_patterns.notifications`) · Jira Epics VC-1 (Fundaciones) y VC-2 / VC-13 (Bandeja Web e Integración) · Criterios de usabilidad ("Responder un mensaje requiere tres clics o menos", "SLA, time limits y pagos pendientes son visibles").
+
+**Objetivo:** Construir el buscador global accesible desde teclado (`Cmd+K` / `Ctrl+K`) en cualquier pantalla y el centro interactivo de alertas y notificaciones operativas en la barra de módulos para enlazar todas las áreas del CRM (conversaciones, contactos, pipeline, expedientes, catálogo).
+
+**Invariantes y criterios:**
+1. **Motor de Búsqueda Global Unificado (`buscador-global-logica.ts`):**
+   - Búsqueda en tiempo real indexando 5 categorías:
+     - 💬 Conversaciones (cliente, último mensaje, canal WhatsApp).
+     - 📇 Contactos (nombre, teléfono, ciudad).
+     - 📊 Oportunidades (título, etapa, monto en COP - R8).
+     - ✈️ Archivos de Viaje (código, titular, destino, estado).
+     - 📦 Paquetes del Catálogo (destino, mayorista, precio base).
+   - Acciones rápidas (Navegar a Bandeja, Nuevo Contacto, Ir a Cotizador, Ver Reportes).
+   - Soporte de teclado completo: `Escape` para cerrar, flechas arriba/abajo para selección, `Enter` para navegar.
+2. **Centro de Notificaciones Operativas (`notificaciones-logica.ts`):**
+   - Agregación y detección reactiva de alertas:
+     - Alerta de SLA de WhatsApp vencido (> 15 min sin respuesta del asesor).
+     - Alerta de Time limit de mayorista/aerolínea próximo a vencer (< 24 horas).
+     - Alerta de saldo pendiente en viajes con fecha de salida próxima.
+     - Alerta de documentación faltante (pasaportes sin adjuntar).
+   - Clasificación por severidad (`CRITICA`, `ADVERTENCIA`, `INFORMATIVA`).
+   - Acciones directas ("Abrir chat", "Ver expediente", "Resolver").
+3. **Integración en la Barra de Módulos (`barra-modulos.tsx`):**
+   - Botón interactivo de Búsqueda (`Search` con pista visual `⌘K`).
+   - Botón interactivo de Campana con contador numérico de alertas pendientes no leídas.
+   - Popover accesible para el centro de alertas.
+4. **Pruebas Automatizadas en Vitest:**
+   - Cobertura completa de filtrado, indexación, alertas y conteos.
+5. **Compuertas:** `test`, `typecheck`, `lint`, `build` y `format:check` 100% en verde.
+
+---
+
 ## [x] 0c.10. Expediente Operativo y Archivo de Viaje (`/viajes`)
 
 Origen: `viajapro_diseno_ui_ux.json` (Pantalla P1: `travel_file` Archivo de viaje) · `docs/01-producto/02-lenguaje-ubicuo.md` (`TravelFile`, `Booking`, `timeLimit`, `recordLocator`, `Supplier`) · Regla R8 (Dinero en enteros de COP), R9 (Fechas UTC) y R10 (PII sensible de viajeros enmascarada y auditada).

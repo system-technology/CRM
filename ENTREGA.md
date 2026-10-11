@@ -1,4 +1,46 @@
-# ENTREGA.md — Tareas 0d, 0c.3 (Pipeline Kanban), 6 (Ventana 24h Meta HSM), 0c.4 (Contactos), 0c.5 (Catálogo), 0c.6 (Cotizador), 0c.7 (Reportes), 0c.8 (Configuración), 0c.9 (Cliente CRM API) y 0c.10 (Expediente Operativo / Viajes)
+# ENTREGA.md — Tareas 0d, 0c.3–0c.10 y 0c.11 (Búsqueda Global Omnicanal y Alertas Operativas)
+
+## 0. Entrega de Tarea 0c.11: Centro de Búsqueda Global Omnicanal (`Cmd+K` / `Ctrl+K`) y Centro de Alertas Operativas Críticas
+
+Origen: `viajapro_diseno_ui_ux.json` (§`interaction_patterns.global_search` y §`interaction_patterns.notifications`) · Jira Epics VC-1 (Fundaciones) y VC-2 / VC-13 (Bandeja Web e Integración) · Criterios de usabilidad ("Responder un mensaje requiere tres clics o menos", "SLA, time limits y pagos pendientes son visibles").
+
+### Implementación Realizada:
+1. **Motor de Búsqueda Global Unificado (`apps/web/src/lib/buscador-global-logica.ts`):**
+   - Búsqueda en memoria indexando 6 categorías transversales:
+     - ⚡ **Acciones Rápidas:** Atajos directos a Bandeja, Pipeline, Cotizador, Viajes, Contactos, Catálogo, Reportes y Configuración.
+     - 💬 **Conversaciones WhatsApp:** Búsqueda por nombre de contacto, teléfono E.164 y extracto del último mensaje.
+     - 📇 **Contactos y Viajeros:** Indexación sobre `PaginaContactos.datos` con nombre, teléfono, correo y etiquetas.
+     - 📊 **Oportunidades:** Búsqueda sobre columnas del Kanban por título, cliente, valor en COP (`Money` R8) y etapa configurada.
+     - ✈️ **Archivos de Viaje (TravelFiles):** Indexación por código de expediente (`EXP-2026-...`), titular, destino y fechas de viaje.
+     - 📦 **Catálogo:** Paquetes turísticos filtrados por destino, nombre y mayorista.
+   - Búsqueda insensible a tildes y mayúsculas con normalización NFD.
+
+2. **Centro de Notificaciones y Alertas Operativas (`apps/web/src/lib/notificaciones-logica.ts`):**
+   - Agregación y detección reactiva de alertas operativas:
+     - **SLA de WhatsApp Excedido:** Detección de mensajes sin leer o chats con SLA de primera respuesta vencido (>15 min).
+     - **Time Limit de Reservas Mayoristas:** Alertas críticas (< 24h o vencido) y advertencias para reservas de hoteles/aerolíneas próximas a caducar.
+     - **Saldos Pendientes:** Viajes confirmados con recaudos pendientes en COP (R8).
+     - **Documentación Faltante:** Expedientes con pasaportes o vouchers pendientes de carga.
+   - Clasificación por severidad (`critica`, `advertencia`, `informativa`) y contador de alertas no leídas.
+
+3. **Pruebas Automatizadas en Vitest:**
+   - `apps/web/src/lib/buscador-global-logica.spec.ts` (8 pruebas unitarias).
+   - `apps/web/src/lib/notificaciones-logica.spec.ts` (4 pruebas unitarias).
+   - Suite total: **94/94 pruebas pasando en 13 archivos de prueba**.
+
+4. **Componentes de Interfaz de Usuario:**
+   - `apps/web/src/components/busqueda/modal-busqueda-global.tsx`: Modal Spotlight tipo `⌘K` accesible con atajo de teclado en cualquier ruta, navegación fluida con flechas de dirección (arriba/abajo), `Enter` para navegar y `Esc` para cerrar.
+   - `apps/web/src/components/notificaciones/panel-notificaciones.tsx`: Popover flotante desplegable desde la campana con selector de filtros (Todas, Críticas, Advertencias), insignia roja de no leídas y botones de salto directo en un solo clic ("Responder Chat", "Ver Expediente").
+   - Integración transversal en la barra lateral (`apps/web/src/components/bandeja/barra-modulos.tsx`).
+
+### Verificación de las 5 Compuertas:
+- **Vitest:** 94/94 pruebas pasando en 13 suites (`pnpm --filter @viajapro/web test`).
+- **TypeScript:** `tsc --noEmit` 0 errores.
+- **ESLint:** `eslint src` 0 errores, 0 advertencias.
+- **Next.js Build:** Generación estática exitosa de las 13 rutas de la aplicación (`pnpm --filter @viajapro/web build`).
+- **Prettier:** 100% verificado (`pnpm format:check`).
+
+---
 
 ## 0. Entrega de Tarea 0c.10: Pantalla de Expediente Operativo y Archivo de Viaje (`/viajes` — `travel_file`)
 

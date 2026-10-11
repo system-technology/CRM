@@ -16,7 +16,17 @@ import {
   Moon,
   Plane,
   TrendingUp,
+  Search,
+  Bell,
 } from 'lucide-react';
+import { ModalBusquedaGlobal } from '../busqueda/modal-busqueda-global';
+import { PanelNotificaciones } from '../notificaciones/panel-notificaciones';
+import {
+  generarAlertasOperativas,
+  marcarAlertaLeida,
+  contarAlertasNoLeidas,
+  type AlertaOperativa,
+} from '../../lib/notificaciones-logica';
 
 interface ModuloItem {
   id: string;
@@ -30,6 +40,9 @@ interface ModuloItem {
 export function BarraModulos() {
   const pathname = usePathname();
   const [modoOscuro, setModoOscuro] = useState(false);
+  const [busquedaAbierta, setBusquedaAbierta] = useState(false);
+  const [panelNotifAbierto, setPanelNotifAbierto] = useState(false);
+  const [alertas, setAlertas] = useState<AlertaOperativa[]>([]);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -39,6 +52,20 @@ export function BarraModulos() {
         document.documentElement.classList.add('dark');
       }
     }
+    // Inicializar alertas operativas
+    setAlertas(generarAlertasOperativas());
+  }, []);
+
+  // Atajo global Cmd+K / Ctrl+K
+  useEffect(() => {
+    const manejarAtajo = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setBusquedaAbierta((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', manejarAtajo);
+    return () => window.removeEventListener('keydown', manejarAtajo);
   }, []);
 
   const alternarTema = () => {
@@ -52,6 +79,16 @@ export function BarraModulos() {
       localStorage.setItem('viajapro_tema', 'light');
     }
   };
+
+  const manejarMarcarLeida = (id: string) => {
+    setAlertas((prev) => marcarAlertaLeida(prev, id));
+  };
+
+  const manejarMarcarTodasLeidas = () => {
+    setAlertas((prev) => prev.map((a) => ({ ...a, leida: true })));
+  };
+
+  const conteoNoLeidas = contarAlertasNoLeidas(alertas);
 
   const modulos: ModuloItem[] = [
     {
@@ -121,91 +158,132 @@ export function BarraModulos() {
   ];
 
   return (
-    <aside
-      className="flex h-full w-14 flex-col items-center justify-between border-r border-neutral-200 bg-white py-3 select-none dark:border-neutral-800 dark:bg-neutral-900"
-      aria-label="Barra de módulos"
-    >
-      {/* Top: Logo & Módulos */}
-      <div className="flex w-full flex-col items-center space-y-4">
-        {/* Logo */}
-        <Link
-          href="/bandeja"
-          title="ViajaPro — CRM Turístico"
-          className="bg-acento-700 flex h-10 w-10 items-center justify-center rounded-xl text-white shadow-sm transition-transform hover:scale-105"
-        >
-          <Plane className="h-5 w-5" />
-        </Link>
+    <>
+      <aside
+        className="flex h-full w-14 flex-col items-center justify-between border-r border-neutral-200 bg-white py-3 select-none dark:border-neutral-800 dark:bg-neutral-900"
+        aria-label="Barra de módulos"
+      >
+        {/* Top: Logo & Módulos */}
+        <div className="flex w-full flex-col items-center space-y-3">
+          {/* Logo */}
+          <Link
+            href="/bandeja"
+            title="ViajaPro — CRM Turístico"
+            className="bg-acento-700 flex h-10 w-10 items-center justify-center rounded-xl text-white shadow-sm transition-transform hover:scale-105"
+          >
+            <Plane className="h-5 w-5" />
+          </Link>
 
-        {/* Separador */}
-        <div className="h-px w-8 bg-neutral-200 dark:bg-neutral-800" />
+          {/* Botón Buscador Global (⌘K) */}
+          <button
+            type="button"
+            onClick={() => setBusquedaAbierta(true)}
+            title="Búsqueda Global omnicanal (⌘K / Ctrl+K)"
+            className="group relative flex h-9 w-9 items-center justify-center rounded-lg text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
+          >
+            <Search className="h-4 w-4" />
+          </button>
 
-        {/* Lista de Módulos */}
-        <nav className="flex w-full flex-col items-center space-y-1 px-1">
-          {modulos.map((m) => {
-            const Icon = m.icon;
-            if (!m.disponible) {
+          {/* Separador */}
+          <div className="h-px w-8 bg-neutral-200 dark:bg-neutral-800" />
+
+          {/* Lista de Módulos */}
+          <nav className="flex w-full flex-col items-center space-y-1 px-1">
+            {modulos.map((m) => {
+              const Icon = m.icon;
+              if (!m.disponible) {
+                return (
+                  <div
+                    key={m.id}
+                    title={`${m.label} (Próximamente)`}
+                    className="group relative flex h-10 w-10 cursor-not-allowed items-center justify-center rounded-lg text-neutral-400 opacity-60 hover:bg-neutral-100 dark:text-neutral-500 dark:hover:bg-neutral-800"
+                  >
+                    <Icon className="h-5 w-5" />
+                  </div>
+                );
+              }
+
               return (
-                <div
+                <Link
                   key={m.id}
-                  title={`${m.label} (Próximamente)`}
-                  className="group relative flex h-10 w-10 cursor-not-allowed items-center justify-center rounded-lg text-neutral-400 opacity-60 hover:bg-neutral-100 dark:text-neutral-500 dark:hover:bg-neutral-800"
+                  href={m.href}
+                  title={m.label}
+                  className={`flex h-10 w-10 items-center justify-center rounded-lg transition-colors ${
+                    m.activo
+                      ? 'bg-acento-50 text-acento-700 dark:bg-acento-950/60 dark:text-acento-400'
+                      : 'text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200'
+                  }`}
                 >
                   <Icon className="h-5 w-5" />
-                </div>
+                </Link>
               );
-            }
-
-            return (
-              <Link
-                key={m.id}
-                href={m.href}
-                title={m.label}
-                className={`flex h-10 w-10 items-center justify-center rounded-lg transition-colors ${
-                  m.activo
-                    ? 'bg-acento-50 text-acento-700 dark:bg-acento-950/60 dark:text-acento-400'
-                    : 'text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200'
-                }`}
-              >
-                <Icon className="h-5 w-5" />
-              </Link>
-            );
-          })}
-        </nav>
-      </div>
-
-      {/* Bottom: Meta de Cierres + Tema + Perfil */}
-      <div className="flex w-full flex-col items-center space-y-3 px-1">
-        {/* Meta de cierres compacta */}
-        <div
-          title="Meta de cierres: $42.5M de $60M COP (71% completado)"
-          className="group border-ok-200 bg-ok-50/50 dark:border-ok-900/50 dark:bg-ok-950/30 relative flex h-10 w-10 cursor-help flex-col items-center justify-center rounded-lg border p-1 text-center transition-colors"
-        >
-          <TrendingUp className="text-ok-600 dark:text-ok-400 h-3.5 w-3.5" />
-          <span className="cifra text-ok-700 dark:text-ok-300 text-[9px] font-bold">71%</span>
+            })}
+          </nav>
         </div>
 
-        {/* Interruptor modo oscuro */}
-        <button
-          type="button"
-          onClick={alternarTema}
-          title={modoOscuro ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
-          className="flex h-9 w-9 items-center justify-center rounded-lg text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-800 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
-        >
-          {modoOscuro ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-        </button>
+        {/* Bottom: Campana + Meta de Cierres + Tema + Perfil */}
+        <div className="flex w-full flex-col items-center space-y-2.5 px-1">
+          {/* Botón Campana Notificaciones */}
+          <button
+            type="button"
+            onClick={() => setPanelNotifAbierto(true)}
+            title={`Alertas operativas (${conteoNoLeidas} pendientes)`}
+            className="relative flex h-9 w-9 items-center justify-center rounded-lg text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
+          >
+            <Bell className="h-4 w-4" />
+            {conteoNoLeidas > 0 && (
+              <span className="absolute top-1.5 right-1.5 flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500" />
+              </span>
+            )}
+          </button>
 
-        {/* Separador */}
-        <div className="h-px w-8 bg-neutral-200 dark:bg-neutral-800" />
+          {/* Meta de cierres compacta */}
+          <div
+            title="Meta de cierres: $42.5M de $60M COP (71% completado)"
+            className="group border-ok-200 bg-ok-50/50 dark:border-ok-900/50 dark:bg-ok-950/30 relative flex h-9 w-9 cursor-help flex-col items-center justify-center rounded-lg border p-0.5 text-center transition-colors"
+          >
+            <TrendingUp className="text-ok-600 dark:text-ok-400 h-3 w-3" />
+            <span className="cifra text-ok-700 dark:text-ok-300 text-[8px] leading-none font-bold">
+              71%
+            </span>
+          </div>
 
-        {/* Avatar Asesor */}
-        <div
-          title="Carlos Asesor (En línea)"
-          className="relative flex h-8 w-8 items-center justify-center rounded-full bg-neutral-200 text-xs font-bold text-neutral-700 select-none dark:bg-neutral-700 dark:text-neutral-200"
-        >
-          <span>CA</span>
-          <span className="bg-ok-500 absolute -right-0.5 -bottom-0.5 h-2.5 w-2.5 rounded-full border-3 border-white dark:border-neutral-900" />
+          {/* Interruptor modo oscuro */}
+          <button
+            type="button"
+            onClick={alternarTema}
+            title={modoOscuro ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+            className="flex h-9 w-9 items-center justify-center rounded-lg text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-800 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
+          >
+            {modoOscuro ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          </button>
+
+          {/* Separador */}
+          <div className="h-px w-8 bg-neutral-200 dark:bg-neutral-800" />
+
+          {/* Avatar Asesor */}
+          <div
+            title="Carlos Asesor (En línea)"
+            className="relative flex h-8 w-8 items-center justify-center rounded-full bg-neutral-200 text-xs font-bold text-neutral-700 select-none dark:bg-neutral-700 dark:text-neutral-200"
+          >
+            <span>CA</span>
+            <span className="bg-ok-500 absolute -right-0.5 -bottom-0.5 h-2.5 w-2.5 rounded-full border-3 border-white dark:border-neutral-900" />
+          </div>
         </div>
-      </div>
-    </aside>
+      </aside>
+
+      {/* Modales Globales */}
+      <ModalBusquedaGlobal abierto={busquedaAbierta} alCerrar={() => setBusquedaAbierta(false)} />
+
+      <PanelNotificaciones
+        abierto={panelNotifAbierto}
+        alCerrar={() => setPanelNotifAbierto(false)}
+        alertas={alertas}
+        alMarcarLeida={manejarMarcarLeida}
+        alMarcarTodasLeidas={manejarMarcarTodasLeidas}
+      />
+    </>
   );
 }
