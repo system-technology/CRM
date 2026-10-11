@@ -23,11 +23,13 @@ import {
 } from '@nestjs/common';
 import {
   MoverOportunidad as MovimientoContrato,
+  type MoverOportunidad as Movimiento,
   type FichaDeContacto,
   type Oportunidad,
   type PaginaContactos,
   type TableroPipeline,
 } from '@viajapro/contracts';
+import { ZodValidationPipe } from '../../../shared/validacion/zod-validation.pipe.js';
 import { MoverOportunidadUseCase } from '../application/mover-oportunidad.js';
 import { PuertoCrm } from '../application/puerto-crm.js';
 import { VerTablero } from '../application/ver-tablero.js';
@@ -58,9 +60,8 @@ export class CrmController {
   @Patch('oportunidades/:id/etapa')
   async moverDeEtapa(
     @Param('id', ParseUUIDPipe) id: string,
-    @Body() cuerpo: unknown,
+    @Body(new ZodValidationPipe(MovimientoContrato)) movimiento: Movimiento,
   ): Promise<Oportunidad> {
-    const movimiento = MovimientoContrato.parse(cuerpo);
     return this.mover.ejecutar(id, movimiento);
   }
 
