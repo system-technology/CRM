@@ -11,6 +11,22 @@ redefinidos: todo de `@viajapro/contracts` — si falta un campo, **para y dilo*
 
 ---
 
+## [x] 0c.6. Cotizador Comercial, Despacho a WhatsApp y Navegación (`/cotizador`)
+
+Origen: Jira Epic VC-4 (Fase 3: Cotizador) · `viajapro_diseno_ui_ux.json` (Pantalla 2: Cotizador de paquetes) · `@viajapro/contracts` (`CotizarPaquete`, `CotizacionCalculada`, `Paquete`).
+
+**Objetivo:** Conectar el cotizador con la navegación general (`BarraModulos`), permitir preselección desde el catálogo vía query param (`?paqueteId=...`), incorporar generador de propuesta comercial formateada para WhatsApp con copiado al portapapeles y motor de cálculo offline verificado contra el esquema oficial Zod (R3).
+
+- **Completado y verificado al 100%:**
+  - **Navegación Unificada (`BarraModulos`):** Integración fluida del cotizador en la barra de módulos con indicador de ruta activa y soporte para modo oscuro.
+  - **Recepción de Parámetros (`?paqueteId=...`):** Conexión con el catálogo de paquetes mediante `useSearchParams` en `<Suspense>` para cotización inmediata en <5 minutos.
+  - **Despacho Comercial a WhatsApp (`generarTextoPropuestaWhatsApp`):** Botón para copiar propuesta comercial al portapapeles y enlace directo a `/bandeja` para enviar al cliente.
+  - **Protección de Confidencialidad (R10):** Las propuestas para el cliente excluyen estrictamente tarifas netas y margen comercial interno de la agencia.
+  - **Motor de Cálculo Simulado y Offline:** Soporte resiliente con `calcularCotizacionMock` cuando la API backend no esté disponible localmente, validado al 100% contra el esquema Zod `CotizacionCalculada` de `@viajapro/contracts` (R3).
+  - **Pruebas automáticas (5/5 en `cotizador-logica.spec.ts`):** 41/41 pruebas totales en verde en Vitest.
+
+---
+
 ## [x] 0c.5. Catálogo de Paquetes y Tarifarios de Mayoristas (`/catalogo`)
 
 - **Completado y verificado al 100%:**
