@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { EtapaDefinida, MotivoPerdida, Oportunidad, TableroPipeline } from '@viajapro/contracts';
 import { Kanban, Table as TableIcon, Search, Filter, Plus } from 'lucide-react';
@@ -9,12 +9,28 @@ import { ColumnaKanban } from '../../components/pipeline/columna-kanban';
 import { ModalMotivoPerdida } from '../../components/pipeline/modal-motivo-perdida';
 import { obtenerMockTableroPipeline } from '../../lib/mock-pipeline';
 import { formatearDineroCifra, moverOportunidadEnTablero } from '../../lib/pipeline-logica';
+import { obtenerTableroPipeline, moverOportunidadDeEtapa } from '../../lib/crm-api';
 
 export default function PipelinePage() {
   const [tablero, setTablero] = useState<TableroPipeline>(() => obtenerMockTableroPipeline());
   const [vista, setVista] = useState<'kanban' | 'tabla'>('kanban');
   const [filtroTexto, setFiltroTexto] = useState('');
   const [filtroAsesor, setFiltroAsesor] = useState<string>('todos');
+
+  // Carga inicial del tablero (API real si está disponible, o mock offline)
+  useEffect(() => {
+    let activo = true;
+    obtenerTableroPipeline()
+      .then((datos) => {
+        if (activo) setTablero(datos);
+      })
+      .catch((err) => {
+        console.warn('Error al cargar tablero CRM:', err);
+      });
+    return () => {
+      activo = false;
+    };
+  }, []);
 
   // Estado del modal de pérdida
   const [oportunidadPendientePerdida, setOportunidadPendientePerdida] = useState<{
@@ -30,13 +46,14 @@ export default function PipelinePage() {
     setTimeout(() => setMensajeFeedback(null), 3000);
   };
 
-  // Mover oportunidad
-  const ejecutarMovimiento = (
+  // Mover oportunidad (actualización optimista + persistencia en API)
+  const ejecutarMovimiento = async (
     oportunidadId: string,
     nuevaEtapa: EtapaDefinida,
     motivoPerdida: MotivoPerdida | null = null,
     notaPerdida: string | null = null,
   ) => {
+    // 1. Actualización optimista local
     try {
       const nuevoTablero = moverOportunidadEnTablero(tablero, oportunidadId, {
         etapaId: nuevaEtapa.id,
@@ -45,9 +62,16 @@ export default function PipelinePage() {
       });
       setTablero(nuevoTablero);
       mostrarAviso(`Oportunidad movida a "${nuevaEtapa.nombre}" con éxito.`);
+
+      // 2. Persistencia en la API
+      await moverOportunidadDeEtapa(oportunidadId, {
+        etapaId: nuevaEtapa.id,
+        motivoPerdida,
+        notaPerdida,
+      });
     } catch (e) {
       console.error(e);
-      mostrarAviso('Error al mover la oportunidad.');
+      mostrarAviso('Error al persistir el movimiento de oportunidad.');
     }
   };
 
@@ -57,7 +81,7 @@ export default function PipelinePage() {
       // Exige abrir el modal de motivo
       setOportunidadPendientePerdida({ oportunidad: op, etapaDestino: nuevaEtapa });
     } else {
-      ejecutarMovimiento(op.id, nuevaEtapa, null, null);
+      void ejecutarMovimiento(op.id, nuevaEtapa, null, null);
     }
   };
 
@@ -78,7 +102,7 @@ export default function PipelinePage() {
     if (nuevaEtapa.esPerdida) {
       setOportunidadPendientePerdida({ oportunidad: opEncontrada, etapaDestino: nuevaEtapa });
     } else {
-      ejecutarMovimiento(oportunidadId, nuevaEtapa, null, null);
+      void ejecutarMovimiento(oportunidadId, nuevaEtapa, null, null);
     }
   };
 
@@ -309,7 +333,7 @@ export default function PipelinePage() {
         <ModalMotivoPerdida
           oportunidad={oportunidadPendientePerdida.oportunidad}
           onConfirmar={(motivo, nota) => {
-            ejecutarMovimiento(
+            void ejecutarMovimiento(
               oportunidadPendientePerdida.oportunidad.id,
               oportunidadPendientePerdida.etapaDestino,
               motivo,

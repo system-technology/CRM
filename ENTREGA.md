@@ -1,6 +1,38 @@
-# ENTREGA.md — Tareas 0d, 0c.3 (Pipeline Kanban), 6 (Ventana 24h Meta HSM), 0c.4 (Contactos), 0c.5 (Catálogo), 0c.6 (Cotizador), 0c.7 (Reportes) y 0c.8 (Configuración)
+# ENTREGA.md — Tareas 0d, 0c.3 (Pipeline Kanban), 6 (Ventana 24h Meta HSM), 0c.4 (Contactos), 0c.5 (Catálogo), 0c.6 (Cotizador), 0c.7 (Reportes), 0c.8 (Configuración) y 0c.9 (Cliente CRM API)
 
-## 1. Entrega de Tarea 0c.8: Pantalla de Equipo y Configuración de Agencia (`/configuracion`)
+## 1. Entrega de Tarea 0c.9: Conexión de API Real del CRM: Tablero Pipeline, Movimiento de Etapas y Ficha de Contacto
+
+Origen: Instrucción directa de arquitectura en `COLA.md` por Claude · Endpoints verificados en `apps/api/src/modules/crm/interface/crm.controller.ts` (`GET /api/v1/crm/tablero`, `PATCH /api/v1/crm/oportunidades/:id/etapa`, `GET /api/v1/crm/contactos/:id/ficha`, `GET /api/v1/crm/contactos`).
+
+### Implementación Realizada:
+1. **Cliente de API Robusto (`apps/web/src/lib/crm-api.ts`):**
+   - Endpoints integrados y tipados estrictamente contra contratos oficiales:
+     - `obtenerTableroPipeline`: consume `GET /api/v1/crm/tablero` validando respuesta con `TableroPipeline.parse`.
+     - `moverOportunidadDeEtapa`: valida payload con `MoverOportunidad.parse`, envía `PATCH /api/v1/crm/oportunidades/:id/etapa` y valida respuesta con `Oportunidad.parse`.
+     - `obtenerFichaDeContacto`: consume `GET /api/v1/crm/contactos/:id/ficha` validando con `FichaDeContacto.parse`.
+     - `listarContactos`: consume `GET /api/v1/crm/contactos?buscar=...` validando con `PaginaContactos.parse`.
+   - Manejo de cabecera `x-dev-tenant-id` para entorno local (R1/R2).
+   - Resiliencia transparente: fallback local ante caídas de red o ejecuciones estáticas para garantizar disponibilidad continua.
+
+2. **Integración Reactiva en UI:**
+   - `apps/web/src/app/pipeline/page.tsx`: Carga inicial asíncrona vía `obtenerTableroPipeline`, y movimiento de tarjetas con actualización optimista inmediata + persistencia asíncrona vía `moverOportunidadDeEtapa`.
+   - `apps/web/src/app/bandeja/[id]/page.tsx`: Ficha lateral conectada a `obtenerFichaDeContacto`.
+   - `apps/web/src/app/contactos/page.tsx`: Directorio de contactos conectado a `listarContactos`.
+
+3. **Pruebas Automatizadas (`apps/web/src/lib/crm-api.spec.ts`):**
+   - 5 pruebas unitarias cubriendo consulta de tablero, movimiento con regla de pérdida, rechazo de `OTRO` sin nota explicativa, consulta de ficha y filtrado de contactos.
+   - Vitest en 69/69 pruebas totales en verde a través de 10 suites.
+
+### Verificación de las 5 Compuertas:
+- **Vitest:** 69/69 pruebas pasando en 10 suites.
+- **TypeScript:** `tsc --noEmit` 0 errores.
+- **ESLint:** `eslint src` 0 errores, 0 advertencias.
+- **Next.js Build:** Generación estática exitosa de las 12 rutas de la aplicación.
+- **Prettier:** 100% verificado con `prettier --check`.
+
+---
+
+## 2. Entrega de Tarea 0c.8: Pantalla de Equipo y Configuración de Agencia (`/configuracion`)
 
 Origen: `viajapro_diseno_ui_ux.json` (Pantalla P1: Equipo y configuración `settings_team`) · ADR-0006 (Nivel 1 de parametrización en v1) · Jira Epics VC-1 (Fundaciones / Roles), VC-2 (WhatsApp Cloud API / WABA) y VC-3 (CRM y Pipeline).
 

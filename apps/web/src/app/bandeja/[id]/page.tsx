@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 import { inboxApi, InboxErrorApi } from '../../../lib/inbox-api';
 import { realtimeMockBus } from '../../../lib/realtime-mock';
-import { obtenerMockFichaDeContacto } from '../../../lib/mock-crm';
+import { obtenerFichaDeContacto } from '../../../lib/crm-api';
 import {
   calcularTiempoRestanteVentana,
   claveDeReintento,
@@ -111,7 +111,8 @@ export default function BandejaConversacionPage() {
         setDetalle(null);
       } else {
         setDetalle(data);
-        setFichaContacto(obtenerMockFichaDeContacto(data.id));
+        const ficha = await obtenerFichaDeContacto(data.contactoId ?? data.id);
+        setFichaContacto(ficha);
         setTiempoVentana(calcularTiempoRestanteVentana(data.ventana.expiraEn));
         setTimeout(() => scrollToBottom('auto'), 50);
       }

@@ -48,6 +48,30 @@ redefinidos: todo de `@viajapro/contracts` — si falta un campo, **para y dilo*
 
 ---
 
+## [x] 0c.9. Conexión de API Real del CRM: Tablero Pipeline, Movimiento de Etapas y Ficha de Contacto
+
+Origen: Instrucción directa de arquitectura en `COLA.md` por Claude · Endpoints verificados en `apps/api/src/modules/crm/interface/crm.controller.ts` (`GET /api/v1/crm/tablero`, `PATCH /api/v1/crm/oportunidades/:id/etapa`, `GET /api/v1/crm/contactos/:id/ficha`, `GET /api/v1/crm/contactos`).
+
+**Objetivo:** Construir el cliente `apps/web/src/lib/crm-api.ts` con validación Zod bidireccional estricta, conectar el tablero Kanban de `/pipeline`, el movimiento de oportunidades con motivo de pérdida, la ficha del panel lateral en `/bandeja` y el directorio de `/contactos`, con soporte de interruptor y fallback resiliente.
+
+**Invariantes y criterios:**
+1. **Cliente de API Robusto (`crm-api.ts`):**
+   - Endpoints:
+     - `GET /api/v1/crm/tablero` -> Valida con `TableroPipeline.parse`.
+     - `PATCH /api/v1/crm/oportunidades/:id/etapa` -> Valida entrada con `MoverOportunidad` y salida con `Oportunidad.parse`.
+     - `GET /api/v1/crm/contactos/:id/ficha` -> Valida con `FichaDeContacto.parse`.
+     - `GET /api/v1/crm/contactos?buscar=...` -> Valida con `PaginaContactos.parse`.
+   - Headers: Inyecta `x-dev-tenant-id` en desarrollo local cuando esté configurado.
+   - Resiliencia: Fallback transparente a mocks si el backend NestJS no está disponible, para mantener la UI operativa en pruebas estáticas y demostraciones desconectadas.
+2. **Integración en UI:**
+   - `apps/web/src/app/pipeline/page.tsx`: Carga el tablero real vía `obtenerTableroPipeline` y persiste cambios de etapa vía `moverOportunidadDeEtapa`.
+   - `apps/web/src/components/bandeja/ficha-cliente.tsx`: Consume `obtenerFichaContacto` cuando se abre una conversación.
+3. **Pruebas Unitarias:**
+   - `apps/web/src/lib/crm-api.spec.ts` con cobertura para llamadas exitosas, errores de red y validación de esquemas Zod.
+4. **Compuertas:** `test`, `typecheck`, `lint`, `build` y `format:check` 100% en verde.
+
+---
+
 ## [x] 0c.8. Pantalla de Equipo y Configuración de Agencia (`/configuracion`)
 
 Origen: `viajapro_diseno_ui_ux.json` (Pantalla P1: Equipo y configuración `settings_team`) · ADR-0006 (Nivel 1 de parametrización en v1) · Jira Epics VC-1 (Fundaciones / Roles), VC-2 (WhatsApp Cloud API / WABA) y VC-3 (CRM y Pipeline).

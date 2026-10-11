@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { type Contacto } from '@viajapro/contracts';
 import {
@@ -16,6 +16,7 @@ import {
 import { BarraModulos } from '../../components/bandeja/barra-modulos';
 import { FichaDetalleContacto } from '../../components/contactos/ficha-detalle-contacto';
 import { obtenerMockPaginaContactos } from '../../lib/mock-contactos';
+import { listarContactos } from '../../lib/crm-api';
 import {
   filtrarContactos,
   formatearTelefonoVisual,
@@ -24,7 +25,21 @@ import {
 import { generarColorAvatar, obtenerIniciales } from '../../lib/bandeja-logica';
 
 export default function ContactosPage() {
-  const [pagina] = useState(() => obtenerMockPaginaContactos());
+  const [pagina, setPagina] = useState(() => obtenerMockPaginaContactos());
+
+  useEffect(() => {
+    let activo = true;
+    listarContactos()
+      .then((datos) => {
+        if (activo) setPagina(datos);
+      })
+      .catch((err) => {
+        console.warn('Error al cargar contactos de CRM API:', err);
+      });
+    return () => {
+      activo = false;
+    };
+  }, []);
   const [busqueda, setBusqueda] = useState('');
   const [etiquetaFiltro, setEtiquetaFiltro] = useState('todas');
   const [consentimientoFiltro, setConsentimientoFiltro] = useState('todos');
