@@ -20,6 +20,15 @@
 import { Injectable, Logger, type OnModuleDestroy, type OnModuleInit } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 import { ContextoTenant } from '../tenant/contexto-tenant.js';
+import { type RolDeConexion, resolverCadena, verificarIdentidad } from './guardia-de-rol.js';
+
+/**
+ * El rol con el que DEBE conectarse este proceso.
+ *
+ * La API general es `viajapro_app`. El trabajador del webhook y el caso de uso de alta usan
+ * sus propios procesos y sus propias cadenas, y declaran el suyo. Ver ADR-0008 §1.3.
+ */
+const ROL_ESPERADO: RolDeConexion = 'viajapro_app';
 
 /** Lo que recibe un caso de uso: un cliente ya atado a la transacción con tenant fijado. */
 export type ClienteTenant = Omit<
@@ -34,10 +43,10 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
   constructor() {
     super({
       datasources: {
-        // La aplicación se conecta con viajapro_app, que NO puede saltarse RLS.
-        // Si esta variable apuntara al rol propietario, el aislamiento sería ficticio
-        // y no habría ningún error que lo delatara. Regla R2, ADR-0003 y ADR-0007.
-        db: { url: process.env['DATABASE_APP_URL'] ?? process.env['DATABASE_URL'] ?? '' },
+        // Sin respaldo a propósito: si falta la variable, no se arranca. El
+        // `?? DATABASE_URL` que había aquí conectaba la aplicación con el rol propietario
+        // cuando se activaba, y eso no produce ningún error visible. R2, ADR-0003, ADR-0007.
+        db: { url: resolverCadena(process.env, 'DATABASE_APP_URL') },
       },
       log: [
         { emit: 'event', level: 'warn' },
@@ -49,23 +58,27 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
   async onModuleInit(): Promise<void> {
     await this.$connect();
 
-    // Si la aplicación arrancara con un rol capaz de saltarse RLS, todo "funcionaría"
-    // y el aislamiento sería mentira. Mejor no arrancar.
-    const [rol] = await this.$queryRaw<Array<{ usuario: string; bypassa: boolean }>>`
+    // Se comprueba la IDENTIDAD, no solo los atributos. Los tres roles de login tienen los
+    // mismos privilegios sobre las tablas y se distinguen únicamente en qué funciones
+    // `SECURITY DEFINER` ejecutan, así que conectarse con el equivocado no rompe nada visible
+    // — solo amplía lo que la API puede hacer. Ninguna aserción de base de datos lo detecta.
+    const [rol] = await this.$queryRaw<
+      Array<{ usuario: string; superusuario: boolean; saltaRls: boolean }>
+    >`
       SELECT current_user AS usuario,
-             (SELECT rolbypassrls FROM pg_roles WHERE rolname = current_user) AS bypassa
+             COALESCE((SELECT rolsuper     FROM pg_roles WHERE rolname = current_user), false) AS "superusuario",
+             COALESCE((SELECT rolbypassrls FROM pg_roles WHERE rolname = current_user), false) AS "saltaRls"
     `;
 
     if (!rol) throw new Error('No se pudo determinar el rol de conexión.');
-    if (rol.bypassa) {
-      throw new Error(
-        `La aplicación se conectó como '${rol.usuario}', que tiene BYPASSRLS. ` +
-          'El aislamiento entre agencias sería ficticio. Revisa DATABASE_APP_URL y ejecuta ' +
-          'pnpm --filter @viajapro/database run rol:crear. Ver ADR-0007.',
-      );
-    }
 
-    this.log.log(`Conectado como '${rol.usuario}' (sin BYPASSRLS).`);
+    const motivo = verificarIdentidad(
+      { usuario: rol.usuario, esSuperusuario: rol.superusuario, saltaRls: rol.saltaRls },
+      ROL_ESPERADO,
+    );
+    if (motivo) throw new Error(motivo);
+
+    this.log.log(`Conectado como '${rol.usuario}', verificado contra '${ROL_ESPERADO}'.`);
   }
 
   async onModuleDestroy(): Promise<void> {

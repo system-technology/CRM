@@ -16,11 +16,6 @@ out/
 # ejemplo. R6.
 .env
 .env.*
-.env.local
-.env.*.local
-# Respaldo que deja el rotador de roles: contiene las credenciales ANTERIORES,
-# que siguen siendo credenciales hasta que alguien las borre.
-.env.bak
 !.env.example
 
 # Logs

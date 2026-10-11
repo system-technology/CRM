@@ -139,6 +139,9 @@ corresponde, definido en `.claude/agents/`.
 |---|---|
 | `arquitecto` | Diseño de sistema, ADRs, límites entre contextos |
 | `experto-turismo` | Validar que el modelo refleja cómo opera una agencia real |
+| **`jefe-de-producto`** | Estrategia: mercado, competencia, modelo de cobro, precio. Horizonte de meses |
+| **`dueno-de-producto`** | Dueño de la cola. Qué se construye y en qué orden. Acepta o devuelve entregas |
+| **`facilitador`** | Ceremonias, bloqueos y tablero. Protege al equipo del alcance |
 | `analista-producto` | Historias de usuario, criterios de aceptación, alcance |
 | `backend` | Módulos NestJS, casos de uso, puertos y adaptadores |
 | `frontend` | Next.js, componentes, estados de UI |
@@ -156,6 +159,29 @@ corresponde, definido en `.claude/agents/`.
 | **`integrador`** | **Guardián de `main`. Única vía de integración.** Ver R11 |
 
 Modelo operativo completo, loops y protocolo de traspaso: `docs/09-ia/01-modelo-operativo.md`.
+Trabajo en paralelo con Antigravity: `docs/09-ia/06-flujo-con-antigravity.md`.
+
+### 8.1 Quién decide qué
+
+Conviene no confundirlos, porque los tres pueden decir «no» y ninguno puede anular al otro:
+
+| Quién | Decide |
+|---|---|
+| `jefe-de-producto` | **Hacia dónde** va el producto, y cómo gana dinero |
+| `dueno-de-producto` | **Qué** se construye y en qué orden |
+| `arquitecto` | **Cómo** se construye |
+| `auditor-seguridad` | Si es **seguro** |
+| `integrador` | Si **entra en `main`** |
+| `facilitador` | Que el proceso **no mienta** |
+
+Ninguno anula a otro. El `dueno-de-producto` no negocia el veredicto de una auditoría con
+argumentos de calendario; el `integrador` no decide prioridades; el `facilitador` no decide
+alcance, pero **sí defiende que se recorte el alcance antes que la verificación**.
+
+Los tres primeros están separados a propósito. Dueño y facilitador reunidos en uno solo eliminan
+la fricción que impide prometer de más — y esa fricción es justo lo que protege al equipo.
+
+Un «terminado» solo lo es cuando está integrado en `main`.
 
 ## 9. Cómo no perder el hilo
 
