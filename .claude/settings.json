@@ -96,14 +96,11 @@
       "Bash(git add:*)",
       "Bash(git checkout:*)",
       "Bash(node:*)",
-      "Bash(touch:*)"
-    ],
-    "ask": [
+      "Bash(touch:*)",
       "Bash(node .claude/hooks/autorizar-integracion.mjs:*)",
-      "Bash(docker compose:*)",
-      "Bash(terraform:*)",
-      "Bash(npm install:*)"
+      "Bash(docker compose:*)"
     ],
+    "ask": ["Bash(terraform:*)", "Bash(npm install:*)"],
     "deny": [
       "Read(./.env)",
       "Read(./.env.local)",
