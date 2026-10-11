@@ -21,6 +21,31 @@ las plantillas, que estuvo bien. `lint`, `typecheck`, `test`, `build` y `format:
 
 ---
 
+## [ ] 0d. La ficha del viajero, atada a SU conversación
+
+Lo demás del rediseño pasó — está en `REVISION.md`. Esto no.
+
+Abrí tres conversaciones seguidas —Juan Pérez, Ana Martínez, Sonia López— y la ficha de la
+derecha mostró las tres veces el mismo teléfono: `+573001234567`, el de Sofía Gómez. La cabecera
+dice un nombre y treinta centímetros a la derecha hay otra persona, con otras etiquetas y una
+oportunidad de 12.500.000 COP que no es suya.
+
+**No es un detalle de datos simulados.** Un asesor cotiza Cancún para quien preguntó por San
+Andrés. Y con datos reales sería el expediente de un viajero dentro de la conversación de otro.
+
+**Qué hacer:** que el componente reciba el contacto de la conversación abierta en vez de una
+constante. `FichaDeContacto` ya está en `@viajapro/contracts`, y el simulador debe devolver la
+ficha **del id que se le pide**.
+
+**Criterio de aceptación:** una prueba que abra dos conversaciones distintas y afirme que el
+teléfono de la ficha es **distinto**. Con el código de hoy tiene que salir **en rojo**; si sale
+verde, la prueba no sirve. Cuéntalo en `ENTREGA.md`: roja antes, verde después.
+
+Cuando esté, rehaz las pruebas de la tarea 5 que te devolví — ahora que la pantalla está partida
+en piezas ya hay funciones que importar, que era la mitad del problema.
+
+---
+
 ## [x] 0b. El diseño — todo esto va antes que cualquier funcionalidad nueva
 
 El propietario abrió la aplicación y dijo que la experiencia de usuario está por el suelo. Tiene
