@@ -83,8 +83,8 @@ export function BarraModulos() {
       label: 'Archivos de Viaje (TravelFiles)',
       href: '/viajes',
       icon: Briefcase,
-      activo: false,
-      disponible: false,
+      activo: pathname.startsWith('/viajes'),
+      disponible: true,
     },
     {
       id: 'contactos',

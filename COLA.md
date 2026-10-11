@@ -48,6 +48,34 @@ redefinidos: todo de `@viajapro/contracts` — si falta un campo, **para y dilo*
 
 ---
 
+## [x] 0c.10. Expediente Operativo y Archivo de Viaje (`/viajes`)
+
+Origen: `viajapro_diseno_ui_ux.json` (Pantalla P1: `travel_file` Archivo de viaje) · `docs/01-producto/02-lenguaje-ubicuo.md` (`TravelFile`, `Booking`, `timeLimit`, `recordLocator`, `Supplier`) · Regla R8 (Dinero en enteros de COP), R9 (Fechas UTC) y R10 (PII sensible de viajeros enmascarada y auditada).
+
+**Objetivo:** Construir la pantalla del expediente operativo en `/viajes` para centralizar el seguimiento de una venta confirmada: itinerario, pasajeros con documentación, reservas individuales con proveedores (*bookings* con su *time limit* y localizador), y balance de pagos (total, pagado, saldo pendiente).
+
+**Invariantes y criterios:**
+1. **Resumen Operativo y Financiero (`summary_fields`):**
+   - Titular del viaje, destino turístico, fechas de salida y regreso.
+   - Estado del expediente (`CONFIRMADO`, `EN_OPERACION`, `VIAJANDO`, `COMPLETADO`, `CANCELADO`).
+   - Balance en COP (R8): Total venta, total recaudado y saldo pendiente visible de un vistazo.
+2. **Alertas Críticas Visibles (que cuestan dinero si se olvidan):**
+   - Alerta destacada de **Time limit** de mayorista/aerolínea próximo a vencer con cálculo de horas restantes.
+   - Alerta de pago/abono pendiente antes de fecha límite.
+   - Alerta de documentación faltante (pasaportes sin cargar).
+3. **Pestañas del Expediente:**
+   - **Pasajeros y Documentos (R10):** Lista de pasajeros (Adultos, Niños, Infantes), documento con número enmascarado para proteger PII (`CC-***842`, `PA-***912`), estado de voucher y pasaporte.
+   - **Reservas por Proveedor (`Booking`):** Mayorista/aerolínea/hotel, localizador (`recordLocator` / PNR), fecha límite de emisión (`timeLimit`) y estado de confirmación.
+   - **Historial de Pagos y Abonos:** Pagos recibidos con fecha, método (Transferencia, Wompi, Efectivo) y comprobante.
+   - **Itinerario Operativo:** Cronograma día por día con traslados, check-in de hotel, vuelos y excursiones.
+4. **Filtro y Selección de Expedientes:**
+   - Barra lateral o selector para alternar entre archivos de viaje activos de la agencia, con soporte de parámetro de URL (`?id=...`) para navegación directa desde la Ficha del Contacto en la Bandeja.
+5. **Habilitación en Navegación Lateral:**
+   - Activar el módulo en `BarraModulos` (`disponible: true`, indicador de ruta activa para `/viajes`).
+6. **Compuertas:** `test`, `typecheck`, `lint`, `build` y `format:check` 100% en verde.
+
+---
+
 ## [x] 0c.9. Conexión de API Real del CRM: Tablero Pipeline, Movimiento de Etapas y Ficha de Contacto
 
 Origen: Instrucción directa de arquitectura en `COLA.md` por Claude · Endpoints verificados en `apps/api/src/modules/crm/interface/crm.controller.ts` (`GET /api/v1/crm/tablero`, `PATCH /api/v1/crm/oportunidades/:id/etapa`, `GET /api/v1/crm/contactos/:id/ficha`, `GET /api/v1/crm/contactos`).

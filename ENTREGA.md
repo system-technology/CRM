@@ -1,4 +1,46 @@
-# ENTREGA.md — Tareas 0d, 0c.3 (Pipeline Kanban), 6 (Ventana 24h Meta HSM), 0c.4 (Contactos), 0c.5 (Catálogo), 0c.6 (Cotizador), 0c.7 (Reportes), 0c.8 (Configuración) y 0c.9 (Cliente CRM API)
+# ENTREGA.md — Tareas 0d, 0c.3 (Pipeline Kanban), 6 (Ventana 24h Meta HSM), 0c.4 (Contactos), 0c.5 (Catálogo), 0c.6 (Cotizador), 0c.7 (Reportes), 0c.8 (Configuración), 0c.9 (Cliente CRM API) y 0c.10 (Expediente Operativo / Viajes)
+
+## 0. Entrega de Tarea 0c.10: Pantalla de Expediente Operativo y Archivo de Viaje (`/viajes` — `travel_file`)
+
+Origen: `viajapro_diseno_ui_ux.json` (Pantalla P1: `travel_file` Archivo de viaje) · `docs/01-producto/02-lenguaje-ubicuo.md` (`TravelFile`, `Booking`, `timeLimit`, `recordLocator`, `Supplier`) · Reglas R8 (Dinero en enteros de COP sin decimales), R9 (Fechas UTC) y R10 (PII sensible de pasajeros enmascarada y protegida).
+
+### Implementación Realizada:
+1. **Modelos de Dominio y Datos Tipados (`apps/web/src/lib/mock-viajes.ts`):**
+   - Estructura canónica del archivo de viaje: `ArchivoDeViaje`, `ReservaProveedor` (`Booking`), `PasajeroViaje`, `PagoAbono`, `DiaItinerario`, `NotaBitacora`.
+   - Estados de expediente: `CONFIRMADO`, `EN_OPERACION`, `VIAJANDO`, `COMPLETADO`, `CANCELADO`.
+   - Datos reales de agencias colombianas: expedientes para Cancún todo incluido, San Andrés Islas y Punta Cana.
+
+2. **Lógica Pura y Reglas Críticas de Negocio (`apps/web/src/lib/viajes-logica.ts`):**
+   - `calcularSaldoPendiente`: Balance financiero en COP (R8), cálculo de porcentaje de recaudo y validación de saldado total.
+   - `evaluarAlertaTimeLimit`: Detección en tiempo real de vencimiento de reservas de mayoristas/aerolíneas, con clasificación de urgencia crítica (< 24h o vencido) para evitar penalidades y pérdidas de inventario.
+   - `enmascararDocumentoPii`: Protección rigurosa de datos de pasaporte y cédula (R10) mostrando únicamente tipo y últimos 3-4 dígitos.
+   - `verificarDocumentacionCompleta`: Auditoría de pasaportes y vouchers por cada pasajero.
+   - `calcularMargenOperativoExpediente`: Cálculo de rentabilidad en COP y porcentaje de margen bruto operativo sobre costos de mayoristas.
+
+3. **Pruebas Automatizadas en Vitest (`apps/web/src/lib/viajes-logica.spec.ts`):**
+   - 13 pruebas unitarias exhaustivas probando balance financiero, alertas de time limit próximas y vencidas, enmascaramiento PII, control documental de pasaportes y cálculo de margen.
+   - Total suite: **82/82 pruebas pasando en 11 suites de Vitest**.
+
+4. **Interfaz de Usuario del Expediente Operativo (`apps/web/src/app/viajes/page.tsx`):**
+   - Selector lateral con lista de expedientes activos y soporte de parámetro de URL (`?id=...`) para transición fluida desde la Ficha de Contacto.
+   - Cabecera con resumen del viaje, estado visual, titular, fechas de viaje y saldo pendiente de recaudo.
+   - Resumen financiero de 4 tarjetas: Total Venta (COP), Total Recaudado (COP), Saldo Pendiente (COP) y Margen Bruto Estimado.
+   - Pestañas operativas:
+     - **Itinerario:** Cronograma día por día con traslados, vuelos, hoteles y excursiones.
+     - **Pasajeros y Documentos:** Lista con tipo de pasajero, documento enmascarado (R10), estado de pasaporte y vouchers.
+     - **Reservas Proveedores (Bookings):** Mayorista, PNR/localizador copiable en un clic, costo neto mayorista y alerta de time limit destacada.
+     - **Pagos y Tesorería:** Historial de abonos con fecha UTC, método de pago y soporte.
+     - **Bitácora Operativa:** Registro cronológico de notas de seguimiento de la agencia.
+   - Habilitación del módulo en la barra de navegación lateral (`apps/web/src/components/bandeja/barra-modulos.tsx`).
+
+### Verificación de las 5 Compuertas:
+- **Vitest:** 82/82 pruebas pasando en 11 suites (`pnpm --filter @viajapro/web test`).
+- **TypeScript:** `tsc --noEmit` 0 errores.
+- **ESLint:** `eslint src` 0 errores, 0 advertencias.
+- **Next.js Build:** Generación estática exitosa de las 13 rutas de la aplicación (`pnpm --filter @viajapro/web build`).
+- **Prettier:** 100% conforme (`pnpm format:check`).
+
+---
 
 ## 1. Entrega de Tarea 0c.9: Conexión de API Real del CRM: Tablero Pipeline, Movimiento de Etapas y Ficha de Contacto
 
