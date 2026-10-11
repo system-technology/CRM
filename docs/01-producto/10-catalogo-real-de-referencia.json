@@ -1,0 +1,359 @@
+{
+  "_procedencia": "Tarifario de **Agencias André's Tours**, nombrada por el propietario el 2026-10-11. Imagen original en docs/_assets/catalogo/2026-10-tarifario-semana-de-receso.png. Transcrito a mano; las dudas de lectura quedan en _dudas en vez de resueltas a ojo.",
+  "_para_que_sirve": "Es la primera referencia REAL de cómo una agencia de este mercado estructura y nombra su oferta. Sustituye a los paquetes que nos inventamos. NO es el tarifario del mayorista: son precios al público, sin tarifa neta, así que no permite calcular margen todavía.",
+  "_dudas": [
+    "«Entre Pamas y Café» es casi seguro «Entre Palmas y Café»: confirmar con la agencia antes de sembrarlo.",
+    "«Salento 3d» — el «3d» no está claro. ¿Tres destinos? ¿Un código interno?",
+    "«Borondo Boyacense» podría ser «Rodando Boyacense» o similar."
+  ],
+  "campania": {
+    "nombre": "Octubre — Semana de receso",
+    "lema": "¡Una aventura sin límites!",
+    "mercado": "Colombia",
+    "moneda": "COP",
+    "origen_probable": "Eje Cafetero / Valle del Cauca: casi todo sale hacia Quindío, Risaralda y el Pacífico vallecaucano"
+  },
+  "_hallazgo_principal": "La oferta NO se segmenta por temporada ni por acomodación, que es como la modelamos nosotros. Se segmenta por DURACIÓN Y ESTRUCTURA DEL VIAJE: pasadía, pasanoche, mini-excursión, excursión, super excursión. Y cada producto se vende atado a FECHAS DE SALIDA CONCRETAS, no como un paquete abierto que se cotiza para cualquier día.",
+  "tipos_de_producto": [
+    {
+      "clave": "PASADIA",
+      "nombre": "Pasadía",
+      "que_es": "Salida y regreso el mismo día. Sin alojamiento.",
+      "rango_cop": [189000, 399000]
+    },
+    {
+      "clave": "PASANOCHE",
+      "nombre": "Pasanoche",
+      "que_es": "Una noche. Sale un día y vuelve al siguiente.",
+      "rango_cop": [389000, 869000]
+    },
+    {
+      "clave": "MINI_EXCURSION",
+      "nombre": "Mini-excursión",
+      "que_es": "Dos o tres días.",
+      "rango_cop": [489000, 489000]
+    },
+    {
+      "clave": "EXCURSION",
+      "nombre": "Excursión",
+      "que_es": "Tres o cuatro días.",
+      "rango_cop": [645000, 829000]
+    },
+    {
+      "clave": "SUPER_EXCURSION",
+      "nombre": "Super excursión",
+      "que_es": "Seis a diez días, destinos lejanos. El icono es un avión, pero no se declara si incluye vuelo.",
+      "rango_cop": [1299000, 1689000]
+    },
+    {
+      "clave": "PROMO_PAREJA",
+      "nombre": "Promo pareja",
+      "que_es": "No es un tipo de viaje: es una PROMOCIÓN sobre pasadías, con precio distinto y fecha única. Mezclarla con los tipos de arriba sería un error de modelo.",
+      "rango_cop": [280000, 369000]
+    }
+  ],
+  "salidas": [
+    {
+      "tipo": "PASADIA",
+      "fechas": ["2026-10-03", "2026-10-10"],
+      "etiqueta_original": "SÁBADO 3 Y 10 OCTUBRE",
+      "productos": [
+        {
+          "nombre": "Parque del café",
+          "precio_cop": 275000
+        },
+        {
+          "nombre": "Salento 3d",
+          "precio_cop": 205000
+        },
+        {
+          "nombre": "San Cipriano",
+          "precio_cop": 189000
+        },
+        {
+          "nombre": "Playa Pianguita",
+          "precio_cop": 259000
+        },
+        {
+          "nombre": "Playa Magüipí",
+          "precio_cop": 275000
+        },
+        {
+          "nombre": "Pianguita + Ballenas",
+          "precio_cop": 329000
+        },
+        {
+          "nombre": "Magüipí + Ballenas",
+          "precio_cop": 399000
+        }
+      ]
+    },
+    {
+      "tipo": "PASADIA",
+      "fechas": ["2026-10-04", "2026-10-11"],
+      "etiqueta_original": "DOMINGO 4 Y 11 DE OCTUBRE",
+      "productos": [
+        {
+          "nombre": "Parque del café",
+          "precio_cop": 275000
+        },
+        {
+          "nombre": "Salento 3d",
+          "precio_cop": 205000
+        },
+        {
+          "nombre": "Bailarinas",
+          "precio_cop": 239000
+        },
+        {
+          "nombre": "Termales de Santa Rosa",
+          "precio_cop": 235000
+        },
+        {
+          "nombre": "Ukumarí + Consotá",
+          "precio_cop": 259000
+        },
+        {
+          "nombre": "Ukumarí + Termales",
+          "precio_cop": 285000
+        },
+        {
+          "nombre": "Parque Consotá",
+          "precio_cop": 189000
+        },
+        {
+          "nombre": "Nevado del Ruiz",
+          "precio_cop": 365000
+        },
+        {
+          "nombre": "Termales de San Vicente",
+          "precio_cop": 299000
+        },
+        {
+          "nombre": "Panaca",
+          "precio_cop": 239000
+        },
+        {
+          "nombre": "Santa Rosa + Encanto",
+          "precio_cop": 265000
+        },
+        {
+          "nombre": "Lago Calima",
+          "precio_cop": 189000
+        },
+        {
+          "nombre": "San Cipriano",
+          "precio_cop": 189000
+        },
+        {
+          "nombre": "Playa Pianguita",
+          "precio_cop": 259000
+        },
+        {
+          "nombre": "Playa Magüipí",
+          "precio_cop": 275000
+        },
+        {
+          "nombre": "Pianguita + Ballenas",
+          "precio_cop": 329000
+        },
+        {
+          "nombre": "Magüipí + Ballenas",
+          "precio_cop": 399000
+        }
+      ]
+    },
+    {
+      "tipo": "PASANOCHE",
+      "fechas": ["2026-10-03"],
+      "etiqueta_original": "3 AL 4 OCTUBRE (SÁBADO A DOMINGO)",
+      "noches": 1,
+      "productos": [
+        {
+          "nombre": "Entre Pamas y Café",
+          "precio_cop": 499000,
+          "_duda": "probablemente «Entre Palmas y Café»"
+        },
+        {
+          "nombre": "Puebleando en el Quindío",
+          "precio_cop": 389000
+        },
+        {
+          "nombre": "Pasanoche Nevado",
+          "precio_cop": 499000
+        },
+        {
+          "nombre": "Pasanoche Magüipí + Ballenas",
+          "precio_cop": 869000
+        },
+        {
+          "nombre": "Pianguita + Ballenas",
+          "precio_cop": 569000
+        }
+      ]
+    },
+    {
+      "tipo": "PASANOCHE",
+      "fechas": ["2026-10-10", "2026-10-11"],
+      "etiqueta_original": "10 AL 11 / 11 AL 12 OCTUBRE (SÁBADO A DOMINGO / DOMINGO A LUNES FESTIVO)",
+      "noches": 1,
+      "productos": [
+        {
+          "nombre": "Entre Pamas y Café",
+          "precio_cop": 499000,
+          "_duda": "probablemente «Entre Palmas y Café»"
+        },
+        {
+          "nombre": "Puebleando en el Quindío",
+          "precio_cop": 389000
+        },
+        {
+          "nombre": "Pasanoche Nevado",
+          "precio_cop": 499000
+        },
+        {
+          "nombre": "Pasanoche Termales",
+          "precio_cop": 435000
+        },
+        {
+          "nombre": "Pasanoche Magüipí + Ballenas",
+          "precio_cop": 869000
+        },
+        {
+          "nombre": "Pianguita + Ballenas",
+          "precio_cop": 569000
+        }
+      ]
+    },
+    {
+      "tipo": "MINI_EXCURSION",
+      "fechas": ["2026-10-02", "2026-10-09", "2026-10-10"],
+      "etiqueta_original": "2 AL 4 / 9 AL 11 / 10 AL 12 DE OCTUBRE",
+      "productos": [
+        {
+          "nombre": "Medellín Guatapé",
+          "precio_cop": 489000
+        }
+      ]
+    },
+    {
+      "tipo": "EXCURSION",
+      "fechas": ["2026-10-09"],
+      "etiqueta_original": "9 AL 12 OCTUBRE",
+      "productos": [
+        {
+          "nombre": "Hacienda Nápoles",
+          "precio_cop": 829000
+        },
+        {
+          "nombre": "Ruta al Sur",
+          "precio_cop": 645000
+        },
+        {
+          "nombre": "Borondo Boyacense",
+          "precio_cop": 799000,
+          "_duda": "nombre dudoso en la imagen"
+        },
+        {
+          "nombre": "Tour Capital",
+          "precio_cop": 819000
+        },
+        {
+          "nombre": "Parque Jaime Duque",
+          "precio_cop": 829000
+        }
+      ]
+    },
+    {
+      "tipo": "SUPER_EXCURSION",
+      "productos": [
+        {
+          "nombre": "Costa Atlántica",
+          "precio_cop": 1689000,
+          "sale": "2026-10-03",
+          "regresa": "2026-10-12"
+        },
+        {
+          "nombre": "Valledupar y Guajira",
+          "precio_cop": 1650000,
+          "sale": "2026-10-04",
+          "regresa": "2026-10-12"
+        },
+        {
+          "nombre": "Coveñas y Golfo de Morrosquillo",
+          "precio_cop": 1299000,
+          "sale": "2026-10-05",
+          "regresa": "2026-10-11"
+        },
+        {
+          "nombre": "Experiencia Cundiboyacense",
+          "precio_cop": 1299000,
+          "sale": "2026-10-06",
+          "regresa": "2026-10-11"
+        }
+      ]
+    },
+    {
+      "tipo": "PROMO_PAREJA",
+      "fechas": ["2026-10-11"],
+      "etiqueta_original": "11 OCTUBRE",
+      "productos": [
+        {
+          "nombre": "Ukumarí + Filandia",
+          "precio_cop": 369000
+        },
+        {
+          "nombre": "Consotá",
+          "precio_cop": 280000
+        }
+      ]
+    }
+  ],
+  "lo_que_el_tarifario_NO_dice": [
+    "La tarifa neta del mayorista. Son precios al público, así que el margen sigue sin poder calcularse. La tarea 2 de ESTADO.md sigue abierta.",
+    "Si el precio es por persona o por el grupo. Por el rango y por el sector, casi seguro por persona — pero «Promo pareja» sugiere que no siempre.",
+    "Qué incluye cada producto: transporte, entradas, comidas, guía.",
+    "Política de niños e infantes. No hay un solo precio diferenciado por edad en toda la hoja.",
+    "Acomodación. Ni una mención, ni en los pasanoches ni en las super excursiones de nueve días.",
+    "Cupos por salida. Un pasadía en bus tiene un tope físico y aquí no aparece.",
+    "Vigencia de la tarifa, más allá de que la campaña es de octubre.",
+    "Condiciones de cancelación y anticipos."
+  ],
+  "preguntas_para_el_experto_de_turismo": [
+    "Nuestro cotizador modela Acomodación (sencilla/doble/triple/cuádruple) y TipoPasajero (ADT/CHD/INF) como ejes centrales del precio. Este tarifario real no usa ninguno de los dos. ¿Está el modelo sobredimensionado para esta cabeza de playa, o la complejidad existe y la agencia la resuelve por fuera de la hoja?",
+    "Nuestro modelo tiene «Paquete» con «Temporada». Este tarifario tiene «producto atado a una fecha de salida». ¿Es `Salida` la entidad principal y `Paquete` la plantilla, o al revés?",
+    "«Pasadía», «pasanoche», «mini-excursión», «excursión» y «super excursión» no están en el lenguaje ubicuo. ¿Son categorías del sector o nomenclatura de esta agencia?",
+    "«Promo pareja» tiene precio propio y fecha propia sobre productos que ya existen. ¿Es un descuento, una tarifa alternativa, o un producto distinto?"
+  ],
+  "_que_sabemos_de_la_agencia": {
+    "nombre": "Agencias André's Tours",
+    "verificado_externamente": false,
+    "por_que_no": "Buscado el 2026-10-11 sin resultado. La búsqueda web disponible tiene alcance estadounidense y una agencia local colombiana cuya presencia es Instagram o Facebook no aparece. Ausencia de resultado NO es evidencia de nada.",
+    "lo_que_si_dijo_el_propietario": "La agencia piloto usa paquetes de mayoristas: revende, no opera.",
+    "pendiente": "Si André's Tours es la agencia piloto o el mayorista que la surte. Cambia si estos precios son al público o netos. Dueño: dueno-de-producto."
+  },
+  "_comparacion_de_mercado": {
+    "_para_que": "Señal, no prueba. Sirve para la pregunta de si estos precios son al público o netos: un precio muy por debajo del mercado apuntaría a neto. Las inclusiones, la ciudad de salida y la fecha pueden explicar la diferencia igual de bien.",
+    "_fecha": "2026-10-11",
+    "casos": [
+      {
+        "producto": "Lago Calima (pasadía)",
+        "en_este_tarifario_cop": 189000,
+        "otra_agencia_cop": 299000,
+        "quien": "Viajando y Gozando, salidas desde Cali",
+        "fuente": "https://agenciaviajandoygozando.com/pasadias/",
+        "diferencia": "-37% frente a la otra agencia"
+      },
+      {
+        "producto": "Pasadía al Eje Cafetero",
+        "en_este_tarifario_cop": 275000,
+        "_nota": "comparable más cercano: Parque del Café",
+        "otra_agencia_cop": 409000,
+        "quien": "RutasCafeterasTours, salidas desde Armenia/Pereira",
+        "fuente": "https://rutascafeterastours.com/",
+        "diferencia": "-33% frente a la otra agencia"
+      }
+    ],
+    "_lectura_honesta": "Dos comparables por debajo en un tercio es consistente con DOS explicaciones y no distingue entre ellas: que André's Tours sea más barata, o que esta hoja sean precios netos. No sirve para decidir; sirve para no decidir a ciegas."
+  }
+}
