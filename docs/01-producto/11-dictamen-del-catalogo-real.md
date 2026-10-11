@@ -1,3 +1,22 @@
+> ## ⚠️ Corregido el 2026-10-11 — la premisa central de este dictamen es falsa para nuestro piloto
+>
+> Este documento concluye que la agencia **opera** su propia excursión en bus. Era una
+> **inferencia a partir de una imagen**, no un dato, y el propietario la desmintió al día
+> siguiente: **la agencia piloto usa paquetes de mayoristas. Revende.**
+>
+> Lo que cae con ella, y está en todo el texto: «no falta la tarifa neta, falta el concepto»
+> —el mayorista existe y el neto existe—, el costo como bus fletado con punto de equilibrio, y
+> el valor operativo que de ahí se derivaba: cupo en vivo, salida «en riesgo», planilla del
+> conductor. El revendedor no decide si el bus sale; le pregunta al mayorista si hay cupo.
+>
+> **Lo que sigue en pie** y es la razón de conservar este documento entero en vez de borrarlo:
+> la salida con fecha como unidad de venta, `Fare` con su unidad de cobro, los 26 de 47
+> productos sin noche, y la lectura de la imagen que ninguna transcripción captura —que el
+> avión de «Super Excursiones» es decorativo y los 47 productos son terrestres.
+>
+> **Manda el `ADR-0009`**, revisado con el dato correcto. Esto se queda como está, sin limpiar,
+> porque un documento que esconde en qué se equivocó enseña menos que uno que lo deja ver.
+
 # Dictamen del catálogo real — `experto-turismo`
 
 > **Fuente:** `docs/01-producto/10-catalogo-real-de-referencia.json` y la imagen original
