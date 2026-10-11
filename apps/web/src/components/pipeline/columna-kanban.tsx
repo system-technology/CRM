@@ -1,17 +1,25 @@
 'use client';
 
 import React, { useState } from 'react';
-import { ColumnaPipeline, EtapaPipeline, Oportunidad } from '@viajapro/contracts';
+import { ClaveEtapa, ColumnaPipeline, EtapaDefinida, Oportunidad } from '@viajapro/contracts';
 import { TarjetaOportunidad } from './tarjeta-oportunidad';
-import { formatearDineroCifra, NOMBRES_ETAPAS } from '../../lib/pipeline-logica';
+import { formatearDineroCifra } from '../../lib/pipeline-logica';
 
 interface ColumnaKanbanProps {
   columna: ColumnaPipeline;
-  onSolicitarMover: (oportunidad: Oportunidad, nuevaEtapa: EtapaPipeline) => void;
-  onDropOportunidad: (oportunidadId: string, nuevaEtapa: EtapaPipeline) => void;
+  onSolicitarMover: (oportunidad: Oportunidad, nuevaEtapa: EtapaDefinida) => void;
+  onDropOportunidad: (oportunidadId: string, nuevaEtapa: EtapaDefinida) => void;
+  /** Todas las etapas del tablero, para el menú «mover a» de cada tarjeta. */
+  etapas: EtapaDefinida[];
 }
 
-const COLORES_CABECERA_ETAPA: Record<EtapaPipeline, { punto: string; badge: string }> = {
+/** Para las etapas que la agencia inventó y el vocabulario común no nombra. */
+const COLOR_ETAPA_PROPIA = {
+  punto: 'bg-neutral-400',
+  badge: 'bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300',
+};
+
+const COLORES_CABECERA_ETAPA: Record<ClaveEtapa, { punto: string; badge: string }> = {
   NUEVO_LEAD: {
     punto: 'bg-blue-500',
     badge: 'bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300',
@@ -36,13 +44,17 @@ const COLORES_CABECERA_ETAPA: Record<EtapaPipeline, { punto: string; badge: stri
 
 export function ColumnaKanban({
   columna,
+  etapas,
   onSolicitarMover,
   onDropOportunidad,
 }: ColumnaKanbanProps) {
   const [arrastrandoEncima, setArrastrandoEncima] = useState(false);
 
   const { etapa, total, valorTotal, oportunidades } = columna;
-  const estilo = COLORES_CABECERA_ETAPA[etapa];
+  // El color se elige por la clave canónica, que puede no existir: una agencia con una etapa
+  // propia —«Esperando anticipo»— no tiene clave, y entonces se usa un gris neutro. Pintarla
+  // de rojo o de verde por adivinanza sería peor que no pintarla.
+  const estilo = etapa.clave ? COLORES_CABECERA_ETAPA[etapa.clave] : COLOR_ETAPA_PROPIA;
 
   const manejarDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -81,7 +93,7 @@ export function ColumnaKanban({
           <div className="flex items-center space-x-2">
             <span className={`h-2 w-2 rounded-full ${estilo.punto}`} />
             <h2 className="text-xs font-semibold text-neutral-900 dark:text-neutral-100">
-              {NOMBRES_ETAPAS[etapa]}
+              {etapa.nombre}
             </h2>
           </div>
           <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${estilo.badge}`}>
@@ -107,7 +119,12 @@ export function ColumnaKanban({
           </div>
         ) : (
           oportunidades.map((op) => (
-            <TarjetaOportunidad key={op.id} oportunidad={op} onSolicitarMover={onSolicitarMover} />
+            <TarjetaOportunidad
+              key={op.id}
+              oportunidad={op}
+              etapas={etapas}
+              onSolicitarMover={onSolicitarMover}
+            />
           ))
         )}
       </div>

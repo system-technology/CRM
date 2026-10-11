@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { EtapaPipeline, Oportunidad } from '@viajapro/contracts';
+import { EtapaDefinida, Oportunidad } from '@viajapro/contracts';
 import {
   MapPin,
   Clock,
@@ -16,17 +16,28 @@ import {
   esTareaAtrasada,
   formatearDineroCifra,
   formatearTiempoRelativo,
-  NOMBRES_ETAPAS,
   NOMBRES_MOTIVOS_PERDIDA,
 } from '../../lib/pipeline-logica';
 import { generarColorAvatar, obtenerIniciales } from '../../lib/bandeja-logica';
 
 interface TarjetaOportunidadProps {
   oportunidad: Oportunidad;
-  onSolicitarMover: (oportunidad: Oportunidad, nuevaEtapa: EtapaPipeline) => void;
+  /**
+   * Las etapas de ESTA agencia, para el menú «mover a».
+   *
+   * Vienen del tablero y no de una lista fija: la agencia demo tiene siete etapas y las cinco
+   * canónicas no las cubren. Construir el menú desde el vocabulario común dejaría dos destinos
+   * fuera, y el asesor no podría mover una tarjeta a una columna que está viendo.
+   */
+  etapas: EtapaDefinida[];
+  onSolicitarMover: (oportunidad: Oportunidad, nuevaEtapa: EtapaDefinida) => void;
 }
 
-export function TarjetaOportunidad({ oportunidad, onSolicitarMover }: TarjetaOportunidadProps) {
+export function TarjetaOportunidad({
+  oportunidad,
+  etapas,
+  onSolicitarMover,
+}: TarjetaOportunidadProps) {
   const [menuAbierto, setMenuAbierto] = useState(false);
 
   const {
@@ -49,9 +60,7 @@ export function TarjetaOportunidad({ oportunidad, onSolicitarMover }: TarjetaOpo
   const avatarColores = generarColorAvatar(contactoId);
   const iniciales = obtenerIniciales(contactoNombre, undefined);
 
-  const etapasDisponibles = (Object.keys(NOMBRES_ETAPAS) as EtapaPipeline[]).filter(
-    (e) => e !== etapa,
-  );
+  const etapasDisponibles = etapas.filter((e) => e.id !== etapa.id);
 
   const manejarDragStart = (e: React.DragEvent<HTMLDivElement>) => {
     e.dataTransfer.setData('text/plain', id);
@@ -64,7 +73,7 @@ export function TarjetaOportunidad({ oportunidad, onSolicitarMover }: TarjetaOpo
       onDragStart={manejarDragStart}
       tabIndex={0}
       role="article"
-      aria-label={`Oportunidad: ${titulo}, cliente ${contactoNombre || 'anónimo'}, etapa ${NOMBRES_ETAPAS[etapa]}`}
+      aria-label={`Oportunidad: ${titulo}, cliente ${contactoNombre || 'anónimo'}, etapa ${etapa.nombre}`}
       className="group relative cursor-grab rounded-2xl border border-neutral-200 bg-white p-4 shadow-2xs transition-all hover:border-neutral-300 hover:shadow-md active:cursor-grabbing dark:border-neutral-800 dark:bg-neutral-900/90 dark:hover:border-neutral-700"
     >
       {/* Fila superior: Destino + Probabilidad */}
@@ -152,7 +161,7 @@ export function TarjetaOportunidad({ oportunidad, onSolicitarMover }: TarjetaOpo
       )}
 
       {/* Motivo de pérdida si está en PERDIDA */}
-      {etapa === 'PERDIDA' && motivoPerdida && (
+      {etapa.esPerdida && motivoPerdida && (
         <div className="mt-2.5 rounded-xl border border-amber-200 bg-amber-50 p-2 text-[11px] text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-300">
           <p className="font-semibold">{NOMBRES_MOTIVOS_PERDIDA[motivoPerdida]}</p>
           {notaPerdida && <p className="mt-0.5 text-[10px] opacity-90">{notaPerdida}</p>}
@@ -199,7 +208,7 @@ export function TarjetaOportunidad({ oportunidad, onSolicitarMover }: TarjetaOpo
                 </div>
                 {etapasDisponibles.map((etapaDestino) => (
                   <button
-                    key={etapaDestino}
+                    key={etapaDestino.id}
                     type="button"
                     role="menuitem"
                     onClick={() => {
@@ -208,7 +217,7 @@ export function TarjetaOportunidad({ oportunidad, onSolicitarMover }: TarjetaOpo
                     }}
                     className="flex w-full items-center px-3 py-1.5 text-left text-xs text-neutral-700 hover:bg-neutral-100 dark:text-neutral-200 dark:hover:bg-neutral-700"
                   >
-                    {NOMBRES_ETAPAS[etapaDestino]}
+                    {etapaDestino.nombre}
                   </button>
                 ))}
               </div>

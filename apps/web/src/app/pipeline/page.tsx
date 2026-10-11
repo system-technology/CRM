@@ -2,17 +2,13 @@
 
 import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
-import { EtapaPipeline, MotivoPerdida, Oportunidad, TableroPipeline } from '@viajapro/contracts';
+import { EtapaDefinida, MotivoPerdida, Oportunidad, TableroPipeline } from '@viajapro/contracts';
 import { Kanban, Table as TableIcon, Search, Filter, Plus } from 'lucide-react';
 import { BarraModulos } from '../../components/bandeja/barra-modulos';
 import { ColumnaKanban } from '../../components/pipeline/columna-kanban';
 import { ModalMotivoPerdida } from '../../components/pipeline/modal-motivo-perdida';
 import { obtenerMockTableroPipeline } from '../../lib/mock-pipeline';
-import {
-  formatearDineroCifra,
-  moverOportunidadEnTablero,
-  NOMBRES_ETAPAS,
-} from '../../lib/pipeline-logica';
+import { formatearDineroCifra, moverOportunidadEnTablero } from '../../lib/pipeline-logica';
 
 export default function PipelinePage() {
   const [tablero, setTablero] = useState<TableroPipeline>(() => obtenerMockTableroPipeline());
@@ -23,7 +19,7 @@ export default function PipelinePage() {
   // Estado del modal de pérdida
   const [oportunidadPendientePerdida, setOportunidadPendientePerdida] = useState<{
     oportunidad: Oportunidad;
-    etapaDestino: EtapaPipeline;
+    etapaDestino: EtapaDefinida;
   } | null>(null);
 
   // Mensaje de feedback/notificación
@@ -37,18 +33,18 @@ export default function PipelinePage() {
   // Mover oportunidad
   const ejecutarMovimiento = (
     oportunidadId: string,
-    nuevaEtapa: EtapaPipeline,
+    nuevaEtapa: EtapaDefinida,
     motivoPerdida: MotivoPerdida | null = null,
     notaPerdida: string | null = null,
   ) => {
     try {
       const nuevoTablero = moverOportunidadEnTablero(tablero, oportunidadId, {
-        etapa: nuevaEtapa,
+        etapaId: nuevaEtapa.id,
         motivoPerdida,
         notaPerdida,
       });
       setTablero(nuevoTablero);
-      mostrarAviso(`Oportunidad movida a "${NOMBRES_ETAPAS[nuevaEtapa]}" con éxito.`);
+      mostrarAviso(`Oportunidad movida a "${nuevaEtapa.nombre}" con éxito.`);
     } catch (e) {
       console.error(e);
       mostrarAviso('Error al mover la oportunidad.');
@@ -56,8 +52,8 @@ export default function PipelinePage() {
   };
 
   // Manejar solicitud de movimiento (desde teclado o drop)
-  const manejarSolicitudMover = (op: Oportunidad, nuevaEtapa: EtapaPipeline) => {
-    if (nuevaEtapa === 'PERDIDA') {
+  const manejarSolicitudMover = (op: Oportunidad, nuevaEtapa: EtapaDefinida) => {
+    if (nuevaEtapa.esPerdida) {
       // Exige abrir el modal de motivo
       setOportunidadPendientePerdida({ oportunidad: op, etapaDestino: nuevaEtapa });
     } else {
@@ -66,7 +62,7 @@ export default function PipelinePage() {
   };
 
   // Manejar drop de HTML5 drag & drop
-  const manejarDropOportunidad = (oportunidadId: string, nuevaEtapa: EtapaPipeline) => {
+  const manejarDropOportunidad = (oportunidadId: string, nuevaEtapa: EtapaDefinida) => {
     let opEncontrada: Oportunidad | null = null;
     for (const col of tablero.columnas) {
       const op = col.oportunidades.find((o) => o.id === oportunidadId);
@@ -77,9 +73,9 @@ export default function PipelinePage() {
     }
     if (!opEncontrada) return;
 
-    if (opEncontrada.etapa === nuevaEtapa) return;
+    if (opEncontrada.etapa.id === nuevaEtapa.id) return;
 
-    if (nuevaEtapa === 'PERDIDA') {
+    if (nuevaEtapa.esPerdida) {
       setOportunidadPendientePerdida({ oportunidad: opEncontrada, etapaDestino: nuevaEtapa });
     } else {
       ejecutarMovimiento(oportunidadId, nuevaEtapa, null, null);
@@ -116,7 +112,7 @@ export default function PipelinePage() {
 
   // Métricas rápidas de cabecera
   const totalOportunidadesActivas = tablero.columnas
-    .filter((c) => c.etapa !== 'PERDIDA' && c.etapa !== 'GANADA')
+    .filter((c) => !c.etapa.esPerdida && !c.etapa.esGanada)
     .reduce((acc, c) => acc + c.total, 0);
 
   return (
@@ -234,8 +230,9 @@ export default function PipelinePage() {
             <div className="flex min-w-full space-x-4">
               {tableroFiltrado.columnas.map((columna) => (
                 <ColumnaKanban
-                  key={columna.etapa}
+                  key={columna.etapa.id}
                   columna={columna}
+                  etapas={tablero.columnas.map((c) => c.etapa)}
                   onSolicitarMover={manejarSolicitudMover}
                   onDropOportunidad={manejarDropOportunidad}
                 />
@@ -277,7 +274,7 @@ export default function PipelinePage() {
                         </td>
                         <td className="px-4 py-3">
                           <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-[10px] font-medium text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300">
-                            {NOMBRES_ETAPAS[op.etapa]}
+                            {op.etapa.nombre}
                           </span>
                         </td>
                         <td className="cifra px-4 py-3 text-right font-bold text-neutral-900 dark:text-neutral-100">

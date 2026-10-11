@@ -100,7 +100,7 @@ export function FichaCliente({ ficha, onCerrar }: FichaClienteProps) {
                 Oportunidad Viva
               </span>
               <span className="py-0.2 rounded-xs border border-neutral-300 bg-neutral-100 px-1.5 text-[10px] font-bold text-neutral-800 dark:border-neutral-700 dark:bg-neutral-700 dark:text-neutral-200">
-                {oportunidadActual.etapa}
+                {oportunidadActual.etapa.nombre}
               </span>
             </div>
 

@@ -3,10 +3,10 @@
  *
  * Conforme a viajapro_diseno_ui_ux.json (Pantalla P1: settings_team),
  * ADR-0006 (Niveles de parametrización: Nivel 1 en v1),
- * y contratos oficiales en @viajapro/contracts (EtapaPipeline, TelefonoE164).
+ * y contratos oficiales en @viajapro/contracts (ClaveEtapa, TelefonoE164).
  */
 
-import type { EtapaPipeline } from '@viajapro/contracts';
+import type { ClaveEtapa } from '@viajapro/contracts';
 
 export type RolMiembro = 'DUENO' | 'ASESOR';
 export type EstadoMiembro = 'ACTIVO' | 'INVITADO' | 'INACTIVO';
@@ -57,7 +57,7 @@ export interface ConfiguracionAgencia {
 }
 
 export interface EtapaConfigurada {
-  codigo: EtapaPipeline;
+  codigo: ClaveEtapa;
   label: string;
   orden: number;
   probabilidad: number;

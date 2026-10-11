@@ -47,7 +47,15 @@ export function obtenerMockFichaDeContacto(conversacionId: string): FichaDeConta
       destino: 'Cancún, México',
       paqueteId: null,
       fechaSalida: '2026-12-15',
-      etapa: 'EN_COTIZACION' as const,
+      etapa: {
+        id: '01a114b2-5314-75b1-91ad-3be0518a6a02',
+        clave: 'EN_COTIZACION' as const,
+        nombre: 'En cotización',
+        orden: 2,
+        probabilidad: 40,
+        esGanada: false,
+        esPerdida: false,
+      },
       valorEstimado: {
         unidades: '1250000000', // 12.500.000 COP en centavos
         moneda: 'COP' as const,

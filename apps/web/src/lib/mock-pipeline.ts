@@ -11,10 +11,18 @@ export function obtenerMockTableroPipeline(): TableroPipeline {
   const columnas: ColumnaPipeline[] = [
     // 1. NUEVO_LEAD
     {
-      etapa: 'NUEVO_LEAD',
+      etapa: {
+        id: '01a114b2-5314-75b1-91ad-3be0518a6a01',
+        clave: 'NUEVO_LEAD',
+        nombre: 'Consulta nueva',
+        orden: 1,
+        probabilidad: 10,
+        esGanada: false,
+        esPerdida: false,
+      },
       total: 3,
       valorTotal: {
-        unidades: '1850000000', // 18.500.000 COP
+        unidades: '18500000', // 18.500.000 COP
         moneda: 'COP',
       },
       oportunidades: [
@@ -26,8 +34,16 @@ export function obtenerMockTableroPipeline(): TableroPipeline {
           destino: 'San Andrés Islas, Colombia',
           paqueteId: null,
           fechaSalida: '2026-11-20',
-          etapa: 'NUEVO_LEAD',
-          valorEstimado: { unidades: '620000000', moneda: 'COP' }, // 6.200.000 COP
+          etapa: {
+            id: '01a114b2-5314-75b1-91ad-3be0518a6a01',
+            clave: 'NUEVO_LEAD',
+            nombre: 'Consulta nueva',
+            orden: 1,
+            probabilidad: 10,
+            esGanada: false,
+            esPerdida: false,
+          },
+          valorEstimado: { unidades: '6200000', moneda: 'COP' }, // 6.200.000 COP
           probabilidad: 20,
           asesorId: '00000000-0000-4000-a000-000000000001',
           asesorNombre: 'Carlos Asesor',
@@ -49,8 +65,16 @@ export function obtenerMockTableroPipeline(): TableroPipeline {
           destino: 'Cartagena de Indias',
           paqueteId: null,
           fechaSalida: '2026-12-05',
-          etapa: 'NUEVO_LEAD',
-          valorEstimado: { unidades: '480000000', moneda: 'COP' }, // 4.800.000 COP
+          etapa: {
+            id: '01a114b2-5314-75b1-91ad-3be0518a6a01',
+            clave: 'NUEVO_LEAD',
+            nombre: 'Consulta nueva',
+            orden: 1,
+            probabilidad: 10,
+            esGanada: false,
+            esPerdida: false,
+          },
+          valorEstimado: { unidades: '4800000', moneda: 'COP' }, // 4.800.000 COP
           probabilidad: 25,
           asesorId: '00000000-0000-4000-a000-000000000001',
           asesorNombre: 'Carlos Asesor',
@@ -72,8 +96,16 @@ export function obtenerMockTableroPipeline(): TableroPipeline {
           destino: 'Punta Cana, Rep. Dominicana',
           paqueteId: null,
           fechaSalida: '2027-01-10',
-          etapa: 'NUEVO_LEAD',
-          valorEstimado: { unidades: '750000000', moneda: 'COP' }, // 7.500.000 COP
+          etapa: {
+            id: '01a114b2-5314-75b1-91ad-3be0518a6a01',
+            clave: 'NUEVO_LEAD',
+            nombre: 'Consulta nueva',
+            orden: 1,
+            probabilidad: 10,
+            esGanada: false,
+            esPerdida: false,
+          },
+          valorEstimado: { unidades: '7500000', moneda: 'COP' }, // 7.500.000 COP
           probabilidad: 15,
           asesorId: '00000000-0000-4000-a000-000000000002',
           asesorNombre: 'Laura Gómez',
@@ -92,10 +124,18 @@ export function obtenerMockTableroPipeline(): TableroPipeline {
 
     // 2. EN_COTIZACION
     {
-      etapa: 'EN_COTIZACION',
+      etapa: {
+        id: '01a114b2-5314-75b1-91ad-3be0518a6a02',
+        clave: 'EN_COTIZACION',
+        nombre: 'En cotización',
+        orden: 2,
+        probabilidad: 40,
+        esGanada: false,
+        esPerdida: false,
+      },
       total: 2,
       valorTotal: {
-        unidades: '2830000000', // 28.300.000 COP
+        unidades: '28300000', // 28.300.000 COP
         moneda: 'COP',
       },
       oportunidades: [
@@ -107,8 +147,16 @@ export function obtenerMockTableroPipeline(): TableroPipeline {
           destino: 'Cancún, México',
           paqueteId: null,
           fechaSalida: '2026-12-15',
-          etapa: 'EN_COTIZACION',
-          valorEstimado: { unidades: '1250000000', moneda: 'COP' }, // 12.500.000 COP
+          etapa: {
+            id: '01a114b2-5314-75b1-91ad-3be0518a6a02',
+            clave: 'EN_COTIZACION',
+            nombre: 'En cotización',
+            orden: 2,
+            probabilidad: 40,
+            esGanada: false,
+            esPerdida: false,
+          },
+          valorEstimado: { unidades: '12500000', moneda: 'COP' }, // 12.500.000 COP
           probabilidad: 60,
           asesorId: '00000000-0000-4000-a000-000000000001',
           asesorNombre: 'Carlos Asesor',
@@ -130,8 +178,16 @@ export function obtenerMockTableroPipeline(): TableroPipeline {
           destino: 'Madrid, París, Roma',
           paqueteId: null,
           fechaSalida: '2027-04-12',
-          etapa: 'EN_COTIZACION',
-          valorEstimado: { unidades: '1580000000', moneda: 'COP' }, // 15.800.000 COP
+          etapa: {
+            id: '01a114b2-5314-75b1-91ad-3be0518a6a02',
+            clave: 'EN_COTIZACION',
+            nombre: 'En cotización',
+            orden: 2,
+            probabilidad: 40,
+            esGanada: false,
+            esPerdida: false,
+          },
+          valorEstimado: { unidades: '15800000', moneda: 'COP' }, // 15.800.000 COP
           probabilidad: 50,
           asesorId: '00000000-0000-4000-a000-000000000001',
           asesorNombre: 'Carlos Asesor',
@@ -150,10 +206,18 @@ export function obtenerMockTableroPipeline(): TableroPipeline {
 
     // 3. EN_NEGOCIACION
     {
-      etapa: 'EN_NEGOCIACION',
+      etapa: {
+        id: '01a114b2-5314-75b1-91ad-3be0518a6a03',
+        clave: 'EN_NEGOCIACION',
+        nombre: 'En negociación',
+        orden: 3,
+        probabilidad: 70,
+        esGanada: false,
+        esPerdida: false,
+      },
       total: 2,
       valorTotal: {
-        unidades: '2350000000', // 23.500.000 COP
+        unidades: '23500000', // 23.500.000 COP
         moneda: 'COP',
       },
       oportunidades: [
@@ -165,8 +229,16 @@ export function obtenerMockTableroPipeline(): TableroPipeline {
           destino: 'Willemstad, Curazao',
           paqueteId: null,
           fechaSalida: '2026-11-28',
-          etapa: 'EN_NEGOCIACION',
-          valorEstimado: { unidades: '950000000', moneda: 'COP' }, // 9.500.000 COP
+          etapa: {
+            id: '01a114b2-5314-75b1-91ad-3be0518a6a03',
+            clave: 'EN_NEGOCIACION',
+            nombre: 'En negociación',
+            orden: 3,
+            probabilidad: 70,
+            esGanada: false,
+            esPerdida: false,
+          },
+          valorEstimado: { unidades: '9500000', moneda: 'COP' }, // 9.500.000 COP
           probabilidad: 80,
           asesorId: '00000000-0000-4000-a000-000000000001',
           asesorNombre: 'Carlos Asesor',
@@ -188,8 +260,16 @@ export function obtenerMockTableroPipeline(): TableroPipeline {
           destino: 'Orlando & Miami, USA',
           paqueteId: null,
           fechaSalida: '2027-02-15',
-          etapa: 'EN_NEGOCIACION',
-          valorEstimado: { unidades: '1400000000', moneda: 'COP' }, // 14.000.000 COP
+          etapa: {
+            id: '01a114b2-5314-75b1-91ad-3be0518a6a03',
+            clave: 'EN_NEGOCIACION',
+            nombre: 'En negociación',
+            orden: 3,
+            probabilidad: 70,
+            esGanada: false,
+            esPerdida: false,
+          },
+          valorEstimado: { unidades: '14000000', moneda: 'COP' }, // 14.000.000 COP
           probabilidad: 75,
           asesorId: '00000000-0000-4000-a000-000000000003',
           asesorNombre: 'Carlos Rodríguez',
@@ -208,10 +288,18 @@ export function obtenerMockTableroPipeline(): TableroPipeline {
 
     // 4. GANADA
     {
-      etapa: 'GANADA',
+      etapa: {
+        id: '01a114b2-5314-75b1-91ad-3be0518a6a04',
+        clave: 'GANADA',
+        nombre: 'Ganada',
+        orden: 4,
+        probabilidad: 100,
+        esGanada: true,
+        esPerdida: false,
+      },
       total: 1,
       valorTotal: {
-        unidades: '1620000000', // 16.200.000 COP
+        unidades: '16200000', // 16.200.000 COP
         moneda: 'COP',
       },
       oportunidades: [
@@ -223,8 +311,16 @@ export function obtenerMockTableroPipeline(): TableroPipeline {
           destino: 'Riviera Maya, México',
           paqueteId: null,
           fechaSalida: '2026-11-10',
-          etapa: 'GANADA',
-          valorEstimado: { unidades: '1620000000', moneda: 'COP' }, // 16.200.000 COP
+          etapa: {
+            id: '01a114b2-5314-75b1-91ad-3be0518a6a04',
+            clave: 'GANADA',
+            nombre: 'Ganada',
+            orden: 4,
+            probabilidad: 100,
+            esGanada: true,
+            esPerdida: false,
+          },
+          valorEstimado: { unidades: '16200000', moneda: 'COP' }, // 16.200.000 COP
           probabilidad: 100,
           asesorId: '00000000-0000-4000-a000-000000000001',
           asesorNombre: 'Carlos Asesor',
@@ -243,10 +339,18 @@ export function obtenerMockTableroPipeline(): TableroPipeline {
 
     // 5. PERDIDA
     {
-      etapa: 'PERDIDA',
+      etapa: {
+        id: '01a114b2-5314-75b1-91ad-3be0518a6a05',
+        clave: 'PERDIDA',
+        nombre: 'Perdida',
+        orden: 5,
+        probabilidad: 0,
+        esGanada: false,
+        esPerdida: true,
+      },
       total: 1,
       valorTotal: {
-        unidades: '890000000', // 8.900.000 COP
+        unidades: '8900000', // 8.900.000 COP
         moneda: 'COP',
       },
       oportunidades: [
@@ -258,8 +362,16 @@ export function obtenerMockTableroPipeline(): TableroPipeline {
           destino: 'Punta Cana',
           paqueteId: null,
           fechaSalida: '2026-12-28',
-          etapa: 'PERDIDA',
-          valorEstimado: { unidades: '890000000', moneda: 'COP' }, // 8.900.000 COP
+          etapa: {
+            id: '01a114b2-5314-75b1-91ad-3be0518a6a05',
+            clave: 'PERDIDA',
+            nombre: 'Perdida',
+            orden: 5,
+            probabilidad: 0,
+            esGanada: false,
+            esPerdida: true,
+          },
+          valorEstimado: { unidades: '8900000', moneda: 'COP' }, // 8.900.000 COP
           probabilidad: 0,
           asesorId: '00000000-0000-4000-a000-000000000001',
           asesorNombre: 'Carlos Asesor',

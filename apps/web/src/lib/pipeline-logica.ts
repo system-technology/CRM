@@ -1,6 +1,7 @@
 import {
+  ClaveEtapa,
   Dinero,
-  EtapaPipeline,
+  EtapaDefinida,
   MotivoPerdida,
   MoverOportunidad,
   Oportunidad,
@@ -8,9 +9,17 @@ import {
 } from '@viajapro/contracts';
 
 /**
- * Nombres legibles en español para cada una de las 5 etapas del pipeline comercial.
+ * Nombre de respaldo para las cinco etapas canónicas.
+ *
+ * **Casi nunca hace falta.** Desde que la etapa viaja como `EtapaDefinida`, trae su propio
+ * `nombre` —el que la agencia le puso: la demo llama «Consulta nueva» a su primera etapa— y es
+ * ése el que se pinta. Este diccionario solo sirve cuando hay que mostrar la clave canónica en
+ * sí misma: un informe que compara agencias, un filtro guardado.
+ *
+ * Pintar desde aquí en vez de desde `etapa.nombre` le quitaría a la agencia el derecho a
+ * llamar a sus etapas como quiera, que es lo que R12 protege.
  */
-export const NOMBRES_ETAPAS: Record<EtapaPipeline, string> = {
+export const NOMBRES_ETAPAS: Record<ClaveEtapa, string> = {
   NUEVO_LEAD: 'Nuevo Lead',
   EN_COTIZACION: 'En Cotización',
   EN_NEGOCIACION: 'En Negociación',
@@ -32,20 +41,28 @@ export const NOMBRES_MOTIVOS_PERDIDA: Record<MotivoPerdida, string> = {
 };
 
 /**
- * Formatea un objeto Dinero del contrato a formato de moneda con estilo numérico .cifra.
- * Las unidades viajan en centavos como string (R8).
+ * Formatea un objeto `Dinero` del contrato.
+ *
+ * **Las unidades NO son centavos: son la unidad mínima de cada moneda**, y en pesos
+ * colombianos esa unidad es el peso. `Money.desdeDecimal('150000', 'COP')` da 150.000
+ * unidades, no 15.000.000. Dividir entre cien aquí mostraba $2.750 donde van $275.000 — un
+ * error de dos órdenes de magnitud en la cifra que el asesor usa para decidir.
+ *
+ * Mismo criterio que `formatearDinero` de `api.ts`, que es el que se verificó en navegador con
+ * el cotizador.
  */
 export function formatearDineroCifra(dinero: Dinero | null): string {
   if (!dinero) return '$0';
-  const centavos = parseInt(dinero.unidades, 10);
-  if (isNaN(centavos)) return '$0';
+  const decimales = dinero.moneda === 'COP' ? 0 : 2;
+  const unidades = Number(dinero.unidades);
+  if (!Number.isFinite(unidades)) return '$0';
 
-  const valor = centavos / 100;
   return new Intl.NumberFormat('es-CO', {
     style: 'currency',
     currency: dinero.moneda,
-    maximumFractionDigits: 0,
-  }).format(valor);
+    minimumFractionDigits: decimales,
+    maximumFractionDigits: decimales,
+  }).format(unidades / 10 ** decimales);
 }
 
 /**
@@ -90,7 +107,7 @@ export function moverOportunidadEnTablero(
 
   // 1. Encontrar la tarjeta en alguna de las columnas
   let tarjetaEncontrada: Oportunidad | null = null;
-  let etapaOrigen: EtapaPipeline | null = null;
+  let etapaOrigen: EtapaDefinida | null = null;
 
   for (const col of tablero.columnas) {
     const encontrada = col.oportunidades.find((op) => op.id === oportunidadId);
@@ -101,13 +118,23 @@ export function moverOportunidadEnTablero(
     }
   }
 
+  // La etapa destino se busca en el propio tablero: el movimiento solo lleva su `etapaId`, y
+  // la tarjeta necesita la etapa entera —con su nombre y su `esPerdida`— para pintarse.
+  const etapaDestino =
+    tablero.columnas.find((col) => col.etapa.id === movValidado.etapaId)?.etapa ?? null;
+  if (!etapaDestino) {
+    throw new Error(
+      `La etapa ${movValidado.etapaId} no existe en este tablero. Las etapas son por agencia.`,
+    );
+  }
+
   if (!tarjetaEncontrada || !etapaOrigen) {
     throw new Error(`No se encontró la oportunidad con ID ${oportunidadId} en el tablero.`);
   }
 
   // Si ya está en la misma etapa y no cambia motivo, retornar el tablero idéntico
   if (
-    etapaOrigen === movValidado.etapa &&
+    etapaOrigen.id === etapaDestino.id &&
     tarjetaEncontrada.motivoPerdida === movValidado.motivoPerdida
   ) {
     return tablero;
@@ -116,7 +143,7 @@ export function moverOportunidadEnTablero(
   // Tarjeta actualizada con su nueva etapa y motivos de pérdida
   const tarjetaActualizada: Oportunidad = Oportunidad.parse({
     ...tarjetaEncontrada,
-    etapa: movValidado.etapa,
+    etapa: etapaDestino,
     motivoPerdida: movValidado.motivoPerdida,
     notaPerdida: movValidado.notaPerdida,
   });
@@ -124,7 +151,7 @@ export function moverOportunidadEnTablero(
   // Retornar nuevo TableroPipeline inmutable
   const nuevasColumnas = tablero.columnas.map((col) => {
     // Si es la columna origen, remover la tarjeta y decrementar contador
-    if (col.etapa === etapaOrigen && col.etapa !== movValidado.etapa) {
+    if (col.etapa.id === etapaOrigen.id && col.etapa.id !== etapaDestino.id) {
       return {
         ...col,
         total: Math.max(0, col.total - 1),
@@ -133,7 +160,7 @@ export function moverOportunidadEnTablero(
     }
 
     // Si es la columna destino, agregar la tarjeta actualizada al inicio e incrementar contador
-    if (col.etapa === movValidado.etapa && col.etapa !== etapaOrigen) {
+    if (col.etapa.id === etapaDestino.id && col.etapa.id !== etapaOrigen.id) {
       return {
         ...col,
         total: col.total + 1,
@@ -142,7 +169,7 @@ export function moverOportunidadEnTablero(
     }
 
     // Si se actualizó dentro de la misma columna (ej. edición de nota de pérdida)
-    if (col.etapa === movValidado.etapa && col.etapa === etapaOrigen) {
+    if (col.etapa.id === etapaDestino.id && col.etapa.id === etapaOrigen.id) {
       return {
         ...col,
         oportunidades: col.oportunidades.map((op) =>
