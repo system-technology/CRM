@@ -1,6 +1,45 @@
-# ENTREGA.md — Tareas 0d, 0c.3 (Pipeline Kanban), 6 (Ventana 24h Meta HSM), 0c.4 (Contactos), 0c.5 (Catálogo) y 0c.6 (Cotizador)
+# ENTREGA.md — Tareas 0d, 0c.3 (Pipeline Kanban), 6 (Ventana 24h Meta HSM), 0c.4 (Contactos), 0c.5 (Catálogo), 0c.6 (Cotizador) y 0c.7 (Reportes)
 
-## 1. Entrega de Tarea 0c.6: Cotizador Comercial, Despacho a WhatsApp y Navegación (`/cotizador`)
+## 1. Entrega de Tarea 0c.7: Pantalla de Reportes, Métricas y Cierres (`/reportes`)
+
+Origen: Jira Epic VC-7 (Fase 6: Analítica y escala) · `viajapro_diseno_ui_ux.json` (Pantalla P1: Reportes) · Reglas del lenguaje ubicuo y R8 (Dinero en enteros de COP).
+
+### Implementación Realizada:
+1. **Modelos de Dominio y Datos de Período (`apps/web/src/lib/mock-reportes.ts`):**
+   - Agrupación por períodos temporales (`ultimos_30_dias`, `este_mes`, `trimestre`, `ano`).
+   - Métricas de ventas, oportunidades creadas, tasa de conversión, tiempo medio de primera respuesta (SLA WhatsApp) y margen comercial.
+   - Desglose de ingresos por destino turístico con montos en centavos COP y porcentajes calculados.
+   - Desglose del embudo de conversión por etapas (`NUEVO_LEAD`, `EN_COTIZACION`, `EN_NEGOCIACION`, `GANADA`, `PERDIDA`).
+   - Desempeño por asesor (conversaciones, oportunidades ganadas, total facturado y SLA de respuesta).
+
+2. **Lógica de Negocio y Pruebas Unitarias (`apps/web/src/lib/reportes-logica.ts` & `reportes-logica.spec.ts`):**
+   - Cálculo seguro de tasa de conversión con protección contra división por cero (`calcularTasaConversion`).
+   - Cálculo de variación porcentual (`calcularDeltaPorcentaje`).
+   - Cálculo de margen neto y porcentaje de rentabilidad (`calcularMargenComercial`).
+   - Segregación de vistas entre `DUENO` (gerencial con márgenes y costos netos) y `ASESOR` (operativa centrada en volumen y tiempos de respuesta).
+   - 5 pruebas unitarias automatizadas en Vitest pasando (46/46 pruebas totales en verde).
+
+3. **Interfaz de Usuario Reactiva y Responsiva (`apps/web/src/app/reportes/page.tsx`):**
+   - Integración nativa con `BarraModulos` con navegación bidireccional y modo oscuro (`dark:`).
+   - Selector interactivo de período de tiempo y conmutador de perfil (Dueño vs Asesor).
+   - Tarjetas de KPIs con indicadores de tendencia (verde subida, rojo bajada).
+   - Visualización de embudo con barras de progreso y porcentajes relativos.
+   - Rendimiento por destino y ranking de asesores con badges y SLA de atención.
+   - Soporte para impresión de reporte y visualización adaptable a móviles (375px).
+
+4. **Navegación Lateral Activada (`apps/web/src/components/bandeja/barra-modulos.tsx`):**
+   - Módulo `/reportes` activado (`disponible: true`, `activo: pathname.startsWith('/reportes')`).
+
+### Verificación de las 5 Compuertas:
+- **Vitest:** 46/46 pruebas pasando en 8 suites (`catalogo`, `cotizador`, `contactos`, `pipeline`, `plantillas`, `realtime`, `bandeja`, `reportes`).
+- **TypeScript:** `tsc --noEmit` sin errores.
+- **ESLint:** `eslint src` 0 errores, 0 advertencias.
+- **Next.js Build:** Generación estática exitosa de las 11 rutas de la aplicación (`/reportes` 7.59 kB).
+- **Prettier:** 100% verificado con `prettier --check`.
+
+---
+
+## 2. Entrega de Tarea 0c.6: Cotizador Comercial, Despacho a WhatsApp y Navegación (`/cotizador`)
 
 Origen: Jira Epic VC-4 (Fase 3: Cotizador) · `viajapro_diseno_ui_ux.json` (Pantalla 2: Cotizador de paquetes) · `@viajapro/contracts` (`CotizarPaquete`, `CotizacionCalculada`, `Paquete`).
 

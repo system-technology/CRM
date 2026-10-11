@@ -11,6 +11,32 @@ redefinidos: todo de `@viajapro/contracts` — si falta un campo, **para y dilo*
 
 ---
 
+## [x] 0c.7. Pantalla de Reportes, Métricas y Cierres (`/reportes`)
+
+Origen: `viajapro_diseno_ui_ux.json` (Pantalla P1: Reportes) · Jira Epic VC-7 (Fase 6: Analítica y escala) · Reglas del lenguaje ubicuo y R8 (Dinero en enteros de COP).
+
+**Objetivo:** Construir el panel gerencial y operativo de reportes en `/reportes` para dar al dueño y asesores una lectura rápida de resultados comerciales, cuellos de botella en el embudo y cumplimiento de metas de cierre.
+
+**Invariantes y criterios:**
+1. **KPIs Clave con Definiciones Visibles y Comparación:**
+   - Ventas totales en COP (`.cifra`), comparadas con el período anterior (% cambio).
+   - Cantidad de oportunidades creadas en el período.
+   - Tasa de conversión formal (ganadas / cerradas).
+   - Tiempo promedio de primera respuesta (SLA de atención en WhatsApp).
+   - Margen acumulado (Venta − Costo neto) con porcentaje sobre ventas.
+2. **Visualizaciones de Rendimiento:**
+   - Distribución de ventas por destino turístico con barras proporcionales.
+   - Embudo de conversión por etapas (`NUEVO_LEAD`, `EN_COTIZACION`, `EN_NEGOCIACION`, `GANADA`, `PERDIDA`).
+   - Tabla de rendimiento por asesor (conversaciones, oportunidades cerradas, tiempo medio de respuesta).
+3. **Filtros Temporales y Vistas:**
+   - Selector de rango de tiempo: «Últimos 30 días», «Este mes», «Último trimestre», «Año 2026/2027».
+   - Conmutador entre «Vista Gerencial (Dueño)» y «Vista Operativa (Asesor)» para separar métricas de margen de las de gestión diaria.
+4. **Habilitación en Navegación Lateral:**
+   - Activar el módulo en `BarraModulos` (`disponible: true`, indicador de ruta activa para `/reportes`).
+5. **Compuertas:** `test`, `typecheck`, `lint`, `build` y `format:check` en verde.
+
+---
+
 ## [x] 0c.6. Cotizador Comercial, Despacho a WhatsApp y Navegación (`/cotizador`)
 
 Origen: Jira Epic VC-4 (Fase 3: Cotizador) · `viajapro_diseno_ui_ux.json` (Pantalla 2: Cotizador de paquetes) · `@viajapro/contracts` (`CotizarPaquete`, `CotizacionCalculada`, `Paquete`).

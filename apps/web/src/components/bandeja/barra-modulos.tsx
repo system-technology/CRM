@@ -107,8 +107,8 @@ export function BarraModulos() {
       label: 'Reportes y Cierres',
       href: '/reportes',
       icon: BarChart3,
-      activo: false,
-      disponible: false,
+      activo: pathname.startsWith('/reportes'),
+      disponible: true,
     },
     {
       id: 'configuracion',
