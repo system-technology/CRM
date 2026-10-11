@@ -82,18 +82,16 @@ async function main() {
   // --- Embudo -------------------------------------------------------------
   // Tabla, no enum: cada agencia define su proceso. R12 y ADR-0006.
   const etapas = [
-    { nombre: 'Consulta nueva', orden: 1, probabilidad: 10 },
-    { nombre: 'Calificado', orden: 2, probabilidad: 25 },
-    { nombre: 'Cotizado', orden: 3, probabilidad: 50 },
-    { nombre: 'En negociación', orden: 4, probabilidad: 70 },
-    { nombre: 'Bloqueo / reserva', orden: 5, probabilidad: 90 },
-    { nombre: 'Ganada', orden: 6, probabilidad: 100, esGanada: true },
-    { nombre: 'Perdida', orden: 7, probabilidad: 0, esPerdida: true },
+    { nombre: 'Consulta nueva', clave: 'NUEVO_LEAD', orden: 1, probabilidad: 10 },
+    { nombre: 'En cotización', clave: 'EN_COTIZACION', orden: 2, probabilidad: 35 },
+    { nombre: 'En negociación', clave: 'EN_NEGOCIACION', orden: 3, probabilidad: 70 },
+    { nombre: 'Ganada', clave: 'GANADA', orden: 4, probabilidad: 100, esGanada: true },
+    { nombre: 'Perdida', clave: 'PERDIDA', orden: 5, probabilidad: 0, esPerdida: true },
   ];
   for (const e of etapas) {
     await prisma.etapaPipeline.upsert({
       where: { tenantId_orden: { tenantId: tenant.id, orden: e.orden } },
-      update: { nombre: e.nombre, probabilidad: e.probabilidad },
+      update: { nombre: e.nombre, probabilidad: e.probabilidad, clave: e.clave },
       create: { tenantId: tenant.id, ...e },
     });
   }
@@ -407,16 +405,83 @@ async function main() {
     { telefonoE164: '+573155551234', nombre: 'Diego Morales', correo: 'diego@ejemplo.test' },
   ];
   for (const c of contactos) {
-    await prisma.contacto.upsert({
+    const contacto = await prisma.contacto.upsert({
       where: { tenantId_telefonoE164: { tenantId: tenant.id, telefonoE164: c.telefonoE164 } },
       update: {},
       create: {
         tenantId: tenant.id,
         ...c,
-        consentimientoEn: new Date(),
-        consentimientoCanal: 'WHATSAPP',
+        etiquetas: ['WhatsApp'],
         camposPersonalizados: { como_nos_conocio: 'Instagram' },
       },
+    });
+
+    // La prueba del consentimiento, no una casilla: quién, cuándo, por qué canal y para
+    // qué finalidad. Ley 1581 de 2012. TRANSACCIONAL y no PROMOCIONAL: haber escrito por
+    // WhatsApp autoriza una respuesta, nunca una campaña.
+    await prisma.consentimientoContacto.createMany({
+      data: [
+        {
+          tenantId: tenant.id,
+          contactoId: contacto.id,
+          finalidad: 'TRANSACCIONAL',
+          prueba: 'semilla:conversacion-entrante-de-whatsapp',
+          canal: 'WHATSAPP',
+        },
+      ],
+      skipDuplicates: true,
+    });
+  }
+
+  // --- Oportunidades: para que el tablero de pipeline tenga qué pintar ----
+  const etapaLead = await prisma.etapaPipeline.findFirst({
+    where: { tenantId: tenant.id, clave: 'NUEVO_LEAD' },
+  });
+  const etapaCotizacion = await prisma.etapaPipeline.findFirst({
+    where: { tenantId: tenant.id, clave: 'EN_COTIZACION' },
+  });
+  const laura = await prisma.contacto.findFirst({
+    where: { tenantId: tenant.id, telefonoE164: '+573001234567' },
+  });
+  const familia = await prisma.contacto.findFirst({
+    where: { tenantId: tenant.id, telefonoE164: '+573109876543' },
+  });
+
+  if (etapaLead && etapaCotizacion && laura && familia) {
+    await prisma.oportunidad.createMany({
+      data: [
+        {
+          id: '01932000-0000-7000-8000-0000000000f1',
+          tenantId: tenant.id,
+          contactoId: laura.id,
+          etapaId: etapaLead.id,
+          titulo: 'Luna de miel en San Andrés',
+          destino: 'San Andrés',
+          fechaViajeDesde: new Date('2026-12-20'),
+          adultos: 2,
+          valorEstimadoUnidades: cop(5_400_000),
+          monedaIso: 'COP',
+          probabilidad: 15,
+          proximaTareaDescripcion: 'Enviar opciones de hotel todo incluido',
+          proximaTareaVenceEn: new Date('2026-10-13T14:00:00.000Z'),
+          proximaTareaCompletada: false,
+        },
+        {
+          id: '01932000-0000-7000-8000-0000000000f2',
+          tenantId: tenant.id,
+          contactoId: familia.id,
+          etapaId: etapaCotizacion.id,
+          titulo: 'Familia Ramírez — Cartagena diciembre',
+          destino: 'Cartagena',
+          fechaViajeDesde: new Date('2026-12-24'),
+          adultos: 2,
+          ninos: 2,
+          valorEstimadoUnidades: cop(9_100_000),
+          monedaIso: 'COP',
+          probabilidad: 45,
+        },
+      ],
+      skipDuplicates: true,
     });
   }
 

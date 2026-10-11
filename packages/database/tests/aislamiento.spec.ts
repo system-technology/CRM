@@ -1246,3 +1246,249 @@ describe('ADR-0008 — directorio de enrutamiento, staging y separación de role
     expect(codigoCheck, 'se esperaba una violación de CHECK (23514)').toBe('23514');
   });
 });
+// =============================================================================
+// CRM — aserciones 26 a 33
+//
+// Las cinco primeras son de AISLAMIENTO y son la parte donde no se recorta (§3.1 de
+// CLAUDE.md): dos agencias, un intento de cruce, cero filas o error del motor. Las tres
+// últimas son de integridad de la fila, y están aquí porque son la mitad de la regla de
+// pérdida que la base puede sostener por sí sola.
+//
+// Cada una de estas aserciones se ha verificado POR MUTACIÓN: se rompe a propósito la
+// política o la restricción que la sostiene y se comprueba que se pone en rojo. El
+// procedimiento está automatizado en `scripts/verificar-por-mutacion.mjs`; una aserción
+// que nadie ha visto fallar no está verificada.
+// =============================================================================
+describe('CRM — contactos, oportunidades y la ficha del panel lateral', () => {
+  const etapaDe: Record<string, string> = {};
+  const contactoDe: Record<string, string> = {};
+  const oportunidadDe: Record<string, string> = {};
+
+  beforeAll(async () => {
+    for (const tenant of [TENANT_A, TENANT_B]) {
+      await comoTenant(tenant, async (c) => {
+        const etapa = await c.query(
+          `INSERT INTO etapas_pipeline (id, tenant_id, nombre, clave, orden, creado_en)
+           VALUES (gen_random_uuid(), $1, 'Nuevo lead', 'NUEVO_LEAD', 1, now())
+           ON CONFLICT (tenant_id, orden) DO UPDATE SET nombre = EXCLUDED.nombre
+           RETURNING id`,
+          [tenant],
+        );
+        etapaDe[tenant] = (etapa.rows[0] as { id: string }).id;
+
+        const contacto = await c.query(
+          `INSERT INTO contactos (id, tenant_id, telefono_e164, nombre, etiquetas, creado_en, actualizado_en)
+           VALUES (gen_random_uuid(), $1, $2, 'Cliente CRM', ARRAY['VIP'], now(), now())
+           ON CONFLICT (tenant_id, telefono_e164) DO UPDATE SET nombre = EXCLUDED.nombre
+           RETURNING id`,
+          [tenant, tenant === TENANT_A ? '+573777000001' : '+573777000002'],
+        );
+        contactoDe[tenant] = (contacto.rows[0] as { id: string }).id;
+
+        const oportunidad = await c.query(
+          `INSERT INTO oportunidades
+             (id, tenant_id, contacto_id, etapa_id, titulo, valor_estimado_unidades, moneda_iso,
+              creado_en, actualizado_en)
+           VALUES (gen_random_uuid(), $1, $2, $3, 'Paquete San Andres Dic 2026', 910000000, 'COP',
+                   now(), now())
+           RETURNING id`,
+          [tenant, contactoDe[tenant], etapaDe[tenant]],
+        );
+        oportunidadDe[tenant] = (oportunidad.rows[0] as { id: string }).id;
+      });
+    }
+  });
+
+  afterAll(async () => {
+    // Antes que el `DELETE FROM tenants` del afterAll global: la clave foránea de
+    // `oportunidades` hacia `etapas_pipeline` es RESTRICT, y el orden en que PostgreSQL
+    // propaga dos cascadas hermanas no está definido.
+    for (const tenant of [TENANT_A, TENANT_B]) {
+      await comoTenant(tenant, async (c) => {
+        await c.query('DELETE FROM oportunidades WHERE tenant_id = $1', [tenant]);
+        await c.query('DELETE FROM notas_internas WHERE tenant_id = $1', [tenant]);
+        await c.query('DELETE FROM consentimientos_contacto WHERE tenant_id = $1', [tenant]);
+        await c.query('DELETE FROM contactos WHERE tenant_id = $1', [tenant]);
+        await c.query('DELETE FROM etapas_pipeline WHERE tenant_id = $1', [tenant]);
+      });
+    }
+  });
+
+  it('26 — un tenant no ve ni puede escribir las oportunidades de otro', async () => {
+    const vistas = await comoTenant(TENANT_B, (c) =>
+      c.query('SELECT id FROM oportunidades WHERE id = $1', [oportunidadDe[TENANT_A]]),
+    );
+    expect(vistas.rowCount).toBe(0);
+
+    // Lo que verifica WITH CHECK: sin él, B crea una oportunidad DENTRO de los datos de A.
+    await expect(
+      comoTenant(TENANT_B, (c) =>
+        c.query(
+          `INSERT INTO oportunidades (id, tenant_id, contacto_id, etapa_id, titulo, creado_en, actualizado_en)
+           VALUES (gen_random_uuid(), $1, $2, $3, 'Secuestro', now(), now())`,
+          [TENANT_A, contactoDe[TENANT_A], etapaDe[TENANT_A]],
+        ),
+      ),
+    ).rejects.toThrow(/row-level security|violates foreign key/i);
+
+    const movidas = await comoTenant(TENANT_B, (c) =>
+      c.query("UPDATE oportunidades SET titulo = 'Robada' WHERE id = $1", [
+        oportunidadDe[TENANT_A],
+      ]),
+    );
+    expect(movidas.rowCount).toBe(0);
+  });
+
+  it('27 — las notas internas de una agencia no existen para la otra', async () => {
+    await comoTenant(TENANT_A, (c) =>
+      c.query(
+        `INSERT INTO notas_internas (id, tenant_id, contacto_id, texto, escrita_en)
+         VALUES (gen_random_uuid(), $1, $2, 'Margen del 22%, no bajar de ahi', now())`,
+        [TENANT_A, contactoDe[TENANT_A]],
+      ),
+    );
+
+    const leidas = await comoTenant(TENANT_B, (c) =>
+      c.query('SELECT texto FROM notas_internas WHERE tenant_id = $1', [TENANT_A]),
+    );
+    expect(leidas.rowCount).toBe(0);
+
+    await expect(
+      comoTenant(TENANT_B, (c) =>
+        c.query(
+          `INSERT INTO notas_internas (id, tenant_id, contacto_id, texto, escrita_en)
+           VALUES (gen_random_uuid(), $1, $2, 'Nota plantada', now())`,
+          [TENANT_A, contactoDe[TENANT_A]],
+        ),
+      ),
+    ).rejects.toThrow(/row-level security|violates foreign key/i);
+  });
+
+  it('28 — el consentimiento de una agencia no se lee ni se falsifica desde otra', async () => {
+    await comoTenant(TENANT_A, (c) =>
+      c.query(
+        `INSERT INTO consentimientos_contacto
+           (id, tenant_id, contacto_id, finalidad, prueba, canal, otorgado_en)
+         VALUES (gen_random_uuid(), $1, $2, 'PROMOCIONAL', 'whatsapp:wamid.prueba', 'whatsapp', now())`,
+        [TENANT_A, contactoDe[TENANT_A]],
+      ),
+    );
+
+    const leidos = await comoTenant(TENANT_B, (c) =>
+      c.query('SELECT finalidad FROM consentimientos_contacto WHERE tenant_id = $1', [TENANT_A]),
+    );
+    expect(leidos.rowCount).toBe(0);
+
+    // Falsificar un consentimiento promocional ajeno es, además de una fuga, la vía para
+    // que a un número lo bloquee Meta por una campaña que su dueño nunca autorizó.
+    await expect(
+      comoTenant(TENANT_B, (c) =>
+        c.query(
+          `INSERT INTO consentimientos_contacto
+             (id, tenant_id, contacto_id, finalidad, prueba, otorgado_en)
+           VALUES (gen_random_uuid(), $1, $2, 'PROMOCIONAL', 'falsificado', now())`,
+          [TENANT_A, contactoDe[TENANT_A]],
+        ),
+      ),
+    ).rejects.toThrow(/row-level security|violates foreign key/i);
+  });
+
+  it('29 — el motor rechaza colgar una oportunidad del CONTACTO de otra agencia', async () => {
+    // Esto NO lo impide RLS: la integridad referencial se comprueba por encima de las
+    // políticas. Lo impide la clave foránea COMPUESTA (contacto_id, tenant_id).
+    await expect(
+      comoTenant(TENANT_B, (c) =>
+        c.query(
+          `INSERT INTO oportunidades (id, tenant_id, contacto_id, etapa_id, titulo, creado_en, actualizado_en)
+           VALUES (gen_random_uuid(), $1, $2, $3, 'Ficha ajena', now(), now())`,
+          [TENANT_B, contactoDe[TENANT_A], etapaDe[TENANT_B]],
+        ),
+      ),
+    ).rejects.toThrow(/violates foreign key constraint/i);
+  });
+
+  it('30 — el motor rechaza mover una oportunidad a la ETAPA de otra agencia', async () => {
+    await expect(
+      comoTenant(TENANT_B, (c) =>
+        c.query('UPDATE oportunidades SET etapa_id = $1 WHERE id = $2', [
+          etapaDe[TENANT_A],
+          oportunidadDe[TENANT_B],
+        ]),
+      ),
+    ).rejects.toThrow(/violates foreign key constraint/i);
+  });
+
+  it('31 — «OTRO» sin explicación no es un motivo, y lo rechaza la base', async () => {
+    await expect(
+      comoTenant(TENANT_A, (c) =>
+        c.query("UPDATE oportunidades SET motivo_perdida = 'OTRO' WHERE id = $1", [
+          oportunidadDe[TENANT_A],
+        ]),
+      ),
+    ).rejects.toThrow(/oportunidades_motivo_otro_exige_nota/);
+
+    // Con explicación, pasa.
+    await expect(
+      comoTenant(TENANT_A, (c) =>
+        c.query(
+          `UPDATE oportunidades SET motivo_perdida = 'OTRO', nota_perdida = 'Se caso y aplazo el viaje'
+           WHERE id = $1`,
+          [oportunidadDe[TENANT_A]],
+        ),
+      ),
+    ).resolves.toBeDefined();
+  });
+
+  it('32 — media próxima tarea no es representable', async () => {
+    await expect(
+      comoTenant(TENANT_A, (c) =>
+        c.query("UPDATE oportunidades SET proxima_tarea_descripcion = 'Llamar' WHERE id = $1", [
+          oportunidadDe[TENANT_A],
+        ]),
+      ),
+    ).rejects.toThrow(/oportunidades_proxima_tarea_completa/);
+  });
+
+  it('33 — un importe sin moneda no es dinero', async () => {
+    // R8: entero + ISO-4217, los dos o ninguno. El valor entra como BIGINT y vuelve intacto:
+    // 9.100.000.000 centavos no caben en el entero seguro de JavaScript, y por eso el
+    // contrato lo serializa como cadena.
+    await expect(
+      comoTenant(TENANT_A, (c) =>
+        c.query('UPDATE oportunidades SET moneda_iso = NULL WHERE id = $1', [
+          oportunidadDe[TENANT_A],
+        ]),
+      ),
+    ).rejects.toThrow(/oportunidades_valor_con_moneda/);
+
+    const { rows } = await comoTenant(TENANT_A, (c) =>
+      c.query('SELECT valor_estimado_unidades::text AS v FROM oportunidades WHERE id = $1', [
+        oportunidadDe[TENANT_A],
+      ]),
+    );
+    expect((rows[0] as { v: string }).v).toBe('910000000');
+  });
+
+  it('34 — las tres tablas del CRM tienen RLS forzada y política con WITH CHECK', async () => {
+    const { rows } = await admin.query(
+      `SELECT c.relname, c.relrowsecurity, c.relforcerowsecurity,
+              (SELECT count(*) FROM pg_policy p
+                WHERE p.polrelid = c.oid AND p.polname = 'tenant_isolation'
+                  AND p.polwithcheck IS NOT NULL) AS con_check
+         FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public'
+          AND c.relname IN ('contactos', 'oportunidades', 'notas_internas', 'consentimientos_contacto')`,
+    );
+    expect(rows).toHaveLength(4);
+    for (const fila of rows as Array<{
+      relname: string;
+      relrowsecurity: boolean;
+      relforcerowsecurity: boolean;
+      con_check: string;
+    }>) {
+      expect(`${fila.relname}:${fila.relrowsecurity}`).toBe(`${fila.relname}:true`);
+      expect(`${fila.relname}:${fila.relforcerowsecurity}`).toBe(`${fila.relname}:true`);
+      expect(`${fila.relname}:${fila.con_check}`).toBe(`${fila.relname}:1`);
+    }
+  });
+});
