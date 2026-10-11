@@ -1,101 +1,75 @@
-# Revisión — `52865d5` — 2026-10-10
+# Revisión — `685ec53` — 2026-10-10
 
-Entrega: *Pruebas automáticas de la bandeja*.
+Entrega: *Rediseño de 3 columnas, componentes de bandeja y pruebas puras*.
 
-## Veredicto: **NO PASA**
+## Veredicto: **PASA con una corrección bloqueante**
 
-Y no principalmente porque dos pruebas estén en rojo —que lo están—, sino porque **cuatro de
-las seis no prueban el producto**. Prueban una copia del código escrita dentro del propio
-archivo de pruebas.
+El salto es grande y se nota al abrirlo. Lo que pedía la tarea 0b está hecho, y lo comprobé
+mirándolo, no leyendo el código:
 
----
+| Lo que pedía 0b | Estado |
+|---|---|
+| Sacar el instrumental de desarrollo | **Hecho.** Cero apariciones de «Mock Simulador», «Guard R5/UI» o «v0.1.0» |
+| Matar el `alert()` de plantillas | **Hecho.** Cero `alert(` en el hilo |
+| Armazón de tres columnas | **Hecho.** `layout.tsx` existe y abrir una conversación ya no pierde la lista |
+| Barra lateral de módulos | **Hecho**, con la métrica del asesor abajo |
+| Ficha del contacto a la derecha | **Hecha**, con oportunidad viva, valor estimado, archivos de viaje y consentimientos |
+| Acción principal visible | **Hecha.** «Crear cotización» en azul, abajo a la derecha, y «Nueva cotización» arriba |
 
-## 1. La entrega llega con la compuerta en rojo
+Compuertas: `lint` limpio, `typecheck` limpio, `test` 8/8. Sin errores de consola salvo un
+`favicon.ico` 404, que es cosmético.
 
-```
-Test Files  1 failed | 1 passed (2)
-     Tests  2 failed | 6 passed (8)
-```
-
-- **Prueba 2** — `actual is not defined`. No es una aserción que falla: es un `ReferenceError`.
-  En la línea 90 hay `...actual` donde debía ir `...listaActualizada[idx]`. Un archivo de
-  pruebas que revienta no es una prueba.
-- **Prueba 6** — espera que `EnviarTexto.safeParse` devuelva éxito con
-  `conversacionId: 'conv-closed-24h'`. `Id` es `z.string().uuid()`. No lo es.
-
-`lint`, `typecheck` y `build` pueden estar verdes con esto. `test` no lo estaba, y el informe
-no lo dice.
-
-## 2. Lo de fondo: cuatro pruebas no importan el código que dicen proteger
-
-El archivo importa exactamente dos cosas: los contratos y `realtimeMockBus`. **No importa nada
-de `bandeja/page.tsx` ni de `bandeja/[id]/page.tsx`**, que es donde vive todo lo que las seis
-pruebas afirman cubrir.
-
-Lo que hacen en su lugar es **reescribir la lógica dentro del `it`**:
-
-**Prueba 3, la de idempotencia R5.** Esta es la más clara, así que la cito entera:
-
-```ts
-const idempotenciaKeys: Record<string, string> = {};
-let claveOriginal = idempotenciaKeys[mensajeId];
-if (!claveOriginal) { claveOriginal = '0000…999'; idempotenciaKeys[mensajeId] = claveOriginal; }
-let claveReintento = idempotenciaKeys[mensajeId];
-if (!claveReintento) { claveReintento = '1111…111'; idempotenciaKeys[mensajeId] = claveReintento; }
-expect(claveReintento).toBe(claveOriginal);
-```
-
-Escribe en un diccionario, lo lee dos veces y afirma que las dos lecturas coinciden. **Eso es
-una propiedad de JavaScript, no de nuestra bandeja.**
-
-La prueba de que no sirve no necesita ejecutarse: **borra entera la idempotencia del producto
-—quita el botón, quita la clave, manda dos mensajes— y esta prueba sigue verde.** Una
-protección que no se pone roja cuando desaparece lo que protege no existe. Es la frase que
-llevamos toda la semana repitiendo, y esta vez la escribió una prueba.
-
-**Prueba 2** copia el algoritmo del búfer (`const base = bufferConversaciones ?? estadoInicial`)
-dentro del `it` y lo ejecuta ahí. Falla por una errata en **la copia**, no en el producto: el
-código real está bien. **Prueba 5** y **prueba 6**, lo mismo: construyen un objeto literal y
-afirman que tiene los valores que acaban de escribirle.
-
-**Las dos que sí valen son la 1 y la 4**, y valen porque importan `realtimeMockBus` de verdad.
-La 1 ya la verifiqué por mutación: reintroduje el UUID roto y se puso roja. Ésa protege.
-
-## 3. Y la causa no es tuya: no había nada que importar
-
-Esto es lo importante, y es responsabilidad compartida. **La lógica vive dentro de los
-componentes**: 1 678 líneas entre dos archivos, con el guardián del ratón, el cálculo del
-scroll y la reutilización de la clave escritos en medio del JSX. Desde un archivo de pruebas no
-hay nada que llamar. Ante eso, copiar la lógica es una salida comprensible — pero produce
-pruebas que acompañan en vez de morder.
-
-La salida real es extraer. Va como tarea, abajo.
+Y el acento azul está aplicado. Se ve como el producto que el propietario aprobó.
 
 ---
 
-## Siguiente bloque, y esta vez en un solo orden
+## Lo bloqueante: la ficha enseña a otro viajero
 
-**0b, la corrección de diseño, sigue sin hacer.** Está marcada como bloqueante desde hace horas:
-el asesor sigue leyendo «Mock Simulador», «Guard R5/UI» y «v0.1.0» en pantalla, elegir plantilla
-fuera de la ventana de 24 h sigue siendo un `alert()` del navegador, y no existe
-`app/bandeja/layout.tsx`. **Nada nuevo hasta que eso esté.** Es lo que el propietario mira
-cuando abre la aplicación.
+Abrí tres conversaciones seguidas y la ficha de la derecha **no cambió**:
 
-Después, y solo después, se rehacen las pruebas. En este orden:
+| Conversación abierta | Teléfono en la ficha |
+|---|---|
+| Juan Pérez | `+573001234567` |
+| Ana Martínez | `+573001234567` |
+| Sonia López | `+573001234567` |
 
-1. **Extraer la lógica a funciones puras** en `apps/web/src/lib/`, importables y sin React:
-   `reordenarConGuardia(prev, buffer, evento, ratonEncima)`, `debeBajarElScroll(distanciaAlFondo)`,
-   `claveDeReintento(estadoPrevio, mensajeId)`. El componente las llama; la prueba las llama.
-   **Una sola implementación, no dos.**
-2. **Reescribir las cuatro pruebas** contra esas funciones.
-3. **Verificar cada una por mutación**, y contarlo en `ENTREGA.md`: qué rompiste, qué prueba se
-   puso roja. Si rompes algo y todo sigue verde, esa prueba no existe todavía.
+Siempre Sofía Gómez. La cabecera dice «Juan Pérez · +573000012345» y treinta centímetros a la
+derecha, bajo «Ficha del Viajero», hay otra persona con otro número, otras etiquetas y otra
+oportunidad de 12.500.000 COP.
 
-Y arregla las dos rojas antes de nada: `...actual` → `...listaActualizada[idx]`, y un UUID de
-verdad en la prueba 6.
+**Por qué esto no es un detalle de datos simulados.** Un asesor que mira esa pantalla cotiza
+Cancún para quien preguntó por San Andrés. Y si esos datos fueran reales, estaría viendo el
+expediente de un viajero dentro de la conversación de otro — que es lo mismo que todo el
+aislamiento entre agencias intenta impedir, pero dentro de la misma agencia. La ficha tiene que
+estar atada al `conversacionId` igual que el hilo.
 
-**Una petición sobre el informe, que no es menor:** `ENTREGA.md` dice que las compuertas pasan y
-`test` estaba en rojo al hacer `git push`. Eso me cuesta más que el defecto, porque si no puedo
-fiarme del informe tengo que ejecutarlo todo yo, y entonces el informe no sirve para nada.
-Ejecuta `pnpm test` antes de escribirlo, y si algo está rojo dilo: una entrega que avisa de su
-propio rojo es útil. Una que lo oculta, no.
+Corrección: que el componente reciba el contacto de la conversación abierta, no una constante.
+Con `FichaDeContacto` de `@viajapro/contracts` y el simulador devolviendo la ficha **del id que
+se le pide**.
+
+**Y una prueba que falle hoy**: abrir dos conversaciones distintas y afirmar que el teléfono de
+la ficha es distinto. Con el código actual tiene que salir en rojo.
+
+## A la cola — no bloquea (R13)
+
+| | Qué | Dónde |
+|---|---|---|
+| 1 | `favicon.ico` da 404 | `app/` |
+| 2 | La ventana de 24 h dice «11 h 59 min» en casi todas las filas: el dato simulado es constante y no enseña el caso que importa, el que está por vencer | `lib/mock-inbox.ts` |
+| 3 | «Ver archivo completo (Próximamente)» — un botón que anuncia lo que no existe. O se quita o se deshabilita sin promesa | panel de la ficha |
+| 4 | El contraste del tono 500 sobre blanco es 3.68 y no vale para texto; revisar que no se use en etiquetas | `globals.css` |
+
+---
+
+## Siguiente bloque
+
+1. **La ficha atada a su conversación**, con la prueba en rojo antes y en verde después.
+2. **Rehacer las pruebas de la tarea 5**, que devolví: cuatro de las seis reescribían la lógica
+   dentro del propio `it` en vez de importarla. Ahora que hay componentes de verdad y funciones
+   separadas, ya hay algo que importar — era la mitad del problema y la has resuelto tú sola al
+   partir la pantalla en piezas.
+3. Luego, lo que esté en `COLA.md`.
+
+Una cosa más, y va de método: esta entrega salió bien porque la cola tenía **una sola tarea**.
+Las tres anteriores se saltaron la misma tarea con siete opciones delante. No era tuyo el fallo:
+era mío, por poner un menú donde tenía que haber una instrucción. Lo mantengo así.
