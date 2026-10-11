@@ -1,15 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import {
-  EventoBandeja,
-  EnviarTexto,
-  type ConversacionResumen,
-  type ConversacionDetalle,
-} from '@viajapro/contracts';
+import { EventoBandeja, type ConversacionResumen } from '@viajapro/contracts';
 import { realtimeMockBus } from './realtime-mock';
+import {
+  reordenarConGuardia,
+  claveDeReintento,
+  debeBajarElScroll,
+  calcularTiempoRestanteVentana,
+} from './bandeja-logica';
 
-describe('Pruebas Automáticas de la Bandeja — Reglas de Comportamiento (Tarea 5)', () => {
+describe('Pruebas Automáticas de la Bandeja — Reglas de Comportamiento (0b & Tarea 5)', () => {
   // 1. Un MENSAJE_NUEVO llega al suscriptor
-  it('1. Un MENSAJE_NUEVO llega al suscriptor sin ser descartado en silencio', () => {
+  it('1. Un MENSAJE_NUEVO llega al suscriptor sin ser descartado en silencio (UUID v4 válido)', () => {
     let eventoRecibido: EventoBandeja | null = null;
 
     const unsubscribe = realtimeMockBus.subscribe((evento: EventoBandeja) => {
@@ -25,20 +26,20 @@ describe('Pruebas Automáticas de la Bandeja — Reglas de Comportamiento (Tarea
 
     unsubscribe();
 
-    // Validar UUID v4
+    // Validar UUID v4 estricto
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
     expect(mensaje.id).toMatch(uuidRegex);
 
     // Validar recepción por el suscriptor
     expect(eventoRecibido).not.toBeNull();
-    const ev = (eventoRecibido ?? {}) as unknown as Record<string, unknown>;
-    expect(ev['tipo']).toBe('MENSAJE_NUEVO');
+    const ev = eventoRecibido as unknown as EventoBandeja;
+    expect(ev.tipo).toBe('MENSAJE_NUEVO');
   });
 
-  // 2. Dos eventos con el ratón encima: sobreviven los dos
-  it('2. Dos eventos con el ratón encima (Mouse Hover Guard): ambos sobreviven en el búfer', () => {
+  // 2. Dos eventos con el ratón encima: ambos sobreviven en el búfer
+  it('2. reordenarConGuardia acumula eventos en el búfer cuando el ratón está encima y no mueve la lista visible', () => {
     const conv1: ConversacionResumen = {
-      id: 'conv-201',
+      id: '00000000-0000-4000-8000-000000000201',
       estado: 'ABIERTA',
       contactoId: 'cnt-201',
       contactoNombre: 'Cliente A',
@@ -55,7 +56,7 @@ describe('Pruebas Automáticas de la Bandeja — Reglas de Comportamiento (Tarea
     };
 
     const conv2: ConversacionResumen = {
-      id: 'conv-202',
+      id: '00000000-0000-4000-8000-000000000202',
       estado: 'ABIERTA',
       contactoId: 'cnt-202',
       contactoNombre: 'Cliente B',
@@ -71,63 +72,82 @@ describe('Pruebas Automáticas de la Bandeja — Reglas de Comportamiento (Tarea
       etiquetas: [],
     };
 
-    const estadoInicial = [conv1, conv2];
-    let bufferConversaciones: ConversacionResumen[] | null = null;
-    let pendientesReorden = 0;
-    const isHoveringList = true;
+    const listaInicial = [conv1, conv2];
+    const ratonEncima = true;
 
-    const eventos = [
-      { id: 'conv-201', texto: 'Actualización A' },
-      { id: 'conv-202', texto: 'Actualización B' },
-    ];
+    // Evento 1
+    const evento1: EventoBandeja = {
+      tipo: 'MENSAJE_NUEVO',
+      conversacionId: conv1.id,
+      mensaje: {
+        id: '00000000-0000-4000-8000-000000000011',
+        conversacionId: conv1.id,
+        direccion: 'ENTRANTE',
+        tipo: 'TEXTO',
+        texto: 'Actualización A',
+        adjuntos: [],
+        estado: 'ENTREGADO',
+        motivoFallo: null,
+        autorId: null,
+        autorNombre: null,
+        ocurridoEn: new Date().toISOString(),
+        cotizacionId: null,
+      },
+    };
 
-    eventos.forEach((e) => {
-      const base = bufferConversaciones ?? estadoInicial;
-      const listaActualizada = [...base];
-      const idx = listaActualizada.findIndex((c) => c.id === e.id);
-      if (idx !== -1 && listaActualizada[idx]) {
-        listaActualizada[idx] = {
-          ...listaActualizada[idx],
-          ultimoMensajeTexto: e.texto,
-          mensajesSinLeer: listaActualizada[idx].mensajesSinLeer + 1,
-        };
-      }
+    const paso1 = reordenarConGuardia(listaInicial, null, evento1, ratonEncima);
+    expect(paso1.nuevoPendiente).toBe(true);
+    expect(paso1.listaVisible).toBe(listaInicial); // No se mueve bajo el cursor
+    expect(paso1.nuevoBuffer).not.toBeNull();
+    expect(paso1.nuevoBuffer?.find((c) => c.id === conv1.id)?.ultimoMensajeTexto).toBe(
+      'Actualización A',
+    );
 
-      if (isHoveringList) {
-        bufferConversaciones = listaActualizada;
-        pendientesReorden += 1;
-      }
-    });
+    // Evento 2: debe acumular sobre el buffer anterior (no sobre listaInicial)
+    const evento2: EventoBandeja = {
+      tipo: 'MENSAJE_NUEVO',
+      conversacionId: conv2.id,
+      mensaje: {
+        id: '00000000-0000-4000-8000-000000000022',
+        conversacionId: conv2.id,
+        direccion: 'ENTRANTE',
+        tipo: 'TEXTO',
+        texto: 'Actualización B',
+        adjuntos: [],
+        estado: 'ENTREGADO',
+        motivoFallo: null,
+        autorId: null,
+        autorNombre: null,
+        ocurridoEn: new Date().toISOString(),
+        cotizacionId: null,
+      },
+    };
 
-    expect(pendientesReorden).toBe(2);
-    expect(bufferConversaciones).not.toBeNull();
-    const arr = bufferConversaciones as unknown as ConversacionResumen[];
-    expect(arr.find((c) => c.id === 'conv-201')?.ultimoMensajeTexto).toBe('Actualización A');
-    expect(arr.find((c) => c.id === 'conv-202')?.ultimoMensajeTexto).toBe('Actualización B');
+    const paso2 = reordenarConGuardia(listaInicial, paso1.nuevoBuffer, evento2, ratonEncima);
+    expect(paso2.nuevoPendiente).toBe(true);
+    expect(paso2.listaVisible).toBe(listaInicial);
+
+    // AFIRMAR QUE AMBOS SOBREVIVIERON EN EL BUFFER FINAL
+    const bufferFinal = paso2.nuevoBuffer;
+    expect(bufferFinal).not.toBeNull();
+    expect(bufferFinal?.find((c) => c.id === conv1.id)?.ultimoMensajeTexto).toBe('Actualización A');
+    expect(bufferFinal?.find((c) => c.id === conv2.id)?.ultimoMensajeTexto).toBe('Actualización B');
   });
 
   // 3. Reintentar un envío fallido reutiliza la clave de idempotencia (R5)
-  it('3. Reintentar un envío fallido reutiliza exactamente la misma clave de idempotencia (R5)', () => {
-    const mensajeId = 'opt-1234567890';
-    const idempotenciaKeys: Record<string, string> = {};
+  it('3. claveDeReintento reutiliza estrictamente la misma clave para el mismo mensajeId (R5)', () => {
+    const mapaIdempotencia: Record<string, string> = {};
+    const mensajeId = '00000000-0000-4000-8000-000000000123';
 
-    // 1. Primer intento
-    let claveOriginal = idempotenciaKeys[mensajeId];
-    if (!claveOriginal) {
-      claveOriginal = '00000000-0000-4000-8000-999999999999';
-      idempotenciaKeys[mensajeId] = claveOriginal;
-    }
+    // 1. Primer intento: genera clave nueva
+    const intento1 = claveDeReintento(mapaIdempotencia, mensajeId);
+    expect(intento1.esReutilizada).toBe(false);
+    expect(intento1.clave).toBeDefined();
 
-    // 2. Reintento tras fallo
-    let claveReintento = idempotenciaKeys[mensajeId];
-    if (!claveReintento) {
-      claveReintento = '11111111-1111-4111-8111-111111111111'; // Se generaría una nueva si no se reutilizara
-      idempotenciaKeys[mensajeId] = claveReintento;
-    }
-
-    // AFIRMAR QUE LA CLAVE ES EXACTAMENTE LA MISMA (R5)
-    expect(claveReintento).toBe(claveOriginal);
-    expect(claveReintento).toBe('00000000-0000-4000-8000-999999999999');
+    // 2. Reintento: debe reutilizar exactamente la misma clave generada
+    const intento2 = claveDeReintento(mapaIdempotencia, mensajeId);
+    expect(intento2.esReutilizada).toBe(true);
+    expect(intento2.clave).toBe(intento1.clave);
   });
 
   // 4. Un EventoBandeja de tipo desconocido se ignora sin romper nada
@@ -146,67 +166,35 @@ describe('Pruebas Automáticas de la Bandeja — Reglas de Comportamiento (Tarea
     expect(llamado).toBe(false);
   });
 
-  // 5. Con el scroll arriba, un mensaje nuevo no roba la posición
-  it('5. Con el scroll arriba (isNearBottom = false), un mensaje nuevo NO roba el desplazamiento', () => {
-    let isNearBottom = false; // El asesor está leyendo mensajes antiguos arriba
-    let scrollEjecutado = false;
-    let mensajesNuevosSinVer = 0;
+  // 5. debeBajarElScroll calcula la distancia al fondo sin robar posición
+  it('5. debeBajarElScroll devuelve false si el asesor está leyendo arriba y true solo cerca del fondo', () => {
+    const umbral = 80;
 
-    const simularLlegadaMensajeNuevo = () => {
-      if (isNearBottom) {
-        scrollEjecutado = true;
-      } else {
-        mensajesNuevosSinVer += 1;
-      }
-    };
+    // Distancia grande (scrolleado hacia arriba leyendo historial antiguo)
+    expect(debeBajarElScroll(500, umbral)).toBe(false);
+    expect(debeBajarElScroll(150, umbral)).toBe(false);
 
-    simularLlegadaMensajeNuevo();
-
-    // Verificaciones: el scroll NO debe ser robado y el contador flotante debe subir
-    expect(scrollEjecutado).toBe(false);
-    expect(mensajesNuevosSinVer).toBe(1);
-
-    // Si el usuario baja al fondo, el contador se limpia
-    isNearBottom = true;
-    simularLlegadaMensajeNuevo();
-    expect(scrollEjecutado).toBe(true);
+    // Cerca del fondo (menos o igual al umbral)
+    expect(debeBajarElScroll(80, umbral)).toBe(true);
+    expect(debeBajarElScroll(10, umbral)).toBe(true);
+    expect(debeBajarElScroll(0, umbral)).toBe(true);
   });
 
-  // 6. La ventana de 24 h cerrada deshabilita el envío libre
-  it('6. La ventana de 24 h cerrada restringe el envío de texto libre segun el contrato Meta', () => {
-    const conversacionCerrada: ConversacionDetalle = {
-      id: '00000000-0000-4000-8000-000000000099',
-      estado: 'ABIERTA',
-      contactoId: 'cnt-999',
-      contactoNombre: 'Viajero Inactivo',
-      contactoTelefono: '+573000000999',
-      asignadoAId: null,
-      asignadoANombre: null,
-      mensajesSinLeer: 0,
-      ultimoMensajeTexto: 'Hola hace 30 horas',
-      ultimoMensajeEn: new Date(Date.now() - 30 * 3600 * 1000).toISOString(),
-      ultimoMensajeDireccion: 'SALIENTE',
-      slaVenceEn: null,
-      ventana: {
-        abierta: false,
-        expiraEn: new Date(Date.now() - 6 * 3600 * 1000).toISOString(),
-        minutosRestantes: 0,
-      },
-      etiquetas: [],
-      notas: [],
-      mensajes: [],
-    };
+  // 6. calcularTiempoRestanteVentana restringe correctamente la ventana cerrada
+  it('6. calcularTiempoRestanteVentana detecta cuando la ventana de 24h está cerrada o calcula horas restantes', () => {
+    // Caso 1: Ventana expirada (fecha en el pasado)
+    const fechaPasada = new Date(Date.now() - 3600 * 1000).toISOString();
+    const estadoExpirado = calcularTiempoRestanteVentana(fechaPasada);
+    expect(estadoExpirado.cerrada).toBe(true);
+    expect(estadoExpirado.minutos).toBe(0);
+    expect(estadoExpirado.texto).toBe('Ventana cerrada');
 
-    // Validar contra el contrato EnviarTexto cuando se intenta escribir fuera de ventana
-    const resultadoEnvio = EnviarTexto.safeParse({
-      conversacionId: conversacionCerrada.id,
-      texto: 'Mensaje libre fuera de 24h',
-      claveIdempotencia: '00000000-0000-4000-8000-888888888888',
-    });
-
-    // El contrato valida la estructura, pero la ventana en estado falsa debe ser evaluada
-    expect(resultadoEnvio.success).toBe(true);
-    expect(conversacionCerrada.ventana.abierta).toBe(false);
-    expect(conversacionCerrada.ventana.minutosRestantes).toBe(0);
+    // Caso 2: Ventana abierta con 2 horas y 30 minutos restantes
+    const fechaFutura = new Date(Date.now() + 150 * 60 * 1000).toISOString();
+    const estadoAbierto = calcularTiempoRestanteVentana(fechaFutura);
+    expect(estadoAbierto.cerrada).toBe(false);
+    expect(estadoAbierto.horas).toBe(2);
+    expect(estadoAbierto.minutos).toBeGreaterThanOrEqual(149);
+    expect(estadoAbierto.texto).toContain('2 h');
   });
 });

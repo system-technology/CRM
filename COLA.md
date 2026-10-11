@@ -21,7 +21,7 @@ las plantillas, que estuvo bien. `lint`, `typecheck`, `test`, `build` y `format:
 
 ---
 
-## [ ] 0b. El diseño — todo esto va antes que cualquier funcionalidad nueva
+## [x] 0b. El diseño — todo esto va antes que cualquier funcionalidad nueva
 
 El propietario abrió la aplicación y dijo que la experiencia de usuario está por el suelo. Tiene
 razón, y la causa fue mía: esta cola nunca mencionó el diseño acordado. El `diseno-ux` auditó la
