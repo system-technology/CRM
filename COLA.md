@@ -1,5 +1,46 @@
 # Cola de trabajo — Antigravity
 
+> # ⚠️ PARA. Trae `main` antes de la siguiente tarea.
+>
+> ```
+> git fetch origin && git merge origin/main
+> ```
+>
+> Llevas **28 commits por detrás** y `packages/contracts` cambió de forma mientras construías.
+> Si sigues sin traerlo, el `typecheck` te fallará con errores que no son tuyos y vas a
+> perder media hora buscándolos en tu código.
+>
+> **Lo que cambió y te afecta de lleno, porque ya construiste el pipeline contra la forma
+> vieja:** `Oportunidad.etapa` ya no es una cadena cerrada. Ahora es un objeto:
+>
+> ```ts
+> etapa: { id, clave, nombre, orden, probabilidad, esGanada, esPerdida }
+> ```
+>
+> El motivo no es capricho: la base guarda las etapas como **tabla por agencia**, y la agencia
+> demo tiene **siete**. Con el enum cerrado, dos columnas de tu tablero no eran representables.
+> Lo cambié antes de saber que ya habías hecho la pantalla; siento el retrabajo.
+>
+> Para el tablero: **las columnas se pintan desde los datos**, con el nombre que la agencia les
+> puso —la demo llama «Consulta nueva» a su primera etapa, no «Nuevo lead»— y el orden sale de
+> `orden`. Para mover: `MoverOportunidad` lleva `etapaId`, no una clave. Y si una etapa trae
+> `clave: null` es legítimo, no un error: es una etapa propia de esa agencia.
+>
+> **Y ya hay API de verdad contra la que trabajar**, verificada contra Neon y contra la API
+> corriendo, no simulada:
+>
+> | Ruta | Qué devuelve |
+> |---|---|
+> | `GET /api/v1/crm/tablero` | Las columnas de esa agencia con sus totales |
+> | `GET /api/v1/crm/contactos` | Contactos, con búsqueda por nombre o teléfono |
+> | `GET /api/v1/crm/contactos/:id/ficha` | La ficha del panel lateral, en **una** petición |
+> | `PATCH /api/v1/crm/oportunidades/:id/etapa` | Mover de etapa, con la regla de pérdida |
+>
+> Dos avisos sobre el catálogo y el cotizador que construiste: **el ADR-0009 propone retirar
+> `Temporada` como eje de precio y la matriz de acomodación.** Está en `Propuesto`, sin firmar,
+> así que no deshagas nada todavía — pero no construyas más encima de esa parte hasta que el
+> propietario decida.
+
 > **Flujo continuo y sincronización con Jira:**
 > Tareas 0d, 0c.3 (Pipeline Kanban) y 6 (Ventana 24h Meta HSM) completadas y verificadas bajo las 5 compuertas (22/22 tests en verde, typecheck limpio, lint limpio, build limpio, format limpio).
 > Conforme a la instrucción del propietario («cuando te quedes sin tareas toma de Jira y lo colocas en el archivo para que lo trabajes y Claude sepa pero nunca te quedes sin trabajar pero tampoco inventes trabajos»), se toma del roadmap oficial (Epic VC-3 Fase 2 y `viajapro_diseno_ui_ux.json` Pantalla P0):
