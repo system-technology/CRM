@@ -1,6 +1,47 @@
-# ENTREGA.md — Tareas 0d, 0c.3 (Pipeline Kanban), 6 (Ventana 24h Meta HSM), 0c.4 (Contactos), 0c.5 (Catálogo), 0c.6 (Cotizador) y 0c.7 (Reportes)
+# ENTREGA.md — Tareas 0d, 0c.3 (Pipeline Kanban), 6 (Ventana 24h Meta HSM), 0c.4 (Contactos), 0c.5 (Catálogo), 0c.6 (Cotizador), 0c.7 (Reportes) y 0c.8 (Configuración)
 
-## 1. Entrega de Tarea 0c.7: Pantalla de Reportes, Métricas y Cierres (`/reportes`)
+## 1. Entrega de Tarea 0c.8: Pantalla de Equipo y Configuración de Agencia (`/configuracion`)
+
+Origen: `viajapro_diseno_ui_ux.json` (Pantalla P1: Equipo y configuración `settings_team`) · ADR-0006 (Nivel 1 de parametrización en v1) · Jira Epics VC-1 (Fundaciones / Roles), VC-2 (WhatsApp Cloud API / WABA) y VC-3 (CRM y Pipeline).
+
+### Implementación Realizada:
+1. **Modelos de Datos y Dominio (`apps/web/src/lib/mock-configuracion.ts`):**
+   - Miembros del equipo con roles tipados (`DUENO`, `ASESOR`), estados (`ACTIVO`, `INVITADO`), correo, teléfono E.164 y avatar.
+   - Parámetros de WABA (Phone Number ID, WABA ID, número verificado +57, calidad Meta GREEN/HIGH y webhook URL oficial).
+   - Parámetros de SLA (tiempo máximo de primera respuesta, alerta preventiva, horario y días laborales).
+   - Parámetros de agencia (razón social, nombre comercial, NIT colombiano, moneda base COP R8 y huso horario R9).
+   - Etapas comerciales del pipeline con orden y probabilidades de cierre estimadas.
+
+2. **Lógica de Negocio y Pruebas Unitarias (`apps/web/src/lib/configuracion-logica.ts` & `configuracion-logica.spec.ts`):**
+   - `validarSla`: validación estricta de tiempo de respuesta (1 a 1440 min) y umbral de alerta preventiva.
+   - `validarReglaDuenoActivo`: invariante de seguridad que garantiza la existencia de al menos un usuario activo con rol DUEÑO.
+   - `verificarSaludConexion`: diagnóstico de salud de la integración de WhatsApp Cloud API (ÓPTIMO, ATENCIÓN, CRÍTICO).
+   - `validarFormatoNit`: comprobación de formatos válidos de NIT colombiano con dígito de verificación.
+   - `calcularProbabilidadPromedio`: cálculo de probabilidad global del embudo comercial.
+   - 13 pruebas unitarias automatizadas en Vitest pasando (59/59 pruebas totales del monorepo en verde).
+
+3. **Interfaz de Usuario y Secciones Reactivas (`apps/web/src/app/configuracion/page.tsx`):**
+   - Integración nativa con `BarraModulos` con navegación lateral completa y soporte de modo oscuro (`dark:`).
+   - Pestañas funcionales:
+     - «Miembros y Roles»: métricas del equipo, tabla detallada, badges de rol y modal interactivo para invitar nuevos asesores.
+     - «Canal WhatsApp (WABA)»: tarjeta de salud en vivo, identificadores técnicos y nota de seguridad sobre cifrado AES-256-GCM (R6).
+     - «SLA y Tiempos»: formulario de parametrización con validaciones reactivas y cálculo de alerta preventiva.
+     - «Etapas del Pipeline»: visualización de etapas y orden comercial con porcentajes de conversión.
+     - «Marca y Datos Fiscales»: formulario de razón social, NIT validado, moneda oficial COP (R8) y ubicación.
+
+4. **Navegación Lateral Activada (`apps/web/src/components/bandeja/barra-modulos.tsx`):**
+   - Módulo `/configuracion` activado (`disponible: true`, `activo: pathname.startsWith('/configuracion')`).
+
+### Verificación de las 5 Compuertas:
+- **Vitest:** 59/59 pruebas pasando en 9 suites (`catalogo`, `cotizador`, `contactos`, `pipeline`, `plantillas`, `realtime`, `bandeja`, `reportes`, `configuracion`).
+- **TypeScript:** `tsc --noEmit` sin errores.
+- **ESLint:** `eslint src` 0 errores, 0 advertencias.
+- **Next.js Build:** Generación estática exitosa de las 12 rutas de la aplicación (`/configuracion` 11.4 kB).
+- **Prettier:** 100% verificado con `prettier --check`.
+
+---
+
+## 2. Entrega de Tarea 0c.7: Pantalla de Reportes, Métricas y Cierres (`/reportes`)
 
 Origen: Jira Epic VC-7 (Fase 6: Analítica y escala) · `viajapro_diseno_ui_ux.json` (Pantalla P1: Reportes) · Reglas del lenguaje ubicuo y R8 (Dinero en enteros de COP).
 

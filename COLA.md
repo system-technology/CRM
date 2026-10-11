@@ -11,6 +11,33 @@ redefinidos: todo de `@viajapro/contracts` — si falta un campo, **para y dilo*
 
 ---
 
+## [x] 0c.8. Pantalla de Equipo y Configuración de Agencia (`/configuracion`)
+
+Origen: `viajapro_diseno_ui_ux.json` (Pantalla P1: Equipo y configuración `settings_team`) · ADR-0006 (Nivel 1 de parametrización en v1) · Jira Epics VC-1 (Fundaciones / Roles), VC-2 (WhatsApp Cloud API / WABA) y VC-3 (CRM y Pipeline).
+
+**Objetivo:** Construir la pantalla integral de configuración en `/configuracion` para administrar miembros del equipo, roles de acceso, etapas del pipeline, SLA de respuesta en WhatsApp, salud de conexión WABA y parámetros de marca/moneda de la agencia.
+
+**Invariantes y criterios:**
+1. **Miembros y Roles de Agencia:**
+   - Listado de asesores y dueños con estado (Activo, Invitado), correo, teléfono E.164 y rol (`DUENO`, `ASESOR`).
+   - Invariante de seguridad: Debe existir siempre al menos un usuario activo con rol `DUENO` en la agencia.
+2. **Canal WhatsApp Cloud API (WABA):**
+   - Estado de salud de la conexión (Conectado / Webhook activo / Calidad del número Verde / Media / Baja).
+   - Identificadores oficiales: Phone Number ID, WABA ID y número E.164 verificado (+57...).
+   - Token de Meta cifrado en reposo (R6: nunca expuesto en texto plano).
+3. **Parámetros de SLA de Atención:**
+   - Tiempo límite de primera respuesta (ej. 15 minutos) y umbral de alerta preventiva (ej. 5 minutos).
+   - Horario laboral de atención comercial y cálculo de vencimiento.
+4. **Etapas del Pipeline:**
+   - Visualización y orden de etapas comerciales (`NUEVO_LEAD`, `EN_COTIZACION`, `EN_NEGOCIACION`, `GANADA`, `PERDIDA`) con probabilidad estimada.
+5. **Marca y Moneda Base:**
+   - Razón social, NIT colombiano con formato de validación, moneda base ISO-4217 (COP) y huso horario (UTC-5 / America/Bogota).
+6. **Habilitación en Navegación:**
+   - Activar `id: 'configuracion'` en `BarraModulos` con enlace funcional a `/configuracion`.
+7. **Compuertas:** `test`, `typecheck`, `lint`, `build` y `format:check` 100% en verde.
+
+---
+
 ## [x] 0c.7. Pantalla de Reportes, Métricas y Cierres (`/reportes`)
 
 Origen: `viajapro_diseno_ui_ux.json` (Pantalla P1: Reportes) · Jira Epic VC-7 (Fase 6: Analítica y escala) · Reglas del lenguaje ubicuo y R8 (Dinero en enteros de COP).

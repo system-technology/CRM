@@ -115,8 +115,8 @@ export function BarraModulos() {
       label: 'Configuración de Agencia',
       href: '/configuracion',
       icon: Settings,
-      activo: false,
-      disponible: false,
+      activo: pathname.startsWith('/configuracion'),
+      disponible: true,
     },
   ];
 
