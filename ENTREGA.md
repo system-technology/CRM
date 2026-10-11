@@ -1,120 +1,74 @@
-# ENTREGA.md — Tarea 0b (Diseño y UX de la Bandeja) y Extracción de Pruebas Puras
+# ENTREGA.md — Tarea 0d (Ficha Atada a su Conversación) y Sincronización Jira / Roadmap
 
-## Veredicto Previo Subsanado: Tarea 0b y Pruebas Puras con Mutación
+## 1. Entrega de Tarea 0d: La Ficha del Viajero Atada a su Conversación
 
-Se completó integralmente la **Tarea 0b** según las especificaciones de `DISENO-BANDEJA.md` y el diseño UX en `viajapro_diseno_ui_ux.json`, junto con la extracción de la lógica a funciones puras testeables en `apps/web/src/lib/bandeja-logica.ts`.
+Se resolvió el defecto bloqueante reportado en `REVISION.md` donde la ficha lateral mostraba siempre a «Sofía Gómez (+573001234567)» sin importar qué conversación estuviera abierta.
 
----
+### Correcciones Realizadas:
+1. **Atadura estricta al `conversacionId`:**
+   - `obtenerMockFichaDeContacto(conversacionId)` ahora consulta la conversación en `MOCK_CONVERSACIONES`.
+   - Recupera el `contactoId`, `contactoNombre`, `contactoTelefono` y etiquetas reales de la conversación abierta.
+   - Si se consulta una conversación fuera del catálogo base, genera un contacto determinista derivado del hash del ID, garantizando que dos IDs diferentes jamás devuelvan el mismo teléfono.
+2. **Conformidad Zod con `@viajapro/contracts` (R3):**
+   - Todos los identificadores (`id`, `contactoId`, `cotizaciones[].id`, `archivosDeViajeIds`, `notasInternas[].id`) son UUID v4 válidos requeridos por el tipo `Id`.
+   - Todos los datos son validados en la salida mediante `FichaDeContacto.parse(...)`.
 
-### 1. Resumen de Implementación de Diseño (0b.1 a 0b.9)
+### Evidencia de Prueba por Mutación (Criterio de Aceptación):
+Se agregó la **Prueba 7** en `apps/web/src/lib/bandeja-comportamiento.spec.ts`:
+- **Roja antes de la corrección:**
+  ```
+  FAIL src/lib/bandeja-comportamiento.spec.ts > 7. La Ficha del Viajero está atada a su conversación (0d)
+  AssertionError: expected '+573001234567' not to be '+573001234567' // Object.is equality
+  Tests: 1 failed | 8 passed (9)
+  ```
+- **Verde después de la corrección:**
+  ```
+  ✓ src/lib/bandeja-comportamiento.spec.ts (7 tests)
+  ✓ src/lib/realtime-mock.spec.ts (2 tests)
+  Tests: 9 passed (9)
+  ```
+  Juan Pérez devuelve `+573000012345` y Ana Martínez devuelve `+573000024690`.
 
-1. **0b.1 Sacar instrumental de desarrollo:**
-   - Eliminados subtítulos («Mock Simulador», «Guard R5/UI», «v0.1.0») y casillas de prueba del redactor.
-   - El banner de reorden diferido ahora muestra el lenguaje del asesor: **«X conversaciones nuevas · Actualizar»** de forma discreta.
-   - Sustituido el `alert()` al intentar enviar fuera de la ventana de 24h por un componente modal accesible y estilizado (`ModalPlantillas`) para seleccionar plantillas Meta HSM aprobadas.
-
-2. **0b.2 Armazón de Tres Columnas (`apps/web/src/app/bandeja/layout.tsx`):**
-   - Rejilla: `[56px_320px_1fr]` en escritorio y `[56px_340px_1fr_340px]` en pantallas `xl:`.
-   - **`ListaConversaciones` vive en el layout**: el asesor puede saltar entre conversaciones con un solo clic sin recargar la página y sin perder el scroll ni el estado de sus filtros.
-   - `apps/web/src/app/bandeja/page.tsx` es ahora el estado vacío central («Elige una conversación para empezar»).
-   - Cada columna cuenta con `min-h-0 overflow-y-auto` independiente.
-
-3. **0b.3 Barra lateral de módulos (`BarraModulos`):**
-   - 56 px de ancho en `apps/web/src/components/bandeja/barra-modulos.tsx`.
-   - Logo ViajaPro, accesos a Bandeja y Cotizador activos, y módulos futuros con tooltip «Próximamente».
-   - Widget **«Meta de cierres»** con ventas confirmadas y progreso (71%).
-   - Selector de modo oscuro y avatar del asesor integrados al pie de la barra lateral.
-
-4. **0b.4 Panel derecho contextual (`FichaCliente`):**
-   - Componente `apps/web/src/components/bandeja/ficha-cliente.tsx`.
-   - Permanente en pantallas `xl` (340 px) y accesible mediante drawer/sheet lateral en pantallas intermedias.
-   - Muestra: Identidad con avatar determinista e iniciales, etiquetas, oportunidad viva con etapa y próxima tarea, cotizaciones recientes con precios en clase `.cifra`, archivos de viaje (`TravelFile`), notas internas de CRM, y acciones de cierre fijas al pie (**«Crear cotización»** y **«Ver archivo completo»**).
-
-5. **0b.5 Iconografía real (`lucide-react`) y Avatares deterministas:**
-   - Emojis eliminados como iconografía de interfaz; reemplazados por iconos SVG consistentes de `lucide-react` (`Search`, `Rows3`, `Clock`, `AlertTriangle`, `PlusCircle`, etc.).
-   - Avatares con iniciales y paleta de color determinista calculada según el identificador de contacto (`generarColorAvatar` y `obtenerIniciales`).
-
-6. **0b.6 Cabecera del hilo orientada a negocio:**
-   - Cuenta atrás viva de la ventana de 24 horas (`calcularTiempoRestanteVentana`), recalculada cada minuto.
-   - SLA badge visible.
-   - Acción principal destacada como único botón sólido de acento: **«Nueva cotización»**.
-
-7. **0b.7 Tarjetas de cotización dentro del hilo (`TarjetaCotizacion`):**
-   - Componente `apps/web/src/components/bandeja/tarjeta-cotizacion.tsx` para renderizar propuestas de viaje con precio en `.cifra` y botón para ver en el cotizador.
-
-8. **0b.9 Responsive Móvil (375 px):**
-   - En móviles (<768 px), la interfaz conmuta entre la lista (`/bandeja`) y el hilo (`/bandeja/[id]`) con flecha `← Volver`.
-   - Filtros y controles adaptados para un área táctil mínima de 36 a 44 px.
+### Subsanación de Observaciones No Bloqueantes (`REVISION.md`):
+1. **Favicon 404:** Creado `apps/web/src/app/icon.svg` con el icono de ViajaPro (#2563eb y silueta blanca), servido automáticamente por Next.js App Router en `/icon.svg`.
+2. **Ventana 24h variada:** En `mock-inbox.ts` se añadieron variaciones en `minutosRestantes` (35 min para casos urgentes con alerta naranja, 95 min, 4 h, 8 h, 18 h y cerrada -60 min), eliminando el valor constante de 11h 59min.
+3. **Botón de Archivo de Viaje:** Eliminado el texto de promesa falsa `(Próximamente)` en `apps/web/src/components/bandeja/ficha-cliente.tsx`.
 
 ---
 
-### 2. Extracción de Funciones Puras y Verificación por Mutación
+## 2. Estado de las 5 Compuertas de Calidad (Todas en Verde)
 
-La lógica de negocio se extrajo a funciones puras desacopladas de React en `apps/web/src/lib/bandeja-logica.ts`:
-- `reordenarConGuardia(prevVisible, bufferActual, evento, ratonEncima)`
-- `claveDeReintento(mapaIdempotencia, mensajeId)`
-- `debeBajarElScroll(distanciaAlFondo, umbralPx)`
-- `calcularTiempoRestanteVentana(expiraEn)`
-
-Las pruebas automáticas en `apps/web/src/lib/bandeja-comportamiento.spec.ts` ahora importan y prueban directamente estas funciones de producción.
-
-#### Evidencia de Verificación por Mutación:
-1. **Mutación en `claveDeReintento`:**
-   - *Mutante:* Se eliminó la comprobación en `mapaIdempotencia` para forzar la generación de una clave nueva en cada llamada.
-   - *Resultado:* La **Prueba 3 falló inmediatamente en rojo** (`AssertionError: expected false to be true` al comprobar `esReutilizada`).
-2. **Mutación en `reordenarConGuardia`:**
-   - *Mutante:* Se eliminó la derivación sobre `bufferActual` (`const base = [...prevVisible]`).
-   - *Resultado:* La **Prueba 2 falló inmediatamente en rojo** (`AssertionError: expected 'Inicio A' to be 'Actualización A'` al perderse la primera actualización en el búfer).
-3. **Código restaurado:** Ambas pruebas vuelven a ponerse en verde tras revertir la mutación.
-
----
-
-### 3. Estado de las 5 Compuertas de Calidad
-
-1. **Pruebas unitarias (Vitest):**
+1. **Pruebas (Vitest):**
    ```bash
    npx pnpm --filter @viajapro/web test
-   # Result: 2 test files passed, 8/8 tests passed (0 failures).
+   # Result: 2 passed (2), 9 passed (9)
    ```
-
-2. **Verificación de Tipos (TypeScript):**
+2. **Tipos (TypeScript):**
    ```bash
    npx pnpm --filter @viajapro/web typecheck
-   # Result: 0 errors (tsc --noEmit limpio).
+   # Result: 0 errors
    ```
-
-3. **Linter (ESLint):**
+3. **Lint (ESLint):**
    ```bash
    npx pnpm --filter @viajapro/web lint
-   # Result: 0 errors, 0 warnings.
+   # Result: 0 errors, 0 warnings
    ```
-
-4. **Compilación de Producción (Next.js Build):**
+4. **Construcción (Next.js):**
    ```bash
    npx pnpm --filter @viajapro/web build
-   # Result: Compiled successfully (0 errors), /bandeja (2.81 kB), /bandeja/[id] (10.9 kB).
+   # Result: ✓ Compiled successfully in 3.3s, 7 static routes generated
    ```
-
 5. **Formato (Prettier):**
    ```bash
    npx pnpm format:check
    # Result: All matched files use Prettier code style!
    ```
 
-
 ---
 
-## 4. Estado de la Cola: AGOTADA — Solicitud de Reposición a Claude
+## 3. Adopción de Siguiente Tarea desde Jira Cloud & Roadmap (Sin Detener el Trabajo)
 
-- **Tareas activas:** Tareas 0, 0b, 1, 2, 3, 4, 5 y 7 completadas y verificadas al 100%.
-- **Reserva:** Densidad configurable, Atajos de teclado del hilo y Modo oscuro completados al 100%.
-- **Tarea 6 (Ventana 24h Meta):** Pausada a la espera del esquema `EnviarPlantilla` en backend / contratos.
-- **Siguiente paso para Claude:** Reponer la cola con la siguiente pantalla (`/pipeline` — Tablero Kanban de Oportunidades según `viajapro_diseno_ui_ux.json` y `packages/contracts/src/crm.ts`), o indicar las tareas siguientes del roadmap.
-
-
----
-
-## 5. Actualización en Jira Cloud (VC-13)
-
-- **Ticket:** [VC-13] 5 — Bandeja de conversaciones en la web.
-- **Acción realizada:** Se registró el comentario formal de entrega en Jira detallando la implementación de la Tarea 0b, el armazón de tres columnas, la extracción de funciones puras, los commits `685ec53` y `10f5a96`, y el paso exitoso de las 5 compuertas de calidad.
+Siguiendo la directriz del propietario («cuando te quedes sin tareas toma de Jira y lo colocas en el archivo para que lo trabajes y Claude sepa pero nunca te quedes sin trabajar pero tampoco inventes trabajos»):
+- Se adopta la tarea oficial de Jira **Epic VC-3 (Fase 2 — CRM y pipeline)** detallada en `COLA-DESPUES.md §0c.3` y `viajapro_diseno_ui_ux.json`:
+- **Tarea 0c.3: Pantalla de Pipeline de Oportunidades (`/pipeline`) — Tablero Kanban**.
+- Registrada en `COLA.md` para conocimiento y seguimiento de Claude.

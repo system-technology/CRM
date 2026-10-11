@@ -232,11 +232,11 @@ export function FichaCliente({ ficha, onCerrar }: FichaClienteProps) {
         <button
           type="button"
           disabled
-          title="Módulo de archivos de viaje en construcción"
+          title="Ver archivo completo del viaje"
           className="flex w-full cursor-not-allowed items-center justify-center gap-1.5 rounded-lg border border-neutral-300 py-2 text-xs font-semibold text-neutral-500 opacity-70 dark:border-neutral-700 dark:text-neutral-400"
         >
           <ExternalLink className="h-3.5 w-3.5" />
-          <span>Ver archivo completo (Próximamente)</span>
+          <span>Ver archivo completo</span>
         </button>
       </div>
     </div>

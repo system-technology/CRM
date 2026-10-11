@@ -182,12 +182,30 @@ function generar500Conversaciones(): ConversacionResumen[] {
         : null;
 
     const ventanaCerrada = i % 8 === 0;
+    // Variar los tiempos restantes para demostrar casos urgentes (<60m), medios y holgados
+    let minutosRestantes: number;
+    if (ventanaCerrada) {
+      minutosRestantes = -60;
+    } else if (i % 7 === 1) {
+      minutosRestantes = 35; // Urgente: 35 min restantes (< 1h)
+    } else if (i % 7 === 2) {
+      minutosRestantes = 95; // 1 h 35 min
+    } else if (i % 7 === 3) {
+      minutosRestantes = 240; // 4 horas
+    } else if (i % 7 === 4) {
+      minutosRestantes = 510; // 8 h 30 min
+    } else {
+      minutosRestantes = 1080; // 18 horas
+    }
+
+    const expiraEn = ventanaCerrada
+      ? new Date(ahora - 3600000).toISOString()
+      : new Date(ahora + minutosRestantes * 60000).toISOString();
+
     const ventanaServicio = {
       abierta: !ventanaCerrada,
-      expiraEn: ventanaCerrada
-        ? new Date(ahora - 3600000).toISOString()
-        : new Date(ahora + 12 * 3600000).toISOString(),
-      minutosRestantes: ventanaCerrada ? -60 : 720,
+      expiraEn,
+      minutosRestantes,
     };
 
     const textoMsg =

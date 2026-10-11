@@ -7,6 +7,7 @@ import {
   debeBajarElScroll,
   calcularTiempoRestanteVentana,
 } from './bandeja-logica';
+import { obtenerMockFichaDeContacto } from './mock-crm';
 
 describe('Pruebas Automáticas de la Bandeja — Reglas de Comportamiento (0b & Tarea 5)', () => {
   // 1. Un MENSAJE_NUEVO llega al suscriptor
@@ -196,5 +197,18 @@ describe('Pruebas Automáticas de la Bandeja — Reglas de Comportamiento (0b & 
     expect(estadoAbierto.horas).toBe(2);
     expect(estadoAbierto.minutos).toBeGreaterThanOrEqual(149);
     expect(estadoAbierto.texto).toContain('2 h');
+  });
+  // 7. La Ficha del Viajero está atada a su conversación (0d): dos conversaciones distintas devuelven teléfonos distintos
+  it('7. La Ficha del Viajero está atada a su conversación (0d): dos conversaciones distintas devuelven teléfonos distintos', () => {
+    // Abrir dos conversaciones distintas (Juan Pérez vs Ana Martínez)
+    const convJuanId = '00000000-0001-4000-8000-000000000001';
+    const convAnaId = '00000000-0001-4000-8000-000000000002';
+
+    const fichaJuan = obtenerMockFichaDeContacto(convJuanId);
+    const fichaAna = obtenerMockFichaDeContacto(convAnaId);
+
+    // Criterio de aceptación explícito de Claude:
+    // "una prueba que abra dos conversaciones distintas y afirme que el teléfono de la ficha es distinto"
+    expect(fichaJuan.contacto.telefono).not.toBe(fichaAna.contacto.telefono);
   });
 });

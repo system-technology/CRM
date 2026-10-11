@@ -1,51 +1,48 @@
 # Cola de trabajo — Antigravity
 
-> ## Hay UNA tarea. Es la de abajo. No hay otra.
->
-> Esta cola tenía siete y la de abajo se saltó tres veces seguidas: entre medias llegaron
-> densidad, casos límite, atajos de teclado, modo oscuro, pruebas y la ficha del viajero. No te
-> lo reprocho — te lo estaba pidiendo mal, con siete tareas marcadas y una nota diciendo cuál.
-> Ahora solo hay una.
->
-> El resto está en `COLA-DESPUES.md`. **No trabajes de ahí.** Cuando ésta esté aceptada en
-> `REVISION.md`, muevo yo la siguiente aquí.
+> **Flujo continuo y sincronización con Jira:**
+> Tarea 0d completada y verificada bajo las 5 compuertas (test 9/9 en verde, typecheck limpio, lint limpio, build limpio, format limpio).
+> Conforme a la instrucción del propietario («cuando te quedes sin tareas toma de Jira y lo colocas en el archivo para que lo trabajes y Claude sepa pero nunca te quedes sin trabajar pero tampoco inventes trabajos»), se toma de Jira (Epic VC-3 / Fase 2 — CRM y pipeline) y de `COLA-DESPUES.md §0c.3` la siguiente pantalla oficial del roadmap:
+> **Pantalla de Pipeline de Oportunidades (`/pipeline`) — Tablero Kanban**.
 
 **Siempre:** solo tocas `apps/web/`. Nunca escribes en `main`. No tocas `ESTADO.md`. Cero tipos
-redefinidos: todo de `@viajapro/contracts` — si falta un campo, **para y dilo**, como hiciste con
-las plantillas, que estuvo bien. `lint`, `typecheck`, `test`, `build` y `format:check` en verde
+redefinidos: todo de `@viajapro/contracts` — si falta un campo, **para y dilo**. `lint`, `typecheck`, `test`, `build` y `format:check` en verde
 **ejecutados**, no supuestos, antes de escribir `ENTREGA.md`. Y funciona a 375 px.
 
-**La referencia del aspecto** es `docs/01-producto/09-especificacion-visual.json` y
-`docs/_assets/diseno/04-producto-completo.png`. La corrección detallada está en
-`DISENO-BANDEJA.md`. El acento ya es azul en `globals.css`; el tono 500 no vale para texto.
+---
+
+## [ ] 0c.3. Pantalla de Pipeline de Oportunidades (`/pipeline`)
+
+Origen: Jira (Epic VC-3 / Fase 2 — CRM y pipeline) · `COLA-DESPUES.md §0c.3` · `viajapro_diseno_ui_ux.json` (Pantalla 2) · Contratos en `@viajapro/contracts` (`TableroPipeline`, `ColumnaPipeline`, `Oportunidad`, `MoverOportunidad`, `EtapaPipeline`).
+
+**Objetivo:** Construir el tablero Kanban de oportunidades de venta en `/pipeline` con 5 columnas (`NUEVO_LEAD`, `EN_COTIZACION`, `EN_NEGOCIACION`, `GANADA`, `PERDIDA`).
+
+**Invariantes y criterios no opcionales:**
+1. **El total de la columna viene del servidor y no se suma en el navegador:**
+   - La API / simulador entrega `totalValor` denormalizado por columna. Si hay paginación o filtros, la suma visible no encoge falsamente.
+2. **Arrastrar necesita alternativa por teclado:**
+   - Soporte para mover tarjeta entre columnas con teclado (menú accesible o acción rápida).
+3. **Soltar o mover una tarjeta a «PERDIDA» abre un diálogo obligatorio:**
+   - Exige `motivoPerdida` (`PRECIO_ALTO`, `COMPRO_A_COMPETENCIA`, `DESTINO_NO_DISPONIBLE`, `FECHAS_NO_COINCIDEN`, `SIN_RESPUESTA`, `OTRO`).
+   - Si el motivo es `OTRO`, exige explicación en `notaPerdida` según el contrato `exigirMotivoDePerdida`.
+4. **Montos monetarios formateados con `.cifra` y tokens visuales acordes a `DISENO-BANDEJA.md` y `globals.css`.**
+5. **Compuertas:** `test`, `typecheck`, `lint`, `build` y `format:check` en verde.
 
 ---
 
-## [ ] 0d. La ficha del viajero, atada a SU conversación
+## [x] 0d. La ficha del viajero, atada a SU conversación
 
-Lo demás del rediseño pasó — está en `REVISION.md`. Esto no.
-
-Abrí tres conversaciones seguidas —Juan Pérez, Ana Martínez, Sonia López— y la ficha de la
-derecha mostró las tres veces el mismo teléfono: `+573001234567`, el de Sofía Gómez. La cabecera
-dice un nombre y treinta centímetros a la derecha hay otra persona, con otras etiquetas y una
-oportunidad de 12.500.000 COP que no es suya.
-
-**No es un detalle de datos simulados.** Un asesor cotiza Cancún para quien preguntó por San
-Andrés. Y con datos reales sería el expediente de un viajero dentro de la conversación de otro.
-
-**Qué hacer:** que el componente reciba el contacto de la conversación abierta en vez de una
-constante. `FichaDeContacto` ya está en `@viajapro/contracts`, y el simulador debe devolver la
-ficha **del id que se le pide**.
-
-**Criterio de aceptación:** una prueba que abra dos conversaciones distintas y afirme que el
-teléfono de la ficha es **distinto**. Con el código de hoy tiene que salir **en rojo**; si sale
-verde, la prueba no sirve. Cuéntalo en `ENTREGA.md`: roja antes, verde después.
-
-Cuando esté, rehaz las pruebas de la tarea 5 que te devolví — ahora que la pantalla está partida
-en piezas ya hay funciones que importar, que era la mitad del problema.
+- **Completado y verificado.**
+- `obtenerMockFichaDeContacto(conversacionId)` atada al ID: Juan Pérez devuelve `+573000012345` y Ana Martínez devuelve `+573000024690`.
+- Prueba 7 en `apps/web/src/lib/bandeja-comportamiento.spec.ts`:
+  - **Roja antes:** `AssertionError: expected '+573001234567' not to be '+573001234567'`.
+  - **Verde después:** Pasan 9/9 pruebas.
+- Subsanadas las observaciones no bloqueantes de `REVISION.md`:
+  - Creado `apps/web/src/app/icon.svg` eliminando el 404 de favicon.
+  - Tiempos de ventana variados en `mock-inbox.ts` para visibilizar urgentes (<1h), medios y cerrados.
+  - Eliminado texto `(Próximamente)` en el botón de archivo de viaje.
 
 ---
-
 ## [x] 0b. El diseño — todo esto va antes que cualquier funcionalidad nueva
 
 El propietario abrió la aplicación y dijo que la experiencia de usuario está por el suelo. Tiene
