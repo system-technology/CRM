@@ -6,7 +6,7 @@
 
 | Campo | Valor |
 |---|---|
-| Última actualización | 2026-10-10 (dos IA en paralelo: webhook de WhatsApp y bandeja web; tablero de Jira; guardián de rama arreglado) |
+| Última actualización | 2026-10-10 (integración: contratos de crm, agentes de producto y el webhook del inbox) |
 | Actualizado por | Claude Opus 5 |
 | Fase | **Rebanada vertical de paquetes, en construcción** |
 | Avance de la fase | Cotizador de punta a punta. Esquema del inbox, 30/30 contra Neon. **Apretón de manos del webhook vivo y verificado contra la API corriendo.** Bandeja web en construcción |
@@ -64,7 +64,7 @@ Qué hay, concretamente:
 | Diseño | Sistema de diseño subido a Stitch (proyecto `8333038101997719867`). Tokens replicados en `apps/web/src/app/globals.css`. Capturas en `docs/_assets/diseno/` |
 | Datos | Agencia demo sembrada: 3 paquetes, 5 temporadas, 26 precios |
 | Contrato multi-harness | `AGENTS.md` en la raíz: cualquier IA trabaja bajo las mismas **trece** reglas. R12 faltaba hasta v0.9.1; R13 se añadió el 2026-10-07 |
-| Repositorio | [github.com/Alfavear/CRM](https://github.com/Alfavear/CRM) · **privado** · `main` en **v0.11.0** (`9b3a872`, cuatro commits después del tag: utillaje, sin versión) |
+| Repositorio | [github.com/Alfavear/CRM](https://github.com/Alfavear/CRM) · **privado** · `main` en **v0.13.0** (`9b3a872`, cuatro commits después del tag: utillaje, sin versión) |
 | Gobierno de `main` | Compuerta local activa y probada. **Sin protección de servidor:** el plan gratuito no la permite en repos privados |
 
 ## 2. Decisiones ya tomadas (no reabrir sin ADR que las supersede)
@@ -187,3 +187,15 @@ Al cerrar una sesión de trabajo (`/estado` lo hace de forma guiada):
 4. Añadir o retirar bloqueos. Todo bloqueo lleva dueño. Un bloqueo sin dueño después de dos
    sesiones es un problema, no un riesgo.
 5. Crear la entrada de bitácora correspondiente.
+
+---
+
+## Cola abierta por la integración del 2026-10-10
+
+| Qué | Dueño | Por qué no bloqueó |
+|---|---|---|
+| **La suite de aislamiento de `@viajapro/database` está en rojo: 17/30.** La causa es residuo de fixtures en la base compartida (`duplicate key` sobre `contactos_tenant_id_telefono_e164_key`), no una regresión de política: se verificó idéntica en `main` (`9b3a872`) antes de integrar nada. **Bloquea el despliegue, no la integración.** Remedio: borrar los tenants de fixture `...000a/b/c` y volver a correrla | `datos` | Pre-existente en `main` y ajena a las tres ramas; el integrador no tiene permiso de escritura sobre la base compartida |
+| `aislamiento.spec.ts` limpia sus fixtures solo en `afterAll`. Una ejecución interrumpida envenena todas las siguientes, que es justo lo que pasó hoy. La limpieza tiene que correr también en `beforeAll` | `qa` | Es higiene del suite, no una fuga |
+| `decodificarClave` acepta hexadecimal o base64. La regla es determinista (64 caracteres `[0-9a-f]` → hex; lo demás, base64) y el largo se verifica después, así que se aceptó. Pendiente: que el generador de secretos y el lector acuerden **una** codificación y la rama desaparezca | `devops` | No hay sustitución silenciosa: lo que no mide 32 bytes lanza al arrancar |
+| Auditar la cadena de inyección de `quoting` y `shared`: el mismo silencio de Nest que construyó el controlador del inbox con cero dependencias es posible ahí | `backend` | Hoy no está roto; el inbox ya lleva `@Inject` explícito |
+| `dueno-de-producto` tiene `Bash` entre sus herramientas y `facilitador` no declara lista, así que las hereda todas. El hook `guard-rama` les impide escribir en `main` | `arquitecto` | Defensa en profundidad ya presente |
