@@ -33,6 +33,9 @@ export default tseslint.config(
       'packages/database/src/generated/**',
       // Lo genera Next en cada build y su cabecera dice explícitamente que no se edite.
       '**/next-env.d.ts',
+      // Configuración de herramientas: vive fuera de `rootDir`, así que el analizador con
+      // tipos no la alcanza. Incluirla en el tsconfig rompería el build, que sí usa `rootDir`.
+      '**/vitest.config.ts',
     ],
   },
 

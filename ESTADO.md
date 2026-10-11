@@ -194,8 +194,46 @@ Al cerrar una sesión de trabajo (`/estado` lo hace de forma guiada):
 
 | Qué | Dueño | Por qué no bloqueó |
 |---|---|---|
-| **La suite de aislamiento de `@viajapro/database` está en rojo: 17/30.** La causa es residuo de fixtures en la base compartida (`duplicate key` sobre `contactos_tenant_id_telefono_e164_key`), no una regresión de política: se verificó idéntica en `main` (`9b3a872`) antes de integrar nada. **Bloquea el despliegue, no la integración.** Remedio: borrar los tenants de fixture `...000a/b/c` y volver a correrla | `datos` | Pre-existente en `main` y ajena a las tres ramas; el integrador no tiene permiso de escritura sobre la base compartida |
+| **Resuelto el mismo 2026-10-10.** La suite de aislamiento vuelve a **30/30 en verde**, firmada por el integrador sobre `main` en `01dd143`. Eran 174 filas de fixtures de tres tenants, todas `duplicate key`, ninguna de aislamiento. El limpiador quedó en `chore/limpiar-fixtures` (`79fe4b7`) | `datos` | — |
+| **La aserción 17 comprueba el NOMBRE de la columna, no lo que guarda.** Dice «ninguna tabla global tiene columna `tenant_id`», pero una tabla global que guarde datos de agencia bajo otro nombre la pasa sin que nadie se entere — y eso ya existe: `enrutamiento_canales` usa `tenant_resuelto_id` y `enrutamiento_historial_2026` usa `tenant_anterior`, `tenant_nuevo` y `actor_tenant_id`. Debería comprobar **columnas `uuid` que referencien `tenants`**, no un literal. Y `excepciones_rls` debería exigir motivo revisado, no solo existencia | `qa` | **Hoy no es fuga:** se verificó contra la base que las seis tablas sin RLS con columna de tenant están todas declaradas en `excepciones_rls`. La aserción promete más de lo que comprueba; el diseño que vigila es correcto |
 | `aislamiento.spec.ts` limpia sus fixtures solo en `afterAll`. Una ejecución interrumpida envenena todas las siguientes, que es justo lo que pasó hoy. La limpieza tiene que correr también en `beforeAll` | `qa` | Es higiene del suite, no una fuga |
 | `decodificarClave` acepta hexadecimal o base64. La regla es determinista (64 caracteres `[0-9a-f]` → hex; lo demás, base64) y el largo se verifica después, así que se aceptó. Pendiente: que el generador de secretos y el lector acuerden **una** codificación y la rama desaparezca | `devops` | No hay sustitución silenciosa: lo que no mide 32 bytes lanza al arrancar |
 | Auditar la cadena de inyección de `quoting` y `shared`: el mismo silencio de Nest que construyó el controlador del inbox con cero dependencias es posible ahí | `backend` | Hoy no está roto; el inbox ya lleva `@Inject` explícito |
 | `dueno-de-producto` tiene `Bash` entre sus herramientas y `facilitador` no declara lista, así que las hereda todas. El hook `guard-rama` les impide escribir en `main` | `arquitecto` | Defensa en profundidad ya presente |
+
+## Cola abierta por la integración del 2026-10-11 (v0.14.0)
+
+| Qué | Dueño | Por qué no bloqueó |
+|---|---|---|
+| **`WITH CHECK` no es lo que ADR-0003 y `policies/001` dicen que es.** Quitarlo dejando solo `USING` no mató ninguna mutación: PostgreSQL reutiliza la expresión de `USING` para la escritura cuando `WITH CHECK` se omite. La frase «sin él un tenant puede escribir filas de otro» es **técnicamente falsa tal como está escrita**. El ADR es inmutable: corresponde una nota de superseding o un ADR nuevo que lo precise | `arquitecto` | **Hoy no hay fuga.** Las políticas sí llevan `WITH CHECK` explícito, que es lo correcto y es obligatorio en cuanto `USING` y `WITH CHECK` difieran. Lo falso es la justificación, no el aislamiento |
+| La batería de mutaciones tiene un punto ciego: borrar `WITH CHECK` de una política no pone ninguna prueba en rojo. Hace falta una mutación que haga divergir `USING` de `WITH CHECK` para que la cobertura signifique algo | `qa` | Es cobertura de la prueba, no una brecha del sistema |
+| `pnpm typecheck` depende del cliente Prisma generado y el pipeline de Turbo no declara `generate` como dependencia. En un árbol recién clonado el typecheck falla con errores que no son del código (`'probabilidad' does not exist in type 'OportunidadCreateManyInput'`) | `devops` | Se resuelve con `pnpm --filter @viajapro/database generate`; no afecta al artefacto desplegado |
+| Ninguna de las cuatro ramas trajo entrada en `docs/_bitacora/` para su sesión. El registro de la integración está en `docs/_integraciones/2026-10-11-v0.14.0.md` | `documentador` | El hilo queda trazable por el registro de integración |
+| `docs/01-producto/10-catalogo-real-de-referencia.json` viaja con un PNG de 4,6 MB en el historial. Es evidencia primaria del tarifario y se aceptó por eso; si se repite con cada tarifario, el repositorio se hincha | `devops` | Una vez no es un patrón |
+
+## Integración del 2026-10-11 (tarde) — v0.15.0
+
+`feat/crm-esquema` **integrada** (`bb58ed2`, `v0.15.0`): migración aplicada a Neon y las
+**39/39** aserciones de aislamiento reproducidas por el integrador contra la base real.
+`main` está publicado y verificado contra el remoto.
+
+`feat/crm-api` **devuelta** por una sola cosa: ninguna prueba monta el `CrmModule`
+ensamblado —todo son dobles— y este proyecto ya perdió un día por un controlador que Nest
+construyó con cero dependencias sin que ninguna prueba con dobles lo viera. Entra en cuanto
+haya salida de peticiones reales contra la API corriendo o una prueba que monte el módulo.
+
+| Cola nueva | Dueño | Por qué no bloqueó |
+|---|---|---|
+| No existe ninguna prueba que arranque el `AppModule` real. El riesgo no es del CRM: es de cualquier módulo futuro. Hace falta un `*.e2e-spec.ts` que monte la aplicación aunque sea con la base de pruebas | `qa` | Para `feat/crm-api` **sí bloquea**; como deuda transversal del resto de módulos, va a la cola |
+| La regla «perdida exige motivo» se mudó del esquema al caso de uso al pasar la etapa a id. Está aislada en función pura y verificada por mutación, pero ahora la base **ya no la impone**: una escritura que no pase por el caso de uso puede dejar una oportunidad perdida sin motivo | `datos` | Hoy no hay otra ruta de escritura; cuando la haya, toca `CHECK` o disparador |
+
+## Integración del 2026-10-11 (cierre) — v0.16.0
+
+`feat/crm-api` **integrada** (`6c843b0`, `v0.16.0`): el módulo `crm` de la API con la primera
+prueba que arranca el `AppModule` ensamblado contra Neon. api `112 passed`, aislamiento
+**39/39**. Las cinco ramas del día quedaron integradas.
+
+| Cola nueva | Dueño | Por qué no bloqueó |
+|---|---|---|
+| **La prueba del `AppModule` certifica el montaje bajo el runtime de vitest, no bajo el del servidor.** Quitar el `@Inject` explícito del controlador del webhook —el defecto del 2026-10-11 por la mañana— no la pone en rojo: vitest transpila con metadatos de decorador y `tsx` no. Falta ejecutar la aplicación como se ejecuta de verdad: `pnpm build` y arrancar el `dist` | `devops` | El límite está declarado en la cabecera del propio archivo de prueba, así que nadie puede leer la red como más ancha de lo que es. El `@Inject` explícito sigue siendo obligatorio **por convención, no por compuerta** |
+| `apps/api` corre con `vitest run --passWithNoTests`. Si el `include` se rompiera otra vez, la suite pasaría con cero pruebas en vez de avisar. Conviene un umbral mínimo de pruebas o quitar la bandera | `qa` | Hoy el `include` es explícito y la cuenta es visible (112) |
