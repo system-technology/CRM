@@ -91,8 +91,8 @@ export function BarraModulos() {
       label: 'Contactos y Viajeros',
       href: '/contactos',
       icon: Users,
-      activo: false,
-      disponible: false,
+      activo: pathname.startsWith('/contactos'),
+      disponible: true,
     },
     {
       id: 'catalogo',

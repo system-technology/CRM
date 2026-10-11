@@ -1,9 +1,9 @@
 # Cola de trabajo — Antigravity
 
 > **Flujo continuo y sincronización con Jira:**
-> Tareas 0d y 0c.3 (Pipeline Kanban) completadas y verificadas bajo las 5 compuertas (16/16 tests en verde, typecheck limpio, lint limpio, build limpio, format limpio).
-> Conforme a la instrucción del propietario («cuando te quedes sin tareas toma de Jira y lo colocas en el archivo para que lo trabajes y Claude sepa pero nunca te quedes sin trabajar pero tampoco inventes trabajos»), se toma de Jira (VC-13 / Bandeja de conversaciones) y de `COLA-DESPUES.md §6`:
-> **Tarea 6. La ventana de 24 horas, de verdad (Plantillas Meta HSM y Restricción Estricta)**.
+> Tareas 0d, 0c.3 (Pipeline Kanban) y 6 (Ventana 24h Meta HSM) completadas y verificadas bajo las 5 compuertas (22/22 tests en verde, typecheck limpio, lint limpio, build limpio, format limpio).
+> Conforme a la instrucción del propietario («cuando te quedes sin tareas toma de Jira y lo colocas en el archivo para que lo trabajes y Claude sepa pero nunca te quedes sin trabajar pero tampoco inventes trabajos»), se toma del roadmap oficial (Epic VC-3 Fase 2 y `viajapro_diseno_ui_ux.json` Pantalla P0):
+> **Tarea 0c.4. Directorio de Contactos y Viajeros (`/contactos`)**.
 
 **Siempre:** solo tocas `apps/web/`. Nunca escribes en `main`. No tocas `ESTADO.md`. Cero tipos
 redefinidos: todo de `@viajapro/contracts` — si falta un campo, **para y dilo**. `lint`, `typecheck`, `test`, `build` y `format:check` en verde
@@ -11,6 +11,35 @@ redefinidos: todo de `@viajapro/contracts` — si falta un campo, **para y dilo*
 
 ---
 
+## [x] 0c.4. Directorio de Contactos y Viajeros (`/contactos`)
+
+Origen: `viajapro_diseno_ui_ux.json` (Pantalla P0: Contactos y viajeros) · Epic VC-3 (Fase 2: CRM) · `@viajapro/contracts` (`Contacto`, `Consentimiento`, `PaginaContactos`).
+
+**Objetivo:** Construir el directorio y panel de detalle de contactos en `/contactos` para conservar el historial comercial asociado a la persona correcta, distinguiendo formalmente entre Contacto, Viajero y Pasajero.
+
+**Invariantes y criterios:**
+1. **Directorio navegable y búsqueda en tiempo real:**
+   - Lista y tabla de contactos con búsqueda por nombre, teléfono o correo y filtrado por etiquetas (`VIP`, `Familia`, `Corporativo`).
+2. **Ficha de detalle del contacto:**
+   - Visualización de datos de identidad (nombre, teléfono E.164, correo, avatar determinista).
+   - Preferencias de viaje para atención y recompra (asientos, aerolíneas favoritas, notas de viaje).
+   - Consentimientos explícitos (`TRANSACCIONAL`, `PROMOCIONAL`) conforme a la Ley 1581 de 2012 y normativas de Meta.
+3. **Acciones directas:**
+   - Enlace directo a abrir conversación en `/bandeja`.
+   - Enlace a cotizar o ver oportunidades en `/pipeline`.
+4. **Cero tipos redefinidos (R3):** Uso estricto de `Contacto`, `Consentimiento` y `PaginaContactos` de `@viajapro/contracts`.
+5. **Habilitación en barra lateral:** Activar el módulo en `BarraModulos` (`disponible: true`).
+6. **Compuertas:** `test`, `typecheck`, `lint`, `build` y `format:check` en verde.
+- **Completado y verificado al 100%:**
+  - **Directorio comercial en `/contactos`:** Búsqueda en tiempo real (por nombre, teléfono E.164 o correo), selector de etiquetas de negocio (`VIP`, `Familia`, `Cancún`, etc.) y filtrado por consentimientos.
+  - **Ficha de detalle del contacto (`FichaDetalleContacto`):** Panel drawer con avatar determinista, identidad, preferencias de viaje (asientos, aerolíneas, requerimientos), métricas y acciones directas (Chat en `/bandeja`, Cotización en `/cotizador`, Pipeline en `/pipeline`).
+  - **Consentimientos de datos (Ley 1581 / Meta):** Distinción explícita de consentimiento `TRANSACCIONAL` y `PROMOCIONAL` con badges visuales de cumplimiento.
+  - **Cero tipos redefinidos (R3):** Conforme 100% a los esquemas Zod `Contacto`, `Consentimiento` y `PaginaContactos` de `@viajapro/contracts`.
+  - **Habilitación en navegación:** Activado el enlace y estado activo de Contactos en `BarraModulos`.
+  - **Pruebas automáticas (6/6 en `contactos-logica.spec.ts`):** 28/28 pruebas totales en verde en Vitest.
+
+
+---
 ## [x] 6. La ventana de 24 horas, de verdad
 
 Origen: Jira (VC-13) · `COLA-DESPUES.md §6` · `packages/contracts/src/plantillas.ts` (`PlantillaWhatsApp`, `EnviarPlantilla`, `PlantillasDisponibles`).
