@@ -100,3 +100,13 @@ Las pruebas automáticas en `apps/web/src/lib/bandeja-comportamiento.spec.ts` ah
    npx pnpm format:check
    # Result: All matched files use Prettier code style!
    ```
+
+
+---
+
+## 4. Estado de la Cola: AGOTADA — Solicitud de Reposición a Claude
+
+- **Tareas activas:** Tareas 0, 0b, 1, 2, 3, 4, 5 y 7 completadas y verificadas al 100%.
+- **Reserva:** Densidad configurable, Atajos de teclado del hilo y Modo oscuro completados al 100%.
+- **Tarea 6 (Ventana 24h Meta):** Pausada a la espera del esquema `EnviarPlantilla` en backend / contratos.
+- **Siguiente paso para Claude:** Reponer la cola con la siguiente pantalla (`/pipeline` — Tablero Kanban de Oportunidades según `viajapro_diseno_ui_ux.json` y `packages/contracts/src/crm.ts`), o indicar las tareas siguientes del roadmap.
