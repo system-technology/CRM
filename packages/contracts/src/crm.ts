@@ -55,20 +55,46 @@ export type Contacto = z.infer<typeof Contacto>;
 // =============================================================================
 
 /**
- * Las etapas del pipeline.
+ * Las cinco etapas canónicas.
  *
- * **Son el valor por defecto, no la verdad.** Cada agencia ordena su embudo distinto y R12 dice
- * que la política de negocio se parametriza: cuando exista la configuración por tenant, estas
- * cinco serán la semilla de una tabla, no un `enum` cerrado. Mientras tanto, cerradas.
+ * **No son la lista de etapas de una agencia: son el vocabulario común.** Cada agencia ordena su
+ * embudo distinto —R12— y en la base `etapas_pipeline` es una tabla por tenant. Esta clave es el
+ * puente: permite que un informe diga «cuántas se pierden» sin importar cómo las llame cada una.
+ *
+ * Una etapa puede **no tener clave**, y es legítimo: la agencia demo tenía siete etapas y aquí
+ * solo caben cinco. Por eso `EtapaDefinida.clave` admite `null`.
  */
-export const EtapaPipeline = z.enum([
+export const ClaveEtapa = z.enum([
   'NUEVO_LEAD',
   'EN_COTIZACION',
   'EN_NEGOCIACION',
   'GANADA',
   'PERDIDA',
 ]);
-export type EtapaPipeline = z.infer<typeof EtapaPipeline>;
+export type ClaveEtapa = z.infer<typeof ClaveEtapa>;
+
+/**
+ * Una etapa tal como la tiene configurada ESTA agencia.
+ *
+ * **El tablero se pinta desde estos datos, no desde el `enum`.** La primera versión del contrato
+ * llevaba la etapa como valor cerrado, y eso dejaba fuera a cualquier agencia con una etapa de
+ * más: existía en la base y no era representable en la API. Se corrigió antes de construir la
+ * pantalla, que era el único momento en que salía barato.
+ *
+ * `esGanada` y `esPerdida` viajan con la etapa porque son lo que decide el comportamiento —si
+ * sale del embudo, si exige motivo— y preguntarlo por la clave obligaría a ramificar sobre una
+ * etiqueta que la agencia puede haber renombrado.
+ */
+export const EtapaDefinida = z.object({
+  id: Id,
+  clave: ClaveEtapa.nullable(),
+  nombre: z.string().min(1).max(80),
+  orden: z.number().int().min(0),
+  probabilidad: z.number().int().min(0).max(100),
+  esGanada: z.boolean(),
+  esPerdida: z.boolean(),
+});
+export type EtapaDefinida = z.infer<typeof EtapaDefinida>;
 
 /**
  * Por qué se perdió.
@@ -108,7 +134,7 @@ const camposOportunidad = {
   /** Si ya se eligió un paquete del catálogo. Null mientras se explora. */
   paqueteId: Id.nullable(),
   fechaSalida: FechaViaje.nullable(),
-  etapa: EtapaPipeline,
+  etapa: EtapaDefinida,
   /**
    * Estimado, no comprometido. Es lo que el asesor cree que vale, antes de que exista una
    * cotización firme — por eso puede ser null al principio y por eso NO se suma como venta.
@@ -126,33 +152,24 @@ const camposOportunidad = {
 };
 
 /**
- * La regla de pérdida, en el contrato y no en el formulario.
+ * Las reglas de pérdida que el contrato PUEDE comprobar, y por qué no están todas aquí.
  *
- * Ponerla aquí significa que la API la rechaza igual que la web, y que nadie puede marcar una
- * oportunidad como perdida desde una integración futura sin decir por qué.
+ * Son tres reglas y viven en tres sitios distintos, a propósito:
+ *
+ *   1. **«OTRO» exige explicación** — aquí, y también como `CHECK` en la base. Se comprueba
+ *      mirando la propia fila, así que puede estar en los dos sitios sin coste.
+ *   2. **Perdida ⇒ motivo** y **motivo ⇒ perdida** — **no están aquí, y no es un olvido**: la
+ *      etapa viaja como `etapaId`, y saber si ese id es una etapa de pérdida exige leer
+ *      `etapas_pipeline`. Un esquema no lee otra tabla. Viven en el caso de uso, que sí puede,
+ *      y salen como error de dominio tipado.
+ *
+ * La alternativa era que el cliente mandara «esto es una pérdida» junto al id. Eso es confiar en
+ * quien llama para aplicar una regla que existe precisamente porque no se confía en quien llama.
  */
-function exigirMotivoDePerdida(
-  valor: { etapa: EtapaPipeline; motivoPerdida: MotivoPerdida | null; notaPerdida?: string | null },
+function exigirExplicacionDeOtro(
+  valor: { motivoPerdida: MotivoPerdida | null; notaPerdida?: string | null },
   ctx: z.RefinementCtx,
 ): void {
-  if (valor.etapa === 'PERDIDA' && valor.motivoPerdida === null) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ['motivoPerdida'],
-      message:
-        'Una oportunidad perdida necesita motivo: sin él el embudo dice cuántas se pierden y ' +
-        'nunca por qué.',
-    });
-  }
-
-  if (valor.etapa !== 'PERDIDA' && valor.motivoPerdida !== null) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ['motivoPerdida'],
-      message: 'Solo una oportunidad en etapa PERDIDA lleva motivo de pérdida.',
-    });
-  }
-
   if (valor.motivoPerdida === 'OTRO' && !valor.notaPerdida?.trim()) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
@@ -162,7 +179,7 @@ function exigirMotivoDePerdida(
   }
 }
 
-export const Oportunidad = z.object(camposOportunidad).superRefine(exigirMotivoDePerdida);
+export const Oportunidad = z.object(camposOportunidad).superRefine(exigirExplicacionDeOtro);
 export type Oportunidad = z.infer<typeof Oportunidad>;
 
 /** Crear: el resto lo pone el servidor. Una oportunidad nueva nace en `NUEVO_LEAD`. */
@@ -186,14 +203,19 @@ export const CrearOportunidad = z
   });
 export type CrearOportunidad = z.infer<typeof CrearOportunidad>;
 
-/** Mover de etapa. Es su propia operación porque arrastrar una tarjeta no edita lo demás. */
+/**
+ * Mover de etapa. Es su propia operación porque arrastrar una tarjeta no edita lo demás.
+ *
+ * Lleva `etapaId` y no una clave: el destino es una etapa **de esta agencia**, que puede ser una
+ * que el vocabulario común no nombra.
+ */
 export const MoverOportunidad = z
   .object({
-    etapa: EtapaPipeline,
+    etapaId: Id,
     motivoPerdida: MotivoPerdida.nullable().default(null),
     notaPerdida: z.string().max(500).nullable().default(null),
   })
-  .superRefine(exigirMotivoDePerdida);
+  .superRefine(exigirExplicacionDeOtro);
 export type MoverOportunidad = z.infer<typeof MoverOportunidad>;
 
 // =============================================================================
@@ -208,7 +230,7 @@ export type MoverOportunidad = z.infer<typeof MoverOportunidad>;
  * navegador daría una cifra menor cada vez que se pagina, que es peor que no darla.
  */
 export const ColumnaPipeline = z.object({
-  etapa: EtapaPipeline,
+  etapa: EtapaDefinida,
   total: z.number().int().min(0),
   valorTotal: Dinero.nullable(),
   oportunidades: z.array(Oportunidad),
