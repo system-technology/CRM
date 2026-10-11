@@ -11,6 +11,44 @@ redefinidos: todo de `@viajapro/contracts` — si falta un campo, **para y dilo*
 
 ---
 
+## [x] 0c.5. Catálogo de Paquetes y Tarifarios de Mayoristas (`/catalogo`)
+
+- **Completado y verificado al 100%:**
+  - **Directorio de Paquetes en `/catalogo`:** Catálogo interactivo de paquetes prearmados de mayoristas aliados, buscador reactivo en tiempo real (por destino, nombre, mayorista o inclusión), selector de plan de alimentación, selector de destinos y filtro por tarifarios vigentes.
+  - **Ficha de Detalle y Matriz de Tarifas (`FichaDetallePaquete`):** Panel modal con selector de temporadas, desglose completo de matriz de tarifas por acomodación (`SENCILLA`, `DOBLE`, `TRIPLE`, `CUADRUPLE`) y tipo de pasajero (Adulto, Niño e Infante con edades de corte comercial), desglose de precios neto/venta y advertencias de vigencia.
+  - **Gestión de Mayoristas y Time Limits:** Visualización de mayoristas proveedores con información de contacto y conteo regresivo de time limit (`diasTimeLimit`) para proteger cupos antes de liberación.
+  - **Conexión Directa al Cotizador:** Enlaces de acción directa «Cotizar este paquete ahora» hacia `/cotizador` para garantizar cotización de propuesta comercial en <5 minutos.
+  - **Cero Tipos Redefinidos (R3):** Basado 100% en esquemas Zod de `@viajapro/contracts` (`Paquete`, `Mayorista`, `Temporada`, `Precio`, `PlanAlimentacion`, `Acomodacion`, `TipoPasajero`).
+  - **Habilitación en Barra Lateral:** Activado el módulo de Catálogo en `BarraModulos` (`disponible: true`, indicador de ruta activa para `/catalogo`).
+  - **Pruebas automáticas (8/8 en `catalogo-logica.spec.ts`):** 36/36 pruebas totales en verde en Vitest.
+
+Origen: `viajapro_diseno_ui_ux.json` (Pantalla P0: Catálogo de paquetes) · Jira Epic VC-4 (Fase 3: Cotizador) & VC-10 · `@viajapro/contracts` (`Paquete`, `Mayorista`, `Temporada`, `Precio`, `PlanAlimentacion`, `Acomodacion`, `TipoPasajero`).
+
+**Objetivo:** Construir la pantalla y panel de detalle del catálogo de paquetes turísticos en `/catalogo` para encontrar, auditar y operar los paquetes de mayoristas que la agencia revende, con desglose de temporadas, matriz de tarifas por acomodación y tipo de pasajero, y enlace rápido al cotizador.
+
+**Invariantes y criterios:**
+1. **Directorio y Búsqueda en Tiempo Real:**
+   - Buscador reactivo por nombre del paquete, destino o mayorista.
+   - Filtro dinámico por plan de alimentación (`TODO_INCLUIDO`, `DESAYUNO`, `MEDIA_PENSION`, etc.).
+   - Filtro por estado de vigencia del tarifario (tarifas vigentes vs vencidas).
+2. **Tarjeta de Paquete Responsiva:**
+   - Visualización de destino, duración (`X días / Y noches`), plan de alimentación, mayorista responsable y días de time limit (`diasTimeLimit`).
+   - Precio de referencia «Desde» por persona en clase `.cifra`.
+   - Badges de temporadas y fechas de vigencia (`desde` y `hasta`).
+   - Inclusiones destacadas.
+3. **Ficha de Detalle del Paquete (`FichaDetallePaquete`):**
+   - Modal/drawer con desglose exhaustivo de temporadas.
+   - Matriz transparente de tarifas por tipo de pasajero (Adulto, Niño, Infante con edades de corte) y acomodación (`SENCILLA`, `DOBLE`, `TRIPLE`, `CUADRUPLE`).
+   - Inclusiones y exclusiones detalladas.
+   - Datos del mayorista y política de time limit.
+4. **Acción Comercial Directa:**
+   - Botón «Cotizar este paquete» que vincula directamente a `/cotizador` para cumplir la meta de cotización en menos de 5 minutos.
+5. **Cero Tipos Redefinidos (R3):** Uso estricto de `Paquete`, `Mayorista`, `Temporada`, `Precio`, `PlanAlimentacion` de `@viajapro/contracts`.
+6. **Habilitación en barra lateral:** Activar el módulo en `BarraModulos` (`disponible: true`, activo en `/catalogo`).
+7. **Compuertas:** `test`, `typecheck`, `lint`, `build` y `format:check` en verde.
+
+---
+
 ## [x] 0c.4. Directorio de Contactos y Viajeros (`/contactos`)
 
 Origen: `viajapro_diseno_ui_ux.json` (Pantalla P0: Contactos y viajeros) · Epic VC-3 (Fase 2: CRM) · `@viajapro/contracts` (`Contacto`, `Consentimiento`, `PaginaContactos`).

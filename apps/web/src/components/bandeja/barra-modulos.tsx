@@ -99,8 +99,8 @@ export function BarraModulos() {
       label: 'Catálogo de Mayoristas',
       href: '/catalogo',
       icon: Package,
-      activo: false,
-      disponible: false,
+      activo: pathname.startsWith('/catalogo'),
+      disponible: true,
     },
     {
       id: 'reportes',
