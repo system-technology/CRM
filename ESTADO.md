@@ -210,3 +210,19 @@ Al cerrar una sesión de trabajo (`/estado` lo hace de forma guiada):
 | `pnpm typecheck` depende del cliente Prisma generado y el pipeline de Turbo no declara `generate` como dependencia. En un árbol recién clonado el typecheck falla con errores que no son del código (`'probabilidad' does not exist in type 'OportunidadCreateManyInput'`) | `devops` | Se resuelve con `pnpm --filter @viajapro/database generate`; no afecta al artefacto desplegado |
 | Ninguna de las cuatro ramas trajo entrada en `docs/_bitacora/` para su sesión. El registro de la integración está en `docs/_integraciones/2026-10-11-v0.14.0.md` | `documentador` | El hilo queda trazable por el registro de integración |
 | `docs/01-producto/10-catalogo-real-de-referencia.json` viaja con un PNG de 4,6 MB en el historial. Es evidencia primaria del tarifario y se aceptó por eso; si se repite con cada tarifario, el repositorio se hincha | `devops` | Una vez no es un patrón |
+
+## Integración del 2026-10-11 (tarde) — v0.15.0
+
+`feat/crm-esquema` **integrada** (`bb58ed2`, `v0.15.0`): migración aplicada a Neon y las
+**39/39** aserciones de aislamiento reproducidas por el integrador contra la base real.
+`main` está publicado y verificado contra el remoto.
+
+`feat/crm-api` **devuelta** por una sola cosa: ninguna prueba monta el `CrmModule`
+ensamblado —todo son dobles— y este proyecto ya perdió un día por un controlador que Nest
+construyó con cero dependencias sin que ninguna prueba con dobles lo viera. Entra en cuanto
+haya salida de peticiones reales contra la API corriendo o una prueba que monte el módulo.
+
+| Cola nueva | Dueño | Por qué no bloqueó |
+|---|---|---|
+| No existe ninguna prueba que arranque el `AppModule` real. El riesgo no es del CRM: es de cualquier módulo futuro. Hace falta un `*.e2e-spec.ts` que monte la aplicación aunque sea con la base de pruebas | `qa` | Para `feat/crm-api` **sí bloquea**; como deuda transversal del resto de módulos, va a la cola |
+| La regla «perdida exige motivo» se mudó del esquema al caso de uso al pasar la etapa a id. Está aislada en función pura y verificada por mutación, pero ahora la base **ya no la impone**: una escritura que no pase por el caso de uso puede dejar una oportunidad perdida sin motivo | `datos` | Hoy no hay otra ruta de escritura; cuando la haya, toca `CHECK` o disparador |
