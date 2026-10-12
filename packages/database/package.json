@@ -20,7 +20,8 @@
     "validate": "dotenv -e ../../.env -- prisma validate",
     "rol:crear": "dotenv -e ../../.env -- node scripts/crear-rol-aplicacion.mjs",
     "roles:dev": "dotenv -e ../../.env -- node scripts/roles-de-desarrollo.mjs",
-    "mutaciones": "dotenv -e ../../.env -- node scripts/mutaciones-aislamiento.mjs"
+    "mutaciones": "dotenv -e ../../.env -- node scripts/mutaciones-aislamiento.mjs",
+    "seed:crm": "dotenv -e ../../.env -- tsx prisma/seed-demo-crm.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0"

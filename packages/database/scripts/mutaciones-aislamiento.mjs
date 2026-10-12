@@ -33,7 +33,19 @@ const VITEST = fileURLToPath(new URL('../node_modules/vitest/vitest.mjs', import
 
 const TABLAS = ['conversaciones', 'mensajes', 'adjuntos', 'plantillas_whatsapp'];
 
-const limpio = (t) => t.replace(/\u001b\[[0-9;]*m/g, '');
+/**
+ * Quita los codigos de color ANSI de la salida de vitest.
+ *
+ * La expresion se construye desde una cadena en vez de escribirse como literal porque un
+ * caracter de control dentro de un literal de expresion regular es invisible al leerlo: no se
+ * distingue de un espacio, y la regla `no-control-regex` existe justo para eso. Aqui es
+ * deliberado --el ESC de los colores de terminal-- y se nombra.
+ */
+const ESC = String.fromCharCode(27);
+// `[[]` es una clase de caracteres que contiene un corchete: no necesita escaparse, y asi
+// la expresion no depende de cuantas capas de comillas la hayan atravesado.
+const COLORES_ANSI = new RegExp(ESC + '[[][0-9;]*m', 'g');
+const limpio = (t) => t.replace(COLORES_ANSI, '');
 
 /** Corre las aserciones cuyo nombre contiene `nombre`. */
 function correr(nombre) {
@@ -133,7 +145,9 @@ await admin.connect();
 console.log('\n--- MUTACIONES ---');
 const resultados = [];
 for (const m of MUTACIONES) {
-  let r = { verde: true, salida: '' };
+  // Sin valor inicial: si `correr` lanzara, la mutacion quedaria contada como VERDE, que es
+  // justo el falso positivo que este arnes existe para no tener. Que reviente es preferible.
+  let r;
   try {
     await admin.query(m.sql);
     r = correr(m.prueba);

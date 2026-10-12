@@ -88,12 +88,51 @@ async function main() {
     { nombre: 'Ganada', clave: 'GANADA', orden: 4, probabilidad: 100, esGanada: true },
     { nombre: 'Perdida', clave: 'PERDIDA', orden: 5, probabilidad: 0, esPerdida: true },
   ];
+  // **Se identifican por CLAVE, no por orden.** El orden es presentación: una agencia lo
+  // reordena arrastrando columnas y eso no convierte «Ganada» en otra etapa. La clave sí es
+  // identidad, y la base lo respalda con una unique parcial `(tenant_id, clave) WHERE clave IS
+  // NOT NULL`.
+  //
+  // Identificarlas por orden rompía la siembra en cuanto la agencia tenía más etapas que las
+  // cinco canónicas: con siete en la base, poner `GANADA` en el orden 4 chocaba contra la fila
+  // que ya la tenía en el 6, y `pnpm db:seed` moría con P2002. Una semilla que solo funciona
+  // sobre una base virgen no sirve para nada.
+  const ordenesOcupados = new Set(
+    (
+      await prisma.etapaPipeline.findMany({
+        where: { tenantId: tenant.id },
+        select: { orden: true },
+      })
+    ).map((x) => x.orden),
+  );
+
   for (const e of etapas) {
-    await prisma.etapaPipeline.upsert({
-      where: { tenantId_orden: { tenantId: tenant.id, orden: e.orden } },
-      update: { nombre: e.nombre, probabilidad: e.probabilidad, clave: e.clave },
-      create: { tenantId: tenant.id, ...e },
+    const existente = await prisma.etapaPipeline.findFirst({
+      where: { tenantId: tenant.id, clave: e.clave },
     });
+
+    if (existente) {
+      // NO se toca el orden: la agencia pudo reordenar su embudo, y devolverlo a nuestro
+      // orden por defecto en cada siembra le desharía la configuración.
+      await prisma.etapaPipeline.update({
+        where: { id: existente.id },
+        data: {
+          nombre: e.nombre,
+          probabilidad: e.probabilidad,
+          esGanada: e.esGanada ?? false,
+          esPerdida: e.esPerdida ?? false,
+        },
+      });
+      continue;
+    }
+
+    // Si el orden que queríamos ya está ocupado por una etapa propia de la agencia, se va al
+    // final en vez de pelearse por el sitio.
+    let orden = e.orden;
+    while (ordenesOcupados.has(orden)) orden += 1;
+    ordenesOcupados.add(orden);
+
+    await prisma.etapaPipeline.create({ data: { tenantId: tenant.id, ...e, orden } });
   }
 
   // --- Campos personalizados ---------------------------------------------
