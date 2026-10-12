@@ -195,7 +195,7 @@ function ExpedienteDetalleContenido() {
       </aside>
 
       {/* Área Principal: Expediente Seleccionado */}
-      <main className="flex flex-1 flex-col overflow-y-auto">
+      <main className="flex flex-1 flex-col overflow-y-auto pb-14 md:pb-0">
         {/* Cabecera del Expediente */}
         <header className="border-b border-neutral-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

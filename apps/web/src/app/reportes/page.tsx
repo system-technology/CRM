@@ -32,7 +32,7 @@ export default function ReportesPage() {
       <BarraModulos />
 
       {/* 2. Cuerpo Principal */}
-      <main className="flex flex-1 flex-col overflow-y-auto">
+      <main className="flex flex-1 flex-col overflow-y-auto pb-14 md:pb-0">
         {/* Encabezado */}
         <header className="border-b border-neutral-200 bg-white px-6 py-5 dark:border-neutral-800 dark:bg-neutral-900">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">

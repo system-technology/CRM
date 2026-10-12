@@ -44,6 +44,8 @@ export function BarraModulos() {
   const [panelNotifAbierto, setPanelNotifAbierto] = useState(false);
   const [alertas, setAlertas] = useState<AlertaOperativa[]>([]);
 
+  const esDetalleMovil = pathname !== '/bandeja' && pathname.startsWith('/bandeja/');
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const guardado = localStorage.getItem('viajapro_tema');
@@ -159,9 +161,10 @@ export function BarraModulos() {
 
   return (
     <>
+      {/* 1. Barra Lateral de Escritorio (>=768px, ancho 56px fijo) */}
       <aside
-        className="flex h-full w-14 flex-col items-center justify-between border-r border-neutral-200 bg-white py-3 select-none dark:border-neutral-800 dark:bg-neutral-900"
-        aria-label="Barra de módulos"
+        className="hidden h-full w-14 shrink-0 flex-col items-center justify-between border-r border-neutral-200 bg-white py-3 select-none md:flex dark:border-neutral-800 dark:bg-neutral-900"
+        aria-label="Barra de módulos lateral"
       >
         {/* Top: Logo & Módulos */}
         <div className="flex w-full flex-col items-center space-y-3">
@@ -169,17 +172,18 @@ export function BarraModulos() {
           <Link
             href="/bandeja"
             title="ViajaPro — CRM Turístico"
-            className="bg-acento-700 flex h-10 w-10 items-center justify-center rounded-xl text-white shadow-sm transition-transform hover:scale-105"
+            className="bg-acento-700 focus-visible:ring-acento-600 flex h-10 w-10 items-center justify-center rounded-xl text-white shadow-sm transition-transform hover:scale-105 focus-visible:ring-2 focus-visible:outline-none"
           >
             <Plane className="h-5 w-5" />
           </Link>
 
-          {/* Botón Buscador Global (⌘K) */}
+          {/* Botón Buscador Global (Cmd+K) */}
           <button
             type="button"
             onClick={() => setBusquedaAbierta(true)}
-            title="Búsqueda Global omnicanal (⌘K / Ctrl+K)"
-            className="group relative flex h-9 w-9 items-center justify-center rounded-lg text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
+            title="Búsqueda Global omnicanal (Cmd+K / Ctrl+K)"
+            aria-label="Abrir buscador global (Cmd+K)"
+            className="group focus-visible:ring-acento-600 relative flex h-9 w-9 items-center justify-center rounded-lg text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 focus-visible:ring-2 focus-visible:outline-none dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
           >
             <Search className="h-4 w-4" />
           </button>
@@ -208,9 +212,10 @@ export function BarraModulos() {
                   key={m.id}
                   href={m.href}
                   title={m.label}
-                  className={`flex h-10 w-10 items-center justify-center rounded-lg transition-colors ${
+                  aria-label={m.label}
+                  className={`focus-visible:ring-acento-600 flex h-10 w-10 items-center justify-center rounded-lg transition-colors focus-visible:ring-2 focus-visible:outline-none ${
                     m.activo
-                      ? 'bg-acento-50 text-acento-700 dark:bg-acento-950/60 dark:text-acento-400'
+                      ? 'bg-acento-50 text-acento-700 dark:bg-acento-950/60 dark:text-acento-400 font-semibold'
                       : 'text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200'
                   }`}
                 >
@@ -228,7 +233,8 @@ export function BarraModulos() {
             type="button"
             onClick={() => setPanelNotifAbierto(true)}
             title={`Alertas operativas (${conteoNoLeidas} pendientes)`}
-            className="relative flex h-9 w-9 items-center justify-center rounded-lg text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
+            aria-label={`Alertas operativas (${conteoNoLeidas} pendientes)`}
+            className="focus-visible:ring-acento-600 relative flex h-9 w-9 items-center justify-center rounded-lg text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 focus-visible:ring-2 focus-visible:outline-none dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
           >
             <Bell className="h-4 w-4" />
             {conteoNoLeidas > 0 && (
@@ -255,7 +261,8 @@ export function BarraModulos() {
             type="button"
             onClick={alternarTema}
             title={modoOscuro ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
-            className="flex h-9 w-9 items-center justify-center rounded-lg text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-800 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
+            aria-label={modoOscuro ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+            className="focus-visible:ring-acento-600 flex h-9 w-9 items-center justify-center rounded-lg text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-800 focus-visible:ring-2 focus-visible:outline-none dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
           >
             {modoOscuro ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </button>
@@ -268,15 +275,96 @@ export function BarraModulos() {
             title="Carlos Asesor (En línea)"
             className="relative flex h-8 w-8 items-center justify-center rounded-full bg-neutral-200 text-xs font-bold text-neutral-700 select-none dark:bg-neutral-700 dark:text-neutral-200"
           >
-            <span>CA</span>
-            <span className="bg-ok-500 absolute -right-0.5 -bottom-0.5 h-2.5 w-2.5 rounded-full border-3 border-white dark:border-neutral-900" />
+            CA
+            <span className="bg-ok-500 absolute -right-0.5 -bottom-0.5 h-2.5 w-2.5 rounded-full border-2 border-white dark:border-neutral-900" />
           </div>
         </div>
       </aside>
 
-      {/* Modales Globales */}
+      {/* 2. Barra de Navegación Inferior Móvil (<768px, WCAG 2.5.5 Touch Target >= 44px) */}
+      {!esDetalleMovil && (
+        <nav
+          aria-label="Navegación móvil inferior"
+          className="fixed right-0 bottom-0 left-0 z-40 flex h-14 items-center justify-around border-t border-neutral-200 bg-white/95 px-2 shadow-lg backdrop-blur-md md:hidden dark:border-neutral-800 dark:bg-neutral-900/95"
+        >
+          {/* P0: Bandeja */}
+          <Link
+            href="/bandeja"
+            title="Bandeja de WhatsApp"
+            aria-label="Bandeja de WhatsApp"
+            className={`focus-visible:ring-acento-600 flex min-h-[44px] min-w-[44px] flex-col items-center justify-center rounded-xl transition-colors focus-visible:ring-2 focus-visible:outline-none ${
+              pathname.startsWith('/bandeja')
+                ? 'bg-acento-50 text-acento-700 dark:bg-acento-950/60 dark:text-acento-400 font-semibold'
+                : 'text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800'
+            }`}
+          >
+            <MessageSquare className="h-5 w-5" />
+            <span className="text-[9px] leading-tight font-medium">Bandeja</span>
+          </Link>
+
+          {/* P0: Pipeline */}
+          <Link
+            href="/pipeline"
+            title="Pipeline de Oportunidades"
+            aria-label="Pipeline de Oportunidades"
+            className={`focus-visible:ring-acento-600 flex min-h-[44px] min-w-[44px] flex-col items-center justify-center rounded-xl transition-colors focus-visible:ring-2 focus-visible:outline-none ${
+              pathname === '/pipeline'
+                ? 'bg-acento-50 text-acento-700 dark:bg-acento-950/60 dark:text-acento-400 font-semibold'
+                : 'text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800'
+            }`}
+          >
+            <Kanban className="h-5 w-5" />
+            <span className="text-[9px] leading-tight font-medium">Pipeline</span>
+          </Link>
+
+          {/* P0: Cotizador */}
+          <Link
+            href="/cotizador"
+            title="Cotizador de Paquetes"
+            aria-label="Cotizador de Paquetes"
+            className={`focus-visible:ring-acento-600 flex min-h-[44px] min-w-[44px] flex-col items-center justify-center rounded-xl transition-colors focus-visible:ring-2 focus-visible:outline-none ${
+              pathname === '/cotizador'
+                ? 'bg-acento-50 text-acento-700 dark:bg-acento-950/60 dark:text-acento-400 font-semibold'
+                : 'text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800'
+            }`}
+          >
+            <FileText className="h-5 w-5" />
+            <span className="text-[9px] leading-tight font-medium">Cotizar</span>
+          </Link>
+
+          {/* P1: Viajes */}
+          <Link
+            href="/viajes"
+            title="Archivos de Viaje"
+            aria-label="Archivos de Viaje"
+            className={`focus-visible:ring-acento-600 flex min-h-[44px] min-w-[44px] flex-col items-center justify-center rounded-xl transition-colors focus-visible:ring-2 focus-visible:outline-none ${
+              pathname.startsWith('/viajes')
+                ? 'bg-acento-50 text-acento-700 dark:bg-acento-950/60 dark:text-acento-400 font-semibold'
+                : 'text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800'
+            }`}
+          >
+            <Briefcase className="h-5 w-5" />
+            <span className="text-[9px] leading-tight font-medium">Viajes</span>
+          </Link>
+
+          {/* Buscador / Más */}
+          <button
+            type="button"
+            onClick={() => setBusquedaAbierta(true)}
+            title="Buscar o abrir menú (Cmd+K)"
+            aria-label="Buscar o abrir menú global"
+            className="focus-visible:ring-acento-600 flex min-h-[44px] min-w-[44px] flex-col items-center justify-center rounded-xl text-neutral-500 transition-colors hover:bg-neutral-100 focus-visible:ring-2 focus-visible:outline-none dark:text-neutral-400 dark:hover:bg-neutral-800"
+          >
+            <Search className="h-5 w-5" />
+            <span className="text-[9px] leading-tight font-medium">Buscar</span>
+          </button>
+        </nav>
+      )}
+
+      {/* Modal de Búsqueda Global (Cmd+K / Ctrl+K) */}
       <ModalBusquedaGlobal abierto={busquedaAbierta} alCerrar={() => setBusquedaAbierta(false)} />
 
+      {/* Panel Desplegable de Notificaciones y Alertas Operativas */}
       <PanelNotificaciones
         abierto={panelNotifAbierto}
         alCerrar={() => setPanelNotifAbierto(false)}

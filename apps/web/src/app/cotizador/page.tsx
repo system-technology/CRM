@@ -178,7 +178,7 @@ function ContenidoCotizador() {
         {/* Zona de Trabajo */}
         <div className="flex flex-1 overflow-hidden">
           {/* Formulario y Desglose (Scrollable) */}
-          <main className="flex-1 space-y-5 overflow-y-auto p-6">
+          <main className="flex-1 space-y-5 overflow-y-auto p-6 pb-14 md:pb-0">
             {paquetes === null && !error && (
               <div className="space-y-3" aria-busy="true">
                 {[0, 1, 2].map((i) => (

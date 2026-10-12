@@ -111,7 +111,7 @@ export default function ConfiguracionPage() {
     <div className="flex h-screen w-full bg-neutral-50 text-neutral-900 antialiased dark:bg-neutral-950 dark:text-neutral-100">
       <BarraModulos />
 
-      <main className="flex flex-1 flex-col overflow-y-auto">
+      <main className="flex flex-1 flex-col overflow-y-auto pb-14 md:pb-0">
         {/* Cabecera Principal */}
         <header className="border-b border-neutral-200 bg-white px-6 py-4 dark:border-neutral-800 dark:bg-neutral-900">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">

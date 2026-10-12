@@ -66,7 +66,7 @@ export default function CatalogoPage() {
       <BarraModulos />
 
       {/* 2. Área Principal */}
-      <main className="flex flex-1 flex-col overflow-y-auto">
+      <main className="flex flex-1 flex-col overflow-y-auto pb-14 md:pb-0">
         {/* Cabecera */}
         <header className="border-b border-neutral-200 bg-white px-6 py-5 dark:border-neutral-800 dark:bg-neutral-900">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

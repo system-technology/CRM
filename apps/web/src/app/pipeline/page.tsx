@@ -145,7 +145,7 @@ export default function PipelinePage() {
       <BarraModulos />
 
       {/* Contenido Principal de Pipeline */}
-      <main className="flex flex-1 flex-col overflow-hidden">
+      <main className="flex flex-1 flex-col overflow-hidden pb-14 md:pb-0">
         {/* Cabecera de Página */}
         <header className="flex flex-col border-b border-neutral-200 bg-white px-6 py-4 dark:border-neutral-800 dark:bg-neutral-900">
           <div className="flex flex-wrap items-center justify-between gap-4">

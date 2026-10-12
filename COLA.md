@@ -48,6 +48,21 @@ redefinidos: todo de `@viajapro/contracts` — si falta un campo, **para y dilo*
 
 ---
 
+## [x] 0c.13. Auditoría Responsiva a 375 px, Touch Targets >= 44 px, Navegación Móvil y Accesibilidad WCAG AA en Todas las Pantallas
+
+Origen: Jira Story `VC-42` (Epic `VC-3` — CRM y Pipeline) · `viajapro_diseno_ui_ux.json` (§`responsive_and_accessibility` y §`validation_checklist`) · `DISENO-BANDEJA.md` (defecto táctil de chips < 44 px).
+
+**Objetivo:** Garantizar que las 8 pantallas de ViajaPro funcionen perfectamente a 375 px de ancho (móvil real), con navegación inferior optimizada para móviles, chips y botones con área táctil >= 44 px, foco visible en navegación por teclado y contraste AA tanto en tema claro como en tema oscuro.
+
+**Criterios de aceptación:**
+1. **Touch Targets >= 44 px:** Chips de filtro de la bandeja y botones clave en interfaces móviles ajustados con altura táctil mínima de 44 px (`min-h-[44px]`) en pantallas táctiles, cumpliendo WCAG 2.5.5.
+2. **Navegación Móvil:** `BarraModulos` adaptada para móviles con barra inferior táctil (`bottom bar`) en resoluciones < 768 px, liberando los 56 px laterales para maximizar el ancho útil a 375 px sin provocar scroll horizontal involuntario.
+3. **Flujo de Pantallas a 375 px:** Cada una de las 8 pantallas (`/bandeja`, `/pipeline`, `/cotizador`, `/viajes`, `/contactos`, `/catalogo`, `/reportes`, `/configuracion`) validada contra overflow horizontal, con paddings adecuados y lectura nítida.
+4. **Foco visible y teclado:** Elementos interactivos con estilos `focus-visible:ring-2 focus-visible:ring-acento-600` y navegación accesible.
+5. **Pruebas y Compuertas:** Nuevas pruebas unitarias en Vitest para validar los contratos de diseño responsivo y accesibilidad, pasando las 5 compuertas (`test`, `typecheck`, `lint`, `build`, `format:check`).
+
+---
+
 ## [x] 0c.12. Asistente Copilot IA en la Bandeja: Extractor de Oportunidades, Resumen Ejecutivo y Respuestas Sugeridas con Aprobación Humana
 
 Origen: `viajapro_diseno_ui_ux.json` (§`interaction_patterns.ai` y §`states_and_business_rules.human_approval_required_for_ai_outbound: true`) · Jira Epics VC-6 (Fase 5 — Automatización e IA) y VC-13 (Bandeja Web) · Regla R8 (dinero en enteros de COP sin flotantes), R9 (UTC) y R10 (PII protegida).

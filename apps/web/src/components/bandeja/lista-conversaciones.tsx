@@ -191,7 +191,7 @@ export function ListaConversaciones() {
             type="button"
             onClick={() => setDensidad((d) => (d === 'comoda' ? 'compacta' : 'comoda'))}
             title={densidad === 'comoda' ? 'Cambiar a vista compacta' : 'Cambiar a vista cómoda'}
-            className="flex items-center gap-1 rounded-md border border-neutral-200 px-2 py-1 text-xs text-neutral-600 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-400 dark:hover:bg-neutral-800"
+            className="focus-visible:ring-acento-600 flex min-h-[36px] items-center gap-1 rounded-md border border-neutral-200 px-2.5 py-1 text-xs text-neutral-600 hover:bg-neutral-100 focus-visible:ring-2 focus-visible:outline-none md:min-h-[28px] dark:border-neutral-700 dark:text-neutral-400 dark:hover:bg-neutral-800"
           >
             <Rows3 className="h-3.5 w-3.5" />
             <span className="text-[11px] capitalize">{densidad}</span>
@@ -207,7 +207,7 @@ export function ListaConversaciones() {
             value={buscar}
             onChange={(e) => setBuscar(e.target.value)}
             placeholder="Buscar por cliente o mensaje... (/)"
-            className="focus:border-acento-600 w-full rounded-lg border border-neutral-200 bg-neutral-50 py-1.5 pr-3 pl-8 text-xs text-neutral-900 placeholder-neutral-400 focus:bg-white focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+            className="focus:border-acento-600 focus:ring-acento-600/30 w-full rounded-lg border border-neutral-200 bg-neutral-50 py-2 pr-3 pl-8 text-xs text-neutral-900 placeholder-neutral-400 focus:bg-white focus:ring-2 focus:outline-none md:py-1.5 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
           />
         </div>
 
@@ -221,7 +221,7 @@ export function ListaConversaciones() {
                 role="tab"
                 aria-selected={activo}
                 onClick={() => setFiltro(f.id)}
-                className={`flex min-h-[32px] items-center rounded-lg px-2.5 py-1 text-xs font-medium transition-colors ${
+                className={`focus-visible:ring-acento-600 flex min-h-[44px] items-center rounded-lg px-3 py-1.5 text-xs font-medium transition-colors focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:outline-none md:min-h-[32px] md:py-1 dark:focus-visible:ring-offset-neutral-900 ${
                   activo
                     ? 'bg-acento-700 font-semibold text-white shadow-2xs'
                     : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700'
@@ -299,7 +299,7 @@ export function ListaConversaciones() {
             </p>
           </div>
         ) : (
-          <div className="divide-y divide-neutral-100 dark:divide-neutral-800/60">
+          <div className="divide-y divide-neutral-100 pb-16 md:pb-0 dark:divide-neutral-800/60">
             {conversaciones.map((conv, idx) => {
               const esActiva = pathname === `/bandeja/${conv.id}`;
               const avatarColores = generarColorAvatar(conv.contactoId);
