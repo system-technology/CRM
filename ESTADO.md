@@ -6,7 +6,7 @@
 
 | Campo | Valor |
 |---|---|
-| Última actualización | 2026-10-10 (integración: contratos de crm, agentes de producto y el webhook del inbox) |
+| Última actualización | 2026-10-11 (noche; integración: compuerta de pruebas, semilla por clave, ventana de 24 h y semilla del CRM) |
 | Actualizado por | Claude Opus 5 |
 | Fase | **Rebanada vertical de paquetes, en construcción** |
 | Avance de la fase | Cotizador de punta a punta. Esquema del inbox, 30/30 contra Neon. **Apretón de manos del webhook vivo y verificado contra la API corriendo.** Bandeja web en construcción |
@@ -237,3 +237,52 @@ prueba que arranca el `AppModule` ensamblado contra Neon. api `112 passed`, aisl
 |---|---|---|
 | **La prueba del `AppModule` certifica el montaje bajo el runtime de vitest, no bajo el del servidor.** Quitar el `@Inject` explícito del controlador del webhook —el defecto del 2026-10-11 por la mañana— no la pone en rojo: vitest transpila con metadatos de decorador y `tsx` no. Falta ejecutar la aplicación como se ejecuta de verdad: `pnpm build` y arrancar el `dist` | `devops` | El límite está declarado en la cabecera del propio archivo de prueba, así que nadie puede leer la red como más ancha de lo que es. El `@Inject` explícito sigue siendo obligatorio **por convención, no por compuerta** |
 | `apps/api` corre con `vitest run --passWithNoTests`. Si el `include` se rompiera otra vez, la suite pasaría con cero pruebas en vez de avisar. Conviene un umbral mínimo de pruebas o quitar la bandera | `qa` | Hoy el `include` es explícito y la cuenta es visible (112) |
+
+---
+
+## Integración del 2026-10-11 (noche) — v0.16.1 · v0.17.0 · v0.17.1
+
+**Cuatro de cinco ramas integradas. `feat/inbox-esquema` devuelta por `pnpm lint` en rojo.**
+
+| Rama | Veredicto | Versión |
+|---|---|---|
+| `fix/compuerta-de-pruebas` | **Integrada** (`03d4ee5`) | v0.16.1 |
+| `fix/semilla-etapas` | **Integrada** (`a340360`) | v0.16.1 |
+| `feat/ventana-servicio` | **Integrada** (`202cfbf`) | v0.17.0 |
+| `feat/semilla-crm` | **Integrada** (`a468287`) | v0.17.1 |
+| `feat/inbox-esquema` | **DEVUELTA** | — |
+
+Compuertas de las cuatro integradas, corridas por el integrador: `typecheck` 7/7 · `lint` 7/7 ·
+`test` 6/6 (api **133 passed**, aislamiento **39/39** contra Neon, domain 32, contracts 56) ·
+`build` 5/5 · `format:check` limpio. `pnpm db:seed` corrido **dos veces seguidas** contra Neon sin
+P2002 y `pnpm db:seed:crm` con `creadas ahora 0` en la segunda.
+
+### Por qué volvió `feat/inbox-esquema`
+
+Una sola cosa, y es de hoy: **`pnpm lint` sale en rojo** por el arnés de mutaciones que trae la
+propia rama, `packages/database/scripts/mutaciones-aislamiento.mjs`:
+
+```
+36:33  error  Unexpected control character(s) in regular expression:    no-control-regex
+136:7  error  The value assigned to 'r' is not used in subsequent statements  no-useless-assignment
+```
+
+El resto de la rama se verificó y **está en verde**: `typecheck` 7/7, `build` 5/5,
+`format:check` limpio y **50/50 de aislamiento contra Neon** —la cifra que la rama afirmaba,
+comprobada por el integrador, no aceptada de palabra—. La siembra del inbox, que su autor no
+había podido correr, **corre**: con `fix/semilla-etapas` ya en `main`, `pnpm db:seed` deja
+1 conversación, 3 mensajes y 2 plantillas. El conflicto en `packages/database/package.json` se
+resuelve conservando los dos scripts (`seed:crm` y `mutaciones`); `prisma/seed.ts` fusiona solo.
+
+**Es una vuelta, no tres (R13):** corregidos esos dos errores, la rama entra. No se abre frente
+nuevo sobre ella.
+
+### Cola nueva — con dueño, no bloquea
+
+| Cola | Dueño | Por qué no bloquea |
+|---|---|---|
+| **`mensajes.texto` sin cifrar, con índice de búsqueda trigram.** Ahí van a ir números de pasaporte (R10). El argumento del autor es correcto —cifrado no hay búsqueda, y la bandeja busca— y los controles que aplica son reales: RLS forzada, prohibición de copiarlo a `registros_auditoria` ni al `outbox`, declarada en un `COMMENT` de la columna | `auditor-seguridad` + `arquitecto` | Hoy no hay un solo mensaje real guardado: el riesgo es futuro, y la columna de «el día que…». **Pero el plazo es duro: el ADR tiene que estar cerrado antes de que el trabajador persista el primer mensaje de producción**, porque cifrar después es migrar filas existentes, no cambiar una línea |
+| `mensajes.cotizacion_id` existe **sin** clave foránea porque `cotizaciones` todavía no existe. El plan está escrito en la migración: `ADD CONSTRAINT ... NOT VALID` + `VALIDATE` | `datos` | La columna hoy no apunta a nada. **La tarea es de quien cree la tabla `cotizaciones`**, en esa misma migración, y no en otra |
+| **Deriva entre `schema.prisma` y la base**: la unique parcial `(tenant_id, clave) WHERE clave IS NOT NULL` de `etapas_pipeline` existe en la base y Prisma no la modela. Hoy no duele porque la semilla ya no se apoya en el orden | `datos` | Es deriva de modelado, no de comportamiento. Pero conviene un barrido: lo que la base exige y el esquema no dice es un error que aparece en producción |
+| **Decisión de NO particionar `mensajes`** y su razón —particionar por fecha obligaría a meter la clave de partición en la unique de `wamid` y el mismo reintento de Meta entraría dos veces, rompiendo R5— vive hoy en un comentario de migración. Merece ADR | `arquitecto` | La decisión está tomada y argumentada; lo que falta es dónde vive. Cuando la rama entre |
+| Las cuatro ramas integradas esta noche **no traían entrada de bitácora**: la escribió el integrador al cerrar | `facilitador` | El hilo quedó cerrado igual, pero la bitácora es del que trabaja, no del que integra |
