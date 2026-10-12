@@ -19,7 +19,8 @@
     "db:push": "dotenv -e ../../.env -- prisma db push",
     "validate": "dotenv -e ../../.env -- prisma validate",
     "rol:crear": "dotenv -e ../../.env -- node scripts/crear-rol-aplicacion.mjs",
-    "roles:dev": "dotenv -e ../../.env -- node scripts/roles-de-desarrollo.mjs"
+    "roles:dev": "dotenv -e ../../.env -- node scripts/roles-de-desarrollo.mjs",
+    "mutaciones": "dotenv -e ../../.env -- node scripts/mutaciones-aislamiento.mjs"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0"

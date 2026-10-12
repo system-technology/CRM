@@ -416,3 +416,96 @@ El teléfono es único por tenant (`UNIQUE (tenant_id, telefono_e164)`) y es la 
 *resolver* quién escribe, pero no es la clave de la relación: cambia, se reasigna, y una agencia
 puede tener dos canales. `contactos` ya expone `UNIQUE (id, tenant_id)`, que es lo que permite a
 `conversaciones` declarar `FOREIGN KEY (contacto_id, tenant_id)` el día que se cree.
+
+---
+
+## Inbox — conversaciones, mensajes, adjuntos y el espejo de plantillas
+
+*Añadido en `20261011090000_inbox_conversaciones_mensajes_y_plantillas`. Sirve
+`packages/contracts/src/inbox.ts` y `packages/contracts/src/plantillas.ts`.*
+
+```mermaid
+erDiagram
+    CONTACTOS      ||--o{ CONVERSACIONES : "habla por"
+    CANALES        ||--o{ CONVERSACIONES : "entra por"
+    CONVERSACIONES ||--o{ MENSAJES       : "contiene"
+    CONVERSACIONES ||--o{ NOTAS_INTERNAS : "ancla (opcional)"
+    MENSAJES       ||--o{ ADJUNTOS       : "trae"
+    CUENTAS_WHATSAPP ||--o{ PLANTILLAS_WHATSAPP : "registra en Meta"
+    PLANTILLAS_WHATSAPP ||--o{ MENSAJES : "reabre con"
+    USUARIOS       ||--o{ CONVERSACIONES : "asignada a"
+    USUARIOS       ||--o{ MENSAJES       : "escribe"
+```
+
+**Todas las claves foráneas son compuestas con `tenant_id`.** Es el agujero que se cerró en
+`oportunidades` y aquí había dos puertas: el contacto y el canal. RLS no interviene en la
+integridad referencial —PostgreSQL la comprueba por encima de las políticas—, así que con una
+clave simple el hilo de una agencia puede colgar del contacto de otra y la fila resultante es
+invisible para las dos. Lo vigilan las aserciones 39 y la mutación M6.
+
+### Las decisiones y su porqué
+
+| Decisión | Por qué |
+|---|---|
+| **Un hilo por `(contacto, canal)`** | En WhatsApp el hilo es el que el cliente ve en su teléfono. Partirlo por «tema» crea dos verdades de la misma pantalla, y es lo que permite al webhook hacer `ON CONFLICT DO UPDATE` sin carreras. |
+| **La ventana de 24 h es UNA columna** (`ultimo_mensaje_cliente_en`) | `abierta`, `expiraEn` y `minutosRestantes` son función de ese instante y de `now()`. Una columna `abierta` caduca sin que nadie escriba: a las 15:00 nadie manda un `UPDATE`, y desde ese segundo estaría mintiendo. |
+| **`wamid` único por tenant, índice parcial** | La idempotencia de R5 en la base, no en el código. Meta reintenta hasta recibir 200, y también cuando el 200 se perdió de vuelta. Por tenant y no global: global sería un oráculo que le confirma a una agencia la actividad de otra. |
+| **`clave_idempotencia` única por tenant** | La otra mitad: entre el clic del asesor y la respuesta de Meta no hay identificador. Un doble clic manda el mensaje dos veces, y si es plantilla **se cobra dos veces**. |
+| **Dos ejes de tiempo** (`ocurrido_en` de Meta, `creado_en` nuestro) | Los webhooks llegan desordenados: un reintento trae un mensaje de ayer después de uno de ahora. El hilo ordena por el de Meta, con `id` (UUID v7) de desempate porque Meta solo da segundos. R9. |
+| **`cotizacion_id` sin FK, por ahora** | La tabla `cotizaciones` no existe todavía. La columna se crea hoy porque el contrato ya la expone y porque añadirla a `mensajes` con millones de filas es caro. La FK compuesta entra con `ADD CONSTRAINT NOT VALID` + `VALIDATE`. |
+| **`adjuntos` es tabla, no JSONB** | Ciclo de vida propio: se descarga después, falla, se reintenta, se purga. Y la clave de S3 es lo que hay que recorrer para borrar de verdad los datos de una agencia que se va — S3 **no** está cubierto por RLS (ADR-0003). |
+
+### Las plantillas no son nuestras
+
+`plantillas_whatsapp` es la única tabla del esquema cuyo dueño está fuera del sistema: es un
+**espejo** de lo que Meta aprobó. De ahí tres formas que no se parecen al resto del modelo:
+
+1. **La identidad es `(WABA, nombre, idioma)`**, no `(tenant, nombre)`. Una agencia con dos WABAs
+   puede tener `recordatorio_pago` en los dos, y son dos plantillas con estados distintos; y la
+   misma plantilla en `es_CO` y en `en_US` puede estar aprobada en una y rechazada en la otra.
+2. **El tiempo se parte en tres.** `actualizada_en_meta` (lo que dice Meta, lo único que el
+   contrato expone), `sincronizada_en` (cuándo lo oímos) y `estado_cambiado_en` (desde cuándo está
+   así). La tercera parece redundante hasta que un asesor pregunta «¿desde cuándo está pausada?».
+3. **`creado_por` y `actualizado_por` NULOS son el dato**, no un campo sin rellenar: significan que
+   el cambio lo hizo Meta. Meta pausa sola una plantilla cuando la marcan como spam, sin avisar.
+   Un CHECK exige que `RECHAZADA` y `PAUSADA` traigan motivo: una lista que esconde el porqué no
+   explica por qué falta la plantilla que se usaba ayer.
+
+### Por qué `mensajes` NO está particionada
+
+Es la tabla que más crece. Aun así no se particiona hoy, y no por prudencia:
+
+1. **No ayuda a la consulta caliente.** Abrir un hilo es una búsqueda por `(tenant_id,
+   conversacion_id)`; un btree de tres niveles cubre un millón de filas igual que cien millones.
+2. **Particionar por `ocurrido_en` rompería la idempotencia de R5.** PostgreSQL exige que toda
+   restricción única contenga la clave de partición: `(tenant_id, wamid)` pasaría a
+   `(tenant_id, wamid, ocurrido_en)`, y el mismo `wamid` reintentado con otro timestamp caería en
+   otra partición y se insertaría dos veces. Sin ningún error.
+3. **Cuando haga falta, la forma correcta es HASH por `tenant_id`**: mantiene `(tenant_id, wamid)`
+   exigible, acota el vacuum por agencia y encaja con el aplicador de RLS, que ya desciende por
+   `pg_inherits`.
+
+Disparadores para revisarlo: más de ~50 M de filas, un vacuum que no termina en su ventana, o una
+política de retención por fecha —único caso donde partir por tiempo gana, y entonces la
+deduplicación de `wamid` se saca a una tabla aparte.
+
+### R10 — el texto de un mensaje es PII
+
+`mensajes.texto` es la mayor superficie de datos sensibles del producto: ahí escribe el viajero, y
+en una agencia eso incluye número de pasaporte y fecha de nacimiento de un menor. **No se cifra por
+columna**, y la decisión tiene coste: el hilo se lee entero en cada apertura y `ConsultarBandeja.buscar`
+busca dentro del texto; cifrado queda ilegible para cualquier índice. Lo que sí se aplica: RLS
+forzada (aserción 38), el texto **nunca** viaja a `registros_auditoria.detalle` ni a `outbox.payload`,
+el índice de trigramas vive en la misma tabla y bajo la misma política, y el cifrado en reposo lo da
+el almacenamiento. **Esto no cierra el asunto:** si el cifrado por columna se considera exigible
+para la Ley 1581, es un ADR con `auditor-seguridad` y un rediseño de la búsqueda. Queda en la cola
+de `ESTADO.md`.
+
+### El punto ciego que se cerró
+
+`001-aislamiento-tenant.sql` solo miraba si `polwithcheck` era NULL. Quitar `WITH CHECK` dejando
+`USING` no cambia el comportamiento —PostgreSQL reutiliza la expresión—, pero un `WITH CHECK`
+**presente y distinto** (`WITH CHECK (true)`) pasaba todas las comprobaciones de catálogo mientras
+dejaba a cualquier agencia insertar filas dentro de los datos de otra. `003-politica-canonica.sql`
+compara ahora el texto de `USING` y de `WITH CHECK` contra una forma canónica, y exige además que la
+política sea `PERMISSIVE FOR ALL`. Lo verifican la aserción 36 y las mutaciones M4 y M5.
