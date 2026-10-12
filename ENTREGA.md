@@ -1,4 +1,40 @@
-# ENTREGA.md — Tareas 0d, 0c.3–0c.10 y 0c.11 (Búsqueda Global Omnicanal y Alertas Operativas)
+# ENTREGA.md — Tareas 0d, 0c.3–0c.11 y 0c.12 (Asistente Copilot IA en la Bandeja)
+
+## 0. Entrega de Tarea 0c.12: Asistente Copilot IA en la Bandeja: Extractor de Oportunidades, Resumen Ejecutivo y Respuestas Sugeridas con Aprobación Humana
+
+Origen: `viajapro_diseno_ui_ux.json` (§`interaction_patterns.ai` y §`states_and_business_rules.human_approval_required_for_ai_outbound: true`) · Jira Epics VC-6 (Fase 5 — Automatización e IA) y VC-13 (Bandeja Web) · Regla R8 (dinero en enteros de COP sin flotantes), R9 (fechas en UTC) y R10 (PII sensible protegida).
+
+### Implementación Realizada:
+1. **Motor Heurístico y de Extracción IA (`apps/web/src/lib/asistente-ia-logica.ts`):**
+   - `extraerDatosViajeDeMensajes`: detecta destinos (Cancún, San Andrés, Punta Cana, Cartagena, Orlando, etc.), cantidad de adultos/niños, fechas tentativas, preferencias de alojamiento y presupuesto declarado en COP (R8).
+   - `generarResumenConversacion`: resume necesidades, objeciones y siguiente acción recomendada en 3 viñetas ejecutivas para acelerar la toma de contexto entre asesores.
+   - `sugerirRespuestaComercial`: genera borradores personalizados con destino, número de personas y llamado a cotización.
+   - `calificarLead`: calcula puntuación objetiva (`ALTO`, `MEDIO`, `BAJO`) con justificación explícita según variables comerciales detectadas.
+
+2. **Invariante de Aprobación Humana Obligatoria (`human_approval_required_for_ai_outbound`):**
+   - La respuesta generada por IA **nunca** se despacha sola al cliente.
+   - El botón "Insertar en borrador" traslada el texto al área de redacción (`textarea`) del asesor para su lectura, adaptación y envío explícito.
+
+3. **Interfaz de Usuario (`apps/web/src/components/bandeja/panel-copilot-ia.tsx` y `apps/web/src/app/bandeja/[id]/page.tsx`):**
+   - Botón interactivo "✨ Copilot IA" integrado en la barra de herramientas del chat junto a los selectores de mensajes y notas internas.
+   - Panel deslizable con:
+     - Indicador de calificación de lead (`Lead ALTO/MEDIO/BAJO` con puntos y justificación).
+     - Tarjeta de datos detectados con enlace a "Precargar Cotizador" (`/cotizador?destino=...&adultos=...&ninos=...`).
+     - Resumen ejecutivo de 3 puntos clave.
+     - Respuesta comercial sugerida con botón de inserción asistida y recordatorio de revisión humana.
+
+4. **Pruebas Automatizadas en Vitest (`apps/web/src/lib/asistente-ia-logica.spec.ts`):**
+   - 6 pruebas unitarias cubriendo extracción de destinos, pasajeros y presupuesto en COP, generación de resumen, redacción comercial y calificación de leads.
+   - Total suite: **100/100 pruebas pasando en 14 suites**.
+
+### Verificación de las 5 Compuertas:
+- **Vitest:** 100/100 pruebas pasando en 14 suites (`pnpm --filter @viajapro/web test`).
+- **TypeScript:** `tsc --noEmit` 0 errores.
+- **ESLint:** `eslint src` 0 errores, 0 advertencias.
+- **Next.js Build:** Generación estática exitosa de las 13 rutas de la aplicación (`pnpm --filter @viajapro/web build`).
+- **Prettier:** 100% verificado (`pnpm format:check`).
+
+---
 
 ## 0. Entrega de Tarea 0c.11: Centro de Búsqueda Global Omnicanal (`Cmd+K` / `Ctrl+K`) y Centro de Alertas Operativas Críticas
 

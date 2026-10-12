@@ -48,6 +48,32 @@ redefinidos: todo de `@viajapro/contracts` — si falta un campo, **para y dilo*
 
 ---
 
+## [x] 0c.12. Asistente Copilot IA en la Bandeja: Extractor de Oportunidades, Resumen Ejecutivo y Respuestas Sugeridas con Aprobación Humana
+
+Origen: `viajapro_diseno_ui_ux.json` (§`interaction_patterns.ai` y §`states_and_business_rules.human_approval_required_for_ai_outbound: true`) · Jira Epics VC-6 (Fase 5 — Automatización e IA) y VC-13 (Bandeja Web) · Regla R8 (dinero en enteros de COP sin flotantes), R9 (UTC) y R10 (PII protegida).
+
+**Objetivo:** Construir el asistente Copilot IA para la bandeja de WhatsApp (`/bandeja/[id]`) que permita a los asesores extraer variables de viaje (destino, fechas, pax, presupuesto) directamente de la conversación, generar resúmenes ejecutivos en segundos y recibir respuestas sugeridas contextuales que requieren aprobación/edición humana antes de enviarse.
+
+**Invariantes y criterios:**
+1. **Motor Heurístico y de Extracción IA (`asistente-ia-logica.ts`):**
+   - `extraerDatosViajeDeMensajes`: detecta destinos (Cancún, San Andrés, Punta Cana, Cartagena, Orlando, etc.), número de adultos/niños, fechas tentativas y presupuesto en COP (R8).
+   - `generarResumenConversacion`: resume necesidades, preguntas clave del viajero y siguiente acción recomendada en 3 viñetas breves.
+   - `sugerirRespuestaComercial`: genera borrador personalizado en tono comercial cálido y profesional adaptado a agencias colombianas.
+   - `calificarLead`: calcula puntuación objetiva (`ALTA`, `MEDIA`, `BAJA`) según intención, destino y presupuesto.
+2. **Invariante de Aprobación Humana Obligatoria (`human_approval_required_for_ai_outbound`):**
+   - La respuesta generada por IA **nunca** se despacha sola al viajero: se inserta en el compositor de texto (`input`) del asesor para que este la revise, modifique y envíe explícitamente.
+3. **Integración en la UI de la Bandeja (`bandeja/[id]/page.tsx`):**
+   - Botón interactivo "✨ Asistente IA" en la barra de herramientas del chat junto al selector de plantillas y notas.
+   - Tarjeta contextual colapsable con las 3 herramientas:
+     - 🎯 **Extraer Datos para Oportunidad / Cotización:** Muestra datos detectados y botón "Cotizar este viaje" con parámetros prellenados.
+     - 📋 **Resumen del Hilo:** Vista rápida del estado actual de la consulta.
+     - 💬 **Sugerir Respuesta:** Botón que inserta el texto generado directamente en el área de redacción.
+4. **Pruebas Automatizadas en Vitest (`asistente-ia-logica.spec.ts`):**
+   - Validación completa de extracción de parámetros, formato de respuestas, resúmenes y calificación de leads.
+5. **Compuertas:** `test`, `typecheck`, `lint`, `build` y `format:check` 100% en verde.
+
+---
+
 ## [x] 0c.11. Centro de Búsqueda Global Omnicanal (Cmd+K) y Centro de Alertas Operativas Críticas
 
 Origen: `viajapro_diseno_ui_ux.json` (§`interaction_patterns.global_search` y §`interaction_patterns.notifications`) · Jira Epics VC-1 (Fundaciones) y VC-2 / VC-13 (Bandeja Web e Integración) · Criterios de usabilidad ("Responder un mensaje requiere tres clics o menos", "SLA, time limits y pagos pendientes son visibles").

@@ -20,6 +20,7 @@ import {
   Lock,
   PlusCircle,
   PanelRight,
+  Sparkles,
 } from 'lucide-react';
 import { inboxApi, InboxErrorApi } from '../../../lib/inbox-api';
 import { realtimeMockBus } from '../../../lib/realtime-mock';
@@ -35,6 +36,7 @@ import { FichaCliente } from '../../../components/bandeja/ficha-cliente';
 import { ModalPlantillas } from '../../../components/bandeja/modal-plantillas';
 import { EnviarPlantilla } from '@viajapro/contracts';
 import { TarjetaCotizacion } from '../../../components/bandeja/tarjeta-cotizacion';
+import { PanelCopilotIa } from '../../../components/bandeja/panel-copilot-ia';
 
 export default function BandejaConversacionPage() {
   const params = useParams();
@@ -56,6 +58,9 @@ export default function BandejaConversacionPage() {
 
   // Panel lateral de ficha del viajero en pantallas medianas / pequeñas
   const [mostrarFichaLateral, setMostrarFichaLateral] = useState(false);
+
+  // Asistente Copilot IA
+  const [copilotAbierto, setCopilotAbierto] = useState(false);
 
   // Atajos de teclado
 
@@ -638,70 +643,103 @@ export default function BandejaConversacionPage() {
               </button>
             </div>
           ) : (
-            <form onSubmit={(e) => void manejarEnvio(e)} className="space-y-2">
-              <div className="flex items-center justify-between">
-                <div className="flex rounded-lg border border-neutral-200 bg-neutral-100 p-0.5 dark:border-neutral-700 dark:bg-neutral-800">
-                  <button
-                    type="button"
-                    onClick={() => setModoNota(false)}
-                    className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
-                      !modoNota
-                        ? 'bg-white font-semibold text-neutral-900 shadow-2xs dark:bg-neutral-700 dark:text-neutral-100'
-                        : 'text-neutral-600 hover:text-neutral-900 dark:text-neutral-400'
-                    }`}
-                  >
-                    💬 Mensaje
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setModoNota(true)}
-                    className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
-                      modoNota
-                        ? 'bg-amber-400 font-bold text-amber-950 shadow-2xs'
-                        : 'text-neutral-600 hover:text-neutral-900 dark:text-neutral-400'
-                    }`}
-                  >
-                    📌 Nota interna
-                  </button>
-                </div>
-              </div>
-
-              {errorEnvio && (
-                <div className="border-alerta-200 bg-alerta-50 text-alerta-800 dark:border-alerta-900 dark:bg-alerta-950/40 dark:text-alerta-300 rounded-lg border p-2 text-xs">
-                  {errorEnvio}
-                </div>
+            <div className="space-y-2">
+              {copilotAbierto && (
+                <PanelCopilotIa
+                  mensajes={detalle.mensajes.map((m) => ({
+                    texto: m.texto || '',
+                    direccion: m.direccion,
+                  }))}
+                  contactoNombre={detalle.contactoNombre || 'Viajero'}
+                  onInsertarRespuesta={(texto) => {
+                    setTextoMensaje(texto);
+                    textareaRef.current?.focus();
+                  }}
+                  onCerrar={() => setCopilotAbierto(false)}
+                />
               )}
 
-              <div className="flex gap-2">
-                <textarea
-                  ref={textareaRef}
-                  rows={2}
-                  value={textoMensaje}
-                  onChange={(e) => setTextoMensaje(e.target.value)}
-                  placeholder={
-                    modoNota
-                      ? 'Escribe una nota interna para el equipo (nunca se envía al cliente)...'
-                      : 'Escribe tu respuesta a cliente...'
-                  }
-                  className={`flex-1 rounded-lg border p-2.5 text-xs focus:outline-none ${
-                    modoNota
-                      ? 'border-amber-300 bg-amber-50/50 focus:border-amber-500 dark:border-amber-900/60 dark:bg-amber-950/20'
-                      : 'focus:border-acento-600 border-neutral-200 bg-neutral-50 focus:bg-white dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100'
-                  }`}
-                />
-                <button
-                  type="submit"
-                  disabled={enviando || !textoMensaje.trim()}
-                  className={`self-end rounded-lg px-4 py-2.5 text-xs font-semibold text-white shadow-2xs disabled:opacity-50 ${
-                    modoNota
-                      ? 'bg-amber-600 hover:bg-amber-700'
-                      : 'bg-acento-700 hover:bg-acento-800'
-                  }`}
-                >
-                  <Send className="h-4 w-4" />
-                </button>
-              </div>
-            </form>
+              <form onSubmit={(e) => void manejarEnvio(e)} className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="flex rounded-lg border border-neutral-200 bg-neutral-100 p-0.5 dark:border-neutral-700 dark:bg-neutral-800">
+                      <button
+                        type="button"
+                        onClick={() => setModoNota(false)}
+                        className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                          !modoNota
+                            ? 'bg-white font-semibold text-neutral-900 shadow-2xs dark:bg-neutral-700 dark:text-neutral-100'
+                            : 'text-neutral-600 hover:text-neutral-900 dark:text-neutral-400'
+                        }`}
+                      >
+                        💬 Mensaje
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setModoNota(true)}
+                        className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                          modoNota
+                            ? 'bg-amber-400 font-bold text-amber-950 shadow-2xs'
+                            : 'text-neutral-600 hover:text-neutral-900 dark:text-neutral-400'
+                        }`}
+                      >
+                        📌 Nota interna
+                      </button>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setCopilotAbierto((p) => !p)}
+                      className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-semibold transition-colors ${
+                        copilotAbierto
+                          ? 'border-purple-300 bg-purple-100 text-purple-900 dark:border-purple-800 dark:bg-purple-950 dark:text-purple-200'
+                          : 'border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-100 dark:border-purple-900/60 dark:bg-purple-950/40 dark:text-purple-300'
+                      }`}
+                      title="Abrir Asistente Copilot IA"
+                    >
+                      <Sparkles className="h-3.5 w-3.5" />
+                      <span>Copilot IA</span>
+                    </button>
+                  </div>
+                </div>
+
+                {errorEnvio && (
+                  <div className="border-alerta-200 bg-alerta-50 text-alerta-800 dark:border-alerta-900 dark:bg-alerta-950/40 dark:text-alerta-300 rounded-lg border p-2 text-xs">
+                    {errorEnvio}
+                  </div>
+                )}
+
+                <div className="flex gap-2">
+                  <textarea
+                    ref={textareaRef}
+                    rows={2}
+                    value={textoMensaje}
+                    onChange={(e) => setTextoMensaje(e.target.value)}
+                    placeholder={
+                      modoNota
+                        ? 'Escribe una nota interna para el equipo (nunca se envía al cliente)...'
+                        : 'Escribe tu respuesta a cliente...'
+                    }
+                    className={`flex-1 rounded-lg border p-2.5 text-xs focus:outline-none ${
+                      modoNota
+                        ? 'border-amber-300 bg-amber-50/50 focus:border-amber-500 dark:border-amber-900/60 dark:bg-amber-950/20'
+                        : 'focus:border-acento-600 border-neutral-200 bg-neutral-50 focus:bg-white dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100'
+                    }`}
+                  />
+                  <button
+                    type="submit"
+                    disabled={enviando || !textoMensaje.trim()}
+                    className={`self-end rounded-lg px-4 py-2.5 text-xs font-semibold text-white shadow-2xs disabled:opacity-50 ${
+                      modoNota
+                        ? 'bg-amber-600 hover:bg-amber-700'
+                        : 'bg-acento-700 hover:bg-acento-800'
+                    }`}
+                  >
+                    <Send className="h-4 w-4" />
+                  </button>
+                </div>
+              </form>
+            </div>
           )}
         </footer>
       </div>
