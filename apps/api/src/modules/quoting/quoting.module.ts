@@ -1,7 +1,10 @@
 import { Module } from '@nestjs/common';
 import { CotizarPaqueteUseCase } from './application/cotizar-paquete.use-case.js';
+import { CotizarSalidaUseCase } from './application/cotizar-salida.use-case.js';
 import { ListarPaquetesUseCase } from './application/listar-paquetes.use-case.js';
+import { ListarSalidasUseCase } from './application/listar-salidas.use-case.js';
 import { CatalogoController } from './interface/catalogo.controller.js';
+import { SalidasController } from './interface/salidas.controller.js';
 
 /**
  * Contexto de cotización: catálogo de paquetes y cálculo de precio.
@@ -10,8 +13,13 @@ import { CatalogoController } from './interface/catalogo.controller.js';
  * será por evento de dominio o por un puerto declarado aquí. Regla R4.
  */
 @Module({
-  controllers: [CatalogoController],
-  providers: [ListarPaquetesUseCase, CotizarPaqueteUseCase],
+  controllers: [CatalogoController, SalidasController],
+  providers: [
+    ListarPaquetesUseCase,
+    CotizarPaqueteUseCase,
+    ListarSalidasUseCase,
+    CotizarSalidaUseCase,
+  ],
   exports: [CotizarPaqueteUseCase],
 })
 export class QuotingModule {}

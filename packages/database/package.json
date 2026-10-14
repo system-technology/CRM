@@ -25,7 +25,8 @@
     "fixtures:limpiar": "dotenv -e ../../.env -- node scripts/limpiar-fixtures.mjs --borrar"
   },
   "dependencies": {
-    "@prisma/client": "^5.22.0"
+    "@prisma/client": "^5.22.0",
+    "@viajapro/domain": "workspace:*"
   },
   "devDependencies": {
     "@types/pg": "^8.11.10",

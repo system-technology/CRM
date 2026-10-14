@@ -509,3 +509,47 @@ de `ESTADO.md`.
 dejaba a cualquier agencia insertar filas dentro de los datos de otra. `003-politica-canonica.sql`
 compara ahora el texto de `USING` y de `WITH CHECK` contra una forma canónica, y exige además que la
 política sea `PERMISSIVE FOR ALL`. Lo verifican la aserción 36 y las mutaciones M4 y M5.
+
+### `SET NULL` sobre clave foránea COMPUESTA: la columna hay que nombrarla
+
+`notas_internas.conversacion_id` es anulable y su foránea es compuesta —`(conversacion_id,
+tenant_id)`—, porque toda referencia cruzada entre tablas con tenant lo es (§2). El `ON DELETE SET
+NULL` a secas sobre una clave compuesta anula **todas** sus columnas, y `tenant_id` es `NOT NULL`:
+PostgreSQL acepta el DDL y el borrado revienta en ejecución, en producción y no aquí. Peor: el
+borrado en cascada de un tenant se atasca en medio.
+
+La forma correcta nombra la columna, y existe desde PostgreSQL 15:
+
+```sql
+ON DELETE SET NULL ("conversacion_id") ON UPDATE RESTRICT
+```
+
+Está en la migración `20261011090200_notas_set_null_solo_la_conversacion`. **Prisma no sabe
+expresar la lista de columnas**: `schema.prisma` dice `onDelete: SetNull` y `prisma format` avisa
+con *«should not be set to SetNull when a referenced field is required»*. El aviso es correcto y la
+base ya está corregida; lo que no hay que hacer es «arreglarlo» generando una migración nueva desde
+el esquema, porque eso devolvería la forma rota. Si una foránea compuesta nueva necesita `SET NULL`,
+se escribe el `ALTER TABLE` a mano. Por la misma razón `tarifas → mayoristas` quedó en `Restrict`.
+
+## Catálogo (ADR-0009) e inbox: la unión, no la elección
+
+El ADR-0009 y el inbox se construyeron en ramas hermanas desde el mismo punto, y las dos añadieron
+tablas **distintas**. El esquema resultante es la unión:
+
+| Lado | Tablas |
+|---|---|
+| ADR-0009 (catálogo) | `vigencias` (renombre de `salidas`, con `desde`/`hasta`/`publicada`), `tarifas`, `politicas_de_precio` |
+| Inbox | `conversaciones`, `mensajes`, `adjuntos`, `plantillas_whatsapp` |
+
+No se tocan: ninguna foránea cruza de un bloque al otro. Lo único que ambos lados modificaron fue
+`usuarios`, y por motivos ajenos —el catálogo lo reformateó, el inbox le añadió dos relaciones
+inversas (`conversacionesAsignadas`, `mensajesEnviados`)—, así que la unión también vale ahí.
+
+Las tablas que el inbox tocó de pasada son todas relaciones inversas, salvo una columna:
+`tenants`, `usuarios`, `contactos`, `canales` y `cuentas_whatsapp` solo ganan listas; `notas_internas`
+gana `conversacion_id`, anulable y añadida en caliente.
+
+La primera aserción del arnés de aislamiento está **dirigida por datos** —consulta la vista
+`tablas_sin_aislamiento`—, así que las tres tablas del catálogo quedaron cubiertas sin tocar la
+prueba. Es la propiedad que hace barata una mezcla como esta: no hay una lista de tablas que
+alguien tenga que acordarse de actualizar.
