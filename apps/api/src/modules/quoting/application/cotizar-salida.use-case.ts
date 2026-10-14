@@ -23,7 +23,13 @@ import {
 import { PrismaService } from '../../../shared/prisma/prisma.service.js';
 import { PaqueteNoEncontradoError } from '../domain/errors.js';
 import { monedaDeLaBase } from '../domain/moneda-de-la-base.js';
-import { esSuplemento, exigeComposicion, vecesQueSeCobra } from '../domain/seleccion-de-tarifas.js';
+import {
+  type Composicion,
+  esSuplemento,
+  exigeComposicion,
+  motivoNoAplica,
+  vecesQueSeCobra,
+} from '../domain/seleccion-de-tarifas.js';
 
 /** Una tarifa tal como sale de la base, antes de convertirse en opción de precio. */
 interface FilaTarifa {
@@ -58,6 +64,7 @@ export class CotizarSalidaUseCase {
     const adultos = peticion.adultos ?? 1;
     const ninos = peticion.ninos ?? 0;
     const infantes = peticion.infantes ?? 0;
+    const composicion: Composicion = { adultos, ninos, infantes };
     const pasajeros = adultos + ninos + infantes;
 
     return this.prisma.conTenant(async (tx) => {
@@ -116,29 +123,53 @@ export class CotizarSalidaUseCase {
                   moneda,
                 },
           margenPorcentaje: margenLinea?.porcentaje ?? null,
-          recomendada: false,
+          masBarata: false,
         };
       };
 
-      const opciones: OpcionDePrecio[] = [];
+      // --- La cotización armada: una línea por tarifa que cubra a alguien ---------
+      //
+      // Una cotización real NO es una tarifa: es una suma. Dos adultos a precio de adulto más un
+      // niño a precio de menor. Antes solo se devolvían tarifas sueltas, y el número que el
+      // asesor tiene que escribir en WhatsApp no estaba en ninguna respuesta.
+      const lineas: OpcionDePrecio[] = [];
+      const alternativas: OpcionDePrecio[] = [];
       const suplementos: OpcionDePrecio[] = [];
+      const noAplicables: { tarifaId: string; nombre: string; motivo: string }[] = [];
 
       for (const t of filas) {
-        const veces = vecesQueSeCobra(t, pasajeros);
-        if (veces === null) continue;
-        // Un suplemento se ofrece, no se suma solo: el de sencilla depende de cómo duerman.
-        // Un suplemento se cobra una vez y se ofrece aparte: no se suma solo.
-        (esSuplemento(t) ? suplementos : opciones).push(aOpcion(t, esSuplemento(t) ? 1 : veces));
-      }
+        const veces = vecesQueSeCobra(t, composicion);
 
-      // La recomendada es la más barata, y se marca a la vista en lugar de aplicarse a escondidas.
-      let masBarata: OpcionDePrecio | null = null;
-      for (const o of opciones) {
-        if (masBarata === null || BigInt(o.total.unidades) < BigInt(masBarata.total.unidades)) {
-          masBarata = o;
+        if (veces === null) {
+          const motivo = motivoNoAplica(t, composicion);
+          // Se devuelve CON su motivo en vez de desaparecer. Una promo que se esconde acaba
+          // aplicándose con la calculadora del celular, y el informe de margen deja de cuadrar.
+          if (motivo !== null) noAplicables.push({ tarifaId: t.id, nombre: t.nombre, motivo });
+          continue;
+        }
+
+        if (esSuplemento(t)) {
+          suplementos.push(aOpcion(t, 1));
+        } else if (t.unidad === 'POR_GRUPO') {
+          // Las de grupo REEMPLAZAN al armado: llevan condiciones que no conocemos —cupo del
+          // mayorista, «no acumulable»—, y prometer un precio que no se puede honrar cuesta un
+          // cliente. Se enseñan; no se aplican solas.
+          alternativas.push(aOpcion(t, veces));
+        } else {
+          lineas.push(aOpcion(t, veces));
         }
       }
-      if (masBarata) masBarata.recomendada = true;
+
+      const moneda = monedaDeLaBase(filas[0]?.monedaIso ?? 'COP');
+      let total = Money.cero(moneda);
+      for (const l of lineas)
+        total = total.sumar(Money.desdeUnidades(BigInt(l.total.unidades), moneda));
+
+      // Por TOTAL, no por precio unitario: en un celular se lee la primera línea, y ordenar por
+      // unitario ponía la opción cara arriba —$189.000 por persona delante de $280.000 la pareja,
+      // cuando para dos personas la pareja sale más barata—.
+      alternativas.sort((a, b) => Number(BigInt(a.total.unidades) - BigInt(b.total.unidades)));
+      if (alternativas[0]) alternativas[0].masBarata = true;
 
       return {
         paqueteId: paquete.id,
@@ -154,7 +185,10 @@ export class CotizarSalidaUseCase {
         ninos,
         infantes,
         pasajeros,
-        opciones,
+        lineas,
+        total: { unidades: total.aPersistencia().unidades.toString(), moneda },
+        alternativas,
+        noAplicables,
         suplementos,
         pideComposicion: filas.some(exigeComposicion),
       };

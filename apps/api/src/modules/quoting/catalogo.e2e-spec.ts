@@ -15,7 +15,7 @@
  *
  * **Lo que SÍ afirma:** el montaje de las rutas; la validación de entrada (400); el corte sin
  * tenant (401); que `SIN_VIGENCIA` sale como 409 con su código estable; el conteo de salidas;
- * que cotizar devuelve TODAS las opciones aplicables y marca la más barata; que la tarifa de
+ * que cotizar arma la cotización por líneas y devuelve las alternativas de grupo; que la tarifa de
  * grupo no aplica a múltiplos inexactos; que `neto` y `mayoristaId` no salen en el listado; y
  * que un tenant inexistente no ve estas salidas ni puede cotizarlas (RLS vía HTTP).
  *
@@ -65,7 +65,7 @@ interface Opcion {
   unidad: string;
   veces: number;
   total: { unidades: string; moneda: string };
-  recomendada: boolean;
+  masBarata: boolean;
 }
 interface ErrorApi {
   error: { code: string; details?: Record<string, string> };
@@ -167,29 +167,45 @@ describe('GET /api/v1/catalogo/salidas', () => {
 });
 
 describe('POST /api/v1/catalogo/cotizar', () => {
-  it('con 2 adultos ofrece DOS opciones y recomienda la promo de pareja', async () => {
+  it('con 2 adultos arma la línea por persona y ofrece la promo como alternativa', async () => {
     const r = await cotizar({ paqueteId: paqueteConsota, fecha: '2026-10-11', adultos: 2 });
     expect(r.status).toBe(200);
 
-    const opciones = r.cuerpo['opciones'] as Opcion[];
-    expect(opciones).toHaveLength(2);
+    // La cotización armada: lo que el asesor escribe si no aplica ninguna promoción.
+    const lineas = r.cuerpo['lineas'] as Opcion[];
+    expect(lineas).toHaveLength(1);
+    expect(lineas[0]).toMatchObject({ nombre: 'Adulto', unidad: 'POR_PERSONA', veces: 2 });
+    expect((r.cuerpo['total'] as { unidades: string }).unidades).toBe('378000');
 
-    const porPersona = opciones.find((o) => o.nombre === 'Adulto');
-    expect(porPersona).toMatchObject({ unidad: 'POR_PERSONA', veces: 2, recomendada: false });
-    expect(porPersona?.total.unidades).toBe('378000');
-
-    const promo = opciones.find((o) => o.nombre === 'Promo pareja');
-    expect(promo).toMatchObject({ unidad: 'POR_GRUPO', veces: 1, recomendada: true });
-    expect(promo?.total.unidades).toBe('280000');
+    // La promo de grupo NO se aplica sola: lleva condiciones que el sistema no conoce —cupo del
+    // mayorista, «no acumulable»— y prometer un precio que no se puede honrar cuesta un cliente.
+    const alternativas = r.cuerpo['alternativas'] as Opcion[];
+    expect(alternativas).toHaveLength(1);
+    expect(alternativas[0]).toMatchObject({
+      nombre: 'Promo pareja',
+      unidad: 'POR_GRUPO',
+      veces: 1,
+      masBarata: true,
+    });
+    expect(alternativas[0]?.total.unidades).toBe('280000');
   });
 
-  it('con 3 adultos SOLO queda la opción por persona', async () => {
+  it('con 3 adultos la promo NO aplica, y se dice POR QUÉ en vez de esconderla', async () => {
     const r = await cotizar({ paqueteId: paqueteConsota, fecha: '2026-10-11', adultos: 3 });
     expect(r.status).toBe(200);
-    const opciones = r.cuerpo['opciones'] as Opcion[];
-    expect(opciones).toHaveLength(1);
-    expect(opciones[0]).toMatchObject({ nombre: 'Adulto', unidad: 'POR_PERSONA', veces: 3 });
-    expect(opciones[0]?.total.unidades).toBe('567000');
+
+    const lineas = r.cuerpo['lineas'] as Opcion[];
+    expect(lineas).toHaveLength(1);
+    expect(lineas[0]).toMatchObject({ nombre: 'Adulto', veces: 3 });
+    expect((r.cuerpo['total'] as { unidades: string }).unidades).toBe('567000');
+    expect(r.cuerpo['alternativas']).toHaveLength(0);
+
+    // Antes desaparecía en silencio. Una promo que se esconde acaba aplicándose con la
+    // calculadora del celular —«dos en promo y uno suelto»— y el margen deja de cuadrar.
+    const noAplicables = r.cuerpo['noAplicables'] as { nombre: string; motivo: string }[];
+    expect(noAplicables).toHaveLength(1);
+    expect(noAplicables[0]?.nombre).toBe('Promo pareja');
+    expect(noAplicables[0]?.motivo).toMatch(/sobra 1/);
   });
 
   it('una fecha sin cobertura da 409 con `SIN_VIGENCIA`', async () => {
@@ -271,5 +287,73 @@ describe('Las dos formas de vender conviven, y se distinguen', () => {
     expect(enRango.status).toBe(200);
     expect(enRango.cuerpo['deSalidaProgramada']).toBe(false);
     expect(enRango.cuerpo['vigenciaDesde']).not.toBe(enRango.cuerpo['vigenciaHasta']);
+  });
+});
+
+/**
+ * **La mina que encontró `experto-turismo` el 2026-10-13.**
+ *
+ * El cotizador preguntaba la composición de pasajeros y después la ignoraba: una tarifa
+ * `POR_PERSONA` se cobraba al grupo entero, cualquiera que fuera su `tipoPasajero`. Una tarifa de
+ * menor se habría aplicado también a los adultos y, por ser la más barata, habría salido marcada
+ * como la recomendada — vendiendo por debajo del costo.
+ *
+ * No disparaba porque el tarifario real son pasadías sin tarifa de menor. Habría disparado con el
+ * primer paquete con hotel. La semilla siembra ahora esa tarifa, marcada como suposición nuestra,
+ * para que esto quede verificado y no solo arreglado.
+ */
+describe('Una cotización es la SUMA de varias tarifas, no una sola', () => {
+  let paquetePasanoche = '';
+
+  beforeAll(async () => {
+    const { cuerpo } = await salidas('desde=2026-10-01&limite=200');
+    const p = cuerpo.salidas.find((s) => s.paqueteNombre.startsWith('Puebleando'));
+    if (!p) throw new Error('No está «Puebleando en el Quindío»: corre `pnpm db:seed`.');
+    paquetePasanoche = p.paqueteId;
+  }, ARRANQUE_MS);
+
+  it('dos adultos y un niño son DOS líneas, cada una a su precio', async () => {
+    const r = await cotizar({
+      paqueteId: paquetePasanoche,
+      fecha: '2026-10-03',
+      adultos: 2,
+      ninos: 1,
+    });
+    expect(r.status).toBe(200);
+
+    const lineas = r.cuerpo['lineas'] as Opcion[];
+    expect(lineas).toHaveLength(2);
+
+    const adulto = lineas.find((l) => l.nombre === 'Adulto');
+    const menor = lineas.find((l) => l.nombre.startsWith('Menor'));
+    expect(adulto?.veces).toBe(2);
+    expect(menor?.veces).toBe(1);
+
+    // 389.000 x 2 + 292.000. Antes el sistema habría devuelto «Menor x 3 = 876.000» y lo habría
+    // marcado como la opción recomendada: por debajo del costo con el margen del 20 %.
+    expect((r.cuerpo['total'] as { unidades: string }).unidades).toBe('1070000');
+  });
+
+  it('el cotizador pide la composición porque el TARIFARIO lo pide, no por un interruptor', async () => {
+    const conNoche = await cotizar({
+      paqueteId: paquetePasanoche,
+      fecha: '2026-10-03',
+      adultos: 1,
+    });
+    expect(conNoche.cuerpo['pideComposicion']).toBe(true);
+
+    // El pasadía no tiene tarifas por edad, así que no hay nada que preguntar. Eje 3 del
+    // ADR-0009: se deriva del dato. Una bandera que puede contradecir al tarifario es un defecto
+    // esperando su turno.
+    const pasadia = await cotizar({ paqueteId: paqueteConsota, fecha: '2026-10-11', adultos: 2 });
+    expect(pasadia.cuerpo['pideComposicion']).toBe(false);
+  });
+
+  it('una tarifa de menor NO se cobra cuando no viaja ningún niño', async () => {
+    const r = await cotizar({ paqueteId: paquetePasanoche, fecha: '2026-10-03', adultos: 2 });
+    const lineas = r.cuerpo['lineas'] as Opcion[];
+    expect(lineas).toHaveLength(1);
+    expect(lineas[0]?.nombre).toBe('Adulto');
+    expect((r.cuerpo['total'] as { unidades: string }).unidades).toBe('778000');
   });
 });

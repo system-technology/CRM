@@ -259,8 +259,14 @@ export const OpcionDePrecio = z.object({
   /** **Solo para el tenant.** `null` cuando la tarifa no tiene neto cargado: desconocido, no cero. */
   margen: Dinero.nullable(),
   margenPorcentaje: z.number().nullable(),
-  /** La de menor total. Es una sugerencia visible, no una elección hecha a espaldas del asesor. */
-  recomendada: z.boolean(),
+  /**
+   * **Describe, no prescribe.** Se llamaba `recomendada` y `experto-turismo` tuvo razón en
+   * señalarlo: la opción más barata es, casi por definición, la de PEOR margen —mismo neto,
+   * menor venta—, y este producto paga comisión al asesor sobre margen. Poner «recomendada»
+   * sobre la línea que menos le deja a la agencia es fingir un juicio comercial que el sistema
+   * no tiene. El nombre dice ahora lo que de verdad calcula.
+   */
+  masBarata: z.boolean(),
 });
 export type OpcionDePrecio = z.infer<typeof OpcionDePrecio>;
 
@@ -282,7 +288,36 @@ export const CotizacionDeSalida = z.object({
   infantes: z.number().int().min(0),
   pasajeros: z.number().int().min(1),
 
-  opciones: z.array(OpcionDePrecio),
+  /**
+   * **La cotización armada: una línea por tipo de pasajero.** Una cotización real no es UNA
+   * tarifa, es una SUMA: dos adultos a precio de adulto más un niño a precio de menor. Antes
+   * solo se devolvían tarifas sueltas y ese número no existía en ninguna respuesta.
+   */
+  lineas: z.array(OpcionDePrecio),
+  /** El número que el asesor escribe en WhatsApp. Es la suma de `lineas`. */
+  total: Dinero,
+
+  /**
+   * Tarifas de grupo que podrían **reemplazar** al armado: promo de pareja, precio de grupo.
+   * No se aplican solas porque llevan condiciones que el sistema no conoce —cupo del mayorista,
+   * «no acumulable»—, y prometer un precio que luego no se puede honrar cuesta un cliente.
+   *
+   * Ordenadas por total, de menor a mayor: en un celular se lee la primera línea.
+   */
+  alternativas: z.array(OpcionDePrecio),
+
+  /**
+   * Lo que NO aplica, **con su motivo**. Misma filosofía que el desempate de vigencias: no se
+   * elige en silencio.
+   *
+   * Si una promo de pareja desaparece sin explicación para un grupo de tres, el asesor la aplica
+   * igual con la calculadora del celular —«dos en promo y uno suelto», que es lo que hace una
+   * agencia de verdad— y el informe de margen deja de cuadrar para siempre.
+   */
+  noAplicables: z.array(
+    z.object({ tarifaId: Id, nombre: z.string(), motivo: z.string().max(200) }),
+  ),
+
   /** Tarifas aditivas —suplemento de sencilla y similares—. **No se suman solas.** */
   suplementos: z.array(OpcionDePrecio),
 
