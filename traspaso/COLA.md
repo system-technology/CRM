@@ -14,48 +14,18 @@ redefinidos: todo de `@viajapro/contracts` — si falta un campo, **para y dilo*
 
 ---
 
-## [x] 0c.14. Que la pantalla diga con qué datos está hablando
-
-- **Completado y verificado:**
-  - **0c.14.1 — Distintivo honesto y discreto (`DistintivoDatosDemo`):** Etiqueta pequeña `«datos de demostración»` en cabecera cuando una pantalla opera en modo simulado o fallback offline. Si conecta contra la API real con tenant válido, no se muestra nada («lo normal no se anuncia»). Presente en `/pipeline`, `/contactos`, `/bandeja`, `/catalogo`, `/cotizador`, `/reportes`, `/viajes` y `/configuracion`.
-  - **0c.14.2 — Manejo resiliente de error de configuración de tenant (`AvisoConfiguracionTenant`):** Si `NEXT_PUBLIC_USE_REAL_CRM=true` pero falta `NEXT_PUBLIC_DEV_TENANT_ID` o la API responde 401 `SIN_SESION`, la pantalla ya no queda en blanco. Muestra una tarjeta clara indicando los 3 pasos de resolución: correr `pnpm db:seed` para obtener el UUID de André's Tours, configurarlo en `.env` y reiniciar dev server. Proporciona además la opción de "Ver con datos de demostración".
-  - **0c.14.3 — Error de hidratación del pipeline corregido:** Identificada disparidad de caracteres de espacio no separable (`\u202f` vs `\u00a0` vs `\u0020`) producida por implementaciones dispares de `Intl` entre Node (servidor) y navegador en `es-CO`. Función determinista `formatearFechaTarea` con fijación de zona a `America/Bogota` (R9) y normalización regex de espacios. Base temporal estable en `mock-pipeline.ts` redondeada a la hora para erradicar desfases de segundos. Fijado con pruebas unitarias dedicadas.
-  - **Honestidad en el panel de sugerencias (observación REVISION.md):** Reemplazada la denominación engañosa de "Copilot IA" por "Sugerencias Automáticas — Reglas Heurísticas" y "Sugerencias" en el botón de redactor, evitando prometer un modelo generativo que aún no está conectado.
-  - **Cinco compuertas en verde (`pnpm compuertas`):** build (22.1s), lint (9.9s), typecheck (4.9s), test (105.2s, 109 pruebas en web y 112 en api), format:check (3.6s).
-
-Arranqué las dos aplicaciones hoy y abrí `/pipeline`. Se ve como un producto terminado. Las
-tarjetas decían «Curazao All Inclusive» y «Circuito Europa 15 días» — datos inventados, no los
-que hay sembrados. El panel de red: **cero peticiones a la API**.
-
-No es culpa tuya: el interruptor `NEXT_PUBLIC_USE_REAL_CRM` viene apagado y hasta hoy no estaba
-ni documentado. Pero el efecto es grave: **el producto parece completo, no habla con nada, y
-nada en la pantalla lo dice.** Delante del piloto, eso es una bomba.
-
-**0c.14.1 — Un distintivo honesto, visible y discreto.** Cuando una pantalla esté pintando
-datos simulados, que lo diga: una etiqueta pequeña, en la cabecera, del tipo «datos de
-demostración». No un banner que estorbe; algo que un asesor no note y que a nadie en una demo se
-le pueda escapar. Y cuando esté contra la API real, **no aparece nada**: lo normal no se anuncia.
-
-**0c.14.2 — Que el interruptor encendido sin tenant no deje la pantalla rota.** Si
-`NEXT_PUBLIC_USE_REAL_CRM` es `true` pero falta `NEXT_PUBLIC_DEV_TENANT_ID`, la API responde 401
-y hoy la pantalla se queda en blanco sin explicar nada. Que diga qué falta y cómo se arregla —
-el valor lo imprime `pnpm db:seed` al terminar—. Un error de configuración tiene que leerse como
-un error de configuración, no como un producto roto.
-
-**0c.14.3 — El error de hidratación del pipeline.** Lo vi hoy en consola: el servidor y el
-navegador generan la misma fecha de forma distinta —«13 de oct, 09:09 p. m.» contra el mismo
-texto— y React regenera el árbol entero. Es formateo de fecha con `Intl` en servidor y cliente.
-Arréglalo donde esté y añade una prueba que lo fije.
-
-**Criterio de aceptación:** con el interruptor apagado se ve el distintivo; encendido y con
-tenant, desaparece y las tarjetas traen los datos de la base —los de André's Tours, no
-«Curazao»—; encendido y sin tenant, un mensaje que explica qué falta. Y cero errores de
-hidratación en consola al abrir `/pipeline`.
-
-**Cuéntalo en `ENTREGA.md` con la salida real.** Si no puedes encender el interruptor porque no
-puedes escribir `.env` —no puedes, lo bloquea un hook—, dilo y verifica lo que sí puedas.
-
----
+> ### Aviso del 2026-10-13, tarde — error mío, no tuyo
+>
+> Te dije que `PoliticaDePrecio` y los demás contratos nuevos estaban «ya publicados en
+> `@viajapro/contracts`». **Están en mi rama, que todavía no se ha integrado a `main`**, así que
+> en tu árbol no existen. Vi que has tenido que recrearlos para poder compilar: eso es
+> exactamente lo que pasa cuando te doy una referencia que no puedes alcanzar.
+>
+> **Qué hacer:** sigue con lo que tengas hecho; no deshagas nada. Cuando el `integrador` meta mi
+> rama en `main`, haz `git merge main` y **quédate con la versión de `main`** de
+> `packages/contracts/` y `packages/domain/`: son los mismos conceptos, y la fuente de verdad es
+> la que venga integrada (R3). Si al mezclar ves una diferencia que te parece un error mío,
+> **dilo en `ENTREGA.md` en vez de arreglarla por tu cuenta**.
 
 ## [ ] 0c.15. La política de precio de la agencia, en `/configuracion`
 
@@ -97,6 +67,99 @@ no está. **Y aplica 0c.14 también aquí:** si los valores son simulados, que l
 **Criterio de aceptación:** cambiar `base` en la pantalla mueve el ejemplo de $1.200.000 a
 $1.250.000. Hay prueba que lo fija. El cálculo viene de `@viajapro/domain` y no de código tuyo.
 Funciona a 375 px.
+
+
+---
+
+## [ ] 0c.16. El catálogo REAL en pantalla
+
+**Esta ya no depende de mí: las rutas existen, están probadas y responden.** Hoy
+`/catalogo` y `/cotizador` pintan datos simulados; en la base hay **34 paquetes, 98 vigencias y
+125 tarifas** del tarifario de Agencias André's Tours.
+
+```
+GET  /api/v1/catalogo/salidas?desde=AAAA-MM-DD[&hasta=][&paqueteId=][&limite=]
+POST /api/v1/catalogo/cotizar   { paqueteId, fecha, adultos?, ninos?, infantes? }
+```
+
+**0c.16.1 — `/catalogo` contra la API.** Lista de salidas publicadas con su fecha y su «desde».
+Mismo interruptor y mismo distintivo de datos simulados que ya hiciste en 0c.14: si está apagado,
+sigue con el simulado y que lo diga.
+
+**0c.16.2 — El cotizador devuelve una cotización ARMADA, no un precio.** Esto es lo que más
+importa y es nuevo, así que léelo entero. La respuesta trae:
+
+- `lineas` — una por tipo de pasajero: «Adulto ×2 → $778.000», «Menor ×1 → $292.000»
+- `total` — **el número que el asesor copia y pega en WhatsApp**. Ese es el protagonista de la
+  pantalla, en grande
+- `alternativas` — tarifas de grupo que **reemplazan** al armado, con `masBarata` marcada. Se
+  enseñan, **no se aplican solas**: llevan condiciones que el sistema no conoce
+- `noAplicables` — lo que no aplica **con su motivo**: «Promo pareja — aplica a grupos de 2;
+  sobra 1». **Enséñalo.** Si lo escondes, el asesor hace la cuenta por fuera con la calculadora
+  del celular y el informe de margen deja de cuadrar
+- `pideComposicion` — **si viene `false`, NO preguntes adultos/niños/infantes.** Lo decide el
+  tarifario, no un ajuste: un pasadía no tiene tarifa de menor y preguntarlo es ruido
+
+**0c.16.3 — Los dos errores que la pantalla tiene que saber leer.** Llegan como 409 con código
+estable: `SIN_VIGENCIA` («no hay precio para esa fecha — prueba otra o pídesela a la agencia») y
+`VIGENCIAS_EMPATADAS` (el tarifario tiene dos ventanas solapadas: es un error de datos de la
+agencia y hay que decirlo así, no como «error del servidor»).
+
+**0c.16.4 — «Bajo consulta de cupo».** Si `deSalidaProgramada` viene `false`, el precio salió de
+una vigencia abierta y **no hay fecha publicada**. Dilo. Prometer una fecha que la agencia no
+publicó es lo que hace que un cliente llegue al punto de encuentro y no haya bus.
+
+**Lo que NO hay y no esperes:** rutas de escritura. No se puede crear ni editar una tarifa desde
+la web todavía. El catálogo solo se carga con `pnpm db:seed`.
+
+**Criterio de aceptación:** con el interruptor encendido, `/catalogo` enseña salidas de André's
+Tours —«Parque del café», «Piangüita + Ballenas»— y no «Curazao». Cotizar «Puebleando en el
+Quindío» el 2026-10-03 con 2 adultos y 1 niño enseña dos líneas y un total de **$1.070.000**.
+Cotizar «Parque Consotá» el 2026-10-11 con 3 adultos enseña el motivo por el que la promo de
+pareja no aplica. Funciona a 375 px.
+
+---
+
+## [x] 0c.14. Que la pantalla diga con qué datos está hablando
+
+- **Completado y verificado:**
+  - **0c.14.1 — Distintivo honesto y discreto (`DistintivoDatosDemo`):** Etiqueta pequeña `«datos de demostración»` en cabecera cuando una pantalla opera en modo simulado o fallback offline. Si conecta contra la API real con tenant válido, no se muestra nada («lo normal no se anuncia»). Presente en `/pipeline`, `/contactos`, `/bandeja`, `/catalogo`, `/cotizador`, `/reportes`, `/viajes` y `/configuracion`.
+  - **0c.14.2 — Manejo resiliente de error de configuración de tenant (`AvisoConfiguracionTenant`):** Si `NEXT_PUBLIC_USE_REAL_CRM=true` pero falta `NEXT_PUBLIC_DEV_TENANT_ID` o la API responde 401 `SIN_SESION`, la pantalla ya no queda en blanco. Muestra una tarjeta clara indicando los 3 pasos de resolución: correr `pnpm db:seed` para obtener el UUID de André's Tours, configurarlo en `.env` y reiniciar dev server. Proporciona además la opción de "Ver con datos de demostración".
+  - **0c.14.3 — Error de hidratación del pipeline corregido:** Identificada disparidad de caracteres de espacio no separable (`\u202f` vs `\u00a0` vs `\u0020`) producida por implementaciones dispares de `Intl` entre Node (servidor) y navegador en `es-CO`. Función determinista `formatearFechaTarea` con fijación de zona a `America/Bogota` (R9) y normalización regex de espacios. Base temporal estable en `mock-pipeline.ts` redondeada a la hora para erradicar desfases de segundos. Fijado con pruebas unitarias dedicadas.
+  - **Honestidad en el panel de sugerencias (observación REVISION.md):** Reemplazada la denominación engañosa de "Copilot IA" por "Sugerencias Automáticas — Reglas Heurísticas" y "Sugerencias" en el botón de redactor, evitando prometer un modelo generativo que aún no está conectado.
+  - **Cinco compuertas en verde (`pnpm compuertas`):** build (22.1s), lint (9.9s), typecheck (4.9s), test (105.2s, 109 pruebas en web y 112 en api), format:check (3.6s).
+
+Arranqué las dos aplicaciones hoy y abrí `/pipeline`. Se ve como un producto terminado. Las
+tarjetas decían «Curazao All Inclusive» y «Circuito Europa 15 días» — datos inventados, no los
+que hay sembrados. El panel de red: **cero peticiones a la API**.
+
+No es culpa tuya: el interruptor `NEXT_PUBLIC_USE_REAL_CRM` viene apagado y hasta hoy no estaba
+ni documentado. Pero el efecto es grave: **el producto parece completo, no habla con nada, y
+nada en la pantalla lo dice.** Delante del piloto, eso es una bomba.
+
+**0c.14.1 — Un distintivo honesto, visible y discreto.** Cuando una pantalla esté pintando
+datos simulados, que lo diga: una etiqueta pequeña, en la cabecera, del tipo «datos de
+demostración». No un banner que estorbe; algo que un asesor no note y que a nadie en una demo se
+le pueda escapar. Y cuando esté contra la API real, **no aparece nada**: lo normal no se anuncia.
+
+**0c.14.2 — Que el interruptor encendido sin tenant no deje la pantalla rota.** Si
+`NEXT_PUBLIC_USE_REAL_CRM` es `true` pero falta `NEXT_PUBLIC_DEV_TENANT_ID`, la API responde 401
+y hoy la pantalla se queda en blanco sin explicar nada. Que diga qué falta y cómo se arregla —
+el valor lo imprime `pnpm db:seed` al terminar—. Un error de configuración tiene que leerse como
+un error de configuración, no como un producto roto.
+
+**0c.14.3 — El error de hidratación del pipeline.** Lo vi hoy en consola: el servidor y el
+navegador generan la misma fecha de forma distinta —«13 de oct, 09:09 p. m.» contra el mismo
+texto— y React regenera el árbol entero. Es formateo de fecha con `Intl` en servidor y cliente.
+Arréglalo donde esté y añade una prueba que lo fije.
+
+**Criterio de aceptación:** con el interruptor apagado se ve el distintivo; encendido y con
+tenant, desaparece y las tarjetas traen los datos de la base —los de André's Tours, no
+«Curazao»—; encendido y sin tenant, un mensaje que explica qué falta. Y cero errores de
+hidratación en consola al abrir `/pipeline`.
+
+**Cuéntalo en `ENTREGA.md` con la salida real.** Si no puedes encender el interruptor porque no
+puedes escribir `.env` —no puedes, lo bloquea un hook—, dilo y verifica lo que sí puedas.
 
 ---
 
