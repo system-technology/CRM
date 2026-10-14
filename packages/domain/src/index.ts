@@ -10,3 +10,4 @@
 export * from './errors.js';
 export * from './money.js';
 export * from './ocupacion.js';
+export * from './precio-de-venta.js';

@@ -286,3 +286,65 @@ nuevo sobre ella.
 | **Deriva entre `schema.prisma` y la base**: la unique parcial `(tenant_id, clave) WHERE clave IS NOT NULL` de `etapas_pipeline` existe en la base y Prisma no la modela. Hoy no duele porque la semilla ya no se apoya en el orden | `datos` | Es deriva de modelado, no de comportamiento. Pero conviene un barrido: lo que la base exige y el esquema no dice es un error que aparece en producción |
 | **Decisión de NO particionar `mensajes`** y su razón —particionar por fecha obligaría a meter la clave de partición en la unique de `wamid` y el mismo reintento de Meta entraría dos veces, rompiendo R5— vive hoy en un comentario de migración. Merece ADR | `arquitecto` | La decisión está tomada y argumentada; lo que falta es dónde vive. Cuando la rama entre |
 | Las cuatro ramas integradas esta noche **no traían entrada de bitácora**: la escribió el integrador al cerrar | `facilitador` | El hilo quedó cerrado igual, pero la bitácora es del que trabaja, no del que integra |
+
+---
+
+## 2026-10-13 — ADR-0009, revisión 2: paramétrico, y el margen deja de ser un número de cabeza
+
+El propietario instruyó dos cosas: **«que sea paramétrico, estas agencias de turismo no todas
+trabajan igual»** y **«tarifario neto del mayorista, margen el 20 %»**. La primera retiró la última
+premisa que quedaba en pie en el ADR: que había **un** arquetipo de agencia al que apostar.
+
+**Qué cambió en la decisión.** El encuadre anterior trataba «salida programada» y «fecha abierta»
+como dos modelos rivales —de ahí la opción B, y de ahí que la opción C (los dos conviviendo) se
+descartara por duplicar el cotizador—. No son dos modelos: son dos valores de un eje. **Una tarifa
+es un precio válido para una ventana de fechas de salida; una salida programada es la ventana de un
+solo día.** Con eso `Temporada` no se retira, se generaliza a `Vigencia`, y hay **una sola función
+de resolución** para las dos formas de vender. El ADR cambió de título en consecuencia.
+
+**Los tres ejes paramétricos, todos nivel 1 de ADR-0006:** cómo se publica la vigencia
+(`modoDeCatalogo`, que afecta a las altas y **nunca al cálculo**); cómo se forma la venta (§2); y
+qué pregunta el cotizador — que **no es un interruptor**: se deriva del tarifario, porque una
+bandera que puede contradecir al dato es un defecto esperando su turno. El ADR lleva además la
+lista explícita de lo que **nunca** se parametriza (R12).
+
+**La ambigüedad que vale dinero y que no se adivinó.** «Margen del 20 %» tiene dos lecturas:
+
+| Lectura | Cómo lo dice una agencia | Sobre un neto de $1.000.000 |
+|---|---|---|
+| `SOBRE_EL_NETO` | «le subo el 20 %» | venta **$1.200.000** |
+| `SOBRE_LA_VENTA` | «me deja el 20 %» | venta **$1.250.000** |
+
+Son **$50.000 por silla**; en un bus de cuarenta, dos millones por salida. El código toma
+`SOBRE_EL_NETO` por defecto **y lo declara como suposición nuestra, no como dato del propietario.**
+
+**Qué se construyó, y por qué es seguro construirlo con el ADR sin firmar.** Solo el eje 2.
+ADR-0006 ya puso el *markup* en el nivel 1 por tenant en v1, así que la política de precio no
+depende de la firma del ADR-0009: la agencia necesita declarar su margen cuelgue la tarifa de donde
+cuelgue. Los ejes 1 y 3 **no se tocaron**.
+
+- `packages/domain/src/precio-de-venta.ts` — `calcularVenta`, `derivarNeto`, `calcularMargen`,
+  `redondearA`, y `POLITICA_POR_DEFECTO`. Aritmética pura, sin reloj ni base de datos.
+- `packages/contracts/src/politica-de-precio.ts` — el espejo Zod, **sin repetir el «20»**: el valor
+  por defecto vive en un solo sitio, para que no haya dos fuentes del mismo número separándose.
+- 20 pruebas nuevas, 52 en el paquete `domain`, **280 en el monorepo**.
+
+**Lo que esto desbloquea para la demostración.** Seguimos sin la hoja de netos del mayorista: lo
+que tenemos son precios de venta al público. Con `derivarNeto` la semilla puede llevar un neto
+coherente con el margen declarado —`venta ÷ 1,20`— **marcado como derivado**. No es el dato del
+mayorista y no debe enseñarse como tal.
+
+**Las cinco compuertas, ejecutadas:** `lint`, `typecheck`, `test` (280), `build`, `format:check`.
+Todas en verde. El `typecheck` de la web dio primero un rojo **falso** por un `.next/types` viejo
+que apuntaba a una pantalla de la rama de Antigravity; es la tarea 13 de la cola, ya documentada,
+no un defecto nuevo.
+
+### Cola nueva — con dueño, no bloquea
+
+| Cola | Dueño | Por qué no bloquea |
+|---|---|---|
+| **¿El 20 % es sobre el neto o sobre la venta?** Es una palabra del propietario y un campo de una tabla; no se toca una línea de código | Usuario | El valor por defecto ya está puesto y probado. Pero **mientras no se confirme, toda cifra de margen que enseñemos lleva ese asterisco** |
+| La `PoliticaDePrecio` **no tiene todavía tabla ni RLS**: hoy vive como contrato y función pura | `datos` | Sin pantalla de configuración nadie la cambia. Cuando la tenga: `tenant_id` y política RLS como todas, ninguna excepción (R1) |
+| **R8 dice «centavos» en `CLAUDE.md`** y lo correcto es «unidad mínima de la moneda»: en COP esa unidad es **el peso** | `documentador` | El código ya lo hace bien y hay prueba que lo fija. Es la redacción la que miente, y ya causó un error de dos órdenes de magnitud que llegó hasta la pantalla |
+| La **resolución de tarifa con desempate** —lo más específico gana; empate en longitud es error de datos— es código que no existe y es donde se esconderán los defectos de precio | `backend`, `qa` | Espera la firma del ADR-0009. Cuando llegue: **pruebas de solape, no de camino feliz** |
+| Precio por **fecha de compra** (*early bird*): la ventana por fecha de salida no lo cubre | `arquitecto` | Nadie lo ha pedido todavía. Si llega, **pide ADR propio**, no un campo más en la condición de la tarifa |
