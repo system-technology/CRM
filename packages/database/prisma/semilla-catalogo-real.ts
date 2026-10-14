@@ -281,6 +281,40 @@ export async function sembrarCatalogoReal(
     }
   }
 
+  // --- Vigencias abiertas: la OTRA forma de vender -------------------------
+  //
+  // **Esto no sale de la hoja, y hay que decirlo.** La hoja publica fechas concretas. Pero una
+  // agencia real vende el mismo pasadia cualquier otro dia de la campania «bajo consulta de
+  // cupo», y ese es el segundo modo que el ADR-0009 existe para cubrir.
+  //
+  // Sin esto, la base NO contiene ni una sola vigencia abierta: el modelo diria que soporta las
+  // dos formas de vender y los datos solo demostrarian una. Ademas deja sin probar la regla de
+  // desempate —la salida publicada gana al rango que la contiene— y el filtro `publicada` del
+  // listado, que es lo que impide anunciar un rango de un mes como si fuera una fecha.
+  //
+  // Mismo precio que la fecha publicada: subirlo o bajarlo seria inventar una politica comercial
+  // que nadie nos ha dicho.
+  const CAMPANIA_DESDE = '2026-10-01';
+  const CAMPANIA_HASTA = '2026-10-31';
+
+  for (const grupo of grupos) {
+    if (grupo.tipo !== 'PASADIA') continue;
+    for (const producto of grupo.productos) {
+      const paqueteId = await asegurarPaquete(producto.nombre, 0);
+      const vigenciaId = await crearVigencia(paqueteId, CAMPANIA_DESDE, CAMPANIA_HASTA, false);
+      const yaTiene = await prisma.tarifa.count({ where: { tenantId, vigenciaId } });
+      if (yaTiene === 0) {
+        await crearTarifa(
+          vigenciaId,
+          'Adulto (bajo consulta)',
+          producto.precio_cop,
+          'POR_PERSONA',
+          1,
+        );
+      }
+    }
+  }
+
   return {
     paquetes: paquetesPorNombre.size,
     vigencias: await prisma.vigencia.count({ where: { tenantId } }),
