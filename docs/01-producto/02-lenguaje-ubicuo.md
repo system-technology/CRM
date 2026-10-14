@@ -120,7 +120,7 @@ Dos cosas que un modelo hecho desde fuera del sector siempre olvida:
 ## Nombres en la interfaz
 
 **Propuesta, no decisión cerrada.** Los nombres de módulo vienen del material de inspiración
-([`images/Brochure.jpeg`](../../images/Brochure.jpeg)) y son un buen punto de partida porque están
+([`brochure-de-inspiracion.jpeg`](../_assets/brochure-de-inspiracion.jpeg)) y son un buen punto de partida porque están
 en el lenguaje que una agencia ya usa. Se adoptan como propuesta de navegación hasta que el piloto
 diga otra cosa. El código, en cualquier caso, sigue usando los nombres de dominio en inglés.
 
