@@ -32,7 +32,7 @@ const COMPUERTAS = [
   { nombre: 'build', orden: ['turbo', 'run', 'build'], omitirEnRapido: true },
   { nombre: 'lint', orden: ['turbo', 'run', 'lint'] },
   { nombre: 'typecheck', orden: ['turbo', 'run', 'typecheck'] },
-  { nombre: 'test', orden: ['turbo', 'run', 'test'] },
+  { nombre: 'test', orden: ['turbo', 'run', 'test', '--concurrency=1'] },
   {
     nombre: 'format:check',
     orden: ['prettier', '--check', '**/*.{ts,tsx,js,mjs,jsx,json,yml,yaml}'],

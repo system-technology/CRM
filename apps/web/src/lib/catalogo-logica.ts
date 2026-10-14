@@ -5,6 +5,7 @@ import type {
   Precio,
   Temporada,
   TipoPasajero,
+  SalidaPublicada,
 } from '@viajapro/contracts';
 import type { PaqueteConDetalle } from './mock-catalogo';
 
@@ -57,7 +58,6 @@ export function verificarVigenciaTarifario(
 
   let proximoVencimiento: string | null = null;
   if (estaVigente) {
-    // La fecha de vencimiento más próxima de las vigentes
     const fechas = temporadasVigentes.map((t) => t.hasta).sort();
     proximoVencimiento = fechas[0] ?? null;
   }
@@ -70,7 +70,7 @@ export function verificarVigenciaTarifario(
 }
 
 /**
- * Filtra el catálogo de paquetes según los criterios provistos.
+ * Filtra el catálogo de paquetes según los criterios provistos (modo demo).
  */
 export function filtrarPaquetes(
   paquetes: PaqueteConDetalle[],
@@ -80,7 +80,6 @@ export function filtrarPaquetes(
   const fechaRef = filtro.fechaReferencia ?? new Date().toISOString().slice(0, 10);
 
   return paquetes.filter((p) => {
-    // 1. Filtro de búsqueda
     if (busqueda) {
       const matchNombre = p.nombre.toLowerCase().includes(busqueda);
       const matchDestino = p.destino.toLowerCase().includes(busqueda);
@@ -92,21 +91,18 @@ export function filtrarPaquetes(
       }
     }
 
-    // 2. Filtro de plan de alimentación
     if (filtro.planAlimentacion && filtro.planAlimentacion !== 'TODOS') {
       if (p.planAlimentacion !== filtro.planAlimentacion) {
         return false;
       }
     }
 
-    // 3. Filtro de destino exacto
     if (filtro.destino && filtro.destino !== 'TODOS') {
       if (p.destino.toLowerCase() !== filtro.destino.toLowerCase()) {
         return false;
       }
     }
 
-    // 4. Filtro solo vigentes
     if (filtro.soloVigentes) {
       const vigencia = verificarVigenciaTarifario(p.temporadas, fechaRef);
       if (!vigencia.estaVigente || !p.activo) {
@@ -137,4 +133,57 @@ export function agruparPreciosPorAcomodacion(
   }
 
   return matriz;
+}
+
+/**
+ * Formatea el texto de noches de una salida de catálogo.
+ * Si noches es 0, es un pasadía / tour de 1 día.
+ */
+export function formatearNochesLabel(noches: number): string {
+  if (noches === 0) return 'Pasadía';
+  if (noches === 1) return '1 noche';
+  return `${noches} noches`;
+}
+
+/**
+ * Extrae lista única de destinos de las salidas reales para el selector de filtros.
+ */
+export function extraerDestinosDeSalidas(salidas: SalidaPublicada[]): string[] {
+  const destinos = new Set<string>();
+  for (const s of salidas) {
+    if (s.destino && s.destino.trim()) {
+      destinos.add(s.destino.trim());
+    }
+  }
+  return Array.from(destinos).sort();
+}
+
+export interface FiltroSalidasPublicadas {
+  busqueda?: string;
+  destino?: string;
+}
+
+/**
+ * Filtra salidas publicadas por texto de búsqueda y destino.
+ */
+export function filtrarSalidasPublicadas(
+  salidas: SalidaPublicada[],
+  filtro: FiltroSalidasPublicadas,
+): SalidaPublicada[] {
+  const b = filtro.busqueda?.trim().toLowerCase() ?? '';
+  const d = filtro.destino?.trim().toLowerCase() ?? '';
+
+  return salidas.filter((s) => {
+    if (d && d !== 'todos' && s.destino.toLowerCase() !== d) {
+      return false;
+    }
+    if (b) {
+      const matchNombre = s.paqueteNombre.toLowerCase().includes(b);
+      const matchDestino = s.destino.toLowerCase().includes(b);
+      if (!matchNombre && !matchDestino) {
+        return false;
+      }
+    }
+    return true;
+  });
 }

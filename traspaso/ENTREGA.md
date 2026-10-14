@@ -1,60 +1,66 @@
-# ENTREGA.md — Tarea 0c.15: La política de precio de la agencia, en /configuracion
+# ENTREGA.md — Tarea 0c.16: El catálogo REAL en pantalla
 
 - **Rama:** `feat/bandeja-web`
 - **Fecha:** 2026-10-13
-- **Tarea completada:** `0c.15. La política de precio de la agencia, en /configuracion` (ADR-0009)
+- **Tarea completada:** `0c.16. El catálogo REAL en pantalla` (ADR-0009)
 
 ---
 
 ## 1. Qué construí
 
-1. **Sección y Bloque «Cómo se forma el precio» en `/configuracion` (`apps/web/src/components/configuracion/bloque-politica-precio.tsx` - 0c.15.1):**
-   - Panel dedicado en la pestaña «Formación del Precio» (`precios`) y en la vista general de configuración con etiqueta `ADR-0009`.
-   - Incluye los 4 campos del contrato `PoliticaDePrecio` de `@viajapro/contracts`:
-     - `porcentaje` (con slider reactivo de 1 % a 100 % y presets rápidos: 15 %, 20 %, 25 %, 30 %).
-     - `base`: Selector interactivo entre `SOBRE_EL_NETO` («le subo el X %») y `SOBRE_LA_VENTA` («me deja el X %»).
-     - `origenDeLaVenta`: `DIRECTA` vs `CANAL_EXTERNO`.
-     - `redondeoVenta`: `SIN_REDONDEO`, `CIEN_COP`, `MIL_COP`, `CINCO_MIL_COP`.
-     - `admiteMargenPorTarifa`: Toggle interactivo que indica si las tarifas pueden sobreescribir el margen global.
+1. **Cliente de API para Catálogo Real y Cotizaciones (`apps/web/src/lib/catalogo-api.ts`):**
+   - Tipos 100 % inferidos de los contratos Zod de `@viajapro/contracts` (R3): `SalidaPublicada`, `CotizarSalida`, `CotizacionDeSalida`.
+   - Conexión a `GET /api/v1/catalogo/salidas` con soporte para filtros (`desde`, `hasta`, `paqueteId`, `limite`).
+   - Conexión a `POST /api/v1/catalogo/cotizar` con payload validado.
+   - Manejo tipado de errores con la clase `CatalogoApiError` para capturar códigos de dominio (`SIN_VIGENCIA`, `VIGENCIAS_EMPATADAS`, `PAQUETE_NO_ENCONTRADO`, `SIN_SESION`).
 
-2. **Ejemplo vivo interactivo con impacto económico real (0c.15.2):**
-   - Tarjeta de cálculo en tiempo real con un neto base de prueba de **$1.000.000 COP** (editable).
-   - Al alternar `base` entre `SOBRE_EL_NETO` y `SOBRE_LA_VENTA` con el 20 %:
-     - `SOBRE_EL_NETO` muestra venta de **$1.200.000 COP**, margen de **$200.000 COP** (20 % sobre neto, 16.7 % sobre venta).
-     - `SOBRE_LA_VENTA` muestra venta de **$1.250.000 COP**, margen de **$250.000 COP** (25 % sobre neto, 20.0 % sobre venta).
-   - Explica de forma visual y pedagógica la diferencia de **$50.000 COP por silla** y el impacto de **$2.000.000 COP en una salida de bus de 40 pasajeros**.
-   - Muestra la fórmula matemática dinámica según la base seleccionada (`neto × (1 + p)` vs `neto / (1 − p)`).
+2. **Catálogo de Salidas Publicadas (`apps/web/src/app/catalogo/page.tsx` y `tarjeta-salida-publicada.tsx`):**
+   - Listado de salidas reales de André's Tours sembradas en Neon (ej. «Parque del café», «Piangüita + Ballenas», «Puebleando en el Quindío», «Parque Consotá»).
+   - Visualización de fecha amigable, noches («Pasadía», «1 noche», «2 noches»), número de tarifas asociadas y precio "Desde $XXX.XXX COP".
+   - Filtros de búsqueda en tiempo real por texto (nombre/destino) y selector de destinos únicos derivados.
+   - Enlace directo a `/cotizador` transmitiendo `paquete` y `fecha`.
+   - Integración con el interruptor `NEXT_PUBLIC_USE_REAL_CRM`: si está apagado, mantiene fallback a datos de demostración con distintivo visible; si falta tenant, despliega `AvisoConfiguracionTenant`.
 
-3. **Aritmética estricta desde el dominio (0c.15.3 - Reglas R3 y R8):**
-   - Toda la aritmética de formación de precio se delegó a `calcularVenta` y `calcularMargen` y al objeto de valor `Money` de `@viajapro/domain`.
-   - Cero reimplementación de fórmulas en el frontend. Enteros en centavos respetados en todo el flujo.
-   - Lógica desacoplada en `apps/web/src/lib/politica-precio-logica.ts` con tipado Zod estricto y funciones puras probadas.
+3. **Cotizador de Salidas Armadas (`apps/web/src/app/cotizador/page.tsx` y `desglose-cotizacion-salida.tsx`):**
+   - **Total protagonista:** Importe total visible en tipografía destacada con formato de moneda en pesos colombianos (R8). Botón de copiar cotización formateada para WhatsApp en un clic.
+   - **Líneas desglosadas por pasajero:** Renderiza cada línea individual (ej. 2 Adultos a $410.000 + 1 Niño a $250.000 = $1.070.000 COP en Puebleando en el Quindío 2026-10-03).
+   - **Tarifas alternativas de grupo:** Panel informativo de tarifas que reemplazarían al armado (ej. Promo pareja), marcando `Más económica` según el contrato (`masBarata`). No se aplican solas para no sobrepasar condiciones del mayorista.
+   - **Tarifas no aplicables con motivo:** Si una tarifa no aplica (ej. Promo pareja para 3 adultos en Parque Consotá), muestra explícitamente el motivo: «Aplica a grupos de 2; sobra 1».
+   - **Respeto a `pideComposicion`:** Si el tarifario devuelve `pideComposicion: false`, la interfaz oculta/desactiva los selectores de desglose por edad.
+   - **Aviso «Bajo consulta de cupo»:** Si `deSalidaProgramada === false`, destaca advertencia ámbar indicando que la cotización procede de una vigencia abierta y no de una fecha garantizada.
+   - **Errores de dominio 409 honestos:** Intercepta `SIN_VIGENCIA` y `VIGENCIAS_EMPATADAS` con explicaciones claras sin mensajes genéricos.
 
-4. **Honestidad y datos simulados (0c.15.4):**
-   - Botón de guardado deshabilitado con mensaje explícito: *«Guardado deshabilitado: La API todavía no expone la ruta de persistencia para la política de precio (ADR-0009).»*
-   - Distintivo discreto `DistintivoDatosDemo` visible junto a la configuración predeterminada.
+4. **Lógica pura y propuesta WhatsApp (`catalogo-logica.ts` y `cotizador-logica.ts`):**
+   - `formatearNochesLabel`, `extraerDestinosDeSalidas`, `filtrarSalidasPublicadas`.
+   - `generarTextoPropuestaWhatsAppSalida`: arma la propuesta en texto markdown para WhatsApp con total protagonista, desglose por pasajero, nota de estado de cupo y alternativas, omitiendo estrictamente costos netos o márgenes internos (R10).
+   - `interpretarErrorCotizacion`: clasifica los errores en problemas de búsqueda vs errores de datos de la agencia.
 
-5. **Responsividad móvil:**
-   - Controles accesibles a 375 px de ancho con targets táctiles ≥ 44 px, inputs legibles y rejilla responsive.
+5. **Aislamiento y Concurrencia en Compuertas:**
+   - Detectada y resuelta contienda de concurrencia en Neon entre `api:test` y `database:test` configurando `--concurrency=1` en `scripts/compuertas.mjs`.
+   - Terminados procesos observadores en segundo plano que retenían bloqueos transaccionales en Neon.
 
 ---
 
-## 2. Pruebas y verificación
+## 2. Pruebas y Verificación
 
-- **Pruebas unitarias de lógica de presentación (`apps/web/src/lib/politica-precio-logica.spec.ts`):**
-  - 5 pruebas unitarias verificando el recálculo interactivo:
-    1. Venta a $1.200.000 COP con `SOBRE_EL_NETO` al 20 %.
-    2. Venta a $1.250.000 COP con `SOBRE_LA_VENTA` al 20 %.
-    3. Diferencia exacta de $50.000 COP por pasajero y $2.000.000 COP en un bus de 40 pasajeros.
-    4. Aplicación de reglas de redondeo (`MIL_COP`, etc.).
-    5. Formateo amigable en pesos colombianos ($ COP).
-  - Todas las 114 pruebas de `@viajapro/web` en verde (16 archivos de prueba).
+- **Nuevas pruebas unitarias en Web:**
+  - `apps/web/src/lib/catalogo-logica.spec.ts`: 13 pruebas (incluyendo formateo de noches, extracción de destinos y filtrado de salidas publicadas).
+  - `apps/web/src/lib/cotizador-logica.spec.ts`: 9 pruebas (incluyendo validación con Zod de `CotizacionDeSalida`, formato de texto WhatsApp para salidas armadas, protección R10 de márgenes e interpretación de errores 409).
+- **Total pruebas en `apps/web`:** 123 pasadas en 16 archivos de pruebas.
+- **Total pruebas en `apps/api`:** 208 pasadas en 14 archivos de pruebas.
+- **Total pruebas en `packages/database`:** 39 pasadas (suite completa de aislamiento).
 
-- **Cinco compuertas de verificación (`pnpm compuertas`):**
-  - `build`: ✓ verde (todos los paquetes compilaron a dist, 13 páginas estáticas de Next.js compiladas).
-  - `lint`: ✓ verde (0 errores de ESLint).
-  - `typecheck`: ✓ verde (TypeScript estricto en todos los workspaces).
-  - `test`: ✓ verde (contracts, domain [52 tests], web [114 tests], api [112 tests], database [39 tests de aislamiento]).
-  - `format:check`: ✓ verde (Prettier limpio).
+---
 
-Las cinco compuertas ejecutadas y pasadas en verde.
+## 3. Estado de las Cinco Compuertas (`node scripts/compuertas.mjs`)
+
+```
+══════════════════════════════════════════════════════════════════════
+  ✓ build          verde     0.5s
+  ✓ lint           verde     0.4s
+  ✓ typecheck      verde     0.5s
+  ✓ test           verde     126.4s
+  ✓ format:check   verde     3.0s
+
+  Las cinco en verde. Ejecutadas, no supuestas.
+```

@@ -1,7 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { CotizacionCalculada as EsquemaCotizacion } from '@viajapro/contracts';
+import {
+  CotizacionCalculada as EsquemaCotizacion,
+  CotizacionDeSalida as EsquemaCotizacionDeSalida,
+  type CotizacionDeSalida,
+} from '@viajapro/contracts';
 import { MOCK_PAQUETES_CATALOGO } from './mock-catalogo';
-import { calcularCotizacionMock, generarTextoPropuestaWhatsApp } from './cotizador-logica';
+import {
+  calcularCotizacionMock,
+  generarTextoPropuestaWhatsApp,
+  generarTextoPropuestaWhatsAppSalida,
+  interpretarErrorCotizacion,
+} from './cotizador-logica';
 
 describe('Pruebas del Módulo de Cotización y Generación de Propuestas', () => {
   const paqueteSanAndres = MOCK_PAQUETES_CATALOGO[0]!;
@@ -20,13 +29,12 @@ describe('Pruebas del Módulo de Cotización y Generación de Propuestas', () =>
     const validacion = EsquemaCotizacion.safeParse(cotizacion);
     expect(validacion.success).toBe(true);
     expect(cotizacion.destino).toBe('San Andrés');
-    expect(cotizacion.lineas.length).toBe(2); // Adultos y Niños
+    expect(cotizacion.lineas.length).toBe(2);
     expect(cotizacion.totalVenta.moneda).toBe('COP');
     expect(BigInt(cotizacion.totalVenta.unidades)).toBeGreaterThan(0n);
   });
 
   it('2. calcularCotizacionMock detecta plazas sin usar cuando la acomodación supera los ocupantes', () => {
-    // 3 adultos en acomodación DOBLE requieren 2 habitaciones dobles = 4 plazas. 1 plaza sin usar.
     const cotizacion = calcularCotizacionMock(
       {
         paqueteId: paqueteSanAndres.id,
@@ -59,7 +67,7 @@ describe('Pruebas del Módulo de Cotización y Generación de Propuestas', () =>
         fechaSalida: '2027-03-15',
         pasajeros: { adultos: 2, ninos: 0, infantes: 0 },
         acomodacion: 'DOBLE',
-        markupExtra: 10, // 10% adicional
+        markupExtra: 10,
       },
       paqueteSanAndres,
     );
@@ -112,5 +120,103 @@ describe('Pruebas del Módulo de Cotización y Generación de Propuestas', () =>
     expect(textoAuditoria).toContain('Costo Neto:');
     expect(textoAuditoria).toContain('Margen:');
     expect(textoAuditoria).toContain('[CONFIDENCIAL AGENCIA]');
+  });
+
+  // =============================================================================
+  // Pruebas 0c.16: Cotización Armada de Salidas Reales (ADR-0009)
+  // =============================================================================
+
+  const cotizacionArmadaEjemplo: CotizacionDeSalida = {
+    paqueteId: '01a1387b-008e-7c51-aaf6-6a1f3e895731',
+    paqueteNombre: 'Puebleando en el Quindío',
+    destino: 'Eje Cafetero',
+    noches: 2,
+    fecha: '2026-10-03',
+    vigenciaId: '01a1387b-008e-7c51-aaf6-6a1f3e895732',
+    vigenciaDesde: '2026-10-03',
+    vigenciaHasta: '2026-10-03',
+    deSalidaProgramada: true,
+    pideComposicion: true,
+    pasajeros: 3,
+    adultos: 2,
+    ninos: 1,
+    infantes: 0,
+    lineas: [
+      {
+        tarifaId: '01a1387b-008e-7c51-aaf6-6a1f3e895733',
+        nombre: 'Adulto',
+        unidad: 'POR_PERSONA',
+        cubrePasajeros: 1,
+        precioUnitario: { unidades: '410000', moneda: 'COP' },
+        veces: 2,
+        total: { unidades: '820000', moneda: 'COP' },
+        margen: { unidades: '60000', moneda: 'COP' },
+        margenPorcentaje: 14.6,
+        masBarata: false,
+      },
+      {
+        tarifaId: '01a1387b-008e-7c51-aaf6-6a1f3e895734',
+        nombre: 'Niño',
+        unidad: 'POR_PERSONA',
+        cubrePasajeros: 1,
+        precioUnitario: { unidades: '250000', moneda: 'COP' },
+        veces: 1,
+        total: { unidades: '250000', moneda: 'COP' },
+        margen: { unidades: '30000', moneda: 'COP' },
+        margenPorcentaje: 12.0,
+        masBarata: false,
+      },
+    ],
+    total: { unidades: '1070000', moneda: 'COP' },
+    alternativas: [],
+    noAplicables: [],
+    suplementos: [],
+  };
+
+  it('6. cotizacionArmadaEjemplo valida con el contrato Zod oficial CotizacionDeSalida (R3)', () => {
+    const res = EsquemaCotizacionDeSalida.safeParse(cotizacionArmadaEjemplo);
+    expect(res.success).toBe(true);
+  });
+
+  it('7. generarTextoPropuestaWhatsAppSalida formatea desglose armado y total protagonista', () => {
+    const texto = generarTextoPropuestaWhatsAppSalida(cotizacionArmadaEjemplo, {
+      contactoNombre: 'Don Andrés',
+    });
+
+    expect(texto).toContain('¡Hola, Don Andrés!');
+    expect(texto).toContain('PUEBLEANDO EN EL QUINDÍO');
+    expect(texto).toContain('Salida confirmada');
+    expect(texto).toContain('2026-10-03');
+    expect(texto).toContain('3 persona(s)');
+    expect(texto).toContain('2 adulto(s), 1 niño(s)');
+    expect(texto).toContain('Adulto 2x');
+    expect(texto).toContain('Niño');
+    expect(texto).toContain('TOTAL A PAGAR:');
+    expect(texto).toContain('1.070.000');
+    // R10: Sin costo neto ni margen
+    expect(texto).not.toContain('margen');
+    expect(texto).not.toContain('neto');
+  });
+
+  it('8. generarTextoPropuestaWhatsAppSalida avisa si es vigencia abierta (deSalidaProgramada=false)', () => {
+    const cotizacionAbierta: CotizacionDeSalida = {
+      ...cotizacionArmadaEjemplo,
+      deSalidaProgramada: false,
+    };
+
+    const texto = generarTextoPropuestaWhatsAppSalida(cotizacionAbierta);
+    expect(texto).toContain('Bajo consulta de cupo - Vigencia abierta');
+  });
+
+  it('9. interpretarErrorCotizacion maneja códigos de dominio SIN_VIGENCIA y VIGENCIAS_EMPATADAS (0c.16)', () => {
+    const errSinVigencia = interpretarErrorCotizacion({ code: 'SIN_VIGENCIA' });
+    expect(errSinVigencia.codigo).toBe('SIN_VIGENCIA');
+    expect(errSinVigencia.mensaje).toContain('No hay precio ni salida disponible');
+    expect(errSinVigencia.esErrorAgencia).toBe(false);
+
+    const errEmpatadas = interpretarErrorCotizacion({ code: 'VIGENCIAS_EMPATADAS' });
+    expect(errEmpatadas.codigo).toBe('VIGENCIAS_EMPATADAS');
+    expect(errEmpatadas.mensaje).toContain('dos ventanas de vigencia solapadas');
+    expect(errEmpatadas.esErrorAgencia).toBe(true);
   });
 });

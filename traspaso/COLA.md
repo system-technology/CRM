@@ -71,7 +71,20 @@ Funciona a 375 px.
 
 ---
 
-## [ ] 0c.16. El catálogo REAL en pantalla
+## [x] 0c.16. El catálogo REAL en pantalla
+
+- **Completado y verificado:**
+  - **0c.16.1 — `/catalogo` contra la API real (`listarSalidasApi`):** Conexión a `GET /api/v1/catalogo/salidas`. Lista las salidas reales sembradas de André's Tours («Parque del café», «Piangüita + Ballenas», «Puebleando en el Quindío», etc.) con fecha en formato amigable, etiqueta de noches («Pasadía», «1 noche», «2 noches»), contador de tarifas y precio "Desde $XXX.XXX". Búsqueda y filtrado por destino único extraído de las salidas reales. Enlace directo al cotizador con parámetros pre-cargados. Si el interruptor `NEXT_PUBLIC_USE_REAL_CRM` está apagado, mantiene fallback honesto con distintivo de datos de demostración; si falta tenant, enseña la guía `AvisoConfiguracionTenant`.
+  - **0c.16.2 — Cotización ARMADA como protagonista (`POST /api/v1/catalogo/cotizar`):**
+    - **Total protagonista:** El importe total en COP a gran escala, listo para transferir o copiar a WhatsApp.
+    - **Líneas desglosadas por tipo de pasajero:** Muestra cada línea con multiplicador y precio unitario (ej. Puebleando en el Quindío 2026-10-03 con 2 adultos + 1 niño = 2 adultos a $410.000 c/u + 1 niño a $250.000 = **$1.070.000 COP**).
+    - **Tarifas alternativas de grupo:** Muestra tarifas alternativas (ej. Promo pareja) con badge `Más económica` sin aplicarlas a ciegas.
+    - **Tarifas no aplicables con motivo honesto:** Si una tarifa no aplica para el grupo (ej. Parque Consotá 2026-10-11 con 3 adultos), explica el motivo («Promo pareja: Aplica a grupos de 2; sobra 1») evitando cálculos por fuera en calculadora manual.
+    - **Gobierno por tarifario (`pideComposicion`):** Si `pideComposicion === false` (ej. pasadía sin tarifas diferenciadas por edad), la pantalla bloquea o simplifica las entradas de menores/infantes.
+  - **0c.16.3 — Tratamiento transparente de errores 409 (`interpretarErrorCotizacion`):** Diferencia `SIN_VIGENCIA` («No hay precio ni salida disponible para esa fecha») de `VIGENCIAS_EMPATADAS` («El tarifario tiene dos ventanas de vigencia solapadas (error de datos de la agencia)»).
+  - **0c.16.4 — «Bajo consulta de cupo»:** Si `deSalidaProgramada === false`, avisa visiblemente en la tarjeta de cotización y en la propuesta comercial de WhatsApp que la cotización deriva de una vigencia abierta y no de una salida garantizada.
+  - **0c.16.5 — Responsivo y Accesibilidad:** Adaptado a anchos desde 375 px, objetivos táctiles >= 44 px, soporte modo claro/oscuro.
+  - **Cinco compuertas en verde (`pnpm compuertas`):** build (0.5s), lint (0.4s), typecheck (0.5s), test (126.4s, 123 pruebas en web, 208 en api, 39 en database), format:check (3.0s).
 
 **Esta ya no depende de mí: las rutas existen, están probadas y responden.** Hoy
 `/catalogo` y `/cotizador` pintan datos simulados; en la base hay **34 paquetes, 98 vigencias y

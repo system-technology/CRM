@@ -4,11 +4,16 @@ import {
   Paquete as EsquemaPaquete,
   Precio as EsquemaPrecio,
   Temporada as EsquemaTemporada,
+  SalidaPublicada as EsquemaSalidaPublicada,
+  type SalidaPublicada,
 } from '@viajapro/contracts';
 import { MOCK_MAYORISTAS, MOCK_PAQUETES_CATALOGO } from './mock-catalogo';
 import {
   agruparPreciosPorAcomodacion,
+  extraerDestinosDeSalidas,
   filtrarPaquetes,
+  filtrarSalidasPublicadas,
+  formatearNochesLabel,
   obtenerPrecioDesde,
   verificarVigenciaTarifario,
 } from './catalogo-logica';
@@ -71,7 +76,6 @@ describe('Pruebas del Catálogo de Paquetes y Tarifarios de Mayoristas', () => {
     const precioDesde = obtenerPrecioDesde(paqueteSanAndres);
 
     expect(precioDesde).not.toBeNull();
-    // En San Andrés el menor ADT es Cuádruple $1.340.000 COP
     expect(precioDesde?.unidades).toBe('1340000');
     expect(precioDesde?.moneda).toBe('COP');
   });
@@ -95,14 +99,14 @@ describe('Pruebas del Catálogo de Paquetes y Tarifarios de Mayoristas', () => {
     expect(resPuntaCana[0]!.destino).toBe('Punta Cana');
 
     const resMayorista = filtrarPaquetes(MOCK_PAQUETES_CATALOGO, { busqueda: 'Mayorista Caribe' });
-    expect(resMayorista.length).toBe(2); // San Andrés y Punta Cana
+    expect(resMayorista.length).toBe(2);
   });
 
   it('7. filtrarPaquetes filtra por plan de alimentación y solo vigentes', () => {
     const soloTodoIncluido = filtrarPaquetes(MOCK_PAQUETES_CATALOGO, {
       planAlimentacion: 'TODO_INCLUIDO',
     });
-    expect(soloTodoIncluido.length).toBe(3); // San Andrés, Punta Cana, Cancún
+    expect(soloTodoIncluido.length).toBe(3);
 
     const soloVigentes = filtrarPaquetes(MOCK_PAQUETES_CATALOGO, {
       soloVigentes: true,
@@ -121,5 +125,83 @@ describe('Pruebas del Catálogo de Paquetes y Tarifarios de Mayoristas', () => {
     expect(matriz.DOBLE.INF?.venta.unidades).toBe('220000');
     expect(matriz.SENCILLA.ADT?.venta.unidades).toBe('2290000');
     expect(matriz.SENCILLA.CHD).toBeUndefined();
+  });
+
+  // =============================================================================
+  // Pruebas 0c.16: Catálogo Real de Salidas Publicadas (ADR-0009)
+  // =============================================================================
+
+  const salidasEjemplo: SalidaPublicada[] = [
+    {
+      vigenciaId: '01a1387b-008e-7c51-aaf6-6a1f3e895732',
+      paqueteId: '01a1387b-008e-7c51-aaf6-6a1f3e895731',
+      paqueteNombre: 'Puebleando en el Quindío',
+      destino: 'Eje Cafetero',
+      noches: 2,
+      fecha: '2026-10-03',
+      cupoTotal: 20,
+      desde: { unidades: '410000', moneda: 'COP' },
+      tarifas: 2,
+    },
+    {
+      vigenciaId: '01a1387a-cd9b-7313-9191-9e5e34f18768',
+      paqueteId: '01a1387a-cd9b-7313-9191-9e5e34f18767',
+      paqueteNombre: 'Parque Consotá',
+      destino: 'Pereira',
+      noches: 0,
+      fecha: '2026-10-11',
+      cupoTotal: null,
+      desde: { unidades: '189000', moneda: 'COP' },
+      tarifas: 3,
+    },
+    {
+      vigenciaId: '01a1387a-cd9b-7313-9191-9e5e34f18769',
+      paqueteId: '01a1387a-cd9b-7313-9191-9e5e34f18770',
+      paqueteNombre: 'Piangüita + Ballenas',
+      destino: 'Pacífico',
+      noches: 1,
+      fecha: '2026-10-17',
+      cupoTotal: 15,
+      desde: { unidades: '650000', moneda: 'COP' },
+      tarifas: 1,
+    },
+  ];
+
+  it('9. Todas las salidas ejemplo cumplen el contrato Zod oficial SalidaPublicada (R3)', () => {
+    for (const s of salidasEjemplo) {
+      const res = EsquemaSalidaPublicada.safeParse(s);
+      expect(res.success).toBe(true);
+    }
+  });
+
+  it('10. formatearNochesLabel devuelve "Pasadía" para 0 noches y plural para más', () => {
+    expect(formatearNochesLabel(0)).toBe('Pasadía');
+    expect(formatearNochesLabel(1)).toBe('1 noche');
+    expect(formatearNochesLabel(2)).toBe('2 noches');
+    expect(formatearNochesLabel(5)).toBe('5 noches');
+  });
+
+  it('11. extraerDestinosDeSalidas extrae destinos únicos y ordenados', () => {
+    const destinos = extraerDestinosDeSalidas(salidasEjemplo);
+    expect(destinos).toEqual(['Eje Cafetero', 'Pacífico', 'Pereira']);
+  });
+
+  it('12. filtrarSalidasPublicadas filtra por destino exacto o todos', () => {
+    const filtroPereira = filtrarSalidasPublicadas(salidasEjemplo, { destino: 'Pereira' });
+    expect(filtroPereira.length).toBe(1);
+    expect(filtroPereira[0]!.paqueteNombre).toBe('Parque Consotá');
+
+    const filtroTodos = filtrarSalidasPublicadas(salidasEjemplo, { destino: 'todos' });
+    expect(filtroTodos.length).toBe(3);
+  });
+
+  it('13. filtrarSalidasPublicadas filtra por texto en nombre o destino', () => {
+    const porNombre = filtrarSalidasPublicadas(salidasEjemplo, { busqueda: 'ballenas' });
+    expect(porNombre.length).toBe(1);
+    expect(porNombre[0]!.destino).toBe('Pacífico');
+
+    const porDestino = filtrarSalidasPublicadas(salidasEjemplo, { busqueda: 'cafetero' });
+    expect(porDestino.length).toBe(1);
+    expect(porDestino[0]!.paqueteNombre).toBe('Puebleando en el Quindío');
   });
 });

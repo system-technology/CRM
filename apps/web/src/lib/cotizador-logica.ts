@@ -1,6 +1,7 @@
 import type {
   Acomodacion,
   CotizacionCalculada,
+  CotizacionDeSalida,
   CotizarPaquete,
   Habitacion,
   LineaCotizacion,
@@ -17,7 +18,7 @@ const CAPACIDAD_ACOMODACION: Record<Acomodacion, number> = {
 };
 
 /**
- * Genera el texto formateado para enviar la propuesta comercial por WhatsApp.
+ * Genera el texto formateado para enviar la propuesta comercial por WhatsApp (Cotización Clásica).
  * NUNCA incluye tarifas netas ni márgenes internos de la agencia (R3 y R10).
  */
 export function generarTextoPropuestaWhatsApp(
@@ -62,22 +63,123 @@ ${lineasPasajeros}
   return texto;
 }
 
+// =============================================================================
+// Lógica para Cotización Armada de Salidas Reales (ADR-0009 - 0c.16)
+// =============================================================================
+
+/**
+ * Genera el texto para WhatsApp de una cotización armada de salida (0c.16.2).
+ * Incluye desglose por tipo de pasajero, total protagonista, aviso si es vigencia abierta
+ * y alternativas de grupo si existen. Cero filtración de datos de margen/neto (R3, R10).
+ */
+export function generarTextoPropuestaWhatsAppSalida(
+  cotizacion: CotizacionDeSalida,
+  opciones?: { contactoNombre?: string },
+): string {
+  const saludo = opciones?.contactoNombre
+    ? `¡Hola, ${opciones.contactoNombre}! Te comparto los detalles de tu cotización:`
+    : '¡Hola! Te comparto los detalles de tu cotización:';
+
+  const estadoCupo = cotizacion.deSalidaProgramada
+    ? '🗓️ *Salida confirmada:* ' + cotizacion.fecha
+    : '🗓️ *Fecha:* ' + cotizacion.fecha + ' _(Bajo consulta de cupo - Vigencia abierta)_';
+
+  const lineasDesglose = cotizacion.lineas
+    .map((l) => {
+      const vecesTxt = l.veces > 1 ? ` ${l.veces}x (${formatearDinero(l.precioUnitario)} c/u)` : '';
+      return `  • ${l.nombre}${vecesTxt} → *${formatearDinero(l.total)}*`;
+    })
+    .join('\n');
+
+  let texto = `${saludo}
+
+🌴 *${cotizacion.paqueteNombre.toUpperCase()}*
+📍 *Destino:* ${cotizacion.destino}
+${estadoCupo}
+👥 *Pasajeros:* ${cotizacion.pasajeros} persona(s) (${cotizacion.adultos} adulto(s)${cotizacion.ninos > 0 ? `, ${cotizacion.ninos} niño(s)` : ''}${cotizacion.infantes > 0 ? `, ${cotizacion.infantes} infante(s)` : ''})
+
+📝 *Desglose de la cotización:*
+${lineasDesglose}
+
+💰 *TOTAL A PAGAR:* *${formatearDinero(cotizacion.total)}*`;
+
+  if (cotizacion.alternativas.length > 0) {
+    const altText = cotizacion.alternativas
+      .map(
+        (a) =>
+          `  • ${a.nombre}: ${formatearDinero(a.total)} (${a.unidad === 'POR_GRUPO' ? 'Tarifa grupal' : 'Por persona'})`,
+      )
+      .join('\n');
+    texto += `\n\n🏷️ *Tarifas alternativas disponibles:*\n${altText}\n_(Sujetas a condiciones comerciales de la agencia)_`;
+  }
+
+  texto += `\n\n_¿Deseas apartar tus cupos o necesitas información adicional? Quedo muy atento a tu respuesta._`;
+
+  return texto;
+}
+
+/**
+ * Traduce códigos de error de dominio de cotización a mensajes amigables y honestos (0c.16.3).
+ */
+export function interpretarErrorCotizacion(error: unknown): {
+  codigo: string;
+  mensaje: string;
+  esErrorAgencia: boolean;
+} {
+  if (error && typeof error === 'object' && 'code' in error) {
+    const code = String(error.code);
+    if (code === 'SIN_VIGENCIA') {
+      return {
+        codigo: 'SIN_VIGENCIA',
+        mensaje:
+          'No hay precio ni salida disponible para esa fecha — prueba otra fecha o consúltala con la agencia.',
+        esErrorAgencia: false,
+      };
+    }
+    if (code === 'VIGENCIAS_EMPATADAS') {
+      return {
+        codigo: 'VIGENCIAS_EMPATADAS',
+        mensaje:
+          'El tarifario tiene dos ventanas de vigencia solapadas para esta fecha (error de datos de la agencia).',
+        esErrorAgencia: true,
+      };
+    }
+    if (code === 'PAQUETE_NO_ENCONTRADO') {
+      return {
+        codigo: 'PAQUETE_NO_ENCONTRADO',
+        mensaje: 'El paquete turístico seleccionado no existe en el catálogo.',
+        esErrorAgencia: false,
+      };
+    }
+    if (code === 'SIN_SESION') {
+      return {
+        codigo: 'SIN_SESION',
+        mensaje: 'Falta configurar el identificador de la agencia (x-dev-tenant-id).',
+        esErrorAgencia: true,
+      };
+    }
+  }
+
+  const msg = error instanceof Error ? error.message : 'Ocurrió un error inesperado al cotizar.';
+  return {
+    codigo: 'DESCONOCIDO',
+    mensaje: msg,
+    esErrorAgencia: false,
+  };
+}
+
 /**
  * Motor de cálculo puro para simulación local y desarrollo offline
- * cuando la API backend no está disponible.
- * Garantiza concordancia total con el esquema Zod CotizacionCalculada.
  */
 export function calcularCotizacionMock(
   entrada: CotizarPaquete,
   paquete: PaqueteConDetalle,
 ): CotizacionCalculada {
-  // 1. Determinar temporada
   const temporada =
     paquete.temporadas.find(
       (t) => entrada.fechaSalida >= t.desde && entrada.fechaSalida <= t.hasta,
     ) ?? paquete.temporadas[0]!;
 
-  // 2. Determinar acomodación sugerida si no se indicó
   const totalPasajeros =
     entrada.pasajeros.adultos + entrada.pasajeros.ninos + entrada.pasajeros.infantes;
   const totalPagantes = entrada.pasajeros.adultos + entrada.pasajeros.ninos;
@@ -106,9 +208,7 @@ export function calcularCotizacionMock(
     restantes = Math.max(0, restantes - ocupantes);
   }
 
-  // 3. Precios y líneas
   const markupFactor = 1 + (entrada.markupExtra ?? 0) / 100;
-
   const lineas: LineaCotizacion[] = [];
   let sumaVentaBigInt = 0n;
   let sumaNetoBigInt = 0n;
@@ -121,8 +221,6 @@ export function calcularCotizacionMock(
 
   for (const g of grupos) {
     if (g.cant <= 0) continue;
-
-    // Buscar precio en la temporada para esta acomodación y tipo
     const precioBase =
       temporada.precios.find(
         (p) => p.acomodacion === acomodacionElegida && p.tipoPasajero === g.tipo,
@@ -156,7 +254,6 @@ export function calcularCotizacionMock(
     });
   }
 
-  // Fecha regreso estimada
   const salidaDate = new Date(entrada.fechaSalida);
   const regresoDate = new Date(salidaDate.getTime() + (paquete.dias - 1) * 24 * 60 * 60 * 1000);
   const fechaRegreso = regresoDate.toISOString().slice(0, 10);
@@ -191,6 +288,5 @@ export function calcularCotizacionMock(
     margenPorcentaje,
   };
 
-  // Validar exhaustivamente contra el esquema oficial Zod
   return EsquemaCotizacion.parse(cotizacionResultado);
 }
