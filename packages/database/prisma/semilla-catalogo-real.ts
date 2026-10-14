@@ -222,6 +222,8 @@ export async function sembrarCatalogoReal(
     ventaCop: number,
     unidad: 'POR_PERSONA' | 'POR_GRUPO',
     cubrePasajeros: number,
+    tipoPasajero: 'ADT' | 'CHD' | null = null,
+    edades: { minima: number | null; maxima: number | null } = { minima: null, maxima: null },
   ): Promise<void> => {
     const venta = Money.desdeUnidades(ventaCop, 'COP');
     const neto = derivarNeto(venta, POLITICA_POR_DEFECTO);
@@ -237,6 +239,9 @@ export async function sembrarCatalogoReal(
         ventaUnidades: venta.aPersistencia().unidades,
         monedaIso: 'COP',
         mayoristaId: mayorista.id,
+        tipoPasajero,
+        edadMinima: edades.minima,
+        edadMaxima: edades.maxima,
       },
     });
   };
@@ -277,6 +282,70 @@ export async function sembrarCatalogoReal(
       for (const fecha of grupo.fechas ?? []) {
         const vigenciaId = await crearVigencia(paqueteId, fecha, fecha, true);
         await crearTarifa(vigenciaId, 'Promo pareja', producto.precio_cop, 'POR_GRUPO', 2);
+      }
+    }
+  }
+
+  // --- Tarifa de menor en los productos con noche --------------------------
+  //
+  // **Esto NO sale de la hoja, y es una suposición explícita.** El tarifario del piloto no trae
+  // ni una tarifa diferenciada por edad: son pasadías, y en un pasadía el niño paga la silla
+  // igual. Pero en cuanto hay hotel, la tarifa de menor existe siempre, y sin ella no se puede
+  // demostrar —ni probar— que una cotización es la SUMA de varias tarifas y no una sola.
+  //
+  // El 25 % de descuento es nuestro, no del mayorista. Se sustituye en cuanto llegue su hoja.
+  const DESCUENTO_MENOR = 0.75;
+
+  const conNoche = await prisma.vigencia.findMany({
+    where: { tenantId, paquete: { noches: { gt: 0 }, mayoristaId: MAYORISTA_ID } },
+    select: { id: true, tarifas: { select: { ventaUnidades: true, nombre: true } } },
+  });
+  for (const v of conNoche) {
+    if (v.tarifas.some((t) => t.nombre.startsWith('Menor'))) continue;
+    const adulto = v.tarifas[0];
+    if (!adulto) continue;
+    const ventaMenor = Math.round((Number(adulto.ventaUnidades) * DESCUENTO_MENOR) / 1000) * 1000;
+    await crearTarifa(v.id, 'Menor de 2 a 11 años', ventaMenor, 'POR_PERSONA', 1, 'CHD', {
+      minima: 2,
+      maxima: 11,
+    });
+    // La de adulto tiene que decir que es de adulto, o se cobraría también a los niños.
+    await prisma.tarifa.updateMany({
+      where: { tenantId, vigenciaId: v.id, tipoPasajero: null, aditiva: false },
+      data: { tipoPasajero: 'ADT' },
+    });
+  }
+
+  // --- Vigencias abiertas: la OTRA forma de vender -------------------------
+  //
+  // **Esto no sale de la hoja, y hay que decirlo.** La hoja publica fechas concretas. Pero una
+  // agencia real vende el mismo pasadia cualquier otro dia de la campania «bajo consulta de
+  // cupo», y ese es el segundo modo que el ADR-0009 existe para cubrir.
+  //
+  // Sin esto, la base NO contiene ni una sola vigencia abierta: el modelo diria que soporta las
+  // dos formas de vender y los datos solo demostrarian una. Ademas deja sin probar la regla de
+  // desempate —la salida publicada gana al rango que la contiene— y el filtro `publicada` del
+  // listado, que es lo que impide anunciar un rango de un mes como si fuera una fecha.
+  //
+  // Mismo precio que la fecha publicada: subirlo o bajarlo seria inventar una politica comercial
+  // que nadie nos ha dicho.
+  const CAMPANIA_DESDE = '2026-10-01';
+  const CAMPANIA_HASTA = '2026-10-31';
+
+  for (const grupo of grupos) {
+    if (grupo.tipo !== 'PASADIA') continue;
+    for (const producto of grupo.productos) {
+      const paqueteId = await asegurarPaquete(producto.nombre, 0);
+      const vigenciaId = await crearVigencia(paqueteId, CAMPANIA_DESDE, CAMPANIA_HASTA, false);
+      const yaTiene = await prisma.tarifa.count({ where: { tenantId, vigenciaId } });
+      if (yaTiene === 0) {
+        await crearTarifa(
+          vigenciaId,
+          'Adulto (bajo consulta)',
+          producto.precio_cop,
+          'POR_PERSONA',
+          1,
+        );
       }
     }
   }

@@ -73,7 +73,7 @@ flowchart LR
 
 **Paso 1 — Empaquetar.** Ocho secciones obligatorias (ver la skill). Archivos pegados íntegros,
 nunca referenciados por ruta. Criterios de aceptación objetivos. Restricciones explícitas:
-TypeScript estricto, sin `any`, dinero en centavos, fechas UTC, sin dependencias nuevas.
+TypeScript estricto, sin `any`, dinero en la unidad mínima de la moneda (en COP, el peso), fechas UTC, sin dependencias nuevas.
 
 **Paso 4 — Verificar.** Criterio por criterio. Lo que no cumple, vuelve. No se "arregla un poquito"
 para que pase: eso convierte la delegación en retrabajo disfrazado.

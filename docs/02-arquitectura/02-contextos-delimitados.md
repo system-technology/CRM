@@ -14,7 +14,7 @@ y podría, en teoría, ser un servicio separado. Si solo es "un grupo de pantall
 flowchart TB
     subgraph Núcleo["Núcleo del negocio"]
         CRM["crm<br/>contactos · oportunidades · pipeline"]
-        QUO["quoting<br/>cotizaciones · itinerarios · tarifas"]
+        QUO["quoting<br/>catálogo y precio · cotizaciones · itinerarios"]
         BOO["booking<br/>archivos · reservas · pasajeros"]
     end
 
@@ -88,14 +88,25 @@ viaja.** Un modelo que los fusiona se rompe en el primer viaje familiar.
 
 ### `quoting` — cotización
 
-**Posee:** productos turísticos, tarifarios, proveedores, cotizaciones, versiones, opciones, ítems,
-itinerarios, cálculo de markup y margen, generación de propuestas.
+**Posee:** el catálogo y su precio —paquetes, vigencias, salidas, tarifas y la política de precio de
+cada agencia—, proveedores, cotizaciones, versiones, opciones, ítems, itinerarios, cálculo de markup
+y margen, generación de propuestas.
 
-**Lenguaje:** Quote, QuoteOption, QuoteItem, TravelProduct, Supplier, Rate, Markup, Margin,
-Itinerary, Segment.
+**Lenguaje:** Quote, QuoteOption, QuoteItem, TravelProduct, Supplier, Package, Vigencia, Departure,
+Fare, PricingPolicy, Rate, Markup, Margin, Itinerary, Segment.
 
-**Publica:** `QuoteCreated`, `QuoteSent`, `QuoteAccepted`, `QuoteExpired`.
+**Publica:** `QuoteCreated`, `QuoteSent`, `QuoteAccepted`, `QuoteExpired`. Previstos por
+[ADR-0009](../03-adr/0009-salida-programada-como-unidad-de-venta.md) y **todavía sin implementar**:
+`DepartureScheduled` y `DeparturePriced`.
 **Consume:** `DealQualified`.
+
+**Dónde termina el catálogo.** `quoting` posee `Package`, `Vigencia`, `Departure` y `Fare` porque son
+catálogo y precio: se resuelven y se cotizan aquí. En el código viven en
+`apps/api/src/modules/quoting/` (`GET /api/v1/catalogo/salidas`, `POST /api/v1/catalogo/cotizar`).
+**Lo que ocurre después de vender una silla** —reservar contra el mayorista, su *time limit*, el
+pasajero, el archivo— es de `booking`, que **referencia** la vigencia o la salida por identificador
+(regla 2 de §3). ADR-0009 no crea un módulo `operations` ni un agregado de inventario: para quien
+revende, la disponibilidad es del mayorista.
 
 Es el contexto con la lógica más densa: multi-moneda, multi-pasajero, impuestos, markup contra
 comisión, versionado. **La cotización que vio el cliente nunca cambia**: una modificación crea una

@@ -23,6 +23,7 @@
  */
 
 import pg from 'pg';
+import { borrarTenants } from './borrar-tenants.mjs';
 
 /** Los mismos tres de `tests/aislamiento.spec.ts`. Si cambian allí, cambian aquí. */
 const FIXTURES = [
@@ -123,39 +124,11 @@ try {
   // Una transacción: o se va todo o no se va nada. Un borrado a medias deja la base en un
   // estado peor que el residuo, porque el `duplicate key` cambia de tabla cada vez.
   //
-  // El ORDEN lo descubre el propio script, no lo sabe de antemano. Hay claves foráneas con
-  // `RESTRICT` —`enrutamiento_canales` apunta a `cuentas_whatsapp`— y codificar a mano el
-  // orden correcto sería una lista más que se queda vieja. Se intenta cada tabla; la que falle
-  // por dependencia se reintenta en la vuelta siguiente, cuando ya se habrá ido quien la
-  // retenía. Con `SAVEPOINT`, para que un fallo esperado no aborte la transacción entera.
+  // El orden lo descubre `borrarTenants`, compartido con el `afterAll` de la prueba de
+  // aislamiento: el mismo código que limpia a mano es el que limpia solo, para que no haya una
+  // versión buena y otra que se queda vieja.
   await cliente.query('BEGIN');
-
-  let pendientes = [...conFilas];
-  for (let vuelta = 1; pendientes.length > 0 && vuelta <= 10; vuelta += 1) {
-    const fallaron = [];
-    for (const item of pendientes) {
-      await cliente.query('SAVEPOINT intento');
-      try {
-        await cliente.query(`DELETE FROM public."${item.tabla}" WHERE ${condicion(item.cols)}`, [
-          FIXTURES,
-        ]);
-        await cliente.query('RELEASE SAVEPOINT intento');
-      } catch (error) {
-        await cliente.query('ROLLBACK TO SAVEPOINT intento');
-        if (error?.code !== '23001' && error?.code !== '23503') throw error;
-        fallaron.push(item);
-      }
-    }
-    if (fallaron.length === pendientes.length) {
-      throw new Error(
-        `Ciclo de dependencias entre: ${fallaron.map((f) => f.tabla).join(', ')}. ` +
-          'Ninguna se pudo borrar en una vuelta entera.',
-      );
-    }
-    pendientes = fallaron;
-  }
-
-  const { rowCount } = await cliente.query('DELETE FROM tenants WHERE id = ANY($1)', [FIXTURES]);
+  const { tenants: rowCount } = await borrarTenants(cliente, FIXTURES);
   await cliente.query('COMMIT');
 
   console.log(`Borrado. ${total} filas y ${rowCount} tenants de fixture.`);

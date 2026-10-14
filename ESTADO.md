@@ -6,11 +6,11 @@
 
 | Campo | Valor |
 |---|---|
-| Última actualización | 2026-10-13 (integración: ADR-0009 paramétrico y orden en la raíz; dos ramas devueltas) |
+| Última actualización | 2026-10-11 (noche; integración: compuerta de pruebas, semilla por clave, ventana de 24 h y semilla del CRM) |
 | Actualizado por | Claude Opus 5 |
 | Fase | **Rebanada vertical de paquetes, en construcción** |
-| Avance de la fase | Cotizador de punta a punta. **El precio cuelga ya de una ventana de vigencia (ADR-0009, v0.18.0).** Apretón de manos del webhook vivo y verificado contra la API corriendo. Bandeja web en construcción |
-| Próximo hito | **Reparar la compuerta de pruebas (tarea 0).** Hoy la suite de aislamiento se envenena a sí misma y no puede correr dos veces seguidas: nada más se integra hasta que vuelva a verde |
+| Avance de la fase | Cotizador de punta a punta. Esquema del inbox, 30/30 contra Neon. **Apretón de manos del webhook vivo y verificado contra la API corriendo.** Bandeja web en construcción |
+| Próximo hito | **El trabajador que resuelve de qué agencia es cada mensaje.** El `POST` ya guarda cifrado y verificado contra Neon; falta tomar los `change` pendientes |
 
 ---
 
@@ -64,7 +64,7 @@ Qué hay, concretamente:
 | Diseño | Sistema de diseño subido a Stitch (proyecto `8333038101997719867`). Tokens replicados en `apps/web/src/app/globals.css`. Capturas en `docs/_assets/diseno/` |
 | Datos | Agencia demo sembrada: 3 paquetes, 5 temporadas, 26 precios |
 | Contrato multi-harness | `AGENTS.md` en la raíz: cualquier IA trabaja bajo las mismas **trece** reglas. R12 faltaba hasta v0.9.1; R13 se añadió el 2026-10-07 |
-| Repositorio | [github.com/Alfavear/CRM](https://github.com/Alfavear/CRM) · **privado** · `main` en **v0.18.0** (`fa73c4d`) |
+| Repositorio | [github.com/Alfavear/CRM](https://github.com/Alfavear/CRM) · **privado** · `main` en **v0.13.0** (`9b3a872`, cuatro commits después del tag: utillaje, sin versión) |
 | Gobierno de `main` | Compuerta local activa y probada. **Sin protección de servidor:** el plan gratuito no la permite en repos privados |
 
 ## 2. Decisiones ya tomadas (no reabrir sin ADR que las supersede)
@@ -87,7 +87,7 @@ Qué hay, concretamente:
 
 ### Lo comercial NO está decidido
 
-`docs/_assets/brochure-de-inspiracion.jpeg` es **inspiración y dirección de producto, no un compromiso comercial.**
+`images/Brochure.jpeg` es **inspiración y dirección de producto, no un compromiso comercial.**
 Lo que aporta —módulos, flujo, tono, horizonte— está recogido en
 `docs/00-vision/05-norte-del-producto.md`. Lo que **no** está decidido:
 
@@ -103,10 +103,6 @@ Ordenada. La primera es la que debe tomarse ahora.
 
 | # | Tarea | Agente / dueño | Estado |
 |---|---|---|---|
-| **0** | **Reparar la suite de aislamiento, que se envenena a sí misma.** El `DELETE FROM tenants` del `afterAll` global (línea 111) nunca corre: llega con la conexión dentro de una transacción abortada desde el `afterAll` del bloque ADR-0008 (línea 599). Los fixtures sobreviven y la corrida siguiente muere con `duplicate key` antes de comprobar una política. Dos arreglos: limpiar **también en `beforeAll`**, y envolver en `SAVEPOINT` toda aserción que espere un error, para que no deje la conexión abortada | `qa` | **BLOQUEANTE.** Medido el 2026-10-13: 171 filas de residuo al empezar la sesión; 15, 20 y 20 aserciones en rojo en tres corridas, ninguna por una fuga. **Bloquea la próxima integración**: la excepción del 2026-10-13 vale una vez |
-| 0b | **Permiso para `scripts/limpiar-fixtures.mjs --borrar`, o decidir que ese borrado lo hace una persona.** El integrador lo intentó y el sistema de permisos lo denegó, igual que un borrado acotado a cinco filas | Usuario | El repositorio tiene la herramienta desde el 2026-10-10 y la compuerta no puede usarla |
-| 0c | **Una base por árbol de trabajo, o fixtures con identificador por proceso.** Cuatro sesiones contra una sola base de Neon es una carrera permanente | `devops` | El residuo de una sesión pone en rojo la compuerta de las otras tres |
-| 0d | **Decidir de quién es `politica-de-precio.ts`.** Antigravity lo tiene a medio escribir en `feat/bandeja-web` y la otra sesión lo integró hoy en `main` | `arquitecto` | Dos versiones del mismo contrato escritas en paralelo durante días. Cuanto más crezca la segunda, más caro |
 | 1 | **Iniciar verificación de Meta Business y solicitud de Tech Provider** | Usuario | **Camino crítico, sin empezar** |
 | 2 | **Recibir el tarifario real del mayorista** de la agencia piloto | Usuario | La agencia ya está tramitando la información (2026-10-07). Hasta que llegue, el catálogo sigue modelado con datos verosímiles |
 | 2b | **Bajar el tarifario de Meta para Colombia en COP** del CSV oficial | Usuario | Cinco minutos con un navegador. Sin esa cifra el plan de entrada se fija a ciegas |
@@ -168,10 +164,7 @@ Ordenada. La primera es la que debe tomarse ahora.
 
 ## 6. Bitácora
 
-- [`2026-10-13-la-compuerta-que-se-envenena-sola.md`](docs/_bitacora/2026-10-13-la-compuerta-que-se-envenena-sola.md) ← **empieza por aquí**
-- [`2026-10-13-el-veinte-por-ciento-tiene-dos-lecturas.md`](docs/_bitacora/2026-10-13-el-veinte-por-ciento-tiene-dos-lecturas.md)
-- [`_integraciones/2026-10-13-v0.18.0.md`](docs/_integraciones/2026-10-13-v0.18.0.md) — por qué se integró con la compuerta de pruebas en rojo
-- [`2026-10-10-el-dia-que-medimos-todo.md`](docs/_bitacora/2026-10-10-el-dia-que-medimos-todo.md)
+- [`2026-10-10-el-dia-que-medimos-todo.md`](docs/_bitacora/2026-10-10-el-dia-que-medimos-todo.md) ← **empieza por aquí**
 - [`2026-10-07-el-dia-que-nos-pusimos-un-freno.md`](docs/_bitacora/2026-10-07-el-dia-que-nos-pusimos-un-freno.md)
 - [`2026-10-07-el-adr-que-se-defendio-tres-veces.md`](docs/_bitacora/2026-10-07-el-adr-que-se-defendio-tres-veces.md)
 - [`2026-10-07-primera-interfaz.md`](docs/_bitacora/2026-10-07-primera-interfaz.md)
@@ -351,7 +344,7 @@ no un defecto nuevo.
 | Cola | Dueño | Por qué no bloquea |
 |---|---|---|
 | **¿El 20 % es sobre el neto o sobre la venta?** Es una palabra del propietario y un campo de una tabla; no se toca una línea de código | Usuario | El valor por defecto ya está puesto y probado. Pero **mientras no se confirme, toda cifra de margen que enseñemos lleva ese asterisco** |
-| ~~La `PoliticaDePrecio` **no tiene todavía tabla ni RLS**~~ — **resuelto en el mismo commit que entró el 2026-10-13**: `politicas_de_precio` existe, con `tenant_id`, RLS por `aplicar_aislamiento_tenant()` y tres `CHECK`. Lo que falta es la pantalla de configuración | `frontend` | Corregido por el integrador al cerrar: la línea describía el estado de un commit anterior de la misma rama |
+| La `PoliticaDePrecio` **no tiene todavía tabla ni RLS**: hoy vive como contrato y función pura | `datos` | Sin pantalla de configuración nadie la cambia. Cuando la tenga: `tenant_id` y política RLS como todas, ninguna excepción (R1) |
 | **R8 dice «centavos» en `CLAUDE.md`** y lo correcto es «unidad mínima de la moneda»: en COP esa unidad es **el peso** | `documentador` | El código ya lo hace bien y hay prueba que lo fija. Es la redacción la que miente, y ya causó un error de dos órdenes de magnitud que llegó hasta la pantalla |
 | La **resolución de tarifa con desempate** —lo más específico gana; empate en longitud es error de datos— es código que no existe y es donde se esconderán los defectos de precio | `backend`, `qa` | Espera la firma del ADR-0009. Cuando llegue: **pruebas de solape, no de camino feliz** |
 | Precio por **fecha de compra** (*early bird*): la ventana por fecha de salida no lo cubre | `arquitecto` | Nadie lo ha pedido todavía. Si llega, **pide ADR propio**, no un campo más en la condición de la tarifa |
@@ -406,63 +399,9 @@ más es esa.
 
 | Cola | Dueño | Por qué no bloquea |
 |---|---|---|
-| **Meterle el `tenant_id` dentro a las claves foráneas.** La integridad referencial se evalúa por encima de RLS, así que una foránea simple deja colgar una fila de la de otra agencia si alguien escribe el id cruzado | `datos` | Hoy `tenant_id` lo pone el servidor, nunca el cliente. Es un **barrido de todo el esquema**, no de una tabla suelta: hacerlo en una sola sería inconsistente y daría falsa sensación de cubierto |
+| ~~**Meterle el `tenant_id` dentro a las claves foráneas.**~~ **HECHO el 2026-10-13**, migración `20261013230000`. Y el motivo por el que se había aplazado **era falso**: escribí «es un barrido de todo el esquema, no de una tabla suelta», y `auditor-seguridad` lo contó contra la base — **38 foráneas compuestas contra 6 simples**. `inbox` y `crm` ya eran compuestas y tienen dos aserciones probando ese ataque; las dos de esta mañana se añadieron al lado minoritario. Ponerlas compuestas acercaba a la consistencia | — | Los dos ataques que el auditor ejecutó contra Neon ahora rebotan con `23503`, comprobado |
 | `Paquete` + `Temporada` + `Precio` siguen en el esquema junto al modelo nuevo | `datos` | El cotizador actual todavía se apoya en ellos. Se retiran cuando el cotizador pase a `resolverVigencia` |
-| La API no expone todavía `vigencias` ni `tarifas` | `backend` | El dato ya está en la base y la función de resolución probada. Falta el caso de uso y la ruta |
-
----
-
-## Integración del 2026-10-13 — v0.18.0
-
-**Dos ramas entran, dos se devuelven.** Registro completo:
-[`docs/_integraciones/2026-10-13-v0.18.0.md`](docs/_integraciones/2026-10-13-v0.18.0.md).
-
-| Rama | Veredicto | Versión |
-|---|---|---|
-| `chore/orden-en-la-raiz` | **Integrada** (`23e239e`) | sin etiqueta: no cambia el artefacto desplegable |
-| `docs/adr-0009-parametrico` @ `49278fe` | **Integrada** (`fa73c4d`) | **v0.18.0** |
-| `feat/inbox-esquema` | **DEVUELTA** | — |
-| `feat/bandeja-web` | **DEVUELTA** | — |
-
-Compuertas de las dos integradas, corridas por el integrador: `build` **5/5 forzado sin caché** ·
-`typecheck` **7/7** · `lint` **7/7** · `format:check` limpio · pruebas: contracts **56**,
-domain **70**, api **150** y aislamiento **39/39** contra Neon.
-
-**Se integró con la tarea `test` en rojo, y hay que decirlo claro.** No por el contenido de las
-ramas: por el arnés. Ver tarea 0. Las 39 aserciones de aislamiento pasan; lo que falla es el
-desmontaje de la suite, que deja sus fixtures y rompe la corrida siguiente. Una de las dos ramas
-integradas no contiene código. **La excepción vale una vez: hasta que la tarea 0 esté cerrada, no
-entra nada más.**
-
-De `docs/adr-0009-parametrico` se integró el commit medido `49278fe`, **no la punta de la rama**:
-su sesión seguía escribiendo durante la revisión, y el commit siguiente (`a408407`) es trabajo del
-inbox dentro de una rama de quoting.
-
-### Por qué volvió `feat/inbox-esquema`
-
-Lo de la vuelta anterior está corregido y comprobado: `lint` 7/7 y ningún UUID corto. Lo que la
-detiene es de hoy y es de aislamiento, donde no aplica la regla de una sola vuelta (R13):
-`aislamiento.spec.ts:1614` borra `canales` antes que las filas de `enrutamiento_canales` que lo
-referencian con `ON DELETE RESTRICT`. El desmontaje revienta y los fixtures sobreviven.
-
-Consecuencia sobre su propia cifra: afirma **50/50** y hoy da **30 pasadas y 20 saltadas** — el
-bloque del inbox entero cae en su `beforeAll` con `duplicate key` sobre
-`plantillas_whatsapp_tenant_id_cuenta_id_nombre_idioma_key`. Veinte aserciones que nadie ha visto
-ejecutarse.
-
-### Por qué volvió `feat/bandeja-web`
-
-Sin entrar en su contenido: **15 commits por detrás de `main`**, 63 por delante, 89 archivos y
-+17.052 líneas, y todavía escribiéndose. El modelo de ramas dice que la rama atrasada se pone al
-día antes de pedir integración, y que una rama que nadie puede revisar se parte. No se tocó su
-árbol de trabajo.
-
-### Cola nueva — con dueño, no bloquea
-
-| Cola | Dueño | Por qué no bloquea |
-|---|---|---|
-| **La migración de ADR-0009 se aplicó a Neon antes de pasar por la compuerta.** Mientras duró, `main` hablaba de `salidas` contra una base que ya solo tenía `vigencias`, y los otros tres árboles de trabajo con ella | `datos` | Se resuelve solo al integrar el código que la acompaña. El precedente es malo y por eso queda escrito: aplicar esquema desde una rama sin integrar rompe a todos los demás |
-| **Renombrar una tabla no es una migración segura en caliente.** `salidas` → `vigencias` deja ciega a la versión anterior en ejecución. Hoy no hay nada desplegado; cuando lo haya, toca el patrón de dos pasos (vista o columna nueva, despliegue, retirada) | `arquitecto` | No hay servidor. Pero la primera vez que lo haya, esto es una caída |
-| El prefijo `docs/` de `docs/adr-0009-parametrico` miente: la rama trae migración, rutas de API, dominio y contratos | `facilitador` | Se integró por su contenido. El nombre es barato de acertar la próxima vez |
-| `.prettierignore` sigue ignorando `images/`, una carpeta que ya no existe | `devops` | Ruido inofensivo |
-| El `typecheck` da un rojo falso (`Property 'vigencia' does not exist on type 'ClienteTenant'`) cuando `build` es un acierto de caché de Turbo y no regenera el cliente de Prisma. Turbo no declara `generate` como dependencia de `typecheck` | `devops` | Se resuelve con `pnpm --filter @viajapro/database generate`. Ya estaba en la cola desde el 2026-10-11; hoy volvió a morder |
+| ~~La API no expone todavía `vigencias` ni `tarifas`~~ **HECHO**: `GET /api/v1/catalogo/salidas` y `POST /api/v1/catalogo/cotizar`, con 22 pruebas de extremo a extremo. Faltan las rutas de **escritura** | `backend` | Sin alta de tarifas por API, el catálogo solo se carga por semilla |
+| **El `margen` de la respuesta de cotizar ES el neto**: `neto = venta − margen`. Y `TarifaPublica`, el contrato escrito para impedirlo, **no lo importa nadie** | `backend` | Hoy no hay ninguna superficie de cara al viajero y toda ruta exige sesión. **Pero es dependencia dura: no entra la primera pieza para el viajero sin partir la respuesta en interna y pública** |
+| `politicaDePrecio.findFirst()` sin `where` acierta hoy por RLS, pero con otro rol o fuera de contexto devuelve la política de otra agencia **sin error** | `backend` | Verificado que hoy devuelve lo correcto. Cuesta una línea: `findUnique` con el `tenantId` del contexto de sesión |
+| `vigencias`, `tarifas` y `politicas_de_precio` **no tienen ni una aserción de comportamiento** en `aislamiento.spec.ts`: solo cobertura estructural | `qa` | Las 39 en verde no dicen nada sobre `tarifas`. El día que alguien quite la foránea compuesta por comodidad, nada se pondrá en rojo |
