@@ -25,14 +25,42 @@
 import pg from 'pg';
 import { borrarTenants } from './borrar-tenants.mjs';
 
-/** Los mismos tres de `tests/aislamiento.spec.ts`. Si cambian allí, cambian aquí. */
-const FIXTURES = [
+/**
+ * **Los fixtures se reconocen por su `slug`, no por un identificador escrito aquí.**
+ *
+ * Eran tres UUID fijos, copiados del spec. Dejaron de serlo el 2026-10-13, cuando el agente
+ * `datos` midió que los cuatro árboles de trabajo comparten la misma base de Neon **y el mismo
+ * literal**: dos corridas a la vez se borraban los fixtures mutuamente, y un «50/50» solo
+ * significaba algo si nadie más estaba trabajando.
+ *
+ * Ahora cada corrida siembra los suyos con el prefijo de abajo, así que esto tiene que
+ * reconocerlos por la marca. **El prefijo es el contrato**, y sigue siendo tan estrecho como los
+ * tres UUID: una agencia de verdad no se llama `fixture-aislamiento-…`, y este archivo sigue sin
+ * aceptar identificadores por parámetro, que es lo que lo haría peligroso.
+ */
+const PREFIJO_FIXTURE = 'fixture-aislamiento-';
+
+/** Los tres UUID de antes. Se conservan para barrer el residuo que dejaron las corridas viejas. */
+const FIXTURES_HEREDADOS = [
   '01932000-0000-7000-8000-00000000000a',
   '01932000-0000-7000-8000-00000000000b',
   '01932000-0000-7000-8000-00000000000c',
 ];
 
 const BORRAR = process.argv.includes('--borrar');
+
+/**
+ * **Solo se borra el residuo VIEJO**, y esta es la pieza que hace seguro limpiar antes de cada
+ * corrida sobre una base compartida.
+ *
+ * `pnpm test` limpia al arrancar. Si borrara por prefijo sin mirar la edad, mataría los fixtures
+ * de una corrida que esté pasando ahora mismo en otro árbol de trabajo — exactamente el problema
+ * que los fixtures por corrida vinieron a resolver, reintroducido por la puerta de atrás.
+ *
+ * Una corrida entera tarda unos dos minutos. Quince da margen de sobra y sigue barriendo lo que
+ * quedó de ayer. `--todos` lo ignora, para limpiar a mano cuando se sabe que no hay nadie.
+ */
+const MINUTOS_DE_GRACIA = process.argv.includes('--todos') ? 0 : 15;
 
 const cadena = process.env['DATABASE_URL'];
 if (!cadena) {
@@ -51,12 +79,30 @@ try {
   console.log(`Conectado como '${quien[0].usuario}'.\n`);
 
   const { rows: encontrados } = await cliente.query(
-    'SELECT id, slug FROM tenants WHERE id = ANY($1) ORDER BY slug',
-    [FIXTURES],
+    `SELECT id, slug, creado_en FROM tenants
+      WHERE (slug LIKE $1 || '%' OR id = ANY($2))
+        AND creado_en < now() - make_interval(mins => $3::int)
+      ORDER BY slug`,
+    [PREFIJO_FIXTURE, FIXTURES_HEREDADOS, MINUTOS_DE_GRACIA],
   );
 
+  const { rows: vivos } = await cliente.query(
+    `SELECT count(*)::int AS n FROM tenants
+      WHERE slug LIKE $1 || '%'
+        AND creado_en >= now() - make_interval(mins => $2::int)`,
+    [PREFIJO_FIXTURE, MINUTOS_DE_GRACIA],
+  );
+  if (vivos[0].n > 0) {
+    console.log(
+      `Hay ${vivos[0].n} tenants de fixture de menos de ${MINUTOS_DE_GRACIA} min: ` +
+        'otra corrida puede estar usandolos. NO se tocan.',
+    );
+  }
+
+  const FIXTURES = encontrados.map((t) => t.id);
+
   if (encontrados.length === 0) {
-    console.log('No hay residuo: los tres tenants de fixture no existen. Nada que hacer.');
+    console.log('No hay residuo viejo de fixtures. Nada que hacer.');
     process.exit(0);
   }
 
@@ -66,7 +112,7 @@ try {
   // Lo que NO se toca, enseñado a propósito: es la comprobación de que el filtro distingue.
   const { rows: ajenos } = await cliente.query(
     'SELECT count(*)::int AS n FROM tenants WHERE id <> ALL($1)',
-    [FIXTURES],
+    [FIXTURES.length > 0 ? FIXTURES : ['00000000-0000-0000-0000-000000000000']],
   );
   console.log(`\nTenants que NO son fixture y no se tocan: ${ajenos[0].n}\n`);
 

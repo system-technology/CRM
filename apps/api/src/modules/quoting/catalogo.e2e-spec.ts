@@ -59,6 +59,13 @@ interface Salida {
   paqueteId: string;
   paqueteNombre: string;
   fecha: string;
+  noches: number;
+  /** El «desde» anunciado, que es **por persona** aunque la tarifa sea de grupo. */
+  desde: { unidades: string; moneda: string };
+  /** `true` si ese «desde» es el per cápita de una tarifa de grupo. */
+  desdeEsDeGrupo: boolean;
+  /** Cuántas tarifas distintas tiene. Más de una significa promoción o condición. */
+  tarifas: number;
 }
 interface Opcion {
   nombre: string;
@@ -355,5 +362,104 @@ describe('Una cotización es la SUMA de varias tarifas, no una sola', () => {
     expect(lineas).toHaveLength(1);
     expect(lineas[0]?.nombre).toBe('Adulto');
     expect((r.cuerpo['total'] as { unidades: string }).unidades).toBe('778000');
+  });
+});
+
+/**
+ * **El margen ES el neto, y por eso no sale salvo que se pida.**
+ *
+ * `auditor-seguridad` lo midió hoy: `neto = venta − margen`. Publicar el margen es publicar lo
+ * que la agencia le paga al mayorista. La barrera que debía impedirlo —`TarifaPublica`— estaba
+ * declarada y **no la importaba nadie**, que es peor que no tenerla: hace creer que hay un muro
+ * donde no lo hay.
+ *
+ * Las claves se **omiten enteras**, no vienen en `null`: estas aserciones miran el texto crudo y
+ * las claves del objeto, que es lo que sobrevive a un `...spread` futuro.
+ */
+describe('El margen no sale de la agencia salvo que se pida', () => {
+  it('por defecto la respuesta NO lleva margen por ninguna parte', async () => {
+    const r = await cotizar({ paqueteId: paqueteConsota, fecha: '2026-10-11', adultos: 2 });
+    expect(r.status).toBe(200);
+
+    const crudo = JSON.stringify(r.cuerpo);
+    expect(crudo).not.toMatch(/margen/i);
+    expect(crudo).not.toMatch(/neto/i);
+
+    const lineas = r.cuerpo['lineas'] as Record<string, unknown>[];
+    expect(lineas.length).toBeGreaterThan(0);
+    for (const l of lineas) {
+      expect(Object.keys(l)).not.toContain('margen');
+      expect(Object.keys(l)).not.toContain('margenPorcentaje');
+    }
+  });
+
+  it('quitar el margen no cambia ni un peso de lo que se cobra', async () => {
+    const sin = await cotizar({ paqueteId: paqueteConsota, fecha: '2026-10-11', adultos: 2 });
+    const con = await cotizar({
+      paqueteId: paqueteConsota,
+      fecha: '2026-10-11',
+      adultos: 2,
+      incluirMargen: true,
+    });
+    expect((sin.cuerpo['total'] as { unidades: string }).unidades).toBe(
+      (con.cuerpo['total'] as { unidades: string }).unidades,
+    );
+  });
+
+  it('con `incluirMargen` sí viene, porque la pantalla del asesor lo necesita', async () => {
+    const r = await cotizar({
+      paqueteId: paqueteConsota,
+      fecha: '2026-10-11',
+      adultos: 2,
+      incluirMargen: true,
+    });
+    const lineas = r.cuerpo['lineas'] as Record<string, unknown>[];
+    expect(Object.keys(lineas[0] ?? {})).toContain('margen');
+    expect(lineas[0]?.['margenPorcentaje']).toBe(20);
+  });
+});
+
+/**
+ * **El «desde» que se anuncia es por persona, siempre.**
+ *
+ * La consulta tomaba el mínimo de `venta_unidades` mezclando tarifas por persona y por grupo, y
+ * los importes de grupo se guardan **íntegros** por R8. Una promo de pareja más barata que el
+ * precio por persona saldría anunciada como per cápita: el cliente llega con un número y el
+ * asesor tiene otro.
+ */
+describe('El precio anunciado es el que un adulto puede pagar SOLO', () => {
+  it('«Parque Consotá» anuncia el per cápita de la promo, y DICE que es de grupo', async () => {
+    // Esa salida tiene DOS tarifas: Adulto 189.000 por persona y Promo pareja 280.000 por grupo
+    // de dos, cuyo per cápita son 140.000. Una persona sola no puede comprar la promo, así que
+    // el titular lleva la condición al lado en vez de prometer un precio sin letra pequeña.
+    const { cuerpo } = await salidas('desde=2026-10-11&hasta=2026-10-11&limite=200');
+    const consota = cuerpo.salidas.find((s) => s.paqueteNombre === 'Parque Consotá');
+    expect(consota).toBeDefined();
+    expect(consota?.tarifas).toBe(2);
+    expect(consota?.desde.unidades).toBe('140000');
+    // Y la pantalla recibe la condición, para poder escribir «en promo de pareja» al lado.
+    expect(consota?.desdeEsDeGrupo).toBe(true);
+  });
+
+  it('un pasanoche anuncia el precio de ADULTO, no el de menor', async () => {
+    // Esto lo encontré abriendo la pantalla, no con una compuerta: «Puebleando en el Quindío»
+    // anunciaba $292.000, que es la tarifa de menor. Un adulto paga $389.000. Anunciar un precio
+    // que el comprador no puede pagar no es un gancho.
+    const { cuerpo } = await salidas('desde=2026-10-03&hasta=2026-10-03&limite=200');
+    const pasanoche = cuerpo.salidas.find((s) => s.paqueteNombre.startsWith('Puebleando'));
+    expect(pasanoche).toBeDefined();
+    expect(pasanoche?.desde.unidades).toBe('389000');
+  });
+
+  it('el «desde» coincide SIEMPRE con cotizar para un adulto solo', async () => {
+    // Red de seguridad sobre el catálogo entero. No «menor o igual»: **igual**. Si el titular y
+    // la cotización no dan el mismo número, el cliente llega con uno y el asesor tiene otro.
+    const { cuerpo } = await salidas('desde=2026-10-01&hasta=2026-10-31&limite=200');
+    for (const s of cuerpo.salidas.slice(0, 15)) {
+      if (s.desdeEsDeGrupo) continue; // Esa no la puede comprar un viajero solo, por definición.
+      const r = await cotizar({ paqueteId: s.paqueteId, fecha: s.fecha, adultos: 1 });
+      expect(r.status).toBe(200);
+      expect((r.cuerpo['total'] as { unidades: string }).unidades).toBe(s.desde.unidades);
+    }
   });
 });

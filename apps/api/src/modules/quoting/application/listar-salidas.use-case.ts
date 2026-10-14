@@ -54,10 +54,35 @@ export class ListarSalidasUseCase {
           cupoTotal: true,
           paquete: { select: { id: true, nombre: true, destino: true, noches: true } },
           tarifas: {
-            // No aditivas: un suplemento de sencilla no es el precio «desde» de nada.
-            where: { aditiva: false },
+            /**
+             * **El «desde» es el precio que UN viajero adulto puede pagar de verdad.** Nada más.
+             *
+             * Lo descubrí abriendo la pantalla, que es donde se ven estas cosas: toda salida con
+             * noche anunciaba el precio de MENOR —«Puebleando, desde $292.000» cuando un adulto
+             * paga $389.000—. Ninguna compuerta lo vio, porque ninguna sabe lo que significa.
+             *
+             * Se excluyen tres clases y por tres motivos distintos:
+             *
+             * - **Aditivas**: un suplemento de sencilla no es el precio «desde» de nada.
+             * - **De menor o de infante**: anunciar un precio que el comprador adulto no puede
+             *   pagar para sí no es un gancho, es publicidad engañosa.
+             *
+             * Las de **grupo** sí entran, con su per cápita y marcadas con `desdeEsDeGrupo`.
+             * Excluirlas borraba del catálogo productos que solo se venden en promo —«Ukumarí +
+             * Filandia» es uno—, y esconder un producto que la agencia vende es peor que
+             * anunciarlo con su condición al lado.
+             */
+            where: {
+              aditiva: false,
+              OR: [{ tipoPasajero: null }, { tipoPasajero: 'ADT' }],
+            },
             orderBy: { ventaUnidades: 'asc' },
-            select: { ventaUnidades: true, monedaIso: true },
+            select: {
+              ventaUnidades: true,
+              monedaIso: true,
+              unidad: true,
+              cubrePasajeros: true,
+            },
           },
         },
       });
@@ -67,7 +92,15 @@ export class ListarSalidasUseCase {
       return filas
         .filter((v) => v.tarifas.length > 0)
         .map((v) => {
-          const barata = v.tarifas[0]!;
+          const porPersona = (x: {
+            ventaUnidades: bigint;
+            unidad: string;
+            cubrePasajeros: number;
+          }) =>
+            x.unidad === 'POR_GRUPO' && x.cubrePasajeros > 1
+              ? x.ventaUnidades / BigInt(x.cubrePasajeros)
+              : x.ventaUnidades;
+          const barata = v.tarifas.reduce((a, b) => (porPersona(b) < porPersona(a) ? b : a));
           return {
             vigenciaId: v.id,
             paqueteId: v.paquete.id,
@@ -77,9 +110,10 @@ export class ListarSalidasUseCase {
             fecha: aFecha(v.desde),
             cupoTotal: v.cupoTotal,
             desde: {
-              unidades: barata.ventaUnidades.toString(),
+              unidades: porPersona(barata).toString(),
               moneda: monedaDeLaBase(barata.monedaIso),
             },
+            desdeEsDeGrupo: barata.unidad === 'POR_GRUPO',
             tarifas: v.tarifas.length,
           };
         });

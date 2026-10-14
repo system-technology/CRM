@@ -204,6 +204,16 @@ export const CotizarSalida = z.object({
   ninos: z.number().int().min(0).max(200).optional(),
   infantes: z.number().int().min(0).max(200).optional(),
   acomodacion: Acomodacion.optional(),
+
+  /**
+   * Traer el margen de cada línea. **Por defecto NO**, y es deliberado.
+   *
+   * El margen revela el neto por resta. Lo pide la pantalla del asesor, que sabe lo que hace;
+   * cualquier otra cosa que llame a esta ruta recibe una cotización sin él. Cuando exista
+   * autenticación, esto además se comprobará contra el rol — pero el valor por defecto seguro
+   * vale hoy y no cuesta nada.
+   */
+  incluirMargen: z.boolean().default(false),
 });
 export type CotizarSalida = z.infer<typeof CotizarSalida>;
 
@@ -234,6 +244,16 @@ export const SalidaPublicada = z.object({
   fecha: FechaViaje,
   cupoTotal: z.number().int().nullable(),
   desde: Dinero,
+  /**
+   * `true` cuando ese «desde» sale de una tarifa de GRUPO y es su per cápita — «$140.000 por
+   * persona, en promo de pareja».
+   *
+   * La pantalla **tiene que decirlo**: una persona sola no puede comprar esa tarifa, y un
+   * titular que promete un precio condicionado sin nombrar la condición es publicidad engañosa.
+   * Esconder el producto habría sido peor —existe y la agencia lo vende—, así que se enseña con
+   * su letra pequeña al lado.
+   */
+  desdeEsDeGrupo: z.boolean(),
   /** Cuántas tarifas distintas tiene. Más de una significa que hay promoción o condición. */
   tarifas: z.number().int().min(1),
 });
@@ -256,9 +276,20 @@ export const OpcionDePrecio = z.object({
   veces: z.number().int().min(1),
   precioUnitario: Dinero,
   total: Dinero,
-  /** **Solo para el tenant.** `null` cuando la tarifa no tiene neto cargado: desconocido, no cero. */
-  margen: Dinero.nullable(),
-  margenPorcentaje: z.number().nullable(),
+  /**
+   * **Solo para el tenant, y por eso NO viene salvo que se pida** con `incluirMargen`.
+   *
+   * `auditor-seguridad` lo dijo sin rodeos: publicar el margen **es** publicar el neto, porque
+   * `neto = venta − margen`. La barrera que debía impedirlo —`TarifaPublica`— estaba declarada
+   * y **no la importaba nadie**, que es peor que no tenerla: hace creer que hay un muro donde
+   * no lo hay.
+   *
+   * Por eso la clave se **omite entera** en vez de venir en `null`: una pantalla de cara al
+   * viajero que consuma esto no recibe el dato ni puede despejarlo. Y el valor por defecto es el
+   * seguro, que es la única forma de que un descuido futuro falle hacia el lado bueno.
+   */
+  margen: Dinero.nullable().optional(),
+  margenPorcentaje: z.number().nullable().optional(),
   /**
    * **Describe, no prescribe.** Se llamaba `recomendada` y `experto-turismo` tuvo razón en
    * señalarlo: la opción más barata es, casi por definición, la de PEOR margen —mismo neto,
