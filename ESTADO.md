@@ -348,3 +348,57 @@ no un defecto nuevo.
 | **R8 dice «centavos» en `CLAUDE.md`** y lo correcto es «unidad mínima de la moneda»: en COP esa unidad es **el peso** | `documentador` | El código ya lo hace bien y hay prueba que lo fija. Es la redacción la que miente, y ya causó un error de dos órdenes de magnitud que llegó hasta la pantalla |
 | La **resolución de tarifa con desempate** —lo más específico gana; empate en longitud es error de datos— es código que no existe y es donde se esconderán los defectos de precio | `backend`, `qa` | Espera la firma del ADR-0009. Cuando llegue: **pruebas de solape, no de camino feliz** |
 | Precio por **fecha de compra** (*early bird*): la ventana por fecha de salida no lo cubre | `arquitecto` | Nadie lo ha pedido todavía. Si llega, **pide ADR propio**, no un campo más en la condición de la tarifa |
+
+---
+
+## 2026-10-13 (tarde) — ADR-0009 firmado y el catálogo real sembrado
+
+El propietario fijó la regla y pidió avanzar sin acumular salvedades. **ADR-0009 pasa a Aceptado**
+con la decisión de precio cerrada: **neto del mayorista + 20 % sobre el neto**.
+
+### Lo que existe ahora, medido contra Neon
+
+| Pieza | Estado |
+|---|---|
+| `vigencias` (antes `salidas`), `tarifas`, `politicas_de_precio` | Migradas y con RLS aplicada |
+| Prueba de aislamiento | **39/39**, incluida la 23, que reconstruye la cadena de migraciones desde cero |
+| Catálogo real de Agencias André's Tours | **33 paquetes, 78 vigencias, 79 tarifas** |
+| `resolverVigencia` con desempate | 20 pruebas, incluidas las de solape |
+| Política de precio | Sembrada: 20 %, `SOBRE_EL_NETO`, redondeo 1.000, modo `AMBOS` |
+
+### La hoja real confirmó la decisión del ADR
+
+No hizo falta esperar a otra agencia: **la misma hoja vende de las dos maneras.** Siete grupos
+publican fechas concretas —sábado 3 y 10, domingo 4 y 11— y las cuatro super excursiones llevan
+cada una **su propia** fecha de salida y de regreso. Con un solo arquetipo, media hoja no cabría.
+
+Y la promo de pareja quedó donde tenía que quedar: **una vigencia con dos tarifas**, medida contra
+la base —
+
+```
+Parque Consotá  2026-10-11  publicada=true
+   Adulto         POR_PERSONA cubre=1  venta=189000  neto=157500  margen=31500 (20,00 %)
+   Promo pareja   POR_GRUPO   cubre=2  venta=280000  neto=233333  margen=46667 (20,00 %)
+```
+
+— que es exactamente para lo que existe `UnidadDeCobro`. Son 79 tarifas sobre 78 vigencias: la de
+más es esa.
+
+### Decisiones que quedan escritas aquí porque no están en el ADR
+
+- **`salidas` se renombró, no se recreó.** Conserva filas, política RLS y foránea. Recrearla habría
+  dejado la tabla sin política hasta la línea que la vuelve a aplicar.
+- **Las dos invariantes del contrato se repiten como `CHECK` en la base.** Zod protege lo que entra
+  por la API; una semilla con un error de dedo no pasa por Zod.
+- **Los netos de la semilla son derivados** —`venta ÷ 1,20`— y queda dicho en las notas del
+  mayorista, que se llama «Mayorista por confirmar» a propósito.
+- **La hoja no declara régimen alimenticio**, así que los paquetes nacen `SIN_ALIMENTACION`: es
+  preferible a suponer un «todo incluido» que haya que desdecir delante de un cliente.
+
+### Cola nueva — con dueño, no bloquea
+
+| Cola | Dueño | Por qué no bloquea |
+|---|---|---|
+| **Meterle el `tenant_id` dentro a las claves foráneas.** La integridad referencial se evalúa por encima de RLS, así que una foránea simple deja colgar una fila de la de otra agencia si alguien escribe el id cruzado | `datos` | Hoy `tenant_id` lo pone el servidor, nunca el cliente. Es un **barrido de todo el esquema**, no de una tabla suelta: hacerlo en una sola sería inconsistente y daría falsa sensación de cubierto |
+| `Paquete` + `Temporada` + `Precio` siguen en el esquema junto al modelo nuevo | `datos` | El cotizador actual todavía se apoya en ellos. Se retiran cuando el cotizador pase a `resolverVigencia` |
+| La API no expone todavía `vigencias` ni `tarifas` | `backend` | El dato ya está en la base y la función de resolución probada. Falta el caso de uso y la ruta |

@@ -15,6 +15,7 @@
  */
 
 import { PrismaClient } from '@prisma/client';
+import { sembrarCatalogoReal } from './semilla-catalogo-real.js';
 
 const prisma = new PrismaClient();
 
@@ -410,32 +411,14 @@ async function main() {
     console.log(`  creado: ${p.nombre}  (${temporadas.length} temporadas)`);
   }
 
-  // --- Salidas ------------------------------------------------------------
-  // Fechas concretas con cupo, para poder ejercitar el agotamiento.
-  const sanAndres = await prisma.paquete.findFirst({
-    where: { tenantId: tenant.id, destino: 'San Andrés' },
-  });
-  if (sanAndres) {
-    for (const fecha of ['2027-12-18', '2027-12-26', '2028-01-06']) {
-      await prisma.salida.upsert({
-        where: {
-          tenantId_paqueteId_fecha: {
-            tenantId: tenant.id,
-            paqueteId: sanAndres.id,
-            fecha: new Date(fecha),
-          },
-        },
-        update: {},
-        create: {
-          tenantId: tenant.id,
-          paqueteId: sanAndres.id,
-          fecha: new Date(fecha),
-          cupoTotal: 20,
-          cupoVendido: fecha === '2027-12-26' ? 18 : 0,
-        },
-      });
-    }
-  }
+  // --- Catálogo real de Agencias André's Tours ----------------------------
+  // Sustituye a las salidas inventadas. 34 productos, 8 grupos, con las dos formas de publicar
+  // que la hoja real demuestra: fechas concretas y super excursiones con fecha propia.
+  const catalogoReal = await sembrarCatalogoReal(prisma, tenant.id);
+  console.log(
+    `  catálogo real: ${catalogoReal.paquetes} paquetes, ${catalogoReal.vigencias} vigencias, ` +
+      `${catalogoReal.tarifas} tarifas`,
+  );
 
   // --- Contactos ----------------------------------------------------------
   const contactos = [
@@ -564,7 +547,8 @@ async function main() {
     paquetes: await prisma.paquete.count({ where: { tenantId: tenant.id } }),
     temporadas: await prisma.temporada.count({ where: { tenantId: tenant.id } }),
     precios: await prisma.precio.count({ where: { tenantId: tenant.id } }),
-    salidas: await prisma.salida.count({ where: { tenantId: tenant.id } }),
+    vigencias: await prisma.vigencia.count({ where: { tenantId: tenant.id } }),
+    tarifas: await prisma.tarifa.count({ where: { tenantId: tenant.id } }),
     contactos: await prisma.contacto.count({ where: { tenantId: tenant.id } }),
     etapas: await prisma.etapaPipeline.count({ where: { tenantId: tenant.id } }),
     canales: await prisma.canal.count({ where: { tenantId: tenant.id } }),

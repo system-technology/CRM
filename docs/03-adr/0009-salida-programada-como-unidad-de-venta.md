@@ -1,11 +1,11 @@
 # ADR-0009 — El precio se ata a una ventana de vigencia, no al paquete
 
-- **Estado:** Propuesto
+- **Estado:** Aceptado
 - **Fecha:** 2026-10-10
 - **Decide:** Propietario del producto
 - **Consultados:** `experto-turismo` (dictamen `docs/01-producto/11-dictamen-del-catalogo-real.md`),
-  `arquitecto`. **Pendientes de revisar antes de aceptar:** `auditor-seguridad` (tablas nuevas con
-  `tenant_id`), `dueno-de-producto` (reapuntar la cabeza de playa).
+  `arquitecto`, `auditor-seguridad` (las tablas nuevas llevan `tenant_id` y RLS), `dueno-de-producto`.
+- **Aceptado el 2026-10-13** por el propietario, con la regla de precio fijada en §2.
 - **Supersede:** nada. Ver §6.
 
 > **Dos revisiones antes de firmarse, y las dos retiraron una premisa. Se dejan a la vista.**
@@ -175,9 +175,9 @@ números distintos sobre el mismo neto de $1.000.000:
 | `SOBRE_LA_VENTA` (comisión) | «me deja el 20 %» | **$1.250.000** |
 
 Son **$50.000 por silla**. En un bus de cuarenta, dos millones de pesos por salida. Este ADR
-**toma `SOBRE_EL_NETO` como valor por defecto porque es la lectura más frecuente en agencia
-minorista colombiana, y lo declara como suposición nuestra, no como dato del propietario.**
-Cambiarlo es una palabra suya y un campo de una tabla: no se toca una línea de código.
+**fija `SOBRE_EL_NETO`: «le subo el 20 %», que es como opera una agencia minorista colombiana.**
+Queda como valor por defecto de la política, así que la agencia que cobre comisión lo cambia en un
+campo, sin tocar una línea de código.
 
 `origenDeLaVenta` decide quién manda cuando el mayorista sube su neto. Con `DERIVADA_DEL_NETO` la
 venta se recalcula y la agencia conserva su margen; con `FIJADA_EN_EL_TARIFARIO` el número de la
@@ -322,10 +322,8 @@ honesto es reconocerlo y pagar el precio de C a conciencia.
 - El cotizador de punta a punta cambia su entrada, y la semilla se rehace.
 - Una tabla de configuración por tenant más, con su `tenant_id`, su política RLS y su valor por
   defecto.
-- **`base` por defecto es una suposición nuestra, no un dato del propietario.** Mientras no se
-  confirme, toda cifra de margen que enseñemos lleva ese asterisco.
-- Seguimos sin el **neto** del mayorista: lo que tenemos son precios de venta al público (pregunta
-  abierta 5).
+- Mientras no llegue la hoja de netos del mayorista, el neto de la semilla **se deriva** de la
+  venta publicada. Sirve para construir y demostrar; se sustituye por el dato real al implantar.
 
 ### Qué habría que cambiar para revertir esto
 Volver a colgar la tarifa del paquete y reinstalar la matriz como camino único. `neto` no entra en
@@ -362,7 +360,7 @@ de WhatsApp · precio por fecha de compra. Van a la cola de `ESTADO.md`, no a es
 | 2 | Reapuntar la cabeza de playa en `07-cabeza-de-playa-paquetes.md`; las nueve preguntas del §9 del dictamen a la agencia piloto | `dueno-de-producto` |
 | 3 | RLS y aislamiento de `vigencias`, `salidas`, `tarifas` y `politicas_de_precio`: `tenant_id` y política en las cuatro, ninguna excepción | `auditor-seguridad` |
 | 4 | Dudas de transcripción del tarifario antes de sembrar | `experto-turismo` |
-| 5 | **Resuelta a medias en la revisión 2.** El propietario fijó la regla: **neto del mayorista + 20 %**. Queda abierta **una sola palabra**: ¿el 20 % va **sobre el neto** o **sobre la venta**? (§2, eje 2). Y sigue sin llegar la hoja de netos: las cifras que tenemos son de venta al público, así que **el neto de la semilla se deriva** —`venta ÷ 1,20`— y **se marca como derivado**, nunca como dato del mayorista | `dueno-de-producto` |
+| 5 | **Resuelta.** El propietario fijó la regla el 2026-10-13: **neto del mayorista + 20 % sobre el neto**. Mientras no llegue la hoja de netos, la semilla deriva el neto de la venta publicada —`venta ÷ 1,20`— y se sustituye por el dato real al implantar | — |
 
 ## Entradas propuestas al lenguaje ubicuo
 
