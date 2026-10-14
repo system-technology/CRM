@@ -1,50 +1,52 @@
 # Cola de trabajo — Antigravity
 
-> # ✅ Ya está hecho. `main` traído y el pipeline alineado. Sigue sin parar.
->
-> No tenías que perder tiempo en esto, así que lo hice yo. Tu rama ya tiene `main` dentro y las
-> **cinco compuertas en verde: 64 pruebas**, typecheck, lint, build y format.
->
-> **Qué toqué, para que no te sorprenda al abrir los archivos.** `Oportunidad.etapa` pasó de
-> cadena a objeto `EtapaDefinida`. La base guarda las etapas como **tabla por agencia** y la
-> demo tiene **siete**; con las cinco cerradas, dos columnas de tu tablero no eran
-> representables. Adapté `pipeline-logica`, la página, la columna kanban, la tarjeta, la ficha
-> y los simulados.
->
-> **Y te simplifica el código.** Ya no hace falta `NOMBRES_ETAPAS` para pintar: la etapa trae su
-> propio `nombre`, el que la agencia le puso —la demo llama «Consulta nueva» a su primera
-> etapa—. El menú «mover a» se construye ahora desde las etapas del tablero, así que una agencia
-> con siete etapas tiene siete destinos en vez de cinco.
->
-> **Un fallo de dinero que encontré de paso, de los que duelen en una demo.**
-> `formatearDineroCifra` dividía entre 100 suponiendo centavos, pero en pesos colombianos **la
-> unidad es el peso**. El simulado traía los centavos, así que los dos errores se compensaban y
-> la pantalla acertaba por casualidad. Corregidos los dos, con una prueba que lo fija.
->
-> **Y uno que te afecta a ti directamente:** tu `typecheck` estaba pasando **en falso**, contra
-> una versión vieja de `@viajapro/contracts`. Al reconstruir el paquete salieron 14 errores en 6
-> archivos. Si ves verde y dudas, prueba `pnpm --filter @viajapro/contracts build` antes.
->
-> **Lo que sigue siendo tuyo:** varias de tus pantallas usan datos simulados donde ya hay API de
-> verdad, verificada contra Neon y contra la API corriendo:
->
-> | Ruta | Qué devuelve |
-> |---|---|
-> | `GET /api/v1/crm/tablero` | Las columnas de esa agencia con sus totales |
-> | `GET /api/v1/crm/contactos` | Contactos, con búsqueda por nombre o teléfono |
-> | `GET /api/v1/crm/contactos/:id/ficha` | La ficha del panel lateral, en **una** petición |
-> | `PATCH /api/v1/crm/oportunidades/:id/etapa` | Mover de etapa, con la regla de pérdida |
->
-> Conectar el pipeline y la ficha a esas rutas, detrás del interruptor que ya montaste, vale más
-> que una pantalla nueva: deja de ser una maqueta.
->
-> Aviso sobre el catálogo y el cotizador: **el ADR-0009 propone retirar `Temporada` como eje de
-> precio y la matriz de acomodación.** Está en `Propuesto`, sin firmar. No deshagas nada, pero
-> tampoco construyas más encima de esa parte hasta que el propietario decida.
+> **¿Sesión nueva, sin contexto?** Lee **`ARRANQUE.md`** primero. Está escrito para eso y es
+> suficiente: no necesitas que nadie te cuente nada.
 
 **Siempre:** solo tocas `apps/web/`. Nunca escribes en `main`. No tocas `ESTADO.md`. Cero tipos
-redefinidos: todo de `@viajapro/contracts` — si falta un campo, **para y dilo**. `lint`, `typecheck`, `test`, `build` y `format:check` en verde
-**ejecutados**, no supuestos, antes de escribir `ENTREGA.md`. Y funciona a 375 px.
+redefinidos: todo de `@viajapro/contracts` — si falta un campo, **para y dilo**. Las cinco
+compuertas en verde **ejecutadas**, no supuestas, antes de escribir `ENTREGA.md`. Y funciona a
+375 px.
+
+> Si el `typecheck` sale verde y dudas, corre antes `pnpm build`: un `dist` viejo de los
+> paquetes hace que compiles contra una versión anterior de los contratos. Ya nos ha dado
+> verdes falsos y rojos falsos.
+
+---
+
+## [ ] 0c.14. Que la pantalla diga con qué datos está hablando
+
+Arranqué las dos aplicaciones hoy y abrí `/pipeline`. Se ve como un producto terminado. Las
+tarjetas decían «Curazao All Inclusive» y «Circuito Europa 15 días» — datos inventados, no los
+que hay sembrados. El panel de red: **cero peticiones a la API**.
+
+No es culpa tuya: el interruptor `NEXT_PUBLIC_USE_REAL_CRM` viene apagado y hasta hoy no estaba
+ni documentado. Pero el efecto es grave: **el producto parece completo, no habla con nada, y
+nada en la pantalla lo dice.** Delante del piloto, eso es una bomba.
+
+**0c.14.1 — Un distintivo honesto, visible y discreto.** Cuando una pantalla esté pintando
+datos simulados, que lo diga: una etiqueta pequeña, en la cabecera, del tipo «datos de
+demostración». No un banner que estorbe; algo que un asesor no note y que a nadie en una demo se
+le pueda escapar. Y cuando esté contra la API real, **no aparece nada**: lo normal no se anuncia.
+
+**0c.14.2 — Que el interruptor encendido sin tenant no deje la pantalla rota.** Si
+`NEXT_PUBLIC_USE_REAL_CRM` es `true` pero falta `NEXT_PUBLIC_DEV_TENANT_ID`, la API responde 401
+y hoy la pantalla se queda en blanco sin explicar nada. Que diga qué falta y cómo se arregla —
+el valor lo imprime `pnpm db:seed` al terminar—. Un error de configuración tiene que leerse como
+un error de configuración, no como un producto roto.
+
+**0c.14.3 — El error de hidratación del pipeline.** Lo vi hoy en consola: el servidor y el
+navegador generan la misma fecha de forma distinta —«13 de oct, 09:09 p. m.» contra el mismo
+texto— y React regenera el árbol entero. Es formateo de fecha con `Intl` en servidor y cliente.
+Arréglalo donde esté y añade una prueba que lo fije.
+
+**Criterio de aceptación:** con el interruptor apagado se ve el distintivo; encendido y con
+tenant, desaparece y las tarjetas traen los datos de la base —los de André's Tours, no
+«Curazao»—; encendido y sin tenant, un mensaje que explica qué falta. Y cero errores de
+hidratación en consola al abrir `/pipeline`.
+
+**Cuéntalo en `ENTREGA.md` con la salida real.** Si no puedes encender el interruptor porque no
+puedes escribir `.env` —no puedes, lo bloquea un hook—, dilo y verifica lo que sí puedas.
 
 ---
 
