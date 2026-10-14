@@ -50,6 +50,49 @@ puedes escribir `.env` —no puedes, lo bloquea un hook—, dilo y verifica lo q
 
 ---
 
+## [ ] 0c.15. La política de precio de la agencia, en `/configuracion`
+
+**Esto ya no espera a nadie.** El contrato `PoliticaDePrecio` existe y está publicado en
+`@viajapro/contracts`; corre `pnpm build` antes de importarlo.
+
+**De qué va.** ADR-0009 quedó firmado el 13 de octubre con la regla del propietario: el precio de
+venta sale del **neto del mayorista más un 20 %**. Y lo interesante es que «margen del 20 %» tiene
+**dos lecturas** que dan precios distintos sobre el mismo neto de un millón:
+
+| Valor de `base` | Cómo lo dice una agencia | Venta |
+|---|---|---|
+| `SOBRE_EL_NETO` | «le subo el 20 %» | **$1.200.000** |
+| `SOBRE_LA_VENTA` | «me deja el 20 %» | **$1.250.000** |
+
+Cincuenta mil pesos por silla. En un bus de cuarenta, dos millones por salida. **El dueño de la
+agencia tiene que poder ver cuál de las dos está aplicando, y entender la diferencia sin que nadie
+se la explique.** Esa es la tarea.
+
+**0c.15.1 — La sección.** En `/configuracion`, un bloque «Cómo se forma el precio» con los cuatro
+campos del contrato: `porcentaje`, `base`, `origenDeLaVenta` y `redondeoVenta`. Más
+`admiteMargenPorTarifa`.
+
+**0c.15.2 — El ejemplo vivo, que es lo que de verdad enseña.** Al lado de los campos, un ejemplo
+que se recalcula mientras se tocan: «con un neto de $1.000.000, su precio de venta sería
+**$1.200.000**». Cambiar `base` de una lectura a la otra tiene que mover ese número delante de
+los ojos. Un texto explicando la diferencia se lee una vez y no se entiende; el número cambiando
+se entiende solo.
+
+**0c.15.3 — Cuidado con la aritmética, y no la escribas tú.** `calcularVenta` y `calcularMargen`
+están **ya hechos y probados** en `@viajapro/domain` (`precio-de-venta.ts`, 20 pruebas). Impórtalos.
+Si reimplementas la fórmula en el navegador tendremos dos versiones del mismo cálculo separándose
+con el tiempo, y además `SOBRE_LA_VENTA` no es una multiplicación: es `neto / (1 − p)`.
+
+**0c.15.4 — Qué NO hacer.** No guardas nada todavía: la API no expone la ruta de escritura. La
+pantalla lee, enseña y calcula; el botón de guardar queda deshabilitado con un motivo honesto, o
+no está. **Y aplica 0c.14 también aquí:** si los valores son simulados, que lo diga.
+
+**Criterio de aceptación:** cambiar `base` en la pantalla mueve el ejemplo de $1.200.000 a
+$1.250.000. Hay prueba que lo fija. El cálculo viene de `@viajapro/domain` y no de código tuyo.
+Funciona a 375 px.
+
+---
+
 ## [x] 0c.13. Auditoría Responsiva a 375 px, Touch Targets >= 44 px, Navegación Móvil y Accesibilidad WCAG AA en Todas las Pantallas
 
 Origen: Jira Story `VC-42` (Epic `VC-3` — CRM y Pipeline) · `viajapro_diseno_ui_ux.json` (§`responsive_and_accessibility` y §`validation_checklist`) · `DISENO-BANDEJA.md` (defecto táctil de chips < 44 px).

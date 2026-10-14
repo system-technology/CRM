@@ -1,75 +1,99 @@
-# Revisión — `685ec53` — 2026-10-10
+# REVISIÓN — 2026-10-13
 
-Entrega: *Rediseño de 3 columnas, componentes de bandeja y pruebas puras*.
+> **Antes que nada: este retraso es mío, no tuyo.** Tu `ENTREGA.md` es del 11 a las 20:03 y mi
+> revisión anterior era del 10 a las 22:13. Entregaste y te quedaste esperando respuesta, que es
+> exactamente lo que el protocolo te dice que hagas. El lazo se rompió de mi lado y estuviste dos
+> días parado por eso. Queda corregido con esta revisión, y abajo tienes cola para seguir.
 
-## Veredicto: **PASA con una corrección bloqueante**
+## Veredicto: **ACEPTADO**, las cinco entregas
 
-El salto es grande y se nota al abrirlo. Lo que pedía la tarea 0b está hecho, y lo comprobé
-mirándolo, no leyendo el código:
+`bc21212` · `0110053` · `e78564f` · `39401e6` · `ff74c08`
 
-| Lo que pedía 0b | Estado |
+Ninguna corrección bloqueante. Según R13, una sola vuelta: lo que está más abajo va a cola con
+dueño y **no te detiene**.
+
+## Lo que verifiqué EJECUTANDO, no leyendo
+
+Compilé antes los paquetes del monorepo, para no medir contra un `dist` viejo:
+
+| Compuerta | Resultado real |
 |---|---|
-| Sacar el instrumental de desarrollo | **Hecho.** Cero apariciones de «Mock Simulador», «Guard R5/UI» o «v0.1.0» |
-| Matar el `alert()` de plantillas | **Hecho.** Cero `alert(` en el hilo |
-| Armazón de tres columnas | **Hecho.** `layout.tsx` existe y abrir una conversación ya no pierde la lista |
-| Barra lateral de módulos | **Hecho**, con la métrica del asesor abajo |
-| Ficha del contacto a la derecha | **Hecha**, con oportunidad viva, valor estimado, archivos de viaje y consentimientos |
-| Acción principal visible | **Hecha.** «Crear cotización» en azul, abajo a la derecha, y «Nueva cotización» arriba |
+| `typecheck` | limpio |
+| `lint` | limpio |
+| `test` | **104 pruebas, 15 archivos, todas en verde** |
+| `build` | **compila en 6,8 s, 10 rutas** — `/bandeja`, `/bandeja/[id]`, `/catalogo`, `/configuracion`, `/contactos`, `/cotizador`, `/pipeline`, `/reportes`, `/viajes` |
+| `format:check` | limpio |
 
-Compuertas: `lint` limpio, `typecheck` limpio, `test` 8/8. Sin errores de consola salvo un
-`favicon.ico` 404, que es cosmético.
+**Tu informe decía la verdad.** Lo digo porque la vez que no la dijo lo anoté, y sería injusto no
+anotar esta.
 
-Y el acento azul está aplicado. Se ve como el producto que el propietario aprobó.
+Comprobé además las dos cosas que no se ven en una compuerta:
+
+- **R3, cero tipos redefinidos.** 39 archivos importan de `@viajapro/contracts`. El único tipo
+  propio con nombre de contrato es `PaqueteConDetalle`, y **extiende** `Paquete` en vez de
+  copiarlo: eso es correcto y es la forma de hacerlo.
+- **Ni una clave de modelo en el navegador.** Busqué `anthropic`, `ANTHROPIC`, `sk-ant` y la URL de
+  la API de Anthropic en todo `apps/web/src`: nada. Era lo que más me preocupaba de la entrega del
+  copiloto, y está limpio.
+
+## Cola — con dueño, no bloquea
+
+**El copiloto no habla con ningún modelo, y la pantalla no debería dar a entender que sí.**
+`asistente-ia-logica.ts` es un extractor por palabras clave sobre una lista fija de destinos. Como
+armazón está bien hecho y bien probado, y me parece la decisión correcta para esta fase. Pero se
+llama «Asistente Copilot IA» y **un asesor va a creer que detrás hay un modelo**. Cuando
+`ingeniero-ia` conecte el de verdad, el cambio será interno y nadie lo notará; mientras tanto, que
+el texto no prometa lo que todavía no hay. *(Dueño: tú, junto con 0c.14 — es el mismo problema de
+decir con qué está hablando la pantalla.)*
+
+**`presupuestoEstimadoCop: number | null`.** Es dinero como `number` suelto y no como `Dinero` de
+los contratos. Aquí no rompe nada —es una estimación sacada de un texto, no un precio que se
+cobre— pero si ese número llega algún día a una cotización, entra sin moneda y sin el redondeo que
+manda la política de la agencia. *(Dueño: `frontend`, cuando el copiloto deje de ser heurístico.)*
+
+## Lo que cambió bajo tus pies mientras esperabas
+
+**ADR-0009 está FIRMADO.** Ya no está en «Propuesto», así que **se levanta** la instrucción de
+`ARRANQUE.md` de no construir encima. Lo que decide:
+
+- El precio ya no cuelga del paquete: cuelga de una **ventana de fechas de salida** (`Vigencia`).
+  Una salida programada es la ventana de **un solo día**, publicada.
+- `Temporada` **no se retiró**: se generalizó. Tu `/catalogo` y tu `/cotizador` no están de más.
+- **La regla de precio quedó cerrada:** neto del mayorista **+ 20 % sobre el neto**, redondeo a
+  1.000 — y las tres cosas configurables por agencia.
+
+**Y ya hay datos reales en la base**, sembrados y medidos: **33 paquetes, 78 vigencias, 79 tarifas**
+del tarifario de Agencias André's Tours. Incluido el caso que explica por qué el modelo es así: una
+vigencia con dos tarifas, por persona y por pareja.
+
+```
+Parque Consotá  2026-10-11
+   Adulto         POR_PERSONA  cubre=1  venta=189.000  neto=157.500  (20,00 %)
+   Promo pareja   POR_GRUPO    cubre=2  venta=280.000  neto=233.333  (20,00 %)
+```
+
+**Contratos nuevos, ya publicados en `@viajapro/contracts`:** `Vigencia`, `Tarifa`, `UnidadDeCobro`,
+`CondicionDeTarifa`, `CotizarSalida`, `PoliticaDePrecio`, `BaseDelMargen`, `OrigenDeLaVenta`,
+`ModoDeCatalogo`. Corre `pnpm build` antes de usarlos, o compilarás contra el `dist` de antes.
+
+**Lo que todavía NO existe:** la API no expone `vigencias` ni `tarifas`. Es trabajo mío y va ahora.
+Por eso la cola no te pide pintar el catálogo real todavía: te pediría esperarme, y eso ya lo hemos
+pagado caro esta semana.
+
+## Tu cola
+
+Dos tareas en `COLA.md`, en este orden:
+
+1. **0c.14 — Que la pantalla diga con qué datos está hablando.** Sigue siendo la primera. Es lo
+   único que hoy separa una demostración honesta de una bomba delante del piloto.
+2. **0c.15 — La política de precio en `/configuracion`.** Nueva. Se construye entera contra el
+   contrato `PoliticaDePrecio`, que ya existe: **no depende de mí para nada**.
+
+Si terminas las dos y no he vuelto a escribir aquí, **no te pares**: coge la primera de
+`COLA-DESPUES.md` y dilo en `ENTREGA.md`.
 
 ---
 
-## Lo bloqueante: la ficha enseña a otro viajero
-
-Abrí tres conversaciones seguidas y la ficha de la derecha **no cambió**:
-
-| Conversación abierta | Teléfono en la ficha |
-|---|---|
-| Juan Pérez | `+573001234567` |
-| Ana Martínez | `+573001234567` |
-| Sonia López | `+573001234567` |
-
-Siempre Sofía Gómez. La cabecera dice «Juan Pérez · +573000012345» y treinta centímetros a la
-derecha, bajo «Ficha del Viajero», hay otra persona con otro número, otras etiquetas y otra
-oportunidad de 12.500.000 COP.
-
-**Por qué esto no es un detalle de datos simulados.** Un asesor que mira esa pantalla cotiza
-Cancún para quien preguntó por San Andrés. Y si esos datos fueran reales, estaría viendo el
-expediente de un viajero dentro de la conversación de otro — que es lo mismo que todo el
-aislamiento entre agencias intenta impedir, pero dentro de la misma agencia. La ficha tiene que
-estar atada al `conversacionId` igual que el hilo.
-
-Corrección: que el componente reciba el contacto de la conversación abierta, no una constante.
-Con `FichaDeContacto` de `@viajapro/contracts` y el simulador devolviendo la ficha **del id que
-se le pide**.
-
-**Y una prueba que falle hoy**: abrir dos conversaciones distintas y afirmar que el teléfono de
-la ficha es distinto. Con el código actual tiene que salir en rojo.
-
-## A la cola — no bloquea (R13)
-
-| | Qué | Dónde |
-|---|---|---|
-| 1 | `favicon.ico` da 404 | `app/` |
-| 2 | La ventana de 24 h dice «11 h 59 min» en casi todas las filas: el dato simulado es constante y no enseña el caso que importa, el que está por vencer | `lib/mock-inbox.ts` |
-| 3 | «Ver archivo completo (Próximamente)» — un botón que anuncia lo que no existe. O se quita o se deshabilita sin promesa | panel de la ficha |
-| 4 | El contraste del tono 500 sobre blanco es 3.68 y no vale para texto; revisar que no se use en etiquetas | `globals.css` |
-
----
-
-## Siguiente bloque
-
-1. **La ficha atada a su conversación**, con la prueba en rojo antes y en verde después.
-2. **Rehacer las pruebas de la tarea 5**, que devolví: cuatro de las seis reescribían la lógica
-   dentro del propio `it` en vez de importarla. Ahora que hay componentes de verdad y funciones
-   separadas, ya hay algo que importar — era la mitad del problema y la has resuelto tú sola al
-   partir la pantalla en piezas.
-3. Luego, lo que esté en `COLA.md`.
-
-Una cosa más, y va de método: esta entrega salió bien porque la cola tenía **una sola tarea**.
-Las tres anteriores se saltaron la misma tarea con siete opciones delante. No era tuyo el fallo:
-era mío, por poner un menú donde tenía que haber una instrucción. Lo mantengo así.
+> Las revisiones anteriores se conservan en el historial de git. Esta sustituye a la del
+> 2026-10-10 (`685ec53`), cuya corrección bloqueante —la ficha que enseñaba a otro viajero— quedó
+> resuelta y verificada.
