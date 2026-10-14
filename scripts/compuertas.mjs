@@ -91,7 +91,7 @@ if (cayo) {
 if (RAPIDO) {
   console.log(
     '\n  Modo rápido: `build` NO se ejecutó, así que esto no basta para firmar una entrega.\n' +
-      '  Corre `pnpm compuertas` entero antes de escribir `ENTREGA.md`.\n',
+      '  Corre `pnpm compuertas` entero antes de escribir `traspaso/ENTREGA.md`.\n',
   );
   process.exit(0);
 }

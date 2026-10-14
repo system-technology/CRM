@@ -1,5 +1,9 @@
 # ARRANQUE — empieza aquí, desde cero contexto
 
+> **Dónde estás:** `traspaso/`. Este archivo y los otros cinco del protocolo viven aquí desde el
+> 2026-10-13; antes estaban sueltos en la raíz y eran seis de diez. Lo que se nombra sin carpeta
+> —`CLAUDE.md`, `ESTADO.md`, `AGENTS.md`— sigue en la raíz, un nivel por encima.
+
 Si acabas de perder la sesión y no recuerdas nada de este proyecto, este archivo es suficiente.
 No hace falta que nadie te cuente nada: **todo lo que importa está escrito.** Lee en este orden
 y no te saltes el orden, que está pensado.

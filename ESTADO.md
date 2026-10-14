@@ -28,8 +28,8 @@ iniciada.
 
 **Desde el 2026-10-08 se trabaja con dos IA en paralelo**, cada una en su propio worktree y su
 propia rama: esta sesión en `feat/inbox-webhook` (`D:\Projects\CRM-api`) y Antigravity en
-`feat/bandeja-web` (`D:\Projects\CRM-bandeja`). El traspaso es por archivo —`ENTREGA.md` y
-`REVISION.md` en la rama— sin cartero humano. Ver `docs/09-ia/06-flujo-con-antigravity.md`.
+`feat/bandeja-web` (`D:\Projects\CRM-bandeja`). El traspaso es por archivo —`traspaso/ENTREGA.md` y
+`traspaso/REVISION.md` en la rama— sin cartero humano. Ver `docs/09-ia/06-flujo-con-antigravity.md`.
 
 **Del inbox existe ya, en ramas:** los contratos Zod de la bandeja (`packages/contracts/src/inbox.ts`,
 en `main` desde v0.11.0), las tres piezas puras del webhook —firma HMAC sobre el cuerpo crudo,
