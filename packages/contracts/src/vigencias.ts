@@ -244,6 +244,16 @@ export const SalidaPublicada = z.object({
   fecha: FechaViaje,
   cupoTotal: z.number().int().nullable(),
   desde: Dinero,
+  /**
+   * `true` cuando ese «desde» sale de una tarifa de GRUPO y es su per cápita — «$140.000 por
+   * persona, en promo de pareja».
+   *
+   * La pantalla **tiene que decirlo**: una persona sola no puede comprar esa tarifa, y un
+   * titular que promete un precio condicionado sin nombrar la condición es publicidad engañosa.
+   * Esconder el producto habría sido peor —existe y la agencia lo vende—, así que se enseña con
+   * su letra pequeña al lado.
+   */
+  desdeEsDeGrupo: z.boolean(),
   /** Cuántas tarifas distintas tiene. Más de una significa que hay promoción o condición. */
   tarifas: z.number().int().min(1),
 });
