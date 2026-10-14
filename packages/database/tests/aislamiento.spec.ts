@@ -23,6 +23,8 @@ import { Client } from 'pg';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+// @ts-expect-error — módulo JS sin tipos, compartido con `scripts/limpiar-fixtures.mjs`.
+import { borrarTenants } from '../scripts/borrar-tenants.mjs';
 
 // SIN `??` hacia DATABASE_URL, y eso es media compuerta.
 //
@@ -108,7 +110,16 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await admin.query('DELETE FROM tenants WHERE id = ANY($1)', [[TENANT_A, TENANT_B, TENANT_C]]);
+  // **No es un `DELETE FROM tenants` y no puede serlo.** Lo era, y fallaba en silencio contra el
+  // `RESTRICT` de `enrutamiento_canales` hacia `cuentas_whatsapp`: los tres tenants de fixture
+  // sobrevivían y la corrida siguiente reventaba con `duplicate key` en DIECISIETE aserciones
+  // que no tenían nada que ver con el aislamiento. Un rojo que parece una fuga y es higiene.
+  //
+  // `borrarTenants` descubre el orden de borrado en vez de codificarlo, así que una migración
+  // nueva no vuelve a romperlo.
+  await admin.query('BEGIN');
+  await borrarTenants(admin, [TENANT_A, TENANT_B, TENANT_C]);
+  await admin.query('COMMIT');
   await admin.end();
   await app.end();
 });
