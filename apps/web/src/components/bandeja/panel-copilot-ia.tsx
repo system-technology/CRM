@@ -69,7 +69,7 @@ export function PanelCopilotIa({
     <div
       className="mb-3 overflow-hidden rounded-xl border border-purple-200 bg-purple-50/40 p-3.5 shadow-xs transition-all dark:border-purple-900/50 dark:bg-purple-950/20"
       role="region"
-      aria-label="Asistente Copilot IA"
+      aria-label="Asistente de Sugerencias Heurísticas"
     >
       {/* Cabecera */}
       <div className="flex items-center justify-between border-b border-purple-200/60 pb-2.5 dark:border-purple-900/40">
@@ -78,7 +78,7 @@ export function PanelCopilotIa({
             <Sparkles className="h-3.5 w-3.5" />
           </div>
           <span className="text-xs font-bold text-purple-950 dark:text-purple-200">
-            Copilot IA — Inteligencia de Ventas
+            Sugerencias Automáticas — Reglas Heurísticas
           </span>
           <span
             className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${

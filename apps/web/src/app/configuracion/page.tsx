@@ -17,6 +17,7 @@ import {
   Phone,
 } from 'lucide-react';
 import { BarraModulos } from '../../components/bandeja/barra-modulos';
+import { DistintivoDatosDemo } from '../../components/comun/distintivo-datos-demo';
 import {
   MOCK_MIEMBROS_EQUIPO,
   MOCK_CONFIGURACION_WABA,
@@ -120,6 +121,7 @@ export default function ConfiguracionPage() {
                 <h1 className="text-xl font-bold tracking-tight text-neutral-900 dark:text-white">
                   Equipo y Configuración de Agencia
                 </h1>
+                <DistintivoDatosDemo visible={true} />
                 <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-semibold text-blue-800 dark:bg-blue-900/60 dark:text-blue-300">
                   {agencia.nombreComercial}
                 </span>

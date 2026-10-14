@@ -4,6 +4,8 @@ import {
   moverOportunidadDeEtapa,
   obtenerFichaDeContacto,
   listarContactos,
+  estaUsandoApiReal,
+  obtenerTenantDemo,
 } from './crm-api';
 
 describe('Cliente de API CRM (crm-api.ts)', () => {
@@ -62,5 +64,31 @@ describe('Cliente de API CRM (crm-api.ts)', () => {
     const pagina = await listarContactos('Juan');
     expect(pagina.datos.length).toBeGreaterThanOrEqual(1);
     expect(pagina.datos[0]?.nombre).toContain('Juan');
+  });
+});
+
+describe('Detección y reporte de configuración de API CRM (0c.14)', () => {
+  it('reporta correctamente el estado de los interruptores de entorno', () => {
+    const estado = estaUsandoApiReal();
+    expect(typeof estado).toBe('boolean');
+    expect(typeof obtenerTenantDemo()).toBe('string');
+  });
+
+  it('si NEXT_PUBLIC_USE_REAL_CRM es true pero falta NEXT_PUBLIC_DEV_TENANT_ID, lanza CrmApiError con CONFIG_TENANT_FALTANTE (401)', async () => {
+    const prevCrm = process.env['NEXT_PUBLIC_USE_REAL_CRM'];
+    const prevTenant = process.env['NEXT_PUBLIC_DEV_TENANT_ID'];
+
+    try {
+      process.env['NEXT_PUBLIC_USE_REAL_CRM'] = 'true';
+      delete process.env['NEXT_PUBLIC_DEV_TENANT_ID'];
+
+      await expect(obtenerTableroPipeline()).rejects.toThrowError(/NEXT_PUBLIC_DEV_TENANT_ID/);
+    } finally {
+      if (prevCrm !== undefined) process.env['NEXT_PUBLIC_USE_REAL_CRM'] = prevCrm;
+      else delete process.env['NEXT_PUBLIC_USE_REAL_CRM'];
+
+      if (prevTenant !== undefined) process.env['NEXT_PUBLIC_DEV_TENANT_ID'] = prevTenant;
+      else delete process.env['NEXT_PUBLIC_DEV_TENANT_ID'];
+    }
   });
 });

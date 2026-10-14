@@ -13,6 +13,7 @@ import {
   Calendar,
 } from 'lucide-react';
 import { BarraModulos } from '../../components/bandeja/barra-modulos';
+import { DistintivoDatosDemo } from '../../components/comun/distintivo-datos-demo';
 import { formatearDinero } from '../../lib/api';
 import type { RangoPeriodo, RolVistaReporte } from '../../lib/mock-reportes';
 import { obtenerEtiquetaPeriodo, obtenerReportePorPeriodo } from '../../lib/reportes-logica';
@@ -44,6 +45,7 @@ export default function ReportesPage() {
                 <h1 className="text-xl font-bold text-neutral-900 dark:text-white">
                   Reportes y Rendimiento Comercial
                 </h1>
+                <DistintivoDatosDemo visible={true} />
               </div>
               <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
                 Lectura ejecutiva de ventas, cuellos de botella en el embudo y tiempos de atención

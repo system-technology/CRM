@@ -10,6 +10,7 @@ import type {
   PaginaBandeja,
 } from '@viajapro/contracts';
 import { Search, Rows3, AlertTriangle, RefreshCw } from 'lucide-react';
+import { DistintivoDatosDemo } from '../comun/distintivo-datos-demo';
 import { inboxApi, InboxErrorApi } from '../../lib/inbox-api';
 import { realtimeMockBus } from '../../lib/realtime-mock';
 import {
@@ -184,9 +185,12 @@ export function ListaConversaciones() {
       {/* Cabecera de la lista */}
       <div className="shrink-0 space-y-2.5 border-b border-neutral-200 p-3 dark:border-neutral-800">
         <div className="flex items-center justify-between">
-          <h1 className="text-sm font-bold text-neutral-900 dark:text-neutral-100">
-            Conversaciones
-          </h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-sm font-bold text-neutral-900 dark:text-neutral-100">
+              Conversaciones
+            </h1>
+            <DistintivoDatosDemo />
+          </div>
           <button
             type="button"
             onClick={() => setDensidad((d) => (d === 'comoda' ? 'compacta' : 'comoda'))}

@@ -16,6 +16,7 @@ import {
   esTareaAtrasada,
   formatearDineroCifra,
   formatearTiempoRelativo,
+  formatearFechaTarea,
   NOMBRES_MOTIVOS_PERDIDA,
 } from '../../lib/pipeline-logica';
 import { generarColorAvatar, obtenerIniciales } from '../../lib/bandeja-logica';
@@ -127,7 +128,7 @@ export function TarjetaOportunidad({
         </span>
         <span className="flex items-center space-x-1 text-[10px] text-neutral-500 dark:text-neutral-400">
           <Clock className="h-2.5 w-2.5" />
-          <span>{formatearTiempoRelativo(ultimoContactoEn)}</span>
+          <span suppressHydrationWarning>{formatearTiempoRelativo(ultimoContactoEn)}</span>
         </span>
       </div>
 
@@ -147,14 +148,9 @@ export function TarjetaOportunidad({
           )}
           <div className="min-w-0 flex-1">
             <p className="truncate font-medium">{proximaTarea.descripcion}</p>
-            <p className="text-[10px] opacity-80">
+            <p className="text-[10px] opacity-80" suppressHydrationWarning>
               {atrasada ? 'Atrasada · ' : 'Vence · '}
-              {new Date(proximaTarea.venceEn).toLocaleDateString('es-CO', {
-                month: 'short',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
-              })}
+              {formatearFechaTarea(proximaTarea.venceEn)}
             </p>
           </div>
         </div>

@@ -6,7 +6,8 @@ import { TableroPipeline, type ColumnaPipeline } from '@viajapro/contracts';
  * El total de la columna viene precalculado del servidor y no es la suma de las tarjetas visibles (COLA-DESPUES §0c.3).
  */
 export function obtenerMockTableroPipeline(): TableroPipeline {
-  const ahora = Date.now();
+  // Base temporal redondeada a la hora actual para evitar desfases milimétricos de hidratación SSR
+  const ahora = Math.floor(Date.now() / 3600000) * 3600000;
 
   const columnas: ColumnaPipeline[] = [
     // 1. NUEVO_LEAD

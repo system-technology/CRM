@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import type { PlanAlimentacion } from '@viajapro/contracts';
 import { BarraModulos } from '../../components/bandeja/barra-modulos';
+import { DistintivoDatosDemo } from '../../components/comun/distintivo-datos-demo';
 import { FichaDetallePaquete } from '../../components/catalogo/ficha-detalle-paquete';
 import {
   MOCK_PAQUETES_CATALOGO,
@@ -78,6 +79,7 @@ export default function CatalogoPage() {
                 <h1 className="text-xl font-bold text-neutral-900 dark:text-white">
                   Catálogo de Paquetes y Tarifarios
                 </h1>
+                <DistintivoDatosDemo visible={true} />
               </div>
               <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
                 Planes prearmados de mayoristas aliados. Precios verificados con vigencia de

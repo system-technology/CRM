@@ -18,6 +18,7 @@ import {
   Copy,
 } from 'lucide-react';
 import { BarraModulos } from '../../components/bandeja/barra-modulos';
+import { DistintivoDatosDemo } from '../../components/comun/distintivo-datos-demo';
 import { MOCK_ARCHIVOS_VIAJE, type ArchivoDeViaje } from '../../lib/mock-viajes';
 import {
   calcularSaldoPendiente,
@@ -222,6 +223,7 @@ function ExpedienteDetalleContenido() {
               <h1 className="mt-1 text-xl font-bold tracking-tight text-neutral-900 dark:text-white">
                 {expediente.paqueteNombre}
               </h1>
+              <DistintivoDatosDemo visible={true} />
 
               <div className="mt-1 flex flex-wrap items-center gap-4 text-xs text-neutral-600 dark:text-neutral-300">
                 <span className="flex items-center gap-1">

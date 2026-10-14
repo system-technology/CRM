@@ -14,6 +14,7 @@ import {
   UserCheck,
 } from 'lucide-react';
 import { BarraModulos } from '../../components/bandeja/barra-modulos';
+import { DistintivoDatosDemo } from '../../components/comun/distintivo-datos-demo';
 import { FichaDetalleContacto } from '../../components/contactos/ficha-detalle-contacto';
 import { obtenerMockPaginaContactos } from '../../lib/mock-contactos';
 import { listarContactos } from '../../lib/crm-api';
@@ -82,6 +83,7 @@ export default function ContactosPage() {
                 <h1 className="text-base font-bold tracking-tight text-neutral-900 dark:text-neutral-100">
                   Contactos y Viajeros
                 </h1>
+                <DistintivoDatosDemo />
                 <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-[10px] font-semibold text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300">
                   {pagina.datos.length} contactos
                 </span>

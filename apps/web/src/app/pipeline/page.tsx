@@ -3,13 +3,21 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { EtapaDefinida, MotivoPerdida, Oportunidad, TableroPipeline } from '@viajapro/contracts';
-import { Kanban, Table as TableIcon, Search, Filter, Plus } from 'lucide-react';
+import { Kanban, Table as TableIcon, Search, Filter, Plus, Loader2 } from 'lucide-react';
 import { BarraModulos } from '../../components/bandeja/barra-modulos';
 import { ColumnaKanban } from '../../components/pipeline/columna-kanban';
 import { ModalMotivoPerdida } from '../../components/pipeline/modal-motivo-perdida';
+import { DistintivoDatosDemo } from '../../components/comun/distintivo-datos-demo';
+import { AvisoConfiguracionTenant } from '../../components/crm/aviso-configuracion-tenant';
 import { obtenerMockTableroPipeline } from '../../lib/mock-pipeline';
 import { formatearDineroCifra, moverOportunidadEnTablero } from '../../lib/pipeline-logica';
-import { obtenerTableroPipeline, moverOportunidadDeEtapa } from '../../lib/crm-api';
+import {
+  obtenerTableroPipeline,
+  moverOportunidadDeEtapa,
+  estaUsandoApiReal,
+  obtenerTenantDemo,
+  CrmApiError,
+} from '../../lib/crm-api';
 
 export default function PipelinePage() {
   const [tablero, setTablero] = useState<TableroPipeline>(() => obtenerMockTableroPipeline());
@@ -17,16 +25,55 @@ export default function PipelinePage() {
   const [filtroTexto, setFiltroTexto] = useState('');
   const [filtroAsesor, setFiltroAsesor] = useState<string>('todos');
 
-  // Carga inicial del tablero (API real si está disponible, o mock offline)
+  // Estado del origen de datos y configuración (Tarea 0c.14)
+  const [esModoSimulado, setEsModoSimulado] = useState<boolean>(!estaUsandoApiReal());
+  const [errorConfiguracion, setErrorConfiguracion] = useState<string | null>(null);
+  const [mostrarDemoForzado, setMostrarDemoForzado] = useState<boolean>(false);
+  const [cargandoApi, setCargandoApi] = useState<boolean>(estaUsandoApiReal());
+
+  // Carga inicial del tablero (API real si está disponible y configurada, o mock)
   useEffect(() => {
     let activo = true;
+
+    if (!estaUsandoApiReal()) {
+      setEsModoSimulado(true);
+      setCargandoApi(false);
+      return;
+    }
+
+    const tenant = obtenerTenantDemo().trim();
+    if (!tenant) {
+      setErrorConfiguracion(
+        'El interruptor NEXT_PUBLIC_USE_REAL_CRM está activado, pero falta NEXT_PUBLIC_DEV_TENANT_ID en el archivo .env.',
+      );
+      setCargandoApi(false);
+      return;
+    }
+
+    setCargandoApi(true);
     obtenerTableroPipeline()
       .then((datos) => {
-        if (activo) setTablero(datos);
+        if (!activo) return;
+        setTablero(datos);
+        setEsModoSimulado(false);
+        setErrorConfiguracion(null);
       })
       .catch((err) => {
-        console.warn('Error al cargar tablero CRM:', err);
+        if (!activo) return;
+        if (
+          err instanceof CrmApiError &&
+          (err.status === 401 || err.code === 'SIN_SESION' || err.code === 'CONFIG_TENANT_FALTANTE')
+        ) {
+          setErrorConfiguracion(err.message);
+        } else {
+          console.warn('[Pipeline] API CRM no disponible, recurriendo a datos simulados:', err);
+          setEsModoSimulado(true);
+        }
+      })
+      .finally(() => {
+        if (activo) setCargandoApi(false);
       });
+
     return () => {
       activo = false;
     };
@@ -99,77 +146,65 @@ export default function PipelinePage() {
 
     if (opEncontrada.etapa.id === nuevaEtapa.id) return;
 
-    if (nuevaEtapa.esPerdida) {
-      setOportunidadPendientePerdida({ oportunidad: opEncontrada, etapaDestino: nuevaEtapa });
-    } else {
-      void ejecutarMovimiento(oportunidadId, nuevaEtapa, null, null);
-    }
+    manejarSolicitudMover(opEncontrada, nuevaEtapa);
   };
 
-  // Filtrado de tablero para vista
+  // Filtrado de tablero por texto y asesor
   const tableroFiltrado = useMemo(() => {
-    if (!filtroTexto.trim() && filtroAsesor === 'todos') {
-      return tablero;
-    }
-
-    const texto = filtroTexto.toLowerCase().trim();
+    const texto = filtroTexto.trim().toLowerCase();
+    const asesor = filtroAsesor;
 
     return {
+      ...tablero,
       columnas: tablero.columnas.map((col) => ({
         ...col,
         oportunidades: col.oportunidades.filter((op) => {
-          const coincideTexto =
-            !texto ||
-            op.titulo.toLowerCase().includes(texto) ||
-            (op.destino && op.destino.toLowerCase().includes(texto)) ||
-            (op.contactoNombre && op.contactoNombre.toLowerCase().includes(texto));
-
-          const coincideAsesor =
-            filtroAsesor === 'todos' ||
-            op.asesorNombre?.toLowerCase().includes(filtroAsesor.toLowerCase());
-
-          return coincideTexto && coincideAsesor;
+          // Filtro por asesor
+          if (asesor !== 'todos' && op.asesorNombre !== asesor) {
+            return false;
+          }
+          // Filtro por texto
+          if (texto) {
+            const coincideTitulo = op.titulo.toLowerCase().includes(texto);
+            const coincideCliente = op.contactoNombre
+              ? op.contactoNombre.toLowerCase().includes(texto)
+              : false;
+            const coincideDestino = op.destino ? op.destino.toLowerCase().includes(texto) : false;
+            return coincideTitulo || coincideCliente || coincideDestino;
+          }
+          return true;
         }),
       })),
     };
   }, [tablero, filtroTexto, filtroAsesor]);
-
-  // Métricas rápidas de cabecera
-  const totalOportunidadesActivas = tablero.columnas
-    .filter((c) => !c.etapa.esPerdida && !c.etapa.esGanada)
-    .reduce((acc, c) => acc + c.total, 0);
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-neutral-100 text-neutral-900 select-none dark:bg-neutral-950 dark:text-neutral-100">
       {/* Barra de Módulos (56px) */}
       <BarraModulos />
 
-      {/* Contenido Principal de Pipeline */}
+      {/* Contenedor Principal del Pipeline */}
       <main className="flex flex-1 flex-col overflow-hidden pb-14 md:pb-0">
-        {/* Cabecera de Página */}
-        <header className="flex flex-col border-b border-neutral-200 bg-white px-6 py-4 dark:border-neutral-800 dark:bg-neutral-900">
+        {/* Cabecera del Pipeline */}
+        <header className="border-b border-neutral-200 bg-white px-6 py-4 shadow-2xs dark:border-neutral-800 dark:bg-neutral-900">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <div className="flex items-center space-x-2.5">
-                <div className="bg-acento-50 text-acento-700 dark:bg-acento-950/60 dark:text-acento-400 flex h-8 w-8 items-center justify-center rounded-xl">
-                  <Kanban className="h-4 w-4" />
-                </div>
-                <h1 className="text-base font-bold tracking-tight text-neutral-900 dark:text-neutral-100">
+              <div className="flex items-center space-x-2">
+                <Kanban className="text-acento-600 dark:text-acento-400 h-5 w-5" />
+                <h1 className="text-base font-bold text-neutral-900 dark:text-neutral-100">
                   Pipeline de Oportunidades
                 </h1>
-                <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-[10px] font-semibold text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300">
-                  {totalOportunidadesActivas} activas
-                </span>
+                {(esModoSimulado || mostrarDemoForzado) && <DistintivoDatosDemo />}
               </div>
               <p className="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400">
-                Seguimiento comercial de paquetes y cierre de ventas
+                Gestión comercial de prospectos y cotizaciones en curso
               </p>
             </div>
 
-            {/* Acciones principales: Crear oportunidad + Switcher */}
+            {/* Controles de Vista y Acción Principal */}
             <div className="flex items-center space-x-3">
-              {/* Conmutador de vista Kanban / Tabla */}
-              <div className="flex rounded-xl border border-neutral-200 bg-neutral-50 p-0.5 dark:border-neutral-800 dark:bg-neutral-800/80">
+              {/* Selector Kanban / Tabla */}
+              <div className="flex items-center rounded-xl border border-neutral-200 bg-neutral-100 p-1 dark:border-neutral-800 dark:bg-neutral-800">
                 <button
                   type="button"
                   onClick={() => setVista('kanban')}
@@ -180,7 +215,7 @@ export default function PipelinePage() {
                   }`}
                 >
                   <Kanban className="h-3.5 w-3.5" />
-                  <span>Tablero</span>
+                  <span>Kanban</span>
                 </button>
                 <button
                   type="button"
@@ -249,7 +284,21 @@ export default function PipelinePage() {
         </header>
 
         {/* Cuerpo Principal del Tablero Kanban */}
-        {vista === 'kanban' ? (
+        {errorConfiguracion && !mostrarDemoForzado ? (
+          <div className="flex flex-1 items-center justify-center overflow-y-auto p-6">
+            <AvisoConfiguracionTenant
+              mensajeError={errorConfiguracion}
+              onContinuarConDemo={() => setMostrarDemoForzado(true)}
+            />
+          </div>
+        ) : cargandoApi ? (
+          <div className="flex flex-1 items-center justify-center p-6 text-neutral-500">
+            <div className="flex items-center gap-2 text-xs">
+              <Loader2 className="text-acento-600 dark:text-acento-400 h-4 w-4 animate-spin" />
+              <span>Cargando tablero desde la API CRM...</span>
+            </div>
+          </div>
+        ) : vista === 'kanban' ? (
           <div className="flex flex-1 overflow-x-auto overflow-y-hidden p-6">
             <div className="flex min-w-full space-x-4">
               {tableroFiltrado.columnas.map((columna) => (

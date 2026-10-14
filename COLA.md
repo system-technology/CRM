@@ -14,7 +14,14 @@ redefinidos: todo de `@viajapro/contracts` — si falta un campo, **para y dilo*
 
 ---
 
-## [ ] 0c.14. Que la pantalla diga con qué datos está hablando
+## [x] 0c.14. Que la pantalla diga con qué datos está hablando
+
+- **Completado y verificado:**
+  - **0c.14.1 — Distintivo honesto y discreto (`DistintivoDatosDemo`):** Etiqueta pequeña `«datos de demostración»` en cabecera cuando una pantalla opera en modo simulado o fallback offline. Si conecta contra la API real con tenant válido, no se muestra nada («lo normal no se anuncia»). Presente en `/pipeline`, `/contactos`, `/bandeja`, `/catalogo`, `/cotizador`, `/reportes`, `/viajes` y `/configuracion`.
+  - **0c.14.2 — Manejo resiliente de error de configuración de tenant (`AvisoConfiguracionTenant`):** Si `NEXT_PUBLIC_USE_REAL_CRM=true` pero falta `NEXT_PUBLIC_DEV_TENANT_ID` o la API responde 401 `SIN_SESION`, la pantalla ya no queda en blanco. Muestra una tarjeta clara indicando los 3 pasos de resolución: correr `pnpm db:seed` para obtener el UUID de André's Tours, configurarlo en `.env` y reiniciar dev server. Proporciona además la opción de "Ver con datos de demostración".
+  - **0c.14.3 — Error de hidratación del pipeline corregido:** Identificada disparidad de caracteres de espacio no separable (`\u202f` vs `\u00a0` vs `\u0020`) producida por implementaciones dispares de `Intl` entre Node (servidor) y navegador en `es-CO`. Función determinista `formatearFechaTarea` con fijación de zona a `America/Bogota` (R9) y normalización regex de espacios. Base temporal estable en `mock-pipeline.ts` redondeada a la hora para erradicar desfases de segundos. Fijado con pruebas unitarias dedicadas.
+  - **Honestidad en el panel de sugerencias (observación REVISION.md):** Reemplazada la denominación engañosa de "Copilot IA" por "Sugerencias Automáticas — Reglas Heurísticas" y "Sugerencias" en el botón de redactor, evitando prometer un modelo generativo que aún no está conectado.
+  - **Cinco compuertas en verde (`pnpm compuertas`):** build (22.1s), lint (9.9s), typecheck (4.9s), test (105.2s, 109 pruebas en web y 112 en api), format:check (3.6s).
 
 Arranqué las dos aplicaciones hoy y abrí `/pipeline`. Se ve como un producto terminado. Las
 tarjetas decían «Curazao All Inclusive» y «Circuito Europa 15 días» — datos inventados, no los

@@ -16,6 +16,7 @@ import { MoverOportunidad } from '@viajapro/contracts';
 import {
   esTareaAtrasada,
   formatearDineroCifra,
+  formatearFechaTarea,
   moverOportunidadEnTablero,
 } from './pipeline-logica';
 import { obtenerMockTableroPipeline } from './mock-pipeline';
@@ -124,5 +125,27 @@ describe('Las tareas', () => {
 
   it('sin tarea no hay atraso', () => {
     expect(esTareaAtrasada(null)).toBe(false);
+  });
+});
+
+describe('Formateo determinista de fechas de tareas (0c.14.3 — Hidratación)', () => {
+  it('formatea la fecha en zona horaria America/Bogota (R9) con hora y minutos', () => {
+    // 2026-10-14T02:09:00Z en UTC equivale a las 21:09 (09:09 p. m.) del 13 de oct en Bogotá
+    const resultado = formatearFechaTarea('2026-10-14T02:09:00Z');
+    expect(resultado).toContain('13 de oct');
+    expect(resultado).toContain('09:09');
+    expect(resultado).toContain('p. m.');
+  });
+
+  it('no contiene espacios no separables (\u00a0 ni \u202f), evitando disparidad entre Node e Intl de navegador', () => {
+    const resultado = formatearFechaTarea('2026-10-14T02:09:00Z');
+    expect(resultado).not.toMatch(/[\u202f\u00a0]/);
+    // Asegura que los espacios entre 'p.' y 'm.' son espacios estándar \u0020
+    expect(resultado).toContain('p. m.');
+  });
+
+  it('con fecha nula o inválida devuelve raya amigable sin lanzar excepción', () => {
+    expect(formatearFechaTarea(null)).toBe('—');
+    expect(formatearFechaTarea('fecha-invalida')).toBe('—');
   });
 });

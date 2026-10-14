@@ -698,7 +698,7 @@ export default function BandejaConversacionPage() {
                       title="Abrir Asistente Copilot IA"
                     >
                       <Sparkles className="h-3.5 w-3.5" />
-                      <span>Copilot IA</span>
+                      <span>Sugerencias</span>
                     </button>
                   </div>
                 </div>

@@ -68,6 +68,29 @@ export function formatearDineroCifra(dinero: Dinero | null): string {
 /**
  * Formatea un instante ISO a texto relativo amigable ('hace 2 h', 'ayer', etc.).
  */
+/**
+ * Formatea una fecha de vencimiento de tarea de forma determinista para evitar
+ * errores de hidratación entre servidor (Node) y cliente (Navegador) (Tarea 0c.14.3).
+ *
+ * Normaliza espacios no separables (\u202f, \u00a0) generados de forma dispar por
+ * distintas implementaciones de Intl en es-CO, y fija la zona horaria a America/Bogota (R9).
+ */
+export function formatearFechaTarea(fechaIso: string | null): string {
+  if (!fechaIso) return '—';
+  const d = new Date(fechaIso);
+  if (isNaN(d.getTime())) return '—';
+
+  const formateador = new Intl.DateTimeFormat('es-CO', {
+    timeZone: 'America/Bogota',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+
+  return formateador.format(d).replace(/[\u202f\u00a0]/g, ' ');
+}
+
 export function formatearTiempoRelativo(instante: string | null): string {
   if (!instante) return 'Sin contacto previo';
   const fecha = new Date(instante).getTime();
@@ -81,7 +104,9 @@ export function formatearTiempoRelativo(instante: string | null): string {
   const difDias = Math.floor(difHoras / 24);
   if (difDias === 1) return 'Ayer';
   if (difDias < 30) return `Hace ${difDias} d`;
-  return new Date(instante).toLocaleDateString('es-CO');
+  return new Intl.DateTimeFormat('es-CO', { timeZone: 'America/Bogota' })
+    .format(new Date(instante))
+    .replace(/[\u202f\u00a0]/g, ' ');
 }
 
 /**

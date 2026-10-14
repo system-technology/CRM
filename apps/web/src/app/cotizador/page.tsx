@@ -25,6 +25,7 @@ import {
 import type { Acomodacion, CotizacionCalculada, Paquete } from '@viajapro/contracts';
 import { api, ErrorApi, formatearDinero } from '../../lib/api';
 import { BarraModulos } from '../../components/bandeja/barra-modulos';
+import { DistintivoDatosDemo } from '../../components/comun/distintivo-datos-demo';
 import { MOCK_PAQUETES_CATALOGO } from '../../lib/mock-catalogo';
 import { calcularCotizacionMock, generarTextoPropuestaWhatsApp } from '../../lib/cotizador-logica';
 
@@ -156,6 +157,7 @@ function ContenidoCotizador() {
                 <h1 className="text-xl font-bold text-neutral-900 dark:text-white">
                   Cotizador de Paquetes
                 </h1>
+                <DistintivoDatosDemo visible={true} />
               </div>
               <p className="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400">
                 Calcula tarifas transparentes, desglose por acomodación y genera propuestas

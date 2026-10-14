@@ -3,7 +3,8 @@
  *
  * Conforme a @viajapro/contracts (TableroPipeline, MoverOportunidad, Oportunidad, FichaDeContacto, PaginaContactos).
  * Regla R3: Tipos estrictamente inferidos de contratos oficiales.
- * Soporta conexión real a NestJS (/api/v1/crm) con fallback resiliente para entornos desconectados.
+ * Soporta conexión real a NestJS (/api/v1/crm) con fallback resiliente para entornos desconectados
+ * y reporte transparente de errores de configuración (0c.14).
  */
 
 import {
@@ -19,9 +20,17 @@ import { moverOportunidadEnTablero } from './pipeline-logica';
 import { obtenerMockFichaDeContacto } from './mock-crm';
 import { obtenerMockPaginaContactos } from './mock-contactos';
 
-const BASE_API = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3333';
-const TENANT_DEMO = process.env['NEXT_PUBLIC_DEV_TENANT_ID'] ?? '';
-const USAR_API_REAL = process.env['NEXT_PUBLIC_USE_REAL_CRM'] === 'true';
+export function obtenerBaseApi(): string {
+  return process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3333';
+}
+
+export function obtenerTenantDemo(): string {
+  return process.env['NEXT_PUBLIC_DEV_TENANT_ID'] ?? '';
+}
+
+export function estaUsandoApiReal(): boolean {
+  return process.env['NEXT_PUBLIC_USE_REAL_CRM'] === 'true';
+}
 
 export class CrmApiError extends Error {
   constructor(
@@ -42,13 +51,14 @@ async function pedirCrm(
   ruta: string,
   opciones: RequestInit = {},
 ): Promise<{ ok: boolean; status: number; data: unknown }> {
+  const tenant = obtenerTenantDemo().trim();
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    ...(TENANT_DEMO ? { 'x-dev-tenant-id': TENANT_DEMO } : {}),
+    ...(tenant ? { 'x-dev-tenant-id': tenant } : {}),
     ...(opciones.headers as Record<string, string> | undefined),
   };
 
-  const res = await fetch(`${BASE_API}${ruta}`, {
+  const res = await fetch(`${obtenerBaseApi()}${ruta}`, {
     ...opciones,
     headers,
     cache: 'no-store',
@@ -81,13 +91,23 @@ async function pedirCrm(
  * GET /api/v1/crm/tablero
  */
 export async function obtenerTableroPipeline(): Promise<TableroPipeline> {
-  if (USAR_API_REAL) {
+  if (estaUsandoApiReal()) {
+    const tenant = obtenerTenantDemo().trim();
+    if (!tenant) {
+      throw new CrmApiError(
+        'CONFIG_TENANT_FALTANTE',
+        'El interruptor NEXT_PUBLIC_USE_REAL_CRM está activo, pero falta NEXT_PUBLIC_DEV_TENANT_ID en el archivo .env. Ejecuta "pnpm db:seed" para generar la agencia demo y añade su ID a .env.',
+        401,
+      );
+    }
+
     try {
       const { data } = await pedirCrm('/api/v1/crm/tablero');
       return TableroPipeline.parse(data);
     } catch (err) {
-      // Si falla por red o la API no está levantada, fallback transparente a mock
+      // Si la API respondió 401 o error controlado, relanzar para advertir configuración rota
       if (err instanceof CrmApiError) throw err;
+      // Si fue fallo de red (servidor caído), fallback resiliente a mock
       console.warn('[CrmApi] Fallo de conexión a NestJS. Usando mock offline:', err);
     }
   }
@@ -105,7 +125,7 @@ export async function moverOportunidadDeEtapa(
 ): Promise<Oportunidad> {
   const validado = MoverOportunidad.parse(movimiento);
 
-  if (USAR_API_REAL) {
+  if (estaUsandoApiReal()) {
     try {
       const { data } = await pedirCrm(`/api/v1/crm/oportunidades/${id}/etapa`, {
         method: 'PATCH',
@@ -134,7 +154,7 @@ export async function moverOportunidadDeEtapa(
  * GET /api/v1/crm/contactos/:id/ficha
  */
 export async function obtenerFichaDeContacto(contactoId: string): Promise<FichaDeContacto> {
-  if (USAR_API_REAL) {
+  if (estaUsandoApiReal()) {
     try {
       const { data } = await pedirCrm(`/api/v1/crm/contactos/${contactoId}/ficha`);
       return FichaDeContacto.parse(data);
@@ -152,7 +172,7 @@ export async function obtenerFichaDeContacto(contactoId: string): Promise<FichaD
  * GET /api/v1/crm/contactos?buscar=...
  */
 export async function listarContactos(buscar?: string): Promise<PaginaContactos> {
-  if (USAR_API_REAL) {
+  if (estaUsandoApiReal()) {
     try {
       const qs = buscar?.trim() ? `?buscar=${encodeURIComponent(buscar.trim())}` : '';
       const { data } = await pedirCrm(`/api/v1/crm/contactos${qs}`);
