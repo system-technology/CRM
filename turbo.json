@@ -32,6 +32,12 @@
     "test:e2e": {
       "dependsOn": ["^build"],
       "cache": false
+    },
+    "@viajapro/web#typecheck": {
+      "dependsOn": ["^build", "@viajapro/web#build"]
+    },
+    "@viajapro/database#typecheck": {
+      "dependsOn": ["^build", "@viajapro/database#build"]
     }
   },
   "agentGuidance": false
