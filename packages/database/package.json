@@ -23,7 +23,8 @@
     "seed:crm": "dotenv -e ../../.env -- tsx prisma/seed-demo-crm.ts"
   },
   "dependencies": {
-    "@prisma/client": "^5.22.0"
+    "@prisma/client": "^5.22.0",
+    "@viajapro/domain": "workspace:*"
   },
   "devDependencies": {
     "@types/pg": "^8.11.10",
