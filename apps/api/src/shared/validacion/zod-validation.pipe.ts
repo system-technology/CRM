@@ -4,6 +4,11 @@
  * Nada entra a un caso de uso sin pasar por aquí. Y lo que valida es el MISMO esquema que usa
  * el formulario de la web: si divergieran, el usuario vería un formulario que acepta algo que
  * la API rechaza, o al revés.
+ *
+ * `@inyeccion-manual`: este pipe **no lo construye Nest**. Se instancia en cada ruta con el
+ * esquema de esa ruta —`new ZodValidationPipe(CotizarSalida)`—, así que su parámetro no es una
+ * dependencia que el inyector deba resolver y no existe token que pedirle. Declarado aquí
+ * porque `guardia-de-inyeccion.spec.ts` exige `@Inject` en todo lo demás.
  */
 
 import { BadRequestException, Injectable, type PipeTransform } from '@nestjs/common';

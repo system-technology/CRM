@@ -5,7 +5,7 @@
  * que tipa el formulario en la web. Un contrato, una validación.
  */
 
-import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Inject, Param, Post, Query } from '@nestjs/common';
 import { CotizarPaquete, type CotizacionCalculada, ParametrosPagina } from '@viajapro/contracts';
 import { ZodValidationPipe } from '../../../shared/validacion/zod-validation.pipe.js';
 import { CotizarPaqueteUseCase } from '../application/cotizar-paquete.use-case.js';
@@ -13,9 +13,16 @@ import { ListarPaquetesUseCase } from '../application/listar-paquetes.use-case.j
 
 @Controller('api/v1')
 export class CatalogoController {
+  // `@Inject` explícito, y no solo el tipo del parámetro. Sin él, Nest construye este
+  // controlador **con cero dependencias y sin quejarse**: los metadatos de decorador no
+  // sobreviven al transpilador que usamos en desarrollo, y el fallo no aparece hasta la primera
+  // petición real, como un `undefined` en mitad del manejador. Pasó el 2026-10-13 en los casos
+  // de uso de `quoting` y costó una tarde. Un token explícito no depende de los metadatos.
+  //
+  // `guardia-de-inyeccion.spec.ts` pone esto en rojo si alguien lo vuelve a omitir.
   constructor(
-    private readonly listarPaquetes: ListarPaquetesUseCase,
-    private readonly cotizarPaquete: CotizarPaqueteUseCase,
+    @Inject(ListarPaquetesUseCase) private readonly listarPaquetes: ListarPaquetesUseCase,
+    @Inject(CotizarPaqueteUseCase) private readonly cotizarPaquete: CotizarPaqueteUseCase,
   ) {}
 
   /** Catálogo de la agencia. Paginado por cursor desde el primer día. */
