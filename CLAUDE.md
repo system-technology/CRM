@@ -38,7 +38,7 @@ punto exacto del hilo.
 | R5 | **Todo efecto externo (WhatsApp, pagos, correo) es idempotente y pasa por cola.** | Meta reintenta webhooks; las pasarelas también. Duplicar un cobro es imperdonable. |
 | R6 | **Ningún secreto en el repositorio.** Credenciales de tenant cifradas en reposo con AES-256-GCM. | Guardamos tokens de WhatsApp de terceros. |
 | R7 | **Decisión estructural = ADR.** Si cambia la forma del sistema, se escribe antes de implementarse. | Sin esto el "por qué" se pierde en tres meses. |
-| R8 | **Dinero en enteros (centavos) + código ISO-4217.** Nunca `float`. | Multi-moneda con TRM; los redondeos se cobran caro. |
+| R8 | **Dinero en enteros, en la unidad mínima de la moneda, + código ISO-4217.** Nunca `float`. «Unidad mínima» no es «centavos»: en USD son centavos, **en COP es el peso**. | Multi-moneda con TRM; los redondeos se cobran caro. Confundirlas ya produjo un error de dos órdenes de magnitud que llegó a la pantalla. |
 | R9 | **Fechas en UTC en la base; la zona horaria del tenant solo en presentación.** | Agencias en varios husos; los vuelos cruzan fechas. |
 | R10 | **PII de viajeros (pasaporte, fecha de nacimiento) se trata como dato sensible**: cifrado y acceso auditado. | Ley 1581 de 2012. Ver `docs/05-seguridad/02-proteccion-de-datos.md`. |
 | R11 | **En `main` solo escribe el agente `integrador`**, y solo tras superar las siete compuertas. Todo el trabajo va en ramas. | Los agentes producen más rápido de lo que nadie revisa. Sin compuerta, entra a producción lo que nadie miró. Ver ADR-0005. |

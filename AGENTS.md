@@ -45,7 +45,7 @@ monorepo pnpm + Turborepo.
 | R5 | Todo efecto externo (WhatsApp, pagos, correo) es **idempotente** y pasa por cola |
 | R6 | **Ningún secreto en el repositorio.** Credenciales de tenant cifradas con AES-256-GCM |
 | R7 | Decisión estructural = **ADR** en `docs/03-adr/`, escrito antes de implementarse |
-| R8 | Dinero en **enteros (centavos)** + código ISO-4217. Nunca coma flotante |
+| R8 | Dinero en **enteros, en la unidad mínima de la moneda** (en COP es el peso, no el centavo) + código ISO-4217. Nunca coma flotante |
 | R9 | Fechas en **UTC** en la base; la zona del tenant solo en presentación |
 | R10 | PII de viajeros (pasaporte, fecha de nacimiento) es **dato sensible**: cifrado y auditado |
 | R11 | **En `main` solo escribe el agente `integrador`.** Todo el trabajo va en ramas |

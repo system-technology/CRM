@@ -63,15 +63,18 @@ Términos del producto que vende una agencia minorista. Ver
 
 | Término | Código | Qué es |
 |---|---|---|
-| **Paquete** | `TravelPackage` | Producto ya armado por un mayorista: destino, duración, inclusiones y precio. **Es el ítem de cotización de la primera rebanada.** |
+| **Paquete** | `TravelPackage` | Producto ya armado por un mayorista: destino, duración e inclusiones. **Es plantilla: no lleva precio.** El precio cuelga de una [`Vigencia`](#vigencia-y-salida-adr-0009) (ADR-0009). Es el ítem de cotización de la primera rebanada. En el código hoy se llama `Paquete` |
 | **Mayorista** | `Wholesaler` | Quien arma el paquete y se lo vende a la agencia. Un tipo de `Supplier` |
 | **Inclusiones** | `inclusions` | Qué trae el paquete: vuelo, hotel, traslados, alimentación, tours, seguro |
-| **Acomodación** | `Occupancy` | Cuántas personas por habitación: `SINGLE`, `DOUBLE`, `TRIPLE`, `QUADRUPLE`. **El precio por persona cambia con la acomodación**, y es un error clásico modelarlo como precio fijo por pasajero |
+| **Acomodación** | `Occupancy` | Cuántas personas por habitación: `SINGLE`, `DOUBLE`, `TRIPLE`, `QUADRUPLE`. En productos con noche, **el precio por persona cambia con la acomodación**, y es un error clásico modelarlo como precio fijo por pasajero. En pasadías y excursiones no existe: es una condición **opcional** de la tarifa, y si el tarifario no la trae el cotizador no la pregunta |
 | **Plan de alimentación** | `MealPlan` | `ALL_INCLUSIVE`, `BREAKFAST`, `HALF_BOARD`, `FULL_BOARD`, `ROOM_ONLY` |
-| **Temporada** | `Season` | Rango de fechas con precio propio: alta, baja, puente festivo. En Colombia los puentes son su propia temporada |
+| **Temporada** | `Season` | Rango de fechas con precio propio: alta, baja, puente festivo. En Colombia los puentes son su propia temporada. **Desde ADR-0009 es un caso de [`Vigencia`](#vigencia-y-salida-adr-0009): no se retira, se generaliza.** |
 | **Cupo** | `Allotment` | Plazas que el mayorista tiene bloqueadas. Se agotan |
-| **Tarifario** | `RateSheet` | El documento del mayorista con precios por temporada y acomodación. Hoy llega en Excel o PDF |
-| **Salida** | `Departure` | Fecha concreta en que opera un paquete. Un paquete tiene muchas |
+| **Tarifario** | `RateSheet` | El documento del mayorista con los precios netos por vigencia y, cuando el producto tiene noche, por acomodación. Hoy llega en Excel o PDF |
+
+`Salida` (`Departure`) tenía aquí una entrada propia, «fecha en que opera un paquete». Se redefinió y
+se movió al bloque [Vigencia y salida](#vigencia-y-salida-adr-0009): ya no es una tabla aparte, es
+una vigencia.
 
 Dos cosas que un modelo hecho desde fuera del sector siempre olvida:
 
@@ -79,6 +82,30 @@ Dos cosas que un modelo hecho desde fuera del sector siempre olvida:
   habitaciones dobles no cuestan lo mismo que cuatro en una cuádruple.
 - **Los niños tienen edad de corte y cupo por habitación.** «Niño gratis compartiendo habitación con
   dos adultos» es una condición comercial real que el modelo debe poder expresar.
+
+### Vigencia y salida (ADR-0009)
+
+Cómo se ata el precio a una fecha. Lo decide
+[ADR-0009](../03-adr/0009-salida-programada-como-unidad-de-venta.md); este bloque es el diccionario
+y el razonamiento vive allí. **Hoy el esquema y los contratos usan nombres en español**
+(`Vigencia`, `Tarifa`, `UnidadDeCobro`, `PoliticaDePrecio`). La columna «Código» recoge el nombre que
+fija el ADR; la distancia entre ambos está sin resolver.
+
+| Término | Código | Qué es |
+|---|---|---|
+| **Vigencia** (ventana de vigencia) | `Vigencia` | Rango de **fechas de salida**, ambos extremos incluidos, al que cuelga el precio de un paquete. Generaliza a `Temporada`. **Un precio sin vigencia no existe.** Si dos vigencias abiertas se solapan gana la más corta; si empatan en longitud es un error de datos y se devuelve como tal, no se elige en silencio |
+| **Salida** | `Departure` | La vigencia de **un solo día**, **publicada**: una fecha concreta que el cliente ve en la pieza de WhatsApp. No es una tabla aparte. Puede llevar cupo, pero **informativo y opcional**: para quien revende, el inventario es del mayorista y la disponibilidad se pregunta, no se calcula. Una salida publicada vence a una vigencia abierta que contenga su fecha |
+| **Tarifa** | `Fare` | El precio de una vigencia: nombre, monto, unidad de cobro, condición de aplicación y mayorista al que se compra. Lleva `neto` y `venta`. Una vigencia tiene varias («Adulto», «Menor de 2 a 11», «Promo pareja», «Suplemento de sencilla»). Un `neto` ausente cotiza igual y reporta margen desconocido (`null`, no cero). **No confundir con `Rate`**, la tarifa de un ítem en la cotización general |
+| **Unidad de cobro** | `PricingUnit` | El **denominador** de una tarifa: `PER_PERSON`, o `PER_GROUP` con `cubrePasajeros: n`. «Promo pareja» es `PER_GROUP` con `cubrePasajeros = 2`. Es aritmética, no política: no se parametriza. El monto de grupo se guarda íntegro; el per cápita es presentación |
+| **Política de precio** | `PricingPolicy` | Cómo forma **esta agencia** el precio de venta; una fila por tenant: `porcentaje` (por defecto 20), `base`, `origenDeLaVenta`, `redondeoVenta` (por defecto 1.000) y `modoDeCatalogo`. Cambiarla **nunca altera una cotización ya enviada** |
+| **Formato de viaje** | `TripFormat` | Etiqueta comercial: pasadía, pasanoche, excursión, mini-excursión, super excursión. **Tabla por tenant**, no `enum` (R12): la propia hoja las solapa. El invariante es el número de noches; ninguna ruta de cotización ramifica sobre la etiqueta. *Aún no existe como tabla: la semilla del catálogo real la trata como etiqueta* |
+
+Dos precisiones que ahorran un error caro:
+
+- **«Margen del 20 %» tiene dos lecturas.** `SOBRE_EL_NETO` (markup, «le subo el 20 %») da
+  $1.200.000 sobre un neto de $1.000.000; `SOBRE_LA_VENTA` (comisión, «me deja el 20 %») da
+  $1.250.000. Por defecto rige la primera. Ver `Markup` y `Comisión` en [Cotización](#cotización).
+- **La venta se redondea; el neto nunca.** El neto es lo que cobra el mayorista.
 
 ## Reserva y operación
 
@@ -97,6 +124,7 @@ Dos cosas que un modelo hecho desde fuera del sector siempre olvida:
 
 | Término | Código | Qué es |
 |---|---|---|
+| **Unidad mínima de la moneda** | `unidades` (en `Money`) | Cómo se guarda todo monto (R8): entero en la unidad más pequeña **que esa moneda usa**, no en «centavos». En USD son centavos; **en COP es el peso** (`decimales: 0`). Confundirlas produce un error de dos órdenes de magnitud, y ya llegó una vez a la pantalla. Va siempre con el código ISO-4217 |
 | **Pago** | `Payment` | Dinero recibido del cliente. |
 | **Anticipo** | `deposit` | Primer pago que confirma la reserva. |
 | **Cuota** | `Installment` | Pago parcial programado. |
