@@ -64,6 +64,9 @@ const PAREJA_SOBRE_PASADIA: Record<string, string> = {
   Consotá: 'Parque Consotá',
 };
 
+/** Fijo, para que la semilla reconozca lo que ella misma creo en corridas anteriores. */
+const MAYORISTA_ID = '01932000-0000-7000-8000-00000000aa01';
+
 const diasEntre = (desde: string, hasta: string): number =>
   Math.round((Date.parse(hasta) - Date.parse(desde)) / 86_400_000);
 
@@ -94,10 +97,10 @@ export async function sembrarCatalogoReal(
   // Se llama así a propósito: la hoja es de venta al público y no dice a quién se le compra.
   // Un nombre inventado haría pasar por dato lo que es un hueco.
   const mayorista = await prisma.mayorista.upsert({
-    where: { id: '01932000-0000-7000-8000-00000000aa01' },
+    where: { id: MAYORISTA_ID },
     update: {},
     create: {
-      id: '01932000-0000-7000-8000-00000000aa01',
+      id: MAYORISTA_ID,
       tenantId,
       nombre: 'Mayorista por confirmar',
       notas:
@@ -107,16 +110,67 @@ export async function sembrarCatalogoReal(
     },
   });
 
+  // --- Idempotencia -------------------------------------------------------
+  // Correr `db:seed` dos veces duplicaba el catalogo entero: 33 paquetes pasaban a 70. Se borra
+  // lo que ESTA semilla creo en corridas anteriores —se reconoce por el mayorista fijo— y se
+  // vuelve a sembrar. Vigencias y tarifas caen por cascada.
+  //
+  // **Lo que tiene una oportunidad enganchada NO se toca.** La foranea es `RESTRICT` y con razon:
+  // borrar un paquete por el que alguien esta negociando dejaria la oportunidad sin producto. Se
+  // conservan y mas abajo se reutilizan en vez de duplicarse.
+  const mios = await prisma.paquete.findMany({
+    where: { tenantId, mayoristaId: MAYORISTA_ID },
+    select: { id: true },
+  });
+  if (mios.length > 0) {
+    const ids = mios.map((p) => p.id);
+    const enUso = await prisma.oportunidad.findMany({
+      where: { tenantId, paqueteId: { in: ids } },
+      select: { paqueteId: true },
+    });
+    const protegidos = new Set(enUso.map((o) => o.paqueteId));
+    const borrables = ids.filter((id) => !protegidos.has(id));
+    if (borrables.length > 0) {
+      await prisma.paquete.deleteMany({ where: { id: { in: borrables } } });
+    }
+    if (protegidos.size > 0) {
+      console.log(`  (se conservan ${protegidos.size} paquetes con oportunidad viva)`);
+    }
+  }
+
   const paquetesPorNombre = new Map<string, string>();
 
+  /**
+   * **La clave es el nombre MAS las noches, y no solo el nombre.** La hoja tiene «Pianguita +
+   * Ballenas» como pasadia a 329.000 y como pasanoche a 569.000: mismo nombre, producto distinto.
+   * Con el nombre solo, el segundo se colaba como una tarifa mas del primero y el tablero
+   * enseñaba un pasadia con dos precios sin decir que uno incluye una noche.
+   *
+   * Es justo el hecho 3 del ADR-0009 visto desde el otro lado: el nombre no identifica el
+   * producto. Aqui lo identifica la combinacion con las noches.
+   */
   const asegurarPaquete = async (nombre: string, noches: number): Promise<string> => {
-    const existente = paquetesPorNombre.get(nombre);
-    if (existente) return existente;
+    const clave = `${nombre}::${noches}`;
+    const enMemoria = paquetesPorNombre.get(clave);
+    if (enMemoria) return enMemoria;
+
+    const nombreVisible =
+      noches > 0 ? `${nombre} (${noches} ${noches === 1 ? 'noche' : 'noches'})` : nombre;
+
+    // Puede sobrevivir de una corrida anterior por tener una oportunidad enganchada.
+    const sobreviviente = await prisma.paquete.findFirst({
+      where: { tenantId, nombre: nombreVisible, noches },
+      select: { id: true },
+    });
+    if (sobreviviente) {
+      paquetesPorNombre.set(clave, sobreviviente.id);
+      return sobreviviente.id;
+    }
 
     const paquete = await prisma.paquete.create({
       data: {
         tenantId,
-        nombre,
+        nombre: nombreVisible,
         // La hoja no declara destino aparte del nombre del producto, y el nombre ES el destino
         // en este mercado: «Parque del café», «Lago Calima». No se inventa uno.
         destino: nombre.slice(0, 120),
@@ -131,7 +185,7 @@ export async function sembrarCatalogoReal(
         mayoristaId: mayorista.id,
       },
     });
-    paquetesPorNombre.set(nombre, paquete.id);
+    paquetesPorNombre.set(clave, paquete.id);
     return paquete.id;
   };
 

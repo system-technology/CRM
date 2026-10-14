@@ -214,3 +214,83 @@ export const MotivoSinTarifa = z.enum([
   'SIN_TARIFA_APLICABLE',
 ]);
 export type MotivoSinTarifa = z.infer<typeof MotivoSinTarifa>;
+
+// =============================================================================
+// Lo que la API devuelve
+// =============================================================================
+
+/**
+ * Una salida publicada, como se lista en el catálogo de la agencia.
+ *
+ * `desde` es la tarifa **más barata** de esa salida, que es como se anuncia un viaje en este
+ * mercado: «Parque del café, 3 de octubre, desde $275.000».
+ */
+export const SalidaPublicada = z.object({
+  vigenciaId: Id,
+  paqueteId: Id,
+  paqueteNombre: z.string(),
+  destino: z.string(),
+  noches: z.number().int().min(0),
+  fecha: FechaViaje,
+  cupoTotal: z.number().int().nullable(),
+  desde: Dinero,
+  /** Cuántas tarifas distintas tiene. Más de una significa que hay promoción o condición. */
+  tarifas: z.number().int().min(1),
+});
+export type SalidaPublicada = z.infer<typeof SalidaPublicada>;
+
+/**
+ * Una forma de cobrar este viaje a este grupo.
+ *
+ * **Se devuelven TODAS las que aplican, no una.** Si dos personas van a un pasadía que además
+ * tiene promo de pareja, el asesor ve las dos y elige: «por persona son $378.000, en promo de
+ * pareja $280.000». Elegir por él en silencio sería esconderle una decisión comercial que es
+ * suya — y la barata no siempre es la que quiere, porque la promo puede tener condiciones.
+ */
+export const OpcionDePrecio = z.object({
+  tarifaId: Id,
+  nombre: z.string(),
+  unidad: UnidadDeCobro,
+  cubrePasajeros: z.number().int().min(1),
+  /** Cuántas veces se cobra: pasajeros en `POR_PERSONA`, grupos en `POR_GRUPO`. */
+  veces: z.number().int().min(1),
+  precioUnitario: Dinero,
+  total: Dinero,
+  /** **Solo para el tenant.** `null` cuando la tarifa no tiene neto cargado: desconocido, no cero. */
+  margen: Dinero.nullable(),
+  margenPorcentaje: z.number().nullable(),
+  /** La de menor total. Es una sugerencia visible, no una elección hecha a espaldas del asesor. */
+  recomendada: z.boolean(),
+});
+export type OpcionDePrecio = z.infer<typeof OpcionDePrecio>;
+
+export const CotizacionDeSalida = z.object({
+  paqueteId: Id,
+  paqueteNombre: z.string(),
+  destino: z.string(),
+  noches: z.number().int().min(0),
+  fecha: FechaViaje,
+
+  vigenciaId: Id,
+  vigenciaDesde: FechaViaje,
+  vigenciaHasta: FechaViaje,
+  /** `true` si el precio vino de una fecha publicada; `false` si de una vigencia abierta. */
+  deSalidaProgramada: z.boolean(),
+
+  adultos: z.number().int().min(0),
+  ninos: z.number().int().min(0),
+  infantes: z.number().int().min(0),
+  pasajeros: z.number().int().min(1),
+
+  opciones: z.array(OpcionDePrecio),
+  /** Tarifas aditivas —suplemento de sencilla y similares—. **No se suman solas.** */
+  suplementos: z.array(OpcionDePrecio),
+
+  /**
+   * Eje 3 de ADR-0009: **`true` solo si las tarifas aplicables lo piden.** La pantalla pregunta
+   * la composición de pasajeros cuando esto viene en `true`, y no cuando no. Se deriva del dato,
+   * no de un interruptor que pueda contradecir al tarifario.
+   */
+  pideComposicion: z.boolean(),
+});
+export type CotizacionDeSalida = z.infer<typeof CotizacionDeSalida>;

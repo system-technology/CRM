@@ -40,3 +40,15 @@ export class AcomodacionSinPrecioError extends InvariantError {
     );
   }
 }
+
+/**
+ * Una fila del tarifario trae una moneda que el sistema no maneja.
+ *
+ * Es defecto de datos, no del asesor: se nombra la moneda para poder ir a buscarla.
+ */
+export class MonedaDesconocidaError extends InvariantError {
+  readonly code = 'MONEDA_DESCONOCIDA';
+  constructor(readonly iso: string) {
+    super(`'${iso}' no es una moneda habilitada, y viene de una tarifa guardada en la base`);
+  }
+}
