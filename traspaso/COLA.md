@@ -27,7 +27,7 @@ redefinidos: todo de `@viajapro/contracts` — si falta un campo, **para y dilo*
 > la que venga integrada (R3). Si al mezclar ves una diferencia que te parece un error mío,
 > **dilo en `ENTREGA.md` en vez de arreglarla por tu cuenta**.
 
-## [ ] 0c.15. La política de precio de la agencia, en `/configuracion`
+## [x] 0c.15. La política de precio de la agencia, en `/configuracion`
 
 **Esto ya no espera a nadie.** El contrato `PoliticaDePrecio` existe y está publicado en
 `@viajapro/contracts`; corre `pnpm build` antes de importarlo.

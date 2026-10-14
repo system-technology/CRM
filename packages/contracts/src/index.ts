@@ -12,3 +12,4 @@ export * from './catalogo.js';
 export * from './crm.js';
 export * from './inbox.js';
 export * from './plantillas.js';
+export * from './politica-de-precio.js';
