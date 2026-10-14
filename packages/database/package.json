@@ -19,10 +19,12 @@
     "db:push": "dotenv -e ../../.env -- prisma db push",
     "validate": "dotenv -e ../../.env -- prisma validate",
     "rol:crear": "dotenv -e ../../.env -- node scripts/crear-rol-aplicacion.mjs",
-    "roles:dev": "dotenv -e ../../.env -- node scripts/roles-de-desarrollo.mjs"
+    "roles:dev": "dotenv -e ../../.env -- node scripts/roles-de-desarrollo.mjs",
+    "seed:crm": "dotenv -e ../../.env -- tsx prisma/seed-demo-crm.ts"
   },
   "dependencies": {
-    "@prisma/client": "^5.22.0"
+    "@prisma/client": "^5.22.0",
+    "@viajapro/domain": "workspace:*"
   },
   "devDependencies": {
     "@types/pg": "^8.11.10",

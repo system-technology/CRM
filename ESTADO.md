@@ -6,11 +6,11 @@
 
 | Campo | Valor |
 |---|---|
-| Última actualización | 2026-10-10 (integración: contratos de crm, agentes de producto y el webhook del inbox) |
+| Última actualización | 2026-10-13 (integración: ADR-0009 paramétrico y orden en la raíz; dos ramas devueltas) |
 | Actualizado por | Claude Opus 5 |
 | Fase | **Rebanada vertical de paquetes, en construcción** |
-| Avance de la fase | Cotizador de punta a punta. Esquema del inbox, 30/30 contra Neon. **Apretón de manos del webhook vivo y verificado contra la API corriendo.** Bandeja web en construcción |
-| Próximo hito | **El trabajador que resuelve de qué agencia es cada mensaje.** El `POST` ya guarda cifrado y verificado contra Neon; falta tomar los `change` pendientes |
+| Avance de la fase | Cotizador de punta a punta. **El precio cuelga ya de una ventana de vigencia (ADR-0009, v0.18.0).** Apretón de manos del webhook vivo y verificado contra la API corriendo. Bandeja web en construcción |
+| Próximo hito | **Reparar la compuerta de pruebas (tarea 0).** Hoy la suite de aislamiento se envenena a sí misma y no puede correr dos veces seguidas: nada más se integra hasta que vuelva a verde |
 
 ---
 
@@ -28,8 +28,8 @@ iniciada.
 
 **Desde el 2026-10-08 se trabaja con dos IA en paralelo**, cada una en su propio worktree y su
 propia rama: esta sesión en `feat/inbox-webhook` (`D:\Projects\CRM-api`) y Antigravity en
-`feat/bandeja-web` (`D:\Projects\CRM-bandeja`). El traspaso es por archivo —`traspaso/ENTREGA.md` y
-`traspaso/REVISION.md` en la rama— sin cartero humano. Ver `docs/09-ia/06-flujo-con-antigravity.md`.
+`feat/bandeja-web` (`D:\Projects\CRM-bandeja`). El traspaso es por archivo —`ENTREGA.md` y
+`REVISION.md` en la rama— sin cartero humano. Ver `docs/09-ia/06-flujo-con-antigravity.md`.
 
 **Del inbox existe ya, en ramas:** los contratos Zod de la bandeja (`packages/contracts/src/inbox.ts`,
 en `main` desde v0.11.0), las tres piezas puras del webhook —firma HMAC sobre el cuerpo crudo,
@@ -64,7 +64,7 @@ Qué hay, concretamente:
 | Diseño | Sistema de diseño subido a Stitch (proyecto `8333038101997719867`). Tokens replicados en `apps/web/src/app/globals.css`. Capturas en `docs/_assets/diseno/` |
 | Datos | Agencia demo sembrada: 3 paquetes, 5 temporadas, 26 precios |
 | Contrato multi-harness | `AGENTS.md` en la raíz: cualquier IA trabaja bajo las mismas **trece** reglas. R12 faltaba hasta v0.9.1; R13 se añadió el 2026-10-07 |
-| Repositorio | [github.com/Alfavear/CRM](https://github.com/Alfavear/CRM) · **privado** · `main` en **v0.13.0** (`9b3a872`, cuatro commits después del tag: utillaje, sin versión) |
+| Repositorio | [github.com/Alfavear/CRM](https://github.com/Alfavear/CRM) · **privado** · `main` en **v0.18.0** (`fa73c4d`) |
 | Gobierno de `main` | Compuerta local activa y probada. **Sin protección de servidor:** el plan gratuito no la permite en repos privados |
 
 ## 2. Decisiones ya tomadas (no reabrir sin ADR que las supersede)
@@ -87,7 +87,7 @@ Qué hay, concretamente:
 
 ### Lo comercial NO está decidido
 
-`images/Brochure.jpeg` es **inspiración y dirección de producto, no un compromiso comercial.**
+`docs/_assets/brochure-de-inspiracion.jpeg` es **inspiración y dirección de producto, no un compromiso comercial.**
 Lo que aporta —módulos, flujo, tono, horizonte— está recogido en
 `docs/00-vision/05-norte-del-producto.md`. Lo que **no** está decidido:
 
@@ -103,6 +103,10 @@ Ordenada. La primera es la que debe tomarse ahora.
 
 | # | Tarea | Agente / dueño | Estado |
 |---|---|---|---|
+| **0** | **Reparar la suite de aislamiento, que se envenena a sí misma.** El `DELETE FROM tenants` del `afterAll` global (línea 111) nunca corre: llega con la conexión dentro de una transacción abortada desde el `afterAll` del bloque ADR-0008 (línea 599). Los fixtures sobreviven y la corrida siguiente muere con `duplicate key` antes de comprobar una política. Dos arreglos: limpiar **también en `beforeAll`**, y envolver en `SAVEPOINT` toda aserción que espere un error, para que no deje la conexión abortada | `qa` | **BLOQUEANTE.** Medido el 2026-10-13: 171 filas de residuo al empezar la sesión; 15, 20 y 20 aserciones en rojo en tres corridas, ninguna por una fuga. **Bloquea la próxima integración**: la excepción del 2026-10-13 vale una vez |
+| 0b | **Permiso para `scripts/limpiar-fixtures.mjs --borrar`, o decidir que ese borrado lo hace una persona.** El integrador lo intentó y el sistema de permisos lo denegó, igual que un borrado acotado a cinco filas | Usuario | El repositorio tiene la herramienta desde el 2026-10-10 y la compuerta no puede usarla |
+| 0c | **Una base por árbol de trabajo, o fixtures con identificador por proceso.** Cuatro sesiones contra una sola base de Neon es una carrera permanente | `devops` | El residuo de una sesión pone en rojo la compuerta de las otras tres |
+| 0d | **Decidir de quién es `politica-de-precio.ts`.** Antigravity lo tiene a medio escribir en `feat/bandeja-web` y la otra sesión lo integró hoy en `main` | `arquitecto` | Dos versiones del mismo contrato escritas en paralelo durante días. Cuanto más crezca la segunda, más caro |
 | 1 | **Iniciar verificación de Meta Business y solicitud de Tech Provider** | Usuario | **Camino crítico, sin empezar** |
 | 2 | **Recibir el tarifario real del mayorista** de la agencia piloto | Usuario | La agencia ya está tramitando la información (2026-10-07). Hasta que llegue, el catálogo sigue modelado con datos verosímiles |
 | 2b | **Bajar el tarifario de Meta para Colombia en COP** del CSV oficial | Usuario | Cinco minutos con un navegador. Sin esa cifra el plan de entrada se fija a ciegas |
@@ -164,7 +168,10 @@ Ordenada. La primera es la que debe tomarse ahora.
 
 ## 6. Bitácora
 
-- [`2026-10-10-el-dia-que-medimos-todo.md`](docs/_bitacora/2026-10-10-el-dia-que-medimos-todo.md) ← **empieza por aquí**
+- [`2026-10-13-la-compuerta-que-se-envenena-sola.md`](docs/_bitacora/2026-10-13-la-compuerta-que-se-envenena-sola.md) ← **empieza por aquí**
+- [`2026-10-13-el-veinte-por-ciento-tiene-dos-lecturas.md`](docs/_bitacora/2026-10-13-el-veinte-por-ciento-tiene-dos-lecturas.md)
+- [`_integraciones/2026-10-13-v0.18.0.md`](docs/_integraciones/2026-10-13-v0.18.0.md) — por qué se integró con la compuerta de pruebas en rojo
+- [`2026-10-10-el-dia-que-medimos-todo.md`](docs/_bitacora/2026-10-10-el-dia-que-medimos-todo.md)
 - [`2026-10-07-el-dia-que-nos-pusimos-un-freno.md`](docs/_bitacora/2026-10-07-el-dia-que-nos-pusimos-un-freno.md)
 - [`2026-10-07-el-adr-que-se-defendio-tres-veces.md`](docs/_bitacora/2026-10-07-el-adr-que-se-defendio-tres-veces.md)
 - [`2026-10-07-primera-interfaz.md`](docs/_bitacora/2026-10-07-primera-interfaz.md)
@@ -237,3 +244,225 @@ prueba que arranca el `AppModule` ensamblado contra Neon. api `112 passed`, aisl
 |---|---|---|
 | **La prueba del `AppModule` certifica el montaje bajo el runtime de vitest, no bajo el del servidor.** Quitar el `@Inject` explícito del controlador del webhook —el defecto del 2026-10-11 por la mañana— no la pone en rojo: vitest transpila con metadatos de decorador y `tsx` no. Falta ejecutar la aplicación como se ejecuta de verdad: `pnpm build` y arrancar el `dist` | `devops` | El límite está declarado en la cabecera del propio archivo de prueba, así que nadie puede leer la red como más ancha de lo que es. El `@Inject` explícito sigue siendo obligatorio **por convención, no por compuerta** |
 | `apps/api` corre con `vitest run --passWithNoTests`. Si el `include` se rompiera otra vez, la suite pasaría con cero pruebas en vez de avisar. Conviene un umbral mínimo de pruebas o quitar la bandera | `qa` | Hoy el `include` es explícito y la cuenta es visible (112) |
+
+---
+
+## Integración del 2026-10-11 (noche) — v0.16.1 · v0.17.0 · v0.17.1
+
+**Cuatro de cinco ramas integradas. `feat/inbox-esquema` devuelta por `pnpm lint` en rojo.**
+
+| Rama | Veredicto | Versión |
+|---|---|---|
+| `fix/compuerta-de-pruebas` | **Integrada** (`03d4ee5`) | v0.16.1 |
+| `fix/semilla-etapas` | **Integrada** (`a340360`) | v0.16.1 |
+| `feat/ventana-servicio` | **Integrada** (`202cfbf`) | v0.17.0 |
+| `feat/semilla-crm` | **Integrada** (`a468287`) | v0.17.1 |
+| `feat/inbox-esquema` | **DEVUELTA** | — |
+
+Compuertas de las cuatro integradas, corridas por el integrador: `typecheck` 7/7 · `lint` 7/7 ·
+`test` 6/6 (api **133 passed**, aislamiento **39/39** contra Neon, domain 32, contracts 56) ·
+`build` 5/5 · `format:check` limpio. `pnpm db:seed` corrido **dos veces seguidas** contra Neon sin
+P2002 y `pnpm db:seed:crm` con `creadas ahora 0` en la segunda.
+
+### Por qué volvió `feat/inbox-esquema`
+
+Una sola cosa, y es de hoy: **`pnpm lint` sale en rojo** por el arnés de mutaciones que trae la
+propia rama, `packages/database/scripts/mutaciones-aislamiento.mjs`:
+
+```
+36:33  error  Unexpected control character(s) in regular expression:    no-control-regex
+136:7  error  The value assigned to 'r' is not used in subsequent statements  no-useless-assignment
+```
+
+El resto de la rama se verificó y **está en verde**: `typecheck` 7/7, `build` 5/5,
+`format:check` limpio y **50/50 de aislamiento contra Neon** —la cifra que la rama afirmaba,
+comprobada por el integrador, no aceptada de palabra—. La siembra del inbox, que su autor no
+había podido correr, **corre**: con `fix/semilla-etapas` ya en `main`, `pnpm db:seed` deja
+1 conversación, 3 mensajes y 2 plantillas. El conflicto en `packages/database/package.json` se
+resuelve conservando los dos scripts (`seed:crm` y `mutaciones`); `prisma/seed.ts` fusiona solo.
+
+**Es una vuelta, no tres (R13):** corregidos esos dos errores, la rama entra. No se abre frente
+nuevo sobre ella.
+
+### Cola nueva — con dueño, no bloquea
+
+| Cola | Dueño | Por qué no bloquea |
+|---|---|---|
+| **`mensajes.texto` sin cifrar, con índice de búsqueda trigram.** Ahí van a ir números de pasaporte (R10). El argumento del autor es correcto —cifrado no hay búsqueda, y la bandeja busca— y los controles que aplica son reales: RLS forzada, prohibición de copiarlo a `registros_auditoria` ni al `outbox`, declarada en un `COMMENT` de la columna | `auditor-seguridad` + `arquitecto` | Hoy no hay un solo mensaje real guardado: el riesgo es futuro, y la columna de «el día que…». **Pero el plazo es duro: el ADR tiene que estar cerrado antes de que el trabajador persista el primer mensaje de producción**, porque cifrar después es migrar filas existentes, no cambiar una línea |
+| `mensajes.cotizacion_id` existe **sin** clave foránea porque `cotizaciones` todavía no existe. El plan está escrito en la migración: `ADD CONSTRAINT ... NOT VALID` + `VALIDATE` | `datos` | La columna hoy no apunta a nada. **La tarea es de quien cree la tabla `cotizaciones`**, en esa misma migración, y no en otra |
+| **Deriva entre `schema.prisma` y la base**: la unique parcial `(tenant_id, clave) WHERE clave IS NOT NULL` de `etapas_pipeline` existe en la base y Prisma no la modela. Hoy no duele porque la semilla ya no se apoya en el orden | `datos` | Es deriva de modelado, no de comportamiento. Pero conviene un barrido: lo que la base exige y el esquema no dice es un error que aparece en producción |
+| **Decisión de NO particionar `mensajes`** y su razón —particionar por fecha obligaría a meter la clave de partición en la unique de `wamid` y el mismo reintento de Meta entraría dos veces, rompiendo R5— vive hoy en un comentario de migración. Merece ADR | `arquitecto` | La decisión está tomada y argumentada; lo que falta es dónde vive. Cuando la rama entre |
+| Las cuatro ramas integradas esta noche **no traían entrada de bitácora**: la escribió el integrador al cerrar | `facilitador` | El hilo quedó cerrado igual, pero la bitácora es del que trabaja, no del que integra |
+
+---
+
+## 2026-10-13 — ADR-0009, revisión 2: paramétrico, y el margen deja de ser un número de cabeza
+
+El propietario instruyó dos cosas: **«que sea paramétrico, estas agencias de turismo no todas
+trabajan igual»** y **«tarifario neto del mayorista, margen el 20 %»**. La primera retiró la última
+premisa que quedaba en pie en el ADR: que había **un** arquetipo de agencia al que apostar.
+
+**Qué cambió en la decisión.** El encuadre anterior trataba «salida programada» y «fecha abierta»
+como dos modelos rivales —de ahí la opción B, y de ahí que la opción C (los dos conviviendo) se
+descartara por duplicar el cotizador—. No son dos modelos: son dos valores de un eje. **Una tarifa
+es un precio válido para una ventana de fechas de salida; una salida programada es la ventana de un
+solo día.** Con eso `Temporada` no se retira, se generaliza a `Vigencia`, y hay **una sola función
+de resolución** para las dos formas de vender. El ADR cambió de título en consecuencia.
+
+**Los tres ejes paramétricos, todos nivel 1 de ADR-0006:** cómo se publica la vigencia
+(`modoDeCatalogo`, que afecta a las altas y **nunca al cálculo**); cómo se forma la venta (§2); y
+qué pregunta el cotizador — que **no es un interruptor**: se deriva del tarifario, porque una
+bandera que puede contradecir al dato es un defecto esperando su turno. El ADR lleva además la
+lista explícita de lo que **nunca** se parametriza (R12).
+
+**La ambigüedad que vale dinero y que no se adivinó.** «Margen del 20 %» tiene dos lecturas:
+
+| Lectura | Cómo lo dice una agencia | Sobre un neto de $1.000.000 |
+|---|---|---|
+| `SOBRE_EL_NETO` | «le subo el 20 %» | venta **$1.200.000** |
+| `SOBRE_LA_VENTA` | «me deja el 20 %» | venta **$1.250.000** |
+
+Son **$50.000 por silla**; en un bus de cuarenta, dos millones por salida. El código toma
+`SOBRE_EL_NETO` por defecto **y lo declara como suposición nuestra, no como dato del propietario.**
+
+**Qué se construyó, y por qué es seguro construirlo con el ADR sin firmar.** Solo el eje 2.
+ADR-0006 ya puso el *markup* en el nivel 1 por tenant en v1, así que la política de precio no
+depende de la firma del ADR-0009: la agencia necesita declarar su margen cuelgue la tarifa de donde
+cuelgue. Los ejes 1 y 3 **no se tocaron**.
+
+- `packages/domain/src/precio-de-venta.ts` — `calcularVenta`, `derivarNeto`, `calcularMargen`,
+  `redondearA`, y `POLITICA_POR_DEFECTO`. Aritmética pura, sin reloj ni base de datos.
+- `packages/contracts/src/politica-de-precio.ts` — el espejo Zod, **sin repetir el «20»**: el valor
+  por defecto vive en un solo sitio, para que no haya dos fuentes del mismo número separándose.
+- 20 pruebas nuevas, 52 en el paquete `domain`, **280 en el monorepo**.
+
+**Lo que esto desbloquea para la demostración.** Seguimos sin la hoja de netos del mayorista: lo
+que tenemos son precios de venta al público. Con `derivarNeto` la semilla puede llevar un neto
+coherente con el margen declarado —`venta ÷ 1,20`— **marcado como derivado**. No es el dato del
+mayorista y no debe enseñarse como tal.
+
+**Las cinco compuertas, ejecutadas:** `lint`, `typecheck`, `test` (280), `build`, `format:check`.
+Todas en verde. El `typecheck` de la web dio primero un rojo **falso** por un `.next/types` viejo
+que apuntaba a una pantalla de la rama de Antigravity; es la tarea 13 de la cola, ya documentada,
+no un defecto nuevo.
+
+### Cola nueva — con dueño, no bloquea
+
+| Cola | Dueño | Por qué no bloquea |
+|---|---|---|
+| **¿El 20 % es sobre el neto o sobre la venta?** Es una palabra del propietario y un campo de una tabla; no se toca una línea de código | Usuario | El valor por defecto ya está puesto y probado. Pero **mientras no se confirme, toda cifra de margen que enseñemos lleva ese asterisco** |
+| ~~La `PoliticaDePrecio` **no tiene todavía tabla ni RLS**~~ — **resuelto en el mismo commit que entró el 2026-10-13**: `politicas_de_precio` existe, con `tenant_id`, RLS por `aplicar_aislamiento_tenant()` y tres `CHECK`. Lo que falta es la pantalla de configuración | `frontend` | Corregido por el integrador al cerrar: la línea describía el estado de un commit anterior de la misma rama |
+| **R8 dice «centavos» en `CLAUDE.md`** y lo correcto es «unidad mínima de la moneda»: en COP esa unidad es **el peso** | `documentador` | El código ya lo hace bien y hay prueba que lo fija. Es la redacción la que miente, y ya causó un error de dos órdenes de magnitud que llegó hasta la pantalla |
+| La **resolución de tarifa con desempate** —lo más específico gana; empate en longitud es error de datos— es código que no existe y es donde se esconderán los defectos de precio | `backend`, `qa` | Espera la firma del ADR-0009. Cuando llegue: **pruebas de solape, no de camino feliz** |
+| Precio por **fecha de compra** (*early bird*): la ventana por fecha de salida no lo cubre | `arquitecto` | Nadie lo ha pedido todavía. Si llega, **pide ADR propio**, no un campo más en la condición de la tarifa |
+
+---
+
+## 2026-10-13 (tarde) — ADR-0009 firmado y el catálogo real sembrado
+
+El propietario fijó la regla y pidió avanzar sin acumular salvedades. **ADR-0009 pasa a Aceptado**
+con la decisión de precio cerrada: **neto del mayorista + 20 % sobre el neto**.
+
+### Lo que existe ahora, medido contra Neon
+
+| Pieza | Estado |
+|---|---|
+| `vigencias` (antes `salidas`), `tarifas`, `politicas_de_precio` | Migradas y con RLS aplicada |
+| Prueba de aislamiento | **39/39**, incluida la 23, que reconstruye la cadena de migraciones desde cero |
+| Catálogo real de Agencias André's Tours | **33 paquetes, 78 vigencias, 79 tarifas** |
+| `resolverVigencia` con desempate | 20 pruebas, incluidas las de solape |
+| Política de precio | Sembrada: 20 %, `SOBRE_EL_NETO`, redondeo 1.000, modo `AMBOS` |
+
+### La hoja real confirmó la decisión del ADR
+
+No hizo falta esperar a otra agencia: **la misma hoja vende de las dos maneras.** Siete grupos
+publican fechas concretas —sábado 3 y 10, domingo 4 y 11— y las cuatro super excursiones llevan
+cada una **su propia** fecha de salida y de regreso. Con un solo arquetipo, media hoja no cabría.
+
+Y la promo de pareja quedó donde tenía que quedar: **una vigencia con dos tarifas**, medida contra
+la base —
+
+```
+Parque Consotá  2026-10-11  publicada=true
+   Adulto         POR_PERSONA cubre=1  venta=189000  neto=157500  margen=31500 (20,00 %)
+   Promo pareja   POR_GRUPO   cubre=2  venta=280000  neto=233333  margen=46667 (20,00 %)
+```
+
+— que es exactamente para lo que existe `UnidadDeCobro`. Son 79 tarifas sobre 78 vigencias: la de
+más es esa.
+
+### Decisiones que quedan escritas aquí porque no están en el ADR
+
+- **`salidas` se renombró, no se recreó.** Conserva filas, política RLS y foránea. Recrearla habría
+  dejado la tabla sin política hasta la línea que la vuelve a aplicar.
+- **Las dos invariantes del contrato se repiten como `CHECK` en la base.** Zod protege lo que entra
+  por la API; una semilla con un error de dedo no pasa por Zod.
+- **Los netos de la semilla son derivados** —`venta ÷ 1,20`— y queda dicho en las notas del
+  mayorista, que se llama «Mayorista por confirmar» a propósito.
+- **La hoja no declara régimen alimenticio**, así que los paquetes nacen `SIN_ALIMENTACION`: es
+  preferible a suponer un «todo incluido» que haya que desdecir delante de un cliente.
+
+### Cola nueva — con dueño, no bloquea
+
+| Cola | Dueño | Por qué no bloquea |
+|---|---|---|
+| **Meterle el `tenant_id` dentro a las claves foráneas.** La integridad referencial se evalúa por encima de RLS, así que una foránea simple deja colgar una fila de la de otra agencia si alguien escribe el id cruzado | `datos` | Hoy `tenant_id` lo pone el servidor, nunca el cliente. Es un **barrido de todo el esquema**, no de una tabla suelta: hacerlo en una sola sería inconsistente y daría falsa sensación de cubierto |
+| `Paquete` + `Temporada` + `Precio` siguen en el esquema junto al modelo nuevo | `datos` | El cotizador actual todavía se apoya en ellos. Se retiran cuando el cotizador pase a `resolverVigencia` |
+| La API no expone todavía `vigencias` ni `tarifas` | `backend` | El dato ya está en la base y la función de resolución probada. Falta el caso de uso y la ruta |
+
+---
+
+## Integración del 2026-10-13 — v0.18.0
+
+**Dos ramas entran, dos se devuelven.** Registro completo:
+[`docs/_integraciones/2026-10-13-v0.18.0.md`](docs/_integraciones/2026-10-13-v0.18.0.md).
+
+| Rama | Veredicto | Versión |
+|---|---|---|
+| `chore/orden-en-la-raiz` | **Integrada** (`23e239e`) | sin etiqueta: no cambia el artefacto desplegable |
+| `docs/adr-0009-parametrico` @ `49278fe` | **Integrada** (`fa73c4d`) | **v0.18.0** |
+| `feat/inbox-esquema` | **DEVUELTA** | — |
+| `feat/bandeja-web` | **DEVUELTA** | — |
+
+Compuertas de las dos integradas, corridas por el integrador: `build` **5/5 forzado sin caché** ·
+`typecheck` **7/7** · `lint` **7/7** · `format:check` limpio · pruebas: contracts **56**,
+domain **70**, api **150** y aislamiento **39/39** contra Neon.
+
+**Se integró con la tarea `test` en rojo, y hay que decirlo claro.** No por el contenido de las
+ramas: por el arnés. Ver tarea 0. Las 39 aserciones de aislamiento pasan; lo que falla es el
+desmontaje de la suite, que deja sus fixtures y rompe la corrida siguiente. Una de las dos ramas
+integradas no contiene código. **La excepción vale una vez: hasta que la tarea 0 esté cerrada, no
+entra nada más.**
+
+De `docs/adr-0009-parametrico` se integró el commit medido `49278fe`, **no la punta de la rama**:
+su sesión seguía escribiendo durante la revisión, y el commit siguiente (`a408407`) es trabajo del
+inbox dentro de una rama de quoting.
+
+### Por qué volvió `feat/inbox-esquema`
+
+Lo de la vuelta anterior está corregido y comprobado: `lint` 7/7 y ningún UUID corto. Lo que la
+detiene es de hoy y es de aislamiento, donde no aplica la regla de una sola vuelta (R13):
+`aislamiento.spec.ts:1614` borra `canales` antes que las filas de `enrutamiento_canales` que lo
+referencian con `ON DELETE RESTRICT`. El desmontaje revienta y los fixtures sobreviven.
+
+Consecuencia sobre su propia cifra: afirma **50/50** y hoy da **30 pasadas y 20 saltadas** — el
+bloque del inbox entero cae en su `beforeAll` con `duplicate key` sobre
+`plantillas_whatsapp_tenant_id_cuenta_id_nombre_idioma_key`. Veinte aserciones que nadie ha visto
+ejecutarse.
+
+### Por qué volvió `feat/bandeja-web`
+
+Sin entrar en su contenido: **15 commits por detrás de `main`**, 63 por delante, 89 archivos y
++17.052 líneas, y todavía escribiéndose. El modelo de ramas dice que la rama atrasada se pone al
+día antes de pedir integración, y que una rama que nadie puede revisar se parte. No se tocó su
+árbol de trabajo.
+
+### Cola nueva — con dueño, no bloquea
+
+| Cola | Dueño | Por qué no bloquea |
+|---|---|---|
+| **La migración de ADR-0009 se aplicó a Neon antes de pasar por la compuerta.** Mientras duró, `main` hablaba de `salidas` contra una base que ya solo tenía `vigencias`, y los otros tres árboles de trabajo con ella | `datos` | Se resuelve solo al integrar el código que la acompaña. El precedente es malo y por eso queda escrito: aplicar esquema desde una rama sin integrar rompe a todos los demás |
+| **Renombrar una tabla no es una migración segura en caliente.** `salidas` → `vigencias` deja ciega a la versión anterior en ejecución. Hoy no hay nada desplegado; cuando lo haya, toca el patrón de dos pasos (vista o columna nueva, despliegue, retirada) | `arquitecto` | No hay servidor. Pero la primera vez que lo haya, esto es una caída |
+| El prefijo `docs/` de `docs/adr-0009-parametrico` miente: la rama trae migración, rutas de API, dominio y contratos | `facilitador` | Se integró por su contenido. El nombre es barato de acertar la próxima vez |
+| `.prettierignore` sigue ignorando `images/`, una carpeta que ya no existe | `devops` | Ruido inofensivo |
+| El `typecheck` da un rojo falso (`Property 'vigencia' does not exist on type 'ClienteTenant'`) cuando `build` es un acierto de caché de Turbo y no regenera el cliente de Prisma. Turbo no declara `generate` como dependencia de `typecheck` | `devops` | Se resuelve con `pnpm --filter @viajapro/database generate`. Ya estaba en la cola desde el 2026-10-11; hoy volvió a morder |

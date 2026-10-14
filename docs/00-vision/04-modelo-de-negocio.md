@@ -6,7 +6,7 @@
 > ⚠️ **Nada más está decidido.** Ni el nombre comercial, ni el modelo de cobro, ni los precios, ni
 > los planes. Lo que sigue son marcos de decisión e hipótesis de trabajo, no acuerdos.
 >
-> `images/Brochure.jpeg` es **material de inspiración**, no una lista de precios. Lo que aporta como
+> `docs/_assets/brochure-de-inspiracion.jpeg` es **material de inspiración**, no una lista de precios. Lo que aporta como
 > dirección de producto está recogido en [el norte del producto](05-norte-del-producto.md).
 
 ---

@@ -30,7 +30,8 @@
     "preflight": "node scripts/preflight.mjs",
     "db:setup": "pnpm db:migrate:deploy && pnpm --filter @viajapro/database run rol:crear",
     "db:migrate:deploy": "pnpm --filter @viajapro/database run migrate:deploy",
-    "db:aislamiento": "pnpm --filter @viajapro/database run test:aislamiento"
+    "db:aislamiento": "pnpm --filter @viajapro/database run test:aislamiento",
+    "db:seed:crm": "pnpm --filter @viajapro/database seed:crm"
   },
   "devDependencies": {
     "@commitlint/cli": "^19.5.0",

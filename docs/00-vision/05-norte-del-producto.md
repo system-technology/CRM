@@ -1,6 +1,6 @@
 # El norte del producto
 
-> **Qué es este documento.** [`images/Brochure.jpeg`](../../images/Brochure.jpeg) es material de
+> **Qué es este documento.** [`brochure-de-inspiracion.jpeg`](../_assets/brochure-de-inspiracion.jpeg) es material de
 > inspiración: una exploración visual de cómo podría verse el producto. **No es un compromiso
 > comercial** —el nombre, los precios y los planes siguen sin decidirse— pero sí aporta algo
 > valioso: una dirección clara. Aquí se recoge esa dirección y se empuja más allá.

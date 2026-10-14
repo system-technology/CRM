@@ -6,14 +6,18 @@
  * tocar la API y el cliente a la vez.
  */
 
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { ParametrosPagina } from '@viajapro/contracts';
 import { PrismaService } from '../../../shared/prisma/prisma.service.js';
 import { PaqueteNoEncontradoError } from '../domain/errors.js';
 
 @Injectable()
 export class ListarPaquetesUseCase {
-  constructor(private readonly prisma: PrismaService) {}
+  // `@Inject` explicito, y no es ceremonia: el transpilador de desarrollo (`tsx`) NO emite los
+  // metadatos de decorador que Nest necesita para resolver el tipo. Sin esto, Nest construye la
+  // clase CON CERO DEPENDENCIAS y sin quejarse, y el fallo sale como `undefined` en la primera
+  // peticion real. Compila, arranca, y revienta al usarse. Ver cola 11c de `ESTADO.md`.
+  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
   async ejecutar(params: ParametrosPagina) {
     return this.prisma.conTenant(async (tx) => {

@@ -15,6 +15,7 @@
  */
 
 import { PrismaClient } from '@prisma/client';
+import { sembrarCatalogoReal } from './semilla-catalogo-real.js';
 
 const prisma = new PrismaClient();
 
@@ -88,12 +89,51 @@ async function main() {
     { nombre: 'Ganada', clave: 'GANADA', orden: 4, probabilidad: 100, esGanada: true },
     { nombre: 'Perdida', clave: 'PERDIDA', orden: 5, probabilidad: 0, esPerdida: true },
   ];
+  // **Se identifican por CLAVE, no por orden.** El orden es presentación: una agencia lo
+  // reordena arrastrando columnas y eso no convierte «Ganada» en otra etapa. La clave sí es
+  // identidad, y la base lo respalda con una unique parcial `(tenant_id, clave) WHERE clave IS
+  // NOT NULL`.
+  //
+  // Identificarlas por orden rompía la siembra en cuanto la agencia tenía más etapas que las
+  // cinco canónicas: con siete en la base, poner `GANADA` en el orden 4 chocaba contra la fila
+  // que ya la tenía en el 6, y `pnpm db:seed` moría con P2002. Una semilla que solo funciona
+  // sobre una base virgen no sirve para nada.
+  const ordenesOcupados = new Set(
+    (
+      await prisma.etapaPipeline.findMany({
+        where: { tenantId: tenant.id },
+        select: { orden: true },
+      })
+    ).map((x) => x.orden),
+  );
+
   for (const e of etapas) {
-    await prisma.etapaPipeline.upsert({
-      where: { tenantId_orden: { tenantId: tenant.id, orden: e.orden } },
-      update: { nombre: e.nombre, probabilidad: e.probabilidad, clave: e.clave },
-      create: { tenantId: tenant.id, ...e },
+    const existente = await prisma.etapaPipeline.findFirst({
+      where: { tenantId: tenant.id, clave: e.clave },
     });
+
+    if (existente) {
+      // NO se toca el orden: la agencia pudo reordenar su embudo, y devolverlo a nuestro
+      // orden por defecto en cada siembra le desharía la configuración.
+      await prisma.etapaPipeline.update({
+        where: { id: existente.id },
+        data: {
+          nombre: e.nombre,
+          probabilidad: e.probabilidad,
+          esGanada: e.esGanada ?? false,
+          esPerdida: e.esPerdida ?? false,
+        },
+      });
+      continue;
+    }
+
+    // Si el orden que queríamos ya está ocupado por una etapa propia de la agencia, se va al
+    // final en vez de pelearse por el sitio.
+    let orden = e.orden;
+    while (ordenesOcupados.has(orden)) orden += 1;
+    ordenesOcupados.add(orden);
+
+    await prisma.etapaPipeline.create({ data: { tenantId: tenant.id, ...e, orden } });
   }
 
   // --- Campos personalizados ---------------------------------------------
@@ -371,32 +411,14 @@ async function main() {
     console.log(`  creado: ${p.nombre}  (${temporadas.length} temporadas)`);
   }
 
-  // --- Salidas ------------------------------------------------------------
-  // Fechas concretas con cupo, para poder ejercitar el agotamiento.
-  const sanAndres = await prisma.paquete.findFirst({
-    where: { tenantId: tenant.id, destino: 'San Andrés' },
-  });
-  if (sanAndres) {
-    for (const fecha of ['2027-12-18', '2027-12-26', '2028-01-06']) {
-      await prisma.salida.upsert({
-        where: {
-          tenantId_paqueteId_fecha: {
-            tenantId: tenant.id,
-            paqueteId: sanAndres.id,
-            fecha: new Date(fecha),
-          },
-        },
-        update: {},
-        create: {
-          tenantId: tenant.id,
-          paqueteId: sanAndres.id,
-          fecha: new Date(fecha),
-          cupoTotal: 20,
-          cupoVendido: fecha === '2027-12-26' ? 18 : 0,
-        },
-      });
-    }
-  }
+  // --- Catálogo real de Agencias André's Tours ----------------------------
+  // Sustituye a las salidas inventadas. 34 productos, 8 grupos, con las dos formas de publicar
+  // que la hoja real demuestra: fechas concretas y super excursiones con fecha propia.
+  const catalogoReal = await sembrarCatalogoReal(prisma, tenant.id);
+  console.log(
+    `  catálogo real: ${catalogoReal.paquetes} paquetes, ${catalogoReal.vigencias} vigencias, ` +
+      `${catalogoReal.tarifas} tarifas`,
+  );
 
   // --- Contactos ----------------------------------------------------------
   const contactos = [
@@ -525,7 +547,8 @@ async function main() {
     paquetes: await prisma.paquete.count({ where: { tenantId: tenant.id } }),
     temporadas: await prisma.temporada.count({ where: { tenantId: tenant.id } }),
     precios: await prisma.precio.count({ where: { tenantId: tenant.id } }),
-    salidas: await prisma.salida.count({ where: { tenantId: tenant.id } }),
+    vigencias: await prisma.vigencia.count({ where: { tenantId: tenant.id } }),
+    tarifas: await prisma.tarifa.count({ where: { tenantId: tenant.id } }),
     contactos: await prisma.contacto.count({ where: { tenantId: tenant.id } }),
     etapas: await prisma.etapaPipeline.count({ where: { tenantId: tenant.id } }),
     canales: await prisma.canal.count({ where: { tenantId: tenant.id } }),
