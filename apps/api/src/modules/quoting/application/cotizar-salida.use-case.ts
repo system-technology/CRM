@@ -21,6 +21,7 @@ import {
   type BaseDelMargen,
 } from '@viajapro/domain';
 import { PrismaService } from '../../../shared/prisma/prisma.service.js';
+import { ContextoTenant } from '../../../shared/tenant/contexto-tenant.js';
 import { PaqueteNoEncontradoError } from '../domain/errors.js';
 import { monedaDeLaBase } from '../domain/moneda-de-la-base.js';
 import {
@@ -88,10 +89,23 @@ export class CotizarSalidaUseCase {
         peticion.fecha,
       );
 
-      // Sin `where`: RLS ya acota a esta agencia, y hay una sola fila por tenant. Pasarle el
-      // `tenantId` a mano aqui seria repetir en la consulta lo que la politica ya garantiza, y
-      // abrir la puerta a que alguien lo tome del cuerpo de la peticion.
-      const politica = await tx.politicaDePrecio.findFirst({ select: { base: true } });
+      // **Predicado explícito MÁS RLS**, y no RLS sola. Lo era: un `findFirst` sin `where`, con
+      // el argumento de que pasar el `tenantId` «abriría la puerta a que alguien lo tome del
+      // cuerpo de la petición». `auditor-seguridad` desmontó ese argumento: `ContextoTenant` es
+      // **la misma fuente** de la que `conTenant` saca el valor para `set_config` —el token de
+      // sesión—, y no hay forma de que un cuerpo de petición llegue ahí.
+      //
+      // Lo que sí había era un agujero latente. El SQL emitido era `SELECT ... LIMIT 1` sin
+      // `WHERE` ni `ORDER BY`: acierta mientras el conjunto visible tenga una sola fila. Él lo
+      // reprodujo con un rol que ve más —el propietario, que en Neon se salta RLS— y devuelve la
+      // política de una agencia **arbitraria, sin error y sin aviso**, con el margen de otra
+      // aplicado al cálculo. El día que esto se llame desde un informe o un trabajo en cola, no
+      // falla: acierta mal.
+      const { tenantId } = ContextoTenant.obtener();
+      const politica = await tx.politicaDePrecio.findUnique({
+        where: { tenantId },
+        select: { base: true },
+      });
       const base: BaseDelMargen = (politica?.base as BaseDelMargen) ?? POLITICA_POR_DEFECTO.base;
 
       // `select` explicito y no `findMany` a secas. El neto es lo que la agencia le paga al

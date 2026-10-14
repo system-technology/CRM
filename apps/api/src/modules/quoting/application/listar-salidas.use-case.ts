@@ -57,17 +57,42 @@ export class ListarSalidasUseCase {
             // No aditivas: un suplemento de sencilla no es el precio «desde» de nada.
             where: { aditiva: false },
             orderBy: { ventaUnidades: 'asc' },
-            select: { ventaUnidades: true, monedaIso: true },
+            select: {
+              ventaUnidades: true,
+              monedaIso: true,
+              unidad: true,
+              cubrePasajeros: true,
+            },
           },
         },
       });
 
       // Una salida sin tarifa no se puede anunciar: no se inventa un «desde», se omite. Aparecer
       // en el catálogo sin precio obliga al asesor a preguntar por dentro qué pasó.
+      /**
+       * El «desde» que se anuncia es **por persona**, siempre.
+       *
+       * `auditor-seguridad` lo vio de paso y tenía razón en que es dinero: la consulta tomaba el
+       * mínimo de `venta_unidades` mezclando tarifas por persona y por grupo, y los importes de
+       * grupo se guardan **íntegros** por R8. Una promo de pareja de $150.000 saldría anunciada
+       * como «desde $150.000» por persona, cuando son $75.000 cada uno. El cliente llega con un
+       * número y el asesor tiene otro.
+       *
+       * Dividir entre `cubrePasajeros` es **presentación**, nunca se persiste (ADR-0009 §4).
+       */
+      const porPersona = (t: {
+        ventaUnidades: bigint;
+        unidad: string;
+        cubrePasajeros: number;
+      }): bigint => {
+        if (t.unidad !== 'POR_GRUPO' || t.cubrePasajeros < 1) return t.ventaUnidades;
+        return t.ventaUnidades / BigInt(t.cubrePasajeros);
+      };
+
       return filas
         .filter((v) => v.tarifas.length > 0)
         .map((v) => {
-          const barata = v.tarifas[0]!;
+          const barata = v.tarifas.reduce((a, b) => (porPersona(b) < porPersona(a) ? b : a));
           return {
             vigenciaId: v.id,
             paqueteId: v.paquete.id,
@@ -77,7 +102,7 @@ export class ListarSalidasUseCase {
             fecha: aFecha(v.desde),
             cupoTotal: v.cupoTotal,
             desde: {
-              unidades: barata.ventaUnidades.toString(),
+              unidades: porPersona(barata).toString(),
               moneda: monedaDeLaBase(barata.monedaIso),
             },
             tarifas: v.tarifas.length,

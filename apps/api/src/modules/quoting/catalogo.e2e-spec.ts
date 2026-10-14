@@ -411,3 +411,35 @@ describe('El margen no sale de la agencia salvo que se pida', () => {
     expect(lineas[0]?.['margenPorcentaje']).toBe(20);
   });
 });
+
+/**
+ * **El «desde» que se anuncia es por persona, siempre.**
+ *
+ * La consulta tomaba el mínimo de `venta_unidades` mezclando tarifas por persona y por grupo, y
+ * los importes de grupo se guardan **íntegros** por R8. Una promo de pareja más barata que el
+ * precio por persona saldría anunciada como per cápita: el cliente llega con un número y el
+ * asesor tiene otro.
+ */
+describe('El precio anunciado', () => {
+  it('«Parque Consotá» anuncia 189.000 por persona, no 280.000 de la pareja', async () => {
+    // Esa salida tiene DOS tarifas: Adulto 189.000 por persona y Promo pareja 280.000 por grupo
+    // de dos. El per cápita de la promo son 140.000, que es el más barato de los dos.
+    const { cuerpo } = await salidas('desde=2026-10-11&hasta=2026-10-11&limite=200');
+    const consota = cuerpo.salidas.find((s) => s.paqueteNombre === 'Parque Consotá');
+    expect(consota).toBeDefined();
+    expect(consota?.tarifas).toBe(2);
+    expect(consota?.desde.unidades).toBe('140000');
+  });
+
+  it('ningún «desde» supera al total de su cotización para una persona', async () => {
+    // Red de seguridad sobre el catálogo entero: si el anuncio fuera un importe de grupo sin
+    // dividir, sería mayor que lo que de verdad paga un viajero solo.
+    const { cuerpo } = await salidas('desde=2026-10-01&hasta=2026-10-31&limite=200');
+    for (const s of cuerpo.salidas.slice(0, 12)) {
+      const r = await cotizar({ paqueteId: s.paqueteId, fecha: s.fecha, adultos: 1 });
+      if (r.status !== 200) continue;
+      const total = BigInt((r.cuerpo['total'] as { unidades: string }).unidades);
+      expect(BigInt(s.desde.unidades) <= total).toBe(true);
+    }
+  });
+});
