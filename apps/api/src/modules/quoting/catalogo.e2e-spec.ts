@@ -357,3 +357,57 @@ describe('Una cotización es la SUMA de varias tarifas, no una sola', () => {
     expect((r.cuerpo['total'] as { unidades: string }).unidades).toBe('778000');
   });
 });
+
+/**
+ * **El margen ES el neto, y por eso no sale salvo que se pida.**
+ *
+ * `auditor-seguridad` lo midió hoy: `neto = venta − margen`. Publicar el margen es publicar lo
+ * que la agencia le paga al mayorista. La barrera que debía impedirlo —`TarifaPublica`— estaba
+ * declarada y **no la importaba nadie**, que es peor que no tenerla: hace creer que hay un muro
+ * donde no lo hay.
+ *
+ * Las claves se **omiten enteras**, no vienen en `null`: estas aserciones miran el texto crudo y
+ * las claves del objeto, que es lo que sobrevive a un `...spread` futuro.
+ */
+describe('El margen no sale de la agencia salvo que se pida', () => {
+  it('por defecto la respuesta NO lleva margen por ninguna parte', async () => {
+    const r = await cotizar({ paqueteId: paqueteConsota, fecha: '2026-10-11', adultos: 2 });
+    expect(r.status).toBe(200);
+
+    const crudo = JSON.stringify(r.cuerpo);
+    expect(crudo).not.toMatch(/margen/i);
+    expect(crudo).not.toMatch(/neto/i);
+
+    const lineas = r.cuerpo['lineas'] as Record<string, unknown>[];
+    expect(lineas.length).toBeGreaterThan(0);
+    for (const l of lineas) {
+      expect(Object.keys(l)).not.toContain('margen');
+      expect(Object.keys(l)).not.toContain('margenPorcentaje');
+    }
+  });
+
+  it('quitar el margen no cambia ni un peso de lo que se cobra', async () => {
+    const sin = await cotizar({ paqueteId: paqueteConsota, fecha: '2026-10-11', adultos: 2 });
+    const con = await cotizar({
+      paqueteId: paqueteConsota,
+      fecha: '2026-10-11',
+      adultos: 2,
+      incluirMargen: true,
+    });
+    expect((sin.cuerpo['total'] as { unidades: string }).unidades).toBe(
+      (con.cuerpo['total'] as { unidades: string }).unidades,
+    );
+  });
+
+  it('con `incluirMargen` sí viene, porque la pantalla del asesor lo necesita', async () => {
+    const r = await cotizar({
+      paqueteId: paqueteConsota,
+      fecha: '2026-10-11',
+      adultos: 2,
+      incluirMargen: true,
+    });
+    const lineas = r.cuerpo['lineas'] as Record<string, unknown>[];
+    expect(Object.keys(lineas[0] ?? {})).toContain('margen');
+    expect(lineas[0]?.['margenPorcentaje']).toBe(20);
+  });
+});

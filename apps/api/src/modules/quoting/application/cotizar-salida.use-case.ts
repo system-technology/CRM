@@ -37,7 +37,7 @@ interface FilaTarifa {
   nombre: string;
   unidad: 'POR_PERSONA' | 'POR_GRUPO';
   cubrePasajeros: number;
-  netoUnidades: bigint | null;
+  netoUnidades?: bigint | null;
   ventaUnidades: bigint;
   monedaIso: string;
   aditiva: boolean;
@@ -64,6 +64,8 @@ export class CotizarSalidaUseCase {
     const adultos = peticion.adultos ?? 1;
     const ninos = peticion.ninos ?? 0;
     const infantes = peticion.infantes ?? 0;
+    // Por defecto NO sale el margen: revela el neto por resta (`neto = venta − margen`).
+    const incluirMargen = peticion.incluirMargen ?? false;
     const composicion: Composicion = { adultos, ninos, infantes };
     const pasajeros = adultos + ninos + infantes;
 
@@ -92,17 +94,44 @@ export class CotizarSalidaUseCase {
       const politica = await tx.politicaDePrecio.findFirst({ select: { base: true } });
       const base: BaseDelMargen = (politica?.base as BaseDelMargen) ?? POLITICA_POR_DEFECTO.base;
 
+      // `select` explicito y no `findMany` a secas. El neto es lo que la agencia le paga al
+      // mayorista: no debe llegar a la capa de respuesta por inercia, sino porque alguien lo
+      // escribio. Y cuando no se pide el margen, ni siquiera sale de la base: defensa en
+      // profundidad, no una sola barrera en el mapeador.
       const filas = (await tx.tarifa.findMany({
         where: { vigenciaId: elegida.id },
         orderBy: { ventaUnidades: 'asc' },
+        select: {
+          id: true,
+          nombre: true,
+          unidad: true,
+          cubrePasajeros: true,
+          netoUnidades: incluirMargen,
+          ventaUnidades: true,
+          monedaIso: true,
+          aditiva: true,
+          acomodacion: true,
+          tipoPasajero: true,
+          edadMinima: true,
+          edadMaxima: true,
+          pasajerosMinimo: true,
+          pasajerosMaximo: true,
+          ocupaSilla: true,
+        },
       })) as unknown as FilaTarifa[];
 
       const aOpcion = (t: FilaTarifa, veces: number): OpcionDePrecio => {
         const moneda = monedaDeLaBase(t.monedaIso);
         const unitario = Money.desdeUnidades(t.ventaUnidades, moneda);
         const total = unitario.porCantidad(veces);
-        const neto = t.netoUnidades === null ? null : Money.desdeUnidades(t.netoUnidades, moneda);
-        const margenLinea = calcularMargen(neto, unitario, base);
+        // `undefined` cuando no se pidio el margen y la columna ni se consulto; `null` cuando la
+        // tarifa no tiene neto cargado. Las dos son «no hay margen que informar», y ninguna es
+        // margen cero.
+        const neto =
+          t.netoUnidades === null || t.netoUnidades === undefined
+            ? null
+            : Money.desdeUnidades(t.netoUnidades, moneda);
+        const margenLinea = incluirMargen ? calcularMargen(neto, unitario, base) : null;
 
         return {
           tarifaId: t.id,
@@ -112,17 +141,24 @@ export class CotizarSalidaUseCase {
           veces,
           precioUnitario: { unidades: t.ventaUnidades.toString(), moneda },
           total: { unidades: total.aPersistencia().unidades.toString(), moneda },
-          margen:
-            margenLinea === null
-              ? null
-              : {
-                  unidades: margenLinea.importe
-                    .porCantidad(veces)
-                    .aPersistencia()
-                    .unidades.toString(),
-                  moneda,
-                },
-          margenPorcentaje: margenLinea?.porcentaje ?? null,
+          // Las claves se OMITEN enteras cuando no se piden, en vez de venir en `null`: asi una
+          // pantalla que consuma esto no recibe el dato ni puede despejarlo, y un `Object.keys`
+          // lo demuestra — que es la asercion que sobrevive a un `...spread` futuro.
+          ...(incluirMargen
+            ? {
+                margen:
+                  margenLinea === null
+                    ? null
+                    : {
+                        unidades: margenLinea.importe
+                          .porCantidad(veces)
+                          .aPersistencia()
+                          .unidades.toString(),
+                        moneda,
+                      },
+                margenPorcentaje: margenLinea?.porcentaje ?? null,
+              }
+            : {}),
           masBarata: false,
         };
       };
