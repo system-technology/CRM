@@ -120,7 +120,11 @@ export async function listarSalidasApi(filtro: FiltroListarSalidas): Promise<Sal
  * Cotiza una salida o vigencia para un grupo de pasajeros.
  * POST /api/v1/catalogo/cotizar
  */
-export async function cotizarSalidaApi(peticion: CotizarSalida): Promise<CotizacionDeSalida> {
+export type PeticionCotizarSalida = z.input<typeof CotizarSalida>;
+
+export async function cotizarSalidaApi(
+  peticion: PeticionCotizarSalida,
+): Promise<CotizacionDeSalida> {
   const bruto = await pedirCatalogo<unknown>('/api/v1/catalogo/cotizar', {
     method: 'POST',
     body: JSON.stringify(peticion),

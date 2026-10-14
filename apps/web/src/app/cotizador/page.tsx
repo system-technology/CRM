@@ -162,6 +162,7 @@ function ContenidoCotizador() {
           adultos: Math.max(1, adultos),
           ninos: pideComposicion ? ninos : 0,
           infantes: pideComposicion ? infantes : 0,
+          incluirMargen: false,
         });
         setCotizacionReal(respuesta);
         setErrorMensaje(null);

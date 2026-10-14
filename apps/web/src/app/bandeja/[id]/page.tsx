@@ -695,7 +695,7 @@ export default function BandejaConversacionPage() {
                           ? 'border-purple-300 bg-purple-100 text-purple-900 dark:border-purple-800 dark:bg-purple-950 dark:text-purple-200'
                           : 'border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-100 dark:border-purple-900/60 dark:bg-purple-950/40 dark:text-purple-300'
                       }`}
-                      title="Abrir Asistente Copilot IA"
+                      title="Abrir Asistente de Cotización (Heurístico)"
                     >
                       <Sparkles className="h-3.5 w-3.5" />
                       <span>Sugerencias</span>

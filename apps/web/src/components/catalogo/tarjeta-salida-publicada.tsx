@@ -2,9 +2,9 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Calendar, Compass, MapPin, Sparkles } from 'lucide-react';
+import { Calendar, Compass, MapPin, Sparkles, Users } from 'lucide-react';
 import type { SalidaPublicada } from '@viajapro/contracts';
-import { formatearNochesLabel } from '../../lib/catalogo-logica';
+import { formatearNochesLabel, formatearCondicionDesde } from '../../lib/catalogo-logica';
 import { formatearDinero } from '../../lib/api';
 
 interface TarjetaSalidaPublicadaProps {
@@ -23,6 +23,7 @@ export function TarjetaSalidaPublicada({ salida }: TarjetaSalidaPublicadaProps) 
   }).format(fechaObj);
 
   const nochesTxt = formatearNochesLabel(salida.noches);
+  const condicionDesde = formatearCondicionDesde(salida);
 
   return (
     <article className="flex flex-col justify-between overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-xs transition-all hover:border-neutral-300 hover:shadow-md dark:border-neutral-800 dark:bg-neutral-900 dark:hover:border-neutral-700">
@@ -54,6 +55,13 @@ export function TarjetaSalidaPublicada({ salida }: TarjetaSalidaPublicadaProps) 
               <span className="flex items-center gap-1 rounded bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:bg-amber-950/50 dark:text-amber-300">
                 <Sparkles className="h-3 w-3" />
                 {salida.tarifas} opciones / promo
+              </span>
+            )}
+
+            {salida.desdeEsDeGrupo && (
+              <span className="flex items-center gap-1 rounded bg-purple-50 px-2 py-0.5 text-[11px] font-medium text-purple-700 dark:bg-purple-950/50 dark:text-purple-300">
+                <Users className="h-3 w-3" />
+                Promo grupal
               </span>
             )}
           </div>
@@ -92,9 +100,25 @@ export function TarjetaSalidaPublicada({ salida }: TarjetaSalidaPublicadaProps) 
             <span className="cifra text-lg font-extrabold text-neutral-900 dark:text-white">
               {formatearDinero(salida.desde)}
             </span>
-            <span className="block text-[10px] text-neutral-400">por persona (COP)</span>
+            <span
+              className={`block text-[10px] ${
+                condicionDesde.esGrupo
+                  ? 'font-medium text-purple-700 dark:text-purple-300'
+                  : 'text-neutral-400'
+              }`}
+            >
+              {condicionDesde.subtitulo}
+            </span>
           </div>
         </div>
+
+        {condicionDesde.esGrupo && (
+          <div className="mb-3 rounded-lg border border-purple-200/80 bg-purple-50/70 p-2 text-[11px] text-purple-900 dark:border-purple-900/50 dark:bg-purple-950/30 dark:text-purple-200">
+            <p className="font-medium">
+              ℹ️ <strong>Condición comercial:</strong> {condicionDesde.aviso}
+            </p>
+          </div>
+        )}
 
         <Link
           href={`/cotizador?paqueteId=${encodeURIComponent(salida.paqueteId)}&fecha=${encodeURIComponent(salida.fecha)}`}

@@ -554,7 +554,10 @@ cambiar una ruta de importación.
 ## 📌 Sincronización Jira Cloud — Proyecto VIAJAPRO CRM (VC)
 
 - **Ticket de Frontend activo:** [VC-13] (5 — Bandeja de conversaciones en la web).
-- **Estado:** Entregado en `feat/bandeja-web` (Commits `685ec53` y `10f5a96`). Comentario formal registrado en Jira con evidencia de las 5 compuertas.
-- **Próximas tareas en Jira identificadas para Frontend:**
-  1. Pantalla de Pipeline (`/pipeline`) — Tablero Kanban de Oportunidades contra contratos de `crm.ts` (`TableroPipeline`, `Oportunidad`), según `viajapro_diseno_ui_ux.json`.
-  2. [VC-21] Carrera de `turbo` entre `build` y `typecheck` de la web: evitar falso rojo en CI.
+- **Estado:** Entregado en `feat/bandeja-web`. Verificado y auditado favorablemente.
+- **Tareas entregadas recientemente:**
+  - **[VC-21] Carrera de `turbo` entre `build` y `typecheck` de la web:** RESUELTO. Integradas dependencias de paquete en `turbo.json` (`@viajapro/web#typecheck` y `@viajapro/database#typecheck` dependen de su propio `#build`). Cero carreras entre reescritura de `.next/types` y `tsc`.
+  - **0c.17 — El «desde» con su condición:** RESUELTO. Tarjeta de salida muestra advertencia comercial destacada cuando `desdeEsDeGrupo` es `true` («por persona · en promo grupal»); propuesta WhatsApp avisa condición grupal explícitamente; nuevo helper `formatearCondicionDesde` probado.
+  - **Copiloto heurístico:** Nombres honestos en UI («Asistente de Cotización (Heurístico)») sin prometer modelos LLM externos inexistentes.
+- **Próxima tarea:**
+  1. Pantalla de Pipeline (`/pipeline`) — Tablero Kanban de Oportunidades contra contratos de `crm.ts` (`TableroPipeline`, `Oportunidad`), según `viajapro_diseno_ui_ux.json` (0c.3 en `COLA-DESPUES.md`).

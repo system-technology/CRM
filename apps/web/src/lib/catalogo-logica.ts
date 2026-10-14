@@ -187,3 +187,25 @@ export function filtrarSalidasPublicadas(
     return true;
   });
 }
+
+/**
+ * Entrega el texto de presentación y advertencia honesta para la tarifa «desde» (0c.17).
+ * Si la tarifa es de grupo, no puede enseñarse como compra individual a secas.
+ */
+export function formatearCondicionDesde(salida: Pick<SalidaPublicada, 'desdeEsDeGrupo'>): {
+  subtitulo: string;
+  esGrupo: boolean;
+  aviso?: string;
+} {
+  if (salida.desdeEsDeGrupo) {
+    return {
+      subtitulo: 'por persona · en promo grupal',
+      esGrupo: true,
+      aviso: 'Tarifa condicionada: Precio per cápita sujeto a compra en grupo o pareja.',
+    };
+  }
+  return {
+    subtitulo: 'por persona (COP)',
+    esGrupo: false,
+  };
+}

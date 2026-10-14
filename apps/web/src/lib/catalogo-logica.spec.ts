@@ -14,6 +14,7 @@ import {
   filtrarPaquetes,
   filtrarSalidasPublicadas,
   formatearNochesLabel,
+  formatearCondicionDesde,
   obtenerPrecioDesde,
   verificarVigenciaTarifario,
 } from './catalogo-logica';
@@ -141,6 +142,7 @@ describe('Pruebas del Catálogo de Paquetes y Tarifarios de Mayoristas', () => {
       fecha: '2026-10-03',
       cupoTotal: 20,
       desde: { unidades: '410000', moneda: 'COP' },
+      desdeEsDeGrupo: false,
       tarifas: 2,
     },
     {
@@ -152,6 +154,7 @@ describe('Pruebas del Catálogo de Paquetes y Tarifarios de Mayoristas', () => {
       fecha: '2026-10-11',
       cupoTotal: null,
       desde: { unidades: '189000', moneda: 'COP' },
+      desdeEsDeGrupo: true,
       tarifas: 3,
     },
     {
@@ -163,6 +166,7 @@ describe('Pruebas del Catálogo de Paquetes y Tarifarios de Mayoristas', () => {
       fecha: '2026-10-17',
       cupoTotal: 15,
       desde: { unidades: '650000', moneda: 'COP' },
+      desdeEsDeGrupo: false,
       tarifas: 1,
     },
   ];
@@ -203,5 +207,19 @@ describe('Pruebas del Catálogo de Paquetes y Tarifarios de Mayoristas', () => {
     const porDestino = filtrarSalidasPublicadas(salidasEjemplo, { busqueda: 'cafetero' });
     expect(porDestino.length).toBe(1);
     expect(porDestino[0]!.paqueteNombre).toBe('Puebleando en el Quindío');
+  });
+
+  it('14. formatearCondicionDesde avisa con honestidad si el desde proviene de una tarifa de grupo (0c.17)', () => {
+    const salidaIndividual = salidasEjemplo[0]!;
+    const infoIndiv = formatearCondicionDesde(salidaIndividual);
+    expect(infoIndiv.esGrupo).toBe(false);
+    expect(infoIndiv.subtitulo).toBe('por persona (COP)');
+    expect(infoIndiv.aviso).toBeUndefined();
+
+    const salidaGrupo = salidasEjemplo[1]!;
+    const infoGrupo = formatearCondicionDesde(salidaGrupo);
+    expect(infoGrupo.esGrupo).toBe(true);
+    expect(infoGrupo.subtitulo).toContain('promo grupal');
+    expect(infoGrupo.aviso).toContain('sujeto a compra en grupo');
   });
 });

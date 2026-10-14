@@ -219,4 +219,28 @@ describe('Pruebas del Módulo de Cotización y Generación de Propuestas', () =>
     expect(errEmpatadas.mensaje).toContain('dos ventanas de vigencia solapadas');
     expect(errEmpatadas.esErrorAgencia).toBe(true);
   });
+
+  it('10. generarTextoPropuestaWhatsAppSalida incluye nota explícita de condición cuando hay tarifas de grupo (0c.17)', () => {
+    const cotizacionConGrupo: CotizacionDeSalida = {
+      ...cotizacionArmadaEjemplo,
+      lineas: [
+        {
+          tarifaId: '01a1387b-008e-7c51-aaf6-6a1f3e895799',
+          nombre: 'Promo Pareja',
+          unidad: 'POR_GRUPO',
+          cubrePasajeros: 2,
+          precioUnitario: { unidades: '280000', moneda: 'COP' },
+          veces: 1,
+          total: { unidades: '280000', moneda: 'COP' },
+          masBarata: true,
+        },
+      ],
+      total: { unidades: '280000', moneda: 'COP' },
+    };
+
+    const texto = generarTextoPropuestaWhatsAppSalida(cotizacionConGrupo);
+    expect(texto).toContain('Tarifa de grupo para 2 personas');
+    expect(texto).toContain('Nota de tarifa grupal');
+    expect(texto).toContain('condicionada a la cantidad mínima de pasajeros');
+  });
 });

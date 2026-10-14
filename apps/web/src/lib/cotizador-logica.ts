@@ -84,10 +84,16 @@ export function generarTextoPropuestaWhatsAppSalida(
     ? '🗓️ *Salida confirmada:* ' + cotizacion.fecha
     : '🗓️ *Fecha:* ' + cotizacion.fecha + ' _(Bajo consulta de cupo - Vigencia abierta)_';
 
+  let tieneTarifaGrupo = false;
   const lineasDesglose = cotizacion.lineas
     .map((l) => {
       const vecesTxt = l.veces > 1 ? ` ${l.veces}x (${formatearDinero(l.precioUnitario)} c/u)` : '';
-      return `  • ${l.nombre}${vecesTxt} → *${formatearDinero(l.total)}*`;
+      let condGrupo = '';
+      if (l.unidad === 'POR_GRUPO' || l.cubrePasajeros > 1) {
+        tieneTarifaGrupo = true;
+        condGrupo = ` _(Tarifa de grupo para ${l.cubrePasajeros} personas)_`;
+      }
+      return `  • ${l.nombre}${vecesTxt}${condGrupo} → *${formatearDinero(l.total)}*`;
     })
     .join('\n');
 
@@ -103,11 +109,15 @@ ${lineasDesglose}
 
 💰 *TOTAL A PAGAR:* *${formatearDinero(cotizacion.total)}*`;
 
+  if (tieneTarifaGrupo) {
+    texto += `\n\nℹ️ *Nota de tarifa grupal:* La cotización incluye tarifa(s) en modalidad de grupo/pareja condicionada a la cantidad mínima de pasajeros indicada.`;
+  }
+
   if (cotizacion.alternativas.length > 0) {
     const altText = cotizacion.alternativas
       .map(
         (a) =>
-          `  • ${a.nombre}: ${formatearDinero(a.total)} (${a.unidad === 'POR_GRUPO' ? 'Tarifa grupal' : 'Por persona'})`,
+          `  • ${a.nombre}: ${formatearDinero(a.total)} (${a.unidad === 'POR_GRUPO' ? `Tarifa grupal para ${a.cubrePasajeros} personas` : 'Por persona'})`,
       )
       .join('\n');
     texto += `\n\n🏷️ *Tarifas alternativas disponibles:*\n${altText}\n_(Sujetas a condiciones comerciales de la agencia)_`;

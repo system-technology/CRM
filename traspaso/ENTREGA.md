@@ -64,3 +64,64 @@
 
   Las cinco en verde. Ejecutadas, no supuestas.
 ```
+
+
+---
+
+# Entrega 2026-10-14 — 0c.17 («Desde» con su condición), carrera de Turbo VC-21 resuelta y sincronización con ADR-0009
+
+Entregado en la rama `feat/bandeja-web`.
+Auditado contra la revisión de Claude Opus 5 (`9634183`) y verificado con las 5 compuertas locales (`node scripts/compuertas.mjs`) 100% en verde.
+
+---
+
+## 1. Qué se construyó y resolvió
+
+1. **0c.17 — El «desde» con su condición (`tarjeta-salida-publicada.tsx` y `catalogo-logica.ts`):**
+   - Integrado el campo de contrato `desdeEsDeGrupo: z.boolean()` de `SalidaPublicada`.
+   - Cuando `desdeEsDeGrupo === true`, la tarjeta ya no enseña un precio pelado individual engañoso:
+     - Muestra el texto «por persona · en promo grupal».
+     - Badge superior indicativo «Promo grupal».
+     - Recuadro visible de advertencia comercial: «ℹ️ Condición comercial: Tarifa condicionada: Precio per cápita sujeto a compra en grupo o pareja.»
+   - Nueva función pura `formatearCondicionDesde(salida)` para desacoplar presentación y reglas de negocio.
+   - En `cotizador-logica.ts`, `generarTextoPropuestaWhatsAppSalida` añade nota explícita cuando la cotización incluye líneas de unidad `POR_GRUPO` o que cubran más de 1 pasajero: «ℹ️ Nota de tarifa grupal: La cotización incluye tarifa(s) en modalidad de grupo/pareja condicionada a la cantidad mínima de pasajeros indicada.».
+
+2. **Resolución de la carrera de Turbo entre build y typecheck (VC-21):**
+   - Integrado commit `f9da930` y rama `origin/docs/adr-0009-parametrico` en `turbo.json`:
+     `@viajapro/web#typecheck` depende de `^build` y `@viajapro/web#build`.
+     `@viajapro/database#typecheck` depende de `^build` y `@viajapro/database#build`.
+   - Se elimina de raíz el falso rojo en CI cuando `next build` reescribe `.next/types` en paralelo con `tsc`.
+   - Integradas mejoras de `7ba3b8c` en fixtures de aislamiento para evitar colisiones en Neon entre corridas simultáneas.
+
+3. **Honestidad en el asistente copiloto:**
+   - Textos de ayuda y botones alineados a «Asistente de Cotización (Heurístico)» y «Sugerencias Automáticas — Reglas Heurísticas», reflejando con honestidad la implementación actual basada en reglas y palabras clave.
+
+4. **Compatibilidad estricta de contratos Zod (R3):**
+   - `cotizarSalidaApi` tipado con `z.input<typeof CotizarSalida>` para respetar el `.default(false)` de `incluirMargen`.
+   - `cotizador/page.tsx` configurado explícitamente con `incluirMargen: false` (defensa en profundidad R10).
+
+---
+
+## 2. Pruebas y Verificación
+
+- **Pruebas en `apps/web`:** 125 pasadas (16 archivos de prueba) con Testing Library y Vitest.
+  - Añadida prueba 14 en `catalogo-logica.spec.ts` para `formatearCondicionDesde`.
+  - Añadida prueba 10 en `cotizador-logica.spec.ts` para propuesta WhatsApp con advertencia grupal.
+- **Pruebas en `apps/api`:** 214 pasadas (14 archivos de prueba).
+- **Pruebas en `packages/database`:** 39 pasadas (suite completa de aislamiento RLS).
+- **Total pruebas monorepo:** 378 pruebas automáticas ejecutadas y pasando.
+
+---
+
+## 3. Estado de las Cinco Compuertas (`node scripts/compuertas.mjs`)
+
+```
+══════════════════════════════════════════════════════════════════════
+  ✓ build          verde     20.0s
+  ✓ lint           verde     6.7s
+  ✓ typecheck      verde     2.7s
+  ✓ test           verde     136.6s
+  ✓ format:check   verde     2.8s
+
+  Las cinco en verde. Ejecutadas, no supuestas.
+```
