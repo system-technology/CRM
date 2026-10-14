@@ -23,6 +23,8 @@ import { Client } from 'pg';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+// @ts-expect-error — modulo JS sin tipos, compartido con `scripts/limpiar-fixtures.mjs`.
+import { borrarTenants } from '../scripts/borrar-tenants.mjs';
 
 // SIN `??` hacia DATABASE_URL, y eso es media compuerta.
 //
@@ -108,7 +110,13 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await admin.query('DELETE FROM tenants WHERE id = ANY($1)', [[TENANT_A, TENANT_B, TENANT_C]]);
+  // **No es un `DELETE FROM tenants` y no puede serlo.** Lo era, y chocaba contra el `RESTRICT`
+  // de `enrutamiento_canales` hacia `cuentas_whatsapp`: el borrado no se completaba, los tres
+  // tenants de fixture sobrevivian y la corrida siguiente moria con `duplicate key` en
+  // diecisiete aserciones que no tienen nada que ver con el aislamiento.
+  await admin.query('BEGIN');
+  await borrarTenants(admin, [TENANT_A, TENANT_B, TENANT_C]);
+  await admin.query('COMMIT');
   await admin.end();
   await app.end();
 });
@@ -1611,6 +1619,16 @@ describe('Inbox — conversaciones, mensajes y el espejo de plantillas de Meta',
         await c.query('DELETE FROM notas_internas WHERE tenant_id = $1', [tenant]);
         await c.query('DELETE FROM plantillas_whatsapp WHERE tenant_id = $1', [tenant]);
         await c.query('DELETE FROM conversaciones WHERE tenant_id = $1', [tenant]);
+      });
+      // `enrutamiento_canales` apunta a `canales` y a `cuentas_whatsapp` con RESTRICT, y es
+      // tabla GLOBAL: el rol del tenant no la ve, asi que borrarla desde `comoTenant` no es
+      // que falle — es que no encuentra nada y despues el `DELETE FROM canales` revienta.
+      // Este es el fallo exacto por el que la rama volvio de la compuerta.
+      await admin.query('BEGIN');
+      await admin.query('SET LOCAL ROLE "viajapro_enrutador"');
+      await admin.query('DELETE FROM enrutamiento_canales WHERE tenant_resuelto_id = $1', [tenant]);
+      await admin.query('COMMIT');
+      await comoTenant(tenant, async (c) => {
         await c.query('DELETE FROM canales WHERE tenant_id = $1', [tenant]);
         await c.query('DELETE FROM cuentas_whatsapp WHERE tenant_id = $1', [tenant]);
         await c.query('DELETE FROM contactos WHERE tenant_id = $1', [tenant]);

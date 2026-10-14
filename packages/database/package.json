@@ -13,7 +13,7 @@
     "studio": "dotenv -e ../../.env -- prisma studio",
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "dotenv -e ../../.env -- vitest run",
+    "test": "pnpm run fixtures:limpiar && dotenv -e ../../.env -- vitest run",
     "test:aislamiento": "dotenv -e ../../.env -- vitest run tests/aislamiento.spec.ts",
     "lint": "eslint prisma tests scripts",
     "db:push": "dotenv -e ../../.env -- prisma db push",
@@ -21,7 +21,8 @@
     "rol:crear": "dotenv -e ../../.env -- node scripts/crear-rol-aplicacion.mjs",
     "roles:dev": "dotenv -e ../../.env -- node scripts/roles-de-desarrollo.mjs",
     "mutaciones": "dotenv -e ../../.env -- node scripts/mutaciones-aislamiento.mjs",
-    "seed:crm": "dotenv -e ../../.env -- tsx prisma/seed-demo-crm.ts"
+    "seed:crm": "dotenv -e ../../.env -- tsx prisma/seed-demo-crm.ts",
+    "fixtures:limpiar": "dotenv -e ../../.env -- node scripts/limpiar-fixtures.mjs --borrar"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0"
