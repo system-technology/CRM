@@ -87,7 +87,7 @@ Qué hay, concretamente:
 
 ### Lo comercial NO está decidido
 
-`images/Brochure.jpeg` es **inspiración y dirección de producto, no un compromiso comercial.**
+`docs/_assets/brochure-de-inspiracion.jpeg` es **inspiración y dirección de producto, no un compromiso comercial.**
 Lo que aporta —módulos, flujo, tono, horizonte— está recogido en
 `docs/00-vision/05-norte-del-producto.md`. Lo que **no** está decidido:
 
