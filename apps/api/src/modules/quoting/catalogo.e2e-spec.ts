@@ -59,6 +59,11 @@ interface Salida {
   paqueteId: string;
   paqueteNombre: string;
   fecha: string;
+  noches: number;
+  /** El «desde» anunciado, que es **por persona** aunque la tarifa sea de grupo. */
+  desde: { unidades: string; moneda: string };
+  /** Cuántas tarifas distintas tiene. Más de una significa promoción o condición. */
+  tarifas: number;
 }
 interface Opcion {
   nombre: string;
