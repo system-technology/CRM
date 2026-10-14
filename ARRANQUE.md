@@ -37,14 +37,25 @@ repartís así:
 - **No tocas `ESTADO.md`.** Ese archivo lo mantiene Claude y el integrador.
 - **Cero tipos redefinidos.** Todo sale de `@viajapro/contracts`. Si falta un campo, **paras y
   lo dices** en `ENTREGA.md`. Ya lo hiciste una vez con las plantillas y estuvo bien.
-- **Las cinco compuertas en verde, EJECUTADAS, antes de escribir `ENTREGA.md`:**
-  `lint`, `typecheck`, `test`, `build`, `format:check`. No supuestas.
+- **Las cinco compuertas en verde, EJECUTADAS, antes de escribir `ENTREGA.md`.** Una sola orden:
+
+  ```
+  pnpm compuertas
+  ```
+
+  Corre `build`, `lint`, `typecheck`, `test` y `format:check`, para en la primera roja y te dice
+  cuál cayó. **Sin tuberías a propósito**: una orden con `|` o con `;` te hace pedir permiso casi
+  siempre, aunque la regla esté en tu lista de permitidos. Con esto basta una regla —`command(pnpm)`—
+  y dejas de interrumpir al propietario.
+
+  Mientras iteras puedes usar `pnpm compuertas --rapido`, que se salta `build`. **No sirve para
+  firmar una entrega.**
 - **Funciona a 375 px.**
 
-> Una trampa que ya nos mordió dos veces: si tu `typecheck` sale verde y dudas, corre antes
-> `pnpm build`. Los paquetes del monorepo se compilan a `dist`, y un `dist` viejo hace que el
-> analizador compile contra una versión anterior de los contratos. **Hemos tenido verdes falsos
-> y rojos falsos por esto.**
+> **Por qué `build` va primero y no último.** Los paquetes del monorepo se compilan a `dist`, y un
+> `dist` viejo hace que `typecheck` compile contra una versión anterior de los contratos: hemos
+> tenido verdes falsos **y rojos falsos** por eso, tres veces esta semana. En el orden natural
+> —lint, typecheck, test, build— el error ya ocurrió. `pnpm compuertas` lo pone delante por ti.
 
 ## 4. Cómo funciona el traspaso — no hay cartero humano
 

@@ -4,13 +4,13 @@
 > suficiente: no necesitas que nadie te cuente nada.
 
 **Siempre:** solo tocas `apps/web/`. Nunca escribes en `main`. No tocas `ESTADO.md`. Cero tipos
-redefinidos: todo de `@viajapro/contracts` — si falta un campo, **para y dilo**. Las cinco
-compuertas en verde **ejecutadas**, no supuestas, antes de escribir `ENTREGA.md`. Y funciona a
+redefinidos: todo de `@viajapro/contracts` — si falta un campo, **para y dilo**. Y funciona a
 375 px.
 
-> Si el `typecheck` sale verde y dudas, corre antes `pnpm build`: un `dist` viejo de los
-> paquetes hace que compiles contra una versión anterior de los contratos. Ya nos ha dado
-> verdes falsos y rojos falsos.
+> **Las cinco compuertas son una sola orden: `pnpm compuertas`.** Ejecutadas, no supuestas, antes
+> de escribir `ENTREGA.md`. Va sin tuberías a propósito —una orden con `|` o `;` te hace pedir
+> permiso casi siempre— y pone `build` delante del resto, que es lo que evita que compiles contra
+> un `dist` viejo de los contratos.
 
 ---
 
