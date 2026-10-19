@@ -95,3 +95,30 @@ cola como 0c.29, que no bloquea.
   `politica` en el DOM (grep sin coincidencias en `page.tsx`).
 - **Ejecutado:** web lint y typecheck limpios, test 20 archivos y 160 pruebas, `format:check` limpio.
   Sin navegador ni suite de aislamiento.
+
+---
+
+# REVISIÓN — 0c.25 `9da2b68`
+
+## Veredicto: **ACEPTADA**, sin bloqueantes nuevos
+
+## Cola — con dueño
+
+1. **R10, anterior a esta entrega y ya en `main`:** `reportes/page.tsx` muestra «Costo Neto Mayoristas»
+   y «Margen Comercial (%)» con un comentario «Solo Dueño» sin control de rol. No lo introdujo la
+   0c.25 (el diff solo reindenta). Amplié la 0c.27 para incluirlo; mientras no exista el permiso, el
+   dueño de producto debe decidir si se oculta ya. *(Dueño: dueno-de-producto.)*
+2. **Mensajes crudos:** `err.message` se pinta al asesor en bandeja, catálogo y contactos, y
+   `estados-ui-logica.ts` lo incrusta en el texto. Los errores de red sí se clasifican, el resto no.
+   Es la 0c.30. *(Dueño: Antigravity.)*
+3. La tabla de `ENTREGA.md` marca «Cumple» en 27 de 27 celdas, sin capturas; en `configuracion` y
+   `viajes` la carga es «sin spinners» y no un esqueleto. Aceptable, con la 0c.26 como evidencia.
+4. `ENTREGA.md` cuenta un `test` rojo en `aislamiento.spec.ts` por tablas de ADR-0011 en la base Neon
+   compartida; no es de `apps/web` ni de esta entrega. *(Dueño: datos.)*
+
+## Verificado
+
+- **R3:** `reportes/page.tsx` y `viajes/page.tsx` no exportan tipos; el único tipo nuevo,
+  `MensajeErrorDetallado`, es de la maqueta de estados de UI y no existe en los contratos.
+- **Ejecutado:** web lint y typecheck limpios, test 21 archivos y 172 pruebas, `format:check` limpio.
+  Sin navegador ni suite de aislamiento.

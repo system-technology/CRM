@@ -212,7 +212,8 @@ Guarda las capturas en `docs/_assets/diseno/` y corrige lo que falle.
 ## [ ] 0c.27. Ocultar neto y margen a quien no tenga el permiso (añadida el 2026-10-19, ESPERA)
 
 **No hacer nada hasta que exista el permiso «ver neto y margen»** (rebanada 3 del ADR-0011). Entonces:
-ocultar `ficha-detalle-paquete.tsx:244` («Neto: …» en el catálogo) y `bloque-politica-precio.tsx` a
+ocultar el bloque «Costo Neto Mayoristas» y «Margen Comercial» de `reportes/page.tsx` (~l. 230-262, ya
+en `main`; el comentario «Solo Dueño» no lo hace cierto: no hay control de rol), `ficha-detalle-paquete.tsx:244` («Neto: …» en el catálogo) y `bloque-politica-precio.tsx` a
 quien no lo tenga. El permiso viene del servidor; el cliente no calcula roles.
 
 **Hecho cuando:** sin el permiso no hay ningún importe neto ni porcentaje de margen en el DOM, y con
@@ -246,6 +247,38 @@ cuando el usuario pertenezca a más de una, (3) la ruta `/ingresar` que fija el 
 
 **Hecho cuando:** la secuencia correo y contraseña, código y agencia se recorre a 375 px con teclado,
 con el interruptor apagado `/ingresar` no renderiza nada de la maqueta, y `pnpm compuertas` sale en verde.
+
+---
+
+## [ ] 0c.30. Los errores no enseñan el mensaje crudo del servidor (añadida el 2026-10-19)
+
+Hay `err instanceof Error ? err.message : '...'` pintado tal cual al asesor en `bandeja/[id]`
+(l. 239, 285, 330), `catalogo` (68, 235) y `contactos` (45), y `estados-ui-logica.ts` lo incrusta en
+«Ocurrió un inconveniente...: ${mensajeBase}». Pasa por una función pura de `estados-ui-logica.ts`
+que clasifique (red, sesión, no encontrado, validación, desconocido) y devuelva **qué pasó y qué
+hacer** en español; el mensaje crudo solo a `console.error`. Pruebas con errores `TypeError: Failed
+to fetch`, un 500 con texto técnico y un error de dominio ya redactado.
+
+**Hecho cuando:** ningún `catch` de `apps/web/src/app` pinta `err.message` sin pasar por la función, y
+`pnpm compuertas` sale en verde.
+
+## [ ] 0c.31. Pruebas de los componentes de estado (añadida el 2026-10-19)
+
+`components/comun/esqueletos.tsx` y `AvisoErrorAccionable` solo tienen pruebas de la lógica. Con las
+herramientas ya instaladas (si falta `@testing-library/react`, **pide la dependencia, no la añadas**),
+prueba: el aviso expone `role="alert"`, el botón «Reintentar» llama a su callback y mide >= 44 px de
+clase, y cada esqueleto tiene `aria-busy` o texto para lector de pantalla.
+
+**Hecho cuando:** hay pruebas por componente y `pnpm compuertas` sale en verde.
+
+## [ ] 0c.32. Teclado y foco en modales y bandeja (añadida el 2026-10-19)
+
+Recorre sin ratón: bandeja (lista, hilo, envío), modales (plantillas, guardar cotización, motivo de
+pérdida, búsqueda global). Cada modal atrapa el foco, cierra con Esc y devuelve el foco a quien lo
+abrió; los avisos dinámicos usan `aria-live`. Corrige lo que falle y anota en `ENTREGA.md` una tabla
+modal × (foco dentro, Esc, foco de vuelta).
+
+**Hecho cuando:** la tabla no tiene celdas «no» sin motivo y `pnpm compuertas` sale en verde.
 
 ---
 
