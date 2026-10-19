@@ -197,3 +197,53 @@
 
 - **Componente centralizado `esqueletos.tsx`:** En lugar de duplicar markup de esqueletos ad-hoc en cada archivo de ruta, se encapsularon en componentes semánticos y reutilizables en `components/comun/esqueletos.tsx`.
 - **Atributos de accesibilidad en esqueletos:** Todos los esqueletos llevan `aria-busy="true"` y un `aria-label` descriptivo (ej. `aria-label="Cargando conversación"`) para que los lectores de pantalla informen el estado adecuadamente.
+
+
+# Entrega — Tarea 0c.26: Evidencia a 375 px de la auditoría 0c.21 — 2026-10-19
+
+## Qué construí
+
+1. **Capturas de Pantalla a 375 px en `docs/_assets/diseno/`:**
+   - Se capturaron las 4 pantallas exigidas en viewport móvil estándar (375 &times; 812 px) utilizando Chrome Headless:
+     - `docs/_assets/diseno/07-catalogo-salida-375px.png` (36.8 kB): Tarjeta de salida del catálogo con filtros y diseño responsivo adaptado.
+     - `docs/_assets/diseno/08-ventana-24h-cerrada-375px.png` (32.8 kB): Pantalla de conversación con ventana de 24h cerrada por Meta, mostrando el aviso de borrador preservado («La ventana se cerró; tu borrador sigue aquí») y el botón táctil para seleccionar plantilla HSM.
+     - `docs/_assets/diseno/09-pipeline-375px.png` (42.1 kB): Tablero de ventas en vista móvil, con selector de vista (Kanban/Tabla), buscador y tarjetas adaptadas sin desbordamiento.
+     - `docs/_assets/diseno/10-cotizador-375px.png` (37.0 kB): Cotizador comercial con selectores, calendario y contadores táctiles amplios.
+
+2. **Corrección Integral de Objetivos Táctiles (< 44 px):**
+   - Se auditaron mediante el Chrome DevTools Protocol (CDP) todos los elementos interactivos (`button`, `a`, `input`, `select`) a 375 px y se elevaron para satisfacer la pauta de accesibilidad WCAG 2.5.5 (&ge; 44 &times; 44 px):
+     - **Cotizador:** Los 6 botones contadores de pasajeros (`+` y `-`) pasaron de 32 &times; 32 px a `min-h-[44px] min-w-[44px]` (`h-11 w-11`). El selector de paquetes y el campo de fecha de salida se ampliaron a `min-h-[44px]`.
+     - **Catálogo:** El enlace «Ir al Cotizador» y los selectores de destino/plan se ajustaron a `min-h-[44px]`.
+     - **Bandeja (`[id]`):** El botón de retorno a la lista en móvil (`ArrowLeft`) y el botón de nueva cotización se aseguraron con dimensiones mínimas de 44 &times; 44 px.
+     - **Pipeline:** Los botones conmutadores de vista («Kanban» y «Tabla») y el botón «Nueva Oportunidad» se ampliaron a `min-h-[44px]`.
+
+---
+
+## Qué verifiqué EJECUTANDO
+
+1. **Auditoría Responsiva Automatizada con CDP (`scratch/cdp-audit-375px.js`):**
+   - **Catálogo (`/catalogo`):** Ancho ventana 375 px, ancho documento 375 px. **Scroll horizontal: NO (CUMPLE)**.
+   - **Ventana 24h Cerrada (`/bandeja/00000000-0001-4000-8000-000000000008`):** Ancho ventana 375 px, ancho documento 375 px. **Scroll horizontal: NO (CUMPLE)**.
+   - **Pipeline (`/pipeline`):** Ancho ventana 375 px, ancho documento 375 px. **Scroll horizontal: NO (CUMPLE)**.
+   - **Cotizador (`/cotizador`):** Ancho ventana 375 px, ancho documento 375 px. **Scroll horizontal: NO (CUMPLE)**.
+
+2. **Pruebas Unitarias de Frontend:**
+   - `pnpm --filter @viajapro/web test`: **21/21 archivos en verde, 172/172 pruebas pasando**.
+
+3. **Compuertas de Frontend:**
+   - `pnpm --filter @viajapro/web lint`: **0 errores**.
+   - `pnpm --filter @viajapro/web build`: **Compilación exitosa** (Next.js 15.5.27 generó las 15 rutas).
+   - `pnpm typecheck`: **9/9 tareas exitosas** en todo el monorepo.
+   - `pnpm format`: **100% Prettier alineado**.
+
+---
+
+## Qué NO verifiqué
+
+- No se ejecutaron pruebas en dispositivos físicos Android o iOS; la verificación se realizó con el motor Chromium Headless oficial utilizando emulación de métricas de dispositivo móvil a 375 &times; 812 px con factor de escala 2x.
+
+---
+
+## Decisiones que el encargo no especificaba
+
+- **Aislamiento del desplazamiento horizontal en Kanban:** Para el tablero Kanban a 375 px, se garantizó que el desplazamiento horizontal de las columnas quede estrictamente encapsulado en su contenedor interior (`overflow-x-auto`), preservando `document.body.scrollWidth === 375` sin desborde en el viewport global de la página.

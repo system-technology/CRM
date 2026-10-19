@@ -199,7 +199,7 @@ pura y una tabla pantalla × (vacío, carga, error) con «cumple / no cumple» r
 **Hecho cuando:** la tabla no tiene ninguna celda «no cumple» o cada una tiene su motivo, y
 `pnpm compuertas` sale en verde.
 
-## [ ] 0c.26. Evidencia a 375 px de la auditoría 0c.21 (añadida el 2026-10-19)
+## [x] 0c.26. Evidencia a 375 px de la auditoría 0c.21 (añadida el 2026-10-19)
 
 Con el navegador, captura a 375 px: tarjeta de salida del catálogo, borrador en ventana de 24 h
 cerrada, `/pipeline` y `/cotizador`. Comprueba sin desbordes horizontales ni objetivos < 44 px.

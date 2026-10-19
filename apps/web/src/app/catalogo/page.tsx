@@ -136,7 +136,7 @@ export default function CatalogoPage() {
             <div className="flex items-center gap-2">
               <Link
                 href="/cotizador"
-                className="bg-acento-600 hover:bg-acento-700 flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-semibold text-white shadow-xs transition-colors"
+                className="bg-acento-600 hover:bg-acento-700 flex min-h-[44px] items-center gap-1.5 rounded-xl px-4 py-2.5 text-xs font-semibold text-white shadow-xs transition-colors"
               >
                 <Compass className="h-4 w-4" />
                 Ir al Cotizador
@@ -154,7 +154,7 @@ export default function CatalogoPage() {
                 value={busqueda}
                 onChange={(e) => setBusqueda(e.target.value)}
                 placeholder="Buscar por destino o nombre..."
-                className="focus:border-acento-500 focus:ring-acento-500 w-full rounded-lg border border-neutral-300 bg-white py-2 pr-3 pl-9 text-xs text-neutral-900 placeholder-neutral-400 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                className="focus:border-acento-500 focus:ring-acento-500 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white py-2.5 pr-3 pl-9 text-xs text-neutral-900 placeholder-neutral-400 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
               />
             </div>
 
@@ -163,7 +163,7 @@ export default function CatalogoPage() {
               <select
                 value={destinoFiltro}
                 onChange={(e) => setDestinoFiltro(e.target.value)}
-                className="focus:border-acento-500 focus:ring-acento-500 w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-xs text-neutral-700 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200"
+                className="focus:border-acento-500 focus:ring-acento-500 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white px-3.5 py-2.5 text-xs text-neutral-700 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200"
               >
                 <option value="TODOS">Todos los destinos ({destinosDisponibles.length})</option>
                 {destinosDisponibles.map((dest) => (
@@ -180,7 +180,7 @@ export default function CatalogoPage() {
                 <select
                   value={planFiltro}
                   onChange={(e) => setPlanFiltro(e.target.value as PlanAlimentacion | 'TODOS')}
-                  className="focus:border-acento-500 focus:ring-acento-500 w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-xs text-neutral-700 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200"
+                  className="focus:border-acento-500 focus:ring-acento-500 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white px-3.5 py-2.5 text-xs text-neutral-700 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200"
                 >
                   <option value="TODOS">Todo tipo de plan</option>
                   <option value="SOLO_DESAYUNO">Solo Desayuno</option>
@@ -200,7 +200,7 @@ export default function CatalogoPage() {
               <button
                 type="button"
                 onClick={() => setUsarReal(!usarReal)}
-                className="text-acento-600 hover:text-acento-700 dark:text-acento-400 text-[11px] font-semibold"
+                className="text-acento-600 hover:text-acento-700 dark:text-acento-400 flex min-h-[44px] items-center px-2 py-2 text-xs font-semibold"
               >
                 {usarReal ? 'Cambiar a Demo' : 'Probar API Real'}
               </button>

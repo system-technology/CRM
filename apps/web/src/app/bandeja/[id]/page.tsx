@@ -143,6 +143,11 @@ export default function BandejaConversacionPage() {
         setDetalle(null);
       } else {
         setDetalle(data);
+        if (!data.ventana.abierta) {
+          setTextoMensaje(
+            'Estimado cliente, le comparto los detalles del paquete turístico para su confirmación.',
+          );
+        }
         const ficha = await obtenerFichaDeContacto(data.contactoId ?? data.id);
         setFichaContacto(ficha);
         setTiempoVentana(calcularTiempoRestanteVentana(data.ventana.expiraEn));
@@ -410,7 +415,7 @@ export default function BandejaConversacionPage() {
             {/* Botón volver a lista (móvil) */}
             <Link
               href="/bandeja"
-              className="flex h-8 w-8 items-center justify-center rounded-lg text-neutral-500 hover:bg-neutral-100 md:hidden dark:hover:bg-neutral-800"
+              className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl text-neutral-500 hover:bg-neutral-100 md:hidden dark:hover:bg-neutral-800"
               title="Volver a lista de conversaciones"
             >
               <ArrowLeft className="h-4 w-4" />
@@ -469,7 +474,7 @@ export default function BandejaConversacionPage() {
             {/* Acción Primaria Prominente: Nueva Cotización */}
             <Link
               href={`/cotizador?conversacion=${id}&contactoId=${detalle.contactoId}`}
-              className="bg-acento-700 hover:bg-acento-800 flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold text-white shadow-2xs"
+              className="bg-acento-700 hover:bg-acento-800 flex min-h-[44px] min-w-[44px] items-center justify-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-semibold text-white shadow-2xs"
             >
               <PlusCircle className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Nueva cotización</span>

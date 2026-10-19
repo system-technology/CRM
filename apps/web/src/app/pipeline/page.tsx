@@ -236,7 +236,7 @@ export default function PipelinePage() {
               <button
                 type="button"
                 onClick={() => mostrarAviso('Creación de oportunidad disponible en cotizador.')}
-                className="bg-acento-600 hover:bg-acento-700 flex items-center space-x-1.5 rounded-xl px-3.5 py-1.5 text-xs font-medium text-white shadow-xs transition-colors"
+                className="bg-acento-600 hover:bg-acento-700 flex min-h-[44px] items-center space-x-1.5 rounded-xl px-4 py-2.5 text-xs font-medium text-white shadow-xs transition-colors"
               >
                 <Plus className="h-4 w-4" />
                 <span>Nueva Oportunidad</span>
@@ -255,7 +255,7 @@ export default function PipelinePage() {
                   value={filtroTexto}
                   onChange={(e) => setFiltroTexto(e.target.value)}
                   placeholder="Buscar por cliente, destino o título..."
-                  className="focus:border-acento-500 w-full rounded-xl border border-neutral-200 bg-neutral-50 py-1.5 pr-3 pl-8 text-xs text-neutral-900 placeholder-neutral-400 focus:bg-white focus:outline-hidden dark:border-neutral-800 dark:bg-neutral-800/50 dark:text-neutral-100"
+                  className="focus:border-acento-500 min-h-[44px] w-full rounded-xl border border-neutral-200 bg-neutral-50 py-2.5 pr-3 pl-8 text-xs text-neutral-900 placeholder-neutral-400 focus:bg-white focus:outline-hidden dark:border-neutral-800 dark:bg-neutral-800/50 dark:text-neutral-100"
                 />
               </div>
 
@@ -265,7 +265,7 @@ export default function PipelinePage() {
                 <select
                   value={filtroAsesor}
                   onChange={(e) => setFiltroAsesor(e.target.value)}
-                  className="focus:border-acento-500 rounded-xl border border-neutral-200 bg-neutral-50 px-2.5 py-1.5 text-xs text-neutral-700 focus:outline-hidden dark:border-neutral-800 dark:bg-neutral-800 dark:text-neutral-200"
+                  className="focus:border-acento-500 min-h-[44px] rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-xs text-neutral-700 focus:outline-hidden dark:border-neutral-800 dark:bg-neutral-800 dark:text-neutral-200"
                 >
                   <option value="todos">Todos los asesores</option>
                   <option value="Carlos Asesor">Carlos Asesor</option>

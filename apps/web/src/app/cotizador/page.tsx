@@ -377,7 +377,7 @@ function ContenidoCotizador() {
                     id="select-paquete-cotizador"
                     value={paqueteId}
                     onChange={(e) => setPaqueteId(e.target.value)}
-                    className="mt-1.5 w-full rounded-xl border border-neutral-300 bg-white p-2.5 text-xs text-neutral-900 shadow-2xs focus:border-purple-600 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                    className="mt-1.5 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white p-2.5 text-xs text-neutral-900 shadow-2xs focus:border-purple-600 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                   >
                     {paquetesDisponibles.map((p) => (
                       <option key={p.id} value={p.id}>
@@ -400,7 +400,7 @@ function ContenidoCotizador() {
                     type="date"
                     value={fecha}
                     onChange={(e) => setFecha(e.target.value)}
-                    className="mt-1.5 w-full rounded-xl border border-neutral-300 bg-white p-2.5 text-xs text-neutral-900 shadow-2xs focus:border-purple-600 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                    className="mt-1.5 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white p-2.5 text-xs text-neutral-900 shadow-2xs focus:border-purple-600 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                   />
                   {fechasDelPaquete.length > 0 && (
                     <div className="mt-2">
@@ -411,7 +411,7 @@ function ContenidoCotizador() {
                             key={f}
                             type="button"
                             onClick={() => setFecha(f)}
-                            className={`rounded px-2 py-0.5 text-[11px] font-semibold transition-colors ${
+                            className={`flex min-h-[44px] items-center rounded-lg px-3 py-2 text-xs font-semibold transition-colors ${
                               fecha === f
                                 ? 'bg-purple-700 text-white'
                                 : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-300'
@@ -459,7 +459,7 @@ function ContenidoCotizador() {
                           <button
                             type="button"
                             onClick={() => setAdultos(Math.max(1, adultos - 1))}
-                            className="flex h-8 w-8 items-center justify-center rounded-lg border border-neutral-300 bg-white font-bold text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                            className="flex h-11 min-h-[44px] w-11 min-w-[44px] items-center justify-center rounded-lg border border-neutral-300 bg-white text-sm font-bold text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                           >
                             -
                           </button>
@@ -469,7 +469,7 @@ function ContenidoCotizador() {
                           <button
                             type="button"
                             onClick={() => setAdultos(adultos + 1)}
-                            className="flex h-8 w-8 items-center justify-center rounded-lg border border-neutral-300 bg-white font-bold text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                            className="flex h-11 min-h-[44px] w-11 min-w-[44px] items-center justify-center rounded-lg border border-neutral-300 bg-white text-sm font-bold text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                           >
                             +
                           </button>
@@ -488,7 +488,7 @@ function ContenidoCotizador() {
                           <button
                             type="button"
                             onClick={() => setNinos(Math.max(0, ninos - 1))}
-                            className="flex h-8 w-8 items-center justify-center rounded-lg border border-neutral-300 bg-white font-bold text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                            className="flex h-11 min-h-[44px] w-11 min-w-[44px] items-center justify-center rounded-lg border border-neutral-300 bg-white text-sm font-bold text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                           >
                             -
                           </button>
@@ -498,7 +498,7 @@ function ContenidoCotizador() {
                           <button
                             type="button"
                             onClick={() => setNinos(ninos + 1)}
-                            className="flex h-8 w-8 items-center justify-center rounded-lg border border-neutral-300 bg-white font-bold text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                            className="flex h-11 min-h-[44px] w-11 min-w-[44px] items-center justify-center rounded-lg border border-neutral-300 bg-white text-sm font-bold text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                           >
                             +
                           </button>
@@ -519,7 +519,7 @@ function ContenidoCotizador() {
                           <button
                             type="button"
                             onClick={() => setInfantes(Math.max(0, infantes - 1))}
-                            className="flex h-8 w-8 items-center justify-center rounded-lg border border-neutral-300 bg-white font-bold text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                            className="flex h-11 min-h-[44px] w-11 min-w-[44px] items-center justify-center rounded-lg border border-neutral-300 bg-white text-sm font-bold text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                           >
                             -
                           </button>
@@ -529,7 +529,7 @@ function ContenidoCotizador() {
                           <button
                             type="button"
                             onClick={() => setInfantes(infantes + 1)}
-                            className="flex h-8 w-8 items-center justify-center rounded-lg border border-neutral-300 bg-white font-bold text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                            className="flex h-11 min-h-[44px] w-11 min-w-[44px] items-center justify-center rounded-lg border border-neutral-300 bg-white text-sm font-bold text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                           >
                             +
                           </button>
