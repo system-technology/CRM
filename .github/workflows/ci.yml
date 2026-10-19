@@ -149,7 +149,7 @@ jobs:
 
       # Las pruebas e2e de la API buscan la agencia demo y el catalogo real: la semilla.
       - name: Semilla
-        run: pnpm db:seed
+        run: pnpm --filter @viajapro/domain build && pnpm db:seed
         env:
           DATABASE_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'neondb') }}
           DIRECT_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'neondb') }}
