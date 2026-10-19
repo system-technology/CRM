@@ -6,7 +6,7 @@
 
 | Campo | Valor |
 |---|---|
-| Última actualización | 2026-10-19 (integraciones v0.19.0 → v0.24.0; la última, la tanda 1 de la bandeja web) |
+| Última actualización | 2026-10-19 (noche: el arnés de pruebas en paralelo y el CI como compuerta de aislamiento) |
 | Actualizado por | Claude Opus 5.5 (`integrador`) |
 | Fase | **Rebanada vertical de paquetes, en construcción** |
 | Avance de la fase | Cotizador de punta a punta. **La cotización es la suma de sus tarifas y el precio «desde» es uno que el comprador puede pagar (v0.19.0).** Apretón de manos del webhook vivo. Bandeja web en construcción |
@@ -139,7 +139,7 @@ Ordenada. La primera es la que debe tomarse ahora.
 
 | Bloqueo | Impacto | Dueño | Mitigación |
 |---|---|---|---|
-| **La compuerta de aislamiento está en rojo para `main` (2026-10-19, noche).** Neon tiene aplicada `20261019230000_identidad_global_y_roles_por_agencia`, de una rama sin integrar (ADR-0011, rebanada 1), y `excepciones_rls` ya no coincide con el literal de `main`: la aserción 11 sale roja en todas las corridas. Además, la **39** (colgar una conversación del contacto de otra agencia) resolvió un `INSERT` que debía rechazarse **una vez**, en una corrida completa con otras sesiones activas. Pasó 3/3 en el bloque aislado, y las foráneas compuestas siguen en Neon, validadas y `NOT NULL` | **No entra en `main` nada que dependa de la suite de aislamiento.** `feat/quoting-listado-y-estados` espera, aunque su api da 318/318 en 4 corridas | `datos` (integrar la rebanada 1 o retirar la migración de Neon) · `qa` (la 39, con el arreglo del arnés paralelo) | Mismo precedente que la v0.18.0: aplicar esquema desde una rama sin integrar rompe la compuerta de todos. **La 39 es de aislamiento: no se da por intermitente sin causa** |
+| **La suite de aislamiento contra Neon compartido no sirve de compuerta mientras dure la deriva** (2026-10-19, noche).** Neon tiene aplicada `20261019230000_identidad_global_y_roles_por_agencia`, de una rama sin integrar (ADR-0011, rebanada 1), y `excepciones_rls` ya no coincide con el literal de `main`: la aserción 11 sale roja en todas las corridas. Además, la **39** (colgar una conversación del contacto de otra agencia) resolvió un `INSERT` que debía rechazarse **una vez**, en una corrida completa con otras sesiones activas. Pasó 3/3 en el bloque aislado, y las foráneas compuestas siguen en Neon, validadas y `NOT NULL` | **Desde el 2026-10-19 la compuerta de aislamiento es el CI** (Postgres 16 limpio, migraciones desde cero). Neon queda solo para las e2e que lo necesitan. La aserción 11 vuelve a casar cuando entre `feat/identity-esquema` | `datos` (integrar la rebanada 1) | La causa de la 39 ya está encontrada: ver el incidente de abajo |
 | ~~Rotar `WHATSAPP_WEBHOOK_VERIFY_TOKEN`~~ | — | Usuario | **Cerrado el 2026-10-19.** Rotado en los cuatro `.env`; el integrador comprobó que el valor viejo ya no aparece en ninguno. Meta nunca lo tuvo, porque el webhook no está configurado |
 | **Modo desatendido detenido en la compuerta** — el commit `59a52d8` amplía los permisos de los propios agentes | Cada commit y cada push siguen pidiendo autorización al propietario, con dos IA trabajando en paralelo | Usuario | **Solo el propietario puede aprobarlo, en su propia sesión**: el integrador no acepta de segunda mano un cambio a la configuración que define lo que los agentes pueden hacer sin preguntar. Y antes hay que sacar `git clean -xdf` de la lista de permitidos: borra lo no rastreado **y** lo ignorado, incluidos los tres `.env` |
 | **`Bash(cat:*)` permitido hace decorativo el `deny` de `Read(./.env)`** | `cat .env` funciona hoy. O ese `deny` significa algo, o sobra por honestidad | Usuario | Decidirlo al tocar los permisos |
@@ -856,7 +856,36 @@ domain 70, **web 4**, api 279, aislamiento 57/57) y dos con un rojo cada una, **
 
 | Cola | Dueño | Por qué no bloquea, y hasta cuándo |
 |---|---|---|
-| **El arnés falla una de cada dos corridas**: el `DELETE FROM recepciones_webhook` global de `aislamiento.spec.ts:646` choca con las e2e del inbox, y la 22 se interbloquea. Arreglo: borrar solo las recepciones de los fixtures de la corrida, y serializar la 22 con `pg_advisory_lock` | `qa` — **primera de la cola** | Se ven los dos rojos y se atribuyen uno por uno, y las corridas limpias pasan enteras. **Pero una compuerta que hay que leer a mano deja de ser compuerta**: si dentro de dos integraciones sigue igual, pasa a bloqueante |
+| ~~El arnés falla una de cada dos corridas~~ | `qa` | **Resuelta (`5ead5fe`):** borrados y purgas acotados a la corrida, la 22 serializada con advisory lock, y una guarda que impide las mutaciones contra una base no desechable |
 | La portada enlaza a `/bandeja`, `/catalogo`, `/pipeline`… antes de que existan en `main` | integrador (tandas 2–4) | No hay nada desplegado; se cierra con la tanda 4 |
 | R3: `apps/web/src/lib/mock-viajes.ts:12` redefine `TipoPasajero` (`'ADT' | 'CHD' | 'INF'`), que ya existe en `packages/contracts/src/catalogo.ts` con otros valores | Antigravity | No está en la tanda 1. **Bloquea la tanda 4** si sigue así |
+
+---
+
+## Incidente del 2026-10-19 — las mutaciones de aislamiento corrieron contra Neon compartido
+
+**Qué pasó.** `mutaciones-aislamiento.mjs` rompe el aislamiento a propósito, una rotura cada vez, y lo
+restaura. Se ejecutó contra la base **compartida**. Según `qa`, hubo unos **4 minutos** con la foránea
+de cotizaciones sin `tenant_id` y RLS apagada en `cotizaciones`. Eso explica que la aserción 39 de
+otra corrida aceptara un `INSERT` cruzado. **No cruzó ninguna fila de negocio**: en esa base solo hay
+datos de prueba y la agencia demo.
+
+**Lo que tiene que constar.** El integrador corrió esas mutaciones contra Neon compartido durante la
+integración de v0.22.0. Lo anotó en su registro y en la cola de `qa`/`devops`, pero lo correcto era no ejecutarlas.
+Que aquella corrida sea o no la de los 4 minutos que midió `qa`, el fallo de criterio es el mismo:
+**una herramienta que rompe el aislamiento no se ejecuta contra una base que usa nadie más**.
+
+**Qué lo impide ahora.** `scripts/guarda-base-desechable.mjs` (`5ead5fe`): las mutaciones exigen
+`VIAJAPRO_BASE_DESECHABLE=1`, y se niegan a correr si el host es de Neon o la base se llama `neondb`
+fuera de loopback. **Desde hoy, la compuerta de aislamiento de cada integración es el CI**, sobre una
+base limpia.
+
+## Integración del 2026-10-19 (decimotercera) — `fix/qa-arnes-paralelo`, sin etiqueta
+
+`fix/qa-arnes-paralelo` @ `835d2a6` entra en `main` (`5ead5fe`). Solo toca pruebas y scripts de prueba,
+así que no lleva etiqueta. Compuerta: rama `chore/compuerta-qa-arnes` (origin/main + la rama), con CI
+**8/8 en verde**: https://github.com/Alfavear/CRM/actions/runs/39336470606. El merge tiene el árbol que
+probó el CI. Estáticas en local, sin caché: `typecheck` 9/9, `lint` 7/7, `build` 5/5, `format:check` limpio.
+La suite sigue con 57 `it` y pasa de 163 `expect` a 164: no se quitó ninguna aserción, se envolvieron
+en el bloqueo.
 
