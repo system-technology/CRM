@@ -469,6 +469,7 @@ model Mayorista {
   paquetes Paquete[]
   tarifas  Tarifa[]
 
+  @@unique([id, tenantId])
   @@index([tenantId, eliminadoEn])
   @@index([tenantId, nombre])
   @@map("mayoristas")
@@ -612,7 +613,9 @@ model Vigencia {
   tenantId String @map("tenant_id") @db.Uuid
 
   paqueteId String  @map("paquete_id") @db.Uuid
-  paquete   Paquete @relation(fields: [paqueteId], references: [id], onDelete: Cascade)
+  /// Foranea COMPUESTA con el tenant: la integridad referencial se evalua por encima de RLS, asi
+  /// que una foranea simple deja colgar una vigencia del paquete de otra agencia.
+  paquete   Paquete @relation(fields: [paqueteId, tenantId], references: [id, tenantId], onDelete: Cascade)
 
   /// Ambos extremos incluidos. `desde = hasta` es un solo dia.
   desde DateTime @db.Date
@@ -631,6 +634,7 @@ model Vigencia {
 
   creadoEn DateTime @default(now()) @map("creado_en") @db.Timestamptz(3)
 
+  @@unique([id, tenantId])
   @@unique([tenantId, paqueteId, desde, hasta])
   @@index([tenantId, paqueteId, desde, hasta])
   @@map("vigencias")
@@ -642,7 +646,7 @@ model Tarifa {
   tenantId String @map("tenant_id") @db.Uuid
 
   vigenciaId String   @map("vigencia_id") @db.Uuid
-  vigencia   Vigencia @relation(fields: [vigenciaId], references: [id], onDelete: Cascade)
+  vigencia   Vigencia @relation(fields: [vigenciaId, tenantId], references: [id, tenantId], onDelete: Cascade)
 
   /// Lo que ve el asesor: «Adulto», «Menor de 2 a 11», «Promo pareja», «Suplemento sencilla».
   nombre String @db.VarChar(80)
@@ -662,7 +666,10 @@ model Tarifa {
   /// De quien se compra ESTA silla en ESTA fecha. Baja del paquete a la tarifa porque dos
   /// vigencias del mismo paquete pueden comprarse a mayoristas distintos.
   mayoristaId String?    @map("mayorista_id") @db.Uuid
-  mayorista   Mayorista? @relation(fields: [mayoristaId], references: [id], onDelete: SetNull)
+  /// `Restrict` y no `SetNull`: una foranea COMPUESTA con `SET NULL` pondria a NULL tambien
+  /// `tenant_id`, que es NOT NULL. PostgreSQL acepta el DDL y revienta en ejecucion. Ademas
+  /// `mayoristas` se borra en blando, asi que restringir es lo correcto para el negocio.
+  mayorista   Mayorista? @relation(fields: [mayoristaId, tenantId], references: [id, tenantId], onDelete: Restrict)
 
   /// Si suma al precio base en vez de reemplazarlo: asi es el suplemento de sencilla.
   aditiva Boolean @default(false)

@@ -33,7 +33,7 @@
 - [ ] **Migración nueva** → es segura en caliente y compatible con la versión anterior en ejecución
 - [ ] **Ninguna migración ya aplicada fue editada**
 - [ ] **Sin `any`** en TypeScript
-- [ ] **Dinero en enteros** (centavos) + ISO-4217, nunca coma flotante
+- [ ] **Dinero en enteros** (unidad mínima de la moneda; en COP, el peso) + ISO-4217, nunca coma flotante
 - [ ] **Webhook o job nuevo** → es idempotente
 
 ## Auditoría

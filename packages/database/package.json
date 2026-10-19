@@ -14,7 +14,7 @@
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "pnpm run fixtures:limpiar && dotenv -e ../../.env -- vitest run",
-    "test:aislamiento": "dotenv -e ../../.env -- vitest run tests/aislamiento.spec.ts",
+    "test:aislamiento": "pnpm run fixtures:limpiar && dotenv -e ../../.env -- vitest run tests/aislamiento.spec.ts",
     "lint": "eslint prisma tests scripts",
     "db:push": "dotenv -e ../../.env -- prisma db push",
     "validate": "dotenv -e ../../.env -- prisma validate",

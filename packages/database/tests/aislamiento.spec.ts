@@ -23,7 +23,7 @@ import { Client } from 'pg';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-// @ts-expect-error — modulo JS sin tipos, compartido con `scripts/limpiar-fixtures.mjs`.
+// @ts-expect-error — módulo JS sin tipos, compartido con `scripts/limpiar-fixtures.mjs`.
 import { borrarTenants } from '../scripts/borrar-tenants.mjs';
 
 // SIN `??` hacia DATABASE_URL, y eso es media compuerta.
@@ -47,10 +47,31 @@ if (!URL_ADMIN) {
   throw new Error('Falta DATABASE_URL (rol propietario, para las comprobaciones de catálogo).');
 }
 
-const TENANT_A = '01932000-0000-7000-8000-00000000000a';
-const TENANT_B = '01932000-0000-7000-8000-00000000000b';
+/**
+ * **Los tenants de fixture son de ESTA corrida, no constantes compartidas.**
+ *
+ * Lo eran —tres UUID fijos—, y el agente `datos` midió esta noche lo que eso significa: los
+ * cuatro árboles de trabajo del proyecto comparten la misma base de Neon y el mismo literal en
+ * el mismo archivo. Dos corridas a la vez **se borran los fixtures mutuamente**. Lo vio con un
+ * vigilante sobre `pg_stat_activity`: los tres tenants desapareciendo a las 04:43:02 y
+ * reapareciendo a las 04:43:44, con una conexión de propietario que esta sesión no había abierto.
+ *
+ * El efecto es peor que un fallo: **un «50/50» solo significaba algo si nadie más estaba
+ * corriendo**, y no hay forma de saberlo desde dentro. Una compuerta cuyo verde depende de quién
+ * más esté trabajando no es una compuerta.
+ *
+ * El prefijo `fixture-aislamiento-` **es contrato** con `scripts/limpiar-fixtures.mjs`: así la
+ * limpieza puede reconocer residuo de cualquier corrida sin tener los identificadores escritos,
+ * y sigue sin poder borrar una agencia de verdad.
+ */
+const MARCA = `${process.pid.toString(16)}${Date.now().toString(16)}`.slice(-10).padStart(10, '0');
+const tenantDeCorrida = (letra: string): string =>
+  `01932000-0000-7000-8000-${letra}${MARCA}f`.slice(0, 36);
+
+const TENANT_A = tenantDeCorrida('a');
+const TENANT_B = tenantDeCorrida('b');
 /** Un POST de Meta puede traer `changes` de tres agencias distintas. Para la aserción 16. */
-const TENANT_C = '01932000-0000-7000-8000-00000000000c';
+const TENANT_C = tenantDeCorrida('c');
 
 let admin: Client;
 let app: Client;
@@ -96,9 +117,9 @@ beforeAll(async () => {
   }
 
   for (const [id, slug] of [
-    [TENANT_A, 'agencia-a'],
-    [TENANT_B, 'agencia-b'],
-    [TENANT_C, 'agencia-c'],
+    [TENANT_A, `fixture-aislamiento-${MARCA}-a`],
+    [TENANT_B, `fixture-aislamiento-${MARCA}-b`],
+    [TENANT_C, `fixture-aislamiento-${MARCA}-c`],
   ] as const) {
     await admin.query(
       `INSERT INTO tenants (id, slug, nombre, creado_en, actualizado_en)
@@ -110,10 +131,13 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  // **No es un `DELETE FROM tenants` y no puede serlo.** Lo era, y chocaba contra el `RESTRICT`
-  // de `enrutamiento_canales` hacia `cuentas_whatsapp`: el borrado no se completaba, los tres
-  // tenants de fixture sobrevivian y la corrida siguiente moria con `duplicate key` en
-  // diecisiete aserciones que no tienen nada que ver con el aislamiento.
+  // **No es un `DELETE FROM tenants` y no puede serlo.** Lo era, y fallaba en silencio contra el
+  // `RESTRICT` de `enrutamiento_canales` hacia `cuentas_whatsapp`: los tres tenants de fixture
+  // sobrevivían y la corrida siguiente reventaba con `duplicate key` en DIECISIETE aserciones
+  // que no tenían nada que ver con el aislamiento. Un rojo que parece una fuga y es higiene.
+  //
+  // `borrarTenants` descubre el orden de borrado en vez de codificarlo, así que una migración
+  // nueva no vuelve a romperlo.
   await admin.query('BEGIN');
   await borrarTenants(admin, [TENANT_A, TENANT_B, TENANT_C]);
   await admin.query('COMMIT');
