@@ -6,7 +6,7 @@
 
 | Campo | Valor |
 |---|---|
-| Última actualización | 2026-10-19 (integraciones v0.19.0, v0.20.0, e2e del POST, v0.21.0 —relay y trabajador— y v0.21.1 —canal revocado—) |
+| Última actualización | 2026-10-19 (integraciones v0.19.0 → v0.21.2: ADR-0009, esquema del inbox, POST, relay y trabajador, canal revocado, auditoría del trabajador) |
 | Actualizado por | Claude Opus 5.5 (`integrador`) |
 | Fase | **Rebanada vertical de paquetes, en construcción** |
 | Avance de la fase | Cotizador de punta a punta. **La cotización es la suma de sus tarifas y el precio «desde» es uno que el comprador puede pagar (v0.19.0).** Apretón de manos del webhook vivo. Bandeja web en construcción |
@@ -629,7 +629,7 @@ limpio · `pnpm run test --force` **dos veces**: contracts 56, domain 70, api **
 | Cola | Dueño | Por qué no bloquea |
 |---|---|---|
 | Trabajador en `apps/api` contra el mapa de `CLAUDE.md` y el ADR-0004: ADR o mudanza | `arquitecto` | Proceso y rol separados; es ubicación, no aislamiento |
-| **Revisión de `auditor-seguridad` sobre `ProcesarChange` y `PrismaWebhookService.conTenantResuelto`.** La hizo el integrador, no el auditor: `set_config` local a la transacción y releído antes de escribir, rol sin `BYPASSRLS` verificado al arrancar, `WITH CHECK` en `mensajes` | `auditor-seguridad` | La frontera que impide la fuga es la base (RLS + rol), ya auditada en 4a; el código nuevo no puede ensancharla. **Primera de la cola** |
+| ~~Revisión de `auditor-seguridad` sobre `ProcesarChange` y `conTenantResuelto`~~ | `auditor-seguridad` | **Cerrada (v0.21.2):** sin bloqueantes; tres correcciones integradas |
 | BullMQ contra Redis real, y el job de CI | `devops` (4c, 4a.1) | Nada desplegado; ruta probada con dobles |
 | Sin relay de barrido: un change cuya cola se pierde solo se recupera por el reintento de Meta. Falta una función de base para listar pendientes | `datos` | Meta reintenta durante horas |
 | `aislamiento.spec.ts` borra toda `recepciones_webhook` en su `afterAll` | `qa` | No se manifestó en dos corridas en paralelo |
@@ -666,4 +666,25 @@ base. No se reprodujo en dos corridas con otras sesiones activas. Va a `qa`.
 | **`D:\Projects\CRM\.env` y `CRM-inbox\.env` no tienen `WHATSAPP_DIRECTORY_PEPPER` ni `WEBHOOK_PAYLOAD_KEY`**: desde v0.21.0, `pnpm test` cae en `inbox-relay.e2e-spec` en esos árboles (visto hoy: 253 pasadas y 5 saltadas). Solo `CRM-api` puede correr la compuerta completa | Usuario (copiar las variables; nunca por el chat) | El código está bien y `.env.example` las declara; lo que falta es la configuración local |
 | Las e2e de `apps/api` se cargan desde `.env` sin `-o` y heredan el `DATABASE_URL` del shell. El integrador consultó una vez, solo en lectura, la base ajena por eso | `devops` | Ya estaba en la cola del 2026-10-19 (primera) |
 | `D:\Projects\CRM-gate3`: tercer árbol temporal sin borrar | Usuario | Junto con `CRM-gate` y `CRM-gate2` |
+
+---
+
+## Integración del 2026-10-19 (sexta) — v0.21.2: la auditoría del trabajador, cerrada
+
+`fix/inbox-auditoria-trabajador` @ `a30db6b` entra en `main` (`b17aa34`), etiquetada **v0.21.2**. Registro:
+[`docs/_integraciones/2026-10-19-v0.21.2.md`](docs/_integraciones/2026-10-19-v0.21.2.md).
+
+**`auditor-seguridad` auditó el trabajador de v0.21.0 y no encontró bloqueantes. Las tres correcciones
+que pidió están integradas:**
+
+1. **R10:** `ErrorDeTrabajo` deja en `failedReason` y en el registro solo `Clase:código`. BullMQ
+   guarda ese motivo siete días en Redis, sin RLS ni cifrado. Una prueba fuerza PII y comprueba que no sale.
+2. `FOR SHARE` al leer el canal: una revocación concurrente espera a que termine la escritura.
+3. Dos e2e contra Neon: un lote con `changes` de dos agencias, y el mismo `wamid` en dos tenants.
+
+Compuertas sobre el árbol fusionado con `b93fa75` (iba 3 por detrás), en un árbol limpio:
+`typecheck` 9/9, `lint` 7/7, `build` 5/5, sin caché · `format:check` limpio · `pnpm run test --force`
+dos veces: 56 · 70 · api **263** (`inbox-relay.e2e-spec` 7/7) · aislamiento **51/51** las dos.
+
+Cola: nada nuevo. `D:\Projects\CRM-gate4` se suma a los árboles temporales que hay que borrar a mano.
 
