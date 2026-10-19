@@ -6,7 +6,7 @@
 
 | Campo | Valor |
 |---|---|
-| Última actualización | 2026-10-19 (integraciones v0.19.0, v0.20.0 y la prueba e2e del POST del webhook, sin etiqueta) |
+| Última actualización | 2026-10-19 (integraciones v0.19.0, v0.20.0, e2e del POST y v0.21.0 —relay y trabajador del inbox—) |
 | Actualizado por | Claude Opus 5.5 (`integrador`) |
 | Fase | **Rebanada vertical de paquetes, en construcción** |
 | Avance de la fase | Cotizador de punta a punta. **La cotización es la suma de sus tarifas y el precio «desde» es uno que el comprador puede pagar (v0.19.0).** Apretón de manos del webhook vivo. Bandeja web en construcción |
@@ -113,7 +113,7 @@ Ordenada. La primera es la que debe tomarse ahora.
 | 3 | Reparar la conexión del MCP `postgres` o retirarlo de `.mcp.json` | `devops` | Falla con `CONNECTION_CLOSED` |
 | 4a | Inbox — esquema, roles, funciones y aserciones | `datos` | **Cerrada e integrada (v0.20.0, 2026-10-19).** 50/50 de aislamiento en tres corridas seguidas contra Neon, cero saltadas; las cuatro tablas con `tenant_id`, RLS forzado y política `USING` + `WITH CHECK`, comprobado en el catálogo |
 | 4a.1 | **Ver en verde los jobs `aislamiento-tenants` y `test` en CI** antes de integrar | `devops` | **Condición del auditor.** Nunca han corrido: ejecutarlos una vez es la única forma honesta de cerrar ese hallazgo |
-| 4b | Inbox — API: tres orígenes de conexión, guardia de identidad, puerto a `crm`, relay por `change` | `backend` | **En curso.** Hechos: guardia de identidad del rol, firma HMAC, apretón de manos, desglose del sobre y **el `POST` con persistencia durable, verificado vivo** (`inbox-webhook.e2e-spec.ts`, AppModule contra Neon, 6/6; integrado el 2026-10-19). Falta el relay por `change` y el trabajador (ADR-0008 §4 paso 5) |
+| 4b | Inbox — API: tres orígenes de conexión, guardia de identidad, puerto a `crm`, relay por `change` | `backend` | **Hecha (v0.21.0, 2026-10-19).** POST durable verificado vivo; relay por `change` con `jobId` por change; trabajador `ProcesarChange` con el rol `viajapro_webhook`, que escribe el mensaje bajo RLS (e2e contra Neon 5/5). **Sin verificar contra Redis real**: ver 4c y la cola del 2026-10-19 |
 | 4c | Las 3 verificaciones que **no** son de base de datos: arranque del proceso, alta de extremo a extremo, ensayo de rotación de la pimienta | `backend`, `qa`, `devops` | **En curso.** La de arranque está hecha: `guardia-de-rol.ts` comprueba identidad, `rolsuper` y `rolbypassrls`, y la API registra al arrancar «Conectado como 'viajapro_app', verificado». Faltan las otras dos |
 | 4d | Alinear `05-seguridad/02-proteccion-de-datos.md` con el ADR-0008 | `documentador` | La redacción de consentimiento lo contradice. Faltan pimienta y clave de plataforma en el inventario §5 |
 | 4e | **ADR que enmiende el ADR-0008 en cinco puntos** | `arquitecto` | Un ADR es inmutable y hoy describe un sistema que no existe: tokens en `cuentas_whatsapp`, `cuenta_id` en el directorio, una **séptima** función, `crear_particion_historial` fuera del inventario, y el hueco de `purgar_directorio`. **Lo más fácil de olvidar y lo más caro en seis meses** |
@@ -594,4 +594,45 @@ aislamiento **50/50 dos veces seguidas**.
 |---|---|---|
 | Durante las corridas había **4** tenants de fixture vivos de otra sesión (no múltiplo de 3: posible corrida muerta a medias). La limpieza los respetó por edad y la suite pasó igual | `datos` | Si en 15 min no desaparecen, los barre la siguiente corrida |
 | Queda el directorio `D:\Projects\CRM-gate` (árbol temporal del integrador, ya desregistrado y sin `.env`): el borrado fue denegado | Usuario | Solo contiene `node_modules` y copia del código; borrarlo a mano |
+
+---
+
+## Integración del 2026-10-19 (cuarta) — v0.21.0
+
+`feat/inbox-relay` @ `99eb149` entra en `main` (`b12bc4f`), etiquetada **v0.21.0**. Registro:
+[`docs/_integraciones/2026-10-19-v0.21.0.md`](docs/_integraciones/2026-10-19-v0.21.0.md).
+
+Compuertas sobre el **árbol fusionado**, en un árbol de trabajo limpio (el commit de merge tiene
+exactamente el árbol probado): `typecheck` 9/9, `lint` 7/7, `build` 5/5, sin caché · `format:check`
+limpio · `pnpm run test --force` **dos veces**: contracts 56, domain 70, api **258**, aislamiento
+**50/50** las dos, con `api` y `database` corriendo en paralelo.
+
+### Los cuatro puntos que había que juzgar
+
+1. **El trabajador vive en `apps/api`, no en `apps/worker`.** No bloquea: es otro proceso
+   (`src/worker.ts`), con su propio módulo y su propio rol, y no comparte `PrismaService` con la API.
+   Pero el mapa de `CLAUDE.md` §5 y el ADR-0004 dicen otra cosa, y eso es una afirmación que el código
+   ya no cumple. Va a cola del `arquitecto`, que decide: o un ADR que lo acepte y corrija el mapa, o
+   mover el trabajador a `apps/worker` cuando se extraiga el paquete.
+2. **BullMQ real sin verificar.** Basta para integrar: no hay nada desplegado, la idempotencia está en
+   el `jobId` y en `ProcesarChange` (probados), y si falla el encolado el POST devuelve 500 y Meta
+   reintenta sobre una fila ya durable. Queda en 4c: verificarlo con `pnpm infra:up` y en CI antes del
+   primer despliegue.
+3. **Dependencias justificadas:** `bullmq` es la cola del ADR-0001; `ioredis` la exige BullMQ 6
+   aparte; `pg` y `@types/pg` son solo de desarrollo, para la e2e, como en `packages/database`.
+4. **El `afterAll` de `aislamiento.spec.ts` borra `recepciones_webhook` entera.** Está en `main`
+   desde antes, no en esta rama. No se manifestó: dos corridas con las pruebas de `api` y `database`
+   en paralelo. Cola de `qa`.
+
+### Cola nueva — con dueño, no bloquea
+
+| Cola | Dueño | Por qué no bloquea |
+|---|---|---|
+| Trabajador en `apps/api` contra el mapa de `CLAUDE.md` y el ADR-0004: ADR o mudanza | `arquitecto` | Proceso y rol separados; es ubicación, no aislamiento |
+| **Revisión de `auditor-seguridad` sobre `ProcesarChange` y `PrismaWebhookService.conTenantResuelto`.** La hizo el integrador, no el auditor: `set_config` local a la transacción y releído antes de escribir, rol sin `BYPASSRLS` verificado al arrancar, `WITH CHECK` en `mensajes` | `auditor-seguridad` | La frontera que impide la fuga es la base (RLS + rol), ya auditada en 4a; el código nuevo no puede ensancharla. **Primera de la cola** |
+| BullMQ contra Redis real, y el job de CI | `devops` (4c, 4a.1) | Nada desplegado; ruta probada con dobles |
+| Sin relay de barrido: un change cuya cola se pierde solo se recupera por el reintento de Meta. Falta una función de base para listar pendientes | `datos` | Meta reintenta durante horas |
+| `aislamiento.spec.ts` borra toda `recepciones_webhook` en su `afterAll` | `qa` | No se manifestó en dos corridas en paralelo |
+| `.env.example`: la rama reescribió el archivo entero por finales de línea (345 líneas en el diff, 3 de contenido). Falta `.gitattributes` | `devops` | Solo ruido en el diff |
+| `D:\Projects\CRM-gate2`: otro árbol temporal del integrador sin borrar (desregistrado, sin `.env`) | Usuario | Borrar a mano junto con `CRM-gate` |
 
