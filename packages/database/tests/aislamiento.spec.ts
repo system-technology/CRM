@@ -2159,3 +2159,464 @@ describe('Inbox — conversaciones, mensajes y el espejo de plantillas de Meta',
     }
   });
 });
+// =============================================================================
+// Cotizaciones — cabecera mutable y versiones inmutables (20261019200000)
+//
+// Dos propiedades distintas, y las dos se prueban en rojo con `scripts/mutaciones-aislamiento.mjs`:
+//
+//   · aislamiento: una agencia no lee ni escribe cotizaciones ni versiones de otra (47, 48, 51);
+//   · inmutabilidad: una versión no se modifica ni se borra, ni por su propia agencia (49).
+//
+// Las sentencias que, con el sistema ROTO, borrarían filas ajenas —el TRUNCATE y el DELETE del
+// propietario— van SIEMPRE dentro de BEGIN … ROLLBACK. La base es compartida entre árboles de
+// trabajo: una mutación que quite el disparador no puede llevarse por delante las versiones de
+// la corrida de al lado.
+// =============================================================================
+
+const TABLAS_DE_COTIZACION = ['cotizaciones', 'versiones_cotizacion'] as const;
+
+/** Una línea con la forma de `OpcionDePrecio`. Solo `total` lo exige el disparador de alta. */
+const linea = (nombre: string, veces: number, unitario: number, moneda = 'COP') => ({
+  tarifaId: randomUUID(),
+  nombre,
+  unidad: 'POR_PERSONA',
+  cubrePasajeros: 1,
+  veces,
+  precioUnitario: { unidades: String(unitario), moneda },
+  total: { unidades: String(unitario * veces), moneda },
+  masBarata: false,
+});
+
+interface VersionDePrueba {
+  venta: number;
+  neto: number | null;
+  margen: number | null;
+  lineas: unknown[];
+  moneda?: string;
+}
+
+/** Dos adultos a 350.000 y un niño a 280.000: 980.000, con neto 800.000. */
+const VERSION_SANA: VersionDePrueba = {
+  venta: 980_000,
+  neto: 800_000,
+  margen: 180_000,
+  lineas: [linea('Adulto', 2, 350_000), linea('Menor de 2 a 11', 1, 280_000)],
+};
+
+function insertarVersion(
+  c: Client,
+  tenant: string,
+  cotizacionId: string,
+  paqueteId: string,
+  numero: number,
+  v: VersionDePrueba = VERSION_SANA,
+  { conRetorno = true }: { conRetorno?: boolean } = {},
+) {
+  return c.query(
+    `INSERT INTO versiones_cotizacion
+       (id, tenant_id, cotizacion_id, numero, paquete_id, paquete_nombre, destino, noches,
+        fecha_salida, vigencia_id, vigencia_desde, vigencia_hasta, de_salida_programada,
+        adultos, ninos, infantes, politica_porcentaje, politica_base, politica_origen,
+        politica_redondeo, lineas, venta_unidades, neto_unidades, margen_unidades, moneda_iso)
+     VALUES (gen_random_uuid(), $1, $2, $3, $4, 'Parque del Café', 'Quindío', 1,
+             '2026-12-05', gen_random_uuid(), '2026-12-01', '2026-12-15', false,
+             2, 1, 0, 20, 'SOBRE_EL_NETO', 'DERIVADA_DEL_NETO',
+             1000, $5::jsonb, $6, $7, $8, $9)
+     ${conRetorno ? 'RETURNING id' : ''}`,
+    [
+      tenant,
+      cotizacionId,
+      numero,
+      paqueteId,
+      JSON.stringify(v.lineas),
+      v.venta,
+      v.neto,
+      v.margen,
+      v.moneda ?? 'COP',
+    ],
+  );
+}
+
+describe('Cotizaciones — cabecera mutable y versiones inmutables', () => {
+  const contactoDe: Record<string, string> = {};
+  const paqueteDe: Record<string, string> = {};
+  const cotizacionDe: Record<string, string> = {};
+  const versionDe: Record<string, string> = {};
+  const mensajeDe: Record<string, string> = {};
+
+  // Sin afterAll propio: el `borrarTenants` global se lleva todo, y al hacerlo ejerce la única
+  // salida de purga del disparador. Si esa salida se rompe, el afterAll global se pone en rojo.
+  beforeAll(async () => {
+    for (const [i, tenant] of [TENANT_A, TENANT_B].entries()) {
+      await comoTenant(tenant, async (c) => {
+        const contacto = await c.query(
+          `INSERT INTO contactos (id, tenant_id, telefono_e164, nombre, creado_en, actualizado_en)
+           VALUES (gen_random_uuid(), $1, $2, 'Cliente que cotiza', now(), now())
+           RETURNING id`,
+          [tenant, `+57377700000${i}`],
+        );
+        contactoDe[tenant] = (contacto.rows[0] as { id: string }).id;
+
+        const paquete = await c.query(
+          `INSERT INTO paquetes (id, tenant_id, nombre, destino, dias, noches, plan_alimentacion,
+                                 creado_en, actualizado_en)
+           VALUES (gen_random_uuid(), $1, 'Parque del Café', 'Quindío', 2, 1, 'DESAYUNO', now(), now())
+           RETURNING id`,
+          [tenant],
+        );
+        paqueteDe[tenant] = (paquete.rows[0] as { id: string }).id;
+
+        const cotizacion = await c.query(
+          `INSERT INTO cotizaciones (id, tenant_id, contacto_id, titulo, creado_en, actualizado_en)
+           VALUES (gen_random_uuid(), $1, $2, 'Familia al Parque del Café', now(), now())
+           RETURNING id`,
+          [tenant, contactoDe[tenant]],
+        );
+        cotizacionDe[tenant] = (cotizacion.rows[0] as { id: string }).id;
+
+        const version = await insertarVersion(
+          c,
+          tenant,
+          cotizacionDe[tenant] ?? '',
+          paqueteDe[tenant] ?? '',
+          1,
+        );
+        versionDe[tenant] = (version.rows[0] as { id: string }).id;
+
+        // Enviada: la versión 1 es la que vio el cliente.
+        await c.query(
+          `UPDATE cotizaciones SET estado = 'ENVIADA', version_enviada = 1, enviada_en = now()
+            WHERE id = $1`,
+          [cotizacionDe[tenant]],
+        );
+
+        // Un hilo mínimo para probar la foránea de `mensajes.cotizacion_id`.
+        const cuenta = await c.query(
+          `INSERT INTO cuentas_whatsapp (id, tenant_id, waba_id, nombre, creado_en, actualizado_en)
+           VALUES (gen_random_uuid(), $1, $2, 'WABA de cotizaciones', now(), now())
+           RETURNING id`,
+          [tenant, `9100000000000${i}`],
+        );
+        const canal = await c.query(
+          `INSERT INTO canales (id, tenant_id, cuenta_id, phone_number_id, numero_e164, creado_en, actualizado_en)
+           VALUES (gen_random_uuid(), $1, $2, $3, $4, now(), now())
+           RETURNING id`,
+          [tenant, (cuenta.rows[0] as { id: string }).id, `8100000000000${i}`, `+5761000000${i}`],
+        );
+        const conversacion = await c.query(
+          `INSERT INTO conversaciones (id, tenant_id, contacto_id, canal_id, creado_en, actualizado_en)
+           VALUES (gen_random_uuid(), $1, $2, $3, now(), now())
+           RETURNING id`,
+          [tenant, contactoDe[tenant], (canal.rows[0] as { id: string }).id],
+        );
+        const mensaje = await c.query(
+          `INSERT INTO mensajes (id, tenant_id, conversacion_id, direccion, tipo, estado, texto,
+                                 ocurrido_en, creado_en, actualizado_en)
+           VALUES (gen_random_uuid(), $1, $2, 'SALIENTE', 'TEXTO', 'PENDIENTE',
+                   'Le comparto la cotización', now(), now(), now())
+           RETURNING id`,
+          [tenant, (conversacion.rows[0] as { id: string }).id],
+        );
+        mensajeDe[tenant] = (mensaje.rows[0] as { id: string }).id;
+      });
+    }
+  });
+
+  it('47 — las dos tablas de cotización tienen RLS forzada con WITH CHECK, y la inmutabilidad está armada', async () => {
+    const { rows } = await admin.query(
+      `SELECT c.relname, c.relrowsecurity, c.relforcerowsecurity,
+              (SELECT count(*) FROM pg_policy p
+                WHERE p.polrelid = c.oid AND p.polname = 'tenant_isolation'
+                  AND p.polwithcheck IS NOT NULL) AS con_check
+         FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' AND c.relname = ANY($1)`,
+      [TABLAS_DE_COTIZACION],
+    );
+    expect(rows).toHaveLength(TABLAS_DE_COTIZACION.length);
+    for (const f of rows as Array<{
+      relname: string;
+      relrowsecurity: boolean;
+      relforcerowsecurity: boolean;
+      con_check: string;
+    }>) {
+      expect(`${f.relname}:${f.relrowsecurity}:${f.relforcerowsecurity}:${f.con_check}`).toBe(
+        `${f.relname}:true:true:1`,
+      );
+    }
+
+    // Los tres disparadores, HABILITADOS ('O' = origen). Uno deshabilitado existe en el catálogo
+    // y no hace nada: contarlos sin mirar `tgenabled` sería verde con la puerta abierta.
+    const disparadores = await admin.query(
+      `SELECT t.tgname, t.tgenabled
+         FROM pg_trigger t
+        WHERE t.tgrelid = 'versiones_cotizacion'::regclass AND NOT t.tgisinternal
+        ORDER BY 1`,
+    );
+    expect(disparadores.rows).toEqual([
+      { tgname: 'versiones_cotizacion_inmutables', tgenabled: 'O' },
+      { tgname: 'versiones_cotizacion_sin_truncate', tgenabled: 'O' },
+      { tgname: 'versiones_cotizacion_validar_alta', tgenabled: 'O' },
+    ]);
+  });
+
+  it('48 — un tenant no ve ni puede escribir las cotizaciones ni las versiones de otro', async () => {
+    // Control: A ve lo suyo. Sin esto, «B ve cero» sería verde también con RLS sin política.
+    const propias = await comoTenant(TENANT_A, async (c) => ({
+      cabeceras: (await c.query('SELECT id FROM cotizaciones WHERE tenant_id = $1', [TENANT_A]))
+        .rowCount,
+      versiones: (
+        await c.query('SELECT id FROM versiones_cotizacion WHERE tenant_id = $1', [TENANT_A])
+      ).rowCount,
+    }));
+    expect(propias).toEqual({ cabeceras: 1, versiones: 1 });
+
+    // Lectura cruzada, por tenant y por identificador.
+    const ajenas = await comoTenant(TENANT_B, async (c) => ({
+      cabeceras: (await c.query('SELECT id FROM cotizaciones WHERE tenant_id = $1', [TENANT_A]))
+        .rowCount,
+      porId: (await c.query('SELECT id FROM cotizaciones WHERE id = $1', [cotizacionDe[TENANT_A]]))
+        .rowCount,
+      // La versión lleva el NETO: es la fila que más daño hace si se filtra.
+      versiones: (
+        await c.query('SELECT neto_unidades FROM versiones_cotizacion WHERE tenant_id = $1', [
+          TENANT_A,
+        ])
+      ).rowCount,
+    }));
+    expect(ajenas).toEqual({ cabeceras: 0, porId: 0, versiones: 0 });
+
+    // Escritura con el tenant_id de otro: la rechaza el WITH CHECK.
+    await expect(
+      comoTenant(TENANT_B, (c) =>
+        c.query(
+          `INSERT INTO cotizaciones (id, tenant_id, contacto_id, titulo, creado_en, actualizado_en)
+           VALUES (gen_random_uuid(), $1, $2, 'Plantada', now(), now())`,
+          [TENANT_A, contactoDe[TENANT_A]],
+        ),
+      ),
+    ).rejects.toThrow(/row-level security/i);
+    await expect(
+      comoTenant(TENANT_B, (c) =>
+        // SIN `RETURNING`, y es la mitad de la prueba. Con él, PostgreSQL pasa la fila nueva
+        // también por el USING de la política y la rechaza aunque el WITH CHECK sea `true`: la
+        // mutación M9 salía VERDE por eso. Un INSERT sin RETURNING solo lo para el WITH CHECK.
+        insertarVersion(
+          c,
+          TENANT_A,
+          cotizacionDe[TENANT_A] ?? '',
+          paqueteDe[TENANT_A] ?? '',
+          2,
+          VERSION_SANA,
+          { conRetorno: false },
+        ),
+      ),
+    ).rejects.toThrow(/row-level security/i);
+
+    // Con SU tenant_id pero colgando de lo ajeno: lo rechazan las foráneas COMPUESTAS, no RLS.
+    await expect(
+      comoTenant(TENANT_B, (c) =>
+        c.query(
+          `INSERT INTO cotizaciones (id, tenant_id, contacto_id, titulo, creado_en, actualizado_en)
+           VALUES (gen_random_uuid(), $1, $2, 'Del contacto ajeno', now(), now())`,
+          [TENANT_B, contactoDe[TENANT_A]],
+        ),
+      ),
+    ).rejects.toThrow(/violates foreign key constraint/i);
+    await expect(
+      comoTenant(TENANT_B, (c) =>
+        insertarVersion(c, TENANT_B, cotizacionDe[TENANT_A] ?? '', paqueteDe[TENANT_B] ?? '', 2),
+      ),
+    ).rejects.toThrow(/violates foreign key constraint/i);
+    await expect(
+      comoTenant(TENANT_B, (c) =>
+        insertarVersion(c, TENANT_B, cotizacionDe[TENANT_B] ?? '', paqueteDe[TENANT_A] ?? '', 2),
+      ),
+    ).rejects.toThrow(/violates foreign key constraint/i);
+
+    // Modificar o borrar lo ajeno: cero filas, sin error. RLS filtra antes de que el disparador
+    // llegue a ver la fila.
+    const tocadas = await comoTenant(TENANT_B, async (c) => ({
+      actualizadas: (
+        await c.query("UPDATE cotizaciones SET titulo = 'Secuestrada' WHERE id = $1", [
+          cotizacionDe[TENANT_A],
+        ])
+      ).rowCount,
+      borradas: (await c.query('DELETE FROM cotizaciones WHERE id = $1', [cotizacionDe[TENANT_A]]))
+        .rowCount,
+      versiones: (
+        await c.query('UPDATE versiones_cotizacion SET venta_unidades = 1 WHERE tenant_id = $1', [
+          TENANT_A,
+        ])
+      ).rowCount,
+    }));
+    expect(tocadas).toEqual({ actualizadas: 0, borradas: 0, versiones: 0 });
+  });
+
+  it('49 — una versión no se modifica ni se borra, ni siquiera por su propia agencia', async () => {
+    const id = versionDe[TENANT_A];
+
+    await expect(
+      comoTenant(TENANT_A, (c) =>
+        c.query('UPDATE versiones_cotizacion SET venta_unidades = 1 WHERE id = $1', [id]),
+      ),
+    ).rejects.toThrow(/inmutable/i);
+    await expect(
+      comoTenant(TENANT_A, (c) => c.query('DELETE FROM versiones_cotizacion WHERE id = $1', [id])),
+    ).rejects.toThrow(/inmutable/i);
+
+    // Fijar la variable de purga desde la API no abre nada: le falta ser propietaria.
+    await expect(
+      comoTenant(TENANT_A, async (c) => {
+        await c.query("SELECT set_config('viajapro.purga_de_tenants', $1, true)", [TENANT_A]);
+        return c.query('DELETE FROM versiones_cotizacion WHERE id = $1', [id]);
+      }),
+    ).rejects.toThrow(/inmutable/i);
+
+    // Ni borrando la cabecera: la versión no se va «de rebote».
+    await expect(
+      comoTenant(TENANT_A, (c) =>
+        c.query('DELETE FROM cotizaciones WHERE id = $1', [cotizacionDe[TENANT_A]]),
+      ),
+    ).rejects.toThrow(/inmutable|RESTRICT|foreign key/i);
+
+    // El propietario tampoco: ni UPDATE —con o sin declarar purga—, ni DELETE sin declararla,
+    // ni TRUNCATE. Todo dentro de BEGIN … ROLLBACK: ver la cabecera de este bloque.
+    const rechazoDelPropietario = async (sentencias: string[]) => {
+      await admin.query('BEGIN');
+      try {
+        for (const s of sentencias) await admin.query(s, s.includes('$1') ? [id] : []);
+        return 'aceptada';
+      } catch (error) {
+        return (error as Error).message;
+      } finally {
+        await admin.query('ROLLBACK');
+      }
+    };
+    expect(
+      await rechazoDelPropietario([
+        'UPDATE versiones_cotizacion SET numero = numero WHERE id = $1',
+      ]),
+    ).toMatch(/inmutable/i);
+    expect(
+      await rechazoDelPropietario([
+        `SELECT set_config('viajapro.purga_de_tenants', '${TENANT_A}', true)`,
+        'UPDATE versiones_cotizacion SET venta_unidades = 1 WHERE id = $1',
+      ]),
+    ).toMatch(/inmutable/i);
+    expect(await rechazoDelPropietario(['DELETE FROM versiones_cotizacion WHERE id = $1'])).toMatch(
+      /inmutable/i,
+    );
+    // CASCADE porque `cotizaciones` la referencia: sin él el motor rechaza antes de llegar al
+    // disparador, y la aserción no probaría el disparador. Dentro de ROLLBACK, siempre.
+    expect(await rechazoDelPropietario(['TRUNCATE versiones_cotizacion CASCADE'])).toMatch(
+      /inmutable/i,
+    );
+
+    // Y la fila sigue diciendo lo que dijo.
+    const { rows } = await comoTenant(TENANT_A, (c) =>
+      c.query('SELECT venta_unidades, neto_unidades FROM versiones_cotizacion WHERE id = $1', [id]),
+    );
+    expect(rows).toEqual([{ venta_unidades: '980000', neto_unidades: '800000' }]);
+
+    // Corregir es crear la versión siguiente, y eso sí se puede.
+    await comoTenant(TENANT_A, (c) =>
+      insertarVersion(c, TENANT_A, cotizacionDe[TENANT_A] ?? '', paqueteDe[TENANT_A] ?? '', 2, {
+        venta: 700_000,
+        neto: null,
+        margen: null,
+        lineas: [linea('Adulto', 2, 350_000)],
+      }),
+    );
+  });
+
+  it('50 — el dinero de una versión cuadra o no entra', async () => {
+    const intento = (v: VersionDePrueba) =>
+      comoTenant(TENANT_A, (c) =>
+        insertarVersion(c, TENANT_A, cotizacionDe[TENANT_A] ?? '', paqueteDe[TENANT_A] ?? '', 9, v),
+      );
+
+    // Las líneas suman 980.000 y la venta dice 900.000.
+    await expect(intento({ ...VERSION_SANA, venta: 900_000, margen: 100_000 })).rejects.toThrow(
+      /suman/i,
+    );
+    // Una línea en dólares dentro de una versión en pesos.
+    await expect(
+      intento({
+        ...VERSION_SANA,
+        lineas: [linea('Adulto', 2, 350_000), linea('Menor de 2 a 11', 1, 280_000, 'USD')],
+      }),
+    ).rejects.toThrow(/linea/i);
+    // Margen que no es la resta, y «margen 0» con neto desconocido.
+    await expect(intento({ ...VERSION_SANA, margen: 1 })).rejects.toThrow(/margen_es_la_resta/);
+    await expect(intento({ ...VERSION_SANA, neto: null, margen: 0 })).rejects.toThrow(
+      /margen_es_la_resta/,
+    );
+    // Una versión sin líneas no es una cotización.
+    await expect(
+      intento({
+        ...VERSION_SANA,
+        venta: 0,
+        neto: null,
+        margen: null,
+        lineas: [],
+      }),
+    ).rejects.toThrow(/lineas_no_vacias|suman/i);
+  });
+
+  it('51 — mensajes.cotizacion_id es foránea COMPUESTA y VALIDADA: un mensaje no lleva la cotización de otra agencia', async () => {
+    const { rows } = await admin.query(
+      `SELECT c.convalidated,
+              (SELECT array_agg(a.attname::text ORDER BY a.attname)
+                 FROM unnest(c.conkey) k
+                 JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = k) AS columnas
+         FROM pg_constraint c
+        WHERE c.conname = 'mensajes_cotizacion_id_tenant_id_fkey'
+          AND c.conrelid = 'mensajes'::regclass`,
+    );
+    expect(rows).toEqual([{ convalidated: true, columnas: ['cotizacion_id', 'tenant_id'] }]);
+
+    await expect(
+      comoTenant(TENANT_B, (c) =>
+        c.query('UPDATE mensajes SET cotizacion_id = $1 WHERE id = $2', [
+          cotizacionDe[TENANT_A],
+          mensajeDe[TENANT_B],
+        ]),
+      ),
+    ).rejects.toThrow(/violates foreign key constraint/i);
+
+    // Control: con la suya, sí.
+    const propia = await comoTenant(TENANT_B, (c) =>
+      c.query('UPDATE mensajes SET cotizacion_id = $1 WHERE id = $2', [
+        cotizacionDe[TENANT_B],
+        mensajeDe[TENANT_B],
+      ]),
+    );
+    expect(propia.rowCount).toBe(1);
+  });
+
+  it('52 — la versión que vio el cliente es una versión DE ESTA cotización', async () => {
+    // Otra cotización de A sin versiones, que dice haber enviado la «versión 1»: la única versión 1
+    // que existe es la de la otra cotización. La foránea es diferible, así que revienta al COMMIT.
+    await expect(
+      comoTenant(TENANT_A, (c) =>
+        c.query(
+          `INSERT INTO cotizaciones (id, tenant_id, contacto_id, titulo, estado, version_enviada,
+                                     enviada_en, creado_en, actualizado_en)
+           VALUES (gen_random_uuid(), $1, $2, 'Enviada sin versión', 'ENVIADA', 1, now(), now(), now())`,
+          [TENANT_A, contactoDe[TENANT_A]],
+        ),
+      ),
+    ).rejects.toThrow(/violates foreign key constraint/i);
+
+    // ENVIADA sin decir qué versión es una aceptación de nada.
+    await expect(
+      comoTenant(TENANT_A, (c) =>
+        c.query(
+          `INSERT INTO cotizaciones (id, tenant_id, contacto_id, titulo, estado, creado_en, actualizado_en)
+           VALUES (gen_random_uuid(), $1, $2, 'Enviada sin envío', 'ACEPTADA', now(), now())`,
+          [TENANT_A, contactoDe[TENANT_A]],
+        ),
+      ),
+    ).rejects.toThrow(/estado_exige_envio/);
+  });
+});

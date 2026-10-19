@@ -81,6 +81,9 @@ model Tenant {
   adjuntos       Adjunto[]
   plantillas     PlantillaWhatsapp[]
 
+  cotizaciones        Cotizacion[]
+  versionesCotizacion VersionCotizacion[]
+
   @@map("tenants")
 }
 
@@ -330,6 +333,9 @@ model Usuario {
   conversacionesAsignadas    Conversacion[]           @relation("ConversacionAsignadaA")
   mensajesEnviados           Mensaje[]                @relation("MensajeAutor")
   consentimientosRegistrados ConsentimientoContacto[] @relation("ConsentimientoRegistradoPor")
+  cotizacionesCreadas        Cotizacion[]             @relation("CotizacionCreadoPor")
+  cotizacionesActualizadas   Cotizacion[]             @relation("CotizacionActualizadoPor")
+  versionesCotizacionCreadas VersionCotizacion[]      @relation("VersionCotizacionCreadoPor")
 
   /// El correo es único dentro de la agencia, no globalmente: ver la decisión de arriba.
   @@unique([tenantId, correo])
@@ -504,9 +510,10 @@ model Paquete {
   actualizadoEn DateTime  @updatedAt @map("actualizado_en") @db.Timestamptz(3)
   eliminadoEn   DateTime? @map("eliminado_en") @db.Timestamptz(3)
 
-  temporadas    Temporada[]
-  vigencias     Vigencia[]
-  oportunidades Oportunidad[]
+  temporadas          Temporada[]
+  vigencias           Vigencia[]
+  oportunidades       Oportunidad[]
+  versionesCotizacion VersionCotizacion[]
 
   @@unique([id, tenantId])
   @@index([tenantId, activo, eliminadoEn])
@@ -931,6 +938,7 @@ model Contacto {
   notasInternas   NotaInterna[]
   consentimientos ConsentimientoContacto[]
   conversaciones  Conversacion[]
+  cotizaciones    Cotizacion[]
 
   /// Dos agencias distintas pueden tener el mismo teléfono de cliente: la unicidad
   /// es POR TENANT, nunca global.
@@ -1057,7 +1065,12 @@ model Oportunidad {
   creadoPor        Usuario? @relation("OportunidadCreadoPor", fields: [creadoPorId, tenantId], references: [id, tenantId], onDelete: Restrict, onUpdate: Restrict)
   actualizadoPor   Usuario? @relation("OportunidadActualizadoPor", fields: [actualizadoPorId, tenantId], references: [id, tenantId], onDelete: Restrict, onUpdate: Restrict)
 
+  cotizaciones Cotizacion[]
+
   @@unique([id, tenantId])
+  /// Destino de la foránea de tres columnas de `cotizaciones`: la oportunidad de una cotización
+  /// tiene que ser del MISMO contacto que la cotización.
+  @@unique([id, contactoId, tenantId])
   /// El tablero: una consulta por columna, filtrada por tenant y ordenada por actividad.
   @@index([tenantId, etapaId, actualizadoEn(sort: Desc)])
   @@index([tenantId, asesorId])
@@ -1399,7 +1412,11 @@ model Mensaje {
   /// ALTER TABLE ... ADD CONSTRAINT ... NOT VALID seguido de VALIDATE, seguro en caliente.
   /// Mientras tanto, el aislamiento de esta columna lo da la fila: tenant_id es suyo y RLS
   /// no deja leerla desde otra agencia.
-  cotizacionId String? @map("cotizacion_id") @db.Uuid
+  ///
+  /// **Saldada en 20261019200000**: la foránea compuesta existe, con
+  /// `ON DELETE SET NULL ("cotizacion_id")` —solo esa columna, nunca `tenant_id`—.
+  cotizacionId String?     @map("cotizacion_id") @db.Uuid
+  cotizacion   Cotizacion? @relation(fields: [cotizacionId, tenantId], references: [id, tenantId], onDelete: SetNull, onUpdate: Restrict)
 
   /// El instante de META (R9). Es el que ordena el hilo y el que ve el viajero. Resolución
   /// de segundos: el desempate lo pone id, que es UUID v7 y por tanto ordenable en el
@@ -1576,4 +1593,135 @@ model PlantillaWhatsapp {
   /// El selector de plantillas de la bandeja: por cuenta y por estado.
   @@index([tenantId, cuentaId, estado])
   @@map("plantillas_whatsapp")
+}
+
+// =============================================================================
+// COTIZACIONES — cabecera mutable, versiones inmutables (ADR-0006, ADR-0009)
+//
+// La inmutabilidad NO la impone este archivo ni el caso de uso: la impone un disparador de la
+// base (`versiones_cotizacion_inmutables`) que rechaza UPDATE, DELETE y TRUNCATE. Prisma no lo
+// modela; la migración 20261019200000 sí, y la aserción 49 se pone en rojo si falta.
+// =============================================================================
+
+/// El ciclo de vida de una cotización. Invariante del dominio, no política: enum (R12).
+enum EstadoCotizacion {
+  BORRADOR
+  ENVIADA
+  ACEPTADA
+  RECHAZADA
+  VENCIDA
+
+  @@map("estado_cotizacion")
+}
+
+/// Cotización (`Quote` en el lenguaje ubicuo). La CABECERA: a quién, en qué estado y qué
+/// versión vio el cliente. Lo que se ofreció vive en `VersionCotizacion`, que no cambia.
+model Cotizacion {
+  id       String @id @default(uuid(7)) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  /// `Restrict`: los contactos se borran en blando, y la cotización es la prueba de lo ofrecido.
+  contactoId String   @map("contacto_id") @db.Uuid
+  contacto   Contacto @relation(fields: [contactoId, tenantId], references: [id, tenantId], onDelete: Restrict, onUpdate: Restrict)
+
+  /// Foránea de TRES columnas: la oportunidad es de esta agencia y de este mismo contacto.
+  oportunidadId String?      @map("oportunidad_id") @db.Uuid
+  oportunidad   Oportunidad? @relation(fields: [oportunidadId, contactoId, tenantId], references: [id, contactoId, tenantId], onDelete: Restrict, onUpdate: Restrict)
+
+  titulo String           @db.VarChar(200)
+  estado EstadoCotizacion @default(BORRADOR)
+
+  /// La versión que vio el cliente y cuándo. Las dos o ninguna (CHECK), y todo estado que no
+  /// sea BORRADOR la exige (CHECK). Apunta a una versión DE ESTA cotización; en la base es
+  /// `DEFERRABLE INITIALLY DEFERRED`, que Prisma no modela.
+  versionEnviada         Int?               @map("version_enviada") @db.SmallInt
+  enviadaEn              DateTime?          @map("enviada_en") @db.Timestamptz(3)
+  versionVistaPorCliente VersionCotizacion? @relation("VersionEnviada", fields: [tenantId, id, versionEnviada], references: [tenantId, cotizacionId, numero], onDelete: NoAction, onUpdate: NoAction, map: "cotizaciones_version_enviada_fkey")
+
+  versiones VersionCotizacion[] @relation("VersionesDeLaCotizacion")
+  mensajes  Mensaje[]
+
+  creadoEn      DateTime  @default(now()) @map("creado_en") @db.Timestamptz(3)
+  actualizadoEn DateTime  @updatedAt @map("actualizado_en") @db.Timestamptz(3)
+  eliminadoEn   DateTime? @map("eliminado_en") @db.Timestamptz(3)
+
+  creadoPorId      String?  @map("creado_por") @db.Uuid
+  actualizadoPorId String?  @map("actualizado_por") @db.Uuid
+  creadoPor        Usuario? @relation("CotizacionCreadoPor", fields: [creadoPorId, tenantId], references: [id, tenantId], onDelete: Restrict, onUpdate: Restrict)
+  actualizadoPor   Usuario? @relation("CotizacionActualizadoPor", fields: [actualizadoPorId, tenantId], references: [id, tenantId], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([id, tenantId])
+  /// El panel lateral de la bandeja: las cotizaciones del contacto, la más reciente primero.
+  @@index([tenantId, contactoId, actualizadoEn(sort: Desc)])
+  @@index([tenantId, oportunidadId])
+  @@map("cotizaciones")
+}
+
+/// Una versión de la cotización: la INSTANTÁNEA completa del cálculo. Inmutable desde el INSERT.
+///
+/// Todo lo necesario para reconstruir qué se ofreció sin mirar el catálogo, que cambia. Por eso
+/// `vigenciaId` y los `tarifaId` de `lineas` son copias sin foránea: una `Restrict` bloquearía el
+/// mantenimiento del catálogo y una `Cascade` borraría la prueba.
+///
+/// Sin `actualizadoEn` ni `actualizadoPor`: una fila que no se puede actualizar no los tiene.
+model VersionCotizacion {
+  id       String @id @default(uuid(7)) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  /// `Restrict` y no `Cascade`: una acción en cascada corre como el PROPIETARIO de la tabla, que
+  /// es la mitad de la salida de purga del disparador. Ver la migración.
+  cotizacionId String     @map("cotizacion_id") @db.Uuid
+  cotizacion   Cotizacion @relation("VersionesDeLaCotizacion", fields: [cotizacionId, tenantId], references: [id, tenantId], onDelete: Restrict, onUpdate: Restrict)
+  /// 1, 2, 3… por cotización. Único por (tenant, cotización).
+  numero       Int        @db.SmallInt
+
+  paqueteId          String   @map("paquete_id") @db.Uuid
+  paquete            Paquete  @relation(fields: [paqueteId, tenantId], references: [id, tenantId], onDelete: Restrict, onUpdate: Restrict)
+  paqueteNombre      String   @map("paquete_nombre") @db.VarChar(200)
+  destino            String   @db.VarChar(120)
+  noches             Int      @db.SmallInt
+  /// R9: las fechas de viaje son `date`.
+  fechaSalida        DateTime @map("fecha_salida") @db.Date
+  vigenciaId         String   @map("vigencia_id") @db.Uuid
+  vigenciaDesde      DateTime @map("vigencia_desde") @db.Date
+  vigenciaHasta      DateTime @map("vigencia_hasta") @db.Date
+  deSalidaProgramada Boolean  @map("de_salida_programada")
+
+  adultos     Int          @db.SmallInt
+  ninos       Int          @db.SmallInt
+  infantes    Int          @db.SmallInt
+  acomodacion Acomodacion?
+
+  /// La política de precio TAL COMO ESTABA al congelar. Cambiarla después no toca esto.
+  politicaPorcentaje Decimal         @map("politica_porcentaje") @db.Decimal(6, 3)
+  politicaBase       BaseDelMargen   @map("politica_base")
+  politicaOrigen     OrigenDeLaVenta @map("politica_origen")
+  politicaRedondeo   Int             @map("politica_redondeo")
+
+  /// Arreglo no vacío con la forma de `OpcionDePrecio`. El disparador de alta exige que cada
+  /// línea traiga `total: { unidades, moneda }` entero y en `monedaIso`, y que sumen `ventaUnidades`.
+  lineas Json @db.JsonB
+
+  /// R8. Neto y margen nulos = desconocidos (no cero). `margen = venta − neto`, por CHECK.
+  ventaUnidades  BigInt  @map("venta_unidades")
+  netoUnidades   BigInt? @map("neto_unidades")
+  margenUnidades BigInt? @map("margen_unidades")
+  monedaIso      String  @map("moneda_iso") @db.Char(3)
+
+  /// Hasta cuándo se sostiene el precio ofrecido.
+  vigenteHasta DateTime? @map("vigente_hasta") @db.Date
+
+  /// El instante en que se congeló (R9, UTC).
+  creadoEn    DateTime @default(now()) @map("creado_en") @db.Timestamptz(3)
+  creadoPorId String?  @map("creado_por") @db.Uuid
+  creadoPor   Usuario? @relation("VersionCotizacionCreadoPor", fields: [creadoPorId, tenantId], references: [id, tenantId], onDelete: Restrict, onUpdate: Restrict)
+
+  enviadaEnCotizaciones Cotizacion[] @relation("VersionEnviada")
+
+  @@unique([id, tenantId])
+  @@unique([tenantId, cotizacionId, numero])
+  @@index([tenantId, paqueteId])
+  @@map("versiones_cotizacion")
 }

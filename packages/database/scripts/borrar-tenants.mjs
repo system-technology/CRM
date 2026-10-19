@@ -30,6 +30,14 @@
 export async function borrarTenants(cliente, ids) {
   if (ids.length === 0) return { filas: 0, tenants: 0 };
 
+  // **Las versiones de cotización son inmutables y solo la purga las borra** (migración
+  // 20261019200000). El disparador exige dos cosas: ser el propietario —este cliente lo es— y
+  // declarar en ESTA transacción qué tenants se purgan. `true` = local a la transacción: por eso
+  // los tres llamadores envuelven esto en BEGIN/COMMIT. Sin la declaración, el DELETE de
+  // `versiones_cotizacion` revienta con 23001 y el bucle de abajo lo reintenta hasta rendirse,
+  // que es el fallo ruidoso que se quiere si alguien llama a esto fuera de una transacción.
+  await cliente.query("SELECT set_config('viajapro.purga_de_tenants', $1, true)", [ids.join(',')]);
+
   const { rows: columnas } = await cliente.query(`
     SELECT c.relname AS tabla, a.attname AS columna
     FROM pg_class c

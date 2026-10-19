@@ -7,7 +7,7 @@
  * y el hallazgo es bloqueante.
  *
  * EMPIEZA POR UN CONTROL, y sin él el informe no valdría nada: si el arnés no supiera
- * arrancar vitest —falta una variable de entorno, un binario, lo que sea—, las siete
+ * arrancar vitest —falta una variable de entorno, un binario, lo que sea—, todas las
  * mutaciones saldrían «rojas» y el resultado sería un falso positivo perfecto. Antes de
  * romper nada, cada aserción implicada tiene que estar VERDE sobre el sistema sano.
  *
@@ -31,7 +31,14 @@ const raizPaquete = fileURLToPath(new URL('..', import.meta.url));
 // indistinguible del fallo de la prueba — que es exactamente lo que el CONTROL atrapó.
 const VITEST = fileURLToPath(new URL('../node_modules/vitest/vitest.mjs', import.meta.url));
 
-const TABLAS = ['conversaciones', 'mensajes', 'adjuntos', 'plantillas_whatsapp'];
+const TABLAS = [
+  'conversaciones',
+  'mensajes',
+  'adjuntos',
+  'plantillas_whatsapp',
+  'cotizaciones',
+  'versiones_cotizacion',
+];
 
 /**
  * Quita los codigos de color ANSI de la salida de vitest.
@@ -124,6 +131,54 @@ const MUTACIONES = [
     prueba: '40',
     restaurar: `CREATE UNIQUE INDEX mensajes_tenant_id_wamid_key
                   ON mensajes (tenant_id, wamid) WHERE wamid IS NOT NULL`,
+  },
+  // --- Cotizaciones (20261019200000) ---
+  {
+    nombre: 'M8 — cotizaciones SIN RLS: lectura cruzada',
+    sql: `ALTER TABLE cotizaciones DISABLE ROW LEVEL SECURITY`,
+    prueba: '48',
+  },
+  {
+    nombre: 'M9 — versiones_cotizacion con WITH CHECK (true): escritura cruzada',
+    sql: `DROP POLICY tenant_isolation ON versiones_cotizacion;
+          CREATE POLICY tenant_isolation ON versiones_cotizacion
+            USING      (tenant_id = NULLIF(current_setting('app.current_tenant', true), '')::uuid)
+            WITH CHECK (true)`,
+    prueba: '48',
+  },
+  {
+    nombre: 'M10 — versión colgando de la cotización de otra agencia (foránea SIMPLE)',
+    sql: `ALTER TABLE versiones_cotizacion DROP CONSTRAINT versiones_cotizacion_cotizacion_id_tenant_id_fkey;
+          ALTER TABLE versiones_cotizacion ADD CONSTRAINT versiones_cotizacion_cotizacion_id_tenant_id_fkey
+            FOREIGN KEY (cotizacion_id) REFERENCES cotizaciones (id) ON DELETE RESTRICT`,
+    prueba: '48',
+    restaurar: `ALTER TABLE versiones_cotizacion DROP CONSTRAINT versiones_cotizacion_cotizacion_id_tenant_id_fkey;
+                ALTER TABLE versiones_cotizacion ADD CONSTRAINT versiones_cotizacion_cotizacion_id_tenant_id_fkey
+                  FOREIGN KEY (cotizacion_id, tenant_id) REFERENCES cotizaciones (id, tenant_id)
+                  ON DELETE RESTRICT ON UPDATE RESTRICT`,
+  },
+  {
+    nombre: 'M11 — sin el disparador de inmutabilidad: una versión se edita',
+    sql: `ALTER TABLE versiones_cotizacion DISABLE TRIGGER versiones_cotizacion_inmutables`,
+    prueba: '49',
+    restaurar: `ALTER TABLE versiones_cotizacion ENABLE TRIGGER versiones_cotizacion_inmutables`,
+  },
+  {
+    nombre: 'M12 — sin el disparador de alta: líneas que no suman el total',
+    sql: `ALTER TABLE versiones_cotizacion DISABLE TRIGGER versiones_cotizacion_validar_alta`,
+    prueba: '50',
+    restaurar: `ALTER TABLE versiones_cotizacion ENABLE TRIGGER versiones_cotizacion_validar_alta`,
+  },
+  {
+    nombre: 'M13 — mensajes.cotizacion_id con foránea SIMPLE',
+    sql: `ALTER TABLE mensajes DROP CONSTRAINT mensajes_cotizacion_id_tenant_id_fkey;
+          ALTER TABLE mensajes ADD CONSTRAINT mensajes_cotizacion_id_tenant_id_fkey
+            FOREIGN KEY (cotizacion_id) REFERENCES cotizaciones (id) ON DELETE SET NULL`,
+    prueba: '51',
+    restaurar: `ALTER TABLE mensajes DROP CONSTRAINT mensajes_cotizacion_id_tenant_id_fkey;
+                ALTER TABLE mensajes ADD CONSTRAINT mensajes_cotizacion_id_tenant_id_fkey
+                  FOREIGN KEY (cotizacion_id, tenant_id) REFERENCES cotizaciones (id, tenant_id)
+                  ON DELETE SET NULL (cotizacion_id) ON UPDATE RESTRICT`,
   },
 ];
 
