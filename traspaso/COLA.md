@@ -32,7 +32,7 @@ redefinidos: todo de `@viajapro/contracts` — si falta un campo, **para y dilo*
 > Orden: 0c.18, 0c.19, 0c.20, 0c.21. Cada una es autosuficiente. Antes de nada: `git fetch` y
 > lee `REVISION.md`. Las cinco compuertas (`pnpm compuertas`) antes de cada `ENTREGA.md`.
 
-## [ ] 0c.18. Ponerse al día con `main` y dejar la rama revisable
+## [x] 0c.18. Ponerse al día con `main` y dejar la rama revisable
 
 **Contexto.** El 2026-10-13 el integrador devolvió esta rama por ir 82 commits por delante, con
 +17k líneas. Hoy: 82 commits, +21.5k líneas, 119 archivos, 79 en `apps/web`. Nadie puede revisar

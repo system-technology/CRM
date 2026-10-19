@@ -1,127 +1,142 @@
-# ENTREGA.md — Tarea 0c.16: El catálogo REAL en pantalla
+﻿# Entrega — Inventario de Pantallas y Puesta al Día con Main (0c.18) — 2026-10-19
 
-- **Rama:** `feat/bandeja-web`
-- **Fecha:** 2026-10-13
-- **Tarea completada:** `0c.16. El catálogo REAL en pantalla` (ADR-0009)
+## Qué construí
 
----
-
-## 1. Qué construí
-
-1. **Cliente de API para Catálogo Real y Cotizaciones (`apps/web/src/lib/catalogo-api.ts`):**
-   - Tipos 100 % inferidos de los contratos Zod de `@viajapro/contracts` (R3): `SalidaPublicada`, `CotizarSalida`, `CotizacionDeSalida`.
-   - Conexión a `GET /api/v1/catalogo/salidas` con soporte para filtros (`desde`, `hasta`, `paqueteId`, `limite`).
-   - Conexión a `POST /api/v1/catalogo/cotizar` con payload validado.
-   - Manejo tipado de errores con la clase `CatalogoApiError` para capturar códigos de dominio (`SIN_VIGENCIA`, `VIGENCIAS_EMPATADAS`, `PAQUETE_NO_ENCONTRADO`, `SIN_SESION`).
-
-2. **Catálogo de Salidas Publicadas (`apps/web/src/app/catalogo/page.tsx` y `tarjeta-salida-publicada.tsx`):**
-   - Listado de salidas reales de André's Tours sembradas en Neon (ej. «Parque del café», «Piangüita + Ballenas», «Puebleando en el Quindío», «Parque Consotá»).
-   - Visualización de fecha amigable, noches («Pasadía», «1 noche», «2 noches»), número de tarifas asociadas y precio "Desde $XXX.XXX COP".
-   - Filtros de búsqueda en tiempo real por texto (nombre/destino) y selector de destinos únicos derivados.
-   - Enlace directo a `/cotizador` transmitiendo `paquete` y `fecha`.
-   - Integración con el interruptor `NEXT_PUBLIC_USE_REAL_CRM`: si está apagado, mantiene fallback a datos de demostración con distintivo visible; si falta tenant, despliega `AvisoConfiguracionTenant`.
-
-3. **Cotizador de Salidas Armadas (`apps/web/src/app/cotizador/page.tsx` y `desglose-cotizacion-salida.tsx`):**
-   - **Total protagonista:** Importe total visible en tipografía destacada con formato de moneda en pesos colombianos (R8). Botón de copiar cotización formateada para WhatsApp en un clic.
-   - **Líneas desglosadas por pasajero:** Renderiza cada línea individual (ej. 2 Adultos a $410.000 + 1 Niño a $250.000 = $1.070.000 COP en Puebleando en el Quindío 2026-10-03).
-   - **Tarifas alternativas de grupo:** Panel informativo de tarifas que reemplazarían al armado (ej. Promo pareja), marcando `Más económica` según el contrato (`masBarata`). No se aplican solas para no sobrepasar condiciones del mayorista.
-   - **Tarifas no aplicables con motivo:** Si una tarifa no aplica (ej. Promo pareja para 3 adultos en Parque Consotá), muestra explícitamente el motivo: «Aplica a grupos de 2; sobra 1».
-   - **Respeto a `pideComposicion`:** Si el tarifario devuelve `pideComposicion: false`, la interfaz oculta/desactiva los selectores de desglose por edad.
-   - **Aviso «Bajo consulta de cupo»:** Si `deSalidaProgramada === false`, destaca advertencia ámbar indicando que la cotización procede de una vigencia abierta y no de una fecha garantizada.
-   - **Errores de dominio 409 honestos:** Intercepta `SIN_VIGENCIA` y `VIGENCIAS_EMPATADAS` con explicaciones claras sin mensajes genéricos.
-
-4. **Lógica pura y propuesta WhatsApp (`catalogo-logica.ts` y `cotizador-logica.ts`):**
-   - `formatearNochesLabel`, `extraerDestinosDeSalidas`, `filtrarSalidasPublicadas`.
-   - `generarTextoPropuestaWhatsAppSalida`: arma la propuesta en texto markdown para WhatsApp con total protagonista, desglose por pasajero, nota de estado de cupo y alternativas, omitiendo estrictamente costos netos o márgenes internos (R10).
-   - `interpretarErrorCotizacion`: clasifica los errores en problemas de búsqueda vs errores de datos de la agencia.
-
-5. **Aislamiento y Concurrencia en Compuertas:**
-   - Detectada y resuelta contienda de concurrencia en Neon entre `api:test` y `database:test` configurando `--concurrency=1` en `scripts/compuertas.mjs`.
-   - Terminados procesos observadores en segundo plano que retenían bloqueos transaccionales en Neon.
+1. **Puesta al día con `origin/main` (0 commits por detrás):** Fusión limpia de `origin/main` (v0.23.0 y CI en verde) en `feat/bandeja-web`, resolviendo el lockfile y generando el cliente de Prisma actualizado.
+2. **Corrección de script de pruebas en `apps/web`:** Se normalizó `"test": "vitest run"` en `apps/web/package.json` eliminando la ruta virtual frágil de pnpm.
+3. **Optimización móvil de `/catalogo` a 375 px (0c.18 §4):** Se retiró el recuadro informativo redundante en `tarjeta-salida-publicada.tsx`, manteniendo la insignia «Promo grupal» y el subtítulo destacado «por persona · en promo grupal» para evitar saturar la tarjeta en pantallas estrechas.
+4. **Inventario exhaustivo por pantallas:** Desglose completo de las 8 rutas de `apps/web/src/app/` para permitir al `integrador` incorporar el trabajo en ramas o partes manejables.
 
 ---
 
-## 2. Pruebas y Verificación
+## Qué verifiqué EJECUTANDO
 
-- **Nuevas pruebas unitarias en Web:**
-  - `apps/web/src/lib/catalogo-logica.spec.ts`: 13 pruebas (incluyendo formateo de noches, extracción de destinos y filtrado de salidas publicadas).
-  - `apps/web/src/lib/cotizador-logica.spec.ts`: 9 pruebas (incluyendo validación con Zod de `CotizacionDeSalida`, formato de texto WhatsApp para salidas armadas, protección R10 de márgenes e interpretación de errores 409).
-- **Total pruebas en `apps/web`:** 123 pasadas en 16 archivos de pruebas.
-- **Total pruebas en `apps/api`:** 208 pasadas en 14 archivos de pruebas.
-- **Total pruebas en `packages/database`:** 39 pasadas (suite completa de aislamiento).
+### 1. Compuertas del monorepo (`pnpm compuertas`)
+Ejecutadas las 5 compuertas completas sobre el árbol fusionado en `D:\Projects\CRM-bandeja`:
+- `build`: **5/5 paquetes en verde** (21.4s)
+- `lint`: **7/7 paquetes en verde** (6.7s)
+- `typecheck`: **9/9 paquetes en verde** (2.4s)
+- `test`: **23/23 archivos de prueba, 279 pruebas en verde en la API; 16/16 archivos y 125/125 pruebas en verde en la Web; 4/4 y 70 pruebas en Domain; 4/4 y 60 pruebas en Contracts** (178.2s)
+- `format:check`: **limpio** (3.7s)
 
----
-
-## 3. Estado de las Cinco Compuertas (`node scripts/compuertas.mjs`)
-
-```
-══════════════════════════════════════════════════════════════════════
-  ✓ build          verde     0.5s
-  ✓ lint           verde     0.4s
-  ✓ typecheck      verde     0.5s
-  ✓ test           verde     126.4s
-  ✓ format:check   verde     3.0s
-
-  Las cinco en verde. Ejecutadas, no supuestas.
-```
-
+`HEAD..origin/main` verificado con `git log`: **vacío** (0 commits por detrás).
 
 ---
 
-# Entrega 2026-10-14 — 0c.17 («Desde» con su condición), carrera de Turbo VC-21 resuelta y sincronización con ADR-0009
+## Qué NO verifiqué
 
-Entregado en la rama `feat/bandeja-web`.
-Auditado contra la revisión de Claude Opus 5 (`9634183`) y verificado con las 5 compuertas locales (`node scripts/compuertas.mjs`) 100% en verde.
-
----
-
-## 1. Qué se construyó y resolvió
-
-1. **0c.17 — El «desde» con su condición (`tarjeta-salida-publicada.tsx` y `catalogo-logica.ts`):**
-   - Integrado el campo de contrato `desdeEsDeGrupo: z.boolean()` de `SalidaPublicada`.
-   - Cuando `desdeEsDeGrupo === true`, la tarjeta ya no enseña un precio pelado individual engañoso:
-     - Muestra el texto «por persona · en promo grupal».
-     - Badge superior indicativo «Promo grupal».
-     - Recuadro visible de advertencia comercial: «ℹ️ Condición comercial: Tarifa condicionada: Precio per cápita sujeto a compra en grupo o pareja.»
-   - Nueva función pura `formatearCondicionDesde(salida)` para desacoplar presentación y reglas de negocio.
-   - En `cotizador-logica.ts`, `generarTextoPropuestaWhatsAppSalida` añade nota explícita cuando la cotización incluye líneas de unidad `POR_GRUPO` o que cubran más de 1 pasajero: «ℹ️ Nota de tarifa grupal: La cotización incluye tarifa(s) en modalidad de grupo/pareja condicionada a la cantidad mínima de pasajeros indicada.».
-
-2. **Resolución de la carrera de Turbo entre build y typecheck (VC-21):**
-   - Integrado commit `f9da930` y rama `origin/docs/adr-0009-parametrico` en `turbo.json`:
-     `@viajapro/web#typecheck` depende de `^build` y `@viajapro/web#build`.
-     `@viajapro/database#typecheck` depende de `^build` y `@viajapro/database#build`.
-   - Se elimina de raíz el falso rojo en CI cuando `next build` reescribe `.next/types` en paralelo con `tsc`.
-   - Integradas mejoras de `7ba3b8c` en fixtures de aislamiento para evitar colisiones en Neon entre corridas simultáneas.
-
-3. **Honestidad en el asistente copiloto:**
-   - Textos de ayuda y botones alineados a «Asistente de Cotización (Heurístico)» y «Sugerencias Automáticas — Reglas Heurísticas», reflejando con honestidad la implementación actual basada en reglas y palabras clave.
-
-4. **Compatibilidad estricta de contratos Zod (R3):**
-   - `cotizarSalidaApi` tipado con `z.input<typeof CotizarSalida>` para respetar el `.default(false)` de `incluirMargen`.
-   - `cotizador/page.tsx` configurado explícitamente con `incluirMargen: false` (defensa en profundidad R10).
+- No se levantó navegador Playwright automatizado para interactuar con la tarjeta de Consotá a 375 px en vivo (se comprobó inspeccionando el markup y CSS responsivo Tailwind).
+- No se probaron mutaciones en vivo de cotizaciones contra la API real levantada (la tarea 0c.22 cubrirá el consumo de `POST /api/v1/cotizaciones`).
 
 ---
 
-## 2. Pruebas y Verificación
+## Decisiones que el encargo no especificaba
 
-- **Pruebas en `apps/web`:** 125 pasadas (16 archivos de prueba) con Testing Library y Vitest.
-  - Añadida prueba 14 en `catalogo-logica.spec.ts` para `formatearCondicionDesde`.
-  - Añadida prueba 10 en `cotizador-logica.spec.ts` para propuesta WhatsApp con advertencia grupal.
-- **Pruebas en `apps/api`:** 214 pasadas (14 archivos de prueba).
-- **Pruebas en `packages/database`:** 39 pasadas (suite completa de aislamiento RLS).
-- **Total pruebas monorepo:** 378 pruebas automáticas ejecutadas y pasando.
+- **Retiro del recuadro comercial de tarifa grupal:** En `tarjeta-salida-publicada.tsx`, tener insignia en cabecera, subtítulo en el precio y un tercer recuadro inferior ocupaba demasiado espacio vertical en 375 px y contenía además un glifo mal codificado. Se conservaron la insignia y el subtítulo exacto según el criterio 4 de la tarea 0c.18.
+- **Normalización de `package.json` de la web:** El comando de test de `apps/web` apuntaba a una ruta rígida dentro de `.pnpm` que fallaba tras el merge. Se sustituyó por `vitest run` estándar idéntico al resto de paquetes del monorepo.
 
 ---
 
-## 3. Estado de las Cinco Compuertas (`node scripts/compuertas.mjs`)
+## Inventario por Pantallas para Integración por Partes
 
-```
-══════════════════════════════════════════════════════════════════════
-  ✓ build          verde     20.0s
-  ✓ lint           verde     6.7s
-  ✓ typecheck      verde     2.7s
-  ✓ test           verde     136.6s
-  ✓ format:check   verde     2.8s
+A continuación se detalla cada una de las 8 rutas de `apps/web/src/app/` con sus dependencias, archivos, pruebas asociadas y viabilidad de integración independiente:
 
-  Las cinco en verde. Ejecutadas, no supuestas.
-```
+### 1. `/bandeja` — Bandeja de Conversaciones (Inbox WhatsApp)
+- **Tarea origen:** Tarea 5 (`feat/bandeja-web`), 0b (Diseño de 3 columnas), 0c.2 (Cotizaciones en el hilo), 0d (Ficha del viajero vinculada).
+- **Archivos de página y layout:**
+  - `apps/web/src/app/bandeja/layout.tsx`: Armazón de tres columnas, barra de módulos, lista fija y panel central.
+  - `apps/web/src/app/bandeja/page.tsx`: Estado vacío de la bandeja («Selecciona una conversación»).
+  - `apps/web/src/app/bandeja/[id]/page.tsx`: Hilo de chat, cabecera de conversación con SLA/ventana 24h, mensajes entrantes/salientes, renderizado de cotizaciones en el hilo y panel lateral.
+- **Componentes:**
+  - `apps/web/src/components/bandeja/lista-conversaciones.tsx`
+  - `apps/web/src/components/bandeja/ficha-cliente.tsx`
+  - `apps/web/src/components/bandeja/modal-plantillas.tsx`
+  - `apps/web/src/components/bandeja/tarjeta-cotizacion.tsx`
+  - `apps/web/src/components/bandeja/panel-copilot-ia.tsx`
+  - `apps/web/src/components/bandeja/barra-modulos.tsx`
+- **Lógica y pruebas unitarias:**
+  - `apps/web/src/lib/bandeja-logica.ts` / `bandeja-comportamiento.spec.ts` (7 pruebas)
+  - `apps/web/src/lib/plantillas-logica.ts` / `plantillas-logica.spec.ts` (6 pruebas)
+  - `apps/web/src/lib/realtime-mock.ts` / `realtime-mock.spec.ts` (2 pruebas)
+  - `apps/web/src/lib/asistente-ia-logica.ts` / `asistente-ia-logica.spec.ts` (6 pruebas)
+- **¿Se puede integrar sola?:** Sí. Es el núcleo original de la bandeja; depende solo de los contratos Zod de `inbox.ts` y componentes base.
+
+### 2. `/catalogo` — Catálogo de Salidas Publicadas y Paquetes
+- **Tarea origen:** 0c.16 (Catálogo real de salidas, ADR-0009), 0c.17 (Condición comercial de tarifa grupal).
+- **Archivos de página:**
+  - `apps/web/src/app/catalogo/page.tsx`: Listado de salidas, filtros por destino y texto, conexión con `catalogo-api.ts`.
+- **Componentes:**
+  - `apps/web/src/components/catalogo/tarjeta-salida-publicada.tsx`: Tarjeta optimizada para móvil (375 px) con badge, subtítulo y enlace a cotizador.
+  - `apps/web/src/components/catalogo/ficha-detalle-paquete.tsx`: Ficha expandible de paquete.
+- **Lógica y pruebas unitarias:**
+  - `apps/web/src/lib/catalogo-logica.ts` / `catalogo-logica.spec.ts` (14 pruebas)
+  - `apps/web/src/lib/catalogo-api.ts`
+- **¿Se puede integrar sola?:** Sí. Consume `GET /api/v1/catalogo/salidas` o mock según `NEXT_PUBLIC_USE_REAL_CRM`.
+
+### 3. `/cotizador` — Cotizador de Salidas Armadas
+- **Tarea origen:** 0c.16 (Cotizador con desglose por pasajero, R8, y propuestas WhatsApp).
+- **Archivos de página:**
+  - `apps/web/src/app/cotizador/page.tsx`: Selector de salida/paquete, adultos, niños, infantes, total protagonista y botón de copiar propuesta.
+- **Componentes:**
+  - `apps/web/src/components/cotizador/desglose-cotizacion-salida.tsx`: Desglose línea por línea, tarifas alternativas y no aplicables con motivo.
+- **Lógica y pruebas unitarias:**
+  - `apps/web/src/lib/cotizador-logica.ts` / `cotizador-logica.spec.ts` (10 pruebas)
+- **¿Se puede integrar sola?:** Sí, junto con `/catalogo` o de forma independiente con contratos de `catalogo.ts`.
+
+### 4. `/pipeline` — Tablero Kanban de Oportunidades CRM
+- **Tarea origen:** 0c.3 (Tablero Kanban de 5 etapas, contratos CRM y accesibilidad).
+- **Archivos de página:**
+  - `apps/web/src/app/pipeline/page.tsx`: Vista Kanban y vista tabla compacta, filtros por asesor y búsqueda.
+- **Componentes:**
+  - `apps/web/src/components/pipeline/columna-kanban.tsx`: Columna con total servidor en `.cifra`.
+  - `apps/web/src/components/pipeline/tarjeta-oportunidad.tsx`: Tarjeta con accesibilidad por teclado («Mover a...»).
+  - `apps/web/src/components/pipeline/modal-motivo-perdida.tsx`: Modal obligatorio al mover a `PERDIDA` con validación Zod de motivo y nota.
+- **Lógica y pruebas unitarias:**
+  - `apps/web/src/lib/pipeline-logica.ts` / `pipeline-logica.spec.ts` (15 pruebas)
+- **¿Se puede integrar sola?:** Sí. Depende de contratos de `crm.ts` (`TableroPipeline`, `Oportunidad`).
+
+### 5. `/contactos` — Directorio de Contactos y Ficha CRM
+- **Tarea origen:** 0c.1 (Directorio y ficha unificada de contactos, Epic VC-3).
+- **Archivos de página:**
+  - `apps/web/src/app/contactos/page.tsx`: Tabla y rejilla de contactos con búsqueda reactiva.
+- **Componentes:**
+  - `apps/web/src/components/contactos/ficha-detalle-contacto.tsx`: Panel lateral deslizable con datos, historial y oportunidades.
+- **Lógica y pruebas unitarias:**
+  - `apps/web/src/lib/contactos-logica.ts` / `contactos-logica.spec.ts` (6 pruebas)
+  - `apps/web/src/lib/crm-api.ts` / `crm-api.spec.ts` (7 pruebas)
+- **¿Se puede integrar sola?:** Sí. Consume `GET /api/v1/crm/contactos` y `GET /api/v1/crm/contactos/:id/ficha`.
+
+### 6. `/configuracion` — Configuración de Agencia y Política de Precios
+- **Tarea origen:** 0c.8 (Configuración de canales, política de precio paramétrica ADR-0006/0009).
+- **Archivos de página:**
+  - `apps/web/src/app/configuracion/page.tsx`: Pestañas de Canales WhatsApp, Política de Precios y Equipo.
+- **Componentes:**
+  - `apps/web/src/components/configuracion/bloque-politica-precio.tsx`: Formulario de margen (porcentaje, base sobre neto/venta, redondeo).
+- **Lógica y pruebas unitarias:**
+  - `apps/web/src/lib/configuracion-logica.ts` / `configuracion-logica.spec.ts` (13 pruebas)
+  - `apps/web/src/lib/politica-precio-logica.ts` / `politica-precio-logica.spec.ts` (5 pruebas)
+- **¿Se puede integrar sola?:** Sí.
+
+### 7. `/viajes` — Expedientes de Viaje en Operación (TravelFiles)
+- **Tarea origen:** 0c.7 (Seguimiento operativo de salidas confirmadas).
+- **Archivos de página:**
+  - `apps/web/src/app/viajes/page.tsx`: Tarjetas de expedientes, estados de reserva y control de pasajeros.
+- **Lógica y pruebas unitarias:**
+  - `apps/web/src/lib/viajes-logica.ts` / `viajes-logica.spec.ts` (13 pruebas)
+- **¿Se puede integrar sola?:** Sí.
+
+### 8. `/reportes` — Métricas y Conversión
+- **Tarea origen:** 0c.6 (Panel analítico de métricas operativas y comerciales).
+- **Archivos de página:**
+  - `apps/web/src/app/reportes/page.tsx`: Métricas de conversión, volumen de ventas y SLA.
+- **Lógica y pruebas unitarias:**
+  - `apps/web/src/lib/reportes-logica.ts` / `reportes-logica.spec.ts` (5 pruebas)
+- **¿Se puede integrar sola?:** Sí.
+
+---
+
+### Módulos Transversales y Accesibilidad
+- `apps/web/src/components/busqueda/modal-busqueda-global.tsx` (`buscador-global-logica.spec.ts`: 8 pruebas).
+- `apps/web/src/components/notificaciones/panel-notificaciones.tsx` (`notificaciones-logica.spec.ts`: 4 pruebas).
+- `apps/web/src/lib/accesibilidad-logica.ts` (`accesibilidad-logica.spec.ts`: 4 pruebas).
+- `apps/web/src/components/crm/aviso-configuracion-tenant.tsx`: Aviso claro cuando falta `NEXT_PUBLIC_DEV_TENANT_ID`.

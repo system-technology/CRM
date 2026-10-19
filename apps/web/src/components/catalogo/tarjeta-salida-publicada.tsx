@@ -112,14 +112,6 @@ export function TarjetaSalidaPublicada({ salida }: TarjetaSalidaPublicadaProps) 
           </div>
         </div>
 
-        {condicionDesde.esGrupo && (
-          <div className="mb-3 rounded-lg border border-purple-200/80 bg-purple-50/70 p-2 text-[11px] text-purple-900 dark:border-purple-900/50 dark:bg-purple-950/30 dark:text-purple-200">
-            <p className="font-medium">
-              ℹ️ <strong>Condición comercial:</strong> {condicionDesde.aviso}
-            </p>
-          </div>
-        )}
-
         <Link
           href={`/cotizador?paqueteId=${encodeURIComponent(salida.paqueteId)}&fecha=${encodeURIComponent(salida.fecha)}`}
           className="bg-acento-600 hover:bg-acento-700 flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-xs font-bold text-white shadow-xs transition-colors"
