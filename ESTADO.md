@@ -6,7 +6,7 @@
 
 | Campo | Valor |
 |---|---|
-| Última actualización | 2026-10-19 (noche: v0.24.1 → v0.28.0; la bandeja web, entera en `main`) |
+| Última actualización | 2026-10-19 (noche: hasta v0.29.0, los estados de interfaz de la web) |
 | Actualizado por | Claude Opus 5.5 (`integrador`) |
 | Fase | **Rebanada vertical de paquetes, en construcción** |
 | Avance de la fase | Cotizador de punta a punta. **La cotización es la suma de sus tarifas y el precio «desde» es uno que el comprador puede pagar (v0.19.0).** Apretón de manos del webhook vivo. Bandeja web en construcción |
@@ -981,4 +981,25 @@ Estáticas en local en verde. Registro: [`docs/_integraciones/2026-10-19-bullmq-
 | Cola | Dueño | Por qué no bloquea |
 |---|---|---|
 | En el CI, la e2e de BullMQ **se salta, no falla**, si falta `REDIS_URL` (`CORRE = CI && REDIS_URL`). Si alguien quita el Redis del job, el CI seguiría verde | `devops` | Hoy `REDIS_URL` está en el job y la prueba corre. Arreglo: con `CI=true` y sin `REDIS_URL`, fallar |
+
+## Integración del 2026-10-19 (vigésima) — v0.29.0: estados vacío, de carga y de error (0c.25)
+
+`feat/web-0c25-estados` @ `fd3d2df` entra en `main` (`a43de30`), etiquetada **v0.29.0**. Contra `main`, `feat/bandeja-web` @ `2667648`
+solo traía la 0c.25 nueva: la 0c.23 y la 0c.24 ya habían entrado en la v0.28.0. Son 12 archivos de `apps/web`: los
+esqueletos, `estados-ui-logica` y nueve pantallas. Desde ahora, en `apps/web`, `main` es idéntico a `2667648`.
+Compuerta: CI **8/8**, https://github.com/Alfavear/CRM/actions/runs/39341157989, sobre el árbol del merge ·
+estáticas en local en verde · web **172** pruebas en 21 archivos.
+
+**`/iniciar-sesion` con el interruptor apagado, comprobado en el build de producción** (sin `NEXT_PUBLIC_AUTH_MAQUETA`).
+El HTML prerenderizado (`.next/server/app/iniciar-sesion.html`) solo contiene «Redirigiendo a la bandeja», sin
+formulario ni campo de contraseña, y el cliente redirige a `/bandeja`. El chunk JS de la página sí lleva el formulario
+y las credenciales de ejemplo (`asesor@viajapro.com` / `demo123`), porque Next no elimina ese código. **Son ficticias**:
+la maqueta acepta cualquier contraseña de 6 caracteres o más y no habla con ningún servidor, así que no hay nada que proteger.
+Registro: [`docs/_integraciones/2026-10-19-v0.29.0.md`](docs/_integraciones/2026-10-19-v0.29.0.md).
+
+| Cola | Dueño | Por qué no bloquea |
+|---|---|---|
+| `reportes/page.tsx` muestra **«Costo Neto»** y **«Margen Comercial»** con una etiqueta «Solo Dueño», pero sin control de rol | Antigravity (**0c.27**) | Hoy no hay roles. Va con «Neto:» del catálogo y el bloque de política |
+| `err.message` se pinta tal cual en tres pantallas | Antigravity (**0c.30**) | Hoy los errores vienen de mocks y de la API propia; con datos reales podría filtrar detalles internos |
+| La maqueta de ingreso deja su formulario y las credenciales de ejemplo en el chunk de cliente aunque el interruptor esté apagado | Antigravity (con la rebanada 3 del ADR-0011) | Son ficticias y no autentican nada. Se va al sustituir la maqueta por el ingreso real |
 
