@@ -261,8 +261,11 @@ model RecepcionWebhookChange {
   /// distintas producirían identificadores de trabajo distintos para el mismo reintento.
   indice      Int              @db.SmallInt
 
-  estado      EstadoChangeRecepcion @default(PENDIENTE)
-  procesadoEn DateTime?             @map("procesado_en") @db.Timestamptz(3)
+  estado          EstadoChangeRecepcion @default(PENDIENTE)
+  procesadoEn     DateTime?             @map("procesado_en") @db.Timestamptz(3)
+  /// Cuántas veces lo reencoló el barrido. Lo suma `contar_reencolado_barrido`; el listado
+  /// excluye a los que pasan del tope para que los abandonados no tapen a los nuevos.
+  intentosBarrido Int                   @default(0) @map("intentos_barrido") @db.SmallInt
 
   @@id([recepcionId, indice])
   @@index([procesadoEn])
