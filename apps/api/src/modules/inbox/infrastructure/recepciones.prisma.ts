@@ -23,10 +23,12 @@ export class RecepcionesPrisma extends PuertoRecepciones {
   async registrar(r: RecepcionAGuardar): Promise<boolean> {
     // Sin contexto de tenant a propósito: todavía no se sabe de qué agencia es el mensaje.
     // Ése es el problema que el ADR-0008 resuelve, y la razón de que esta tabla no lleve RLS.
-    return this.prisma.sinTenantPorqueEsPlataforma(
-      'recepción de webhook: el tenant aún no se ha resuelto (ADR-0008 §4)',
-      async (tx) => {
-        const filas = await tx.$queryRaw<Array<{ registrada: boolean }>>`
+    //
+    // **Declarada**, no a pelo. La variante ruidosa emitiría un `warn` por cada mensaje que
+    // entre, y el primer día de volumen real alguien bajaría el nivel del registro — perdiendo
+    // el aviso también donde sí importa. El porqué vive en `operaciones-de-plataforma.ts`.
+    return this.prisma.sinTenantDeclarado('inbox/registrar-recepcion', async (tx) => {
+      const filas = await tx.$queryRaw<Array<{ registrada: boolean }>>`
           SELECT public.registrar_recepcion(
             ${r.recepcionId}::bytea,
             ${r.cifrado}::bytea,
@@ -36,8 +38,7 @@ export class RecepcionesPrisma extends PuertoRecepciones {
             ${r.totalChanges}::smallint
           ) AS registrada
         `;
-        return filas[0]?.registrada === true;
-      },
-    );
+      return filas[0]?.registrada === true;
+    });
   }
 }

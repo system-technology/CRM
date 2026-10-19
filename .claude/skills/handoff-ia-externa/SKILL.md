@@ -56,7 +56,7 @@ diluye la tarea.>
 
 ## 5. Restricciones innegociables
 - TypeScript estricto. Sin `any`.
-- Dinero en enteros (centavos) + código ISO-4217. Nunca coma flotante.
+- Dinero en enteros (unidad mínima de la moneda; en COP es el peso, no el centavo) + código ISO-4217. Nunca coma flotante.
 - Fechas en UTC.
 - Sin dependencias nuevas salvo que se autoricen aquí explícitamente.
 - Sin acceso a red ni a base de datos: función pura o módulo aislado.

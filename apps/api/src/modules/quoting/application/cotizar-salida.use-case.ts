@@ -21,9 +21,16 @@ import {
   type BaseDelMargen,
 } from '@viajapro/domain';
 import { PrismaService } from '../../../shared/prisma/prisma.service.js';
+import { ContextoTenant } from '../../../shared/tenant/contexto-tenant.js';
 import { PaqueteNoEncontradoError } from '../domain/errors.js';
 import { monedaDeLaBase } from '../domain/moneda-de-la-base.js';
-import { esSuplemento, exigeComposicion, vecesQueSeCobra } from '../domain/seleccion-de-tarifas.js';
+import {
+  type Composicion,
+  esSuplemento,
+  exigeComposicion,
+  motivoNoAplica,
+  vecesQueSeCobra,
+} from '../domain/seleccion-de-tarifas.js';
 
 /** Una tarifa tal como sale de la base, antes de convertirse en opción de precio. */
 interface FilaTarifa {
@@ -31,7 +38,7 @@ interface FilaTarifa {
   nombre: string;
   unidad: 'POR_PERSONA' | 'POR_GRUPO';
   cubrePasajeros: number;
-  netoUnidades: bigint | null;
+  netoUnidades?: bigint | null;
   ventaUnidades: bigint;
   monedaIso: string;
   aditiva: boolean;
@@ -58,6 +65,9 @@ export class CotizarSalidaUseCase {
     const adultos = peticion.adultos ?? 1;
     const ninos = peticion.ninos ?? 0;
     const infantes = peticion.infantes ?? 0;
+    // Por defecto NO sale el margen: revela el neto por resta (`neto = venta − margen`).
+    const incluirMargen = peticion.incluirMargen ?? false;
+    const composicion: Composicion = { adultos, ninos, infantes };
     const pasajeros = adultos + ninos + infantes;
 
     return this.prisma.conTenant(async (tx) => {
@@ -79,23 +89,63 @@ export class CotizarSalidaUseCase {
         peticion.fecha,
       );
 
-      // Sin `where`: RLS ya acota a esta agencia, y hay una sola fila por tenant. Pasarle el
-      // `tenantId` a mano aqui seria repetir en la consulta lo que la politica ya garantiza, y
-      // abrir la puerta a que alguien lo tome del cuerpo de la peticion.
-      const politica = await tx.politicaDePrecio.findFirst({ select: { base: true } });
+      // **Predicado explícito MÁS RLS**, y no RLS sola. Lo era: un `findFirst` sin `where`, con
+      // el argumento de que pasar el `tenantId` «abriría la puerta a que alguien lo tome del
+      // cuerpo de la petición». `auditor-seguridad` desmontó ese argumento: `ContextoTenant` es
+      // **la misma fuente** de la que `conTenant` saca el valor para `set_config` —el token de
+      // sesión—, y no hay forma de que un cuerpo de petición llegue ahí.
+      //
+      // Lo que sí había era un agujero latente. El SQL emitido era `SELECT ... LIMIT 1` sin
+      // `WHERE` ni `ORDER BY`: acierta mientras el conjunto visible tenga una sola fila. Él lo
+      // reprodujo con un rol que ve más —el propietario, que en Neon se salta RLS— y devuelve la
+      // política de una agencia **arbitraria, sin error y sin aviso**, con el margen de otra
+      // aplicado al cálculo. El día que esto se llame desde un informe o un trabajo en cola, no
+      // falla: acierta mal.
+      const { tenantId } = ContextoTenant.obtener();
+      const politica = await tx.politicaDePrecio.findUnique({
+        where: { tenantId },
+        select: { base: true },
+      });
       const base: BaseDelMargen = (politica?.base as BaseDelMargen) ?? POLITICA_POR_DEFECTO.base;
 
+      // `select` explicito y no `findMany` a secas. El neto es lo que la agencia le paga al
+      // mayorista: no debe llegar a la capa de respuesta por inercia, sino porque alguien lo
+      // escribio. Y cuando no se pide el margen, ni siquiera sale de la base: defensa en
+      // profundidad, no una sola barrera en el mapeador.
       const filas = (await tx.tarifa.findMany({
         where: { vigenciaId: elegida.id },
         orderBy: { ventaUnidades: 'asc' },
+        select: {
+          id: true,
+          nombre: true,
+          unidad: true,
+          cubrePasajeros: true,
+          netoUnidades: incluirMargen,
+          ventaUnidades: true,
+          monedaIso: true,
+          aditiva: true,
+          acomodacion: true,
+          tipoPasajero: true,
+          edadMinima: true,
+          edadMaxima: true,
+          pasajerosMinimo: true,
+          pasajerosMaximo: true,
+          ocupaSilla: true,
+        },
       })) as unknown as FilaTarifa[];
 
       const aOpcion = (t: FilaTarifa, veces: number): OpcionDePrecio => {
         const moneda = monedaDeLaBase(t.monedaIso);
         const unitario = Money.desdeUnidades(t.ventaUnidades, moneda);
         const total = unitario.porCantidad(veces);
-        const neto = t.netoUnidades === null ? null : Money.desdeUnidades(t.netoUnidades, moneda);
-        const margenLinea = calcularMargen(neto, unitario, base);
+        // `undefined` cuando no se pidio el margen y la columna ni se consulto; `null` cuando la
+        // tarifa no tiene neto cargado. Las dos son «no hay margen que informar», y ninguna es
+        // margen cero.
+        const neto =
+          t.netoUnidades === null || t.netoUnidades === undefined
+            ? null
+            : Money.desdeUnidades(t.netoUnidades, moneda);
+        const margenLinea = incluirMargen ? calcularMargen(neto, unitario, base) : null;
 
         return {
           tarifaId: t.id,
@@ -105,40 +155,71 @@ export class CotizarSalidaUseCase {
           veces,
           precioUnitario: { unidades: t.ventaUnidades.toString(), moneda },
           total: { unidades: total.aPersistencia().unidades.toString(), moneda },
-          margen:
-            margenLinea === null
-              ? null
-              : {
-                  unidades: margenLinea.importe
-                    .porCantidad(veces)
-                    .aPersistencia()
-                    .unidades.toString(),
-                  moneda,
-                },
-          margenPorcentaje: margenLinea?.porcentaje ?? null,
-          recomendada: false,
+          // Las claves se OMITEN enteras cuando no se piden, en vez de venir en `null`: asi una
+          // pantalla que consuma esto no recibe el dato ni puede despejarlo, y un `Object.keys`
+          // lo demuestra — que es la asercion que sobrevive a un `...spread` futuro.
+          ...(incluirMargen
+            ? {
+                margen:
+                  margenLinea === null
+                    ? null
+                    : {
+                        unidades: margenLinea.importe
+                          .porCantidad(veces)
+                          .aPersistencia()
+                          .unidades.toString(),
+                        moneda,
+                      },
+                margenPorcentaje: margenLinea?.porcentaje ?? null,
+              }
+            : {}),
+          masBarata: false,
         };
       };
 
-      const opciones: OpcionDePrecio[] = [];
+      // --- La cotización armada: una línea por tarifa que cubra a alguien ---------
+      //
+      // Una cotización real NO es una tarifa: es una suma. Dos adultos a precio de adulto más un
+      // niño a precio de menor. Antes solo se devolvían tarifas sueltas, y el número que el
+      // asesor tiene que escribir en WhatsApp no estaba en ninguna respuesta.
+      const lineas: OpcionDePrecio[] = [];
+      const alternativas: OpcionDePrecio[] = [];
       const suplementos: OpcionDePrecio[] = [];
+      const noAplicables: { tarifaId: string; nombre: string; motivo: string }[] = [];
 
       for (const t of filas) {
-        const veces = vecesQueSeCobra(t, pasajeros);
-        if (veces === null) continue;
-        // Un suplemento se ofrece, no se suma solo: el de sencilla depende de cómo duerman.
-        // Un suplemento se cobra una vez y se ofrece aparte: no se suma solo.
-        (esSuplemento(t) ? suplementos : opciones).push(aOpcion(t, esSuplemento(t) ? 1 : veces));
-      }
+        const veces = vecesQueSeCobra(t, composicion);
 
-      // La recomendada es la más barata, y se marca a la vista en lugar de aplicarse a escondidas.
-      let masBarata: OpcionDePrecio | null = null;
-      for (const o of opciones) {
-        if (masBarata === null || BigInt(o.total.unidades) < BigInt(masBarata.total.unidades)) {
-          masBarata = o;
+        if (veces === null) {
+          const motivo = motivoNoAplica(t, composicion);
+          // Se devuelve CON su motivo en vez de desaparecer. Una promo que se esconde acaba
+          // aplicándose con la calculadora del celular, y el informe de margen deja de cuadrar.
+          if (motivo !== null) noAplicables.push({ tarifaId: t.id, nombre: t.nombre, motivo });
+          continue;
+        }
+
+        if (esSuplemento(t)) {
+          suplementos.push(aOpcion(t, 1));
+        } else if (t.unidad === 'POR_GRUPO') {
+          // Las de grupo REEMPLAZAN al armado: llevan condiciones que no conocemos —cupo del
+          // mayorista, «no acumulable»—, y prometer un precio que no se puede honrar cuesta un
+          // cliente. Se enseñan; no se aplican solas.
+          alternativas.push(aOpcion(t, veces));
+        } else {
+          lineas.push(aOpcion(t, veces));
         }
       }
-      if (masBarata) masBarata.recomendada = true;
+
+      const moneda = monedaDeLaBase(filas[0]?.monedaIso ?? 'COP');
+      let total = Money.cero(moneda);
+      for (const l of lineas)
+        total = total.sumar(Money.desdeUnidades(BigInt(l.total.unidades), moneda));
+
+      // Por TOTAL, no por precio unitario: en un celular se lee la primera línea, y ordenar por
+      // unitario ponía la opción cara arriba —$189.000 por persona delante de $280.000 la pareja,
+      // cuando para dos personas la pareja sale más barata—.
+      alternativas.sort((a, b) => Number(BigInt(a.total.unidades) - BigInt(b.total.unidades)));
+      if (alternativas[0]) alternativas[0].masBarata = true;
 
       return {
         paqueteId: paquete.id,
@@ -154,7 +235,10 @@ export class CotizarSalidaUseCase {
         ninos,
         infantes,
         pasajeros,
-        opciones,
+        lineas,
+        total: { unidades: total.aPersistencia().unidades.toString(), moneda },
+        alternativas,
+        noAplicables,
         suplementos,
         pideComposicion: filas.some(exigeComposicion),
       };

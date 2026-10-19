@@ -21,6 +21,7 @@ import { Injectable, Logger, type OnModuleDestroy, type OnModuleInit } from '@ne
 import { PrismaClient } from '@prisma/client';
 import { ContextoTenant } from '../tenant/contexto-tenant.js';
 import { type RolDeConexion, resolverCadena, verificarIdentidad } from './guardia-de-rol.js';
+import { type OperacionDePlataforma, motivoDeclarado } from './operaciones-de-plataforma.js';
 
 /**
  * El rol con el que DEBE conectarse este proceso.
@@ -113,6 +114,26 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
     fn: (tx: ClienteTenant) => Promise<T>,
   ): Promise<T> {
     this.log.warn(`Acceso sin contexto de tenant: ${motivo}`);
+    return this.$transaction((tx) => fn(tx));
+  }
+
+  /**
+   * Lo mismo, pero para una operación **declarada** en `operaciones-de-plataforma.ts`.
+   *
+   * La diferencia con la de arriba no es el aislamiento —las dos corren igual de destapadas—,
+   * es **dónde se pide la atención de quien revisa**. La de arriba grita en cada ejecución;
+   * ésta exige una línea nueva en un archivo compartido, que se ve una vez en el diff y no un
+   * millón de veces en el registro.
+   *
+   * Sin esto, el webhook emitiría un aviso por cada mensaje recibido, alguien bajaría el nivel
+   * del registro, y el aviso dejaría de verse **también en el alta de agencias**, que es donde
+   * sí significaba algo. El daño no habría sido el ruido: habría sido perder la señal.
+   */
+  async sinTenantDeclarado<T>(
+    operacion: OperacionDePlataforma,
+    fn: (tx: ClienteTenant) => Promise<T>,
+  ): Promise<T> {
+    this.log.debug(`Operación de plataforma «${operacion}»: ${motivoDeclarado(operacion)}`);
     return this.$transaction((tx) => fn(tx));
   }
 }

@@ -10,7 +10,7 @@
 | Actualizado por | Claude Opus 5 |
 | Fase | **Rebanada vertical de paquetes, en construcción** |
 | Avance de la fase | Cotizador de punta a punta. **El precio cuelga ya de una ventana de vigencia (ADR-0009, v0.18.0).** Apretón de manos del webhook vivo y verificado contra la API corriendo. Bandeja web en construcción |
-| Próximo hito | **Reparar la compuerta de pruebas (tarea 0).** Hoy la suite de aislamiento se envenena a sí misma y no puede correr dos veces seguidas: nada más se integra hasta que vuelva a verde |
+| Próximo hito | **El trabajador que convierte un `change` recibido en mensaje de bandeja.** La compuerta de pruebas (tarea 0) ya está reparada y medida con dos corridas seguidas |
 
 ---
 
@@ -466,3 +466,67 @@ día antes de pedir integración, y que una rama que nadie puede revisar se part
 | El prefijo `docs/` de `docs/adr-0009-parametrico` miente: la rama trae migración, rutas de API, dominio y contratos | `facilitador` | Se integró por su contenido. El nombre es barato de acertar la próxima vez |
 | `.prettierignore` sigue ignorando `images/`, una carpeta que ya no existe | `devops` | Ruido inofensivo |
 | El `typecheck` da un rojo falso (`Property 'vigencia' does not exist on type 'ClienteTenant'`) cuando `build` es un acierto de caché de Turbo y no regenera el cliente de Prisma. Turbo no declara `generate` como dependencia de `typecheck` | `devops` | Se resuelve con `pnpm --filter @viajapro/database generate`. Ya estaba en la cola desde el 2026-10-11; hoy volvió a morder |
+
+
+---
+
+## 2026-10-13 (noche) — lo que pasó después de la v0.18.0
+
+### La tarea 0 está cerrada, y medida como había que medirla
+
+El `integrador` integró con la compuerta de pruebas en rojo y lo declaró como excepción. Tenía
+razón en el diagnóstico: **la suite se envenenaba a sí misma**. Su `afterAll` hacía
+`DELETE FROM tenants` a secas, chocaba contra el `RESTRICT` de `enrutamiento_canales` hacia
+`cuentas_whatsapp`, el borrado no se completaba y los tres tenants de fixture sobrevivían. La
+corrida siguiente moría con `duplicate key` en diecisiete aserciones que no tenían nada que ver
+con el aislamiento.
+
+Reparado en `4f08d25`. `scripts/borrar-tenants.mjs` **descubre** el orden de borrado en vez de
+codificarlo, y barre toda columna `uuid` con `tenant` en el nombre —no solo `tenant_id`—. Lo usan
+el `afterAll` y `limpiar-fixtures.mjs`: un solo sitio, para que no haya una versión buena y otra
+que se queda vieja. Y `pnpm test` del paquete limpia antes de correr, porque la higiene no puede
+depender de que alguien se acuerde.
+
+**Prueba: dos corridas seguidas sin tocar nada entre ellas. 39/39 las dos, y la segunda arranca
+con la base limpia.** También se borraron 213 filas de residuo que ya estaban en Neon.
+
+### Las foráneas del catálogo llevan el tenant dentro
+
+`auditor-seguridad` ejecutó contra Neon tres escrituras cruzadas que la foránea simple permitía:
+colgar una tarifa de la vigencia de otra agencia, mover una tarifa a la vigencia ajena, y colgar
+una vigencia del paquete de otro. **Y desmontó el motivo por el que yo lo había aplazado:** escribí
+«es un barrido de todo el esquema, no de una tabla suelta» y contó 38 foráneas compuestas contra 6
+simples. `inbox` y `crm` ya eran compuestas, con dos aserciones probando ese ataque.
+
+Migración `20261013230000`. Los tres ataques ahora rebotan con `23503`, comprobado. Una trampa
+esquivada por el camino: la foránea al mayorista era `SET NULL`, y una **compuesta** con `SET NULL`
+pone a `NULL` también `tenant_id`, que es `NOT NULL` — PostgreSQL acepta el DDL y revienta en
+ejecución.
+
+### La cotización es una suma, no una tarifa
+
+`experto-turismo` encontró una mina: el cotizador **preguntaba la composición de pasajeros y
+después la ignoraba**. Una tarifa `POR_PERSONA` se cobraba al grupo entero, fuera cual fuera su
+`tipoPasajero`. Una familia de dos adultos y un niño habría salido a **$876.000** —«Menor × 3»,
+marcada como recomendada por ser la más barata— cuando lo correcto son **$1.070.000**. Con el
+margen del 20 %, eso es vender por debajo del costo.
+
+No disparaba porque el tarifario real son pasadías sin tarifa de menor. Habría disparado con el
+primer paquete con hotel.
+
+La respuesta de cotizar lleva ahora `lineas` —una por tipo de pasajero—, `total`, `alternativas`
+de grupo que **no se aplican solas**, y `noAplicables` **con su motivo**. `recomendada` pasó a
+llamarse `masBarata`, porque la opción más barata es casi por definición la de peor margen.
+
+### Cola — con dueño, no bloquea
+
+| Cola | Dueño | Por qué no bloquea |
+|---|---|---|
+| **El `margen` que devuelve cotizar ES el neto**: `neto = venta − margen`. Y `TarifaPublica`, el contrato escrito para impedirlo, **no lo importa nadie** | `backend` | No hay superficie de cara al viajero y toda ruta exige sesión. **Dependencia dura: no entra la primera pieza para el viajero sin partir la respuesta en interna y pública** |
+| `politicaDePrecio.findFirst()` sin `where` acierta hoy por RLS; con otro rol o fuera de contexto devuelve la política de otra agencia **sin error** | `backend` | Verificado que hoy devuelve lo correcto. Cuesta una línea |
+| `vigencias`, `tarifas` y `politicas_de_precio` no tienen **ni una aserción de comportamiento** en `aislamiento.spec.ts` | `qa` | Cobertura estructural sí. Pero el día que alguien quite la foránea compuesta, nada se pondrá en rojo |
+| **La salida no tiene fecha de regreso**: la hereda del paquete. Las cuatro super excursiones salen en días distintos y vuelven el mismo | `arquitecto` | Roto hoy con el dato de hoy, pero el cliente aún no lo ve. «¿Y volvemos cuándo?» es la segunda pregunta de todo viajero |
+| **No existe la ciudad de ORIGEN** de la salida, y la hoja real mezcla orígenes: Nevado del Ruiz y Buenaventura el mismo domingo no salen del mismo sitio | `arquitecto` | Hoy se duplicaría el paquete por ciudad, que rompe paquete-como-plantilla |
+| `neto` y `venta` obligados a la **misma moneda**: el mayorista de producto internacional cotiza en USD y la agencia vende en COP | `arquitecto` | Los 47 productos son terrestres y en COP. Candidato a bloqueante en el mes dos |
+| **Impuestos sin base gravable.** `experto-turismo` levantó la bandera y declaró no conocer el detalle | `investigador` | Afecta a la factura electrónica, no al cotizador. Fuente: el contador de la agencia piloto |
+| Nombres de dominio: `CLAUDE.md` exige **inglés** y el esquema entero está en **español** | `arquitecto` | Hay que cambiar la regla o el código. No se tocó ninguna de las dos |
