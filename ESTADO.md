@@ -6,7 +6,7 @@
 
 | Campo | Valor |
 |---|---|
-| Última actualización | 2026-10-19 (noche: v0.24.1, v0.25.0 y v0.26.0 —bandeja web—, con el CI como compuerta) |
+| Última actualización | 2026-10-19 (noche: v0.24.1 → v0.27.0, con el CI como compuerta) |
 | Actualizado por | Claude Opus 5.5 (`integrador`) |
 | Fase | **Rebanada vertical de paquetes, en construcción** |
 | Avance de la fase | Cotizador de punta a punta. **La cotización es la suma de sus tarifas y el precio «desde» es uno que el comprador puede pagar (v0.19.0).** Apretón de manos del webhook vivo. Bandeja web en construcción |
@@ -121,7 +121,7 @@ Ordenada. La primera es la que debe tomarse ahora.
 | 4g | `purgar_directorio`, o decidir que es manual | `arquitecto`, `datos` | Hoy ninguna fila del directorio se puede borrar por ningún camino de código. **No bloquea un esquema vacío; bloquea el primer tenant en producción** |
 | 4h | Trabajo anual de creación de particiones del historial | `devops` | Si falta la del año siguiente, **ninguna agencia puede conectar su canal**. Mejor: un *event trigger* que lo haga imposible de olvidar |
 | 4i | Aserción de concurrencia determinista y orden de las aserciones | `qa` | La de la carrera falla hacia el verde; y 22/23 reparan privilegios, así que enmascaran a cualquier aserción declarada después |
-| 5 | Bandeja de conversaciones en la web | Antigravity, en `feat/bandeja-web`; integración por tandas | **Entra por tandas desde `814ae24`, revisada y aceptada.** Tanda 1 (base) en v0.24.0 y tanda 2 (bandeja) en v0.26.0. Quedan la 3 (catálogo y cotizador) y la 4 (CRM operativo y docs). La 0c.22 (cotizaciones guardadas) va aparte. `traspaso/` no entra en `main` |
+| 5 | Bandeja de conversaciones en la web | Antigravity, en `feat/bandeja-web`; integración por tandas | **Entra por tandas desde `814ae24`, revisada y aceptada.** Tandas 1 (base, v0.24.0), 2 (bandeja, v0.26.0) y 3 (catálogo y piezas del cotizador, v0.27.0) integradas. Queda la 4 (CRM operativo y docs). La página del cotizador entra con la 0c.22, porque en `0586743` importa el guardado. La 0c.22 (cotizaciones guardadas) va aparte. `traspaso/` no entra en `main` |
 | 6 | Guardar cotizaciones con versiones inmutables | `backend` | **Hecha (esquema v0.22.0, API v0.23.0, 2026-10-19).** `POST /api/v1/cotizaciones`, `POST /:id/versiones` y `GET /:id`. El servidor recalcula los importes y no guarda los que manda el cliente. Siguen en cola el listado, el envío y los estados |
 | 7 | Pruebas de integración de la API | `qa` | Solo se probó a mano. **La verificación del cotizador fue manual: no hay prueba automática que la repita** |
 | 8 | CI en GitHub Actions corriendo de verdad | `devops` | **Cerrada (2026-10-19).** Primer verde: https://github.com/Alfavear/CRM/actions/runs/39308173658. Las 18 migraciones se reconstruyen desde cero en un Postgres 16 limpio |
@@ -924,4 +924,21 @@ integradas. **Sin la 0c.22**: no entra nada de cotizaciones guardadas, y ningún
 Compuerta: CI **8/8**, https://github.com/Alfavear/CRM/actions/runs/39338146105, sobre el árbol del merge ·
 estáticas en local en verde · web **73** pruebas en 10 archivos.
 Registro: [`docs/_integraciones/2026-10-19-v0.26.0.md`](docs/_integraciones/2026-10-19-v0.26.0.md).
+
+## Integración del 2026-10-19 (decimoséptima) — v0.27.0: catálogo web y piezas del cotizador (tanda 3)
+
+`feat/web-tanda-3-catalogo` @ `f008b7c` entra en `main` (`b5327e9`), etiquetada **v0.27.0**. Son 13 rutas de
+`0586743`, byte a byte: la página de catálogo y sus componentes, el aviso de configuración del tenant, el
+bloque de política de precio, el desglose de cotización por salida, y la lógica de catálogo, cotizador
+y política de precio, con sus specs.
+**Frontera movida: la página `/cotizador` no entra.** En `0586743` importa `modal-guardar-cotizacion`,
+`cotizaciones-api` y `cotizaciones-logica`, que son la 0c.22 y van aparte. `main` se queda con su
+cotizador anterior, y el desglose nuevo está listo pero sin usar hasta entonces.
+Compuerta: CI **8/8**, https://github.com/Alfavear/CRM/actions/runs/39338773523, sobre el árbol del merge ·
+estáticas en local en verde · web **102** pruebas en 13 archivos.
+Registro: [`docs/_integraciones/2026-10-19-v0.27.0.md`](docs/_integraciones/2026-10-19-v0.27.0.md).
+
+| Cola | Dueño | Por qué no bloquea |
+|---|---|---|
+| `/cotizador` sigue con la versión anterior, y `desglose-cotizacion-salida` y `bloque-politica-precio` están en `main` sin que ninguna página los use | integrador (con la 0c.22 y la tanda 4) | Es código sin usar; lo activan la 0c.22 y la página de configuración |
 
