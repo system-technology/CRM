@@ -1,7 +1,7 @@
 # ADR-0010 — El webhook entrante tal como es, y dónde vive su trabajador
 
-- **Estado:** Aceptado (2026-10-19) en modo desatendido, tras la revisión de `auditor-seguridad`.
-  Queda pendiente que el propietario lo ratifique. Ninguno de los
+- **Estado:** Aceptado (2026-10-19), tras la revisión de `auditor-seguridad`, y ratificado por
+  el propietario el mismo día. Ninguno de los
   huecos del punto 6 es una fuga posible hoy: están en cola.
 - **Fecha:** 2026-10-19
 - **Decide:** Propietario del producto

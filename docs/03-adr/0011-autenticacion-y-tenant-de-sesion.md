@@ -1,8 +1,8 @@
 # ADR-0011 — Autenticación con Better Auth en la API y el tenant como dato de la sesión
 
-- **Estado:** Propuesto, a la espera del propietario. `auditor-seguridad` lo **aceptó** en la
-  segunda vuelta (2026-10-19), con los dos bloqueantes cerrados (la baja en el socket y la
-  superficie de `viajapro_identidad`). Aceptarlo exige cambiar R2 de `CLAUDE.md` (roles nuevos).
+- **Estado:** Aceptado (2026-10-19) por el propietario, tras dos vueltas de `auditor-seguridad`
+  con los dos bloqueantes cerrados (la baja en el socket y la superficie de `viajapro_identidad`).
+  R2 de `CLAUDE.md` se actualizó con los roles nuevos, con la aprobación expresa del propietario.
 - **Fecha:** 2026-10-19
 - **Decide:** Propietario del producto
 - **Consultados:** `arquitecto` (redacta) y `auditor-seguridad` (dos vueltas). Pendiente: `datos`
