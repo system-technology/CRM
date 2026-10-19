@@ -1,10 +1,11 @@
 # ADR-0011 — Autenticación con Better Auth en la API y el tenant como dato de la sesión
 
-- **Estado:** Propuesto. `auditor-seguridad` lo revisó y pidió aceptarlo con cambios; los dos
-  bloqueantes ya están incorporados (la baja en el socket y la superficie de `viajapro_identidad`)
+- **Estado:** Propuesto, a la espera del propietario. `auditor-seguridad` lo **aceptó** en la
+  segunda vuelta (2026-10-19), con los dos bloqueantes cerrados (la baja en el socket y la
+  superficie de `viajapro_identidad`). Aceptarlo exige cambiar R2 de `CLAUDE.md` (roles nuevos).
 - **Fecha:** 2026-10-19
 - **Decide:** Propietario del producto
-- **Consultados:** `arquitecto`. Pendiente: `auditor-seguridad` (toca aislamiento y PII), `datos`
+- **Consultados:** `arquitecto` (redacta) y `auditor-seguridad` (dos vueltas). Pendiente: `datos`
 
 ---
 
@@ -293,6 +294,9 @@ Las rebanadas 1 a 3 cierran la tarea 12 y desbloquean el despliegue.
 | `RUTAS_SIN_TENANT` excluye todo el prefijo `/api/v1/auth/`, que es muy amplio. Hay que reducirlo a las rutas de Better Auth y comprobar que `tenant-activo` hace el paso 4 por su cuenta | `backend` |
 | Ley 1581: un aviso de privacidad para los asesores, sobre qué datos suyos se guardan, por qué y cuánto tiempo | `auditor-seguridad`, `documentador` |
 | Ley 1581: el procedimiento para suprimir una identidad, que cubra también sus filas de `accesos_identidad` y sus sesiones | `datos`, `backend` |
+| Una aserción sobre `pg_auth_members` que compruebe que ningún rol de login es miembro de `viajapro_accesos`. **Entra en la rebanada 1** | `datos` |
+| El disparador de `accesos_identidad`, en `UPDATE`: si cambia `identidad_id` o `tenant_id`, borra el par `OLD`. **Entra en la rebanada 1**, con su aserción | `datos` |
+| La revalidación del socket cada 60 s repite **también el paso 3** (la sesión existe y no está revocada), no solo el 4. Si no, una sesión revocada cuyo evento se perdió sigue viva. **Entra en la rebanada 2** | `backend` |
 
 ## Cuándo revisar esta decisión
 
