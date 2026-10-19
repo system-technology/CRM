@@ -199,11 +199,16 @@ pura y una tabla pantalla × (vacío, carga, error) con «cumple / no cumple» r
 **Hecho cuando:** la tabla no tiene ninguna celda «no cumple» o cada una tiene su motivo, y
 `pnpm compuertas` sale en verde.
 
-## [x] 0c.26. Evidencia a 375 px de la auditoría 0c.21 (añadida el 2026-10-19)
+## [ ] 0c.26. Evidencia a 375 px de la auditoría 0c.21 (añadida el 2026-10-19)
 
 Con el navegador, captura a 375 px: tarjeta de salida del catálogo, borrador en ventana de 24 h
 cerrada, `/pipeline` y `/cotizador`. Comprueba sin desbordes horizontales ni objetivos < 44 px.
 Guarda las capturas en `docs/_assets/diseno/` y corrige lo que falle.
+
+> **REABIERTA el 2026-10-19 tras revisar las capturas con la vista:** las cuatro son de 375 x 812 y la
+> corrección de objetivos táctiles se acepta, pero **tres de las cuatro muestran contenido cortado
+> por la derecha**, es decir, desborde horizontal real. Ver detalle en `REVISION.md` (0c.26). El
+> «Hecho cuando» no se cumple. Corrige y recaptura las tres.
 
 **Hecho cuando:** hay 4 capturas referenciadas en `ENTREGA.md` y ninguna muestra scroll horizontal.
 
@@ -279,6 +284,20 @@ abrió; los avisos dinámicos usan `aria-live`. Corrige lo que falle y anota en 
 modal × (foco dentro, Esc, foco de vuelta).
 
 **Hecho cuando:** la tabla no tiene celdas «no» sin motivo y `pnpm compuertas` sale en verde.
+
+---
+
+## [ ] 0c.33. Corregir el desborde horizontal a 375 px que muestran las capturas (añadida el 2026-10-19, PRIORITARIA)
+
+Causa probable: un hijo con ancho mínimo mayor que el viewport (`min-w-*`, `whitespace-nowrap`, grids
+sin `min-w-0`, tarjetas con `w-[...]`) dentro de `main`. Busca en `/catalogo`, `/bandeja/[id]`
+(cabecera, aviso de ventana cerrada y botón «Usar borrador en plantilla») y `/cotizador`, más el
+filtro de la cabecera de `/pipeline`. Añade `padding-bottom` al contenido para que la barra inferior
+no tape el pie. Mide con CDP `document.documentElement.scrollWidth` **y** mira la captura: el número
+solo no basta, la 0c.26 pasó la medida y falló la vista.
+
+**Hecho cuando:** recapturas `07`, `08`, `09` y `10` a 375 px y, mirándolas, ningún texto, borde ni
+botón queda cortado por la derecha ni tapado por la barra inferior; `pnpm compuertas` en verde.
 
 ---
 

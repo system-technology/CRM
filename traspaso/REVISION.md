@@ -122,3 +122,40 @@ cola como 0c.29, que no bloquea.
   `MensajeErrorDetallado`, es de la maqueta de estados de UI y no existe en los contratos.
 - **Ejecutado:** web lint y typecheck limpios, test 21 archivos y 172 pruebas, `format:check` limpio.
   Sin navegador ni suite de aislamiento.
+
+---
+
+# REVISIÓN — 0c.26 `e3f4fa5`
+
+## Veredicto: **DEVUELTA EN PARTE.** Objetivos táctiles aceptados; la evidencia contradice «sin desborde»
+
+## Bloqueante (solo para cerrar la 0c.26; no detiene la integración del resto)
+
+Miré las cuatro capturas con la vista. Todas miden de verdad 375 x 812, pero **el contenido se sale
+por la derecha en tres**, lo que contradice `ENTREGA.md` («cero desbordes», `body.scrollWidth === 375`):
+
+- `07-catalogo-salida-375px.png`: el badge «datos demo…» y el enlace «Pro…» cortados; la tarjeta de
+  salida sin borde derecho; «Tarifa desde: $» con el importe fuera de pantalla.
+- `08-ventana-24h-cerrada-375px.png`: la cabecera («+57300009876…», «24h Cerrada»), la hora «05:51», el
+  texto de «Ventana de 24 horas cerrada…» y el botón «Usar borrado…» cortados. **El botón clave de
+  0c.19 no se ve entero.**
+- `10-cotizador-375px.png`: la tarjeta de parámetros y los campos de pasajeros sin borde derecho; el
+  texto del paquete en el selector cortado.
+- `09-pipeline-375px.png`: el kanban hace scroll interno (correcto, hay barra propia), pero el filtro
+  «Todos…» de la cabecera también se corta.
+
+Es el criterio 3 de la 0c.21 («funciona a 375 px»), marcado «Cumple», y hoy no se cumple. Nueva tarea
+**0c.33**.
+
+## Cola
+
+1. La barra inferior de navegación tapa el pie de contenido (en `10-cotizador` los botones de abajo
+   quedan detrás de ella): falta `padding-bottom` del alto de la barra. *(Dueño: Antigravity, 0c.33.)*
+2. El botón flotante «N» es del modo desarrollo de Next, no del producto; ignorado.
+
+## Verificado
+
+- **Peso:** 36.8, 32.8, 42.1 y 37.0 KB; todas muy por debajo de 200 KB.
+- **Neto y margen:** ninguna captura los muestra; solo venta, totales de etapa y «Tarifa desde».
+- **Pantallas:** coinciden con la 0c.26 (catálogo, ventana 24 h cerrada, pipeline, cotizador).
+- **Ejecutado:** web lint y typecheck limpios, 172 pruebas, `format:check` limpio.
