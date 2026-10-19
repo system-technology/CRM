@@ -18,7 +18,11 @@ import {
   GuardarCotizacion as EsquemaGuardarCotizacion,
   ErrorApi as EsquemaError,
 } from '@viajapro/contracts';
-import { guardarMockCotizacion, obtenerMockCotizacionPorId } from './mock-cotizaciones';
+import {
+  guardarMockCotizacion,
+  obtenerMockCotizacionPorId,
+  obtenerMockCotizaciones,
+} from './mock-cotizaciones';
 import { MOCK_PAQUETES_CATALOGO } from './mock-catalogo';
 
 export function obtenerBaseApi(): string {
@@ -361,4 +365,29 @@ export async function obtenerCotizacionGuardadaApi(
   }
 
   return EsquemaCotizacionGuardada.parse(cotizacion);
+}
+
+/**
+ * Obtiene el listado de cotizaciones guardadas.
+ * - Si NEXT_PUBLIC_USE_REAL_CRM está activo: consulta GET /api/v1/cotizaciones.
+ * - Si falla o está inactivo: recurre al almacén simulado en memoria.
+ */
+export async function listarCotizacionesApi(): Promise<CotizacionGuardada[]> {
+  if (estaUsandoApiReal()) {
+    try {
+      const respuesta = await pedirCotizaciones<unknown>('/api/v1/cotizaciones');
+      if (Array.isArray(respuesta)) {
+        return respuesta.map((item) => EsquemaCotizacionGuardada.parse(item));
+      }
+    } catch (err) {
+      console.warn(
+        '[CotizacionesApi] Fallo al listar cotizaciones en API real. Usando almacén mock:',
+        err,
+      );
+    }
+  }
+
+  // Simulación de latencia de red para renderizado de esqueleto
+  await new Promise((resolve) => setTimeout(resolve, 300));
+  return obtenerMockCotizaciones();
 }

@@ -174,7 +174,7 @@ defecto: apagado = la ruta redirige a `/bandeja`). Sin guardar sesión real ni t
 muestra error y carga simulados, con el interruptor apagado no cambia nada del resto de la app, y
 `pnpm compuertas` sale en verde.
 
-## [ ] 0c.24. Listado de cotizaciones guardadas, con datos simulados (añadida el 2026-10-19)
+## [x] 0c.24. Listado de cotizaciones guardadas, con datos simulados (añadida el 2026-10-19)
 
 > **Nota:** cuando `GET /api/v1/cotizaciones` (listado) entre en `main`, esta tarea pasa de datos
 > simulados a la API real; el interruptor se mantiene para el modo sin API.

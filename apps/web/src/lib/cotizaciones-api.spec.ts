@@ -4,9 +4,10 @@ import {
   CotizacionesApiError,
   guardarCotizacionApi,
   obtenerCotizacionGuardadaApi,
+  listarCotizacionesApi,
 } from './cotizaciones-api';
 
-describe('cotizaciones-api (0c.22)', () => {
+describe('cotizaciones-api (0c.22 & 0c.24)', () => {
   const CONTACTO_ID = '00000000-0002-4000-8000-000000000001';
   const PAQUETE_ID = '01932000-0000-7000-8000-000000000001';
 
@@ -73,5 +74,14 @@ describe('cotizaciones-api (0c.22)', () => {
     await expect(
       obtenerCotizacionGuardadaApi('00000000-0000-0000-0000-999999999999'),
     ).rejects.toThrow(CotizacionesApiError);
+  });
+
+  it('lista las cotizaciones guardadas con sus versiones (0c.24)', async () => {
+    const listado = await listarCotizacionesApi();
+    expect(Array.isArray(listado)).toBe(true);
+    expect(listado.length).toBeGreaterThan(0);
+    const primera = listado[0]!;
+    expect(primera.id).toBeDefined();
+    expect(primera.versiones.length).toBeGreaterThan(0);
   });
 });
