@@ -1,7 +1,8 @@
 # ADR-0010 — El webhook entrante tal como es, y dónde vive su trabajador
 
-- **Estado:** Propuesto. Toca la frontera entre agencias (ADR-0008 §1.3 y §4): pasa por
-  `auditor-seguridad` antes de aceptarse.
+- **Estado:** Aceptado (2026-10-19) en modo desatendido, tras la revisión de `auditor-seguridad`.
+  Queda pendiente que el propietario lo ratifique. Ninguno de los
+  huecos del punto 6 es una fuga posible hoy: están en cola.
 - **Fecha:** 2026-10-19
 - **Decide:** Propietario del producto
 - **Consultados:** `arquitecto` (redacta). Pendiente: `auditor-seguridad`
@@ -36,8 +37,8 @@ Todo lo que sigue se contrastó contra las migraciones y el código de `main` en
 | 3 | §1.2(b), §1.4, §5: «**seis** funciones `SECURITY DEFINER`» | Son **ocho**. Ver 1.2. Las reglas de §1.4, la revocación a `PUBLIC` y la obligación de auditar cualquier cambio de cuerpo valen para las ocho. Las aserciones 12, 13 y 20 ya las enumeran (`aislamiento.spec.ts`) | `20261007140100` §4, `20261019120000` |
 | 4 | No mencionaba `crear_particion_historial` | Existe. **No** es `SECURITY DEFINER`, compone SQL dinámico y solo la ejecuta el rol de migraciones (`EXECUTE` revocado a `PUBLIC`). Es del mismo género que `aplicar_aislamiento_tenant`: sin entrada de usuario, por eso se le permite el SQL dinámico. Queda **fuera** del inventario de 1.2 y de la matriz de la aserción 20, a propósito, y aun así todo cambio de su cuerpo pasa por `auditor-seguridad`. Hay particiones de 2026 a 2030 | `20261007140100` §5 |
 | 5 | §2 y §4: la fila `REVOCADO` se conserva 5 años y luego se borra | **Ningún camino puede borrar una fila del directorio.** Ningún rol de login tiene `DELETE` y ninguna función lo ofrece. Borrar un tenant con canales falla con `23503` por el `RESTRICT`. Tampoco existe la función que suelte una partición vencida del historial: la retención de 5 años de §1.6 no tiene quién la ejecute. Ver la decisión en 1.4 | — |
-| 6 | §2 suponía que la baja de un canal llegaba al directorio | Llega por un **disparador**: `canales_propagar_estado` (`AFTER UPDATE OF estado WHEN estado <> 'ACTIVO'`) llama a `propagar_estado_canal()`. Es **monótono**, solo restringe y nunca relaja. Alcanza solo las filas de número de ese canal y de ese tenant, y deja un asiento en el historial. **No cubre** tres casos: la baja de una cuenta (`cuentas_whatsapp.estado` no toca las filas WABA), el borrado lógico (`canales.eliminado_en`) y un re-alta (`registrar_enrutamiento` puede escribir `ACTIVO` sobre un canal que sigue `REVOCADO`) | `20261019120000` |
-| 7 | No estaba | **Lo que decide en la escritura es `canales`, no el directorio.** `BandejaPrisma` lee el canal con `FOR SHARE`, en la misma transacción y bajo RLS, antes de escribir. Si está revocado o borrado, el change se cierra como `CLASIFICADO` y se anula su contenido. Una revocación concurrente espera a que la escritura termine, o la escritura espera a la revocación. El directorio decide a qué agencia va el change; `canales` decide si se escribe. Por eso los tres huecos del punto 6 no dejan entrar mensajes de números (sí dejan sin resolver los eventos de gestión, que hoy no se procesan: punto 10) | `bandeja.prisma.ts` |
+| 6 | §2 suponía que la baja de un canal llegaba al directorio | Llega por un **disparador**: `canales_propagar_estado` (`AFTER UPDATE OF estado WHEN estado <> 'ACTIVO'`) llama a `propagar_estado_canal()`. Es **monótono**, solo restringe y nunca relaja. Alcanza solo las filas de número de ese canal y de ese tenant, y deja un asiento en el historial. No actúa en `INSERT`: un canal que nace `REVOCADO` no se propaga. **No cubre** tres casos más: la baja de una cuenta (`cuentas_whatsapp.estado` no toca las filas WABA), el borrado lógico (`canales.eliminado_en`) y un re-alta (`registrar_enrutamiento` puede escribir `ACTIVO` sobre un canal que sigue `REVOCADO`) | `20261019120000` |
+| 7 | No estaba | **La escritura exige la conjunción: el directorio y `canales` en `ACTIVO`** (`procesar-change.ts:95`). Ninguno basta solo, porque `viajapro_app` puede devolver `canales.estado` a `ACTIVO`. `BandejaPrisma` lee el canal con `FOR SHARE`, en la misma transacción y bajo RLS, antes de escribir. Si está revocado o borrado, el change se cierra como `CLASIFICADO` y se anula su contenido. Una revocación concurrente espera a que la escritura termine, o la escritura espera a la revocación. El directorio decide a qué agencia va el change; los dos juntos deciden si se escribe. Por eso los tres huecos del punto 6 no dejan entrar mensajes de números (sí dejan sin resolver los eventos de gestión, que hoy no se procesan: punto 10) | `bandeja.prisma.ts` |
 | 8 | §4 paso 5: `jobId = recepcion_id \|\| ':' \|\| índice` | Es `<recepcion_id en hex>-<índice>`, porque BullMQ reserva `:`. El grano y el orden aplanado son los de 0008. El POST encola **también** cuando la recepción ya existía, y así el reintento de Meta cierra el hueco entre guardar y encolar. El trabajo lleva solo `{ recepcionId, indice }`, con 5 intentos, `removeOnComplete` de 1 h y `removeOnFail` de 7 días | `registrar-recepcion.ts`, `cola-de-changes.bullmq.ts` |
 | 9 | §4: un relay barre los changes pendientes de más de 30 s, y antes de reencolar borra el trabajo fallido | **El relay de barrido no existe.** Lo único que recupera un change es el reintento de Meta. Y queda abierto justo el fallo que 0008 previó: un change que agota sus 5 intentos deja su trabajo fallido 7 días con el mismo `jobId`, y BullMQ descarta en silencio el reencolado del reintento de Meta. Lo mismo pasa con `RETENIDO`: el trabajo termina bien, el change sigue `PENDIENTE` y solo lo recupera un reintento de Meta que llegue pasada 1 h. `purgar_payloads` acota cuánto vive ese contenido, pero no lo recupera | `procesar-change.ts` |
 | 10 | §1.1: filas WABA para los eventos de plantillas y de cuenta | El trabajador cierra todo campo distinto de `messages` como `CAMPO_NO_SOPORTADO` y anula su contenido. **Ningún código resuelve hoy por WABA**: las filas existen en el esquema y nadie las consulta | `procesar-change.ts` |
@@ -150,8 +151,9 @@ dominio puro de `inbox`, la guardia de rol y la conexión por rol a `packages/da
 ### Positivas
 - El ADR-0008 vuelve a ser auditable: sus diferencias con el sistema están enumeradas y tienen
   dueño.
-- Queda escrito cuál es la garantía de verdad: `canales` con `FOR SHARE` en la escritura. El
-  directorio es la ruta.
+- Queda escrito cuál es la garantía de verdad: **la conjunción**. Se escribe solo si el
+  directorio **y** `canales` (leído con `FOR SHARE`) dicen `ACTIVO` (`procesar-change.ts:95`).
+  Ninguno de los dos basta solo: `viajapro_app` puede devolver `canales.estado` a `ACTIVO`.
 - La mudanza del trabajador tiene un disparador que no depende de que alguien se acuerde.
 
 ### Negativas
