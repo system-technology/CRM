@@ -573,3 +573,61 @@ La primera aserción del arnés de aislamiento está **dirigida por datos** —c
 `tablas_sin_aislamiento`—, así que las tres tablas del catálogo quedaron cubiertas sin tocar la
 prueba. Es la propiedad que hace barata una mezcla como esta: no hay una lista de tablas que
 alguien tenga que acordarse de actualizar.
+
+## Cotizaciones: cabecera mutable, versiones inmutables (2026-10-19)
+
+Migraciones `20261019200000_cotizaciones_con_versiones_inmutables` y
+`20261019200100_margen_desconocido_es_nulo`. Tarea 6 de `ESTADO.md`. El invariante viene de
+ADR-0006 («una cotización enviada es inmutable; editarla crea una versión») y de ADR-0009 («una
+cotización congela sus números»).
+
+```mermaid
+erDiagram
+    CONTACTO ||--o{ COTIZACION : "recibe"
+    OPORTUNIDAD |o--o{ COTIZACION : "del mismo contacto"
+    COTIZACION ||--|{ VERSION_COTIZACION : "numero 1, 2, 3"
+    COTIZACION |o--o| VERSION_COTIZACION : "version_enviada (diferible)"
+    PAQUETE ||--o{ VERSION_COTIZACION : "se cotizó"
+    MENSAJE }o--o| COTIZACION : "cotizacion_id"
+```
+
+| Tabla | Qué guarda | ¿Mutable? |
+|---|---|---|
+| `cotizaciones` | Contacto, oportunidad opcional, título, `estado` (`BORRADOR`, `ENVIADA`, `ACEPTADA`, `RECHAZADA`, `VENCIDA`), qué versión vio el cliente y cuándo | Sí. Borrado en blando |
+| `versiones_cotizacion` | La instantánea: paquete, fecha, vigencia resuelta, pasajeros, política de precio copiada, `lineas` (JSONB con la forma de `OpcionDePrecio`), venta, neto y margen en `bigint` + `moneda_iso`, `vigente_hasta` | **No.** Lo impone un disparador |
+
+### Por qué así
+
+- **La inmutabilidad la impone la base.** `versiones_cotizacion_inmutables` rechaza `UPDATE`,
+  `DELETE` y `TRUNCATE`. La única salida es la purga de una agencia entera: tiene que borrar el
+  **propietario** de la tabla y la transacción tiene que declarar
+  `set_config('viajapro.purga_de_tenants', '<ids>', true)`. Ningún rol de aplicación es
+  propietario. Lo usa `scripts/borrar-tenants.mjs`.
+- **La versión no cuelga de la cabecera con `CASCADE`, cuelga con `RESTRICT`.** Una acción
+  referencial corre con el rol propietario de la tabla afectada, no con el de quien borra. Con
+  `CASCADE`, un `DELETE FROM cotizaciones` desde la API llegaría al disparador como propietario,
+  y la variable de purga la puede fijar cualquier rol. La única cascada que llega a las versiones
+  es la de `tenants`, que la aplicación no puede borrar.
+- **Las líneas van en JSONB y no en una tabla hija.** Una tabla hija necesitaría su propio
+  disparador y además una regla contra *añadir* líneas a una versión cerrada. Así la instantánea es
+  una sola fila. El disparador de alta (`versiones_cotizacion_validar_alta`) exige que cada línea
+  traiga `total` entero en la moneda de la versión y que las líneas sumen `venta_unidades`.
+- **`vigencia_id` y los `tarifaId` de las líneas no tienen foránea.** El catálogo cambia y las
+  vigencias se borran físicamente. Con `RESTRICT` la versión bloquearía el mantenimiento del
+  catálogo, y con `CASCADE` se perdería la prueba. Un identificador suelto no filtra nada, porque
+  lo que hay detrás está bajo RLS. El paquete sí tiene foránea: se borra en blando.
+- **Todas las foráneas son compuestas con `tenant_id`.** La de la oportunidad tiene tres columnas,
+  `(oportunidad_id, contacto_id, tenant_id)`, y obliga a que sea del mismo contacto. La de
+  `version_enviada`, `(tenant_id, id, version_enviada)`, obliga a que sea una versión de **esta**
+  cotización. Esta última es `DEFERRABLE INITIALLY DEFERRED` porque cabecera y versiones se
+  referencian en los dos sentidos. Prisma no modela `DEFERRABLE`.
+- **`mensajes.cotizacion_id` ya tiene foránea**, compuesta y con `SET NULL ("cotizacion_id")`. Se
+  creó `NOT VALID` y se validó en la misma migración, como pedía la cola. Prisma aplica el archivo
+  en una sola transacción, así que esa división no acorta el bloqueo. Hoy da igual, porque ninguna
+  fila tenía la columna llena. Con millones de filas, el `VALIDATE` iría en una migración aparte.
+- **Margen desconocido es `NULL`, nunca 0.** El CHECK de la primera migración se podía saltar con
+  la lógica de tres valores (`0 = NULL` da NULL y el CHECK pasa). Lo detectó la aserción 50 y lo
+  corrige la segunda migración con `IS NOT DISTINCT FROM`.
+
+Aserciones 47 a 52 en `tests/aislamiento.spec.ts`, más las mutaciones M8 a M13 en
+`scripts/mutaciones-aislamiento.mjs`.
