@@ -6,7 +6,7 @@
 
 | Campo | Valor |
 |---|---|
-| Última actualización | 2026-10-19 (noche: hasta v0.30.0, el relay de barrido) |
+| Última actualización | 2026-10-19 (noche: hasta v0.30.1, R4 sin violaciones) |
 | Actualizado por | Claude Opus 5.5 (`integrador`) |
 | Fase | **Rebanada vertical de paquetes, en construcción** |
 | Avance de la fase | Cotizador de punta a punta. **La cotización es la suma de sus tarifas y el precio «desde» es uno que el comprador puede pagar (v0.19.0).** Apretón de manos del webhook vivo. Bandeja web en construcción |
@@ -710,7 +710,7 @@ revisó (ACEPTAR CON CAMBIOS), y los dos cambios están aplicados.
 | Cola | Dueño | Por qué no bloquea |
 |---|---|---|
 | ~~No existe el relay de barrido~~ | `datos` | **Cerrado en v0.30.0:** `listar_changes_pendientes` y el barrido del trabajador, que reencola los `changes` pendientes |
-| **Falta el puerto `asegurarContacto`:** `inbox` escribe en `contactos` (de `crm`) directamente, contra R4 | `backend` | Misma transacción y mismo RLS. Es frontera de módulo, no aislamiento |
+| ~~Falta el puerto `asegurarContacto`: `inbox` escribía en `contactos` directamente (R4)~~ | `backend` | **Cerrado en v0.30.1** |
 | **Tres huecos del disparador `canales_propagar_estado`:** la baja de una cuenta, el borrado lógico de un canal y la re-alta no se propagan al directorio | `datos` | El trabajador contrasta con `canales` dentro de la transacción y descarta lo revocado |
 | Ratificar el ADR-0010, y aprobar la línea del mapa en `CLAUDE.md` §5 | Usuario | Hoy describe el código tal como está |
 
@@ -767,7 +767,7 @@ y el tenant llega por cabecera, solo con `APP_ENV=local`. Va ligado a la tarea 1
 | **`incluirMargen` sin control de rol**: cualquiera que llame la API ve el margen, o sea el neto | `backend`, junto con la **tarea 12** | No hay autenticación ni superficie para el viajero. **Dependencia dura:** no se despliega sin sesión y sin un rol que pueda pedir el margen |
 | ~~Listado, envío y estados de la cotización~~ | `backend` | **Hecho en v0.25.0**: listado por cursor y máquina de estados. Queda el envío por WhatsApp |
 | ~~El filtro de errores responde 400 a `*_NO_ENCONTRADA`~~ | `backend` | **Resuelto en v0.25.0**: 404 para `_NO_ENCONTRADA` y `_NO_ENCONTRADO` |
-| `quoting` lee `contactos` y `oportunidades` (de `crm`) directamente desde su transacción, igual que `inbox` (R4; ver `asegurarContacto`) | `arquitecto` | Mismo RLS y misma transacción; es frontera de módulo |
+| ~~`quoting` leía `contactos` y `oportunidades` de `crm` directamente (R4)~~ | `arquitecto` | **Cerrado en v0.30.1** |
 | `D:\Projects\CRM-gate6`: otro árbol temporal | Usuario | Borrar a mano |
 
 ---
@@ -1023,4 +1023,16 @@ Registro: [`docs/_integraciones/2026-10-19-v0.30.0.md`](docs/_integraciones/2026
 |---|---|---|
 | **Más de 500 `changes` abandonados taparían a los nuevos**: el barrido lista siempre los mismos primeros. Hace falta una columna de intentos, o un orden que los rote | `datos` | Hoy no hay volumen ni changes abandonados |
 | **Al integrar `feat/identity-esquema`**: esta rama y aquella suben las dos el recuento literal de funciones `SECURITY DEFINER` de `aislamiento.spec.ts`. Juntas, el total correcto es **10** | integrador / `datos` | Se resuelve en esa fusión. La aserción lo detecta si queda mal |
+
+## Integración del 2026-10-19 (vigesimosegunda) — v0.30.1: inbox y quoting piden a crm por puertos (R4)
+
+`refactor/puertos-hacia-crm` @ `d828dda` entra en `main` (`304f37b`), etiquetada **v0.30.1**: es un refactor, no cambia la
+conducta. Trae tres puertos de `crm`: `asegurarContacto` para `inbox`, y `existeContacto` y `existeOportunidadDelContacto` para
+`quoting`. Los tokens viven en `shared/puertos/` y la raíz del trabajador pasa a `worker.module.ts`. Los puertos usan la
+transacción y el `set_config` del llamador, el upsert va por `(tenantId, telefono)` bajo RLS, y el trabajador conserva su
+guardia de `viajapro_webhook`. `auditor-seguridad`: ACEPTAR. **Con esto se cierran las dos colas de R4.**
+`scripts/verificar-fronteras.mjs` detecta ahora el acceso a tablas de otro módulo: ejecutado contra el `main` anterior, marca
+`quoting/…/cotizaciones.use-case.ts:99` y `:106`. Sus pruebas dan 6 casos en verde. Compuerta: CI **8/8** sobre la punta
+exacta, que iba 0 por detrás: https://github.com/Alfavear/CRM/actions/runs/39342331764. Estáticas en local en verde. Sin
+migraciones, así que no hay nada que aplicar en Neon.
 
