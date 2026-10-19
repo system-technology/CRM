@@ -791,7 +791,7 @@ El valor ya no aparece en ningún archivo rastreado de `main`.
 
 | Cola | Dueño | Por qué no bloquea |
 |---|---|---|
-| BullMQ real sigue sin probar: `apps/api/vitest.config.ts` fija `COLA_CHANGES=inerte`, aunque el CI ya levanta Redis 7 | `devops` (4c) | Nada desplegado. El CI ya tiene el Redis: falta una prueba que lo use |
+| ~~BullMQ real sigue sin probar~~ | `devops` | **Cerrado (`897d8df`):** `inbox-bullmq.e2e-spec.ts` corre con Redis 7 en el CI —ejecutada, no saltada, run 39339999694— y cubre `jobId`, el reintento sin duplicar, el consumidor hasta `mensajes` y un `failedReason` sin PII |
 | Protección de rama con estos checks como obligatorios | Usuario (**tarea 10**) | El plan gratuito no la permite en repos privados |
 | `convencion-de-commits` sale *skipped*, porque solo corre en PR, y la integración aquí es por merge local | `devops` | La convención la revisa el integrador a mano |
 
@@ -823,7 +823,7 @@ Con esto, la compuerta completa (`inbox-relay.e2e-spec`) se puede correr desde c
 
 | Cola | Dueño | Por qué no bloquea |
 |---|---|---|
-| **Severidad alta.** `scripts/generar-secretos-locales.ps1` toma como referencia el **primer** árbol de `git worktree list` (`D:\Projects\CRM`). Si ese árbol no tiene los secretos, genera valores nuevos y los escribe en **todos**, pisando la pimienta y la clave buenas de los demás: el directorio de enrutamiento queda huérfano y lo cifrado, ilegible. Corrección: abortar si un árbol tiene valor y otro no, y ofrecer copiar en vez de generar | `devops` | Hoy no se manifestó, y los cuatro árboles ya tienen los mismos valores. Pero basta una ejecución con un árbol nuevo primero en la lista |
+| ~~`generar-secretos-locales.ps1` podía pisar la pimienta buena~~ | `devops` | **Cerrado (`897d8df`):** copia el valor existente antes de generar, aborta (salida 2) si los árboles tienen valores distintos, y solo genera si no lo tiene ninguno |
 
 ---
 
@@ -969,4 +969,16 @@ Registro: [`docs/_integraciones/2026-10-19-v0.28.0.md`](docs/_integraciones/2026
 | Cola | Dueño | Por qué no bloquea |
 |---|---|---|
 | `ficha-detalle-paquete.tsx:244` muestra **«Neto:»** en el catálogo, a cualquiera que lo abra | Antigravity (**0c.27**, con los permisos) | Hoy no hay roles: todo usuario es de la agencia. Se cierra al poner esto y `bloque-politica-precio` detrás del permiso |
+
+## Integración del 2026-10-19 (decimonovena) — `ci/bullmq-real-y-secretos`, sin etiqueta
+
+`ci/bullmq-real-y-secretos` @ `16c03d2` entra en `main` (`897d8df`). Solo toca una prueba, un script de desarrollo y la
+bitácora, así que no lleva etiqueta. Compuerta: CI **8/8** sobre el árbol del merge,
+https://github.com/Alfavear/CRM/actions/runs/39339999694. En el log consta
+`✓ src/modules/inbox/inbox-bullmq.e2e-spec.ts (2 tests) 2440ms` y ningún aviso «SALTADA»: **corrió de verdad**.
+Estáticas en local en verde. Registro: [`docs/_integraciones/2026-10-19-bullmq-real.md`](docs/_integraciones/2026-10-19-bullmq-real.md).
+
+| Cola | Dueño | Por qué no bloquea |
+|---|---|---|
+| En el CI, la e2e de BullMQ **se salta, no falla**, si falta `REDIS_URL` (`CORRE = CI && REDIS_URL`). Si alguien quita el Redis del job, el CI seguiría verde | `devops` | Hoy `REDIS_URL` está en el job y la prueba corre. Arreglo: con `CI=true` y sin `REDIS_URL`, fallar |
 
