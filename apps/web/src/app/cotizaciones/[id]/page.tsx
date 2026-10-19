@@ -218,11 +218,26 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
             </span>
           </div>
 
-          {/* Estado de carga */}
+          {/* Estado de carga (Esqueleto - 0c.25) */}
           {cargando && (
-            <div className="flex h-64 flex-col items-center justify-center gap-3 rounded-2xl border border-neutral-200 bg-white p-8 dark:border-neutral-800 dark:bg-neutral-900">
-              <div className="h-8 w-8 animate-spin rounded-full border-2 border-purple-600 border-t-transparent" />
-              <p className="text-xs text-neutral-500">Cargando cotización oficial y versiones...</p>
+            <div className="animate-pulse space-y-6 select-none">
+              <div className="rounded-2xl border border-neutral-200 bg-white p-6 shadow-2xs dark:border-neutral-800 dark:bg-neutral-900">
+                <div className="flex justify-between border-b border-neutral-100 pb-4 dark:border-neutral-800">
+                  <div className="space-y-2">
+                    <div className="h-4 w-48 rounded bg-neutral-200 dark:bg-neutral-700" />
+                    <div className="h-3 w-32 rounded bg-neutral-100 dark:bg-neutral-800" />
+                  </div>
+                  <div className="h-8 w-24 rounded-lg bg-neutral-200 dark:bg-neutral-700" />
+                </div>
+                <div className="mt-6 space-y-3">
+                  <div className="h-3.5 w-full rounded bg-neutral-100 dark:bg-neutral-800" />
+                  <div className="h-3.5 w-5/6 rounded bg-neutral-100 dark:bg-neutral-800" />
+                </div>
+                <div className="mt-8 flex justify-between border-t border-neutral-100 pt-4 dark:border-neutral-800">
+                  <div className="h-3 w-20 rounded bg-neutral-100 dark:bg-neutral-800" />
+                  <div className="h-6 w-32 rounded bg-purple-200 dark:bg-purple-900" />
+                </div>
+              </div>
             </div>
           )}
 

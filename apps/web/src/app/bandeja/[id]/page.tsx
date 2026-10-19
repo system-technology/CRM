@@ -25,6 +25,8 @@ import {
 import { inboxApi, InboxErrorApi } from '../../../lib/inbox-api';
 import { realtimeMockBus } from '../../../lib/realtime-mock';
 import { obtenerFichaDeContacto } from '../../../lib/crm-api';
+import { EsqueletoConversacion, AvisoErrorAccionable } from '../../../components/comun/esqueletos';
+import { construirMensajeErrorAccionable } from '../../../lib/estados-ui-logica';
 import {
   calcularTiempoRestanteVentana,
   claveDeReintento,
@@ -380,30 +382,17 @@ export default function BandejaConversacionPage() {
   };
 
   if (cargando) {
-    return (
-      <div className="flex h-full w-full flex-col items-center justify-center p-8 text-neutral-400">
-        <div className="border-acento-600 h-8 w-8 animate-spin rounded-full border-2 border-t-transparent"></div>
-        <p className="mt-3 text-xs">Cargando conversación...</p>
-      </div>
-    );
+    return <EsqueletoConversacion />;
   }
 
   if (errorHistorial || !detalle) {
+    const errorDetallado = construirMensajeErrorAccionable(
+      errorHistorial || 'Conversación no encontrada',
+      'BANDEJA_CONVERSACION',
+    );
     return (
-      <div className="flex h-full w-full flex-col items-center justify-center p-6 text-center">
-        <AlertTriangle className="text-alerta-600 h-8 w-8" />
-        <h3 className="mt-2 text-sm font-bold text-neutral-900 dark:text-neutral-100">
-          No se pudo cargar la conversación
-        </h3>
-        <p className="mt-1 text-xs text-neutral-500">
-          {errorHistorial || 'Conversación no encontrada'}
-        </p>
-        <button
-          onClick={() => void cargarHistorial()}
-          className="bg-acento-700 hover:bg-acento-800 mt-4 rounded-lg px-4 py-1.5 text-xs font-semibold text-white"
-        >
-          Reintentar
-        </button>
+      <div className="flex h-full w-full items-center justify-center p-6">
+        <AvisoErrorAccionable error={errorDetallado} onReintentar={() => void cargarHistorial()} />
       </div>
     );
   }
