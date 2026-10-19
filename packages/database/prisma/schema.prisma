@@ -76,6 +76,11 @@ model Tenant {
   notasInternas     NotaInterna[]
   consentimientos   ConsentimientoContacto[]
 
+  conversaciones Conversacion[]
+  mensajes       Mensaje[]
+  adjuntos       Adjunto[]
+  plantillas     PlantillaWhatsapp[]
+
   @@map("tenants")
 }
 
@@ -322,6 +327,8 @@ model Usuario {
   oportunidadesCreadas       Oportunidad[]            @relation("OportunidadCreadoPor")
   oportunidadesActualizadas  Oportunidad[]            @relation("OportunidadActualizadoPor")
   notasEscritas              NotaInterna[]            @relation("NotaInternaAutor")
+  conversacionesAsignadas    Conversacion[]           @relation("ConversacionAsignadaA")
+  mensajesEnviados           Mensaje[]                @relation("MensajeAutor")
   consentimientosRegistrados ConsentimientoContacto[] @relation("ConsentimientoRegistradoPor")
 
   /// El correo es único dentro de la agencia, no globalmente: ver la decisión de arriba.
@@ -791,6 +798,7 @@ model CuentaWhatsapp {
 
   canales       Canal[]
   enrutamientos EnrutamientoCanal[]
+  plantillas    PlantillaWhatsapp[]
 
   /// Sostiene la clave foránea compuesta de `canales` **y la del directorio**: la misma
   /// unicidad que ya existía es la que respalda ahora las filas WABA.
@@ -829,7 +837,8 @@ model Canal {
   creadoPor      String?   @map("creado_por") @db.Uuid
   actualizadoPor String?   @map("actualizado_por") @db.Uuid
 
-  enrutamientos EnrutamientoCanal[]
+  enrutamientos  EnrutamientoCanal[]
+  conversaciones Conversacion[]
 
   /// Sostiene la clave foránea compuesta del directorio global.
   @@unique([id, tenantId])
@@ -921,6 +930,7 @@ model Contacto {
   oportunidades   Oportunidad[]
   notasInternas   NotaInterna[]
   consentimientos ConsentimientoContacto[]
+  conversaciones  Conversacion[]
 
   /// Dos agencias distintas pueden tener el mismo teléfono de cliente: la unicidad
   /// es POR TENANT, nunca global.
@@ -1084,12 +1094,23 @@ model NotaInterna {
   autorId String?  @map("autor_id") @db.Uuid
   autor   Usuario? @relation("NotaInternaAutor", fields: [autorId, tenantId], references: [id, tenantId], onDelete: Restrict, onUpdate: Restrict)
 
+  /// La conversación en cuyo hilo se escribió, si se escribió desde la bandeja.
+  ///
+  /// Nulo para las notas del panel del contacto, que no cuelgan de ningún hilo. El
+  /// contrato `ConversacionDetalle.notas` se sirve de aquí: la nota sigue siendo del
+  /// CONTACTO —es lo que un asesor quiere recordar de la persona, no del hilo— y el
+  /// ancla solo dice dónde se escribió. Columna anulable y añadida en caliente: no
+  /// reescribe ninguna fila existente.
+  conversacionId String?       @map("conversacion_id") @db.Uuid
+  conversacion   Conversacion? @relation(fields: [conversacionId, tenantId], references: [id, tenantId], onDelete: SetNull, onUpdate: Restrict)
+
   texto String @db.VarChar(2000)
 
   escritaEn   DateTime  @default(now()) @map("escrita_en") @db.Timestamptz(3)
   eliminadaEn DateTime? @map("eliminada_en") @db.Timestamptz(3)
 
   @@index([tenantId, contactoId, escritaEn(sort: Desc)])
+  @@index([tenantId, conversacionId, escritaEn(sort: Desc)])
   @@map("notas_internas")
 }
 
@@ -1147,4 +1168,412 @@ model Outbox {
   @@index([ocurridoEn], map: "idx_outbox_pendientes")
   @@index([tenantId, agregado, agregadoId])
   @@map("outbox")
+}
+
+// =============================================================================
+// INBOX — conversaciones, mensajes y el espejo de plantillas de Meta
+//
+// Sirve packages/contracts/src/inbox.ts y packages/contracts/src/plantillas.ts.
+// Los contratos mandan: aquí no se inventa ningún campo que no sostenga uno suyo.
+//
+// Dos ejes de tiempo, y confundirlos es un defecto, no un detalle (R9):
+//   · ocurrido_en  — el instante de META. Resolución de SEGUNDOS, llega DESORDENADO y
+//                    puede venir del pasado (reintento de un webhook de hace horas).
+//                    Es el que ordena el hilo y el que ve el viajero.
+//   · creado_en    — el instante NUESTRO. Monótono, sirve para auditar y para medir
+//                    cuánto tardamos en procesar. NUNCA se muestra como hora del mensaje.
+// Los dos en timestamptz UTC. El huso del tenant es cosa de presentación.
+// =============================================================================
+
+/// Un hilo con un contacto por un canal. El contrato la llama ConversacionResumen.
+///
+/// **Una por (contacto, canal), no una por «tema».** La alternativa —abrir una conversación
+/// nueva cada vez que el viajero vuelve— parece ordenada hasta que el asesor pierde el
+/// historial justo cuando lo necesita: en WhatsApp el hilo es el que ve el cliente en su
+/// teléfono, y partirlo en la base crea dos verdades distintas de la misma pantalla.
+model Conversacion {
+  id       String @id @default(uuid(7)) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  /// Clave foránea COMPUESTA con el tenant, igual que en oportunidades. RLS no interviene
+  /// en la integridad referencial: sin el tenant dentro de la clave, el hilo de una
+  /// agencia podía colgar del contacto de otra y nadie se enteraba.
+  contactoId String   @map("contacto_id") @db.Uuid
+  contacto   Contacto @relation(fields: [contactoId, tenantId], references: [id, tenantId], onDelete: Cascade, onUpdate: Restrict)
+
+  /// El número por el que entra y sale. Compuesta por el mismo motivo.
+  canalId String @map("canal_id") @db.Uuid
+  canal   Canal  @relation(fields: [canalId, tenantId], references: [id, tenantId], onDelete: Restrict, onUpdate: Restrict)
+
+  estado EstadoConversacion @default(ABIERTA)
+
+  /// Restrict y no SetNull: la clave compuesta incluye tenant_id, que es NOT NULL, y
+  /// PostgreSQL no puede anular media clave. Mismo razonamiento que en oportunidades.
+  asignadoAId String?  @map("asignado_a_id") @db.Uuid
+  asignadoA   Usuario? @relation("ConversacionAsignadaA", fields: [asignadoAId, tenantId], references: [id, tenantId], onDelete: Restrict, onUpdate: Restrict)
+
+  /// LA VENTANA DE SERVICIO, en una sola columna y no en tres.
+  ///
+  /// El contrato expone abierta, expiraEn y minutosRestantes; los tres son función de este
+  /// instante y de now(). Guardarlos sería guardar tres copias de un dato que caduca sin
+  /// que nadie escriba: una conversación cuya ventana expira a las 15:00 no recibe ningún
+  /// UPDATE a las 15:00, de modo que cualquier columna «abierta» estaría mintiendo desde
+  /// ese segundo. Se deriva en la consulta, y hay índice sobre esta columna para que
+  /// derivarla no cueste un recorrido.
+  ///
+  /// Nulo mientras el cliente nunca haya escrito, que es el expiraEn nulo del contrato.
+  ultimoMensajeClienteEn DateTime? @map("ultimo_mensaje_cliente_en") @db.Timestamptz(3)
+
+  /// Vista previa de la lista. Recortada por el servidor a 200 —lo que declara el
+  /// contrato—, no por la web. Denormalizada a propósito: pintar 30 filas de bandeja no
+  /// puede costar 30 búsquedas del último mensaje.
+  ultimoMensajeTexto     String?           @map("ultimo_mensaje_texto") @db.VarChar(200)
+  ultimoMensajeEn        DateTime?         @map("ultimo_mensaje_en") @db.Timestamptz(3)
+  ultimoMensajeDireccion DireccionMensaje? @map("ultimo_mensaje_direccion")
+
+  /// Contador denormalizado. CHECK >= 0 en la migración: un contador negativo es un bug de
+  /// la aplicación, y se vuelve visible en la base en vez de en la interfaz.
+  mensajesSinLeer Int @default(0) @map("mensajes_sin_leer") @db.SmallInt
+
+  /// Plazo comprometido de PRIMERA respuesta, y el instante en que se cumplió.
+  ///
+  /// Dos columnas y no una: el contrato pide slaVenceEn nulo «cuando ya se respondió», y
+  /// borrar el plazo al responder destruye la única evidencia de si se cumplió. Se guardan
+  /// las dos y la proyección anula la primera cuando la segunda existe.
+  slaVenceEn         DateTime? @map("sla_vence_en") @db.Timestamptz(3)
+  primeraRespuestaEn DateTime? @map("primera_respuesta_en") @db.Timestamptz(3)
+
+  /// Etiquetas libres por agencia, R12. Mismo tratamiento que en contactos.
+  etiquetas String[] @default([])
+
+  creadoEn      DateTime  @default(now()) @map("creado_en") @db.Timestamptz(3)
+  actualizadoEn DateTime  @updatedAt @map("actualizado_en") @db.Timestamptz(3)
+  eliminadoEn   DateTime? @map("eliminado_en") @db.Timestamptz(3)
+
+  /// Nulos a propósito: la conversación que abre un webhook no la crea ningún usuario.
+  creadoPorId      String? @map("creado_por") @db.Uuid
+  actualizadoPorId String? @map("actualizado_por") @db.Uuid
+
+  mensajes      Mensaje[]
+  notasInternas NotaInterna[]
+
+  /// El invariante del modelo: UN hilo por contacto y canal. Es lo que permite que el
+  /// webhook haga ON CONFLICT DO UPDATE sin carreras — dos mensajes del mismo viajero
+  /// procesados a la vez por dos trabajadores no crean dos hilos.
+  @@unique([tenantId, canalId, contactoId])
+  /// Sostiene las claves foráneas compuestas de mensajes y notas_internas.
+  @@unique([id, tenantId])
+  /// La bandeja: filtrar por estado y ordenar por actividad, con el tenant delante.
+  @@index([tenantId, estado, ultimoMensajeEn(sort: Desc)])
+  @@index([tenantId, asignadoAId, ultimoMensajeEn(sort: Desc)])
+  @@index([tenantId, contactoId])
+  /// La ventana de servicio. Parcial en la migración: solo hilos vivos.
+  @@index([tenantId, ultimoMensajeClienteEn(sort: Desc)], map: "idx_conversaciones_ventana")
+  /// El filtro SLA_VENCIDO. Parcial: solo las que aún no han tenido respuesta.
+  @@index([tenantId, slaVenceEn], map: "idx_conversaciones_sla_pendiente")
+  @@map("conversaciones")
+}
+
+enum EstadoConversacion {
+  ABIERTA
+  EN_ESPERA
+  CERRADA
+
+  @@map("estado_conversacion")
+}
+
+enum DireccionMensaje {
+  ENTRANTE
+  SALIENTE
+
+  @@map("direccion_mensaje")
+}
+
+/// Estado de entrega tal como lo reporta Meta.
+///
+/// FALLIDO es terminal y gana siempre: Meta documenta que un mismo mensaje puede emitir
+/// delivered y failed, y mostrar «entregado» sobre algo que no llegó es peor que no
+/// mostrar nada. Lo impone la aplicación, no un CHECK: el orden de llegada de los webhooks
+/// no es un invariante de fila.
+enum EstadoMensaje {
+  PENDIENTE
+  ENVIADO
+  ENTREGADO
+  LEIDO
+  REPRODUCIDO
+  FALLIDO
+
+  @@map("estado_mensaje")
+}
+
+enum TipoContenido {
+  TEXTO
+  IMAGEN
+  DOCUMENTO
+  AUDIO
+  VIDEO
+  UBICACION
+  CONTACTO
+  PLANTILLA
+  INTERACTIVO
+  REACCION
+  NO_SOPORTADO
+
+  @@map("tipo_contenido")
+}
+
+/// El grano fino del hilo.
+///
+/// **La tabla que más crece del producto.** No está particionada, y la decisión está
+/// razonada en la migración y en el modelo de datos: la consulta caliente lleva siempre
+/// tenant_id y conversacion_id, que un btree resuelve igual con un millón de filas que con
+/// cien; y particionar por ocurrido_en obligaría a meter la fecha en la clave única de
+/// wamid, que es justo lo que destruiría la idempotencia de R5.
+model Mensaje {
+  id       String @id @default(uuid(7)) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  conversacionId String       @map("conversacion_id") @db.Uuid
+  conversacion   Conversacion @relation(fields: [conversacionId, tenantId], references: [id, tenantId], onDelete: Cascade, onUpdate: Restrict)
+
+  direccion DireccionMensaje
+  tipo      TipoContenido
+  estado    EstadoMensaje    @default(PENDIENTE)
+
+  /// Texto plano. Nulo en los que son solo adjunto o reacción.
+  ///
+  /// **R10 — campo de riesgo, y el de mayor superficie del producto.** Aquí escribe el
+  /// viajero: número de pasaporte, fecha de nacimiento de un menor, a veces una alergia.
+  /// No se cifra por columna, y la razón es la misma que en contactos.preferencias
+  /// multiplicada: el hilo se lee entero en cada apertura de conversación y el contrato
+  /// ConsultarBandeja.buscar busca dentro de él. Los controles que sí se aplican están en
+  /// la migración; la decisión de cifrarlo pide un ADR con auditor-seguridad, no una
+  /// columna puesta en silencio.
+  texto String? @db.Text
+
+  /// El identificador de Meta: wamid.HBg... **Nulo hasta que Meta lo devuelve** en los
+  /// salientes, y presente desde el primer instante en los entrantes.
+  ///
+  /// Único POR TENANT, con índice parcial. Es la idempotencia de R5 escrita en la base y
+  /// no en el código: Meta reintenta un webhook hasta que le respondemos 200, y lo hace
+  /// también cuando ya habíamos respondido pero el 200 se perdió. Sin esta unicidad, un
+  /// reintento duplica el mensaje en la pantalla del asesor. El ON CONFLICT DO NOTHING del
+  /// trabajador se apoya exactamente aquí.
+  ///
+  /// Por tenant y no global, por la misma razón que canales.phone_number_id: una unicidad
+  /// global sería un oráculo que confirma a una agencia la actividad de otra.
+  wamid String? @db.VarChar(128)
+
+  /// La clave que genera el CLIENTE antes de enviar (EnviarTexto, EnviarPlantilla).
+  ///
+  /// Cubre la mitad que wamid no puede cubrir: entre el clic del asesor y la respuesta de
+  /// Meta no existe ningún identificador, así que un doble clic o un reintento de red
+  /// mandarían el mensaje dos veces —y una plantilla se COBRA dos veces y el viajero la
+  /// recibe dos veces. Única por tenant, con índice parcial. R5.
+  claveIdempotencia String? @map("clave_idempotencia") @db.Uuid
+
+  /// Lo que se le muestra al asesor cuando estado es FALLIDO, ya traducido.
+  motivoFallo     String? @map("motivo_fallo") @db.VarChar(500)
+  /// El código crudo de Meta (131047, 470…). Se guarda APARTE, como dice el contrato:
+  /// motivo_fallo es para el humano y este es para el soporte y las métricas.
+  codigoErrorMeta Int?    @map("codigo_error_meta")
+
+  /// Quién lo envió. Nulo en los entrantes y en los que manda una automatización — y un
+  /// CHECK impide que un ENTRANTE tenga autor, que sería un mensaje puesto en boca del
+  /// viajero.
+  autorId String?  @map("autor_id") @db.Uuid
+  autor   Usuario? @relation("MensajeAutor", fields: [autorId, tenantId], references: [id, tenantId], onDelete: Restrict, onUpdate: Restrict)
+
+  /// La plantilla que se envió, cuando tipo es PLANTILLA. Compuesta con el tenant.
+  plantillaId String?            @map("plantilla_id") @db.Uuid
+  plantilla   PlantillaWhatsapp? @relation(fields: [plantillaId, tenantId], references: [id, tenantId], onDelete: Restrict, onUpdate: Restrict)
+
+  /// La cotización que este mensaje llevaba, si llevaba alguna.
+  ///
+  /// **Sin clave foránea, y es deliberado: la tabla cotizaciones todavía no existe.** La
+  /// columna se crea ahora porque el contrato ya la expone y porque añadirla después sobre
+  /// una tabla de millones de filas es caro; la clave foránea compuesta
+  /// (cotizacion_id, tenant_id) entra en la migración que cree cotizaciones, que es un
+  /// ALTER TABLE ... ADD CONSTRAINT ... NOT VALID seguido de VALIDATE, seguro en caliente.
+  /// Mientras tanto, el aislamiento de esta columna lo da la fila: tenant_id es suyo y RLS
+  /// no deja leerla desde otra agencia.
+  cotizacionId String? @map("cotizacion_id") @db.Uuid
+
+  /// El instante de META (R9). Es el que ordena el hilo y el que ve el viajero. Resolución
+  /// de segundos: el desempate lo pone id, que es UUID v7 y por tanto ordenable en el
+  /// tiempo. Sin ese desempate, dos mensajes del mismo segundo salen en orden distinto en
+  /// cada consulta.
+  ocurridoEn DateTime @map("ocurrido_en") @db.Timestamptz(3)
+
+  /// El instante NUESTRO. Nunca se muestra como hora del mensaje.
+  creadoEn      DateTime  @default(now()) @map("creado_en") @db.Timestamptz(3)
+  actualizadoEn DateTime  @updatedAt @map("actualizado_en") @db.Timestamptz(3)
+  eliminadoEn   DateTime? @map("eliminado_en") @db.Timestamptz(3)
+
+  adjuntos Adjunto[]
+
+  /// Sostiene la clave foránea compuesta de adjuntos.
+  @@unique([id, tenantId])
+  /// LA consulta caliente: abrir un hilo. ocurrido_en y después id, el mismo orden con el
+  /// que se pagina hacia atrás.
+  @@index([tenantId, conversacionId, ocurridoEn(sort: Desc), id(sort: Desc)])
+  /// Los índices de unicidad de wamid y clave_idempotencia son PARCIALES
+  /// (WHERE ... IS NOT NULL) y los pone la migración: Prisma no modela el WHERE, y sin él
+  /// los miles de salientes sin wamid chocarían entre sí.
+  @@map("mensajes")
+}
+
+/// Media de WhatsApp ya descargada y guardada por nosotros.
+///
+/// Tabla propia y no un JSONB en mensajes: un adjunto tiene ciclo de vida propio —se
+/// descarga después que el mensaje, puede fallar y reintentarse, y se purga por
+/// retención—, y la clave de S3 es lo que hay que recorrer para borrar de verdad los datos
+/// de una agencia que se va.
+model Adjunto {
+  id       String @id @default(uuid(7)) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  mensajeId String  @map("mensaje_id") @db.Uuid
+  mensaje   Mensaje @relation(fields: [mensajeId, tenantId], references: [id, tenantId], onDelete: Cascade, onUpdate: Restrict)
+
+  tipo TipoContenido
+
+  /// Identificador del media en Meta. Caduca y exige el token de la agencia: NUNCA se
+  /// sirve al navegador. Lo que el contrato expone como url es nuestra, temporal y
+  /// firmada, y se construye desde clave_objeto.
+  mediaIdMeta String? @map("media_id_meta") @db.VarChar(64)
+  /// Ruta en S3/MinIO, SIEMPRE con prefijo de tenant: ADR-0003 deja claro que S3 no está
+  /// cubierto por RLS y que su aislamiento es responsabilidad de la aplicación.
+  claveObjeto String? @map("clave_objeto") @db.VarChar(500)
+
+  nombreArchivo String? @map("nombre_archivo") @db.VarChar(255)
+  tamanoBytes   BigInt? @map("tamano_bytes")
+  mimeType      String? @map("mime_type") @db.VarChar(100)
+
+  /// Nulo mientras la descarga no haya terminado. El contrato no lo expone: la API solo
+  /// emite adjuntos ya descargados.
+  descargadoEn DateTime? @map("descargado_en") @db.Timestamptz(3)
+  creadoEn     DateTime  @default(now()) @map("creado_en") @db.Timestamptz(3)
+  eliminadoEn  DateTime? @map("eliminado_en") @db.Timestamptz(3)
+
+  @@unique([id, tenantId])
+  @@index([tenantId, mensajeId])
+  @@map("adjuntos")
+}
+
+// -----------------------------------------------------------------------------
+// PLANTILLAS — un ESPEJO, no un registro nuestro
+//
+// Esta es la única tabla del esquema cuyo dueño está fuera del sistema. Meta aprueba, Meta
+// rechaza y **Meta pausa sola** una plantilla cuando los destinatarios la marcan como spam,
+// sin avisar y sin que nadie aquí toque una fila. De eso salen tres decisiones que no se
+// parecen a las del resto del modelo:
+//
+//   1. La identidad NO es nuestra. El nombre es único por WABA y por IDIOMA —así lo define
+//      Meta—, no por tenant a secas. Por eso la unicidad cuelga de cuenta_id y no del
+//      tenant: una agencia con dos WABAs puede tener recordatorio_pago en los dos, y son
+//      dos plantillas distintas con estados distintos.
+//   2. El tiempo se parte en tres. actualizada_en_meta es lo que dice Meta, lo único que el
+//      contrato expone; sincronizada_en es cuándo lo oímos nosotros por última vez;
+//      estado_cambiado_en es desde cuándo está así. La tercera parece redundante hasta que
+//      un asesor pregunta «¿desde cuándo está pausada?», que es la pregunta que se hace.
+//   3. La autoría es opcional. La regla de auditoría pide creado_por y actualizado_por en
+//      toda entidad de negocio; aquí van NULOS cuando el cambio vino de Meta, y eso NO es
+//      un campo sin rellenar: es el dato. Nulo = lo hizo Meta. Una columna «origen» aparte
+//      sería una segunda columna diciendo lo mismo.
+// -----------------------------------------------------------------------------
+
+enum CategoriaPlantilla {
+  UTILIDAD
+  MARKETING
+  AUTENTICACION
+
+  @@map("categoria_plantilla")
+}
+
+enum EstadoPlantilla {
+  APROBADA
+  PENDIENTE
+  RECHAZADA
+  PAUSADA
+  DESHABILITADA
+
+  @@map("estado_plantilla")
+}
+
+/// Espejo local de una plantilla de Meta.
+model PlantillaWhatsapp {
+  id       String @id @default(uuid(7)) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  /// El WABA al que pertenece. Clave foránea compuesta con el tenant, y además el ámbito
+  /// real de la unicidad del nombre.
+  cuentaId String         @map("cuenta_id") @db.Uuid
+  cuenta   CuentaWhatsapp @relation(fields: [cuentaId, tenantId], references: [id, tenantId], onDelete: Cascade, onUpdate: Restrict)
+
+  /// El identificador que Meta le da. Nulo mientras no lo hayamos visto; útil para
+  /// conciliar un renombrado. Atributo reasignable, NUNCA clave: misma lección que
+  /// phone_number_id.
+  metaTemplateId String? @map("meta_template_id") @db.VarChar(32)
+
+  /// Minúsculas, dígitos y guion bajo. Un CHECK lo impone con el mismo patrón que el
+  /// contrato: si entra un nombre que Meta no admite, el envío falla en producción y nadie
+  /// entiende por qué.
+  nombre String @db.VarChar(512)
+  /// es, es_CO, en_US. La misma plantilla existe en varios idiomas y cada uno tiene SU
+  /// estado: Meta puede aprobar el español y rechazar el inglés.
+  idioma String @db.VarChar(10)
+
+  categoria    CategoriaPlantilla
+  estado       EstadoPlantilla    @default(PENDIENTE)
+  /// Por qué está RECHAZADA o PAUSADA, en lenguaje de persona.
+  motivoEstado String?            @map("motivo_estado") @db.VarChar(500)
+
+  encabezado String? @db.VarChar(60)
+  cuerpo     String  @db.VarChar(1024)
+  pie        String? @db.VarChar(60)
+
+  /// Botones y variables en JSONB y no en dos tablas hijas.
+  ///
+  /// Son un espejo OPACO del payload de Meta: nunca se filtra ni se ordena por su
+  /// contenido, siempre se leen enteros con la plantilla, y su forma la cambia Meta sin
+  /// pedirnos permiso. Dos tablas hijas serían dos políticas RLS más y dos joins en la
+  /// consulta que abre el selector de plantillas, a cambio de cero consultas nuevas. Los
+  /// límites del contrato —10 botones, 50 variables— los imponen dos CHECK.
+  botones   Json @default("[]") @db.JsonB
+  variables Json @default("[]") @db.JsonB
+
+  /// Lo que dice Meta que cambió por última vez. Es el actualizadaEn del contrato.
+  actualizadaEnMeta DateTime @map("actualizada_en_meta") @db.Timestamptz(3)
+  /// Cuándo lo oímos nosotros. Si se queda atrás, el espejo está ciego y hay que avisar.
+  sincronizadaEn    DateTime @default(now()) @map("sincronizada_en") @db.Timestamptz(3)
+  /// Desde cuándo está en este estado. Responde «¿desde cuándo está pausada?».
+  estadoCambiadoEn  DateTime @default(now()) @map("estado_cambiado_en") @db.Timestamptz(3)
+
+  creadoEn      DateTime  @default(now()) @map("creado_en") @db.Timestamptz(3)
+  actualizadoEn DateTime  @updatedAt @map("actualizado_en") @db.Timestamptz(3)
+  /// Borrado lógico = «Meta ya no la tiene». No se borra la fila: los mensajes enviados con
+  /// ella siguen apuntándola, y un hilo que pierde la plantilla con la que se reabrió
+  /// pierde la explicación de por qué se reabrió.
+  eliminadoEn   DateTime? @map("eliminado_en") @db.Timestamptz(3)
+
+  /// NULOS cuando el cambio lo hizo Meta. Ver la nota de arriba: el nulo es el dato.
+  creadoPorId      String? @map("creado_por") @db.Uuid
+  actualizadoPorId String? @map("actualizado_por") @db.Uuid
+
+  mensajes Mensaje[]
+
+  /// La identidad de Meta: (WABA, nombre, idioma). El tenant va delante por convención de
+  /// índices y es redundante —cuenta_id ya determina el tenant por su clave compuesta—,
+  /// pero deja el filtro de tenant en primera posición, que es la regla.
+  @@unique([tenantId, cuentaId, nombre, idioma])
+  /// Sostiene la clave foránea compuesta de mensajes.
+  @@unique([id, tenantId])
+  /// El selector de plantillas de la bandeja: por cuenta y por estado.
+  @@index([tenantId, cuentaId, estado])
+  @@map("plantillas_whatsapp")
 }

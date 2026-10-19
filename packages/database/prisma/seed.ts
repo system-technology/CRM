@@ -530,7 +530,7 @@ async function main() {
     },
   });
 
-  await prisma.canal.upsert({
+  const canal = await prisma.canal.upsert({
     where: { tenantId_phoneNumberId: { tenantId: tenant.id, phoneNumberId: '100000000000001' } },
     update: {},
     create: {
@@ -543,6 +543,123 @@ async function main() {
     },
   });
 
+  // --- Bandeja de demostracion ---------------------------------------------
+  //
+  // Un hilo con historia, no una fila vacia: la bandeja no se puede evaluar sin ver
+  // como se ve un mensaje entrante, uno saliente y una ventana de servicio a punto de
+  // cerrarse. Los instantes son RELATIVOS a la siembra, a proposito: una semilla con
+  // fechas fijas muestra una bandeja de hace meses el dia que alguien la corra.
+  const contactoDemo = await prisma.contacto.findFirstOrThrow({
+    where: { tenantId: tenant.id, telefonoE164: '+573001234567' },
+  });
+
+  const ahora = Date.now();
+  const haceHoras = (h: number) => new Date(ahora - h * 60 * 60 * 1000);
+
+  const conversacion = await prisma.conversacion.upsert({
+    where: {
+      tenantId_canalId_contactoId: {
+        tenantId: tenant.id,
+        canalId: canal.id,
+        contactoId: contactoDemo.id,
+      },
+    },
+    update: {},
+    create: {
+      tenantId: tenant.id,
+      canalId: canal.id,
+      contactoId: contactoDemo.id,
+      estado: 'ABIERTA',
+      // Hace 20 horas: quedan 4 de ventana. Es el estado interesante de la interfaz,
+      // el que obliga a decidir entre responder ya o gastar una plantilla.
+      ultimoMensajeClienteEn: haceHoras(20),
+      ultimoMensajeTexto: 'Perfecto, cuando me manda la cotizacion?',
+      ultimoMensajeEn: haceHoras(20),
+      ultimoMensajeDireccion: 'ENTRANTE',
+      mensajesSinLeer: 1,
+      slaVenceEn: haceHoras(19),
+      etiquetas: ['San Andres'],
+    },
+  });
+
+  // `skipDuplicates` se apoya en el indice unico de (tenant_id, wamid): volver a sembrar
+  // no duplica el hilo, que es la misma propiedad que protege de los reintentos de Meta.
+  await prisma.mensaje.createMany({
+    skipDuplicates: true,
+    data: [
+      {
+        tenantId: tenant.id,
+        conversacionId: conversacion.id,
+        direccion: 'ENTRANTE',
+        tipo: 'TEXTO',
+        estado: 'ENTREGADO',
+        texto: 'Hola! Quiero ir a San Andres en diciembre, somos 2 adultos y un nino.',
+        wamid: 'wamid.DEMO.0001',
+        ocurridoEn: haceHoras(22),
+      },
+      {
+        tenantId: tenant.id,
+        conversacionId: conversacion.id,
+        direccion: 'SALIENTE',
+        tipo: 'TEXTO',
+        estado: 'LEIDO',
+        texto: 'Hola Laura! Con mucho gusto. Que fechas tiene en mente?',
+        wamid: 'wamid.DEMO.0002',
+        claveIdempotencia: '01932000-0000-7000-8000-00000000e001',
+        ocurridoEn: haceHoras(21),
+      },
+      {
+        tenantId: tenant.id,
+        conversacionId: conversacion.id,
+        direccion: 'ENTRANTE',
+        tipo: 'TEXTO',
+        estado: 'ENTREGADO',
+        texto: 'Perfecto, cuando me manda la cotizacion?',
+        wamid: 'wamid.DEMO.0003',
+        ocurridoEn: haceHoras(20),
+      },
+    ],
+  });
+
+  // El espejo de Meta. APROBADA y PAUSADA a la vez, a proposito: la bandeja tiene que
+  // mostrar la pausada deshabilitada CON SU MOTIVO, y sin un ejemplo nadie lo construye.
+  await prisma.plantillaWhatsapp.createMany({
+    skipDuplicates: true,
+    data: [
+      {
+        tenantId: tenant.id,
+        cuentaId: cuenta.id,
+        nombre: 'recordatorio_anticipo',
+        idioma: 'es_CO',
+        categoria: 'UTILIDAD',
+        estado: 'APROBADA',
+        cuerpo: 'Hola {{1}}, le recordamos que el anticipo de su viaje vence el {{2}}.',
+        variables: [
+          { indice: 1, descripcion: 'Nombre del viajero', ejemplo: 'Laura' },
+          { indice: 2, descripcion: 'Fecha limite', ejemplo: '15 de noviembre' },
+        ],
+        botones: [{ tipo: 'RESPUESTA_RAPIDA', texto: 'Ya pague', valor: null }],
+        actualizadaEnMeta: haceHoras(72),
+      },
+      {
+        tenantId: tenant.id,
+        cuentaId: cuenta.id,
+        nombre: 'promo_fin_de_ano',
+        idioma: 'es_CO',
+        categoria: 'MARKETING',
+        estado: 'PAUSADA',
+        motivoEstado: 'Meta la pauso: varios destinatarios la marcaron como spam.',
+        cuerpo: 'Hola {{1}}, tenemos planes de fin de ano desde {{2}}.',
+        variables: [
+          { indice: 1, descripcion: 'Nombre del viajero', ejemplo: 'Laura' },
+          { indice: 2, descripcion: 'Precio desde', ejemplo: '$1.900.000' },
+        ],
+        actualizadaEnMeta: haceHoras(48),
+        estadoCambiadoEn: haceHoras(12),
+      },
+    ],
+  });
+
   const resumen = {
     paquetes: await prisma.paquete.count({ where: { tenantId: tenant.id } }),
     temporadas: await prisma.temporada.count({ where: { tenantId: tenant.id } }),
@@ -552,6 +669,9 @@ async function main() {
     contactos: await prisma.contacto.count({ where: { tenantId: tenant.id } }),
     etapas: await prisma.etapaPipeline.count({ where: { tenantId: tenant.id } }),
     canales: await prisma.canal.count({ where: { tenantId: tenant.id } }),
+    conversaciones: await prisma.conversacion.count({ where: { tenantId: tenant.id } }),
+    mensajes: await prisma.mensaje.count({ where: { tenantId: tenant.id } }),
+    plantillas: await prisma.plantillaWhatsapp.count({ where: { tenantId: tenant.id } }),
   };
 
   console.log('\nAgencia demo lista:');

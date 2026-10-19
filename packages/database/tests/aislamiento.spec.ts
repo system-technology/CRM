@@ -1524,3 +1524,563 @@ describe('CRM — contactos, oportunidades y la ficha del panel lateral', () => 
     }
   });
 });
+// =============================================================================
+// INBOX — conversaciones, mensajes, adjuntos y el espejo de plantillas
+//
+// Aserciones 35 a 45. Las cuatro tablas nuevas son de negocio: una fuga aquí es una
+// agencia leyendo las conversaciones privadas de otra, que es el peor escenario del
+// producto porque es donde el viajero escribe su pasaporte.
+//
+// Todas estas aserciones se han verificado POR MUTACIÓN con
+// `scripts/mutaciones-aislamiento.mjs`: se rompe la política a propósito y se comprueba
+// que la prueba se pone roja. Una protección que no se puede poner en rojo no cuenta
+// como protección.
+// =============================================================================
+
+/**
+ * La expresión de aislamiento, LETRA POR LETRA, tal como la escribe
+ * `aplicar_aislamiento_tenant`.
+ *
+ * Vive aquí, en el repositorio, por la misma razón que el literal de `excepciones_rls`
+ * de la aserción 11: la vista `tablas_sin_aislamiento` deduce la forma canónica del
+ * catálogo, de modo que si alguien rompiera la política de la tabla de referencia, la
+ * «canónica» pasaría a ser la rota y la vista se quedaría muda. Este literal es el ancla
+ * que impide que la referencia se mueva sin que nadie se entere.
+ */
+const EXPRESION_AISLAMIENTO_CANONICA =
+  "(tenant_id = (NULLIF(current_setting('app.current_tenant'::text, true), ''::text))::uuid)";
+
+const TABLAS_DEL_INBOX = ['conversaciones', 'mensajes', 'adjuntos', 'plantillas_whatsapp'] as const;
+
+describe('Inbox — conversaciones, mensajes y el espejo de plantillas de Meta', () => {
+  const cuentaDe: Record<string, string> = {};
+  const canalDe: Record<string, string> = {};
+  const contactoDe: Record<string, string> = {};
+  const conversacionDe: Record<string, string> = {};
+  const mensajeDe: Record<string, string> = {};
+  const plantillaDe: Record<string, string> = {};
+
+  beforeAll(async () => {
+    for (const [i, tenant] of [TENANT_A, TENANT_B].entries()) {
+      await comoTenant(tenant, async (c) => {
+        const cuenta = await c.query(
+          `INSERT INTO cuentas_whatsapp (id, tenant_id, waba_id, nombre, creado_en, actualizado_en)
+           VALUES (gen_random_uuid(), $1, $2, 'WABA de prueba', now(), now())
+           ON CONFLICT (tenant_id, waba_id) DO UPDATE SET nombre = EXCLUDED.nombre
+           RETURNING id`,
+          [tenant, `9000000000000${i}`],
+        );
+        cuentaDe[tenant] = (cuenta.rows[0] as { id: string }).id;
+
+        const canal = await c.query(
+          `INSERT INTO canales (id, tenant_id, cuenta_id, phone_number_id, numero_e164, creado_en, actualizado_en)
+           VALUES (gen_random_uuid(), $1, $2, $3, $4, now(), now())
+           ON CONFLICT (tenant_id, phone_number_id) DO UPDATE SET numero_e164 = EXCLUDED.numero_e164
+           RETURNING id`,
+          [tenant, cuentaDe[tenant], `8000000000000${i}`, `+5760000000${i}`],
+        );
+        canalDe[tenant] = (canal.rows[0] as { id: string }).id;
+
+        const contacto = await c.query(
+          `INSERT INTO contactos (id, tenant_id, telefono_e164, nombre, creado_en, actualizado_en)
+           VALUES (gen_random_uuid(), $1, $2, 'Viajero del inbox', now(), now())
+           ON CONFLICT (tenant_id, telefono_e164) DO UPDATE SET nombre = EXCLUDED.nombre
+           RETURNING id`,
+          [tenant, `+57366600000${i}`],
+        );
+        contactoDe[tenant] = (contacto.rows[0] as { id: string }).id;
+
+        const conversacion = await c.query(
+          `INSERT INTO conversaciones
+             (id, tenant_id, contacto_id, canal_id, ultimo_mensaje_cliente_en,
+              ultimo_mensaje_texto, ultimo_mensaje_en, ultimo_mensaje_direccion,
+              creado_en, actualizado_en)
+           VALUES (gen_random_uuid(), $1, $2, $3, now(), 'Hola, quiero San Andres',
+                   now(), 'ENTRANTE', now(), now())
+           RETURNING id`,
+          [tenant, contactoDe[tenant], canalDe[tenant]],
+        );
+        conversacionDe[tenant] = (conversacion.rows[0] as { id: string }).id;
+
+        const mensaje = await c.query(
+          `INSERT INTO mensajes
+             (id, tenant_id, conversacion_id, direccion, tipo, estado, texto, wamid,
+              ocurrido_en, creado_en, actualizado_en)
+           VALUES (gen_random_uuid(), $1, $2, 'ENTRANTE', 'TEXTO', 'ENTREGADO',
+                   $4, $3,
+                   now(), now(), now())
+           RETURNING id`,
+          [
+            tenant,
+            conversacionDe[tenant],
+            `wamid.COMPARTIDO.${i}`,
+            `Mi pasaporte es AQ12345${i} y nazco el 1990-03-04`,
+          ],
+        );
+        mensajeDe[tenant] = (mensaje.rows[0] as { id: string }).id;
+
+        const plantilla = await c.query(
+          `INSERT INTO plantillas_whatsapp
+             (id, tenant_id, cuenta_id, nombre, idioma, categoria, estado, cuerpo,
+              actualizada_en_meta, creado_en, actualizado_en)
+           VALUES (gen_random_uuid(), $1, $2, 'recordatorio_pago', 'es_CO', 'UTILIDAD',
+                   'APROBADA', 'Hola {{1}}, su anticipo vence el {{2}}.', now(), now(), now())
+           RETURNING id`,
+          [tenant, cuentaDe[tenant]],
+        );
+        plantillaDe[tenant] = (plantilla.rows[0] as { id: string }).id;
+      });
+    }
+  });
+
+  afterAll(async () => {
+    // Orden explícito: `conversaciones -> canales` es RESTRICT, y el orden en que
+    // PostgreSQL propaga dos cascadas hermanas no está definido.
+    for (const tenant of [TENANT_A, TENANT_B]) {
+      await comoTenant(tenant, async (c) => {
+        await c.query('DELETE FROM adjuntos WHERE tenant_id = $1', [tenant]);
+        await c.query('DELETE FROM mensajes WHERE tenant_id = $1', [tenant]);
+        await c.query('DELETE FROM notas_internas WHERE tenant_id = $1', [tenant]);
+        await c.query('DELETE FROM plantillas_whatsapp WHERE tenant_id = $1', [tenant]);
+        await c.query('DELETE FROM conversaciones WHERE tenant_id = $1', [tenant]);
+      });
+      // `enrutamiento_canales` apunta a `canales` y a `cuentas_whatsapp` con RESTRICT, y es
+      // tabla GLOBAL: el rol del tenant no la ve, asi que borrarla desde `comoTenant` no es
+      // que falle — es que no encuentra nada y despues el `DELETE FROM canales` revienta.
+      // Este es el fallo exacto por el que la rama volvio de la compuerta.
+      await admin.query('BEGIN');
+      await admin.query('SET LOCAL ROLE "viajapro_enrutador"');
+      await admin.query('DELETE FROM enrutamiento_canales WHERE tenant_resuelto_id = $1', [tenant]);
+      await admin.query('COMMIT');
+      await comoTenant(tenant, async (c) => {
+        await c.query('DELETE FROM canales WHERE tenant_id = $1', [tenant]);
+        await c.query('DELETE FROM cuentas_whatsapp WHERE tenant_id = $1', [tenant]);
+        await c.query('DELETE FROM contactos WHERE tenant_id = $1', [tenant]);
+      });
+    }
+  });
+
+  it('35 — las cuatro tablas del inbox tienen RLS habilitada, FORZADA y con WITH CHECK', async () => {
+    const { rows } = await admin.query(
+      `SELECT c.relname, c.relrowsecurity, c.relforcerowsecurity,
+              (SELECT count(*) FROM pg_policy p
+                WHERE p.polrelid = c.oid AND p.polname = 'tenant_isolation'
+                  AND p.polwithcheck IS NOT NULL) AS con_check
+         FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' AND c.relname = ANY($1)`,
+      [TABLAS_DEL_INBOX],
+    );
+    expect(rows).toHaveLength(TABLAS_DEL_INBOX.length);
+    for (const fila of rows as Array<{
+      relname: string;
+      relrowsecurity: boolean;
+      relforcerowsecurity: boolean;
+      con_check: string;
+    }>) {
+      expect(`${fila.relname}:${fila.relrowsecurity}`).toBe(`${fila.relname}:true`);
+      expect(`${fila.relname}:${fila.relforcerowsecurity}`).toBe(`${fila.relname}:true`);
+      expect(`${fila.relname}:${fila.con_check}`).toBe(`${fila.relname}:1`);
+    }
+  });
+
+  it('36 — USING y WITH CHECK son la MISMA expresión canónica en TODA tabla de negocio', async () => {
+    // EL PUNTO CIEGO QUE QUEDÓ SEÑALADO.
+    //
+    // Quitar `WITH CHECK` dejando `USING` no rompe nada: PostgreSQL reutiliza la
+    // expresión. Lo que sí es una brecha —y pasaba todas las comprobaciones anteriores—
+    // es un `WITH CHECK` PRESENTE pero DISTINTO: con `WITH CHECK (true)`, `polwithcheck`
+    // no es NULL, la política existe, RLS está forzada, el catálogo está en verde, y
+    // cualquier agencia puede INSERTAR filas dentro de los datos de otra.
+    const { rows } = await admin.query(
+      `SELECT c.relname AS tabla,
+              pg_get_expr(p.polqual, p.polrelid)      AS usando,
+              pg_get_expr(p.polwithcheck, p.polrelid) AS con_check,
+              p.polcmd, p.polpermissive
+         FROM pg_policy p
+         JOIN pg_class c ON c.oid = p.polrelid
+         JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' AND p.polname = 'tenant_isolation'
+        ORDER BY 1`,
+    );
+    expect(rows.length).toBeGreaterThan(0);
+    for (const f of rows as Array<{
+      tabla: string;
+      usando: string;
+      con_check: string | null;
+      polcmd: string;
+      polpermissive: boolean;
+    }>) {
+      expect(`${f.tabla}:${f.usando}`).toBe(`${f.tabla}:${EXPRESION_AISLAMIENTO_CANONICA}`);
+      expect(`${f.tabla}:${f.con_check}`).toBe(`${f.tabla}:${EXPRESION_AISLAMIENTO_CANONICA}`);
+      // PERMISSIVE FOR ALL: una política FOR SELECT dejaría el INSERT sin filtrar.
+      expect(`${f.tabla}:${f.polcmd}`).toBe(`${f.tabla}:*`);
+      expect(`${f.tabla}:${f.polpermissive}`).toBe(`${f.tabla}:true`);
+    }
+
+    // Y la vista lo detecta, que es lo que mira la aserción 1 y lo que corre en CI.
+    const defectos = await admin.query(
+      'SELECT tabla, problema FROM tablas_sin_aislamiento WHERE problema IS NOT NULL',
+    );
+    expect(defectos.rows).toEqual([]);
+  });
+
+  it('37 — un tenant no ve ni puede escribir las conversaciones de otro', async () => {
+    const vistas = await comoTenant(TENANT_B, (c) =>
+      c.query('SELECT id FROM conversaciones WHERE id = $1', [conversacionDe[TENANT_A]]),
+    );
+    expect(vistas.rowCount).toBe(0);
+
+    // Lo que verifica WITH CHECK: sin él, B abre un hilo DENTRO de los datos de A.
+    await expect(
+      comoTenant(TENANT_B, (c) =>
+        c.query(
+          `INSERT INTO conversaciones (id, tenant_id, contacto_id, canal_id, creado_en, actualizado_en)
+           VALUES (gen_random_uuid(), $1, $2, $3, now(), now())`,
+          [TENANT_A, contactoDe[TENANT_A], canalDe[TENANT_A]],
+        ),
+      ),
+    ).rejects.toThrow(/row-level security|violates foreign key/i);
+
+    const robadas = await comoTenant(TENANT_B, (c) =>
+      c.query("UPDATE conversaciones SET estado = 'CERRADA' WHERE id = $1", [
+        conversacionDe[TENANT_A],
+      ]),
+    );
+    expect(robadas.rowCount).toBe(0);
+
+    const borradas = await comoTenant(TENANT_B, (c) =>
+      c.query('DELETE FROM conversaciones WHERE id = $1', [conversacionDe[TENANT_A]]),
+    );
+    expect(borradas.rowCount).toBe(0);
+  });
+
+  it('38 — el texto de un mensaje de otra agencia no existe, ni se puede plantar uno', async () => {
+    // Aquí es donde el viajero escribe su pasaporte (R10). Es la fila más sensible.
+    const leidos = await comoTenant(TENANT_B, (c) =>
+      c.query('SELECT texto FROM mensajes WHERE tenant_id = $1', [TENANT_A]),
+    );
+    expect(leidos.rowCount).toBe(0);
+
+    // Ni siquiera por la búsqueda de la bandeja, que es la otra puerta a esa columna:
+    // el número de pasaporte de un viajero de A no aparece buscándolo desde B. Se busca
+    // el de A en concreto, no la palabra «pasaporte», porque B tiene el suyo y
+    // encontrarlo sería el comportamiento correcto.
+    const buscados = await comoTenant(TENANT_B, (c) =>
+      c.query('SELECT id FROM mensajes WHERE texto ILIKE $1', ['%AQ123450%']),
+    );
+    expect(buscados.rowCount).toBe(0);
+    // Y desde A sí se encuentra: si no, la aserción anterior sería verde por vacío.
+    const propios = await comoTenant(TENANT_A, (c) =>
+      c.query('SELECT id FROM mensajes WHERE texto ILIKE $1', ['%AQ123450%']),
+    );
+    expect(propios.rowCount).toBe(1);
+
+    await expect(
+      comoTenant(TENANT_B, (c) =>
+        c.query(
+          `INSERT INTO mensajes (id, tenant_id, conversacion_id, direccion, tipo, texto, wamid, ocurrido_en, creado_en, actualizado_en)
+           VALUES (gen_random_uuid(), $1, $2, 'ENTRANTE', 'TEXTO', 'Mensaje plantado', 'wamid.PLANTADO', now(), now(), now())`,
+          [TENANT_A, conversacionDe[TENANT_A]],
+        ),
+      ),
+    ).rejects.toThrow(/row-level security|violates foreign key/i);
+
+    // Y los adjuntos, que son la otra mitad del mensaje: la media de WhatsApp lleva
+    // fotos de pasaporte con la misma frecuencia que el texto lleva su número.
+    await comoTenant(TENANT_A, (c) =>
+      c.query(
+        `INSERT INTO adjuntos (id, tenant_id, mensaje_id, tipo, clave_objeto, descargado_en, creado_en)
+         VALUES (gen_random_uuid(), $1, $2, 'DOCUMENTO', $3, now(), now())`,
+        [TENANT_A, mensajeDe[TENANT_A], `${TENANT_A}/media/pasaporte.pdf`],
+      ),
+    );
+    const adjuntosAjenos = await comoTenant(TENANT_B, (c) =>
+      c.query('SELECT clave_objeto FROM adjuntos WHERE tenant_id = $1', [TENANT_A]),
+    );
+    expect(adjuntosAjenos.rowCount).toBe(0);
+  });
+
+  it('39 — el motor rechaza colgar una conversación del CONTACTO o del CANAL de otra agencia', async () => {
+    // Esto NO lo impide RLS: la integridad referencial se comprueba por encima de las
+    // políticas. Lo impiden las claves foráneas COMPUESTAS. Es el mismo agujero que se
+    // cerró en `oportunidades`, y aquí hay dos: el contacto y el canal.
+    await expect(
+      comoTenant(TENANT_B, (c) =>
+        c.query(
+          `INSERT INTO conversaciones (id, tenant_id, contacto_id, canal_id, creado_en, actualizado_en)
+           VALUES (gen_random_uuid(), $1, $2, $3, now(), now())`,
+          [TENANT_B, contactoDe[TENANT_A], canalDe[TENANT_B]],
+        ),
+      ),
+    ).rejects.toThrow(/violates foreign key constraint/i);
+
+    await expect(
+      comoTenant(TENANT_B, (c) =>
+        c.query('UPDATE conversaciones SET canal_id = $1 WHERE id = $2', [
+          canalDe[TENANT_A],
+          conversacionDe[TENANT_B],
+        ]),
+      ),
+    ).rejects.toThrow(/violates foreign key constraint/i);
+
+    // Y un mensaje no puede colgar del hilo de otra agencia.
+    await expect(
+      comoTenant(TENANT_B, (c) =>
+        c.query(
+          `INSERT INTO mensajes (id, tenant_id, conversacion_id, direccion, tipo, wamid, ocurrido_en, creado_en, actualizado_en)
+           VALUES (gen_random_uuid(), $1, $2, 'ENTRANTE', 'TEXTO', 'wamid.HILO.AJENO', now(), now(), now())`,
+          [TENANT_B, conversacionDe[TENANT_A]],
+        ),
+      ),
+    ).rejects.toThrow(/violates foreign key constraint/i);
+  });
+
+  it('40 — el mismo wamid no entra dos veces en la misma agencia, y sí en otra (R5)', async () => {
+    // Meta reintenta hasta recibir 200, y también cuando el 200 se perdió de vuelta.
+    // Sin esta unicidad el reintento duplica el mensaje en la pantalla del asesor.
+    await expect(
+      comoTenant(TENANT_A, (c) =>
+        c.query(
+          `INSERT INTO mensajes (id, tenant_id, conversacion_id, direccion, tipo, texto, wamid, ocurrido_en, creado_en, actualizado_en)
+           VALUES (gen_random_uuid(), $1, $2, 'ENTRANTE', 'TEXTO', 'Reintento de Meta', 'wamid.COMPARTIDO.0', now(), now(), now())`,
+          [TENANT_A, conversacionDe[TENANT_A]],
+        ),
+      ),
+    ).rejects.toThrow(/mensajes_tenant_id_wamid_key|duplicate key/i);
+
+    // El `ON CONFLICT DO NOTHING` del trabajador se apoya exactamente en ese índice.
+    const reintento = await comoTenant(TENANT_A, (c) =>
+      c.query(
+        `INSERT INTO mensajes (id, tenant_id, conversacion_id, direccion, tipo, texto, wamid, ocurrido_en, creado_en, actualizado_en)
+         VALUES (gen_random_uuid(), $1, $2, 'ENTRANTE', 'TEXTO', 'Reintento de Meta', 'wamid.COMPARTIDO.0', now(), now(), now())
+         ON CONFLICT (tenant_id, wamid) WHERE wamid IS NOT NULL DO NOTHING`,
+        [TENANT_A, conversacionDe[TENANT_A]],
+      ),
+    );
+    expect(reintento.rowCount).toBe(0);
+
+    // Y la unicidad es POR TENANT y no global: global sería un oráculo que le confirma a
+    // una agencia que otra ya recibió ese mensaje. B ya tiene `wamid.COMPARTIDO.1`; que
+    // A pueda tener el suyo con el mismo sufijo lo demuestra sin cruzar ninguna fila.
+    const enOtraAgencia = await comoTenant(TENANT_A, (c) =>
+      c.query(
+        `INSERT INTO mensajes (id, tenant_id, conversacion_id, direccion, tipo, texto, wamid, ocurrido_en, creado_en, actualizado_en)
+         VALUES (gen_random_uuid(), $1, $2, 'ENTRANTE', 'TEXTO', 'Mismo wamid, otra agencia', 'wamid.COMPARTIDO.1', now(), now(), now())
+         RETURNING id`,
+        [TENANT_A, conversacionDe[TENANT_A]],
+      ),
+    );
+    expect(enOtraAgencia.rowCount).toBe(1);
+  });
+
+  it('41 — una clave de idempotencia repetida no manda el mensaje dos veces (R5)', async () => {
+    const clave = randomUUID();
+    const enviar = (texto: string) =>
+      comoTenant(TENANT_A, (c) =>
+        c.query(
+          `INSERT INTO mensajes (id, tenant_id, conversacion_id, direccion, tipo, estado, texto, clave_idempotencia, ocurrido_en, creado_en, actualizado_en)
+           VALUES (gen_random_uuid(), $1, $2, 'SALIENTE', 'TEXTO', 'PENDIENTE', $3, $4, now(), now(), now())`,
+          [TENANT_A, conversacionDe[TENANT_A], texto, clave],
+        ),
+      );
+
+    await expect(enviar('Le confirmo la reserva')).resolves.toBeDefined();
+    // El doble clic del asesor. Sin esto, el viajero lo recibe dos veces — y si fuera
+    // una plantilla, Meta lo cobraría dos veces.
+    await expect(enviar('Le confirmo la reserva')).rejects.toThrow(
+      /mensajes_tenant_id_clave_idempotencia_key|duplicate key/i,
+    );
+  });
+
+  it('42 — un mensaje entrante no tiene autor, ni existe sin wamid, ni falla sin estar fallido', async () => {
+    const insertar = (columnas: string, valores: unknown[]) =>
+      comoTenant(TENANT_A, (c) =>
+        c.query(
+          `INSERT INTO mensajes (id, tenant_id, conversacion_id, ocurrido_en, creado_en, actualizado_en, ${columnas})
+           VALUES (gen_random_uuid(), $1, $2, now(), now(), now(), ${valores
+             .map((_, i) => `$${i + 3}`)
+             .join(', ')})`,
+          [TENANT_A, conversacionDe[TENANT_A], ...valores],
+        ),
+      );
+
+    // Un entrante con autor es un mensaje puesto en boca del viajero.
+    await expect(
+      insertar('direccion, tipo, wamid, autor_id', [
+        'ENTRANTE',
+        'TEXTO',
+        `wamid.${randomUUID()}`,
+        TENANT_A,
+      ]),
+    ).rejects.toThrow(/mensajes_entrante_sin_autor|violates foreign key/i);
+
+    // Un entrante sin wamid se duplica en el siguiente reintento de Meta: el índice
+    // único no protege un NULL.
+    await expect(insertar('direccion, tipo', ['ENTRANTE', 'TEXTO'])).rejects.toThrow(
+      /mensajes_entrante_exige_wamid/,
+    );
+
+    // «Entregado, pero con motivo de fallo» es una contradicción que la bandeja pintaría
+    // como error sobre un mensaje que sí llegó.
+    await expect(
+      insertar('direccion, tipo, estado, motivo_fallo', [
+        'SALIENTE',
+        'TEXTO',
+        'ENTREGADO',
+        'El numero no tiene WhatsApp',
+      ]),
+    ).rejects.toThrow(/mensajes_fallo_explica_solo_el_fallo/);
+  });
+
+  it('43 — la identidad de una plantilla es (WABA, nombre, idioma), no (tenant, nombre)', async () => {
+    // Las plantillas NO son nuestras: son de Meta, y allí el nombre es único por WABA y
+    // por idioma. Una agencia con dos WABAs puede tener la misma registrada en los dos.
+    const segundaCuenta = await comoTenant(TENANT_A, (c) =>
+      c.query(
+        `INSERT INTO cuentas_whatsapp (id, tenant_id, waba_id, nombre, creado_en, actualizado_en)
+         VALUES (gen_random_uuid(), $1, '90000000000099', 'Segundo WABA', now(), now())
+         RETURNING id`,
+        [TENANT_A],
+      ),
+    );
+    const otraCuenta = (segundaCuenta.rows[0] as { id: string }).id;
+
+    // Mismo nombre, mismo idioma, OTRO WABA: son dos plantillas distintas.
+    await expect(
+      comoTenant(TENANT_A, (c) =>
+        c.query(
+          `INSERT INTO plantillas_whatsapp (id, tenant_id, cuenta_id, nombre, idioma, categoria, cuerpo, actualizada_en_meta, creado_en, actualizado_en)
+           VALUES (gen_random_uuid(), $1, $2, 'recordatorio_pago', 'es_CO', 'UTILIDAD', 'Otro WABA', now(), now(), now())`,
+          [TENANT_A, otraCuenta],
+        ),
+      ),
+    ).resolves.toBeDefined();
+
+    // Mismo nombre, mismo WABA, OTRO idioma: también son distintas, y cada una lleva su
+    // propio estado — Meta puede aprobar el español y rechazar el inglés.
+    await expect(
+      comoTenant(TENANT_A, (c) =>
+        c.query(
+          `INSERT INTO plantillas_whatsapp (id, tenant_id, cuenta_id, nombre, idioma, categoria, cuerpo, actualizada_en_meta, creado_en, actualizado_en)
+           VALUES (gen_random_uuid(), $1, $2, 'recordatorio_pago', 'en_US', 'UTILIDAD', 'Hi {{1}}', now(), now(), now())`,
+          [TENANT_A, cuentaDe[TENANT_A]],
+        ),
+      ),
+    ).resolves.toBeDefined();
+
+    // Pero la misma terna, no.
+    await expect(
+      comoTenant(TENANT_A, (c) =>
+        c.query(
+          `INSERT INTO plantillas_whatsapp (id, tenant_id, cuenta_id, nombre, idioma, categoria, cuerpo, actualizada_en_meta, creado_en, actualizado_en)
+           VALUES (gen_random_uuid(), $1, $2, 'recordatorio_pago', 'es_CO', 'UTILIDAD', 'Duplicada', now(), now(), now())`,
+          [TENANT_A, cuentaDe[TENANT_A]],
+        ),
+      ),
+    ).rejects.toThrow(/plantillas_whatsapp_tenant_id_cuenta_id_nombre_idioma_key|duplicate key/i);
+
+    // Un nombre que Meta no admite no falla al guardarlo: falla al ENVIAR, en producción.
+    await expect(
+      comoTenant(TENANT_A, (c) =>
+        c.query(
+          `INSERT INTO plantillas_whatsapp (id, tenant_id, cuenta_id, nombre, idioma, categoria, cuerpo, actualizada_en_meta, creado_en, actualizado_en)
+           VALUES (gen_random_uuid(), $1, $2, 'Recordatorio Pago', 'es_CO', 'UTILIDAD', 'x', now(), now(), now())`,
+          [TENANT_A, cuentaDe[TENANT_A]],
+        ),
+      ),
+    ).rejects.toThrow(/plantillas_nombre_formato_meta/);
+  });
+
+  it('44 — Meta pausa sola una plantilla, y pausarla sin motivo no es representable', async () => {
+    // El caso que más sorprende: Meta pausa una plantilla cuando los destinatarios la
+    // marcan como spam, sin avisar. La que funcionaba el martes no funciona el jueves, y
+    // el asesor necesita el motivo y DESDE CUÁNDO — por eso `estado_cambiado_en` existe.
+    await expect(
+      comoTenant(TENANT_A, (c) =>
+        c.query("UPDATE plantillas_whatsapp SET estado = 'PAUSADA' WHERE id = $1", [
+          plantillaDe[TENANT_A],
+        ]),
+      ),
+    ).rejects.toThrow(/plantillas_estado_malo_exige_motivo/);
+
+    await comoTenant(TENANT_A, (c) =>
+      c.query(
+        `UPDATE plantillas_whatsapp
+            SET estado = 'PAUSADA',
+                motivo_estado = 'Los destinatarios la marcaron como spam',
+                estado_cambiado_en = now(),
+                sincronizada_en = now(),
+                actualizado_por = NULL
+          WHERE id = $1`,
+        [plantillaDe[TENANT_A]],
+      ),
+    );
+
+    // `actualizado_por` NULO es el dato, no un campo sin rellenar: significa que el
+    // cambio lo hizo Meta y no una persona de la agencia.
+    const { rows } = await comoTenant(TENANT_A, (c) =>
+      c.query(
+        'SELECT estado, motivo_estado, actualizado_por FROM plantillas_whatsapp WHERE id = $1',
+        [plantillaDe[TENANT_A]],
+      ),
+    );
+    expect((rows[0] as { estado: string }).estado).toBe('PAUSADA');
+    expect((rows[0] as { actualizado_por: string | null }).actualizado_por).toBeNull();
+
+    // Y nada de esto se ve desde la otra agencia.
+    const ajenas = await comoTenant(TENANT_B, (c) =>
+      c.query('SELECT id FROM plantillas_whatsapp WHERE tenant_id = $1', [TENANT_A]),
+    );
+    expect(ajenas.rowCount).toBe(0);
+
+    await expect(
+      comoTenant(TENANT_B, (c) =>
+        c.query(
+          `INSERT INTO plantillas_whatsapp (id, tenant_id, cuenta_id, nombre, idioma, categoria, cuerpo, actualizada_en_meta, creado_en, actualizado_en)
+           VALUES (gen_random_uuid(), $1, $2, 'plantilla_plantada', 'es_CO', 'MARKETING', 'x', now(), now(), now())`,
+          [TENANT_A, cuentaDe[TENANT_A]],
+        ),
+      ),
+    ).rejects.toThrow(/row-level security|violates foreign key/i);
+  });
+
+  it('45 — el instante de Meta y el nuestro son dos columnas distintas, y el hilo ordena por el de Meta', async () => {
+    // Los webhooks llegan DESORDENADOS: un reintento de Meta trae un mensaje de hace
+    // horas después de uno recién recibido. Si el hilo ordenara por `creado_en`, ese
+    // mensaje aparecería al final de la conversación, fuera de contexto.
+    const viejo = `wamid.${randomUUID()}`;
+    await comoTenant(TENANT_A, (c) =>
+      c.query(
+        `INSERT INTO mensajes (id, tenant_id, conversacion_id, direccion, tipo, texto, wamid, ocurrido_en, creado_en, actualizado_en)
+         VALUES (gen_random_uuid(), $1, $2, 'ENTRANTE', 'TEXTO', 'Llego tarde pero es de ayer', $3,
+                 now() - interval '1 day', now(), now())`,
+        [TENANT_A, conversacionDe[TENANT_A], viejo],
+      ),
+    );
+
+    const { rows } = await comoTenant(TENANT_A, (c) =>
+      c.query(
+        `SELECT wamid, ocurrido_en < creado_en AS meta_antes_que_nosotros
+           FROM mensajes
+          WHERE tenant_id = $1 AND conversacion_id = $2
+          ORDER BY ocurrido_en ASC, id ASC
+          LIMIT 1`,
+        [TENANT_A, conversacionDe[TENANT_A]],
+      ),
+    );
+    expect((rows[0] as { wamid: string }).wamid).toBe(viejo);
+    expect((rows[0] as { meta_antes_que_nosotros: boolean }).meta_antes_que_nosotros).toBe(true);
+
+    // Las dos columnas son timestamptz (UTC). R9: nada de `timestamp` sin huso, que es
+    // la forma silenciosa de que un mensaje cambie de día según quién lo lea.
+    const tipos = await admin.query(
+      `SELECT attname, format_type(atttypid, atttypmod) AS tipo
+         FROM pg_attribute
+        WHERE attrelid = 'mensajes'::regclass
+          AND attname IN ('ocurrido_en', 'creado_en')`,
+    );
+    for (const f of tipos.rows as Array<{ attname: string; tipo: string }>) {
+      expect(`${f.attname}:${f.tipo}`).toBe(`${f.attname}:timestamp(3) with time zone`);
+    }
+  });
+});
