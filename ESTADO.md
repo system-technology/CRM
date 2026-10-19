@@ -6,7 +6,7 @@
 
 | Campo | Valor |
 |---|---|
-| Última actualización | 2026-10-19 (integración v0.19.0: `docs/adr-0009-parametrico` @ `f57925b`; la tarea 0 queda cerrada) |
+| Última actualización | 2026-10-19 (integraciones v0.19.0 —ADR-0009, tarea 0— y v0.20.0 —esquema del inbox—) |
 | Actualizado por | Claude Opus 5.5 (`integrador`) |
 | Fase | **Rebanada vertical de paquetes, en construcción** |
 | Avance de la fase | Cotizador de punta a punta. **La cotización es la suma de sus tarifas y el precio «desde» es uno que el comprador puede pagar (v0.19.0).** Apretón de manos del webhook vivo. Bandeja web en construcción |
@@ -111,7 +111,7 @@ Ordenada. La primera es la que debe tomarse ahora.
 | 2 | **Recibir el tarifario real del mayorista** de la agencia piloto | Usuario | La agencia ya está tramitando la información (2026-10-07). Hasta que llegue, el catálogo sigue modelado con datos verosímiles |
 | 2b | **Bajar el tarifario de Meta para Colombia en COP** del CSV oficial | Usuario | Cinco minutos con un navegador. Sin esa cifra el plan de entrada se fija a ciegas |
 | 3 | Reparar la conexión del MCP `postgres` o retirarlo de `.mcp.json` | `devops` | Falla con `CONNECTION_CLOSED` |
-| 4a | Inbox — esquema, roles, funciones y aserciones | `datos` | **Hecho.** 30/30 contra Neon, dos auditorías de seguridad, seis mutaciones verificadas en rojo |
+| 4a | Inbox — esquema, roles, funciones y aserciones | `datos` | **Cerrada e integrada (v0.20.0, 2026-10-19).** 50/50 de aislamiento en tres corridas seguidas contra Neon, cero saltadas; las cuatro tablas con `tenant_id`, RLS forzado y política `USING` + `WITH CHECK`, comprobado en el catálogo |
 | 4a.1 | **Ver en verde los jobs `aislamiento-tenants` y `test` en CI** antes de integrar | `devops` | **Condición del auditor.** Nunca han corrido: ejecutarlos una vez es la única forma honesta de cerrar ese hallazgo |
 | 4b | Inbox — API: tres orígenes de conexión, guardia de identidad, puerto a `crm`, relay por `change` | `backend` | **En curso** en `feat/inbox-webhook`. Hechos: guardia de identidad del rol, firma HMAC, apretón de manos (`GET` vivo y verificado), desglose del sobre. Falta el `POST` con persistencia durable |
 | 4c | Las 3 verificaciones que **no** son de base de datos: arranque del proceso, alta de extremo a extremo, ensayo de rotación de la pimienta | `backend`, `qa`, `devops` | **En curso.** La de arranque está hecha: `guardia-de-rol.ts` comprueba identidad, `rolsuper` y `rolbypassrls`, y la API registra al arrancar «Conectado como 'viajapro_app', verificado». Faltan las otras dos |
@@ -550,8 +550,28 @@ corridas. **La tarea 0 queda cerrada y la compuerta de pruebas vuelve a ser comp
 | Cola | Dueño | Por qué no bloquea |
 |---|---|---|
 | **El shell del usuario exporta un `DATABASE_URL` de OTRO proyecto (`TrastornadoresApp`, otro endpoint de Neon) y `dotenv-cli` no lo pisa.** La primera corrida de `pnpm test` lanzó `limpiar-fixtures.mjs --borrar` **con rol propietario contra esa base ajena**; se salvó porque allí no existe `tenants`. Arreglo: `dotenv -o` en los scripts del paquete, o que `limpiar-fixtures` aborte si `current_database()` no es la esperada | `devops` (+ Usuario: quitar la variable del perfil) | El filtro por prefijo y edad acota lo borrable; y con `env -u DATABASE_URL` todo corre contra la base correcta. **Es de hoy, pero el daño posible es pequeño y no es de aislamiento entre agencias** |
-| Neon tiene aplicadas tres migraciones que no están en `main` (`20261011090000…090200`, del inbox, desde otro árbol de trabajo). Mismo precedente que la cola del 2026-10-13 | `datos` | La suite de aislamiento pasa con ese esquema encima; se resuelve al integrar `feat/inbox-esquema` |
+| ~~Neon tiene aplicadas tres migraciones que no están en `main` (`20261011090000…090200`)~~ | `datos` | **Resuelta en v0.20.0:** ya están en `main`; `migrate status` da 15 migraciones y ninguna deriva |
 | La rama mezcla propósitos (`a408407` es inbox en una rama de quoting) y su prefijo `docs/` sigue mintiendo; además se integró **dos veces** con el mismo nombre | `facilitador` | Se integró por su contenido y por desbloquear la tarea 0. La rama no se borró porque el árbol `D:\Projects\CRM-api` la tiene activa: **su sesión debe abrir rama nueva desde `main`** |
 | `semilla-catalogo-real.ts` calcula la venta del menor con `* 0.75` en coma flotante (R8) | `datos` | Es semilla, redondeada a miles; no es cálculo de producción |
 | `catalogo.e2e-spec.ts` redefine a mano el tipo de la respuesta (`desdeEsDeGrupo: boolean`) en vez de inferirlo del contrato (R3) | `qa` | Solo en la prueba; si el contrato cambia, la aserción lo detecta igual |
+
+---
+
+## Integración del 2026-10-19 (segunda) — v0.20.0
+
+`feat/inbox-esquema` @ `d30b256` entra en `main` (`533c5d4`), etiquetada **v0.20.0**. Registro:
+[`docs/_integraciones/2026-10-19-v0.20.0.md`](docs/_integraciones/2026-10-19-v0.20.0.md).
+
+Compuertas sobre el árbol fusionado (idéntico a la punta; 0 por detrás de `2905e05`), siempre con
+`env -u DATABASE_URL -u DIRECT_URL` y `current_database() = neondb` comprobado: `typecheck` **9/9**,
+`lint` **7/7**, `build` **5/5**, los tres sin caché · `format:check` limpio · pruebas: contracts **56**,
+domain **70**, api **218**, aislamiento **50/50** — **tres corridas seguidas, cero saltadas, sin
+residuo**. La tarea 4a queda cerrada.
+
+### Cola nueva — con dueño, no bloquea
+
+| Cola | Dueño | Por qué no bloquea |
+|---|---|---|
+| Las tres migraciones del inbox se fechan `20261011…` pero entraron **después** de las `20261013…`. En una base nueva se aplicarán en otro orden que en Neon, y **nadie ha reproducido el esquema desde cero** con las 15 | `datos` | Son independientes del catálogo a simple vista, y Neon está sin deriva. Pero la primera base nueva (CI, staging) es la prueba que falta: ejecutar `migrate reset` en una base desechable |
+| 4a.1 sigue abierta: los jobs `aislamiento-tenants` y `test` nunca han corrido en CI | `devops` | La compuerta local está en verde y medida tres veces |
 
