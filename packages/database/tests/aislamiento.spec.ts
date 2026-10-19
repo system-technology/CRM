@@ -318,6 +318,10 @@ const MATRIZ_FUNCIONES: Readonly<Record<string, readonly string[]>> = {
   // Séptima. La añadió la auditoría de implementación: sin ella, un `change` que agota
   // sus reintentos conservaba el contenido para siempre.
   purgar_payloads: ['viajapro_webhook'],
+  // Octava, y SIN ningún EXECUTE: es la función del disparador que lleva la baja de un canal
+  // al directorio (tarea 4f). Es SECURITY DEFINER y escribe el directorio, así que entra en
+  // la matriz como las demás: un GRANT sobre ella sería un camino nuevo hacia la peor tabla.
+  propagar_estado_canal: [],
 };
 
 const PROPIETARIO_ESPERADO: Readonly<Record<string, string>> = {
@@ -328,6 +332,7 @@ const PROPIETARIO_ESPERADO: Readonly<Record<string, string>> = {
   anular_payload: 'viajapro_staging',
   purgar_recepciones: 'viajapro_staging',
   purgar_payloads: 'viajapro_staging',
+  propagar_estado_canal: 'viajapro_enrutador',
 };
 
 /**
@@ -574,6 +579,10 @@ describe('ADR-0008 — directorio de enrutamiento, staging y separación de role
   const claveC = randomBytes(32);
   /** Fila de tipo WABA: `canal_id` nulo, `cuenta_id` relleno. */
   const claveWabaA = randomBytes(32);
+  /** Para la aserción 46: un canal que se da de baja a mitad de la prueba. */
+  const cuentaRevocada = randomUUID();
+  const canalRevocado = randomUUID();
+  const claveRevocada = randomBytes(32);
 
   /** Lo que haría el camino de alta tras el canje del `code`: escribir en el directorio. */
   async function registrar(
@@ -630,15 +639,17 @@ describe('ADR-0008 — directorio de enrutamiento, staging y separación de role
     // invariante que lo hace probatorio, y la prueba lo paga dejando sus asientos.
     await admin.query('SET ROLE "viajapro_enrutador"');
     await admin.query('DELETE FROM enrutamiento_canales WHERE clave_canal_hmac = ANY($1)', [
-      [claveA, claveB, claveC, claveWabaA],
+      [claveA, claveB, claveC, claveWabaA, claveRevocada],
     ]);
     await admin.query('RESET ROLE');
     await admin.query('SET ROLE "viajapro_staging"');
     await admin.query('DELETE FROM recepciones_webhook');
     await admin.query('RESET ROLE');
-    await admin.query('DELETE FROM canales WHERE id = ANY($1)', [[canalA, canalB, canalC]]);
+    await admin.query('DELETE FROM canales WHERE id = ANY($1)', [
+      [canalA, canalB, canalC, canalRevocado],
+    ]);
     await admin.query('DELETE FROM cuentas_whatsapp WHERE id = ANY($1)', [
-      [cuentaA, cuentaB, cuentaC],
+      [cuentaA, cuentaB, cuentaC, cuentaRevocada],
     ]);
   }, 60_000);
 
@@ -719,8 +730,8 @@ describe('ADR-0008 — directorio de enrutamiento, staging y separación de role
     );
     expect(
       rows.length,
-      'faltan funciones de ADR-0008: eran seis y la auditoría de implementación añadió purgar_payloads',
-    ).toBe(7);
+      'faltan funciones de ADR-0008: eran seis, la auditoría de implementación añadió purgar_payloads y la tarea 4f propagar_estado_canal',
+    ).toBe(8);
     expect(rows.filter((r) => r.publico)).toEqual([]);
   });
 
@@ -733,7 +744,7 @@ describe('ADR-0008 — directorio de enrutamiento, staging y separación de role
        WHERE n.nspname = 'public' AND p.proname = ANY($1) ORDER BY 1`,
       [Object.keys(MATRIZ_FUNCIONES)],
     );
-    expect(rows.length).toBe(7);
+    expect(rows.length).toBe(8);
 
     for (const fila of rows) {
       const config = (fila.proconfig as string[] | null) ?? [];
@@ -1276,6 +1287,70 @@ describe('ADR-0008 — directorio de enrutamiento, staging y separación de role
       await admin.query('ROLLBACK');
     }
     expect(codigoCheck, 'se esperaba una violación de CHECK (23514)').toBe('23514');
+  });
+
+  it('46 — un canal REVOCADO en canales se resuelve como REVOCADO, y la agencia no lo reactiva', async () => {
+    // Tarea 4f. Dar de baja un canal es un UPDATE sobre `canales` hecho por la API; si no
+    // llega al directorio, el trabajador sigue viendo ACTIVO y persiste mensajes de una
+    // agencia sin contrato. Fixture propio: el canal revocado no puede contaminar al resto.
+    await admin.query(
+      `INSERT INTO cuentas_whatsapp (id, tenant_id, waba_id, nombre, actualizado_en)
+       VALUES ($1, $2, $3, 'WABA revocable', now())`,
+      [cuentaRevocada, TENANT_A, `waba-prueba-r-${cuentaRevocada.slice(0, 8)}`],
+    );
+    await admin.query(
+      `INSERT INTO canales (id, tenant_id, cuenta_id, phone_number_id, numero_e164, actualizado_en)
+       VALUES ($1, $2, $3, $4, '+573001110009', now())`,
+      [canalRevocado, TENANT_A, cuentaRevocada, `pn-${canalRevocado.slice(0, 8)}`],
+    );
+    await registrar(TENANT_A, claveRevocada, canalRevocado, cuentaRevocada);
+
+    const resolver = async () =>
+      (
+        await conRol('viajapro_webhook', 'SELECT estado FROM resolver_enrutamiento($1)', [
+          claveRevocada,
+        ])
+      ).rows.map((r) => r.estado as string);
+    expect(await resolver(), 'el alta de prueba debía resolver ACTIVO').toEqual(['ACTIVO']);
+
+    // La baja, por el camino real: la API, con su rol y su contexto de tenant.
+    const baja = await comoTenant(TENANT_A, (c) =>
+      c.query("UPDATE canales SET estado = 'REVOCADO', revocado_en = now() WHERE id = $1", [
+        canalRevocado,
+      ]),
+    );
+    expect(baja.rowCount).toBe(1);
+    expect(await resolver(), 'un canal revocado no puede resolverse como ACTIVO').toEqual([
+      'REVOCADO',
+    ]);
+
+    // Y la propagación es monótona: devolver el canal a ACTIVO desde la API no reactiva el
+    // ruteo. Reactivar es repuntar, y eso solo lo hace registrar_enrutamiento.
+    await comoTenant(TENANT_A, (c) =>
+      c.query("UPDATE canales SET estado = 'ACTIVO', revocado_en = NULL WHERE id = $1", [
+        canalRevocado,
+      ]),
+    );
+    expect(await resolver(), 'la API no puede reactivar el ruteo de un número').toEqual([
+      'REVOCADO',
+    ]);
+
+    // El cambio dejó su asiento: un cambio del directorio sin historial es indemostrable.
+    const asientos = await conRol(
+      'viajapro_enrutador',
+      `SELECT estado_anterior, estado_nuevo, tenant_nuevo FROM enrutamiento_historial
+       WHERE canal_id = $1 ORDER BY ocurrido_en`,
+      [canalRevocado],
+    );
+    const filas = asientos.rows as {
+      estado_anterior: string | null;
+      estado_nuevo: string;
+      tenant_nuevo: string;
+    }[];
+    expect(filas.map((r) => [r.estado_anterior, r.estado_nuevo, r.tenant_nuevo])).toEqual([
+      [null, 'ACTIVO', TENANT_A],
+      ['ACTIVO', 'REVOCADO', TENANT_A],
+    ]);
   });
 });
 // =============================================================================

@@ -342,8 +342,28 @@ y `tablas_sin_aislamiento` imputa cada partición a su tabla raíz.
   control. Pendiente: una función `purgar_directorio(p_anteriores_a)` acotada a filas
   `REVOCADO` de más de cinco años y con asiento en el historial, **o** la decisión
   explícita de que es una operación manual con procedimiento escrito.
-- **Nada ata `canales.estado` con `enrutamiento_canales.estado`.** Es responsabilidad del
-  camino de baja, en la misma transacción, con una métrica de reconciliación. Tarea 4b.
+- **`canales.estado` → `enrutamiento_canales.estado`: lo ata un disparador desde el
+  2026-10-19 (tarea 4f, migración `20261019120000_propagar_estado_de_canal_al_directorio`).**
+
+  ```
+  UPDATE canales SET estado = 'REVOCADO'          (viajapro_app, bajo RLS)
+        │  AFTER UPDATE OF estado WHEN estado <> 'ACTIVO'
+        ▼
+  propagar_estado_canal()    SECURITY DEFINER, dueño viajapro_enrutador, sin EXECUTE para nadie
+        ├─► enrutamiento_canales.estado := max(actual, NEW.estado)   (canal_id y tenant de NEW)
+        └─► enrutamiento_historial       asiento ACTIVO → REVOCADO
+  ```
+
+  Por qué un disparador y no que `resolver_enrutamiento` lea `canales`: el resolvedor corre
+  sin contexto de tenant y su dueño no tiene privilegios sobre `canales` por diseño; leerla
+  desde ahí sería una lectura entre tenants nueva. El disparador recibe la fila en `NEW` y no
+  necesita ninguno. Es **monótono**: restringe y nunca relaja, porque reactivar el ruteo es
+  repuntar y eso queda solo en `registrar_enrutamiento`. Aserción 46.
+
+  Lo que sigue sin atar: la baja de una **cuenta** (`cuentas_whatsapp.estado`) no restringe
+  las filas WABA del directorio, y `registrar_enrutamiento` puede escribir `ACTIVO` para un
+  canal que en `canales` sigue `REVOCADO` (es el orden del re-alta, y el rol `viajapro_altas`
+  es el único que puede hacerlo).
 
 ---
 
