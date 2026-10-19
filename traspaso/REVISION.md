@@ -188,3 +188,34 @@ Sin bloqueantes. Abrí otra vez las cuatro PNG y comparé con las de antes:
 
 Web lint y typecheck limpios, 172 pruebas en verde, `format:check` limpio. La rama quedó 40 commits por
 delante tras fusionar `main`; sin conflictos pendientes. Abiertas: 0c.27 a 0c.32.
+
+---
+
+# REVISIÓN — 0c.28 `cba69d7`
+
+## Veredicto: **ACEPTADA**, sin bloqueantes
+
+1. **R3: cumple.** `git grep` no encuentra `PaginaResultado`, `paginarItems` ni ninguna redefinición de
+   `ListarCotizaciones`, `FilaDeCotizacion` o `PaginaDeCotizaciones`: se importan de
+   `@viajapro/contracts` y se validan con sus esquemas Zod (`EsquemaPaginaDeCotizaciones.parse`). Queda
+   `ResumenVisualCotizacion` como modelo de vista derivado de la fila; es de la pantalla, no del contrato.
+2. **Cursor: cumple.** `nextCursor` / `hasMore` en estado, botón «Cargar más cotizaciones»; ya no hay «Página N de M».
+3. **Filtros: coinciden** con el contrato (`cursor`, `limite`, `estado`, `contactoId`, `desde`, `hasta`),
+   los nombres exactos. La pantalla solo ofrece el filtro de estado; el resto está en la función.
+4. **`incluirMargen`: nunca se envía** (grep: solo aparece en comentarios que lo prohíben).
+
+## Cola — con dueño
+
+1. **La búsqueda por texto filtra solo las filas ya cargadas**, no el servidor; con cursor, «sin
+   resultados» puede ser falso si quedan páginas. Mostrar «Buscando en las N cargadas; carga más» o pedir
+   al backend un filtro de texto. *(Dueño: Antigravity; backend si se quiere filtro de servidor.)*
+2. **Con la API real activa, si falla cae en silencio al mock** (solo `console.warn`): el asesor vería
+   cotizaciones simuladas como si fueran suyas. El patrón viene de antes, pero en un listado es más
+   grave; debe mostrar el error accionable de la 0c.25 y no datos falsos. *(Dueño: Antigravity.)*
+3. El mock ignora `desde`/`hasta`, y `listarCotizacionesApi` tiene dos bloques de comentario seguidos.
+   Cosmético.
+
+## Verificado
+
+Web lint y typecheck limpios, test 21 archivos y 171 pruebas, `format:check` limpio. **No levanté la API
+ni hice un GET real contra Neon**: no está verificado el listado contra el servidor.
