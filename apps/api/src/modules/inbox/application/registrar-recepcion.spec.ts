@@ -8,6 +8,7 @@
 import { createHmac } from 'node:crypto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { RegistrarRecepcion } from './registrar-recepcion.js';
+import { PuertoColaDeChanges } from './puertos-de-proceso.js';
 import { PuertoRecepciones, type RecepcionAGuardar } from './puerto-recepciones.js';
 
 const SECRETO = 'secreto-de-aplicacion-de-pruebas';
@@ -50,16 +51,28 @@ class PuertoEspia extends PuertoRecepciones {
   }
 }
 
+class ColaEspia extends PuertoColaDeChanges {
+  trabajos: Array<{ id: string; indice: number }> = [];
+  fallar = false;
+  encolar(recepcionId: Buffer, indice: number): Promise<void> {
+    if (this.fallar) return Promise.reject(new Error('redis caído'));
+    this.trabajos.push({ id: recepcionId.toString('hex'), indice });
+    return Promise.resolve();
+  }
+}
+
 describe('RegistrarRecepcion', () => {
   let puerto: PuertoEspia;
   let caso: RegistrarRecepcion;
+  let cola: ColaEspia;
 
   beforeEach(() => {
     process.env['META_APP_SECRET'] = SECRETO;
     process.env['WEBHOOK_PAYLOAD_KEY'] = CLAVE;
     process.env['WEBHOOK_PAYLOAD_KEY_VERSION'] = '1';
     puerto = new PuertoEspia();
-    caso = new RegistrarRecepcion(puerto);
+    cola = new ColaEspia();
+    caso = new RegistrarRecepcion(puerto, cola);
   });
 
   it('guarda el sobre y cuenta sus dos changes', async () => {
@@ -130,5 +143,30 @@ describe('RegistrarRecepcion', () => {
   it('exige la clave de cifrado: no hay respaldo a texto plano', async () => {
     delete process.env['WEBHOOK_PAYLOAD_KEY'];
     await expect(caso.ejecutar(SOBRE, firmar(SOBRE))).rejects.toThrow(/No hay respaldo/);
+  });
+
+  it('encola un trabajo por change, con el índice aplanado, tras guardar', async () => {
+    await caso.ejecutar(SOBRE, firmar(SOBRE));
+    expect(cola.trabajos.map((t) => t.indice)).toEqual([0, 1]);
+    expect(puerto.guardadas).toHaveLength(1);
+  });
+
+  it('el reintento de Meta reencola con los mismos identificadores: cierra el hueco guardar-encolar', async () => {
+    await caso.ejecutar(SOBRE, firmar(SOBRE));
+    puerto.devolver = false;
+    await caso.ejecutar(SOBRE, firmar(SOBRE));
+    expect(cola.trabajos).toHaveLength(4);
+    expect(cola.trabajos[0]?.id).toBe(cola.trabajos[2]?.id);
+  });
+
+  it('con la firma inválida no se encola nada', async () => {
+    await caso.ejecutar(SOBRE, firmar(SOBRE, 'otro'));
+    expect(cola.trabajos).toHaveLength(0);
+  });
+
+  it('si la cola falla el error sube (500): la fila ya es durable y Meta reintentará', async () => {
+    cola.fallar = true;
+    await expect(caso.ejecutar(SOBRE, firmar(SOBRE))).rejects.toThrow(/redis/);
+    expect(puerto.guardadas).toHaveLength(1);
   });
 });
