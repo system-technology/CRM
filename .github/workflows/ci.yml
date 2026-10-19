@@ -11,6 +11,7 @@
 name: CI
 
 on:
+  workflow_dispatch:
   pull_request:
     branches: [main]
   push:
@@ -123,8 +124,25 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      - name: Generar el cliente de Prisma
+        run: pnpm db:generate
+        env:
+          DATABASE_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'viajapro_test') }}
+          DIRECT_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'viajapro_test') }}
+
+      # Secretos de prueba: aleatorios y efimeros, nacen y mueren con el job. Nada en GitHub.
+      - name: Secretos efimeros de prueba
+        run: |
+          {
+            echo "WHATSAPP_DIRECTORY_PEPPER=$(openssl rand -hex 32)"
+            echo "WEBHOOK_PAYLOAD_KEY=$(openssl rand -base64 32)"
+            echo "WEBHOOK_PAYLOAD_KEY_VERSION=1"
+            echo "META_APP_SECRET=$(openssl rand -hex 16)"
+            echo "WHATSAPP_WEBHOOK_VERIFY_TOKEN=$(openssl rand -hex 16)"
+          } >> "$GITHUB_ENV"
+
       - name: Migraciones
-        run: pnpm db:migrate
+        run: pnpm db:migrate:deploy
         env:
           DATABASE_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'viajapro_test') }}
           DIRECT_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'viajapro_test') }}
@@ -180,11 +198,17 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      - name: Generar el cliente de Prisma
+        run: pnpm db:generate
+        env:
+          DATABASE_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'viajapro_test') }}
+          DIRECT_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'viajapro_test') }}
+
       # La cadena del contenedor se compone con `format` y no se escribe entera: el
       # guardián de secretos del repositorio bloquea cualquier URL de base de datos con
       # contraseña, y tiene razón aunque esta sea la de un servicio efímero de CI.
       - name: Migraciones y políticas RLS
-        run: pnpm db:migrate
+        run: pnpm db:migrate:deploy
         env:
           DATABASE_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'viajapro_test') }}
           DIRECT_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'viajapro_test') }}
