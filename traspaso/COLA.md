@@ -224,7 +224,7 @@ quien no lo tenga. El permiso viene del servidor; el cliente no calcula roles.
 **Hecho cuando:** sin el permiso no hay ningún importe neto ni porcentaje de margen en el DOM, y con
 él sigue igual que hoy.
 
-## [ ] 0c.28. El listado de cotizaciones pasa a la API real (añadida el 2026-10-19, ESPERA)
+## [x] 0c.28. El listado de cotizaciones pasa a la API real (añadida el 2026-10-19)
 
 Cuando `feat/quoting-listado-y-estados` entre en `main` (`git log origin/main`), la 0c.24 deja los
 datos simulados y usa `GET /api/v1/cotizaciones` con los contratos nuevos, conservando el interruptor

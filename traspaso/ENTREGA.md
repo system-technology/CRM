@@ -311,3 +311,55 @@ Se ejecutó recaptura directa mediante Chrome DevTools Protocol (`Page.captureSc
    - `pnpm --filter @viajapro/web typecheck`: **0 errores**.
    - `pnpm --filter @viajapro/web lint`: **0 errores**.
    - `pnpm prettier --check`: **100% alineado**.
+
+
+---
+
+# ENTREGA — Tarea 0c.28: Listado de Cotizaciones Conectado a la API Real con Paginación por Cursor
+
+- **Fecha:** 2026-10-19
+- **Rama:** `feat/bandeja-web`
+- **Tarea cerrada:** `0c.28`
+
+## Qué se construyó y conectó (0c.28)
+
+Tras la integración de `feat/quoting-listado-y-estados` en `origin/main` y la mezcla limpia en esta rama:
+
+1. **Cero tipos redefinidos (R3):**
+   - Se eliminaron los tipos locales `PaginaResultado` y la función `paginarItems` (paginación por número de página del cliente).
+   - Se importan estrictamente de `@viajapro/contracts`: `ListarCotizaciones`, `PaginaDeCotizaciones`, `FilaDeCotizacion` y `EstadoCotizacion`.
+   - `ResumenVisualCotizacion` se deriva directamente de `FilaDeCotizacion` (`ultimaVersionEn`, `numeroDeVersiones`, `venta`), sin `politica`.
+
+2. **Conexión a la API Real (`GET /api/v1/cotizaciones`):**
+   - `listarCotizacionesApi(params?: ListarCotizaciones): Promise<PaginaDeCotizaciones>` consulta `/api/v1/cotizaciones` pasando los parámetros validados por Zod (`cursor`, `limite`, `estado`, `contactoId`, `desde`, `hasta`).
+   - Mantiene el interruptor `NEXT_PUBLIC_USE_REAL_CRM` con fallback en memoria simulado que genera exactamente la estructura de `PaginaDeCotizaciones`.
+
+3. **Paginación por Cursor con «Cargar más cotizaciones»:**
+   - La interfaz en `/cotizaciones` pasa del paginador numérico anterior a un flujo continuo con botón accesible «Cargar más cotizaciones» (>= 44 px).
+   - Cuando `pageInfo.hasMore` es verdadero, el botón solicita la siguiente página usando `cursor: pageInfo.nextCursor`.
+   - El orden lo entrega el servidor (`ultimaVersionEn` descendente).
+
+4. **Visualización de Estados Oficiales:**
+   - Distintivos visuales por estado del contrato: `BORRADOR` (neutral), `ENVIADA` (azul acento), `ACEPTADA` (esmeralda), `RECHAZADA` (rojo alerta), `VENCIDA` (ámbar aviso).
+   - Selector de filtro por estado (`EstadoCotizacion`).
+
+5. **Garantías R8 y R10:**
+   - Total de venta presentado exclusivamente en cifras enteras de COP (`.cifra` + `formatearDinero`).
+   - Cero exposición de costo neto, margen o política comercial a nivel de datos ni DOM.
+
+6. **Caso de Estrés de 500 Cotizaciones:**
+   - `generarCotizacionesSimuladasLote(500)` tipado con `FilaDeCotizacion` permite validar fluidez y paginación por cursor en modo desconectado.
+
+---
+
+## Verificación Automatizada Ejecutada
+
+1. **Suite de Pruebas Unitarias (`pnpm --filter web test`):**
+   - **21/21 archivos en verde, 171/171 pruebas pasando**.
+   - Pruebas dedicadas en `cotizaciones-listado-logica.spec.ts` (9 pruebas) y `cotizaciones-api.spec.ts` (4 pruebas) validando paginación por cursor, derivación de fila y contratos Zod.
+
+2. **Compuertas de Frontend:**
+   - `pnpm --filter web typecheck`: **0 errores**.
+   - `pnpm --filter web lint`: **0 errores**.
+   - `pnpm --filter web build`: **Compilación exitosa** (Next.js generó las 15 rutas estáticas y dinámicas).
+   - `pnpm prettier --check`: **100% alineado**.
