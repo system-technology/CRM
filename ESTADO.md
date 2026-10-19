@@ -6,7 +6,7 @@
 
 | Campo | Valor |
 |---|---|
-| Última actualización | 2026-10-19 (noche: hasta v0.29.0, los estados de interfaz de la web) |
+| Última actualización | 2026-10-19 (noche: hasta v0.30.0, el relay de barrido) |
 | Actualizado por | Claude Opus 5.5 (`integrador`) |
 | Fase | **Rebanada vertical de paquetes, en construcción** |
 | Avance de la fase | Cotizador de punta a punta. **La cotización es la suma de sus tarifas y el precio «desde» es uno que el comprador puede pagar (v0.19.0).** Apretón de manos del webhook vivo. Bandeja web en construcción |
@@ -633,7 +633,7 @@ limpio · `pnpm run test --force` **dos veces**: contracts 56, domain 70, api **
 | Trabajador en `apps/api` contra el mapa de `CLAUDE.md` | `arquitecto` → Usuario | **Decidido en el ADR-0010.** Falta la línea del mapa en `CLAUDE.md` §5, que la aprueba el propietario aparte |
 | ~~Revisión de `auditor-seguridad` sobre `ProcesarChange` y `conTenantResuelto`~~ | `auditor-seguridad` | **Cerrada (v0.21.2):** sin bloqueantes; tres correcciones integradas |
 | BullMQ contra Redis real, y el job de CI | `devops` (4c, 4a.1) | Nada desplegado; ruta probada con dobles |
-| Sin relay de barrido: un change cuya cola se pierde solo se recupera por el reintento de Meta. Falta una función de base para listar pendientes | `datos` | Meta reintenta durante horas |
+| ~~Sin relay de barrido~~ | `datos` | **Cerrado en v0.30.0** |
 | `aislamiento.spec.ts` borra toda `recepciones_webhook` en su `afterAll` | `qa` | No se manifestó en dos corridas en paralelo |
 | `.env.example`: la rama reescribió el archivo entero por finales de línea (345 líneas en el diff, 3 de contenido). Falta `.gitattributes` | `devops` | Solo ruido en el diff |
 | `D:\Projects\CRM-gate2`: otro árbol temporal del integrador sin borrar (desregistrado, sin `.env`) | Usuario | Borrar a mano junto con `CRM-gate` |
@@ -709,7 +709,7 @@ revisó (ACEPTAR CON CAMBIOS), y los dos cambios están aplicados.
 
 | Cola | Dueño | Por qué no bloquea |
 |---|---|---|
-| **No existe el relay de barrido.** Un `change` cuya cola se pierde solo se recupera por el reintento de Meta. Hace falta una función de base que liste los `changes` pendientes (`viajapro_webhook` solo puede `tomar_recepcion` por id) | `datos` | Meta reintenta durante horas; nada desplegado |
+| ~~No existe el relay de barrido~~ | `datos` | **Cerrado en v0.30.0:** `listar_changes_pendientes` y el barrido del trabajador, que reencola los `changes` pendientes |
 | **Falta el puerto `asegurarContacto`:** `inbox` escribe en `contactos` (de `crm`) directamente, contra R4 | `backend` | Misma transacción y mismo RLS. Es frontera de módulo, no aislamiento |
 | **Tres huecos del disparador `canales_propagar_estado`:** la baja de una cuenta, el borrado lógico de un canal y la re-alta no se propagan al directorio | `datos` | El trabajador contrasta con `canales` dentro de la transacción y descarta lo revocado |
 | Ratificar el ADR-0010, y aprobar la línea del mapa en `CLAUDE.md` §5 | Usuario | Hoy describe el código tal como está |
@@ -1002,4 +1002,25 @@ Registro: [`docs/_integraciones/2026-10-19-v0.29.0.md`](docs/_integraciones/2026
 | `reportes/page.tsx` muestra **«Costo Neto»** y **«Margen Comercial»** con una etiqueta «Solo Dueño», pero sin control de rol | Antigravity (**0c.27**) | Hoy no hay roles. Va con «Neto:» del catálogo y el bloque de política |
 | `err.message` se pinta tal cual en tres pantallas | Antigravity (**0c.30**) | Hoy los errores vienen de mocks y de la API propia; con datos reales podría filtrar detalles internos |
 | La maqueta de ingreso deja su formulario y las credenciales de ejemplo en el chunk de cliente aunque el interruptor esté apagado | Antigravity (con la rebanada 3 del ADR-0011) | Son ficticias y no autentican nada. Se va al sustituir la maqueta por el ingreso real |
+
+## Integración del 2026-10-19 (vigesimoprimera) — v0.30.0: el relay de barrido
+
+`feat/inbox-barrido-pendientes` @ `c00e6c0` entra en `main` (`4c59812`), etiquetada **v0.30.0**. Trae la función
+`listar_changes_pendientes` (`SECURITY DEFINER`, propiedad de `viajapro_staging`, `EXECUTE` solo para `viajapro_webhook`,
+límite obligatorio de 1 a 1000, sin payload ni tenant) y el barrido del trabajador, que reencola los pendientes.
+`auditor-seguridad`: ACEPTAR, sin bloqueantes. Compuerta: CI **8/8**, https://github.com/Alfavear/CRM/actions/runs/39341678409,
+sobre el árbol del merge, con `inbox-barrido.e2e-spec` (3 pruebas) e `inbox-bullmq.e2e-spec` (2) **ejecutadas** contra
+Redis real. Estáticas en local en verde.
+
+**Migración aplicada en Neon desde `main`**, con `prisma migrate deploy` y `current_database() = neondb`. Antes, `migrate status`
+avisó de la divergencia que ya conocíamos (`20261019230000_identidad` está en Neon pero no en `main`). `deploy` no se
+quejó del orden: aplicó `20261019210000` y terminó con «All migrations have been successfully applied». Comprobado
+después en Neon: la función existe, es `SECURITY DEFINER`, su ACL es `{viajapro_staging=X, viajapro_webhook=X}`, la
+`checksum` coincide con el sha256 del archivo (`8e67d376…`), y `viajapro_staging` ya no tiene `CREATE` en `public`.
+Registro: [`docs/_integraciones/2026-10-19-v0.30.0.md`](docs/_integraciones/2026-10-19-v0.30.0.md).
+
+| Cola | Dueño | Por qué no bloquea |
+|---|---|---|
+| **Más de 500 `changes` abandonados taparían a los nuevos**: el barrido lista siempre los mismos primeros. Hace falta una columna de intentos, o un orden que los rote | `datos` | Hoy no hay volumen ni changes abandonados |
+| **Al integrar `feat/identity-esquema`**: esta rama y aquella suben las dos el recuento literal de funciones `SECURITY DEFINER` de `aislamiento.spec.ts`. Juntas, el total correcto es **10** | integrador / `datos` | Se resuelve en esa fusión. La aserción lo detecta si queda mal |
 

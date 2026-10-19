@@ -365,6 +365,27 @@ y `tablas_sin_aislamiento` imputa cada partición a su tabla raíz.
   las filas WABA del directorio, y `registrar_enrutamiento` puede escribir `ACTIVO` para un
   canal que en `canales` sigue `REVOCADO` (es el orden del re-alta, y el rol `viajapro_altas`
   es el único que puede hacerlo).
+- **Los changes que se quedan `PENDIENTE` ya se pueden listar (2026-10-19, migración
+  `20261019210000_listar_changes_pendientes_para_el_barrido`).** Es la mitad de base de datos
+  del relay de barrido de ADR-0010 punto 9: si el POST guarda y el encolado falla, el change
+  ya no depende solo del reintento de Meta.
+
+  ```
+  trabajo programado (viajapro_webhook)
+        │  listar_changes_pendientes(antigüedad_mínima_s, límite 1..1000)
+        ▼                                    SECURITY DEFINER, dueño viajapro_staging
+  recepciones_webhook_changes  ⋈  recepciones_webhook
+        WHERE estado = 'PENDIENTE' AND payload_cifrado IS NOT NULL AND recibido_en <= now() - N s
+        ORDER BY recibido_en                 índice parcial ..._changes_pendientes_idx
+        ▼
+  (recepcion_id, indice, antiguedad_s)  ──►  reencolar con jobId <hex>-<indice> (R5)
+  ```
+
+  Por qué así: es la primera función que **lista** el staging, y el staging guarda contenido
+  de varias agencias sin RLS. Por eso devuelve solo identificadores y antigüedad (ni payload
+  ni tenant), el límite es obligatorio y nadie salvo el trabajador la ejecuta. Excluye las
+  recepciones ya anuladas por `purgar_payloads`: sin contenido no hay qué procesar, y
+  reencolarlas sería un bucle. Es la novena `SECURITY DEFINER`; aserciones 12, 13, 20 y 53.
 
 ---
 
