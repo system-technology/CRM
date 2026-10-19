@@ -6,7 +6,7 @@
 
 | Campo | Valor |
 |---|---|
-| Última actualización | 2026-10-19 (integraciones v0.19.0 → v0.21.2 y el ADR-0010, sin etiqueta) |
+| Última actualización | 2026-10-19 (integraciones v0.19.0 → v0.22.0; la última, el esquema de cotizaciones) |
 | Actualizado por | Claude Opus 5.5 (`integrador`) |
 | Fase | **Rebanada vertical de paquetes, en construcción** |
 | Avance de la fase | Cotizador de punta a punta. **La cotización es la suma de sus tarifas y el precio «desde» es uno que el comprador puede pagar (v0.19.0).** Apretón de manos del webhook vivo. Bandeja web en construcción |
@@ -122,7 +122,7 @@ Ordenada. La primera es la que debe tomarse ahora.
 | 4h | Trabajo anual de creación de particiones del historial | `devops` | Si falta la del año siguiente, **ninguna agencia puede conectar su canal**. Mejor: un *event trigger* que lo haga imposible de olvidar |
 | 4i | Aserción de concurrencia determinista y orden de las aserciones | `qa` | La de la carrera falla hacia el verde; y 22/23 reparan privilegios, así que enmascaran a cualquier aserción declarada después |
 | 5 | Bandeja de conversaciones en la web | Antigravity, en `feat/bandeja-web` | **En curso.** Lista y pantalla de conversación construidas, con idempotencia R5 verificada en navegador. La entrega de tiempo real fue rechazada: su emisor genera un UUID inválido y ningún evento llega a la pantalla |
-| 6 | Guardar cotizaciones con versiones inmutables | `backend` | Hoy el cálculo no persiste |
+| 6 | Guardar cotizaciones con versiones inmutables | `backend` | **Esquema hecho (v0.22.0, 2026-10-19):** `cotizaciones` y `versiones_cotizacion` con RLS, foráneas compuestas y versiones inmutables por disparador. **Faltan el caso de uso y la ruta de la API** |
 | 7 | Pruebas de integración de la API | `qa` | Solo se probó a mano. **La verificación del cotizador fue manual: no hay prueba automática que la repita** |
 | 8 | CI en GitHub Actions corriendo de verdad | `devops` | Escrito, nunca ejecutado |
 | 9 | Decidir nombre comercial, modelo de cobro y precios | Usuario | Antes de vender |
@@ -711,4 +711,34 @@ revisó (ACEPTAR CON CAMBIOS), y los dos cambios están aplicados.
 | **Falta el puerto `asegurarContacto`:** `inbox` escribe en `contactos` (de `crm`) directamente, contra R4 | `backend` | Misma transacción y mismo RLS. Es frontera de módulo, no aislamiento |
 | **Tres huecos del disparador `canales_propagar_estado`:** la baja de una cuenta, el borrado lógico de un canal y la re-alta no se propagan al directorio | `datos` | El trabajador contrasta con `canales` dentro de la transacción y descarta lo revocado |
 | Ratificar el ADR-0010, y aprobar la línea del mapa en `CLAUDE.md` §5 | Usuario | Hoy describe el código tal como está |
+
+---
+
+## Integración del 2026-10-19 (octava) — v0.22.0: el esquema de cotizaciones
+
+`feat/quoting-cotizaciones-esquema` @ `1effb16` entra en `main` (`862d265`), etiquetada **v0.22.0**. Registro:
+[`docs/_integraciones/2026-10-19-v0.22.0.md`](docs/_integraciones/2026-10-19-v0.22.0.md).
+
+Es de aislamiento, y se verificó como tal. La rama se fusionó con `5618bc2` (iba 5 por detrás) en un
+árbol limpio con el `.env` completo, y el merge tiene el árbol probado. Resultados: `typecheck` 9/9,
+`lint` 7/7, `build` 5/5, sin caché · `format:check` limpio · `pnpm run test --force` dos veces: 56 · 70 ·
+api 263 · aislamiento **57/57**. **Mutaciones 13/13 en rojo**, con su control previo en verde, y después
+una tercera corrida de aislamiento 57/57 para confirmar que la base volvió a su estado bueno.
+`migrate status`: 18 migraciones, al día; las dos nuevas aplicadas con la `checksum` del archivo.
+
+**La vía de escape de la purga, comprobada en Neon.** El disparador deja borrar una versión solo si
+`current_user` es el propietario de la tabla (`neondb_owner`) **y** el tenant está en
+`viajapro.purga_de_tenants`. Cualquier rol puede fijar ese parámetro, porque es un GUC personalizado.
+Por eso no protege él: protege la primera condición. Ningún rol `viajapro_*` es miembro del
+propietario, ni tiene `SUPERUSER`, `BYPASSRLS` o `CREATEROLE`. La función es `SECURITY INVOKER`, y no
+existe ninguna función `SECURITY DEFINER` del propietario por la que un rol de app pueda ejecutar como él.
+**`viajapro_app` puede fijar el parámetro, pero no puede activar la purga.**
+
+### Cola nueva — con dueño, no bloquea
+
+| Cola | Dueño | Por qué no bloquea |
+|---|---|---|
+| Los roles de app tienen `UPDATE`/`DELETE` concedidos sobre `versiones_cotizacion`, y los frena solo el disparador (M11 lo prueba). Quitarlos daría una segunda capa | `datos` | El disparador está probado por mutación |
+| `mutaciones-aislamiento.mjs` rompe el aislamiento **en la base compartida**: durante su corrida, las suites de los otros árboles pueden ver rojos falsos | `qa` / `devops` (0c) | Revierte siempre, y solo hay datos de prueba |
+| `D:\Projects\CRM-gate5`: otro árbol temporal | Usuario | Borrar a mano con los demás |
 
