@@ -149,7 +149,7 @@ después de terminar la 0c.22.
 
 ---
 
-## [ ] 0c.22c. Quitar el porcentaje de margen de `/cotizaciones/[id]` (añadida el 2026-10-19, PRIORITARIA)
+## [x] 0c.22c. Quitar el porcentaje de margen de `/cotizaciones/[id]` (añadida el 2026-10-19, PRIORITARIA)
 
 `apps/web/src/app/cotizaciones/[id]/page.tsx` (~l. 435-455) muestra «Política de Margen Aplicada» con
 `politica.porcentaje` y la base. El margen es interno (R10) y hoy no hay control de rol; tu propia

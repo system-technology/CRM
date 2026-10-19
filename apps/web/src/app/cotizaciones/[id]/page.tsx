@@ -7,7 +7,7 @@
  * Cada versión conserva la instantánea exacta cotizada (paquete, fecha, pasajeros, líneas, total).
  * Modificar crea la versión siguiente (POST /api/v1/cotizaciones/:id/versiones)
  * manteniendo las versiones anteriores 100% inalteradas.
- * Cero filtración de neto o margen (R10): solo venta. Todo a 375 px.
+ * Venta comercial transparente y calculada (R10). Todo a 375 px.
  */
 
 import React, { use, useEffect, useState, useMemo } from 'react';
@@ -19,7 +19,6 @@ import {
   Copy,
   Check,
   Edit3,
-  ShieldCheck,
   Users,
   AlertCircle,
   FileText,
@@ -431,26 +430,6 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
                       )}
                     </div>
                   </div>
-
-                  {/* Política aplicada */}
-                  <div className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-xs dark:border-neutral-800 dark:bg-neutral-900">
-                    <span className="text-xs font-bold text-neutral-500 uppercase">
-                      Política de Margen Aplicada
-                    </span>
-                    <p className="mt-1 text-xs text-neutral-600 dark:text-neutral-400">
-                      Calculada por el servidor en la fecha de registro:
-                    </p>
-                    <div className="mt-2.5 flex items-center gap-2 rounded-xl bg-neutral-50 p-2.5 dark:bg-neutral-800/50">
-                      <ShieldCheck className="h-4 w-4 shrink-0 text-emerald-600" />
-                      <span className="text-xs font-semibold text-neutral-800 dark:text-neutral-200">
-                        {versionActual.politica.porcentaje}% (
-                        {versionActual.politica.base === 'SOBRE_EL_NETO'
-                          ? 'Sobre el neto'
-                          : 'Sobre la venta'}
-                        )
-                      </span>
-                    </div>
-                  </div>
                 </div>
 
                 {/* Columna Derecha: Tabla de Líneas y Total */}
@@ -528,8 +507,7 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
                         Propuesta para WhatsApp (Versión {versionActual.numero})
                       </h4>
                       <p className="text-[11px] text-neutral-500">
-                        Copia el texto comercial limpio sin exponer costos netos ni márgenes
-                        internos
+                        Copia el texto comercial listo para compartir con el cliente
                       </p>
                     </div>
 
