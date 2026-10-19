@@ -278,6 +278,12 @@ jobs:
           fi
           echo "Sin importaciones cruzadas entre módulos."
 
+      # El grep de arriba solo ve rutas con `modules/` y ninguna lectura de datos. Este recorre las
+      # importaciones relativas y busca modelos de Prisma y tablas de otro módulo: el caso de inbox
+      # escribiendo en contactos y de quoting leyendo oportunidades, que el grep dejaba pasar.
+      - name: Buscar accesos cruzados a datos y rutas relativas entre módulos
+        run: node scripts/verificar-fronteras.mjs
+
   # ---------------------------------------------------------------------------
   # Los hooks de gobierno son código, y código sin pruebas se rompe en silencio.
   # Esta suite existe porque el guardián de rama tuvo un falso positivo en producción.

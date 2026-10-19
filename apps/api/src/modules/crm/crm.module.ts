@@ -11,10 +11,12 @@ import { Module } from '@nestjs/common';
 import { MoverOportunidadUseCase } from './application/mover-oportunidad.js';
 import { PuertoCrm } from './application/puerto-crm.js';
 import { VerTablero } from './application/ver-tablero.js';
+import { CrmPuertosModule } from './crm-puertos.module.js';
 import { CrmPrisma } from './infrastructure/crm.prisma.js';
 import { CrmController } from './interface/crm.controller.js';
 
 @Module({
+  imports: [CrmPuertosModule],
   controllers: [CrmController],
   providers: [VerTablero, MoverOportunidadUseCase, { provide: PuertoCrm, useClass: CrmPrisma }],
 })

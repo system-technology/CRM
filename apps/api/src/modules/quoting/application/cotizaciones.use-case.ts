@@ -24,6 +24,7 @@ import type {
 } from '@viajapro/contracts';
 import { POLITICA_POR_DEFECTO } from '@viajapro/domain';
 import { PrismaService, type ClienteTenant } from '../../../shared/prisma/prisma.service.js';
+import { PuertoReferenciasDeCrm } from '../../../shared/puertos/puertos-hacia-crm.js';
 import { ContextoTenant } from '../../../shared/tenant/contexto-tenant.js';
 import {
   ContactoDeCotizacionNoEncontradoError,
@@ -90,24 +91,25 @@ export class CotizacionesUseCase {
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(CotizarSalidaUseCase) private readonly cotizar: CotizarSalidaUseCase,
+    @Inject(PuertoReferenciasDeCrm) private readonly crm: PuertoReferenciasDeCrm,
   ) {}
 
   async guardar(entrada: GuardarCotizacion, incluirMargen: boolean): Promise<CotizacionGuardada> {
     const { tenantId } = ContextoTenant.obtener();
 
     return this.prisma.conTenant(async (tx) => {
-      const contacto = await tx.contacto.findFirst({
-        where: { id: entrada.contactoId, tenantId, eliminadoEn: null },
-        select: { id: true },
-      });
-      if (!contacto) throw new ContactoDeCotizacionNoEncontradoError(entrada.contactoId);
+      // Contacto y oportunidad son de `crm`: se comprueban por su puerto, en esta transacción.
+      if (!(await this.crm.existeContacto(tx, tenantId, entrada.contactoId)))
+        throw new ContactoDeCotizacionNoEncontradoError(entrada.contactoId);
 
       if (entrada.oportunidadId) {
-        const oportunidad = await tx.oportunidad.findFirst({
-          where: { id: entrada.oportunidadId, contactoId: entrada.contactoId, tenantId },
-          select: { id: true },
-        });
-        if (!oportunidad) {
+        const pertenece = await this.crm.existeOportunidadDelContacto(
+          tx,
+          tenantId,
+          entrada.oportunidadId,
+          entrada.contactoId,
+        );
+        if (!pertenece) {
           throw new OportunidadDeCotizacionNoEncontradaError(
             entrada.oportunidadId,
             entrada.contactoId,
