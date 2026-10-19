@@ -128,7 +128,7 @@ Ordenada. La primera es la que debe tomarse ahora.
 | 9 | Decidir nombre comercial, modelo de cobro y precios | Usuario | Antes de vender |
 | 10 | Resolver la protección de `main` en GitHub | Usuario | Plan gratuito no la permite en repos privados |
 | 11 | **Rotar la contraseña de Neon y la clave de API de Stitch** | Usuario | **Sigue pendiente.** `ac7fb99` rotó los tres roles de PostgreSQL, que es otra cosa. Ambas se pegaron en el chat; un secreto expuesto no se borra, se rota |
-| 11b | **`META_APP_SECRET` y `WEBHOOK_PAYLOAD_KEY_VERSION` no están en `.env`** | Usuario | Sin el primero el `POST` rechaza **todo** con 403, y sin el segundo lanza al cifrar. El `POST` se verificó con un secreto temporal en memoria. El secreto va al `.env`, nunca al chat |
+| 11b | `META_APP_SECRET` y `WEBHOOK_PAYLOAD_KEY_VERSION` en `.env` | Usuario | **A medias (2026-10-19).** El propietario puso `META_APP_SECRET`, pero el integrador lo encontró con valor **solo en `D:ProjectsCRM.env`**: falta en `CRM-api`, `CRM-inbox` y `CRM-bandeja`. Falta además confirmar `WEBHOOK_PAYLOAD_KEY_VERSION`. El secreto va al `.env`, nunca al chat |
 | 11c | Los metadatos de decorador no siempre llegan con el transpilador de desarrollo | `backend` | **Hecha (`85eceac`, v0.19.0).** `@Inject` explícito y `guardia-de-inyeccion.spec.ts`, que pone en rojo cualquier dependencia sin token |
 | 11d | El aviso «Acceso sin contexto de tenant» se emitía una vez por mensaje | `backend` | **Hecha (`f57925b`, v0.19.0).** El webhook usa `sinTenantDeclarado`, con la operación declarada en `operaciones-de-plataforma.ts` (tipo cerrado). La variante ruidosa sigue para todo lo no declarado |
 | 12 | Autenticación: el `tenant_id` debe salir del token de sesión | `backend` | Hoy la web lo envía por cabecera. Solo funciona con `APP_ENV=local`, pero es deuda que bloquea desplegar |
@@ -139,7 +139,7 @@ Ordenada. La primera es la que debe tomarse ahora.
 
 | Bloqueo | Impacto | Dueño | Mitigación |
 |---|---|---|---|
-| **Rotar `WHATSAPP_WEBHOOK_VERIFY_TOKEN` en Meta y en los cuatro `.env`** | Quedó en el historial del repositorio privado desde `94bf78f`, como literal de una prueba. **Alcance: solo el apretón de manos GET** de la suscripción; no firma ni descifra nada | Usuario | El literal ya salió del código (`33283a5`) y el historial se ignora solo por su huella exacta. **El comentario de `.gitleaksignore` dice «ya rotado» y todavía no lo está**: será cierto cuando se rote |
+| ~~Rotar `WHATSAPP_WEBHOOK_VERIFY_TOKEN`~~ | — | Usuario | **Cerrado el 2026-10-19.** Rotado en los cuatro `.env`; el integrador comprobó que el valor viejo ya no aparece en ninguno. Meta nunca lo tuvo, porque el webhook no está configurado |
 | **Modo desatendido detenido en la compuerta** — el commit `59a52d8` amplía los permisos de los propios agentes | Cada commit y cada push siguen pidiendo autorización al propietario, con dos IA trabajando en paralelo | Usuario | **Solo el propietario puede aprobarlo, en su propia sesión**: el integrador no acepta de segunda mano un cambio a la configuración que define lo que los agentes pueden hacer sin preguntar. Y antes hay que sacar `git clean -xdf` de la lista de permitidos: borra lo no rastreado **y** lo ignorado, incluidos los tres `.env` |
 | **`Bash(cat:*)` permitido hace decorativo el `deny` de `Read(./.env)`** | `cat .env` funciona hoy. O ese `deny` significa algo, o sobra por honestidad | Usuario | Decidirlo al tocar los permisos |
 | Verificación de Meta Business sin iniciar | **Bloquea lanzar con clientes reales, NO bloquea construir.** Tarda semanas | Usuario | Arrancar el trámite en paralelo. Mientras tanto se desarrolla con el número de prueba de Meta |
@@ -793,4 +793,19 @@ El valor ya no aparece en ningún archivo rastreado de `main`.
 | BullMQ real sigue sin probar: `apps/api/vitest.config.ts` fija `COLA_CHANGES=inerte`, aunque el CI ya levanta Redis 7 | `devops` (4c) | Nada desplegado. El CI ya tiene el Redis: falta una prueba que lo use |
 | Protección de rama con estos checks como obligatorios | Usuario (**tarea 10**) | El plan gratuito no la permite en repos privados |
 | `convencion-de-commits` sale *skipped*, porque solo corre en PR, y la integración aquí es por merge local | `devops` | La convención la revisa el integrador a mano |
+
+---
+
+## Integración del 2026-10-19 (undécima) — `fix/gitleaksignore-rotado`, sin etiqueta
+
+`fix/gitleaksignore-rotado` @ `20da8ef` entra en `main` (`d806804`). Solo cambia el comentario de
+`.gitleaksignore`: la huella es la misma. No lleva etiqueta.
+Registro: [`docs/_integraciones/2026-10-19-gitleaksignore-rotado.md`](docs/_integraciones/2026-10-19-gitleaksignore-rotado.md).
+
+- **La rotación del token está verificada**: el valor viejo no aparece en ninguno de los cuatro `.env`.
+  El bloqueo de §4 queda cerrado.
+- **11b, a medias**: `META_APP_SECRET` tiene valor solo en `D:\Projects\CRM\.env`.
+- **El Paso 2 de Meta —configurar el webhook— espera a que haya despliegue o túnel.** Exige una URL
+  pública, y hoy no la hay. Hasta entonces el `POST` real de Meta no llega; el verificado es el
+  de las pruebas e2e.
 
