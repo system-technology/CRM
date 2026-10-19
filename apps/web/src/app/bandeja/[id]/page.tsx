@@ -143,6 +143,11 @@ export default function BandejaConversacionPage() {
         setDetalle(null);
       } else {
         setDetalle(data);
+        if (!data.ventana.abierta) {
+          setTextoMensaje(
+            'Estimado cliente, le comparto los detalles del paquete turístico para su confirmación.',
+          );
+        }
         const ficha = await obtenerFichaDeContacto(data.contactoId ?? data.id);
         setFichaContacto(ficha);
         setTiempoVentana(calcularTiempoRestanteVentana(data.ventana.expiraEn));
@@ -405,12 +410,12 @@ export default function BandejaConversacionPage() {
       {/* Columna Central: Conversación (Chat) */}
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-white dark:bg-neutral-900">
         {/* Cabecera de la conversación (Tarea 0b.6) */}
-        <header className="flex shrink-0 items-center justify-between border-b border-neutral-200 bg-white px-4 py-2.5 dark:border-neutral-800 dark:bg-neutral-900">
-          <div className="flex items-center gap-3">
+        <header className="flex min-w-0 shrink-0 items-center justify-between border-b border-neutral-200 bg-white px-2.5 py-2 sm:px-4 sm:py-2.5 dark:border-neutral-800 dark:bg-neutral-900">
+          <div className="flex min-w-0 flex-1 items-center gap-2">
             {/* Botón volver a lista (móvil) */}
             <Link
               href="/bandeja"
-              className="flex h-8 w-8 items-center justify-center rounded-lg text-neutral-500 hover:bg-neutral-100 md:hidden dark:hover:bg-neutral-800"
+              className="flex h-11 min-h-[44px] w-11 min-w-[44px] shrink-0 items-center justify-center rounded-xl text-neutral-500 hover:bg-neutral-100 md:hidden dark:hover:bg-neutral-800"
               title="Volver a lista de conversaciones"
             >
               <ArrowLeft className="h-4 w-4" />
@@ -418,50 +423,52 @@ export default function BandejaConversacionPage() {
 
             {/* Avatar determinista */}
             <div
-              className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold ${avatarColores.bg} ${avatarColores.text}`}
+              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold sm:h-9 sm:w-9 ${avatarColores.bg} ${avatarColores.text}`}
             >
               {iniciales}
             </div>
 
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5">
                 <h2 className="truncate text-xs font-bold text-neutral-900 dark:text-neutral-100">
                   {detalle.contactoNombre || detalle.contactoTelefono}
                 </h2>
-                <span className="cifra text-[11px] text-neutral-400">
+                <span className="cifra hidden text-[11px] text-neutral-400 sm:inline">
                   {detalle.contactoTelefono}
                 </span>
               </div>
-              <p className="text-[10px] text-neutral-400">
+              <p className="truncate text-[10px] text-neutral-400">
                 {detalle.asignadoANombre ? `Asignado a: ${detalle.asignadoANombre}` : 'Sin asignar'}
               </p>
             </div>
           </div>
 
           {/* Estado de 24h + SLA + Acción Primaria «Nueva Cotización» */}
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-1.5">
             {/* Cuenta atrás viva de 24h */}
             {tiempoVentana.cerrada ? (
-              <span className="flex items-center gap-1 rounded-md bg-neutral-100 px-2 py-1 text-[11px] font-semibold text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400">
+              <span className="flex shrink-0 items-center gap-1 rounded-md bg-neutral-100 px-1.5 py-1 text-[10px] font-semibold text-neutral-600 sm:text-[11px] dark:bg-neutral-800 dark:text-neutral-400">
                 <Clock className="h-3 w-3 text-neutral-400" />
-                <span>24h Cerrada</span>
+                <span className="hidden sm:inline">24h </span>
+                <span>Cerrada</span>
               </span>
             ) : (
               <span
-                className={`flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-semibold ${
+                className={`flex shrink-0 items-center gap-1 rounded-md px-1.5 py-1 text-[10px] font-semibold sm:text-[11px] ${
                   tiempoVentana.minutos <= 120
                     ? 'border border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300'
                     : 'bg-ok-50 text-ok-800 border-ok-200 dark:bg-ok-950/40 dark:text-ok-300 dark:border-ok-900 border'
                 }`}
               >
                 <Clock className="h-3 w-3" />
-                <span>Ventana 24h · {tiempoVentana.texto}</span>
+                <span className="hidden sm:inline">Ventana 24h · </span>
+                <span>{tiempoVentana.texto}</span>
               </span>
             )}
 
-            {/* SLA Badge */}
+            {/* SLA Badge (visible a partir de sm) */}
             {detalle.slaVenceEn && (
-              <span className="bg-alerta-50 text-alerta-700 dark:bg-alerta-950/40 dark:text-alerta-300 rounded-md px-2 py-1 text-[11px] font-semibold">
+              <span className="bg-alerta-50 text-alerta-700 dark:bg-alerta-950/40 dark:text-alerta-300 hidden shrink-0 rounded-md px-2 py-1 text-[11px] font-semibold sm:inline-flex">
                 SLA Activo
               </span>
             )}
@@ -469,7 +476,7 @@ export default function BandejaConversacionPage() {
             {/* Acción Primaria Prominente: Nueva Cotización */}
             <Link
               href={`/cotizador?conversacion=${id}&contactoId=${detalle.contactoId}`}
-              className="bg-acento-700 hover:bg-acento-800 flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold text-white shadow-2xs"
+              className="bg-acento-700 hover:bg-acento-800 flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center gap-1.5 rounded-xl px-2.5 py-2 text-xs font-semibold text-white shadow-2xs sm:px-3.5"
             >
               <PlusCircle className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Nueva cotización</span>
@@ -479,7 +486,7 @@ export default function BandejaConversacionPage() {
             <button
               type="button"
               onClick={() => setMostrarFichaLateral((p) => !p)}
-              className="flex h-8 w-8 items-center justify-center rounded-lg border border-neutral-200 text-neutral-600 hover:bg-neutral-100 xl:hidden dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+              className="flex h-11 min-h-[44px] w-11 min-w-[44px] shrink-0 items-center justify-center rounded-xl border border-neutral-200 text-neutral-600 hover:bg-neutral-100 xl:hidden dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
               title="Ver ficha del viajero"
             >
               <PanelRight className="h-4 w-4" />
@@ -637,7 +644,7 @@ export default function BandejaConversacionPage() {
         </main>
 
         {/* Pie de redacción */}
-        <footer className="shrink-0 border-t border-neutral-200 bg-white p-3 dark:border-neutral-800 dark:bg-neutral-900">
+        <footer className="min-w-0 shrink-0 border-t border-neutral-200 bg-white p-3 pb-24 md:pb-3 dark:border-neutral-800 dark:bg-neutral-900">
           {!detalle.ventana.abierta || tiempoVentana.cerrada ? (
             <div className="space-y-3 rounded-xl border border-neutral-200 bg-neutral-50 p-4 text-xs dark:border-neutral-800 dark:bg-neutral-800/40">
               <div className="flex items-center justify-center space-x-1.5 font-semibold text-neutral-800 dark:text-neutral-200">
@@ -666,11 +673,11 @@ export default function BandejaConversacionPage() {
                       </p>
                     </div>
                   </div>
-                  <div className="mt-2.5 flex justify-end">
+                  <div className="mt-2.5 flex w-full sm:justify-end">
                     <button
                       type="button"
                       onClick={() => setModalPlantillasAbierto(true)}
-                      className="flex min-h-[44px] min-w-[44px] items-center justify-center gap-1.5 rounded-lg bg-amber-600 px-4 py-2 font-semibold text-white shadow-xs transition-colors hover:bg-amber-700"
+                      className="flex min-h-[44px] w-full min-w-[44px] items-center justify-center gap-1.5 rounded-lg bg-amber-600 px-3 py-2 text-center text-xs font-semibold text-white shadow-xs transition-colors hover:bg-amber-700 sm:w-auto"
                     >
                       <PlusCircle className="h-4 w-4" />
                       Usar borrador en plantilla
