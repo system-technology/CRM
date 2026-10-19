@@ -6,7 +6,7 @@
 
 | Campo | Valor |
 |---|---|
-| Última actualización | 2026-10-19 (integraciones v0.19.0 → v0.23.0 y el primer CI en verde, sin etiqueta) |
+| Última actualización | 2026-10-19 (integraciones v0.19.0 → v0.24.0; la última, la tanda 1 de la bandeja web) |
 | Actualizado por | Claude Opus 5.5 (`integrador`) |
 | Fase | **Rebanada vertical de paquetes, en construcción** |
 | Avance de la fase | Cotizador de punta a punta. **La cotización es la suma de sus tarifas y el precio «desde» es uno que el comprador puede pagar (v0.19.0).** Apretón de manos del webhook vivo. Bandeja web en construcción |
@@ -121,14 +121,14 @@ Ordenada. La primera es la que debe tomarse ahora.
 | 4g | `purgar_directorio`, o decidir que es manual | `arquitecto`, `datos` | Hoy ninguna fila del directorio se puede borrar por ningún camino de código. **No bloquea un esquema vacío; bloquea el primer tenant en producción** |
 | 4h | Trabajo anual de creación de particiones del historial | `devops` | Si falta la del año siguiente, **ninguna agencia puede conectar su canal**. Mejor: un *event trigger* que lo haga imposible de olvidar |
 | 4i | Aserción de concurrencia determinista y orden de las aserciones | `qa` | La de la carrera falla hacia el verde; y 22/23 reparan privilegios, así que enmascaran a cualquier aserción declarada después |
-| 5 | Bandeja de conversaciones en la web | Antigravity, en `feat/bandeja-web` | **En curso.** Lista y pantalla de conversación construidas, con idempotencia R5 verificada en navegador. La entrega de tiempo real fue rechazada: su emisor genera un UUID inválido y ningún evento llega a la pantalla |
+| 5 | Bandeja de conversaciones en la web | Antigravity, en `feat/bandeja-web`; integración por tandas | **Entra por tandas desde `814ae24`, revisada y aceptada.** Tanda 1 (base) integrada en v0.24.0. Quedan la 2 (bandeja), la 3 (catálogo y cotizador) y la 4 (CRM operativo y docs). `traspaso/` no entra en `main` |
 | 6 | Guardar cotizaciones con versiones inmutables | `backend` | **Hecha (esquema v0.22.0, API v0.23.0, 2026-10-19).** `POST /api/v1/cotizaciones`, `POST /:id/versiones` y `GET /:id`. El servidor recalcula los importes y no guarda los que manda el cliente. Siguen en cola el listado, el envío y los estados |
 | 7 | Pruebas de integración de la API | `qa` | Solo se probó a mano. **La verificación del cotizador fue manual: no hay prueba automática que la repita** |
 | 8 | CI en GitHub Actions corriendo de verdad | `devops` | **Cerrada (2026-10-19).** Primer verde: https://github.com/Alfavear/CRM/actions/runs/39308173658. Las 18 migraciones se reconstruyen desde cero en un Postgres 16 limpio |
 | 9 | Decidir nombre comercial, modelo de cobro y precios | Usuario | Antes de vender |
 | 10 | Resolver la protección de `main` en GitHub | Usuario | Plan gratuito no la permite en repos privados |
 | 11 | **Rotar la contraseña de Neon y la clave de API de Stitch** | Usuario | **Sigue pendiente.** `ac7fb99` rotó los tres roles de PostgreSQL, que es otra cosa. Ambas se pegaron en el chat; un secreto expuesto no se borra, se rota |
-| 11b | **`META_APP_SECRET` y `WEBHOOK_PAYLOAD_KEY_VERSION` no están en `.env`** | Usuario | Sin el primero el `POST` rechaza **todo** con 403, y sin el segundo lanza al cifrar. El `POST` se verificó con un secreto temporal en memoria. El secreto va al `.env`, nunca al chat |
+| 11b | `META_APP_SECRET` y `WEBHOOK_PAYLOAD_KEY_VERSION` en `.env` | Usuario | **Cerrada (2026-10-19).** El integrador comprobó la presencia sin imprimir valores. `META_APP_SECRET`, `WHATSAPP_DIRECTORY_PEPPER` y `WEBHOOK_PAYLOAD_KEY` tienen valor en los cuatro árboles, y en cada variable es el mismo en los cuatro (mismo hash). `WEBHOOK_PAYLOAD_KEY_VERSION=1` en los cuatro |
 | 11c | Los metadatos de decorador no siempre llegan con el transpilador de desarrollo | `backend` | **Hecha (`85eceac`, v0.19.0).** `@Inject` explícito y `guardia-de-inyeccion.spec.ts`, que pone en rojo cualquier dependencia sin token |
 | 11d | El aviso «Acceso sin contexto de tenant» se emitía una vez por mensaje | `backend` | **Hecha (`f57925b`, v0.19.0).** El webhook usa `sinTenantDeclarado`, con la operación declarada en `operaciones-de-plataforma.ts` (tipo cerrado). La variante ruidosa sigue para todo lo no declarado |
 | 12 | Autenticación: el `tenant_id` debe salir del token de sesión | `backend` | Hoy la web lo envía por cabecera. Solo funciona con `APP_ENV=local`, pero es deuda que bloquea desplegar |
@@ -139,7 +139,7 @@ Ordenada. La primera es la que debe tomarse ahora.
 
 | Bloqueo | Impacto | Dueño | Mitigación |
 |---|---|---|---|
-| **Rotar `WHATSAPP_WEBHOOK_VERIFY_TOKEN` en Meta y en los cuatro `.env`** | Quedó en el historial del repositorio privado desde `94bf78f`, como literal de una prueba. **Alcance: solo el apretón de manos GET** de la suscripción; no firma ni descifra nada | Usuario | El literal ya salió del código (`33283a5`) y el historial se ignora solo por su huella exacta. **El comentario de `.gitleaksignore` dice «ya rotado» y todavía no lo está**: será cierto cuando se rote |
+| ~~Rotar `WHATSAPP_WEBHOOK_VERIFY_TOKEN`~~ | — | Usuario | **Cerrado el 2026-10-19.** Rotado en los cuatro `.env`; el integrador comprobó que el valor viejo ya no aparece en ninguno. Meta nunca lo tuvo, porque el webhook no está configurado |
 | **Modo desatendido detenido en la compuerta** — el commit `59a52d8` amplía los permisos de los propios agentes | Cada commit y cada push siguen pidiendo autorización al propietario, con dos IA trabajando en paralelo | Usuario | **Solo el propietario puede aprobarlo, en su propia sesión**: el integrador no acepta de segunda mano un cambio a la configuración que define lo que los agentes pueden hacer sin preguntar. Y antes hay que sacar `git clean -xdf` de la lista de permitidos: borra lo no rastreado **y** lo ignorado, incluidos los tres `.env` |
 | **`Bash(cat:*)` permitido hace decorativo el `deny` de `Read(./.env)`** | `cat .env` funciona hoy. O ese `deny` significa algo, o sobra por honestidad | Usuario | Decidirlo al tocar los permisos |
 | Verificación de Meta Business sin iniciar | **Bloquea lanzar con clientes reales, NO bloquea construir.** Tarda semanas | Usuario | Arrancar el trámite en paralelo. Mientras tanto se desarrolla con el número de prueba de Meta |
@@ -793,4 +793,69 @@ El valor ya no aparece en ningún archivo rastreado de `main`.
 | BullMQ real sigue sin probar: `apps/api/vitest.config.ts` fija `COLA_CHANGES=inerte`, aunque el CI ya levanta Redis 7 | `devops` (4c) | Nada desplegado. El CI ya tiene el Redis: falta una prueba que lo use |
 | Protección de rama con estos checks como obligatorios | Usuario (**tarea 10**) | El plan gratuito no la permite en repos privados |
 | `convencion-de-commits` sale *skipped*, porque solo corre en PR, y la integración aquí es por merge local | `devops` | La convención la revisa el integrador a mano |
+
+---
+
+## Integración del 2026-10-19 (undécima) — `fix/gitleaksignore-rotado`, sin etiqueta
+
+`fix/gitleaksignore-rotado` @ `20da8ef` entra en `main` (`d806804`). Solo cambia el comentario de
+`.gitleaksignore`: la huella es la misma. No lleva etiqueta.
+Registro: [`docs/_integraciones/2026-10-19-gitleaksignore-rotado.md`](docs/_integraciones/2026-10-19-gitleaksignore-rotado.md).
+
+- **La rotación del token está verificada**: el valor viejo no aparece en ninguno de los cuatro `.env`.
+  El bloqueo de §4 queda cerrado.
+- **11b, a medias**: `META_APP_SECRET` tiene valor solo en `D:\Projects\CRM\.env`.
+- **El Paso 2 de Meta —configurar el webhook— espera a que haya despliegue o túnel.** Exige una URL
+  pública, y hoy no la hay. Hasta entonces el `POST` real de Meta no llega; el verificado es el
+  de las pruebas e2e.
+
+---
+
+## 2026-10-19 — cierre documental: secretos locales alineados
+
+**11b cerrada.** Los cuatro `.env` tienen `META_APP_SECRET`, `WHATSAPP_DIRECTORY_PEPPER`, `WEBHOOK_PAYLOAD_KEY` y
+`WEBHOOK_PAYLOAD_KEY_VERSION=1`. En cada variable, el valor es el mismo en los cuatro: lo comprobé por hash,
+sin imprimir valores. La pimienta y la clave son las que ya usaba la base, copiadas desde `CRM-api`.
+Con esto, la compuerta completa (`inbox-relay.e2e-spec`) se puede correr desde cualquier árbol.
+
+### Cola nueva — con dueño, no bloquea
+
+| Cola | Dueño | Por qué no bloquea |
+|---|---|---|
+| **Severidad alta.** `scripts/generar-secretos-locales.ps1` toma como referencia el **primer** árbol de `git worktree list` (`D:\Projects\CRM`). Si ese árbol no tiene los secretos, genera valores nuevos y los escribe en **todos**, pisando la pimienta y la clave buenas de los demás: el directorio de enrutamiento queda huérfano y lo cifrado, ilegible. Corrección: abortar si un árbol tiene valor y otro no, y ofrecer copiar en vez de generar | `devops` | Hoy no se manifestó, y los cuatro árboles ya tienen los mismos valores. Pero basta una ejecución con un árbol nuevo primero en la lista |
+
+---
+
+## Integración del 2026-10-19 (duodécima) — v0.24.0: la bandeja web, tanda 1 (base)
+
+`feat/web-tanda-1-base` @ `420e88a` entra en `main` (`cd35a3d`), etiquetada **v0.24.0**. Registro:
+[`docs/_integraciones/2026-10-19-v0.24.0.md`](docs/_integraciones/2026-10-19-v0.24.0.md).
+
+**La rama la armó el integrador, pero el contenido no es suyo.** Se creó desde `origin/main` y solo
+trae rutas de `814ae24` (`feat/bandeja-web`, revisada y aceptada), con `git checkout 814ae24 -- <rutas>`.
+Se comprobó que los doce archivos son byte a byte los de `814ae24`. No se tocó `D:\Projects\CRM-bandeja`.
+
+**La frontera se movió:** la búsqueda global, el panel de notificaciones y el distintivo de datos demo
+**no** entran en la tanda 1, porque importan los mocks de todas las áreas y `crm-api`. Irán en la
+tanda 4. La portada enlaza a rutas que llegan en las tandas 2 a 4: hasta entonces, esos enlaces dan 404.
+
+Compuertas: `install --frozen-lockfile` limpio · `typecheck` 9/9, `lint` 7/7, `build` 5/5, sin caché ·
+`format:check` limpio · `pnpm run test --force` **cuatro veces**: dos en verde completo (contracts 60,
+domain 70, **web 4**, api 279, aislamiento 57/57) y dos con un rojo cada una, **los dos del arnés**.
+
+### Los dos rojos, mirados
+
+1. `inbox-relay.e2e-spec`, «el mismo wamid en un lote DISTINTO»: `NO_ENCONTRADO` en vez de `PROCESADO`.
+   **Causa: `aislamiento.spec.ts:646` hace `DELETE FROM recepciones_webhook` sin filtro**, y turbo
+   corre `api:test` y `database:test` a la vez: la suite de aislamiento le borra la recepción a la e2e.
+   Es la cola de `qa` de la v0.21.0, **que ya se manifiesta**.
+2. Aserción 22: `deadlock detected` al reaplicar `001`/`002`. Es la cola de `qa` de la v0.21.1.
+
+### Cola — sube de prioridad
+
+| Cola | Dueño | Por qué no bloquea, y hasta cuándo |
+|---|---|---|
+| **El arnés falla una de cada dos corridas**: el `DELETE FROM recepciones_webhook` global de `aislamiento.spec.ts:646` choca con las e2e del inbox, y la 22 se interbloquea. Arreglo: borrar solo las recepciones de los fixtures de la corrida, y serializar la 22 con `pg_advisory_lock` | `qa` — **primera de la cola** | Se ven los dos rojos y se atribuyen uno por uno, y las corridas limpias pasan enteras. **Pero una compuerta que hay que leer a mano deja de ser compuerta**: si dentro de dos integraciones sigue igual, pasa a bloqueante |
+| La portada enlaza a `/bandeja`, `/catalogo`, `/pipeline`… antes de que existan en `main` | integrador (tandas 2–4) | No hay nada desplegado; se cierra con la tanda 4 |
+| R3: `apps/web/src/lib/mock-viajes.ts:12` redefine `TipoPasajero` (`'ADT' | 'CHD' | 'INF'`), que ya existe en `packages/contracts/src/catalogo.ts` con otros valores | Antigravity | No está en la tanda 1. **Bloquea la tanda 4** si sigue así |
 
