@@ -889,3 +889,12 @@ probó el CI. Estáticas en local, sin caché: `typecheck` 9/9, `lint` 7/7, `bui
 La suite sigue con 57 `it` y pasa de 163 `expect` a 164: no se quitó ninguna aserción, se envolvieron
 en el bloqueo.
 
+
+## Integración del 2026-10-19 (decimocuarta) — v0.24.1: la política solo con el margen (R10)
+
+`fix/quoting-politica-solo-con-margen` @ `b06f88b` entra en `main` (`8fcb35a`), etiquetada **v0.24.1**.
+Con la base, el porcentaje y la venta se despejaba el neto (`venta / (1 + %)`). Ahora `politica` solo
+viaja con `incluirMargen=true`, y la e2e comprueba que una respuesta sin margen no contiene ni neto,
+ni margen, ni política. Compuerta: CI **8/8**, https://github.com/Alfavear/CRM/actions/runs/39337042919,
+sobre el árbol del merge. Estáticas en local en verde. Registro:
+[`docs/_integraciones/2026-10-19-v0.24.1.md`](docs/_integraciones/2026-10-19-v0.24.1.md).
