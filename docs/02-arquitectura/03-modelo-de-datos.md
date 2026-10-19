@@ -327,7 +327,8 @@ teóricas:
   ruidosa —ninguna agencia podría conectar su canal—, que es preferible a una partición por
   defecto que luego impide adjuntar el año nuevo sin mover filas.
 
-Lo mismo vale para RLS el día que se particione una tabla de negocio —`mensajes` lo será—:
+Lo mismo vale para RLS el día que se particione una tabla de negocio —`mensajes` **no** se
+particiona hoy, y si llega a hacerse será por HASH de `tenant_id`: ADR-0010 §1.5—:
 la política va al padre **y a cada partición**, o un `SELECT` directo contra la partición
 usa su propia configuración, que nadie habilitó. `aplicar_aislamiento_tenant` ya desciende,
 y `tablas_sin_aislamiento` imputa cada partición a su tabla raíz.
@@ -339,9 +340,9 @@ y `tablas_sin_aislamiento` imputa cada partición a su tabla raíz.
   tenant cascadea a `canales` y choca con el `ON DELETE RESTRICT` del directorio. La
   retención de 5 años de las filas `REVOCADO` y un derecho de supresión no tienen hoy
   ejecutante que no sea el rol propietario, que es justo lo que ADR-0008 no acepta como
-  control. Pendiente: una función `purgar_directorio(p_anteriores_a)` acotada a filas
-  `REVOCADO` de más de cinco años y con asiento en el historial, **o** la decisión
-  explícita de que es una operación manual con procedimiento escrito.
+  control. **Decidido en ADR-0010 §1.4:** la baja de una agencia es lógica y el `RESTRICT`
+  es intencional. La retención la ejecutará `purgar_directorio(p_anteriores_a)`, nunca el
+  rol propietario a mano, y se construye antes de la fecha límite que fija ese ADR.
 - **`canales.estado` → `enrutamiento_canales.estado`: lo ata un disparador desde el
   2026-10-19 (tarea 4f, migración `20261019120000_propagar_estado_de_canal_al_directorio`).**
 
