@@ -132,7 +132,7 @@ con sus totales distintos, y `pnpm compuertas` sale en verde.
 
 ---
 
-## [ ] 0c.22b. `TipoPasajero` sale del contrato, no de un mock (añadida el 2026-10-19, PRIORITARIA)
+## [x] 0c.22b. `TipoPasajero` sale del contrato, no de un mock (añadida el 2026-10-19, PRIORITARIA)
 
 El integrador está metiendo tu rama en `main` por tandas: la 1 ya entró como v0.24.0. **La tanda 4
 está bloqueada por R3:** `apps/web/src/lib/mock-viajes.ts:12` redefine

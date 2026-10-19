@@ -1,3 +1,5 @@
+import type { TipoPasajero } from '@viajapro/contracts';
+
 /**
  * Mock data y tipos del Expediente Operativo / Archivo de Viaje (TravelFile).
  *
@@ -9,7 +11,6 @@
 export type EstadoArchivoViaje =
   'CONFIRMADO' | 'EN_OPERACION' | 'VIAJANDO' | 'COMPLETADO' | 'CANCELADO';
 
-export type TipoPasajero = 'ADT' | 'CHD' | 'INF';
 export type EstadoDocumento = 'CARGADO' | 'PENDIENTE' | 'RECHAZADO' | 'VERIFICADO';
 
 export interface PasajeroViaje {
