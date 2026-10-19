@@ -18,6 +18,8 @@ import {
 import type { PlanAlimentacion, SalidaPublicada } from '@viajapro/contracts';
 import { BarraModulos } from '../../components/bandeja/barra-modulos';
 import { DistintivoDatosDemo } from '../../components/comun/distintivo-datos-demo';
+import { EsqueletoGridTarjetas, AvisoErrorAccionable } from '../../components/comun/esqueletos';
+import { construirMensajeErrorAccionable } from '../../lib/estados-ui-logica';
 import { AvisoConfiguracionTenant } from '../../components/crm/aviso-configuracion-tenant';
 import { FichaDetallePaquete } from '../../components/catalogo/ficha-detalle-paquete';
 import { TarjetaSalidaPublicada } from '../../components/catalogo/tarjeta-salida-publicada';
@@ -208,24 +210,46 @@ export default function CatalogoPage() {
 
         {/* Contenido */}
         <section className="flex-1 p-6">
-          {/* Error de configuración de tenant en modo API real */}
+          {/* Error de configuración de tenant o red en modo API real */}
           {usarReal && errorTenant && (
             <div className="mb-6">
-              <AvisoConfiguracionTenant
-                onContinuarConDemo={() => {
-                  setUsarReal(false);
-                  setErrorTenant(null);
-                }}
-              />
+              {errorTenant.includes('DEV_TENANT_ID') || errorTenant.includes('SIN_SESION') ? (
+                <AvisoConfiguracionTenant
+                  onContinuarConDemo={() => {
+                    setUsarReal(false);
+                    setErrorTenant(null);
+                  }}
+                />
+              ) : (
+                <AvisoErrorAccionable
+                  error={construirMensajeErrorAccionable(errorTenant, 'CATALOGO_SALIDAS')}
+                  onReintentar={() => {
+                    setCargando(true);
+                    listarSalidasApi({ desde: '2026-10-01' })
+                      .then((salidas) => {
+                        setSalidasReales(salidas);
+                        setErrorTenant(null);
+                      })
+                      .catch((err) => {
+                        setErrorTenant(
+                          err instanceof Error ? err.message : 'Error al conectar con la API',
+                        );
+                      })
+                      .finally(() => setCargando(false));
+                  }}
+                  onAccionSecundaria={() => {
+                    setUsarReal(false);
+                    setErrorTenant(null);
+                  }}
+                  etiquetaSecundaria="Cambiar a Datos Demo"
+                />
+              )}
             </div>
           )}
 
           {/* Estado de carga */}
           {cargando ? (
-            <div className="flex h-64 flex-col items-center justify-center gap-3 text-neutral-500">
-              <div className="border-acento-600 h-8 w-8 animate-spin rounded-full border-2 border-t-transparent" />
-              <p className="text-xs">Cargando salidas reales desde la base de datos...</p>
-            </div>
+            <EsqueletoGridTarjetas cantidad={6} />
           ) : usarReal && !errorTenant ? (
             /* LISTADO REAL DE SALIDAS PUBLICADAS (0c.16.1) */
             salidasFiltradas.length === 0 ? (

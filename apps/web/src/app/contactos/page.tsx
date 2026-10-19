@@ -15,6 +15,8 @@ import {
 } from 'lucide-react';
 import { BarraModulos } from '../../components/bandeja/barra-modulos';
 import { DistintivoDatosDemo } from '../../components/comun/distintivo-datos-demo';
+import { EsqueletoTabla, AvisoErrorAccionable } from '../../components/comun/esqueletos';
+import { construirMensajeErrorAccionable } from '../../lib/estados-ui-logica';
 import { FichaDetalleContacto } from '../../components/contactos/ficha-detalle-contacto';
 import { obtenerMockPaginaContactos } from '../../lib/mock-contactos';
 import { listarContactos } from '../../lib/crm-api';
@@ -27,19 +29,28 @@ import { generarColorAvatar, obtenerIniciales } from '../../lib/bandeja-logica';
 
 export default function ContactosPage() {
   const [pagina, setPagina] = useState(() => obtenerMockPaginaContactos());
+  const [cargando, setCargando] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let activo = true;
+  const cargarContactos = () => {
+    setCargando(true);
+    setError(null);
     listarContactos()
       .then((datos) => {
-        if (activo) setPagina(datos);
+        setPagina(datos);
+        setError(null);
       })
       .catch((err) => {
         console.warn('Error al cargar contactos de CRM API:', err);
+        setError(err instanceof Error ? err.message : 'Error al conectar con la API de CRM');
+      })
+      .finally(() => {
+        setCargando(false);
       });
-    return () => {
-      activo = false;
-    };
+  };
+
+  useEffect(() => {
+    cargarContactos();
   }, []);
   const [busqueda, setBusqueda] = useState('');
   const [etiquetaFiltro, setEtiquetaFiltro] = useState('todas');
@@ -163,135 +174,159 @@ export default function ContactosPage() {
           </div>
         </header>
 
-        {/* Tabla de Contactos */}
+        {/* Tabla de Contactos con Estados (0c.25) */}
         <div className="flex-1 overflow-y-auto p-6">
+          {error && (
+            <AvisoErrorAccionable
+              error={construirMensajeErrorAccionable(error, 'CONTACTOS_LISTA')}
+              onReintentar={cargarContactos}
+            />
+          )}
+
           <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-2xs dark:border-neutral-800 dark:bg-neutral-900">
-            <table className="w-full text-left text-xs">
-              <thead className="border-b border-neutral-200 bg-neutral-50 text-[11px] font-semibold text-neutral-500 dark:border-neutral-800 dark:bg-neutral-800/50 dark:text-neutral-400">
-                <tr>
-                  <th className="px-5 py-3">Contacto / Viajero</th>
-                  <th className="px-4 py-3">Teléfono WhatsApp</th>
-                  <th className="px-4 py-3">Correo</th>
-                  <th className="px-4 py-3">Etiquetas</th>
-                  <th className="px-4 py-3">Consentimiento</th>
-                  <th className="px-4 py-3">Último Contacto</th>
-                  <th className="px-4 py-3 text-right">Acciones</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800">
-                {contactosFiltrados.length === 0 ? (
+            {cargando ? (
+              <EsqueletoTabla filas={6} />
+            ) : (
+              <table className="w-full text-left text-xs">
+                <thead className="border-b border-neutral-200 bg-neutral-50 text-[11px] font-semibold text-neutral-500 dark:border-neutral-800 dark:bg-neutral-800/50 dark:text-neutral-400">
                   <tr>
-                    <td colSpan={7} className="p-8 text-center text-xs text-neutral-400">
-                      No se encontraron contactos que coincidan con la búsqueda.
-                    </td>
+                    <th className="px-5 py-3">Contacto / Viajero</th>
+                    <th className="px-4 py-3">Teléfono WhatsApp</th>
+                    <th className="px-4 py-3">Correo</th>
+                    <th className="px-4 py-3">Etiquetas</th>
+                    <th className="px-4 py-3">Consentimiento</th>
+                    <th className="px-4 py-3">Último Contacto</th>
+                    <th className="px-4 py-3 text-right">Acciones</th>
                   </tr>
-                ) : (
-                  contactosFiltrados.map((c) => {
-                    const avatarColores = generarColorAvatar(c.id);
-                    const iniciales = obtenerIniciales(c.nombre, c.telefono);
-                    const tienePromocional = c.consentimientos.includes('PROMOCIONAL');
+                </thead>
+                <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800">
+                  {contactosFiltrados.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="p-8 text-center">
+                        <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400">
+                          No se encontraron contactos que coincidan con los filtros aplicados.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setBusqueda('');
+                            setEtiquetaFiltro('todas');
+                            setConsentimientoFiltro('todos');
+                          }}
+                          className="text-acento-600 hover:text-acento-700 mt-2 text-xs font-semibold"
+                        >
+                          Restablecer filtros
+                        </button>
+                      </td>
+                    </tr>
+                  ) : (
+                    contactosFiltrados.map((c) => {
+                      const avatarColores = generarColorAvatar(c.id);
+                      const iniciales = obtenerIniciales(c.nombre, c.telefono);
+                      const tienePromocional = c.consentimientos.includes('PROMOCIONAL');
 
-                    return (
-                      <tr
-                        key={c.id}
-                        onClick={() => setContactoSeleccionado(c)}
-                        className="cursor-pointer transition-colors hover:bg-neutral-50/80 dark:hover:bg-neutral-800/40"
-                      >
-                        {/* Nombre + Avatar */}
-                        <td className="px-5 py-3">
-                          <div className="flex items-center space-x-3">
-                            <div
-                              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl text-[10px] font-bold select-none"
-                              style={{
-                                backgroundColor: avatarColores.bg,
-                                color: avatarColores.text,
-                              }}
-                            >
-                              {iniciales}
-                            </div>
-                            <div className="min-w-0">
-                              <p className="truncate font-semibold text-neutral-900 dark:text-neutral-100">
-                                {c.nombre || 'Sin nombre registrado'}
-                              </p>
-                              <p className="truncate text-[10px] text-neutral-400">
-                                ID: {c.id.slice(0, 8)}
-                              </p>
-                            </div>
-                          </div>
-                        </td>
-
-                        {/* Teléfono */}
-                        <td className="cifra px-4 py-3 font-medium text-neutral-700 dark:text-neutral-300">
-                          {formatearTelefonoVisual(c.telefono)}
-                        </td>
-
-                        {/* Correo */}
-                        <td className="max-w-[160px] truncate px-4 py-3 text-neutral-500 dark:text-neutral-400">
-                          {c.correo || '—'}
-                        </td>
-
-                        {/* Etiquetas */}
-                        <td className="px-4 py-3">
-                          <div className="flex max-w-xs flex-wrap gap-1">
-                            {c.etiquetas.slice(0, 2).map((et) => (
-                              <span
-                                key={et}
-                                className="rounded-full bg-neutral-100 px-2 py-0.5 text-[10px] font-medium text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300"
+                      return (
+                        <tr
+                          key={c.id}
+                          onClick={() => setContactoSeleccionado(c)}
+                          className="cursor-pointer transition-colors hover:bg-neutral-50/80 dark:hover:bg-neutral-800/40"
+                        >
+                          {/* Nombre + Avatar */}
+                          <td className="px-5 py-3">
+                            <div className="flex items-center space-x-3">
+                              <div
+                                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl text-[10px] font-bold select-none"
+                                style={{
+                                  backgroundColor: avatarColores.bg,
+                                  color: avatarColores.text,
+                                }}
                               >
-                                {et}
-                              </span>
-                            ))}
-                            {c.etiquetas.length > 2 && (
-                              <span className="rounded-full bg-neutral-100 px-1.5 py-0.5 text-[9px] font-bold text-neutral-500 dark:bg-neutral-800">
-                                +{c.etiquetas.length - 2}
-                              </span>
-                            )}
-                          </div>
-                        </td>
+                                {iniciales}
+                              </div>
+                              <div className="min-w-0">
+                                <p className="truncate font-semibold text-neutral-900 dark:text-neutral-100">
+                                  {c.nombre || 'Sin nombre registrado'}
+                                </p>
+                                <p className="truncate text-[10px] text-neutral-400">
+                                  ID: {c.id.slice(0, 8)}
+                                </p>
+                              </div>
+                            </div>
+                          </td>
 
-                        {/* Consentimiento */}
-                        <td className="px-4 py-3">
-                          <span
-                            className={`inline-flex items-center space-x-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                              tienePromocional
-                                ? 'bg-ok-50 text-ok-800 dark:bg-ok-950/60 dark:text-ok-300'
-                                : 'bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400'
-                            }`}
-                          >
-                            <UserCheck className="h-3 w-3" />
-                            <span>
-                              {tienePromocional ? 'Transaccional + Mkt' : 'Transaccional'}
-                            </span>
-                          </span>
-                        </td>
+                          {/* Teléfono */}
+                          <td className="cifra px-4 py-3 font-medium text-neutral-700 dark:text-neutral-300">
+                            {formatearTelefonoVisual(c.telefono)}
+                          </td>
 
-                        {/* Último contacto */}
-                        <td className="px-4 py-3 text-[11px] text-neutral-500 dark:text-neutral-400">
-                          {c.ultimoContactoEn
-                            ? new Date(c.ultimoContactoEn).toLocaleDateString('es-CO')
-                            : '—'}
-                        </td>
+                          {/* Correo */}
+                          <td className="max-w-[160px] truncate px-4 py-3 text-neutral-500 dark:text-neutral-400">
+                            {c.correo || '—'}
+                          </td>
 
-                        {/* Acciones */}
-                        <td className="px-4 py-3 text-right">
-                          <div className="flex items-center justify-end space-x-2">
-                            <Link
-                              href="/bandeja"
-                              onClick={(e) => e.stopPropagation()}
-                              title="Abrir chat en bandeja"
-                              className="hover:text-acento-600 dark:hover:text-acento-400 rounded-lg p-1 text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                          {/* Etiquetas */}
+                          <td className="px-4 py-3">
+                            <div className="flex max-w-xs flex-wrap gap-1">
+                              {c.etiquetas.slice(0, 2).map((et) => (
+                                <span
+                                  key={et}
+                                  className="rounded-full bg-neutral-100 px-2 py-0.5 text-[10px] font-medium text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300"
+                                >
+                                  {et}
+                                </span>
+                              ))}
+                              {c.etiquetas.length > 2 && (
+                                <span className="rounded-full bg-neutral-100 px-1.5 py-0.5 text-[9px] font-bold text-neutral-500 dark:bg-neutral-800">
+                                  +{c.etiquetas.length - 2}
+                                </span>
+                              )}
+                            </div>
+                          </td>
+
+                          {/* Consentimiento */}
+                          <td className="px-4 py-3">
+                            <span
+                              className={`inline-flex items-center space-x-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                                tienePromocional
+                                  ? 'bg-ok-50 text-ok-800 dark:bg-ok-950/60 dark:text-ok-300'
+                                  : 'bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400'
+                              }`}
                             >
-                              <MessageSquare className="h-4 w-4" />
-                            </Link>
-                            <ChevronRight className="h-4 w-4 text-neutral-300 dark:text-neutral-600" />
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
+                              <UserCheck className="h-3 w-3" />
+                              <span>
+                                {tienePromocional ? 'Transaccional + Mkt' : 'Transaccional'}
+                              </span>
+                            </span>
+                          </td>
+
+                          {/* Último contacto */}
+                          <td className="px-4 py-3 text-[11px] text-neutral-500 dark:text-neutral-400">
+                            {c.ultimoContactoEn
+                              ? new Date(c.ultimoContactoEn).toLocaleDateString('es-CO')
+                              : '—'}
+                          </td>
+
+                          {/* Acciones */}
+                          <td className="px-4 py-3 text-right">
+                            <div className="flex items-center justify-end space-x-2">
+                              <Link
+                                href="/bandeja"
+                                onClick={(e) => e.stopPropagation()}
+                                title="Abrir chat en bandeja"
+                                className="hover:text-acento-600 dark:hover:text-acento-400 rounded-lg p-1 text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                              >
+                                <MessageSquare className="h-4 w-4" />
+                              </Link>
+                              <ChevronRight className="h-4 w-4 text-neutral-300 dark:text-neutral-600" />
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            )}
           </div>
         </div>
       </main>

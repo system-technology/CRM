@@ -3,11 +3,12 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { EtapaDefinida, MotivoPerdida, Oportunidad, TableroPipeline } from '@viajapro/contracts';
-import { Kanban, Table as TableIcon, Search, Filter, Plus, Loader2 } from 'lucide-react';
+import { Kanban, Table as TableIcon, Search, Filter, Plus } from 'lucide-react';
 import { BarraModulos } from '../../components/bandeja/barra-modulos';
 import { ColumnaKanban } from '../../components/pipeline/columna-kanban';
 import { ModalMotivoPerdida } from '../../components/pipeline/modal-motivo-perdida';
 import { DistintivoDatosDemo } from '../../components/comun/distintivo-datos-demo';
+import { EsqueletoKanban } from '../../components/comun/esqueletos';
 import { AvisoConfiguracionTenant } from '../../components/crm/aviso-configuracion-tenant';
 import { obtenerMockTableroPipeline } from '../../lib/mock-pipeline';
 import { formatearDineroCifra, moverOportunidadEnTablero } from '../../lib/pipeline-logica';
@@ -292,12 +293,7 @@ export default function PipelinePage() {
             />
           </div>
         ) : cargandoApi ? (
-          <div className="flex flex-1 items-center justify-center p-6 text-neutral-500">
-            <div className="flex items-center gap-2 text-xs">
-              <Loader2 className="text-acento-600 dark:text-acento-400 h-4 w-4 animate-spin" />
-              <span>Cargando tablero desde la API CRM...</span>
-            </div>
-          </div>
+          <EsqueletoKanban />
         ) : vista === 'kanban' ? (
           <div className="flex flex-1 overflow-x-auto overflow-y-hidden p-6">
             <div className="flex min-w-full space-x-4">
@@ -330,45 +326,53 @@ export default function PipelinePage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800">
-                  {tableroFiltrado.columnas.flatMap((col) =>
-                    col.oportunidades.map((op) => (
-                      <tr
-                        key={op.id}
-                        className="hover:bg-neutral-50/80 dark:hover:bg-neutral-800/40"
-                      >
-                        <td className="px-4 py-3 font-semibold text-neutral-900 dark:text-neutral-100">
-                          {op.titulo}
-                        </td>
-                        <td className="px-4 py-3 text-neutral-700 dark:text-neutral-300">
-                          {op.contactoNombre || '—'}
-                        </td>
-                        <td className="px-4 py-3 text-neutral-600 dark:text-neutral-400">
-                          {op.destino || '—'}
-                        </td>
-                        <td className="px-4 py-3">
-                          <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-[10px] font-medium text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300">
-                            {op.etapa.nombre}
-                          </span>
-                        </td>
-                        <td className="cifra px-4 py-3 text-right font-bold text-neutral-900 dark:text-neutral-100">
-                          {formatearDineroCifra(op.valorEstimado)}
-                        </td>
-                        <td className="max-w-xs truncate px-4 py-3 text-neutral-600 dark:text-neutral-400">
-                          {op.proximaTarea ? op.proximaTarea.descripcion : '—'}
-                        </td>
-                        <td className="px-4 py-3 text-neutral-600 dark:text-neutral-400">
-                          {op.asesorNombre || 'Sin asignar'}
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          <Link
-                            href="/bandeja"
-                            className="text-acento-600 hover:text-acento-700 dark:text-acento-400 font-medium"
-                          >
-                            Chat
-                          </Link>
-                        </td>
-                      </tr>
-                    )),
+                  {tableroFiltrado.columnas.every((col) => col.oportunidades.length === 0) ? (
+                    <tr>
+                      <td colSpan={8} className="p-8 text-center text-xs text-neutral-400">
+                        No hay oportunidades que coincidan con los filtros aplicados.
+                      </td>
+                    </tr>
+                  ) : (
+                    tableroFiltrado.columnas.flatMap((col) =>
+                      col.oportunidades.map((op) => (
+                        <tr
+                          key={op.id}
+                          className="hover:bg-neutral-50/80 dark:hover:bg-neutral-800/40"
+                        >
+                          <td className="px-4 py-3 font-semibold text-neutral-900 dark:text-neutral-100">
+                            {op.titulo}
+                          </td>
+                          <td className="px-4 py-3 text-neutral-700 dark:text-neutral-300">
+                            {op.contactoNombre || '—'}
+                          </td>
+                          <td className="px-4 py-3 text-neutral-600 dark:text-neutral-400">
+                            {op.destino || '—'}
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-[10px] font-medium text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300">
+                              {op.etapa.nombre}
+                            </span>
+                          </td>
+                          <td className="cifra px-4 py-3 text-right font-bold text-neutral-900 dark:text-neutral-100">
+                            {formatearDineroCifra(op.valorEstimado)}
+                          </td>
+                          <td className="max-w-xs truncate px-4 py-3 text-neutral-600 dark:text-neutral-400">
+                            {op.proximaTarea ? op.proximaTarea.descripcion : '—'}
+                          </td>
+                          <td className="px-4 py-3 text-neutral-600 dark:text-neutral-400">
+                            {op.asesorNombre || 'Sin asignar'}
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            <Link
+                              href="/bandeja"
+                              className="text-acento-600 hover:text-acento-700 dark:text-acento-400 font-medium"
+                            >
+                              Chat
+                            </Link>
+                          </td>
+                        </tr>
+                      )),
+                    )
                   )}
                 </tbody>
               </table>

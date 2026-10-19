@@ -47,6 +47,7 @@ export default function ConfiguracionPage() {
   const [agencia, setAgencia] = useState<ConfiguracionAgencia>(MOCK_CONFIGURACION_AGENCIA);
   const [guardadoExitoso, setGuardadoExitoso] = useState(false);
   const [errorSla, setErrorSla] = useState<string | null>(null);
+  const [errorNit, setErrorNit] = useState<string | null>(null);
   const [modalInvitar, setModalInvitar] = useState(false);
   const [nuevoNombre, setNuevoNombre] = useState('');
   const [nuevoEmail, setNuevoEmail] = useState('');
@@ -71,9 +72,12 @@ export default function ConfiguracionPage() {
   const guardarCambiosAgencia = (e: React.FormEvent) => {
     e.preventDefault();
     if (!validarFormatoNit(agencia.nit)) {
-      alert('Formato de NIT no válido para Colombia. Ejemplo: 901.482.910-3');
+      setErrorNit(
+        'El formato de NIT es inválido para Colombia. Qué hacer: Ingresa el formato con puntos y dígito de verificación, ej. 901.482.910-3',
+      );
       return;
     }
+    setErrorNit(null);
     setGuardadoExitoso(true);
     setTimeout(() => setGuardadoExitoso(false), 3000);
   };
@@ -313,73 +317,88 @@ export default function ConfiguracionPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-neutral-200 dark:divide-neutral-800">
-                    {miembros.map((m) => (
-                      <tr
-                        key={m.id}
-                        className="hover:bg-neutral-50/50 dark:hover:bg-neutral-800/30"
-                      >
-                        <td className="px-4 py-3.5">
-                          <div className="flex items-center gap-3">
-                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-neutral-200 font-bold text-neutral-700 dark:bg-neutral-700 dark:text-neutral-200">
-                              {m.avatarIniciales}
-                            </div>
-                            <div>
-                              <p className="font-semibold text-neutral-900 dark:text-white">
-                                {m.nombre}
-                              </p>
-                              <p className="text-[11px] text-neutral-500 dark:text-neutral-400">
-                                {m.email}
-                              </p>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3.5 text-neutral-600 dark:text-neutral-300">
-                          <div className="flex items-center gap-1.5">
-                            <Phone className="h-3.5 w-3.5 text-neutral-400" />
-                            <span>{m.telefono}</span>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3.5">
-                          <span
-                            className={`inline-flex items-center rounded px-2 py-0.5 text-[11px] font-semibold ${
-                              m.rol === 'DUENO'
-                                ? 'bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300'
-                                : 'bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300'
-                            }`}
-                          >
-                            {m.rol === 'DUENO' ? 'Dueño / Admin' : 'Asesor Comercial'}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3.5">
-                          <span
-                            className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${
-                              m.estado === 'ACTIVO'
-                                ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400'
-                                : 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400'
-                            }`}
-                          >
-                            <span
-                              className={`h-1.5 w-1.5 rounded-full ${
-                                m.estado === 'ACTIVO' ? 'bg-emerald-500' : 'bg-amber-500'
-                              }`}
-                            />
-                            {m.estado === 'ACTIVO' ? 'Activo' : 'Invitación Enviada'}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3.5 text-neutral-500 dark:text-neutral-400">
-                          {m.fechaIngreso}
-                        </td>
-                        <td className="px-4 py-3.5 text-right">
+                    {miembros.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="p-8 text-center text-xs text-neutral-400">
+                          <p>No hay miembros registrados en el equipo.</p>
                           <button
                             type="button"
-                            title="Gestionar permisos del usuario"
-                            className="rounded px-2.5 py-1 text-xs text-neutral-600 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
+                            onClick={() => setModalInvitar(true)}
+                            className="mt-2 font-semibold text-neutral-900 underline dark:text-white"
                           >
-                            Editar
+                            Invitar al primer miembro
                           </button>
                         </td>
                       </tr>
-                    ))}
+                    ) : (
+                      miembros.map((m) => (
+                        <tr
+                          key={m.id}
+                          className="hover:bg-neutral-50/50 dark:hover:bg-neutral-800/30"
+                        >
+                          <td className="px-4 py-3.5">
+                            <div className="flex items-center gap-3">
+                              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-neutral-200 font-bold text-neutral-700 dark:bg-neutral-700 dark:text-neutral-200">
+                                {m.avatarIniciales}
+                              </div>
+                              <div>
+                                <p className="font-semibold text-neutral-900 dark:text-white">
+                                  {m.nombre}
+                                </p>
+                                <p className="text-[11px] text-neutral-500 dark:text-neutral-400">
+                                  {m.email}
+                                </p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3.5 text-neutral-600 dark:text-neutral-300">
+                            <div className="flex items-center gap-1.5">
+                              <Phone className="h-3.5 w-3.5 text-neutral-400" />
+                              <span>{m.telefono}</span>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3.5">
+                            <span
+                              className={`inline-flex items-center rounded px-2 py-0.5 text-[11px] font-semibold ${
+                                m.rol === 'DUENO'
+                                  ? 'bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300'
+                                  : 'bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300'
+                              }`}
+                            >
+                              {m.rol === 'DUENO' ? 'Dueño / Admin' : 'Asesor Comercial'}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3.5">
+                            <span
+                              className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                                m.estado === 'ACTIVO'
+                                  ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400'
+                                  : 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400'
+                              }`}
+                            >
+                              <span
+                                className={`h-1.5 w-1.5 rounded-full ${
+                                  m.estado === 'ACTIVO' ? 'bg-emerald-500' : 'bg-amber-500'
+                                }`}
+                              />
+                              {m.estado === 'ACTIVO' ? 'Activo' : 'Invitación Enviada'}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3.5 text-neutral-500 dark:text-neutral-400">
+                            {m.fechaIngreso}
+                          </td>
+                          <td className="px-4 py-3.5 text-right">
+                            <button
+                              type="button"
+                              title="Gestionar permisos del usuario"
+                              className="rounded px-2.5 py-1 text-xs text-neutral-600 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
+                            >
+                              Editar
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -746,6 +765,16 @@ export default function ConfiguracionPage() {
                   </div>
                 </div>
 
+                {errorNit && (
+                  <div
+                    role="alert"
+                    aria-live="assertive"
+                    className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300"
+                  >
+                    <AlertTriangle className="h-4 w-4 shrink-0" />
+                    <span>{errorNit}</span>
+                  </div>
+                )}
                 <div className="pt-2">
                   <button
                     type="submit"

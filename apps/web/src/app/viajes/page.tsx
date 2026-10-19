@@ -1,9 +1,11 @@
 'use client';
 
 import React, { useState, useMemo, Suspense } from 'react';
+import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import {
   AlertTriangle,
+  Briefcase,
   Clock,
   CheckCircle2,
   Calendar,
@@ -62,8 +64,21 @@ function ExpedienteDetalleContenido() {
 
   if (!expediente) {
     return (
-      <div className="flex h-full items-center justify-center p-8 text-neutral-500">
-        No hay expedientes operativos registrados.
+      <div className="flex h-full flex-col items-center justify-center p-8 text-center select-none">
+        <Briefcase className="h-10 w-10 text-neutral-400" />
+        <h3 className="mt-3 text-sm font-bold text-neutral-900 dark:text-neutral-100">
+          Sin expedientes de viaje activos
+        </h3>
+        <p className="mt-1 max-w-sm text-xs text-neutral-500">
+          Los expedientes operativos se originan automáticamente al confirmar cotizaciones ganadas
+          en el cotizador o pipeline.
+        </p>
+        <Link
+          href="/pipeline"
+          className="mt-4 rounded-xl bg-neutral-900 px-4 py-2 text-xs font-semibold text-white shadow-2xs hover:bg-neutral-800 dark:bg-white dark:text-neutral-900"
+        >
+          Ir al Pipeline
+        </Link>
       </div>
     );
   }
@@ -135,63 +150,79 @@ function ExpedienteDetalleContenido() {
 
         {/* Lista con scroll */}
         <div className="flex-1 divide-y divide-neutral-100 overflow-y-auto dark:divide-neutral-800/60">
-          {archivosFiltrados.map((a) => {
-            const esSeleccionado = a.id === expediente.id;
-            const balanceItem = calcularSaldoPendiente(a.totalVentaCop, a.totalPagadoCop);
-
-            return (
+          {archivosFiltrados.length === 0 ? (
+            <div className="p-6 text-center text-xs text-neutral-500">
+              <p>No se encontraron expedientes con ese criterio.</p>
               <button
-                key={a.id}
-                onClick={() => setArchivoSeleccionadoId(a.id)}
-                className={`w-full p-3.5 text-left transition-colors ${
-                  esSeleccionado
-                    ? 'border-l-4 border-blue-600 bg-blue-50/70 dark:border-blue-500 dark:bg-blue-950/30'
-                    : 'hover:bg-neutral-50 dark:hover:bg-neutral-800/50'
-                }`}
+                type="button"
+                onClick={() => {
+                  setFiltroTexto('');
+                  setFiltroEstado('TODOS');
+                }}
+                className="text-acento-600 hover:text-acento-700 mt-2 text-xs font-semibold"
               >
-                <div className="flex items-center justify-between">
-                  <span className="font-mono text-[11px] font-bold text-neutral-900 dark:text-white">
-                    {a.codigoExpediente}
-                  </span>
-                  <span
-                    className={`py-0.2 rounded px-1.5 text-[10px] font-semibold ${
-                      a.estado === 'CONFIRMADO'
-                        ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
-                        : 'bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300'
-                    }`}
-                  >
-                    {a.estado}
-                  </span>
-                </div>
-
-                <p className="mt-1 truncate text-xs font-semibold text-neutral-800 dark:text-neutral-200">
-                  {a.titularNombre}
-                </p>
-
-                <div className="mt-1 flex items-center gap-1.5 text-[11px] text-neutral-500 dark:text-neutral-400">
-                  <MapPin className="h-3 w-3 shrink-0" />
-                  <span className="truncate">{a.destino}</span>
-                </div>
-
-                <div className="mt-2 flex items-center justify-between text-[11px]">
-                  <span className="text-neutral-500">
-                    {a.fechaSalida.slice(5)} al {a.fechaRegreso.slice(5)}
-                  </span>
-                  <span
-                    className={`font-semibold ${
-                      balanceItem.estaPagadoTotal
-                        ? 'text-emerald-600 dark:text-emerald-400'
-                        : 'text-amber-600 dark:text-amber-400'
-                    }`}
-                  >
-                    {balanceItem.estaPagadoTotal
-                      ? 'Saldado'
-                      : `Saldo: $${balanceItem.saldoCop.toLocaleString('es-CO')}`}
-                  </span>
-                </div>
+                Restablecer búsqueda
               </button>
-            );
-          })}
+            </div>
+          ) : (
+            archivosFiltrados.map((a) => {
+              const esSeleccionado = a.id === expediente.id;
+              const balanceItem = calcularSaldoPendiente(a.totalVentaCop, a.totalPagadoCop);
+
+              return (
+                <button
+                  key={a.id}
+                  onClick={() => setArchivoSeleccionadoId(a.id)}
+                  className={`w-full p-3.5 text-left transition-colors ${
+                    esSeleccionado
+                      ? 'border-l-4 border-blue-600 bg-blue-50/70 dark:border-blue-500 dark:bg-blue-950/30'
+                      : 'hover:bg-neutral-50 dark:hover:bg-neutral-800/50'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-[11px] font-bold text-neutral-900 dark:text-white">
+                      {a.codigoExpediente}
+                    </span>
+                    <span
+                      className={`py-0.2 rounded px-1.5 text-[10px] font-semibold ${
+                        a.estado === 'CONFIRMADO'
+                          ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
+                          : 'bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300'
+                      }`}
+                    >
+                      {a.estado}
+                    </span>
+                  </div>
+
+                  <p className="mt-1 truncate text-xs font-semibold text-neutral-800 dark:text-neutral-200">
+                    {a.titularNombre}
+                  </p>
+
+                  <div className="mt-1 flex items-center gap-1.5 text-[11px] text-neutral-500 dark:text-neutral-400">
+                    <MapPin className="h-3 w-3 shrink-0" />
+                    <span className="truncate">{a.destino}</span>
+                  </div>
+
+                  <div className="mt-2 flex items-center justify-between text-[11px]">
+                    <span className="text-neutral-500">
+                      {a.fechaSalida.slice(5)} al {a.fechaRegreso.slice(5)}
+                    </span>
+                    <span
+                      className={`font-semibold ${
+                        balanceItem.estaPagadoTotal
+                          ? 'text-emerald-600 dark:text-emerald-400'
+                          : 'text-amber-600 dark:text-amber-400'
+                      }`}
+                    >
+                      {balanceItem.estaPagadoTotal
+                        ? 'Saldado'
+                        : `Saldo: $${balanceItem.saldoCop.toLocaleString('es-CO')}`}
+                    </span>
+                  </div>
+                </button>
+              );
+            })
+          )}
         </div>
       </aside>
 

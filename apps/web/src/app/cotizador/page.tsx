@@ -554,13 +554,25 @@ function ContenidoCotizador() {
 
             {/* Panel de Resultados de la Cotización (8 col) */}
             <div className="lg:col-span-8">
-              {/* Estado de carga */}
+              {/* Estado de carga (Esqueleto - 0c.25) */}
               {calculando && (
-                <div className="flex h-64 flex-col items-center justify-center gap-3 rounded-2xl border border-neutral-200 bg-white p-8 dark:border-neutral-800 dark:bg-neutral-900">
-                  <div className="border-acento-600 h-8 w-8 animate-spin rounded-full border-2 border-t-transparent" />
-                  <p className="text-xs text-neutral-500">
-                    Cotizando salida contra el tarifario oficial...
-                  </p>
+                <div className="animate-pulse space-y-4 rounded-2xl border border-neutral-200 bg-white p-6 shadow-2xs select-none dark:border-neutral-800 dark:bg-neutral-900">
+                  <div className="flex items-center justify-between border-b border-neutral-100 pb-4 dark:border-neutral-800">
+                    <div className="space-y-2">
+                      <div className="h-4 w-48 rounded bg-neutral-200 dark:bg-neutral-700" />
+                      <div className="h-3 w-32 rounded bg-neutral-100 dark:bg-neutral-800" />
+                    </div>
+                    <div className="h-8 w-28 rounded-xl bg-neutral-100 dark:bg-neutral-800" />
+                  </div>
+                  <div className="space-y-3 py-2">
+                    <div className="h-3.5 w-full rounded bg-neutral-100 dark:bg-neutral-800" />
+                    <div className="h-3.5 w-4/5 rounded bg-neutral-100 dark:bg-neutral-800" />
+                    <div className="h-3.5 w-3/5 rounded bg-neutral-100 dark:bg-neutral-800" />
+                  </div>
+                  <div className="flex items-center justify-between border-t border-neutral-100 pt-4 dark:border-neutral-800">
+                    <div className="h-3 w-24 rounded bg-neutral-100 dark:bg-neutral-800" />
+                    <div className="h-6 w-36 rounded bg-purple-200 dark:bg-purple-900" />
+                  </div>
                 </div>
               )}
 
@@ -686,8 +698,11 @@ export default function Cotizador() {
   return (
     <Suspense
       fallback={
-        <div className="flex h-screen w-full items-center justify-center bg-neutral-50 dark:bg-neutral-950">
-          <div className="border-acento-600 h-8 w-8 animate-spin rounded-full border-2 border-t-transparent" />
+        <div className="flex h-screen w-full items-center justify-center bg-neutral-50 p-6 select-none dark:bg-neutral-950">
+          <div className="h-full w-full max-w-5xl animate-pulse rounded-2xl border border-neutral-200 bg-white p-8 shadow-2xs dark:border-neutral-800 dark:bg-neutral-900">
+            <div className="h-6 w-48 rounded bg-neutral-200 dark:bg-neutral-700" />
+            <div className="mt-4 h-4 w-96 rounded bg-neutral-100 dark:bg-neutral-800" />
+          </div>
         </div>
       }
     >

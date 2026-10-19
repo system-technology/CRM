@@ -188,7 +188,7 @@ si 0c.22 ya lo creó.
 **Hecho cuando:** cargando (esqueleto), vacío, error con reintento y el caso de 500 cotizaciones
 con nombres largos funcionan a 375 px, y `pnpm compuertas` sale en verde.
 
-## [ ] 0c.25. Estados vacío, carga y error con evidencia (añadida el 2026-10-19)
+## [x] 0c.25. Estados vacío, carga y error con evidencia (añadida el 2026-10-19)
 
 La 0c.21 marcó el criterio 6 como «Cumple» sin evidencia, y habla de «spinner/skeleton». El
 producto pide **esqueleto, no spinner centrado**. Recorre `bandeja`, `pipeline`, `catalogo`,
