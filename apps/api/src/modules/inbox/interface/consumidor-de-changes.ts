@@ -37,6 +37,27 @@ export function leerTrabajo(datos: unknown): { recepcionId: Buffer; indice: numb
   return { recepcionId: Buffer.from(d.recepcionId, 'hex'), indice: d.indice };
 }
 
+/**
+ * Un error sin su mensaje. **R10.** El mensaje de un error de Prisma o de PostgreSQL puede traer
+ * la fila entera («Failing row contains (...)») con el teléfono y el texto del viajero, y
+ * BullMQ guarda el failedReason siete días en Redis, que no tiene RLS ni cifrado. Solo
+ * sobreviven la clase y el código, que son los que permiten diagnosticar.
+ */
+export class ErrorDeTrabajo extends Error {
+  constructor(readonly codigo: string) {
+    super(`Falló el procesamiento del change (${codigo}).`);
+    this.name = 'ErrorDeTrabajo';
+  }
+}
+
+export function sanearError(error: unknown): ErrorDeTrabajo {
+  if (error instanceof ErrorDeTrabajo) return error;
+  const e = error as { code?: unknown; constructor?: { name?: string } } | null;
+  const clase = e?.constructor?.name ?? 'Error';
+  const codigo = typeof e?.code === 'string' ? e.code : null;
+  return new ErrorDeTrabajo(codigo ? `${clase}:${codigo}` : clase);
+}
+
 @Injectable()
 export class ConsumidorDeChanges implements OnModuleInit, OnModuleDestroy {
   private readonly log = new Logger(ConsumidorDeChanges.name);
@@ -52,20 +73,29 @@ export class ConsumidorDeChanges implements OnModuleInit, OnModuleDestroy {
     this.conexion = crearConexionDeRedis(url);
     this.worker = new Worker<DatosDelTrabajo>(
       NOMBRE_DE_COLA,
-      async (trabajo) => {
-        const { recepcionId, indice } = leerTrabajo(trabajo.data);
-        const r = await this.procesar.ejecutar(recepcionId, indice);
-        return r.estado;
-      },
+      (trabajo) => this.atender(trabajo.data),
       { connection: this.conexion, concurrency: 5 },
     );
-    this.worker.on('failed', (trabajo, error) => {
-      // El mensaje del error y el id del trabajo; nunca `trabajo.data` completo ni contenido.
-      this.log.error(
-        `Trabajo ${trabajo?.id ?? '?'} falló (intento ${trabajo?.attemptsMade ?? 0}): ${error.message}`,
-      );
-    });
+    this.worker.on('failed', (trabajo, error) =>
+      this.registrarFallo(trabajo?.id, trabajo?.attemptsMade ?? 0, error),
+    );
     this.log.log(`Consumiendo la cola ${NOMBRE_DE_COLA}.`);
+  }
+
+  /** Un trabajo. Lo que lance sube saneado: es lo que BullMQ guarda como failedReason. */
+  async atender(datos: unknown): Promise<string> {
+    try {
+      const { recepcionId, indice } = leerTrabajo(datos);
+      const r = await this.procesar.ejecutar(recepcionId, indice);
+      return r.estado;
+    } catch (error) {
+      throw sanearError(error);
+    }
+  }
+
+  /** La clase y el código del error y el id del trabajo; nunca el mensaje ni los datos. */
+  registrarFallo(id: string | undefined, intento: number, error: unknown): void {
+    this.log.error(`Trabajo ${id ?? '?'} falló (intento ${intento}): ${sanearError(error).codigo}`);
   }
 
   async onModuleDestroy(): Promise<void> {

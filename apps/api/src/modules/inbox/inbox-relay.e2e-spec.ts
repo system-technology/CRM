@@ -45,6 +45,11 @@ const numero = (): string => String(Math.floor(Math.random() * 9e14) + 1e14);
 const PN_ACTIVO = numero();
 const PN_REVOCADO = numero();
 const PN_DESCONOCIDO = numero();
+// Una SEGUNDA agencia, para los casos que cruzan tenants.
+const TENANT_B = `01932000-0000-7000-8000-${randomBytes(6).toString('hex')}`;
+const CUENTA_B = randomUUID();
+const CANAL_B = randomUUID();
+const PN_B = numero();
 
 let app: INestApplication;
 let base: string;
@@ -112,15 +117,20 @@ async function payloadAnulado(cuerpo: Buffer): Promise<boolean> {
   return r.rows[0]?.anulado === true;
 }
 
-async function registrarEnDirectorio(pn: string, canal: string): Promise<void> {
+async function registrarEnDirectorio(
+  pn: string,
+  canal: string,
+  tenant = TENANT,
+  cuenta = CUENTA,
+): Promise<void> {
   await admin.query('BEGIN');
   try {
     await admin.query('SET LOCAL ROLE "viajapro_altas"');
-    await admin.query("SELECT set_config('app.current_tenant', $1, true)", [TENANT]);
+    await admin.query("SELECT set_config('app.current_tenant', $1, true)", [tenant]);
     await admin.query(
       `SELECT registrar_enrutamiento($1, $2::smallint, $3, $4, $5,
                                      'ACTIVO'::estado_enrutamiento, NULL, $6)`,
-      [claveDeEnrutamiento(PIMIENTA, 'pn', pn), 1, TENANT, canal, CUENTA, 'alta de prueba e2e'],
+      [claveDeEnrutamiento(PIMIENTA, 'pn', pn), 1, tenant, canal, cuenta, 'alta de prueba e2e'],
     );
     await admin.query('COMMIT');
   } catch (error) {
@@ -166,6 +176,23 @@ beforeAll(async () => {
     CANAL_REVOCADO,
   ]);
 
+  await admin.query(
+    `INSERT INTO tenants (id, slug, nombre, creado_en, actualizado_en) VALUES ($1, $2, $3, now(), now())`,
+    [
+      TENANT_B,
+      'fixture-aislamiento-relay-' + TENANT_B.slice(-12),
+      'Segunda agencia de la prueba del relay',
+    ],
+  );
+  await admin.query(
+    `INSERT INTO cuentas_whatsapp (id, tenant_id, waba_id, nombre, actualizado_en) VALUES ($1, $2, $3, 'WABA B', now())`,
+    [CUENTA_B, TENANT_B, 'waba-relay-' + CUENTA_B.slice(0, 8)],
+  );
+  await admin.query(
+    `INSERT INTO canales (id, tenant_id, cuenta_id, phone_number_id, numero_e164, actualizado_en) VALUES ($1, $2, $3, $4, '+573001110003', now())`,
+    [CANAL_B, TENANT_B, CUENTA_B, PN_B],
+  );
+  await registrarEnDirectorio(PN_B, CANAL_B, TENANT_B, CUENTA_B);
   Logger.overrideLogger(false);
   app = await NestFactory.create(AppModule, { logger: false });
   app.useGlobalFilters(new DominioExcepcionFilter());
@@ -185,14 +212,16 @@ afterAll(async () => {
   if (admin) {
     try {
       await admin.query('SET ROLE "viajapro_enrutador"');
-      await admin.query('DELETE FROM enrutamiento_canales WHERE tenant_resuelto_id = $1', [TENANT]);
+      await admin.query('DELETE FROM enrutamiento_canales WHERE tenant_resuelto_id = ANY($1)', [
+        [TENANT, TENANT_B],
+      ]);
       await admin.query('RESET ROLE');
       type Limpiador = (c: Client, ids: string[]) => Promise<unknown>;
       // Especificador no literal: el limpiador es JS sin tipos y se comparte con el paquete de base de datos.
       const ruta = '../../../../../packages/database/scripts/borrar-tenants.mjs';
       const modulo = (await import(ruta)) as { borrarTenants: Limpiador };
       await admin.query('BEGIN');
-      await modulo.borrarTenants(admin, [TENANT]);
+      await modulo.borrarTenants(admin, [TENANT, TENANT_B]);
       await admin.query('COMMIT');
     } finally {
       await admin.end();
@@ -303,5 +332,47 @@ describe('POST firmado -> trabajador -> mensajes', () => {
     );
     expect(k.rows).toHaveLength(0);
     expect(await payloadAnulado(cuerpo)).toBe(true);
+  });
+
+  async function tenantsDe(wamid: string): Promise<string[]> {
+    const r = await admin.query('SELECT tenant_id FROM mensajes WHERE wamid = $1', [wamid]);
+    return r.rows.map((f: { tenant_id: string }) => f.tenant_id).sort();
+  }
+
+  it('un lote con changes de DOS agencias: cada uno se escribe bajo su tenant', async () => {
+    // Un solo POST, dos `entry` de WABAs distintos: el caso que la documentación de Meta
+    // confirma y que obliga a resolver el tenant por change y no por petición.
+    const wA = `wamid.${randomUUID()}`;
+    const wB = `wamid.${randomUUID()}`;
+    const a = JSON.parse(sobre(PN_ACTIVO, wA).toString('utf8')) as { entry: unknown[] };
+    const b = JSON.parse(sobre(PN_B, wB).toString('utf8')) as { entry: unknown[] };
+    const lote = Buffer.from(JSON.stringify({ ...a, entry: [...a.entry, ...b.entry] }), 'utf8');
+
+    expect(await post(lote)).toBe(200);
+    const ra = await caso.ejecutar(idDe(lote), 0);
+    const rb = await caso.ejecutar(idDe(lote), 1);
+
+    expect(ra).toEqual({ estado: 'PROCESADO', mensajesNuevos: 1, mensajesRepetidos: 0 });
+    expect(rb).toEqual({ estado: 'PROCESADO', mensajesNuevos: 1, mensajesRepetidos: 0 });
+    expect(await tenantsDe(wA)).toEqual([TENANT]);
+    expect(await tenantsDe(wB)).toEqual([TENANT_B]);
+    // Los dos changes cerrados, y el contenido solo se anula al cerrar el último.
+    expect(await payloadAnulado(lote)).toBe(true);
+  });
+
+  it('el mismo wamid en dos tenants: existen las dos filas (la unicidad es por tenant)', async () => {
+    const wamid = `wamid.${randomUUID()}`;
+    const deA = sobre(PN_ACTIVO, wamid);
+    const deB = sobre(PN_B, wamid);
+    await post(deA);
+    await post(deB);
+
+    expect((await caso.ejecutar(idDe(deA), 0)).estado).toBe('PROCESADO');
+    expect(await caso.ejecutar(idDe(deB), 0)).toEqual({
+      estado: 'PROCESADO',
+      mensajesNuevos: 1,
+      mensajesRepetidos: 0,
+    });
+    expect(await tenantsDe(wamid)).toEqual([TENANT, TENANT_B].sort());
   });
 });
