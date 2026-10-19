@@ -11,8 +11,11 @@
 import { Body, Controller, Get, Inject, Param, ParseUUIDPipe, Post, Query } from '@nestjs/common';
 import {
   AnadirVersionACotizacion,
+  CambiarEstadoDeCotizacion,
   type CotizacionGuardada,
   GuardarCotizacion,
+  ListarCotizaciones,
+  type PaginaDeCotizaciones,
 } from '@viajapro/contracts';
 import { ZodValidationPipe } from '../../../shared/validacion/zod-validation.pipe.js';
 import { CotizacionesUseCase } from '../application/cotizaciones.use-case.js';
@@ -39,6 +42,22 @@ export class CotizacionesController {
     @Query('incluirMargen') incluirMargen?: string,
   ): Promise<CotizacionGuardada> {
     return this.cotizaciones.anadirVersion(id, body, pideMargen(incluirMargen));
+  }
+
+  /** Listado paginado por cursor. Sin `incluirMargen`: nunca neto ni margen (ADR-0011). */
+  @Get()
+  async listar(
+    @Query(new ZodValidationPipe(ListarCotizaciones)) params: ListarCotizaciones,
+  ): Promise<PaginaDeCotizaciones> {
+    return this.cotizaciones.listar(params);
+  }
+
+  @Post(':id/estado')
+  async cambiarEstado(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body(new ZodValidationPipe(CambiarEstadoDeCotizacion)) body: CambiarEstadoDeCotizacion,
+  ): Promise<CotizacionGuardada> {
+    return this.cotizaciones.cambiarEstado(id, body.estado);
   }
 
   @Get(':id')

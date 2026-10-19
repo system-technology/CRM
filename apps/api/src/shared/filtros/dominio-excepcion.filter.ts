@@ -47,7 +47,7 @@ export class DominioExcepcionFilter implements ExceptionFilter {
           ? HttpStatus.UNPROCESSABLE_ENTITY
           : excepcion instanceof EstadoInvalidoError
             ? HttpStatus.CONFLICT
-            : excepcion.code.endsWith('_NO_ENCONTRADO')
+            : /_NO_ENCONTRAD[OA]$/.test(excepcion.code)
               ? HttpStatus.NOT_FOUND
               : HttpStatus.BAD_REQUEST;
 
