@@ -162,7 +162,7 @@ visible al asesor y `pnpm compuertas` sale en verde. Hazla junto con la 0c.22b.
 
 ---
 
-## [ ] 0c.23. Pantalla de inicio de sesión, solo maqueta (añadida el 2026-10-19)
+## [x] 0c.23. Pantalla de inicio de sesión, solo maqueta (añadida el 2026-10-19)
 
 La API de autenticación **no existe**; llega con el ADR-0011. No inventes contratos ni endpoints.
 Construye `/iniciar-sesion` con correo y contraseña, validación con un esquema local mínimo
