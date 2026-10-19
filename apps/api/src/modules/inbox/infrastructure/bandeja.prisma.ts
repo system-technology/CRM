@@ -26,11 +26,11 @@ export class BandejaPrisma extends PuertoBandeja {
   ): Promise<ResultadoDeBandeja> {
     return this.prisma.conTenantResuelto(tenantId, async (tx): Promise<ResultadoDeBandeja> => {
       // La verdad manda sobre el directorio, que es derivado: un canal revocado no recibe.
-      const canal = await tx.canal.findUnique({
-        where: { id: canalId },
-        select: { estado: true, eliminadoEn: true },
-      });
-      if (!canal || canal.estado === 'REVOCADO' || canal.eliminadoEn !== null) {
+      // FOR SHARE: una revocación concurrente (UPDATE) espera a que esta transacción termine, o
+      // esta espera a que ella confirme. Sin el bloqueo, el mensaje podía colarse tras la baja.
+      const [canal] = await tx.$queryRaw<Array<{ estado: string; eliminado_en: Date | null }>>`
+        SELECT estado::text AS estado, eliminado_en FROM canales WHERE id = ${canalId}::uuid FOR SHARE`;
+      if (!canal || canal.estado === 'REVOCADO' || canal.eliminado_en !== null) {
         return 'CANAL_REVOCADO';
       }
 

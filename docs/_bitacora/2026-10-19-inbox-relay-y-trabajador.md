@@ -53,3 +53,14 @@ Rama `feat/inbox-relay`, desde `feat/inbox-webhook-post` (78e74cc). ADR-0008 §4
 - Descarga de medios (`adjuntos.media_id_meta` queda sin `clave_objeto`) y Socket.IO tras el commit.
 - `aislamiento.spec.ts` hace `DELETE FROM recepciones_webhook` entero en su `afterAll`: borra
   recepciones ajenas si corre en paralelo con otra prueba (dueño `qa`).
+
+## Correcciones de la auditoría de seguridad (`fix/inbox-auditoria-trabajador`)
+
+1. **R10, errores sin PII.** El trabajo falla con `ErrorDeTrabajo` (clase y código, nunca el mensaje
+   original), así que `failedReason` en Redis y el registro solo llevan `Clase:codigo` y el id del
+   trabajo. Prueba: un error con «Failing row contains (teléfono, texto)» no aparece ni en el motivo
+   ni en el log.
+2. **`FOR SHARE`** en la lectura del canal dentro de la transacción de escritura: una revocación
+   concurrente ya no se cuela entre la comprobación y el INSERT.
+3. **e2e:** un lote con changes de dos agencias (cada uno bajo su tenant) y el mismo wamid en dos
+   tenants (dos filas).
