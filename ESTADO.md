@@ -6,7 +6,7 @@
 
 | Campo | Valor |
 |---|---|
-| Última actualización | 2026-10-19 (noche: v0.24.1 → v0.27.0, con el CI como compuerta) |
+| Última actualización | 2026-10-19 (noche: v0.24.1 → v0.28.0; la bandeja web, entera en `main`) |
 | Actualizado por | Claude Opus 5.5 (`integrador`) |
 | Fase | **Rebanada vertical de paquetes, en construcción** |
 | Avance de la fase | Cotizador de punta a punta. **La cotización es la suma de sus tarifas y el precio «desde» es uno que el comprador puede pagar (v0.19.0).** Apretón de manos del webhook vivo. Bandeja web en construcción |
@@ -121,7 +121,7 @@ Ordenada. La primera es la que debe tomarse ahora.
 | 4g | `purgar_directorio`, o decidir que es manual | `arquitecto`, `datos` | Hoy ninguna fila del directorio se puede borrar por ningún camino de código. **No bloquea un esquema vacío; bloquea el primer tenant en producción** |
 | 4h | Trabajo anual de creación de particiones del historial | `devops` | Si falta la del año siguiente, **ninguna agencia puede conectar su canal**. Mejor: un *event trigger* que lo haga imposible de olvidar |
 | 4i | Aserción de concurrencia determinista y orden de las aserciones | `qa` | La de la carrera falla hacia el verde; y 22/23 reparan privilegios, así que enmascaran a cualquier aserción declarada después |
-| 5 | Bandeja de conversaciones en la web | Antigravity, en `feat/bandeja-web`; integración por tandas | **Entra por tandas desde `814ae24`, revisada y aceptada.** Tandas 1 (base, v0.24.0), 2 (bandeja, v0.26.0) y 3 (catálogo y piezas del cotizador, v0.27.0) integradas. Queda la 4 (CRM operativo y docs). La página del cotizador entra con la 0c.22, porque en `0586743` importa el guardado. La 0c.22 (cotizaciones guardadas) va aparte. `traspaso/` no entra en `main` |
+| 5 | Bandeja de conversaciones en la web | Antigravity | **Integrada entera en cuatro tandas (v0.24.0, v0.26.0, v0.27.0 y v0.28.0).** `apps/web` en `main` es idéntico a `feat/bandeja-web` @ `6d790ff`. Lo siguiente, rama por rama |
 | 6 | Guardar cotizaciones con versiones inmutables | `backend` | **Hecha (esquema v0.22.0, API v0.23.0, 2026-10-19).** `POST /api/v1/cotizaciones`, `POST /:id/versiones` y `GET /:id`. El servidor recalcula los importes y no guarda los que manda el cliente. Siguen en cola el listado, el envío y los estados |
 | 7 | Pruebas de integración de la API | `qa` | Solo se probó a mano. **La verificación del cotizador fue manual: no hay prueba automática que la repita** |
 | 8 | CI en GitHub Actions corriendo de verdad | `devops` | **Cerrada (2026-10-19).** Primer verde: https://github.com/Alfavear/CRM/actions/runs/39308173658. Las 18 migraciones se reconstruyen desde cero en un Postgres 16 limpio |
@@ -940,5 +940,33 @@ Registro: [`docs/_integraciones/2026-10-19-v0.27.0.md`](docs/_integraciones/2026
 
 | Cola | Dueño | Por qué no bloquea |
 |---|---|---|
-| `/cotizador` sigue con la versión anterior, y `desglose-cotizacion-salida` y `bloque-politica-precio` están en `main` sin que ninguna página los use | integrador (con la 0c.22 y la tanda 4) | Es código sin usar; lo activan la 0c.22 y la página de configuración |
+| ~~`/cotizador` con la versión anterior, y piezas sin usar~~ | integrador | **Resuelto en v0.28.0** |
+
+## Integración del 2026-10-19 (decimoctava) — v0.28.0: CRM operativo web y cotizador con guardado (tanda 4)
+
+`feat/web-tanda-4-crm-y-cotizador` @ `c34e779` entra en `main` (`13e08da`), etiquetada **v0.28.0**. Son dos commits,
+para revisarlos por separado:
+
+1. **El cotizador con el guardado (0c.22, 0c.24):** `/cotizador`, el modal de guardar, `/cotizaciones` y su ficha,
+   `cotizaciones-api`, `cotizaciones-logica`, `cotizaciones-listado-logica` y `mock-cotizaciones`.
+2. **La tanda 4:** pipeline, contactos, configuración, viajes, reportes, la maqueta de ingreso bajo interruptor
+   (0c.23), la especificación visual con sus capturas y el flujo con Antigravity.
+
+Son 36 archivos de `6d790ff`, byte a byte (34 nuevos y 2 modificados). **R10, comprobado con `git grep`:** en
+`apps/web` solo se leen `politica.porcentaje` y `politica.base` dentro de `bloque-politica-precio.tsx` (es
+`/configuracion`, del dueño), y de `politica-precio-logica.ts`, que solo ese bloque importa. Ninguna llamada pide
+`incluirMargen`, y el texto «CONFIDENCIAL AGENCIA» de `cotizador-logica` solo sale con `incluirNeto`, que ninguna
+pantalla pasa.
+
+Compuerta: CI **8/8**, https://github.com/Alfavear/CRM/actions/runs/39339456755, sobre el árbol del merge ·
+estáticas en local en verde · web **160** pruebas en 20 archivos.
+
+**Lo que queda fuera de `main` de `feat/bandeja-web`: 7 archivos, a propósito.** Los 6 de `traspaso/`, que son el
+canal de trabajo con Antigravity y no producto, y su edición de `ESTADO.md`, porque `ESTADO.md` en `main` lo
+lleva el integrador. **En `apps/web`, `main` y `6d790ff` no tienen ninguna diferencia.**
+Registro: [`docs/_integraciones/2026-10-19-v0.28.0.md`](docs/_integraciones/2026-10-19-v0.28.0.md).
+
+| Cola | Dueño | Por qué no bloquea |
+|---|---|---|
+| `ficha-detalle-paquete.tsx:244` muestra **«Neto:»** en el catálogo, a cualquiera que lo abra | Antigravity (**0c.27**, con los permisos) | Hoy no hay roles: todo usuario es de la agencia. Se cierra al poner esto y `bloque-politica-precio` detrás del permiso |
 
