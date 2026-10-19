@@ -132,6 +132,50 @@ con sus totales distintos, y `pnpm compuertas` sale en verde.
 
 ---
 
+## [ ] 0c.23. Pantalla de inicio de sesión, solo maqueta (añadida el 2026-10-19)
+
+La API de autenticación **no existe**; llega con el ADR-0011. No inventes contratos ni endpoints.
+Construye `/iniciar-sesion` con correo y contraseña, validación con un esquema local mínimo
+(marcado `// TODO: sustituir por el contrato de identity cuando exista`), estados de carga y error
+con mensaje claro, y todo **detrás de un interruptor** (`NEXT_PUBLIC_AUTH_MAQUETA`, apagado por
+defecto: apagado = la ruta redirige a `/bandeja`). Sin guardar sesión real ni tokens.
+
+**Hecho cuando:** a 375 px el formulario se usa con teclado y con el pulgar (objetivos >= 44 px),
+muestra error y carga simulados, con el interruptor apagado no cambia nada del resto de la app, y
+`pnpm compuertas` sale en verde.
+
+## [ ] 0c.24. Listado de cotizaciones guardadas, con datos simulados (añadida el 2026-10-19)
+
+Ruta `/cotizaciones`. La API de listado llegará después: usa datos simulados **tipados con
+`CotizacionGuardada` de `@viajapro/contracts`** detrás del interruptor que ya usas para la API real
+(patrón de la bandeja). Columnas: cliente, salida, última versión, total de venta (R8, solo venta,
+nunca neto ni margen), fecha. Filtro por texto, orden por fecha, enlace a `/cotizaciones/[id]`
+si 0c.22 ya lo creó.
+
+**Hecho cuando:** cargando (esqueleto), vacío, error con reintento y el caso de 500 cotizaciones
+con nombres largos funcionan a 375 px, y `pnpm compuertas` sale en verde.
+
+## [ ] 0c.25. Estados vacío, carga y error con evidencia (añadida el 2026-10-19)
+
+La 0c.21 marcó el criterio 6 como «Cumple» sin evidencia, y habla de «spinner/skeleton». El
+producto pide **esqueleto, no spinner centrado**. Recorre `bandeja`, `pipeline`, `catalogo`,
+`contactos`, `configuracion`, `viajes`, `reportes`: donde haya spinner, esqueleto; donde el error
+diga algo genérico, que diga qué pasó y qué hacer. Añade pruebas de los estados que sean lógica
+pura y una tabla pantalla × (vacío, carga, error) con «cumple / no cumple» real en `ENTREGA.md`.
+
+**Hecho cuando:** la tabla no tiene ninguna celda «no cumple» o cada una tiene su motivo, y
+`pnpm compuertas` sale en verde.
+
+## [ ] 0c.26. Evidencia a 375 px de la auditoría 0c.21 (añadida el 2026-10-19)
+
+Con el navegador, captura a 375 px: tarjeta de salida del catálogo, borrador en ventana de 24 h
+cerrada, `/pipeline` y `/cotizador`. Comprueba sin desbordes horizontales ni objetivos < 44 px.
+Guarda las capturas en `docs/_assets/diseno/` y corrige lo que falle.
+
+**Hecho cuando:** hay 4 capturas referenciadas en `ENTREGA.md` y ninguna muestra scroll horizontal.
+
+---
+
 ## [x] 0c.15. La política de precio de la agencia, en `/configuracion`
 
 **Esto ya no espera a nadie.** El contrato `PoliticaDePrecio` existe y está publicado en

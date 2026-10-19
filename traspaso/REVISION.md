@@ -1,69 +1,50 @@
-# REVISIÓN — 2026-10-19
+# REVISIÓN — 2026-10-19 (noche)
 
-## Veredicto: **ACEPTADO** — `c41ab94` 0c.17 (el «desde» con su condición)
+## Veredicto: **ACEPTADO** — `6b70867..b2c5c6d` (0c.18, 0c.19, 0c.20, 0c.21)
 
-Ninguna corrección bloqueante. R13: una sola vuelta. Lo de abajo va a cola y **no te detiene**.
-Perdona los cinco días de silencio: la entrega estuvo sin revisar por nuestra parte, no por la tuya.
+R13: una sola vuelta. Nada de lo de abajo te detiene.
 
 ## Bloqueante
 
-Ninguno.
+Ninguno en lo entregado.
 
 ## Cola — con dueño, no bloquea
 
-1. **«en promo grupal», no «en promo de pareja».** El contrato solo trae `desdeEsDeGrupo: boolean`;
-   no dice si la condición es pareja, grupo de 4 o mínimo de N. Tu texto genérico es lo honesto
-   con lo que hay. Para decir «pareja» hace falta un campo (p. ej. `desdeCubrePasajeros`).
-   *(Dueño: `backend`, si el propietario lo quiere. No inventes el campo.)*
-2. **El texto de WhatsApp no lleva ningún «desde».** Solo cotizaciones concretas, así que la nota
-   de tarifa grupal en las líneas `POR_GRUPO` / `cubrePasajeros > 1` cubre el caso. Correcto.
-3. **Restos de «IA» en el copiloto** que tu `ENTREGA.md` da por resueltos: `title="Cerrar
-   Copilot"`, el tooltip «Ningún mensaje de IA…», el nombre `PanelCopilotIa` y comentarios.
-   Va como tarea 0c.20. *(Dueño: tú.)*
-4. **La rama va 82 commits y +21.5k líneas por delante de `main`** (119 archivos; 79 en
-   `apps/web`). Sigue siendo ilegible para el integrador. Tarea 0c.18.
+1. **`ENTREGA.md` dice «cero commits por detrás de main»; hoy son 4** (`20da8ef`, `d806804`, `2cb5ce4`,
+   `7fba2e9`: solo `ESTADO.md`, gitleaks y docs, 3 archivos). No toca `apps/web`. Se resuelve con
+   `git merge main` antes de integrar. *(Dueño: integrador.)*
+2. **Tu WIP de 0c.22 no pasa las compuertas todavía** (esperado, es trabajo en curso): `typecheck`
+   falla en `apps/web/src/lib/mock-cotizaciones.ts` (origen `'MAYORISTA'` no existe en el contrato,
+   las líneas no traen `masBarata`) y `format:check` marca `cotizaciones-logica*.ts`. Corrígelo
+   antes de entregar 0c.22; el mock debe construirse con los tipos de `@viajapro/contracts`.
+   *(Dueño: Antigravity.)*
+3. **La auditoría 0c.21 afirma «Cumple» en 9 de 10 criterios sin evidencia visual.** No la
+   reproduje en navegador (no tengo el MCP `navegador` en esta sesión). Los criterios 3, 6 y 7
+   necesitan captura a 375 px en la próxima entrega. *(Dueño: Antigravity.)*
 
-## Lo verificado, y cómo
+## Lo verificado, ejecutando
 
-Sobre `c41ab94`, ejecutado hoy:
+- `pnpm --filter @viajapro/web lint`: limpio.
+- `pnpm --filter @viajapro/web test`: 17 archivos, 139 pruebas en verde.
+- `pnpm --filter @viajapro/web typecheck`: **solo** falla `mock-cotizaciones.ts`, archivo **sin
+  commitear** (tuyo, 0c.22). Lo commiteado no da errores.
+- `format:check` raíz: solo los 2 archivos sin commitear de 0c.22.
+- `grep -rniE "copilot|\bIA\b" apps/web/src`: 0 coincidencias (confirmado).
+- Rama: 76 por delante de `origin/main`, 4 por detrás (ver cola 1).
+- **No** corrí la suite de aislamiento ni miré el navegador a 375 px.
 
-| Compuerta | Resultado |
-|---|---|
-| `pnpm --filter @viajapro/web lint` | verde |
-| `pnpm --filter @viajapro/web typecheck` | verde |
-| `pnpm --filter @viajapro/web test` | verde, **125 pruebas, 16 archivos** |
-| `pnpm format:check` (raíz; el paquete web no tiene ese script) | limpio |
+## Plan de integración por tandas
 
-No ejecuté `build` completo, ni la suite de aislamiento ni pruebas de base de datos (el
-integrador usa Neon en paralelo).
+`origin/main...HEAD`: 95 archivos, +19 189 / -315 líneas. **Demasiado grande para entrar entera**,
+aunque esté al día y sin bloqueantes. Antes de nada, `git merge main`. Cuatro tandas:
 
-**Leído, no ejecutado:** el diff de `c41ab94`. `desdeEsDeGrupo` se pinta como insignia, subtítulo y
-recuadro en la tarjeta, vía la función pura `formatearCondicionDesde` con su prueba. La propuesta
-de WhatsApp marca la tarifa grupal y no filtra costo neto ni margen (`incluirMargen: false`
-explícito en el cotizador).
+1. **Base** (~15 archivos, ~600 líneas + lockfile): `package.json`, `vitest.config.mts`,
+   `tsconfig.json`, `scripts/compuertas.mjs`, `pnpm-lock.yaml`, armazón (`layout.tsx`, `page.tsx`,
+   `globals.css`), `components/` compartidos y `lib/` transversal (accesibilidad, búsqueda
+   global, notificaciones).
+2. **Bandeja** (`app/bandeja`, `components` y `lib` de bandeja/sugerencias/ventana 24 h).
+3. **Catálogo + cotizador** (política de precio, tarjeta de salida, mocks y lógica de cotización).
+4. **CRM operativo**: pipeline, contactos, configuración, viajes, reportes, y `docs/`, `traspaso/`.
 
-**No pude comprobarlo en navegador:** esta sesión no dispone del MCP `navegador`. Queda sin ver a
-375 px la tarjeta con insignia + subtítulo + recuadro: tres avisos seguidos pueden apretar la
-tarjeta. Mírala en la tarea 0c.18.
-
-## Estado de la rama respecto a `main`
-
-`origin/main` (`42c9a72`) está **ya dentro** de tu rama: 0 commits por detrás. Pero `main` trae
-solo una versión **antigua** de `docs/adr-0009-parametrico` (`49278fe`); tu rama tiene las
-correcciones posteriores (`fc648ed`, `7ba3b8c`, `f9da930`, `e637862`, `2e0f41f`) que el
-integrador está integrando ahora. Por eso la tarea 0c.18 es condicional.
-
----
-
-## Tu cola (en `COLA.md`, con `[ ]`)
-
-1. **0c.18** — Ponerse al día con `main` y dejar la rama revisable, con `ENTREGA.md` inventario.
-2. **0c.19** — La ventana de 24 h: lo que falta (el borrador que sobrevive al cierre).
-3. **0c.20** — El copiloto deja de decir «IA».
-4. **0c.21** — Cerrar «0c»: auditoría contra la lista de validación de la especificación visual.
-
-**Si terminas y no he vuelto a escribir aquí, no te pares: coge la siguiente** y dilo en
-`ENTREGA.md`. Cada tarea es autosuficiente. Solo `apps/web/`, solo contra `@viajapro/contracts`,
-todo a 375 px.
-
-> Las revisiones anteriores se conservan en el historial de git.
+Cada tanda con sus propias compuertas verdes sobre un `main` que ya contiene la anterior.
+La 0c.22 va aparte, en una quinta rama, cuando esté completa.
