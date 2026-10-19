@@ -45,7 +45,7 @@ Son *worktrees* de git: un repositorio, un historial, tres árboles. Cada uno co
 
 1. **Commitea y empuja.** `git push origin feat/bandeja-web`. Sin empujar no hay señal: el
    trabajo local es invisible para todos los demás, y ya se perdió una sesión entera por eso.
-2. **Escribe `ENTREGA.md`** en la raíz de su árbol, lo commitea y lo empuja con el resto. Es el
+2. **Escribe `traspaso/ENTREGA.md`** en la raíz de su árbol, lo commitea y lo empuja con el resto. Es el
    resumen que antes pegaba el propietario a mano.
 
 Formato, corto a propósito:
@@ -70,9 +70,9 @@ Formato, corto a propósito:
 
 1. Fusiona `main` en una copia y corre las compuertas: `lint`, `typecheck`, `test`, `build`,
    `format:check`.
-2. **Verifica en navegador** lo que el `ENTREGA.md` declare como no verificado. Es la razón de
+2. **Verifica en navegador** lo que el `traspaso/ENTREGA.md` declare como no verificado. Es la razón de
    ser de esta división: Antigravity construye, aquí se comprueba con Playwright.
-3. Escribe **`REVISION.md`** en la raíz de la rama, lo commitea y lo empuja.
+3. Escribe **`traspaso/REVISION.md`** en la raíz de la rama, lo commitea y lo empuja.
 
 ```markdown
 # Revisión — <commit revisado> — <fecha>
@@ -101,7 +101,7 @@ contratos, qué criterios tiene que cumplir. Autosuficiente.>
 > Se redacta **autosuficiente**, como si quien lo lee no hubiera visto esta conversación —
 > porque es literalmente el caso: Antigravity empieza cada sesión sin memoria de la anterior.
 
-4. Si pasa, va a la compuerta del `integrador`. Si no, Antigravity lee `REVISION.md` al empezar
+4. Si pasa, va a la compuerta del `integrador`. Si no, Antigravity lee `traspaso/REVISION.md` al empezar
    su siguiente sesión.
 
 ## 4. El vigilante
@@ -138,5 +138,5 @@ aparecieron dos críticos y una regresión.
 - **`ESTADO.md` tiene un solo dueño**, y es Claude. Dos agentes escribiendo el hilo lo rompen —
   ya pasó dos veces.
 - **Nadie escribe en `main`** salvo el `integrador` (R11).
-- **Lo que dice `ENTREGA.md` sobre lo no verificado se toma en serio.** Es lo más valioso del
+- **Lo que dice `traspaso/ENTREGA.md` sobre lo no verificado se toma en serio.** Es lo más valioso del
   documento: una entrega que afirma lo que no comprobó cuesta más que una que calla.
