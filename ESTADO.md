@@ -6,7 +6,7 @@
 
 | Campo | Valor |
 |---|---|
-| Última actualización | 2026-10-19 (integraciones v0.19.0 → v0.23.0; la última, guardar cotizaciones) |
+| Última actualización | 2026-10-19 (integraciones v0.19.0 → v0.23.0 y el primer CI en verde, sin etiqueta) |
 | Actualizado por | Claude Opus 5.5 (`integrador`) |
 | Fase | **Rebanada vertical de paquetes, en construcción** |
 | Avance de la fase | Cotizador de punta a punta. **La cotización es la suma de sus tarifas y el precio «desde» es uno que el comprador puede pagar (v0.19.0).** Apretón de manos del webhook vivo. Bandeja web en construcción |
@@ -112,7 +112,7 @@ Ordenada. La primera es la que debe tomarse ahora.
 | 2b | **Bajar el tarifario de Meta para Colombia en COP** del CSV oficial | Usuario | Cinco minutos con un navegador. Sin esa cifra el plan de entrada se fija a ciegas |
 | 3 | Reparar la conexión del MCP `postgres` o retirarlo de `.mcp.json` | `devops` | Falla con `CONNECTION_CLOSED` |
 | 4a | Inbox — esquema, roles, funciones y aserciones | `datos` | **Cerrada e integrada (v0.20.0, 2026-10-19).** 50/50 de aislamiento en tres corridas seguidas contra Neon, cero saltadas; las cuatro tablas con `tenant_id`, RLS forzado y política `USING` + `WITH CHECK`, comprobado en el catálogo |
-| 4a.1 | **Ver en verde los jobs `aislamiento-tenants` y `test` en CI** antes de integrar | `devops` | **Condición del auditor.** Nunca han corrido: ejecutarlos una vez es la única forma honesta de cerrar ese hallazgo |
+| 4a.1 | Ver en verde los jobs `aislamiento-tenants` y `test` en CI | `devops` | **Cerrada (2026-10-19).** Ocho jobs en success: https://github.com/Alfavear/CRM/actions/runs/39308173658 |
 | 4b | Inbox — API: tres orígenes de conexión, guardia de identidad, puerto a `crm`, relay por `change` | `backend` | **Hecha (v0.21.0, 2026-10-19).** POST durable verificado vivo; relay por `change` con `jobId` por change; trabajador `ProcesarChange` con el rol `viajapro_webhook`, que escribe el mensaje bajo RLS (e2e contra Neon 5/5). **Sin verificar contra Redis real**: ver 4c y la cola del 2026-10-19 |
 | 4c | Las 3 verificaciones que **no** son de base de datos: arranque del proceso, alta de extremo a extremo, ensayo de rotación de la pimienta | `backend`, `qa`, `devops` | **En curso.** La de arranque está hecha: `guardia-de-rol.ts` comprueba identidad, `rolsuper` y `rolbypassrls`, y la API registra al arrancar «Conectado como 'viajapro_app', verificado». Faltan las otras dos |
 | 4d | Alinear `05-seguridad/02-proteccion-de-datos.md` con el ADR-0008 | `documentador` | La redacción de consentimiento lo contradice. Faltan pimienta y clave de plataforma en el inventario §5 |
@@ -124,7 +124,7 @@ Ordenada. La primera es la que debe tomarse ahora.
 | 5 | Bandeja de conversaciones en la web | Antigravity, en `feat/bandeja-web` | **En curso.** Lista y pantalla de conversación construidas, con idempotencia R5 verificada en navegador. La entrega de tiempo real fue rechazada: su emisor genera un UUID inválido y ningún evento llega a la pantalla |
 | 6 | Guardar cotizaciones con versiones inmutables | `backend` | **Hecha (esquema v0.22.0, API v0.23.0, 2026-10-19).** `POST /api/v1/cotizaciones`, `POST /:id/versiones` y `GET /:id`. El servidor recalcula los importes y no guarda los que manda el cliente. Siguen en cola el listado, el envío y los estados |
 | 7 | Pruebas de integración de la API | `qa` | Solo se probó a mano. **La verificación del cotizador fue manual: no hay prueba automática que la repita** |
-| 8 | CI en GitHub Actions corriendo de verdad | `devops` | Escrito, nunca ejecutado |
+| 8 | CI en GitHub Actions corriendo de verdad | `devops` | **Cerrada (2026-10-19).** Primer verde: https://github.com/Alfavear/CRM/actions/runs/39308173658. Las 18 migraciones se reconstruyen desde cero en un Postgres 16 limpio |
 | 9 | Decidir nombre comercial, modelo de cobro y precios | Usuario | Antes de vender |
 | 10 | Resolver la protección de `main` en GitHub | Usuario | Plan gratuito no la permite en repos privados |
 | 11 | **Rotar la contraseña de Neon y la clave de API de Stitch** | Usuario | **Sigue pendiente.** `ac7fb99` rotó los tres roles de PostgreSQL, que es otra cosa. Ambas se pegaron en el chat; un secreto expuesto no se borra, se rota |
@@ -139,6 +139,7 @@ Ordenada. La primera es la que debe tomarse ahora.
 
 | Bloqueo | Impacto | Dueño | Mitigación |
 |---|---|---|---|
+| **Rotar `WHATSAPP_WEBHOOK_VERIFY_TOKEN` en Meta y en los cuatro `.env`** | Quedó en el historial del repositorio privado desde `94bf78f`, como literal de una prueba. **Alcance: solo el apretón de manos GET** de la suscripción; no firma ni descifra nada | Usuario | El literal ya salió del código (`33283a5`) y el historial se ignora solo por su huella exacta. **El comentario de `.gitleaksignore` dice «ya rotado» y todavía no lo está**: será cierto cuando se rote |
 | **Modo desatendido detenido en la compuerta** — el commit `59a52d8` amplía los permisos de los propios agentes | Cada commit y cada push siguen pidiendo autorización al propietario, con dos IA trabajando en paralelo | Usuario | **Solo el propietario puede aprobarlo, en su propia sesión**: el integrador no acepta de segunda mano un cambio a la configuración que define lo que los agentes pueden hacer sin preguntar. Y antes hay que sacar `git clean -xdf` de la lista de permitidos: borra lo no rastreado **y** lo ignorado, incluidos los tres `.env` |
 | **`Bash(cat:*)` permitido hace decorativo el `deny` de `Read(./.env)`** | `cat .env` funciona hoy. O ese `deny` significa algo, o sobra por honestidad | Usuario | Decidirlo al tocar los permisos |
 | Verificación de Meta Business sin iniciar | **Bloquea lanzar con clientes reales, NO bloquea construir.** Tarda semanas | Usuario | Arrancar el trámite en paralelo. Mientras tanto se desarrolla con el número de prueba de Meta |
@@ -572,7 +573,7 @@ residuo**. La tarea 4a queda cerrada.
 
 | Cola | Dueño | Por qué no bloquea |
 |---|---|---|
-| Las tres migraciones del inbox se fechan `20261011…` pero entraron **después** de las `20261013…`. En una base nueva se aplicarán en otro orden que en Neon, y **nadie ha reproducido el esquema desde cero** con las 15 | `datos` | Son independientes del catálogo a simple vista, y Neon está sin deriva. Pero la primera base nueva (CI, staging) es la prueba que falta: ejecutar `migrate reset` en una base desechable |
+| ~~Las tres migraciones del inbox se fechan `20261011…` y nadie había reconstruido el esquema desde cero~~ | `datos` | **Resuelta (2026-10-19):** el CI reconstruye las 18 desde cero en un Postgres 16 limpio y queda en verde |
 | 4a.1 sigue abierta: los jobs `aislamiento-tenants` y `test` nunca han corrido en CI | `devops` | La compuerta local está en verde y medida tres veces |
 
 ---
@@ -767,4 +768,29 @@ y el tenant llega por cabecera, solo con `APP_ENV=local`. Va ligado a la tarea 1
 | El filtro de errores responde **400** a los códigos `*_NO_ENCONTRADA`, cuando debería ser 404 (la e2e cubre `COTIZACION_NO_ENCONTRADO` con 404, no el resto) | `backend` | Es el código HTTP; no es una fuga |
 | `quoting` lee `contactos` y `oportunidades` (de `crm`) directamente desde su transacción, igual que `inbox` (R4; ver `asegurarContacto`) | `arquitecto` | Mismo RLS y misma transacción; es frontera de módulo |
 | `D:\Projects\CRM-gate6`: otro árbol temporal | Usuario | Borrar a mano |
+
+---
+
+## Integración del 2026-10-19 (décima) — el primer CI en verde, sin etiqueta
+
+`ci/primer-verde` @ `33283a5` entra en `main` (`d56f06c`). Toca el CI, `turbo.json`, la configuración de
+gitleaks, una prueba y la bitácora. **No cambia el artefacto desplegable, así que no lleva etiqueta.**
+Registro: [`docs/_integraciones/2026-10-19-ci-primer-verde.md`](docs/_integraciones/2026-10-19-ci-primer-verde.md).
+
+La compuerta es la corrida https://github.com/Alfavear/CRM/actions/runs/39308173658, sobre la punta exacta: 8 jobs en success (`secretos`, `typecheck`,
+`lint`, `build`, `test`, `aislamiento-tenants`, `fronteras-entre-modulos` y `politica-de-rama`), con
+Postgres 16 y Redis 7 limpios.
+
+**Se devolvió una vez.** Uno de los dos «falsos positivos» de gitleaks era el `WHATSAPP_WEBHOOK_VERIFY_TOKEN`
+real, que la lista blanca habría ocultado para siempre. Ahora la prueba genera el suyo, y el
+historial se ignora **solo** por la huella `94bf78f…:verificacion-suscripcion.spec.ts:generic-api-key:4`.
+El valor ya no aparece en ningún archivo rastreado de `main`.
+
+### Cola nueva — con dueño, no bloquea
+
+| Cola | Dueño | Por qué no bloquea |
+|---|---|---|
+| BullMQ real sigue sin probar: `apps/api/vitest.config.ts` fija `COLA_CHANGES=inerte`, aunque el CI ya levanta Redis 7 | `devops` (4c) | Nada desplegado. El CI ya tiene el Redis: falta una prueba que lo use |
+| Protección de rama con estos checks como obligatorios | Usuario (**tarea 10**) | El plan gratuito no la permite en repos privados |
+| `convencion-de-commits` sale *skipped*, porque solo corre en PR, y la integración aquí es por merge local | `devops` | La convención la revisa el integrador a mano |
 
