@@ -30,6 +30,8 @@ import { DominioExcepcionFilter } from '../../shared/filtros/dominio-excepcion.f
 import { PrismaWebhookService } from '../../shared/prisma/prisma-webhook.service.js';
 import { ProcesarChange } from './application/procesar-change.js';
 import { claveDeEnrutamiento } from './domain/clave-de-enrutamiento.js';
+// La prueba ensambla el proceso real: el puerto de contactos lo implementa `crm`.
+import { ContactosDeCrm } from '../crm/infrastructure/puertos-de-crm.prisma.js';
 import { BandejaPrisma } from './infrastructure/bandeja.prisma.js';
 import { StagingPrisma } from './infrastructure/staging.prisma.js';
 
@@ -207,7 +209,10 @@ beforeAll(async () => {
   // El trabajador, tal como lo ensambla `InboxWorkerModule`, con su propio rol.
   prismaWebhook = new PrismaWebhookService();
   await prismaWebhook.onModuleInit();
-  caso = new ProcesarChange(new StagingPrisma(prismaWebhook), new BandejaPrisma(prismaWebhook));
+  caso = new ProcesarChange(
+    new StagingPrisma(prismaWebhook),
+    new BandejaPrisma(prismaWebhook, new ContactosDeCrm()),
+  );
 });
 
 afterAll(async () => {

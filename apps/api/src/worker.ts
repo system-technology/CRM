@@ -10,10 +10,10 @@ import 'reflect-metadata';
 
 import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
-import { InboxWorkerModule } from './modules/inbox/inbox-worker.module.js';
+import { WorkerModule } from './worker.module.js';
 
 async function arrancar(): Promise<void> {
-  const app = await NestFactory.createApplicationContext(InboxWorkerModule, { bufferLogs: true });
+  const app = await NestFactory.createApplicationContext(WorkerModule, { bufferLogs: true });
   app.enableShutdownHooks();
   new Logger('Worker').log('Trabajador del inbox en marcha.');
 }

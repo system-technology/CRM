@@ -27,6 +27,8 @@ import { DominioExcepcionFilter } from '../../shared/filtros/dominio-excepcion.f
 import { PrismaWebhookService } from '../../shared/prisma/prisma-webhook.service.js';
 import { ProcesarChange } from './application/procesar-change.js';
 import { claveDeEnrutamiento } from './domain/clave-de-enrutamiento.js';
+// La prueba ensambla el proceso real: el puerto de contactos lo implementa `crm`.
+import { ContactosDeCrm } from '../crm/infrastructure/puertos-de-crm.prisma.js';
 import { BandejaPrisma } from './infrastructure/bandeja.prisma.js';
 import {
   crearConexionDeRedis,
@@ -204,7 +206,7 @@ describe.skipIf(!CORRE)('BullMQ real: POST -> Redis -> consumidor -> mensajes', 
     await prismaWebhook.onModuleInit();
     const real = new ProcesarChange(
       new StagingPrisma(prismaWebhook),
-      new BandejaPrisma(prismaWebhook),
+      new BandejaPrisma(prismaWebhook, new ContactosDeCrm()),
     );
     const conFallo = {
       ejecutar: (recepcionId: Buffer, indice: number) => {
