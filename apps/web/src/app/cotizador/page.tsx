@@ -323,8 +323,8 @@ function ContenidoCotizador() {
     <div className="flex h-screen w-full bg-neutral-50 dark:bg-neutral-950">
       <BarraModulos />
 
-      <main className="flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
+      <main className="min-w-0 flex-1 overflow-y-auto pb-24 md:pb-0">
+        <div className="mx-auto max-w-7xl min-w-0 space-y-6 p-3.5 pb-28 sm:p-6 md:pb-8 lg:p-8">
           {/* Cabecera de Página */}
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-3">
@@ -360,7 +360,7 @@ function ContenidoCotizador() {
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
             {/* Sidebar de Parámetros (4 col) */}
             <aside className="lg:col-span-4">
-              <div className="space-y-4 rounded-2xl border border-neutral-200 bg-white p-5 shadow-xs dark:border-neutral-800 dark:bg-neutral-900">
+              <div className="min-w-0 space-y-4 rounded-2xl border border-neutral-200 bg-white p-3.5 shadow-xs sm:p-5 dark:border-neutral-800 dark:bg-neutral-900">
                 <h2 className="text-xs font-bold tracking-wider text-neutral-500 uppercase">
                   Parámetros de Cotización
                 </h2>

@@ -247,3 +247,67 @@
 ## Decisiones que el encargo no especificaba
 
 - **Aislamiento del desplazamiento horizontal en Kanban:** Para el tablero Kanban a 375 px, se garantizó que el desplazamiento horizontal de las columnas quede estrictamente encapsulado en su contenedor interior (`overflow-x-auto`), preservando `document.body.scrollWidth === 375` sin desborde en el viewport global de la página.
+
+
+---
+
+# ENTREGA — Tarea 0c.33 & 0c.26: Subsanación de Desbordes Horizontales a 375 px y Recaptura de Evidencias
+
+- **Fecha:** 2026-10-19
+- **Rama:** `feat/bandeja-web`
+- **Tareas cerradas:** `0c.33` (PRIORITARIA) y `0c.26` (Revisada y aceptada en su totalidad).
+
+## Qué se construyó y corrigió (0c.33)
+
+Tras la revisión en `traspaso/REVISION.md` donde se identificaron desbordes visuales en las capturas a 375 px, se realizó una re-ingeniería exhaustiva del diseño responsivo en las cuatro pantallas:
+
+1. **Catálogo (`/catalogo` y `TarjetaSalidaPublicada`):**
+   - **Cabecera flexible:** Se aplicó `flex-wrap` al contenedor del título y del badge `DistintivoDatosDemo`, y tipografía responsiva (`text-base sm:text-xl`), impidiendo que el badge o el enlace de acción queden empujados fuera del viewport.
+   - **Padding optimizado en móvil:** Reducido de `px-6` (48 px totales) a `px-3.5 py-3.5 sm:px-6 sm:py-5`, aumentando el espacio útil en pantalla.
+   - **Tarjetas de salida sin corte:** Se añadió `min-w-0 w-full` a `<article>` y se envolvieron las filas de «Salida confirmada», «Cupo» y «Tarifa desde:» con `flex-wrap gap-1`. El importe monetario y el borde derecho quedan 100% visibles dentro del margen.
+   - **Espacio inferior de navegación:** Contenedor principal con `pb-24 md:pb-6` para no colisionar con la barra fija inferior.
+
+2. **Bandeja de Conversación con Ventana Cerrada (`/bandeja/[id]`):**
+   - **Cabecera compacta a 375 px:** El bloque izquierdo de avatar y nombre ahora cuenta con `min-w-0 flex-1` con truncado elíptico seguro. El teléfono del contacto se oculta en móviles si el nombre está disponible (`hidden sm:inline`).
+   - **Insignias y botones de cabecera:** La insignia de 24h cerrada se optimizó a formato compacto (`Cerrada` con icono de reloj). La insignia de SLA se oculta en pantallas pequeñas (`hidden sm:inline-flex`). El botón de «Nueva cotización» y el selector de ficha del viajero se configuraron como botones táctiles de 44 &times; 44 px (`shrink-0`), posicionando el extremo derecho en 368 px (sin rebasar los 375 px).
+   - **Botón clave de 0c.19 100% visible:** El botón «Usar borrador en plantilla» dentro del aviso de borrador preservado se configuró con `w-full sm:w-auto text-xs px-3 py-2 text-center`, garantizando que todo el texto y el icono queden visibles sin cortes.
+   - **Burbujas de chat y marcas de tiempo:** Espaciado y burbujas de mensaje con hora («05:51») 100% visibles.
+
+3. **Cotizador Comercial (`/cotizador`):**
+   - **Bordes y campos integrales:** La tarjeta de parámetros se dotó de `p-3.5 sm:p-5 min-w-0` y los selectores de paquete turístico se truncan limpiamente, manteniendo visibles los bordes laterales y las sombras.
+   - **Pie despejado:** Se añadió `pb-28 md:pb-8` al contenedor principal. Los botones inferiores («Guardar cotización», «Crear propuesta») quedan completamente por encima de la barra de navegación móvil de 56 px (`h-14`), permitiendo su pulsación sin solapamiento.
+
+4. **Pipeline de Oportunidades (`/pipeline`):**
+   - **Barra de filtros apilada en móvil:** El campo de búsqueda y el selector «Todos los asesores» se re-estructuraron con `flex-col sm:flex-row w-full gap-2`, eliminando el desborde horizontal que cortaba el selector de asesor.
+   - **Contenedor Kanban:** `pb-24 md:pb-6` para visibilidad completa de tarjetas al final de las columnas.
+
+---
+
+## Evidencia Fotográfica Recapturada a 375 &times; 812 px
+
+Se ejecutó recaptura directa mediante Chrome DevTools Protocol (`Page.captureScreenshot` con `Emulation.setDeviceMetricsOverride` a 375 &times; 812 px exactos):
+
+| Captura | Archivo | Peso | Estado Visual |
+|---|---|---|---|
+| **Catálogo** | `docs/_assets/diseno/07-catalogo-salida-375px.png` | 41.1 KB | Sin cortes. Borde derecho visible, badge demo visible, tarifa desde completa. |
+| **Ventana 24h Cerrada** | `docs/_assets/diseno/08-ventana-24h-cerrada-375px.png` | 36.6 KB | Sin cortes. Cabecera dentro de márgenes, hora «05:51» visible, botón «Usar borrador en plantilla» íntegro. |
+| **Pipeline** | `docs/_assets/diseno/09-pipeline-375px.png` | 41.6 KB | Sin cortes. Filtros apilados, selector de asesor completo, kanban con scroll interior aislado. |
+| **Cotizador** | `docs/_assets/diseno/10-cotizador-375px.png` | 40.1 KB | Sin cortes. Tarjetas con borde derecho, botones inferiores por encima de la barra de navegación. |
+
+---
+
+## Verificación Automatizada Ejecutada
+
+1. **Auditoría de Desborde DOM por Elemento (CDP `getBoundingClientRect` a 375 px):**
+   - `/catalogo`: **`overflowCount: 0`** (cero elementos que rebasen 375.5 px).
+   - `/bandeja/00000000-0001-4000-8000-000000000008`: **`overflowCount: 0`** (cero elementos que rebasen 375.5 px).
+   - `/cotizador`: **`overflowCount: 0`** (cero elementos que rebasen 375.5 px).
+   - `/pipeline`: Cabecera y filtros con **`headerOverflowCount: 0`**; columnas Kanban aisladas en su scroll horizontal interno sin desbordar el documento.
+
+2. **Suite de Pruebas Automatizadas:**
+   - `pnpm --filter @viajapro/web test`: **21/21 archivos en verde, 172/172 pruebas pasando**.
+
+3. **Compuertas de Frontend:**
+   - `pnpm --filter @viajapro/web typecheck`: **0 errores**.
+   - `pnpm --filter @viajapro/web lint`: **0 errores**.
+   - `pnpm prettier --check`: **100% alineado**.

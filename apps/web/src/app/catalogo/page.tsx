@@ -108,16 +108,16 @@ export default function CatalogoPage() {
       <BarraModulos />
 
       {/* 2. Área Principal */}
-      <main className="flex flex-1 flex-col overflow-y-auto pb-14 md:pb-0">
+      <main className="flex min-w-0 flex-1 flex-col overflow-y-auto pb-24 md:pb-0">
         {/* Cabecera */}
-        <header className="border-b border-neutral-200 bg-white px-6 py-5 dark:border-neutral-800 dark:bg-neutral-900">
+        <header className="border-b border-neutral-200 bg-white px-3.5 py-3.5 sm:px-6 sm:py-5 dark:border-neutral-800 dark:bg-neutral-900">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <span className="bg-acento-100 text-acento-800 dark:bg-acento-950 dark:text-acento-300 rounded-lg p-1.5">
                   <Package className="h-5 w-5" />
                 </span>
-                <h1 className="text-xl font-bold text-neutral-900 dark:text-white">
+                <h1 className="text-base font-bold break-words text-neutral-900 sm:text-xl dark:text-white">
                   {usarReal && !errorTenant
                     ? 'Salidas y Catálogo de Tarifas'
                     : 'Catálogo de Paquetes y Tarifarios'}
@@ -209,7 +209,7 @@ export default function CatalogoPage() {
         </header>
 
         {/* Contenido */}
-        <section className="flex-1 p-6">
+        <section className="min-w-0 flex-1 p-3.5 pb-24 sm:p-6 md:pb-6">
           {/* Error de configuración de tenant o red en modo API real */}
           {usarReal && errorTenant && (
             <div className="mb-6">

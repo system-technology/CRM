@@ -187,7 +187,7 @@ export default function PipelinePage() {
       {/* Contenedor Principal del Pipeline */}
       <main className="flex flex-1 flex-col overflow-hidden pb-14 md:pb-0">
         {/* Cabecera del Pipeline */}
-        <header className="border-b border-neutral-200 bg-white px-6 py-4 shadow-2xs dark:border-neutral-800 dark:bg-neutral-900">
+        <header className="min-w-0 border-b border-neutral-200 bg-white px-3.5 py-3 shadow-2xs sm:px-6 sm:py-4 dark:border-neutral-800 dark:bg-neutral-900">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
               <div className="flex items-center space-x-2">
@@ -246,9 +246,9 @@ export default function PipelinePage() {
 
           {/* Barra de Filtros y Búsqueda */}
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-neutral-100 pt-3 dark:border-neutral-800/70">
-            <div className="flex flex-1 items-center space-x-3">
+            <div className="flex w-full min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:space-x-3">
               {/* Búsqueda */}
-              <div className="relative max-w-sm flex-1">
+              <div className="relative w-full sm:max-w-sm sm:flex-1">
                 <Search className="absolute top-2.5 left-3 h-3.5 w-3.5 text-neutral-400" />
                 <input
                   type="text"
@@ -260,12 +260,12 @@ export default function PipelinePage() {
               </div>
 
               {/* Selector de Asesor */}
-              <div className="flex items-center space-x-1.5 text-xs text-neutral-500 dark:text-neutral-400">
+              <div className="flex w-full items-center space-x-1.5 text-xs text-neutral-500 sm:w-auto dark:text-neutral-400">
                 <Filter className="h-3.5 w-3.5" />
                 <select
                   value={filtroAsesor}
                   onChange={(e) => setFiltroAsesor(e.target.value)}
-                  className="focus:border-acento-500 min-h-[44px] rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-xs text-neutral-700 focus:outline-hidden dark:border-neutral-800 dark:bg-neutral-800 dark:text-neutral-200"
+                  className="focus:border-acento-500 min-h-[44px] w-full rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-xs text-neutral-700 focus:outline-hidden sm:w-auto dark:border-neutral-800 dark:bg-neutral-800 dark:text-neutral-200"
                 >
                   <option value="todos">Todos los asesores</option>
                   <option value="Carlos Asesor">Carlos Asesor</option>
