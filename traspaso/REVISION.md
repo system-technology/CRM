@@ -159,3 +159,32 @@ Es el criterio 3 de la 0c.21 («funciona a 375 px»), marcado «Cumple», y hoy 
 - **Neto y margen:** ninguna captura los muestra; solo venta, totales de etapa y «Tarifa desde».
 - **Pantallas:** coinciden con la 0c.26 (catálogo, ventana 24 h cerrada, pipeline, cotizador).
 - **Ejecutado:** web lint y typecheck limpios, 172 pruebas, `format:check` limpio.
+
+---
+
+# REVISIÓN — 0c.33 `4b69971` (cierra 0c.26)
+
+## Veredicto: **ACEPTADA.** 0c.26 y 0c.33 en `[x]`
+
+Sin bloqueantes. Abrí otra vez las cuatro PNG y comparé con las de antes:
+
+- `07` catálogo: tarjeta, badge «4D/3N» y «Tarifa desde $ 1.340.000 por persona» enteros; filtros y
+  «Probar API Real» visibles.
+- `08` ventana de 24 h: cabecera completa («Cerrada» y los dos botones), horas visibles, y el botón
+  «Usar borrador en plantilla» ocupa el ancho de la tarjeta, entero y táctil.
+- `09` pipeline: el filtro «Todos los asesores» entero; el kanban solo desplaza dentro de su
+  contenedor (las columnas siguientes asoman a propósito, con su barra).
+- `10` cotizador: tarjeta con borde derecho, contadores `- 2 +` completos; el selector de paquete
+  recorta el texto con elipsis dentro de su caja, que es correcto.
+- Las cuatro miden 375 x 812 y pesan 36 a 41 KB. Sin neto ni margen.
+
+## Cola
+
+1. La barra inferior sigue cubriendo el pie en `07`, `09` y `10` (el botón morado del cotizador queda
+   detrás): es una captura en el punto de scroll cero, y la página sí tiene espacio al final; solo
+   confirma con una captura al fondo del scroll cuando toques esas pantallas. *(Antigravity.)*
+
+## Verificado
+
+Web lint y typecheck limpios, 172 pruebas en verde, `format:check` limpio. La rama quedó 40 commits por
+delante tras fusionar `main`; sin conflictos pendientes. Abiertas: 0c.27 a 0c.32.
