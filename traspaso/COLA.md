@@ -97,7 +97,7 @@ cada vista; 500 conversaciones en la lista sin lag. Todo a 375 px.
 
 **Hecho cuando:** la tabla existe y `COLA-DESPUES.md` §0c queda marcado `[x]`.
 
-## [ ] 0c.22. «Guardar cotización» en el cotizador (añadida el 2026-10-19)
+## [x] 0c.22. «Guardar cotización» en el cotizador (añadida el 2026-10-19)
 
 La API ya guarda cotizaciones con versiones que no cambian nunca. Está en la rama
 `feat/quoting-guardar-cotizacion` y entra en `main` como v0.23.0. **Empieza esta tarea solo cuando

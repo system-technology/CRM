@@ -479,7 +479,7 @@ export default function BandejaConversacionPage() {
 
             {/* Acción Primaria Prominente: Nueva Cotización */}
             <Link
-              href="/cotizador"
+              href={`/cotizador?conversacion=${id}&contactoId=${detalle.contactoId}`}
               className="bg-acento-700 hover:bg-acento-800 flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold text-white shadow-2xs"
             >
               <PlusCircle className="h-3.5 w-3.5" />

@@ -223,7 +223,7 @@ export function FichaCliente({ ficha, onCerrar }: FichaClienteProps) {
       {/* Acciones de Cierre fijas al pie (Tarea 0b.8) */}
       <div className="sticky bottom-0 space-y-2 border-t border-neutral-200 bg-white p-3 dark:border-neutral-800 dark:bg-neutral-900">
         <Link
-          href="/cotizador"
+          href={`/cotizador?contactoId=${contacto.id}`}
           className="bg-acento-700 hover:bg-acento-800 flex w-full items-center justify-center gap-1.5 rounded-lg py-2.5 text-xs font-bold text-white shadow-sm transition-colors"
         >
           <PlusCircle className="h-4 w-4" />

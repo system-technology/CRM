@@ -1,29 +1,32 @@
 'use client';
 
 /**
- * Cotizador de paquetes y salidas — Módulo Comercial (ADR-0009 - 0c.16)
+ * Cotizador de paquetes y salidas — Módulo Comercial (ADR-0009 - 0c.16 & 0c.22)
  *
  * Cotización armada por tipo de pasajero, total protagonista para WhatsApp,
  * tarifas de grupo alternativas y motivos de no aplicación.
  * Conexión directa a GET /api/v1/catalogo/salidas y POST /api/v1/catalogo/cotizar.
- * Cumple con R3 (@viajapro/contracts: CotizarSalida, CotizacionDeSalida, SalidaPublicada).
+ * Integración con Guardar Cotización y Control de Versiones (0c.22).
+ * Cumple con R3 (@viajapro/contracts: CotizarSalida, CotizacionDeSalida, SalidaPublicada, GuardarCotizacion).
  */
 
 import React, { Suspense, useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
-import { Calculator, Compass, Copy, Check, AlertCircle } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Calculator, Compass, Copy, Check, AlertCircle, Bookmark } from 'lucide-react';
 import type {
   Acomodacion,
   CotizacionCalculada,
   CotizacionDeSalida,
   SalidaPublicada,
+  Contacto,
 } from '@viajapro/contracts';
 import { formatearDinero } from '../../lib/api';
 import { BarraModulos } from '../../components/bandeja/barra-modulos';
 import { DistintivoDatosDemo } from '../../components/comun/distintivo-datos-demo';
 import { AvisoConfiguracionTenant } from '../../components/crm/aviso-configuracion-tenant';
 import { DesgloseCotizacionSalida } from '../../components/cotizador/desglose-cotizacion-salida';
+import { ModalGuardarCotizacion } from '../../components/cotizador/modal-guardar-cotizacion';
 import { MOCK_PAQUETES_CATALOGO } from '../../lib/mock-catalogo';
 import {
   calcularCotizacionMock,
@@ -37,6 +40,13 @@ import {
   cotizarSalidaApi,
   CatalogoApiError,
 } from '../../lib/catalogo-api';
+import { listarContactos } from '../../lib/crm-api';
+import { guardarCotizacionApi } from '../../lib/cotizaciones-api';
+import {
+  armarCuerpoGuardarCotizacion,
+  interpretarErrorCotizaciones,
+  sugerirTituloCotizacion,
+} from '../../lib/cotizaciones-logica';
 
 interface PaqueteOpcion {
   id: string;
@@ -45,9 +55,12 @@ interface PaqueteOpcion {
 }
 
 function ContenidoCotizador() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const paqueteParam = searchParams.get('paqueteId');
   const fechaParam = searchParams.get('fecha');
+  const conversacionParam = searchParams.get('conversacion');
+  const contactoParam = searchParams.get('contactoId');
 
   // Modo de operación: API real (ADR-0009) vs mock
   const [usarReal, setUsarReal] = useState(() => estaUsandoCatalogoReal());
@@ -77,13 +90,48 @@ function ContenidoCotizador() {
   const [calculando, setCalculando] = useState(false);
   const [copiado, setCopiado] = useState(false);
 
+  // Contactos y Guardado (0c.22)
+  const [contactosDisponibles, setContactosDisponibles] = useState<Contacto[]>([]);
+  const [contactoIdInicial, setContactoIdInicial] = useState<string>('');
+  const [modalGuardarAbierto, setModalGuardarAbierto] = useState(false);
+  const [guardandoCotizacion, setGuardandoCotizacion] = useState(false);
+  const [errorGuardar, setErrorGuardar] = useState<{
+    codigo: string;
+    mensaje: string;
+    esErrorAgencia: boolean;
+  } | null>(null);
+
   // Eje 3 de ADR-0009: pideComposicion gobernado por el tarifario
   const pideComposicion = useMemo(() => {
     if (!usarReal) return true;
     if (cotizacionReal) return cotizacionReal.pideComposicion;
-    // Si aún no hay respuesta de cotización, inferir de las salidas si es posible
     return true;
   }, [usarReal, cotizacionReal]);
+
+  // Cargar contactos disponibles para asociar cotización
+  useEffect(() => {
+    listarContactos()
+      .then((pag) => {
+        setContactosDisponibles(pag.datos);
+
+        if (contactoParam) {
+          setContactoIdInicial(contactoParam);
+        } else if (conversacionParam && pag.datos.length > 0) {
+          // Pre-asociar contacto cuando se navega desde una conversación
+          const contactoMatch = pag.datos.find((c) => c.id === conversacionParam);
+          if (contactoMatch) {
+            setContactoIdInicial(contactoMatch.id);
+          } else {
+            setContactoIdInicial(pag.datos[0]!.id);
+          }
+        } else if (pag.datos.length > 0) {
+          setContactoIdInicial(pag.datos[0]!.id);
+        }
+      })
+      .catch((err: unknown) => {
+        console.warn('No se pudieron listar contactos:', err);
+      });
+  }, [contactoParam, conversacionParam]);
 
   // Carga inicial de catálogo y salidas reales
   useEffect(() => {
@@ -108,112 +156,107 @@ function ContenidoCotizador() {
         const listaPaquetes = Array.from(mapPaquetes.values());
         setPaquetesDisponibles(listaPaquetes);
 
-        // Si no hay paquete seleccionado, seleccionar el del query param o el primero
+        // Seleccionar primer paquete por defecto si no venía en URL
         if (!paqueteId && listaPaquetes.length > 0) {
-          const inicial =
-            paqueteParam && mapPaquetes.has(paqueteParam) ? paqueteParam : listaPaquetes[0]!.id;
-          setPaqueteId(inicial);
+          setPaqueteId(listaPaquetes[0]!.id);
         }
       })
-      .catch((err) => {
-        console.error('Error cargando salidas para cotizador:', err);
+      .catch((err: unknown) => {
         if (err instanceof CatalogoApiError && err.code === 'SIN_SESION') {
           setErrorTenant(err.message);
         } else {
-          setErrorTenant(
-            err instanceof Error ? err.message : 'Error al conectar con la API de catálogo',
-          );
+          console.error('Error cargando salidas para cotizador:', err);
         }
       });
-  }, [usarReal]);
+  }, [usarReal, paqueteId]);
+
+  // Sincronizar catálogo para modo mock
+  useEffect(() => {
+    if (usarReal) return;
+    const lista = MOCK_PAQUETES_CATALOGO.map((p) => ({
+      id: p.id,
+      nombre: p.nombre,
+      destino: p.destino,
+    }));
+    setPaquetesDisponibles(lista);
+    if (!paqueteId && lista.length > 0) {
+      setPaqueteId(lista[0]!.id);
+    }
+  }, [usarReal, paqueteId]);
 
   // Fechas disponibles para el paquete seleccionado
   const fechasDelPaquete = useMemo(() => {
     if (!usarReal || !paqueteId) return [];
-    return salidasDisponibles
-      .filter((s) => s.paqueteId === paqueteId)
-      .map((s) => s.fecha)
-      .filter((v, i, a) => a.indexOf(v) === i)
-      .sort();
+    return salidasDisponibles.filter((s) => s.paqueteId === paqueteId).map((s) => s.fecha);
   }, [usarReal, paqueteId, salidasDisponibles]);
 
-  // Si cambia el paquete y la fecha actual no aplica, sugerir la primera disponible
-  useEffect(() => {
-    if (usarReal && fechasDelPaquete.length > 0 && !fechasDelPaquete.includes(fecha)) {
-      if (!fechaParam) {
-        setFecha(fechasDelPaquete[0]!);
-      }
-    }
-  }, [usarReal, paqueteId, fechasDelPaquete]);
+  // Paquete actualmente seleccionado
+  const paqueteSeleccionado = useMemo(() => {
+    return paquetesDisponibles.find((p) => p.id === paqueteId) ?? paquetesDisponibles[0];
+  }, [paquetesDisponibles, paqueteId]);
 
-  // Ejecutar Cotización (Real o Mock)
-  const ejecutarCotizacion = async () => {
+  // Efecto de cotización: ejecuta cotizarSalidaApi o calcularCotizacionMock
+  useEffect(() => {
     if (!paqueteId || !fecha) return;
 
     setCalculando(true);
     setErrorMensaje(null);
-    setCopiado(false);
 
     if (usarReal) {
-      try {
-        const respuesta = await cotizarSalidaApi({
-          paqueteId,
-          fecha,
-          adultos: Math.max(1, adultos),
-          ninos: pideComposicion ? ninos : 0,
-          infantes: pideComposicion ? infantes : 0,
-          incluirMargen: false,
+      cotizarSalidaApi({
+        paqueteId,
+        fecha,
+        adultos: pideComposicion ? adultos : undefined,
+        ninos: pideComposicion ? ninos : undefined,
+        infantes: pideComposicion ? infantes : undefined,
+      })
+        .then((res) => {
+          setCotizacionReal(res);
+          setCotizacionMock(null);
+        })
+        .catch((err: unknown) => {
+          setCotizacionReal(null);
+          setErrorMensaje(interpretarErrorCotizacion(err));
+        })
+        .finally(() => {
+          setCalculando(false);
         });
-        setCotizacionReal(respuesta);
-        setErrorMensaje(null);
-      } catch (err) {
-        setCotizacionReal(null);
-        const interpretado = interpretarErrorCotizacion(err);
-        setErrorMensaje(interpretado);
-      } finally {
-        setCalculando(false);
-      }
     } else {
-      // Modo Mock
+      // Modo mock offline
+      const mockPkg =
+        MOCK_PAQUETES_CATALOGO.find((p) => p.id === paqueteId) ?? MOCK_PAQUETES_CATALOGO[0]!;
       try {
-        const paqueteMock =
-          MOCK_PAQUETES_CATALOGO.find((p) => p.id === paqueteId) ?? MOCK_PAQUETES_CATALOGO[0]!;
-        const respuestaMock = calcularCotizacionMock(
+        const res = calcularCotizacionMock(
           {
-            paqueteId: paqueteMock.id,
+            paqueteId: mockPkg.id,
             fechaSalida: fecha,
-            pasajeros: {
-              adultos,
-              ninos,
-              infantes,
-            },
+            pasajeros: { adultos, ninos, infantes },
             acomodacion: acomodacionMock || undefined,
             markupExtra: markupExtraMock,
           },
-          paqueteMock,
+          mockPkg,
         );
-        setCotizacionMock(respuestaMock);
-        setErrorMensaje(null);
-      } catch (err) {
-        setErrorMensaje({
-          codigo: 'ERROR_MOCK',
-          mensaje: err instanceof Error ? err.message : 'Error al calcular cotización mock',
-          esErrorAgencia: false,
-        });
+        setCotizacionMock(res);
+        setCotizacionReal(null);
+      } catch (err: unknown) {
+        console.error('Error calculando mock:', err);
       } finally {
         setCalculando(false);
       }
     }
-  };
+  }, [
+    usarReal,
+    paqueteId,
+    fecha,
+    adultos,
+    ninos,
+    infantes,
+    pideComposicion,
+    acomodacionMock,
+    markupExtraMock,
+  ]);
 
-  // Recalcular automáticamente al cambiar parámetros
-  useEffect(() => {
-    if (paqueteId && fecha) {
-      void ejecutarCotizacion();
-    }
-  }, [paqueteId, fecha, adultos, ninos, infantes, acomodacionMock, markupExtraMock, usarReal]);
-
-  // Copiar propuesta WhatsApp
+  // Copiar propuesta WhatsApp al portapapeles
   const copiarPropuestaWhatsApp = () => {
     let texto = '';
     if (usarReal && cotizacionReal) {
@@ -221,205 +264,196 @@ function ContenidoCotizador() {
     } else if (cotizacionMock) {
       texto = generarTextoPropuestaWhatsApp(cotizacionMock);
     }
+    if (!texto) return;
 
-    if (texto && typeof navigator !== 'undefined' && navigator.clipboard) {
-      void navigator.clipboard.writeText(texto).then(() => {
-        setCopiado(true);
-        setTimeout(() => setCopiado(false), 2500);
+    void navigator.clipboard.writeText(texto).then(() => {
+      setCopiado(true);
+      setTimeout(() => setCopiado(false), 3000);
+    });
+  };
+
+  // Manejar el guardado oficial de la cotización (0c.22)
+  const manejarGuardarCotizacion = async (datos: {
+    contactoId: string;
+    titulo: string;
+    vigenteHasta?: string | undefined;
+  }) => {
+    setGuardandoCotizacion(true);
+    setErrorGuardar(null);
+
+    try {
+      const cuerpo = armarCuerpoGuardarCotizacion({
+        contactoId: datos.contactoId,
+        titulo: datos.titulo,
+        composicion: {
+          paqueteId,
+          fecha,
+          adultos: pideComposicion ? adultos : 2,
+          ninos: pideComposicion ? ninos : 0,
+          infantes: pideComposicion ? infantes : 0,
+          acomodacion: acomodacionMock || undefined,
+          vigenteHasta: datos.vigenteHasta,
+        },
       });
+
+      const guardada = await guardarCotizacionApi(cuerpo);
+      setModalGuardarAbierto(false);
+      router.push(`/cotizaciones/${guardada.id}`);
+    } catch (err) {
+      const interpretado = interpretarErrorCotizaciones(err);
+      setErrorGuardar(interpretado);
+    } finally {
+      setGuardandoCotizacion(false);
     }
   };
 
+  // Título sugerido para el modal
+  const tituloSugerido = useMemo(() => {
+    return sugerirTituloCotizacion(paqueteSeleccionado?.nombre || 'Paquete', fecha);
+  }, [paqueteSeleccionado, fecha]);
+
+  // Total estimado formateado para el modal
+  const totalEstimadoTexto = useMemo(() => {
+    if (cotizacionReal) return formatearDinero(cotizacionReal.total);
+    if (cotizacionMock) return formatearDinero(cotizacionMock.totalVenta);
+    return '$ 0 COP';
+  }, [cotizacionReal, cotizacionMock]);
+
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-neutral-50 dark:bg-neutral-950">
-      {/* 1. Barra de Módulos */}
+    <div className="flex h-screen w-full bg-neutral-50 dark:bg-neutral-950">
       <BarraModulos />
 
-      {/* 2. Área Principal */}
-      <main className="flex flex-1 flex-col overflow-y-auto pb-14 md:pb-0">
-        {/* Cabecera */}
-        <header className="border-b border-neutral-200 bg-white px-6 py-5 dark:border-neutral-800 dark:bg-neutral-900">
+      <main className="flex-1 overflow-y-auto">
+        <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
+          {/* Cabecera de Página */}
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="bg-acento-100 text-acento-800 dark:bg-acento-950 dark:text-acento-300 rounded-lg p-1.5">
-                  <Calculator className="h-5 w-5" />
-                </span>
-                <h1 className="text-xl font-bold text-neutral-900 dark:text-white">
-                  Cotizador Comercial de Viajes
-                </h1>
-                <DistintivoDatosDemo visible={!usarReal || !!errorTenant} />
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300">
+                <Calculator className="h-5 w-5" />
               </div>
-              <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-                {usarReal && !errorTenant
-                  ? 'Cotización armada en tiempo real con tarifarios reales (ADR-0009)'
-                  : 'Cotización con motor simulado para demostraciones y desarrollo offline'}
-              </p>
+              <div>
+                <h1 className="text-xl font-black text-neutral-900 dark:text-white">
+                  Cotizador Comercial
+                </h1>
+                <p className="text-xs text-neutral-500">
+                  Cotización oficial por composición de grupo y tarifario vigente
+                </p>
+              </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <DistintivoDatosDemo />
               <Link
                 href="/catalogo"
-                className="flex items-center gap-1.5 rounded-lg border border-neutral-300 bg-white px-3.5 py-2 text-xs font-semibold text-neutral-700 hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
+                className="flex min-h-[44px] items-center gap-1.5 rounded-xl border border-neutral-200 bg-white px-3 py-2 text-xs font-semibold text-neutral-700 hover:bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300"
               >
                 <Compass className="h-4 w-4" />
-                Ver Catálogo de Salidas
+                <span>Ver Salidas en Catálogo</span>
               </Link>
             </div>
           </div>
-        </header>
 
-        {/* Contenido en dos columnas */}
-        <div className="p-6">
-          {/* Error de configuración de sesión */}
-          {usarReal && errorTenant && (
-            <div className="mb-6">
-              <AvisoConfiguracionTenant
-                onContinuarConDemo={() => {
-                  setUsarReal(false);
-                  setErrorTenant(null);
-                }}
-              />
-            </div>
-          )}
+          {/* Aviso si falta tenant en desarrollo */}
+          {errorTenant && <AvisoConfiguracionTenant mensajeError={errorTenant} />}
 
-          <div className="grid gap-6 lg:grid-cols-12">
-            {/* Panel de Configuración de la Cotización (4 col) */}
-            <aside className="rounded-2xl border border-neutral-200 bg-white p-6 shadow-xs lg:col-span-4 dark:border-neutral-800 dark:bg-neutral-900">
-              <h2 className="text-sm font-bold text-neutral-900 dark:text-white">
-                Parámetros del Viaje
-              </h2>
-              <p className="mt-0.5 text-xs text-neutral-500">
-                Seleccione el paquete, la fecha y la composición de pasajeros
-              </p>
+          {/* Formulario y Panel de Resultados en Grilla */}
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+            {/* Sidebar de Parámetros (4 col) */}
+            <aside className="lg:col-span-4">
+              <div className="space-y-4 rounded-2xl border border-neutral-200 bg-white p-5 shadow-xs dark:border-neutral-800 dark:bg-neutral-900">
+                <h2 className="text-xs font-bold tracking-wider text-neutral-500 uppercase">
+                  Parámetros de Cotización
+                </h2>
 
-              <div className="mt-5 space-y-4">
-                {/* 1. Selector de Paquete */}
+                {/* Selector de Paquete */}
                 <div>
                   <label
-                    htmlFor="paquete-select"
-                    className="text-xs font-semibold text-neutral-700 dark:text-neutral-300"
+                    htmlFor="select-paquete-cotizador"
+                    className="block text-xs font-semibold text-neutral-700 dark:text-neutral-300"
                   >
-                    Paquete / Excursión
+                    Paquete Turístico
                   </label>
                   <select
-                    id="paquete-select"
+                    id="select-paquete-cotizador"
                     value={paqueteId}
                     onChange={(e) => setPaqueteId(e.target.value)}
-                    className="focus:border-acento-500 focus:ring-acento-500 mt-1 w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-xs font-medium text-neutral-900 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                    className="mt-1.5 w-full rounded-xl border border-neutral-300 bg-white p-2.5 text-xs text-neutral-900 shadow-2xs focus:border-purple-600 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                   >
-                    {usarReal && paquetesDisponibles.length > 0
-                      ? paquetesDisponibles.map((p) => (
-                          <option key={p.id} value={p.id}>
-                            {p.nombre} ({p.destino})
-                          </option>
-                        ))
-                      : MOCK_PAQUETES_CATALOGO.map((p) => (
-                          <option key={p.id} value={p.id}>
-                            {p.nombre} ({p.destino})
-                          </option>
-                        ))}
+                    {paquetesDisponibles.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.nombre} ({p.destino})
+                      </option>
+                    ))}
                   </select>
                 </div>
 
-                {/* 2. Selector de Fecha de Salida */}
+                {/* Fecha de Salida */}
                 <div>
                   <label
-                    htmlFor="fecha-input"
-                    className="flex items-center justify-between text-xs font-semibold text-neutral-700 dark:text-neutral-300"
+                    htmlFor="input-fecha-cotizador"
+                    className="block text-xs font-semibold text-neutral-700 dark:text-neutral-300"
                   >
-                    <span>Fecha de Salida</span>
-                    {fechasDelPaquete.length > 0 && (
-                      <span className="text-acento-600 dark:text-acento-400 text-[11px] font-normal">
-                        {fechasDelPaquete.length} fecha(s) publicada(s)
-                      </span>
-                    )}
+                    Fecha de Salida
                   </label>
                   <input
-                    id="fecha-input"
+                    id="input-fecha-cotizador"
                     type="date"
                     value={fecha}
                     onChange={(e) => setFecha(e.target.value)}
-                    className="focus:border-acento-500 focus:ring-acento-500 mt-1 w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-xs font-medium text-neutral-900 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                    className="mt-1.5 w-full rounded-xl border border-neutral-300 bg-white p-2.5 text-xs text-neutral-900 shadow-2xs focus:border-purple-600 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                   />
-
-                  {/* Atajos de fechas publicadas del paquete */}
-                  {usarReal && fechasDelPaquete.length > 0 && (
-                    <div className="mt-2 flex flex-wrap gap-1">
-                      {fechasDelPaquete.map((f) => (
-                        <button
-                          key={f}
-                          type="button"
-                          onClick={() => setFecha(f)}
-                          className={`rounded px-2 py-0.5 text-[11px] font-semibold transition-colors ${
-                            fecha === f
-                              ? 'bg-acento-600 text-white'
-                              : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-300'
-                          }`}
-                        >
-                          {f}
-                        </button>
-                      ))}
+                  {fechasDelPaquete.length > 0 && (
+                    <div className="mt-2">
+                      <span className="text-[11px] text-neutral-400">Salidas programadas:</span>
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {fechasDelPaquete.map((f) => (
+                          <button
+                            key={f}
+                            type="button"
+                            onClick={() => setFecha(f)}
+                            className={`rounded px-2 py-0.5 text-[11px] font-semibold transition-colors ${
+                              fecha === f
+                                ? 'bg-purple-700 text-white'
+                                : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-300'
+                            }`}
+                          >
+                            {f}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   )}
                 </div>
 
-                {/* 3. Composición de Pasajeros (0c.16.2 — pideComposicion) */}
-                <div className="rounded-xl border border-neutral-100 bg-neutral-50/70 p-4 dark:border-neutral-800 dark:bg-neutral-800/30">
-                  <div className="mb-3 flex items-center justify-between">
-                    <span className="text-xs font-bold text-neutral-800 dark:text-neutral-200">
+                {/* Eje 3 de ADR-0009: Composicion de Pasajeros */}
+                <div className="border-t border-neutral-100 pt-4 dark:border-neutral-800">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">
                       Composición del Grupo
                     </span>
                     {!pideComposicion && (
-                      <span className="rounded bg-neutral-200/80 px-2 py-0.5 text-[10px] font-semibold text-neutral-700 dark:bg-neutral-700 dark:text-neutral-200">
-                        Tarifa fija por persona
+                      <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                        Tarifa fija por salida
                       </span>
                     )}
                   </div>
 
                   {!pideComposicion ? (
-                    /* Tarifa sin desglose por edad (pasadías, etc.) */
-                    <div>
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <span className="text-xs font-medium text-neutral-700 dark:text-neutral-300">
-                            Número de Pasajeros
-                          </span>
-                          <span className="block text-[11px] text-neutral-400">
-                            Pasadía sin tarifa diferenciada de menor
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => setAdultos(Math.max(1, adultos - 1))}
-                            className="flex h-8 w-8 items-center justify-center rounded-lg border border-neutral-300 bg-white font-bold text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
-                          >
-                            -
-                          </button>
-                          <span className="cifra w-6 text-center text-sm font-bold text-neutral-900 dark:text-white">
-                            {adultos}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => setAdultos(adultos + 1)}
-                            className="flex h-8 w-8 items-center justify-center rounded-lg border border-neutral-300 bg-white font-bold text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
-                          >
-                            +
-                          </button>
-                        </div>
-                      </div>
-                    </div>
+                    <p className="mt-2 text-[11px] text-neutral-500">
+                      El tarifario vigente para este paquete no desglosa por persona; aplica tarifa
+                      global de salida.
+                    </p>
                   ) : (
-                    /* Tarifario que exige desglose por edad */
-                    <div className="space-y-3">
+                    <div className="mt-3 space-y-3">
                       {/* Adultos */}
                       <div className="flex items-center justify-between">
                         <div>
                           <span className="text-xs font-medium text-neutral-700 dark:text-neutral-300">
                             Adultos
                           </span>
-                          <span className="block text-[10px] text-neutral-400">Desde 12 años</span>
+                          <span className="block text-[10px] text-neutral-400">
+                            Mayor a 12 años
+                          </span>
                         </div>
                         <div className="flex items-center gap-2">
                           <button
@@ -448,7 +482,7 @@ function ContenidoCotizador() {
                           <span className="text-xs font-medium text-neutral-700 dark:text-neutral-300">
                             Niños
                           </span>
-                          <span className="block text-[10px] text-neutral-400">De 2 a 11 años</span>
+                          <span className="block text-[10px] text-neutral-400">2 a 11 años</span>
                         </div>
                         <div className="flex items-center gap-2">
                           <button
@@ -574,12 +608,14 @@ function ContenidoCotizador() {
                 </div>
               )}
 
-              {/* Resultado Cotización Real (0c.16.2) */}
+              {/* Resultado Cotización Real (0c.16.2 & 0c.22) */}
               {!calculando && !errorMensaje && usarReal && cotizacionReal && (
                 <DesgloseCotizacionSalida
                   cotizacion={cotizacionReal}
                   copiado={copiado}
                   alCopiarWhatsApp={copiarPropuestaWhatsApp}
+                  alGuardarCotizacion={() => setModalGuardarAbierto(true)}
+                  guardando={guardandoCotizacion}
                 />
               )}
 
@@ -587,7 +623,7 @@ function ContenidoCotizador() {
               {!calculando && !errorMensaje && !usarReal && cotizacionMock && (
                 <section className="space-y-6">
                   <div className="rounded-2xl border border-neutral-200 bg-white p-6 shadow-xs dark:border-neutral-800 dark:bg-neutral-900">
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                       <div>
                         <span className="text-xs font-bold text-neutral-500 uppercase">
                           Total Cotización (Simulada)
@@ -596,14 +632,26 @@ function ContenidoCotizador() {
                           {formatearDinero(cotizacionMock.totalVenta)}
                         </div>
                       </div>
-                      <button
-                        type="button"
-                        onClick={copiarPropuestaWhatsApp}
-                        className="bg-ok-600 hover:bg-ok-700 flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold text-white shadow-xs"
-                      >
-                        {copiado ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                        {copiado ? '¡Copiado!' : 'Copiar para WhatsApp'}
-                      </button>
+
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setModalGuardarAbierto(true)}
+                          disabled={guardandoCotizacion}
+                          className="flex min-h-[44px] items-center gap-2 rounded-xl bg-purple-700 px-4 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-purple-800"
+                        >
+                          <Bookmark className="h-4 w-4" />
+                          <span>Guardar Cotización Oficial</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={copiarPropuestaWhatsApp}
+                          className="bg-ok-600 hover:bg-ok-700 flex min-h-[44px] items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold text-white shadow-xs"
+                        >
+                          {copiado ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                          {copiado ? '¡Copiado!' : 'Copiar para WhatsApp'}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </section>
@@ -611,6 +659,24 @@ function ContenidoCotizador() {
             </div>
           </div>
         </div>
+
+        {/* Modal Guardar Cotización (0c.22) */}
+        <ModalGuardarCotizacion
+          abierto={modalGuardarAbierto}
+          alCerrar={() => setModalGuardarAbierto(false)}
+          alConfirmar={manejarGuardarCotizacion}
+          guardando={guardandoCotizacion}
+          error={errorGuardar}
+          tituloSugerido={tituloSugerido}
+          contactoIdInicial={contactoIdInicial}
+          contactosDisponibles={contactosDisponibles}
+          paqueteNombre={paqueteSeleccionado?.nombre || 'Paquete Turístico'}
+          fechaSalida={fecha}
+          adultos={adultos}
+          ninos={ninos}
+          infantes={infantes}
+          totalEstimadoFormateado={totalEstimadoTexto}
+        />
       </main>
     </div>
   );
