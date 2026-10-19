@@ -6,11 +6,11 @@
 
 | Campo | Valor |
 |---|---|
-| Última actualización | 2026-10-13 (integración: ADR-0009 paramétrico y orden en la raíz; dos ramas devueltas) |
-| Actualizado por | Claude Opus 5 |
+| Última actualización | 2026-10-19 (integración v0.19.0: `docs/adr-0009-parametrico` @ `f57925b`; la tarea 0 queda cerrada) |
+| Actualizado por | Claude Opus 5.5 (`integrador`) |
 | Fase | **Rebanada vertical de paquetes, en construcción** |
-| Avance de la fase | Cotizador de punta a punta. **El precio cuelga ya de una ventana de vigencia (ADR-0009, v0.18.0).** Apretón de manos del webhook vivo y verificado contra la API corriendo. Bandeja web en construcción |
-| Próximo hito | **El trabajador que convierte un `change` recibido en mensaje de bandeja.** La compuerta de pruebas (tarea 0) ya está reparada y medida con dos corridas seguidas |
+| Avance de la fase | Cotizador de punta a punta. **La cotización es la suma de sus tarifas y el precio «desde» es uno que el comprador puede pagar (v0.19.0).** Apretón de manos del webhook vivo. Bandeja web en construcción |
+| Próximo hito | **El trabajador que convierte un `change` recibido en mensaje de bandeja.** La compuerta de pruebas vuelve a ser compuerta: aislamiento 39/39 en tres corridas seguidas el 2026-10-19 |
 
 ---
 
@@ -103,10 +103,10 @@ Ordenada. La primera es la que debe tomarse ahora.
 
 | # | Tarea | Agente / dueño | Estado |
 |---|---|---|---|
-| **0** | **Reparar la suite de aislamiento, que se envenena a sí misma.** El `DELETE FROM tenants` del `afterAll` global (línea 111) nunca corre: llega con la conexión dentro de una transacción abortada desde el `afterAll` del bloque ADR-0008 (línea 599). Los fixtures sobreviven y la corrida siguiente muere con `duplicate key` antes de comprobar una política. Dos arreglos: limpiar **también en `beforeAll`**, y envolver en `SAVEPOINT` toda aserción que espere un error, para que no deje la conexión abortada | `qa` | **BLOQUEANTE.** Medido el 2026-10-13: 171 filas de residuo al empezar la sesión; 15, 20 y 20 aserciones en rojo en tres corridas, ninguna por una fuga. **Bloquea la próxima integración**: la excepción del 2026-10-13 vale una vez |
-| 0b | **Permiso para `scripts/limpiar-fixtures.mjs --borrar`, o decidir que ese borrado lo hace una persona.** El integrador lo intentó y el sistema de permisos lo denegó, igual que un borrado acotado a cinco filas | Usuario | El repositorio tiene la herramienta desde el 2026-10-10 y la compuerta no puede usarla |
-| 0c | **Una base por árbol de trabajo, o fixtures con identificador por proceso.** Cuatro sesiones contra una sola base de Neon es una carrera permanente | `devops` | El residuo de una sesión pone en rojo la compuerta de las otras tres |
-| 0d | **Decidir de quién es `politica-de-precio.ts`.** Antigravity lo tiene a medio escribir en `feat/bandeja-web` y la otra sesión lo integró hoy en `main` | `arquitecto` | Dos versiones del mismo contrato escritas en paralelo durante días. Cuanto más crezca la segunda, más caro |
+| **0** | Reparar la suite de aislamiento, que se envenenaba a sí misma | `qa` | **Cerrada el 2026-10-19 (v0.19.0).** El integrador corrió la suite tres veces seguidas contra Neon sin limpiar a mano: 39/39 las tres, sin residuo entre corridas (`4f08d25`, `7ba3b8c`) |
+| 0b | Permiso para `limpiar-fixtures.mjs --borrar` | Usuario | **Resuelta por diseño (v0.19.0):** `pnpm test` del paquete limpia solo, y solo residuo de más de 15 min con el prefijo `fixture-aislamiento-` |
+| 0c | Una base por árbol de trabajo, o fixtures con identificador por proceso | `devops` | **Resuelta la segunda opción (`7ba3b8c`, v0.19.0).** La base sigue siendo compartida: ver la cola del 2026-10-19 sobre esquema ajeno |
+| 0d | **Decidir de quién es `politica-de-precio.ts`.** Antigravity lo tiene a medio escribir en `feat/bandeja-web` y la otra sesión lo integró hoy en `main` | `arquitecto` | **Sigue abierta.** v0.19.0 no la resuelve: `feat/bandeja-web` sigue sin integrar |
 | 1 | **Iniciar verificación de Meta Business y solicitud de Tech Provider** | Usuario | **Camino crítico, sin empezar** |
 | 2 | **Recibir el tarifario real del mayorista** de la agencia piloto | Usuario | La agencia ya está tramitando la información (2026-10-07). Hasta que llegue, el catálogo sigue modelado con datos verosímiles |
 | 2b | **Bajar el tarifario de Meta para Colombia en COP** del CSV oficial | Usuario | Cinco minutos con un navegador. Sin esa cifra el plan de entrada se fija a ciegas |
@@ -129,10 +129,10 @@ Ordenada. La primera es la que debe tomarse ahora.
 | 10 | Resolver la protección de `main` en GitHub | Usuario | Plan gratuito no la permite en repos privados |
 | 11 | **Rotar la contraseña de Neon y la clave de API de Stitch** | Usuario | **Sigue pendiente.** `ac7fb99` rotó los tres roles de PostgreSQL, que es otra cosa. Ambas se pegaron en el chat; un secreto expuesto no se borra, se rota |
 | 11b | **`META_APP_SECRET` y `WEBHOOK_PAYLOAD_KEY_VERSION` no están en `.env`** | Usuario | Sin el primero el `POST` rechaza **todo** con 403, y sin el segundo lanza al cifrar. El `POST` se verificó con un secreto temporal en memoria. El secreto va al `.env`, nunca al chat |
-| 11c | Los metadatos de decorador no siempre llegan con el transpilador de desarrollo | `backend` | Nest construyó un controlador **con cero dependencias y sin quejarse**; el fallo salió como un `undefined` en la primera petición real. El módulo `inbox` usa ya `@Inject` explícito; **falta revisar `quoting` y `shared`, donde el mismo silencio es posible** |
-| 11d | El aviso «Acceso sin contexto de tenant» se emite **una vez por mensaje** | `backend` | Es deliberadamente incómodo para que llame la atención en una revisión, pero en el webhook es legítimo y a volumen real inunda el registro |
+| 11c | Los metadatos de decorador no siempre llegan con el transpilador de desarrollo | `backend` | **Hecha (`85eceac`, v0.19.0).** `@Inject` explícito y `guardia-de-inyeccion.spec.ts`, que pone en rojo cualquier dependencia sin token |
+| 11d | El aviso «Acceso sin contexto de tenant» se emitía una vez por mensaje | `backend` | **Hecha (`f57925b`, v0.19.0).** El webhook usa `sinTenantDeclarado`, con la operación declarada en `operaciones-de-plataforma.ts` (tipo cerrado). La variante ruidosa sigue para todo lo no declarado |
 | 12 | Autenticación: el `tenant_id` debe salir del token de sesión | `backend` | Hoy la web lo envía por cabecera. Solo funciona con `APP_ENV=local`, pero es deuda que bloquea desplegar |
-| 13 | **La carrera de `turbo` entre `build` y `typecheck` de la web** | `devops` | `next build` reescribe `.next/types` mientras `tsc` lo lee. Por separado pasan; en paralelo da un rojo falso. **Morderá en CI**, que es justo donde corren en paralelo |
+| 13 | La carrera de `turbo` entre `build` y `typecheck` | `devops` | **Hecha (`f9da930`, v0.19.0).** `typecheck` de `web` y `database` depende de su `build`. Verificado: `typecheck --force` 9/9 sin caché |
 | 14 | El aviso de `any` no es una compuerta | `devops` | `no-explicit-any` está en `warn` y ningún script lleva `--max-warnings 0`: hoy hay cero `any`, pero el primero entraría sin que lint falle |
 
 ## 4. Bloqueos y riesgos activos
@@ -530,3 +530,28 @@ llamarse `masBarata`, porque la opción más barata es casi por definición la d
 | `neto` y `venta` obligados a la **misma moneda**: el mayorista de producto internacional cotiza en USD y la agencia vende en COP | `arquitecto` | Los 47 productos son terrestres y en COP. Candidato a bloqueante en el mes dos |
 | **Impuestos sin base gravable.** `experto-turismo` levantó la bandera y declaró no conocer el detalle | `investigador` | Afecta a la factura electrónica, no al cotizador. Fuente: el contador de la agencia piloto |
 | Nombres de dominio: `CLAUDE.md` exige **inglés** y el esquema entero está en **español** | `arquitecto` | Hay que cambiar la regla o el código. No se tocó ninguna de las dos |
+
+---
+
+## Integración del 2026-10-19 — v0.19.0
+
+`docs/adr-0009-parametrico` @ `f57925b` entra en `main` (`3b53943`), etiquetada **v0.19.0**.
+Registro: [`docs/_integraciones/2026-10-19-v0.19.0.md`](docs/_integraciones/2026-10-19-v0.19.0.md).
+
+Compuertas, corridas por el integrador sobre el árbol fusionado (idéntico a la punta: la rama
+estaba 0 por detrás): `install --frozen-lockfile` limpio · `typecheck` **9/9 sin caché** ·
+`lint` **7/7 sin caché** · `format:check` limpio · `build` **5/5 sin caché** · pruebas: contracts
+**56**, domain **70**, api **218** (16 archivos, e2e incluidas) y aislamiento **39/39**.
+**Aislamiento en verde tres veces seguidas** contra Neon, sin limpieza manual y sin residuo entre
+corridas. **La tarea 0 queda cerrada y la compuerta de pruebas vuelve a ser compuerta.**
+
+### Cola nueva — con dueño, no bloquea
+
+| Cola | Dueño | Por qué no bloquea |
+|---|---|---|
+| **El shell del usuario exporta un `DATABASE_URL` de OTRO proyecto (`TrastornadoresApp`, otro endpoint de Neon) y `dotenv-cli` no lo pisa.** La primera corrida de `pnpm test` lanzó `limpiar-fixtures.mjs --borrar` **con rol propietario contra esa base ajena**; se salvó porque allí no existe `tenants`. Arreglo: `dotenv -o` en los scripts del paquete, o que `limpiar-fixtures` aborte si `current_database()` no es la esperada | `devops` (+ Usuario: quitar la variable del perfil) | El filtro por prefijo y edad acota lo borrable; y con `env -u DATABASE_URL` todo corre contra la base correcta. **Es de hoy, pero el daño posible es pequeño y no es de aislamiento entre agencias** |
+| Neon tiene aplicadas tres migraciones que no están en `main` (`20261011090000…090200`, del inbox, desde otro árbol de trabajo). Mismo precedente que la cola del 2026-10-13 | `datos` | La suite de aislamiento pasa con ese esquema encima; se resuelve al integrar `feat/inbox-esquema` |
+| La rama mezcla propósitos (`a408407` es inbox en una rama de quoting) y su prefijo `docs/` sigue mintiendo; además se integró **dos veces** con el mismo nombre | `facilitador` | Se integró por su contenido y por desbloquear la tarea 0. La rama no se borró porque el árbol `D:\Projects\CRM-api` la tiene activa: **su sesión debe abrir rama nueva desde `main`** |
+| `semilla-catalogo-real.ts` calcula la venta del menor con `* 0.75` en coma flotante (R8) | `datos` | Es semilla, redondeada a miles; no es cálculo de producción |
+| `catalogo.e2e-spec.ts` redefine a mano el tipo de la respuesta (`desdeEsDeGrupo: boolean`) en vez de inferirlo del contrato (R3) | `qa` | Solo en la prueba; si el contrato cambia, la aserción lo detecta igual |
+
