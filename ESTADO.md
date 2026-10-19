@@ -6,7 +6,7 @@
 
 | Campo | Valor |
 |---|---|
-| Última actualización | 2026-10-19 (noche: el arnés de pruebas en paralelo y el CI como compuerta de aislamiento) |
+| Última actualización | 2026-10-19 (noche: v0.24.1 y v0.25.0, con el CI como compuerta) |
 | Actualizado por | Claude Opus 5.5 (`integrador`) |
 | Fase | **Rebanada vertical de paquetes, en construcción** |
 | Avance de la fase | Cotizador de punta a punta. **La cotización es la suma de sus tarifas y el precio «desde» es uno que el comprador puede pagar (v0.19.0).** Apretón de manos del webhook vivo. Bandeja web en construcción |
@@ -765,8 +765,8 @@ y el tenant llega por cabecera, solo con `APP_ENV=local`. Va ligado a la tarea 1
 | Cola | Dueño | Por qué no bloquea |
 |---|---|---|
 | **`incluirMargen` sin control de rol**: cualquiera que llame la API ve el margen, o sea el neto | `backend`, junto con la **tarea 12** | No hay autenticación ni superficie para el viajero. **Dependencia dura:** no se despliega sin sesión y sin un rol que pueda pedir el margen |
-| Listado, envío y estados de la cotización | `backend` | Siguiente rebanada de la tarea 6 |
-| El filtro de errores responde **400** a los códigos `*_NO_ENCONTRADA`, cuando debería ser 404 (la e2e cubre `COTIZACION_NO_ENCONTRADO` con 404, no el resto) | `backend` | Es el código HTTP; no es una fuga |
+| ~~Listado, envío y estados de la cotización~~ | `backend` | **Hecho en v0.25.0**: listado por cursor y máquina de estados. Queda el envío por WhatsApp |
+| ~~El filtro de errores responde 400 a `*_NO_ENCONTRADA`~~ | `backend` | **Resuelto en v0.25.0**: 404 para `_NO_ENCONTRADA` y `_NO_ENCONTRADO` |
 | `quoting` lee `contactos` y `oportunidades` (de `crm`) directamente desde su transacción, igual que `inbox` (R4; ver `asegurarContacto`) | `arquitecto` | Mismo RLS y misma transacción; es frontera de módulo |
 | `D:\Projects\CRM-gate6`: otro árbol temporal | Usuario | Borrar a mano |
 
@@ -898,3 +898,16 @@ viaja con `incluirMargen=true`, y la e2e comprueba que una respuesta sin margen 
 ni margen, ni política. Compuerta: CI **8/8**, https://github.com/Alfavear/CRM/actions/runs/39337042919,
 sobre el árbol del merge. Estáticas en local en verde. Registro:
 [`docs/_integraciones/2026-10-19-v0.24.1.md`](docs/_integraciones/2026-10-19-v0.24.1.md).
+
+## Integración del 2026-10-19 (decimoquinta) — v0.25.0: listado y estados de cotizaciones
+
+`feat/quoting-listado-y-estados` @ `e96e0ff` entra en `main` (`f6fb562`), etiquetada **v0.25.0**. Trae
+`GET /api/v1/cotizaciones` con cursor y filtros (devuelve 400 si se pide `incluirMargen`), y
+`POST /:id/estado` con BORRADOR→ENVIADA→ACEPTADA|RECHAZADA|VENCIDA, donde los estados terminales dan 409.
+El filtro de errores ya da 404 a los `_NO_ENCONTRADA`/`_NO_ENCONTRADO`. **Fusionada sobre la v0.24.1:
+`FilaDeCotizacion` no lleva `politica`, ni `neto`, ni `margen`**, y el SQL del listado no lee esas columnas.
+Compuerta: CI **8/8**, https://github.com/Alfavear/CRM/actions/runs/39337507750, sobre el árbol del merge.
+Estáticas en local en verde. Antes, contra Neon compartido, la api dio 318/318 en cuatro corridas,
+con la e2e de dos agencias de inbox-relay en verde las cuatro.
+Registro: [`docs/_integraciones/2026-10-19-v0.25.0.md`](docs/_integraciones/2026-10-19-v0.25.0.md).
+
