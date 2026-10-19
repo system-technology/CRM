@@ -1,6 +1,7 @@
 # ADR-0011 — Autenticación con Better Auth en la API y el tenant como dato de la sesión
 
-- **Estado:** Propuesto — a la espera de `auditor-seguridad`
+- **Estado:** Propuesto. `auditor-seguridad` lo revisó y pidió aceptarlo con cambios; los dos
+  bloqueantes ya están incorporados (la baja en el socket y la superficie de `viajapro_identidad`)
 - **Fecha:** 2026-10-19
 - **Decide:** Propietario del producto
 - **Consultados:** `arquitecto`. Pendiente: `auditor-seguridad` (toca aislamiento y PII), `datos`
@@ -101,8 +102,11 @@ el resto del sistema.
 1. **Cookie, no JWT.** Usamos una cookie de sesión opaca, `HttpOnly; Secure; SameSite=Lax`, y la
    **valida solo NestJS**, contra la tabla de sesiones, en cada petición. La razón es la
    revocación: si una agencia desactiva a un asesor que se fue, deja de entrar en la petición
-   siguiente, no cuando caduque un JWT. Next.js no valida nada. Su middleware solo redirige a
-   `/ingresar` si falta la cookie, y eso es experiencia de usuario, no autorización.
+   siguiente, no cuando caduque un JWT. Por la misma razón, **`session.cookieCache` de Better Auth
+   va desactivado de forma explícita**: con esa caché activa, la sesión se valida contra la cookie
+   firmada y no contra la base, y una baja tardaría lo que dure la caché. Next.js no valida nada.
+   Su middleware solo redirige a `/ingresar` si falta la cookie, y eso es experiencia de usuario,
+   no autorización.
 2. **Mismo origen.** Next reescribe `/api/v1/*` hacia la API. Así la cookie es de primera parte
    para el navegador (Safari en iOS bloquea las de terceros), y los Server Components reenvían la
    cabecera `cookie` al llamar a la API.
@@ -123,6 +127,34 @@ el resto del sistema.
    Prisma propio sobre `DATABASE_IDENTIDAD_URL`, y ese pool aborta al arrancar si `current_user` no
    es `viajapro_identidad` (R2). R2 menciona tres roles, así que hay que actualizar la tabla de
    `CLAUDE.md` cuando este ADR se acepte.
+
+   **Superficie exacta de `viajapro_identidad`.**
+   - **No entra en el literal `roles_de_aplicacion`** de `aplicar_privilegios_declarados()`
+     (migración `20261007140000`). Ese literal recibe `GRANT ... ON ALL TABLES` y los privilegios
+     por defecto. Por tanto, `viajapro_identidad` no tiene **ningún privilegio sobre tablas de
+     negocio**, ni siquiera sobre `usuarios`, `roles` o `tenants`. El paso 4 del flujo lo hace
+     `viajapro_app`.
+   - Sus únicos privilegios son las filas que declare `excepciones_rls`: `SELECT, INSERT, UPDATE,
+     DELETE` sobre `identidades`, `credenciales`, `sesiones` y `verificaciones`, y solo `SELECT`
+     sobre `accesos_identidad`. Ninguna otra cosa.
+   - Es un rol de login sin `BYPASSRLS`, así que la vista `roles_de_login_vigilados` lo vigila
+     por atributo: las aserciones 8, 9, 10 y 20 de ADR-0008 lo incluyen sin que nadie lo añada.
+     **Se agrega una aserción nueva**: `viajapro_identidad` da `42501` sobre una muestra de tablas
+     de negocio (`usuarios`, `contactos`, `mensajes`, `cotizaciones`).
+   - En su matriz de §1.3 no tiene `EXECUTE` sobre ninguna función.
+
+   **Quién escribe `accesos_identidad`.** Ni `viajapro_app` ni `viajapro_identidad` pueden
+   escribirla. La mantiene un trigger `AFTER INSERT OR UPDATE OR DELETE` sobre `usuarios` que
+   llama a `sincronizar_acceso_identidad()`. Esa función es `SECURITY DEFINER`, tiene
+   `search_path` vacío y su dueño es un rol nuevo, `viajapro_accesos`, que es `NOLOGIN` y no tiene
+   `BYPASSRLS` ni pertenece a `neon_superuser`. Solo puede escribir en `accesos_identidad`, y solo
+   el par `(NEW.identidad_id, NEW.tenant_id)` de una fila que ya pasó el `WITH CHECK` de RLS, así
+   que **no puede registrar un acceso a otro tenant**. Al desactivar o borrar el usuario, borra
+   ese par. Así el índice se actualiza en la misma transacción que la pertenencia. La función
+   **entra en el inventario de funciones de ADR-0008**, con `EXECUTE` revocado a `PUBLIC` y a todo
+   rol de login (un trigger no necesita ese privilegio en quien lo dispara). Queda cubierta por las
+   aserciones 12, 13 y 14 (con `viajapro_accesos` como dueño esperado) y por la matriz de la 20,
+   con «no» en todas las columnas.
 
 ### Por qué la identidad es global y la pertenencia no
 
@@ -175,14 +207,36 @@ renombrarlos y crear otros.
    la cookie y busca la sesión con el pool de identidad. Si falta, o si `tenant_activo_id` es
    nulo, responde 401.
 4. **Abre la transacción con `viajapro_app` y ejecuta `SET LOCAL app.current_tenant =
-   tenant_activo_id`.** Luego lee `usuarios JOIN roles WHERE identidad_id = $1 AND activo AND
-   eliminado_en IS NULL`. **RLS garantiza que esa fila pertenece a ese tenant.** Si la consulta
-   devuelve cero filas (la identidad no pertenece a esa agencia, o la agencia la desactivó), la
-   respuesta es 401 y la sesión se invalida.
+   tenant_activo_id`.** Luego lee `usuarios JOIN roles JOIN tenants WHERE identidad_id = $1 AND
+   activo AND eliminado_en IS NULL`, y exige además que la agencia no esté suspendida
+   (`tenants.estado`). **RLS garantiza que esa fila pertenece a ese tenant.** Si la consulta
+   devuelve cero filas (la identidad no pertenece a esa agencia, la agencia la desactivó o la
+   agencia está suspendida), la respuesta es 401 y la sesión se invalida.
 5. `ContextoTenant` recibe `tenantId`, `usuarioId` y `permisos: ReadonlySet<Permiso>`.
 6. **Autorización.** Un decorador `@RequierePermiso(...)` y un guard. `incluirMargen=true` sin
    `cotizacion.ver_neto_y_margen` responde **403**. Ignorarlo en silencio enseñaría al cliente que
    pedirlo es inocuo.
+
+**La bandeja en vivo (Socket.IO) no pasa por `TenantMiddleware`**, así que repite los pasos por
+su cuenta:
+- **Al conectar:** se ejecutan los pasos 3 y 4 con la cookie del handshake. Si fallan, se rechaza
+  la conexión. Cada socket se une a las salas `tenant:<id>` y `usuario:<id>`, y guarda sus
+  permisos.
+- **Cada 60 segundos:** se vuelve a ejecutar el paso 4 para cada socket abierto. Si da cero filas
+  o la sesión caducó, se desconecta. Si cambió el rol, se actualizan los permisos.
+- **Al dar de baja** a un usuario, revocar su sesión o cambiarle el rol, se emite un evento por el
+  outbox. El gateway reacciona con `disconnectSockets()` sobre la sala `usuario:<id>`, y el
+  adaptador de Redis lleva la orden a todas las réplicas. El intervalo de 60 segundos es el
+  respaldo para cuando el evento se pierde, no el mecanismo principal.
+
+**Requisitos de la configuración de Better Auth** (cada uno es una línea):
+- `emailAndPassword.disableSignUp: true`. Una identidad nace solo por invitación o por un script
+  de plataforma. La invitación responde lo mismo exista o no el correo, en esta o en otra agencia,
+  para que nadie pueda averiguar quién trabaja en qué agencia.
+- **El token de sesión se guarda hasheado** (SHA-256) y el OTP también (`storeOTP: 'hashed'`).
+  Así, aunque alguien lea la tabla, no puede suplantar a nadie. Si Better Auth no permite hashear el
+  token de sesión de forma nativa, `backend` lo resuelve en la rebanada 2 y lo lleva al
+  `auditor-seguridad` **antes** de integrar.
 
 Lo que se elimina: `x-dev-tenant-id`, `x-dev-usuario-id` y el atajo de `APP_ENV=local`. En local
 se entra con las identidades de la semilla, igual que en producción.
@@ -192,7 +246,8 @@ se entra con las identidades de la semilla, igual que en producción.
 ### Positivas
 - El tenant sale de una sola fuente, verificada en el servidor. Una sesión con un
   `tenant_activo_id` manipulado no consigue nada, porque el paso 4 la lee bajo RLS.
-- Una baja revoca el acceso en la petición siguiente.
+- Una baja revoca el acceso a la API en la petición siguiente. En la bandeja en vivo, el acceso
+  se corta en cuanto llega el evento, y nunca tarda más de 60 segundos.
 - Los roles pasan a ser tabla por tenant, y se elimina el `enum RolUsuario` (R12).
 - Ningún costo por agencia, y la identidad tiene FK reales dentro de la misma base.
 
@@ -223,12 +278,21 @@ restablecimiento) y cambiar el paso 3 del flujo. Los pasos 4 a 6 y el modelo de 
 
 | # | Rebanada | Dueño | Hecho cuando |
 |---|---|---|---|
-| 1 | Esquema: las cinco tablas globales, `roles`, la modificación de `usuarios`, el rol `viajapro_identidad`, las filas de `excepciones_rls` (cero privilegios para los otros tres roles) y la semilla con tres roles por agencia | `datos` | La suite de aislamiento en verde con aserciones nuevas: los tres roles de siempre no tienen ningún privilegio sobre las tablas de identidad; `roles` lleva política `USING` + `WITH CHECK`; el literal de `aislamiento.spec.ts` está actualizado |
-| 2 | Módulo `identity`: Better Auth en `/api/v1/auth`, pool de identidad con verificación al arrancar, contraseña, `tenant-activo`, el nuevo `TenantMiddleware`, el guard de permisos y el 403 de `incluirMargen` | `backend` | e2e contra Neon: una sesión con el tenant activo de una agencia ajena da 401; un asesor sin el permiso recibe 403 al pedir el margen; un usuario desactivado da 401 en la petición siguiente |
+| 1 | Esquema: las cinco tablas globales, `roles`, la modificación de `usuarios`, el rol `viajapro_identidad` (fuera de `roles_de_aplicacion`), el rol `viajapro_accesos` con su trigger, las filas de `excepciones_rls` (cero privilegios para los otros tres roles) y la semilla con tres roles por agencia | `datos` | La suite de aislamiento en verde con aserciones nuevas: los tres roles de siempre no tienen ningún privilegio sobre las tablas de identidad; `viajapro_identidad` da `42501` sobre las tablas de negocio; la matriz de la 20 incluye `sincronizar_acceso_identidad`; `roles` lleva política `USING` + `WITH CHECK`; el literal de `aislamiento.spec.ts` está actualizado |
+| 2 | Módulo `identity`: Better Auth en `/api/v1/auth` (sin `cookieCache`, con `disableSignUp`, token y OTP hasheados), pool de identidad con verificación al arrancar, contraseña, `tenant-activo`, el nuevo `TenantMiddleware`, el guard de permisos, el 403 de `incluirMargen` y la autenticación del socket (handshake, revalidación periódica y desconexión por evento) | `backend` | e2e contra Neon: una sesión con el tenant activo de una agencia ajena da 401; un asesor sin el permiso recibe 403 al pedir el margen; un usuario desactivado, o de una agencia suspendida, da 401 en la petición siguiente; **un socket abierto de un usuario dado de baja se cierra** |
 | 3 | Web: `/ingresar`, la reescritura `/api/v1/*`, el selector de agencia, quitar las cabeceras de desarrollo y ocultar neto y margen sin permiso | `frontend` / Antigravity | Verificado en un navegador real, también en el móvil |
 | 4 | Administración: el dueño invita asesores, asigna roles y edita permisos. Después, el código por correo, cuando exista el adaptador de correo | `backend` + `frontend` | **No bloquea el primer despliegue.** La agencia piloto se da de alta por script |
 
 Las rebanadas 1 a 3 cierran la tarea 12 y desbloquean el despliegue.
+
+## Cola (no bloquea; va a `ESTADO.md` con dueño)
+
+| Pendiente | Dueño |
+|---|---|
+| El límite de intentos detrás del proxy: confiar solo en la cabecera de IP del balanceador propio. Fijar también `trustedOrigins` por entorno | `backend`, `devops` |
+| `RUTAS_SIN_TENANT` excluye todo el prefijo `/api/v1/auth/`, que es muy amplio. Hay que reducirlo a las rutas de Better Auth y comprobar que `tenant-activo` hace el paso 4 por su cuenta | `backend` |
+| Ley 1581: un aviso de privacidad para los asesores, sobre qué datos suyos se guardan, por qué y cuánto tiempo | `auditor-seguridad`, `documentador` |
+| Ley 1581: el procedimiento para suprimir una identidad, que cubra también sus filas de `accesos_identidad` y sus sesiones | `datos`, `backend` |
 
 ## Cuándo revisar esta decisión
 
