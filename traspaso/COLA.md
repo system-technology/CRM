@@ -27,6 +27,78 @@ redefinidos: todo de `@viajapro/contracts` — si falta un campo, **para y dilo*
 > la que venga integrada (R3). Si al mezclar ves una diferencia que te parece un error mío,
 > **dilo en `ENTREGA.md` en vez de arreglarla por tu cuenta**.
 
+> ### Cola del 2026-10-19 — si terminas y no he vuelto a escribir, NO TE PARES: coge la siguiente
+>
+> Orden: 0c.18, 0c.19, 0c.20, 0c.21. Cada una es autosuficiente. Antes de nada: `git fetch` y
+> lee `REVISION.md`. Las cinco compuertas (`pnpm compuertas`) antes de cada `ENTREGA.md`.
+
+## [ ] 0c.18. Ponerse al día con `main` y dejar la rama revisable
+
+**Contexto.** El 2026-10-13 el integrador devolvió esta rama por ir 82 commits por delante, con
++17k líneas. Hoy: 82 commits, +21.5k líneas, 119 archivos, 79 en `apps/web`. Nadie puede revisar
+eso de una vez.
+
+1. `git fetch && git log --oneline HEAD..origin/main`. Si no sale nada, ve al punto 3. Si sale
+   algo (el integrador estaba metiendo `docs/adr-0009-parametrico`): `git merge origin/main` y,
+   en conflictos de `packages/`, `apps/api/` y `docs/`, **quédate con la versión de `main`**
+   (`git checkout --theirs`). Esas rutas no son tuyas. Si ves un error mío, dilo en `ENTREGA.md`.
+2. `pnpm compuertas` en verde tras la mezcla.
+3. **Reescribe `ENTREGA.md` entero** como inventario por pantallas, una sección por ruta de
+   `apps/web/src/app/` (`bandeja`, `catalogo`, `configuracion`, `contactos`, `cotizador`,
+   `pipeline`, `reportes`, `viajes`): archivos que toca, pruebas, tarea de la cola que la
+   originó, y si se puede integrar sola. El integrador integrará por partes.
+4. Abre `/catalogo` a 375 px: la tarjeta con `desdeEsDeGrupo` (insignia + subtítulo + recuadro)
+   no debe apretar ni desbordar. Si lo hace, quita el recuadro y deja el subtítulo.
+
+**Hecho cuando:** `HEAD..origin/main` vacío, compuertas verdes, `ENTREGA.md` inventario.
+
+## [ ] 0c.19. La ventana de 24 horas: lo que falta
+
+**Ya está hecho** (compruébalo, no lo rehagas): contratos `VentanaServicio`, `EnviarPlantilla`,
+`PlantillasDisponibles`; texto bloqueado con ventana cerrada, selector de plantillas
+(`modal-plantillas.tsx`), aviso con tiempo restante a menos de 2 h
+(`calcularTiempoRestanteVentana`).
+
+**Falta** (de `COLA-DESPUES.md` §6): si la ventana se cierra **mientras hay un borrador
+escrito**, el borrador no se pierde: aviso visible («La ventana se cerró; tu borrador sigue
+aquí») y ofrecer abrir el modal de plantillas con `borradorPrevio` ya puesto. Hoy el campo se
+deshabilita sin más. Solo `apps/web/`: función pura en `bandeja-logica.ts` que decida el aviso
+(abierta→cerrada con texto no vacío), con prueba, y `aria-live="polite"` en el aviso.
+
+**Hecho cuando:** prueba unitaria de la transición, y a 375 px el aviso y el botón caben y se
+tocan (>= 44 px).
+
+## [ ] 0c.20. El copiloto deja de decir «IA»
+
+El extractor es por palabras clave (`asistente-ia-logica.ts`); no hay modelo. Quedan restos:
+`title="Cerrar Copilot"` y el tooltip «Ningún mensaje de IA…» en `panel-copilot-ia.tsx`,
+comentarios «Asistente Copilot IA» en `bandeja/[id]/page.tsx`, el encabezado del archivo de
+lógica. Cambia **todo texto visible** y los `aria-label`/`title` a «Sugerencias» o «Asistente de
+cotización (reglas)». Renombra `PanelCopilotIa` → `PanelSugerencias` y
+`asistente-ia-logica.ts` → `sugerencias-logica.ts` (con su spec) si el cambio es mecánico; si
+arrastra más de 10 archivos, deja los nombres de archivo y cambia solo los textos. La regla «nada
+sale sin aprobación humana» se queda, redactada sin decir «IA». Busca con
+`grep -rni "copilot\|\bIA\b" apps/web/src`.
+
+**Hecho cuando:** ese grep solo devuelve identificadores internos justificados (anótalos) y las
+compuertas están verdes.
+
+## [ ] 0c.21. Cerrar «0c»: auditoría contra la especificación visual
+
+0c.1 (ficha de contacto), 0c.2 (tarjeta de cotización en el hilo) y 0c.3 (pipeline) existen en
+código: `ficha-cliente.tsx`, `m.cotizacionId` en `bandeja/[id]/page.tsx`, `/pipeline`. Lo que no
+está comprobado es el detalle. Recorre la lista de validación de
+`docs/01-producto/09-especificacion-visual.json` pantalla por pantalla y haz una tabla en
+`ENTREGA.md`: criterio, cumple / no cumple, archivo. Corrige lo que cueste menos de 30 minutos;
+lo demás va a `COLA.md` como tarea nueva con la fecha. Comprueba en concreto: el total de columna
+del pipeline viene del servidor; alternativa de teclado para mover tarjetas; «Perdida» exige
+motivo y «Otro» explicación; cotizaciones sin tarifa neta; vacío, carga (esqueleto) y error en
+cada vista; 500 conversaciones en la lista sin lag. Todo a 375 px.
+
+**Hecho cuando:** la tabla existe y `COLA-DESPUES.md` §0c queda marcado `[x]`.
+
+---
+
 ## [x] 0c.15. La política de precio de la agencia, en `/configuracion`
 
 **Esto ya no espera a nadie.** El contrato `PoliticaDePrecio` existe y está publicado en

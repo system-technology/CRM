@@ -5,7 +5,7 @@
 > Esto es el histórico y lo que viene después, para que sepas hacia dónde va la cosa. Cuando la
 > tarea de `COLA.md` esté aceptada en `REVISION.md`, yo muevo aquí la siguiente. Tú no la cojas.
 
-## [ ] 0c. El panel del contacto y el pipeline — ya tienes los contratos
+## [ ] 0c. El panel del contacto y el pipeline — **construido; la auditoría final está en `COLA.md` 0c.21**
 
 **Reparto de trabajo, decidido por el propietario el 2026-10-10: tú haces el frontend, yo hago
 el backend.** Los contratos son la costura y los pongo yo. Acaban de llegar a esta rama en
@@ -156,7 +156,7 @@ prueba no existe. Cuéntalo en `ENTREGA.md`.
 
 ---
 
-## [ ] 6. La ventana de 24 horas, de verdad
+## [ ] 6. La ventana de 24 horas, de verdad — **casi hecha; lo que falta está en `COLA.md` 0c.19**
 
 Hoy el estado `24h Cerrada` es una etiqueta. Tiene que ser una restricción.
 

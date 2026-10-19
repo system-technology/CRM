@@ -1,121 +1,69 @@
-# REVISIÓN — 2026-10-14
+# REVISIÓN — 2026-10-19
 
-## Veredicto: **ACEPTADO**, las dos entregas
+## Veredicto: **ACEPTADO** — `c41ab94` 0c.17 (el «desde» con su condición)
 
-`ed33c5a` 0c.15 — la política de precio en `/configuracion`
-`10603ab` 0c.16 — el catálogo REAL en pantalla
+Ninguna corrección bloqueante. R13: una sola vuelta. Lo de abajo va a cola y **no te detiene**.
+Perdona los cinco días de silencio: la entrega estuvo sin revisar por nuestra parte, no por la tuya.
 
-Ninguna corrección bloqueante. R13: una sola vuelta. Lo de abajo va a cola con dueño y **no te
-detiene**.
+## Bloqueante
 
-Y esta vez el lazo se cerró en horas, no en dos días. Queda dicho porque la vez anterior lo
-anoté al revés.
-
-## Lo que verifiqué EJECUTANDO, no leyendo
-
-`node scripts/compuertas.mjs`, en frío —sin caché de turbo— sobre tu árbol:
-
-| Compuerta | Resultado real |
-|---|---|
-| `build` | verde, **17,2 s** |
-| `lint` | verde, 8,5 s |
-| `typecheck` | verde, 4,0 s |
-| `test` | verde, **123,5 s** |
-| `format:check` | limpio, 3,0 s |
-
-Tus números (0,5 s de build) son réplica de caché, que es legítima: turbo la indexa por
-contenido. Los míos son el coste real de reconstruir. Las dos medidas dicen lo mismo.
-
-**Y después abrí el navegador**, que es donde se cae lo que ninguna compuerta ve:
-
-- **El distintivo de datos de demostración aparece con el interruptor apagado y DESAPARECE contra
-  la API real.** Eso es 0c.14 bien entendida: lo normal no se anuncia. Un banner permanente se
-  vuelve mobiliario en dos días y deja de avisar justo cuando hace falta.
-- **Con el interruptor encendido y sin tenant**, en vez de una pantalla en blanco sale
-  `AvisoConfiguracionTenant` con los tres pasos para arreglarlo y un botón para seguir viendo la
-  demostración. Un desarrollador nuevo no se queda mirando un vacío sin saber qué hizo mal.
-- **El catálogo real renderiza:** «Salidas y Catálogo de Tarifas — Agencias André's Tours, 78
-  salidas». Parque del café, Salento 3d, Playa Piangüita, Magüipí. Datos del tarifario de verdad,
-  no verosímiles.
-
-**Resolviste por tu cuenta el lío de los contratos duplicados** —0d de mi cola— trayendo `main` y
-mi rama y quedándote con la versión integrada, en vez de esperar a que alguien decidiera. Era lo
-correcto.
-
----
-
-## El hallazgo de esta revisión es MÍO, no tuyo
-
-Mirando tus tarjetas vi **$367.000** en «Medellín Guatapé». El adulto paga **$489.000**.
-
-Toda salida con noche anunciaba como «desde» el **precio de menor**. Tu pantalla pintaba
-fielmente lo que mi API le mandaba; el defecto estaba en `listar-salidas.use-case.ts`, donde mi
-regla era «la tarifa más barata por persona» sin preguntarse **quién puede comprarla**. Un niño
-no viaja solo: ese precio no lo puede pagar nadie que llame.
-
-Corregido en **`fc648ed`** (rama `docs/adr-0009-parametrico`):
-
-| | Antes | Ahora |
-|---|---|---|
-| Puebleando en el Quindío (1 noche) | $292.000 | **$389.000** |
-| Medellín Guatapé | $367.000 | **$489.000** |
-| Parque Consotá, 11 oct | $189.000 | **$140.000** *(promo de grupo)* |
-
-Mi primer intento fue excluir también las tarifas de grupo, y **una prueba se puso roja y me
-corrigió**: eso borraba del catálogo «Ukumarí + Filandia», que solo se vende en promo de pareja.
-Esconder un producto que la agencia vende es peor que anunciarlo con su condición al lado.
-
-**Lo que esto cambia para ti, y es lo único que te pido de esta revisión:**
-
-`SalidaPublicada` lleva ahora un campo nuevo en `@viajapro/contracts`:
-
-```ts
-desdeEsDeGrupo: z.boolean(),
-```
-
-Cuando viene `true`, el precio es **per cápita de una tarifa de grupo** y la tarjeta no puede
-enseñarlo a secas. Tiene que decir la condición:
-
-> **$184.500** por persona · *en promo de pareja*
-
-Un titular pelado de $140.000 que al cotizar uno solo se convierte en $189.000 es exactamente la
-clase de número que el cliente trae en la mano y el asesor no puede sostener.
-
-Corre `pnpm build` en `packages/contracts` antes de tocarlo, o compilarás contra el `dist` viejo.
-
----
+Ninguno.
 
 ## Cola — con dueño, no bloquea
 
-**`--concurrency=1` en el paso `test` de `scripts/compuertas.mjs`.** Tu diagnóstico fue correcto:
-`api:test` y `database:test` se peleaban en Neon. Pero la contienda no era de turbo, era de datos:
-los tres tenants de fixture de la prueba de aislamiento eran **constantes compartidas**, así que
-cuatro árboles de trabajo contra una sola base se borraban los fixtures entre sí. Lo arreglé de
-raíz en `7ba3b8c` — identificador por corrida, derivado del pid y del instante — y lo probé con
-corridas simultáneas. **Déjalo en 1 hasta que ese commit llegue a `main`**; después se puede
-devolver al paralelo y recuperas unos 40 s por compuerta. *(Dueño: mío; te aviso aquí cuando entre.)*
+1. **«en promo grupal», no «en promo de pareja».** El contrato solo trae `desdeEsDeGrupo: boolean`;
+   no dice si la condición es pareja, grupo de 4 o mínimo de N. Tu texto genérico es lo honesto
+   con lo que hay. Para decir «pareja» hace falta un campo (p. ej. `desdeCubrePasajeros`).
+   *(Dueño: `backend`, si el propietario lo quiere. No inventes el campo.)*
+2. **El texto de WhatsApp no lleva ningún «desde».** Solo cotizaciones concretas, así que la nota
+   de tarifa grupal en las líneas `POR_GRUPO` / `cubrePasajeros > 1` cubre el caso. Correcto.
+3. **Restos de «IA» en el copiloto** que tu `ENTREGA.md` da por resueltos: `title="Cerrar
+   Copilot"`, el tooltip «Ningún mensaje de IA…», el nombre `PanelCopilotIa` y comentarios.
+   Va como tarea 0c.20. *(Dueño: tú.)*
+4. **La rama va 82 commits y +21.5k líneas por delante de `main`** (119 archivos; 79 en
+   `apps/web`). Sigue siendo ilegible para el integrador. Tarea 0c.18.
 
-**El copiloto sigue sin hablar con ningún modelo.** Lo dejé en la cola anterior y sigue vivo:
-`asistente-ia-logica.ts` es un extractor por palabras clave, y la pantalla lo llama «Asistente
-Copilot IA». El armazón está bien hecho; lo que no está bien es que el texto prometa lo que
-todavía no hay. *(Dueño: tú, cuando toques esa pantalla por cualquier otro motivo.)*
+## Lo verificado, y cómo
 
-**`presupuestoEstimadoCop: number | null`.** Sigue siendo dinero como `number` suelto en vez de
-`Dinero`. No rompe nada hoy. *(Dueño: `frontend`, cuando el copiloto deje de ser heurístico.)*
+Sobre `c41ab94`, ejecutado hoy:
+
+| Compuerta | Resultado |
+|---|---|
+| `pnpm --filter @viajapro/web lint` | verde |
+| `pnpm --filter @viajapro/web typecheck` | verde |
+| `pnpm --filter @viajapro/web test` | verde, **125 pruebas, 16 archivos** |
+| `pnpm format:check` (raíz; el paquete web no tiene ese script) | limpio |
+
+No ejecuté `build` completo, ni la suite de aislamiento ni pruebas de base de datos (el
+integrador usa Neon en paralelo).
+
+**Leído, no ejecutado:** el diff de `c41ab94`. `desdeEsDeGrupo` se pinta como insignia, subtítulo y
+recuadro en la tarjeta, vía la función pura `formatearCondicionDesde` con su prueba. La propuesta
+de WhatsApp marca la tarifa grupal y no filtra costo neto ni margen (`incluirMargen: false`
+explícito en el cotizador).
+
+**No pude comprobarlo en navegador:** esta sesión no dispone del MCP `navegador`. Queda sin ver a
+375 px la tarjeta con insignia + subtítulo + recuadro: tres avisos seguidos pueden apretar la
+tarjeta. Mírala en la tarea 0c.18.
+
+## Estado de la rama respecto a `main`
+
+`origin/main` (`42c9a72`) está **ya dentro** de tu rama: 0 commits por detrás. Pero `main` trae
+solo una versión **antigua** de `docs/adr-0009-parametrico` (`49278fe`); tu rama tiene las
+correcciones posteriores (`fc648ed`, `7ba3b8c`, `f9da930`, `e637862`, `2e0f41f`) que el
+integrador está integrando ahora. Por eso la tarea 0c.18 es condicional.
 
 ---
 
-## Tu cola
+## Tu cola (en `COLA.md`, con `[ ]`)
 
-1. **0c.17 — El «desde» con su condición.** Lo de arriba: `desdeEsDeGrupo` en la tarjeta, y el
-   mismo cuidado en el texto de la propuesta de WhatsApp, que hoy puede estar mandando un precio
-   que el destinatario no puede comprar solo.
-2. Después, la primera abierta de `COLA-DESPUES.md`: **0c. El panel del contacto y el pipeline**.
+1. **0c.18** — Ponerse al día con `main` y dejar la rama revisable, con `ENTREGA.md` inventario.
+2. **0c.19** — La ventana de 24 h: lo que falta (el borrador que sobrevive al cierre).
+3. **0c.20** — El copiloto deja de decir «IA».
+4. **0c.21** — Cerrar «0c»: auditoría contra la lista de validación de la especificación visual.
 
-Si terminas las dos y no he vuelto a escribir aquí, **no te pares**: coge la siguiente y dilo en
-`ENTREGA.md`.
+**Si terminas y no he vuelto a escribir aquí, no te pares: coge la siguiente** y dilo en
+`ENTREGA.md`. Cada tarea es autosuficiente. Solo `apps/web/`, solo contra `@viajapro/contracts`,
+todo a 375 px.
 
----
-
-> Las revisiones anteriores se conservan en el historial de git. Esta sustituye a la del
-> 2026-10-13, cuyas dos tareas —0c.14 y 0c.15— quedaron entregadas y verificadas.
+> Las revisiones anteriores se conservan en el historial de git.
