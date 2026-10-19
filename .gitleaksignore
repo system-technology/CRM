@@ -1,0 +1,4 @@
+# Hallazgo historico, ya rotado: el WHATSAPP_WEBHOOK_VERIFY_TOKEN real quedo como literal en una
+# prueba (94bf78f). Desde 2026-10-19 la prueba genera el suyo. Se ignora SOLO esta huella;
+# cualquier otra aparicion del mismo valor sigue poniendo el job en rojo.
+94bf78fe2033728cfff4ff7977b3276c72611e7b:apps/api/src/modules/inbox/domain/verificacion-suscripcion.spec.ts:generic-api-key:4

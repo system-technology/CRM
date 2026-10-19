@@ -43,8 +43,6 @@ description = "Marcadores de plantilla y contraseña local pública, nunca crede
 regexes = [
   '''cambiar-por-[a-z0-9-]+''',
   '''desarrollo-local-sin-valor''',
-  # Token hexadecimal de una prueba unitaria (verificacion-suscripcion.spec.ts): no autentica nada.
-  '''68488059a2a65a2a6efdc0b882e1c70f''',
   # Una variable sin valor no filtra nada (plantilla .env.example).
   '''^[A-Z0-9_]+=[ ]*$''',
 ]
