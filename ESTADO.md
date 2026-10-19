@@ -6,11 +6,11 @@
 
 | Campo | Valor |
 |---|---|
-| Última actualización | 2026-10-13 (integración: ADR-0009 paramétrico y orden en la raíz; dos ramas devueltas) |
-| Actualizado por | Claude Opus 5 |
+| Última actualización | 2026-10-19 (integraciones v0.19.0 → v0.23.0 y el primer CI en verde, sin etiqueta) |
+| Actualizado por | Claude Opus 5.5 (`integrador`) |
 | Fase | **Rebanada vertical de paquetes, en construcción** |
-| Avance de la fase | Cotizador de punta a punta. **El precio cuelga ya de una ventana de vigencia (ADR-0009, v0.18.0).** Apretón de manos del webhook vivo y verificado contra la API corriendo. Bandeja web en construcción |
-| Próximo hito | **El trabajador que convierte un `change` recibido en mensaje de bandeja.** La compuerta de pruebas (tarea 0) ya está reparada y medida con dos corridas seguidas |
+| Avance de la fase | Cotizador de punta a punta. **La cotización es la suma de sus tarifas y el precio «desde» es uno que el comprador puede pagar (v0.19.0).** Apretón de manos del webhook vivo. Bandeja web en construcción |
+| Próximo hito | **El trabajador que convierte un `change` recibido en mensaje de bandeja.** La compuerta de pruebas vuelve a ser compuerta: aislamiento 39/39 en tres corridas seguidas el 2026-10-19 |
 
 ---
 
@@ -103,42 +103,43 @@ Ordenada. La primera es la que debe tomarse ahora.
 
 | # | Tarea | Agente / dueño | Estado |
 |---|---|---|---|
-| **0** | **Reparar la suite de aislamiento, que se envenena a sí misma.** El `DELETE FROM tenants` del `afterAll` global (línea 111) nunca corre: llega con la conexión dentro de una transacción abortada desde el `afterAll` del bloque ADR-0008 (línea 599). Los fixtures sobreviven y la corrida siguiente muere con `duplicate key` antes de comprobar una política. Dos arreglos: limpiar **también en `beforeAll`**, y envolver en `SAVEPOINT` toda aserción que espere un error, para que no deje la conexión abortada | `qa` | **BLOQUEANTE.** Medido el 2026-10-13: 171 filas de residuo al empezar la sesión; 15, 20 y 20 aserciones en rojo en tres corridas, ninguna por una fuga. **Bloquea la próxima integración**: la excepción del 2026-10-13 vale una vez |
-| 0b | **Permiso para `scripts/limpiar-fixtures.mjs --borrar`, o decidir que ese borrado lo hace una persona.** El integrador lo intentó y el sistema de permisos lo denegó, igual que un borrado acotado a cinco filas | Usuario | El repositorio tiene la herramienta desde el 2026-10-10 y la compuerta no puede usarla |
-| 0c | **Una base por árbol de trabajo, o fixtures con identificador por proceso.** Cuatro sesiones contra una sola base de Neon es una carrera permanente | `devops` | El residuo de una sesión pone en rojo la compuerta de las otras tres |
-| 0d | **Decidir de quién es `politica-de-precio.ts`.** Antigravity lo tiene a medio escribir en `feat/bandeja-web` y la otra sesión lo integró hoy en `main` | `arquitecto` | Dos versiones del mismo contrato escritas en paralelo durante días. Cuanto más crezca la segunda, más caro |
+| **0** | Reparar la suite de aislamiento, que se envenenaba a sí misma | `qa` | **Cerrada el 2026-10-19 (v0.19.0).** El integrador corrió la suite tres veces seguidas contra Neon sin limpiar a mano: 39/39 las tres, sin residuo entre corridas (`4f08d25`, `7ba3b8c`) |
+| 0b | Permiso para `limpiar-fixtures.mjs --borrar` | Usuario | **Resuelta por diseño (v0.19.0):** `pnpm test` del paquete limpia solo, y solo residuo de más de 15 min con el prefijo `fixture-aislamiento-` |
+| 0c | Una base por árbol de trabajo, o fixtures con identificador por proceso | `devops` | **Resuelta la segunda opción (`7ba3b8c`, v0.19.0).** La base sigue siendo compartida: ver la cola del 2026-10-19 sobre esquema ajeno |
+| 0d | **Decidir de quién es `politica-de-precio.ts`.** Antigravity lo tiene a medio escribir en `feat/bandeja-web` y la otra sesión lo integró hoy en `main` | `arquitecto` | **Sigue abierta.** v0.19.0 no la resuelve: `feat/bandeja-web` sigue sin integrar |
 | 1 | **Iniciar verificación de Meta Business y solicitud de Tech Provider** | Usuario | **Camino crítico, sin empezar** |
 | 2 | **Recibir el tarifario real del mayorista** de la agencia piloto | Usuario | La agencia ya está tramitando la información (2026-10-07). Hasta que llegue, el catálogo sigue modelado con datos verosímiles |
 | 2b | **Bajar el tarifario de Meta para Colombia en COP** del CSV oficial | Usuario | Cinco minutos con un navegador. Sin esa cifra el plan de entrada se fija a ciegas |
 | 3 | Reparar la conexión del MCP `postgres` o retirarlo de `.mcp.json` | `devops` | Falla con `CONNECTION_CLOSED` |
-| 4a | Inbox — esquema, roles, funciones y aserciones | `datos` | **Hecho.** 30/30 contra Neon, dos auditorías de seguridad, seis mutaciones verificadas en rojo |
-| 4a.1 | **Ver en verde los jobs `aislamiento-tenants` y `test` en CI** antes de integrar | `devops` | **Condición del auditor.** Nunca han corrido: ejecutarlos una vez es la única forma honesta de cerrar ese hallazgo |
-| 4b | Inbox — API: tres orígenes de conexión, guardia de identidad, puerto a `crm`, relay por `change` | `backend` | **En curso** en `feat/inbox-webhook`. Hechos: guardia de identidad del rol, firma HMAC, apretón de manos (`GET` vivo y verificado), desglose del sobre. Falta el `POST` con persistencia durable |
+| 4a | Inbox — esquema, roles, funciones y aserciones | `datos` | **Cerrada e integrada (v0.20.0, 2026-10-19).** 50/50 de aislamiento en tres corridas seguidas contra Neon, cero saltadas; las cuatro tablas con `tenant_id`, RLS forzado y política `USING` + `WITH CHECK`, comprobado en el catálogo |
+| 4a.1 | Ver en verde los jobs `aislamiento-tenants` y `test` en CI | `devops` | **Cerrada (2026-10-19).** Ocho jobs en success: https://github.com/Alfavear/CRM/actions/runs/39308173658 |
+| 4b | Inbox — API: tres orígenes de conexión, guardia de identidad, puerto a `crm`, relay por `change` | `backend` | **Hecha (v0.21.0, 2026-10-19).** POST durable verificado vivo; relay por `change` con `jobId` por change; trabajador `ProcesarChange` con el rol `viajapro_webhook`, que escribe el mensaje bajo RLS (e2e contra Neon 5/5). **Sin verificar contra Redis real**: ver 4c y la cola del 2026-10-19 |
 | 4c | Las 3 verificaciones que **no** son de base de datos: arranque del proceso, alta de extremo a extremo, ensayo de rotación de la pimienta | `backend`, `qa`, `devops` | **En curso.** La de arranque está hecha: `guardia-de-rol.ts` comprueba identidad, `rolsuper` y `rolbypassrls`, y la API registra al arrancar «Conectado como 'viajapro_app', verificado». Faltan las otras dos |
 | 4d | Alinear `05-seguridad/02-proteccion-de-datos.md` con el ADR-0008 | `documentador` | La redacción de consentimiento lo contradice. Faltan pimienta y clave de plataforma en el inventario §5 |
-| 4e | **ADR que enmiende el ADR-0008 en cinco puntos** | `arquitecto` | Un ADR es inmutable y hoy describe un sistema que no existe: tokens en `cuentas_whatsapp`, `cuenta_id` en el directorio, una **séptima** función, `crear_particion_historial` fuera del inventario, y el hueco de `purgar_directorio`. **Lo más fácil de olvidar y lo más caro en seis meses** |
-| 4f | Reconciliación directorio ↔ verdad | `backend` | Una agencia marcada `REVOCADO` en `canales` se sigue resolviendo como `ACTIVO`: se persistirían mensajes de una agencia sin contrato |
+| 4e | ADR que enmiende el ADR-0008 | `arquitecto` | **Cerrada por el ADR-0010** (`docs/03-adr/0010-webhook-tal-como-es-y-el-trabajador-en-apps-api.md`, integrado el 2026-10-19). **Aceptado en modo desatendido: falta que el propietario lo ratifique** |
+| 4f | Reconciliación directorio ↔ verdad | `datos` | **Cerrada (v0.21.1, 2026-10-19).** Disparador `canales_propagar_estado`: lleva SUSPENDIDO/REVOCADO al directorio y nunca relaja. Aserción 46 vista en rojo sin el arreglo; aislamiento 51/51 |
 | 4g | `purgar_directorio`, o decidir que es manual | `arquitecto`, `datos` | Hoy ninguna fila del directorio se puede borrar por ningún camino de código. **No bloquea un esquema vacío; bloquea el primer tenant en producción** |
 | 4h | Trabajo anual de creación de particiones del historial | `devops` | Si falta la del año siguiente, **ninguna agencia puede conectar su canal**. Mejor: un *event trigger* que lo haga imposible de olvidar |
 | 4i | Aserción de concurrencia determinista y orden de las aserciones | `qa` | La de la carrera falla hacia el verde; y 22/23 reparan privilegios, así que enmascaran a cualquier aserción declarada después |
 | 5 | Bandeja de conversaciones en la web | Antigravity, en `feat/bandeja-web` | **En curso.** Lista y pantalla de conversación construidas, con idempotencia R5 verificada en navegador. La entrega de tiempo real fue rechazada: su emisor genera un UUID inválido y ningún evento llega a la pantalla |
-| 6 | Guardar cotizaciones con versiones inmutables | `backend` | Hoy el cálculo no persiste |
+| 6 | Guardar cotizaciones con versiones inmutables | `backend` | **Hecha (esquema v0.22.0, API v0.23.0, 2026-10-19).** `POST /api/v1/cotizaciones`, `POST /:id/versiones` y `GET /:id`. El servidor recalcula los importes y no guarda los que manda el cliente. Siguen en cola el listado, el envío y los estados |
 | 7 | Pruebas de integración de la API | `qa` | Solo se probó a mano. **La verificación del cotizador fue manual: no hay prueba automática que la repita** |
-| 8 | CI en GitHub Actions corriendo de verdad | `devops` | Escrito, nunca ejecutado |
+| 8 | CI en GitHub Actions corriendo de verdad | `devops` | **Cerrada (2026-10-19).** Primer verde: https://github.com/Alfavear/CRM/actions/runs/39308173658. Las 18 migraciones se reconstruyen desde cero en un Postgres 16 limpio |
 | 9 | Decidir nombre comercial, modelo de cobro y precios | Usuario | Antes de vender |
 | 10 | Resolver la protección de `main` en GitHub | Usuario | Plan gratuito no la permite en repos privados |
 | 11 | **Rotar la contraseña de Neon y la clave de API de Stitch** | Usuario | **Sigue pendiente.** `ac7fb99` rotó los tres roles de PostgreSQL, que es otra cosa. Ambas se pegaron en el chat; un secreto expuesto no se borra, se rota |
 | 11b | **`META_APP_SECRET` y `WEBHOOK_PAYLOAD_KEY_VERSION` no están en `.env`** | Usuario | Sin el primero el `POST` rechaza **todo** con 403, y sin el segundo lanza al cifrar. El `POST` se verificó con un secreto temporal en memoria. El secreto va al `.env`, nunca al chat |
-| 11c | Los metadatos de decorador no siempre llegan con el transpilador de desarrollo | `backend` | Nest construyó un controlador **con cero dependencias y sin quejarse**; el fallo salió como un `undefined` en la primera petición real. El módulo `inbox` usa ya `@Inject` explícito; **falta revisar `quoting` y `shared`, donde el mismo silencio es posible** |
-| 11d | El aviso «Acceso sin contexto de tenant» se emite **una vez por mensaje** | `backend` | Es deliberadamente incómodo para que llame la atención en una revisión, pero en el webhook es legítimo y a volumen real inunda el registro |
+| 11c | Los metadatos de decorador no siempre llegan con el transpilador de desarrollo | `backend` | **Hecha (`85eceac`, v0.19.0).** `@Inject` explícito y `guardia-de-inyeccion.spec.ts`, que pone en rojo cualquier dependencia sin token |
+| 11d | El aviso «Acceso sin contexto de tenant» se emitía una vez por mensaje | `backend` | **Hecha (`f57925b`, v0.19.0).** El webhook usa `sinTenantDeclarado`, con la operación declarada en `operaciones-de-plataforma.ts` (tipo cerrado). La variante ruidosa sigue para todo lo no declarado |
 | 12 | Autenticación: el `tenant_id` debe salir del token de sesión | `backend` | Hoy la web lo envía por cabecera. Solo funciona con `APP_ENV=local`, pero es deuda que bloquea desplegar |
-| 13 | **La carrera de `turbo` entre `build` y `typecheck` de la web** | `devops` | `next build` reescribe `.next/types` mientras `tsc` lo lee. Por separado pasan; en paralelo da un rojo falso. **Morderá en CI**, que es justo donde corren en paralelo |
+| 13 | La carrera de `turbo` entre `build` y `typecheck` | `devops` | **Hecha (`f9da930`, v0.19.0).** `typecheck` de `web` y `database` depende de su `build`. Verificado: `typecheck --force` 9/9 sin caché |
 | 14 | El aviso de `any` no es una compuerta | `devops` | `no-explicit-any` está en `warn` y ningún script lleva `--max-warnings 0`: hoy hay cero `any`, pero el primero entraría sin que lint falle |
 
 ## 4. Bloqueos y riesgos activos
 
 | Bloqueo | Impacto | Dueño | Mitigación |
 |---|---|---|---|
+| **Rotar `WHATSAPP_WEBHOOK_VERIFY_TOKEN` en Meta y en los cuatro `.env`** | Quedó en el historial del repositorio privado desde `94bf78f`, como literal de una prueba. **Alcance: solo el apretón de manos GET** de la suscripción; no firma ni descifra nada | Usuario | El literal ya salió del código (`33283a5`) y el historial se ignora solo por su huella exacta. **El comentario de `.gitleaksignore` dice «ya rotado» y todavía no lo está**: será cierto cuando se rote |
 | **Modo desatendido detenido en la compuerta** — el commit `59a52d8` amplía los permisos de los propios agentes | Cada commit y cada push siguen pidiendo autorización al propietario, con dos IA trabajando en paralelo | Usuario | **Solo el propietario puede aprobarlo, en su propia sesión**: el integrador no acepta de segunda mano un cambio a la configuración que define lo que los agentes pueden hacer sin preguntar. Y antes hay que sacar `git clean -xdf` de la lista de permitidos: borra lo no rastreado **y** lo ignorado, incluidos los tres `.env` |
 | **`Bash(cat:*)` permitido hace decorativo el `deny` de `Read(./.env)`** | `cat .env` funciona hoy. O ese `deny` significa algo, o sobra por honestidad | Usuario | Decidirlo al tocar los permisos |
 | Verificación de Meta Business sin iniciar | **Bloquea lanzar con clientes reales, NO bloquea construir.** Tarda semanas | Usuario | Arrancar el trámite en paralelo. Mientras tanto se desarrolla con el número de prueba de Meta |
@@ -530,3 +531,266 @@ llamarse `masBarata`, porque la opción más barata es casi por definición la d
 | `neto` y `venta` obligados a la **misma moneda**: el mayorista de producto internacional cotiza en USD y la agencia vende en COP | `arquitecto` | Los 47 productos son terrestres y en COP. Candidato a bloqueante en el mes dos |
 | **Impuestos sin base gravable.** `experto-turismo` levantó la bandera y declaró no conocer el detalle | `investigador` | Afecta a la factura electrónica, no al cotizador. Fuente: el contador de la agencia piloto |
 | Nombres de dominio: `CLAUDE.md` exige **inglés** y el esquema entero está en **español** | `arquitecto` | Hay que cambiar la regla o el código. No se tocó ninguna de las dos |
+
+---
+
+## Integración del 2026-10-19 — v0.19.0
+
+`docs/adr-0009-parametrico` @ `f57925b` entra en `main` (`3b53943`), etiquetada **v0.19.0**.
+Registro: [`docs/_integraciones/2026-10-19-v0.19.0.md`](docs/_integraciones/2026-10-19-v0.19.0.md).
+
+Compuertas, corridas por el integrador sobre el árbol fusionado (idéntico a la punta: la rama
+estaba 0 por detrás): `install --frozen-lockfile` limpio · `typecheck` **9/9 sin caché** ·
+`lint` **7/7 sin caché** · `format:check` limpio · `build` **5/5 sin caché** · pruebas: contracts
+**56**, domain **70**, api **218** (16 archivos, e2e incluidas) y aislamiento **39/39**.
+**Aislamiento en verde tres veces seguidas** contra Neon, sin limpieza manual y sin residuo entre
+corridas. **La tarea 0 queda cerrada y la compuerta de pruebas vuelve a ser compuerta.**
+
+### Cola nueva — con dueño, no bloquea
+
+| Cola | Dueño | Por qué no bloquea |
+|---|---|---|
+| **El shell del usuario exporta un `DATABASE_URL` de OTRO proyecto (`TrastornadoresApp`, otro endpoint de Neon) y `dotenv-cli` no lo pisa.** La primera corrida de `pnpm test` lanzó `limpiar-fixtures.mjs --borrar` **con rol propietario contra esa base ajena**; se salvó porque allí no existe `tenants`. Arreglo: `dotenv -o` en los scripts del paquete, o que `limpiar-fixtures` aborte si `current_database()` no es la esperada | `devops` (+ Usuario: quitar la variable del perfil) | El filtro por prefijo y edad acota lo borrable; y con `env -u DATABASE_URL` todo corre contra la base correcta. **Es de hoy, pero el daño posible es pequeño y no es de aislamiento entre agencias** |
+| ~~Neon tiene aplicadas tres migraciones que no están en `main` (`20261011090000…090200`)~~ | `datos` | **Resuelta en v0.20.0:** ya están en `main`; `migrate status` da 15 migraciones y ninguna deriva |
+| La rama mezcla propósitos (`a408407` es inbox en una rama de quoting) y su prefijo `docs/` sigue mintiendo; además se integró **dos veces** con el mismo nombre | `facilitador` | Se integró por su contenido y por desbloquear la tarea 0. La rama no se borró porque el árbol `D:\Projects\CRM-api` la tiene activa: **su sesión debe abrir rama nueva desde `main`** |
+| `semilla-catalogo-real.ts` calcula la venta del menor con `* 0.75` en coma flotante (R8) | `datos` | Es semilla, redondeada a miles; no es cálculo de producción |
+| `catalogo.e2e-spec.ts` redefine a mano el tipo de la respuesta (`desdeEsDeGrupo: boolean`) en vez de inferirlo del contrato (R3) | `qa` | Solo en la prueba; si el contrato cambia, la aserción lo detecta igual |
+
+---
+
+## Integración del 2026-10-19 (segunda) — v0.20.0
+
+`feat/inbox-esquema` @ `d30b256` entra en `main` (`533c5d4`), etiquetada **v0.20.0**. Registro:
+[`docs/_integraciones/2026-10-19-v0.20.0.md`](docs/_integraciones/2026-10-19-v0.20.0.md).
+
+Compuertas sobre el árbol fusionado (idéntico a la punta; 0 por detrás de `2905e05`), siempre con
+`env -u DATABASE_URL -u DIRECT_URL` y `current_database() = neondb` comprobado: `typecheck` **9/9**,
+`lint` **7/7**, `build` **5/5**, los tres sin caché · `format:check` limpio · pruebas: contracts **56**,
+domain **70**, api **218**, aislamiento **50/50** — **tres corridas seguidas, cero saltadas, sin
+residuo**. La tarea 4a queda cerrada.
+
+### Cola nueva — con dueño, no bloquea
+
+| Cola | Dueño | Por qué no bloquea |
+|---|---|---|
+| ~~Las tres migraciones del inbox se fechan `20261011…` y nadie había reconstruido el esquema desde cero~~ | `datos` | **Resuelta (2026-10-19):** el CI reconstruye las 18 desde cero en un Postgres 16 limpio y queda en verde |
+| 4a.1 sigue abierta: los jobs `aislamiento-tenants` y `test` nunca han corrido en CI | `devops` | La compuerta local está en verde y medida tres veces |
+
+---
+
+## Integración del 2026-10-19 (tercera) — sin etiqueta
+
+`feat/inbox-webhook-post` @ `78e74cc` entra en `main` (`539c581`). Solo añade la prueba e2e del
+`POST` y su bitácora: **no cambia el artefacto desplegable, no lleva versión.** Registro:
+[`docs/_integraciones/2026-10-19-inbox-webhook-post.md`](docs/_integraciones/2026-10-19-inbox-webhook-post.md).
+
+Compuertas en un árbol de trabajo **limpio** en `78e74cc` (el de `D:\Projects\CRM-api` tenía trabajo
+sin commitear de `feat/inbox-relay`, así que la primera corrida no contó): `typecheck` 9/9, `lint`
+7/7, `build` 5/5, sin caché · `format:check` limpio · contracts 56, domain 70, api **224**,
+aislamiento **50/50 dos veces seguidas**.
+
+### Cola nueva — con dueño, no bloquea
+
+| Cola | Dueño | Por qué no bloquea |
+|---|---|---|
+| Durante las corridas había **4** tenants de fixture vivos de otra sesión (no múltiplo de 3: posible corrida muerta a medias). La limpieza los respetó por edad y la suite pasó igual | `datos` | Si en 15 min no desaparecen, los barre la siguiente corrida |
+| Queda el directorio `D:\Projects\CRM-gate` (árbol temporal del integrador, ya desregistrado y sin `.env`): el borrado fue denegado | Usuario | Solo contiene `node_modules` y copia del código; borrarlo a mano |
+
+---
+
+## Integración del 2026-10-19 (cuarta) — v0.21.0
+
+`feat/inbox-relay` @ `99eb149` entra en `main` (`b12bc4f`), etiquetada **v0.21.0**. Registro:
+[`docs/_integraciones/2026-10-19-v0.21.0.md`](docs/_integraciones/2026-10-19-v0.21.0.md).
+
+Compuertas sobre el **árbol fusionado**, en un árbol de trabajo limpio (el commit de merge tiene
+exactamente el árbol probado): `typecheck` 9/9, `lint` 7/7, `build` 5/5, sin caché · `format:check`
+limpio · `pnpm run test --force` **dos veces**: contracts 56, domain 70, api **258**, aislamiento
+**50/50** las dos, con `api` y `database` corriendo en paralelo.
+
+### Los cuatro puntos que había que juzgar
+
+1. **El trabajador vive en `apps/api`, no en `apps/worker`.** No bloquea: es otro proceso
+   (`src/worker.ts`), con su propio módulo y su propio rol, y no comparte `PrismaService` con la API.
+   Pero el mapa de `CLAUDE.md` §5 y el ADR-0004 dicen otra cosa, y eso es una afirmación que el código
+   ya no cumple. Va a cola del `arquitecto`, que decide: o un ADR que lo acepte y corrija el mapa, o
+   mover el trabajador a `apps/worker` cuando se extraiga el paquete.
+2. **BullMQ real sin verificar.** Basta para integrar: no hay nada desplegado, la idempotencia está en
+   el `jobId` y en `ProcesarChange` (probados), y si falla el encolado el POST devuelve 500 y Meta
+   reintenta sobre una fila ya durable. Queda en 4c: verificarlo con `pnpm infra:up` y en CI antes del
+   primer despliegue.
+3. **Dependencias justificadas:** `bullmq` es la cola del ADR-0001; `ioredis` la exige BullMQ 6
+   aparte; `pg` y `@types/pg` son solo de desarrollo, para la e2e, como en `packages/database`.
+4. **El `afterAll` de `aislamiento.spec.ts` borra `recepciones_webhook` entera.** Está en `main`
+   desde antes, no en esta rama. No se manifestó: dos corridas con las pruebas de `api` y `database`
+   en paralelo. Cola de `qa`.
+
+### Cola nueva — con dueño, no bloquea
+
+| Cola | Dueño | Por qué no bloquea |
+|---|---|---|
+| Trabajador en `apps/api` contra el mapa de `CLAUDE.md` | `arquitecto` → Usuario | **Decidido en el ADR-0010.** Falta la línea del mapa en `CLAUDE.md` §5, que la aprueba el propietario aparte |
+| ~~Revisión de `auditor-seguridad` sobre `ProcesarChange` y `conTenantResuelto`~~ | `auditor-seguridad` | **Cerrada (v0.21.2):** sin bloqueantes; tres correcciones integradas |
+| BullMQ contra Redis real, y el job de CI | `devops` (4c, 4a.1) | Nada desplegado; ruta probada con dobles |
+| Sin relay de barrido: un change cuya cola se pierde solo se recupera por el reintento de Meta. Falta una función de base para listar pendientes | `datos` | Meta reintenta durante horas |
+| `aislamiento.spec.ts` borra toda `recepciones_webhook` en su `afterAll` | `qa` | No se manifestó en dos corridas en paralelo |
+| `.env.example`: la rama reescribió el archivo entero por finales de línea (345 líneas en el diff, 3 de contenido). Falta `.gitattributes` | `devops` | Solo ruido en el diff |
+| `D:\Projects\CRM-gate2`: otro árbol temporal del integrador sin borrar (desregistrado, sin `.env`) | Usuario | Borrar a mano junto con `CRM-gate` |
+
+---
+
+## Integración del 2026-10-19 (quinta) — v0.21.1
+
+`fix/datos-canal-revocado` @ `1739694` entra en `main` (`f77906a`), etiquetada **v0.21.1**. Registro:
+[`docs/_integraciones/2026-10-19-v0.21.1.md`](docs/_integraciones/2026-10-19-v0.21.1.md).
+
+La rama iba 6 por detrás. Se fusionó con `aac69bf` en un árbol limpio y ahí se repitió todo (el
+merge tiene el árbol probado): `typecheck` 9/9, `lint` 7/7, `build` 5/5, sin caché · `format:check`
+limpio · `pnpm run test --force` dos veces: 56 · 70 · api **258** · aislamiento **51/51** las dos,
+con entre 6 y 11 tenants de fixture de otras sesiones vivos a la vez.
+
+**Migración.** `_prisma_migrations` tiene dos filas para `20261019120000`: el primer intento, con
+`rolled_back_at` puesto, y el bueno, cuya `checksum` coincide con el archivo de la rama
+(`9a5a808c…`). `migrate status`: 16 migraciones, al día. La función `propagar_estado_canal` es
+`SECURITY DEFINER`, propiedad de `viajapro_enrutador`, sin `EXECUTE` para nadie más; filtra por
+`tenant_resuelto_id = NEW.tenant_id`, así que una agencia solo puede restringir sus propias filas.
+
+**El interbloqueo de la aserción 22 es del arnés, no un defecto.** La 22 reaplica `001`/`002` —DDL
+de privilegios sobre todo el esquema— y choca con otra corrida que hace lo mismo sobre la misma
+base. No se reprodujo en dos corridas con otras sesiones activas. Va a `qa`.
+
+### Cola nueva — con dueño, no bloquea
+
+| Cola | Dueño | Por qué no bloquea |
+|---|---|---|
+| La aserción 22 puede interbloquearse con otra corrida simultánea (DDL de privilegios contra una base compartida). Encaja con 4i y con 0c: serializar con `pg_advisory_lock` o una base por árbol | `qa` | Es del arnés; no se reprodujo en dos corridas |
+| **`D:\Projects\CRM\.env` y `CRM-inbox\.env` no tienen `WHATSAPP_DIRECTORY_PEPPER` ni `WEBHOOK_PAYLOAD_KEY`**: desde v0.21.0, `pnpm test` cae en `inbox-relay.e2e-spec` en esos árboles (visto hoy: 253 pasadas y 5 saltadas). Solo `CRM-api` puede correr la compuerta completa | Usuario (copiar las variables; nunca por el chat) | El código está bien y `.env.example` las declara; lo que falta es la configuración local |
+| Las e2e de `apps/api` se cargan desde `.env` sin `-o` y heredan el `DATABASE_URL` del shell. El integrador consultó una vez, solo en lectura, la base ajena por eso | `devops` | Ya estaba en la cola del 2026-10-19 (primera) |
+| `D:\Projects\CRM-gate3`: tercer árbol temporal sin borrar | Usuario | Junto con `CRM-gate` y `CRM-gate2` |
+
+---
+
+## Integración del 2026-10-19 (sexta) — v0.21.2: la auditoría del trabajador, cerrada
+
+`fix/inbox-auditoria-trabajador` @ `a30db6b` entra en `main` (`b17aa34`), etiquetada **v0.21.2**. Registro:
+[`docs/_integraciones/2026-10-19-v0.21.2.md`](docs/_integraciones/2026-10-19-v0.21.2.md).
+
+**`auditor-seguridad` auditó el trabajador de v0.21.0 y no encontró bloqueantes. Las tres correcciones
+que pidió están integradas:**
+
+1. **R10:** `ErrorDeTrabajo` deja en `failedReason` y en el registro solo `Clase:código`. BullMQ
+   guarda ese motivo siete días en Redis, sin RLS ni cifrado. Una prueba fuerza PII y comprueba que no sale.
+2. `FOR SHARE` al leer el canal: una revocación concurrente espera a que termine la escritura.
+3. Dos e2e contra Neon: un lote con `changes` de dos agencias, y el mismo `wamid` en dos tenants.
+
+Compuertas sobre el árbol fusionado con `b93fa75` (iba 3 por detrás), en un árbol limpio:
+`typecheck` 9/9, `lint` 7/7, `build` 5/5, sin caché · `format:check` limpio · `pnpm run test --force`
+dos veces: 56 · 70 · api **263** (`inbox-relay.e2e-spec` 7/7) · aislamiento **51/51** las dos.
+
+Cola: nada nuevo. `D:\Projects\CRM-gate4` se suma a los árboles temporales que hay que borrar a mano.
+
+---
+
+## Integración del 2026-10-19 (séptima) — ADR-0010, sin etiqueta
+
+`docs/adr-0010-enmienda-0008` @ `9cdda1e` entra en `main` (`cf2296d`). Solo toca cinco `.md` de `docs/`:
+no cambia el artefacto desplegable, así que no lleva versión. Registro:
+[`docs/_integraciones/2026-10-19-adr-0010.md`](docs/_integraciones/2026-10-19-adr-0010.md).
+
+Fue **devuelta una vez**: en `0ee9a52` cambiaba una línea de `CLAUDE.md`. Ese archivo solo cambia con
+aprobación del propietario, y ningún mensaje de agente la sustituye. En `9cdda1e`, `CLAUDE.md` es
+idéntico a `main`. La línea del mapa se le pide al propietario aparte.
+
+**El ADR-0010 se aceptó en modo desatendido y falta que el propietario lo ratifique.** `auditor-seguridad` lo
+revisó (ACEPTAR CON CAMBIOS), y los dos cambios están aplicados.
+
+### Cola nueva — con dueño, no bloquea (según `auditor-seguridad`)
+
+| Cola | Dueño | Por qué no bloquea |
+|---|---|---|
+| **No existe el relay de barrido.** Un `change` cuya cola se pierde solo se recupera por el reintento de Meta. Hace falta una función de base que liste los `changes` pendientes (`viajapro_webhook` solo puede `tomar_recepcion` por id) | `datos` | Meta reintenta durante horas; nada desplegado |
+| **Falta el puerto `asegurarContacto`:** `inbox` escribe en `contactos` (de `crm`) directamente, contra R4 | `backend` | Misma transacción y mismo RLS. Es frontera de módulo, no aislamiento |
+| **Tres huecos del disparador `canales_propagar_estado`:** la baja de una cuenta, el borrado lógico de un canal y la re-alta no se propagan al directorio | `datos` | El trabajador contrasta con `canales` dentro de la transacción y descarta lo revocado |
+| Ratificar el ADR-0010, y aprobar la línea del mapa en `CLAUDE.md` §5 | Usuario | Hoy describe el código tal como está |
+
+---
+
+## Integración del 2026-10-19 (octava) — v0.22.0: el esquema de cotizaciones
+
+`feat/quoting-cotizaciones-esquema` @ `1effb16` entra en `main` (`862d265`), etiquetada **v0.22.0**. Registro:
+[`docs/_integraciones/2026-10-19-v0.22.0.md`](docs/_integraciones/2026-10-19-v0.22.0.md).
+
+Es de aislamiento, y se verificó como tal. La rama se fusionó con `5618bc2` (iba 5 por detrás) en un
+árbol limpio con el `.env` completo, y el merge tiene el árbol probado. Resultados: `typecheck` 9/9,
+`lint` 7/7, `build` 5/5, sin caché · `format:check` limpio · `pnpm run test --force` dos veces: 56 · 70 ·
+api 263 · aislamiento **57/57**. **Mutaciones 13/13 en rojo**, con su control previo en verde, y después
+una tercera corrida de aislamiento 57/57 para confirmar que la base volvió a su estado bueno.
+`migrate status`: 18 migraciones, al día; las dos nuevas aplicadas con la `checksum` del archivo.
+
+**La vía de escape de la purga, comprobada en Neon.** El disparador deja borrar una versión solo si
+`current_user` es el propietario de la tabla (`neondb_owner`) **y** el tenant está en
+`viajapro.purga_de_tenants`. Cualquier rol puede fijar ese parámetro, porque es un GUC personalizado.
+Por eso no protege él: protege la primera condición. Ningún rol `viajapro_*` es miembro del
+propietario, ni tiene `SUPERUSER`, `BYPASSRLS` o `CREATEROLE`. La función es `SECURITY INVOKER`, y no
+existe ninguna función `SECURITY DEFINER` del propietario por la que un rol de app pueda ejecutar como él.
+**`viajapro_app` puede fijar el parámetro, pero no puede activar la purga.**
+
+### Cola nueva — con dueño, no bloquea
+
+| Cola | Dueño | Por qué no bloquea |
+|---|---|---|
+| Los roles de app tienen `UPDATE`/`DELETE` concedidos sobre `versiones_cotizacion`, y los frena solo el disparador (M11 lo prueba). Quitarlos daría una segunda capa | `datos` | El disparador está probado por mutación |
+| `mutaciones-aislamiento.mjs` rompe el aislamiento **en la base compartida**: durante su corrida, las suites de los otros árboles pueden ver rojos falsos | `qa` / `devops` (0c) | Revierte siempre, y solo hay datos de prueba |
+| `D:\Projects\CRM-gate5`: otro árbol temporal | Usuario | Borrar a mano con los demás |
+
+---
+
+## Integración del 2026-10-19 (novena) — v0.23.0: guardar cotizaciones
+
+`feat/quoting-guardar-cotizacion` @ `c8121ee` entra en `main` (`3d9b07a`), etiquetada **v0.23.0**. Registro:
+[`docs/_integraciones/2026-10-19-v0.23.0.md`](docs/_integraciones/2026-10-19-v0.23.0.md).
+
+La rama iba 0 por detrás de `860d335`. Las compuertas se corrieron en un árbol limpio con el `.env`
+completo, y el merge tiene el árbol probado: `typecheck` 9/9, `lint` 7/7, `build` 5/5, sin caché ·
+`format:check` limpio · `pnpm run test --force` dos veces: contracts **60**, domain 70, api **279**
+(`cotizaciones.e2e-spec` 9/9) y aislamiento **57/57**.
+
+**`incluirMargen` no tiene control de rol, confirmado.** El controlador lo lee de la query
+(`v === 'true'`) y lo pasa tal cual al caso de uso, sin mirar quién pide. Hoy no hay autenticación,
+y el tenant llega por cabecera, solo con `APP_ENV=local`. Va ligado a la tarea 12.
+
+### Cola nueva — con dueño, no bloquea
+
+| Cola | Dueño | Por qué no bloquea |
+|---|---|---|
+| **`incluirMargen` sin control de rol**: cualquiera que llame la API ve el margen, o sea el neto | `backend`, junto con la **tarea 12** | No hay autenticación ni superficie para el viajero. **Dependencia dura:** no se despliega sin sesión y sin un rol que pueda pedir el margen |
+| Listado, envío y estados de la cotización | `backend` | Siguiente rebanada de la tarea 6 |
+| El filtro de errores responde **400** a los códigos `*_NO_ENCONTRADA`, cuando debería ser 404 (la e2e cubre `COTIZACION_NO_ENCONTRADO` con 404, no el resto) | `backend` | Es el código HTTP; no es una fuga |
+| `quoting` lee `contactos` y `oportunidades` (de `crm`) directamente desde su transacción, igual que `inbox` (R4; ver `asegurarContacto`) | `arquitecto` | Mismo RLS y misma transacción; es frontera de módulo |
+| `D:\Projects\CRM-gate6`: otro árbol temporal | Usuario | Borrar a mano |
+
+---
+
+## Integración del 2026-10-19 (décima) — el primer CI en verde, sin etiqueta
+
+`ci/primer-verde` @ `33283a5` entra en `main` (`d56f06c`). Toca el CI, `turbo.json`, la configuración de
+gitleaks, una prueba y la bitácora. **No cambia el artefacto desplegable, así que no lleva etiqueta.**
+Registro: [`docs/_integraciones/2026-10-19-ci-primer-verde.md`](docs/_integraciones/2026-10-19-ci-primer-verde.md).
+
+La compuerta es la corrida https://github.com/Alfavear/CRM/actions/runs/39308173658, sobre la punta exacta: 8 jobs en success (`secretos`, `typecheck`,
+`lint`, `build`, `test`, `aislamiento-tenants`, `fronteras-entre-modulos` y `politica-de-rama`), con
+Postgres 16 y Redis 7 limpios.
+
+**Se devolvió una vez.** Uno de los dos «falsos positivos» de gitleaks era el `WHATSAPP_WEBHOOK_VERIFY_TOKEN`
+real, que la lista blanca habría ocultado para siempre. Ahora la prueba genera el suyo, y el
+historial se ignora **solo** por la huella `94bf78f…:verificacion-suscripcion.spec.ts:generic-api-key:4`.
+El valor ya no aparece en ningún archivo rastreado de `main`.
+
+### Cola nueva — con dueño, no bloquea
+
+| Cola | Dueño | Por qué no bloquea |
+|---|---|---|
+| BullMQ real sigue sin probar: `apps/api/vitest.config.ts` fija `COLA_CHANGES=inerte`, aunque el CI ya levanta Redis 7 | `devops` (4c) | Nada desplegado. El CI ya tiene el Redis: falta una prueba que lo use |
+| Protección de rama con estos checks como obligatorios | Usuario (**tarea 10**) | El plan gratuito no la permite en repos privados |
+| `convencion-de-commits` sale *skipped*, porque solo corre en PR, y la integración aquí es por merge local | `devops` | La convención la revisa el integrador a mano |
+

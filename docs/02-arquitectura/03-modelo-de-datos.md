@@ -327,7 +327,8 @@ teóricas:
   ruidosa —ninguna agencia podría conectar su canal—, que es preferible a una partición por
   defecto que luego impide adjuntar el año nuevo sin mover filas.
 
-Lo mismo vale para RLS el día que se particione una tabla de negocio —`mensajes` lo será—:
+Lo mismo vale para RLS el día que se particione una tabla de negocio —`mensajes` **no** se
+particiona hoy, y si llega a hacerse será por HASH de `tenant_id`: ADR-0010 §1.5—:
 la política va al padre **y a cada partición**, o un `SELECT` directo contra la partición
 usa su propia configuración, que nadie habilitó. `aplicar_aislamiento_tenant` ya desciende,
 y `tablas_sin_aislamiento` imputa cada partición a su tabla raíz.
@@ -339,11 +340,31 @@ y `tablas_sin_aislamiento` imputa cada partición a su tabla raíz.
   tenant cascadea a `canales` y choca con el `ON DELETE RESTRICT` del directorio. La
   retención de 5 años de las filas `REVOCADO` y un derecho de supresión no tienen hoy
   ejecutante que no sea el rol propietario, que es justo lo que ADR-0008 no acepta como
-  control. Pendiente: una función `purgar_directorio(p_anteriores_a)` acotada a filas
-  `REVOCADO` de más de cinco años y con asiento en el historial, **o** la decisión
-  explícita de que es una operación manual con procedimiento escrito.
-- **Nada ata `canales.estado` con `enrutamiento_canales.estado`.** Es responsabilidad del
-  camino de baja, en la misma transacción, con una métrica de reconciliación. Tarea 4b.
+  control. **Decidido en ADR-0010 §1.4:** la baja de una agencia es lógica y el `RESTRICT`
+  es intencional. La retención la ejecutará `purgar_directorio(p_anteriores_a)`, nunca el
+  rol propietario a mano, y se construye antes de la fecha límite que fija ese ADR.
+- **`canales.estado` → `enrutamiento_canales.estado`: lo ata un disparador desde el
+  2026-10-19 (tarea 4f, migración `20261019120000_propagar_estado_de_canal_al_directorio`).**
+
+  ```
+  UPDATE canales SET estado = 'REVOCADO'          (viajapro_app, bajo RLS)
+        │  AFTER UPDATE OF estado WHEN estado <> 'ACTIVO'
+        ▼
+  propagar_estado_canal()    SECURITY DEFINER, dueño viajapro_enrutador, sin EXECUTE para nadie
+        ├─► enrutamiento_canales.estado := max(actual, NEW.estado)   (canal_id y tenant de NEW)
+        └─► enrutamiento_historial       asiento ACTIVO → REVOCADO
+  ```
+
+  Por qué un disparador y no que `resolver_enrutamiento` lea `canales`: el resolvedor corre
+  sin contexto de tenant y su dueño no tiene privilegios sobre `canales` por diseño; leerla
+  desde ahí sería una lectura entre tenants nueva. El disparador recibe la fila en `NEW` y no
+  necesita ninguno. Es **monótono**: restringe y nunca relaja, porque reactivar el ruteo es
+  repuntar y eso queda solo en `registrar_enrutamiento`. Aserción 46.
+
+  Lo que sigue sin atar: la baja de una **cuenta** (`cuentas_whatsapp.estado`) no restringe
+  las filas WABA del directorio, y `registrar_enrutamiento` puede escribir `ACTIVO` para un
+  canal que en `canales` sigue `REVOCADO` (es el orden del re-alta, y el rol `viajapro_altas`
+  es el único que puede hacerlo).
 
 ---
 
@@ -416,3 +437,198 @@ El teléfono es único por tenant (`UNIQUE (tenant_id, telefono_e164)`) y es la 
 *resolver* quién escribe, pero no es la clave de la relación: cambia, se reasigna, y una agencia
 puede tener dos canales. `contactos` ya expone `UNIQUE (id, tenant_id)`, que es lo que permite a
 `conversaciones` declarar `FOREIGN KEY (contacto_id, tenant_id)` el día que se cree.
+
+---
+
+## Inbox — conversaciones, mensajes, adjuntos y el espejo de plantillas
+
+*Añadido en `20261011090000_inbox_conversaciones_mensajes_y_plantillas`. Sirve
+`packages/contracts/src/inbox.ts` y `packages/contracts/src/plantillas.ts`.*
+
+```mermaid
+erDiagram
+    CONTACTOS      ||--o{ CONVERSACIONES : "habla por"
+    CANALES        ||--o{ CONVERSACIONES : "entra por"
+    CONVERSACIONES ||--o{ MENSAJES       : "contiene"
+    CONVERSACIONES ||--o{ NOTAS_INTERNAS : "ancla (opcional)"
+    MENSAJES       ||--o{ ADJUNTOS       : "trae"
+    CUENTAS_WHATSAPP ||--o{ PLANTILLAS_WHATSAPP : "registra en Meta"
+    PLANTILLAS_WHATSAPP ||--o{ MENSAJES : "reabre con"
+    USUARIOS       ||--o{ CONVERSACIONES : "asignada a"
+    USUARIOS       ||--o{ MENSAJES       : "escribe"
+```
+
+**Todas las claves foráneas son compuestas con `tenant_id`.** Es el agujero que se cerró en
+`oportunidades` y aquí había dos puertas: el contacto y el canal. RLS no interviene en la
+integridad referencial —PostgreSQL la comprueba por encima de las políticas—, así que con una
+clave simple el hilo de una agencia puede colgar del contacto de otra y la fila resultante es
+invisible para las dos. Lo vigilan las aserciones 39 y la mutación M6.
+
+### Las decisiones y su porqué
+
+| Decisión | Por qué |
+|---|---|
+| **Un hilo por `(contacto, canal)`** | En WhatsApp el hilo es el que el cliente ve en su teléfono. Partirlo por «tema» crea dos verdades de la misma pantalla, y es lo que permite al webhook hacer `ON CONFLICT DO UPDATE` sin carreras. |
+| **La ventana de 24 h es UNA columna** (`ultimo_mensaje_cliente_en`) | `abierta`, `expiraEn` y `minutosRestantes` son función de ese instante y de `now()`. Una columna `abierta` caduca sin que nadie escriba: a las 15:00 nadie manda un `UPDATE`, y desde ese segundo estaría mintiendo. |
+| **`wamid` único por tenant, índice parcial** | La idempotencia de R5 en la base, no en el código. Meta reintenta hasta recibir 200, y también cuando el 200 se perdió de vuelta. Por tenant y no global: global sería un oráculo que le confirma a una agencia la actividad de otra. |
+| **`clave_idempotencia` única por tenant** | La otra mitad: entre el clic del asesor y la respuesta de Meta no hay identificador. Un doble clic manda el mensaje dos veces, y si es plantilla **se cobra dos veces**. |
+| **Dos ejes de tiempo** (`ocurrido_en` de Meta, `creado_en` nuestro) | Los webhooks llegan desordenados: un reintento trae un mensaje de ayer después de uno de ahora. El hilo ordena por el de Meta, con `id` (UUID v7) de desempate porque Meta solo da segundos. R9. |
+| **`cotizacion_id` sin FK, por ahora** | La tabla `cotizaciones` no existe todavía. La columna se crea hoy porque el contrato ya la expone y porque añadirla a `mensajes` con millones de filas es caro. La FK compuesta entra con `ADD CONSTRAINT NOT VALID` + `VALIDATE`. |
+| **`adjuntos` es tabla, no JSONB** | Ciclo de vida propio: se descarga después, falla, se reintenta, se purga. Y la clave de S3 es lo que hay que recorrer para borrar de verdad los datos de una agencia que se va — S3 **no** está cubierto por RLS (ADR-0003). |
+
+### Las plantillas no son nuestras
+
+`plantillas_whatsapp` es la única tabla del esquema cuyo dueño está fuera del sistema: es un
+**espejo** de lo que Meta aprobó. De ahí tres formas que no se parecen al resto del modelo:
+
+1. **La identidad es `(WABA, nombre, idioma)`**, no `(tenant, nombre)`. Una agencia con dos WABAs
+   puede tener `recordatorio_pago` en los dos, y son dos plantillas con estados distintos; y la
+   misma plantilla en `es_CO` y en `en_US` puede estar aprobada en una y rechazada en la otra.
+2. **El tiempo se parte en tres.** `actualizada_en_meta` (lo que dice Meta, lo único que el
+   contrato expone), `sincronizada_en` (cuándo lo oímos) y `estado_cambiado_en` (desde cuándo está
+   así). La tercera parece redundante hasta que un asesor pregunta «¿desde cuándo está pausada?».
+3. **`creado_por` y `actualizado_por` NULOS son el dato**, no un campo sin rellenar: significan que
+   el cambio lo hizo Meta. Meta pausa sola una plantilla cuando la marcan como spam, sin avisar.
+   Un CHECK exige que `RECHAZADA` y `PAUSADA` traigan motivo: una lista que esconde el porqué no
+   explica por qué falta la plantilla que se usaba ayer.
+
+### Por qué `mensajes` NO está particionada
+
+Es la tabla que más crece. Aun así no se particiona hoy, y no por prudencia:
+
+1. **No ayuda a la consulta caliente.** Abrir un hilo es una búsqueda por `(tenant_id,
+   conversacion_id)`; un btree de tres niveles cubre un millón de filas igual que cien millones.
+2. **Particionar por `ocurrido_en` rompería la idempotencia de R5.** PostgreSQL exige que toda
+   restricción única contenga la clave de partición: `(tenant_id, wamid)` pasaría a
+   `(tenant_id, wamid, ocurrido_en)`, y el mismo `wamid` reintentado con otro timestamp caería en
+   otra partición y se insertaría dos veces. Sin ningún error.
+3. **Cuando haga falta, la forma correcta es HASH por `tenant_id`**: mantiene `(tenant_id, wamid)`
+   exigible, acota el vacuum por agencia y encaja con el aplicador de RLS, que ya desciende por
+   `pg_inherits`.
+
+Disparadores para revisarlo: más de ~50 M de filas, un vacuum que no termina en su ventana, o una
+política de retención por fecha —único caso donde partir por tiempo gana, y entonces la
+deduplicación de `wamid` se saca a una tabla aparte.
+
+### R10 — el texto de un mensaje es PII
+
+`mensajes.texto` es la mayor superficie de datos sensibles del producto: ahí escribe el viajero, y
+en una agencia eso incluye número de pasaporte y fecha de nacimiento de un menor. **No se cifra por
+columna**, y la decisión tiene coste: el hilo se lee entero en cada apertura y `ConsultarBandeja.buscar`
+busca dentro del texto; cifrado queda ilegible para cualquier índice. Lo que sí se aplica: RLS
+forzada (aserción 38), el texto **nunca** viaja a `registros_auditoria.detalle` ni a `outbox.payload`,
+el índice de trigramas vive en la misma tabla y bajo la misma política, y el cifrado en reposo lo da
+el almacenamiento. **Esto no cierra el asunto:** si el cifrado por columna se considera exigible
+para la Ley 1581, es un ADR con `auditor-seguridad` y un rediseño de la búsqueda. Queda en la cola
+de `ESTADO.md`.
+
+### El punto ciego que se cerró
+
+`001-aislamiento-tenant.sql` solo miraba si `polwithcheck` era NULL. Quitar `WITH CHECK` dejando
+`USING` no cambia el comportamiento —PostgreSQL reutiliza la expresión—, pero un `WITH CHECK`
+**presente y distinto** (`WITH CHECK (true)`) pasaba todas las comprobaciones de catálogo mientras
+dejaba a cualquier agencia insertar filas dentro de los datos de otra. `003-politica-canonica.sql`
+compara ahora el texto de `USING` y de `WITH CHECK` contra una forma canónica, y exige además que la
+política sea `PERMISSIVE FOR ALL`. Lo verifican la aserción 36 y las mutaciones M4 y M5.
+
+### `SET NULL` sobre clave foránea COMPUESTA: la columna hay que nombrarla
+
+`notas_internas.conversacion_id` es anulable y su foránea es compuesta —`(conversacion_id,
+tenant_id)`—, porque toda referencia cruzada entre tablas con tenant lo es (§2). El `ON DELETE SET
+NULL` a secas sobre una clave compuesta anula **todas** sus columnas, y `tenant_id` es `NOT NULL`:
+PostgreSQL acepta el DDL y el borrado revienta en ejecución, en producción y no aquí. Peor: el
+borrado en cascada de un tenant se atasca en medio.
+
+La forma correcta nombra la columna, y existe desde PostgreSQL 15:
+
+```sql
+ON DELETE SET NULL ("conversacion_id") ON UPDATE RESTRICT
+```
+
+Está en la migración `20261011090200_notas_set_null_solo_la_conversacion`. **Prisma no sabe
+expresar la lista de columnas**: `schema.prisma` dice `onDelete: SetNull` y `prisma format` avisa
+con *«should not be set to SetNull when a referenced field is required»*. El aviso es correcto y la
+base ya está corregida; lo que no hay que hacer es «arreglarlo» generando una migración nueva desde
+el esquema, porque eso devolvería la forma rota. Si una foránea compuesta nueva necesita `SET NULL`,
+se escribe el `ALTER TABLE` a mano. Por la misma razón `tarifas → mayoristas` quedó en `Restrict`.
+
+## Catálogo (ADR-0009) e inbox: la unión, no la elección
+
+El ADR-0009 y el inbox se construyeron en ramas hermanas desde el mismo punto, y las dos añadieron
+tablas **distintas**. El esquema resultante es la unión:
+
+| Lado | Tablas |
+|---|---|
+| ADR-0009 (catálogo) | `vigencias` (renombre de `salidas`, con `desde`/`hasta`/`publicada`), `tarifas`, `politicas_de_precio` |
+| Inbox | `conversaciones`, `mensajes`, `adjuntos`, `plantillas_whatsapp` |
+
+No se tocan: ninguna foránea cruza de un bloque al otro. Lo único que ambos lados modificaron fue
+`usuarios`, y por motivos ajenos —el catálogo lo reformateó, el inbox le añadió dos relaciones
+inversas (`conversacionesAsignadas`, `mensajesEnviados`)—, así que la unión también vale ahí.
+
+Las tablas que el inbox tocó de pasada son todas relaciones inversas, salvo una columna:
+`tenants`, `usuarios`, `contactos`, `canales` y `cuentas_whatsapp` solo ganan listas; `notas_internas`
+gana `conversacion_id`, anulable y añadida en caliente.
+
+La primera aserción del arnés de aislamiento está **dirigida por datos** —consulta la vista
+`tablas_sin_aislamiento`—, así que las tres tablas del catálogo quedaron cubiertas sin tocar la
+prueba. Es la propiedad que hace barata una mezcla como esta: no hay una lista de tablas que
+alguien tenga que acordarse de actualizar.
+
+## Cotizaciones: cabecera mutable, versiones inmutables (2026-10-19)
+
+Migraciones `20261019200000_cotizaciones_con_versiones_inmutables` y
+`20261019200100_margen_desconocido_es_nulo`. Tarea 6 de `ESTADO.md`. El invariante viene de
+ADR-0006 («una cotización enviada es inmutable; editarla crea una versión») y de ADR-0009 («una
+cotización congela sus números»).
+
+```mermaid
+erDiagram
+    CONTACTO ||--o{ COTIZACION : "recibe"
+    OPORTUNIDAD |o--o{ COTIZACION : "del mismo contacto"
+    COTIZACION ||--|{ VERSION_COTIZACION : "numero 1, 2, 3"
+    COTIZACION |o--o| VERSION_COTIZACION : "version_enviada (diferible)"
+    PAQUETE ||--o{ VERSION_COTIZACION : "se cotizó"
+    MENSAJE }o--o| COTIZACION : "cotizacion_id"
+```
+
+| Tabla | Qué guarda | ¿Mutable? |
+|---|---|---|
+| `cotizaciones` | Contacto, oportunidad opcional, título, `estado` (`BORRADOR`, `ENVIADA`, `ACEPTADA`, `RECHAZADA`, `VENCIDA`), qué versión vio el cliente y cuándo | Sí. Borrado en blando |
+| `versiones_cotizacion` | La instantánea: paquete, fecha, vigencia resuelta, pasajeros, política de precio copiada, `lineas` (JSONB con la forma de `OpcionDePrecio`), venta, neto y margen en `bigint` + `moneda_iso`, `vigente_hasta` | **No.** Lo impone un disparador |
+
+### Por qué así
+
+- **La inmutabilidad la impone la base.** `versiones_cotizacion_inmutables` rechaza `UPDATE`,
+  `DELETE` y `TRUNCATE`. La única salida es la purga de una agencia entera: tiene que borrar el
+  **propietario** de la tabla y la transacción tiene que declarar
+  `set_config('viajapro.purga_de_tenants', '<ids>', true)`. Ningún rol de aplicación es
+  propietario. Lo usa `scripts/borrar-tenants.mjs`.
+- **La versión no cuelga de la cabecera con `CASCADE`, cuelga con `RESTRICT`.** Una acción
+  referencial corre con el rol propietario de la tabla afectada, no con el de quien borra. Con
+  `CASCADE`, un `DELETE FROM cotizaciones` desde la API llegaría al disparador como propietario,
+  y la variable de purga la puede fijar cualquier rol. La única cascada que llega a las versiones
+  es la de `tenants`, que la aplicación no puede borrar.
+- **Las líneas van en JSONB y no en una tabla hija.** Una tabla hija necesitaría su propio
+  disparador y además una regla contra *añadir* líneas a una versión cerrada. Así la instantánea es
+  una sola fila. El disparador de alta (`versiones_cotizacion_validar_alta`) exige que cada línea
+  traiga `total` entero en la moneda de la versión y que las líneas sumen `venta_unidades`.
+- **`vigencia_id` y los `tarifaId` de las líneas no tienen foránea.** El catálogo cambia y las
+  vigencias se borran físicamente. Con `RESTRICT` la versión bloquearía el mantenimiento del
+  catálogo, y con `CASCADE` se perdería la prueba. Un identificador suelto no filtra nada, porque
+  lo que hay detrás está bajo RLS. El paquete sí tiene foránea: se borra en blando.
+- **Todas las foráneas son compuestas con `tenant_id`.** La de la oportunidad tiene tres columnas,
+  `(oportunidad_id, contacto_id, tenant_id)`, y obliga a que sea del mismo contacto. La de
+  `version_enviada`, `(tenant_id, id, version_enviada)`, obliga a que sea una versión de **esta**
+  cotización. Esta última es `DEFERRABLE INITIALLY DEFERRED` porque cabecera y versiones se
+  referencian en los dos sentidos. Prisma no modela `DEFERRABLE`.
+- **`mensajes.cotizacion_id` ya tiene foránea**, compuesta y con `SET NULL ("cotizacion_id")`. Se
+  creó `NOT VALID` y se validó en la misma migración, como pedía la cola. Prisma aplica el archivo
+  en una sola transacción, así que esa división no acorta el bloqueo. Hoy da igual, porque ninguna
+  fila tenía la columna llena. Con millones de filas, el `VALIDATE` iría en una migración aparte.
+- **Margen desconocido es `NULL`, nunca 0.** El CHECK de la primera migración se podía saltar con
+  la lógica de tres valores (`0 = NULL` da NULL y el CHECK pasa). Lo detectó la aserción 50 y lo
+  corrige la segunda migración con `IS NOT DISTINCT FROM`.
+
+Aserciones 47 a 52 en `tests/aislamiento.spec.ts`, más las mutaciones M8 a M13 en
+`scripts/mutaciones-aislamiento.mjs`.

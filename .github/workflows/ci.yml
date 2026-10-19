@@ -11,6 +11,7 @@
 name: CI
 
 on:
+  workflow_dispatch:
   pull_request:
     branches: [main]
   push:
@@ -75,13 +76,13 @@ jobs:
       - name: Generar el cliente de Prisma
         run: pnpm db:generate
         env:
-          DATABASE_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'viajapro_test') }}
-          DIRECT_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'viajapro_test') }}
+          DATABASE_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'neondb') }}
+          DIRECT_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'neondb') }}
 
       - run: pnpm ${{ matrix.tarea }}
         env:
-          DATABASE_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'viajapro_test') }}
-          DIRECT_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'viajapro_test') }}
+          DATABASE_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'neondb') }}
+          DIRECT_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'neondb') }}
 
   # ---------------------------------------------------------------------------
   test:
@@ -93,7 +94,7 @@ jobs:
         env:
           POSTGRES_USER: viajapro
           POSTGRES_PASSWORD: viajapro
-          POSTGRES_DB: viajapro_test
+          POSTGRES_DB: neondb
         ports: ['5432:5432']
         options: >-
           --health-cmd pg_isready
@@ -123,11 +124,35 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - name: Migraciones
-        run: pnpm db:migrate
+      - name: Generar el cliente de Prisma
+        run: pnpm db:generate
         env:
-          DATABASE_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'viajapro_test') }}
-          DIRECT_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'viajapro_test') }}
+          DATABASE_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'neondb') }}
+          DIRECT_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'neondb') }}
+
+      # Secretos de prueba: aleatorios y efimeros, nacen y mueren con el job. Nada en GitHub.
+      - name: Secretos efimeros de prueba
+        run: |
+          {
+            echo "WHATSAPP_DIRECTORY_PEPPER=$(openssl rand -hex 32)"
+            echo "WEBHOOK_PAYLOAD_KEY=$(openssl rand -base64 32)"
+            echo "WEBHOOK_PAYLOAD_KEY_VERSION=1"
+            echo "META_APP_SECRET=$(openssl rand -hex 16)"
+            echo "WHATSAPP_WEBHOOK_VERIFY_TOKEN=$(openssl rand -hex 16)"
+          } >> "$GITHUB_ENV"
+
+      - name: Migraciones
+        run: pnpm db:migrate:deploy
+        env:
+          DATABASE_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'neondb') }}
+          DIRECT_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'neondb') }}
+
+      # Las pruebas e2e de la API buscan la agencia demo y el catalogo real: la semilla.
+      - name: Semilla
+        run: pnpm --filter @viajapro/domain build && pnpm db:seed
+        env:
+          DATABASE_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'neondb') }}
+          DIRECT_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'neondb') }}
 
       # `pnpm test` incluye la prueba de aislamiento, que ya NO acepta caer al rol
       # propietario: sin este paso no habría DATABASE_APP_URL y abortaría, que es
@@ -135,16 +160,17 @@ jobs:
       - name: Contraseñas de desarrollo para los tres roles de aplicación
         run: node packages/database/scripts/roles-de-desarrollo.mjs
         env:
-          DATABASE_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'viajapro_test') }}
-          DIRECT_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'viajapro_test') }}
+          DATABASE_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'neondb') }}
+          DIRECT_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'neondb') }}
           DB_DEV_PASSWORD: clave-de-integracion-continua
 
       - name: Pruebas
         run: pnpm test
         env:
-          DATABASE_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'viajapro_test') }}
-          DIRECT_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'viajapro_test') }}
+          DATABASE_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'neondb') }}
+          DIRECT_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'neondb') }}
           REDIS_URL: redis://localhost:6379
+          APP_ENV: local
 
   # ---------------------------------------------------------------------------
   # La compuerta propia de este producto. Si falla, da igual lo demás:
@@ -158,7 +184,7 @@ jobs:
         env:
           POSTGRES_USER: viajapro
           POSTGRES_PASSWORD: viajapro
-          POSTGRES_DB: viajapro_test
+          POSTGRES_DB: neondb
         ports: ['5432:5432']
         options: >-
           --health-cmd pg_isready
@@ -180,14 +206,20 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      - name: Generar el cliente de Prisma
+        run: pnpm db:generate
+        env:
+          DATABASE_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'neondb') }}
+          DIRECT_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'neondb') }}
+
       # La cadena del contenedor se compone con `format` y no se escribe entera: el
       # guardián de secretos del repositorio bloquea cualquier URL de base de datos con
       # contraseña, y tiene razón aunque esta sea la de un servicio efímero de CI.
       - name: Migraciones y políticas RLS
-        run: pnpm db:migrate
+        run: pnpm db:migrate:deploy
         env:
-          DATABASE_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'viajapro_test') }}
-          DIRECT_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'viajapro_test') }}
+          DATABASE_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'neondb') }}
+          DIRECT_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'neondb') }}
 
       # Sin este paso la compuerta NO SE PUEDE PONER EN VERDE, y eso fue un hallazgo
       # crítico: las migraciones crean los tres roles de login SIN contraseña —un LOGIN sin
@@ -197,8 +229,8 @@ jobs:
       - name: Contraseñas de desarrollo para los tres roles de aplicación
         run: node packages/database/scripts/roles-de-desarrollo.mjs
         env:
-          DATABASE_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'viajapro_test') }}
-          DIRECT_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'viajapro_test') }}
+          DATABASE_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'neondb') }}
+          DIRECT_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'neondb') }}
           DB_DEV_PASSWORD: clave-de-integracion-continua
 
       # Corre con `viajapro_app`, que NO puede saltarse RLS. Antes caía al rol del
@@ -208,8 +240,8 @@ jobs:
       - name: Un tenant no puede leer ni escribir datos de otro
         run: pnpm --filter @viajapro/database test:aislamiento
         env:
-          DATABASE_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'viajapro_test') }}
-          DIRECT_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'viajapro_test') }}
+          DATABASE_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'neondb') }}
+          DIRECT_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'neondb') }}
 
   # ---------------------------------------------------------------------------
   # Regla R4: los módulos no se importan entre sí. Es lo que permite extraer

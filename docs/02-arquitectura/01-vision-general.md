@@ -8,6 +8,10 @@
 bastante limpias para extraer servicios cuando haga falta — y no antes. El porqué completo está en
 [ADR-0004](../03-adr/0004-monolito-modular.md).
 
+> **Hoy el proceso trabajador del inbox vive en `apps/api`** (`src/worker.ts`, rol
+> `viajapro_webhook`), no en `apps/worker`, que sigue vacío. Se muda con el segundo consumidor de
+> cola: [ADR-0010](../03-adr/0010-webhook-tal-como-es-y-el-trabajador-en-apps-api.md), Parte 2.
+
 ```mermaid
 flowchart TB
     subgraph Externos
@@ -78,7 +82,8 @@ sequenceDiagram
 
     M->>A: POST /webhooks/whatsapp
     A->>A: Validar firma HMAC sobre el cuerpo crudo
-    A->>R: Encolar payload sin procesar
+    A->>D: Guardar el sobre cifrado (registrar_recepcion)
+    A->>R: Encolar un trabajo por change, solo identificadores
     A-->>M: 200 OK (en menos de 100 ms)
     Note over A,M: Responder rápido no es optimización:<br/>si tardamos, Meta degrada la entrega.
     R->>W: Procesar
@@ -97,7 +102,9 @@ sequenceDiagram
 
 Tres decisiones están condensadas aquí y las tres son deliberadas:
 
-1. **Responder antes de procesar.** El webhook valida la firma, encola y devuelve 200. Nada más.
+1. **Responder antes de procesar, pero nunca antes de guardar.** El webhook valida la firma, guarda
+   el sobre cifrado en una tabla durable, encola un trabajo por `change` y devuelve 200. El
+   contenido nunca viaja a Redis. ADR-0008 §4.
 2. **Idempotencia por `wamid`.** Meta reintenta; el mismo mensaje puede llegar varias veces.
 3. **Enrutamiento por `phone_number_id`.** Es lo que identifica al tenant. Si no se reconoce, se
    descarta y se alerta: un payload para un número que no conocemos es un síntoma, no un dato.

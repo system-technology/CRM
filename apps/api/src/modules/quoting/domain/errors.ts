@@ -52,3 +52,47 @@ export class MonedaDesconocidaError extends InvariantError {
     super(`'${iso}' no es una moneda habilitada, y viene de una tarifa guardada en la base`);
   }
 }
+
+export class CotizacionNoEncontradaError extends DomainError {
+  // Termina en `_NO_ENCONTRADO` a propósito: así el filtro global lo traduce a 404.
+  readonly code = 'COTIZACION_NO_ENCONTRADO';
+  constructor(readonly cotizacionId: string) {
+    super(`No existe la cotización ${cotizacionId} en esta agencia`);
+  }
+}
+
+export class ContactoDeCotizacionNoEncontradoError extends DomainError {
+  readonly code = 'CONTACTO_DE_COTIZACION_NO_ENCONTRADO';
+  constructor(readonly contactoId: string) {
+    super(`No existe el contacto ${contactoId} en esta agencia`);
+  }
+}
+
+export class OportunidadDeCotizacionNoEncontradaError extends DomainError {
+  readonly code = 'OPORTUNIDAD_DE_COTIZACION_NO_ENCONTRADO';
+  constructor(
+    readonly oportunidadId: string,
+    readonly contactoId: string,
+  ) {
+    super(`No existe la oportunidad ${oportunidadId} para el contacto ${contactoId}`);
+  }
+}
+
+/** Una cotización sin una sola línea armada no tiene precio que conservar. */
+export class CotizacionSinLineasError extends InvariantError {
+  readonly code = 'COTIZACION_SIN_LINEAS';
+  constructor() {
+    super(
+      'La cotización no tiene líneas armadas: con esa composición ninguna tarifa por persona ' +
+        'aplica, y no hay un precio que guardar. Revisa la composición o el tarifario.',
+    );
+  }
+}
+
+/** Las líneas no cuadran con el total o mezclan monedas: defecto del cálculo, no del asesor. */
+export class CotizacionIncoherenteError extends InvariantError {
+  readonly code = 'COTIZACION_INCOHERENTE';
+  constructor(detalle: string) {
+    super(`El cálculo de la cotización no es coherente consigo mismo: ${detalle}`);
+  }
+}

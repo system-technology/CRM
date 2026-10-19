@@ -18,6 +18,7 @@ import { desglosarSobre } from '../domain/sobre-webhook.js';
 import { identificarRecepcion } from '../domain/identidad-recepcion.js';
 import { verificarFirma } from '../domain/firma-webhook.js';
 import { resolverClavePayload, sellarPayload } from '../domain/payload-sellado.js';
+import { PuertoColaDeChanges } from './puertos-de-proceso.js';
 import { PuertoRecepciones } from './puerto-recepciones.js';
 
 export type ResultadoRecepcion =
@@ -30,7 +31,10 @@ export type ResultadoRecepcion =
 export class RegistrarRecepcion {
   private readonly log = new Logger(RegistrarRecepcion.name);
 
-  constructor(@Inject(PuertoRecepciones) private readonly recepciones: PuertoRecepciones) {}
+  constructor(
+    @Inject(PuertoRecepciones) private readonly recepciones: PuertoRecepciones,
+    @Inject(PuertoColaDeChanges) private readonly cola: PuertoColaDeChanges,
+  ) {}
 
   async ejecutar(cuerpo: Buffer, cabeceraFirma: string | undefined): Promise<ResultadoRecepcion> {
     // Primero la firma, sobre los BYTES CRUDOS. Antes de leer nada del contenido: lo que no
@@ -59,6 +63,13 @@ export class RegistrarRecepcion {
       claveVersion: this.resolverVersionDeClave(),
       totalChanges: sobre.cambios.length,
     });
+
+    // PASO 5 del ADR-0008 §4: encolar UN trabajo por change, DESPUÉS de que la fila sea durable.
+    // También cuando ya existía: si el proceso murió entre guardar y encolar, el reintento de
+    // Meta cierra ese hueco, y el jobId hace que encolar dos veces sea inocuo. Si Redis falla
+    // se deja subir el error: un 500 es lo que hace que Meta reintente y el change no se quede
+    // sin trabajo.
+    for (const cambio of sobre.cambios) await this.cola.encolar(recepcionId, cambio.indice);
 
     if (!registrada) {
       // Meta reintenta: ante un tiempo de espera, ante un 500, y a veces ante un 200 que no le
