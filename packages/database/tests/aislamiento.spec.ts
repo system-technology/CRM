@@ -325,6 +325,12 @@ const MATRIZ_FUNCIONES: Readonly<Record<string, readonly string[]>> = {
   // Novena: el relay de barrido (ADR-0010, punto 9). Solo identificadores y antigüedad; la
   // ejecuta el trabajador, que es quien vuelve a encolar.
   listar_changes_pendientes: ['viajapro_webhook'],
+  // Décima, y SIN EXECUTE: el disparador gemelo sobre `cuentas_whatsapp`, que lleva la baja
+  // (o el borrado lógico) de una cuenta a sus filas WABA. Hueco (a) de ADR-0010 punto 6.
+  propagar_estado_cuenta: [],
+  // Undécima: el contador de reencolados del barrido, en la base y no en Redis, para que el
+  // listado pueda excluir a los abandonados (cola de v0.30.0).
+  contar_reencolado_barrido: ['viajapro_webhook'],
 };
 
 const PROPIETARIO_ESPERADO: Readonly<Record<string, string>> = {
@@ -337,6 +343,8 @@ const PROPIETARIO_ESPERADO: Readonly<Record<string, string>> = {
   purgar_payloads: 'viajapro_staging',
   propagar_estado_canal: 'viajapro_enrutador',
   listar_changes_pendientes: 'viajapro_staging',
+  propagar_estado_cuenta: 'viajapro_enrutador',
+  contar_reencolado_barrido: 'viajapro_staging',
 };
 
 /**
@@ -628,6 +636,10 @@ describe('ADR-0008 — directorio de enrutamiento, staging y separación de role
   const cuentaRevocada = randomUUID();
   const canalRevocado = randomUUID();
   const claveRevocada = randomBytes(32);
+  /** Para las aserciones 54 a 57: lo que crean, para que el desmontaje lo encuentre. */
+  const CUENTAS_DE_HUECOS: string[] = [];
+  const CANALES_DE_HUECOS: string[] = [];
+  const CLAVES_DE_HUECOS: Buffer[] = [];
 
   /** Lo que haría el camino de alta tras el canje del `code`: escribir en el directorio. */
   async function registrar(
@@ -684,7 +696,7 @@ describe('ADR-0008 — directorio de enrutamiento, staging y separación de role
     // invariante que lo hace probatorio, y la prueba lo paga dejando sus asientos.
     await admin.query('SET ROLE "viajapro_enrutador"');
     await admin.query('DELETE FROM enrutamiento_canales WHERE clave_canal_hmac = ANY($1)', [
-      [claveA, claveB, claveC, claveWabaA, claveRevocada],
+      [claveA, claveB, claveC, claveWabaA, claveRevocada, ...CLAVES_DE_HUECOS],
     ]);
     await admin.query('RESET ROLE');
     await admin.query('SET ROLE "viajapro_staging"');
@@ -696,10 +708,10 @@ describe('ADR-0008 — directorio de enrutamiento, staging y separación de role
     ]);
     await admin.query('RESET ROLE');
     await admin.query('DELETE FROM canales WHERE id = ANY($1)', [
-      [canalA, canalB, canalC, canalRevocado],
+      [canalA, canalB, canalC, canalRevocado, ...CANALES_DE_HUECOS],
     ]);
     await admin.query('DELETE FROM cuentas_whatsapp WHERE id = ANY($1)', [
-      [cuentaA, cuentaB, cuentaC, cuentaRevocada],
+      [cuentaA, cuentaB, cuentaC, cuentaRevocada, ...CUENTAS_DE_HUECOS],
     ]);
   }, 60_000);
 
@@ -780,8 +792,8 @@ describe('ADR-0008 — directorio de enrutamiento, staging y separación de role
     );
     expect(
       rows.length,
-      'faltan funciones de ADR-0008: eran seis, la auditoría de implementación añadió purgar_payloads, la tarea 4f propagar_estado_canal y el relay de barrido listar_changes_pendientes',
-    ).toBe(9);
+      'faltan funciones de ADR-0008: eran seis, la auditoría de implementación añadió purgar_payloads, la tarea 4f propagar_estado_canal, el relay de barrido listar_changes_pendientes, y los huecos del disparador propagar_estado_cuenta y contar_reencolado_barrido',
+    ).toBe(11);
     expect(rows.filter((r) => r.publico)).toEqual([]);
   });
 
@@ -794,7 +806,7 @@ describe('ADR-0008 — directorio de enrutamiento, staging y separación de role
        WHERE n.nspname = 'public' AND p.proname = ANY($1) ORDER BY 1`,
       [Object.keys(MATRIZ_FUNCIONES)],
     );
-    expect(rows.length).toBe(9);
+    expect(rows.length).toBe(11);
 
     for (const fila of rows) {
       const config = (fila.proconfig as string[] | null) ?? [];
@@ -1440,7 +1452,9 @@ describe('ADR-0008 — directorio de enrutamiento, staging y separación de role
     expect(firma.rows[0]?.resultado).toBe(
       'TABLE(recepcion_id bytea, indice smallint, antiguedad_s integer)',
     );
-    expect(firma.rows[0]?.argumentos).toBe('p_antiguedad_minima_s integer, p_limite integer');
+    expect(firma.rows[0]?.argumentos).toBe(
+      'p_antiguedad_minima_s integer, p_limite integer, p_max_intentos integer',
+    );
 
     // Solo el trabajador. La 20 lo mira en el catálogo; esto lo mira en el comportamiento.
     for (const rol of ['viajapro_app', 'viajapro_altas']) {
@@ -1522,6 +1536,361 @@ describe('ADR-0008 — directorio de enrutamiento, staging y separación de role
         `aceptó antigüedad ${antiguedad} y límite ${limite}`,
       ).rejects.toThrow(/listar_changes_pendientes/);
     }
+  });
+
+  // ---------------------------------------------------------------------------
+  // Los cuatro huecos del disparador (ADR-0010 punto 6, y el del auditor). Ninguno era
+  // fuga —la escritura exige la conjunción del directorio y de `canales`—, pero el
+  // directorio mentía. Cada aserción mira el directorio por el único camino que lo lee
+  // (`resolver_enrutamiento`, como el trabajador) después de un cambio hecho por el camino
+  // real: la API, con su rol y su contexto de tenant.
+  // ---------------------------------------------------------------------------
+
+  async function crearCuenta(tenant: string, cuenta: string, estado = 'ACTIVO') {
+    await admin.query(
+      `INSERT INTO cuentas_whatsapp (id, tenant_id, waba_id, nombre, estado, actualizado_en)
+       VALUES ($1, $2, $3, 'WABA de huecos', $4::estado_canal, now())`,
+      [cuenta, tenant, `waba-hueco-${cuenta.slice(0, 8)}`, estado],
+    );
+    CUENTAS_DE_HUECOS.push(cuenta);
+  }
+
+  async function crearCanal(tenant: string, canal: string, cuenta: string, estado = 'ACTIVO') {
+    await admin.query(
+      `INSERT INTO canales (id, tenant_id, cuenta_id, phone_number_id, numero_e164, estado, actualizado_en)
+       VALUES ($1, $2, $3, $4, '+573001110077', $5::estado_canal, now())`,
+      [canal, tenant, cuenta, `pn-${canal.slice(0, 8)}`, estado],
+    );
+    CANALES_DE_HUECOS.push(canal);
+  }
+
+  function claveDeHueco(): Buffer {
+    const clave = randomBytes(32);
+    CLAVES_DE_HUECOS.push(clave);
+    return clave;
+  }
+
+  const estadoResuelto = async (clave: Buffer) =>
+    (
+      await conRol('viajapro_webhook', 'SELECT estado FROM resolver_enrutamiento($1)', [clave])
+    ).rows.map((r) => r.estado as string);
+
+  async function asientos(columna: 'canal_id' | 'cuenta_id', id: string) {
+    const { rows } = await conRol(
+      'viajapro_enrutador',
+      `SELECT estado_anterior, estado_nuevo, motivo FROM enrutamiento_historial
+       WHERE ${columna} = $1 ORDER BY ocurrido_en`,
+      [id],
+    );
+    return (rows as { estado_anterior: string | null; estado_nuevo: string; motivo: string }[]).map(
+      (r) => [r.estado_anterior, r.estado_nuevo],
+    );
+  }
+
+  it('54 — la baja de una CUENTA llega a sus filas WABA, y la agencia no la deshace', async () => {
+    // Hueco (a). Las filas WABA gobiernan todos los eventos de gestión de la agencia; una
+    // cuenta dada de baja seguía resolviéndose ACTIVO.
+    const cuenta = randomUUID();
+    const clave = claveDeHueco();
+    await crearCuenta(TENANT_B, cuenta);
+    await registrar(TENANT_B, clave, null, cuenta);
+    expect(await estadoResuelto(clave)).toEqual(['ACTIVO']);
+
+    const baja = await comoTenant(TENANT_B, (c) =>
+      c.query("UPDATE cuentas_whatsapp SET estado = 'SUSPENDIDO' WHERE id = $1", [cuenta]),
+    );
+    expect(baja.rowCount).toBe(1);
+    expect(await estadoResuelto(clave), 'una cuenta suspendida no resuelve ACTIVO').toEqual([
+      'SUSPENDIDO',
+    ]);
+
+    await comoTenant(TENANT_B, (c) =>
+      c.query(
+        "UPDATE cuentas_whatsapp SET estado = 'REVOCADO', revocado_en = now() WHERE id = $1",
+        [cuenta],
+      ),
+    );
+    expect(await estadoResuelto(clave)).toEqual(['REVOCADO']);
+
+    // Monótono: devolver la cuenta a ACTIVO desde la API no reactiva el ruteo.
+    await comoTenant(TENANT_B, (c) =>
+      c.query("UPDATE cuentas_whatsapp SET estado = 'ACTIVO', revocado_en = NULL WHERE id = $1", [
+        cuenta,
+      ]),
+    );
+    expect(await estadoResuelto(clave), 'la API no puede reactivar el ruteo de un WABA').toEqual([
+      'REVOCADO',
+    ]);
+
+    expect(await asientos('cuenta_id', cuenta), 'cada restricción deja su asiento').toEqual([
+      [null, 'ACTIVO'],
+      ['ACTIVO', 'SUSPENDIDO'],
+      ['SUSPENDIDO', 'REVOCADO'],
+    ]);
+
+    // Y solo alcanza a SU cuenta: la fila WABA de otro tenant no se mueve.
+    expect(await estadoResuelto(claveWabaA)).toEqual(['ACTIVO']);
+  });
+
+  it('55 — el borrado lógico de un canal o de una cuenta revoca su ruteo', async () => {
+    // Hueco (b). `eliminado_en` es la baja de la agencia (ADR-0010 §1.4) y no propagaba.
+    const cuenta = randomUUID();
+    const canal = randomUUID();
+    const claveNumero = claveDeHueco();
+    const claveWaba = claveDeHueco();
+    await crearCuenta(TENANT_B, cuenta);
+    await crearCanal(TENANT_B, canal, cuenta);
+    await registrar(TENANT_B, claveNumero, canal, cuenta);
+    await registrar(TENANT_B, claveWaba, null, cuenta);
+
+    await comoTenant(TENANT_B, (c) =>
+      c.query('UPDATE canales SET eliminado_en = now() WHERE id = $1', [canal]),
+    );
+    expect(await estadoResuelto(claveNumero), 'un canal borrado no resuelve ACTIVO').toEqual([
+      'REVOCADO',
+    ]);
+
+    await comoTenant(TENANT_B, (c) =>
+      c.query('UPDATE cuentas_whatsapp SET eliminado_en = now() WHERE id = $1', [cuenta]),
+    );
+    expect(await estadoResuelto(claveWaba), 'una cuenta borrada no resuelve ACTIVO').toEqual([
+      'REVOCADO',
+    ]);
+
+    // Deshacer el borrado no relaja nada: reactivar es un re-alta, y eso es la 56.
+    await comoTenant(TENANT_B, (c) =>
+      c.query('UPDATE canales SET eliminado_en = NULL WHERE id = $1', [canal]),
+    );
+    expect(await estadoResuelto(claveNumero)).toEqual(['REVOCADO']);
+    expect(await asientos('canal_id', canal)).toEqual([
+      [null, 'ACTIVO'],
+      ['ACTIVO', 'REVOCADO'],
+    ]);
+  });
+
+  it('56 — registrar_enrutamiento no escribe un estado más laxo que el del canal o la cuenta', async () => {
+    // Hueco (c). El re-alta podía escribir ACTIVO sobre un canal que seguía REVOCADO, y el
+    // directorio volvía a mentir hasta la siguiente baja.
+    const cuenta = randomUUID();
+    const canal = randomUUID();
+    const clave = claveDeHueco();
+    const claveWaba = claveDeHueco();
+    await crearCuenta(TENANT_B, cuenta);
+    await crearCanal(TENANT_B, canal, cuenta);
+    await registrar(TENANT_B, clave, canal, cuenta);
+    await comoTenant(TENANT_B, (c) =>
+      c.query("UPDATE canales SET estado = 'REVOCADO' WHERE id = $1", [canal]),
+    );
+
+    await expect(
+      registrar(TENANT_B, clave, canal, cuenta, 'ACTIVO'),
+      'reactivó el ruteo de un canal REVOCADO',
+    ).rejects.toThrow(/registrar_enrutamiento/);
+    await expect(
+      registrar(TENANT_B, clave, canal, cuenta, 'SUSPENDIDO'),
+      'relajó a SUSPENDIDO un canal REVOCADO',
+    ).rejects.toThrow(/registrar_enrutamiento/);
+    expect(await estadoResuelto(clave)).toEqual(['REVOCADO']);
+
+    // Restringir siempre se puede.
+    await registrar(TENANT_B, clave, canal, cuenta, 'REVOCADO');
+
+    // Borrado lógico cuenta como REVOCADO aunque el estado diga ACTIVO.
+    await comoTenant(TENANT_B, (c) =>
+      c.query("UPDATE canales SET estado = 'ACTIVO', eliminado_en = now() WHERE id = $1", [canal]),
+    );
+    await expect(
+      registrar(TENANT_B, clave, canal, cuenta, 'ACTIVO'),
+      'reactivó el ruteo de un canal borrado',
+    ).rejects.toThrow(/registrar_enrutamiento/);
+
+    // El re-alta legítimo sigue existiendo: el canal vuelve a ACTIVO y SOLO ENTONCES el
+    // camino de alta repunta el directorio.
+    await comoTenant(TENANT_B, (c) =>
+      c.query('UPDATE canales SET eliminado_en = NULL WHERE id = $1', [canal]),
+    );
+    await registrar(TENANT_B, clave, canal, cuenta, 'ACTIVO');
+    expect(await estadoResuelto(clave), 'el re-alta legítimo dejó de funcionar').toEqual([
+      'ACTIVO',
+    ]);
+
+    // Lo mismo para la fila WABA, contra la cuenta.
+    await comoTenant(TENANT_B, (c) =>
+      c.query("UPDATE cuentas_whatsapp SET estado = 'SUSPENDIDO' WHERE id = $1", [cuenta]),
+    );
+    await expect(
+      registrar(TENANT_B, claveWaba, null, cuenta, 'ACTIVO'),
+      'registró ACTIVO el WABA de una cuenta suspendida',
+    ).rejects.toThrow(/registrar_enrutamiento/);
+
+    // Para comprobarlo, el dueño del directorio lee `canales` y `cuentas_whatsapp`. Lo hace
+    // BAJO RLS —sin contexto, cero filas— y solo cuatro columnas: ni el phone_number_id ni
+    // el token, y nada de escribir.
+    await comoRol(admin, 'viajapro_enrutador', async () => {
+      const sinContexto = await admin.query('SELECT id FROM canales');
+      expect(sinContexto.rows, 'el dueño del directorio lee canales sin contexto').toEqual([]);
+      await esperarPermisoDenegado(
+        admin,
+        () => admin.query('SELECT phone_number_id FROM canales'),
+        'SELECT phone_number_id sobre canales como viajapro_enrutador',
+      );
+      await esperarPermisoDenegado(
+        admin,
+        () => admin.query('SELECT token_cifrado FROM cuentas_whatsapp'),
+        'SELECT token_cifrado sobre cuentas_whatsapp como viajapro_enrutador',
+      );
+      await esperarPermisoDenegado(
+        admin,
+        () => admin.query("UPDATE canales SET estado = 'ACTIVO'"),
+        'UPDATE sobre canales como viajapro_enrutador',
+      );
+    });
+    const columnas = async (privilegio: string) =>
+      (
+        await admin.query<{ tabla: string; columnas: string }>(
+          `SELECT c.relname AS tabla, string_agg(a.attname::text, ',' ORDER BY a.attname) AS columnas
+           FROM pg_attribute a JOIN pg_class c ON c.oid = a.attrelid
+           JOIN pg_namespace n ON n.oid = c.relnamespace
+           WHERE n.nspname = 'public' AND c.relname IN ('canales', 'cuentas_whatsapp')
+             AND a.attnum > 0 AND NOT a.attisdropped
+             AND has_column_privilege('viajapro_enrutador', c.oid, a.attnum, $1)
+           GROUP BY 1 ORDER BY 1`,
+          [privilegio],
+        )
+      ).rows;
+    expect(
+      await columnas('SELECT'),
+      'el dueño del directorio lee más columnas de las que necesita',
+    ).toEqual([
+      { tabla: 'canales', columnas: 'eliminado_en,estado,id,tenant_id' },
+      { tabla: 'cuentas_whatsapp', columnas: 'eliminado_en,estado,id,tenant_id' },
+    ]);
+    expect(
+      await columnas('INSERT, UPDATE, REFERENCES'),
+      'el dueño del directorio escribe tablas de negocio',
+    ).toEqual([]);
+  });
+
+  it('57 — un canal que NACE revocado no se registra ACTIVO, y el disparador actúa en INSERT', async () => {
+    // Hueco (d), el del auditor. La clave foránea impide que el directorio tenga una fila
+    // de un canal que todavía no existe, así que el peligro real del INSERT es el alta
+    // posterior: lo cierra la comprobación de la 56. Aun así el disparador escucha INSERT,
+    // para que la regla no dependa de esa clave foránea.
+    const cuenta = randomUUID();
+    const canal = randomUUID();
+    const clave = claveDeHueco();
+    await crearCuenta(TENANT_B, cuenta);
+    await crearCanal(TENANT_B, canal, cuenta, 'REVOCADO');
+
+    await expect(
+      registrar(TENANT_B, clave, canal, cuenta, 'ACTIVO'),
+      'registró ACTIVO un canal que nació REVOCADO',
+    ).rejects.toThrow(/registrar_enrutamiento/);
+    expect(await estadoResuelto(clave), 'el intento rechazado dejó fila').toEqual([]);
+    await registrar(TENANT_B, clave, canal, cuenta, 'REVOCADO');
+    expect(await estadoResuelto(clave)).toEqual(['REVOCADO']);
+
+    const { rows } = await admin.query(
+      `SELECT c.relname AS tabla, pg_get_triggerdef(t.oid) AS definicion
+       FROM pg_trigger t JOIN pg_class c ON c.oid = t.tgrelid
+       WHERE NOT t.tgisinternal AND c.relname IN ('canales', 'cuentas_whatsapp')
+         AND t.tgname IN ('canales_propagar_estado', 'cuentas_whatsapp_propagar_estado')
+       ORDER BY 1`,
+    );
+    expect(rows.map((r) => r.tabla as string)).toEqual(['canales', 'cuentas_whatsapp']);
+    for (const r of rows) {
+      expect(r.definicion, `${r.tabla}: el disparador no actúa en INSERT ni en el borrado`).toMatch(
+        /AFTER INSERT OR UPDATE OF estado, eliminado_en ON public\.\w+ FOR EACH ROW/,
+      );
+    }
+  });
+
+  it('58 — el barrido no deja que los abandonados tapen a los nuevos', async () => {
+    // Cola de v0.30.0: con más de 500 changes abandonados, el límite del barrido los
+    // devolvía siempre a ellos y un change recién atascado no se reencolaba nunca. Ahora
+    // la base cuenta los reencolados, excluye a los que pasaron del tope y devuelve
+    // primero a los que menos llevan.
+    const viejaYMuyReintentada = nuevaRecepcion();
+    const viejaPocoReintentada = nuevaRecepcion();
+    const nueva = nuevaRecepcion();
+    for (const id of [viejaYMuyReintentada, viejaPocoReintentada, nueva]) {
+      await conRol(
+        'viajapro_app',
+        'SELECT registrar_recepcion($1, $2, $3, $4, 1::smallint, 1::smallint)',
+        [id, randomBytes(32), randomBytes(12), randomBytes(16)],
+      );
+    }
+    await admin.query(
+      "UPDATE recepciones_webhook SET recibido_en = now() - interval '20 minutes' WHERE recepcion_id = ANY($1)",
+      [[viejaYMuyReintentada, viejaPocoReintentada]],
+    );
+    await admin.query(
+      "UPDATE recepciones_webhook SET recibido_en = now() - interval '10 minutes' WHERE recepcion_id = $1",
+      [nueva],
+    );
+
+    // Solo el trabajador cuenta, y cuenta de uno en uno devolviendo el total.
+    await expect(
+      conRol('viajapro_app', 'SELECT contar_reencolado_barrido($1, 0::smallint)', [nueva]),
+      'la API pudo contar reencolados',
+    ).rejects.toThrow(/permission denied/i);
+    const contar = async (id: Buffer) =>
+      Number(
+        (
+          await conRol(
+            'viajapro_webhook',
+            'SELECT contar_reencolado_barrido($1, 0::smallint) AS n',
+            [id],
+          )
+        ).rows[0]?.n,
+      );
+    expect(await contar(viejaPocoReintentada)).toBe(1);
+    expect(await contar(viejaPocoReintentada)).toBe(2);
+    for (let i = 0; i < 11; i += 1) await contar(viejaYMuyReintentada);
+    expect(await contar(viejaYMuyReintentada), 'el contador no suma').toBe(12);
+
+    const nuestras = async (sql: string) =>
+      (await conRol('viajapro_webhook', sql)).rows
+        .map((f) => f.recepcion_id as Buffer)
+        .filter((id) =>
+          [viejaYMuyReintentada, viejaPocoReintentada, nueva].some((n) => n.equals(id)),
+        )
+        .map((id) =>
+          id.equals(nueva) ? 'nueva' : id.equals(viejaPocoReintentada) ? 'poco' : 'mucho',
+        );
+
+    // Tope 10: la que lleva 12 no sale; las otras dos, la de menos reencolados primero
+    // aunque sea la más reciente.
+    expect(
+      await nuestras('SELECT * FROM listar_changes_pendientes(30, 1000, 10)'),
+      'el barrido no filtra por el tope o no ordena por reencolados',
+    ).toEqual(['nueva', 'poco']);
+    // Con tope 12 vuelve a salir: el tope es del llamador, que es quien lo configura.
+    expect(await nuestras('SELECT * FROM listar_changes_pendientes(30, 1000, 12)')).toEqual([
+      'nueva',
+      'poco',
+      'mucho',
+    ]);
+    // Sin tercer argumento, el tope por defecto (10) del barrido.
+    expect(await nuestras('SELECT * FROM listar_changes_pendientes(30, 1000)')).toEqual([
+      'nueva',
+      'poco',
+    ]);
+
+    for (const tope of [null, -1]) {
+      await expect(
+        conRol('viajapro_webhook', 'SELECT * FROM listar_changes_pendientes(30, 10, $1)', [tope]),
+        `aceptó el tope ${tope}`,
+      ).rejects.toThrow(/listar_changes_pendientes/);
+    }
+
+    // Un change resuelto no se cuenta: devuelve 0 y no toca la fila.
+    await conRol(
+      'viajapro_webhook',
+      'SELECT anular_payload($1, 0::smallint, $2::estado_change_recepcion)',
+      [nueva, 'PROCESADO'],
+    );
+    expect(await contar(nueva)).toBe(0);
   });
 });
 // =============================================================================
