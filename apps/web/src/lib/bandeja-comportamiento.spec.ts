@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+﻿import { describe, expect, it } from 'vitest';
 import { EventoBandeja, type ConversacionResumen } from '@viajapro/contracts';
 import { realtimeMockBus } from './realtime-mock';
 import {
@@ -6,6 +6,7 @@ import {
   claveDeReintento,
   debeBajarElScroll,
   calcularTiempoRestanteVentana,
+  evaluarTransicionVentanaBorrador,
 } from './bandeja-logica';
 import { obtenerMockFichaDeContacto } from './mock-crm';
 
@@ -210,5 +211,30 @@ describe('Pruebas Automáticas de la Bandeja — Reglas de Comportamiento (0b & 
     // Criterio de aceptación explícito de Claude:
     // "una prueba que abra dos conversaciones distintas y afirme que el teléfono de la ficha es distinto"
     expect(fichaJuan.contacto.telefono).not.toBe(fichaAna.contacto.telefono);
+  });
+  // 8. Transición de ventana con borrador (0c.19): si se cierra con borrador escrito, se preserva y se avisa
+  it('8. evaluarTransicionVentanaBorrador avisa si la ventana se cierra con texto no vacío y preserva el borrador', () => {
+    // Caso 1: Ventana se cierra (abierta -> cerrada) con borrador redactado
+    const r1 = evaluarTransicionVentanaBorrador(
+      true,
+      false,
+      'Hola, tenemos los vuelos a Cartagena listos',
+    );
+    expect(r1.debeMostrar).toBe(true);
+    expect(r1.mensaje).toBe('La ventana se cerró; tu borrador sigue aquí');
+    expect(r1.borrador).toBe('Hola, tenemos los vuelos a Cartagena listos');
+
+    // Caso 2: Ventana se cierra (abierta -> cerrada) pero sin borrador (espacios en blanco)
+    const r2 = evaluarTransicionVentanaBorrador(true, false, '   ');
+    expect(r2.debeMostrar).toBe(false);
+    expect(r2.borrador).toBe('');
+
+    // Caso 3: Ventana sigue abierta con texto
+    const r3 = evaluarTransicionVentanaBorrador(true, true, 'Texto redactando...');
+    expect(r3.debeMostrar).toBe(false);
+
+    // Caso 4: Ventana ya estaba cerrada (sin transición de cierre)
+    const r4 = evaluarTransicionVentanaBorrador(false, false, 'Borrador existente');
+    expect(r4.debeMostrar).toBe(false);
   });
 });

@@ -4,9 +4,9 @@ import {
   generarResumenConversacion,
   sugerirRespuestaComercial,
   calificarLead,
-} from './asistente-ia-logica';
+} from './sugerencias-logica';
 
-describe('Pruebas Unitarias del Asistente Copilot IA (asistente-ia-logica.ts)', () => {
+describe('Pruebas Unitarias del Asistente de Sugerencias (sugerencias-logica.ts)', () => {
   describe('extraerDatosViajeDeMensajes', () => {
     it('extrae destino, fechas, pasajeros y presupuesto correctamente', () => {
       const mensajes = [

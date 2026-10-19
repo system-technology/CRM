@@ -1,4 +1,4 @@
-# Cola de trabajo — Antigravity
+﻿# Cola de trabajo — Antigravity
 
 > **¿Sesión nueva, sin contexto?** Lee **`ARRANQUE.md`** primero. Está escrito para eso y es
 > suficiente: no necesitas que nadie te cuente nada.
@@ -52,7 +52,7 @@ eso de una vez.
 
 **Hecho cuando:** `HEAD..origin/main` vacío, compuertas verdes, `ENTREGA.md` inventario.
 
-## [ ] 0c.19. La ventana de 24 horas: lo que falta
+## [x] 0c.19. La ventana de 24 horas: lo que falta
 
 **Ya está hecho** (compruébalo, no lo rehagas): contratos `VentanaServicio`, `EnviarPlantilla`,
 `PlantillasDisponibles`; texto bloqueado con ventana cerrada, selector de plantillas
@@ -68,7 +68,7 @@ deshabilita sin más. Solo `apps/web/`: función pura en `bandeja-logica.ts` que
 **Hecho cuando:** prueba unitaria de la transición, y a 375 px el aviso y el botón caben y se
 tocan (>= 44 px).
 
-## [ ] 0c.20. El copiloto deja de decir «IA»
+## [x] 0c.20. El copiloto deja de decir «IA»
 
 El extractor es por palabras clave (`asistente-ia-logica.ts`); no hay modelo. Quedan restos:
 `title="Cerrar Copilot"` y el tooltip «Ningún mensaje de IA…» en `panel-copilot-ia.tsx`,
@@ -83,7 +83,7 @@ sale sin aprobación humana» se queda, redactada sin decir «IA». Busca con
 **Hecho cuando:** ese grep solo devuelve identificadores internos justificados (anótalos) y las
 compuertas están verdes.
 
-## [ ] 0c.21. Cerrar «0c»: auditoría contra la especificación visual
+## [x] 0c.21. Cerrar «0c»: auditoría contra la especificación visual
 
 0c.1 (ficha de contacto), 0c.2 (tarjeta de cotización en el hilo) y 0c.3 (pipeline) existen en
 código: `ficha-cliente.tsx`, `m.cotizacionId` en `bandeja/[id]/page.tsx`, `/pipeline`. Lo que no

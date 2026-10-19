@@ -1,10 +1,10 @@
 /**
- * Lógica pura del Copilot Asistente IA para la Bandeja de WhatsApp.
+ * Lógica pura de Sugerencias y Asistente de cotización (reglas) para la Bandeja de WhatsApp.
  *
  * Cumple:
  * - Regla R8: Dinero en enteros de COP sin flotantes.
  * - Regla R10: No expone PII sensible.
- * - Regla UX: "human_approval_required_for_ai_outbound" (salidas de IA requieren aprobación explícita).
+ * - Regla UX: "human_approval_required_for_outbound" (las respuestas sugeridas requieren revisión y aprobación humana explícita).
  * - Cero dependencias de UI, 100% testeable en Vitest.
  */
 
@@ -24,11 +24,13 @@ export interface CalificacionLead {
   justificacion: string;
 }
 
-export interface ResumenChatIa {
+export interface ResumenChatSugerido {
   puntosClave: string[];
   intencionPrincipal: string;
   proximaAccionSugerida: string;
 }
+
+export type ResumenChatIa = ResumenChatSugerido;
 
 const DESTINOS_CONOCIDOS = [
   'Cancún',

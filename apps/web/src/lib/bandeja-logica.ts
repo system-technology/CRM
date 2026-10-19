@@ -209,3 +209,37 @@ export function obtenerIniciales(nombre: string | null, telefono?: string): stri
 
   return 'VP';
 }
+
+export interface AvisoBorradorVentana {
+  debeMostrar: boolean;
+  mensaje: string;
+  borrador: string;
+}
+
+/**
+ * Evalúa la transición de la ventana de servicio de 24 horas de Meta.
+ * Si la ventana pasa de abierta a cerrada mientras hay un borrador escrito (texto no vacío),
+ * genera el aviso correspondiente para preservar el borrador y permitir convertirlo a plantilla.
+ */
+export function evaluarTransicionVentanaBorrador(
+  ventanaPreviaAbierta: boolean,
+  ventanaActualAbierta: boolean,
+  textoBorrador: string,
+): AvisoBorradorVentana {
+  const tieneBorrador = textoBorrador.trim().length > 0;
+  const seCerro = ventanaPreviaAbierta && !ventanaActualAbierta;
+
+  if (seCerro && tieneBorrador) {
+    return {
+      debeMostrar: true,
+      mensaje: 'La ventana se cerró; tu borrador sigue aquí',
+      borrador: textoBorrador.trim(),
+    };
+  }
+
+  return {
+    debeMostrar: false,
+    mensaje: '',
+    borrador: tieneBorrador ? textoBorrador.trim() : '',
+  };
+}

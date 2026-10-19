@@ -29,6 +29,8 @@ import {
   calcularTiempoRestanteVentana,
   claveDeReintento,
   debeBajarElScroll,
+  evaluarTransicionVentanaBorrador,
+  type AvisoBorradorVentana,
   generarColorAvatar,
   obtenerIniciales,
 } from '../../../lib/bandeja-logica';
@@ -36,7 +38,7 @@ import { FichaCliente } from '../../../components/bandeja/ficha-cliente';
 import { ModalPlantillas } from '../../../components/bandeja/modal-plantillas';
 import { EnviarPlantilla } from '@viajapro/contracts';
 import { TarjetaCotizacion } from '../../../components/bandeja/tarjeta-cotizacion';
-import { PanelCopilotIa } from '../../../components/bandeja/panel-copilot-ia';
+import { PanelSugerencias } from '../../../components/bandeja/panel-sugerencias';
 
 export default function BandejaConversacionPage() {
   const params = useParams();
@@ -49,6 +51,13 @@ export default function BandejaConversacionPage() {
 
   // Redacción y envío
   const [textoMensaje, setTextoMensaje] = useState('');
+  const [avisoBorrador, setAvisoBorrador] = useState<AvisoBorradorVentana>({
+    debeMostrar: false,
+    mensaje: '',
+    borrador: '',
+  });
+  const ventanaPreviaRef = useRef<boolean>(true);
+
   const [modoNota, setModoNota] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [errorEnvio, setErrorEnvio] = useState<string | null>(null);
@@ -59,8 +68,8 @@ export default function BandejaConversacionPage() {
   // Panel lateral de ficha del viajero en pantallas medianas / pequeñas
   const [mostrarFichaLateral, setMostrarFichaLateral] = useState(false);
 
-  // Asistente Copilot IA
-  const [copilotAbierto, setCopilotAbierto] = useState(false);
+  // Asistente de Sugerencias (reglas)
+  const [sugerenciasAbierto, setSugerenciasAbierto] = useState(false);
 
   // Atajos de teclado
 
@@ -81,6 +90,22 @@ export default function BandejaConversacionPage() {
     cerrada: boolean;
     texto: string;
   }>({ minutos: 0, horas: 0, cerrada: false, texto: '' });
+
+  // Evaluar cierre de ventana con borrador (0c.19)
+  useEffect(() => {
+    if (!detalle) return;
+    const ventanaEstaAbierta = detalle.ventana.abierta && !tiempoVentana.cerrada;
+    const previa = ventanaPreviaRef.current;
+
+    const evaluacion = evaluarTransicionVentanaBorrador(previa, ventanaEstaAbierta, textoMensaje);
+    if (evaluacion.debeMostrar) {
+      setAvisoBorrador(evaluacion);
+    } else if (ventanaEstaAbierta || textoMensaje.trim().length === 0) {
+      setAvisoBorrador({ debeMostrar: false, mensaje: '', borrador: '' });
+    }
+
+    ventanaPreviaRef.current = ventanaEstaAbierta;
+  }, [detalle?.ventana?.abierta, tiempoVentana.cerrada, textoMensaje]);
 
   const scrollToBottom = useCallback((behavior: ScrollBehavior = 'smooth') => {
     if (chatContainerRef.current) {
@@ -624,28 +649,61 @@ export default function BandejaConversacionPage() {
 
         {/* Pie de redacción */}
         <footer className="shrink-0 border-t border-neutral-200 bg-white p-3 dark:border-neutral-800 dark:bg-neutral-900">
-          {!detalle.ventana.abierta ? (
-            <div className="space-y-2 rounded-xl border border-neutral-200 bg-neutral-50 p-4 text-center text-xs dark:border-neutral-800 dark:bg-neutral-800/40">
+          {!detalle.ventana.abierta || tiempoVentana.cerrada ? (
+            <div className="space-y-3 rounded-xl border border-neutral-200 bg-neutral-50 p-4 text-xs dark:border-neutral-800 dark:bg-neutral-800/40">
               <div className="flex items-center justify-center space-x-1.5 font-semibold text-neutral-800 dark:text-neutral-200">
                 <Lock className="h-4 w-4 text-neutral-500" />
                 <span>Ventana de 24 horas cerrada por Meta</span>
               </div>
-              <p className="text-neutral-500 dark:text-neutral-400">
+              <p className="text-center text-neutral-500 dark:text-neutral-400">
                 No es posible enviar mensajes de texto libre pasadas 24 horas desde el último
                 mensaje del viajero. Utiliza una plantilla HSM aprobada.
               </p>
-              <button
-                type="button"
-                onClick={() => setModalPlantillasAbierto(true)}
-                className="bg-acento-700 hover:bg-acento-800 rounded-lg px-4 py-2 font-semibold text-white shadow-sm transition-colors"
-              >
-                Seleccionar plantilla aprobada
-              </button>
+
+              {/* Aviso visible de borrador preservado con aria-live (0c.19) */}
+              {(avisoBorrador.debeMostrar || textoMensaje.trim().length > 0) && (
+                <div
+                  aria-live="polite"
+                  className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-amber-900 dark:border-amber-700/60 dark:bg-amber-950/40 dark:text-amber-200"
+                >
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                    <div className="min-w-0 flex-1">
+                      <p className="font-bold text-amber-950 dark:text-amber-100">
+                        La ventana se cerró; tu borrador sigue aquí
+                      </p>
+                      <p className="mt-1 line-clamp-2 rounded bg-amber-100/70 p-1.5 text-[11px] text-amber-800 italic dark:bg-amber-900/40 dark:text-amber-300">
+                        «{textoMensaje.trim()}»
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-2.5 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => setModalPlantillasAbierto(true)}
+                      className="flex min-h-[44px] min-w-[44px] items-center justify-center gap-1.5 rounded-lg bg-amber-600 px-4 py-2 font-semibold text-white shadow-xs transition-colors hover:bg-amber-700"
+                    >
+                      <PlusCircle className="h-4 w-4" />
+                      Usar borrador en plantilla
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex justify-center">
+                <button
+                  type="button"
+                  onClick={() => setModalPlantillasAbierto(true)}
+                  className="bg-acento-700 hover:bg-acento-800 flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg px-4 py-2 font-semibold text-white shadow-sm transition-colors"
+                >
+                  Seleccionar plantilla aprobada
+                </button>
+              </div>
             </div>
           ) : (
             <div className="space-y-2">
-              {copilotAbierto && (
-                <PanelCopilotIa
+              {sugerenciasAbierto && (
+                <PanelSugerencias
                   mensajes={detalle.mensajes.map((m) => ({
                     texto: m.texto || '',
                     direccion: m.direccion,
@@ -655,7 +713,7 @@ export default function BandejaConversacionPage() {
                     setTextoMensaje(texto);
                     textareaRef.current?.focus();
                   }}
-                  onCerrar={() => setCopilotAbierto(false)}
+                  onCerrar={() => setSugerenciasAbierto(false)}
                 />
               )}
 
@@ -689,13 +747,14 @@ export default function BandejaConversacionPage() {
 
                     <button
                       type="button"
-                      onClick={() => setCopilotAbierto((p) => !p)}
+                      onClick={() => setSugerenciasAbierto((p) => !p)}
                       className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-semibold transition-colors ${
-                        copilotAbierto
+                        sugerenciasAbierto
                           ? 'border-purple-300 bg-purple-100 text-purple-900 dark:border-purple-800 dark:bg-purple-950 dark:text-purple-200'
                           : 'border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-100 dark:border-purple-900/60 dark:bg-purple-950/40 dark:text-purple-300'
                       }`}
-                      title="Abrir Asistente de Cotización (Heurístico)"
+                      title="Abrir Asistente de Cotización (reglas)"
+                      aria-label="Abrir Asistente de Cotización (reglas)"
                     >
                       <Sparkles className="h-3.5 w-3.5" />
                       <span>Sugerencias</span>

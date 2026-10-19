@@ -19,27 +19,27 @@ import {
   generarResumenConversacion,
   sugerirRespuestaComercial,
   calificarLead,
-} from '../../lib/asistente-ia-logica';
+} from '../../lib/sugerencias-logica';
 
-interface PanelCopilotIaProps {
+export interface PanelSugerenciasProps {
   mensajes: Array<{ texto: string; direccion: 'ENTRANTE' | 'SALIENTE' }>;
   contactoNombre: string;
   onInsertarRespuesta: (texto: string) => void;
   onCerrar: () => void;
 }
 
-export function PanelCopilotIa({
+export function PanelSugerencias({
   mensajes,
   contactoNombre,
   onInsertarRespuesta,
   onCerrar,
-}: PanelCopilotIaProps) {
+}: PanelSugerenciasProps) {
   const [copiado, setCopiado] = useState(false);
 
   // Extraer textos para análisis
   const textos = useMemo(() => mensajes.map((m) => m.texto), [mensajes]);
 
-  // Ejecución de lógica heurística IA
+  // Ejecución de lógica heurística de sugerencias
   const datosViaje = useMemo(() => extraerDatosViajeDeMensajes(textos), [textos]);
   const resumen = useMemo(
     () => generarResumenConversacion(textos, contactoNombre),
@@ -97,7 +97,8 @@ export function PanelCopilotIa({
           type="button"
           onClick={onCerrar}
           className="rounded-md p-1 text-neutral-400 hover:bg-purple-100 hover:text-neutral-600 dark:hover:bg-purple-900/40 dark:hover:text-neutral-200"
-          title="Cerrar Copilot"
+          title="Cerrar sugerencias"
+          aria-label="Cerrar sugerencias"
         >
           <X className="h-4 w-4" />
         </button>
@@ -185,7 +186,7 @@ export function PanelCopilotIa({
                 Respuesta Comercial Sugerida:
               </span>
               <div
-                title="Regla de Negocio: Ningún mensaje de IA se envía al cliente sin previa revisión y aprobación humana."
+                title="Regla de Negocio: Ninguna sugerencia se envía al cliente sin previa revisión y aprobación humana."
                 className="flex items-center gap-1 text-[10px] text-amber-700 dark:text-amber-400"
               >
                 <ShieldCheck className="h-3 w-3" />
