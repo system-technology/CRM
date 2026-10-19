@@ -6,7 +6,7 @@
 
 | Campo | Valor |
 |---|---|
-| Última actualización | 2026-10-19 (noche: hasta v0.30.2, la web en móvil) |
+| Última actualización | 2026-10-19 (noche: hasta v0.31.0, ninguna foránea simple entre tablas de tenant) |
 | Actualizado por | Claude Opus 5.5 (`integrador`) |
 | Fase | **Rebanada vertical de paquetes, en construcción** |
 | Avance de la fase | Cotizador de punta a punta. **La cotización es la suma de sus tarifas y el precio «desde» es uno que el comprador puede pagar (v0.19.0).** Apretón de manos del webhook vivo. Bandeja web en construcción |
@@ -204,7 +204,7 @@ Al cerrar una sesión de trabajo (`/estado` lo hace de forma guiada):
 | Qué | Dueño | Por qué no bloqueó |
 |---|---|---|
 | **Resuelto el mismo 2026-10-10.** La suite de aislamiento vuelve a **30/30 en verde**, firmada por el integrador sobre `main` en `01dd143`. Eran 174 filas de fixtures de tres tenants, todas `duplicate key`, ninguna de aislamiento. El limpiador quedó en `chore/limpiar-fixtures` (`79fe4b7`) | `datos` | — |
-| **La aserción 17 comprueba el NOMBRE de la columna, no lo que guarda.** Dice «ninguna tabla global tiene columna `tenant_id`», pero una tabla global que guarde datos de agencia bajo otro nombre la pasa sin que nadie se entere — y eso ya existe: `enrutamiento_canales` usa `tenant_resuelto_id` y `enrutamiento_historial_2026` usa `tenant_anterior`, `tenant_nuevo` y `actor_tenant_id`. Debería comprobar **columnas `uuid` que referencien `tenants`**, no un literal. Y `excepciones_rls` debería exigir motivo revisado, no solo existencia | `qa` | **Hoy no es fuga:** se verificó contra la base que las seis tablas sin RLS con columna de tenant están todas declaradas en `excepciones_rls`. La aserción promete más de lo que comprueba; el diseño que vigila es correcto |
+| ~~La aserción 17 comprobaba el NOMBRE de la columna, no lo que guarda~~ | `qa` | **Cerrada en v0.31.0:** la 17 decide por columna; su contraprueba va dentro de `BEGIN…ROLLBACK` |
 | `aislamiento.spec.ts` limpia sus fixtures solo en `afterAll`. Una ejecución interrumpida envenena todas las siguientes, que es justo lo que pasó hoy. La limpieza tiene que correr también en `beforeAll` | `qa` | Es higiene del suite, no una fuga |
 | `decodificarClave` acepta hexadecimal o base64. La regla es determinista (64 caracteres `[0-9a-f]` → hex; lo demás, base64) y el largo se verifica después, así que se aceptó. Pendiente: que el generador de secretos y el lector acuerden **una** codificación y la rama desaparezca | `devops` | No hay sustitución silenciosa: lo que no mide 32 bytes lanza al arrancar |
 | Auditar la cadena de inyección de `quoting` y `shared`: el mismo silencio de Nest que construyó el controlador del inbox con cero dependencias es posible ahí | `backend` | Hoy no está roto; el inbox ya lleva `@Inject` explícito |
@@ -408,7 +408,7 @@ más es esa.
 
 | Cola | Dueño | Por qué no bloquea |
 |---|---|---|
-| **Meterle el `tenant_id` dentro a las claves foráneas.** La integridad referencial se evalúa por encima de RLS, así que una foránea simple deja colgar una fila de la de otra agencia si alguien escribe el id cruzado | `datos` | Hoy `tenant_id` lo pone el servidor, nunca el cliente. Es un **barrido de todo el esquema**, no de una tabla suelta: hacerlo en una sola sería inconsistente y daría falsa sensación de cubierto |
+| ~~Meterle el `tenant_id` dentro a las claves foráneas~~ | `datos` | **Cerrada en v0.31.0:** las tres simples que quedaban (`paquetes`→`mayoristas`, `temporadas`→`paquetes`, `precios`→`temporadas`) son compuestas. La migración aborta si queda alguna simple y la aserción 54 barre el catálogo. En Neon: cero simples |
 | `Paquete` + `Temporada` + `Precio` siguen en el esquema junto al modelo nuevo | `datos` | El cotizador actual todavía se apoya en ellos. Se retiran cuando el cotizador pase a `resolverVigencia` |
 | La API no expone todavía `vigencias` ni `tarifas` | `backend` | El dato ya está en la base y la función de resolución probada. Falta el caso de uso y la ruta |
 
@@ -1043,4 +1043,23 @@ objetivos táctiles y los desbordes horizontales a 375 px en el catálogo, la ve
 cinco archivos de `apps/web` y cuatro capturas de 36 a 41 KB, tomados byte a byte de `ec15d04`. `traspaso/` no entra.
 Compuerta: CI **8/8**, https://github.com/Alfavear/CRM/actions/runs/39343734213, sobre el árbol del merge. Estáticas en
 local en verde, y la web pasa sus 172 pruebas.
+
+## Integración del 2026-10-19 (vigesimocuarta) — v0.31.0: foráneas con tenant en el modelo antiguo
+
+`fix/db-fk-compuestas-y-asercion-17` @ `9079e95` entra en `main` (`a84e54f`), etiquetada **v0.31.0**. Trae la migración
+`20261019220000`, que hace compuestas con `tenant_id` tres foráneas: `paquetes.mayorista_id` (con `SET NULL` solo sobre
+`mayorista_id`), `temporadas.paquete_id` y `precios.temporada_id`. La migración termina con un barrido que aborta si queda
+alguna simple. Además entra la aserción **54**, que barre el catálogo, y la **17**, reescrita para decidir por columna.
+`auditor-seguridad`: ACEPTAR. Compuerta: CI **8/8**, https://github.com/Alfavear/CRM/actions/runs/39344193917, sobre el árbol
+del merge. Estáticas en local en verde.
+
+**Aplicada en Neon desde `main`** con `migrate deploy`, contra `neondb`. Antes de aplicarla corrí en Neon el mismo barrido de
+la migración, solo en lectura. Encontró exactamente las tres foráneas que la migración corrige, y `tablas_sin_aislamiento`
+salió vacía, así que no podía abortar a medias. Después de aplicarla, el barrido da **cero** foráneas simples y la `checksum`
+coincide con el sha256 del archivo (`03b377ff…`).
+Registro: [`docs/_integraciones/2026-10-19-v0.31.0.md`](docs/_integraciones/2026-10-19-v0.31.0.md).
+
+| Cola | Dueño | Por qué no bloquea |
+|---|---|---|
+| La contraprueba de la 17 hace `CREATE TABLE … REFERENCES tenants`, y eso **bloquea las escrituras en `tenants`** mientras corre (`SHARE ROW EXCLUSIVE`) | `qa` | Va dentro de `BEGIN…ROLLBACK` y dura milisegundos. Contra una base compartida podría frenar un alta de agencia |
 
