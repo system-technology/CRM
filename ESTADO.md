@@ -128,7 +128,7 @@ Ordenada. La primera es la que debe tomarse ahora.
 | 9 | Decidir nombre comercial, modelo de cobro y precios | Usuario | Antes de vender |
 | 10 | Resolver la protección de `main` en GitHub | Usuario | Plan gratuito no la permite en repos privados |
 | 11 | **Rotar la contraseña de Neon y la clave de API de Stitch** | Usuario | **Sigue pendiente.** `ac7fb99` rotó los tres roles de PostgreSQL, que es otra cosa. Ambas se pegaron en el chat; un secreto expuesto no se borra, se rota |
-| 11b | `META_APP_SECRET` y `WEBHOOK_PAYLOAD_KEY_VERSION` en `.env` | Usuario | **A medias (2026-10-19).** El propietario puso `META_APP_SECRET`, pero el integrador lo encontró con valor **solo en `D:ProjectsCRM.env`**: falta en `CRM-api`, `CRM-inbox` y `CRM-bandeja`. Falta además confirmar `WEBHOOK_PAYLOAD_KEY_VERSION`. El secreto va al `.env`, nunca al chat |
+| 11b | `META_APP_SECRET` y `WEBHOOK_PAYLOAD_KEY_VERSION` en `.env` | Usuario | **Cerrada (2026-10-19).** El integrador comprobó la presencia sin imprimir valores. `META_APP_SECRET`, `WHATSAPP_DIRECTORY_PEPPER` y `WEBHOOK_PAYLOAD_KEY` tienen valor en los cuatro árboles, y en cada variable es el mismo en los cuatro (mismo hash). `WEBHOOK_PAYLOAD_KEY_VERSION=1` en los cuatro |
 | 11c | Los metadatos de decorador no siempre llegan con el transpilador de desarrollo | `backend` | **Hecha (`85eceac`, v0.19.0).** `@Inject` explícito y `guardia-de-inyeccion.spec.ts`, que pone en rojo cualquier dependencia sin token |
 | 11d | El aviso «Acceso sin contexto de tenant» se emitía una vez por mensaje | `backend` | **Hecha (`f57925b`, v0.19.0).** El webhook usa `sinTenantDeclarado`, con la operación declarada en `operaciones-de-plataforma.ts` (tipo cerrado). La variante ruidosa sigue para todo lo no declarado |
 | 12 | Autenticación: el `tenant_id` debe salir del token de sesión | `backend` | Hoy la web lo envía por cabecera. Solo funciona con `APP_ENV=local`, pero es deuda que bloquea desplegar |
@@ -808,4 +808,19 @@ Registro: [`docs/_integraciones/2026-10-19-gitleaksignore-rotado.md`](docs/_inte
 - **El Paso 2 de Meta —configurar el webhook— espera a que haya despliegue o túnel.** Exige una URL
   pública, y hoy no la hay. Hasta entonces el `POST` real de Meta no llega; el verificado es el
   de las pruebas e2e.
+
+---
+
+## 2026-10-19 — cierre documental: secretos locales alineados
+
+**11b cerrada.** Los cuatro `.env` tienen `META_APP_SECRET`, `WHATSAPP_DIRECTORY_PEPPER`, `WEBHOOK_PAYLOAD_KEY` y
+`WEBHOOK_PAYLOAD_KEY_VERSION=1`. En cada variable, el valor es el mismo en los cuatro: lo comprobé por hash,
+sin imprimir valores. La pimienta y la clave son las que ya usaba la base, copiadas desde `CRM-api`.
+Con esto, la compuerta completa (`inbox-relay.e2e-spec`) se puede correr desde cualquier árbol.
+
+### Cola nueva — con dueño, no bloquea
+
+| Cola | Dueño | Por qué no bloquea |
+|---|---|---|
+| **Severidad alta.** `scripts/generar-secretos-locales.ps1` toma como referencia el **primer** árbol de `git worktree list` (`D:\Projects\CRM`). Si ese árbol no tiene los secretos, genera valores nuevos y los escribe en **todos**, pisando la pimienta y la clave buenas de los demás: el directorio de enrutamiento queda huérfano y lo cifrado, ilegible. Corrección: abortar si un árbol tiene valor y otro no, y ofrecer copiar en vez de generar | `devops` | Hoy no se manifestó, y los cuatro árboles ya tienen los mismos valores. Pero basta una ejecución con un árbol nuevo primero en la lista |
 
