@@ -322,6 +322,9 @@ const MATRIZ_FUNCIONES: Readonly<Record<string, readonly string[]>> = {
   // al directorio (tarea 4f). Es SECURITY DEFINER y escribe el directorio, así que entra en
   // la matriz como las demás: un GRANT sobre ella sería un camino nuevo hacia la peor tabla.
   propagar_estado_canal: [],
+  // Novena: el relay de barrido (ADR-0010, punto 9). Solo identificadores y antigüedad; la
+  // ejecuta el trabajador, que es quien vuelve a encolar.
+  listar_changes_pendientes: ['viajapro_webhook'],
 };
 
 const PROPIETARIO_ESPERADO: Readonly<Record<string, string>> = {
@@ -333,6 +336,7 @@ const PROPIETARIO_ESPERADO: Readonly<Record<string, string>> = {
   purgar_recepciones: 'viajapro_staging',
   purgar_payloads: 'viajapro_staging',
   propagar_estado_canal: 'viajapro_enrutador',
+  listar_changes_pendientes: 'viajapro_staging',
 };
 
 /**
@@ -776,8 +780,8 @@ describe('ADR-0008 — directorio de enrutamiento, staging y separación de role
     );
     expect(
       rows.length,
-      'faltan funciones de ADR-0008: eran seis, la auditoría de implementación añadió purgar_payloads y la tarea 4f propagar_estado_canal',
-    ).toBe(8);
+      'faltan funciones de ADR-0008: eran seis, la auditoría de implementación añadió purgar_payloads, la tarea 4f propagar_estado_canal y el relay de barrido listar_changes_pendientes',
+    ).toBe(9);
     expect(rows.filter((r) => r.publico)).toEqual([]);
   });
 
@@ -790,7 +794,7 @@ describe('ADR-0008 — directorio de enrutamiento, staging y separación de role
        WHERE n.nspname = 'public' AND p.proname = ANY($1) ORDER BY 1`,
       [Object.keys(MATRIZ_FUNCIONES)],
     );
-    expect(rows.length).toBe(8);
+    expect(rows.length).toBe(9);
 
     for (const fila of rows) {
       const config = (fila.proconfig as string[] | null) ?? [];
@@ -1419,6 +1423,105 @@ describe('ADR-0008 — directorio de enrutamiento, staging y separación de role
       [null, 'ACTIVO', TENANT_A],
       ['ACTIVO', 'REVOCADO', TENANT_A],
     ]);
+  });
+
+  it('53 — el barrido lista solo identificadores, solo para el trabajador y con límite', async () => {
+    // ADR-0010, punto 9. La tabla es global y guarda contenido de varias agencias: lo que
+    // devuelva esta función lo ve cualquiera que tenga la cadena del trabajador, así que la
+    // forma del resultado es la frontera. Ni payload ni tenant: solo lo que hace falta para
+    // reconstruir el `jobId` y decidir si toca reencolar.
+    const firma = await admin.query(
+      `SELECT pg_get_function_result(p.oid) AS resultado,
+              pg_get_function_identity_arguments(p.oid) AS argumentos
+       FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+       WHERE n.nspname = 'public' AND p.proname = 'listar_changes_pendientes'`,
+    );
+    expect(firma.rows.length, 'listar_changes_pendientes no existe o está sobrecargada').toBe(1);
+    expect(firma.rows[0]?.resultado).toBe(
+      'TABLE(recepcion_id bytea, indice smallint, antiguedad_s integer)',
+    );
+    expect(firma.rows[0]?.argumentos).toBe('p_antiguedad_minima_s integer, p_limite integer');
+
+    // Solo el trabajador. La 20 lo mira en el catálogo; esto lo mira en el comportamiento.
+    for (const rol of ['viajapro_app', 'viajapro_altas']) {
+      await expect(
+        conRol(rol, 'SELECT * FROM listar_changes_pendientes(30, 10)'),
+        `${rol} pudo listar los changes pendientes`,
+      ).rejects.toThrow(/permission denied/i);
+    }
+
+    // Tres recepciones de esta corrida, envejecidas diez minutos y no dos días: así ninguna
+    // purga de otra corrida (plazo de un día) las alcanza a mitad de la prueba.
+    const vieja = nuevaRecepcion(); // dos changes: el 0 se procesa, el 1 queda pendiente
+    const fresca = nuevaRecepcion(); // pendiente, pero recién llegada
+    const anulada = nuevaRecepcion(); // pendiente y vieja, pero sin contenido que procesar
+    for (const [id, total] of [
+      [vieja, 2],
+      [fresca, 1],
+      [anulada, 1],
+    ] as const) {
+      await conRol(
+        'viajapro_app',
+        'SELECT registrar_recepcion($1, $2, $3, $4, 1::smallint, $5::smallint)',
+        [id, randomBytes(32), randomBytes(12), randomBytes(16), total],
+      );
+    }
+    await conRol(
+      'viajapro_webhook',
+      'SELECT anular_payload($1, 0::smallint, $2::estado_change_recepcion)',
+      [vieja, 'PROCESADO'],
+    );
+    await admin.query(
+      "UPDATE recepciones_webhook SET recibido_en = now() - interval '10 minutes' WHERE recepcion_id = ANY($1)",
+      [[vieja, anulada]],
+    );
+    await admin.query(
+      `UPDATE recepciones_webhook
+          SET payload_cifrado = NULL, payload_nonce = NULL, payload_tag = NULL, anulado_en = now()
+        WHERE recepcion_id = $1`,
+      [anulada],
+    );
+
+    const { rows } = await conRol(
+      'viajapro_webhook',
+      'SELECT * FROM listar_changes_pendientes(30, 1000)',
+    );
+    for (const fila of rows as Record<string, unknown>[]) {
+      expect(Object.keys(fila).sort(), 'el barrido devuelve algo más que identificadores').toEqual([
+        'antiguedad_s',
+        'indice',
+        'recepcion_id',
+      ]);
+      expect(Number(fila.antiguedad_s)).toBeGreaterThanOrEqual(30);
+    }
+    const nuestras = rows
+      .filter((f) => [vieja, fresca, anulada].some((id) => id.equals(f.recepcion_id as Buffer)))
+      .map((f) => [(f.recepcion_id as Buffer).equals(vieja) ? 'vieja' : 'otra', Number(f.indice)]);
+    expect(
+      nuestras,
+      'solo el change 1 de la vieja: ni el procesado, ni la fresca, ni la que ya no tiene contenido',
+    ).toEqual([['vieja', 1]]);
+
+    // El límite se respeta: hay al menos dos pendientes de esta corrida con antigüedad >= 0.
+    const uno = await conRol('viajapro_webhook', 'SELECT * FROM listar_changes_pendientes(0, 1)');
+    expect(uno.rows.length, 'el barrido no respeta el límite').toBe(1);
+
+    // Y el límite es obligatorio y acotado: sin él, el barrido es un volcado.
+    for (const [antiguedad, limite] of [
+      [30, 0],
+      [30, 1001],
+      [30, null],
+      [null, 10],
+      [-1, 10],
+    ] as const) {
+      await expect(
+        conRol('viajapro_webhook', 'SELECT * FROM listar_changes_pendientes($1, $2)', [
+          antiguedad,
+          limite,
+        ]),
+        `aceptó antigüedad ${antiguedad} y límite ${limite}`,
+      ).rejects.toThrow(/listar_changes_pendientes/);
+    }
   });
 });
 // =============================================================================
