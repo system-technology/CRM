@@ -25,6 +25,11 @@
         "DATABASE_APP_URL",
         "DATABASE_ALTAS_URL",
         "DATABASE_WEBHOOK_URL",
+        "WHATSAPP_DIRECTORY_PEPPER",
+        "WEBHOOK_PAYLOAD_KEY",
+        "WEBHOOK_PAYLOAD_KEY_VERSION",
+        "META_APP_SECRET",
+        "WHATSAPP_WEBHOOK_VERIFY_TOKEN",
         "REDIS_URL"
       ],
       "cache": false

@@ -43,4 +43,6 @@ description = "Marcadores de plantilla y contraseña local pública, nunca crede
 regexes = [
   '''cambiar-por-[a-z0-9-]+''',
   '''desarrollo-local-sin-valor''',
+  # Una variable sin valor no filtra nada (plantilla .env.example).
+  '''^[A-Z0-9_]+=[ ]*$''',
 ]

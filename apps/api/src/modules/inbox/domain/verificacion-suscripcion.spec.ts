@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
+import { randomBytes } from 'node:crypto';
 import { verificarSuscripcion } from './verificacion-suscripcion.js';
 
-const TOKEN = '68488059a2a65a2a6efdc0b882e1c70f';
+// Aleatorio por corrida: un literal aquí acabó siendo el token real del entorno (2026-10-19).
+const TOKEN = randomBytes(16).toString('hex');
 const base = {
   'hub.mode': 'subscribe',
   'hub.verify_token': TOKEN,
