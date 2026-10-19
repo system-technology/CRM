@@ -26,11 +26,11 @@ export function TarjetaSalidaPublicada({ salida }: TarjetaSalidaPublicadaProps) 
   const condicionDesde = formatearCondicionDesde(salida);
 
   return (
-    <article className="flex flex-col justify-between overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-xs transition-all hover:border-neutral-300 hover:shadow-md dark:border-neutral-800 dark:bg-neutral-900 dark:hover:border-neutral-700">
+    <article className="flex w-full min-w-0 flex-col justify-between overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-xs transition-all hover:border-neutral-300 hover:shadow-md dark:border-neutral-800 dark:bg-neutral-900 dark:hover:border-neutral-700">
       <div>
         {/* Cabecera de la tarjeta con Fecha y Tipo */}
-        <div className="border-b border-neutral-100 bg-neutral-50/80 p-4 dark:border-neutral-800/80 dark:bg-neutral-800/40">
-          <div className="flex items-center justify-between gap-2">
+        <div className="border-b border-neutral-100 bg-neutral-50/80 p-3.5 sm:p-4 dark:border-neutral-800/80 dark:bg-neutral-800/40">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <span className="bg-acento-50 text-acento-700 dark:bg-acento-950/60 dark:text-acento-300 flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold">
               <Calendar className="h-3.5 w-3.5" />
               <span className="capitalize">{fechaTexto}</span>
@@ -68,8 +68,8 @@ export function TarjetaSalidaPublicada({ salida }: TarjetaSalidaPublicadaProps) 
         </div>
 
         {/* Cuerpo informativo */}
-        <div className="space-y-2.5 p-4 text-xs text-neutral-600 dark:text-neutral-300">
-          <div className="flex items-center justify-between border-b border-neutral-100 pb-2 dark:border-neutral-800">
+        <div className="space-y-2.5 p-3.5 text-xs text-neutral-600 sm:p-4 dark:text-neutral-300">
+          <div className="flex flex-wrap items-center justify-between gap-1 border-b border-neutral-100 pb-2 dark:border-neutral-800">
             <span className="text-neutral-400">Salida:</span>
             <span className="font-semibold text-neutral-800 dark:text-neutral-200">
               Fecha fija confirmada ({salida.fecha})
@@ -77,7 +77,7 @@ export function TarjetaSalidaPublicada({ salida }: TarjetaSalidaPublicadaProps) 
           </div>
 
           {salida.cupoTotal !== null ? (
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-1">
               <span className="text-neutral-400">Cupo total:</span>
               <span className="font-semibold text-neutral-800 dark:text-neutral-200">
                 {salida.cupoTotal} sillas
@@ -93,8 +93,8 @@ export function TarjetaSalidaPublicada({ salida }: TarjetaSalidaPublicadaProps) 
       </div>
 
       {/* Pie de tarjeta con Tarifa Desde y Botón Cotizar */}
-      <div className="border-t border-neutral-100 bg-neutral-50/50 p-4 dark:border-neutral-800/80 dark:bg-neutral-800/20">
-        <div className="mb-3 flex items-baseline justify-between">
+      <div className="border-t border-neutral-100 bg-neutral-50/50 p-3.5 sm:p-4 dark:border-neutral-800/80 dark:bg-neutral-800/20">
+        <div className="mb-3 flex flex-wrap items-baseline justify-between gap-1">
           <span className="text-xs text-neutral-500 dark:text-neutral-400">Tarifa desde:</span>
           <div className="text-right">
             <span className="cifra text-lg font-extrabold text-neutral-900 dark:text-white">

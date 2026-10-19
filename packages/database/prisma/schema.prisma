@@ -491,7 +491,8 @@ model Paquete {
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   mayoristaId String?    @map("mayorista_id") @db.Uuid
-  mayorista   Mayorista? @relation(fields: [mayoristaId], references: [id], onDelete: SetNull)
+  /// Foranea COMPUESTA con el tenant; en SQL es `SET NULL ("mayorista_id")`, que Prisma no modela.
+  mayorista   Mayorista? @relation(fields: [mayoristaId, tenantId], references: [id, tenantId], onDelete: SetNull, onUpdate: Restrict)
 
   nombre  String  @db.VarChar(200)
   destino String  @db.VarChar(120)
@@ -542,7 +543,8 @@ model Temporada {
   tenantId String @map("tenant_id") @db.Uuid
 
   paqueteId String  @map("paquete_id") @db.Uuid
-  paquete   Paquete @relation(fields: [paqueteId], references: [id], onDelete: Cascade)
+  /// Foranea COMPUESTA con el tenant: la integridad referencial se evalua por encima de RLS.
+  paquete   Paquete @relation(fields: [paqueteId, tenantId], references: [id, tenantId], onDelete: Cascade, onUpdate: Restrict)
 
   nombre String   @db.VarChar(80)
   /// Fechas de viaje, sin hora: el 24 de diciembre es el 24 en cualquier huso. R9.
@@ -553,6 +555,7 @@ model Temporada {
 
   precios Precio[]
 
+  @@unique([id, tenantId])
   @@index([tenantId, paqueteId])
   @@index([tenantId, desde, hasta])
   @@map("temporadas")
@@ -571,7 +574,8 @@ model Precio {
   tenantId String @map("tenant_id") @db.Uuid
 
   temporadaId String    @map("temporada_id") @db.Uuid
-  temporada   Temporada @relation(fields: [temporadaId], references: [id], onDelete: Cascade)
+  /// Foranea COMPUESTA con el tenant: la integridad referencial se evalua por encima de RLS.
+  temporada   Temporada @relation(fields: [temporadaId, tenantId], references: [id, tenantId], onDelete: Cascade, onUpdate: Restrict)
 
   acomodacion  Acomodacion
   tipoPasajero TipoPasajero @map("tipo_pasajero")
