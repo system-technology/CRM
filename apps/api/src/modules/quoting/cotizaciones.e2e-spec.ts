@@ -154,6 +154,19 @@ afterAll(async () => {
 
 const composicion = (adultos = 2) => ({ paqueteId: paqueteA, fecha: FECHA, adultos });
 
+/**
+ * Nada en la respuesta de quien NO pidió el margen puede servir para despejar el neto: ni
+ * `neto` ni `margen`, pero tampoco la política (porcentaje + base + venta dan `neto = venta / (1 + %)`),
+ * ni su origen ni su redondeo. Se busca en el TEXTO de la respuesta, no en claves conocidas: un
+ * campo nuevo que lo filtre también pondría esto en rojo.
+ */
+function sinPistasDelNeto(cuerpo: unknown): void {
+  const texto = JSON.stringify(cuerpo);
+  expect(texto).not.toMatch(
+    /neto|margen|politica|porcentaje|redondeo|origenDeLaVenta|SOBRE_EL|SOBRE_LA|DERIVADA|FIJADA/i,
+  );
+}
+
 describe('cotizaciones guardadas', () => {
   let guardada: CotizacionGuardada;
 
@@ -172,7 +185,8 @@ describe('cotizaciones guardadas', () => {
     expect(v1.numero).toBe(1);
     expect(v1.venta).toEqual({ unidades: '2400000', moneda: 'COP' });
     expect(v1.paqueteNombre).toBe('San Andrés fixture');
-    expect(v1.politica.base).toBe('SOBRE_EL_NETO');
+    expect(v1.politica).toBeUndefined();
+    sinPistasDelNeto(r.json);
     expect(v1.lineas).toHaveLength(1);
     // Sin `incluirMargen`: ni margen, ni neto, ni la clave.
     expect(Object.keys(v1)).not.toContain('neto');
@@ -192,13 +206,19 @@ describe('cotizaciones guardadas', () => {
   it('leer devuelve lo mismo, y el margen solo con incluirMargen=true', async () => {
     const sin = await llamar('GET', `/api/v1/cotizaciones/${guardada.id}`, TENANT_A);
     expect(sin.estado).toBe(200);
-    expect(Object.keys(sin.json.versiones![0]!)).not.toContain('neto');
+    sinPistasDelNeto(sin.json);
 
     const con = await llamar(
       'GET',
       `/api/v1/cotizaciones/${guardada.id}?incluirMargen=true`,
       TENANT_A,
     );
+    expect(con.json.versiones![0]!.politica).toEqual({
+      porcentaje: 20,
+      base: 'SOBRE_EL_NETO',
+      origenDeLaVenta: 'DERIVADA_DEL_NETO',
+      redondeoVenta: 1000,
+    });
     expect(con.json.versiones![0]!.neto).toEqual({ unidades: '2000000', moneda: 'COP' });
     expect(con.json.versiones![0]!.margen).toEqual({ unidades: '400000', moneda: 'COP' });
   });
@@ -229,6 +249,17 @@ describe('cotizaciones guardadas', () => {
     // La 1, idéntica byte a byte a como estaba antes de tocar el tarifario.
     expect(c.versiones[0]).toEqual(antes.json.versiones![0]!);
     expect(c.versiones[0]!.venta).toEqual({ unidades: '2400000', moneda: 'COP' });
+  });
+
+  it('añadir una versión SIN incluirMargen tampoco revela política, neto ni margen', async () => {
+    const r = await llamar(
+      'POST',
+      `/api/v1/cotizaciones/${guardada.id}/versiones`,
+      TENANT_A,
+      composicion(1),
+    );
+    expect(r.estado).toBe(201);
+    sinPistasDelNeto(r.json);
   });
 
   it('la base rechaza editar una versión ya guardada', async () => {

@@ -44,3 +44,16 @@ cuerpo con importes se rechaza con 400 en vez de ignorarse en silencio.
 - No hay listado de cotizaciones por contacto ni cambio de estado/envío: el esquema los admite,
   los casos de uso no existen todavía.
 - `creado_por` queda nulo hasta que exista identidad.
+
+## Corrección R10: la política solo viaja con `incluirMargen=true`
+
+`VersionDeCotizacion.politica` salía siempre. Con base `SOBRE_EL_NETO`, porcentaje y venta, el neto
+sale por división (`neto = venta / (1 + %)`). Ahora `politica` es opcional en el contrato y se omite
+entera, clave incluida, junto con `neto` y `margen`, en las tres rutas.
+
+Barrido del resto de la respuesta: `origenDeLaVenta` y `redondeoVenta` solos no despejan el neto,
+pero son parte de la misma política interna y se ocultan con ella. `lineas` ya se limpiaba de
+`margen` y `margenPorcentaje`; `venta`, `precioUnitario` y `total` son precio de venta. No hay
+listado de cotizaciones todavía, así que no hay otra superficie. La e2e busca en el TEXTO de la
+respuesta (`neto|margen|politica|porcentaje|redondeo|origen|SOBRE_|DERIVADA|FIJADA`), no en claves
+conocidas: un campo futuro que filtre también la pone en rojo.

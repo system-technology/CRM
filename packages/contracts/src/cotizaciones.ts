@@ -88,7 +88,12 @@ export const VersionDeCotizacion = z.object({
   infantes: z.number().int().min(0),
   acomodacion: Acomodacion.nullable(),
 
-  politica: PoliticaAplicada,
+  /**
+   * **Solo con `incluirMargen=true`.** Con la base (`SOBRE_EL_NETO`), el porcentaje y la venta, el
+   * neto sale por división: `neto = venta / (1 + porcentaje)`. Es política de margen, interna de la
+   * agencia, y se omite entera —clave incluida— junto con `neto` y `margen`.
+   */
+  politica: PoliticaAplicada.optional(),
 
   /** Las líneas armadas tal como se cotizaron. Con margen solo si se pidió `incluirMargen`. */
   lineas: z.array(OpcionDePrecio),
