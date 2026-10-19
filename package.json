@@ -16,6 +16,7 @@
     "test": "turbo run test",
     "test:e2e": "turbo run test:e2e",
     "test:hooks": "node .claude/hooks/lib/politica-rama.test.mjs && node .claude/hooks/lib/guard-secretos.test.mjs",
+    "compuertas": "node scripts/compuertas.mjs",
     "format": "prettier --write \"**/*.{ts,tsx,js,mjs,jsx,json,yml,yaml}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,mjs,jsx,json,yml,yaml}\"",
     "db:generate": "pnpm --filter @viajapro/database generate",

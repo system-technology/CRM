@@ -11,7 +11,7 @@
     "migrate:deploy": "dotenv -e ../../.env -- prisma migrate deploy",
     "seed": "dotenv -e ../../.env -- tsx prisma/seed.ts",
     "studio": "dotenv -e ../../.env -- prisma studio",
-    "build": "tsc -p tsconfig.build.json",
+    "build": "prisma generate && tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "pnpm run fixtures:limpiar && dotenv -e ../../.env -- vitest run",
     "test:aislamiento": "pnpm run fixtures:limpiar && dotenv -e ../../.env -- vitest run tests/aislamiento.spec.ts",
