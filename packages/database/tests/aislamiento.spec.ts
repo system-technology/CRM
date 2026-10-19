@@ -1003,11 +1003,22 @@ describe('ADR-0008 — directorio de enrutamiento, staging y separación de role
   }, 60_000);
 
   it('17 — toda tabla con datos de agencia fuera de excepciones_rls tiene RLS forzada, y toda excepción tiene motivo', async () => {
-    // COMMIT ROJO: una tabla global que guarda datos de agencia bajo otro nombre, sin RLS y
-    // sin excepción. La versión anterior de la 17 la dejaba pasar.
-    await admin.query(
-      'CREATE TABLE IF NOT EXISTS prueba_roja_17 (id uuid PRIMARY KEY, tenant_x uuid REFERENCES tenants (id))',
-    );
+    // Contraprueba primero: el detector tiene que ver una tabla que guarda datos de agencia
+    // bajo otro nombre, sin RLS y sin excepción —lo que la versión anterior dejaba pasar—.
+    // Se planta dentro de una transacción que se deshace: no queda nada en la base.
+    await admin.query('BEGIN');
+    try {
+      await admin.query(
+        'CREATE TABLE contraprueba_17 (id uuid PRIMARY KEY, tenant_x uuid REFERENCES tenants (id))',
+      );
+      const plantada = await tablasConDatosDeAgenciaSinRlsForzada(admin);
+      expect(plantada, 'el detector de la 17 no ve una tabla con tenant_x sin RLS').toContainEqual({
+        tabla: 'contraprueba_17',
+        columnas: ['tenant_x'],
+      });
+    } finally {
+      await admin.query('ROLLBACK');
+    }
 
     // **Por el dato, no por el nombre.** La versión anterior solo preguntaba si una tabla
     // global tenía una columna llamada `tenant_id`, y una tabla que guardase datos de agencia
