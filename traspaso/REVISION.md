@@ -1,4 +1,4 @@
-# REVISIÓN — 2026-10-19 (noche) — 0c.22 `ba6fe8e`
+﻿# REVISIÓN — 2026-10-19 (noche) — 0c.22 `ba6fe8e`
 
 ## Veredicto: **ACEPTADO con una corrección pequeña (0c.22c)**
 
@@ -38,3 +38,32 @@ R13: una sola vuelta. La corrección es la única que toca R10; el resto va a co
 
 `@viajapro/web`: lint limpio, typecheck limpio, test 18 archivos / 142 pruebas en verde;
 `format:check` raíz limpio. No corrí la suite de aislamiento ni el navegador (no tengo el MCP).
+
+---
+
+# REVISIÓN — 0c.22c `fba0c96` y 0c.23 `7f38955`
+
+## Veredicto: **ACEPTADAS**, sin bloqueantes
+
+0c.22c: aceptada por el coordinador. 0c.23: la maqueta cumple (1) y (2); (3) cumple a medias y va a la
+cola como 0c.29, que no bloquea.
+
+## Cola — con dueño
+
+1. **Forma frente al ADR-0011:** la maqueta tiene correo y contraseña, pero no el paso del código por
+   correo ni el selector de agencia, y la ruta es `/iniciar-sesion` cuando el ADR fija `/ingresar`.
+   Es la 0c.29. *(Dueño: Antigravity.)*
+2. **Interruptor apagado:** la redirección a `/bandeja` es de cliente (`useEffect` + `router.replace`),
+   y la ruta existe y se compila; no hay nada de la maqueta en el DOM salvo una pantalla de espera.
+   Aceptable para una maqueta; en 0c.29 pasa a servidor.
+3. Encoladas 0c.27 (ocultar neto y margen, espera al permiso) y 0c.28 (listado a la API real, espera
+   a `feat/quoting-listado-y-estados`).
+
+## Verificado
+
+- **Sin credenciales guardadas:** grep de `localStorage`, `sessionStorage`, `document.cookie` y
+  `fetch(` en la pantalla y en `auth-maqueta-logica.ts`: cero coincidencias. La contraseña solo pasa
+  por `simularInicioSesion`, que no sale del navegador.
+- **Interruptor:** `NEXT_PUBLIC_AUTH_MAQUETA`, apagado por defecto; apagado redirige a `/bandeja`.
+- **Ejecutado:** `@viajapro/web` lint y typecheck limpios, test 19 archivos y 149 pruebas en verde,
+  `format:check` limpio. No corrí navegador ni la suite de aislamiento.

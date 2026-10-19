@@ -209,6 +209,38 @@ Guarda las capturas en `docs/_assets/diseno/` y corrige lo que falle.
 
 ---
 
+## [ ] 0c.27. Ocultar neto y margen a quien no tenga el permiso (añadida el 2026-10-19, ESPERA)
+
+**No hacer nada hasta que exista el permiso «ver neto y margen»** (rebanada 3 del ADR-0011). Entonces:
+ocultar `ficha-detalle-paquete.tsx:244` («Neto: …» en el catálogo) y `bloque-politica-precio.tsx` a
+quien no lo tenga. El permiso viene del servidor; el cliente no calcula roles.
+
+**Hecho cuando:** sin el permiso no hay ningún importe neto ni porcentaje de margen en el DOM, y con
+él sigue igual que hoy.
+
+## [ ] 0c.28. El listado de cotizaciones pasa a la API real (añadida el 2026-10-19, ESPERA)
+
+Cuando `feat/quoting-listado-y-estados` entre en `main` (`git log origin/main`), la 0c.24 deja los
+datos simulados y usa `GET /api/v1/cotizaciones` con los contratos nuevos, conservando el interruptor
+para el modo sin API. No empieces antes: los contratos no existen en tu árbol (R3).
+
+**Hecho cuando:** el listado muestra cotizaciones reales, con sus estados, y `pnpm compuertas` sale
+en verde.
+
+## [ ] 0c.29. La maqueta de inicio de sesión toma la forma del ADR-0011 (añadida el 2026-10-19)
+
+Lee `docs/03-adr/0011-autenticacion-y-tenant-de-sesion.md` (rama `origin/docs/adr-0011-autenticacion`).
+Hoy la maqueta solo tiene correo y contraseña. Añade, todo simulado y detrás del mismo interruptor:
+(1) el paso «código de seis dígitos por correo» (se escribe, no es enlace), (2) el selector de agencia
+cuando el usuario pertenezca a más de una, (3) la ruta `/ingresar` que fija el ADR, no
+`/iniciar-sesion`. (4) Con el interruptor apagado, que la redirección sea del servidor (en
+`next.config` o con `redirect()` en un Server Component) y no un `useEffect`. Sin guardar nada.
+
+**Hecho cuando:** la secuencia correo y contraseña, código y agencia se recorre a 375 px con teclado,
+con el interruptor apagado `/ingresar` no renderiza nada de la maqueta, y `pnpm compuertas` sale en verde.
+
+---
+
 ## [x] 0c.15. La política de precio de la agencia, en `/configuracion`
 
 **Esto ya no espera a nadie.** El contrato `PoliticaDePrecio` existe y está publicado en
