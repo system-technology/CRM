@@ -224,6 +224,14 @@ Cuando `feat/quoting-listado-y-estados` entre en `main` (`git log origin/main`),
 datos simulados y usa `GET /api/v1/cotizaciones` con los contratos nuevos, conservando el interruptor
 para el modo sin API. No empieces antes: los contratos no existen en tu árbol (R3).
 
+**Qué cambia, explícito (R3):** **borrar los tipos locales e importar de `@viajapro/contracts`**:
+`PaginaResultado` y `paginarItems` (paginación por número de página en el cliente) desaparecen;
+se usa `ListarCotizaciones` (`cursor`, `limite`, filtros `estado`, `contactoId`, `desde`, `hasta`) y
+`PaginaDeCotizaciones` (`datos`, `pageInfo.nextCursor`, `hasMore`). `ResumenVisualCotizacion` se
+deriva de `FilaDeCotizacion` (`ultimaVersionEn`, `numeroDeVersiones`, `venta`), sin `politica`. La
+UI pasa de «Página N de M» a «Cargar más» con cursor. El orden lo da el servidor. Los generadores de
+500 filas simuladas solo sirven en el modo sin API.
+
 **Hecho cuando:** el listado muestra cotizaciones reales, con sus estados, y `pnpm compuertas` sale
 en verde.
 

@@ -67,3 +67,31 @@ cola como 0c.29, que no bloquea.
 - **Interruptor:** `NEXT_PUBLIC_AUTH_MAQUETA`, apagado por defecto; apagado redirige a `/bandeja`.
 - **Ejecutado:** `@viajapro/web` lint y typecheck limpios, test 19 archivos y 149 pruebas en verde,
   `format:check` limpio. No corrí navegador ni la suite de aislamiento.
+
+---
+
+# REVISIÓN — 0c.24 `21dfcab`
+
+## Veredicto: **ACEPTADA**, sin bloqueantes
+
+## Cola — con dueño
+
+1. **Paginación por número de página, en el cliente** (`paginarItems`, «Página N de M»), no por cursor
+   como el contrato `ListarCotizaciones` de `feat/quoting-listado-y-estados` (`e96e0ff`). Es provisional
+   y la 0c.28 lo sustituye; ahora dice explícitamente «borrar los tipos locales e importar de
+   `@viajapro/contracts`». `PaginaResultado` y `ResumenVisualCotizacion` no llevan comentario que
+   apunte al contrato: añade uno de una línea. *(Dueño: Antigravity, 0c.28.)*
+2. El listado no usa `FilaDeCotizacion`; deriva de `CotizacionGuardada` (que sí está en `main`).
+   Su resumen incluye `contactoNombre` y `destino`, que la fila del contrato no trae. En 0c.28 el
+   nombre del contacto se resuelve aparte o se omite. *(Dueño: Antigravity.)*
+
+## Verificado
+
+- **R3:** no redefine `FilaDeCotizacion`, `PaginaDeCotizaciones` ni `ListarCotizaciones`; el estado sale
+  de `CotizacionGuardada['estado']`.
+- **Estados:** BORRADOR, ENVIADA, ACEPTADA, RECHAZADA y VENCIDA, idénticos a `EstadoCotizacion` de
+  `main` y de `e96e0ff`.
+- **R10:** la pantalla y el resumen solo exponen `venta` (`totalUnidades`); sin neto, margen ni
+  `politica` en el DOM (grep sin coincidencias en `page.tsx`).
+- **Ejecutado:** web lint y typecheck limpios, test 20 archivos y 160 pruebas, `format:check` limpio.
+  Sin navegador ni suite de aislamiento.
