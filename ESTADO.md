@@ -6,7 +6,7 @@
 
 | Campo | Valor |
 |---|---|
-| Última actualización | 2026-10-19 (noche: hasta v0.30.1, R4 sin violaciones) |
+| Última actualización | 2026-10-19 (noche: hasta v0.30.2, la web en móvil) |
 | Actualizado por | Claude Opus 5.5 (`integrador`) |
 | Fase | **Rebanada vertical de paquetes, en construcción** |
 | Avance de la fase | Cotizador de punta a punta. **La cotización es la suma de sus tarifas y el precio «desde» es uno que el comprador puede pagar (v0.19.0).** Apretón de manos del webhook vivo. Bandeja web en construcción |
@@ -1035,4 +1035,12 @@ guardia de `viajapro_webhook`. `auditor-seguridad`: ACEPTAR. **Con esto se cierr
 `quoting/…/cotizaciones.use-case.ts:99` y `:106`. Sus pruebas dan 6 casos en verde. Compuerta: CI **8/8** sobre la punta
 exacta, que iba 0 por detrás: https://github.com/Alfavear/CRM/actions/runs/39342331764. Estáticas en local en verde. Sin
 migraciones, así que no hay nada que aplicar en Neon.
+
+## Integración del 2026-10-19 (vigesimotercera) — v0.30.2: la web en móvil (0c.26, 0c.33)
+
+`fix/web-0c26-0c33-movil` @ `afdc7d5` entra en `main` (`f8127b0`), etiquetada **v0.30.2**. Es una corrección visual: arregla los
+objetivos táctiles y los desbordes horizontales a 375 px en el catálogo, la ventana de 24 h, el cotizador y el pipeline. Son
+cinco archivos de `apps/web` y cuatro capturas de 36 a 41 KB, tomados byte a byte de `ec15d04`. `traspaso/` no entra.
+Compuerta: CI **8/8**, https://github.com/Alfavear/CRM/actions/runs/39343734213, sobre el árbol del merge. Estáticas en
+local en verde, y la web pasa sus 172 pruebas.
 
