@@ -170,6 +170,7 @@ jobs:
           DATABASE_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'neondb') }}
           DIRECT_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'neondb') }}
           REDIS_URL: redis://localhost:6379
+          APP_ENV: local
 
   # ---------------------------------------------------------------------------
   # La compuerta propia de este producto. Si falla, da igual lo demás:
