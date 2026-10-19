@@ -214,6 +214,29 @@ Guarda las capturas en `docs/_assets/diseno/` y corrige lo que falle.
 
 ---
 
+## [ ] 0c.34. Con la API real encendida, un fallo es un error, nunca datos simulados (añadida el 2026-10-19, PRIORITARIA, LA PRIMERA)
+
+`apps/web/src/lib/cotizaciones-api.ts` cae **en silencio** al almacén simulado (solo `console.warn`)
+cuando falla la API real, en cuatro sitios: guardar (~l. 127), añadir versión (~l. 245), consultar por
+id (~l. 356) y listar (~l. 403). Con `NEXT_PUBLIC_USE_REAL_CRM=true` el asesor vería cotizaciones
+falsas —o peor, «guardaría» una que no existe— como si fueran suyas: justo lo que la 0c.14 vino a
+impedir. Cambia: dentro de `if (estaUsandoApiReal())` **no hay `catch` que continúe al mock**; el error
+sube (tipado, p. ej. `CotizacionesApiError`) y la pantalla muestra el estado de error de la 0c.25
+(`AvisoErrorAccionable`, qué pasó y qué hacer, con «Reintentar»), sin `err.message` crudo (0c.30). El
+mock solo responde cuando el interruptor está **apagado**. Un 404 de una cotización sigue siendo el
+mensaje honesto que ya existe.
+
+`git grep` hecho el 2026-10-19: ninguna otra capa de datos tiene este patrón (`catalogo-api.ts`,
+`api.ts`, `crm-api.ts` lanzan errores). Los `useState(mock...)` iniciales de `contactos`, `pipeline`,
+`configuracion` y `viajes` y el mock de `cotizador` (protegido por `!usarReal`) son el modo apagado;
+**revisa** que ninguno se quede pintado si la API real está encendida y falla, e inclúyelo si es así.
+
+**Hecho cuando:** pruebas con `fetch` que rechaza y con respuesta 500, interruptor encendido, para las
+cuatro funciones: lanzan error y **no** devuelven datos del mock; con el interruptor apagado siguen
+devolviendo el mock; y `pnpm compuertas` sale en verde.
+
+---
+
 ## [ ] 0c.27. Ocultar neto y margen a quien no tenga el permiso (añadida el 2026-10-19, ESPERA)
 
 **No hacer nada hasta que exista el permiso «ver neto y margen»** (rebanada 3 del ADR-0011). Entonces:
