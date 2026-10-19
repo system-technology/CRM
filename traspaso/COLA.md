@@ -132,6 +132,23 @@ con sus totales distintos, y `pnpm compuertas` sale en verde.
 
 ---
 
+## [ ] 0c.22b. `TipoPasajero` sale del contrato, no de un mock (añadida el 2026-10-19, PRIORITARIA)
+
+El integrador está metiendo tu rama en `main` por tandas: la 1 ya entró como v0.24.0. **La tanda 4
+está bloqueada por R3:** `apps/web/src/lib/mock-viajes.ts:12` redefine
+`export type TipoPasajero = 'ADT' | 'CHD' | 'INF'`, y ese tipo ya existe en
+`packages/contracts/src/catalogo.ts`. Hay que importarlo de `@viajapro/contracts` (con
+`z.infer<typeof TipoPasajero>` si el contrato lo exporta como esquema). Si los valores no coinciden
+con los del contrato, **no cambies el contrato**: dilo en `ENTREGA.md`. Busca de paso cualquier
+otro tipo de dominio redefinido en `apps/web/src/lib/mock-*.ts`, porque cada uno vuelve a bloquear
+una tanda.
+
+**Hecho cuando:** `grep -rn "export type" apps/web/src/lib/mock-*.ts` solo devuelve tipos propios
+de la maqueta, ninguno que exista en los contratos, y `pnpm compuertas` sale en verde. Hazla
+después de terminar la 0c.22.
+
+---
+
 ## [ ] 0c.23. Pantalla de inicio de sesión, solo maqueta (añadida el 2026-10-19)
 
 La API de autenticación **no existe**; llega con el ADR-0011. No inventes contratos ni endpoints.
