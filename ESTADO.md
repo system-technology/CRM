@@ -6,7 +6,7 @@
 
 | Campo | Valor |
 |---|---|
-| Última actualización | 2026-10-19 (noche: v0.24.1 → v0.27.0, con el CI como compuerta) |
+| Última actualización | 2026-10-19 (noche: v0.24.1 → v0.28.0; la bandeja web, entera en `main`) |
 | Actualizado por | Claude Opus 5.5 (`integrador`) |
 | Fase | **Rebanada vertical de paquetes, en construcción** |
 | Avance de la fase | Cotizador de punta a punta. **La cotización es la suma de sus tarifas y el precio «desde» es uno que el comprador puede pagar (v0.19.0).** Apretón de manos del webhook vivo. Bandeja web en construcción |
@@ -121,7 +121,7 @@ Ordenada. La primera es la que debe tomarse ahora.
 | 4g | `purgar_directorio`, o decidir que es manual | `arquitecto`, `datos` | Hoy ninguna fila del directorio se puede borrar por ningún camino de código. **No bloquea un esquema vacío; bloquea el primer tenant en producción** |
 | 4h | Trabajo anual de creación de particiones del historial | `devops` | Si falta la del año siguiente, **ninguna agencia puede conectar su canal**. Mejor: un *event trigger* que lo haga imposible de olvidar |
 | 4i | Aserción de concurrencia determinista y orden de las aserciones | `qa` | La de la carrera falla hacia el verde; y 22/23 reparan privilegios, así que enmascaran a cualquier aserción declarada después |
-| 5 | Bandeja de conversaciones en la web | Antigravity, en `feat/bandeja-web`; integración por tandas | **Entra por tandas desde `814ae24`, revisada y aceptada.** Tandas 1 (base, v0.24.0), 2 (bandeja, v0.26.0) y 3 (catálogo y piezas del cotizador, v0.27.0) integradas. Queda la 4 (CRM operativo y docs). La página del cotizador entra con la 0c.22, porque en `0586743` importa el guardado. La 0c.22 (cotizaciones guardadas) va aparte. `traspaso/` no entra en `main` |
+| 5 | Bandeja de conversaciones en la web | Antigravity | **Integrada entera en cuatro tandas (v0.24.0, v0.26.0, v0.27.0 y v0.28.0).** `apps/web` en `main` es idéntico a `feat/bandeja-web` @ `6d790ff`. Lo siguiente, rama por rama |
 | 6 | Guardar cotizaciones con versiones inmutables | `backend` | **Hecha (esquema v0.22.0, API v0.23.0, 2026-10-19).** `POST /api/v1/cotizaciones`, `POST /:id/versiones` y `GET /:id`. El servidor recalcula los importes y no guarda los que manda el cliente. Siguen en cola el listado, el envío y los estados |
 | 7 | Pruebas de integración de la API | `qa` | Solo se probó a mano. **La verificación del cotizador fue manual: no hay prueba automática que la repita** |
 | 8 | CI en GitHub Actions corriendo de verdad | `devops` | **Cerrada (2026-10-19).** Primer verde: https://github.com/Alfavear/CRM/actions/runs/39308173658. Las 18 migraciones se reconstruyen desde cero en un Postgres 16 limpio |
@@ -791,7 +791,7 @@ El valor ya no aparece en ningún archivo rastreado de `main`.
 
 | Cola | Dueño | Por qué no bloquea |
 |---|---|---|
-| BullMQ real sigue sin probar: `apps/api/vitest.config.ts` fija `COLA_CHANGES=inerte`, aunque el CI ya levanta Redis 7 | `devops` (4c) | Nada desplegado. El CI ya tiene el Redis: falta una prueba que lo use |
+| ~~BullMQ real sigue sin probar~~ | `devops` | **Cerrado (`897d8df`):** `inbox-bullmq.e2e-spec.ts` corre con Redis 7 en el CI —ejecutada, no saltada, run 39339999694— y cubre `jobId`, el reintento sin duplicar, el consumidor hasta `mensajes` y un `failedReason` sin PII |
 | Protección de rama con estos checks como obligatorios | Usuario (**tarea 10**) | El plan gratuito no la permite en repos privados |
 | `convencion-de-commits` sale *skipped*, porque solo corre en PR, y la integración aquí es por merge local | `devops` | La convención la revisa el integrador a mano |
 
@@ -823,7 +823,7 @@ Con esto, la compuerta completa (`inbox-relay.e2e-spec`) se puede correr desde c
 
 | Cola | Dueño | Por qué no bloquea |
 |---|---|---|
-| **Severidad alta.** `scripts/generar-secretos-locales.ps1` toma como referencia el **primer** árbol de `git worktree list` (`D:\Projects\CRM`). Si ese árbol no tiene los secretos, genera valores nuevos y los escribe en **todos**, pisando la pimienta y la clave buenas de los demás: el directorio de enrutamiento queda huérfano y lo cifrado, ilegible. Corrección: abortar si un árbol tiene valor y otro no, y ofrecer copiar en vez de generar | `devops` | Hoy no se manifestó, y los cuatro árboles ya tienen los mismos valores. Pero basta una ejecución con un árbol nuevo primero en la lista |
+| ~~`generar-secretos-locales.ps1` podía pisar la pimienta buena~~ | `devops` | **Cerrado (`897d8df`):** copia el valor existente antes de generar, aborta (salida 2) si los árboles tienen valores distintos, y solo genera si no lo tiene ninguno |
 
 ---
 
@@ -940,5 +940,45 @@ Registro: [`docs/_integraciones/2026-10-19-v0.27.0.md`](docs/_integraciones/2026
 
 | Cola | Dueño | Por qué no bloquea |
 |---|---|---|
-| `/cotizador` sigue con la versión anterior, y `desglose-cotizacion-salida` y `bloque-politica-precio` están en `main` sin que ninguna página los use | integrador (con la 0c.22 y la tanda 4) | Es código sin usar; lo activan la 0c.22 y la página de configuración |
+| ~~`/cotizador` con la versión anterior, y piezas sin usar~~ | integrador | **Resuelto en v0.28.0** |
+
+## Integración del 2026-10-19 (decimoctava) — v0.28.0: CRM operativo web y cotizador con guardado (tanda 4)
+
+`feat/web-tanda-4-crm-y-cotizador` @ `c34e779` entra en `main` (`13e08da`), etiquetada **v0.28.0**. Son dos commits,
+para revisarlos por separado:
+
+1. **El cotizador con el guardado (0c.22, 0c.24):** `/cotizador`, el modal de guardar, `/cotizaciones` y su ficha,
+   `cotizaciones-api`, `cotizaciones-logica`, `cotizaciones-listado-logica` y `mock-cotizaciones`.
+2. **La tanda 4:** pipeline, contactos, configuración, viajes, reportes, la maqueta de ingreso bajo interruptor
+   (0c.23), la especificación visual con sus capturas y el flujo con Antigravity.
+
+Son 36 archivos de `6d790ff`, byte a byte (34 nuevos y 2 modificados). **R10, comprobado con `git grep`:** en
+`apps/web` solo se leen `politica.porcentaje` y `politica.base` dentro de `bloque-politica-precio.tsx` (es
+`/configuracion`, del dueño), y de `politica-precio-logica.ts`, que solo ese bloque importa. Ninguna llamada pide
+`incluirMargen`, y el texto «CONFIDENCIAL AGENCIA» de `cotizador-logica` solo sale con `incluirNeto`, que ninguna
+pantalla pasa.
+
+Compuerta: CI **8/8**, https://github.com/Alfavear/CRM/actions/runs/39339456755, sobre el árbol del merge ·
+estáticas en local en verde · web **160** pruebas en 20 archivos.
+
+**Lo que queda fuera de `main` de `feat/bandeja-web`: 7 archivos, a propósito.** Los 6 de `traspaso/`, que son el
+canal de trabajo con Antigravity y no producto, y su edición de `ESTADO.md`, porque `ESTADO.md` en `main` lo
+lleva el integrador. **En `apps/web`, `main` y `6d790ff` no tienen ninguna diferencia.**
+Registro: [`docs/_integraciones/2026-10-19-v0.28.0.md`](docs/_integraciones/2026-10-19-v0.28.0.md).
+
+| Cola | Dueño | Por qué no bloquea |
+|---|---|---|
+| `ficha-detalle-paquete.tsx:244` muestra **«Neto:»** en el catálogo, a cualquiera que lo abra | Antigravity (**0c.27**, con los permisos) | Hoy no hay roles: todo usuario es de la agencia. Se cierra al poner esto y `bloque-politica-precio` detrás del permiso |
+
+## Integración del 2026-10-19 (decimonovena) — `ci/bullmq-real-y-secretos`, sin etiqueta
+
+`ci/bullmq-real-y-secretos` @ `16c03d2` entra en `main` (`897d8df`). Solo toca una prueba, un script de desarrollo y la
+bitácora, así que no lleva etiqueta. Compuerta: CI **8/8** sobre el árbol del merge,
+https://github.com/Alfavear/CRM/actions/runs/39339999694. En el log consta
+`✓ src/modules/inbox/inbox-bullmq.e2e-spec.ts (2 tests) 2440ms` y ningún aviso «SALTADA»: **corrió de verdad**.
+Estáticas en local en verde. Registro: [`docs/_integraciones/2026-10-19-bullmq-real.md`](docs/_integraciones/2026-10-19-bullmq-real.md).
+
+| Cola | Dueño | Por qué no bloquea |
+|---|---|---|
+| En el CI, la e2e de BullMQ **se salta, no falla**, si falta `REDIS_URL` (`CORRE = CI && REDIS_URL`). Si alguien quita el Redis del job, el CI seguiría verde | `devops` | Hoy `REDIS_URL` está en el job y la prueba corre. Arreglo: con `CI=true` y sin `REDIS_URL`, fallar |
 
