@@ -95,7 +95,11 @@ function sobre(phoneNumberId: string, wamid: string, telefono = '573001112233'):
   );
 }
 
+/** Las recepciones que creó ESTA corrida: el desmontaje borra solo estas, nunca la tabla. */
+const RECEPCIONES_DE_LA_CORRIDA: Buffer[] = [];
+
 async function post(cuerpo: Buffer): Promise<number> {
+  RECEPCIONES_DE_LA_CORRIDA.push(idDe(cuerpo));
   const r = await fetch(new URL('/webhooks/whatsapp', base), {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'x-hub-signature-256': firmar(cuerpo) },
@@ -211,6 +215,15 @@ afterAll(async () => {
   await app?.close();
   if (admin) {
     try {
+      // Solo las recepciones de esta corrida (la tabla es global); sin esto se acumulaban.
+      await admin.query('SET ROLE "viajapro_staging"');
+      await admin.query('DELETE FROM recepciones_webhook_changes WHERE recepcion_id = ANY($1)', [
+        RECEPCIONES_DE_LA_CORRIDA,
+      ]);
+      await admin.query('DELETE FROM recepciones_webhook WHERE recepcion_id = ANY($1)', [
+        RECEPCIONES_DE_LA_CORRIDA,
+      ]);
+      await admin.query('RESET ROLE');
       await admin.query('SET ROLE "viajapro_enrutador"');
       await admin.query('DELETE FROM enrutamiento_canales WHERE tenant_resuelto_id = ANY($1)', [
         [TENANT, TENANT_B],
