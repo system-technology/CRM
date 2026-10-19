@@ -97,6 +97,39 @@ cada vista; 500 conversaciones en la lista sin lag. Todo a 375 px.
 
 **Hecho cuando:** la tabla existe y `COLA-DESPUES.md` §0c queda marcado `[x]`.
 
+## [ ] 0c.22. «Guardar cotización» en el cotizador (añadida el 2026-10-19)
+
+La API ya guarda cotizaciones con versiones que no cambian nunca. Está en la rama
+`feat/quoting-guardar-cotizacion` y entra en `main` como v0.23.0. **Empieza esta tarea solo cuando
+`git log origin/main` muestre v0.23.0**: antes, los contratos no existen en tu árbol, y no los
+recrees (R3). Cuando esté, `git merge main` y `pnpm --filter @viajapro/contracts build`.
+
+Contratos, en `packages/contracts/src/cotizaciones.ts`: `GuardarCotizacion`,
+`AnadirVersionACotizacion`, `ComposicionDeVersion`, `CotizacionGuardada`, `VersionDeCotizacion`,
+`PoliticaAplicada` y `EstadoCotizacion`. Rutas:
+
+- `POST /api/v1/cotizaciones` crea la cotización con su versión 1 (201).
+- `POST /api/v1/cotizaciones/:id/versiones` crea la versión siguiente (201).
+- `GET /api/v1/cotizaciones/:id` devuelve la cabecera con todas sus versiones.
+
+Lo que se construye:
+
+1. **Un botón «Guardar cotización» en `/cotizador`**, debajo del total. Manda la **composición y
+   la salida, nunca los importes**: el servidor recalcula, y los contratos son `.strict()`, así que
+   un cuerpo con importes da 400. Si la pantalla viene de una conversación (`?conversacion=`),
+   asocia el contacto.
+2. **Al guardar, la pantalla pasa a la cotización guardada** (`/cotizaciones/[id]` o un panel).
+   Muestra el número de versión y la fecha de cada una. «Modificar» crea la versión siguiente, y
+   **la anterior se sigue viendo igual que estaba**: es la promesa del producto, y la de la
+   pantalla también.
+3. **No pidas `?incluirMargen=true`.** Neto y margen son internos (R10) y hoy no hay control de
+   rol. La pantalla del asesor muestra solo la venta.
+4. **Errores:** 404 con un mensaje honesto, y 400 sin perder lo que el asesor escribió.
+5. Pruebas de la lógica pura (armar el cuerpo sin importes, ordenar versiones) y todo a 375 px.
+
+**Hecho cuando:** guardas una cotización real del catálogo, la modificas, ves las dos versiones
+con sus totales distintos, y `pnpm compuertas` sale en verde.
+
 ---
 
 ## [x] 0c.15. La política de precio de la agencia, en `/configuracion`
