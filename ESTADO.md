@@ -6,7 +6,7 @@
 
 | Campo | Valor |
 |---|---|
-| Última actualización | 2026-10-19 (integraciones v0.19.0, v0.20.0, e2e del POST y v0.21.0 —relay y trabajador del inbox—) |
+| Última actualización | 2026-10-19 (integraciones v0.19.0, v0.20.0, e2e del POST, v0.21.0 —relay y trabajador— y v0.21.1 —canal revocado—) |
 | Actualizado por | Claude Opus 5.5 (`integrador`) |
 | Fase | **Rebanada vertical de paquetes, en construcción** |
 | Avance de la fase | Cotizador de punta a punta. **La cotización es la suma de sus tarifas y el precio «desde» es uno que el comprador puede pagar (v0.19.0).** Apretón de manos del webhook vivo. Bandeja web en construcción |
@@ -117,7 +117,7 @@ Ordenada. La primera es la que debe tomarse ahora.
 | 4c | Las 3 verificaciones que **no** son de base de datos: arranque del proceso, alta de extremo a extremo, ensayo de rotación de la pimienta | `backend`, `qa`, `devops` | **En curso.** La de arranque está hecha: `guardia-de-rol.ts` comprueba identidad, `rolsuper` y `rolbypassrls`, y la API registra al arrancar «Conectado como 'viajapro_app', verificado». Faltan las otras dos |
 | 4d | Alinear `05-seguridad/02-proteccion-de-datos.md` con el ADR-0008 | `documentador` | La redacción de consentimiento lo contradice. Faltan pimienta y clave de plataforma en el inventario §5 |
 | 4e | **ADR que enmiende el ADR-0008 en cinco puntos** | `arquitecto` | Un ADR es inmutable y hoy describe un sistema que no existe: tokens en `cuentas_whatsapp`, `cuenta_id` en el directorio, una **séptima** función, `crear_particion_historial` fuera del inventario, y el hueco de `purgar_directorio`. **Lo más fácil de olvidar y lo más caro en seis meses** |
-| 4f | Reconciliación directorio ↔ verdad | `backend` | Una agencia marcada `REVOCADO` en `canales` se sigue resolviendo como `ACTIVO`: se persistirían mensajes de una agencia sin contrato |
+| 4f | Reconciliación directorio ↔ verdad | `datos` | **Cerrada (v0.21.1, 2026-10-19).** Disparador `canales_propagar_estado`: lleva SUSPENDIDO/REVOCADO al directorio y nunca relaja. Aserción 46 vista en rojo sin el arreglo; aislamiento 51/51 |
 | 4g | `purgar_directorio`, o decidir que es manual | `arquitecto`, `datos` | Hoy ninguna fila del directorio se puede borrar por ningún camino de código. **No bloquea un esquema vacío; bloquea el primer tenant en producción** |
 | 4h | Trabajo anual de creación de particiones del historial | `devops` | Si falta la del año siguiente, **ninguna agencia puede conectar su canal**. Mejor: un *event trigger* que lo haga imposible de olvidar |
 | 4i | Aserción de concurrencia determinista y orden de las aserciones | `qa` | La de la carrera falla hacia el verde; y 22/23 reparan privilegios, así que enmascaran a cualquier aserción declarada después |
@@ -635,4 +635,35 @@ limpio · `pnpm run test --force` **dos veces**: contracts 56, domain 70, api **
 | `aislamiento.spec.ts` borra toda `recepciones_webhook` en su `afterAll` | `qa` | No se manifestó en dos corridas en paralelo |
 | `.env.example`: la rama reescribió el archivo entero por finales de línea (345 líneas en el diff, 3 de contenido). Falta `.gitattributes` | `devops` | Solo ruido en el diff |
 | `D:\Projects\CRM-gate2`: otro árbol temporal del integrador sin borrar (desregistrado, sin `.env`) | Usuario | Borrar a mano junto con `CRM-gate` |
+
+---
+
+## Integración del 2026-10-19 (quinta) — v0.21.1
+
+`fix/datos-canal-revocado` @ `1739694` entra en `main` (`f77906a`), etiquetada **v0.21.1**. Registro:
+[`docs/_integraciones/2026-10-19-v0.21.1.md`](docs/_integraciones/2026-10-19-v0.21.1.md).
+
+La rama iba 6 por detrás. Se fusionó con `aac69bf` en un árbol limpio y ahí se repitió todo (el
+merge tiene el árbol probado): `typecheck` 9/9, `lint` 7/7, `build` 5/5, sin caché · `format:check`
+limpio · `pnpm run test --force` dos veces: 56 · 70 · api **258** · aislamiento **51/51** las dos,
+con entre 6 y 11 tenants de fixture de otras sesiones vivos a la vez.
+
+**Migración.** `_prisma_migrations` tiene dos filas para `20261019120000`: el primer intento, con
+`rolled_back_at` puesto, y el bueno, cuya `checksum` coincide con el archivo de la rama
+(`9a5a808c…`). `migrate status`: 16 migraciones, al día. La función `propagar_estado_canal` es
+`SECURITY DEFINER`, propiedad de `viajapro_enrutador`, sin `EXECUTE` para nadie más; filtra por
+`tenant_resuelto_id = NEW.tenant_id`, así que una agencia solo puede restringir sus propias filas.
+
+**El interbloqueo de la aserción 22 es del arnés, no un defecto.** La 22 reaplica `001`/`002` —DDL
+de privilegios sobre todo el esquema— y choca con otra corrida que hace lo mismo sobre la misma
+base. No se reprodujo en dos corridas con otras sesiones activas. Va a `qa`.
+
+### Cola nueva — con dueño, no bloquea
+
+| Cola | Dueño | Por qué no bloquea |
+|---|---|---|
+| La aserción 22 puede interbloquearse con otra corrida simultánea (DDL de privilegios contra una base compartida). Encaja con 4i y con 0c: serializar con `pg_advisory_lock` o una base por árbol | `qa` | Es del arnés; no se reprodujo en dos corridas |
+| **`D:\Projects\CRM\.env` y `CRM-inbox\.env` no tienen `WHATSAPP_DIRECTORY_PEPPER` ni `WEBHOOK_PAYLOAD_KEY`**: desde v0.21.0, `pnpm test` cae en `inbox-relay.e2e-spec` en esos árboles (visto hoy: 253 pasadas y 5 saltadas). Solo `CRM-api` puede correr la compuerta completa | Usuario (copiar las variables; nunca por el chat) | El código está bien y `.env.example` las declara; lo que falta es la configuración local |
+| Las e2e de `apps/api` se cargan desde `.env` sin `-o` y heredan el `DATABASE_URL` del shell. El integrador consultó una vez, solo en lectura, la base ajena por eso | `devops` | Ya estaba en la cola del 2026-10-19 (primera) |
+| `D:\Projects\CRM-gate3`: tercer árbol temporal sin borrar | Usuario | Junto con `CRM-gate` y `CRM-gate2` |
 
