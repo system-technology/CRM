@@ -149,6 +149,19 @@ después de terminar la 0c.22.
 
 ---
 
+## [ ] 0c.22c. Quitar el porcentaje de margen de `/cotizaciones/[id]` (añadida el 2026-10-19, PRIORITARIA)
+
+`apps/web/src/app/cotizaciones/[id]/page.tsx` (~l. 435-455) muestra «Política de Margen Aplicada» con
+`politica.porcentaje` y la base. El margen es interno (R10) y hoy no hay control de rol; tu propia
+cabecera del archivo y `ENTREGA.md` dicen «cero filtración de margen», y eso hoy es falso. Quita el
+bloque (o déjalo detrás de un control de rol cuando exista; no lo inventes). Revisa de paso que ni el
+mock ni la UI muestren neto, margen ni `politica` en ningún otro sitio.
+
+**Hecho cuando:** `grep -rniE "margen|neto|politica" apps/web/src/app/cotizaciones` no devuelve texto
+visible al asesor y `pnpm compuertas` sale en verde. Hazla junto con la 0c.22b.
+
+---
+
 ## [ ] 0c.23. Pantalla de inicio de sesión, solo maqueta (añadida el 2026-10-19)
 
 La API de autenticación **no existe**; llega con el ADR-0011. No inventes contratos ni endpoints.
@@ -162,6 +175,9 @@ muestra error y carga simulados, con el interruptor apagado no cambia nada del r
 `pnpm compuertas` sale en verde.
 
 ## [ ] 0c.24. Listado de cotizaciones guardadas, con datos simulados (añadida el 2026-10-19)
+
+> **Nota:** cuando `GET /api/v1/cotizaciones` (listado) entre en `main`, esta tarea pasa de datos
+> simulados a la API real; el interruptor se mantiene para el modo sin API.
 
 Ruta `/cotizaciones`. La API de listado llegará después: usa datos simulados **tipados con
 `CotizacionGuardada` de `@viajapro/contracts`** detrás del interruptor que ya usas para la API real
