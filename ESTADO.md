@@ -6,7 +6,7 @@
 
 | Campo | Valor |
 |---|---|
-| Última actualización | 2026-10-19 (integraciones v0.19.0 —ADR-0009, tarea 0— y v0.20.0 —esquema del inbox—) |
+| Última actualización | 2026-10-19 (integraciones v0.19.0, v0.20.0 y la prueba e2e del POST del webhook, sin etiqueta) |
 | Actualizado por | Claude Opus 5.5 (`integrador`) |
 | Fase | **Rebanada vertical de paquetes, en construcción** |
 | Avance de la fase | Cotizador de punta a punta. **La cotización es la suma de sus tarifas y el precio «desde» es uno que el comprador puede pagar (v0.19.0).** Apretón de manos del webhook vivo. Bandeja web en construcción |
@@ -113,7 +113,7 @@ Ordenada. La primera es la que debe tomarse ahora.
 | 3 | Reparar la conexión del MCP `postgres` o retirarlo de `.mcp.json` | `devops` | Falla con `CONNECTION_CLOSED` |
 | 4a | Inbox — esquema, roles, funciones y aserciones | `datos` | **Cerrada e integrada (v0.20.0, 2026-10-19).** 50/50 de aislamiento en tres corridas seguidas contra Neon, cero saltadas; las cuatro tablas con `tenant_id`, RLS forzado y política `USING` + `WITH CHECK`, comprobado en el catálogo |
 | 4a.1 | **Ver en verde los jobs `aislamiento-tenants` y `test` en CI** antes de integrar | `devops` | **Condición del auditor.** Nunca han corrido: ejecutarlos una vez es la única forma honesta de cerrar ese hallazgo |
-| 4b | Inbox — API: tres orígenes de conexión, guardia de identidad, puerto a `crm`, relay por `change` | `backend` | **En curso** en `feat/inbox-webhook`. Hechos: guardia de identidad del rol, firma HMAC, apretón de manos (`GET` vivo y verificado), desglose del sobre. Falta el `POST` con persistencia durable |
+| 4b | Inbox — API: tres orígenes de conexión, guardia de identidad, puerto a `crm`, relay por `change` | `backend` | **En curso.** Hechos: guardia de identidad del rol, firma HMAC, apretón de manos, desglose del sobre y **el `POST` con persistencia durable, verificado vivo** (`inbox-webhook.e2e-spec.ts`, AppModule contra Neon, 6/6; integrado el 2026-10-19). Falta el relay por `change` y el trabajador (ADR-0008 §4 paso 5) |
 | 4c | Las 3 verificaciones que **no** son de base de datos: arranque del proceso, alta de extremo a extremo, ensayo de rotación de la pimienta | `backend`, `qa`, `devops` | **En curso.** La de arranque está hecha: `guardia-de-rol.ts` comprueba identidad, `rolsuper` y `rolbypassrls`, y la API registra al arrancar «Conectado como 'viajapro_app', verificado». Faltan las otras dos |
 | 4d | Alinear `05-seguridad/02-proteccion-de-datos.md` con el ADR-0008 | `documentador` | La redacción de consentimiento lo contradice. Faltan pimienta y clave de plataforma en el inventario §5 |
 | 4e | **ADR que enmiende el ADR-0008 en cinco puntos** | `arquitecto` | Un ADR es inmutable y hoy describe un sistema que no existe: tokens en `cuentas_whatsapp`, `cuenta_id` en el directorio, una **séptima** función, `crear_particion_historial` fuera del inventario, y el hueco de `purgar_directorio`. **Lo más fácil de olvidar y lo más caro en seis meses** |
@@ -574,4 +574,24 @@ residuo**. La tarea 4a queda cerrada.
 |---|---|---|
 | Las tres migraciones del inbox se fechan `20261011…` pero entraron **después** de las `20261013…`. En una base nueva se aplicarán en otro orden que en Neon, y **nadie ha reproducido el esquema desde cero** con las 15 | `datos` | Son independientes del catálogo a simple vista, y Neon está sin deriva. Pero la primera base nueva (CI, staging) es la prueba que falta: ejecutar `migrate reset` en una base desechable |
 | 4a.1 sigue abierta: los jobs `aislamiento-tenants` y `test` nunca han corrido en CI | `devops` | La compuerta local está en verde y medida tres veces |
+
+---
+
+## Integración del 2026-10-19 (tercera) — sin etiqueta
+
+`feat/inbox-webhook-post` @ `78e74cc` entra en `main` (`539c581`). Solo añade la prueba e2e del
+`POST` y su bitácora: **no cambia el artefacto desplegable, no lleva versión.** Registro:
+[`docs/_integraciones/2026-10-19-inbox-webhook-post.md`](docs/_integraciones/2026-10-19-inbox-webhook-post.md).
+
+Compuertas en un árbol de trabajo **limpio** en `78e74cc` (el de `D:\Projects\CRM-api` tenía trabajo
+sin commitear de `feat/inbox-relay`, así que la primera corrida no contó): `typecheck` 9/9, `lint`
+7/7, `build` 5/5, sin caché · `format:check` limpio · contracts 56, domain 70, api **224**,
+aislamiento **50/50 dos veces seguidas**.
+
+### Cola nueva — con dueño, no bloquea
+
+| Cola | Dueño | Por qué no bloquea |
+|---|---|---|
+| Durante las corridas había **4** tenants de fixture vivos de otra sesión (no múltiplo de 3: posible corrida muerta a medias). La limpieza los respetó por edad y la suite pasó igual | `datos` | Si en 15 min no desaparecen, los barre la siguiente corrida |
+| Queda el directorio `D:\Projects\CRM-gate` (árbol temporal del integrador, ya desregistrado y sin `.env`): el borrado fue denegado | Usuario | Solo contiene `node_modules` y copia del código; borrarlo a mano |
 
