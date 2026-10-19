@@ -6,7 +6,7 @@
 
 | Campo | Valor |
 |---|---|
-| Última actualización | 2026-10-19 (integraciones v0.19.0 → v0.22.0; la última, el esquema de cotizaciones) |
+| Última actualización | 2026-10-19 (integraciones v0.19.0 → v0.23.0; la última, guardar cotizaciones) |
 | Actualizado por | Claude Opus 5.5 (`integrador`) |
 | Fase | **Rebanada vertical de paquetes, en construcción** |
 | Avance de la fase | Cotizador de punta a punta. **La cotización es la suma de sus tarifas y el precio «desde» es uno que el comprador puede pagar (v0.19.0).** Apretón de manos del webhook vivo. Bandeja web en construcción |
@@ -122,7 +122,7 @@ Ordenada. La primera es la que debe tomarse ahora.
 | 4h | Trabajo anual de creación de particiones del historial | `devops` | Si falta la del año siguiente, **ninguna agencia puede conectar su canal**. Mejor: un *event trigger* que lo haga imposible de olvidar |
 | 4i | Aserción de concurrencia determinista y orden de las aserciones | `qa` | La de la carrera falla hacia el verde; y 22/23 reparan privilegios, así que enmascaran a cualquier aserción declarada después |
 | 5 | Bandeja de conversaciones en la web | Antigravity, en `feat/bandeja-web` | **En curso.** Lista y pantalla de conversación construidas, con idempotencia R5 verificada en navegador. La entrega de tiempo real fue rechazada: su emisor genera un UUID inválido y ningún evento llega a la pantalla |
-| 6 | Guardar cotizaciones con versiones inmutables | `backend` | **Esquema hecho (v0.22.0, 2026-10-19):** `cotizaciones` y `versiones_cotizacion` con RLS, foráneas compuestas y versiones inmutables por disparador. **Faltan el caso de uso y la ruta de la API** |
+| 6 | Guardar cotizaciones con versiones inmutables | `backend` | **Hecha (esquema v0.22.0, API v0.23.0, 2026-10-19).** `POST /api/v1/cotizaciones`, `POST /:id/versiones` y `GET /:id`. El servidor recalcula los importes y no guarda los que manda el cliente. Siguen en cola el listado, el envío y los estados |
 | 7 | Pruebas de integración de la API | `qa` | Solo se probó a mano. **La verificación del cotizador fue manual: no hay prueba automática que la repita** |
 | 8 | CI en GitHub Actions corriendo de verdad | `devops` | Escrito, nunca ejecutado |
 | 9 | Decidir nombre comercial, modelo de cobro y precios | Usuario | Antes de vender |
@@ -741,4 +741,30 @@ existe ninguna función `SECURITY DEFINER` del propietario por la que un rol de 
 | Los roles de app tienen `UPDATE`/`DELETE` concedidos sobre `versiones_cotizacion`, y los frena solo el disparador (M11 lo prueba). Quitarlos daría una segunda capa | `datos` | El disparador está probado por mutación |
 | `mutaciones-aislamiento.mjs` rompe el aislamiento **en la base compartida**: durante su corrida, las suites de los otros árboles pueden ver rojos falsos | `qa` / `devops` (0c) | Revierte siempre, y solo hay datos de prueba |
 | `D:\Projects\CRM-gate5`: otro árbol temporal | Usuario | Borrar a mano con los demás |
+
+---
+
+## Integración del 2026-10-19 (novena) — v0.23.0: guardar cotizaciones
+
+`feat/quoting-guardar-cotizacion` @ `c8121ee` entra en `main` (`3d9b07a`), etiquetada **v0.23.0**. Registro:
+[`docs/_integraciones/2026-10-19-v0.23.0.md`](docs/_integraciones/2026-10-19-v0.23.0.md).
+
+La rama iba 0 por detrás de `860d335`. Las compuertas se corrieron en un árbol limpio con el `.env`
+completo, y el merge tiene el árbol probado: `typecheck` 9/9, `lint` 7/7, `build` 5/5, sin caché ·
+`format:check` limpio · `pnpm run test --force` dos veces: contracts **60**, domain 70, api **279**
+(`cotizaciones.e2e-spec` 9/9) y aislamiento **57/57**.
+
+**`incluirMargen` no tiene control de rol, confirmado.** El controlador lo lee de la query
+(`v === 'true'`) y lo pasa tal cual al caso de uso, sin mirar quién pide. Hoy no hay autenticación,
+y el tenant llega por cabecera, solo con `APP_ENV=local`. Va ligado a la tarea 12.
+
+### Cola nueva — con dueño, no bloquea
+
+| Cola | Dueño | Por qué no bloquea |
+|---|---|---|
+| **`incluirMargen` sin control de rol**: cualquiera que llame la API ve el margen, o sea el neto | `backend`, junto con la **tarea 12** | No hay autenticación ni superficie para el viajero. **Dependencia dura:** no se despliega sin sesión y sin un rol que pueda pedir el margen |
+| Listado, envío y estados de la cotización | `backend` | Siguiente rebanada de la tarea 6 |
+| El filtro de errores responde **400** a los códigos `*_NO_ENCONTRADA`, cuando debería ser 404 (la e2e cubre `COTIZACION_NO_ENCONTRADO` con 404, no el resto) | `backend` | Es el código HTTP; no es una fuga |
+| `quoting` lee `contactos` y `oportunidades` (de `crm`) directamente desde su transacción, igual que `inbox` (R4; ver `asegurarContacto`) | `arquitecto` | Mismo RLS y misma transacción; es frontera de módulo |
+| `D:\Projects\CRM-gate6`: otro árbol temporal | Usuario | Borrar a mano |
 
