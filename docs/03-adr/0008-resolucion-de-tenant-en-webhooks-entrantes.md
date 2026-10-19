@@ -3,6 +3,8 @@
 - **Estado:** **Aceptado** el 2026-10-07 por el propietario del producto, tras tres pasadas de
   auditoría de seguridad con dictamen final favorable. La aprobación es del **diseño**: su alcance
   está delimitado al final de §5 y caduca si alguna de las verificaciones de allí se desactiva.
+- **Supersedido parcialmente por** [ADR-0010](0010-webhook-tal-como-es-y-el-trabajador-en-apps-api.md)
+  (propuesto el 2026-10-19) en los puntos que allí se enumeran. Donde difieran, manda el ADR-0010.
 - **Fecha:** 2026-10-07
 - **Decide:** Propietario del producto
 - **Consultados:** `arquitecto`, `whatsapp`, `datos`, `auditor-seguridad`

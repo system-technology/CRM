@@ -58,6 +58,9 @@ Toda la documentación del proyecto. Si una decisión no está aquí (o en `ESTA
 | [0005](03-adr/0005-modelo-de-ramas.md) | Rama principal protegida con compuerta de integración | Aceptado |
 | [0006](03-adr/0006-parametrizacion-y-extensibilidad.md) | Vertical configurable, no plataforma genérica. Sin código abierto por ahora | Aceptado |
 | [0007](03-adr/0007-postgres-gestionado-neon.md) | PostgreSQL gestionado (Neon) en desarrollo, dev y staging | Aceptado |
+| [0008](03-adr/0008-resolucion-de-tenant-en-webhooks-entrantes.md) | Directorio global de enrutamiento por función; staging durable antes del 200 | Aceptado; supersedido en parte por 0010 |
+| [0009](03-adr/0009-salida-programada-como-unidad-de-venta.md) | El precio se ata a una ventana de vigencia, no al paquete | Aceptado |
+| [0010](03-adr/0010-webhook-tal-como-es-y-el-trabajador-en-apps-api.md) | El webhook tal como es; el trabajador en `apps/api` hasta el segundo consumidor | Propuesto |
 
 ## 04 · Integraciones
 
