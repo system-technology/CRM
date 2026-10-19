@@ -9,13 +9,17 @@
  * transacción entera en PostgreSQL.
  */
 import { Inject, Injectable } from '@nestjs/common';
+import { PuertoContactos } from '../../../shared/puertos/puertos-hacia-crm.js';
 import { PrismaWebhookService } from '../../../shared/prisma/prisma-webhook.service.js';
 import { PuertoBandeja, type ResultadoDeBandeja } from '../application/puertos-de-proceso.js';
 import type { MensajeEntrante } from '../domain/contenido-del-cambio.js';
 
 @Injectable()
 export class BandejaPrisma extends PuertoBandeja {
-  constructor(@Inject(PrismaWebhookService) private readonly prisma: PrismaWebhookService) {
+  constructor(
+    @Inject(PrismaWebhookService) private readonly prisma: PrismaWebhookService,
+    @Inject(PuertoContactos) private readonly contactos: PuertoContactos,
+  ) {
     super();
   }
 
@@ -34,11 +38,11 @@ export class BandejaPrisma extends PuertoBandeja {
         return 'CANAL_REVOCADO';
       }
 
-      const contacto = await tx.contacto.upsert({
-        where: { tenantId_telefonoE164: { tenantId, telefonoE164: m.deTelefono } },
-        update: {},
-        create: { tenantId, telefonoE164: m.deTelefono, nombre: m.nombrePerfil },
-        select: { id: true },
+      // El contacto es de `crm`: se pide por su puerto, en ESTA transacción y bajo la misma RLS.
+      const contacto = await this.contactos.asegurarContacto(tx, {
+        tenantId,
+        telefonoE164: m.deTelefono,
+        nombrePerfil: m.nombrePerfil,
       });
 
       const conversacion = await tx.conversacion.upsert({

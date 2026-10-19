@@ -63,6 +63,8 @@ export class ConsumidorDeChanges implements OnModuleInit, OnModuleDestroy {
   private readonly log = new Logger(ConsumidorDeChanges.name);
   private worker: Worker<DatosDelTrabajo> | null = null;
   private conexion: Redis | null = null;
+  /** Se puede cambiar antes de arrancar: la prueba con Redis real usa una cola propia. */
+  nombreDeCola: string = NOMBRE_DE_COLA;
 
   constructor(@Inject(ProcesarChange) private readonly procesar: ProcesarChange) {}
 
@@ -72,14 +74,14 @@ export class ConsumidorDeChanges implements OnModuleInit, OnModuleDestroy {
 
     this.conexion = crearConexionDeRedis(url);
     this.worker = new Worker<DatosDelTrabajo>(
-      NOMBRE_DE_COLA,
+      this.nombreDeCola,
       (trabajo) => this.atender(trabajo.data),
       { connection: this.conexion, concurrency: 5 },
     );
     this.worker.on('failed', (trabajo, error) =>
       this.registrarFallo(trabajo?.id, trabajo?.attemptsMade ?? 0, error),
     );
-    this.log.log(`Consumiendo la cola ${NOMBRE_DE_COLA}.`);
+    this.log.log(`Consumiendo la cola ${this.nombreDeCola}.`);
   }
 
   /** Un trabajo. Lo que lance sube saneado: es lo que BullMQ guarda como failedReason. */

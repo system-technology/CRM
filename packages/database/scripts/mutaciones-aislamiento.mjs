@@ -20,10 +20,26 @@
 import { Client } from 'pg';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { evaluarGuarda } from './guarda-base-desechable.mjs';
 
 const URL_ADMIN = process.env.DATABASE_URL;
 if (!URL_ADMIN) throw new Error('Falta DATABASE_URL (rol propietario).');
 if (!process.env.DATABASE_APP_URL) throw new Error('Falta DATABASE_APP_URL (rol de aplicación).');
+
+// Antes de arrancar NADA (ni el control, que también usa la base): estas mutaciones no corren contra una base compartida.
+const guarda = evaluarGuarda({
+  desechable: process.env.VIAJAPRO_BASE_DESECHABLE,
+  url: URL_ADMIN,
+});
+if (!guarda.ok) {
+  console.error(
+    `RECHAZADO: las mutaciones rompen el aislamiento de la base a la que apunten. ${guarda.motivo}.
+` +
+      'Solo corren contra una base desechable: VIAJAPRO_BASE_DESECHABLE=1 y un host de loopback ' +
+      '(o un host propio con base distinta de neondb). No se tocó nada.',
+  );
+  process.exit(2);
+}
 
 const raizPaquete = fileURLToPath(new URL('..', import.meta.url));
 // El binario de vitest del propio paquete, invocado con el Node actual.
