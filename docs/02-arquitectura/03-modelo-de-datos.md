@@ -116,6 +116,25 @@ quedaron sin respaldo del motor: entraban sin que nada comprobara de quién era 
 Un `CHECK (num_nonnulls(canal_id, cuenta_id) = 1)` cierra la figura: **toda fila es de una
 de las dos clases, y las dos tienen clave foránea compuesta.**
 
+**Desde el 2026-10-19 no queda ninguna simple, y lo vigila un barrido, no una lista.** Las tres
+últimas venían de la migración inicial y las cerró `20261019220000_foraneas_con_tenant_en_el_modelo_antiguo`:
+
+```
+mayoristas (id, tenant_id) <── paquetes (mayorista_id, tenant_id)   SET NULL ("mayorista_id")
+paquetes   (id, tenant_id) <── temporadas (paquete_id, tenant_id)   CASCADE
+temporadas (id, tenant_id) <── precios (temporada_id, tenant_id)    CASCADE   [UNIQUE nuevo en temporadas]
+```
+
+La aserción 54 recorre `pg_constraint` entero: toda foránea entre dos tablas con `tenant_id` tiene
+que emparejar el `tenant_id` de la hija con el del padre en la misma posición. La migración repite
+la consulta y tumba el despliegue si encuentra alguna. `temporadas` y `precios` son del modelo
+anterior a ADR-0009 pero siguen vivas: las leen `cotizar-paquete` y `listar-paquetes`.
+
+**La aserción 17 juzga por el dato, no por el nombre.** Toda tabla fuera de `excepciones_rls` con
+una columna que sea foránea hacia `tenants` o que se llame `tenant%` tiene que tener RLS habilitada
+y forzada, y toda excepción tiene que tener `motivo` no vacío. A diferencia de la aserción 1, no
+depende de la vista `tablas_sin_aislamiento`, que vive en la base y una migración puede reescribir.
+
 ---
 
 ## 3. Decisiones de modelado y su porqué

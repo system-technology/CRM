@@ -303,6 +303,62 @@ const EXCEPCIONES_DECLARADAS: ReadonlyArray<readonly [string, string, readonly s
 ];
 
 /**
+ * El detector de la aserción 17: tablas con datos de agencia que nadie aísla.
+ *
+ * «Datos de agencia» por el DATO y no por el nombre: una columna que es foránea hacia
+ * `tenants`, o que se llama `tenant%`. Las particiones se juzgan por su raíz, igual que en
+ * `tablas_sin_aislamiento`: es la raíz la que está —o no— en `excepciones_rls`.
+ */
+async function tablasConDatosDeAgenciaSinRlsForzada(
+  cliente: Client,
+): Promise<Array<{ tabla: string; columnas: string[] }>> {
+  const { rows } = await cliente.query(
+    `WITH RECURSIVE raices AS (
+       SELECT c.oid, c.relname AS raiz
+         FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' AND c.relkind IN ('r', 'p') AND NOT c.relispartition
+       UNION ALL
+       SELECT h.inhrelid, r.raiz FROM pg_inherits h JOIN raices r ON r.oid = h.inhparent
+     )
+     SELECT c.relname AS tabla, array_agg(a.attname::text ORDER BY a.attname) AS columnas
+       FROM raices r
+       JOIN pg_class c ON c.oid = r.oid
+       JOIN pg_attribute a ON a.attrelid = c.oid AND a.attnum > 0 AND NOT a.attisdropped
+      WHERE (a.attname LIKE 'tenant%'
+             OR EXISTS (SELECT 1 FROM pg_constraint k
+                         WHERE k.contype = 'f' AND k.conrelid = c.oid
+                           AND k.confrelid = 'public.tenants'::regclass
+                           AND a.attnum = ANY (k.conkey)))
+        AND NOT EXISTS (SELECT 1 FROM excepciones_rls e WHERE e.tabla = r.raiz)
+        AND NOT (c.relrowsecurity AND c.relforcerowsecurity)
+      GROUP BY c.relname
+      ORDER BY 1`,
+  );
+  return rows as Array<{ tabla: string; columnas: string[] }>;
+}
+
+/**
+ * El barrido de la aserción 54: foráneas entre dos tablas que tienen `tenant_id` en las que
+ * el `tenant_id` de la hija no se empareja, en la misma posición, con el `tenant_id` del padre.
+ */
+const FORANEAS_SIN_TENANT_SQL = `
+  SELECT DISTINCT t.relname AS hija, c.conname, p.relname AS padre
+    FROM pg_constraint c
+    JOIN pg_class t ON t.oid = c.conrelid
+    JOIN pg_namespace n ON n.oid = t.relnamespace
+    JOIN pg_class p ON p.oid = c.confrelid
+    JOIN pg_attribute ta ON ta.attrelid = c.conrelid AND ta.attname = 'tenant_id'
+                        AND ta.attnum > 0 AND NOT ta.attisdropped
+    JOIN pg_attribute pa ON pa.attrelid = c.confrelid AND pa.attname = 'tenant_id'
+                        AND pa.attnum > 0 AND NOT pa.attisdropped
+   WHERE c.contype = 'f' AND n.nspname = 'public'
+     AND NOT EXISTS (
+       SELECT 1 FROM generate_subscripts(c.conkey, 1) AS i
+        WHERE c.conkey[i] = ta.attnum AND c.confkey[i] = pa.attnum
+     )
+   ORDER BY 1, 2`;
+
+/**
  * La tabla de §1.3 del ADR, que es normativa. La aserción 20 la compara entrada por
  * entrada y **en ambos sentidos**: ni falta ni sobra un EXECUTE.
  *
@@ -946,11 +1002,47 @@ describe('ADR-0008 — directorio de enrutamiento, staging y separación de role
     }
   }, 60_000);
 
-  it('17 — ninguna tabla global tiene columna tenant_id, y todas están declaradas', async () => {
-    // Si alguna la tuviera, el aplicador dirigido por datos les pondría RLS y volverían a
-    // ser ilegibles sin contexto: el ciclo huevo-gallina de vuelta, en producción y sin
-    // error. `excepciones_rls` entra en la cuenta: son CUATRO, y la regla de parada de
-    // Consecuencias se apoya en ese número.
+  it('17 — toda tabla con datos de agencia fuera de excepciones_rls tiene RLS forzada, y toda excepción tiene motivo', async () => {
+    // Contraprueba primero: el detector tiene que ver una tabla que guarda datos de agencia
+    // bajo otro nombre, sin RLS y sin excepción —lo que la versión anterior dejaba pasar—.
+    // Se planta dentro de una transacción que se deshace: no queda nada en la base.
+    await admin.query('BEGIN');
+    try {
+      await admin.query(
+        'CREATE TABLE contraprueba_17 (id uuid PRIMARY KEY, tenant_x uuid REFERENCES tenants (id))',
+      );
+      const plantada = await tablasConDatosDeAgenciaSinRlsForzada(admin);
+      expect(plantada, 'el detector de la 17 no ve una tabla con tenant_x sin RLS').toContainEqual({
+        tabla: 'contraprueba_17',
+        columnas: ['tenant_x'],
+      });
+    } finally {
+      await admin.query('ROLLBACK');
+    }
+
+    // **Por el dato, no por el nombre.** La versión anterior solo preguntaba si una tabla
+    // global tenía una columna llamada `tenant_id`, y una tabla que guardase datos de agencia
+    // bajo otro nombre —`tenant_resuelto_id`, `tenant_acceso_id`— la pasaba sin más. Ahora:
+    // toda tabla (y toda partición, juzgada por su raíz) que NO esté en `excepciones_rls` y
+    // tenga una columna que referencie `tenants` o se llame `tenant%` tiene RLS habilitada y
+    // forzada. La 1 no lo cubre: mira solo la columna `tenant_id`.
+    const sinRls = await tablasConDatosDeAgenciaSinRlsForzada(admin);
+    expect(
+      sinRls,
+      `Tablas con datos de agencia, fuera de excepciones_rls y sin RLS forzada: ${JSON.stringify(sinRls)}`,
+    ).toEqual([]);
+
+    // Una excepción sin razón escrita no es una excepción, es un agujero con nombre.
+    const sinMotivo = await admin.query(
+      `SELECT tabla, rol FROM excepciones_rls
+        WHERE motivo IS NULL OR btrim(motivo) = '' ORDER BY 1, 2`,
+    );
+    expect(sinMotivo.rows, 'excepciones_rls con motivo vacío').toEqual([]);
+
+    // Lo de antes sigue valiendo: si una tabla global tuviera `tenant_id`, el aplicador
+    // dirigido por datos le pondría RLS y volvería a ser ilegible sin contexto —el ciclo
+    // huevo-gallina de vuelta, en producción y sin error—. `excepciones_rls` entra en la
+    // cuenta: son CUATRO, y la regla de parada de Consecuencias se apoya en ese número.
     const tablas = [...TABLAS_GLOBALES_ADR_0008, 'excepciones_rls'];
     const { rows } = await admin.query(
       `SELECT c.relname,
@@ -967,6 +1059,18 @@ describe('ADR-0008 — directorio de enrutamiento, staging y separación de role
       expect(r.tiene_tenant_id, `${r.relname} tiene una columna tenant_id`).toBe(false);
       expect(r.declarada, `${r.relname} no está declarada en excepciones_rls`).toBe(true);
     }
+  });
+
+  it('54 — ninguna foránea entre dos tablas con tenant_id deja fuera el tenant', async () => {
+    // La integridad referencial se evalúa POR ENCIMA de RLS: el `WITH CHECK` valida el
+    // `tenant_id` de la fila nueva y nadie valida el del padre. Una foránea simple deja
+    // colgar una fila de una agencia de la fila de otra si alguien escribe el id cruzado.
+    // Barrido del catálogo entero, no lista de tablas: la que se cree mañana entra sola.
+    const { rows } = await admin.query(FORANEAS_SIN_TENANT_SQL);
+    expect(
+      rows.map((r) => `${r.hija}.${r.conname} -> ${r.padre}`),
+      'Foráneas entre tablas de tenant que no incluyen tenant_id',
+    ).toEqual([]);
   });
 
   it('18 — la purga no borra una recepción con algún change sin resolver', async () => {
