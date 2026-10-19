@@ -692,7 +692,7 @@ describe('ADR-0008 — directorio de enrutamiento, staging y separación de role
   const cuentaRevocada = randomUUID();
   const canalRevocado = randomUUID();
   const claveRevocada = randomBytes(32);
-  /** Para las aserciones 54 a 57: lo que crean, para que el desmontaje lo encuentre. */
+  /** Para las aserciones 55 a 58: lo que crean, para que el desmontaje lo encuentre. */
   const CUENTAS_DE_HUECOS: string[] = [];
   const CANALES_DE_HUECOS: string[] = [];
   const CLAVES_DE_HUECOS: Buffer[] = [];
@@ -1691,7 +1691,7 @@ describe('ADR-0008 — directorio de enrutamiento, staging y separación de role
     );
   }
 
-  it('54 — la baja de una CUENTA llega a sus filas WABA, y la agencia no la deshace', async () => {
+  it('55 — la baja de una CUENTA llega a sus filas WABA, y la agencia no la deshace', async () => {
     // Hueco (a). Las filas WABA gobiernan todos los eventos de gestión de la agencia; una
     // cuenta dada de baja seguía resolviéndose ACTIVO.
     const cuenta = randomUUID();
@@ -1736,7 +1736,7 @@ describe('ADR-0008 — directorio de enrutamiento, staging y separación de role
     expect(await estadoResuelto(claveWabaA)).toEqual(['ACTIVO']);
   });
 
-  it('55 — el borrado lógico de un canal o de una cuenta revoca su ruteo', async () => {
+  it('56 — el borrado lógico de un canal o de una cuenta revoca su ruteo', async () => {
     // Hueco (b). `eliminado_en` es la baja de la agencia (ADR-0010 §1.4) y no propagaba.
     const cuenta = randomUUID();
     const canal = randomUUID();
@@ -1761,7 +1761,7 @@ describe('ADR-0008 — directorio de enrutamiento, staging y separación de role
       'REVOCADO',
     ]);
 
-    // Deshacer el borrado no relaja nada: reactivar es un re-alta, y eso es la 56.
+    // Deshacer el borrado no relaja nada: reactivar es un re-alta, y eso es la 57.
     await comoTenant(TENANT_B, (c) =>
       c.query('UPDATE canales SET eliminado_en = NULL WHERE id = $1', [canal]),
     );
@@ -1772,7 +1772,7 @@ describe('ADR-0008 — directorio de enrutamiento, staging y separación de role
     ]);
   });
 
-  it('56 — registrar_enrutamiento no escribe un estado más laxo que el del canal o la cuenta', async () => {
+  it('57 — registrar_enrutamiento no escribe un estado más laxo que el del canal o la cuenta', async () => {
     // Hueco (c). El re-alta podía escribir ACTIVO sobre un canal que seguía REVOCADO, y el
     // directorio volvía a mentir hasta la siguiente baja.
     const cuenta = randomUUID();
@@ -1875,10 +1875,10 @@ describe('ADR-0008 — directorio de enrutamiento, staging y separación de role
     ).toEqual([]);
   });
 
-  it('57 — un canal que NACE revocado no se registra ACTIVO, y el disparador actúa en INSERT', async () => {
+  it('58 — un canal que NACE revocado no se registra ACTIVO, y el disparador actúa en INSERT', async () => {
     // Hueco (d), el del auditor. La clave foránea impide que el directorio tenga una fila
     // de un canal que todavía no existe, así que el peligro real del INSERT es el alta
-    // posterior: lo cierra la comprobación de la 56. Aun así el disparador escucha INSERT,
+    // posterior: lo cierra la comprobación de la 57. Aun así el disparador escucha INSERT,
     // para que la regla no dependa de esa clave foránea.
     const cuenta = randomUUID();
     const canal = randomUUID();
@@ -1909,7 +1909,7 @@ describe('ADR-0008 — directorio de enrutamiento, staging y separación de role
     }
   });
 
-  it('58 — el barrido no deja que los abandonados tapen a los nuevos', async () => {
+  it('59 — el barrido no deja que los abandonados tapen a los nuevos', async () => {
     // Cola de v0.30.0: con más de 500 changes abandonados, el límite del barrido los
     // devolvía siempre a ellos y un change recién atascado no se reencolaba nunca. Ahora
     // la base cuenta los reencolados, excluye a los que pasaron del tope y devuelve

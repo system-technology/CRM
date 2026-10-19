@@ -30,7 +30,7 @@
 -- sea el de la fila, y la RLS forzada de `canales` y `cuentas_whatsapp` vale también para
 -- el dueño de la función: lee solo la agencia de la sesión, y sin contexto lee cero filas.
 -- Se concede SELECT sobre CUATRO columnas (`id`, `tenant_id`, `estado`, `eliminado_en`),
--- nunca el `phone_number_id` ni el token, y nada de escritura. Aserción 56.
+-- nunca el `phone_number_id` ni el token, y nada de escritura. Aserción 57.
 --
 -- La carrera entre un re-alta y una baja concurrente se cierra con un bloqueo consultivo
 -- de transacción por canal (o por cuenta), que toman los dos lados ANTES de leer: el

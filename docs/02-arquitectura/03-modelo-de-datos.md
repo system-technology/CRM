@@ -381,7 +381,7 @@ y `tablas_sin_aislamiento` imputa cada partición a su tabla raíz.
   repuntar y eso queda solo en `registrar_enrutamiento`. Aserción 46.
 
   **Los cuatro huecos que dejaba, cerrados el 2026-10-19** (ADR-0010 punto 6, migración
-  `20261019230000_huecos_del_disparador_y_tope_del_barrido`, aserciones 54 a 57). Estado
+  `20261020010000_huecos_del_disparador_y_tope_del_barrido`, aserciones 55 a 58). Estado
   **efectivo** de un canal o una cuenta = `REVOCADO` si tiene `eliminado_en`, si no su `estado`.
 
   ```
@@ -409,7 +409,7 @@ y `tablas_sin_aislamiento` imputa cada partición a su tabla raíz.
   `cuentas_whatsapp`, cuando 4f lo rechazó para el resolvedor: el resolvedor corre **sin**
   contexto y sería una lectura entre tenants; `registrar_enrutamiento` exige que el tenant de
   la sesión sea el de la fila y la RLS forzada vale también para el dueño de la función. Sin
-  contexto lee cero filas, y nunca el `phone_number_id` ni el token (aserción 56). Una baja
+  contexto lee cero filas, y nunca el `phone_number_id` ni el token (aserción 57). Una baja
   concurrente con un alta se serializa con un bloqueo consultivo por canal o por cuenta
   (claves 7410100 y 7410101) que toman los dos lados antes de leer.
 
@@ -435,7 +435,7 @@ y `tablas_sin_aislamiento` imputa cada partición a su tabla raíz.
   recepciones ya anuladas por `purgar_payloads`: sin contenido no hay qué procesar, y
   reencolarlas sería un bucle. Es la novena `SECURITY DEFINER`; aserciones 12, 13, 20 y 53.
 
-  **Tope de reencolados en la base (2026-10-19, `20261019230000`, aserción 58).** Con más de
+  **Tope de reencolados en la base (2026-10-19, `20261020010000`, aserción 59).** Con más de
   500 changes abandonados el límite del barrido los devolvía siempre a ellos y tapaban a los
   nuevos. `recepciones_webhook_changes.intentos_barrido smallint NOT NULL DEFAULT 0` cuenta
   los reencolados; `contar_reencolado_barrido(recepcion_id, indice)` suma uno a un change
