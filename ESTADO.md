@@ -6,7 +6,7 @@
 
 | Campo | Valor |
 |---|---|
-| Última actualización | 2026-10-19 (integraciones v0.19.0 → v0.21.2: ADR-0009, esquema del inbox, POST, relay y trabajador, canal revocado, auditoría del trabajador) |
+| Última actualización | 2026-10-19 (integraciones v0.19.0 → v0.21.2 y el ADR-0010, sin etiqueta) |
 | Actualizado por | Claude Opus 5.5 (`integrador`) |
 | Fase | **Rebanada vertical de paquetes, en construcción** |
 | Avance de la fase | Cotizador de punta a punta. **La cotización es la suma de sus tarifas y el precio «desde» es uno que el comprador puede pagar (v0.19.0).** Apretón de manos del webhook vivo. Bandeja web en construcción |
@@ -116,7 +116,7 @@ Ordenada. La primera es la que debe tomarse ahora.
 | 4b | Inbox — API: tres orígenes de conexión, guardia de identidad, puerto a `crm`, relay por `change` | `backend` | **Hecha (v0.21.0, 2026-10-19).** POST durable verificado vivo; relay por `change` con `jobId` por change; trabajador `ProcesarChange` con el rol `viajapro_webhook`, que escribe el mensaje bajo RLS (e2e contra Neon 5/5). **Sin verificar contra Redis real**: ver 4c y la cola del 2026-10-19 |
 | 4c | Las 3 verificaciones que **no** son de base de datos: arranque del proceso, alta de extremo a extremo, ensayo de rotación de la pimienta | `backend`, `qa`, `devops` | **En curso.** La de arranque está hecha: `guardia-de-rol.ts` comprueba identidad, `rolsuper` y `rolbypassrls`, y la API registra al arrancar «Conectado como 'viajapro_app', verificado». Faltan las otras dos |
 | 4d | Alinear `05-seguridad/02-proteccion-de-datos.md` con el ADR-0008 | `documentador` | La redacción de consentimiento lo contradice. Faltan pimienta y clave de plataforma en el inventario §5 |
-| 4e | **ADR que enmiende el ADR-0008 en cinco puntos** | `arquitecto` | Un ADR es inmutable y hoy describe un sistema que no existe: tokens en `cuentas_whatsapp`, `cuenta_id` en el directorio, una **séptima** función, `crear_particion_historial` fuera del inventario, y el hueco de `purgar_directorio`. **Lo más fácil de olvidar y lo más caro en seis meses** |
+| 4e | ADR que enmiende el ADR-0008 | `arquitecto` | **Cerrada por el ADR-0010** (`docs/03-adr/0010-webhook-tal-como-es-y-el-trabajador-en-apps-api.md`, integrado el 2026-10-19). **Aceptado en modo desatendido: falta que el propietario lo ratifique** |
 | 4f | Reconciliación directorio ↔ verdad | `datos` | **Cerrada (v0.21.1, 2026-10-19).** Disparador `canales_propagar_estado`: lleva SUSPENDIDO/REVOCADO al directorio y nunca relaja. Aserción 46 vista en rojo sin el arreglo; aislamiento 51/51 |
 | 4g | `purgar_directorio`, o decidir que es manual | `arquitecto`, `datos` | Hoy ninguna fila del directorio se puede borrar por ningún camino de código. **No bloquea un esquema vacío; bloquea el primer tenant en producción** |
 | 4h | Trabajo anual de creación de particiones del historial | `devops` | Si falta la del año siguiente, **ninguna agencia puede conectar su canal**. Mejor: un *event trigger* que lo haga imposible de olvidar |
@@ -628,7 +628,7 @@ limpio · `pnpm run test --force` **dos veces**: contracts 56, domain 70, api **
 
 | Cola | Dueño | Por qué no bloquea |
 |---|---|---|
-| Trabajador en `apps/api` contra el mapa de `CLAUDE.md` y el ADR-0004: ADR o mudanza | `arquitecto` | Proceso y rol separados; es ubicación, no aislamiento |
+| Trabajador en `apps/api` contra el mapa de `CLAUDE.md` | `arquitecto` → Usuario | **Decidido en el ADR-0010.** Falta la línea del mapa en `CLAUDE.md` §5, que la aprueba el propietario aparte |
 | ~~Revisión de `auditor-seguridad` sobre `ProcesarChange` y `conTenantResuelto`~~ | `auditor-seguridad` | **Cerrada (v0.21.2):** sin bloqueantes; tres correcciones integradas |
 | BullMQ contra Redis real, y el job de CI | `devops` (4c, 4a.1) | Nada desplegado; ruta probada con dobles |
 | Sin relay de barrido: un change cuya cola se pierde solo se recupera por el reintento de Meta. Falta una función de base para listar pendientes | `datos` | Meta reintenta durante horas |
@@ -687,4 +687,28 @@ Compuertas sobre el árbol fusionado con `b93fa75` (iba 3 por detrás), en un á
 dos veces: 56 · 70 · api **263** (`inbox-relay.e2e-spec` 7/7) · aislamiento **51/51** las dos.
 
 Cola: nada nuevo. `D:\Projects\CRM-gate4` se suma a los árboles temporales que hay que borrar a mano.
+
+---
+
+## Integración del 2026-10-19 (séptima) — ADR-0010, sin etiqueta
+
+`docs/adr-0010-enmienda-0008` @ `9cdda1e` entra en `main` (`cf2296d`). Solo toca cinco `.md` de `docs/`:
+no cambia el artefacto desplegable, así que no lleva versión. Registro:
+[`docs/_integraciones/2026-10-19-adr-0010.md`](docs/_integraciones/2026-10-19-adr-0010.md).
+
+Fue **devuelta una vez**: en `0ee9a52` cambiaba una línea de `CLAUDE.md`. Ese archivo solo cambia con
+aprobación del propietario, y ningún mensaje de agente la sustituye. En `9cdda1e`, `CLAUDE.md` es
+idéntico a `main`. La línea del mapa se le pide al propietario aparte.
+
+**El ADR-0010 se aceptó en modo desatendido y falta que el propietario lo ratifique.** `auditor-seguridad` lo
+revisó (ACEPTAR CON CAMBIOS), y los dos cambios están aplicados.
+
+### Cola nueva — con dueño, no bloquea (según `auditor-seguridad`)
+
+| Cola | Dueño | Por qué no bloquea |
+|---|---|---|
+| **No existe el relay de barrido.** Un `change` cuya cola se pierde solo se recupera por el reintento de Meta. Hace falta una función de base que liste los `changes` pendientes (`viajapro_webhook` solo puede `tomar_recepcion` por id) | `datos` | Meta reintenta durante horas; nada desplegado |
+| **Falta el puerto `asegurarContacto`:** `inbox` escribe en `contactos` (de `crm`) directamente, contra R4 | `backend` | Misma transacción y mismo RLS. Es frontera de módulo, no aislamiento |
+| **Tres huecos del disparador `canales_propagar_estado`:** la baja de una cuenta, el borrado lógico de un canal y la re-alta no se propagan al directorio | `datos` | El trabajador contrasta con `canales` dentro de la transacción y descarta lo revocado |
+| Ratificar el ADR-0010, y aprobar la línea del mapa en `CLAUDE.md` §5 | Usuario | Hoy describe el código tal como está |
 
