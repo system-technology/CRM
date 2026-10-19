@@ -291,6 +291,8 @@ para siempre.**
 | `enrutamiento_canales` | Sí — **ADR-0008** | El mapa `identificador de Meta → tenant`. Es lo que rompe el ciclo: leerlo es el paso previo a saber de qué agencia es el webhook. Claves en HMAC con pimienta fuera de la base; **ningún rol de login tiene un solo privilegio sobre ella** |
 | `enrutamiento_historial` | Sí — **ADR-0008** | Bitácora del directorio, particionada por año. Es global porque `registros_auditoria` tiene `tenant_id` y RLS forzada: el registro de un secuestro quedaría archivado bajo el **atacante**, invisible para la víctima. Solo inserción, ni su propietario puede modificarla |
 | `recepciones_webhook` y `recepciones_webhook_changes` | Sí — **ADR-0008** | El staging del webhook: contenido de varios tenants durante segundos, **antes** de saber de quién es. Cifrado con AAD, borrado al clasificar y purgado. Se cuentan como una: la hija existe porque el grano real del procesamiento es el `change` |
+| `identidades`, `credenciales`, `sesiones`, `verificaciones` | Sí — **ADR-0011** | La persona y su autenticación (Better Auth). Existen antes de elegir agencia y el inicio de sesión corre sin `app.current_tenant`. **Solo `viajapro_identidad`** tiene privilegios (DML); los tres roles de siempre, cero, declarados fila por fila |
+| `accesos_identidad` | Sí — **ADR-0011** | Índice `(identidad, agencia)` para el selector de agencia. `viajapro_identidad` solo la lee; la escribe únicamente el disparador `SECURITY DEFINER` de `usuarios` (dueño `viajapro_accesos`, NOLOGIN). No decide nada: lo que cuenta es leer `usuarios` bajo RLS |
 | `plans` | Todavía no | Catálogo de planes del SaaS, igual para todos |
 | `countries`, `timezones` | Todavía no | Datos de referencia universales |
 | `system_message_templates` | Todavía no | Plantillas base sugeridas, que cada tenant copia y adapta |
@@ -299,7 +301,10 @@ para siempre.**
 datos de negocio o de ruteo**, tres (`enrutamiento_canales`, `enrutamiento_historial`,
 `recepciones_webhook` con su hija). Si aparece una cuarta, **el patrón está mal** y hay que
 revisar la decisión, no añadirla a la lista. Las tablas de control del propio mecanismo
-—`excepciones_rls`— y los catálogos de referencia son otra categoría.
+—`excepciones_rls`— y los catálogos de referencia son otra categoría. **Las cinco de identidad
+(ADR-0011) son una tercera**, decidida por ADR y no añadida a la lista: no guardan datos de
+negocio ni de ruteo sino la autenticación de la persona, y tienen su propio rol de conexión,
+que no ve ninguna tabla de negocio. La regla de parada sigue en tres.
 
 **Ninguna de ellas tiene ni tendrá una columna llamada `tenant_id`**, y eso no es
 cosmético: el aplicador de políticas es dirigido por datos y se la pondría RLS
@@ -632,3 +637,46 @@ erDiagram
 
 Aserciones 47 a 52 en `tests/aislamiento.spec.ts`, más las mutaciones M8 a M13 en
 `scripts/mutaciones-aislamiento.mjs`.
+
+## Identidad global, pertenencia por agencia y roles como tabla (ADR-0011, 2026-10-19)
+
+Migración `20261019230000_identidad_global_y_roles_por_agencia`.
+
+```
+                 GLOBAL (excepciones_rls, solo viajapro_identidad)         |  POR TENANT (RLS forzada)
+                                                                           |
+  identidades ──< credenciales                                             |
+      │  └────< sesiones ── tenant_activo_id ──> tenants                   |
+      │                                                                    |
+      ├────< accesos_identidad (identidad_id, tenant_acceso_id) <── disparador ── usuarios ──> roles
+      │                                                                    |   │ (rol_id, tenant_id)
+      └──────────────────────────────── identidad_id ──────────────────────────┘
+  verificaciones (sin FK: códigos previos a la sesión)                     |
+```
+
+**Por qué así.**
+
+- **La identidad es global y la pertenencia no.** Una persona existe antes de elegir agencia;
+  qué es en cada agencia (rol, clientes asignados) es dato de negocio y vive en `usuarios`, con
+  RLS. Las FK que ya apuntaban a `usuarios(id, tenant_id)` no se tocan.
+- **Ninguna tabla de identidad tiene una columna `tenant_id`.** El ADR nombraba así la de
+  `accesos_identidad`; se llama `tenant_acceso_id` porque el aplicador de `001` es dirigido por
+  datos y le habría puesto RLS: el selector, que corre sin tenant, vería cero filas.
+- **`viajapro_identidad` no está en `roles_de_aplicacion`.** No recibe el `GRANT ... ON ALL
+  TABLES`: sus únicos privilegios son las filas de `excepciones_rls`. La aserción 54 enumera todas
+  las tablas no de identidad y exige 42501 en cada una.
+- **`accesos_identidad` la escribe un disparador**, `sincronizar_acceso_identidad()`,
+  `SECURITY DEFINER`, `search_path` vacío, dueño `viajapro_accesos` (NOLOGIN, solo `SELECT,
+  INSERT, DELETE` sobre esa tabla). Lo dispara quien escribe `usuarios` bajo RLS, así que solo
+  puede apuntar el par de una fila que ya pasó el `WITH CHECK`. En `UPDATE`, si cambia la
+  identidad o el tenant, borra el par viejo.
+- **Roles: tabla por tenant, no `enum`** (R12). Se eliminó `rol_usuario`. El catálogo de permisos
+  es invariante: `PERMISOS` en `packages/contracts/src/identidad.ts` y el `CHECK
+  roles_permisos_del_catalogo`. Tres roles sembrados por agencia con `clave` DUENO, ASESOR y
+  OPERACIONES. `usuarios.rol_id` es foránea **compuesta** con `tenant_id`, `NO ACTION` para que
+  el borrado en cascada de un tenant no tropiece a mitad de sentencia.
+- **Relleno**: una identidad por correo (sin distinguir mayúsculas); DUENO y ADMINISTRADOR
+  pasaron al rol DUENO, ASESOR y SOLO_LECTURA a ASESOR. Se borraron `usuarios.rol` y
+  `usuarios.hash_contrasena` (vacía). **No reversible** en esa parte.
+- **Hash del token y del OTP**: el esquema no lo impone (columnas `text`). Es requisito de la
+  rebanada 2 y condición del auditor.

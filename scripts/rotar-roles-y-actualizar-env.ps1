@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  Rota las contrasenas de los tres roles de aplicacion y actualiza los .env de todos los
+  Rota las contrasenas de los cuatro roles de login (los tres de aplicacion y viajapro_identidad) y actualiza los .env de todos los
   arboles de trabajo, sin mostrar las credenciales por pantalla.
 
 .DESCRIPTION
@@ -60,7 +60,7 @@ if (-not $Arboles) { throw 'Ningun arbol tiene .env. Copia uno antes de rotar.' 
 # 2. Rotar. La salida se captura: NO se muestra.
 # ---------------------------------------------------------------------------
 Write-Host ''
-Write-Host 'Rotando contrasenas de los tres roles...' -ForegroundColor Cyan
+Write-Host 'Rotando contrasenas de los cuatro roles...' -ForegroundColor Cyan
 
 Push-Location $raiz
 try {
@@ -80,7 +80,7 @@ try {
         Write-Host "La rotacion fallo (codigo $codigo). Los .env NO se han tocado." -ForegroundColor Red
         Write-Host 'Ultimas lineas, sin las de credenciales:' -ForegroundColor Yellow
         ($salida -split "`r?`n" |
-            Where-Object { $_ -notmatch 'DATABASE_(APP|ALTAS|WEBHOOK)_URL=' }) |
+            Where-Object { $_ -notmatch 'DATABASE_(APP|ALTAS|WEBHOOK|IDENTIDAD)_URL=' }) |
             Select-Object -Last 15 |
             ForEach-Object { Write-Host "  $_" }
         exit 1
@@ -92,7 +92,7 @@ try {
 # Las lineas utiles tienen la forma  VARIABLE=<cadena>   # proposito
 # Se buscan por NOMBRE DE VARIABLE, nunca por el esquema de la URL, para no escribir
 # en este archivo nada que parezca una cadena de conexion.
-$variables = @('DATABASE_APP_URL', 'DATABASE_ALTAS_URL', 'DATABASE_WEBHOOK_URL')
+$variables = @('DATABASE_APP_URL', 'DATABASE_ALTAS_URL', 'DATABASE_WEBHOOK_URL', 'DATABASE_IDENTIDAD_URL')
 $nuevos = @{}
 
 foreach ($linea in ($salida -split "`r?`n")) {
@@ -187,7 +187,7 @@ if ($problemas -gt 0) {
     exit 1
 }
 
-Write-Host '  Los tres .env estan completos y sin duplicados.' -ForegroundColor Green
+Write-Host '  Los .env estan completos y sin duplicados.' -ForegroundColor Green
 Write-Host ''
 Write-Host 'Siguiente paso, para comprobar que la base acepta las credenciales nuevas:' -ForegroundColor Cyan
 Write-Host '  pnpm db:aislamiento'

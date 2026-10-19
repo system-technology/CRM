@@ -101,6 +101,26 @@ try {
 
   const FIXTURES = encontrados.map((t) => t.id);
 
+  // Las identidades de fixture (ADR-0011) son GLOBALES: no cuelgan de ningún tenant y
+  // `borrarTenants` no las ve. Se reconocen por el mismo prefijo en el correo, con la misma
+  // gracia, y solo si ya no tienen ninguna pertenencia (usuarios → identidades es RESTRICT).
+  const { rows: identidadesViejas } = await cliente.query(
+    `SELECT id FROM identidades i
+      WHERE i.correo::text LIKE $1 || '%'
+        AND i.creado_en < now() - make_interval(mins => $2::int)
+        AND NOT EXISTS (SELECT 1 FROM usuarios u WHERE u.identidad_id = i.id)`,
+    [PREFIJO_FIXTURE, MINUTOS_DE_GRACIA],
+  );
+  if (identidadesViejas.length > 0) {
+    console.log(`Identidades de fixture huérfanas: ${identidadesViejas.length}.`);
+    if (BORRAR) {
+      await cliente.query('DELETE FROM identidades WHERE id = ANY($1)', [
+        identidadesViejas.map((r) => r.id),
+      ]);
+      console.log('  Borradas.');
+    }
+  }
+
   if (encontrados.length === 0) {
     console.log('No hay residuo viejo de fixtures. Nada que hacer.');
     process.exit(0);

@@ -254,6 +254,24 @@ describe('aislamiento entre tenants', () => {
  */
 const ROLES_DE_APLICACION = ['viajapro_app', 'viajapro_altas', 'viajapro_webhook'] as const;
 
+/**
+ * El cuarto rol de login (ADR-0011). **No** es de aplicación: no recibe el `GRANT ... ON ALL
+ * TABLES` y no debe recibirlo nunca. Pero es de login y sin BYPASSRLS, así que se vigila por
+ * atributo, y se añade aquí a la unión de `rolesAVigilar` por la misma razón que los otros
+ * tres: si se cayera de la vigilancia, sus aserciones de comportamiento seguirían corriendo.
+ */
+const ROL_IDENTIDAD = 'viajapro_identidad';
+const ROLES_DE_LOGIN_DECLARADOS = [...ROLES_DE_APLICACION, ROL_IDENTIDAD] as const;
+
+/** Las cinco tablas globales de ADR-0011. Solo `viajapro_identidad` las toca. */
+const TABLAS_DE_IDENTIDAD = [
+  'accesos_identidad',
+  'credenciales',
+  'identidades',
+  'sesiones',
+  'verificaciones',
+] as const;
+
 /** Las cuatro tablas globales del ADR. `recepciones_webhook_changes` es la tabla hija. */
 const TABLAS_GLOBALES_ADR_0008 = [
   'enrutamiento_canales',
@@ -279,6 +297,15 @@ const EXCEPCIONES_DECLARADAS: ReadonlyArray<readonly [string, string, readonly s
   ['_prisma_migrations', 'viajapro_altas', []],
   ['_prisma_migrations', 'viajapro_app', []],
   ['_prisma_migrations', 'viajapro_webhook', []],
+  // ADR-0011: solo viajapro_identidad, y sobre accesos_identidad solo lee.
+  ['accesos_identidad', 'viajapro_altas', []],
+  ['accesos_identidad', 'viajapro_app', []],
+  ['accesos_identidad', 'viajapro_identidad', ['SELECT']],
+  ['accesos_identidad', 'viajapro_webhook', []],
+  ['credenciales', 'viajapro_altas', []],
+  ['credenciales', 'viajapro_app', []],
+  ['credenciales', 'viajapro_identidad', ['SELECT', 'INSERT', 'UPDATE', 'DELETE']],
+  ['credenciales', 'viajapro_webhook', []],
   ['enrutamiento_canales', 'viajapro_altas', []],
   ['enrutamiento_canales', 'viajapro_app', []],
   ['enrutamiento_canales', 'viajapro_webhook', []],
@@ -288,6 +315,10 @@ const EXCEPCIONES_DECLARADAS: ReadonlyArray<readonly [string, string, readonly s
   ['excepciones_rls', 'viajapro_altas', []],
   ['excepciones_rls', 'viajapro_app', []],
   ['excepciones_rls', 'viajapro_webhook', []],
+  ['identidades', 'viajapro_altas', []],
+  ['identidades', 'viajapro_app', []],
+  ['identidades', 'viajapro_identidad', ['SELECT', 'INSERT', 'UPDATE', 'DELETE']],
+  ['identidades', 'viajapro_webhook', []],
   ['monedas', 'viajapro_altas', ['SELECT']],
   ['monedas', 'viajapro_app', ['SELECT']],
   ['monedas', 'viajapro_webhook', ['SELECT']],
@@ -297,9 +328,17 @@ const EXCEPCIONES_DECLARADAS: ReadonlyArray<readonly [string, string, readonly s
   ['recepciones_webhook_changes', 'viajapro_altas', []],
   ['recepciones_webhook_changes', 'viajapro_app', []],
   ['recepciones_webhook_changes', 'viajapro_webhook', []],
+  ['sesiones', 'viajapro_altas', []],
+  ['sesiones', 'viajapro_app', []],
+  ['sesiones', 'viajapro_identidad', ['SELECT', 'INSERT', 'UPDATE', 'DELETE']],
+  ['sesiones', 'viajapro_webhook', []],
   ['tenants', 'viajapro_altas', ['SELECT']],
   ['tenants', 'viajapro_app', ['SELECT']],
   ['tenants', 'viajapro_webhook', ['SELECT']],
+  ['verificaciones', 'viajapro_altas', []],
+  ['verificaciones', 'viajapro_app', []],
+  ['verificaciones', 'viajapro_identidad', ['SELECT', 'INSERT', 'UPDATE', 'DELETE']],
+  ['verificaciones', 'viajapro_webhook', []],
 ];
 
 /**
@@ -322,6 +361,9 @@ const MATRIZ_FUNCIONES: Readonly<Record<string, readonly string[]>> = {
   // al directorio (tarea 4f). Es SECURITY DEFINER y escribe el directorio, así que entra en
   // la matriz como las demás: un GRANT sobre ella sería un camino nuevo hacia la peor tabla.
   propagar_estado_canal: [],
+  // Novena (ADR-0011), también SIN ningún EXECUTE: la función del disparador de `usuarios`
+  // que mantiene `accesos_identidad`. Un GRANT sobre ella dejaría apuntar pertenencias a mano.
+  sincronizar_acceso_identidad: [],
 };
 
 const PROPIETARIO_ESPERADO: Readonly<Record<string, string>> = {
@@ -333,6 +375,7 @@ const PROPIETARIO_ESPERADO: Readonly<Record<string, string>> = {
   purgar_recepciones: 'viajapro_staging',
   purgar_payloads: 'viajapro_staging',
   propagar_estado_canal: 'viajapro_enrutador',
+  sincronizar_acceso_identidad: 'viajapro_accesos',
 };
 
 /**
@@ -384,7 +427,7 @@ async function rolesVigilados(cliente: Client): Promise<string[]> {
 async function rolesAVigilar(cliente: Client): Promise<string[]> {
   const vigilados = await rolesVigilados(cliente);
   const existentes = await cliente.query('SELECT rolname FROM pg_roles WHERE rolname = ANY($1)', [
-    [...ROLES_DE_APLICACION],
+    [...ROLES_DE_LOGIN_DECLARADOS],
   ]);
   const declarados = existentes.rows.map((r) => r.rolname as string);
   return [...new Set([...vigilados, ...declarados])].sort();
@@ -730,8 +773,8 @@ describe('ADR-0008 — directorio de enrutamiento, staging y separación de role
     );
     expect(
       rows.length,
-      'faltan funciones de ADR-0008: eran seis, la auditoría de implementación añadió purgar_payloads y la tarea 4f propagar_estado_canal',
-    ).toBe(8);
+      'faltan funciones de ADR-0008: eran seis, la auditoría de implementación añadió purgar_payloads, la tarea 4f propagar_estado_canal y ADR-0011 sincronizar_acceso_identidad',
+    ).toBe(9);
     expect(rows.filter((r) => r.publico)).toEqual([]);
   });
 
@@ -744,7 +787,7 @@ describe('ADR-0008 — directorio de enrutamiento, staging y separación de role
        WHERE n.nspname = 'public' AND p.proname = ANY($1) ORDER BY 1`,
       [Object.keys(MATRIZ_FUNCIONES)],
     );
-    expect(rows.length).toBe(8);
+    expect(rows.length).toBe(9);
 
     for (const fila of rows) {
       const config = (fila.proconfig as string[] | null) ?? [];
@@ -760,14 +803,15 @@ describe('ADR-0008 — directorio de enrutamiento, staging y separación de role
     }
   });
 
-  it('14 — los dos propietarios no son credenciales ni se saltan RLS', async () => {
+  it('14 — los tres propietarios no son credenciales ni se saltan RLS', async () => {
     const { rows } = await admin.query(
       `SELECT rolname, rolcanlogin, rolbypassrls, rolsuper,
               EXISTS (SELECT 1 FROM pg_roles s WHERE s.rolname = 'neon_superuser')
                 AND pg_has_role(rolname, 'neon_superuser', 'MEMBER') AS hereda_neon
-       FROM pg_roles WHERE rolname IN ('viajapro_enrutador','viajapro_staging') ORDER BY 1`,
+       FROM pg_roles WHERE rolname IN ('viajapro_enrutador','viajapro_staging','viajapro_accesos') ORDER BY 1`,
     );
-    expect(rows.length).toBe(2);
+    // El tercero es de ADR-0011: dueño del disparador que escribe `accesos_identidad`.
+    expect(rows.length).toBe(3);
     for (const r of rows) {
       expect(r.rolcanlogin, `${r.rolname} puede iniciar sesión`).toBe(false);
       expect(r.rolbypassrls, `${r.rolname} tiene BYPASSRLS`).toBe(false);
@@ -2618,5 +2662,386 @@ describe('Cotizaciones — cabecera mutable y versiones inmutables', () => {
         ),
       ),
     ).rejects.toThrow(/estado_exige_envio/);
+  });
+});
+// =========================================================================================
+// ADR-0011 — identidad global, pertenencias por agencia y roles como tabla
+//
+// Las tablas de identidad son GLOBALES (una persona existe antes de elegir agencia) y por eso
+// la frontera es el rol de conexión, como en el directorio de ADR-0008: solo
+// `viajapro_identidad` las toca, y ese rol no ve nada más. La pertenencia (`usuarios`) y los
+// roles (`roles`) llevan tenant y RLS forzada. Cada aserción de este bloque se vio en rojo
+// sin su pieza: ver M14-M20 de `scripts/mutaciones-aislamiento.mjs`.
+// =========================================================================================
+
+/** INSERT, UPDATE y DELETE genéricos: el permiso se comprueba antes que cualquier restricción. */
+const escriturasGenericas = (tabla: string) => [
+  `INSERT INTO ${tabla} DEFAULT VALUES`,
+  `UPDATE ${tabla} SET creado_en = creado_en`,
+  `DELETE FROM ${tabla}`,
+];
+
+describe('ADR-0011 — identidad global, pertenencias y roles por agencia', () => {
+  const correo = (sufijo: string) => `fixture-aislamiento-${MARCA}-${sufijo}@prueba.invalid`;
+  const identidadA = randomUUID();
+  const identidadB = randomUUID();
+  /** La que se repunta y se mueve de agencia en la 56. */
+  const identidadMovil = randomUUID();
+  /** Para las escrituras cruzadas de la 57: no tiene pertenencia en ninguna agencia. */
+  const identidadSuelta = randomUUID();
+  const rolA = randomUUID();
+  const rolB = randomUUID();
+  const usuarioA = randomUUID();
+  const usuarioB = randomUUID();
+  const identidades = [identidadA, identidadB, identidadMovil, identidadSuelta];
+
+  async function accesosDe(identidad: string): Promise<string[]> {
+    const { rows } = await admin.query(
+      'SELECT tenant_acceso_id FROM accesos_identidad WHERE identidad_id = $1 ORDER BY 1',
+      [identidad],
+    );
+    return rows.map((r) => r.tenant_acceso_id as string);
+  }
+
+  async function crearUsuario(
+    tenant: string,
+    id: string,
+    identidad: string,
+    rol: string,
+    sufijo: string,
+  ) {
+    await comoTenant(tenant, (c) =>
+      c.query(
+        `INSERT INTO usuarios (id, tenant_id, identidad_id, rol_id, correo, nombre, actualizado_en)
+         VALUES ($1, $2, $3, $4, $5, 'Asesora de prueba', now())`,
+        [id, tenant, identidad, rol, correo(sufijo)],
+      ),
+    );
+  }
+
+  beforeAll(async () => {
+    // Las identidades las crea el propietario: en producción las crea el pool de identidad,
+    // que no puede escribir `usuarios` ni `roles`, así que aquí no hay un rol que haga ambas.
+    for (const [id, sufijo] of [
+      [identidadA, 'a'],
+      [identidadB, 'b'],
+      [identidadMovil, 'movil'],
+      [identidadSuelta, 'suelta'],
+    ] as const) {
+      await admin.query(
+        `INSERT INTO identidades (id, correo, nombre, actualizado_en) VALUES ($1, $2, 'Fixture', now())`,
+        [id, correo(sufijo)],
+      );
+    }
+    // Roles y pertenencias, en cambio, por el camino de la API: viajapro_app bajo RLS.
+    for (const [tenant, rol] of [
+      [TENANT_A, rolA],
+      [TENANT_B, rolB],
+    ] as const) {
+      await comoTenant(tenant, (c) =>
+        c.query(
+          `INSERT INTO roles (id, tenant_id, nombre, clave, permisos, actualizado_en)
+           VALUES ($1, $2, 'Dueño', 'DUENO', ARRAY['cotizacion.ver_neto_y_margen'], now())`,
+          [rol, tenant],
+        ),
+      );
+    }
+    await crearUsuario(TENANT_A, usuarioA, identidadA, rolA, 'ua');
+    await crearUsuario(TENANT_B, usuarioB, identidadB, rolB, 'ub');
+  }, 60_000);
+
+  afterAll(async () => {
+    // Las pertenencias primero: `usuarios → identidades` es RESTRICT. Las borra el propietario
+    // y el disparador se lleva los pares de `accesos_identidad`.
+    await admin.query('DELETE FROM usuarios WHERE identidad_id = ANY($1)', [identidades]);
+    await admin.query('DELETE FROM identidades WHERE id = ANY($1)', [identidades]);
+  }, 60_000);
+
+  it('53 — las cinco tablas de identidad son globales, están declaradas, y los tres roles de siempre no las tocan', async () => {
+    const { rows } = await admin.query(
+      `SELECT c.relname,
+              EXISTS (SELECT 1 FROM pg_attribute a
+                      WHERE a.attrelid = c.oid AND a.attname = 'tenant_id'
+                        AND a.attnum > 0 AND NOT a.attisdropped) AS tiene_tenant_id,
+              EXISTS (SELECT 1 FROM excepciones_rls e WHERE e.tabla = c.relname) AS declarada
+       FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+       WHERE n.nspname = 'public' AND c.relname = ANY($1) ORDER BY 1`,
+      [[...TABLAS_DE_IDENTIDAD]],
+    );
+    expect(rows.map((r) => r.relname as string)).toEqual([...TABLAS_DE_IDENTIDAD]);
+    for (const r of rows) {
+      // Con `tenant_id`, el aplicador de `001` les pondría RLS y el inicio de sesión —que
+      // corre sin tenant— vería cero filas.
+      expect(r.tiene_tenant_id, `${r.relname} tiene una columna tenant_id`).toBe(false);
+      expect(r.declarada, `${r.relname} no está declarada en excepciones_rls`).toBe(true);
+    }
+
+    // COMPORTAMIENTO, no catálogo: todo rol de login que no sea el de identidad recibe 42501.
+    const roles = (await rolesAVigilar(admin)).filter((r) => r !== ROL_IDENTIDAD);
+    expect(roles, 'faltan los tres roles de aplicación').toEqual(
+      expect.arrayContaining([...ROLES_DE_APLICACION]),
+    );
+    for (const rol of roles) {
+      await comoRol(admin, rol, async () => {
+        for (const tabla of TABLAS_DE_IDENTIDAD) {
+          for (const sentencia of [`SELECT * FROM ${tabla}`, ...escriturasGenericas(tabla)]) {
+            await esperarPermisoDenegado(
+              admin,
+              () => admin.query(sentencia),
+              `${sentencia.split(' ')[0]} sobre ${tabla} como ${rol}`,
+            );
+          }
+        }
+      });
+    }
+
+    // Y el de identidad lee `accesos_identidad` pero no la escribe: eso es del disparador.
+    await comoRol(admin, ROL_IDENTIDAD, async () => {
+      await admin.query('SELECT * FROM accesos_identidad LIMIT 1');
+      for (const sentencia of escriturasGenericas('accesos_identidad')) {
+        await esperarPermisoDenegado(
+          admin,
+          () => admin.query(sentencia),
+          `${sentencia.split(' ')[0]} sobre accesos_identidad como ${ROL_IDENTIDAD}`,
+        );
+      }
+    });
+  }, 120_000);
+
+  it('54 — viajapro_identidad no lee NINGUNA tabla de negocio (42501), ni tiene privilegio alguno fuera de las suyas', async () => {
+    // Enumeradas, no listadas: toda tabla del esquema que no sea de identidad, particiones
+    // incluidas. Una tabla de negocio creada mañana entra sola.
+    const { rows } = await admin.query(
+      `SELECT c.oid, c.oid::regclass::text AS tabla
+       FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+       WHERE n.nspname = 'public' AND c.relkind IN ('r', 'p') AND c.relname <> ALL($1)
+       ORDER BY 2`,
+      [[...TABLAS_DE_IDENTIDAD]],
+    );
+    const tablas = rows.map((r) => r.tabla as string);
+    // La muestra que nombra el ADR tiene que estar dentro, o la enumeración está rota.
+    expect(tablas).toEqual(
+      expect.arrayContaining([
+        'usuarios',
+        'roles',
+        'contactos',
+        'mensajes',
+        'cotizaciones',
+        'tenants',
+      ]),
+    );
+
+    await comoRol(admin, ROL_IDENTIDAD, async () => {
+      for (const tabla of tablas) {
+        await esperarPermisoDenegado(
+          admin,
+          () => admin.query(`SELECT 1 FROM ${tabla} LIMIT 1`),
+          `SELECT sobre ${tabla} como ${ROL_IDENTIDAD}`,
+        );
+      }
+    });
+
+    // Catálogo, para lo que un SELECT no ve: un INSERT o un TRUNCATE concedido a solas.
+    const { rows: privilegios } = await admin.query(
+      `SELECT c.oid::regclass::text AS tabla, p AS privilegio
+       FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+       CROSS JOIN unnest(ARRAY['SELECT','INSERT','UPDATE','DELETE','TRUNCATE','REFERENCES','TRIGGER']) p
+       WHERE n.nspname = 'public' AND c.relkind IN ('r', 'p') AND c.relname <> ALL($1)
+         AND has_table_privilege($2, c.oid, p)`,
+      [[...TABLAS_DE_IDENTIDAD], ROL_IDENTIDAD],
+    );
+    expect(privilegios, `${ROL_IDENTIDAD} tiene privilegios sobre tablas de negocio`).toEqual([]);
+  }, 120_000);
+
+  it('55 — ningún rol de login es miembro de viajapro_accesos, y viajapro_accesos solo escribe accesos_identidad', async () => {
+    // pg_auth_members, directo. El único miembro admitido es el rol de migraciones, que se lo
+    // pone (SET) para traspasar la propiedad de la función y no hereda nada (INHERIT FALSE).
+    const { rows: miembros } = await admin.query(
+      `SELECT r.rolname
+       FROM pg_auth_members m
+       JOIN pg_roles r ON r.oid = m.member
+       WHERE m.roleid = 'viajapro_accesos'::regrole
+         AND r.rolcanlogin
+         AND r.rolname IS DISTINCT FROM (
+           SELECT pg_get_userbyid(c.relowner) FROM pg_class c
+           JOIN pg_namespace n ON n.oid = c.relnamespace
+           WHERE n.nspname = 'public' AND c.relname = '_prisma_migrations')`,
+    );
+    expect(miembros, 'roles de login miembros directos de viajapro_accesos').toEqual([]);
+
+    // Y por cualquier camino, también indirecto, para todo rol vigilado o declarado.
+    const roles = await rolesAVigilar(admin);
+    expect(roles).toContain(ROL_IDENTIDAD);
+    const { rows: indirectos } = await admin.query(
+      `SELECT rolname FROM unnest($1::text[]) AS rolname
+       WHERE pg_has_role(rolname, 'viajapro_accesos', 'MEMBER')`,
+      [roles],
+    );
+    expect(indirectos, 'roles de login que pueden actuar como viajapro_accesos').toEqual([]);
+
+    // Su superficie exacta: SELECT, INSERT y DELETE sobre accesos_identidad, y nada más.
+    const { rows: privilegios } = await admin.query(
+      `SELECT c.relname AS tabla, array_agg(p ORDER BY p) AS privilegios
+       FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+       CROSS JOIN unnest(ARRAY['SELECT','INSERT','UPDATE','DELETE','TRUNCATE','REFERENCES','TRIGGER']) p
+       WHERE n.nspname = 'public' AND c.relkind IN ('r', 'p')
+         AND has_table_privilege('viajapro_accesos', c.oid, p)
+       GROUP BY 1 ORDER BY 1`,
+    );
+    expect(privilegios).toEqual([
+      {
+        tabla: 'accesos_identidad',
+        privilegios: ['DELETE', 'INSERT', 'SELECT'],
+      },
+    ]);
+  });
+
+  it('56 — el disparador mantiene accesos_identidad: alta, baja y, en UPDATE, borra el par OLD', async () => {
+    const usuario = randomUUID();
+
+    // Alta por el camino de la API: el par aparece en la misma transacción.
+    await crearUsuario(TENANT_A, usuario, identidadMovil, rolA, 'movil');
+    expect(await accesosDe(identidadMovil)).toEqual([TENANT_A]);
+
+    // Repuntar la identidad: el par VIEJO se va. Sin esa rama, la identidad anterior seguiría
+    // viendo esta agencia en su selector.
+    await comoTenant(TENANT_A, (c) =>
+      c.query('UPDATE usuarios SET identidad_id = $1 WHERE id = $2', [identidadSuelta, usuario]),
+    );
+    expect(await accesosDe(identidadMovil), 'quedó el par OLD al cambiar identidad_id').toEqual([]);
+    expect(await accesosDe(identidadSuelta)).toEqual([TENANT_A]);
+
+    // Mover de agencia. Bajo RLS no se puede (WITH CHECK), así que lo hace el propietario:
+    // es el caso que el disparador tiene que cubrir aunque la API nunca lo haga.
+    await admin.query('UPDATE usuarios SET tenant_id = $1, rol_id = $2 WHERE id = $3', [
+      TENANT_B,
+      rolB,
+      usuario,
+    ]);
+    expect(await accesosDe(identidadSuelta), 'quedó el par OLD al cambiar tenant_id').toEqual([
+      TENANT_B,
+    ]);
+
+    // Desactivar, reactivar y borrado lógico.
+    await comoTenant(TENANT_B, (c) =>
+      c.query('UPDATE usuarios SET activo = false WHERE id = $1', [usuario]),
+    );
+    expect(await accesosDe(identidadSuelta), 'un usuario desactivado conserva el acceso').toEqual(
+      [],
+    );
+    await comoTenant(TENANT_B, (c) =>
+      c.query('UPDATE usuarios SET activo = true WHERE id = $1', [usuario]),
+    );
+    expect(await accesosDe(identidadSuelta)).toEqual([TENANT_B]);
+    await comoTenant(TENANT_B, (c) =>
+      c.query('UPDATE usuarios SET eliminado_en = now() WHERE id = $1', [usuario]),
+    );
+    expect(await accesosDe(identidadSuelta), 'un usuario borrado conserva el acceso').toEqual([]);
+
+    // Borrado físico.
+    await comoTenant(TENANT_B, (c) =>
+      c.query('UPDATE usuarios SET eliminado_en = NULL WHERE id = $1', [usuario]),
+    );
+    expect(await accesosDe(identidadSuelta)).toEqual([TENANT_B]);
+    await comoTenant(TENANT_B, (c) => c.query('DELETE FROM usuarios WHERE id = $1', [usuario]));
+    expect(await accesosDe(identidadSuelta)).toEqual([]);
+  }, 60_000);
+
+  it('57 — una membresía de la agencia A no es visible ni escribible desde la B', async () => {
+    const vista = await comoTenant(TENANT_B, (c) =>
+      c.query('SELECT id FROM usuarios WHERE id = $1 OR identidad_id = $2', [usuarioA, identidadA]),
+    );
+    expect(vista.rowCount, 'B ve la pertenencia de A').toBe(0);
+
+    const cambio = await comoTenant(TENANT_B, (c) =>
+      c.query("UPDATE usuarios SET nombre = 'secuestrado', activo = false WHERE id = $1", [
+        usuarioA,
+      ]),
+    );
+    expect(cambio.rowCount).toBe(0);
+    const borrado = await comoTenant(TENANT_B, (c) =>
+      c.query('DELETE FROM usuarios WHERE id = $1', [usuarioA]),
+    );
+    expect(borrado.rowCount).toBe(0);
+
+    // Plantar una pertenencia en A desde B: sería darse acceso a la otra agencia.
+    await expect(
+      comoTenant(TENANT_B, (c) =>
+        c.query(
+          `INSERT INTO usuarios (id, tenant_id, identidad_id, rol_id, correo, nombre, actualizado_en)
+           VALUES (gen_random_uuid(), $1, $2, $3, $4, 'Infiltrada', now())`,
+          [TENANT_A, identidadSuelta, rolA, correo('infiltrada')],
+        ),
+      ),
+    ).rejects.toMatchObject({ code: '42501' });
+    // Ni moverse a A la propia.
+    await expect(
+      comoTenant(TENANT_B, (c) =>
+        c.query('UPDATE usuarios SET tenant_id = $1, rol_id = $2 WHERE id = $3', [
+          TENANT_A,
+          rolA,
+          usuarioB,
+        ]),
+      ),
+    ).rejects.toMatchObject({ code: '42501' });
+
+    const intacta = await comoTenant(TENANT_A, (c) =>
+      c.query('SELECT nombre, activo FROM usuarios WHERE id = $1', [usuarioA]),
+    );
+    expect(intacta.rows).toEqual([{ nombre: 'Asesora de prueba', activo: true }]);
+    expect(await accesosDe(identidadSuelta), 'el intento dejó un acceso a A').toEqual([]);
+  });
+
+  it('58 — los roles por agencia no cruzan tenants', async () => {
+    const vista = await comoTenant(TENANT_B, (c) =>
+      c.query('SELECT id FROM roles WHERE id = $1', [rolA]),
+    );
+    expect(vista.rowCount, 'B ve el rol de A').toBe(0);
+
+    // Darse el permiso del margen en el rol de otra agencia.
+    const cambio = await comoTenant(TENANT_B, (c) =>
+      c.query("UPDATE roles SET permisos = ARRAY['usuarios.administrar'] WHERE id = $1", [rolA]),
+    );
+    expect(cambio.rowCount).toBe(0);
+
+    await expect(
+      comoTenant(TENANT_B, (c) =>
+        c.query(
+          `INSERT INTO roles (id, tenant_id, nombre, permisos, actualizado_en)
+           VALUES (gen_random_uuid(), $1, 'Plantado', ARRAY['cotizacion.ver_neto_y_margen'], now())`,
+          [TENANT_A],
+        ),
+      ),
+    ).rejects.toMatchObject({ code: '42501' });
+
+    // La foránea COMPUESTA: un usuario de B no puede llevar el rol de A, ni al crearse ni
+    // al cambiarlo. La comprobación de la foránea no pasa por RLS, por eso tiene que ser
+    // compuesta: con una simple, el rol de A existe y la fila entra.
+    await expect(
+      comoTenant(TENANT_B, (c) =>
+        c.query(
+          `INSERT INTO usuarios (id, tenant_id, identidad_id, rol_id, correo, nombre, actualizado_en)
+           VALUES (gen_random_uuid(), $1, $2, $3, $4, 'Con rol ajeno', now())`,
+          [TENANT_B, identidadSuelta, rolA, correo('rol-ajeno')],
+        ),
+      ),
+    ).rejects.toMatchObject({ code: '23503' });
+    await expect(
+      comoTenant(TENANT_B, (c) =>
+        c.query('UPDATE usuarios SET rol_id = $1 WHERE id = $2', [rolA, usuarioB]),
+      ),
+    ).rejects.toMatchObject({ code: '23503' });
+
+    // El catálogo de permisos es cerrado: un permiso inventado no se puede asignar.
+    await expect(
+      comoTenant(TENANT_B, (c) =>
+        c.query("UPDATE roles SET permisos = ARRAY['todo.poderoso'] WHERE id = $1", [rolB]),
+      ),
+    ).rejects.toMatchObject({ code: '23514' });
+
+    const intacto = await comoTenant(TENANT_A, (c) =>
+      c.query('SELECT permisos FROM roles WHERE id = $1', [rolA]),
+    );
+    expect(intacto.rows).toEqual([{ permisos: ['cotizacion.ver_neto_y_margen'] }]);
   });
 });
