@@ -93,7 +93,7 @@ Detalle y alternativas descartadas: `docs/03-adr/0001-stack-tecnologico.md`.
 ```
 apps/api        NestJS. src/modules/<contexto>/ — cada uno con domain/ application/ infrastructure/ interface/
 apps/web        Next.js. src/app/(dashboard)/<contexto>/
-apps/worker     BullMQ. src/jobs/<contexto>/ — vacío: el único consumidor (inbox) vive en apps/api, ADR-0010
+apps/worker     BullMQ. src/jobs/<contexto>/
 packages/contracts   Zod + tipos compartidos. FUENTE DE VERDAD de los contratos.
 packages/database    schema.prisma, migrations/, policies/ (RLS), seed/
 packages/domain      Value objects puros: Money, PhoneNumber, DateRange, PassengerCount
