@@ -6,7 +6,7 @@
 
 | Campo | Valor |
 |---|---|
-| Última actualización | 2026-10-20 (hasta v0.35.0: invitaciones y código por correo) |
+| Última actualización | 2026-10-20 (hasta v0.36.0: la bandeja en vivo) |
 | Actualizado por | Claude Opus 5.5 (`integrador`) |
 | Fase | **Rebanada vertical de paquetes, en construcción** |
 | Avance de la fase | Cotizador de punta a punta. **La cotización es la suma de sus tarifas y el precio «desde» es uno que el comprador puede pagar (v0.19.0).** Apretón de manos del webhook vivo. Bandeja web en construcción |
@@ -1152,7 +1152,7 @@ Registro: [`docs/_integraciones/2026-10-20-v0.34.0.md`](docs/_integraciones/2026
 
 | Cola | Dueño | Por qué no bloquea |
 |---|---|---|
-| **Socket.IO no existe en la API.** Sus cuatro `it.todo` (revalidar la sesión del socket cada 60 s) **bloquean la rama que lo cree**: no entra sin convertirlos en pruebas | `backend` | Hoy no hay socket que revalidar |
+| ~~Socket.IO no existe en la API, y sus cuatro `it.todo`~~ | `backend` | **Cerrado en v0.36.0**: el gateway existe y los cuatro `it.todo` son pruebas reales |
 | El OTP, cuando entre (rebanada 4), con `storeOTP: 'hashed'` | `backend` | Hoy no hay OTP |
 
 ## Integración del 2026-10-20 — v0.34.1: el cotizador de paquetes sin neto ni margen (R10)
@@ -1194,4 +1194,25 @@ Registro: [`docs/_integraciones/2026-10-20-v0.35.0.md`](docs/_integraciones/2026
 |---|---|---|
 | **Antes del adaptador de correo de producción:** un límite de OTP por dirección de correo, para que nadie use el envío para inundar un buzón ajeno | `backend` | En local el correo va a Mailpit; no sale nada a internet |
 | **Antes del adaptador de correo de producción: el ADR del proveedor de correo** (R7, y la regla de no integrar servicios externos sin ADR ni puerto) | `arquitecto` | El puerto ya existe y el adaptador es un TODO |
+
+## Integración del 2026-10-20 — v0.36.0: la bandeja en vivo con Socket.IO
+
+`feat/inbox-tiempo-real` @ `00aa61f` entra en `main` (`465bfd5`), etiquetada **v0.36.0**. Trae:
+
+- el gateway, que repite los pasos 3 y 4 del ADR-0011 en el handshake y cada 60 s;
+- salas asignadas por el servidor;
+- el relay del outbox por Redis pub/sub, que no lleva el texto: la API lee el mensaje bajo RLS;
+- los cuatro `it.todo` de la rebanada 2, convertidos en pruebas.
+
+Dependencias nuevas: `socket.io`, y `socket.io-client` solo para pruebas. `auditor-seguridad`: ACEPTAR, sin bloqueantes de aislamiento. Un
+evento forjado no lee nada de otra agencia (lo cubre la e2e), y una inyección en Redis solo puede causar denegación de servicio. Compuerta:
+CI **8/8** sobre la punta, que contiene `main`: https://github.com/Alfavear/CRM/actions/runs/39358324178. En el log aparece
+`inbox-tiempo-real.e2e-spec` con 19 pruebas en verde, ejecutadas contra Redis real. Estáticas en local, en verde.
+Registro: [`docs/_integraciones/2026-10-20-v0.36.0.md`](docs/_integraciones/2026-10-20-v0.36.0.md).
+
+| Cola | Dueño | Por qué no bloquea |
+|---|---|---|
+| **ANTES de que la agencia piloto use asesores:** se emite a toda la sala `tenant:<id>`, así que **un asesor sin `conversaciones.ver_todas` recibe el texto de todas las conversaciones**. Ese permiso no se aplica en ningún sitio: ni en el socket ni en la API REST de la bandeja | `dueno-de-producto` (decide la regla de asignación) y `backend` | No cruza agencias: es visibilidad dentro de la propia. Hoy la piloto trabaja con la dueña. **Bloquea dar de alta al primer asesor** |
+| Si la revalidación falla por infraestructura (por ejemplo, la base no responde), **el socket sigue abierto**. Hay que cerrarlo tras N fallos seguidos | `backend` | La revocación por evento sigue cerrándolo, y el fallo de infraestructura es transitorio |
+| El primer barrido tras desplegar emitirá los **eventos viejos** del outbox | `backend` | No hay nada desplegado. Antes del primer despliegue: marcar los eventos viejos como emitidos, o filtrar por antigüedad |
 
