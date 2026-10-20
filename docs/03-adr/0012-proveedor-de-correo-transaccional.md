@@ -1,10 +1,11 @@
 # ADR-0012 — Proveedor de correo transaccional: Postmark, por HTTP, detrás de `PuertoCorreo`
 
-- **Estado:** Propuesto
+- **Estado:** Propuesto. `auditor-seguridad`: aceptado con cambios, ya incorporados. Pendiente del
+  propietario
 - **Fecha:** 2026-10-20
 - **Decide:** propietario
-- **Consultados:** `arquitecto` (autor). Pendiente: `auditor-seguridad` (datos de asesores, tokens en
-  tránsito), `devops` (secretos y DNS)
+- **Consultados:** `arquitecto` (autor), `auditor-seguridad` (aceptado con cambios). Pendiente:
+  `devops` (secretos y DNS)
 
 ---
 
@@ -93,13 +94,14 @@ Resend es la segunda opción y la sustitución es barata: otro adaptador y otro 
    definitivo sin reintento. Un duplicado lleva el mismo código o enlace, así que es inofensivo.
 4. **Plazo.** Un timeout de 10 s por intento. Los reintentos acaban antes de los 5 minutos de vida
    del OTP: no tiene sentido entregar un código caducado.
-5. **Nada del cuerpo en los registros.** Se registran el `MessageID` de Postmark y el código de error,
-   nunca el destinatario ni el contenido.
+5. **Nada del cuerpo en los registros.** Se registran el `MessageID` y el `ErrorCode` de Postmark,
+   **nunca su campo `Message`**, que puede repetir el destinatario (R10), ni el contenido.
 
 **Rebotes y quejas en v1: sin webhook.** Postmark suprime por sí mismo las direcciones que rebotan o se
 quejan. Las invitaciones y los OTP solo se envían cuando alguien los pide, así que una dirección
 suprimida se manifiesta como un 4xx en el trabajo fallido. El webhook entra cuando haya correo a viajeros
-o un volumen que lo justifique. Va a la cola de `ESTADO.md`.
+o un volumen que lo justifique. Va a la cola de `ESTADO.md`. Cuando entre, debe saberse que Postmark
+no firma con HMAC: el webhook exige autenticación básica sobre HTTPS, con un secreto que se rota.
 
 ## Qué se configura
 
@@ -109,7 +111,7 @@ la plataforma, nunca en el repositorio, R6):
 | Variable | Qué es |
 |---|---|
 | `MAIL_PROVIDER` | Se añade el valor `postmark`. Se rechaza con `APP_ENV=local` si no hay token |
-| `POSTMARK_SERVER_TOKEN` | **Secreto.** El token del *server* de Postmark, solo de envío |
+| `POSTMARK_SERVER_TOKEN` | **Secreto.** El token del *server* de Postmark, solo de envío. Lo rota `devops` al menos una vez al año y siempre que se sospeche una exposición: se crea un token nuevo en Postmark, se despliega y, solo después, se revoca el anterior |
 | `POSTMARK_MESSAGE_STREAM` | `outbound` |
 | `MAIL_FROM` | Ya existe. Pasa a ser `"<Marca> <no-reply@notificaciones.<dominio>>"` |
 
@@ -142,9 +144,11 @@ dominio compartido: falla DMARC y entrena a los filtros contra nosotros.
 
 ### Negativas
 - **15 USD al mes fijos** desde antes de tener clientes. A un volumen ×10 pueden llegar a unos 68 USD.
-- **Contenido retenido 45 días en Postmark**, y eso incluye los enlaces de invitación vigentes.
-  `auditor-seguridad` decide si hace falta el complemento de retención de 7 días o acortar la vida
-  de la invitación. Los OTP caducan a los 5 minutos y su retención es inocua.
+- **Postmark retiene el contenido 45 días por omisión**, enlaces de invitación incluidos. Por
+  decisión de `auditor-seguridad`: (1) la invitación caduca a las **72 horas**, en vez de los 7 días
+  actuales; (2) se contrata la retención más corta que ofrezca Postmark, hoy el complemento de
+  7 días; (3) la cuenta de Postmark lleva **MFA obligatorio y el mínimo de usuarios**. El OTP no
+  cambia: caduca a los 5 minutos y que se retenga no tiene riesgo.
 - **Transmisión internacional a EE. UU.** EE. UU. figura en la lista de países con nivel adecuado de
   la Circular Externa 005 de 2017 de la SIC, según los análisis de 2017. Hay que confirmar con el
   abogado que esa lista sigue vigente. Postmark actúa como subencargado: el DPA de sus términos sirve
@@ -166,7 +170,8 @@ dominio compartido: falla DMARC y entrena a los filtros contra nosotros.
 1. **Decidir el dominio.** O el comercial definitivo, o un dominio técnico neutro solo para
    notificaciones si el OTP se necesita antes de tener marca. Registrarlo a nombre de la empresa.
 2. **Crear la cuenta de Postmark** con un correo corporativo y aceptar sus términos, que incluyen el
-   DPA. Contratar el plan Basic (15 USD al mes) y crear un *server* `viajapro-produccion`.
+   DPA. Activar MFA, dejar solo los usuarios imprescindibles, contratar el plan Basic (15 USD al
+   mes) con la retención mínima y crear un *server* `viajapro-produccion`.
 3. En Postmark, **añadir el dominio** `notificaciones.<dominio>` y copiar los registros DKIM y
    Return-Path que muestre el panel.
 4. **Publicar en el DNS** el DKIM, el Return-Path y el DMARC de la tabla anterior. Pulsar *Verify*;
