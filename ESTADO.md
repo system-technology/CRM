@@ -6,7 +6,7 @@
 
 | Campo | Valor |
 |---|---|
-| Última actualización | 2026-10-20 (hasta v0.34.1) |
+| Última actualización | 2026-10-20 (hasta v0.35.0: invitaciones y código por correo) |
 | Actualizado por | Claude Opus 5.5 (`integrador`) |
 | Fase | **Rebanada vertical de paquetes, en construcción** |
 | Avance de la fase | Cotizador de punta a punta. **La cotización es la suma de sus tarifas y el precio «desde» es uno que el comprador puede pagar (v0.19.0).** Apretón de manos del webhook vivo. Bandeja web en construcción |
@@ -131,7 +131,7 @@ Ordenada. La primera es la que debe tomarse ahora.
 | 11b | `META_APP_SECRET` y `WEBHOOK_PAYLOAD_KEY_VERSION` en `.env` | Usuario | **Cerrada (2026-10-19).** El integrador comprobó la presencia sin imprimir valores. `META_APP_SECRET`, `WHATSAPP_DIRECTORY_PEPPER` y `WEBHOOK_PAYLOAD_KEY` tienen valor en los cuatro árboles, y en cada variable es el mismo en los cuatro (mismo hash). `WEBHOOK_PAYLOAD_KEY_VERSION=1` en los cuatro |
 | 11c | Los metadatos de decorador no siempre llegan con el transpilador de desarrollo | `backend` | **Hecha (`85eceac`, v0.19.0).** `@Inject` explícito y `guardia-de-inyeccion.spec.ts`, que pone en rojo cualquier dependencia sin token |
 | 11d | El aviso «Acceso sin contexto de tenant» se emitía una vez por mensaje | `backend` | **Hecha (`f57925b`, v0.19.0).** El webhook usa `sinTenantDeclarado`, con la operación declarada en `operaciones-de-plataforma.ts` (tipo cerrado). La variante ruidosa sigue para todo lo no declarado |
-| 12 | Autenticación: el `tenant_id` debe salir del token de sesión | `datos`, `backend`, Antigravity | **ADR-0011 aceptado y ratificado.** Rebanada 1 (esquema) en v0.33.0 y **rebanada 2 (módulo `identity` con Better Auth) en v0.34.0**: token de sesión con hash, tenant solo desde la sesión, 403 del margen. Siguen la 3 (pantalla de ingreso, Antigravity) y la 4 (invitaciones y código por correo, con `storeOTP: 'hashed'`) |
+| 12 | Autenticación: el `tenant_id` debe salir del token de sesión | `datos`, `backend`, Antigravity | **ADR-0011 aceptado y ratificado. Rebanadas 1 (v0.33.0), 2 (v0.34.0) y 4 (v0.35.0) integradas.** Queda la **3**: la pantalla de ingreso y el selector de agencia (Antigravity) |
 | 13 | La carrera de `turbo` entre `build` y `typecheck` | `devops` | **Hecha (`f9da930`, v0.19.0).** `typecheck` de `web` y `database` depende de su `build`. Verificado: `typecheck --force` 9/9 sin caché |
 | 14 | El aviso de `any` no es una compuerta | `devops` | `no-explicit-any` está en `warn` y ningún script lleva `--max-warnings 0`: hoy hay cero `any`, pero el primero entraría sin que lint falle |
 
@@ -1168,4 +1168,30 @@ Registro: [`docs/_integraciones/2026-10-20-v0.34.1.md`](docs/_integraciones/2026
 | Cola | Dueño | Por qué no bloquea |
 |---|---|---|
 | `mayoristaId` sigue saliendo en `/paquetes` | `backend` | No es importe; revela con quién trabaja la agencia, y hoy solo lo ve su propio personal |
+
+## Integración del 2026-10-20 — v0.35.0: invitaciones y código por correo (ADR-0011, rebanada 4)
+
+`feat/identity-invitaciones` @ `7d9bacb` entra en `main` (`ec51ff0`), etiquetada **v0.35.0**. Trae:
+
+- Invitaciones en `verificaciones`, con el token en sha256, de un solo uso y con caducidad.
+- Email OTP con `storeOTP: 'hashed'`, 5 minutos y 3 intentos.
+- El módulo `notifications`: cola BullMQ con la carga cifrada en AES-GCM y `removeOnFail`, un puerto de correo y Mailpit en local. El
+  adaptador de producción queda como TODO.
+- Dependencia nueva: `nodemailer`.
+
+`auditor-seguridad` aceptó con un bloqueante, ya corregido: quien tenía `usuarios.administrar` podía invitarse a sí mismo como Dueño. Ahora
+los permisos del rol invitado tienen que estar contenidos en los del invitador, o da 403. Además, aceptar una invitación nunca cambia el rol
+de un miembro vigente. Las dos cosas tienen su e2e.
+
+**Se devolvió una vez.** `generar-secretos-locales.ps1` no generaba `CORREO_PAYLOAD_KEY` ni `BETTER_AUTH_SECRET`. En `7d9bacb` genera las dos.
+**Comprobado:** `CORREO_PAYLOAD_KEY` está vacía en `.env.example`, el CI la genera, y la API **aborta al arrancar** si falta: sale con 1 y el
+mensaje «Falta CORREO_PAYLOAD_KEY…».
+
+Compuerta: CI **8/8** sobre la punta, que contiene `main`: https://github.com/Alfavear/CRM/actions/runs/39356530515. Estáticas en local, en verde.
+Registro: [`docs/_integraciones/2026-10-20-v0.35.0.md`](docs/_integraciones/2026-10-20-v0.35.0.md).
+
+| Cola | Dueño | Por qué no bloquea |
+|---|---|---|
+| **Antes del adaptador de correo de producción:** un límite de OTP por dirección de correo, para que nadie use el envío para inundar un buzón ajeno | `backend` | En local el correo va a Mailpit; no sale nada a internet |
+| **Antes del adaptador de correo de producción: el ADR del proveedor de correo** (R7, y la regla de no integrar servicios externos sin ADR ni puerto) | `arquitecto` | El puerto ya existe y el adaptador es un TODO |
 
