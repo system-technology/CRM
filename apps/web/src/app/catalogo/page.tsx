@@ -19,7 +19,10 @@ import type { PlanAlimentacion, SalidaPublicada } from '@viajapro/contracts';
 import { BarraModulos } from '../../components/bandeja/barra-modulos';
 import { DistintivoDatosDemo } from '../../components/comun/distintivo-datos-demo';
 import { EsqueletoGridTarjetas, AvisoErrorAccionable } from '../../components/comun/esqueletos';
-import { construirMensajeErrorAccionable } from '../../lib/estados-ui-logica';
+import {
+  construirMensajeErrorAccionable,
+  formatearErrorAmigable,
+} from '../../lib/estados-ui-logica';
 import { AvisoConfiguracionTenant } from '../../components/crm/aviso-configuracion-tenant';
 import { FichaDetallePaquete } from '../../components/catalogo/ficha-detalle-paquete';
 import { TarjetaSalidaPublicada } from '../../components/catalogo/tarjeta-salida-publicada';
@@ -31,7 +34,7 @@ import {
   extraerDestinosDeSalidas,
   filtrarSalidasPublicadas,
 } from '../../lib/catalogo-logica';
-import { estaUsandoCatalogoReal, listarSalidasApi, CatalogoApiError } from '../../lib/catalogo-api';
+import { estaUsandoCatalogoReal, listarSalidasApi } from '../../lib/catalogo-api';
 import { formatearDinero } from '../../lib/api';
 
 export default function CatalogoPage() {
@@ -61,13 +64,9 @@ export default function CatalogoPage() {
       })
       .catch((err) => {
         console.error('Error cargando salidas reales:', err);
-        if (err instanceof CatalogoApiError && err.code === 'SIN_SESION') {
-          setErrorTenant(err.message);
-        } else {
-          setErrorTenant(
-            err instanceof Error ? err.message : 'Error al conectar con la API de catálogo',
-          );
-        }
+        setErrorTenant(
+          formatearErrorAmigable(err, 'No fue posible conectar con el catálogo de salidas.'),
+        );
       })
       .finally(() => {
         setCargando(false);
@@ -232,7 +231,10 @@ export default function CatalogoPage() {
                       })
                       .catch((err) => {
                         setErrorTenant(
-                          err instanceof Error ? err.message : 'Error al conectar con la API',
+                          formatearErrorAmigable(
+                            err,
+                            'No se pudo cotizar la salida en este momento.',
+                          ),
                         );
                       })
                       .finally(() => setCargando(false));

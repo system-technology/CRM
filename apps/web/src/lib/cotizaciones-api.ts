@@ -67,11 +67,21 @@ async function pedirCotizaciones<T>(ruta: string, opciones: RequestInit = {}): P
     ...(opciones.headers as Record<string, string> | undefined),
   };
 
-  const res = await fetch(`${base}${ruta}`, {
-    ...opciones,
-    headers,
-    cache: 'no-store',
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${base}${ruta}`, {
+      ...opciones,
+      headers,
+      cache: 'no-store',
+    });
+  } catch (netErr) {
+    throw new CotizacionesApiError(
+      'ERROR_CONEXION',
+      'No se pudo conectar con el servidor de cotizaciones.',
+      0,
+      { causa: netErr instanceof Error ? netErr.message : String(netErr) },
+    );
+  }
 
   const json: unknown = await res.json().catch(() => null);
 
@@ -116,16 +126,11 @@ export async function guardarCotizacionApi(cuerpo: GuardarCotizacion): Promise<C
   const validado = EsquemaGuardarCotizacion.parse(cuerpo);
 
   if (estaUsandoApiReal()) {
-    try {
-      const respuesta = await pedirCotizaciones<unknown>('/api/v1/cotizaciones', {
-        method: 'POST',
-        body: JSON.stringify(validado),
-      });
-      return EsquemaCotizacionGuardada.parse(respuesta);
-    } catch (err) {
-      if (err instanceof CotizacionesApiError) throw err;
-      console.warn('[CotizacionesApi] Fallo al guardar en API real. Usando almacén mock:', err);
-    }
+    const respuesta = await pedirCotizaciones<unknown>('/api/v1/cotizaciones', {
+      method: 'POST',
+      body: JSON.stringify(validado),
+    });
+    return EsquemaCotizacionGuardada.parse(respuesta);
   }
 
   // Fallback simulado offline
@@ -230,22 +235,14 @@ export async function anadirVersionCotizacionApi(
   const validado = EsquemaAnadirVersionACotizacion.parse(cuerpo);
 
   if (estaUsandoApiReal()) {
-    try {
-      const respuesta = await pedirCotizaciones<unknown>(
-        `/api/v1/cotizaciones/${cotizacionId}/versiones`,
-        {
-          method: 'POST',
-          body: JSON.stringify(validado),
-        },
-      );
-      return EsquemaCotizacionGuardada.parse(respuesta);
-    } catch (err) {
-      if (err instanceof CotizacionesApiError) throw err;
-      console.warn(
-        '[CotizacionesApi] Fallo al añadir versión en API real. Usando almacén mock:',
-        err,
-      );
-    }
+    const respuesta = await pedirCotizaciones<unknown>(
+      `/api/v1/cotizaciones/${cotizacionId}/versiones`,
+      {
+        method: 'POST',
+        body: JSON.stringify(validado),
+      },
+    );
+    return EsquemaCotizacionGuardada.parse(respuesta);
   }
 
   // Fallback simulado offline
@@ -347,16 +344,8 @@ export async function obtenerCotizacionGuardadaApi(
   cotizacionId: string,
 ): Promise<CotizacionGuardada> {
   if (estaUsandoApiReal()) {
-    try {
-      const respuesta = await pedirCotizaciones<unknown>(`/api/v1/cotizaciones/${cotizacionId}`);
-      return EsquemaCotizacionGuardada.parse(respuesta);
-    } catch (err) {
-      if (err instanceof CotizacionesApiError) throw err;
-      console.warn(
-        '[CotizacionesApi] Fallo al consultar cotización en API real. Usando almacén mock:',
-        err,
-      );
-    }
+    const respuesta = await pedirCotizaciones<unknown>(`/api/v1/cotizaciones/${cotizacionId}`);
+    return EsquemaCotizacionGuardada.parse(respuesta);
   }
 
   const cotizacion = obtenerMockCotizacionPorId(cotizacionId);
@@ -385,25 +374,18 @@ export async function listarCotizacionesApi(
   params?: ListarCotizaciones,
 ): Promise<PaginaDeCotizaciones> {
   if (estaUsandoApiReal()) {
-    try {
-      const q = new URLSearchParams();
-      if (params?.cursor) q.set('cursor', params.cursor);
-      if (params?.limite) q.set('limite', String(params.limite));
-      if (params?.estado) q.set('estado', params.estado);
-      if (params?.contactoId) q.set('contactoId', params.contactoId);
-      if (params?.desde) q.set('desde', params.desde);
-      if (params?.hasta) q.set('hasta', params.hasta);
+    const q = new URLSearchParams();
+    if (params?.cursor) q.set('cursor', params.cursor);
+    if (params?.limite) q.set('limite', String(params.limite));
+    if (params?.estado) q.set('estado', params.estado);
+    if (params?.contactoId) q.set('contactoId', params.contactoId);
+    if (params?.desde) q.set('desde', params.desde);
+    if (params?.hasta) q.set('hasta', params.hasta);
 
-      const qs = q.toString();
-      const ruta = qs ? `/api/v1/cotizaciones?${qs}` : '/api/v1/cotizaciones';
-      const respuesta = await pedirCotizaciones<unknown>(ruta);
-      return EsquemaPaginaDeCotizaciones.parse(respuesta);
-    } catch (err) {
-      console.warn(
-        '[CotizacionesApi] Fallo al listar cotizaciones en API real. Usando almacén mock:',
-        err,
-      );
-    }
+    const qs = q.toString();
+    const ruta = qs ? `/api/v1/cotizaciones?${qs}` : '/api/v1/cotizaciones';
+    const respuesta = await pedirCotizaciones<unknown>(ruta);
+    return EsquemaPaginaDeCotizaciones.parse(respuesta);
   }
 
   // Simulación de latencia de red para renderizado de esqueleto

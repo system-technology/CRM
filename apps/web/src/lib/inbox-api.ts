@@ -37,7 +37,9 @@ const BASE_API = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3333';
 const TENANT_DEMO = process.env['NEXT_PUBLIC_DEV_TENANT_ID'] ?? '';
 
 // Interruptor por variable de entorno: Si NEXT_PUBLIC_USE_REAL_INBOX === 'true', se conecta a la API NestJS real.
-const USAR_API_REAL = process.env['NEXT_PUBLIC_USE_REAL_INBOX'] === 'true';
+export function estaUsandoApiRealInbox(): boolean {
+  return process.env['NEXT_PUBLIC_USE_REAL_INBOX'] === 'true';
+}
 
 export class InboxErrorApi extends Error {
   constructor(
@@ -51,15 +53,22 @@ export class InboxErrorApi extends Error {
 }
 
 async function pedirInbox<T>(ruta: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE_API}${ruta}`, {
-    ...init,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(TENANT_DEMO ? { 'x-dev-tenant-id': TENANT_DEMO } : {}),
-      ...init?.headers,
-    },
-    cache: 'no-store',
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${BASE_API}${ruta}`, {
+      ...init,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(TENANT_DEMO ? { 'x-dev-tenant-id': TENANT_DEMO } : {}),
+        ...init?.headers,
+      },
+      cache: 'no-store',
+    });
+  } catch (netErr) {
+    throw new InboxErrorApi('ERROR_CONEXION', 'No se pudo conectar con el servidor de inbox.', {
+      causa: netErr instanceof Error ? netErr.message : String(netErr),
+    });
+  }
 
   const cuerpo: unknown = await res.json().catch(() => null);
 
@@ -90,7 +99,7 @@ export const inboxApi = {
    * Consulta las conversaciones de la bandeja con filtros, búsqueda y paginación por cursor.
    */
   consultarBandeja: async (consulta: ConsultarBandeja): Promise<PaginaBandeja> => {
-    if (!USAR_API_REAL) {
+    if (!estaUsandoApiRealInbox()) {
       return consultarBandejaMock(consulta);
     }
 
@@ -109,7 +118,7 @@ export const inboxApi = {
    * Obtiene el detalle completo de una conversación abierta con su historial y notas.
    */
   obtenerConversacionDetalle: async (id: string): Promise<ConversacionDetalle | null> => {
-    if (!USAR_API_REAL) {
+    if (!estaUsandoApiRealInbox()) {
       return obtenerConversacionDetalleMock(id);
     }
 
@@ -122,7 +131,7 @@ export const inboxApi = {
    * Envía un mensaje de texto dentro de la conversación respetando la ventana de 24h y la clave de idempotencia (R5).
    */
   enviarTexto: async (entrada: EnviarTexto): Promise<Mensaje> => {
-    if (!USAR_API_REAL) {
+    if (!estaUsandoApiRealInbox()) {
       return enviarTextoMock(entrada);
     }
 
@@ -140,7 +149,7 @@ export const inboxApi = {
    * Asigna o desasigna una conversación a un asesor.
    */
   asignarConversacion: async (entrada: AsignarConversacion): Promise<ConversacionResumen> => {
-    if (!USAR_API_REAL) {
+    if (!estaUsandoApiRealInbox()) {
       return asignarConversacionMock(entrada);
     }
 
@@ -158,7 +167,7 @@ export const inboxApi = {
    * Cambia el estado de una conversación (ABIERTA, EN_ESPERA, CERRADA).
    */
   cambiarEstado: async (entrada: CambiarEstadoConversacion): Promise<ConversacionResumen> => {
-    if (!USAR_API_REAL) {
+    if (!estaUsandoApiRealInbox()) {
       return cambiarEstadoConversacionMock(entrada);
     }
 
@@ -176,7 +185,7 @@ export const inboxApi = {
    * Crea una nota interna para el equipo.
    */
   crearNota: async (entrada: CrearNota): Promise<ConversacionDetalle['notas'][number]> => {
-    if (!USAR_API_REAL) {
+    if (!estaUsandoApiRealInbox()) {
       return crearNotaMock(entrada);
     }
 
@@ -191,5 +200,5 @@ export const inboxApi = {
   },
 
   /** Informa si la app está ejecutándose contra el cliente real o el simulado */
-  isModoReal: (): boolean => USAR_API_REAL,
+  isModoReal: (): boolean => estaUsandoApiRealInbox(),
 };
