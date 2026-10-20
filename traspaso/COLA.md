@@ -291,6 +291,24 @@ en verde.
 
 ## [ ] 0c.29. La maqueta de inicio de sesión toma la forma del ADR-0011 (añadida el 2026-10-19)
 
+> **2026-10-20: YA NO ES MAQUETA, LA API EXISTE.** La rebanada 2 está en `main` (v0.34.0 y v0.34.1).
+> Haz `git merge main` y conecta `/ingresar` a la API real, detrás del mismo interruptor que el
+> resto. Las rutas son:
+> - `POST /api/v1/auth/sign-in/email`
+> - `POST /api/v1/auth/sign-out`
+> - `GET /api/v1/auth/session`
+> - `POST /api/v1/auth/tenant-activo`
+>
+> Los contratos están en `packages/contracts/src/identidad.ts`: `IniciarSesion`, `SesionActual`,
+> `AgenciaDeAcceso`, `CambiarAgenciaActiva` y `CodigoDeErrorDeAcceso`.
+>
+> La cookie es `httpOnly`. La web **no** la lee ni la guarda: la manda el navegador
+> (`credentials: 'include'`). Si la sesión trae varias agencias, muestra el selector. Con eso, quita
+> la cabecera de tenant de desarrollo de las llamadas cuando haya sesión.
+>
+> **El código por correo todavía no existe** (rebanada 4, en curso): deja su paso preparado, pero
+> sin conectar. **Después de esta, la 0c.27**, que ya se puede hacer.
+
 Lee `docs/03-adr/0011-autenticacion-y-tenant-de-sesion.md` (rama `origin/docs/adr-0011-autenticacion`).
 Hoy la maqueta solo tiene correo y contraseña. Añade, todo simulado y detrás del mismo interruptor:
 (1) el paso «código de seis dígitos por correo» (se escribe, no es enlace), (2) el selector de agencia
