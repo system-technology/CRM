@@ -6,7 +6,7 @@
 
 | Campo | Valor |
 |---|---|
-| Última actualización | 2026-10-19 (noche: hasta v0.31.0, ninguna foránea simple entre tablas de tenant) |
+| Última actualización | 2026-10-19 (noche: hasta v0.31.1, el listado de cotizaciones contra la API real) |
 | Actualizado por | Claude Opus 5.5 (`integrador`) |
 | Fase | **Rebanada vertical de paquetes, en construcción** |
 | Avance de la fase | Cotizador de punta a punta. **La cotización es la suma de sus tarifas y el precio «desde» es uno que el comprador puede pagar (v0.19.0).** Apretón de manos del webhook vivo. Bandeja web en construcción |
@@ -1062,4 +1062,15 @@ Registro: [`docs/_integraciones/2026-10-19-v0.31.0.md`](docs/_integraciones/2026
 | Cola | Dueño | Por qué no bloquea |
 |---|---|---|
 | La contraprueba de la 17 hace `CREATE TABLE … REFERENCES tenants`, y eso **bloquea las escrituras en `tenants`** mientras corre (`SHARE ROW EXCLUSIVE`) | `qa` | Va dentro de `BEGIN…ROLLBACK` y dura milisegundos. Contra una base compartida podría frenar un alta de agencia |
+
+## Integración del 2026-10-19 (vigesimoquinta) — v0.31.1: el listado de cotizaciones con los contratos reales (0c.28)
+
+`feat/web-0c28-listado-real` @ `9e504a3` entra en `main` (`aab3ee5`), etiquetada **v0.31.1**. Son cinco archivos de `apps/web`, idénticos a
+los de `035e6f9`: el listado de `/cotizaciones` usa ahora `GET /api/v1/cotizaciones` de la v0.25.0, con paginación por cursor,
+y no pide nunca `incluirMargen`. Compuerta: CI **8/8**, https://github.com/Alfavear/CRM/actions/runs/39345393651. Estáticas en
+local en verde, y la web pasa 171 pruebas.
+
+| Cola | Dueño | Por qué no bloquea |
+|---|---|---|
+| **Si la API falla, el listado de cotizaciones muestra el mock sin avisar**: el asesor vería datos inventados como si fueran suyos. El mismo `catch → mock` puede estar en `crm-api.ts` e `inbox-api.ts`, que también importan mocks: que Antigravity lo confirme pantalla por pantalla | Antigravity (**0c.34**, prioritaria) | No hay nada desplegado. **Bloquea el primer despliegue** |
 
