@@ -6,7 +6,7 @@
 
 | Campo | Valor |
 |---|---|
-| Última actualización | 2026-10-20 (madrugada: hasta v0.32.0, los huecos del disparador) |
+| Última actualización | 2026-10-20 (madrugada: v0.32.0 y el ADR-0011 integrado) |
 | Actualizado por | Claude Opus 5.5 (`integrador`) |
 | Fase | **Rebanada vertical de paquetes, en construcción** |
 | Avance de la fase | Cotizador de punta a punta. **La cotización es la suma de sus tarifas y el precio «desde» es uno que el comprador puede pagar (v0.19.0).** Apretón de manos del webhook vivo. Bandeja web en construcción |
@@ -131,7 +131,7 @@ Ordenada. La primera es la que debe tomarse ahora.
 | 11b | `META_APP_SECRET` y `WEBHOOK_PAYLOAD_KEY_VERSION` en `.env` | Usuario | **Cerrada (2026-10-19).** El integrador comprobó la presencia sin imprimir valores. `META_APP_SECRET`, `WHATSAPP_DIRECTORY_PEPPER` y `WEBHOOK_PAYLOAD_KEY` tienen valor en los cuatro árboles, y en cada variable es el mismo en los cuatro (mismo hash). `WEBHOOK_PAYLOAD_KEY_VERSION=1` en los cuatro |
 | 11c | Los metadatos de decorador no siempre llegan con el transpilador de desarrollo | `backend` | **Hecha (`85eceac`, v0.19.0).** `@Inject` explícito y `guardia-de-inyeccion.spec.ts`, que pone en rojo cualquier dependencia sin token |
 | 11d | El aviso «Acceso sin contexto de tenant» se emitía una vez por mensaje | `backend` | **Hecha (`f57925b`, v0.19.0).** El webhook usa `sinTenantDeclarado`, con la operación declarada en `operaciones-de-plataforma.ts` (tipo cerrado). La variante ruidosa sigue para todo lo no declarado |
-| 12 | Autenticación: el `tenant_id` debe salir del token de sesión | `backend` | Hoy la web lo envía por cabecera. Solo funciona con `APP_ENV=local`, pero es deuda que bloquea desplegar |
+| 12 | Autenticación: el `tenant_id` debe salir del token de sesión | `datos`, `backend`, Antigravity | **ADR-0011 aceptado y ratificado** (2026-10-19, integrado por orden directa del propietario con `/integrar`): Better Auth en `identity`, cookie opaca validada solo por la API, tenant activo revalidado por petición bajo RLS, roles por agencia en tabla. R2 de `CLAUDE.md` pasa a cuatro roles más `viajapro_accesos` (NOLOGIN). **Rebanada 1** (esquema e identidad) hecha y aceptada por `auditor-seguridad` en `feat/identity-esquema`, devuelta a `datos` para fusionar `main` y renumerar aserciones desde la 61 (12 SECURITY DEFINER). Rebanadas 2 (módulo `identity`, condición del auditor: token de sesión y OTP hasheados), 3 (pantalla de ingreso) y 4 (invitaciones) pendientes. Sigue bloqueando el despliegue |
 | 13 | La carrera de `turbo` entre `build` y `typecheck` | `devops` | **Hecha (`f9da930`, v0.19.0).** `typecheck` de `web` y `database` depende de su `build`. Verificado: `typecheck --force` 9/9 sin caché |
 | 14 | El aviso de `any` no es una compuerta | `devops` | `no-explicit-any` está en `warn` y ningún script lleva `--max-warnings 0`: hoy hay cero `any`, pero el primero entraría sin que lint falle |
 
