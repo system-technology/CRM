@@ -314,7 +314,7 @@ export function ListaConversaciones() {
                   ref={(el) => {
                     itemRefs.current[idx] = el;
                   }}
-                  className={`block p-3 transition-colors ${
+                  className={`focus-visible:ring-acento-600 block p-3 transition-colors focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-inset ${
                     esActiva
                       ? 'bg-acento-50/80 border-acento-700 dark:bg-acento-950/40 border-l-4'
                       : 'hover:bg-neutral-50 dark:hover:bg-neutral-800/50'
