@@ -283,7 +283,7 @@ con el interruptor apagado `/ingresar` no renderiza nada de la maqueta, y `pnpm 
 
 ---
 
-## [x] 0c.30. Los errores no enseñan el mensaje crudo del servidor (añadida el 2026-10-19)
+## [ ] 0c.30. Los errores no enseñan el mensaje crudo del servidor (añadida el 2026-10-19)
 
 Hay `err instanceof Error ? err.message : '...'` pintado tal cual al asesor en `bandeja/[id]`
 (l. 239, 285, 330), `catalogo` (68, 235) y `contactos` (45), y `estados-ui-logica.ts` lo incrusta en
@@ -291,6 +291,11 @@ Hay `err instanceof Error ? err.message : '...'` pintado tal cual al asesor en `
 que clasifique (red, sesión, no encontrado, validación, desconocido) y devuelva **qué pasó y qué
 hacer** en español; el mensaje crudo solo a `console.error`. Pruebas con errores `TypeError: Failed
 to fetch`, un 500 con texto técnico y un error de dominio ya redactado.
+
+> **REABIERTA (restos), 2026-10-19:** quedan `err.message` pintados en `lista-conversaciones.tsx`
+> (l. 81, 83, 149) y en el desconocido de `cotizaciones-logica.ts:192` y `cotizador-logica.ts:173`; y
+> `clasificarError` debe mirar el código de dominio antes que las palabras clave. Detalle en
+> `REVISION.md`. **Va después de la 0c.34.**
 
 **Hecho cuando:** ningún `catch` de `apps/web/src/app` pinta `err.message` sin pasar por la función, y
 `pnpm compuertas` sale en verde.

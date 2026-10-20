@@ -1,4 +1,47 @@
-﻿# REVISIÓN — 2026-10-19 (noche) — 0c.22 `ba6fe8e`
+﻿# REVISIÓN — 0c.30 `ce1727f`
+
+> ## LA SIGUIENTE ES LA 0c.34, SIN EXCEPCIÓN
+> La 0c.34 era **PRIORITARIA y primera**, y se hizo antes la 0c.30. Con la API caída, «Guardar
+> cotización» hoy muestra «guardada» con datos simulados (`cotizaciones-api.ts` cae al mock en silencio
+> en guardar, añadir versión, consultar y listar; y `crm-api.ts` / `inbox-api.ts` por comprobar). **Eso
+> bloquea el primer despliegue.** No se coge ninguna otra tarea antes. La 0c.30 se solapa con ella: las
+> dos deciden qué ve el asesor cuando la API real falla, así que el error de la 0c.34 debe pasar por
+> `clasificarError`/`AvisoErrorAccionable` de la 0c.30. La 0c.30 no tocó `cotizaciones-api.ts`: no
+> adelantó nada de la 0c.34.
+
+## Veredicto 0c.30: **ACEPTADA EN PARTE.** El «Hecho cuando» no se cumple del todo; los restos van a la cola
+
+### Bloqueante
+
+Ninguno propio de la 0c.30 (el bloqueante del despliegue es la 0c.34).
+
+### Cola — con dueño (Antigravity; hazlos junto con la 0c.34, mismo código)
+
+1. **Quedan mensajes crudos pintados**, con `git grep`:
+   - `components/bandeja/lista-conversaciones.tsx` l. 81, 83 y 149: `setError(\`[${e.code}] ${e.message}\`)`
+     y `e.message`. **Es la lista de la pantalla principal.**
+   - `lib/cotizaciones-logica.ts:192` y `lib/cotizador-logica.ts:173`: el caso desconocido devuelve
+     `error.message` tal cual como `mensaje`.
+2. **La clasificación puede esconder lo que el asesor necesita.** `clasificarError` busca palabras
+   («409», «conflicto», «inválido», «no existe», «tenant») **antes** de mirar si el texto ya es un error
+   de dominio redactado, así que «El contacto no existe» o «Versión inválida: …» se convierten en el
+   genérico «Datos inconsistentes» / «Recurso no disponible». `SIN_VIGENCIA` sí sigue diciendo qué
+   pasa, pero porque `cotizador-logica.ts` lo trata antes de llegar aquí, no por `clasificarError`.
+   Arreglo: tabla por **código de dominio** (`SIN_VIGENCIA`, `VIGENCIAS_EMPATADAS`, …) primero, y las
+   palabras clave solo como último recurso.
+3. En la prueba de `estados-ui-logica.spec.ts` falta un caso «409 de dominio conserva su texto».
+
+### Verificado
+
+- **Ejecutado:** lint limpio y 177 pruebas en verde. **Typecheck y `format:check` fallan, pero solo en
+  archivos sin commitear de Antigravity** (`cotizaciones-api.ts` l. 82, `crm-api.ts` l. 73: `unknown` no
+  asignable a `Record<string, unknown>`; Prettier en `crm-api.ts` y `pipeline/page.tsx`): es el trabajo en
+  curso de la 0c.34, no el commit `ce1727f`. Lo commiteado no los provoca.
+- `git pull` falló: `github.com:443` inalcanzable desde esta sesión (ver mensaje del push).
+
+---
+
+# REVISIÓN — 2026-10-19 (noche) — 0c.22 `ba6fe8e`
 
 ## Veredicto: **ACEPTADO con una corrección pequeña (0c.22c)**
 
