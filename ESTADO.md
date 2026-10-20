@@ -6,7 +6,7 @@
 
 | Campo | Valor |
 |---|---|
-| Última actualización | 2026-10-20 (hasta v0.37.0: visibilidad de conversaciones) |
+| Última actualización | 2026-10-20 (hasta v0.37.1) |
 | Actualizado por | Claude Opus 5.5 (`integrador`) |
 | Fase | **Rebanada vertical de paquetes, en construcción** |
 | Avance de la fase | Cotizador de punta a punta. **La cotización es la suma de sus tarifas y el precio «desde» es uno que el comprador puede pagar (v0.19.0).** Apretón de manos del webhook vivo. Bandeja web en construcción |
@@ -1193,7 +1193,7 @@ Registro: [`docs/_integraciones/2026-10-20-v0.35.0.md`](docs/_integraciones/2026
 
 | Cola | Dueño | Por qué no bloquea |
 |---|---|---|
-| **Antes del adaptador de correo de producción:** un límite de OTP por dirección de correo, para que nadie use el envío para inundar un buzón ajeno | `backend` | En local el correo va a Mailpit; no sale nada a internet |
+| ~~Antes del adaptador de correo de producción: límite de OTP por correo~~ | `backend` | **Cerrado en v0.37.1**: por IP da 429; por correo (3 cada 15 min) da 200 sin enviar, igual que un correo inexistente. Los contadores van en Redis con TTL y la clave es un HMAC |
 | **Antes del adaptador de correo de producción: el ADR del proveedor de correo** (R7, y la regla de no integrar servicios externos sin ADR ni puerto) | `arquitecto` | El puerto ya existe y el adaptador es un TODO |
 
 ## Integración del 2026-10-20 — v0.36.0: la bandeja en vivo con Socket.IO
@@ -1214,7 +1214,7 @@ Registro: [`docs/_integraciones/2026-10-20-v0.36.0.md`](docs/_integraciones/2026
 | Cola | Dueño | Por qué no bloquea |
 |---|---|---|
 | ~~ANTES de que la piloto use asesores: un asesor sin `conversaciones.ver_todas` recibía el texto de todas las conversaciones~~ | `dueno-de-producto`, `backend` | **Cerrado en v0.37.0**: la regla de `docs/01-producto/12-visibilidad-de-conversaciones.md` se aplica en la REST y en el socket. **Ya se puede dar de alta al primer asesor** |
-| Si la revalidación falla por infraestructura (por ejemplo, la base no responde), **el socket sigue abierto**. Hay que cerrarlo tras N fallos seguidos | `backend` | La revocación por evento sigue cerrándolo, y el fallo de infraestructura es transitorio |
+| ~~Si la revalidación falla por infraestructura, el socket sigue abierto~~ | `backend` | **Cerrado en v0.37.1**: tres fallos seguidos lo cierran (`SOCKET_REVALIDACION_MAX_FALLOS`), y una sesión inválida, al momento |
 | El primer barrido tras desplegar emitirá los **eventos viejos** del outbox | `backend` | No hay nada desplegado. Antes del primer despliegue: marcar los eventos viejos como emitidos, o filtrar por antigüedad |
 
 ## Integración del 2026-10-20 — v0.36.1: la web no cae al mock ni pinta err.message (0c.34, 0c.30, 0c.31)
@@ -1262,4 +1262,20 @@ de la regla (12). Estáticas en local, en verde. Registro: [`docs/_integraciones
 | Cola | Dueño | Por qué no bloquea |
 |---|---|---|
 | **La bandeja web tiene que tratar `CONVERSACION_RETIRADA`** y pasarse a la REST nueva `api/v1/conversaciones` | Antigravity | Hoy la web usa mocks y el socket anterior. Sin esto, al asesor no se le quita de la pantalla la conversación reasignada |
+
+## Integración del 2026-10-20 — v0.37.1: endurecimiento de identity
+
+`fix/identity-endurecimiento` @ `b8ce6c8` entra en `main` (`e455d93`), etiquetada **v0.37.1**. Cierra las dos colas del auditor:
+
+1. **El socket.** «No pude comprobar» cuenta como fallo, y a los tres seguidos se cierra (`SOCKET_REVALIDACION_MAX_FALLOS`). Una sesión
+   inválida lo cierra al momento.
+2. **El límite de OTP.** Por IP (`req.ip`) devuelve 429. Por correo devuelve 200 sin enviar nada, para no revelar si el correo existe.
+
+No hay migraciones. Compuerta: CI **8/8** sobre la punta, que contiene `main`: https://github.com/Alfavear/CRM/actions/runs/39364001732.
+Estáticas en local, en verde. Registro: [`docs/_integraciones/2026-10-20-v0.37.1.md`](docs/_integraciones/2026-10-20-v0.37.1.md).
+
+| Cola | Dueño | Por qué no bloquea |
+|---|---|---|
+| El adaptador Redis de los contadores de OTP **solo se probó con un doble**. El CI ya levanta Redis 7: la e2e del límite debería correr contra él, como la de BullMQ. **Antes del adaptador de correo de producción** | `backend` | El algoritmo está probado en memoria y el adaptador es `INCR` + `EXPIRE NX` en una transacción. Hoy el correo solo va a Mailpit |
+| En `.env.example`, `SOCKET_REVALIDACION_MAX_FALLOS` solo figura en un comentario, sin su línea `VARIABLE=` (por defecto vale 3) | `backend` | Es opcional y tiene valor por defecto |
 
