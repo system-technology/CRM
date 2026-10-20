@@ -380,10 +380,39 @@ y `tablas_sin_aislamiento` imputa cada partición a su tabla raíz.
   necesita ninguno. Es **monótono**: restringe y nunca relaja, porque reactivar el ruteo es
   repuntar y eso queda solo en `registrar_enrutamiento`. Aserción 46.
 
-  Lo que sigue sin atar: la baja de una **cuenta** (`cuentas_whatsapp.estado`) no restringe
-  las filas WABA del directorio, y `registrar_enrutamiento` puede escribir `ACTIVO` para un
-  canal que en `canales` sigue `REVOCADO` (es el orden del re-alta, y el rol `viajapro_altas`
-  es el único que puede hacerlo).
+  **Los cuatro huecos que dejaba, cerrados el 2026-10-19** (ADR-0010 punto 6, migración
+  `20261020010000_huecos_del_disparador_y_tope_del_barrido`, aserciones 55 a 58). Estado
+  **efectivo** de un canal o una cuenta = `REVOCADO` si tiene `eliminado_en`, si no su `estado`.
+
+  ```
+  INSERT o UPDATE OF estado, eliminado_en      (viajapro_app, bajo RLS)
+        │                                   │
+     canales                          cuentas_whatsapp
+        ▼                                   ▼
+  propagar_estado_canal()            propagar_estado_cuenta()      dueño viajapro_enrutador,
+   filas de número (canal_id)         filas WABA (cuenta_id)        sin EXECUTE para nadie
+        └──────────► directorio := max(actual, efectivo) + asiento ◄──────┘
+
+  registrar_enrutamiento(..., p_estado)       (viajapro_altas, con tenant de sesión)
+        │  lee canales / cuentas_whatsapp BAJO RLS: SELECT(id, tenant_id, estado, eliminado_en)
+        └─► rechaza (55000) si p_estado < efectivo        → no hay re-alta sobre un REVOCADO
+  ```
+
+  | Hueco | Cómo se cerró |
+  |---|---|
+  | (a) baja de cuenta | Disparador gemelo sobre `cuentas_whatsapp`; solo filas WABA de esa cuenta y ese tenant. Las filas de **número** de una cuenta dada de baja siguen la verdad de `canales`: la baja de una cuenta tiene que dar de baja sus canales (caso de uso) |
+  | (b) borrado lógico | Los dos disparadores escuchan `eliminado_en` y lo tratan como `REVOCADO`. Deshacer el borrado no relaja |
+  | (c) re-alta | `registrar_enrutamiento` no escribe un estado más laxo que el efectivo. El re-alta legítimo existe: primero el canal vuelve a `ACTIVO`, luego se repunta |
+  | (d) `INSERT` | Los dos disparadores escuchan `INSERT`. Hoy la clave foránea ya impide filas de un canal que no existe, así que el riesgo real era (c) |
+
+  Por qué el dueño del directorio puede ahora leer cuatro columnas de `canales` y
+  `cuentas_whatsapp`, cuando 4f lo rechazó para el resolvedor: el resolvedor corre **sin**
+  contexto y sería una lectura entre tenants; `registrar_enrutamiento` exige que el tenant de
+  la sesión sea el de la fila y la RLS forzada vale también para el dueño de la función. Sin
+  contexto lee cero filas, y nunca el `phone_number_id` ni el token (aserción 57). Una baja
+  concurrente con un alta se serializa con un bloqueo consultivo por canal o por cuenta
+  (claves 7410100 y 7410101) que toman los dos lados antes de leer.
+
 - **Los changes que se quedan `PENDIENTE` ya se pueden listar (2026-10-19, migración
   `20261019210000_listar_changes_pendientes_para_el_barrido`).** Es la mitad de base de datos
   del relay de barrido de ADR-0010 punto 9: si el POST guarda y el encolado falla, el change
@@ -405,6 +434,31 @@ y `tablas_sin_aislamiento` imputa cada partición a su tabla raíz.
   ni tenant), el límite es obligatorio y nadie salvo el trabajador la ejecuta. Excluye las
   recepciones ya anuladas por `purgar_payloads`: sin contenido no hay qué procesar, y
   reencolarlas sería un bucle. Es la novena `SECURITY DEFINER`; aserciones 12, 13, 20 y 53.
+
+  **Tope de reencolados en la base (2026-10-19, `20261020010000`, aserción 59).** Con más de
+  500 changes abandonados el límite del barrido los devolvía siempre a ellos y tapaban a los
+  nuevos. `recepciones_webhook_changes.intentos_barrido smallint NOT NULL DEFAULT 0` cuenta
+  los reencolados; `contar_reencolado_barrido(recepcion_id, indice)` suma uno a un change
+  `PENDIENTE` y devuelve el total (0 si ya se resolvió). `listar_changes_pendientes` gana un
+  tercer argumento `p_max_intentos` (DEFAULT 10, el `maxReencolados` por defecto), excluye
+  `intentos_barrido > tope` y ordena por `intentos_barrido` antes que por antigüedad.
+
+- **Inventario de funciones `SECURITY DEFINER`** (ADR-0010 §1.2 es inmutable y se quedó en
+  ocho; esta es la lista viva, y la matriz normativa es `MATRIZ_FUNCIONES` de la aserción 20).
+
+  | Función | Dueño | `EXECUTE` |
+  |---|---|---|
+  | `resolver_enrutamiento` | `viajapro_enrutador` | `viajapro_webhook` |
+  | `registrar_enrutamiento` | `viajapro_enrutador` | `viajapro_altas` |
+  | `propagar_estado_canal` | `viajapro_enrutador` | nadie (disparador) |
+  | `propagar_estado_cuenta` | `viajapro_enrutador` | nadie (disparador) |
+  | `registrar_recepcion` | `viajapro_staging` | `viajapro_app` |
+  | `tomar_recepcion` | `viajapro_staging` | `viajapro_webhook` |
+  | `anular_payload` | `viajapro_staging` | `viajapro_webhook` |
+  | `purgar_recepciones` | `viajapro_staging` | `viajapro_webhook` |
+  | `purgar_payloads` | `viajapro_staging` | `viajapro_webhook` |
+  | `listar_changes_pendientes` | `viajapro_staging` | `viajapro_webhook` |
+  | `contar_reencolado_barrido` | `viajapro_staging` | `viajapro_webhook` |
 
 ---
 
