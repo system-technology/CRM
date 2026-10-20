@@ -1,3 +1,4 @@
+import { formatearErrorAmigable } from './estados-ui-logica';
 /**
  * Lógica pura para el guardado y versionado de cotizaciones comerciales (0c.22).
  *
@@ -189,7 +190,7 @@ export function interpretarErrorCotizaciones(error: unknown): {
     }
   }
 
-  const msg = error instanceof Error ? error.message : 'Error al procesar la cotización.';
+  const msg = formatearErrorAmigable(error, 'Error al procesar la cotización.');
   return {
     codigo: 'DESCONOCIDO',
     mensaje: msg,

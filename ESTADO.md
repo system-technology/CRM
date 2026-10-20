@@ -6,7 +6,7 @@
 
 | Campo | Valor |
 |---|---|
-| Última actualización | 2026-10-20 (hasta v0.36.0: la bandeja en vivo) |
+| Última actualización | 2026-10-20 (hasta v0.36.1) |
 | Actualizado por | Claude Opus 5.5 (`integrador`) |
 | Fase | **Rebanada vertical de paquetes, en construcción** |
 | Avance de la fase | Cotizador de punta a punta. **La cotización es la suma de sus tarifas y el precio «desde» es uno que el comprador puede pagar (v0.19.0).** Apretón de manos del webhook vivo. Bandeja web en construcción |
@@ -1001,7 +1001,7 @@ Registro: [`docs/_integraciones/2026-10-19-v0.29.0.md`](docs/_integraciones/2026
 | Cola | Dueño | Por qué no bloquea |
 |---|---|---|
 | `reportes/page.tsx` muestra **«Costo Neto»** y **«Margen Comercial»** con una etiqueta «Solo Dueño», pero sin control de rol | Antigravity (**0c.27**) | Hoy no hay roles. Va con «Neto:» del catálogo y el bloque de política |
-| `err.message` se pinta tal cual en tres pantallas | Antigravity (**0c.30**) | Hoy los errores vienen de mocks y de la API propia; con datos reales podría filtrar detalles internos |
+| ~~`err.message` se pinta tal cual~~ | Antigravity (0c.30) | **Cerrado en v0.36.1**: `clasificarError` mira primero el código de dominio |
 | La maqueta de ingreso deja su formulario y las credenciales de ejemplo en el chunk de cliente aunque el interruptor esté apagado | Antigravity (con la rebanada 3 del ADR-0011) | Son ficticias y no autentican nada. Se va al sustituir la maqueta por el ingreso real |
 
 ## Integración del 2026-10-19 (vigesimoprimera) — v0.30.0: el relay de barrido
@@ -1073,7 +1073,7 @@ local en verde, y la web pasa 171 pruebas.
 
 | Cola | Dueño | Por qué no bloquea |
 |---|---|---|
-| **Si la API falla, el listado de cotizaciones muestra el mock sin avisar**: el asesor vería datos inventados como si fueran suyos. El mismo `catch → mock` puede estar en `crm-api.ts` e `inbox-api.ts`, que también importan mocks: que Antigravity lo confirme pantalla por pantalla | Antigravity (**0c.34**, prioritaria) | No hay nada desplegado. **Bloquea el primer despliegue** |
+| ~~Si la API falla, el listado cae al mock sin avisar~~ | Antigravity (0c.34) | **Cerrado en v0.36.1**: con la API real, un fallo es un error en `cotizaciones-api`, `crm-api` e `inbox-api`, con pruebas del 200 malformado |
 
 ## Integración del 2026-10-19 (vigesimosexta) — v0.32.0: los huecos del disparador y el tope del barrido
 
@@ -1216,4 +1216,17 @@ Registro: [`docs/_integraciones/2026-10-20-v0.36.0.md`](docs/_integraciones/2026
 | **ANTES de que la agencia piloto use asesores:** se emite a toda la sala `tenant:<id>`, así que **un asesor sin `conversaciones.ver_todas` recibe el texto de todas las conversaciones**. Ese permiso no se aplica en ningún sitio: ni en el socket ni en la API REST de la bandeja | `dueno-de-producto` (decide la regla de asignación) y `backend` | No cruza agencias: es visibilidad dentro de la propia. Hoy la piloto trabaja con la dueña. **Bloquea dar de alta al primer asesor** |
 | Si la revalidación falla por infraestructura (por ejemplo, la base no responde), **el socket sigue abierto**. Hay que cerrarlo tras N fallos seguidos | `backend` | La revocación por evento sigue cerrándolo, y el fallo de infraestructura es transitorio |
 | El primer barrido tras desplegar emitirá los **eventos viejos** del outbox | `backend` | No hay nada desplegado. Antes del primer despliegue: marcar los eventos viejos como emitidos, o filtrar por antigüedad |
+
+## Integración del 2026-10-20 — v0.36.1: la web no cae al mock ni pinta err.message (0c.34, 0c.30, 0c.31)
+
+`feat/web-0c30-0c31-0c34` @ `bebc87c` entra en `main` (`98b267d`), etiquetada **v0.36.1**. Son 17 archivos de `apps/web`, idénticos a `0bededa`:
+
+- **0c.34**: con la API real encendida, un fallo es un error, nunca datos simulados. Afecta a `cotizaciones-api`, `crm-api` e `inbox-api`, y
+  hay pruebas del 200 malformado. **Se cierra el bloqueante del primer despliegue.**
+- **0c.30**: ya no se pinta `err.message` tal cual.
+- **0c.31**: pruebas accesibles de los componentes de estado.
+
+**Los tres archivos que tocó el backend en v0.34.1:** `ficha-detalle-paquete.tsx` y `catalogo-logica.spec.ts` quedan igual que en `main`.
+`cotizador-logica.ts` solo cambia por la 0c.30 (`formatearErrorAmigable` en lugar de `error.message`), y las líneas de la v0.34.1 siguen ahí.
+Compuerta: CI **8/8**, https://github.com/Alfavear/CRM/actions/runs/39359410509. Estáticas en local, en verde. Web, **218** pruebas.
 

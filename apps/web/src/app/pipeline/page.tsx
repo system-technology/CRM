@@ -8,10 +8,14 @@ import { BarraModulos } from '../../components/bandeja/barra-modulos';
 import { ColumnaKanban } from '../../components/pipeline/columna-kanban';
 import { ModalMotivoPerdida } from '../../components/pipeline/modal-motivo-perdida';
 import { DistintivoDatosDemo } from '../../components/comun/distintivo-datos-demo';
-import { EsqueletoKanban } from '../../components/comun/esqueletos';
+import { EsqueletoKanban, AvisoErrorAccionable } from '../../components/comun/esqueletos';
 import { AvisoConfiguracionTenant } from '../../components/crm/aviso-configuracion-tenant';
 import { obtenerMockTableroPipeline } from '../../lib/mock-pipeline';
 import { formatearDineroCifra, moverOportunidadEnTablero } from '../../lib/pipeline-logica';
+import {
+  formatearErrorAmigable,
+  construirMensajeErrorAccionable,
+} from '../../lib/estados-ui-logica';
 import {
   obtenerTableroPipeline,
   moverOportunidadDeEtapa,
@@ -29,13 +33,11 @@ export default function PipelinePage() {
   // Estado del origen de datos y configuración (Tarea 0c.14)
   const [esModoSimulado, setEsModoSimulado] = useState<boolean>(!estaUsandoApiReal());
   const [errorConfiguracion, setErrorConfiguracion] = useState<string | null>(null);
+  const [errorCarga, setErrorCarga] = useState<string | null>(null);
   const [mostrarDemoForzado, setMostrarDemoForzado] = useState<boolean>(false);
   const [cargandoApi, setCargandoApi] = useState<boolean>(estaUsandoApiReal());
 
-  // Carga inicial del tablero (API real si está disponible y configurada, o mock)
-  useEffect(() => {
-    let activo = true;
-
+  const cargarTablero = () => {
     if (!estaUsandoApiReal()) {
       setEsModoSimulado(true);
       setCargandoApi(false);
@@ -52,32 +54,34 @@ export default function PipelinePage() {
     }
 
     setCargandoApi(true);
+    setErrorCarga(null);
+    setErrorConfiguracion(null);
+
     obtenerTableroPipeline()
       .then((datos) => {
-        if (!activo) return;
         setTablero(datos);
         setEsModoSimulado(false);
         setErrorConfiguracion(null);
+        setErrorCarga(null);
       })
       .catch((err) => {
-        if (!activo) return;
         if (
           err instanceof CrmApiError &&
           (err.status === 401 || err.code === 'SIN_SESION' || err.code === 'CONFIG_TENANT_FALTANTE')
         ) {
-          setErrorConfiguracion(err.message);
+          setErrorConfiguracion(formatearErrorAmigable(err));
         } else {
-          console.warn('[Pipeline] API CRM no disponible, recurriendo a datos simulados:', err);
-          setEsModoSimulado(true);
+          setErrorCarga(formatearErrorAmigable(err, 'No fue posible cargar el tablero pipeline.'));
         }
       })
       .finally(() => {
-        if (activo) setCargandoApi(false);
+        setCargandoApi(false);
       });
+  };
 
-    return () => {
-      activo = false;
-    };
+  // Carga inicial del tablero (API real si está disponible y configurada, o mock)
+  useEffect(() => {
+    cargarTablero();
   }, []);
 
   // Estado del modal de pérdida
@@ -290,6 +294,13 @@ export default function PipelinePage() {
             <AvisoConfiguracionTenant
               mensajeError={errorConfiguracion}
               onContinuarConDemo={() => setMostrarDemoForzado(true)}
+            />
+          </div>
+        ) : errorCarga && !mostrarDemoForzado ? (
+          <div className="flex flex-1 items-center justify-center overflow-y-auto p-6">
+            <AvisoErrorAccionable
+              error={construirMensajeErrorAccionable(errorCarga, 'PIPELINE_TABLERO')}
+              onReintentar={cargarTablero}
             />
           </div>
         ) : cargandoApi ? (

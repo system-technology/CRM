@@ -11,7 +11,8 @@ import type {
 } from '@viajapro/contracts';
 import { Search, Rows3, AlertTriangle, RefreshCw } from 'lucide-react';
 import { DistintivoDatosDemo } from '../comun/distintivo-datos-demo';
-import { inboxApi, InboxErrorApi } from '../../lib/inbox-api';
+import { inboxApi } from '../../lib/inbox-api';
+import { formatearErrorAmigable } from '../../lib/estados-ui-logica';
 import { realtimeMockBus } from '../../lib/realtime-mock';
 import {
   reordenarConGuardia,
@@ -77,11 +78,7 @@ export function ListaConversaciones() {
       setPendientesReorden(0);
       bufferConversacionesRef.current = null;
     } catch (e) {
-      if (e instanceof InboxErrorApi) {
-        setError(`[${e.code}] ${e.message}`);
-      } else {
-        setError(e instanceof Error ? e.message : 'Error desconocido al cargar conversaciones');
-      }
+      setError(formatearErrorAmigable(e, 'No fue posible cargar las conversaciones.'));
       setConversaciones([]);
       setPagina(null);
     } finally {
@@ -146,7 +143,7 @@ export function ListaConversaciones() {
       setPagina(res);
       setConversaciones((prev) => [...prev, ...res.datos]);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Error al cargar más conversaciones');
+      setError(formatearErrorAmigable(e, 'No fue posible cargar más conversaciones.'));
     } finally {
       setCargandoMas(false);
     }
