@@ -214,7 +214,7 @@ Guarda las capturas en `docs/_assets/diseno/` y corrige lo que falle.
 
 ---
 
-## [ ] 0c.34. Con la API real encendida, un fallo es un error, nunca datos simulados (añadida el 2026-10-19, PRIORITARIA, LA PRIMERA)
+## [x] 0c.34. Con la API real encendida, un fallo es un error, nunca datos simulados (añadida el 2026-10-19, PRIORITARIA, LA PRIMERA)
 
 `apps/web/src/lib/cotizaciones-api.ts` cae **en silencio** al almacén simulado (solo `console.warn`)
 cuando falla la API real, en cuatro sitios: guardar (~l. 127), añadir versión (~l. 245), consultar por

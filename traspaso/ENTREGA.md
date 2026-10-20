@@ -515,3 +515,44 @@ Se creó el archivo de pruebas de componentes `apps/web/src/components/comun/esq
 - `pnpm --filter web test`: **23/23 suites en verde, 214/214 pruebas pasando**.
 - `pnpm --filter web typecheck`: **0 errores**.
 - `pnpm --filter web lint`: **0 errores**.
+
+
+---
+
+# Entrega Tareas 0c.34 y 0c.30 (Cierre de Puntos de Revisión)
+
+**Fecha:** 2026-10-19  
+**Rama:** `feat/bandeja-web`  
+**Contexto:** Subsanación de restos de revisión para 0c.34 (crm-api y ZodError) y 0c.30 (clasificación por código de dominio y err.message en bandeja).
+
+## 1. Qué se construyó y corrigió
+
+1. **0c.34 (Restos de crm-api):**
+   - En `apps/web/src/lib/crm-api.ts`: se eliminaron los dos bloques `try/catch` en `obtenerTableroPipeline()` y `obtenerFichaDeContacto()` que ante cualquier error distinto de `CrmApiError` (como un `ZodError` por respuesta 200 con forma inesperada) caían al almacén simulado pintándolo como real.
+   - En `apps/web/src/lib/crm-api.spec.ts`: se añadieron pruebas con respuestas HTTP 200 de esquema inválido para `obtenerTableroPipeline`, `obtenerFichaDeContacto`, `listarContactos` y `moverOportunidadDeEtapa`, verificando que lanzan error y nunca devuelven datos simulados.
+   - En `apps/web/src/lib/cotizaciones-api.spec.ts`: se añadieron pruebas análogas de respuesta 200 con contrato Zod inválido para `obtenerCotizacionGuardadaApi` y `listarCotizacionesApi`.
+
+2. **0c.30 (Restos de clasificación y err.message):**
+   - En `apps/web/src/lib/estados-ui-logica.ts`: `clasificarError` inspecciona ahora de forma prioritaria el código de dominio (`errorObj.code` / `errorObj.codigo`) y el código de estado HTTP (`statusHttp`) antes de recurrir al escaneo de palabras clave del mensaje.
+   - En `apps/web/src/components/bandeja/lista-conversaciones.tsx`: se erradicaron las 3 interpolaciones crudas de `err.message` (líneas 81, 83 y 149), pasando ahora por `formatearErrorAmigable`.
+   - En `cotizaciones-logica.ts:192` y `cotizador-logica.ts:173`: el manejo de fallos desconocidos se canaliza a través de `formatearErrorAmigable`.
+
+3. **Sincronización con main:**
+   - Merge limpio con `origin/main` (v0.35.0), resolviendo el conflicto en `cotizaciones-api.ts` preservando la política estricta de no enmascarar errores de API real tras mocks.
+
+## 2. Qué se verificó EJECUTANDO
+
+- `pnpm --filter @viajapro/contracts build`: compilado con éxito.
+- `pnpm --filter web typecheck`: **0 errores**.
+- `pnpm --filter web lint`: **0 errores, 0 advertencias**.
+- `pnpm --filter web test`: **23/23 suites en verde, 218/218 pruebas pasando**.
+- `pnpm --filter web build`: **Compilación de producción exitosa** (15/15 rutas estáticas y dinámicas generadas).
+- `pnpm exec prettier --check "apps/web/**/*.{ts,tsx}"`: **Estilo verificado**.
+
+## 3. Qué NO se verificó
+
+- No se ejecutaron pruebas e2e en navegador sobre endpoints con fallos 500 inyectados en vivo contra Neon (la validación se realizó mediante suites Vitest interceptando fetch).
+
+## 4. Decisiones que el encargo no especificaba
+
+- Se mapearon en `clasificarError` códigos de dominio canónicos como `SIN_SESION`, `CONFIG_TENANT_FALTANTE`, `VENTANA_CERRADA` y códigos estándar HTTP (400, 401, 403, 404, 409, 500) para garantizar clasificación determinista sin importar cómo el backend formatee su mensaje de texto.
