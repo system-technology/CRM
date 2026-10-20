@@ -68,6 +68,16 @@ export function filtroDeVisibilidad(v: Visibilidad): Prisma.ConversacionWhereInp
   };
 }
 
+/**
+ * La misma regla sobre las notas internas, que cuelgan del contacto y a veces de un hilo. Una nota
+ * escrita en el hilo de una conversación que no se ve no se ve; las del panel del contacto (sin
+ * hilo) son de toda la agencia. Con visibilidad total no se añade ningún predicado.
+ */
+export function filtroDeNotasPorVisibilidad(v: Visibilidad): Prisma.NotaInternaWhereInput {
+  if (v.alcance === 'TODAS') return {};
+  return { OR: [{ conversacionId: null }, { conversacion: { is: filtroDeVisibilidad(v) } }] };
+}
+
 export interface MiembroParaAudiencia {
   readonly usuarioId: string;
   readonly verTodas: boolean;

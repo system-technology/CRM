@@ -13,7 +13,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import type { Contacto, EtapaDefinida, FichaDeContacto, Oportunidad } from '@viajapro/contracts';
 import { ClaveEtapa } from '@viajapro/contracts';
 import {
-  filtroDeVisibilidad,
+  filtroDeNotasPorVisibilidad,
   visibilidadDe,
 } from '../../../shared/autorizacion/visibilidad-de-conversaciones.js';
 import { PrismaService } from '../../../shared/prisma/prisma.service.js';
@@ -157,7 +157,7 @@ export class CrmPrisma extends PuertoCrm {
               // Una nota escrita en el hilo de una conversación que este miembro no ve no sale por
               // la ficha: "lo que no se ve no se ve por ningún camino". Las notas del panel del
               // contacto (sin hilo) son de toda la agencia.
-              OR: [{ conversacionId: null }, { conversacion: filtroDeVisibilidad(visibilidad) }],
+              ...filtroDeNotasPorVisibilidad(visibilidad),
             },
             orderBy: { escritaEn: 'desc' },
             take: 20,

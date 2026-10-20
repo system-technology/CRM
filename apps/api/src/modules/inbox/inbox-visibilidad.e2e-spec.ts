@@ -181,6 +181,7 @@ interface Escenario {
   c2: string;
   c3: string;
   contactoC2: string;
+  contactoC3: string;
   textos: { c1: string; c2: string; c3: string };
 }
 
@@ -203,7 +204,14 @@ async function escenario(): Promise<Escenario> {
     texto: textos.c3,
     sinLeer: 1,
   });
-  return { c1: c1.id, c2: c2.id, c3: c3.id, contactoC2: c2.contactoId, textos };
+  return {
+    c1: c1.id,
+    c2: c2.id,
+    c3: c3.id,
+    contactoC2: c2.contactoId,
+    contactoC3: c3.contactoId,
+    textos,
+  };
 }
 
 // ---------------------------------------------------------------------------------------- HTTP
@@ -534,6 +542,23 @@ describe('lectura', () => {
     expect(JSON.stringify(ana.json)).not.toContain(nota);
     const dueno = await api('dueno', 'GET', `/api/v1/crm/contactos/${e.contactoC2}/ficha`);
     expect(JSON.stringify(dueno.json)).toContain(nota);
+
+    // Lo que SÍ se ve sigue saliendo: una nota del panel del contacto (sin hilo) y una escrita en
+    // una conversación de la cola común.
+    const delPanel = `nota-del-panel-${randomBytes(3).toString('hex')}`;
+    await admin.notaInterna.create({
+      data: { tenantId: TENANT_A, contactoId: e.contactoC2, autorId: U.dueno, texto: delPanel },
+    });
+    const conPanel = await api('ana', 'GET', `/api/v1/crm/contactos/${e.contactoC2}/ficha`);
+    expect(JSON.stringify(conPanel.json)).toContain(delPanel);
+
+    const deLaCola = `nota-de-la-cola-${randomBytes(3).toString('hex')}`;
+    expect(
+      (await api('ana', 'POST', `/api/v1/conversaciones/${e.c3}/notas`, { texto: deLaCola }))
+        .status,
+    ).toBe(201);
+    const ficha3 = await api('beto', 'GET', `/api/v1/crm/contactos/${e.contactoC3}/ficha`);
+    expect(JSON.stringify(ficha3.json)).toContain(deLaCola);
   });
 
   it('una consulta con un cursor roto es 422, no un 500', async () => {
