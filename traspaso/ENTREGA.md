@@ -556,3 +556,58 @@ Se creó el archivo de pruebas de componentes `apps/web/src/components/comun/esq
 ## 4. Decisiones que el encargo no especificaba
 
 - Se mapearon en `clasificarError` códigos de dominio canónicos como `SIN_SESION`, `CONFIG_TENANT_FALTANTE`, `VENTANA_CERRADA` y códigos estándar HTTP (400, 401, 403, 404, 409, 500) para garantizar clasificación determinista sin importar cómo el backend formatee su mensaje de texto.
+
+
+---
+
+# Entrega Tarea 0c.32: Teclado y foco en modales y bandeja
+
+**Fecha:** 2026-10-20  
+**Rama:** `feat/bandeja-web`  
+**Contexto:** Accesibilidad de teclado, focus trap, tecla Escape, restauración de foco al disparador y anuncios `aria-live` en modales y bandeja.
+
+## 1. Qué se construyó
+
+1. **Hook reutilizable `useFocoModal` (`apps/web/src/lib/use-foco-modal.ts`):**
+   - Almacena `document.activeElement` al abrir el modal y restaura el foco al cerrarlo.
+   - Coloca el foco inicial en `elementoInicialRef` o en el primer elemento interactivo (`button`, `input`, `select`, etc.).
+   - Atrapa el foco dentro del modal (Focus Trap): cicla `Tab` y `Shift+Tab` impidiendo que el foco escape al fondo de la página.
+   - Cierra con tecla `Escape` invocando `onCerrar()`.
+
+2. **Integración en los 4 Modales de la aplicación:**
+   | Modal | Foco dentro | Cierra con Esc | Foco de vuelta | Avisos `aria-live` |
+   |---|---|---|---|---|
+   | `ModalPlantillas` | Sí (tarjeta / primer control) | Sí | Sí (al disparador) | Sí (`assertive`) |
+   | `ModalGuardarCotizacion` | Sí (input título) | Sí | Sí (al botón Guardar) | Sí (`assertive`) |
+   | `ModalMotivoPerdida` | Sí (radio options) | Sí | Sí (a tarjeta kanban) | Sí (`assertive`) |
+   | `ModalBusquedaGlobal` | Sí (input búsqueda) | Sí | Sí (al disparador Cmd+K) | Sí (`polite`) |
+
+3. **Navegación accesible en la Bandeja:**
+   - En `apps/web/src/components/bandeja/lista-conversaciones.tsx`:
+     - Navegación con flechas `ArrowDown` y `ArrowUp` entre conversaciones.
+     - Atajo `/` para enfocar la barra de búsqueda rápidamente.
+     - Tecla `Escape` en búsqueda limpia el texto y retorna el foco a la lista.
+     - Indicadores visuales de foco accesible con `focus-visible:ring-2`.
+   - En `apps/web/src/app/bandeja/[id]/page.tsx`:
+     - Enviar mensaje con `Enter` (sin Shift), salto de línea con `Shift+Enter`.
+     - Anuncio de mensajes entrantes con `aria-live="polite"`.
+     - Alerta de fallos de envío con `role="alert"` y `aria-live="assertive"`.
+
+4. **Suite de pruebas de accesibilidad y foco (`apps/web/src/components/comun/foco-modal.spec.tsx`):**
+   - 9 pruebas completas verificando Focus Trap, Escape, restauración de foco y atributos `aria-live`.
+
+## 2. Qué se verificó EJECUTANDO
+
+- `pnpm --filter web test`: **24/24 suites en verde, 227/227 pruebas pasando**.
+- `pnpm --filter web typecheck`: **0 errores**.
+- `pnpm --filter web lint`: **0 errores, 0 advertencias**.
+- `pnpm --filter web build`: **Compilación exitosa** (15/15 páginas generadas).
+- `pnpm format:check`: **Todos los archivos coinciden con el estilo Prettier**.
+
+## 3. Qué NO se verificó
+
+- No se ejecutó lector de pantalla real (NVDA/VoiceOver) en hardware nativo; la validación se realizó sobre el DOM mediante `@testing-library/react` y jsdom.
+
+## 4. Decisiones que el encargo no especificaba
+
+- En `ModalPlantillas`, se habilitó selección con teclado mediante `tabIndex={0}`, `role="button"` y listener `onKeyDown` (Enter/Espacio) para las tarjetas de plantilla, garantizando accesibilidad total sin requerir ratón.

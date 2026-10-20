@@ -642,6 +642,8 @@ export default function BandejaConversacionPage() {
             <div className="sticky bottom-2 z-20 flex justify-center">
               <button
                 onClick={() => scrollToBottom('smooth')}
+                role="status"
+                aria-live="polite"
                 className="flex items-center gap-1.5 rounded-full bg-neutral-900 px-4 py-1.5 text-xs font-bold text-white shadow-xl hover:bg-black"
               >
                 <span>⬇️ Hay {mensajesNuevosSinVer} mensaje(s) nuevo(s)</span>
@@ -766,7 +768,11 @@ export default function BandejaConversacionPage() {
                 </div>
 
                 {errorEnvio && (
-                  <div className="border-alerta-200 bg-alerta-50 text-alerta-800 dark:border-alerta-900 dark:bg-alerta-950/40 dark:text-alerta-300 rounded-lg border p-2 text-xs">
+                  <div
+                    role="alert"
+                    aria-live="assertive"
+                    className="border-alerta-200 bg-alerta-50 text-alerta-800 dark:border-alerta-900 dark:bg-alerta-950/40 dark:text-alerta-300 rounded-lg border p-2 text-xs"
+                  >
                     {errorEnvio}
                   </div>
                 )}
@@ -777,6 +783,12 @@ export default function BandejaConversacionPage() {
                     rows={2}
                     value={textoMensaje}
                     onChange={(e) => setTextoMensaje(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        void manejarEnvio();
+                      }
+                    }}
                     placeholder={
                       modoNota
                         ? 'Escribe una nota interna para el equipo (nunca se envía al cliente)...'

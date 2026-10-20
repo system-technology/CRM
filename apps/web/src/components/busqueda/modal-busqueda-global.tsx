@@ -19,6 +19,7 @@ import {
   type ResultadoBusqueda,
   type CategoriaBusqueda,
 } from '../../lib/buscador-global-logica';
+import { useFocoModal } from '../../lib/use-foco-modal';
 
 interface ModalBusquedaGlobalProps {
   abierto: boolean;
@@ -63,12 +64,17 @@ export function ModalBusquedaGlobal({ abierto, alCerrar }: ModalBusquedaGlobalPr
   const [indiceSeleccionado, setIndiceSeleccionado] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const contenedorRef = useFocoModal<HTMLDivElement>({
+    abierto,
+    alCerrar,
+    elementoInicialRef: inputRef,
+  });
+
   // Enfocar input al abrir
   useEffect(() => {
     if (abierto) {
       setConsulta('');
       setIndiceSeleccionado(0);
-      setTimeout(() => inputRef.current?.focus(), 50);
     }
   }, [abierto]);
 
@@ -96,9 +102,7 @@ export function ModalBusquedaGlobal({ abierto, alCerrar }: ModalBusquedaGlobalPr
 
   // Manejo de teclado dentro del modal
   const manejarKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Escape') {
-      alCerrar();
-    } else if (e.key === 'ArrowDown') {
+    if (e.key === 'ArrowDown') {
       e.preventDefault();
       setIndiceSeleccionado((prev) => (prev + 1) % Math.max(1, itemsPlanos.length));
     } else if (e.key === 'ArrowUp') {
@@ -127,10 +131,18 @@ export function ModalBusquedaGlobal({ abierto, alCerrar }: ModalBusquedaGlobalPr
       aria-label="Búsqueda Global"
     >
       <div
+        ref={contenedorRef}
         className="w-full max-w-2xl overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-2xl transition-all dark:border-neutral-800 dark:bg-neutral-900"
         onClick={(e) => e.stopPropagation()}
         onKeyDown={manejarKeyDown}
       >
+        {/* Aviso dinámico para lectores de pantalla */}
+        <div aria-live="polite" className="sr-only">
+          {consulta.trim()
+            ? `${itemsPlanos.length} resultados encontrados para ${consulta}`
+            : 'Búsqueda global abierta. Escribe un término para buscar.'}
+        </div>
+
         {/* Cabecera / Input */}
         <div className="relative flex items-center border-b border-neutral-200 px-4 py-3 dark:border-neutral-800">
           <Search className="h-5 w-5 text-neutral-400" />
@@ -152,6 +164,7 @@ export function ModalBusquedaGlobal({ abierto, alCerrar }: ModalBusquedaGlobalPr
                 setConsulta('');
                 inputRef.current?.focus();
               }}
+              aria-label="Limpiar búsqueda"
               className="rounded-md p-1 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200"
             >
               <X className="h-4 w-4" />
@@ -193,12 +206,22 @@ export function ModalBusquedaGlobal({ abierto, alCerrar }: ModalBusquedaGlobalPr
                       return (
                         <div
                           key={item.id}
+                          role="option"
+                          aria-selected={esSeleccionado}
+                          tabIndex={0}
                           onClick={() => {
                             alCerrar();
                             router.push(item.href);
                           }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              alCerrar();
+                              router.push(item.href);
+                            }
+                          }}
                           onMouseEnter={() => setIndiceSeleccionado(idxGlobal)}
-                          className={`flex cursor-pointer items-center justify-between rounded-xl px-3 py-2.5 transition-colors ${
+                          className={`focus-visible:ring-acento-600 flex cursor-pointer items-center justify-between rounded-xl px-3 py-2.5 transition-colors focus-visible:ring-2 focus-visible:outline-none ${
                             esSeleccionado
                               ? 'bg-acento-50 dark:bg-acento-950/60 text-neutral-900 dark:text-neutral-50'
                               : 'text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800/60'

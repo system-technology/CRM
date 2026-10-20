@@ -9,6 +9,7 @@ import {
   interpolarPlantilla,
   validarEnvioPlantilla,
 } from '../../lib/plantillas-logica';
+import { useFocoModal } from '../../lib/use-foco-modal';
 
 interface ModalPlantillasProps {
   abierto: boolean;
@@ -31,6 +32,11 @@ export function ModalPlantillas({
   );
   const [valoresVariables, setValoresVariables] = useState<string[]>([]);
   const [errorValidacion, setErrorValidacion] = useState<string | null>(null);
+
+  const contenedorRef = useFocoModal<HTMLDivElement>({
+    abierto,
+    alCerrar: onCerrar,
+  });
 
   // Inicializar con la primera plantilla aprobada
   useEffect(() => {
@@ -95,6 +101,7 @@ export function ModalPlantillas({
       aria-labelledby="titulo-modal-plantillas"
     >
       <div
+        ref={contenedorRef}
         className="flex max-h-[90vh] w-full max-w-xl flex-col overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-2xl dark:border-neutral-800 dark:bg-neutral-900"
         onClick={(e) => e.stopPropagation()}
       >
@@ -122,6 +129,7 @@ export function ModalPlantillas({
             onClick={onCerrar}
             className="rounded-lg p-1 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
             title="Cerrar modal"
+            aria-label="Cerrar modal de plantillas"
           >
             <X className="h-5 w-5" />
           </button>
@@ -158,8 +166,17 @@ export function ModalPlantillas({
                 return (
                   <div
                     key={p.id}
+                    role="button"
+                    tabIndex={esAprobada ? 0 : -1}
+                    aria-pressed={seleccionada}
                     onClick={() => cambiarPlantilla(p)}
-                    className={`rounded-xl border p-3.5 transition-colors ${
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        cambiarPlantilla(p);
+                      }
+                    }}
+                    className={`focus-visible:ring-acento-600 rounded-xl border p-3.5 transition-colors focus-visible:ring-2 focus-visible:outline-none ${
                       !esAprobada
                         ? 'cursor-not-allowed border-neutral-200 bg-neutral-100/70 opacity-60 dark:border-neutral-800 dark:bg-neutral-800/40'
                         : seleccionada
@@ -280,9 +297,13 @@ export function ModalPlantillas({
             </div>
           </div>
 
-          {/* Error de validación Zod */}
+          {/* Error de validación Zod con aviso dinámico accesible */}
           {errorValidacion && (
-            <div className="animate-in fade-in rounded-xl bg-red-50 p-3 text-xs text-red-700 duration-150 dark:bg-red-950/50 dark:text-red-300">
+            <div
+              role="alert"
+              aria-live="assertive"
+              className="animate-in fade-in rounded-xl bg-red-50 p-3 text-xs text-red-700 duration-150 dark:bg-red-950/50 dark:text-red-300"
+            >
               {errorValidacion}
             </div>
           )}

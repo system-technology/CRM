@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import type { Contacto } from '@viajapro/contracts';
 import { Bookmark, X, AlertCircle, Calendar, User, FileText, CheckCircle2 } from 'lucide-react';
+import { useFocoModal } from '../../lib/use-foco-modal';
 
 export interface ModalGuardarCotizacionProps {
   abierto: boolean;
@@ -46,6 +47,13 @@ export function ModalGuardarCotizacion({
   const [vigenteHasta, setVigenteHasta] = useState('');
   const [errorLocal, setErrorLocal] = useState<string | null>(null);
 
+  const inputTituloRef = useRef<HTMLInputElement>(null);
+  const contenedorRef = useFocoModal<HTMLDivElement>({
+    abierto,
+    alCerrar,
+    elementoInicialRef: inputTituloRef,
+  });
+
   // Sincronizar título sugerido y contacto inicial al abrir
   useEffect(() => {
     if (abierto) {
@@ -86,8 +94,13 @@ export function ModalGuardarCotizacion({
       aria-modal="true"
       aria-labelledby="titulo-modal-guardar-cotizacion"
       className="animate-in fade-in fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs duration-200"
+      onClick={alCerrar}
     >
-      <div className="relative w-full max-w-lg overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-2xl dark:border-neutral-800 dark:bg-neutral-900">
+      <div
+        ref={contenedorRef}
+        onClick={(e) => e.stopPropagation()}
+        className="relative w-full max-w-lg overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-2xl dark:border-neutral-800 dark:bg-neutral-900"
+      >
         {/* Cabecera */}
         <div className="flex items-center justify-between border-b border-neutral-100 px-6 py-4 dark:border-neutral-800">
           <div className="flex items-center gap-2.5">
@@ -125,10 +138,11 @@ export function ModalGuardarCotizacion({
           }}
           className="space-y-4 p-6 text-xs"
         >
-          {/* Alertas de error */}
+          {/* Alertas de error con aria-live */}
           {(error || errorLocal) && (
             <div
               role="alert"
+              aria-live="assertive"
               className="flex items-start gap-2.5 rounded-xl border border-rose-200 bg-rose-50 p-3.5 text-rose-800 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-300"
             >
               <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
@@ -155,6 +169,7 @@ export function ModalGuardarCotizacion({
               Título descriptivo *
             </label>
             <input
+              ref={inputTituloRef}
               id="input-titulo-cotizacion"
               type="text"
               value={titulo}
