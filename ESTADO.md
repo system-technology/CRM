@@ -6,7 +6,7 @@
 
 | Campo | Valor |
 |---|---|
-| Última actualización | 2026-10-20 (hasta v0.37.1) |
+| Última actualización | 2026-10-20 (hasta el ADR-0012: proveedor de correo) |
 | Actualizado por | Claude Opus 5.5 (`integrador`) |
 | Fase | **Rebanada vertical de paquetes, en construcción** |
 | Avance de la fase | Cotizador de punta a punta. **La cotización es la suma de sus tarifas y el precio «desde» es uno que el comprador puede pagar (v0.19.0).** Apretón de manos del webhook vivo. Bandeja web en construcción |
@@ -1194,7 +1194,7 @@ Registro: [`docs/_integraciones/2026-10-20-v0.35.0.md`](docs/_integraciones/2026
 | Cola | Dueño | Por qué no bloquea |
 |---|---|---|
 | ~~Antes del adaptador de correo de producción: límite de OTP por correo~~ | `backend` | **Cerrado en v0.37.1**: por IP da 429; por correo (3 cada 15 min) da 200 sin enviar, igual que un correo inexistente. Los contadores van en Redis con TTL y la clave es un HMAC |
-| **Antes del adaptador de correo de producción: el ADR del proveedor de correo** (R7, y la regla de no integrar servicios externos sin ADR ni puerto) | `arquitecto` | El puerto ya existe y el adaptador es un TODO |
+| ~~Antes del adaptador de correo de producción: el ADR del proveedor de correo~~ | `arquitecto` | **Cerrado: ADR-0012** (Postmark, con dominio técnico neutro). **En curso:** el adaptador `CorreoPostmark` (`backend`) |
 
 ## Integración del 2026-10-20 — v0.36.0: la bandeja en vivo con Socket.IO
 
@@ -1285,4 +1285,22 @@ Estáticas en local, en verde. Registro: [`docs/_integraciones/2026-10-20-v0.37.
 `limite-otp-redis.e2e-spec` corre contra el Redis real del CI y pasa 3 de 3, sin «SALTADA». Prueba el 429 por IP, el corte silencioso por
 correo y que la clave sea un HMAC con TTL. Además, `SOCKET_REVALIDACION_MAX_FALLOS=3` ya está en `.env.example`. Compuerta: CI **8/8**,
 https://github.com/Alfavear/CRM/actions/runs/39367641187, sobre la punta, que contiene `main`. Se cierran las dos colas de la v0.37.1.
+
+## Integración del 2026-10-20 — ADR-0012, proveedor de correo, sin etiqueta
+
+`docs/adr-0012-proveedor-de-correo` @ `9b8eeb5` entra en `main` (`785a189`). Trae el ADR-0012 (**Postmark**), su fila en `docs/README.md` y la
+bitácora. Es solo documentación y no toca `CLAUDE.md`: no lleva etiqueta. `format:check` está limpio.
+
+- **`auditor-seguridad`:** ACEPTAR CON CAMBIOS, ya incorporados en el ADR. La invitación caduca a las 72 h. Postmark con MFA y retención
+  mínima. `devops` rota el token. En los registros, solo el `ErrorCode`. El futuro webhook, con autenticación básica.
+- **El propietario lo aceptó** («Acepto Postmark», «Un dominio técnico neutro»), según consta en la bitácora del 2026-10-20.
+- **En curso:** el adaptador `CorreoPostmark` (`backend`).
+
+**Para el usuario, los pasos del ADR-0012, en orden:**
+
+1. Comprar el **dominio técnico neutro**.
+2. Crear la cuenta de **Postmark con MFA**.
+3. Publicar en el DNS los registros **DKIM**, **Return-Path** y **DMARC**.
+4. Pasar el token de Postmark a `devops`, por el gestor de secretos y nunca por el chat.
+5. Consultar al **abogado** por la SIC: el correo transaccional y el tratamiento de datos (Ley 1581).
 
