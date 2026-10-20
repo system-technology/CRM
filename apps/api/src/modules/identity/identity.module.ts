@@ -4,6 +4,20 @@ import { CambiarAgenciaActiva } from './application/cambiar-agencia-activa.use-c
 import { ResolverAcceso } from './application/resolver-acceso.use-case.js';
 import { ObtenerSesionActual } from './application/sesion-actual.use-case.js';
 import { PuertoAgencias, PuertoMembresias, PuertoSesiones } from './domain/puertos.js';
+import {
+  PuertoIdentidades,
+  PuertoInvitaciones,
+  PuertoMiembros,
+} from './domain/puertos-de-miembros.js';
+import { AceptarInvitacionUseCase } from './application/aceptar-invitacion.use-case.js';
+import { InvitarMiembroUseCase } from './application/invitar-miembro.use-case.js';
+import { IdentidadesPrisma } from './infrastructure/identidades.prisma.js';
+import { InvitacionesPrisma } from './infrastructure/invitaciones.prisma.js';
+import { MiembrosPrisma } from './infrastructure/miembros.prisma.js';
+import {
+  AceptarInvitacionController,
+  InvitacionesController,
+} from './interface/invitaciones.controller.js';
 import { AgenciasPrisma } from './infrastructure/agencias.prisma.js';
 import { proveedorDeAuth } from './infrastructure/auth.provider.js';
 import { MembresiasPrisma } from './infrastructure/membresias.prisma.js';
@@ -19,17 +33,22 @@ import { AuthController } from './interface/auth.controller.js';
  * pide igual.
  */
 @Module({
-  controllers: [AuthController],
+  controllers: [AuthController, InvitacionesController, AceptarInvitacionController],
   providers: [
     PrismaIdentidadService,
     proveedorDeAuth,
     ResolverAcceso,
     ObtenerSesionActual,
     CambiarAgenciaActiva,
+    InvitarMiembroUseCase,
+    AceptarInvitacionUseCase,
     { provide: ResolutorDeAcceso, useExisting: ResolverAcceso },
     { provide: PuertoSesiones, useClass: SesionesBetterAuth },
     { provide: PuertoMembresias, useClass: MembresiasPrisma },
     { provide: PuertoAgencias, useClass: AgenciasPrisma },
+    { provide: PuertoInvitaciones, useClass: InvitacionesPrisma },
+    { provide: PuertoIdentidades, useClass: IdentidadesPrisma },
+    { provide: PuertoMiembros, useClass: MiembrosPrisma },
   ],
   exports: [ResolutorDeAcceso],
 })

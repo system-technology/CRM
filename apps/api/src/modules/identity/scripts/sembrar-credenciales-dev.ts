@@ -53,6 +53,13 @@ async function principal(): Promise<void> {
         update: { hashContrasena: hash },
         create: { identidadId: identidad.id, proveedor: 'credential', hashContrasena: hash },
       });
+      // Verificada: el código por correo, al iniciar sesión con una identidad SIN verificar, le
+      // borra la contraseña y las sesiones (cuenta «sin probar»). Toda identidad creada por un
+      // script de plataforma debe nacer verificada.
+      await prisma.identidad.update({
+        where: { id: identidad.id },
+        data: { correoVerificado: true },
+      });
       console.log(`  contraseña puesta: ${identidad.correo}`);
     }
     if (identidades.length === 0)

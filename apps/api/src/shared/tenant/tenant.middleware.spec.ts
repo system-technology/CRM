@@ -138,12 +138,15 @@ describe('la cabecera de desarrollo', () => {
 });
 
 describe('rutas sin tenant', () => {
-  it('las cuatro rutas de autenticación van por coincidencia EXACTA', () => {
+  it('las rutas de autenticación sin tenant van por coincidencia EXACTA', () => {
     for (const r of [
       '/api/v1/auth/sign-in/email',
       '/api/v1/auth/sign-out',
       '/api/v1/auth/session',
       '/api/v1/auth/tenant-activo',
+      '/api/v1/auth/otp/enviar',
+      '/api/v1/auth/otp/iniciar-sesion',
+      '/api/v1/auth/invitaciones/aceptar',
     ]) {
       expect(esRutaSinTenant(r), r).toBe(true);
     }
@@ -160,6 +163,9 @@ describe('rutas sin tenant', () => {
       '/api/v1/auth/sign-in/email/',
       '/api/v1/auth/SIGN-OUT',
       '/api/v1/auth/session%2F..%2Fx',
+      '/api/v1/auth/email-otp/verify-email',
+      '/api/v1/auth/invitaciones/aceptar/x',
+      '/api/v1/identidad/invitaciones',
     ]) {
       expect(esRutaSinTenant(r), r).toBe(false);
     }

@@ -4,11 +4,10 @@
  * Cada opción de abajo es una decisión del ADR o una condición del auditor de seguridad, y el
  * comentario dice cuál. **Lo que NO está aquí también es una decisión:**
  *
- *   · Ningún plugin. No se usa *Organization* (ADR-0011 §4: sus tablas serían globales) ni
- *     *Email OTP* todavía (depende del adaptador de correo de producción, que no existe). Cuando
- *     se añada, DEBE llevar `storeOTP: 'hashed'`: es parte de la condición del auditor y hoy no
- *     hay OTP que guardar.
- *   · No se monta `auth.handler` como ruta abierta. `identity` expone solo las cuatro rutas
+
+ *   · Un solo plugin: *Email OTP*, con `storeOTP: 'hashed'` (condición del auditor). No se usa
+ *     *Organization* (ADR-0011 §4: sus tablas serían globales).
+ *   · No se monta `auth.handler` como ruta abierta. `identity` expone solo sus rutas
  *     del contrato (ver `auth.controller.ts`); el resto de la superficie de Better Auth
  *     (listar sesiones, cambiar correo, restablecer contraseña…) no es alcanzable.
  *
@@ -19,6 +18,8 @@
  */
 import { betterAuth } from 'better-auth';
 import { APIError } from 'better-auth/api';
+import type { Auth } from 'better-auth/types';
+import { emailOTP } from 'better-auth/plugins/email-otp';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
 import type { PrismaClient } from '@prisma/client';
 import { conTokenDeSesionHasheado } from './adaptador-con-token-hasheado.js';
@@ -36,7 +37,15 @@ export interface OpcionesDeAuth {
   sesionDuraSegundos?: number;
   /** Cada cuánto se renueva la fecha de expiración mientras se usa, en segundos. */
   sesionSeRenuevaCadaSegundos?: number;
+  /**
+   * Entrega un código de un solo uso. Encola el correo (R5): NO lo envía. No debe lanzar ni
+   * hacer esperar según el correo exista o no, para no revelarlo; este módulo no la espera.
+   */
+  enviarCodigo: (correo: string, codigo: string) => Promise<void>;
 }
+
+/** Longitud, vigencia e intentos del código por correo. Corto y de pocos intentos a propósito. */
+export const CODIGO_DE_CORREO = { longitud: 6, vigenciaSegundos: 5 * 60, intentos: 3 } as const;
 
 /** Cuántos intentos de inicio de sesión por minuto y dirección IP. */
 export const INTENTOS_DE_INICIO_POR_MINUTO = 5;
@@ -55,11 +64,11 @@ export function leerSecretoDeAutenticacion(entorno: Record<string, string | unde
   return secreto;
 }
 
-export function crearAuth(opciones: OpcionesDeAuth) {
+export function crearAuth(opciones: OpcionesDeAuth): Auth {
   const { prisma } = opciones;
   const base = prismaAdapter(prisma, { provider: 'postgresql' });
 
-  return betterAuth({
+  const auth = betterAuth({
     appName: 'viajapro',
     secret: opciones.secreto,
     baseURL: opciones.baseUrl,
@@ -134,6 +143,28 @@ export function crearAuth(opciones: OpcionesDeAuth) {
     },
 
     // --- Acceso ----------------------------------------------------------------------------
+    // Código de un solo uso por correo (ADR-0011 §5), solo para INICIAR SESIÓN.
+    //   · `storeOTP: 'hashed'`: el código se guarda hasheado (condición del auditor, bloqueante).
+    //   · `disableSignUp`: un código nunca crea una identidad; solo se entra por invitación.
+    //   · Caduca en 5 minutos y se invalida a los 3 intentos fallidos.
+    // Las demás rutas del plugin (verificar correo, restablecer contraseña, cambiar correo) no son
+    // alcanzables: `auth.controller.ts` solo expone las dos que necesita.
+    plugins: [
+      emailOTP({
+        otpLength: CODIGO_DE_CORREO.longitud,
+        expiresIn: CODIGO_DE_CORREO.vigenciaSegundos,
+        allowedAttempts: CODIGO_DE_CORREO.intentos,
+        storeOTP: 'hashed',
+        disableSignUp: true,
+        sendVerificationOTP: ({ email, otp }) => {
+          // Sin `await` ni errores hacia fuera: tardar o fallar distinto según el correo existiera
+          // revelaría quién tiene cuenta. El plugin ni siquiera llama aquí si no existe.
+          void opciones.enviarCodigo(email, otp).catch(() => undefined);
+          return Promise.resolve();
+        },
+      }),
+    ],
+
     emailAndPassword: {
       enabled: true,
       // Solo se entra por invitación o por script de plataforma (ADR-0011): no hay registro.
@@ -166,6 +197,8 @@ export function crearAuth(opciones: OpcionesDeAuth) {
       max: 100,
       customRules: {
         '/sign-in/email': { window: 60, max: INTENTOS_DE_INICIO_POR_MINUTO },
+        '/sign-in/email-otp': { window: 60, max: INTENTOS_DE_INICIO_POR_MINUTO },
+        '/email-otp/send-verification-otp': { window: 60, max: 3 },
       },
     },
 
@@ -198,6 +231,8 @@ export function crearAuth(opciones: OpcionesDeAuth) {
       },
     },
   });
+  // Anotación explícita: el tipo inferido arrastra tipos internos de zod 4 que no son portables.
+  return auth as unknown as Auth;
 }
 
-export type AuthDeViajaPro = ReturnType<typeof crearAuth>;
+export type AuthDeViajaPro = Auth;

@@ -19,7 +19,10 @@
 import { Body, Controller, Get, HttpCode, Inject, Post, Req, Res } from '@nestjs/common';
 import {
   CambiarAgenciaActiva as CambiarAgenciaActivaContrato,
+  EnviarCodigo,
   IniciarSesion,
+  IniciarSesionConCodigo,
+  type RespuestaOk,
   SesionActual,
 } from '@viajapro/contracts';
 import type { Request as PeticionExpress, Response as RespuestaExpress } from 'express';
@@ -49,25 +52,59 @@ export class AuthController {
     @Req() req: PeticionExpress,
     @Res({ passthrough: true }) res: RespuestaExpress,
   ): Promise<SesionActual> {
-    // Un navegador siempre manda `Origin` en un POST. Si viene y no es la web, se rechaza
-    // aunque aún no haya cookie: Better Auth solo lo exige a quien ya trae una.
-    const origen = req.headers.origin;
-    if (origen !== undefined && !origenEsDeConfianza(origen, origenesDeConfianza(process.env))) {
-      throw errorDeAcceso('ORIGEN_NO_CONFIABLE');
-    }
+    this.exigirOrigenSiVino(req);
     const respuesta = await this.llamarABetterAuth(req, '/sign-in/email', {
       email: body.correo,
       password: body.contrasena,
     });
     this.rechazarSiFallo(respuesta);
+    return this.abrirSesion(respuesta, res);
+  }
 
-    // La cookie de la sesión recién creada, para resolverla con el mismo caso de uso que
-    // cualquier otra petición (y que así revalide la agencia activa, si ya hay una).
-    const cookiesNuevas = respuesta.headers.getSetCookie();
-    const { sesion } = await this.sesionActual.ejecutar(cabeceraDeCookies(cookiesNuevas));
+  /**
+   * Pide un código de un solo uso por correo. **Responde `{ ok: true }` exista o no el correo**:
+   * el plugin no envía nada si no hay identidad, y esta ruta no lo distingue ni en el cuerpo ni
+   * en el estado. El envío es una tarea encolada (R5), no algo que esta petición espere.
+   */
+  @Post('otp/enviar')
+  @HttpCode(200)
+  async enviarCodigo(
+    @Body(new ZodValidationPipe(EnviarCodigo)) body: EnviarCodigo,
+    @Req() req: PeticionExpress,
+  ): Promise<RespuestaOk> {
+    this.exigirOrigenSiVino(req);
+    const respuesta = await this.llamarABetterAuth(req, '/email-otp/send-verification-otp', {
+      email: body.correo,
+      type: 'sign-in',
+    });
+    if (respuesta.status === 429) throw errorDeAcceso('DEMASIADOS_INTENTOS');
+    if (respuesta.status >= 500) {
+      throw new Error(`Better Auth respondió ${respuesta.status} al pedir un código.`);
+    }
+    return { ok: true };
+  }
 
-    for (const c of cookiesNuevas) res.append('Set-Cookie', c);
-    return SesionActual.parse(sesion);
+  @Post('otp/iniciar-sesion')
+  @HttpCode(200)
+  async iniciarSesionConCodigo(
+    @Body(new ZodValidationPipe(IniciarSesionConCodigo)) body: IniciarSesionConCodigo,
+    @Req() req: PeticionExpress,
+    @Res({ passthrough: true }) res: RespuestaExpress,
+  ): Promise<SesionActual> {
+    this.exigirOrigenSiVino(req);
+    const respuesta = await this.llamarABetterAuth(req, '/sign-in/email-otp', {
+      email: body.correo,
+      otp: body.codigo,
+    });
+    if (!respuesta.ok) {
+      if (respuesta.status === 429) throw errorDeAcceso('DEMASIADOS_INTENTOS');
+      // Código erróneo, caducado, sin intentos, o sin identidad: el mismo error para todo.
+      if (respuesta.status >= 500) {
+        throw new Error(`Better Auth respondió ${respuesta.status} al validar un código.`);
+      }
+      throw errorDeAcceso('CODIGO_INVALIDO');
+    }
+    return this.abrirSesion(respuesta, res);
   }
 
   @Post('sign-out')
@@ -133,6 +170,29 @@ export class AuthController {
     return this.auth.handler(
       new Request(base, { method: 'POST', headers: cabeceras, body: JSON.stringify(cuerpo) }),
     );
+  }
+
+  /**
+   * Un navegador siempre manda `Origin` en un POST. Si viene y no es la web, se rechaza aunque
+   * aún no haya cookie: Better Auth solo lo exige a quien ya trae una.
+   */
+  private exigirOrigenSiVino(req: PeticionExpress): void {
+    const origen = req.headers.origin;
+    if (origen !== undefined && !origenEsDeConfianza(origen, origenesDeConfianza(process.env))) {
+      throw errorDeAcceso('ORIGEN_NO_CONFIABLE');
+    }
+  }
+
+  /**
+   * La cookie de la sesión recién creada se resuelve con el mismo caso de uso que cualquier otra
+   * petición (y que así revalide la agencia activa, si ya hay una). Si lo rechaza —agencia
+   * suspendida—, la cookie no se entrega.
+   */
+  private async abrirSesion(respuesta: RespuestaWeb, res: RespuestaExpress): Promise<SesionActual> {
+    const cookiesNuevas = respuesta.headers.getSetCookie();
+    const { sesion } = await this.sesionActual.ejecutar(cabeceraDeCookies(cookiesNuevas));
+    for (const c of cookiesNuevas) res.append('Set-Cookie', c);
+    return SesionActual.parse(sesion);
   }
 
   private rechazarSiFallo(respuesta: RespuestaWeb): void {

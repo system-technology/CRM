@@ -12,6 +12,7 @@ import { crearAuth, leerSecretoDeAutenticacion } from './crear-auth.js';
 function auth() {
   return crearAuth({
     prisma: {} as unknown as PrismaClient,
+    enviarCodigo: () => Promise.resolve(),
     secreto: 'x'.repeat(48),
     baseUrl: 'http://localhost:3333',
     origenesDeConfianza: ['http://localhost:3000'],
@@ -38,8 +39,8 @@ describe('configuración de Better Auth', () => {
     });
   });
 
-  it('no usa plugins (ni Organization ni Email OTP sin el adaptador de correo)', () => {
-    expect(Object.keys(opciones)).not.toContain('plugins');
+  it('usa solo el plugin de código por correo (ni Organization ni nada más)', () => {
+    expect((opciones.plugins ?? []).map((p) => p.id)).toEqual(['email-otp']);
   });
 
   it('los orígenes de confianza son los que se pasan, y nada más', () => {

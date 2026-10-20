@@ -116,5 +116,55 @@ export const CodigoDeErrorDeAcceso = z.enum([
   'SIN_MEMBRESIA',
   /** Le falta un permiso del catálogo. */
   'PERMISO_DENEGADO',
+  /** El código por correo no es válido, caducó o se agotaron sus intentos. */
+  'CODIGO_INVALIDO',
+  /** El token de invitación no existe, ya se usó o caducó. Mismo código en los tres casos. */
+  'INVITACION_INVALIDA',
 ]);
 export type CodigoDeErrorDeAcceso = z.infer<typeof CodigoDeErrorDeAcceso>;
+
+// =============================================================================
+// Invitaciones y código por correo — ADR-0011, rebanada 4
+//
+//   POST /api/v1/identidad/invitaciones       el dueño invita (permiso `usuarios.administrar`)
+//   POST /api/v1/auth/invitaciones/aceptar    la persona invitada acepta, SIN sesión
+//   POST /api/v1/auth/otp/enviar              pide un código de un solo uso por correo
+//   POST /api/v1/auth/otp/iniciar-sesion      inicia sesión con ese código
+//
+// **Ninguna respuesta revela si un correo ya existe** (en esta agencia, en otra o en ninguna):
+// invitar y pedir un código responden SIEMPRE lo mismo. El enlace de la invitación lo arma la
+// web: `<WEB_PUBLIC_URL>/aceptar-invitacion?token=<token>`.
+// =============================================================================
+
+/** Cuerpo de `POST /api/v1/identidad/invitaciones`. El rol es de la agencia de quien invita. */
+export const InvitarMiembro = z.object({
+  correo: z.string().trim().toLowerCase().email().max(255),
+  rolId: z.string().uuid(),
+});
+export type InvitarMiembro = z.infer<typeof InvitarMiembro>;
+
+/** Cuerpo de `POST /api/v1/auth/invitaciones/aceptar`. */
+export const AceptarInvitacion = z.object({
+  token: z.string().min(20).max(200),
+  nombre: z.string().trim().min(1).max(200),
+  /** Solo se usa si la identidad no existía. Una identidad existente conserva la suya. */
+  contrasena: z.string().min(12).max(128),
+});
+export type AceptarInvitacion = z.infer<typeof AceptarInvitacion>;
+
+/** Cuerpo de `POST /api/v1/auth/otp/enviar`. */
+export const EnviarCodigo = z.object({
+  correo: z.string().trim().toLowerCase().email().max(255),
+});
+export type EnviarCodigo = z.infer<typeof EnviarCodigo>;
+
+/** Cuerpo de `POST /api/v1/auth/otp/iniciar-sesion`. Responde con `SesionActual`. */
+export const IniciarSesionConCodigo = z.object({
+  correo: z.string().trim().toLowerCase().email().max(255),
+  codigo: z.string().regex(/^\d{6}$/, 'son seis dígitos'),
+});
+export type IniciarSesionConCodigo = z.infer<typeof IniciarSesionConCodigo>;
+
+/** La única respuesta de invitar, aceptar y pedir código: `{ ok: true }`. */
+export const RespuestaOk = z.object({ ok: z.literal(true) });
+export type RespuestaOk = z.infer<typeof RespuestaOk>;

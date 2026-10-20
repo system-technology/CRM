@@ -6,6 +6,7 @@
 import { Module } from '@nestjs/common';
 import { CrmPuertosModule } from './modules/crm/crm-puertos.module.js';
 import { InboxWorkerModule } from './modules/inbox/inbox-worker.module.js';
+import { NotificationsWorkerModule } from './modules/notifications/notifications-worker.module.js';
 
-@Module({ imports: [CrmPuertosModule, InboxWorkerModule] })
+@Module({ imports: [CrmPuertosModule, InboxWorkerModule, NotificationsWorkerModule] })
 export class WorkerModule {}

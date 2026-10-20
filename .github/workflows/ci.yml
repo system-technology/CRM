@@ -141,6 +141,7 @@ jobs:
             echo "WHATSAPP_WEBHOOK_VERIFY_TOKEN=$(openssl rand -hex 16)"
             # ADR-0011: firma las cookies de sesion de las pruebas. Nace y muere con el job.
             echo "BETTER_AUTH_SECRET=$(openssl rand -base64 48)"
+            echo "CORREO_PAYLOAD_KEY=$(openssl rand -base64 32)"
           } >> "$GITHUB_ENV"
 
       - name: Migraciones

@@ -37,15 +37,18 @@ import { ContextoTenant, type ContextoPeticion } from './contexto-tenant.js';
  *
  * **Coincidencia EXACTA para la autenticación.** Antes era todo el prefijo `/api/v1/auth/`, y
  * cualquier ruta que se añadiera ahí quedaba sin tenant sin que nadie lo decidiera. Ahora cada
- * ruta sin tenant es una línea de esta lista, y lo que no esté falla cerrado (401). Las cuatro
- * hacen su propia comprobación de sesión: iniciar sesión verifica la contraseña; las otras
- * tres leen la cookie por `identity`.
+ * ruta sin tenant es una línea de esta lista, y lo que no esté falla cerrado (401).
+ * Todas hacen su propia comprobación: iniciar sesión verifica la contraseña o el código, aceptar
+ * una invitación consume su token, y las demás leen la cookie por `identity`.
  */
 export const RUTAS_DE_AUTENTICACION_SIN_TENANT: ReadonlySet<string> = new Set([
   '/api/v1/auth/sign-in/email',
   '/api/v1/auth/sign-out',
   '/api/v1/auth/session',
   '/api/v1/auth/tenant-activo',
+  '/api/v1/auth/otp/enviar',
+  '/api/v1/auth/otp/iniciar-sesion',
+  '/api/v1/auth/invitaciones/aceptar',
 ]);
 
 const RUTAS_SIN_TENANT = [/^\/salud/, /^\/webhooks\//];
