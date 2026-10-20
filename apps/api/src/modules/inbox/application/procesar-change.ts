@@ -13,11 +13,12 @@
  * excliente, o de un número que nadie reconoce, no tiene finalidad (Ley 1581).
  */
 import { createHash } from 'node:crypto';
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import { claveDeEnrutamiento } from '../domain/clave-de-enrutamiento.js';
 import { contenidoDelCambio } from '../domain/contenido-del-cambio.js';
 import { abrirPayload, resolverClavePayload } from '../domain/payload-sellado.js';
 import { desglosarSobre } from '../domain/sobre-webhook.js';
+import { PuertoAvisoDeOutbox } from './puertos-de-eventos.js';
 import { type EnrutamientoResuelto, PuertoBandeja, PuertoStaging } from './puertos-de-proceso.js';
 
 export type ResultadoDeProceso =
@@ -40,6 +41,10 @@ export class ProcesarChange {
   constructor(
     @Inject(PuertoStaging) private readonly staging: PuertoStaging,
     @Inject(PuertoBandeja) private readonly bandeja: PuertoBandeja,
+    // La pista para el relay del outbox. Opcional: sin ella el barrido periódico igual lo publica.
+    @Optional()
+    @Inject(PuertoAvisoDeOutbox)
+    private readonly avisos?: PuertoAvisoDeOutbox,
   ) {}
 
   async ejecutar(
@@ -103,6 +108,10 @@ export class ProcesarChange {
     }
 
     await this.staging.cerrar(recepcionId, indice, 'PROCESADO');
+    // Los eventos ya están en el outbox (misma transacción que el mensaje): esto solo avisa al
+    // relay para que salgan en décimas de segundo. Sin tenant de por medio en el aviso: es el
+    // que resolvió el directorio, nunca el que dice el contenido.
+    if (nuevos > 0) this.avisos?.avisar(ruta.tenantId);
     return { estado: 'PROCESADO', mensajesNuevos: nuevos, mensajesRepetidos: repetidos };
   }
 

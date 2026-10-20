@@ -585,6 +585,65 @@ describe('código por correo', () => {
     expect(rows[0]?.segundos).toBeLessThanOrEqual(300);
   });
 
+  it('el límite por correo no se nota: el cuarto pedido responde igual que un correo inexistente y no envía', async () => {
+    const anterior = process.env['OTP_ENVIOS_POR_CORREO'];
+    process.env['OTP_ENVIOS_POR_CORREO'] = '3';
+    try {
+      // Un buzón sin uso previo: el contador del resto de las pruebas no cuenta.
+      const existente = correo('limite');
+      creados.push(existente);
+      await admin.identidad.create({
+        data: { correo: existente, nombre: 'Límite', correoVerificado: true },
+      });
+      const fantasma = correo('fantasma-limite');
+      const antes = correoDePrueba.para(existente).length;
+      const respuestas = [];
+      for (let i = 0; i < 4; i += 1) {
+        // IP distinta cada vez: aquí se prueba el límite por correo, no el de IP.
+        respuestas.push(
+          await new Navegador().llamar('POST', '/api/v1/auth/otp/enviar', {
+            cuerpo: { correo: existente },
+          }),
+        );
+      }
+      expect(respuestas.map((r) => r.estado)).toEqual([200, 200, 200, 200]);
+      expect(respuestas.map((r) => r.json)).toEqual(Array(4).fill({ ok: true }));
+      // Solo salieron 3: el cuarto se descartó sin avisar.
+      expect(correoDePrueba.para(existente).length - antes).toBe(3);
+
+      // Lo que ve quien pide un correo que no existe es lo mismo, byte a byte.
+      const f = await new Navegador().llamar('POST', '/api/v1/auth/otp/enviar', {
+        cuerpo: { correo: fantasma },
+      });
+      expect(f.estado).toBe(respuestas[3]?.estado);
+      expect(f.json).toEqual(respuestas[3]?.json);
+    } finally {
+      if (anterior === undefined) delete process.env['OTP_ENVIOS_POR_CORREO'];
+      else process.env['OTP_ENVIOS_POR_CORREO'] = anterior;
+    }
+  });
+
+  it('el límite por IP responde 429, sin importar el correo', async () => {
+    const anterior = process.env['OTP_ENVIOS_POR_IP'];
+    process.env['OTP_ENVIOS_POR_IP'] = '2';
+    try {
+      const nav = new Navegador();
+      const estados: number[] = [];
+      for (let i = 0; i < 3; i += 1) {
+        estados.push(
+          (
+            await nav.llamar('POST', '/api/v1/auth/otp/enviar', {
+              cuerpo: { correo: correo(`ip-${i}`) },
+            })
+          ).estado,
+        );
+      }
+      expect(estados).toEqual([200, 200, 429]);
+    } finally {
+      if (anterior === undefined) delete process.env['OTP_ENVIOS_POR_IP'];
+      else process.env['OTP_ENVIOS_POR_IP'] = anterior;
+    }
+  });
   it('pedir códigos está limitado por dirección', async () => {
     const nav = new Navegador();
     const estados: number[] = [];

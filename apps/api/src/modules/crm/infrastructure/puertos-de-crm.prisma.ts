@@ -8,7 +8,9 @@ import { Injectable } from '@nestjs/common';
 import type { ClienteTenant } from '../../../shared/prisma/prisma.service.js';
 import {
   type EntradaDeContacto,
+  type NotaDeConversacionLeida,
   PuertoContactos,
+  PuertoNotasDeConversacion,
   PuertoReferenciasDeCrm,
 } from '../../../shared/puertos/puertos-hacia-crm.js';
 
@@ -46,5 +48,56 @@ export class ReferenciasDeCrm extends PuertoReferenciasDeCrm {
       select: { id: true },
     });
     return o !== null;
+  }
+}
+
+@Injectable()
+export class NotasDeConversacionDeCrm extends PuertoNotasDeConversacion {
+  async crear(
+    tx: ClienteTenant,
+    e: {
+      tenantId: string;
+      conversacionId: string;
+      contactoId: string;
+      autorId: string | null;
+      texto: string;
+    },
+  ): Promise<{ id: string; escritaEn: Date }> {
+    return tx.notaInterna.create({
+      data: {
+        tenantId: e.tenantId,
+        contactoId: e.contactoId,
+        conversacionId: e.conversacionId,
+        autorId: e.autorId,
+        texto: e.texto,
+      },
+      select: { id: true, escritaEn: true },
+    });
+  }
+
+  async deLaConversacion(
+    tx: ClienteTenant,
+    tenantId: string,
+    conversacionId: string,
+  ): Promise<NotaDeConversacionLeida[]> {
+    const filas = await tx.notaInterna.findMany({
+      // El contrato exige autor: una nota de automatización (autor nulo) no cabe todavía.
+      where: { tenantId, conversacionId, eliminadaEn: null, autorId: { not: null } },
+      orderBy: [{ escritaEn: 'asc' }, { id: 'asc' }],
+      include: { autor: { select: { nombre: true } } },
+    });
+    return filas.flatMap((n) =>
+      n.autorId === null
+        ? []
+        : [
+            {
+              id: n.id,
+              texto: n.texto,
+              autorId: n.autorId,
+              autorNombre: n.autor?.nombre ?? '',
+              creadaEn: n.escritaEn,
+            },
+          ],
+    );
   }
 }

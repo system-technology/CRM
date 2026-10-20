@@ -6,7 +6,7 @@
 
 | Campo | Valor |
 |---|---|
-| Última actualización | 2026-10-20 (hasta v0.35.0: invitaciones y código por correo) |
+| Última actualización | 2026-10-20 (hasta v0.37.1) |
 | Actualizado por | Claude Opus 5.5 (`integrador`) |
 | Fase | **Rebanada vertical de paquetes, en construcción** |
 | Avance de la fase | Cotizador de punta a punta. **La cotización es la suma de sus tarifas y el precio «desde» es uno que el comprador puede pagar (v0.19.0).** Apretón de manos del webhook vivo. Bandeja web en construcción |
@@ -83,6 +83,7 @@ Qué hay, concretamente:
 | **Alta de la agencia cliente** | **No requiere verificación de Meta ni página web.** Sin verificar: conversaciones entrantes ilimitadas, 250 iniciadas/24h, 250 plantillas. Verificado 2026-10-07 | `docs/10-onboarding/01-requisitos-para-la-agencia.md` |
 | Alcance v1 | Los cuatro bloques siguen siendo el mapa del alcance total | `docs/01-producto/01-alcance-mvp.md` |
 | Diseño | Stitch para explorar; shadcn/ui en `packages/ui` para producir | `docs/01-producto/06-diseno-y-ux.md` |
+| **Visibilidad de conversaciones** | Sin `conversaciones.ver_todas`: las asignadas a uno + la cola común. Responder la primera vez asigna. Al reasignar, el anterior deja de verla. «Todos ven todo» = dar `ver_todas` al rol asesor. Criterios CA1-CA17 | `docs/01-producto/12-visibilidad-de-conversaciones.md` |
 | Norte de producto | El brochure fija la dirección: qué módulos, qué flujo, qué tono | `docs/00-vision/05-norte-del-producto.md` |
 
 ### Lo comercial NO está decidido
@@ -1000,7 +1001,7 @@ Registro: [`docs/_integraciones/2026-10-19-v0.29.0.md`](docs/_integraciones/2026
 | Cola | Dueño | Por qué no bloquea |
 |---|---|---|
 | `reportes/page.tsx` muestra **«Costo Neto»** y **«Margen Comercial»** con una etiqueta «Solo Dueño», pero sin control de rol | Antigravity (**0c.27**) | Hoy no hay roles. Va con «Neto:» del catálogo y el bloque de política |
-| `err.message` se pinta tal cual en tres pantallas | Antigravity (**0c.30**) | Hoy los errores vienen de mocks y de la API propia; con datos reales podría filtrar detalles internos |
+| ~~`err.message` se pinta tal cual~~ | Antigravity (0c.30) | **Cerrado en v0.36.1**: `clasificarError` mira primero el código de dominio |
 | La maqueta de ingreso deja su formulario y las credenciales de ejemplo en el chunk de cliente aunque el interruptor esté apagado | Antigravity (con la rebanada 3 del ADR-0011) | Son ficticias y no autentican nada. Se va al sustituir la maqueta por el ingreso real |
 
 ## Integración del 2026-10-19 (vigesimoprimera) — v0.30.0: el relay de barrido
@@ -1072,7 +1073,7 @@ local en verde, y la web pasa 171 pruebas.
 
 | Cola | Dueño | Por qué no bloquea |
 |---|---|---|
-| **Si la API falla, el listado de cotizaciones muestra el mock sin avisar**: el asesor vería datos inventados como si fueran suyos. El mismo `catch → mock` puede estar en `crm-api.ts` e `inbox-api.ts`, que también importan mocks: que Antigravity lo confirme pantalla por pantalla | Antigravity (**0c.34**, prioritaria) | No hay nada desplegado. **Bloquea el primer despliegue** |
+| ~~Si la API falla, el listado cae al mock sin avisar~~ | Antigravity (0c.34) | **Cerrado en v0.36.1**: con la API real, un fallo es un error en `cotizaciones-api`, `crm-api` e `inbox-api`, con pruebas del 200 malformado |
 
 ## Integración del 2026-10-19 (vigesimosexta) — v0.32.0: los huecos del disparador y el tope del barrido
 
@@ -1152,7 +1153,7 @@ Registro: [`docs/_integraciones/2026-10-20-v0.34.0.md`](docs/_integraciones/2026
 
 | Cola | Dueño | Por qué no bloquea |
 |---|---|---|
-| **Socket.IO no existe en la API.** Sus cuatro `it.todo` (revalidar la sesión del socket cada 60 s) **bloquean la rama que lo cree**: no entra sin convertirlos en pruebas | `backend` | Hoy no hay socket que revalidar |
+| ~~Socket.IO no existe en la API, y sus cuatro `it.todo`~~ | `backend` | **Cerrado en v0.36.0**: el gateway existe y los cuatro `it.todo` son pruebas reales |
 | El OTP, cuando entre (rebanada 4), con `storeOTP: 'hashed'` | `backend` | Hoy no hay OTP |
 
 ## Integración del 2026-10-20 — v0.34.1: el cotizador de paquetes sin neto ni margen (R10)
@@ -1192,6 +1193,96 @@ Registro: [`docs/_integraciones/2026-10-20-v0.35.0.md`](docs/_integraciones/2026
 
 | Cola | Dueño | Por qué no bloquea |
 |---|---|---|
-| **Antes del adaptador de correo de producción:** un límite de OTP por dirección de correo, para que nadie use el envío para inundar un buzón ajeno | `backend` | En local el correo va a Mailpit; no sale nada a internet |
+| ~~Antes del adaptador de correo de producción: límite de OTP por correo~~ | `backend` | **Cerrado en v0.37.1**: por IP da 429; por correo (3 cada 15 min) da 200 sin enviar, igual que un correo inexistente. Los contadores van en Redis con TTL y la clave es un HMAC |
 | **Antes del adaptador de correo de producción: el ADR del proveedor de correo** (R7, y la regla de no integrar servicios externos sin ADR ni puerto) | `arquitecto` | El puerto ya existe y el adaptador es un TODO |
+
+## Integración del 2026-10-20 — v0.36.0: la bandeja en vivo con Socket.IO
+
+`feat/inbox-tiempo-real` @ `00aa61f` entra en `main` (`465bfd5`), etiquetada **v0.36.0**. Trae:
+
+- el gateway, que repite los pasos 3 y 4 del ADR-0011 en el handshake y cada 60 s;
+- salas asignadas por el servidor;
+- el relay del outbox por Redis pub/sub, que no lleva el texto: la API lee el mensaje bajo RLS;
+- los cuatro `it.todo` de la rebanada 2, convertidos en pruebas.
+
+Dependencias nuevas: `socket.io`, y `socket.io-client` solo para pruebas. `auditor-seguridad`: ACEPTAR, sin bloqueantes de aislamiento. Un
+evento forjado no lee nada de otra agencia (lo cubre la e2e), y una inyección en Redis solo puede causar denegación de servicio. Compuerta:
+CI **8/8** sobre la punta, que contiene `main`: https://github.com/Alfavear/CRM/actions/runs/39358324178. En el log aparece
+`inbox-tiempo-real.e2e-spec` con 19 pruebas en verde, ejecutadas contra Redis real. Estáticas en local, en verde.
+Registro: [`docs/_integraciones/2026-10-20-v0.36.0.md`](docs/_integraciones/2026-10-20-v0.36.0.md).
+
+| Cola | Dueño | Por qué no bloquea |
+|---|---|---|
+| ~~ANTES de que la piloto use asesores: un asesor sin `conversaciones.ver_todas` recibía el texto de todas las conversaciones~~ | `dueno-de-producto`, `backend` | **Cerrado en v0.37.0**: la regla de `docs/01-producto/12-visibilidad-de-conversaciones.md` se aplica en la REST y en el socket. **Ya se puede dar de alta al primer asesor** |
+| ~~Si la revalidación falla por infraestructura, el socket sigue abierto~~ | `backend` | **Cerrado en v0.37.1**: tres fallos seguidos lo cierran (`SOCKET_REVALIDACION_MAX_FALLOS`), y una sesión inválida, al momento |
+| El primer barrido tras desplegar emitirá los **eventos viejos** del outbox | `backend` | No hay nada desplegado. Antes del primer despliegue: marcar los eventos viejos como emitidos, o filtrar por antigüedad |
+
+## Integración del 2026-10-20 — v0.36.1: la web no cae al mock ni pinta err.message (0c.34, 0c.30, 0c.31)
+
+`feat/web-0c30-0c31-0c34` @ `bebc87c` entra en `main` (`98b267d`), etiquetada **v0.36.1**. Son 17 archivos de `apps/web`, idénticos a `0bededa`:
+
+- **0c.34**: con la API real encendida, un fallo es un error, nunca datos simulados. Afecta a `cotizaciones-api`, `crm-api` e `inbox-api`, y
+  hay pruebas del 200 malformado. **Se cierra el bloqueante del primer despliegue.**
+- **0c.30**: ya no se pinta `err.message` tal cual.
+- **0c.31**: pruebas accesibles de los componentes de estado.
+
+**Los tres archivos que tocó el backend en v0.34.1:** `ficha-detalle-paquete.tsx` y `catalogo-logica.spec.ts` quedan igual que en `main`.
+`cotizador-logica.ts` solo cambia por la 0c.30 (`formatearErrorAmigable` en lugar de `error.message`), y las líneas de la v0.34.1 siguen ahí.
+Compuerta: CI **8/8**, https://github.com/Alfavear/CRM/actions/runs/39359410509. Estáticas en local, en verde. Web, **218** pruebas.
+
+## Integración del 2026-10-20 — v0.36.2: teclado y foco en los modales (0c.32)
+
+`feat/web-0c32-foco` @ `aedec34` entra en `main` (`f433eb5`), etiquetada **v0.36.2**. Son 8 archivos de `apps/web`, idénticos a los de `44e8a07`.
+El hook `use-foco-modal` atrapa el foco, cierra con Escape y devuelve el foco al salir en los cuatro modales. Las pruebas usan teclas reales.
+Compuerta: CI **8/8**, https://github.com/Alfavear/CRM/actions/runs/39361825426. Estáticas en local, en verde. Web: **227** pruebas.
+Registro: [`docs/_integraciones/2026-10-20-v0.36.2.md`](docs/_integraciones/2026-10-20-v0.36.2.md).
+
+| Cola | Dueño | Por qué no bloquea |
+|---|---|---|
+| `alCerrar` está entre las dependencias del hook: si el padre se vuelve a renderizar, podría robar el foco. Sin reproducir | Antigravity | Menor. Aún no se ha visto pasar |
+
+## Integración del 2026-10-20 — v0.37.0: visibilidad de conversaciones por asignación
+
+`feat/inbox-visibilidad` @ `c76b1d8` entra en `main` (`6032ae3`), etiquetada **v0.37.0**. Trae:
+
+- **La decisión del `dueno-de-producto`**, `docs/01-producto/12-visibilidad-de-conversaciones.md`, con su glosario. Vino dentro de esta rama.
+  Su fila en §2 de `ESTADO.md` se fusionó sin conflicto.
+- **La regla:** sin `ver_todas`, cada asesor ve las conversaciones que tiene asignadas y las de la cola común. Hay una e2e por cada criterio,
+  del CA1 al CA17.
+- **Rutas REST nuevas:** `api/v1/conversaciones` y `POST /identidad/miembros/:id/baja`.
+- **El socket** emite a `usuario:<id>` y añade `CONVERSACION_RETIRADA`. Es un cambio de contrato.
+
+`auditor-seguridad` aceptó con un bloqueante, ya corregido: con `usuarios.administrar` se podía dar de baja a la única dueña. Ahora devuelve
+403 si faltan permisos (usa `permisoQueFalta`, compartida con las invitaciones) y 409 `NO_PUEDE_DEJAR_SIN_DUENO`. Las dos tienen su e2e.
+
+Compuerta: CI **8/8** sobre el árbol fusionado, porque la rama iba 3 commits por detrás:
+https://github.com/Alfavear/CRM/actions/runs/39362743786. Corrieron `inbox-visibilidad.e2e-spec` (31 pruebas), la de su caso de uso (8) y la
+de la regla (12). Estáticas en local, en verde. Registro: [`docs/_integraciones/2026-10-20-v0.37.0.md`](docs/_integraciones/2026-10-20-v0.37.0.md).
+
+| Cola | Dueño | Por qué no bloquea |
+|---|---|---|
+| **La bandeja web tiene que tratar `CONVERSACION_RETIRADA`** y pasarse a la REST nueva `api/v1/conversaciones` | Antigravity | Hoy la web usa mocks y el socket anterior. Sin esto, al asesor no se le quita de la pantalla la conversación reasignada |
+
+## Integración del 2026-10-20 — v0.37.1: endurecimiento de identity
+
+`fix/identity-endurecimiento` @ `b8ce6c8` entra en `main` (`e455d93`), etiquetada **v0.37.1**. Cierra las dos colas del auditor:
+
+1. **El socket.** «No pude comprobar» cuenta como fallo, y a los tres seguidos se cierra (`SOCKET_REVALIDACION_MAX_FALLOS`). Una sesión
+   inválida lo cierra al momento.
+2. **El límite de OTP.** Por IP (`req.ip`) devuelve 429. Por correo devuelve 200 sin enviar nada, para no revelar si el correo existe.
+
+No hay migraciones. Compuerta: CI **8/8** sobre la punta, que contiene `main`: https://github.com/Alfavear/CRM/actions/runs/39364001732.
+Estáticas en local, en verde. Registro: [`docs/_integraciones/2026-10-20-v0.37.1.md`](docs/_integraciones/2026-10-20-v0.37.1.md).
+
+| Cola | Dueño | Por qué no bloquea |
+|---|---|---|
+| ~~El adaptador Redis de los contadores de OTP solo se probó con un doble~~ | `backend` | **Cerrado** (`ab5b3cf`): `limite-otp-redis.e2e-spec` corre contra el Redis del CI, 3/3 |
+| ~~`SOCKET_REVALIDACION_MAX_FALLOS` sin línea en `.env.example`~~ | `backend` | **Cerrado** (`ab5b3cf`) |
+
+## Integración del 2026-10-20 — `test/identity-limite-otp-redis-real`, sin etiqueta
+
+`test/identity-limite-otp-redis-real` @ `f601168` entra en `main` (`ab5b3cf`). Solo trae pruebas y la plantilla, así que no lleva etiqueta. La e2e
+`limite-otp-redis.e2e-spec` corre contra el Redis real del CI y pasa 3 de 3, sin «SALTADA». Prueba el 429 por IP, el corte silencioso por
+correo y que la clave sea un HMAC con TTL. Además, `SOCKET_REVALIDACION_MAX_FALLOS=3` ya está en `.env.example`. Compuerta: CI **8/8**,
+https://github.com/Alfavear/CRM/actions/runs/39367641187, sobre la punta, que contiene `main`. Se cierran las dos colas de la v0.37.1.
 
