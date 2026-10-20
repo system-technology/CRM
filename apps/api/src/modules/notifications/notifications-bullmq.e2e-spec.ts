@@ -9,7 +9,7 @@
  */
 import 'reflect-metadata';
 
-import { randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { Queue } from 'bullmq';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
@@ -30,6 +30,7 @@ if (!CORRE) {
   );
 }
 
+const CLAVE = randomBytes(32);
 const NOMBRE = `correo-saliente-prueba-${randomUUID()}`;
 const dormir = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 
@@ -41,10 +42,11 @@ describe.skipIf(!CORRE)('cola de correo con Redis real', () => {
   let conexion: ReturnType<typeof crearConexionDeRedis>;
 
   beforeAll(() => {
-    productor = new ColaDeCorreoBullmq(URL_REDIS, NOMBRE);
+    productor = new ColaDeCorreoBullmq(URL_REDIS, CLAVE, NOMBRE);
     correo = new CorreoEnMemoria();
     consumidor = new ConsumidorDeCorreo(correo);
     consumidor.nombreDeCola = NOMBRE;
+    consumidor.clave = CLAVE;
     conexion = crearConexionDeRedis(URL_REDIS);
     inspector = new Queue(NOMBRE, { connection: conexion });
   });
@@ -62,7 +64,11 @@ describe.skipIf(!CORRE)('cola de correo con Redis real', () => {
     await productor.encolar(mensaje, 'prueba-uno');
     await productor.encolar(mensaje, 'prueba-uno'); // reintento: no duplica
 
-    expect(await inspector.getJob('prueba-uno')).toBeTruthy();
+    const guardado = await inspector.getJob('prueba-uno');
+    expect(guardado).toBeTruthy();
+    // En Redis va CIFRADO: ni el código ni el destinatario aparecen.
+    expect(JSON.stringify(guardado?.data)).not.toContain('654321');
+    expect(JSON.stringify(guardado?.data)).not.toContain('cola@fixture.test');
     consumidor.onModuleInit();
 
     for (let i = 0; i < 50 && correo.enviados.length === 0; i += 1) await dormir(100);

@@ -41,7 +41,11 @@ class Invitaciones extends PuertoInvitaciones {
 class Miembros extends PuertoMiembros {
   altas: unknown[] = [];
   constructor(
-    private readonly rol: DescripcionDeInvitacion | null = { agencia: 'A', rol: 'Asesor' },
+    private readonly rol: DescripcionDeInvitacion | null = {
+      agencia: 'A',
+      rol: 'Asesor',
+      permisos: [],
+    },
     private readonly alta: ResultadoDeAlta | 'rol_inexistente' = 'creado',
   ) {
     super();
@@ -105,6 +109,39 @@ describe('InvitarMiembroUseCase', () => {
     ).rejects.toBeInstanceOf(ForbiddenException);
     expect(invitaciones.guardadas.size).toBe(0);
     expect(correo.enviados).toHaveLength(0);
+  });
+
+  it('nadie reparte más de lo que tiene: un rol con permisos de más es 403 y no guarda nada', async () => {
+    const miembros = new Miembros({
+      agencia: 'A',
+      rol: 'Dueño',
+      permisos: ['usuarios.administrar', 'roles.administrar'],
+    });
+    const { caso, invitaciones, correo } = armar(miembros);
+    await expect(
+      conPermisos(['usuarios.administrar'], () => caso.ejecutar(entrada, 'http://web')),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(invitaciones.guardadas.size).toBe(0);
+    expect(correo.enviados).toHaveLength(0);
+  });
+
+  it('un rol cuyos permisos están incluidos en los del invitador sí se puede dar', async () => {
+    const miembros = new Miembros({
+      agencia: 'A',
+      rol: 'Ops',
+      permisos: ['conversaciones.ver_todas'],
+    });
+    const { caso, invitaciones } = armar(miembros);
+    await conPermisos(['usuarios.administrar', 'conversaciones.ver_todas'], () =>
+      caso.ejecutar(entrada, 'http://web'),
+    );
+    expect(invitaciones.guardadas.size).toBe(1);
+  });
+
+  it('un rol sin permisos lo puede dar cualquiera que pueda invitar', async () => {
+    const { caso, invitaciones } = armar();
+    await conPermisos(['usuarios.administrar'], () => caso.ejecutar(entrada, 'http://web'));
+    expect(invitaciones.guardadas.size).toBe(1);
   });
 
   it('un rol que no es de la agencia (RLS no lo ve) es 404 y no guarda nada', async () => {

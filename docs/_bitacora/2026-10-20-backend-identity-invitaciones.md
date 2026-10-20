@@ -61,3 +61,17 @@ Las pruebas fijan `COLA_CORREO=memoria` y `MAIL_PROVIDER=memoria` en `vitest.con
 | Outbox para el correo: hoy se encola tras guardar; si Redis cae justo en medio, la invitación existe sin correo y el dueño reinvita | `backend` |
 | Purga de filas caducadas de `verificaciones` | `datos` |
 | Eventos de auditoría de invitar/aceptar | `backend` |
+
+## Correcciones tras la auditoría (bloqueante resuelto)
+
+- **Escalada dentro de la agencia:** quien tenía `usuarios.administrar` podía invitarse con un rol de
+  dueño y, al aceptar, cambiarse el rol. (1) Invitar exige que los permisos del rol invitado estén
+  INCLUIDOS en los del invitador (403 si no). (2) Aceptar **nunca cambia el rol de un miembro vigente**:
+  se ignora, no se rechaza (rechazar delataría que ya era miembro); el token se consume igual. Un miembro
+  de baja sí se readmite con el rol de la invitación. Subir o bajar de rol es de `roles.administrar`.
+  e2e: invitarse con rol superior da 403; aceptar siendo miembro (invitación legítima y una forjada en la
+  base hacia un rol superior) no cambia el rol.
+- **Trabajo de correo cifrado** (AES-256-GCM, `CORREO_PAYLOAD_KEY` compartida API/trabajador, mismo patrón
+  que el staging del webhook; el id del trabajo va como AAD). Variable nueva: `CORREO_PAYLOAD_KEY`
+  (en `.env.example`, `turbo.json` y generada en el job de CI). `removeOnFail: true`.
+- **Cola:** límite de envíos de OTP por correo (hoy solo por dirección), antes del adaptador de producción.

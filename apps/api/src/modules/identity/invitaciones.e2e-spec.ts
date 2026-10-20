@@ -49,8 +49,8 @@ let base: string;
 let admin: PrismaClient;
 let adminPg: Client;
 let correoDePrueba: CorreoEnMemoria;
-let rolesA: { dueno: string; asesor: string };
-let rolesB: { dueno: string; asesor: string };
+let rolesA: { dueno: string; asesor: string; superior: string };
+let rolesB: { dueno: string; asesor: string; superior: string };
 const hashesDeTokens: string[] = [];
 
 interface Respuesta {
@@ -125,7 +125,15 @@ async function agencia(id: string, nombre: string) {
   const asesor = await admin.rol.create({
     data: { tenantId: id, nombre: 'Asesor', clave: 'ASESOR', permisos: [] },
   });
-  return { dueno: dueno.id, asesor: asesor.id };
+  // Un rol con MÁS permisos que el del dueño: nadie del equipo puede repartirlo.
+  const superior = await admin.rol.create({
+    data: {
+      tenantId: id,
+      nombre: 'Superdueño',
+      permisos: ['usuarios.administrar', 'roles.administrar'],
+    },
+  });
+  return { dueno: dueno.id, asesor: asesor.id, superior: superior.id };
 }
 
 async function persona(correoDe: string, nombre: string, tenantId: string, rolId: string) {
@@ -299,6 +307,84 @@ describe('invitar', () => {
     expect(correoDePrueba.para(EVA).length).toBeGreaterThanOrEqual(1);
     tokenDelUltimoCorreo(EVA);
     tokenDelUltimoCorreo(nuevo);
+  });
+});
+
+describe('nadie reparte más de lo que tiene', () => {
+  it('invitarse a sí mismo con un rol superior da 403 y no envía ni guarda nada', async () => {
+    const dueno = await comoDueno();
+    const correosAntes = correoDePrueba.para(ANA).length;
+    const { rows: antes } = await adminPg.query<{ n: string }>(
+      "SELECT count(*) AS n FROM verificaciones WHERE identificador LIKE 'invitacion:%'",
+    );
+    const r = await dueno.llamar('POST', '/api/v1/identidad/invitaciones', {
+      cuerpo: { correo: ANA, rolId: rolesA.superior },
+    });
+    expect(r.estado).toBe(403);
+    expect(r.json.error?.code).toBe('PERMISO_DENEGADO');
+    expect(correoDePrueba.para(ANA)).toHaveLength(correosAntes);
+    const { rows: despues } = await adminPg.query<{ n: string }>(
+      "SELECT count(*) AS n FROM verificaciones WHERE identificador LIKE 'invitacion:%'",
+    );
+    expect(despues[0]?.n).toBe(antes[0]?.n);
+  });
+
+  it('un rol con permisos de más tampoco se le da a otra persona', async () => {
+    const dueno = await comoDueno();
+    const r = await dueno.llamar('POST', '/api/v1/identidad/invitaciones', {
+      cuerpo: { correo: correo('otro'), rolId: rolesA.superior },
+    });
+    expect(r.estado).toBe(403);
+  });
+
+  it('aceptar siendo YA miembro vigente no cambia el rol, aunque la invitación lo pida', async () => {
+    const miembro = async () =>
+      admin.usuario.findFirst({
+        where: { tenantId: TENANT_A, correo: ANA },
+        include: { rol: true },
+      });
+    expect((await miembro())?.rol.nombre).toBe('Dueño');
+
+    // (a) Una invitación legítima a un rol menor: tampoco lo cambia (no lo baja de Dueño).
+    const dueno = await comoDueno();
+    await dueno.llamar('POST', '/api/v1/identidad/invitaciones', {
+      cuerpo: { correo: ANA, rolId: rolesA.asesor },
+    });
+    const token = tokenDelUltimoCorreo(ANA);
+    const r = await new Navegador().llamar('POST', '/api/v1/auth/invitaciones/aceptar', {
+      cuerpo: { token, nombre: 'Ana', contrasena: CLAVE_NUEVA },
+    });
+    expect(r.estado).toBe(200);
+    expect(r.json).toEqual({ ok: true });
+    expect((await miembro())?.rol.nombre).toBe('Dueño');
+
+    // (b) Una invitación FORJADA directamente en la base (por ejemplo, de antes de esta regla)
+    // hacia un rol superior: aceptarla tampoco cambia nada. Defensa en profundidad.
+    const forjado = randomBytes(32).toString('base64url');
+    const hash = hashearTokenDeInvitacion(forjado);
+    hashesDeTokens.push(hash);
+    await adminPg.query(
+      "INSERT INTO verificaciones (id, identificador, valor, expira_en, actualizado_en) VALUES (gen_random_uuid(), $1, $2, now() + interval '1 day', now())",
+      [
+        `invitacion:${hash}`,
+        JSON.stringify({
+          tenantId: TENANT_A,
+          correo: BETO,
+          rolId: rolesA.superior,
+          invitadoPorUsuarioId: null,
+        }),
+      ],
+    );
+    const beto = await admin.usuario.findFirst({ where: { tenantId: TENANT_A, correo: BETO } });
+    const r2 = await new Navegador().llamar('POST', '/api/v1/auth/invitaciones/aceptar', {
+      cuerpo: { token: forjado, nombre: 'Beto', contrasena: CLAVE_NUEVA },
+    });
+    expect(r2.estado).toBe(200);
+    const despues = await admin.usuario.findUnique({
+      where: { id: beto?.id ?? '' },
+      include: { rol: true },
+    });
+    expect(despues?.rol.nombre).toBe('Asesor');
   });
 });
 

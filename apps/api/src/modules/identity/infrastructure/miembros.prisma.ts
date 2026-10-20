@@ -26,9 +26,9 @@ export class MiembrosPrisma extends PuertoMiembros {
     return this.prisma.conTenant(async (tx) => {
       const rol = await tx.rol.findFirst({
         where: { id: rolId, tenantId },
-        select: { nombre: true, tenant: { select: { nombre: true } } },
+        select: { nombre: true, permisos: true, tenant: { select: { nombre: true } } },
       });
-      return rol ? { rol: rol.nombre, agencia: rol.tenant.nombre } : null;
+      return rol ? { rol: rol.nombre, agencia: rol.tenant.nombre, permisos: rol.permisos } : null;
     });
   }
 
@@ -73,12 +73,19 @@ export class MiembrosPrisma extends PuertoMiembros {
             return 'creado' as const;
           }
 
-          const vigente = actual.activo && actual.eliminadoEn === null;
+          // Un miembro vigente NO cambia de rol por aceptar una invitación: sería la puerta para
+          // que quien puede invitar se auto-asigne un rol superior. Se ignora (no se rechaza,
+          // porque rechazar delataría que ya era miembro). Subir o bajar de rol es de
+          // `roles.administrar`, no de una invitación.
+          if (actual.activo && actual.eliminadoEn === null) return 'ya_era_miembro' as const;
+
+          // De baja: la invitación lo readmite con el rol que le dio quien invitó (que no pudo
+          // repartir más permisos de los que tenía).
           await tx.usuario.update({
             where: { id: actual.id },
             data: { activo: true, eliminadoEn: null, rolId },
           });
-          return vigente ? ('ya_era_miembro' as const) : ('reactivado' as const);
+          return 'reactivado' as const;
         }),
     );
   }

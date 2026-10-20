@@ -1,6 +1,7 @@
 import { Global, Module, type Provider } from '@nestjs/common';
 import { PuertoColaDeCorreo } from '../../shared/puertos/puerto-de-correo.js';
 import { PuertoCorreo } from './domain/puerto-correo.js';
+import { resolverClaveDeCorreo } from './domain/sellado-de-correo.js';
 import { ColaDeCorreoBullmq } from './infrastructure/cola-de-correo.bullmq.js';
 import { ColaDeCorreoEnMemoria } from './infrastructure/cola-de-correo.en-memoria.js';
 import { CorreoEnMemoria } from './infrastructure/correo.en-memoria.js';
@@ -30,7 +31,7 @@ const proveedores: Provider[] = enMemoria
         useFactory: (): PuertoColaDeCorreo => {
           const url = process.env['REDIS_URL'];
           if (!url) throw new Error('Falta REDIS_URL (o COLA_CORREO=memoria en pruebas).');
-          return new ColaDeCorreoBullmq(url);
+          return new ColaDeCorreoBullmq(url, resolverClaveDeCorreo(process.env));
         },
       },
     ];

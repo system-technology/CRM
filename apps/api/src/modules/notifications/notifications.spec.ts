@@ -10,7 +10,9 @@ import { ColaDeCorreoEnMemoria } from './infrastructure/cola-de-correo.en-memori
 import { CorreoEnMemoria } from './infrastructure/correo.en-memoria.js';
 import { CorreoMailpit } from './infrastructure/correo.mailpit.js';
 import { crearCorreo } from './infrastructure/crear-correo.js';
+import { abrirCorreo, resolverClaveDeCorreo, sellarCorreo } from './domain/sellado-de-correo.js';
 import { ConsumidorDeCorreo } from './interface/consumidor-de-correo.js';
+import { randomBytes } from 'node:crypto';
 
 const mensaje: MensajeDeCorreo = {
   para: 'a@b.test',
@@ -65,17 +67,68 @@ describe('ColaDeCorreoEnMemoria', () => {
   });
 });
 
+const CLAVE = randomBytes(32);
+const consumidor = (correo: PuertoCorreo): ConsumidorDeCorreo => {
+  const c = new ConsumidorDeCorreo(correo);
+  c.clave = CLAVE;
+  return c;
+};
+
+describe('sellado del trabajo de correo (AES-256-GCM)', () => {
+  it('lo que hay en Redis no revela el mensaje, y se abre con la clave', () => {
+    const sellado = sellarCorreo(mensaje, CLAVE, 'trabajo-1');
+    const texto = JSON.stringify(sellado);
+    expect(texto).not.toContain('123456');
+    expect(texto).not.toContain('a@b.test');
+    expect(texto).not.toContain('Cuerpo secreto');
+    expect(abrirCorreo(sellado, CLAVE, 'trabajo-1')).toEqual(mensaje);
+  });
+
+  it('dos cifrados del mismo mensaje difieren (nonce aleatorio)', () => {
+    expect(sellarCorreo(mensaje, CLAVE, 'x').cifrado).not.toBe(
+      sellarCorreo(mensaje, CLAVE, 'x').cifrado,
+    );
+  });
+
+  it('no se abre con otra clave, ni bajo otro identificador de trabajo, ni manipulado', () => {
+    const sellado = sellarCorreo(mensaje, CLAVE, 'trabajo-1');
+    expect(() => abrirCorreo(sellado, randomBytes(32), 'trabajo-1')).toThrow();
+    expect(() => abrirCorreo(sellado, CLAVE, 'trabajo-2')).toThrow();
+    const roto = { ...sellado, cifrado: Buffer.from('otra cosa').toString('base64') };
+    expect(() => abrirCorreo(roto, CLAVE, 'trabajo-1')).toThrow();
+  });
+
+  it('la clave no tiene respaldo y debe medir 32 bytes', () => {
+    expect(() => resolverClaveDeCorreo({})).toThrow(/CORREO_PAYLOAD_KEY/);
+    expect(() => resolverClaveDeCorreo({ CORREO_PAYLOAD_KEY: 'corta' })).toThrow(/32 bytes/);
+    expect(resolverClaveDeCorreo({ CORREO_PAYLOAD_KEY: CLAVE.toString('hex') })).toEqual(CLAVE);
+    expect(resolverClaveDeCorreo({ CORREO_PAYLOAD_KEY: CLAVE.toString('base64') })).toEqual(CLAVE);
+  });
+});
+
+describe('la cola de correo', () => {
+  it('borra los trabajos al completarse Y al fallar del todo (llevan un secreto)', async () => {
+    const { OPCIONES_DE_TRABAJO_DE_CORREO } =
+      await import('./infrastructure/cola-de-correo.bullmq.js');
+    expect(OPCIONES_DE_TRABAJO_DE_CORREO.removeOnComplete).toBe(true);
+    expect(OPCIONES_DE_TRABAJO_DE_CORREO.removeOnFail).toBe(true);
+  });
+});
+
 describe('ConsumidorDeCorreo', () => {
   it('entrega un trabajo válido por el puerto', async () => {
     const correo = new CorreoEnMemoria();
-    await new ConsumidorDeCorreo(correo).atender(mensaje);
+    await consumidor(correo).atender(sellarCorreo(mensaje, CLAVE, 'j1'), 'j1');
     expect(correo.enviados).toEqual([mensaje]);
   });
 
   it('rechaza un trabajo malformado (Redis no es de fiar)', async () => {
     const correo = new CorreoEnMemoria();
     await expect(
-      new ConsumidorDeCorreo(correo).atender({ para: 'no-es-correo', asunto: 'x', texto: 'y' }),
+      consumidor(correo).atender(
+        sellarCorreo({ para: 'no-es-correo', asunto: 'x', texto: 'y' }, CLAVE, 'j2'),
+        'j2',
+      ),
     ).rejects.toThrow();
     expect(correo.enviados).toHaveLength(0);
   });
@@ -86,7 +139,9 @@ describe('ConsumidorDeCorreo', () => {
         throw new Error('550 buzón a@b.test rechazado: Cuerpo secreto 123456');
       }
     }
-    const error = await new ConsumidorDeCorreo(new Falla()).atender(mensaje).catch((e: Error) => e);
+    const error = await consumidor(new Falla())
+      .atender(sellarCorreo(mensaje, CLAVE, 'j3'), 'j3')
+      .catch((e: Error) => e);
     expect(error).toBeInstanceOf(Error);
     expect((error as Error).message).not.toContain('a@b.test');
     expect((error as Error).message).not.toContain('123456');

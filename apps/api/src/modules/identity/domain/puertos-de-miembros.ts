@@ -16,6 +16,8 @@ export abstract class PuertoInvitaciones {
 export interface DescripcionDeInvitacion {
   agencia: string;
   rol: string;
+  /** Los permisos que da ese rol, leídos bajo RLS. */
+  permisos: readonly string[];
 }
 
 export type ResultadoDeAlta = 'creado' | 'reactivado' | 'ya_era_miembro';
@@ -27,7 +29,8 @@ export abstract class PuertoMiembros {
    */
   abstract describirInvitacion(rolId: string): Promise<DescripcionDeInvitacion | null>;
   /**
-   * Crea (o reactiva) la pertenencia de la identidad a la agencia, bajo RLS con ESE tenant.
+   * Crea la pertenencia de la identidad a la agencia, bajo RLS con ESE tenant, o la reactiva si
+   * estaba de baja. **Nunca cambia el rol de un miembro vigente**: devuelve `ya_era_miembro`.
    * `rol_inexistente` si el rol ya no existe en la agencia (se borró desde la invitación).
    */
   abstract agregar(entrada: {
