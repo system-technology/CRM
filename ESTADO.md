@@ -6,7 +6,7 @@
 
 | Campo | Valor |
 |---|---|
-| Última actualización | 2026-10-20 (madrugada: v0.32.0 y el ADR-0011 integrado) |
+| Última actualización | 2026-10-20 (madrugada: hasta v0.33.0; Neon y `main` vuelven a coincidir) |
 | Actualizado por | Claude Opus 5.5 (`integrador`) |
 | Fase | **Rebanada vertical de paquetes, en construcción** |
 | Avance de la fase | Cotizador de punta a punta. **La cotización es la suma de sus tarifas y el precio «desde» es uno que el comprador puede pagar (v0.19.0).** Apretón de manos del webhook vivo. Bandeja web en construcción |
@@ -131,7 +131,7 @@ Ordenada. La primera es la que debe tomarse ahora.
 | 11b | `META_APP_SECRET` y `WEBHOOK_PAYLOAD_KEY_VERSION` en `.env` | Usuario | **Cerrada (2026-10-19).** El integrador comprobó la presencia sin imprimir valores. `META_APP_SECRET`, `WHATSAPP_DIRECTORY_PEPPER` y `WEBHOOK_PAYLOAD_KEY` tienen valor en los cuatro árboles, y en cada variable es el mismo en los cuatro (mismo hash). `WEBHOOK_PAYLOAD_KEY_VERSION=1` en los cuatro |
 | 11c | Los metadatos de decorador no siempre llegan con el transpilador de desarrollo | `backend` | **Hecha (`85eceac`, v0.19.0).** `@Inject` explícito y `guardia-de-inyeccion.spec.ts`, que pone en rojo cualquier dependencia sin token |
 | 11d | El aviso «Acceso sin contexto de tenant» se emitía una vez por mensaje | `backend` | **Hecha (`f57925b`, v0.19.0).** El webhook usa `sinTenantDeclarado`, con la operación declarada en `operaciones-de-plataforma.ts` (tipo cerrado). La variante ruidosa sigue para todo lo no declarado |
-| 12 | Autenticación: el `tenant_id` debe salir del token de sesión | `datos`, `backend`, Antigravity | **ADR-0011 aceptado y ratificado** (2026-10-19, integrado por orden directa del propietario con `/integrar`): Better Auth en `identity`, cookie opaca validada solo por la API, tenant activo revalidado por petición bajo RLS, roles por agencia en tabla. R2 de `CLAUDE.md` pasa a cuatro roles más `viajapro_accesos` (NOLOGIN). **Rebanada 1** (esquema e identidad) hecha y aceptada por `auditor-seguridad` en `feat/identity-esquema`, devuelta a `datos` para fusionar `main` y renumerar aserciones desde la 61 (12 SECURITY DEFINER). Rebanadas 2 (módulo `identity`, condición del auditor: token de sesión y OTP hasheados), 3 (pantalla de ingreso) y 4 (invitaciones) pendientes. Sigue bloqueando el despliegue |
+| 12 | Autenticación: el `tenant_id` debe salir del token de sesión | `datos`, `backend`, Antigravity | **ADR-0011 aceptado y ratificado** (en `main` desde `b6a1c4b`). **Rebanada 1 integrada (v0.33.0):** identidad global, roles por agencia, `viajapro_identidad` y `viajapro_accesos` (`NOLOGIN`). **Siguiente, la rebanada 2 (`backend`):** el módulo `identity`, las guardias y el 403 del margen, con **la condición del auditor de guardar con hash el token de sesión y el OTP** |
 | 13 | La carrera de `turbo` entre `build` y `typecheck` | `devops` | **Hecha (`f9da930`, v0.19.0).** `typecheck` de `web` y `database` depende de su `build`. Verificado: `typecheck --force` 9/9 sin caché |
 | 14 | El aviso de `any` no es una compuerta | `devops` | `no-explicit-any` está en `warn` y ningún script lleva `--max-warnings 0`: hoy hay cero `any`, pero el primero entraría sin que lint falle |
 
@@ -139,7 +139,7 @@ Ordenada. La primera es la que debe tomarse ahora.
 
 | Bloqueo | Impacto | Dueño | Mitigación |
 |---|---|---|---|
-| **La suite de aislamiento contra Neon compartido no sirve de compuerta mientras dure la deriva** (2026-10-19, noche).** Neon tiene aplicada `20261019230000_identidad_global_y_roles_por_agencia`, de una rama sin integrar (ADR-0011, rebanada 1), y `excepciones_rls` ya no coincide con el literal de `main`: la aserción 11 sale roja en todas las corridas. Además, la **39** (colgar una conversación del contacto de otra agencia) resolvió un `INSERT` que debía rechazarse **una vez**, en una corrida completa con otras sesiones activas. Pasó 3/3 en el bloque aislado, y las foráneas compuestas siguen en Neon, validadas y `NOT NULL` | **Desde el 2026-10-19 la compuerta de aislamiento es el CI** (Postgres 16 limpio, migraciones desde cero). Neon queda solo para las e2e que lo necesitan. La aserción 11 vuelve a casar cuando entre `feat/identity-esquema` | `datos` (integrar la rebanada 1) | La causa de la 39 ya está encontrada: ver el incidente de abajo |
+| ~~La suite de aislamiento contra Neon compartido no sirve de compuerta mientras dure la deriva (la aserción 11, roja por una migración sin integrar)~~ | — | `datos` | **Cerrado en v0.33.0 (2026-10-20):** `20261019230000_identidad` ya está en `main`, con la misma `checksum` que en Neon. `migrate status` desde `main`: 22 migraciones, «up to date», sin nada pendiente ni divergente. **El CI sigue siendo la compuerta de aislamiento** |
 | ~~Rotar `WHATSAPP_WEBHOOK_VERIFY_TOKEN`~~ | — | Usuario | **Cerrado el 2026-10-19.** Rotado en los cuatro `.env`; el integrador comprobó que el valor viejo ya no aparece en ninguno. Meta nunca lo tuvo, porque el webhook no está configurado |
 | **Modo desatendido detenido en la compuerta** — el commit `59a52d8` amplía los permisos de los propios agentes | Cada commit y cada push siguen pidiendo autorización al propietario, con dos IA trabajando en paralelo | Usuario | **Solo el propietario puede aprobarlo, en su propia sesión**: el integrador no acepta de segunda mano un cambio a la configuración que define lo que los agentes pueden hacer sin preguntar. Y antes hay que sacar `git clean -xdf` de la lista de permitidos: borra lo no rastreado **y** lo ignorado, incluidos los tres `.env` |
 | **`Bash(cat:*)` permitido hace decorativo el `deny` de `Read(./.env)`** | `cat .env` funciona hoy. O ese `deny` significa algo, o sobra por honestidad | Usuario | Decidirlo al tocar los permisos |
@@ -1098,4 +1098,21 @@ Registro: [`docs/_integraciones/2026-10-19-v0.32.0.md`](docs/_integraciones/2026
 |---|---|---|
 | **El filtro de reencolados de la base todavía no actúa**: el trabajador no pasa `maxReencolados` como tercer argumento, y cuenta en Redis en vez de llamar a `contar_reencolado_barrido` | `backend` | Hoy no hay volumen. Sin esto, el tope de la base es papel |
 | La baja de una cuenta no da de baja sus canales | `backend` | El directorio ya la propaga a las filas WABA. Falta la coherencia en `canales` |
+
+## Integración del 2026-10-20 — v0.33.0: identidad global y roles por agencia (ADR-0011, rebanada 1)
+
+`feat/identity-esquema` @ `c36a839` entra en `main` (`15b79d5`), etiquetada **v0.33.0**. Corrige lo que se devolvió en la vuelta anterior:
+
+- trae `origin/main` fusionado y va 0 commits por detrás;
+- las aserciones nuevas son la 61 a la 66;
+- la matriz y las aserciones 12 y 13 cuentan **12** funciones `SECURITY DEFINER`;
+- `CLAUDE.md` queda igual que en `main`;
+- la migración `20261019230000` no cambió.
+
+`auditor-seguridad`: ACEPTAR. Compuerta: CI **8/8**, https://github.com/Alfavear/CRM/actions/runs/39347442380, sobre la punta exacta.
+Estáticas en el worktree de compuerta (`D:\Projects\CRM-gate`), en verde.
+
+**Neon y `main` coinciden.** La `checksum` de `20261019230000` en Neon (`9071640e…`) es el sha256 del archivo. `migrate status` desde
+`main` da 22 migraciones, «Database schema is up to date», sin nada pendiente ni divergente. Se cierra el bloqueo de la aserción 11.
+Registro: [`docs/_integraciones/2026-10-20-v0.33.0.md`](docs/_integraciones/2026-10-20-v0.33.0.md).
 
