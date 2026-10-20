@@ -6,7 +6,7 @@
 
 | Campo | Valor |
 |---|---|
-| Última actualización | 2026-10-20 (hasta v0.36.2) |
+| Última actualización | 2026-10-20 (hasta v0.37.0: visibilidad de conversaciones) |
 | Actualizado por | Claude Opus 5.5 (`integrador`) |
 | Fase | **Rebanada vertical de paquetes, en construcción** |
 | Avance de la fase | Cotizador de punta a punta. **La cotización es la suma de sus tarifas y el precio «desde» es uno que el comprador puede pagar (v0.19.0).** Apretón de manos del webhook vivo. Bandeja web en construcción |
@@ -1213,7 +1213,7 @@ Registro: [`docs/_integraciones/2026-10-20-v0.36.0.md`](docs/_integraciones/2026
 
 | Cola | Dueño | Por qué no bloquea |
 |---|---|---|
-| **ANTES de que la agencia piloto use asesores:** se emite a toda la sala `tenant:<id>`, así que **un asesor sin `conversaciones.ver_todas` recibe el texto de todas las conversaciones**. Ese permiso no se aplica en ningún sitio: ni en el socket ni en la API REST de la bandeja | `dueno-de-producto` (decide la regla de asignación) y `backend` | No cruza agencias: es visibilidad dentro de la propia. Hoy la piloto trabaja con la dueña. **Bloquea dar de alta al primer asesor** |
+| ~~ANTES de que la piloto use asesores: un asesor sin `conversaciones.ver_todas` recibía el texto de todas las conversaciones~~ | `dueno-de-producto`, `backend` | **Cerrado en v0.37.0**: la regla de `docs/01-producto/12-visibilidad-de-conversaciones.md` se aplica en la REST y en el socket. **Ya se puede dar de alta al primer asesor** |
 | Si la revalidación falla por infraestructura (por ejemplo, la base no responde), **el socket sigue abierto**. Hay que cerrarlo tras N fallos seguidos | `backend` | La revocación por evento sigue cerrándolo, y el fallo de infraestructura es transitorio |
 | El primer barrido tras desplegar emitirá los **eventos viejos** del outbox | `backend` | No hay nada desplegado. Antes del primer despliegue: marcar los eventos viejos como emitidos, o filtrar por antigüedad |
 
@@ -1240,4 +1240,26 @@ Registro: [`docs/_integraciones/2026-10-20-v0.36.2.md`](docs/_integraciones/2026
 | Cola | Dueño | Por qué no bloquea |
 |---|---|---|
 | `alCerrar` está entre las dependencias del hook: si el padre se vuelve a renderizar, podría robar el foco. Sin reproducir | Antigravity | Menor. Aún no se ha visto pasar |
+
+## Integración del 2026-10-20 — v0.37.0: visibilidad de conversaciones por asignación
+
+`feat/inbox-visibilidad` @ `c76b1d8` entra en `main` (`6032ae3`), etiquetada **v0.37.0**. Trae:
+
+- **La decisión del `dueno-de-producto`**, `docs/01-producto/12-visibilidad-de-conversaciones.md`, con su glosario. Vino dentro de esta rama.
+  Su fila en §2 de `ESTADO.md` se fusionó sin conflicto.
+- **La regla:** sin `ver_todas`, cada asesor ve las conversaciones que tiene asignadas y las de la cola común. Hay una e2e por cada criterio,
+  del CA1 al CA17.
+- **Rutas REST nuevas:** `api/v1/conversaciones` y `POST /identidad/miembros/:id/baja`.
+- **El socket** emite a `usuario:<id>` y añade `CONVERSACION_RETIRADA`. Es un cambio de contrato.
+
+`auditor-seguridad` aceptó con un bloqueante, ya corregido: con `usuarios.administrar` se podía dar de baja a la única dueña. Ahora devuelve
+403 si faltan permisos (usa `permisoQueFalta`, compartida con las invitaciones) y 409 `NO_PUEDE_DEJAR_SIN_DUENO`. Las dos tienen su e2e.
+
+Compuerta: CI **8/8** sobre el árbol fusionado, porque la rama iba 3 commits por detrás:
+https://github.com/Alfavear/CRM/actions/runs/39362743786. Corrieron `inbox-visibilidad.e2e-spec` (31 pruebas), la de su caso de uso (8) y la
+de la regla (12). Estáticas en local, en verde. Registro: [`docs/_integraciones/2026-10-20-v0.37.0.md`](docs/_integraciones/2026-10-20-v0.37.0.md).
+
+| Cola | Dueño | Por qué no bloquea |
+|---|---|---|
+| **La bandeja web tiene que tratar `CONVERSACION_RETIRADA`** y pasarse a la REST nueva `api/v1/conversaciones` | Antigravity | Hoy la web usa mocks y el socket anterior. Sin esto, al asesor no se le quita de la pantalla la conversación reasignada |
 
