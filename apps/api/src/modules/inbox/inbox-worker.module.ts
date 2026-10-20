@@ -25,6 +25,7 @@ import {
 import { AvisosDeOutboxEnMemoria } from './infrastructure/avisos-de-outbox.en-memoria.js';
 import { crearPublicadorDelTrabajador } from './infrastructure/crear-bus.js';
 import { OutboxPrisma } from './infrastructure/outbox.prisma.js';
+import { EscuchaDeAvisosDelRelay } from './infrastructure/aviso-al-relay.redis.js';
 import { PlanificadorDeRelay } from './interface/planificador-de-relay.js';
 import { ConsumidorDeChanges } from './interface/consumidor-de-changes.js';
 import { PlanificadorDeBarrido } from './interface/planificador-de-barrido.js';
@@ -42,6 +43,16 @@ import { PlanificadorDeBarrido } from './interface/planificador-de-barrido.js';
     { provide: PuertoOutbox, useClass: OutboxPrisma },
     { provide: PuertoAvisoDeOutbox, useClass: AvisosDeOutboxEnMemoria },
     { provide: PuertoPublicadorDeEventos, useFactory: crearPublicadorDelTrabajador },
+    {
+      // La API avisa por Redis cuando escribe un evento: se vuelve una pista del relay.
+      provide: EscuchaDeAvisosDelRelay,
+      useFactory: (pistas: PuertoAvisoDeOutbox): EscuchaDeAvisosDelRelay => {
+        const url = process.env['REDIS_URL'];
+        if (!url) throw new Error('Falta REDIS_URL: el relay no recibe los avisos de la API.');
+        return new EscuchaDeAvisosDelRelay(url, pistas);
+      },
+      inject: [PuertoAvisoDeOutbox],
+    },
     { provide: PuertoPendientes, useClass: PendientesPrisma },
     {
       // Una sola instancia con dos caras: la cola y la coordinación comparten conexión.

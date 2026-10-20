@@ -37,3 +37,19 @@ export const CargaDeAccesoRevocado = z.object({ usuarioId: z.string().uuid() });
 /** Las salas las asigna el SERVIDOR a partir de la sesión. El cliente no puede nombrarlas. */
 export const salaDeTenant = (tenantId: string): string => `tenant:${tenantId}`;
 export const salaDeUsuario = (usuarioId: string): string => `usuario:${usuarioId}`;
+
+/** `inbox.mensaje_saliente_creado`: un miembro respondió y el mensaje quedó guardado (pendiente de envío). */
+export const TIPO_MENSAJE_SALIENTE_CREADO = 'inbox.mensaje_saliente_creado';
+
+/**
+ * `inbox.conversacion_actualizada`: cambió la asignación, el estado o el contador de sin leer.
+ * La carga lleva solo el id de quien la tenía asignada ANTES (nulo = sin asignar): con él se
+ * calcula quién dejó de verla. Ausente = nadie perdió visibilidad.
+ */
+export const TIPO_CONVERSACION_ACTUALIZADA = 'inbox.conversacion_actualizada';
+export const CargaDeConversacionActualizada = z.object({
+  anteriorAsignadoAId: z.string().uuid().nullable().optional(),
+});
+
+/** El aviso que la API le manda al trabajador para que vacíe el outbox de una agencia YA. */
+export const CANAL_DE_AVISOS_DEL_RELAY = 'viajapro:aviso-relay';

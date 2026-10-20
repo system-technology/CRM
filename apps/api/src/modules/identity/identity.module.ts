@@ -10,6 +10,7 @@ import {
   PuertoMiembros,
 } from './domain/puertos-de-miembros.js';
 import { AceptarInvitacionUseCase } from './application/aceptar-invitacion.use-case.js';
+import { DarDeBajaMiembroUseCase } from './application/dar-de-baja-miembro.use-case.js';
 import { InvitarMiembroUseCase } from './application/invitar-miembro.use-case.js';
 import { IdentidadesPrisma } from './infrastructure/identidades.prisma.js';
 import { InvitacionesPrisma } from './infrastructure/invitaciones.prisma.js';
@@ -23,6 +24,7 @@ import { proveedorDeAuth } from './infrastructure/auth.provider.js';
 import { MembresiasPrisma } from './infrastructure/membresias.prisma.js';
 import { PrismaIdentidadService } from './infrastructure/prisma-identidad.service.js';
 import { SesionesBetterAuth } from './infrastructure/sesiones.better-auth.js';
+import { MiembrosController } from './interface/miembros.controller.js';
 import { AuthController } from './interface/auth.controller.js';
 
 /**
@@ -38,7 +40,12 @@ import { AuthController } from './interface/auth.controller.js';
  */
 @Global()
 @Module({
-  controllers: [AuthController, InvitacionesController, AceptarInvitacionController],
+  controllers: [
+    AuthController,
+    InvitacionesController,
+    AceptarInvitacionController,
+    MiembrosController,
+  ],
   providers: [
     PrismaIdentidadService,
     proveedorDeAuth,
@@ -47,6 +54,7 @@ import { AuthController } from './interface/auth.controller.js';
     CambiarAgenciaActiva,
     InvitarMiembroUseCase,
     AceptarInvitacionUseCase,
+    DarDeBajaMiembroUseCase,
     { provide: ResolutorDeAcceso, useExisting: ResolverAcceso },
     { provide: PuertoSesiones, useClass: SesionesBetterAuth },
     { provide: PuertoMembresias, useClass: MembresiasPrisma },

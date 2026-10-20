@@ -52,3 +52,39 @@ export abstract class PuertoReferenciasDeCrm {
     contactoId: string,
   ): Promise<boolean>;
 }
+
+export interface NotaDeConversacionLeida {
+  id: string;
+  texto: string;
+  autorId: string;
+  autorNombre: string;
+  creadaEn: Date;
+}
+
+/**
+ * Lo que `inbox` necesita de `crm`: las notas internas que se escriben en el hilo de una
+ * conversación. La tabla es de `crm` (la nota es del CONTACTO y el hilo solo es el ancla), así que
+ * `inbox` no la toca: la pide por aquí.
+ *
+ * **La visibilidad de la conversación la decide quien llama, antes.** Estos métodos no la
+ * comprueban: reciben una conversación que `inbox` ya verificó que el miembro ve.
+ */
+export abstract class PuertoNotasDeConversacion {
+  abstract crear(
+    tx: ClienteTenant,
+    entrada: {
+      tenantId: string;
+      conversacionId: string;
+      contactoId: string;
+      autorId: string | null;
+      texto: string;
+    },
+  ): Promise<{ id: string; escritaEn: Date }>;
+
+  /** Las notas escritas en ese hilo, de la más antigua a la más reciente. Solo las que tienen autor. */
+  abstract deLaConversacion(
+    tx: ClienteTenant,
+    tenantId: string,
+    conversacionId: string,
+  ): Promise<NotaDeConversacionLeida[]>;
+}
