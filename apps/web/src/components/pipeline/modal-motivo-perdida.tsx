@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { MotivoPerdida, Oportunidad } from '@viajapro/contracts';
 import { AlertCircle, X, Check } from 'lucide-react';
 import { NOMBRES_MOTIVOS_PERDIDA } from '../../lib/pipeline-logica';
+import { useFocoModal } from '../../lib/use-foco-modal';
 
 interface ModalMotivoPerdidaProps {
   oportunidad: Oportunidad;
@@ -19,6 +20,11 @@ export function ModalMotivoPerdida({
   const [motivoSeleccionado, setMotivoSeleccionado] = useState<MotivoPerdida>('PRECIO');
   const [nota, setNota] = useState('');
   const [errorValidacion, setErrorValidacion] = useState<string | null>(null);
+
+  const contenedorRef = useFocoModal<HTMLDivElement>({
+    abierto: true,
+    alCerrar: onCancelar,
+  });
 
   const manejarConfirmar = (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,9 +43,14 @@ export function ModalMotivoPerdida({
       role="dialog"
       aria-modal="true"
       aria-labelledby="modal-perdida-titulo"
+      onClick={onCancelar}
       className="animate-in fade-in fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs duration-200"
     >
-      <div className="w-full max-w-lg rounded-2xl border border-neutral-200 bg-white shadow-2xl dark:border-neutral-800 dark:bg-neutral-900">
+      <div
+        ref={contenedorRef}
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-lg rounded-2xl border border-neutral-200 bg-white shadow-2xl dark:border-neutral-800 dark:bg-neutral-900"
+      >
         {/* Cabecera */}
         <div className="flex items-center justify-between border-b border-neutral-100 px-6 py-4 dark:border-neutral-800">
           <div className="flex items-center space-x-2.5">
@@ -54,7 +65,7 @@ export function ModalMotivoPerdida({
                 Marcar Oportunidad como Perdida
               </h2>
               <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                {oportunidad.titulo} · {oportunidad.contactoNombre || 'Sin contacto'}
+                {oportunidad.titulo} — {oportunidad.contactoNombre || 'Sin contacto'}
               </p>
             </div>
           </div>
@@ -84,7 +95,7 @@ export function ModalMotivoPerdida({
               return (
                 <label
                   key={m}
-                  className={`flex cursor-pointer items-center justify-between rounded-xl border p-3 text-xs transition-colors ${
+                  className={`focus-within:ring-acento-600 flex cursor-pointer items-center justify-between rounded-xl border p-3 text-xs transition-colors focus-within:ring-2 ${
                     seleccionado
                       ? 'border-acento-600 bg-acento-50/60 text-acento-900 dark:border-acento-500 dark:bg-acento-950/40 dark:text-acento-200 font-medium'
                       : 'border-neutral-200 hover:bg-neutral-50 dark:border-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-800/60'
@@ -135,7 +146,11 @@ export function ModalMotivoPerdida({
           )}
 
           {errorValidacion && (
-            <div className="mt-3 rounded-lg bg-red-50 p-2.5 text-xs text-red-700 dark:bg-red-950/50 dark:text-red-300">
+            <div
+              role="alert"
+              aria-live="assertive"
+              className="mt-3 rounded-lg bg-red-50 p-2.5 text-xs text-red-700 dark:bg-red-950/50 dark:text-red-300"
+            >
               {errorValidacion}
             </div>
           )}
