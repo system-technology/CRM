@@ -6,7 +6,7 @@
 
 | Campo | Valor |
 |---|---|
-| Última actualización | 2026-10-19 (noche: hasta v0.31.1, el listado de cotizaciones contra la API real) |
+| Última actualización | 2026-10-20 (madrugada: hasta v0.32.0, los huecos del disparador) |
 | Actualizado por | Claude Opus 5.5 (`integrador`) |
 | Fase | **Rebanada vertical de paquetes, en construcción** |
 | Avance de la fase | Cotizador de punta a punta. **La cotización es la suma de sus tarifas y el precio «desde» es uno que el comprador puede pagar (v0.19.0).** Apretón de manos del webhook vivo. Bandeja web en construcción |
@@ -711,7 +711,7 @@ revisó (ACEPTAR CON CAMBIOS), y los dos cambios están aplicados.
 |---|---|---|
 | ~~No existe el relay de barrido~~ | `datos` | **Cerrado en v0.30.0:** `listar_changes_pendientes` y el barrido del trabajador, que reencola los `changes` pendientes |
 | ~~Falta el puerto `asegurarContacto`: `inbox` escribía en `contactos` directamente (R4)~~ | `backend` | **Cerrado en v0.30.1** |
-| **Tres huecos del disparador `canales_propagar_estado`:** la baja de una cuenta, el borrado lógico de un canal y la re-alta no se propagan al directorio | `datos` | El trabajador contrasta con `canales` dentro de la transacción y descarta lo revocado |
+| ~~Tres huecos del disparador `canales_propagar_estado`~~ | `datos` | **Cerrados en v0.32.0**, con el cuarto (INSERT): baja de cuenta (`propagar_estado_cuenta`), `eliminado_en` tratado como REVOCADO, y un re-alta que no puede relajar el estado del canal |
 | Ratificar el ADR-0010, y aprobar la línea del mapa en `CLAUDE.md` §5 | Usuario | Hoy describe el código tal como está |
 
 ---
@@ -1021,7 +1021,7 @@ Registro: [`docs/_integraciones/2026-10-19-v0.30.0.md`](docs/_integraciones/2026
 
 | Cola | Dueño | Por qué no bloquea |
 |---|---|---|
-| **Más de 500 `changes` abandonados taparían a los nuevos**: el barrido lista siempre los mismos primeros. Hace falta una columna de intentos, o un orden que los rote | `datos` | Hoy no hay volumen ni changes abandonados |
+| ~~Más de 500 `changes` abandonados taparían a los nuevos~~ | `datos` | **La base ya tiene el tope (v0.32.0)**: `listar_changes_pendientes` admite `p_max_intentos` (por defecto 10). Falta que el trabajador lo use: ver la cola de `backend` del 2026-10-19 (vigesimosexta) |
 | **Al integrar `feat/identity-esquema`**: esta rama y aquella suben las dos el recuento literal de funciones `SECURITY DEFINER` de `aislamiento.spec.ts`. Juntas, el total correcto es **10** | integrador / `datos` | Se resuelve en esa fusión. La aserción lo detecta si queda mal |
 
 ## Integración del 2026-10-19 (vigesimosegunda) — v0.30.1: inbox y quoting piden a crm por puertos (R4)
@@ -1073,4 +1073,29 @@ local en verde, y la web pasa 171 pruebas.
 | Cola | Dueño | Por qué no bloquea |
 |---|---|---|
 | **Si la API falla, el listado de cotizaciones muestra el mock sin avisar**: el asesor vería datos inventados como si fueran suyos. El mismo `catch → mock` puede estar en `crm-api.ts` e `inbox-api.ts`, que también importan mocks: que Antigravity lo confirme pantalla por pantalla | Antigravity (**0c.34**, prioritaria) | No hay nada desplegado. **Bloquea el primer despliegue** |
+
+## Integración del 2026-10-19 (vigesimosexta) — v0.32.0: los huecos del disparador y el tope del barrido
+
+`fix/db-huecos-disparador-y-intentos` @ `c8d88e6` entra en `main` (`e4f45b9`), etiquetada **v0.32.0**. Trae la migración `20261020010000`
+y las aserciones 55 a 60, que cierran los cuatro huecos del ADR-0010:
+
+- la baja de una cuenta, con el disparador nuevo `propagar_estado_cuenta`;
+- `eliminado_en` tratado como REVOCADO;
+- el re-alta: `registrar_enrutamiento` rechaza un estado más laxo que el del canal, y lanza `P0002` si el canal o la cuenta no
+  existen bajo el tenant;
+- el INSERT.
+
+Además pone el tope de reencolados en la base: `listar_changes_pendientes(…, p_max_intentos DEFAULT 10)` y
+`contar_reencolado_barrido`. **Es compatible con el trabajador que ya corre**, que sigue llamando con dos argumentos gracias al
+`DEFAULT`. `auditor-seguridad`: ACEPTAR. Compuerta: CI **8/8**, https://github.com/Alfavear/CRM/actions/runs/39346331354.
+
+**Aplicada en Neon desde `main`** (`migrate deploy`, `neondb`), y la `checksum` coincide con el archivo (`ca22ed01…`). Neon queda con
+**12 funciones `SECURITY DEFINER`**: las 11 de `main` más `sincronizar_acceso_identidad`, que viene de la migración de identidad
+todavía sin integrar. Ambos disparadores, el de canal y el de cuenta, están presentes.
+Registro: [`docs/_integraciones/2026-10-19-v0.32.0.md`](docs/_integraciones/2026-10-19-v0.32.0.md).
+
+| Cola | Dueño | Por qué no bloquea |
+|---|---|---|
+| **El filtro de reencolados de la base todavía no actúa**: el trabajador no pasa `maxReencolados` como tercer argumento, y cuenta en Redis en vez de llamar a `contar_reencolado_barrido` | `backend` | Hoy no hay volumen. Sin esto, el tope de la base es papel |
+| La baja de una cuenta no da de baja sus canales | `backend` | El directorio ya la propaga a las filas WABA. Falta la coherencia en `canales` |
 
