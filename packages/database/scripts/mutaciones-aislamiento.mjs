@@ -54,7 +54,44 @@ const TABLAS = [
   'plantillas_whatsapp',
   'cotizaciones',
   'versiones_cotizacion',
+  'usuarios',
+  'roles',
 ];
+
+/**
+ * Reescribe `sincronizar_acceso_identidad` con el rol de su dueño. Lo necesitan M17 y su
+ * restauración: el rol de migraciones la puede PONERSE (SET) pero no hereda su propiedad, y
+ * crear —también reemplazar— en `public` exige CREATE, que se concede y se retira en el acto.
+ */
+async function reescribirComoAccesos(cliente, definicion) {
+  await cliente.query('BEGIN');
+  try {
+    await cliente.query('GRANT CREATE ON SCHEMA public TO viajapro_accesos');
+    await cliente.query('SET LOCAL ROLE viajapro_accesos');
+    await cliente.query(definicion);
+    await cliente.query('RESET ROLE');
+    await cliente.query('REVOKE CREATE ON SCHEMA public FROM viajapro_accesos');
+    await cliente.query('COMMIT');
+  } catch (error) {
+    await cliente.query('ROLLBACK');
+    throw error;
+  }
+}
+
+/** La definición sana, leída del catálogo una vez, para poder restaurarla tal cual. */
+let definicionSincronizar;
+async function definicionSana(cliente) {
+  if (!definicionSincronizar) {
+    const { rows } = await cliente.query(
+      "SELECT pg_get_functiondef('public.sincronizar_acceso_identidad()'::regprocedure) AS def",
+    );
+    definicionSincronizar = rows[0].def;
+    if (!/\[par-old\][\s\S]*\[\/par-old\]/.test(definicionSincronizar)) {
+      throw new Error('La función no tiene las marcas [par-old]: M17 no sabría qué quitar.');
+    }
+  }
+  return definicionSincronizar;
+}
 
 /**
  * Quita los codigos de color ANSI de la salida de vitest.
@@ -196,7 +233,68 @@ const MUTACIONES = [
                   FOREIGN KEY (cotizacion_id, tenant_id) REFERENCES cotizaciones (id, tenant_id)
                   ON DELETE SET NULL (cotizacion_id) ON UPDATE RESTRICT`,
   },
+  // --- Identidad (20261019230000, ADR-0011) ---
+  {
+    nombre: 'M14 — viajapro_app puede leer sesiones (tabla global de identidad)',
+    sql: `GRANT SELECT ON sesiones TO viajapro_app`,
+    prueba: '61',
+    restaurar: `REVOKE SELECT ON sesiones FROM viajapro_app`,
+  },
+  {
+    // La pieza: que viajapro_identidad esté FUERA de roles_de_aplicacion. Meterlo ahí es
+    // exactamente esto, sobre todas las tablas a la vez.
+    nombre: 'M15 — viajapro_identidad puede leer contactos (tabla de negocio)',
+    sql: `GRANT SELECT ON contactos TO viajapro_identidad`,
+    prueba: '62',
+    restaurar: `REVOKE SELECT ON contactos FROM viajapro_identidad`,
+  },
+  {
+    nombre: 'M16 — un rol de login es miembro de viajapro_accesos',
+    sql: `GRANT viajapro_accesos TO viajapro_app`,
+    prueba: '63',
+    restaurar: `REVOKE viajapro_accesos FROM viajapro_app`,
+  },
+  {
+    nombre: 'M17 — el disparador NO borra el par OLD al cambiar identidad_id o tenant_id',
+    sql: async (cliente) => {
+      const sana = await definicionSana(cliente);
+      await reescribirComoAccesos(
+        cliente,
+        sana.replace(/\[par-old\][\s\S]*\[\/par-old\]/, '[sin par-old]'),
+      );
+    },
+    prueba: '64',
+    restaurar: async (cliente) => reescribirComoAccesos(cliente, await definicionSana(cliente)),
+  },
+  {
+    nombre: 'M18 — usuarios con WITH CHECK (true): plantar una membresía en otra agencia',
+    sql: `DROP POLICY tenant_isolation ON usuarios;
+          CREATE POLICY tenant_isolation ON usuarios
+            USING      (tenant_id = NULLIF(current_setting('app.current_tenant', true), '')::uuid)
+            WITH CHECK (true)`,
+    prueba: '65',
+  },
+  {
+    nombre: 'M19 — roles SIN RLS: lectura cruzada del rol de otra agencia',
+    sql: `ALTER TABLE roles DISABLE ROW LEVEL SECURITY`,
+    prueba: '66',
+  },
+  {
+    nombre: 'M20 — usuarios.rol_id con foránea SIMPLE: un usuario lleva el rol de otra agencia',
+    sql: `ALTER TABLE usuarios DROP CONSTRAINT usuarios_rol_id_tenant_id_fkey;
+          ALTER TABLE usuarios ADD CONSTRAINT usuarios_rol_id_tenant_id_fkey
+            FOREIGN KEY (rol_id) REFERENCES roles (id)`,
+    prueba: '66',
+    restaurar: `ALTER TABLE usuarios DROP CONSTRAINT usuarios_rol_id_tenant_id_fkey;
+                ALTER TABLE usuarios ADD CONSTRAINT usuarios_rol_id_tenant_id_fkey
+                  FOREIGN KEY (rol_id, tenant_id) REFERENCES roles (id, tenant_id)
+                  ON DELETE NO ACTION ON UPDATE RESTRICT`,
+  },
 ];
+
+/** Una mutación o su restauración: SQL directo, o una función cuando hace falta otro rol. */
+const ejecutar = (cliente, paso) =>
+  typeof paso === 'function' ? paso(cliente) : cliente.query(paso);
 
 console.log('--- CONTROL: el sistema sano, sin ninguna mutacion ---');
 let controlOk = true;
@@ -220,10 +318,10 @@ for (const m of MUTACIONES) {
   // justo el falso positivo que este arnes existe para no tener. Que reviente es preferible.
   let r;
   try {
-    await admin.query(m.sql);
+    await ejecutar(admin, m.sql);
     r = correr(m.prueba);
   } finally {
-    if (m.restaurar) await admin.query(m.restaurar);
+    if (m.restaurar) await ejecutar(admin, m.restaurar);
     for (const t of TABLAS) await admin.query('SELECT aplicar_aislamiento_tenant($1)', [t]);
   }
   resultados.push({ nombre: m.nombre, rojo: !r.verde, salida: r.salida });

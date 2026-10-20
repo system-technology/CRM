@@ -254,6 +254,24 @@ describe('aislamiento entre tenants', () => {
  */
 const ROLES_DE_APLICACION = ['viajapro_app', 'viajapro_altas', 'viajapro_webhook'] as const;
 
+/**
+ * El cuarto rol de login (ADR-0011). **No** es de aplicación: no recibe el `GRANT ... ON ALL
+ * TABLES` y no debe recibirlo nunca. Pero es de login y sin BYPASSRLS, así que se vigila por
+ * atributo, y se añade aquí a la unión de `rolesAVigilar` por la misma razón que los otros
+ * tres: si se cayera de la vigilancia, sus aserciones de comportamiento seguirían corriendo.
+ */
+const ROL_IDENTIDAD = 'viajapro_identidad';
+const ROLES_DE_LOGIN_DECLARADOS = [...ROLES_DE_APLICACION, ROL_IDENTIDAD] as const;
+
+/** Las cinco tablas globales de ADR-0011. Solo `viajapro_identidad` las toca. */
+const TABLAS_DE_IDENTIDAD = [
+  'accesos_identidad',
+  'credenciales',
+  'identidades',
+  'sesiones',
+  'verificaciones',
+] as const;
+
 /** Las cuatro tablas globales del ADR. `recepciones_webhook_changes` es la tabla hija. */
 const TABLAS_GLOBALES_ADR_0008 = [
   'enrutamiento_canales',
@@ -279,6 +297,15 @@ const EXCEPCIONES_DECLARADAS: ReadonlyArray<readonly [string, string, readonly s
   ['_prisma_migrations', 'viajapro_altas', []],
   ['_prisma_migrations', 'viajapro_app', []],
   ['_prisma_migrations', 'viajapro_webhook', []],
+  // ADR-0011: solo viajapro_identidad, y sobre accesos_identidad solo lee.
+  ['accesos_identidad', 'viajapro_altas', []],
+  ['accesos_identidad', 'viajapro_app', []],
+  ['accesos_identidad', 'viajapro_identidad', ['SELECT']],
+  ['accesos_identidad', 'viajapro_webhook', []],
+  ['credenciales', 'viajapro_altas', []],
+  ['credenciales', 'viajapro_app', []],
+  ['credenciales', 'viajapro_identidad', ['SELECT', 'INSERT', 'UPDATE', 'DELETE']],
+  ['credenciales', 'viajapro_webhook', []],
   ['enrutamiento_canales', 'viajapro_altas', []],
   ['enrutamiento_canales', 'viajapro_app', []],
   ['enrutamiento_canales', 'viajapro_webhook', []],
@@ -288,6 +315,10 @@ const EXCEPCIONES_DECLARADAS: ReadonlyArray<readonly [string, string, readonly s
   ['excepciones_rls', 'viajapro_altas', []],
   ['excepciones_rls', 'viajapro_app', []],
   ['excepciones_rls', 'viajapro_webhook', []],
+  ['identidades', 'viajapro_altas', []],
+  ['identidades', 'viajapro_app', []],
+  ['identidades', 'viajapro_identidad', ['SELECT', 'INSERT', 'UPDATE', 'DELETE']],
+  ['identidades', 'viajapro_webhook', []],
   ['monedas', 'viajapro_altas', ['SELECT']],
   ['monedas', 'viajapro_app', ['SELECT']],
   ['monedas', 'viajapro_webhook', ['SELECT']],
@@ -297,10 +328,74 @@ const EXCEPCIONES_DECLARADAS: ReadonlyArray<readonly [string, string, readonly s
   ['recepciones_webhook_changes', 'viajapro_altas', []],
   ['recepciones_webhook_changes', 'viajapro_app', []],
   ['recepciones_webhook_changes', 'viajapro_webhook', []],
+  ['sesiones', 'viajapro_altas', []],
+  ['sesiones', 'viajapro_app', []],
+  ['sesiones', 'viajapro_identidad', ['SELECT', 'INSERT', 'UPDATE', 'DELETE']],
+  ['sesiones', 'viajapro_webhook', []],
   ['tenants', 'viajapro_altas', ['SELECT']],
   ['tenants', 'viajapro_app', ['SELECT']],
   ['tenants', 'viajapro_webhook', ['SELECT']],
+  ['verificaciones', 'viajapro_altas', []],
+  ['verificaciones', 'viajapro_app', []],
+  ['verificaciones', 'viajapro_identidad', ['SELECT', 'INSERT', 'UPDATE', 'DELETE']],
+  ['verificaciones', 'viajapro_webhook', []],
 ];
+
+/**
+ * El detector de la aserción 17: tablas con datos de agencia que nadie aísla.
+ *
+ * «Datos de agencia» por el DATO y no por el nombre: una columna que es foránea hacia
+ * `tenants`, o que se llama `tenant%`. Las particiones se juzgan por su raíz, igual que en
+ * `tablas_sin_aislamiento`: es la raíz la que está —o no— en `excepciones_rls`.
+ */
+async function tablasConDatosDeAgenciaSinRlsForzada(
+  cliente: Client,
+): Promise<Array<{ tabla: string; columnas: string[] }>> {
+  const { rows } = await cliente.query(
+    `WITH RECURSIVE raices AS (
+       SELECT c.oid, c.relname AS raiz
+         FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' AND c.relkind IN ('r', 'p') AND NOT c.relispartition
+       UNION ALL
+       SELECT h.inhrelid, r.raiz FROM pg_inherits h JOIN raices r ON r.oid = h.inhparent
+     )
+     SELECT c.relname AS tabla, array_agg(a.attname::text ORDER BY a.attname) AS columnas
+       FROM raices r
+       JOIN pg_class c ON c.oid = r.oid
+       JOIN pg_attribute a ON a.attrelid = c.oid AND a.attnum > 0 AND NOT a.attisdropped
+      WHERE (a.attname LIKE 'tenant%'
+             OR EXISTS (SELECT 1 FROM pg_constraint k
+                         WHERE k.contype = 'f' AND k.conrelid = c.oid
+                           AND k.confrelid = 'public.tenants'::regclass
+                           AND a.attnum = ANY (k.conkey)))
+        AND NOT EXISTS (SELECT 1 FROM excepciones_rls e WHERE e.tabla = r.raiz)
+        AND NOT (c.relrowsecurity AND c.relforcerowsecurity)
+      GROUP BY c.relname
+      ORDER BY 1`,
+  );
+  return rows as Array<{ tabla: string; columnas: string[] }>;
+}
+
+/**
+ * El barrido de la aserción 54: foráneas entre dos tablas que tienen `tenant_id` en las que
+ * el `tenant_id` de la hija no se empareja, en la misma posición, con el `tenant_id` del padre.
+ */
+const FORANEAS_SIN_TENANT_SQL = `
+  SELECT DISTINCT t.relname AS hija, c.conname, p.relname AS padre
+    FROM pg_constraint c
+    JOIN pg_class t ON t.oid = c.conrelid
+    JOIN pg_namespace n ON n.oid = t.relnamespace
+    JOIN pg_class p ON p.oid = c.confrelid
+    JOIN pg_attribute ta ON ta.attrelid = c.conrelid AND ta.attname = 'tenant_id'
+                        AND ta.attnum > 0 AND NOT ta.attisdropped
+    JOIN pg_attribute pa ON pa.attrelid = c.confrelid AND pa.attname = 'tenant_id'
+                        AND pa.attnum > 0 AND NOT pa.attisdropped
+   WHERE c.contype = 'f' AND n.nspname = 'public'
+     AND NOT EXISTS (
+       SELECT 1 FROM generate_subscripts(c.conkey, 1) AS i
+        WHERE c.conkey[i] = ta.attnum AND c.confkey[i] = pa.attnum
+     )
+   ORDER BY 1, 2`;
 
 /**
  * La tabla de §1.3 del ADR, que es normativa. La aserción 20 la compara entrada por
@@ -325,6 +420,15 @@ const MATRIZ_FUNCIONES: Readonly<Record<string, readonly string[]>> = {
   // Novena: el relay de barrido (ADR-0010, punto 9). Solo identificadores y antigüedad; la
   // ejecuta el trabajador, que es quien vuelve a encolar.
   listar_changes_pendientes: ['viajapro_webhook'],
+  // Décima, y SIN EXECUTE: el disparador gemelo sobre `cuentas_whatsapp`, que lleva la baja
+  // (o el borrado lógico) de una cuenta a sus filas WABA. Hueco (a) de ADR-0010 punto 6.
+  propagar_estado_cuenta: [],
+  // Undécima: el contador de reencolados del barrido, en la base y no en Redis, para que el
+  // listado pueda excluir a los abandonados (cola de v0.30.0).
+  contar_reencolado_barrido: ['viajapro_webhook'],
+  // Duodécima (ADR-0011), también SIN ningún EXECUTE: la función del disparador de `usuarios`
+  // que mantiene `accesos_identidad`. Un GRANT sobre ella dejaría apuntar pertenencias a mano.
+  sincronizar_acceso_identidad: [],
 };
 
 const PROPIETARIO_ESPERADO: Readonly<Record<string, string>> = {
@@ -337,6 +441,9 @@ const PROPIETARIO_ESPERADO: Readonly<Record<string, string>> = {
   purgar_payloads: 'viajapro_staging',
   propagar_estado_canal: 'viajapro_enrutador',
   listar_changes_pendientes: 'viajapro_staging',
+  propagar_estado_cuenta: 'viajapro_enrutador',
+  contar_reencolado_barrido: 'viajapro_staging',
+  sincronizar_acceso_identidad: 'viajapro_accesos',
 };
 
 /**
@@ -429,7 +536,7 @@ async function rolesVigilados(cliente: Client): Promise<string[]> {
 async function rolesAVigilar(cliente: Client): Promise<string[]> {
   const vigilados = await rolesVigilados(cliente);
   const existentes = await cliente.query('SELECT rolname FROM pg_roles WHERE rolname = ANY($1)', [
-    [...ROLES_DE_APLICACION],
+    [...ROLES_DE_LOGIN_DECLARADOS],
   ]);
   const declarados = existentes.rows.map((r) => r.rolname as string);
   return [...new Set([...vigilados, ...declarados])].sort();
@@ -628,6 +735,10 @@ describe('ADR-0008 — directorio de enrutamiento, staging y separación de role
   const cuentaRevocada = randomUUID();
   const canalRevocado = randomUUID();
   const claveRevocada = randomBytes(32);
+  /** Para las aserciones 55 a 58: lo que crean, para que el desmontaje lo encuentre. */
+  const CUENTAS_DE_HUECOS: string[] = [];
+  const CANALES_DE_HUECOS: string[] = [];
+  const CLAVES_DE_HUECOS: Buffer[] = [];
 
   /** Lo que haría el camino de alta tras el canje del `code`: escribir en el directorio. */
   async function registrar(
@@ -684,7 +795,7 @@ describe('ADR-0008 — directorio de enrutamiento, staging y separación de role
     // invariante que lo hace probatorio, y la prueba lo paga dejando sus asientos.
     await admin.query('SET ROLE "viajapro_enrutador"');
     await admin.query('DELETE FROM enrutamiento_canales WHERE clave_canal_hmac = ANY($1)', [
-      [claveA, claveB, claveC, claveWabaA, claveRevocada],
+      [claveA, claveB, claveC, claveWabaA, claveRevocada, ...CLAVES_DE_HUECOS],
     ]);
     await admin.query('RESET ROLE');
     await admin.query('SET ROLE "viajapro_staging"');
@@ -696,10 +807,10 @@ describe('ADR-0008 — directorio de enrutamiento, staging y separación de role
     ]);
     await admin.query('RESET ROLE');
     await admin.query('DELETE FROM canales WHERE id = ANY($1)', [
-      [canalA, canalB, canalC, canalRevocado],
+      [canalA, canalB, canalC, canalRevocado, ...CANALES_DE_HUECOS],
     ]);
     await admin.query('DELETE FROM cuentas_whatsapp WHERE id = ANY($1)', [
-      [cuentaA, cuentaB, cuentaC, cuentaRevocada],
+      [cuentaA, cuentaB, cuentaC, cuentaRevocada, ...CUENTAS_DE_HUECOS],
     ]);
   }, 60_000);
 
@@ -780,8 +891,8 @@ describe('ADR-0008 — directorio de enrutamiento, staging y separación de role
     );
     expect(
       rows.length,
-      'faltan funciones de ADR-0008: eran seis, la auditoría de implementación añadió purgar_payloads, la tarea 4f propagar_estado_canal y el relay de barrido listar_changes_pendientes',
-    ).toBe(9);
+      'faltan funciones de ADR-0008: eran seis, la auditoría de implementación añadió purgar_payloads, la tarea 4f propagar_estado_canal, el relay de barrido listar_changes_pendientes, y los huecos del disparador propagar_estado_cuenta y contar_reencolado_barrido, y ADR-0011 sincronizar_acceso_identidad',
+    ).toBe(12);
     expect(rows.filter((r) => r.publico)).toEqual([]);
   });
 
@@ -794,7 +905,7 @@ describe('ADR-0008 — directorio de enrutamiento, staging y separación de role
        WHERE n.nspname = 'public' AND p.proname = ANY($1) ORDER BY 1`,
       [Object.keys(MATRIZ_FUNCIONES)],
     );
-    expect(rows.length).toBe(9);
+    expect(rows.length).toBe(12);
 
     for (const fila of rows) {
       const config = (fila.proconfig as string[] | null) ?? [];
@@ -810,14 +921,15 @@ describe('ADR-0008 — directorio de enrutamiento, staging y separación de role
     }
   });
 
-  it('14 — los dos propietarios no son credenciales ni se saltan RLS', async () => {
+  it('14 — los tres propietarios no son credenciales ni se saltan RLS', async () => {
     const { rows } = await admin.query(
       `SELECT rolname, rolcanlogin, rolbypassrls, rolsuper,
               EXISTS (SELECT 1 FROM pg_roles s WHERE s.rolname = 'neon_superuser')
                 AND pg_has_role(rolname, 'neon_superuser', 'MEMBER') AS hereda_neon
-       FROM pg_roles WHERE rolname IN ('viajapro_enrutador','viajapro_staging') ORDER BY 1`,
+       FROM pg_roles WHERE rolname IN ('viajapro_enrutador','viajapro_staging','viajapro_accesos') ORDER BY 1`,
     );
-    expect(rows.length).toBe(2);
+    // El tercero es de ADR-0011: dueño del disparador que escribe `accesos_identidad`.
+    expect(rows.length).toBe(3);
     for (const r of rows) {
       expect(r.rolcanlogin, `${r.rolname} puede iniciar sesión`).toBe(false);
       expect(r.rolbypassrls, `${r.rolname} tiene BYPASSRLS`).toBe(false);
@@ -946,11 +1058,47 @@ describe('ADR-0008 — directorio de enrutamiento, staging y separación de role
     }
   }, 60_000);
 
-  it('17 — ninguna tabla global tiene columna tenant_id, y todas están declaradas', async () => {
-    // Si alguna la tuviera, el aplicador dirigido por datos les pondría RLS y volverían a
-    // ser ilegibles sin contexto: el ciclo huevo-gallina de vuelta, en producción y sin
-    // error. `excepciones_rls` entra en la cuenta: son CUATRO, y la regla de parada de
-    // Consecuencias se apoya en ese número.
+  it('17 — toda tabla con datos de agencia fuera de excepciones_rls tiene RLS forzada, y toda excepción tiene motivo', async () => {
+    // Contraprueba primero: el detector tiene que ver una tabla que guarda datos de agencia
+    // bajo otro nombre, sin RLS y sin excepción —lo que la versión anterior dejaba pasar—.
+    // Se planta dentro de una transacción que se deshace: no queda nada en la base.
+    await admin.query('BEGIN');
+    try {
+      await admin.query(
+        'CREATE TABLE contraprueba_17 (id uuid PRIMARY KEY, tenant_x uuid REFERENCES tenants (id))',
+      );
+      const plantada = await tablasConDatosDeAgenciaSinRlsForzada(admin);
+      expect(plantada, 'el detector de la 17 no ve una tabla con tenant_x sin RLS').toContainEqual({
+        tabla: 'contraprueba_17',
+        columnas: ['tenant_x'],
+      });
+    } finally {
+      await admin.query('ROLLBACK');
+    }
+
+    // **Por el dato, no por el nombre.** La versión anterior solo preguntaba si una tabla
+    // global tenía una columna llamada `tenant_id`, y una tabla que guardase datos de agencia
+    // bajo otro nombre —`tenant_resuelto_id`, `tenant_acceso_id`— la pasaba sin más. Ahora:
+    // toda tabla (y toda partición, juzgada por su raíz) que NO esté en `excepciones_rls` y
+    // tenga una columna que referencie `tenants` o se llame `tenant%` tiene RLS habilitada y
+    // forzada. La 1 no lo cubre: mira solo la columna `tenant_id`.
+    const sinRls = await tablasConDatosDeAgenciaSinRlsForzada(admin);
+    expect(
+      sinRls,
+      `Tablas con datos de agencia, fuera de excepciones_rls y sin RLS forzada: ${JSON.stringify(sinRls)}`,
+    ).toEqual([]);
+
+    // Una excepción sin razón escrita no es una excepción, es un agujero con nombre.
+    const sinMotivo = await admin.query(
+      `SELECT tabla, rol FROM excepciones_rls
+        WHERE motivo IS NULL OR btrim(motivo) = '' ORDER BY 1, 2`,
+    );
+    expect(sinMotivo.rows, 'excepciones_rls con motivo vacío').toEqual([]);
+
+    // Lo de antes sigue valiendo: si una tabla global tuviera `tenant_id`, el aplicador
+    // dirigido por datos le pondría RLS y volvería a ser ilegible sin contexto —el ciclo
+    // huevo-gallina de vuelta, en producción y sin error—. `excepciones_rls` entra en la
+    // cuenta: son CUATRO, y la regla de parada de Consecuencias se apoya en ese número.
     const tablas = [...TABLAS_GLOBALES_ADR_0008, 'excepciones_rls'];
     const { rows } = await admin.query(
       `SELECT c.relname,
@@ -967,6 +1115,18 @@ describe('ADR-0008 — directorio de enrutamiento, staging y separación de role
       expect(r.tiene_tenant_id, `${r.relname} tiene una columna tenant_id`).toBe(false);
       expect(r.declarada, `${r.relname} no está declarada en excepciones_rls`).toBe(true);
     }
+  });
+
+  it('54 — ninguna foránea entre dos tablas con tenant_id deja fuera el tenant', async () => {
+    // La integridad referencial se evalúa POR ENCIMA de RLS: el `WITH CHECK` valida el
+    // `tenant_id` de la fila nueva y nadie valida el del padre. Una foránea simple deja
+    // colgar una fila de una agencia de la fila de otra si alguien escribe el id cruzado.
+    // Barrido del catálogo entero, no lista de tablas: la que se cree mañana entra sola.
+    const { rows } = await admin.query(FORANEAS_SIN_TENANT_SQL);
+    expect(
+      rows.map((r) => `${r.hija}.${r.conname} -> ${r.padre}`),
+      'Foráneas entre tablas de tenant que no incluyen tenant_id',
+    ).toEqual([]);
   });
 
   it('18 — la purga no borra una recepción con algún change sin resolver', async () => {
@@ -1440,7 +1600,9 @@ describe('ADR-0008 — directorio de enrutamiento, staging y separación de role
     expect(firma.rows[0]?.resultado).toBe(
       'TABLE(recepcion_id bytea, indice smallint, antiguedad_s integer)',
     );
-    expect(firma.rows[0]?.argumentos).toBe('p_antiguedad_minima_s integer, p_limite integer');
+    expect(firma.rows[0]?.argumentos).toBe(
+      'p_antiguedad_minima_s integer, p_limite integer, p_max_intentos integer',
+    );
 
     // Solo el trabajador. La 20 lo mira en el catálogo; esto lo mira en el comportamiento.
     for (const rol of ['viajapro_app', 'viajapro_altas']) {
@@ -1522,6 +1684,387 @@ describe('ADR-0008 — directorio de enrutamiento, staging y separación de role
         `aceptó antigüedad ${antiguedad} y límite ${limite}`,
       ).rejects.toThrow(/listar_changes_pendientes/);
     }
+  });
+
+  // ---------------------------------------------------------------------------
+  // Los cuatro huecos del disparador (ADR-0010 punto 6, y el del auditor). Ninguno era
+  // fuga —la escritura exige la conjunción del directorio y de `canales`—, pero el
+  // directorio mentía. Cada aserción mira el directorio por el único camino que lo lee
+  // (`resolver_enrutamiento`, como el trabajador) después de un cambio hecho por el camino
+  // real: la API, con su rol y su contexto de tenant.
+  // ---------------------------------------------------------------------------
+
+  async function crearCuenta(tenant: string, cuenta: string, estado = 'ACTIVO') {
+    await admin.query(
+      `INSERT INTO cuentas_whatsapp (id, tenant_id, waba_id, nombre, estado, actualizado_en)
+       VALUES ($1, $2, $3, 'WABA de huecos', $4::estado_canal, now())`,
+      [cuenta, tenant, `waba-hueco-${cuenta.slice(0, 8)}`, estado],
+    );
+    CUENTAS_DE_HUECOS.push(cuenta);
+  }
+
+  async function crearCanal(tenant: string, canal: string, cuenta: string, estado = 'ACTIVO') {
+    await admin.query(
+      `INSERT INTO canales (id, tenant_id, cuenta_id, phone_number_id, numero_e164, estado, actualizado_en)
+       VALUES ($1, $2, $3, $4, '+573001110077', $5::estado_canal, now())`,
+      [canal, tenant, cuenta, `pn-${canal.slice(0, 8)}`, estado],
+    );
+    CANALES_DE_HUECOS.push(canal);
+  }
+
+  function claveDeHueco(): Buffer {
+    const clave = randomBytes(32);
+    CLAVES_DE_HUECOS.push(clave);
+    return clave;
+  }
+
+  const estadoResuelto = async (clave: Buffer) =>
+    (
+      await conRol('viajapro_webhook', 'SELECT estado FROM resolver_enrutamiento($1)', [clave])
+    ).rows.map((r) => r.estado as string);
+
+  async function asientos(columna: 'canal_id' | 'cuenta_id', id: string) {
+    const { rows } = await conRol(
+      'viajapro_enrutador',
+      `SELECT estado_anterior, estado_nuevo, motivo FROM enrutamiento_historial
+       WHERE ${columna} = $1 ORDER BY ocurrido_en`,
+      [id],
+    );
+    return (rows as { estado_anterior: string | null; estado_nuevo: string; motivo: string }[]).map(
+      (r) => [r.estado_anterior, r.estado_nuevo],
+    );
+  }
+
+  it('55 — la baja de una CUENTA llega a sus filas WABA, y la agencia no la deshace', async () => {
+    // Hueco (a). Las filas WABA gobiernan todos los eventos de gestión de la agencia; una
+    // cuenta dada de baja seguía resolviéndose ACTIVO.
+    const cuenta = randomUUID();
+    const clave = claveDeHueco();
+    await crearCuenta(TENANT_B, cuenta);
+    await registrar(TENANT_B, clave, null, cuenta);
+    expect(await estadoResuelto(clave)).toEqual(['ACTIVO']);
+
+    const baja = await comoTenant(TENANT_B, (c) =>
+      c.query("UPDATE cuentas_whatsapp SET estado = 'SUSPENDIDO' WHERE id = $1", [cuenta]),
+    );
+    expect(baja.rowCount).toBe(1);
+    expect(await estadoResuelto(clave), 'una cuenta suspendida no resuelve ACTIVO').toEqual([
+      'SUSPENDIDO',
+    ]);
+
+    await comoTenant(TENANT_B, (c) =>
+      c.query(
+        "UPDATE cuentas_whatsapp SET estado = 'REVOCADO', revocado_en = now() WHERE id = $1",
+        [cuenta],
+      ),
+    );
+    expect(await estadoResuelto(clave)).toEqual(['REVOCADO']);
+
+    // Monótono: devolver la cuenta a ACTIVO desde la API no reactiva el ruteo.
+    await comoTenant(TENANT_B, (c) =>
+      c.query("UPDATE cuentas_whatsapp SET estado = 'ACTIVO', revocado_en = NULL WHERE id = $1", [
+        cuenta,
+      ]),
+    );
+    expect(await estadoResuelto(clave), 'la API no puede reactivar el ruteo de un WABA').toEqual([
+      'REVOCADO',
+    ]);
+
+    expect(await asientos('cuenta_id', cuenta), 'cada restricción deja su asiento').toEqual([
+      [null, 'ACTIVO'],
+      ['ACTIVO', 'SUSPENDIDO'],
+      ['SUSPENDIDO', 'REVOCADO'],
+    ]);
+
+    // Y solo alcanza a SU cuenta: la fila WABA de otro tenant no se mueve.
+    expect(await estadoResuelto(claveWabaA)).toEqual(['ACTIVO']);
+  });
+
+  it('56 — el borrado lógico de un canal o de una cuenta revoca su ruteo', async () => {
+    // Hueco (b). `eliminado_en` es la baja de la agencia (ADR-0010 §1.4) y no propagaba.
+    const cuenta = randomUUID();
+    const canal = randomUUID();
+    const claveNumero = claveDeHueco();
+    const claveWaba = claveDeHueco();
+    await crearCuenta(TENANT_B, cuenta);
+    await crearCanal(TENANT_B, canal, cuenta);
+    await registrar(TENANT_B, claveNumero, canal, cuenta);
+    await registrar(TENANT_B, claveWaba, null, cuenta);
+
+    await comoTenant(TENANT_B, (c) =>
+      c.query('UPDATE canales SET eliminado_en = now() WHERE id = $1', [canal]),
+    );
+    expect(await estadoResuelto(claveNumero), 'un canal borrado no resuelve ACTIVO').toEqual([
+      'REVOCADO',
+    ]);
+
+    await comoTenant(TENANT_B, (c) =>
+      c.query('UPDATE cuentas_whatsapp SET eliminado_en = now() WHERE id = $1', [cuenta]),
+    );
+    expect(await estadoResuelto(claveWaba), 'una cuenta borrada no resuelve ACTIVO').toEqual([
+      'REVOCADO',
+    ]);
+
+    // Deshacer el borrado no relaja nada: reactivar es un re-alta, y eso es la 57.
+    await comoTenant(TENANT_B, (c) =>
+      c.query('UPDATE canales SET eliminado_en = NULL WHERE id = $1', [canal]),
+    );
+    expect(await estadoResuelto(claveNumero)).toEqual(['REVOCADO']);
+    expect(await asientos('canal_id', canal)).toEqual([
+      [null, 'ACTIVO'],
+      ['ACTIVO', 'REVOCADO'],
+    ]);
+  });
+
+  it('57 — registrar_enrutamiento no escribe un estado más laxo que el del canal o la cuenta', async () => {
+    // Hueco (c). El re-alta podía escribir ACTIVO sobre un canal que seguía REVOCADO, y el
+    // directorio volvía a mentir hasta la siguiente baja.
+    const cuenta = randomUUID();
+    const canal = randomUUID();
+    const clave = claveDeHueco();
+    const claveWaba = claveDeHueco();
+    await crearCuenta(TENANT_B, cuenta);
+    await crearCanal(TENANT_B, canal, cuenta);
+    await registrar(TENANT_B, clave, canal, cuenta);
+    await comoTenant(TENANT_B, (c) =>
+      c.query("UPDATE canales SET estado = 'REVOCADO' WHERE id = $1", [canal]),
+    );
+
+    await expect(
+      registrar(TENANT_B, clave, canal, cuenta, 'ACTIVO'),
+      'reactivó el ruteo de un canal REVOCADO',
+    ).rejects.toThrow(/registrar_enrutamiento/);
+    await expect(
+      registrar(TENANT_B, clave, canal, cuenta, 'SUSPENDIDO'),
+      'relajó a SUSPENDIDO un canal REVOCADO',
+    ).rejects.toThrow(/registrar_enrutamiento/);
+    expect(await estadoResuelto(clave)).toEqual(['REVOCADO']);
+
+    // Restringir siempre se puede.
+    await registrar(TENANT_B, clave, canal, cuenta, 'REVOCADO');
+
+    // Borrado lógico cuenta como REVOCADO aunque el estado diga ACTIVO.
+    await comoTenant(TENANT_B, (c) =>
+      c.query("UPDATE canales SET estado = 'ACTIVO', eliminado_en = now() WHERE id = $1", [canal]),
+    );
+    await expect(
+      registrar(TENANT_B, clave, canal, cuenta, 'ACTIVO'),
+      'reactivó el ruteo de un canal borrado',
+    ).rejects.toThrow(/registrar_enrutamiento/);
+
+    // El re-alta legítimo sigue existiendo: el canal vuelve a ACTIVO y SOLO ENTONCES el
+    // camino de alta repunta el directorio.
+    await comoTenant(TENANT_B, (c) =>
+      c.query('UPDATE canales SET eliminado_en = NULL WHERE id = $1', [canal]),
+    );
+    await registrar(TENANT_B, clave, canal, cuenta, 'ACTIVO');
+    expect(await estadoResuelto(clave), 'el re-alta legítimo dejó de funcionar').toEqual([
+      'ACTIVO',
+    ]);
+
+    // Lo mismo para la fila WABA, contra la cuenta.
+    await comoTenant(TENANT_B, (c) =>
+      c.query("UPDATE cuentas_whatsapp SET estado = 'SUSPENDIDO' WHERE id = $1", [cuenta]),
+    );
+    await expect(
+      registrar(TENANT_B, claveWaba, null, cuenta, 'ACTIVO'),
+      'registró ACTIVO el WABA de una cuenta suspendida',
+    ).rejects.toThrow(/registrar_enrutamiento/);
+
+    // Para comprobarlo, el dueño del directorio lee `canales` y `cuentas_whatsapp`. Lo hace
+    // BAJO RLS —sin contexto, cero filas— y solo cuatro columnas: ni el phone_number_id ni
+    // el token, y nada de escribir.
+    await comoRol(admin, 'viajapro_enrutador', async () => {
+      const sinContexto = await admin.query('SELECT id FROM canales');
+      expect(sinContexto.rows, 'el dueño del directorio lee canales sin contexto').toEqual([]);
+      await esperarPermisoDenegado(
+        admin,
+        () => admin.query('SELECT phone_number_id FROM canales'),
+        'SELECT phone_number_id sobre canales como viajapro_enrutador',
+      );
+      await esperarPermisoDenegado(
+        admin,
+        () => admin.query('SELECT token_cifrado FROM cuentas_whatsapp'),
+        'SELECT token_cifrado sobre cuentas_whatsapp como viajapro_enrutador',
+      );
+      await esperarPermisoDenegado(
+        admin,
+        () => admin.query("UPDATE canales SET estado = 'ACTIVO'"),
+        'UPDATE sobre canales como viajapro_enrutador',
+      );
+    });
+    const columnas = async (privilegio: string) =>
+      (
+        await admin.query<{ tabla: string; columnas: string }>(
+          `SELECT c.relname AS tabla, string_agg(a.attname::text, ',' ORDER BY a.attname) AS columnas
+           FROM pg_attribute a JOIN pg_class c ON c.oid = a.attrelid
+           JOIN pg_namespace n ON n.oid = c.relnamespace
+           WHERE n.nspname = 'public' AND c.relname IN ('canales', 'cuentas_whatsapp')
+             AND a.attnum > 0 AND NOT a.attisdropped
+             AND has_column_privilege('viajapro_enrutador', c.oid, a.attnum, $1)
+           GROUP BY 1 ORDER BY 1`,
+          [privilegio],
+        )
+      ).rows;
+    expect(
+      await columnas('SELECT'),
+      'el dueño del directorio lee más columnas de las que necesita',
+    ).toEqual([
+      { tabla: 'canales', columnas: 'eliminado_en,estado,id,tenant_id' },
+      { tabla: 'cuentas_whatsapp', columnas: 'eliminado_en,estado,id,tenant_id' },
+    ]);
+    expect(
+      await columnas('INSERT, UPDATE, REFERENCES'),
+      'el dueño del directorio escribe tablas de negocio',
+    ).toEqual([]);
+  });
+
+  it('58 — un canal que NACE revocado no se registra ACTIVO, y el disparador actúa en INSERT', async () => {
+    // Hueco (d), el del auditor. La clave foránea impide que el directorio tenga una fila
+    // de un canal que todavía no existe, así que el peligro real del INSERT es el alta
+    // posterior: lo cierra la comprobación de la 57. Aun así el disparador escucha INSERT,
+    // para que la regla no dependa de esa clave foránea.
+    const cuenta = randomUUID();
+    const canal = randomUUID();
+    const clave = claveDeHueco();
+    await crearCuenta(TENANT_B, cuenta);
+    await crearCanal(TENANT_B, canal, cuenta, 'REVOCADO');
+
+    await expect(
+      registrar(TENANT_B, clave, canal, cuenta, 'ACTIVO'),
+      'registró ACTIVO un canal que nació REVOCADO',
+    ).rejects.toThrow(/registrar_enrutamiento/);
+    expect(await estadoResuelto(clave), 'el intento rechazado dejó fila').toEqual([]);
+    await registrar(TENANT_B, clave, canal, cuenta, 'REVOCADO');
+    expect(await estadoResuelto(clave)).toEqual(['REVOCADO']);
+
+    const { rows } = await admin.query(
+      `SELECT c.relname AS tabla, pg_get_triggerdef(t.oid) AS definicion
+       FROM pg_trigger t JOIN pg_class c ON c.oid = t.tgrelid
+       WHERE NOT t.tgisinternal AND c.relname IN ('canales', 'cuentas_whatsapp')
+         AND t.tgname IN ('canales_propagar_estado', 'cuentas_whatsapp_propagar_estado')
+       ORDER BY 1`,
+    );
+    expect(rows.map((r) => r.tabla as string)).toEqual(['canales', 'cuentas_whatsapp']);
+    for (const r of rows) {
+      expect(r.definicion, `${r.tabla}: el disparador no actúa en INSERT ni en el borrado`).toMatch(
+        /AFTER INSERT OR UPDATE OF estado, eliminado_en ON public\.\w+ FOR EACH ROW/,
+      );
+    }
+  });
+
+  it('59 — el barrido no deja que los abandonados tapen a los nuevos', async () => {
+    // Cola de v0.30.0: con más de 500 changes abandonados, el límite del barrido los
+    // devolvía siempre a ellos y un change recién atascado no se reencolaba nunca. Ahora
+    // la base cuenta los reencolados, excluye a los que pasaron del tope y devuelve
+    // primero a los que menos llevan.
+    const viejaYMuyReintentada = nuevaRecepcion();
+    const viejaPocoReintentada = nuevaRecepcion();
+    const nueva = nuevaRecepcion();
+    for (const id of [viejaYMuyReintentada, viejaPocoReintentada, nueva]) {
+      await conRol(
+        'viajapro_app',
+        'SELECT registrar_recepcion($1, $2, $3, $4, 1::smallint, 1::smallint)',
+        [id, randomBytes(32), randomBytes(12), randomBytes(16)],
+      );
+    }
+    await admin.query(
+      "UPDATE recepciones_webhook SET recibido_en = now() - interval '20 minutes' WHERE recepcion_id = ANY($1)",
+      [[viejaYMuyReintentada, viejaPocoReintentada]],
+    );
+    await admin.query(
+      "UPDATE recepciones_webhook SET recibido_en = now() - interval '10 minutes' WHERE recepcion_id = $1",
+      [nueva],
+    );
+
+    // Solo el trabajador cuenta, y cuenta de uno en uno devolviendo el total.
+    await expect(
+      conRol('viajapro_app', 'SELECT contar_reencolado_barrido($1, 0::smallint)', [nueva]),
+      'la API pudo contar reencolados',
+    ).rejects.toThrow(/permission denied/i);
+    const contar = async (id: Buffer) =>
+      Number(
+        (
+          await conRol(
+            'viajapro_webhook',
+            'SELECT contar_reencolado_barrido($1, 0::smallint) AS n',
+            [id],
+          )
+        ).rows[0]?.n,
+      );
+    expect(await contar(viejaPocoReintentada)).toBe(1);
+    expect(await contar(viejaPocoReintentada)).toBe(2);
+    for (let i = 0; i < 11; i += 1) await contar(viejaYMuyReintentada);
+    expect(await contar(viejaYMuyReintentada), 'el contador no suma').toBe(12);
+
+    const nuestras = async (sql: string) =>
+      (await conRol('viajapro_webhook', sql)).rows
+        .map((f) => f.recepcion_id as Buffer)
+        .filter((id) =>
+          [viejaYMuyReintentada, viejaPocoReintentada, nueva].some((n) => n.equals(id)),
+        )
+        .map((id) =>
+          id.equals(nueva) ? 'nueva' : id.equals(viejaPocoReintentada) ? 'poco' : 'mucho',
+        );
+
+    // Tope 10: la que lleva 12 no sale; las otras dos, la de menos reencolados primero
+    // aunque sea la más reciente.
+    expect(
+      await nuestras('SELECT * FROM listar_changes_pendientes(30, 1000, 10)'),
+      'el barrido no filtra por el tope o no ordena por reencolados',
+    ).toEqual(['nueva', 'poco']);
+    // Con tope 12 vuelve a salir: el tope es del llamador, que es quien lo configura.
+    expect(await nuestras('SELECT * FROM listar_changes_pendientes(30, 1000, 12)')).toEqual([
+      'nueva',
+      'poco',
+      'mucho',
+    ]);
+    // Sin tercer argumento, el tope por defecto (10) del barrido.
+    expect(await nuestras('SELECT * FROM listar_changes_pendientes(30, 1000)')).toEqual([
+      'nueva',
+      'poco',
+    ]);
+
+    for (const tope of [null, -1]) {
+      await expect(
+        conRol('viajapro_webhook', 'SELECT * FROM listar_changes_pendientes(30, 10, $1)', [tope]),
+        `aceptó el tope ${tope}`,
+      ).rejects.toThrow(/listar_changes_pendientes/);
+    }
+
+    // Un change resuelto no se cuenta: devuelve 0 y no toca la fila.
+    await conRol(
+      'viajapro_webhook',
+      'SELECT anular_payload($1, 0::smallint, $2::estado_change_recepcion)',
+      [nueva, 'PROCESADO'],
+    );
+    expect(await contar(nueva)).toBe(0);
+  });
+
+  it('60 — registrar con el canal o la cuenta de OTRA agencia lo rechaza la función, no solo la foránea', async () => {
+    // Si el canal o la cuenta no son visibles bajo el tenant que registra, la comprobación
+    // de estado no puede saltarse en silencio: la clave foránea compuesta no debe ser la
+    // única defensa. P0002, distinto del 23503 de la foránea y del 42501 del historial.
+    const codigo = async (fn: () => Promise<unknown>) => {
+      try {
+        await fn();
+        return 'ningún error';
+      } catch (error) {
+        return (error as { code?: string }).code;
+      }
+    };
+    expect(
+      await codigo(() => registrar(TENANT_A, claveDeHueco(), canalB, cuentaA)),
+      'registró con el canal de otra agencia',
+    ).toBe('P0002');
+    expect(
+      await codigo(() => registrar(TENANT_A, claveDeHueco(), null, cuentaB)),
+      'registró con la cuenta de otra agencia',
+    ).toBe('P0002');
+    expect(
+      await codigo(() => registrar(TENANT_A, claveDeHueco(), randomUUID(), cuentaA)),
+      'registró con un canal que no existe',
+    ).toBe('P0002');
   });
 });
 // =============================================================================
@@ -2789,5 +3332,387 @@ describe('Cotizaciones — cabecera mutable y versiones inmutables', () => {
         ),
       ),
     ).rejects.toThrow(/estado_exige_envio/);
+  });
+});
+// =========================================================================================
+// ADR-0011 — identidad global, pertenencias por agencia y roles como tabla
+//
+// Las tablas de identidad son GLOBALES (una persona existe antes de elegir agencia) y por eso
+// la frontera es el rol de conexión, como en el directorio de ADR-0008: solo
+// `viajapro_identidad` las toca, y ese rol no ve nada más. La pertenencia (`usuarios`) y los
+// roles (`roles`) llevan tenant y RLS forzada. Cada aserción de este bloque se vio en rojo
+// sin su pieza: ver M14-M20 de `scripts/mutaciones-aislamiento.mjs`. Numeradas desde la 61: main ya
+// usaba hasta la 60.
+// =========================================================================================
+
+/** INSERT, UPDATE y DELETE genéricos: el permiso se comprueba antes que cualquier restricción. */
+const escriturasGenericas = (tabla: string) => [
+  `INSERT INTO ${tabla} DEFAULT VALUES`,
+  `UPDATE ${tabla} SET creado_en = creado_en`,
+  `DELETE FROM ${tabla}`,
+];
+
+describe('ADR-0011 — identidad global, pertenencias y roles por agencia', () => {
+  const correo = (sufijo: string) => `fixture-aislamiento-${MARCA}-${sufijo}@prueba.invalid`;
+  const identidadA = randomUUID();
+  const identidadB = randomUUID();
+  /** La que se repunta y se mueve de agencia en la 56. */
+  const identidadMovil = randomUUID();
+  /** Para las escrituras cruzadas de la 57: no tiene pertenencia en ninguna agencia. */
+  const identidadSuelta = randomUUID();
+  const rolA = randomUUID();
+  const rolB = randomUUID();
+  const usuarioA = randomUUID();
+  const usuarioB = randomUUID();
+  const identidades = [identidadA, identidadB, identidadMovil, identidadSuelta];
+
+  async function accesosDe(identidad: string): Promise<string[]> {
+    const { rows } = await admin.query(
+      'SELECT tenant_acceso_id FROM accesos_identidad WHERE identidad_id = $1 ORDER BY 1',
+      [identidad],
+    );
+    return rows.map((r) => r.tenant_acceso_id as string);
+  }
+
+  async function crearUsuario(
+    tenant: string,
+    id: string,
+    identidad: string,
+    rol: string,
+    sufijo: string,
+  ) {
+    await comoTenant(tenant, (c) =>
+      c.query(
+        `INSERT INTO usuarios (id, tenant_id, identidad_id, rol_id, correo, nombre, actualizado_en)
+         VALUES ($1, $2, $3, $4, $5, 'Asesora de prueba', now())`,
+        [id, tenant, identidad, rol, correo(sufijo)],
+      ),
+    );
+  }
+
+  beforeAll(async () => {
+    // Las identidades las crea el propietario: en producción las crea el pool de identidad,
+    // que no puede escribir `usuarios` ni `roles`, así que aquí no hay un rol que haga ambas.
+    for (const [id, sufijo] of [
+      [identidadA, 'a'],
+      [identidadB, 'b'],
+      [identidadMovil, 'movil'],
+      [identidadSuelta, 'suelta'],
+    ] as const) {
+      await admin.query(
+        `INSERT INTO identidades (id, correo, nombre, actualizado_en) VALUES ($1, $2, 'Fixture', now())`,
+        [id, correo(sufijo)],
+      );
+    }
+    // Roles y pertenencias, en cambio, por el camino de la API: viajapro_app bajo RLS.
+    for (const [tenant, rol] of [
+      [TENANT_A, rolA],
+      [TENANT_B, rolB],
+    ] as const) {
+      await comoTenant(tenant, (c) =>
+        c.query(
+          `INSERT INTO roles (id, tenant_id, nombre, clave, permisos, actualizado_en)
+           VALUES ($1, $2, 'Dueño', 'DUENO', ARRAY['cotizacion.ver_neto_y_margen'], now())`,
+          [rol, tenant],
+        ),
+      );
+    }
+    await crearUsuario(TENANT_A, usuarioA, identidadA, rolA, 'ua');
+    await crearUsuario(TENANT_B, usuarioB, identidadB, rolB, 'ub');
+  }, 60_000);
+
+  afterAll(async () => {
+    // Las pertenencias primero: `usuarios → identidades` es RESTRICT. Las borra el propietario
+    // y el disparador se lleva los pares de `accesos_identidad`.
+    await admin.query('DELETE FROM usuarios WHERE identidad_id = ANY($1)', [identidades]);
+    await admin.query('DELETE FROM identidades WHERE id = ANY($1)', [identidades]);
+  }, 60_000);
+
+  it('61 — las cinco tablas de identidad son globales, están declaradas, y los tres roles de siempre no las tocan', async () => {
+    const { rows } = await admin.query(
+      `SELECT c.relname,
+              EXISTS (SELECT 1 FROM pg_attribute a
+                      WHERE a.attrelid = c.oid AND a.attname = 'tenant_id'
+                        AND a.attnum > 0 AND NOT a.attisdropped) AS tiene_tenant_id,
+              EXISTS (SELECT 1 FROM excepciones_rls e WHERE e.tabla = c.relname) AS declarada
+       FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+       WHERE n.nspname = 'public' AND c.relname = ANY($1) ORDER BY 1`,
+      [[...TABLAS_DE_IDENTIDAD]],
+    );
+    expect(rows.map((r) => r.relname as string)).toEqual([...TABLAS_DE_IDENTIDAD]);
+    for (const r of rows) {
+      // Con `tenant_id`, el aplicador de `001` les pondría RLS y el inicio de sesión —que
+      // corre sin tenant— vería cero filas.
+      expect(r.tiene_tenant_id, `${r.relname} tiene una columna tenant_id`).toBe(false);
+      expect(r.declarada, `${r.relname} no está declarada en excepciones_rls`).toBe(true);
+    }
+
+    // COMPORTAMIENTO, no catálogo: todo rol de login que no sea el de identidad recibe 42501.
+    const roles = (await rolesAVigilar(admin)).filter((r) => r !== ROL_IDENTIDAD);
+    expect(roles, 'faltan los tres roles de aplicación').toEqual(
+      expect.arrayContaining([...ROLES_DE_APLICACION]),
+    );
+    for (const rol of roles) {
+      await comoRol(admin, rol, async () => {
+        for (const tabla of TABLAS_DE_IDENTIDAD) {
+          for (const sentencia of [`SELECT * FROM ${tabla}`, ...escriturasGenericas(tabla)]) {
+            await esperarPermisoDenegado(
+              admin,
+              () => admin.query(sentencia),
+              `${sentencia.split(' ')[0]} sobre ${tabla} como ${rol}`,
+            );
+          }
+        }
+      });
+    }
+
+    // Y el de identidad lee `accesos_identidad` pero no la escribe: eso es del disparador.
+    await comoRol(admin, ROL_IDENTIDAD, async () => {
+      await admin.query('SELECT * FROM accesos_identidad LIMIT 1');
+      for (const sentencia of escriturasGenericas('accesos_identidad')) {
+        await esperarPermisoDenegado(
+          admin,
+          () => admin.query(sentencia),
+          `${sentencia.split(' ')[0]} sobre accesos_identidad como ${ROL_IDENTIDAD}`,
+        );
+      }
+    });
+  }, 120_000);
+
+  it('62 — viajapro_identidad no lee NINGUNA tabla de negocio (42501), ni tiene privilegio alguno fuera de las suyas', async () => {
+    // Enumeradas, no listadas: toda tabla del esquema que no sea de identidad, particiones
+    // incluidas. Una tabla de negocio creada mañana entra sola.
+    const { rows } = await admin.query(
+      `SELECT c.oid, c.oid::regclass::text AS tabla
+       FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+       WHERE n.nspname = 'public' AND c.relkind IN ('r', 'p') AND c.relname <> ALL($1)
+       ORDER BY 2`,
+      [[...TABLAS_DE_IDENTIDAD]],
+    );
+    const tablas = rows.map((r) => r.tabla as string);
+    // La muestra que nombra el ADR tiene que estar dentro, o la enumeración está rota.
+    expect(tablas).toEqual(
+      expect.arrayContaining([
+        'usuarios',
+        'roles',
+        'contactos',
+        'mensajes',
+        'cotizaciones',
+        'tenants',
+      ]),
+    );
+
+    await comoRol(admin, ROL_IDENTIDAD, async () => {
+      for (const tabla of tablas) {
+        await esperarPermisoDenegado(
+          admin,
+          () => admin.query(`SELECT 1 FROM ${tabla} LIMIT 1`),
+          `SELECT sobre ${tabla} como ${ROL_IDENTIDAD}`,
+        );
+      }
+    });
+
+    // Catálogo, para lo que un SELECT no ve: un INSERT o un TRUNCATE concedido a solas.
+    const { rows: privilegios } = await admin.query(
+      `SELECT c.oid::regclass::text AS tabla, p AS privilegio
+       FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+       CROSS JOIN unnest(ARRAY['SELECT','INSERT','UPDATE','DELETE','TRUNCATE','REFERENCES','TRIGGER']) p
+       WHERE n.nspname = 'public' AND c.relkind IN ('r', 'p') AND c.relname <> ALL($1)
+         AND has_table_privilege($2, c.oid, p)`,
+      [[...TABLAS_DE_IDENTIDAD], ROL_IDENTIDAD],
+    );
+    expect(privilegios, `${ROL_IDENTIDAD} tiene privilegios sobre tablas de negocio`).toEqual([]);
+  }, 120_000);
+
+  it('63 — ningún rol de login es miembro de viajapro_accesos, y viajapro_accesos solo escribe accesos_identidad', async () => {
+    // pg_auth_members, directo. El único miembro admitido es el rol de migraciones, que se lo
+    // pone (SET) para traspasar la propiedad de la función y no hereda nada (INHERIT FALSE).
+    const { rows: miembros } = await admin.query(
+      `SELECT r.rolname
+       FROM pg_auth_members m
+       JOIN pg_roles r ON r.oid = m.member
+       WHERE m.roleid = 'viajapro_accesos'::regrole
+         AND r.rolcanlogin
+         AND r.rolname IS DISTINCT FROM (
+           SELECT pg_get_userbyid(c.relowner) FROM pg_class c
+           JOIN pg_namespace n ON n.oid = c.relnamespace
+           WHERE n.nspname = 'public' AND c.relname = '_prisma_migrations')`,
+    );
+    expect(miembros, 'roles de login miembros directos de viajapro_accesos').toEqual([]);
+
+    // Y por cualquier camino, también indirecto, para todo rol vigilado o declarado.
+    const roles = await rolesAVigilar(admin);
+    expect(roles).toContain(ROL_IDENTIDAD);
+    const { rows: indirectos } = await admin.query(
+      `SELECT rolname FROM unnest($1::text[]) AS rolname
+       WHERE pg_has_role(rolname, 'viajapro_accesos', 'MEMBER')`,
+      [roles],
+    );
+    expect(indirectos, 'roles de login que pueden actuar como viajapro_accesos').toEqual([]);
+
+    // Su superficie exacta: SELECT, INSERT y DELETE sobre accesos_identidad, y nada más.
+    const { rows: privilegios } = await admin.query(
+      `SELECT c.relname AS tabla, array_agg(p ORDER BY p) AS privilegios
+       FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+       CROSS JOIN unnest(ARRAY['SELECT','INSERT','UPDATE','DELETE','TRUNCATE','REFERENCES','TRIGGER']) p
+       WHERE n.nspname = 'public' AND c.relkind IN ('r', 'p')
+         AND has_table_privilege('viajapro_accesos', c.oid, p)
+       GROUP BY 1 ORDER BY 1`,
+    );
+    expect(privilegios).toEqual([
+      {
+        tabla: 'accesos_identidad',
+        privilegios: ['DELETE', 'INSERT', 'SELECT'],
+      },
+    ]);
+  });
+
+  it('64 — el disparador mantiene accesos_identidad: alta, baja y, en UPDATE, borra el par OLD', async () => {
+    const usuario = randomUUID();
+
+    // Alta por el camino de la API: el par aparece en la misma transacción.
+    await crearUsuario(TENANT_A, usuario, identidadMovil, rolA, 'movil');
+    expect(await accesosDe(identidadMovil)).toEqual([TENANT_A]);
+
+    // Repuntar la identidad: el par VIEJO se va. Sin esa rama, la identidad anterior seguiría
+    // viendo esta agencia en su selector.
+    await comoTenant(TENANT_A, (c) =>
+      c.query('UPDATE usuarios SET identidad_id = $1 WHERE id = $2', [identidadSuelta, usuario]),
+    );
+    expect(await accesosDe(identidadMovil), 'quedó el par OLD al cambiar identidad_id').toEqual([]);
+    expect(await accesosDe(identidadSuelta)).toEqual([TENANT_A]);
+
+    // Mover de agencia. Bajo RLS no se puede (WITH CHECK), así que lo hace el propietario:
+    // es el caso que el disparador tiene que cubrir aunque la API nunca lo haga.
+    await admin.query('UPDATE usuarios SET tenant_id = $1, rol_id = $2 WHERE id = $3', [
+      TENANT_B,
+      rolB,
+      usuario,
+    ]);
+    expect(await accesosDe(identidadSuelta), 'quedó el par OLD al cambiar tenant_id').toEqual([
+      TENANT_B,
+    ]);
+
+    // Desactivar, reactivar y borrado lógico.
+    await comoTenant(TENANT_B, (c) =>
+      c.query('UPDATE usuarios SET activo = false WHERE id = $1', [usuario]),
+    );
+    expect(await accesosDe(identidadSuelta), 'un usuario desactivado conserva el acceso').toEqual(
+      [],
+    );
+    await comoTenant(TENANT_B, (c) =>
+      c.query('UPDATE usuarios SET activo = true WHERE id = $1', [usuario]),
+    );
+    expect(await accesosDe(identidadSuelta)).toEqual([TENANT_B]);
+    await comoTenant(TENANT_B, (c) =>
+      c.query('UPDATE usuarios SET eliminado_en = now() WHERE id = $1', [usuario]),
+    );
+    expect(await accesosDe(identidadSuelta), 'un usuario borrado conserva el acceso').toEqual([]);
+
+    // Borrado físico.
+    await comoTenant(TENANT_B, (c) =>
+      c.query('UPDATE usuarios SET eliminado_en = NULL WHERE id = $1', [usuario]),
+    );
+    expect(await accesosDe(identidadSuelta)).toEqual([TENANT_B]);
+    await comoTenant(TENANT_B, (c) => c.query('DELETE FROM usuarios WHERE id = $1', [usuario]));
+    expect(await accesosDe(identidadSuelta)).toEqual([]);
+  }, 60_000);
+
+  it('65 — una membresía de la agencia A no es visible ni escribible desde la B', async () => {
+    const vista = await comoTenant(TENANT_B, (c) =>
+      c.query('SELECT id FROM usuarios WHERE id = $1 OR identidad_id = $2', [usuarioA, identidadA]),
+    );
+    expect(vista.rowCount, 'B ve la pertenencia de A').toBe(0);
+
+    const cambio = await comoTenant(TENANT_B, (c) =>
+      c.query("UPDATE usuarios SET nombre = 'secuestrado', activo = false WHERE id = $1", [
+        usuarioA,
+      ]),
+    );
+    expect(cambio.rowCount).toBe(0);
+    const borrado = await comoTenant(TENANT_B, (c) =>
+      c.query('DELETE FROM usuarios WHERE id = $1', [usuarioA]),
+    );
+    expect(borrado.rowCount).toBe(0);
+
+    // Plantar una pertenencia en A desde B: sería darse acceso a la otra agencia.
+    await expect(
+      comoTenant(TENANT_B, (c) =>
+        c.query(
+          `INSERT INTO usuarios (id, tenant_id, identidad_id, rol_id, correo, nombre, actualizado_en)
+           VALUES (gen_random_uuid(), $1, $2, $3, $4, 'Infiltrada', now())`,
+          [TENANT_A, identidadSuelta, rolA, correo('infiltrada')],
+        ),
+      ),
+    ).rejects.toMatchObject({ code: '42501' });
+    // Ni moverse a A la propia.
+    await expect(
+      comoTenant(TENANT_B, (c) =>
+        c.query('UPDATE usuarios SET tenant_id = $1, rol_id = $2 WHERE id = $3', [
+          TENANT_A,
+          rolA,
+          usuarioB,
+        ]),
+      ),
+    ).rejects.toMatchObject({ code: '42501' });
+
+    const intacta = await comoTenant(TENANT_A, (c) =>
+      c.query('SELECT nombre, activo FROM usuarios WHERE id = $1', [usuarioA]),
+    );
+    expect(intacta.rows).toEqual([{ nombre: 'Asesora de prueba', activo: true }]);
+    expect(await accesosDe(identidadSuelta), 'el intento dejó un acceso a A').toEqual([]);
+  });
+
+  it('66 — los roles por agencia no cruzan tenants', async () => {
+    const vista = await comoTenant(TENANT_B, (c) =>
+      c.query('SELECT id FROM roles WHERE id = $1', [rolA]),
+    );
+    expect(vista.rowCount, 'B ve el rol de A').toBe(0);
+
+    // Darse el permiso del margen en el rol de otra agencia.
+    const cambio = await comoTenant(TENANT_B, (c) =>
+      c.query("UPDATE roles SET permisos = ARRAY['usuarios.administrar'] WHERE id = $1", [rolA]),
+    );
+    expect(cambio.rowCount).toBe(0);
+
+    await expect(
+      comoTenant(TENANT_B, (c) =>
+        c.query(
+          `INSERT INTO roles (id, tenant_id, nombre, permisos, actualizado_en)
+           VALUES (gen_random_uuid(), $1, 'Plantado', ARRAY['cotizacion.ver_neto_y_margen'], now())`,
+          [TENANT_A],
+        ),
+      ),
+    ).rejects.toMatchObject({ code: '42501' });
+
+    // La foránea COMPUESTA: un usuario de B no puede llevar el rol de A, ni al crearse ni
+    // al cambiarlo. La comprobación de la foránea no pasa por RLS, por eso tiene que ser
+    // compuesta: con una simple, el rol de A existe y la fila entra.
+    await expect(
+      comoTenant(TENANT_B, (c) =>
+        c.query(
+          `INSERT INTO usuarios (id, tenant_id, identidad_id, rol_id, correo, nombre, actualizado_en)
+           VALUES (gen_random_uuid(), $1, $2, $3, $4, 'Con rol ajeno', now())`,
+          [TENANT_B, identidadSuelta, rolA, correo('rol-ajeno')],
+        ),
+      ),
+    ).rejects.toMatchObject({ code: '23503' });
+    await expect(
+      comoTenant(TENANT_B, (c) =>
+        c.query('UPDATE usuarios SET rol_id = $1 WHERE id = $2', [rolA, usuarioB]),
+      ),
+    ).rejects.toMatchObject({ code: '23503' });
+
+    // El catálogo de permisos es cerrado: un permiso inventado no se puede asignar.
+    await expect(
+      comoTenant(TENANT_B, (c) =>
+        c.query("UPDATE roles SET permisos = ARRAY['todo.poderoso'] WHERE id = $1", [rolB]),
+      ),
+    ).rejects.toMatchObject({ code: '23514' });
+
+    const intacto = await comoTenant(TENANT_A, (c) =>
+      c.query('SELECT permisos FROM roles WHERE id = $1', [rolA]),
+    );
+    expect(intacto.rows).toEqual([{ permisos: ['cotizacion.ver_neto_y_margen'] }]);
   });
 });

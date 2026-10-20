@@ -84,6 +84,11 @@ model Tenant {
   cotizaciones        Cotizacion[]
   versionesCotizacion VersionCotizacion[]
 
+  roles            Rol[]
+  /// Índice global de pertenencias (ADR-0011). Lo escribe solo el disparador de `usuarios`.
+  accesosIdentidad AccesoIdentidad[]
+  sesionesActivas  Sesion[]
+
   @@map("tenants")
 }
 
@@ -261,8 +266,11 @@ model RecepcionWebhookChange {
   /// distintas producirían identificadores de trabajo distintos para el mismo reintento.
   indice      Int              @db.SmallInt
 
-  estado      EstadoChangeRecepcion @default(PENDIENTE)
-  procesadoEn DateTime?             @map("procesado_en") @db.Timestamptz(3)
+  estado          EstadoChangeRecepcion @default(PENDIENTE)
+  procesadoEn     DateTime?             @map("procesado_en") @db.Timestamptz(3)
+  /// Cuántas veces lo reencoló el barrido. Lo suma `contar_reencolado_barrido`; el listado
+  /// excluye a los que pasan del tope para que los abandonados no tapen a los nuevos.
+  intentosBarrido Int                   @default(0) @map("intentos_barrido") @db.SmallInt
 
   @@id([recepcionId, indice])
   @@index([procesadoEn])
@@ -299,25 +307,150 @@ enum EstadoChangeRecepcion {
 }
 
 // =============================================================================
-// IDENTIDAD
+// IDENTIDAD — ADR-0011
+//
+// La identidad es GLOBAL y la pertenencia NO. Una persona (`Identidad`) existe antes de
+// elegir agencia, así que sus cinco tablas no llevan tenant y están declaradas en
+// `excepciones_rls`: solo el rol `viajapro_identidad` (el pool de Better Auth) las toca, y
+// ese rol no tiene ningún privilegio sobre las tablas de negocio. La pertenencia a una
+// agencia (`Usuario`) y los roles (`Rol`) llevan `tenant_id` y RLS forzada.
+//
+// **Ninguna de las cinco tiene una columna llamada `tenant_id`**, y es a propósito: el
+// aplicador de `policies/001` les pondría RLS y el inicio de sesión, que corre sin tenant,
+// vería cero filas. Aserciones 17 y 61.
 // =============================================================================
 
-/// Usuario de una agencia.
+/// Una persona. Global: existe antes de elegir agencia. Solo `viajapro_identidad`.
+model Identidad {
+  id               String    @id @default(uuid(7)) @db.Uuid
+  /// citext: mayúsculas distintas no son dos personas.
+  correo           String    @unique @db.Citext
+  correoVerificado Boolean   @default(false) @map("correo_verificado")
+  nombre           String    @db.VarChar(200)
+  creadoEn         DateTime  @default(now()) @map("creado_en") @db.Timestamptz(3)
+  actualizadoEn    DateTime  @updatedAt @map("actualizado_en") @db.Timestamptz(3)
+  eliminadoEn      DateTime? @map("eliminado_en") @db.Timestamptz(3)
+
+  credenciales Credencial[]
+  sesiones     Sesion[]
+  accesos      AccesoIdentidad[]
+  pertenencias Usuario[]
+
+  @@map("identidades")
+}
+
+/// Contraseña (scrypt) u otro proveedor de una identidad. Solo `viajapro_identidad`.
+model Credencial {
+  id             String    @id @default(uuid(7)) @db.Uuid
+  identidadId    String    @map("identidad_id") @db.Uuid
+  identidad      Identidad @relation(fields: [identidadId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  /// `credential` para correo y contraseña.
+  proveedor      String    @db.VarChar(50)
+  hashContrasena String?   @map("hash_contrasena")
+  creadoEn       DateTime  @default(now()) @map("creado_en") @db.Timestamptz(3)
+  actualizadoEn  DateTime  @updatedAt @map("actualizado_en") @db.Timestamptz(3)
+
+  @@unique([identidadId, proveedor])
+  @@map("credenciales")
+}
+
+/// Sesión opaca en cookie. Solo `viajapro_identidad`.
 ///
-/// Decisión: el usuario pertenece a UN tenant. Una persona que trabaje en dos agencias
-/// tiene dos cuentas. La alternativa —usuario global con membresías— obliga a una tabla
-/// global con datos personales y complica cada consulta, a cambio de resolver un caso
-/// que en este mercado es raro. Si deja de serlo, se revisa con un ADR.
+/// `token` debe guardarse HASHEADO (ADR-0011). `tenantActivoId` no autoriza nada: el paso 4
+/// del flujo lo comprueba leyendo `usuarios` bajo RLS.
+model Sesion {
+  id             String    @id @default(uuid(7)) @db.Uuid
+  identidadId    String    @map("identidad_id") @db.Uuid
+  identidad      Identidad @relation(fields: [identidadId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  token          String    @unique
+  expiraEn       DateTime  @map("expira_en") @db.Timestamptz(3)
+  tenantActivoId String?   @map("tenant_activo_id") @db.Uuid
+  tenantActivo   Tenant?   @relation(fields: [tenantActivoId], references: [id], onDelete: SetNull, onUpdate: Restrict)
+  ip             String?   @db.VarChar(45)
+  agenteUsuario  String?   @map("agente_usuario")
+  creadoEn       DateTime  @default(now()) @map("creado_en") @db.Timestamptz(3)
+  actualizadoEn  DateTime  @updatedAt @map("actualizado_en") @db.Timestamptz(3)
+
+  @@index([identidadId])
+  @@index([expiraEn])
+  @@index([tenantActivoId])
+  @@map("sesiones")
+}
+
+/// Códigos de un solo uso y de recuperación. `valor` debe guardarse hasheado. Solo
+/// `viajapro_identidad`.
+model Verificacion {
+  id            String   @id @default(uuid(7)) @db.Uuid
+  identificador String
+  valor         String
+  expiraEn      DateTime @map("expira_en") @db.Timestamptz(3)
+  creadoEn      DateTime @default(now()) @map("creado_en") @db.Timestamptz(3)
+  actualizadoEn DateTime @updatedAt @map("actualizado_en") @db.Timestamptz(3)
+
+  @@index([identificador])
+  @@index([expiraEn])
+  @@map("verificaciones")
+}
+
+/// En qué agencias está una identidad, para el selector. **Índice, no autoridad.**
+///
+/// `viajapro_identidad` solo la lee; la escribe el disparador `SECURITY DEFINER` de
+/// `usuarios`, propiedad de `viajapro_accesos`. Nadie más puede escribirla.
+model AccesoIdentidad {
+  identidadId    String    @map("identidad_id") @db.Uuid
+  identidad      Identidad @relation(fields: [identidadId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  tenantAccesoId String    @map("tenant_acceso_id") @db.Uuid
+  tenant         Tenant    @relation(fields: [tenantAccesoId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  creadoEn       DateTime  @default(now()) @map("creado_en") @db.Timestamptz(3)
+
+  @@id([identidadId, tenantAccesoId])
+  @@index([tenantAccesoId])
+  @@map("accesos_identidad")
+}
+
+/// Rol de una agencia. **Tabla, no enum** (R12, ADR-0006): la agencia los renombra y crea
+/// otros. Lo que no es configurable es el catálogo de permisos: el `CHECK` de la migración,
+/// reflejo de `PERMISOS` en `packages/contracts/src/identidad.ts`.
+model Rol {
+  id       String @id @default(uuid(7)) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  nombre   String   @db.VarChar(80)
+  /// `DUENO`, `ASESOR` u `OPERACIONES` en los tres sembrados; nula en los que crea la agencia.
+  clave    String?  @db.VarChar(32)
+  permisos String[] @default([])
+
+  creadoEn      DateTime @default(now()) @map("creado_en") @db.Timestamptz(3)
+  actualizadoEn DateTime @updatedAt @map("actualizado_en") @db.Timestamptz(3)
+
+  usuarios Usuario[]
+
+  @@unique([tenantId, nombre])
+  @@unique([id, tenantId])
+  @@unique([tenantId, clave])
+  @@map("roles")
+}
+
+/// La pertenencia de una identidad a una agencia: en la agencia X, Ana es asesora.
+///
+/// Lleva tenant y RLS: es la tabla que dice quién puede ver qué. Desde ADR-0011 la persona
+/// es una `Identidad` global y una misma identidad puede pertenecer a varias agencias.
+/// `correo` y `nombre` se quedan como copia de presentación.
 model Usuario {
   id       String @id @default(uuid(7)) @db.Uuid
   tenantId String @map("tenant_id") @db.Uuid
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
-  correo         String     @db.VarChar(255)
-  nombre         String     @db.VarChar(200)
-  hashContrasena String?    @map("hash_contrasena") @db.VarChar(255)
-  rol            RolUsuario @default(ASESOR)
-  activo         Boolean    @default(true)
+  identidadId String    @map("identidad_id") @db.Uuid
+  identidad   Identidad @relation(fields: [identidadId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  /// Foránea COMPUESTA: un usuario de la agencia B no lleva el rol de la A.
+  rolId       String    @map("rol_id") @db.Uuid
+  rol         Rol       @relation(fields: [rolId, tenantId], references: [id, tenantId], onDelete: NoAction, onUpdate: Restrict)
+
+  correo String  @db.VarChar(255)
+  nombre String  @db.VarChar(200)
+  activo Boolean @default(true)
 
   ultimoAccesoEn DateTime? @map("ultimo_acceso_en") @db.Timestamptz(3)
   creadoEn       DateTime  @default(now()) @map("creado_en") @db.Timestamptz(3)
@@ -337,20 +470,13 @@ model Usuario {
   cotizacionesActualizadas   Cotizacion[]             @relation("CotizacionActualizadoPor")
   versionesCotizacionCreadas VersionCotizacion[]      @relation("VersionCotizacionCreadoPor")
 
-  /// El correo es único dentro de la agencia, no globalmente: ver la decisión de arriba.
   @@unique([tenantId, correo])
+  @@unique([tenantId, identidadId])
   @@unique([id, tenantId])
   @@index([tenantId, activo])
+  @@index([identidadId])
+  @@index([tenantId, rolId])
   @@map("usuarios")
-}
-
-enum RolUsuario {
-  DUENO
-  ADMINISTRADOR
-  ASESOR
-  SOLO_LECTURA
-
-  @@map("rol_usuario")
 }
 
 // =============================================================================
@@ -488,7 +614,8 @@ model Paquete {
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   mayoristaId String?    @map("mayorista_id") @db.Uuid
-  mayorista   Mayorista? @relation(fields: [mayoristaId], references: [id], onDelete: SetNull)
+  /// Foranea COMPUESTA con el tenant; en SQL es `SET NULL ("mayorista_id")`, que Prisma no modela.
+  mayorista   Mayorista? @relation(fields: [mayoristaId, tenantId], references: [id, tenantId], onDelete: SetNull, onUpdate: Restrict)
 
   nombre  String  @db.VarChar(200)
   destino String  @db.VarChar(120)
@@ -539,7 +666,8 @@ model Temporada {
   tenantId String @map("tenant_id") @db.Uuid
 
   paqueteId String  @map("paquete_id") @db.Uuid
-  paquete   Paquete @relation(fields: [paqueteId], references: [id], onDelete: Cascade)
+  /// Foranea COMPUESTA con el tenant: la integridad referencial se evalua por encima de RLS.
+  paquete   Paquete @relation(fields: [paqueteId, tenantId], references: [id, tenantId], onDelete: Cascade, onUpdate: Restrict)
 
   nombre String   @db.VarChar(80)
   /// Fechas de viaje, sin hora: el 24 de diciembre es el 24 en cualquier huso. R9.
@@ -550,6 +678,7 @@ model Temporada {
 
   precios Precio[]
 
+  @@unique([id, tenantId])
   @@index([tenantId, paqueteId])
   @@index([tenantId, desde, hasta])
   @@map("temporadas")
@@ -568,7 +697,8 @@ model Precio {
   tenantId String @map("tenant_id") @db.Uuid
 
   temporadaId String    @map("temporada_id") @db.Uuid
-  temporada   Temporada @relation(fields: [temporadaId], references: [id], onDelete: Cascade)
+  /// Foranea COMPUESTA con el tenant: la integridad referencial se evalua por encima de RLS.
+  temporada   Temporada @relation(fields: [temporadaId, tenantId], references: [id, tenantId], onDelete: Cascade, onUpdate: Restrict)
 
   acomodacion  Acomodacion
   tipoPasajero TipoPasajero @map("tipo_pasajero")

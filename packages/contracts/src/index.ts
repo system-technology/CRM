@@ -15,3 +15,4 @@ export * from './plantillas.js';
 export * from './politica-de-precio.js';
 export * from './vigencias.js';
 export * from './cotizaciones.js';
+export * from './identidad.js';

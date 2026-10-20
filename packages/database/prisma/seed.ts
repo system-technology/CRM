@@ -53,32 +53,62 @@ async function main() {
     },
   });
 
+  // --- Roles -------------------------------------------------------------
+  // Tabla por agencia, no enum (R12, ADR-0011). Los tres sembrados se identifican por CLAVE:
+  // la agencia puede renombrarlos, y la siembra no le pisa ni el nombre ni los permisos.
+  const rolesSembrados = [
+    {
+      clave: 'DUENO',
+      nombre: 'Dueño',
+      permisos: [
+        'cotizacion.ver_neto_y_margen',
+        'usuarios.administrar',
+        'roles.administrar',
+        'conversaciones.ver_todas',
+      ],
+    },
+    { clave: 'ASESOR', nombre: 'Asesor', permisos: [] },
+    { clave: 'OPERACIONES', nombre: 'Operaciones', permisos: ['conversaciones.ver_todas'] },
+  ] as const;
+  const rolPorClave = new Map<string, string>();
+  for (const r of rolesSembrados) {
+    const rol = await prisma.rol.upsert({
+      where: { tenantId_clave: { tenantId: tenant.id, clave: r.clave } },
+      update: {},
+      create: { tenantId: tenant.id, clave: r.clave, nombre: r.nombre, permisos: [...r.permisos] },
+    });
+    rolPorClave.set(r.clave, rol.id);
+  }
+
   // --- Equipo -------------------------------------------------------------
-  // Sin contraseña: la autenticación todavía no existe. Cuando exista, el seed
-  // deberá poner un hash conocido y documentarlo como credencial de desarrollo.
-  await prisma.usuario.createMany({
-    data: [
-      {
+  // La persona es una identidad GLOBAL; su pertenencia a la agencia es `usuarios`.
+  // Sin credencial: la contraseña de desarrollo la pone la rebanada 2 (Better Auth), con el
+  // hash que genere su biblioteca, no uno escrito aquí.
+  const equipo = [
+    { correo: 'dueno@agenciademo.test', nombre: 'Marcela Duarte', clave: 'DUENO' },
+    { correo: 'ana@agenciademo.test', nombre: 'Ana Lucía Pérez', clave: 'ASESOR' },
+    { correo: 'carlos@agenciademo.test', nombre: 'Carlos Mejía', clave: 'ASESOR' },
+  ];
+  for (const persona of equipo) {
+    const identidad = await prisma.identidad.upsert({
+      where: { correo: persona.correo },
+      update: {},
+      create: { correo: persona.correo, nombre: persona.nombre },
+    });
+    const rolId = rolPorClave.get(persona.clave);
+    if (!rolId) throw new Error(`Falta el rol sembrado ${persona.clave}`);
+    await prisma.usuario.upsert({
+      where: { tenantId_correo: { tenantId: tenant.id, correo: persona.correo } },
+      update: {},
+      create: {
         tenantId: tenant.id,
-        correo: 'dueno@agenciademo.test',
-        nombre: 'Marcela Duarte',
-        rol: 'DUENO',
+        identidadId: identidad.id,
+        rolId,
+        correo: persona.correo,
+        nombre: persona.nombre,
       },
-      {
-        tenantId: tenant.id,
-        correo: 'ana@agenciademo.test',
-        nombre: 'Ana Lucía Pérez',
-        rol: 'ASESOR',
-      },
-      {
-        tenantId: tenant.id,
-        correo: 'carlos@agenciademo.test',
-        nombre: 'Carlos Mejía',
-        rol: 'ASESOR',
-      },
-    ],
-    skipDuplicates: true,
-  });
+    });
+  }
 
   // --- Embudo -------------------------------------------------------------
   // Tabla, no enum: cada agencia define su proceso. R12 y ADR-0006.

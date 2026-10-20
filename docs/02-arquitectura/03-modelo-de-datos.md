@@ -116,6 +116,25 @@ quedaron sin respaldo del motor: entraban sin que nada comprobara de quién era 
 Un `CHECK (num_nonnulls(canal_id, cuenta_id) = 1)` cierra la figura: **toda fila es de una
 de las dos clases, y las dos tienen clave foránea compuesta.**
 
+**Desde el 2026-10-19 no queda ninguna simple, y lo vigila un barrido, no una lista.** Las tres
+últimas venían de la migración inicial y las cerró `20261019220000_foraneas_con_tenant_en_el_modelo_antiguo`:
+
+```
+mayoristas (id, tenant_id) <── paquetes (mayorista_id, tenant_id)   SET NULL ("mayorista_id")
+paquetes   (id, tenant_id) <── temporadas (paquete_id, tenant_id)   CASCADE
+temporadas (id, tenant_id) <── precios (temporada_id, tenant_id)    CASCADE   [UNIQUE nuevo en temporadas]
+```
+
+La aserción 54 recorre `pg_constraint` entero: toda foránea entre dos tablas con `tenant_id` tiene
+que emparejar el `tenant_id` de la hija con el del padre en la misma posición. La migración repite
+la consulta y tumba el despliegue si encuentra alguna. `temporadas` y `precios` son del modelo
+anterior a ADR-0009 pero siguen vivas: las leen `cotizar-paquete` y `listar-paquetes`.
+
+**La aserción 17 juzga por el dato, no por el nombre.** Toda tabla fuera de `excepciones_rls` con
+una columna que sea foránea hacia `tenants` o que se llame `tenant%` tiene que tener RLS habilitada
+y forzada, y toda excepción tiene que tener `motivo` no vacío. A diferencia de la aserción 1, no
+depende de la vista `tablas_sin_aislamiento`, que vive en la base y una migración puede reescribir.
+
 ---
 
 ## 3. Decisiones de modelado y su porqué
@@ -291,6 +310,8 @@ para siempre.**
 | `enrutamiento_canales` | Sí — **ADR-0008** | El mapa `identificador de Meta → tenant`. Es lo que rompe el ciclo: leerlo es el paso previo a saber de qué agencia es el webhook. Claves en HMAC con pimienta fuera de la base; **ningún rol de login tiene un solo privilegio sobre ella** |
 | `enrutamiento_historial` | Sí — **ADR-0008** | Bitácora del directorio, particionada por año. Es global porque `registros_auditoria` tiene `tenant_id` y RLS forzada: el registro de un secuestro quedaría archivado bajo el **atacante**, invisible para la víctima. Solo inserción, ni su propietario puede modificarla |
 | `recepciones_webhook` y `recepciones_webhook_changes` | Sí — **ADR-0008** | El staging del webhook: contenido de varios tenants durante segundos, **antes** de saber de quién es. Cifrado con AAD, borrado al clasificar y purgado. Se cuentan como una: la hija existe porque el grano real del procesamiento es el `change` |
+| `identidades`, `credenciales`, `sesiones`, `verificaciones` | Sí — **ADR-0011** | La persona y su autenticación (Better Auth). Existen antes de elegir agencia y el inicio de sesión corre sin `app.current_tenant`. **Solo `viajapro_identidad`** tiene privilegios (DML); los tres roles de siempre, cero, declarados fila por fila |
+| `accesos_identidad` | Sí — **ADR-0011** | Índice `(identidad, agencia)` para el selector de agencia. `viajapro_identidad` solo la lee; la escribe únicamente el disparador `SECURITY DEFINER` de `usuarios` (dueño `viajapro_accesos`, NOLOGIN). No decide nada: lo que cuenta es leer `usuarios` bajo RLS |
 | `plans` | Todavía no | Catálogo de planes del SaaS, igual para todos |
 | `countries`, `timezones` | Todavía no | Datos de referencia universales |
 | `system_message_templates` | Todavía no | Plantillas base sugeridas, que cada tenant copia y adapta |
@@ -299,7 +320,10 @@ para siempre.**
 datos de negocio o de ruteo**, tres (`enrutamiento_canales`, `enrutamiento_historial`,
 `recepciones_webhook` con su hija). Si aparece una cuarta, **el patrón está mal** y hay que
 revisar la decisión, no añadirla a la lista. Las tablas de control del propio mecanismo
-—`excepciones_rls`— y los catálogos de referencia son otra categoría.
+—`excepciones_rls`— y los catálogos de referencia son otra categoría. **Las cinco de identidad
+(ADR-0011) son una tercera**, decidida por ADR y no añadida a la lista: no guardan datos de
+negocio ni de ruteo sino la autenticación de la persona, y tienen su propio rol de conexión,
+que no ve ninguna tabla de negocio. La regla de parada sigue en tres.
 
 **Ninguna de ellas tiene ni tendrá una columna llamada `tenant_id`**, y eso no es
 cosmético: el aplicador de políticas es dirigido por datos y se la pondría RLS
@@ -361,10 +385,39 @@ y `tablas_sin_aislamiento` imputa cada partición a su tabla raíz.
   necesita ninguno. Es **monótono**: restringe y nunca relaja, porque reactivar el ruteo es
   repuntar y eso queda solo en `registrar_enrutamiento`. Aserción 46.
 
-  Lo que sigue sin atar: la baja de una **cuenta** (`cuentas_whatsapp.estado`) no restringe
-  las filas WABA del directorio, y `registrar_enrutamiento` puede escribir `ACTIVO` para un
-  canal que en `canales` sigue `REVOCADO` (es el orden del re-alta, y el rol `viajapro_altas`
-  es el único que puede hacerlo).
+  **Los cuatro huecos que dejaba, cerrados el 2026-10-19** (ADR-0010 punto 6, migración
+  `20261020010000_huecos_del_disparador_y_tope_del_barrido`, aserciones 55 a 58). Estado
+  **efectivo** de un canal o una cuenta = `REVOCADO` si tiene `eliminado_en`, si no su `estado`.
+
+  ```
+  INSERT o UPDATE OF estado, eliminado_en      (viajapro_app, bajo RLS)
+        │                                   │
+     canales                          cuentas_whatsapp
+        ▼                                   ▼
+  propagar_estado_canal()            propagar_estado_cuenta()      dueño viajapro_enrutador,
+   filas de número (canal_id)         filas WABA (cuenta_id)        sin EXECUTE para nadie
+        └──────────► directorio := max(actual, efectivo) + asiento ◄──────┘
+
+  registrar_enrutamiento(..., p_estado)       (viajapro_altas, con tenant de sesión)
+        │  lee canales / cuentas_whatsapp BAJO RLS: SELECT(id, tenant_id, estado, eliminado_en)
+        └─► rechaza (55000) si p_estado < efectivo        → no hay re-alta sobre un REVOCADO
+  ```
+
+  | Hueco | Cómo se cerró |
+  |---|---|
+  | (a) baja de cuenta | Disparador gemelo sobre `cuentas_whatsapp`; solo filas WABA de esa cuenta y ese tenant. Las filas de **número** de una cuenta dada de baja siguen la verdad de `canales`: la baja de una cuenta tiene que dar de baja sus canales (caso de uso) |
+  | (b) borrado lógico | Los dos disparadores escuchan `eliminado_en` y lo tratan como `REVOCADO`. Deshacer el borrado no relaja |
+  | (c) re-alta | `registrar_enrutamiento` no escribe un estado más laxo que el efectivo. El re-alta legítimo existe: primero el canal vuelve a `ACTIVO`, luego se repunta |
+  | (d) `INSERT` | Los dos disparadores escuchan `INSERT`. Hoy la clave foránea ya impide filas de un canal que no existe, así que el riesgo real era (c) |
+
+  Por qué el dueño del directorio puede ahora leer cuatro columnas de `canales` y
+  `cuentas_whatsapp`, cuando 4f lo rechazó para el resolvedor: el resolvedor corre **sin**
+  contexto y sería una lectura entre tenants; `registrar_enrutamiento` exige que el tenant de
+  la sesión sea el de la fila y la RLS forzada vale también para el dueño de la función. Sin
+  contexto lee cero filas, y nunca el `phone_number_id` ni el token (aserción 57). Una baja
+  concurrente con un alta se serializa con un bloqueo consultivo por canal o por cuenta
+  (claves 7410100 y 7410101) que toman los dos lados antes de leer.
+
 - **Los changes que se quedan `PENDIENTE` ya se pueden listar (2026-10-19, migración
   `20261019210000_listar_changes_pendientes_para_el_barrido`).** Es la mitad de base de datos
   del relay de barrido de ADR-0010 punto 9: si el POST guarda y el encolado falla, el change
@@ -386,6 +439,31 @@ y `tablas_sin_aislamiento` imputa cada partición a su tabla raíz.
   ni tenant), el límite es obligatorio y nadie salvo el trabajador la ejecuta. Excluye las
   recepciones ya anuladas por `purgar_payloads`: sin contenido no hay qué procesar, y
   reencolarlas sería un bucle. Es la novena `SECURITY DEFINER`; aserciones 12, 13, 20 y 53.
+
+  **Tope de reencolados en la base (2026-10-19, `20261020010000`, aserción 59).** Con más de
+  500 changes abandonados el límite del barrido los devolvía siempre a ellos y tapaban a los
+  nuevos. `recepciones_webhook_changes.intentos_barrido smallint NOT NULL DEFAULT 0` cuenta
+  los reencolados; `contar_reencolado_barrido(recepcion_id, indice)` suma uno a un change
+  `PENDIENTE` y devuelve el total (0 si ya se resolvió). `listar_changes_pendientes` gana un
+  tercer argumento `p_max_intentos` (DEFAULT 10, el `maxReencolados` por defecto), excluye
+  `intentos_barrido > tope` y ordena por `intentos_barrido` antes que por antigüedad.
+
+- **Inventario de funciones `SECURITY DEFINER`** (ADR-0010 §1.2 es inmutable y se quedó en
+  ocho; esta es la lista viva, y la matriz normativa es `MATRIZ_FUNCIONES` de la aserción 20).
+
+  | Función | Dueño | `EXECUTE` |
+  |---|---|---|
+  | `resolver_enrutamiento` | `viajapro_enrutador` | `viajapro_webhook` |
+  | `registrar_enrutamiento` | `viajapro_enrutador` | `viajapro_altas` |
+  | `propagar_estado_canal` | `viajapro_enrutador` | nadie (disparador) |
+  | `propagar_estado_cuenta` | `viajapro_enrutador` | nadie (disparador) |
+  | `registrar_recepcion` | `viajapro_staging` | `viajapro_app` |
+  | `tomar_recepcion` | `viajapro_staging` | `viajapro_webhook` |
+  | `anular_payload` | `viajapro_staging` | `viajapro_webhook` |
+  | `purgar_recepciones` | `viajapro_staging` | `viajapro_webhook` |
+  | `purgar_payloads` | `viajapro_staging` | `viajapro_webhook` |
+  | `listar_changes_pendientes` | `viajapro_staging` | `viajapro_webhook` |
+  | `contar_reencolado_barrido` | `viajapro_staging` | `viajapro_webhook` |
 
 ---
 
@@ -653,3 +731,46 @@ erDiagram
 
 Aserciones 47 a 52 en `tests/aislamiento.spec.ts`, más las mutaciones M8 a M13 en
 `scripts/mutaciones-aislamiento.mjs`.
+
+## Identidad global, pertenencia por agencia y roles como tabla (ADR-0011, 2026-10-19)
+
+Migración `20261019230000_identidad_global_y_roles_por_agencia`.
+
+```
+                 GLOBAL (excepciones_rls, solo viajapro_identidad)         |  POR TENANT (RLS forzada)
+                                                                           |
+  identidades ──< credenciales                                             |
+      │  └────< sesiones ── tenant_activo_id ──> tenants                   |
+      │                                                                    |
+      ├────< accesos_identidad (identidad_id, tenant_acceso_id) <── disparador ── usuarios ──> roles
+      │                                                                    |   │ (rol_id, tenant_id)
+      └──────────────────────────────── identidad_id ──────────────────────────┘
+  verificaciones (sin FK: códigos previos a la sesión)                     |
+```
+
+**Por qué así.**
+
+- **La identidad es global y la pertenencia no.** Una persona existe antes de elegir agencia;
+  qué es en cada agencia (rol, clientes asignados) es dato de negocio y vive en `usuarios`, con
+  RLS. Las FK que ya apuntaban a `usuarios(id, tenant_id)` no se tocan.
+- **Ninguna tabla de identidad tiene una columna `tenant_id`.** El ADR nombraba así la de
+  `accesos_identidad`; se llama `tenant_acceso_id` porque el aplicador de `001` es dirigido por
+  datos y le habría puesto RLS: el selector, que corre sin tenant, vería cero filas.
+- **`viajapro_identidad` no está en `roles_de_aplicacion`.** No recibe el `GRANT ... ON ALL
+  TABLES`: sus únicos privilegios son las filas de `excepciones_rls`. La aserción 62 enumera todas
+  las tablas no de identidad y exige 42501 en cada una.
+- **`accesos_identidad` la escribe un disparador**, `sincronizar_acceso_identidad()`,
+  `SECURITY DEFINER`, `search_path` vacío, dueño `viajapro_accesos` (NOLOGIN, solo `SELECT,
+  INSERT, DELETE` sobre esa tabla). Lo dispara quien escribe `usuarios` bajo RLS, así que solo
+  puede apuntar el par de una fila que ya pasó el `WITH CHECK`. En `UPDATE`, si cambia la
+  identidad o el tenant, borra el par viejo.
+- **Roles: tabla por tenant, no `enum`** (R12). Se eliminó `rol_usuario`. El catálogo de permisos
+  es invariante: `PERMISOS` en `packages/contracts/src/identidad.ts` y el `CHECK
+  roles_permisos_del_catalogo`. Tres roles sembrados por agencia con `clave` DUENO, ASESOR y
+  OPERACIONES. `usuarios.rol_id` es foránea **compuesta** con `tenant_id`, `NO ACTION` para que
+  el borrado en cascada de un tenant no tropiece a mitad de sentencia.
+- **Relleno**: una identidad por correo (sin distinguir mayúsculas); DUENO y ADMINISTRADOR
+  pasaron al rol DUENO, ASESOR y SOLO_LECTURA a ASESOR. Se borraron `usuarios.rol` y
+  `usuarios.hash_contrasena` (vacía). **No reversible** en esa parte.
+- **Hash del token y del OTP**: el esquema no lo impone (columnas `text`). Es requisito de la
+  rebanada 2 y condición del auditor.

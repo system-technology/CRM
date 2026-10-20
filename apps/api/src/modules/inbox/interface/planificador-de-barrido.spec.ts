@@ -12,9 +12,6 @@ class Turnos extends PuertoCoordinacionDelBarrido {
     this.libre = false;
     return Promise.resolve(r);
   }
-  contarReencolado(): Promise<number> {
-    return Promise.resolve(1);
-  }
 }
 
 describe('PlanificadorDeBarrido', () => {
