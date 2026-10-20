@@ -290,7 +290,7 @@ con el interruptor apagado `/ingresar` no renderiza nada de la maqueta, y `pnpm 
 
 ---
 
-## [ ] 0c.30. Los errores no enseñan el mensaje crudo del servidor (añadida el 2026-10-19)
+## [x] 0c.30. Los errores no enseñan el mensaje crudo del servidor (añadida el 2026-10-19)
 
 Hay `err instanceof Error ? err.message : '...'` pintado tal cual al asesor en `bandeja/[id]`
 (l. 239, 285, 330), `catalogo` (68, 235) y `contactos` (45), y `estados-ui-logica.ts` lo incrusta en
@@ -307,7 +307,7 @@ to fetch`, un 500 con texto técnico y un error de dominio ya redactado.
 **Hecho cuando:** ningún `catch` de `apps/web/src/app` pinta `err.message` sin pasar por la función, y
 `pnpm compuertas` sale en verde.
 
-## [ ] 0c.31. Pruebas de los componentes de estado (añadida el 2026-10-19)
+## [x] 0c.31. Pruebas de los componentes de estado (añadida el 2026-10-19)
 
 `components/comun/esqueletos.tsx` y `AvisoErrorAccionable` solo tienen pruebas de la lógica. Con las
 herramientas ya instaladas (si falta `@testing-library/react`, **pide la dependencia, no la añadas**),

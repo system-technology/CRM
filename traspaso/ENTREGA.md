@@ -477,3 +477,41 @@ Se añadieron pruebas automatizadas dedicadas en Vitest simulando fallos de red 
   - Con interruptor apagado: devuelven datos simulados correctamente.
 
 **Resultado:** 22/22 suites en verde, **203 pruebas pasando**.
+
+---
+
+# Entrega Tarea 0c.31 — Pruebas de los Componentes de Estado
+
+**Fecha:** 2026-10-19  
+**Rama:** `feat/bandeja-web`  
+**Contexto:** Pruebas unitarias de componentes con Testing Library para `AvisoErrorAccionable` y la familia de siluetas de carga de `components/comun/esqueletos.tsx`.
+
+---
+
+## 1. Qué se implementó y verificó
+
+Se creó el archivo de pruebas de componentes `apps/web/src/components/comun/esqueletos.spec.tsx` (11 pruebas automatizadas):
+
+1. **`AvisoErrorAccionable`**:
+   - Expone `role="alert"` y `aria-live="assertive"` para notificación inmediata por tecnología de asistencia.
+   - Enseña los bloques estructurados de negocio: título, qué pasó y qué hacer.
+   - Botón «Reintentar»:
+     - Mide `min-h-[44px]` cumpliendo con el touch target táctil móvil (WCAG 2.5.5).
+     - Dispara correctamente el callback `onReintentar` al hacer clic.
+     - Se omite automáticamente cuando `error.esReintentable` es falso.
+   - Acción secundaria: renderiza con `min-h-[44px]` y ejecuta su callback al activarse.
+
+2. **Siluetas de Carga (Esqueletos) — Accesibilidad y Lectores de Pantalla**:
+   - **`EsqueletoConversacion`**: verifica presencia de `aria-busy="true"` y `aria-label="Cargando conversación"`.
+   - **`EsqueletoKanban`**: verifica `aria-busy="true"` y `aria-label="Cargando tablero kanban"`.
+   - **`EsqueletoGridTarjetas`**: verifica `aria-busy="true"`, `aria-label="Cargando catálogo"` y conteo de tarjetas configurable.
+   - **`EsqueletoTabla`**: verifica `aria-busy="true"`, `aria-label="Cargando registros"` y conteo de filas configurable.
+   - **`EsqueletoExpediente`**: verifica `aria-busy="true"` y `aria-label="Cargando expedientes de viaje"`.
+   - **`EsqueletoReportes`**: verifica `aria-busy="true"` y `aria-label="Cargando reportes comerciales"`.
+
+---
+
+## 2. Compuertas de Frontend
+- `pnpm --filter web test`: **23/23 suites en verde, 214/214 pruebas pasando**.
+- `pnpm --filter web typecheck`: **0 errores**.
+- `pnpm --filter web lint`: **0 errores**.
