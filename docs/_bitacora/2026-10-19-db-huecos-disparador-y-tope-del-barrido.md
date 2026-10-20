@@ -53,6 +53,14 @@ De nueve funciones `SECURITY DEFINER` pasamos a once. Están en `MATRIZ_FUNCIONE
 - Verde: run 39344759662, con la migración. Pasan 63/63 en aislamiento y todo el CI, incluida la
   cadena completa desde cero (aserción 23).
 
+## Punto de cola del auditor, cerrado en la misma rama
+
+Si el canal o la cuenta no eran visibles bajo el tenant que registra, `v_estado_origen` quedaba
+nulo y la comprobación de estado se saltaba en silencio. Solo la frenaba la foránea compuesta.
+Ahora `registrar_enrutamiento` lanza `P0002`, y el filtro repite `tenant_id = p_tenant` además
+de la RLS. Para ver el rojo se usa la aserción 60. Se modificó la misma migración, que no estaba
+aplicada en ningún entorno salvo el CI.
+
 ## Cola (no bloquea)
 
 - **`backend`**: el contador del barrido sigue en Redis (`barrido.bullmq.ts`,

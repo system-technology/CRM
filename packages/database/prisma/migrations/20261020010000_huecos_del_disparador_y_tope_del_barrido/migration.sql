@@ -244,25 +244,34 @@ BEGIN
   -- >>> Nuevo (ADR-0010 punto 6, hueco c). El directorio no puede quedar más laxo que la
   -- verdad. Se lee bajo RLS —el tenant de la sesión, que acaba de comprobarse— y tras el
   -- mismo bloqueo consultivo que toma el disparador, para que una baja concurrente o se
-  -- vea aquí o vea la fila que se escribe aquí. Si el canal no es visible (no existe o es
-  -- de otra agencia) no se decide aquí: la clave foránea compuesta lo rechaza con 23503.
+  -- vea aquí o vea la fila que se escribe aquí. El filtro por `p_tenant` repite a la RLS
+  -- a propósito: si un día la política cambiara, esto seguiría sin ver otra agencia.
   IF v_canal_fila IS NOT NULL THEN
     PERFORM pg_catalog.pg_advisory_xact_lock(7410100, pg_catalog.hashtext(v_canal_fila::text));
     SELECT CASE WHEN c.eliminado_en IS NOT NULL THEN 'REVOCADO'::public.estado_enrutamiento
                 ELSE c.estado::text::public.estado_enrutamiento END
       INTO v_estado_origen
     FROM public.canales c
-    WHERE c.id = v_canal_fila;
+    WHERE c.id = v_canal_fila AND c.tenant_id = p_tenant;
   ELSE
     PERFORM pg_catalog.pg_advisory_xact_lock(7410101, pg_catalog.hashtext(v_cuenta_fila::text));
     SELECT CASE WHEN w.eliminado_en IS NOT NULL THEN 'REVOCADO'::public.estado_enrutamiento
                 ELSE w.estado::text::public.estado_enrutamiento END
       INTO v_estado_origen
     FROM public.cuentas_whatsapp w
-    WHERE w.id = v_cuenta_fila;
+    WHERE w.id = v_cuenta_fila AND w.tenant_id = p_tenant;
   END IF;
 
-  IF v_estado_origen IS NOT NULL AND p_estado < v_estado_origen THEN
+  -- Si no es visible bajo el tenant que registra —no existe o es de otra agencia— se lanza
+  -- aquí. La clave foránea compuesta también lo rechazaría (23503), pero no debe ser la
+  -- única defensa, y la comprobación de estado no puede saltarse en silencio. Aserción 60.
+  IF v_estado_origen IS NULL THEN
+    RAISE EXCEPTION 'registrar_enrutamiento: el % no existe bajo el tenant que registra',
+      CASE WHEN v_canal_fila IS NOT NULL THEN 'canal' ELSE 'cuenta' END
+      USING ERRCODE = 'P0002';
+  END IF;
+
+  IF p_estado < v_estado_origen THEN
     RAISE EXCEPTION 'registrar_enrutamiento: no se registra % sobre un % que está %',
       p_estado, CASE WHEN v_canal_fila IS NOT NULL THEN 'canal' ELSE 'cuenta' END, v_estado_origen
       USING ERRCODE = '55000';
