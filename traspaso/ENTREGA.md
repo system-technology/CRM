@@ -363,3 +363,47 @@ Tras la integración de `feat/quoting-listado-y-estados` en `origin/main` y la m
    - `pnpm --filter web lint`: **0 errores**.
    - `pnpm --filter web build`: **Compilación exitosa** (Next.js generó las 15 rutas estáticas y dinámicas).
    - `pnpm prettier --check`: **100% alineado**.
+
+---
+
+# Entrega Tarea 0c.30 — Erradicación de Mensajes Crudos y Clasificación de Fallos
+
+**Fecha:** 2026-10-19  
+**Rama:** `feat/bandeja-web`  
+**Contexto:** Erradicación de fugas de mensajes técnicos internos (`err.message`) al usuario y clasificación tipada de fallos con acciones claras en español.
+
+---
+
+## 1. Qué se implementó
+
+1. **Clasificación Tipada y Pura de Errores (`estados-ui-logica.ts`):**
+   - Se añadió la función pura `clasificarError(error: unknown): CategoriaErrorUI` que categoriza fallos en cinco categorías de negocio y UX:
+     - `RED`: Fallos de conexión o `Failed to fetch`.
+     - `SESION`: Problemas de autenticación (`401`), autorización (`403`) o tenant no configurado.
+     - `NO_ENCONTRADO`: Recursos no localizados (`404`).
+     - `VALIDACION`: Desajustes de datos o esquemas Zod (`400`, `409`).
+     - `DESCONOCIDO`: Cualquier otra excepción imprevista.
+   - Se añadió `esTextoTecnico(texto: string): boolean` para interceptar stack traces (`at Object.run (...)`), trazas SQL (`SELECT * FROM ...`), menciones de motores de base de datos (`postgres`, `prisma`, `connection pool`) y errores internos (`TypeError`, `SyntaxError`).
+   - Se añadió `formatearErrorAmigable(error: unknown, fallback: string): string` que traduce cualquier error a un mensaje digno y comprensible en español, enviando el error crudo únicamente a `console.error` para depuración técnica sin comprometer al usuario.
+
+2. **Purga Completa de `err.message` en `apps/web/src/app`:**
+   - **`bandeja/[id]/page.tsx`**: Eliminados `[e.code] ${e.message}` y `e.message` en carga de conversación, envío de mensajes y asignación de asesor.
+   - **`catalogo/page.tsx`**: Eliminados `err.message` en carga inicial de paquetes y apertura de detalle de paquete.
+   - **`contactos/page.tsx`**: Eliminado `err.message` en carga de directorio.
+   - **`cotizador/page.tsx`**: Eliminado `err.message` en guardado y consulta de cotización.
+   - **`pipeline/page.tsx`**: Eliminado `err.message` en arrastre y cambio de etapa de oportunidades.
+
+3. **Pruebas Automatizadas Rigurosas (`estados-ui-logica.spec.ts`):**
+   - 18 pruebas unitarias cubriendo:
+     - Detección de texto técnico y supresión de stack traces.
+     - Clasificación correcta por código de estado HTTP y mensajes de error.
+     - Garantía de que `formatearErrorAmigable` nunca devuelva texto técnico ni trazas de backend.
+
+---
+
+## 2. Estado de Compuertas
+
+- `pnpm --filter web test`: **21/21 archivos en verde, 177/177 pruebas pasando**.
+- `pnpm --filter web typecheck`: **0 errores**.
+- `pnpm --filter web lint`: **0 errores**.
+- `pnpm --filter web build`: **Compilación exitosa Next.js**.

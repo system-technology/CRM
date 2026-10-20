@@ -12,6 +12,7 @@ import { EsqueletoKanban } from '../../components/comun/esqueletos';
 import { AvisoConfiguracionTenant } from '../../components/crm/aviso-configuracion-tenant';
 import { obtenerMockTableroPipeline } from '../../lib/mock-pipeline';
 import { formatearDineroCifra, moverOportunidadEnTablero } from '../../lib/pipeline-logica';
+import { formatearErrorAmigable } from '../../lib/estados-ui-logica';
 import {
   obtenerTableroPipeline,
   moverOportunidadDeEtapa,
@@ -65,7 +66,7 @@ export default function PipelinePage() {
           err instanceof CrmApiError &&
           (err.status === 401 || err.code === 'SIN_SESION' || err.code === 'CONFIG_TENANT_FALTANTE')
         ) {
-          setErrorConfiguracion(err.message);
+          setErrorConfiguracion(formatearErrorAmigable(err));
         } else {
           console.warn('[Pipeline] API CRM no disponible, recurriendo a datos simulados:', err);
           setEsModoSimulado(true);

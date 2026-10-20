@@ -22,11 +22,14 @@ import {
   PanelRight,
   Sparkles,
 } from 'lucide-react';
-import { inboxApi, InboxErrorApi } from '../../../lib/inbox-api';
+import { inboxApi } from '../../../lib/inbox-api';
 import { realtimeMockBus } from '../../../lib/realtime-mock';
 import { obtenerFichaDeContacto } from '../../../lib/crm-api';
 import { EsqueletoConversacion, AvisoErrorAccionable } from '../../../components/comun/esqueletos';
-import { construirMensajeErrorAccionable } from '../../../lib/estados-ui-logica';
+import {
+  construirMensajeErrorAccionable,
+  formatearErrorAmigable,
+} from '../../../lib/estados-ui-logica';
 import {
   calcularTiempoRestanteVentana,
   claveDeReintento,
@@ -154,11 +157,10 @@ export default function BandejaConversacionPage() {
         setTimeout(() => scrollToBottom('auto'), 50);
       }
     } catch (e) {
-      if (e instanceof InboxErrorApi) {
-        setErrorHistorial(`[${e.code}] ${e.message}`);
-      } else {
-        setErrorHistorial(e instanceof Error ? e.message : 'Error al cargar la conversación');
-      }
+      console.error('[bandeja] Error al cargar historial:', e);
+      setErrorHistorial(
+        formatearErrorAmigable(e, 'No se pudo cargar el historial de la conversación.'),
+      );
     } finally {
       setCargando(false);
     }
@@ -241,7 +243,9 @@ export default function BandejaConversacionPage() {
         setDetalle((prev) => (prev ? { ...prev, notas: [...prev.notas, notaCreada] } : null));
         setTimeout(() => scrollToBottom('smooth'), 50);
       } catch (err) {
-        setErrorEnvio(err instanceof Error ? err.message : 'Error al guardar nota interna');
+        setErrorEnvio(
+          formatearErrorAmigable(err, 'No fue posible guardar la nota interna en este momento.'),
+        );
       } finally {
         setEnviando(false);
       }
@@ -287,7 +291,10 @@ export default function BandejaConversacionPage() {
         };
       });
     } catch (err) {
-      const msgError = err instanceof Error ? err.message : 'Error al enviar mensaje por Meta API';
+      const msgError = formatearErrorAmigable(
+        err,
+        'No fue posible enviar el mensaje a través de Meta.',
+      );
       setErrorEnvio(msgError);
       setDetalle((prev) => {
         if (!prev) return null;
@@ -332,7 +339,7 @@ export default function BandejaConversacionPage() {
         };
       });
     } catch (err) {
-      const msgError = err instanceof Error ? err.message : 'Fallo en reintento';
+      const msgError = formatearErrorAmigable(err, 'No fue posible reintentar el envío.');
       setDetalle((prev) => {
         if (!prev) return null;
         return {

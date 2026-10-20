@@ -283,7 +283,7 @@ con el interruptor apagado `/ingresar` no renderiza nada de la maqueta, y `pnpm 
 
 ---
 
-## [ ] 0c.30. Los errores no enseñan el mensaje crudo del servidor (añadida el 2026-10-19)
+## [x] 0c.30. Los errores no enseñan el mensaje crudo del servidor (añadida el 2026-10-19)
 
 Hay `err instanceof Error ? err.message : '...'` pintado tal cual al asesor en `bandeja/[id]`
 (l. 239, 285, 330), `catalogo` (68, 235) y `contactos` (45), y `estados-ui-logica.ts` lo incrusta en

@@ -25,6 +25,7 @@ import { formatearDinero } from '../../lib/api';
 import { BarraModulos } from '../../components/bandeja/barra-modulos';
 import { DistintivoDatosDemo } from '../../components/comun/distintivo-datos-demo';
 import { AvisoConfiguracionTenant } from '../../components/crm/aviso-configuracion-tenant';
+import { formatearErrorAmigable } from '../../lib/estados-ui-logica';
 import { DesgloseCotizacionSalida } from '../../components/cotizador/desglose-cotizacion-salida';
 import { ModalGuardarCotizacion } from '../../components/cotizador/modal-guardar-cotizacion';
 import { MOCK_PAQUETES_CATALOGO } from '../../lib/mock-catalogo';
@@ -163,7 +164,7 @@ function ContenidoCotizador() {
       })
       .catch((err: unknown) => {
         if (err instanceof CatalogoApiError && err.code === 'SIN_SESION') {
-          setErrorTenant(err.message);
+          setErrorTenant(formatearErrorAmigable(err));
         } else {
           console.error('Error cargando salidas para cotizador:', err);
         }

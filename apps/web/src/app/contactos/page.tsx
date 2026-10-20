@@ -16,6 +16,7 @@ import {
 import { BarraModulos } from '../../components/bandeja/barra-modulos';
 import { DistintivoDatosDemo } from '../../components/comun/distintivo-datos-demo';
 import { EsqueletoTabla, AvisoErrorAccionable } from '../../components/comun/esqueletos';
+import { formatearErrorAmigable } from '../../lib/estados-ui-logica';
 import { construirMensajeErrorAccionable } from '../../lib/estados-ui-logica';
 import { FichaDetalleContacto } from '../../components/contactos/ficha-detalle-contacto';
 import { obtenerMockPaginaContactos } from '../../lib/mock-contactos';
@@ -42,7 +43,9 @@ export default function ContactosPage() {
       })
       .catch((err) => {
         console.warn('Error al cargar contactos de CRM API:', err);
-        setError(err instanceof Error ? err.message : 'Error al conectar con la API de CRM');
+        setError(
+          formatearErrorAmigable(err, 'No fue posible consultar el directorio de contactos.'),
+        );
       })
       .finally(() => {
         setCargando(false);
