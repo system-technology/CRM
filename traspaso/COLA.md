@@ -314,7 +314,7 @@ UI pasa de «Página N de M» a «Cargar más» con cursor. El orden lo da el se
 **Hecho cuando:** el listado muestra cotizaciones reales, con sus estados, y `pnpm compuertas` sale
 en verde.
 
-## [ ] 0c.29. La maqueta de inicio de sesión toma la forma del ADR-0011 (añadida el 2026-10-19)
+## [x] 0c.29. La pantalla de ingreso se conecta a la API real de identidad del ADR-0011 (2026-10-20)
 
 > **2026-10-20: YA NO ES MAQUETA, LA API EXISTE.** La rebanada 2 está en `main` (v0.34.0 y v0.34.1).
 > Haz `git merge main` y conecta `/ingresar` a la API real, detrás del mismo interruptor que el

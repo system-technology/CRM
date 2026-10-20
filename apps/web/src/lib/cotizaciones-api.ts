@@ -71,6 +71,7 @@ async function pedirCotizaciones<T>(ruta: string, opciones: RequestInit = {}): P
   try {
     res = await fetch(`${base}${ruta}`, {
       ...opciones,
+      credentials: 'include',
       headers,
       cache: 'no-store',
     });

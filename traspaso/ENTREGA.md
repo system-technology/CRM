@@ -611,3 +611,53 @@ Se creó el archivo de pruebas de componentes `apps/web/src/components/comun/esq
 ## 4. Decisiones que el encargo no especificaba
 
 - En `ModalPlantillas`, se habilitó selección con teclado mediante `tabIndex={0}`, `role="button"` y listener `onKeyDown` (Enter/Espacio) para las tarjetas de plantilla, garantizando accesibilidad total sin requerir ratón.
+
+
+---
+
+# Entrega Tarea 0c.29: Conexión de `/ingresar` con la API real de identidad (ADR-0011)
+
+**Fecha:** 2026-10-20  
+**Rama:** `feat/bandeja-web`  
+**Contexto:** Transición de la pantalla de ingreso a la API real de Better Auth (`POST /api/v1/auth/sign-in/email`, `POST /api/v1/auth/sign-out`, `GET /api/v1/auth/session`, `POST /api/v1/auth/tenant-activo`), contratos Zod `@viajapro/contracts`, cookie `HttpOnly` (`credentials: 'include'`), selector de agencia y redirección de servidor cuando el interruptor está inactivo.
+
+## 1. Qué se construyó
+
+1. **Cliente de Identidad (`apps/web/src/lib/auth-api.ts`):**
+   - Interacción con las 4 rutas reales de autenticación bajo contratos Zod estrictos (`IniciarSesion`, `SesionActual`, `AgenciaDeAcceso`, `CambiarAgenciaActiva`, `CodigoDeErrorDeAcceso`).
+   - Política R3 / 0c.34: ante cualquier respuesta 200 malformada, valida con `SesionActual.parse(json)` lanzando `ZodError` sin enmascarar con mocks.
+   - Envío de cookies de sesión mediante `credentials: 'include'`.
+   - Mapeo de errores canónicos (`CREDENCIALES_INVALIDAS`, `DEMASIADOS_INTENTOS`, `SIN_SESION`, `SIN_AGENCIA_ACTIVA`, `ACCESO_REVOCADO`, `AGENCIA_SUSPENDIDA`, `SIN_MEMBRESIA`, `CODIGO_INVALIDO`, `ORIGEN_NO_CONFIABLE`) a mensajes comprensibles para el usuario.
+   - Modo mock offline de respaldo para desarrollo local sin backend cuando el interruptor real está inactivo.
+
+2. **Ruta canónica `/ingresar` (`apps/web/src/app/ingresar/page.tsx`):**
+   - Server Component de Next.js que evalúa `estaAuthHabilitada()`. Si está inactivo, ejecuta `redirect('/bandeja')` a nivel de servidor, sin renderizar ningún markup en el cliente.
+   - Ruta legacy `/iniciar-sesion/page.tsx` redirige permanentemente a `/ingresar`.
+
+3. **Componente de Flujo de Ingreso (`apps/web/src/components/auth/formulario-ingreso.tsx`):**
+   - **Paso 1 (Credenciales):** Formulario accesible con correo y contraseña, alternancia de visibilidad de contraseña con botón accesible, indicador de estado de conexión API / Demo y alerta de error accesible (`role="alert"` y `aria-live="assertive"`). Touch targets $\ge 44$ px en botones e inputs.
+   - **Paso 2 (Selector de Agencia):** Se activa automáticamente cuando la sesión tiene más de 1 agencia asignada y no tiene tenant activo fijado. Permite seleccionar agencia mediante teclado o clic, invocando `POST /api/v1/auth/tenant-activo`.
+   - **Paso 3 (Código de 6 dígitos por correo):** UI preparada para la Rebanada 4 de identidad con validación de 6 dígitos numéricos y aviso informativo accesible con `role="status"`.
+
+4. **Inclusión de `credentials: 'include'` en clientes de API:**
+   - Actualizados `api.ts`, `crm-api.ts`, `cotizaciones-api.ts` e `inbox-api.ts` para enviar la cookie de sesión `HttpOnly` en todas las peticiones fetch de la aplicación.
+
+5. **Pruebas Unitarias y de Componentes:**
+   - `apps/web/src/lib/auth-api.spec.ts`: 19 pruebas cubriendo endpoints, códigos de error HTTP (401, 403, 429), contratos Zod, validación estricta y modo offline.
+   - `apps/web/src/components/auth/formulario-ingreso.spec.tsx`: 7 pruebas verificando renderizado de formulario, toggle de visibilidad de contraseña, alertas accesibles, selector de agencia multi-tenant y paso de código OTP.
+
+## 2. Qué se verificó EJECUTANDO
+
+- `pnpm --filter web test`: **26/26 suites en verde, 253/253 pruebas pasando**.
+- `pnpm --filter web typecheck`: **0 errores**.
+- `pnpm --filter web lint`: **0 errores, 0 advertencias**.
+- `pnpm --filter web build`: **Compilación exitosa** (16/16 páginas generadas, incluyendo `/ingresar` con 5.71 kB y `/iniciar-sesion` con 123 B).
+- `pnpm format:check`: **Todos los archivos formateados según Prettier**.
+
+## 3. Qué NO se verificó
+
+- No se ejecutó el flujo contra el backend en vivo levantado con Neon ni envío real de correos OTP (el servicio de correo transaccional corresponde a la Rebanada 4).
+
+## 4. Decisiones que el encargo no especificaba
+
+- En el selector de agencias, se dispusieron tarjetas con icono de agencia, nombre y slug distintivo con un área táctil de 48 px de altura y estado `hover`/`focus-visible:ring-2`, facilitando la selección cómoda tanto en dispositivos táctiles de 375 px como en escritorio con teclado.

@@ -57,6 +57,7 @@ async function pedirInbox<T>(ruta: string, init?: RequestInit): Promise<T> {
   try {
     res = await fetch(`${BASE_API}${ruta}`, {
       ...init,
+      credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
         ...(TENANT_DEMO ? { 'x-dev-tenant-id': TENANT_DEMO } : {}),

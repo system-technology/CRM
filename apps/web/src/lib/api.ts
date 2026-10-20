@@ -38,6 +38,7 @@ export class ErrorApi extends Error {
 async function pedir<T>(ruta: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${ruta}`, {
     ...init,
+    credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
       ...(TENANT_DEMO ? { 'x-dev-tenant-id': TENANT_DEMO } : {}),

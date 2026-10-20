@@ -62,6 +62,7 @@ async function pedirCrm(
   try {
     res = await fetch(`${obtenerBaseApi()}${ruta}`, {
       ...opciones,
+      credentials: 'include',
       headers,
       cache: 'no-store',
     });
