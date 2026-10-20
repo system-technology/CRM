@@ -20,6 +20,10 @@ export default defineConfig({
       COLA_CORREO: 'memoria',
       MAIL_PROVIDER: 'memoria',
       BUS_DE_EVENTOS: 'memoria',
+      LIMITADOR_OTP: 'memoria',
+      // Las e2e piden muchos códigos para un mismo buzón; la prueba del límite lo baja a propósito.
+      OTP_ENVIOS_POR_CORREO: '1000',
+      OTP_ENVIOS_POR_IP: '1000',
     },
     // Arrancar Nest y conectar con Neon no son milisegundos.
     testTimeout: 60_000,

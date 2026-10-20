@@ -21,6 +21,8 @@ import {
 } from './interface/invitaciones.controller.js';
 import { AgenciasPrisma } from './infrastructure/agencias.prisma.js';
 import { proveedorDeAuth } from './infrastructure/auth.provider.js';
+import { LimitadorDeEnvios } from './application/limitador-de-envios.js';
+import { crearLimitadorDeEnvios } from './infrastructure/crear-limitador-de-envios.js';
 import { MembresiasPrisma } from './infrastructure/membresias.prisma.js';
 import { PrismaIdentidadService } from './infrastructure/prisma-identidad.service.js';
 import { SesionesBetterAuth } from './infrastructure/sesiones.better-auth.js';
@@ -49,6 +51,7 @@ import { AuthController } from './interface/auth.controller.js';
   providers: [
     PrismaIdentidadService,
     proveedorDeAuth,
+    { provide: LimitadorDeEnvios, useFactory: crearLimitadorDeEnvios },
     ResolverAcceso,
     ObtenerSesionActual,
     CambiarAgenciaActiva,
