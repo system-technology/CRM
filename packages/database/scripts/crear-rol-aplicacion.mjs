@@ -45,11 +45,14 @@ if (url.includes('-pooler')) {
   process.exit(1);
 }
 
-/** Los tres roles de login y la variable de entorno de cada proceso. */
+/** Los cuatro roles de login y la variable de entorno de cada proceso. */
 const ROLES = [
   ['viajapro_app', 'DATABASE_APP_URL', 'apps/api — toda la API salvo el alta de canales'],
   ['viajapro_altas', 'DATABASE_ALTAS_URL', 'SOLO el caso de uso de Embedded Signup'],
   ['viajapro_webhook', 'DATABASE_WEBHOOK_URL', 'apps/worker — webhooks entrantes'],
+  // ADR-0011. De login pero NO de aplicación: aplicar_privilegios_declarados no le concede
+  // nada sobre tablas de negocio; solo las filas de excepciones_rls de identidad.
+  ['viajapro_identidad', 'DATABASE_IDENTIDAD_URL', 'apps/api — SOLO el pool de Better Auth'],
 ];
 
 const cliente = new Client({ connectionString: url });
@@ -94,7 +97,8 @@ try {
   // enterarse aquí que en producción. Comprobar es mejor que afirmar.
   const { rows } = await cliente.query(
     `SELECT rolname, rolbypassrls, rolsuper,
-            has_table_privilege(rolname, 'enrutamiento_canales', 'SELECT') AS ve_directorio
+            has_table_privilege(rolname, 'enrutamiento_canales', 'SELECT') AS ve_directorio,
+            rolname = 'viajapro_identidad' AND has_table_privilege(rolname, 'usuarios', 'SELECT') AS identidad_ve_negocio
      FROM pg_roles WHERE rolname = ANY($1)`,
     [ROLES.map(([rol]) => rol)],
   );
@@ -103,6 +107,11 @@ try {
       throw new Error(`${rol.rolname} tiene BYPASSRLS: el aislamiento sería ficticio.`);
     if (rol.rolsuper)
       throw new Error(`${rol.rolname} es superusuario: el aislamiento sería ficticio.`);
+    if (rol.identidad_ve_negocio) {
+      throw new Error(
+        'viajapro_identidad puede LEER usuarios: no puede estar en roles_de_aplicacion (ADR-0011).',
+      );
+    }
     if (rol.ve_directorio) {
       throw new Error(
         `${rol.rolname} puede LEER enrutamiento_canales. Es el fallo que ADR-0008 existe para impedir.`,
@@ -111,7 +120,7 @@ try {
   }
 
   console.log('');
-  console.log('  Verificado: los tres roles de login no pueden saltarse RLS');
+  console.log('  Verificado: los cuatro roles de login no pueden saltarse RLS');
   console.log('  ni tocar el directorio de enrutamiento.');
   console.log('');
   console.log('  Reemplaza estas lineas en tu .env, tal cual:');

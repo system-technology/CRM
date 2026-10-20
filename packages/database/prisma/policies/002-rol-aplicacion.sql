@@ -45,7 +45,11 @@ BEGIN
       ('viajapro_altas',      true,  'SOLO el caso de uso de Embedded Signup. Único rol con EXECUTE sobre registrar_enrutamiento.'),
       ('viajapro_webhook',    true,  'apps/worker: resuelve el tenant y procesa el staging.'),
       ('viajapro_enrutador',  false, 'Propietario del directorio y de sus dos funciones. NOLOGIN: no es una credencial.'),
-      ('viajapro_staging',    false, 'Propietario del staging y de sus cuatro funciones. Sin ningún privilegio sobre el directorio.')
+      ('viajapro_staging',    false, 'Propietario del staging y de sus cuatro funciones. Sin ningún privilegio sobre el directorio.'),
+      -- ADR-0011. El cuarto de login NO está en `roles_de_aplicacion` de `001`: sus únicos
+      -- privilegios son las filas de `excepciones_rls` sobre las tablas de identidad.
+      ('viajapro_identidad',  true,  'Pool de Better Auth (ADR-0011). Solo las tablas globales de identidad, por excepciones_rls. NINGÚN privilegio sobre tablas de negocio: no está en roles_de_aplicacion.'),
+      ('viajapro_accesos',    false, 'Propietario de sincronizar_acceso_identidad. NOLOGIN: no es una credencial. Solo escribe accesos_identidad.')
     ) AS t(nombre, con_login, proposito)
   LOOP
     IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = rol.nombre) THEN
@@ -80,7 +84,7 @@ DO $$
 DECLARE
   nombre text;
 BEGIN
-  FOREACH nombre IN ARRAY ARRAY['viajapro_app','viajapro_altas','viajapro_webhook','viajapro_enrutador','viajapro_staging'] LOOP
+  FOREACH nombre IN ARRAY ARRAY['viajapro_app','viajapro_altas','viajapro_webhook','viajapro_enrutador','viajapro_staging','viajapro_identidad','viajapro_accesos'] LOOP
     BEGIN
       EXECUTE format('ALTER ROLE %I NOBYPASSRLS NOSUPERUSER NOCREATEDB NOCREATEROLE', nombre);
     EXCEPTION WHEN insufficient_privilege THEN
@@ -102,7 +106,7 @@ DECLARE
   nombre text;
 BEGIN
   IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'neon_superuser') THEN
-    FOREACH nombre IN ARRAY ARRAY['viajapro_app','viajapro_altas','viajapro_webhook','viajapro_enrutador','viajapro_staging'] LOOP
+    FOREACH nombre IN ARRAY ARRAY['viajapro_app','viajapro_altas','viajapro_webhook','viajapro_enrutador','viajapro_staging','viajapro_identidad','viajapro_accesos'] LOOP
       IF pg_has_role(nombre, 'neon_superuser', 'MEMBER') THEN
         EXECUTE format('REVOKE neon_superuser FROM %I', nombre);
         RAISE NOTICE 'Revocada la membresía de neon_superuser en %.', nombre;
@@ -129,13 +133,13 @@ DO $$
 DECLARE
   nombre text;
 BEGIN
-  FOREACH nombre IN ARRAY ARRAY['viajapro_app','viajapro_altas','viajapro_webhook'] LOOP
+  FOREACH nombre IN ARRAY ARRAY['viajapro_app','viajapro_altas','viajapro_webhook','viajapro_identidad'] LOOP
     EXECUTE format('GRANT CONNECT ON DATABASE %I TO %I', current_database(), nombre);
     EXECUTE format('GRANT USAGE ON SCHEMA public TO %I', nombre);
     EXECUTE format('REVOKE CREATE ON SCHEMA public FROM %I', nombre);
   END LOOP;
 
-  FOREACH nombre IN ARRAY ARRAY['viajapro_enrutador','viajapro_staging'] LOOP
+  FOREACH nombre IN ARRAY ARRAY['viajapro_enrutador','viajapro_staging','viajapro_accesos'] LOOP
     EXECUTE format('GRANT USAGE ON SCHEMA public TO %I', nombre);
     EXECUTE format('REVOKE CREATE ON SCHEMA public FROM %I', nombre);
   END LOOP;
@@ -150,7 +154,7 @@ BEGIN
   -- Esto no amplía nada: el rol de migraciones ya es dueño del esquema y, en Neon, además
   -- hereda BYPASSRLS. Quien lo tenga, lo tiene todo; esa es la razón de que la aplicación
   -- nunca se conecte con él.
-  FOREACH nombre IN ARRAY ARRAY['viajapro_app','viajapro_altas','viajapro_webhook','viajapro_enrutador','viajapro_staging'] LOOP
+  FOREACH nombre IN ARRAY ARRAY['viajapro_app','viajapro_altas','viajapro_webhook','viajapro_enrutador','viajapro_staging','viajapro_identidad','viajapro_accesos'] LOOP
     EXECUTE format('GRANT %I TO %I WITH SET TRUE, INHERIT FALSE', nombre, current_user);
   END LOOP;
 
@@ -174,7 +178,7 @@ BEGIN
   FOR r IN
     SELECT rolname, rolsuper, rolbypassrls, rolcanlogin
     FROM pg_roles
-    WHERE rolname IN ('viajapro_app','viajapro_altas','viajapro_webhook','viajapro_enrutador','viajapro_staging')
+    WHERE rolname IN ('viajapro_app','viajapro_altas','viajapro_webhook','viajapro_enrutador','viajapro_staging','viajapro_identidad','viajapro_accesos')
   LOOP
     IF r.rolbypassrls THEN
       RAISE EXCEPTION '% tiene BYPASSRLS: el aislamiento entre tenants sería ficticio.', r.rolname;
@@ -182,14 +186,14 @@ BEGIN
     IF r.rolsuper THEN
       RAISE EXCEPTION '% es superusuario: el aislamiento entre tenants sería ficticio.', r.rolname;
     END IF;
-    IF r.rolcanlogin AND r.rolname IN ('viajapro_enrutador','viajapro_staging') THEN
+    IF r.rolcanlogin AND r.rolname IN ('viajapro_enrutador','viajapro_staging','viajapro_accesos') THEN
       RAISE EXCEPTION '% puede iniciar sesión: un propietario con LOGIN es una contraseña cuya posesión concede el secuestro de cualquier conversación.', r.rolname;
     END IF;
-    IF NOT r.rolcanlogin AND r.rolname IN ('viajapro_app','viajapro_altas','viajapro_webhook') THEN
+    IF NOT r.rolcanlogin AND r.rolname IN ('viajapro_app','viajapro_altas','viajapro_webhook','viajapro_identidad') THEN
       RAISE EXCEPTION '% no puede iniciar sesión y la aplicación lo necesita.', r.rolname;
     END IF;
   END LOOP;
 
-  RAISE NOTICE 'Verificado: ninguno de los cinco roles puede saltarse RLS.';
+  RAISE NOTICE 'Verificado: ninguno de los siete roles puede saltarse RLS.';
 END;
 $$;
