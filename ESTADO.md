@@ -83,6 +83,7 @@ Qué hay, concretamente:
 | **Alta de la agencia cliente** | **No requiere verificación de Meta ni página web.** Sin verificar: conversaciones entrantes ilimitadas, 250 iniciadas/24h, 250 plantillas. Verificado 2026-10-07 | `docs/10-onboarding/01-requisitos-para-la-agencia.md` |
 | Alcance v1 | Los cuatro bloques siguen siendo el mapa del alcance total | `docs/01-producto/01-alcance-mvp.md` |
 | Diseño | Stitch para explorar; shadcn/ui en `packages/ui` para producir | `docs/01-producto/06-diseno-y-ux.md` |
+| **Visibilidad de conversaciones** | Sin `conversaciones.ver_todas`: las asignadas a uno + la cola común. Responder la primera vez asigna. Al reasignar, el anterior deja de verla. «Todos ven todo» = dar `ver_todas` al rol asesor. Criterios CA1-CA17 | `docs/01-producto/12-visibilidad-de-conversaciones.md` |
 | Norte de producto | El brochure fija la dirección: qué módulos, qué flujo, qué tono | `docs/00-vision/05-norte-del-producto.md` |
 
 ### Lo comercial NO está decidido
