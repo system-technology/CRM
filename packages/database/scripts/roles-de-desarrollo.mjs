@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Pone contraseñas DE DESARROLLO, deterministas, a los tres roles de login.
+ * Pone contraseñas DE DESARROLLO, deterministas, a los cuatro roles de login.
  *
  *   pnpm --filter @viajapro/database run roles:dev
  *
@@ -68,6 +68,8 @@ const ROLES = [
   ['viajapro_app', 'DATABASE_APP_URL'],
   ['viajapro_altas', 'DATABASE_ALTAS_URL'],
   ['viajapro_webhook', 'DATABASE_WEBHOOK_URL'],
+  // ADR-0011: el pool de Better Auth. Cuarto rol de login; la API lo exige como suyo.
+  ['viajapro_identidad', 'DATABASE_IDENTIDAD_URL'],
 ];
 
 if (!/^[A-Za-z0-9_-]{12,}$/.test(CLAVE)) {

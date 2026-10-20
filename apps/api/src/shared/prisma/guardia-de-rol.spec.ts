@@ -8,7 +8,12 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { resolverCadena, verificarIdentidad } from './guardia-de-rol.js';
+import {
+  ROLES_DE_CONEXION,
+  resolverCadena,
+  verificarIdentidad,
+  verificarSinPrivilegiosDeNegocio,
+} from './guardia-de-rol.js';
 
 const sano = { usuario: 'viajapro_app', esSuperusuario: false, saltaRls: false };
 
@@ -17,7 +22,7 @@ describe('verificarIdentidad', () => {
     expect(verificarIdentidad(sano, 'viajapro_app')).toBeNull();
   });
 
-  it('acepta cada uno de los tres roles cuando es el que toca', () => {
+  it('acepta cada uno de los roles de login cuando es el que toca', () => {
     expect(
       verificarIdentidad({ ...sano, usuario: 'viajapro_webhook' }, 'viajapro_webhook'),
     ).toBeNull();
@@ -92,5 +97,35 @@ describe('resolverCadena', () => {
 
   it('LANZA si la variable está vacía', () => {
     expect(() => resolverCadena({ DATABASE_APP_URL: '' }, 'DATABASE_APP_URL')).toThrow();
+  });
+});
+
+describe('rol de identidad (ADR-0011)', () => {
+  it('es uno de los roles de login, con el mismo rigor que los otros', () => {
+    expect(ROLES_DE_CONEXION).toContain('viajapro_identidad');
+    const identidad = { ...sano, usuario: 'viajapro_identidad' };
+    expect(verificarIdentidad(identidad, 'viajapro_identidad')).toBeNull();
+    expect(
+      verificarIdentidad({ ...identidad, esSuperusuario: true }, 'viajapro_identidad'),
+    ).toMatch(/superusuario/);
+    expect(verificarIdentidad({ ...identidad, saltaRls: true }, 'viajapro_identidad')).toMatch(
+      /BYPASSRLS/,
+    );
+  });
+
+  it('el pool de identidad no arranca como el rol de la API, ni al revés', () => {
+    expect(verificarIdentidad({ ...sano, usuario: 'viajapro_app' }, 'viajapro_identidad')).toMatch(
+      /debe conectarse como 'viajapro_identidad'/,
+    );
+    expect(verificarIdentidad({ ...sano, usuario: 'viajapro_identidad' }, 'viajapro_app')).toMatch(
+      /debe conectarse como 'viajapro_app'/,
+    );
+  });
+
+  it('se niega a arrancar si el rol de identidad lee alguna tabla de negocio', () => {
+    expect(verificarSinPrivilegiosDeNegocio([])).toBeNull();
+    expect(verificarSinPrivilegiosDeNegocio(['usuarios', 'mensajes'])).toMatch(
+      /usuarios, mensajes/,
+    );
   });
 });

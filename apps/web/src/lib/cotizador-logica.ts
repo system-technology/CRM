@@ -241,6 +241,8 @@ export function calcularCotizacionMock(
 
     const ventaUnit = Math.round(Number(precioBase.venta.unidades) * markupFactor);
     const subtotalVenta = ventaUnit * g.cant;
+    // El tarifario de muestra siempre trae el neto; la API real ya no lo entrega sin `incluirMargen`.
+    if (!precioBase.neto) throw new Error('El simulador necesita el neto del tarifario de muestra');
     const netoUnit = Number(precioBase.neto.unidades);
     const subtotalNeto = netoUnit * g.cant;
 

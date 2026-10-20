@@ -37,6 +37,7 @@ export class CotizarPaqueteUseCase {
   constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
   async ejecutar(entrada: CotizarPaquete): Promise<CotizacionCalculada> {
+    const incluirMargen = entrada.incluirMargen === true;
     const composicion = ComposicionPasajeros.crear({
       adultos: entrada.pasajeros.adultos,
       ninos: entrada.pasajeros.ninos,
@@ -111,10 +112,14 @@ export class CotizarPaqueteUseCase {
             unidades: subtotalVenta.unidades.toString(),
             moneda: subtotalVenta.moneda,
           },
-          subtotalNeto: {
-            unidades: subtotalNeto.unidades.toString(),
-            moneda: subtotalNeto.moneda,
-          },
+          ...(incluirMargen
+            ? {
+                subtotalNeto: {
+                  unidades: subtotalNeto.unidades.toString(),
+                  moneda: subtotalNeto.moneda,
+                },
+              }
+            : {}),
         });
       }
 
@@ -139,9 +144,14 @@ export class CotizarPaqueteUseCase {
         plazasSinUsar: reparto.plazasSinUsar,
         lineas,
         totalVenta: { unidades: totalVenta.unidades.toString(), moneda: totalVenta.moneda },
-        totalNeto: { unidades: totalNeto.unidades.toString(), moneda: totalNeto.moneda },
-        margen: { unidades: margen.unidades.toString(), moneda: margen.moneda },
-        margenPorcentaje,
+        // Neto, margen y porcentaje van juntos o no van: cualquiera de los tres despeja el neto.
+        ...(incluirMargen
+          ? {
+              totalNeto: { unidades: totalNeto.unidades.toString(), moneda: totalNeto.moneda },
+              margen: { unidades: margen.unidades.toString(), moneda: margen.moneda },
+              margenPorcentaje,
+            }
+          : {}),
       };
     });
   }

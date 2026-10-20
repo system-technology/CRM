@@ -16,10 +16,18 @@
  */
 
 import { AsyncLocalStorage } from 'node:async_hooks';
+import type { Permiso } from '@viajapro/contracts';
 
 export interface ContextoPeticion {
   readonly tenantId: string;
   readonly usuarioId: string | null;
+  /** La persona global detrás del usuario. Nula solo en el atajo de desarrollo. */
+  readonly identidadId: string | null;
+  /**
+   * Lo que el rol de este usuario en ESTA agencia permite (ADR-0011, paso 5). Sale de `roles`
+   * leído bajo RLS en cada petición, nunca de la sesión ni del cliente.
+   */
+  readonly permisos: ReadonlySet<Permiso>;
   /** Para correlacionar logs y trazas con una petición concreta. */
   readonly trazaId: string;
 }
@@ -61,5 +69,10 @@ export const ContextoTenant = {
 
   tenantId(): string {
     return ContextoTenant.obtener().tenantId;
+  },
+
+  /** ¿El usuario de esta petición tiene el permiso? Sin contexto, no: se niega. */
+  tienePermiso(permiso: Permiso): boolean {
+    return almacen.getStore()?.permisos.has(permiso) ?? false;
   },
 };

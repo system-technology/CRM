@@ -8,13 +8,18 @@ import 'reflect-metadata';
 
 import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module.js';
+import { leerProxyDeConfianza } from './shared/red/proxy-de-confianza.js';
 import { DominioExcepcionFilter } from './shared/filtros/dominio-excepcion.filter.js';
 
 async function arrancar(): Promise<void> {
-  const app = await NestFactory.create(AppModule, { bufferLogs: true });
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, { bufferLogs: true });
 
   app.useGlobalFilters(new DominioExcepcionFilter());
+
+  // Sin saltos de confianza por defecto: `req.ip` es la del socket y `x-forwarded-for` se ignora.
+  app.set('trust proxy', leerProxyDeConfianza(process.env));
 
   // Sin ValidationPipe global: validamos con los esquemas Zod de @viajapro/contracts,
   // uno por ruta. El pipe de Nest exige class-validator y duplicaria la definicion de cada
