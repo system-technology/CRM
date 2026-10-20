@@ -1996,6 +1996,32 @@ describe('ADR-0008 — directorio de enrutamiento, staging y separación de role
     );
     expect(await contar(nueva)).toBe(0);
   });
+
+  it('60 — registrar con el canal o la cuenta de OTRA agencia lo rechaza la función, no solo la foránea', async () => {
+    // Si el canal o la cuenta no son visibles bajo el tenant que registra, la comprobación
+    // de estado no puede saltarse en silencio: la clave foránea compuesta no debe ser la
+    // única defensa. P0002, distinto del 23503 de la foránea y del 42501 del historial.
+    const codigo = async (fn: () => Promise<unknown>) => {
+      try {
+        await fn();
+        return 'ningún error';
+      } catch (error) {
+        return (error as { code?: string }).code;
+      }
+    };
+    expect(
+      await codigo(() => registrar(TENANT_A, claveDeHueco(), canalB, cuentaA)),
+      'registró con el canal de otra agencia',
+    ).toBe('P0002');
+    expect(
+      await codigo(() => registrar(TENANT_A, claveDeHueco(), null, cuentaB)),
+      'registró con la cuenta de otra agencia',
+    ).toBe('P0002');
+    expect(
+      await codigo(() => registrar(TENANT_A, claveDeHueco(), randomUUID(), cuentaA)),
+      'registró con un canal que no existe',
+    ).toBe('P0002');
+  });
 });
 // =============================================================================
 // CRM — aserciones 26 a 33
