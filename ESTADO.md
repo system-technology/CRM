@@ -1276,6 +1276,13 @@ Estáticas en local, en verde. Registro: [`docs/_integraciones/2026-10-20-v0.37.
 
 | Cola | Dueño | Por qué no bloquea |
 |---|---|---|
-| El adaptador Redis de los contadores de OTP **solo se probó con un doble**. El CI ya levanta Redis 7: la e2e del límite debería correr contra él, como la de BullMQ. **Antes del adaptador de correo de producción** | `backend` | El algoritmo está probado en memoria y el adaptador es `INCR` + `EXPIRE NX` en una transacción. Hoy el correo solo va a Mailpit |
-| En `.env.example`, `SOCKET_REVALIDACION_MAX_FALLOS` solo figura en un comentario, sin su línea `VARIABLE=` (por defecto vale 3) | `backend` | Es opcional y tiene valor por defecto |
+| ~~El adaptador Redis de los contadores de OTP solo se probó con un doble~~ | `backend` | **Cerrado** (`ab5b3cf`): `limite-otp-redis.e2e-spec` corre contra el Redis del CI, 3/3 |
+| ~~`SOCKET_REVALIDACION_MAX_FALLOS` sin línea en `.env.example`~~ | `backend` | **Cerrado** (`ab5b3cf`) |
+
+## Integración del 2026-10-20 — `test/identity-limite-otp-redis-real`, sin etiqueta
+
+`test/identity-limite-otp-redis-real` @ `f601168` entra en `main` (`ab5b3cf`). Solo trae pruebas y la plantilla, así que no lleva etiqueta. La e2e
+`limite-otp-redis.e2e-spec` corre contra el Redis real del CI y pasa 3 de 3, sin «SALTADA». Prueba el 429 por IP, el corte silencioso por
+correo y que la clave sea un HMAC con TTL. Además, `SOCKET_REVALIDACION_MAX_FALLOS=3` ya está en `.env.example`. Compuerta: CI **8/8**,
+https://github.com/Alfavear/CRM/actions/runs/39367641187, sobre la punta, que contiene `main`. Se cierran las dos colas de la v0.37.1.
 
