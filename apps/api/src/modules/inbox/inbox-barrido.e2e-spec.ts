@@ -341,6 +341,35 @@ describe.skipIf(!CORRE)('Barrido: un POST guardado cuyo encolado falló llega a 
     expect(turnos.filter(Boolean)).toHaveLength(1);
   });
 
+  it('el tope vive en la base: pasado maxReencolados el change ya no se lista', async () => {
+    // El consumidor ya está parado desde la prueba anterior: el change se queda pendiente.
+    const cuerpo = sobre(`wamid.${randomUUID()}`);
+    const idRecepcion = idDe(cuerpo);
+    expect(await post(cuerpo)).toBe(200);
+    await dormir((ANTIGUEDAD_S + 1) * 1_000);
+
+    const pendientes = new PendientesPrisma(prismaWebhook);
+    const lista = async (): Promise<boolean> =>
+      (await pendientes.listar(ANTIGUEDAD_S, 1000, 10)).some((f) =>
+        f.recepcionId.equals(idRecepcion),
+      );
+
+    expect(await lista()).toBe(true);
+    // Diez reencolados contados en la base: con el tope en 10 todavía sale una última vez.
+    for (let i = 1; i <= 10; i += 1) {
+      expect(await pendientes.contarReencolado(idRecepcion, 0)).toBe(i);
+    }
+    expect(await lista()).toBe(true);
+    // El undécimo cruza el tope: el barrido lo da por abandonado y la base ya no lo lista.
+    expect(await pendientes.contarReencolado(idRecepcion, 0)).toBe(11);
+    expect(await lista()).toBe(false);
+    const r = await admin.query(
+      'SELECT intentos_barrido FROM recepciones_webhook_changes WHERE recepcion_id = $1',
+      [idRecepcion],
+    );
+    expect(r.rows[0].intentos_barrido).toBe(11);
+  });
+
   it('un trabajo FALLIDO con ese id se borra antes de reencolar, y el mensaje llega', async () => {
     const wamid = `wamid.${randomUUID()}`;
     const cuerpo = sobre(wamid);
@@ -380,34 +409,5 @@ describe.skipIf(!CORRE)('Barrido: un POST guardado cuyo encolado falló llega a 
       return f.length > 0 ? f : undefined;
     });
     expect(filas).toEqual([{ tenant_id: TENANT }]);
-  });
-
-  it('el tope vive en la base: pasado maxReencolados el change ya no se lista', async () => {
-    await consumidor.onModuleDestroy();
-    const cuerpo = sobre(`wamid.${randomUUID()}`);
-    const idRecepcion = idDe(cuerpo);
-    expect(await post(cuerpo)).toBe(200);
-    await dormir((ANTIGUEDAD_S + 1) * 1_000);
-
-    const pendientes = new PendientesPrisma(prismaWebhook);
-    const lista = async (): Promise<boolean> =>
-      (await pendientes.listar(ANTIGUEDAD_S, 1000, 10)).some((f) =>
-        f.recepcionId.equals(idRecepcion),
-      );
-
-    expect(await lista()).toBe(true);
-    // Diez reencolados contados en la base: con el tope en 10 todavía sale una última vez.
-    for (let i = 1; i <= 10; i += 1) {
-      expect(await pendientes.contarReencolado(idRecepcion, 0)).toBe(i);
-    }
-    expect(await lista()).toBe(true);
-    // El undécimo cruza el tope: el barrido lo da por abandonado y la base ya no lo lista.
-    expect(await pendientes.contarReencolado(idRecepcion, 0)).toBe(11);
-    expect(await lista()).toBe(false);
-    const r = await admin.query(
-      'SELECT intentos_barrido FROM recepciones_webhook_changes WHERE recepcion_id = $1',
-      [idRecepcion],
-    );
-    expect(r.rows[0].intentos_barrido).toBe(11);
   });
 });
