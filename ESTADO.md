@@ -6,7 +6,7 @@
 
 | Campo | Valor |
 |---|---|
-| Última actualización | 2026-10-19 (integraciones v0.19.0 → v0.23.0 y el primer CI en verde, sin etiqueta) |
+| Última actualización | 2026-10-20 (madrugada: v0.32.0 y el ADR-0011 integrado) |
 | Actualizado por | Claude Opus 5.5 (`integrador`) |
 | Fase | **Rebanada vertical de paquetes, en construcción** |
 | Avance de la fase | Cotizador de punta a punta. **La cotización es la suma de sus tarifas y el precio «desde» es uno que el comprador puede pagar (v0.19.0).** Apretón de manos del webhook vivo. Bandeja web en construcción |
@@ -121,7 +121,7 @@ Ordenada. La primera es la que debe tomarse ahora.
 | 4g | `purgar_directorio`, o decidir que es manual | `arquitecto`, `datos` | Hoy ninguna fila del directorio se puede borrar por ningún camino de código. **No bloquea un esquema vacío; bloquea el primer tenant en producción** |
 | 4h | Trabajo anual de creación de particiones del historial | `devops` | Si falta la del año siguiente, **ninguna agencia puede conectar su canal**. Mejor: un *event trigger* que lo haga imposible de olvidar |
 | 4i | Aserción de concurrencia determinista y orden de las aserciones | `qa` | La de la carrera falla hacia el verde; y 22/23 reparan privilegios, así que enmascaran a cualquier aserción declarada después |
-| 5 | Bandeja de conversaciones en la web | Antigravity, en `feat/bandeja-web` | **En curso.** Lista y pantalla de conversación construidas, con idempotencia R5 verificada en navegador. La entrega de tiempo real fue rechazada: su emisor genera un UUID inválido y ningún evento llega a la pantalla |
+| 5 | Bandeja de conversaciones en la web | Antigravity | **Integrada entera en cuatro tandas (v0.24.0, v0.26.0, v0.27.0 y v0.28.0).** `apps/web` en `main` es idéntico a `feat/bandeja-web` @ `6d790ff`. Lo siguiente, rama por rama |
 | 6 | Guardar cotizaciones con versiones inmutables | `backend` | **Hecha (esquema v0.22.0, API v0.23.0, 2026-10-19).** `POST /api/v1/cotizaciones`, `POST /:id/versiones` y `GET /:id`. El servidor recalcula los importes y no guarda los que manda el cliente. Siguen en cola el listado, el envío y los estados |
 | 7 | Pruebas de integración de la API | `qa` | Solo se probó a mano. **La verificación del cotizador fue manual: no hay prueba automática que la repita** |
 | 8 | CI en GitHub Actions corriendo de verdad | `devops` | **Cerrada (2026-10-19).** Primer verde: https://github.com/Alfavear/CRM/actions/runs/39308173658. Las 18 migraciones se reconstruyen desde cero en un Postgres 16 limpio |
@@ -131,7 +131,7 @@ Ordenada. La primera es la que debe tomarse ahora.
 | 11b | `META_APP_SECRET` y `WEBHOOK_PAYLOAD_KEY_VERSION` en `.env` | Usuario | **Cerrada (2026-10-19).** El integrador comprobó la presencia sin imprimir valores. `META_APP_SECRET`, `WHATSAPP_DIRECTORY_PEPPER` y `WEBHOOK_PAYLOAD_KEY` tienen valor en los cuatro árboles, y en cada variable es el mismo en los cuatro (mismo hash). `WEBHOOK_PAYLOAD_KEY_VERSION=1` en los cuatro |
 | 11c | Los metadatos de decorador no siempre llegan con el transpilador de desarrollo | `backend` | **Hecha (`85eceac`, v0.19.0).** `@Inject` explícito y `guardia-de-inyeccion.spec.ts`, que pone en rojo cualquier dependencia sin token |
 | 11d | El aviso «Acceso sin contexto de tenant» se emitía una vez por mensaje | `backend` | **Hecha (`f57925b`, v0.19.0).** El webhook usa `sinTenantDeclarado`, con la operación declarada en `operaciones-de-plataforma.ts` (tipo cerrado). La variante ruidosa sigue para todo lo no declarado |
-| 12 | Autenticación: el `tenant_id` debe salir del token de sesión | `backend` | Hoy la web lo envía por cabecera. Solo funciona con `APP_ENV=local`, pero es deuda que bloquea desplegar |
+| 12 | Autenticación: el `tenant_id` debe salir del token de sesión | `datos`, `backend`, Antigravity | **ADR-0011 aceptado y ratificado** (2026-10-19, integrado por orden directa del propietario con `/integrar`): Better Auth en `identity`, cookie opaca validada solo por la API, tenant activo revalidado por petición bajo RLS, roles por agencia en tabla. R2 de `CLAUDE.md` pasa a cuatro roles más `viajapro_accesos` (NOLOGIN). **Rebanada 1** (esquema e identidad) hecha y aceptada por `auditor-seguridad` en `feat/identity-esquema`, devuelta a `datos` para fusionar `main` y renumerar aserciones desde la 61 (12 SECURITY DEFINER). Rebanadas 2 (módulo `identity`, condición del auditor: token de sesión y OTP hasheados), 3 (pantalla de ingreso) y 4 (invitaciones) pendientes. Sigue bloqueando el despliegue |
 | 13 | La carrera de `turbo` entre `build` y `typecheck` | `devops` | **Hecha (`f9da930`, v0.19.0).** `typecheck` de `web` y `database` depende de su `build`. Verificado: `typecheck --force` 9/9 sin caché |
 | 14 | El aviso de `any` no es una compuerta | `devops` | `no-explicit-any` está en `warn` y ningún script lleva `--max-warnings 0`: hoy hay cero `any`, pero el primero entraría sin que lint falle |
 
@@ -139,6 +139,7 @@ Ordenada. La primera es la que debe tomarse ahora.
 
 | Bloqueo | Impacto | Dueño | Mitigación |
 |---|---|---|---|
+| **La suite de aislamiento contra Neon compartido no sirve de compuerta mientras dure la deriva** (2026-10-19, noche).** Neon tiene aplicada `20261019230000_identidad_global_y_roles_por_agencia`, de una rama sin integrar (ADR-0011, rebanada 1), y `excepciones_rls` ya no coincide con el literal de `main`: la aserción 11 sale roja en todas las corridas. Además, la **39** (colgar una conversación del contacto de otra agencia) resolvió un `INSERT` que debía rechazarse **una vez**, en una corrida completa con otras sesiones activas. Pasó 3/3 en el bloque aislado, y las foráneas compuestas siguen en Neon, validadas y `NOT NULL` | **Desde el 2026-10-19 la compuerta de aislamiento es el CI** (Postgres 16 limpio, migraciones desde cero). Neon queda solo para las e2e que lo necesitan. La aserción 11 vuelve a casar cuando entre `feat/identity-esquema` | `datos` (integrar la rebanada 1) | La causa de la 39 ya está encontrada: ver el incidente de abajo |
 | ~~Rotar `WHATSAPP_WEBHOOK_VERIFY_TOKEN`~~ | — | Usuario | **Cerrado el 2026-10-19.** Rotado en los cuatro `.env`; el integrador comprobó que el valor viejo ya no aparece en ninguno. Meta nunca lo tuvo, porque el webhook no está configurado |
 | **Modo desatendido detenido en la compuerta** — el commit `59a52d8` amplía los permisos de los propios agentes | Cada commit y cada push siguen pidiendo autorización al propietario, con dos IA trabajando en paralelo | Usuario | **Solo el propietario puede aprobarlo, en su propia sesión**: el integrador no acepta de segunda mano un cambio a la configuración que define lo que los agentes pueden hacer sin preguntar. Y antes hay que sacar `git clean -xdf` de la lista de permitidos: borra lo no rastreado **y** lo ignorado, incluidos los tres `.env` |
 | **`Bash(cat:*)` permitido hace decorativo el `deny` de `Read(./.env)`** | `cat .env` funciona hoy. O ese `deny` significa algo, o sobra por honestidad | Usuario | Decidirlo al tocar los permisos |
@@ -203,7 +204,7 @@ Al cerrar una sesión de trabajo (`/estado` lo hace de forma guiada):
 | Qué | Dueño | Por qué no bloqueó |
 |---|---|---|
 | **Resuelto el mismo 2026-10-10.** La suite de aislamiento vuelve a **30/30 en verde**, firmada por el integrador sobre `main` en `01dd143`. Eran 174 filas de fixtures de tres tenants, todas `duplicate key`, ninguna de aislamiento. El limpiador quedó en `chore/limpiar-fixtures` (`79fe4b7`) | `datos` | — |
-| **La aserción 17 comprueba el NOMBRE de la columna, no lo que guarda.** Dice «ninguna tabla global tiene columna `tenant_id`», pero una tabla global que guarde datos de agencia bajo otro nombre la pasa sin que nadie se entere — y eso ya existe: `enrutamiento_canales` usa `tenant_resuelto_id` y `enrutamiento_historial_2026` usa `tenant_anterior`, `tenant_nuevo` y `actor_tenant_id`. Debería comprobar **columnas `uuid` que referencien `tenants`**, no un literal. Y `excepciones_rls` debería exigir motivo revisado, no solo existencia | `qa` | **Hoy no es fuga:** se verificó contra la base que las seis tablas sin RLS con columna de tenant están todas declaradas en `excepciones_rls`. La aserción promete más de lo que comprueba; el diseño que vigila es correcto |
+| ~~La aserción 17 comprobaba el NOMBRE de la columna, no lo que guarda~~ | `qa` | **Cerrada en v0.31.0:** la 17 decide por columna; su contraprueba va dentro de `BEGIN…ROLLBACK` |
 | `aislamiento.spec.ts` limpia sus fixtures solo en `afterAll`. Una ejecución interrumpida envenena todas las siguientes, que es justo lo que pasó hoy. La limpieza tiene que correr también en `beforeAll` | `qa` | Es higiene del suite, no una fuga |
 | `decodificarClave` acepta hexadecimal o base64. La regla es determinista (64 caracteres `[0-9a-f]` → hex; lo demás, base64) y el largo se verifica después, así que se aceptó. Pendiente: que el generador de secretos y el lector acuerden **una** codificación y la rama desaparezca | `devops` | No hay sustitución silenciosa: lo que no mide 32 bytes lanza al arrancar |
 | Auditar la cadena de inyección de `quoting` y `shared`: el mismo silencio de Nest que construyó el controlador del inbox con cero dependencias es posible ahí | `backend` | Hoy no está roto; el inbox ya lleva `@Inject` explícito |
@@ -407,7 +408,7 @@ más es esa.
 
 | Cola | Dueño | Por qué no bloquea |
 |---|---|---|
-| **Meterle el `tenant_id` dentro a las claves foráneas.** La integridad referencial se evalúa por encima de RLS, así que una foránea simple deja colgar una fila de la de otra agencia si alguien escribe el id cruzado | `datos` | Hoy `tenant_id` lo pone el servidor, nunca el cliente. Es un **barrido de todo el esquema**, no de una tabla suelta: hacerlo en una sola sería inconsistente y daría falsa sensación de cubierto |
+| ~~Meterle el `tenant_id` dentro a las claves foráneas~~ | `datos` | **Cerrada en v0.31.0:** las tres simples que quedaban (`paquetes`→`mayoristas`, `temporadas`→`paquetes`, `precios`→`temporadas`) son compuestas. La migración aborta si queda alguna simple y la aserción 54 barre el catálogo. En Neon: cero simples |
 | `Paquete` + `Temporada` + `Precio` siguen en el esquema junto al modelo nuevo | `datos` | El cotizador actual todavía se apoya en ellos. Se retiran cuando el cotizador pase a `resolverVigencia` |
 | La API no expone todavía `vigencias` ni `tarifas` | `backend` | El dato ya está en la base y la función de resolución probada. Falta el caso de uso y la ruta |
 
@@ -632,7 +633,7 @@ limpio · `pnpm run test --force` **dos veces**: contracts 56, domain 70, api **
 | Trabajador en `apps/api` contra el mapa de `CLAUDE.md` | `arquitecto` → Usuario | **Decidido en el ADR-0010.** Falta la línea del mapa en `CLAUDE.md` §5, que la aprueba el propietario aparte |
 | ~~Revisión de `auditor-seguridad` sobre `ProcesarChange` y `conTenantResuelto`~~ | `auditor-seguridad` | **Cerrada (v0.21.2):** sin bloqueantes; tres correcciones integradas |
 | BullMQ contra Redis real, y el job de CI | `devops` (4c, 4a.1) | Nada desplegado; ruta probada con dobles |
-| Sin relay de barrido: un change cuya cola se pierde solo se recupera por el reintento de Meta. Falta una función de base para listar pendientes | `datos` | Meta reintenta durante horas |
+| ~~Sin relay de barrido~~ | `datos` | **Cerrado en v0.30.0** |
 | `aislamiento.spec.ts` borra toda `recepciones_webhook` en su `afterAll` | `qa` | No se manifestó en dos corridas en paralelo |
 | `.env.example`: la rama reescribió el archivo entero por finales de línea (345 líneas en el diff, 3 de contenido). Falta `.gitattributes` | `devops` | Solo ruido en el diff |
 | `D:\Projects\CRM-gate2`: otro árbol temporal del integrador sin borrar (desregistrado, sin `.env`) | Usuario | Borrar a mano junto con `CRM-gate` |
@@ -708,9 +709,9 @@ revisó (ACEPTAR CON CAMBIOS), y los dos cambios están aplicados.
 
 | Cola | Dueño | Por qué no bloquea |
 |---|---|---|
-| **No existe el relay de barrido.** Un `change` cuya cola se pierde solo se recupera por el reintento de Meta. Hace falta una función de base que liste los `changes` pendientes (`viajapro_webhook` solo puede `tomar_recepcion` por id) | `datos` | Meta reintenta durante horas; nada desplegado |
-| **Falta el puerto `asegurarContacto`:** `inbox` escribe en `contactos` (de `crm`) directamente, contra R4 | `backend` | Misma transacción y mismo RLS. Es frontera de módulo, no aislamiento |
-| **Tres huecos del disparador `canales_propagar_estado`:** la baja de una cuenta, el borrado lógico de un canal y la re-alta no se propagan al directorio | `datos` | El trabajador contrasta con `canales` dentro de la transacción y descarta lo revocado |
+| ~~No existe el relay de barrido~~ | `datos` | **Cerrado en v0.30.0:** `listar_changes_pendientes` y el barrido del trabajador, que reencola los `changes` pendientes |
+| ~~Falta el puerto `asegurarContacto`: `inbox` escribía en `contactos` directamente (R4)~~ | `backend` | **Cerrado en v0.30.1** |
+| ~~Tres huecos del disparador `canales_propagar_estado`~~ | `datos` | **Cerrados en v0.32.0**, con el cuarto (INSERT): baja de cuenta (`propagar_estado_cuenta`), `eliminado_en` tratado como REVOCADO, y un re-alta que no puede relajar el estado del canal |
 | Ratificar el ADR-0010, y aprobar la línea del mapa en `CLAUDE.md` §5 | Usuario | Hoy describe el código tal como está |
 
 ---
@@ -764,9 +765,9 @@ y el tenant llega por cabecera, solo con `APP_ENV=local`. Va ligado a la tarea 1
 | Cola | Dueño | Por qué no bloquea |
 |---|---|---|
 | **`incluirMargen` sin control de rol**: cualquiera que llame la API ve el margen, o sea el neto | `backend`, junto con la **tarea 12** | No hay autenticación ni superficie para el viajero. **Dependencia dura:** no se despliega sin sesión y sin un rol que pueda pedir el margen |
-| Listado, envío y estados de la cotización | `backend` | Siguiente rebanada de la tarea 6 |
-| El filtro de errores responde **400** a los códigos `*_NO_ENCONTRADA`, cuando debería ser 404 (la e2e cubre `COTIZACION_NO_ENCONTRADO` con 404, no el resto) | `backend` | Es el código HTTP; no es una fuga |
-| `quoting` lee `contactos` y `oportunidades` (de `crm`) directamente desde su transacción, igual que `inbox` (R4; ver `asegurarContacto`) | `arquitecto` | Mismo RLS y misma transacción; es frontera de módulo |
+| ~~Listado, envío y estados de la cotización~~ | `backend` | **Hecho en v0.25.0**: listado por cursor y máquina de estados. Queda el envío por WhatsApp |
+| ~~El filtro de errores responde 400 a `*_NO_ENCONTRADA`~~ | `backend` | **Resuelto en v0.25.0**: 404 para `_NO_ENCONTRADA` y `_NO_ENCONTRADO` |
+| ~~`quoting` leía `contactos` y `oportunidades` de `crm` directamente (R4)~~ | `arquitecto` | **Cerrado en v0.30.1** |
 | `D:\Projects\CRM-gate6`: otro árbol temporal | Usuario | Borrar a mano |
 
 ---
@@ -790,7 +791,7 @@ El valor ya no aparece en ningún archivo rastreado de `main`.
 
 | Cola | Dueño | Por qué no bloquea |
 |---|---|---|
-| BullMQ real sigue sin probar: `apps/api/vitest.config.ts` fija `COLA_CHANGES=inerte`, aunque el CI ya levanta Redis 7 | `devops` (4c) | Nada desplegado. El CI ya tiene el Redis: falta una prueba que lo use |
+| ~~BullMQ real sigue sin probar~~ | `devops` | **Cerrado (`897d8df`):** `inbox-bullmq.e2e-spec.ts` corre con Redis 7 en el CI —ejecutada, no saltada, run 39339999694— y cubre `jobId`, el reintento sin duplicar, el consumidor hasta `mensajes` y un `failedReason` sin PII |
 | Protección de rama con estos checks como obligatorios | Usuario (**tarea 10**) | El plan gratuito no la permite en repos privados |
 | `convencion-de-commits` sale *skipped*, porque solo corre en PR, y la integración aquí es por merge local | `devops` | La convención la revisa el integrador a mano |
 
@@ -822,5 +823,279 @@ Con esto, la compuerta completa (`inbox-relay.e2e-spec`) se puede correr desde c
 
 | Cola | Dueño | Por qué no bloquea |
 |---|---|---|
-| **Severidad alta.** `scripts/generar-secretos-locales.ps1` toma como referencia el **primer** árbol de `git worktree list` (`D:\Projects\CRM`). Si ese árbol no tiene los secretos, genera valores nuevos y los escribe en **todos**, pisando la pimienta y la clave buenas de los demás: el directorio de enrutamiento queda huérfano y lo cifrado, ilegible. Corrección: abortar si un árbol tiene valor y otro no, y ofrecer copiar en vez de generar | `devops` | Hoy no se manifestó, y los cuatro árboles ya tienen los mismos valores. Pero basta una ejecución con un árbol nuevo primero en la lista |
+| ~~`generar-secretos-locales.ps1` podía pisar la pimienta buena~~ | `devops` | **Cerrado (`897d8df`):** copia el valor existente antes de generar, aborta (salida 2) si los árboles tienen valores distintos, y solo genera si no lo tiene ninguno |
+
+---
+
+## Integración del 2026-10-19 (duodécima) — v0.24.0: la bandeja web, tanda 1 (base)
+
+`feat/web-tanda-1-base` @ `420e88a` entra en `main` (`cd35a3d`), etiquetada **v0.24.0**. Registro:
+[`docs/_integraciones/2026-10-19-v0.24.0.md`](docs/_integraciones/2026-10-19-v0.24.0.md).
+
+**La rama la armó el integrador, pero el contenido no es suyo.** Se creó desde `origin/main` y solo
+trae rutas de `814ae24` (`feat/bandeja-web`, revisada y aceptada), con `git checkout 814ae24 -- <rutas>`.
+Se comprobó que los doce archivos son byte a byte los de `814ae24`. No se tocó `D:\Projects\CRM-bandeja`.
+
+**La frontera se movió:** la búsqueda global, el panel de notificaciones y el distintivo de datos demo
+**no** entran en la tanda 1, porque importan los mocks de todas las áreas y `crm-api`. Irán en la
+tanda 4. La portada enlaza a rutas que llegan en las tandas 2 a 4: hasta entonces, esos enlaces dan 404.
+
+Compuertas: `install --frozen-lockfile` limpio · `typecheck` 9/9, `lint` 7/7, `build` 5/5, sin caché ·
+`format:check` limpio · `pnpm run test --force` **cuatro veces**: dos en verde completo (contracts 60,
+domain 70, **web 4**, api 279, aislamiento 57/57) y dos con un rojo cada una, **los dos del arnés**.
+
+### Los dos rojos, mirados
+
+1. `inbox-relay.e2e-spec`, «el mismo wamid en un lote DISTINTO»: `NO_ENCONTRADO` en vez de `PROCESADO`.
+   **Causa: `aislamiento.spec.ts:646` hace `DELETE FROM recepciones_webhook` sin filtro**, y turbo
+   corre `api:test` y `database:test` a la vez: la suite de aislamiento le borra la recepción a la e2e.
+   Es la cola de `qa` de la v0.21.0, **que ya se manifiesta**.
+2. Aserción 22: `deadlock detected` al reaplicar `001`/`002`. Es la cola de `qa` de la v0.21.1.
+
+### Cola — sube de prioridad
+
+| Cola | Dueño | Por qué no bloquea, y hasta cuándo |
+|---|---|---|
+| ~~El arnés falla una de cada dos corridas~~ | `qa` | **Resuelta (`5ead5fe`):** borrados y purgas acotados a la corrida, la 22 serializada con advisory lock, y una guarda que impide las mutaciones contra una base no desechable |
+| La portada enlaza a `/bandeja`, `/catalogo`, `/pipeline`… antes de que existan en `main` | integrador (tandas 2–4) | No hay nada desplegado; se cierra con la tanda 4 |
+| R3: `apps/web/src/lib/mock-viajes.ts:12` redefine `TipoPasajero` (`'ADT' | 'CHD' | 'INF'`), que ya existe en `packages/contracts/src/catalogo.ts` con otros valores | Antigravity | No está en la tanda 1. **Bloquea la tanda 4** si sigue así |
+
+---
+
+## Incidente del 2026-10-19 — las mutaciones de aislamiento corrieron contra Neon compartido
+
+**Qué pasó.** `mutaciones-aislamiento.mjs` rompe el aislamiento a propósito, una rotura cada vez, y lo
+restaura. Se ejecutó contra la base **compartida**. Según `qa`, hubo unos **4 minutos** con la foránea
+de cotizaciones sin `tenant_id` y RLS apagada en `cotizaciones`. Eso explica que la aserción 39 de
+otra corrida aceptara un `INSERT` cruzado. **No cruzó ninguna fila de negocio**: en esa base solo hay
+datos de prueba y la agencia demo.
+
+**Lo que tiene que constar.** El integrador corrió esas mutaciones contra Neon compartido durante la
+integración de v0.22.0. Lo anotó en su registro y en la cola de `qa`/`devops`, pero lo correcto era no ejecutarlas.
+Que aquella corrida sea o no la de los 4 minutos que midió `qa`, el fallo de criterio es el mismo:
+**una herramienta que rompe el aislamiento no se ejecuta contra una base que usa nadie más**.
+
+**Qué lo impide ahora.** `scripts/guarda-base-desechable.mjs` (`5ead5fe`): las mutaciones exigen
+`VIAJAPRO_BASE_DESECHABLE=1`, y se niegan a correr si el host es de Neon o la base se llama `neondb`
+fuera de loopback. **Desde hoy, la compuerta de aislamiento de cada integración es el CI**, sobre una
+base limpia.
+
+## Integración del 2026-10-19 (decimotercera) — `fix/qa-arnes-paralelo`, sin etiqueta
+
+`fix/qa-arnes-paralelo` @ `835d2a6` entra en `main` (`5ead5fe`). Solo toca pruebas y scripts de prueba,
+así que no lleva etiqueta. Compuerta: rama `chore/compuerta-qa-arnes` (origin/main + la rama), con CI
+**8/8 en verde**: https://github.com/Alfavear/CRM/actions/runs/39336470606. El merge tiene el árbol que
+probó el CI. Estáticas en local, sin caché: `typecheck` 9/9, `lint` 7/7, `build` 5/5, `format:check` limpio.
+La suite sigue con 57 `it` y pasa de 163 `expect` a 164: no se quitó ninguna aserción, se envolvieron
+en el bloqueo.
+
+
+## Integración del 2026-10-19 (decimocuarta) — v0.24.1: la política solo con el margen (R10)
+
+`fix/quoting-politica-solo-con-margen` @ `b06f88b` entra en `main` (`8fcb35a`), etiquetada **v0.24.1**.
+Con la base, el porcentaje y la venta se despejaba el neto (`venta / (1 + %)`). Ahora `politica` solo
+viaja con `incluirMargen=true`, y la e2e comprueba que una respuesta sin margen no contiene ni neto,
+ni margen, ni política. Compuerta: CI **8/8**, https://github.com/Alfavear/CRM/actions/runs/39337042919,
+sobre el árbol del merge. Estáticas en local en verde. Registro:
+[`docs/_integraciones/2026-10-19-v0.24.1.md`](docs/_integraciones/2026-10-19-v0.24.1.md).
+
+## Integración del 2026-10-19 (decimoquinta) — v0.25.0: listado y estados de cotizaciones
+
+`feat/quoting-listado-y-estados` @ `e96e0ff` entra en `main` (`f6fb562`), etiquetada **v0.25.0**. Trae
+`GET /api/v1/cotizaciones` con cursor y filtros (devuelve 400 si se pide `incluirMargen`), y
+`POST /:id/estado` con BORRADOR→ENVIADA→ACEPTADA|RECHAZADA|VENCIDA, donde los estados terminales dan 409.
+El filtro de errores ya da 404 a los `_NO_ENCONTRADA`/`_NO_ENCONTRADO`. **Fusionada sobre la v0.24.1:
+`FilaDeCotizacion` no lleva `politica`, ni `neto`, ni `margen`**, y el SQL del listado no lee esas columnas.
+Compuerta: CI **8/8**, https://github.com/Alfavear/CRM/actions/runs/39337507750, sobre el árbol del merge.
+Estáticas en local en verde. Antes, contra Neon compartido, la api dio 318/318 en cuatro corridas,
+con la e2e de dos agencias de inbox-relay en verde las cuatro.
+Registro: [`docs/_integraciones/2026-10-19-v0.25.0.md`](docs/_integraciones/2026-10-19-v0.25.0.md).
+
+## Integración del 2026-10-19 (decimosexta) — v0.26.0: la bandeja web (tanda 2)
+
+`feat/web-tanda-2-bandeja` @ `7ba9e3e` entra en `main` (`689dcb1`), etiquetada **v0.26.0**. La armó el
+integrador desde `origin/main` con 40 rutas de `0586743` (`feat/bandeja-web`), byte a byte. Son la bandeja
+más **su cierre de importaciones**, calculado siguiendo los `import` relativos: `barra-modulos` arrastra la
+búsqueda global y las notificaciones, `lista-conversaciones` arrastra el distintivo de datos demo y
+`crm-api`, y esas piezas arrastran `mock-viajes`, `mock-contactos`, `mock-pipeline`, `mock-catalogo`, y la
+lógica de pipeline y de viajes. Con esto, esas tres piezas, que salieron de la tanda 1, quedan
+integradas. **Sin la 0c.22**: no entra nada de cotizaciones guardadas, y ningún archivo de la tanda importa
+`mock-cotizaciones` ni `cotizaciones-*`.
+Compuerta: CI **8/8**, https://github.com/Alfavear/CRM/actions/runs/39338146105, sobre el árbol del merge ·
+estáticas en local en verde · web **73** pruebas en 10 archivos.
+Registro: [`docs/_integraciones/2026-10-19-v0.26.0.md`](docs/_integraciones/2026-10-19-v0.26.0.md).
+
+## Integración del 2026-10-19 (decimoséptima) — v0.27.0: catálogo web y piezas del cotizador (tanda 3)
+
+`feat/web-tanda-3-catalogo` @ `f008b7c` entra en `main` (`b5327e9`), etiquetada **v0.27.0**. Son 13 rutas de
+`0586743`, byte a byte: la página de catálogo y sus componentes, el aviso de configuración del tenant, el
+bloque de política de precio, el desglose de cotización por salida, y la lógica de catálogo, cotizador
+y política de precio, con sus specs.
+**Frontera movida: la página `/cotizador` no entra.** En `0586743` importa `modal-guardar-cotizacion`,
+`cotizaciones-api` y `cotizaciones-logica`, que son la 0c.22 y van aparte. `main` se queda con su
+cotizador anterior, y el desglose nuevo está listo pero sin usar hasta entonces.
+Compuerta: CI **8/8**, https://github.com/Alfavear/CRM/actions/runs/39338773523, sobre el árbol del merge ·
+estáticas en local en verde · web **102** pruebas en 13 archivos.
+Registro: [`docs/_integraciones/2026-10-19-v0.27.0.md`](docs/_integraciones/2026-10-19-v0.27.0.md).
+
+| Cola | Dueño | Por qué no bloquea |
+|---|---|---|
+| ~~`/cotizador` con la versión anterior, y piezas sin usar~~ | integrador | **Resuelto en v0.28.0** |
+
+## Integración del 2026-10-19 (decimoctava) — v0.28.0: CRM operativo web y cotizador con guardado (tanda 4)
+
+`feat/web-tanda-4-crm-y-cotizador` @ `c34e779` entra en `main` (`13e08da`), etiquetada **v0.28.0**. Son dos commits,
+para revisarlos por separado:
+
+1. **El cotizador con el guardado (0c.22, 0c.24):** `/cotizador`, el modal de guardar, `/cotizaciones` y su ficha,
+   `cotizaciones-api`, `cotizaciones-logica`, `cotizaciones-listado-logica` y `mock-cotizaciones`.
+2. **La tanda 4:** pipeline, contactos, configuración, viajes, reportes, la maqueta de ingreso bajo interruptor
+   (0c.23), la especificación visual con sus capturas y el flujo con Antigravity.
+
+Son 36 archivos de `6d790ff`, byte a byte (34 nuevos y 2 modificados). **R10, comprobado con `git grep`:** en
+`apps/web` solo se leen `politica.porcentaje` y `politica.base` dentro de `bloque-politica-precio.tsx` (es
+`/configuracion`, del dueño), y de `politica-precio-logica.ts`, que solo ese bloque importa. Ninguna llamada pide
+`incluirMargen`, y el texto «CONFIDENCIAL AGENCIA» de `cotizador-logica` solo sale con `incluirNeto`, que ninguna
+pantalla pasa.
+
+Compuerta: CI **8/8**, https://github.com/Alfavear/CRM/actions/runs/39339456755, sobre el árbol del merge ·
+estáticas en local en verde · web **160** pruebas en 20 archivos.
+
+**Lo que queda fuera de `main` de `feat/bandeja-web`: 7 archivos, a propósito.** Los 6 de `traspaso/`, que son el
+canal de trabajo con Antigravity y no producto, y su edición de `ESTADO.md`, porque `ESTADO.md` en `main` lo
+lleva el integrador. **En `apps/web`, `main` y `6d790ff` no tienen ninguna diferencia.**
+Registro: [`docs/_integraciones/2026-10-19-v0.28.0.md`](docs/_integraciones/2026-10-19-v0.28.0.md).
+
+| Cola | Dueño | Por qué no bloquea |
+|---|---|---|
+| `ficha-detalle-paquete.tsx:244` muestra **«Neto:»** en el catálogo, a cualquiera que lo abra | Antigravity (**0c.27**, con los permisos) | Hoy no hay roles: todo usuario es de la agencia. Se cierra al poner esto y `bloque-politica-precio` detrás del permiso |
+
+## Integración del 2026-10-19 (decimonovena) — `ci/bullmq-real-y-secretos`, sin etiqueta
+
+`ci/bullmq-real-y-secretos` @ `16c03d2` entra en `main` (`897d8df`). Solo toca una prueba, un script de desarrollo y la
+bitácora, así que no lleva etiqueta. Compuerta: CI **8/8** sobre el árbol del merge,
+https://github.com/Alfavear/CRM/actions/runs/39339999694. En el log consta
+`✓ src/modules/inbox/inbox-bullmq.e2e-spec.ts (2 tests) 2440ms` y ningún aviso «SALTADA»: **corrió de verdad**.
+Estáticas en local en verde. Registro: [`docs/_integraciones/2026-10-19-bullmq-real.md`](docs/_integraciones/2026-10-19-bullmq-real.md).
+
+| Cola | Dueño | Por qué no bloquea |
+|---|---|---|
+| En el CI, la e2e de BullMQ **se salta, no falla**, si falta `REDIS_URL` (`CORRE = CI && REDIS_URL`). Si alguien quita el Redis del job, el CI seguiría verde | `devops` | Hoy `REDIS_URL` está en el job y la prueba corre. Arreglo: con `CI=true` y sin `REDIS_URL`, fallar |
+
+## Integración del 2026-10-19 (vigésima) — v0.29.0: estados vacío, de carga y de error (0c.25)
+
+`feat/web-0c25-estados` @ `fd3d2df` entra en `main` (`a43de30`), etiquetada **v0.29.0**. Contra `main`, `feat/bandeja-web` @ `2667648`
+solo traía la 0c.25 nueva: la 0c.23 y la 0c.24 ya habían entrado en la v0.28.0. Son 12 archivos de `apps/web`: los
+esqueletos, `estados-ui-logica` y nueve pantallas. Desde ahora, en `apps/web`, `main` es idéntico a `2667648`.
+Compuerta: CI **8/8**, https://github.com/Alfavear/CRM/actions/runs/39341157989, sobre el árbol del merge ·
+estáticas en local en verde · web **172** pruebas en 21 archivos.
+
+**`/iniciar-sesion` con el interruptor apagado, comprobado en el build de producción** (sin `NEXT_PUBLIC_AUTH_MAQUETA`).
+El HTML prerenderizado (`.next/server/app/iniciar-sesion.html`) solo contiene «Redirigiendo a la bandeja», sin
+formulario ni campo de contraseña, y el cliente redirige a `/bandeja`. El chunk JS de la página sí lleva el formulario
+y las credenciales de ejemplo (`asesor@viajapro.com` / `demo123`), porque Next no elimina ese código. **Son ficticias**:
+la maqueta acepta cualquier contraseña de 6 caracteres o más y no habla con ningún servidor, así que no hay nada que proteger.
+Registro: [`docs/_integraciones/2026-10-19-v0.29.0.md`](docs/_integraciones/2026-10-19-v0.29.0.md).
+
+| Cola | Dueño | Por qué no bloquea |
+|---|---|---|
+| `reportes/page.tsx` muestra **«Costo Neto»** y **«Margen Comercial»** con una etiqueta «Solo Dueño», pero sin control de rol | Antigravity (**0c.27**) | Hoy no hay roles. Va con «Neto:» del catálogo y el bloque de política |
+| `err.message` se pinta tal cual en tres pantallas | Antigravity (**0c.30**) | Hoy los errores vienen de mocks y de la API propia; con datos reales podría filtrar detalles internos |
+| La maqueta de ingreso deja su formulario y las credenciales de ejemplo en el chunk de cliente aunque el interruptor esté apagado | Antigravity (con la rebanada 3 del ADR-0011) | Son ficticias y no autentican nada. Se va al sustituir la maqueta por el ingreso real |
+
+## Integración del 2026-10-19 (vigesimoprimera) — v0.30.0: el relay de barrido
+
+`feat/inbox-barrido-pendientes` @ `c00e6c0` entra en `main` (`4c59812`), etiquetada **v0.30.0**. Trae la función
+`listar_changes_pendientes` (`SECURITY DEFINER`, propiedad de `viajapro_staging`, `EXECUTE` solo para `viajapro_webhook`,
+límite obligatorio de 1 a 1000, sin payload ni tenant) y el barrido del trabajador, que reencola los pendientes.
+`auditor-seguridad`: ACEPTAR, sin bloqueantes. Compuerta: CI **8/8**, https://github.com/Alfavear/CRM/actions/runs/39341678409,
+sobre el árbol del merge, con `inbox-barrido.e2e-spec` (3 pruebas) e `inbox-bullmq.e2e-spec` (2) **ejecutadas** contra
+Redis real. Estáticas en local en verde.
+
+**Migración aplicada en Neon desde `main`**, con `prisma migrate deploy` y `current_database() = neondb`. Antes, `migrate status`
+avisó de la divergencia que ya conocíamos (`20261019230000_identidad` está en Neon pero no en `main`). `deploy` no se
+quejó del orden: aplicó `20261019210000` y terminó con «All migrations have been successfully applied». Comprobado
+después en Neon: la función existe, es `SECURITY DEFINER`, su ACL es `{viajapro_staging=X, viajapro_webhook=X}`, la
+`checksum` coincide con el sha256 del archivo (`8e67d376…`), y `viajapro_staging` ya no tiene `CREATE` en `public`.
+Registro: [`docs/_integraciones/2026-10-19-v0.30.0.md`](docs/_integraciones/2026-10-19-v0.30.0.md).
+
+| Cola | Dueño | Por qué no bloquea |
+|---|---|---|
+| ~~Más de 500 `changes` abandonados taparían a los nuevos~~ | `datos` | **La base ya tiene el tope (v0.32.0)**: `listar_changes_pendientes` admite `p_max_intentos` (por defecto 10). Falta que el trabajador lo use: ver la cola de `backend` del 2026-10-19 (vigesimosexta) |
+| **Al integrar `feat/identity-esquema`**: esta rama y aquella suben las dos el recuento literal de funciones `SECURITY DEFINER` de `aislamiento.spec.ts`. Juntas, el total correcto es **10** | integrador / `datos` | Se resuelve en esa fusión. La aserción lo detecta si queda mal |
+
+## Integración del 2026-10-19 (vigesimosegunda) — v0.30.1: inbox y quoting piden a crm por puertos (R4)
+
+`refactor/puertos-hacia-crm` @ `d828dda` entra en `main` (`304f37b`), etiquetada **v0.30.1**: es un refactor, no cambia la
+conducta. Trae tres puertos de `crm`: `asegurarContacto` para `inbox`, y `existeContacto` y `existeOportunidadDelContacto` para
+`quoting`. Los tokens viven en `shared/puertos/` y la raíz del trabajador pasa a `worker.module.ts`. Los puertos usan la
+transacción y el `set_config` del llamador, el upsert va por `(tenantId, telefono)` bajo RLS, y el trabajador conserva su
+guardia de `viajapro_webhook`. `auditor-seguridad`: ACEPTAR. **Con esto se cierran las dos colas de R4.**
+`scripts/verificar-fronteras.mjs` detecta ahora el acceso a tablas de otro módulo: ejecutado contra el `main` anterior, marca
+`quoting/…/cotizaciones.use-case.ts:99` y `:106`. Sus pruebas dan 6 casos en verde. Compuerta: CI **8/8** sobre la punta
+exacta, que iba 0 por detrás: https://github.com/Alfavear/CRM/actions/runs/39342331764. Estáticas en local en verde. Sin
+migraciones, así que no hay nada que aplicar en Neon.
+
+## Integración del 2026-10-19 (vigesimotercera) — v0.30.2: la web en móvil (0c.26, 0c.33)
+
+`fix/web-0c26-0c33-movil` @ `afdc7d5` entra en `main` (`f8127b0`), etiquetada **v0.30.2**. Es una corrección visual: arregla los
+objetivos táctiles y los desbordes horizontales a 375 px en el catálogo, la ventana de 24 h, el cotizador y el pipeline. Son
+cinco archivos de `apps/web` y cuatro capturas de 36 a 41 KB, tomados byte a byte de `ec15d04`. `traspaso/` no entra.
+Compuerta: CI **8/8**, https://github.com/Alfavear/CRM/actions/runs/39343734213, sobre el árbol del merge. Estáticas en
+local en verde, y la web pasa sus 172 pruebas.
+
+## Integración del 2026-10-19 (vigesimocuarta) — v0.31.0: foráneas con tenant en el modelo antiguo
+
+`fix/db-fk-compuestas-y-asercion-17` @ `9079e95` entra en `main` (`a84e54f`), etiquetada **v0.31.0**. Trae la migración
+`20261019220000`, que hace compuestas con `tenant_id` tres foráneas: `paquetes.mayorista_id` (con `SET NULL` solo sobre
+`mayorista_id`), `temporadas.paquete_id` y `precios.temporada_id`. La migración termina con un barrido que aborta si queda
+alguna simple. Además entra la aserción **54**, que barre el catálogo, y la **17**, reescrita para decidir por columna.
+`auditor-seguridad`: ACEPTAR. Compuerta: CI **8/8**, https://github.com/Alfavear/CRM/actions/runs/39344193917, sobre el árbol
+del merge. Estáticas en local en verde.
+
+**Aplicada en Neon desde `main`** con `migrate deploy`, contra `neondb`. Antes de aplicarla corrí en Neon el mismo barrido de
+la migración, solo en lectura. Encontró exactamente las tres foráneas que la migración corrige, y `tablas_sin_aislamiento`
+salió vacía, así que no podía abortar a medias. Después de aplicarla, el barrido da **cero** foráneas simples y la `checksum`
+coincide con el sha256 del archivo (`03b377ff…`).
+Registro: [`docs/_integraciones/2026-10-19-v0.31.0.md`](docs/_integraciones/2026-10-19-v0.31.0.md).
+
+| Cola | Dueño | Por qué no bloquea |
+|---|---|---|
+| La contraprueba de la 17 hace `CREATE TABLE … REFERENCES tenants`, y eso **bloquea las escrituras en `tenants`** mientras corre (`SHARE ROW EXCLUSIVE`) | `qa` | Va dentro de `BEGIN…ROLLBACK` y dura milisegundos. Contra una base compartida podría frenar un alta de agencia |
+
+## Integración del 2026-10-19 (vigesimoquinta) — v0.31.1: el listado de cotizaciones con los contratos reales (0c.28)
+
+`feat/web-0c28-listado-real` @ `9e504a3` entra en `main` (`aab3ee5`), etiquetada **v0.31.1**. Son cinco archivos de `apps/web`, idénticos a
+los de `035e6f9`: el listado de `/cotizaciones` usa ahora `GET /api/v1/cotizaciones` de la v0.25.0, con paginación por cursor,
+y no pide nunca `incluirMargen`. Compuerta: CI **8/8**, https://github.com/Alfavear/CRM/actions/runs/39345393651. Estáticas en
+local en verde, y la web pasa 171 pruebas.
+
+| Cola | Dueño | Por qué no bloquea |
+|---|---|---|
+| **Si la API falla, el listado de cotizaciones muestra el mock sin avisar**: el asesor vería datos inventados como si fueran suyos. El mismo `catch → mock` puede estar en `crm-api.ts` e `inbox-api.ts`, que también importan mocks: que Antigravity lo confirme pantalla por pantalla | Antigravity (**0c.34**, prioritaria) | No hay nada desplegado. **Bloquea el primer despliegue** |
+
+## Integración del 2026-10-19 (vigesimosexta) — v0.32.0: los huecos del disparador y el tope del barrido
+
+`fix/db-huecos-disparador-y-intentos` @ `c8d88e6` entra en `main` (`e4f45b9`), etiquetada **v0.32.0**. Trae la migración `20261020010000`
+y las aserciones 55 a 60, que cierran los cuatro huecos del ADR-0010:
+
+- la baja de una cuenta, con el disparador nuevo `propagar_estado_cuenta`;
+- `eliminado_en` tratado como REVOCADO;
+- el re-alta: `registrar_enrutamiento` rechaza un estado más laxo que el del canal, y lanza `P0002` si el canal o la cuenta no
+  existen bajo el tenant;
+- el INSERT.
+
+Además pone el tope de reencolados en la base: `listar_changes_pendientes(…, p_max_intentos DEFAULT 10)` y
+`contar_reencolado_barrido`. **Es compatible con el trabajador que ya corre**, que sigue llamando con dos argumentos gracias al
+`DEFAULT`. `auditor-seguridad`: ACEPTAR. Compuerta: CI **8/8**, https://github.com/Alfavear/CRM/actions/runs/39346331354.
+
+**Aplicada en Neon desde `main`** (`migrate deploy`, `neondb`), y la `checksum` coincide con el archivo (`ca22ed01…`). Neon queda con
+**12 funciones `SECURITY DEFINER`**: las 11 de `main` más `sincronizar_acceso_identidad`, que viene de la migración de identidad
+todavía sin integrar. Ambos disparadores, el de canal y el de cuenta, están presentes.
+Registro: [`docs/_integraciones/2026-10-19-v0.32.0.md`](docs/_integraciones/2026-10-19-v0.32.0.md).
+
+| Cola | Dueño | Por qué no bloquea |
+|---|---|---|
+| **El filtro de reencolados de la base todavía no actúa**: el trabajador no pasa `maxReencolados` como tercer argumento, y cuenta en Redis en vez de llamar a `contar_reencolado_barrido` | `backend` | Hoy no hay volumen. Sin esto, el tope de la base es papel |
+| La baja de una cuenta no da de baja sus canales | `backend` | El directorio ya la propaga a las filas WABA. Falta la coherencia en `canales` |
 

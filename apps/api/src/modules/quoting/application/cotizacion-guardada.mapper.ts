@@ -47,12 +47,16 @@ export function aVersionDeCotizacion(
     ninos: v.ninos,
     infantes: v.infantes,
     acomodacion: v.acomodacion,
-    politica: {
-      porcentaje: Number(v.politicaPorcentaje),
-      base: v.politicaBase,
-      origenDeLaVenta: v.politicaOrigen,
-      redondeoVenta: v.politicaRedondeo,
-    },
+    ...(incluirMargen
+      ? {
+          politica: {
+            porcentaje: Number(v.politicaPorcentaje),
+            base: v.politicaBase,
+            origenDeLaVenta: v.politicaOrigen,
+            redondeoVenta: v.politicaRedondeo,
+          },
+        }
+      : {}),
     lineas: incluirMargen ? lineas : sinMargen(lineas),
     venta: { unidades: v.ventaUnidades.toString(), moneda },
     ...(incluirMargen ? { neto: dinero(v.netoUnidades), margen: dinero(v.margenUnidades) } : {}),

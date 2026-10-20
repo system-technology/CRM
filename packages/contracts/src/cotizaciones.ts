@@ -88,7 +88,12 @@ export const VersionDeCotizacion = z.object({
   infantes: z.number().int().min(0),
   acomodacion: Acomodacion.nullable(),
 
-  politica: PoliticaAplicada,
+  /**
+   * **Solo con `incluirMargen=true`.** Con la base (`SOBRE_EL_NETO`), el porcentaje y la venta, el
+   * neto sale por división: `neto = venta / (1 + porcentaje)`. Es política de margen, interna de la
+   * agencia, y se omite entera —clave incluida— junto con `neto` y `margen`.
+   */
+  politica: PoliticaAplicada.optional(),
 
   /** Las líneas armadas tal como se cotizaron. Con margen solo si se pidió `incluirMargen`. */
   lineas: z.array(OpcionDePrecio),
@@ -120,3 +125,52 @@ export const CotizacionGuardada = z.object({
   versiones: z.array(VersionDeCotizacion).min(1),
 });
 export type CotizacionGuardada = z.infer<typeof CotizacionGuardada>;
+
+/** `POST /api/v1/cotizaciones/:id/estado` — pide una transición del ciclo de vida. */
+export const CambiarEstadoDeCotizacion = z.object({ estado: EstadoCotizacion }).strict();
+export type CambiarEstadoDeCotizacion = z.infer<typeof CambiarEstadoDeCotizacion>;
+
+/**
+ * `GET /api/v1/cotizaciones` — filtros y cursor. Llegan por query string, así que `limite` se
+ * coacciona. `desde`/`hasta` acotan el instante de la ÚLTIMA versión (UTC, `hasta` exclusivo).
+ */
+export const ListarCotizaciones = z
+  .object({
+    cursor: z.string().min(1).max(200).optional(),
+    limite: z.coerce.number().int().min(1).max(100).default(25),
+    estado: EstadoCotizacion.optional(),
+    contactoId: Id.optional(),
+    desde: Instante.optional(),
+    hasta: Instante.optional(),
+  })
+  .strict();
+export type ListarCotizaciones = z.infer<typeof ListarCotizaciones>;
+
+/**
+ * Una fila del listado. Lleva la venta de la última versión y cuántas hay; **nunca** neto ni
+ * margen: el listado no tiene `incluirMargen`, a propósito (ADR-0011).
+ */
+export const FilaDeCotizacion = z.object({
+  id: Id,
+  contactoId: Id,
+  oportunidadId: Id.nullable(),
+  titulo: z.string(),
+  estado: EstadoCotizacion,
+  versionEnviada: z.number().int().min(1).nullable(),
+  enviadaEn: Instante.nullable(),
+  creadaEn: Instante,
+  /** Cuándo se creó la última versión: el orden del listado, de la más reciente a la más vieja. */
+  ultimaVersionEn: Instante,
+  numeroDeVersiones: z.number().int().min(1),
+  paqueteNombre: z.string(),
+  fechaSalida: FechaViaje,
+  /** El total de la última versión. */
+  venta: Dinero,
+});
+export type FilaDeCotizacion = z.infer<typeof FilaDeCotizacion>;
+
+export const PaginaDeCotizaciones = z.object({
+  datos: z.array(FilaDeCotizacion),
+  pageInfo: z.object({ nextCursor: z.string().nullable(), hasMore: z.boolean() }),
+});
+export type PaginaDeCotizaciones = z.infer<typeof PaginaDeCotizaciones>;

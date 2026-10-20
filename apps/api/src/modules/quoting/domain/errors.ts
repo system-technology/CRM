@@ -54,7 +54,7 @@ export class MonedaDesconocidaError extends InvariantError {
 }
 
 export class CotizacionNoEncontradaError extends DomainError {
-  // Termina en `_NO_ENCONTRADO` a propósito: así el filtro global lo traduce a 404.
+  // Termina en `_NO_ENCONTRADO` (o `_NO_ENCONTRADA`): el filtro global lo traduce a 404.
   readonly code = 'COTIZACION_NO_ENCONTRADO';
   constructor(readonly cotizacionId: string) {
     super(`No existe la cotización ${cotizacionId} en esta agencia`);
@@ -94,5 +94,29 @@ export class CotizacionIncoherenteError extends InvariantError {
   readonly code = 'COTIZACION_INCOHERENTE';
   constructor(detalle: string) {
     super(`El cálculo de la cotización no es coherente consigo mismo: ${detalle}`);
+  }
+}
+
+export class TransicionDeCotizacionInvalidaError extends EstadoInvalidoError {
+  readonly code = 'COTIZACION_TRANSICION_INVALIDA';
+  constructor(
+    readonly de: string,
+    readonly a: string,
+  ) {
+    super(`Una cotización ${de} no puede pasar a ${a}`);
+  }
+}
+
+export class CotizacionTerminalError extends EstadoInvalidoError {
+  readonly code = 'COTIZACION_TERMINAL';
+  constructor(readonly estado: string) {
+    super(`La cotización está ${estado}, un estado final: no admite versiones nuevas`);
+  }
+}
+
+export class CursorDeCotizacionesInvalidoError extends InvariantError {
+  readonly code = 'CURSOR_INVALIDO';
+  constructor() {
+    super('El cursor del listado de cotizaciones no es válido');
   }
 }

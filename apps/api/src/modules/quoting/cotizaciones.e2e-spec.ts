@@ -154,6 +154,19 @@ afterAll(async () => {
 
 const composicion = (adultos = 2) => ({ paqueteId: paqueteA, fecha: FECHA, adultos });
 
+/**
+ * Nada en la respuesta de quien NO pidió el margen puede servir para despejar el neto: ni
+ * `neto` ni `margen`, pero tampoco la política (porcentaje + base + venta dan `neto = venta / (1 + %)`),
+ * ni su origen ni su redondeo. Se busca en el TEXTO de la respuesta, no en claves conocidas: un
+ * campo nuevo que lo filtre también pondría esto en rojo.
+ */
+function sinPistasDelNeto(cuerpo: unknown): void {
+  const texto = JSON.stringify(cuerpo);
+  expect(texto).not.toMatch(
+    /neto|margen|politica|porcentaje|redondeo|origenDeLaVenta|SOBRE_EL|SOBRE_LA|DERIVADA|FIJADA/i,
+  );
+}
+
 describe('cotizaciones guardadas', () => {
   let guardada: CotizacionGuardada;
 
@@ -172,7 +185,8 @@ describe('cotizaciones guardadas', () => {
     expect(v1.numero).toBe(1);
     expect(v1.venta).toEqual({ unidades: '2400000', moneda: 'COP' });
     expect(v1.paqueteNombre).toBe('San Andrés fixture');
-    expect(v1.politica.base).toBe('SOBRE_EL_NETO');
+    expect(v1.politica).toBeUndefined();
+    sinPistasDelNeto(r.json);
     expect(v1.lineas).toHaveLength(1);
     // Sin `incluirMargen`: ni margen, ni neto, ni la clave.
     expect(Object.keys(v1)).not.toContain('neto');
@@ -192,13 +206,19 @@ describe('cotizaciones guardadas', () => {
   it('leer devuelve lo mismo, y el margen solo con incluirMargen=true', async () => {
     const sin = await llamar('GET', `/api/v1/cotizaciones/${guardada.id}`, TENANT_A);
     expect(sin.estado).toBe(200);
-    expect(Object.keys(sin.json.versiones![0]!)).not.toContain('neto');
+    sinPistasDelNeto(sin.json);
 
     const con = await llamar(
       'GET',
       `/api/v1/cotizaciones/${guardada.id}?incluirMargen=true`,
       TENANT_A,
     );
+    expect(con.json.versiones![0]!.politica).toEqual({
+      porcentaje: 20,
+      base: 'SOBRE_EL_NETO',
+      origenDeLaVenta: 'DERIVADA_DEL_NETO',
+      redondeoVenta: 1000,
+    });
     expect(con.json.versiones![0]!.neto).toEqual({ unidades: '2000000', moneda: 'COP' });
     expect(con.json.versiones![0]!.margen).toEqual({ unidades: '400000', moneda: 'COP' });
   });
@@ -229,6 +249,17 @@ describe('cotizaciones guardadas', () => {
     // La 1, idéntica byte a byte a como estaba antes de tocar el tarifario.
     expect(c.versiones[0]).toEqual(antes.json.versiones![0]!);
     expect(c.versiones[0]!.venta).toEqual({ unidades: '2400000', moneda: 'COP' });
+  });
+
+  it('añadir una versión SIN incluirMargen tampoco revela política, neto ni margen', async () => {
+    const r = await llamar(
+      'POST',
+      `/api/v1/cotizaciones/${guardada.id}/versiones`,
+      TENANT_A,
+      composicion(1),
+    );
+    expect(r.estado).toBe(201);
+    sinPistasDelNeto(r.json);
   });
 
   it('la base rechaza editar una versión ya guardada', async () => {
@@ -281,5 +312,188 @@ describe('cotizaciones guardadas', () => {
     expect(r.estado).toBe(409);
     const filas = await admin.cotizacion.count({ where: { tenantId: TENANT_A } });
     expect(filas).toBe(1);
+  });
+});
+
+describe('listado y estados', () => {
+  let contacto2: string;
+  const ids: string[] = [];
+
+  const guardar = async (contactoId: string, titulo: string, adultos: number) => {
+    const r = await llamar('POST', '/api/v1/cotizaciones', TENANT_A, {
+      contactoId,
+      titulo,
+      version: composicion(adultos),
+    });
+    expect(r.estado).toBe(201);
+    return r.json as CotizacionGuardada;
+  };
+  const pausa = () => new Promise((r) => setTimeout(r, 15));
+
+  interface Pagina {
+    datos: Array<Record<string, unknown> & { id: string; titulo: string; estado: string }>;
+    pageInfo: { nextCursor: string | null; hasMore: boolean };
+    error?: { code: string };
+  }
+  const listar = async (tenant: string, consulta = '') => {
+    const r = await llamar('GET', `/api/v1/cotizaciones${consulta}`, tenant);
+    return { estado: r.estado, pagina: r.json as unknown as Pagina };
+  };
+
+  beforeAll(async () => {
+    contacto2 = (
+      await admin.contacto.create({
+        data: { tenantId: TENANT_A, telefonoE164: '+573009990001', nombre: 'Otro viajero' },
+      })
+    ).id;
+    const x = await guardar(contacto2, 'Listado X', 1);
+    await pausa();
+    const y = await guardar(contacto2, 'Listado Y', 2);
+    await pausa();
+    const z = await guardar(contacto2, 'Listado Z', 3);
+    await pausa();
+    // X recibe una versión nueva: pasa a ser la más reciente por su última versión.
+    const r = await llamar(
+      'POST',
+      `/api/v1/cotizaciones/${x.id}/versiones`,
+      TENANT_A,
+      composicion(4),
+    );
+    expect(r.estado).toBe(201);
+    ids.push(x.id, y.id, z.id);
+  });
+
+  it('ordena por la última versión y lleva total y número de versiones', async () => {
+    const { estado, pagina } = await listar(TENANT_A, `?contactoId=${contacto2}`);
+    expect(estado).toBe(200);
+    expect(pagina.datos.map((f) => f.titulo)).toEqual(['Listado X', 'Listado Z', 'Listado Y']);
+    expect(pagina.datos[0]).toMatchObject({
+      numeroDeVersiones: 2,
+      venta: { unidades: '6000000', moneda: 'COP' },
+      paqueteNombre: 'San Andrés fixture',
+    });
+    expect(pagina.datos[1]).toMatchObject({ numeroDeVersiones: 1 });
+    expect(pagina.pageInfo).toEqual({ nextCursor: null, hasMore: false });
+  });
+
+  it('nunca expone neto ni margen, ni siquiera pidiéndolos', async () => {
+    const r = await llamar('GET', `/api/v1/cotizaciones?incluirMargen=true`, TENANT_A);
+    // El esquema es estricto: el parámetro desconocido se rechaza, no se ignora en silencio.
+    expect(r.estado).toBe(400);
+    const { pagina } = await listar(TENANT_A, `?contactoId=${contacto2}`);
+    const texto = JSON.stringify(pagina);
+    expect(texto).not.toMatch(/neto|margen/i);
+  });
+
+  it('pagina por cursor sin repetir ni saltar filas', async () => {
+    const p1 = await listar(TENANT_A, `?contactoId=${contacto2}&limite=2`);
+    expect(p1.pagina.datos.map((f) => f.titulo)).toEqual(['Listado X', 'Listado Z']);
+    expect(p1.pagina.pageInfo.hasMore).toBe(true);
+    const cursor = p1.pagina.pageInfo.nextCursor;
+    expect(cursor).toBeTruthy();
+
+    const p2 = await listar(
+      TENANT_A,
+      `?contactoId=${contacto2}&limite=2&cursor=${encodeURIComponent(cursor ?? '')}`,
+    );
+    expect(p2.pagina.datos.map((f) => f.titulo)).toEqual(['Listado Y']);
+    expect(p2.pagina.pageInfo).toEqual({ nextCursor: null, hasMore: false });
+  });
+
+  it('un cursor basura se rechaza', async () => {
+    const r = await listar(TENANT_A, '?cursor=basura');
+    expect(r.estado).toBe(422);
+    expect(r.pagina.error?.code).toBe('CURSOR_INVALIDO');
+  });
+
+  it('filtra por contacto, por estado y por rango de fechas', async () => {
+    const delOtro = await listar(TENANT_A, `?contactoId=${contactoA}`);
+    expect(delOtro.pagina.datos.every((f) => f.contactoId === contactoA)).toBe(true);
+    expect(delOtro.pagina.datos.map((f) => f.titulo)).not.toContain('Listado X');
+
+    const enviadas = await listar(TENANT_A, `?estado=ENVIADA&contactoId=${contacto2}`);
+    expect(enviadas.pagina.datos).toHaveLength(0);
+
+    const futuro = await listar(TENANT_A, `?desde=${encodeURIComponent('2999-01-01T00:00:00Z')}`);
+    expect(futuro.pagina.datos).toHaveLength(0);
+    const pasado = await listar(TENANT_A, `?hasta=${encodeURIComponent('2000-01-01T00:00:00Z')}`);
+    expect(pasado.pagina.datos).toHaveLength(0);
+    const hoy = await listar(
+      TENANT_A,
+      `?contactoId=${contacto2}&desde=${encodeURIComponent('2000-01-01T00:00:00Z')}`,
+    );
+    expect(hoy.pagina.datos).toHaveLength(3);
+  });
+
+  it('el listado no cruza tenants', async () => {
+    const b = await listar(TENANT_B);
+    expect(b.estado).toBe(200);
+    expect(b.pagina.datos).toHaveLength(0);
+    // Ni siquiera nombrando un contacto de la otra agencia.
+    const filtrado = await listar(TENANT_B, `?contactoId=${contacto2}`);
+    expect(filtrado.pagina.datos).toHaveLength(0);
+  });
+
+  it('enviar fija la versión enviada; las transiciones inválidas dan 409', async () => {
+    const id = ids[1]!;
+    const saltar = await llamar('POST', `/api/v1/cotizaciones/${id}/estado`, TENANT_A, {
+      estado: 'ACEPTADA',
+    });
+    expect(saltar.estado).toBe(409);
+    expect(saltar.json.error?.code).toBe('COTIZACION_TRANSICION_INVALIDA');
+
+    const enviada = await llamar('POST', `/api/v1/cotizaciones/${id}/estado`, TENANT_A, {
+      estado: 'ENVIADA',
+    });
+    expect(enviada.estado).toBe(201);
+    expect(enviada.json.estado).toBe('ENVIADA');
+    expect(enviada.json.versionEnviada).toBe(1);
+    expect(enviada.json.enviadaEn).toBeTruthy();
+
+    const filtrada = await listar(TENANT_A, '?estado=ENVIADA');
+    expect(filtrada.pagina.datos.map((f) => f.id)).toContain(id);
+  });
+
+  it('una cotización enviada admite versión; una aceptada no, ni transición', async () => {
+    const id = ids[1]!;
+    const v = await llamar(
+      'POST',
+      `/api/v1/cotizaciones/${id}/versiones`,
+      TENANT_A,
+      composicion(2),
+    );
+    expect(v.estado).toBe(201);
+    expect((v.json as CotizacionGuardada).versionEnviada).toBe(1);
+
+    const ok = await llamar('POST', `/api/v1/cotizaciones/${id}/estado`, TENANT_A, {
+      estado: 'ACEPTADA',
+    });
+    expect(ok.estado).toBe(201);
+    expect(ok.json.estado).toBe('ACEPTADA');
+
+    const nueva = await llamar(
+      'POST',
+      `/api/v1/cotizaciones/${id}/versiones`,
+      TENANT_A,
+      composicion(1),
+    );
+    expect(nueva.estado).toBe(409);
+    expect(nueva.json.error?.code).toBe('COTIZACION_TERMINAL');
+
+    const otra = await llamar('POST', `/api/v1/cotizaciones/${id}/estado`, TENANT_A, {
+      estado: 'RECHAZADA',
+    });
+    expect(otra.estado).toBe(409);
+  });
+
+  it('otro tenant no puede cambiar el estado (404); un estado desconocido da 400', async () => {
+    const ajeno = await llamar('POST', `/api/v1/cotizaciones/${ids[0]}/estado`, TENANT_B, {
+      estado: 'ENVIADA',
+    });
+    expect(ajeno.estado).toBe(404);
+    const malo = await llamar('POST', `/api/v1/cotizaciones/${ids[0]}/estado`, TENANT_A, {
+      estado: 'CANCELADA',
+    });
+    expect(malo.estado).toBe(400);
   });
 });

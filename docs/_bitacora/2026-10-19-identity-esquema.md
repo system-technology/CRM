@@ -29,8 +29,8 @@ Rama `feat/identity-esquema`, desde `a765601` (`origin/docs/adr-0011-autenticaci
 
 ## Verificación
 
-- Suite de aislamiento contra Neon: **63/63 dos veces**. Aserciones nuevas 53-58; 12, 13 y 14
-  ampliadas (nueve funciones, tres propietarios); literal de la 11 y matriz de la 20 actualizados.
+- Suite de aislamiento contra Neon: **63/63 dos veces**. Aserciones nuevas 61-66 (renumeradas al fusionar main, que ya usaba hasta la 60); 12, 13 y 14
+  ampliadas (doce funciones SECURITY DEFINER tras fusionar main, tres propietarios); literal de la 11 y matriz de la 20 actualizados.
 - `typecheck`, `lint`, `build`, `format:check` en verde. `pnpm test`: un fallo de
   `inbox-relay.e2e-spec.ts` en paralelo que pasa 7/7 aislado (contención en la base compartida).
 - Mutaciones M14-M20 añadidas al arnés y vistas en rojo. **Incidente:** el arnés muta el

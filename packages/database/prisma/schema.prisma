@@ -266,8 +266,11 @@ model RecepcionWebhookChange {
   /// distintas producirían identificadores de trabajo distintos para el mismo reintento.
   indice      Int              @db.SmallInt
 
-  estado      EstadoChangeRecepcion @default(PENDIENTE)
-  procesadoEn DateTime?             @map("procesado_en") @db.Timestamptz(3)
+  estado          EstadoChangeRecepcion @default(PENDIENTE)
+  procesadoEn     DateTime?             @map("procesado_en") @db.Timestamptz(3)
+  /// Cuántas veces lo reencoló el barrido. Lo suma `contar_reencolado_barrido`; el listado
+  /// excluye a los que pasan del tope para que los abandonados no tapen a los nuevos.
+  intentosBarrido Int                   @default(0) @map("intentos_barrido") @db.SmallInt
 
   @@id([recepcionId, indice])
   @@index([procesadoEn])
@@ -314,7 +317,7 @@ enum EstadoChangeRecepcion {
 //
 // **Ninguna de las cinco tiene una columna llamada `tenant_id`**, y es a propósito: el
 // aplicador de `policies/001` les pondría RLS y el inicio de sesión, que corre sin tenant,
-// vería cero filas. Aserciones 17 y 53.
+// vería cero filas. Aserciones 17 y 61.
 // =============================================================================
 
 /// Una persona. Global: existe antes de elegir agencia. Solo `viajapro_identidad`.
@@ -611,7 +614,8 @@ model Paquete {
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   mayoristaId String?    @map("mayorista_id") @db.Uuid
-  mayorista   Mayorista? @relation(fields: [mayoristaId], references: [id], onDelete: SetNull)
+  /// Foranea COMPUESTA con el tenant; en SQL es `SET NULL ("mayorista_id")`, que Prisma no modela.
+  mayorista   Mayorista? @relation(fields: [mayoristaId, tenantId], references: [id, tenantId], onDelete: SetNull, onUpdate: Restrict)
 
   nombre  String  @db.VarChar(200)
   destino String  @db.VarChar(120)
@@ -662,7 +666,8 @@ model Temporada {
   tenantId String @map("tenant_id") @db.Uuid
 
   paqueteId String  @map("paquete_id") @db.Uuid
-  paquete   Paquete @relation(fields: [paqueteId], references: [id], onDelete: Cascade)
+  /// Foranea COMPUESTA con el tenant: la integridad referencial se evalua por encima de RLS.
+  paquete   Paquete @relation(fields: [paqueteId, tenantId], references: [id, tenantId], onDelete: Cascade, onUpdate: Restrict)
 
   nombre String   @db.VarChar(80)
   /// Fechas de viaje, sin hora: el 24 de diciembre es el 24 en cualquier huso. R9.
@@ -673,6 +678,7 @@ model Temporada {
 
   precios Precio[]
 
+  @@unique([id, tenantId])
   @@index([tenantId, paqueteId])
   @@index([tenantId, desde, hasta])
   @@map("temporadas")
@@ -691,7 +697,8 @@ model Precio {
   tenantId String @map("tenant_id") @db.Uuid
 
   temporadaId String    @map("temporada_id") @db.Uuid
-  temporada   Temporada @relation(fields: [temporadaId], references: [id], onDelete: Cascade)
+  /// Foranea COMPUESTA con el tenant: la integridad referencial se evalua por encima de RLS.
+  temporada   Temporada @relation(fields: [temporadaId, tenantId], references: [id, tenantId], onDelete: Cascade, onUpdate: Restrict)
 
   acomodacion  Acomodacion
   tipoPasajero TipoPasajero @map("tipo_pasajero")

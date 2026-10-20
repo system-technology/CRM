@@ -20,10 +20,26 @@
 import { Client } from 'pg';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { evaluarGuarda } from './guarda-base-desechable.mjs';
 
 const URL_ADMIN = process.env.DATABASE_URL;
 if (!URL_ADMIN) throw new Error('Falta DATABASE_URL (rol propietario).');
 if (!process.env.DATABASE_APP_URL) throw new Error('Falta DATABASE_APP_URL (rol de aplicación).');
+
+// Antes de arrancar NADA (ni el control, que también usa la base): estas mutaciones no corren contra una base compartida.
+const guarda = evaluarGuarda({
+  desechable: process.env.VIAJAPRO_BASE_DESECHABLE,
+  url: URL_ADMIN,
+});
+if (!guarda.ok) {
+  console.error(
+    `RECHAZADO: las mutaciones rompen el aislamiento de la base a la que apunten. ${guarda.motivo}.
+` +
+      'Solo corren contra una base desechable: VIAJAPRO_BASE_DESECHABLE=1 y un host de loopback ' +
+      '(o un host propio con base distinta de neondb). No se tocó nada.',
+  );
+  process.exit(2);
+}
 
 const raizPaquete = fileURLToPath(new URL('..', import.meta.url));
 // El binario de vitest del propio paquete, invocado con el Node actual.
@@ -221,7 +237,7 @@ const MUTACIONES = [
   {
     nombre: 'M14 — viajapro_app puede leer sesiones (tabla global de identidad)',
     sql: `GRANT SELECT ON sesiones TO viajapro_app`,
-    prueba: '53',
+    prueba: '61',
     restaurar: `REVOKE SELECT ON sesiones FROM viajapro_app`,
   },
   {
@@ -229,13 +245,13 @@ const MUTACIONES = [
     // exactamente esto, sobre todas las tablas a la vez.
     nombre: 'M15 — viajapro_identidad puede leer contactos (tabla de negocio)',
     sql: `GRANT SELECT ON contactos TO viajapro_identidad`,
-    prueba: '54',
+    prueba: '62',
     restaurar: `REVOKE SELECT ON contactos FROM viajapro_identidad`,
   },
   {
     nombre: 'M16 — un rol de login es miembro de viajapro_accesos',
     sql: `GRANT viajapro_accesos TO viajapro_app`,
-    prueba: '55',
+    prueba: '63',
     restaurar: `REVOKE viajapro_accesos FROM viajapro_app`,
   },
   {
@@ -247,7 +263,7 @@ const MUTACIONES = [
         sana.replace(/\[par-old\][\s\S]*\[\/par-old\]/, '[sin par-old]'),
       );
     },
-    prueba: '56',
+    prueba: '64',
     restaurar: async (cliente) => reescribirComoAccesos(cliente, await definicionSana(cliente)),
   },
   {
@@ -256,19 +272,19 @@ const MUTACIONES = [
           CREATE POLICY tenant_isolation ON usuarios
             USING      (tenant_id = NULLIF(current_setting('app.current_tenant', true), '')::uuid)
             WITH CHECK (true)`,
-    prueba: '57',
+    prueba: '65',
   },
   {
     nombre: 'M19 — roles SIN RLS: lectura cruzada del rol de otra agencia',
     sql: `ALTER TABLE roles DISABLE ROW LEVEL SECURITY`,
-    prueba: '58',
+    prueba: '66',
   },
   {
     nombre: 'M20 — usuarios.rol_id con foránea SIMPLE: un usuario lleva el rol de otra agencia',
     sql: `ALTER TABLE usuarios DROP CONSTRAINT usuarios_rol_id_tenant_id_fkey;
           ALTER TABLE usuarios ADD CONSTRAINT usuarios_rol_id_tenant_id_fkey
             FOREIGN KEY (rol_id) REFERENCES roles (id)`,
-    prueba: '58',
+    prueba: '66',
     restaurar: `ALTER TABLE usuarios DROP CONSTRAINT usuarios_rol_id_tenant_id_fkey;
                 ALTER TABLE usuarios ADD CONSTRAINT usuarios_rol_id_tenant_id_fkey
                   FOREIGN KEY (rol_id, tenant_id) REFERENCES roles (id, tenant_id)
