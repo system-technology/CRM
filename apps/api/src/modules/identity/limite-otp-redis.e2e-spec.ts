@@ -135,9 +135,10 @@ describe.skipIf(!CORRE)('límite de OTP con Redis real', () => {
     const excedida = await pedirCodigo(correoFantasma(99), ip);
     expect(excedida.estado).toBe(429);
     expect((excedida.json['error'] as { code: string }).code).toBe('DEMASIADOS_INTENTOS');
+    // El tercero no llegó al contador por correo: el de IP corta antes.
     // El rechazo vino de NUESTRO límite (contó MAX+1), no del de Better Auth (que cuenta aparte).
     expect(await redis.get(claveIp)).toBe(String(MAX_IP + 1));
-    for (const n of [1, 2, 99]) {
+    for (const n of [1, 2]) {
       clavesUsadas.push(claveDeLimite(secreto, 'correo', correoFantasma(n)));
     }
   });
