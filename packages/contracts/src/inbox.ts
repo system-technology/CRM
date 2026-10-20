@@ -261,3 +261,41 @@ export const EventoBandeja = z.discriminatedUnion('tipo', [
   z.object({ tipo: z.literal('CONVERSACION_ACTUALIZADA'), conversacion: ConversacionResumen }),
 ]);
 export type EventoBandeja = z.infer<typeof EventoBandeja>;
+
+// =============================================================================
+// Canal de tiempo real (Socket.IO) — ADR-0001, ADR-0011
+//
+// El cliente se conecta a `RUTA_SOCKET_BANDEJA` (mismo origen: Next reescribe `/api/v1/*`) y la
+// autenticación es la COOKIE de sesión: no hay token ni `auth` en el handshake. **El cliente no
+// elige agencia ni sala**: el servidor las asigna de la sesión (`tenant:<id>` y `usuario:<id>`) y
+// cualquier `tenantId` que mande se ignora. Si la sesión falla, la conexión se rechaza con un
+// `connect_error` cuyo mensaje es `NO_AUTORIZADO:<motivo>` (`CodigoDeErrorDeAcceso`).
+// =============================================================================
+
+export const RUTA_SOCKET_BANDEJA = '/api/v1/tiempo-real';
+
+/** Servidor -> cliente. La carga es un `EventoBandeja`; un tipo desconocido se ignora. */
+export const EVENTO_SOCKET_BANDEJA = 'bandeja';
+
+/**
+ * Servidor -> cliente, justo antes de cerrar: la sesión se revocó, la dieron de baja, la agencia se
+ * suspendió o cambió la agencia activa. Carga: `{ motivo }`. La web vuelve a `/ingresar` o reconecta.
+ */
+export const EVENTO_SOCKET_CIERRE = 'sesion_cerrada';
+
+/**
+ * Cliente -> servidor (con acuse). **No da ninguna capacidad**: el servidor ya unió el socket a sus
+ * salas al conectar. Pedir otra sala responde `SALA_NO_PERMITIDA` y no une nada. Existe para que un
+ * cliente pueda comprobar a qué salas pertenece, y para que pedir la de otra agencia sea un rechazo
+ * explícito y no un silencio.
+ */
+export const EVENTO_SOCKET_UNIRSE = 'unirse';
+
+export const PeticionDeUnirse = z.object({ sala: z.string().max(100) });
+export type PeticionDeUnirse = z.infer<typeof PeticionDeUnirse>;
+
+export const RespuestaDeUnirse = z.discriminatedUnion('ok', [
+  z.object({ ok: z.literal(true), sala: z.string() }),
+  z.object({ ok: z.literal(false), error: z.literal('SALA_NO_PERMITIDA') }),
+]);
+export type RespuestaDeUnirse = z.infer<typeof RespuestaDeUnirse>;

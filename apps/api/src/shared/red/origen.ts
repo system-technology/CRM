@@ -27,3 +27,8 @@ export function origenEsDeConfianza(
     }
   });
 }
+
+/** Los orígenes desde los que un navegador puede llamar con cookie: la web. */
+export function origenesDeConfianzaDeLaWeb(entorno: Record<string, string | undefined>): string[] {
+  return [entorno['WEB_PUBLIC_URL'] ?? 'http://localhost:3000'];
+}

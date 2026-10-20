@@ -6,16 +6,14 @@
  */
 import { Logger, type Provider } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
+import { origenesDeConfianzaDeLaWeb } from '../../../shared/red/origen.js';
 import { PuertoColaDeCorreo } from '../../../shared/puertos/puerto-de-correo.js';
 import { type AuthDeViajaPro, crearAuth, leerSecretoDeAutenticacion } from './crear-auth.js';
 import { PrismaIdentidadService } from './prisma-identidad.service.js';
 
 export const AUTH = Symbol('AUTH_DE_BETTER_AUTH');
 
-/** Los orígenes desde los que un navegador puede llamar con cookie. */
-export function origenesDeConfianza(entorno: Record<string, string | undefined>): string[] {
-  return [entorno['WEB_PUBLIC_URL'] ?? 'http://localhost:3000'];
-}
+export const origenesDeConfianza = origenesDeConfianzaDeLaWeb;
 
 export const proveedorDeAuth: Provider = {
   provide: AUTH,

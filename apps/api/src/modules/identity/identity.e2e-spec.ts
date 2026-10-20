@@ -793,12 +793,5 @@ describe('la cabecera de desarrollo', () => {
   });
 });
 
-describe('el socket de la bandeja (ADR-0011, «La bandeja en vivo»)', () => {
-  // Socket.IO todavía no existe en la API: la bandeja en vivo es una tarea posterior. El
-  // contrato queda escrito en `application/revalidar-conexion.use-case.ts` (los pasos 3 y 4 con la cookie del
-  // handshake, cada 60 s, y el cierre por baja) y estas pruebas se activan cuando haya gateway.
-  it.todo('rechaza el handshake sin cookie de sesión válida');
-  it.todo('revalida cada 60 s con los pasos 3 y 4, y desconecta si la sesión fue revocada');
-  it.todo('un socket abierto de un usuario dado de baja se cierra');
-  it.todo('se une a las salas tenant:<id> y usuario:<id> con los permisos de ese momento');
-});
+// El socket de la bandeja (handshake, salas, revalidación cada 60 s y cierre por baja) se prueba con
+// sockets reales en `modules/inbox/inbox-tiempo-real.e2e-spec.ts`.

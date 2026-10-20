@@ -32,7 +32,7 @@ import { CambiarAgenciaActiva } from '../application/cambiar-agencia-activa.use-
 import { ObtenerSesionActual } from '../application/sesion-actual.use-case.js';
 import { AUTH, origenesDeConfianza } from '../infrastructure/auth.provider.js';
 import { type AuthDeViajaPro, RUTA_BASE_DE_AUTENTICACION } from '../infrastructure/crear-auth.js';
-import { origenEsDeConfianza } from './origen.js';
+import { origenEsDeConfianza } from '../../../shared/red/origen.js';
 
 /** Las cabeceras que Better Auth necesita ver: origen, cookie, agente y dirección del cliente. */
 const CABECERAS_REENVIADAS = ['origin', 'cookie', 'user-agent'];
