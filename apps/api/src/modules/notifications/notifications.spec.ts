@@ -36,7 +36,9 @@ describe('crearCorreo', () => {
 
   it('cualquier otro proveedor se niega: el de producción espera su ADR', () => {
     for (const p of [undefined, '', 'resend', 'ses', 'smtp']) {
-      expect(() => crearCorreo({ MAIL_PROVIDER: p, APP_ENV: 'local' })).toThrow(/ADR/);
+      expect(() => crearCorreo({ MAIL_PROVIDER: p, APP_ENV: 'local' })).toThrow(
+        /no tiene adaptador/,
+      );
     }
   });
 });

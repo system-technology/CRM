@@ -73,7 +73,7 @@ export class InvitarMiembroUseCase {
         asunto: `Te invitaron a ${descripcion.agencia} en ViajaPro`,
         texto:
           `Te invitaron a unirte a ${descripcion.agencia} en ViajaPro con el rol ${descripcion.rol}.\n\n` +
-          `Acepta la invitación aquí (caduca en 7 días y solo sirve una vez):\n` +
+          `Acepta la invitación aquí (caduca en 72 horas y solo sirve una vez):\n` +
           `${enlaceDeInvitacion(urlDeLaWeb, token)}\n\n` +
           'Si no esperabas este correo, ignóralo: no pasa nada.',
       },

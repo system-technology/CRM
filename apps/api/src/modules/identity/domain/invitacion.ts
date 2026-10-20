@@ -10,8 +10,8 @@
  */
 import { createHash, randomBytes } from 'node:crypto';
 
-/** Una semana. Una invitación es una puerta abierta: no se deja abierta indefinidamente. */
-export const VIGENCIA_DE_INVITACION_MS = 7 * 24 * 60 * 60 * 1000;
+/** 72 horas (ADR-0012: el proveedor retiene el contenido). Una puerta abierta no se deja abierta. */
+export const VIGENCIA_DE_INVITACION_MS = 72 * 60 * 60 * 1000;
 
 /** Lo que se guarda de una invitación, sin el token. El tenant sale del SERVIDOR, no del cliente. */
 export interface DatosDeInvitacion {
