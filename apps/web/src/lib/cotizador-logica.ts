@@ -1,3 +1,4 @@
+import { formatearErrorAmigable } from './estados-ui-logica';
 import type {
   Acomodacion,
   CotizacionCalculada,
@@ -170,7 +171,7 @@ export function interpretarErrorCotizacion(error: unknown): {
     }
   }
 
-  const msg = error instanceof Error ? error.message : 'Ocurrió un error inesperado al cotizar.';
+  const msg = formatearErrorAmigable(error, 'Ocurrió un error inesperado al cotizar.');
   return {
     codigo: 'DESCONOCIDO',
     mensaje: msg,

@@ -108,15 +108,8 @@ export async function obtenerTableroPipeline(): Promise<TableroPipeline> {
       );
     }
 
-    try {
-      const { data } = await pedirCrm('/api/v1/crm/tablero');
-      return TableroPipeline.parse(data);
-    } catch (err) {
-      // Si la API respondió 401 o error controlado, relanzar para advertir configuración rota
-      if (err instanceof CrmApiError) throw err;
-      // Si fue fallo de red (servidor caído), fallback resiliente a mock
-      console.warn('[CrmApi] Fallo de conexión a NestJS. Usando mock offline:', err);
-    }
+    const { data } = await pedirCrm('/api/v1/crm/tablero');
+    return TableroPipeline.parse(data);
   }
 
   return obtenerMockTableroPipeline();
@@ -157,13 +150,8 @@ export async function moverOportunidadDeEtapa(
  */
 export async function obtenerFichaDeContacto(contactoId: string): Promise<FichaDeContacto> {
   if (estaUsandoApiReal()) {
-    try {
-      const { data } = await pedirCrm(`/api/v1/crm/contactos/${contactoId}/ficha`);
-      return FichaDeContacto.parse(data);
-    } catch (err) {
-      if (err instanceof CrmApiError) throw err;
-      console.warn('[CrmApi] Fallo al consultar ficha en API. Usando mock:', err);
-    }
+    const { data } = await pedirCrm(`/api/v1/crm/contactos/${contactoId}/ficha`);
+    return FichaDeContacto.parse(data);
   }
 
   return obtenerMockFichaDeContacto(contactoId);

@@ -82,16 +82,109 @@ export function esTextoTecnico(texto: string): boolean {
  * El mensaje crudo se delega exclusivamente a console.error (0c.30).
  */
 export function clasificarError(error: unknown): ErrorClasificado {
+  if (typeof console !== 'undefined' && console.error) {
+    console.error('[ErrorSistema - Mensaje Crudo]:', error);
+  }
+
+  // 0. Comprobación prioritaria por código de dominio y status HTTP
+  const errorObj =
+    typeof error === 'object' && error !== null ? (error as Record<string, unknown>) : null;
+  const rawCode = errorObj?.code ?? errorObj?.codigo;
+  const codigoDominio = typeof rawCode === 'string' ? rawCode : '';
+  const statusHttp = typeof errorObj?.status === 'number' ? errorObj.status : 0;
+
+  if (codigoDominio) {
+    const codUpper = codigoDominio.toUpperCase();
+
+    // Sesión o autorización
+    if (
+      codUpper === 'SIN_SESION' ||
+      codUpper === 'UNAUTHORIZED' ||
+      codUpper === 'CONFIG_TENANT_FALTANTE' ||
+      codUpper === 'TOKEN_EXPIRADO' ||
+      codUpper === 'NO_AUTORIZADO' ||
+      statusHttp === 401 ||
+      statusHttp === 403
+    ) {
+      return {
+        categoria: 'SESION',
+        titulo: 'Sesión o configuración requerida',
+        quePaso:
+          'Tu sesión no es válida, ha expirado o el espacio de trabajo de la agencia no está configurado.',
+        queHacer: 'Inicia sesión de nuevo o revisa las credenciales de la agencia.',
+        mensajeUsuario:
+          'Sesión expirada o configuración requerida. Por favor inicia sesión nuevamente.',
+        esReintentable: true,
+        codigo: codUpper || 'ERROR_AUTORIZACION',
+      };
+    }
+
+    // No encontrado
+    if (
+      codUpper.includes('NO_ENCONTRAD') ||
+      codUpper === 'NOT_FOUND' ||
+      codUpper === 'RECURSO_INEXISTENTE' ||
+      statusHttp === 404
+    ) {
+      return {
+        categoria: 'NO_ENCONTRADO',
+        titulo: 'Recurso no disponible',
+        quePaso: 'El elemento consultado no existe, fue eliminado o se encuentra archivado.',
+        queHacer: 'Verifica el identificador o regresa al listado principal.',
+        mensajeUsuario: 'El recurso solicitado no fue encontrado o ya no está disponible.',
+        esReintentable: false,
+        codigo: codUpper || 'ERROR_NO_ENCONTRADO',
+      };
+    }
+
+    // Red / Conexión
+    if (
+      codUpper === 'ERROR_CONEXION' ||
+      codUpper === 'ERROR_RED' ||
+      codUpper === 'FALLO_CONEXION' ||
+      codUpper === 'TIMEOUT' ||
+      statusHttp === 0
+    ) {
+      return {
+        categoria: 'RED',
+        titulo: 'Sin conexión con el servidor',
+        quePaso:
+          'No se pudo establecer comunicación con el servidor debido a una interrupción en tu red o en el servicio.',
+        queHacer: 'Verifica tu conexión a internet y pulsa Reintentar.',
+        mensajeUsuario: 'Sin conexión con el servidor. Comprueba tu red e intenta nuevamente.',
+        esReintentable: true,
+        codigo: codUpper || 'ERROR_RED',
+      };
+    }
+
+    // Validación
+    if (
+      codUpper.includes('VALIDACION') ||
+      codUpper === 'VENTANA_CERRADA' ||
+      codUpper === 'VALOR_INVALIDO' ||
+      codUpper === 'SOLICITUD_INVALIDA' ||
+      statusHttp === 400 ||
+      statusHttp === 409
+    ) {
+      return {
+        categoria: 'VALIDACION',
+        titulo: 'Datos no válidos o conflicto comercial',
+        quePaso: 'La solicitud no cumple con los contratos o reglas comerciales requeridas.',
+        queHacer:
+          'Revisa los campos del formulario y verifica que los datos cumplan las condiciones.',
+        mensajeUsuario: 'Los datos suministrados no son válidos o entraron en conflicto.',
+        esReintentable: false,
+        codigo: codUpper || 'ERROR_VALIDACION',
+      };
+    }
+  }
+
   const crudo =
     error instanceof Error
       ? error.message
       : typeof error === 'string'
         ? error
         : 'Inconveniente inesperado';
-
-  if (typeof console !== 'undefined' && console.error) {
-    console.error('[ErrorSistema - Mensaje Crudo]:', error);
-  }
 
   const texto = crudo.toLowerCase();
 

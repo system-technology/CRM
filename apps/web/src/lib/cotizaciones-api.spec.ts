@@ -238,6 +238,33 @@ describe('0c.34: Con la API real encendida, un fallo es un error, nunca datos si
     });
   });
 
+  describe('Con respuesta 200 de forma inválida (desajuste de contrato Zod)', () => {
+    beforeEach(() => {
+      activarApiReal();
+      globalThis.fetch = () =>
+        Promise.resolve({
+          ok: true,
+          status: 200,
+          statusText: 'OK',
+          json: () => Promise.resolve({ respuestaInvalida: true }),
+        } as unknown as Response);
+    });
+
+    afterEach(() => {
+      restaurarEntorno();
+    });
+
+    it('obtenerCotizacionGuardadaApi lanza ZodError y NO devuelve mock', async () => {
+      await expect(
+        obtenerCotizacionGuardadaApi('01932000-0000-7000-8000-000000000001'),
+      ).rejects.toThrow();
+    });
+
+    it('listarCotizacionesApi lanza ZodError y NO devuelve mock', async () => {
+      await expect(listarCotizacionesApi({ limite: 5 })).rejects.toThrow();
+    });
+  });
+
   describe('Con interruptor apagado (modo mock offline)', () => {
     beforeEach(() => {
       process.env['NEXT_PUBLIC_USE_REAL_CRM'] = 'false';
