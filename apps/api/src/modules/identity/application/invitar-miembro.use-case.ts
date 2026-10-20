@@ -28,6 +28,7 @@ import {
   hashearTokenDeInvitacion,
   VIGENCIA_DE_INVITACION_MS,
 } from '../domain/invitacion.js';
+import { permisoQueFalta } from '../domain/permisos-incluidos.js';
 import { PuertoInvitaciones, PuertoMiembros } from '../domain/puertos-de-miembros.js';
 import { RolNoEncontradoError } from './errores.js';
 
@@ -50,9 +51,7 @@ export class InvitarMiembroUseCase {
 
     // Subconjunto estricto de lo que tiene quien invita. Un permiso que el catálogo no conoce no
     // se tiene: ante la duda, se niega.
-    const sinTener = descripcion.permisos.find(
-      (p) => !(contexto.permisos as ReadonlySet<string>).has(p),
-    );
+    const sinTener = permisoQueFalta(descripcion.permisos, contexto.permisos);
     if (sinTener !== undefined) throw permisoDenegado(sinTener as Permiso);
 
     const token = generarTokenDeInvitacion();

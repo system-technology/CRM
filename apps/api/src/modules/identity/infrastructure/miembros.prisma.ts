@@ -8,6 +8,7 @@
  */
 import { Inject, Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../shared/prisma/prisma.service.js';
+import { permisoQueFalta } from '../domain/permisos-incluidos.js';
 import { PuertoConversacionesDeMiembro } from '../../../shared/puertos/puertos-hacia-inbox.js';
 import { ContextoTenant } from '../../../shared/tenant/contexto-tenant.js';
 import {
@@ -96,16 +97,43 @@ export class MiembrosPrisma extends PuertoMiembros {
     );
   }
 
-  async darDeBaja(usuarioId: string): Promise<ResultadoDeBaja> {
+  async darDeBaja(
+    usuarioId: string,
+    permisosDeQuienLaDa: ReadonlySet<string>,
+  ): Promise<ResultadoDeBaja> {
     const { tenantId } = ContextoTenant.obtener();
     return this.prisma.conTenant(async (tx) => {
       const u = await tx.usuario.findFirst({
         where: { id: usuarioId, tenantId },
-        select: { id: true, activo: true, eliminadoEn: true },
+        select: {
+          id: true,
+          activo: true,
+          eliminadoEn: true,
+          rol: { select: { clave: true, permisos: true } },
+        },
       });
       if (!u) return 'no_encontrado' as const;
 
       const yaDeBaja = !u.activo || u.eliminadoEn !== null;
+      if (!yaDeBaja) {
+        // Nadie da de baja a quien tiene más permisos que él: sin esto, un rol personalizado con
+        // `usuarios.administrar` apagaría al dueño.
+        const falta = permisoQueFalta(u.rol.permisos, permisosDeQuienLaDa);
+        if (falta !== undefined) return { faltaPermiso: falta };
+        // La agencia nunca se queda sin un Dueño activo, ni siquiera por mano de otro dueño.
+        if (u.rol.clave === 'DUENO') {
+          const otros = await tx.usuario.count({
+            where: {
+              tenantId,
+              id: { not: u.id },
+              activo: true,
+              eliminadoEn: null,
+              rol: { clave: 'DUENO' },
+            },
+          });
+          if (otros === 0) return 'ultimo_dueno' as const;
+        }
+      }
       if (!yaDeBaja) {
         await tx.usuario.update({
           where: { id: u.id },

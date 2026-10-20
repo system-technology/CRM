@@ -58,7 +58,7 @@ class Miembros extends PuertoMiembros {
     this.altas.push(entrada);
     return this.alta;
   }
-  async darDeBaja(): Promise<ResultadoDeBaja> {
+  async darDeBaja(_u?: string, _p?: ReadonlySet<string>): Promise<ResultadoDeBaja> {
     return 'baja';
   }
 }

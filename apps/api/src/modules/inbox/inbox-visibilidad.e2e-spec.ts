@@ -39,17 +39,27 @@ const ORIGEN_WEB = 'http://localhost:3000';
 const CLAVE = 'una-clave-larga-de-prueba-1';
 const correo = (quien: string): string =>
   `fixture-visibilidad-${randomBytes(3).toString('hex')}-${quien}@fixture-identidad.test`;
-type Persona = 'dueno' | 'ana' | 'beto' | 'cata' | 'bruno';
+type Persona = 'dueno' | 'ana' | 'beto' | 'cata' | 'bruno' | 'gina' | 'dora';
 const CORREO: Record<Persona, string> = {
   dueno: correo('dueno'),
   ana: correo('ana'),
   beto: correo('beto'),
   cata: correo('cata'),
+  gina: correo('gina'),
+  dora: correo('dora'),
   bruno: correo('bruno'),
 };
 const identidades: Partial<Record<Persona, string>> = {};
 /** El id de `usuarios` (la pertenencia a la agencia), que es el que se asigna. */
-const U: Record<Persona, string> = { dueno: '', ana: '', beto: '', cata: '', bruno: '' };
+const U: Record<Persona, string> = {
+  dueno: '',
+  ana: '',
+  beto: '',
+  cata: '',
+  bruno: '',
+  gina: '',
+  dora: '',
+};
 
 let app: INestApplication;
 let base: string;
@@ -375,6 +385,20 @@ beforeAll(async () => {
   await persona('beto', TENANT_A, rolAsesorA);
   await persona('cata', TENANT_A, rolAsesorA, false);
   await persona('bruno', TENANT_B, rolB.id);
+  // Roles personalizados (sin clave sembrada): Gina solo administra usuarios; Dora tiene los mismos
+  // permisos que el Dueño pero NO es el rol Dueño.
+  const rolGestor = await admin.rol.create({
+    data: { tenantId: TENANT_A, nombre: 'Gestor', permisos: ['usuarios.administrar'] },
+  });
+  const rolCopropietario = await admin.rol.create({
+    data: {
+      tenantId: TENANT_A,
+      nombre: 'Copropietario',
+      permisos: ['conversaciones.ver_todas', 'usuarios.administrar'],
+    },
+  });
+  await persona('gina', TENANT_A, rolGestor.id);
+  await persona('dora', TENANT_A, rolCopropietario.id);
 
   Logger.overrideLogger(false);
   app = await NestFactory.create(AppModule, { logger: false });
@@ -389,7 +413,9 @@ beforeAll(async () => {
   bandeja = new BandejaPrisma(prismaWebhook, new ContactosDeCrm());
   relevo = new RelevarOutbox(new OutboxAcotado(prismaWebhook), publicador);
 
-  for (const p of ['dueno', 'ana', 'beto', 'bruno'] as const) cookies[p] = await iniciarSesion(p);
+  for (const p of ['dueno', 'ana', 'beto', 'bruno', 'gina', 'dora'] as const) {
+    cookies[p] = await iniciarSesion(p);
+  }
 });
 
 afterAll(async () => {
@@ -878,6 +904,37 @@ describe('asignación', () => {
 // ============================================================================================
 // Responder: idempotencia y ventana (lo que ya existía como regla y ahora tiene ruta)
 // ============================================================================================
+
+describe('baja de miembros: nadie apaga a quien tiene más que él', () => {
+  const activo = async (id: string): Promise<boolean> =>
+    (await admin.usuario.findUniqueOrThrow({ where: { id }, select: { activo: true } })).activo;
+
+  it('quien tiene usuarios.administrar en un rol personalizado no puede dar de baja al Dueño: 403 y sigue activo', async () => {
+    const r = await api('gina', 'POST', `/api/v1/identidad/miembros/${U.dueno}/baja`);
+    expect(r.status).toBe(403);
+    expect(codigo(r)).toBe('PERMISO_DENEGADO');
+    expect(await activo(U.dueno)).toBe(true);
+    // Tampoco a otro con un permiso que ella no tiene.
+    expect((await api('gina', 'POST', `/api/v1/identidad/miembros/${U.dora}/baja`)).status).toBe(
+      403,
+    );
+    expect(await activo(U.dora)).toBe(true);
+  });
+
+  it('la agencia nunca se queda sin un Dueño activo: 409 NO_PUEDE_DEJAR_SIN_DUENO aunque los permisos alcancen', async () => {
+    const r = await api('dora', 'POST', `/api/v1/identidad/miembros/${U.dueno}/baja`);
+    expect(r.status).toBe(409);
+    expect(codigo(r)).toBe('NO_PUEDE_DEJAR_SIN_DUENO');
+    expect(await activo(U.dueno)).toBe(true);
+  });
+
+  it('con permisos incluidos y sin tocar al último Dueño, la baja sí procede', async () => {
+    // Cata está de baja desde el fixture; Ana tiene permisos [], incluidos en los de Gina.
+    expect((await api('gina', 'POST', `/api/v1/identidad/miembros/${U.cata}/baja`)).status).toBe(
+      200,
+    );
+  });
+});
 
 describe('responder', () => {
   it('la misma clave de idempotencia produce un solo mensaje', async () => {

@@ -103,3 +103,12 @@ export class NoPuedeDarseDeBajaError extends EstadoInvalidoError {
     super('No puedes darte de baja a ti mismo.');
   }
 }
+
+/** La agencia no puede quedarse sin ningún Dueño activo. 409. */
+export class NoPuedeDejarSinDuenoError extends EstadoInvalidoError {
+  readonly code = 'NO_PUEDE_DEJAR_SIN_DUENO';
+
+  constructor() {
+    super('La agencia no puede quedarse sin un Dueño activo.');
+  }
+}

@@ -22,7 +22,8 @@ export interface DescripcionDeInvitacion {
 
 export type ResultadoDeAlta = 'creado' | 'reactivado' | 'ya_era_miembro';
 
-export type ResultadoDeBaja = 'baja' | 'ya_de_baja' | 'no_encontrado';
+export type ResultadoDeBaja =
+  'baja' | 'ya_de_baja' | 'no_encontrado' | 'ultimo_dueno' | { faltaPermiso: string };
 
 export abstract class PuertoMiembros {
   /**
@@ -46,7 +47,10 @@ export abstract class PuertoMiembros {
    * Con el tenant de la PETICIÓN y bajo RLS: da de baja al miembro, suelta sus conversaciones y
    * escribe `identity.acceso_revocado` en el outbox, todo en una transacción. Idempotente.
    */
-  abstract darDeBaja(usuarioId: string): Promise<ResultadoDeBaja>;
+  abstract darDeBaja(
+    usuarioId: string,
+    permisosDeQuienLaDa: ReadonlySet<string>,
+  ): Promise<ResultadoDeBaja>;
 }
 
 export abstract class PuertoIdentidades {
