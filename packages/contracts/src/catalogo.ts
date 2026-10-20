@@ -56,7 +56,8 @@ export const Precio = z.object({
   id: Id,
   acomodacion: Acomodacion,
   tipoPasajero: TipoPasajero,
-  neto: Dinero,
+  /** Solo con `incluirMargen=true`: sin el flag la clave no existe en la respuesta. */
+  neto: Dinero.optional(),
   venta: Dinero,
   /** Edad de corte. "Niño de 2 a 11 años" es condición comercial del tarifario. */
   edadMinima: z.number().int().min(0).max(120).nullable(),
@@ -176,6 +177,12 @@ export const CotizarPaquete = z.object({
   acomodacion: Acomodacion.optional(),
   /** Markup adicional sobre el precio de venta del tarifario, en puntos porcentuales. */
   markupExtra: z.number().min(-100).max(500).optional(),
+  /**
+   * Pide el neto del mayorista y el margen. Sin esto la respuesta no lleva `totalNeto`,
+   * `margen`, `margenPorcentaje` ni `subtotalNeto`: R10. El permiso para pedirlo lo añade
+   * la autenticación; aquí solo se garantiza que, sin el flag, no viaja nada.
+   */
+  incluirMargen: z.boolean().optional(),
 });
 export type CotizarPaquete = z.infer<typeof CotizarPaquete>;
 
@@ -214,7 +221,7 @@ export const CotizacionCalculada = z.object({
   plazasSinUsar: z.number().int().min(0),
   lineas: z.array(LineaCotizacion),
   totalVenta: Dinero,
-  /** Solo para el tenant. */
+  /** Solo con `incluirMargen=true`; sin el flag la clave no viaja. */
   totalNeto: Dinero.optional(),
   margen: Dinero.optional(),
   margenPorcentaje: z.number().optional(),

@@ -32,8 +32,9 @@ export class CatalogoController {
   }
 
   @Get('paquetes/:id')
-  async detalle(@Param('id') id: string) {
-    return this.listarPaquetes.detalle(id);
+  async detalle(@Param('id') id: string, @Query('incluirMargen') incluirMargen?: string) {
+    // Solo la cadena `true` activa el neto: cualquier otra cosa es el valor seguro.
+    return this.listarPaquetes.detalle(id, incluirMargen === 'true');
   }
 
   /**

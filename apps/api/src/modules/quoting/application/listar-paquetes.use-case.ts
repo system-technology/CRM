@@ -58,7 +58,8 @@ export class ListarPaquetesUseCase {
     });
   }
 
-  async detalle(id: string) {
+  /** El neto de cada precio solo viaja con `incluirMargen`: R10. */
+  async detalle(id: string, incluirMargen = false) {
     return this.prisma.conTenant(async (tx) => {
       const paquete = await tx.paquete.findFirst({
         where: { id, eliminadoEn: null },
@@ -89,7 +90,9 @@ export class ListarPaquetesUseCase {
             id: pr.id,
             acomodacion: pr.acomodacion,
             tipoPasajero: pr.tipoPasajero,
-            neto: { unidades: pr.netoUnidades.toString(), moneda: pr.monedaIso },
+            ...(incluirMargen
+              ? { neto: { unidades: pr.netoUnidades.toString(), moneda: pr.monedaIso } }
+              : {}),
             venta: { unidades: pr.ventaUnidades.toString(), moneda: pr.monedaIso },
             edadMinima: pr.edadMinima,
             edadMaxima: pr.edadMaxima,
