@@ -6,7 +6,7 @@
 
 | Campo | Valor |
 |---|---|
-| Última actualización | 2026-10-20 (hasta v0.36.1) |
+| Última actualización | 2026-10-20 (hasta v0.36.2) |
 | Actualizado por | Claude Opus 5.5 (`integrador`) |
 | Fase | **Rebanada vertical de paquetes, en construcción** |
 | Avance de la fase | Cotizador de punta a punta. **La cotización es la suma de sus tarifas y el precio «desde» es uno que el comprador puede pagar (v0.19.0).** Apretón de manos del webhook vivo. Bandeja web en construcción |
@@ -1228,4 +1228,15 @@ Registro: [`docs/_integraciones/2026-10-20-v0.36.0.md`](docs/_integraciones/2026
 **Los tres archivos que tocó el backend en v0.34.1:** `ficha-detalle-paquete.tsx` y `catalogo-logica.spec.ts` quedan igual que en `main`.
 `cotizador-logica.ts` solo cambia por la 0c.30 (`formatearErrorAmigable` en lugar de `error.message`), y las líneas de la v0.34.1 siguen ahí.
 Compuerta: CI **8/8**, https://github.com/Alfavear/CRM/actions/runs/39359410509. Estáticas en local, en verde. Web, **218** pruebas.
+
+## Integración del 2026-10-20 — v0.36.2: teclado y foco en los modales (0c.32)
+
+`feat/web-0c32-foco` @ `aedec34` entra en `main` (`f433eb5`), etiquetada **v0.36.2**. Son 8 archivos de `apps/web`, idénticos a los de `44e8a07`.
+El hook `use-foco-modal` atrapa el foco, cierra con Escape y devuelve el foco al salir en los cuatro modales. Las pruebas usan teclas reales.
+Compuerta: CI **8/8**, https://github.com/Alfavear/CRM/actions/runs/39361825426. Estáticas en local, en verde. Web: **227** pruebas.
+Registro: [`docs/_integraciones/2026-10-20-v0.36.2.md`](docs/_integraciones/2026-10-20-v0.36.2.md).
+
+| Cola | Dueño | Por qué no bloquea |
+|---|---|---|
+| `alCerrar` está entre las dependencias del hook: si el padre se vuelve a renderizar, podría robar el foco. Sin reproducir | Antigravity | Menor. Aún no se ha visto pasar |
 
