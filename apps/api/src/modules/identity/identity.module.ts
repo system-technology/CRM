@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Global, Module } from '@nestjs/common';
 import { ResolutorDeAcceso } from '../../shared/puertos/puerto-de-acceso.js';
 import { CambiarAgenciaActiva } from './application/cambiar-agencia-activa.use-case.js';
 import { ResolverAcceso } from './application/resolver-acceso.use-case.js';
@@ -32,6 +32,11 @@ import { AuthController } from './interface/auth.controller.js';
  * preguntar quién llama sin importar este módulo (R4). Cualquier otro consumidor —el socket— lo
  * pide igual.
  */
+/**
+ * Global para que `ResolutorDeAcceso` se resuelva por su símbolo sin que nadie importe este módulo
+ * (R4): lo usan el middleware de tenant y el gateway de tiempo real.
+ */
+@Global()
 @Module({
   controllers: [AuthController, InvitacionesController, AceptarInvitacionController],
   providers: [

@@ -16,6 +16,16 @@ import {
 } from './application/puertos-de-barrido.js';
 import { BarridoBullmq } from './infrastructure/barrido.bullmq.js';
 import { PendientesPrisma } from './infrastructure/pendientes.prisma.js';
+import { RelevarOutbox } from './application/relevar-outbox.js';
+import {
+  PuertoAvisoDeOutbox,
+  PuertoOutbox,
+  PuertoPublicadorDeEventos,
+} from './application/puertos-de-eventos.js';
+import { AvisosDeOutboxEnMemoria } from './infrastructure/avisos-de-outbox.en-memoria.js';
+import { crearPublicadorDelTrabajador } from './infrastructure/crear-bus.js';
+import { OutboxPrisma } from './infrastructure/outbox.prisma.js';
+import { PlanificadorDeRelay } from './interface/planificador-de-relay.js';
 import { ConsumidorDeChanges } from './interface/consumidor-de-changes.js';
 import { PlanificadorDeBarrido } from './interface/planificador-de-barrido.js';
 
@@ -26,6 +36,12 @@ import { PlanificadorDeBarrido } from './interface/planificador-de-barrido.js';
     ConsumidorDeChanges,
     BarrerPendientes,
     PlanificadorDeBarrido,
+    // --- Relay del outbox: de la base al bus, sin saber que existen sockets ---
+    RelevarOutbox,
+    PlanificadorDeRelay,
+    { provide: PuertoOutbox, useClass: OutboxPrisma },
+    { provide: PuertoAvisoDeOutbox, useClass: AvisosDeOutboxEnMemoria },
+    { provide: PuertoPublicadorDeEventos, useFactory: crearPublicadorDelTrabajador },
     { provide: PuertoPendientes, useClass: PendientesPrisma },
     {
       // Una sola instancia con dos caras: la cola y la coordinación comparten conexión.

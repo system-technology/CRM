@@ -4,6 +4,7 @@
  * Lo que se comprueba es la DECISIÓN: qué ramas escriben negocio y cuáles clasifican y
  * descartan, y que un change ya resuelto no se vuelva a tocar.
  */
+import { PuertoAvisoDeOutbox } from './puertos-de-eventos.js';
 import { randomBytes } from 'node:crypto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { claveDeEnrutamiento } from '../domain/clave-de-enrutamiento.js';
@@ -105,6 +106,41 @@ function montar(
   const bandeja = new BandejaFalsa();
   return { id, staging, bandeja, caso: new ProcesarChange(staging, bandeja) };
 }
+
+describe('ProcesarChange: la pista al relay del outbox', () => {
+  const ruta = { tenantId: TENANT, canalId: CANAL, estado: 'ACTIVO' as const };
+  const cuerpo = sobre(NUMERO, ['wamid.A']);
+
+  class Pistas extends PuertoAvisoDeOutbox {
+    avisados: string[] = [];
+    avisar(t: string): void {
+      this.avisados.push(t);
+    }
+    tomarAvisos(): string[] {
+      return [];
+    }
+  }
+
+  it('avisa del tenant RESUELTO cuando hay mensajes nuevos', async () => {
+    const { id, staging, bandeja } = montar(cuerpo, ruta);
+    const pistas = new Pistas();
+    await new ProcesarChange(staging, bandeja, pistas).ejecutar(id, 0, ENTORNO);
+    expect(pistas.avisados).toEqual([TENANT]);
+  });
+
+  it('no avisa si todo eran repetidos (no hay evento nuevo)', async () => {
+    const { id, staging, bandeja } = montar(cuerpo, ruta);
+    bandeja.respuesta = 'DUPLICADO';
+    const pistas = new Pistas();
+    await new ProcesarChange(staging, bandeja, pistas).ejecutar(id, 0, ENTORNO);
+    expect(pistas.avisados).toEqual([]);
+  });
+
+  it('funciona sin pista: el barrido del relay lo publicaría igual', async () => {
+    const { id, caso } = montar(cuerpo, ruta);
+    await expect(caso.ejecutar(id, 0, ENTORNO)).resolves.toMatchObject({ estado: 'PROCESADO' });
+  });
+});
 
 describe('ProcesarChange', () => {
   let cuerpo: Buffer;
