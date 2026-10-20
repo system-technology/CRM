@@ -30,6 +30,11 @@ export const OPERACIONES_DE_PLATAFORMA = {
     'El POST de Meta se guarda cifrado antes de saber de qué agencia es. La tabla no lleva RLS ' +
     'a propósito y el contenido se descifra en el trabajador, con otra clave y otro rol. ' +
     'ADR-0008 §4.',
+  'identity/listar-agencias-de-acceso':
+    'El selector de agencia necesita el nombre de las agencias en las que está una identidad, y ' +
+    'corre ANTES de elegir una: no hay tenant que fijar. Lee `tenants` (global, solo SELECT) por ' +
+    'los ids que da el índice accesos_identidad. Es informativo: lo que autoriza es la lectura ' +
+    'de `usuarios` bajo RLS. ADR-0011.',
 } as const;
 
 /** El nombre de una operación declarada arriba. Cualquier otra cosa es un error de tipos. */

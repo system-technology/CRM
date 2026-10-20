@@ -139,6 +139,8 @@ jobs:
             echo "WEBHOOK_PAYLOAD_KEY_VERSION=1"
             echo "META_APP_SECRET=$(openssl rand -hex 16)"
             echo "WHATSAPP_WEBHOOK_VERIFY_TOKEN=$(openssl rand -hex 16)"
+            # ADR-0011: firma las cookies de sesion de las pruebas. Nace y muere con el job.
+            echo "BETTER_AUTH_SECRET=$(openssl rand -base64 48)"
           } >> "$GITHUB_ENV"
 
       - name: Migraciones
@@ -157,7 +159,7 @@ jobs:
       # `pnpm test` incluye la prueba de aislamiento, que ya NO acepta caer al rol
       # propietario: sin este paso no habría DATABASE_APP_URL y abortaría, que es
       # exactamente lo que debe hacer.
-      - name: Contraseñas de desarrollo para los tres roles de aplicación
+      - name: Contraseñas de desarrollo para los roles de login
         run: node packages/database/scripts/roles-de-desarrollo.mjs
         env:
           DATABASE_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'neondb') }}
@@ -226,7 +228,7 @@ jobs:
       # contraseña no se conecta, que es el estado seguro por defecto— y la prueba ya no
       # acepta caer al rol propietario. Este paso las fija y exporta las tres cadenas por
       # GITHUB_ENV para el paso siguiente.
-      - name: Contraseñas de desarrollo para los tres roles de aplicación
+      - name: Contraseñas de desarrollo para los roles de login
         run: node packages/database/scripts/roles-de-desarrollo.mjs
         env:
           DATABASE_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'neondb') }}

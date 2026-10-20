@@ -13,6 +13,7 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
   test: {
     include: ['src/**/*.spec.ts', 'src/**/*.e2e-spec.ts'],
+    setupFiles: ['./src/vitest.setup.ts'],
     // Sin Redis en las pruebas: la cola se declara inerte. El encolado se prueba con un doble.
     env: { COLA_CHANGES: 'inerte' },
     // Arrancar Nest y conectar con Neon no son milisegundos.

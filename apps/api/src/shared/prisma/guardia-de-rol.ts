@@ -24,8 +24,17 @@
  * La lógica vive aquí separada del servicio para poder probarla sin una base de datos.
  */
 
-/** Los tres roles de login del ADR-0008. Cada proceso declara cuál debe ser. */
-export const ROLES_DE_CONEXION = ['viajapro_app', 'viajapro_altas', 'viajapro_webhook'] as const;
+/**
+ * Los roles de login. Los tres primeros son del ADR-0008; `viajapro_identidad` es del ADR-0011:
+ * el pool de Better Auth, el único que toca las tablas globales de identidad y el único que NO
+ * toca ninguna de negocio. Cada pool declara cuál debe ser.
+ */
+export const ROLES_DE_CONEXION = [
+  'viajapro_app',
+  'viajapro_altas',
+  'viajapro_webhook',
+  'viajapro_identidad',
+] as const;
 export type RolDeConexion = (typeof ROLES_DE_CONEXION)[number];
 
 /** Lo que el motor responde sobre la conexión actual. */
@@ -91,4 +100,31 @@ export function resolverCadena(
     );
   }
   return valor;
+}
+
+/**
+ * Tablas de negocio que `viajapro_identidad` NO debe poder leer (ADR-0011, superficie exacta).
+ *
+ * `verificarIdentidad` comprueba *qué rol* se conectó; esto comprueba *qué puede hacer*. El rol
+ * de identidad no entra en el literal `roles_de_aplicacion`, así que no debería tener ningún
+ * privilegio sobre ellas. Si un `GRANT` suelto o un cambio en `aplicar_privilegios_declarados`
+ * se lo diera, el pool que guarda los hashes de contraseña y las sesiones de todas las agencias
+ * podría además leer sus clientes: es la combinación que el cuarto rol existe para impedir.
+ */
+export const TABLAS_DE_NEGOCIO_VEDADAS_A_IDENTIDAD = [
+  'usuarios',
+  'roles',
+  'contactos',
+  'mensajes',
+  'cotizaciones',
+] as const;
+
+/** Devuelve el motivo para no arrancar si el rol de identidad lee alguna tabla de negocio. */
+export function verificarSinPrivilegiosDeNegocio(tablasLegibles: readonly string[]): string | null {
+  if (tablasLegibles.length === 0) return null;
+  return (
+    `'viajapro_identidad' puede leer tablas de negocio (${tablasLegibles.join(', ')}). El pool ` +
+    'de identidad guarda hashes y sesiones de todas las agencias y no debe ver sus datos. ' +
+    'Revisa excepciones_rls y aplicar_privilegios_declarados (ADR-0011).'
+  );
 }
