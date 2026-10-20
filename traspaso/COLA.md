@@ -231,8 +231,13 @@ mensaje honesto que ya existe.
 `configuracion` y `viajes` y el mock de `cotizador` (protegido por `!usarReal`) son el modo apagado;
 **revisa** que ninguno se quede pintado si la API real está encendida y falla, e inclúyelo si es así.
 
+**También `crm-api.ts` e `inbox-api.ts`:** importan mocks; comprueba y deja por escrito en `ENTREGA.md`,
+función por función, que el mock **solo** se usa con el interruptor apagado y nunca como respaldo de
+un error de la API real. Si alguno cae al mock tras un fallo, se corrige igual.
+
 **Hecho cuando:** pruebas con `fetch` que rechaza y con respuesta 500, interruptor encendido, para las
-cuatro funciones: lanzan error y **no** devuelven datos del mock; con el interruptor apagado siguen
+cuatro funciones de `cotizaciones-api.ts` **y** las de `crm-api.ts` e `inbox-api.ts` que usen mocks:
+lanzan error y **no** devuelven datos del mock; con el interruptor apagado siguen
 devolviendo el mock; y `pnpm compuertas` sale en verde.
 
 ---
