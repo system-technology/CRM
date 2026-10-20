@@ -407,3 +407,73 @@ Tras la integración de `feat/quoting-listado-y-estados` en `origin/main` y la m
 - `pnpm --filter web typecheck`: **0 errores**.
 - `pnpm --filter web lint`: **0 errores**.
 - `pnpm --filter web build`: **Compilación exitosa Next.js**.
+
+---
+
+# Entrega Tarea 0c.34 — Con la API Real Encendida, un Fallo es un Error (Nunca Datos Simulados)
+
+**Fecha:** 2026-10-19  
+**Rama:** `feat/bandeja-web`  
+**Contexto:** Erradicación del patrón de fallback silencioso a datos simulados cuando la API real está encendida (`NEXT_PUBLIC_USE_REAL_CRM=true` o `NEXT_PUBLIC_USE_REAL_INBOX=true`), garantizando que un fallo de red o del servidor sea visible honestamente con `AvisoErrorAccionable` y reintento.
+
+---
+
+## 1. Qué se auditó y corrigió
+
+### 1.1 `apps/web/src/lib/cotizaciones-api.ts`
+Se eliminó el bloque `catch` que registraba `console.warn` y continuaba silenciosamente al mock en las 4 funciones:
+1. **`guardarCotizacionApi`**: Si la API real está encendida, despacha a `POST /api/v1/cotizaciones`. Si falla la red o el servidor responde `!res.ok`, lanza `CotizacionesApiError`. El mock solo responde si `!estaUsandoApiReal()`.
+2. **`anadirVersionCotizacionApi`**: Despacha a `POST /api/v1/cotizaciones/:id/versiones`. Ante error, propaga la excepción tipada. Cero caída a mock.
+3. **`obtenerCotizacionGuardadaApi`**: Despacha a `GET /api/v1/cotizaciones/:id`. Ante error, propaga la excepción tipada.
+4. **`listarCotizacionesApi`**: Despacha a `GET /api/v1/cotizaciones`. Ante error, propaga la excepción tipada.
+
+### 1.2 `apps/web/src/lib/crm-api.ts`
+Se auditó y corrigió el mismo patrón en las 4 funciones de CRM:
+1. **`obtenerTableroPipeline`**: Eliminado fallback a `obtenerMockTableroPipeline()`. Si la API real está activa y falla, lanza `CrmApiError`.
+2. **`moverOportunidadDeEtapa`**: Eliminado cálculo y movimiento local en mock cuando la API real está activa. Ante fallo, propaga `CrmApiError`.
+3. **`obtenerFichaDeContacto`**: Eliminado fallback a `obtenerMockFichaDeContacto()`. Lanza `CrmApiError`.
+4. **`listarContactos`**: Eliminado fallback a `obtenerMockPaginaContactos()`. Lanza `CrmApiError`.
+
+### 1.3 Auditoría de `apps/web/src/lib/inbox-api.ts` (Función por Función)
+Se verificó el comportamiento del cliente de Inbox con interruptor (`NEXT_PUBLIC_USE_REAL_INBOX`):
+1. **`consultarBandeja`**:
+   - Con interruptor apagado: usa `consultarBandejaMock(consulta)`.
+   - Con interruptor encendido: despacha a `GET /api/v1/inbox/conversaciones`. Si falla, lanza `InboxErrorApi`. **Nunca cae al mock**.
+2. **`obtenerConversacionDetalle`**:
+   - Con interruptor apagado: usa `obtenerConversacionDetalleMock(id)`.
+   - Con interruptor encendido: despacha a `GET /api/v1/inbox/conversaciones/:id`. Si falla, lanza `InboxErrorApi`. **Nunca cae al mock**.
+3. **`enviarTexto`**:
+   - Con interruptor apagado: usa `enviarTextoMock(entrada)`.
+   - Con interruptor encendido: despacha a `POST /api/v1/inbox/conversaciones/:id/mensajes`. Si falla, propaga error. **Nunca cae al mock**.
+4. **`asignarConversacion`**:
+   - Con interruptor apagado: usa `asignarConversacionMock(entrada)`.
+   - Con interruptor encendido: despacha a `POST /api/v1/inbox/conversaciones/:id/asignar`. Si falla, propaga error. **Nunca cae al mock**.
+5. **`cambiarEstadoConversacion`**:
+   - Con interruptor apagado: usa `cambiarEstadoConversacionMock(entrada)`.
+   - Con interruptor encendido: despacha a `PATCH /api/v1/inbox/conversaciones/:id/estado`. Si falla, propaga error. **Nunca cae al mock**.
+6. **`crearNota`**:
+   - Con interruptor apagado: usa `crearNotaMock(entrada)`.
+   - Con interruptor encendido: despacha a `POST /api/v1/inbox/conversaciones/:id/notas`. Si falla, propaga error. **Nunca cae al mock**.
+
+### 1.4 Correcciones en Vistas (`pipeline` y `contactos`)
+- **`apps/web/src/app/pipeline/page.tsx`**: Cuando `obtenerTableroPipeline()` falla en modo API real, ya no recurre silenciosamente a datos simulados (`setEsModoSimulado(true)`). Ahora captura el fallo en `errorCarga` y despliega `AvisoErrorAccionable` con botón de reintento, evitando pintar columnas mock como si fueran reales.
+- **`apps/web/src/app/contactos/page.tsx`**: Cuando ocurre un error al consultar el directorio de contactos, la tabla con filas simuladas queda oculta y solo se presenta el `AvisoErrorAccionable`.
+
+---
+
+## 2. Pruebas Automatizadas de Verificación
+
+Se añadieron pruebas automatizadas dedicadas en Vitest simulando fallos de red (`fetch` que rechaza) y respuestas 500 del servidor con el interruptor encendido:
+- **`cotizaciones-api.spec.ts`** (13 pruebas):
+  - Con fetch rechazado: `guardarCotizacionApi`, `anadirVersionCotizacionApi`, `obtenerCotizacionGuardadaApi` y `listarCotizacionesApi` lanzan `CotizacionesApiError` y no devuelven datos simulados.
+  - Con respuesta 500: las 4 funciones lanzan `CotizacionesApiError` con status 500 y no devuelven datos simulados.
+  - Con interruptor apagado: devuelven datos simulados correctamente.
+- **`crm-api.spec.ts`** (16 pruebas):
+  - Con fetch rechazado: `obtenerTableroPipeline`, `moverOportunidadDeEtapa`, `obtenerFichaDeContacto` y `listarContactos` lanzan `CrmApiError` y no devuelven datos mock.
+  - Con respuesta 500: las 4 funciones lanzan `CrmApiError` con status 500.
+  - Con interruptor apagado: devuelven datos simulados correctamente.
+- **`inbox-api.spec.ts`** (8 pruebas):
+  - Con fetch rechazado y respuesta 500: los métodos de `inboxApi` lanzan `InboxErrorApi` y no devuelven datos mock.
+  - Con interruptor apagado: devuelven datos simulados correctamente.
+
+**Resultado:** 22/22 suites en verde, **203 pruebas pasando**.

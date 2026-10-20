@@ -58,11 +58,18 @@ async function pedirCrm(
     ...(opciones.headers as Record<string, string> | undefined),
   };
 
-  const res = await fetch(`${obtenerBaseApi()}${ruta}`, {
-    ...opciones,
-    headers,
-    cache: 'no-store',
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${obtenerBaseApi()}${ruta}`, {
+      ...opciones,
+      headers,
+      cache: 'no-store',
+    });
+  } catch (netErr) {
+    throw new CrmApiError('ERROR_CONEXION', 'No se pudo conectar con el servidor CRM.', 0, {
+      causa: netErr instanceof Error ? netErr.message : String(netErr),
+    });
+  }
 
   const json: unknown = await res.json().catch(() => null);
 
@@ -126,16 +133,11 @@ export async function moverOportunidadDeEtapa(
   const validado = MoverOportunidad.parse(movimiento);
 
   if (estaUsandoApiReal()) {
-    try {
-      const { data } = await pedirCrm(`/api/v1/crm/oportunidades/${id}/etapa`, {
-        method: 'PATCH',
-        body: JSON.stringify(validado),
-      });
-      return Oportunidad.parse(data);
-    } catch (err) {
-      if (err instanceof CrmApiError) throw err;
-      console.warn('[CrmApi] Fallo al mover oportunidad en API. Usando cálculo local:', err);
-    }
+    const { data } = await pedirCrm(`/api/v1/crm/oportunidades/${id}/etapa`, {
+      method: 'PATCH',
+      body: JSON.stringify(validado),
+    });
+    return Oportunidad.parse(data);
   }
 
   // Fallback local: mover en el tablero mock
@@ -173,14 +175,9 @@ export async function obtenerFichaDeContacto(contactoId: string): Promise<FichaD
  */
 export async function listarContactos(buscar?: string): Promise<PaginaContactos> {
   if (estaUsandoApiReal()) {
-    try {
-      const qs = buscar?.trim() ? `?buscar=${encodeURIComponent(buscar.trim())}` : '';
-      const { data } = await pedirCrm(`/api/v1/crm/contactos${qs}`);
-      return PaginaContactos.parse(data);
-    } catch (err) {
-      if (err instanceof CrmApiError) throw err;
-      console.warn('[CrmApi] Fallo al listar contactos en API. Usando mock:', err);
-    }
+    const qs = buscar?.trim() ? `?buscar=${encodeURIComponent(buscar.trim())}` : '';
+    const { data } = await pedirCrm(`/api/v1/crm/contactos${qs}`);
+    return PaginaContactos.parse(data);
   }
 
   const mock = obtenerMockPaginaContactos();

@@ -179,17 +179,17 @@ export default function ContactosPage() {
 
         {/* Tabla de Contactos con Estados (0c.25) */}
         <div className="flex-1 overflow-y-auto p-6">
-          {error && (
+          {error ? (
             <AvisoErrorAccionable
               error={construirMensajeErrorAccionable(error, 'CONTACTOS_LISTA')}
               onReintentar={cargarContactos}
             />
-          )}
-
-          <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-2xs dark:border-neutral-800 dark:bg-neutral-900">
-            {cargando ? (
+          ) : cargando ? (
+            <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-2xs dark:border-neutral-800 dark:bg-neutral-900">
               <EsqueletoTabla filas={6} />
-            ) : (
+            </div>
+          ) : (
+            <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-2xs dark:border-neutral-800 dark:bg-neutral-900">
               <table className="w-full text-left text-xs">
                 <thead className="border-b border-neutral-200 bg-neutral-50 text-[11px] font-semibold text-neutral-500 dark:border-neutral-800 dark:bg-neutral-800/50 dark:text-neutral-400">
                   <tr>
@@ -329,8 +329,8 @@ export default function ContactosPage() {
                   )}
                 </tbody>
               </table>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </main>
 
