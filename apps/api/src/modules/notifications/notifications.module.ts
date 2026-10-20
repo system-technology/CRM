@@ -5,6 +5,7 @@ import { resolverClaveDeCorreo } from './domain/sellado-de-correo.js';
 import { ColaDeCorreoBullmq } from './infrastructure/cola-de-correo.bullmq.js';
 import { ColaDeCorreoEnMemoria } from './infrastructure/cola-de-correo.en-memoria.js';
 import { CorreoEnMemoria } from './infrastructure/correo.en-memoria.js';
+import { validarConfiguracionDeCorreo } from './infrastructure/crear-correo.js';
 
 /**
  * Notificaciones, lado API: solo el PRODUCTOR de la cola de correo. La API no envía nada.
@@ -29,6 +30,7 @@ const proveedores: Provider[] = enMemoria
       {
         provide: PuertoColaDeCorreo,
         useFactory: (): PuertoColaDeCorreo => {
+          validarConfiguracionDeCorreo(process.env);
           const url = process.env['REDIS_URL'];
           if (!url) throw new Error('Falta REDIS_URL (o COLA_CORREO=memoria en pruebas).');
           return new ColaDeCorreoBullmq(url, resolverClaveDeCorreo(process.env));
