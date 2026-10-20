@@ -6,7 +6,7 @@
  * rechaza el `add`, la fila existe y nadie la recogerá: Meta ya recibió su 200 o su 500 y reintenta
  * solo en el segundo caso. Esto cierra el hueco sin depender de Meta.
  *
- * **Lo durable es la base.** El barrido pregunta a PostgreSQL qué falta, no a Redis qué sobra.
+ * **Lo durable es la base**, también el contador de reencolados (`intentos_barrido`). El barrido pregunta a PostgreSQL qué falta, no a Redis qué sobra.
  * Redis solo transporta identificadores.
  *
  * **Tres límites contra un barrido que hace daño:**
@@ -22,11 +22,7 @@
  */
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import type { ConfiguracionDelBarrido } from '../domain/configuracion-del-barrido.js';
-import {
-  PuertoCoordinacionDelBarrido,
-  PuertoPendientes,
-  PuertoReencolador,
-} from './puertos-de-barrido.js';
+import { PuertoPendientes, PuertoReencolador } from './puertos-de-barrido.js';
 
 export interface ResultadoDelBarrido {
   /** Cuántos changes devolvió la base. */
@@ -46,14 +42,16 @@ export class BarrerPendientes {
   constructor(
     @Inject(PuertoPendientes) private readonly pendientes: PuertoPendientes,
     @Inject(PuertoReencolador) private readonly reencolador: PuertoReencolador,
-    @Inject(PuertoCoordinacionDelBarrido)
-    private readonly coordinacion: PuertoCoordinacionDelBarrido,
   ) {}
 
   async ejecutar(
     config: Pick<ConfiguracionDelBarrido, 'antiguedadMinimaS' | 'limite' | 'maxReencolados'>,
   ): Promise<ResultadoDelBarrido> {
-    const filas = await this.pendientes.listar(config.antiguedadMinimaS, config.limite);
+    const filas = await this.pendientes.listar(
+      config.antiguedadMinimaS,
+      config.limite,
+      config.maxReencolados,
+    );
     const r: ResultadoDelBarrido = {
       candidatos: filas.length,
       reencolados: 0,
@@ -67,7 +65,7 @@ export class BarrerPendientes {
         continue;
       }
 
-      const veces = await this.coordinacion.contarReencolado(fila.recepcionId, fila.indice);
+      const veces = await this.pendientes.contarReencolado(fila.recepcionId, fila.indice);
       if (veces > config.maxReencolados) {
         r.abandonados += 1;
         // Una sola vez, al cruzar el tope: el barrido siguiente no vuelve a gritar por lo mismo.

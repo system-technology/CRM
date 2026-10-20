@@ -12,7 +12,14 @@ export interface ChangePendiente {
 
 /** Los changes que siguen `PENDIENTE` y conservan su contenido, los más antiguos primero. */
 export abstract class PuertoPendientes {
-  abstract listar(antiguedadMinimaS: number, limite: number): Promise<ChangePendiente[]>;
+  /** Excluye a los que ya pasaron de `maxReencolados` (lo decide la base). */
+  abstract listar(
+    antiguedadMinimaS: number,
+    limite: number,
+    maxReencolados: number,
+  ): Promise<ChangePendiente[]>;
+  /** Cuenta un reencolado de ese change EN LA BASE y devuelve cuántos lleva (0 si ya no está pendiente). */
+  abstract contarReencolado(recepcionId: Buffer, indice: number): Promise<number>;
 }
 
 /** La cola, vista por el barrido: saber si un change ya tiene trabajo vivo y volver a darlo. */
@@ -27,10 +34,8 @@ export abstract class PuertoReencolador {
   abstract reencolar(recepcionId: Buffer, indice: number): Promise<void>;
 }
 
-/** Lo que comparten los trabajadores para no pisarse: un turno por intervalo y un tope por change. */
+/** Lo que comparten los trabajadores para no pisarse: un turno por intervalo. */
 export abstract class PuertoCoordinacionDelBarrido {
   /** `true` si este proceso se queda con el turno del intervalo; los demás saltan el barrido. */
   abstract adquirirTurno(duracionMs: number): Promise<boolean>;
-  /** Cuenta un reencolado de ese change y devuelve cuántos lleva. Caduca solo. */
-  abstract contarReencolado(recepcionId: Buffer, indice: number): Promise<number>;
 }

@@ -4,12 +4,7 @@
 import { Logger } from '@nestjs/common';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { BarrerPendientes } from './barrer-pendientes.js';
-import {
-  type ChangePendiente,
-  PuertoCoordinacionDelBarrido,
-  PuertoPendientes,
-  PuertoReencolador,
-} from './puertos-de-barrido.js';
+import { type ChangePendiente, PuertoPendientes, PuertoReencolador } from './puertos-de-barrido.js';
 
 const CONFIG = { antiguedadMinimaS: 30, limite: 500, maxReencolados: 3 };
 const id = (n: number): Buffer => Buffer.alloc(32, n);
@@ -20,13 +15,22 @@ const fila = (n: number, indice = 0): ChangePendiente => ({
 });
 
 class PendientesFalsos extends PuertoPendientes {
-  llamadas: Array<[number, number]> = [];
-  constructor(public filas: ChangePendiente[]) {
+  llamadas: Array<[number, number, number]> = [];
+  constructor(
+    public filas: ChangePendiente[],
+    public cuentas: Map<string, number> = new Map(),
+  ) {
     super();
   }
-  listar(antiguedad: number, limite: number): Promise<ChangePendiente[]> {
-    this.llamadas.push([antiguedad, limite]);
+  listar(antiguedad: number, limite: number, max: number): Promise<ChangePendiente[]> {
+    this.llamadas.push([antiguedad, limite, max]);
     return Promise.resolve(this.filas);
+  }
+  contarReencolado(r: Buffer, i: number): Promise<number> {
+    const k = `${r.toString('hex')}-${i}`;
+    const n = (this.cuentas.get(k) ?? 0) + 1;
+    this.cuentas.set(k, n);
+    return Promise.resolve(n);
   }
 }
 
@@ -49,30 +53,14 @@ class ColaFalsa extends PuertoReencolador {
   }
 }
 
-class CoordinacionFalsa extends PuertoCoordinacionDelBarrido {
-  cuentas = new Map<string, number>();
-  turnoTomado = false;
-  adquirirTurno(): Promise<boolean> {
-    if (this.turnoTomado) return Promise.resolve(false);
-    this.turnoTomado = true;
-    return Promise.resolve(true);
-  }
-  contarReencolado(r: Buffer, i: number): Promise<number> {
-    const k = `${r.toString('hex')}-${i}`;
-    const n = (this.cuentas.get(k) ?? 0) + 1;
-    this.cuentas.set(k, n);
-    return Promise.resolve(n);
-  }
-}
-
 describe('BarrerPendientes', () => {
   let cola: ColaFalsa;
-  let coord: CoordinacionFalsa;
+  let coord: { cuentas: Map<string, number> };
   let escrito: string[];
 
   beforeEach(() => {
     cola = new ColaFalsa();
-    coord = new CoordinacionFalsa();
+    coord = { cuentas: new Map() };
     escrito = [];
     const guardar = (m: unknown): void => void escrito.push(String(m));
     vi.spyOn(Logger.prototype, 'log').mockImplementation(guardar);
@@ -81,14 +69,14 @@ describe('BarrerPendientes', () => {
   afterEach(() => vi.restoreAllMocks());
 
   const caso = (filas: ChangePendiente[]): { caso: BarrerPendientes; base: PendientesFalsos } => {
-    const base = new PendientesFalsos(filas);
-    return { caso: new BarrerPendientes(base, cola, coord), base };
+    const base = new PendientesFalsos(filas, coord.cuentas);
+    return { caso: new BarrerPendientes(base, cola), base };
   };
 
   it('pide a la base con la antigüedad y el límite configurados', async () => {
     const { caso: c, base } = caso([]);
     await c.ejecutar(CONFIG);
-    expect(base.llamadas).toEqual([[30, 500]]);
+    expect(base.llamadas).toEqual([[30, 500, 3]]);
   });
 
   it('reencola cada change pendiente que no tiene trabajo vivo', async () => {
@@ -168,8 +156,6 @@ describe('BarrerPendientes', () => {
   it('si la base falla, el error sube: el planificador decide qué hacer con él', async () => {
     const base = new PendientesFalsos([]);
     base.listar = () => Promise.reject(new Error('base caída'));
-    await expect(new BarrerPendientes(base, cola, coord).ejecutar(CONFIG)).rejects.toThrow(
-      /base caída/,
-    );
+    await expect(new BarrerPendientes(base, cola).ejecutar(CONFIG)).rejects.toThrow(/base caída/);
   });
 });
