@@ -32,7 +32,7 @@ import { type AuthDeViajaPro, RUTA_BASE_DE_AUTENTICACION } from '../infrastructu
 import { origenEsDeConfianza } from './origen.js';
 
 /** Las cabeceras que Better Auth necesita ver: origen, cookie, agente y dirección del cliente. */
-const CABECERAS_REENVIADAS = ['origin', 'cookie', 'user-agent', 'x-forwarded-for', 'x-real-ip'];
+const CABECERAS_REENVIADAS = ['origin', 'cookie', 'user-agent'];
 
 @Controller('api/v1/auth')
 export class AuthController {
@@ -123,11 +123,11 @@ export class AuthController {
       const valor = req.headers[nombre];
       if (typeof valor === 'string') cabeceras.set(nombre, valor);
     }
-    // Sin dirección no hay límite de intentos: Better Auth lo omite si no sabe de quién es la
-    // petición. Detrás del proxy llega `x-forwarded-for`; si no, la del socket.
-    if (!cabeceras.has('x-forwarded-for') && req.socket.remoteAddress) {
-      cabeceras.set('x-forwarded-for', req.socket.remoteAddress);
-    }
+    // La IP del límite de intentos es `req.ip`: la del socket, o la que deduce Express con los
+    // saltos de proxy de confianza configurados (`API_TRUST_PROXY`). NUNCA se reenvía el
+    // `x-forwarded-for` del cliente: rotándolo se esquivaría el límite.
+    const ip = req.ip ?? req.socket.remoteAddress;
+    if (ip) cabeceras.set('x-forwarded-for', ip);
 
     const base = new URL(`http://interno${RUTA_BASE_DE_AUTENTICACION}${ruta}`);
     return this.auth.handler(

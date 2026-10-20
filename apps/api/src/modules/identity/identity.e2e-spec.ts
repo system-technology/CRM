@@ -28,6 +28,7 @@ import 'reflect-metadata';
 import { randomBytes } from 'node:crypto';
 import { type INestApplication, Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import { PrismaClient } from '@prisma/client';
 import type { SesionActual } from '@viajapro/contracts';
 import { hashPassword } from 'better-auth/crypto';
@@ -212,6 +213,9 @@ beforeAll(async () => {
   Logger.overrideLogger(false);
   app = await NestFactory.create(AppModule, { logger: false });
   app.useGlobalFilters(new DominioExcepcionFilter());
+  // Hace de balanceador propio: con un salto de confianza, `req.ip` sale del x-forwarded-for
+  // y cada «navegador» de la prueba tiene su dirección.
+  (app as NestExpressApplication).set('trust proxy', 1);
   await app.listen(0);
   base = await app.getUrl();
 });
@@ -296,6 +300,31 @@ describe('iniciar sesión', () => {
         where: { id: identidadId.beto },
         data: { eliminadoEn: null },
       });
+    }
+  });
+
+  it('sin proxy de confianza, rotar x-forwarded-for NO esquiva el límite: el sexto da 429', async () => {
+    const otra = await NestFactory.create(AppModule, { logger: false });
+    otra.useGlobalFilters(new DominioExcepcionFilter());
+    await otra.listen(0);
+    const url = await otra.getUrl();
+    try {
+      const estados: number[] = [];
+      for (let i = 0; i < 6; i += 1) {
+        const r = await fetch(new URL('/api/v1/auth/sign-in/email', url), {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            origin: ORIGEN_WEB,
+            'x-forwarded-for': `203.0.113.${i + 1}`,
+          },
+          body: JSON.stringify({ correo: correo.beto, contrasena: 'contrasena-equivocada-1' }),
+        });
+        estados.push(r.status);
+      }
+      expect(estados).toEqual([401, 401, 401, 401, 401, 429]);
+    } finally {
+      await otra.close();
     }
   });
 
