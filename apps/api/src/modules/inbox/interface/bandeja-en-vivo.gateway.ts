@@ -9,7 +9,9 @@
  *     tenant**: ni en `auth`, ni en la query, ni en una cabecera, ni en un mensaje; nada de eso se
  *     lee. La cabecera de desarrollo tampoco: aquí no existe.
  *   · **Las salas las asigna el servidor** (`tenant:<id>` y `usuario:<id>`) y el cliente no tiene
- *     forma de unirse a otra. El evento `unirse` no da ninguna capacidad: devuelve un rechazo si
+ *     forma de unirse a otra. **Los eventos de conversaciones salen solo por `usuario:<id>`**, a
+ *     quien ve la conversación (visibilidad dentro de la agencia): nada emite a `tenant:<id>`,
+ *     que queda solo como pertenencia. El evento `unirse` no da ninguna capacidad: devuelve un rechazo si
  *     piden una sala que no es suya.
  *   · **Cada 60 s** se repiten los pasos 3 y 4 para cada socket, con la cookie guardada del
  *     handshake. Si la sesión se revocó, dieron de baja al usuario, la agencia se suspendió o
@@ -167,8 +169,22 @@ export class BandejaEnVivoGateway
     socket.disconnect(true);
   }
 
-  emitirATenant(tenantId: string, evento: EventoBandeja): void {
-    this.io?.to(salaDeTenant(tenantId)).emit(EVENTO_SOCKET_BANDEJA, evento);
+  /**
+   * Emite a los sockets de CADA usuario del conjunto, por su sala `usuario:<id>`. Quién va en el
+   * conjunto lo decidió quien llama (la regla de visibilidad, evaluada al emitir). Se comprueba
+   * además que el socket sea de la agencia del evento: un id de usuario es único, pero emitir a una
+   * sala sin mirar de quién es el socket es el tipo de atajo que no se perdona.
+   */
+  emitirAUsuarios(tenantId: string, usuarioIds: ReadonlySet<string>, evento: EventoBandeja): void {
+    for (const usuarioId of usuarioIds) {
+      const sala = this.io?.sockets.adapter.rooms.get(salaDeUsuario(usuarioId));
+      for (const id of sala ?? []) {
+        const socket = this.io?.sockets.sockets.get(id);
+        if (socket && datosDe(socket).tenantId === tenantId) {
+          socket.emit(EVENTO_SOCKET_BANDEJA, evento);
+        }
+      }
+    }
   }
 
   desconectarUsuario(tenantId: string, usuarioId: string): void {

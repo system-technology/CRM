@@ -7,6 +7,7 @@ import type { CodigoDeErrorDeAcceso } from '@viajapro/contracts';
 import {
   DemasiadosIntentosError,
   DomainError,
+  EstadoInvalidoError,
   NoAutenticadoError,
   ProhibidoError,
 } from '@viajapro/domain';
@@ -82,5 +83,23 @@ export class RolNoEncontradoError extends DomainError {
 
   constructor() {
     super('No existe ese rol en tu agencia.');
+  }
+}
+
+/** El miembro no existe en la agencia de quien lo pide (bajo RLS, uno de otra agencia no existe). 404. */
+export class MiembroNoEncontradoError extends DomainError {
+  readonly code = 'MIEMBRO_NO_ENCONTRADO';
+
+  constructor() {
+    super('No existe ese miembro en tu agencia.');
+  }
+}
+
+/** Darse de baja a uno mismo dejaría a la agencia sin quien la administre. 409. */
+export class NoPuedeDarseDeBajaError extends EstadoInvalidoError {
+  readonly code = 'NO_PUEDE_DARSE_DE_BAJA';
+
+  constructor() {
+    super('No puedes darte de baja a ti mismo.');
   }
 }

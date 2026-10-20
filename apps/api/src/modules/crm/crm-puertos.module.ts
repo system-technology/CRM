@@ -9,15 +9,24 @@
  * que comparten es el token, que vive en `shared/puertos/`.
  */
 import { Global, Module } from '@nestjs/common';
-import { PuertoContactos, PuertoReferenciasDeCrm } from '../../shared/puertos/puertos-hacia-crm.js';
-import { ContactosDeCrm, ReferenciasDeCrm } from './infrastructure/puertos-de-crm.prisma.js';
+import {
+  PuertoContactos,
+  PuertoNotasDeConversacion,
+  PuertoReferenciasDeCrm,
+} from '../../shared/puertos/puertos-hacia-crm.js';
+import {
+  ContactosDeCrm,
+  NotasDeConversacionDeCrm,
+  ReferenciasDeCrm,
+} from './infrastructure/puertos-de-crm.prisma.js';
 
 @Global()
 @Module({
   providers: [
     { provide: PuertoContactos, useClass: ContactosDeCrm },
     { provide: PuertoReferenciasDeCrm, useClass: ReferenciasDeCrm },
+    { provide: PuertoNotasDeConversacion, useClass: NotasDeConversacionDeCrm },
   ],
-  exports: [PuertoContactos, PuertoReferenciasDeCrm],
+  exports: [PuertoContactos, PuertoReferenciasDeCrm, PuertoNotasDeConversacion],
 })
 export class CrmPuertosModule {}

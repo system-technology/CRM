@@ -22,6 +22,7 @@ import {
   PuertoInvitaciones,
   PuertoMiembros,
   type ResultadoDeAlta,
+  type ResultadoDeBaja,
 } from '../domain/puertos-de-miembros.js';
 import { AceptarInvitacionUseCase } from './aceptar-invitacion.use-case.js';
 import { InvitacionInvalidaError, RolNoEncontradoError } from './errores.js';
@@ -56,6 +57,9 @@ class Miembros extends PuertoMiembros {
   async agregar(entrada: unknown): Promise<ResultadoDeAlta | 'rol_inexistente'> {
     this.altas.push(entrada);
     return this.alta;
+  }
+  async darDeBaja(): Promise<ResultadoDeBaja> {
+    return 'baja';
   }
 }
 class Identidades extends PuertoIdentidades {

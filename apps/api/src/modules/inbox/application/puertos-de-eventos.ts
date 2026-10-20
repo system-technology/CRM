@@ -6,7 +6,8 @@
  *   · API: `PuertoSuscriptorDeEventos` entrega cada evento a esta réplica, que lo traduce y lo
  *     emite a sus sockets por `PuertoEmisionEnVivo`. El trabajador NUNCA llama al gateway.
  */
-import type { EventoBandeja, Mensaje } from '@viajapro/contracts';
+import type { ConversacionResumen, EventoBandeja, Mensaje } from '@viajapro/contracts';
+import type { MiembroParaAudiencia } from '../../../shared/autorizacion/visibilidad-de-conversaciones.js';
 import type { EventoDeDominio } from '../domain/evento-de-dominio.js';
 
 export abstract class PuertoPublicadorDeEventos {
@@ -59,8 +60,45 @@ export abstract class PuertoLecturaDeMensajes {
   abstract mensajePorId(tenantId: string, mensajeId: string): Promise<Mensaje | null>;
 }
 
-/** Por dónde sale lo que se emite a los sockets. Lo implementa el gateway. */
+/**
+ * Lo que la API necesita leer de una conversación para decidir a QUIÉN se le emite. Siempre bajo RLS
+ * y con el tenant del evento.
+ */
+export abstract class PuertoLecturaDeConversaciones {
+  /** `null` si no existe en ESE tenant. `asignadoAId` nulo = sin asignar. */
+  abstract asignacionDe(
+    tenantId: string,
+    conversacionId: string,
+  ): Promise<{ asignadoAId: string | null } | null>;
+  /** La fila de la bandeja, SIN filtrar por visibilidad: es para armar el evento, no para una persona. */
+  abstract resumenPorId(
+    tenantId: string,
+    conversacionId: string,
+  ): Promise<ConversacionResumen | null>;
+  /** Los miembros activos de la agencia y si su rol tiene `conversaciones.ver_todas` AHORA. */
+  abstract miembrosActivos(tenantId: string): Promise<MiembroParaAudiencia[]>;
+}
+
+/**
+ * Por dónde sale lo que se emite a los sockets. Lo implementa el gateway.
+ *
+ * **No hay «emitir a toda la agencia».** Cada evento de una conversación sale solo hacia quienes la
+ * ven (`usuario:<id>`), y quién la ve se decide en el momento de emitir: reasignar o cambiar el
+ * permiso de un rol surte efecto en el siguiente evento, sin reconectar.
+ */
 export abstract class PuertoEmisionEnVivo {
-  abstract emitirATenant(tenantId: string, evento: EventoBandeja): void;
+  abstract emitirAUsuarios(
+    tenantId: string,
+    usuarioIds: ReadonlySet<string>,
+    evento: EventoBandeja,
+  ): void;
   abstract desconectarUsuario(tenantId: string, usuarioId: string): void;
+}
+
+/**
+ * La pista que la API le manda al trabajador: «hay eventos nuevos en el outbox de esta agencia».
+ * No es la verdad (el evento ya está en el outbox y el barrido lo encuentra): solo evita esperar.
+ */
+export abstract class PuertoAvisoAlRelay {
+  abstract avisar(tenantId: string): Promise<void>;
 }

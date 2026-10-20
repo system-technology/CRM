@@ -8,16 +8,22 @@
  */
 import { Inject, Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../shared/prisma/prisma.service.js';
+import { PuertoConversacionesDeMiembro } from '../../../shared/puertos/puertos-hacia-inbox.js';
 import { ContextoTenant } from '../../../shared/tenant/contexto-tenant.js';
 import {
   type DescripcionDeInvitacion,
   PuertoMiembros,
   type ResultadoDeAlta,
+  type ResultadoDeBaja,
 } from '../domain/puertos-de-miembros.js';
 
 @Injectable()
 export class MiembrosPrisma extends PuertoMiembros {
-  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {
+  constructor(
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(PuertoConversacionesDeMiembro)
+    private readonly conversaciones: PuertoConversacionesDeMiembro,
+  ) {
     super();
   }
 
@@ -88,5 +94,42 @@ export class MiembrosPrisma extends PuertoMiembros {
           return 'reactivado' as const;
         }),
     );
+  }
+
+  async darDeBaja(usuarioId: string): Promise<ResultadoDeBaja> {
+    const { tenantId } = ContextoTenant.obtener();
+    return this.prisma.conTenant(async (tx) => {
+      const u = await tx.usuario.findFirst({
+        where: { id: usuarioId, tenantId },
+        select: { id: true, activo: true, eliminadoEn: true },
+      });
+      if (!u) return 'no_encontrado' as const;
+
+      const yaDeBaja = !u.activo || u.eliminadoEn !== null;
+      if (!yaDeBaja) {
+        await tx.usuario.update({
+          where: { id: u.id },
+          data: { activo: false, eliminadoEn: new Date() },
+        });
+      }
+      // Aunque ya estuviera de baja: si una baja anterior quedó a medias, esto la completa.
+      await this.conversaciones.soltarLasDe(tx, tenantId, u.id);
+
+      if (!yaDeBaja) {
+        // Mismo evento que cierra los sockets del usuario sin esperar a la revalidación de 60 s.
+        // Es el tipo que declara `inbox`; se escribe como literal porque los módulos no se
+        // importan (R4). Solo el id: el outbox no lleva datos personales.
+        await tx.outbox.create({
+          data: {
+            tenantId,
+            agregado: 'usuario',
+            agregadoId: u.id,
+            tipoEvento: 'identity.acceso_revocado',
+            payload: { usuarioId: u.id },
+          },
+        });
+      }
+      return yaDeBaja ? ('ya_de_baja' as const) : ('baja' as const);
+    });
   }
 }

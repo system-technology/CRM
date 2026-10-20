@@ -22,6 +22,8 @@ export interface DescripcionDeInvitacion {
 
 export type ResultadoDeAlta = 'creado' | 'reactivado' | 'ya_era_miembro';
 
+export type ResultadoDeBaja = 'baja' | 'ya_de_baja' | 'no_encontrado';
+
 export abstract class PuertoMiembros {
   /**
    * Con el tenant de la PETICIÓN y bajo RLS: el rol existe en esta agencia. `null` si no.
@@ -40,6 +42,11 @@ export abstract class PuertoMiembros {
     correo: string;
     nombre: string;
   }): Promise<ResultadoDeAlta | 'rol_inexistente'>;
+  /**
+   * Con el tenant de la PETICIÓN y bajo RLS: da de baja al miembro, suelta sus conversaciones y
+   * escribe `identity.acceso_revocado` en el outbox, todo en una transacción. Idempotente.
+   */
+  abstract darDeBaja(usuarioId: string): Promise<ResultadoDeBaja>;
 }
 
 export abstract class PuertoIdentidades {

@@ -161,19 +161,20 @@ export const ConversacionResumen = z.object({
 });
 export type ConversacionResumen = z.infer<typeof ConversacionResumen>;
 
+/** Una nota del equipo. **Nunca se envía al cliente**: la interfaz debe distinguirla a simple vista. */
+export const NotaDeConversacion = z.object({
+  id: Id,
+  texto: z.string(),
+  autorId: Id,
+  autorNombre: z.string().max(200),
+  creadaEn: Instante,
+});
+export type NotaDeConversacion = z.infer<typeof NotaDeConversacion>;
+
 /** La conversación abierta, con su historial. */
 export const ConversacionDetalle = ConversacionResumen.extend({
   mensajes: z.array(Mensaje),
-  /** Notas del equipo. **Nunca se envían al cliente**: la interfaz debe distinguirlas a simple vista. */
-  notas: z.array(
-    z.object({
-      id: Id,
-      texto: z.string(),
-      autorId: Id,
-      autorNombre: z.string().max(200),
-      creadaEn: Instante,
-    }),
-  ),
+  notas: z.array(NotaDeConversacion),
 });
 export type ConversacionDetalle = z.infer<typeof ConversacionDetalle>;
 
@@ -190,12 +191,55 @@ export const ConsultarBandeja = z.object({
   buscar: z.string().max(100).optional(),
   estado: EstadoConversacion.optional(),
   cursor: z.string().optional(),
-  limite: z.number().int().min(1).max(100).default(30),
+  /** `coerce`: en `GET` llega como cadena de la consulta; con un número sigue valiendo. */
+  limite: z.coerce.number().int().min(1).max(100).default(30),
 });
 export type ConsultarBandeja = z.infer<typeof ConsultarBandeja>;
 
 export const PaginaBandeja = pagina(ConversacionResumen);
 export type PaginaBandeja = z.infer<typeof PaginaBandeja>;
+
+/** Página de mensajes de un hilo, de los más recientes hacia atrás. Cada página va en orden cronológico. */
+export const ConsultarMensajes = z.object({
+  cursor: z.string().optional(),
+  limite: z.coerce.number().int().min(1).max(100).default(50),
+});
+export type ConsultarMensajes = z.infer<typeof ConsultarMensajes>;
+
+export const PaginaMensajes = pagina(Mensaje);
+export type PaginaMensajes = z.infer<typeof PaginaMensajes>;
+
+export const ListaDeNotas = z.object({ datos: z.array(NotaDeConversacion) });
+export type ListaDeNotas = z.infer<typeof ListaDeNotas>;
+
+/**
+ * Contadores de la bandeja **de quien pregunta**: solo cuentan las conversaciones que ese miembro
+ * ve (`docs/01-producto/12-visibilidad-de-conversaciones.md`). Los mensajes sin leer de una
+ * conversación ajena no suman.
+ */
+export const ContadoresBandeja = z.object({
+  todas: z.number().int().min(0),
+  mias: z.number().int().min(0),
+  sinAsignar: z.number().int().min(0),
+  conversacionesSinLeer: z.number().int().min(0),
+  mensajesSinLeer: z.number().int().min(0),
+});
+export type ContadoresBandeja = z.infer<typeof ContadoresBandeja>;
+
+/**
+ * Metadatos de un adjunto. El contenido no se sirve todavía: la descarga a nuestro
+ * almacenamiento (y con ella la URL propia y firmada del contrato `Adjunto`) aún no existe.
+ */
+export const AdjuntoDeConversacion = z.object({
+  id: Id,
+  tipo: TipoContenido,
+  nombreArchivo: z.string().max(255).nullable(),
+  tamanoBytes: z.number().int().min(0).nullable(),
+  mimeType: z.string().max(100).nullable(),
+  /** `true` cuando ya está guardado en nuestro almacenamiento. */
+  descargado: z.boolean(),
+});
+export type AdjuntoDeConversacion = z.infer<typeof AdjuntoDeConversacion>;
 
 // =============================================================================
 // Acciones
@@ -239,6 +283,17 @@ export const CrearNota = z.object({
 });
 export type CrearNota = z.infer<typeof CrearNota>;
 
+// En las rutas la conversación va en el camino, no en el cuerpo: se deriva de los mismos esquemas
+// para que nada se defina dos veces (R3).
+export const EnviarTextoCuerpo = EnviarTexto.omit({ conversacionId: true });
+export type EnviarTextoCuerpo = z.infer<typeof EnviarTextoCuerpo>;
+export const AsignarConversacionCuerpo = AsignarConversacion.omit({ conversacionId: true });
+export type AsignarConversacionCuerpo = z.infer<typeof AsignarConversacionCuerpo>;
+export const CambiarEstadoCuerpo = CambiarEstadoConversacion.omit({ conversacionId: true });
+export type CambiarEstadoCuerpo = z.infer<typeof CambiarEstadoCuerpo>;
+export const CrearNotaCuerpo = CrearNota.omit({ conversacionId: true });
+export type CrearNotaCuerpo = z.infer<typeof CrearNotaCuerpo>;
+
 // =============================================================================
 // Tiempo real
 // =============================================================================
@@ -259,6 +314,12 @@ export const EventoBandeja = z.discriminatedUnion('tipo', [
     motivoFallo: z.string().nullable(),
   }),
   z.object({ tipo: z.literal('CONVERSACION_ACTUALIZADA'), conversacion: ConversacionResumen }),
+  /**
+   * Esta conversación **dejó de ser visible** para quien lo recibe (la reasignaron a otro asesor):
+   * la web retira la fila y cierra el hilo si lo tiene abierto. Solo lleva el id, que quien lo
+   * recibe ya conocía. Visibilidad: `docs/01-producto/12-visibilidad-de-conversaciones.md`.
+   */
+  z.object({ tipo: z.literal('CONVERSACION_RETIRADA'), conversacionId: Id }),
 ]);
 export type EventoBandeja = z.infer<typeof EventoBandeja>;
 

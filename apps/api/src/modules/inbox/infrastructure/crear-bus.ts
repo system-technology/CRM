@@ -9,9 +9,11 @@
  */
 import { Injectable } from '@nestjs/common';
 import {
+  type PuertoAvisoAlRelay,
   PuertoPublicadorDeEventos,
   type PuertoSuscriptorDeEventos,
 } from '../application/puertos-de-eventos.js';
+import { AvisoAlRelayInerte, AvisoAlRelayRedis } from './aviso-al-relay.redis.js';
 import type { EventoDeDominio } from '../domain/evento-de-dominio.js';
 import { BusDeEventosEnMemoria } from './bus-de-eventos.en-memoria.js';
 import { PublicadorRedis, SuscriptorRedis } from './bus-de-eventos.redis.js';
@@ -51,4 +53,12 @@ export function crearPublicadorDeLaApi(
 /** El trabajador SIEMPRE publica por Redis: es la razón de que el bus exista. */
 export function crearPublicadorDelTrabajador(): PuertoPublicadorDeEventos {
   return new PublicadorRedis(urlDeRedis());
+}
+
+/**
+ * La pista hacia el relay del trabajador. Con el bus en memoria no hay trabajador al otro lado de
+ * Redis: la pista no tiene a quién llegar y las pruebas vacían el outbox a mano.
+ */
+export function crearAvisoAlRelay(bus: BusDeEventosEnMemoria | null): PuertoAvisoAlRelay {
+  return bus ? new AvisoAlRelayInerte() : new AvisoAlRelayRedis(urlDeRedis());
 }

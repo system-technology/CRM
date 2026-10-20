@@ -12,7 +12,12 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { Contacto, EtapaDefinida, FichaDeContacto, Oportunidad } from '@viajapro/contracts';
 import { ClaveEtapa } from '@viajapro/contracts';
+import {
+  filtroDeVisibilidad,
+  visibilidadDe,
+} from '../../../shared/autorizacion/visibilidad-de-conversaciones.js';
 import { PrismaService } from '../../../shared/prisma/prisma.service.js';
+import { ContextoTenant } from '../../../shared/tenant/contexto-tenant.js';
 import {
   PuertoCrm,
   type EtapaResumida,
@@ -140,13 +145,20 @@ export class CrmPrisma extends PuertoCrm {
   }
 
   async fichaDeContacto(contactoId: string): Promise<FichaDeContacto | null> {
+    const visibilidad = visibilidadDe(ContextoTenant.obtener());
     return this.prisma.conTenant(async (tx) => {
       const c = await tx.contacto.findFirst({
         where: { id: contactoId, eliminadoEn: null },
         include: {
           consentimientos: true,
           notasInternas: {
-            where: { eliminadaEn: null },
+            where: {
+              eliminadaEn: null,
+              // Una nota escrita en el hilo de una conversación que este miembro no ve no sale por
+              // la ficha: "lo que no se ve no se ve por ningún camino". Las notas del panel del
+              // contacto (sin hilo) son de toda la agencia.
+              OR: [{ conversacionId: null }, { conversacion: filtroDeVisibilidad(visibilidad) }],
+            },
             orderBy: { escritaEn: 'desc' },
             take: 20,
             // El autor sale del join: el contrato pide `autorNombre` y la nota solo guarda el
