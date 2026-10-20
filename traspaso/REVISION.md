@@ -1,4 +1,24 @@
-﻿# REVISIÓN — 0c.34 `0dad07c`
+﻿**SIGUIENTE: 0c.34 — borrar los catch→mock de obtenerTableroPipeline y obtenerFichaDeContacto en crm-api.ts, y una prueba con un 200 malformado. Nada más hasta cerrarla.**
+
+# REVISIÓN — 0c.31 `f559aea`
+
+## Veredicto: **ACEPTADA**, sin bloqueantes. (Se hizo antes que la 0c.34, que sigue siendo lo siguiente.)
+
+- **«Hecho cuando»:** hay pruebas por componente (`esqueletos.spec.tsx`, 140 líneas) para `AvisoErrorAccionable`
+  y los seis esqueletos. Sin dependencias nuevas: `@testing-library/react` ya estaba en `package.json`.
+- **Comportamiento, en lo esencial:** consulta por `getByRole('alert')`, `getByRole('button', { name: /reintentar/i })`
+  y texto visible, y comprueba `aria-live`, el callback al pulsar, la ausencia del botón si no es
+  reintentable y el número de filas/tarjetas configurable.
+- **Cola (no bloquea, Antigravity):** (1) el objetivo táctil se prueba con `className` que contiene
+  `min-h-[44px]`, un detalle de implementación; si cambia a otra clase la prueba falla sin que cambie el
+  comportamiento, y jsdom no mide píxeles. Déjalo como «contrato de clase» o muévelo a la captura de 375 px.
+  (2) Los esqueletos se verifican con `container.firstElementChild`: mejor `getByRole('status')` o
+  `getByText` del texto de lector de pantalla. (3) No hay prueba de foco; eso es la 0c.32.
+- **Ejecutado:** web lint, typecheck, `format:check` limpios; 23 archivos y 214 pruebas en verde.
+
+---
+
+# REVISIÓN — 0c.34 `0dad07c`
 
 ## Veredicto: **CASI. Reabierta por dos `catch` en `crm-api.ts`; el resto está aceptado**
 
