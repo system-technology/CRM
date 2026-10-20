@@ -13,11 +13,15 @@ import {
   type CotizacionGuardada,
   type GuardarCotizacion,
   type VersionDeCotizacion,
+  type ListarCotizaciones,
+  type PaginaDeCotizaciones,
   AnadirVersionACotizacion as EsquemaAnadirVersionACotizacion,
   CotizacionGuardada as EsquemaCotizacionGuardada,
   GuardarCotizacion as EsquemaGuardarCotizacion,
+  PaginaDeCotizaciones as EsquemaPaginaDeCotizaciones,
   ErrorApi as EsquemaError,
 } from '@viajapro/contracts';
+import { cotizacionGuardadaAFila, paginarPorCursor } from './cotizaciones-listado-logica';
 import {
   guardarMockCotizacion,
   obtenerMockCotizacionPorId,
@@ -372,13 +376,28 @@ export async function obtenerCotizacionGuardadaApi(
  * - Si NEXT_PUBLIC_USE_REAL_CRM está activo: consulta GET /api/v1/cotizaciones.
  * - Si falla o está inactivo: recurre al almacén simulado en memoria.
  */
-export async function listarCotizacionesApi(): Promise<CotizacionGuardada[]> {
+/**
+ * Obtiene el listado de cotizaciones guardadas paginado por cursor (0c.28).
+ * - Si NEXT_PUBLIC_USE_REAL_CRM está activo: consulta GET /api/v1/cotizaciones con los filtros Zod.
+ * - Si falla o está inactivo: recurre al almacén simulado en memoria tipado con PaginaDeCotizaciones.
+ */
+export async function listarCotizacionesApi(
+  params?: ListarCotizaciones,
+): Promise<PaginaDeCotizaciones> {
   if (estaUsandoApiReal()) {
     try {
-      const respuesta = await pedirCotizaciones<unknown>('/api/v1/cotizaciones');
-      if (Array.isArray(respuesta)) {
-        return respuesta.map((item) => EsquemaCotizacionGuardada.parse(item));
-      }
+      const q = new URLSearchParams();
+      if (params?.cursor) q.set('cursor', params.cursor);
+      if (params?.limite) q.set('limite', String(params.limite));
+      if (params?.estado) q.set('estado', params.estado);
+      if (params?.contactoId) q.set('contactoId', params.contactoId);
+      if (params?.desde) q.set('desde', params.desde);
+      if (params?.hasta) q.set('hasta', params.hasta);
+
+      const qs = q.toString();
+      const ruta = qs ? `/api/v1/cotizaciones?${qs}` : '/api/v1/cotizaciones';
+      const respuesta = await pedirCotizaciones<unknown>(ruta);
+      return EsquemaPaginaDeCotizaciones.parse(respuesta);
     } catch (err) {
       console.warn(
         '[CotizacionesApi] Fallo al listar cotizaciones en API real. Usando almacén mock:',
@@ -389,5 +408,20 @@ export async function listarCotizacionesApi(): Promise<CotizacionGuardada[]> {
 
   // Simulación de latencia de red para renderizado de esqueleto
   await new Promise((resolve) => setTimeout(resolve, 300));
-  return obtenerMockCotizaciones();
+
+  const todas = obtenerMockCotizaciones();
+  let filas = todas.map(cotizacionGuardadaAFila);
+
+  if (params?.estado) {
+    filas = filas.filter((f) => f.estado === params.estado);
+  }
+  if (params?.contactoId) {
+    filas = filas.filter((f) => f.contactoId === params.contactoId);
+  }
+
+  filas.sort(
+    (a, b) => new Date(b.ultimaVersionEn).getTime() - new Date(a.ultimaVersionEn).getTime(),
+  );
+
+  return paginarPorCursor(filas, params?.cursor, params?.limite ?? 25);
 }

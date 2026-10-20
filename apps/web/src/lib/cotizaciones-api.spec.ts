@@ -7,7 +7,7 @@ import {
   listarCotizacionesApi,
 } from './cotizaciones-api';
 
-describe('cotizaciones-api (0c.22 & 0c.24)', () => {
+describe('cotizaciones-api (0c.22 & 0c.28)', () => {
   const CONTACTO_ID = '00000000-0002-4000-8000-000000000001';
   const PAQUETE_ID = '01932000-0000-7000-8000-000000000001';
 
@@ -76,12 +76,20 @@ describe('cotizaciones-api (0c.22 & 0c.24)', () => {
     ).rejects.toThrow(CotizacionesApiError);
   });
 
-  it('lista las cotizaciones guardadas con sus versiones (0c.24)', async () => {
-    const listado = await listarCotizacionesApi();
-    expect(Array.isArray(listado)).toBe(true);
-    expect(listado.length).toBeGreaterThan(0);
-    const primera = listado[0]!;
+  it('lista las cotizaciones guardadas con paginación por cursor (0c.28)', async () => {
+    const respuesta = await listarCotizacionesApi({ limite: 10 });
+    expect(respuesta.datos).toBeDefined();
+    expect(Array.isArray(respuesta.datos)).toBe(true);
+    expect(respuesta.datos.length).toBeGreaterThan(0);
+    expect(respuesta.pageInfo).toBeDefined();
+    expect(typeof respuesta.pageInfo.hasMore).toBe('boolean');
+
+    const primera = respuesta.datos[0]!;
     expect(primera.id).toBeDefined();
-    expect(primera.versiones.length).toBeGreaterThan(0);
+    expect(primera.numeroDeVersiones).toBeGreaterThanOrEqual(1);
+    expect(primera.venta.unidades).toBeDefined();
+    expect(primera.venta.moneda).toBe('COP');
+    // R10: Sin margen ni política
+    expect(primera).not.toHaveProperty('politica');
   });
 });
