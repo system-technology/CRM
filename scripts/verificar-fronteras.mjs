@@ -25,6 +25,13 @@ import { fileURLToPath } from 'node:url';
 
 /** Quién es dueño de qué. Lo que no aparece aquí es compartido y no se restringe. */
 export const DUENOS = {
+  // ADR-0011: las tablas globales de identidad solo las toca `identity`, y con SU pool
+  // (`viajapro_identidad`). Cualquier otro módulo que las nombrara estaría leyendo hashes de
+  // contraseña y sesiones de todas las agencias.
+  identity: {
+    modelos: ['identidad', 'credencial', 'sesion', 'verificacion', 'accesoIdentidad'],
+    tablas: ['identidades', 'credenciales', 'sesiones', 'verificaciones', 'accesos_identidad'],
+  },
   crm: {
     modelos: [
       'contacto',
