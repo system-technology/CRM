@@ -21,9 +21,6 @@ import {
 /** Estados en los que un trabajo todavía va a ejecutarse: reencolarlo sería duplicar. */
 const VIVOS = new Set(['waiting', 'active', 'delayed', 'prioritized', 'waiting-children']);
 
-/** Cuánto recuerda el contador de reencolados de un change: pasado un día, empieza de cero. */
-const TTL_CONTADOR_S = 24 * 3_600;
-
 export class BarridoBullmq extends PuertoReencolador implements PuertoCoordinacionDelBarrido {
   private readonly conexion: Redis;
   private readonly cola: Queue<DatosDelTrabajo>;
@@ -76,13 +73,6 @@ export class BarridoBullmq extends PuertoReencolador implements PuertoCoordinaci
       'NX',
     );
     return r === 'OK';
-  }
-
-  async contarReencolado(recepcionId: Buffer, indice: number): Promise<number> {
-    const clave = `${this.nombreDeCola}:barrido:reencolados:${idDeTrabajo(recepcionId, indice)}`;
-    const n = await this.conexion.incr(clave);
-    if (n === 1) await this.conexion.expire(clave, TTL_CONTADOR_S);
-    return n;
   }
 
   async onModuleDestroy(): Promise<void> {

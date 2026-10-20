@@ -12,7 +12,9 @@
  *   · uno que ya no está pendiente no vuelve a aparecer en el barrido;
  *   · dos barridos concurrentes dejan UN solo trabajo (el `jobId` lo impide);
  *   · un trabajo FALLIDO con ese id se borra antes de reencolar: si no, BullMQ descarta el `add`
- *     en silencio y el mensaje se pierde.
+ *     en silencio y el mensaje se pierde;
+ *   · el tope vive en la base: tras contar `maxReencolados + 1` reencolados el change deja de
+ *     listarse (`intentos_barrido`), y el contador es el de `contar_reencolado_barrido`.
  *
  * **Aislamiento.** Usa una cola con nombre propio, porque el consumidor de `inbox-bullmq` corre
  * en la misma CI sobre la cola de siempre y se llevaría estos trabajos (o esta prueba los suyos).
@@ -92,8 +94,11 @@ class SoloLasMias extends PuertoPendientes {
   constructor(private readonly real: PuertoPendientes) {
     super();
   }
-  async listar(antiguedad: number, limite: number): Promise<ChangePendiente[]> {
-    const todas = await this.real.listar(antiguedad, limite);
+  contarReencolado(recepcionId: Buffer, indice: number): Promise<number> {
+    return this.real.contarReencolado(recepcionId, indice);
+  }
+  async listar(antiguedad: number, limite: number, max: number): Promise<ChangePendiente[]> {
+    const todas = await this.real.listar(antiguedad, limite, max);
     const mias = new Set(RECEPCIONES.map((r) => r.toString('hex')));
     return todas.filter((f) => mias.has(f.recepcionId.toString('hex')));
   }
@@ -104,11 +109,7 @@ function nuevoBarrido(): { barrer: BarrerPendientes; redis: BarridoBullmq } {
   barridos.push(redis);
   return {
     redis,
-    barrer: new BarrerPendientes(
-      new SoloLasMias(new PendientesPrisma(prismaWebhook)),
-      redis,
-      redis,
-    ),
+    barrer: new BarrerPendientes(new SoloLasMias(new PendientesPrisma(prismaWebhook)), redis),
   };
 }
 
@@ -379,5 +380,34 @@ describe.skipIf(!CORRE)('Barrido: un POST guardado cuyo encolado falló llega a 
       return f.length > 0 ? f : undefined;
     });
     expect(filas).toEqual([{ tenant_id: TENANT }]);
+  });
+
+  it('el tope vive en la base: pasado maxReencolados el change ya no se lista', async () => {
+    await consumidor.onModuleDestroy();
+    const cuerpo = sobre(`wamid.${randomUUID()}`);
+    const idRecepcion = idDe(cuerpo);
+    expect(await post(cuerpo)).toBe(200);
+    await dormir((ANTIGUEDAD_S + 1) * 1_000);
+
+    const pendientes = new PendientesPrisma(prismaWebhook);
+    const lista = async (): Promise<boolean> =>
+      (await pendientes.listar(ANTIGUEDAD_S, 1000, 10)).some((f) =>
+        f.recepcionId.equals(idRecepcion),
+      );
+
+    expect(await lista()).toBe(true);
+    // Diez reencolados contados en la base: con el tope en 10 todavía sale una última vez.
+    for (let i = 1; i <= 10; i += 1) {
+      expect(await pendientes.contarReencolado(idRecepcion, 0)).toBe(i);
+    }
+    expect(await lista()).toBe(true);
+    // El undécimo cruza el tope: el barrido lo da por abandonado y la base ya no lo lista.
+    expect(await pendientes.contarReencolado(idRecepcion, 0)).toBe(11);
+    expect(await lista()).toBe(false);
+    const r = await admin.query(
+      'SELECT intentos_barrido FROM recepciones_webhook_changes WHERE recepcion_id = $1',
+      [idRecepcion],
+    );
+    expect(r.rows[0].intentos_barrido).toBe(11);
   });
 });

@@ -12,15 +12,25 @@ export class PendientesPrisma extends PuertoPendientes {
     super();
   }
 
-  async listar(antiguedadMinimaS: number, limite: number): Promise<ChangePendiente[]> {
+  async listar(
+    antiguedadMinimaS: number,
+    limite: number,
+    maxReencolados: number,
+  ): Promise<ChangePendiente[]> {
     const filas = await this.prisma.$queryRaw<
       Array<{ recepcion_id: Buffer; indice: number; antiguedad_s: number }>
     >`SELECT recepcion_id, indice, antiguedad_s
-        FROM public.listar_changes_pendientes(${antiguedadMinimaS}::integer, ${limite}::integer)`;
+        FROM public.listar_changes_pendientes(${antiguedadMinimaS}::integer, ${limite}::integer, ${maxReencolados}::integer)`;
     return filas.map((f) => ({
       recepcionId: f.recepcion_id,
       indice: f.indice,
       antiguedadS: f.antiguedad_s,
     }));
+  }
+
+  async contarReencolado(recepcionId: Buffer, indice: number): Promise<number> {
+    const filas = await this.prisma.$queryRaw<Array<{ total: number }>>`
+      SELECT public.contar_reencolado_barrido(${recepcionId}::bytea, ${indice}::smallint) AS total`;
+    return filas[0]?.total ?? 0;
   }
 }
