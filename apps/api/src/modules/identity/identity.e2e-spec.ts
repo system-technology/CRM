@@ -54,6 +54,7 @@ let admin: PrismaClient;
 let adminPg: Client;
 let contactoA: string;
 let contactoB: string;
+let paqueteA: string;
 
 const correo = {
   ana: `fixture-aislamiento-ana-${randomBytes(3).toString('hex')}${DOMINIO}`,
@@ -209,6 +210,38 @@ beforeAll(async () => {
       data: { tenantId: TENANT_B, telefonoE164: '+573001110002', nombre: 'Contacto de B' },
     })
   ).id;
+
+  const paquete = await admin.paquete.create({
+    data: {
+      tenantId: TENANT_A,
+      nombre: 'Paquete antiguo fixture',
+      destino: 'San Andrés',
+      dias: 4,
+      noches: 3,
+      planAlimentacion: 'TODO_INCLUIDO',
+    },
+  });
+  paqueteA = paquete.id;
+  const temporada = await admin.temporada.create({
+    data: {
+      tenantId: TENANT_A,
+      paqueteId: paqueteA,
+      nombre: 'Temporada fixture',
+      desde: new Date('2027-03-01'),
+      hasta: new Date('2027-03-31'),
+    },
+  });
+  await admin.precio.create({
+    data: {
+      tenantId: TENANT_A,
+      temporadaId: temporada.id,
+      acomodacion: 'DOBLE',
+      tipoPasajero: 'ADT',
+      netoUnidades: 1_000_000n,
+      ventaUnidades: 1_200_000n,
+      monedaIso: 'COP',
+    },
+  });
 
   Logger.overrideLogger(false);
   app = await NestFactory.create(AppModule, { logger: false });
@@ -677,6 +710,50 @@ describe('el permiso «ver neto y margen»', () => {
     await nav.llamar('POST', '/api/v1/auth/tenant-activo', { cuerpo: { tenantId: TENANT_B } });
     const enB = await nav.llamar('GET', `/api/v1/cotizaciones/${inexistente}?incluirMargen=true`);
     expect(enB.estado).toBe(403);
+  });
+});
+
+describe('el permiso «ver neto y margen» en las rutas del paquete antiguo', () => {
+  const cotizarPaquete = (incluirMargen: boolean) => ({
+    cuerpo: {
+      paqueteId: paqueteA,
+      fechaSalida: '2027-03-15',
+      pasajeros: { adultos: 2 },
+      incluirMargen,
+    },
+  });
+
+  it('un asesor recibe 403 con incluirMargen en las dos rutas, y 2xx sin pedirlo', async () => {
+    const nav = new Navegador();
+    await nav.iniciarSesion('beto');
+
+    const cot = await nav.llamar('POST', '/api/v1/paquetes/cotizar', cotizarPaquete(true));
+    expect(cot.estado).toBe(403);
+    expect(cot.json.error?.code).toBe('PERMISO_DENEGADO');
+
+    const det = await nav.llamar('GET', `/api/v1/paquetes/${paqueteA}?incluirMargen=true`);
+    expect(det.estado).toBe(403);
+    expect(det.json.error?.code).toBe('PERMISO_DENEGADO');
+
+    const sinPedir = await nav.llamar('POST', '/api/v1/paquetes/cotizar', cotizarPaquete(false));
+    expect(sinPedir.estado).toBe(201);
+    expect(JSON.stringify(sinPedir.json)).not.toMatch(/neto|margen|porcentaje/i);
+  });
+
+  it('la dueña recibe 200 con el neto y el margen', async () => {
+    const nav = new Navegador();
+    await nav.iniciarSesion('ana');
+    await nav.llamar('POST', '/api/v1/auth/tenant-activo', { cuerpo: { tenantId: TENANT_A } });
+
+    const cot = await nav.llamar('POST', '/api/v1/paquetes/cotizar', cotizarPaquete(true));
+    expect(cot.estado).toBe(201);
+    expect(cot.json['totalNeto']).toEqual({ unidades: '2000000', moneda: 'COP' });
+    expect(cot.json['margen']).toBeDefined();
+    expect(cot.json['margenPorcentaje']).toBeDefined();
+
+    const det = await nav.llamar('GET', `/api/v1/paquetes/${paqueteA}?incluirMargen=true`);
+    expect(det.estado).toBe(200);
+    expect(JSON.stringify(det.json)).toMatch(/"neto":\{"unidades":"1000000"/);
   });
 });
 

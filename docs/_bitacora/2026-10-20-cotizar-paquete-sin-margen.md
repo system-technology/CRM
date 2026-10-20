@@ -20,3 +20,10 @@ simulador local. Con `Precio.neto` opcional hubo que guardar tres usos en web
 (`ficha-detalle-paquete.tsx`, `cotizador-logica.ts`, `catalogo-logica.spec.ts`). Avisar a Antigravity.
 **Cola:** `mayoristaId`/`mayorista` siguen saliendo en `/paquetes` y `/paquetes/:id` (identidad del
 mayorista, no neto); decidir con la autenticación.
+
+## Segunda vuelta (tras v0.34.0, permiso)
+`POST /paquetes/cotizar` y `GET /paquetes/:id` llaman a `autorizarMargen()` antes de entregar neto o
+margen: sin `cotizacion.ver_neto_y_margen`, 403 `PERMISO_DENEGADO`. e2e en `identity.e2e-spec.ts`
+(asesor 403 en las dos rutas, dueña 200 con campos). Barrido de `incluirMargen` en `apps/api/src`:
+salidas, cotizaciones (guardar, versiones, leer) y las dos de paquetes pasan por `autorizarMargen`;
+ninguna otra lo acepta.

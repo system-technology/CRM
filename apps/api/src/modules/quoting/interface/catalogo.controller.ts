@@ -8,6 +8,7 @@
 import { Body, Controller, Get, Inject, Param, Post, Query } from '@nestjs/common';
 import { CotizarPaquete, type CotizacionCalculada, ParametrosPagina } from '@viajapro/contracts';
 import { ZodValidationPipe } from '../../../shared/validacion/zod-validation.pipe.js';
+import { autorizarMargen } from '../../../shared/autorizacion/margen.js';
 import { CotizarPaqueteUseCase } from '../application/cotizar-paquete.use-case.js';
 import { ListarPaquetesUseCase } from '../application/listar-paquetes.use-case.js';
 
@@ -34,7 +35,7 @@ export class CatalogoController {
   @Get('paquetes/:id')
   async detalle(@Param('id') id: string, @Query('incluirMargen') incluirMargen?: string) {
     // Solo la cadena `true` activa el neto: cualquier otra cosa es el valor seguro.
-    return this.listarPaquetes.detalle(id, incluirMargen === 'true');
+    return this.listarPaquetes.detalle(id, autorizarMargen(incluirMargen === 'true'));
   }
 
   /**
@@ -47,6 +48,8 @@ export class CatalogoController {
   async cotizar(
     @Body(new ZodValidationPipe(CotizarPaquete)) body: CotizarPaquete,
   ): Promise<CotizacionCalculada> {
+    // `incluirMargen: true` exige el permiso: sin él, 403 (ADR-0011, paso 6).
+    autorizarMargen(body.incluirMargen ?? false);
     return this.cotizarPaquete.ejecutar(body);
   }
 }
