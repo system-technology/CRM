@@ -16,6 +16,7 @@ import {
 import { BarraModulos } from '../../components/bandeja/barra-modulos';
 import { DistintivoDatosDemo } from '../../components/comun/distintivo-datos-demo';
 import { EsqueletoTabla, AvisoErrorAccionable } from '../../components/comun/esqueletos';
+import { formatearErrorAmigable } from '../../lib/estados-ui-logica';
 import { construirMensajeErrorAccionable } from '../../lib/estados-ui-logica';
 import { FichaDetalleContacto } from '../../components/contactos/ficha-detalle-contacto';
 import { obtenerMockPaginaContactos } from '../../lib/mock-contactos';
@@ -42,7 +43,9 @@ export default function ContactosPage() {
       })
       .catch((err) => {
         console.warn('Error al cargar contactos de CRM API:', err);
-        setError(err instanceof Error ? err.message : 'Error al conectar con la API de CRM');
+        setError(
+          formatearErrorAmigable(err, 'No fue posible consultar el directorio de contactos.'),
+        );
       })
       .finally(() => {
         setCargando(false);
@@ -176,17 +179,17 @@ export default function ContactosPage() {
 
         {/* Tabla de Contactos con Estados (0c.25) */}
         <div className="flex-1 overflow-y-auto p-6">
-          {error && (
+          {error ? (
             <AvisoErrorAccionable
               error={construirMensajeErrorAccionable(error, 'CONTACTOS_LISTA')}
               onReintentar={cargarContactos}
             />
-          )}
-
-          <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-2xs dark:border-neutral-800 dark:bg-neutral-900">
-            {cargando ? (
+          ) : cargando ? (
+            <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-2xs dark:border-neutral-800 dark:bg-neutral-900">
               <EsqueletoTabla filas={6} />
-            ) : (
+            </div>
+          ) : (
+            <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-2xs dark:border-neutral-800 dark:bg-neutral-900">
               <table className="w-full text-left text-xs">
                 <thead className="border-b border-neutral-200 bg-neutral-50 text-[11px] font-semibold text-neutral-500 dark:border-neutral-800 dark:bg-neutral-800/50 dark:text-neutral-400">
                   <tr>
@@ -326,8 +329,8 @@ export default function ContactosPage() {
                   )}
                 </tbody>
               </table>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </main>
 

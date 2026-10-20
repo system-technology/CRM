@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, beforeEach, afterEach } from 'vitest';
 import {
   obtenerTableroPipeline,
   moverOportunidadDeEtapa,
@@ -6,6 +6,7 @@ import {
   listarContactos,
   estaUsandoApiReal,
   obtenerTenantDemo,
+  CrmApiError,
 } from './crm-api';
 
 describe('Cliente de API CRM (crm-api.ts)', () => {
@@ -90,5 +91,169 @@ describe('Detección y reporte de configuración de API CRM (0c.14)', () => {
       if (prevTenant !== undefined) process.env['NEXT_PUBLIC_DEV_TENANT_ID'] = prevTenant;
       else delete process.env['NEXT_PUBLIC_DEV_TENANT_ID'];
     }
+  });
+});
+
+describe('0c.34: Con la API real encendida, un fallo es un error, nunca datos simulados (crm-api)', () => {
+  const originalFetch = globalThis.fetch;
+  const originalCrmEnv = process.env['NEXT_PUBLIC_USE_REAL_CRM'];
+  const originalTenantEnv = process.env['NEXT_PUBLIC_DEV_TENANT_ID'];
+
+  function activarApiReal() {
+    process.env['NEXT_PUBLIC_USE_REAL_CRM'] = 'true';
+    process.env['NEXT_PUBLIC_DEV_TENANT_ID'] = '01932000-0000-7000-8000-00000000000a';
+  }
+
+  function restaurarEntorno() {
+    globalThis.fetch = originalFetch;
+    if (originalCrmEnv !== undefined) {
+      process.env['NEXT_PUBLIC_USE_REAL_CRM'] = originalCrmEnv;
+    } else {
+      delete process.env['NEXT_PUBLIC_USE_REAL_CRM'];
+    }
+    if (originalTenantEnv !== undefined) {
+      process.env['NEXT_PUBLIC_DEV_TENANT_ID'] = originalTenantEnv;
+    } else {
+      delete process.env['NEXT_PUBLIC_DEV_TENANT_ID'];
+    }
+  }
+
+  describe('Con fetch rechazado (fallo de red/conexión)', () => {
+    beforeEach(() => {
+      activarApiReal();
+      globalThis.fetch = () => Promise.reject(new TypeError('Failed to fetch'));
+    });
+
+    afterEach(() => {
+      restaurarEntorno();
+    });
+
+    it('obtenerTableroPipeline lanza CrmApiError y NO devuelve el tablero mock', async () => {
+      await expect(obtenerTableroPipeline()).rejects.toThrow(CrmApiError);
+    });
+
+    it('moverOportunidadDeEtapa lanza CrmApiError y NO mueve en el mock', async () => {
+      await expect(
+        moverOportunidadDeEtapa('00000000-0003-4000-8000-000000000001', {
+          etapaId: '01932000-0000-7000-8000-000000000002',
+          motivoPerdida: null,
+          notaPerdida: null,
+        }),
+      ).rejects.toThrow(CrmApiError);
+    });
+
+    it('obtenerFichaDeContacto lanza CrmApiError y NO devuelve la ficha mock', async () => {
+      await expect(obtenerFichaDeContacto('00000000-0001-4000-8000-000000000001')).rejects.toThrow(
+        CrmApiError,
+      );
+    });
+
+    it('listarContactos lanza CrmApiError y NO devuelve la lista mock', async () => {
+      await expect(listarContactos('Juan')).rejects.toThrow(CrmApiError);
+    });
+  });
+
+  describe('Con respuesta 500 del servidor', () => {
+    beforeEach(() => {
+      activarApiReal();
+      globalThis.fetch = () =>
+        Promise.resolve({
+          ok: false,
+          status: 500,
+          statusText: 'Internal Server Error',
+          json: () =>
+            Promise.resolve({
+              error: {
+                code: 'FALLO_CRITICO_CRM',
+                message: 'Servicio CRM temporalmente inaccesible',
+              },
+            }),
+        } as unknown as Response);
+    });
+
+    afterEach(() => {
+      restaurarEntorno();
+    });
+
+    it('obtenerTableroPipeline lanza CrmApiError (500) y NO devuelve el mock', async () => {
+      await expect(obtenerTableroPipeline()).rejects.toMatchObject({
+        code: 'FALLO_CRITICO_CRM',
+        status: 500,
+      });
+    });
+
+    it('moverOportunidadDeEtapa lanza CrmApiError (500) y NO devuelve el mock', async () => {
+      await expect(
+        moverOportunidadDeEtapa('00000000-0003-4000-8000-000000000001', {
+          etapaId: '01932000-0000-7000-8000-000000000002',
+          motivoPerdida: null,
+          notaPerdida: null,
+        }),
+      ).rejects.toMatchObject({
+        code: 'FALLO_CRITICO_CRM',
+        status: 500,
+      });
+    });
+
+    it('obtenerFichaDeContacto lanza CrmApiError (500) y NO devuelve el mock', async () => {
+      await expect(
+        obtenerFichaDeContacto('00000000-0001-4000-8000-000000000001'),
+      ).rejects.toMatchObject({
+        code: 'FALLO_CRITICO_CRM',
+        status: 500,
+      });
+    });
+
+    it('listarContactos lanza CrmApiError (500) y NO devuelve el mock', async () => {
+      await expect(listarContactos('Juan')).rejects.toMatchObject({
+        code: 'FALLO_CRITICO_CRM',
+        status: 500,
+      });
+    });
+  });
+
+  describe('Con respuesta 200 de forma inválida (desajuste de contrato Zod)', () => {
+    beforeEach(() => {
+      activarApiReal();
+      globalThis.fetch = () =>
+        Promise.resolve({
+          ok: true,
+          status: 200,
+          statusText: 'OK',
+          json: () => Promise.resolve({ datosInesperados: 123 }),
+        } as unknown as Response);
+    });
+
+    afterEach(() => {
+      restaurarEntorno();
+    });
+
+    it('obtenerTableroPipeline lanza ZodError y NO devuelve mock', async () => {
+      await expect(obtenerTableroPipeline()).rejects.toThrow();
+    });
+
+    it('obtenerFichaDeContacto lanza ZodError y NO devuelve mock', async () => {
+      await expect(
+        obtenerFichaDeContacto('00000000-0001-4000-8000-000000000001'),
+      ).rejects.toThrow();
+    });
+  });
+
+  describe('Con interruptor apagado (modo mock offline)', () => {
+    beforeEach(() => {
+      process.env['NEXT_PUBLIC_USE_REAL_CRM'] = 'false';
+    });
+
+    afterEach(() => {
+      restaurarEntorno();
+    });
+
+    it('devuelve los datos simulados sin error de conexión', async () => {
+      const tablero = await obtenerTableroPipeline();
+      expect(tablero.columnas.length).toBeGreaterThanOrEqual(5);
+
+      const contactos = await listarContactos();
+      expect(contactos.datos.length).toBeGreaterThan(0);
+    });
   });
 });
