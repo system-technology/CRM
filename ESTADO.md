@@ -6,7 +6,7 @@
 
 | Campo | Valor |
 |---|---|
-| Última actualización | 2026-10-20 (hasta v0.34.0: autenticación con sesión) |
+| Última actualización | 2026-10-20 (hasta v0.34.1) |
 | Actualizado por | Claude Opus 5.5 (`integrador`) |
 | Fase | **Rebanada vertical de paquetes, en construcción** |
 | Avance de la fase | Cotizador de punta a punta. **La cotización es la suma de sus tarifas y el precio «desde» es uno que el comprador puede pagar (v0.19.0).** Apretón de manos del webhook vivo. Bandeja web en construcción |
@@ -1154,4 +1154,18 @@ Registro: [`docs/_integraciones/2026-10-20-v0.34.0.md`](docs/_integraciones/2026
 |---|---|---|
 | **Socket.IO no existe en la API.** Sus cuatro `it.todo` (revalidar la sesión del socket cada 60 s) **bloquean la rama que lo cree**: no entra sin convertirlos en pruebas | `backend` | Hoy no hay socket que revalidar |
 | El OTP, cuando entre (rebanada 4), con `storeOTP: 'hashed'` | `backend` | Hoy no hay OTP |
+
+## Integración del 2026-10-20 — v0.34.1: el cotizador de paquetes sin neto ni margen (R10)
+
+`fix/quoting-cotizar-paquete-sin-margen` @ `45b627f` entra en `main` (`c3a3023`), etiquetada **v0.34.1**. **Se devolvió una vez.** En `4dd1428`, al
+fusionarla con la v0.34.0, `GET /paquetes/:id` y `POST /paquetes/cotizar` daban neto y margen con `incluirMargen` **sin pedir el permiso**.
+Ahora las dos rutas llaman a `autorizarMargen()`: en la e2e de identity, el asesor recibe 403 y la dueña, 200. `pideMargen` de
+`cotizaciones.controller` también pasa por `autorizarMargen`. `Precio.neto` es opcional en el contrato, y los tres archivos de
+`apps/web` que tocaba ya compilan con él. Compuerta: CI **8/8** sobre la punta, que contiene `main`:
+https://github.com/Alfavear/CRM/actions/runs/39353421650. Estáticas en local en verde.
+Registro: [`docs/_integraciones/2026-10-20-v0.34.1.md`](docs/_integraciones/2026-10-20-v0.34.1.md).
+
+| Cola | Dueño | Por qué no bloquea |
+|---|---|---|
+| `mayoristaId` sigue saliendo en `/paquetes` | `backend` | No es importe; revela con quién trabaja la agencia, y hoy solo lo ve su propio personal |
 
