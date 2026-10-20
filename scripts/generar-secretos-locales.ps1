@@ -39,6 +39,11 @@ $ErrorActionPreference = 'Stop'
 $secretos = @{
     'WHATSAPP_DIRECTORY_PEPPER' = 32
     'WEBHOOK_PAYLOAD_KEY'       = 32
+    # Cifra el trabajo de correo en Redis (AES-256-GCM). Se decodifica en hex o base64: vale el hex.
+    'CORREO_PAYLOAD_KEY'        = 32
+    # Firma las cookies de sesion (Better Auth). Cadena libre de 32+ caracteres: el hex de 32 bytes
+    # (64 caracteres) cumple.
+    'BETTER_AUTH_SECRET'        = 32
 }
 
 if ($Carpetas) {
