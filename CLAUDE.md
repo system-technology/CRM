@@ -32,7 +32,7 @@ punto exacto del hilo.
 | # | Regla | Por qué |
 |---|---|---|
 | R1 | **Toda tabla de negocio lleva `tenant_id` y política RLS.** Las únicas excepciones son las tablas globales declaradas **en `excepciones_rls`**, que es dato en la base y no una lista en un documento: lo que no esté ahí y no tenga `tenant_id` es un defecto bloqueante que pone en rojo la prueba de aislamiento. Añadir una excepción exige editar también el literal de `aislamiento.spec.ts`. | Una fuga entre agencias mata el producto. Ver ADR-0003 y ADR-0008 §1.2. |
-| R2 | **Ninguna consulta usa el rol `postgres`.** La app entra con uno de los tres roles de aplicación —`viajapro_app`, `viajapro_altas`, `viajapro_webhook`—, ninguno de los cuales puede saltarse RLS, y **cada proceso aborta al arrancar si no es el rol que esperaba ser**. | Defensa en profundidad: un bug de `WHERE` no se vuelve una brecha. Y con tres roles que solo se distinguen en qué funciones ejecutan, apuntar una variable de entorno al rol equivocado sería una brecha silenciosa. Ver ADR-0008 §1.3. |
+| R2 | **Ninguna consulta usa el rol `postgres`.** La app entra con uno de los cuatro roles de aplicación —`viajapro_app`, `viajapro_altas`, `viajapro_webhook`, `viajapro_identidad`—, ninguno de los cuales puede saltarse RLS, y **cada proceso aborta al arrancar si no es el rol que esperaba ser**. `viajapro_identidad` solo toca las tablas globales de identidad, nunca las de negocio. `viajapro_accesos` es `NOLOGIN`: solo es dueño de un disparador, y ningún rol de login es miembro suyo. | Defensa en profundidad: un bug de `WHERE` no se vuelve una brecha. Y con roles que solo se distinguen en qué funciones ejecutan, apuntar una variable de entorno al rol equivocado sería una brecha silenciosa. Ver ADR-0008 §1.3 y ADR-0011. |
 | R3 | **Los contratos viven en `packages/contracts` como esquemas Zod.** API y web importan de ahí; nadie redefine tipos. | Una sola fuente de verdad entre back y front. |
 | R4 | **Los módulos no se importan entre sí directamente.** Se comunican por eventos de dominio o por puertos explícitos. | Es lo que permite extraer servicios después sin reescribir. Ver ADR-0004. |
 | R5 | **Todo efecto externo (WhatsApp, pagos, correo) es idempotente y pasa por cola.** | Meta reintenta webhooks; las pasarelas también. Duplicar un cobro es imperdonable. |
@@ -93,7 +93,7 @@ Detalle y alternativas descartadas: `docs/03-adr/0001-stack-tecnologico.md`.
 ```
 apps/api        NestJS. src/modules/<contexto>/ — cada uno con domain/ application/ infrastructure/ interface/
 apps/web        Next.js. src/app/(dashboard)/<contexto>/
-apps/worker     BullMQ. src/jobs/<contexto>/
+apps/worker     BullMQ. src/jobs/<contexto>/ — vacío: el único consumidor (inbox) vive en apps/api, ADR-0010
 packages/contracts   Zod + tipos compartidos. FUENTE DE VERDAD de los contratos.
 packages/database    schema.prisma, migrations/, policies/ (RLS), seed/
 packages/domain      Value objects puros: Money, PhoneNumber, DateRange, PassengerCount
