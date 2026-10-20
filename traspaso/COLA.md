@@ -214,7 +214,7 @@ Guarda las capturas en `docs/_assets/diseno/` y corrige lo que falle.
 
 ---
 
-## [x] 0c.34. Con la API real encendida, un fallo es un error, nunca datos simulados (añadida el 2026-10-19, PRIORITARIA, LA PRIMERA)
+## [ ] 0c.34. Con la API real encendida, un fallo es un error, nunca datos simulados (añadida el 2026-10-19, PRIORITARIA, LA PRIMERA)
 
 `apps/web/src/lib/cotizaciones-api.ts` cae **en silencio** al almacén simulado (solo `console.warn`)
 cuando falla la API real, en cuatro sitios: guardar (~l. 127), añadir versión (~l. 245), consultar por
@@ -225,6 +225,13 @@ sube (tipado, p. ej. `CotizacionesApiError`) y la pantalla muestra el estado de 
 (`AvisoErrorAccionable`, qué pasó y qué hacer, con «Reintentar»), sin `err.message` crudo (0c.30). El
 mock solo responde cuando el interruptor está **apagado**. Un 404 de una cotización sigue siendo el
 mensaje honesto que ya existe.
+
+> **REABIERTA por 2 líneas, 2026-10-19 (revisión de `0dad07c`):** en `crm-api.ts` quedan dos `try/catch`
+> que, con el interruptor encendido, caen a `obtenerMockTableroPipeline()` (~l. 114-122) y a
+> `obtenerMockFichaDeContacto()` (~l. 163-169) para todo error que no sea `CrmApiError`, es decir, un
+> `ZodError` de una respuesta 200 con forma inesperada. Y `pipeline/page.tsx` entonces pone
+> `setEsModoSimulado(false)`: pinta el tablero falso **como real**. Borra esos dos `catch` (que el
+> error suba) y añade una prueba con respuesta 200 de forma inválida. El resto de la 0c.34 está bien.
 
 `git grep` hecho el 2026-10-19: ninguna otra capa de datos tiene este patrón (`catalogo-api.ts`,
 `api.ts`, `crm-api.ts` lanzan errores). Los `useState(mock...)` iniciales de `contactos`, `pipeline`,

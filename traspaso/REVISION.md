@@ -1,4 +1,40 @@
-﻿# REVISIÓN — 0c.30 `ce1727f`
+﻿# REVISIÓN — 0c.34 `0dad07c`
+
+## Veredicto: **CASI. Reabierta por dos `catch` en `crm-api.ts`; el resto está aceptado**
+
+La siguiente sigue siendo la 0c.34, pero ahora son dos líneas; después, la 0c.30 (restos).
+
+### Bloqueante (para el primer despliegue)
+
+`crm-api.ts` conserva dos `try/catch` con salida al mock con el interruptor **encendido**:
+`obtenerTableroPipeline` (~l. 114-122) y `obtenerFichaDeContacto` (~l. 163-169). Relanzan solo si el
+error es `CrmApiError`; con un `ZodError` (la API responde 200 con una forma que el contrato no acepta)
+caen al mock, y `pipeline/page.tsx` marca `setEsModoSimulado(false)`, o sea, el tablero falso se pinta
+como real. Los fallos de red y 500 ya no llegan ahí (`pedirCrm` los envuelve en `CrmApiError`), por eso
+las pruebas pasan; **ninguna prueba cubre una respuesta 200 malformada**.
+
+### Comprobado
+
+1. **Mocks solo con interruptor apagado:** `cotizaciones-api.ts` (4 funciones) e `inbox-api.ts` (6):
+   correcto, sin `catch` que devuelva mock. `crm-api.ts`: `moverOportunidadDeEtapa` y
+   `listarContactos` correctas; las otras dos, el bloqueante de arriba.
+2. **Guardar y añadir versión con la API caída: cumple.** `cotizador/page.tsx` cierra el modal y navega
+   solo tras el `await` correcto; el `catch` pinta el error y conserva el formulario; añadir versión
+   igual (`setErrorModificar`).
+3. **Pruebas:** las nuevas de `crm-api`, `inbox-api` y `cotizaciones-api` sí simulan `fetch` rechazado
+   y 500 y comprueban `rejects` (no son solo el camino feliz), más el caso con el interruptor apagado.
+   Falta el 200 malformado.
+4. **Mocks iniciales:** `pipeline` y `contactos` empiezan con el mock en el `useState`, pero ante un fallo
+   pintan el error accionable (`errorCarga` / `error` van antes que los datos), no el mock. El «demo
+   forzado» del pipeline es una decisión explícita del asesor. Correcto.
+
+### Ejecutado
+
+Web: lint, typecheck (ahora limpio), `format:check` y 203 pruebas en 22 archivos, todo en verde.
+
+---
+
+# REVISIÓN — 0c.30 `ce1727f`
 
 > ## LA SIGUIENTE ES LA 0c.34, SIN EXCEPCIÓN
 > La 0c.34 era **PRIORITARIA y primera**, y se hizo antes la 0c.30. Con la API caída, «Guardar
