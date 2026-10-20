@@ -251,6 +251,19 @@ devolviendo el mock; y `pnpm compuertas` sale en verde.
 
 ## [ ] 0c.27. Ocultar neto y margen a quien no tenga el permiso (añadida el 2026-10-19, ESPERA)
 
+> **Aviso del 2026-10-20.** Esta tarea va a cambiar de forma, y un agente `backend` ha tocado tres
+> archivos tuyos. Lo que llega a `main` en breve:
+> - **v0.34.0, rebanada 2 de autenticación:** la API devuelve **403** a `?incluirMargen=true` si el
+>   usuario no tiene el permiso. La sesión se lee en `GET /api/v1/auth/session`; los contratos están
+>   en `packages/contracts/src/identidad.ts`.
+> - **v0.34.1:** el cotizador antiguo (`/catalogo/paquetes/*`) ya no manda neto ni margen sin el flag.
+>   Para que compilara, `backend` cambió `ficha-detalle-paquete.tsx`, `cotizador-logica.ts` y
+>   `catalogo-logica.spec.ts` (`Precio.neto` ahora es opcional). **Cuando entre, haz `git merge main`
+>   y quédate con esa versión de esos tres archivos.**
+>
+> Con eso, la 0c.27 deja de ser «ocultar»: **la pantalla nunca recibe el neto si no lo pide, y solo
+> lo pide si la sesión trae el permiso.** Espera a ver las dos versiones en `git log origin/main`.
+
 **No hacer nada hasta que exista el permiso «ver neto y margen»** (rebanada 3 del ADR-0011). Entonces:
 ocultar el bloque «Costo Neto Mayoristas» y «Margen Comercial» de `reportes/page.tsx` (~l. 230-262, ya
 en `main`; el comentario «Solo Dueño» no lo hace cierto: no hay control de rol), `ficha-detalle-paquete.tsx:244` («Neto: …» en el catálogo) y `bloque-politica-precio.tsx` a
