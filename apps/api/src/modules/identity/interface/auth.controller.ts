@@ -30,8 +30,17 @@ import { ZodValidationPipe } from '../../../shared/validacion/zod-validation.pip
 import { errorDeAcceso } from '../application/errores.js';
 import { CambiarAgenciaActiva } from '../application/cambiar-agencia-activa.use-case.js';
 import { ObtenerSesionActual } from '../application/sesion-actual.use-case.js';
+import {
+  claveDeLimite,
+  LimitadorDeEnvios,
+  politicaDeEnvioDeCodigos,
+} from '../application/limitador-de-envios.js';
 import { AUTH, origenesDeConfianza } from '../infrastructure/auth.provider.js';
-import { type AuthDeViajaPro, RUTA_BASE_DE_AUTENTICACION } from '../infrastructure/crear-auth.js';
+import {
+  type AuthDeViajaPro,
+  leerSecretoDeAutenticacion,
+  RUTA_BASE_DE_AUTENTICACION,
+} from '../infrastructure/crear-auth.js';
 import { origenEsDeConfianza } from '../../../shared/red/origen.js';
 
 /** Las cabeceras que Better Auth necesita ver: origen, cookie, agente y dirección del cliente. */
@@ -43,6 +52,7 @@ export class AuthController {
     @Inject(AUTH) private readonly auth: AuthDeViajaPro,
     @Inject(ObtenerSesionActual) private readonly sesionActual: ObtenerSesionActual,
     @Inject(CambiarAgenciaActiva) private readonly cambiarAgencia: CambiarAgenciaActiva,
+    @Inject(LimitadorDeEnvios) private readonly limitador: LimitadorDeEnvios,
   ) {}
 
   @Post('sign-in/email')
@@ -73,6 +83,7 @@ export class AuthController {
     @Req() req: PeticionExpress,
   ): Promise<RespuestaOk> {
     this.exigirOrigenSiVino(req);
+    if (!(await this.cabeEnElLimite(req, body.correo))) return { ok: true };
     const respuesta = await this.llamarABetterAuth(req, '/email-otp/send-verification-otp', {
       email: body.correo,
       type: 'sign-in',
@@ -149,6 +160,40 @@ export class AuthController {
   }
 
   // ---------------------------------------------------------------------------------------
+
+  /**
+   * Límite de envíos de código, con contadores en Redis (clave hasheada).
+   *
+   *   · **Por IP** (`req.ip`, igual que el resto): al superarlo, 429. No revela nada: cuenta toda
+   *     petición de esa IP, exista o no el correo.
+   *   · **Por correo**: al superarlo NO hay 429. Responde `{ ok: true }` y no envía nada, idéntico a
+   *     lo que ve quien pide un correo inexistente. El contador sube exista o no la cuenta, así que
+   *     ni el 200 ni la ausencia de 429 distinguen. El trade-off: el titular legítimo que pide un
+   *     cuarto código no ve ningún aviso y espera un correo que no llega; la pantalla debe decir
+   *     «si el correo existe, llegará en breve; puedes pedir otro en 15 minutos».
+   *
+   * Devuelve `false` si el correo superó su límite (no se debe enviar).
+   */
+  private async cabeEnElLimite(req: PeticionExpress, correo: string): Promise<boolean> {
+    const politica = politicaDeEnvioDeCodigos(process.env);
+    const secreto = leerSecretoDeAutenticacion(process.env);
+    const ip = req.ip ?? req.socket.remoteAddress ?? 'desconocida';
+    const { porIp, porCorreo } = politica;
+    if (
+      !(await this.limitador.consumir(
+        claveDeLimite(secreto, 'ip', ip),
+        porIp.maximo,
+        porIp.ventanaSegundos,
+      ))
+    ) {
+      throw errorDeAcceso('DEMASIADOS_INTENTOS');
+    }
+    return this.limitador.consumir(
+      claveDeLimite(secreto, 'correo', correo),
+      porCorreo.maximo,
+      porCorreo.ventanaSegundos,
+    );
+  }
 
   private async llamarABetterAuth(
     req: PeticionExpress,

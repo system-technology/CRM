@@ -51,11 +51,22 @@ import { salaDeTenant, salaDeUsuario } from '../domain/evento-de-dominio.js';
 /** Cada cuánto se revalida un socket abierto (ADR-0011). */
 export const INTERVALO_DE_REVALIDACION_MS = 60_000;
 
+/** Fallos de infraestructura seguidos que un socket tolera antes de cerrarse. */
+export const FALLOS_SEGUIDOS_POR_DEFECTO = 3;
+
+/** `SOCKET_REVALIDACION_MAX_FALLOS`: entero >= 1; un valor inválido vuelve al defecto. */
+export function maximoDeFallosSeguidos(entorno: Record<string, string | undefined>): number {
+  const n = Number(entorno['SOCKET_REVALIDACION_MAX_FALLOS']);
+  return Number.isInteger(n) && n >= 1 ? n : FALLOS_SEGUIDOS_POR_DEFECTO;
+}
+
 /** Lo que el servidor guarda de cada socket. Sale de la SESIÓN, nunca del cliente. */
 interface DatosDelSocket {
   cookie: string | null;
   tenantId: string;
   usuarioId: string;
+  /** Revalidaciones seguidas que no pudieron comprobarse (la base no respondió). */
+  fallosSeguidos?: number;
 }
 
 const datosDe = (socket: Socket): DatosDelSocket => socket.data as DatosDelSocket;
@@ -69,6 +80,7 @@ export class BandejaEnVivoGateway
   private io: Server | null = null;
   private temporizador: NodeJS.Timeout | null = null;
   private revalidando = false;
+  private readonly maxFallos = maximoDeFallosSeguidos(process.env);
 
   constructor(
     @Inject(HttpAdapterHost) private readonly host: HttpAdapterHost,
@@ -148,19 +160,31 @@ export class BandejaEnVivoGateway
     }
   }
 
+  /**
+   * Dos desenlaces distintos. **Sesión inválida** (el resolutor respondió que no): cierra al
+   * momento. **No pude comprobar** (el resolutor lanzó: la base no responde): no concede ni niega,
+   * cuenta como fallo, y tras `maxFallos` seguidos se cierra. Una comprobación que sí responde
+   * reinicia la cuenta. El cliente puede reconectar y pasa el handshake completo.
+   */
   private async revalidar(socket: Socket): Promise<void> {
     const antes = datosDe(socket);
+    let r: Awaited<ReturnType<ResolutorDeAcceso['resolver']>>;
     try {
-      const r = await this.acceso.resolver({ cookie: antes.cookie });
-      if (!r.concedido) return this.cerrar(socket, r.motivo);
-      // Cambió la agencia activa o el usuario: las salas ya no corresponden. Cerrar y que
-      // reconecte es más simple —y más seguro— que mover salas.
-      if (r.acceso.tenantId !== antes.tenantId || r.acceso.usuarioId !== antes.usuarioId) {
-        return this.cerrar(socket, 'SIN_AGENCIA_ACTIVA');
-      }
+      r = await this.acceso.resolver({ cookie: antes.cookie });
     } catch {
-      // Un fallo de infraestructura NO concede ni niega: el socket sigue y se reintenta en 60 s.
-      this.log.error('La revalidación de un socket falló; se reintenta en la siguiente.');
+      antes.fallosSeguidos = (antes.fallosSeguidos ?? 0) + 1;
+      this.log.error(
+        `La revalidación de un socket no pudo comprobarse (${antes.fallosSeguidos}/${this.maxFallos}).`,
+      );
+      if (antes.fallosSeguidos >= this.maxFallos) this.cerrar(socket, 'REVALIDACION_NO_DISPONIBLE');
+      return;
+    }
+    antes.fallosSeguidos = 0;
+    if (!r.concedido) return this.cerrar(socket, r.motivo);
+    // Cambió la agencia activa o el usuario: las salas ya no corresponden. Cerrar y que
+    // reconecte es más simple —y más seguro— que mover salas.
+    if (r.acceso.tenantId !== antes.tenantId || r.acceso.usuarioId !== antes.usuarioId) {
+      this.cerrar(socket, 'SIN_AGENCIA_ACTIVA');
     }
   }
 
