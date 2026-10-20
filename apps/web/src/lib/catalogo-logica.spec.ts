@@ -65,8 +65,8 @@ describe('Pruebas del Catálogo de Paquetes y Tarifarios de Mayoristas', () => {
           const resPrecio = EsquemaPrecio.safeParse(pr);
           expect(resPrecio.success).toBe(true);
           expect(pr.venta.moneda).toBe('COP');
-          expect(pr.neto.moneda).toBe('COP');
-          expect(BigInt(pr.venta.unidades)).toBeGreaterThan(BigInt(pr.neto.unidades));
+          expect(pr.neto?.moneda).toBe('COP');
+          expect(BigInt(pr.venta.unidades)).toBeGreaterThan(BigInt(pr.neto?.unidades ?? '0'));
         }
       }
     }

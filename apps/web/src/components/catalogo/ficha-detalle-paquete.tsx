@@ -240,9 +240,11 @@ export function FichaDetallePaquete({ paquete, alCerrar }: FichaDetallePaquetePr
                                   <div className="cifra font-bold text-neutral-900 dark:text-white">
                                     {formatearDinero(precio.venta)}
                                   </div>
-                                  <div className="cifra text-[10px] text-neutral-400 dark:text-neutral-500">
-                                    Neto: {formatearDinero(precio.neto)}
-                                  </div>
+                                  {precio.neto && (
+                                    <div className="cifra text-[10px] text-neutral-400 dark:text-neutral-500">
+                                      Neto: {formatearDinero(precio.neto)}
+                                    </div>
+                                  )}
                                   {precio.edadMinima !== null && precio.edadMaxima !== null && (
                                     <div className="text-[10px] text-neutral-500 dark:text-neutral-400">
                                       {precio.edadMinima} a {precio.edadMaxima} años
