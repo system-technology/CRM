@@ -589,7 +589,12 @@ describe('código por correo', () => {
     const anterior = process.env['OTP_ENVIOS_POR_CORREO'];
     process.env['OTP_ENVIOS_POR_CORREO'] = '3';
     try {
-      const existente = SOLO_CODIGO;
+      // Un buzón sin uso previo: el contador del resto de las pruebas no cuenta.
+      const existente = correo('limite');
+      creados.push(existente);
+      await admin.identidad.create({
+        data: { correo: existente, nombre: 'Límite', correoVerificado: true },
+      });
       const fantasma = correo('fantasma-limite');
       const antes = correoDePrueba.para(existente).length;
       const respuestas = [];
