@@ -1,4 +1,35 @@
-﻿**SIGUIENTE: 0c.34 — borrar los catch→mock de obtenerTableroPipeline y obtenerFichaDeContacto en crm-api.ts, y una prueba con un 200 malformado. Nada más hasta cerrarla.**
+﻿**SIGUIENTE, EN ESTE ORDEN: 0c.29 (ingreso con la API real de identidad) → 0c.27 → 0c.35 (bandeja en tiempo real). La 0c.32 se hizo antes que la 0c.29; no bloquea, pero no se coge otra fuera de este orden.**
+
+# REVISIÓN — 0c.32 `293187e`
+
+## Veredicto: **ACEPTADA**, sin bloqueantes
+
+- **Foco atrapado, Esc y foco de vuelta:** `use-foco-modal.ts` guarda `document.activeElement` al abrir,
+  enfoca el primer elemento (o el inicial), cicla con Tab/Shift+Tab, cierra con Escape y devuelve el foco
+  al disparador. Aplicado a los cuatro modales (plantillas, guardar cotización, motivo de pérdida,
+  búsqueda global).
+- **Pruebas:** `foco-modal.spec.tsx` (386 líneas) comprueban comportamiento real: `fireEvent.keyDown`
+  de Escape y Tab con `shiftKey` y `document.activeElement`, tanto en un arnés como en los modales
+  reales. No son de implementación.
+- **Teclado en la bandeja:** las flechas de la lista ya existían; la entrega añade el anillo de foco
+  visible a las filas. **No hay prueba** de la navegación de la lista.
+- **Ejecutado:** web lint, typecheck, `format:check` limpios; 24 archivos y 227 pruebas en verde.
+
+### Cola (no bloquea, Antigravity; arreglo corto)
+
+1. **Probable defecto por lectura (no lo reproduje):** el `useEffect` de `useFocoModal` lleva `alCerrar` en
+   sus dependencias. Los modales reciben un `alCerrar` en línea (`() => set...(false)`), así que si el
+   **padre** se vuelve a renderizar con el modal abierto, el efecto se repite: el cleanup devuelve el foco
+   al «previo», y la nueva ejecución guarda como «previo» un elemento **de dentro del modal** y vuelve a
+   enfocar el primero a los 30 ms. Resultado posible: foco robado al escribir y, al cerrar, el foco no
+   vuelve al botón que abrió. Las pruebas no lo ven porque el estado del arnés no re-renderiza al padre
+   a mitad. Arreglo: guardar `alCerrar` en un `ref` y quitarlo de las dependencias; prueba que re-renderiza
+   al padre con el modal abierto y comprueba que el foco no se mueve.
+2. Falta una prueba de teclado de `lista-conversaciones.tsx` (flecha abajo/arriba y Enter).
+
+---
+
+**SIGUIENTE: 0c.34 — borrar los catch→mock de obtenerTableroPipeline y obtenerFichaDeContacto en crm-api.ts, y una prueba con un 200 malformado. Nada más hasta cerrarla.**
 
 # REVISIÓN — 0c.31 `f559aea`
 
