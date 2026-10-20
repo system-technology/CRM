@@ -6,7 +6,7 @@
 
 | Campo | Valor |
 |---|---|
-| Última actualización | 2026-10-20 (madrugada: hasta v0.33.0; Neon y `main` vuelven a coincidir) |
+| Última actualización | 2026-10-20 (madrugada: hasta v0.33.1) |
 | Actualizado por | Claude Opus 5.5 (`integrador`) |
 | Fase | **Rebanada vertical de paquetes, en construcción** |
 | Avance de la fase | Cotizador de punta a punta. **La cotización es la suma de sus tarifas y el precio «desde» es uno que el comprador puede pagar (v0.19.0).** Apretón de manos del webhook vivo. Bandeja web en construcción |
@@ -1096,8 +1096,8 @@ Registro: [`docs/_integraciones/2026-10-19-v0.32.0.md`](docs/_integraciones/2026
 
 | Cola | Dueño | Por qué no bloquea |
 |---|---|---|
-| **El filtro de reencolados de la base todavía no actúa**: el trabajador no pasa `maxReencolados` como tercer argumento, y cuenta en Redis en vez de llamar a `contar_reencolado_barrido` | `backend` | Hoy no hay volumen. Sin esto, el tope de la base es papel |
-| La baja de una cuenta no da de baja sus canales | `backend` | El directorio ya la propaga a las filas WABA. Falta la coherencia en `canales` |
+| ~~El filtro de reencolados de la base todavía no actúa~~ | `backend` | **Cerrado en v0.33.1**: el trabajador llama a `contar_reencolado_barrido` y pasa `maxReencolados` |
+| La baja de una cuenta no da de baja sus canales. **Cuando exista el caso de uso que da de baja una cuenta**, que revoque sus canales en la misma transacción y bajo RLS. Hoy ese caso de uso no existe | `backend` | El directorio ya propaga la baja a las filas WABA (v0.32.0) |
 
 ## Integración del 2026-10-20 — v0.33.0: identidad global y roles por agencia (ADR-0011, rebanada 1)
 
@@ -1115,4 +1115,13 @@ Estáticas en el worktree de compuerta (`D:\Projects\CRM-gate`), en verde.
 **Neon y `main` coinciden.** La `checksum` de `20261019230000` en Neon (`9071640e…`) es el sha256 del archivo. `migrate status` desde
 `main` da 22 migraciones, «Database schema is up to date», sin nada pendiente ni divergente. Se cierra el bloqueo de la aserción 11.
 Registro: [`docs/_integraciones/2026-10-20-v0.33.0.md`](docs/_integraciones/2026-10-20-v0.33.0.md).
+
+## Integración del 2026-10-20 — v0.33.1: el contador de reencolados en la base
+
+`fix/inbox-barrido-contador-en-base` @ `b178ee9` entra en `main` (`6b5a3ea`), etiquetada **v0.33.1**. El barrido deja de contar los
+reencolados en Redis: ahora llama a `contar_reencolado_barrido` y pasa `maxReencolados` a `listar_changes_pendientes`, las dos
+funciones de la v0.32.0. No hay privilegios nuevos ni migraciones. La e2e (`inbox-barrido.e2e-spec`, ahora con 4 pruebas)
+demuestra que un change con 11 reencolados deja de listarse. Compuerta: CI **8/8** sobre el árbol del merge, porque la rama
+iba 4 por detrás: https://github.com/Alfavear/CRM/actions/runs/39348242898. Estáticas en local en verde.
+Registro: [`docs/_integraciones/2026-10-20-v0.33.1.md`](docs/_integraciones/2026-10-20-v0.33.1.md).
 
