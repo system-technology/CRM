@@ -1,7 +1,8 @@
 # ADR-0012 — Proveedor de correo transaccional: Postmark, por HTTP, detrás de `PuertoCorreo`
 
-- **Estado:** Propuesto. `auditor-seguridad`: aceptado con cambios, ya incorporados. Pendiente del
-  propietario
+- **Estado:** Aceptado (2026-10-20) por el propietario. `auditor-seguridad` lo aceptó con cambios, ya
+  incorporados. Se envía desde un **dominio técnico neutro**, que elige y compra el propietario,
+  mientras no haya nombre comercial
 - **Fecha:** 2026-10-20
 - **Decide:** propietario
 - **Consultados:** `arquitecto` (autor), `auditor-seguridad` (aceptado con cambios). Pendiente:
