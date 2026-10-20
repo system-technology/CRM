@@ -17,11 +17,16 @@ import {
   ListarCotizaciones,
   type PaginaDeCotizaciones,
 } from '@viajapro/contracts';
+import { autorizarMargen } from '../../../shared/autorizacion/margen.js';
 import { ZodValidationPipe } from '../../../shared/validacion/zod-validation.pipe.js';
 import { CotizacionesUseCase } from '../application/cotizaciones.use-case.js';
 
 /** Solo la cadena `true` activa el margen: cualquier otra cosa es el valor seguro. */
-const pideMargen = (v: string | undefined): boolean => v === 'true';
+/**
+ * `?incluirMargen=true` exige `cotizacion.ver_neto_y_margen` y, sin él, responde 403 (ADR-0011,
+ * paso 6). No se ignora en silencio: eso enseñaría que pedirlo es inocuo.
+ */
+const pideMargen = (v: string | undefined): boolean => autorizarMargen(v === 'true');
 
 @Controller('api/v1/cotizaciones')
 export class CotizacionesController {

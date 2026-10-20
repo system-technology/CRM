@@ -15,7 +15,14 @@ import {
   HttpStatus,
   Logger,
 } from '@nestjs/common';
-import { DomainError, EstadoInvalidoError, InvariantError } from '@viajapro/domain';
+import {
+  DemasiadosIntentosError,
+  DomainError,
+  EstadoInvalidoError,
+  InvariantError,
+  NoAutenticadoError,
+  ProhibidoError,
+} from '@viajapro/domain';
 import type { Response } from 'express';
 import { ContextoTenant } from '../tenant/contexto-tenant.js';
 
@@ -47,9 +54,15 @@ export class DominioExcepcionFilter implements ExceptionFilter {
           ? HttpStatus.UNPROCESSABLE_ENTITY
           : excepcion instanceof EstadoInvalidoError
             ? HttpStatus.CONFLICT
-            : /_NO_ENCONTRAD[OA]$/.test(excepcion.code)
-              ? HttpStatus.NOT_FOUND
-              : HttpStatus.BAD_REQUEST;
+            : excepcion instanceof NoAutenticadoError
+              ? HttpStatus.UNAUTHORIZED
+              : excepcion instanceof ProhibidoError
+                ? HttpStatus.FORBIDDEN
+                : excepcion instanceof DemasiadosIntentosError
+                  ? HttpStatus.TOO_MANY_REQUESTS
+                  : /_NO_ENCONTRAD[OA]$/.test(excepcion.code)
+                    ? HttpStatus.NOT_FOUND
+                    : HttpStatus.BAD_REQUEST;
 
       this.log.warn(
         `${excepcion.code}: ${excepcion.message}` +

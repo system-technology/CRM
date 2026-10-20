@@ -51,3 +51,12 @@ export abstract class InvariantError extends DomainError {}
 
 /** La operación no está permitida en el estado actual. Corresponde a un 409. */
 export abstract class EstadoInvalidoError extends DomainError {}
+
+/** No hay una sesión válida: sin sesión, o ya no vale. Corresponde a un 401. */
+export abstract class NoAutenticadoError extends DomainError {}
+
+/** Hay sesión, pero no puede hacer esto: sin membresía o sin permiso. Corresponde a un 403. */
+export abstract class ProhibidoError extends DomainError {}
+
+/** Demasiados intentos en poco tiempo. Corresponde a un 429. */
+export abstract class DemasiadosIntentosError extends DomainError {}

@@ -23,6 +23,7 @@ import {
   type CotizarSalida as PeticionCotizar,
   type SalidaPublicada,
 } from '@viajapro/contracts';
+import { autorizarMargen } from '../../../shared/autorizacion/margen.js';
 import { ZodValidationPipe } from '../../../shared/validacion/zod-validation.pipe.js';
 import { CotizarSalidaUseCase } from '../application/cotizar-salida.use-case.js';
 import { ListarSalidasUseCase } from '../application/listar-salidas.use-case.js';
@@ -93,6 +94,8 @@ export class SalidasController {
   async cotizarSalida(
     @Body(new ZodValidationPipe(CotizarSalidaContrato)) peticion: PeticionCotizar,
   ): Promise<CotizacionDeSalida> {
+    // `incluirMargen: true` exige el permiso: sin él, 403 (ADR-0011, paso 6).
+    autorizarMargen(peticion.incluirMargen ?? false);
     return this.cotizar.ejecutar(peticion);
   }
 }

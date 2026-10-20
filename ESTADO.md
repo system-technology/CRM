@@ -6,7 +6,7 @@
 
 | Campo | Valor |
 |---|---|
-| Última actualización | 2026-10-20 (madrugada: hasta v0.33.1) |
+| Última actualización | 2026-10-20 (hasta v0.34.0: autenticación con sesión) |
 | Actualizado por | Claude Opus 5.5 (`integrador`) |
 | Fase | **Rebanada vertical de paquetes, en construcción** |
 | Avance de la fase | Cotizador de punta a punta. **La cotización es la suma de sus tarifas y el precio «desde» es uno que el comprador puede pagar (v0.19.0).** Apretón de manos del webhook vivo. Bandeja web en construcción |
@@ -131,7 +131,7 @@ Ordenada. La primera es la que debe tomarse ahora.
 | 11b | `META_APP_SECRET` y `WEBHOOK_PAYLOAD_KEY_VERSION` en `.env` | Usuario | **Cerrada (2026-10-19).** El integrador comprobó la presencia sin imprimir valores. `META_APP_SECRET`, `WHATSAPP_DIRECTORY_PEPPER` y `WEBHOOK_PAYLOAD_KEY` tienen valor en los cuatro árboles, y en cada variable es el mismo en los cuatro (mismo hash). `WEBHOOK_PAYLOAD_KEY_VERSION=1` en los cuatro |
 | 11c | Los metadatos de decorador no siempre llegan con el transpilador de desarrollo | `backend` | **Hecha (`85eceac`, v0.19.0).** `@Inject` explícito y `guardia-de-inyeccion.spec.ts`, que pone en rojo cualquier dependencia sin token |
 | 11d | El aviso «Acceso sin contexto de tenant» se emitía una vez por mensaje | `backend` | **Hecha (`f57925b`, v0.19.0).** El webhook usa `sinTenantDeclarado`, con la operación declarada en `operaciones-de-plataforma.ts` (tipo cerrado). La variante ruidosa sigue para todo lo no declarado |
-| 12 | Autenticación: el `tenant_id` debe salir del token de sesión | `datos`, `backend`, Antigravity | **ADR-0011 aceptado y ratificado** (en `main` desde `b6a1c4b`). **Rebanada 1 integrada (v0.33.0):** identidad global, roles por agencia, `viajapro_identidad` y `viajapro_accesos` (`NOLOGIN`). **Siguiente, la rebanada 2 (`backend`):** el módulo `identity`, las guardias y el 403 del margen, con **la condición del auditor de guardar con hash el token de sesión y el OTP** |
+| 12 | Autenticación: el `tenant_id` debe salir del token de sesión | `datos`, `backend`, Antigravity | **ADR-0011 aceptado y ratificado.** Rebanada 1 (esquema) en v0.33.0 y **rebanada 2 (módulo `identity` con Better Auth) en v0.34.0**: token de sesión con hash, tenant solo desde la sesión, 403 del margen. Siguen la 3 (pantalla de ingreso, Antigravity) y la 4 (invitaciones y código por correo, con `storeOTP: 'hashed'`) |
 | 13 | La carrera de `turbo` entre `build` y `typecheck` | `devops` | **Hecha (`f9da930`, v0.19.0).** `typecheck` de `web` y `database` depende de su `build`. Verificado: `typecheck --force` 9/9 sin caché |
 | 14 | El aviso de `any` no es una compuerta | `devops` | `no-explicit-any` está en `warn` y ningún script lleva `--max-warnings 0`: hoy hay cero `any`, pero el primero entraría sin que lint falle |
 
@@ -764,7 +764,7 @@ y el tenant llega por cabecera, solo con `APP_ENV=local`. Va ligado a la tarea 1
 
 | Cola | Dueño | Por qué no bloquea |
 |---|---|---|
-| **`incluirMargen` sin control de rol**: cualquiera que llame la API ve el margen, o sea el neto | `backend`, junto con la **tarea 12** | No hay autenticación ni superficie para el viajero. **Dependencia dura:** no se despliega sin sesión y sin un rol que pueda pedir el margen |
+| ~~`incluirMargen` sin control de rol~~ | `backend` | **Cerrado en v0.34.0:** sin el permiso «ver neto y margen», 403 `PERMISO_DENEGADO` (`autorizarMargen()` en cotizaciones y en `POST /catalogo/cotizar`) |
 | ~~Listado, envío y estados de la cotización~~ | `backend` | **Hecho en v0.25.0**: listado por cursor y máquina de estados. Queda el envío por WhatsApp |
 | ~~El filtro de errores responde 400 a `*_NO_ENCONTRADA`~~ | `backend` | **Resuelto en v0.25.0**: 404 para `_NO_ENCONTRADA` y `_NO_ENCONTRADO` |
 | ~~`quoting` leía `contactos` y `oportunidades` de `crm` directamente (R4)~~ | `arquitecto` | **Cerrado en v0.30.1** |
@@ -1124,4 +1124,34 @@ funciones de la v0.32.0. No hay privilegios nuevos ni migraciones. La e2e (`inbo
 demuestra que un change con 11 reencolados deja de listarse. Compuerta: CI **8/8** sobre el árbol del merge, porque la rama
 iba 4 por detrás: https://github.com/Alfavear/CRM/actions/runs/39348242898. Estáticas en local en verde.
 Registro: [`docs/_integraciones/2026-10-20-v0.33.1.md`](docs/_integraciones/2026-10-20-v0.33.1.md).
+
+## Integración del 2026-10-20 — v0.34.0: el módulo identity con Better Auth (ADR-0011, rebanada 2)
+
+`feat/identity-modulo` @ `2e65648` entra en `main` (`c3bbdf2`), etiquetada **v0.34.0**. Son 57 archivos, un cambio estructural ya anunciado en
+el ADR. `auditor-seguridad` lo ACEPTÓ CON UN CAMBIO, que ya está hecho: el límite de intentos sale de `req.ip` con `API_TRUST_PROXY`
+(por defecto, ninguno), y una prueba de 6 intentos rotando la cabecera da 429. Compuerta: CI **8/8**, run
+https://github.com/Alfavear/CRM/actions/runs/39352438574, sobre la punta, que contiene `main`. Estáticas en local en verde.
+
+- **Variables nuevas.** `DATABASE_IDENTIDAD_URL`, `BETTER_AUTH_SECRET`, `IDENTIDAD_DEV_PASSWORD` y `API_TRUST_PROXY` están vacías en
+  `.env.example`, y las dos primeras declaradas en `turbo.json`. El CI genera `BETTER_AUTH_SECRET` con `openssl`, y
+  `roles-de-desarrollo.mjs` exporta `DATABASE_IDENTIDAD_URL`.
+- **Dependencia nueva:** `better-auth`, justificada en la bitácora del 2026-10-20.
+- **Sin `DATABASE_IDENTIDAD_URL`, la API aborta, comprobado.** Arranqué `dist/main.js` sin esa variable: sale con código 1 y el
+  mensaje «Falta DATABASE_IDENTIDAD_URL. No hay respaldo a propósito…». No arranca a medias.
+
+**Para el usuario: probar la autenticación en local.** Hoy ningún `.env` local tiene `BETTER_AUTH_SECRET`.
+
+1. Pon en los cuatro `.env` **los mismos valores** de `BETTER_AUTH_SECRET` (`openssl rand -base64 48`), `IDENTIDAD_DEV_PASSWORD`
+   y `DATABASE_IDENTIDAD_URL`. La última la escribe `scripts/rotar-roles-y-actualizar-env.ps1`, que ya rota cuatro roles.
+2. `pnpm --filter @viajapro/api identidad:sembrar-dev`, que da las credenciales a las identidades de la semilla.
+3. `pnpm dev`, y luego `POST /api/v1/auth/sign-in/email` con `Origin: http://localhost:3000`. Deja una cookie de sesión.
+   Después, `POST /api/v1/auth/tenant-activo`.
+4. Con la cookie, `?incluirMargen=true` da 403 si la persona no tiene el permiso.
+
+Registro: [`docs/_integraciones/2026-10-20-v0.34.0.md`](docs/_integraciones/2026-10-20-v0.34.0.md).
+
+| Cola | Dueño | Por qué no bloquea |
+|---|---|---|
+| **Socket.IO no existe en la API.** Sus cuatro `it.todo` (revalidar la sesión del socket cada 60 s) **bloquean la rama que lo cree**: no entra sin convertirlos en pruebas | `backend` | Hoy no hay socket que revalidar |
+| El OTP, cuando entre (rebanada 4), con `storeOTP: 'hashed'` | `backend` | Hoy no hay OTP |
 
