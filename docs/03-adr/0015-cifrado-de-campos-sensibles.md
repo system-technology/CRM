@@ -4,7 +4,8 @@
   decisión del 0014 y amplía su alcance. El 0014 ya está en `main` y aceptado, así que no se edita
   (CLAUDE.md §9 y la plantilla): solo cambia su línea de estado a
   `Superseded por ADR-0015`.
-- **Estado:** Propuesto
+- **Estado:** Propuesto. `auditor-seguridad`: aceptado con cambios, ya incorporados. Pendiente del
+  propietario
 - **Fecha:** 2026-10-20
 - **Decide:** el propietario, con el veredicto de `auditor-seguridad`, porque toca datos de tenants
 - **Consultados:** `arquitecto` (autor). Pendientes: `auditor-seguridad`, `datos` (migración),
@@ -97,9 +98,13 @@ pasajeros**: el `Viajero` del glosario solo aparece como valor del enum `Entidad
 | `contactos.preferencias` | Alergias, es decir, salud | **Cifrar** | Dato sensible por definición. Nadie la busca y se lee de una fila |
 | `notas_internas.texto` | Lo que el asesor anota del viajero: documento, salud, menores | **Cifrar** | Texto libre de 2.000 caracteres, sin búsqueda en el código |
 | `adjuntos.nombre_archivo` | «pasaporte_AB123456.jpg» | **Cifrar** | Lo elige el viajero, nadie lo busca y cuesta lo mismo |
+| `adjuntos.clave_objeto` | La ruta en S3 | **No, pero con una condición** | Hoy ningún código la escribe; solo el fixture de `aislamiento.spec.ts:2581`. **Exigencia:** es un identificador opaco (`<tenant_id>/<uuid>`), **nunca derivado de `nombre_archivo`**, porque si no deja en claro lo que se cifró. La descarga de media lo prueba con una aserción |
 | `contactos.campos_personalizados` y `oportunidades.campos_personalizados` (jsonb) | Lo que la agencia defina, incluido un campo «pasaporte» | **No, por ahora** | Tiene índice GIN para filtrar. Pasaporte y fecha de nacimiento tienen su sitio en `Viajero`, que nacerá cifrado. **Riesgo en cola:** una marca `sensible` en `definiciones_campo_personalizado` que cifre esos valores |
 | `contactos.etiquetas` | «Celíaco», «Diabético» | **No** | Es un filtro de segmentación y se muestra en listados. La guía de producto: la salud va en `preferencias`. **Riesgo aceptado**, revisable |
+| `conversaciones.etiquetas` | Lo mismo que las del contacto | **No** | El mismo criterio que `contactos.etiquetas`: es un filtro de la bandeja. **Riesgo aceptado**, revisable |
 | `oportunidades.nota_perdida` (500) y `proxima_tarea_descripcion` (200) | Estado comercial; ocasionalmente «falta pasaporte del niño» | **No** | Describen la venta, no al viajero, y se pintan en el tablero. **Riesgo aceptado** |
+| `oportunidades.titulo` y `cotizaciones.titulo` (200) | «Viaje de Ana y su hijo»: nombres y la existencia de un menor | **No. Riesgo aceptado, con cola** | Los nombres son PII ordinaria y ya están en claro en `contactos.nombre`. Lo sensible (documento, salud) no es lo que se escribe en un título. Son el asa de los listados: el tablero (`crm.prisma.ts:30`) y las cotizaciones. Hoy no se buscan por título, pero cifrarlos cerraría esa búsqueda. **Cola** (`frontend`): un texto guía «Destino y fecha». Se revisa si una muestra real trae datos sensibles |
+| `versiones_cotizacion.lineas` (jsonb) | Nada del viajero | **No** | **Verificado:** la entrada `ComposicionDeVersion` es `.strict()` y solo trae paquete, fecha, conteos y acomodación (`packages/contracts/src/cotizaciones.ts:30-41`). Cada línea es un `OpcionDePrecio` (`vigencias.ts:270`) cuyo `nombre` es el de la tarifa, leído de `tarifas` en `cotizar-salida.use-case.ts:160`. No hay nombres de pasajeros. Si `Viajero` llega a la cotización, entra en el alcance |
 | `contactos.nombre`, `telefono_e164` y `correo` | PII ordinaria, no sensible | **No** | Son la llave del canal y de la búsqueda. Su cifrado no lo exige R10 |
 | `registros_auditoria.detalle` y `outbox.payload` | Nada, por invariante | **No** | El texto no entra ahí. Se prueba en `inbox-visibilidad.e2e-spec.ts` |
 | `consentimientos_contacto.prueba`, `mensajes.motivo_fallo` y `plantillas_whatsapp.cuerpo` | Evidencia, códigos de Meta y texto de la agencia | **No** | No son PII del viajero |
