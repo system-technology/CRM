@@ -722,3 +722,28 @@ Se creó el archivo de pruebas de componentes `apps/web/src/components/comun/esq
     - `@viajapro/domain`: **VERDE**.
     - `@viajapro/api`: **VERDE**.
     - `@viajapro/database`: 73/76 pasando. La prueba 57 de `tests/aislamiento.spec.ts` excede el timeout por defecto de 5000 ms (toma 5004 ms sobre la WAN a Neon) al no contar con el parámetro `, 60_000)` que tienen otras pruebas largas del archivo, dejando la transacción abierta para la 58 y 59. No se alteró `packages/database` por regla R11 (ámbito exclusivo de `apps/web`).
+
+---
+
+### 2026-10-20 — 0c.32 y 0c.30: Foco accesible en modales, navegación por teclado en lista y preservación de errores de dominio
+
+- **Tareas de la cola / revisión:** 0c.32 (cola residual), 0c.30 (cola residual).
+- **Reglas respetadas:** R3 (cero tipos redefinidos, esquemas de contratos), R8 (moneda entera en COP), R10 (confidencialidad y PII), R11 (sólo código en apps/web, sin tocar main ni packages/database).
+- **Archivos creados:**
+  - `apps/web/src/components/bandeja/lista-conversaciones-teclado.spec.tsx`: 4 pruebas de componente verificando navegación secuencial con `ArrowDown` y `ArrowUp`, foco rápido a búsqueda con tecla `/`, y enlaces accesibles con URLs de conversación.
+- **Archivos modificados:**
+  - `apps/web/src/lib/use-foco-modal.ts`: estabilizado el ciclo de vida del foco. Se almacena `alCerrar` en un `useRef` (`alCerrarRef.current = alCerrar`) y se retira `alCerrar` de las dependencias del `useEffect`. Se elimina la fuga donde un re-renderizado del padre con un callback en línea reiniciaba el temporizador de foco, robaba el cursor o sobrescribía el elemento disparador.
+  - `apps/web/src/components/comun/foco-modal.spec.tsx`: añadida prueba 6 demostrando que el re-renderizado del componente padre con `alCerrar` en línea NO mueve el foco ni reinicia el temporizador, y al presionar Escape devuelve el foco limpiamente al botón disparador original (10/10 pruebas pasando).
+  - `apps/web/src/lib/estados-ui-logica.ts`: incorporada tabla `TABLA_ERRORES_DOMINIO` (`SIN_VIGENCIA`, `VIGENCIAS_EMPATADAS`, `VENTANA_CERRADA`, `CONFLICTO_VERSION`, `PLAZAS_INSUFICIENTES`, etc.) priorizada por código de dominio antes de la búsqueda por palabras clave. En conflictos HTTP 409 y errores con redacción humana no técnica, se preserva íntegramente la explicación para el asesor en lugar de convertirla en un genérico «Datos inconsistentes».
+  - `apps/web/src/lib/estados-ui-logica.spec.ts`: agregadas pruebas unitarias verificando que un error 409 de dominio conserva su texto descriptivo y que los códigos de la tabla prioritaria preceden al filtrado por palabras clave (20/20 pruebas pasando).
+  - `apps/web/src/app/bandeja/bandeja-asignacion.spec.tsx` y `apps/web/src/components/bandeja/lista-conversaciones-realtime.spec.tsx`: renderizado asíncrono determinista en pruebas con carga inicial.
+- **Compuertas:**
+  - `lint`: **VERDE** (0 errores, 0 advertencias).
+  - `typecheck`: **VERDE** (TypeScript estricto en los 5 paquetes).
+  - `format:check`: **VERDE** (Prettier 100% verificado).
+  - `build`: **VERDE** (Next.js 15.5.27 compiló 16 páginas sin errores).
+  - `test`:
+    - `@viajapro/web`: **34/34 archivos en verde, 295/295 pruebas pasando**.
+    - `@viajapro/contracts`: **VERDE**.
+    - `@viajapro/domain`: **VERDE**.
+    - `@viajapro/database`: 73/76 pasando (las 3 fallidas corresponden a timeout WAN de 5000 ms en la prueba 57 sobre Neon sin parámetro largo, documentada en ESTADO.md; no se altera packages/database por R11).

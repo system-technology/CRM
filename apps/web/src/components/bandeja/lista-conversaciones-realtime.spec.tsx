@@ -59,9 +59,10 @@ describe('ListaConversaciones — Integración en tiempo real (0c.35)', () => {
     vi.spyOn(inboxApi, 'consultarBandeja').mockResolvedValue(PAGINA_MOCK);
   });
 
-  it('1. Muestra el indicador de «reconectando...» cuando el socket entra en reconexión', () => {
-    act(() => {
+  it('1. Muestra el indicador de «reconectando...» cuando el socket entra en reconexión', async () => {
+    await act(async () => {
       render(<ListaConversaciones />);
+      await new Promise((r) => setTimeout(r, 20));
     });
 
     // Inicialmente no está reconectando
@@ -83,9 +84,10 @@ describe('ListaConversaciones — Integración en tiempo real (0c.35)', () => {
     expect(screen.queryByTestId('indicador-reconectando')).toBeNull();
   });
 
-  it('2. Retira la conversación de la lista al recibir evento CONVERSACION_RETIRADA', () => {
-    act(() => {
+  it('2. Retira la conversación de la lista al recibir evento CONVERSACION_RETIRADA', async () => {
+    await act(async () => {
       render(<ListaConversaciones />);
+      await new Promise((r) => setTimeout(r, 20));
     });
 
     expect(screen.getByText('Carlos Cliente')).toBeDefined();

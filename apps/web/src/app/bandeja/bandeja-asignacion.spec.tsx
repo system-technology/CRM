@@ -72,7 +72,7 @@ describe('BandejaConversacionPage — Asignación y Retiro en Tiempo Real (0c.35
     );
   });
 
-  it('1. En conversación sin asignar muestra botón «Tomar» y asigna al asesor activo', () => {
+  it('1. En conversación sin asignar muestra botón «Tomar» y asigna al asesor activo', async () => {
     vi.spyOn(inboxApi, 'obtenerConversacionDetalle').mockResolvedValue({
       ...DETALLE_BASE,
       asignadoAId: null,
@@ -85,8 +85,9 @@ describe('BandejaConversacionPage — Asignación y Retiro en Tiempo Real (0c.35
       asignadoANombre: 'Carlos Asesor',
     });
 
-    act(() => {
+    await act(async () => {
       render(<BandejaConversacionPage />);
+      await new Promise((r) => setTimeout(r, 20));
     });
 
     const botonTomar = screen.getByTestId('boton-tomar');
@@ -102,7 +103,7 @@ describe('BandejaConversacionPage — Asignación y Retiro en Tiempo Real (0c.35
     });
   });
 
-  it('2. En conversación asignada al asesor activo muestra botones «Soltar» y «Reasignar»', () => {
+  it('2. En conversación asignada al asesor activo muestra botones «Soltar» y «Reasignar»', async () => {
     vi.spyOn(inboxApi, 'obtenerConversacionDetalle').mockResolvedValue({
       ...DETALLE_BASE,
       asignadoAId: MI_USUARIO_ID,
@@ -115,8 +116,9 @@ describe('BandejaConversacionPage — Asignación y Retiro en Tiempo Real (0c.35
       asignadoANombre: null,
     });
 
-    act(() => {
+    await act(async () => {
       render(<BandejaConversacionPage />);
+      await new Promise((r) => setTimeout(r, 20));
     });
 
     const botonSoltar = screen.getByTestId('boton-soltar');
@@ -135,15 +137,16 @@ describe('BandejaConversacionPage — Asignación y Retiro en Tiempo Real (0c.35
     });
   });
 
-  it('3. Al recibir CONVERSACION_RETIRADA, muestra aviso de retiro, bloquea envío y PRESERVA el borrador', () => {
+  it('3. Al recibir CONVERSACION_RETIRADA, muestra aviso de retiro, bloquea envío y PRESERVA el borrador', async () => {
     vi.spyOn(inboxApi, 'obtenerConversacionDetalle').mockResolvedValue({
       ...DETALLE_BASE,
       asignadoAId: MI_USUARIO_ID,
       asignadoANombre: 'Carlos Asesor',
     });
 
-    act(() => {
+    await act(async () => {
       render(<BandejaConversacionPage />);
+      await new Promise((r) => setTimeout(r, 20));
     });
 
     // Simular que el asesor escribe un borrador
