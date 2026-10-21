@@ -1,7 +1,8 @@
 # ADR-0014 — Cifrado del texto de los mensajes
 
 - **Estado:** Aceptado por el propietario (2026-10-20), con la opción (a): cifrar y buscar solo por
-  metadatos. **Queda pendiente de `auditor-seguridad`**, y no se implementa hasta su veredicto
+  metadatos. `auditor-seguridad` lo aceptó con cambios (2026-10-20), ya incorporados. Listo para
+  implementar
 - **Fecha:** 2026-10-20
 - **Decide:** el propietario, con el veredicto de `auditor-seguridad` (toca datos de tenants)
 - **Consultados:** `arquitecto` (autor). Pendientes: `auditor-seguridad`, `datos` (migración),
