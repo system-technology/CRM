@@ -24,7 +24,7 @@ RUN pnpm --filter @viajapro/api deploy --prod /out
 RUN set -e; \
     origen=$(ls -d /app/node_modules/.pnpm/@prisma+client@*/node_modules/.prisma | head -n1); \
     destino=$(ls -d /out/node_modules/.pnpm/@prisma+client@*/node_modules | head -n1); \
-    cp -r "$origen" "$destino/.prisma"
+    rm -rf "$destino/.prisma"; cp -r "$origen" "$destino/.prisma"
 
 # ---- 2. ejecutar --------------------------------------------------------------------------
 FROM node:22.20-bookworm-slim AS runtime
