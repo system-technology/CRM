@@ -687,3 +687,38 @@ Se creó el archivo de pruebas de componentes `apps/web/src/components/comun/esq
   - `pnpm --filter web typecheck`: 0 errores.
   - `pnpm format:check`: 100% verificado con Prettier.
   - `pnpm --filter web build`: 16/16 páginas compiladas con éxito.
+
+---
+
+### 2026-10-20 — 0c.35: La bandeja en tiempo real y contra la REST real
+
+- **Tarea de la cola:** 0c.35.
+- **Reglas respetadas:** R1 (aislamiento tenant), R3 (cero tipos redefinidos, esquemas de `@viajapro/contracts`), R5 (idempotencia estricta con UUID v4), R6 (sin secretos en repo, cookie HttpOnly), R10 (sesión y visibilidad de conversaciones), R11 (sólo código en apps/web, sin tocar main ni packages/database).
+- **Archivos creados:**
+  - `apps/web/src/lib/inbox-socket.ts`: Gestor singleton de conexión Socket.IO (`RUTA_SOCKET_BANDEJA = '/api/v1/tiempo-real'`) con `withCredentials: true`, fallback offline a `realtimeMockBus`, validación Zod (`EventoBandeja.safeParse`), eventos desconocidos ignorados en silencio (R3), manejo de cierre de sesión (`sesion_cerrada`), y hook `useInboxSocket`.
+  - `apps/web/src/components/bandeja/modal-reasignar.tsx`: Diálogo accesible con `useFocoModal` (cierre con Esc, trampa de foco y touch targets $\ge 44$ px) para reasignar conversación a asesores o devolver a la cola común.
+  - `apps/web/src/lib/inbox-socket.spec.ts`: 5 pruebas unitarias verificando despacho de eventos, descarte silencioso de desconocidos, evento `CONVERSACION_RETIRADA`, reconexión y transiciones de estado.
+  - `apps/web/src/components/bandeja/lista-conversaciones-realtime.spec.tsx`: 2 pruebas de componente validando el indicador de «reconectando...» (`[data-testid="indicador-reconectando"]`) y el retiro dinámico de filas ante `CONVERSACION_RETIRADA`.
+  - `apps/web/src/app/bandeja/bandeja-asignacion.spec.tsx`: 3 pruebas de componente validando botones «Tomar», «Soltar», «Reasignar» y el aviso accesible de conversación retirada (`[data-testid="aviso-conversacion-retirada"]`) con preservación íntegra del borrador redactado.
+- **Archivos modificados:**
+  - `apps/web/src/lib/inbox-api.ts`: Rutas alineadas a la REST real (`/api/v1/conversaciones`, `/contadores`, `/:id`, `/:id/mensajes`, `/asignacion`, `/estado`, `/notas`, `/leida`) con validación Zod estricta y clave de idempotencia UUID v4 (R5).
+  - `apps/web/src/lib/inbox-api.spec.ts`: 8 pruebas unitarias actualizadas y verificadas con los nuevos endpoints y esquemas.
+  - `apps/web/src/lib/bandeja-logica.ts`: Manejo de `CONVERSACION_RETIRADA` con guardia de ratón en `reordenarConGuardia`, y funciones puras `calcularPermisosAsignacion` y `evaluarConversacionRetirada` según `docs/01-producto/12-visibilidad-de-conversaciones.md §3`.
+  - `apps/web/src/lib/bandeja-comportamiento.spec.ts`: 11 pruebas unitarias (añadidas pruebas 9, 10 y 11 para retiro, permisos y evaluación).
+  - `apps/web/src/lib/permisos.ts`: Agregado permiso `PERMISO_VER_TODAS_CONVERSACIONES` (`conversaciones.ver_todas`) y helper `puedeVerTodasConversaciones`.
+  - `apps/web/src/lib/realtime-mock.ts`: Método `emitirConversacionRetirada` para simulación offline.
+  - `apps/web/src/components/bandeja/lista-conversaciones.tsx`: Conectado a `useInboxSocket`, badge de reconexión y re-fetch por REST en reconexión.
+  - `apps/web/src/app/bandeja/[id]/page.tsx`: Conectado a `useInboxSocket`, botones de asignación («Tomar», «Soltar», «Reasignar»), aviso accesible de retirada (`[data-testid="aviso-conversacion-retirada"]`), bloqueo de envío y preservación del borrador redactado.
+  - `apps/web/package.json` y `pnpm-lock.yaml`: Añadida dependencia `socket.io-client@^4.8.4`.
+  - `traspaso/COLA.md`: Marcada la tarea `0c.35` como `[x]`.
+- **Compuertas:**
+  - `build`: **VERDE** (Next.js 15.5.27 compiló 16 páginas sin errores).
+  - `lint`: **VERDE** (cero errores, cero warnings).
+  - `typecheck`: **VERDE** (TypeScript estricto en los 5 paquetes).
+  - `format:check`: **VERDE** (Prettier 100% verificado).
+  - `test`:
+    - `@viajapro/web`: **33/33 archivos, 288/288 pruebas pasando**.
+    - `@viajapro/contracts`: **VERDE**.
+    - `@viajapro/domain`: **VERDE**.
+    - `@viajapro/api`: **VERDE**.
+    - `@viajapro/database`: 73/76 pasando. La prueba 57 de `tests/aislamiento.spec.ts` excede el timeout por defecto de 5000 ms (toma 5004 ms sobre la WAN a Neon) al no contar con el parámetro `, 60_000)` que tienen otras pruebas largas del archivo, dejando la transacción abierta para la 58 y 59. No se alteró `packages/database` por regla R11 (ámbito exclusivo de `apps/web`).

@@ -6,6 +6,7 @@ import { obtenerSesionActualApi } from './auth-api';
 
 /** Permiso estricto de visualización de netos y márgenes del cotizador y tarifario (ADR-0011). */
 export const PERMISO_VER_NETO_Y_MARGEN: Permiso = 'cotizacion.ver_neto_y_margen';
+export const PERMISO_VER_TODAS_CONVERSACIONES: Permiso = 'conversaciones.ver_todas';
 
 /**
  * Función pura para evaluar si una sesión cuenta con un permiso específico.
@@ -26,11 +27,16 @@ export function puedeVerNetoYMargen(sesion: SesionActual | null | undefined): bo
   return tienePermiso(sesion, PERMISO_VER_NETO_Y_MARGEN);
 }
 
+export function puedeVerTodasConversaciones(sesion: SesionActual | null | undefined): boolean {
+  return tienePermiso(sesion, PERMISO_VER_TODAS_CONVERSACIONES);
+}
+
 export interface ResultadoPermisos {
   sesion: SesionActual | null;
   cargando: boolean;
   tienePermiso: (permiso: Permiso) => boolean;
   puedeVerNetoYMargen: boolean;
+  puedeVerTodasConversaciones: boolean;
 }
 
 /**
@@ -75,5 +81,6 @@ export function usePermisos(sesionInicial?: SesionActual | null): ResultadoPermi
     cargando,
     tienePermiso: verificar,
     puedeVerNetoYMargen: puedeVerNetoYMargen(sesion),
+    puedeVerTodasConversaciones: puedeVerTodasConversaciones(sesion),
   };
 }

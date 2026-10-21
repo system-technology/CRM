@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type {
@@ -13,7 +13,7 @@ import { Search, Rows3, AlertTriangle, RefreshCw } from 'lucide-react';
 import { DistintivoDatosDemo } from '../comun/distintivo-datos-demo';
 import { inboxApi } from '../../lib/inbox-api';
 import { formatearErrorAmigable } from '../../lib/estados-ui-logica';
-import { realtimeMockBus } from '../../lib/realtime-mock';
+import { useInboxSocket } from '../../lib/inbox-socket';
 import {
   reordenarConGuardia,
   generarColorAvatar,
@@ -104,11 +104,20 @@ export function ListaConversaciones() {
     }
   }, []);
 
-  // Suscripción a eventos en tiempo real usando la función pura reordenarConGuardia
-  useEffect(() => {
-    const unsubscribe = realtimeMockBus.subscribe((evento: EventoBandeja) => {
-      let debeIncrementar = false;
+  // Suscripción a eventos en tiempo real con Socket.IO / mock y reconexión REST (0c.35)
+  const { estado: estadoSocket } = useInboxSocket({
+    onEvento: (evento: EventoBandeja) => {
+      if (evento.tipo === 'CONVERSACION_RETIRADA') {
+        setConversaciones((prev) => prev.filter((c) => c.id !== evento.conversacionId));
+        if (bufferConversacionesRef.current) {
+          bufferConversacionesRef.current = bufferConversacionesRef.current.filter(
+            (c) => c.id !== evento.conversacionId,
+          );
+        }
+        return;
+      }
 
+      let debeIncrementar = false;
       setConversaciones((prev) => {
         const res = reordenarConGuardia(
           prev,
@@ -125,10 +134,12 @@ export function ListaConversaciones() {
       if (debeIncrementar) {
         setPendientesReorden((p) => p + 1);
       }
-    });
-
-    return () => unsubscribe();
-  }, []);
+    },
+    onReconexion: () => {
+      // Si el socket cae y se reconecta, re-pedir lista por REST porque eventos perdidos no se reenvían (0c.35)
+      void cargarInicial();
+    },
+  });
 
   const cargarMas = async () => {
     if (!pagina?.pageInfo.nextCursor || cargandoMas) return;
@@ -180,6 +191,15 @@ export function ListaConversaciones() {
       aria-label="Lista de conversaciones"
     >
       {/* Cabecera de la lista */}
+      {estadoSocket === 'reconectando' && (
+        <div
+          data-testid="indicador-reconectando"
+          className="flex shrink-0 items-center justify-center gap-1.5 border-b border-amber-200 bg-amber-50 px-3 py-1.5 text-[11px] font-medium text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-300"
+        >
+          <RefreshCw className="h-3 w-3 animate-spin" />
+          <span>Reconectando tiempo real...</span>
+        </div>
+      )}
       <div className="shrink-0 space-y-2.5 border-b border-neutral-200 p-3 dark:border-neutral-800">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">

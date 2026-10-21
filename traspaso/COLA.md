@@ -251,7 +251,7 @@ devolviendo el mock; y `pnpm compuertas` sale en verde.
 
 ---
 
-## [ ] 0c.35. La bandeja en tiempo real y contra la REST real (añadida el 2026-10-20)
+## [x] 0c.35. La bandeja en tiempo real y contra la REST real (añadida el 2026-10-20)
 
 La API ya trae, en `main`, todo lo que esta pantalla necesita:
 - **v0.36.0:** gateway Socket.IO.

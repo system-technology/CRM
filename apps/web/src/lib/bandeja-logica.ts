@@ -16,6 +16,25 @@ export function reordenarConGuardia(
   evento: EventoBandeja,
   ratonEncima: boolean,
 ): ResultadoGuardiaReorden {
+  // Si la conversación fue retirada (reasignada a otro asesor o desvinculada)
+  if (evento.tipo === 'CONVERSACION_RETIRADA') {
+    const base = bufferActual ? [...bufferActual] : [...prevVisible];
+    const filtrada = base.filter((c) => c.id !== evento.conversacionId);
+    if (ratonEncima) {
+      return {
+        listaVisible: prevVisible,
+        nuevoBuffer: filtrada,
+        nuevoPendiente: true,
+      };
+    } else {
+      return {
+        listaVisible: filtrada,
+        nuevoBuffer: null,
+        nuevoPendiente: false,
+      };
+    }
+  }
+
   // Base de derivación: acumula sobre el buffer si ya existe
   const base = bufferActual ? [...bufferActual] : [...prevVisible];
 
@@ -242,4 +261,43 @@ export function evaluarTransicionVentanaBorrador(
     mensaje: '',
     borrador: tieneBorrador ? textoBorrador.trim() : '',
   };
+}
+
+export interface PermisosAsignacion {
+  puedeTomar: boolean;
+  puedeSoltar: boolean;
+  puedeReasignar: boolean;
+}
+
+/**
+ * Calcula qué acciones de asignación («Tomar», «Soltar», «Reasignar»)
+ * están permitidas para una conversación según las reglas de visibilidad (docs/01-producto/12-visibilidad-de-conversaciones.md §3).
+ */
+export function calcularPermisosAsignacion(
+  conversacion: ConversacionResumen | null | undefined,
+  usuarioId: string | null | undefined,
+  tienePermisoVerTodas: boolean,
+): PermisosAsignacion {
+  if (!conversacion) {
+    return { puedeTomar: false, puedeSoltar: false, puedeReasignar: false };
+  }
+
+  const sinAsignar = conversacion.asignadoAId === null;
+  const esMia = Boolean(usuarioId && conversacion.asignadoAId === usuarioId);
+
+  return {
+    puedeTomar: sinAsignar,
+    puedeSoltar: !sinAsignar && (esMia || tienePermisoVerTodas),
+    puedeReasignar: sinAsignar || esMia || tienePermisoVerTodas,
+  };
+}
+
+/**
+ * Evalúa si un evento en tiempo real retira la conversación activa del asesor.
+ */
+export function evaluarConversacionRetirada(
+  conversacionIdActual: string,
+  evento: EventoBandeja,
+): boolean {
+  return evento.tipo === 'CONVERSACION_RETIRADA' && evento.conversacionId === conversacionIdActual;
 }
