@@ -247,6 +247,40 @@ jobs:
           DIRECT_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'neondb') }}
 
   # ---------------------------------------------------------------------------
+  # ADR-0013: las imagenes que Render va a ejecutar tienen que construirse y arrancar el codigo
+  # correcto ANTES de que exista una cuenta. No se publican en ningun registro.
+  imagenes:
+    name: imagenes-de-despliegue
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Construir la imagen de la API y el trabajador
+        run: docker build -f apps/api/Dockerfile -t viajapro-api .
+
+      - name: Comprobar la imagen de la API
+        run: |
+          # No root, con el cliente de Prisma generado y con los dos puntos de entrada.
+          test "$(docker run --rm --entrypoint id viajapro-api -u)" != "0"
+          docker run --rm --entrypoint test viajapro-api -f dist/main.js
+          docker run --rm --entrypoint test viajapro-api -f dist/worker.js
+          docker run --rm --entrypoint node viajapro-api -e "
+            Promise.all([import('@viajapro/domain'), import('@viajapro/contracts'), import('@prisma/client')])
+              .then(([, , p]) => { new p.PrismaClient(); console.log('imagen de la API: ok'); })"
+
+      - name: Construir la imagen de la web
+        run: >-
+          docker build -f apps/web/Dockerfile
+          --build-arg NEXT_PUBLIC_API_URL=https://api.ejemplo.invalid
+          -t viajapro-web .
+
+      - name: Comprobar la imagen de la web
+        run: |
+          test "$(docker run --rm --entrypoint id viajapro-web -u)" != "0"
+          docker run --rm --entrypoint test viajapro-web -f apps/web/server.js
+          docker images viajapro-api viajapro-web --format '{{.Repository}} {{.Size}}'
+
+  # ---------------------------------------------------------------------------
   # Regla R4: los módulos no se importan entre sí. Es lo que permite extraer
   # servicios después, y lo primero que se erosiona.
   fronteras:

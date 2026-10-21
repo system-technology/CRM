@@ -1,0 +1,141 @@
+# Despliegue de STAGING (ADR-0013 §6 y §7). Publica lo que ya entro en `main` y paso el CI:
+#   migrate deploy (rama de staging, rol propietario) -> deploy hook de cada servicio -> /salud
+#
+# Sin cuentas todavia: si faltan los secretos del Environment `staging`, el workflow termina
+# en VERDE con un aviso y no hace nada. Asi no rompe el CI de nadie.
+#
+# Lo que usa y lo que NO usa:
+#   - Secretos del Environment `staging` (limitado a `main`): DIRECT_URL y los deploy hooks.
+#   - Nunca la clave de API de Render: vale para toda la cuenta.
+#   - Variable (no secreto) opcional del repositorio: STAGING_API_URL, para la sonda final.
+
+name: Deploy staging
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: false # un despliegue a medias no se cancela: se espera
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: '22.20.0'
+  PNPM_VERSION: '9.12.0'
+
+jobs:
+  migrar:
+    name: migrar
+    runs-on: ubuntu-latest
+    # Solo un push a main con el CI en verde. Los PR y las ramas no despliegan jamas.
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'main'
+    environment: staging
+    outputs:
+      listo: ${{ steps.secretos.outputs.listo }}
+    env:
+      SHA: ${{ github.event.workflow_run.head_sha }}
+      DIRECT_URL: ${{ secrets.DIRECT_URL }}
+    steps:
+      - name: Comprobar que hay secretos
+        id: secretos
+        run: |
+          if [ -z "$DIRECT_URL" ]; then
+            echo "listo=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Faltan los secretos del Environment 'staging' (DIRECT_URL). No se migra ni se despliega. Ver docs/07-ingenieria/despliegue-staging.md"
+          else
+            echo "listo=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.secretos.outputs.listo == 'true'
+        with:
+          ref: ${{ env.SHA }}
+          fetch-depth: 0
+
+      # ADR-0013 §6: hoy una rama sin integrar migro y rompio la compuerta.
+      - name: Negarse si el SHA no esta en main
+        if: steps.secretos.outputs.listo == 'true'
+        run: |
+          git fetch origin main
+          if ! git merge-base --is-ancestor "$SHA" origin/main; then
+            echo "::error::El SHA $SHA no es ancestro de origin/main. No se migra."
+            exit 1
+          fi
+
+      - uses: pnpm/action-setup@v4
+        if: steps.secretos.outputs.listo == 'true'
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        if: steps.secretos.outputs.listo == 'true'
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Instalar
+        if: steps.secretos.outputs.listo == 'true'
+        run: pnpm install --frozen-lockfile
+
+      # Conexion DIRECTA con el rol propietario: las migraciones no pasan por el pooler.
+      # La migracion tiene que ser compatible con el codigo anterior (expandir, luego contraer).
+      - name: prisma migrate deploy
+        if: steps.secretos.outputs.listo == 'true'
+        run: pnpm db:migrate:deploy
+        env:
+          DATABASE_URL: ${{ secrets.DIRECT_URL }}
+
+  desplegar:
+    name: desplegar
+    runs-on: ubuntu-latest
+    needs: migrar
+    if: needs.migrar.outputs.listo == 'true'
+    environment: staging
+    env:
+      HOOK_API: ${{ secrets.RENDER_DEPLOY_HOOK_API }}
+      HOOK_WORKER: ${{ secrets.RENDER_DEPLOY_HOOK_WORKER }}
+      HOOK_WEB: ${{ secrets.RENDER_DEPLOY_HOOK_WEB }}
+      STAGING_API_URL: ${{ vars.STAGING_API_URL }}
+    steps:
+      # Un hook es una URL con un token: se llama sin imprimirla y sin `-v`.
+      # Primero API y trabajador (que pueden tener migraciones nuevas esperando), luego la web.
+      - name: Llamar a los deploy hooks
+        run: |
+          for par in "API:$HOOK_API" "WORKER:$HOOK_WORKER" "WEB:$HOOK_WEB"; do
+            nombre="${par%%:*}"
+            url="${par#*:}"
+            if [ -z "$url" ]; then
+              echo "::warning::Falta RENDER_DEPLOY_HOOK_${nombre}: ese servicio no se despliega."
+              continue
+            fi
+            curl --fail --silent --show-error --max-time 30 -X POST "$url" > /dev/null
+            echo "Despliegue de ${nombre} solicitado."
+          done
+
+      # Limite conocido: el hook responde al instante y el servicio anterior sigue sano unos
+      # minutos, asi que esto confirma que la API contesta y que el rol no salta RLS, no que
+      # el SHA nuevo ya este arriba. La reversion automatica la hace Render si falla su health check.
+      - name: Sonda de salud
+        run: |
+          if [ -z "$STAGING_API_URL" ]; then
+            echo "::notice::Sin la variable STAGING_API_URL no hay sonda final."
+            exit 0
+          fi
+          sleep 60
+          for i in $(seq 1 20); do
+            if curl --fail --silent --max-time 10 "$STAGING_API_URL/salud/listo" | grep -q '"estado":"ok"'; then
+              echo "La API de staging esta lista."
+              exit 0
+            fi
+            sleep 15
+          done
+          echo "::error::La API de staging no quedo lista en 6 minutos."
+          exit 1
