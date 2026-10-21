@@ -1,4 +1,4 @@
-﻿**SIGUIENTE, EN ESTE ORDEN: 0c.37 (capturas a 375 px) → 0c.40. No cojas otra fuera de este orden.**
+﻿**SIGUIENTE, EN ESTE ORDEN: 0c.40 (socket solo se conecta con bandeja y sesión). No cojas otra fuera de este orden.**
 
 # Cola de trabajo — Antigravity
 
@@ -276,7 +276,7 @@ prometa buscar dentro de los mensajes.
 **Hecho cuando:** `git grep -niE "por cliente o mensaje|en los mensajes" apps/web/src` sin resultados y
 las compuertas web en verde.
 
-## [ ] 0c.37. Capturas a 375 px de `/ingresar`, el selector de agencia y la bandeja en vivo (añadida el 2026-10-20)
+## [x] 0c.37. Capturas a 375 px de `/ingresar`, el selector de agencia y la bandeja en vivo (añadida el 2026-10-20)
 
 Con el navegador, y como en la 0c.26: `/ingresar` (con error de credenciales), el selector de agencia, la
 bandeja con el indicador «Reconectando» y el aviso «Esta conversación se asignó a otra persona» con el

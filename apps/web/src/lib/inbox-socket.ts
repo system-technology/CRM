@@ -221,6 +221,11 @@ export class InboxSocketManager {
 
 export const inboxSocketManager = new InboxSocketManager();
 
+if (typeof window !== 'undefined') {
+  (window as unknown as { __inboxSocketManager?: InboxSocketManager }).__inboxSocketManager =
+    inboxSocketManager;
+}
+
 export function useInboxSocket(opciones?: {
   onEvento?: ListenerBandeja;
   onReconexion?: ListenerReconexion;

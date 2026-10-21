@@ -854,3 +854,18 @@ Se creó el archivo de pruebas de componentes `apps/web/src/components/comun/esq
   - `lint`: **VERDE** (0 errores, 0 advertencias).
   - `typecheck`: **VERDE** (9/9 tareas exitosas en Turborepo, cero errores TypeScript).
   - `format:check`: **VERDE** (100% verificado con Prettier).
+
+
+---
+
+### 2026-10-20 — 0c.37: Capturas a 375 px de /ingresar, selector de agencia y bandeja en vivo
+
+- **Tarea de la cola:** 0c.37 (Verificación visual móvil a 375 px y evidencia de fidelidad de diseño).
+- **Reglas respetadas:** Accesibilidad móvil a 375 px (viewport 375x812, touch targets >= 44 px, legibilidad y contraste), R11 (ámbito acotado a assets y web).
+- **Capturas generadas y verificadas visualmente (< 100 KB cada una):**
+  1. `docs/_assets/diseno/11-ingresar-error-375px.png` (29.1 KB): Pantalla `/ingresar` mostrando el banner accesible de error ante credenciales no reconocidas (`role="alert"`), campos accesibles y botones con touch target >= 44 px sin desbordamientos ni textos cortados.
+  2. `docs/_assets/diseno/12-selector-agencia-375px.png` (26.8 KB): Flujo de autenticación multi-agencia (usuario `multi@viajapro.com`) desplegando las agencias disponibles en tarjetas accesibles con chevron y enlace para volver al ingreso.
+  3. `docs/_assets/diseno/13-bandeja-reconectando-375px.png` (49.6 KB): Vista de la bandeja de conversaciones con el banner superior en ámbar «Reconectando tiempo real...» con icono giratorio de actualización, filtros por píldora, buscador acotado y barra de navegación inferior móvil.
+  4. `docs/_assets/diseno/14-aviso-conversacion-retirada-375px.png` (41.2 KB): Hilo de conversación tras recibir evento `CONVERSACION_RETIRADA`, mostrando el banner de aviso de reasignación a otra persona, bloqueo de envío y el **borrador redactado perfectamente visible e intacto** en el campo de texto deshabilitado.
+- **Criterio «Hecho cuando» verificado:**
+  - 4 capturas en `docs/_assets/diseno/` referenciadas en `ENTREGA.md`, cada una < 100 KB, inspeccionadas visualmente sin texto ni botón cortado.
