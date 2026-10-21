@@ -227,7 +227,7 @@ export function ListaConversaciones() {
             type="search"
             value={buscar}
             onChange={(e) => setBuscar(e.target.value)}
-            placeholder="Buscar por cliente o mensaje... (/)"
+            placeholder="Buscar por nombre o teléfono... (/)"
             className="focus:border-acento-600 focus:ring-acento-600/30 w-full rounded-lg border border-neutral-200 bg-neutral-50 py-2 pr-3 pl-8 text-xs text-neutral-900 placeholder-neutral-400 focus:bg-white focus:ring-2 focus:outline-none md:py-1.5 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
           />
         </div>

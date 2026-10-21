@@ -807,3 +807,22 @@ Se creó el archivo de pruebas de componentes `apps/web/src/components/comun/esq
   - `typecheck`: **VERDE** (9/9 tareas exitosas en Turborepo, cero errores TypeScript).
   - `format:check`: **VERDE** (100% verificado con Prettier).
   - `build`: **VERDE** (Next.js 15.5.27 compiló 16 páginas en 4.9s).
+
+
+---
+
+### 2026-10-20 — 0c.36: El buscador de la bandeja dice lo que de verdad busca
+
+- **Tarea de la cola:** 0c.36 (Alineación con ADR-0015 / cifrado de mensajes).
+- **Reglas respetadas:** R10 (confidencialidad de mensajes cifrados en reposo), R11 (ámbito estricto en apps/web).
+- **Archivos modificados:**
+  - `apps/web/src/components/bandeja/lista-conversaciones.tsx`: Se actualizó el placeholder del input de búsqueda a `Buscar por nombre o teléfono... (/)` reflejando con exactitud la capacidad del índice tras el cifrado de mensajes del ADR-0015.
+  - `apps/web/src/components/bandeja/lista-conversaciones-teclado.spec.tsx`: Actualizada la aserción de búsqueda accesible por placeholder.
+- **Criterio «Hecho cuando» verificado:**
+  - `git grep -niE "por cliente o mensaje|en los mensajes" apps/web/src` arroja 0 resultados.
+- **Compuertas de Calidad:**
+  - `test`: **VERDE** (37 archivos de prueba, 317/317 tests pasando en `@viajapro/web`).
+  - `lint`: **VERDE** (0 errores, 0 advertencias).
+  - `typecheck`: **VERDE** (9/9 tareas exitosas en Turborepo, cero errores TypeScript).
+  - `format:check`: **VERDE** (100% verificado con Prettier).
+  - `build`: **VERDE** (Next.js 15.5.27 compiló 16 páginas en 6.7s).

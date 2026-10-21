@@ -1,4 +1,4 @@
-﻿**SIGUIENTE, EN ESTE ORDEN: 0c.36 (placeholder de búsqueda) → 0c.38 → 0c.37 → 0c.40. No cojas otra fuera de este orden.**
+﻿**SIGUIENTE, EN ESTE ORDEN: 0c.38 (pruebas reconexión y desconectado) → 0c.37 → 0c.40. No cojas otra fuera de este orden.**
 
 # Cola de trabajo — Antigravity
 
@@ -266,7 +266,7 @@ se lanza `CONFIG_TENANT_FALTANTE`; con auth apagada, sigue como hoy.
 **Hecho cuando:** `git grep "x-dev-tenant-id" apps/web/src` solo sale en esa función, las pruebas pasan y
 las compuertas web (lint, typecheck, test, format:check) en verde.
 
-## [ ] 0c.36. El buscador de la bandeja dice lo que de verdad busca (añadida el 2026-10-20, PRIORITARIA, pequeña)
+## [x] 0c.36. El buscador de la bandeja dice lo que de verdad busca (añadida el 2026-10-20, PRIORITARIA, pequeña)
 
 `components/bandeja/lista-conversaciones.tsx:230`: `placeholder="Buscar por cliente o mensaje... (/)"`
 pasa a «Buscar por nombre o teléfono... (/)», porque el ADR-0015 cifra los mensajes y la búsqueda ya no

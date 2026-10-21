@@ -129,7 +129,7 @@ describe('ListaConversaciones — Navegación y atajos por teclado (0c.32)', () 
     });
 
     const region = screen.getByRole('region', { name: /Lista de conversaciones/i });
-    const inputBusqueda = screen.getByPlaceholderText(/Buscar por cliente o mensaje/i);
+    const inputBusqueda = screen.getByPlaceholderText(/Buscar por nombre o teléfono/i);
 
     // Asegurarse de que el foco no esté en la búsqueda
     region.focus();
