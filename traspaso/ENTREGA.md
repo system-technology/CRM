@@ -826,3 +826,31 @@ Se creó el archivo de pruebas de componentes `apps/web/src/components/comun/esq
   - `typecheck`: **VERDE** (9/9 tareas exitosas en Turborepo, cero errores TypeScript).
   - `format:check`: **VERDE** (100% verificado con Prettier).
   - `build`: **VERDE** (Next.js 15.5.27 compiló 16 páginas en 6.7s).
+
+
+---
+
+### 2026-10-20 — 0c.38: Pruebas de la reconexión y del estado sin conexión
+
+- **Tarea de la cola:** 0c.38 (Resiliencia de conexión y tiempo real en la bandeja).
+- **Reglas respetadas:** R3 (contratos Zod / EventoBandeja estricto), R5 (idempotencia y sincronización REST al reconectar), R11 (ámbito acotado a apps/web).
+- **Archivos modificados:**
+  - `apps/web/src/components/bandeja/lista-conversaciones.tsx`:
+    - Incorporado banner accesible con `role="status"` e `indicador-desconectado` visible cuando `estadoSocket === 'desconectado'` («Sin conexión en tiempo real; los mensajes nuevos no llegarán solos. Reintentando...»).
+    - Validación segura de eventos entrantes con `EventoBandeja.safeParse(evento)` y registro de advertencia `console.warn` sin alterar el estado si no cumple el contrato.
+  - `apps/web/src/lib/inbox-socket.ts`:
+    - Registro de advertencia vía `console.warn` ante eventos recibidos por socket que no validen el esquema Zod `EventoBandeja`.
+    - Método `notificarEvento(evento: unknown)` validando el esquema antes de despachar a los suscriptores.
+  - `apps/web/src/components/bandeja/lista-conversaciones-realtime.spec.tsx`:
+    - Prueba 3: Al reconectar el socket (`notificarReconexion`), la lista re-consulta por REST vía `inboxApi.consultarBandeja`, cerrando cualquier hueco de mensajes o conversaciones perdidas durante el corte.
+    - Prueba 4: En estado desconectado (`notificarCambioEstado('desconectado')`), muestra aviso visible y la lista conserva los elementos en memoria sin sustituirlos por datos simulados (0c.34).
+    - Prueba 5: Un evento que no valida el contrato Zod no altera la lista de conversaciones y se registra con `console.warn`.
+  - `apps/web/src/app/bandeja/bandeja-asignacion.spec.tsx`:
+    - Prueba 4: Al recibir `CONVERSACION_RETIRADA` con un ID perteneciente a otra conversación, no altera la conversación abierta ni muestra el aviso de retiro, preservando el borrador y manteniendo habilitado el campo de redacción.
+- **Criterio «Hecho cuando» verificado:**
+  - Las 4 pruebas existen, cubren los estados reales por roles y texto visible, y fallan si se remueve la lógica correspondiente.
+- **Compuertas de Calidad:**
+  - `test`: **VERDE** (37 archivos de prueba, 321/321 tests pasando en `@viajapro/web`).
+  - `lint`: **VERDE** (0 errores, 0 advertencias).
+  - `typecheck`: **VERDE** (9/9 tareas exitosas en Turborepo, cero errores TypeScript).
+  - `format:check`: **VERDE** (100% verificado con Prettier).

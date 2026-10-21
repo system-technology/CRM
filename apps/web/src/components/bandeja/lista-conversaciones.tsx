@@ -3,11 +3,11 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import type {
-  ConversacionResumen,
+import {
+  type ConversacionResumen,
   EventoBandeja,
-  FiltroBandeja,
-  PaginaBandeja,
+  type FiltroBandeja,
+  type PaginaBandeja,
 } from '@viajapro/contracts';
 import { Search, Rows3, AlertTriangle, RefreshCw } from 'lucide-react';
 import { DistintivoDatosDemo } from '../comun/distintivo-datos-demo';
@@ -107,11 +107,20 @@ export function ListaConversaciones() {
   // Suscripción a eventos en tiempo real con Socket.IO / mock y reconexión REST (0c.35)
   const { estado: estadoSocket } = useInboxSocket({
     onEvento: (evento: EventoBandeja) => {
-      if (evento.tipo === 'CONVERSACION_RETIRADA') {
-        setConversaciones((prev) => prev.filter((c) => c.id !== evento.conversacionId));
+      const parseado = EventoBandeja.safeParse(evento);
+      if (!parseado.success) {
+        console.warn(
+          '[ListaConversaciones] Evento descartado por no cumplir contrato Zod:',
+          parseado.error,
+        );
+        return;
+      }
+      const ev = parseado.data;
+      if (ev.tipo === 'CONVERSACION_RETIRADA') {
+        setConversaciones((prev) => prev.filter((c) => c.id !== ev.conversacionId));
         if (bufferConversacionesRef.current) {
           bufferConversacionesRef.current = bufferConversacionesRef.current.filter(
-            (c) => c.id !== evento.conversacionId,
+            (c) => c.id !== ev.conversacionId,
           );
         }
         return;
@@ -122,7 +131,7 @@ export function ListaConversaciones() {
         const res = reordenarConGuardia(
           prev,
           bufferConversacionesRef.current,
-          evento,
+          ev,
           isHoveringListRef.current,
         );
 
@@ -194,10 +203,23 @@ export function ListaConversaciones() {
       {estadoSocket === 'reconectando' && (
         <div
           data-testid="indicador-reconectando"
+          role="status"
           className="flex shrink-0 items-center justify-center gap-1.5 border-b border-amber-200 bg-amber-50 px-3 py-1.5 text-[11px] font-medium text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-300"
         >
           <RefreshCw className="h-3 w-3 animate-spin" />
           <span>Reconectando tiempo real...</span>
+        </div>
+      )}
+      {estadoSocket === 'desconectado' && (
+        <div
+          data-testid="indicador-desconectado"
+          role="status"
+          className="flex shrink-0 items-center justify-center gap-1.5 border-b border-amber-200 bg-amber-50 px-3 py-1.5 text-[11px] font-medium text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-300"
+        >
+          <AlertTriangle className="h-3 w-3 text-amber-600" />
+          <span>
+            Sin conexión en tiempo real; los mensajes nuevos no llegarán solos. Reintentando...
+          </span>
         </div>
       )}
       <div className="shrink-0 space-y-2.5 border-b border-neutral-200 p-3 dark:border-neutral-800">

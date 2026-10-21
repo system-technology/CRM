@@ -121,10 +121,14 @@ export class InboxSocketManager {
       }
     });
 
-    // Eventos de la bandeja: discriminados por tipo, eventos desconocidos se ignoran en silencio (R3)
+    // Eventos de la bandeja: discriminados por tipo, eventos desconocidos se registran con warn (R3)
     socketInstance.on(EVENTO_SOCKET_BANDEJA, (payload: unknown) => {
       const parseado = EventoBandeja.safeParse(payload);
       if (!parseado.success) {
+        console.warn(
+          '[InboxSocketManager] Evento de socket descartado por no cumplir contrato Zod:',
+          parseado.error,
+        );
         return;
       }
       this.notificarEvento(parseado.data);
@@ -161,10 +165,19 @@ export class InboxSocketManager {
     };
   }
 
-  public notificarEvento(evento: EventoBandeja): void {
+  public notificarEvento(evento: unknown): void {
+    const parseado = EventoBandeja.safeParse(evento);
+    if (!parseado.success) {
+      console.warn(
+        '[InboxSocketManager] Evento descartado por no cumplir contrato Zod:',
+        parseado.error,
+      );
+      return;
+    }
+    const eventoValido = parseado.data;
     this.listeners.forEach((listener) => {
       try {
-        listener(evento);
+        listener(eventoValido);
       } catch (e) {
         console.error('[InboxSocketManager] Error en listener de evento:', e);
       }

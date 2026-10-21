@@ -106,4 +106,117 @@ describe('ListaConversaciones — Integración en tiempo real (0c.35)', () => {
     // Mariana Viajera sigue presente
     expect(screen.getByText('Mariana Viajera')).toBeDefined();
   });
+
+  it('3. Al reconectar, la lista vuelve a pedir la primera página por REST y el hueco se cierra (0c.38)', async () => {
+    const consultarBandejaSpy = vi
+      .spyOn(inboxApi, 'consultarBandeja')
+      .mockResolvedValue(PAGINA_MOCK);
+
+    await act(async () => {
+      render(<ListaConversaciones />);
+      await new Promise((r) => setTimeout(r, 20));
+    });
+
+    expect(consultarBandejaSpy).toHaveBeenCalledTimes(1);
+    expect(screen.getByText('Carlos Cliente')).toBeDefined();
+    expect(screen.getByText('Mariana Viajera')).toBeDefined();
+    expect(screen.queryByText('Pedro Pasajero')).toBeNull();
+
+    // Nueva respuesta que simula conversaciones llegadas durante el corte
+    const PAGINA_RECONECTADA: PaginaBandeja = {
+      datos: [
+        {
+          id: '00000000-0000-4000-8000-000000000703',
+          contactoId: 'cnt-703',
+          contactoNombre: 'Pedro Pasajero',
+          contactoTelefono: '+573000000703',
+          estado: 'ABIERTA',
+          ventana: { abierta: true, expiraEn: null, minutosRestantes: 1440 },
+          asignadoAId: null,
+          asignadoANombre: null,
+          ultimoMensajeTexto: 'Mensaje llegado durante corte',
+          ultimoMensajeEn: new Date().toISOString(),
+          ultimoMensajeDireccion: 'ENTRANTE',
+          mensajesSinLeer: 1,
+          slaVenceEn: null,
+          etiquetas: [],
+        },
+        ...PAGINA_MOCK.datos,
+      ],
+      pageInfo: { nextCursor: null, hasMore: false },
+    };
+    consultarBandejaSpy.mockResolvedValue(PAGINA_RECONECTADA);
+
+    // Simular reconexión del socket
+    await act(async () => {
+      inboxSocketManager.notificarReconexion();
+      await new Promise((r) => setTimeout(r, 20));
+    });
+
+    // Se consultó nuevamente la API por REST
+    expect(consultarBandejaSpy).toHaveBeenCalledTimes(2);
+    // Y el hueco se cerró: Pedro Pasajero ahora aparece en la lista
+    expect(screen.getByText('Pedro Pasajero')).toBeDefined();
+  });
+
+  it('4. En estado desconectado muestra aviso visible y la lista conserva lo cargado sin pintar datos simulados (0c.38, 0c.34)', async () => {
+    await act(async () => {
+      render(<ListaConversaciones />);
+      await new Promise((r) => setTimeout(r, 20));
+    });
+
+    expect(screen.queryByTestId('indicador-desconectado')).toBeNull();
+    expect(screen.getByText('Carlos Cliente')).toBeDefined();
+    expect(screen.getByText('Mariana Viajera')).toBeDefined();
+
+    // Cambiar estado a 'desconectado'
+    act(() => {
+      inboxSocketManager.notificarCambioEstado('desconectado');
+    });
+
+    // Indicador y mensaje visible presentes
+    const indicador = screen.getByTestId('indicador-desconectado');
+    expect(indicador).toBeDefined();
+    expect(
+      screen.getByText(
+        /Sin conexión en tiempo real; los mensajes nuevos no llegarán solos. Reintentando.../i,
+      ),
+    ).toBeDefined();
+
+    // Invariante 0c.34: conserva lo cargado en memoria, no sustituye por datos mock
+    expect(screen.getByText('Carlos Cliente')).toBeDefined();
+    expect(screen.getByText('Mariana Viajera')).toBeDefined();
+  });
+
+  it('5. Un evento que no valida el contrato Zod no cambia la lista y se registra en consola con warn (0c.38, R3)', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    await act(async () => {
+      render(<ListaConversaciones />);
+      await new Promise((r) => setTimeout(r, 20));
+    });
+
+    expect(screen.getByText('Carlos Cliente')).toBeDefined();
+    expect(screen.getByText('Mariana Viajera')).toBeDefined();
+
+    // Emitir payload no conforme al contrato Zod EventoBandeja
+    act(() => {
+      inboxSocketManager.notificarEvento({
+        tipo: 'EVENTO_INVALIDO_INEXISTENTE',
+        conversacionId: '00000000-0000-4000-8000-000000000701',
+      });
+    });
+
+    // Se registró advertencia en consola
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining(
+        '[InboxSocketManager] Evento descartado por no cumplir contrato Zod:',
+      ),
+      expect.anything(),
+    );
+
+    // La lista de conversaciones se preservó sin alteraciones
+    expect(screen.getByText('Carlos Cliente')).toBeDefined();
+    expect(screen.getByText('Mariana Viajera')).toBeDefined();
+  });
 });

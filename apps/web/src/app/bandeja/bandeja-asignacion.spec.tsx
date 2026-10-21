@@ -178,4 +178,43 @@ describe('BandejaConversacionPage — Asignación y Retiro en Tiempo Real (0c.35
     // INVARIANTE CRÍTICO: El borrador redactado NO se perdió
     expect(textarea.value).toBe('Borrador importante que no debe perderse');
   });
+
+  it('4. CONVERSACION_RETIRADA de OTRA conversación no toca la conversación abierta ni muestra aviso de retiro (0c.38)', async () => {
+    vi.spyOn(inboxApi, 'obtenerConversacionDetalle').mockResolvedValue({
+      ...DETALLE_BASE,
+      asignadoAId: MI_USUARIO_ID,
+      asignadoANombre: 'Carlos Asesor',
+    });
+
+    await act(async () => {
+      render(<BandejaConversacionPage />);
+      await new Promise((r) => setTimeout(r, 20));
+    });
+
+    const textarea = screen.getByPlaceholderText<HTMLTextAreaElement>(
+      /Escribe tu respuesta a cliente/i,
+    );
+    act(() => {
+      fireEvent.change(textarea, { target: { value: 'Borrador activo en conversación actual' } });
+    });
+
+    expect(textarea.value).toBe('Borrador activo en conversación actual');
+
+    // Emitir retiro de OTRA conversación en tiempo real (ID distinto a CONV_ID)
+    const OTRA_CONV_ID = '00000000-0000-4000-8000-000000000999';
+    act(() => {
+      inboxSocketManager.notificarEvento({
+        tipo: 'CONVERSACION_RETIRADA',
+        conversacionId: OTRA_CONV_ID,
+      });
+    });
+
+    // NO debe aparecer el aviso de retiro
+    expect(screen.queryByTestId('aviso-conversacion-retirada')).toBeNull();
+    expect(screen.queryByText('Esta conversación se asignó a otra persona')).toBeNull();
+
+    // El campo de texto permanece habilitado y el borrador intacto
+    expect(textarea.disabled).toBe(false);
+    expect(textarea.value).toBe('Borrador activo en conversación actual');
+  });
 });

@@ -1,4 +1,4 @@
-﻿**SIGUIENTE, EN ESTE ORDEN: 0c.38 (pruebas reconexión y desconectado) → 0c.37 → 0c.40. No cojas otra fuera de este orden.**
+﻿**SIGUIENTE, EN ESTE ORDEN: 0c.37 (capturas a 375 px) → 0c.40. No cojas otra fuera de este orden.**
 
 # Cola de trabajo — Antigravity
 
@@ -285,7 +285,7 @@ borrador visible. Guárdalas en `docs/_assets/diseno/` (cada una < 100 KB; el re
 
 **Hecho cuando:** 4 capturas referenciadas en `ENTREGA.md` y ninguna con texto o botón cortado.
 
-## [ ] 0c.38. Pruebas de la reconexión y del estado sin conexión (añadida el 2026-10-20)
+## [x] 0c.38. Pruebas de la reconexión y del estado sin conexión (añadida el 2026-10-20)
 
 Ya hay pruebas de la retirada de conversación (lista e hilo) y del indicador «reconectando». Faltan, con
 el mismo estilo (roles, texto visible): (1) al **reconectar**, la lista vuelve a pedir la primera página
