@@ -1483,4 +1483,9 @@ se arregle, no entra nada que necesite el CI como compuerta.** Lo resuelve el **
 |---|---|
 | `fix/quoting-condiciones-y-salud` @ `109a2ee` | Hallazgos de la auditoría integral: tarifas con condición de edad o de silla, la retirada de la ruta antigua y `/salud` con 503 cuando está degradado |
 | `ci/acciones-por-sha-y-guard-rama` @ `d132189` | M1.5: 22 acciones fijadas por SHA y Dependabot. **Además cierra el hueco de `guard-rama`**: `git -C dir commit` pasaba sin autorización, y `autorizar-integracion` fallaba con ENOTDIR en un worktree. En local pasa 59 pruebas de hooks |
+| `feat/db-cifrado-campos-sensibles` @ `2a34e35` | **M1.4: la implementación del ADR-0015.** Migración `20261020120000_cifrar_columnas_con_pii_sensible`, **irreversible**: borra con `DROP COLUMN` el texto en claro de las filas de desarrollo. Trae además `CifradoDeCampos`, la búsqueda solo por nombre y teléfono, y `CAMPOS_SENSIBLES_KEY` (con su versión y la anterior) en `render.yaml`. `auditor-seguridad`: ACEPTAR. **Condiciones para integrarla:** la e2e de cifrado en reposo y las aserciones 67 a 71 tienen que correr de verdad contra el Postgres del CI (criterio de corte 2: cero PII en claro, comprobado con `$queryRaw`), y la matriz de `despliegue-staging.md` tiene que incluir la clave en la API y en el trabajador. **Al aplicarla en Neon:** destruye el texto de las filas de desarrollo, y después hay que correr `pnpm --filter @viajapro/api campos:sembrar-dev` |
+
+| Cola | Dueño | Por qué no bloquea |
+|---|---|---|
+| **El tope de 2^32 cifrados por clave (AES-GCM con nonce aleatorio) no se hace cumplir.** Hace falta un contador o una métrica, y un trabajo de recifrado, antes de que haya volumen | `backend`, `devops` | Hoy no hay volumen: quedan muchos órdenes de magnitud de margen |
 
