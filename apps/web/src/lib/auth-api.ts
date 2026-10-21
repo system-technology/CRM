@@ -1,3 +1,4 @@
+import { obtenerBaseApi } from './api-base';
 /**
  * Cliente de autenticación e identidad — ADR-0011 (0c.29).
  *
@@ -16,8 +17,6 @@ import {
   CambiarAgenciaActiva as EsquemaCambiarAgenciaActiva,
   ErrorApi as EsquemaErrorApi,
 } from '@viajapro/contracts';
-
-const BASE_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3333';
 
 /**
  * Evalúa si la pantalla de autenticación está habilitada.
@@ -193,7 +192,7 @@ export async function iniciarSesionApi(credenciales: IniciarSesionTipo): Promise
     return sesionEnMemoriaMock;
   }
 
-  const res = await fetch(`${BASE_URL}/api/v1/auth/sign-in/email`, {
+  const res = await fetch(`${obtenerBaseApi()}/api/v1/auth/sign-in/email`, {
     method: 'POST',
     credentials: 'include',
     headers: {
@@ -241,7 +240,7 @@ export async function cerrarSesionApi(): Promise<void> {
     return;
   }
 
-  const res = await fetch(`${BASE_URL}/api/v1/auth/sign-out`, {
+  const res = await fetch(`${obtenerBaseApi()}/api/v1/auth/sign-out`, {
     method: 'POST',
     credentials: 'include',
   });
@@ -263,7 +262,7 @@ export async function obtenerSesionActualApi(): Promise<SesionActualTipo> {
     return sesionEnMemoriaMock;
   }
 
-  const res = await fetch(`${BASE_URL}/api/v1/auth/session`, {
+  const res = await fetch(`${obtenerBaseApi()}/api/v1/auth/session`, {
     method: 'GET',
     credentials: 'include',
     cache: 'no-store',
@@ -312,7 +311,7 @@ export async function cambiarAgenciaActivaApi(tenantId: string): Promise<SesionA
     return sesionEnMemoriaMock;
   }
 
-  const res = await fetch(`${BASE_URL}/api/v1/auth/tenant-activo`, {
+  const res = await fetch(`${obtenerBaseApi()}/api/v1/auth/tenant-activo`, {
     method: 'POST',
     credentials: 'include',
     headers: {

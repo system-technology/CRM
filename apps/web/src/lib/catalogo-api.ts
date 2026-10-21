@@ -1,3 +1,5 @@
+import { obtenerBaseApi } from './api-base';
+export { obtenerBaseApi };
 /**
  * Cliente de API para el catálogo real y cotización de salidas (ADR-0009).
  *
@@ -16,9 +18,7 @@ import {
 } from '@viajapro/contracts';
 import { z } from 'zod';
 
-export function obtenerBaseApi(): string {
-  return process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3333';
-}
+// Re-exportado de api-base (ADR-0011 §2)
 
 export function obtenerTenantDemo(): string {
   return process.env['NEXT_PUBLIC_DEV_TENANT_ID'] ?? '';

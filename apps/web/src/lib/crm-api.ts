@@ -1,3 +1,5 @@
+import { obtenerBaseApi } from './api-base';
+export { obtenerBaseApi };
 /**
  * Cliente de API para el módulo CRM (Pipeline, Oportunidades, Contactos y Ficha Lateral).
  *
@@ -20,9 +22,7 @@ import { moverOportunidadEnTablero } from './pipeline-logica';
 import { obtenerMockFichaDeContacto } from './mock-crm';
 import { obtenerMockPaginaContactos } from './mock-contactos';
 
-export function obtenerBaseApi(): string {
-  return process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3333';
-}
+// Re-exportado de api-base (ADR-0011 §2)
 
 export function obtenerTenantDemo(): string {
   return process.env['NEXT_PUBLIC_DEV_TENANT_ID'] ?? '';

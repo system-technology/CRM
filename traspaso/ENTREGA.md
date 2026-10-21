@@ -747,3 +747,31 @@ Se creó el archivo de pruebas de componentes `apps/web/src/components/comun/esq
     - `@viajapro/contracts`: **VERDE**.
     - `@viajapro/domain`: **VERDE**.
     - `@viajapro/database`: 73/76 pasando (las 3 fallidas corresponden a timeout WAN de 5000 ms en la prueba 57 sobre Neon sin parámetro largo, documentada en ESTADO.md; no se altera packages/database por R11).
+
+
+---
+
+### 2026-10-20 — ADR-0011 (Rebanada 3): Reescritura /api/v1/* en Next.js y Selector de Sesión y Agencia en Barra de Módulos
+
+- **Referencia:** ADR-0011 §2 (Mismo origen) y §Plan de implementación (Rebanada 3).
+- **Reglas respetadas:** R1 (aislamiento tenant), R3 (cero tipos redefinidos, esquemas Zod de `@viajapro/contracts`), R6 (sin secretos en repo, cookies HttpOnly SameSite seguras), R8 (moneda entera COP), R10 (sesión y confidencialidad), R11 (ámbito estricto en apps/web, sin tocar main ni packages/database).
+- **Archivos creados:**
+  - `apps/web/src/lib/api-base.ts`: Helper centralizado `obtenerBaseApi()` que en el navegador devuelve `''` si `NEXT_PUBLIC_API_URL` está vacía o indefinida, aprovechando la reescritura same-origin de Next.js (`/api/v1/*`), y en el servidor o tests devuelve `API_INTERNAL_URL`, `NEXT_PUBLIC_API_URL` o el fallback `'http://localhost:3333'`.
+  - `apps/web/src/lib/api-base.spec.ts`: 4 pruebas unitarias cubriendo comportamiento de URL en navegador, SSR y configuraciones explícitas de entorno.
+  - `apps/web/src/components/bandeja/barra-modulos.spec.tsx`: 13 pruebas unitarias y de componente validando:
+    - Iniciales dinámicas del usuario (`calcularIniciales`).
+    - Navegación lateral desktop y móvil con touch targets $\ge 44$ px (WCAG 2.5.5).
+    - Despliegue accesible del diálogo de sesión al pulsar avatar desktop o botón de perfil móvil.
+    - Cierre accesible con tecla `Escape` y clic en telón de fondo.
+    - Conmutación dinámica de agencia activa en cuentas multiagencia (`cambiarAgenciaActivaApi`).
+    - Cierre de sesión y redirección segura hacia `/ingresar` (`cerrarSesionApi`).
+- **Archivos modificados:**
+  - `apps/web/next.config.mjs`: Añadido `async rewrites()` para mapear `/api/v1/:path*` hacia `${API_INTERNAL_URL || NEXT_PUBLIC_API_URL || 'http://localhost:3333'}/api/v1/:path*` garantizando origen único para cookies de sesión.
+  - `apps/web/src/components/bandeja/barra-modulos.tsx`: Conectado a `usePermisos(sesionInicial)`, cálculo dinámico de iniciales, popover accesible (`dialog`, trampa de foco con `useFocoModal`, Esc y backdrop) con selector multiagencia y botón de cierre de sesión, más botón accesible en navegación inferior móvil.
+  - `apps/web/src/lib/api.ts`, `apps/web/src/lib/auth-api.ts`, `apps/web/src/lib/catalogo-api.ts`, `apps/web/src/lib/cotizaciones-api.ts`, `apps/web/src/lib/crm-api.ts`, `apps/web/src/lib/inbox-api.ts`: Unificados para consumir `obtenerBaseApi()` de `api-base.ts`.
+- **Compuertas de Calidad:**
+  - `lint`: **VERDE** (0 errores, 0 advertencias).
+  - `typecheck`: **VERDE** (9/9 tareas exitosas en Turborepo, cero errores TypeScript).
+  - `format:check`: **VERDE** (100% verificado con Prettier).
+  - `build`: **VERDE** (Next.js 15.5.27 compiló 16 páginas en 7.2s).
+  - `test`: **VERDE** (36 archivos de prueba, 312/312 tests pasando en `@viajapro/web`).

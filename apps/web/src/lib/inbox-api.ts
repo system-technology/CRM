@@ -1,3 +1,4 @@
+import { obtenerBaseApi } from './api-base';
 /**
  * Cliente de API para la Bandeja de Entrada de WhatsApp (/bandeja).
  * Conecta contra las rutas reales de NestJS en /api/v1/conversaciones (0c.35).
@@ -47,7 +48,7 @@ import {
   obtenerConversacionDetalleMock,
 } from './mock-inbox';
 
-const BASE_API = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3333';
+// BASE_API sustituido por obtenerBaseApi() (ADR-0011 §2)
 const TENANT_DEMO = process.env['NEXT_PUBLIC_DEV_TENANT_ID'] ?? '';
 
 /**
@@ -74,7 +75,7 @@ export class InboxErrorApi extends Error {
 async function pedirInbox<T>(ruta: string, init?: RequestInit): Promise<T> {
   let res: Response;
   try {
-    res = await fetch(`${BASE_API}${ruta}`, {
+    res = await fetch(`${obtenerBaseApi()}${ruta}`, {
       ...init,
       credentials: 'include',
       headers: {

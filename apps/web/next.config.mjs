@@ -6,6 +6,21 @@ export default {
   // Los paquetes del monorepo se compilan con la app en vez de consumirse ya construidos:
   // evita tener que reconstruirlos a mano en cada cambio durante el desarrollo.
   transpilePackages: ['@viajapro/contracts', '@viajapro/domain'],
+  // Reescritura hacia la API backend (ADR-0011 §2 / ADR-0013):
+  // Asegura que las peticiones del navegador a /api/v1/* sean de primer origen (same-origin),
+  // permitiendo que las cookies HttpOnly funcionen en Safari iOS sin problemas de terceros.
+  async rewrites() {
+    const destinoApi =
+      process.env['API_INTERNAL_URL'] ||
+      process.env['NEXT_PUBLIC_API_URL'] ||
+      'http://localhost:3333';
+    return [
+      {
+        source: '/api/v1/:path*',
+        destination: `${destinoApi}/api/v1/:path*`,
+      },
+    ];
+  },
   // Solo la imagen de Docker (apps/web/Dockerfile) lo activa: produce un servidor minimo con
   // las dependencias que de verdad se usan. El desarrollo y el CI normal no cambian.
   ...(process.env['NEXT_OUTPUT_STANDALONE'] === '1'

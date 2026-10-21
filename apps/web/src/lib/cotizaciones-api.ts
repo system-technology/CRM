@@ -1,3 +1,5 @@
+import { obtenerBaseApi } from './api-base';
+export { obtenerBaseApi };
 /**
  * Cliente de API para cotizaciones guardadas y sus versiones inmutables (0c.22).
  *
@@ -29,9 +31,7 @@ import {
 } from './mock-cotizaciones';
 import { MOCK_PAQUETES_CATALOGO } from './mock-catalogo';
 
-export function obtenerBaseApi(): string {
-  return process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3333';
-}
+// Re-exportado de api-base (ADR-0011 §2)
 
 export function obtenerTenantDemo(): string {
   return process.env['NEXT_PUBLIC_DEV_TENANT_ID'] ?? '';

@@ -1,3 +1,4 @@
+import { obtenerBaseApi } from './api-base';
 /**
  * Cliente de la API.
  *
@@ -13,8 +14,6 @@ import {
   ErrorApi as EsquemaError,
   type Paquete,
 } from '@viajapro/contracts';
-
-const BASE = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3333';
 
 /**
  * Cabecera de desarrollo mientras no existe el módulo de autenticación.
@@ -36,7 +35,7 @@ export class ErrorApi extends Error {
 }
 
 async function pedir<T>(ruta: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE}${ruta}`, {
+  const res = await fetch(`${obtenerBaseApi()}${ruta}`, {
     ...init,
     credentials: 'include',
     headers: {
