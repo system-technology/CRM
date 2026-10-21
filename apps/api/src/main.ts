@@ -10,6 +10,7 @@ import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module.js';
+import { cuerpoCrudoDeWebhooks } from './shared/red/cuerpo-crudo-de-webhooks.js';
 import { leerProxyDeConfianza } from './shared/red/proxy-de-confianza.js';
 import { DominioExcepcionFilter } from './shared/filtros/dominio-excepcion.filter.js';
 
@@ -27,7 +28,7 @@ async function arrancar(): Promise<void> {
 
   // Los webhooks de Meta se firman sobre el CUERPO CRUDO: cualquier middleware que parsee
   // JSON antes rompe la verificación de la firma. Es el error número uno de esta integración.
-  app.use('/webhooks', (await import('express')).raw({ type: '*/*', limit: '1mb' }));
+  app.use('/webhooks', cuerpoCrudoDeWebhooks());
 
   app.enableCors({
     origin: process.env['WEB_PUBLIC_URL'] ?? 'http://localhost:3000',

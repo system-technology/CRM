@@ -3716,3 +3716,137 @@ describe('ADR-0011 — identidad global, pertenencias y roles por agencia', () =
     expect(intacto.rows).toEqual([{ permisos: ['cotizacion.ver_neto_y_margen'] }]);
   });
 });
+
+// ---------------------------------------------------------------------------------------
+// Cierres de la auditoría externa (2026-10-20): AUD-008 y la aserción de RLS forzada de AUD-013.
+//
+// Las dos son DINÁMICAS: enumeran el catálogo, no una lista escrita a mano, de modo que una tabla
+// que se cree mañana entra sola. Y cada una trae su contraprueba: dentro de una transacción que
+// se revierte, crea el defecto y comprueba que el detector lo ve. Un detector que nunca ha visto
+// un defecto no ha demostrado que pueda verlo.
+// ---------------------------------------------------------------------------------------
+
+const PRIVILEGIOS_DE_FILA = ['SELECT', 'INSERT', 'UPDATE', 'DELETE'] as const;
+
+/**
+ * Todo (tabla, privilegio) de fila que `rol` tiene en el esquema `public`, sobre TODA relación:
+ * tablas, particionadas, vistas, vistas materializadas y foráneas. `has_table_privilege` responde
+ * por la herencia de roles y por PUBLIC, que es donde se esconde un GRANT por error.
+ */
+async function privilegiosDeFila(
+  cliente: Client,
+  rol: string,
+): Promise<Array<{ tabla: string; privilegio: string }>> {
+  const { rows } = await cliente.query(
+    `SELECT c.relname AS tabla, p AS privilegio
+       FROM pg_class c
+       JOIN pg_namespace n ON n.oid = c.relnamespace
+      CROSS JOIN unnest($2::text[]) AS p
+      WHERE n.nspname = 'public' AND c.relkind IN ('r', 'p', 'v', 'm', 'f')
+        AND has_table_privilege($1, c.oid, p)
+      ORDER BY 1, 2`,
+    [rol, [...PRIVILEGIOS_DE_FILA]],
+  );
+  return rows as Array<{ tabla: string; privilegio: string }>;
+}
+
+/** Los privilegios que `viajapro_identidad` tiene FUERA de sus cinco tablas declaradas. */
+async function privilegiosDeIdentidadFueraDeSusTablas(cliente: Client) {
+  const permitidas = new Set<string>(TABLAS_DE_IDENTIDAD);
+  return (await privilegiosDeFila(cliente, ROL_IDENTIDAD)).filter((f) => !permitidas.has(f.tabla));
+}
+
+/** Tablas con RLS habilitada pero NO forzada: el propietario se las salta sin necesitar nada. */
+async function tablasConRlsSinForzar(cliente: Client): Promise<string[]> {
+  const { rows } = await cliente.query(
+    `SELECT n.nspname || '.' || c.relname AS tabla
+       FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+      WHERE c.relkind IN ('r', 'p') AND c.relrowsecurity AND NOT c.relforcerowsecurity
+        AND n.nspname NOT IN ('pg_catalog', 'information_schema')
+      ORDER BY 1`,
+  );
+  return rows.map((r) => r.tabla as string);
+}
+
+describe('AUD-008 y AUD-013 — comprobaciones dinámicas de privilegios y de RLS forzada', () => {
+  it('AUD-008 — viajapro_identidad solo tiene privilegios de fila sobre sus cinco tablas, y exactamente los declarados', async () => {
+    // Sobre TODAS las tablas del esquema, no sobre una lista de negocio. Una tabla nueva con un
+    // GRANT por error (directo, por PUBLIC o por un rol heredado) aparece aquí sin tocar la prueba.
+    const fuera = await privilegiosDeIdentidadFueraDeSusTablas(admin);
+    expect(
+      fuera,
+      `${ROL_IDENTIDAD} tiene privilegios fuera de las cinco tablas de identidad: ` +
+        JSON.stringify(fuera),
+    ).toEqual([]);
+
+    // Dentro de las cinco, ni uno más ni uno menos de lo que declara el repositorio.
+    const reales = new Map<string, string[]>();
+    for (const f of await privilegiosDeFila(admin, ROL_IDENTIDAD)) {
+      reales.set(f.tabla, [...(reales.get(f.tabla) ?? []), f.privilegio]);
+    }
+    for (const tabla of TABLAS_DE_IDENTIDAD) {
+      const declarados = EXCEPCIONES_DECLARADAS.filter(
+        ([t, rol]) => t === tabla && rol === ROL_IDENTIDAD,
+      ).flatMap(([, , privilegios]) =>
+        privilegios.filter((p) => PRIVILEGIOS_DE_FILA.includes(p as never)),
+      );
+      expect(
+        [...(reales.get(tabla) ?? [])].sort(),
+        `privilegios de ${ROL_IDENTIDAD} sobre ${tabla}`,
+      ).toEqual([...declarados].sort());
+      expect(
+        declarados.length,
+        `${tabla} sin privilegios declarados: el rol no podría usarla`,
+      ).toBeGreaterThan(0);
+    }
+  });
+
+  it('AUD-008 (contraprueba) — una tabla nueva de negocio con un GRANT por error pone el detector en rojo', async () => {
+    await admin.query('BEGIN');
+    try {
+      await admin.query('CREATE TABLE zz_aud008_tabla_nueva_de_negocio (id int)');
+      await admin.query(
+        `GRANT SELECT, DELETE ON zz_aud008_tabla_nueva_de_negocio TO ${ROL_IDENTIDAD}`,
+      );
+      const fuera = await privilegiosDeIdentidadFueraDeSusTablas(admin);
+      // ORDER BY tabla, privilegio: DELETE antes que SELECT.
+      expect(fuera.map((f) => `${f.tabla}:${f.privilegio}`)).toEqual([
+        'zz_aud008_tabla_nueva_de_negocio:DELETE',
+        'zz_aud008_tabla_nueva_de_negocio:SELECT',
+      ]);
+    } finally {
+      await admin.query('ROLLBACK');
+    }
+    // Y la reversión dejó el esquema como estaba.
+    expect(await privilegiosDeIdentidadFueraDeSusTablas(admin)).toEqual([]);
+  });
+
+  it('AUD-013 — ninguna tabla con relrowsecurity deja de tener relforcerowsecurity', async () => {
+    const sinForzar = await tablasConRlsSinForzar(admin);
+    expect(sinForzar, `RLS habilitada pero NO forzada en: ${sinForzar.join(', ')}`).toEqual([]);
+
+    // Que no sea vacuo: tiene que haber tablas con RLS, y las de negocio conocidas están entre ellas.
+    const { rows } = await admin.query(
+      `SELECT c.relname FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' AND c.relkind IN ('r', 'p') AND c.relrowsecurity
+          AND c.relforcerowsecurity`,
+    );
+    const conRls = rows.map((r) => r.relname as string);
+    expect(conRls).toEqual(
+      expect.arrayContaining(['contactos', 'mensajes', 'cotizaciones', 'usuarios']),
+    );
+  });
+
+  it('AUD-013 (contraprueba) — una tabla con RLS habilitada y sin FORCE la ve el detector', async () => {
+    await admin.query('BEGIN');
+    try {
+      await admin.query('CREATE TABLE zz_aud013_rls_sin_forzar (id int)');
+      await admin.query('ALTER TABLE zz_aud013_rls_sin_forzar ENABLE ROW LEVEL SECURITY');
+      expect(await tablasConRlsSinForzar(admin)).toEqual(['public.zz_aud013_rls_sin_forzar']);
+      await admin.query('ALTER TABLE zz_aud013_rls_sin_forzar FORCE ROW LEVEL SECURITY');
+      expect(await tablasConRlsSinForzar(admin)).toEqual([]);
+    } finally {
+      await admin.query('ROLLBACK');
+    }
+  });
+});

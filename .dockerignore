@@ -1,0 +1,19 @@
+# El contexto de build es la raiz del monorepo. Nada de esto debe entrar en una imagen:
+# ni secretos (R6), ni dependencias del anfitrion, ni historial.
+.git
+.github
+.claude
+.husky
+**/node_modules
+**/dist
+**/.next
+**/.turbo
+**/coverage
+**/*.tsbuildinfo
+.env
+.env.*
+!.env.example
+docs
+infra
+*.md
+!pnpm-lock.yaml
