@@ -175,6 +175,20 @@ jobs:
           REDIS_URL: redis://localhost:6379
           APP_ENV: local
 
+      # AUD-013. Esta prueba MUTA los roles del clúster (ALTER ROLE viajapro_app SUPERUSER unos
+      # milisegundos) para demostrar que cada proceso aborta; corre SOLA, después de pnpm test,
+      # para que ninguna otra prueba corra como ese rol mientras tanto. Con EXIGIR=1 no puede
+      # pasar omitida: si la base no es desechable, falla.
+      - name: Arranque seguro, los tres servicios abortan con un rol que salta RLS
+        run: pnpm --filter @viajapro/api exec vitest run src/shared/prisma/arranque-seguro.e2e-spec.ts
+        env:
+          DATABASE_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'neondb') }}
+          DIRECT_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'neondb') }}
+          REDIS_URL: redis://localhost:6379
+          APP_ENV: local
+          VIAJAPRO_BASE_DESECHABLE: '1'
+          VIAJAPRO_EXIGIR_ARRANQUE_SEGURO: '1'
+
   # ---------------------------------------------------------------------------
   # La compuerta propia de este producto. Si falla, da igual lo demás:
   # una fuga entre agencias es el fallo que mata el negocio.

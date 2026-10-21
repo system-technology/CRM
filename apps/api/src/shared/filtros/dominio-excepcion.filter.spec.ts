@@ -26,3 +26,16 @@ describe('DominioExcepcionFilter: no encontrado', () => {
   it('_NO_ENCONTRADA da 404', () => expect(estadoPara(new Hembra('x'))).toBe(404));
   it('cualquier otro código sigue dando 400', () => expect(estadoPara(new Otro('x'))).toBe(400));
 });
+
+describe('DominioExcepcionFilter: errores de cliente de body-parser (AUD-017)', () => {
+  const deHttpErrors = (status: number, expose = true) =>
+    Object.assign(new Error('x'), { status, expose });
+  it('un cuerpo demasiado grande da 413, no 500', () =>
+    expect(estadoPara(deHttpErrors(413))).toBe(413));
+  it('un JSON malformado da 400', () => expect(estadoPara(deHttpErrors(400))).toBe(400));
+  it('un error 5xx o no exponible sigue siendo 500', () => {
+    expect(estadoPara(deHttpErrors(500, false))).toBe(500);
+    expect(estadoPara(deHttpErrors(413, false))).toBe(500);
+    expect(estadoPara(new Error('boom'))).toBe(500);
+  });
+});

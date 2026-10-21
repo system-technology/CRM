@@ -23,6 +23,7 @@ import { NestFactory } from '@nestjs/core';
 import { PrismaClient } from '@prisma/client';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { AppModule } from '../../app.module.js';
+import { cuerpoCrudoDeWebhooks } from '../../shared/red/cuerpo-crudo-de-webhooks.js';
 import { DominioExcepcionFilter } from '../../shared/filtros/dominio-excepcion.filter.js';
 
 const SECRETO = randomBytes(24).toString('hex');
@@ -112,7 +113,7 @@ beforeAll(async () => {
   app = await NestFactory.create(AppModule, { logger: false });
   app.useGlobalFilters(new DominioExcepcionFilter());
   // Igual que `main.ts`: sin el cuerpo crudo la firma no se puede verificar.
-  app.use('/webhooks', (await import('express')).raw({ type: '*/*', limit: '1mb' }));
+  app.use('/webhooks', cuerpoCrudoDeWebhooks());
   await app.listen(0);
   base = await app.getUrl();
 });
@@ -133,6 +134,26 @@ describe('POST /webhooks/whatsapp', () => {
     const r = await enviar(cuerpo, firmar(cuerpo, 'otro-secreto'));
     expect(r.status).toBe(403);
     expect(await contar(cuerpo)).toEqual({ recepciones: 0, changes: 0 });
+  });
+
+  it('un cuerpo de más de 1 MB -> 413 y ninguna fila, aunque la firma sea válida (AUD-017)', async () => {
+    const grande = Buffer.alloc(1024 * 1024 + 1, 0x61);
+    creadas.push(idDe(grande));
+    const r = await enviar(grande, firmar(grande));
+    expect(r.status).toBe(413);
+    expect(await contar(grande)).toEqual({ recepciones: 0, changes: 0 });
+  });
+
+  it('el tope se aplica ANTES de mirar la firma: sin firma también es 413, no 403 (AUD-017)', async () => {
+    const grande = Buffer.alloc(1024 * 1024 + 1, 0x61);
+    const r = await enviar(grande);
+    expect(r.status).toBe(413);
+  });
+
+  it('un cuerpo justo en el tope (1 MB) no se rechaza por tamaño (AUD-017)', async () => {
+    const justo = Buffer.alloc(1024 * 1024, 0x61);
+    const r = await enviar(justo, firmar(justo));
+    expect(r.status).not.toBe(413);
   });
 
   it('sin cabecera de firma -> 403 y ninguna fila', async () => {

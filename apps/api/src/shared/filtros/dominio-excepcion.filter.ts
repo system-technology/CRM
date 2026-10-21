@@ -73,6 +73,23 @@ export class DominioExcepcionFilter implements ExceptionFilter {
       return;
     }
 
+    // Errores de cliente de los analizadores de cuerpo (body-parser/http-errors): un cuerpo por
+    // encima del tope es 413, un JSON malformado es 400. No son HttpException de Nest, y sin esto
+    // caían en el 500 de abajo: Meta reintenta los 5xx, y un cuerpo enorme se reintentaría solo.
+    const estadoDeCliente = estadoDeClienteDeHttpErrors(excepcion);
+    if (estadoDeCliente !== null) {
+      res.status(estadoDeCliente).json({
+        error: {
+          code: estadoDeCliente === 413 ? 'CUERPO_DEMASIADO_GRANDE' : 'PETICION_INVALIDA',
+          message:
+            estadoDeCliente === 413
+              ? 'El cuerpo supera el tamaño permitido.'
+              : 'Petición inválida.',
+        },
+      });
+      return;
+    }
+
     // Lo inesperado se registra entero, pero hacia fuera NO sale el detalle: un stack trace
     // o un mensaje de PostgreSQL filtran nombres de tablas y estructura interna.
     this.log.error(
@@ -88,4 +105,13 @@ export class DominioExcepcionFilter implements ExceptionFilter {
       },
     });
   }
+}
+
+/** El estado 4xx de un error de http-errors marcado como exponible; null si no lo es. */
+function estadoDeClienteDeHttpErrors(e: unknown): number | null {
+  if (typeof e !== 'object' || e === null) return null;
+  const { status, expose } = e as { status?: unknown; expose?: unknown };
+  return expose === true && typeof status === 'number' && status >= 400 && status < 500
+    ? status
+    : null;
 }
