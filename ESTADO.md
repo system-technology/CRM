@@ -1355,3 +1355,30 @@ Registro: [`docs/_integraciones/2026-10-20-adr-0013.md`](docs/_integraciones/202
 6. El **DNS** del dominio hacia Render.
 7. El **Paso 2 de Meta**: configurar el webhook con la URL pública de staging.
 
+## Integración del 2026-10-20 — v0.38.1: el blueprint de despliegue en staging (ADR-0013)
+
+`ci/despliegue-staging-render` @ `321fb46` entra en `main` (`6243144`), etiquetada **v0.38.1**. Lleva versión porque `/salud` en la web y el
+`output: standalone` cambian el artefacto web. Trae:
+
+- `render.yaml` en Ohio: web, API, trabajador y Key Value (`noeviction`, `ipAllowList` vacío), `autoDeployTrigger: off` y la matriz de secretos
+  por servicio;
+- los Dockerfiles de API (la misma imagen para la API y el trabajador) y de web, con usuario no root, y `.dockerignore`;
+- `deploy-staging.yml`, que corre tras `ci.yml` en verde y con un SHA de `main`, dentro del Environment `staging`. `DIRECT_URL` solo aparece
+  en los pasos de comprobar y de migrar, instala con `--ignore-scripts` y termina con los deploy hooks por servicio;
+- el job `imagenes-de-despliegue` en `ci.yml`;
+- la guía `docs/07-ingenieria/despliegue-staging.md`.
+
+`auditor-seguridad`: ACEPTAR CON DOS CAMBIOS, ya aplicados. `POSTMARK_SERVER_TOKEN` solo en el trabajador, y `DIRECT_URL` solo en el paso de
+migración. Compuerta: CI verde (9 jobs, `imagenes-de-despliegue` incluido) sobre el árbol fusionado, https://github.com/Alfavear/CRM/actions/runs/39530667590.
+**Sin secretos, el workflow termina en verde con un aviso**: el paso `secretos` pone `listo=false` y todos los demás tienen
+`if: … listo == 'true'`. Lo leí en el código; la primera corrida real es la del push de este merge.
+Registro: [`docs/_integraciones/2026-10-20-v0.38.1.md`](docs/_integraciones/2026-10-20-v0.38.1.md).
+
+**AUD-012:** el blueprint ya está en `main`. Para el usuario: los pasos de `docs/07-ingenieria/despliegue-staging.md`.
+
+| Cola | Dueño | Por qué no bloquea |
+|---|---|---|
+| **Carrera entre la migración y el hook**: el deploy hook de Render despliega la **cabeza** de la rama, no el SHA que se migró. Si entra otro commit entre los dos pasos, se despliega código que nadie migró | `devops` | Solo staging y sin tráfico. Hay que cerrarlo antes de producción |
+| Dos campos de `render.yaml` por comprobar en el primer sync: `dockerCommand` en el trabajador e `ipAllowList` en el Key Value | `devops` | Se ven en el primer sync con Render |
+| **Hallazgo de gobierno, severidad alta:** `autorizar-integracion.mjs` falla dentro de un worktree (escribe en `<worktree>/.git/…`, y ahí `.git` es un archivo), **y `guard-rama` no impide escribir en `main` desde otro worktree**. El integrador pudo hacer un merge en `main` desde `D:\Projects\CRM-gate` sin autorización; lo deshizo antes de empujar. Mientras no haya ruleset en el servidor (AUD-004), este hook es la **única** protección de `main` | `devops` | No se empujó nada. **No lo corrige el integrador** |
+
