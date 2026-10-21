@@ -38,7 +38,8 @@ export const OPCIONES_DE_TRABAJO = {
   attempts: 5,
   backoff: { type: 'exponential' as const, delay: 2_000 },
   removeOnComplete: { age: 3_600, count: 1_000 },
-  removeOnFail: { age: 7 * 24 * 3_600 },
+  // Con tope de cantidad: sin él, una avería que falle todo durante 7 días llena Redis.
+  removeOnFail: { age: 7 * 24 * 3_600, count: 5_000 },
 };
 
 @Injectable()
