@@ -1,7 +1,7 @@
 # Blueprint de Render, SOLO STAGING (ADR-0013). Produccion se anade despues, con su propio entorno.
 #
-# Lo que NO se ha podido verificar contra la documentacion actual de Render (no hubo acceso a
-# ella al escribir esto) lleva la marca PENDIENTE-DE-VERIFICAR. Ver docs/07-ingenieria/despliegue-staging.md.
+# Verificado contra la documentacion oficial de Render (2026-10-20). Lo no confirmado lleva la marca
+# VERIFICAR-AL-SINCRONIZAR. Ver docs/07-ingenieria/despliegue-staging.md.
 #
 # Reglas del ADR-0013 que este archivo cumple:
 #   - Region ohio, junto a Neon us-east-2.
@@ -22,15 +22,11 @@ services:
     dockerfilePath: ./apps/web/Dockerfile
     dockerContext: .
     healthCheckPath: /salud
-    autoDeploy: false # PENDIENTE-DE-VERIFICAR: la clave vigente podria ser `autoDeployTrigger: off`
+    autoDeployTrigger: 'off' # solo despliega el deploy hook (GitHub Actions)
     envVars:
-      # Se incrusta al CONSTRUIR (ARG del Dockerfile). PENDIENTE-DE-VERIFICAR: que Render pase
-      # las variables del servicio como --build-arg en servicios Docker.
+      # Se incrusta al CONSTRUIR: Render pasa las variables como build-arg y el Dockerfile declara ARG.
       - key: NEXT_PUBLIC_API_URL
         sync: false # https://api.staging.<dominio>
-      # URL interna de la API por la red privada, para la reescritura de /api/v1/* (ADR-0011 §2).
-      - key: API_INTERNAL_URL
-        sync: false
 
   # ---- API (NestJS, HTTP y Socket.IO) -----------------------------------------------------
   - type: web
@@ -41,8 +37,8 @@ services:
     dockerfilePath: ./apps/api/Dockerfile
     dockerContext: .
     healthCheckPath: /salud/listo # comprueba base de datos y que el rol no salte RLS
-    maxShutdownDelaySeconds: 120 # PENDIENTE-DE-VERIFICAR: drena Socket.IO al redesplegar
-    autoDeploy: false # PENDIENTE-DE-VERIFICAR (igual que arriba)
+    maxShutdownDelaySeconds: 120 # drena Socket.IO al redesplegar
+    autoDeployTrigger: 'off' # solo despliega el deploy hook (GitHub Actions)
     # dockerCommand omitido: la imagen arranca `node dist/main.js`.
     envVars:
       - key: NODE_ENV
@@ -86,7 +82,7 @@ services:
         sync: false
       - key: REDIS_URL
         fromService:
-          type: keyvalue # PENDIENTE-DE-VERIFICAR: `keyvalue` (antes `redis`) y `connectionString`
+          type: keyvalue
           name: viajapro-redis-staging
           property: connectionString
 
@@ -98,8 +94,8 @@ services:
     plan: starter
     dockerfilePath: ./apps/api/Dockerfile # la misma imagen que la API
     dockerContext: .
-    dockerCommand: node dist/worker.js
-    autoDeploy: false # PENDIENTE-DE-VERIFICAR (igual que arriba)
+    dockerCommand: node dist/worker.js # VERIFICAR-AL-SINCRONIZAR: inferido como admitido en workers
+    autoDeployTrigger: 'off' # solo despliega el deploy hook (GitHub Actions)
     envVars:
       - key: NODE_ENV
         value: production
@@ -138,4 +134,4 @@ services:
     region: ohio
     plan: starter # de pago: el gratuito no persiste en disco
     maxmemoryPolicy: noeviction # BullMQ lo exige; con desalojo se pierden trabajos en silencio
-    ipAllowList: [] # vacia: solo se entra por la red privada
+    ipAllowList: [] # vacia: solo red privada. VERIFICAR-AL-SINCRONIZAR

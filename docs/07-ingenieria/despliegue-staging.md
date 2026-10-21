@@ -52,7 +52,7 @@ A partir de aquí las migraciones las aplica GitHub Actions, no usted.
 
 | Servicio | Variables a pegar |
 |---|---|
-| `viajapro-web-staging` | `NEXT_PUBLIC_API_URL` (`https://api.staging.<dominio>`), `API_INTERNAL_URL` |
+| `viajapro-web-staging` | `NEXT_PUBLIC_API_URL` (`https://api.staging.<dominio>`) |
 | `viajapro-api-staging` | `API_PUBLIC_URL`, `WEB_PUBLIC_URL` (`https://staging.<dominio>`), `API_TRUST_PROXY`, `MAIL_FROM`, `POSTMARK_MESSAGE_STREAM`, `DATABASE_APP_URL`, `DATABASE_ALTAS_URL`, `DATABASE_IDENTIDAD_URL`, `BETTER_AUTH_SECRET`, `META_APP_SECRET`, `WHATSAPP_WEBHOOK_VERIFY_TOKEN`, `WEBHOOK_PAYLOAD_KEY`, `WEBHOOK_PAYLOAD_KEY_VERSION`, `CORREO_PAYLOAD_KEY`, `POSTMARK_SERVER_TOKEN` |
 | `viajapro-worker-staging` | `MAIL_FROM`, `POSTMARK_MESSAGE_STREAM`, `DATABASE_WEBHOOK_URL`, `WEBHOOK_PAYLOAD_KEY`, `WEBHOOK_PAYLOAD_KEY_VERSION`, `CORREO_PAYLOAD_KEY`, `WHATSAPP_DIRECTORY_PEPPER`, `WHATSAPP_DIRECTORY_PEPPER_VERSION`, `POSTMARK_SERVER_TOKEN` |
 
@@ -106,16 +106,18 @@ de la web y de la API. Esperar a que emita los certificados.
 corren **antes** y deben ser compatibles con el código anterior (expandir y después contraer).
 Cada despliegue de la API corta los sockets de la bandeja; el cliente reconecta.
 
-## Pendiente de verificar contra la documentación de Render
+## Verificar al sincronizar (no confirmado en la documentación)
 
-No hubo acceso a ella al escribir `render.yaml`; confirmarlo con el primer Blueprint (Render
-informa los campos inválidos al sincronizar):
+Verificado contra la documentación oficial el 2026-10-20: `autoDeployTrigger`, `keyvalue`,
+`maxmemoryPolicy`, `fromService`/`connectionString`, `maxShutdownDelaySeconds`, región, plan y
+build-args. Quedan dos que Render confirmará al crear el Blueprint:
 
-- `autoDeploy: false` frente a `autoDeployTrigger: off`.
-- Tipo `keyvalue` con `maxmemoryPolicy` e `ipAllowList: []`, y `fromService` con `connectionString`.
-- Que las variables del servicio lleguen como `--build-arg` (`NEXT_PUBLIC_API_URL`). Si no, hay que
-  fijarla de otro modo; el build falla a propósito si falta.
-- `maxShutdownDelaySeconds` y su tope.
-- `dockerCommand` en un `worker` con la misma imagen que la API.
-- Nombres de plan (`starter`) y que `/salud/listo` sirva de health check (comprueba base de datos).
-- `API_INTERNAL_URL`: el código de la web aún no la lee (la reescritura del ADR-0011 §2 no está en esta rama).
+- `dockerCommand` en un `worker` (inferido como admitido).
+- `ipAllowList: []` en el Key Value.
+
+**Comprobación tras el primer sync:** el Key Value no muestra URL externa (solo la interna), y los
+logs del trabajador muestran `Trabajador del inbox en marcha.`, es decir, arrancó con
+`node dist/worker.js`. Si Render rechaza alguno de los dos campos, ajustar el Blueprint antes de seguir.
+
+Nota: la web aún no llama a la API de servidor a servidor, por eso el blueprint no define una URL
+interna de la API; se añade con la reescritura del ADR-0011 §2.

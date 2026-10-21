@@ -8,8 +8,8 @@ Hecho: `render.yaml` (staging, Ohio, matriz de variables por servicio), `apps/ap
 web, job `imagenes-de-despliegue` en `ci.yml`, workflow `deploy-staging.yml` y la guía
 `docs/07-ingenieria/despliegue-staging.md`.
 
-Pendiente de verificar: campos de `render.yaml` (lista al final de la guía). Imágenes no probadas
+Verificado contra la documentación de Render (investigador). Verificar al sincronizar: `dockerCommand` en un worker (inferido) e `ipAllowList: []` en el Key Value. Imágenes no probadas
 localmente (sin Docker): las valida el CI.
 
-Cola: la web aún no lee `API_INTERNAL_URL` (reescritura ADR-0011 §2 no integrada en esta rama);
+Cola: `API_INTERNAL_URL` retirada del blueprint: se añade con la reescritura ADR-0011 §2;
 el trabajador sigue sin sonda de salud propia; la sonda del workflow no distingue SHA nuevo de viejo.

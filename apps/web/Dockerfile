@@ -10,6 +10,7 @@ RUN pnpm install --frozen-lockfile
 # Las variables NEXT_PUBLIC_* se incrustan en el JavaScript al CONSTRUIR, no al arrancar:
 # cambiarla exige reconstruir la imagen. Sin ella la web apuntaria a localhost, asi que
 # el build se niega a seguir.
+# Render pasa las variables del servicio como build-arg; hay que declararlas aqui.
 ARG NEXT_PUBLIC_API_URL
 RUN test -n "$NEXT_PUBLIC_API_URL" || (echo "Falta el argumento NEXT_PUBLIC_API_URL" && exit 1)
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL \
