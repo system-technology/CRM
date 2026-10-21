@@ -63,6 +63,7 @@ Toda la documentación del proyecto. Si una decisión no está aquí (o en `ESTA
 | [0010](03-adr/0010-webhook-tal-como-es-y-el-trabajador-en-apps-api.md) | El webhook tal como es; el trabajador en `apps/api` hasta el segundo consumidor | Propuesto |
 | [0011](03-adr/0011-autenticacion-y-tenant-de-sesion.md) | Better Auth autoalojado en la API; cookie opaca; tenant activo en la sesión, validado bajo RLS; roles por tenant | Propuesto |
 | [0012](03-adr/0012-proveedor-de-correo-transaccional.md) | Correo transaccional con Postmark por HTTP detrás de `PuertoCorreo`; subdominio propio con DKIM y DMARC | Propuesto |
+| [0013](03-adr/0013-despliegue-staging-y-produccion.md) | Despliegue en Render (Ohio, junto a Neon): web, API con Socket.IO, trabajador y Key Value; migraciones solo desde `main` por GitHub Actions; producción manual | Propuesto |
 
 ## 04 · Integraciones
 

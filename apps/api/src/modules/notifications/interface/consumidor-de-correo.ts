@@ -12,8 +12,9 @@ import {
   type OnModuleDestroy,
   type OnModuleInit,
 } from '@nestjs/common';
-import { Worker } from 'bullmq';
+import { UnrecoverableError, Worker } from 'bullmq';
 import type { Redis } from 'ioredis';
+import { ErrorDeCorreo, ErrorDeCorreoDefinitivo } from '../domain/errores-de-correo.js';
 import { PuertoCorreo } from '../domain/puerto-correo.js';
 import { abrirCorreo, resolverClaveDeCorreo } from '../domain/sellado-de-correo.js';
 import {
@@ -64,9 +65,16 @@ export class ConsumidorDeCorreo implements OnModuleInit, OnModuleDestroy {
       await this.correo.enviar(mensaje);
     } catch (error) {
       const clase = error instanceof Error ? error.constructor.name : 'Error';
+      const codigo = error instanceof ErrorDeCorreo ? error.codigo : null;
+      // R10: solo el id del trabajo y el código numérico del proveedor. Nada del destinatario,
+      // del contenido ni del `Message` del proveedor.
+      this.log.warn(`Correo ${idDeTrabajo} falló: ${clase} codigo=${codigo ?? 'n/a'}`);
+      const texto = `Falló el envío de correo (${clase}).`;
+      // Un 4xx no se arregla reintentando: BullMQ no lo reintenta.
+      if (error instanceof ErrorDeCorreoDefinitivo) throw new UnrecoverableError(texto);
       // Sin `cause` a propósito: el error original puede traer la dirección o el cuerpo.
       // eslint-disable-next-line preserve-caught-error
-      throw new Error(`Falló el envío de correo (${clase}).`);
+      throw new Error(texto);
     }
   }
 

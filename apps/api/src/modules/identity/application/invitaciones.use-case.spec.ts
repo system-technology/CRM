@@ -168,7 +168,7 @@ describe('InvitarMiembroUseCase', () => {
       rolId: entrada.rolId,
       invitadoPorUsuarioId: 'u1',
     });
-    expect(guardada?.expiraEn.getTime()).toBe(ahora.getTime() + 7 * 24 * 3600 * 1000);
+    expect(guardada?.expiraEn.getTime()).toBe(ahora.getTime() + 72 * 3600 * 1000);
 
     const { mensaje, clave } = correo.enviados[0]!;
     const token = /token=([^\s]+)/.exec(mensaje.texto)?.[1] ?? '';
