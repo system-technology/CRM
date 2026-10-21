@@ -11,8 +11,10 @@
 
 import { writeFileSync, existsSync, mkdirSync, appendFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
+import { rutaMarcador } from './lib/marcador.mjs';
 
-const MARCADOR = '.git/INTEGRACION-AUTORIZADA';
+// Marcador en el directorio git propio de ESTE worktree (en un worktree `.git` es un archivo).
+const MARCADOR = rutaMarcador();
 const REGISTRO = 'docs/_integraciones/registro-de-autorizaciones.log';
 
 const motivo = process.argv.slice(2).join(' ').trim();
@@ -22,6 +24,13 @@ if (!motivo) {
     'Falta el motivo de la integración.\n\n' +
       '  node .claude/hooks/autorizar-integracion.mjs "feat/inbox-webhooks → main, v0.2.0"\n\n' +
       'El motivo queda registrado. Una autorización sin explicación no sirve para auditar nada.\n',
+  );
+  process.exit(1);
+}
+
+if (!MARCADOR) {
+  process.stderr.write(
+    'No se pudo resolver el directorio git: ejecuta esto dentro del repositorio o worktree.\n',
   );
   process.exit(1);
 }

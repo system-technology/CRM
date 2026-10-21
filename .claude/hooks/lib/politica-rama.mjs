@@ -90,7 +90,7 @@ export function tokenizar(linea) {
  * Parte la línea en invocaciones de git, devolviendo los argumentos de cada una.
  * Un token entrecomillado nunca puede ser el nombre de un comando.
  */
-export function invocacionesGit(linea) {
+export function invocacionesGit(linea, crudo = false) {
   const tokens = tokenizar(linea);
   const invocaciones = [];
   let segmento = [];
@@ -108,7 +108,7 @@ export function invocacionesGit(linea) {
     }
     const cabeza = segmento[i];
     if (cabeza && !cabeza.entrecomillado && /(^|[\\/])git(\.exe)?$/.test(cabeza.valor)) {
-      invocaciones.push(segmento.slice(i + 1));
+      invocaciones.push(crudo ? segmento.slice(i + 1) : sinOpcionesGlobales(segmento.slice(i + 1)));
     }
     segmento = [];
   };
@@ -123,6 +123,22 @@ export function invocacionesGit(linea) {
   cerrar();
 
   return invocaciones;
+}
+
+/**
+ * Quita las opciones globales de git que llevan valor (`-C <dir>`, `-c k=v`, `--git-dir=..`)
+ * para que el subcomando sea el primer argumento. Sin esto, `git -C ../gate commit` tenia como
+ * "subcomando" la ruta y la escritura en main no se reconocia: falso negativo, el grave.
+ */
+function sinOpcionesGlobales(args) {
+  const salida = [];
+  let i = 0;
+  while (i < args.length && args[i].valor.startsWith('-') && !args[i].entrecomillado) {
+    const v = args[i].valor;
+    i += v === '-C' || v === '-c' || v === '--git-dir' || v === '--work-tree' ? 2 : 1;
+  }
+  salida.push(...args.slice(i));
+  return salida;
 }
 
 /** ¿Alguno de estos argumentos nombra la rama protegida? */
@@ -238,7 +254,7 @@ export function directorioDelComando(linea) {
   // `tokenizar` devuelve objetos { valor, entrecomillado }, no cadenas.
   const tokens = tokenizar(linea);
   if (tokens.length < 2) return null;
-  if (tokens[0].valor !== 'cd') return null;
+  if (tokens[0].valor !== 'cd') return dirDeGitC(linea);
 
   const destino = tokens[1].valor;
   // `cd` a secas, `cd -` o `cd ~`: no se puede resolver aquí sin adivinar. Conservador.
@@ -266,4 +282,20 @@ export function rutaDeSistema(ruta, esWindows) {
   if (!m) return ruta;
   const barra = String.fromCharCode(92);
   return m[1].toUpperCase() + ':' + barra + m[2].split('/').join(barra);
+}
+
+/**
+ * `git -C <dir> ...`: actua sobre otro worktree sin cambiar de directorio. Sin esto, desde una
+ * sesion en una rama de trabajo, `git -C ../gate merge x` se evaluaba contra la rama de la
+ * SESION y la escritura en `main` pasaba sin autorizacion (falso negativo).
+ * Toma el `-C` de la primera invocacion de git que lo lleve.
+ */
+function dirDeGitC(linea) {
+  for (const args of invocacionesGit(linea, true)) {
+    for (let i = 0; i < args.length - 1; i++) {
+      if (args[i].valor === '-C' && args[i + 1].valor) return args[i + 1].valor;
+      if (!args[i].valor.startsWith('-')) break; // ya es el subcomando: las globales terminaron
+    }
+  }
+  return null;
 }
