@@ -15,7 +15,7 @@ RUN test -n "$NEXT_PUBLIC_API_URL" || (echo "Falta el argumento NEXT_PUBLIC_API_
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL \
     NEXT_OUTPUT_STANDALONE=1 \
     NEXT_TELEMETRY_DISABLED=1
-RUN pnpm turbo run build --filter=@viajapro/web
+RUN pnpm --filter "@viajapro/web..." run build
 
 # ---- 2. ejecutar --------------------------------------------------------------------------
 FROM node:22.20-bookworm-slim AS runtime

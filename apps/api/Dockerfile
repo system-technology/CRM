@@ -17,7 +17,7 @@ RUN pnpm install --frozen-lockfile
 # credenciales: nada que filtrar, y no se usa en tiempo de ejecucion.
 RUN DATABASE_URL=postgresql://localhost/build DIRECT_URL=postgresql://localhost/build \
     pnpm db:generate
-RUN pnpm turbo run build --filter=@viajapro/api
+RUN pnpm --filter "@viajapro/api..." run build
 # Solo lo de produccion: la API, sus paquetes del monorepo ya construidos y sus dependencias.
 RUN pnpm --filter @viajapro/api deploy --prod /out
 # `deploy` instala de cero y no trae el cliente de Prisma generado: se copia el del build.
