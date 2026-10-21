@@ -1,7 +1,7 @@
 # ADR-0013 — Despliegue de staging y producción: todo en Render (Ohio), junto a Neon
 
-- **Estado:** Propuesto. A la espera de `auditor-seguridad` (cookie, secretos por proceso, rol de
-  migraciones) y del propietario (cuentas y costo).
+- **Estado:** Propuesto. `auditor-seguridad`: aceptado con cambios, ya incorporados. Pendiente del
+  propietario.
 - **Fecha:** 2026-10-20
 - **Decide:** el propietario
 - **Consultados:** `arquitecto`, `devops`, `auditor-seguridad`
@@ -91,13 +91,34 @@ BullMQ sin que operemos un Redis.
 2. **Webhook de Meta (Paso 2):** `https://api.app.<dominio>/webhooks/whatsapp`. Staging no se
    suscribe al número real.
 3. **Redis.** Key Value creado con `maxmemory-policy=noeviction`, en un plan pago, porque el gratuito
-   no persiste. Solo acepta conexiones de la red privada. El trabajador mantiene
-   `maxRetriesPerRequest: null`.
-4. **Secretos por proceso, no un grupo común.** Hay un grupo de entorno por servicio y por entorno.
-   `WEBHOOK_PAYLOAD_KEY` está **solo en el trabajador** y `DATABASE_ALTAS_URL` solo en la API. La
-   web no recibe ninguna cadena de base ni ningún secreto. **`DATABASE_URL` (rol propietario) no
-   está en ningún servicio de Render.** En producción no existen `NEXT_PUBLIC_DEV_TENANT_ID`,
-   `NEXT_PUBLIC_AUTH_MAQUETA` ni `IDENTIDAD_DEV_PASSWORD`.
+   no persiste. La **lista de IP externas permitidas queda vacía**: solo se entra por la red
+   privada. El trabajador mantiene `maxRetriesPerRequest: null`.
+4. **Secretos por proceso, no un grupo común.** Hay un grupo de entorno por servicio y por entorno,
+   y cada variable va solo donde se lee:
+
+   | Variable | Web | API | Trabajador | GitHub Actions |
+   |---|---|---|---|---|
+   | `NEXT_PUBLIC_*` (solo `NEXT_PUBLIC_API_URL`) y la URL interna de la API | Sí | No | No | No |
+   | `DATABASE_APP_URL` | No | Sí | No | No |
+   | `DATABASE_ALTAS_URL` | No | Sí | No | No |
+   | `DATABASE_IDENTIDAD_URL` | No | Sí | No | No |
+   | `DATABASE_WEBHOOK_URL` | No | No | Sí | No |
+   | `DATABASE_URL` / `DIRECT_URL` (propietario) | No | No | No | Sí, solo para migrar |
+   | `BETTER_AUTH_SECRET` | No | Sí | No | No |
+   | `META_APP_SECRET` | No | Sí (firma del webhook) | No | No |
+   | `WHATSAPP_WEBHOOK_VERIFY_TOKEN` | No | Sí | No | No |
+   | `WEBHOOK_PAYLOAD_KEY` (+ `_VERSION`, `_PREVIOUS`) | No | Sí (sella) | Sí (abre) | No |
+   | `CORREO_PAYLOAD_KEY` | No | Sí (sella) | Sí (abre) | No |
+   | `WHATSAPP_DIRECTORY_PEPPER` (+ `_VERSION`, `_PREVIOUS`) | No | No | Sí | No |
+   | `POSTMARK_SERVER_TOKEN` | No | Sí (aborta sin él) | Sí | No |
+   | `REDIS_URL` (red privada) | No | Sí | Sí | No |
+   | Deploy hook del servicio | No | No | No | Sí |
+
+   `ENCRYPTION_MASTER_KEY` y `META_SYSTEM_USER_TOKEN` entran solo en la API, y solo cuando exista el
+   código que los lee. **Ningún servicio de Render tiene el rol propietario.** En producción no
+   existen `NEXT_PUBLIC_DEV_TENANT_ID`, `NEXT_PUBLIC_AUTH_MAQUETA` ni `IDENTIDAD_DEV_PASSWORD`.
+   **No se registran cuerpos de petición**, ni del webhook ni de la API. Los logs no se envían a
+   terceros sin un acuerdo de tratamiento de datos (DPA, R10).
 5. **Roles (R2).** Cada proceso conserva su aserción al arrancar: la API con `viajapro_app`,
    `viajapro_altas` y `viajapro_identidad`, y el trabajador con `viajapro_webhook`. Las contraseñas
    se fijan una vez por rama de Neon con `rol:crear`, y las copia el propietario.
@@ -111,12 +132,16 @@ BullMQ sin que operemos un Redis.
 
    ```
    integrador → merge en main → CI (las siete compuertas, ADR-0005)
-     └─ verde → [staging]    migrate deploy (rama staging) → API de Render: desplegar SHA → /salud
-                [producción] workflow_dispatch del mismo SHA, Environment con aprobación
-                             del propietario → migrate deploy (rama prod) → desplegar → /salud
+     └─ verde → [staging]    migrate deploy (rama staging) → deploy hook de cada servicio → /salud
+                [producción] workflow_dispatch desde main, Environment con aprobación
+                             del propietario → migrate deploy (rama prod) → deploy hooks → /salud
    ```
 
-   La compuerta del integrador decide qué entra en `main`. Este flujo solo publica lo que ya entró.
+   Los dos *Environments* de GitHub **solo admiten la rama `main`**. Se despliega con un **deploy
+   hook por servicio**, no con la clave de API de Render: esa clave vale para toda la cuenta y
+   probablemente lee las variables de todos los servicios. Si algún día hace falta, vive solo en un
+   *Environment* con aprobación manual. La compuerta del integrador decide qué entra en `main`, y
+   este flujo solo publica lo que ya entró.
 8. **Arranque del trabajador.** Hoy `worker` corre con `tsx` y `dotenv -e ../../.env`. Hace falta
    `node dist/worker.js` sin archivo `.env`. Es tarea de `backend` y no cambia la forma del sistema.
 
@@ -184,17 +209,23 @@ S3 ni la IA. Son estimaciones sobre precios de lista del 2026-10-20, no medidas.
 
 Todo se hace **en los paneles, nunca por el chat**. Ningún secreto pasa por aquí.
 
+0. **Opción de arranque: solo staging (~USD 51 al mes).** Se monta primero staging y se valida
+   con Meta en modo de desarrollo. Producción se monta cuando la piloto vaya a usarlo de verdad:
+   los mismos pasos, la rama `production` y los registros DNS de `app`.
 1. **Dominio.** Decidir y comprar el dominio técnico neutro (ADR-0012, paso 1).
 2. **Render.** Crear la cuenta y el espacio Pro, registrar la tarjeta, conectar el repositorio de
    GitHub y crear los dos entornos en **Ohio** con el `render.yaml` que prepare `devops`.
-3. **Neon.** Crear la rama `staging` y confirmar `production`. Ejecutar `rol:crear` en cada una y
-   pegar las cadenas en el grupo de entorno de **cada** servicio, según §4.
+3. **Neon.** Confirmar la rama `production`. Crear `staging` como rama **schema-only**: las ramas
+   normales copian los datos de su padre, y **staging nunca es copia de producción**. Después,
+   migrar y sembrar la agencia demo. Ejecutar `rol:crear` en cada rama y pegar cada cadena solo
+   en el servicio que la usa, según la matriz de §4.
 4. **Secretos.** Generar con `openssl rand` en la máquina propia la pimienta, `WEBHOOK_PAYLOAD_KEY`,
    `CORREO_PAYLOAD_KEY`, `ENCRYPTION_MASTER_KEY` y `BETTER_AUTH_SECRET`, **distintos por entorno**.
    Pegar además el token de Postmark y los de Meta.
-5. **GitHub.** Crear los *Environments* `staging` y `production`. En `production`, exigir la
-   aprobación del propietario. Guardar allí `DATABASE_URL` (propietario, directa) y la clave de la
-   API de Render.
+5. **GitHub.** Crear los *Environments* `staging` y `production`, los dos limitados a la rama
+   `main`. En `production`, exigir la aprobación del propietario. Guardar en cada uno su
+   `DATABASE_URL` (propietario, directa) y los deploy hooks de sus servicios. La clave de API de
+   Render no se guarda.
 6. **DNS.** Crear los CNAME `app`, `api.app`, `staging` y `api.staging` hacia lo que indique Render, y
    esperar a que emita los certificados.
 7. **Meta, Paso 2.** Registrar `https://api.app.<dominio>/webhooks/whatsapp` con el token de
