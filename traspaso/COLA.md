@@ -274,7 +274,7 @@ Haz `git merge main` primero.
 
 ---
 
-## [ ] 0c.27. Ocultar neto y margen a quien no tenga el permiso (añadida el 2026-10-19, ESPERA)
+## [x] 0c.27. Ocultar neto y margen a quien no tenga el permiso (2026-10-20)
 
 > **Aviso del 2026-10-20.** Esta tarea va a cambiar de forma, y un agente `backend` ha tocado tres
 > archivos tuyos. Lo que llega a `main` en breve:

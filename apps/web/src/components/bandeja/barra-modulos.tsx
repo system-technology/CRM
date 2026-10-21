@@ -44,7 +44,9 @@ export function BarraModulos() {
   const [panelNotifAbierto, setPanelNotifAbierto] = useState(false);
   const [alertas, setAlertas] = useState<AlertaOperativa[]>([]);
 
-  const esDetalleMovil = pathname !== '/bandeja' && pathname.startsWith('/bandeja/');
+  const esDetalleMovil = Boolean(
+    pathname && pathname !== '/bandeja' && pathname.startsWith('/bandeja/'),
+  );
 
   useEffect(() => {
     if (typeof window !== 'undefined') {

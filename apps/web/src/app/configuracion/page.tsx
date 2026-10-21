@@ -20,6 +20,7 @@ import {
 import { BarraModulos } from '../../components/bandeja/barra-modulos';
 import { DistintivoDatosDemo } from '../../components/comun/distintivo-datos-demo';
 import { BloquePoliticaPrecio } from '../../components/configuracion/bloque-politica-precio';
+import { usePermisos } from '../../lib/permisos';
 import {
   MOCK_MIEMBROS_EQUIPO,
   MOCK_CONFIGURACION_WABA,
@@ -40,6 +41,7 @@ import {
 type TabConfig = 'equipo' | 'whatsapp' | 'sla' | 'pipeline' | 'agencia' | 'precios';
 
 export default function ConfiguracionPage() {
+  const { puedeVerNetoYMargen } = usePermisos();
   const [tabActiva, setTabActiva] = useState<TabConfig>('equipo');
   const [miembros, setMiembros] = useState<MiembroEquipo[]>(MOCK_MIEMBROS_EQUIPO);
   const [waba] = useState(MOCK_CONFIGURACION_WABA);
@@ -222,21 +224,23 @@ export default function ConfiguracionPage() {
               <span>Marca y Datos Fiscales</span>
             </button>
 
-            <button
-              id="tab-btn-formacion-precio"
-              onClick={() => setTabActiva('precios')}
-              className={`flex items-center gap-2 border-b-2 px-4 py-2 text-xs font-medium transition-colors ${
-                tabActiva === 'precios'
-                  ? 'border-emerald-600 text-emerald-700 dark:border-emerald-400 dark:text-emerald-300'
-                  : 'border-transparent text-neutral-500 hover:border-neutral-300 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200'
-              }`}
-            >
-              <Calculator className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-              <span>Formación del Precio</span>
-              <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-                ADR-0009
-              </span>
-            </button>
+            {puedeVerNetoYMargen && (
+              <button
+                id="tab-btn-formacion-precio"
+                onClick={() => setTabActiva('precios')}
+                className={`flex items-center gap-2 border-b-2 px-4 py-2 text-xs font-medium transition-colors ${
+                  tabActiva === 'precios'
+                    ? 'border-emerald-600 text-emerald-700 dark:border-emerald-400 dark:text-emerald-300'
+                    : 'border-transparent text-neutral-500 hover:border-neutral-300 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200'
+                }`}
+              >
+                <Calculator className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                <span>Formación del Precio</span>
+                <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                  ADR-0009
+                </span>
+              </button>
+            )}
           </nav>
         </header>
 
@@ -624,7 +628,7 @@ export default function ConfiguracionPage() {
           {/* TAB 6: FORMACIÓN DEL PRECIO (0c.15 - ADR-0009) */}
           {tabActiva === 'precios' && (
             <div id="tab-contenido-precios">
-              <BloquePoliticaPrecio />
+              <BloquePoliticaPrecio puedeVerNetoYMargen={puedeVerNetoYMargen} />
             </div>
           )}
 

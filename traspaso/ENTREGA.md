@@ -661,3 +661,29 @@ Se creó el archivo de pruebas de componentes `apps/web/src/components/comun/esq
 ## 4. Decisiones que el encargo no especificaba
 
 - En el selector de agencias, se dispusieron tarjetas con icono de agencia, nombre y slug distintivo con un área táctil de 48 px de altura y estado `hover`/`focus-visible:ring-2`, facilitando la selección cómoda tanto en dispositivos táctiles de 375 px como en escritorio con teclado.
+
+---
+
+### 2026-10-20 — 0c.27: Ocultar neto y margen a quien no tenga el permiso
+
+- **Tarea de la cola:** 0c.27.
+- **Reglas respetadas:** R3 (contrato Zod `Permiso` y `SesionActual` de `@viajapro/contracts`), R8 (dinero entero COP), R10 (confidencialidad de costos netos y márgenes mayoristas del tenant).
+- **Archivos creados:**
+  - `apps/web/src/lib/permisos.ts`: funciones puras `tienePermiso` y `puedeVerNetoYMargen`, y hook cliente `usePermisos` conectado a `obtenerSesionActualApi()`.
+  - `apps/web/src/lib/permisos.spec.ts`: 11 pruebas unitarias sobre funciones puras y ciclo de vida del hook con sesiones de asesor, dueño y sin tenant.
+  - `apps/web/src/components/catalogo/ficha-detalle-paquete.spec.tsx`: 4 pruebas de componente verificando ausencia total de "Neto:" sin permiso y presencia con permiso.
+  - `apps/web/src/components/configuracion/bloque-politica-precio.spec.tsx`: 4 pruebas de componente verificando estado restringido sin cifras en el DOM.
+  - `apps/web/src/app/reportes/reportes-permisos.spec.tsx`: 3 pruebas verificando que "Costo Neto Mayoristas" y "Margen Comercial" no existen en el DOM sin permiso.
+- **Archivos modificados:**
+  - `apps/web/src/lib/auth-api.ts`: añadida `MOCK_SESION_DUENO` con permiso `cotizacion.ver_neto_y_margen` y `fijarSesionMock` para tests.
+  - `apps/web/src/components/catalogo/ficha-detalle-paquete.tsx`: prop opcional `puedeVerNetoYMargen` y llamada a `usePermisos`; `Neto:` solo en DOM si tiene permiso.
+  - `apps/web/src/components/configuracion/bloque-politica-precio.tsx`: prop `puedeVerNetoYMargen` y `usePermisos`; sin permiso devuelve tarjeta de acceso restringido con cero cifras o porcentajes en el DOM.
+  - `apps/web/src/app/configuracion/page.tsx`: pestaña "Formación del Precio" solo visible en barra si `puedeVerNetoYMargen` es verdadero.
+  - `apps/web/src/app/reportes/page.tsx`: bloque confidencial `seccion-margen-confidencial` (Costo Neto Mayoristas y Margen Comercial) condicionado a `puedeVerNetoYMargen && esDueño`. Conmutador fuerza "Vista Asesor (Operativa)" si no hay permiso.
+  - `apps/web/src/components/bandeja/barra-modulos.tsx`: comprobación nula segura en `pathname.startsWith`.
+- **Verificación:**
+  - `pnpm --filter web test`: 30 archivos de prueba, 275 tests pasando.
+  - `pnpm --filter web lint`: 0 errores, 0 warnings.
+  - `pnpm --filter web typecheck`: 0 errores.
+  - `pnpm format:check`: 100% verificado con Prettier.
+  - `pnpm --filter web build`: 16/16 páginas compiladas con éxito.

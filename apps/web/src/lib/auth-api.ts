@@ -125,6 +125,33 @@ export const MOCK_SESION_MULTI_AGENCIA: SesionActualTipo = {
   acceso: null,
 };
 
+export const MOCK_SESION_DUENO: SesionActualTipo = {
+  identidad: {
+    id: '01932000-0000-7000-8000-000000000003',
+    correo: 'dueno@viajapro.com',
+    nombre: 'Dueña Agencia',
+  },
+  agencias: [MOCK_AGENCIA_PRINCIPAL],
+  tenantActivoId: MOCK_AGENCIA_PRINCIPAL.id,
+  acceso: {
+    usuarioId: '01932000-0000-7000-8000-000000000033',
+    rol: 'Dueño',
+    permisos: [
+      'cotizacion.ver_neto_y_margen',
+      'usuarios.administrar',
+      'roles.administrar',
+      'conversaciones.ver_todas',
+    ],
+  },
+};
+
+/**
+ * Permite a los tests o al selector manual fijar la sesión mock en memoria.
+ */
+export function fijarSesionMock(sesion: SesionActualTipo | null): void {
+  sesionEnMemoriaMock = sesion;
+}
+
 let sesionEnMemoriaMock: SesionActualTipo | null = null;
 
 // -----------------------------------------------------------------------------
@@ -150,6 +177,13 @@ export async function iniciarSesionApi(credenciales: IniciarSesionTipo): Promise
         mapearErrorAcceso('CREDENCIALES_INVALIDAS'),
         401,
       );
+    }
+    if (
+      datosValidados.correo.toLowerCase().includes('dueno@') ||
+      datosValidados.correo.toLowerCase().includes('admin@')
+    ) {
+      sesionEnMemoriaMock = { ...MOCK_SESION_DUENO };
+      return sesionEnMemoriaMock;
     }
     if (datosValidados.correo.toLowerCase().includes('multi@')) {
       sesionEnMemoriaMock = { ...MOCK_SESION_MULTI_AGENCIA };
