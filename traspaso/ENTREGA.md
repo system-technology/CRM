@@ -869,3 +869,30 @@ Se creó el archivo de pruebas de componentes `apps/web/src/components/comun/esq
   4. `docs/_assets/diseno/14-aviso-conversacion-retirada-375px.png` (41.2 KB): Hilo de conversación tras recibir evento `CONVERSACION_RETIRADA`, mostrando el banner de aviso de reasignación a otra persona, bloqueo de envío y el **borrador redactado perfectamente visible e intacto** en el campo de texto deshabilitado.
 - **Criterio «Hecho cuando» verificado:**
   - 4 capturas en `docs/_assets/diseno/` referenciadas en `ENTREGA.md`, cada una < 100 KB, inspeccionadas visualmente sin texto ni botón cortado.
+
+
+---
+
+### 2026-10-20 — 0c.40: El socket solo se conecta cuando hay bandeja y sesión activa
+
+- **Tarea de la cola:** 0c.40 (Aislamiento de conexión de socket e higiene de red).
+- **Reglas respetadas:** R1 (aislamiento de tenant), R3 (contratos Zod / EventoBandeja), R5 (cero efectos colaterales de red fuera de contexto), R11 (ámbito acotado a apps/web).
+- **Archivos modificados:**
+  - `apps/web/src/lib/inbox-socket.ts`:
+    - El constructor de `InboxSocketManager` ya **NO** autoconecta al importarse (`this.inicializar()` removido del constructor).
+    - Incorporado conteo de referencias (`consumidoresActivos`) con métodos `registrarConsumidor()` y `liberarConsumidor()`: conecta solo cuando el primer consumidor monta, y desconecta automáticamente (`this.desconectar()`) cuando todos los consumidores de la bandeja se desmontan (por ejemplo al salir a `/pipeline`, `/cotizador`, `/catalogo` o al desloguearse).
+    - Enriquecido `desconectar()` para cortar activamente el socket, restablecer suscriptores a 0 y notificar estado `desconectado`.
+  - `apps/web/src/components/bandeja/barra-modulos.tsx`:
+    - En el manejador `manejarCerrarSesion`, se ejecuta explícitamente `inboxSocketManager.desconectar()` al cerrar sesión para garantizar que no queden intentos de reconexión activos tras abandonar la app.
+  - `apps/web/src/lib/inbox-socket.spec.ts`:
+    - Prueba 6: Verifica que la instanciación de `InboxSocketManager` NO llama a `io` ni inicia peticiones de socket, manteniendo estado `desconectado` y 0 consumidores.
+    - Prueba 7: Verifica que conecta solo al montar el primer consumidor y desconecta al desmontar el último consumidor (probado con mock de socket.io-client).
+    - Prueba 8: Verifica que `desconectar()` explícito (al cerrar sesión) corta la conexión del socket inmediatamente y resetea el contador de consumidores y el estado.
+- **Criterio «Hecho cuando» verificado:**
+  - Sin sesión o fuera de la bandeja (como en `/ingresar`), hay 0 peticiones de socket, validado por las pruebas unitarias.
+- **Compuertas de Calidad:**
+  - `test`: **VERDE** (37 archivos de prueba, 324/324 tests pasando en `@viajapro/web`).
+  - `lint`: **VERDE** (0 errores, 0 advertencias).
+  - `typecheck`: **VERDE** (9/9 tareas exitosas en Turborepo, cero errores TypeScript).
+  - `format:check`: **VERDE** (100% verificado con Prettier).
+  - `build`: **VERDE** (Next.js 15.5.27 compiló 16 páginas en 6.7s).

@@ -33,6 +33,7 @@ import {
 } from '../../lib/notificaciones-logica';
 import { usePermisos } from '../../lib/permisos';
 import { cambiarAgenciaActivaApi, cerrarSesionApi } from '../../lib/auth-api';
+import { inboxSocketManager } from '../../lib/inbox-socket';
 import { useFocoModal } from '../../lib/use-foco-modal';
 
 interface ModuloItem {
@@ -158,6 +159,7 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
   const manejarCerrarSesion = async () => {
     try {
       setCerrandoSesion(true);
+      inboxSocketManager.desconectar();
       await cerrarSesionApi();
       setMenuSesionAbierto(false);
       router.push('/ingresar');

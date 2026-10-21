@@ -24,9 +24,28 @@ export class InboxSocketManager {
   private intentoReconexion = false;
   private mockUnsubscribe: (() => void) | null = null;
 
+  private consumidoresActivos = 0;
+
   constructor() {
-    if (typeof window !== 'undefined') {
+    // 0c.40: El constructor NO se conecta al socket automáticamente.
+    // La conexión se inicia exclusivamente desde useInboxSocket cuando hay bandeja y sesión activa.
+  }
+
+  public getConsumidoresActivos(): number {
+    return this.consumidoresActivos;
+  }
+
+  public registrarConsumidor(): void {
+    this.consumidoresActivos++;
+    if (this.consumidoresActivos === 1) {
       this.inicializar();
+    }
+  }
+
+  public liberarConsumidor(): void {
+    this.consumidoresActivos = Math.max(0, this.consumidoresActivos - 1);
+    if (this.consumidoresActivos === 0) {
+      this.desconectar();
     }
   }
 
@@ -214,8 +233,10 @@ export class InboxSocketManager {
       this.mockUnsubscribe();
       this.mockUnsubscribe = null;
     }
+    this.consumidoresActivos = 0;
     this.estadoActual = 'desconectado';
     this.intentoReconexion = false;
+    this.notificarCambioEstado('desconectado');
   }
 }
 
@@ -240,7 +261,7 @@ export function useInboxSocket(opciones?: {
   }, [opciones?.onEvento, opciones?.onReconexion]);
 
   useEffect(() => {
-    inboxSocketManager.inicializar();
+    inboxSocketManager.registrarConsumidor();
 
     const unsubEstado = inboxSocketManager.suscribirEstado((nuevoEstado) => {
       setEstado(nuevoEstado);
@@ -258,6 +279,7 @@ export function useInboxSocket(opciones?: {
       unsubEstado();
       unsubEvento();
       unsubReconexion();
+      inboxSocketManager.liberarConsumidor();
     };
   }, []);
 

@@ -1,4 +1,4 @@
-﻿**SIGUIENTE, EN ESTE ORDEN: 0c.40 (socket solo se conecta con bandeja y sesión). No cojas otra fuera de este orden.**
+﻿**COLA DE REVISIÓN COMPLETADA: 0c.39, 0c.36, 0c.38, 0c.37, 0c.40 terminadas con compuertas verdes.**
 
 # Cola de trabajo — Antigravity
 
@@ -295,7 +295,7 @@ en consola; (4) un `CONVERSACION_RETIRADA` de otra conversación no toca la abie
 
 **Hecho cuando:** las cuatro pruebas existen y fallan si se quita la lógica correspondiente.
 
-## [ ] 0c.40. El socket solo se conecta cuando hay bandeja y sesión (añadida el 2026-10-20)
+## [x] 0c.40. El socket solo se conecta cuando hay bandeja y sesión (añadida el 2026-10-20)
 
 `inboxSocketManager` es un singleton que llama a `inicializar()` al importarse y reintenta sin límite:
 en `/ingresar`, sin sesión, intentaría conectarse cada pocos segundos. Conéctalo solo desde
