@@ -1,4 +1,5 @@
-import { Controller, Get, Inject } from '@nestjs/common';
+import { Controller, Get, HttpStatus, Inject, Logger, Res } from '@nestjs/common';
+import type { Response } from 'express';
 import { PrismaService } from './shared/prisma/prisma.service.js';
 
 @Controller('salud')
@@ -24,17 +25,34 @@ export class SaludController {
    * ficticio. Preferimos que el despliegue se marque como no listo.
    */
   @Get('listo')
-  async listo() {
-    const [rol] = await this.prisma.$queryRaw<Array<{ usuario: string; bypassa: boolean }>>`
-      SELECT current_user AS usuario,
-             (SELECT rolbypassrls FROM pg_roles WHERE rolname = current_user) AS bypassa
-    `;
-    const aislamientoOk = rol != null && !rol.bypassa;
-    return {
-      estado: aislamientoOk ? 'ok' : 'degradado',
-      baseDeDatos: 'ok',
-      rol: rol?.usuario ?? null,
-      aislamiento: aislamientoOk ? 'forzado' : 'EL ROL PUEDE SALTARSE RLS',
-    };
+  async listo(@Res({ passthrough: true }) res: Response) {
+    // 503 cuando no puede atender de verdad: el health check de Render (ADR-0013) mira el codigo
+    // HTTP, no el cuerpo. El cuerpo conserva el mismo detalle de antes, y ni la causa de un error
+    // de conexion ni nada mas sale en el.
+    try {
+      const [rol] = await this.prisma.$queryRaw<Array<{ usuario: string; bypassa: boolean }>>`
+        SELECT current_user AS usuario,
+               (SELECT rolbypassrls FROM pg_roles WHERE rolname = current_user) AS bypassa
+      `;
+      const aislamientoOk = rol != null && !rol.bypassa;
+      if (!aislamientoOk) res.status(HttpStatus.SERVICE_UNAVAILABLE);
+      return {
+        estado: aislamientoOk ? 'ok' : 'degradado',
+        baseDeDatos: 'ok',
+        rol: rol?.usuario ?? null,
+        aislamiento: aislamientoOk ? 'forzado' : 'EL ROL PUEDE SALTARSE RLS',
+      };
+    } catch (error) {
+      new Logger(SaludController.name).error(
+        `La base de datos no responde: ${error instanceof Error ? error.name : 'desconocido'}`,
+      );
+      res.status(HttpStatus.SERVICE_UNAVAILABLE);
+      return {
+        estado: 'degradado',
+        baseDeDatos: 'caida',
+        rol: null,
+        aislamiento: 'sin verificar',
+      };
+    }
   }
 }

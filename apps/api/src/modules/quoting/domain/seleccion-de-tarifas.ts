@@ -65,6 +65,37 @@ export function exigeComposicion(t: CondicionDeCobro): boolean {
 }
 
 /**
+ * ¿Esta tarifa tiene una condición que la entrada actual NO permite evaluar?
+ *
+ * La entrada trae conteos de adultos, niños e infantes, no la edad de cada uno ni si el infante
+ * ocupa silla. Una tarifa con `edadMinima`, `edadMaxima` u `ocupaSilla` no se puede cobrar a
+ * ciegas: una tarifa infantil de 2 a 11 años contaría a todos los niños, y la de «infante con
+ * silla» no distingue al que va en brazos. Se excluye de la selección automática y se enseña
+ * con su motivo, en vez de aplicarse en silencio con un precio que puede estar mal.
+ *
+ * Solo importa si la tarifa cubriría a alguien: sin pasajeros de ese tipo, el motivo de siempre
+ * («no hay pasajeros del tipo…») es el más claro.
+ *
+ * Siguiente paso (ver bitácora): modelar la edad por pasajero, que cambia el contrato.
+ */
+export function condicionNoEvaluable(t: CondicionDeCobro, c: Composicion): string | null {
+  if (pasajerosQueCubre(t, c) < 1) return null;
+  if (t.edadMinima !== null || t.edadMaxima !== null) {
+    const rango =
+      t.edadMinima !== null && t.edadMaxima !== null
+        ? `de ${t.edadMinima} a ${t.edadMaxima} años`
+        : t.edadMinima !== null
+          ? `desde ${t.edadMinima} años`
+          : `hasta ${t.edadMaxima} años`;
+    return `Aplica a pasajeros ${rango} y la cotización no recoge la edad de cada pasajero`;
+  }
+  if (t.ocupaSilla !== null) {
+    return `Aplica a pasajeros ${t.ocupaSilla ? 'que ocupan' : 'que no ocupan'} silla y la cotización no recoge ese dato`;
+  }
+  return null;
+}
+
+/**
  * **A cuántos de este grupo se les cobra esta tarifa.**
  *
  * Una tarifa sin `tipoPasajero` es para todos; una con `ADT` solo para los adultos. Esta función
@@ -107,6 +138,7 @@ export function aplicaAlGrupo(t: CondicionDeCobro, c: Composicion): boolean {
  */
 export function vecesQueSeCobra(t: CondicionDeCobro, c: Composicion): number | null {
   if (!aplicaAlGrupo(t, c)) return null;
+  if (condicionNoEvaluable(t, c) !== null) return null;
 
   if (t.unidad === 'POR_PERSONA') {
     const cubiertos = pasajerosQueCubre(t, c);
@@ -138,6 +170,9 @@ export function motivoNoAplica(t: CondicionDeCobro, c: Composicion): string | nu
   if (t.pasajerosMaximo !== null && total > t.pasajerosMaximo) {
     return `Aplica hasta ${t.pasajerosMaximo} pasajeros y van ${total}`;
   }
+
+  const noEvaluable = condicionNoEvaluable(t, c);
+  if (noEvaluable !== null) return noEvaluable;
 
   if (t.unidad === 'POR_PERSONA') {
     return pasajerosQueCubre(t, c) > 0

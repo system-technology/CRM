@@ -22,11 +22,12 @@ import {
 } from '@viajapro/domain';
 import { type ClienteTenant, PrismaService } from '../../../shared/prisma/prisma.service.js';
 import { ContextoTenant } from '../../../shared/tenant/contexto-tenant.js';
-import { PaqueteNoEncontradoError } from '../domain/errors.js';
+import { PaqueteNoEncontradoError, TarifasConCondicionNoEvaluableError } from '../domain/errors.js';
 import { monedaDeLaBase } from '../domain/moneda-de-la-base.js';
 import {
   type Composicion,
   esSuplemento,
+  condicionNoEvaluable,
   exigeComposicion,
   motivoNoAplica,
   vecesQueSeCobra,
@@ -193,6 +194,7 @@ export class CotizarSalidaUseCase {
     const lineas: OpcionDePrecio[] = [];
     const alternativas: OpcionDePrecio[] = [];
     const suplementos: OpcionDePrecio[] = [];
+    const sinEvaluar: string[] = [];
     const noAplicables: { tarifaId: string; nombre: string; motivo: string }[] = [];
 
     for (const t of filas) {
@@ -203,6 +205,9 @@ export class CotizarSalidaUseCase {
         // Se devuelve CON su motivo en vez de desaparecer. Una promo que se esconde acaba
         // aplicándose con la calculadora del celular, y el informe de margen deja de cuadrar.
         if (motivo !== null) noAplicables.push({ tarifaId: t.id, nombre: t.nombre, motivo });
+        if (condicionNoEvaluable(t, composicion) !== null && motivo !== null) {
+          sinEvaluar.push(motivo);
+        }
         continue;
       }
 
@@ -216,6 +221,14 @@ export class CotizarSalidaUseCase {
       } else {
         lineas.push(aOpcion(t, veces));
       }
+    }
+
+    // Si lo que impidió dar precio fue una condición que no se puede evaluar, se dice: devolver
+    // una cotización vacía o, peor, la tarifa de adulto para un niño sería un precio equivocado.
+    // Con líneas parciales (un adulto sí, el niño no) el total saldría de menos: también se corta.
+    const cubiertos = lineas.reduce((n, l) => n + l.veces, 0);
+    if (sinEvaluar.length > 0 && alternativas.length === 0 && cubiertos < pasajeros) {
+      throw new TarifasConCondicionNoEvaluableError([...new Set(sinEvaluar)]);
     }
 
     const moneda = monedaDeLaBase(filas[0]?.monedaIso ?? 'COP');

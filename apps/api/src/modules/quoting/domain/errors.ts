@@ -120,3 +120,17 @@ export class CursorDeCotizacionesInvalidoError extends InvariantError {
     super('El cursor del listado de cotizaciones no es válido');
   }
 }
+
+/**
+ * Ninguna tarifa se pudo cobrar porque todas las candidatas traen una condición (edad, silla) que
+ * la entrada no permite evaluar. Antes que un precio equivocado, un error que dice por qué.
+ */
+export class TarifasConCondicionNoEvaluableError extends InvariantError {
+  readonly code = 'TARIFAS_CON_CONDICION_NO_EVALUABLE';
+  constructor(readonly motivos: readonly string[]) {
+    super(
+      'Con esta composición solo hay tarifas con condiciones que no se pueden evaluar ' +
+        `(${motivos.join('; ')}). Cotiza a mano o espera a que se recoja la edad por pasajero.`,
+    );
+  }
+}

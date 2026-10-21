@@ -207,3 +207,27 @@ describe('Por qué NO aplica, dicho en voz alta', () => {
     expect(motivoNoAplica(promoPareja, { adultos: 2, ninos: 0, infantes: 0 })).toBeNull();
   });
 });
+
+describe('Condiciones que la entrada actual no permite evaluar', () => {
+  const infantil = con({ tipoPasajero: 'CHD', edadMinima: 2, edadMaxima: 11 });
+  const infanteConSilla = con({ tipoPasajero: 'INF', ocupaSilla: true });
+  const familia: Composicion = { adultos: 2, ninos: 1, infantes: 1 };
+
+  it('una tarifa infantil de 2 a 11 años no se cobra en silencio: sale no aplicable con su motivo', () => {
+    expect(vecesQueSeCobra(infantil, familia)).toBeNull();
+    expect(motivoNoAplica(infantil, familia)).toMatch(/de 2 a 11 años/);
+  });
+
+  it('un infante que ocupa silla no se distingue del que no: no se cobra y se explica', () => {
+    expect(vecesQueSeCobra(infanteConSilla, familia)).toBeNull();
+    expect(motivoNoAplica(infanteConSilla, familia)).toMatch(/silla/);
+  });
+
+  it('la tarifa de adulto sigue cobrándose con normalidad', () => {
+    expect(vecesQueSeCobra(con({ tipoPasajero: 'ADT' }), familia)).toBe(2);
+  });
+
+  it('sin pasajeros de ese tipo, el motivo es el de siempre y no el de la edad', () => {
+    expect(motivoNoAplica(infantil, soloAdultos(2))).toMatch(/No hay pasajeros del tipo CHD/);
+  });
+});
