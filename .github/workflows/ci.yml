@@ -250,6 +250,12 @@ jobs:
           DIRECT_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'neondb') }}
           DB_DEV_PASSWORD: clave-de-integracion-continua
 
+      # TEMPORAL, SOLO PARA DEMOSTRAR EL ROJO DE AUD-008. Esta rama no se integra.
+      - name: ROJO temporal, tabla nueva con GRANT por error a viajapro_identidad
+        run: pnpm --filter @viajapro/database exec node scripts/zz-rojo-temporal.cjs
+        env:
+          DATABASE_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'neondb') }}
+
       # Corre con `viajapro_app`, que NO puede saltarse RLS. Antes caía al rol del
       # contenedor, que es SUPERUSUARIO: las aserciones pasaban sin probar nada, porque lo
       # único que lo vigilaba miraba `rolbypassrls` —falso en un superusuario— en vez de
