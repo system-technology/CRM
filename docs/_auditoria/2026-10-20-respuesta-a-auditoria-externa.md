@@ -51,8 +51,13 @@ lo aceptó el 2026-10-20, y está pendiente de nuestro `auditor-seguridad`. Hay 
 - **Alcance:** incluye también **`conversaciones.ultimo_mensaje_texto`**, una segunda copia en claro
   que no figuraba en la auditoría.
 
-La claves se derivan **por agencia con HKDF**. Eso permite el *crypto-shredding* de una agencia
-entera y prepara la supresión por Ley 1581 (AUD-002).
+Las claves se derivan **por agencia con HKDF** a partir de una clave maestra. **Límite declarado:**
+eso **no** permite el *crypto-shredding* por agencia. Mientras exista la clave maestra, las ramas de
+Neon y la recuperación a un instante (PITR) conservan criptogramas legibles. Para un borrado
+criptográfico real hacen falta claves aleatorias por agencia, envueltas y borrables: queda como un
+ADR futuro, ligado a la supresión por Ley 1581 (AUD-002). Nuestro `auditor-seguridad` aceptó el
+ADR-0014 con cambios: `info` de HKDF con etiqueta y versión, IV de 96 bits con tope de 2^32 cifrados
+por clave, AAD con longitudes prefijadas y la clave solo en la API y en el trabajador.
 
 ## 5. Estado de los hallazgos
 

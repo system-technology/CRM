@@ -37,21 +37,21 @@ pasar por la API**, y ese lector existe:
 El cifrado en reposo del proveedor no cubre ninguno de los tres: descifra para cualquiera que entre
 por el protocolo de PostgreSQL.
 
-**Un dato que rebaja el coste de cifrar:** la búsqueda actual (`conversaciones.prisma.ts:145`) usa
-`contains` con `mode: 'insensitive'` de Prisma, que genera `texto ILIKE '%…%'` sobre la columna
-cruda. El índice está construido sobre `inmutable_unaccent(lower(COALESCE(texto, '')))`, una
-expresión distinta, así que **es muy probable que el índice no se use hoy**. Hay que confirmarlo
-con `EXPLAIN` antes de cerrar el ADR. Si se confirma, «perder el índice» no cuesta rendimiento: la
-búsqueda ya recorre todos los mensajes de la agencia.
+**Un dato que rebaja el coste:** la búsqueda (`conversaciones.prisma.ts:145`) genera
+`texto ILIKE '%…%'` sobre la columna cruda, y el índice es de otra expresión
+(`inmutable_unaccent(lower(COALESCE(texto, '')))`). **Es muy probable que hoy no se use.** Hay que
+confirmarlo con `EXPLAIN`; si se confirma, perderlo no cuesta rendimiento.
 
 **Por qué ahora:** no hay mensajes de producción. Cambiar el tipo de una columna sin filas reales es
 una migración más; con dos años de conversaciones es un recifrado masivo con la bandeja en marcha.
+Las filas que existen hoy, en local, en el CI y en Neon de desarrollo, son semillas y fixtures, no
+datos reales. La migración las anula y se vuelven a sembrar cifradas, así que no hay que escribir
+un paso de claro a cifrado.
 
 ## Opciones consideradas
 
-Lo que comparten todas: el outbox y Redis siguen **sin el texto**. Lo prueban
-`inbox-tiempo-real-redis.e2e-spec.ts` («el texto del viajero y su teléfono NO pasan por Redis») e
-`inbox-visibilidad.e2e-spec.ts` («el evento del outbox lleva solo identificadores»).
+En todas, el outbox y Redis siguen **sin el texto** (`inbox-tiempo-real-redis.e2e-spec.ts` e
+`inbox-visibilidad.e2e-spec.ts` lo prueban).
 
 ### A — AES-256-GCM a nivel de aplicación, con versión de clave
 
@@ -61,13 +61,15 @@ etiqueta y versión de clave, con `CHECK (num_nonnulls(...) IN (0, 4))` como en 
 - **Búsqueda:** se pierde la búsqueda por subcadena dentro del texto. Siguen el nombre y el teléfono
   del contacto, que tienen su propio índice. Buscar dentro del hilo abierto se hace en el cliente,
   que ya tiene el texto descifrado.
-- **Tiempo real:** sin cambios de forma. La API ya lee el mensaje bajo RLS antes de emitir. Ahora
-  además descifra en memoria, del orden de microsegundos por mensaje. El trabajador cifra al
-  escribir, en `procesar-change.ts`.
+- **Tiempo real:** sin cambios de forma. **Tienen la clave la API y el trabajador; la web, nunca.**
+  La API descifra en memoria al leer y emitir (microsegundos) y cifra los mensajes salientes. El
+  trabajador cifra los entrantes en `procesar-change.ts`. La web recibe el texto ya descifrado, por TLS.
 - **Rotación (AUD-005):** cada fila lleva su versión. Se leen la versión vigente y la anterior. Un
   trabajo del trabajador recifra por lotes, agencia por agencia y bajo RLS. Una versión se retira
   cuando `count(*) WHERE clave_version = vieja` llega a cero, que es una consulta verificable.
-- **Supresión (AUD-002):** borrar o anular las cuatro columnas. No hay copias derivadas que perseguir.
+- **Supresión (AUD-002):** anular las cuatro columnas en la base viva, sin índices derivados. **No
+  alcanza las ramas de Neon ni el PITR:** allí el criptograma sigue legible mientras exista la
+  maestra de su versión (concreción 8).
 - **Gana:** cierra los tres lectores del contexto. Es el mismo código y el mismo criterio que ya
   auditamos. **Cuesta:** la búsqueda por contenido y un trabajo de recifrado que hay que escribir.
   **Cierra:** cualquier consulta SQL sobre el texto: informes, analítica o `LIKE` desde la base.
@@ -76,41 +78,34 @@ etiqueta y versión de clave, con `CHECK (num_nonnulls(...) IN (0, 4))` como en 
 
 Igual que A, y además una tabla `mensajes_tokens (tenant_id, mensaje_id, token)` con
 `token = HMAC(clave_índice_tenant, normalizar(fragmento))`, también bajo RLS.
-- **Búsqueda:** para buscar por subcadena hay que indexar trigramas con hash. Buscar por palabra
-  entera solo da coincidencias exactas.
-- **Fuga:** el índice revela qué mensajes comparten un fragmento y con qué frecuencia. Con trigramas,
-  un análisis de frecuencias dentro de una agencia reconstruye buena parte del texto: es casi tan
-  legible como el claro. Con palabras enteras, revela que el mismo pasaporte aparece en tres
-  conversaciones, que es justo el dato que se quería proteger.
-- **Tiempo real:** cada mensaje entrante escribe además entre 10 y 200 tokens. Eso amplifica las
-  escrituras del trabajador.
-- **Rotación:** hay que rehacer el índice entero con la clave nueva, más el recifrado de A.
-- **Supresión:** hay que borrar también los tokens. Olvidarlos deja una huella consultable.
-- **Gana:** conserva algo de búsqueda. **Cuesta:** una tabla nueva, la más grande del sistema, con
-  una fuga difícil de acotar ante un auditor. **Cierra:** poco, pero compromete un esquema caro.
+- **Búsqueda:** por subcadena, solo indexando trigramas con hash. Por palabra entera, solo
+  coincidencias exactas.
+- **Fuga:** revela qué mensajes comparten un fragmento y con qué frecuencia. Con trigramas, el
+  análisis de frecuencias reconstruye buena parte del texto. Con palabras, delata que el mismo
+  pasaporte aparece en tres conversaciones.
+- **Tiempo real, rotación y supresión:** entre 10 y 200 tokens más por mensaje. Hay que rehacer el
+  índice al rotar y borrar los tokens al suprimir.
+- **Gana:** conserva algo de búsqueda. **Cuesta:** la tabla más grande del sistema, con una fuga
+  difícil de acotar. **Cierra:** compromete un esquema caro.
 
 ### C — Cifrar solo lo que parezca PII sensible
 
 Un detector marca pasaportes, documentos y fechas, y cifra esos fragmentos o esos mensajes. El
 resto queda en claro.
-- **Búsqueda:** se conserva sobre la parte en claro, que es la mayoría.
-- **Tiempo real:** el texto vuelve a armarse a partir de partes en claro y partes cifradas.
-- **Rotación:** igual que A, pero sobre un subconjunto.
-- **Supresión:** igual que A, más la parte en claro.
+- **Búsqueda:** se conserva sobre la parte en claro. **Tiempo real:** el texto se rearma con partes
+  en claro y partes cifradas. **Rotación y supresión:** como en A, pero sobre un subconjunto.
 - **Por qué no:** los falsos negativos son el caso normal. «Mi hijo nació el 3 de mayo», un
-  pasaporte con espacios, una alergia o una foto del pasaporte transcrita: nada de eso lo atrapa una
-  expresión regular. Da una garantía falsa, la peor posición ante la SIC: declarar que se cifra la
-  PII cuando no se cifra. Además pone lógica de clasificación en el camino de escritura.
+  pasaporte con espacios o una alergia escapan a cualquier expresión regular. Da una garantía falsa
+  ante la SIC y pone un clasificador en el camino de escritura.
 - **Cierra:** la posibilidad de afirmar «el texto del viajero está cifrado».
 
 ### D — Dejarlo en claro, con cifrado del proveedor y RLS
 
 Lo de hoy, ratificado.
-- **Búsqueda, tiempo real, rotación:** sin cambios. No hay clave que rotar.
-- **Supresión:** `DELETE` o `UPDATE`. Es lo más simple.
-- **Por qué no:** no protege de ninguno de los tres lectores del contexto. Contradice R10 tal como
-  está escrita («cifrado y acceso auditado»). Habría que cambiar la regla, y no hay fuerza de
-  producto que lo justifique, porque la búsqueda probablemente ya no usa el índice.
+- **Búsqueda, tiempo real y rotación:** sin cambios. **Supresión:** un `DELETE`.
+- **Por qué no:** no protege de ninguno de los tres lectores del contexto y contradice R10 tal como
+  está escrita. No hay fuerza de producto que lo justifique: la búsqueda probablemente ya no usa el
+  índice.
 - **Cierra:** nada técnico. Abre una exposición legal.
 
 ## Decisión
@@ -123,22 +118,31 @@ promete lo que no cumple.
 
 Concreciones obligatorias:
 
-1. **Clave por agencia, derivada:** `clave = HKDF-SHA256(MENSAJES_TEXTO_KEY_v<n>, info = tenant_id)`.
-   Un criptograma copiado a otra agencia no descifra, aunque falle RLS. No hace falta ninguna tabla
-   de claves.
-2. **AAD = `tenant_id ‖ mensaje_id ‖ nombre de columna`.** Ata el criptograma a su fila y a su
-   columna, como el `recepcion_id` en el payload.
-3. **Sin respaldo:** sin `MENSAJES_TEXTO_KEY`, la API y el trabajador abortan al arrancar, con el
-   mismo criterio que `resolverClavePayload`. La web no recibe la clave.
-4. **Un solo punto de cifrado:** un adaptador en `inbox/infrastructure`. Ni los casos de uso ni los
-   controladores ven bytes cifrados.
-5. **Se elimina** `mensajes_texto_trgm_idx`. El contrato `ConsultarBandeja.buscar` pasa a buscar
-   solo por el nombre y el teléfono del contacto. Lo debe aceptar `dueno-de-producto`.
+1. **Clave por agencia, derivada:** `HKDF-SHA256(ikm = MENSAJES_TEXTO_KEY_v<n>, sal = la constante
+   de 32 bytes fijada en el adaptador y documentada junto a él, info = "viajapro/mensajes/v<n>/" ‖
+   tenant_id)`. Un criptograma copiado a otra agencia no descifra, aunque falle RLS. Rotar la
+   maestra cambia todas las claves derivadas, y eso lo cubre el recifrado por agencia.
+2. **IV aleatorio de 96 bits por cifrado y tope de 2^32 cifrados por clave derivada** (agencia y
+   versión). Cada `UPDATE` cuenta como un cifrado más. Se rota antes de llegar a 2^31, con la
+   cuenta sacada de la base por agencia y versión. Lo que fuerza la rotación es ese tope, no el
+   calendario.
+3. **AAD sin ambigüedad, con campos de longitud fija:** `etiqueta "viajapro/mensajes/v1"` ‖
+   `tenant_id` (16 bytes) ‖ id de fila (16 bytes) ‖ código de columna (1 byte). En
+   `ultimo_mensaje_texto`, el id es el de la conversación. **El id del mensaje se genera en la
+   aplicación antes del `INSERT`**, nunca por `DEFAULT` de la base.
+4. **Sin respaldo:** sin `MENSAJES_TEXTO_KEY`, la API y el trabajador abortan al arrancar, con el
+   mismo criterio que `resolverClavePayload`. La web y su entorno nunca tienen la clave.
+5. **Un solo punto de cifrado:** un adaptador en `inbox/infrastructure`. Se quita
+   `mensajes_texto_trgm_idx`, y `ConsultarBandeja.buscar` busca solo por el nombre y el teléfono
+   del contacto. Lo acepta `dueno-de-producto`.
 6. **Lo que falla al descifrar se registra como error `Clase:código`, sin contenido.** No se emite
    ni se devuelve a medias.
-7. **Prueba de aislamiento nueva**, que debe verse en rojo antes del arreglo: con el rol de
-   aplicación y SQL directo, ninguna columna de `mensajes` ni de `conversaciones` contiene el texto
-   sembrado. Es el análogo de «lo guardado va cifrado» en `inbox-webhook.e2e-spec.ts`.
+7. **Prueba de aislamiento nueva**, vista en rojo antes del arreglo: con el rol de aplicación y SQL
+   directo, ninguna columna de `mensajes` ni de `conversaciones` contiene el texto sembrado.
+8. **Sin *crypto-shredding* por agencia.** Las claves derivadas de una maestra no se pueden borrar
+   una a una. Las ramas de Neon y el PITR guardan criptogramas legibles mientras exista la maestra
+   de su versión. Para borrar de verdad hacen falta claves aleatorias por agencia, envueltas y
+   borrables. Eso queda para un ADR futuro, ligado a AUD-002.
 
 ## Consecuencias
 
@@ -146,7 +150,7 @@ Concreciones obligatorias:
 - Un `DATABASE_URL` filtrado, una rama de Neon o un volcado ya no exponen lo que escribieron los
   viajeros.
 - R10 se cumple tal como está escrita para el texto de los mensajes.
-- La supresión de un mensaje es completa: no queda ningún índice ni copia derivada.
+- En la base viva, la supresión de un mensaje no deja ningún índice ni copia derivada.
 
 ### Negativas
 - **Se pierde la búsqueda por contenido en la bandeja.** Un asesor que recuerda «el que preguntó por
@@ -157,8 +161,8 @@ Concreciones obligatorias:
   ni para la pimienta (tarea 4c).
 - Hay un secreto más que custodiar por entorno. Si se pierde `MENSAJES_TEXTO_KEY`, se pierde el
   historial: tiene que estar en el gestor de secretos con copia fuera de Render.
-- **No protege de un compromiso del proceso de la API**, que tiene la clave. Contra eso protegen
-  RLS, la sesión y la visibilidad, no este ADR.
+- **No protege de un compromiso de la API ni del trabajador**, que tienen la clave. **La supresión no
+  alcanza** las ramas ni el PITR mientras viva la maestra (concreción 8).
 - Siguen en claro las notas internas, `contactos.preferencias` y el nombre y el teléfono del
   contacto. Quedan fuera de este ADR y van a la cola de `ESTADO.md`, con `datos` y
   `auditor-seguridad` como dueños.

@@ -105,7 +105,7 @@ un control, pero no cubre toda la amenaza o no tiene prueba.
 | B5 | E | Un rol de login crea objetos o lee el directorio | Privilegios declarados, comparados en ambos sentidos | AISL-8, AISL-9, AISL-10, AISL-21 y AISL-62 |
 | B6 | I | Una credencial `viajapro_app` filtrada fija cualquier `app.current_tenant` y lee todas las agencias | **Sin control** para el texto de los mensajes (en claro). Lo cierra ADR-0014 (Propuesto) | — |
 | B7 | I | Copias de Neon (ramas, PITR) con PII real | **Parcial:** staging nace solo con el esquema (ADR-0013). Sin cifrado de aplicación del texto | Sin prueba |
-| B8 | T/D | El arnés de mutaciones se ejecuta contra una base compartida | Aborta sin `VIAJAPRO_BASE_DESECHABLE=1` (`scripts/guarda-base-desechable.mjs`) | Sin prueba automatizada de la guarda |
+| B8 | T/D | El arnés de mutaciones se ejecuta contra una base compartida | Aborta sin `VIAJAPRO_BASE_DESECHABLE=1` (`packages/database/scripts/guarda-base-desechable.mjs`) | `packages/database/tests/guarda-mutaciones.spec.ts` |
 
 ### 3.6 Correo saliente (Postmark), LC6
 
@@ -135,7 +135,7 @@ un control, pero no cubre toda la amenaza o no tiene prueba.
 | D3 | T | Cadena de suministro: dependencias o Actions comprometidas | **Parcial:** `--frozen-lockfile`. Las Actions van fijadas por etiqueta (`@v4`), no por SHA. No hay `permissions` por defecto a nivel de workflow (solo en `secretos`) ni `pnpm audit` | — |
 | D4 | E | Migraciones aplicadas desde una rama sin integrar | Solo `migrate deploy` desde `main`, en un Environment limitado (ADR-0013, no implementado) | AISL-11 detecta la divergencia con el repo |
 | D5 | S/E | Un *deploy hook* filtrado redespliega | Un hook por servicio. Solo redespliega lo que ya está en `main` | — |
-| D6 | R | No queda constancia de quién integró ni desplegó | `docs/_integraciones/registro-de-autorizaciones.log` y el historial de Actions | — |
+| D6 | R | No queda constancia de quién integró ni desplegó | **Parcial:** un registro por integración en `docs/_integraciones/AAAA-MM-DD-<versión>.md`, los commits `merge --no-ff` de `main` y el historial de Actions. `registro-de-autorizaciones.log` **no está versionado en `main`**, así que no sirve de evidencia | — |
 
 ## 4. Lo que está «sin control», por gravedad
 
