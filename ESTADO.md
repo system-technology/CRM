@@ -6,7 +6,7 @@
 
 | Campo | Valor |
 |---|---|
-| Última actualización | 2026-10-20 (hasta v0.38.0: el adaptador de Postmark) |
+| Última actualización | 2026-10-20 (hasta el ADR-0013: despliegue, solo staging) |
 | Actualizado por | Claude Opus 5.5 (`integrador`) |
 | Fase | **Rebanada vertical de paquetes, en construcción** |
 | Avance de la fase | Cotizador de punta a punta. **La cotización es la suma de sus tarifas y el precio «desde» es uno que el comprador puede pagar (v0.19.0).** Apretón de manos del webhook vivo. Bandeja web en construcción |
@@ -1327,4 +1327,31 @@ Registro: [`docs/_integraciones/2026-10-20-v0.38.0.md`](docs/_integraciones/2026
 **Para el usuario, siguen los cinco pasos del ADR-0012.** El paso 2 cambia: crear la cuenta de Postmark **con MFA y con el Retention Add-on**
 (la retención pasa de 7 a 365 días). Los demás quedan igual: dominio neutro, DNS (DKIM, Return-Path y DMARC), token a `devops` y consulta al
 abogado por la SIC.
+
+## Integración del 2026-10-20 — ADR-0013, despliegue, sin etiqueta
+
+`docs/adr-0013-despliegue` @ `beb2103` entra en `main` (`c84edbc`). Trae el ADR-0013 (**todo en Render, región Ohio**), su fila en `docs/README.md` y la
+bitácora. Es solo documentación y no toca `CLAUDE.md`, así que no lleva etiqueta. `format:check` sale limpio.
+Registro: [`docs/_integraciones/2026-10-20-adr-0013.md`](docs/_integraciones/2026-10-20-adr-0013.md).
+
+- **El despliegue queda con el ADR-0013 aceptado, solo para staging.** El propietario respondió «Acepto, solo staging primero», según consta
+  en la bitácora del 2026-10-20.
+- **`auditor-seguridad`:** ACEPTAR CON CAMBIOS, ya incorporados:
+  - una matriz de variables por servicio;
+  - un deploy hook por servicio;
+  - el Environment de GitHub limitado a `main`;
+  - Key Value solo por red privada;
+  - nada de cuerpos de petición en los logs;
+  - la rama de staging de Neon, solo con el esquema.
+- **En curso:** `devops` prepara el blueprint de Render, las imágenes y el workflow de despliegue.
+
+**Para el usuario, los pasos del ADR-0013:**
+
+1. El **dominio neutro**, el mismo del ADR-0012.
+2. Una **cuenta de Render con tarjeta**.
+3. Una **rama de staging en Neon solo con el esquema**, sin datos de la base actual.
+4. Los **secretos por servicio** en Render, según la matriz del ADR. Nunca por el chat.
+5. Los **Environments de GitHub** (`staging`), limitados a `main`.
+6. El **DNS** del dominio hacia Render.
+7. El **Paso 2 de Meta**: configurar el webhook con la URL pública de staging.
 
