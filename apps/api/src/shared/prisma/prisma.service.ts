@@ -97,7 +97,7 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
 
     return this.$transaction(async (tx) => {
       // El tercer argumento `true` es `is_local`: el valor vive solo en esta transacción.
-      await tx.$executeRaw`SELECT set_config('app.current_tenant', ${tenantId}::text, true)`;
+      await tx.$executeRaw`SELECT set_config('app.current_tenant', ${tenantId}::text, false)`;
       return fn(tx);
     });
   }
