@@ -1,3 +1,4 @@
+import { cabecerasDeTenantDev } from './cabeceras-tenant';
 import { obtenerBaseApi } from './api-base';
 /**
  * Cliente de la API.
@@ -21,7 +22,6 @@ import {
  * Cuando exista, esto desaparece y el tenant se deriva del token de sesión. Hoy el servidor
  * solo la acepta con `APP_ENV=local`, así que no hay forma de usarla en otro entorno.
  */
-const TENANT_DEMO = process.env['NEXT_PUBLIC_DEV_TENANT_ID'] ?? '';
 
 export class ErrorApi extends Error {
   constructor(
@@ -40,7 +40,7 @@ async function pedir<T>(ruta: string, init?: RequestInit): Promise<T> {
     credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
-      ...(TENANT_DEMO ? { 'x-dev-tenant-id': TENANT_DEMO } : {}),
+      ...cabecerasDeTenantDev(),
       ...init?.headers,
     },
     cache: 'no-store',

@@ -1,3 +1,4 @@
+import { cabecerasDeTenantDev } from './cabeceras-tenant';
 import { obtenerBaseApi } from './api-base';
 export { obtenerBaseApi };
 /**
@@ -59,11 +60,10 @@ export class CotizacionesApiError extends Error {
  */
 async function pedirCotizaciones<T>(ruta: string, opciones: RequestInit = {}): Promise<T> {
   const base = obtenerBaseApi();
-  const tenant = obtenerTenantDemo().trim();
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    ...(tenant ? { 'x-dev-tenant-id': tenant } : {}),
+    ...cabecerasDeTenantDev(),
     ...(opciones.headers as Record<string, string> | undefined),
   };
 
@@ -104,7 +104,7 @@ async function pedirCotizaciones<T>(ruta: string, opciones: RequestInit = {}): P
     if (res.status === 401) {
       throw new CotizacionesApiError(
         'SIN_SESION',
-        'Falta identificar la agencia (x-dev-tenant-id). Verifique su configuración de desarrollo.',
+        'Falta identificar la agencia. Verifique su configuración de desarrollo o sesión activa.',
         401,
       );
     }

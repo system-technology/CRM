@@ -775,3 +775,35 @@ Se creó el archivo de pruebas de componentes `apps/web/src/components/comun/esq
   - `format:check`: **VERDE** (100% verificado con Prettier).
   - `build`: **VERDE** (Next.js 15.5.27 compiló 16 páginas en 7.2s).
   - `test`: **VERDE** (36 archivos de prueba, 312/312 tests pasando en `@viajapro/web`).
+
+
+---
+
+### 2026-10-20 — 0c.39: Con sesión real no se manda la cabecera de tenant de desarrollo (Frontera de sesión ADR-0011)
+
+- **Tarea de la cola:** 0c.39 (Prioritaria, la primera de la tanda de revisión).
+- **Reglas respetadas:** R1 (aislamiento tenant), R3 (cero tipos redefinidos, contratos Zod), R6 (sin secretos en repo, cookies HttpOnly SameSite seguras), R10 (sesión y confidencialidad), R11 (ámbito estricto en apps/web, sin tocar main ni packages/database).
+- **Archivos creados:**
+  - `apps/web/src/lib/cabeceras-tenant.ts`: Función pura `cabecerasDeTenantDev()` que evalúa `usaAuthReal()`: si la autenticación real está activa devuelve `{}` (cero cabeceras de desarrollo, garantizando que el tenant se resuelva en el servidor por la cookie de sesión vía `TenantMiddleware`), y sólo si la autenticación está apagada devuelve `{ 'x-dev-tenant-id': ... }` cuando `NEXT_PUBLIC_DEV_TENANT_ID` existe.
+  - `apps/web/src/lib/cabeceras-tenant.spec.ts`: 5 pruebas unitarias verificando:
+    1. Con auth real activa, `cabecerasDeTenantDev()` devuelve `{}` aunque exista `NEXT_PUBLIC_DEV_TENANT_ID`.
+    2. Con auth real activa, `obtenerTableroPipeline()` no exige `NEXT_PUBLIC_DEV_TENANT_ID` ni lanza `CONFIG_TENANT_FALTANTE`.
+    3. Con auth apagada, envía `x-dev-tenant-id` si la variable de entorno está definida.
+    4. Con auth apagada, devuelve `{}` si la variable está ausente.
+    5. Con auth apagada y CRM real activo, exige `NEXT_PUBLIC_DEV_TENANT_ID` y lanza `CONFIG_TENANT_FALTANTE`.
+- **Archivos modificados:**
+  - `apps/web/src/lib/api.ts`: Conectado a `cabecerasDeTenantDev()`.
+  - `apps/web/src/lib/catalogo-api.ts`: Conectado a `cabecerasDeTenantDev()`, añadido `credentials: 'include'` en peticiones fetch y mensaje de 401 honesto.
+  - `apps/web/src/lib/cotizaciones-api.ts`: Conectado a `cabecerasDeTenantDev()` y mensaje de 401 honesto.
+  - `apps/web/src/lib/crm-api.ts`: Conectado a `cabecerasDeTenantDev()`, `obtenerTableroPipeline()` condicionado a exigir `NEXT_PUBLIC_DEV_TENANT_ID` únicamente cuando `!usaAuthReal()`.
+  - `apps/web/src/lib/inbox-api.ts`: Conectado a `cabecerasDeTenantDev()`.
+  - `apps/web/src/app/pipeline/page.tsx`: Carga inicial condicionada a exigir `NEXT_PUBLIC_DEV_TENANT_ID` únicamente cuando `!usaAuthReal()`.
+  - `apps/web/src/lib/cotizaciones-logica.ts`, `apps/web/src/lib/cotizaciones-logica.spec.ts`, `apps/web/src/lib/cotizador-logica.ts`: Mensajes de error amigables sin exponer el literal `x-dev-tenant-id`.
+- **Criterio «Hecho cuando» verificado:**
+  - `git grep "x-dev-tenant-id" apps/web/src` arroja **únicamente** la función `cabecerasDeTenantDev()` en `cabeceras-tenant.ts` (y sus pruebas unitarias).
+- **Compuertas de Calidad:**
+  - `test`: **VERDE** (37 archivos de prueba, 317/317 pruebas pasando en `@viajapro/web`).
+  - `lint`: **VERDE** (0 errores, 0 advertencias).
+  - `typecheck`: **VERDE** (9/9 tareas exitosas en Turborepo, cero errores TypeScript).
+  - `format:check`: **VERDE** (100% verificado con Prettier).
+  - `build`: **VERDE** (Next.js 15.5.27 compiló 16 páginas en 4.9s).

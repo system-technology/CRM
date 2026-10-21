@@ -16,6 +16,7 @@ import {
   formatearErrorAmigable,
   construirMensajeErrorAccionable,
 } from '../../lib/estados-ui-logica';
+import { usaAuthReal } from '../../lib/auth-api';
 import {
   obtenerTableroPipeline,
   moverOportunidadDeEtapa,
@@ -44,13 +45,15 @@ export default function PipelinePage() {
       return;
     }
 
-    const tenant = obtenerTenantDemo().trim();
-    if (!tenant) {
-      setErrorConfiguracion(
-        'El interruptor NEXT_PUBLIC_USE_REAL_CRM está activado, pero falta NEXT_PUBLIC_DEV_TENANT_ID en el archivo .env.',
-      );
-      setCargandoApi(false);
-      return;
+    if (!usaAuthReal()) {
+      const tenant = obtenerTenantDemo().trim();
+      if (!tenant) {
+        setErrorConfiguracion(
+          'El interruptor NEXT_PUBLIC_USE_REAL_CRM está activado, pero falta NEXT_PUBLIC_DEV_TENANT_ID en el archivo .env.',
+        );
+        setCargandoApi(false);
+        return;
+      }
     }
 
     setCargandoApi(true);

@@ -1,4 +1,4 @@
-﻿**SIGUIENTE, EN ESTE ORDEN: 0c.39 (la cabecera de tenant de desarrollo con sesión) → 0c.36 (placeholder de búsqueda) → 0c.38 → 0c.37 → 0c.40. No cojas otra fuera de este orden.**
+﻿**SIGUIENTE, EN ESTE ORDEN: 0c.36 (placeholder de búsqueda) → 0c.38 → 0c.37 → 0c.40. No cojas otra fuera de este orden.**
 
 # Cola de trabajo — Antigravity
 
@@ -251,7 +251,7 @@ devolviendo el mock; y `pnpm compuertas` sale en verde.
 
 ---
 
-## [ ] 0c.39. Con sesión real no se manda la cabecera de tenant de desarrollo (añadida el 2026-10-20, PRIORITARIA, LA PRIMERA)
+## [x] 0c.39. Con sesión real no se manda la cabecera de tenant de desarrollo (añadida el 2026-10-20, PRIORITARIA, LA PRIMERA)
 
 Frontera de sesión (ADR-0011). Hoy `api.ts`, `crm-api.ts`, `cotizaciones-api.ts`, `inbox-api.ts` y
 `catalogo-api.ts` añaden `x-dev-tenant-id` siempre que exista `NEXT_PUBLIC_DEV_TENANT_ID`, **aunque haya

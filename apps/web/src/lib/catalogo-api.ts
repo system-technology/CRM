@@ -1,3 +1,4 @@
+import { cabecerasDeTenantDev } from './cabeceras-tenant';
 import { obtenerBaseApi } from './api-base';
 export { obtenerBaseApi };
 /**
@@ -50,19 +51,15 @@ const EsquemaRespuestaSalidas = z.object({
  */
 async function pedirCatalogo<T>(ruta: string, init?: RequestInit): Promise<T> {
   const base = obtenerBaseApi();
-  const tenantId = obtenerTenantDemo();
-
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
+    ...cabecerasDeTenantDev(),
     ...(init?.headers as Record<string, string>),
   };
 
-  if (tenantId) {
-    headers['x-dev-tenant-id'] = tenantId;
-  }
-
   const res = await fetch(`${base}${ruta}`, {
     ...init,
+    credentials: 'include',
     headers,
     cache: 'no-store',
   });
@@ -79,7 +76,7 @@ async function pedirCatalogo<T>(ruta: string, init?: RequestInit): Promise<T> {
     if (res.status === 401) {
       throw new CatalogoApiError(
         'SIN_SESION',
-        'Falta identificar la agencia (x-dev-tenant-id). Verifique su configuración de desarrollo.',
+        'Falta identificar la agencia. Verifique su configuración de desarrollo o sesión activa.',
         401,
       );
     }

@@ -1,3 +1,4 @@
+import { cabecerasDeTenantDev } from './cabeceras-tenant';
 import { obtenerBaseApi } from './api-base';
 /**
  * Cliente de API para la Bandeja de Entrada de WhatsApp (/bandeja).
@@ -49,7 +50,6 @@ import {
 } from './mock-inbox';
 
 // BASE_API sustituido por obtenerBaseApi() (ADR-0011 §2)
-const TENANT_DEMO = process.env['NEXT_PUBLIC_DEV_TENANT_ID'] ?? '';
 
 /**
  * Determina si la bandeja consulta la API REST real de NestJS o el mock en memoria.
@@ -80,7 +80,7 @@ async function pedirInbox<T>(ruta: string, init?: RequestInit): Promise<T> {
       credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
-        ...(TENANT_DEMO ? { 'x-dev-tenant-id': TENANT_DEMO } : {}),
+        ...cabecerasDeTenantDev(),
         ...init?.headers,
       },
       cache: 'no-store',
