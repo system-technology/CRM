@@ -603,7 +603,8 @@ async function main() {
       // Hace 20 horas: quedan 4 de ventana. Es el estado interesante de la interfaz,
       // el que obliga a decidir entre responder ya o gastar una plantilla.
       ultimoMensajeClienteEn: haceHoras(20),
-      ultimoMensajeTexto: 'Perfecto, cuando me manda la cotizacion?',
+      // ADR-0015: la vista previa va cifrada y la cifra la API (`apps/api/src/shared/cifrado/`),
+      // que esta semilla no puede importar. Hasta que `backend` siembre por ese camino, nula.
       ultimoMensajeEn: haceHoras(20),
       ultimoMensajeDireccion: 'ENTRANTE',
       mensajesSinLeer: 1,
@@ -612,6 +613,9 @@ async function main() {
     },
   });
 
+  // ADR-0015: `mensajes.texto` ya no existe en claro. El hilo de demostración se siembra
+  // sin texto hasta que `backend` lo siembre cifrado con la primitiva de la API.
+  //
   // `skipDuplicates` se apoya en el indice unico de (tenant_id, wamid): volver a sembrar
   // no duplica el hilo, que es la misma propiedad que protege de los reintentos de Meta.
   await prisma.mensaje.createMany({
@@ -623,7 +627,6 @@ async function main() {
         direccion: 'ENTRANTE',
         tipo: 'TEXTO',
         estado: 'ENTREGADO',
-        texto: 'Hola! Quiero ir a San Andres en diciembre, somos 2 adultos y un nino.',
         wamid: 'wamid.DEMO.0001',
         ocurridoEn: haceHoras(22),
       },
@@ -633,7 +636,6 @@ async function main() {
         direccion: 'SALIENTE',
         tipo: 'TEXTO',
         estado: 'LEIDO',
-        texto: 'Hola Laura! Con mucho gusto. Que fechas tiene en mente?',
         wamid: 'wamid.DEMO.0002',
         claveIdempotencia: '01932000-0000-7000-8000-00000000e001',
         ocurridoEn: haceHoras(21),
@@ -644,7 +646,6 @@ async function main() {
         direccion: 'ENTRANTE',
         tipo: 'TEXTO',
         estado: 'ENTREGADO',
-        texto: 'Perfecto, cuando me manda la cotizacion?',
         wamid: 'wamid.DEMO.0003',
         ocurridoEn: haceHoras(20),
       },
