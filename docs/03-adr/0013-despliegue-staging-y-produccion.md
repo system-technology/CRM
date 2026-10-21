@@ -1,7 +1,7 @@
 # ADR-0013 — Despliegue de staging y producción: todo en Render (Ohio), junto a Neon
 
-- **Estado:** Propuesto. `auditor-seguridad`: aceptado con cambios, ya incorporados. Pendiente del
-  propietario.
+- **Estado:** Aceptado (2026-10-20) por el propietario, **empezando solo por staging**. Producción se
+  monta cuando la piloto vaya a usarlo. `auditor-seguridad` lo aceptó con cambios, ya incorporados.
 - **Fecha:** 2026-10-20
 - **Decide:** el propietario
 - **Consultados:** `arquitecto`, `devops`, `auditor-seguridad`
