@@ -4,8 +4,8 @@
   decisión del 0014 y amplía su alcance. El 0014 ya está en `main` y aceptado, así que no se edita
   (CLAUDE.md §9 y la plantilla): solo cambia su línea de estado a
   `Superseded por ADR-0015`.
-- **Estado:** Propuesto. `auditor-seguridad`: aceptado con cambios, ya incorporados. Pendiente del
-  propietario
+- **Estado:** Aceptado (2026-10-20) por el propietario. `auditor-seguridad` lo aceptó con cambios, ya
+  incorporados
 - **Fecha:** 2026-10-20
 - **Decide:** el propietario, con el veredicto de `auditor-seguridad`, porque toca datos de tenants
 - **Consultados:** `arquitecto` (autor). Pendientes: `auditor-seguridad`, `datos` (migración),
