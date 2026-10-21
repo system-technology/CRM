@@ -1,4 +1,55 @@
-﻿**SIGUIENTE, EN ESTE ORDEN: 0c.29 (ingreso con la API real de identidad) → 0c.27 → 0c.35 (bandeja en tiempo real). La 0c.32 se hizo antes que la 0c.29; no bloquea, pero no se coge otra fuera de este orden.**
+﻿**SIGUIENTE, EN ESTE ORDEN: 0c.39 (la cabecera de tenant de desarrollo con sesión) → 0c.36 → 0c.38 → 0c.37 → 0c.40.**
+
+# REVISIÓN — 0c.29 `77e3535`, 0c.27 `4641967`, 0c.35 `4525cb7`
+
+Compuertas web ejecutadas en local (el CI está bloqueado por facturación): lint, typecheck, `format:check`
+limpios; 36 archivos y 312 pruebas en verde.
+
+| Tarea | Veredicto |
+|---|---|
+| 0c.29 `/ingresar` | **ACEPTADA con una corrección prioritaria (0c.39)** |
+| 0c.27 neto y margen | **ACEPTADA** |
+| 0c.35 bandeja en vivo | **ACEPTADA**, con cola (0c.38, 0c.40) |
+
+## 0c.29 — frontera de sesión
+
+- **Bien:** `credentials: 'include'` en login, sesión, sign-out y tenant-activo; cero `localStorage`,
+  `sessionStorage` ni `document.cookie` para sesión (solo el tema claro/oscuro); el selector llama a
+  `POST /api/v1/auth/tenant-activo`; logout presente; la redirección del interruptor apagado ya es **del
+  servidor** (`redirect('/bandeja')` en un Server Component de `/ingresar`; `/iniciar-sesion` redirige a
+  `/ingresar`); un 200 malformado lanza `ZodError` sin caer al mock; el aviso «Esta conversación se asignó
+  a otra persona» existe, con prueba.
+- **Bloqueante de la frontera (0c.39):** con sesión **sí se manda `x-dev-tenant-id`** si existe
+  `NEXT_PUBLIC_DEV_TENANT_ID` (`api.ts`, `crm-api.ts`, `cotizaciones-api.ts`, `inbox-api.ts`,
+  `catalogo-api.ts`), y sin esa variable el CRM lanza `CONFIG_TENANT_FALTANTE` aunque haya sesión: la
+  entrega de auth no tocó eso. En producción la variable no existe, por eso no es una brecha hoy, pero la
+  autenticación real no es usable sin ella y es lo que pedía el ADR. `catalogo-api.ts` no envía
+  `credentials`.
+
+## 0c.27 — neto y margen
+
+- **Bien:** `grep` no encuentra ningún `incluirMargen` en código (solo comentarios que lo prohíben): la
+  pantalla **nunca pide** neto, así que no lo recibe de la API; con el permiso tampoco hay nada que pedir
+  todavía. `usePermisos` falla cerrado (sin sesión o sin permiso, oculto). `reportes/page.tsx` construye el
+  reporte con `rolEfectivo = ASESOR` sin el permiso, o sea, no calcula ni tiene neto ni margen en memoria;
+  `ficha-detalle-paquete` y `bloque-politica-precio` lo ocultan. Con pruebas por componente.
+- **Cola:** en modo simulado, `mock-catalogo` sigue trayendo `precio.neto` en memoria para todos y solo se
+  oculta al pintar (sin consecuencia con la API real, que ya no lo entrega). Cuando el servidor exponga el
+  neto tras el permiso, hará falta la petición condicionada: nueva tarea entonces.
+
+## 0c.35 — bandeja en vivo
+
+- **Bien:** `withCredentials: true`, **sin tenant ni sala** en el handshake; eventos validados con
+  `EventoBandeja.safeParse`; `MENSAJE_NUEVO` y `CONVERSACION_RETIRADA` (la quita de la lista, y en el hilo
+  abierto muestra el aviso, bloquea el envío y **conserva el borrador**: no la cierra, mejor); al
+  reconectar re-pide la lista por REST; Tomar/Soltar/Reasignar según `calcularPermisosAsignacion`; el
+  evento de cierre forzado redirige a `/ingresar`. Dependencia nueva: `socket.io-client`, la del stack
+  (ADR-0001).
+- **Cola (0c.38, 0c.40):** (1) el singleton se conecta al importarse, también en `/ingresar` sin sesión,
+  con reintentos infinitos; (2) solo se ve el estado «reconectando», no «desconectado»; (3) el evento
+  inválido se descarta sin registro; (4) falta la prueba de que reconectar recarga por REST.
+
+---
 
 # REVISIÓN — 0c.32 `293187e`
 

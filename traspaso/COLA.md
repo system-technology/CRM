@@ -1,4 +1,4 @@
-**SIGUIENTE, EN ESTE ORDEN: 0c.29 (ingreso con la API real de identidad) → 0c.27 → 0c.35 (bandeja en tiempo real). No cojas otra fuera de este orden.**
+﻿**SIGUIENTE, EN ESTE ORDEN: 0c.39 (la cabecera de tenant de desarrollo con sesión) → 0c.36 (placeholder de búsqueda) → 0c.38 → 0c.37 → 0c.40. No cojas otra fuera de este orden.**
 
 # Cola de trabajo — Antigravity
 
@@ -248,6 +248,63 @@ un error de la API real. Si alguno cae al mock tras un fallo, se corrige igual.
 cuatro funciones de `cotizaciones-api.ts` **y** las de `crm-api.ts` e `inbox-api.ts` que usen mocks:
 lanzan error y **no** devuelven datos del mock; con el interruptor apagado siguen
 devolviendo el mock; y `pnpm compuertas` sale en verde.
+
+---
+
+## [ ] 0c.39. Con sesión real no se manda la cabecera de tenant de desarrollo (añadida el 2026-10-20, PRIORITARIA, LA PRIMERA)
+
+Frontera de sesión (ADR-0011). Hoy `api.ts`, `crm-api.ts`, `cotizaciones-api.ts`, `inbox-api.ts` y
+`catalogo-api.ts` añaden `x-dev-tenant-id` siempre que exista `NEXT_PUBLIC_DEV_TENANT_ID`, **aunque haya
+sesión**, y `crm-api.ts` / `pipeline` lanzan `CONFIG_TENANT_FALTANTE` si esa variable no está: con
+`NEXT_PUBLIC_USE_REAL_AUTH=true` el CRM no se puede usar sin la variable, y con ella se manda el tenant
+del cliente junto a la cookie. Una sola función `cabecerasDeTenantDev()` en `lib/` que devuelva `{}`
+cuando `usaAuthReal()`, usada en los cinco clientes; con auth real, **no** exijas
+`NEXT_PUBLIC_DEV_TENANT_ID` (el tenant viene de la sesión). `catalogo-api.ts` además no pone
+`credentials: 'include'`: añádelo. Pruebas: con auth real no hay cabecera aunque la variable exista y no
+se lanza `CONFIG_TENANT_FALTANTE`; con auth apagada, sigue como hoy.
+
+**Hecho cuando:** `git grep "x-dev-tenant-id" apps/web/src` solo sale en esa función, las pruebas pasan y
+las compuertas web (lint, typecheck, test, format:check) en verde.
+
+## [ ] 0c.36. El buscador de la bandeja dice lo que de verdad busca (añadida el 2026-10-20, PRIORITARIA, pequeña)
+
+`components/bandeja/lista-conversaciones.tsx:230`: `placeholder="Buscar por cliente o mensaje... (/)"`
+pasa a «Buscar por nombre o teléfono... (/)», porque el ADR-0015 cifra los mensajes y la búsqueda ya no
+mira el texto. Revisa de paso `modal-busqueda-global`, la ayuda de teclado y cualquier otro texto que
+prometa buscar dentro de los mensajes.
+
+**Hecho cuando:** `git grep -niE "por cliente o mensaje|en los mensajes" apps/web/src` sin resultados y
+las compuertas web en verde.
+
+## [ ] 0c.37. Capturas a 375 px de `/ingresar`, el selector de agencia y la bandeja en vivo (añadida el 2026-10-20)
+
+Con el navegador, y como en la 0c.26: `/ingresar` (con error de credenciales), el selector de agencia, la
+bandeja con el indicador «Reconectando» y el aviso «Esta conversación se asignó a otra persona» con el
+borrador visible. Guárdalas en `docs/_assets/diseno/` (cada una < 100 KB; el repo ya cargó una vez con
+4,6 MB). Mira cada captura antes de entregarla: la medida de ancho no basta.
+
+**Hecho cuando:** 4 capturas referenciadas en `ENTREGA.md` y ninguna con texto o botón cortado.
+
+## [ ] 0c.38. Pruebas de la reconexión y del estado sin conexión (añadida el 2026-10-20)
+
+Ya hay pruebas de la retirada de conversación (lista e hilo) y del indicador «reconectando». Faltan, con
+el mismo estilo (roles, texto visible): (1) al **reconectar**, la lista vuelve a pedir la primera página
+por REST y el hueco se cierra; (2) estado **desconectado**: hay aviso visible y la lista conserva lo
+cargado sin pintar datos simulados (0c.34); (3) un evento que no valida no cambia la lista y se registra
+en consola; (4) un `CONVERSACION_RETIRADA` de otra conversación no toca la abierta.
+
+**Hecho cuando:** las cuatro pruebas existen y fallan si se quita la lógica correspondiente.
+
+## [ ] 0c.40. El socket solo se conecta cuando hay bandeja y sesión (añadida el 2026-10-20)
+
+`inboxSocketManager` es un singleton que llama a `inicializar()` al importarse y reintenta sin límite:
+en `/ingresar`, sin sesión, intentaría conectarse cada pocos segundos. Conéctalo solo desde
+`useInboxSocket` (ya lo hace) y **no** en el constructor; desconecta al salir de la bandeja y al cerrar
+sesión. Muestra también el estado `desconectado` (hoy solo se ve `reconectando`): «Sin conexión en tiempo
+real; los mensajes nuevos no llegarán solos. Reintentando». Y registra con `console.warn` los eventos que
+no validan en vez de descartarlos mudos.
+
+**Hecho cuando:** sin sesión no hay ninguna petición de socket, y las pruebas lo comprueban.
 
 ---
 
