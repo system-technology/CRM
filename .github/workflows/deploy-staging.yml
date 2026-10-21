@@ -42,10 +42,11 @@ jobs:
       listo: ${{ steps.secretos.outputs.listo }}
     env:
       SHA: ${{ github.event.workflow_run.head_sha }}
-      DIRECT_URL: ${{ secrets.DIRECT_URL }}
     steps:
       - name: Comprobar que hay secretos
         id: secretos
+        env:
+          DIRECT_URL: ${{ secrets.DIRECT_URL }}
         run: |
           if [ -z "$DIRECT_URL" ]; then
             echo "listo=false" >> "$GITHUB_OUTPUT"
@@ -83,7 +84,9 @@ jobs:
 
       - name: Instalar
         if: steps.secretos.outputs.listo == 'true'
-        run: pnpm install --frozen-lockfile
+        # Sin scripts de instalacion: ningun paquete corre codigo propio en este job, y la
+        # credencial del rol propietario solo existe en el paso de migrar.
+        run: pnpm install --frozen-lockfile --ignore-scripts
 
       # Conexion DIRECTA con el rol propietario: las migraciones no pasan por el pooler.
       # La migracion tiene que ser compatible con el codigo anterior (expandir, luego contraer).
@@ -92,6 +95,7 @@ jobs:
         run: pnpm db:migrate:deploy
         env:
           DATABASE_URL: ${{ secrets.DIRECT_URL }}
+          DIRECT_URL: ${{ secrets.DIRECT_URL }}
 
   desplegar:
     name: desplegar

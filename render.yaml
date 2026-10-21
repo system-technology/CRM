@@ -78,8 +78,6 @@ services:
         sync: false
       - key: CORREO_PAYLOAD_KEY
         sync: false
-      - key: POSTMARK_SERVER_TOKEN
-        sync: false
       - key: REDIS_URL
         fromService:
           type: keyvalue

@@ -13,3 +13,4 @@ localmente (sin Docker): las valida el CI.
 
 Cola: `API_INTERNAL_URL` retirada del blueprint: se añade con la reescritura ADR-0011 §2;
 el trabajador sigue sin sonda de salud propia; la sonda del workflow no distingue SHA nuevo de viejo.
+Auditoria: `POSTMARK_SERVER_TOKEN` solo en el trabajador; `DIRECT_URL` solo en el paso de migrar con `--ignore-scripts`. Cola: el deploy hook despliega la cabeza de la rama, no el SHA migrado (carrera migracion-hook documentada en la guia).

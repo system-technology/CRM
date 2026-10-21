@@ -53,7 +53,7 @@ A partir de aquí las migraciones las aplica GitHub Actions, no usted.
 | Servicio | Variables a pegar |
 |---|---|
 | `viajapro-web-staging` | `NEXT_PUBLIC_API_URL` (`https://api.staging.<dominio>`) |
-| `viajapro-api-staging` | `API_PUBLIC_URL`, `WEB_PUBLIC_URL` (`https://staging.<dominio>`), `API_TRUST_PROXY`, `MAIL_FROM`, `POSTMARK_MESSAGE_STREAM`, `DATABASE_APP_URL`, `DATABASE_ALTAS_URL`, `DATABASE_IDENTIDAD_URL`, `BETTER_AUTH_SECRET`, `META_APP_SECRET`, `WHATSAPP_WEBHOOK_VERIFY_TOKEN`, `WEBHOOK_PAYLOAD_KEY`, `WEBHOOK_PAYLOAD_KEY_VERSION`, `CORREO_PAYLOAD_KEY`, `POSTMARK_SERVER_TOKEN` |
+| `viajapro-api-staging` | `API_PUBLIC_URL`, `WEB_PUBLIC_URL` (`https://staging.<dominio>`), `API_TRUST_PROXY`, `MAIL_FROM`, `POSTMARK_MESSAGE_STREAM`, `DATABASE_APP_URL`, `DATABASE_ALTAS_URL`, `DATABASE_IDENTIDAD_URL`, `BETTER_AUTH_SECRET`, `META_APP_SECRET`, `WHATSAPP_WEBHOOK_VERIFY_TOKEN`, `WEBHOOK_PAYLOAD_KEY`, `WEBHOOK_PAYLOAD_KEY_VERSION`, `CORREO_PAYLOAD_KEY` |
 | `viajapro-worker-staging` | `MAIL_FROM`, `POSTMARK_MESSAGE_STREAM`, `DATABASE_WEBHOOK_URL`, `WEBHOOK_PAYLOAD_KEY`, `WEBHOOK_PAYLOAD_KEY_VERSION`, `CORREO_PAYLOAD_KEY`, `WHATSAPP_DIRECTORY_PEPPER`, `WHATSAPP_DIRECTORY_PEPPER_VERSION`, `POSTMARK_SERVER_TOKEN` |
 
 `REDIS_URL` se enlaza sola desde el Key Value por la red privada. Generar los secretos propios con
@@ -121,3 +121,12 @@ logs del trabajador muestran `Trabajador del inbox en marcha.`, es decir, arranc
 
 Nota: la web aún no llama a la API de servidor a servidor, por eso el blueprint no define una URL
 interna de la API; se añade con la reescritura del ADR-0011 §2.
+
+## Cola: el deploy hook despliega la cabeza de la rama, no el SHA migrado
+
+Un deploy hook de Render despliega el último commit de la rama enlazada. No se confirmó que admita
+fijar el commit (la documentación consultada no lo menciona; verificar al sincronizar si el hook
+acepta un parámetro `ref` o de imagen). Carrera conocida: si entra un commit en `main` entre la
+migración y el hook, se despliega código que no se migró. Mitigación actual: la concurrencia del
+workflow serializa los despliegues y las migraciones son compatibles hacia atrás (expandir y
+contraer), pero la carrera existe. Dueño: `devops`.
