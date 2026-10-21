@@ -78,6 +78,12 @@ services:
         sync: false
       - key: CORREO_PAYLOAD_KEY
         sync: false
+      - key: CAMPOS_SENSIBLES_KEY # ADR-0015: solo API y trabajador, nunca la web
+        sync: false
+      - key: CAMPOS_SENSIBLES_KEY_VERSION
+        sync: false
+      - key: CAMPOS_SENSIBLES_KEY_PREVIOUS
+        sync: false
       - key: REDIS_URL
         fromService:
           type: keyvalue
@@ -113,6 +119,12 @@ services:
       - key: WEBHOOK_PAYLOAD_KEY_VERSION
         sync: false
       - key: CORREO_PAYLOAD_KEY
+        sync: false
+      - key: CAMPOS_SENSIBLES_KEY # ADR-0015: solo API y trabajador, nunca la web
+        sync: false
+      - key: CAMPOS_SENSIBLES_KEY_VERSION
+        sync: false
+      - key: CAMPOS_SENSIBLES_KEY_PREVIOUS
         sync: false
       - key: WHATSAPP_DIRECTORY_PEPPER
         sync: false
