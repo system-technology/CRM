@@ -14,7 +14,7 @@
  */
 import 'reflect-metadata';
 
-import { randomBytes } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { type INestApplication, Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
@@ -33,6 +33,9 @@ import { Client } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { AppModule } from '../../app.module.js';
 import { DominioExcepcionFilter } from '../../shared/filtros/dominio-excepcion.filter.js';
+import { cifradoDePrueba } from '../../shared/cifrado/cifrado-de-prueba.js';
+import { columnasDeTexto } from '../../shared/cifrado/columnas-de-prisma.js';
+import { COLUMNAS_CIFRADAS } from '../../shared/cifrado/puerto-de-cifrado.js';
 import { PuertoPublicadorDeEventos } from './application/puertos-de-eventos.js';
 import {
   salaDeTenant,
@@ -124,14 +127,18 @@ async function mensajeEnAgencia(tenantId: string, texto: string): Promise<string
   const conversacion = await admin.conversacion.create({
     data: { tenantId, canalId: canal.id, contactoId: contacto.id },
   });
+  const mensajeId = randomUUID();
   const mensaje = await admin.mensaje.create({
     data: {
+      id: mensajeId,
       tenantId,
       conversacionId: conversacion.id,
       direccion: 'ENTRANTE',
       tipo: 'TEXTO',
       estado: 'ENTREGADO',
-      texto,
+      ...columnasDeTexto(
+        cifradoDePrueba().cifrar(COLUMNAS_CIFRADAS.MENSAJES_TEXTO, tenantId, mensajeId, texto),
+      ),
       wamid: `wamid.vivo.${randomBytes(6).toString('hex')}`,
       ocurridoEn: new Date(),
     },

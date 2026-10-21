@@ -29,6 +29,13 @@ import { ContactosDeCrm } from '../crm/infrastructure/puertos-de-crm.prisma.js';
 import { PuertoPublicadorDeEventos } from './application/puertos-de-eventos.js';
 import { RelevarOutbox } from './application/relevar-outbox.js';
 import { TIPO_MENSAJE_RECIBIDO } from './domain/evento-de-dominio.js';
+import {
+  columnasDeNombreDeArchivo,
+  columnasDeTexto,
+  columnasDeUltimoMensaje,
+} from '../../shared/cifrado/columnas-de-prisma.js';
+import { COLUMNAS_CIFRADAS } from '../../shared/cifrado/puerto-de-cifrado.js';
+import { cifradoDePrueba } from '../../shared/cifrado/cifrado-de-prueba.js';
 import { BandejaPrisma } from './infrastructure/bandeja.prisma.js';
 import { OutboxPrisma } from './infrastructure/outbox.prisma.js';
 
@@ -64,6 +71,7 @@ const U: Record<Persona, string> = {
 let app: INestApplication;
 let base: string;
 let admin: PrismaClient;
+const cifrado = cifradoDePrueba();
 let adminPg: Client;
 let publicador: PuertoPublicadorDeEventos;
 let prismaWebhook: PrismaWebhookService;
@@ -139,30 +147,41 @@ async function conversacion(
   tenantId: string,
   canalId: string,
   o: OpcionesDeConversacion,
-): Promise<{ id: string; contactoId: string; mensajeId: string }> {
+): Promise<{ id: string; contactoId: string; mensajeId: string; nombre: string }> {
+  const nombre = `Viajero ${randomBytes(3).toString('hex')}`;
   const contacto = await admin.contacto.create({
     data: {
       tenantId,
       telefonoE164: `+57301${Math.floor(Math.random() * 9e6 + 1e6)}`,
-      nombre: `Viajero ${randomBytes(2).toString('hex')}`,
+      nombre,
     },
   });
   const cuando = new Date(Date.now() - (o.clienteHaceMs ?? 0));
+  // Los ids nacen aquí: van en el AAD del texto cifrado (ADR-0015).
+  const conversacionId = randomUUID();
   const c = await admin.conversacion.create({
     data: {
+      id: conversacionId,
       tenantId,
       canalId,
       contactoId: contacto.id,
       asignadoAId: o.asignadaA,
       ultimoMensajeClienteEn: cuando,
       ultimoMensajeEn: cuando,
-      ultimoMensajeTexto: o.texto,
+      ...columnasDeUltimoMensaje(
+        cifrado.cifrar(
+          COLUMNAS_CIFRADAS.CONVERSACIONES_ULTIMO_MENSAJE_TEXTO,
+          tenantId,
+          conversacionId,
+          o.texto,
+        ),
+      ),
       ultimoMensajeDireccion: 'ENTRANTE',
       mensajesSinLeer: o.sinLeer ?? 0,
     },
   });
   const m = await mensajeEntrante(tenantId, c.id, o.texto, cuando);
-  return { id: c.id, contactoId: contacto.id, mensajeId: m };
+  return { id: c.id, contactoId: contacto.id, mensajeId: m, nombre };
 }
 
 async function mensajeEntrante(
@@ -171,14 +190,16 @@ async function mensajeEntrante(
   texto: string,
   cuando = new Date(),
 ): Promise<string> {
+  const id = randomUUID();
   const m = await admin.mensaje.create({
     data: {
+      id,
       tenantId,
       conversacionId,
       direccion: 'ENTRANTE',
       tipo: 'TEXTO',
       estado: 'ENTREGADO',
-      texto,
+      ...columnasDeTexto(cifrado.cifrar(COLUMNAS_CIFRADAS.MENSAJES_TEXTO, tenantId, id, texto)),
       wamid: `wamid.vis.${randomBytes(6).toString('hex')}`,
       ocurridoEn: cuando,
     },
@@ -193,6 +214,7 @@ interface Escenario {
   contactoC2: string;
   contactoC3: string;
   textos: { c1: string; c2: string; c3: string };
+  nombres: { c1: string; c2: string };
 }
 
 /** C1 de Ana, C2 de Beto, C3 sin asignar. Cada texto lleva una marca única para buscarlo. */
@@ -221,6 +243,7 @@ async function escenario(): Promise<Escenario> {
     contactoC2: c2.contactoId,
     contactoC3: c3.contactoId,
     textos,
+    nombres: { c1: c1.nombre, c2: c2.nombre },
   };
 }
 
@@ -410,7 +433,7 @@ beforeAll(async () => {
 
   prismaWebhook = new PrismaWebhookService();
   await prismaWebhook.onModuleInit();
-  bandeja = new BandejaPrisma(prismaWebhook, new ContactosDeCrm());
+  bandeja = new BandejaPrisma(prismaWebhook, new ContactosDeCrm(), cifradoDePrueba());
   relevo = new RelevarOutbox(new OutboxAcotado(prismaWebhook), publicador);
 
   for (const p of ['dueno', 'ana', 'beto', 'bruno', 'gina', 'dora'] as const) {
@@ -489,13 +512,22 @@ describe('lectura', () => {
 
   it('CA3: la media de una conversación ajena es 404 de conversación; la de una propia sin ese adjunto, de adjunto', async () => {
     const mensaje = await admin.mensaje.findFirstOrThrow({ where: { conversacionId: e.c2 } });
+    const adjuntoId = randomUUID();
     const adjunto = await admin.adjunto.create({
       data: {
         tenantId: TENANT_A,
+        id: adjuntoId,
         mensajeId: mensaje.id,
         tipo: 'DOCUMENTO',
         mediaIdMeta: 'media-1',
-        nombreArchivo: 'itinerario.pdf',
+        ...columnasDeNombreDeArchivo(
+          cifrado.cifrar(
+            COLUMNAS_CIFRADAS.ADJUNTOS_NOMBRE_ARCHIVO,
+            TENANT_A,
+            adjuntoId,
+            'itinerario.pdf',
+          ),
+        ),
         mimeType: 'application/pdf',
       },
     });
@@ -517,21 +549,33 @@ describe('lectura', () => {
     expect(codigo(otro)).toBe('ADJUNTO_NO_ENCONTRADO');
   });
 
-  it('CA4: Ana busca un texto que solo aparece en un mensaje de C2 y no obtiene resultados', async () => {
-    const buscar = encodeURIComponent(e.textos.c2);
+  it('CA4: Ana busca el contacto de C2 (por nombre) y no obtiene resultados', async () => {
+    // El texto de los mensajes está cifrado (ADR-0015) y ya no se busca: la búsqueda es por
+    // contacto. La visibilidad se aplica igual: lo que no se ve no se encuentra.
+    const buscar = encodeURIComponent(e.nombres.c2);
     const ana = await api('ana', 'GET', `/api/v1/conversaciones?filtro=TODAS&buscar=${buscar}`);
     expect(ana.status).toBe(200);
     expect(idsDe(ana)).toEqual([]);
-    // El mismo texto sí aparece para quien ve C2: la búsqueda funciona, no está rota.
+    // El mismo nombre sí aparece para quien ve C2: la búsqueda funciona, no está rota.
     const dueno = await api('dueno', 'GET', `/api/v1/conversaciones?filtro=TODAS&buscar=${buscar}`);
     expect(idsDe(dueno)).toEqual([e.c2]);
     // Y lo suyo sí lo encuentra.
     const suyo = await api(
       'ana',
       'GET',
-      `/api/v1/conversaciones?filtro=TODAS&buscar=${encodeURIComponent(e.textos.c1)}`,
+      `/api/v1/conversaciones?filtro=TODAS&buscar=${encodeURIComponent(e.nombres.c1)}`,
     );
     expect(idsDe(suyo)).toEqual([e.c1]);
+  });
+
+  it('el texto de un mensaje ya no es buscable: la búsqueda no mira el cuerpo', async () => {
+    const dueno = await api(
+      'dueno',
+      'GET',
+      `/api/v1/conversaciones?filtro=TODAS&buscar=${encodeURIComponent(e.textos.c2)}`,
+    );
+    expect(dueno.status).toBe(200);
+    expect(idsDe(dueno)).toEqual([]);
   });
 
   it('CA4: la vista previa de C2 tampoco sale en ninguna pestaña de la bandeja de Ana', async () => {
@@ -572,8 +616,17 @@ describe('lectura', () => {
     // Lo que SÍ se ve sigue saliendo: una nota del panel del contacto (sin hilo) y una escrita en
     // una conversación de la cola común.
     const delPanel = `nota-del-panel-${randomBytes(3).toString('hex')}`;
+    const notaId = randomUUID();
     await admin.notaInterna.create({
-      data: { tenantId: TENANT_A, contactoId: e.contactoC2, autorId: U.dueno, texto: delPanel },
+      data: {
+        id: notaId,
+        tenantId: TENANT_A,
+        contactoId: e.contactoC2,
+        autorId: U.dueno,
+        ...columnasDeTexto(
+          cifrado.cifrar(COLUMNAS_CIFRADAS.NOTAS_INTERNAS_TEXTO, TENANT_A, notaId, delPanel),
+        ),
+      },
     });
     const conPanel = await api('ana', 'GET', `/api/v1/crm/contactos/${e.contactoC2}/ficha`);
     expect(JSON.stringify(conPanel.json)).toContain(delPanel);
@@ -876,10 +929,12 @@ describe('asignación', () => {
   });
 
   it('CA17: una conversación nueva que abre el webhook entra sin asignar y la ven todos los miembros', async () => {
+    // Se busca por el nombre del perfil: el texto del mensaje está cifrado y ya no se busca.
+    const marca = randomBytes(4).toString('hex');
     const r = await bandeja.registrarEntrante(TENANT_A, canal.A, {
       wamid: `wamid.vis.${randomUUID()}`,
       deTelefono: `+57302${Math.floor(Math.random() * 9e6 + 1e6)}`,
-      nombrePerfil: 'Viajera nueva',
+      nombrePerfil: `Viajera ${marca}`,
       instante: new Date(),
       tipo: 'TEXTO',
       texto: 'Quiero ir a Cartagena',
@@ -893,7 +948,7 @@ describe('asignación', () => {
 
     // Beto está dado de baja por CA15: miran Ana y el dueño; y la fila dice «sin asignar».
     for (const quien of ['ana', 'dueno'] as const) {
-      const lista = await api(quien, 'GET', '/api/v1/conversaciones?buscar=Cartagena');
+      const lista = await api(quien, 'GET', `/api/v1/conversaciones?buscar=${marca}`);
       const filas = lista.json['datos'] as Array<{ asignadoAId: string | null }>;
       expect(filas).toHaveLength(1);
       expect(filas[0]?.asignadoAId).toBeNull();
@@ -991,5 +1046,152 @@ describe('responder', () => {
       [TENANT_A],
     );
     expect(JSON.stringify(mensajes.rows)).not.toContain(texto);
+  });
+});
+
+// ============================================================================================
+// ADR-0015: cifrado en reposo. Criterio de corte 2 del roadmap: en la base no hay texto en claro.
+// Para el CI: esta suite necesita Postgres con la migración 20261020120000 aplicada.
+// ============================================================================================
+
+describe('cifrado en reposo de las columnas con PII sensible (ADR-0015)', () => {
+  const marca = (): string => `pasaporte-AB${randomBytes(5).toString('hex')}`;
+
+  /** Los bytes de una columna `bytea`, tal como están en la base. */
+  async function bytes(sql: string, id: string): Promise<Buffer> {
+    const r = await adminPg.query<{ b: Buffer }>(sql, [id]);
+    const b = r.rows[0]?.b;
+    if (!b) throw new Error('La fila no existe');
+    return b;
+  }
+
+  it('un mensaje saliente, su vista previa y una nota no dejan texto en claro; la API los devuelve descifrados', async () => {
+    const e = await escenario();
+    const texto = marca();
+    const nota = marca();
+
+    const enviado = await api('ana', 'POST', `/api/v1/conversaciones/${e.c1}/mensajes`, {
+      texto,
+      claveIdempotencia: randomUUID(),
+    });
+    expect(enviado.status).toBe(201);
+    const mensajeId = enviado.json['id'] as string;
+    expect(
+      (await api('ana', 'POST', `/api/v1/conversaciones/${e.c1}/notas`, { texto: nota })).status,
+    ).toBe(201);
+
+    // SQL directo: ninguna de las tres columnas contiene el texto, ni como bytes ni en la fila.
+    const claro = Buffer.from(texto);
+    const delMensaje = await bytes(
+      'SELECT texto_cifrado AS b FROM mensajes WHERE id = $1',
+      mensajeId,
+    );
+    expect(delMensaje.includes(claro)).toBe(false);
+    expect(delMensaje.length).toBeGreaterThan(0);
+    const vista = await bytes(
+      'SELECT ultimo_mensaje_texto_cifrado AS b FROM conversaciones WHERE id = $1',
+      e.c1,
+    );
+    expect(vista.includes(claro)).toBe(false);
+    const notas = await adminPg.query<{ b: Buffer }>(
+      'SELECT texto_cifrado AS b FROM notas_internas WHERE tenant_id = $1 AND conversacion_id = $2',
+      [TENANT_A, e.c1],
+    );
+    expect(notas.rows.length).toBeGreaterThan(0);
+    for (const fila of notas.rows) expect(fila.b.includes(Buffer.from(nota))).toBe(false);
+
+    // Y la fila entera, con todas sus columnas, tampoco lo trae (p. ej. una copia en otra columna).
+    const filaEntera = await adminPg.query<{ t: string }>(
+      'SELECT m::text AS t FROM mensajes m WHERE id = $1',
+      [mensajeId],
+    );
+    expect(filaEntera.rows[0]?.t).not.toContain(texto);
+
+    // La API, en cambio, lo devuelve descifrado: en el hilo, en la bandeja y en las notas.
+    const detalle = await api('ana', 'GET', `/api/v1/conversaciones/${e.c1}`);
+    expect(JSON.stringify(detalle.json)).toContain(texto);
+    expect(JSON.stringify(detalle.json)).toContain(nota);
+    const lista = await api('ana', 'GET', '/api/v1/conversaciones?filtro=TODAS');
+    expect(JSON.stringify(lista.json)).toContain(texto);
+  });
+
+  it('un mensaje entrante del webhook y el nombre de su adjunto tampoco dejan texto en claro', async () => {
+    const texto = marca();
+    const archivo = `${marca()}.jpg`;
+    const wamid = `wamid.vis.${randomUUID()}`;
+    const r = await bandeja.registrarEntrante(TENANT_A, canal.A, {
+      wamid,
+      deTelefono: `+57302${Math.floor(Math.random() * 9e6 + 1e6)}`,
+      nombrePerfil: 'Viajero de cifrado',
+      instante: new Date(),
+      tipo: 'IMAGEN',
+      texto,
+      medioId: `media-${randomBytes(4).toString('hex')}`,
+      nombreArchivo: archivo,
+      mimeType: 'image/jpeg',
+      respondeA: null,
+      reaccionaA: null,
+    });
+    expect(r).toBe('CREADO');
+
+    const m = await adminPg.query<{ id: string; conversacion_id: string; b: Buffer }>(
+      'SELECT id, conversacion_id, texto_cifrado AS b FROM mensajes WHERE tenant_id = $1 AND wamid = $2',
+      [TENANT_A, wamid],
+    );
+    expect(m.rows[0]?.b.includes(Buffer.from(texto))).toBe(false);
+    const adjunto = await adminPg.query<{ b: Buffer }>(
+      'SELECT nombre_archivo_cifrado AS b FROM adjuntos WHERE mensaje_id = $1',
+      [m.rows[0]?.id],
+    );
+    expect(adjunto.rows[0]?.b.includes(Buffer.from(archivo))).toBe(false);
+    const vista = await bytes(
+      'SELECT ultimo_mensaje_texto_cifrado AS b FROM conversaciones WHERE id = $1',
+      m.rows[0]?.conversacion_id ?? '',
+    );
+    expect(vista.includes(Buffer.from(texto))).toBe(false);
+
+    const hilo = await api('dueno', 'GET', `/api/v1/conversaciones/${m.rows[0]?.conversacion_id}`);
+    expect(JSON.stringify(hilo.json)).toContain(texto);
+  });
+
+  it('el mismo texto en dos agencias produce criptogramas distintos', async () => {
+    const texto = marca();
+    const wamidA = `wamid.vis.${randomUUID()}`;
+    const wamidB = `wamid.vis.${randomUUID()}`;
+    const base = {
+      nombrePerfil: 'Viajero igual',
+      instante: new Date(),
+      tipo: 'TEXTO' as const,
+      texto,
+      medioId: null,
+      nombreArchivo: null,
+      mimeType: null,
+      respondeA: null,
+      reaccionaA: null,
+    };
+    expect(
+      await bandeja.registrarEntrante(TENANT_A, canal.A, {
+        ...base,
+        wamid: wamidA,
+        deTelefono: `+57302${Math.floor(Math.random() * 9e6 + 1e6)}`,
+      }),
+    ).toBe('CREADO');
+    expect(
+      await bandeja.registrarEntrante(TENANT_B, canal.B, {
+        ...base,
+        wamid: wamidB,
+        deTelefono: `+57302${Math.floor(Math.random() * 9e6 + 1e6)}`,
+      }),
+    ).toBe('CREADO');
+
+    const filas = await adminPg.query<{ wamid: string; b: Buffer }>(
+      'SELECT wamid, texto_cifrado AS b FROM mensajes WHERE wamid = ANY($1::text[])',
+      [[wamidA, wamidB]],
+    );
+    const a = filas.rows.find((f) => f.wamid === wamidA)?.b;
+    const b = filas.rows.find((f) => f.wamid === wamidB)?.b;
+    expect(a).toBeDefined();
+    expect(b).toBeDefined();
+    expect(a?.equals(b ?? Buffer.alloc(0))).toBe(false);
   });
 });

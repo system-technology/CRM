@@ -191,7 +191,7 @@ async function main(): Promise<void> {
         etiquetas: c.etiquetas,
         // ADR-0015: `preferencias` va cifrada y la cifra la API; esta semilla no puede
         // importar la primitiva. `c.preferencias` queda como dato para cuando `backend`
-        // siembre por ese camino.
+        // siembre por ese camino (`campos:sembrar-dev` en `apps/api`).
         ultimoContactoEn: new Date(Date.now() - Math.floor(Math.random() * 72) * 3_600_000),
       },
     });
@@ -274,7 +274,7 @@ async function main(): Promise<void> {
 
   // --- Notas internas -----------------------------------------------------
   // ADR-0015: `notas_internas.texto` es obligatorio y cifrado, y la cifra la API. Hasta que
-  // `backend` siembre por la primitiva de `apps/api/src/shared/cifrado/`, no hay notas de
+  // `pnpm --filter @viajapro/api campos:sembrar-dev` (primitiva de la API), no hay notas de
   // demostración: una nota sin texto no es representable.
 
   const resumen = {

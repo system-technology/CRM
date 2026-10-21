@@ -39,6 +39,8 @@ $ErrorActionPreference = 'Stop'
 $secretos = @{
     'WHATSAPP_DIRECTORY_PEPPER' = 32
     'WEBHOOK_PAYLOAD_KEY'       = 32
+    # Clave maestra de las columnas con PII sensible (ADR-0015). Hex: vale para HKDF-SHA256.
+    'CAMPOS_SENSIBLES_KEY'      = 32
     # Cifra el trabajo de correo en Redis (AES-256-GCM). Se decodifica en hex o base64: vale el hex.
     'CORREO_PAYLOAD_KEY'        = 32
     # Firma las cookies de sesion (Better Auth). Cadena libre de 32+ caracteres: el hex de 32 bytes

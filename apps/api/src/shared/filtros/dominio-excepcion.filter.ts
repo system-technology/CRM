@@ -24,6 +24,7 @@ import {
   ProhibidoError,
 } from '@viajapro/domain';
 import type { Response } from 'express';
+import { CampoCifradoIlegibleError } from '../cifrado/puerto-de-cifrado.js';
 import { ContextoTenant } from '../tenant/contexto-tenant.js';
 
 @Catch()
@@ -46,7 +47,9 @@ export class DominioExcepcionFilter implements ExceptionFilter {
       return;
     }
 
-    if (excepcion instanceof DomainError) {
+    // Un criptograma que no abre es un fallo NUESTRO, no de la petición: sale como 500 (el bloque
+    // de abajo), sin contenido, y se registra con su clase y código (ADR-0015, concreción 6).
+    if (excepcion instanceof DomainError && !(excepcion instanceof CampoCifradoIlegibleError)) {
       // La invariante violada es culpa de la entrada (422); el estado inválido es un
       // conflicto con la realidad actual (409); el resto, no encontrado o petición mala.
       const estado =

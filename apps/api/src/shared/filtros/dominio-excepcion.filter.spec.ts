@@ -1,5 +1,6 @@
 import { DomainError } from '@viajapro/domain';
 import { describe, expect, it, vi } from 'vitest';
+import { CampoCifradoIlegibleError } from '../cifrado/puerto-de-cifrado.js';
 import { DominioExcepcionFilter } from './dominio-excepcion.filter.js';
 
 class Macho extends DomainError {
@@ -38,4 +39,9 @@ describe('DominioExcepcionFilter: errores de cliente de body-parser (AUD-017)', 
     expect(estadoPara(deHttpErrors(413, false))).toBe(500);
     expect(estadoPara(new Error('boom'))).toBe(500);
   });
+});
+
+describe('DominioExcepcionFilter: criptograma ilegible (ADR-0015)', () => {
+  it('es un fallo nuestro: 500, no 400', () =>
+    expect(estadoPara(new CampoCifradoIlegibleError('mensajes.texto'))).toBe(500));
 });

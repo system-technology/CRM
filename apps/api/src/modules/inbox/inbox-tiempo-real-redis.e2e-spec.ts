@@ -42,6 +42,7 @@ import { RelevarOutbox } from './application/relevar-outbox.js';
 import { claveDeEnrutamiento } from './domain/clave-de-enrutamiento.js';
 import { CANAL_DE_EVENTOS, TIPO_ACCESO_REVOCADO } from './domain/evento-de-dominio.js';
 import { AvisosDeOutboxEnMemoria } from './infrastructure/avisos-de-outbox.en-memoria.js';
+import { cifradoDePrueba } from '../../shared/cifrado/cifrado-de-prueba.js';
 import { BandejaPrisma } from './infrastructure/bandeja.prisma.js';
 import { PublicadorRedis } from './infrastructure/bus-de-eventos.redis.js';
 import { OutboxPrisma } from './infrastructure/outbox.prisma.js';
@@ -304,7 +305,7 @@ describe.skipIf(!CORRE)('POST firmado -> trabajador -> Redis -> socket', () => {
     const avisos = new AvisosDeOutboxEnMemoria();
     caso = new ProcesarChange(
       new StagingPrisma(prismaWebhook),
-      new BandejaPrisma(prismaWebhook, new ContactosDeCrm()),
+      new BandejaPrisma(prismaWebhook, new ContactosDeCrm(), cifradoDePrueba()),
       avisos,
     );
     publicador = new PublicadorRedis(URL_REDIS);

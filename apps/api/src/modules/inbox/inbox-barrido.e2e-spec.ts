@@ -41,6 +41,7 @@ import { type ChangePendiente, PuertoPendientes } from './application/puertos-de
 import { claveDeEnrutamiento } from './domain/clave-de-enrutamiento.js';
 // La prueba ensambla el proceso real: el puerto de contactos lo implementa `crm`.
 import { ContactosDeCrm } from '../crm/infrastructure/puertos-de-crm.prisma.js';
+import { cifradoDePrueba } from '../../shared/cifrado/cifrado-de-prueba.js';
 import { BandejaPrisma } from './infrastructure/bandeja.prisma.js';
 import { BarridoBullmq } from './infrastructure/barrido.bullmq.js';
 import {
@@ -243,7 +244,7 @@ describe.skipIf(!CORRE)('Barrido: un POST guardado cuyo encolado falló llega a 
     consumidor = new ConsumidorDeChanges(
       new ProcesarChange(
         new StagingPrisma(prismaWebhook),
-        new BandejaPrisma(prismaWebhook, new ContactosDeCrm()),
+        new BandejaPrisma(prismaWebhook, new ContactosDeCrm(), cifradoDePrueba()),
       ),
     );
     consumidor.nombreDeCola = COLA;

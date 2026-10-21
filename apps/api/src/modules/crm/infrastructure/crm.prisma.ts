@@ -16,6 +16,10 @@ import {
   filtroDeNotasPorVisibilidad,
   visibilidadDe,
 } from '../../../shared/autorizacion/visibilidad-de-conversaciones.js';
+import {
+  COLUMNAS_CIFRADAS,
+  PuertoCifradoDeCampos,
+} from '../../../shared/cifrado/puerto-de-cifrado.js';
 import { PrismaService } from '../../../shared/prisma/prisma.service.js';
 import { ContextoTenant } from '../../../shared/tenant/contexto-tenant.js';
 import {
@@ -60,7 +64,10 @@ const PARA_LA_TARJETA = {
 
 @Injectable()
 export class CrmPrisma extends PuertoCrm {
-  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {
+  constructor(
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(PuertoCifradoDeCampos) private readonly cifrado: PuertoCifradoDeCampos,
+  ) {
     super();
   }
 
@@ -177,7 +184,7 @@ export class CrmPrisma extends PuertoCrm {
 
       const viva = c.oportunidades[0];
       return {
-        contacto: aContacto(c),
+        contacto: aContacto(c, this.cifrado),
         // La más reciente que no esté cerrada. Si hay varias vivas, el asesor ve la última que
         // tocó, que es la que tiene en la cabeza.
         oportunidadActual: viva ? aOportunidad(viva) : null,
@@ -188,7 +195,12 @@ export class CrmPrisma extends PuertoCrm {
         notasInternas: c.notasInternas.map((n) => ({
           id: n.id,
           autorNombre: n.autor?.nombre ?? null,
-          texto: n.texto,
+          texto: this.cifrado.descifrar(COLUMNAS_CIFRADAS.NOTAS_INTERNAS_TEXTO, n.tenantId, n.id, {
+            cifrado: n.textoCifrado,
+            nonce: n.textoNonce,
+            tag: n.textoTag,
+            claveVersion: n.textoClaveVersion,
+          }),
           escritaEn: n.escritaEn.toISOString(),
         })),
       };
@@ -213,7 +225,7 @@ export class CrmPrisma extends PuertoCrm {
         orderBy: { ultimoContactoEn: 'desc' },
         take: p.limite,
       });
-      return filas.map(aContacto);
+      return filas.map((c) => aContacto(c, this.cifrado));
     });
   }
 }
@@ -317,24 +329,38 @@ function aOportunidad(o: FilaOportunidad): Oportunidad {
 
 interface FilaContacto {
   id: string;
+  tenantId: string;
   nombre: string | null;
   telefonoE164: string;
   correo: string | null;
   etiquetas: string[];
-  preferencias: string | null;
+  preferenciasCifrado: Buffer | null;
+  preferenciasNonce: Buffer | null;
+  preferenciasTag: Buffer | null;
+  preferenciasClaveVersion: number | null;
   creadoEn: Date;
   ultimoContactoEn: Date | null;
   consentimientos: { finalidad: string; revocadoEn: Date | null }[];
 }
 
-function aContacto(c: FilaContacto): Contacto {
+function aContacto(c: FilaContacto, cifrado: PuertoCifradoDeCampos): Contacto {
   return {
     id: c.id,
     nombre: c.nombre,
     telefono: c.telefonoE164,
     correo: c.correo,
     etiquetas: c.etiquetas,
-    preferencias: c.preferencias,
+    preferencias: cifrado.descifrarNulable(
+      COLUMNAS_CIFRADAS.CONTACTOS_PREFERENCIAS,
+      c.tenantId,
+      c.id,
+      {
+        cifrado: c.preferenciasCifrado,
+        nonce: c.preferenciasNonce,
+        tag: c.preferenciasTag,
+        claveVersion: c.preferenciasClaveVersion,
+      },
+    ),
     // Solo los vigentes. Un consentimiento revocado sigue en la tabla porque la ley pide poder
     // demostrar la revocación, pero hacia fuera el contacto ya no lo tiene.
     consentimientos: c.consentimientos

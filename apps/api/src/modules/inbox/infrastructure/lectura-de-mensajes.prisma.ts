@@ -9,6 +9,7 @@
  */
 import { Inject, Injectable } from '@nestjs/common';
 import type { Mensaje } from '@viajapro/contracts';
+import { PuertoCifradoDeCampos } from '../../../shared/cifrado/puerto-de-cifrado.js';
 import { PrismaService } from '../../../shared/prisma/prisma.service.js';
 import { ContextoTenant } from '../../../shared/tenant/contexto-tenant.js';
 import { PuertoLecturaDeMensajes } from '../application/puertos-de-eventos.js';
@@ -16,7 +17,10 @@ import { aMensaje, PARA_EL_MENSAJE } from './mapeo.js';
 
 @Injectable()
 export class LecturaDeMensajesPrisma extends PuertoLecturaDeMensajes {
-  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {
+  constructor(
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(PuertoCifradoDeCampos) private readonly cifrado: PuertoCifradoDeCampos,
+  ) {
     super();
   }
 
@@ -31,6 +35,6 @@ export class LecturaDeMensajesPrisma extends PuertoLecturaDeMensajes {
           }),
         ),
     );
-    return fila ? aMensaje(fila) : null;
+    return fila ? aMensaje(fila, this.cifrado) : null;
   }
 }

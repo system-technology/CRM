@@ -11,6 +11,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "dotenv -e ../../.env -- vitest run",
     "lint": "eslint src",
+    "campos:sembrar-dev": "dotenv -e ../../.env -- tsx src/shared/cifrado/sembrar-campos-dev.ts",
     "identidad:sembrar-dev": "dotenv -e ../../.env -- tsx src/modules/identity/scripts/sembrar-credenciales-dev.ts"
   },
   "dependencies": {

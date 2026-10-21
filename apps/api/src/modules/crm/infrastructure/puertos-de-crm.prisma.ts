@@ -4,7 +4,13 @@
  * Sin estado y sin `PrismaService`: usan la transacción que les pasa el llamador, que ya lleva el
  * tenant fijado. Ver `shared/puertos/puertos-hacia-crm.ts`.
  */
-import { Injectable } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
+import { Inject, Injectable } from '@nestjs/common';
+import { columnasDeTexto } from '../../../shared/cifrado/columnas-de-prisma.js';
+import {
+  COLUMNAS_CIFRADAS,
+  PuertoCifradoDeCampos,
+} from '../../../shared/cifrado/puerto-de-cifrado.js';
 import type { ClienteTenant } from '../../../shared/prisma/prisma.service.js';
 import {
   type EntradaDeContacto,
@@ -53,6 +59,10 @@ export class ReferenciasDeCrm extends PuertoReferenciasDeCrm {
 
 @Injectable()
 export class NotasDeConversacionDeCrm extends PuertoNotasDeConversacion {
+  constructor(@Inject(PuertoCifradoDeCampos) private readonly cifrado: PuertoCifradoDeCampos) {
+    super();
+  }
+
   async crear(
     tx: ClienteTenant,
     e: {
@@ -63,13 +73,18 @@ export class NotasDeConversacionDeCrm extends PuertoNotasDeConversacion {
       texto: string;
     },
   ): Promise<{ id: string; escritaEn: Date }> {
+    // El id nace antes del INSERT: va en el AAD del texto cifrado (ADR-0015, concreción 3).
+    const id = randomUUID();
     return tx.notaInterna.create({
       data: {
+        id,
         tenantId: e.tenantId,
         contactoId: e.contactoId,
         conversacionId: e.conversacionId,
         autorId: e.autorId,
-        texto: e.texto,
+        ...columnasDeTexto(
+          this.cifrado.cifrar(COLUMNAS_CIFRADAS.NOTAS_INTERNAS_TEXTO, e.tenantId, id, e.texto),
+        ),
       },
       select: { id: true, escritaEn: true },
     });
@@ -92,7 +107,17 @@ export class NotasDeConversacionDeCrm extends PuertoNotasDeConversacion {
         : [
             {
               id: n.id,
-              texto: n.texto,
+              texto: this.cifrado.descifrar(
+                COLUMNAS_CIFRADAS.NOTAS_INTERNAS_TEXTO,
+                n.tenantId,
+                n.id,
+                {
+                  cifrado: n.textoCifrado,
+                  nonce: n.textoNonce,
+                  tag: n.textoTag,
+                  claveVersion: n.textoClaveVersion,
+                },
+              ),
               autorId: n.autorId,
               autorNombre: n.autor?.nombre ?? '',
               creadaEn: n.escritaEn,

@@ -604,7 +604,7 @@ async function main() {
       // el que obliga a decidir entre responder ya o gastar una plantilla.
       ultimoMensajeClienteEn: haceHoras(20),
       // ADR-0015: la vista previa va cifrada y la cifra la API (`apps/api/src/shared/cifrado/`),
-      // que esta semilla no puede importar. Hasta que `backend` siembre por ese camino, nula.
+      // que esta semilla no puede importar. La siembra: `pnpm --filter @viajapro/api campos:sembrar-dev`.
       ultimoMensajeEn: haceHoras(20),
       ultimoMensajeDireccion: 'ENTRANTE',
       mensajesSinLeer: 1,
@@ -614,7 +614,7 @@ async function main() {
   });
 
   // ADR-0015: `mensajes.texto` ya no existe en claro. El hilo de demostración se siembra
-  // sin texto hasta que `backend` lo siembre cifrado con la primitiva de la API.
+  // sin texto; lo completa `pnpm --filter @viajapro/api campos:sembrar-dev`.
   //
   // `skipDuplicates` se apoya en el indice unico de (tenant_id, wamid): volver a sembrar
   // no duplica el hilo, que es la misma propiedad que protege de los reintentos de Meta.
