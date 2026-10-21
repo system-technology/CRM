@@ -1,221 +1,197 @@
-# Roadmap
+# Roadmap v2
 
-> ⚠️ **Revisado el 2026-10-07.** Las fases horizontales de abajo siguen siendo válidas como mapa
-> del alcance total, pero **el orden de construcción cambió**: se empieza por una rebanada
-> vertical estrecha para la agencia que revende paquetes. Ver
-> [cabeza de playa](../01-producto/07-cabeza-de-playa-paquetes.md).
->
-> El motivo: una rebanada completa que una agencia pueda usar en semanas vale más que tres fases
-> horizontales impecables que no sirven para vender hasta el mes siete.
-
-> **Lee esto primero.** El alcance aprobado para v1 incluye los cuatro bloques: inbox + pipeline,
-> cotizador, reservas/pagos y automatización/IA. Este documento no recorta ese alcance: lo
-> **secuencia con fechas honestas**, para que la decisión de dónde cortar sea tuya y esté informada.
-
----
-
-## 1. La aritmética, sin maquillaje
-
-Con un equipo de **3 a 4 personas** (2 desarrolladores full-stack, 1 persona de producto/diseño,
-apoyo de agentes de IA), y contando que buena parte del trabajo es integración con terceros cuyos
-tiempos no controlamos:
-
-| Bloque | Esfuerzo realista | Por qué cuesta lo que cuesta |
-|---|---|---|
-| Fundaciones + identidad | 3–4 semanas | Multi-tenancy con RLS, auth, CI/CD. Se hace una vez y sostiene todo |
-| Inbox + WhatsApp | 6–8 semanas | Embedded Signup, webhooks, plantillas, tiempo real, ventana de 24h |
-| CRM + pipeline | 3–4 semanas | Es lo más convencional del producto |
-| Cotizador | 8–10 semanas | **El más complejo.** Multi-moneda, multi-pasajero, markup vs comisión, versionado, PDF |
-| Reservas + pagos | 6–8 semanas | Archivo de viaje, *time limits*, pasarela, conciliación, idempotencia estricta |
-| Automatización + IA | 4–6 semanas | Extracción de intención, scoring, secuencias, evaluaciones |
-| Analítica | 3–4 semanas | Proyecciones y reportes |
-
-**Total: 33 a 44 semanas.** Entre 8 y 11 meses. No 3 o 4.
-
-Las tres salidas posibles, y lo que cuesta cada una:
-
-| Camino | Consecuencia |
+| Campo | Valor |
 |---|---|
-| **Fases, lanzar con menos** (recomendado) | Clientes pagando al mes 4. Aprendes del uso real antes de construir lo caro. |
-| **Todo antes de lanzar** | Primer cliente al mes 9–11. Nueve meses construyendo a ciegas. |
-| **Todo en 4 meses** | Cinco cosas a medias. El modo de fallo más común de productos como este. |
+| Versión | 2, adoptada el 2026-10-20 |
+| Origen | Roadmap técnico v2 de la auditoría externa, **con las correcciones del equipo** |
+| Aprobación | Propietario, 2026-10-20: «si avanza con lo que propones» |
+| Estado auditado | `main` en `3a1369a` (v0.38.0) |
+| Evidencia | `docs/_auditoria/2026-10-20-respuesta-a-auditoria-externa.md` |
+| Sustituye a | El roadmap por fases del 2026-10-07. Sus fases de producto siguen aquí, en la §5 |
 
-La recomendación es el primer camino, y el roadmap está construido sobre él. **Pero el alcance
-completo sigue planificado**: nada se eliminó, solo se ordenó.
-
----
-
-## 2. Las fases
-
-### Fase 0 — Fundaciones · 3 a 4 semanas
-
-**Objetivo:** que el equipo pueda construir sin discutir cómo.
-
-- [x] Andamiaje documental, arquitectura, ADRs, capa de agentes de IA
-- [ ] **Iniciar verificación de Meta Business y acceso a Tech Provider** ← *camino crítico, hoy*
-- [ ] Monorepo compilando: `apps/api`, `apps/web`, `apps/worker`, `packages/*`
-- [ ] PostgreSQL con RLS, migraciones, seed, prueba de aislamiento entre tenants
-- [ ] CI: lint, tipos, pruebas, escaneo de secretos
-- [ ] Entornos `dev` y `staging` desplegando
-- [ ] Observabilidad mínima: trazas, logs estructurados, Sentry
-- [ ] Validar los servidores MCP declarados en `.mcp.json`
-
-**Criterio de salida:** un desarrollador clona, corre `pnpm install && pnpm infra:up && pnpm dev`,
-y tiene el sistema andando en menos de diez minutos. La prueba de aislamiento pasa en CI.
+> **Cómo se lee.** Las semanas son relativas a la adopción (la semana 1 es la que empieza el
+> 2026-10-20). No hay fechas absolutas: las que dependen de terceros (Meta, Postmark, GitHub) no
+> las controlamos. **Terminado significa integrado en `main`**; lo que está en una rama se marca
+> como «en rama».
+>
+> El orden dentro de cada hito es el orden de la cola. La fuente de verdad del estado sigue siendo
+> `ESTADO.md`; si este documento y `ESTADO.md` discrepan, gana `ESTADO.md` y aquí se corrige.
 
 ---
 
-### Fase 1 — Inbox con WhatsApp · 6 a 8 semanas
+## 1. Correcciones al roadmap externo
 
-**Objetivo:** que una agencia real atienda sus conversaciones aquí. **Es el momento de la verdad.**
+El roadmap v2 externo describía como «por implementar» varias cosas que el código ya resuelve. El
+dictamen v3 de la auditoría ya lo rectificó. Lo que cambia respecto del texto externo:
 
-- Embedded Signup: la agencia conecta su número desde nuestra interfaz
-- Webhook: firma, idempotencia, enrutamiento por `phone_number_id`
-- Bandeja compartida: asignación, filtros, búsqueda, notas internas
-- Envío y recepción: texto, media, plantillas, interactivos
-- Ventana de 24 horas visible y aplicada
-- Gestión del ciclo de vida de plantillas
-- Tiempo real por WebSocket
-- Contactos básicos y timeline unificado por viajero
-
-**Criterio de salida:** una agencia piloto opera **todo** su WhatsApp aquí durante dos semanas sin
-volver al celular. Esa es la prueba, no una demo.
-
-**Si esta fase falla, el producto no existe.** Todo lo demás se construye encima.
-
----
-
-### Fase 2 — CRM y pipeline · 3 a 4 semanas
-
-- Oportunidades, etapas configurables, tablero y tabla
-- Actividades, tareas y recordatorios
-- Viajeros, empresas, segmentación
-- Motivos de pérdida obligatorios
-- Reportes básicos: conversión por etapa, actividad por asesor
-
-**Criterio de salida:** la agencia piloto sabe, por primera vez, cuántas consultas entraron y
-cuántas se convirtieron. Casi siempre, este número los sorprende.
-
-**Aquí se puede empezar a cobrar.** Inbox + pipeline ya es un producto vendible.
-
----
-
-### Fase 3 — Cotizador · 8 a 10 semanas
-
-**La fase más larga y el mayor diferenciador.** También la de mayor riesgo de alcance: es donde
-"una cosita más" multiplica el tiempo.
-
-- Catálogo de productos y proveedores, tarifarios
-- Cotización multi-opción, multi-pasajero (ADT/CHD/INF)
-- Tarifa neta, markup, comisión, impuestos, margen visible
-- Multi-moneda con TRM congelada
-- Itinerario por días y segmentos
-- Versionado: la cotización que vio el cliente no cambia
-- PDF con la marca de la agencia
-- Envío por WhatsApp y seguimiento de apertura
-
-**Criterio de salida:** un asesor pasa de conversación a propuesta enviada en **menos de cinco
-minutos**, cronometrado con un caso real.
-
----
-
-### Fase 4 — Reservas y pagos · 6 a 8 semanas
-
-- Archivo de viaje: pasajeros, documentos, proveedores
-- Reservas con localizador y **control de *time limit* con alertas**
-- Plan de pagos: anticipo y cuotas
-- Pasarela de pagos con webhooks idempotentes
-- Conciliación
-- Documentos del viajero (dato sensible: cifrado y acceso auditado)
-- Seguimiento del viaje y post-venta
-
-**Criterio de salida:** un archivo completo, de la cotización aceptada al viaje terminado, con
-pagos conciliados. Ninguna reserva se pierde por un *time limit* no avisado.
-
----
-
-### Fase 5 — Automatización e IA · 4 a 6 semanas
-
-- Extracción de intención de viaje desde el chat ← *la de mayor impacto, va primera*
-- Calificación de leads con justificación visible
-- Respuestas sugeridas (siempre revisadas por el asesor)
-- Resumen de conversación
-- Secuencias de seguimiento automáticas
-- Evaluaciones en CI y control de presupuesto por tenant
-
-**Criterio de salida:** el 80% de las conversaciones entrantes genera una oportunidad con destino,
-fechas y pasajeros correctos **sin que nadie teclee nada**, medido contra un conjunto anotado.
-
----
-
-### Fase 6 — Analítica y escala · 3 a 4 semanas
-
-- Reportes de conversión, margen por archivo, productividad, origen de leads
-- Recompra y cohortes de viajeros
-- Réplica de lectura; particionado de `messages`
-- Panel de administración de la plataforma
-
----
-
-## 3. Cronograma
-
-```mermaid
-gantt
-    title ViajaPro — plan de entregas
-    dateFormat YYYY-MM-DD
-    axisFormat %b
-
-    section Crítico externo
-    Verificación Meta Business   :crit, meta, 2026-10-07, 56d
-
-    section Construcción
-    F0 Fundaciones               :f0, 2026-10-07, 28d
-    F1 Inbox + WhatsApp          :f1, after f0, 49d
-    F2 CRM + Pipeline            :f2, after f1, 28d
-    F3 Cotizador                 :f3, after f2, 63d
-    F4 Reservas + Pagos          :f4, after f3, 49d
-    F5 Automatización + IA       :f5, after f4, 35d
-    F6 Analítica + Escala        :f6, after f5, 28d
-
-    section Negocio
-    Conseguir agencia piloto     :crit, pil, 2026-10-07, 42d
-    Piloto operando en Fase 1    :milestone, after f1, 0d
-    Primer cliente pagando       :milestone, after f2, 0d
-    Producto completo v1         :milestone, after f5, 0d
-```
-
-| Hito | Cuándo | Qué significa |
+| Punto del externo | Corrección | Por qué |
 |---|---|---|
-| Piloto operando | ~mes 3 | Una agencia real usa el inbox todos los días |
-| **Primer ingreso** | ~mes 4 | Inbox + pipeline es vendible |
-| Diferenciador en producción | ~mes 7 | El cotizador nos separa de la competencia |
-| v1 completa | ~mes 10 | Los cuatro bloques del alcance aprobado |
+| `socket.join('tenant:${id}')` | **Rechazado.** Se mantiene `usuario:<id>` con la visibilidad | Una sala por agencia entrega a cada asesor conversaciones que no le tocan. CA1 a CA17 de `docs/01-producto/12-visibilidad-de-conversaciones.md` |
+| Parámetro de contexto | Se llama **`app.current_tenant`** | `set_config('app.current_tenant', $tenantId, true)` en `apps/api/src/shared/prisma/prisma.service.ts:100` |
+| `preDeployCommand` para migraciones | **Rechazado.** Las migraciones corren desde **GitHub Actions** | ADR-0013: el rol que migra no vive en el servicio que atiende tráfico |
+| Particiones automáticas de `mensajes` | Aplica a **`enrutamiento_historial`**, no a `mensajes` | Particionar `mensajes` por fecha mete la fecha en la unique de `wamid` y el mismo reintento de Meta entraría dos veces (rompe R5) |
+| Guardia de rol, contexto transaccional, colas, socket, netos e inmutabilidad «por hacer» | **Hechos** en el código; falta la prueba donde se indica | Tabla de la §2 de la respuesta a la auditoría |
 
 ---
 
-## 4. Lo que está fuera de v1 (y por qué)
+## 2. Definition of Ready for Production
 
-Nombrarlo evita que se cuele por la puerta de atrás:
+Los cinco criterios de corte. **Ninguna agencia real pone datos de viajeros en producción hasta que
+los cinco estén en verde y comprobados en el CI o en staging.** No se negocian con calendario: si
+uno no se cumple, se recorta alcance.
+
+| # | Criterio | Cómo se comprueba | Hitos que lo cierran | Estado |
+|---|---|---|---|---|
+| C1 | **100 % de los mutantes muertos**, en `USING` y en `WITH CHECK` | La suite de mutantes de RLS en el CI informa 0 supervivientes | M1.3, AUD-014 | Mutantes `WITH CHECK` existen (M3, M4 y M9); falta el 100 % |
+| C2 | **Cero PII en claro**, comprobado con `$queryRaw` | Una prueba lee `mensajes.texto` y `conversaciones.ultimo_mensaje_texto` crudos y no encuentra texto legible | M1.4 | Abierto: depende del ADR-0014 |
+| C3 | **Meta y Postmark reales en staging** | Un mensaje real entra por el webhook de Meta y un correo real sale por Postmark, en staging | M2.1, M2.2, M5.1 | Bloqueado por las cuentas (propietario) |
+| C4 | **Protección de `main` activa** | Un `push` directo a `main` es rechazado por GitHub | M1.1 | Bloqueado por el plan de GitHub (propietario) |
+| C5 | **Supresión operativa** en la base, las colas y la caché | Una solicitud de supresión deja cero rastros del titular en Postgres, BullMQ y Redis, verificado por prueba | M4.3, M2.4 | Abierto: depende del ADR-0014 |
+
+---
+
+## 3. Hitos técnicos
+
+Columnas: **Hecho** lleva su versión o rama; **Queda** es lo único que falta para cerrarlo.
+
+### M1 — Cimientos · semanas 1 y 2
+
+**Objetivo:** que ningún defecto de código pueda volverse una fuga entre agencias, y que nada entre
+en `main` sin compuerta.
+
+| # | Qué | Hecho, con evidencia | Queda | Dueño | Depende de |
+|---|---|---|---|---|---|
+| M1.1 | Protección de `main` (AUD-004) | Compuerta por agente `integrador` (R11, ADR-0005) | *Rulesets* en GitHub: exige **GitHub Pro o Team** para un repositorio privado | **Propietario** (plan), luego `devops` | Decisión de pago del propietario |
+| M1.2 | Guardia de rol en el arranque (AUD-013) | **Hecho en el código:** aborta ante `rolsuper`, `rolbypassrls` o rol inesperado en `prisma.service.ts`, `prisma-webhook.service.ts` y `prisma-identidad.service.ts` | La prueba de arranque con roles prohibidos y la aserción `relforcerowsecurity` en el CI (en curso) | `qa` | — |
+| M1.3 | Contexto transaccional con 50 peticiones concurrentes (AUD-015, AUD-008) | **Hecho en el código:** `set_config('app.current_tenant', …, true)` dentro de `$transaction` (`prisma.service.ts:100`, `prisma-webhook.service.ts:64`); sin contexto, cero filas (migración `20261007042518_rls_sin_contexto_cero_filas`) | **REG-02** en el CI: 50 peticiones cruzadas con `connection_limit=2` (en curso). `has_table_privilege` dinámico visto en rojo y en verde. Mutantes al 100 % (C1) | `qa`, `datos` | — |
+| M1.4 | Cifrado del texto de los mensajes (AUD-001) | ADR-0014 **aceptado por el propietario** (Enfoque A: AES-256-GCM, clave por agencia con HKDF, AAD tenant ‖ mensaje ‖ columna) | Auditoría de `auditor-seguridad` del ADR; migración que cifra `mensajes.texto` y `conversaciones.ultimo_mensaje_texto`; quitar la búsqueda por cuerpo; prueba `$queryRaw` (C2) | `auditor-seguridad`, luego `datos` y `backend` | ADR-0014 auditado |
+| M1.5 | **Propio.** Acciones de GitHub fijadas por SHA | — | Fijar cada `uses:` a un SHA completo y añadir Dependabot para actualizarlas | `devops` | — |
+| M1.6 | **Propio.** Comprobación de `Origin` en toda ruta que cambia estado | Existe en `auth` y en el socket | Extenderla al resto de mutaciones de la API: hoy hay riesgo de CSRF entre subdominios del mismo sitio | `backend` | — |
+
+**Por qué M1.5 y M1.6 van aquí:** una acción de terceros sin fijar corre con los secretos del CI
+—incluido, con el ADR-0013, el que migra la base—, y el CSRF es una mutación hecha con la sesión de
+otro. Las dos son baratas y cierran caminos de ataque que existen hoy.
+
+**Criterio de salida:** C1 y C4 en verde; M1.4 integrado o, como mínimo, con su migración en
+revisión.
+
+---
+
+### M2 — Núcleo asíncrono e integraciones · semanas 3 y 4
+
+**Objetivo:** que los efectos externos sean reales en staging, y que lo que la API expone al mundo
+aguante abuso.
+
+| # | Qué | Hecho, con evidencia | Queda | Dueño | Depende de |
+|---|---|---|---|---|---|
+| M2.1 | Meta real en staging (AUD-010) | Webhook con firma HMAC, idempotencia y relay por `change` (v0.21.0); número de prueba como entorno de desarrollo | Conectar la app de Meta al webhook de staging y ver entrar un mensaje real (C3) | `whatsapp` | **Cuenta de Meta** (propietario), M2.5 y M5.1 |
+| M2.2 | Postmark real (AUD-010) | Adaptador en `feat/notifications-postmark`, ADR-0012 | Cuenta, dominio verificado (SPF/DKIM) y un correo real enviado desde staging (C3) | `backend` | **Cuenta de Postmark y DNS** (propietario) y M5.1 |
+| M2.3 | Colas y barrido (AUD-017) | **Hecho:** `removeOnComplete`/`removeOnFail`, `FOR UPDATE SKIP LOCKED`, `jobId` determinista y barrido cada 30 s con tope en la base y `SET NX` (`cola-de-changes.bullmq.ts:40-41`, `outbox.prisma.ts`) | Tope a los fallidos, prueba del 413 y concurrencia acotada (en verificación) | `backend`, `qa` | — |
+| M2.4 | Purga del directorio | — | Purga de las entradas del directorio de números que ya no enrutan a ninguna agencia. Es parte de C5 | `datos` | M2.3 |
+| M2.5 | **Propio.** Límite de tasa fuera de `auth` | Existe solo en `auth` | Límite por IP en el webhook y por sesión en la API, antes de exponer el webhook a Meta real | `backend` | — |
+| M2.6 | **Propio.** Escritores de `registros_auditoria` (R10) | La tabla existe | Escribir en ella cada acceso a PII y cada cambio de permisos, con una prueba que lo compruebe. Necesario para la supresión (M4.3) y para los documentos de viajeros (§5) | `backend`, `datos` | — |
+| M2.7 | **Propio.** CSP en la web | — | `Content-Security-Policy` estricta en `apps/web`, probada en el navegador sin romper la bandeja | `frontend` | — |
+
+**Por qué estos tres van a M2 y no a M1:** ninguno es una fuga entre agencias hoy. El límite de
+tasa importa cuando el webhook sea público (M2.1); la auditoría, cuando haya PII real de viajeros;
+la CSP, cuando la web tenga sesión en un navegador ajeno (M3.1). Los tres tienen que estar antes de
+que ocurra eso.
+
+**Criterio de salida:** C3 en verde, o bloqueado solo por las cuentas del propietario.
+
+---
+
+### M3 — Frontend y tiempo real · semanas 5 y 6
+
+| # | Qué | Hecho, con evidencia | Queda | Dueño | Depende de |
+|---|---|---|---|---|---|
+| M3.1 | La web con Better Auth (AUD-009) | ADR-0011 aceptado; rebanadas 1 (v0.33.0), 2 (v0.34.0) y 4 (v0.35.0) integradas | Rebanada 3: pantalla de ingreso y selector de agencia. Quitar la cabecera de tenant de desarrollo | Antigravity (`frontend`) | M1.6, M2.7 |
+| M3.2 | Socket seguro | **Hecho en la API:** salas asignadas por el servidor, handshake con los pasos 3 y 4 del ADR-0011, revalidación cada 60 s, cierre con `identity.acceso_revocado`, emisión por `usuario:<id>` (v0.37.0; `bandeja-en-vivo.gateway.ts:133`) | Conectar la web al socket con la cookie de sesión | `frontend` | M3.1 |
+| M3.3 | Bandeja reactiva | Bandeja web integrada (v0.24.0 a v0.28.0) | Actualización en vivo sin recargar; ventana de 24 h visible y aplicada | `frontend` | M3.2 |
+
+**Criterio de salida:** un asesor entra con su usuario, ve solo sus conversaciones y la cola común, y
+un mensaje nuevo aparece sin recargar.
+
+---
+
+### M4 — Finanzas y Ley 1581 · semanas 7 y 8
+
+| # | Qué | Hecho, con evidencia | Queda | Dueño | Depende de |
+|---|---|---|---|---|---|
+| M4.1 | Ocultar netos | **Hecho:** `autorizarMargen()` con 403 y dinero en enteros (v0.22.0, v0.24.1, v0.34.0) | — | — | — |
+| M4.2 | Inmutabilidad de las cotizaciones | **Hecho:** disparadores de inmutabilidad (v0.34.1); el servidor recalcula y no guarda los importes del cliente (v0.23.0) | — | — | — |
+| M4.3 | Servicio de supresión (AUD-002) y purga de payloads crudos a los 15 días | — | Supresión de un titular en base, colas y caché; *crypto-shredding* de una agencia entera; purga programada de los payloads crudos del webhook a los 15 días (C5) | `backend`, `datos` | M1.4, M2.4, M2.6 |
+
+---
+
+### M5 — Despliegue · semanas 9 y 10
+
+| # | Qué | Hecho, con evidencia | Queda | Dueño | Depende de |
+|---|---|---|---|---|---|
+| M5.1 | `render.yaml` segregado (AUD-012) | *Blueprint* y workflow **en rama** `ci/despliegue-staging-render`; la auditoría interna lo aceptó con dos cambios | Los dos cambios y la integración. Migraciones desde GitHub Actions, no con `preDeployCommand`. Solo staging (ADR-0013) | `devops` | **Cuenta de Render** (propietario). **Se adelanta a M2**, porque M2.1 y M2.2 lo necesitan |
+| M5.2 | Particiones automáticas de `enrutamiento_historial` (AUD-007) | Tabla ya particionada | Creación automática de las particiones futuras y retiro de las viejas; incluir las tablas de auditoría | `datos` | — |
+| M5.3 | Prueba de carga con 500 webhooks | — | 500 webhooks en ráfaga en staging sin duplicados ni pérdidas, con la latencia medida | `qa` | M2.1, M5.1 |
+
+---
+
+### M6 — Beta · semanas 11 y 12
+
+| # | Qué | Hecho, con evidencia | Queda | Dueño | Depende de |
+|---|---|---|---|---|---|
+| M6.1 | Compuertas de liberación | Siete compuertas del `integrador` para `main` (ADR-0005) | Compuerta de producción: los cinco criterios de la §2 comprobados de forma automática | `integrador`, `devops` | C1 a C5 |
+| M6.2 | De 2 a 3 agencias piloto | Hay una agencia piloto desde el 2026-10-07 | Conseguir una o dos más; operar dos semanas sin volver al celular | **Propietario** | M6.1 |
+| M6.3 | Observabilidad sin PII | — | Trazas, logs estructurados y errores sin texto de mensajes ni datos de viajeros, con una prueba que lo compruebe | `devops` | M1.4 |
+
+**Criterio de salida de la beta:** la agencia piloto opera **todo** su WhatsApp aquí durante dos
+semanas. Es la prueba que el roadmap anterior pedía a la Fase 1, y sigue siendo la que importa.
+
+---
+
+## 4. Lo que solo puede hacer el propietario
+
+| Qué | Bloquea | Cuándo hace falta |
+|---|---|---|
+| Plan GitHub Pro o Team | M1.1 y C4 | Semana 1 |
+| Cuenta de Render para staging | M5.1, y con ella M2.1 y M2.2 | Semana 3 |
+| Cuenta de Meta (app y número de prueba) y verificación de Meta Business | M2.1, C3 y lanzar con clientes reales | Semana 3; la verificación tarda semanas, **hay que arrancarla ya** |
+| Cuenta de Postmark y acceso al DNS del dominio | M2.2 y C3 | Semana 3 |
+| Agencias piloto adicionales | M6.2 | Semana 11 |
+| Tarifario real del piloto y tarifa de Meta en COP | La §5 y el precio de entrada | Ya |
+| Pasarela de pagos | Reservas y pagos (§5) | Antes de empezar esa fase |
+
+---
+
+## 5. Producto: lo que el roadmap técnico no cubre
+
+El roadmap v2 externo es de cimientos y seguridad. **No sustituye el alcance de producto de v1**
+—inbox + pipeline, cotizador, reservas y pagos, automatización e IA—, que se mantiene. Se
+construye en paralelo donde no compite con los hitos, y después de la beta lo que dependa de ella.
+
+| Fase | Estado | Encaje con los hitos |
+|---|---|---|
+| **Inbox con WhatsApp** | Webhook, bandeja web y visibilidad hechos | Lo cierran M2.1 y M3 |
+| **CRM y pipeline** | Esquema y API en ramas `feat/crm-*` | En paralelo con M3; es lo que hace vendible el producto |
+| **Cotizador** | De punta a punta en `main`; guardado, versiones y estados hechos | Falta el PDF con la marca y el envío por WhatsApp; en paralelo con M3 y M4 |
+| **Reservas y pagos** | Sin empezar | **Después de M4.** Los documentos del viajero exigen M1.4 y M2.6 (R10). Pagos idempotentes por cola (R5). Pasarela pendiente de decisión del propietario |
+| **Automatización e IA** | Sin empezar | **Después de la beta.** Extracción de intención primero. Con el ADR-0014, la IA lee el texto descifrado solo en el trabajador, nunca en claro desde la base |
+| **Analítica y escala** | Sin empezar | Después de la beta. El particionado es de `enrutamiento_historial` y de auditoría, no de `mensajes` (ver §1) |
+
+Los criterios de salida de cada fase del roadmap anterior siguen vigentes. Por ejemplo, el del
+cotizador: de conversación a propuesta enviada en menos de cinco minutos, cronometrado con un caso
+real.
+
+---
+
+## 6. Fuera de v1
 
 | Fuera | Por qué | Cuándo |
 |---|---|---|
 | Integración con GDS (Amadeus, Sabre) | Contratos, certificación y complejidad desproporcionados | v2 |
 | Contabilidad y facturación electrónica | No competimos con el ERP de la agencia: integramos | v2, vía API |
-| App móvil nativa | La web responsive cubre el caso. Nativa es un producto aparte | v2 |
-| Instagram, Messenger, correo en el inbox | WhatsApp es el 90% del volumen real | v1.5 |
-| Marca blanca completa de la interfaz | Solo PDF y color de acento en v1 | Plan enterprise |
+| App móvil nativa | La web responsive cubre el caso | v2 |
+| Instagram, Messenger, correo en el inbox | WhatsApp es el 90 % del volumen real | v1.5 |
+| Búsqueda por el cuerpo de los mensajes | Desaparece con el ADR-0014: se busca por contacto, teléfono, fecha, estado y cotización | Se reconsidera solo con un ADR que la haga sin texto en claro |
+| Marca blanca completa | Solo PDF y color de acento en v1 | Plan enterprise |
 | Portal del viajero | Interesante, no urgente | v2 |
-| Turismo corporativo (políticas, autorizaciones) | Otro producto, otro comprador | v3 |
-
----
-
-## 5. Decisiones que necesita el usuario
-
-Cada una bloquea o cambia una fase. Están en `ESTADO.md` como preguntas abiertas:
-
-1. **Agencia piloto.** Sin un cliente real en Fase 1, construimos a ciegas. Es la decisión más
-   urgente después de iniciar el trámite con Meta.
-2. **País de operación inicial.** Define moneda, impuestos, pasarela y normativa por defecto.
-3. **Pasarela de pagos.** Bloquea la Fase 4.
-4. **Nombre comercial.** Barato ahora, caro después de tener clientes.
-5. **Presupuesto mensual de IA.** Define si la Fase 5 usa el modelo rápido o el fuerte.
+| Turismo corporativo | Otro producto, otro comprador | v3 |
+| Producción con clientes reales | Solo staging hasta cumplir la §2 (ADR-0013) | Cuando C1 a C5 estén en verde |
