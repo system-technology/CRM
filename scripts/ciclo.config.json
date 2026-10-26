@@ -27,8 +27,8 @@
     "backend": {
       "prefijo": "a",
       "modeloPlan": [
-        "opencode-go/kimi-k3.1-pro",
         "nvidia/nvidia/nemotron-3-ultra-550b-a55b",
+        "opencode-go/kimi-k3.1-pro",
         "opencode-go/qwen3.8-max"
       ],
       "modeloImplementa": [
@@ -45,8 +45,8 @@
     "frontend": {
       "prefijo": "b",
       "modeloPlan": [
-        "opencode-go/kimi-k3.1-pro",
         "nvidia/nvidia/nemotron-3-ultra-550b-a55b",
+        "opencode-go/kimi-k3.1-pro",
         "opencode-go/qwen3.8-max"
       ],
       "modeloImplementa": [
