@@ -29,7 +29,7 @@ import {
 import type { FilaDeCotizacion, EstadoCotizacion } from '@viajapro/contracts';
 import { BarraModulos } from '../../components/bandeja/barra-modulos';
 import { DistintivoDatosDemo } from '../../components/comun/distintivo-datos-demo';
-import { formatearDinero } from '../../lib/api';
+import { formatearDinero, formatearFecha } from '../../lib/formato';
 import { listarCotizacionesApi, estaUsandoApiReal } from '../../lib/cotizaciones-api';
 import {
   filtrarFilasCotizacion,
@@ -386,7 +386,9 @@ export default function CotizacionesPage() {
                       </div>
 
                       <div className="mt-3 flex items-center justify-between border-t border-neutral-100 pt-2.5 text-[11px] text-neutral-500 dark:border-neutral-800">
-                        <span className="truncate pr-2">Salida: {resumen.fechaSalida}</span>
+                        <span className="truncate pr-2">
+                          Salida: {formatearFecha(resumen.fechaSalida)}
+                        </span>
                         <Link
                           href={`/cotizaciones/${resumen.id}`}
                           className="flex min-h-[44px] items-center gap-1 rounded-xl bg-neutral-100 px-3 py-1.5 text-xs font-semibold text-neutral-800 transition-colors hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
@@ -440,7 +442,7 @@ export default function CotizacionesPage() {
                               {resumen.paqueteNombre}
                             </span>
                             <span className="text-[11px] text-neutral-400">
-                              {resumen.fechaSalida}
+                              {formatearFecha(resumen.fechaSalida)}
                             </span>
                           </td>
                           <td className="px-3 py-4 text-center">

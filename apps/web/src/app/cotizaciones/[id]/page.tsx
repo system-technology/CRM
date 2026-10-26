@@ -26,7 +26,7 @@ import {
 } from 'lucide-react';
 import type { Acomodacion, CotizacionGuardada, Contacto } from '@viajapro/contracts';
 import { BarraModulos } from '../../../components/bandeja/barra-modulos';
-import { formatearDinero } from '../../../lib/api';
+import { formatearDinero, formatearFecha, formatearTelefono } from '../../../lib/formato';
 import {
   obtenerCotizacionGuardadaApi,
   anadirVersionCotizacionApi,
@@ -181,7 +181,7 @@ export default function PaginaCotizacionGuardada({ params }: PageProps) {
 
 🌴 *${versionActual.paqueteNombre.toUpperCase()}*
 📍 *Destino:* ${versionActual.destino}
-📅 *Fecha de Salida:* ${versionActual.fechaSalida} (${versionActual.noches} noches)
+📅 *Fecha de Salida:* ${formatearFecha(versionActual.fechaSalida)} (${versionActual.noches} noches)
 👥 *Pasajeros:* ${versionActual.adultos} adulto(s)${versionActual.ninos > 0 ? `, ${versionActual.ninos} niño(s)` : ''}${versionActual.infantes > 0 ? `, ${versionActual.infantes} infante(s)` : ''}
 
 📋 *Desglose de Tarifas:*
@@ -297,7 +297,9 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
                         Viajero: <strong>{contacto?.nombre || 'Contacto registrado'}</strong>
                       </span>
                       {contacto?.telefono && (
-                        <span className="font-mono text-neutral-500">({contacto.telefono})</span>
+                        <span className="font-mono text-neutral-500">
+                          ({formatearTelefono(contacto.telefono)})
+                        </span>
                       )}
                       <span className="flex items-center gap-1.5">
                         <FileText className="h-3.5 w-3.5 text-neutral-400" />

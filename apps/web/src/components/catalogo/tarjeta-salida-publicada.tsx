@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Calendar, Compass, MapPin, Sparkles, Users } from 'lucide-react';
 import type { SalidaPublicada } from '@viajapro/contracts';
 import { formatearNochesLabel, formatearCondicionDesde } from '../../lib/catalogo-logica';
-import { formatearDinero } from '../../lib/api';
+import { formatearDinero, formatearFecha } from '../../lib/formato';
 
 interface TarjetaSalidaPublicadaProps {
   salida: SalidaPublicada;
@@ -72,7 +72,7 @@ export function TarjetaSalidaPublicada({ salida }: TarjetaSalidaPublicadaProps) 
           <div className="flex flex-wrap items-center justify-between gap-1 border-b border-neutral-100 pb-2 dark:border-neutral-800">
             <span className="text-neutral-400">Salida:</span>
             <span className="font-semibold text-neutral-800 dark:text-neutral-200">
-              Fecha fija confirmada ({salida.fecha})
+              Fecha fija confirmada ({formatearFecha(salida.fecha)})
             </span>
           </div>
 

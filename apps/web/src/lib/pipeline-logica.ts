@@ -1,3 +1,4 @@
+import { formatearDinero } from './formato';
 import {
   ClaveEtapa,
   Dinero,
@@ -53,16 +54,7 @@ export const NOMBRES_MOTIVOS_PERDIDA: Record<MotivoPerdida, string> = {
  */
 export function formatearDineroCifra(dinero: Dinero | null): string {
   if (!dinero) return '$0';
-  const decimales = dinero.moneda === 'COP' ? 0 : 2;
-  const unidades = Number(dinero.unidades);
-  if (!Number.isFinite(unidades)) return '$0';
-
-  return new Intl.NumberFormat('es-CO', {
-    style: 'currency',
-    currency: dinero.moneda,
-    minimumFractionDigits: decimales,
-    maximumFractionDigits: decimales,
-  }).format(unidades / 10 ** decimales);
+  return formatearDinero(dinero);
 }
 
 /**
