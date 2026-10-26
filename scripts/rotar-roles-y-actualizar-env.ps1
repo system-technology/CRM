@@ -130,9 +130,21 @@ Write-Host "  Rotados: $($nuevos.Count) roles." -ForegroundColor Green
 foreach ($arbol in $Arboles) {
     $ruta = Join-Path $arbol '.env'
 
-    # Copia de seguridad: un .env roto deja la maquina sin base de datos, y el contenido
-    # anterior no esta en ningun otro sitio.
-    $respaldo = "$ruta.bak"
+    # Copia de seguridad FUERA DEL ARBOL DE TRABAJO, y con fecha.
+    #
+    # La version anterior dejaba un `.env.bak` junto al `.env`, y eso resulto ser un error en
+    # dos sentidos. Primero: `.gitignore` no siempre nombro `.env.bak`, asi que un `git add -A`
+    # lo habria subido con credenciales dentro. Y segundo, que es peor: ese respaldo se queda
+    # ahi para siempre, y como esta rotacion NO cambia la contrasena del propietario, el
+    # archivo conserva una credencial que sigue viva.
+    #
+    # Fuera del arbol no lo alcanza ningun `git add`, ningun `git clean` y ninguna herramienta
+    # que recorra el repositorio.
+    $carpetaRespaldos = Join-Path $env:LOCALAPPDATA 'viajaproespaldos-env'
+    New-Item -ItemType Directory -Force -Path $carpetaRespaldos | Out-Null
+    $marca = Get-Date -Format 'yyyyMMdd-HHmmss'
+    $nombreArbol = Split-Path $arbol -Leaf
+    $respaldo = Join-Path $carpetaRespaldos "$nombreArbol-$marca.env"
     Copy-Item -LiteralPath $ruta -Destination $respaldo -Force
 
     $lineas = [System.Collections.Generic.List[string]](Get-Content -LiteralPath $ruta)
@@ -153,7 +165,7 @@ foreach ($arbol in $Arboles) {
     }
 
     Set-Content -LiteralPath $ruta -Value $lineas -Encoding utf8
-    Write-Host "  $ruta  ->  $cambios variables actualizadas (respaldo en .env.bak)" -ForegroundColor Green
+    Write-Host "  $ruta  ->  $cambios variables actualizadas" -ForegroundColor Green
 }
 
 # ---------------------------------------------------------------------------
@@ -183,7 +195,7 @@ foreach ($arbol in $Arboles) {
 
 if ($problemas -gt 0) {
     Write-Host ''
-    Write-Host "$problemas problemas. Los respaldos estan en <arbol>\.env.bak" -ForegroundColor Red
+    Write-Host "$problemas problemas. Los respaldos estan en $carpetaRespaldos" -ForegroundColor Red
     exit 1
 }
 
@@ -193,4 +205,4 @@ Write-Host 'Siguiente paso, para comprobar que la base acepta las credenciales n
 Write-Host '  pnpm db:aislamiento'
 Write-Host ''
 Write-Host 'Las contrasenas no se han mostrado ni se guardan en ningun otro sitio.'
-Write-Host 'Si hace falta volver atras, cada .env tiene su .env.bak al lado.'
+Write-Host "Si hace falta volver atras, los respaldos estan en $carpetaRespaldos (fuera del repositorio)."
