@@ -515,12 +515,39 @@ ${recorte(inst.salida, 1500)}`;
   if (!motivos.length) {
     // `pnpm compuertas --rapido` completo NO sirve aquí: los tests de @viajapro/database necesitan Postgres y
     // .env, que no existen en un worktree (23 rojos que no son del agente). Esos y el aislamiento los corre el CI.
+    // `build` de los paquetes compartidos va PRIMERO (las pruebas de la API los importan desde `dist`; sin él, 10 suites rojas
+    // que no son del agente). Las `*.e2e-spec.ts` de la API arrancan Nest contra Neon y su script exige `.env`: solo unitarias.
     const pasos = [
+      [
+        'build de paquetes compartidos',
+        [
+          'exec',
+          'turbo',
+          'run',
+          'build',
+          '--filter=@viajapro/contracts',
+          '--filter=@viajapro/domain',
+        ],
+        10,
+      ],
       ['lint+typecheck', ['exec', 'turbo', 'run', 'lint', 'typecheck'], 20],
       [
         'tests (sin base de datos)',
-        ['exec', 'turbo', 'run', 'test', '--filter=!@viajapro/database', '--concurrency=1'],
+        [
+          'exec',
+          'turbo',
+          'run',
+          'test',
+          '--filter=!@viajapro/database',
+          '--filter=!@viajapro/api',
+          '--concurrency=1',
+        ],
         20,
+      ],
+      [
+        'tests unitarios de la API',
+        ['--filter', '@viajapro/api', 'exec', 'vitest', 'run', '--exclude', '**/*.e2e-spec.ts'],
+        15,
       ],
     ];
     for (const [nombre, a, minutos] of pasos) {
