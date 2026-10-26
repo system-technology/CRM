@@ -1,3 +1,5 @@
+import { esModoDemo } from './modo-demo';
+import { haySesionActiva } from './auth-api';
 import { cabecerasDeTenantDev } from './cabeceras-tenant';
 import { obtenerBaseApi } from './api-base';
 /**
@@ -58,7 +60,19 @@ export function estaUsandoApiRealInbox(): boolean {
   if (process.env['NEXT_PUBLIC_USE_MOCK_INBOX'] === 'true') {
     return false;
   }
-  return process.env['NEXT_PUBLIC_USE_REAL_INBOX'] === 'true';
+  if (process.env['NEXT_PUBLIC_USE_REAL_INBOX'] === 'false') {
+    return false;
+  }
+  if (process.env['NEXT_PUBLIC_USE_REAL_INBOX'] === 'true') {
+    return true;
+  }
+  if (esModoDemo()) {
+    return false;
+  }
+  if (process.env['VITEST'] === 'true' && !haySesionActiva()) {
+    return false;
+  }
+  return true;
 }
 
 export class InboxErrorApi extends Error {

@@ -1,5 +1,7 @@
 'use client';
 
+import { useModoDemo } from '../../lib/modo-demo';
+
 /**
  * Pantalla de Listado de Cotizaciones Guardadas (0c.28 & 0c.24).
  *
@@ -38,7 +40,8 @@ import {
 import { obtenerMockPaginaContactos } from '../../lib/mock-contactos';
 
 export default function CotizacionesPage() {
-  const usandoApiReal = estaUsandoApiReal();
+  const { esDemo } = useModoDemo();
+  const usandoApiReal = !esDemo && estaUsandoApiReal();
 
   // Estados principales de datos y paginación por cursor
   const [filas, setFilas] = useState<FilaDeCotizacion[]>([]);

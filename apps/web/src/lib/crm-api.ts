@@ -1,5 +1,6 @@
+import { esModoDemo } from './modo-demo';
 import { cabecerasDeTenantDev } from './cabeceras-tenant';
-import { usaAuthReal } from './auth-api';
+import { usaAuthReal, haySesionActiva } from './auth-api';
 import { obtenerBaseApi } from './api-base';
 export { obtenerBaseApi };
 /**
@@ -31,7 +32,21 @@ export function obtenerTenantDemo(): string {
 }
 
 export function estaUsandoApiReal(): boolean {
-  return process.env['NEXT_PUBLIC_USE_REAL_CRM'] === 'true';
+  if (esModoDemo()) {
+    return false;
+  }
+  if (process.env['NEXT_PUBLIC_USE_REAL_CRM'] === 'false') {
+    return false;
+  }
+  if (process.env['NEXT_PUBLIC_USE_REAL_CRM'] === 'true') {
+    return true;
+  }
+  // En pruebas unitarias Vitest sin servidor ni variable explícita, usar mock
+  if (process.env['VITEST'] === 'true' && !haySesionActiva()) {
+    return false;
+  }
+  // En ejecución real (browser o con sesión): API REAL POR DEFECTO
+  return true;
 }
 
 export class CrmApiError extends Error {
