@@ -32,6 +32,8 @@ import { ProcesarChange } from './application/procesar-change.js';
 import { claveDeEnrutamiento } from './domain/clave-de-enrutamiento.js';
 // La prueba ensambla el proceso real: el puerto de contactos lo implementa `crm`.
 import { ContactosDeCrm } from '../crm/infrastructure/puertos-de-crm.prisma.js';
+import { COLUMNAS_CIFRADAS } from '../../shared/cifrado/puerto-de-cifrado.js';
+import { cifradoDePrueba } from '../../shared/cifrado/cifrado-de-prueba.js';
 import { BandejaPrisma } from './infrastructure/bandeja.prisma.js';
 import { StagingPrisma } from './infrastructure/staging.prisma.js';
 
@@ -211,7 +213,7 @@ beforeAll(async () => {
   await prismaWebhook.onModuleInit();
   caso = new ProcesarChange(
     new StagingPrisma(prismaWebhook),
-    new BandejaPrisma(prismaWebhook, new ContactosDeCrm()),
+    new BandejaPrisma(prismaWebhook, new ContactosDeCrm(), cifradoDePrueba()),
   );
 });
 
@@ -256,21 +258,42 @@ describe('POST firmado -> trabajador -> mensajes', () => {
     const r = await caso.ejecutar(idDe(cuerpo), 0);
     expect(r).toEqual({ estado: 'PROCESADO', mensajesNuevos: 1, mensajesRepetidos: 0 });
 
-    const m = await admin.query(
-      `SELECT id, tenant_id, direccion::text, tipo::text, texto, conversacion_id FROM mensajes WHERE wamid = $1`,
+    const m = await admin.query<{
+      id: string;
+      tenant_id: string;
+      direccion: string;
+      texto_cifrado: Buffer;
+      texto_nonce: Buffer;
+      texto_tag: Buffer;
+      texto_clave_version: number;
+      conversacion_id: string;
+    }>(
+      `SELECT id, tenant_id, direccion::text, texto_cifrado, texto_nonce, texto_tag,
+              texto_clave_version, conversacion_id FROM mensajes WHERE wamid = $1`,
       [wamid],
     );
     expect(m.rows).toHaveLength(1);
-    expect(m.rows[0].tenant_id).toBe(TENANT);
-    expect(m.rows[0].direccion).toBe('ENTRANTE');
-    expect(m.rows[0].texto).toContain('San Andrés');
+    const fila = m.rows[0];
+    if (!fila) throw new Error('El mensaje no llegó');
+    expect(fila.tenant_id).toBe(TENANT);
+    expect(fila.direccion).toBe('ENTRANTE');
+    // En la base no hay texto: lo guardado solo abre con la clave, la agencia y el id de la fila.
+    expect(fila.texto_cifrado.includes(Buffer.from('San Andrés'))).toBe(false);
+    expect(
+      cifradoDePrueba().descifrar(COLUMNAS_CIFRADAS.MENSAJES_TEXTO, TENANT, fila.id, {
+        cifrado: fila.texto_cifrado,
+        nonce: fila.texto_nonce,
+        tag: fila.texto_tag,
+        claveVersion: fila.texto_clave_version,
+      }),
+    ).toContain('San Andrés');
 
     const c = await admin.query(
       `SELECT c.tenant_id, c.canal_id, c.mensajes_sin_leer, c.ultimo_mensaje_direccion::text AS dir,
               k.telefono_e164, k.tenant_id AS k_tenant
          FROM conversaciones c JOIN contactos k ON k.id = c.contacto_id
         WHERE c.id = $1`,
-      [m.rows[0].conversacion_id],
+      [fila.conversacion_id],
     );
     expect(c.rows[0]).toMatchObject({
       tenant_id: TENANT,
@@ -283,7 +306,7 @@ describe('POST firmado -> trabajador -> mensajes', () => {
 
     const ev = await admin.query(
       `SELECT payload::text AS p FROM outbox WHERE tenant_id = $1 AND agregado_id = $2`,
-      [TENANT, m.rows[0].id],
+      [TENANT, fila.id],
     );
     expect(ev.rows).toHaveLength(1);
     expect(ev.rows[0].p).not.toContain('573001112233');

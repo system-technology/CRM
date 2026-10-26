@@ -1,6 +1,7 @@
 import { Global, Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { PermisoGuard } from './autorizacion/permiso.guard.js';
+import { CifradoModule } from './cifrado/cifrado.module.js';
 import { PrismaService } from './prisma/prisma.service.js';
 
 /**
@@ -9,6 +10,7 @@ import { PrismaService } from './prisma/prisma.service.js';
  */
 @Global()
 @Module({
+  imports: [CifradoModule],
   providers: [PrismaService, { provide: APP_GUARD, useClass: PermisoGuard }],
   exports: [PrismaService],
 })

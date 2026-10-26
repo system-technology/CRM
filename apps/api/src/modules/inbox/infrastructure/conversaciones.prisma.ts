@@ -11,6 +11,7 @@
  * Todo lo que escribe lo hace en UNA transacción junto con su evento de outbox (R5): el relay lo
  * publica después; aquí no se publica nada.
  */
+import { randomUUID } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import type {
@@ -30,6 +31,14 @@ import {
   filtroDeVisibilidad,
   type Visibilidad,
 } from '../../../shared/autorizacion/visibilidad-de-conversaciones.js';
+import {
+  columnasDeTexto,
+  columnasDeUltimoMensaje,
+} from '../../../shared/cifrado/columnas-de-prisma.js';
+import {
+  COLUMNAS_CIFRADAS,
+  PuertoCifradoDeCampos,
+} from '../../../shared/cifrado/puerto-de-cifrado.js';
 import { type ClienteTenant, PrismaService } from '../../../shared/prisma/prisma.service.js';
 import { PuertoNotasDeConversacion } from '../../../shared/puertos/puertos-hacia-crm.js';
 import { ContextoTenant } from '../../../shared/tenant/contexto-tenant.js';
@@ -103,6 +112,7 @@ export class ConversacionesPrisma extends PuertoConversaciones {
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(PuertoNotasDeConversacion) private readonly notasDeCrm: PuertoNotasDeConversacion,
+    @Inject(PuertoCifradoDeCampos) private readonly cifrado: PuertoCifradoDeCampos,
   ) {
     super();
   }
@@ -135,16 +145,13 @@ export class ConversacionesPrisma extends PuertoConversaciones {
       }
     })();
 
+    // Solo contacto: nombre y teléfono. El texto de los mensajes está cifrado (ADR-0015) y ya no
+    // se busca en la base; en el hilo abierto se busca en el cliente.
     const busqueda: Prisma.ConversacionWhereInput = termino
       ? {
           OR: [
             { contacto: { nombre: { contains: termino, mode: 'insensitive' } } },
             { contacto: { telefonoE164: { contains: termino } } },
-            {
-              mensajes: {
-                some: { eliminadoEn: null, texto: { contains: termino, mode: 'insensitive' } },
-              },
-            },
           ],
         }
       : {};
@@ -183,7 +190,7 @@ export class ConversacionesPrisma extends PuertoConversaciones {
     const pagina = filas.slice(0, c.limite);
     const ultima = pagina[pagina.length - 1];
     return {
-      datos: pagina.map((f) => aResumen(f, ahora)),
+      datos: pagina.map((f) => aResumen(f, ahora, this.cifrado)),
       pageInfo: {
         hasMore: hayMas,
         nextCursor:
@@ -240,8 +247,8 @@ export class ConversacionesPrisma extends PuertoConversaciones {
       const notas = await this.notasDeCrm.deLaConversacion(tx, tenantId, id);
 
       return {
-        ...aResumen(fila, ahora),
-        mensajes: recientes.reverse().map(aMensaje),
+        ...aResumen(fila, ahora, this.cifrado),
+        mensajes: recientes.reverse().map((m) => aMensaje(m, this.cifrado)),
         notas: notas.map(aNota),
       };
     });
@@ -279,7 +286,7 @@ export class ConversacionesPrisma extends PuertoConversaciones {
       const pagina = filas.slice(0, c.limite);
       const masAntiguo = pagina[pagina.length - 1];
       return {
-        datos: pagina.reverse().map(aMensaje),
+        datos: pagina.reverse().map((m) => aMensaje(m, this.cifrado)),
         pageInfo: {
           hasMore: hayMas,
           nextCursor:
@@ -326,7 +333,11 @@ export class ConversacionesPrisma extends PuertoConversaciones {
         select: {
           id: true,
           tipo: true,
-          nombreArchivo: true,
+          tenantId: true,
+          nombreArchivoCifrado: true,
+          nombreArchivoNonce: true,
+          nombreArchivoTag: true,
+          nombreArchivoClaveVersion: true,
           tamanoBytes: true,
           mimeType: true,
           descargadoEn: true,
@@ -337,7 +348,17 @@ export class ConversacionesPrisma extends PuertoConversaciones {
           ? {
               id: a.id,
               tipo: a.tipo,
-              nombreArchivo: a.nombreArchivo,
+              nombreArchivo: this.cifrado.descifrarNulable(
+                COLUMNAS_CIFRADAS.ADJUNTOS_NOMBRE_ARCHIVO,
+                a.tenantId,
+                a.id,
+                {
+                  cifrado: a.nombreArchivoCifrado,
+                  nonce: a.nombreArchivoNonce,
+                  tag: a.nombreArchivoTag,
+                  claveVersion: a.nombreArchivoClaveVersion,
+                },
+              ),
               tamanoBytes: a.tamanoBytes === null ? null : Number(a.tamanoBytes),
               mimeType: a.mimeType,
               descargado: a.descargadoEn !== null,
@@ -395,7 +416,7 @@ export class ConversacionesPrisma extends PuertoConversaciones {
       });
       if (previo) {
         if (previo.conversacionId !== id) throw new ClaveDeIdempotenciaEnUsoError();
-        return aMensaje(previo);
+        return aMensaje(previo, this.cifrado);
       }
 
       const expira = conv.ultimoMensajeClienteEn
@@ -403,15 +424,25 @@ export class ConversacionesPrisma extends PuertoConversaciones {
         : null;
       if (!calcularVentana(expira, ahora).abierta) throw new VentanaCerradaError();
 
+      // El id nace aquí, antes del INSERT: va en el AAD (ADR-0015, concreción 3).
+      const mensajeId = randomUUID();
       const creado = await tx.mensaje.create({
         data: {
+          id: mensajeId,
           tenantId,
           conversacionId: id,
           direccion: 'SALIENTE',
           tipo: 'TEXTO',
           // Pendiente hasta que el envío por la Cloud API lo confirme; ese envío es de `whatsapp`.
           estado: 'PENDIENTE',
-          texto: entrada.texto,
+          ...columnasDeTexto(
+            this.cifrado.cifrar(
+              COLUMNAS_CIFRADAS.MENSAJES_TEXTO,
+              tenantId,
+              mensajeId,
+              entrada.texto,
+            ),
+          ),
           autorId,
           claveIdempotencia: entrada.claveIdempotencia,
           ocurridoEn: ahora,
@@ -424,7 +455,14 @@ export class ConversacionesPrisma extends PuertoConversaciones {
         data: {
           ultimoMensajeEn: ahora,
           ultimoMensajeDireccion: 'SALIENTE',
-          ultimoMensajeTexto: entrada.texto.slice(0, 200),
+          ...columnasDeUltimoMensaje(
+            this.cifrado.cifrar(
+              COLUMNAS_CIFRADAS.CONVERSACIONES_ULTIMO_MENSAJE_TEXTO,
+              tenantId,
+              id,
+              entrada.texto.slice(0, 200),
+            ),
+          ),
           primeraRespuestaEn: conv.primeraRespuestaEn ?? ahora,
           actualizadoPorId: autorId,
         },
@@ -458,7 +496,7 @@ export class ConversacionesPrisma extends PuertoConversaciones {
           payload: { anteriorAsignadoAId: null },
         });
       }
-      return aMensaje(creado);
+      return aMensaje(creado, this.cifrado);
     });
   }
 
@@ -610,7 +648,7 @@ export class ConversacionesPrisma extends PuertoConversaciones {
       where: { id, tenantId },
       select: PARA_EL_RESUMEN,
     });
-    return aResumen(fila, ahora);
+    return aResumen(fila, ahora, this.cifrado);
   }
 }
 

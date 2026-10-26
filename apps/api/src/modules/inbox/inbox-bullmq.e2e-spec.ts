@@ -29,6 +29,7 @@ import { ProcesarChange } from './application/procesar-change.js';
 import { claveDeEnrutamiento } from './domain/clave-de-enrutamiento.js';
 // La prueba ensambla el proceso real: el puerto de contactos lo implementa `crm`.
 import { ContactosDeCrm } from '../crm/infrastructure/puertos-de-crm.prisma.js';
+import { cifradoDePrueba } from '../../shared/cifrado/cifrado-de-prueba.js';
 import { BandejaPrisma } from './infrastructure/bandeja.prisma.js';
 import {
   crearConexionDeRedis,
@@ -206,7 +207,7 @@ describe.skipIf(!CORRE)('BullMQ real: POST -> Redis -> consumidor -> mensajes', 
     await prismaWebhook.onModuleInit();
     const real = new ProcesarChange(
       new StagingPrisma(prismaWebhook),
-      new BandejaPrisma(prismaWebhook, new ContactosDeCrm()),
+      new BandejaPrisma(prismaWebhook, new ContactosDeCrm(), cifradoDePrueba()),
     );
     const conFallo = {
       ejecutar: (recepcionId: Buffer, indice: number) => {

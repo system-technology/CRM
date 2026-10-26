@@ -611,15 +611,9 @@ deduplicación de `wamid` se saca a una tabla aparte.
 
 ### R10 — el texto de un mensaje es PII
 
-`mensajes.texto` es la mayor superficie de datos sensibles del producto: ahí escribe el viajero, y
-en una agencia eso incluye número de pasaporte y fecha de nacimiento de un menor. **No se cifra por
-columna**, y la decisión tiene coste: el hilo se lee entero en cada apertura y `ConsultarBandeja.buscar`
-busca dentro del texto; cifrado queda ilegible para cualquier índice. Lo que sí se aplica: RLS
-forzada (aserción 38), el texto **nunca** viaja a `registros_auditoria.detalle` ni a `outbox.payload`,
-el índice de trigramas vive en la misma tabla y bajo la misma política, y el cifrado en reposo lo da
-el almacenamiento. **Esto no cierra el asunto:** si el cifrado por columna se considera exigible
-para la Ley 1581, es un ADR con `auditor-seguridad` y un rediseño de la búsqueda. Queda en la cola
-de `ESTADO.md`.
+**Superado por ADR-0015 (2026-10-20): `mensajes.texto` ya no existe en claro**, ni su índice de
+trigramas. Ver «Columnas cifradas (ADR-0015)» al final. Sigue en pie: el texto **nunca** viaja a
+`registros_auditoria.detalle` ni a `outbox.payload`, y RLS forzada (aserción 38).
 
 ### El punto ciego que se cerró
 
@@ -774,3 +768,43 @@ Migración `20261019230000_identidad_global_y_roles_por_agencia`.
   `usuarios.hash_contrasena` (vacía). **No reversible** en esa parte.
 - **Hash del token y del OTP**: el esquema no lo impone (columnas `text`). Es requisito de la
   rebanada 2 y condición del auditor.
+
+---
+
+## Columnas cifradas (ADR-0015, 2026-10-20)
+
+Migración `20261020120000_cifrar_columnas_con_pii_sensible`. Las cinco columnas que la tabla de
+alcance del ADR-0015 marca «Cifrar» dejan de existir en claro. Cada una es ahora **cuatro**
+columnas, con el patrón de `cuentas_whatsapp.token_*`:
+
+```
+<col>                         ──►  <col>_cifrado        bytea     AES-256-GCM, sin nonce ni etiqueta
+(varchar/text, en claro)           <col>_nonce          bytea     12 bytes, aleatorio por cifrado
+                                   <col>_tag            bytea     16 bytes
+                                   <col>_clave_version  smallint  v<n> de CAMPOS_SENSIBLES_KEY (>= 1)
+
+mensajes.texto                       → texto_*                 anulable
+conversaciones.ultimo_mensaje_texto  → ultimo_mensaje_texto_*  anulable
+contactos.preferencias               → preferencias_*          anulable
+notas_internas.texto                 → texto_*                 NOT NULL
+adjuntos.nombre_archivo              → nombre_archivo_*        anulable
+```
+
+### Por qué así
+
+| Decisión | Por qué |
+|---|---|
+| **Cuatro columnas `bytea` y no un `text` con sobre `v1:…`** | Es lo que fija el ADR, y deja que la base imponga el formato. `num_nonnulls(...) IN (0, 4)`, nonce de 12, etiqueta de 16 y versión ≥ 1 son `CHECK`: un criptograma sin versión, o unos bytes sueltos que podrían ser el claro, no son representables. Un `text` versionado solo se vigila con una regex que no distingue base64 de un texto que empiece por `v1:` |
+| **Tope de bytes del criptograma** (800, 1020, 8000) | GCM no expande: bytes del criptograma = bytes UTF-8 del claro. El tope de caracteres (200, 255, 2000) lo impone la API antes de cifrar; el de bytes impide que un error meta un documento en una vista previa |
+| **`DROP COLUMN` y no relleno** | No hay datos de producción (ADR, «Por qué ahora»). El claro desaparece en la misma migración en que aparecen las cifradas: sin convivencia ni marcador. Las semillas las vuelve a sembrar la API cifradas. Las notas de desarrollo se **borran** (una nota sin texto no es representable). **No reversible** en el contenido |
+| **Sin `mensajes_texto_trgm_idx`** | Ya no hay texto que indexar. La búsqueda de la bandeja pasa a nombre y teléfono del contacto (concreción 5). Aserción 69 |
+| **`adjuntos.clave_objeto` = `<tenant_id>/<uuid>`** | CHECK `adjuntos_clave_objeto_opaca`: prefijo igual al tenant de la fila (S3 no tiene RLS) y un UUID en minúsculas, sin extensión ni carpetas. Así nunca deriva del nombre del archivo que se acaba de cifrar. Las claves de desarrollo que no cumplían se anularon con su `descargado_en`. Aserción 70 |
+| **Lista declarada de columnas de texto** | Aserción 71 (concreción 7): toda columna `text`/`varchar`/`char`/`citext` de una tabla con `tenant_id` está en `COLUMNAS_DE_TEXTO_DECLARADAS` de `aislamiento.spec.ts`. Una nueva pone el CI en rojo hasta que alguien decida, con la tabla de alcance, si nace cifrada |
+
+Aserciones nuevas en `packages/database/tests/aislamiento.spec.ts`: 67 (las columnas en claro no
+existen y las cuatro tienen su tipo), 68 (las restricciones existen, **validadas**, y el motor
+rechaza las filas mal formadas), 69 (sin índice trigram), 70 (dentro de la 38) y 71.
+
+Clave, HKDF por agencia y columna, AAD y el descifrado son de la API
+(`apps/api/src/shared/cifrado/`), no de la base: la base nunca ve la clave (ni `pgcrypto`, que la
+dejaría en `pg_stat_statements`).

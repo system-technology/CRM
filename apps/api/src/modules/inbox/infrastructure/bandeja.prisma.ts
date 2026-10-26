@@ -8,7 +8,17 @@
  * (`createMany({ skipDuplicates })`): insertar y capturar el error de unicidad abortaría la
  * transacción entera en PostgreSQL.
  */
+import { randomUUID } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
+import {
+  COLUMNAS_CIFRADAS,
+  PuertoCifradoDeCampos,
+} from '../../../shared/cifrado/puerto-de-cifrado.js';
+import {
+  columnasDeNombreDeArchivo,
+  columnasDeTexto,
+  columnasDeUltimoMensaje,
+} from '../../../shared/cifrado/columnas-de-prisma.js';
 import { PuertoContactos } from '../../../shared/puertos/puertos-hacia-crm.js';
 import { PrismaWebhookService } from '../../../shared/prisma/prisma-webhook.service.js';
 import { PuertoBandeja, type ResultadoDeBandeja } from '../application/puertos-de-proceso.js';
@@ -19,6 +29,7 @@ export class BandejaPrisma extends PuertoBandeja {
   constructor(
     @Inject(PrismaWebhookService) private readonly prisma: PrismaWebhookService,
     @Inject(PuertoContactos) private readonly contactos: PuertoContactos,
+    @Inject(PuertoCifradoDeCampos) private readonly cifrado: PuertoCifradoDeCampos,
   ) {
     super();
   }
@@ -54,15 +65,27 @@ export class BandejaPrisma extends PuertoBandeja {
         select: { id: true, ultimoMensajeClienteEn: true, ultimoMensajeEn: true },
       });
 
+      // El id se genera ANTES del INSERT: va en el AAD del texto cifrado (ADR-0015, concreción 3).
+      const mensajeId = randomUUID();
       const insertados = await tx.mensaje.createMany({
         data: [
           {
+            id: mensajeId,
             tenantId,
             conversacionId: conversacion.id,
             direccion: 'ENTRANTE',
             tipo: m.tipo,
             estado: 'ENTREGADO',
-            texto: m.texto,
+            ...(m.texto === null
+              ? {}
+              : columnasDeTexto(
+                  this.cifrado.cifrar(
+                    COLUMNAS_CIFRADAS.MENSAJES_TEXTO,
+                    tenantId,
+                    mensajeId,
+                    m.texto,
+                  ),
+                )),
             wamid: m.wamid,
             ocurridoEn: m.instante,
           },
@@ -77,13 +100,25 @@ export class BandejaPrisma extends PuertoBandeja {
       });
 
       if (m.medioId) {
+        const adjuntoId = randomUUID();
         await tx.adjunto.create({
           data: {
+            id: adjuntoId,
             tenantId,
             mensajeId: mensaje.id,
             tipo: m.tipo,
             mediaIdMeta: m.medioId,
-            nombreArchivo: m.nombreArchivo,
+            ...(m.nombreArchivo === null
+              ? {}
+              : columnasDeNombreDeArchivo(
+                  this.cifrado.cifrar(
+                    COLUMNAS_CIFRADAS.ADJUNTOS_NOMBRE_ARCHIVO,
+                    tenantId,
+                    adjuntoId,
+                    // Tope de la columna antes de cifrar (ADR-0015): lo elige el viajero.
+                    m.nombreArchivo.slice(0, 255),
+                  ),
+                )),
             mimeType: m.mimeType,
           },
         });
@@ -107,7 +142,14 @@ export class BandejaPrisma extends PuertoBandeja {
             ? {
                 ultimoMensajeEn: m.instante,
                 ultimoMensajeDireccion: 'ENTRANTE' as const,
-                ultimoMensajeTexto: (m.texto ?? `[${m.tipo}]`).slice(0, 200),
+                ...columnasDeUltimoMensaje(
+                  this.cifrado.cifrar(
+                    COLUMNAS_CIFRADAS.CONVERSACIONES_ULTIMO_MENSAJE_TEXTO,
+                    tenantId,
+                    conversacion.id,
+                    (m.texto ?? `[${m.tipo}]`).slice(0, 200),
+                  ),
+                ),
               }
             : {}),
         },

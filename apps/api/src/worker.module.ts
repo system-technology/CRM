@@ -4,9 +4,12 @@
  * inbox pide un contacto por un puerto; quien lo implementa es crm, y se enchufa aquí.
  */
 import { Module } from '@nestjs/common';
+import { CifradoModule } from './shared/cifrado/cifrado.module.js';
 import { CrmPuertosModule } from './modules/crm/crm-puertos.module.js';
 import { InboxWorkerModule } from './modules/inbox/inbox-worker.module.js';
 import { NotificationsWorkerModule } from './modules/notifications/notifications-worker.module.js';
 
-@Module({ imports: [CrmPuertosModule, InboxWorkerModule, NotificationsWorkerModule] })
+@Module({
+  imports: [CifradoModule, CrmPuertosModule, InboxWorkerModule, NotificationsWorkerModule],
+})
 export class WorkerModule {}

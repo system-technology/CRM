@@ -142,6 +142,9 @@ jobs:
             echo "WHATSAPP_DIRECTORY_PEPPER=$(openssl rand -hex 32)"
             echo "WEBHOOK_PAYLOAD_KEY=$(openssl rand -base64 32)"
             echo "WEBHOOK_PAYLOAD_KEY_VERSION=1"
+            # ADR-0015: clave maestra de las columnas cifradas. Efimera, nace y muere con el job.
+            echo "CAMPOS_SENSIBLES_KEY=$(openssl rand -hex 32)"
+            echo "CAMPOS_SENSIBLES_KEY_VERSION=1"
             echo "META_APP_SECRET=$(openssl rand -hex 16)"
             echo "WHATSAPP_WEBHOOK_VERIFY_TOKEN=$(openssl rand -hex 16)"
             # ADR-0011: firma las cookies de sesion de las pruebas. Nace y muere con el job.

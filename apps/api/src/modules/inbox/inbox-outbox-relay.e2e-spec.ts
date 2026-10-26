@@ -23,6 +23,7 @@ import { RelevarOutbox } from './application/relevar-outbox.js';
 import { PuertoPublicadorDeEventos } from './application/puertos-de-eventos.js';
 import type { EventoDeDominio } from './domain/evento-de-dominio.js';
 import { TIPO_MENSAJE_RECIBIDO } from './domain/evento-de-dominio.js';
+import { cifradoDePrueba } from '../../shared/cifrado/cifrado-de-prueba.js';
 import { BandejaPrisma } from './infrastructure/bandeja.prisma.js';
 import { OutboxPrisma } from './infrastructure/outbox.prisma.js';
 
@@ -117,7 +118,7 @@ beforeAll(async () => {
 
   prismaWebhook = new PrismaWebhookService();
   await prismaWebhook.onModuleInit();
-  bandeja = new BandejaPrisma(prismaWebhook, new ContactosDeCrm());
+  bandeja = new BandejaPrisma(prismaWebhook, new ContactosDeCrm(), cifradoDePrueba());
   outbox = new OutboxAcotado(prismaWebhook);
 });
 
