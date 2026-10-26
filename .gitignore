@@ -58,3 +58,7 @@ secrets/
 
 # Salidas del MCP de navegador (capturas y trazas de depuracion)
 .playwright-mcp/
+
+# Activos de agencias (logos, fotos) para demostraciones locales: NUNCA al repositorio, es publico
+# y no tenemos permiso de terceros para publicarlos. Se sirven solo en desarrollo.
+apps/web/public/_local/

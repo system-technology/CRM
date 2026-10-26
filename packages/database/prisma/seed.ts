@@ -16,6 +16,7 @@
 
 import { PrismaClient } from '@prisma/client';
 import { sembrarCatalogoReal } from './semilla-catalogo-real.js';
+import { sembrarEtapas, sembrarFormatos, sembrarRoles } from './siembra-de-tenant.js';
 
 const prisma = new PrismaClient();
 
@@ -54,61 +55,11 @@ async function main() {
   });
 
   // --- Roles -------------------------------------------------------------
-  // Tabla por agencia, no enum (R12, ADR-0011). Los tres sembrados se identifican por CLAVE:
-  // la agencia puede renombrarlos, y la siembra no le pisa ni el nombre ni los permisos.
-  const rolesSembrados = [
-    {
-      clave: 'DUENO',
-      nombre: 'Dueño',
-      permisos: [
-        'cotizacion.ver_neto_y_margen',
-        'usuarios.administrar',
-        'roles.administrar',
-        'conversaciones.ver_todas',
-        'catalogo.administrar',
-      ],
-    },
-    { clave: 'ASESOR', nombre: 'Asesor', permisos: [] },
-    {
-      clave: 'OPERACIONES',
-      nombre: 'Operaciones',
-      // ADR-0017 D2: Operaciones mantiene el catálogo; el Asesor no.
-      permisos: ['conversaciones.ver_todas', 'catalogo.administrar'],
-    },
-  ] as const;
-  const rolPorClave = new Map<string, string>();
-  for (const r of rolesSembrados) {
-    const rol = await prisma.rol.upsert({
-      where: { tenantId_clave: { tenantId: tenant.id, clave: r.clave } },
-      update: {},
-      create: { tenantId: tenant.id, clave: r.clave, nombre: r.nombre, permisos: [...r.permisos] },
-    });
-    rolPorClave.set(r.clave, rol.id);
-  }
+  // Tabla por agencia, no enum (R12, ADR-0011); ver siembra-de-tenant.ts.
+  const rolPorClave = await sembrarRoles(prisma, tenant.id);
 
   // --- Formatos de viaje (ADR-0017 M2) -------------------------------------
-  // Los cuatro de sistema, como copias editables de la agencia. Mismo contenido que siembra la
-  // migración 20261026120100 para las agencias que ya existían. Por NOMBRE y sin pisar nada: la
-  // agencia puede haber editado la plantilla o el orden.
-  const formatosDeSistema = [
-    { nombre: 'Excursión de un día', orden: 1, clave: 'excursion-de-un-dia', dias: 1, noches: 0 },
-    { nombre: 'Pasadía', orden: 2, clave: 'pasadia', dias: 1, noches: 0 },
-    { nombre: 'Pasanoche', orden: 3, clave: 'pasanoche', dias: 2, noches: 1 },
-    { nombre: 'Paquete con hotel', orden: 4, clave: 'paquete-con-hotel' },
-  ];
-  for (const f of formatosDeSistema) {
-    const valoresPorDefecto = f.dias === undefined ? {} : { dias: f.dias, noches: f.noches };
-    await prisma.formatoDeViaje.upsert({
-      where: { tenantId_nombre: { tenantId: tenant.id, nombre: f.nombre } },
-      update: {},
-      create: {
-        tenantId: tenant.id,
-        nombre: f.nombre,
-        orden: f.orden,
-        plantilla: { clave: f.clave, version: 1, valoresPorDefecto },
-      },
-    });
-  }
+  await sembrarFormatos(prisma, tenant.id);
 
   // --- Equipo -------------------------------------------------------------
   // La persona es una identidad GLOBAL; su pertenencia a la agencia es `usuarios`.
@@ -141,60 +92,9 @@ async function main() {
   }
 
   // --- Embudo -------------------------------------------------------------
-  // Tabla, no enum: cada agencia define su proceso. R12 y ADR-0006.
-  const etapas = [
-    { nombre: 'Consulta nueva', clave: 'NUEVO_LEAD', orden: 1, probabilidad: 10 },
-    { nombre: 'En cotización', clave: 'EN_COTIZACION', orden: 2, probabilidad: 35 },
-    { nombre: 'En negociación', clave: 'EN_NEGOCIACION', orden: 3, probabilidad: 70 },
-    { nombre: 'Ganada', clave: 'GANADA', orden: 4, probabilidad: 100, esGanada: true },
-    { nombre: 'Perdida', clave: 'PERDIDA', orden: 5, probabilidad: 0, esPerdida: true },
-  ];
-  // **Se identifican por CLAVE, no por orden.** El orden es presentación: una agencia lo
-  // reordena arrastrando columnas y eso no convierte «Ganada» en otra etapa. La clave sí es
-  // identidad, y la base lo respalda con una unique parcial `(tenant_id, clave) WHERE clave IS
-  // NOT NULL`.
-  //
-  // Identificarlas por orden rompía la siembra en cuanto la agencia tenía más etapas que las
-  // cinco canónicas: con siete en la base, poner `GANADA` en el orden 4 chocaba contra la fila
-  // que ya la tenía en el 6, y `pnpm db:seed` moría con P2002. Una semilla que solo funciona
-  // sobre una base virgen no sirve para nada.
-  const ordenesOcupados = new Set(
-    (
-      await prisma.etapaPipeline.findMany({
-        where: { tenantId: tenant.id },
-        select: { orden: true },
-      })
-    ).map((x) => x.orden),
-  );
-
-  for (const e of etapas) {
-    const existente = await prisma.etapaPipeline.findFirst({
-      where: { tenantId: tenant.id, clave: e.clave },
-    });
-
-    if (existente) {
-      // NO se toca el orden: la agencia pudo reordenar su embudo, y devolverlo a nuestro
-      // orden por defecto en cada siembra le desharía la configuración.
-      await prisma.etapaPipeline.update({
-        where: { id: existente.id },
-        data: {
-          nombre: e.nombre,
-          probabilidad: e.probabilidad,
-          esGanada: e.esGanada ?? false,
-          esPerdida: e.esPerdida ?? false,
-        },
-      });
-      continue;
-    }
-
-    // Si el orden que queríamos ya está ocupado por una etapa propia de la agencia, se va al
-    // final en vez de pelearse por el sitio.
-    let orden = e.orden;
-    while (ordenesOcupados.has(orden)) orden += 1;
-    ordenesOcupados.add(orden);
-
-    await prisma.etapaPipeline.create({ data: { tenantId: tenant.id, ...e, orden } });
-  }
+  // Las etapas y su lógica de idempotencia viven en siembra-de-tenant.ts (compartida con las
+  // agencias de prospecto).
+  await sembrarEtapas(prisma, tenant.id);
 
   // --- Campos personalizados ---------------------------------------------
   // Se siembran para que la columna jsonb y las definiciones se ejerciten desde el principio.
