@@ -127,4 +127,24 @@ describe('CotizadorPage — Excursiones de un Día y Estados de UI (Bloque 2)', 
     // Sigue renderizando sin romper
     expect(screen.getByText(/Total Cotización/i)).toBeDefined();
   });
+  it('5. En estado vacío muestra las acciones obligatorias: Importar catálogo y Crear excursión (T-019)', async () => {
+    vi.mocked(estaUsandoCatalogoReal).mockReturnValue(true);
+    vi.mocked(listarSalidasApi).mockResolvedValue([]);
+
+    act(() => {
+      render(<CotizadorPage />);
+    });
+
+    await waitFor(() => {
+      const estadoVacio = screen.getByTestId('cotizador-estado-vacio');
+      expect(estadoVacio).toBeDefined();
+
+      const btnImportar = screen.getByTestId('accion-importar-catalogo');
+      const btnCrear = screen.getByTestId('accion-crear-excursion');
+      expect(btnImportar).toBeDefined();
+      expect(btnImportar.textContent).toContain('Importar catálogo');
+      expect(btnCrear).toBeDefined();
+      expect(btnCrear.textContent).toContain('Crear excursión');
+    });
+  });
 });

@@ -14,17 +14,7 @@ import React, { Suspense, useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useModoDemo } from '../../lib/modo-demo';
-import {
-  Calculator,
-  Compass,
-  Copy,
-  Check,
-  AlertCircle,
-  Bookmark,
-  Eye,
-  RefreshCw,
-  Ship,
-} from 'lucide-react';
+import { Calculator, Compass, Copy, Check, AlertCircle, Bookmark, Ship } from 'lucide-react';
 import { requiereAvisoImpuestoMuelle } from '../../lib/cotizador-logica';
 import type {
   Acomodacion,
@@ -36,6 +26,7 @@ import type {
 import { formatearDinero } from '../../lib/api';
 import { BarraModulos } from '../../components/bandeja/barra-modulos';
 import { DistintivoDatosDemo } from '../../components/comun/distintivo-datos-demo';
+import { AvisoSinCatalogo } from '../../components/comun/aviso-sin-catalogo';
 import { AvisoConfiguracionTenant } from '../../components/crm/aviso-configuracion-tenant';
 import { formatearErrorAmigable } from '../../lib/estados-ui-logica';
 import { DesgloseCotizacionSalida } from '../../components/cotizador/desglose-cotizacion-salida';
@@ -394,48 +385,13 @@ function ContenidoCotizador() {
             </div>
           )}
 
-          {/* Estado Vacío cuando la agencia no tiene salidas ni excursiones publicadas */}
+          {/* Estado Vacío cuando la agencia no tiene salidas ni excursiones publicadas (T-019) */}
           {!cargandoSalidas && !errorTenant && paquetesDisponibles.length === 0 ? (
-            <div
-              data-testid="cotizador-estado-vacio"
-              className="rounded-3xl border border-dashed border-neutral-300 bg-white p-8 text-center shadow-xs dark:border-neutral-800 dark:bg-neutral-900"
-            >
-              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-purple-50 text-purple-600 dark:bg-purple-950 dark:text-purple-300">
-                <Compass className="h-7 w-7" />
-              </div>
-              <h2 className="mt-4 text-base font-bold text-neutral-900 dark:text-white">
-                No hay excursiones ni salidas registradas en esta agencia
-              </h2>
-              <p className="mx-auto mt-2 max-w-md text-xs text-neutral-600 dark:text-neutral-400">
-                La agencia activa no cuenta con excursiones de un día ni salidas publicadas en la
-                API. Puedes publicar excursiones en la gestión del catálogo o activar el modo
-                demostración para explorar el cotizador con excursiones reales.
-              </p>
-              <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => alternarDemo()}
-                  className="flex min-h-[44px] items-center gap-2 rounded-xl bg-purple-700 px-4 py-2.5 text-xs font-bold text-white shadow-xs transition-colors hover:bg-purple-800"
-                >
-                  <Eye className="h-4 w-4" />
-                  <span>Ver excursiones de demostración</span>
-                </button>
-                <Link
-                  href="/catalogo"
-                  className="flex min-h-[44px] items-center gap-2 rounded-xl border border-neutral-200 bg-white px-4 py-2.5 text-xs font-bold text-neutral-700 transition-colors hover:bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-800 dark:text-neutral-300"
-                >
-                  <span>Ir al catálogo</span>
-                </Link>
-                <button
-                  type="button"
-                  onClick={cargarSalidasReales}
-                  className="flex min-h-[44px] items-center gap-2 rounded-xl border border-neutral-200 bg-white px-4 py-2.5 text-xs font-medium text-neutral-600 transition-colors hover:bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-800 dark:text-neutral-400"
-                >
-                  <RefreshCw className="h-3.5 w-3.5" />
-                  <span>Reintentar búsqueda</span>
-                </button>
-              </div>
-            </div>
+            <AvisoSinCatalogo
+              pantalla="cotizador"
+              testId="cotizador-estado-vacio"
+              onVerDemo={() => alternarDemo()}
+            />
           ) : (
             !cargandoSalidas && (
               <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
