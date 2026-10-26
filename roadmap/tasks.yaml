@@ -59,7 +59,7 @@ tasks:
     phase: 1
     priority: P1
     effort: S
-    status: backlog
+    status: done
     acceptance:
       - next.config.mjs emite Content-Security-Policy, X-Content-Type-Options y Referrer-Policy en todas las
         rutas
@@ -69,6 +69,12 @@ tasks:
       - pnpm compuertas --rapido verde
     files:
       - apps/web/next.config.mjs
+    started_at: 2026-10-26T17:54:49.893Z
+    done_at: 2026-10-26T17:54:49.894Z
+    evidence: "Mergeado en main por el PR #16 (rama b/T-003-politica-de-seguridad-de-contenido-csp-y) con el CI en
+      verde: format, analyze, tests y los demás checks obligatorios. Cierre automático
+      (.github/workflows/cerrar-tarea.yml)."
+    commit: 70289630bc65153616d124ad29676e0bb3cbcc85
   - id: T-004
     title: Estados de carga, error y vacío en la pantalla del pipeline
     type: feature
