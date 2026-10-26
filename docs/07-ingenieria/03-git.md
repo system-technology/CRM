@@ -1,8 +1,10 @@
 # Git — modelo de ramas y gobierno de la integración
 
 > **La regla de la que cuelga todo lo demás:**
-> **En `main` solo escribe el agente `integrador`, y solo después de superar todas las compuertas.**
-> Nadie más. Ni personas, ni otros agentes, ni «solo esta vez porque urge».
+> **En `main` solo entra lo que supera un pull request con los 8 checks en verde y la rama al día**,
+> por auto-merge o por el agente `integrador`. Nadie empuja directo —ni personas, ni agentes, ni
+> administradores—, y el servidor lo impide. Las rutas protegidas esperan al propietario.
+> Reformulación de la regla original por el [ADR-0016](../03-adr/0016-ciclo-autonomo-con-sesiones-de-opencode.md) §6.
 
 Decisión de fondo: [ADR-0005](../03-adr/0005-modelo-de-ramas.md).
 
@@ -171,8 +173,9 @@ práctica acababa de hacer otra cosa.
 **Lo que NO es:** una frontera de seguridad. Es una barandilla contra el accidente y el atajo
 cómodo. Un agente o una persona decidida puede crear el marcador a mano.
 
-**La protección real es de servidor.** En cuanto exista el repositorio remoto, hay que configurar
-en GitHub, sobre `main`:
+**La protección real es de servidor, y desde el 2026-10-26 está activa** en
+`system-technology/CRM` (copia de la configuración en `.github/proteccion-main.json`). Lo que
+exige sobre `main`:
 
 - Requerir pull request antes de fusionar.
 - Requerir que las comprobaciones de CI pasen.
@@ -199,3 +202,28 @@ El integrador no resuelve conflictos ajenos: devuelve.
 
 **Trabajo de más de tres días.** Pártelo. Si de verdad no se puede, habla con `arquitecto`: casi
 siempre significa que el cambio está mal delimitado.
+
+---
+
+## 8. Sincronía: cómo no trabajar con cosas atrasadas
+
+El proyecto avanza con varias sesiones y herramientas en paralelo. Lo que más se rompe no es el
+código: es trabajar sobre una copia vieja de `main` o de la documentación.
+
+1. **Antes de cada bloque de trabajo:** `git fetch origin`, y rama nueva desde `origin/main`
+   (`git checkout -B feat/<contexto>-<descripcion> origin/main`). No desde la rama anterior.
+2. **Nunca sigas en una rama de la que ya se integró un PR.** Un PR integrado cierra su rama: lo
+   siguiente va en otra, desde `origin/main`. Seguir en la vieja produce conflictos con tu propio
+   trabajo ya integrado.
+3. **Mira qué árboles están atrasados:** `node scripts/estado-de-arboles.mjs`. Informa, por cada
+   árbol de trabajo, cuánto se quedó atrás de `origin/main`. *El script llega con un PR en curso;
+   hasta que entre en `main`, el comando no existe y la comprobación es `git fetch origin` y
+   `git status -sb`.*
+4. **Un PR a la vez cuando tocan los mismos ficheros.** `main` exige la rama al día: el segundo PR
+   queda `BEHIND` en cuanto entra el primero. Pon el segundo al día y espera su CI antes de pedir
+   el tercero.
+5. **Los commits del PR cumplen commitlint**, o el CI cae en `convencion-de-commits`: tipo y scope
+   válidos, asunto en minúscula, sin punto final. Un commit mal escrito en medio de la rama obliga
+   a reescribirla; revisa el mensaje antes de empujar.
+6. **Al cerrar la sesión:** `ESTADO.md` y bitácora. Ver la sección «Cómo actualizar este archivo»
+   de [`ESTADO.md`](../../ESTADO.md).

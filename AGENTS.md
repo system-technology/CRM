@@ -25,9 +25,10 @@ archivos, no en conversaciones.
 **ViajaPro** (nombre en clave, no comercial): SaaS multi-tenant, CRM vertical para agencias de
 turismo, con WhatsApp Cloud API como canal nativo. Mercado base: Colombia.
 
-Estado: **rebanada vertical de paquetes, en construcción.** El cotizador funciona de punta a
-punta —web, API, PostgreSQL con RLS en Neon— y está verificado en navegador. Falta el inbox de
-WhatsApp, la autenticación y la persistencia de cotizaciones.
+Estado: **en construcción, sin agencia real todavía.** Hay cotizador, catálogo, autenticación,
+bandeja web, esquema del inbox y recepción de WhatsApp probada con el número de prueba de Meta.
+Faltan el trabajador con Redis, el despliegue, el catálogo gestionable, pagos y automatizaciones.
+El repositorio es público y `main` tiene protección de servidor.
 
 > Este párrafo caduca. **La fuente de verdad del estado es `ESTADO.md`**, no este resumen.
 
@@ -48,9 +49,9 @@ monorepo pnpm + Turborepo.
 | R8 | Dinero en **enteros, en la unidad mínima de la moneda** (en COP es el peso, no el centavo) + código ISO-4217. Nunca coma flotante |
 | R9 | Fechas en **UTC** en la base; la zona del tenant solo en presentación |
 | R10 | PII de viajeros (pasaporte, fecha de nacimiento) es **dato sensible**: cifrado y auditado |
-| R11 | **En `main` solo escribe el agente `integrador`.** Todo el trabajo va en ramas |
+| R11 | **En `main` solo entra lo que supera un PR con los 8 checks del CI y la rama al día** (auto-merge o `integrador`); nadie empuja directo. Las rutas protegidas esperan al propietario. Todo el trabajo va en ramas |
 | R12 | **Se parametriza la política de negocio; nunca los invariantes del dominio.** Lo que cada agencia define distinto es tabla por tenant, no `enum` |
-| R13 | **Una sola vuelta de revisión, salvo en aislamiento entre tenants.** Lo que no se corrige en esa vuelta va a la cola de `ESTADO.md` con dueño, no bloquea |
+| R13 | **Una sola vuelta de revisión, salvo en aislamiento entre tenants.** Lo que no se corrige en esa vuelta va a la cola (`roadmap/tasks.yaml`) con dueño, no bloquea |
 
 ## 4. Git — esto es lo que más se incumple
 
@@ -64,8 +65,9 @@ git checkout -b feat/<contexto>-<descripcion>
 - Ramas de 1 a 3 días. Si el trabajo es más largo, **pártelo**.
 - Commits en [Conventional Commits](https://www.conventionalcommits.org/) con scope de contexto:
   `feat(quoting): calcula markup por tipo de pasajero`. Scopes válidos en `commitlint.config.js`.
-- La integración a `main` la hace **solo** el agente `integrador`, tras siete compuertas.
-  Ver `docs/07-ingenieria/03-git.md`.
+- La integración a `main` es **solo por pull request**: 8 checks en verde y rama al día, por
+  auto-merge o por el agente `integrador`. El servidor rechaza el resto. Antes de cada bloque:
+  `git fetch origin` y rama nueva desde `origin/main`. Ver `docs/07-ingenieria/03-git.md`.
 
 ## 5. Convenciones
 
@@ -113,7 +115,7 @@ pnpm test:hooks   # política de protección de rama
 Este repositorio nació con un método de trabajo documentado en `docs/09-ia/`. Si vienes de otro
 harness, lo esencial:
 
-- **El equipo de agentes está en `.claude/agents/`** (17 roles). Son archivos markdown legibles por
+- **El equipo de agentes está en `.claude/agents/`** (20 roles en `CLAUDE.md` §8). Son archivos markdown legibles por
   cualquier herramienta: úsalos como descripciones de rol aunque tu harness no los cargue solo.
 - **Los loops de trabajo están en `docs/09-ia/02-loops-de-trabajo.md`** y el cronograma en
   `docs/09-ia/06-cronograma-de-loops.md`.
