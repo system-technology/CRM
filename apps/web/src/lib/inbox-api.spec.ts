@@ -42,15 +42,17 @@ describe('0c.34: Con la API real encendida, un fallo es un error, nunca datos si
     });
 
     it('obtenerConversacionDetalle lanza InboxErrorApi y NO devuelve mock', async () => {
-      await expect(inboxApi.obtenerConversacionDetalle('conv-1')).rejects.toThrow(InboxErrorApi);
+      await expect(
+        inboxApi.obtenerConversacionDetalle('01932000-0000-7000-8000-000000000001'),
+      ).rejects.toThrow(InboxErrorApi);
     });
 
     it('enviarTexto lanza InboxErrorApi y NO devuelve mock', async () => {
       await expect(
         inboxApi.enviarTexto({
-          conversacionId: 'conv-1',
+          conversacionId: '01932000-0000-7000-8000-000000000001',
           texto: 'Hola',
-          claveIdempotencia: 'idemp-1',
+          claveIdempotencia: '01932000-0000-7000-8000-000000000002',
         }),
       ).rejects.toThrow(InboxErrorApi);
     });
@@ -58,8 +60,8 @@ describe('0c.34: Con la API real encendida, un fallo es un error, nunca datos si
     it('asignarConversacion lanza InboxErrorApi y NO devuelve mock', async () => {
       await expect(
         inboxApi.asignarConversacion({
-          conversacionId: 'conv-1',
-          usuarioId: 'asesor-1',
+          conversacionId: '01932000-0000-7000-8000-000000000001',
+          usuarioId: '01932000-0000-7000-8000-000000000003',
         }),
       ).rejects.toThrow(InboxErrorApi);
     });
@@ -96,7 +98,9 @@ describe('0c.34: Con la API real encendida, un fallo es un error, nunca datos si
     });
 
     it('obtenerConversacionDetalle lanza InboxErrorApi y NO devuelve mock', async () => {
-      await expect(inboxApi.obtenerConversacionDetalle('conv-1')).rejects.toMatchObject({
+      await expect(
+        inboxApi.obtenerConversacionDetalle('01932000-0000-7000-8000-000000000001'),
+      ).rejects.toMatchObject({
         code: 'ERROR_INTERNO_INBOX',
       });
     });
@@ -104,9 +108,9 @@ describe('0c.34: Con la API real encendida, un fallo es un error, nunca datos si
     it('enviarTexto lanza InboxErrorApi y NO devuelve mock', async () => {
       await expect(
         inboxApi.enviarTexto({
-          conversacionId: 'conv-1',
+          conversacionId: '01932000-0000-7000-8000-000000000001',
           texto: 'Hola',
-          claveIdempotencia: 'idemp-1',
+          claveIdempotencia: '01932000-0000-7000-8000-000000000002',
         }),
       ).rejects.toMatchObject({
         code: 'ERROR_INTERNO_INBOX',

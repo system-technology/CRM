@@ -18,10 +18,12 @@ import { EsqueletoReportes } from '../../components/comun/esqueletos';
 import { formatearDinero } from '../../lib/api';
 import type { RangoPeriodo, RolVistaReporte } from '../../lib/mock-reportes';
 import { obtenerEtiquetaPeriodo, obtenerReportePorPeriodo } from '../../lib/reportes-logica';
+import { usePermisos } from '../../lib/permisos';
 
 const PERIODOS: RangoPeriodo[] = ['ultimos_30_dias', 'este_mes', 'trimestre', 'ano'];
 
 export default function ReportesPage() {
+  const { puedeVerNetoYMargen } = usePermisos();
   const [periodo, setPeriodo] = useState<RangoPeriodo>('ultimos_30_dias');
   const [rol, setRol] = useState<RolVistaReporte>('DUENO');
   const [cargando, setCargando] = useState(false);
@@ -38,8 +40,11 @@ export default function ReportesPage() {
     setTimeout(() => setCargando(false), 200);
   };
 
-  const reporte = obtenerReportePorPeriodo(periodo, rol);
-  const esDueño = rol === 'DUENO';
+  // Regla R10 / ADR-0011: el servidor es la fuente del permiso. Sin él,
+  // la vista siempre es ASESOR y el reporte calcula sin netos ni márgenes.
+  const rolEfectivo: RolVistaReporte = puedeVerNetoYMargen ? rol : 'ASESOR';
+  const reporte = obtenerReportePorPeriodo(periodo, rolEfectivo);
+  const esDueño = rolEfectivo === 'DUENO';
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-neutral-50 dark:bg-neutral-950">
@@ -69,31 +74,37 @@ export default function ReportesPage() {
 
             {/* Controles de Vista y Período */}
             <div className="flex flex-wrap items-center gap-3">
-              {/* Conmutador de Rol */}
-              <div className="flex items-center rounded-lg border border-neutral-200 bg-neutral-100 p-0.5 text-xs dark:border-neutral-800 dark:bg-neutral-800">
-                <button
-                  type="button"
-                  onClick={() => cambiarRol('DUENO')}
-                  className={`rounded-md px-3 py-1.5 font-medium transition-colors ${
-                    esDueño
-                      ? 'bg-white text-neutral-900 shadow-xs dark:bg-neutral-700 dark:text-white'
-                      : 'text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white'
-                  }`}
-                >
-                  Vista Dueño (Gerencial)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => cambiarRol('ASESOR')}
-                  className={`rounded-md px-3 py-1.5 font-medium transition-colors ${
-                    !esDueño
-                      ? 'bg-white text-neutral-900 shadow-xs dark:bg-neutral-700 dark:text-white'
-                      : 'text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white'
-                  }`}
-                >
+              {/* Conmutador de Rol (Solo si tiene permiso para vista de dueño) */}
+              {puedeVerNetoYMargen ? (
+                <div className="flex items-center rounded-lg border border-neutral-200 bg-neutral-100 p-0.5 text-xs dark:border-neutral-800 dark:bg-neutral-800">
+                  <button
+                    type="button"
+                    onClick={() => cambiarRol('DUENO')}
+                    className={`rounded-md px-3 py-1.5 font-medium transition-colors ${
+                      esDueño
+                        ? 'bg-white text-neutral-900 shadow-xs dark:bg-neutral-700 dark:text-white'
+                        : 'text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white'
+                    }`}
+                  >
+                    Vista Dueño (Gerencial)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => cambiarRol('ASESOR')}
+                    className={`rounded-md px-3 py-1.5 font-medium transition-colors ${
+                      !esDueño
+                        ? 'bg-white text-neutral-900 shadow-xs dark:bg-neutral-700 dark:text-white'
+                        : 'text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white'
+                    }`}
+                  >
+                    Vista Asesor (Operativa)
+                  </button>
+                </div>
+              ) : (
+                <div className="rounded-lg border border-neutral-200 bg-neutral-100 px-3 py-1.5 text-xs font-medium text-neutral-600 dark:border-neutral-800 dark:bg-neutral-800 dark:text-neutral-300">
                   Vista Asesor (Operativa)
-                </button>
-              </div>
+                </div>
+              )}
 
               {/* Selector de Período */}
               <div className="flex items-center gap-1 rounded-lg border border-neutral-300 bg-white px-2 py-1 text-xs dark:border-neutral-700 dark:bg-neutral-800">
@@ -227,9 +238,12 @@ export default function ReportesPage() {
                 </div>
               </section>
 
-              {/* Margen Confidencial (Solo Dueño) */}
-              {esDueño && (
-                <section className="rounded-xl border border-emerald-200 bg-emerald-50/40 p-4 dark:border-emerald-900/40 dark:bg-emerald-950/20">
+              {/* Margen Confidencial (Solo Dueño con permiso de servidor) */}
+              {puedeVerNetoYMargen && esDueño && (
+                <section
+                  data-testid="seccion-margen-confidencial"
+                  className="rounded-xl border border-emerald-200 bg-emerald-50/40 p-4 dark:border-emerald-900/40 dark:bg-emerald-950/20"
+                >
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <div className="flex items-center gap-2 text-xs font-bold text-emerald-800 uppercase dark:text-emerald-300">
