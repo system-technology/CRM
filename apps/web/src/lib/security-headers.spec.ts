@@ -76,6 +76,23 @@ describe('Security headers in next.config.mjs', () => {
     expect(cspValue).not.toContain('unsafe-eval');
   });
 
+  it("CSP permite 'unsafe-eval' solo en desarrollo (el recargador de React lo exige)", async () => {
+    const scriptSrc = async (nodeEnv: string): Promise<string> => {
+      vi.stubEnv('NODE_ENV', nodeEnv);
+      vi.resetModules();
+      const config = await loadConfig();
+      const entradas = await config.headers!();
+      const cabecera = entradas[0]!.headers.find((h) => h.key === 'Content-Security-Policy');
+      return (cabecera?.value ?? '').split('; ').find((d) => d.startsWith('script-src')) ?? '';
+    };
+
+    expect(await scriptSrc('development')).toContain("'unsafe-eval'");
+    expect(await scriptSrc('production')).not.toContain("'unsafe-eval'");
+    expect(await scriptSrc('test')).not.toContain("'unsafe-eval'");
+
+    vi.unstubAllEnvs();
+  });
+
   it('CSP includes API and WebSocket origins from environment variables', async () => {
     // Save original env
     const originalApiUrl = process.env.NEXT_PUBLIC_API_URL;
