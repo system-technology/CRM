@@ -20,7 +20,10 @@ import {
   Info,
   MapPin,
   Bookmark,
+  Ship,
+  Tag,
 } from 'lucide-react';
+import { requiereAvisoImpuestoMuelle } from '../../lib/cotizador-logica';
 import { formatearDinero } from '../../lib/api';
 
 export interface DesgloseCotizacionSalidaProps {
@@ -45,9 +48,15 @@ export function DesgloseCotizacionSalida({
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <div className="flex items-center gap-2">
-              <span className="rounded-md bg-purple-100 px-2 py-0.5 text-[10px] font-bold text-purple-700 uppercase dark:bg-purple-950 dark:text-purple-300">
-                {cotizacion.deSalidaProgramada ? 'Salida Confirmada' : 'Vigencia Abierta'}
-              </span>
+              {cotizacion.noches === 0 ? (
+                <span className="rounded-md bg-sky-100 px-2 py-0.5 text-[10px] font-bold text-sky-800 uppercase dark:bg-sky-950 dark:text-sky-300">
+                  Excursión de 1 día (Pasadía)
+                </span>
+              ) : (
+                <span className="rounded-md bg-purple-100 px-2 py-0.5 text-[10px] font-bold text-purple-700 uppercase dark:bg-purple-950 dark:text-purple-300">
+                  {cotizacion.deSalidaProgramada ? 'Salida Confirmada' : 'Vigencia Abierta'}
+                </span>
+              )}
               <span className="text-xs text-neutral-400">
                 Vigencia: {cotizacion.vigenciaDesde} al {cotizacion.vigenciaHasta}
               </span>
@@ -80,6 +89,15 @@ export function DesgloseCotizacionSalida({
             <span className="text-xs font-bold text-neutral-500 uppercase">
               Total Venta Sugerido
             </span>
+            {cotizacion.alternativas.some((a) => a.masBarata || a.unidad === 'POR_GRUPO') && (
+              <div
+                data-testid="badge-promo-vigente"
+                className="mb-1 flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+              >
+                <Tag className="h-3 w-3" />
+                <span>Promo vigente disponible</span>
+              </div>
+            )}
             <div className="cifra mt-1 text-3xl font-black text-neutral-900 dark:text-white">
               {formatearDinero(cotizacion.total)}
             </div>
@@ -88,6 +106,23 @@ export function DesgloseCotizacionSalida({
             </span>
           </div>
         </div>
+
+        {/* Aviso obligatorio de tasa portuaria / impuesto de muelle */}
+        {requiereAvisoImpuestoMuelle(cotizacion.destino, cotizacion.paqueteNombre) && (
+          <div
+            data-testid="aviso-impuesto-muelle"
+            role="note"
+            className="mt-4 flex items-start gap-3 rounded-xl border border-amber-300 bg-amber-50/90 p-3.5 text-xs text-amber-900 shadow-2xs dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-200"
+          >
+            <Ship className="mt-0.5 h-4 w-4 shrink-0 text-amber-700 dark:text-amber-400" />
+            <div>
+              <span className="font-bold">Aviso obligatorio para el viajero:</span> Impuesto de
+              muelle no incluido. La tasa portuaria se cancela directamente en taquilla antes de
+              abordar la embarcación (aprox. $26.500 COP por persona en taquilla del muelle de La
+              Bodeguita / puntos de zarpe). No está incluida en el valor del tour.
+            </div>
+          </div>
+        )}
 
         {/* Aviso pedagógico si no es fecha fija (0c.16.4) */}
         {!cotizacion.deSalidaProgramada && (

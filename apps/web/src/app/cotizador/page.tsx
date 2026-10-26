@@ -14,7 +14,18 @@ import React, { Suspense, useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useModoDemo } from '../../lib/modo-demo';
-import { Calculator, Compass, Copy, Check, AlertCircle, Bookmark } from 'lucide-react';
+import {
+  Calculator,
+  Compass,
+  Copy,
+  Check,
+  AlertCircle,
+  Bookmark,
+  Eye,
+  RefreshCw,
+  Ship,
+} from 'lucide-react';
+import { requiereAvisoImpuestoMuelle } from '../../lib/cotizador-logica';
 import type {
   Acomodacion,
   CotizacionCalculada,
@@ -54,6 +65,7 @@ interface PaqueteOpcion {
   id: string;
   nombre: string;
   destino: string;
+  noches?: number;
 }
 
 function ContenidoCotizador() {
@@ -72,6 +84,7 @@ function ContenidoCotizador() {
   useEffect(() => {
     setUsarReal(modoRealActivo);
   }, [modoRealActivo]);
+  const [cargandoSalidas, setCargandoSalidas] = useState(true);
   const [salidasDisponibles, setSalidasDisponibles] = useState<SalidaPublicada[]>([]);
   const [paquetesDisponibles, setPaquetesDisponibles] = useState<PaqueteOpcion[]>([]);
   const [errorTenant, setErrorTenant] = useState<string | null>(null);
@@ -141,16 +154,13 @@ function ContenidoCotizador() {
       });
   }, [contactoParam, conversacionParam]);
 
-  // Carga inicial de catálogo y salidas reales
-  useEffect(() => {
-    if (!usarReal) return;
-
+  const cargarSalidasReales = () => {
+    setCargandoSalidas(true);
     listarSalidasApi({ desde: '2026-10-01' })
       .then((salidas) => {
         setSalidasDisponibles(salidas);
         setErrorTenant(null);
 
-        // Extraer paquetes únicos de las salidas
         const mapPaquetes = new Map<string, PaqueteOpcion>();
         for (const s of salidas) {
           if (!mapPaquetes.has(s.paqueteId)) {
@@ -158,13 +168,13 @@ function ContenidoCotizador() {
               id: s.paqueteId,
               nombre: s.paqueteNombre,
               destino: s.destino,
+              noches: s.noches,
             });
           }
         }
         const listaPaquetes = Array.from(mapPaquetes.values());
         setPaquetesDisponibles(listaPaquetes);
 
-        // Seleccionar primer paquete por defecto si no venía en URL
         if (!paqueteId && listaPaquetes.length > 0) {
           setPaqueteId(listaPaquetes[0]!.id);
         }
@@ -175,22 +185,29 @@ function ContenidoCotizador() {
         } else {
           console.error('Error cargando salidas para cotizador:', err);
         }
+      })
+      .finally(() => {
+        setCargandoSalidas(false);
       });
-  }, [usarReal, paqueteId]);
+  };
 
-  // Sincronizar catálogo para modo mock
   useEffect(() => {
-    if (usarReal) return;
-    const lista = MOCK_PAQUETES_CATALOGO.map((p) => ({
-      id: p.id,
-      nombre: p.nombre,
-      destino: p.destino,
-    }));
-    setPaquetesDisponibles(lista);
-    if (!paqueteId && lista.length > 0) {
-      setPaqueteId(lista[0]!.id);
+    if (usarReal) {
+      cargarSalidasReales();
+    } else {
+      setCargandoSalidas(false);
+      const lista = MOCK_PAQUETES_CATALOGO.map((p) => ({
+        id: p.id,
+        nombre: p.nombre,
+        destino: p.destino,
+        noches: p.noches,
+      }));
+      setPaquetesDisponibles(lista);
+      if (!paqueteId && lista.length > 0) {
+        setPaqueteId(lista[0]!.id);
+      }
     }
-  }, [usarReal, paqueteId]);
+  }, [usarReal]);
 
   // Fechas disponibles para el paquete seleccionado
   const fechasDelPaquete = useMemo(() => {
@@ -365,258 +382,130 @@ function ContenidoCotizador() {
           {errorTenant && <AvisoConfiguracionTenant mensajeError={errorTenant} />}
 
           {/* Formulario y Panel de Resultados en Grilla */}
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-            {/* Sidebar de Parámetros (4 col) */}
-            <aside className="lg:col-span-4">
-              <div className="min-w-0 space-y-4 rounded-2xl border border-neutral-200 bg-white p-3.5 shadow-xs sm:p-5 dark:border-neutral-800 dark:bg-neutral-900">
-                <h2 className="text-xs font-bold tracking-wider text-neutral-500 uppercase">
-                  Parámetros de Cotización
-                </h2>
+          {/* Estado de carga inicial */}
+          {cargandoSalidas && (
+            <div
+              data-testid="cotizador-cargando"
+              className="animate-pulse space-y-4 rounded-3xl border border-neutral-200 bg-white p-8 text-center dark:border-neutral-800 dark:bg-neutral-900"
+            >
+              <div className="mx-auto h-12 w-12 rounded-2xl bg-neutral-200 dark:bg-neutral-800" />
+              <div className="mx-auto h-4 w-48 rounded bg-neutral-200 dark:bg-neutral-800" />
+              <div className="mx-auto h-3 w-64 rounded bg-neutral-100 dark:bg-neutral-800" />
+            </div>
+          )}
 
-                {/* Selector de Paquete */}
-                <div>
-                  <label
-                    htmlFor="select-paquete-cotizador"
-                    className="block text-xs font-semibold text-neutral-700 dark:text-neutral-300"
-                  >
-                    Paquete Turístico
-                  </label>
-                  <select
-                    id="select-paquete-cotizador"
-                    value={paqueteId}
-                    onChange={(e) => setPaqueteId(e.target.value)}
-                    className="mt-1.5 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white p-2.5 text-xs text-neutral-900 shadow-2xs focus:border-purple-600 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
-                  >
-                    {paquetesDisponibles.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.nombre} ({p.destino})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Fecha de Salida */}
-                <div>
-                  <label
-                    htmlFor="input-fecha-cotizador"
-                    className="block text-xs font-semibold text-neutral-700 dark:text-neutral-300"
-                  >
-                    Fecha de Salida
-                  </label>
-                  <input
-                    id="input-fecha-cotizador"
-                    type="date"
-                    value={fecha}
-                    onChange={(e) => setFecha(e.target.value)}
-                    className="mt-1.5 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white p-2.5 text-xs text-neutral-900 shadow-2xs focus:border-purple-600 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
-                  />
-                  {fechasDelPaquete.length > 0 && (
-                    <div className="mt-2">
-                      <span className="text-[11px] text-neutral-400">Salidas programadas:</span>
-                      <div className="mt-1 flex flex-wrap gap-1">
-                        {fechasDelPaquete.map((f) => (
-                          <button
-                            key={f}
-                            type="button"
-                            onClick={() => setFecha(f)}
-                            className={`flex min-h-[44px] items-center rounded-lg px-3 py-2 text-xs font-semibold transition-colors ${
-                              fecha === f
-                                ? 'bg-purple-700 text-white'
-                                : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-300'
-                            }`}
-                          >
-                            {f}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Eje 3 de ADR-0009: Composicion de Pasajeros */}
-                <div className="border-t border-neutral-100 pt-4 dark:border-neutral-800">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">
-                      Composición del Grupo
-                    </span>
-                    {!pideComposicion && (
-                      <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-800 dark:bg-amber-950 dark:text-amber-300">
-                        Tarifa fija por salida
-                      </span>
-                    )}
-                  </div>
-
-                  {!pideComposicion ? (
-                    <p className="mt-2 text-[11px] text-neutral-500">
-                      El tarifario vigente para este paquete no desglosa por persona; aplica tarifa
-                      global de salida.
-                    </p>
-                  ) : (
-                    <div className="mt-3 space-y-3">
-                      {/* Adultos */}
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <span className="text-xs font-medium text-neutral-700 dark:text-neutral-300">
-                            Adultos
-                          </span>
-                          <span className="block text-[10px] text-neutral-400">
-                            Mayor a 12 años
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => setAdultos(Math.max(1, adultos - 1))}
-                            className="flex h-11 min-h-[44px] w-11 min-w-[44px] items-center justify-center rounded-lg border border-neutral-300 bg-white text-sm font-bold text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
-                          >
-                            -
-                          </button>
-                          <span className="cifra w-6 text-center text-sm font-bold text-neutral-900 dark:text-white">
-                            {adultos}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => setAdultos(adultos + 1)}
-                            className="flex h-11 min-h-[44px] w-11 min-w-[44px] items-center justify-center rounded-lg border border-neutral-300 bg-white text-sm font-bold text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
-                          >
-                            +
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Niños */}
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <span className="text-xs font-medium text-neutral-700 dark:text-neutral-300">
-                            Niños
-                          </span>
-                          <span className="block text-[10px] text-neutral-400">2 a 11 años</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => setNinos(Math.max(0, ninos - 1))}
-                            className="flex h-11 min-h-[44px] w-11 min-w-[44px] items-center justify-center rounded-lg border border-neutral-300 bg-white text-sm font-bold text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
-                          >
-                            -
-                          </button>
-                          <span className="cifra w-6 text-center text-sm font-bold text-neutral-900 dark:text-white">
-                            {ninos}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => setNinos(ninos + 1)}
-                            className="flex h-11 min-h-[44px] w-11 min-w-[44px] items-center justify-center rounded-lg border border-neutral-300 bg-white text-sm font-bold text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
-                          >
-                            +
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Infantes */}
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <span className="text-xs font-medium text-neutral-700 dark:text-neutral-300">
-                            Infantes
-                          </span>
-                          <span className="block text-[10px] text-neutral-400">
-                            Menores de 2 años
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => setInfantes(Math.max(0, infantes - 1))}
-                            className="flex h-11 min-h-[44px] w-11 min-w-[44px] items-center justify-center rounded-lg border border-neutral-300 bg-white text-sm font-bold text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
-                          >
-                            -
-                          </button>
-                          <span className="cifra w-6 text-center text-sm font-bold text-neutral-900 dark:text-white">
-                            {infantes}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => setInfantes(infantes + 1)}
-                            className="flex h-11 min-h-[44px] w-11 min-w-[44px] items-center justify-center rounded-lg border border-neutral-300 bg-white text-sm font-bold text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
-                          >
-                            +
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Alternador modo Real / Mock */}
-                <div className="pt-2">
-                  <button
-                    type="button"
-                    onClick={() => alternarDemo()}
-                    className="w-full text-center text-xs font-semibold text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200"
-                  >
-                    Modo: {usarReal ? 'Conectado a API real' : 'Modo demostración (simulado)'}{' '}
-                    (Alternar)
-                  </button>
-                </div>
+          {/* Estado Vacío cuando la agencia no tiene salidas ni excursiones publicadas */}
+          {!cargandoSalidas && !errorTenant && paquetesDisponibles.length === 0 ? (
+            <div
+              data-testid="cotizador-estado-vacio"
+              className="rounded-3xl border border-dashed border-neutral-300 bg-white p-8 text-center shadow-xs dark:border-neutral-800 dark:bg-neutral-900"
+            >
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-purple-50 text-purple-600 dark:bg-purple-950 dark:text-purple-300">
+                <Compass className="h-7 w-7" />
               </div>
-            </aside>
-
-            {/* Panel de Resultados de la Cotización (8 col) */}
-            <div className="lg:col-span-8">
-              {/* Estado de carga (Esqueleto - 0c.25) */}
-              {calculando && (
-                <div className="animate-pulse space-y-4 rounded-2xl border border-neutral-200 bg-white p-6 shadow-2xs select-none dark:border-neutral-800 dark:bg-neutral-900">
-                  <div className="flex items-center justify-between border-b border-neutral-100 pb-4 dark:border-neutral-800">
-                    <div className="space-y-2">
-                      <div className="h-4 w-48 rounded bg-neutral-200 dark:bg-neutral-700" />
-                      <div className="h-3 w-32 rounded bg-neutral-100 dark:bg-neutral-800" />
-                    </div>
-                    <div className="h-8 w-28 rounded-xl bg-neutral-100 dark:bg-neutral-800" />
-                  </div>
-                  <div className="space-y-3 py-2">
-                    <div className="h-3.5 w-full rounded bg-neutral-100 dark:bg-neutral-800" />
-                    <div className="h-3.5 w-4/5 rounded bg-neutral-100 dark:bg-neutral-800" />
-                    <div className="h-3.5 w-3/5 rounded bg-neutral-100 dark:bg-neutral-800" />
-                  </div>
-                  <div className="flex items-center justify-between border-t border-neutral-100 pt-4 dark:border-neutral-800">
-                    <div className="h-3 w-24 rounded bg-neutral-100 dark:bg-neutral-800" />
-                    <div className="h-6 w-36 rounded bg-purple-200 dark:bg-purple-900" />
-                  </div>
-                </div>
-              )}
-
-              {/* Mensajes de Error de Dominio (0c.16.3) */}
-              {!calculando && errorMensaje && (
-                <div
-                  className={`rounded-2xl border p-6 ${
-                    errorMensaje.esErrorAgencia
-                      ? 'border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-300'
-                      : 'border-rose-200 bg-rose-50 text-rose-900 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-300'
-                  }`}
+              <h2 className="mt-4 text-base font-bold text-neutral-900 dark:text-white">
+                No hay excursiones ni salidas registradas en esta agencia
+              </h2>
+              <p className="mx-auto mt-2 max-w-md text-xs text-neutral-600 dark:text-neutral-400">
+                La agencia activa no cuenta con excursiones de un día ni salidas publicadas en la
+                API. Puedes publicar excursiones en la gestión del catálogo o activar el modo
+                demostración para explorar el cotizador con excursiones reales.
+              </p>
+              <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => alternarDemo()}
+                  className="flex min-h-[44px] items-center gap-2 rounded-xl bg-purple-700 px-4 py-2.5 text-xs font-bold text-white shadow-xs transition-colors hover:bg-purple-800"
                 >
-                  <div className="flex items-start gap-3">
-                    <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
+                  <Eye className="h-4 w-4" />
+                  <span>Ver excursiones de demostración</span>
+                </button>
+                <Link
+                  href="/catalogo"
+                  className="flex min-h-[44px] items-center gap-2 rounded-xl border border-neutral-200 bg-white px-4 py-2.5 text-xs font-bold text-neutral-700 transition-colors hover:bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-800 dark:text-neutral-300"
+                >
+                  <span>Ir al catálogo</span>
+                </Link>
+                <button
+                  type="button"
+                  onClick={cargarSalidasReales}
+                  className="flex min-h-[44px] items-center gap-2 rounded-xl border border-neutral-200 bg-white px-4 py-2.5 text-xs font-medium text-neutral-600 transition-colors hover:bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-800 dark:text-neutral-400"
+                >
+                  <RefreshCw className="h-3.5 w-3.5" />
+                  <span>Reintentar búsqueda</span>
+                </button>
+              </div>
+            </div>
+          ) : (
+            !cargandoSalidas && (
+              <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+                {/* Sidebar de Parámetros (4 col) */}
+                <aside className="lg:col-span-4">
+                  <div className="min-w-0 space-y-4 rounded-2xl border border-neutral-200 bg-white p-3.5 shadow-xs sm:p-5 dark:border-neutral-800 dark:bg-neutral-900">
+                    <h2 className="text-xs font-bold tracking-wider text-neutral-500 uppercase">
+                      Parámetros de Cotización
+                    </h2>
+
+                    {/* Selector de Paquete */}
                     <div>
-                      <h3 className="text-sm font-bold">
-                        {errorMensaje.codigo === 'SIN_VIGENCIA'
-                          ? 'Sin vigencia disponible para la fecha'
-                          : errorMensaje.codigo === 'VIGENCIAS_EMPATADAS'
-                            ? 'Error en datos de tarifario (Vigencias solapadas)'
-                            : 'No se pudo generar la cotización'}
-                      </h3>
-                      <p className="mt-1 text-xs">{errorMensaje.mensaje}</p>
-                      {fechasDelPaquete.length > 0 && (
-                        <div className="mt-3">
-                          <span className="text-[11px] font-semibold">
-                            Fechas con salida confirmada para este paquete:
+                      <label
+                        htmlFor="select-paquete-cotizador"
+                        className="block text-xs font-semibold text-neutral-700 dark:text-neutral-300"
+                      >
+                        Paquete Turístico
+                      </label>
+                      <select
+                        id="select-paquete-cotizador"
+                        value={paqueteId}
+                        onChange={(e) => setPaqueteId(e.target.value)}
+                        className="mt-1.5 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white p-2.5 text-xs text-neutral-900 shadow-2xs focus:border-purple-600 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                      >
+                        {paquetesDisponibles.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.nombre} ({p.destino})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Fecha de Salida */}
+                    <div>
+                      <div className="flex items-center justify-between">
+                        <label
+                          htmlFor="input-fecha-cotizador"
+                          className="block text-xs font-semibold text-neutral-700 dark:text-neutral-300"
+                        >
+                          {paqueteSeleccionado?.noches === 0
+                            ? 'Fecha de la Excursión'
+                            : 'Fecha de Salida'}
+                        </label>
+                        {paqueteSeleccionado?.noches === 0 && (
+                          <span className="rounded-md bg-sky-100 px-1.5 py-0.5 text-[10px] font-bold text-sky-800 dark:bg-sky-950 dark:text-sky-300">
+                            Pasadía (1 día)
                           </span>
-                          <div className="mt-1.5 flex flex-wrap gap-1.5">
+                        )}
+                      </div>
+                      <input
+                        id="input-fecha-cotizador"
+                        type="date"
+                        value={fecha}
+                        onChange={(e) => setFecha(e.target.value)}
+                        className="mt-1.5 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white p-2.5 text-xs text-neutral-900 shadow-2xs focus:border-purple-600 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                      />
+                      {fechasDelPaquete.length > 0 && (
+                        <div className="mt-2">
+                          <span className="text-[11px] text-neutral-400">Salidas programadas:</span>
+                          <div className="mt-1 flex flex-wrap gap-1">
                             {fechasDelPaquete.map((f) => (
                               <button
                                 key={f}
                                 type="button"
                                 onClick={() => setFecha(f)}
-                                className="rounded bg-white px-2.5 py-1 text-xs font-bold text-neutral-800 shadow-xs hover:bg-neutral-100 dark:bg-neutral-800 dark:text-white"
+                                className={`flex min-h-[44px] items-center rounded-lg px-3 py-2 text-xs font-semibold transition-colors ${
+                                  fecha === f
+                                    ? 'bg-purple-700 text-white'
+                                    : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-300'
+                                }`}
                               >
                                 {f}
                               </button>
@@ -625,60 +514,362 @@ function ContenidoCotizador() {
                         </div>
                       )}
                     </div>
-                  </div>
-                </div>
-              )}
 
-              {/* Resultado Cotización Real (0c.16.2 & 0c.22) */}
-              {!calculando && !errorMensaje && usarReal && cotizacionReal && (
-                <DesgloseCotizacionSalida
-                  cotizacion={cotizacionReal}
-                  copiado={copiado}
-                  alCopiarWhatsApp={copiarPropuestaWhatsApp}
-                  alGuardarCotizacion={() => setModalGuardarAbierto(true)}
-                  guardando={guardandoCotizacion}
-                />
-              )}
-
-              {/* Resultado Cotización Mock (Fallback) */}
-              {!calculando && !errorMensaje && !usarReal && cotizacionMock && (
-                <section className="space-y-6">
-                  <div className="rounded-2xl border border-neutral-200 bg-white p-6 shadow-xs dark:border-neutral-800 dark:bg-neutral-900">
-                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                      <div>
-                        <span className="text-xs font-bold text-neutral-500 uppercase">
-                          Total Cotización (Simulada)
+                    {/* Eje 3 de ADR-0009: Composicion de Pasajeros */}
+                    <div className="border-t border-neutral-100 pt-4 dark:border-neutral-800">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">
+                          Composición del Grupo
                         </span>
-                        <div className="cifra mt-1 text-3xl font-black text-neutral-900 dark:text-white">
-                          {formatearDinero(cotizacionMock.totalVenta)}
-                        </div>
+                        {!pideComposicion && (
+                          <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                            Tarifa fija por salida
+                          </span>
+                        )}
                       </div>
 
-                      <div className="flex flex-wrap items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setModalGuardarAbierto(true)}
-                          disabled={guardandoCotizacion}
-                          className="flex min-h-[44px] items-center gap-2 rounded-xl bg-purple-700 px-4 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-purple-800"
-                        >
-                          <Bookmark className="h-4 w-4" />
-                          <span>Guardar Cotización Oficial</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={copiarPropuestaWhatsApp}
-                          className="bg-ok-600 hover:bg-ok-700 flex min-h-[44px] items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold text-white shadow-xs"
-                        >
-                          {copiado ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                          {copiado ? '¡Copiado!' : 'Copiar para WhatsApp'}
-                        </button>
-                      </div>
+                      {!pideComposicion ? (
+                        <p className="mt-2 text-[11px] text-neutral-500">
+                          El tarifario vigente para este paquete no desglosa por persona; aplica
+                          tarifa global de salida.
+                        </p>
+                      ) : (
+                        <div className="mt-3 space-y-3">
+                          {/* Adultos */}
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <span className="text-xs font-medium text-neutral-700 dark:text-neutral-300">
+                                Adultos
+                              </span>
+                              <span className="block text-[10px] text-neutral-400">
+                                Mayor a 12 años
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setAdultos(Math.max(1, adultos - 1))}
+                                className="flex h-11 min-h-[44px] w-11 min-w-[44px] items-center justify-center rounded-lg border border-neutral-300 bg-white text-sm font-bold text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                              >
+                                -
+                              </button>
+                              <span className="cifra w-6 text-center text-sm font-bold text-neutral-900 dark:text-white">
+                                {adultos}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => setAdultos(adultos + 1)}
+                                className="flex h-11 min-h-[44px] w-11 min-w-[44px] items-center justify-center rounded-lg border border-neutral-300 bg-white text-sm font-bold text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                              >
+                                +
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Niños */}
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <span className="text-xs font-medium text-neutral-700 dark:text-neutral-300">
+                                Niños
+                              </span>
+                              <span className="block text-[10px] text-neutral-400">
+                                2 a 11 años
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setNinos(Math.max(0, ninos - 1))}
+                                className="flex h-11 min-h-[44px] w-11 min-w-[44px] items-center justify-center rounded-lg border border-neutral-300 bg-white text-sm font-bold text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                              >
+                                -
+                              </button>
+                              <span className="cifra w-6 text-center text-sm font-bold text-neutral-900 dark:text-white">
+                                {ninos}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => setNinos(ninos + 1)}
+                                className="flex h-11 min-h-[44px] w-11 min-w-[44px] items-center justify-center rounded-lg border border-neutral-300 bg-white text-sm font-bold text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                              >
+                                +
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Infantes */}
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <span className="text-xs font-medium text-neutral-700 dark:text-neutral-300">
+                                Infantes
+                              </span>
+                              <span className="block text-[10px] text-neutral-400">
+                                Menores de 2 años
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setInfantes(Math.max(0, infantes - 1))}
+                                className="flex h-11 min-h-[44px] w-11 min-w-[44px] items-center justify-center rounded-lg border border-neutral-300 bg-white text-sm font-bold text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                              >
+                                -
+                              </button>
+                              <span className="cifra w-6 text-center text-sm font-bold text-neutral-900 dark:text-white">
+                                {infantes}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => setInfantes(infantes + 1)}
+                                className="flex h-11 min-h-[44px] w-11 min-w-[44px] items-center justify-center rounded-lg border border-neutral-300 bg-white text-sm font-bold text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                              >
+                                +
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Alternador modo Real / Mock */}
+                    <div className="pt-2">
+                      <button
+                        type="button"
+                        onClick={() => alternarDemo()}
+                        className="w-full text-center text-xs font-semibold text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200"
+                      >
+                        Modo: {usarReal ? 'Conectado a API real' : 'Modo demostración (simulado)'}{' '}
+                        (Alternar)
+                      </button>
                     </div>
                   </div>
-                </section>
-              )}
-            </div>
-          </div>
+                </aside>
+
+                {/* Panel de Resultados de la Cotización (8 col) */}
+                <div className="lg:col-span-8">
+                  {/* Estado de carga (Esqueleto - 0c.25) */}
+                  {calculando && (
+                    <div className="animate-pulse space-y-4 rounded-2xl border border-neutral-200 bg-white p-6 shadow-2xs select-none dark:border-neutral-800 dark:bg-neutral-900">
+                      <div className="flex items-center justify-between border-b border-neutral-100 pb-4 dark:border-neutral-800">
+                        <div className="space-y-2">
+                          <div className="h-4 w-48 rounded bg-neutral-200 dark:bg-neutral-700" />
+                          <div className="h-3 w-32 rounded bg-neutral-100 dark:bg-neutral-800" />
+                        </div>
+                        <div className="h-8 w-28 rounded-xl bg-neutral-100 dark:bg-neutral-800" />
+                      </div>
+                      <div className="space-y-3 py-2">
+                        <div className="h-3.5 w-full rounded bg-neutral-100 dark:bg-neutral-800" />
+                        <div className="h-3.5 w-4/5 rounded bg-neutral-100 dark:bg-neutral-800" />
+                        <div className="h-3.5 w-3/5 rounded bg-neutral-100 dark:bg-neutral-800" />
+                      </div>
+                      <div className="flex items-center justify-between border-t border-neutral-100 pt-4 dark:border-neutral-800">
+                        <div className="h-3 w-24 rounded bg-neutral-100 dark:bg-neutral-800" />
+                        <div className="h-6 w-36 rounded bg-purple-200 dark:bg-purple-900" />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Mensajes de Error de Dominio (0c.16.3) */}
+                  {!calculando && errorMensaje && (
+                    <div
+                      className={`rounded-2xl border p-6 ${
+                        errorMensaje.esErrorAgencia
+                          ? 'border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-300'
+                          : 'border-rose-200 bg-rose-50 text-rose-900 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-300'
+                      }`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
+                        <div>
+                          <h3 className="text-sm font-bold">
+                            {errorMensaje.codigo === 'SIN_VIGENCIA'
+                              ? 'Sin vigencia disponible para la fecha'
+                              : errorMensaje.codigo === 'VIGENCIAS_EMPATADAS'
+                                ? 'Error en datos de tarifario (Vigencias solapadas)'
+                                : 'No se pudo generar la cotización'}
+                          </h3>
+                          <p className="mt-1 text-xs">{errorMensaje.mensaje}</p>
+                          {fechasDelPaquete.length > 0 && (
+                            <div className="mt-3">
+                              <span className="text-[11px] font-semibold">
+                                Fechas con salida confirmada para este paquete:
+                              </span>
+                              <div className="mt-1.5 flex flex-wrap gap-1.5">
+                                {fechasDelPaquete.map((f) => (
+                                  <button
+                                    key={f}
+                                    type="button"
+                                    onClick={() => setFecha(f)}
+                                    className="rounded bg-white px-2.5 py-1 text-xs font-bold text-neutral-800 shadow-xs hover:bg-neutral-100 dark:bg-neutral-800 dark:text-white"
+                                  >
+                                    {f}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Resultado Cotización Real (0c.16.2 & 0c.22) */}
+                  {!calculando && !errorMensaje && usarReal && cotizacionReal && (
+                    <DesgloseCotizacionSalida
+                      cotizacion={cotizacionReal}
+                      copiado={copiado}
+                      alCopiarWhatsApp={copiarPropuestaWhatsApp}
+                      alGuardarCotizacion={() => setModalGuardarAbierto(true)}
+                      guardando={guardandoCotizacion}
+                    />
+                  )}
+
+                  {/* Resultado Cotización Mock (Fallback & Demostración) */}
+                  {!calculando && !errorMensaje && !usarReal && cotizacionMock && (
+                    <section className="space-y-6">
+                      <div className="rounded-2xl border border-neutral-200 bg-white p-6 shadow-xs dark:border-neutral-800 dark:bg-neutral-900">
+                        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              {paqueteSeleccionado?.noches === 0 ? (
+                                <span className="rounded-md bg-sky-100 px-2 py-0.5 text-[10px] font-bold text-sky-800 uppercase dark:bg-sky-950 dark:text-sky-300">
+                                  Excursión de 1 día (Pasadía)
+                                </span>
+                              ) : (
+                                <span className="rounded-md bg-purple-100 px-2 py-0.5 text-[10px] font-bold text-purple-700 uppercase dark:bg-purple-950 dark:text-purple-300">
+                                  Cotización de demostración
+                                </span>
+                              )}
+                              <span className="text-xs text-neutral-400">Fecha: {fecha}</span>
+                            </div>
+
+                            <h2 className="mt-2 text-xl font-black text-neutral-900 dark:text-white">
+                              {cotizacionMock.paqueteNombre}
+                            </h2>
+
+                            <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-neutral-600 dark:text-neutral-400">
+                              <span>📍 {cotizacionMock.destino}</span>
+                              <span>
+                                👥 {adultos + ninos + infantes} pasajero(s) ({adultos} adt
+                                {ninos > 0 ? `, ${ninos} chd` : ''}
+                                {infantes > 0 ? `, ${infantes} inf` : ''})
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="flex flex-col items-start sm:items-end">
+                            <span className="text-xs font-bold text-neutral-500 uppercase">
+                              Total Venta Sugerido
+                            </span>
+                            <div className="cifra mt-1 text-3xl font-black text-neutral-900 dark:text-white">
+                              {formatearDinero(cotizacionMock.totalVenta)}
+                            </div>
+                            <span className="mt-0.5 text-[10px] text-neutral-500">
+                              Tarifa calculada por persona en COP
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Aviso de Tasa Portuaria / Impuesto de Muelle */}
+                        {requiereAvisoImpuestoMuelle(
+                          cotizacionMock.destino,
+                          cotizacionMock.paqueteNombre,
+                        ) && (
+                          <div
+                            data-testid="aviso-impuesto-muelle"
+                            role="note"
+                            className="mt-4 flex items-start gap-3 rounded-xl border border-amber-300 bg-amber-50/90 p-3.5 text-xs text-amber-900 shadow-2xs dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-200"
+                          >
+                            <Ship className="mt-0.5 h-4 w-4 shrink-0 text-amber-700 dark:text-amber-400" />
+                            <div>
+                              <span className="font-bold">Aviso obligatorio para el viajero:</span>{' '}
+                              Impuesto de muelle no incluido. La tasa portuaria se cancela
+                              directamente en taquilla antes de abordar la embarcación (aprox.
+                              $26.500 COP por persona en taquilla del muelle de La Bodeguita /
+                              puntos de zarpe). No está incluida en el valor del tour.
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Tabla de desglose de pasajeros */}
+                        <div className="mt-6 overflow-x-auto rounded-xl border border-neutral-100 dark:border-neutral-800">
+                          <table className="w-full text-xs">
+                            <thead>
+                              <tr className="border-b border-neutral-100 bg-neutral-50 text-neutral-500 dark:border-neutral-800 dark:bg-neutral-800/50 dark:text-neutral-400">
+                                <th className="px-4 py-2.5 text-left font-medium">Pasajero</th>
+                                <th className="px-4 py-2.5 text-right font-medium">Cantidad</th>
+                                <th className="px-4 py-2.5 text-right font-medium">
+                                  Precio Unitario
+                                </th>
+                                <th className="px-4 py-2.5 text-right font-medium">Subtotal</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800/60">
+                              {cotizacionMock.lineas.map((linea) => (
+                                <tr key={linea.tipoPasajero}>
+                                  <td className="px-4 py-3 font-bold text-neutral-800 dark:text-neutral-200">
+                                    {linea.tipoPasajero === 'ADT'
+                                      ? 'Adulto (Mayor de 12 años)'
+                                      : linea.tipoPasajero === 'CHD'
+                                        ? 'Niño (Menor)'
+                                        : 'Infante'}
+                                  </td>
+                                  <td className="cifra px-4 py-3 text-right font-semibold text-neutral-700 dark:text-neutral-300">
+                                    {linea.cantidad}x
+                                  </td>
+                                  <td className="cifra px-4 py-3 text-right text-neutral-600 dark:text-neutral-400">
+                                    {formatearDinero(linea.precioUnitarioVenta)}
+                                  </td>
+                                  <td className="cifra px-4 py-3 text-right font-bold text-neutral-900 dark:text-white">
+                                    {formatearDinero(linea.subtotalVenta)}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                            <tfoot>
+                              <tr className="border-t-2 border-neutral-200 bg-neutral-50/80 font-bold dark:border-neutral-700 dark:bg-neutral-800/60">
+                                <td
+                                  colSpan={3}
+                                  className="px-4 py-3 text-right text-neutral-800 dark:text-neutral-200"
+                                >
+                                  Total Cotización:
+                                </td>
+                                <td className="cifra text-acento-600 dark:text-acento-400 px-4 py-3 text-right text-base">
+                                  {formatearDinero(cotizacionMock.totalVenta)}
+                                </td>
+                              </tr>
+                            </tfoot>
+                          </table>
+                        </div>
+
+                        <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-neutral-100 pt-4 dark:border-neutral-800">
+                          <button
+                            type="button"
+                            onClick={() => setModalGuardarAbierto(true)}
+                            disabled={guardandoCotizacion}
+                            className="flex min-h-[44px] items-center gap-2 rounded-xl bg-purple-700 px-4 py-2.5 text-xs font-bold text-white shadow-xs transition-colors hover:bg-purple-800"
+                          >
+                            <Bookmark className="h-4 w-4" />
+                            <span>Guardar Cotización Oficial</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={copiarPropuestaWhatsApp}
+                            className="bg-ok-600 hover:bg-ok-700 flex min-h-[44px] items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold text-white shadow-xs transition-colors"
+                          >
+                            {copiado ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                            <span>
+                              {copiado ? '¡Copiado al portapapeles!' : 'Copiar para WhatsApp'}
+                            </span>
+                          </button>
+                        </div>
+                      </div>
+                    </section>
+                  )}
+                </div>
+              </div>
+            )
+          )}
         </div>
 
         {/* Modal Guardar Cotización (0c.22) */}
