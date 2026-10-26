@@ -22,10 +22,11 @@ import {
 } from '@viajapro/domain';
 import { type ClienteTenant, PrismaService } from '../../../shared/prisma/prisma.service.js';
 import { ContextoTenant } from '../../../shared/tenant/contexto-tenant.js';
-import { PaqueteNoEncontradoError } from '../domain/errors.js';
+import { PaqueteNoEncontradoError, TarifasConCondicionNoEvaluableError } from '../domain/errors.js';
 import { monedaDeLaBase } from '../domain/moneda-de-la-base.js';
 import {
   type Composicion,
+  condicionNoEvaluable,
   esSuplemento,
   exigeComposicion,
   motivoNoAplica,
@@ -194,6 +195,7 @@ export class CotizarSalidaUseCase {
     const alternativas: OpcionDePrecio[] = [];
     const suplementos: OpcionDePrecio[] = [];
     const noAplicables: { tarifaId: string; nombre: string; motivo: string }[] = [];
+    const sinEvaluar: string[] = [];
 
     for (const t of filas) {
       const veces = vecesQueSeCobra(t, composicion);
@@ -203,6 +205,13 @@ export class CotizarSalidaUseCase {
         // Se devuelve CON su motivo en vez de desaparecer. Una promo que se esconde acaba
         // aplicándose con la calculadora del celular, y el informe de margen deja de cuadrar.
         if (motivo !== null) noAplicables.push({ tarifaId: t.id, nombre: t.nombre, motivo });
+
+        // Si la tarifa no se puede cobrar POR una condición no evaluable, registrar el motivo
+        // para poder lanzar error si TODAS las tarifas aplicables tienen este problema.
+        const noEvaluable = condicionNoEvaluable(t, composicion);
+        if (noEvaluable !== null && motivo !== null) {
+          sinEvaluar.push(motivo);
+        }
         continue;
       }
 
@@ -216,6 +225,13 @@ export class CotizarSalidaUseCase {
       } else {
         lineas.push(aOpcion(t, veces));
       }
+    }
+
+    // Si todas las tarifas aplicables tienen condiciones no evaluables, no hay alternativas
+    // de grupo y no se cubren todos los pasajeros → error de dominio tipado.
+    const cubiertos = lineas.reduce((n, l) => n + l.veces, 0);
+    if (sinEvaluar.length > 0 && alternativas.length === 0 && cubiertos < pasajeros) {
+      throw new TarifasConCondicionNoEvaluableError([...new Set(sinEvaluar)]);
     }
 
     const moneda = monedaDeLaBase(filas[0]?.monedaIso ?? 'COP');

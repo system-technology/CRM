@@ -175,6 +175,22 @@ export class CrmPrisma extends PuertoCrm {
       });
       if (!c) return null;
 
+      // Auditoría R10: solo hay lectura sensible si la ficha trae `preferencias` (puede ser dato
+      // de salud). Se registra el NOMBRE del campo, jamás su valor.
+      if (c.preferencias !== null && c.preferencias.trim() !== '') {
+        const { tenantId, usuarioId } = ContextoTenant.obtener();
+        await tx.registroAuditoria.create({
+          data: {
+            tenantId,
+            usuarioId,
+            accion: 'LECTURA_DATOS_SENSIBLES',
+            entidad: 'Contacto',
+            entidadId: contactoId,
+            detalle: { camposSensibles: ['preferencias'] },
+          },
+        });
+      }
+
       const viva = c.oportunidades[0];
       return {
         contacto: aContacto(c),
