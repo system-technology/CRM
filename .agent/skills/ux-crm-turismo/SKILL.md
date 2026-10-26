@@ -18,7 +18,8 @@ Quien usa esto es un **asesor de viajes** con 6–15 conversaciones abiertas, mu
 1. **El destino es el protagonista.** Toda tarjeta de producto lleva imagen (o un degradado + icono de tipo de tour si no hay foto), nombre, duración («1 día», «5D/4N») y el precio. Nada de filas grises sin cara.
 2. **Precio claro y honesto.**
    - «Desde $450.000» cuando hay varias tarifas; precio por persona explícito («por persona»).
-   - Promo: precio vigente destacado y precio de lista tachado **solo mientras la promo esté vigente**; muestra «hasta el 30 oct».
+   - Promo vigente: precio de la promo destacado y precio de lista tachado; muestra «hasta el 30 oct».
+   - **Promo vencida: la decide cada agencia** con el ajuste `promo_vencida` (`ocultar` = solo el precio vigente, sin rastro de la promo; `tachar` = precio de lista tachado con la leyenda «promo vencida»). **Nunca lo fijes en el código**: léelo de la configuración de la agencia en toda pantalla que muestre precio (tarjeta, cotizador, cotización compartida). El precio no cambia solo en ninguno de los dos casos.
    - Cargos que se pagan en destino (impuesto de muelle, tasa portuaria) van aparte, con etiqueta «No incluido», y **nunca se suman al total**.
    - Sin precio publicado: «Consultar», nunca `$0`.
 3. **Fechas y cupos a la vista.** Salidas como chips o calendario («sáb 3 oct»), con cupos («quedan 4») y estados: disponible, últimos cupos, agotado, cerrado. Una salida agotada se ve distinta, no desaparece.

@@ -7,6 +7,8 @@ import {
   debeBajarElScroll,
   calcularTiempoRestanteVentana,
   evaluarTransicionVentanaBorrador,
+  calcularPermisosAsignacion,
+  evaluarConversacionRetirada,
 } from './bandeja-logica';
 import { obtenerMockFichaDeContacto } from './mock-crm';
 
@@ -236,5 +238,160 @@ describe('Pruebas Automáticas de la Bandeja — Reglas de Comportamiento (0b & 
     // Caso 4: Ventana ya estaba cerrada (sin transición de cierre)
     const r4 = evaluarTransicionVentanaBorrador(false, false, 'Borrador existente');
     expect(r4.debeMostrar).toBe(false);
+  });
+  // 9. CONVERSACION_RETIRADA en reordenarConGuardia (0c.35): retira de la lista
+  it('9. reordenarConGuardia retira la conversación si recibe CONVERSACION_RETIRADA', () => {
+    const conv1: ConversacionResumen = {
+      id: '00000000-0000-4000-8000-000000000301',
+      estado: 'ABIERTA',
+      contactoId: 'cnt-301',
+      contactoNombre: 'Cliente Retirado',
+      contactoTelefono: '+573000000301',
+      asignadoAId: null,
+      asignadoANombre: null,
+      mensajesSinLeer: 0,
+      ultimoMensajeTexto: 'Mensaje 1',
+      ultimoMensajeEn: new Date().toISOString(),
+      ultimoMensajeDireccion: 'ENTRANTE',
+      slaVenceEn: null,
+      ventana: { abierta: true, expiraEn: null, minutosRestantes: 1440 },
+      etiquetas: [],
+    };
+
+    const conv2: ConversacionResumen = {
+      id: '00000000-0000-4000-8000-000000000302',
+      estado: 'ABIERTA',
+      contactoId: 'cnt-302',
+      contactoNombre: 'Cliente Conservado',
+      contactoTelefono: '+573000000302',
+      asignadoAId: null,
+      asignadoANombre: null,
+      mensajesSinLeer: 0,
+      ultimoMensajeTexto: 'Mensaje 2',
+      ultimoMensajeEn: new Date().toISOString(),
+      ultimoMensajeDireccion: 'ENTRANTE',
+      slaVenceEn: null,
+      ventana: { abierta: true, expiraEn: null, minutosRestantes: 1440 },
+      etiquetas: [],
+    };
+
+    const lista = [conv1, conv2];
+    const eventoRetirada: EventoBandeja = {
+      tipo: 'CONVERSACION_RETIRADA',
+      conversacionId: conv1.id,
+    };
+
+    // Caso A: Sin cursor encima (ratonEncima = false) -> Se retira de inmediato de la lista visible
+    const resSinCursor = reordenarConGuardia(lista, null, eventoRetirada, false);
+    expect(resSinCursor.listaVisible.map((c) => c.id)).toEqual([conv2.id]);
+    expect(resSinCursor.nuevoPendiente).toBe(false);
+
+    // Caso B: Con cursor encima (ratonEncima = true) -> No mueve la lista bajo el cursor, actualiza el buffer
+    const resConCursor = reordenarConGuardia(lista, null, eventoRetirada, true);
+    expect(resConCursor.listaVisible.map((c) => c.id)).toEqual([conv1.id, conv2.id]);
+    expect(resConCursor.nuevoBuffer?.map((c) => c.id)).toEqual([conv2.id]);
+    expect(resConCursor.nuevoPendiente).toBe(true);
+  });
+
+  // 10. calcularPermisosAsignacion (0c.35): evalúa Tomar, Soltar y Reasignar
+  it('10. calcularPermisosAsignacion evalúa correctamente Tomar, Soltar y Reasignar según visibilidad', () => {
+    const miId = '00000000-0000-4000-a000-000000000001';
+    const otroId = '00000000-0000-4000-a000-000000000002';
+
+    const convSinAsignar: ConversacionResumen = {
+      id: '00000000-0000-4000-8000-000000000401',
+      estado: 'ABIERTA',
+      contactoId: 'cnt-401',
+      contactoNombre: 'Sin Asignar',
+      contactoTelefono: '+573000000401',
+      asignadoAId: null,
+      asignadoANombre: null,
+      mensajesSinLeer: 0,
+      ultimoMensajeTexto: 'Texto',
+      ultimoMensajeEn: null,
+      ultimoMensajeDireccion: null,
+      slaVenceEn: null,
+      ventana: { abierta: true, expiraEn: null, minutosRestantes: 1440 },
+      etiquetas: [],
+    };
+
+    const convMia: ConversacionResumen = {
+      ...convSinAsignar,
+      id: '00000000-0000-4000-8000-000000000402',
+      asignadoAId: miId,
+      asignadoANombre: 'Mi Nombre',
+    };
+
+    const convAjena: ConversacionResumen = {
+      ...convSinAsignar,
+      id: '00000000-0000-4000-8000-000000000403',
+      asignadoAId: otroId,
+      asignadoANombre: 'Otro Asesor',
+    };
+
+    // Caso 1: Asesor sin ver_todas en conversación sin asignar (cola común)
+    const p1 = calcularPermisosAsignacion(convSinAsignar, miId, false);
+    expect(p1.puedeTomar).toBe(true);
+    expect(p1.puedeSoltar).toBe(false);
+    expect(p1.puedeReasignar).toBe(true); // puede asignar a un compañero desde la cola común
+
+    // Caso 2: Asesor sin ver_todas en conversación propia
+    const p2 = calcularPermisosAsignacion(convMia, miId, false);
+    expect(p2.puedeTomar).toBe(false);
+    expect(p2.puedeSoltar).toBe(true); // devolver a la cola común
+    expect(p2.puedeReasignar).toBe(true); // traspasar a otro asesor
+
+    // Caso 3: Asesor sin ver_todas en conversación ajena
+    const p3 = calcularPermisosAsignacion(convAjena, miId, false);
+    expect(p3.puedeTomar).toBe(false);
+    expect(p3.puedeSoltar).toBe(false);
+    expect(p3.puedeReasignar).toBe(false);
+
+    // Caso 4: Dueño con ver_todas en conversación de otro asesor
+    const p4 = calcularPermisosAsignacion(convAjena, miId, true);
+    expect(p4.puedeTomar).toBe(false); // ya tiene asesor, para tomarla la reasigna
+    expect(p4.puedeSoltar).toBe(true);
+    expect(p4.puedeReasignar).toBe(true);
+  });
+
+  // 11. evaluarConversacionRetirada (0c.35): detecta si el evento corresponde a la conversación activa
+  it('11. evaluarConversacionRetirada detecta cuando la conversación activa fue retirada', () => {
+    const activaId = '00000000-0000-4000-8000-000000000501';
+    const otraId = '00000000-0000-4000-8000-000000000502';
+
+    expect(
+      evaluarConversacionRetirada(activaId, {
+        tipo: 'CONVERSACION_RETIRADA',
+        conversacionId: activaId,
+      }),
+    ).toBe(true);
+
+    expect(
+      evaluarConversacionRetirada(activaId, {
+        tipo: 'CONVERSACION_RETIRADA',
+        conversacionId: otraId,
+      }),
+    ).toBe(false);
+
+    expect(
+      evaluarConversacionRetirada(activaId, {
+        tipo: 'MENSAJE_NUEVO',
+        conversacionId: activaId,
+        mensaje: {
+          id: '00000000-0000-4000-8000-000000000099',
+          conversacionId: activaId,
+          direccion: 'ENTRANTE',
+          tipo: 'TEXTO',
+          texto: 'Hola',
+          adjuntos: [],
+          estado: 'ENTREGADO',
+          motivoFallo: null,
+          autorId: null,
+          autorNombre: null,
+          ocurridoEn: new Date().toISOString(),
+          cotizacionId: null,
+        },
+      }),
+    ).toBe(false);
   });
 });

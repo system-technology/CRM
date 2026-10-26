@@ -45,6 +45,8 @@ export function useFocoModal<T extends HTMLElement = HTMLDivElement>({
 }: OpcionesFocoModal) {
   const contenedorRef = useRef<T | null>(null);
   const elementoPrevioRef = useRef<HTMLElement | null>(null);
+  const alCerrarRef = useRef(alCerrar);
+  alCerrarRef.current = alCerrar;
 
   useEffect(() => {
     if (!abierto) return;
@@ -77,7 +79,7 @@ export function useFocoModal<T extends HTMLElement = HTMLDivElement>({
       if (e.key === 'Escape') {
         e.preventDefault();
         e.stopPropagation();
-        alCerrar();
+        alCerrarRef.current();
         return;
       }
 
@@ -123,7 +125,7 @@ export function useFocoModal<T extends HTMLElement = HTMLDivElement>({
         }, 10);
       }
     };
-  }, [abierto, alCerrar, elementoInicialRef, desactivarTrap]);
+  }, [abierto, elementoInicialRef, desactivarTrap]);
 
   return contenedorRef;
 }

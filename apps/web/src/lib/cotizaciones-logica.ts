@@ -167,7 +167,7 @@ export function interpretarErrorCotizaciones(error: unknown): {
       return {
         codigo: 'SIN_SESION',
         mensaje:
-          'Falta identificar la agencia (x-dev-tenant-id). Verifique su configuración de desarrollo.',
+          'Falta identificar la agencia activa. Verifique su sesión o configuración de desarrollo.',
         esErrorAgencia: true,
       };
     }

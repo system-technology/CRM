@@ -165,7 +165,7 @@ export function interpretarErrorCotizacion(error: unknown): {
     if (code === 'SIN_SESION') {
       return {
         codigo: 'SIN_SESION',
-        mensaje: 'Falta configurar el identificador de la agencia (x-dev-tenant-id).',
+        mensaje: 'Falta configurar la agencia activa o iniciar sesión.',
         esErrorAgencia: true,
       };
     }
