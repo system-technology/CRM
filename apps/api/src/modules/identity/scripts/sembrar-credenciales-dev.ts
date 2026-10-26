@@ -1,47 +1,65 @@
 /**
- * Pone contraseña a las identidades de la semilla, SOLO en desarrollo local.
+ * Pone contraseña a las identidades de la semilla, SOLO en desarrollo.
  *
- *   IDENTIDAD_DEV_PASSWORD=<12+ caracteres> pnpm --filter @viajapro/api identidad:sembrar-dev
+ *   Local:
+ *     IDENTIDAD_DEV_PASSWORD=<12+ caracteres> pnpm --filter @viajapro/api identidad:sembrar-dev
+ *   Base remota de DESARROLLO (p. ej. Neon con solo datos sintéticos), opt-in en la orden:
+ *     IDENTIDAD_DEV_PERMITIR_REMOTO=si IDENTIDAD_DEV_PASSWORD=<12+ caracteres> \
+ *       pnpm --filter @viajapro/api identidad:sembrar-dev
  *
  * La semilla (`packages/database/prisma/seed.ts`) crea las identidades de la agencia demo sin
  * credencial, porque el hash lo produce Better Auth y `packages/database` no depende de ella.
  * Este script lo completa con **el mismo hash que usará el inicio de sesión** (scrypt), y lo
  * escribe con el pool de identidad: el único rol que puede tocar `credenciales`.
  *
- * Guardias, porque un script que pone una contraseña conocida es de los que acaban corriendo en
- * el sitio equivocado:
+ * Guardias (la decisión es pura y vive en `guardia-de-siembra-dev.ts`). La intención: que jamás
+ * exista una contraseña conocida donde hay usuarios reales.
  *   1. Exige `APP_ENV=local`.
- *   2. Solo contra un anfitrión local (`localhost`, `127.0.0.1`): nunca contra Neon.
- *   3. Sin valor por omisión: la contraseña viene de `IDENTIDAD_DEV_PASSWORD` o no se hace nada.
- *   4. Solo toca identidades cuyo correo termina en `@agenciademo.test`.
+ *   2. Sin valor por omisión: la contraseña viene de `IDENTIDAD_DEV_PASSWORD` (12+) o no se hace nada.
+ *   3. Anfitrión local (`localhost`, `127.0.0.1`, `::1`): permitido.
+ *   4. Anfitrión remoto: solo con `IDENTIDAD_DEV_PERMITIR_REMOTO=si` (exacto) Y cero identidades
+ *      cuyo correo no termine en `@agenciademo.test`. Esa variable se pasa en la orden; NO se
+ *      guarda en el `.env`.
+ *   5. Solo toca identidades cuyo correo termina en `@agenciademo.test`.
+ *   Nunca se imprime la cadena de conexión: solo el hostname.
  */
 import { PrismaClient } from '@prisma/client';
 import { hashPassword } from 'better-auth/crypto';
 import { resolverCadena } from '../../../shared/prisma/guardia-de-rol.js';
-
-const DOMINIO_DE_LA_SEMILLA = '@agenciademo.test';
-const ANFITRIONES_LOCALES = new Set(['localhost', '127.0.0.1', '::1']);
+import {
+  decidirSiSePuedeSembrar,
+  DOMINIO_DE_LA_SEMILLA,
+  esAnfitrionLocal,
+} from './guardia-de-siembra-dev.js';
 
 async function principal(): Promise<void> {
-  if (process.env['APP_ENV'] !== 'local') {
-    throw new Error('Negado: este script solo corre con APP_ENV=local.');
-  }
   const cadena = resolverCadena(process.env, 'DATABASE_IDENTIDAD_URL');
   const anfitrion = new URL(cadena).hostname;
-  if (!ANFITRIONES_LOCALES.has(anfitrion)) {
-    throw new Error(
-      `Negado: "${anfitrion}" no es un anfitrión local. Pone una contraseña conocida.`,
-    );
-  }
-  const clave = process.env['IDENTIDAD_DEV_PASSWORD'];
-  if (!clave || clave.length < 12) {
-    throw new Error(
-      'Falta IDENTIDAD_DEV_PASSWORD (12+ caracteres). Este script no inventa claves.',
-    );
-  }
+  const clave = process.env['IDENTIDAD_DEV_PASSWORD'] ?? '';
 
   const prisma = new PrismaClient({ datasources: { db: { url: cadena } } });
   try {
+    // Solo en remoto hace falta contar: en local no hay usuarios reales que proteger.
+    const identidadesAjenas = esAnfitrionLocal(anfitrion)
+      ? 0
+      : await prisma.identidad.count({
+          where: { NOT: { correo: { endsWith: DOMINIO_DE_LA_SEMILLA } } },
+        });
+    const decision = decidirSiSePuedeSembrar({
+      appEnv: process.env['APP_ENV'],
+      anfitrion,
+      permitirRemoto: process.env['IDENTIDAD_DEV_PERMITIR_REMOTO'],
+      claveLongitud: clave.length,
+      identidadesAjenas,
+    });
+    if (!decision.permitido) throw new Error(decision.motivo);
+    if (decision.remoto) {
+      console.warn(
+        `AVISO: se está poniendo una contraseña de DESARROLLO en una base REMOTA (anfitrión: ${anfitrion}). ` +
+          `Solo identidades ${DOMINIO_DE_LA_SEMILLA}; la base no tiene otras.`,
+      );
+    }
+
     const hash = await hashPassword(clave);
     const identidades = await prisma.identidad.findMany({
       where: { correo: { endsWith: DOMINIO_DE_LA_SEMILLA } },

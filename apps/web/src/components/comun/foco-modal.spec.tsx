@@ -21,24 +21,37 @@ vi.mock('next/navigation', () => ({
 function ArnesModalPrueba({
   abiertoInicial = false,
   desactivarTrap = false,
+  abierto: abiertoProp,
+  alCerrar: alCerrarProp,
 }: {
   abiertoInicial?: boolean;
   desactivarTrap?: boolean;
+  abierto?: boolean;
+  alCerrar?: () => void;
 }) {
-  const [abierto, setAbierto] = useState(abiertoInicial);
+  const [abiertoInterno, setAbiertoInterno] = useState(abiertoInicial);
+  const abierto = abiertoProp !== undefined ? abiertoProp : abiertoInterno;
   const botonAbrirRef = useRef<HTMLButtonElement>(null);
   const primerInputRef = useRef<HTMLInputElement>(null);
 
+  const alCerrar = () => {
+    if (alCerrarProp) {
+      alCerrarProp();
+    } else {
+      setAbiertoInterno(false);
+    }
+  };
+
   const contenedorRef = useFocoModal<HTMLDivElement>({
     abierto,
-    alCerrar: () => setAbierto(false),
+    alCerrar,
     elementoInicialRef: primerInputRef,
     desactivarTrap,
   });
 
   return (
     <div>
-      <button ref={botonAbrirRef} onClick={() => setAbierto(true)}>
+      <button ref={botonAbrirRef} onClick={() => setAbiertoInterno(true)}>
         Abrir Modal Prueba
       </button>
 
@@ -48,7 +61,7 @@ function ArnesModalPrueba({
           <input ref={primerInputRef} placeholder="Primer campo" data-testid="input-uno" />
           <input placeholder="Segundo campo" data-testid="input-dos" />
           <button data-testid="btn-guardar">Guardar</button>
-          <button data-testid="btn-cerrar" onClick={() => setAbierto(false)}>
+          <button data-testid="btn-cerrar" onClick={alCerrar}>
             Cerrar
           </button>
         </div>
@@ -131,6 +144,58 @@ describe('0c.32: Gestión Accesible de Teclado y Foco en Modales (WCAG AA)', () 
       // Shift+Tab en el primer elemento debe ciclar al último
       fireEvent.keyDown(document, { key: 'Tab', shiftKey: true });
       expect(document.activeElement).toBe(btnCerrar);
+    });
+
+    it('6. Re-renderizado del padre con alCerrar en línea no roba el foco ni reinicia timer (0c.32)', async () => {
+      function ArnesConEstadoPadre() {
+        const [abierto, setAbierto] = useState(false);
+        const [contador, setContador] = useState(0);
+
+        return (
+          <div>
+            <button data-testid="btn-abrir-re-render" onClick={() => setAbierto(true)}>
+              Abrir Modal
+            </button>
+            <button data-testid="btn-forzar-re-render" onClick={() => setContador((c) => c + 1)}>
+              Renderizar Padre: {contador}
+            </button>
+            <ArnesModalPrueba abierto={abierto} alCerrar={() => setAbierto(false)} />
+          </div>
+        );
+      }
+
+      render(<ArnesConEstadoPadre />);
+      const btnAbrir = screen.getByTestId('btn-abrir-re-render');
+      btnAbrir.focus();
+      fireEvent.click(btnAbrir);
+
+      await act(async () => {
+        await new Promise((r) => setTimeout(r, 60));
+      });
+
+      const inputDos = screen.getByTestId('input-dos');
+      inputDos.focus();
+      expect(document.activeElement).toBe(inputDos);
+
+      // Forzar re-renderizado del padre (que produce una nueva función alCerrar en línea)
+      const btnReRender = screen.getByTestId('btn-forzar-re-render');
+      fireEvent.click(btnReRender);
+
+      // Esperar más de 30ms para verificar que el foco NO fue robado ni reseteado al primer input
+      await act(async () => {
+        await new Promise((r) => setTimeout(r, 60));
+      });
+
+      expect(document.activeElement).toBe(inputDos);
+
+      // Al cerrar con Escape, el foco debe regresar limpiamente al disparador original
+      fireEvent.keyDown(document, { key: 'Escape' });
+
+      await act(async () => {
+        await new Promise((r) => setTimeout(r, 30));
+      });
+
+      expect(document.activeElement).toBe(btnAbrir);
     });
   });
 

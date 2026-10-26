@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import {
   MessageSquare,
   Kanban,
@@ -18,7 +18,11 @@ import {
   TrendingUp,
   Search,
   Bell,
+  Building2,
+  Check,
+  LogOut,
 } from 'lucide-react';
+import type { SesionActual } from '@viajapro/contracts';
 import { ModalBusquedaGlobal } from '../busqueda/modal-busqueda-global';
 import { PanelNotificaciones } from '../notificaciones/panel-notificaciones';
 import {
@@ -27,6 +31,10 @@ import {
   contarAlertasNoLeidas,
   type AlertaOperativa,
 } from '../../lib/notificaciones-logica';
+import { usePermisos } from '../../lib/permisos';
+import { cambiarAgenciaActivaApi, cerrarSesionApi } from '../../lib/auth-api';
+import { inboxSocketManager } from '../../lib/inbox-socket';
+import { useFocoModal } from '../../lib/use-foco-modal';
 
 interface ModuloItem {
   id: string;
@@ -37,14 +45,56 @@ interface ModuloItem {
   disponible: boolean;
 }
 
-export function BarraModulos() {
+/**
+ * Calcula iniciales legibles del usuario activo.
+ */
+export function calcularIniciales(nombre?: string | null, correo?: string | null): string {
+  if (nombre && nombre.trim().length > 0) {
+    const partes = nombre.trim().split(/\s+/);
+    const primero = partes[0];
+    const segundo = partes[1];
+    if (primero && segundo && primero.length > 0 && segundo.length > 0) {
+      return ((primero[0] ?? '') + (segundo[0] ?? '')).toUpperCase();
+    }
+    if (primero && primero.length > 0) {
+      return primero.slice(0, 2).toUpperCase();
+    }
+  }
+  if (correo && correo.includes('@')) {
+    const usuario = correo.split('@')[0];
+    if (usuario && usuario.length > 0) {
+      return usuario.slice(0, 2).toUpperCase();
+    }
+  }
+  return 'VP';
+}
+
+export interface BarraModulosProps {
+  sesionInicial?: SesionActual | null;
+}
+
+export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
   const pathname = usePathname();
+  const router = useRouter();
+  const { sesion } = usePermisos(sesionInicial);
+
   const [modoOscuro, setModoOscuro] = useState(false);
   const [busquedaAbierta, setBusquedaAbierta] = useState(false);
   const [panelNotifAbierto, setPanelNotifAbierto] = useState(false);
   const [alertas, setAlertas] = useState<AlertaOperativa[]>([]);
+  const [menuSesionAbierto, setMenuSesionAbierto] = useState(false);
+  const [cambiandoAgencia, setCambiandoAgencia] = useState<string | null>(null);
+  const [cerrandoSesion, setCerrandoSesion] = useState(false);
 
-  const esDetalleMovil = pathname !== '/bandeja' && pathname.startsWith('/bandeja/');
+  // Trampa de foco accesible y cierre con Esc para el popover de sesión
+  const menuRef = useFocoModal({
+    abierto: menuSesionAbierto,
+    alCerrar: () => setMenuSesionAbierto(false),
+  });
+
+  const esDetalleMovil = Boolean(
+    pathname && pathname !== '/bandeja' && pathname.startsWith('/bandeja/'),
+  );
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -90,7 +140,45 @@ export function BarraModulos() {
     setAlertas((prev) => prev.map((a) => ({ ...a, leida: true })));
   };
 
+  const manejarCambioAgencia = async (tenantId: string) => {
+    if (tenantId === sesion?.tenantActivoId) return;
+    try {
+      setCambiandoAgencia(tenantId);
+      await cambiarAgenciaActivaApi(tenantId);
+      setMenuSesionAbierto(false);
+      if (typeof window !== 'undefined') {
+        window.location.reload();
+      }
+    } catch (err) {
+      console.error('Error al cambiar agencia', err);
+    } finally {
+      setCambiandoAgencia(null);
+    }
+  };
+
+  const manejarCerrarSesion = async () => {
+    try {
+      setCerrandoSesion(true);
+      inboxSocketManager.desconectar();
+      await cerrarSesionApi();
+      setMenuSesionAbierto(false);
+      router.push('/ingresar');
+    } catch (err) {
+      console.error('Error al cerrar sesión', err);
+    } finally {
+      setCerrandoSesion(false);
+    }
+  };
+
   const conteoNoLeidas = contarAlertasNoLeidas(alertas);
+
+  const nombreUsuario = sesion?.identidad?.nombre ?? 'Asesor ViajaPro';
+  const correoUsuario = sesion?.identidad?.correo ?? 'asesor@viajapro.com';
+  const rolUsuario = sesion?.acceso?.rol ?? 'Asesor Comercial';
+  const iniciales = calcularIniciales(sesion?.identidad?.nombre, sesion?.identidad?.correo);
+  const agenciaActiva =
+    sesion?.agencias?.find((a) => a.id === sesion.tenantActivoId) ?? sesion?.agencias?.[0];
+  const nombreAgenciaActiva = agenciaActiva?.nombre ?? 'ViajaPro';
 
   const modulos: ModuloItem[] = [
     {
@@ -199,7 +287,7 @@ export function BarraModulos() {
                 return (
                   <div
                     key={m.id}
-                    title={`${m.label} (Próximamente)`}
+                    title={m.label + ' (Próximamente)'}
                     className="group relative flex h-10 w-10 cursor-not-allowed items-center justify-center rounded-lg text-neutral-400 opacity-60 hover:bg-neutral-100 dark:text-neutral-500 dark:hover:bg-neutral-800"
                   >
                     <Icon className="h-5 w-5" />
@@ -213,11 +301,12 @@ export function BarraModulos() {
                   href={m.href}
                   title={m.label}
                   aria-label={m.label}
-                  className={`focus-visible:ring-acento-600 flex h-10 w-10 items-center justify-center rounded-lg transition-colors focus-visible:ring-2 focus-visible:outline-none ${
-                    m.activo
+                  className={
+                    'focus-visible:ring-acento-600 flex h-10 w-10 items-center justify-center rounded-lg transition-colors focus-visible:ring-2 focus-visible:outline-none ' +
+                    (m.activo
                       ? 'bg-acento-50 text-acento-700 dark:bg-acento-950/60 dark:text-acento-400 font-semibold'
-                      : 'text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200'
-                  }`}
+                      : 'text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200')
+                  }
                 >
                   <Icon className="h-5 w-5" />
                 </Link>
@@ -232,8 +321,8 @@ export function BarraModulos() {
           <button
             type="button"
             onClick={() => setPanelNotifAbierto(true)}
-            title={`Alertas operativas (${conteoNoLeidas} pendientes)`}
-            aria-label={`Alertas operativas (${conteoNoLeidas} pendientes)`}
+            title={'Alertas operativas (' + conteoNoLeidas + ' pendientes)'}
+            aria-label={'Alertas operativas (' + conteoNoLeidas + ' pendientes)'}
             className="focus-visible:ring-acento-600 relative flex h-9 w-9 items-center justify-center rounded-lg text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 focus-visible:ring-2 focus-visible:outline-none dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
           >
             <Bell className="h-4 w-4" />
@@ -270,13 +359,21 @@ export function BarraModulos() {
           {/* Separador */}
           <div className="h-px w-8 bg-neutral-200 dark:bg-neutral-800" />
 
-          {/* Avatar Asesor */}
-          <div
-            title="Carlos Asesor (En línea)"
-            className="relative flex h-8 w-8 items-center justify-center rounded-full bg-neutral-200 text-xs font-bold text-neutral-700 select-none dark:bg-neutral-700 dark:text-neutral-200"
-          >
-            CA
-            <span className="bg-ok-500 absolute -right-0.5 -bottom-0.5 h-2.5 w-2.5 rounded-full border-2 border-white dark:border-neutral-900" />
+          {/* Avatar Asesor y Menú de Sesión */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setMenuSesionAbierto((prev) => !prev)}
+              title={'Perfil y sesión: ' + nombreUsuario + ' (' + nombreAgenciaActiva + ')'}
+              aria-label={'Perfil y sesión: ' + nombreUsuario}
+              aria-haspopup="dialog"
+              aria-expanded={menuSesionAbierto}
+              data-testid="boton-avatar-sesion"
+              className="focus-visible:ring-acento-600 relative flex h-8 w-8 items-center justify-center rounded-full bg-neutral-200 text-xs font-bold text-neutral-700 transition-transform hover:scale-105 focus-visible:ring-2 focus-visible:outline-none dark:bg-neutral-700 dark:text-neutral-200"
+            >
+              {iniciales}
+              <span className="bg-ok-500 absolute -right-0.5 -bottom-0.5 h-2.5 w-2.5 rounded-full border-2 border-white dark:border-neutral-900" />
+            </button>
           </div>
         </div>
       </aside>
@@ -292,11 +389,12 @@ export function BarraModulos() {
             href="/bandeja"
             title="Bandeja de WhatsApp"
             aria-label="Bandeja de WhatsApp"
-            className={`focus-visible:ring-acento-600 flex min-h-[44px] min-w-[44px] flex-col items-center justify-center rounded-xl transition-colors focus-visible:ring-2 focus-visible:outline-none ${
-              pathname.startsWith('/bandeja')
+            className={
+              'focus-visible:ring-acento-600 flex min-h-[44px] min-w-[44px] flex-col items-center justify-center rounded-xl transition-colors focus-visible:ring-2 focus-visible:outline-none ' +
+              (pathname.startsWith('/bandeja')
                 ? 'bg-acento-50 text-acento-700 dark:bg-acento-950/60 dark:text-acento-400 font-semibold'
-                : 'text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800'
-            }`}
+                : 'text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800')
+            }
           >
             <MessageSquare className="h-5 w-5" />
             <span className="text-[9px] leading-tight font-medium">Bandeja</span>
@@ -307,11 +405,12 @@ export function BarraModulos() {
             href="/pipeline"
             title="Pipeline de Oportunidades"
             aria-label="Pipeline de Oportunidades"
-            className={`focus-visible:ring-acento-600 flex min-h-[44px] min-w-[44px] flex-col items-center justify-center rounded-xl transition-colors focus-visible:ring-2 focus-visible:outline-none ${
-              pathname === '/pipeline'
+            className={
+              'focus-visible:ring-acento-600 flex min-h-[44px] min-w-[44px] flex-col items-center justify-center rounded-xl transition-colors focus-visible:ring-2 focus-visible:outline-none ' +
+              (pathname === '/pipeline'
                 ? 'bg-acento-50 text-acento-700 dark:bg-acento-950/60 dark:text-acento-400 font-semibold'
-                : 'text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800'
-            }`}
+                : 'text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800')
+            }
           >
             <Kanban className="h-5 w-5" />
             <span className="text-[9px] leading-tight font-medium">Pipeline</span>
@@ -322,11 +421,12 @@ export function BarraModulos() {
             href="/cotizador"
             title="Cotizador de Paquetes"
             aria-label="Cotizador de Paquetes"
-            className={`focus-visible:ring-acento-600 flex min-h-[44px] min-w-[44px] flex-col items-center justify-center rounded-xl transition-colors focus-visible:ring-2 focus-visible:outline-none ${
-              pathname === '/cotizador'
+            className={
+              'focus-visible:ring-acento-600 flex min-h-[44px] min-w-[44px] flex-col items-center justify-center rounded-xl transition-colors focus-visible:ring-2 focus-visible:outline-none ' +
+              (pathname === '/cotizador'
                 ? 'bg-acento-50 text-acento-700 dark:bg-acento-950/60 dark:text-acento-400 font-semibold'
-                : 'text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800'
-            }`}
+                : 'text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800')
+            }
           >
             <FileText className="h-5 w-5" />
             <span className="text-[9px] leading-tight font-medium">Cotizar</span>
@@ -337,11 +437,12 @@ export function BarraModulos() {
             href="/viajes"
             title="Archivos de Viaje"
             aria-label="Archivos de Viaje"
-            className={`focus-visible:ring-acento-600 flex min-h-[44px] min-w-[44px] flex-col items-center justify-center rounded-xl transition-colors focus-visible:ring-2 focus-visible:outline-none ${
-              pathname.startsWith('/viajes')
+            className={
+              'focus-visible:ring-acento-600 flex min-h-[44px] min-w-[44px] flex-col items-center justify-center rounded-xl transition-colors focus-visible:ring-2 focus-visible:outline-none ' +
+              (pathname.startsWith('/viajes')
                 ? 'bg-acento-50 text-acento-700 dark:bg-acento-950/60 dark:text-acento-400 font-semibold'
-                : 'text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800'
-            }`}
+                : 'text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800')
+            }
           >
             <Briefcase className="h-5 w-5" />
             <span className="text-[9px] leading-tight font-medium">Viajes</span>
@@ -358,7 +459,158 @@ export function BarraModulos() {
             <Search className="h-5 w-5" />
             <span className="text-[9px] leading-tight font-medium">Buscar</span>
           </button>
+
+          {/* Perfil Móvil */}
+          <button
+            type="button"
+            onClick={() => setMenuSesionAbierto(true)}
+            title={'Perfil y sesión (' + nombreUsuario + ')'}
+            aria-label={'Perfil y sesión (' + nombreUsuario + ')'}
+            data-testid="boton-perfil-movil"
+            className="focus-visible:ring-acento-600 flex min-h-[44px] min-w-[44px] flex-col items-center justify-center rounded-xl text-neutral-500 transition-colors hover:bg-neutral-100 focus-visible:ring-2 focus-visible:outline-none dark:text-neutral-400 dark:hover:bg-neutral-800"
+          >
+            <div className="relative flex h-5 w-5 items-center justify-center rounded-full bg-neutral-200 text-[10px] font-bold text-neutral-700 dark:bg-neutral-700 dark:text-neutral-200">
+              {iniciales}
+            </div>
+            <span className="text-[9px] leading-tight font-medium">Perfil</span>
+          </button>
         </nav>
+      )}
+
+      {/* Popover / Menú Desplegable de Sesión y Agencia Activa (ADR-0011) */}
+      {menuSesionAbierto && (
+        <>
+          {/* Telón de fondo */}
+          <div
+            className="fixed inset-0 z-40 bg-black/20 backdrop-blur-[1px]"
+            onClick={() => setMenuSesionAbierto(false)}
+            aria-hidden="true"
+            data-testid="telon-perfil-sesion"
+          />
+
+          <div
+            ref={menuRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Perfil y sesión"
+            data-testid="dialogo-perfil-sesion"
+            className="fixed right-4 bottom-16 left-4 z-50 w-[calc(100%-2rem)] max-w-xs rounded-2xl border border-neutral-200 bg-white p-4 shadow-2xl transition-all md:bottom-3 md:left-16 md:w-80 dark:border-neutral-800 dark:bg-neutral-900"
+          >
+            {/* Cabecera de Usuario */}
+            <div className="flex items-center space-x-3 border-b border-neutral-100 pb-3 dark:border-neutral-800">
+              <div className="bg-acento-100 text-acento-800 dark:bg-acento-950 dark:text-acento-300 flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-sm font-bold">
+                {iniciales}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p
+                  className="truncate text-sm font-semibold text-neutral-900 dark:text-neutral-100"
+                  data-testid="nombre-usuario-sesion"
+                >
+                  {nombreUsuario}
+                </p>
+                <p
+                  className="truncate text-xs text-neutral-500 dark:text-neutral-400"
+                  data-testid="correo-usuario-sesion"
+                >
+                  {correoUsuario}
+                </p>
+                <div className="mt-1 flex items-center space-x-1.5">
+                  <span
+                    className="inline-flex items-center rounded-md bg-neutral-100 px-1.5 py-0.5 text-[10px] font-medium text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300"
+                    data-testid="rol-usuario-sesion"
+                  >
+                    {rolUsuario}
+                  </span>
+                  <span className="bg-ok-50 text-ok-700 dark:bg-ok-950/60 dark:text-ok-400 inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-medium">
+                    En línea
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Agencia Activa / Selector Multiagencia */}
+            <div className="mt-3 border-b border-neutral-100 pb-3 dark:border-neutral-800">
+              <div className="flex items-center justify-between text-xs text-neutral-500 dark:text-neutral-400">
+                <span className="flex items-center space-x-1 font-medium">
+                  <Building2 className="h-3.5 w-3.5" />
+                  <span>Agencia activa</span>
+                </span>
+                {sesion?.agencias && sesion.agencias.length > 1 && (
+                  <span className="font-mono text-[10px] text-neutral-400">
+                    ({sesion.agencias.length} disponibles)
+                  </span>
+                )}
+              </div>
+
+              {/* Si solo tiene 1 agencia */}
+              {!sesion?.agencias || sesion.agencias.length <= 1 ? (
+                <div
+                  className="mt-1.5 flex items-center justify-between rounded-lg bg-neutral-50 px-2.5 py-2 text-xs font-medium text-neutral-800 dark:bg-neutral-800/60 dark:text-neutral-200"
+                  data-testid="indicador-agencia-unica"
+                >
+                  <span className="truncate">{nombreAgenciaActiva}</span>
+                  <span className="bg-ok-500 h-1.5 w-1.5 rounded-full" />
+                </div>
+              ) : (
+                /* Selector Multiagencia (ADR-0011 §2 / Rebanada 3) */
+                <div
+                  className="mt-2 space-y-1"
+                  role="radiogroup"
+                  aria-label="Seleccionar agencia activa"
+                  data-testid="selector-agencias-sesion"
+                >
+                  {sesion.agencias.map((agencia) => {
+                    const esActiva = agencia.id === sesion.tenantActivoId;
+                    return (
+                      <button
+                        key={agencia.id}
+                        type="button"
+                        role="radio"
+                        aria-checked={esActiva}
+                        disabled={cambiandoAgencia !== null}
+                        onClick={() => {
+                          void manejarCambioAgencia(agencia.id);
+                        }}
+                        data-testid={'opcion-agencia-' + agencia.id}
+                        className={
+                          'focus-visible:ring-acento-600 flex min-h-[44px] w-full items-center justify-between rounded-xl px-2.5 py-2 text-left text-xs transition-colors focus-visible:ring-2 focus-visible:outline-none ' +
+                          (esActiva
+                            ? 'bg-acento-50 text-acento-800 dark:bg-acento-950/60 dark:text-acento-300 font-semibold'
+                            : 'text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800')
+                        }
+                      >
+                        <span className="truncate">{agencia.nombre}</span>
+                        {esActiva ? (
+                          <Check className="text-acento-700 dark:text-acento-400 h-4 w-4 shrink-0" />
+                        ) : cambiandoAgencia === agencia.id ? (
+                          <span className="animate-pulse text-[10px] text-neutral-400">
+                            Cambiando...
+                          </span>
+                        ) : null}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Acciones: Cerrar Sesión */}
+            <div className="mt-3">
+              <button
+                type="button"
+                disabled={cerrandoSesion}
+                onClick={() => {
+                  void manejarCerrarSesion();
+                }}
+                data-testid="boton-cerrar-sesion"
+                className="flex min-h-[44px] w-full items-center justify-center space-x-2 rounded-xl text-xs font-semibold text-red-600 transition-colors hover:bg-red-50 focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:outline-none dark:text-red-400 dark:hover:bg-red-950/50"
+              >
+                <LogOut className="h-4 w-4" />
+                <span>{cerrandoSesion ? 'Cerrando sesión...' : 'Cerrar sesión'}</span>
+              </button>
+            </div>
+          </div>
+        </>
       )}
 
       {/* Modal de Búsqueda Global (Cmd+K / Ctrl+K) */}

@@ -105,6 +105,13 @@ class RealtimeMockBus {
     });
   }
 
+  emitirConversacionRetirada(conversacionId: string): void {
+    this.dispatchRaw({
+      tipo: 'CONVERSACION_RETIRADA',
+      conversacionId,
+    });
+  }
+
   emitirEventoDesconocido(): boolean {
     const payloadDesconocido = {
       tipo: 'CLIENTE_UBICACION_COMPARTIDA_V2',
