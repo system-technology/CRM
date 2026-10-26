@@ -1,5 +1,4 @@
 import { Module } from '@nestjs/common';
-import { CotizarPaqueteUseCase } from './application/cotizar-paquete.use-case.js';
 import { CotizarSalidaUseCase } from './application/cotizar-salida.use-case.js';
 import { ListarPaquetesUseCase } from './application/listar-paquetes.use-case.js';
 import { ListarSalidasUseCase } from './application/listar-salidas.use-case.js';
@@ -18,11 +17,10 @@ import { SalidasController } from './interface/salidas.controller.js';
   controllers: [CatalogoController, SalidasController, CotizacionesController],
   providers: [
     ListarPaquetesUseCase,
-    CotizarPaqueteUseCase,
     ListarSalidasUseCase,
     CotizacionesUseCase,
     CotizarSalidaUseCase,
   ],
-  exports: [CotizarPaqueteUseCase],
+  exports: [],
 })
 export class QuotingModule {}
