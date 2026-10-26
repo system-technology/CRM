@@ -14,8 +14,10 @@ export interface MensajeErrorDetallado {
   codigo?: string;
 }
 
+export type CategoriaError = 'RED' | 'SESION' | 'NO_ENCONTRADO' | 'VALIDACION' | 'DESCONOCIDO';
+
 export interface ErrorClasificado {
-  categoria: 'RED' | 'SESION' | 'NO_ENCONTRADO' | 'VALIDACION' | 'DESCONOCIDO';
+  categoria: CategoriaError;
   titulo: string;
   quePaso: string;
   queHacer: string;
@@ -77,6 +79,77 @@ export function esTextoTecnico(texto: string): boolean {
 }
 
 /**
+ * Tabla de códigos de dominio prioritarios conforme a contratos y reglas de negocio (0c.30).
+ */
+export const TABLA_ERRORES_DOMINIO: Record<
+  string,
+  {
+    titulo: string;
+    quePaso: string;
+    queHacer: string;
+    categoria: CategoriaError;
+    esReintentable: boolean;
+  }
+> = {
+  SIN_VIGENCIA: {
+    titulo: 'Sin vigencia de tarifas',
+    quePaso: 'No existe una vigencia de tarifas aplicable para las fechas y paquete seleccionados.',
+    queHacer: 'Selecciona otra fecha de salida o consulta al operador mayorista.',
+    categoria: 'VALIDACION',
+    esReintentable: false,
+  },
+  VIGENCIAS_EMPATADAS: {
+    titulo: 'Vigencias superpuestas',
+    quePaso: 'Existen múltiples vigencias de tarifas en conflicto para la fecha seleccionada.',
+    queHacer: 'Revisa la matriz de temporadas en el catálogo o reporta la inconsistencia.',
+    categoria: 'VALIDACION',
+    esReintentable: false,
+  },
+  VENTANA_CERRADA: {
+    titulo: 'Ventana de 24 horas cerrada',
+    quePaso: 'Han transcurrido más de 24 horas desde el último mensaje del viajero.',
+    queHacer: 'Utiliza una plantilla HSM aprobada para reiniciar la conversación.',
+    categoria: 'VALIDACION',
+    esReintentable: false,
+  },
+  CONFLICTO_VERSION: {
+    titulo: 'Conflicto de versión',
+    quePaso: 'La cotización fue modificada o aprobada por otro usuario simultáneamente.',
+    queHacer: 'Recarga la cotización para obtener la versión más reciente.',
+    categoria: 'VALIDACION',
+    esReintentable: false,
+  },
+  PLAZAS_INSUFICIENTES: {
+    titulo: 'Plazas insuficientes',
+    quePaso: 'No hay cupos disponibles para el número de pasajeros y acomodación elegidos.',
+    queHacer: 'Ajusta la cantidad de pasajeros o cambia de paquete o acomodación.',
+    categoria: 'VALIDACION',
+    esReintentable: false,
+  },
+  CONTACTO_NO_ENCONTRADO: {
+    titulo: 'Contacto no encontrado',
+    quePaso: 'El contacto solicitado no existe o pertenece a otro asesor.',
+    queHacer: 'Verifica los datos en el directorio de contactos.',
+    categoria: 'NO_ENCONTRADO',
+    esReintentable: false,
+  },
+  OPORTUNIDAD_NO_ENCONTRADA: {
+    titulo: 'Oportunidad no encontrada',
+    quePaso: 'La oportunidad solicitada no existe o fue archivada.',
+    queHacer: 'Regresa al tablero del pipeline para verificar las oportunidades activas.',
+    categoria: 'NO_ENCONTRADO',
+    esReintentable: false,
+  },
+  COTIZACION_NO_ENCONTRADA: {
+    titulo: 'Cotización no encontrada',
+    quePaso: 'La cotización solicitada no existe o fue eliminada.',
+    queHacer: 'Regresa al listado de cotizaciones para consultar las versiones disponibles.',
+    categoria: 'NO_ENCONTRADO',
+    esReintentable: false,
+  },
+};
+
+/**
  * Clasifica cualquier error en categorías legibles (RED, SESION, NO_ENCONTRADO, VALIDACION, DESCONOCIDO)
  * y devuelve explicaciones en español orientadas al asesor de agencia.
  * El mensaje crudo se delega exclusivamente a console.error (0c.30).
@@ -86,17 +159,39 @@ export function clasificarError(error: unknown): ErrorClasificado {
     console.error('[ErrorSistema - Mensaje Crudo]:', error);
   }
 
-  // 0. Comprobación prioritaria por código de dominio y status HTTP
   const errorObj =
     typeof error === 'object' && error !== null ? (error as Record<string, unknown>) : null;
   const rawCode = errorObj?.code ?? errorObj?.codigo;
   const codigoDominio = typeof rawCode === 'string' ? rawCode : '';
   const statusHttp = typeof errorObj?.status === 'number' ? errorObj.status : 0;
 
+  const crudo =
+    error instanceof Error
+      ? error.message
+      : typeof error === 'string'
+        ? error
+        : typeof errorObj?.message === 'string'
+          ? errorObj.message
+          : 'Inconveniente inesperado';
+
+  const texto = crudo.toLowerCase();
+  const esMensajeHumano = !esTextoTecnico(crudo) && crudo.trim().length > 5;
+
+  // 1. Tabla de códigos de dominio prioritarios (SIN_VIGENCIA, VIGENCIAS_EMPATADAS, etc.)
   if (codigoDominio) {
     const codUpper = codigoDominio.toUpperCase();
+    const mapeoDominio = TABLA_ERRORES_DOMINIO[codUpper];
+    if (mapeoDominio) {
+      const mensajeFinal = esMensajeHumano ? crudo : mapeoDominio.quePaso;
+      return {
+        ...mapeoDominio,
+        quePaso: mensajeFinal,
+        mensajeUsuario: mensajeFinal,
+        codigo: codUpper,
+      };
+    }
 
-    // Sesión o autorización
+    // Sesión o autorización por código o HTTP 401/403
     if (
       codUpper === 'SIN_SESION' ||
       codUpper === 'UNAUTHORIZED' ||
@@ -106,38 +201,46 @@ export function clasificarError(error: unknown): ErrorClasificado {
       statusHttp === 401 ||
       statusHttp === 403
     ) {
+      const msg = esMensajeHumano
+        ? crudo
+        : 'Sesión expirada o configuración requerida. Por favor inicia sesión nuevamente.';
       return {
         categoria: 'SESION',
         titulo: 'Sesión o configuración requerida',
-        quePaso:
-          'Tu sesión no es válida, ha expirado o el espacio de trabajo de la agencia no está configurado.',
+        quePaso: esMensajeHumano
+          ? crudo
+          : 'Tu sesión no es válida, ha expirado o el espacio de trabajo de la agencia no está configurado.',
         queHacer: 'Inicia sesión de nuevo o revisa las credenciales de la agencia.',
-        mensajeUsuario:
-          'Sesión expirada o configuración requerida. Por favor inicia sesión nuevamente.',
+        mensajeUsuario: msg,
         esReintentable: true,
         codigo: codUpper || 'ERROR_AUTORIZACION',
       };
     }
 
-    // No encontrado
+    // No encontrado por código o HTTP 404
     if (
       codUpper.includes('NO_ENCONTRAD') ||
       codUpper === 'NOT_FOUND' ||
       codUpper === 'RECURSO_INEXISTENTE' ||
       statusHttp === 404
     ) {
+      const msg = esMensajeHumano
+        ? crudo
+        : 'El recurso solicitado no fue encontrado o ya no está disponible.';
       return {
         categoria: 'NO_ENCONTRADO',
         titulo: 'Recurso no disponible',
-        quePaso: 'El elemento consultado no existe, fue eliminado o se encuentra archivado.',
+        quePaso: esMensajeHumano
+          ? crudo
+          : 'El elemento consultado no existe, fue eliminado o se encuentra archivado.',
         queHacer: 'Verifica el identificador o regresa al listado principal.',
-        mensajeUsuario: 'El recurso solicitado no fue encontrado o ya no está disponible.',
+        mensajeUsuario: msg,
         esReintentable: false,
         codigo: codUpper || 'ERROR_NO_ENCONTRADO',
       };
     }
 
-    // Red / Conexión
+    // Red / Conexión por código o HTTP 0
     if (
       codUpper === 'ERROR_CONEXION' ||
       codUpper === 'ERROR_RED' ||
@@ -157,45 +260,70 @@ export function clasificarError(error: unknown): ErrorClasificado {
       };
     }
 
-    // Validación
+    // Conflicto de versión o regla de negocio (HTTP 409)
+    if (statusHttp === 409 || codUpper.includes('CONFLICTO')) {
+      const msg = esMensajeHumano
+        ? crudo
+        : 'La operación presenta un conflicto con el estado actual del registro.';
+      return {
+        categoria: 'VALIDACION',
+        titulo: 'Conflicto en la operación',
+        quePaso: msg,
+        queHacer: 'Recarga los datos para verificar el estado más reciente de la operación.',
+        mensajeUsuario: msg,
+        esReintentable: false,
+        codigo: codUpper || 'ERROR_CONFLICTO_409',
+      };
+    }
+
+    // Validación general (HTTP 400 o código de validación)
     if (
       codUpper.includes('VALIDACION') ||
-      codUpper === 'VENTANA_CERRADA' ||
       codUpper === 'VALOR_INVALIDO' ||
       codUpper === 'SOLICITUD_INVALIDA' ||
-      statusHttp === 400 ||
-      statusHttp === 409
+      statusHttp === 400
     ) {
+      const msg = esMensajeHumano
+        ? crudo
+        : 'Los datos suministrados no son válidos o entraron en conflicto.';
       return {
         categoria: 'VALIDACION',
         titulo: 'Datos no válidos o conflicto comercial',
-        quePaso: 'La solicitud no cumple con los contratos o reglas comerciales requeridas.',
+        quePaso: esMensajeHumano
+          ? crudo
+          : 'La solicitud no cumple con los contratos o reglas comerciales requeridas.',
         queHacer:
           'Revisa los campos del formulario y verifica que los datos cumplan las condiciones.',
-        mensajeUsuario: 'Los datos suministrados no son válidos o entraron en conflicto.',
+        mensajeUsuario: msg,
         esReintentable: false,
         codigo: codUpper || 'ERROR_VALIDACION',
       };
     }
   }
 
-  const crudo =
-    error instanceof Error
-      ? error.message
-      : typeof error === 'string'
-        ? error
-        : 'Inconveniente inesperado';
+  // Si el objeto de error tiene status 409 aunque no tenga code
+  if (statusHttp === 409) {
+    const msg = esMensajeHumano
+      ? crudo
+      : 'La operación presenta un conflicto con el estado actual del registro.';
+    return {
+      categoria: 'VALIDACION',
+      titulo: 'Conflicto en la operación',
+      quePaso: msg,
+      queHacer: 'Recarga los datos para verificar el estado más reciente de la operación.',
+      mensajeUsuario: msg,
+      esReintentable: false,
+      codigo: 'ERROR_CONFLICTO_409',
+    };
+  }
 
-  const texto = crudo.toLowerCase();
-
-  // 1. Errores de Red
+  // 2. Errores de Red (prioridad sobre texto libre)
   if (
     texto.includes('failed to fetch') ||
-    texto.includes('network') ||
     texto.includes('econnrefused') ||
     texto.includes('offline') ||
     texto.includes('timeout') ||
-    texto.includes('abort')
+    texto.includes('network')
   ) {
     return {
       categoria: 'RED',
@@ -209,7 +337,7 @@ export function clasificarError(error: unknown): ErrorClasificado {
     };
   }
 
-  // 2. Errores de Sesión o Tenant
+  // 3. Errores de Sesión o Tenant
   if (
     texto.includes('unauthorized') ||
     texto.includes('401') ||
@@ -233,7 +361,38 @@ export function clasificarError(error: unknown): ErrorClasificado {
     };
   }
 
-  // 3. No encontrado (404)
+  // 4. Errores explícitos de validación (400, zod, formulario)
+  if (texto.includes('400') || texto.includes('validation') || texto.includes('validación')) {
+    return {
+      categoria: 'VALIDACION',
+      titulo: 'Datos inconsistentes o inválidos',
+      quePaso:
+        'Los datos enviados no cumplen con las reglas comerciales requeridas para la solicitud.',
+      queHacer: 'Revisa los campos del formulario, corrige la información y vuelve a intentar.',
+      mensajeUsuario:
+        'Los datos suministrados no son válidos o presentan un conflicto. Revisa los campos e intenta nuevamente.',
+      esReintentable: false,
+      codigo: 'ERROR_VALIDACION',
+    };
+  }
+
+  // 5. Conflicto de versión / 409 en mensaje
+  if (texto.includes('409') || texto.includes('conflicto')) {
+    const msg = esMensajeHumano
+      ? crudo
+      : 'La operación presenta un conflicto con el estado actual del registro.';
+    return {
+      categoria: 'VALIDACION',
+      titulo: 'Conflicto en la operación',
+      quePaso: msg,
+      queHacer: 'Recarga los datos para verificar el estado más reciente de la operación.',
+      mensajeUsuario: msg,
+      esReintentable: false,
+      codigo: 'ERROR_CONFLICTO_409',
+    };
+  }
+
+  // 6. No encontrado (404)
   if (
     texto.includes('404') ||
     texto.includes('not found') ||
@@ -252,31 +411,8 @@ export function clasificarError(error: unknown): ErrorClasificado {
     };
   }
 
-  // 4. Validación o Datos Incorrectos (400 / 409 / Zod)
-  if (
-    texto.includes('400') ||
-    texto.includes('409') ||
-    texto.includes('validation') ||
-    texto.includes('invalido') ||
-    texto.includes('inválido') ||
-    texto.includes('conflicto') ||
-    texto.includes('vigencias_empatadas')
-  ) {
-    return {
-      categoria: 'VALIDACION',
-      titulo: 'Datos inconsistentes o inválidos',
-      quePaso:
-        'Los datos enviados no cumplen con las reglas comerciales requeridas para la solicitud.',
-      queHacer: 'Revisa los campos del formulario, corrige la información y vuelve a intentar.',
-      mensajeUsuario:
-        'Los datos suministrados no son válidos o presentan un conflicto. Revisa los campos e intenta nuevamente.',
-      esReintentable: false,
-      codigo: 'ERROR_VALIDACION',
-    };
-  }
-
-  // 5. Errores de dominio ya redactados para humanos vs errores técnicos (500)
-  if (!esTextoTecnico(crudo) && crudo.length > 10 && crudo.length < 200) {
+  // 7. Errores de dominio ya redactados para humanos vs errores técnicos (500)
+  if (!esTextoTecnico(crudo) && crudo.length > 10 && crudo.length < 250) {
     return {
       categoria: 'DESCONOCIDO',
       titulo: 'Inconveniente comercial',
@@ -302,10 +438,6 @@ export function clasificarError(error: unknown): ErrorClasificado {
   };
 }
 
-/**
- * Devuelve un texto limpio para avisos breves e inline en la interfaz,
- * nunca un mensaje técnico crudo.
- */
 export function formatearErrorAmigable(error: unknown, fallback?: string): string {
   const clasificado = clasificarError(error);
   if (

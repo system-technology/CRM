@@ -5,12 +5,23 @@ import { Calculator, Percent, TrendingUp, Lock, Sparkles, Users2, Check } from '
 import type { PoliticaDePrecio, OrigenDeLaVenta } from '@viajapro/contracts';
 import { calcularEjemploVivo, formatearPesosCop } from '../../lib/politica-precio-logica';
 import { DistintivoDatosDemo } from '../comun/distintivo-datos-demo';
+import { usePermisos } from '../../lib/permisos';
+import { MOCK_SESION_DUENO } from '../../lib/auth-api';
 
 interface BloquePoliticaPrecioProps {
   politicaInicial?: Partial<PoliticaDePrecio>;
+  puedeVerNetoYMargen?: boolean;
 }
 
-export function BloquePoliticaPrecio({ politicaInicial }: BloquePoliticaPrecioProps) {
+export function BloquePoliticaPrecio({
+  politicaInicial,
+  puedeVerNetoYMargen: puedeVerNetoProp,
+}: BloquePoliticaPrecioProps) {
+  const { puedeVerNetoYMargen: puedeVerNetoHook } = usePermisos(
+    puedeVerNetoProp !== undefined ? (puedeVerNetoProp ? MOCK_SESION_DUENO : null) : undefined,
+  );
+  const tienePermiso = puedeVerNetoProp !== undefined ? puedeVerNetoProp : puedeVerNetoHook;
+
   const [politica, setPolitica] = useState<Omit<PoliticaDePrecio, 'actualizadaEn'>>({
     porcentaje: politicaInicial?.porcentaje ?? 20,
     base: politicaInicial?.base ?? 'SOBRE_EL_NETO',
@@ -23,6 +34,25 @@ export function BloquePoliticaPrecio({ politicaInicial }: BloquePoliticaPrecioPr
 
   // Cálculo vivo garantizado por @viajapro/domain (R3 + R8)
   const ejemplo = calcularEjemploVivo(netoPrueba, politica);
+  if (!tienePermiso) {
+    return (
+      <div
+        data-testid="bloque-politica-precio-restringido"
+        className="flex flex-col items-center justify-center rounded-xl border border-neutral-200 bg-white p-8 text-center shadow-xs dark:border-neutral-800 dark:bg-neutral-900"
+      >
+        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-neutral-100 text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400">
+          <Lock className="h-6 w-6" />
+        </div>
+        <h3 className="mt-4 text-base font-bold text-neutral-900 dark:text-white">
+          Acceso restringido
+        </h3>
+        <p className="mt-1.5 max-w-md text-xs text-neutral-500 dark:text-neutral-400">
+          No tienes permisos para ver o modificar la política de precios ni los márgenes comerciales
+          de la agencia.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
