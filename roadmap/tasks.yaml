@@ -653,3 +653,185 @@ tasks:
     created_at: 2026-10-26T21:39:01.014Z
     blocked_reason: Espera el ADR-0017 aceptado y sus endpoints en la API (carril backend); Antigravity pide lo
       que falte en traspaso/ENTREGA.md
+  - id: T-032
+    title: "Sistema visual de turismo: paleta caribeña, degradados, iconografía por módulo y componentes base"
+    type: feature
+    phase: 1
+    priority: P0
+    effort: M
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Los tokens de color, degradado, sombra y radio salen de un único sitio (globals.css y la configuración
+        de Tailwind) y siguen la sección «Identidad visual» de .agent/skills/ux-crm-turismo/SKILL.md; no hay
+        colores sueltos en los componentes
+      - Cada módulo (bandeja, pipeline, cotizaciones, catálogo, contactos, viajes, reportes, configuración)
+        tiene su icono y su color de acento coherentes en la barra lateral y en su cabecera
+      - Existen componentes base reutilizables con la nueva identidad (botón primario con degradado, tarjeta
+        con elevación al pasar el cursor, chip de tipo de producto, insignia de estado)
+      - Se mantiene el contraste AA y la pantalla sigue siendo limpia y ordenada; pnpm compuertas en verde y
+        capturas a 375 y 1280 px en traspaso/ENTREGA.md con el id de la pantalla de Stitch usada
+    files:
+      - apps/web/src/app/globals.css
+      - apps/web/src/components/comun/
+      - apps/web/src/app/layout.tsx
+    source: propietario:2026-10-26 (identidad visual)
+    created_at: 2026-10-26T23:32:24.203Z
+  - id: T-033
+    title: "Login con identidad de viaje: pantalla dividida con héroe oceánico animado y formulario con
+      microinteracciones"
+    type: feature
+    phase: 1
+    priority: P0
+    effort: M
+    status: backlog
+    depends_on:
+      - T-032
+    acceptance:
+      - "apps/web/src/app/ingresar muestra una composición dividida: a un lado un héroe con degradado de mar y
+        atardecer, olas y elementos de viaje animados con CSS (por ejemplo un avión o una lancha que se
+        desplazan) y la promesa «Convierte conversaciones en viajes reales»; al otro, el formulario"
+      - El formulario entra con animación escalonada, los campos tienen estados de foco y error animados y el
+        botón muestra carga mientras ingresa
+      - Todas las animaciones respetan prefers-reduced-motion, duran menos de 400 ms por transición y no usan
+        dependencias nuevas salvo que se justifique en ENTREGA.md
+      - Sin valores de relleno reales en los campos (ni correo ni contraseña); usable a 375 px; tests del
+        formulario siguen en verde
+    files:
+      - apps/web/src/app/ingresar/page.tsx
+      - apps/web/src/components/auth/formulario-ingreso.tsx
+      - apps/web/src/app/globals.css
+    source: propietario:2026-10-26 (identidad visual)
+    created_at: 2026-10-26T23:32:24.204Z
+  - id: T-034
+    title: "Navegación más rica: barra lateral con iconos de color y etiquetas, migas, paleta de comandos y
+      accesos rápidos"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on:
+      - T-032
+    acceptance:
+      - La barra lateral muestra icono de color y etiqueta por módulo, indica la sección activa con animación
+        y se puede expandir o contraer; en móvil pasa a una barra inferior
+      - Hay migas de pan en las pantallas de detalle y una paleta de comandos con Ctrl+K para saltar a
+        módulos, buscar contactos, cotizaciones y productos
+      - Cada pantalla ofrece una acción principal visible y accesos rápidos a la siguiente acción lógica (por
+        ejemplo, de una conversación a cotizar)
+      - Navegable solo con teclado, con foco visible; tests de la paleta de comandos y capturas a 375 y 1280
+        px en ENTREGA.md
+    files:
+      - apps/web/src/components/bandeja/barra-modulos.tsx
+      - apps/web/src/components/comun/
+      - apps/web/src/app/layout.tsx
+    source: propietario:2026-10-26 (identidad visual)
+    created_at: 2026-10-26T23:32:24.205Z
+  - id: T-035
+    title: "Animaciones y transiciones: entrada escalonada, hover, esqueletos con brillo y transiciones de página"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on:
+      - T-032
+    acceptance:
+      - Las listas y cuadrículas (bandeja, pipeline, catálogo, contactos) entran con animación escalonada
+        corta; las tarjetas se elevan al pasar el cursor; los esqueletos de carga tienen efecto de brillo
+      - Los cambios de pantalla y la apertura de paneles y modales tienen transición suave de menos de 300 ms
+      - "Todo respeta prefers-reduced-motion (sin movimiento cuando el usuario lo pide) y no degrada el
+        rendimiento: sin saltos de diseño al cargar"
+      - Utilidades de animación reutilizables en globals.css o un módulo de comun; test que verifica el
+        comportamiento con movimiento reducido
+    files:
+      - apps/web/src/app/globals.css
+      - apps/web/src/components/comun/
+    source: propietario:2026-10-26 (identidad visual)
+    created_at: 2026-10-26T23:32:24.205Z
+  - id: T-036
+    title: "Tarjetas de producto con identidad por tipo de excursión: color, icono, degradado, promo y cupos"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on:
+      - T-032
+    acceptance:
+      - Cada tipo de producto (isla o beach club, reserva natural, city tour, excursión de ciudad, paquete con
+        hotel) tiene su color, icono y degradado cuando no hay foto
+      - La tarjeta muestra «Desde $X por persona», promo vigente con insignia, horarios, chips de lo que
+        incluye y cupos, con la nueva identidad
+      - "No hay datos de producto escritos en el código: salen de la API; tests de la lógica de tipos"
+    files:
+      - apps/web/src/components/catalogo/
+      - apps/web/src/app/catalogo/page.tsx
+      - apps/web/src/lib/catalogo-logica.ts
+    source: propietario:2026-10-26 (identidad visual)
+    created_at: 2026-10-26T23:32:24.205Z
+  - id: T-037
+    title: Inicio con saludo, acciones rápidas y tarjetas de colores sobre el trabajo del día
+    type: feature
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    depends_on:
+      - T-032
+    acceptance:
+      - apps/web/src/app/page.tsx da la bienvenida con el nombre del asesor y la hora del día y muestra
+        tarjetas de colores con conversaciones pendientes, oportunidades por etapa y cotizaciones por vencer
+      - Hay accesos rápidos a crear cotización, abrir la bandeja y ver el catálogo; las tarjetas entran con
+        animación y enlazan a su pantalla filtrada
+      - Estados cargando, error y vacío; usable a 375 px; datos reales de la API
+    files:
+      - apps/web/src/app/page.tsx
+      - apps/web/src/lib/crm-api.ts
+    source: propietario:2026-10-26 (identidad visual)
+    created_at: 2026-10-26T23:32:24.205Z
+  - id: T-038
+    title: "Marca de la agencia en la API: nombre comercial, logo y color de acento por agencia"
+    type: feature
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    depends_on: []
+    acceptance:
+      - "GET y PUT bajo /api/v1/agencia/marca devuelven y guardan nombre comercial, logo (URL o archivo
+        validado: tipo y tamaño máximos) y color de acento, siempre del tenant de la sesión y con el permiso
+        de administrar la agencia (R1)"
+      - El color se valida (formato y contraste suficiente sobre blanco) y el logo se sirve sin ejecutar
+        contenido activo (sin SVG con scripts)
+      - Un test e2e comprueba que una agencia no lee ni cambia la marca de otra
+      - "Si guardar la marca exige columnas o tablas nuevas, NO se escribe migración: se reporta la lista
+        exacta al agente datos; pnpm compuertas en verde"
+    files:
+      - apps/api/src/modules/identity/
+      - packages/contracts/src/
+    source: propietario:2026-10-26 (marca por agencia)
+    created_at: 2026-10-26T23:39:32.870Z
+  - id: T-039
+    title: "Aplicar la marca de cada agencia: logo y color de acento en la cabecera, el login y los documentos"
+    type: feature
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    depends_on:
+      - T-038
+    acceptance:
+      - La cabecera y la barra lateral muestran el logo y el nombre comercial de la agencia de la sesión; el
+        color de acento se aplica mediante variables CSS sin romper el contraste AA
+      - Sin marca configurada, se ve la identidad de ViajaPro; con marca, la de la agencia; un test cubre
+        ambos casos
+      - Configuración permite subir el logo y elegir el color con vista previa en vivo
+      - No se copia ningún activo gráfico de terceros al repositorio; usable a 375 px
+    files:
+      - apps/web/src/app/configuracion/page.tsx
+      - apps/web/src/app/layout.tsx
+      - apps/web/src/components/comun/
+    source: propietario:2026-10-26 (marca por agencia)
+    created_at: 2026-10-26T23:39:32.871Z
