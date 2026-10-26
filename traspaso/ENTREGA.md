@@ -1,3 +1,44 @@
+# Entrega — T-019: Estado «sin catálogo todavía» que guía a cargarlo en catálogo y cotizador — 2026-10-26
+
+## Identificación
+- **Tarea:** `T-019` (roadmap/tasks.yaml)
+- **Rama:** `b/T-019-estado-sin-catalogo` (creada desde `origin/main` en commit `f51880a`)
+- **Carril:** Frontend (`apps/web`, `packages/ui`, `packages/sdk`)
+
+## Qué se construyó
+
+1. **Componente Reutilizable `AvisoSinCatalogo` (`apps/web/src/components/comun/aviso-sin-catalogo.tsx`):**
+   - Estado vacío sobrio y de alta densidad para agencias de turismo sin productos ni salidas registradas.
+   - Dos acciones principales obligatorias:
+     - **«Importar catálogo»** (`data-testid="accion-importar-catalogo"`): Guía al asesor informando sobre la carga masiva desde Excel (.xlsx) o CSV.
+     - **«Crear excursión»** (`data-testid="accion-crear-excursion"`): Guía al asesor informando sobre el alta manual de productos y tarifas.
+   - Avisos informativos contextuales accesibles (`role="status"`, `data-testid="aviso-accion-catalogo"`) cuando las acciones están en preparación para el siguiente bloque.
+   - Botón opcional **«Ver excursiones de demostración»** (`data-testid="accion-ver-demo"`) para previsualizar el CRM con datos de muestra en un solo clic.
+
+2. **Integración en Catálogo (`apps/web/src/app/catalogo/page.tsx`):**
+   - Cuando el tenant conectado a la API no tiene salidas registradas (`salidasReales.length === 0`), renderiza `AvisoSinCatalogo` (`data-testid="catalogo-estado-vacio"`).
+   - Diferenciación clara entre un tenant sin inventario cargado y un filtro de búsqueda con 0 coincidencias.
+
+3. **Integración en Cotizador Comercial (`apps/web/src/app/cotizador/page.tsx`):**
+   - Cuando la agencia no tiene paquetes ni salidas disponibles (`paquetesDisponibles.length === 0`), renderiza `AvisoSinCatalogo` unificado (`data-testid="cotizador-estado-vacio"`).
+   - Conserva la compatibilidad con el flujo de alternar modo demostración y previsualización de excursiones.
+
+4. **Pruebas y Cobertura de Componentes:**
+   - `apps/web/src/components/comun/aviso-sin-catalogo.spec.tsx`: 5/5 pruebas unitarias cubriendo renderizado, textos de ambas pantallas, clics en acciones, avisos y enlaces.
+   - `apps/web/src/app/catalogo/page.spec.tsx`: 4/4 pruebas verificando el estado vacío ante catálogo sin productos, las dos acciones obligatorias, activación de demo y renderizado normal cuando hay salidas.
+   - `apps/web/src/app/cotizador/page.spec.tsx`: 5/5 pruebas verificando el estado vacío ante agencia sin productos, acciones obligatorias, y el flujo completo de cotización.
+
+## Verificación de Compuertas
+
+- **Pruebas unitarias y componentes (@viajapro/web):** 44 archivos de prueba, 364 pruebas en verde en 8.58s.
+- **Typecheck (@viajapro/web):** 0 errores (`tsc --noEmit`).
+- **Linter (@viajapro/web):** 0 advertencias, 0 errores (`eslint src`).
+- **Prettier:** 100% formateado según reglas de estilo.
+- **Compilación de producción (Next.js):** 16/16 páginas estáticas y dinámicas compiladas exitosamente.
+- **Fronteras y ganchos de seguridad (`pnpm test:hooks`):** 59/59 casos de política de rama, 19/19 detección de secretos, 6/6 fronteras de módulos.
+
+---
+
 # Entrega — Bloque 2: Cotizador y Catálogo para Excursiones de un Día y Estados de UI — 2026-10-26
 
 ## Identificación
