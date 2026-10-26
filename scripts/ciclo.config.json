@@ -26,39 +26,15 @@
   "carriles": {
     "backend": {
       "prefijo": "a",
-      "modeloPlan": [
-        "nvidia/nvidia/nemotron-3-ultra-550b-a55b",
-        "opencode-go/kimi-k3.1-pro",
-        "opencode-go/qwen3.8-max"
-      ],
-      "modeloImplementa": [
-        "nvidia/nvidia/nemotron-3-ultra-550b-a55b",
-        "opencode-go/kimi-k3.1-pro",
-        "opencode-go/qwen3.8-max"
-      ],
-      "modeloRevisa": [
-        "opencode-go/glm-5.3",
-        "nvidia/nvidia/nemotron-3.5-super-vl-120b-a12b",
-        "opencode-go/minimax-m3"
-      ]
+      "modeloPlan": ["nvidia/nvidia/nemotron-3-ultra-550b-a55b", "opencode-go/qwen3.8-max"],
+      "modeloImplementa": ["nvidia/nvidia/nemotron-3-ultra-550b-a55b", "opencode-go/kimi-k3.1-pro"],
+      "modeloRevisa": ["nvidia/nvidia/nemotron-3.5-super-vl-120b-a12b", "opencode-go/glm-5.3"]
     },
     "frontend": {
       "prefijo": "b",
-      "modeloPlan": [
-        "nvidia/nvidia/nemotron-3-ultra-550b-a55b",
-        "opencode-go/kimi-k3.1-pro",
-        "opencode-go/qwen3.8-max"
-      ],
-      "modeloImplementa": [
-        "nvidia/nvidia/nemotron-3-ultra-550b-a55b",
-        "opencode-go/kimi-k3.1-pro",
-        "opencode-go/qwen3.8-max"
-      ],
-      "modeloRevisa": [
-        "opencode-go/glm-5.3",
-        "nvidia/nvidia/nemotron-3.5-super-vl-120b-a12b",
-        "opencode-go/minimax-m3"
-      ]
+      "modeloPlan": ["nvidia/nvidia/nemotron-3-ultra-550b-a55b", "opencode-go/qwen3.8-max"],
+      "modeloImplementa": ["nvidia/nvidia/nemotron-3-ultra-550b-a55b", "opencode-go/kimi-k3.1-pro"],
+      "modeloRevisa": ["nvidia/nvidia/nemotron-3.5-super-vl-120b-a12b", "opencode-go/glm-5.3"]
     }
   },
   "noPublicables": ["^\\.github/workflows/"],
@@ -81,7 +57,7 @@
     "minutosFase": 25,
     "minutosFaseRespaldo": 15
   },
-  "_modelosNota": "Cada fase prueba los modelos en orden y pasa al siguiente si el anterior no produce lo esperado (tiempo agotado, 429...). NVIDIA primero (créditos propios) y OpenCode Go de respaldo. Todos ids de `opencode models`.",
+  "_modelosNota": "OpenCode Go agotó su cuota el 2026-10-26 («Go usage limit exceeded»): NVIDIA va primero en todas las fases y Go queda de respaldo. Planificador y revisor siempre distintos.",
   "minutosFaseRespaldo": 15,
   "maxPrsProtegidos": 3,
   "maxIntentosPorTarea": 2,

@@ -34,8 +34,9 @@ tasks:
       - Un test en apps/api/src/shared/red/ cubre origen permitido, origen ajeno y ausencia de origen
       - pnpm compuertas --rapido verde
     files:
-      - apps/api/src/shared/red/origen.ts
+      - apps/api/src/shared/red/
       - apps/api/src/main.ts
+      - apps/api/src/app.module.ts
   - id: T-002
     title: Límite de tasa en la API fuera del flujo de autenticación
     type: security
@@ -81,7 +82,7 @@ tasks:
     phase: 1
     priority: P2
     effort: S
-    status: backlog
+    status: dropped
     acceptance:
       - apps/web/src/app/pipeline/page.tsx muestra un esqueleto mientras carga, un mensaje con reintento si la
         API falla y un estado vacío con texto útil
@@ -89,19 +90,23 @@ tasks:
       - pnpm compuertas --rapido verde
     files:
       - apps/web/src/app/pipeline/page.tsx
+    dropped_reason: La pantalla ya tiene esqueleto, error accionable y estado vacio
+      (EsqueletoKanban/AvisoErrorAccionable); verificado contra el codigo el 2026-10-26.
   - id: T-005
     title: Estados de carga, error y vacío en la pantalla de contactos
     type: feature
     phase: 1
     priority: P2
     effort: S
-    status: backlog
+    status: dropped
     acceptance:
       - apps/web/src/app/contactos/page.tsx muestra esqueleto, error con reintento y vacío con texto útil
       - Un test de componente cubre los tres estados
       - pnpm compuertas --rapido verde
     files:
       - apps/web/src/app/contactos/page.tsx
+    dropped_reason: La pantalla ya tiene esqueleto, error accionable y estado vacio
+      (EsqueletoKanban/AvisoErrorAccionable); verificado contra el codigo el 2026-10-26.
   - id: T-006
     title: Escribir en registros_auditoria las lecturas de datos sensibles de viajeros (R10)
     type: security
@@ -134,6 +139,8 @@ tasks:
         (apps/api/src/salud.controller.spec.ts)
       - "pnpm compuertas --rapido verde; referencia: git show origin/fix/quoting-condiciones-y-salud, que
         quedo atras de main y no se puede fusionar tal cual"
+      - "SOLO se modifica apps/api: no se toca apps/web (el cliente es la tarea T-008), docs/ ni ESTADO.md; no
+        se copia la bitacora de la rama antigua"
     files:
       - apps/api/src/salud.controller.ts
       - apps/api/src/modules/quoting/domain/seleccion-de-tarifas.ts
