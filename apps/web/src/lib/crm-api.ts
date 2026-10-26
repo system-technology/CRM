@@ -1,3 +1,8 @@
+import { esModoDemo } from './modo-demo';
+import { cabecerasDeTenantDev } from './cabeceras-tenant';
+import { usaAuthReal, haySesionActiva } from './auth-api';
+import { obtenerBaseApi } from './api-base';
+export { obtenerBaseApi };
 /**
  * Cliente de API para el módulo CRM (Pipeline, Oportunidades, Contactos y Ficha Lateral).
  *
@@ -20,16 +25,28 @@ import { moverOportunidadEnTablero } from './pipeline-logica';
 import { obtenerMockFichaDeContacto } from './mock-crm';
 import { obtenerMockPaginaContactos } from './mock-contactos';
 
-export function obtenerBaseApi(): string {
-  return process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3333';
-}
+// Re-exportado de api-base (ADR-0011 §2)
 
 export function obtenerTenantDemo(): string {
   return process.env['NEXT_PUBLIC_DEV_TENANT_ID'] ?? '';
 }
 
 export function estaUsandoApiReal(): boolean {
-  return process.env['NEXT_PUBLIC_USE_REAL_CRM'] === 'true';
+  if (esModoDemo()) {
+    return false;
+  }
+  if (process.env['NEXT_PUBLIC_USE_REAL_CRM'] === 'false') {
+    return false;
+  }
+  if (process.env['NEXT_PUBLIC_USE_REAL_CRM'] === 'true') {
+    return true;
+  }
+  // En pruebas unitarias Vitest sin servidor ni variable explícita, usar mock
+  if (process.env['VITEST'] === 'true' && !haySesionActiva()) {
+    return false;
+  }
+  // En ejecución real (browser o con sesión): API REAL POR DEFECTO
+  return true;
 }
 
 export class CrmApiError extends Error {
@@ -51,10 +68,9 @@ async function pedirCrm(
   ruta: string,
   opciones: RequestInit = {},
 ): Promise<{ ok: boolean; status: number; data: unknown }> {
-  const tenant = obtenerTenantDemo().trim();
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    ...(tenant ? { 'x-dev-tenant-id': tenant } : {}),
+    ...cabecerasDeTenantDev(),
     ...(opciones.headers as Record<string, string> | undefined),
   };
 
@@ -62,6 +78,7 @@ async function pedirCrm(
   try {
     res = await fetch(`${obtenerBaseApi()}${ruta}`, {
       ...opciones,
+      credentials: 'include',
       headers,
       cache: 'no-store',
     });
@@ -99,13 +116,15 @@ async function pedirCrm(
  */
 export async function obtenerTableroPipeline(): Promise<TableroPipeline> {
   if (estaUsandoApiReal()) {
-    const tenant = obtenerTenantDemo().trim();
-    if (!tenant) {
-      throw new CrmApiError(
-        'CONFIG_TENANT_FALTANTE',
-        'El interruptor NEXT_PUBLIC_USE_REAL_CRM está activo, pero falta NEXT_PUBLIC_DEV_TENANT_ID en el archivo .env. Ejecuta "pnpm db:seed" para generar la agencia demo y añade su ID a .env.',
-        401,
-      );
+    if (!usaAuthReal()) {
+      const tenant = obtenerTenantDemo().trim();
+      if (!tenant) {
+        throw new CrmApiError(
+          'CONFIG_TENANT_FALTANTE',
+          'El interruptor NEXT_PUBLIC_USE_REAL_CRM está activo, pero falta NEXT_PUBLIC_DEV_TENANT_ID en el archivo .env. Ejecuta "pnpm db:seed" para generar la agencia demo y añade su ID a .env.',
+          401,
+        );
+      }
     }
 
     const { data } = await pedirCrm('/api/v1/crm/tablero');

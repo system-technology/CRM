@@ -42,6 +42,13 @@ export const salaDeUsuario = (usuarioId: string): string => `usuario:${usuarioId
 export const TIPO_MENSAJE_SALIENTE_CREADO = 'inbox.mensaje_saliente_creado';
 
 /**
+ * `inbox.mensaje_actualizado`: cambió el estado de entrega de un mensaje saliente (lo aceptó Meta,
+ * llegó, se leyó o falló). Lo escribe el trabajador en la misma transacción que el cambio; la API
+ * lo traduce a `MENSAJE_ACTUALIZADO` para el socket. Carga: `{ conversacionId }`.
+ */
+export const TIPO_MENSAJE_ACTUALIZADO = 'inbox.mensaje_actualizado';
+
+/**
  * `inbox.conversacion_actualizada`: cambió la asignación, el estado o el contador de sin leer.
  * La carga lleva solo el id de quien la tenía asignada ANTES (nulo = sin asignar): con él se
  * calcula quién dejó de verla. Ausente = nadie perdió visibilidad.

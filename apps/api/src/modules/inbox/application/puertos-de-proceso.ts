@@ -2,7 +2,7 @@
  * Los puertos del trabajador. Clases abstractas por el mismo motivo que `PuertoRecepciones`:
  * Nest necesita un símbolo en ejecución para inyectar.
  */
-import type { MensajeEntrante } from '../domain/contenido-del-cambio.js';
+import type { CambioDeEstado, MensajeEntrante } from '../domain/contenido-del-cambio.js';
 
 export type EstadoDelChange = 'PENDIENTE' | 'PROCESADO' | 'CLASIFICADO';
 export type EstadoDeEnrutamiento = 'ACTIVO' | 'SUSPENDIDO' | 'REVOCADO';
@@ -38,6 +38,12 @@ export abstract class PuertoStaging {
 
 export type ResultadoDeBandeja = 'CREADO' | 'DUPLICADO' | 'CANAL_REVOCADO';
 
+/**
+ * Qué pasó con un webhook de estado. `DESCONOCIDO`: ningún mensaje saliente de ESE tenant tiene ese
+ * `wamid` ni esa referencia (un mensaje enviado fuera de ViajaPro, o uno ya borrado).
+ */
+export type ResultadoDeEstado = 'APLICADO' | 'SIN_CAMBIO' | 'DESCONOCIDO';
+
 /** La escritura de negocio, siempre bajo el tenant resuelto y por tanto bajo RLS. */
 export abstract class PuertoBandeja {
   abstract registrarEntrante(
@@ -45,6 +51,8 @@ export abstract class PuertoBandeja {
     canalId: string,
     mensaje: MensajeEntrante,
   ): Promise<ResultadoDeBandeja>;
+  /** Avanza el estado de un mensaje saliente según la máquina de `estado-de-entrega.ts`. */
+  abstract aplicarEstado(tenantId: string, cambio: CambioDeEstado): Promise<ResultadoDeEstado>;
 }
 
 /** La cola de trabajos. Transporta únicamente identificadores: el contenido nunca sale de la base. */

@@ -193,6 +193,34 @@ describe('Los acuses de entrega', () => {
     expect(r.estados[0]?.codigoError).toBe(131047);
     expect(r.estados[0]?.mensajeError).toBe('Re-engagement message');
   });
+
+  it('`played` (nota de voz reproducida, desde 2025-11-03) es REPRODUCIDO', () => {
+    const r = contenidoDelCambio({
+      statuses: [{ id: 'wamid.N', status: 'played', timestamp: '1792000000' }],
+    });
+    expect(r.estados[0]?.estado).toBe('REPRODUCIDO');
+  });
+
+  it('biz_opaque_callback_data vuelve como referencia solo si es un UUID nuestro', () => {
+    const conReferencia = (dato: unknown) =>
+      contenidoDelCambio({
+        statuses: [
+          {
+            id: 'wamid.N',
+            status: 'sent',
+            timestamp: '1792000000',
+            biz_opaque_callback_data: dato,
+          },
+        ],
+      }).estados[0]?.referencia;
+
+    expect(conReferencia('0193A000-0000-7000-8000-0000000000EE')).toBe(
+      '0193a000-0000-7000-8000-0000000000ee',
+    );
+    expect(conReferencia('campaña-de-otro-sistema')).toBeNull();
+    expect(conReferencia(42)).toBeNull();
+    expect(conReferencia(undefined)).toBeNull();
+  });
 });
 
 describe('Un mismo change puede traer las dos cosas', () => {

@@ -140,7 +140,7 @@ tasks:
     phase: 1
     priority: P0
     effort: M
-    status: backlog
+    status: done
     depends_on: []
     acceptance:
       - Una tarifa con condicion de edad o de silla que no se puede evaluar se rechaza con un error de dominio
@@ -162,6 +162,12 @@ tasks:
       - apps/api/src/modules/quoting/quoting.module.ts
     source: orquestador:2026-10-26
     created_at: 2026-10-26T16:08:34.342Z
+    started_at: 2026-10-26T21:29:29.051Z
+    done_at: 2026-10-26T21:29:29.051Z
+    evidence: "Mergeado en main por el PR #21 (rama a/T-007-portar-a-main-el-cambio-de-origin-fix-qu) con el CI en
+      verde: format, analyze, tests y los demás checks obligatorios. Cierre automático
+      (.github/workflows/cerrar-tarea.yml)."
+    commit: a3c9c3f2d23c557795f509575a0770201dc09e18
   - id: T-008
     title: Adaptar el cliente de la web a la retirada de la ruta antigua de cotizacion de paquetes
     type: bug
@@ -308,3 +314,524 @@ tasks:
       - apps/api/src/jobs/
     source: auditoria-auto:2026-10-26
     created_at: 2026-10-26T20:14:47.464Z
+  - id: T-016
+    title: "Modo de datos explícito: API real por defecto y demostración solo si se pide y se ve"
+    type: feature
+    phase: 1
+    priority: P0
+    effort: M
+    status: done
+    depends_on: []
+    acceptance:
+      - Existe un único módulo en apps/web/src/lib/ que decide entre API real y demostración; ninguna pantalla
+        lee process.env de los interruptores por su cuenta
+      - Con sesión iniciada y sin variables de desarrollo, contactos, pipeline, cotizaciones, catálogo y
+        bandeja llaman a la API con el tenant de la sesión
+      - El modo demostración muestra una insignia «Datos de demostración» visible en la cabecera y nunca se
+        activa en silencio
+      - Tests unitarios cubren los tres casos (sesión, sin sesión, demostración explícita); pnpm compuertas en
+        verde
+    files:
+      - apps/web/src/lib/api.ts
+      - apps/web/src/lib/crm-api.ts
+      - apps/web/src/lib/catalogo-api.ts
+      - apps/web/src/lib/cotizaciones-api.ts
+      - apps/web/src/lib/inbox-api.ts
+    source: orquestador:2026-10-26 (cola de Antigravity)
+    created_at: 2026-10-26T21:39:01.013Z
+    started_at: 2026-10-26T22:55:26.072Z
+    done_at: 2026-10-26T22:55:26.072Z
+    evidence: "Mergeado en main por el PR #47 (rama b/T-016-modo-de-datos-explicito) con el CI en verde: format,
+      analyze, tests y los demás checks obligatorios. Cierre automático (.github/workflows/cerrar-tarea.yml)."
+    commit: d3c15ac1655015aef8a306cb4303de8e7f8566be
+  - id: T-017
+    title: "Cotizador de excursiones de un día: precio por persona, promo vigente y cargos en destino aparte"
+    type: feature
+    phase: 1
+    priority: P0
+    effort: M
+    status: done
+    depends_on:
+      - T-016
+    acceptance:
+      - El cotizador permite elegir producto, fecha de salida y pasajeros por tipo (adultos, niños, infantes)
+        y muestra el total y el precio por persona
+      - Una promo vigente muestra el precio de la promo con el de lista tachado y la fecha límite; los cargos
+        en destino (impuesto de muelle) se listan aparte como «No incluido» y no se suman al total
+      - Los importes salen de la API en enteros de la unidad mínima (COP en pesos) y se formatean solo al
+        pintar con el helper es-CO
+      - Estados cargando (esqueleto), error con «Reintentar» y vacío «aún no tienes excursiones»; usable a 375
+        px; tests de lógica en cotizador-logica.spec.ts
+    files:
+      - apps/web/src/app/cotizador/page.tsx
+      - apps/web/src/components/cotizador/
+      - apps/web/src/lib/cotizador-logica.ts
+    source: orquestador:2026-10-26 (cola de Antigravity)
+    created_at: 2026-10-26T21:39:01.014Z
+    started_at: 2026-10-26T23:14:23.582Z
+    done_at: 2026-10-26T23:14:23.582Z
+    evidence: "Mergeado en main por el PR #52 (rama b/T-017-cotizador-excursiones-dia) con el CI en verde: format,
+      analyze, tests y los demás checks obligatorios. Cierre automático (.github/workflows/cerrar-tarea.yml)."
+    commit: 153dc4cd0ae242cfe4cf0b2f3403ad7190b0c456
+  - id: T-018
+    title: "Tarjeta y ficha de excursión en el catálogo: «desde», promo, horarios, qué incluye y cupos por salida"
+    type: feature
+    phase: 1
+    priority: P0
+    effort: M
+    status: backlog
+    depends_on:
+      - T-016
+    acceptance:
+      - Cada producto se muestra con imagen o degradado por tipo, nombre, duración, horario de salida y
+        regreso, «Desde $X por persona», promo y chips de lo que incluye
+      - Las próximas salidas se muestran como chips con cupos («sáb 3 oct · quedan 4») y estados disponible,
+        últimos cupos, agotado; un producto sin precio muestra «Consultar»
+      - "Ningún dato de producto está escrito en el código: todo viene de la API; tests de
+        catalogo-logica.spec.ts"
+      - Se cumple .agent/skills/ux-crm-turismo/SKILL.md y se declara en traspaso/ENTREGA.md el id de la
+        pantalla de Stitch usada
+    files:
+      - apps/web/src/app/catalogo/page.tsx
+      - apps/web/src/components/catalogo/
+      - apps/web/src/lib/catalogo-logica.ts
+    source: orquestador:2026-10-26 (cola de Antigravity)
+    created_at: 2026-10-26T21:39:01.014Z
+  - id: T-019
+    title: Estado «sin catálogo todavía» que guía a cargarlo, en catálogo y cotizador
+    type: feature
+    phase: 1
+    priority: P1
+    effort: S
+    status: backlog
+    depends_on:
+      - T-016
+    acceptance:
+      - "Con un tenant sin productos, catálogo y cotizador muestran un estado vacío con dos acciones:
+        «Importar catálogo» y «Crear excursión» (enlaces a las rutas que existan, o deshabilitados con aviso)"
+      - Un test de componente cubre el estado vacío en ambas pantallas
+      - pnpm compuertas en verde
+    files:
+      - apps/web/src/app/catalogo/page.tsx
+      - apps/web/src/app/cotizador/page.tsx
+      - apps/web/src/components/comun/
+    source: orquestador:2026-10-26 (cola de Antigravity)
+    created_at: 2026-10-26T21:39:01.014Z
+  - id: T-020
+    title: "Inicio con datos reales del asesor: conversaciones pendientes, oportunidades por etapa y cotizaciones
+      por vencer"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on:
+      - T-016
+    acceptance:
+      - "apps/web/src/app/page.tsx deja de ser una maqueta: consume la API real con el tenant de la sesión
+        para las tres tarjetas"
+      - Cada tarjeta enlaza a su pantalla filtrada y tiene estados cargando, error y vacío
+      - Tests de la lógica de agregación; usable a 375 px
+    files:
+      - apps/web/src/app/page.tsx
+      - apps/web/src/lib/crm-api.ts
+    source: orquestador:2026-10-26 (cola de Antigravity)
+    created_at: 2026-10-26T21:39:01.014Z
+  - id: T-021
+    title: "Reportes sin mocks: métricas calculadas desde la API o marcadas como no disponibles"
+    type: feature
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    depends_on:
+      - T-016
+    acceptance:
+      - apps/web/src/app/reportes/page.tsx no importa nada de mock-reportes; lo que la API no ofrece se
+        muestra como «Aún sin datos» en lugar de cifras inventadas
+      - Tests de reportes-logica.spec.ts actualizados
+      - pnpm compuertas en verde
+    files:
+      - apps/web/src/app/reportes/page.tsx
+      - apps/web/src/lib/reportes-logica.ts
+    source: orquestador:2026-10-26 (cola de Antigravity)
+    created_at: 2026-10-26T21:39:01.014Z
+  - id: T-022
+    title: "Auditoría de formatos es-CO: dinero, fechas, teléfonos y cupos con helpers únicos"
+    type: refactor
+    phase: 1
+    priority: P1
+    effort: S
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Existe un módulo de formato en apps/web/src/lib/ y ninguna pantalla formatea dinero o fechas a mano;
+        COP sin decimales con punto de miles, fechas «sáb 3 oct 2026»
+      - Un test recorre los helpers con casos límite (cero, millones, medianoche UTC frente a la zona de la
+        agencia)
+      - pnpm compuertas en verde
+    files:
+      - apps/web/src/lib/
+    source: orquestador:2026-10-26 (cola de Antigravity)
+    created_at: 2026-10-26T21:39:01.014Z
+  - id: T-023
+    title: Revisión a 375 px de bandeja, pipeline, cotizador y catálogo con correcciones
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on:
+      - T-017
+      - T-018
+    acceptance:
+      - Las cuatro pantallas no tienen scroll horizontal a 375 px, con objetivos táctiles de al menos 44 px
+      - Se adjuntan en traspaso/ENTREGA.md las capturas tomadas con el MCP playwright a 375 y 1280 px
+      - Los cambios se limitan a apps/web y pnpm compuertas está en verde
+    files:
+      - apps/web/src/app/bandeja/
+      - apps/web/src/app/pipeline/page.tsx
+      - apps/web/src/app/cotizador/page.tsx
+      - apps/web/src/app/catalogo/page.tsx
+    source: orquestador:2026-10-26 (cola de Antigravity)
+    created_at: 2026-10-26T21:39:01.014Z
+  - id: T-024
+    title: "Accesibilidad de la bandeja y los modales: foco, teclado, etiquetas y contraste"
+    type: feature
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Todos los botones solo-icono tienen aria-label y los modales atrapan y devuelven el foco
+      - La bandeja se recorre completa solo con teclado, con atajos documentados en pantalla
+      - Tests en accesibilidad-logica.spec.ts y foco-modal.spec.tsx
+    files:
+      - apps/web/src/components/bandeja/
+      - apps/web/src/components/comun/
+      - apps/web/src/lib/accesibilidad-logica.ts
+    source: orquestador:2026-10-26 (cola de Antigravity)
+    created_at: 2026-10-26T21:39:01.014Z
+  - id: T-025
+    title: Etapas del pipeline configurables por la agencia (crear, renombrar, ordenar, colorear)
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on:
+      - T-016
+    acceptance:
+      - En Configuración hay un bloque «Etapas del pipeline» que lista las etapas de la agencia desde la API y
+        permite reordenarlas y renombrarlas
+      - El pipeline pinta las etapas que devuelve la API, no una lista fija en el código
+      - Si la API no expone las etapas, se registra la petición en traspaso/ENTREGA.md y la tarea queda
+        parcial con un test del contrato esperado
+    files:
+      - apps/web/src/app/configuracion/page.tsx
+      - apps/web/src/components/configuracion/
+      - apps/web/src/app/pipeline/page.tsx
+    source: orquestador:2026-10-26 (cola de Antigravity)
+    created_at: 2026-10-26T21:39:01.014Z
+  - id: T-026
+    title: Campos personalizados por agencia en la ficha del contacto y en las oportunidades
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on:
+      - T-016
+    acceptance:
+      - Configuración permite definir campos (texto, número, fecha, lista) para contactos y oportunidades, y
+        la ficha los muestra y edita
+      - Los tipos de campo salen del contrato de packages/contracts, sin redefinirlos
+      - Si la API aún no lo soporta, se pide en traspaso/ENTREGA.md y se deja el componente con pruebas
+    files:
+      - apps/web/src/app/configuracion/page.tsx
+      - apps/web/src/components/contactos/
+      - apps/web/src/components/configuracion/
+    source: orquestador:2026-10-26 (cola de Antigravity)
+    created_at: 2026-10-26T21:39:01.014Z
+  - id: T-027
+    title: "Equipo e invitaciones: invitar asesores, asignar rol y ver quién tiene acceso"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on:
+      - T-016
+    acceptance:
+      - Configuración › Equipo lista usuarios y roles de la agencia desde la API y permite invitar por correo
+        con un rol
+      - Los errores de la API (código ya usado, límite de envíos) se muestran en español con qué hacer
+      - Tests de componente; usable a 375 px
+    files:
+      - apps/web/src/app/configuracion/page.tsx
+      - apps/web/src/components/configuracion/
+    source: orquestador:2026-10-26 (cola de Antigravity)
+    created_at: 2026-10-26T21:39:01.014Z
+  - id: T-028
+    title: Ajuste «promoción vencida» (ocultar o tachar) en Configuración › Catálogo y su aplicación en tarjeta y
+      cotizador
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: blocked
+    depends_on: []
+    acceptance:
+      - Configuración › Catálogo ofrece el ajuste promo_vencida con los valores ocultar y tachar, guardado por
+        agencia vía API
+      - La tarjeta del catálogo y el cotizador respetan el ajuste sin fijarlo en el código
+      - Tests de ambos valores
+    files:
+      - apps/web/src/app/catalogo/page.tsx
+      - apps/web/src/components/catalogo/
+    source: orquestador:2026-10-26 (cola de Antigravity)
+    created_at: 2026-10-26T21:39:01.014Z
+    blocked_reason: Espera el ADR-0017 aceptado y sus endpoints en la API (carril backend); Antigravity pide lo
+      que falte en traspaso/ENTREGA.md
+  - id: T-029
+    title: "Asistente de importación de catálogo: subir archivo, previsualizar, ver errores por fila y confirmar"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: blocked
+    depends_on: []
+    acceptance:
+      - El asistente tiene cuatro pasos (archivo, mapeo de columnas, previsualización con errores por fila,
+        confirmación)
+      - Consume los endpoints del ADR-0017 y el contrato de propuesta de catálogo de packages/contracts
+      - Tests con respuestas simuladas de la API; usable a 375 px
+    files:
+      - apps/web/src/app/catalogo/page.tsx
+      - apps/web/src/components/catalogo/
+    source: orquestador:2026-10-26 (cola de Antigravity)
+    created_at: 2026-10-26T21:39:01.014Z
+    blocked_reason: Espera el ADR-0017 aceptado y sus endpoints en la API (carril backend); Antigravity pide lo
+      que falte en traspaso/ENTREGA.md
+  - id: T-030
+    title: Descarga de plantillas CSV y Excel por tipo de producto
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: blocked
+    depends_on: []
+    acceptance:
+      - Una pantalla lista las plantillas por tipo de producto (excursión de un día, paquete con hotel) y
+        descarga la elegida
+      - Los tipos salen de la API, no del código
+      - Test de componente
+    files:
+      - apps/web/src/app/catalogo/page.tsx
+      - apps/web/src/components/catalogo/
+    source: orquestador:2026-10-26 (cola de Antigravity)
+    created_at: 2026-10-26T21:39:01.014Z
+    blocked_reason: Espera el ADR-0017 aceptado y sus endpoints en la API (carril backend); Antigravity pide lo
+      que falte en traspaso/ENTREGA.md
+  - id: T-031
+    title: "Pantalla de gestión del catálogo: crear, editar y desactivar productos, tarifas y salidas"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: blocked
+    depends_on: []
+    acceptance:
+      - Formularios con validación contra los contratos Zod y errores por campo en español
+      - Un producto desactivado se oculta del cotizador pero conserva su historial
+      - Tests de formulario; usable a 375 px
+    files:
+      - apps/web/src/app/catalogo/page.tsx
+      - apps/web/src/components/catalogo/
+    source: orquestador:2026-10-26 (cola de Antigravity)
+    created_at: 2026-10-26T21:39:01.014Z
+    blocked_reason: Espera el ADR-0017 aceptado y sus endpoints en la API (carril backend); Antigravity pide lo
+      que falte en traspaso/ENTREGA.md
+  - id: T-032
+    title: "Sistema visual de turismo: paleta caribeña, degradados, iconografía por módulo y componentes base"
+    type: feature
+    phase: 1
+    priority: P0
+    effort: M
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Los tokens de color, degradado, sombra y radio salen de un único sitio (globals.css y la configuración
+        de Tailwind) y siguen la sección «Identidad visual» de .agent/skills/ux-crm-turismo/SKILL.md; no hay
+        colores sueltos en los componentes
+      - Cada módulo (bandeja, pipeline, cotizaciones, catálogo, contactos, viajes, reportes, configuración)
+        tiene su icono y su color de acento coherentes en la barra lateral y en su cabecera
+      - Existen componentes base reutilizables con la nueva identidad (botón primario con degradado, tarjeta
+        con elevación al pasar el cursor, chip de tipo de producto, insignia de estado)
+      - Se mantiene el contraste AA y la pantalla sigue siendo limpia y ordenada; pnpm compuertas en verde y
+        capturas a 375 y 1280 px en traspaso/ENTREGA.md con el id de la pantalla de Stitch usada
+    files:
+      - apps/web/src/app/globals.css
+      - apps/web/src/components/comun/
+      - apps/web/src/app/layout.tsx
+    source: propietario:2026-10-26 (identidad visual)
+    created_at: 2026-10-26T23:32:24.203Z
+  - id: T-033
+    title: "Login con identidad de viaje: pantalla dividida con héroe oceánico animado y formulario con
+      microinteracciones"
+    type: feature
+    phase: 1
+    priority: P0
+    effort: M
+    status: backlog
+    depends_on:
+      - T-032
+    acceptance:
+      - "apps/web/src/app/ingresar muestra una composición dividida: a un lado un héroe con degradado de mar y
+        atardecer, olas y elementos de viaje animados con CSS (por ejemplo un avión o una lancha que se
+        desplazan) y la promesa «Convierte conversaciones en viajes reales»; al otro, el formulario"
+      - El formulario entra con animación escalonada, los campos tienen estados de foco y error animados y el
+        botón muestra carga mientras ingresa
+      - Todas las animaciones respetan prefers-reduced-motion, duran menos de 400 ms por transición y no usan
+        dependencias nuevas salvo que se justifique en ENTREGA.md
+      - Sin valores de relleno reales en los campos (ni correo ni contraseña); usable a 375 px; tests del
+        formulario siguen en verde
+    files:
+      - apps/web/src/app/ingresar/page.tsx
+      - apps/web/src/components/auth/formulario-ingreso.tsx
+      - apps/web/src/app/globals.css
+    source: propietario:2026-10-26 (identidad visual)
+    created_at: 2026-10-26T23:32:24.204Z
+  - id: T-034
+    title: "Navegación más rica: barra lateral con iconos de color y etiquetas, migas, paleta de comandos y
+      accesos rápidos"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on:
+      - T-032
+    acceptance:
+      - La barra lateral muestra icono de color y etiqueta por módulo, indica la sección activa con animación
+        y se puede expandir o contraer; en móvil pasa a una barra inferior
+      - Hay migas de pan en las pantallas de detalle y una paleta de comandos con Ctrl+K para saltar a
+        módulos, buscar contactos, cotizaciones y productos
+      - Cada pantalla ofrece una acción principal visible y accesos rápidos a la siguiente acción lógica (por
+        ejemplo, de una conversación a cotizar)
+      - Navegable solo con teclado, con foco visible; tests de la paleta de comandos y capturas a 375 y 1280
+        px en ENTREGA.md
+    files:
+      - apps/web/src/components/bandeja/barra-modulos.tsx
+      - apps/web/src/components/comun/
+      - apps/web/src/app/layout.tsx
+    source: propietario:2026-10-26 (identidad visual)
+    created_at: 2026-10-26T23:32:24.205Z
+  - id: T-035
+    title: "Animaciones y transiciones: entrada escalonada, hover, esqueletos con brillo y transiciones de página"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on:
+      - T-032
+    acceptance:
+      - Las listas y cuadrículas (bandeja, pipeline, catálogo, contactos) entran con animación escalonada
+        corta; las tarjetas se elevan al pasar el cursor; los esqueletos de carga tienen efecto de brillo
+      - Los cambios de pantalla y la apertura de paneles y modales tienen transición suave de menos de 300 ms
+      - "Todo respeta prefers-reduced-motion (sin movimiento cuando el usuario lo pide) y no degrada el
+        rendimiento: sin saltos de diseño al cargar"
+      - Utilidades de animación reutilizables en globals.css o un módulo de comun; test que verifica el
+        comportamiento con movimiento reducido
+    files:
+      - apps/web/src/app/globals.css
+      - apps/web/src/components/comun/
+    source: propietario:2026-10-26 (identidad visual)
+    created_at: 2026-10-26T23:32:24.205Z
+  - id: T-036
+    title: "Tarjetas de producto con identidad por tipo de excursión: color, icono, degradado, promo y cupos"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on:
+      - T-032
+    acceptance:
+      - Cada tipo de producto (isla o beach club, reserva natural, city tour, excursión de ciudad, paquete con
+        hotel) tiene su color, icono y degradado cuando no hay foto
+      - La tarjeta muestra «Desde $X por persona», promo vigente con insignia, horarios, chips de lo que
+        incluye y cupos, con la nueva identidad
+      - "No hay datos de producto escritos en el código: salen de la API; tests de la lógica de tipos"
+    files:
+      - apps/web/src/components/catalogo/
+      - apps/web/src/app/catalogo/page.tsx
+      - apps/web/src/lib/catalogo-logica.ts
+    source: propietario:2026-10-26 (identidad visual)
+    created_at: 2026-10-26T23:32:24.205Z
+  - id: T-037
+    title: Inicio con saludo, acciones rápidas y tarjetas de colores sobre el trabajo del día
+    type: feature
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    depends_on:
+      - T-032
+    acceptance:
+      - apps/web/src/app/page.tsx da la bienvenida con el nombre del asesor y la hora del día y muestra
+        tarjetas de colores con conversaciones pendientes, oportunidades por etapa y cotizaciones por vencer
+      - Hay accesos rápidos a crear cotización, abrir la bandeja y ver el catálogo; las tarjetas entran con
+        animación y enlazan a su pantalla filtrada
+      - Estados cargando, error y vacío; usable a 375 px; datos reales de la API
+    files:
+      - apps/web/src/app/page.tsx
+      - apps/web/src/lib/crm-api.ts
+    source: propietario:2026-10-26 (identidad visual)
+    created_at: 2026-10-26T23:32:24.205Z
+  - id: T-038
+    title: "Marca de la agencia en la API: nombre comercial, logo y color de acento por agencia"
+    type: feature
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    depends_on: []
+    acceptance:
+      - "GET y PUT bajo /api/v1/agencia/marca devuelven y guardan nombre comercial, logo (URL o archivo
+        validado: tipo y tamaño máximos) y color de acento, siempre del tenant de la sesión y con el permiso
+        de administrar la agencia (R1)"
+      - El color se valida (formato y contraste suficiente sobre blanco) y el logo se sirve sin ejecutar
+        contenido activo (sin SVG con scripts)
+      - Un test e2e comprueba que una agencia no lee ni cambia la marca de otra
+      - "Si guardar la marca exige columnas o tablas nuevas, NO se escribe migración: se reporta la lista
+        exacta al agente datos; pnpm compuertas en verde"
+    files:
+      - apps/api/src/modules/identity/
+      - packages/contracts/src/
+    source: propietario:2026-10-26 (marca por agencia)
+    created_at: 2026-10-26T23:39:32.870Z
+  - id: T-039
+    title: "Aplicar la marca de cada agencia: logo y color de acento en la cabecera, el login y los documentos"
+    type: feature
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    depends_on:
+      - T-038
+    acceptance:
+      - La cabecera y la barra lateral muestran el logo y el nombre comercial de la agencia de la sesión; el
+        color de acento se aplica mediante variables CSS sin romper el contraste AA
+      - Sin marca configurada, se ve la identidad de ViajaPro; con marca, la de la agencia; un test cubre
+        ambos casos
+      - Configuración permite subir el logo y elegir el color con vista previa en vivo
+      - No se copia ningún activo gráfico de terceros al repositorio; usable a 375 px
+    files:
+      - apps/web/src/app/configuracion/page.tsx
+      - apps/web/src/app/layout.tsx
+      - apps/web/src/components/comun/
+    source: propietario:2026-10-26 (marca por agencia)
+    created_at: 2026-10-26T23:39:32.871Z

@@ -184,7 +184,7 @@ describe('cotizaciones-logica (0c.22)', () => {
     it('traduce falta de tenant en desarrollo', () => {
       const err = interpretarErrorCotizaciones({ code: 'SIN_SESION' });
       expect(err.esErrorAgencia).toBe(true);
-      expect(err.mensaje).toContain('x-dev-tenant-id');
+      expect(err.mensaje).toContain('identificar la agencia activa');
     });
 
     it('maneja fallos desconocidos sin crashear', () => {
