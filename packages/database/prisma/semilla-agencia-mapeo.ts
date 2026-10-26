@@ -61,6 +61,8 @@ export const CAMPOS_DEL_PAQUETE = [
   { clave: 'restricciones', etiqueta: 'Restricciones', tipo: 'TEXTO', orden: 5 },
   { clave: 'notas', etiqueta: 'Notas', tipo: 'TEXTO', orden: 6 },
   { clave: 'neto_es_derivado', etiqueta: 'Neto derivado (no real)', tipo: 'BOOLEANO', orden: 7 },
+  // Ruta relativa que sirve la web en desarrollo. Solo el texto: nunca se leen ni se copian ficheros.
+  { clave: 'imagen', etiqueta: 'Imagen', tipo: 'TEXTO', orden: 8 },
 ] as const;
 
 export type ValorDeCampo = string | boolean;
@@ -114,6 +116,12 @@ export interface CatalogoMapeado {
     readonly slug: string;
     readonly paisIso: string;
     readonly monedaIso: CodigoMoneda;
+    /**
+     * Marca de la agencia, validada pero SIN DESTINO hoy: `tenants` no tiene dónde guardarla
+     * (T-038 y T-039 añadirán el almacenamiento). El script no la escribe.
+     */
+    readonly logo: string | null;
+    readonly colorAcento: string | null;
   };
   readonly paquetes: readonly PaqueteMapeado[];
 }
@@ -393,6 +401,8 @@ function mapearTour(
   const notas = textoOpcional(tour, 'notas', ruta, 2000);
   if (notas !== null) campos['notas'] = notas;
   if (tarifas.length > 0) campos['neto_es_derivado'] = true;
+  const imagen = textoOpcional(tour, 'imagen', ruta, 300);
+  if (imagen !== null) campos['imagen'] = imagen;
 
   return {
     codigo,
@@ -443,7 +453,12 @@ export function mapearCatalogo(datos: unknown, politica: PoliticaDePrecio): Cata
     return p;
   });
 
-  return { agencia: { nombre, slug, paisIso, monedaIso: moneda }, paquetes };
+  const logo = textoOpcional(a, 'logo', 'agencia', 300);
+  const colorAcento = textoOpcional(a, 'color_acento', 'agencia', 32);
+  return {
+    agencia: { nombre, slug, paisIso, monedaIso: moneda, logo, colorAcento },
+    paquetes,
+  };
 }
 
 export function resumirCatalogo(c: CatalogoMapeado): ResumenDelCatalogo {

@@ -21,13 +21,23 @@ import {
 } from '../prisma/guardia-de-semilla-agencia.js';
 
 const sintetico = () => ({
-  agencia: { nombre: 'Agencia Ficticia Náutica', pais: 'CO', moneda: 'COP', ciudad: 'Ciudad Z' },
+  agencia: {
+    nombre: 'Agencia Ficticia Náutica',
+    pais: 'CO',
+    moneda: 'COP',
+    ciudad: 'Ciudad Z',
+    logo: '/ficticio/logo.png',
+    color_acento: '#123456',
+    campo_desconocido: 1,
+  },
   contexto_destino: { ignorado: true },
   marca_observada: ['ignorada'],
   tours: [
     {
       nombre: 'Excursión Ñandú Clásica',
       tipo: 'excursion_ciudad',
+      imagen: '/ficticio/uno.png',
+      campo_desconocido: { x: 1 },
       precio_lista_cop: 300000,
       precio_promo_cop: 250000,
       es_desde: false,
@@ -98,8 +108,13 @@ describe('mapeo del catálogo', () => {
       slug: 'agencia-ficticia-nautica',
       paisIso: 'CO',
       monedaIso: 'COP',
+      logo: '/ficticio/logo.png',
+      colorAcento: '#123456',
     });
     expect(c.paquetes).toHaveLength(4);
+    // La imagen es solo texto (ruta relativa); se guarda en campos personalizados.
+    expect(c.paquetes[0]?.camposPersonalizados['imagen']).toBe('/ficticio/uno.png');
+    expect(c.paquetes[1]?.camposPersonalizados['imagen']).toBeUndefined();
   });
 
   it('código estable sin tildes, un paquete de 1 día y 0 noches por tour', () => {
