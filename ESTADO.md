@@ -4,6 +4,9 @@
 > bloquea, quién trabaja en qué. **La cola de trabajo ya no vive aquí:** vive en
 > [`roadmap/tasks.yaml`](roadmap/tasks.yaml) (ADR-0016). El historial anterior al 2026-10-20 está
 > íntegro en [`docs/_bitacora/archivo/ESTADO-hasta-2026-10-20.md`](docs/_bitacora/archivo/ESTADO-hasta-2026-10-20.md).
+>
+> **Al retomar tras compactar o en una sesión nueva, lee primero [`docs/_contexto/CONTEXTO.md`](docs/_contexto/CONTEXTO.md):**
+> el entorno vivo, las trampas conocidas, las decisiones del propietario y la cola inmediata.
 
 | Campo | Valor |
 |---|---|
