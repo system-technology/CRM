@@ -713,21 +713,21 @@ describe('el permiso «ver neto y margen»', () => {
   });
 });
 
-describe('el permiso «ver neto y margen» en las rutas del paquete antiguo', () => {
-  const cotizarPaquete = (incluirMargen: boolean) => ({
+describe('el permiso «ver neto y margen» en las rutas del cotizador', () => {
+  const cotizarSalida = (incluirMargen: boolean) => ({
     cuerpo: {
       paqueteId: paqueteA,
-      fechaSalida: '2027-03-15',
-      pasajeros: { adultos: 2 },
+      fecha: '2027-03-15',
+      adultos: 2,
       incluirMargen,
     },
   });
 
-  it('un asesor recibe 403 con incluirMargen en las dos rutas, y 2xx sin pedirlo', async () => {
+  it('un asesor recibe 403 con incluirMargen en la ruta de cotizar, y 2xx sin pedirlo', async () => {
     const nav = new Navegador();
     await nav.iniciarSesion('beto');
 
-    const cot = await nav.llamar('POST', '/api/v1/paquetes/cotizar', cotizarPaquete(true));
+    const cot = await nav.llamar('POST', '/api/v1/catalogo/cotizar', cotizarSalida(true));
     expect(cot.estado).toBe(403);
     expect(cot.json.error?.code).toBe('PERMISO_DENEGADO');
 
@@ -735,8 +735,8 @@ describe('el permiso «ver neto y margen» en las rutas del paquete antiguo', ()
     expect(det.estado).toBe(403);
     expect(det.json.error?.code).toBe('PERMISO_DENEGADO');
 
-    const sinPedir = await nav.llamar('POST', '/api/v1/paquetes/cotizar', cotizarPaquete(false));
-    expect(sinPedir.estado).toBe(201);
+    const sinPedir = await nav.llamar('POST', '/api/v1/catalogo/cotizar', cotizarSalida(false));
+    expect(sinPedir.estado).toBe(200);
     expect(JSON.stringify(sinPedir.json)).not.toMatch(/neto|margen|porcentaje/i);
   });
 
@@ -745,8 +745,8 @@ describe('el permiso «ver neto y margen» en las rutas del paquete antiguo', ()
     await nav.iniciarSesion('ana');
     await nav.llamar('POST', '/api/v1/auth/tenant-activo', { cuerpo: { tenantId: TENANT_A } });
 
-    const cot = await nav.llamar('POST', '/api/v1/paquetes/cotizar', cotizarPaquete(true));
-    expect(cot.estado).toBe(201);
+    const cot = await nav.llamar('POST', '/api/v1/catalogo/cotizar', cotizarSalida(true));
+    expect(cot.estado).toBe(200);
     expect(cot.json['totalNeto']).toEqual({ unidades: '2000000', moneda: 'COP' });
     expect(cot.json['margen']).toBeDefined();
     expect(cot.json['margenPorcentaje']).toBeDefined();

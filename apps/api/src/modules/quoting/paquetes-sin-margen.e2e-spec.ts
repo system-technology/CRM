@@ -1,9 +1,9 @@
 /**
- * El cotizador antiguo (Paquete / Temporada / Precio) y el detalle del paquete no entregan el
+ * El cotizador nuevo (CotizarSalida) y el detalle del paquete no entregan el
  * neto del mayorista sin `incluirMargen`: R10.
  *
- *   POST /api/v1/paquetes/cotizar        (flag en el cuerpo, como `/catalogo/cotizar`)
- *   GET  /api/v1/paquetes/:id            (flag en la consulta, como `/cotizaciones/:id`)
+ *   POST /api/v1/catalogo/cotizar      (flag en el cuerpo)
+ *   GET  /api/v1/paquetes/:id          (flag en la consulta, como `/cotizaciones/:id`)
  *
  * Fixture propio (prefijo `fixture-aislamiento-`, el que reconoce el limpiador): no escribe en la
  * agencia demo. Se busca en el TEXTO completo de la respuesta, no en claves conocidas: un campo
@@ -58,7 +58,7 @@ beforeAll(async () => {
   const paquete = await admin.paquete.create({
     data: {
       tenantId: TENANT,
-      nombre: 'Paquete antiguo fixture',
+      nombre: 'Paquete fixture',
       destino: 'San Andrés',
       dias: 4,
       noches: 3,
@@ -113,33 +113,33 @@ afterAll(async () => {
 
 const cuerpoCotizar = (extra: object = {}) => ({
   paqueteId,
-  fechaSalida: '2027-03-15',
-  pasajeros: { adultos: 2 },
+  fecha: '2027-03-15',
+  adultos: 2,
   ...extra,
 });
 
-describe('POST /api/v1/paquetes/cotizar', () => {
+describe('POST /api/v1/catalogo/cotizar', () => {
   it('sin incluirMargen no viaja rastro del neto, del margen ni del porcentaje', async () => {
     for (const extra of [{}, { incluirMargen: false }]) {
-      const r = await llamar('POST', '/api/v1/paquetes/cotizar', cuerpoCotizar(extra));
-      expect(r.estado).toBe(201);
+      const r = await llamar('POST', '/api/v1/catalogo/cotizar', cuerpoCotizar(extra));
+      expect(r.estado).toBe(200);
       expect(r.texto).not.toMatch(PISTAS);
-      expect((r.json['totalVenta'] as { unidades: string }).unidades).toBe('2400000');
+      expect((r.json['total'] as { unidades: string }).unidades).toBe('2400000');
     }
   });
 
   it('con incluirMargen=true sí vienen, y el precio de venta no cambia', async () => {
     const con = await llamar(
       'POST',
-      '/api/v1/paquetes/cotizar',
+      '/api/v1/catalogo/cotizar',
       cuerpoCotizar({ incluirMargen: true }),
     );
-    expect(con.estado).toBe(201);
+    expect(con.estado).toBe(200);
     expect(con.texto).toMatch(/totalNeto/);
     expect(con.texto).toMatch(/margenPorcentaje/);
     expect(con.texto).toMatch(/subtotalNeto/);
     expect((con.json['totalNeto'] as { unidades: string }).unidades).toBe('2000000');
-    expect((con.json['totalVenta'] as { unidades: string }).unidades).toBe('2400000');
+    expect((con.json['total'] as { unidades: string }).unidades).toBe('2400000');
   });
 });
 

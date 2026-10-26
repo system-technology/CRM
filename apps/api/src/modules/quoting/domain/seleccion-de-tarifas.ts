@@ -94,6 +94,34 @@ export function aplicaAlGrupo(t: CondicionDeCobro, c: Composicion): boolean {
 }
 
 /**
+ * Detecta si una condición no se puede evaluar con la entrada actual.
+ *
+ * Devuelve el mensaje explicativo si hay una condición de edad o silla que no se puede evaluar
+ * porque la cotización no recoge ese dato por pasajero. Devuelve `null` si la condición es
+ * evaluable o si el motivo es simplemente "no hay pasajeros de ese tipo" (que ya maneja
+ * `pasajerosQueCubre`).
+ */
+export function condicionNoEvaluable(t: CondicionDeCobro, c: Composicion): string | null {
+  // Si no hay pasajeros del tipo que cubre la tarifa, el motivo habitual es más claro.
+  if (pasajerosQueCubre(t, c) < 1) return null;
+
+  // Rango de edad: la cotización actual no recoge la edad por pasajero.
+  if (t.edadMinima !== null || t.edadMaxima !== null) {
+    const desde = t.edadMinima ?? 0;
+    const hasta = t.edadMaxima ?? 99;
+    return `Aplica a pasajeros de ${desde} a ${hasta} años y la cotización no recoge la edad de cada pasajero`;
+  }
+
+  // Ocupa silla: la cotización actual no recoge si el infante ocupa silla.
+  if (t.ocupaSilla !== null) {
+    const verbo = t.ocupaSilla ? 'ocupan' : 'no ocupan';
+    return `Aplica a pasajeros que ${verbo} silla y la cotización no recoge ese dato`;
+  }
+
+  return null;
+}
+
+/**
  * Cuántas veces se cobra la tarifa. `null` significa **no se puede cobrar**.
  *
  * - `POR_PERSONA`: una vez por cada pasajero **que la tarifa cubre**, no por cada pasajero.
@@ -107,6 +135,7 @@ export function aplicaAlGrupo(t: CondicionDeCobro, c: Composicion): boolean {
  */
 export function vecesQueSeCobra(t: CondicionDeCobro, c: Composicion): number | null {
   if (!aplicaAlGrupo(t, c)) return null;
+  if (condicionNoEvaluable(t, c) !== null) return null;
 
   if (t.unidad === 'POR_PERSONA') {
     const cubiertos = pasajerosQueCubre(t, c);
@@ -138,6 +167,9 @@ export function motivoNoAplica(t: CondicionDeCobro, c: Composicion): string | nu
   if (t.pasajerosMaximo !== null && total > t.pasajerosMaximo) {
     return `Aplica hasta ${t.pasajerosMaximo} pasajeros y van ${total}`;
   }
+
+  const noEvaluable = condicionNoEvaluable(t, c);
+  if (noEvaluable !== null) return noEvaluable;
 
   if (t.unidad === 'POR_PERSONA') {
     return pasajerosQueCubre(t, c) > 0
