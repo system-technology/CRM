@@ -1,5 +1,5 @@
 import React from 'react';
-import { AlertCircle, RefreshCw } from 'lucide-react';
+import { AlertCircle, RefreshCw, Users } from 'lucide-react';
 import type { MensajeErrorDetallado } from '../../lib/estados-ui-logica';
 
 /**
@@ -341,6 +341,51 @@ export function AvisoErrorAccionable({
               </button>
             )}
           </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Componente de estado vacío con ilustración y acción opcional (0c.25).
+ * Informa que no hay resultados y ofrece una acción contextual para restablecer filtros.
+ * Cumple WCAG AA: role="status", aria-live="polite", touch target >= 44px.
+ */
+export function AvisoVacio({
+  titulo,
+  descripcion,
+  accion,
+}: {
+  titulo: string;
+  descripcion: string;
+  accion?: { label: string; onClick: () => void };
+}) {
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      className="border-alerta-200 bg-alerta-50/90 text-alerta-950 dark:border-alerta-900/50 dark:bg-alerta-950/40 dark:text-alerta-200 mx-auto my-4 max-w-xl rounded-2xl border p-5 shadow-sm"
+    >
+      <div className="flex flex-col items-center gap-3.5 text-center">
+        <div className="bg-alerta-100 text-alerta-700 dark:bg-alerta-900/60 dark:text-alerta-300 shrink-0 rounded-xl p-2">
+          <Users className="h-6 w-6" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <h3 className="text-sm font-bold text-neutral-900 dark:text-neutral-100">{titulo}</h3>
+          <p className="mt-1 text-xs text-neutral-600 dark:text-neutral-400">{descripcion}</p>
+
+          {accion && (
+            <div className="mt-4">
+              <button
+                type="button"
+                onClick={accion.onClick}
+                className="flex min-h-[44px] items-center gap-1.5 rounded-xl border border-neutral-300 bg-white px-4 py-2 text-xs font-medium text-neutral-700 hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700"
+              >
+                {accion.label}
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>
