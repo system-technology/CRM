@@ -24,7 +24,12 @@ import { type EnrutamientoResuelto, PuertoBandeja, PuertoStaging } from './puert
 export type ResultadoDeProceso =
   | { estado: 'NO_ENCONTRADO' }
   | { estado: 'YA_RESUELTO' }
-  | { estado: 'PROCESADO'; mensajesNuevos: number; mensajesRepetidos: number }
+  | {
+      estado: 'PROCESADO';
+      mensajesNuevos: number;
+      mensajesRepetidos: number;
+      estadosAplicados: number;
+    }
   | {
       estado: 'CLASIFICADO';
       motivo: 'DESCONOCIDO' | 'REVOCADO' | 'SIN_NUMERO' | 'CAMPO_NO_SOPORTADO' | 'SIN_CAMBIO';
@@ -95,9 +100,10 @@ export class ProcesarChange {
       return this.clasificar(recepcionId, indice, 'REVOCADO');
     }
 
+    const contenido = contenidoDelCambio(cambio.valor);
     let nuevos = 0;
     let repetidos = 0;
-    for (const mensaje of contenidoDelCambio(cambio.valor).mensajes) {
+    for (const mensaje of contenido.mensajes) {
       const r = await this.bandeja.registrarEntrante(ruta.tenantId, ruta.canalId, mensaje);
       if (r === 'CANAL_REVOCADO') {
         // La verdad (`canales`) contradice al directorio derivado. Manda la verdad.
@@ -107,12 +113,26 @@ export class ProcesarChange {
       else repetidos += 1;
     }
 
+    // Los acuses de NUESTROS mensajes (ADR-0018 §4). Siempre con el tenant que resolvió el
+    // directorio: un `wamid` de otra agencia no existe bajo esta RLS y queda `DESCONOCIDO`.
+    let estadosAplicados = 0;
+    for (const estado of contenido.estados) {
+      if ((await this.bandeja.aplicarEstado(ruta.tenantId, estado)) === 'APLICADO') {
+        estadosAplicados += 1;
+      }
+    }
+
     await this.staging.cerrar(recepcionId, indice, 'PROCESADO');
     // Los eventos ya están en el outbox (misma transacción que el mensaje): esto solo avisa al
     // relay para que salgan en décimas de segundo. Sin tenant de por medio en el aviso: es el
     // que resolvió el directorio, nunca el que dice el contenido.
-    if (nuevos > 0) this.avisos?.avisar(ruta.tenantId);
-    return { estado: 'PROCESADO', mensajesNuevos: nuevos, mensajesRepetidos: repetidos };
+    if (nuevos > 0 || estadosAplicados > 0) this.avisos?.avisar(ruta.tenantId);
+    return {
+      estado: 'PROCESADO',
+      mensajesNuevos: nuevos,
+      mensajesRepetidos: repetidos,
+      estadosAplicados,
+    };
   }
 
   private async clasificar(

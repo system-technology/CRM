@@ -29,6 +29,25 @@ import { EscuchaDeAvisosDelRelay } from './infrastructure/aviso-al-relay.redis.j
 import { PlanificadorDeRelay } from './interface/planificador-de-relay.js';
 import { ConsumidorDeChanges } from './interface/consumidor-de-changes.js';
 import { PlanificadorDeBarrido } from './interface/planificador-de-barrido.js';
+import { EnviarMensajeSaliente } from './application/enviar-mensaje-saliente.js';
+import {
+  PuertoColaDeEnvios,
+  PuertoCredencialesWhatsapp,
+  PuertoEnvioWhatsapp,
+  PuertoMensajesSalientes,
+  PuertoReservaDeEnvio,
+} from './application/puertos-de-envio.js';
+import {
+  ColaDeEnviosBullmq,
+  ReservaDeEnvioRedis,
+  urlDeRedisParaEnvios,
+} from './infrastructure/cola-de-envios.bullmq.js';
+import {
+  crearCredencialesWhatsapp,
+  crearEnvioWhatsapp,
+} from './infrastructure/crear-envio-whatsapp.js';
+import { MensajesSalientesPrisma } from './infrastructure/mensajes-salientes.prisma.js';
+import { ConsumidorDeEnvios } from './interface/consumidor-de-envios.js';
 
 @Module({
   providers: [
@@ -67,6 +86,23 @@ import { PlanificadorDeBarrido } from './interface/planificador-de-barrido.js';
     { provide: PuertoCoordinacionDelBarrido, useExisting: BarridoBullmq },
     { provide: PuertoStaging, useClass: StagingPrisma },
     { provide: PuertoBandeja, useClass: BandejaPrisma },
+    // --- Envío saliente por WhatsApp (ADR-0018): el relay encola, este consumidor envía ---
+    EnviarMensajeSaliente,
+    ConsumidorDeEnvios,
+    { provide: PuertoMensajesSalientes, useClass: MensajesSalientesPrisma },
+    { provide: PuertoEnvioWhatsapp, useFactory: (): PuertoEnvioWhatsapp => crearEnvioWhatsapp() },
+    {
+      provide: PuertoCredencialesWhatsapp,
+      useFactory: (): PuertoCredencialesWhatsapp => crearCredencialesWhatsapp(),
+    },
+    {
+      provide: PuertoColaDeEnvios,
+      useFactory: (): PuertoColaDeEnvios => new ColaDeEnviosBullmq(urlDeRedisParaEnvios()),
+    },
+    {
+      provide: PuertoReservaDeEnvio,
+      useFactory: (): PuertoReservaDeEnvio => new ReservaDeEnvioRedis(urlDeRedisParaEnvios()),
+    },
   ],
 })
 export class InboxWorkerModule {}

@@ -25,6 +25,7 @@ import {
   type EventoDeDominio,
   TIPO_ACCESO_REVOCADO,
   TIPO_CONVERSACION_ACTUALIZADA,
+  TIPO_MENSAJE_ACTUALIZADO,
   TIPO_MENSAJE_RECIBIDO,
   TIPO_MENSAJE_SALIENTE_CREADO,
 } from '../domain/evento-de-dominio.js';
@@ -48,6 +49,11 @@ export class EmitirEventosEnVivo {
   async atender(evento: EventoDeDominio): Promise<void> {
     if (evento.tipo === TIPO_MENSAJE_RECIBIDO || evento.tipo === TIPO_MENSAJE_SALIENTE_CREADO) {
       await this.mensajeNuevo(evento);
+      return;
+    }
+
+    if (evento.tipo === TIPO_MENSAJE_ACTUALIZADO) {
+      await this.mensajeActualizado(evento);
       return;
     }
 
@@ -84,6 +90,36 @@ export class EmitirEventosEnVivo {
       mensaje,
     });
     this.emision.emitirAUsuarios(evento.tenantId, audiencia, salida);
+  }
+
+  /** El estado de entrega cambió (ADR-0018): solo el estado y el motivo, leídos de la base. */
+  private async mensajeActualizado(evento: EventoDeDominio): Promise<void> {
+    const mensaje = await this.lectura.mensajePorId(evento.tenantId, evento.agregadoId);
+    if (!mensaje) {
+      this.log.warn('Evento de mensaje sin mensaje en su tenant: no se emite.');
+      return;
+    }
+    const asignacion = await this.conversaciones.asignacionDe(
+      evento.tenantId,
+      mensaje.conversacionId,
+    );
+    if (!asignacion) return;
+
+    const audiencia = quienesVen(
+      await this.conversaciones.miembrosActivos(evento.tenantId),
+      asignacion.asignadoAId,
+    );
+    this.emision.emitirAUsuarios(
+      evento.tenantId,
+      audiencia,
+      EventoBandeja.parse({
+        tipo: 'MENSAJE_ACTUALIZADO',
+        conversacionId: mensaje.conversacionId,
+        mensajeId: mensaje.id,
+        estado: mensaje.estado,
+        motivoFallo: mensaje.motivoFallo,
+      }),
+    );
   }
 
   private async conversacionActualizada(evento: EventoDeDominio): Promise<void> {
