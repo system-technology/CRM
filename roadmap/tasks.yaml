@@ -320,7 +320,7 @@ tasks:
     phase: 1
     priority: P0
     effort: M
-    status: backlog
+    status: done
     depends_on: []
     acceptance:
       - Existe un único módulo en apps/web/src/lib/ que decide entre API real y demostración; ninguna pantalla
@@ -339,6 +339,11 @@ tasks:
       - apps/web/src/lib/inbox-api.ts
     source: orquestador:2026-10-26 (cola de Antigravity)
     created_at: 2026-10-26T21:39:01.013Z
+    started_at: 2026-10-26T22:55:26.072Z
+    done_at: 2026-10-26T22:55:26.072Z
+    evidence: "Mergeado en main por el PR #47 (rama b/T-016-modo-de-datos-explicito) con el CI en verde: format,
+      analyze, tests y los demás checks obligatorios. Cierre automático (.github/workflows/cerrar-tarea.yml)."
+    commit: d3c15ac1655015aef8a306cb4303de8e7f8566be
   - id: T-017
     title: "Cotizador de excursiones de un día: precio por persona, promo vigente y cargos en destino aparte"
     type: feature
