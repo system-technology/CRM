@@ -175,6 +175,19 @@ export class CrmPrisma extends PuertoCrm {
       });
       if (!c) return null;
 
+      // Auditoría R10: lectura de datos sensibles (preferencias puede contener datos de salud)
+      const { tenantId, usuarioId } = ContextoTenant.obtener();
+      await tx.registroAuditoria.create({
+        data: {
+          tenantId,
+          usuarioId,
+          accion: 'LECTURA_DATOS_SENSIBLES',
+          entidad: 'Contacto',
+          entidadId: contactoId,
+          detalle: { camposSensibles: ['preferencias'] },
+        },
+      });
+
       const viva = c.oportunidades[0];
       return {
         contacto: aContacto(c),
