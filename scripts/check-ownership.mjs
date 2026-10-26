@@ -31,7 +31,9 @@ const any = (ms, f) => ms.some((m) => m.test(f));
 
 const m = /^(a|b|i)\//.exec(branch) || /lane-(a|b)\b/.exec(branch);
 const lane = arg('--lane', process.env.LANE) || (m ? m[1] : null);
-const files = git(['diff', '--name-only', `${base}...HEAD`]).split('\n').filter(Boolean);
+const files = git(['diff', '--name-only', `${base}...HEAD`])
+  .split('\n')
+  .filter(Boolean);
 
 const lanes = Object.fromEntries(Object.entries(own.lanes).map(([k, v]) => [k, matchers(v.owns)]));
 const shared = matchers(own.shared);
@@ -46,10 +48,15 @@ for (const f of files) {
   if (lane && owner && owner !== lane) foreign.push(`${f}  (carril ${owner})`);
 }
 
-console.log(`rama: ${branch || '(?)'}  carril: ${lane || 'desconocido'}  ficheros: ${files.length}`);
-if (needsHuman.length) console.log(`\n⚠ Requieren revisión humana (CODEOWNERS):\n  ${needsHuman.join('\n  ')}`);
+console.log(
+  `rama: ${branch || '(?)'}  carril: ${lane || 'desconocido'}  ficheros: ${files.length}`,
+);
+if (needsHuman.length)
+  console.log(`\n⚠ Requieren revisión humana (CODEOWNERS):\n  ${needsHuman.join('\n  ')}`);
 if (!lane) {
-  console.log('\nℹ Carril no reconocible: nombra la rama a/…, b/… o i/… para activar la comprobación.');
+  console.log(
+    '\nℹ Carril no reconocible: nombra la rama a/…, b/… o i/… para activar la comprobación.',
+  );
   process.exit(0);
 }
 if (foreign.length) {
@@ -58,7 +65,9 @@ if (foreign.length) {
     console.log('\n(OVERRIDE activo: se acepta con aviso)');
     process.exit(0);
   }
-  console.log('\nSepara el cambio en un PR del carril dueño, o pide la etiqueta `override-lane` al integrador.');
+  console.log(
+    '\nSepara el cambio en un PR del carril dueño, o pide la etiqueta `override-lane` al integrador.',
+  );
   process.exit(1);
 }
 console.log('\n✔ Dentro del carril.');

@@ -21,7 +21,8 @@ export const TYPES = ['security', 'bug', 'refactor', 'test', 'feature', 'docs', 
 export function load(path = PATHS.tasks) {
   const doc = YAML.parseDocument(readFileSync(path, 'utf8'));
   const data = doc.toJS();
-  if (!data?.tasks || !Array.isArray(data.tasks)) throw new Error('tasks.yaml inválido: falta tasks[]');
+  if (!data?.tasks || !Array.isArray(data.tasks))
+    throw new Error('tasks.yaml inválido: falta tasks[]');
   return { doc, data };
 }
 
@@ -43,12 +44,17 @@ export function validate(data) {
     if (!PRIORITIES.includes(t.priority)) errors.push(`${t.id}: priority inválida`);
     if (!EFFORTS.includes(t.effort)) errors.push(`${t.id}: effort inválido`);
     if (!TYPES.includes(t.type)) errors.push(`${t.id}: type inválido`);
-    if (!Array.isArray(t.acceptance) || t.acceptance.length === 0) errors.push(`${t.id}: sin criterios de aceptación`);
-    if (t.status === 'blocked' && !t.blocked_reason) errors.push(`${t.id}: blocked sin blocked_reason`);
+    if (!Array.isArray(t.acceptance) || t.acceptance.length === 0)
+      errors.push(`${t.id}: sin criterios de aceptación`);
+    if (t.status === 'blocked' && !t.blocked_reason)
+      errors.push(`${t.id}: blocked sin blocked_reason`);
   }
-  for (const t of data.tasks) for (const d of t.depends_on ?? []) if (!ids.has(d)) errors.push(`${t.id}: depende de ${d} que no existe`);
+  for (const t of data.tasks)
+    for (const d of t.depends_on ?? [])
+      if (!ids.has(d)) errors.push(`${t.id}: depende de ${d} que no existe`);
   const inProgress = data.tasks.filter((t) => t.status === 'in_progress');
-  if (inProgress.length > 1) errors.push(`más de una tarea in_progress: ${inProgress.map((t) => t.id).join(', ')}`);
+  if (inProgress.length > 1)
+    errors.push(`más de una tarea in_progress: ${inProgress.map((t) => t.id).join(', ')}`);
   return errors;
 }
 
@@ -68,15 +74,26 @@ export function nextTask(data) {
   if (current) return { task: current, reason: 'ya in_progress' };
   const eligible = data.tasks
     .filter((t) => ['ready', 'backlog'].includes(t.status) && depsDone(data, t) && t.effort !== 'L')
-    .sort((a, b) =>
-      PRIORITIES.indexOf(a.priority) - PRIORITIES.indexOf(b.priority)
-      || (a.status === 'ready' ? -1 : 1) - (b.status === 'ready' ? -1 : 1)
-      || EFFORTS.indexOf(a.effort) - EFFORTS.indexOf(b.effort)
-      || a.id.localeCompare(b.id));
+    .sort(
+      (a, b) =>
+        PRIORITIES.indexOf(a.priority) - PRIORITIES.indexOf(b.priority) ||
+        (a.status === 'ready' ? -1 : 1) - (b.status === 'ready' ? -1 : 1) ||
+        EFFORTS.indexOf(a.effort) - EFFORTS.indexOf(b.effort) ||
+        a.id.localeCompare(b.id),
+    );
   if (eligible.length === 0) {
-    const large = data.tasks.filter((t) => ['ready', 'backlog'].includes(t.status) && depsDone(data, t) && t.effort === 'L');
-    if (large.length) return { task: null, reason: `solo quedan tareas L elegibles (${large.map((t) => t.id).join(', ')}): dividirlas con split_task` };
-    return { task: null, reason: 'no hay tareas elegibles (todas done/blocked o con dependencias pendientes)' };
+    const large = data.tasks.filter(
+      (t) => ['ready', 'backlog'].includes(t.status) && depsDone(data, t) && t.effort === 'L',
+    );
+    if (large.length)
+      return {
+        task: null,
+        reason: `solo quedan tareas L elegibles (${large.map((t) => t.id).join(', ')}): dividirlas con split_task`,
+      };
+    return {
+      task: null,
+      reason: 'no hay tareas elegibles (todas done/blocked o con dependencias pendientes)',
+    };
   }
   return { task: eligible[0], reason: 'mayor prioridad elegible' };
 }
@@ -84,9 +101,11 @@ export function nextTask(data) {
 export function startTask(data, id, cycle) {
   const t = data.tasks.find((x) => x.id === id);
   if (!t) throw new Error(`${id} no existe`);
-  if (!['ready', 'backlog', 'review'].includes(t.status)) throw new Error(`${id} está ${t.status}, no se puede iniciar`);
+  if (!['ready', 'backlog', 'review'].includes(t.status))
+    throw new Error(`${id} está ${t.status}, no se puede iniciar`);
   if (!depsDone(data, t)) throw new Error(`${id} tiene dependencias sin terminar`);
-  if (data.tasks.some((x) => x.status === 'in_progress')) throw new Error('ya hay una tarea in_progress; termínala o bloquéala primero');
+  if (data.tasks.some((x) => x.status === 'in_progress'))
+    throw new Error('ya hay una tarea in_progress; termínala o bloquéala primero');
   t.status = 'in_progress';
   t.started_cycle = cycle;
   t.started_at = new Date().toISOString();
@@ -97,7 +116,10 @@ export function completeTask(data, id, { evidence, commit }) {
   const t = data.tasks.find((x) => x.id === id);
   if (!t) throw new Error(`${id} no existe`);
   if (t.status !== 'in_progress') throw new Error(`${id} no está in_progress`);
-  if (!evidence || evidence.length < 20) throw new Error('evidence obligatoria: pega la salida de scripts/check.sh o describe la verificación');
+  if (!evidence || evidence.length < 20)
+    throw new Error(
+      'evidence obligatoria: pega la salida de scripts/check.sh o describe la verificación',
+    );
   t.status = 'done';
   t.done_at = new Date().toISOString();
   t.evidence = evidence;
@@ -130,17 +152,26 @@ export function addTask(data, input) {
   };
   data.tasks.push(t);
   const errs = validate(data);
-  if (errs.length) { data.tasks.pop(); throw new Error(errs.join('; ')); }
+  if (errs.length) {
+    data.tasks.pop();
+    throw new Error(errs.join('; '));
+  }
   return t;
 }
 
 export function splitTask(data, id, parts) {
   const t = data.tasks.find((x) => x.id === id);
   if (!t) throw new Error(`${id} no existe`);
-  const created = parts.map((p, i) => addTask(data, {
-    ...p, type: p.type ?? t.type, phase: t.phase, priority: p.priority ?? t.priority,
-    depends_on: i === 0 ? (t.depends_on ?? []) : [], source: `split:${id}`,
-  }));
+  const created = parts.map((p, i) =>
+    addTask(data, {
+      ...p,
+      type: p.type ?? t.type,
+      phase: t.phase,
+      priority: p.priority ?? t.priority,
+      depends_on: i === 0 ? (t.depends_on ?? []) : [],
+      source: `split:${id}`,
+    }),
+  );
   for (let i = 1; i < created.length; i++) created[i].depends_on = [created[i - 1].id];
   t.status = 'dropped';
   t.dropped_reason = `dividida en ${created.map((c) => c.id).join(', ')}`;
@@ -159,18 +190,26 @@ export function logCycle(data, entry) {
     `- **check.sh:** ${entry.check_passed ? '✅ verde' : '❌ rojo'}`,
     `- **Reviewer:** ${entry.review_verdict ?? '—'}`,
     entry.summary ? `\n${entry.summary}\n` : '',
-    entry.problems?.length ? `**Problemas:**\n${entry.problems.map((p) => `- ${p}`).join('\n')}\n` : '',
-    entry.decisions?.length ? `**Decisiones:**\n${entry.decisions.map((p) => `- ${p}`).join('\n')}\n` : '',
+    entry.problems?.length
+      ? `**Problemas:**\n${entry.problems.map((p) => `- ${p}`).join('\n')}\n`
+      : '',
+    entry.decisions?.length
+      ? `**Decisiones:**\n${entry.decisions.map((p) => `- ${p}`).join('\n')}\n`
+      : '',
     entry.next ? `**Siguiente:** ${entry.next}\n` : '',
     '---',
     '',
-  ].filter((l) => l !== undefined).join('\n');
+  ]
+    .filter((l) => l !== undefined)
+    .join('\n');
   appendFileSync(PATHS.bitacora, md);
   return n;
 }
 
 export function state(data) {
-  const byStatus = Object.fromEntries(STATUSES.map((s) => [s, data.tasks.filter((t) => t.status === s)]));
+  const byStatus = Object.fromEntries(
+    STATUSES.map((s) => [s, data.tasks.filter((t) => t.status === s)]),
+  );
   const total = data.tasks.filter((t) => t.status !== 'dropped').length;
   const done = byStatus.done.length;
   const pct = total ? Math.round((done / total) * 100) : 0;
@@ -186,7 +225,9 @@ export function state(data) {
     progress: { done, total, pct },
     phases,
     in_progress: byStatus.in_progress[0] ?? null,
-    next: next ? { id: next.id, title: next.title, priority: next.priority, effort: next.effort } : null,
+    next: next
+      ? { id: next.id, title: next.title, priority: next.priority, effort: next.effort }
+      : null,
     next_reason: reason,
     counts: Object.fromEntries(Object.entries(byStatus).map(([k, v]) => [k, v.length])),
     blocked: byStatus.blocked.map((t) => ({ id: t.id, title: t.title, reason: t.blocked_reason })),
@@ -210,13 +251,18 @@ export function ultimosCiclos(texto, max = 3, lineasPorCiclo = 10) {
   for (let i = inicio; i < cabeceras.length; i++) {
     const desde = cabeceras[i].index;
     const hasta = i + 1 < cabeceras.length ? cabeceras[i + 1].index : texto.length;
-    const bruto = texto.slice(desde, hasta).trimEnd().replace(/\n+---[ \t]*$/, '').trimEnd();
+    const bruto = texto
+      .slice(desde, hasta)
+      .trimEnd()
+      .replace(/\n+---[ \t]*$/, '')
+      .trimEnd();
     const lineas = bruto.split('\n');
     // Normaliza la cabecera: quita todos los '#' iniciales y deja "## Ciclo N".
     lineas[0] = `## ${lineas[0].replace(/^#{2,}[ \t]*(?:#[ \t]*)*/, '')}`;
-    const recortado = lineas.length > lineasPorCiclo
-      ? [...lineas.slice(0, lineasPorCiclo), '…'].join('\n')
-      : lineas.join('\n');
+    const recortado =
+      lineas.length > lineasPorCiclo
+        ? [...lineas.slice(0, lineasPorCiclo), '…'].join('\n')
+        : lineas.join('\n');
     bloques.push(recortado);
   }
   return bloques.join('\n\n');
@@ -239,7 +285,9 @@ ${s.phases.map((p) => `| ${p.phase}. ${p.name} | ${bar(p.done, p.total)} |`).joi
 **En curso:** ${s.in_progress ? `${s.in_progress.id} · ${s.in_progress.title}` : '—'}
 **Siguiente:** ${s.next ? `${s.next.id} · ${s.next.title} (${s.next.priority}, ${s.next.effort})` : `— (${s.next_reason})`}
 
-**Conteo:** ${Object.entries(s.counts).map(([k, v]) => `${k}=${v}`).join(' · ')}
+**Conteo:** ${Object.entries(s.counts)
+    .map(([k, v]) => `${k}=${v}`)
+    .join(' · ')}
 
 ${s.blocked.length ? `**Bloqueadas:**\n${s.blocked.map((b) => `- ${b.id} ${b.title} — ${b.reason}`).join('\n')}\n` : ''}
 ${s.validation_errors.length ? `⚠️ **Errores de validación:**\n${s.validation_errors.map((e) => `- ${e}`).join('\n')}\n` : ''}
@@ -254,7 +302,10 @@ export function writeState(data) {
 
 export function saveAudit(name, content) {
   mkdirSync(PATHS.audits, { recursive: true });
-  const file = resolve(PATHS.audits, `${new Date().toISOString().slice(0, 10)}-${name.replace(/[^a-z0-9-]/gi, '-').toLowerCase()}.md`);
+  const file = resolve(
+    PATHS.audits,
+    `${new Date().toISOString().slice(0, 10)}-${name.replace(/[^a-z0-9-]/gi, '-').toLowerCase()}.md`,
+  );
   writeFileSync(file, content);
   return file;
 }

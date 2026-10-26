@@ -29,3 +29,6 @@ Te lo dice el mensaje de cada fase (planificar, revisar, implementar o reparar).
 
 ## Superpowers
 Tienes las skills de superpowers (TDD, depuración sistemática, verificación antes de dar por hecho, planes, revisión de código). Úsalas. Pero **nadie contesta**: si una skill te pide preguntar al usuario, esperar aprobación o elegir entre opciones, decide tú con `TAREA.md` y sigue. No hagas merge, push ni crees worktrees: eso es del supervisor.
+
+## Lo que NO haces al terminar
+Ignora la sección «Al terminar» de `AGENTS.md` de la raíz del repo: **no edites `ESTADO.md` ni `docs/_bitacora/`**, que son del carril Integradora. Tu parte es `RESULTADO.md`. Tampoco ejecutes `prettier --write` sobre el repo entero ni sobre ficheros que no son de tu tarea: formatea solo los que tocaste (`pnpm exec prettier --write <tus ficheros>`). Cualquier cambio fuera de los `files` de `TAREA.md` hace fallar la puerta de carriles.
