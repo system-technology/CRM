@@ -6,8 +6,17 @@
  * puede saltarse el aislamiento, y listar el outbox entero exigiría una función `SECURITY DEFINER`
  * nueva. El coste: el barrido recorre las agencias (decenas), con una consulta de índice parcial
  * cada una.
+ *
+ * **Y es lo que encola el envío a WhatsApp** (ADR-0018 §2). Un `inbox.mensaje_saliente_creado` se
+ * convierte aquí en un trabajo de `inbox-envios`, ANTES de publicarlo en el bus: si encolar falla,
+ * la tanda no se marca publicada y se repite. Así la respuesta del asesor y su envío quedan atados
+ * por la misma transacción que la guardó, sin que la API tenga que encolar después de confirmar
+ * (y perderlo si muere entre las dos cosas). El trabajo lleva el id del mensaje como `jobId`: el
+ * relay puede repetir, la cola no duplica.
  */
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
+import { TIPO_MENSAJE_SALIENTE_CREADO } from '../domain/evento-de-dominio.js';
+import { PuertoColaDeEnvios } from './puertos-de-envio.js';
 import { PuertoOutbox, PuertoPublicadorDeEventos } from './puertos-de-eventos.js';
 
 const LIMITE_POR_PASADA = 100;
@@ -19,6 +28,8 @@ export class RelevarOutbox {
   constructor(
     @Inject(PuertoOutbox) private readonly outbox: PuertoOutbox,
     @Inject(PuertoPublicadorDeEventos) private readonly publicador: PuertoPublicadorDeEventos,
+    // Opcional: sin cola de envíos (pruebas del relay) el evento solo se publica.
+    @Optional() @Inject(PuertoColaDeEnvios) private readonly envios?: PuertoColaDeEnvios,
   ) {}
 
   /** Publica todo lo pendiente de un tenant, en tandas. Devuelve cuántos eventos salieron. */
@@ -28,7 +39,12 @@ export class RelevarOutbox {
       const n = await this.outbox.publicarPendientes(
         tenantId,
         async (eventos) => {
-          for (const e of eventos) await this.publicador.publicar(e);
+          for (const e of eventos) {
+            if (this.envios && e.tipo === TIPO_MENSAJE_SALIENTE_CREADO) {
+              await this.envios.encolar(e.tenantId, e.agregadoId);
+            }
+            await this.publicador.publicar(e);
+          }
         },
         LIMITE_POR_PASADA,
       );

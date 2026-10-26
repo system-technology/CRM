@@ -66,6 +66,13 @@ export interface CambioDeEstado {
   /** Código de error de Meta cuando el estado es `FALLIDO`. */
   codigoError: number | null;
   mensajeError: string | null;
+  /**
+   * `biz_opaque_callback_data`: el id de NUESTRO mensaje, que el envío le pasa a Meta y Meta
+   * devuelve en cada estado. Correlaciona el estado aunque todavía no sepamos el `wamid` (la
+   * respuesta del envío se perdió o llegó después que el webhook). Solo se acepta si es un UUID:
+   * cualquier otra cosa no la pusimos nosotros. ADR-0018 §4.
+   */
+  referencia: string | null;
 }
 
 export interface ContenidoDelCambio {
@@ -85,6 +92,13 @@ function comoLista(x: unknown): unknown[] {
 
 function texto(x: unknown): string | null {
   return typeof x === 'string' && x.length > 0 ? x : null;
+}
+
+function comoUuid(x: unknown): string | null {
+  const t = texto(x);
+  return t !== null && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(t)
+    ? t.toLowerCase()
+    : null;
 }
 
 /**
@@ -158,6 +172,9 @@ function estadoDeMeta(s: string | null): EstadoMensaje | null {
       return 'ENTREGADO';
     case 'read':
       return 'LEIDO';
+    // Desde 2025-11-03: el usuario reprodujo una nota de voz (§5.4 de la integración).
+    case 'played':
+      return 'REPRODUCIDO';
     case 'failed':
       return 'FALLIDO';
     default:
@@ -287,6 +304,7 @@ export function contenidoDelCambio(valor: unknown): ContenidoDelCambio {
       mensajeError:
         texto(primerError?.['title']) ??
         texto(comoRegistro(primerError?.['error_data'])?.['details']),
+      referencia: comoUuid(s['biz_opaque_callback_data']),
     });
   }
 
