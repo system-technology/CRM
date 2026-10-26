@@ -1,3 +1,30 @@
+/**
+ * Determina si un destino o paquete turístico náutico / de isla exige el aviso
+ * explícito de impuesto de muelle / tasa portuaria no incluida.
+ */
+export function requiereAvisoImpuestoMuelle(destino: string, paqueteNombre: string): boolean {
+  const normalizado = `${destino} ${paqueteNombre}`.toLowerCase();
+  return (
+    normalizado.includes('cartagena') ||
+    normalizado.includes('rosario') ||
+    normalizado.includes('barú') ||
+    normalizado.includes('baru') ||
+    normalizado.includes('cholón') ||
+    normalizado.includes('cholon') ||
+    normalizado.includes('tierra bomba') ||
+    normalizado.includes('san cipriano') ||
+    normalizado.includes('pianguita') ||
+    normalizado.includes('magüipí') ||
+    normalizado.includes('maguipi') ||
+    normalizado.includes('muelle') ||
+    normalizado.includes('náutico') ||
+    normalizado.includes('nautico') ||
+    normalizado.includes('isla') ||
+    normalizado.includes('bote') ||
+    normalizado.includes('lancha')
+  );
+}
+
 import { formatearErrorAmigable } from './estados-ui-logica';
 import type {
   Acomodacion,
@@ -57,6 +84,10 @@ ${lineasPasajeros}
 
   if (opciones?.incluirNeto && cotizacion.totalNeto && cotizacion.margen) {
     texto += `\n\n[CONFIDENCIAL AGENCIA]\nCosto Neto: ${formatearDinero(cotizacion.totalNeto)} | Margen: ${formatearDinero(cotizacion.margen)} (${cotizacion.margenPorcentaje?.toFixed(1)}%)`;
+  }
+
+  if (requiereAvisoImpuestoMuelle(cotizacion.destino, cotizacion.paqueteNombre)) {
+    texto += `\n\n⚠️ *Aviso importante:* Impuesto de muelle no incluido (tasa portuaria requerida al abordar en taquilla del muelle, no incluida en el valor del tour).`;
   }
 
   texto += `\n\n_¿Deseas confirmar la reserva o requieres ajustar fechas o pasajeros? Quedo atento a tus comentarios._`;
@@ -122,6 +153,10 @@ ${lineasDesglose}
       )
       .join('\n');
     texto += `\n\n🏷️ *Tarifas alternativas disponibles:*\n${altText}\n_(Sujetas a condiciones comerciales de la agencia)_`;
+  }
+
+  if (requiereAvisoImpuestoMuelle(cotizacion.destino, cotizacion.paqueteNombre)) {
+    texto += `\n\n⚠️ *Aviso importante:* Impuesto de muelle no incluido (tasa portuaria requerida al abordar en taquilla del muelle, no incluida en el valor del tour).`;
   }
 
   texto += `\n\n_¿Deseas apartar tus cupos o necesitas información adicional? Quedo muy atento a tu respuesta._`;
@@ -206,7 +241,10 @@ export function calcularCotizacionMock(
   const capacidadHab = CAPACIDAD_ACOMODACION[acomodacionElegida];
   const numHabitaciones = Math.max(1, Math.ceil(totalPagantes / capacidadHab));
   const plazasTotales = numHabitaciones * capacidadHab;
-  const plazasSinUsar = Math.max(0, plazasTotales - totalPagantes);
+  let plazasSinUsar = Math.max(0, plazasTotales - totalPagantes);
+  if (paquete.noches === 0) {
+    plazasSinUsar = 0;
+  }
 
   const habitaciones: Habitacion[] = [];
   let restantes = totalPasajeros;

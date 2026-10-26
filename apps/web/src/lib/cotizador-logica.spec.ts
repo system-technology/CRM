@@ -10,10 +10,12 @@ import {
   generarTextoPropuestaWhatsApp,
   generarTextoPropuestaWhatsAppSalida,
   interpretarErrorCotizacion,
+  requiereAvisoImpuestoMuelle,
 } from './cotizador-logica';
 
 describe('Pruebas del Módulo de Cotización y Generación de Propuestas', () => {
-  const paqueteSanAndres = MOCK_PAQUETES_CATALOGO[0]!;
+  const paqueteSanAndres =
+    MOCK_PAQUETES_CATALOGO.find((p) => p.destino === 'San Andrés') ?? MOCK_PAQUETES_CATALOGO[0]!;
 
   it('1. calcularCotizacionMock produce una cotización válida según el contrato Zod oficial (R3)', () => {
     const cotizacion = calcularCotizacionMock(
@@ -242,5 +244,53 @@ describe('Pruebas del Módulo de Cotización y Generación de Propuestas', () =>
     expect(texto).toContain('Tarifa de grupo para 2 personas');
     expect(texto).toContain('Nota de tarifa grupal');
     expect(texto).toContain('condicionada a la cantidad mínima de pasajeros');
+  });
+  it('11. requiereAvisoImpuestoMuelle detecta destinos marítimos / náuticos que exigen tasa portuaria', () => {
+    expect(requiereAvisoImpuestoMuelle('Cartagena', 'Pasadía Islas del Rosario')).toBe(true);
+    expect(requiereAvisoImpuestoMuelle('Barú', 'Pasadía Playa Blanca')).toBe(true);
+    expect(requiereAvisoImpuestoMuelle('Cartagena', 'Tour Cholón en lancha')).toBe(true);
+    expect(requiereAvisoImpuestoMuelle('Buenaventura', 'Playa Pianguita + Ballenas')).toBe(true);
+
+    // Destinos de interior sin muelle
+    expect(requiereAvisoImpuestoMuelle('Eje Cafetero', 'Parque del Café')).toBe(false);
+    expect(requiereAvisoImpuestoMuelle('Medellín', 'Tour Guatapé y Peñol')).toBe(false);
+    expect(requiereAvisoImpuestoMuelle('Bogotá', 'Catedral de Sal')).toBe(false);
+  });
+
+  it('12. generarTextoPropuestaWhatsAppSalida incluye aviso de impuesto de muelle en tours náuticos', () => {
+    const cotizacionCartagena: CotizacionDeSalida = {
+      ...cotizacionArmadaEjemplo,
+      destino: 'Cartagena',
+      paqueteNombre: 'Pasadía Islas del Rosario VIP',
+      noches: 0,
+    };
+
+    const texto = generarTextoPropuestaWhatsAppSalida(cotizacionCartagena);
+    expect(texto).toContain('Impuesto de muelle no incluido');
+    expect(texto).toContain('tasa portuaria requerida al abordar en taquilla del muelle');
+  });
+
+  it('13. calcularCotizacionMock para excursión de un día (noches=0) no penaliza con plazas sin usar y calcula precio COP por persona', () => {
+    const pasadiaCartagena = MOCK_PAQUETES_CATALOGO.find((p) => p.noches === 0)!;
+    expect(pasadiaCartagena).toBeDefined();
+
+    const cotizacion = calcularCotizacionMock(
+      {
+        paqueteId: pasadiaCartagena.id,
+        fechaSalida: '2026-10-15',
+        pasajeros: { adultos: 2, ninos: 1, infantes: 0 },
+        acomodacion: 'DOBLE',
+      },
+      pasadiaCartagena,
+    );
+
+    expect(cotizacion.plazasSinUsar).toBe(0);
+    expect(cotizacion.fechaRegreso).toBe('2026-10-15'); // Mismo día
+    expect(cotizacion.lineas.length).toBe(2); // Adulto y Niño
+    expect(BigInt(cotizacion.totalVenta.unidades)).toBeGreaterThan(0n);
+
+    // Texto WhatsApp debe contener aviso de muelle
+    const texto = generarTextoPropuestaWhatsApp(cotizacion);
+    expect(texto).toContain('Impuesto de muelle no incluido');
   });
 });
