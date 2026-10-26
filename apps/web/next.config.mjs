@@ -32,7 +32,7 @@ export default {
     : {}),
 
   async headers() {
-    const isDev = process.env.NODE_ENV !== 'production';
+    const isDev = process.env.NODE_ENV === 'development';
     const apiOrigin = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3333';
     const wsOrigin =
       process.env.NEXT_PUBLIC_WS_URL ??
@@ -41,7 +41,9 @@ export default {
     const csp = [
       "default-src 'self'",
       `connect-src 'self' ${apiOrigin} ${wsOrigin}`,
-      `script-src 'self'${isDev ? " 'unsafe-inline'" : ''}`,
+      // 'unsafe-eval' solo en desarrollo: lo exige el recargador de React (sin él la página no arranca y
+      // los botones no hacen nada). Nunca en producción ni en las pruebas.
+      `script-src 'self'${isDev ? " 'unsafe-inline' 'unsafe-eval'" : ''}`,
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob:",
       "font-src 'self' data:",
