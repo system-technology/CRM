@@ -26,7 +26,7 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: backlog
+    status: done
     acceptance:
       - Un POST, PUT, PATCH o DELETE con una cabecera Origin que no esté en la lista permitida responde 403,
         en cualquier controlador
@@ -37,6 +37,12 @@ tasks:
       - apps/api/src/shared/red/
       - apps/api/src/main.ts
       - apps/api/src/app.module.ts
+    started_at: 2026-10-26T20:27:08.532Z
+    done_at: 2026-10-26T20:27:08.532Z
+    evidence: "Mergeado en main por el PR #23 (rama a/T-001-comprobar-la-cabecera-origin-en-toda-mut) con el CI en
+      verde: format, analyze, tests y los demás checks obligatorios. Cierre automático
+      (.github/workflows/cerrar-tarea.yml)."
+    commit: f98b9a74f97b3bb274f9dd3c616c6439cce3caa8
   - id: T-002
     title: Límite de tasa en la API fuera del flujo de autenticación
     type: security
