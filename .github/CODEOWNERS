@@ -1,0 +1,24 @@
+# Rutas que exigen la aprobación del Owner (espejo de `humanRequired` en ownership.json).
+# Con `require_code_owner_reviews` en la protección de `main`, un PR que toque cualquiera de estas
+# rutas no se integra hasta que el Owner lo apruebe. Las GitHub Apps no pueden aprobarlo.
+/packages/database/prisma/migrations/ @Alfavear
+/packages/database/prisma/policies/ @Alfavear
+/packages/database/prisma/schema.prisma @Alfavear
+/packages/database/tests/ @Alfavear
+/docs/03-adr/ @Alfavear
+/render.yaml @Alfavear
+/infra/ @Alfavear
+/.github/ @Alfavear
+/.claude/ @Alfavear
+/.opencode/ @Alfavear
+/scripts/ @Alfavear
+/tools/ @Alfavear
+/.env* @Alfavear
+package.json @Alfavear
+/pnpm-lock.yaml @Alfavear
+/pnpm-workspace.yaml @Alfavear
+/turbo.json @Alfavear
+/CLAUDE.md @Alfavear
+/AGENTS.md @Alfavear
+/ownership.json @Alfavear
+*cifr* @Alfavear

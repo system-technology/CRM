@@ -1,0 +1,73 @@
+{
+  "_doc": "Configuración del ciclo autónomo (scripts/ciclo.mjs). Ver docs/09-ia/07-ciclo-autonomo.md. Se recarga en cada ciclo.",
+  "repo": "system-technology/CRM",
+  "maxCiclosDia": 25,
+  "maxFallosSeguidos": 3,
+  "maxPrsAbiertos": 3,
+  "maxReparacionesPorPr": 2,
+  "pausaEntreCiclosSeg": 60,
+  "pausaSinTareaSeg": 900,
+  "minutosPorFase": 25,
+  "limites": {
+    "maxFicheros": 25,
+    "maxLineas": 1500
+  },
+  "excluirTareas": [],
+  "_excluirNota": "Ids que el supervisor no elegirá nunca (p. ej. las que exigen credenciales de producción o probar en un dispositivo).",
+  "prohibidos": [
+    "^(fix|apply|update)_[^/]*\\.(py|js|mjs|ps1|sh)$",
+    "^test_output\\.txt$",
+    "\\.pem$",
+    "(^|/)\\.env($|\\.)",
+    "^(TAREA|PLAN|RESULTADO|REVISION)\\.(md|json)$",
+    "(^|/)zz_[^/]*",
+    "(^|/)[^/]*probe[^/]*\\.(ts|js|mjs)$"
+  ],
+  "carriles": {
+    "backend": {
+      "prefijo": "a",
+      "modeloPlan": ["nvidia/nvidia/nemotron-3-ultra-550b-a55b", "opencode-go/qwen3.8-max"],
+      "modeloImplementa": ["nvidia/nvidia/nemotron-3-ultra-550b-a55b", "opencode-go/kimi-k3.1-pro"],
+      "modeloRevisa": ["nvidia/nvidia/nemotron-3.5-super-vl-120b-a12b", "opencode-go/glm-5.3"]
+    },
+    "frontend": {
+      "prefijo": "b",
+      "modeloPlan": ["nvidia/nvidia/nemotron-3-ultra-550b-a55b", "opencode-go/qwen3.8-max"],
+      "modeloImplementa": ["nvidia/nvidia/nemotron-3-ultra-550b-a55b", "opencode-go/kimi-k3.1-pro"],
+      "modeloRevisa": ["nvidia/nvidia/nemotron-3.5-super-vl-120b-a12b", "opencode-go/glm-5.3"]
+    }
+  },
+  "noPublicables": ["^\\.github/workflows/"],
+  "_noPublicablesNota": "Las apps no pueden crear ni modificar workflows (no se les concede el permiso 'workflows'): esas tareas las hace una persona.",
+  "auditoria": {
+    "umbralTareasLibres": 2,
+    "enfriamientoHoras": 12,
+    "maxTareasNuevas": 8,
+    "prioridadMaxima": "P2",
+    "modelo": ["nvidia/nvidia/nemotron-3-ultra-550b-a55b", "opencode-go/kimi-k3.1-pro"],
+    "modeloRevisa": ["nvidia/nvidia/nemotron-3.5-super-vl-120b-a12b", "opencode-go/qwen3.8-max"],
+    "enfriamientoSinTareasHoras": 3
+  },
+  "auditor": {
+    "minutosEntreCiclos": 90,
+    "directorio": "auditor-auto",
+    "modelo": ["nvidia/nvidia/nemotron-3-ultra-550b-a55b", "opencode-go/kimi-k3.1-pro"],
+    "modeloRevisa": ["nvidia/nvidia/nemotron-3.5-super-vl-120b-a12b", "opencode-go/qwen3.8-max"],
+    "escaladaCiclos": 3,
+    "minutosFase": 25,
+    "minutosFaseRespaldo": 15
+  },
+  "_modelosNota": "OpenCode Go agotó su cuota el 2026-10-26 («Go usage limit exceeded»): NVIDIA va primero en todas las fases y Go queda de respaldo. Planificador y revisor siempre distintos.",
+  "minutosFaseRespaldo": 15,
+  "maxPrsProtegidos": 3,
+  "maxIntentosPorTarea": 2,
+  "objetivo": "M1 del roadmap v2: endurecer antes de la piloto, y tener un CRM mostrable (cotizador, bandeja, login, datos demo desplegados en staging). Ver ESTADO.md y roadmap/tasks.yaml.",
+  "minutosFase": {
+    "plan": 25,
+    "revision": 12,
+    "implementa": 40,
+    "reparar": 12,
+    "auditoria": 25,
+    "auditoria-revision": 12
+  }
+}

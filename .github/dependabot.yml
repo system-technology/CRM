@@ -1,0 +1,8 @@
+# Mantiene al dia los SHA de las acciones de GitHub (M1.5). Cada actualizacion llega como PR
+# semanal y se revisa; los SHA no se tocan a mano.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

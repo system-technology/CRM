@@ -30,3 +30,6 @@ images/
 # reescribe la tabla entera: el diff deja de mostrar qué cambió de verdad, que es justamente
 # para lo que se revisan esos archivos. La prosa se escribe a mano, a 100 columnas.
 *.md
+
+# El roadmap lo escribe tools/roadmap-mcp con su propio formato; prettier lo reformataria en cada guardado
+roadmap/tasks.yaml
