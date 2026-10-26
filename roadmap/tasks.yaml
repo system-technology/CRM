@@ -791,3 +791,47 @@ tasks:
       - apps/web/src/lib/crm-api.ts
     source: propietario:2026-10-26 (identidad visual)
     created_at: 2026-10-26T23:32:24.205Z
+  - id: T-038
+    title: "Marca de la agencia en la API: nombre comercial, logo y color de acento por agencia"
+    type: feature
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    depends_on: []
+    acceptance:
+      - "GET y PUT bajo /api/v1/agencia/marca devuelven y guardan nombre comercial, logo (URL o archivo
+        validado: tipo y tamaño máximos) y color de acento, siempre del tenant de la sesión y con el permiso
+        de administrar la agencia (R1)"
+      - El color se valida (formato y contraste suficiente sobre blanco) y el logo se sirve sin ejecutar
+        contenido activo (sin SVG con scripts)
+      - Un test e2e comprueba que una agencia no lee ni cambia la marca de otra
+      - "Si guardar la marca exige columnas o tablas nuevas, NO se escribe migración: se reporta la lista
+        exacta al agente datos; pnpm compuertas en verde"
+    files:
+      - apps/api/src/modules/identity/
+      - packages/contracts/src/
+    source: propietario:2026-10-26 (marca por agencia)
+    created_at: 2026-10-26T23:39:32.870Z
+  - id: T-039
+    title: "Aplicar la marca de cada agencia: logo y color de acento en la cabecera, el login y los documentos"
+    type: feature
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    depends_on:
+      - T-038
+    acceptance:
+      - La cabecera y la barra lateral muestran el logo y el nombre comercial de la agencia de la sesión; el
+        color de acento se aplica mediante variables CSS sin romper el contraste AA
+      - Sin marca configurada, se ve la identidad de ViajaPro; con marca, la de la agencia; un test cubre
+        ambos casos
+      - Configuración permite subir el logo y elegir el color con vista previa en vivo
+      - No se copia ningún activo gráfico de terceros al repositorio; usable a 375 px
+    files:
+      - apps/web/src/app/configuracion/page.tsx
+      - apps/web/src/app/layout.tsx
+      - apps/web/src/components/comun/
+    source: propietario:2026-10-26 (marca por agencia)
+    created_at: 2026-10-26T23:39:32.871Z
