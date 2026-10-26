@@ -110,3 +110,48 @@ tasks:
       - No se modifica el esquema de la base ni las migraciones
     files:
       - apps/api/src/modules/crm/
+  - id: T-007
+    title: "Portar a main el cambio de origin/fix/quoting-condiciones-y-salud: condiciones de tarifa no
+      evaluables, ruta antigua retirada y salud 503"
+    type: bug
+    phase: 1
+    priority: P0
+    effort: M
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Una tarifa con condicion de edad o de silla que no se puede evaluar se rechaza con un error de dominio
+        tipado, no se cotiza en silencio (spec en
+        apps/api/src/modules/quoting/domain/seleccion-de-tarifas.spec.ts)
+      - El endpoint antiguo de cotizar-paquete deja de existir y ningun codigo de apps/api lo referencia
+      - GET /salud/listo responde 503 cuando el servicio esta degradado y 200 solo si esta sano
+        (apps/api/src/salud.controller.spec.ts)
+      - "pnpm compuertas --rapido verde; referencia: git show origin/fix/quoting-condiciones-y-salud, que
+        quedo atras de main y no se puede fusionar tal cual"
+    files:
+      - apps/api/src/salud.controller.ts
+      - apps/api/src/modules/quoting/domain/seleccion-de-tarifas.ts
+      - apps/api/src/modules/quoting/domain/errors.ts
+      - apps/api/src/modules/quoting/application/cotizar-salida.use-case.ts
+      - apps/api/src/modules/quoting/interface/catalogo.controller.ts
+      - apps/api/src/modules/quoting/quoting.module.ts
+    source: orquestador:2026-10-26
+    created_at: 2026-10-26T16:08:34.342Z
+  - id: T-008
+    title: Adaptar el cliente de la web a la retirada de la ruta antigua de cotizacion de paquetes
+    type: bug
+    phase: 1
+    priority: P1
+    effort: S
+    status: backlog
+    depends_on:
+      - T-007
+    acceptance:
+      - apps/web/src/lib/api.ts no llama a la ruta antigua de cotizar-paquete
+      - El cotizador de apps/web sigue cotizando contra la ruta vigente; un test en apps/web lo cubre
+      - "pnpm compuertas --rapido verde; referencia: git show
+        origin/fix/quoting-condiciones-y-salud:apps/web/src/lib/api.ts"
+    files:
+      - apps/web/src/lib/api.ts
+    source: orquestador:2026-10-26
+    created_at: 2026-10-26T16:08:34.343Z
