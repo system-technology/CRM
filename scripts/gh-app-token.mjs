@@ -48,6 +48,7 @@ try {
   process.stdout.write(token);
 } catch (e) {
   console.error(`✗ ${e.message}`);
-  if (/404/.test(e.message)) console.error(`  ¿Está instalada la app "${sesion}" sobre ${cfg.repo}?`);
+  if (/404/.test(e.message))
+    console.error(`  ¿Está instalada la app "${sesion}" sobre ${cfg.repo}?`);
   process.exit(1);
 }
