@@ -16,7 +16,9 @@
 #
 #  human_required: el supervisor NO lo lee (verificado: grep en scripts/ciclo.mjs). Las tareas del
 #  Owner van además con status `blocked` y blocked_reason, que sí las saca de las candidatas.
-#  M1 y M2 están autorizadas por el propietario (2026-10-26); M3 espera a auditor-seguridad.
+#  M1 y M2 están autorizadas por el propietario (2026-10-26); M2 incluye opciones_de_salida (revisión
+#  de experto-turismo). M3 (T-045) sigue bloqueada hasta implementar ADR-0017 §6.2 corregido (S1, S2).
+#  La IA (T-050) sigue bloqueada hasta alinear el PR #37 con ADR-0017 §7.
 #
 #  Orden de resultado visible:
 #    T-032 (Owner M1) → T-033 → T-034 → T-035 → T-036     = crear una excursión de un día desde la web
@@ -89,6 +91,10 @@ tasks:
         nombre que casa con dos paquetes actuales = ERROR PAQUETE_AMBIGUO; misma propuesta contra el catálogo ya
         igual = todo SIN_CAMBIOS; la huella es estable para la misma entrada y cambia con el tenantId'
       - Campos de M2 presentes en la propuesta producen AVISO CAMPO_NO_SOPORTADO_AUN y no ERROR
+      - 'ProductoPropuesto tiene opcionesDeSalida [{etiqueta, horaSalida?, horaRegreso?, puntoDeEncuentro?}] y no tiene
+        horaSalida ni horaRegreso sueltos; TarifaPropuesta.opcionDeSalida debe nombrar una etiqueta del mismo producto
+        (si no, ERROR OPCION_DE_SALIDA_DESCONOCIDA); etiqueta repetida en un producto = ERROR'
+      - Procedencia.confianza es number 0..1 (no enum); el spec lo fija
       - pnpm --filter @viajapro/api test verde; pnpm compuertas --rapido verde
     files:
       - packages/contracts/src/propuesta-de-catalogo.ts
@@ -169,21 +175,30 @@ tasks:
     type: feature
     phase: 1
     priority: P1
-    effort: S
+    effort: M
     status: backlog
     depends_on: [T-035]
     unblocks: [T-031, T-018]
     acceptance:
-      - 'packages/contracts/src/catalogo.ts exporta ResumenDePaqueteGestion: Paquete + desde (Dinero nullable) +
-        desdeEsDeGrupo + vigenciasActivas'
-      - desde es el mínimo per cápita de tarifas de vigencias activas con hasta >= hoy en la zona del tenant; no se
-        persiste
-      - Sin vigencias, desde es null; ?incluirInactivos=true incluye los desactivados; paginación por cursor
+      - 'packages/contracts/src/catalogo.ts exporta ResumenDePaqueteGestion: Paquete + desde (Dinero[], uno por moneda)
+        + desdeEsDeGrupo + vigenciasActivas'
+      - 'packages/domain/src/desde.ts: calcularDesde pura; solo considera tarifas base (sin condición de edad, ocupa
+        silla, no aditivas) de vigencias activas con hasta >= hoy en la zona del tenant; mínimo per cápita POR MONEDA;
+        no se persiste'
+      - 'Spec de calcularDesde: Adulto 900000 COP + Infante 0 COP = desde [900000 COP], nunca 0; Adulto 900000 COP +
+        suplemento sencilla aditivo 150000 COP = [900000 COP]; Adulto 900000 COP + Adulto 250 USD = [900000 COP, 250 USD]
+        sin conversión; solo tarifas no base = []'
+      - Sin tarifas base, desde es []; ?incluirInactivos=true incluye los desactivados; paginación por cursor
         (ParametrosPagina)
-      - 'catalogo-gestion.e2e-spec.ts cubre desde con dos tarifas, desde null y que tenant B no ve los de A'
+      - GET /api/v1/catalogo/salidas calcula su desde con la misma calcularDesde (grep: ningún otro cálculo de desde en
+        apps/api)
+      - 'catalogo-gestion.e2e-spec.ts cubre desde con infante a 0 y suplemento aditivo, desde [] y que tenant B no ve
+        los de A'
       - pnpm --filter @viajapro/api test verde; pnpm compuertas --rapido verde
     files:
+      - packages/domain/src/
       - packages/contracts/src/catalogo.ts
+      - apps/api/src/modules/quoting/application/listar-salidas.use-case.ts
       - apps/api/src/modules/quoting/application/listar-paquetes.use-case.ts
       - apps/api/src/modules/quoting/interface/
     source: arquitecto:ADR-0017
@@ -294,8 +309,13 @@ tasks:
         cuatro formatos de PLANTILLAS_DE_SISTEMA'
       - 'CHECK lista_unidades IS NULL OR lista_unidades > venta_unidades; único parcial (tenant_id, codigo) WHERE codigo
         IS NOT NULL AND eliminado_en IS NULL; GIN en campos_personalizados; PAQUETE en entidad_personalizable'
-      - 'packages/database/tests/aislamiento.spec.ts: tablas_sin_aislamiento vacío con formatos_de_viaje, y quitar la
-        foránea compuesta del formato pone la prueba en rojo'
+      - 'Tabla opciones_de_salida (id, tenant_id, paquete_id, etiqueta, hora_salida time, hora_regreso time,
+        punto_de_encuentro, orden, activa) con UNIQUE (id, tenant_id), UNIQUE (paquete_id, etiqueta) y foránea compuesta
+        (paquete_id, tenant_id); tarifas.opcion_de_salida_id nulable con foránea compuesta (opcion_de_salida_id,
+        tenant_id); paquetes NO recibe hora_salida ni hora_regreso'
+      - 'packages/database/tests/aislamiento.spec.ts: tablas_sin_aislamiento vacío con formatos_de_viaje y
+        opciones_de_salida; ambas con RLS USING y WITH CHECK; quitar la foránea compuesta del formato o de la opción
+        pone la prueba en rojo'
       - semilla-catalogo-real.ts deja de poner SIN_ALIMENTACION a los pasadías
       - pnpm db:migrate && pnpm --filter @viajapro/database test verde; pnpm compuertas --rapido verde
     files:
@@ -324,6 +344,10 @@ tasks:
       - camposPersonalizados se valida contra definiciones de entidad PAQUETE del tenant; clave no definida = ERROR
       - 'Cotizar Isla Palma con 2 adultos: el total no incluye la tasa portuaria; la respuesta lista cargosEnDestino con
         29000 COP POR_PERSONA'
+      - 'Opciones de salida: City Tour VIP con turnos Mañana 07:30-12:50 y Tarde 14:50-19:50 se crea por pantalla, por
+        importación (columna opcion_salida) y se lee en el listado; Isla Palma con tarifas distintas para Lancha y
+        Terrestre: cotizar sin opcionDeSalidaId responde OPCION_DE_SALIDA_REQUERIDA, con Lancha usa solo su tarifa'
+      - Una tarifa cuya opción es de otro paquete = ERROR en el núcleo; una opción con tarifas no se borra, se desactiva
       - 'GET/POST/PATCH /api/v1/catalogo/formatos (catalogo.administrar); plantilla validada por PlantillaDeFormato;
         GET /api/v1/catalogo/formatos/:id/plantilla devuelve un DescriptorDePlantilla cuyas columnas incluyen los campos
         personalizados que el formato declara'
@@ -333,6 +357,7 @@ tasks:
       - packages/contracts/src/catalogo.ts
       - packages/contracts/src/plantillas-de-catalogo.ts
       - apps/api/src/modules/quoting/application/
+      - apps/api/src/modules/quoting/domain/seleccion-de-tarifas.ts
       - apps/api/src/modules/quoting/domain/
       - apps/api/src/modules/quoting/interface/
     source: arquitecto:ADR-0017
@@ -420,26 +445,36 @@ tasks:
 
   - id: T-045
     title:
-      'Migración M3: claves_api, función resolver_clave_api SECURITY DEFINER, registros_auditoria.clave_api_id y
-      permiso integraciones.administrar'
+      'Migración M3: rol viajapro_claves, claves_api por tenant, directorio_claves_api global, disparador y
+      resolver_clave_api, registros_auditoria.clave_api_id y permiso integraciones.administrar (ADR-0017 §6.2)'
     type: security
     phase: 1
     priority: P2
     effort: M
     status: blocked
-    blocked_reason: 'human_required: migración del Owner, y antes revisión de auditor-seguridad (ADR-0017 §6, §10)'
+    blocked_reason: 'human_required: migración del Owner. Bloqueada hasta implementar ADR-0017 §6.2 tal como quedó tras la revisión de auditor-seguridad (S1, S2)'
     human_required: true
     depends_on: [T-040]
     acceptance:
-      - 'claves_api con tenant_id, UNIQUE (id, tenant_id), prefijo único global, hash_secreto, ambitos text[],
-        expira_en, revocada_en; ninguna columna guarda el secreto'
-      - 'resolver_clave_api(p_prefijo, p_hash) cumple las cuatro reglas de ADR-0008 §1.4 (search_path fijo, sin SQL
-        dinámico, REVOKE a PUBLIC, EXECUTE solo a viajapro_app) y devuelve vacío si la clave está revocada, vencida o la
-        agencia suspendida'
+      - 'Rol viajapro_claves NOLOGIN NOBYPASSRLS; ningún rol de login es miembro suyo'
+      - 'claves_api con tenant_id y RLS (USING y WITH CHECK por 001), UNIQUE (id, tenant_id), prefijo único,
+        hash_secreto, ambitos text[], expira_en, revocada_en; ninguna columna guarda el secreto'
+      - "directorio_claves_api (prefijo PK, hash_secreto bytea, tenant_resuelto_id, clave_id, ambitos, expira_en,
+        revocada_en) SIN columna tenant_id, propiedad de viajapro_claves, declarada en excepciones_rls con '{}' para
+        viajapro_app, viajapro_altas, viajapro_webhook y viajapro_identidad; el literal de aislamiento.spec.ts se amplía
+        con ella (R1)"
+      - 'Disparador SECURITY DEFINER de viajapro_claves sobre claves_api mantiene el directorio en INSERT y UPDATE
+        (revocar, vencer) en la misma transacción y rechaza cualquier UPDATE de tenant_id'
+      - "resolver_clave_api(p_prefijo, p_hash) propiedad de viajapro_claves, LANGUAGE sql STABLE STRICT, SET
+        search_path = '', sin SQL dinámico; filtra por prefijo y hash, no revocada, no vencida y tenant no suspendido;
+        en la migración el orden es REVOKE ALL FROM PUBLIC, GRANT EXECUTE TO viajapro_app y después OWNER TO
+        viajapro_claves"
       - registros_auditoria.clave_api_id nulable con foránea compuesta a claves_api
       - "'integraciones.administrar' en el CHECK roles_permisos_del_catalogo y en PERMISOS; concedido solo a DUENO"
-      - 'aislamiento.spec.ts: claves_api en las aserciones; la función aparece en el inventario de SECURITY DEFINER y una
-        aserción falla si gana SQL dinámico o EXECUTE a otro rol'
+      - 'aislamiento.spec.ts: ningún rol de login puede SELECT ni escribir directorio_claves_api; viajapro_claves no
+        tiene BYPASSRLS ni LOGIN ni miembros; resolver_clave_api solo la ejecuta viajapro_app; el inventario de
+        funciones SECURITY DEFINER pasa de 11 a 13 y una aserción falla si alguna gana SQL dinámico o EXECUTE a otro
+        rol; un UPDATE de claves_api.tenant_id falla'
       - pnpm db:migrate && pnpm --filter @viajapro/database test verde; pnpm compuertas --rapido verde
     files:
       - packages/database/prisma/schema.prisma
@@ -466,6 +501,11 @@ tasks:
       - 'POST /api/v1/integraciones/claves (integraciones.administrar) devuelve el secreto una sola vez; GET lista
         prefijo, nombre, ámbitos, último uso, sin secreto ni hash; POST .../:id/revocar hace que la siguiente petición
         con esa clave responda 401'
+      - "Ámbitos acotados por los permisos de quien crea la clave con permisoQueFalta
+        (identity/domain/permisos-incluidos.ts): catalogo:escribir exige catalogo.administrar y catalogo:neto exige
+        cotizacion.ver_neto_y_margen; e2e: un rol con integraciones.administrar sin ver_neto_y_margen que pide
+        catalogo:neto recibe 403 y no se crea ninguna fila"
+      - El atajo x-dev-tenant-id se ignora en /api/v1/publica/** incluso con APP_ENV=local (spec)
       - Comparación del hash en tiempo constante; ultimo_uso_en se escribe como mucho una vez por minuto por clave
       - Crear y revocar escriben en registros_auditoria
       - 'e2e: una clave de tenant A nunca resuelve tenant B; clave vencida = 401'
@@ -546,7 +586,10 @@ tasks:
       - El adaptador no recibe AplicadorDeCatalogo por inyección (spec del módulo lo comprueba)
       - Una propuesta IA solo se confirma por /importaciones/confirmar con sesión y catalogo.administrar; el actor
         auditado es la persona y detalle.fuente la procedencia
-      - Neto en una propuesta IA se descarta salvo que el documento lo haya subido alguien con permiso de neto
+      - La IA nunca propone neto; el adaptador descarta cualquier neto devuelto, sin excepción por permiso ni por
+        fuente (spec con un neto en la salida del falso)
+      - El contrato usado es PropuestaDeCatalogo con confianza number 0..1 (el de ADR-0017 §2), no otro
+      - Ninguna clase de apps/api obtiene URLs para la IA (el obtenedor es un proceso aparte, ADR-0017 §7.4b)
       - pnpm --filter @viajapro/api test verde; pnpm compuertas --rapido verde
     files:
       - apps/api/src/modules/quoting/application/
@@ -561,7 +604,7 @@ tasks:
     priority: P3
     effort: M
     status: blocked
-    blocked_reason: 'Espera docs/09-ia/09-ingesta-de-catalogo-con-ia.md aprobado y revisado por auditor-seguridad, y su adaptador real'
+    blocked_reason: 'Espera docs/09-ia/09-ingesta-de-catalogo-con-ia.md (PR #37) alineado con ADR-0017 §7 (solo https, obtenedor en proceso aparte, nunca neto, contrato PropuestaDeCatalogo) y revisado por auditor-seguridad. Activación con agencias reales: DPA del proveedor, aviso a la agencia, pruebas SSRF en verde y regla de red verificada'
     depends_on: [T-049, T-029]
     acceptance:
       - Reutiliza la tabla de previsualización de T-029; cada precio muestra procedencia.fuente y el fragmento literal

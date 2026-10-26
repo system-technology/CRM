@@ -3,6 +3,13 @@
 - **Estado:** Aceptado por el propietario (2026-10-26). Autoriza las migraciones **M1 y M2**. Los
   canales de **API pública** (§6) e **ingesta por IA** (§7), y la migración **M3** que los habilita,
   quedan **sujetos a la revisión de `auditor-seguridad`** antes de implementarse.
+- **Revisión (una vuelta, R13), 2026-10-26:** `auditor-seguridad` y `experto-turismo`, ambos
+  «aceptar con cambios». Incorporados aquí los bloqueantes: «desde» solo sobre tarifas base y por
+  moneda (§9), **opciones de salida** en lugar de dos columnas de hora (§3.1, cambia M2), directorio
+  global de claves con rol propio (§6.2, cambia M3), ámbitos acotados por los permisos de quien crea
+  la clave (§6.2) y alineación con la ingesta por IA (§7). Lo no bloqueante está en «Cola». **M1 y
+  M2 siguen autorizadas; M3 y la activación de la IA siguen bloqueadas** hasta implementar §6.2 y §7
+  tal como quedan.
 - **Fecha:** 2026-10-26
 - **Decide:** Propietario del producto
 - **Consultados:** `arquitecto` (redacta). `ingeniero-ia` diseña en paralelo la ingesta por IA en
@@ -60,7 +67,10 @@ central de este ADR es que **no lo sean**.
 | `packages/contracts/src/plantillas.ts` ya existe y es de **plantillas de WhatsApp** | Grep: exporta `PlantillaWhatsApp`. Por eso aquí se dice «plantilla de catálogo» y el archivo será `plantillas-de-catalogo.ts` |
 | `ownership.json` marca `**/package.json` como `humanRequired`: añadir una dependencia la hace una persona | Lectura de `ownership.json` |
 | El supervisor deduce el carril de `files` (`carrilDeTarea`) y no lee `human_required` | `scripts/ciclo.mjs` línea 181 y grep de `human_required`: cero |
-| **No verificado:** que `viajapro_app` pueda tomar `pg_advisory_xact_lock` y tenga solo `INSERT` sobre `registros_auditoria`; el recuento actual de funciones `SECURITY DEFINER` (ADR-0010 §1.2 dice ocho) | No se ejecutó contra una base |
+| Las funciones `SECURITY DEFINER` del repositorio son **once**, no las ocho de ADR-0010 §1.2 | Recuento de `auditor-seguridad` (revisión del 2026-10-26). Un grep `-i "security definer"` en `packages/database/prisma` da 40 menciones en 10 archivos, comentarios incluidos; el recuento de funciones distintas **no lo verifiqué yo** |
+| Las tablas globales sin `tenant_id` se declaran en `excepciones_rls`, y el patrón de disparador que mantiene una tabla global desde una de negocio ya existe (`sincronizar_acceso_identidad`) | Grep de `excepciones_rls\|sincronizar_acceso_identidad` en `packages/database`: migraciones `20261007120100`, `20261019230000` y `aislamiento.spec.ts` |
+| `permisoQueFalta` ya existe y ya impide dar más permisos de los que se tienen | `apps/api/src/modules/identity/domain/permisos-incluidos.ts` línea 5; lo usa `invitar-miembro.use-case.ts` línea 54 |
+| **No verificado:** que `viajapro_app` pueda tomar `pg_advisory_xact_lock` y tenga solo `INSERT` sobre `registros_auditoria` | No se ejecutó contra una base |
 
 ### Qué cubre ya el esquema (ADR-0009) y qué no
 
@@ -77,7 +87,7 @@ Palma con dos modalidades) y **André's Tours** (`docs/01-producto/10-catalogo-r
 | Plan de alimentación en un pasadía | **No: obliga a mentir** | `plan_alimentacion NOT NULL` → nulable (M2) |
 | Precio de lista tachado + promo | **No** | `lista_unidades`, `promo_hasta` (M2) |
 | Cargo pagado en destino | **Solo como texto** | `cargos_en_destino jsonb` (M2) |
-| Hora de salida y regreso | **No** | `hora_salida`, `hora_regreso` `time` (M2) |
+| Hora de salida y regreso, **varias por producto** (City Tour VIP: turnos 7:30-12:50 y 14:50-19:50; Isla Palma: lancha o terrestre por Tolú, recogida Marbella 4:30, Bocagrande 4:45, Centro 5:00) | **No** | Tabla `opciones_de_salida` (M2, §3.1) |
 | Identificar un producto entre dos cargas | **No** | `codigo` (M2); el nombre no es clave (ADR-0009, hecho 3) |
 | Campos propios de la agencia | **No** | `PAQUETE` en `EntidadPersonalizable` + `campos_personalizados` (M2) |
 | Tipo de producto (`TripFormat`) que defina sus campos | **No** | `formatos_de_viaje` con su `plantilla` (M2) |
@@ -195,13 +205,16 @@ ProductoPropuesto = {
   formato?: string,                       // nombre del formato de viaje del tenant
   planAlimentacion?: PlanAlimentacion | null,
   inclusiones?: string[], exclusiones?: string[],
-  horaSalida?: 'HH:MM', horaRegreso?: 'HH:MM',
+  opcionesDeSalida?: { etiqueta, horaSalida?: 'HH:MM', horaRegreso?: 'HH:MM',
+                       puntoDeEncuentro?: string }[],     // §3.1; etiqueta única en el producto
   cargosEnDestino?: { concepto, monto: Dinero | null, unidad: 'POR_PERSONA' | 'POR_GRUPO', nota? }[],
   camposPersonalizados?: Record<string, unknown>,
   vigencias: { desde, hasta, publicada?, tarifas: TarifaPropuesta[] }[],   // [] = «a consultar»
   procedencia?: Procedencia
 }
-TarifaPropuesta = CrearTarifa + { lista?: Dinero | null, promoHasta?: FechaViaje | null, procedencia? }
+TarifaPropuesta = CrearTarifa + { lista?: Dinero | null, promoHasta?: FechaViaje | null,
+                                  opcionDeSalida?: string,   // etiqueta de una opción del mismo producto
+                                  procedencia? }
 Procedencia = { fila?: number, columna?: string,                 // ARCHIVO
                 fuente?: string, fragmento?: string,             // IA: URL/archivo y cita literal ≤ 300 car.
                 confianza?: number }                             // IA: 0..1, solo informativo
@@ -219,8 +232,12 @@ Reglas del contrato:
   de la heurística de nombre); `IA` exige `procedencia.fuente` y `procedencia.fragmento` en cada
   precio (sin cita no hay precio: es la defensa contra alucinaciones). `procedencia.confianza` **no
   cambia nunca** lo que se aplica: solo ordena la revisión.
-- Los campos que dependen de M2 (`codigo`, `lista`, `promoHasta`, horas, cargos, campos propios,
-  formato) existen en el contrato desde el día uno; mientras M2 no se aplique, el núcleo responde
+- **Este es el único contrato de la propuesta.** `confianza` es un número `0..1`, no un enum. El
+  borrador de `docs/09-ia/09-ingesta-de-catalogo-con-ia.md` (PR #37) usa otro nombre
+  (`PropuestaCatalogo`) y una confianza enumerada: **el PR #37 debe alinearse con este contrato**
+  antes de integrarse. Si la IA quiere mostrar «alta/media/baja», lo deriva del número en la pantalla.
+- Los campos que dependen de M2 (`codigo`, `lista`, `promoHasta`, opciones de salida, cargos, campos
+  propios, formato) existen en el contrato desde el día uno; mientras M2 no se aplique, el núcleo responde
   `AVISO CAMPO_NO_SOPORTADO_AUN` y los ignora. Así el contrato no rompe al aplicar M2.
 
 ### 3. Clave natural
@@ -232,7 +249,38 @@ Reglas del contrato:
 | Tarifa | `(vigencia, nombre normalizado)` — unicidad de aplicación, protegida por el bloqueo |
 | Mayorista | nombre normalizado; si no existe se crea y el informe lo dice |
 
-Si la clave casa con más de un paquete: `ERROR PAQUETE_AMBIGUO`. No se elige en silencio.
+Si la clave casa con más de un paquete: `ERROR PAQUETE_AMBIGUO`. No se elige en silencio. La
+opción de salida se identifica por `(paquete, etiqueta normalizada)`.
+
+### 3.1 Opciones de salida (corrección de la revisión de `experto-turismo`)
+
+Un producto tiene **cero o más opciones de salida**: la variante de operación que el viajero elige
+dentro del mismo producto — un turno (City Tour VIP mañana o tarde), una modalidad con su punto de
+recogida (Isla Palma por lancha, o terrestre por Tolú con recogida en Marbella 4:30, Bocagrande 4:45
+o Centro 5:00), o el hotel en un paquete con hotel. Cada una: `etiqueta`, `hora_salida` y
+`hora_regreso` (`time` **sin zona**: hora local del punto de encuentro, como la fecha de viaje es
+`date`; convertirla a UTC la rompería con el cambio de huso), `punto_de_encuentro` (texto), `orden`,
+`activa`. Una tarifa **puede** referenciar una opción (la lancha y el terrestre cuestan distinto; cada
+hotel tiene su precio); una tarifa sin opción vale para todas.
+
+**Tabla, no JSON.** Se decide `opciones_de_salida (id, tenant_id, paquete_id, …)` con
+`UNIQUE (id, tenant_id)`, `UNIQUE (paquete_id, etiqueta)`, foránea compuesta
+`(paquete_id, tenant_id) → paquetes`, y `tarifas.opcion_de_salida_id` con foránea compuesta
+`(opcion_de_salida_id, tenant_id) → opciones_de_salida`. Razones: **una tarifa la referencia**, y una
+referencia dentro de un `jsonb` no tiene integridad (borrar la opción dejaría tarifas colgando sin que
+la base lo impida); y una tabla con `tenant_id` recibe RLS `USING` y `WITH CHECK` sola por `001`. Que
+la opción de una tarifa sea **del mismo paquete** que su vigencia no lo expresa una foránea: lo valida
+el núcleo, y es coherencia de dominio, no aislamiento (la foránea compuesta ya impide colgar una
+opción de otra agencia). Una opción referenciada por tarifas no se borra: se desactiva.
+
+**Consecuencia en el cotizador, dicha en voz alta.** Es el único punto en que este ADR toca la
+selección de tarifas: si un producto tiene tarifas atadas a opciones, la cotización necesita
+`opcionDeSalidaId`; sin ella responde `OPCION_DE_SALIDA_REQUERIDA` (no cotiza en silencio la más
+barata). La selección filtra tarifas por opción antes de las condiciones existentes; el cálculo de
+precio no cambia. Es un eje más de selección, como la acomodación del eje 3 de ADR-0009.
+
+Sustituye a las columnas `hora_salida` y `hora_regreso` de la redacción anterior, que nunca se
+aplicaron.
 
 ### 4. Los cuatro canales
 
@@ -242,7 +290,7 @@ Rutas bajo `api/v1/catalogo`, sesión de usuario, permiso `catalogo.administrar`
 
 | Ruta | Qué hace |
 |---|---|
-| `GET paquetes` | Listado de gestión: incluye inactivos con filtro; `desde` derivado (nulo = «a consultar») |
+| `GET paquetes` | Listado de gestión: incluye inactivos con filtro; `desde` derivado según §9 (lista vacía = «a consultar») |
 | `POST paquetes` | Alta: el formulario arma una `PropuestaDeCatalogo` de **un** producto (`origen: PANTALLA`) y la aplica directamente: el formulario ya es su previsualización |
 | `PATCH paquetes/:id` · `POST paquetes/:id/desactivar` | Edición y baja lógica. **Nunca se borra un paquete** (`versiones_cotizacion.paquete_id` es `Restrict`) |
 | `GET paquetes/:id/vigencias` · `POST vigencias` · `PATCH vigencias/:id` | Vigencias; `neto` solo con permiso |
@@ -278,7 +326,10 @@ desde esas mismas constantes: una sola fuente.
 
 **Formato del archivo.** Una fila = una tarifa; producto y vigencia repetidos; filas del mismo
 producto se agrupan. Encabezados = las claves estables del descriptor (`nombre`, `noches`,
-`precio_venta`, …). Versionado:
+`precio_venta`, …). Las opciones de salida van como columnas de la fila (`opcion_salida`,
+`hora_salida`, `hora_regreso`, `punto_encuentro`): la City Tour VIP es una fila por turno y por
+tarifa; filas con el mismo producto y la misma `opcion_salida` describen la misma opción, y si sus
+horas difieren es `ERROR OPCION_INCOHERENTE`. Versionado:
 
 - CSV: primera línea `#viajapro;plantilla=<clave-formato>;version=<n>`. UTF-8 con BOM, separador `;`
   (el que Excel en español abre sin preguntar), y el lector acepta también `,`.
@@ -349,16 +400,42 @@ Escribir o leer neto exige además el ámbito `catalogo:neto`. Los contratos de 
   `ambitos text[]`, `creada_por`, `creada_en`, `expira_en` (nulable), `revocada_en`, `revocada_por`,
   `ultimo_uso_en`. **El secreto se muestra una vez** al crearla y no se guarda en ninguna parte.
   Comparación en tiempo constante.
-- **R1, el tenant sale de la clave y de nada más.** El problema es que hay que leer `claves_api`
-  *antes* de conocer el tenant, y la tabla tiene RLS. Se resuelve como ADR-0008 resolvió el webhook:
-  una función **`resolver_clave_api(p_prefijo, p_hash)`** `SECURITY DEFINER`, con las cuatro reglas de
-  ADR-0008 §1.4 (`search_path` fijo, sin SQL dinámico, revocada a `PUBLIC`, `EXECUTE` solo a
-  `viajapro_app`), que devuelve `(clave_id, tenant_id, ambitos)` solo si la clave existe, no está
-  revocada ni vencida y su agencia no está suspendida. `TenantMiddleware` gana una rama para
-  `/api/v1/publica/**`: resuelve la clave por la función y establece el contexto con ese `tenantId`,
-  igual que hoy con la sesión. **Ningún `tenantId` del cuerpo, la ruta o una cabecera se lee nunca**;
-  la propuesta no tiene campo para él (§2). Es una función `SECURITY DEFINER` más en el inventario
-  de ADR-0010 §1.2 y pasa por `auditor-seguridad` como las demás.
+- **R1, el tenant sale de la clave y de nada más.** Hay que encontrar la clave *antes* de conocer el
+  tenant. **La redacción anterior no funcionaba** (hallazgo crítico de `auditor-seguridad`): una
+  función `SECURITY DEFINER` que lee `claves_api` —tabla de negocio con `tenant_id` y RLS forzada— ve
+  cero filas si su dueño no tiene `BYPASSRLS`, y darle `BYPASSRLS` es la escalada que ADR-0008
+  prohíbe. ADR-0008 y ADR-0011 resuelven siempre sobre **tablas globales** declaradas en
+  `excepciones_rls` (`enrutamiento_canales`, `accesos_identidad`). Se hace igual:
+  1. **`claves_api`** sigue siendo tabla **por tenant con RLS** (la gestionan las pantallas, bajo
+     `conTenant`).
+  2. **`directorio_claves_api`**, tabla **global sin `tenant_id`**: `prefijo` (PK), `hash_secreto
+     bytea`, `tenant_resuelto_id`, `clave_id`, `ambitos`, `expira_en`, `revocada_en`. Declarada en
+     `excepciones_rls` con `'{}'` para `viajapro_app`, `viajapro_altas`, `viajapro_webhook` y
+     `viajapro_identidad`: **ningún rol de login la lee ni la escribe**.
+  3. Su dueño es un rol nuevo **`viajapro_claves`**, `NOLOGIN` y `NOBYPASSRLS`, del que ningún rol de
+     login es miembro (mismo patrón que `viajapro_accesos`, R2).
+  4. Un **disparador `SECURITY DEFINER` de `viajapro_claves` sobre `claves_api`** mantiene el
+     directorio en `INSERT` y `UPDATE` (revocar, vencer) —patrón de `sincronizar_acceso_identidad`—
+     y **rechaza todo `UPDATE` de `tenant_id`** en `claves_api`.
+  5. **`resolver_clave_api(p_prefijo, p_hash)`**, propiedad de `viajapro_claves`, `LANGUAGE sql
+     STABLE STRICT`, `SET search_path = ''`, nombres calificados, sin SQL dinámico. Filtra por
+     prefijo **y** hash, no revocada, no vencida y tenant no suspendido; devuelve
+     `(clave_id, tenant_id, ambitos)`. Orden fijo en la migración: `REVOKE ALL ... FROM PUBLIC`,
+     `GRANT EXECUTE ... TO viajapro_app`, **después** `OWNER TO viajapro_claves`.
+  6. Aserciones en `aislamiento.spec.ts`: ningún rol de login lee `directorio_claves_api`; el dueño
+     no tiene `BYPASSRLS` ni `LOGIN`; nadie es miembro de `viajapro_claves`; la función solo es
+     ejecutable por `viajapro_app`.
+
+  `TenantMiddleware` gana una rama para `/api/v1/publica/**`: resuelve la clave por la función y
+  establece el contexto con ese `tenantId`, igual que hoy con la sesión. **Ningún `tenantId` del
+  cuerpo, la ruta o una cabecera se lee nunca**; la propuesta no tiene campo para él (§2). Son dos
+  funciones `SECURITY DEFINER` más (disparador y resolutor) sobre las **once** que ya hay, y pasan
+  por `auditor-seguridad` como las demás.
+- **Los ámbitos no superan los permisos de quien crea la clave** (hallazgo alto de
+  `auditor-seguridad`). Tener `integraciones.administrar` no basta: `catalogo:escribir` exige además
+  `catalogo.administrar`, y `catalogo:neto` exige `cotizacion.ver_neto_y_margen`; `catalogo:leer` no
+  exige más. Se comprueba con `permisoQueFalta` (`identity/domain/permisos-incluidos.ts`), el mismo
+  patrón que impide invitar a alguien con más permisos de los propios; si falta uno, 403.
 - **Propiedad:** las claves son credenciales, así que su gestión (crear, listar, rotar, revocar) y su
   resolución viven en **`identity`**, junto a sesiones e invitaciones. El middleware las consulta por
   el puerto `ResolutorDeAcceso` que ya usa para la sesión (`shared/puertos/puerto-de-acceso.ts`),
@@ -366,8 +443,8 @@ Escribir o leer neto exige además el ámbito `catalogo:neto`. Los contratos de 
   tenant, actor y ámbitos.
 - **Rotación:** crear una clave nueva, desplegarla en el sistema cliente, revocar la vieja. Las dos
   conviven el tiempo que la agencia quiera; `expira_en` opcional para forzarlo.
-- **Revocación inmediata:** sin caché de la resolución (la función es una búsqueda por índice
-  único). Si el volumen lo exige, caché de 30 s como máximo, y se escribe en el ADR que la supersede.
+- **Revocación inmediata:** el disparador propaga `revocada_en` al directorio en la misma
+  transacción, y no hay caché de la resolución (búsqueda por clave primaria). Si el volumen lo exige, caché de 30 s como máximo, y se escribe en el ADR que la supersede.
 - `ultimo_uso_en` se actualiza como mucho una vez por minuto por clave (no una escritura por petición).
 
 #### 6.3 Límites de tasa
@@ -412,8 +489,20 @@ El diseño (modelo, *prompts*, extracción de PDF e imagen, coste, cola) es de `
    puerta de atrás.
 3. La persona puede editar o descartar productos de la propuesta antes de confirmar; lo que se
    confirma es la propuesta resultante, todo o nada.
-4. **Neto:** la IA no propone neto salvo que la fuente sea un documento subido por alguien con
-   permiso de neto; en cualquier otro caso el campo se descarta en el adaptador.
+4. **La IA nunca propone neto.** Sin excepciones: el adaptador descarta cualquier neto que el modelo
+   devuelva, sea cual sea la fuente o el permiso de quien la subió. El neto entra por pantalla,
+   archivo o API, con su permiso. (Sustituye la excepción «documento subido con permiso» de la
+   redacción anterior; unificado con `docs/09-ia/09-…`.)
+4b. **El obtenedor de URLs es un proceso aparte**, no el consumidor de `apps/api`: sin variables de
+   conexión a la base, sin secretos (ni siquiera la clave del modelo), cuya única salida a internet
+   pasa por una regla de red que **niega los rangos privados**, *loopback*, *link-local* y metadatos
+   de nube. Solo `https` (no `http`, no puerto 80). Devuelve bytes y metadatos; quien llama al modelo
+   es otro componente. Si el PR #37 dice otra cosa, prevalece este punto y el PR #37 se alinea.
+4c. **Condiciones de activación con agencias reales**, todas, antes de encenderla para una agencia
+   que no sea de demostración: acuerdo de tratamiento de datos (DPA) firmado con el proveedor del
+   modelo; aviso a la agencia, que es la responsable del tratamiento de lo que sube; pruebas de SSRF
+   en verde en CI; y la regla de red de 4b verificada en el entorno desplegado. Sin las cuatro, la
+   función queda apagada por configuración.
 5. Es un servicio externo: va detrás de un puerto (`ExtractorDeCatalogo`, en `quoting/application/`),
    con su adaptador de Claude. CLAUDE.md §10: se integra con el ADR de `ingeniero-ia` y la revisión
    de seguridad, no antes.
@@ -438,7 +527,15 @@ confirmado. En `origen: IA` el actor es **la persona que confirmó**; la fuente 
 
 ### 9. Promociones: «desde», precio de lista y la política `promo_vencida`
 
-- **«Desde»**: derivado, nunca guardado.
+- **«Desde»**: derivado, nunca guardado, y **solo sobre tarifas base y por moneda** (corrección de
+  `experto-turismo`). Tarifa base = sin condición de edad (adulto), ocupa silla, **no aditiva**, de
+  una vigencia activa con `hasta ≥ hoy` en la zona del tenant. El mínimo per cápita se calcula **por
+  separado en cada moneda**: `desde` es una lista `Dinero[]` (uno por moneda, nunca se suman ni se
+  comparan COP con USD; no se convierte con TRM). Sin tarifas base, la lista es vacía y el producto
+  se muestra «a consultar». Sin esta regla, una tarifa infante a 0 o un suplemento de sencilla
+  aditivo darían «desde $0» o un precio que nadie puede comprar: publicidad engañosa. Una sola
+  función pura, `calcularDesde` en `@viajapro/domain`, la usan el listado de gestión, las salidas
+  publicadas (`SalidaPublicada.desde`, que hoy calcula el suyo) y la API pública.
 - **Precio de lista**: `tarifas.lista_unidades` (nulable, `CHECK lista > venta`) y `tarifas.promo_hasta`
   (`date`, nulable; sin fecha = promo sin vencimiento). **`venta` es siempre lo que se cobra; `lista`
   nunca entra en el cálculo ni en la cotización congelada.**
@@ -495,10 +592,11 @@ omite `promoVigente`: un sistema externo que pinte `lista` sin mirarlo es un err
 |---|---|---|
 | **Fuga entre agencias por tenant en el cuerpo** | API, archivo | La propuesta no tiene campo de tenant (`.strict()`); el tenant sale de la clave (§6.2) o la sesión; RLS + foráneas compuestas; prueba e2e «clave de A no lee ni escribe en B» en cada ruta pública |
 | **Clave de API filtrada** | API | Solo hash en la base; mostrada una vez; prefijo detectable por escáneres; ámbitos mínimos (`catalogo:neto` aparte); revocación inmediata sin caché; `ultimo_uso_en` e IP auditadas; límite por clave; la pantalla de claves muestra último uso para detectar claves huérfanas |
-| **Escalada desde la función `SECURITY DEFINER`** | API | Las cuatro reglas de ADR-0008 §1.4; solo devuelve tres columnas de una fila; aserción en `aislamiento.spec.ts` |
-| **SSRF** cuando la IA obtiene una URL | IA | Lo detalla `ingeniero-ia`; mínimos que este ADR exige: solo `https`, puertos 443; resolución DNS hecha **antes** de conectar y rechazo de IP privadas, *loopback*, *link-local* y metadatos de nube (169.254.169.254), también tras cada redirección (máx. 3); sin cookies ni credenciales; tope de 5 MB y 15 s; el obtenedor corre sin acceso a la base ni a secretos que no necesite |
+| **Escalada desde las funciones `SECURITY DEFINER`** | API | Directorio global sin `tenant_id` en `excepciones_rls`, dueño `viajapro_claves` `NOLOGIN NOBYPASSRLS` sin miembros, disparador que prohíbe cambiar `tenant_id`; las reglas de ADR-0008 §1.4; aserciones en `aislamiento.spec.ts` (§6.2) |
+| **Clave con más poder que quien la creó** | API | Ámbitos acotados por `permisoQueFalta` (§6.2) |
+| **SSRF** cuando la IA obtiene una URL | IA | Lo detalla `ingeniero-ia`; mínimos que este ADR exige: solo `https`, puertos 443; resolución DNS hecha **antes** de conectar y rechazo de IP privadas, *loopback*, *link-local* y metadatos de nube (169.254.169.254), también tras cada redirección (máx. 3); sin cookies ni credenciales; tope de 5 MB y 15 s; el obtenedor es un **proceso aparte** sin acceso a la base ni a secretos, con salida a internet por una regla de red que niega rangos privados (§7.4b). Solo `https`: el borrador de `docs/09-ia/09-…` que admite `http`/80 se alinea con esto |
 | **Inyección de instrucciones** en la página, PDF o imagen | IA | El contenido leído es **dato, nunca instrucción**: va delimitado y el modelo solo puede responder con el esquema `PropuestaDeCatalogo` (salida estructurada, validada por Zod; lo que no valida se descarta); el modelo **no tiene herramientas** que escriban ni que lean otros datos del tenant; y el control final es humano: nada se aplica sin previsualización y confirmación en sesión (§7). Cada precio exige su `fragmento` literal, que la pantalla muestra junto al valor |
-| **Datos de la agencia hacia un tercero** (netos, lista de precios) | IA | Puerto + adaptador, ADR de `ingeniero-ia`, revisión de seguridad; neto descartado salvo documento subido con permiso |
+| **Datos de la agencia hacia un tercero** (netos, lista de precios) | IA | Puerto + adaptador, ADR de `ingeniero-ia`, revisión de seguridad; la IA nunca propone neto; activación condicionada a DPA y aviso a la agencia (§7.4c) |
 | **Importación masiva como DoS** | Archivo, API, IA | Topes por propuesta (§1); 413 antes de validar; límites por clave y por tenant (§6.3); `pg_advisory_xact_lock` por tenant serializa las escrituras de un tenant sin bloquear a los demás; tope de tiempo de la transacción (`statement_timeout` local de 10 s); en IA, tope de documentos por tenant y día (lo fija `ingeniero-ia`) |
 | **Bomba de descompresión / analizador vulnerable** (`.xlsx`) | Archivo | El servidor nunca abre archivos: recibe JSON. El navegador rechaza más de 5 MB antes de abrir |
 | **Inyección de fórmulas** en el CSV/XLSX que **descargamos** | Plantillas | Toda celda generada que empiece por `= + - @` o tabulador se prefija con `'` |
@@ -531,13 +629,14 @@ texto en `exclusiones`. Deuda declarada.
 | # | Contenido | Estado |
 |---|---|---|
 | **M1** | Permiso `catalogo.administrar` en el `CHECK roles_permisos_del_catalogo` y en `PERMISOS`; concedido a `DUENO` y `OPERACIONES` de los tenants existentes y de la semilla | **Autorizada** (2026-10-26) |
-| **M2** | `paquetes`: `plan_alimentacion` nulable, `codigo varchar(64)` + único parcial `(tenant_id, codigo) WHERE codigo IS NOT NULL AND eliminado_en IS NULL`, `hora_salida time`, `hora_regreso time`, `cargos_en_destino jsonb default '[]'`, `campos_personalizados jsonb default '{}'` + GIN, `formato_id` con foránea compuesta. `tarifas`: `lista_unidades bigint`, `promo_hasta date`, `CHECK (lista_unidades IS NULL OR lista_unidades > venta_unidades)`. `entidad_personalizable` + `PAQUETE`. Tabla `formatos_de_viaje (id, tenant_id, nombre, orden, activo, plantilla jsonb default '{}')` con `UNIQUE (id, tenant_id)` y `UNIQUE (tenant_id, nombre)`, sembrada con los cuatro formatos de sistema por tenant. `politicas_de_precio.promo_vencida` enum `OCULTAR | TACHAR` `NOT NULL DEFAULT 'OCULTAR'` | **Autorizada** (2026-10-26) |
-| **M3** | Tabla `claves_api` (§6.2), con `tenant_id` y `UNIQUE (id, tenant_id)`; función `resolver_clave_api` `SECURITY DEFINER`; `registros_auditoria.clave_api_id uuid` nulable con foránea compuesta; permiso `integraciones.administrar` en el `CHECK` y concedido a `DUENO` | **Pendiente:** del Owner, tras `auditor-seguridad` |
+| **M2** | `paquetes`: `plan_alimentacion` nulable, `codigo varchar(64)` + único parcial `(tenant_id, codigo) WHERE codigo IS NOT NULL AND eliminado_en IS NULL`, `cargos_en_destino jsonb default '[]'`, `campos_personalizados jsonb default '{}'` + GIN, `formato_id` con foránea compuesta. Tabla **`opciones_de_salida`** (`id, tenant_id, paquete_id, etiqueta, hora_salida time, hora_regreso time, punto_de_encuentro, orden, activa`) con `UNIQUE (id, tenant_id)`, `UNIQUE (paquete_id, etiqueta)` y foránea compuesta `(paquete_id, tenant_id)` (§3.1; **sustituye** a las columnas `hora_salida`/`hora_regreso` en `paquetes`). `tarifas`: `lista_unidades bigint`, `promo_hasta date`, `CHECK (lista_unidades IS NULL OR lista_unidades > venta_unidades)`, `opcion_de_salida_id` nulable con foránea compuesta `(opcion_de_salida_id, tenant_id)`. `entidad_personalizable` + `PAQUETE`. Tabla `formatos_de_viaje (id, tenant_id, nombre, orden, activo, plantilla jsonb default '{}')` con `UNIQUE (id, tenant_id)` y `UNIQUE (tenant_id, nombre)`, sembrada con los cuatro formatos de sistema por tenant. `politicas_de_precio.promo_vencida` enum `OCULTAR | TACHAR` `NOT NULL DEFAULT 'OCULTAR'` | **Autorizada** (2026-10-26) |
+| **M3** | Rol `viajapro_claves` (`NOLOGIN NOBYPASSRLS`, sin miembros); tabla `claves_api` por tenant con RLS y `UNIQUE (id, tenant_id)`; tabla global `directorio_claves_api` sin `tenant_id`, en `excepciones_rls` con `'{}'` para los cuatro roles de login; disparador `SECURITY DEFINER` de `viajapro_claves` que mantiene el directorio y prohíbe cambiar `tenant_id`; función `resolver_clave_api` de `viajapro_claves` (§6.2); `registros_auditoria.clave_api_id uuid` nulable con foránea compuesta; permiso `integraciones.administrar` en el `CHECK`, concedido a `DUENO`; literal de `aislamiento.spec.ts` ampliado con la excepción nueva (R1) | **Bloqueada** hasta implementar §6.2 tal como queda tras la revisión; del Owner |
 | **M4** | *Condicional.* Tabla `propuestas_de_catalogo` (tenant, origen, contenido cifrado, huella, creada_por, expira_en) **solo si** `ingeniero-ia` concluye que la generación es asíncrona y la propuesta debe sobrevivir a la sesión. Si la IA responde en la misma petición, no existe | **Pendiente** de `docs/09-ia/09-…` |
 
 Notas: todas las columnas de M2 son nulables o con valor por defecto y no reescriben filas.
 `ALTER TYPE ... ADD VALUE` no puede usarse en la misma transacción que lo añade. `aislamiento.spec.ts`
-debe incluir `formatos_de_viaje` (M2) y `claves_api` (M3) en sus aserciones y mutantes (T-009).
+debe incluir `formatos_de_viaje` y `opciones_de_salida` (M2), y `claves_api` y
+`directorio_claves_api` (M3) en sus aserciones y mutantes (T-009).
 
 **Diferido sin migración prevista:** *staging* de importación (opción C), precio por fecha de compra,
 días de operación por semana, CRUD independiente de mayoristas, *webhooks* salientes de cambios de
@@ -549,7 +648,7 @@ catálogo hacia los sistemas cliente.
 - Una agencia carga su catálogo sola, por la vía que tenga: formulario, hoja, su sistema o su web.
 - **Una sola implementación de las reglas**: una regla nueva del catálogo se escribe una vez y la
   respetan los cuatro canales.
-- El cotizador no cambia su cálculo.
+- El cotizador no cambia su cálculo de precio; gana un eje de selección (la opción de salida, §3.1).
 - Todo cambio de precio tiene autor (persona o clave), hora, antes y después.
 - La primera rebanada visible (excursión de un día desde la web + plantilla CSV) solo espera a M1.
 
@@ -583,6 +682,36 @@ hayan llenado, y eso ya lo había decidido ADR-0009.
 
 ---
 
+## Cola (revisión del 2026-10-26; no bloquea, R13)
+
+Van a `roadmap/tasks.yaml` o a `ESTADO.md` con su dueño cuando se planifiquen. Ninguna detiene M1 ni M2.
+
+**Dominio (`experto-turismo`):**
+
+| Pendiente | Dueño |
+|---|---|
+| Política de cancelación y condiciones por producto | `analista-producto` + `experto-turismo` |
+| Adicionales opcionales con precio (Biopark +20.000, traslado al Oceanario) | `arquitecto` (ADR propio: toca el cálculo) |
+| Restricción de admisión (Luxury Beach Club solo mayores de 12): el cotizador debe **rechazar**, no cotizar en silencio | `arquitecto` + `backend` |
+| Tarifa por residencia o nacionalidad | `experto-turismo` |
+| Comisión frente a neto por tarifa | `arquitecto` (relación con `politicas_de_precio.base`) |
+| Precio de fin de semana o festivo | `arquitecto` (es la dimensión de calendario que ADR-0009 reservó) |
+| Si el precio publicado incluye IVA | `experto-turismo` + `investigador` |
+| `AVISO PROMO_SIN_VIGENCIA` al cargar una promo sin `promoHasta`: la Ley 1480 art. 33 parece exigir vigencia (**no verificado**) | `investigador`, luego `backend` |
+
+**Seguridad (`auditor-seguridad`):**
+
+| Pendiente | Dueño |
+|---|---|
+| `registros_auditoria` es modificable y borrable por los roles de login: disparador que lo impida | `datos` (migración del Owner) |
+| `lock_timeout` junto a `statement_timeout` en la transacción de aplicar | `backend` |
+| Tope de 2 MB por ruta y límite por IP **antes** de autenticar en `/api/v1/publica/**` | `backend` + `devops` |
+| Redacción de `Authorization` y `Cookie` en los registros, y prueba de que `vjp_` nunca aparece en ellos | `devops` |
+| Qué pasa con las claves cuando se da de baja a quien las creó | `analista-producto` + `auditor-seguridad` |
+| `origen` de la propuesta lo deriva el servidor del canal (ruta y credencial), no lo declara el cliente | `backend` (en T-037 y T-047) |
+| El atajo `x-dev-tenant-id` no aplica en `/api/v1/publica/**`, ni siquiera con `APP_ENV=local` | `backend` (en T-046) |
+| Fórmulas en `.xlsx` generado: escribir las celdas como texto, no solo prefijar `'` | `frontend` (en T-044) |
+
 ## 13. Fuera de alcance
 
 Sincronización bidireccional con sistemas de mayoristas · *webhooks* salientes · pieza de WhatsApp
@@ -611,5 +740,11 @@ No se edita el diccionario en este ADR. Para aprobación: **Precio de lista** (`
 destino** (`OnSiteCharge`) · **Propuesta de catálogo** (`CatalogProposal`) — lo que cualquier canal
 presenta para cambiar el catálogo; nunca se aplica sin validar · **Previsualización**
 (`ProposalPreview`) · **Huella de propuesta** (`proposalFingerprint`) · **Plantilla de catálogo**
-(`CatalogTemplate`) — distinta de la plantilla de WhatsApp · **Clave de API** (`ApiKey`). Y se retira
+(`CatalogTemplate`) — distinta de la plantilla de WhatsApp · **Clave de API** (`ApiKey`) ·
+**Opción de salida** (`DepartureOption`) — variante de operación que el viajero elige dentro de un
+mismo producto: turno, modalidad con su punto de recogida, u hotel; puede tener tarifas propias ·
+**Adicional opcional** (`OptionalExtra`) — algo que se contrata aparte del producto con su propio
+precio (Biopark, traslado al Oceanario); aún no modelado, ver «Cola» · **Restricción de admisión**
+(`AdmissionRestriction`) — condición que impide vender el producto a un viajero (edad mínima); no es
+una tarifa: si no se cumple, no se cotiza; aún no modelada, ver «Cola». Y se retira
 la nota «aún no existe como tabla» de **Formato de viaje** cuando M2 se aplique.
