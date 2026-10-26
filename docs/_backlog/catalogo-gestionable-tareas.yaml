@@ -190,8 +190,7 @@ tasks:
         sin conversión; solo tarifas no base = []'
       - Sin tarifas base, desde es []; ?incluirInactivos=true incluye los desactivados; paginación por cursor
         (ParametrosPagina)
-      - GET /api/v1/catalogo/salidas calcula su desde con la misma calcularDesde (grep: ningún otro cálculo de desde en
-        apps/api)
+      - 'GET /api/v1/catalogo/salidas calcula su desde con la misma calcularDesde (grep: ningún otro cálculo de desde en apps/api)'
       - 'catalogo-gestion.e2e-spec.ts cubre desde con infante a 0 y suplemento aditivo, desde [] y que tenant B no ve
         los de A'
       - pnpm --filter @viajapro/api test verde; pnpm compuertas --rapido verde
@@ -501,10 +500,10 @@ tasks:
       - 'POST /api/v1/integraciones/claves (integraciones.administrar) devuelve el secreto una sola vez; GET lista
         prefijo, nombre, ámbitos, último uso, sin secreto ni hash; POST .../:id/revocar hace que la siguiente petición
         con esa clave responda 401'
-      - "Ámbitos acotados por los permisos de quien crea la clave con permisoQueFalta
+      - 'Ámbitos acotados por los permisos de quien crea la clave con permisoQueFalta
         (identity/domain/permisos-incluidos.ts): catalogo:escribir exige catalogo.administrar y catalogo:neto exige
         cotizacion.ver_neto_y_margen; e2e: un rol con integraciones.administrar sin ver_neto_y_margen que pide
-        catalogo:neto recibe 403 y no se crea ninguna fila"
+        catalogo:neto recibe 403 y no se crea ninguna fila'
       - El atajo x-dev-tenant-id se ignora en /api/v1/publica/** incluso con APP_ENV=local (spec)
       - Comparación del hash en tiempo constante; ultimo_uso_en se escribe como mucho una vez por minuto por clave
       - Crear y revocar escriben en registros_auditoria

@@ -835,3 +835,628 @@ tasks:
       - apps/web/src/components/comun/
     source: propietario:2026-10-26 (marca por agencia)
     created_at: 2026-10-26T23:39:32.871Z
+  - id: T-040
+    title: "Permiso catalogo.administrar: literal en PERMISOS, CHECK de roles por migración y concesión a los
+      roles sembrados (ADR-0017 M1)"
+    type: security
+    phase: 1
+    priority: P1
+    effort: S
+    status: blocked
+    blocked_reason: "human_required: migración del Owner (CHECK roles_permisos_del_catalogo). Autorizada el 2026-10-26"
+    human_required: true
+    depends_on: []
+    acceptance:
+      - "packages/contracts/src/identidad.ts: PERMISOS incluye 'catalogo.administrar' con su comentario"
+      - Una migración NUEVA en packages/database/prisma/migrations/ amplía el CHECK
+        roles_permisos_del_catalogo con 'catalogo.administrar' (no se edita 20261019230000)
+      - La misma migración concede el permiso a los roles DUENO y OPERACIONES de todos los tenants existentes
+        (ASESOR no); seed.ts lo concede en la semilla
+      - "apps/api/src/shared/autorizacion/permisos.spec.ts: con 'catalogo.administrar' pasa el guard; sin él,
+        PERMISO_DENEGADO"
+      - pnpm db:migrate && pnpm --filter @viajapro/database test verde; pnpm compuertas --rapido verde
+    files:
+      - packages/contracts/src/identidad.ts
+      - packages/database/prisma/migrations/
+      - packages/database/prisma/seed.ts
+      - apps/api/src/shared/autorizacion/permisos.spec.ts
+    source: arquitecto:ADR-0017 (importado 2026-10-26; id original T-032)
+    created_at: 2026-10-26T00:00:00.000Z
+  - id: T-041
+    title: Contrato PropuestaDeCatalogo y plantillas de sistema en contracts; núcleo puro validar y planificar en
+      quoting/domain (ADR-0017 §1-§3)
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on: []
+    unblocks:
+      - T-030
+    acceptance:
+      - packages/contracts/src/propuesta-de-catalogo.ts exporta PropuestaDeCatalogo (.strict(), version 1,
+        origen PANTALLA|ARCHIVO|API|IA, 1..500 productos), ProductoPropuesto, TarifaPropuesta, Procedencia e
+        InformeDeCatalogo; un cuerpo con tenantId es rechazado por parse
+      - "Refinamientos: origen API sin codigo en un producto es inválido; origen IA con un precio sin
+        procedencia.fuente y procedencia.fragmento es inválido (spec en
+        packages/contracts/src/propuesta-de-catalogo.spec.ts)"
+      - packages/contracts/src/plantillas-de-catalogo.ts exporta DescriptorDePlantilla y PLANTILLAS_DE_SISTEMA
+        con cuatro entradas (excursion-un-dia, pasadia, pasanoche, paquete-con-hotel), version 1, claves de
+        columna estables; los cuatro se exportan desde packages/contracts/src/index.ts
+      - "Función pura validarYPlanificar(propuesta, catalogoActual, permisos) en
+        apps/api/src/modules/quoting/domain/: noches > dias = ERROR; POR_PERSONA con cubrePasajeros != 1 =
+        ERROR; dos vigencias abiertas de igual longitud solapadas = ERROR VIGENCIA_EMPATADA usando
+        resolverVigencia de @viajapro/domain; neto sin permiso = ERROR NETO_SIN_PERMISO; producto sin
+        vigencias = AVISO SIN_PRECIO"
+      - "Clave natural: nombre normalizado + noches; «Piangüita + Ballenas» con 0 y con 1 noche son dos CREAR;
+        un nombre que casa con dos paquetes actuales = ERROR PAQUETE_AMBIGUO; misma propuesta contra el
+        catálogo ya igual = todo SIN_CAMBIOS; la huella es estable para la misma entrada y cambia con el
+        tenantId"
+      - Campos de M2 presentes en la propuesta producen AVISO CAMPO_NO_SOPORTADO_AUN y no ERROR
+      - ProductoPropuesto tiene opcionesDeSalida [{etiqueta, horaSalida?, horaRegreso?, puntoDeEncuentro?}] y
+        no tiene horaSalida ni horaRegreso sueltos; TarifaPropuesta.opcionDeSalida debe nombrar una etiqueta
+        del mismo producto (si no, ERROR OPCION_DE_SALIDA_DESCONOCIDA); etiqueta repetida en un producto =
+        ERROR
+      - Procedencia.confianza es number 0..1 (no enum); el spec lo fija
+      - pnpm --filter @viajapro/api test verde; pnpm compuertas --rapido verde
+    files:
+      - packages/contracts/src/propuesta-de-catalogo.ts
+      - packages/contracts/src/plantillas-de-catalogo.ts
+      - packages/contracts/src/index.ts
+      - apps/api/src/modules/quoting/domain/
+    source: arquitecto:ADR-0017 (importado 2026-10-26; id original T-033)
+    created_at: 2026-10-26T00:00:00.000Z
+  - id: T-042
+    title: "API: AplicadorDeCatalogo transaccional con auditoría (puerto RegistroDeCambios) y alta, edición y
+      desactivación de paquetes en /api/v1/catalogo/paquetes"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on:
+      - T-040
+      - T-041
+    unblocks:
+      - T-031
+    acceptance:
+      - AplicadorDeCatalogo en apps/api/src/modules/quoting/application/ aplica un Plan en una sola
+        prisma.conTenant con pg_advisory_xact_lock por tenant; es el único código de apps/api que hace
+        create/update sobre paquetes, vigencias o tarifas (grep en apps/api/src/modules lo demuestra; seed
+        aparte)
+      - "POST /api/v1/catalogo/paquetes construye una PropuestaDeCatalogo origen PANTALLA de un producto y la
+        pasa por validarYPlanificar y el aplicador; {nombre: Isla Corona, destino: Cartagena, dias: 1, noches:
+        0} responde 201 y aparece en GET /api/v1/paquetes"
+      - PATCH /api/v1/catalogo/paquetes/:id y POST .../:id/desactivar pasan por el mismo validador y
+        aplicador; no existe ruta DELETE de paquete; las tres llevan @RequierePermiso('catalogo.administrar')
+        y sin él dan 403
+      - "packages/contracts/src/catalogo.ts: CrearPaquete sin temporadas ni mayoristaId; EditarPaquete
+        parcial; CrearPrecio y CrearTemporada @deprecated"
+      - Cada escritura inserta en registros_auditoria (catalogo.paquete.creado|modificado|desactivado, usuario
+        del contexto, detalle.origen PANTALLA) en la misma transacción, por el puerto RegistroDeCambios
+      - "apps/api/src/modules/quoting/catalogo-gestion.e2e-spec.ts: crea en tenant A; tenant B recibe 404 en
+        PATCH y no ve la fila de auditoría; un cuerpo con tenantId responde 400"
+      - pnpm --filter @viajapro/api test verde; pnpm compuertas --rapido verde
+    files:
+      - packages/contracts/src/catalogo.ts
+      - apps/api/src/modules/quoting/application/
+      - apps/api/src/modules/quoting/interface/
+      - apps/api/src/modules/quoting/domain/errors.ts
+      - apps/api/src/modules/quoting/quoting.module.ts
+    source: arquitecto:ADR-0017 (importado 2026-10-26; id original T-034)
+    created_at: 2026-10-26T00:00:00.000Z
+  - id: T-043
+    title: "API: vigencias y tarifas gestionables por id a través del mismo validador y aplicador, con rechazo de
+      empate"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on:
+      - T-042
+    unblocks:
+      - T-031
+    acceptance:
+      - Rutas GET /api/v1/catalogo/paquetes/:id/vigencias, POST /api/v1/catalogo/vigencias, PATCH
+        /api/v1/catalogo/vigencias/:id, POST /api/v1/catalogo/vigencias/:id/tarifas, PATCH y DELETE
+        /api/v1/catalogo/tarifas/:id, todas con @RequierePermiso('catalogo.administrar')
+      - Crear una vigencia abierta de igual longitud que otra solapada del mismo paquete responde 409
+        VIGENCIA_EMPATADA y no guarda nada
+      - Una petición con neto sin cotizacion.ver_neto_y_margen responde 403; GET de vigencias omite neto sin
+        ese permiso
+      - Cada cambio de venta o neto escribe catalogo.tarifa.modificada con {campo, antes, despues, moneda,
+        origen PANTALLA}; DELETE escribe catalogo.tarifa.eliminada con los valores previos
+      - Tras crear vigencia 2026-11-01..2027-06-30 con tarifa Adulto 900000 COP en Isla Corona, POST
+        /api/v1/catalogo/cotizar para 2026-12-15 con 2 adultos devuelve total 1800000
+      - "catalogo-gestion.e2e-spec.ts: tenant B no crea tarifa en una vigencia de A (404) ni cuelga un
+        mayoristaId de A"
+      - pnpm --filter @viajapro/api test verde; pnpm compuertas --rapido verde
+    files:
+      - packages/contracts/src/vigencias.ts
+      - apps/api/src/modules/quoting/application/
+      - apps/api/src/modules/quoting/interface/
+      - apps/api/src/modules/quoting/catalogo-gestion.e2e-spec.ts
+    source: arquitecto:ADR-0017 (importado 2026-10-26; id original T-035)
+    created_at: 2026-10-26T00:00:00.000Z
+  - id: T-044
+    title: "API: GET /api/v1/catalogo/paquetes, listado de gestión con «desde» derivado y paquetes «a consultar»"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on:
+      - T-043
+    unblocks:
+      - T-031
+      - T-018
+    acceptance:
+      - "packages/contracts/src/catalogo.ts exporta ResumenDePaqueteGestion: Paquete + desde (Dinero[], uno
+        por moneda) + desdeEsDeGrupo + vigenciasActivas"
+      - "packages/domain/src/desde.ts: calcularDesde pura; solo considera tarifas base (sin condición de edad,
+        ocupa silla, no aditivas) de vigencias activas con hasta >= hoy en la zona del tenant; mínimo per
+        cápita POR MONEDA; no se persiste"
+      - "Spec de calcularDesde: Adulto 900000 COP + Infante 0 COP = desde [900000 COP], nunca 0; Adulto 900000
+        COP + suplemento sencilla aditivo 150000 COP = [900000 COP]; Adulto 900000 COP + Adulto 250 USD =
+        [900000 COP, 250 USD] sin conversión; solo tarifas no base = []"
+      - Sin tarifas base, desde es []; ?incluirInactivos=true incluye los desactivados; paginación por cursor
+        (ParametrosPagina)
+      - "GET /api/v1/catalogo/salidas calcula su desde con la misma calcularDesde (grep: ningún otro cálculo
+        de desde en apps/api)"
+      - catalogo-gestion.e2e-spec.ts cubre desde con infante a 0 y suplemento aditivo, desde [] y que tenant B
+        no ve los de A
+      - pnpm --filter @viajapro/api test verde; pnpm compuertas --rapido verde
+    files:
+      - packages/domain/src/
+      - packages/contracts/src/catalogo.ts
+      - apps/api/src/modules/quoting/application/listar-salidas.use-case.ts
+      - apps/api/src/modules/quoting/application/listar-paquetes.use-case.ts
+      - apps/api/src/modules/quoting/interface/
+    source: arquitecto:ADR-0017 (importado 2026-10-26; id original T-036)
+    created_at: 2026-10-26T00:00:00.000Z
+  - id: T-045
+    title: "API: POST /api/v1/catalogo/importaciones/previsualizar ({tabla, mapeo} o {propuesta}) y sugerencia de
+      mapeo por sinónimos y por marcador de plantilla"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on:
+      - T-042
+    unblocks:
+      - T-029
+    acceptance:
+      - packages/contracts/src/importacion.ts exporta TablaDeImportacion (máx. 2000 x 40, celdas string),
+        MapeoDeColumnas y EntradaDeImportacion = {tabla, mapeo} | {propuesta}
+      - "Adaptador puro tabla+mapeo -> PropuestaDeCatalogo origen ARCHIVO en quoting/domain: '$ 1.236.000' COP
+        = 1236000; '12,50' USD = 1250; '15/12/2026' DD/MM/AAAA = 2026-12-15; '31/02/2026' = ERROR
+        FECHA_INVALIDA con fila y columna"
+      - "Fixture de las 19 filas de JD Tours: 17 OK, 2 AVISO SIN_PRECIO (Mantas, Coco Liso)"
+      - "POST /api/v1/catalogo/importaciones/sugerir-mapeo: con marcador
+        #viajapro;plantilla=excursion-un-dia;version=1 y encabezados de la plantilla, mapeo con confianza 1;
+        Tour/Precio/PVP/Valor/Fecha salida por sinónimos; un encabezado desconocido queda sin mapear. Puerto
+        SugeridorDeMapeo, sin dependencia ni servicio externo"
+      - Más de 2 MB de cuerpo o 2000 filas responde 413 sin validar filas
+      - "e2e: previsualizar no cambia el número de paquetes, vigencias, tarifas ni filas de auditoría; sin
+        catalogo.administrar, 403"
+      - pnpm --filter @viajapro/api test verde; pnpm compuertas --rapido verde
+    files:
+      - packages/contracts/src/importacion.ts
+      - packages/contracts/src/index.ts
+      - apps/api/src/modules/quoting/domain/
+      - apps/api/src/modules/quoting/application/
+      - apps/api/src/modules/quoting/interface/
+    source: arquitecto:ADR-0017 (importado 2026-10-26; id original T-037)
+    created_at: 2026-10-26T00:00:00.000Z
+  - id: T-046
+    title: "API: POST /api/v1/catalogo/importaciones/confirmar, todo o nada, idempotente por convergencia y con
+      huella"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on:
+      - T-045
+    unblocks:
+      - T-029
+    acceptance:
+      - Recalcula en el servidor; huella distinta = 409 PROPUESTA_CAMBIO; alguna fila ERROR = 422 con informe
+        y nada escrito
+      - Aplica por AplicadorDeCatalogo (sin camino propio de escritura); no desactiva ni borra lo que no viene
+      - "e2e: confirmar el fixture de JD Tours crea 19 paquetes y 17 tarifas; confirmarlo otra vez responde
+        creados 0, actualizados 0, sinCambios 19 y no añade filas catalogo.tarifa.modificada"
+      - Cambiar un precio y confirmar escribe catalogo.tarifa.modificada con origen ARCHIVO y la huella, y una
+        fila catalogo.propuesta_aplicada con resumen, mapeo sugerido y confirmado
+      - Mapeo con neto sin cotizacion.ver_neto_y_margen = 403; tenant B no ve nada importado por A
+      - pnpm --filter @viajapro/api test verde; pnpm compuertas --rapido verde
+    files:
+      - apps/api/src/modules/quoting/application/
+      - apps/api/src/modules/quoting/interface/
+      - apps/api/src/modules/quoting/domain/errors.ts
+      - apps/api/src/modules/quoting/catalogo-gestion.e2e-spec.ts
+    source: arquitecto:ADR-0017 (importado 2026-10-26; id original T-038)
+    created_at: 2026-10-26T00:00:00.000Z
+  - id: T-047
+    title: "API: GET /api/v1/catalogo/tarifas/:id/historial de cambios de precio, con neto redactado sin permiso"
+    type: feature
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    depends_on:
+      - T-043
+    unblocks:
+      - T-031
+    acceptance:
+      - Devuelve las filas de registros_auditoria de esa tarifa, más reciente primero, con actor (usuario o
+        clave), instante UTC, campo, antes, después y origen
+      - Sin cotizacion.ver_neto_y_margen las entradas de neto salen sin antes ni después
+      - "catalogo-gestion.e2e-spec.ts: dos cambios de venta = dos entradas en orden; tenant B recibe 404"
+      - pnpm --filter @viajapro/api test verde; pnpm compuertas --rapido verde
+    files:
+      - packages/contracts/src/vigencias.ts
+      - apps/api/src/modules/quoting/application/
+      - apps/api/src/modules/quoting/interface/
+    source: arquitecto:ADR-0017 (importado 2026-10-26; id original T-039)
+    created_at: 2026-10-26T00:00:00.000Z
+  - id: T-048
+    title: "Migración M2: catálogo extendido, formatos_de_viaje con plantilla y politicas_de_precio.promo_vencida
+      (ADR-0017 §12)"
+    type: infra
+    phase: 1
+    priority: P1
+    effort: M
+    status: blocked
+    blocked_reason: "human_required: schema.prisma, migración y prueba de aislamiento son del Owner. Autorizada el
+      2026-10-26"
+    human_required: true
+    depends_on:
+      - T-040
+    acceptance:
+      - Migración NUEVA con exactamente M2 de ADR-0017 §12; ninguna columna nueva NOT NULL sin valor por
+        defecto; no se reescriben filas
+      - politicas_de_precio.promo_vencida enum OCULTAR|TACHAR NOT NULL DEFAULT 'OCULTAR'; todos los tenants
+        existentes quedan en OCULTAR
+      - formatos_de_viaje (id, tenant_id, nombre, orden, activo, plantilla jsonb) con UNIQUE (id, tenant_id) y
+        UNIQUE (tenant_id, nombre); paquetes.formato_id con foránea compuesta; cada tenant existente y la
+        semilla reciben los cuatro formatos de PLANTILLAS_DE_SISTEMA
+      - CHECK lista_unidades IS NULL OR lista_unidades > venta_unidades; único parcial (tenant_id, codigo)
+        WHERE codigo IS NOT NULL AND eliminado_en IS NULL; GIN en campos_personalizados; PAQUETE en
+        entidad_personalizable
+      - Tabla opciones_de_salida (id, tenant_id, paquete_id, etiqueta, hora_salida time, hora_regreso time,
+        punto_de_encuentro, orden, activa) con UNIQUE (id, tenant_id), UNIQUE (paquete_id, etiqueta) y foránea
+        compuesta (paquete_id, tenant_id); tarifas.opcion_de_salida_id nulable con foránea compuesta
+        (opcion_de_salida_id, tenant_id); paquetes NO recibe hora_salida ni hora_regreso
+      - "packages/database/tests/aislamiento.spec.ts: tablas_sin_aislamiento vacío con formatos_de_viaje y
+        opciones_de_salida; ambas con RLS USING y WITH CHECK; quitar la foránea compuesta del formato o de la
+        opción pone la prueba en rojo"
+      - semilla-catalogo-real.ts deja de poner SIN_ALIMENTACION a los pasadías
+      - pnpm db:migrate && pnpm --filter @viajapro/database test verde; pnpm compuertas --rapido verde
+    files:
+      - packages/database/prisma/schema.prisma
+      - packages/database/prisma/migrations/
+      - packages/database/tests/aislamiento.spec.ts
+      - packages/database/prisma/semilla-catalogo-real.ts
+      - packages/database/prisma/seed.ts
+    source: arquitecto:ADR-0017 (importado 2026-10-26; id original T-040)
+    created_at: 2026-10-26T00:00:00.000Z
+  - id: T-049
+    title: "API: campos extendidos en propuesta, CRUD, importación y cotización; formatos de viaje y GET
+      /api/v1/catalogo/formatos/:id/plantilla"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on:
+      - T-048
+      - T-046
+    unblocks:
+      - T-030
+    acceptance:
+      - Los campos de M2 dejan de dar CAMPO_NO_SOPORTADO_AUN y se persisten por el aplicador; codigo pasa a
+        ser clave natural preferente
+      - camposPersonalizados se valida contra definiciones de entidad PAQUETE del tenant; clave no definida =
+        ERROR
+      - "Cotizar Isla Palma con 2 adultos: el total no incluye la tasa portuaria; la respuesta lista
+        cargosEnDestino con 29000 COP POR_PERSONA"
+      - "Opciones de salida: City Tour VIP con turnos Mañana 07:30-12:50 y Tarde 14:50-19:50 se crea por
+        pantalla, por importación (columna opcion_salida) y se lee en el listado; Isla Palma con tarifas
+        distintas para Lancha y Terrestre: cotizar sin opcionDeSalidaId responde OPCION_DE_SALIDA_REQUERIDA,
+        con Lancha usa solo su tarifa"
+      - Una tarifa cuya opción es de otro paquete = ERROR en el núcleo; una opción con tarifas no se borra, se
+        desactiva
+      - GET/POST/PATCH /api/v1/catalogo/formatos (catalogo.administrar); plantilla validada por
+        PlantillaDeFormato; GET /api/v1/catalogo/formatos/:id/plantilla devuelve un DescriptorDePlantilla
+        cuyas columnas incluyen los campos personalizados que el formato declara
+      - "e2e: tenant B recibe 404 al pedir la plantilla de un formato de A"
+      - pnpm --filter @viajapro/api test verde; pnpm compuertas --rapido verde
+    files:
+      - packages/contracts/src/catalogo.ts
+      - packages/contracts/src/plantillas-de-catalogo.ts
+      - apps/api/src/modules/quoting/application/
+      - apps/api/src/modules/quoting/domain/seleccion-de-tarifas.ts
+      - apps/api/src/modules/quoting/domain/
+      - apps/api/src/modules/quoting/interface/
+    source: arquitecto:ADR-0017 (importado 2026-10-26; id original T-041)
+    created_at: 2026-10-26T00:00:00.000Z
+  - id: T-050
+    title: "Política promo_vencida: presentarPrecio en @viajapro/domain, GET/PATCH /api/v1/catalogo/ajustes y
+      `presentacion` en listado, salidas, cotización y previsualización"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on:
+      - T-048
+      - T-044
+    unblocks:
+      - T-028
+      - T-018
+      - T-017
+    acceptance:
+      - "packages/domain/src/presentacion-de-precio.ts: presentarPrecio(tarifa, hoy, politica) pura; spec:
+        promo vigente = lista tachada sin leyenda en ambos valores; vencida + OCULTAR = solo venta,
+        listaTachada null, leyenda null; vencida + TACHAR = lista tachada + leyenda PROMO_VENCIDA; promoHasta
+        null = vigente; la venta devuelta es siempre la de la tarifa"
+      - packages/contracts/src/politica-de-precio.ts exporta PromoVencida = OCULTAR|TACHAR y AjustesDeCatalogo
+        {promoVencida}; GET /api/v1/catalogo/ajustes responde OCULTAR en un tenant recién migrado
+      - PATCH /api/v1/catalogo/ajustes exige catalogo.administrar (403 sin él), solo acepta promoVencida y
+        escribe catalogo.ajustes.modificado con antes y después
+      - Listado de gestión, GET /api/v1/catalogo/salidas, la cotización y el informe de previsualización
+        devuelven `presentacion` calculada por presentarPrecio; ningún otro código de apps/api compara
+        promoHasta con la fecha
+      - "e2e: cambiar a TACHAR en tenant A no cambia la presentación de tenant B; la venta cotizada es igual
+        antes y después de vencer la promo"
+      - pnpm --filter @viajapro/api test verde; pnpm compuertas --rapido verde
+    files:
+      - packages/domain/src/
+      - packages/contracts/src/politica-de-precio.ts
+      - apps/api/src/modules/quoting/application/
+      - apps/api/src/modules/quoting/interface/
+    source: arquitecto:ADR-0017 (importado 2026-10-26; id original T-042)
+    created_at: 2026-10-26T00:00:00.000Z
+  - id: T-051
+    title: "Web: tarjeta, ficha y desglose del cotizador pintan `presentacion` de la API sin decidir la promo en
+      el cliente"
+    type: feature
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    depends_on:
+      - T-050
+      - T-018
+      - T-017
+    acceptance:
+      - apps/web/src/components/catalogo/ y apps/web/src/components/cotizador/desglose-cotizacion-salida.tsx
+        muestran listaTachada y la leyenda «promo vencida» solo si vienen en presentacion
+      - Ningún archivo de apps/web compara promoHasta con la fecha actual (grep)
+      - "apps/web/src/lib/catalogo-logica.spec.ts cubre: presentacion OCULTAR sin tachado, TACHAR con tachado
+        y leyenda, y que los cargos en destino no se suman al total mostrado"
+      - pnpm --filter @viajapro/web test verde; pnpm compuertas --rapido verde
+    files:
+      - apps/web/src/components/catalogo/
+      - apps/web/src/components/cotizador/desglose-cotizacion-salida.tsx
+      - apps/web/src/lib/catalogo-logica.ts
+      - apps/web/src/lib/catalogo-logica.spec.ts
+    source: arquitecto:ADR-0017 (importado 2026-10-26; id original T-043)
+    created_at: 2026-10-26T00:00:00.000Z
+  - id: T-052
+    title: "Web: plantilla y lectura .xlsx en el navegador (dependencia nueva, la añade una persona)"
+    type: feature
+    phase: 1
+    priority: P2
+    effort: M
+    status: blocked
+    blocked_reason: "human_required: apps/web/package.json es humanRequired; elegir biblioteca (exceljs o SheetJS)
+      con licencia y justificación"
+    human_required: true
+    depends_on:
+      - T-029
+      - T-030
+    acceptance:
+      - apps/web/package.json declara una sola biblioteca nueva, con licencia anotada en la descripción del PR
+      - La descarga genera hoja Catalogo y hoja oculta _viajapro con {formato, version} desde el
+        DescriptorDePlantilla
+      - Toda celda generada que empieza por = + - @ o tabulador se prefija con apóstrofo
+      - Un archivo de más de 5 MB se rechaza antes de abrirlo; el contenido se envía como {tabla, mapeo},
+        nunca el archivo
+      - Un spec de apps/web lee una plantilla generada y obtiene la misma tabla que su equivalente CSV
+      - pnpm --filter @viajapro/web test verde; pnpm compuertas --rapido verde
+    files:
+      - apps/web/package.json
+      - apps/web/src/lib/
+    source: arquitecto:ADR-0017 (importado 2026-10-26; id original T-044)
+    created_at: 2026-10-26T00:00:00.000Z
+  - id: T-053
+    title: "Migración M3: rol viajapro_claves, claves_api por tenant, directorio_claves_api global, disparador y
+      resolver_clave_api, registros_auditoria.clave_api_id y permiso integraciones.administrar (ADR-0017
+      §6.2)"
+    type: security
+    phase: 1
+    priority: P2
+    effort: M
+    status: blocked
+    blocked_reason: "human_required: migración del Owner. Bloqueada hasta implementar ADR-0017 §6.2 tal como quedó
+      tras la revisión de auditor-seguridad (S1, S2)"
+    human_required: true
+    depends_on:
+      - T-048
+    acceptance:
+      - Rol viajapro_claves NOLOGIN NOBYPASSRLS; ningún rol de login es miembro suyo
+      - claves_api con tenant_id y RLS (USING y WITH CHECK por 001), UNIQUE (id, tenant_id), prefijo único,
+        hash_secreto, ambitos text[], expira_en, revocada_en; ninguna columna guarda el secreto
+      - directorio_claves_api (prefijo PK, hash_secreto bytea, tenant_resuelto_id, clave_id, ambitos,
+        expira_en, revocada_en) SIN columna tenant_id, propiedad de viajapro_claves, declarada en
+        excepciones_rls con '{}' para viajapro_app, viajapro_altas, viajapro_webhook y viajapro_identidad; el
+        literal de aislamiento.spec.ts se amplía con ella (R1)
+      - Disparador SECURITY DEFINER de viajapro_claves sobre claves_api mantiene el directorio en INSERT y
+        UPDATE (revocar, vencer) en la misma transacción y rechaza cualquier UPDATE de tenant_id
+      - resolver_clave_api(p_prefijo, p_hash) propiedad de viajapro_claves, LANGUAGE sql STABLE STRICT, SET
+        search_path = '', sin SQL dinámico; filtra por prefijo y hash, no revocada, no vencida y tenant no
+        suspendido; en la migración el orden es REVOKE ALL FROM PUBLIC, GRANT EXECUTE TO viajapro_app y
+        después OWNER TO viajapro_claves
+      - registros_auditoria.clave_api_id nulable con foránea compuesta a claves_api
+      - "'integraciones.administrar' en el CHECK roles_permisos_del_catalogo y en PERMISOS; concedido solo a
+        DUENO"
+      - "aislamiento.spec.ts: ningún rol de login puede SELECT ni escribir directorio_claves_api;
+        viajapro_claves no tiene BYPASSRLS ni LOGIN ni miembros; resolver_clave_api solo la ejecuta
+        viajapro_app; el inventario de funciones SECURITY DEFINER pasa de 11 a 13 y una aserción falla si
+        alguna gana SQL dinámico o EXECUTE a otro rol; un UPDATE de claves_api.tenant_id falla"
+      - pnpm db:migrate && pnpm --filter @viajapro/database test verde; pnpm compuertas --rapido verde
+    files:
+      - packages/database/prisma/schema.prisma
+      - packages/database/prisma/migrations/
+      - packages/database/tests/aislamiento.spec.ts
+      - packages/contracts/src/identidad.ts
+    source: arquitecto:ADR-0017 (importado 2026-10-26; id original T-045)
+    created_at: 2026-10-26T00:00:00.000Z
+  - id: T-054
+    title: "API: autenticación por clave en /api/v1/publica/** y gestión de claves en identity (crear mostrando el
+      secreto una vez, listar, revocar)"
+    type: security
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    depends_on:
+      - T-053
+    acceptance:
+      - TenantMiddleware resuelve /api/v1/publica/** solo por Authorization Bearer vjp_live_… vía
+        ResolutorDeAcceso; una cookie de sesión en esas rutas = 401; una clave en cualquier otra ruta = 401
+      - Ningún tenantId de cuerpo, ruta, consulta o cabecera se lee (spec en apps/api/src/shared/tenant/)
+      - POST /api/v1/integraciones/claves (integraciones.administrar) devuelve el secreto una sola vez; GET
+        lista prefijo, nombre, ámbitos, último uso, sin secreto ni hash; POST .../:id/revocar hace que la
+        siguiente petición con esa clave responda 401
+      - "Ámbitos acotados por los permisos de quien crea la clave con permisoQueFalta
+        (identity/domain/permisos-incluidos.ts): catalogo:escribir exige catalogo.administrar y catalogo:neto
+        exige cotizacion.ver_neto_y_margen; e2e: un rol con integraciones.administrar sin ver_neto_y_margen
+        que pide catalogo:neto recibe 403 y no se crea ninguna fila"
+      - El atajo x-dev-tenant-id se ignora en /api/v1/publica/** incluso con APP_ENV=local (spec)
+      - Comparación del hash en tiempo constante; ultimo_uso_en se escribe como mucho una vez por minuto por
+        clave
+      - Crear y revocar escriben en registros_auditoria
+      - "e2e: una clave de tenant A nunca resuelve tenant B; clave vencida = 401"
+      - pnpm --filter @viajapro/api test verde; pnpm compuertas --rapido verde
+    files:
+      - apps/api/src/shared/tenant/tenant.middleware.ts
+      - apps/api/src/shared/puertos/puerto-de-acceso.ts
+      - apps/api/src/modules/identity/application/
+      - apps/api/src/modules/identity/infrastructure/
+      - apps/api/src/modules/identity/interface/
+    source: arquitecto:ADR-0017 (importado 2026-10-26; id original T-046)
+    created_at: 2026-10-26T00:00:00.000Z
+  - id: T-055
+    title: "API pública /api/v1/publica/catalogo: lectura, propuestas con Idempotency-Key, simulación, límites por
+      clave y auditoría del actor"
+    type: feature
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    depends_on:
+      - T-054
+      - T-049
+      - T-050
+      - T-002
+    acceptance:
+      - GET productos y productos/:codigo exigen ámbito catalogo:leer; neto solo con catalogo:neto; cada
+        precio trae venta, lista, promoHasta, promoVigente y presentacionSugerida
+      - POST propuestas?simular=true devuelve el informe sin escribir; POST propuestas sin Idempotency-Key =
+        400; misma clave y mismo cuerpo = misma respuesta sin re-aplicar; misma clave y otro cuerpo = 422
+        IDEMPOTENCY_KEY_REUTILIZADA (Redis, 24 h)
+      - Propuesta origen IA presentada con clave = 403; producto sin codigo = 422; todo o nada
+      - Más de 10 escrituras/min por clave = 429 con Retry-After (sobre el mecanismo de T-002, límites por
+        variable de entorno)
+      - Cada cambio de precio registra usuario_id null, clave_api_id e ip
+      - "e2e: la clave de A no lee ni escribe productos de B; OpenAPI generado desde los Zod incluye las
+        cuatro rutas"
+      - pnpm --filter @viajapro/api test verde; pnpm compuertas --rapido verde
+    files:
+      - packages/contracts/src/propuesta-de-catalogo.ts
+      - apps/api/src/modules/quoting/interface/
+      - apps/api/src/modules/quoting/application/
+      - apps/api/src/shared/red/
+    source: arquitecto:ADR-0017 (importado 2026-10-26; id original T-047)
+    created_at: 2026-10-26T00:00:00.000Z
+  - id: T-056
+    title: "Web: pantalla de claves de API en Configuración (crear, copiar una vez, ver último uso, revocar)"
+    type: feature
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    depends_on:
+      - T-054
+    acceptance:
+      - Visible solo con integraciones.administrar
+      - El secreto se muestra una vez tras crear, con botón copiar y aviso de que no se volverá a ver; no se
+        guarda en estado persistente del navegador
+      - La lista muestra prefijo, nombre, ámbitos, último uso en la zona del tenant y botón revocar con
+        confirmación
+      - Un spec de apps/web cubre que tras cerrar el diálogo el secreto no está en el estado
+      - pnpm --filter @viajapro/web test verde; pnpm compuertas --rapido verde
+    files:
+      - apps/web/src/app/configuracion/page.tsx
+      - apps/web/src/components/configuracion/
+    source: arquitecto:ADR-0017 (importado 2026-10-26; id original T-048)
+    created_at: 2026-10-26T00:00:00.000Z
+  - id: T-057
+    title: "API: frontera de la ingesta por IA, puerto ExtractorDeCatalogo con adaptador falso y entrada de
+      propuestas origen IA solo por sesión"
+    type: feature
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    depends_on:
+      - T-046
+    acceptance:
+      - Puerto ExtractorDeCatalogo en apps/api/src/modules/quoting/application/ que devuelve
+        PropuestaDeCatalogo origen IA; único adaptador un falso para pruebas; sin dependencia ni llamada
+        externa nueva
+      - El adaptador no recibe AplicadorDeCatalogo por inyección (spec del módulo lo comprueba)
+      - Una propuesta IA solo se confirma por /importaciones/confirmar con sesión y catalogo.administrar; el
+        actor auditado es la persona y detalle.fuente la procedencia
+      - La IA nunca propone neto; el adaptador descarta cualquier neto devuelto, sin excepción por permiso ni
+        por fuente (spec con un neto en la salida del falso)
+      - El contrato usado es PropuestaDeCatalogo con confianza number 0..1 (el de ADR-0017 §2), no otro
+      - Ninguna clase de apps/api obtiene URLs para la IA (el obtenedor es un proceso aparte, ADR-0017 §7.4b)
+      - pnpm --filter @viajapro/api test verde; pnpm compuertas --rapido verde
+    files:
+      - apps/api/src/modules/quoting/application/
+      - apps/api/src/modules/quoting/quoting.module.ts
+    source: arquitecto:ADR-0017 (importado 2026-10-26; id original T-049)
+    created_at: 2026-10-26T00:00:00.000Z
+  - id: T-058
+    title: "Web: revisión de una propuesta de la IA (fuente y cita por precio, editar o descartar, confirmar)"
+    type: feature
+    phase: 2
+    priority: P3
+    effort: M
+    status: blocked
+    blocked_reason: "Espera docs/09-ia/09-ingesta-de-catalogo-con-ia.md (PR #37) alineado con ADR-0017 §7 (solo
+      https, obtenedor en proceso aparte, nunca neto, contrato PropuestaDeCatalogo) y revisado por
+      auditor-seguridad. Activación con agencias reales: DPA del proveedor, aviso a la agencia, pruebas SSRF
+      en verde y regla de red verificada"
+    depends_on:
+      - T-057
+      - T-029
+    acceptance:
+      - Reutiliza la tabla de previsualización de T-029; cada precio muestra procedencia.fuente y el fragmento
+        literal
+      - Se puede editar o descartar cada producto; Confirmar envía la propuesta resultante a
+        /importaciones/confirmar y está deshabilitado mientras haya ERROR
+      - Los precios se pintan con la presentacion del informe (respeta promo_vencida)
+      - Nada se aplica sin pulsar Confirmar; un spec de apps/web lo cubre
+      - pnpm --filter @viajapro/web test verde; pnpm compuertas --rapido verde
+    files:
+      - apps/web/src/app/catalogo/
+      - apps/web/src/components/catalogo/
+    source: arquitecto:ADR-0017 (importado 2026-10-26; id original T-050)
+    created_at: 2026-10-26T00:00:00.000Z
