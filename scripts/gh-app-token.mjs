@@ -18,8 +18,8 @@ if (!cfg.apps[sesion]) {
   process.exit(2);
 }
 
-const keysDir = process.env.VIAJAPRO_KEYS_DIR || join(homedir(), '.viajapro-keys');
-const pem = readFileSync(join(keysDir, `${sesion}.pem`));
+const keysDir = process.env.VIAJAPRO_KEYS_DIR || join(homedir(), cfg.carpetaClaves ?? '.viajapro-keys');
+const pem = readFileSync(join(keysDir, `${cfg.claves?.[sesion] ?? sesion}.pem`));
 const b64 = (o) => Buffer.from(JSON.stringify(o)).toString('base64url');
 
 const now = Math.floor(Date.now() / 1000);
