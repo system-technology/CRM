@@ -412,7 +412,7 @@ más es esa.
 |---|---|---|
 | ~~Meterle el `tenant_id` dentro a las claves foráneas~~ | `datos` | **Cerrada en v0.31.0:** las tres simples que quedaban (`paquetes`→`mayoristas`, `temporadas`→`paquetes`, `precios`→`temporadas`) son compuestas. La migración aborta si queda alguna simple y la aserción 54 barre el catálogo. En Neon: cero simples |
 | `Paquete` + `Temporada` + `Precio` siguen en el esquema junto al modelo nuevo | `datos` | El cotizador actual todavía se apoya en ellos. Se retiran cuando el cotizador pase a `resolverVigencia` |
-| La API no expone todavía `vigencias` ni `tarifas` | `backend` | El dato ya está en la base y la función de resolución probada. Falta el caso de uso y la ruta |
+| ~~La API no expone todavía `vigencias` ni `tarifas`~~ **HECHO**: `GET /api/v1/catalogo/salidas` y `POST /api/v1/catalogo/cotizar`, con 22 pruebas de extremo a extremo. Faltan las rutas de **escritura** | `backend` | Sin alta de tarifas por API, el catálogo solo se carga por semilla |
 
 ---
 

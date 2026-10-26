@@ -77,6 +77,29 @@ describe('PermisoGuard', () => {
     ).toBe(true);
   });
 
+  it('catalogo.administrar (ADR-0017 M1): con él pasa; sin él, PERMISO_DENEGADO', () => {
+    class RutaDeCatalogo {
+      @RequierePermiso('catalogo.administrar')
+      crear(): void {}
+    }
+    const ctx = {
+      // eslint-disable-next-line @typescript-eslint/unbound-method -- solo se pasa como valor
+      getHandler: () => RutaDeCatalogo.prototype.crear,
+      getClass: () => RutaDeCatalogo,
+    } as unknown as ExecutionContext;
+
+    expect(conPermisos(['catalogo.administrar'], () => guard.canActivate(ctx))).toBe(true);
+    try {
+      conPermisos(['conversaciones.ver_todas'], () => guard.canActivate(ctx));
+      expect.unreachable('debía lanzar');
+    } catch (e) {
+      expect(e).toBeInstanceOf(ForbiddenException);
+      expect((e as ForbiddenException).getResponse()).toMatchObject({
+        error: { code: 'PERMISO_DENEGADO' },
+      });
+    }
+  });
+
   it('guarda los permisos en los metadatos con su clave', () => {
     // eslint-disable-next-line @typescript-eslint/unbound-method -- los metadatos cuelgan de la función
     expect(Reflect.getMetadata(CLAVE_PERMISOS_REQUERIDOS, Ruta.prototype.administrar)).toEqual([

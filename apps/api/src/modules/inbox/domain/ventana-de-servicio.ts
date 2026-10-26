@@ -23,6 +23,7 @@
  */
 
 import type { VentanaServicio } from '@viajapro/contracts';
+import { VentanaCerradaError } from './errores-de-conversacion.js';
 
 /** 24 horas en milisegundos. */
 const DURACION_MS = 24 * 60 * 60 * 1000;
@@ -112,4 +113,20 @@ export type QueSePuedeEnviar = 'TEXTO_LIBRE' | 'SOLO_PLANTILLAS';
 
 export function queSePuedeEnviar(ventana: VentanaServicio): QueSePuedeEnviar {
   return ventana.abierta ? 'TEXTO_LIBRE' : 'SOLO_PLANTILLAS';
+}
+
+/**
+ * La regla que aplica el SERVIDOR antes de aceptar texto libre, en los dos sitios donde se mira:
+ * al registrar la respuesta del asesor y otra vez en el trabajador, justo antes de llamar a Meta
+ * (la ventana pudo cerrarse mientras el mensaje esperaba en la cola). Fuera de la ventana lanza
+ * `VentanaCerradaError`, con su mensaje en español: «solo se pueden enviar plantillas».
+ *
+ * `ultimoMensajeClienteEn` es la columna de `conversaciones`: el instante de Meta del último
+ * evento del cliente, ya con la regla del máximo aplicada al escribirla.
+ */
+export function exigirVentanaAbierta(ultimoMensajeClienteEn: Date | null, ahora: Date): void {
+  const expira = ultimoMensajeClienteEn ? nuevaExpiracion(null, ultimoMensajeClienteEn) : null;
+  if (queSePuedeEnviar(calcularVentana(expira, ahora)) !== 'TEXTO_LIBRE') {
+    throw new VentanaCerradaError();
+  }
 }

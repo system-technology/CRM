@@ -3717,6 +3717,318 @@ describe('ADR-0011 — identidad global, pertenencias y roles por agencia', () =
   });
 });
 
+// =============================================================================
+// ADR-0017, M1 y M2 — permiso de catálogo, formatos de viaje y opciones de salida
+//
+// Las dos tablas nuevas son de NEGOCIO: llevan `tenant_id`, no están en `excepciones_rls` y el
+// literal EXCEPCIONES_DECLARADAS no cambia. Lo que se prueba aquí es lo que el barrido general
+// (tablas_sin_aislamiento, 36, 54) no ve por sí solo: que las foráneas compuestas EXISTAN —si se
+// quitan, no queda foránea que el barrido 54 pueda juzgar— y el comportamiento cruzado.
+// =============================================================================
+
+const TABLAS_DEL_CATALOGO_GESTIONABLE = ['formatos_de_viaje', 'opciones_de_salida'] as const;
+
+/** (hija, columnas de la hija, padre, columnas del padre), en el orden de la foránea. */
+const FORANEAS_COMPUESTAS_M2 = [
+  ['paquetes', ['formato_id', 'tenant_id'], 'formatos_de_viaje', ['id', 'tenant_id']],
+  ['opciones_de_salida', ['paquete_id', 'tenant_id'], 'paquetes', ['id', 'tenant_id']],
+  ['tarifas', ['opcion_de_salida_id', 'tenant_id'], 'opciones_de_salida', ['id', 'tenant_id']],
+] as const;
+
+describe('ADR-0017 — catálogo gestionable: M1 y M2', () => {
+  const paqueteDe: Record<string, string> = {};
+  const formatoDe: Record<string, string> = {};
+  const opcionDe: Record<string, string> = {};
+  const vigenciaDe: Record<string, string> = {};
+
+  // Sin afterAll propio: todo cuelga de los tenants de la corrida y el `borrarTenants` global se
+  // lo lleva (las NO ACTION de M2 se resuelven por reintento, como las demás).
+  beforeAll(async () => {
+    for (const tenant of [TENANT_A, TENANT_B]) {
+      await comoTenant(tenant, async (c) => {
+        const formato = await c.query(
+          `INSERT INTO formatos_de_viaje (id, tenant_id, nombre, plantilla, actualizado_en)
+           VALUES (gen_random_uuid(), $1, $2, '{"clave":"pasadia","version":1}', now())
+           RETURNING id`,
+          [tenant, `Pasadía ${MARCA}`],
+        );
+        formatoDe[tenant] = (formato.rows[0] as { id: string }).id;
+
+        // Sin plan de alimentación: un pasadía no tiene régimen (M2 lo vuelve nulable).
+        const paquete = await c.query(
+          `INSERT INTO paquetes (id, tenant_id, nombre, destino, dias, noches, formato_id, codigo,
+                                 creado_en, actualizado_en)
+           VALUES (gen_random_uuid(), $1, 'Isla Palma', 'Golfo de Morrosquillo', 1, 0, $2, $3,
+                   now(), now())
+           RETURNING id`,
+          [tenant, formatoDe[tenant], `ISLA-PALMA-${MARCA}`],
+        );
+        paqueteDe[tenant] = (paquete.rows[0] as { id: string }).id;
+
+        const opcion = await c.query(
+          `INSERT INTO opciones_de_salida (id, tenant_id, paquete_id, etiqueta, hora_salida,
+                                           hora_regreso, punto_de_encuentro, actualizado_en)
+           VALUES (gen_random_uuid(), $1, $2, 'Terrestre por Tolú', '04:30', '19:00',
+                   'Marbella', now())
+           RETURNING id`,
+          [tenant, paqueteDe[tenant]],
+        );
+        opcionDe[tenant] = (opcion.rows[0] as { id: string }).id;
+
+        const vigencia = await c.query(
+          `INSERT INTO vigencias (id, tenant_id, paquete_id, desde, hasta)
+           VALUES (gen_random_uuid(), $1, $2, '2026-12-01', '2026-12-31')
+           RETURNING id`,
+          [tenant, paqueteDe[tenant]],
+        );
+        vigenciaDe[tenant] = (vigencia.rows[0] as { id: string }).id;
+
+        await c.query(
+          `INSERT INTO tarifas (id, tenant_id, vigencia_id, nombre, venta_unidades, lista_unidades,
+                                promo_hasta, moneda_iso, opcion_de_salida_id, actualizado_en)
+           VALUES (gen_random_uuid(), $1, $2, 'Adulto', 250000, 300000, '2026-12-15', 'COP', $3,
+                   now())`,
+          [tenant, vigenciaDe[tenant], opcionDe[tenant]],
+        );
+      });
+    }
+  }, 60_000);
+
+  it('67 — formatos_de_viaje y opciones_de_salida: tenant_id NOT NULL, RLS forzada, USING y WITH CHECK, y no son excepción', async () => {
+    const { rows } = await admin.query(
+      `SELECT c.relname, c.relrowsecurity, c.relforcerowsecurity,
+              (SELECT a.attnotnull FROM pg_attribute a
+                WHERE a.attrelid = c.oid AND a.attname = 'tenant_id'
+                  AND a.attnum > 0 AND NOT a.attisdropped) AS tenant_no_nulo,
+              (SELECT count(*) FROM pg_policy p
+                WHERE p.polrelid = c.oid AND p.polname = 'tenant_isolation'
+                  AND p.polqual IS NOT NULL AND p.polwithcheck IS NOT NULL) AS con_using_y_check,
+              EXISTS (SELECT 1 FROM excepciones_rls e WHERE e.tabla = c.relname) AS declarada
+         FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' AND c.relname = ANY($1)
+        ORDER BY 1`,
+      [TABLAS_DEL_CATALOGO_GESTIONABLE],
+    );
+    expect(rows.map((r) => r.relname as string)).toEqual([...TABLAS_DEL_CATALOGO_GESTIONABLE]);
+    for (const f of rows as Array<{
+      relname: string;
+      relrowsecurity: boolean;
+      relforcerowsecurity: boolean;
+      tenant_no_nulo: boolean;
+      con_using_y_check: string;
+      declarada: boolean;
+    }>) {
+      expect(
+        `${f.relname}:${f.tenant_no_nulo}:${f.relrowsecurity}:${f.relforcerowsecurity}:${f.con_using_y_check}:${f.declarada}`,
+      ).toBe(`${f.relname}:true:true:true:1:false`);
+    }
+
+    // Y el detector general las cubre: ninguna aparece como defecto.
+    const defectos = await admin.query(
+      'SELECT tabla, problema FROM tablas_sin_aislamiento WHERE problema IS NOT NULL AND tabla = ANY($1)',
+      [TABLAS_DEL_CATALOGO_GESTIONABLE],
+    );
+    expect(defectos.rows).toEqual([]);
+  });
+
+  it('68 — las tres foráneas de M2 existen y son COMPUESTAS con el tenant', async () => {
+    const { rows } = await admin.query(
+      `SELECT t.relname AS hija,
+              (SELECT array_agg(a.attname::text ORDER BY i)
+                 FROM generate_subscripts(c.conkey, 1) AS i
+                 JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = c.conkey[i]) AS columnas,
+              p.relname AS padre,
+              (SELECT array_agg(a.attname::text ORDER BY i)
+                 FROM generate_subscripts(c.confkey, 1) AS i
+                 JOIN pg_attribute a ON a.attrelid = c.confrelid AND a.attnum = c.confkey[i]) AS referidas,
+              c.convalidated
+         FROM pg_constraint c
+         JOIN pg_class t ON t.oid = c.conrelid
+         JOIN pg_class p ON p.oid = c.confrelid
+         JOIN pg_namespace n ON n.oid = t.relnamespace
+        WHERE c.contype = 'f' AND n.nspname = 'public'
+          AND t.relname IN ('paquetes', 'opciones_de_salida', 'tarifas')`,
+    );
+    for (const [hija, columnas, padre, referidas] of FORANEAS_COMPUESTAS_M2) {
+      expect(
+        rows,
+        `falta la foránea compuesta ${hija}(${columnas.join(', ')}) → ${padre}`,
+      ).toContainEqual({
+        hija,
+        columnas: [...columnas],
+        padre,
+        referidas: [...referidas],
+        convalidated: true,
+      });
+    }
+    // Ninguna foránea simple hacia las tablas nuevas, ni desde ellas.
+    const simples = await admin.query(FORANEAS_SIN_TENANT_SQL);
+    expect(
+      (simples.rows as Array<{ hija: string; padre: string }>).filter(
+        (r) =>
+          (TABLAS_DEL_CATALOGO_GESTIONABLE as readonly string[]).includes(r.hija) ||
+          (TABLAS_DEL_CATALOGO_GESTIONABLE as readonly string[]).includes(r.padre),
+      ),
+    ).toEqual([]);
+  });
+
+  it('69 — un tenant no ve, no escribe y no se cuelga de los formatos ni de las opciones de salida de otro', async () => {
+    // Control: A ve lo suyo. Sin esto, «B ve cero» sería verde también con la tabla vacía.
+    const propias = await comoTenant(TENANT_A, async (c) => ({
+      formatos: (
+        await c.query('SELECT id FROM formatos_de_viaje WHERE id = $1', [formatoDe[TENANT_A]])
+      ).rowCount,
+      opciones: (
+        await c.query('SELECT id FROM opciones_de_salida WHERE id = $1', [opcionDe[TENANT_A]])
+      ).rowCount,
+    }));
+    expect(propias).toEqual({ formatos: 1, opciones: 1 });
+
+    // Lectura cruzada: cero filas.
+    const ajenas = await comoTenant(TENANT_B, async (c) => ({
+      formatos: (await c.query('SELECT id FROM formatos_de_viaje WHERE tenant_id = $1', [TENANT_A]))
+        .rowCount,
+      opciones: (
+        await c.query('SELECT id FROM opciones_de_salida WHERE tenant_id = $1', [TENANT_A])
+      ).rowCount,
+    }));
+    expect(ajenas).toEqual({ formatos: 0, opciones: 0 });
+
+    // Modificar o borrar lo de A desde B: cero filas afectadas.
+    const cambios = await comoTenant(TENANT_B, async (c) => [
+      (
+        await c.query("UPDATE formatos_de_viaje SET nombre = 'secuestrado' WHERE id = $1", [
+          formatoDe[TENANT_A],
+        ])
+      ).rowCount,
+      (
+        await c.query("UPDATE opciones_de_salida SET etiqueta = 'secuestrada' WHERE id = $1", [
+          opcionDe[TENANT_A],
+        ])
+      ).rowCount,
+      (await c.query('DELETE FROM opciones_de_salida WHERE id = $1', [opcionDe[TENANT_A]]))
+        .rowCount,
+    ]);
+    expect(cambios).toEqual([0, 0, 0]);
+
+    // Plantar filas con el tenant de A desde B: WITH CHECK, 42501.
+    await expect(
+      comoTenant(TENANT_B, (c) =>
+        c.query(
+          `INSERT INTO formatos_de_viaje (id, tenant_id, nombre, actualizado_en)
+           VALUES (gen_random_uuid(), $1, 'Plantado', now())`,
+          [TENANT_A],
+        ),
+      ),
+    ).rejects.toMatchObject({ code: '42501' });
+    await expect(
+      comoTenant(TENANT_B, (c) =>
+        c.query(
+          `INSERT INTO opciones_de_salida (id, tenant_id, paquete_id, etiqueta, actualizado_en)
+           VALUES (gen_random_uuid(), $1, $2, 'Plantada', now())`,
+          [TENANT_A, paqueteDe[TENANT_A]],
+        ),
+      ),
+    ).rejects.toMatchObject({ code: '42501' });
+
+    // Colgarse del padre de A con una fila PROPIA: lo para la foránea compuesta (23503), porque la
+    // integridad referencial no pasa por RLS. Con una foránea simple, las tres entrarían.
+    await expect(
+      comoTenant(TENANT_B, (c) =>
+        c.query(
+          `INSERT INTO opciones_de_salida (id, tenant_id, paquete_id, etiqueta, actualizado_en)
+           VALUES (gen_random_uuid(), $1, $2, 'Colgada del paquete ajeno', now())`,
+          [TENANT_B, paqueteDe[TENANT_A]],
+        ),
+      ),
+    ).rejects.toMatchObject({ code: '23503' });
+    await expect(
+      comoTenant(TENANT_B, (c) =>
+        c.query('UPDATE paquetes SET formato_id = $1 WHERE id = $2', [
+          formatoDe[TENANT_A],
+          paqueteDe[TENANT_B],
+        ]),
+      ),
+    ).rejects.toMatchObject({ code: '23503' });
+    await expect(
+      comoTenant(TENANT_B, (c) =>
+        c.query(
+          `INSERT INTO tarifas (id, tenant_id, vigencia_id, nombre, venta_unidades, moneda_iso,
+                                opcion_de_salida_id, actualizado_en)
+           VALUES (gen_random_uuid(), $1, $2, 'Con opción ajena', 100000, 'COP', $3, now())`,
+          [TENANT_B, vigenciaDe[TENANT_B], opcionDe[TENANT_A]],
+        ),
+      ),
+    ).rejects.toMatchObject({ code: '23503' });
+
+    // Lo de A, intacto.
+    const intacto = await comoTenant(TENANT_A, (c) =>
+      c.query('SELECT etiqueta FROM opciones_de_salida WHERE id = $1', [opcionDe[TENANT_A]]),
+    );
+    expect(intacto.rows).toEqual([{ etiqueta: 'Terrestre por Tolú' }]);
+  });
+
+  it('70 — catalogo.administrar es asignable, la lista no baja de la venta y promo_vencida nace OCULTAR', async () => {
+    // M1: el catálogo cerrado de permisos lo admite. El inventado sigue fuera (lo prueba la 66).
+    const rol = randomUUID();
+    await comoTenant(TENANT_B, (c) =>
+      c.query(
+        `INSERT INTO roles (id, tenant_id, nombre, permisos, actualizado_en)
+         VALUES ($1, $2, $3, ARRAY['catalogo.administrar'], now())`,
+        [rol, TENANT_B, `Catálogo ${MARCA}`],
+      ),
+    );
+    const asignado = await comoTenant(TENANT_B, (c) =>
+      c.query('SELECT permisos FROM roles WHERE id = $1', [rol]),
+    );
+    expect(asignado.rows).toEqual([{ permisos: ['catalogo.administrar'] }]);
+
+    // M2: un precio de lista que no supera la venta no es una promo, y lo rechaza la base.
+    await expect(
+      comoTenant(TENANT_A, (c) =>
+        c.query(
+          `INSERT INTO tarifas (id, tenant_id, vigencia_id, nombre, venta_unidades, lista_unidades,
+                                moneda_iso, actualizado_en)
+           VALUES (gen_random_uuid(), $1, $2, 'Lista falsa', 250000, 250000, 'COP', now())`,
+          [TENANT_A, vigenciaDe[TENANT_A]],
+        ),
+      ),
+    ).rejects.toMatchObject({ code: '23514' });
+
+    // Dos opciones con la misma etiqueta en el mismo paquete no son dos opciones.
+    await expect(
+      comoTenant(TENANT_A, (c) =>
+        c.query(
+          `INSERT INTO opciones_de_salida (id, tenant_id, paquete_id, etiqueta, actualizado_en)
+           VALUES (gen_random_uuid(), $1, $2, 'Terrestre por Tolú', now())`,
+          [TENANT_A, paqueteDe[TENANT_A]],
+        ),
+      ),
+    ).rejects.toMatchObject({ code: '23505' });
+
+    // La política nueva nace en OCULTAR sin que nadie la escriba.
+    await comoTenant(TENANT_A, (c) =>
+      c.query(
+        `INSERT INTO politicas_de_precio (tenant_id, actualizada_en) VALUES ($1, now())
+         ON CONFLICT (tenant_id) DO NOTHING`,
+        [TENANT_A],
+      ),
+    );
+    const politica = await comoTenant(TENANT_A, (c) =>
+      c.query('SELECT promo_vencida FROM politicas_de_precio WHERE tenant_id = $1', [TENANT_A]),
+    );
+    expect(politica.rows).toEqual([{ promo_vencida: 'OCULTAR' }]);
+    const columna = await admin.query(
+      `SELECT column_default, is_nullable FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'politicas_de_precio'
+          AND column_name = 'promo_vencida'`,
+    );
+    expect(columna.rows).toEqual([
+      { column_default: "'OCULTAR'::promo_vencida", is_nullable: 'NO' },
+    ]);
+  });
+});
+
 // ---------------------------------------------------------------------------------------
 // Cierres de la auditoría externa (2026-10-20): AUD-008 y la aserción de RLS forzada de AUD-013.
 //

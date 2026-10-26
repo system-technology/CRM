@@ -254,7 +254,12 @@ describe('POST firmado -> trabajador -> mensajes', () => {
     expect(await post(cuerpo)).toBe(200);
 
     const r = await caso.ejecutar(idDe(cuerpo), 0);
-    expect(r).toEqual({ estado: 'PROCESADO', mensajesNuevos: 1, mensajesRepetidos: 0 });
+    expect(r).toEqual({
+      estado: 'PROCESADO',
+      mensajesNuevos: 1,
+      mensajesRepetidos: 0,
+      estadosAplicados: 0,
+    });
 
     const m = await admin.query(
       `SELECT id, tenant_id, direccion::text, tipo::text, texto, conversacion_id FROM mensajes WHERE wamid = $1`,
@@ -309,7 +314,12 @@ describe('POST firmado -> trabajador -> mensajes', () => {
     await caso.ejecutar(idDe(uno), 0);
     const segundo = await caso.ejecutar(idDe(otro), 0);
 
-    expect(segundo).toEqual({ estado: 'PROCESADO', mensajesNuevos: 0, mensajesRepetidos: 1 });
+    expect(segundo).toEqual({
+      estado: 'PROCESADO',
+      mensajesNuevos: 0,
+      mensajesRepetidos: 1,
+      estadosAplicados: 0,
+    });
     expect(await mensajesDe(wamid)).toBe(1);
   });
 
@@ -370,8 +380,18 @@ describe('POST firmado -> trabajador -> mensajes', () => {
     const ra = await caso.ejecutar(idDe(lote), 0);
     const rb = await caso.ejecutar(idDe(lote), 1);
 
-    expect(ra).toEqual({ estado: 'PROCESADO', mensajesNuevos: 1, mensajesRepetidos: 0 });
-    expect(rb).toEqual({ estado: 'PROCESADO', mensajesNuevos: 1, mensajesRepetidos: 0 });
+    expect(ra).toEqual({
+      estado: 'PROCESADO',
+      mensajesNuevos: 1,
+      mensajesRepetidos: 0,
+      estadosAplicados: 0,
+    });
+    expect(rb).toEqual({
+      estado: 'PROCESADO',
+      mensajesNuevos: 1,
+      mensajesRepetidos: 0,
+      estadosAplicados: 0,
+    });
     expect(await tenantsDe(wA)).toEqual([TENANT]);
     expect(await tenantsDe(wB)).toEqual([TENANT_B]);
     // Los dos changes cerrados, y el contenido solo se anula al cerrar el último.
@@ -390,6 +410,7 @@ describe('POST firmado -> trabajador -> mensajes', () => {
       estado: 'PROCESADO',
       mensajesNuevos: 1,
       mensajesRepetidos: 0,
+      estadosAplicados: 0,
     });
     expect(await tenantsDe(wamid)).toEqual([TENANT, TENANT_B].sort());
   });

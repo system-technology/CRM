@@ -15,6 +15,8 @@ import {
 } from 'lucide-react';
 import type { Acomodacion, TipoPasajero } from '@viajapro/contracts';
 import { formatearDinero } from '../../lib/api';
+import { usePermisos } from '../../lib/permisos';
+import { MOCK_SESION_DUENO } from '../../lib/auth-api';
 import type { PaqueteConDetalle } from '../../lib/mock-catalogo';
 import {
   agruparPreciosPorAcomodacion,
@@ -24,6 +26,7 @@ import {
 interface FichaDetallePaqueteProps {
   paquete: PaqueteConDetalle | null;
   alCerrar: () => void;
+  puedeVerNetoYMargen?: boolean;
 }
 
 const ACOMODACIONES: Acomodacion[] = ['SENCILLA', 'DOBLE', 'TRIPLE', 'CUADRUPLE'];
@@ -33,7 +36,15 @@ const TIPOS_PASAJERO: { tipo: TipoPasajero; etiqueta: string }[] = [
   { tipo: 'INF', etiqueta: 'Infante (INF)' },
 ];
 
-export function FichaDetallePaquete({ paquete, alCerrar }: FichaDetallePaqueteProps) {
+export function FichaDetallePaquete({
+  paquete,
+  alCerrar,
+  puedeVerNetoYMargen: puedeVerNetoProp,
+}: FichaDetallePaqueteProps) {
+  const { puedeVerNetoYMargen: puedeVerNetoHook } = usePermisos(
+    puedeVerNetoProp !== undefined ? (puedeVerNetoProp ? MOCK_SESION_DUENO : null) : undefined,
+  );
+  const tienePermisoNeto = puedeVerNetoProp !== undefined ? puedeVerNetoProp : puedeVerNetoHook;
   const [temporadaSeleccionadaId, setTemporadaSeleccionadaId] = useState<string>('');
 
   if (!paquete) return null;
@@ -240,7 +251,7 @@ export function FichaDetallePaquete({ paquete, alCerrar }: FichaDetallePaquetePr
                                   <div className="cifra font-bold text-neutral-900 dark:text-white">
                                     {formatearDinero(precio.venta)}
                                   </div>
-                                  {precio.neto && (
+                                  {tienePermisoNeto && precio.neto && (
                                     <div className="cifra text-[10px] text-neutral-400 dark:text-neutral-500">
                                       Neto: {formatearDinero(precio.neto)}
                                     </div>
