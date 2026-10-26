@@ -30,8 +30,8 @@ import {
   RAMA_PROTEGIDA,
   rutaDeSistema,
 } from './lib/politica-rama.mjs';
+import { rutaMarcador } from './lib/marcador.mjs';
 
-const MARCADOR = '.git/INTEGRACION-AUTORIZADA';
 const VIGENCIA_MS = 30 * 60 * 1000;
 
 function bloquear(motivo) {
@@ -93,10 +93,13 @@ if (accion === 'bloquear-destructivo') {
 }
 
 // accion === 'exigir-autorizacion'
+// El marcador se busca en el directorio git del worktree sobre el que actua el comando, no en el
+// de la sesion. Si no se puede resolver, no hay autorizacion (falla cerrado).
+const MARCADOR = rutaMarcador(directorio ?? undefined);
 let autorizado = false;
 let motivoFallo = 'no hay autorización vigente';
 
-if (existsSync(MARCADOR)) {
+if (MARCADOR && existsSync(MARCADOR)) {
   const edad = Date.now() - statSync(MARCADOR).mtimeMs;
   if (edad <= VIGENCIA_MS) {
     autorizado = true;
