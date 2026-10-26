@@ -65,10 +65,16 @@ async function main() {
         'usuarios.administrar',
         'roles.administrar',
         'conversaciones.ver_todas',
+        'catalogo.administrar',
       ],
     },
     { clave: 'ASESOR', nombre: 'Asesor', permisos: [] },
-    { clave: 'OPERACIONES', nombre: 'Operaciones', permisos: ['conversaciones.ver_todas'] },
+    {
+      clave: 'OPERACIONES',
+      nombre: 'Operaciones',
+      // ADR-0017 D2: Operaciones mantiene el catálogo; el Asesor no.
+      permisos: ['conversaciones.ver_todas', 'catalogo.administrar'],
+    },
   ] as const;
   const rolPorClave = new Map<string, string>();
   for (const r of rolesSembrados) {
@@ -78,6 +84,30 @@ async function main() {
       create: { tenantId: tenant.id, clave: r.clave, nombre: r.nombre, permisos: [...r.permisos] },
     });
     rolPorClave.set(r.clave, rol.id);
+  }
+
+  // --- Formatos de viaje (ADR-0017 M2) -------------------------------------
+  // Los cuatro de sistema, como copias editables de la agencia. Mismo contenido que siembra la
+  // migración 20261026120100 para las agencias que ya existían. Por NOMBRE y sin pisar nada: la
+  // agencia puede haber editado la plantilla o el orden.
+  const formatosDeSistema = [
+    { nombre: 'Excursión de un día', orden: 1, clave: 'excursion-de-un-dia', dias: 1, noches: 0 },
+    { nombre: 'Pasadía', orden: 2, clave: 'pasadia', dias: 1, noches: 0 },
+    { nombre: 'Pasanoche', orden: 3, clave: 'pasanoche', dias: 2, noches: 1 },
+    { nombre: 'Paquete con hotel', orden: 4, clave: 'paquete-con-hotel' },
+  ];
+  for (const f of formatosDeSistema) {
+    const valoresPorDefecto = f.dias === undefined ? {} : { dias: f.dias, noches: f.noches };
+    await prisma.formatoDeViaje.upsert({
+      where: { tenantId_nombre: { tenantId: tenant.id, nombre: f.nombre } },
+      update: {},
+      create: {
+        tenantId: tenant.id,
+        nombre: f.nombre,
+        orden: f.orden,
+        plantilla: { clave: f.clave, version: 1, valoresPorDefecto },
+      },
+    });
   }
 
   // --- Equipo -------------------------------------------------------------

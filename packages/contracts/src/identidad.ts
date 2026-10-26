@@ -4,7 +4,7 @@
  * **El catálogo de permisos es código, no tabla.** Lo que el sistema sabe hacer es un
  * invariante del dominio; cómo lo agrupa cada agencia en roles es política (tabla `roles`,
  * R12). Este enum es la fuente de verdad, y la base lo refleja en el `CHECK
- * roles_permisos_del_catalogo` (migración `20261019230000`). Añadir un permiso es editar
+ * roles_permisos_del_catalogo` (migración `20261019230000`, ampliado en `20261026120000`). Añadir un permiso es editar
  * los dos: un permiso que la base no admite no se puede asignar, y uno que el código no
  * conoce no autoriza nada.
  */
@@ -20,6 +20,12 @@ export const PERMISOS = [
   'roles.administrar',
   /** Ver las conversaciones de toda la agencia, no solo las asignadas. */
   'conversaciones.ver_todas',
+  /**
+   * Crear, editar, desactivar e importar el catálogo; confirmar propuestas de la IA; cambiar la
+   * política `promo_vencida` (ADR-0017 §5). Escribir o leer el neto exige ADEMÁS
+   * `cotizacion.ver_neto_y_margen`. Migración `20261026120000`.
+   */
+  'catalogo.administrar',
 ] as const;
 
 export const Permiso = z.enum(PERMISOS);

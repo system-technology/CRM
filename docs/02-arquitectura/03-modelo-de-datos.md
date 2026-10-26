@@ -774,3 +774,54 @@ Migración `20261019230000_identidad_global_y_roles_por_agencia`.
   `usuarios.hash_contrasena` (vacía). **No reversible** en esa parte.
 - **Hash del token y del OTP**: el esquema no lo impone (columnas `text`). Es requisito de la
   rebanada 2 y condición del auditor.
+
+## Catálogo gestionable por la agencia: M1 y M2 (ADR-0017, 2026-10-26)
+
+Migraciones `20261026120000_permiso_catalogo_administrar` (M1) y
+`20261026120100_catalogo_extendido_formatos_y_opciones_de_salida` (M2). M3 (claves de API) sigue
+bloqueada y no existe.
+
+```
+  tenants ──< formatos_de_viaje (plantilla jsonb)
+                    ▲ (formato_id, tenant_id)  NO ACTION
+                    │
+              paquetes (codigo, cargos_en_destino, campos_personalizados, plan_alimentacion NULL)
+                    │ (paquete_id, tenant_id)  CASCADE        │ (paquete_id, tenant_id)
+                    ▼                                          ▼
+           opciones_de_salida ◄──────────────────────── vigencias ──< tarifas
+           (etiqueta, hora_salida time,          (opcion_de_salida_id, tenant_id) NO ACTION
+            hora_regreso time, punto_de_encuentro)        (lista_unidades, promo_hasta)
+
+  politicas_de_precio.promo_vencida  OCULTAR | TACHAR   (NOT NULL DEFAULT 'OCULTAR')
+  roles_permisos_del_catalogo        + 'catalogo.administrar'  (DUENO y OPERACIONES)
+```
+
+**Por qué así.**
+
+- **Dos tablas nuevas, las dos de negocio.** `formatos_de_viaje` y `opciones_de_salida` llevan
+  `tenant_id`, RLS forzada con `USING` y `WITH CHECK` por `aplicar_aislamiento_tenant`, y no
+  están en `excepciones_rls`: el literal de `aislamiento.spec.ts` no cambia. Aserciones 67 a 70.
+- **Opciones de salida como tabla, no dos columnas de hora en `paquetes`** (corrección de
+  `experto-turismo`, ADR-0017 §3.1): un producto tiene varias (turnos, modalidades con punto de
+  recogida, hoteles) y una tarifa referencia una. Una referencia dentro de un `jsonb` no tendría
+  integridad. Las horas son `time` sin zona: hora local del punto de encuentro, como la fecha de
+  viaje es `date`.
+- **Foráneas compuestas en `NO ACTION`**, no `RESTRICT` ni `SET NULL`: la cascada de un tenant se
+  lleva formatos, paquetes, opciones y tarifas en la misma sentencia (RESTRICT abortaría a mitad),
+  y `SET NULL` sobre una compuesta pondría a NULL también `tenant_id`. Un formato o una opción en
+  uso se desactiva, no se borra. Que la opción de una tarifa sea del mismo paquete que su vigencia
+  lo valida el núcleo de `quoting`: es coherencia de dominio, no aislamiento.
+- **`codigo` único parcial** `(tenant_id, codigo) WHERE codigo IS NOT NULL AND eliminado_en IS
+  NULL`; Prisma no modela índices parciales, así que vive solo en la migración.
+- **`lista_unidades` nunca entra en el cálculo**; un `CHECK` exige `lista > venta`. La venta no
+  cambia sola al vencer `promo_hasta`; `promo_vencida` decide solo qué se muestra.
+- **Relleno agencia por agencia con `app.current_tenant`**: tanto la concesión del permiso (M1)
+  como los cuatro formatos de sistema (M2) entran por el `WITH CHECK` de su agencia, de modo que
+  el resultado no depende de que el rol de migraciones tenga `BYPASSRLS`. M1 verifica al final
+  que ningún DUENO u OPERACIONES quedó sin el permiso.
+- **Seguras en caliente**: columnas nulables o con `DEFAULT` constante (sin reescritura), y
+  tablas de catálogo pequeñas. **Reversibles** por una migración posterior salvo el valor
+  `PAQUETE` de `entidad_personalizable`, que PostgreSQL no deja quitar con `ALTER TYPE`.
+- **Deuda declarada:** `plan_alimentacion` ya admite nulo, pero el contrato `Paquete` y la web
+  aún lo tratan como obligatorio; la semilla real sigue poniendo `SIN_ALIMENTACION` hasta que
+  T-041 y la web acepten el nulo. Ninguna fila existente queda nula.
