@@ -350,7 +350,7 @@ tasks:
     phase: 1
     priority: P0
     effort: M
-    status: backlog
+    status: done
     depends_on:
       - T-016
     acceptance:
@@ -368,6 +368,11 @@ tasks:
       - apps/web/src/lib/cotizador-logica.ts
     source: orquestador:2026-10-26 (cola de Antigravity)
     created_at: 2026-10-26T21:39:01.014Z
+    started_at: 2026-10-26T23:14:23.582Z
+    done_at: 2026-10-26T23:14:23.582Z
+    evidence: "Mergeado en main por el PR #52 (rama b/T-017-cotizador-excursiones-dia) con el CI en verde: format,
+      analyze, tests y los demás checks obligatorios. Cierre automático (.github/workflows/cerrar-tarea.yml)."
+    commit: 153dc4cd0ae242cfe4cf0b2f3403ad7190b0c456
   - id: T-018
     title: "Tarjeta y ficha de excursión en el catálogo: «desde», promo, horarios, qué incluye y cupos por salida"
     type: feature
