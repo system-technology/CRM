@@ -1,5 +1,7 @@
 'use client';
 
+import { useModoDemo } from '../../lib/modo-demo';
+
 import React, { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { type Contacto } from '@viajapro/contracts';
@@ -33,6 +35,7 @@ import {
 import { generarColorAvatar, obtenerIniciales } from '../../lib/bandeja-logica';
 
 export default function ContactosPage() {
+  const { esDemo } = useModoDemo();
   const [pagina, setPagina] = useState(() => obtenerMockPaginaContactos());
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -58,7 +61,7 @@ export default function ContactosPage() {
 
   useEffect(() => {
     cargarContactos();
-  }, []);
+  }, [esDemo]);
   const [busqueda, setBusqueda] = useState('');
   const [etiquetaFiltro, setEtiquetaFiltro] = useState('todas');
   const [consentimientoFiltro, setConsentimientoFiltro] = useState('todos');

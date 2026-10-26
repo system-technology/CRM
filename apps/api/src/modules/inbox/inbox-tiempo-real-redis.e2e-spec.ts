@@ -249,7 +249,12 @@ async function hasta(condicion: () => boolean, ms = 8000): Promise<void> {
 /** El camino del trabajador: tomar el change, escribir mensaje + evento, y relevar el outbox. */
 async function procesarYRelevar(cuerpo: Buffer): Promise<void> {
   const r = await caso.ejecutar(idDe(cuerpo), 0, entorno);
-  expect(r).toEqual({ estado: 'PROCESADO', mensajesNuevos: 1, mensajesRepetidos: 0 });
+  expect(r).toEqual({
+    estado: 'PROCESADO',
+    mensajesNuevos: 1,
+    mensajesRepetidos: 0,
+    estadosAplicados: 0,
+  });
   await planificador.tickDeAvisos();
 }
 

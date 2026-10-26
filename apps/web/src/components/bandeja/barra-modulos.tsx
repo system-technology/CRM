@@ -32,6 +32,7 @@ import {
   type AlertaOperativa,
 } from '../../lib/notificaciones-logica';
 import { usePermisos } from '../../lib/permisos';
+import { useModoDemo } from '../../lib/modo-demo';
 import { cambiarAgenciaActivaApi, cerrarSesionApi } from '../../lib/auth-api';
 import { inboxSocketManager } from '../../lib/inbox-socket';
 import { useFocoModal } from '../../lib/use-foco-modal';
@@ -77,6 +78,7 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
   const pathname = usePathname();
   const router = useRouter();
   const { sesion } = usePermisos(sesionInicial);
+  const { esDemo, alternarDemo, desactivarDemo } = useModoDemo();
 
   const [modoOscuro, setModoOscuro] = useState(false);
   const [busquedaAbierta, setBusquedaAbierta] = useState(false);
@@ -275,6 +277,29 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
           >
             <Search className="h-4 w-4" />
           </button>
+
+          {/* Indicador de Estado: Modo Real vs Modo Demo */}
+          {esDemo ? (
+            <button
+              type="button"
+              onClick={() => desactivarDemo()}
+              title="Modo Demostración activo (datos simulados). Haz clic para salir y conectar la API real."
+              aria-label="Salir del modo demostración"
+              data-testid="boton-modo-demo-barra"
+              className="relative flex h-8 w-8 items-center justify-center rounded-lg border border-amber-300 bg-amber-50 text-amber-800 transition hover:bg-amber-100 dark:border-amber-700/60 dark:bg-amber-950/60 dark:text-amber-300"
+            >
+              <span className="h-2 w-2 animate-pulse rounded-full bg-amber-500" />
+            </button>
+          ) : (
+            <div
+              title={'API Conectada: ' + nombreAgenciaActiva}
+              aria-label={'API Conectada: ' + nombreAgenciaActiva}
+              data-testid="indicador-api-conectada"
+              className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400"
+            >
+              <span className="h-2 w-2 rounded-full bg-emerald-500" />
+            </div>
+          )}
 
           {/* Separador */}
           <div className="h-px w-8 bg-neutral-200 dark:bg-neutral-800" />
@@ -596,6 +621,39 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
 
             {/* Acciones: Cerrar Sesión */}
             <div className="mt-3">
+              {/* Interruptor explícito de Modo Demostración */}
+              <div className="flex items-center justify-between border-t border-neutral-100 py-3 dark:border-neutral-800">
+                <div className="flex flex-col pr-2">
+                  <span className="text-xs font-semibold text-neutral-800 dark:text-neutral-200">
+                    Modo Demostración
+                  </span>
+                  <span className="text-[10px] text-neutral-500 dark:text-neutral-400">
+                    {esDemo
+                      ? 'Mostrando datos simulados'
+                      : 'Conectado a la API real (' + nombreAgenciaActiva + ')'}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={esDemo}
+                  aria-label="Alternar modo demostración"
+                  onClick={() => alternarDemo()}
+                  data-testid="boton-alternar-demo"
+                  className={
+                    'relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ' +
+                    (esDemo ? 'bg-amber-500' : 'bg-neutral-300 dark:bg-neutral-700')
+                  }
+                >
+                  <span
+                    className={
+                      'pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ' +
+                      (esDemo ? 'translate-x-4' : 'translate-x-0')
+                    }
+                  />
+                </button>
+              </div>
+
               <button
                 type="button"
                 disabled={cerrandoSesion}

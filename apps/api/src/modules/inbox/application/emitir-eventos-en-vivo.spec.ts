@@ -10,6 +10,7 @@ import {
   type EventoDeDominio,
   TIPO_ACCESO_REVOCADO,
   TIPO_CONVERSACION_ACTUALIZADA,
+  TIPO_MENSAJE_ACTUALIZADO,
   TIPO_MENSAJE_RECIBIDO,
   TIPO_MENSAJE_SALIENTE_CREADO,
 } from '../domain/evento-de-dominio.js';
@@ -118,6 +119,34 @@ const emisor = (
   conversaciones: PuertoLecturaDeConversaciones,
   emision: PuertoEmisionEnVivo,
 ): EmitirEventosEnVivo => new EmitirEventosEnVivo(lectura, conversaciones, emision);
+
+describe('EmitirEventosEnVivo: estado de entrega (ADR-0018)', () => {
+  it('un cambio de estado sale como MENSAJE_ACTUALIZADO, solo hacia quien ve la conversación', async () => {
+    const fallido: Mensaje = {
+      ...mensaje,
+      direccion: 'SALIENTE',
+      estado: 'FALLIDO',
+      motivoFallo: 'Este número no puede recibir mensajes de WhatsApp.',
+    };
+    const emision = new Emision();
+    await emisor(new Lectura(fallido), new Conversaciones(ANA), emision).atender(
+      evento(TIPO_MENSAJE_ACTUALIZADO),
+    );
+    expect(emision.emitidos).toEqual([
+      {
+        tenantId: TENANT,
+        para: [ANA, DUENO].sort(),
+        evento: {
+          tipo: 'MENSAJE_ACTUALIZADO',
+          conversacionId: CONVERSACION,
+          mensajeId: MENSAJE,
+          estado: 'FALLIDO',
+          motivoFallo: 'Este número no puede recibir mensajes de WhatsApp.',
+        },
+      },
+    ]);
+  });
+});
 
 describe('EmitirEventosEnVivo: mensajes', () => {
   it('un mensaje recibido se lee con el tenant del EVENTO y sale solo hacia quien ve la conversación', async () => {
