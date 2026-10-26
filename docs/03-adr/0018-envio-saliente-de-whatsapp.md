@@ -115,7 +115,7 @@ Puerto `PuertoCredencialesWhatsapp.paraCanal(tenantId, canal) → { phoneNumberI
 del flujo no sabe de dónde viene.
 
 - **Fase de prueba (hoy):** `CredencialesDePrueba`, con `META_SYSTEM_USER_TOKEN` y
-  `META_TEST_PHONE_NUMBER_ID`. **Solo sirve al canal cuyo `phone_number_id` es el de prueba**: un
+  `META_PHONE_NUMBER_ID_PRUEBA`. **Solo sirve al canal cuyo `phone_number_id` es el de prueba**: un
   token de usuario del sistema puede alcanzar más de un WABA, y sin esa restricción cualquier canal
   de la base enviaría con el token de la plataforma. Sin esas variables, cada mensaje queda
   `FALLIDO` con un motivo claro y el arranque lo avisa.

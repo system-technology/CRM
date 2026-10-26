@@ -1,6 +1,6 @@
 /**
  * Credenciales de la FASE DE PRUEBA: el token de usuario del sistema del Tech Provider
- * (`META_SYSTEM_USER_TOKEN`) y el número de prueba de Meta (`META_TEST_PHONE_NUMBER_ID`).
+ * (`META_SYSTEM_USER_TOKEN`) y el número de prueba de Meta (`META_PHONE_NUMBER_ID_PRUEBA`).
  *
  * **Solo sirve al canal cuyo `phone_number_id` es el de prueba.** Un token de usuario del sistema
  * puede tener alcance sobre más de un WABA; sin esta restricción, cualquier canal registrado en la
