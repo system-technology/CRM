@@ -26,3 +26,6 @@ Te lo dice el mensaje de cada fase (planificar, revisar, implementar o reparar).
 
 ## Entorno (Windows)
 - `node`, `pnpm`, `git` y `bash` (Git Bash) están disponibles. En PowerShell `where` no imprime nada: usa `Get-Command`.
+
+## Superpowers
+Tienes las skills de superpowers (TDD, depuración sistemática, verificación antes de dar por hecho, planes, revisión de código). Úsalas. Pero **nadie contesta**: si una skill te pide preguntar al usuario, esperar aprobación o elegir entre opciones, decide tú con `TAREA.md` y sigue. No hagas merge, push ni crees worktrees: eso es del supervisor.
