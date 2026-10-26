@@ -1,23 +1,10 @@
 'use client';
 
-import { useModoDemo } from '../../lib/modo-demo';
-
 import React, { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
-import {
-  Package,
-  Search,
-  Building2,
-  Clock,
-  Compass,
-  CheckCircle2,
-  AlertTriangle,
-  Eye,
-  MapPin,
-  Utensils,
-  Calendar,
-} from 'lucide-react';
+import { Package, Search, Compass, Calendar } from 'lucide-react';
 import type { PlanAlimentacion, SalidaPublicada } from '@viajapro/contracts';
+import { useModoDemo } from '../../lib/modo-demo';
 import { BarraModulos } from '../../components/bandeja/barra-modulos';
 import { DistintivoDatosDemo } from '../../components/comun/distintivo-datos-demo';
 import { EsqueletoGridTarjetas, AvisoErrorAccionable } from '../../components/comun/esqueletos';
@@ -27,7 +14,8 @@ import {
 } from '../../lib/estados-ui-logica';
 import { AvisoConfiguracionTenant } from '../../components/crm/aviso-configuracion-tenant';
 import { FichaDetallePaquete } from '../../components/catalogo/ficha-detalle-paquete';
-import { TarjetaSalidaPublicada } from '../../components/catalogo/tarjeta-salida-publicada';
+import { TarjetaExcursionCatalogo } from '../../components/catalogo/tarjeta-excursion-catalogo';
+import { FichaDetalleExcursion } from '../../components/catalogo/ficha-detalle-excursion';
 import { MOCK_PAQUETES_CATALOGO, type PaqueteConDetalle } from '../../lib/mock-catalogo';
 import {
   filtrarPaquetes,
@@ -35,9 +23,77 @@ import {
   verificarVigenciaTarifario,
   extraerDestinosDeSalidas,
   filtrarSalidasPublicadas,
+  agruparSalidasPorProducto,
+  detectarTipoTurismo,
+  formatearHorarioExcursion,
+  requiereAvisoImpuestoMuelle,
+  obtenerEtiquetaPrecio,
+  type ProductoCatalogoAgrupado,
 } from '../../lib/catalogo-logica';
 import { estaUsandoCatalogoReal, listarSalidasApi } from '../../lib/catalogo-api';
-import { formatearDinero } from '../../lib/api';
+
+function adaptarPaqueteConDetalleAProducto(paquete: PaqueteConDetalle): ProductoCatalogoAgrupado {
+  const precioDesde = obtenerPrecioDesde(paquete);
+  const _vigencia = verificarVigenciaTarifario(paquete.temporadas);
+  const reqMuelle = requiereAvisoImpuestoMuelle(paquete.destino, paquete.nombre);
+
+  // Generar salidas de muestra para el paquete
+  const salidas = [
+    {
+      vigenciaId: `${paquete.id}-s1`,
+      fecha: '2026-10-03',
+      etiquetaFecha: 'sáb 3 oct',
+      cupoTotal: 12,
+      etiquetaCupo: '12 cupos',
+      estadoCupo: 'DISPONIBLE' as const,
+      desde: precioDesde ?? { unidades: '0', moneda: 'COP' as const },
+      desdeEsDeGrupo: false,
+    },
+    {
+      vigenciaId: `${paquete.id}-s2`,
+      fecha: '2026-10-04',
+      etiquetaFecha: 'dom 4 oct',
+      cupoTotal: 4,
+      etiquetaCupo: 'quedan 4',
+      estadoCupo: 'ULTIMOS_CUPOS' as const,
+      desde: precioDesde ?? { unidades: '0', moneda: 'COP' as const },
+      desdeEsDeGrupo: false,
+    },
+    {
+      vigenciaId: `${paquete.id}-s3`,
+      fecha: '2026-10-10',
+      etiquetaFecha: 'sáb 10 oct',
+      cupoTotal: 0,
+      etiquetaCupo: 'Agotado',
+      estadoCupo: 'AGOTADO' as const,
+      desde: precioDesde ?? { unidades: '0', moneda: 'COP' as const },
+      desdeEsDeGrupo: false,
+    },
+  ];
+
+  return {
+    paqueteId: paquete.id,
+    nombre: paquete.nombre,
+    destino: paquete.destino,
+    noches: paquete.noches,
+    dias: paquete.dias,
+    tipoTurismo: detectarTipoTurismo(paquete.destino, paquete.nombre),
+    horario: formatearHorarioExcursion(
+      paquete.noches,
+      paquete.nombre,
+      paquete.descripcion ?? undefined,
+    ),
+    inclusiones: paquete.inclusiones,
+    exclusiones: paquete.exclusiones,
+    descripcion: paquete.descripcion,
+    requiereImpuestoMuelle: reqMuelle,
+    precioDesde,
+    precioEtiqueta: obtenerEtiquetaPrecio(precioDesde),
+    tienePromo: paquete.temporadas.length > 1,
+    desdeEsDeGrupo: false,
+    salidas,
+  };
+}
 
 export default function CatalogoPage() {
   const { esDemo } = useModoDemo();
@@ -47,6 +103,7 @@ export default function CatalogoPage() {
   useEffect(() => {
     setUsarReal(modoRealActivo);
   }, [modoRealActivo]);
+
   const [salidasReales, setSalidasReales] = useState<SalidaPublicada[]>([]);
   const [cargando, setCargando] = useState(false);
   const [errorTenant, setErrorTenant] = useState<string | null>(null);
@@ -55,16 +112,22 @@ export default function CatalogoPage() {
   const [planFiltro, setPlanFiltro] = useState<PlanAlimentacion | 'TODOS'>('TODOS');
   const [destinoFiltro, setDestinoFiltro] = useState<string>('TODOS');
   const [soloVigentes, setSoloVigentes] = useState<boolean>(true);
-  const [paqueteSeleccionado, setPaqueteSeleccionado] = useState<PaqueteConDetalle | null>(null);
 
-  // Carga de salidas reales si el interruptor está activo (0c.16.1)
+  // Ficha seleccionada
+  const [productoSeleccionado, setProductoSeleccionado] = useState<ProductoCatalogoAgrupado | null>(
+    null,
+  );
+  const [paqueteMockSeleccionado, setPaqueteMockSeleccionado] = useState<PaqueteConDetalle | null>(
+    null,
+  );
+
+  // Carga de salidas reales si el interruptor está activo
   useEffect(() => {
     if (!usarReal) return;
 
     setCargando(true);
     setErrorTenant(null);
 
-    // Salidas a partir de octubre de 2026 (campaña del tarifario)
     listarSalidasApi({ desde: '2026-10-01' })
       .then((salidas) => {
         setSalidasReales(salidas);
@@ -90,23 +153,25 @@ export default function CatalogoPage() {
     return Array.from(setDestinos).sort();
   }, [usarReal, errorTenant, salidasReales]);
 
-  // Salidas reales filtradas
-  const salidasFiltradas = useMemo(() => {
+  // Salidas reales filtradas y agrupadas por producto
+  const productosRealesAgrupados = useMemo(() => {
     if (!usarReal || errorTenant) return [];
-    return filtrarSalidasPublicadas(salidasReales, {
+    const filtradas = filtrarSalidasPublicadas(salidasReales, {
       busqueda,
       destino: destinoFiltro,
     });
+    return agruparSalidasPorProducto(filtradas);
   }, [usarReal, errorTenant, salidasReales, busqueda, destinoFiltro]);
 
-  // Paquetes mock filtrados
-  const paquetesFiltrados = useMemo(() => {
-    return filtrarPaquetes(MOCK_PAQUETES_CATALOGO, {
+  // Paquetes mock adaptados y filtrados
+  const productosMockAgrupados = useMemo(() => {
+    const filtrados = filtrarPaquetes(MOCK_PAQUETES_CATALOGO, {
       busqueda,
       planAlimentacion: planFiltro,
       destino: destinoFiltro,
       soloVigentes,
     });
+    return filtrados.map(adaptarPaqueteConDetalleAProducto);
   }, [busqueda, planFiltro, destinoFiltro, soloVigentes]);
 
   return (
@@ -125,17 +190,14 @@ export default function CatalogoPage() {
                   <Package className="h-5 w-5" />
                 </span>
                 <h1 className="text-base font-bold break-words text-neutral-900 sm:text-xl dark:text-white">
-                  {usarReal && !errorTenant
-                    ? 'Salidas y Catálogo de Tarifas'
-                    : 'Catálogo de Paquetes y Tarifarios'}
+                  Catálogo de Excursiones y Tours
                 </h1>
-                {/* 0c.14 y 0c.16: solo visible si usamos datos simulados o hay error de tenant */}
                 <DistintivoDatosDemo visible={!usarReal || !!errorTenant} />
               </div>
               <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
                 {usarReal && !errorTenant
-                  ? `Salidas programadas y tarifas reales (Agencias André's Tours — ${salidasReales.length} salidas)`
-                  : 'Tarifarios oficiales para cotización rápida de viajes y excursiones'}
+                  ? `Catálogo oficial de la agencia — ${salidasReales.length} salidas programadas`
+                  : 'Tarifarios y excursiones para cotización rápida en WhatsApp'}
               </p>
             </div>
 
@@ -160,7 +222,7 @@ export default function CatalogoPage() {
                 type="text"
                 value={busqueda}
                 onChange={(e) => setBusqueda(e.target.value)}
-                placeholder="Buscar por destino o nombre..."
+                placeholder="Buscar tour por destino o nombre..."
                 className="focus:border-acento-500 focus:ring-acento-500 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white py-2.5 pr-3 pl-9 text-xs text-neutral-900 placeholder-neutral-400 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
               />
             </div>
@@ -261,12 +323,15 @@ export default function CatalogoPage() {
           {cargando ? (
             <EsqueletoGridTarjetas cantidad={6} />
           ) : usarReal && !errorTenant ? (
-            /* LISTADO REAL DE SALIDAS PUBLICADAS (0c.16.1) */
-            salidasFiltradas.length === 0 ? (
-              <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-neutral-300 py-16 text-center dark:border-neutral-800">
+            /* LISTADO REAL DE PRODUCTOS Y SALIDAS (T-018) */
+            productosRealesAgrupados.length === 0 ? (
+              <div
+                data-testid="catalogo-estado-vacio"
+                className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-neutral-300 py-16 text-center dark:border-neutral-800"
+              >
                 <Calendar className="h-10 w-10 text-neutral-400" />
                 <h3 className="mt-3 text-sm font-bold text-neutral-800 dark:text-white">
-                  No se encontraron salidas para este criterio
+                  No se encontraron excursiones para este criterio
                 </h3>
                 <p className="mt-1 text-xs text-neutral-500">
                   Prueba ajustando el término de búsqueda o seleccionando otro destino.
@@ -284,13 +349,17 @@ export default function CatalogoPage() {
               </div>
             ) : (
               <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-                {salidasFiltradas.map((salida) => (
-                  <TarjetaSalidaPublicada key={salida.vigenciaId} salida={salida} />
+                {productosRealesAgrupados.map((producto) => (
+                  <TarjetaExcursionCatalogo
+                    key={producto.paqueteId}
+                    producto={producto}
+                    alSeleccionar={setProductoSeleccionado}
+                  />
                 ))}
               </div>
             )
           ) : /* LISTADO MOCK (MODO SIMULADO O FALLBACK) */
-          paquetesFiltrados.length === 0 ? (
+          productosMockAgrupados.length === 0 ? (
             <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-neutral-300 py-16 text-center dark:border-neutral-800">
               <Package className="h-10 w-10 text-neutral-400" />
               <h3 className="mt-3 text-sm font-bold text-neutral-800 dark:text-white">
@@ -311,138 +380,28 @@ export default function CatalogoPage() {
             </div>
           ) : (
             <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-              {paquetesFiltrados.map((paquete) => {
-                const precioDesde = obtenerPrecioDesde(paquete);
-                const vigencia = verificarVigenciaTarifario(paquete.temporadas);
-
-                return (
-                  <article
-                    key={paquete.id}
-                    className="flex flex-col justify-between overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-xs transition-shadow hover:shadow-md dark:border-neutral-800 dark:bg-neutral-900"
-                  >
-                    <div>
-                      {/* Cabecera de la tarjeta */}
-                      <div className="border-b border-neutral-100 bg-neutral-50/70 p-4 dark:border-neutral-800/80 dark:bg-neutral-800/30">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="flex items-center gap-1 rounded-full bg-neutral-200/80 px-2.5 py-0.5 text-[11px] font-semibold text-neutral-700 dark:bg-neutral-700 dark:text-neutral-200">
-                            <MapPin className="h-3 w-3" />
-                            {paquete.destino}
-                          </span>
-                          <span className="rounded-full bg-neutral-100 px-2.5 py-0.5 text-[11px] font-medium text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400">
-                            {paquete.dias}D / {paquete.noches}N
-                          </span>
-                        </div>
-
-                        <h3 className="mt-3 line-clamp-2 text-sm font-bold text-neutral-900 dark:text-white">
-                          {paquete.nombre}
-                        </h3>
-
-                        <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
-                          <span className="flex items-center gap-1 rounded bg-neutral-100 px-2 py-0.5 text-[11px] text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400">
-                            <Utensils className="h-3 w-3 text-neutral-400" />
-                            {paquete.planAlimentacion.replace(/_/g, ' ')}
-                          </span>
-
-                          {paquete.mayorista && (
-                            <span className="flex items-center gap-1 rounded bg-neutral-100 px-2 py-0.5 text-[11px] text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400">
-                              <Building2 className="h-3 w-3 text-neutral-400" />
-                              {paquete.mayorista.nombre}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Cuerpo de la tarjeta */}
-                      <div className="space-y-3 p-4">
-                        {vigencia.estaVigente ? (
-                          <div className="flex items-center gap-1.5 text-xs text-emerald-700 dark:text-emerald-400">
-                            <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
-                            <span className="truncate">
-                              Vigente hasta {vigencia.proximoVencimiento}
-                            </span>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-1.5 text-xs text-rose-700 dark:text-rose-400">
-                            <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-                            <span>Tarifario vencido</span>
-                          </div>
-                        )}
-
-                        {paquete.mayorista?.diasTimeLimit !== null &&
-                          paquete.mayorista?.diasTimeLimit !== undefined && (
-                            <div className="flex items-center gap-1 text-[11px] text-amber-800 dark:text-amber-400">
-                              <Clock className="h-3 w-3" />
-                              <span>
-                                Time limit mayorista: {paquete.mayorista.diasTimeLimit} días
-                              </span>
-                            </div>
-                          )}
-
-                        <div>
-                          <div className="text-[11px] font-semibold text-neutral-400 uppercase">
-                            Inclusiones destacadas:
-                          </div>
-                          <ul className="mt-1 space-y-1 text-xs text-neutral-600 dark:text-neutral-300">
-                            {paquete.inclusiones.slice(0, 2).map((inc, i) => (
-                              <li key={i} className="flex items-center gap-1.5 truncate">
-                                <span className="h-1 w-1 rounded-full bg-neutral-400" />
-                                <span className="truncate">{inc}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Pie de tarjeta con precio y botones */}
-                    <div className="border-t border-neutral-100 bg-neutral-50/50 p-4 dark:border-neutral-800/80 dark:bg-neutral-800/20">
-                      <div className="mb-3 flex items-baseline justify-between">
-                        <span className="text-xs text-neutral-500 dark:text-neutral-400">
-                          Tarifa desde:
-                        </span>
-                        {precioDesde ? (
-                          <div className="text-right">
-                            <span className="cifra text-base font-extrabold text-neutral-900 dark:text-white">
-                              {formatearDinero(precioDesde)}
-                            </span>
-                            <span className="block text-[10px] text-neutral-400">por persona</span>
-                          </div>
-                        ) : (
-                          <span className="text-xs text-neutral-400">A consultar</span>
-                        )}
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setPaqueteSeleccionado(paquete)}
-                          className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-neutral-300 bg-white py-2 text-xs font-semibold text-neutral-700 hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
-                        >
-                          <Eye className="h-3.5 w-3.5" />
-                          Ver tarifario
-                        </button>
-
-                        <Link
-                          href="/cotizador"
-                          className="bg-acento-600 hover:bg-acento-700 flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-semibold text-white shadow-xs transition-colors"
-                        >
-                          <Compass className="h-3.5 w-3.5" />
-                          Cotizar
-                        </Link>
-                      </div>
-                    </div>
-                  </article>
-                );
-              })}
+              {productosMockAgrupados.map((producto) => (
+                <TarjetaExcursionCatalogo
+                  key={producto.paqueteId}
+                  producto={producto}
+                  alSeleccionar={setProductoSeleccionado}
+                />
+              ))}
             </div>
           )}
         </section>
       </main>
 
-      {/* 3. Modal / Drawer Ficha Detalle Paquete (Mock) */}
+      {/* 3. Modal Ficha Detalle Excursión (T-018) */}
+      <FichaDetalleExcursion
+        producto={productoSeleccionado}
+        alCerrar={() => setProductoSeleccionado(null)}
+      />
+
+      {/* 4. Modal Legacy Ficha Detalle Paquete (Mock) */}
       <FichaDetallePaquete
-        paquete={paqueteSeleccionado}
-        alCerrar={() => setPaqueteSeleccionado(null)}
+        paquete={paqueteMockSeleccionado}
+        alCerrar={() => setPaqueteMockSeleccionado(null)}
       />
     </div>
   );
