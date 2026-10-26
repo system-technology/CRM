@@ -1,3 +1,52 @@
+# Entrega — T-022: Auditoría de formatos es-CO: dinero, fechas, teléfonos y cupos con helpers únicos — 2026-10-26
+
+## Identificación
+- **Tarea:** `T-022` (roadmap/tasks.yaml)
+- **Rama:** `b/T-022-helpers-formato-es-co` (creada desde `origin/main` en commit `f51880a`)
+- **Carril:** Frontend (`apps/web`, `packages/ui`, `packages/sdk`)
+
+## Qué se construyó
+
+1. **Módulo Centralizado de Formato (`apps/web/src/lib/formato.ts`):**
+   - **Dinero (`formatearDinero`, `formatearCOP`, `formatearDineroCifra`):**
+     - Cumplimiento estricto de R8: Dinero en enteros, unidad mínima de la moneda (en COP es el peso, no el centavo).
+     - Presentación sin decimales y con punto de miles para COP (`$ 350.000`, `$ 12.500.000`, `$ 1.000.000.000`).
+     - Monedas extranjeras con 2 decimales y coma decimal (`$ 1.250,50 USD`).
+     - Soporta contratos Zod (`{ unidades, moneda }`), objetos con `monto`, números primitivos y bigints.
+   - **Fechas (`formatearFecha`, `formatearFechaHora`):**
+     - Cumplimiento de R9: Fechas en UTC en la base, zona horaria oficial del tenant en presentación (`America/Bogota`).
+     - Formato estándar colombiano legible: «sáb 3 oct 2026».
+     - Manejo de casos límite: cadenas de fecha pura `YYYY-MM-DD` fijadas a mediodía UTC para evitar desfases a la víspera en cualquier cliente; y timestamps UTC de madrugada convertidos con exactitud a la hora local en Bogotá (UTC-5).
+   - **Teléfonos (`formatearTelefono`):**
+     - Formato móvil colombiano estándar de 10 dígitos: «+57 300 123 4567» (con opción local «300 123 4567»).
+     - Teléfonos fijos nacionales con indicativo departamental: «+57 (601) 234 5678».
+     - Limpieza y preservación de números extranjeros.
+   - **Cupos (`formatearCupo`):**
+     - Formato declarativo para salidas y tours: «Agotado», «1 cupo disponible», «12 de 20 cupos», «Cupos libres».
+
+2. **Integración en Componentes y Pantallas:**
+   - `apps/web/src/lib/api.ts`: reexporta los helpers únicos hacia toda la aplicación.
+   - `apps/web/src/lib/pipeline-logica.ts`: delega el formato de cifras en `formato.ts`.
+   - `apps/web/src/lib/contactos-logica.ts`: delega `formatearTelefonoVisual` en `formato.ts`.
+   - `apps/web/src/app/cotizaciones/page.tsx`: salidas con fecha formateada en vistas móvil y tabla.
+   - `apps/web/src/app/cotizaciones/[id]/page.tsx`: propuesta de WhatsApp con fecha formateada y teléfono del contacto formateado.
+   - `apps/web/src/components/catalogo/tarjeta-salida-publicada.tsx`: fecha de salida formateada legiblemente.
+
+3. **Pruebas y Cobertura:**
+   - `apps/web/src/lib/formato.spec.ts`: 23/23 pruebas unitarias cubriendo todos los casos límite (cero, millones, miles de millones, medianoche UTC frente a Bogotá, móviles, fijos y cupos).
+   - Suite total de `@viajapro/web`: 43 archivos de prueba, 377 pruebas en verde.
+
+## Verificación de Compuertas
+
+- **Pruebas unitarias (@viajapro/web):** 43 suites, 377 pruebas en verde en 10.90s.
+- **Typecheck (@viajapro/web):** 0 errores (`tsc --noEmit`).
+- **Linter (@viajapro/web):** 0 advertencias, 0 errores (`eslint src`).
+- **Prettier:** 100% formateado según reglas de estilo del monorepo.
+- **Compilación de producción (Next.js):** 16/16 páginas estáticas y dinámicas compiladas exitosamente.
+- **Fronteras y ganchos de seguridad (`pnpm test:hooks`):** 59/59 casos de política de rama, 19/19 detección de secretos, 6/6 fronteras de módulos.
+
+---
+
 # Entrega — Bloque 2: Cotizador y Catálogo para Excursiones de un Día y Estados de UI — 2026-10-26
 
 ## Identificación
