@@ -1,3 +1,37 @@
+### 2026-10-26 — T-020: Inicio con datos reales del asesor comercial
+
+- **Tarea de la cola:** T-020 (Inicio con datos reales del asesor: conversaciones pendientes, oportunidades por etapa y cotizaciones por vencer).
+- **Rama:** `b/T-020-inicio-datos-reales` (salida limpia desde origin/main).
+- **Stitch Screen:** ID `470f964dfc2344a0bad2aa16c347268e` (*Inicio & Dashboard Operacional — ViajaPro CRM*, Proyecto `8333038101997719867`).
+- **Reglas respetadas:**
+  - R3: Esquemas Zod oficiales de `@viajapro/contracts` (`ConversacionResumen`, `ContadoresBandeja`, `TableroPipeline`, `FilaDeCotizacion`).
+  - R8: Dinero en enteros de COP sin coma flotante mediante `formatearCOP` (`$ 45.000.000 COP`).
+  - R9: Fechas en UTC presentadas en `America/Bogota` (`formatearFecha`).
+  - R11: Ámbito exclusivo en `apps/web`.
+- **Archivos creados y modificados:**
+  - `apps/web/src/lib/inicio-logica.ts`: Funciones puras de agregación ejecutiva:
+    - `agregarMetricasConversaciones`: Agrega pendientes, sin responder, ventana crítica 24h y lista previa de conversaciones prioritarias.
+    - `agregarMetricasPipeline`: Agrega oportunidades activas, total acumulado en COP y desglose por etapas con colorimetría estándar.
+    - `agregarMetricasCotizaciones`: Detecta cotizaciones enviadas, borradores y vigencias críticas de viaje (<= 2 días).
+  - `apps/web/src/lib/inicio-logica.spec.ts`: Pruebas unitarias de agregación (6/6 tests pasando).
+  - `apps/web/src/lib/crm-api.ts`: Endpoint `consultarResumenInicioAsesor()` que orquesta concurrentemente `inboxApi.consultarBandeja`, `obtenerTableroPipeline` y `listarCotizacionesApi`.
+  - `apps/web/src/app/page.tsx`: Rediseño completo del Inicio como dashboard operativo:
+    - Tarjeta 1 (WhatsApp): `data-testid="tarjeta-conversaciones"`, desglose de métricas, lista previa de ítems urgentes, estado vacío `data-testid="tarjeta-vacia"` y enlace filtrado `/bandeja?filtro=sin-responder`.
+    - Tarjeta 2 (Pipeline): `data-testid="tarjeta-pipeline"`, headline con valor total COP y tratos activos, desglose de etapas, estado vacío y enlace filtrado `/pipeline`.
+    - Tarjeta 3 (Cotizaciones): `data-testid="tarjeta-cotizaciones"`, total en curso, badge "Vence pronto", estado vacío y enlace filtrado `/cotizaciones?estado=ENVIADA`.
+    - Estados: Skeletons con `data-testid="inicio-cargando"`, error accionable con botón `data-testid="boton-reintentar"`.
+    - Responsive: Totalmente adaptado a 375 px (touch targets >= 44 px, `overflow-x-hidden`, `min-w-0`).
+  - `apps/web/src/app/page.spec.tsx`: 4 pruebas de componentes (skeletons, renderizado de métricas y enlaces filtrados, estados vacíos, error y reintento).
+- **Compuertas de Calidad:**
+  - `test`: **VERDE** (45 archivos de prueba, 388/388 tests pasando en `@viajapro/web`).
+  - `lint`: **VERDE** (0 errores, 0 advertencias).
+  - `typecheck`: **VERDE** (cero errores TypeScript con `tsc --noEmit`).
+  - `prettier`: **VERDE** (100% verificado).
+  - `build`: **VERDE** (Next.js 15.5.27 compiló 16 páginas estáticas/dinámicas en 29s).
+  - `check-ownership`: **VERDE** (carril b estricto).
+
+---
+
 # Entrega — Bloque 2: Cotizador y Catálogo para Excursiones de un Día y Estados de UI — 2026-10-26
 
 ## Identificación
