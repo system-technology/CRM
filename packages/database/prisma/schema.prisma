@@ -85,6 +85,8 @@ model Tenant {
   versionesCotizacion VersionCotizacion[]
 
   roles            Rol[]
+  formatosDeViaje  FormatoDeViaje[]
+  opcionesDeSalida OpcionDeSalida[]
   /// Índice global de pertenencias (ADR-0011). Lo escribe solo el disparador de `usuarios`.
   accesosIdentidad AccesoIdentidad[]
   sesionesActivas  Sesion[]
@@ -552,6 +554,8 @@ enum EntidadPersonalizable {
   VIAJERO
   OPORTUNIDAD
   ARCHIVO_VIAJE
+  /// ADR-0017 M2: los campos propios de la agencia en su catálogo.
+  PAQUETE
 
   @@map("entidad_personalizable")
 }
@@ -625,12 +629,29 @@ model Paquete {
   dias    Int     @db.SmallInt
   noches  Int     @db.SmallInt
 
-  planAlimentacion PlanAlimentacion @map("plan_alimentacion")
+  /// Nulo = no aplica o no se declaró: un pasadía no tiene régimen (ADR-0017 M2). Antes era
+  /// obligatorio y la semilla mentía con `SIN_ALIMENTACION`.
+  planAlimentacion PlanAlimentacion? @map("plan_alimentacion")
   /// Qué incluye, como lista de líneas legibles. No se modela cada servicio por separado:
   /// el paquete ya viene armado. Cuando llegue el armado a medida, serán QuoteItem.
-  inclusiones      Json             @default("[]") @db.JsonB
-  exclusiones      Json             @default("[]") @db.JsonB
-  descripcion      String?          @db.Text
+  inclusiones      Json              @default("[]") @db.JsonB
+  exclusiones      Json              @default("[]") @db.JsonB
+  descripcion      String?           @db.Text
+
+  /// Clave natural preferente entre dos cargas (ADR-0017 §3); el nombre no es clave. Única por
+  /// agencia entre los no borrados: índice PARCIAL `paquetes_tenant_id_codigo_key`
+  /// (`WHERE codigo IS NOT NULL AND eliminado_en IS NULL`), que Prisma no modela y vive en la
+  /// migración 20261026120100.
+  codigo               String? @db.VarChar(64)
+  /// Lo que se paga en destino y NO entra en el total: `[{ concepto, monto, unidad, nota? }]`.
+  /// La forma la protege Zod; la base solo exige que sea una lista.
+  cargosEnDestino      Json    @default("[]") @map("cargos_en_destino") @db.JsonB
+  /// Valores de los campos propios de la agencia (definiciones con entidad PAQUETE).
+  camposPersonalizados Json    @default("{}") @map("campos_personalizados") @db.JsonB
+
+  /// Foránea COMPUESTA con el tenant. Un formato en uso no se borra: se desactiva.
+  formatoId String?         @map("formato_id") @db.Uuid
+  formato   FormatoDeViaje? @relation(fields: [formatoId, tenantId], references: [id, tenantId], onDelete: NoAction, onUpdate: Restrict)
 
   activo        Boolean   @default(true)
   creadoEn      DateTime  @default(now()) @map("creado_en") @db.Timestamptz(3)
@@ -639,13 +660,77 @@ model Paquete {
 
   temporadas          Temporada[]
   vigencias           Vigencia[]
+  opcionesDeSalida    OpcionDeSalida[]
   oportunidades       Oportunidad[]
   versionesCotizacion VersionCotizacion[]
 
   @@unique([id, tenantId])
   @@index([tenantId, activo, eliminadoEn])
   @@index([tenantId, destino])
+  @@index([tenantId, formatoId])
+  @@index([camposPersonalizados(ops: JsonbPathOps)], type: Gin, map: "paquetes_campos_personalizados_idx")
   @@map("paquetes")
+}
+
+/// Tipo de producto de la agencia: excursión de un día, pasadía, pasanoche, paquete con hotel…
+/// El `TripFormat` de ADR-0009 §4, con la plantilla de ENTRADA de ADR-0017 §4.2.
+///
+/// Tabla por agencia, no enum (R12): cada agencia recibe copias editables de los formatos de
+/// sistema, como recibe sus roles. **Ninguna ruta de cálculo ramifica sobre el formato.**
+model FormatoDeViaje {
+  id       String @id @default(uuid(7)) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  nombre    String  @db.VarChar(80)
+  orden     Int     @default(0) @db.SmallInt
+  activo    Boolean @default(true)
+  /// `PlantillaDeFormato` (Zod, `packages/contracts`): campos que se piden, obligatorios,
+  /// campos personalizados que aplican y valores por defecto. Solo entrada y presentación.
+  plantilla Json    @default("{}") @db.JsonB
+
+  creadoEn      DateTime @default(now()) @map("creado_en") @db.Timestamptz(3)
+  actualizadoEn DateTime @updatedAt @map("actualizado_en") @db.Timestamptz(3)
+
+  paquetes Paquete[]
+
+  @@unique([id, tenantId])
+  @@unique([tenantId, nombre])
+  @@map("formatos_de_viaje")
+}
+
+/// La variante de operación que el viajero elige dentro del mismo producto: un turno (City Tour
+/// mañana o tarde), una modalidad con su punto de recogida (lancha o terrestre), o el hotel.
+/// ADR-0017 §3.1. Una tarifa puede atarse a una; sin opción, vale para todas.
+///
+/// Las horas son `time` SIN zona: hora local del punto de encuentro, como la fecha de viaje es
+/// `date` (R9). Pasarlas a UTC las rompería con el cambio de huso.
+model OpcionDeSalida {
+  id       String @id @default(uuid(7)) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  paqueteId String  @map("paquete_id") @db.Uuid
+  /// Foránea COMPUESTA con el tenant: una agencia no cuelga una opción del paquete de otra.
+  paquete   Paquete @relation(fields: [paqueteId, tenantId], references: [id, tenantId], onDelete: Cascade, onUpdate: Restrict)
+
+  etiqueta         String    @db.VarChar(120)
+  horaSalida       DateTime? @map("hora_salida") @db.Time(0)
+  horaRegreso      DateTime? @map("hora_regreso") @db.Time(0)
+  puntoDeEncuentro String?   @map("punto_de_encuentro") @db.VarChar(300)
+  orden            Int       @default(0) @db.SmallInt
+  /// Una opción referenciada por tarifas no se borra: se desactiva.
+  activa           Boolean   @default(true)
+
+  creadoEn      DateTime @default(now()) @map("creado_en") @db.Timestamptz(3)
+  actualizadoEn DateTime @updatedAt @map("actualizado_en") @db.Timestamptz(3)
+
+  tarifas Tarifa[]
+
+  @@unique([id, tenantId])
+  @@unique([paqueteId, etiqueta])
+  @@index([tenantId, paqueteId])
+  @@map("opciones_de_salida")
 }
 
 enum PlanAlimentacion {
@@ -821,10 +906,23 @@ model Tarifa {
   pasajerosMaximo Int?          @map("pasajeros_maximo") @db.SmallInt
   ocupaSilla      Boolean?      @map("ocupa_silla")
 
+  /// Precio de lista, el que se muestra tachado (ADR-0017 §9). Misma moneda y unidad mínima que
+  /// la venta; un CHECK exige `lista > venta`. **Nunca entra en el cálculo ni en la cotización.**
+  listaUnidades BigInt?   @map("lista_unidades")
+  /// Fin de la promo: fecha de calendario, fin del día en la zona del tenant (R9). Nulo = sin fin.
+  /// Al vencer, la venta NO cambia sola; qué se muestra lo decide `promo_vencida`.
+  promoHasta    DateTime? @map("promo_hasta") @db.Date
+
+  /// Nula = vale para todas las opciones del producto. Foránea COMPUESTA con el tenant; que la
+  /// opción sea del mismo paquete que la vigencia lo valida el núcleo, no la base.
+  opcionDeSalidaId String?         @map("opcion_de_salida_id") @db.Uuid
+  opcionDeSalida   OpcionDeSalida? @relation(fields: [opcionDeSalidaId, tenantId], references: [id, tenantId], onDelete: NoAction, onUpdate: Restrict)
+
   creadoEn      DateTime @default(now()) @map("creado_en") @db.Timestamptz(3)
   actualizadoEn DateTime @updatedAt @map("actualizado_en") @db.Timestamptz(3)
 
   @@index([tenantId, vigenciaId])
+  @@index([tenantId, opcionDeSalidaId])
   @@map("tarifas")
 }
 
@@ -854,6 +952,10 @@ model PoliticaDePrecio {
   redondeoVenta Int @default(1000) @map("redondeo_venta")
 
   admiteMargenPorTarifa Boolean @default(true) @map("admite_margen_por_tarifa")
+
+  /// Qué se MUESTRA cuando venció la promo de una tarifa (ADR-0017 §9, D3). Política de
+  /// presentación, nunca de cálculo: la venta no cambia sola en ningún valor.
+  promoVencida PromoVencida @default(OCULTAR) @map("promo_vencida")
 
   actualizadaEn DateTime @updatedAt @map("actualizada_en") @db.Timestamptz(3)
 
@@ -887,6 +989,14 @@ enum ModoDeCatalogo {
   AMBOS
 
   @@map("modo_de_catalogo")
+}
+
+/// OCULTAR (por defecto): solo la venta vigente. TACHAR: la lista tachada con «promo vencida».
+enum PromoVencida {
+  OCULTAR
+  TACHAR
+
+  @@map("promo_vencida")
 }
 
 // =============================================================================
