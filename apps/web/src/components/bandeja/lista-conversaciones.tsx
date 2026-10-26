@@ -1,19 +1,19 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import type {
-  ConversacionResumen,
+import {
+  type ConversacionResumen,
   EventoBandeja,
-  FiltroBandeja,
-  PaginaBandeja,
+  type FiltroBandeja,
+  type PaginaBandeja,
 } from '@viajapro/contracts';
 import { Search, Rows3, AlertTriangle, RefreshCw } from 'lucide-react';
 import { DistintivoDatosDemo } from '../comun/distintivo-datos-demo';
 import { inboxApi } from '../../lib/inbox-api';
 import { formatearErrorAmigable } from '../../lib/estados-ui-logica';
-import { realtimeMockBus } from '../../lib/realtime-mock';
+import { useInboxSocket } from '../../lib/inbox-socket';
 import {
   reordenarConGuardia,
   generarColorAvatar,
@@ -104,16 +104,34 @@ export function ListaConversaciones() {
     }
   }, []);
 
-  // Suscripción a eventos en tiempo real usando la función pura reordenarConGuardia
-  useEffect(() => {
-    const unsubscribe = realtimeMockBus.subscribe((evento: EventoBandeja) => {
-      let debeIncrementar = false;
+  // Suscripción a eventos en tiempo real con Socket.IO / mock y reconexión REST (0c.35)
+  const { estado: estadoSocket } = useInboxSocket({
+    onEvento: (evento: EventoBandeja) => {
+      const parseado = EventoBandeja.safeParse(evento);
+      if (!parseado.success) {
+        console.warn(
+          '[ListaConversaciones] Evento descartado por no cumplir contrato Zod:',
+          parseado.error,
+        );
+        return;
+      }
+      const ev = parseado.data;
+      if (ev.tipo === 'CONVERSACION_RETIRADA') {
+        setConversaciones((prev) => prev.filter((c) => c.id !== ev.conversacionId));
+        if (bufferConversacionesRef.current) {
+          bufferConversacionesRef.current = bufferConversacionesRef.current.filter(
+            (c) => c.id !== ev.conversacionId,
+          );
+        }
+        return;
+      }
 
+      let debeIncrementar = false;
       setConversaciones((prev) => {
         const res = reordenarConGuardia(
           prev,
           bufferConversacionesRef.current,
-          evento,
+          ev,
           isHoveringListRef.current,
         );
 
@@ -125,10 +143,12 @@ export function ListaConversaciones() {
       if (debeIncrementar) {
         setPendientesReorden((p) => p + 1);
       }
-    });
-
-    return () => unsubscribe();
-  }, []);
+    },
+    onReconexion: () => {
+      // Si el socket cae y se reconecta, re-pedir lista por REST porque eventos perdidos no se reenvían (0c.35)
+      void cargarInicial();
+    },
+  });
 
   const cargarMas = async () => {
     if (!pagina?.pageInfo.nextCursor || cargandoMas) return;
@@ -180,6 +200,28 @@ export function ListaConversaciones() {
       aria-label="Lista de conversaciones"
     >
       {/* Cabecera de la lista */}
+      {estadoSocket === 'reconectando' && (
+        <div
+          data-testid="indicador-reconectando"
+          role="status"
+          className="flex shrink-0 items-center justify-center gap-1.5 border-b border-amber-200 bg-amber-50 px-3 py-1.5 text-[11px] font-medium text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-300"
+        >
+          <RefreshCw className="h-3 w-3 animate-spin" />
+          <span>Reconectando tiempo real...</span>
+        </div>
+      )}
+      {estadoSocket === 'desconectado' && (
+        <div
+          data-testid="indicador-desconectado"
+          role="status"
+          className="flex shrink-0 items-center justify-center gap-1.5 border-b border-amber-200 bg-amber-50 px-3 py-1.5 text-[11px] font-medium text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-300"
+        >
+          <AlertTriangle className="h-3 w-3 text-amber-600" />
+          <span>
+            Sin conexión en tiempo real; los mensajes nuevos no llegarán solos. Reintentando...
+          </span>
+        </div>
+      )}
       <div className="shrink-0 space-y-2.5 border-b border-neutral-200 p-3 dark:border-neutral-800">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -207,7 +249,7 @@ export function ListaConversaciones() {
             type="search"
             value={buscar}
             onChange={(e) => setBuscar(e.target.value)}
-            placeholder="Buscar por cliente o mensaje... (/)"
+            placeholder="Buscar por nombre o teléfono... (/)"
             className="focus:border-acento-600 focus:ring-acento-600/30 w-full rounded-lg border border-neutral-200 bg-neutral-50 py-2 pr-3 pl-8 text-xs text-neutral-900 placeholder-neutral-400 focus:bg-white focus:ring-2 focus:outline-none md:py-1.5 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
           />
         </div>

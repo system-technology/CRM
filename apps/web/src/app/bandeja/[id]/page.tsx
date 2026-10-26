@@ -11,6 +11,9 @@ import type {
 } from '@viajapro/contracts';
 import {
   ArrowLeft,
+  UserPlus,
+  UserMinus,
+  UserCheck,
   Clock,
   Send,
   AlertTriangle,
@@ -23,7 +26,9 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { inboxApi } from '../../../lib/inbox-api';
-import { realtimeMockBus } from '../../../lib/realtime-mock';
+import { useInboxSocket } from '../../../lib/inbox-socket';
+import { usePermisos } from '../../../lib/permisos';
+import { ModalReasignar } from '../../../components/bandeja/modal-reasignar';
 import { obtenerFichaDeContacto } from '../../../lib/crm-api';
 import { EsqueletoConversacion, AvisoErrorAccionable } from '../../../components/comun/esqueletos';
 import {
@@ -32,6 +37,7 @@ import {
 } from '../../../lib/estados-ui-logica';
 import {
   calcularTiempoRestanteVentana,
+  calcularPermisosAsignacion,
   claveDeReintento,
   debeBajarElScroll,
   evaluarTransicionVentanaBorrador,
@@ -75,6 +81,20 @@ export default function BandejaConversacionPage() {
 
   // Asistente de Sugerencias (reglas)
   const [sugerenciasAbierto, setSugerenciasAbierto] = useState(false);
+
+  // Estado de conversación retirada (0c.35)
+  const [conversacionRetirada, setConversacionRetirada] = useState(false);
+  const [modalReasignarAbierto, setModalReasignarAbierto] = useState(false);
+  const [asignando, setAsignando] = useState(false);
+
+  // Permisos de sesión para visibilidad y asignación (0c.35)
+  const { sesion, puedeVerTodasConversaciones } = usePermisos();
+  const miUsuarioId = sesion?.acceso?.usuarioId ?? null;
+  const permisosAsignacion = calcularPermisosAsignacion(
+    detalle,
+    miUsuarioId,
+    puedeVerTodasConversaciones,
+  );
 
   // Atajos de teclado
 
@@ -180,10 +200,9 @@ export default function BandejaConversacionPage() {
     return () => clearInterval(timer);
   }, [detalle?.ventana?.expiraEn]);
 
-  // Suscripción a eventos en tiempo real para esta conversación
-  useEffect(() => {
-    if (!id) return;
-    const unsubscribe = realtimeMockBus.subscribe((evento: EventoBandeja) => {
+  // Suscripción a eventos en tiempo real y reconexión REST (0c.35)
+  useInboxSocket({
+    onEvento: (evento: EventoBandeja) => {
       if (evento.tipo === 'MENSAJE_NUEVO' && evento.conversacionId === id) {
         setDetalle((prev) => {
           if (!prev) return prev;
@@ -218,11 +237,97 @@ export default function BandejaConversacionPage() {
             ),
           };
         });
+      } else if (evento.tipo === 'CONVERSACION_ACTUALIZADA' && evento.conversacion.id === id) {
+        setDetalle((prev) => (prev ? { ...prev, ...evento.conversacion } : prev));
+      } else if (evento.tipo === 'CONVERSACION_RETIRADA' && evento.conversacionId === id) {
+        // Conversación retirada del asesor: se avisa y bloquea sin perder borrador (0c.35)
+        setConversacionRetirada(true);
       }
-    });
+    },
+    onReconexion: () => {
+      // Re-consultar historial en reconexión porque los eventos perdidos no se reenvían (0c.35)
+      void cargarHistorial();
+    },
+  });
 
-    return () => unsubscribe();
-  }, [id, isNearBottom, scrollToBottom]);
+  // Manejadores de asignación («Tomar», «Soltar», «Reasignar») (0c.35)
+  const manejarTomar = async () => {
+    if (!detalle || asignando) return;
+    setAsignando(true);
+    try {
+      const res = await inboxApi.asignarConversacion({
+        conversacionId: detalle.id,
+        usuarioId: miUsuarioId ?? '00000000-0000-4000-a000-000000000001',
+      });
+      setDetalle((prev) =>
+        prev
+          ? {
+              ...prev,
+              asignadoAId: res.asignadoAId,
+              asignadoANombre: res.asignadoANombre ?? sesion?.identidad.nombre ?? 'Asignado',
+            }
+          : prev,
+      );
+    } catch (e) {
+      console.error('Error al tomar conversación:', e);
+    } finally {
+      setAsignando(false);
+    }
+  };
+
+  const manejarSoltar = async () => {
+    if (!detalle || asignando) return;
+    setAsignando(true);
+    try {
+      await inboxApi.asignarConversacion({
+        conversacionId: detalle.id,
+        usuarioId: null,
+      });
+      setDetalle((prev) =>
+        prev
+          ? {
+              ...prev,
+              asignadoAId: null,
+              asignadoANombre: null,
+            }
+          : prev,
+      );
+    } catch (e) {
+      console.error('Error al soltar conversación:', e);
+    } finally {
+      setAsignando(false);
+    }
+  };
+
+  const manejarReasignar = async (nuevoUsuarioId: string | null) => {
+    if (!detalle) return;
+    setAsignando(true);
+    try {
+      const resAsignada = await inboxApi.asignarConversacion({
+        conversacionId: detalle.id,
+        usuarioId: nuevoUsuarioId,
+      });
+      if (
+        !puedeVerTodasConversaciones &&
+        nuevoUsuarioId !== miUsuarioId &&
+        nuevoUsuarioId !== null
+      ) {
+        setConversacionRetirada(true);
+      } else {
+        setDetalle((prev) =>
+          prev
+            ? {
+                ...prev,
+                asignadoAId: resAsignada.asignadoAId,
+                asignadoANombre: resAsignada.asignadoANombre,
+              }
+            : prev,
+        );
+      }
+    } finally {
+      setAsignando(false);
+    }
+  };
 
   // Manejar envío de mensaje o nota interna
   const manejarEnvio = async (e?: React.FormEvent) => {
@@ -444,9 +549,53 @@ export default function BandejaConversacionPage() {
                   {detalle.contactoTelefono}
                 </span>
               </div>
-              <p className="truncate text-[10px] text-neutral-400">
-                {detalle.asignadoANombre ? `Asignado a: ${detalle.asignadoANombre}` : 'Sin asignar'}
-              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="truncate text-[10px] text-neutral-400">
+                  {detalle.asignadoANombre
+                    ? `Asignado a: ${detalle.asignadoANombre}`
+                    : 'Sin asignar'}
+                </p>
+                {/* Botones de Asignación (0c.35) */}
+                {permisosAsignacion.puedeTomar && (
+                  <button
+                    type="button"
+                    onClick={() => void manejarTomar()}
+                    disabled={asignando || conversacionRetirada}
+                    data-testid="boton-tomar"
+                    className="bg-primary-50 text-primary-700 hover:bg-primary-100 dark:bg-primary-950/40 dark:text-primary-300 flex min-h-[44px] items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-bold disabled:opacity-50 md:min-h-[28px]"
+                    title="Asignarme esta conversación"
+                  >
+                    <UserPlus className="h-3 w-3" />
+                    <span>Tomar</span>
+                  </button>
+                )}
+                {permisosAsignacion.puedeSoltar && (
+                  <button
+                    type="button"
+                    onClick={() => void manejarSoltar()}
+                    disabled={asignando || conversacionRetirada}
+                    data-testid="boton-soltar"
+                    className="flex min-h-[44px] items-center gap-1 rounded-md border border-neutral-200 px-2 py-0.5 text-[10px] font-semibold text-neutral-600 hover:bg-neutral-50 disabled:opacity-50 md:min-h-[28px] dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+                    title="Devolver a la cola común"
+                  >
+                    <UserMinus className="h-3 w-3" />
+                    <span>Soltar</span>
+                  </button>
+                )}
+                {permisosAsignacion.puedeReasignar && (
+                  <button
+                    type="button"
+                    onClick={() => setModalReasignarAbierto(true)}
+                    disabled={asignando || conversacionRetirada}
+                    data-testid="boton-reasignar"
+                    className="flex min-h-[44px] items-center gap-1 rounded-md border border-neutral-200 px-2 py-0.5 text-[10px] font-semibold text-neutral-600 hover:bg-neutral-50 disabled:opacity-50 md:min-h-[28px] dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+                    title="Reasignar a otro asesor de la agencia"
+                  >
+                    <UserCheck className="h-3 w-3" />
+                    <span>Reasignar</span>
+                  </button>
+                )}
+              </div>
             </div>
           </div>
 
@@ -500,6 +649,32 @@ export default function BandejaConversacionPage() {
             </button>
           </div>
         </header>
+
+        {/* Aviso de conversación retirada sin perder borrador (0c.35) */}
+        {conversacionRetirada && (
+          <div
+            role="alert"
+            data-testid="aviso-conversacion-retirada"
+            className="flex shrink-0 items-center justify-between border-b border-amber-300 bg-amber-100 px-4 py-3 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-950/80 dark:text-amber-200"
+          >
+            <div className="flex items-center gap-2.5">
+              <AlertTriangle className="h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />
+              <div>
+                <p className="font-bold">Esta conversación se asignó a otra persona</p>
+                <p className="text-[11px] text-amber-800 dark:text-amber-300">
+                  Ya no tienes acceso para enviar mensajes. Tu borrador sigue aquí para que no
+                  pierdas lo que escribiste.
+                </p>
+              </div>
+            </div>
+            <Link
+              href="/bandeja"
+              className="flex min-h-[44px] shrink-0 items-center justify-center rounded-xl bg-amber-200 px-3.5 py-1.5 text-xs font-semibold text-amber-900 hover:bg-amber-300 dark:bg-amber-900 dark:text-amber-100"
+            >
+              Ir a mi bandeja
+            </Link>
+          </div>
+        )}
 
         {/* Historial de Mensajes: único contenedor con scroll propio */}
         {/* Banner de advertencia si la ventana está por cerrar (<2h) */}
@@ -794,6 +969,7 @@ export default function BandejaConversacionPage() {
                         ? 'Escribe una nota interna para el equipo (nunca se envía al cliente)...'
                         : 'Escribe tu respuesta a cliente...'
                     }
+                    disabled={enviando || conversacionRetirada}
                     className={`flex-1 rounded-lg border p-2.5 text-xs focus:outline-none ${
                       modoNota
                         ? 'border-amber-300 bg-amber-50/50 focus:border-amber-500 dark:border-amber-900/60 dark:bg-amber-950/20'
@@ -802,7 +978,7 @@ export default function BandejaConversacionPage() {
                   />
                   <button
                     type="submit"
-                    disabled={enviando || !textoMensaje.trim()}
+                    disabled={enviando || conversacionRetirada || !textoMensaje.trim()}
                     className={`self-end rounded-lg px-4 py-2.5 text-xs font-semibold text-white shadow-2xs disabled:opacity-50 ${
                       modoNota
                         ? 'bg-amber-600 hover:bg-amber-700'
@@ -841,6 +1017,14 @@ export default function BandejaConversacionPage() {
       )}
 
       {/* Modal de Plantillas HSM */}
+      <ModalReasignar
+        abierto={modalReasignarAbierto}
+        conversacionId={id}
+        asignadoActualId={detalle.asignadoAId}
+        onCerrar={() => setModalReasignarAbierto(false)}
+        onReasignar={manejarReasignar}
+      />
+
       <ModalPlantillas
         abierto={modalPlantillasAbierto}
         conversacionId={id}

@@ -119,6 +119,34 @@ describe('estados-ui-logica (Tareas 0c.25 y 0c.30)', () => {
       expect(clasificado.codigo).toBe('ERROR_VALIDACION');
       expect(clasificado.queHacer).toContain('formulario');
     });
+
+    it('un error 409 de dominio conserva su texto explicativo para el asesor (0c.30)', () => {
+      const error409 = new Error(
+        'Conflicto al guardar: La versión 2 de la cotización ya fue aprobada por otro usuario.',
+      );
+      Object.assign(error409, { status: 409, code: 'CONFLICTO_VERSION' });
+
+      const clasificado = clasificarError(error409);
+
+      expect(clasificado.categoria).toBe('VALIDACION');
+      expect(clasificado.codigo).toBe('CONFLICTO_VERSION');
+      expect(clasificado.quePaso).toContain('La versión 2 de la cotización ya fue aprobada');
+      expect(clasificado.mensajeUsuario).toContain('La versión 2 de la cotización ya fue aprobada');
+      expect(clasificado.mensajeUsuario).not.toContain('Datos inconsistentes');
+    });
+
+    it('clasifica por código de dominio en la tabla prioritaria antes de palabras clave (0c.30)', () => {
+      const errorSinVigencia = {
+        code: 'SIN_VIGENCIA',
+        message: 'Tarifas no configuradas para temporada baja 2027',
+      };
+      const clasificado = clasificarError(errorSinVigencia);
+
+      expect(clasificado.categoria).toBe('VALIDACION');
+      expect(clasificado.codigo).toBe('SIN_VIGENCIA');
+      expect(clasificado.titulo).toBe('Sin vigencia de tarifas');
+      expect(clasificado.mensajeUsuario).toBe('Tarifas no configuradas para temporada baja 2027');
+    });
   });
 
   describe('construirMensajeErrorAccionable', () => {
