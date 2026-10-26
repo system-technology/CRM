@@ -1,0 +1,49 @@
+name: Mantener ramas al día
+
+# Con la protección de `main` «rama al día» + auto-merge, un PR que se queda atrás NO se mergea nunca
+# si nadie actualiza su rama. Tras cada merge en `main`, esta Action actualiza los PRs con auto-merge
+# activado que quedaron atrás. Es mecánico: no interviene ningún modelo.
+#
+# Usa el token de la app Integradora (variable INTEGRADORA_APP_ID y secret INTEGRADORA_APP_KEY):
+# los push hechos con el token por defecto de Actions NO disparan el CI y el PR se quedaría atascado.
+# Mientras la variable no exista, el job se omite (no falla).
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: mantener-ramas
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  actualizar:
+    name: Actualizar PRs atrasados
+    if: vars.INTEGRADORA_APP_ID != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Token de la app Integradora
+        id: app
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ vars.INTEGRADORA_APP_ID }}
+          private-key: ${{ secrets.INTEGRADORA_APP_KEY }}
+      - name: Actualizar los PRs con auto-merge que quedaron atrás
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          sleep 20   # GitHub tarda unos segundos en recalcular el estado de los PRs tras el push
+          prs=$(gh pr list --repo "$REPO" --state open --json number,mergeStateStatus,autoMergeRequest,isDraft \
+            --jq '.[] | select(.autoMergeRequest != null and .isDraft == false and .mergeStateStatus == "BEHIND") | .number')
+          if [ -z "$prs" ]; then echo "Ningún PR con auto-merge atrasado"; exit 0; fi
+          for n in $prs; do
+            echo "Actualizando #$n"
+            gh api -X PUT "repos/$REPO/pulls/$n/update-branch" --silent \
+              || echo "::warning::No se pudo actualizar #$n (¿conflictos?). Necesita revisión."
+          done

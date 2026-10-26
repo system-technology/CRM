@@ -1,6 +1,7 @@
 # ADR-0014 — Cifrado del texto de los mensajes
 
-- **Estado:** Aceptado por el propietario (2026-10-20), con la opción (a): cifrar y buscar solo por
+- **Estado:** **Superseded por [ADR-0015](0015-cifrado-de-campos-sensibles.md)**, que mantiene entera
+  esta decisión y amplía el alcance. Antes: aceptado por el propietario (2026-10-20), con la opción (a): cifrar y buscar solo por
   metadatos. `auditor-seguridad` lo aceptó con cambios (2026-10-20), ya incorporados. Listo para
   implementar
 - **Fecha:** 2026-10-20

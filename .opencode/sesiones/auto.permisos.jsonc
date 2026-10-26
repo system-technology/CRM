@@ -1,0 +1,35 @@
+{
+  // Solo en el ciclo autónomo (el agente edita únicamente dentro de su worktree: las rutas de otras sesiones y de la config del usuario están vedadas) (scripts/nueva-sesion.sh con SESION_AUTO=1). Fuera de git.
+  "permissions": [
+    { "action": "shell", "resource": "gh *", "effect": "deny" },
+    { "action": "shell", "resource": "node scripts/gh-app*", "effect": "deny" },
+    { "action": "shell", "resource": "git push*", "effect": "deny" },
+    { "action": "shell", "resource": "git remote*", "effect": "deny" },
+    { "action": "shell", "resource": "git credential*", "effect": "deny" },
+    { "action": "shell", "resource": "git reset --hard*", "effect": "deny" },
+    { "action": "shell", "resource": "git checkout main*", "effect": "deny" },
+    { "action": "shell", "resource": "git switch main*", "effect": "deny" },
+    { "action": "read", "resource": "**/.viajapro-keys/**", "effect": "deny" },
+    { "action": "edit", "resource": "**/.viajapro-keys/**", "effect": "deny" },
+    { "action": "edit", "resource": "D:/Projects/CRM*/**", "effect": "deny" },
+    { "action": "edit", "resource": "D:/Projects/sesiones/*/**", "effect": "deny" },
+    { "action": "edit", "resource": "scripts/**", "effect": "deny" },
+    { "action": "edit", "resource": "tools/**", "effect": "deny" },
+    { "action": "edit", "resource": ".opencode/**", "effect": "deny" },
+    { "action": "shell", "resource": "pnpm publish*", "effect": "deny" },
+    { "action": "shell", "resource": "prisma migrate deploy*", "effect": "deny" },
+    { "action": "shell", "resource": "prisma db push*", "effect": "deny" },
+    { "action": "shell", "resource": "rm -rf*", "effect": "deny" },
+    { "action": "shell", "resource": "curl*", "effect": "deny" },
+    { "action": "shell", "resource": "wget*", "effect": "deny" },
+    { "action": "shell", "resource": "Invoke-WebRequest*", "effect": "deny" },
+    { "action": "shell", "resource": "iwr *", "effect": "deny" },
+    { "action": "read", "resource": "**/*.pem", "effect": "deny" },
+    { "action": "read", "resource": "**/.env", "effect": "deny" },
+    { "action": "edit", "resource": "C:/Users/ALVEAR/.config/**", "effect": "deny" },
+    { "action": "edit", "resource": "C:/Users/ALVEAR/.local/**", "effect": "deny" },
+    { "action": "edit", "resource": "C:/Users/ALVEAR/.claude/**", "effect": "deny" },
+    { "action": "edit", "resource": "ownership.json", "effect": "deny" },
+    { "action": "edit", "resource": "opencode.jsonc", "effect": "deny" }
+  ]
+}

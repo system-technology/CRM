@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "_doc": "Propiedad de rutas por carril. Lo valida scripts/check-ownership.mjs (CI: ownership.yml) y lo lee el supervisor scripts/ciclo.mjs. Ver docs/09-ia/07-ciclo-autonomo.md. Lo que ningun carril posee (scripts/, tools/, .opencode/, .github/, raiz) lo cambia una persona.",
+  "lanes": {
+    "a": {
+      "nombre": "Backend",
+      "owns": ["apps/api/**", "apps/worker/**", "packages/database/**"]
+    },
+    "b": {
+      "nombre": "Frontend",
+      "owns": ["apps/web/**", "packages/ui/**", "packages/sdk/**"]
+    },
+    "i": {
+      "nombre": "Integradora",
+      "owns": ["roadmap/**", "docs/**", "ESTADO.md"]
+    }
+  },
+  "shared": ["packages/contracts/**", "packages/domain/**", "packages/config/**", "README.md"],
+  "humanRequired": [
+    "packages/database/prisma/migrations/**",
+    "packages/database/prisma/policies/**",
+    "packages/database/prisma/schema.prisma",
+    "packages/database/tests/**",
+    "**/*cifr*",
+    "**/*cifr*/**",
+    "docs/03-adr/**",
+    "render.yaml",
+    "infra/**",
+    ".github/**",
+    ".claude/**",
+    ".opencode/**",
+    "scripts/**",
+    "tools/**",
+    ".env*",
+    "package.json",
+    "**/package.json",
+    "pnpm-lock.yaml",
+    "pnpm-workspace.yaml",
+    "turbo.json",
+    "CLAUDE.md",
+    "AGENTS.md",
+    "ownership.json",
+    "opencode.jsonc"
+  ]
+}

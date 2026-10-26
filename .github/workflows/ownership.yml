@@ -1,0 +1,40 @@
+name: Carril y trazabilidad
+
+# Comprueba que el PR respeta su carril (ownership.json) y que enlaza una tarea T-xxx.
+# Empieza como check NO requerido: añádelo a la protección de main cuando las ramas
+# a/… b/… i/… estén adoptadas (docs/FLUJO.md). La etiqueta `override-lane` lo acepta con aviso.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled, edited]
+
+permissions:
+  contents: read
+
+jobs:
+  carril:
+    name: Carril y tarea
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 20
+      - name: Carril
+        env:
+          BRANCH: ${{ github.head_ref }}
+          OVERRIDE: ${{ contains(github.event.pull_request.labels.*.name, 'override-lane') && '1' || '0' }}
+        run: node scripts/check-ownership.mjs --base "origin/${{ github.base_ref }}"
+      - name: Tarea enlazada (T-xxx)
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
+          BRANCH: ${{ github.head_ref }}
+        run: |
+          if echo "$TITLE $BRANCH" | grep -Eq 'T-[0-9]{3}'; then
+            echo "✔ PR enlazado a una tarea"
+          else
+            echo "::warning::El PR no menciona ninguna tarea T-xxx en título o rama; el tablero (scripts/board.mjs) no podrá seguirlo."
+          fi

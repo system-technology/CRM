@@ -1,0 +1,19 @@
+{
+  "name": "viajapro-roadmap-mcp",
+  "private": true,
+  "type": "module",
+  "version": "1.0.0",
+  "description": "MCP server que expone el roadmap y la bitácora de ViajaPro a los agentes",
+  "bin": {
+    "roadmap-mcp": "./server.mjs"
+  },
+  "scripts": {
+    "start": "node server.mjs",
+    "test": "node --test roadmap.test.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.0",
+    "yaml": "^2.6.0",
+    "zod": "^3.23.8"
+  }
+}
