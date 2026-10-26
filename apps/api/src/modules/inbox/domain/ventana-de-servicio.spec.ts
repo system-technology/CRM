@@ -6,8 +6,10 @@
  */
 
 import { describe, expect, it } from 'vitest';
+import { VentanaCerradaError } from './errores-de-conversacion.js';
 import {
   calcularVentana,
+  exigirVentanaAbierta,
   nuevaExpiracion,
   queSePuedeEnviar,
   reiniciaLaVentana,
@@ -139,5 +141,33 @@ describe('queSePuedeEnviar', () => {
     expect(queSePuedeEnviar({ abierta: false, expiraEn: null, minutosRestantes: null })).toBe(
       'SOLO_PLANTILLAS',
     );
+  });
+});
+
+describe('exigirVentanaAbierta — la regla del servidor antes de aceptar texto libre', () => {
+  it('dentro de las 24 h deja pasar', () => {
+    expect(() => exigirVentanaAbierta(new Date(AHORA.getTime() - 23 * HORA), AHORA)).not.toThrow();
+  });
+
+  it('fuera de la ventana rechaza con un error tipado y en español', () => {
+    const llamar = () => exigirVentanaAbierta(new Date(AHORA.getTime() - 25 * HORA), AHORA);
+    expect(llamar).toThrow(VentanaCerradaError);
+    expect(llamar).toThrow(/solo se pueden enviar plantillas/);
+  });
+
+  it('a las 24 h clavadas ya está cerrada', () => {
+    expect(() => exigirVentanaAbierta(new Date(AHORA.getTime() - 24 * HORA), AHORA)).toThrow(
+      VentanaCerradaError,
+    );
+  });
+
+  it('si el cliente nunca escribió, no hay texto libre', () => {
+    try {
+      exigirVentanaAbierta(null, AHORA);
+      expect.unreachable();
+    } catch (error) {
+      expect(error).toBeInstanceOf(VentanaCerradaError);
+      expect((error as VentanaCerradaError).code).toBe('VENTANA_CERRADA');
+    }
   });
 });
