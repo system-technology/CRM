@@ -1,0 +1,27 @@
+// Sesión AUDITORA del ciclo autónomo (la lanza scripts/ciclo.mjs cuando a un carril le quedan pocas tareas libres).
+// Audita el repositorio y PROPONE tareas; no escribe código ni roadmap por su cuenta: el supervisor valida y aplica.
+// Sintaxis V2: en `policies` gana la última regla que coincide (negar en bloque, luego permitir).
+{
+  "policies": [
+    { "action": "integration.use", "resource": "skill:*", "effect": "deny" },
+    { "action": "integration.use", "resource": "skill:architecture", "effect": "allow" },
+    { "action": "integration.use", "resource": "skill:architecture-designer", "effect": "allow" },
+    { "action": "integration.use", "resource": "skill:code-reviewer", "effect": "allow" },
+    { "action": "integration.use", "resource": "skill:security-reviewer", "effect": "allow" },
+    { "action": "integration.use", "resource": "skill:secure-code-guardian", "effect": "allow" },
+    { "action": "integration.use", "resource": "skill:spec-miner", "effect": "allow" },
+    { "action": "integration.use", "resource": "skill:feature-forge", "effect": "allow" },
+    { "action": "integration.use", "resource": "skill:test-master", "effect": "allow" },
+    { "action": "integration.use", "resource": "skill:monitoring-expert", "effect": "allow" },
+    { "action": "integration.use", "resource": "skill:domain-modeling", "effect": "allow" },
+    { "action": "integration.use", "resource": "skill:web-design-guidelines", "effect": "allow" },
+    { "action": "integration.use", "resource": "skill:the-fool", "effect": "allow" },
+
+    // Sin roadmap (lo aplica el supervisor), sin red de escritura, sin Stitch ni Playwright
+    { "action": "integration.use", "resource": "mcp:*", "effect": "deny" },
+    { "action": "integration.use", "resource": "mcp:context7", "effect": "allow" },
+    { "action": "integration.use", "resource": "mcp:knowledge-graph-memory", "effect": "allow" },
+
+    { "action": "integration.use", "resource": "plugin:superpowers", "effect": "deny" }
+  ]
+}

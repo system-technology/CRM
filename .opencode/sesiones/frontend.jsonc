@@ -1,0 +1,31 @@
+// Sesión FRONTEND (rama b/…, app viajapro-frontend). Ver docs/09-ia/07-ciclo-autonomo.md.
+// Sintaxis V2: en `policies` gana la última regla que coincide (negar en bloque, luego permitir).
+{
+  "policies": [
+    { "action": "integration.use", "resource": "skill:*", "effect": "deny" },
+    // Next.js, React y diseño
+    { "action": "integration.use", "resource": "skill:nextjs-developer", "effect": "allow" },
+    { "action": "integration.use", "resource": "skill:react-expert", "effect": "allow" },
+    { "action": "integration.use", "resource": "skill:typescript-pro", "effect": "allow" },
+    { "action": "integration.use", "resource": "skill:javascript-pro", "effect": "allow" },
+    { "action": "integration.use", "resource": "skill:fullstack-guardian", "effect": "allow" },
+    { "action": "integration.use", "resource": "skill:feature-forge", "effect": "allow" },
+    { "action": "integration.use", "resource": "skill:api-designer", "effect": "allow" },
+    { "action": "integration.use", "resource": "skill:websocket-engineer", "effect": "allow" },
+    // pruebas y calidad
+    { "action": "integration.use", "resource": "skill:playwright-expert", "effect": "allow" },
+    { "action": "integration.use", "resource": "skill:test-master", "effect": "allow" },
+    { "action": "integration.use", "resource": "skill:debugging-wizard", "effect": "allow" },
+    { "action": "integration.use", "resource": "skill:code-reviewer", "effect": "allow" },
+    { "action": "integration.use", "resource": "skill:secure-code-guardian", "effect": "allow" },
+
+    // MCP: documentación, navegador (revisión visual), lectura web y memoria.
+    { "action": "integration.use", "resource": "mcp:*", "effect": "deny" },
+    { "action": "integration.use", "resource": "mcp:context7", "effect": "allow" },
+    { "action": "integration.use", "resource": "mcp:playwright", "effect": "allow" },
+    { "action": "integration.use", "resource": "mcp:fetch", "effect": "allow" },
+    { "action": "integration.use", "resource": "mcp:knowledge-graph-memory", "effect": "allow" },
+
+    { "action": "integration.use", "resource": "plugin:superpowers", "effect": "deny" }
+  ]
+}
