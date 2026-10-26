@@ -11,7 +11,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "dotenv -e ../../.env -- vitest run",
     "lint": "eslint src",
-    "identidad:sembrar-dev": "dotenv -e ../../.env -- tsx src/modules/identity/scripts/sembrar-credenciales-dev.ts"
+    "identidad:sembrar-dev": "dotenv -e ../../.env -- tsx src/modules/identity/scripts/sembrar-credenciales-dev.ts",
+    "canal:registrar-prueba": "dotenv -e ../../.env -- tsx src/modules/inbox/scripts/registrar-canal-de-prueba.ts"
   },
   "dependencies": {
     "@nestjs/common": "^10.4.15",

@@ -1,5 +1,7 @@
 'use client';
 
+import { useModoDemo } from '../../lib/modo-demo';
+
 import React, { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import {
@@ -38,7 +40,13 @@ import { estaUsandoCatalogoReal, listarSalidasApi } from '../../lib/catalogo-api
 import { formatearDinero } from '../../lib/api';
 
 export default function CatalogoPage() {
-  const [usarReal, setUsarReal] = useState(() => estaUsandoCatalogoReal());
+  const { esDemo } = useModoDemo();
+  const modoRealActivo = !esDemo && estaUsandoCatalogoReal();
+  const [usarReal, setUsarReal] = useState(() => modoRealActivo);
+
+  useEffect(() => {
+    setUsarReal(modoRealActivo);
+  }, [modoRealActivo]);
   const [salidasReales, setSalidasReales] = useState<SalidaPublicada[]>([]);
   const [cargando, setCargando] = useState(false);
   const [errorTenant, setErrorTenant] = useState<string | null>(null);

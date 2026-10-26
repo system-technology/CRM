@@ -1,3 +1,4 @@
+import { estaUsandoApiReal } from './crm-api';
 import { cabecerasDeTenantDev } from './cabeceras-tenant';
 import { obtenerBaseApi } from './api-base';
 export { obtenerBaseApi };
@@ -26,7 +27,13 @@ export function obtenerTenantDemo(): string {
 }
 
 export function estaUsandoCatalogoReal(): boolean {
-  return process.env['NEXT_PUBLIC_USE_REAL_CRM'] === 'true';
+  if (process.env['NEXT_PUBLIC_USE_REAL_CRM'] === 'false') {
+    return false;
+  }
+  if (process.env['NEXT_PUBLIC_USE_REAL_CRM'] === 'true') {
+    return true;
+  }
+  return estaUsandoApiReal();
 }
 
 export class CatalogoApiError extends Error {
