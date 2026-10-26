@@ -15,7 +15,11 @@ import {
 } from 'lucide-react';
 import { BarraModulos } from '../../components/bandeja/barra-modulos';
 import { DistintivoDatosDemo } from '../../components/comun/distintivo-datos-demo';
-import { EsqueletoTabla, AvisoErrorAccionable } from '../../components/comun/esqueletos';
+import {
+  EsqueletoTabla,
+  AvisoErrorAccionable,
+  AvisoVacio,
+} from '../../components/comun/esqueletos';
 import { formatearErrorAmigable } from '../../lib/estados-ui-logica';
 import { construirMensajeErrorAccionable } from '../../lib/estados-ui-logica';
 import { FichaDetalleContacto } from '../../components/contactos/ficha-detalle-contacto';
@@ -205,21 +209,25 @@ export default function ContactosPage() {
                 <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800">
                   {contactosFiltrados.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="p-8 text-center">
-                        <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400">
-                          No se encontraron contactos que coincidan con los filtros aplicados.
-                        </p>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setBusqueda('');
-                            setEtiquetaFiltro('todas');
-                            setConsentimientoFiltro('todos');
+                      <td colSpan={7} className="p-2">
+                        <AvisoVacio
+                          titulo="No hay contactos que mostrar"
+                          descripcion={
+                            busqueda
+                              ? `No hay contactos que coincidan con "${busqueda}"`
+                              : etiquetaFiltro !== 'todas' || consentimientoFiltro !== 'todos'
+                                ? 'Prueba a restablecer los filtros para ver todos los contactos.'
+                                : 'El directorio está vacío. Añade contactos desde la bandeja o sincroniza con el CRM.'
+                          }
+                          accion={{
+                            label: 'Restablecer filtros',
+                            onClick: () => {
+                              setBusqueda('');
+                              setEtiquetaFiltro('todas');
+                              setConsentimientoFiltro('todos');
+                            },
                           }}
-                          className="text-acento-600 hover:text-acento-700 mt-2 text-xs font-semibold"
-                        >
-                          Restablecer filtros
-                        </button>
+                        />
                       </td>
                     </tr>
                   ) : (

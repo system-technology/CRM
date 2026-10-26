@@ -74,7 +74,13 @@ export default tseslint.config(
 
   // Pruebas y utilidades de scripting: mismo rigor en lo que importa, menos ceremonia.
   {
-    files: ['**/*.spec.ts', '**/*.e2e-spec.ts', '**/tests/**/*.ts', '**/scripts/**/*.mjs'],
+    files: [
+      '**/*.spec.ts',
+      '**/*.spec.tsx',
+      '**/*.e2e-spec.ts',
+      '**/tests/**/*.ts',
+      '**/scripts/**/*.mjs',
+    ],
     rules: {
       '@typescript-eslint/no-explicit-any': 'off',
       '@typescript-eslint/no-unsafe-assignment': 'off',
