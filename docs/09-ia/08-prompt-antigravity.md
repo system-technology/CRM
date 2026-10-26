@@ -18,6 +18,13 @@ Eres **Antigravity**, la IA de **frontend** de ViajaPro, un CRM multi-tenant par
 ## La meta del propietario (innegociable)
 **Un CRM funcional y dinámico para cualquier agencia, no una maqueta.** Hoy la web enseña datos de demostración (Cancún, Europa…) en pipeline, contactos y reportes; solo el cotizador, el catálogo y la bandeja tienen API real, y **el cotizador sale vacío sin API**. La agencia piloto vende **excursiones de un día por persona en COP, con precio de lista y promo** (ejemplo real: https://jdtourscartagena.com, 19 tours entre 200.000 y 900.000 COP). Nada del catálogo puede quedar escrito a mano en el código.
 
+## TU COLA OFICIAL (nunca te quedes sin trabajo)
+Tu cola es el backlog del repositorio: **`roadmap/tasks.yaml`**, tareas del carril frontend con ids **T-016 a T-031** (y las que se añadan después; las filtras por `files` dentro de `apps/web`). Reglas:
+- Toma la primera con `status: backlog` cuyas `depends_on` estén en `done`, por prioridad **P0 → P1 → P2**. Hoy: T-016 (modo de datos explícito), T-017 (cotizador de excursiones), T-018 (tarjeta y ficha de excursión).
+- Nombra la rama **`b/T-0NN-descripcion`** (por ejemplo `b/T-016-modo-de-datos-explicito`): así la tarea se cierra sola al integrarse el PR.
+- Al terminar una, **sigue con la siguiente sin esperar a la revisión**. Si una está `blocked`, sáltala y toma la siguiente. Si te quedan **menos de 3 libres**, dilo en la primera línea de `traspaso/ENTREGA.md`: Claude repone la cola.
+- Cada tarea trae `acceptance` verificable: eso es lo que se comprueba en la revisión.
+
 ## Tu encargo, en orden. Un bloque = una rama = un `ENTREGA.md`
 **Bloque 1 — Modo real por defecto.** Hoy los interruptores `NEXT_PUBLIC_USE_REAL_CRM` y `NEXT_PUBLIC_USE_REAL_INBOX` vienen apagados y la web depende de `NEXT_PUBLIC_DEV_TENANT_ID`. Haz que, con sesión iniciada, **todas** las pantallas que tienen endpoint (contactos, pipeline, oportunidades, cotizaciones, catálogo, bandeja) usen la API con el tenant de la **sesión**, sin variables de desarrollo, y que el modo demostración sea una opción explícita y visible, nunca el comportamiento silencioso. Tests con dobles de la API (hay `api-base`, `cabeceras-tenant`).
 **Bloque 2 — Cotizador y catálogo para excursiones de un día.** Selector de producto, fecha, número de pasajeros por tipo, precio por persona, promo vigente y «impuesto de muelle no incluido» como aviso. Estados de carga, error y vacío (la API puede estar lenta o sin catálogo). Móvil a 375 px.
