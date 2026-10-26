@@ -319,26 +319,21 @@ describe('Una cotización es la SUMA de varias tarifas, no una sola', () => {
     paquetePasanoche = p.paqueteId;
   }, ARRANQUE_MS);
 
-  it('dos adultos y un niño son DOS líneas, cada una a su precio', async () => {
+  it('un niño con tarifa de menor por rango de edad no se cobra a ciegas: error tipado, no total corto', async () => {
     const r = await cotizar({
       paqueteId: paquetePasanoche,
       fecha: '2026-10-03',
       adultos: 2,
       ninos: 1,
     });
-    expect(r.status).toBe(200);
 
-    const lineas = r.cuerpo['lineas'] as Opcion[];
-    expect(lineas).toHaveLength(2);
-
-    const adulto = lineas.find((l) => l.nombre === 'Adulto');
-    const menor = lineas.find((l) => l.nombre.startsWith('Menor'));
-    expect(adulto?.veces).toBe(2);
-    expect(menor?.veces).toBe(1);
-
-    // 389.000 x 2 + 292.000. Antes el sistema habría devuelto «Menor x 3 = 876.000» y lo habría
-    // marcado como la opción recomendada: por debajo del costo con el margen del 20 %.
-    expect((r.cuerpo['total'] as { unidades: string }).unidades).toBe('1070000');
+    // La tarifa «Menor de 2 a 11 años» exige la edad de cada pasajero y la cotización solo recibe
+    // conteos. Se corta en vez de devolver un total que podría estar mal (T-007). Cuando se
+    // modele la edad por pasajero, este caso vuelve a ser 200: Adulto x 2 (389.000) y Menor x 1
+    // (292.000), total 1.070.000.
+    expect(r.status).toBe(422);
+    const error = r.cuerpo['error'] as { code?: string } | undefined;
+    expect(error?.code).toBe('TARIFAS_CON_CONDICION_NO_EVALUABLE');
   });
 
   it('el cotizador pide la composición porque el TARIFARIO lo pide, no por un interruptor', async () => {

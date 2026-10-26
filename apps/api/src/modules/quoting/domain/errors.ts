@@ -120,3 +120,17 @@ export class CursorDeCotizacionesInvalidoError extends InvariantError {
     super('El cursor del listado de cotizaciones no es válido');
   }
 }
+
+/**
+ * Todas las tarifas aplicables tienen condiciones que no se pueden evaluar con la entrada actual
+ * (edad por pasajero o si el infante ocupa silla). No se cotiza en silencio.
+ */
+export class TarifasConCondicionNoEvaluableError extends InvariantError {
+  readonly code = 'TARIFAS_CON_CONDICION_NO_EVALUABLE';
+  constructor(readonly motivos: readonly string[]) {
+    super(
+      `Con esta composición solo hay tarifas con condiciones que no se pueden evaluar (${motivos.join('; ')}). ` +
+        'Cotiza a mano o espera a que se recoja la edad por pasajero.',
+    );
+  }
+}

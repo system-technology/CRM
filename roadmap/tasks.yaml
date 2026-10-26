@@ -119,7 +119,7 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: backlog
+    status: done
     acceptance:
       - Leer un contacto con datos sensibles escribe una fila en registros_auditoria con tenant_id, actor,
         acción y recurso, sin copiar el dato sensible al detalle
@@ -127,6 +127,12 @@ tasks:
       - No se modifica el esquema de la base ni las migraciones
     files:
       - apps/api/src/modules/crm/
+    started_at: 2026-10-26T21:31:27.765Z
+    done_at: 2026-10-26T21:31:27.765Z
+    evidence: "Mergeado en main por el PR #25 (rama a/T-006-escribir-en-registros-auditoria-las-lect) con el CI en
+      verde: format, analyze, tests y los demás checks obligatorios. Cierre automático
+      (.github/workflows/cerrar-tarea.yml)."
+    commit: 79bc234668a88a81b10c2086365bed1cd05f7bbb
   - id: T-007
     title: "Portar a main el cambio de origin/fix/quoting-condiciones-y-salud: condiciones de tarifa no
       evaluables, ruta antigua retirada y salud 503"
@@ -134,7 +140,7 @@ tasks:
     phase: 1
     priority: P0
     effort: M
-    status: backlog
+    status: done
     depends_on: []
     acceptance:
       - Una tarifa con condicion de edad o de silla que no se puede evaluar se rechaza con un error de dominio
@@ -156,6 +162,12 @@ tasks:
       - apps/api/src/modules/quoting/quoting.module.ts
     source: orquestador:2026-10-26
     created_at: 2026-10-26T16:08:34.342Z
+    started_at: 2026-10-26T21:29:29.051Z
+    done_at: 2026-10-26T21:29:29.051Z
+    evidence: "Mergeado en main por el PR #21 (rama a/T-007-portar-a-main-el-cambio-de-origin-fix-qu) con el CI en
+      verde: format, analyze, tests y los demás checks obligatorios. Cierre automático
+      (.github/workflows/cerrar-tarea.yml)."
+    commit: a3c9c3f2d23c557795f509575a0770201dc09e18
   - id: T-008
     title: Adaptar el cliente de la web a la retirada de la ruta antigua de cotizacion de paquetes
     type: bug
