@@ -3,6 +3,7 @@ import {
   type CondicionDeCobro,
   type Composicion,
   aplicaAlGrupo,
+  condicionNoEvaluable,
   esSuplemento,
   exigeComposicion,
   motivoNoAplica,
@@ -205,5 +206,39 @@ describe('Por qué NO aplica, dicho en voz alta', () => {
   it('cuando SÍ aplica no hay motivo', () => {
     expect(motivoNoAplica(base, familia)).toBeNull();
     expect(motivoNoAplica(promoPareja, { adultos: 2, ninos: 0, infantes: 0 })).toBeNull();
+  });
+});
+
+describe('Condiciones que la entrada actual no permite evaluar', () => {
+  const familia = { adultos: 2, ninos: 1, infantes: 0 };
+
+  it('tarifa infantil (CHD) con edadMinima: 2, edadMaxima: 11 → vecesQueSeCobra devuelve null, motivoNoAplica matchea /de 2 a 11 años/', () => {
+    const tarifaCHD = con({ tipoPasajero: 'CHD', edadMinima: 2, edadMaxima: 11 });
+    expect(vecesQueSeCobra(tarifaCHD, familia)).toBeNull();
+    expect(motivoNoAplica(tarifaCHD, familia)).toMatch(/de 2 a 11 años/);
+    expect(condicionNoEvaluable(tarifaCHD, familia)).toMatch(/de 2 a 11 años/);
+  });
+
+  it('tarifa infante (INF) con ocupaSilla: true → vecesQueSeCobra devuelve null, motivoNoAplica matchea /silla/', () => {
+    const familiaConInfante = { adultos: 2, ninos: 1, infantes: 1 };
+    const tarifaINF = con({ tipoPasajero: 'INF', ocupaSilla: true });
+    expect(vecesQueSeCobra(tarifaINF, familiaConInfante)).toBeNull();
+    expect(motivoNoAplica(tarifaINF, familiaConInfante)).toMatch(/silla/);
+    expect(condicionNoEvaluable(tarifaINF, familiaConInfante)).toMatch(/silla/);
+  });
+
+  it('tarifa ADT sigue cobrándose normal', () => {
+    const tarifaADT = con({ tipoPasajero: 'ADT' });
+    expect(vecesQueSeCobra(tarifaADT, familia)).toBe(2);
+    expect(motivoNoAplica(tarifaADT, familia)).toBeNull();
+    expect(condicionNoEvaluable(tarifaADT, familia)).toBeNull();
+  });
+
+  it('sin pasajeros de ese tipo, el motivo es el habitual (No hay pasajeros del tipo CHD), no el de la edad', () => {
+    const sinNinos = { adultos: 2, ninos: 0, infantes: 0 };
+    const tarifaCHD = con({ tipoPasajero: 'CHD', edadMinima: 2, edadMaxima: 11 });
+    expect(vecesQueSeCobra(tarifaCHD, sinNinos)).toBeNull();
+    expect(motivoNoAplica(tarifaCHD, sinNinos)).toBe('No hay pasajeros del tipo CHD');
+    expect(condicionNoEvaluable(tarifaCHD, sinNinos)).toBeNull();
   });
 });
