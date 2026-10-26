@@ -513,11 +513,39 @@ ${recorte(inst.salida, 1500)}`;
       'pnpm install --frozen-lockfile falló (¿cambió dependencias sin actualizar el lockfile?)',
     );
   if (!motivos.length) {
-    const chk = await correr('pnpm', ['compuertas', '--rapido'], { cwd: wt, minutos: 30 });
-    salida += `
-== pnpm compuertas --rapido (código ${chk.codigo})
-${recorte(chk.salida, 3000)}`;
-    if (chk.codigo !== 0) motivos.push('pnpm compuertas --rapido falló');
+    // `pnpm compuertas --rapido` completo NO sirve aquí: los tests de @viajapro/database necesitan Postgres y
+    // .env, que no existen en un worktree (23 rojos que no son del agente). Esos y el aislamiento los corre el CI.
+    const pasos = [
+      ['lint+typecheck', ['exec', 'turbo', 'run', 'lint', 'typecheck'], 20],
+      [
+        'tests (sin base de datos)',
+        ['exec', 'turbo', 'run', 'test', '--filter=!@viajapro/database', '--concurrency=1'],
+        20,
+      ],
+    ];
+    for (const [nombre, a, minutos] of pasos) {
+      const r = await correr('pnpm', a, { cwd: wt, minutos });
+      salida += `
+== ${nombre} (código ${r.codigo})
+${recorte(r.salida, 3000)}`;
+      if (r.codigo !== 0) motivos.push(`${nombre} falló`);
+    }
+    const formateables = ficheros.filter(
+      (f) => /\.(ts|tsx|js|mjs|jsx|json|yml|yaml)$/.test(f) && existsSync(join(wt, f)),
+    );
+    if (formateables.length) {
+      const pf = await correr('pnpm', ['exec', 'prettier', '--check', ...formateables], {
+        cwd: wt,
+        minutos: 5,
+      });
+      salida += `
+== prettier --check (código ${pf.codigo})
+${recorte(pf.salida, 1500)}`;
+      if (pf.codigo !== 0)
+        motivos.push(
+          'prettier --check falló en los ficheros cambiados (formatea solo los tuyos con prettier --write)',
+        );
+    }
     const fr = await correr('pnpm', ['verificar:fronteras'], { cwd: wt, minutos: 5 });
     salida += `
 == verificar:fronteras (código ${fr.codigo})
@@ -548,7 +576,7 @@ function publicar(t, rama, wt, g) {
     /* sin resultado */
   }
   const protegida = g.ficheros.filter((f) => own.humanRequired.map(aRegex).some((r) => r.test(f)));
-  const cuerpo = `Generado por el ciclo autónomo del carril **${lane}** (modelos \`${lista(carril.modeloImplementa)}\`, revisor \`${lista(carril.modeloRevisa)}\`).\n\n## Resultado\n${resultado || '_sin RESULTADO.md_'}\n\n## Puertas superadas\n- pnpm compuertas --rapido y verificar:fronteras (el CI corre además build y aislamiento entre tenants)\n- límites de tamaño, ficheros prohibidos y carril (ownership.json)\n${protegida.length ? `\n**Requiere aprobación del Owner** (rutas protegidas): ${protegida.join(', ')}\n` : ''}`;
+  const cuerpo = `Generado por el ciclo autónomo del carril **${lane}** (modelos \`${lista(carril.modeloImplementa)}\`, revisor \`${lista(carril.modeloRevisa)}\`).\n\n## Resultado\n${resultado || '_sin RESULTADO.md_'}\n\n## Puertas superadas\n- lint, typecheck, tests sin base de datos, formato de lo cambiado y verificar:fronteras (el CI corre además build, database y aislamiento entre tenants)\n- límites de tamaño, ficheros prohibidos y carril (ownership.json)\n${protegida.length ? `\n**Requiere aprobación del Owner** (rutas protegidas): ${protegida.join(', ')}\n` : ''}`;
   const titulo = `${TIPO[t.type] ?? 'chore'}(${lane}): ${t.title} (${t.id})`.slice(0, 200);
   const c = crearPr(lane, rama, titulo, cuerpo);
   if (c.codigo !== 0) return { ok: false, detalle: 'pr create: ' + recorte(c.salida, 600) };

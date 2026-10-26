@@ -3,12 +3,15 @@
   "repo": "system-technology/CRM",
   "maxCiclosDia": 25,
   "maxFallosSeguidos": 3,
-  "maxPrsAbiertos": 2,
+  "maxPrsAbiertos": 3,
   "maxReparacionesPorPr": 2,
   "pausaEntreCiclosSeg": 60,
   "pausaSinTareaSeg": 900,
   "minutosPorFase": 25,
-  "limites": { "maxFicheros": 25, "maxLineas": 1500 },
+  "limites": {
+    "maxFicheros": 25,
+    "maxLineas": 1500
+  },
   "excluirTareas": [],
   "_excluirNota": "Ids que el supervisor no elegirá nunca (p. ej. las que exigen credenciales de producción o probar en un dispositivo).",
   "prohibidos": [
@@ -24,9 +27,9 @@
     "backend": {
       "prefijo": "a",
       "modeloPlan": [
-        "nvidia/nvidia/nemotron-3-ultra-550b-a55b",
         "opencode-go/kimi-k3.1-pro",
-        "opencode-go/glm-5.3"
+        "nvidia/nvidia/nemotron-3-ultra-550b-a55b",
+        "opencode-go/qwen3.8-max"
       ],
       "modeloImplementa": [
         "nvidia/nvidia/nemotron-3-ultra-550b-a55b",
@@ -34,17 +37,17 @@
         "opencode-go/qwen3.8-max"
       ],
       "modeloRevisa": [
+        "opencode-go/glm-5.3",
         "nvidia/nvidia/nemotron-3.5-super-vl-120b-a12b",
-        "opencode-go/qwen3.8-max",
         "opencode-go/minimax-m3"
       ]
     },
     "frontend": {
       "prefijo": "b",
       "modeloPlan": [
+        "opencode-go/kimi-k3.1-pro",
         "nvidia/nvidia/nemotron-3-ultra-550b-a55b",
-        "opencode-go/qwen3.8-max",
-        "opencode-go/glm-5.3"
+        "opencode-go/qwen3.8-max"
       ],
       "modeloImplementa": [
         "nvidia/nvidia/nemotron-3-ultra-550b-a55b",
@@ -52,8 +55,8 @@
         "opencode-go/qwen3.8-max"
       ],
       "modeloRevisa": [
+        "opencode-go/glm-5.3",
         "nvidia/nvidia/nemotron-3.5-super-vl-120b-a12b",
-        "opencode-go/kimi-k3.1-pro",
         "opencode-go/minimax-m3"
       ]
     }
@@ -86,8 +89,8 @@
   "minutosFase": {
     "plan": 25,
     "revision": 12,
-    "implementa": 45,
-    "reparar": 25,
+    "implementa": 40,
+    "reparar": 12,
     "auditoria": 25,
     "auditoria-revision": 12
   }
