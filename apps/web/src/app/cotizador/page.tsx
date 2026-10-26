@@ -13,6 +13,7 @@
 import React, { Suspense, useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useModoDemo } from '../../lib/modo-demo';
 import { Calculator, Compass, Copy, Check, AlertCircle, Bookmark } from 'lucide-react';
 import type {
   Acomodacion,
@@ -64,7 +65,13 @@ function ContenidoCotizador() {
   const contactoParam = searchParams.get('contactoId');
 
   // Modo de operación: API real (ADR-0009) vs mock
-  const [usarReal, setUsarReal] = useState(() => estaUsandoCatalogoReal());
+  const { esDemo, alternarDemo } = useModoDemo();
+  const modoRealActivo = !esDemo && estaUsandoCatalogoReal();
+  const [usarReal, setUsarReal] = useState(() => modoRealActivo);
+
+  useEffect(() => {
+    setUsarReal(modoRealActivo);
+  }, [modoRealActivo]);
   const [salidasDisponibles, setSalidasDisponibles] = useState<SalidaPublicada[]>([]);
   const [paquetesDisponibles, setPaquetesDisponibles] = useState<PaqueteOpcion[]>([]);
   const [errorTenant, setErrorTenant] = useState<string | null>(null);
@@ -544,10 +551,11 @@ function ContenidoCotizador() {
                 <div className="pt-2">
                   <button
                     type="button"
-                    onClick={() => setUsarReal(!usarReal)}
+                    onClick={() => alternarDemo()}
                     className="w-full text-center text-xs font-semibold text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200"
                   >
-                    Modo: {usarReal ? 'Conectado a API real' : 'Simulación offline'} (Cambiar)
+                    Modo: {usarReal ? 'Conectado a API real' : 'Modo demostración (simulado)'}{' '}
+                    (Alternar)
                   </button>
                 </div>
               </div>
