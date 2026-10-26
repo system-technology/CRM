@@ -1,0 +1,456 @@
+# ═══════════════════════════════════════════════════════════════════
+#  Catálogo gestionable por la agencia — descomposición de ADR-0017
+#
+#  Formato idéntico al de roadmap/tasks.yaml, para copiar el bloque `tasks` tal cual.
+#  Ids T-016..T-029: son los siguientes libres en main a 2026-10-26 (máximo T-015). Si otra rama
+#  añadió tareas antes de integrar esto, renumerar entero (depends_on incluido).
+#
+#  Carril: el supervisor (scripts/ciclo.mjs, carrilDeTarea) lo DEDUCE de `files` vía ownership.json;
+#  packages/contracts es compartido y no cuenta. Por eso toda tarea lleva al menos un archivo de su
+#  carril: una tarea con solo contracts no la elegiría nadie.
+#
+#  human_required: el supervisor NO lee este campo (verificado). Las tareas del Owner van además
+#  con status `blocked` y blocked_reason, que sí las saca de las candidatas. El Owner las pasa a
+#  `done` al aplicar la migración.
+#
+#  Orden de resultado visible:
+#    T-016 (Owner, S) → T-017 → T-018 → T-019 → T-020  = listar y crear una excursión de un día desde la web
+#    T-021 → T-022 → T-023 → T-024                     = importar el CSV de ejemplo desde la web
+#    T-025 → T-026                                     = edición de tarifas e historial de precio
+#    T-027 (Owner, M) → T-028 → T-029                  = promo, cargos en destino, horario, código,
+#                                                        campos propios y formato de viaje
+# ═══════════════════════════════════════════════════════════════════
+
+meta:
+  version: 1
+  source_adr: docs/03-adr/0017-catalogo-gestionable-por-la-agencia.md
+tasks:
+  - id: T-016
+    title:
+      'Permiso catalogo.administrar: literal en PERMISOS, CHECK de roles por migración y concesión a los
+      roles sembrados (ADR-0017 M1)'
+    type: security
+    phase: 1
+    priority: P1
+    effort: S
+    status: blocked
+    blocked_reason: 'human_required: migración del Owner (CHECK roles_permisos_del_catalogo)'
+    human_required: true
+    depends_on: []
+    acceptance:
+      - "packages/contracts/src/identidad.ts: PERMISOS incluye 'catalogo.administrar' con su comentario"
+      - Una migración NUEVA en packages/database/prisma/migrations/ amplía el CHECK roles_permisos_del_catalogo
+        con 'catalogo.administrar' (no se edita 20261019230000)
+      - La misma migración concede el permiso a los roles con clave DUENO y OPERACIONES (valor por defecto de
+        D2; ASESOR no) de todos los tenants existentes; seed.ts lo concede en la semilla
+      - "apps/api/src/shared/autorizacion/permisos.spec.ts: un caso con 'catalogo.administrar' pasa el guard y
+        uno sin él recibe PERMISO_DENEGADO"
+      - pnpm db:migrate && pnpm --filter @viajapro/database test verde (aislamiento intacto)
+      - pnpm compuertas --rapido verde
+    files:
+      - packages/contracts/src/identidad.ts
+      - packages/database/prisma/migrations/
+      - packages/database/prisma/seed.ts
+      - apps/api/src/shared/autorizacion/permisos.spec.ts
+    source: arquitecto:ADR-0017
+    created_at: 2026-10-26T00:00:00.000Z
+
+  - id: T-017
+    title:
+      'API: alta, edición y desactivación de paquetes por la agencia (POST/PATCH /api/v1/catalogo/paquetes)
+      con auditoría en la misma transacción'
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on:
+      - T-016
+    acceptance:
+      - 'packages/contracts/src/catalogo.ts: CrearPaquete ya no tiene temporadas ni mayoristaId; existe
+        EditarPaquete (parcial, mismas reglas dias/noches); CrearPrecio y CrearTemporada marcados @deprecated'
+      - "POST /api/v1/catalogo/paquetes con {nombre: 'Isla Corona', destino: 'Cartagena', dias: 1, noches: 0,
+        planAlimentacion: 'SIN_ALIMENTACION'} responde 201 y el paquete aparece en GET /api/v1/paquetes"
+      - PATCH /api/v1/catalogo/paquetes/:id cambia nombre e inclusiones; POST .../:id/desactivar pone activo=false
+        y el paquete deja de salir en GET /api/v1/paquetes; no existe ruta DELETE de paquete
+      - Las tres rutas llevan @RequierePermiso('catalogo.administrar'); sin el permiso responden 403
+        PERMISO_DENEGADO
+      - Cada escritura inserta una fila en registros_auditoria (accion catalogo.paquete.creado|modificado|desactivado,
+        entidad 'paquete', usuario del contexto) dentro de la misma prisma.conTenant, a través del puerto
+        RegistroDeCambios declarado en apps/api/src/modules/quoting/application/
+      - 'Test e2e apps/api/src/modules/quoting/catalogo-gestion.e2e-spec.ts: crea en tenant A; tenant B recibe 404
+        en PATCH sobre ese id y no ve la fila de auditoría'
+      - pnpm --filter @viajapro/api test verde; pnpm compuertas --rapido verde
+    files:
+      - packages/contracts/src/catalogo.ts
+      - apps/api/src/modules/quoting/interface/
+      - apps/api/src/modules/quoting/application/
+      - apps/api/src/modules/quoting/domain/errors.ts
+      - apps/api/src/modules/quoting/quoting.module.ts
+    source: arquitecto:ADR-0017
+    created_at: 2026-10-26T00:00:00.000Z
+
+  - id: T-018
+    title:
+      'API: vigencias y tarifas gestionables (alta, edición, baja), rechazo de empate al escribir y
+      auditoría de cada cambio de precio'
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on:
+      - T-017
+    acceptance:
+      - "Rutas: GET /api/v1/catalogo/paquetes/:id/vigencias, POST /api/v1/catalogo/vigencias (cuerpo CrearVigencia),
+        PATCH /api/v1/catalogo/vigencias/:id, POST /api/v1/catalogo/vigencias/:id/tarifas, PATCH
+        /api/v1/catalogo/tarifas/:id, DELETE /api/v1/catalogo/tarifas/:id; todas con
+        @RequierePermiso('catalogo.administrar')"
+      - Crear una vigencia abierta de igual longitud que otra solapada del mismo paquete responde 409
+        VIGENCIA_EMPATADA usando resolverVigencia de @viajapro/domain; no se guarda nada
+      - Una petición que trae neto sin el permiso cotizacion.ver_neto_y_margen responde 403; sin neto se guarda
+        con neto nulo; GET de vigencias omite la clave neto sin ese permiso
+      - Cada cambio de venta o neto escribe en registros_auditoria accion catalogo.tarifa.modificada con detalle
+        {campo, antes, despues, moneda, origen:'manual'}; DELETE escribe catalogo.tarifa.eliminada con los valores
+        previos
+      - 'Tras crear vigencia 2026-11-01..2027-06-30 con tarifa Adulto 900000 COP, POST /api/v1/catalogo/cotizar
+        de Isla Corona para 2026-12-15 con 2 adultos devuelve total 1800000'
+      - 'Test e2e en apps/api/src/modules/quoting/catalogo-gestion.e2e-spec.ts: tenant B no puede crear tarifa en
+        una vigencia de A (404) ni colgar un mayoristaId de A'
+      - pnpm --filter @viajapro/api test verde; pnpm compuertas --rapido verde
+    files:
+      - packages/contracts/src/vigencias.ts
+      - apps/api/src/modules/quoting/interface/
+      - apps/api/src/modules/quoting/application/
+      - apps/api/src/modules/quoting/domain/errors.ts
+      - apps/api/src/modules/quoting/quoting.module.ts
+    source: arquitecto:ADR-0017
+    created_at: 2026-10-26T00:00:00.000Z
+
+  - id: T-019
+    title: 'API: GET /api/v1/catalogo/paquetes, listado de gestión con «desde» derivado y paquetes «a consultar»'
+    type: feature
+    phase: 1
+    priority: P1
+    effort: S
+    status: backlog
+    depends_on:
+      - T-018
+    acceptance:
+      - 'packages/contracts/src/catalogo.ts exporta ResumenDePaqueteGestion: campos de Paquete + desde (Dinero
+        nullable) + desdeEsDeGrupo + vigenciasActivas (número)'
+      - desde es el mínimo per cápita de las tarifas de vigencias activas con hasta >= hoy (zona del tenant); no se
+        persiste en ninguna columna
+      - Un paquete sin vigencias sale con desde null; con ?incluirInactivos=true salen también los desactivados
+      - Paginación por cursor igual que GET /api/v1/paquetes (ParametrosPagina)
+      - Test e2e en apps/api/src/modules/quoting/catalogo-gestion.e2e-spec.ts cubre desde con dos tarifas, desde
+        null y que tenant B no ve los de A
+      - pnpm --filter @viajapro/api test verde; pnpm compuertas --rapido verde
+    files:
+      - packages/contracts/src/catalogo.ts
+      - apps/api/src/modules/quoting/application/listar-paquetes.use-case.ts
+      - apps/api/src/modules/quoting/interface/
+    source: arquitecto:ADR-0017
+    created_at: 2026-10-26T00:00:00.000Z
+
+  - id: T-020
+    title: 'Web: el catálogo lista paquetes reales y permite crear una excursión de un día con su precio'
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on:
+      - T-019
+    acceptance:
+      - 'apps/web/src/lib/catalogo-api.ts añade listarPaquetesGestionApi, crearPaqueteApi y crearVigenciaApi,
+        validando las respuestas con los esquemas de @viajapro/contracts (R3)'
+      - apps/web/src/app/catalogo/page.tsx deja de usar MOCK_PAQUETES_CATALOGO cuando estaUsandoCatalogoReal() es
+        true y muestra «desde $X» o «a consultar»
+      - 'Formulario «Nuevo producto» en apps/web/src/components/catalogo/: con «un día» marcado envía dias=1,
+        noches=0 y no muestra acomodación; con precio crea además una vigencia con tarifa Adulto POR_PERSONA'
+      - El botón «Nuevo producto» no aparece si la sesión no tiene catalogo.administrar
+      - 'apps/web/src/lib/catalogo-logica.spec.ts: el formulario de Isla Corona (900.000) produce un cuerpo que
+        CrearPaquete.parse y CrearVigencia.parse aceptan, con venta.unidades 900000 y moneda COP'
+      - pnpm --filter @viajapro/web test verde; pnpm compuertas --rapido verde
+    files:
+      - apps/web/src/app/catalogo/page.tsx
+      - apps/web/src/lib/catalogo-api.ts
+      - apps/web/src/lib/catalogo-logica.ts
+      - apps/web/src/lib/catalogo-logica.spec.ts
+      - apps/web/src/components/catalogo/
+    source: arquitecto:ADR-0017
+    created_at: 2026-10-26T00:00:00.000Z
+
+  - id: T-021
+    title:
+      'API: contratos de importación y POST /api/v1/catalogo/importaciones/previsualizar (valida fila a
+      fila, no escribe)'
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on:
+      - T-018
+    acceptance:
+      - 'packages/contracts/src/importacion.ts exporta TablaDeImportacion (máx. 2000 filas x 40 columnas, celdas
+        string), MapeoDeColumnas (campo destino -> índice; formatoFecha; separadorDeLista; moneda por defecto),
+        InformeDeImportacion (por fila estado OK|AVISO|ERROR, accion CREAR|ACTUALIZAR|SIN_CAMBIOS, errores con
+        columna, codigo y mensaje; huella sha256; lista de paquetes no incluidos en la hoja)'
+      - "Función pura en apps/api/src/modules/quoting/domain/: '$ 1.236.000' en COP = 1236000 unidades; '12,50'
+        en USD = 1250; fecha '15/12/2026' con formato DD/MM/AAAA = 2026-12-15; '31/02/2026' = ERROR FECHA_INVALIDA"
+      - 'Spec con un fixture de las 19 filas de JD Tours (apps/api/src/modules/quoting/domain/): 17 OK, 2 AVISO
+        SIN_PRECIO (Mantas, Coco Liso); una fila con noches > dias da ERROR'
+      - Una clave nombre+noches que casa con dos paquetes existentes da ERROR PAQUETE_AMBIGUO
+      - 'Test e2e: previsualizar no cambia el número de paquetes, vigencias, tarifas ni filas de auditoría; sin
+        catalogo.administrar responde 403'
+      - pnpm --filter @viajapro/api test verde; pnpm compuertas --rapido verde
+    files:
+      - packages/contracts/src/importacion.ts
+      - packages/contracts/src/index.ts
+      - apps/api/src/modules/quoting/domain/
+      - apps/api/src/modules/quoting/application/
+      - apps/api/src/modules/quoting/interface/
+    source: arquitecto:ADR-0017
+    created_at: 2026-10-26T00:00:00.000Z
+
+  - id: T-022
+    title: 'API: sugerencia de mapeo de columnas por sinónimos detrás del puerto SugeridorDeMapeo'
+    type: feature
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    depends_on:
+      - T-021
+    acceptance:
+      - Puerto abstracto SugeridorDeMapeo en apps/api/src/modules/quoting/application/ y un único adaptador por
+        sinónimos; no se añade ninguna dependencia ni llamada a servicio externo
+      - 'POST /api/v1/catalogo/importaciones/sugerir-mapeo recibe encabezados y hasta 5 filas, devuelve un
+        MapeoDeColumnas con confianza 0..1 por columna; no escribe nada'
+      - "Spec: encabezados 'Tour', 'Precio', 'Fecha salida', 'Noches', 'Incluye' se mapean a nombre, venta, desde,
+        noches, inclusiones; 'PVP' y 'Valor' también a venta; un encabezado desconocido queda sin mapear, nunca
+        adivinado"
+      - pnpm --filter @viajapro/api test verde; pnpm compuertas --rapido verde
+    files:
+      - apps/api/src/modules/quoting/application/
+      - apps/api/src/modules/quoting/interface/
+      - apps/api/src/modules/quoting/quoting.module.ts
+    source: arquitecto:ADR-0017
+    created_at: 2026-10-26T00:00:00.000Z
+
+  - id: T-023
+    title:
+      'API: POST /api/v1/catalogo/importaciones/confirmar, transaccional, idempotente por convergencia y
+      con huella'
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on:
+      - T-021
+    acceptance:
+      - Recalcula la previsualización en el servidor; si la huella enviada no coincide responde 409
+        IMPORTACION_CAMBIO; si queda alguna fila ERROR responde 422 con el informe y no escribe nada
+      - Aplica todo en una sola prisma.conTenant con pg_advisory_xact_lock por tenant; upsert por clave natural
+        (codigo o nombre normalizado + noches; vigencia por paquete+desde+hasta; tarifa por vigencia+nombre
+        normalizado); mayorista por nombre, creado si no existe
+      - No desactiva ni borra nada que no venga en la hoja
+      - 'Test e2e: confirmar el fixture de JD Tours crea 19 paquetes y 17 tarifas; confirmarlo otra vez responde
+        creados 0, actualizados 0, sinCambios 19 y no añade filas catalogo.tarifa.modificada'
+      - Cambiar un precio en la hoja y confirmar escribe una fila catalogo.tarifa.modificada con origen
+        'importacion' y la huella; se escribe una fila catalogo.importado con resumen, mapeo sugerido y mapeo
+        confirmado
+      - Un mapeo con columna neto sin cotizacion.ver_neto_y_margen responde 403; tenant B no ve nada importado
+        por A
+      - pnpm --filter @viajapro/api test verde; pnpm compuertas --rapido verde
+    files:
+      - apps/api/src/modules/quoting/application/
+      - apps/api/src/modules/quoting/interface/
+      - apps/api/src/modules/quoting/domain/errors.ts
+      - apps/api/src/modules/quoting/catalogo-gestion.e2e-spec.ts
+    source: arquitecto:ADR-0017
+    created_at: 2026-10-26T00:00:00.000Z
+
+  - id: T-024
+    title: 'Web: asistente de importación CSV (subir, mapear, previsualizar con errores por fila, confirmar)'
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on:
+      - T-022
+      - T-023
+      - T-020
+    acceptance:
+      - Ruta apps/web/src/app/catalogo/importar/page.tsx accesible desde el catálogo solo con catalogo.administrar
+      - "Lector CSV propio en apps/web/src/lib/importacion-logica.ts, sin dependencia nueva: BOM UTF-8, separador
+        ',' o ';' autodetectado, comillas dobles con separador y salto de línea dentro de la celda"
+      - El mapeo llega pre-rellenado por sugerir-mapeo y la persona puede cambiar cada columna; nada se confirma
+        sin pulsar «Confirmar» sobre una previsualización sin errores
+      - La tabla de previsualización muestra estado, acción y error por fila; el botón Confirmar está deshabilitado
+        mientras haya filas ERROR; se lista «no incluidos en la hoja»
+      - Un botón descarga un CSV de ejemplo con 3 filas (excursión de un día, pasadía con fecha fija, paquete con
+        hotel en DOBLE y TRIPLE)
+      - 'apps/web/src/lib/importacion-logica.spec.ts cubre los casos del lector y el bloqueo del botón'
+      - pnpm --filter @viajapro/web test verde; pnpm compuertas --rapido verde
+    files:
+      - apps/web/src/app/catalogo/
+      - apps/web/src/lib/importacion-logica.ts
+      - apps/web/src/lib/importacion-logica.spec.ts
+      - apps/web/src/lib/catalogo-api.ts
+      - apps/web/src/components/catalogo/
+    source: arquitecto:ADR-0017
+    created_at: 2026-10-26T00:00:00.000Z
+
+  - id: T-025
+    title: 'API: GET /api/v1/catalogo/tarifas/:id/historial de cambios de precio, con neto redactado sin permiso'
+    type: feature
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    depends_on:
+      - T-018
+    acceptance:
+      - Devuelve las filas de registros_auditoria de esa tarifa, más reciente primero, con autor, instante (UTC),
+        campo, antes, después y origen
+      - Sin cotizacion.ver_neto_y_margen las entradas de campo neto se devuelven sin antes ni después
+      - 'Test e2e en apps/api/src/modules/quoting/catalogo-gestion.e2e-spec.ts: dos cambios de venta = dos
+        entradas en orden; tenant B recibe 404 para el id de A'
+      - pnpm --filter @viajapro/api test verde; pnpm compuertas --rapido verde
+    files:
+      - packages/contracts/src/vigencias.ts
+      - apps/api/src/modules/quoting/application/
+      - apps/api/src/modules/quoting/interface/
+    source: arquitecto:ADR-0017
+    created_at: 2026-10-26T00:00:00.000Z
+
+  - id: T-026
+    title: 'Web: ficha de paquete editable (vigencias, tarifas, desactivar) con historial de precio'
+    type: feature
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    depends_on:
+      - T-020
+      - T-025
+    acceptance:
+      - apps/web/src/components/catalogo/ficha-detalle-paquete.tsx permite añadir y editar vigencias y tarifas y
+        desactivar el paquete, solo con catalogo.administrar
+      - El campo neto no se muestra ni se envía sin cotizacion.ver_neto_y_margen
+      - Un 409 VIGENCIA_EMPATADA se muestra junto a las fechas, con el mensaje del servidor
+      - El historial de cada tarifa se abre desde la ficha y muestra autor, fecha en la zona del tenant, antes y
+        después
+      - 'apps/web/src/lib/catalogo-logica.spec.ts cubre: sin permiso de neto el cuerpo enviado no lleva la clave
+        neto'
+      - pnpm --filter @viajapro/web test verde; pnpm compuertas --rapido verde
+    files:
+      - apps/web/src/components/catalogo/ficha-detalle-paquete.tsx
+      - apps/web/src/lib/catalogo-api.ts
+      - apps/web/src/lib/catalogo-logica.ts
+      - apps/web/src/lib/catalogo-logica.spec.ts
+    source: arquitecto:ADR-0017
+    created_at: 2026-10-26T00:00:00.000Z
+
+  - id: T-027
+    title:
+      'Migración del catálogo extendido: plan nulable, código, horario, cargos en destino, campos
+      personalizados y formato de viaje en paquetes; precio de lista y promo_hasta en tarifas (ADR-0017 M2)'
+    type: infra
+    phase: 1
+    priority: P1
+    effort: M
+    status: blocked
+    blocked_reason: 'human_required: schema.prisma, migración y prueba de aislamiento son del Owner'
+    human_required: true
+    depends_on:
+      - T-016
+    acceptance:
+      - Migración NUEVA con exactamente lo de ADR-0017 §7 M2; ninguna columna nueva es NOT NULL sin valor por
+        defecto; no se reescriben filas
+      - 'formatos_de_viaje lleva tenant_id, UNIQUE (id, tenant_id) y UNIQUE (tenant_id, nombre); paquetes.formato_id
+        con foránea compuesta (formato_id, tenant_id)'
+      - 'CHECK tarifas: lista_unidades IS NULL OR lista_unidades > venta_unidades; índice único parcial
+        (tenant_id, codigo) WHERE codigo IS NOT NULL AND eliminado_en IS NULL; GIN en campos_personalizados'
+      - 'packages/database/tests/aislamiento.spec.ts: SELECT * FROM tablas_sin_aislamiento vacío con
+        formatos_de_viaje incluida, y una aserción que pone en rojo quitar la foránea compuesta del formato'
+      - semilla-catalogo-real.ts deja de poner SIN_ALIMENTACION a los pasadías (plan nulo)
+      - pnpm db:migrate && pnpm --filter @viajapro/database test verde; pnpm compuertas --rapido verde
+    files:
+      - packages/database/prisma/schema.prisma
+      - packages/database/prisma/migrations/
+      - packages/database/tests/aislamiento.spec.ts
+      - packages/database/prisma/semilla-catalogo-real.ts
+    source: arquitecto:ADR-0017
+    created_at: 2026-10-26T00:00:00.000Z
+
+  - id: T-028
+    title:
+      'API: exponer y validar los campos extendidos (lista/promo, cargos en destino, horario, código, campos
+      personalizados, formato) en CRUD, importación y cotización'
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on:
+      - T-027
+      - T-023
+    acceptance:
+      - 'Contratos: Tarifa/CrearTarifa con lista (Dinero nullable) y promoHasta (FechaViaje nullable); Paquete con
+        codigo, horaSalida/horaRegreso (HH:MM), cargosEnDestino [{concepto, monto: Dinero|null, unidad, nota}],
+        camposPersonalizados, formatoId; planAlimentacion nullable'
+      - camposPersonalizados se valida contra definiciones_campo_personalizado con entidad PAQUETE del tenant
+        (tipo, obligatorio, opciones); una clave no definida es 422
+      - 'Cotizar Isla Palma con 2 adultos: total no incluye la tasa portuaria; la respuesta lista cargosEnDestino
+        con 29000 COP POR_PERSONA'
+      - 'El listado de gestión y SalidaPublicada traen lista solo si promoHasta es nulo o >= hoy en la zona del
+        tenant; la venta no cambia nunca por fecha de compra'
+      - La importación admite columnas codigo, lista, promoHasta, horaSalida, horaRegreso, cargo en destino y
+        campos personalizados por clave; cambios de lista y promoHasta se auditan como los de venta
+      - pnpm --filter @viajapro/api test verde; pnpm compuertas --rapido verde
+    files:
+      - packages/contracts/src/catalogo.ts
+      - packages/contracts/src/vigencias.ts
+      - packages/contracts/src/importacion.ts
+      - apps/api/src/modules/quoting/application/
+      - apps/api/src/modules/quoting/domain/
+      - apps/api/src/modules/quoting/catalogo-gestion.e2e-spec.ts
+    source: arquitecto:ADR-0017
+    created_at: 2026-10-26T00:00:00.000Z
+
+  - id: T-029
+    title:
+      'Web: precio tachado y promo, cargos en destino, horario, código, formato y campos propios en
+      formulario, ficha e importación'
+    type: feature
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    depends_on:
+      - T-028
+      - T-024
+      - T-026
+    acceptance:
+      - La tarjeta del catálogo muestra el precio de lista tachado junto a la venta solo mientras promoHasta no haya
+        vencido; vencida, la ficha avisa «promo vencida» y no tacha
+      - La ficha y la cotización muestran «No incluye» con cada cargo en destino y su monto, separado del total
+      - El formulario de producto muestra los campos personalizados de entidad PAQUETE definidos por la agencia,
+        sin código específico por campo
+      - El CSV de ejemplo de la importación incluye las columnas nuevas
+      - 'apps/web/src/lib/catalogo-logica.spec.ts cubre tachado vigente, tachado vencido y que los cargos en
+        destino no se suman al total mostrado'
+      - pnpm --filter @viajapro/web test verde; pnpm compuertas --rapido verde
+    files:
+      - apps/web/src/components/catalogo/
+      - apps/web/src/lib/catalogo-logica.ts
+      - apps/web/src/lib/catalogo-logica.spec.ts
+      - apps/web/src/lib/importacion-logica.ts
+    source: arquitecto:ADR-0017
+    created_at: 2026-10-26T00:00:00.000Z
