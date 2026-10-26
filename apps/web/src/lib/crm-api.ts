@@ -1,3 +1,13 @@
+import { inboxApi } from './inbox-api';
+import { listarCotizacionesApi } from './cotizaciones-api';
+import {
+  agregarMetricasConversaciones,
+  agregarMetricasPipeline,
+  agregarMetricasCotizaciones,
+  type MetricasConversacionesInicio,
+  type MetricasPipelineInicio,
+  type MetricasCotizacionesInicio,
+} from './inicio-logica';
 import { esModoDemo } from './modo-demo';
 import { cabecerasDeTenantDev } from './cabeceras-tenant';
 import { usaAuthReal, haySesionActiva } from './auth-api';
@@ -200,4 +210,31 @@ export async function listarContactos(buscar?: string): Promise<PaginaContactos>
   }
 
   return mock;
+}
+
+export interface ResumenInicioAsesor {
+  conversaciones: MetricasConversacionesInicio;
+  pipeline: MetricasPipelineInicio;
+  cotizaciones: MetricasCotizacionesInicio;
+}
+
+/**
+ * Consulta agregada para el panel de inicio del asesor comercial (T-020).
+ * Consume en paralelo la bandeja de WhatsApp, el tablero CRM y el listado de cotizaciones.
+ */
+export async function consultarResumenInicioAsesor(): Promise<ResumenInicioAsesor> {
+  const [resBandeja, contadores, tablero, cotizaciones] = await Promise.all([
+    inboxApi.consultarBandeja({ filtro: 'TODAS', limite: 20 }),
+    inboxApi.obtenerContadores().catch(() => undefined),
+    obtenerTableroPipeline(),
+    listarCotizacionesApi({ limite: 20 })
+      .then((r) => r.datos)
+      .catch(() => []),
+  ]);
+
+  return {
+    conversaciones: agregarMetricasConversaciones(resBandeja.datos, contadores),
+    pipeline: agregarMetricasPipeline(tablero),
+    cotizaciones: agregarMetricasCotizaciones(cotizaciones),
+  };
 }
