@@ -2,6 +2,8 @@
 
 Toda la documentación del proyecto. Si una decisión no está aquí (o en `ESTADO.md`), no existe.
 
+> El historial de `ESTADO.md` hasta el 2026-10-20 está en [`_bitacora/archivo/`](_bitacora/archivo/ESTADO-hasta-2026-10-20.md). La bitácora diaria está en [`_bitacora/`](_bitacora/).
+
 ## Por dónde empezar
 
 | Si eres… | Lee en este orden |
@@ -60,11 +62,15 @@ Toda la documentación del proyecto. Si una decisión no está aquí (o en `ESTA
 | [0007](03-adr/0007-postgres-gestionado-neon.md) | PostgreSQL gestionado (Neon) en desarrollo, dev y staging | Aceptado |
 | [0008](03-adr/0008-resolucion-de-tenant-en-webhooks-entrantes.md) | Directorio global de enrutamiento por función; staging durable antes del 200 | Aceptado; supersedido en parte por 0010 |
 | [0009](03-adr/0009-salida-programada-como-unidad-de-venta.md) | El precio se ata a una ventana de vigencia, no al paquete | Aceptado |
-| [0010](03-adr/0010-webhook-tal-como-es-y-el-trabajador-en-apps-api.md) | El webhook tal como es; el trabajador en `apps/api` hasta el segundo consumidor | Propuesto |
-| [0011](03-adr/0011-autenticacion-y-tenant-de-sesion.md) | Better Auth autoalojado en la API; cookie opaca; tenant activo en la sesión, validado bajo RLS; roles por tenant | Propuesto |
-| [0012](03-adr/0012-proveedor-de-correo-transaccional.md) | Correo transaccional con Postmark por HTTP detrás de `PuertoCorreo`; subdominio propio con DKIM y DMARC | Propuesto |
-| [0013](03-adr/0013-despliegue-staging-y-produccion.md) | Despliegue en Render (Ohio, junto a Neon): web, API con Socket.IO, trabajador y Key Value; migraciones solo desde `main` por GitHub Actions; producción manual | Propuesto |
+| [0010](03-adr/0010-webhook-tal-como-es-y-el-trabajador-en-apps-api.md) | El webhook tal como es; el trabajador en `apps/api` hasta el segundo consumidor | Aceptado |
+| [0011](03-adr/0011-autenticacion-y-tenant-de-sesion.md) | Better Auth autoalojado en la API; cookie opaca; tenant activo en la sesión, validado bajo RLS; roles por tenant | Aceptado |
+| [0012](03-adr/0012-proveedor-de-correo-transaccional.md) | Correo transaccional con Postmark por HTTP detrás de `PuertoCorreo`; subdominio propio con DKIM y DMARC | Aceptado |
+| [0013](03-adr/0013-despliegue-staging-y-produccion.md) | Despliegue en Render (Ohio, junto a Neon): web, API con Socket.IO, trabajador y Key Value; migraciones solo desde `main` por GitHub Actions; producción manual | Aceptado |
+| [0014](03-adr/0014-cifrado-del-texto-de-mensajes.md) | Cifrado del texto de los mensajes | Superseded por 0015 |
 | [0015](03-adr/0015-cifrado-de-campos-sensibles.md) | Cifrado de las columnas con PII sensible (mensajes, último mensaje, preferencias del contacto, notas internas y nombre de adjuntos); supersede al 0014 | Aceptado |
+| [0016](03-adr/0016-ciclo-autonomo-con-sesiones-de-opencode.md) | Ciclo autónomo con sesiones de OpenCode; reformula R11 (la protección de servidor sustituye al escritor único). **Ciclo detenido desde 2026-10-26** | Propuesto |
+| [0017](03-adr/0017-catalogo-gestionable-por-la-agencia.md) | El catálogo lo gestiona la agencia: cuatro canales de alta sobre un solo núcleo | Aceptado |
+| [0018](03-adr/0018-envio-saliente-de-whatsapp.md) | Envío saliente de WhatsApp: cola, idempotencia y origen de la credencial | Propuesto |
 
 ## 04 · Integraciones
 
@@ -107,6 +113,8 @@ Toda la documentación del proyecto. Si una decisión no está aquí (o en `ESTA
 |---|---|
 | [Roadmap](08-roadmap/01-roadmap.md) | Fases, hitos, criterios de salida, estimaciones honestas |
 | [Riesgos](08-roadmap/03-riesgos.md) | Qué puede hundir el proyecto y qué hacemos al respecto |
+| Roadmap de producto v3 (`08-roadmap/02-roadmap-producto-v3.md`) | HubSpot como norte, el turismo como ventaja. **Propuesta, en el PR #43: aún no está en `main`** |
+| [`roadmap/tasks.yaml`](../roadmap/tasks.yaml) | **La cola de trabajo** (ADR-0016). Ya no vive en `ESTADO.md` |
 
 ## 09 · Ingeniería asistida por IA
 
@@ -118,6 +126,9 @@ Toda la documentación del proyecto. Si una decisión no está aquí (o en `ESTA
 | [MCP](09-ia/04-mcp.md) | Servidores de contexto y herramientas |
 | [Interoperabilidad multi-IA](09-ia/05-interoperabilidad-multi-ia.md) | Cómo entra otra IA al proyecto sin romperlo. Decisiones sobre Antigravity y modelos abiertos |
 | [Cronograma de loops](09-ia/06-cronograma-de-loops.md) | Qué corre solo, cuándo, y por qué el calendario crece con el proyecto |
+| [Flujo con Antigravity](09-ia/06-flujo-con-antigravity.md) | Trabajo en paralelo con Antigravity: worktrees, traspaso por archivo |
+| [Ciclo autónomo](09-ia/07-ciclo-autonomo.md) | Guía del ciclo de OpenCode. **Detenido desde 2026-10-26** |
+| [Prompt de Antigravity](09-ia/08-prompt-antigravity.md) | Arranque y cola (T-016 a T-031) del carril de frontend |
 
 ## 10 · Onboarding de agencias
 
