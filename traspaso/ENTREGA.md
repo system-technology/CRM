@@ -1,3 +1,59 @@
+# Entrega — Bloque 1: Modo real por defecto y modo demostracion opcional — 2026-10-26
+
+## Identificacion
+- **Rama:** feat/web-modo-real-por-defecto (empujada a origin)
+- **Stitch Design Screen ID:** 3c600e4e3da347e4ba7c5a72f929b115 (Proyecto ViajaPro — CRM para agencias de turismo, ID 8333038101997719867)
+
+## Que construi
+
+1. **Gestion centralizada de Modo Demostracion (apps/web/src/lib/modo-demo.ts):**
+   - Funciones puras y reactivas esModoDemo(), fijarModoDemo(activo), alternarModoDemo() y hook useModoDemo().
+   - Persistencia en localStorage (viajapro_modo_demo) y despacho de eventos en el DOM (viajapro:cambio-modo-demo) para sincronizacion en tiempo real sin recargar pantalla.
+   - Suite de pruebas unitarias con 7/7 casos en verde (apps/web/src/lib/modo-demo.spec.ts).
+
+2. **Seguimiento de sesion activa (apps/web/src/lib/auth-api.ts):**
+   - Funciones fijarSesionActiva, obtenerSesionActiva y haySesionActiva para rastreo seguro de sesion en el cliente.
+
+3. **Inversion de interruptores a Modo Real por defecto:**
+   - apps/web/src/lib/crm-api.ts: estaUsandoApiReal() devuelve true en navegador a menos que el usuario active explicitamente el modo demo (esModoDemo()). En Vitest sin sesion activa mantiene aislamiento mock para evitar fallos de red.
+   - apps/web/src/lib/catalogo-api.ts: estaUsandoCatalogoReal() delega directamente en estaUsandoApiReal().
+   - apps/web/src/lib/cotizaciones-api.ts: eliminado interruptor obsoleto de variable de entorno; delega en estaUsandoApiReal().
+   - apps/web/src/lib/inbox-api.ts: estaUsandoApiRealInbox() opera conectado en modo real por defecto salvo en modo demo explicito.
+
+4. **Controles de UI y visibilidad del modo demo:**
+   - apps/web/src/components/comun/distintivo-datos-demo.tsx: invisible en modo real. En modo demo muestra aviso ambar y boton interactivo para volver al modo real de la agencia.
+   - apps/web/src/components/bandeja/barra-modulos.tsx: distintivo verde de API conectada (data-testid="indicador-api-conectada"), boton de acceso directo a modo demo y switch accesible (data-testid="boton-alternar-demo", role="switch", aria-checked) dentro del dialogo de perfil de asesor.
+   - Pruebas actualizadas en barra-modulos.spec.tsx con 15/15 casos en verde.
+
+5. **Conexion de pantallas con endpoints reales:**
+   - contactos/page.tsx: consulta listarContactos() en modo real con tenant de sesion y reacciona a cambios de modo demo.
+   - pipeline/page.tsx: consulta obtenerTableroPipeline() en modo real y reacciona a cambios de modo demo.
+   - catalogo/page.tsx: consulta listarSalidasApi() en modo real y conmuta catalogo reactivamente.
+   - cotizaciones/page.tsx y cotizaciones/[id]/page.tsx: consultan cotizaciones reales guardadas con control de versiones.
+   - cotizador/page.tsx: alternador sincronizado con useModoDemo() y consumo de salidas reales.
+   - components/bandeja/lista-conversaciones.tsx: suscrita a useModoDemo() para recargar conversaciones inmediatamente al cambiar de modo.
+
+## Que verifique EJECUTANDO
+
+1. **Pruebas Unitarias de Frontend:**
+   - pnpm --filter @viajapro/web test: 40/40 archivos y 342/342 pruebas en VERDE.
+2. **Verificacion de Tipos:**
+   - pnpm --filter @viajapro/web typecheck: 0 errores de compilacion TypeScript en VERDE.
+3. **Calidad de Codigo y Estilo:**
+   - pnpm --filter @viajapro/web lint: 0 errores y 0 advertencias de ESLint en VERDE.
+   - pnpm prettier --check "apps/web/src/**/*.{ts,tsx}": 100% verificado y formateado en VERDE.
+4. **Compilacion de Produccion:**
+   - pnpm turbo run build --filter=@viajapro/web...: Compilacion exitosa (16/16 paginas Next.js estaticas y dinamicas compiladas en VERDE).
+
+## Que NO verifique
+- No se levanto el servidor NestJS de desarrollo en conjunto con la base de datos PostgreSQL local para navegacion end-to-end con clics de usuario (validacion a cargo de compuertas E2E).
+
+## Decisiones no especificadas
+- En entornos de prueba (process.env.VITEST === "true"), si no hay una sesion activa explicitamente inyectada para el test, los clientes devuelven modo mock para evitar fallos de ECONNREFUSED en suites aisladas.
+- Sincronizacion reactiva inmediata mediante CustomEvents para que cambiar de modo en la barra de modulos actualice inmediatamente cualquier pagina abierta sin requerir refresco forzado del navegador.
+
+---
+
 # Entrega — Tarea 0c.23: Pantalla de inicio de sesión, solo maqueta — 2026-10-19
 
 ## Qué construí

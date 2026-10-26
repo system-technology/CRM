@@ -11,6 +11,7 @@ import {
 } from '@viajapro/contracts';
 import { Search, Rows3, AlertTriangle, RefreshCw } from 'lucide-react';
 import { DistintivoDatosDemo } from '../comun/distintivo-datos-demo';
+import { useModoDemo } from '../../lib/modo-demo';
 import { inboxApi } from '../../lib/inbox-api';
 import { formatearErrorAmigable } from '../../lib/estados-ui-logica';
 import { useInboxSocket } from '../../lib/inbox-socket';
@@ -32,6 +33,7 @@ const FILTROS: { id: FiltroBandeja; etiqueta: string }[] = [
 ];
 
 export function ListaConversaciones() {
+  const { esDemo } = useModoDemo();
   const pathname = usePathname();
   const [filtro, setFiltro] = useState<FiltroBandeja>('TODAS');
   const [buscar, setBuscar] = useState('');
@@ -84,7 +86,7 @@ export function ListaConversaciones() {
     } finally {
       setCargando(false);
     }
-  }, [filtro, buscarDebounced]);
+  }, [filtro, buscarDebounced, esDemo]);
 
   useEffect(() => {
     void cargarInicial();
