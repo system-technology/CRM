@@ -32,3 +32,8 @@ export function origenEsDeConfianza(
 export function origenesDeConfianzaDeLaWeb(entorno: Record<string, string | undefined>): string[] {
   return [entorno['WEB_PUBLIC_URL'] ?? 'http://localhost:3000'];
 }
+
+/** Códigos de error de acceso compartidos para la comprobación de Origin. */
+export const CODIGOS_DE_ERROR_DE_ACCESO = {
+  ORIGEN_NO_CONFIABLE: 'ORIGEN_NO_CONFIABLE',
+} as const;
