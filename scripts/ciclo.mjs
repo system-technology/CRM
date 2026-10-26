@@ -31,6 +31,10 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 const aqui = dirname(fileURLToPath(import.meta.url));
 const repoBase = resolve(aqui, '..');
 const cfg = JSON.parse(readFileSync(join(aqui, 'ciclo.config.json'), 'utf8'));
+const APPS = JSON.parse(readFileSync(join(aqui, 'gh-apps.json'), 'utf8'));
+// Identidad (slug) de la GitHub App de cada sesión: por ahora se reutilizan las de AltarDiario (gh-apps.json › identidad).
+const ident = (ses) => APPS.identidad?.[ses] ?? `viajapro-${ses}`;
+const sesionDe = (login) => Object.keys(APPS.apps).find((k) => login.startsWith(ident(k)));
 const own = JSON.parse(readFileSync(join(repoBase, 'ownership.json'), 'utf8'));
 const YAML = createRequire(join(repoBase, 'tools/roadmap-mcp/noop.js'))('yaml');
 
@@ -211,7 +215,7 @@ function contarPrs(prs) {
   let protegidos = 0;
   const prot = own.humanRequired.map(aRegex);
   for (const p of prs.filter(
-    (x) => x.state === 'OPEN' && (x.author?.login || '').includes(`viajapro-${lane}`) && !x.isDraft,
+    (x) => x.state === 'OPEN' && (x.author?.login || '').includes(ident(lane)) && !x.isDraft,
   )) {
     let ficheros = [];
     try {
@@ -318,13 +322,13 @@ function permisosAuto(wt, sesion = lane) {
     if (!actual.split('\n').includes(f)) appendFileSync(ruta, f + '\n');
   git(repoBase, 'config', 'extensions.worktreeConfig', 'true');
   const apps = JSON.parse(readFileSync(join(aqui, 'gh-apps.json'), 'utf8')).apps;
-  git(wt, 'config', '--worktree', 'user.name', `viajapro-${sesion}[bot]`);
+  git(wt, 'config', '--worktree', 'user.name', `${ident(sesion)}[bot]`);
   git(
     wt,
     'config',
     '--worktree',
     'user.email',
-    `${apps[sesion]}+viajapro-${sesion}[bot]@users.noreply.github.com`,
+    `${apps[sesion]}+${ident(sesion)}[bot]@users.noreply.github.com`,
   );
 }
 function crearWorktree(t) {
@@ -561,10 +565,10 @@ async function repararPrs(estado, prs) {
       !p.isDraft &&
       p.autoMergeRequest &&
       p.mergeStateStatus === 'BEHIND' &&
-      (p.author?.login || '').includes('viajapro-')
+      Object.keys(APPS.apps).some((k) => (p.author?.login || '').includes(ident(k)))
     ) {
       const r = ghComo(
-        (p.author.login.match(/viajapro-(\w+)/) ?? [])[1] ?? lane,
+        sesionDe(p.author.login) ?? lane,
         'api',
         '-X',
         'PUT',
@@ -577,7 +581,7 @@ async function repararPrs(estado, prs) {
   }
   for (const p of prs) {
     if (p.state !== 'OPEN' || !(p.headRefName || '').startsWith(`${carril.prefijo}/`)) continue;
-    if (!(p.author?.login || '').includes(`viajapro-${lane}`)) continue;
+    if (!(p.author?.login || '').includes(ident(lane))) continue;
     const rojos = (p.statusCheckRollup ?? []).filter((c) => c.conclusion === 'FAILURE');
     const n = estado.intentosPR[p.number] ?? 0;
     if (p.mergeStateStatus === 'BEHIND') {

@@ -1,5 +1,12 @@
 {
-  "_doc": "App IDs de las GitHub Apps de cada sesión. No son secretos; las claves .pem viven fuera del repo (~/.viajapro-keys). Pendiente: el Owner crea las apps (docs/09-ia/07-ciclo-autonomo.md §Identidades) y rellena los ids.",
+  "_doc": "App IDs de las GitHub Apps de cada sesión. No son secretos; las claves .pem viven fuera del repo. PROVISIONAL: se reutilizan las apps de AltarDiario (decisión del Owner, 2026-10-26); cuando existan las viajapro-*, cambiar apps, identidad, claves y carpetaClaves.",
   "repo": "system-technology/CRM",
-  "apps": { "integradora": 0, "backend": 0, "frontend": 0 }
+  "carpetaClaves": ".altardiario-keys",
+  "apps": { "integradora": 5449524, "backend": 5449581, "frontend": 5449590 },
+  "identidad": {
+    "integradora": "altardiario-integradora",
+    "backend": "altardiario-plataforma",
+    "frontend": "altardiario-producto"
+  },
+  "claves": { "integradora": "integradora", "backend": "plataforma", "frontend": "producto" }
 }
