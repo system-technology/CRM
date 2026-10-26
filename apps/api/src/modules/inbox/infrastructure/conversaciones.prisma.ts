@@ -40,13 +40,12 @@ import {
   ConversacionModificadaError,
   SinUsuarioError,
   UsuarioNoAsignableError,
-  VentanaCerradaError,
 } from '../domain/errores-de-conversacion.js';
 import {
   TIPO_CONVERSACION_ACTUALIZADA,
   TIPO_MENSAJE_SALIENTE_CREADO,
 } from '../domain/evento-de-dominio.js';
-import { calcularVentana, nuevaExpiracion } from '../domain/ventana-de-servicio.js';
+import { exigirVentanaAbierta } from '../domain/ventana-de-servicio.js';
 import {
   aMensaje,
   aResumen,
@@ -398,10 +397,8 @@ export class ConversacionesPrisma extends PuertoConversaciones {
         return aMensaje(previo);
       }
 
-      const expira = conv.ultimoMensajeClienteEn
-        ? nuevaExpiracion(null, conv.ultimoMensajeClienteEn)
-        : null;
-      if (!calcularVentana(expira, ahora).abierta) throw new VentanaCerradaError();
+      // Fuera de la ventana, `VentanaCerradaError` (409): solo plantillas. ADR-0018 §3.
+      exigirVentanaAbierta(conv.ultimoMensajeClienteEn, ahora);
 
       const creado = await tx.mensaje.create({
         data: {

@@ -8,7 +8,7 @@ import { PuertoAvisoDeOutbox } from './puertos-de-eventos.js';
 import { randomBytes } from 'node:crypto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { claveDeEnrutamiento } from '../domain/clave-de-enrutamiento.js';
-import type { MensajeEntrante } from '../domain/contenido-del-cambio.js';
+import type { CambioDeEstado, MensajeEntrante } from '../domain/contenido-del-cambio.js';
 import { identificarRecepcion } from '../domain/identidad-recepcion.js';
 import { sellarPayload } from '../domain/payload-sellado.js';
 import { ProcesarChange } from './procesar-change.js';
@@ -18,6 +18,7 @@ import {
   PuertoBandeja,
   PuertoStaging,
   type ResultadoDeBandeja,
+  type ResultadoDeEstado,
 } from './puertos-de-proceso.js';
 
 const PIMIENTA = 'pimienta-de-pruebas';
@@ -84,6 +85,21 @@ class BandejaFalsa extends PuertoBandeja {
   registrarEntrante(_t: string, _c: string, m: MensajeEntrante): Promise<ResultadoDeBandeja> {
     this.recibidos.push(m);
     return Promise.resolve(this.respuesta);
+  }
+  estados: Array<{ tenantId: string; cambio: CambioDeEstado }> = [];
+  aplicarEstado(tenantId: string, cambio: CambioDeEstado): Promise<ResultadoDeEstado> {
+    this.estados.push({ tenantId, cambio });
+    return Promise.resolve('APLICADO');
+  }
+}
+
+class AvisosFalsos extends PuertoAvisoDeOutbox {
+  avisados: string[] = [];
+  avisar(t: string): void {
+    this.avisados.push(t);
+  }
+  tomarAvisos(): string[] {
+    return [];
   }
 }
 
@@ -155,9 +171,67 @@ describe('ProcesarChange', () => {
       estado: 'ACTIVO',
     });
     const r = await caso.ejecutar(id, 0, ENTORNO);
-    expect(r).toEqual({ estado: 'PROCESADO', mensajesNuevos: 2, mensajesRepetidos: 0 });
+    expect(r).toEqual({
+      estado: 'PROCESADO',
+      mensajesNuevos: 2,
+      mensajesRepetidos: 0,
+      estadosAplicados: 0,
+    });
     expect(bandeja.recibidos.map((m) => m.wamid)).toEqual(['wamid.A', 'wamid.B']);
     expect(staging.cerrados).toEqual(['PROCESADO']);
+  });
+
+  it('un acuse de estado se aplica bajo el tenant RESUELTO, con la referencia nuestra', async () => {
+    const referencia = '01932000-0000-7000-8000-0000000000ee';
+    const conEstado = Buffer.from(
+      JSON.stringify({
+        object: 'whatsapp_business_account',
+        entry: [
+          {
+            id: '1',
+            changes: [
+              {
+                field: 'messages',
+                value: {
+                  metadata: { phone_number_id: NUMERO },
+                  statuses: [
+                    {
+                      id: 'wamid.S',
+                      status: 'delivered',
+                      timestamp: '1760900000',
+                      recipient_id: '573001112233',
+                      biz_opaque_callback_data: referencia,
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+        ],
+      }),
+    );
+    const pistas = new AvisosFalsos();
+    const { id, staging, bandeja } = montar(conEstado, {
+      tenantId: TENANT,
+      canalId: CANAL,
+      estado: 'ACTIVO',
+    });
+    const r = await new ProcesarChange(staging, bandeja, pistas).ejecutar(id, 0, ENTORNO);
+    expect(r).toEqual({
+      estado: 'PROCESADO',
+      mensajesNuevos: 0,
+      mensajesRepetidos: 0,
+      estadosAplicados: 1,
+    });
+    expect(bandeja.estados).toHaveLength(1);
+    expect(bandeja.estados[0]?.tenantId).toBe(TENANT);
+    expect(bandeja.estados[0]?.cambio).toMatchObject({
+      wamid: 'wamid.S',
+      estado: 'ENTREGADO',
+      referencia,
+    });
+    // Un estado aplicado también despierta al relay: el socket del asesor ve el doble check.
+    expect(pistas.avisados).toEqual([TENANT]);
   });
 
   it('SUSPENDIDO también se persiste: el historial del cliente debe estar completo', async () => {
@@ -234,6 +308,7 @@ describe('ProcesarChange', () => {
       estado: 'PROCESADO',
       mensajesNuevos: 0,
       mensajesRepetidos: 2,
+      estadosAplicados: 0,
     });
   });
 
