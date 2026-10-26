@@ -1,0 +1,304 @@
+# ═══════════════════════════════════════════════════════════════════
+#  Roadmap ejecutable de ViajaPro
+#
+#  Única fuente de verdad de "qué hay que hacer" (sustituye a la cola de ESTADO.md,
+#  que queda como resumen corto: ADR-0016). Lo leen y escriben los agentes y el supervisor
+#  a través de tools/roadmap-mcp. Los humanos pueden editarlo a mano; el validador comprueba.
+#
+#  Estados: backlog → ready → in_progress → review → done | blocked | dropped
+#  Prioridad: P0 (producción rota/seguridad) P1 (esta fase) P2 (siguiente) P3 (idea)
+#  Esfuerzo: S (<1 ciclo) M (1-2 ciclos) L (3+ ciclos → dividir antes de empezar)
+#  Una tarea = UN carril (a: backend, b: frontend, i: integradora), con acceptance verificable
+#  y `files` que existan. Migraciones, RLS, cifrado, infra y dependencias son del Owner.
+# ═══════════════════════════════════════════════════════════════════
+
+meta:
+  version: 1
+  current_phase: 1
+  cycle_counter: 0
+  phases:
+    "1": Un CRM mostrable y endurecido (M1 del roadmap v2)
+    "2": Piloto con la agencia
+tasks:
+  - id: T-001
+    title: Comprobar la cabecera Origin en toda mutación de la API, no solo en auth y en el socket
+    type: security
+    phase: 1
+    priority: P1
+    effort: M
+    status: done
+    acceptance:
+      - Un POST, PUT, PATCH o DELETE con una cabecera Origin que no esté en la lista permitida responde 403,
+        en cualquier controlador
+      - Las peticiones sin Origin (servidor a servidor, el webhook de Meta firmado) siguen funcionando
+      - Un test en apps/api/src/shared/red/ cubre origen permitido, origen ajeno y ausencia de origen
+      - pnpm compuertas --rapido verde
+    files:
+      - apps/api/src/shared/red/
+      - apps/api/src/main.ts
+      - apps/api/src/app.module.ts
+    started_at: 2026-10-26T20:27:08.532Z
+    done_at: 2026-10-26T20:27:08.532Z
+    evidence: "Mergeado en main por el PR #23 (rama a/T-001-comprobar-la-cabecera-origin-en-toda-mut) con el CI en
+      verde: format, analyze, tests y los demás checks obligatorios. Cierre automático
+      (.github/workflows/cerrar-tarea.yml)."
+    commit: f98b9a74f97b3bb274f9dd3c616c6439cce3caa8
+  - id: T-002
+    title: Límite de tasa en la API fuera del flujo de autenticación
+    type: security
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    acceptance:
+      - Un cliente que supera N peticiones por minuto a un endpoint de negocio recibe 429 con la cabecera
+        Retry-After
+      - El límite se mide por tenant y por IP y su valor sale de configuración, no de una constante en el
+        código
+      - El webhook firmado de WhatsApp no queda limitado por este mecanismo
+      - Un test en apps/api/src/shared/ demuestra el 429 y la recuperación tras la ventana
+    files:
+      - apps/api/src/shared/red/
+      - apps/api/src/main.ts
+  - id: T-003
+    title: Política de seguridad de contenido (CSP) y cabeceras de seguridad en la web
+    type: security
+    phase: 1
+    priority: P1
+    effort: S
+    status: done
+    acceptance:
+      - next.config.mjs emite Content-Security-Policy, X-Content-Type-Options y Referrer-Policy en todas las
+        rutas
+      - La CSP permite el origen de la API y el WebSocket de la bandeja configurados por variable, sin
+        unsafe-eval en producción
+      - Un test de apps/web verifica que las cabeceras están declaradas
+      - pnpm compuertas --rapido verde
+    files:
+      - apps/web/next.config.mjs
+    started_at: 2026-10-26T17:54:49.893Z
+    done_at: 2026-10-26T17:54:49.894Z
+    evidence: "Mergeado en main por el PR #16 (rama b/T-003-politica-de-seguridad-de-contenido-csp-y) con el CI en
+      verde: format, analyze, tests y los demás checks obligatorios. Cierre automático
+      (.github/workflows/cerrar-tarea.yml)."
+    commit: 70289630bc65153616d124ad29676e0bb3cbcc85
+  - id: T-004
+    title: Estados de carga, error y vacío en la pantalla del pipeline
+    type: feature
+    phase: 1
+    priority: P2
+    effort: S
+    status: dropped
+    acceptance:
+      - apps/web/src/app/pipeline/page.tsx muestra un esqueleto mientras carga, un mensaje con reintento si la
+        API falla y un estado vacío con texto útil
+      - Un test de componente cubre los tres estados
+      - pnpm compuertas --rapido verde
+    files:
+      - apps/web/src/app/pipeline/page.tsx
+    dropped_reason: La pantalla ya tiene esqueleto, error accionable y estado vacio
+      (EsqueletoKanban/AvisoErrorAccionable); verificado contra el codigo el 2026-10-26.
+  - id: T-005
+    title: Estados de carga, error y vacío en la pantalla de contactos
+    type: feature
+    phase: 1
+    priority: P2
+    effort: S
+    status: dropped
+    acceptance:
+      - apps/web/src/app/contactos/page.tsx muestra esqueleto, error con reintento y vacío con texto útil
+      - Un test de componente cubre los tres estados
+      - pnpm compuertas --rapido verde
+    files:
+      - apps/web/src/app/contactos/page.tsx
+    dropped_reason: La pantalla ya tiene esqueleto, error accionable y estado vacio
+      (EsqueletoKanban/AvisoErrorAccionable); verificado contra el codigo el 2026-10-26.
+  - id: T-006
+    title: Escribir en registros_auditoria las lecturas de datos sensibles de viajeros (R10)
+    type: security
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    acceptance:
+      - Leer un contacto con datos sensibles escribe una fila en registros_auditoria con tenant_id, actor,
+        acción y recurso, sin copiar el dato sensible al detalle
+      - Un test e2e en apps/api/src/modules/crm/ comprueba la fila y que otro tenant no la ve
+      - No se modifica el esquema de la base ni las migraciones
+    files:
+      - apps/api/src/modules/crm/
+  - id: T-007
+    title: "Portar a main el cambio de origin/fix/quoting-condiciones-y-salud: condiciones de tarifa no
+      evaluables, ruta antigua retirada y salud 503"
+    type: bug
+    phase: 1
+    priority: P0
+    effort: M
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Una tarifa con condicion de edad o de silla que no se puede evaluar se rechaza con un error de dominio
+        tipado, no se cotiza en silencio (spec en
+        apps/api/src/modules/quoting/domain/seleccion-de-tarifas.spec.ts)
+      - El endpoint antiguo de cotizar-paquete deja de existir y ningun codigo de apps/api lo referencia
+      - GET /salud/listo responde 503 cuando el servicio esta degradado y 200 solo si esta sano
+        (apps/api/src/salud.controller.spec.ts)
+      - "pnpm compuertas --rapido verde; referencia: git show origin/fix/quoting-condiciones-y-salud, que
+        quedo atras de main y no se puede fusionar tal cual"
+      - "SOLO se modifica apps/api: no se toca apps/web (el cliente es la tarea T-008), docs/ ni ESTADO.md; no
+        se copia la bitacora de la rama antigua"
+    files:
+      - apps/api/src/salud.controller.ts
+      - apps/api/src/modules/quoting/domain/seleccion-de-tarifas.ts
+      - apps/api/src/modules/quoting/domain/errors.ts
+      - apps/api/src/modules/quoting/application/cotizar-salida.use-case.ts
+      - apps/api/src/modules/quoting/interface/catalogo.controller.ts
+      - apps/api/src/modules/quoting/quoting.module.ts
+    source: orquestador:2026-10-26
+    created_at: 2026-10-26T16:08:34.342Z
+  - id: T-008
+    title: Adaptar el cliente de la web a la retirada de la ruta antigua de cotizacion de paquetes
+    type: bug
+    phase: 1
+    priority: P1
+    effort: S
+    status: backlog
+    depends_on:
+      - T-007
+    acceptance:
+      - apps/web/src/lib/api.ts no llama a la ruta antigua de cotizar-paquete
+      - El cotizador de apps/web sigue cotizando contra la ruta vigente; un test en apps/web lo cubre
+      - "pnpm compuertas --rapido verde; referencia: git show
+        origin/fix/quoting-condiciones-y-salud:apps/web/src/lib/api.ts"
+    files:
+      - apps/web/src/lib/api.ts
+    source: orquestador:2026-10-26
+    created_at: 2026-10-26T16:08:34.343Z
+  - id: T-009
+    title: "Completar mutantes RLS al 100% (C1: USING y WITH CHECK en todas las tablas de negocio)"
+    type: test
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Mutantes para USING en todas las tablas con tenant_id (vigencias, tarifas, politicas_de_precio,
+        mensajes, conversaciones, contactos, oportunidades, cotizaciones, etc.)
+      - Mutantes para WITH CHECK en todas las tablas con tenant_id
+      - Suite de mutantes en CI informa 0 supervivientes
+      - pnpm compuertas --rapido verde
+    files:
+      - packages/database/tests/mutaciones-aislamiento.mjs
+      - packages/database/tests/aislamiento.spec.ts
+    source: auditoria-auto:2026-10-26
+    created_at: 2026-10-26T20:14:47.463Z
+  - id: T-010
+    title: Prueba de arranque con roles prohibidos y asercion relforcerowsecurity (M1.2)
+    type: test
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Test e2e intenta arrancar la API con rol postgres (rolsuper) y verifica que aborta
+      - Test e2e intenta arrancar con rolbypassrls y verifica que aborta
+      - "Asercion relforcerowsecurity en CI: todas las tablas de negocio (relkind in ('r','p')) tienen FORCE
+        ROW LEVEL SECURITY"
+      - pnpm compuertas --rapido verde
+    files:
+      - apps/api/src/shared/prisma/arranque-seguro.e2e-spec.ts
+      - apps/api/src/shared/prisma/prisma.service.ts
+      - apps/api/src/shared/prisma/prisma-webhook.service.ts
+      - apps/api/src/shared/prisma/prisma-identidad.service.ts
+    source: auditoria-auto:2026-10-26
+    created_at: 2026-10-26T20:14:47.464Z
+  - id: T-011
+    title: Test de integracion automatico del cotizador (punta a punta web -> API -> BD)
+    type: test
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Test e2e en apps/api o apps/web que hace POST /api/v1/paquetes/cotizar (o ruta vigente) con
+        composicion real y verifica respuesta
+      - "Cubre caso: 2 adultos + 2 ninos en diciembre = temporada alta, doble, 2 habitaciones, $9.100.000 COP,
+        margen 20%"
+      - "Cubre caso: 3 adultos en doble = avisa '1 plaza sin usar, se paga igual'"
+      - Corre en CI contra Neon (o Postgres local de test)
+      - pnpm compuertas --rapido verde
+    files:
+      - apps/api/src/modules/quoting/cotizaciones.e2e-spec.ts
+      - apps/api/src/modules/quoting/catalogo.e2e-spec.ts
+    source: auditoria-auto:2026-10-26
+    created_at: 2026-10-26T20:14:47.464Z
+  - id: T-012
+    title: Aserciones de comportamiento para vigencias, tarifas, politicas_de_precio en aislamiento.spec.ts
+    type: test
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    depends_on: []
+    acceptance:
+      - "Asercion: quitar foranea compuesta vigencia->paquete pone test en rojo"
+      - "Asercion: quitar foranea compuesta tarifa->vigencia pone test en rojo"
+      - "Asercion: quitar foranea compuesta politicas_de_precio->tenant pone test en rojo"
+      - pnpm compuertas --rapido verde
+    files:
+      - packages/database/tests/aislamiento.spec.ts
+    source: auditoria-auto:2026-10-26
+    created_at: 2026-10-26T20:14:47.464Z
+  - id: T-013
+    title: Corregir politicaDePrecio.findFirst() sin where (riesgo de fuga silenciosa)
+    type: bug
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    depends_on: []
+    acceptance:
+      - "politicaDePrecio.findUnique({ where: { tenantId } }) en lugar de findFirst()"
+      - Test que verifica que con rol que salta RLS no devuelve politica ajena
+      - pnpm compuertas --rapido verde
+    files:
+      - apps/api/src/modules/quoting/application/cotizar-salida.use-case.ts:113-117
+    source: auditoria-auto:2026-10-26
+    created_at: 2026-10-26T20:14:47.464Z
+  - id: T-014
+    title: Sincronizar unique parcial etapas_pipeline en schema.prisma
+    type: refactor
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    depends_on: []
+    acceptance:
+      - schema.prisma modela la unique parcial (tenant_id, clave) WHERE clave IS NOT NULL de etapas_pipeline
+      - pnpm db:migrate no genera migracion vacia
+      - pnpm compuertas --rapido verde
+    files:
+      - packages/database/prisma/schema.prisma
+    source: auditoria-auto:2026-10-26
+    created_at: 2026-10-26T20:14:47.464Z
+  - id: T-015
+    title: Particiones automaticas de enrutamiento_historial (M5.2 / AUD-007)
+    type: infra
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Event trigger o job que crea particiones futuras automaticamente
+      - Retiro de particiones viejas (politica de retencion)
+      - Incluye tablas de auditoria
+      - pnpm compuertas --rapido verde
+    files:
+      - packages/database/prisma/migrations/
+      - apps/api/src/jobs/
+    source: auditoria-auto:2026-10-26
+    created_at: 2026-10-26T20:14:47.464Z

@@ -6,7 +6,7 @@
 
 | Campo | Valor |
 |---|---|
-| Última actualización | 2026-10-20 (noche: v0.38.1 y v0.38.2, auditoría externa, auditoría integral y ADR-0014) |
+| Última actualización | 2026-10-20 (noche: ADR-0015; el CI, bloqueado por facturación) |
 | Actualizado por | Claude Opus 5.5 (`integrador`) |
 | Fase | **M1 del roadmap v2: endurecer antes de la piloto** |
 | Avance de la fase | `main` (v0.38.2) tiene el producto de punta a punta: el cotizador con versiones y estados; la bandeja web completa; el inbox con relay, barrido y tiempo real; la visibilidad por asignación; la autenticación con sesión e invitaciones; el correo por Postmark (el adaptador) y el blueprint de staging en Render. El CI es la compuerta de aislamiento. **Todavía no hay nada desplegado** |
@@ -1425,7 +1425,7 @@ Registro: [`docs/_integraciones/2026-10-20-auditoria-y-adr-0014.md`](docs/_integ
 
 | Hallazgo | Estado | Dueño |
 |---|---|---|
-| AUD-001 | ADR-0014 aceptado; faltan la implementación y su auditoría interna | `backend`, `datos` |
+| AUD-001 | **ADR-0015 aceptado** (sustituye al 0014 y amplía su alcance). Falta la implementación (**M1.4**) | `backend`, `datos` |
 | AUD-002 | Aceptado y planificado; depende del ADR-0014 | `backend` |
 | AUD-003 | **Resuelto:** `docs/05-seguridad/01-modelo-de-amenazas.md` | `arquitecto` |
 | AUD-004 | Aceptado; necesita GitHub Pro o Team para tener *rulesets* en un repositorio privado | **Usuario** |
@@ -1459,9 +1459,33 @@ Registro: [`docs/_integraciones/2026-10-20-auditoria-y-adr-0014.md`](docs/_integ
 |---|---|---|
 | La cotización no cuadra **por edad** ni **por silla**, y queda la **ruta antigua** | `backend` | En curso |
 | `/salud/listo` responde **200 aunque el servicio esté degradado** | `backend` | En curso |
-| `Contacto.preferencias` guarda PII: **se suma al alcance del ADR-0014** | `arquitecto` | Por enmendar el alcance |
+| ~~`Contacto.preferencias` guarda PII~~ | `arquitecto` | **Cubierta por el ADR-0015** |
 
 | Cola | Dueño | Por qué no bloquea |
 |---|---|---|
-| El índice de `docs/README.md` no tiene la fila del **ADR-0014** | `documentador` | El ADR existe en `docs/03-adr/`; solo falta en el índice |
+| ~~El índice de `docs/README.md` sin el ADR-0014~~ | `documentador` | **Resuelto** con el índice del ADR-0015 |
+
+## Integración del 2026-10-20 — ADR-0015, cifrado de campos sensibles, sin etiqueta
+
+`docs/adr-0015-campos-sensibles` @ `17437fa` entra en `main` (`d8c43fe`). El ADR-0015 **sustituye al 0014**: lo mantiene entero y amplía su alcance.
+En el 0014 solo cambia la línea de estado. También trae el índice de `docs/README.md` y la bitácora. Lo aceptó el propietario («Acepto»), y
+`auditor-seguridad` lo aceptó con cambios, ya incorporados. Es solo documentación: no lleva etiqueta y `format:check` está limpio.
+**AUD-001** queda con el ADR-0015 aceptado y la implementación pendiente (M1.4). `Contacto.preferencias` queda cubierta.
+
+### Bloqueo: el CI de GitHub está parado por facturación
+
+Todas las corridas fallan a los 3 segundos con «recent account payments have failed or your spending limit needs to be increased». **Mientras no
+se arregle, no entra nada que necesite el CI como compuerta.** Lo resuelve el **Usuario**, en la facturación de GitHub.
+
+**Listas, esperando al CI:**
+
+| Rama | Qué trae |
+|---|---|
+| `fix/quoting-condiciones-y-salud` @ `109a2ee` | Hallazgos de la auditoría integral: tarifas con condición de edad o de silla, la retirada de la ruta antigua y `/salud` con 503 cuando está degradado |
+| `ci/acciones-por-sha-y-guard-rama` @ `d132189` | M1.5: 22 acciones fijadas por SHA y Dependabot. **Además cierra el hueco de `guard-rama`**: `git -C dir commit` pasaba sin autorización, y `autorizar-integracion` fallaba con ENOTDIR en un worktree. En local pasa 59 pruebas de hooks |
+| `feat/db-cifrado-campos-sensibles` @ `2a34e35` | **M1.4: la implementación del ADR-0015.** Migración `20261020120000_cifrar_columnas_con_pii_sensible`, **irreversible**: borra con `DROP COLUMN` el texto en claro de las filas de desarrollo. Trae además `CifradoDeCampos`, la búsqueda solo por nombre y teléfono, y `CAMPOS_SENSIBLES_KEY` (con su versión y la anterior) en `render.yaml`. `auditor-seguridad`: ACEPTAR. **Condiciones para integrarla:** la e2e de cifrado en reposo y las aserciones 67 a 71 tienen que correr de verdad contra el Postgres del CI (criterio de corte 2: cero PII en claro, comprobado con `$queryRaw`), y la matriz de `despliegue-staging.md` tiene que incluir la clave en la API y en el trabajador. **Al aplicarla en Neon:** destruye el texto de las filas de desarrollo, y después hay que correr `pnpm --filter @viajapro/api campos:sembrar-dev` |
+
+| Cola | Dueño | Por qué no bloquea |
+|---|---|---|
+| **El tope de 2^32 cifrados por clave (AES-GCM con nonce aleatorio) no se hace cumplir.** Hace falta un contador o una métrica, y un trabajo de recifrado, antes de que haya volumen | `backend`, `devops` | Hoy no hay volumen: quedan muchos órdenes de magnitud de margen |
 

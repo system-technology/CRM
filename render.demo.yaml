@@ -1,0 +1,25 @@
+# Blueprint de Render para una DEMO GRATUITA de solo web (no es staging; el staging real es render.yaml, ADR-0013).
+#
+# Qué publica: la web con sus datos de demostración (pipeline, contactos, viajes, reportes, configuración).
+# Qué NO tiene: API ni base de datos. Las pantallas que dependen de la API (cotizador, catálogo, bandeja)
+# muestran su estado de error o vacío. Para eso hace falta la vía completa: docs/07-ingenieria/despliegue-demo-gratuito.md §B.
+#
+# Plan gratuito de Render: el servicio se duerme tras ~15 min sin tráfico y la primera visita tarda ~1 min.
+# VERIFICAR-AL-SINCRONIZAR: que el plan `free` admita `runtime: docker` en el espacio del propietario.
+#
+# Nada aquí es secreto (R6): la URL de la API es un valor inerte a propósito.
+
+services:
+  - type: web
+    name: viajapro-web-demo
+    runtime: docker
+    region: ohio
+    plan: free
+    dockerfilePath: ./apps/web/Dockerfile
+    dockerContext: .
+    healthCheckPath: /salud
+    autoDeployTrigger: 'off' # se redespliega a mano o con el deploy hook; la demo no sigue a main
+    envVars:
+      # El Dockerfile exige un valor al construir. Este no apunta a ninguna API real.
+      - key: NEXT_PUBLIC_API_URL
+        value: https://api-no-desplegada.invalid

@@ -1,0 +1,41 @@
+// Sesión BACKEND (rama a/…, app viajapro-backend). Ver docs/09-ia/07-ciclo-autonomo.md.
+// Sintaxis V2: en `policies` gana la última regla que coincide (negar en bloque, luego permitir).
+{
+  "policies": [
+    { "action": "integration.use", "resource": "skill:*", "effect": "deny" },
+    // NestJS, TypeScript, datos y API
+    { "action": "integration.use", "resource": "skill:nestjs-expert", "effect": "allow" },
+    { "action": "integration.use", "resource": "skill:typescript-pro", "effect": "allow" },
+    { "action": "integration.use", "resource": "skill:postgres-pro", "effect": "allow" },
+    { "action": "integration.use", "resource": "skill:sql-pro", "effect": "allow" },
+    { "action": "integration.use", "resource": "skill:database-optimizer", "effect": "allow" },
+    { "action": "integration.use", "resource": "skill:api-designer", "effect": "allow" },
+    { "action": "integration.use", "resource": "skill:websocket-engineer", "effect": "allow" },
+    { "action": "integration.use", "resource": "skill:architecture-designer", "effect": "allow" },
+    { "action": "integration.use", "resource": "skill:microservices-architect", "effect": "allow" },
+    // seguridad y calidad
+    { "action": "integration.use", "resource": "skill:secure-code-guardian", "effect": "allow" },
+    { "action": "integration.use", "resource": "skill:security-reviewer", "effect": "allow" },
+    { "action": "integration.use", "resource": "skill:code-reviewer", "effect": "allow" },
+    { "action": "integration.use", "resource": "skill:test-master", "effect": "allow" },
+    { "action": "integration.use", "resource": "skill:debugging-wizard", "effect": "allow" },
+    { "action": "integration.use", "resource": "skill:monitoring-expert", "effect": "allow" },
+
+    // MCP: documentación al día de librerías, lectura web y memoria. Sin escritura del roadmap.
+    // superpowers: SÍ, salvo brainstorming (pregunta al usuario), finishing-a-development-branch (hace merge/push) y using-git-worktrees (los worktrees son del supervisor)
+    { "action": "integration.use", "resource": "skill:using-superpowers", "effect": "allow" },
+    { "action": "integration.use", "resource": "skill:test-driven-development", "effect": "allow" },
+    { "action": "integration.use", "resource": "skill:systematic-debugging", "effect": "allow" },
+    { "action": "integration.use", "resource": "skill:verification-before-completion", "effect": "allow" },
+    { "action": "integration.use", "resource": "skill:writing-plans", "effect": "allow" },
+    { "action": "integration.use", "resource": "skill:requesting-code-review", "effect": "allow" },
+    { "action": "integration.use", "resource": "skill:receiving-code-review", "effect": "allow" },
+
+    { "action": "integration.use", "resource": "mcp:*", "effect": "deny" },
+    { "action": "integration.use", "resource": "mcp:context7", "effect": "allow" },
+    { "action": "integration.use", "resource": "mcp:fetch", "effect": "allow" },
+    { "action": "integration.use", "resource": "mcp:knowledge-graph-memory", "effect": "allow" },
+
+    { "action": "integration.use", "resource": "plugin:superpowers", "effect": "allow" }
+  ]
+}
