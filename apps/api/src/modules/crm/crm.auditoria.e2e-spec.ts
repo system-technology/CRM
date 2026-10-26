@@ -23,6 +23,7 @@ import type { ClienteTenant } from '../../shared/prisma/prisma.service.js';
 const idDeTenant = (): string => `01932000-0000-7000-8000-${randomBytes(6).toString('hex')}`;
 const TENANT_A = idDeTenant();
 const TENANT_B = idDeTenant();
+// `registros_auditoria.usuario_id` no tiene clave foránea: basta un UUID, sin fixture de usuario.
 const USUARIO_A = randomUUID();
 const TELEFONO = `+57300${Math.floor(Math.random() * 9e6 + 1e6)}`;
 
@@ -46,12 +47,6 @@ function crearCrmConTenant(fijoTenantId: string): CrmPrisma {
 }
 
 beforeAll(async () => {
-  // Verificar que hay variables de entorno para la base de datos
-  if (!process.env['DATABASE_URL'] || !process.env['DATABASE_WEBHOOK_URL']) {
-    console.log('Saltando test e2e de auditoría: faltan DATABASE_URL o DATABASE_WEBHOOK_URL');
-    return;
-  }
-
   admin = new Client({ connectionString: process.env['DATABASE_URL'] });
   await admin.connect();
   const bd = await admin.query('SELECT current_database() AS db');
@@ -70,13 +65,6 @@ beforeAll(async () => {
     );
   }
 
-  // Crear usuario en tenant A (para tener usuario_id en la auditoría)
-  await admin.query(
-    `INSERT INTO usuarios (id, tenant_id, identidad_id, nombre, correo, estado, creado_en, actualizado_en)
-     VALUES ($1, $2, $3, 'Usuario Test A', 'test-a@example.com', 'ACTIVO', now(), now())`,
-    [USUARIO_A, TENANT_A, randomUUID()],
-  );
-
   // Crear contacto en tenant A CON preferencias (dato sensible R10)
   contactoA = randomUUID();
   await admin.query(
@@ -94,8 +82,6 @@ beforeAll(async () => {
 }, 60_000);
 
 afterAll(async () => {
-  if (!prisma) return;
-
   await prisma?.onModuleDestroy();
   if (admin) {
     try {
@@ -128,8 +114,6 @@ describe('Auditoría R10: lectura de datos sensibles de contacto', () => {
   });
 
   it('escribe en registros_auditoria al leer ficha con preferencias', async () => {
-    if (!prisma) return; // Test saltado si no hay BD
-
     // Leer la ficha del contacto (esto debe disparar la auditoría)
     const ficha = await crm.fichaDeContacto(contactoA);
     expect(ficha).not.toBeNull();
@@ -159,8 +143,6 @@ describe('Auditoría R10: lectura de datos sensibles de contacto', () => {
   });
 
   it('otro tenant NO ve la fila de auditoría (RLS)', async () => {
-    if (!prisma) return; // Test saltado si no hay BD
-
     // Consultar auditorías desde tenant B
     const auditorias = await prisma.conTenantResuelto(TENANT_B, async (tx) => {
       return tx.registroAuditoria.findMany({
@@ -168,16 +150,20 @@ describe('Auditoría R10: lectura de datos sensibles de contacto', () => {
       });
     });
 
-    // Debe estar vacío porque RLS filtra por tenant_id
+    // Debe estar vacío porque RLS filtra por tenant_id...
     expect(auditorias).toHaveLength(0);
+    // ...y no porque la fila no exista: el propietario sí la ve (la prueba no es vacua).
+    const existe = await admin.query(
+      'SELECT count(*)::int AS n FROM registros_auditoria WHERE entidad_id = $1 AND tenant_id = $2',
+      [contactoA, TENANT_A],
+    );
+    expect(existe.rows[0].n).toBeGreaterThan(0);
   });
 
   it('NO escribe auditoría si el contacto no tiene preferencias (no hay dato sensible)', async () => {
-    if (!prisma) return; // Test saltado si no hay BD
-
     // Crear contacto SIN preferencias
     const contactoSinPreferencias = randomUUID();
-    await admin!.query(
+    await admin.query(
       `INSERT INTO contactos (id, tenant_id, telefono_e164, nombre, preferencias, creado_en, actualizado_en)
        VALUES ($1, $2, $3, 'Contacto Sin Preferencias', NULL, now(), now())`,
       [contactoSinPreferencias, TENANT_A, `+57300${Math.floor(Math.random() * 9e6 + 1e6)}`],
