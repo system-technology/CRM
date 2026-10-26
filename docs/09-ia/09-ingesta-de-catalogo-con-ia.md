@@ -7,14 +7,17 @@
 - **Redacta:** `ingeniero-ia`. **Debe pasar por:** `auditor-seguridad` (§4 entero: SSRF, inyección,
   datos de terceros hacia un proveedor externo), `arquitecto` (encaje con ADR-0017, cola, módulo),
   `datos` (las dos migraciones de §7.3).
-- **Depende de:** ADR-0017 (*Propuesto*, rama `origin/docs/adr-0017-catalogo-gestionable`, todavía
-  no en `main`). Este diseño **no añade una vía de escritura**: reutiliza la de ADR-0017.
+- **Depende de:** ADR-0017 (*Aceptado*, en `main`; §2, §7 y §10). Este diseño **no añade una vía
+  de escritura**: reutiliza la de ADR-0017. **Si algo de aquí contradice al ADR-0017, prevalece el
+  ADR.** Esta versión (2026-10-26, sustituye al PR #37) está alineada con su §2 (contrato único),
+  §7.4–7.4c (neto, obtenedor aislado, condiciones de activación) y §10 (SSRF).
 
 ---
 
 ## 0. La decisión en cinco líneas
 
-1. La IA **no escribe nunca**. Produce una `PropuestaCatalogo`; la persona la revisa en la misma
+1. La IA **no escribe nunca**. Produce una `PropuestaDeCatalogo` con `origen: IA` (el contrato único
+   de ADR-0017 §2); la persona la revisa en la misma
    pantalla de previsualización de ADR-0017 y la confirma por `importaciones/confirmar`. Ni rutas de
    escritura nuevas, ni herramientas para el modelo.
 2. **El modelo transcribe y el código convierte.** El modelo devuelve el texto literal del precio
@@ -22,10 +25,14 @@
    determinista. **Ningún número sale de la IA sin pasar por un analizador que podemos probar.**
 3. **No se inventa por construcción.** Si la evidencia de un valor no aparece literalmente en la
    fuente, el valor se descarta y el campo queda «sin dato». Un precio nunca puede ser «inferido».
-4. **Las URLs las obtenemos nosotros**, con una protección SSRF explícita (§4.1). No se usa la
-   herramienta `web_fetch` del proveedor (§3.4).
-5. **Apagado por defecto**, interruptor por agencia, presupuesto mensual con tope duro, y si la IA
-   falla la pantalla y el CSV siguen funcionando igual.
+4. **Las URLs las obtenemos nosotros**, solo `https` al puerto 443, desde un **proceso aparte** sin
+   acceso a la base ni a secretos y detrás de una regla de red que niega rangos privados y metadatos
+   (§4.1). No se usa la herramienta `web_fetch` del proveedor.
+5. **La IA nunca propone neto.** Sin excepciones, sea cual sea la fuente o el permiso de quien la
+   subió (ADR-0017 §7.4).
+6. **Apagado por defecto** por agencia, y **no se enciende para una agencia real** sin DPA con el
+   proveedor, aviso a la agencia, pruebas de SSRF en verde y regla de red verificada (§7.2). Tope
+   mensual duro, y si la IA falla la pantalla y el CSV siguen funcionando igual.
 
 ---
 
@@ -33,7 +40,7 @@
 
 | Afirmación | Cómo |
 |---|---|
-| ADR-0017 existe solo en la rama `origin/docs/adr-0017-catalogo-gestionable`, estado *Propuesto* | `git show origin/docs/adr-0017-catalogo-gestionable --stat` |
+| ADR-0017 está en `main`, estado *Aceptado*, con la corrección de `auditor-seguridad` (§7.4–7.4c, §10) | `git show origin/main:docs/03-adr/0017-catalogo-gestionable-por-la-agencia.md` (2026-10-26) |
 | ADR-0017 §5 y D7 **difieren** la IA para *mapear columnas*. El propietario ha decidido ahora otra capacidad: extraer catálogo de contenido **no estructurado**. No contradice §5 (que trata de encabezados de una hoja), pero sí deja D7 sin efecto para este caso | Lectura del ADR |
 | Ningún `package.json` declara dependencia de Anthropic ni de cliente S3, analizador de HTML o PDF | `grep -rl anthropic --include=package.json`; grep de `undici\|pdf\|sharp\|@aws-sdk/client-s3` en `apps/` y `packages/`: solo aparece `zod` |
 | No existe tabla de configuración por tenant salvo `politicas_de_precio` | `schema.prisma` líneas 835-861 |
@@ -50,16 +57,21 @@
 
 ---
 
-## 2. El contrato: `PropuestaCatalogo`
+## 2. El contrato: `PropuestaDeCatalogo` (único, de ADR-0017 §2)
 
-Son **dos esquemas**, y separarlos es la decisión más importante del documento.
+**Hay un solo contrato de propuesta: `PropuestaDeCatalogo`**, definido en ADR-0017 §2, en
+`packages/contracts/src/propuesta-de-catalogo.ts`, y ampliado con los campos de M2 por la tarea
+T-041. Esta capa **no define otro** (el borrador anterior proponía un `PropuestaCatalogo` propio con
+confianza enumerada; queda retirado). Lo que sí existe es un esquema **interno del adaptador** para
+hablar con el modelo, que nunca sale de `apps/api`:
 
-| | Esquema del modelo (`ExtraccionCatalogoModelo`) | Esquema del producto (`PropuestaCatalogo`) |
+| | Esquema del modelo (`ExtraccionCatalogoModelo`) | Contrato del producto (`PropuestaDeCatalogo`, `origen: IA`) |
 |---|---|---|
-| Quién lo llena | El modelo, con salida estructurada | Nuestro código, a partir del anterior |
-| Dónde vive | `apps/api/.../quoting/infrastructure/ia/` (es detalle del adaptador) | `packages/contracts/src/catalogo-ia.ts` (R3: lo consume la web) |
+| Quién lo llena | El modelo, con salida estructurada | El adaptador de IA, a partir del anterior |
+| Dónde vive | `apps/api/.../quoting/infrastructure/ia/` (detalle del adaptador, no es contrato) | `packages/contracts/src/propuesta-de-catalogo.ts` (R3; ADR-0017 §2; T-041) |
 | Números | **Texto literal** tal como aparece («Desde $450.000») | `Dinero` en enteros (R8) |
-| Ausencia | Cadena vacía + `estado: NO_ENCONTRADO` | `valor: null` + `estado` |
+| Ausencia | Cadena vacía + `estado: NO_ENCONTRADO` | Campo opcional **omitido** (o `null` donde el contrato lo admite) |
+| Confianza | No se le pide al modelo | `procedencia.confianza`: **número de 0 a 1**, calculado por código (§2.3) |
 
 **Por qué dos.** La salida estructurada del proveedor tiene límites duros en el esquema: todo objeto
 con `additionalProperties: false`, **como mucho 16 parámetros con `anyOf` o tipos en arreglo**
@@ -68,7 +80,8 @@ con `additionalProperties: false`, **como mucho 16 parámetros con `anyOf` o tip
 esquema rico con nulables por campo los rebasa. Además, pedir al modelo el entero ya convertido es
 pedirle aritmética y convenciones de formato colombianas que un analizador de 40 líneas hace sin
 error y con pruebas. Así que el esquema del modelo es **plano, todo obligatorio, todo texto, sin
-uniones**, y el del producto es el rico.
+uniones**, y el adaptador lo convierte al contrato tipado de ADR-0017 («convertir texto a tipos es
+trabajo del adaptador, no del núcleo», ADR-0017 §2).
 
 ### 2.1 Esquema del modelo (lo que se pide)
 
@@ -110,9 +123,18 @@ ExtraccionCatalogoModelo = {
 }
 ```
 
-Lo que **no** está en el esquema, a propósito: tarifa neta (las fuentes son públicas, y ADR-0017 §9
-deja fuera los netos de mayorista desde PDF), mayorista, cupos, personas, teléfonos, documentos. Un
-campo que no existe en el esquema es un campo que el modelo no puede llenar.
+Lo que **no** está en el esquema, a propósito: **tarifa neta**, mayorista, cupos, personas,
+teléfonos, documentos. Un campo que no existe en el esquema es un campo que el modelo no puede
+llenar.
+
+**La IA nunca propone neto, sin excepciones** (ADR-0017 §7.4): ni por el tipo de fuente, ni porque
+quien subió el documento tenga `cotizacion.ver_neto_y_margen`, ni porque el documento sea una hoja
+de netos de mayorista. El adaptador construye cada `TarifaPropuesta` con `neto: null` y
+`mayoristaId: null` **siempre**, y si una salida trajera algo parecido a un neto (por ejemplo, en
+`notas`) se descarta y se registra `NETO_DESCARTADO` en la auditoría del trabajo. El neto entra por
+pantalla, archivo o API, con su permiso. Pruebas obligatorias: del adaptador (ninguna salida suya
+lleva `neto` no nulo, ni con una hoja de netos como entrada) y, propuesto a T-041, un refinamiento
+por origen que rechace `neto` no nulo cuando `origen = IA`.
 
 Parámetros de la llamada: `output_config.format` con el JSON Schema derivado de este Zod (GA, sin
 cabecera beta según la misma página). Validación **también** con Zod al recibir: la propia
@@ -120,104 +142,73 @@ documentación admite que con `stop_reason: "refusal"` o `"max_tokens"` la salid
 esquema, y que el modelo puede cambiar la capitalización de un valor de `enum` (se compara sin
 distinguir mayúsculas).
 
-### 2.2 Esquema del producto (lo que se propone en `packages/contracts`)
+### 2.2 Cómo se llena `PropuestaDeCatalogo` desde la extracción
 
-```
-EstadoCampo  = z.enum(['ENCONTRADO', 'NO_ENCONTRADO', 'AMBIGUO', 'DESCARTADO_SIN_EVIDENCIA'])
-Confianza    = z.enum(['ALTA', 'MEDIA', 'BAJA'])
-TipoFuente   = z.enum(['URL', 'PDF_TEXTO', 'PDF_IMAGEN', 'IMAGEN', 'TEXTO'])
+El contrato es el de ADR-0017 §2 tal cual; aquí solo se dice **qué pone el adaptador en cada campo**.
+No se añaden campos ni se redefinen tipos (R3).
 
-Evidencia = z.object({
-  fragmento:  z.string().max(300),
-  fuente:     z.object({ tipo: TipoFuente, referencia: z.string().max(2048), pagina: z.number().int().positive().optional() }),
-  verificada: z.boolean(),            // el fragmento aparece literalmente en el texto de la fuente
-})
+| Campo de `PropuestaDeCatalogo` | Lo pone el adaptador así |
+|---|---|
+| `version` | `1` |
+| `origen` | `'IA'` (y por tanto el refinamiento de ADR-0017 §2: `procedencia.fuente` y `procedencia.fragmento` en cada precio) |
+| `productos[].nombre` | Literal de la fuente, saneado (§4.2.6). **Obligatorio**: un producto sin nombre encontrado se descarta y se avisa. Nunca se corrige una errata en silencio |
+| `productos[].destino`, `dias`, `noches` | Analizados por código desde `duracion` y el texto; si no se pueden decidir, el producto queda marcado para que la persona los complete en la revisión (el núcleo los exige) |
+| `formato` | Etiqueta literal; el núcleo la resuelve contra los formatos del tenant |
+| `inclusiones`, `exclusiones`, `cargosEnDestino` | Literales; `cargosEnDestino[].monto` es `null` cuando la fuente nombra el cargo sin cifra («impuesto de muelle no incluido») |
+| `opcionesDeSalida` | Una por horario distinto (`horaSalida`/`horaRegreso` en `HH:MM`) |
+| `vigencias` | `[]` si no hay precio («a consultar»). Con precio: las fechas concretas de la fuente se vuelven vigencias de un día; si la fuente no da vigencia, **la elige la persona** en la revisión (§3.1) |
+| `vigencias[].tarifas[]` (`TarifaPropuesta` = `CrearTarifa` + `lista`, `promoHasta`) | `venta` desde el analizador de dinero (§3.3); `lista` solo si la fuente muestra un precio anterior/tachado; `promoHasta` solo si la fuente lo dice; `unidad`, `cubrePasajeros`, condición de edad solo si la fuente lo dice. **`neto: null` y `mayoristaId: null` siempre** (§2.1) |
+| `procedencia` (producto y cada tarifa) | `fuente` = URL o nombre del archivo (+ página); `fragmento` = cita literal ≤ 300 caracteres; `confianza` = número `0..1` calculado por código (§2.3) |
+| `codigo`, `camposPersonalizados` | No los pone la IA |
 
-campo = <T>(valor: T) => z.object({
-  valor:     valor.nullable(),
-  estado:    EstadoCampo,
-  confianza: Confianza,
-  evidencia: Evidencia.nullable(),
-  original:  z.string().max(300),     // texto literal que dio el modelo, para mostrarlo
-}).superRefine(...)                   // reglas de abajo
+Lo que **no** viaja en la propuesta, porque no es parte del contrato: el modelo usado, la versión del
+*prompt* y el consumo (van a `registros_auditoria` y `consumos_ia`, §4.6 y §7.3), y las advertencias
+propias de la ingesta (`MONEDA_SUPUESTA`, `PAGINA_CON_JAVASCRIPT`, `POSIBLE_INYECCION`,
+`DATO_PERSONAL_RETIRADO`, `CAMPO_SIN_DATO`, `NETO_DESCARTADO`). Estas últimas acompañan a la
+propuesta en la respuesta del trabajo (`GET .../propuestas-ia/:trabajoId` → `{ estado, propuesta:
+PropuestaDeCatalogo, avisos[] }`); los `avisos` reutilizan la forma de elemento `AVISO` del
+`InformeDeCatalogo` de ADR-0017 §1 (código estable, ubicación, mensaje), no un esquema nuevo. La pista
+`PARECIDO_A` (§3.1) viaja igual, como aviso. **Cola para `arquitecto`/T-041:** confirmar que esa
+forma admite estos códigos.
 
-PrecioPropuesto = z.object({
-  etiqueta:     campo(z.string().max(80)),
-  venta:        campo(Dinero),
-  lista:        campo(Dinero),          // nulo salvo que la fuente muestre precio anterior
-  promoHasta:   campo(FechaViaje),
-  esDesde:      z.boolean(),
-  unidad:       campo(UnidadDeCobro),   // POR_PERSONA | POR_GRUPO (vigencias.ts)
-  cubrePasajeros: z.number().int().min(1).max(50),
-  tipoPasajero: campo(TipoPasajero),    // ADT | CHD | INF, solo si la fuente lo dice
-  edadMinima:   campo(z.number().int().min(0).max(120)),
-  edadMaxima:   campo(z.number().int().min(0).max(120)),
-})
+**Reglas del adaptador** (invariantes, no preferencias):
 
-CargoEnDestinoPropuesto = z.object({
-  concepto: campo(z.string().max(120)),
-  monto:    campo(Dinero),              // nulo = "impuesto de muelle no incluido", sin cifra
-  unidad:   campo(UnidadDeCobro),
-})
+1. Un precio sin `procedencia.fuente` y `procedencia.fragmento` no entra en la propuesta (ADR-0017
+   §2: «sin cita no hay precio»).
+2. **Un precio nunca es ambiguo con valor**: si el analizador no puede decidir (§3.3), la tarifa no
+   se propone y la persona la escribe. No existe el precio «inferido»: está en la fuente o no está.
+3. `lista` con valor exige `venta` con valor y `lista > venta` (el `CHECK` de ADR-0017 M2).
+4. Un precio de una fuente de texto cuyo fragmento no aparece literal en la fuente se **descarta**
+   (§2.3).
+5. `unidad = POR_PERSONA` exige `cubrePasajeros = 1` (mismo invariante que `CrearTarifa`).
+6. `neto` y `mayoristaId` son siempre `null` (§2.1).
+7. Mientras M2 no esté aplicada, el núcleo responde `CAMPO_NO_SOPORTADO_AUN` para `lista`,
+   `promoHasta`, opciones de salida, cargos y formato, y los ignora (ADR-0017 §2). La pantalla lo
+   dice: «Este dato no se guardará todavía».
 
-ProductoPropuesto = z.object({
-  claveTemporal:   z.string().uuid(),   // solo para la pantalla; no es identidad de dominio
-  nombre:          campo(z.string().min(1).max(200)),
-  formato:         campo(z.string().max(60)),          // etiqueta → formatos_de_viaje (M2)
-  dias:            campo(z.number().int().min(1).max(60)),
-  noches:          campo(z.number().int().min(0).max(59)),
-  fechasSalida:    campo(z.array(FechaViaje).max(60)),
-  horaSalida:      campo(z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/)),
-  horaRegreso:     campo(z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/)),
-  inclusiones:     z.array(z.object({ texto: z.string().max(200), evidencia: Evidencia })).max(40),
-  exclusiones:     z.array(z.object({ texto: z.string().max(200), evidencia: Evidencia })).max(40),
-  precios:         z.array(PrecioPropuesto).max(20),   // vacío = "sin precio" → paquete "a consultar"
-  cargosEnDestino: z.array(CargoEnDestinoPropuesto).max(10),
-  notas:           campo(z.string().max(500)),
-  sinPrecio:       z.boolean(),                         // derivado: precios.length === 0
-  parecidoA:       z.object({ paqueteId: Id, nombre: z.string(), similitud: z.number() }).nullable(),
-})
-
-PropuestaCatalogo = z.object({
-  propuestaId:     Id,
-  fuente:          z.object({ tipo: TipoFuente, referencia: z.string().max(2048), sha256: z.string().length(64), obtenidaEn: Instante }),
-  modelo:          z.string(),          // ID exacto, p. ej. "claude-sonnet-5-5"
-  versionPrompt:   z.string(),          // "extraccion-catalogo@3" + hash
-  monedaSupuesta:  z.enum(['COP', 'USD', 'EUR', 'MXN']),
-  advertencias:    z.array(z.object({ codigo: z.string(), mensaje: z.string() })),
-  productos:       z.array(ProductoPropuesto).max(200),
-  consumo:         z.object({ entrada: z.number().int(), salida: z.number().int(), cacheLeida: z.number().int(), cacheEscrita: z.number().int(), costoMicroUsd: z.number().int() }),
-})
-```
-
-**Obligatorios** en todo producto: `nombre` con `estado = ENCONTRADO` (un producto sin nombre se
-descarta y se avisa) y la evidencia del nombre. **Todo lo demás puede faltar**, y faltar es un
-resultado válido, no un error.
-
-**Reglas del `superRefine`** (son invariantes, no preferencias):
-
-1. `valor === null` ⇔ `estado ∈ { NO_ENCONTRADO, DESCARTADO_SIN_EVIDENCIA }`.
-2. `estado = ENCONTRADO` exige `evidencia` no nula.
-3. **Un precio (`venta`, `lista`, `monto`) nunca es `AMBIGUO` con valor**: si es ambiguo, `valor`
-   es nulo y la persona lo escribe. Y no existe el estado «inferido»: un precio está en la fuente o
-   no está.
-4. `lista` con valor exige `venta` con valor y `lista > venta` (el mismo `CHECK` de ADR-0017 M2).
-5. `evidencia.verificada = false` limita la `confianza` a `BAJA`. Con fuente de texto, además,
-   un precio no verificado pasa a `DESCARTADO_SIN_EVIDENCIA` (§2.3).
-6. `unidad = POR_PERSONA` exige `cubrePasajeros = 1` (mismo invariante que `CrearTarifa`).
+Campos distintos del precio y del nombre (horarios, inclusiones, notas) **no llevan cita propia** en
+el contrato: la pantalla muestra la cita del producto. Si la revisión demuestra que hace falta cita por
+campo, se pide como ampliación del mismo contrato, no como un esquema paralelo (cola, no bloquea).
 
 ### 2.3 Cómo se calcula la confianza y la evidencia (código, no modelo)
 
-No se le pide al modelo un número de confianza: los modelos lo calibran mal y un `0,87` invita a
-creerle. La confianza la asigna el código, con reglas que se pueden auditar:
+No se le pide al modelo un número de confianza: los modelos lo calibran mal. La confianza la asigna
+**el código**, como **número de 0 a 1** en `procedencia.confianza` (ADR-0017 §2), con reglas que se
+pueden auditar. **La confianza nunca cambia lo que se aplica: solo ordena y resalta la revisión.**
+Si la pantalla quiere mostrar «alta / media / baja», lo deriva del número (≥ 0,8 / ≥ 0,5 / < 0,5);
+esas bandas son presentación, no contrato.
 
-| Situación | Confianza |
+| Situación | `confianza` |
 |---|---|
-| Fuente de texto (URL, PDF con capa de texto, texto pegado), fragmento encontrado literalmente tras normalizar espacios y mayúsculas, y el valor convertido aparece dentro del fragmento | **ALTA** |
-| Igual, pero el valor no aparece literal en el fragmento (p. ej. la hora «4:00 AM» → `04:00`) | **MEDIA** |
-| Fuente de imagen o PDF escaneado: no hay texto contra el que verificar | **MEDIA** como techo; **todo precio de imagen se marca «léalo usted»** |
-| Modelo dijo `AMBIGUO`, o el analizador de dinero no pudo decidir (§3.3) | **BAJA**, valor nulo si es dinero |
-| Fragmento no encontrado en una fuente de texto | Precio: **descartado**. Otro campo: **BAJA** |
+| Fuente de texto (URL, PDF con capa de texto, texto pegado), fragmento encontrado literalmente tras normalizar espacios y mayúsculas, y el valor convertido aparece dentro del fragmento | **0,9** |
+| Igual, pero el valor no aparece literal en el fragmento (p. ej. la hora «4:00 AM» → `04:00`, o «270 mil») | **0,6** |
+| Fuente de imagen o PDF escaneado: no hay texto contra el que verificar | **0,6 como techo**; **todo precio de imagen se marca «léalo usted»** |
+| El modelo dijo `AMBIGUO` en un campo que no es precio (p. ej. un nombre con posible errata) | **0,3**, con aviso |
+| Precio fuera del rango de cordura (§3.3) | **0,3**, con aviso «revise el número» |
+| Fragmento no encontrado en una fuente de texto | Precio: **descartado** (no se propone). Otro campo: **0,3** |
+
+Los valores exactos (0,9 / 0,6 / 0,3) son una convención inicial; se recalibran con la evaluación
+(§5) sin tocar el contrato.
 
 Esta verificación es **la defensa principal contra el dato inventado**, por delante del prompt: un
 precio que no está en la página no puede llegar a la propuesta aunque el modelo lo escriba.
@@ -226,14 +217,14 @@ precio que no está en la página no puede llegar a la propuesta aunque el model
 
 | Fuente | Producto | Propuesta |
 |---|---|---|
-| JD Tours | Mantas Beach Club | `precios: []`, `sinPrecio: true`, advertencia «la fuente dice "Consultar disponibilidad"». Se cargará «a consultar» (paquete sin vigencia, ADR-0017 §2) |
-| JD Tours | Santa Marta Clásico | `venta 270000 COP` (ALTA), `lista 320000 COP` (ALTA), `promoHasta: null NO_ENCONTRADO` |
-| JD Tours | Bora Bora Beach Club | `venta 450000`, `esDesde: true` → aviso «la fuente dice "desde": puede haber opciones más caras que no publica» |
-| JD Tours | Isla Palma | Cargo en destino «Tasa portuaria», `29000 COP POR_PERSONA`; otro «Impuesto de muelle», `monto: null`. La modalidad terrestre (4:30) es **otro producto**, como dice ADR-0017 §3; el modelo propone dos y la persona decide |
-| JD Tours | San Pedro de Majagua | `horaSalida: null NO_ENCONTRADO` |
+| JD Tours | Mantas Beach Club | `vigencias: []` («a consultar», ADR-0017 §2), aviso «la fuente dice "Consultar disponibilidad"» |
+| JD Tours | Santa Marta Clásico | Tarifa `venta 270000 COP`, `lista 320000 COP`, ambas con `procedencia.confianza 0,9`; `promoHasta` omitido (no está en la fuente) |
+| JD Tours | Bora Bora Beach Club | `venta 450000 COP`; aviso «la fuente dice "desde": puede haber opciones más caras que no publica» |
+| JD Tours | Isla Palma | `cargosEnDestino`: «Tasa portuaria» `29000 COP POR_PERSONA`; «Impuesto de muelle» `monto: null`. Lancha (con su horario) y Terrestre (4:30) como **dos opciones de salida** del mismo producto, cada una con su tarifa (ADR-0017 §3.1); la persona confirma |
+| JD Tours | San Pedro de Majagua | Opción de salida sin `horaSalida`; aviso `CAMPO_SIN_DATO` |
 | André's | Pianguita + Ballenas | **Dos** productos: pasadía (0 noches, 329.000) y pasanoche (1 noche, 569.000). La clave natural de ADR-0017 (nombre + noches) los separa |
-| André's | «Entre Pamas y Café» | `nombre` `AMBIGUO`, `original: "Entre Pamas y Café"`, advertencia de posible errata. **No se corrige en silencio** |
-| André's | Promo pareja Consotá | `etiqueta: "Promo pareja"`, `unidad: POR_GRUPO`, `cubrePasajeros: 2` **solo si** la fuente dice pareja; si no, `unidad NO_ENCONTRADO` y la persona elige |
+| André's | «Entre Pamas y Café» | `nombre` literal «Entre Pamas y Café», `procedencia.confianza 0,3`, aviso de posible errata. **No se corrige en silencio** |
+| André's | Promo pareja Consotá | Tarifa `POR_GRUPO`, `cubrePasajeros: 2` **solo si** la fuente dice pareja; si no, la tarifa queda sin unidad decidida y la persona elige antes de confirmar |
 
 ---
 
@@ -246,19 +237,29 @@ precio que no está en la página no puede llegar a la propuesta aunque el model
                        │ (permiso catalogo.administrar, interruptor activo, presupuesto disponible)
                        ▼
            cola BullMQ "catalogo-ia" (consumidor en apps/api, ADR-0010)
-             1. obtener / recibir contenido (por tipo, §3.2)
+             1. si es URL: pide los bytes al OBTENEDOR (proceso aparte, §4.1) ──┐
+                                                                               │  sin base, sin secretos,
+             ◄── { bytes, contentType, urlFinal, sha256 } ─────────────────────┘  solo https:443, regla de red
+                si es archivo / imagen / texto: ya viene en la petición (§3.2)
              2. reducir a texto + imágenes, con topes
              3. llamar al modelo (sin herramientas, salida estructurada)
-             4. validar con Zod; verificar evidencias; convertir dinero y fechas
+             4. validar con Zod; verificar evidencias; convertir dinero y fechas;
+                neto y mayorista siempre null
              5. marcar "parecido a" contra el catálogo del tenant (determinista, bajo RLS)
              6. registrar consumo y auditoría; descartar el contenido fuente
                        ▼
-[web] GET /api/v1/catalogo/propuestas-ia/:trabajoId ─► PropuestaCatalogo
+[web] GET /api/v1/catalogo/propuestas-ia/:trabajoId ─► { estado, propuesta: PropuestaDeCatalogo, avisos[] }
                        ▼
 [web] pantalla de revisión  ═  previsualización de ADR-0017
-      la web convierte la propuesta (ya editada) en la tabla canónica { encabezados, filas, mapeo }
-      ─► importaciones/previsualizar ─► importaciones/confirmar (con origen IA + propuestaId)
+      la persona edita o descarta productos; la propuesta resultante (origen IA)
+      ─► importaciones/previsualizar ─► importaciones/confirmar
+         (persona con catalogo.administrar EN SESIÓN; origen IA con clave de API = 403, ADR-0017 §7.2)
 ```
+
+**Quién toca qué.** El consumidor de `apps/api` tiene las credenciales de la base y la clave de
+cifrado (ADR-0010), así que **nunca abre una conexión a una dirección que dio un usuario**: eso lo
+hace solo el obtenedor (§4.1). El obtenedor, a su vez, nunca llama al modelo ni conoce la clave del
+proveedor: devuelve bytes y metadatos y quien llama al modelo es el consumidor (ADR-0017 §7.4b).
 
 - **Asíncrono por cola, no síncrono.** Una propuesta de 20 productos con evidencias son del orden de
   10.000 tokens de salida: decenas de segundos. Una petición HTTP abierta ese tiempo es mala
@@ -271,14 +272,15 @@ precio que no está en la página no puede llegar a la propuesta aunque el model
 - **La deduplicación no es de la IA.** Comparar contra el catálogo lo hace `previsualizar` de
   ADR-0017 con su clave natural (`codigo`, o nombre normalizado + noches), y devuelve `CREAR |
   ACTUALIZAR | SIN_CAMBIOS`. Así **el catálogo del tenant nunca entra al prompt** (§4.4). Lo único
-  que añade esta capa es la pista `parecidoA`: similitud por trigramas entre el nombre propuesto y
+  que añade esta capa es la pista `PARECIDO_A` (un aviso, §2.2): similitud por trigramas entre el nombre propuesto y
   los existentes (umbral 0,8), para cazar la errata «Rosario Bech Club» frente a «Rosario Beach
   Club», que la clave exacta trataría como producto nuevo. La persona puede asociarlo al existente
   con un clic; nunca se asocia solo.
 - **Lo que no cabe todavía en el modelo de datos** (antes de M2 de ADR-0017): precio de lista, promo
-  hasta, horarios y cargos en destino con monto se muestran en la revisión pero **se guardarán como
-  texto en `exclusiones`/`descripcion`**, y la pantalla lo dice: «Este dato se guardará como texto
-  hasta que el catálogo admita precios tachados». Es la deuda declarada de ADR-0017 §7.
+  hasta, opciones de salida, cargos en destino y formato **viajan en la propuesta igual** (el contrato
+  los tiene desde el día uno); el núcleo responde `CAMPO_NO_SOPORTADO_AUN` y los ignora (ADR-0017
+  §2), y la pantalla lo dice: «Este dato no se guardará todavía». No se meten como texto en otros
+  campos.
 - **Vigencia.** Ninguna de las dos fuentes dice hasta cuándo valen sus precios. La IA no la
   inventa: la revisión exige a la persona elegir «estos precios valen desde ___ hasta ___» (por
   defecto, hoy + 90 días, marcado «lo eligió usted, no la fuente»). Las fechas de salida concretas
@@ -288,11 +290,11 @@ precio que no está en la página no puede llegar a la propuesta aunque el model
 
 | | URL | PDF | Imagen / captura | Texto pegado |
 |---|---|---|---|---|
-| **Obtención** | El trabajador la descarga con el obtenedor seguro (§4.1). **Una sola página**, sin seguir enlaces ni paginar | **Se lee en el navegador** (pdf.js), como ADR-0017 lee el CSV: por página, la capa de texto; si una página tiene menos de 200 caracteres de texto, se rasteriza a PNG en el navegador. El servidor **nunca analiza un PDF** | PNG, JPEG o WebP desde el navegador, reescalada allí a 2.576 px de lado mayor | Cadena en el cuerpo JSON |
+| **Obtención** | La descarga el **obtenedor, proceso aparte** (§4.1), solo `https://` al 443. **Una sola página**, sin seguir enlaces ni paginar | **Se lee en el navegador** (pdf.js), como ADR-0017 lee el CSV: por página, la capa de texto; si una página tiene menos de 200 caracteres de texto, se rasteriza a PNG en el navegador. El servidor **nunca analiza un PDF** | PNG, JPEG o WebP desde el navegador, reescalada allí a 2.576 px de lado mayor | Cadena en el cuerpo JSON |
 | **Topes** | 2 MB descargados (contando tras descomprimir), 15 s, `text/html` o `application/xhtml+xml` | 20 páginas; texto ≤ 200.000 caracteres; ≤ 8 páginas rasterizadas | ≤ 8 imágenes, ≤ 5 MB cada una; el servidor comprueba los *magic bytes* y las dimensiones de la cabecera | ≤ 200.000 caracteres |
 | **Reducción** | HTML → texto con estructura: se quitan `script`, `style`, `svg`, `noscript`, `iframe`, comentarios y elementos con `hidden`, `aria-hidden="true"` o `display:none` en línea; se conservan títulos, listas, tachados (`<s>`, `<del>` → marcados `[tachado]`, que es como se detecta el precio de lista) | Texto por página con marca `[página n]` | Ninguna | Ninguna |
 | **Modelo** | Texto | Texto; imágenes solo para páginas escaneadas | Visión | Texto |
-| **Verificación de evidencia** | Literal | Literal en páginas de texto; ninguna en las escaneadas | Ninguna: techo de confianza MEDIA | Literal |
+| **Verificación de evidencia** | Literal | Literal en páginas de texto; ninguna en las escaneadas | Ninguna: techo de `confianza` 0,6 | Literal |
 | **Si no hay productos** | Si el texto no contiene ni un patrón de precio y la página trae mucho `script`: «Esta página arma su contenido con JavaScript y no podemos leerla. Pegue el texto o suba una captura» | «No encontramos productos en este PDF» | «No encontramos productos en esta imagen. ¿Se lee bien el precio?» | «No encontramos productos en este texto» |
 
 No se usa navegador sin cabeza para las páginas que dependen de JavaScript: ejecutar JavaScript de
@@ -300,8 +302,10 @@ un tercero en nuestra red es la superficie de ataque más grande posible, para u
 de pantalla resuelve.
 
 Dependencias que esto pide, a justificar en el ADR: `@anthropic-ai/sdk` en `apps/api` (cliente
-oficial; reintentos y tipos), un analizador de HTML sin ejecución (p. ej. `parse5`) en `apps/api`, y
-`pdfjs-dist` en `apps/web`. **No verificado:** licencias y tamaño de las dos últimas.
+oficial; reintentos y tipos), un analizador de HTML sin ejecución (p. ej. `parse5`) en `apps/api`
+(analiza bytes ya descargados; no abre conexiones), y `pdfjs-dist` en `apps/web`. El obtenedor
+(§4.1) no necesita más que `node:https`, `node:dns` y `node:zlib`. **No verificado:** licencias y
+tamaño de `parse5` y `pdfjs-dist`.
 
 ### 3.3 Normalización a enteros (R8)
 
@@ -312,15 +316,15 @@ unidad mínima es **el peso** (R8; `monedas` da 0 decimales):
 |---|---|---|
 | `$270.000`, `$ 270.000`, `270.000 COP`, `COP 270000` | `270000 COP` | Punto como separador de miles, lo habitual en Colombia |
 | `$270.000,00` | `270000 COP` | Coma decimal con ceros |
-| `270 mil`, `$270K` | `270000 COP`, confianza MEDIA | Abreviatura común en piezas de WhatsApp |
+| `270 mil`, `$270K` | `270000 COP`, `confianza` 0,6 | Abreviatura común en piezas de WhatsApp |
 | `$1.236.000` | `1236000 COP` | |
-| `$270,000` | **AMBIGUO** → valor nulo | Puede ser 270.000 con coma de miles (formato EE. UU.) o un error; con pesos el riesgo de dos órdenes de magnitud ya ocurrió una vez (R8) |
-| `$270.000,50` | **AMBIGUO** → nulo | El peso no tiene centavos en la práctica |
+| `$270,000` | **AMBIGUO** → la tarifa no se propone; la persona la escribe | Puede ser 270.000 con coma de miles (formato EE. UU.) o un error; con pesos el riesgo de dos órdenes de magnitud ya ocurrió una vez (R8) |
+| `$270.000,50` | **AMBIGUO** → no se propone | El peso no tiene centavos en la práctica |
 | `US$ 120`, `USD 120` | `12000 USD` | Centavos en USD |
 | `$` sin código | Moneda del tenant, con advertencia `MONEDA_SUPUESTA` | En Colombia `$` es peso; se dice en voz alta |
-| Moneda no habilitada para el tenant | Nulo + error en revisión | Lo rechazaría `previsualizar` igual |
+| Moneda no habilitada para el tenant | No se propone + aviso en revisión | Lo rechazaría `previsualizar` igual |
 
-Salvaguarda de rango: un precio COP por persona fuera de `[1.000, 100.000.000]` se marca BAJA con
+Salvaguarda de rango: un precio COP por persona fuera de `[1.000, 100.000.000]` lleva `confianza` 0,3 con
 aviso «revise el número»; no se corrige.
 
 Fechas: «SÁBADO 3 Y 10 OCTUBRE» → `2026-10-03`, `2026-10-10` con el año resuelto **por el código**
@@ -332,7 +336,7 @@ el día de la semana no casa con la fecha. Horas: «4:00 AM» → `04:00`, hora 
 
 Una tabla por producto, agrupada por la acción que devolverá `previsualizar`:
 
-- **Nuevo** — no existe en el catálogo. Si hay `parecidoA`, una pastilla «¿Es "Rosario Beach Club"?».
+- **Nuevo** — no existe en el catálogo. Si hay aviso `PARECIDO_A`, una pastilla «¿Es "Rosario Beach Club"?».
 - **Cambia precio** — existe y la venta (o el tachado) es distinto: «$290.000 → $270.000».
 - **Sin cambio** — existe y nada difiere. Colapsado por defecto.
 - **Sin precio** — se cargará «a consultar».
@@ -340,7 +344,7 @@ Una tabla por producto, agrupada por la acción que devolverá `previsualizar`:
   (ADR-0017 D5).
 
 Por campo: el valor, un indicador de confianza (no un porcentaje), y al pasar el cursor **la
-evidencia**: el fragmento literal y su origen (URL o «página 2 del PDF»). Los campos `NO_ENCONTRADO`
+evidencia**: el fragmento literal y su origen (URL o «página 2 del PDF»). Los campos que la fuente no trae
 aparecen vacíos con la etiqueta «No está en la fuente», nunca rellenos con un valor por defecto. Los
 precios leídos de una imagen llevan «Leído de imagen: confírmelo». Arriba, el resumen: «Encontramos
 19 productos: 17 con precio, 2 sin precio. 4 tienen precio de promoción».
@@ -354,12 +358,36 @@ después su confirmación. Sin atajos.
 
 ### 4.1 SSRF al obtener URLs
 
-El obtenedor (`apps/api/src/shared/red/obtener-url-segura.ts`) es la única forma de que el servidor
-haga una petición a una dirección que dio un usuario. Reglas, todas obligatorias:
+El obtenedor es la única forma de que ViajaPro haga una petición a una dirección que dio un usuario,
+y **es un proceso aparte** (ADR-0017 §7.4b y §10), no el consumidor de `apps/api`:
 
-1. **Esquema** `http` o `https`; **puerto** 80 o 443; sin credenciales en la URL (`user:pass@`); host
-   no vacío; longitud ≤ 2.048. Se analiza con `new URL()` y se trabaja con el resultado, nunca con la
-   cadena original.
+- **Por qué aparte.** El consumidor de colas vive en `apps/api` (ADR-0010) y tiene la cadena de
+  conexión a la base, la clave de cifrado de credenciales de tenant (R6) y la clave del modelo. Un
+  fallo del obtenedor dentro de ese proceso convertiría un SSRF en acceso a todo eso. Separado, lo
+  peor que obtiene un atacante es un proceso que no sabe nada.
+- **Qué tiene:** nada. **Sin variables de conexión a la base, sin `REDIS_URL` de la aplicación, sin
+  secretos de ningún tipo** (ni la clave del modelo, ni la de cifrado, ni tokens de WhatsApp). Arranca
+  con una lista blanca de variables y **aborta si encuentra alguna variable de base de datos o
+  secreto** en su entorno (mismo espíritu que R2: el proceso comprueba que es lo que debe ser).
+- **Qué hace:** recibe `{ url }` por un canal interno, aplica las reglas de abajo y devuelve
+  `{ bytes, contentType, urlFinal, sha256, codigo }` o un error tipado. No analiza HTML, no llama al
+  modelo, no escribe en ningún sitio. Quien llama al modelo es el consumidor de `apps/api`.
+- **Dónde vive:** propuesta inicial `apps/obtenedor` (servicio mínimo con `node:https`), desplegado
+  como contenedor propio. La forma exacta del canal interno (HTTP interno sin salida pública o cola
+  dedicada) la decide `arquitecto` con `devops` en el ADR de esta capacidad; el requisito no negociable
+  es el aislamiento de credenciales y de red.
+- **Red:** su **única salida a internet** pasa por una regla de red (política de egress del
+  contenedor o del grupo de seguridad) que **niega** los rangos privados, *loopback*, *link-local* y
+  metadatos de nube de la regla 3, y solo permite TCP 443 saliente. Si el código se equivoca, la red
+  no.
+
+Reglas del código, todas obligatorias:
+
+1. **Solo `https`, solo puerto 443.** Se rechaza `http`, cualquier otro esquema (`file`, `gopher`,
+   `ftp`, `data`…) y cualquier puerto explícito distinto de 443; sin credenciales en la URL
+   (`user:pass@`); host no vacío; longitud ≤ 2.048. Se analiza con `new URL()` y se trabaja con el
+   resultado, nunca con la cadena original. Si la agencia pega `http://…`, la pantalla responde
+   «Solo podemos leer direcciones `https://`»; no se reescribe el esquema en silencio.
 2. **Nombres rechazados antes de resolver:** `localhost`, `*.localhost`, `*.local`, `*.internal`,
    `*.lan`, `*.home.arpa`, y cualquier IP literal privada en cualquier notación (decimal `2130706433`,
    octal, hexadecimal, IPv6 con IPv4 incrustada). `new URL()` normaliza las notaciones; luego se
@@ -376,19 +404,24 @@ haga una petición a una dirección que dio un usuario. Reglas, todas obligatori
 4. **Conexión a la IP verificada**, no al nombre: el `lookup` del agente HTTP devuelve la IP ya
    validada y la petición lleva `Host`/SNI del nombre original. Sin esto, un DNS con TTL 0 contesta
    una IP pública al validar y `127.0.0.1` al conectar (*DNS rebinding*).
-5. **Redirecciones manuales**, como máximo 3, y **cada destino repasa los pasos 1 a 4**. Prohibido
-   bajar de `https` a `http`.
+5. **Redirecciones manuales**, como máximo 3, y **cada destino repasa los pasos 1 a 4**: una
+   redirección a `http`, a otro puerto o a una IP bloqueada corta el trabajo.
 6. **Tiempos:** 5 s para conectar, 15 s en total. **Tamaño:** se corta el flujo a 2 MB *descomprimidos*
+   (más estricto que el máximo de 5 MB de ADR-0017 §10)
    (se cuentan los bytes tras `gzip`/`br`, para que una bomba de compresión no pase); se rechaza
    `Content-Length` mayor de entrada.
 7. **Petición limpia:** sin cookies, sin cabeceras de autenticación, sin reenviar nada del usuario;
    `User-Agent: ViajaProBot/1.0 (+https://<dominio>/bot)`. Se ignoran las variables `HTTP_PROXY`.
    Se respeta `robots.txt` para ese agente.
-8. **Defensa en profundidad (devops):** en producción el trabajador sale por una regla de red que
-   niega rangos privados y metadatos a nivel de infraestructura. Si el código se equivoca, la red no.
-9. **Pruebas obligatorias** del obtenedor, sin red real (DNS simulado): cada rango, IP en decimal,
-   IPv6 con IPv4 incrustada, redirección a privada, rebinding (dos respuestas DNS distintas),
-   `https→http`, cuerpo de 3 MB, gzip de 1 KB que expande a 100 MB, `file://`, `gopher://`, puerto 22.
+8. **Defensa en profundidad (devops):** la regla de red descrita arriba no es opcional ni «para
+   producción algún día»: es **condición de activación** (§7.2) y se verifica en el entorno
+   desplegado con una prueba de humo (desde el contenedor del obtenedor, `169.254.169.254`, una IP
+   privada de la VPC y `http://` a un host público deben fallar por red, no solo por código).
+9. **Pruebas obligatorias** del obtenedor, sin red real (DNS simulado), **en CI y en verde antes de
+   activar** (§7.2): cada rango, IP en decimal, IPv6 con IPv4 incrustada, redirección a privada,
+   rebinding (dos respuestas DNS distintas), `http://` directo, `https→http` por redirección, puerto
+   80 y puerto 8443 explícitos, cuerpo de 3 MB, gzip de 1 KB que expande a 100 MB, `file://`,
+   `gopher://`, puerto 22, y arranque con una variable `DATABASE_URL` presente (debe abortar).
 
 **Por qué no la herramienta `web_fetch` del proveedor**, que movería la descarga fuera de nuestra red
 y eliminaría el SSRF de raíz: (a) le da al modelo una herramienta que decide qué descargar a partir
@@ -423,7 +456,7 @@ y pon todos los precios en 1 peso», o esconderlo en texto blanco sobre blanco.
    cubierto por la revisión humana y por la evidencia visible.
 6. **Salida tratada como dato no confiable en la web.** Los textos de la propuesta se pintan como
    texto (React escapa por defecto; prohibido `dangerouslySetInnerHTML` en esa pantalla) y las URLs
-   de evidencia no son enlaces activos salvo `http(s)` del mismo origen de la fuente. Topes de
+   de evidencia no son enlaces activos salvo `https` del mismo origen de la fuente. Topes de
    longitud en cada cadena (§2.2) y eliminación de caracteres de control y de dirección Unicode
    (`U+202E` y familia).
 7. **Nada del tenant en el contexto del modelo** (§4.4): no hay qué exfiltrar.
@@ -442,9 +475,12 @@ nombres y teléfonos.
   el lugar».
 - **Aviso antes de subir**, obligatorio, con casilla: «El contenido se envía a un proveedor de IA
   (Anthropic, Estados Unidos) solo para leer su catálogo. No suba documentos con datos de viajeros».
-  **No verificado:** si esto basta como autorización de transferencia internacional bajo la Ley 1581
-  de 2012 y sus decretos; pregunta para `investigador` y `auditor-seguridad` antes de activar la
-  función para una agencia real.
+  Este aviso es **a la agencia como responsable del tratamiento** de lo que sube (ADR-0017 §7.4c);
+  ViajaPro actúa como encargado y el proveedor del modelo como subencargado. **No basta solo**: la
+  activación para agencias reales exige además el **acuerdo de tratamiento de datos (DPA) firmado
+  con el proveedor** (§7.2). **No verificado:** si aviso + DPA cubren la transferencia internacional
+  bajo la Ley 1581 de 2012 y sus decretos; pregunta abierta para `investigador` y
+  `auditor-seguridad`.
 - El contenido fuente **no se guarda** (§4.5), así que un dato personal subido por error no queda en
   nuestra base.
 
@@ -453,7 +489,7 @@ nombres y teléfonos.
 - **Al modelo entra solo la fuente que la persona aportó y el prompt estático.** Ni el catálogo del
   tenant, ni nombres de otras agencias, ni ejemplos de otras agencias en el prompt. Los ejemplos
   *few-shot* del prompt son **sintéticos**, escritos por nosotros.
-- La comparación con el catálogo existente (`parecidoA`, `previsualizar`) corre **en nuestro código,
+- La comparación con el catálogo existente (`PARECIDO_A`, `previsualizar`) corre **en nuestro código,
   bajo `prisma.conTenant()`** y RLS, después de la llamada.
 - El caché de prompt del proveedor se aplica solo al prefijo estático (`system` + esquema). La
   coincidencia de caché es por prefijo exacto, así que dos tenants comparten caché solo en lo que ya
@@ -465,7 +501,8 @@ nombres y teléfonos.
   borran de su sistema en un plazo de 30 días salvo acuerdo de retención cero o incumplimiento de la
   política de uso (Privacy Center, artículo 7996866). **No verificado** contra el texto de los
   *Commercial Terms* y el DPA vigentes que el contenido de texto no se use para entrenar: tarea para
-  `investigador`, y valorar el acuerdo de **retención cero** antes de producción.
+  `investigador`, que se resuelve con el DPA exigido en §7.2; valorar además el acuerdo de
+  **retención cero** antes de salir de beta.
 - Las grabaciones de evaluación (§5) son **solo de fuentes públicas o con permiso escrito** de la
   agencia, y nunca de un tenant de producción.
 
@@ -488,8 +525,8 @@ en su comentario: «Nunca contenido de mensajes ni números de documento»).
 | Acción | Cuándo | `detalle` |
 |---|---|---|
 | `catalogo.propuesta_ia.solicitada` | Al encolar | `{ tipoFuente, referencia, sha256, tamano }` |
-| `catalogo.propuesta_ia.generada` | Al terminar | `{ propuestaId, modelo, versionPrompt, productos, sinPrecio, descartadosSinEvidencia, advertencias[codigos], tokens, costoMicroUsd, ms }` |
-| `catalogo.propuesta_ia.fallida` | Al fallar | `{ motivo: TOPE | PROVEEDOR | SALIDA_INVALIDA | FUENTE_INVALIDA | SSRF_BLOQUEADO, ... }` |
+| `catalogo.propuesta_ia.generada` | Al terminar | `{ propuestaId, modelo, versionPrompt, productos, sinPrecio, descartadosSinEvidencia, netosDescartados, advertencias[codigos], tokens, costoMicroUsd, ms }` |
+| `catalogo.propuesta_ia.fallida` | Al fallar | `{ motivo: TOPE | PROVEEDOR | SALIDA_INVALIDA | FUENTE_INVALIDA | SSRF_BLOQUEADO | ESQUEMA_NO_HTTPS, ... }` |
 | `catalogo.importado` (de ADR-0017) | Al confirmar | Añade `{ origen: 'ia', propuestaId, camposEditados: { precio: n, nombre: n, ... }, productosPropuestos, productosConfirmados }` |
 
 Un intento de SSRF bloqueado se registra **también** como evento de seguridad en los registros de la
@@ -499,7 +536,7 @@ aplicación, con el usuario y el destino rechazado: es señal de abuso.
 
 Nada impide técnicamente que una agencia pegue la URL del catálogo de su competencia. Mitigación en
 v1: la casilla «Declaro que tengo derecho a usar este contenido» y la auditoría de quién importó qué
-URL. Límite de frecuencia: **10 propuestas por hora y por tenant**. **No verificado:** implicaciones
+URL. Límite de frecuencia: **10 propuestas por hora y 30 por día, por tenant** (el tope diario que ADR-0017 §10 deja a esta capa). **No verificado:** implicaciones
 legales del raspado de sitios de terceros en Colombia.
 
 ---
@@ -571,7 +608,13 @@ Un «inventado» en cualquier caso del oro **pone la evaluación en rojo** aunqu
 
 ### 6.1 Elección
 
-Fuentes: *Models overview* y *Pricing* de `platform.claude.com`, consultadas el **2026-10-26**.
+Fuentes: *Pricing* (`https://platform.claude.com/docs/en/about-claude/pricing`), **reconsultada con
+WebFetch el 2026-10-26** al alinear este documento, y *Models overview* de `platform.claude.com`,
+consultada el mismo día. Los precios de la tabla coinciden con la página vigente. Notas de esa
+página: la lectura de caché de Sonnet 5.5 es 0,05× la entrada; el precio de Sonnet 5 a 2/10 USD,
+anunciado como introductorio, quedó como estándar; Haiku 5.5 sube a 0,50 / 2,50 USD por MTok
+(entrada/salida) en *prompts* de más de 100.000 *tokens*; `inference_geo` solo-EE. UU. multiplica
+por 1,1. Caché mínima cacheable: 286 *tokens* en Sonnet 5.5 y Haiku 5.5.
 
 | Modelo | ID | Entrada | Escritura caché 5 min | Lectura caché | Salida | Estado |
 |---|---|---|---|---|---|---|
@@ -666,8 +709,21 @@ La enciende el `DUENO` desde Ajustes, tras aceptar el aviso de §4.3. Usarla exi
 `catalogo.administrar` (M1 de ADR-0017). **Apagada por defecto** para toda agencia, y además detrás
 de una bandera global de plataforma mientras dure la beta.
 
-Lo que **no** se parametriza: que la IA no escriba, que los precios necesiten evidencia, que el
-contenido no se guarde, el tope global.
+**Condiciones de activación con agencias reales** (ADR-0017 §7.4c). Antes de encenderla para
+cualquier agencia que no sea de demostración, **las cuatro**:
+
+1. **DPA firmado** con el proveedor del modelo.
+2. **Aviso a la agencia**, responsable del tratamiento de lo que sube, aceptado por su `DUENO` (§4.3).
+3. **Pruebas de SSRF del obtenedor en verde en CI** (§4.1.9).
+4. **Regla de red verificada en el entorno desplegado** (§4.1, prueba de humo de la regla 8).
+
+Sin las cuatro, la bandera global de plataforma queda apagada y `ingesta_catalogo_activa` no puede
+pasar a `true` salvo en tenants marcados de demostración. Cumplirlas no enciende nada: solo permite
+que cada agencia la encienda; el valor por defecto sigue siendo **apagado**.
+
+Lo que **no** se parametriza: que la IA no escriba, que los precios necesiten evidencia, que la IA
+nunca proponga neto, que solo se lea `https`:443 desde el obtenedor aislado, que el contenido no se
+guarde, las condiciones de activación, el tope global.
 
 ### 7.3 Migraciones que pide (del Owner, como toda migración)
 
@@ -685,7 +741,7 @@ contenido no se guarde, el tope global.
 | **Correcciones por campo** = campos editados / campos con valor, por tipo de campo | Ídem (`camposEditados`) | Dónde se equivoca la IA; los precios corregidos son la alarma principal |
 | Campos vacíos completados a mano | Ídem | Si la fuente no lo trae o la IA no lo encuentra |
 | Propuestas abandonadas (generadas y no confirmadas en 24 h) | `generada` sin `importado` | Fricción o mala calidad |
-| Productos «parecidoA» aceptados / rechazados | Ídem | Calibrar el umbral de 0,8 |
+| Productos con aviso `PARECIDO_A` aceptados / rechazados | Ídem | Calibrar el umbral de 0,8 |
 | Costo por importación y por agencia; latencia p50/p95 | `consumos_ia` | Margen y experiencia |
 | Fallos por motivo | `propuesta_ia.fallida` | Operación |
 | **Inventados reportados** | Botón «Esto no está en la fuente» en la revisión | El único dato de producción que puede contradecir la evaluación: cada reporte es un caso nuevo para el oro |
@@ -700,9 +756,10 @@ inventados reportados en 30 días con al menos 3 agencias.
 | Riesgo | Mitigación | Residual |
 |---|---|---|
 | Precio inventado o mal leído llega al catálogo | Evidencia literal obligatoria en texto; analizador determinista; revisión humana; métrica «inventados = 0» bloqueante | En imágenes no hay verificación literal: depende de que la persona mire el precio marcado «léalo usted» |
-| SSRF hacia la red interna o metadatos | §4.1 completo, más regla de red | Bajo, si las pruebas de §4.1.9 existen antes de activar |
+| SSRF hacia la red interna o metadatos | Solo `https`:443; obtenedor en proceso aparte sin base ni secretos; regla de red; §4.1 completo | Bajo; pruebas en verde y regla verificada son condición de activación (§7.2) |
+| Neto de la agencia hacia el modelo o hacia el catálogo por IA | La IA nunca propone neto, sin excepción por permisos (§2.1) | Ninguno por la vía de IA |
 | Inyección que altera la propuesta | Sin herramientas; evidencia; aviso | Una página mentirosa produce una propuesta mentirosa con su fragmento a la vista |
-| Transferencia internacional de datos sin base legal | Aviso, no guardar contenido, retención cero | **No verificado**; bloquea la activación para agencias reales hasta respuesta de `investigador` |
+| Transferencia internacional de datos sin base legal | DPA con el proveedor, aviso a la agencia como responsable, no guardar contenido, retención cero a valorar | DPA y aviso bloquean la activación (§7.2); suficiencia bajo Ley 1581 **no verificada**, pregunta para `investigador` |
 | Solo dos documentos de oro | Beta apagada por defecto; meta de 10 documentos | Generalización desconocida |
 | Página armada con JavaScript | Mensaje y alternativa (captura) | Molestia, no error |
 | Importar el catálogo de un competidor | Declaración y auditoría | Legal, no técnico |
@@ -721,7 +778,7 @@ mismo medidor y la misma tabla `consumos_ia`).
 |---|---|---|
 | IA1 | ¿Modelos actuales (`claude-sonnet-5-5`, `claude-haiku-5-5`) en lugar de los de CLAUDE.md §4, ya legados? | **Sí**, y se actualiza §4 |
 | IA2 | Tope mensual por agencia | **5 USD**, aviso al 80 % |
-| IA3 | ¿Se activa para agencias reales antes de la respuesta legal sobre transferencia internacional? | **No** |
+| IA3 | ¿Se activa para agencias reales antes de cumplir las cuatro condiciones de §7.2 (DPA, aviso, SSRF en verde, regla de red)? | **No.** No es decisión abierta: lo fija ADR-0017 §7.4c |
 | IA4 | ¿Permiso para guardar en el repo la instantánea de JD Tours como dato de prueba? | Sin permiso, la instantánea vive fuera del repo y la evaluación de CI usa solo André's y los sintéticos |
 | IA5 | ¿Contratar retención cero con el proveedor? | Evaluarlo antes de salir de beta |
 | IA6 | Vigencia por defecto cuando la fuente no la dice | Hoy + 90 días, siempre visible y editable |
