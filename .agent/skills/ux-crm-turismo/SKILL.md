@@ -53,5 +53,13 @@ Cargando (**esqueleto**, no spinner), vacío (con una acción que lleve a resolv
 4. Busca texto en inglés, números sin formato y colores fuera de los tokens.
 5. Declara en `traspaso/ENTREGA.md` qué no pudiste verificar en navegador.
 
-## Si necesitas explorar un diseño nuevo
-Usa Stitch para explorar 2–3 direcciones, pero **los tokens y componentes del proyecto mandan**: Stitch sugiere, no decide. Implementa con los componentes existentes y shadcn/ui.
+## Flujo con Google Stitch (obligatorio en pantallas nuevas o rediseñadas)
+Antigravity tiene Stitch: úsalo **antes** de escribir el componente, no después.
+1. Proyecto ya creado: **«ViajaPro — CRM para agencias de turismo»**, id `8333038101997719867`. Reutilízalo; no abras otro.
+2. Escribe el flujo y la jerarquía en texto (qué ve el asesor primero, qué acción es la principal).
+3. `generate_screen_from_text` en ese proyecto, con la paleta y tipografía de `docs/01-producto/09-especificacion-visual.json`. Explora 2–3 direcciones. Las generaciones tardan: lanza y vuelve a consultar con `list_screens`/`get_screen`.
+4. Critica la imagen contra esta skill (¿se ve de turismo? ¿precio, promo, cupos y cargos en destino bien resueltos? ¿375 px?).
+5. Extrae el contexto de diseño y **reconcilia con nuestros tokens y componentes**: Stitch sugiere, no decide; los tokens del proyecto mandan.
+6. Implementa con los componentes existentes y shadcn/ui, y deja en `traspaso/ENTREGA.md` el id de la pantalla de Stitch que usaste como referencia.
+
+Encargo de partida para la primera pantalla (catálogo de excursiones): cuadrícula de tarjetas con foto caribeña, nombre, duración «1 día», horario de salida, «Desde $450.000 por persona» con precio de lista tachado y etiqueta de promo vigente, chips de lo que incluye, aviso «Impuesto de muelle no incluido», próximas salidas con cupos, estado vacío «Aún no tienes excursiones. Importa tu catálogo o crea la primera», y botones «Importar desde Excel» y «Nueva excursión».
