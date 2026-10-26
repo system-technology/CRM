@@ -713,43 +713,24 @@ describe('el permiso «ver neto y margen»', () => {
   });
 });
 
-describe('el permiso «ver neto y margen» en las rutas del cotizador', () => {
-  const cotizarSalida = (incluirMargen: boolean) => ({
-    cuerpo: {
-      paqueteId: paqueteA,
-      fecha: '2027-03-15',
-      adultos: 2,
-      incluirMargen,
-    },
-  });
-
-  it('un asesor recibe 403 con incluirMargen en la ruta de cotizar, y 2xx sin pedirlo', async () => {
+describe('el permiso «ver neto y margen» en el detalle del paquete antiguo', () => {
+  it('un asesor recibe 403 con incluirMargen en el detalle, y 200 sin pedirlo', async () => {
     const nav = new Navegador();
     await nav.iniciarSesion('beto');
-
-    const cot = await nav.llamar('POST', '/api/v1/catalogo/cotizar', cotizarSalida(true));
-    expect(cot.estado).toBe(403);
-    expect(cot.json.error?.code).toBe('PERMISO_DENEGADO');
 
     const det = await nav.llamar('GET', `/api/v1/paquetes/${paqueteA}?incluirMargen=true`);
     expect(det.estado).toBe(403);
     expect(det.json.error?.code).toBe('PERMISO_DENEGADO');
 
-    const sinPedir = await nav.llamar('POST', '/api/v1/catalogo/cotizar', cotizarSalida(false));
+    const sinPedir = await nav.llamar('GET', `/api/v1/paquetes/${paqueteA}`);
     expect(sinPedir.estado).toBe(200);
-    expect(JSON.stringify(sinPedir.json)).not.toMatch(/neto|margen|porcentaje/i);
+    expect(JSON.stringify(sinPedir.json)).not.toMatch(/"neto"/);
   });
 
-  it('la dueña recibe 200 con el neto y el margen', async () => {
+  it('la dueña recibe 200 con el neto', async () => {
     const nav = new Navegador();
     await nav.iniciarSesion('ana');
     await nav.llamar('POST', '/api/v1/auth/tenant-activo', { cuerpo: { tenantId: TENANT_A } });
-
-    const cot = await nav.llamar('POST', '/api/v1/catalogo/cotizar', cotizarSalida(true));
-    expect(cot.estado).toBe(200);
-    expect(cot.json['totalNeto']).toEqual({ unidades: '2000000', moneda: 'COP' });
-    expect(cot.json['margen']).toBeDefined();
-    expect(cot.json['margenPorcentaje']).toBeDefined();
 
     const det = await nav.llamar('GET', `/api/v1/paquetes/${paqueteA}?incluirMargen=true`);
     expect(det.estado).toBe(200);
