@@ -227,7 +227,9 @@ export async function iniciarSesionApi(credenciales: IniciarSesionTipo): Promise
   }
 
   // Regla R3 / 0c.34: Validar respuesta 200 estrictamente con contrato Zod
-  return EsquemaSesionActual.parse(cuerpo);
+  const sesionParseada = EsquemaSesionActual.parse(cuerpo);
+  fijarSesionActiva(sesionParseada);
+  return sesionParseada;
 }
 
 /**
@@ -237,6 +239,7 @@ export async function iniciarSesionApi(credenciales: IniciarSesionTipo): Promise
 export async function cerrarSesionApi(): Promise<void> {
   if (!usaAuthReal()) {
     sesionEnMemoriaMock = null;
+    fijarSesionActiva(null);
     return;
   }
 
@@ -282,7 +285,9 @@ export async function obtenerSesionActualApi(): Promise<SesionActualTipo> {
     throw new AuthApiError('ERROR_SERVIDOR', 'Error al consultar la sesión actual', res.status);
   }
 
-  return EsquemaSesionActual.parse(cuerpo);
+  const sesionParseada = EsquemaSesionActual.parse(cuerpo);
+  fijarSesionActiva(sesionParseada);
+  return sesionParseada;
 }
 
 /**
@@ -334,5 +339,21 @@ export async function cambiarAgenciaActivaApi(tenantId: string): Promise<SesionA
     throw new AuthApiError('ERROR_SERVIDOR', 'Error al cambiar de agencia activa', res.status);
   }
 
-  return EsquemaSesionActual.parse(cuerpo);
+  const sesionParseada = EsquemaSesionActual.parse(cuerpo);
+  fijarSesionActiva(sesionParseada);
+  return sesionParseada;
+}
+
+let sesionActualEnMemoria: SesionActualTipo | null = null;
+
+export function fijarSesionActiva(sesion: SesionActualTipo | null): void {
+  sesionActualEnMemoria = sesion;
+}
+
+export function obtenerSesionActiva(): SesionActualTipo | null {
+  return sesionActualEnMemoria;
+}
+
+export function haySesionActiva(): boolean {
+  return Boolean(sesionActualEnMemoria?.tenantActivoId);
 }

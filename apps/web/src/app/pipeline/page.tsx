@@ -1,5 +1,7 @@
 'use client';
 
+import { useModoDemo } from '../../lib/modo-demo';
+
 import React, { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { EtapaDefinida, MotivoPerdida, Oportunidad, TableroPipeline } from '@viajapro/contracts';
@@ -16,16 +18,15 @@ import {
   formatearErrorAmigable,
   construirMensajeErrorAccionable,
 } from '../../lib/estados-ui-logica';
-import { usaAuthReal } from '../../lib/auth-api';
 import {
   obtenerTableroPipeline,
   moverOportunidadDeEtapa,
   estaUsandoApiReal,
-  obtenerTenantDemo,
   CrmApiError,
 } from '../../lib/crm-api';
 
 export default function PipelinePage() {
+  const { esDemo } = useModoDemo();
   const [tablero, setTablero] = useState<TableroPipeline>(() => obtenerMockTableroPipeline());
   const [vista, setVista] = useState<'kanban' | 'tabla'>('kanban');
   const [filtroTexto, setFiltroTexto] = useState('');
@@ -39,21 +40,13 @@ export default function PipelinePage() {
   const [cargandoApi, setCargandoApi] = useState<boolean>(estaUsandoApiReal());
 
   const cargarTablero = () => {
-    if (!estaUsandoApiReal()) {
+    if (!estaUsandoApiReal() || esDemo) {
+      setTablero(obtenerMockTableroPipeline());
       setEsModoSimulado(true);
       setCargandoApi(false);
+      setErrorConfiguracion(null);
+      setErrorCarga(null);
       return;
-    }
-
-    if (!usaAuthReal()) {
-      const tenant = obtenerTenantDemo().trim();
-      if (!tenant) {
-        setErrorConfiguracion(
-          'El interruptor NEXT_PUBLIC_USE_REAL_CRM está activado, pero falta NEXT_PUBLIC_DEV_TENANT_ID en el archivo .env.',
-        );
-        setCargandoApi(false);
-        return;
-      }
     }
 
     setCargandoApi(true);
@@ -85,7 +78,7 @@ export default function PipelinePage() {
   // Carga inicial del tablero (API real si está disponible y configurada, o mock)
   useEffect(() => {
     cargarTablero();
-  }, []);
+  }, [esDemo]);
 
   // Estado del modal de pérdida
   const [oportunidadPendientePerdida, setOportunidadPendientePerdida] = useState<{

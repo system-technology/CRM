@@ -204,4 +204,23 @@ describe('BarraModulos y Selector de Sesión (ADR-0011)', () => {
       });
     });
   });
+  describe('Modo Real por defecto y Modo Demostración explícito (Bloque 1)', () => {
+    it('muestra el indicador de API conectada en modo real', () => {
+      render(<BarraModulos sesionInicial={SESION_ASESOR} />);
+      expect(screen.getByTestId('indicador-api-conectada')).toBeDefined();
+    });
+
+    it('permite alternar el modo demostración desde el diálogo de perfil', () => {
+      render(<BarraModulos sesionInicial={SESION_ASESOR} />);
+      const btnAvatar = screen.getByTestId('boton-avatar-sesion');
+      fireEvent.click(btnAvatar);
+
+      const toggleDemo = screen.getByTestId('boton-alternar-demo');
+      expect(toggleDemo).toBeDefined();
+      expect(toggleDemo.getAttribute('aria-checked')).toBe('false');
+
+      fireEvent.click(toggleDemo);
+      expect(toggleDemo.getAttribute('aria-checked')).toBe('true');
+    });
+  });
 });

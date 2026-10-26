@@ -38,9 +38,8 @@ export function obtenerTenantDemo(): string {
   return process.env['NEXT_PUBLIC_DEV_TENANT_ID'] ?? '';
 }
 
-export function estaUsandoApiReal(): boolean {
-  return process.env['NEXT_PUBLIC_USE_REAL_CRM'] === 'true';
-}
+import { estaUsandoApiReal } from './crm-api';
+export { estaUsandoApiReal };
 
 export class CotizacionesApiError extends Error {
   constructor(
