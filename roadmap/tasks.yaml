@@ -1,0 +1,112 @@
+# ═══════════════════════════════════════════════════════════════════
+#  Roadmap ejecutable de ViajaPro
+#
+#  Única fuente de verdad de "qué hay que hacer" (sustituye a la cola de ESTADO.md,
+#  que queda como resumen corto: ADR-0016). Lo leen y escriben los agentes y el supervisor
+#  a través de tools/roadmap-mcp. Los humanos pueden editarlo a mano; el validador comprueba.
+#
+#  Estados: backlog → ready → in_progress → review → done | blocked | dropped
+#  Prioridad: P0 (producción rota/seguridad) P1 (esta fase) P2 (siguiente) P3 (idea)
+#  Esfuerzo: S (<1 ciclo) M (1-2 ciclos) L (3+ ciclos → dividir antes de empezar)
+#  Una tarea = UN carril (a: backend, b: frontend, i: integradora), con acceptance verificable
+#  y `files` que existan. Migraciones, RLS, cifrado, infra y dependencias son del Owner.
+# ═══════════════════════════════════════════════════════════════════
+
+meta:
+  version: 1
+  current_phase: 1
+  cycle_counter: 0
+  phases:
+    "1": Un CRM mostrable y endurecido (M1 del roadmap v2)
+    "2": Piloto con la agencia
+tasks:
+  - id: T-001
+    title: Comprobar la cabecera Origin en toda mutación de la API, no solo en auth y en el socket
+    type: security
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    acceptance:
+      - Un POST, PUT, PATCH o DELETE con una cabecera Origin que no esté en la lista permitida responde 403,
+        en cualquier controlador
+      - Las peticiones sin Origin (servidor a servidor, el webhook de Meta firmado) siguen funcionando
+      - Un test en apps/api/src/shared/red/ cubre origen permitido, origen ajeno y ausencia de origen
+      - pnpm compuertas --rapido verde
+    files:
+      - apps/api/src/shared/red/origen.ts
+      - apps/api/src/main.ts
+  - id: T-002
+    title: Límite de tasa en la API fuera del flujo de autenticación
+    type: security
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    acceptance:
+      - Un cliente que supera N peticiones por minuto a un endpoint de negocio recibe 429 con la cabecera
+        Retry-After
+      - El límite se mide por tenant y por IP y su valor sale de configuración, no de una constante en el
+        código
+      - El webhook firmado de WhatsApp no queda limitado por este mecanismo
+      - Un test en apps/api/src/shared/ demuestra el 429 y la recuperación tras la ventana
+    files:
+      - apps/api/src/shared/red/
+      - apps/api/src/main.ts
+  - id: T-003
+    title: Política de seguridad de contenido (CSP) y cabeceras de seguridad en la web
+    type: security
+    phase: 1
+    priority: P1
+    effort: S
+    status: backlog
+    acceptance:
+      - next.config.mjs emite Content-Security-Policy, X-Content-Type-Options y Referrer-Policy en todas las
+        rutas
+      - La CSP permite el origen de la API y el WebSocket de la bandeja configurados por variable, sin
+        unsafe-eval en producción
+      - Un test de apps/web verifica que las cabeceras están declaradas
+      - pnpm compuertas --rapido verde
+    files:
+      - apps/web/next.config.mjs
+  - id: T-004
+    title: Estados de carga, error y vacío en la pantalla del pipeline
+    type: feature
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    acceptance:
+      - apps/web/src/app/pipeline/page.tsx muestra un esqueleto mientras carga, un mensaje con reintento si la
+        API falla y un estado vacío con texto útil
+      - Un test de componente cubre los tres estados
+      - pnpm compuertas --rapido verde
+    files:
+      - apps/web/src/app/pipeline/page.tsx
+  - id: T-005
+    title: Estados de carga, error y vacío en la pantalla de contactos
+    type: feature
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    acceptance:
+      - apps/web/src/app/contactos/page.tsx muestra esqueleto, error con reintento y vacío con texto útil
+      - Un test de componente cubre los tres estados
+      - pnpm compuertas --rapido verde
+    files:
+      - apps/web/src/app/contactos/page.tsx
+  - id: T-006
+    title: Escribir en registros_auditoria las lecturas de datos sensibles de viajeros (R10)
+    type: security
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    acceptance:
+      - Leer un contacto con datos sensibles escribe una fila en registros_auditoria con tenant_id, actor,
+        acción y recurso, sin copiar el dato sensible al detalle
+      - Un test e2e en apps/api/src/modules/crm/ comprueba la fila y que otro tenant no la ve
+      - No se modifica el esquema de la base ni las migraciones
+    files:
+      - apps/api/src/modules/crm/

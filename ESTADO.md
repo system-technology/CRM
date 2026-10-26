@@ -6,11 +6,11 @@
 
 | Campo | Valor |
 |---|---|
-| Última actualización | 2026-10-20 (hasta el ADR-0013: despliegue, solo staging) |
+| Última actualización | 2026-10-20 (noche: ADR-0015; el CI, bloqueado por facturación) |
 | Actualizado por | Claude Opus 5.5 (`integrador`) |
-| Fase | **Rebanada vertical de paquetes, en construcción** |
-| Avance de la fase | Cotizador de punta a punta. **La cotización es la suma de sus tarifas y el precio «desde» es uno que el comprador puede pagar (v0.19.0).** Apretón de manos del webhook vivo. Bandeja web en construcción |
-| Próximo hito | **El trabajador que convierte un `change` recibido en mensaje de bandeja.** La compuerta de pruebas vuelve a ser compuerta: aislamiento 39/39 en tres corridas seguidas el 2026-10-19 |
+| Fase | **M1 del roadmap v2: endurecer antes de la piloto** |
+| Avance de la fase | `main` (v0.38.2) tiene el producto de punta a punta: el cotizador con versiones y estados; la bandeja web completa; el inbox con relay, barrido y tiempo real; la visibilidad por asignación; la autenticación con sesión e invitaciones; el correo por Postmark (el adaptador) y el blueprint de staging en Render. El CI es la compuerta de aislamiento. **Todavía no hay nada desplegado** |
+| Próximo hito | **Cerrar M1 del roadmap v2:** las pruebas de los P0; la implementación del ADR-0014 (cifrado del texto de los mensajes); las Actions fijadas por SHA; `Origin` en toda mutación; y la protección de `main` en el servidor, que es del usuario (AUD-004) |
 
 ---
 
@@ -140,6 +140,7 @@ Ordenada. La primera es la que debe tomarse ahora.
 
 | Bloqueo | Impacto | Dueño | Mitigación |
 |---|---|---|---|
+| **Auditoría integral (2026-10-20):** campos de mensajes/contactos con PII sensible sin cifrar y dos discrepancias en el cálculo de cotización | **No exponer a clientes reales** hasta decidir tratamiento de PII y corregir/verificar los casos de edad y silla; informe `docs/_auditorias/2026-10-20-auditoria-integral.md` | `arquitecto`, `auditor-seguridad`, `backend`, `experto-turismo` | Revisar los hallazgos alto/medio del informe antes del piloto; completar revisión legal antes de producción |
 | ~~La suite de aislamiento contra Neon compartido no sirve de compuerta mientras dure la deriva (la aserción 11, roja por una migración sin integrar)~~ | — | `datos` | **Cerrado en v0.33.0 (2026-10-20):** `20261019230000_identidad` ya está en `main`, con la misma `checksum` que en Neon. `migrate status` desde `main`: 22 migraciones, «up to date», sin nada pendiente ni divergente. **El CI sigue siendo la compuerta de aislamiento** |
 | ~~Rotar `WHATSAPP_WEBHOOK_VERIFY_TOKEN`~~ | — | Usuario | **Cerrado el 2026-10-19.** Rotado en los cuatro `.env`; el integrador comprobó que el valor viejo ya no aparece en ninguno. Meta nunca lo tuvo, porque el webhook no está configurado |
 | **Modo desatendido detenido en la compuerta** — el commit `59a52d8` amplía los permisos de los propios agentes | Cada commit y cada push siguen pidiendo autorización al propietario, con dos IA trabajando en paralelo | Usuario | **Solo el propietario puede aprobarlo, en su propia sesión**: el integrador no acepta de segunda mano un cambio a la configuración que define lo que los agentes pueden hacer sin preguntar. Y antes hay que sacar `git clean -xdf` de la lista de permitidos: borra lo no rastreado **y** lo ignorado, incluidos los tres `.env` |
@@ -1354,4 +1355,137 @@ Registro: [`docs/_integraciones/2026-10-20-adr-0013.md`](docs/_integraciones/202
 5. Los **Environments de GitHub** (`staging`), limitados a `main`.
 6. El **DNS** del dominio hacia Render.
 7. El **Paso 2 de Meta**: configurar el webhook con la URL pública de staging.
+
+## Integración del 2026-10-20 — v0.38.1: el blueprint de despliegue en staging (ADR-0013)
+
+`ci/despliegue-staging-render` @ `321fb46` entra en `main` (`6243144`), etiquetada **v0.38.1**. Lleva versión porque `/salud` en la web y el
+`output: standalone` cambian el artefacto web. Trae:
+
+- `render.yaml` en Ohio: web, API, trabajador y Key Value (`noeviction`, `ipAllowList` vacío), `autoDeployTrigger: off` y la matriz de secretos
+  por servicio;
+- los Dockerfiles de API (la misma imagen para la API y el trabajador) y de web, con usuario no root, y `.dockerignore`;
+- `deploy-staging.yml`, que corre tras `ci.yml` en verde y con un SHA de `main`, dentro del Environment `staging`. `DIRECT_URL` solo aparece
+  en los pasos de comprobar y de migrar, instala con `--ignore-scripts` y termina con los deploy hooks por servicio;
+- el job `imagenes-de-despliegue` en `ci.yml`;
+- la guía `docs/07-ingenieria/despliegue-staging.md`.
+
+`auditor-seguridad`: ACEPTAR CON DOS CAMBIOS, ya aplicados. `POSTMARK_SERVER_TOKEN` solo en el trabajador, y `DIRECT_URL` solo en el paso de
+migración. Compuerta: CI verde (9 jobs, `imagenes-de-despliegue` incluido) sobre el árbol fusionado, https://github.com/Alfavear/CRM/actions/runs/39530667590.
+**Sin secretos, el workflow termina en verde con un aviso**: el paso `secretos` pone `listo=false` y todos los demás tienen
+`if: … listo == 'true'`. Lo leí en el código; la primera corrida real es la del push de este merge.
+Registro: [`docs/_integraciones/2026-10-20-v0.38.1.md`](docs/_integraciones/2026-10-20-v0.38.1.md).
+
+**AUD-012:** el blueprint ya está en `main`. Para el usuario: los pasos de `docs/07-ingenieria/despliegue-staging.md`.
+
+| Cola | Dueño | Por qué no bloquea |
+|---|---|---|
+| **Carrera entre la migración y el hook**: el deploy hook de Render despliega la **cabeza** de la rama, no el SHA que se migró. Si entra otro commit entre los dos pasos, se despliega código que nadie migró | `devops` | Solo staging y sin tráfico. Hay que cerrarlo antes de producción |
+| Dos campos de `render.yaml` por comprobar en el primer sync: `dockerCommand` en el trabajador e `ipAllowList` en el Key Value | `devops` | Se ven en el primer sync con Render |
+| **Hallazgo de gobierno, severidad alta:** `autorizar-integracion.mjs` falla dentro de un worktree (escribe en `<worktree>/.git/…`, y ahí `.git` es un archivo), **y `guard-rama` no impide escribir en `main` desde otro worktree**. El integrador pudo hacer un merge en `main` desde `D:\Projects\CRM-gate` sin autorización; lo deshizo antes de empujar. Mientras no haya ruleset en el servidor (AUD-004), este hook es la **única** protección de `main` | `devops` | No se empujó nada. **No lo corrige el integrador** |
+
+## Integración del 2026-10-20 — v0.38.2: cierres de la auditoría externa, con pruebas
+
+`test/auditoria-externa-cierres` @ `6d28cd9` entra en `main` (`490005c`), etiquetada **v0.38.2**. No es la v0.38.1 porque ese número ya lo usó el
+despliegue. Cierra con pruebas:
+
+- **AUD-013 y AUD-015:** el arranque con roles prohibidos, la aserción `relforcerowsecurity` y REG-02, con 50 peticiones concurrentes cruzadas y
+  `connection_limit=2`;
+- **AUD-008:** `has_table_privilege` dinámico, que se vio en rojo en 39530859114;
+- **AUD-017:** el tope a los fallidos y la concurrencia acotada.
+
+**Además corrige un defecto real:** un webhook de más de 1 MB daba **500**, que Meta reintentaría. Ahora da **413**.
+
+**El filtro de excepciones afecta a todas las rutas, así que lo miré con detalle.** La rama nueva va **después** de `HttpException` y de los errores
+de dominio, de modo que solo toca lo que antes caía en el 500 genérico. Actúa únicamente si el error de `http-errors` trae `expose: true` y un
+`status` entre 400 y 499, y responde con un mensaje fijo, sin el detalle. Ningún 2xx ni ningún error de dominio cambia de respuesta. No se quitó
+ninguna aserción de aislamiento.
+
+**Compuerta:** CI verde sobre el árbol fusionado (la rama iba 8 por detrás), https://github.com/Alfavear/CRM/actions/runs/39532168838. Las
+estáticas en local, en verde.
+
+**`deploy-staging.yml` en su primera corrida real** (39532224931, tras el push de la v0.38.1): `migrar` en verde con
+`::notice::Faltan los secretos del Environment 'staging'`, y `desplegar` saltado. **Sin secretos termina en verde.**
+
+## Integración del 2026-10-20 — tres ramas de documentación, sin etiqueta
+
+| Rama | En `main` | Qué trae |
+|---|---|---|
+| `docs/informe-auditoria-externa` @ `4342d80` | `dd89aad` | El informe para la auditoría externa (629 líneas) |
+| `docs/auditoria-integral-2026-10-20` @ `7cbbfb1` | `eb860da` | La auditoría integral del propietario y su línea en §4 |
+| `docs/adr-0014-y-modelo-de-amenazas` @ `ac9b9aa` | `f91df23` | El ADR-0014, el STRIDE, el roadmap v2, los riesgos y la respuesta a la auditoría |
+
+Las tres son solo `docs/`, entraron sin conflictos y `format:check` sale limpio.
+
+**ADR-0014:** cifrado AES-256-GCM, HKDF por agencia y AAD `tenant‖mensaje‖columna`. No permite buscar en el cuerpo, y
+`conversaciones.ultimo_mensaje_texto` entra en el alcance. Lo aceptó el propietario («si avanza con lo que propones»), y `auditor-seguridad` lo
+aceptó con cambios. Uno de esos cambios deja escrito que con claves derivadas **no** se puede borrar criptográficamente una sola agencia.
+Registro: [`docs/_integraciones/2026-10-20-auditoria-y-adr-0014.md`](docs/_integraciones/2026-10-20-auditoria-y-adr-0014.md).
+
+### La auditoría externa — AUD-001 a AUD-017 (§5 de la respuesta, al día con v0.38.2)
+
+| Hallazgo | Estado | Dueño |
+|---|---|---|
+| AUD-001 | **ADR-0015 aceptado** (sustituye al 0014 y amplía su alcance). Falta la implementación (**M1.4**) | `backend`, `datos` |
+| AUD-002 | Aceptado y planificado; depende del ADR-0014 | `backend` |
+| AUD-003 | **Resuelto:** `docs/05-seguridad/01-modelo-de-amenazas.md` | `arquitecto` |
+| AUD-004 | Aceptado; necesita GitHub Pro o Team para tener *rulesets* en un repositorio privado | **Usuario** |
+| AUD-005 | Aceptado y planificado | `backend` |
+| AUD-006 | Aceptado y planificado | `devops` |
+| AUD-007 | Aceptado; acotado a `enrutamiento_historial` y a las tablas de auditoría | `datos` |
+| AUD-008 | **Cerrado con prueba (v0.38.2)** | `qa` |
+| AUD-009 | En curso | Antigravity |
+| AUD-010 | Bloqueado hasta que existan las cuentas de Meta y Postmark | Usuario |
+| AUD-011 | **Resuelto:** cabecera de `ESTADO.md` al día | integrador |
+| AUD-012 | **Blueprint integrado (v0.38.1)**; falta el primer despliegue con secretos | `devops`, Usuario |
+| AUD-013 | **Cerrado con prueba (v0.38.2)** | `qa` |
+| AUD-014 | Abierto. Ya existen los mutantes de `WITH CHECK` M3, M4 y M9; se cierra con el 100 % de los mutantes muertos | `qa` |
+| AUD-015 | **Cerrado con prueba (v0.38.2)** | `qa` |
+| AUD-016 | **Resuelto** (dictamen v3) | — |
+| AUD-017 | **Cerrado con prueba (v0.38.2)** | `qa` |
+
+### Hallazgos propios (§6 de la respuesta)
+
+| Hallazgo | Dueño |
+|---|---|
+| Existe `registros_auditoria`, pero **nada escribe en ella** (R10) | `backend` |
+| `Origin` solo se comprueba en `auth` y en el socket: deja abierto un CSRF entre subdominios. **Entra en M1** | `backend` |
+| La web **no tiene CSP** | Antigravity, `devops` |
+| **No hay límite de tasa** fuera de `auth` | `backend` |
+| Las **GitHub Actions no están fijadas por SHA**. **Entra en M1** | `devops` |
+
+### Hallazgos de la auditoría integral del propietario
+
+| Hallazgo | Dueño | Estado |
+|---|---|---|
+| La cotización no cuadra **por edad** ni **por silla**, y queda la **ruta antigua** | `backend` | En curso |
+| `/salud/listo` responde **200 aunque el servicio esté degradado** | `backend` | En curso |
+| ~~`Contacto.preferencias` guarda PII~~ | `arquitecto` | **Cubierta por el ADR-0015** |
+
+| Cola | Dueño | Por qué no bloquea |
+|---|---|---|
+| ~~El índice de `docs/README.md` sin el ADR-0014~~ | `documentador` | **Resuelto** con el índice del ADR-0015 |
+
+## Integración del 2026-10-20 — ADR-0015, cifrado de campos sensibles, sin etiqueta
+
+`docs/adr-0015-campos-sensibles` @ `17437fa` entra en `main` (`d8c43fe`). El ADR-0015 **sustituye al 0014**: lo mantiene entero y amplía su alcance.
+En el 0014 solo cambia la línea de estado. También trae el índice de `docs/README.md` y la bitácora. Lo aceptó el propietario («Acepto»), y
+`auditor-seguridad` lo aceptó con cambios, ya incorporados. Es solo documentación: no lleva etiqueta y `format:check` está limpio.
+**AUD-001** queda con el ADR-0015 aceptado y la implementación pendiente (M1.4). `Contacto.preferencias` queda cubierta.
+
+### Bloqueo: el CI de GitHub está parado por facturación
+
+Todas las corridas fallan a los 3 segundos con «recent account payments have failed or your spending limit needs to be increased». **Mientras no
+se arregle, no entra nada que necesite el CI como compuerta.** Lo resuelve el **Usuario**, en la facturación de GitHub.
+
+**Listas, esperando al CI:**
+
+| Rama | Qué trae |
+|---|---|
+| `fix/quoting-condiciones-y-salud` @ `109a2ee` | Hallazgos de la auditoría integral: tarifas con condición de edad o de silla, la retirada de la ruta antigua y `/salud` con 503 cuando está degradado |
+| `ci/acciones-por-sha-y-guard-rama` @ `d132189` | M1.5: 22 acciones fijadas por SHA y Dependabot. **Además cierra el hueco de `guard-rama`**: `git -C dir commit` pasaba sin autorización, y `autorizar-integracion` fallaba con ENOTDIR en un worktree. En local pasa 59 pruebas de hooks |
+| `feat/db-cifrado-campos-sensibles` @ `2a34e35` | **M1.4: la implementación del ADR-0015.** Migración `20261020120000_cifrar_columnas_con_pii_sensible`, **irreversible**: borra con `DROP COLUMN` el texto en claro de las filas de desarrollo. Trae además `CifradoDeCampos`, la búsqueda solo por nombre y teléfono, y `CAMPOS_SENSIBLES_KEY` (con su versión y la anterior) en `render.yaml`. `auditor-seguridad`: ACEPTAR. **Condiciones para integrarla:** la e2e de cifrado en reposo y las aserciones 67 a 71 tienen que correr de verdad contra el Postgres del CI (criterio de corte 2: cero PII en claro, comprobado con `$queryRaw`), y la matriz de `despliegue-staging.md` tiene que incluir la clave en la API y en el trabajador. **Al aplicarla en Neon:** destruye el texto de las filas de desarrollo, y después hay que correr `pnpm --filter @viajapro/api campos:sembrar-dev` |
+
+| Cola | Dueño | Por qué no bloquea |
+|---|---|---|
+| **El tope de 2^32 cifrados por clave (AES-GCM con nonce aleatorio) no se hace cumplir.** Hace falta un contador o una métrica, y un trabajo de recifrado, antes de que haya volumen | `backend`, `devops` | Hoy no hay volumen: quedan muchos órdenes de magnitud de margen |
 

@@ -1,0 +1,135 @@
+# Blueprint de Render, SOLO STAGING (ADR-0013). Produccion se anade despues, con su propio entorno.
+#
+# Verificado contra la documentacion oficial de Render (2026-10-20). Lo no confirmado lleva la marca
+# VERIFICAR-AL-SINCRONIZAR. Ver docs/07-ingenieria/despliegue-staging.md.
+#
+# Reglas del ADR-0013 que este archivo cumple:
+#   - Region ohio, junto a Neon us-east-2.
+#   - Despliegue automatico APAGADO: se despliega con el deploy hook del servicio desde
+#     GitHub Actions (.github/workflows/deploy-staging.yml), tras migrar.
+#   - Cada servicio declara SOLO las variables que lee (matriz de §4). Los secretos son
+#     `sync: false`: el valor se pega en el panel, nunca aqui (R6).
+#   - Ningun servicio recibe el rol propietario: DATABASE_URL / DIRECT_URL viven en GitHub.
+#   - No existen NEXT_PUBLIC_DEV_TENANT_ID, NEXT_PUBLIC_AUTH_MAQUETA ni IDENTIDAD_DEV_PASSWORD.
+
+services:
+  # ---- Web (Next.js) --------------------------------------------------------------------
+  - type: web
+    name: viajapro-web-staging
+    runtime: docker
+    region: ohio
+    plan: starter
+    dockerfilePath: ./apps/web/Dockerfile
+    dockerContext: .
+    healthCheckPath: /salud
+    autoDeployTrigger: 'off' # solo despliega el deploy hook (GitHub Actions)
+    envVars:
+      # Se incrusta al CONSTRUIR: Render pasa las variables como build-arg y el Dockerfile declara ARG.
+      - key: NEXT_PUBLIC_API_URL
+        sync: false # https://api.staging.<dominio>
+
+  # ---- API (NestJS, HTTP y Socket.IO) -----------------------------------------------------
+  - type: web
+    name: viajapro-api-staging
+    runtime: docker
+    region: ohio
+    plan: starter
+    dockerfilePath: ./apps/api/Dockerfile
+    dockerContext: .
+    healthCheckPath: /salud/listo # comprueba base de datos y que el rol no salte RLS
+    maxShutdownDelaySeconds: 120 # drena Socket.IO al redesplegar
+    autoDeployTrigger: 'off' # solo despliega el deploy hook (GitHub Actions)
+    # dockerCommand omitido: la imagen arranca `node dist/main.js`.
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: APP_ENV
+        value: staging
+      - key: API_PORT
+        value: '10000' # el puerto por omision de Render; main.ts lee API_PORT, no PORT
+      - key: MAIL_PROVIDER
+        value: postmark
+      - key: API_PUBLIC_URL
+        sync: false # https://api.staging.<dominio>
+      - key: WEB_PUBLIC_URL
+        sync: false # https://staging.<dominio>; es el `cors.origin` exacto de Socket.IO
+      - key: API_TRUST_PROXY
+        sync: false # saltos de proxy; ver la guia: mal puesto limita a la web y no al atacante
+      - key: MAIL_FROM
+        sync: false
+      - key: POSTMARK_MESSAGE_STREAM
+        sync: false
+      # Secretos (matriz §4, columna API)
+      - key: DATABASE_APP_URL
+        sync: false
+      - key: DATABASE_ALTAS_URL
+        sync: false
+      - key: DATABASE_IDENTIDAD_URL
+        sync: false
+      - key: BETTER_AUTH_SECRET
+        sync: false
+      - key: META_APP_SECRET
+        sync: false
+      - key: WHATSAPP_WEBHOOK_VERIFY_TOKEN
+        sync: false
+      - key: WEBHOOK_PAYLOAD_KEY
+        sync: false
+      - key: WEBHOOK_PAYLOAD_KEY_VERSION
+        sync: false
+      - key: CORREO_PAYLOAD_KEY
+        sync: false
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: viajapro-redis-staging
+          property: connectionString
+
+  # ---- Trabajador (BullMQ, outbox, barrido de 30 s; sin HTTP) -----------------------------
+  - type: worker
+    name: viajapro-worker-staging
+    runtime: docker
+    region: ohio
+    plan: starter
+    dockerfilePath: ./apps/api/Dockerfile # la misma imagen que la API
+    dockerContext: .
+    dockerCommand: node dist/worker.js # VERIFICAR-AL-SINCRONIZAR: inferido como admitido en workers
+    autoDeployTrigger: 'off' # solo despliega el deploy hook (GitHub Actions)
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: APP_ENV
+        value: staging
+      - key: MAIL_PROVIDER
+        value: postmark
+      - key: MAIL_FROM
+        sync: false
+      - key: POSTMARK_MESSAGE_STREAM
+        sync: false
+      # Secretos (matriz §4, columna Trabajador)
+      - key: DATABASE_WEBHOOK_URL
+        sync: false
+      - key: WEBHOOK_PAYLOAD_KEY
+        sync: false
+      - key: WEBHOOK_PAYLOAD_KEY_VERSION
+        sync: false
+      - key: CORREO_PAYLOAD_KEY
+        sync: false
+      - key: WHATSAPP_DIRECTORY_PEPPER
+        sync: false
+      - key: WHATSAPP_DIRECTORY_PEPPER_VERSION
+        sync: false
+      - key: POSTMARK_SERVER_TOKEN
+        sync: false
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: viajapro-redis-staging
+          property: connectionString
+
+  # ---- Redis gestionado (Valkey) para BullMQ --------------------------------------------
+  - type: keyvalue
+    name: viajapro-redis-staging
+    region: ohio
+    plan: starter # de pago: el gratuito no persiste en disco
+    maxmemoryPolicy: noeviction # BullMQ lo exige; con desalojo se pierden trabajos en silencio
+    ipAllowList: [] # vacia: solo red privada. VERIFICAR-AL-SINCRONIZAR

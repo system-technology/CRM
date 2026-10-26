@@ -42,10 +42,15 @@ jobs:
         with:
           fetch-depth: 0 # historial completo: un secreto en un commit intermedio cuenta igual
 
+      # El binario de gitleaks es gratuito; gitleaks-action exige licencia de pago en
+      # organizaciones («missing gitleaks license»). Versión fijada y verificada por SHA-256.
       - name: Escanear el historial en busca de secretos
-        uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          V=8.30.1
+          curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${V}/gitleaks_${V}_linux_x64.tar.gz" -o gl.tgz
+          echo "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb  gl.tgz" | sha256sum -c -
+          tar -xzf gl.tgz gitleaks
+          ./gitleaks git --redact --no-banner --verbose .
 
   # ---------------------------------------------------------------------------
   calidad:
@@ -175,6 +180,20 @@ jobs:
           REDIS_URL: redis://localhost:6379
           APP_ENV: local
 
+      # AUD-013. Esta prueba MUTA los roles del clúster (ALTER ROLE viajapro_app SUPERUSER unos
+      # milisegundos) para demostrar que cada proceso aborta; corre SOLA, después de pnpm test,
+      # para que ninguna otra prueba corra como ese rol mientras tanto. Con EXIGIR=1 no puede
+      # pasar omitida: si la base no es desechable, falla.
+      - name: Arranque seguro, los tres servicios abortan con un rol que salta RLS
+        run: pnpm --filter @viajapro/api exec vitest run src/shared/prisma/arranque-seguro.e2e-spec.ts
+        env:
+          DATABASE_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'neondb') }}
+          DIRECT_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'neondb') }}
+          REDIS_URL: redis://localhost:6379
+          APP_ENV: local
+          VIAJAPRO_BASE_DESECHABLE: '1'
+          VIAJAPRO_EXIGIR_ARRANQUE_SEGURO: '1'
+
   # ---------------------------------------------------------------------------
   # La compuerta propia de este producto. Si falla, da igual lo demás:
   # una fuga entre agencias es el fallo que mata el negocio.
@@ -245,6 +264,40 @@ jobs:
         env:
           DATABASE_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'neondb') }}
           DIRECT_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'neondb') }}
+
+  # ---------------------------------------------------------------------------
+  # ADR-0013: las imagenes que Render va a ejecutar tienen que construirse y arrancar el codigo
+  # correcto ANTES de que exista una cuenta. No se publican en ningun registro.
+  imagenes:
+    name: imagenes-de-despliegue
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Construir la imagen de la API y el trabajador
+        run: docker build -f apps/api/Dockerfile -t viajapro-api .
+
+      - name: Comprobar la imagen de la API
+        run: |
+          # No root, con el cliente de Prisma generado y con los dos puntos de entrada.
+          test "$(docker run --rm --entrypoint id viajapro-api -u)" != "0"
+          docker run --rm --entrypoint test viajapro-api -f dist/main.js
+          docker run --rm --entrypoint test viajapro-api -f dist/worker.js
+          docker run --rm --entrypoint node viajapro-api -e "
+            Promise.all([import('@viajapro/domain'), import('@viajapro/contracts'), import('@prisma/client')])
+              .then(([, , p]) => { new p.PrismaClient(); console.log('imagen de la API: ok'); })"
+
+      - name: Construir la imagen de la web
+        run: >-
+          docker build -f apps/web/Dockerfile
+          --build-arg NEXT_PUBLIC_API_URL=https://api.ejemplo.invalid
+          -t viajapro-web .
+
+      - name: Comprobar la imagen de la web
+        run: |
+          test "$(docker run --rm --entrypoint id viajapro-web -u)" != "0"
+          docker run --rm --entrypoint test viajapro-web -f apps/web/server.js
+          docker images --format '{{.Repository}} {{.Size}}' | grep '^viajapro-'
 
   # ---------------------------------------------------------------------------
   # Regla R4: los módulos no se importan entre sí. Es lo que permite extraer
