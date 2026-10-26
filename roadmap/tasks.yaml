@@ -168,3 +168,131 @@ tasks:
       - apps/web/src/lib/api.ts
     source: orquestador:2026-10-26
     created_at: 2026-10-26T16:08:34.343Z
+  - id: T-009
+    title: "Completar mutantes RLS al 100% (C1: USING y WITH CHECK en todas las tablas de negocio)"
+    type: test
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Mutantes para USING en todas las tablas con tenant_id (vigencias, tarifas, politicas_de_precio,
+        mensajes, conversaciones, contactos, oportunidades, cotizaciones, etc.)
+      - Mutantes para WITH CHECK en todas las tablas con tenant_id
+      - Suite de mutantes en CI informa 0 supervivientes
+      - pnpm compuertas --rapido verde
+    files:
+      - packages/database/tests/mutaciones-aislamiento.mjs
+      - packages/database/tests/aislamiento.spec.ts
+    source: auditoria-auto:2026-10-26
+    created_at: 2026-10-26T20:14:47.463Z
+  - id: T-010
+    title: Prueba de arranque con roles prohibidos y asercion relforcerowsecurity (M1.2)
+    type: test
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Test e2e intenta arrancar la API con rol postgres (rolsuper) y verifica que aborta
+      - Test e2e intenta arrancar con rolbypassrls y verifica que aborta
+      - "Asercion relforcerowsecurity en CI: todas las tablas de negocio (relkind in ('r','p')) tienen FORCE
+        ROW LEVEL SECURITY"
+      - pnpm compuertas --rapido verde
+    files:
+      - apps/api/src/shared/prisma/arranque-seguro.e2e-spec.ts
+      - apps/api/src/shared/prisma/prisma.service.ts
+      - apps/api/src/shared/prisma/prisma-webhook.service.ts
+      - apps/api/src/shared/prisma/prisma-identidad.service.ts
+    source: auditoria-auto:2026-10-26
+    created_at: 2026-10-26T20:14:47.464Z
+  - id: T-011
+    title: Test de integracion automatico del cotizador (punta a punta web -> API -> BD)
+    type: test
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Test e2e en apps/api o apps/web que hace POST /api/v1/paquetes/cotizar (o ruta vigente) con
+        composicion real y verifica respuesta
+      - "Cubre caso: 2 adultos + 2 ninos en diciembre = temporada alta, doble, 2 habitaciones, $9.100.000 COP,
+        margen 20%"
+      - "Cubre caso: 3 adultos en doble = avisa '1 plaza sin usar, se paga igual'"
+      - Corre en CI contra Neon (o Postgres local de test)
+      - pnpm compuertas --rapido verde
+    files:
+      - apps/api/src/modules/quoting/cotizaciones.e2e-spec.ts
+      - apps/api/src/modules/quoting/catalogo.e2e-spec.ts
+    source: auditoria-auto:2026-10-26
+    created_at: 2026-10-26T20:14:47.464Z
+  - id: T-012
+    title: Aserciones de comportamiento para vigencias, tarifas, politicas_de_precio en aislamiento.spec.ts
+    type: test
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    depends_on: []
+    acceptance:
+      - "Asercion: quitar foranea compuesta vigencia->paquete pone test en rojo"
+      - "Asercion: quitar foranea compuesta tarifa->vigencia pone test en rojo"
+      - "Asercion: quitar foranea compuesta politicas_de_precio->tenant pone test en rojo"
+      - pnpm compuertas --rapido verde
+    files:
+      - packages/database/tests/aislamiento.spec.ts
+    source: auditoria-auto:2026-10-26
+    created_at: 2026-10-26T20:14:47.464Z
+  - id: T-013
+    title: Corregir politicaDePrecio.findFirst() sin where (riesgo de fuga silenciosa)
+    type: bug
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    depends_on: []
+    acceptance:
+      - "politicaDePrecio.findUnique({ where: { tenantId } }) en lugar de findFirst()"
+      - Test que verifica que con rol que salta RLS no devuelve politica ajena
+      - pnpm compuertas --rapido verde
+    files:
+      - apps/api/src/modules/quoting/application/cotizar-salida.use-case.ts:113-117
+    source: auditoria-auto:2026-10-26
+    created_at: 2026-10-26T20:14:47.464Z
+  - id: T-014
+    title: Sincronizar unique parcial etapas_pipeline en schema.prisma
+    type: refactor
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    depends_on: []
+    acceptance:
+      - schema.prisma modela la unique parcial (tenant_id, clave) WHERE clave IS NOT NULL de etapas_pipeline
+      - pnpm db:migrate no genera migracion vacia
+      - pnpm compuertas --rapido verde
+    files:
+      - packages/database/prisma/schema.prisma
+    source: auditoria-auto:2026-10-26
+    created_at: 2026-10-26T20:14:47.464Z
+  - id: T-015
+    title: Particiones automaticas de enrutamiento_historial (M5.2 / AUD-007)
+    type: infra
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Event trigger o job que crea particiones futuras automaticamente
+      - Retiro de particiones viejas (politica de retencion)
+      - Incluye tablas de auditoria
+      - pnpm compuertas --rapido verde
+    files:
+      - packages/database/prisma/migrations/
+      - apps/api/src/jobs/
+    source: auditoria-auto:2026-10-26
+    created_at: 2026-10-26T20:14:47.464Z
