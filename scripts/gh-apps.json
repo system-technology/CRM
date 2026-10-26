@@ -1,0 +1,5 @@
+{
+  "_doc": "App IDs de las GitHub Apps de cada sesión. No son secretos; las claves .pem viven fuera del repo (~/.viajapro-keys). Pendiente: el Owner crea las apps (docs/09-ia/07-ciclo-autonomo.md §Identidades) y rellena los ids.",
+  "repo": "system-technology/CRM",
+  "apps": { "integradora": 0, "backend": 0, "frontend": 0 }
+}

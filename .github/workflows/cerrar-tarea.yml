@@ -1,0 +1,73 @@
+name: Cerrar tarea al mergear
+
+# Cuando se mergea un PR cuya RAMA es a|b|i/T-xxx-slug, marca T-xxx como hecha en roadmap/tasks.yaml
+# mediante un PR automático (roadmap/** no es ruta protegida: se integra solo al pasar el CI).
+# Solo mira el nombre de la rama, nunca el título: un PR que menciona tareas para registrarlas no las cierra.
+# Mecánico, sin modelo. Usa la app Integradora (variable INTEGRADORA_APP_ID y secret INTEGRADORA_APP_KEY);
+# mientras la variable no exista, el job se omite.
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+
+concurrency:
+  group: cerrar-tarea
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  cerrar:
+    name: Marcar la tarea como hecha
+    if: >-
+      github.event.pull_request.merged == true &&
+      vars.INTEGRADORA_APP_ID != '' &&
+      !startsWith(github.event.pull_request.head.ref, 'i/cerrar-')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Token de la app Integradora
+        id: app
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ vars.INTEGRADORA_APP_ID }}
+          private-key: ${{ secrets.INTEGRADORA_APP_KEY }}
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          token: ${{ steps.app.outputs.token }}
+          fetch-depth: 1
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 20
+      - name: Dependencias del roadmap
+        working-directory: tools/roadmap-mcp
+        run: npm ci
+      - name: Cerrar la tarea de la rama
+        id: cerrar
+        env:
+          RAMA: ${{ github.event.pull_request.head.ref }}
+          PR: ${{ github.event.pull_request.number }}
+          SHA: ${{ github.event.pull_request.merge_commit_sha }}
+        run: node scripts/cerrar-tarea.mjs --rama "$RAMA" --pr "$PR" --sha "$SHA"
+      - name: Abrir el PR del cierre
+        if: steps.cerrar.outputs.ids != ''
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          IDS: ${{ steps.cerrar.outputs.ids }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          rama="i/cerrar-$(echo "$IDS" | tr ' ' '-')-pr$PR"
+          git config user.name "viajapro-integradora[bot]"
+          git config user.email "5449524+viajapro-integradora[bot]@users.noreply.github.com"
+          git checkout -b "$rama"
+          git add roadmap/tasks.yaml
+          git commit -m "docs(roadmap): cerrar $IDS (PR #$PR) (T-000)"
+          git push origin "$rama"
+          gh pr create --base main --head "$rama" \
+            --title "docs(roadmap): cerrar $IDS (PR #$PR) (T-000)" \
+            --body "Cierre automático: el PR #$PR (rama de la tarea) se mergeó en main. Generado por .github/workflows/cerrar-tarea.yml."
+          gh pr merge "$rama" --auto --squash
