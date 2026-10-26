@@ -119,7 +119,7 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: backlog
+    status: done
     acceptance:
       - Leer un contacto con datos sensibles escribe una fila en registros_auditoria con tenant_id, actor,
         acción y recurso, sin copiar el dato sensible al detalle
@@ -127,6 +127,12 @@ tasks:
       - No se modifica el esquema de la base ni las migraciones
     files:
       - apps/api/src/modules/crm/
+    started_at: 2026-10-26T21:31:27.765Z
+    done_at: 2026-10-26T21:31:27.765Z
+    evidence: "Mergeado en main por el PR #25 (rama a/T-006-escribir-en-registros-auditoria-las-lect) con el CI en
+      verde: format, analyze, tests y los demás checks obligatorios. Cierre automático
+      (.github/workflows/cerrar-tarea.yml)."
+    commit: 79bc234668a88a81b10c2086365bed1cd05f7bbb
   - id: T-007
     title: "Portar a main el cambio de origin/fix/quoting-condiciones-y-salud: condiciones de tarifa no
       evaluables, ruta antigua retirada y salud 503"
