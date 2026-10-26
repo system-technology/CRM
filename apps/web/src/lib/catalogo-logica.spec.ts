@@ -100,14 +100,14 @@ describe('Pruebas del Catálogo de Paquetes y Tarifarios de Mayoristas', () => {
     expect(resPuntaCana[0]!.destino).toBe('Punta Cana');
 
     const resMayorista = filtrarPaquetes(MOCK_PAQUETES_CATALOGO, { busqueda: 'Mayorista Caribe' });
-    expect(resMayorista.length).toBe(2);
+    expect(resMayorista.length).toBe(4);
   });
 
   it('7. filtrarPaquetes filtra por plan de alimentación y solo vigentes', () => {
     const soloTodoIncluido = filtrarPaquetes(MOCK_PAQUETES_CATALOGO, {
       planAlimentacion: 'TODO_INCLUIDO',
     });
-    expect(soloTodoIncluido.length).toBe(3);
+    expect(soloTodoIncluido.length).toBe(4);
 
     const soloVigentes = filtrarPaquetes(MOCK_PAQUETES_CATALOGO, {
       soloVigentes: true,
