@@ -1004,7 +1004,7 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: backlog
+    status: done
     depends_on:
       - T-043
     unblocks:
@@ -1034,6 +1034,12 @@ tasks:
       - apps/api/src/modules/quoting/interface/
     source: arquitecto:ADR-0017 (importado 2026-10-26; id original T-036)
     created_at: 2026-10-26T00:00:00.000Z
+    started_at: 2026-10-27T01:17:45.356Z
+    done_at: 2026-10-27T01:17:45.356Z
+    evidence: "Mergeado en main por el PR #78 (rama a/T-044-listado-de-gestion-con-desde) con el CI en verde:
+      format, analyze, tests y los demás checks obligatorios. Cierre automático
+      (.github/workflows/cerrar-tarea.yml)."
+    commit: c43bea824426f09cb2533f03424f410251c5e4b1
   - id: T-045
     title: "API: POST /api/v1/catalogo/importaciones/previsualizar ({tabla, mapeo} o {propuesta}) y sugerencia de
       mapeo por sinónimos y por marcador de plantilla"
