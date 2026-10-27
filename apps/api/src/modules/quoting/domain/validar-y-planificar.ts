@@ -43,6 +43,8 @@ export const VERSION_DEL_NUCLEO = 1;
 // =============================================================================
 
 export interface TarifaActual {
+  /** Identificador de la fila; lo llenan los adaptadores de lectura, no la propuesta. */
+  readonly id?: string;
   readonly nombre: string;
   readonly unidad: 'POR_PERSONA' | 'POR_GRUPO';
   readonly cubrePasajeros: number;
@@ -51,14 +53,19 @@ export interface TarifaActual {
   readonly lista?: Dinero | null;
   readonly promoHasta?: string | null;
   readonly mayorista: string | null;
+  readonly mayoristaId?: string | null;
+  /** Etiqueta de la opción de salida a la que está atada, si lo está. */
+  readonly opcionDeSalida?: string | null;
   readonly aditiva: boolean;
   readonly condicion: TarifaPropuesta['condicion'];
 }
 
 export interface VigenciaActual {
+  readonly id?: string;
   readonly desde: string;
   readonly hasta: string;
   readonly publicada: boolean;
+  readonly cupoTotal?: number | null;
   readonly tarifas: readonly TarifaActual[];
 }
 

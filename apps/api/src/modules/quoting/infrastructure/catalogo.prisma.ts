@@ -59,7 +59,7 @@ function comoTextos(json: Prisma.JsonValue): string[] {
   return Array.isArray(json) ? json.filter((x): x is string => typeof x === 'string') : [];
 }
 
-class CatalogoPrisma extends CatalogoPersistente {
+export class CatalogoPrisma extends CatalogoPersistente {
   constructor(
     private readonly tx: ClienteTenant,
     private readonly tenantId: string,
@@ -87,7 +87,14 @@ class CatalogoPrisma extends CatalogoPersistente {
         include: {
           vigencias: {
             orderBy: { desde: 'asc' },
-            include: { tarifas: { include: { mayorista: { select: { nombre: true } } } } },
+            include: {
+              tarifas: {
+                include: {
+                  mayorista: { select: { nombre: true } },
+                  opcionDeSalida: { select: { etiqueta: true } },
+                },
+              },
+            },
           },
         },
       }),
@@ -107,10 +114,13 @@ class CatalogoPrisma extends CatalogoPersistente {
         inclusiones: comoTextos(p.inclusiones),
         exclusiones: comoTextos(p.exclusiones),
         vigencias: p.vigencias.map((v) => ({
+          id: v.id,
+          cupoTotal: v.cupoTotal,
           desde: aIso(v.desde),
           hasta: aIso(v.hasta),
           publicada: v.publicada,
           tarifas: v.tarifas.map((t): TarifaActual => ({
+            id: t.id,
             nombre: t.nombre,
             unidad: t.unidad,
             cubrePasajeros: t.cubrePasajeros,
@@ -119,6 +129,8 @@ class CatalogoPrisma extends CatalogoPersistente {
             lista: aDinero(t.listaUnidades, t.monedaIso),
             promoHasta: t.promoHasta ? aIso(t.promoHasta) : null,
             mayorista: t.mayorista?.nombre ?? null,
+            mayoristaId: t.mayoristaId,
+            opcionDeSalida: t.opcionDeSalida?.etiqueta ?? null,
             aditiva: t.aditiva,
             condicion: {
               acomodacion: t.acomodacion,
@@ -198,7 +210,7 @@ class CatalogoPrisma extends CatalogoPersistente {
     paqueteId: string,
     vigenciaId: string,
     tarifa: TarifaPropuesta,
-    opciones: { conservarNeto: boolean },
+    opciones: { conservarNeto: boolean; conservarOpcion?: boolean },
   ): Promise<string> {
     const clave = normalizarNombre(tarifa.nombre);
     const existentes = await this.tx.tarifa.findMany({
@@ -224,7 +236,9 @@ class CatalogoPrisma extends CatalogoPersistente {
       listaUnidades: tarifa.lista ? BigInt(tarifa.lista.unidades) : null,
       promoHasta: tarifa.promoHasta ? aFecha(tarifa.promoHasta) : null,
       mayoristaId,
-      opcionDeSalidaId,
+      ...(opciones.conservarOpcion === true && tarifa.opcionDeSalida === undefined
+        ? {}
+        : { opcionDeSalidaId }),
       aditiva: tarifa.aditiva,
       acomodacion: c.acomodacion,
       tipoPasajero: c.tipoPasajero,
@@ -340,7 +354,7 @@ class CatalogoPrisma extends CatalogoPersistente {
   }
 }
 
-class RegistroDeCambiosPrisma extends RegistroDeCambios {
+export class RegistroDeCambiosPrisma extends RegistroDeCambios {
   constructor(
     private readonly tx: ClienteTenant,
     private readonly tenantId: string,
