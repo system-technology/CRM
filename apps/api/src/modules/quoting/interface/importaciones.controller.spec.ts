@@ -16,9 +16,9 @@ describe('ImportacionesController', () => {
     (n) => n !== 'constructor' && typeof proto[n] === 'function',
   );
 
-  it('expone previsualizar y sugerir-mapeo, ambas con catalogo.administrar', () => {
+  it('expone confirmar, previsualizar y sugerir-mapeo, todas con catalogo.administrar', () => {
     const rutas = metodos.map((n) => String(Reflect.getMetadata('path', proto[n] as object)));
-    expect(rutas.sort()).toEqual(['previsualizar', 'sugerir-mapeo']);
+    expect(rutas.sort()).toEqual(['confirmar', 'previsualizar', 'sugerir-mapeo']);
     for (const n of metodos) {
       expect(Reflect.getMetadata(CLAVE_PERMISOS_REQUERIDOS, proto[n] as object), n).toEqual([
         'catalogo.administrar',
