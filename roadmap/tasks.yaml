@@ -842,8 +842,7 @@ tasks:
     phase: 1
     priority: P1
     effort: S
-    status: blocked
-    blocked_reason: "human_required: migración del Owner (CHECK roles_permisos_del_catalogo). Autorizada el 2026-10-26"
+    status: done
     human_required: true
     depends_on: []
     acceptance:
@@ -862,6 +861,9 @@ tasks:
       - apps/api/src/shared/autorizacion/permisos.spec.ts
     source: arquitecto:ADR-0017 (importado 2026-10-26; id original T-032)
     created_at: 2026-10-26T00:00:00.000Z
+    evidence: "Migración M1 20261026120000_permiso_catalogo_administrar integrada en main (PR #42) y aplicada a
+      Neon el 2026-10-26"
+    done_at: 2026-10-26T23:56:03.910Z
   - id: T-041
     title: Contrato PropuestaDeCatalogo y plantillas de sistema en contracts; núcleo puro validar y planificar en
       quoting/domain (ADR-0017 §1-§3)
@@ -1109,9 +1111,7 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: blocked
-    blocked_reason: "human_required: schema.prisma, migración y prueba de aislamiento son del Owner. Autorizada el
-      2026-10-26"
+    status: done
     human_required: true
     depends_on:
       - T-040
@@ -1143,6 +1143,9 @@ tasks:
       - packages/database/prisma/seed.ts
     source: arquitecto:ADR-0017 (importado 2026-10-26; id original T-040)
     created_at: 2026-10-26T00:00:00.000Z
+    evidence: "Migración M2 20261026120100_catalogo_extendido_formatos_y_opciones_de_salida integrada (PR #42) y
+      aplicada a Neon el 2026-10-26"
+    done_at: 2026-10-26T23:56:03.910Z
   - id: T-049
     title: "API: campos extendidos en propuesta, CRUD, importación y cotización; formatos de viaje y GET
       /api/v1/catalogo/formatos/:id/plantilla"
@@ -1460,3 +1463,63 @@ tasks:
       - apps/web/src/components/catalogo/
     source: arquitecto:ADR-0017 (importado 2026-10-26; id original T-050)
     created_at: 2026-10-26T00:00:00.000Z
+  - id: T-059
+    title: "Envío de WhatsApp: carrera tras un trabajo estancado deja el mensaje FALLIDO con wamid conocido"
+    type: bug
+    phase: 1
+    priority: P1
+    effort: S
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Si registrarAceptado encuentra un mensaje FALLIDO sin codigo_error_meta, lo devuelve a PENDIENTE y
+        anula el motivo de fallo, en apps/api/src/modules/inbox/infrastructure/mensajes-salientes.prisma.ts
+      - Un test reproduce la carrera (el segundo intento marca FALLIDO «sin confirmar» y el primero guarda
+        después el wamid) y comprueba que el estado final sigue el acuse de Meta
+      - pnpm compuertas --rapido verde
+    files:
+      - apps/api/src/modules/inbox/infrastructure/mensajes-salientes.prisma.ts
+      - apps/api/src/modules/inbox/application/
+    source: auditor-seguridad:envio-whatsapp 2026-10-26
+    created_at: 2026-10-26T23:56:03.909Z
+  - id: T-060
+    title: "Credencial de prueba de WhatsApp atada al tenant: que solo sirva a la agencia del canal registrado"
+    type: security
+    phase: 1
+    priority: P1
+    effort: S
+    status: backlog
+    depends_on: []
+    acceptance:
+      - CredencialesDePrueba exige además un tenant configurado (por ejemplo META_TENANT_ID_PRUEBA) y se niega
+        a resolver credenciales para cualquier otro tenant, en
+        apps/api/src/modules/inbox/infrastructure/credenciales-whatsapp.entorno.ts
+      - Un test comprueba que una agencia distinta con el mismo phone_number_id no obtiene el token de la
+        plataforma
+      - El script canal:registrar-prueba y .env.example documentan la variable nueva; pnpm compuertas --rapido
+        verde
+    files:
+      - apps/api/src/modules/inbox/infrastructure/credenciales-whatsapp.entorno.ts
+      - apps/api/src/modules/inbox/scripts/
+    source: auditor-seguridad:envio-whatsapp 2026-10-26
+    created_at: 2026-10-26T23:56:03.910Z
+  - id: T-061
+    title: "Higiene del texto saliente de WhatsApp: filtrar caracteres de control y acotar el límite de tasa por
+      agencia"
+    type: security
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    depends_on: []
+    acceptance:
+      - El texto saliente rechaza o limpia caracteres de control (salvo saltos de línea y tabulaciones) antes
+        de encolar; test con casos límite
+      - El envío tiene un límite por agencia (grupo del limitador de la cola) para que una agencia no frene el
+        envío de las demás; test del limitador
+      - pnpm compuertas --rapido verde
+    files:
+      - apps/api/src/modules/inbox/application/
+      - apps/api/src/modules/inbox/infrastructure/
+    source: auditor-seguridad:envio-whatsapp 2026-10-26
+    created_at: 2026-10-26T23:56:03.910Z
