@@ -10,7 +10,7 @@
 > `roadmap/tasks.yaml` (qué sigue). Este archivo **no los sustituye**: los resume y enlaza, y guarda lo que
 > no cabe en ellos (el entorno vivo, las trampas, el modo de trabajo).
 >
-> Última actualización: **2026-10-26 (tarde)**.
+> Última actualización: **2026-10-27 (madrugada)**. El propietario está AUSENTE: se trabaja desatendido dentro de los límites de §12.
 
 ---
 
@@ -66,9 +66,12 @@
   (Better Auth, invitaciones, código por correo), recepción de WhatsApp (webhook firmado → almacenamiento cifrado
   sin RLS → cola), **envío saliente de WhatsApp** (PR #44, probado solo contra una Graph API falsa), correo por
   Postmark (adaptador), aislamiento entre agencias por RLS con suite de 79 aserciones.
-- **Migraciones:** 24 en el repo. **Neon tiene 22**: faltan **M1 `20261026120000_permiso_catalogo_administrar`** y
-  **M2 `20261026120100_catalogo_extendido_formatos_y_opciones_de_salida`** (aditivas, revisadas, sin borrar datos).
-  El código de `main` ya las espera: hasta aplicarlas, el catálogo real contra Neon fallará.
+- **Migraciones:** 24 en el repo y **24 aplicadas a Neon** (M1 `20261026120000_permiso_catalogo_administrar` y M2
+  `20261026120100_catalogo_extendido_formatos_y_opciones_de_salida` se aplicaron el 2026-10-26 con `pnpm db:migrate:deploy`).
+  **Neon (rama de desarrollo, 100 % datos sintéticos) contiene dos agencias:** `agencia-demo` (37 paquetes, 13 contactos, 7 etapas, canal de
+  WhatsApp de prueba registrado) y **`jd-tours-cartagena`** (19 excursiones, 17 con precio, 4 opciones de salida, 2 «Consultar»), sembradas con
+  `pnpm db:seed` y `seed:agencia-json`. Identidades con contraseña de desarrollo (`IDENTIDAD_DEV_PASSWORD` del `.env`): `ana@`, `carlos@`, `dueno@`
+  `agenciademo.test` y **`dueno-jdtours@agenciademo.test`** (la demo de JD Tours).
 - **Web:** pantallas reales en código, pero **bloque 1 (modo real por defecto, PR #47) y bloque 2 (cotizador de excursiones, PR #52)
   de Antigravity** están integrados. La web aún no se ha verificado de punta a
   punta contra la API real en navegador.
@@ -180,3 +183,49 @@
 2. `git fetch origin && git status && node scripts/estado-de-arboles.mjs`; `gh pr list --state open`.
 3. Comprobar qué corre: `http://localhost:3333/api/v1/salud/listo` (401 sin sesión es normal), `http://localhost:3000`, el túnel.
 4. Reanudar agentes con `SendMessage` en lugar de crear nuevos (economía de tokens). Actualizar este archivo al cerrar.
+
+## 12. Trabajo desatendido (2026-10-27) y estado de la tanda
+
+**Límites con los que se trabaja mientras el propietario está ausente:** no se toca Meta, pagos ni nada con costo o que salga a internet; no se integra el
+PR #29 (cifrado, migración irreversible); no hay decisiones de negocio; todo va en PRs con los 8 checks en verde; si algo falla dos veces se anota y no se insiste;
+el túnel de Meta está **cerrado** (reabrir solo con el propietario presente).
+
+**Datos de la agencia prospecto JD Tours** (`jdtourscartagena.com`): viven FUERA del repo público, en `D:\Projects\_datos\jd-tours-cartagena.json`
+(catálogo, con cargos en destino con monto tomados de sus flyers) y `D:\Projects\_datosotos-jd-tours\` (logo y fotos). Copia servida en desarrollo desde
+`apps/web/public/_local/jd-tours/` (**ignorada por git**, PR #59). Las fotos con personas identificables NO se usan en pantalla. No hay permiso escrito de JD Tours
+para publicar sus activos: la demo es privada y local; pedir su visto bueno antes de mostrarla a terceros o ponerla en internet.
+
+**Tanda cerrada hoy (PRs integrados):** guardia de Neon (#40), canal de prueba (#46), bloques 1 y 2 de Antigravity (#47, #52), script de sincronía (#49), roadmap v3 e
+investigación de HubSpot (#43, #41), documentación del hilo (#50), contexto (#54), arreglo de la CSP en desarrollo (#55), identidad visual y marca por agencia (#56, #57),
+cargador de agencias (#58), ignorar activos locales (#59), backlog del catálogo importado (#60), diseño de IA alineado (#61), arreglo del envío duplicado de WhatsApp (#62),
+T-041 contrato de propuesta de catálogo (#63), tareas de la auditoría del envío (#64), estabilización del deadlock de tests de `database` (#65: `fileParallelism: false`).
+
+**Cadena del catálogo (ADR-0017), tareas en `roadmap/tasks.yaml`:** T-040 y T-048 (M1, M2) y T-041 hechas; **T-042 en curso** (aplicador transaccional con auditoría); detrás
+T-043 a T-047 (vigencias y tarifas por id, listado de gestión con «desde», importación previsualizar y confirmar, historial de precios), T-049, T-050 (`promo_vencida`), T-051.
+Siguen **bloqueadas** T-052, T-053 (M3: rol `viajapro_claves`, claves de API), T-058 y la IA, hasta aplicar las correcciones de seguridad S1 y S2 del auditor. Las tareas de web
+que esperan esta API (gestión del catálogo, importador, plantillas, `promo_vencida`) son T-028 a T-031 de la cola de Antigravity.
+
+**Cola de calidad y seguridad registrada:** T-059 (carrera tras trabajo estancado en el envío), T-060 (credencial de prueba de WhatsApp atada al tenant), T-061 (higiene del texto y
+límite por agencia); T-002 (límite de tasa general). Pendiente de tarea: CSP con **nonce** para producción (hoy `script-src 'self'` sin nonce rompería el arranque de Next en producción:
+**bloqueante antes de desplegar**), valores de relleno reales en el formulario de ingreso (defecto de la pantalla de Antigravity, cubierto por T-033), el `ADR-0016` que no refleja que el ciclo está detenido.
+
+**Prioridad dada a Antigravity (el propietario pega el mensaje):** T-032 y T-033 (identidad visual y login con héroe animado), luego T-034 a T-036, y después la cola sin detenerse. Si
+una tarea está bloqueada la salta. Su prompt actualizado está en `docs/09-ia/08-prompt-antigravity.md`.
+
+**Qué hacer al volver el propietario:** (1) pasar a Antigravity el mensaje de prioridad; (2) entrar a `http://localhost:3000/ingresar` con `dueno-jdtours@agenciademo.test` y revisar el catálogo de
+JD Tours; (3) Redis (Memurai) o despliegue para ver conversaciones de WhatsApp; (4) iniciar la verificación del negocio en Meta; (5) decidir el PR #29; (6) pedir a JD Tours las fotos y su permiso.
+
+## 13. Reanudar tras el apagado del equipo (2026-10-26, 22:00)
+
+El propietario apagó el PC a las 22:00 (apagado programado con `shutdown /s`; se cancela con `shutdown /a`). **Al encender, no corre nada**: ni la API, ni la web, ni el túnel, ni los bucles de integración,
+ni los agentes. Lo que está en GitHub (PRs, ramas, `main`) y en Neon sigue intacto. Lo que no estuviera empujado a una rama se perdió: revisar `gh pr list` y las ramas `a/T-0xx`, `b/T-0xx`.
+
+Para volver a levantar el entorno de desarrollo, desde `D:\Projects\CRM` (rama `main`, `git pull` antes):
+
+1. `pnpm install --frozen-lockfile`, luego `pnpm exec turbo run build --force --filter=@viajapro/contracts --filter=@viajapro/domain --filter=@viajapro/database` (sin esto, falsos rojos por `dist` viejo).
+2. API: `pnpm --filter @viajapro/api dev` (log útil: redirigir a un fichero). Debe decir `Conectado como 'viajapro_app'` y `'viajapro_identidad'`. Escucha en `http://localhost:3333`.
+3. Web: `NEXT_PUBLIC_API_URL=http://localhost:3333 NEXT_PUBLIC_USE_REAL_AUTH=true pnpm --filter @viajapro/web dev` (en PowerShell: `$env:NEXT_PUBLIC_API_URL=...; $env:NEXT_PUBLIC_USE_REAL_AUTH='true'`). Escucha en `http://localhost:3000`. Entrada: `/ingresar`.
+4. Túnel de Meta (solo si se va a probar WhatsApp, con el propietario presente): `D:\Projects\_tools\cloudflared\cloudflared-windows-amd64.exe tunnel --url http://localhost:3333`; la URL cambia y hay que repegarla en el webhook de Meta (`<url>/webhooks/whatsapp`, sin `/api/v1`). El token temporal de Meta dura 24 h: puede estar vencido.
+5. Redis sigue sin existir: con `COLA_CHANGES=inerte` los mensajes recibidos se guardan pero no se procesan.
+6. Comprobar el estado: `node scripts/estado-de-arboles.mjs` y `gh pr list --state open`, y retomar la cadena del catálogo desde la siguiente tarea libre de `roadmap/tasks.yaml` (T-042 en curso al apagar; T-043 en adelante).
+
