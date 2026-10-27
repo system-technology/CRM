@@ -19,7 +19,7 @@
  */
 
 import { z } from 'zod';
-import { Instante } from './comunes.js';
+import { Dinero, Instante } from './comunes.js';
 
 /**
  * Sobre qué se calcula el porcentaje. **Las dos lecturas de «margen del 20 %» dan precios
@@ -70,3 +70,39 @@ export const ActualizarPoliticaDePrecio = PoliticaDePrecio.innerType()
     path: ['porcentaje'],
   });
 export type ActualizarPoliticaDePrecio = z.infer<typeof ActualizarPoliticaDePrecio>;
+
+// =============================================================================
+// Presentación de precio y política `promo_vencida` (ADR-0017 §9, D3)
+// =============================================================================
+
+/**
+ * Qué se muestra cuando venció la promo de una tarifa. **Política de presentación, nunca de
+ * cálculo**: la venta no cambia sola en ninguno de los dos valores. `OCULTAR` es el valor por
+ * defecto; `TACHAR` muestra el precio de lista tachado con la leyenda de promo vencida.
+ */
+export const PromoVencida = z.enum(['OCULTAR', 'TACHAR']);
+export type PromoVencida = z.infer<typeof PromoVencida>;
+
+/** Lo que `GET /api/v1/catalogo/ajustes` devuelve y `PATCH` acepta (solo `promoVencida`). */
+export const AjustesDeCatalogo = z.object({ promoVencida: PromoVencida }).strict();
+export type AjustesDeCatalogo = z.infer<typeof AjustesDeCatalogo>;
+
+/** El `PATCH`: solo `promoVencida`, y `.strict()` rechaza cualquier otro campo (p. ej. `tenantId`). */
+export const ActualizarAjustesDeCatalogo = AjustesDeCatalogo.partial()
+  .strict()
+  .refine((p) => p.promoVencida !== undefined, { message: 'no se envió ningún cambio' });
+export type ActualizarAjustesDeCatalogo = z.infer<typeof ActualizarAjustesDeCatalogo>;
+
+/**
+ * Cómo pintar un precio. La calcula `presentarPrecio` (`@viajapro/domain`) y es lo que devuelven el
+ * listado de gestión, las salidas y la cotización: ninguna pantalla compara `promoHasta` con la
+ * fecha. `venta` es siempre la de la tarifa; `null` solo en `CONSULTAR`.
+ */
+export const PresentacionDePrecio = z.object({
+  estado: z.enum(['CONSULTAR', 'VIGENTE', 'PROMO_VIGENTE', 'PROMO_VENCIDA']),
+  venta: Dinero.nullable(),
+  listaTachada: Dinero.nullable(),
+  leyenda: z.literal('PROMO_VENCIDA').nullable(),
+  promoVigente: z.boolean(),
+});
+export type PresentacionDePrecio = z.infer<typeof PresentacionDePrecio>;

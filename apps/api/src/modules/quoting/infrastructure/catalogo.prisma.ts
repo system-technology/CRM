@@ -129,7 +129,10 @@ export class CatalogoPrisma extends CatalogoPersistente {
       this.tx.mayorista.findMany({ where: { eliminadoEn: null }, select: { nombre: true } }),
       // La tabla es de `crm` (R4): se pide por el puerto, dentro de la misma transacción.
       this.definiciones.deLosPaquetes(this.tx, this.tenantId),
-      this.tx.formatoDeViaje.findMany({ select: { nombre: true } }),
+      this.tx.formatoDeViaje.findMany({
+        where: { tenantId: this.tenantId },
+        select: { nombre: true },
+      }),
     ]);
 
     return {
@@ -345,7 +348,10 @@ export class CatalogoPrisma extends CatalogoPersistente {
   // -------------------------------------------------------------------------------------------
 
   private async resolverFormato(nombre: string): Promise<string> {
-    const formatos = await this.tx.formatoDeViaje.findMany({ select: { id: true, nombre: true } });
+    const formatos = await this.tx.formatoDeViaje.findMany({
+      where: { tenantId: this.tenantId },
+      select: { id: true, nombre: true },
+    });
     const clave = normalizarNombre(nombre);
     const formato = formatos.find((f) => normalizarNombre(f.nombre) === clave);
     if (!formato) throw new FormatoDeViajeDesconocidoError(nombre);

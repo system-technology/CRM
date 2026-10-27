@@ -15,6 +15,7 @@
 
 import { z } from 'zod';
 import { Acomodacion, Dinero, FechaViaje, Id, Instante, TipoPasajero } from './comunes.js';
+import { PresentacionDePrecio } from './politica-de-precio.js';
 
 /**
  * Eje 1 de ADR-0009: cómo publica su catálogo la agencia.
@@ -251,6 +252,8 @@ export const SalidaPublicada = z.object({
   fecha: FechaViaje,
   cupoTotal: z.number().int().nullable(),
   desde: Dinero,
+  /** Cómo pintar el «desde» según la política `promo_vencida` (`presentarPrecio`). */
+  presentacion: PresentacionDePrecio.optional(),
   /**
    * `true` cuando ese «desde» sale de una tarifa de GRUPO y es su per cápita — «$140.000 por
    * persona, en promo de pareja».
@@ -305,6 +308,8 @@ export const OpcionDePrecio = z.object({
    * no tiene. El nombre dice ahora lo que de verdad calcula.
    */
   masBarata: z.boolean(),
+  /** Cómo pintar el precio unitario según `promo_vencida`. El total y la venta no cambian. */
+  presentacion: PresentacionDePrecio.optional(),
 });
 export type OpcionDePrecio = z.infer<typeof OpcionDePrecio>;
 

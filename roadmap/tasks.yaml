@@ -49,7 +49,7 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: backlog
+    status: done
     acceptance:
       - Un cliente que supera N peticiones por minuto a un endpoint de negocio recibe 429 con la cabecera
         Retry-After
@@ -60,6 +60,11 @@ tasks:
     files:
       - apps/api/src/shared/red/
       - apps/api/src/main.ts
+    started_at: 2026-10-27T01:44:58.126Z
+    done_at: 2026-10-27T01:44:58.127Z
+    evidence: "Mergeado en main por el PR #85 (rama a/T-002-limite-de-tasa-de-la-api) con el CI en verde: format,
+      analyze, tests y los demás checks obligatorios. Cierre automático (.github/workflows/cerrar-tarea.yml)."
+    commit: 05b7b05ee94d1573c28b08405531a4e95d100579
   - id: T-003
     title: Política de seguridad de contenido (CSP) y cabeceras de seguridad en la web
     type: security
@@ -1120,7 +1125,7 @@ tasks:
     phase: 1
     priority: P2
     effort: S
-    status: backlog
+    status: done
     depends_on:
       - T-043
     unblocks:
@@ -1137,6 +1142,11 @@ tasks:
       - apps/api/src/modules/quoting/interface/
     source: arquitecto:ADR-0017 (importado 2026-10-26; id original T-039)
     created_at: 2026-10-26T00:00:00.000Z
+    started_at: 2026-10-27T01:14:43.571Z
+    done_at: 2026-10-27T01:14:43.571Z
+    evidence: "Mergeado en main por el PR #76 (rama a/T-047-historial-de-precios) con el CI en verde: format,
+      analyze, tests y los demás checks obligatorios. Cierre automático (.github/workflows/cerrar-tarea.yml)."
+    commit: 803a7fdb385c723e383e9746e6b8e0248c827a44
   - id: T-048
     title: "Migración M2: catálogo extendido, formatos_de_viaje con plantilla y politicas_de_precio.promo_vencida
       (ADR-0017 §12)"
@@ -1226,7 +1236,7 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: backlog
+    status: done
     depends_on:
       - T-048
       - T-044
@@ -1256,6 +1266,11 @@ tasks:
       - apps/api/src/modules/quoting/interface/
     source: arquitecto:ADR-0017 (importado 2026-10-26; id original T-042)
     created_at: 2026-10-26T00:00:00.000Z
+    started_at: 2026-10-27T01:30:23.008Z
+    done_at: 2026-10-27T01:30:23.009Z
+    evidence: "Mergeado en main por el PR #82 (rama a/T-050-politica-promo-vencida) con el CI en verde: format,
+      analyze, tests y los demás checks obligatorios. Cierre automático (.github/workflows/cerrar-tarea.yml)."
+    commit: ff459bda594ea9c7e3735dac0dff791bd52a835b
   - id: T-051
     title: "Web: tarjeta, ficha y desglose del cotizador pintan `presentacion` de la API sin decidir la promo en
       el cliente"
@@ -1502,7 +1517,7 @@ tasks:
     phase: 1
     priority: P1
     effort: S
-    status: backlog
+    status: done
     depends_on: []
     acceptance:
       - Si registrarAceptado encuentra un mensaje FALLIDO sin codigo_error_meta, lo devuelve a PENDIENTE y
@@ -1515,6 +1530,11 @@ tasks:
       - apps/api/src/modules/inbox/application/
     source: auditor-seguridad:envio-whatsapp 2026-10-26
     created_at: 2026-10-26T23:56:03.909Z
+    started_at: 2026-10-27T01:50:17.247Z
+    done_at: 2026-10-27T01:50:17.247Z
+    evidence: "Mergeado en main por el PR #86 (rama a/T-059-t-060-seguridad-del-envio) con el CI en verde: format,
+      analyze, tests y los demás checks obligatorios. Cierre automático (.github/workflows/cerrar-tarea.yml)."
+    commit: fdb537b683205712effe2e3a5b211c7a2a53dc8b
   - id: T-060
     title: "Credencial de prueba de WhatsApp atada al tenant: que solo sirva a la agencia del canal registrado"
     type: security
@@ -1556,3 +1576,205 @@ tasks:
       - apps/api/src/modules/inbox/infrastructure/
     source: auditor-seguridad:envio-whatsapp 2026-10-26
     created_at: 2026-10-26T23:56:03.910Z
+  - id: T-062
+    title: Persistir la opción de salida elegida en la versión de cotización guardada (hace falta una columna)
+    type: feature
+    phase: 1
+    priority: P1
+    effort: S
+    status: blocked
+    depends_on: []
+    acceptance:
+      - La versión de cotización guarda opcion_de_salida_id con tenant_id, clave foránea compuesta hacia
+        opciones_de_salida y RLS con USING y WITH CHECK, sin tocar migraciones ya aplicadas
+      - Al leer una cotización guardada se devuelve la opción elegida y la cotización reproduce el mismo total
+      - La suite de aislamiento incluye la aserción nueva; pnpm db:aislamiento verde
+    files:
+      - packages/database/prisma/schema.prisma
+      - apps/api/src/modules/quoting/
+    source: hallazgos de la tanda 2026-10-26
+    created_at: 2026-10-27T01:51:03.949Z
+    blocked_reason: Requiere migración (agente datos) con aprobación del propietario, ya delegada en el orquestador
+  - id: T-063
+    title: "Web: enviar opcionDeSalidaId al cotizar y al guardar cuando el producto tiene opciones de salida"
+    type: bug
+    phase: 1
+    priority: P0
+    effort: S
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Si el producto tiene opciones de salida activas, el cotizador de apps/web obliga a elegir una antes de
+        cotizar y manda opcionDeSalidaId; sin esto la API responde 422 OPCION_DE_SALIDA_REQUERIDA (Isla Palma
+        y City Tour VIP de JD Tours)
+      - Los cargos en destino que devuelve la API se muestran aparte con la etiqueta «No incluido» y nunca se
+        suman al total
+      - Tests del cotizador con y sin opciones; pnpm compuertas en verde
+    files:
+      - apps/web/src/app/cotizador/page.tsx
+      - apps/web/src/components/cotizador/
+      - apps/web/src/lib/cotizaciones-api.ts
+    source: hallazgos de la tanda 2026-10-26
+    created_at: 2026-10-27T01:51:03.950Z
+  - id: T-064
+    title: "Catálogo: el neto guardado queda en la moneda anterior si quien cambia la venta no tiene permiso de
+      neto"
+    type: bug
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Cambiar la moneda de la venta sin el permiso cotizacion.ver_neto_y_margen rechaza el cambio o
+        convierte el neto de forma coherente, sin dejar neto y venta en monedas distintas
+      - Test e2e del caso; la auditoría sigue sin datos personales
+    files:
+      - apps/api/src/modules/quoting/application/
+      - apps/api/src/modules/quoting/infrastructure/
+    source: hallazgos de la tanda 2026-10-26
+    created_at: 2026-10-27T01:51:03.950Z
+  - id: T-065
+    title: "Catálogo: el validador no detecta cambios solo en opciones de salida, cargos o formato; PATCH no puede
+      poner el plan de alimentación en nulo; validar la moneda contra la tabla"
+    type: bug
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    depends_on: []
+    acceptance:
+      - validarYPlanificar detecta como cambio una modificación que afecta solo a opciones de salida, cargos
+        en destino o formato, con test
+      - PATCH de un paquete permite poner planAlimentacion en null de forma explícita; la moneda de una tarifa
+        se valida contra la tabla monedas
+      - pnpm compuertas --rapido verde
+    files:
+      - apps/api/src/modules/quoting/domain/
+      - apps/api/src/modules/quoting/application/
+    source: hallazgos de la tanda 2026-10-26
+    created_at: 2026-10-27T01:51:03.950Z
+  - id: T-066
+    title: "GET /catalogo/salidas: el «desde» de una salida con varias monedas toma solo la primera por código"
+    type: bug
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    depends_on: []
+    acceptance:
+      - SalidaPublicada devuelve el «desde» por moneda (lista) igual que el listado de gestión, o documenta y
+        prueba la regla elegida; sin mezclar monedas en un solo número
+      - Test con una salida COP y USD; pnpm compuertas --rapido verde
+    files:
+      - apps/api/src/modules/quoting/application/listar-salidas.use-case.ts
+      - packages/contracts/src/catalogo.ts
+    source: hallazgos de la tanda 2026-10-26
+    created_at: 2026-10-27T01:51:03.950Z
+  - id: T-067
+    title: "Aserciones de comportamiento de vigencias, tarifas y políticas de precio en la suite de aislamiento
+      (T-012 pendiente: exige Postgres real)"
+    type: test
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    depends_on: []
+    acceptance:
+      - aislamiento.spec.ts comprueba, para vigencias, tarifas y politicas_de_precio, que la lectura y la
+        escritura cruzada entre dos agencias dan 0 filas, 42501 o 23503, sin debilitar ninguna aserción
+        existente
+      - pnpm db:aislamiento verde en el CI
+    files:
+      - packages/database/tests/aislamiento.spec.ts
+    source: hallazgos de la tanda 2026-10-26
+    created_at: 2026-10-27T01:51:03.950Z
+  - id: T-068
+    title: "Limitador de tasa: límite combinado tenant+IP, límites distintos por endpoint y prueba e2e contra
+      Redis real"
+    type: security
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Los endpoints costosos (importación de catálogo, envío de mensajes) tienen un límite propio más bajo
+        que el general, configurable
+      - Existe una prueba contra Redis real en el CI o documentada como manual; si Redis falla se mantiene la
+        decisión de dejar pasar y registrar el error, y queda documentada
+    files:
+      - apps/api/src/shared/red/limite-de-tasa/
+    source: hallazgos de la tanda 2026-10-26
+    created_at: 2026-10-27T01:51:03.950Z
+  - id: T-069
+    title: "CSP de producción con nonce: hoy script-src sin nonce ni unsafe-inline impediría arrancar Next en el
+      sitio desplegado"
+    type: security
+    phase: 1
+    priority: P0
+    effort: M
+    status: backlog
+    depends_on: []
+    acceptance:
+      - apps/web emite una CSP con nonce por petición (middleware) para los scripts en línea de Next, sin
+        unsafe-inline ni unsafe-eval en producción
+      - Un build de producción levanta, hidrata y el login funciona con esa CSP (probado con el MCP playwright
+        o un test de humo); la prueba de cabeceras sigue verde
+      - Es requisito antes de cualquier despliegue
+    files:
+      - apps/web/next.config.mjs
+      - apps/web/src/
+    source: hallazgos de la tanda 2026-10-26
+    created_at: 2026-10-27T01:51:03.950Z
+  - id: T-070
+    title: "Prueba inestable de aislamiento: vigilar que fileParallelism false en packages/database no oculte otro
+      cruce de bloqueos"
+    type: test
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: []
+    acceptance:
+      - El job test del CI pasa 10 veces seguidas sin reintentos en main; si vuelve a aparecer 40P01 se
+        documenta la consulta que bloquea
+    files:
+      - packages/database/vitest.config.ts
+    source: hallazgos de la tanda 2026-10-26
+    created_at: 2026-10-27T01:51:03.951Z
+  - id: T-071
+    title: "Registrar quién cambió un precio cuando lo hace una clave de API: columna de actor en la auditoría
+      (para la API pública)"
+    type: feature
+    phase: 1
+    priority: P3
+    effort: S
+    status: blocked
+    depends_on: []
+    acceptance:
+      - registros_auditoria identifica si el actor fue un usuario o una clave de API, con tenant_id y RLS
+        intactas
+      - El historial de precios muestra el actor sin datos personales; la suite de aislamiento sigue verde
+    files:
+      - packages/database/prisma/schema.prisma
+      - apps/api/src/modules/quoting/
+    source: hallazgos de la tanda 2026-10-26
+    created_at: 2026-10-27T01:51:03.951Z
+    blocked_reason: Requiere migración (agente datos) con aprobación del propietario, ya delegada en el orquestador
+  - id: T-072
+    title: "Higiene del repositorio: ADR-0016 debe reflejar que el ciclo de OpenCode está detenido (se supersede,
+      no se edita)"
+    type: docs
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Existe un ADR nuevo que registra el estado detenido del ciclo autónomo de OpenCode, su causa (cuota y
+        lentitud) y las condiciones para reanudarlo, y supersede lo que corresponda del ADR-0016
+    files:
+      - docs/03-adr/
+    source: hallazgos de la tanda 2026-10-26
+    created_at: 2026-10-27T01:51:03.951Z

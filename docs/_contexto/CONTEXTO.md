@@ -229,3 +229,19 @@ Para volver a levantar el entorno de desarrollo, desde `D:\Projects\CRM` (rama `
 5. Redis sigue sin existir: con `COLA_CHANGES=inerte` los mensajes recibidos se guardan pero no se procesan.
 6. Comprobar el estado: `node scripts/estado-de-arboles.mjs` y `gh pr list --state open`, y retomar la cadena del catálogo desde la siguiente tarea libre de `roadmap/tasks.yaml` (T-042 en curso al apagar; T-043 en adelante).
 
+
+## 14. Cierre de la tanda (2026-10-26, ~21:00)
+
+**Acción necesaria del propietario en su `.env`:** `META_TENANT_ID_PRUEBA=01932000-0000-7000-8000-0000000000d0` (UUID de Agencia Demo, no es secreto). Sin ella, los mensajes salientes
+quedan FALLIDOS (T-060: la credencial de prueba va atada al tenant). La variable de número es `META_PHONE_NUMBER_ID_PRUEBA`.
+
+**Integrado desde #67:** cadena del catálogo T-042 a T-051 (aplicador transaccional, vigencias y tarifas por id, listado con «desde», importación previsualizar/confirmar, historial de precios,
+`promo_vencida`, ajustes `GET/PATCH /api/v1/catalogo/ajustes`, `presentacion`), T-002 (límite de tasa por IP y tenant), T-013, T-059 y T-060 (seguridad del envío). **T-049** (campos extendidos,
+formatos y opciones de salida) es el PR #81: comprobar con `gh pr view 81`.
+
+**Cola final registrada (T-062 a T-072, PR #89):** P0 = T-063 (la web debe enviar `opcionDeSalidaId`, si no la API responde 422 `OPCION_DE_SALIDA_REQUERIDA` en Isla Palma y City Tour VIP) y T-069 (CSP con nonce,
+requisito antes de cualquier despliegue). Bloqueadas por migración: T-062 (persistir la opción de salida), T-071 (actor de clave de API en auditoría). El resto es P2/P3 (neto y moneda, validador, «desde»
+multimoneda, aserciones T-012, limitador, estabilidad de `database`, ADR que supersede ADR-0016).
+
+**Al volver:** `git checkout main && git pull`, seguir §13 para levantar el entorno, `gh pr list --state open` (esperados: #81 si no se integró, #29 por decidir, Dependabot #11 a #13), y
+pasar a Antigravity el prompt de prioridad de `docs/09-ia/08-prompt-antigravity.md` más T-063 y T-051.

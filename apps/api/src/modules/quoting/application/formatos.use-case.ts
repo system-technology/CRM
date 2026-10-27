@@ -97,8 +97,10 @@ export class FormatosUseCase {
   ) {}
 
   listar(): Promise<{ datos: FormatoDeViaje[] }> {
+    const { tenantId } = ContextoTenant.obtener();
     return this.prisma.conTenant(async (tx) => {
       const filas = await tx.formatoDeViaje.findMany({
+        where: { tenantId },
         orderBy: [{ orden: 'asc' }, { id: 'asc' }],
       });
       return { datos: filas.map(aVista) };
@@ -199,7 +201,11 @@ export class FormatosUseCase {
     nombre: string,
     propioId: string | null,
   ): Promise<void> {
-    const todos = await tx.formatoDeViaje.findMany({ select: { id: true, nombre: true } });
+    const { tenantId } = ContextoTenant.obtener();
+    const todos = await tx.formatoDeViaje.findMany({
+      where: { tenantId },
+      select: { id: true, nombre: true },
+    });
     const clave = normalizarNombre(nombre);
     if (todos.some((f) => f.id !== propioId && normalizarNombre(f.nombre) === clave)) {
       throw new FormatoDeViajeDuplicadoError(nombre);
