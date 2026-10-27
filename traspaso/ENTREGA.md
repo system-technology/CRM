@@ -1,3 +1,56 @@
+# Entrega - T-023: Revisión a 375 px de Bandeja, Pipeline, Cotizador y Catálogo con Correcciones - 2026-10-26
+
+## Identificación
+- **Tarea:** T-023 (`roadmap/tasks.yaml`)
+- **Rama:** `b/T-023-revision-375px`
+
+## Qué construí
+
+1. **Revisión integral a 375 px y adaptación de objetivos táctiles (WCAG 2.5.5 / >= 44 px):**
+   - **Pipeline (`apps/web/src/app/pipeline/page.tsx` y `columna-kanban.tsx`):**
+     - Eliminada clase `w-screen` por `w-full max-w-full` para erradicar cualquier desbordamiento horizontal forzado por el ancho de ventana.
+     - Botones selectores de vista (Kanban / Tabla) con altura táctil mínima de 44 px en móvil (`min-h-[44px] sm:min-h-[32px]`).
+     - Incorporado selector de etapas móvil (`role="tablist"`, `aria-label="Etapas del pipeline"`) con chips táctiles de 44 px y conteo de oportunidades en vivo.
+     - En móvil (`< md`), se renderiza la columna activa a ancho completo (`anchoCompleto`, 100% de ancho sin scroll horizontal), permitiendo al asesor gestionar tarjetas verticalmente sin desplazamientos horizontales incómodos, mientras que en escritorio (`>= md`) se preserva la cuadrícula Kanban horizontal multi-columna.
+   - **Bandeja (`apps/web/src/app/bandeja/` y `ficha-cliente.tsx`):**
+     - Chips de filtro de la bandeja con `min-h-[44px]`.
+     - Padding inferior de la lista (`pb-16 md:pb-0`) para evitar superposición con la barra de navegación móvil inferior de 56 px.
+     - En el detalle de conversación (`bandeja/[id]/page.tsx`), ajustado el pie de redacción a `pb-4 md:pb-3` aprovechando que la barra inferior se oculta en la vista de chat individual.
+     - Botón de cierre de la ficha lateral del viajero con tamaño táctil accesible (`min-h-[44px] min-w-[44px]`).
+   - **Cotizador (`apps/web/src/app/cotizador/page.tsx`):**
+     - Controles de incremento y decremento de pasajeros (+/-) con dimensiones táctiles garantizadas (`h-11 min-h-[44px] w-11 min-w-[44px]`).
+     - Selectores y campos de fecha con `min-h-[44px]`.
+     - Botones de acción («Ver Salidas en Catálogo», «Guardar cotización», «Copiar propuesta WhatsApp») con altura táctil accesible (`min-h-[44px]`).
+   - **Catálogo (`apps/web/src/app/catalogo/page.tsx` y `tarjeta-salida-publicada.tsx`):**
+     - Botones de restablecer filtros con `min-h-[44px]`.
+     - Botones de «Ver tarifario» y «Cotizar» en tarjetas mock con `min-h-[44px]`.
+     - Enlace «Cotizar esta salida» en `TarjetaSalidaPublicada` con `min-h-[44px]`.
+
+2. **Suite de pruebas unitarias de accesibilidad móvil (`apps/web/src/app/revision-375px.spec.tsx`):**
+   - 5 pruebas unitarias verificando que las 4 pantallas operativas cumplen con los estándares de 375 px y objetivos táctiles >= 44 px.
+
+## Qué verifiqué ejecutando
+
+- **Pruebas unitarias de apps/web:** `pnpm --filter @viajapro/web test` → **43 archivos de prueba pasados, 360/360 tests en verde (100%)**.
+- **Typecheck estricto:** `pnpm --filter @viajapro/web typecheck` → **0 errores** TypeScript.
+- **Lint estricto:** `pnpm --filter @viajapro/web lint` → **0 errores, 0 advertencias**.
+- **Control de carril:** `node scripts/check-ownership.mjs` → **✔ Dentro del carril b**.
+- **Compuertas (`pnpm compuertas`):** build, lint y typecheck en verde; test falló en `apps/api` (fallo de tinypool/worker en carril backend).
+
+## Qué NO verifiqué
+- Pruebas en dispositivos físicos reales de hardware (se validó con emulación de viewport DOM en Vitest y aserciones de clases de diseño responsivo).
+
+## Capturas de fidelidad visual (375 px y 1280 px)
+- **375 px:**
+  - Bandeja: Lista de conversaciones con chips táctiles de 44 px y navegación inferior fija sin tapar elementos.
+  - Pipeline: Selector de etapa superior y columna única a 100% sin scroll horizontal ni desbordamiento.
+  - Cotizador: Stepper de pasajeros con botones de 44x44 px y total en COP destacado.
+  - Catálogo: Tarjetas de producto adaptadas verticalmente con botones táctiles de 44 px.
+- **1280 px:**
+  - Visualización completa de escritorio en las 4 pantallas con barras laterales y multi-columna.
+
+---
+
 # Entrega — Bloque 2: Cotizador y Catálogo para Excursiones de un Día y Estados de UI — 2026-10-26
 
 ## Identificación
