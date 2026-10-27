@@ -18,7 +18,7 @@ export type JsonValue =
 export interface CambioRegistrado {
   /** `catalogo.paquete.creado`, `catalogo.tarifa.modificada`, … */
   readonly accion: string;
-  readonly entidad: 'paquete' | 'tarifa' | 'propuesta';
+  readonly entidad: 'paquete' | 'vigencia' | 'tarifa' | 'propuesta';
   readonly entidadId: string | null;
   readonly detalle: { readonly [clave: string]: JsonValue };
 }
@@ -71,7 +71,11 @@ export abstract class CatalogoPersistente {
     paqueteId: string,
     vigenciaId: string,
     tarifa: TarifaPropuesta,
-    opciones: { readonly conservarNeto: boolean },
+    opciones: {
+      readonly conservarNeto: boolean;
+      /** Sin `opcionDeSalida` en la tarifa: no desatar la que ya tiene (edición por id). */
+      readonly conservarOpcion?: boolean;
+    },
   ): Promise<string>;
 
   abstract desactivarPaquete(id: string): Promise<ResultadoDeDesactivar>;

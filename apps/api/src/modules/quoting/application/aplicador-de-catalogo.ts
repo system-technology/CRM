@@ -79,9 +79,9 @@ export interface ResultadoDeAplicacion {
 }
 
 /** Clave sintética con la que una edición casa su producto con el paquete que se edita. */
-const CODIGO_DE_EDICION = '__edicion__';
+export const CODIGO_DE_EDICION = '__edicion__';
 
-interface ModoDeEdicion {
+export interface ModoDeEdicion {
   readonly codigoNuevo: string | undefined;
   readonly forzarPaquete: boolean;
 }
@@ -207,7 +207,8 @@ export class AplicadorDeCatalogo {
 
   // ---------------------------------------------------------------------------------------------
 
-  private async aplicarDentro(
+  /** Pública para `AplicadorPorId`: aplica una propuesta ya leída, dentro de la transacción. */
+  async aplicarDentro(
     { catalogo, registro }: EspacioDeTrabajo,
     propuesta: PropuestaDeCatalogo,
     actual: CatalogoActual,
@@ -303,6 +304,7 @@ export class AplicadorDeCatalogo {
             vigenciaActual?.tarifas.find((t) => normalizarNombre(t.nombre) === clave) ?? null;
           const tarifaId = await catalogo.guardarTarifa(paqueteId, vigenciaId, tarifa, {
             conservarNeto: !puedeVerNeto && tarifaActual !== null,
+            conservarOpcion: edicion !== null,
           });
           auditoria.push(
             ...cambiosDePrecio(tarifaId, tarifa, tarifaActual, {
@@ -342,7 +344,25 @@ export class AplicadorDeCatalogo {
 // Piezas puras
 // =================================================================================================
 
-function propuestaDeUnProducto(
+/** El producto tal como está hoy, con las vigencias que se le indiquen (por defecto ninguna). */
+export function productoDesdeActual(
+  objetivo: PaqueteActual,
+  vigencias: ProductoPropuesto['vigencias'] = [],
+): ProductoPropuesto {
+  return {
+    codigo: CODIGO_DE_EDICION,
+    nombre: objetivo.nombre,
+    destino: objetivo.destino,
+    dias: objetivo.dias,
+    noches: objetivo.noches,
+    planAlimentacion: objetivo.planAlimentacion as ProductoPropuesto['planAlimentacion'],
+    inclusiones: [...objetivo.inclusiones],
+    exclusiones: [...objetivo.exclusiones],
+    vigencias,
+  };
+}
+
+export function propuestaDeUnProducto(
   origen: OrigenDePropuesta,
   producto: ProductoPropuesto,
 ): PropuestaDeCatalogo {

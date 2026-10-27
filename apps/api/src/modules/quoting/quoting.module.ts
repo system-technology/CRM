@@ -6,6 +6,10 @@ import { CotizacionesUseCase } from './application/cotizaciones.use-case.js';
 import { AplicadorDeCatalogo } from './application/aplicador-de-catalogo.js';
 import { UnidadDeTrabajoDeCatalogo } from './application/puertos-de-catalogo.js';
 import { UnidadDeTrabajoDeCatalogoPrisma } from './infrastructure/catalogo.prisma.js';
+import { AplicadorPorId } from './application/aplicador-por-id.js';
+import { UnidadDeTrabajoDeGestion } from './application/puertos-de-gestion.js';
+import { UnidadDeTrabajoDeGestionPrisma } from './infrastructure/gestion-por-id.prisma.js';
+import { CatalogoVigenciasController } from './interface/catalogo-vigencias.controller.js';
 import { CatalogoGestionController } from './interface/catalogo-gestion.controller.js';
 import { CotizacionesController } from './interface/cotizaciones.controller.js';
 import { CatalogoController } from './interface/catalogo.controller.js';
@@ -21,6 +25,7 @@ import { SalidasController } from './interface/salidas.controller.js';
   controllers: [
     CatalogoController,
     CatalogoGestionController,
+    CatalogoVigenciasController,
     SalidasController,
     CotizacionesController,
   ],
@@ -31,6 +36,8 @@ import { SalidasController } from './interface/salidas.controller.js';
     CotizarSalidaUseCase,
     AplicadorDeCatalogo,
     { provide: UnidadDeTrabajoDeCatalogo, useClass: UnidadDeTrabajoDeCatalogoPrisma },
+    AplicadorPorId,
+    { provide: UnidadDeTrabajoDeGestion, useClass: UnidadDeTrabajoDeGestionPrisma },
   ],
   exports: [],
 })
