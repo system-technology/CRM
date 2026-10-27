@@ -5,7 +5,7 @@
  * los traduce a HTTP. El texto en español es para el log, no para la pantalla.
  */
 
-import { DomainError, EstadoInvalidoError, InvariantError } from '@viajapro/domain';
+import { DomainError, EstadoInvalidoError, InvariantError, ProhibidoError } from '@viajapro/domain';
 
 export class PaqueteNoEncontradoError extends DomainError {
   readonly code = 'PAQUETE_NO_ENCONTRADO';
@@ -196,5 +196,13 @@ export class PaqueteDuplicadoError extends EstadoInvalidoError {
   readonly code = 'PAQUETE_DUPLICADO';
   constructor(readonly clave: string) {
     super(`Ya existe otro paquete de la agencia con la clave '${clave}'`);
+  }
+}
+
+/** La importación trae precios netos y quien confirma no puede verlos ni cambiarlos (403). */
+export class NetoSinPermisoError extends ProhibidoError {
+  readonly code = 'NETO_SIN_PERMISO';
+  constructor() {
+    super('Importar precios netos exige el permiso cotizacion.ver_neto_y_margen');
   }
 }

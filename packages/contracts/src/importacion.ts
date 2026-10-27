@@ -96,3 +96,40 @@ export const SugerenciaDeMapeo = z
   })
   .strict();
 export type SugerenciaDeMapeo = z.infer<typeof SugerenciaDeMapeo>;
+
+// =============================================================================
+// Confirmación (todo o nada)
+// =============================================================================
+
+const HuellaDeImportacion = z.string().regex(/^[0-9a-f]{64}$/);
+
+/**
+ * La misma entrada que previsualizar, más la `huella` que devolvió. Con tabla puede traer el mapeo
+ * que sugirió el servidor, solo para dejarlo en la auditoría junto al confirmado.
+ */
+export const ConfirmarImportacion = z.union([
+  z
+    .object({
+      tabla: TablaDeImportacion,
+      mapeo: MapeoDeColumnas,
+      mapeoSugerido: SugerenciaDeMapeo.optional(),
+      huella: HuellaDeImportacion,
+    })
+    .strict(),
+  z.object({ propuesta: PropuestaDeCatalogo, huella: HuellaDeImportacion }).strict(),
+]);
+export type ConfirmarImportacion = z.infer<typeof ConfirmarImportacion>;
+
+export const RespuestaDeConfirmacion = z
+  .object({
+    informe: InformeDeCatalogo,
+    paquetes: z.array(
+      z.object({
+        indice: z.number().int(),
+        id: z.string(),
+        accion: z.enum(['CREAR', 'ACTUALIZAR', 'SIN_CAMBIOS']),
+      }),
+    ),
+  })
+  .strict();
+export type RespuestaDeConfirmacion = z.infer<typeof RespuestaDeConfirmacion>;

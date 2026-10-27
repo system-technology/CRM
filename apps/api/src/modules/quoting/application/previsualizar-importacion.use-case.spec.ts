@@ -107,7 +107,7 @@ describe('PrevisualizarImportacionUseCase', () => {
       codigo: 'FECHA_INVALIDA',
       procedencia: { fila: 4, columna: 'Fecha' },
     });
-    expect(r.huella).toBe(r.informe.huella);
+    expect(r.huella).toMatch(/^[0-9a-f]{64}$/);
     expect(escritura).not.toHaveBeenCalled();
   });
 

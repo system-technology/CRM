@@ -965,7 +965,7 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: backlog
+    status: done
     depends_on:
       - T-042
     unblocks:
@@ -992,6 +992,12 @@ tasks:
       - apps/api/src/modules/quoting/catalogo-gestion.e2e-spec.ts
     source: arquitecto:ADR-0017 (importado 2026-10-26; id original T-035)
     created_at: 2026-10-26T00:00:00.000Z
+    started_at: 2026-10-27T01:03:28.782Z
+    done_at: 2026-10-27T01:03:28.782Z
+    evidence: "Mergeado en main por el PR #72 (rama a/T-043-vigencias-y-tarifas-por-id) con el CI en verde:
+      format, analyze, tests y los demás checks obligatorios. Cierre automático
+      (.github/workflows/cerrar-tarea.yml)."
+    commit: 992513ef1eaba829d026dfce4c5ff645ad210e89
   - id: T-044
     title: "API: GET /api/v1/catalogo/paquetes, listado de gestión con «desde» derivado y paquetes «a consultar»"
     type: feature
@@ -1075,7 +1081,7 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: backlog
+    status: done
     depends_on:
       - T-045
     unblocks:
@@ -1097,6 +1103,11 @@ tasks:
       - apps/api/src/modules/quoting/catalogo-gestion.e2e-spec.ts
     source: arquitecto:ADR-0017 (importado 2026-10-26; id original T-038)
     created_at: 2026-10-26T00:00:00.000Z
+    started_at: 2026-10-27T01:09:57.221Z
+    done_at: 2026-10-27T01:09:57.221Z
+    evidence: "Mergeado en main por el PR #74 (rama a/T-046-confirmar-importacion) con el CI en verde: format,
+      analyze, tests y los demás checks obligatorios. Cierre automático (.github/workflows/cerrar-tarea.yml)."
+    commit: 8df2dca7a7b0df19aa92b09ffbb30b38c22c317a
   - id: T-047
     title: "API: GET /api/v1/catalogo/tarifas/:id/historial de cambios de precio, con neto redactado sin permiso"
     type: feature
