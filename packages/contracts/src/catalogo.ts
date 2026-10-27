@@ -69,6 +69,7 @@ export type Precio = z.infer<typeof Precio>;
 export const PrecioPublico = Precio.omit({ neto: true });
 export type PrecioPublico = z.infer<typeof PrecioPublico>;
 
+/** @deprecated ADR-0017: el precio vive en `Tarifa` (vigencias). Se retira con las temporadas. */
 export const CrearPrecio = z
   .object({
     acomodacion: Acomodacion,
@@ -105,6 +106,7 @@ export const Temporada = z.object({
 });
 export type Temporada = z.infer<typeof Temporada>;
 
+/** @deprecated ADR-0017: la temporada se reemplazó por la vigencia (`vigencias.ts`). */
 export const CrearTemporada = z
   .object({
     nombre: z.string().min(1).max(80),
@@ -139,27 +141,47 @@ export const Paquete = z.object({
 });
 export type Paquete = z.infer<typeof Paquete>;
 
-export const CrearPaquete = z
-  .object({
-    nombre: z.string().min(1).max(200),
-    destino: z.string().min(1).max(120),
-    paisIso: z.string().length(2).optional(),
-    dias: z.number().int().min(1).max(365),
-    noches: z.number().int().min(0).max(364),
-    planAlimentacion: PlanAlimentacion,
-    inclusiones: z.array(z.string().max(300)).default([]),
-    exclusiones: z.array(z.string().max(300)).default([]),
-    descripcion: z.string().optional(),
-    mayoristaId: Id.optional(),
-    temporadas: z.array(CrearTemporada).default([]),
-  })
-  // "7 días / 6 noches" es la forma normal; "7 días / 7 noches" existe con vuelo nocturno.
-  // Más de un día de diferencia es casi siempre un error de captura.
-  .refine((p) => p.dias - p.noches >= 0 && p.dias - p.noches <= 1, {
-    message: 'las noches deben ser iguales a los días o uno menos',
-    path: ['noches'],
-  });
+/** Campos que el formulario de alta y el de edición comparten. */
+const CamposDePaquete = z.object({
+  nombre: z.string().min(1).max(200),
+  destino: z.string().min(1).max(120),
+  dias: z.number().int().min(1).max(365),
+  noches: z.number().int().min(0).max(364),
+  /** `null` = el producto no tiene alimentación que declarar (un pasadía). */
+  planAlimentacion: PlanAlimentacion.nullable().optional(),
+  inclusiones: z.array(z.string().max(300)).optional(),
+  exclusiones: z.array(z.string().max(300)).optional(),
+  /** Clave natural preferente (ADR-0017 §3). */
+  codigo: z.string().min(1).max(64).optional(),
+  /** Nombre de un formato de viaje de la agencia. */
+  formato: z.string().min(1).max(80).optional(),
+});
+
+// "7 días / 6 noches" es la forma normal; "7 días / 7 noches" existe con vuelo nocturno.
+// Más de un día de diferencia es casi siempre un error de captura.
+const coherenciaDeNoches = (p: { dias?: number | undefined; noches?: number | undefined }) =>
+  p.dias === undefined ||
+  p.noches === undefined ||
+  (p.dias - p.noches >= 0 && p.dias - p.noches <= 1);
+const MENSAJE_NOCHES = {
+  message: 'las noches deben ser iguales a los días o uno menos',
+  path: ['noches'],
+};
+
+/**
+ * Alta de un producto desde la pantalla (`POST /api/v1/catalogo/paquetes`). Sin temporadas ni
+ * mayorista: los precios entran por vigencias y el mayorista es de la tarifa (ADR-0017 §4.1).
+ * `.strict()`: un `tenantId` en el cuerpo es un 400, no se ignora.
+ */
+export const CrearPaquete = CamposDePaquete.strict().refine(coherenciaDeNoches, MENSAJE_NOCHES);
 export type CrearPaquete = z.infer<typeof CrearPaquete>;
+
+/** Edición parcial (`PATCH /api/v1/catalogo/paquetes/:id`): solo lo que viene cambia. */
+export const EditarPaquete = CamposDePaquete.partial()
+  .strict()
+  .refine((p) => Object.keys(p).length > 0, { message: 'no hay nada que cambiar' })
+  .refine(coherenciaDeNoches, MENSAJE_NOCHES);
+export type EditarPaquete = z.infer<typeof EditarPaquete>;
 
 // =============================================================================
 // Cotizar un paquete

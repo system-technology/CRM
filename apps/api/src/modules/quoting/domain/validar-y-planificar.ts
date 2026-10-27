@@ -617,7 +617,8 @@ function tarifaCambia(nueva: TarifaPropuesta, actual: TarifaActual, soportaM2: b
   );
 }
 
-function paqueteCambia(producto: ProductoPropuesto, actual: PaqueteActual): boolean {
+/** ¿Cambia algún dato del paquete en sí (no de sus vigencias)? Lo usa también el aplicador. */
+export function paqueteCambia(producto: ProductoPropuesto, actual: PaqueteActual): boolean {
   if (producto.nombre !== actual.nombre) return true;
   if (producto.destino !== actual.destino) return true;
   if (producto.dias !== actual.dias || producto.noches !== actual.noches) return true;
