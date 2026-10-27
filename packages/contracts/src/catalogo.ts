@@ -16,6 +16,7 @@ import {
   PlanAlimentacion,
   TipoPasajero,
 } from './comunes.js';
+import { CargoEnDestino } from './vigencias.js';
 import { PresentacionDePrecio } from './politica-de-precio.js';
 
 // =============================================================================
@@ -140,6 +141,25 @@ export const Paquete = z.object({
   activo: z.boolean(),
   mayoristaId: Id.nullable(),
   creadoEn: Instante,
+  /** ADR-0017 M2. Opcionales en el esquema: las respuestas previas a M2 no los traen. */
+  codigo: z.string().nullable().optional(),
+  formato: z.object({ id: Id, nombre: z.string() }).nullable().optional(),
+  /** Se muestran aparte y NUNCA entran en el total de una cotización. */
+  cargosEnDestino: z.array(CargoEnDestino).optional(),
+  camposPersonalizados: z.record(z.unknown()).optional(),
+  opcionesDeSalida: z
+    .array(
+      z.object({
+        id: Id,
+        etiqueta: z.string(),
+        horaSalida: z.string().nullable(),
+        horaRegreso: z.string().nullable(),
+        puntoDeEncuentro: z.string().nullable(),
+        orden: z.number().int(),
+        activa: z.boolean(),
+      }),
+    )
+    .optional(),
 });
 export type Paquete = z.infer<typeof Paquete>;
 

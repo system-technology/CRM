@@ -11,6 +11,30 @@ import type { ParametrosPagina } from '@viajapro/contracts';
 import { PrismaService } from '../../../shared/prisma/prisma.service.js';
 import { PaqueteNoEncontradoError } from '../domain/errors.js';
 
+/** `time` sin zona: se devuelve como HH:MM, la hora local del punto de encuentro (R9). */
+const aHHMM = (hora: Date | null): string | null =>
+  hora === null ? null : hora.toISOString().slice(11, 16);
+
+export function vistaDeOpcion(o: {
+  id: string;
+  etiqueta: string;
+  horaSalida: Date | null;
+  horaRegreso: Date | null;
+  puntoDeEncuentro: string | null;
+  orden: number;
+  activa: boolean;
+}) {
+  return {
+    id: o.id,
+    etiqueta: o.etiqueta,
+    horaSalida: aHHMM(o.horaSalida),
+    horaRegreso: aHHMM(o.horaRegreso),
+    puntoDeEncuentro: o.puntoDeEncuentro,
+    orden: o.orden,
+    activa: o.activa,
+  };
+}
+
 @Injectable()
 export class ListarPaquetesUseCase {
   // `@Inject` explicito, y no es ceremonia: el transpilador de desarrollo (`tsx`) NO emite los
@@ -42,6 +66,11 @@ export class ListarPaquetesUseCase {
           activo: true,
           mayoristaId: true,
           creadoEn: true,
+          codigo: true,
+          cargosEnDestino: true,
+          camposPersonalizados: true,
+          formato: { select: { id: true, nombre: true } },
+          opcionesDeSalida: { orderBy: { orden: 'asc' } },
         },
       });
 
@@ -49,7 +78,11 @@ export class ListarPaquetesUseCase {
       const datos = hayMas ? filas.slice(0, params.limite) : filas;
 
       return {
-        datos: datos.map((p) => ({ ...p, creadoEn: p.creadoEn.toISOString() })),
+        datos: datos.map((p) => ({
+          ...p,
+          creadoEn: p.creadoEn.toISOString(),
+          opcionesDeSalida: p.opcionesDeSalida.map(vistaDeOpcion),
+        })),
         pageInfo: {
           nextCursor: hayMas ? (datos[datos.length - 1]?.id ?? null) : null,
           hasMore: hayMas,
@@ -69,6 +102,8 @@ export class ListarPaquetesUseCase {
             include: { precios: { orderBy: [{ acomodacion: 'asc' }, { tipoPasajero: 'asc' }] } },
           },
           mayorista: { select: { id: true, nombre: true, diasTimeLimit: true } },
+          formato: { select: { id: true, nombre: true } },
+          opcionesDeSalida: { orderBy: { orden: 'asc' } },
         },
       });
 
@@ -81,6 +116,7 @@ export class ListarPaquetesUseCase {
         ...paquete,
         creadoEn: paquete.creadoEn.toISOString(),
         actualizadoEn: paquete.actualizadoEn.toISOString(),
+        opcionesDeSalida: paquete.opcionesDeSalida.map(vistaDeOpcion),
         temporadas: paquete.temporadas.map((t) => ({
           id: t.id,
           nombre: t.nombre,

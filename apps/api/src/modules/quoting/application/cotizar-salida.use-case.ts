@@ -11,7 +11,12 @@
  */
 
 import { Inject, Injectable } from '@nestjs/common';
-import type { CotizacionDeSalida, CotizarSalida, OpcionDePrecio } from '@viajapro/contracts';
+import {
+  CargoEnDestino,
+  type CotizacionDeSalida,
+  type CotizarSalida,
+  type OpcionDePrecio,
+} from '@viajapro/contracts';
 import {
   Money,
   POLITICA_POR_DEFECTO,
@@ -23,7 +28,12 @@ import {
 } from '@viajapro/domain';
 import { type ClienteTenant, PrismaService } from '../../../shared/prisma/prisma.service.js';
 import { ContextoTenant } from '../../../shared/tenant/contexto-tenant.js';
-import { PaqueteNoEncontradoError, TarifasConCondicionNoEvaluableError } from '../domain/errors.js';
+import {
+  OpcionDeSalidaNoEncontradaError,
+  OpcionDeSalidaRequeridaError,
+  PaqueteNoEncontradoError,
+  TarifasConCondicionNoEvaluableError,
+} from '../domain/errors.js';
 import { monedaDeLaBase } from '../domain/moneda-de-la-base.js';
 import { hoyEnZona } from './desde-de-tarifas.js';
 import { leerPromoVencida } from './presentacion-de-precios.js';
@@ -87,9 +97,24 @@ export class CotizarSalidaUseCase {
 
     const paquete = await tx.paquete.findFirst({
       where: { id: peticion.paqueteId, eliminadoEn: null },
-      select: { id: true, nombre: true, destino: true, noches: true },
+      select: {
+        id: true,
+        nombre: true,
+        destino: true,
+        noches: true,
+        cargosEnDestino: true,
+        opcionesDeSalida: {
+          where: { activa: true },
+          orderBy: { orden: 'asc' },
+          select: { id: true, etiqueta: true },
+        },
+      },
     });
     if (!paquete) throw new PaqueteNoEncontradoError(peticion.paqueteId);
+
+    // Opciones de salida (ADR-0017 §3.1): si el producto las tiene hay que elegir una; la tarifa
+    // atada a otra opción no se cotiza, la que no está atada vale para todas.
+    const opcionElegida = elegirOpcion(paquete.opcionesDeSalida, peticion.opcionDeSalidaId);
 
     const ventanas = await tx.vigencia.findMany({
       where: { paqueteId: paquete.id, activa: true },
@@ -135,7 +160,12 @@ export class CotizarSalidaUseCase {
     // escribio. Y cuando no se pide el margen, ni siquiera sale de la base: defensa en
     // profundidad, no una sola barrera en el mapeador.
     const filas = (await tx.tarifa.findMany({
-      where: { vigenciaId: elegida.id },
+      where: {
+        vigenciaId: elegida.id,
+        ...(opcionElegida === null
+          ? { opcionDeSalidaId: null }
+          : { OR: [{ opcionDeSalidaId: null }, { opcionDeSalidaId: opcionElegida.id }] }),
+      },
       orderBy: { ventaUnidades: 'asc' },
       select: {
         id: true,
@@ -290,6 +320,36 @@ export class CotizarSalidaUseCase {
       noAplicables,
       suplementos,
       pideComposicion: filas.some(exigeComposicion),
+      opcionDeSalida: opcionElegida,
+      // Aparte y NUNCA sumados a `total`: se pagan en destino.
+      cargosEnDestino: cargosDe(paquete.cargosEnDestino),
     };
   }
+}
+
+function elegirOpcion(
+  opciones: readonly { id: string; etiqueta: string }[],
+  opcionId: string | undefined,
+): { id: string; etiqueta: string } | null {
+  if (opciones.length === 0) {
+    if (opcionId !== undefined) throw new OpcionDeSalidaNoEncontradaError(opcionId);
+    return null;
+  }
+  if (opcionId === undefined) {
+    throw new OpcionDeSalidaRequeridaError(opciones.map((o) => o.etiqueta));
+  }
+  const elegida = opciones.find((o) => o.id === opcionId);
+  if (!elegida) throw new OpcionDeSalidaNoEncontradaError(opcionId);
+  return { id: elegida.id, etiqueta: elegida.etiqueta };
+}
+
+/** Los cargos guardados con la forma del contrato; un elemento malformado no tumba la cotización. */
+function cargosDe(json: unknown): CargoEnDestino[] {
+  if (!Array.isArray(json)) return [];
+  const cargos: CargoEnDestino[] = [];
+  for (const crudo of json) {
+    const r = CargoEnDestino.safeParse(crudo);
+    if (r.success) cargos.push(r.data);
+  }
+  return cargos;
 }

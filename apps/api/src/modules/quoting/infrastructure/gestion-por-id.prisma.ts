@@ -6,6 +6,7 @@
 
 import { Inject, Injectable } from '@nestjs/common';
 import { PrismaService, type ClienteTenant } from '../../../shared/prisma/prisma.service.js';
+import { PuertoDefinicionesDeCampo } from '../../../shared/puertos/puertos-hacia-crm.js';
 import { ContextoTenant } from '../../../shared/tenant/contexto-tenant.js';
 import {
   type EspacioDeGestion,
@@ -49,7 +50,10 @@ class OperacionesPorIdPrisma extends OperacionesPorId {
 
 @Injectable()
 export class UnidadDeTrabajoDeGestionPrisma extends UnidadDeTrabajoDeGestion {
-  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {
+  constructor(
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(PuertoDefinicionesDeCampo) private readonly definiciones: PuertoDefinicionesDeCampo,
+  ) {
     super();
   }
 
@@ -57,7 +61,7 @@ export class UnidadDeTrabajoDeGestionPrisma extends UnidadDeTrabajoDeGestion {
     const { tenantId } = ContextoTenant.obtener();
     return this.prisma.conTenant((tx) =>
       fn({
-        catalogo: new CatalogoPrisma(tx, tenantId),
+        catalogo: new CatalogoPrisma(tx, tenantId, this.definiciones),
         registro: new RegistroDeCambiosPrisma(tx, tenantId),
         porId: new OperacionesPorIdPrisma(tx),
       }),

@@ -8,7 +8,13 @@
 
 import { Inject, Injectable } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
-import type { Dinero, ProductoPropuesto, TarifaPropuesta } from '@viajapro/contracts';
+import {
+  CargoEnDestinoPropuesto,
+  type Dinero,
+  type ProductoPropuesto,
+  type TarifaPropuesta,
+} from '@viajapro/contracts';
+import { PuertoDefinicionesDeCampo } from '../../../shared/puertos/puertos-hacia-crm.js';
 import { PrismaService, type ClienteTenant } from '../../../shared/prisma/prisma.service.js';
 import { ContextoTenant } from '../../../shared/tenant/contexto-tenant.js';
 import {
@@ -55,6 +61,25 @@ function esBloqueoVencido(error: unknown): boolean {
   return /55P03|lock timeout/i.test(texto);
 }
 
+const aHoraIso = (hora: Date): string => hora.toISOString().slice(11, 16);
+
+function comoObjeto(json: Prisma.JsonValue): Record<string, unknown> {
+  return json !== null && typeof json === 'object' && !Array.isArray(json)
+    ? { ...(json as Record<string, unknown>) }
+    : {};
+}
+
+/** Los cargos guardados que respetan la forma del contrato; lo demás no se inventa. */
+function comoCargos(json: Prisma.JsonValue): CargoEnDestinoPropuesto[] {
+  if (!Array.isArray(json)) return [];
+  const cargos: CargoEnDestinoPropuesto[] = [];
+  for (const crudo of json) {
+    const r = CargoEnDestinoPropuesto.safeParse(crudo);
+    if (r.success) cargos.push(r.data);
+  }
+  return cargos;
+}
+
 function comoTextos(json: Prisma.JsonValue): string[] {
   return Array.isArray(json) ? json.filter((x): x is string => typeof x === 'string') : [];
 }
@@ -63,6 +88,7 @@ export class CatalogoPrisma extends CatalogoPersistente {
   constructor(
     private readonly tx: ClienteTenant,
     private readonly tenantId: string,
+    private readonly definiciones: PuertoDefinicionesDeCampo,
   ) {
     super();
   }
@@ -80,11 +106,13 @@ export class CatalogoPrisma extends CatalogoPersistente {
   }
 
   async leer(): Promise<CatalogoActual> {
-    const [paquetes, mayoristas] = await Promise.all([
+    const [paquetes, mayoristas, definiciones, formatos] = await Promise.all([
       this.tx.paquete.findMany({
         where: { eliminadoEn: null },
         orderBy: { id: 'asc' },
         include: {
+          formato: { select: { nombre: true } },
+          opcionesDeSalida: { orderBy: { orden: 'asc' } },
           vigencias: {
             orderBy: { desde: 'asc' },
             include: {
@@ -99,10 +127,23 @@ export class CatalogoPrisma extends CatalogoPersistente {
         },
       }),
       this.tx.mayorista.findMany({ where: { eliminadoEn: null }, select: { nombre: true } }),
+      // La tabla es de `crm` (R4): se pide por el puerto, dentro de la misma transacción.
+      this.definiciones.deLosPaquetes(this.tx, this.tenantId),
+      this.tx.formatoDeViaje.findMany({
+        where: { tenantId: this.tenantId },
+        select: { nombre: true },
+      }),
     ]);
 
     return {
       mayoristas: mayoristas.map((m) => m.nombre),
+      formatos: formatos.map((f) => f.nombre),
+      definicionesDePaquete: definiciones.map((d) => ({
+        clave: d.clave,
+        tipo: d.tipo,
+        obligatorio: d.obligatorio,
+        opciones: d.opciones,
+      })),
       paquetes: paquetes.map((p): PaqueteActual => ({
         id: p.id,
         codigo: p.codigo,
@@ -113,6 +154,16 @@ export class CatalogoPrisma extends CatalogoPersistente {
         planAlimentacion: p.planAlimentacion,
         inclusiones: comoTextos(p.inclusiones),
         exclusiones: comoTextos(p.exclusiones),
+        formato: p.formato?.nombre ?? null,
+        cargosEnDestino: comoCargos(p.cargosEnDestino),
+        camposPersonalizados: comoObjeto(p.camposPersonalizados),
+        opcionesDeSalida: p.opcionesDeSalida.map((o) => ({
+          etiqueta: o.etiqueta,
+          horaSalida: o.horaSalida ? aHoraIso(o.horaSalida) : null,
+          horaRegreso: o.horaRegreso ? aHoraIso(o.horaRegreso) : null,
+          puntoDeEncuentro: o.puntoDeEncuentro,
+          activa: o.activa,
+        })),
         vigencias: p.vigencias.map((v) => ({
           id: v.id,
           cupoTotal: v.cupoTotal,
@@ -155,6 +206,22 @@ export class CatalogoPrisma extends CatalogoPersistente {
     const formatoId =
       producto.formato === undefined ? undefined : await this.resolverFormato(producto.formato);
 
+    // Lo que la propuesta no menciona no se toca: los campos personalizados se fusionan por clave.
+    let campos: Record<string, unknown> | undefined;
+    if (producto.camposPersonalizados !== undefined) {
+      const previo =
+        id === null
+          ? null
+          : await this.tx.paquete.findFirst({
+              where: { id },
+              select: { camposPersonalizados: true },
+            });
+      campos = {
+        ...comoObjeto(previo?.camposPersonalizados ?? {}),
+        ...producto.camposPersonalizados,
+      };
+    }
+
     const comun = {
       nombre: producto.nombre,
       destino: producto.destino,
@@ -168,9 +235,7 @@ export class CatalogoPrisma extends CatalogoPersistente {
       ...(producto.cargosEnDestino !== undefined
         ? { cargosEnDestino: aJson(producto.cargosEnDestino) }
         : {}),
-      ...(producto.camposPersonalizados !== undefined
-        ? { camposPersonalizados: aJson(producto.camposPersonalizados) }
-        : {}),
+      ...(campos !== undefined ? { camposPersonalizados: aJson(campos) } : {}),
       ...(formatoId !== undefined ? { formatoId } : {}),
       ...(codigo !== undefined ? { codigo } : {}),
     };
@@ -382,7 +447,10 @@ export class RegistroDeCambiosPrisma extends RegistroDeCambios {
 
 @Injectable()
 export class UnidadDeTrabajoDeCatalogoPrisma extends UnidadDeTrabajoDeCatalogo {
-  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {
+  constructor(
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(PuertoDefinicionesDeCampo) private readonly definiciones: PuertoDefinicionesDeCampo,
+  ) {
     super();
   }
 
@@ -390,7 +458,7 @@ export class UnidadDeTrabajoDeCatalogoPrisma extends UnidadDeTrabajoDeCatalogo {
     const { tenantId } = ContextoTenant.obtener();
     return this.prisma.conTenant((tx) =>
       fn({
-        catalogo: new CatalogoPrisma(tx, tenantId),
+        catalogo: new CatalogoPrisma(tx, tenantId, this.definiciones),
         registro: new RegistroDeCambiosPrisma(tx, tenantId),
       }),
     );

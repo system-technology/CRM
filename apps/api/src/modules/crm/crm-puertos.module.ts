@@ -11,11 +11,13 @@
 import { Global, Module } from '@nestjs/common';
 import {
   PuertoContactos,
+  PuertoDefinicionesDeCampo,
   PuertoNotasDeConversacion,
   PuertoReferenciasDeCrm,
 } from '../../shared/puertos/puertos-hacia-crm.js';
 import {
   ContactosDeCrm,
+  DefinicionesDeCampoDeCrm,
   NotasDeConversacionDeCrm,
   ReferenciasDeCrm,
 } from './infrastructure/puertos-de-crm.prisma.js';
@@ -24,9 +26,15 @@ import {
 @Module({
   providers: [
     { provide: PuertoContactos, useClass: ContactosDeCrm },
+    { provide: PuertoDefinicionesDeCampo, useClass: DefinicionesDeCampoDeCrm },
     { provide: PuertoReferenciasDeCrm, useClass: ReferenciasDeCrm },
     { provide: PuertoNotasDeConversacion, useClass: NotasDeConversacionDeCrm },
   ],
-  exports: [PuertoContactos, PuertoReferenciasDeCrm, PuertoNotasDeConversacion],
+  exports: [
+    PuertoContactos,
+    PuertoDefinicionesDeCampo,
+    PuertoReferenciasDeCrm,
+    PuertoNotasDeConversacion,
+  ],
 })
 export class CrmPuertosModule {}

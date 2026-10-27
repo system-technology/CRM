@@ -207,6 +207,11 @@ export const CotizarSalida = z.object({
   ninos: z.number().int().min(0).max(200).optional(),
   infantes: z.number().int().min(0).max(200).optional(),
   acomodacion: Acomodacion.optional(),
+  /**
+   * La opción de salida elegida (turno, modalidad). Obligatoria cuando el producto tiene opciones
+   * activas: sin ella la cotización responde `OPCION_DE_SALIDA_REQUERIDA`. ADR-0017 §3.1.
+   */
+  opcionDeSalidaId: Id.optional(),
 
   /**
    * Traer el margen de cada línea. **Por defecto NO**, y es deliberado.
@@ -308,6 +313,16 @@ export const OpcionDePrecio = z.object({
 });
 export type OpcionDePrecio = z.infer<typeof OpcionDePrecio>;
 
+/** Un cargo que se paga en destino y no suma al total de la cotización. */
+export const CargoEnDestino = z.object({
+  concepto: z.string().min(1).max(120),
+  /** `null` = existe pero el monto no se conoce. */
+  monto: Dinero.nullable(),
+  unidad: UnidadDeCobro,
+  nota: z.string().max(300).optional(),
+});
+export type CargoEnDestino = z.infer<typeof CargoEnDestino>;
+
 export const CotizacionDeSalida = z.object({
   paqueteId: Id,
   paqueteNombre: z.string(),
@@ -365,6 +380,14 @@ export const CotizacionDeSalida = z.object({
    * no de un interruptor que pueda contradecir al tarifario.
    */
   pideComposicion: z.boolean(),
+
+  /** La opción de salida con la que se cotizó; `null` si el producto no tiene opciones. */
+  opcionDeSalida: z.object({ id: Id, etiqueta: z.string() }).nullable().optional(),
+  /**
+   * Lo que el viajero paga en destino (tasa portuaria, impuesto de muelle). **Se muestra aparte y
+   * NUNCA entra en `total`.** Cada cargo trae su monto y su unidad de cobro.
+   */
+  cargosEnDestino: z.array(CargoEnDestino).optional(),
 });
 export type CotizacionDeSalida = z.infer<typeof CotizacionDeSalida>;
 

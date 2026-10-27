@@ -18,6 +18,7 @@
 import { createHash } from 'node:crypto';
 import type {
   AccionDePlan,
+  CargoEnDestinoPropuesto,
   Dinero,
   ElementoDeInforme,
   InformeDeCatalogo,
@@ -79,7 +80,28 @@ export interface PaqueteActual {
   readonly planAlimentacion: string | null;
   readonly inclusiones: readonly string[];
   readonly exclusiones: readonly string[];
+  /** Nombre del formato de viaje, si tiene. Opcional: los adaptadores previos a M2 no lo llenan. */
+  readonly formato?: string | null;
+  readonly cargosEnDestino?: readonly CargoEnDestinoPropuesto[];
+  readonly camposPersonalizados?: Readonly<Record<string, unknown>>;
+  readonly opcionesDeSalida?: readonly OpcionActual[];
   readonly vigencias: readonly VigenciaActual[];
+}
+
+export interface OpcionActual {
+  readonly etiqueta: string;
+  readonly horaSalida: string | null;
+  readonly horaRegreso: string | null;
+  readonly puntoDeEncuentro: string | null;
+  readonly activa: boolean;
+}
+
+/** Definición de un campo personalizado de `PAQUETE` del tenant (lo que valida el núcleo). */
+export interface DefinicionDeCampo {
+  readonly clave: string;
+  readonly tipo: 'TEXTO' | 'NUMERO' | 'FECHA' | 'BOOLEANO' | 'SELECCION' | 'SELECCION_MULTIPLE';
+  readonly obligatorio: boolean;
+  readonly opciones: readonly string[] | null;
 }
 
 /** Fotografía del catálogo del tenant. La toma quien llama, dentro de su transacción. */
@@ -87,6 +109,13 @@ export interface CatalogoActual {
   readonly paquetes: readonly PaqueteActual[];
   /** Nombres de los mayoristas existentes. */
   readonly mayoristas: readonly string[];
+  /**
+   * Definiciones de campos personalizados de `PAQUETE`. Si se omite, el núcleo no valida
+   * `camposPersonalizados` (compatibilidad con quien aún no las lee).
+   */
+  readonly definicionesDePaquete?: readonly DefinicionDeCampo[];
+  /** Nombres de los formatos de viaje del tenant. Si se omite, no se valida `formato`. */
+  readonly formatos?: readonly string[];
 }
 
 export interface ContextoDePlanificacion {
@@ -202,7 +231,7 @@ export function validarYPlanificar(
   permisos: readonly Permiso[],
   contexto: ContextoDePlanificacion,
 ): ResultadoDePlanificacion {
-  const soportaM2 = contexto.soportaM2 ?? false;
+  const soportaM2 = contexto.soportaM2 ?? true;
   const puedeVerNeto = permisos.includes('cotizacion.ver_neto_y_margen');
   const elementos: ElementoDeInforme[] = [];
   const mayoristasConocidos = new Set(catalogoActual.mayoristas.map(normalizarNombre));
@@ -272,6 +301,11 @@ export function validarYPlanificar(
       }
       etiquetas.add(etiqueta);
     });
+
+    // ---- formato, cargos en destino y campos personalizados (M2) ----------------------------
+    if (soportaM2) {
+      validarCamposExtendidos(producto, ruta, catalogoActual, emitir);
+    }
 
     // ---- clave natural y paquete actual ---------------------------------------------------------
     const codigo = producto.codigo ?? null;
@@ -357,7 +391,7 @@ export function validarYPlanificar(
       const vigenciaActual =
         actual?.vigencias.find((x) => x.desde === vigencia.desde && x.hasta === vigencia.hasta) ??
         null;
-      const tarifasCambio = planificarTarifas(vigencia, vigenciaActual, rutaV, producto, {
+      const tarifasCambio = planificarTarifas(vigencia, vigenciaActual, rutaV, producto, actual, {
         emitir,
         puedeVerNeto,
         soportaM2,
@@ -483,10 +517,17 @@ function planificarTarifas(
   vigenciaActual: VigenciaActual | null,
   rutaV: string,
   producto: ProductoPropuesto,
+  paqueteActual: PaqueteActual | null,
   s: ServiciosDeTarifa,
 ): CambioDeTarifa[] {
+  // Las opciones del producto son las que la propuesta declara; si no declara ninguna, las que ya
+  // tiene el paquete (una tarifa no puede nombrar la opción de OTRO producto).
   const etiquetas = new Set(
-    (producto.opcionesDeSalida ?? []).map((o) => normalizarNombre(o.etiqueta)),
+    producto.opcionesDeSalida !== undefined
+      ? producto.opcionesDeSalida.map((o) => normalizarNombre(o.etiqueta))
+      : (paqueteActual?.opcionesDeSalida ?? [])
+          .filter((o) => o.activa)
+          .map((o) => normalizarNombre(o.etiqueta)),
   );
   const nombresVistos = new Set<string>();
   const cambios: CambioDeTarifa[] = [];
@@ -620,7 +661,11 @@ function tarifaCambia(nueva: TarifaPropuesta, actual: TarifaActual, soportaM2: b
   if (!soportaM2) return false;
   return (
     !mismoDinero(nueva.lista, actual.lista) ||
-    (nueva.promoHasta ?? null) !== (actual.promoHasta ?? null)
+    (nueva.promoHasta ?? null) !== (actual.promoHasta ?? null) ||
+    (nueva.opcionDeSalida === undefined
+      ? false
+      : normalizarNombre(nueva.opcionDeSalida) !==
+        (actual.opcionDeSalida == null ? null : normalizarNombre(actual.opcionDeSalida)))
   );
 }
 
@@ -635,7 +680,161 @@ export function paqueteCambia(producto: ProductoPropuesto, actual: PaqueteActual
     return true;
   if (producto.exclusiones !== undefined && !mismosTextos(producto.exclusiones, actual.exclusiones))
     return true;
+  if (producto.planAlimentacion === null && actual.planAlimentacion !== null) return true;
+  if (
+    producto.codigo !== undefined &&
+    producto.codigo !== CODIGO_SINTETICO &&
+    producto.codigo !== actual.codigo
+  )
+    return true;
+  if (
+    producto.formato !== undefined &&
+    normalizarNombre(producto.formato) !==
+      (actual.formato == null ? null : normalizarNombre(actual.formato))
+  )
+    return true;
+  if (
+    producto.cargosEnDestino !== undefined &&
+    canonico(producto.cargosEnDestino) !== canonico(actual.cargosEnDestino ?? [])
+  )
+    return true;
+  if (producto.camposPersonalizados !== undefined) {
+    const previos = actual.camposPersonalizados ?? {};
+    for (const [clave, valor] of Object.entries(producto.camposPersonalizados)) {
+      if (canonico(valor) !== canonico(previos[clave])) return true;
+    }
+  }
+  if (producto.opcionesDeSalida !== undefined && opcionesCambian(producto, actual)) return true;
   return false;
+}
+
+/** Clave sintética de las ediciones por id: no es un código real, no cuenta como cambio. */
+const CODIGO_SINTETICO = '__edicion__';
+
+function opcionesCambian(producto: ProductoPropuesto, actual: PaqueteActual): boolean {
+  const propuestas = producto.opcionesDeSalida ?? [];
+  const previas = actual.opcionesDeSalida ?? [];
+  if (propuestas.length !== previas.filter((o) => o.activa).length) return true;
+  return propuestas.some((o) => {
+    const previa = previas.find(
+      (x) => normalizarNombre(x.etiqueta) === normalizarNombre(o.etiqueta),
+    );
+    return (
+      previa === undefined ||
+      !previa.activa ||
+      previa.etiqueta !== o.etiqueta ||
+      (o.horaSalida ?? null) !== previa.horaSalida ||
+      (o.horaRegreso ?? null) !== previa.horaRegreso ||
+      (o.puntoDeEncuentro ?? null) !== previa.puntoDeEncuentro
+    );
+  });
+}
+
+type Emisor = (
+  nivel: 'AVISO' | 'ERROR',
+  codigo: string,
+  ruta: string,
+  mensaje: string,
+  procedencia?: Procedencia,
+) => void;
+
+function validarCamposExtendidos(
+  producto: ProductoPropuesto,
+  ruta: string,
+  catalogo: CatalogoActual,
+  emitir: Emisor,
+): void {
+  const err = (codigo: string, sufijo: string, mensaje: string): void =>
+    emitir('ERROR', codigo, `${ruta}.${sufijo}`, mensaje, producto.procedencia);
+
+  const formato = producto.formato;
+  if (
+    formato !== undefined &&
+    catalogo.formatos !== undefined &&
+    !catalogo.formatos.some((f) => normalizarNombre(f) === normalizarNombre(formato))
+  ) {
+    err(
+      'FORMATO_DE_VIAJE_DESCONOCIDO',
+      'formato',
+      `la agencia no tiene un formato de viaje llamado '${formato}'`,
+    );
+  }
+
+  const conceptos = new Set<string>();
+  (producto.cargosEnDestino ?? []).forEach((cargo, i) => {
+    const clave = normalizarNombre(cargo.concepto);
+    if (conceptos.has(clave)) {
+      err(
+        'CARGO_EN_DESTINO_DUPLICADO',
+        `cargosEnDestino[${i}].concepto`,
+        `el cargo '${cargo.concepto}' está repetido en el producto`,
+      );
+    }
+    conceptos.add(clave);
+    if (cargo.monto !== null && BigInt(cargo.monto.unidades) < 0n) {
+      err(
+        'CARGO_EN_DESTINO_NEGATIVO',
+        `cargosEnDestino[${i}].monto`,
+        'el monto de un cargo en destino no puede ser negativo',
+      );
+    }
+  });
+
+  const definiciones = catalogo.definicionesDePaquete;
+  const campos = producto.camposPersonalizados;
+  if (definiciones === undefined || campos === undefined) return;
+  for (const [clave, valor] of Object.entries(campos)) {
+    const definicion = definiciones.find((d) => d.clave === clave);
+    const rutaCampo = `camposPersonalizados.${clave}`;
+    if (!definicion) {
+      err(
+        'CAMPO_PERSONALIZADO_NO_DEFINIDO',
+        rutaCampo,
+        `'${clave}' no es un campo personalizado definido para los paquetes de esta agencia`,
+      );
+      continue;
+    }
+    const problema = problemaDeValor(definicion, valor);
+    if (problema !== null) err('CAMPO_PERSONALIZADO_INVALIDO', rutaCampo, problema);
+  }
+  for (const definicion of definiciones) {
+    if (!definicion.obligatorio) continue;
+    const nuevo = campos[definicion.clave];
+    if (nuevo === undefined || nuevo === null || nuevo === '') {
+      err(
+        'CAMPO_PERSONALIZADO_OBLIGATORIO',
+        `camposPersonalizados.${definicion.clave}`,
+        `el campo '${definicion.clave}' es obligatorio para los paquetes de esta agencia`,
+      );
+    }
+  }
+}
+
+function problemaDeValor(definicion: DefinicionDeCampo, valor: unknown): string | null {
+  const opciones = definicion.opciones ?? [];
+  switch (definicion.tipo) {
+    case 'TEXTO':
+      return typeof valor === 'string' ? null : `'${definicion.clave}' espera un texto`;
+    case 'NUMERO':
+      return typeof valor === 'number' && Number.isFinite(valor)
+        ? null
+        : `'${definicion.clave}' espera un número`;
+    case 'BOOLEANO':
+      return typeof valor === 'boolean' ? null : `'${definicion.clave}' espera verdadero o falso`;
+    case 'FECHA':
+      return typeof valor === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(valor) && fechaValida(valor)
+        ? null
+        : `'${definicion.clave}' espera una fecha AAAA-MM-DD`;
+    case 'SELECCION':
+      return typeof valor === 'string' && opciones.includes(valor)
+        ? null
+        : `'${definicion.clave}' espera una de: ${opciones.join(', ')}`;
+    case 'SELECCION_MULTIPLE':
+      return Array.isArray(valor) &&
+        valor.every((v) => typeof v === 'string' && opciones.includes(v))
+        ? null
+        : `'${definicion.clave}' espera una lista con valores de: ${opciones.join(', ')}`;
+  }
 }
 
 interface Empate {
