@@ -72,7 +72,7 @@ function montar(meta: EnvioWhatsappFalso, fila: Partial<MensajePorEnviar> = {}) 
   const reservas = new ReservaDeEnvioEnMemoria();
   const caso = new EnviarMensajeSaliente(
     mensajes,
-    new CredencialesDePrueba('token-de-prueba', NUMERO_DE_PRUEBA),
+    new CredencialesDePrueba('token-de-prueba', NUMERO_DE_PRUEBA, TENANT),
     meta,
     reservas,
   );
@@ -173,6 +173,24 @@ describe('EnviarMensajeSaliente — la ventana de 24 h y el canal', () => {
       codigo: new CredencialNoDisponibleError().code,
     });
     expect(meta.pedidos).toHaveLength(0);
+  });
+
+  it('otra agencia con el MISMO phone_number_id de prueba no recibe el token (T-060)', async () => {
+    // `phone_number_id` es único por tenant, no global: el número solo no identifica a la agencia.
+    const OTRA_AGENCIA = '01932000-0000-7000-8000-00000000000b';
+    const meta = new EnvioWhatsappFalso();
+    const { caso } = montar(meta, { phoneNumberId: NUMERO_DE_PRUEBA });
+    expect(await caso.ejecutar(OTRA_AGENCIA, MENSAJE, false, AHORA)).toMatchObject({
+      estado: 'FALLIDO',
+      codigo: new CredencialNoDisponibleError().code,
+    });
+    expect(meta.pedidos).toHaveLength(0);
+    await expect(
+      new CredencialesDePrueba('token-de-prueba', NUMERO_DE_PRUEBA, TENANT).paraCanal(
+        OTRA_AGENCIA,
+        { canalId: 'c', phoneNumberId: NUMERO_DE_PRUEBA },
+      ),
+    ).rejects.toBeInstanceOf(CredencialNoDisponibleError);
   });
 });
 
