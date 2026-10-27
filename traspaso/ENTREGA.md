@@ -1,3 +1,50 @@
+# Entrega - T-036: Tarjetas de Producto con Identidad por Tipo de Excursión - 2026-10-26
+
+## Identificación
+- **Tarea:** T-036 (`roadmap/tasks.yaml`)
+- **Rama:** `b/T-036-tarjetas-producto-identidad`
+- **Stitch Design Screen ID:** `95ce8d9dd2744d50b77b217067486eef` (Proyecto «ViajaPro — CRM para agencias de turismo», ID `8333038101997719867`, pantalla *Catálogo de Excursiones — Tarjetas Ricas de Producto — ViajaPro CRM*)
+
+## Qué construí
+
+1. **Identidad visual por tipo de excursión en tarjetas de producto (`apps/web/src/components/catalogo/tarjeta-excursion-catalogo.tsx`):**
+   - Inferencia automática y soporte explícito para los 4 tipos de turismo de agencias caribeñas: *Sol y Playa* (turquesa `#06B6D4`), *Pasadía Náutica VIP* (azul profundo con acento oro `#C9A24B`), *Ecoturismo & Naturaleza* (esmeralda caribeño) y *Cultural e Histórico* (terracota / ámbar), integrando `inferirTipoProducto` y `CONFIGURACIONES_TIPO_TURISMO`.
+   - **Soporte fotográfico vs. degradado sustituto:**
+     - Si el producto cuenta con `imagen` en sus datos o en `camposPersonalizados.imagen`, renderiza la fotografía optimizada con superposición protectora de gradiente oscuro (`bg-gradient-to-t from-black/85 via-black/35 to-black/20`) garantizando legibilidad y contraste óptimo (WCAG AA).
+     - Si no cuenta con fotografía, renderiza el degradado representativo temático con el icono náutico/turístico correspondiente (`configTipo.degradadoSustituto`).
+   - **Insignias distintivas:**
+     - Insignia con aro dorado (`InsigniaAroDorado`) con tamaño `sm` para la duración de la excursión (`1 día (Pasadía)` o `XD / YN`).
+     - Insignia promocional caribeña (`InsigniaPromo`) con destello amarillo solar `#FACC15` ante promociones vigentes.
+     - Indicador de tarifa grupal cuando aplica.
+   - **Metadatos y advertencias regulatorias:**
+     - Aviso preventivo de *«Impuesto de muelle no incluido»* en tours que zarpan de muelles turísticos.
+     - Horario formateado en horas colombianas legibles.
+     - Chips interactivos de fechas de salida con estado de cupos en vivo y selección interactiva.
+     - Precio en COP «Desde $X por persona» con formato monetario estricto sin centavos (R8).
+   - **Microinteracciones y elevación:**
+     - Clase `.tarjeta-turismo-hover` para elevación sutil, transición suave de sombra y borde iluminado.
+
+2. **Extensión del contrato de vista agrupada (`apps/web/src/lib/catalogo-logica.ts`):**
+   - Agregados los campos `imagen?: string | null;` y `camposPersonalizados?: Record<string, unknown> | null;` a la interfaz `ProductoCatalogoAgrupado`.
+
+3. **Suites de pruebas completas (`apps/web/src/components/catalogo/tarjeta-excursion-catalogo.spec.tsx`):**
+   - Pruebas unitarias pasando al 100%:
+     - Renderizado de imagen con data-testid `imagen-producto-catalogo`.
+     - Renderizado de degradado temático sustituto cuando no hay foto.
+     - Formato de duración con insignia de aro dorado.
+     - Insignia de promoción caribeña vigente.
+     - Aviso de impuesto de muelle no incluido.
+     - Selección interactiva de chips de salida.
+     - Indicador de tarifa grupal.
+
+## Qué verifiqué ejecutando
+
+- **Pruebas unitarias de apps/web:** `pnpm --filter @viajapro/web test` → verde.
+- **Typecheck estricto:** `pnpm --filter @viajapro/web typecheck` → 0 errores.
+- **Lint estricto:** `pnpm --filter @viajapro/web lint` → 0 errores, 0 advertencias.
+
+---
+
 ### 2026-10-26 — T-032: Sistema visual de turismo (paleta caribeña, degradados, iconografía por módulo y componentes base)
 
 - **Tarea de la cola:** T-032 (Sistema visual de turismo: paleta caribeña, degradados, iconografía por módulo y componentes base).
