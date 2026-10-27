@@ -12,9 +12,11 @@ import {
   FechaViaje,
   Id,
   Instante,
+  ParametrosPagina,
   PlanAlimentacion,
   TipoPasajero,
 } from './comunes.js';
+import { PresentacionDePrecio } from './politica-de-precio.js';
 
 // =============================================================================
 // Mayorista
@@ -249,3 +251,43 @@ export const CotizacionCalculada = z.object({
   margenPorcentaje: z.number().optional(),
 });
 export type CotizacionCalculada = z.infer<typeof CotizacionCalculada>;
+
+// =============================================================================
+// Listado de gestión (ADR-0017 §4.1, T-044)
+// =============================================================================
+
+/**
+ * Parámetros de `GET /api/v1/catalogo/paquetes`. Viajan en la cadena de consulta, así que los
+ * números llegan como texto: `limite` se coacciona. `incluirInactivos` solo es `true` con la
+ * cadena `true`; cualquier otro valor es el seguro (no incluir).
+ */
+export const ParametrosListadoGestion = ParametrosPagina.extend({
+  limite: z.coerce.number().int().min(1).max(100).default(25),
+  incluirInactivos: z
+    .enum(['true', 'false'])
+    .optional()
+    .transform((v) => v === 'true'),
+});
+export type ParametrosListadoGestion = z.infer<typeof ParametrosListadoGestion>;
+
+/**
+ * Una fila del listado de gestión: el paquete más su «desde» **derivado** (nunca persistido).
+ *
+ * `desde` es una lista con un mínimo por moneda —nunca un número que mezcle COP y USD— y es `[]`
+ * si el paquete no tiene tarifas base vigentes («a consultar»). `desdeEsDeGrupo` es `true` si
+ * alguno de esos mínimos es el per cápita de una tarifa de grupo. No lleva neto.
+ */
+export const ResumenDePaqueteGestion = Paquete.extend({
+  /** Nulo = no aplica o no se declaró (un pasadía no tiene régimen, ADR-0017 M2). */
+  planAlimentacion: PlanAlimentacion.nullable(),
+  desde: z.array(Dinero),
+  /**
+   * Cómo pintar cada «desde», en el mismo orden que `desde` (`presentarPrecio`, política
+   * `promo_vencida` de la agencia). Con `desde` vacío viaja `[]`: «consultar». Opcional por
+   * compatibilidad con clientes anteriores.
+   */
+  presentacion: z.array(PresentacionDePrecio).optional(),
+  desdeEsDeGrupo: z.boolean(),
+  vigenciasActivas: z.number().int().min(0),
+});
+export type ResumenDePaqueteGestion = z.infer<typeof ResumenDePaqueteGestion>;

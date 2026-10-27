@@ -6,14 +6,21 @@
  * cliente, pero no se anuncian como salidas: anunciar un rango de tres meses como si fuera una
  * fecha sería mentirle al viajero.
  *
- * `desde` es la tarifa más barata de cada salida, que es como se anuncia un viaje en este
- * mercado: «Parque del café, 3 de octubre, desde $275.000».
+ * `desde` es la tarifa base más barata de cada salida, que es como se anuncia un viaje en este
+ * mercado: «Parque del café, 3 de octubre, desde $275.000». **No se calcula aquí**: lo hace
+ * `calcularDesde` de `@viajapro/domain`, la única implementación (ADR-0017). Esa función descarta
+ * aditivas, menores, infantes y tarifas sin silla; las de **grupo** sí entran con su per cápita y
+ * marcadas con `desdeEsDeGrupo`, porque esconder un producto que solo se vende en promo es peor
+ * que anunciarlo con su condición al lado.
  */
 
 import { Inject, Injectable } from '@nestjs/common';
 import type { SalidaPublicada } from '@viajapro/contracts';
+import { calcularDesde, esTarifaBase } from '@viajapro/domain';
 import { PrismaService } from '../../../shared/prisma/prisma.service.js';
-import { monedaDeLaBase } from '../domain/moneda-de-la-base.js';
+import { ContextoTenant } from '../../../shared/tenant/contexto-tenant.js';
+import { aTarifaParaDesde, hoyEnZona, SELECCION_PARA_DESDE } from './desde-de-tarifas.js';
+import { leerPromoVencida, presentarDesde } from './presentacion-de-precios.js';
 
 const aFecha = (d: Date): string => d.toISOString().slice(0, 10);
 
@@ -33,8 +40,15 @@ export class ListarSalidasUseCase {
   // peticion real. Compila, arranca, y revienta al usarse. Ver cola 11c de `ESTADO.md`.
   constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
-  async ejecutar(params: ParametrosSalidas): Promise<SalidaPublicada[]> {
+  async ejecutar(params: ParametrosSalidas, ahora: Date = new Date()): Promise<SalidaPublicada[]> {
+    const { tenantId } = ContextoTenant.obtener();
     return this.prisma.conTenant(async (tx) => {
+      const agencia = await tx.tenant.findUnique({
+        where: { id: tenantId },
+        select: { zonaHoraria: true },
+      });
+      const hoy = hoyEnZona(agencia?.zonaHoraria ?? 'America/Bogota', ahora);
+      const politicaPromo = await leerPromoVencida(tx, tenantId);
       const filas = await tx.vigencia.findMany({
         where: {
           publicada: true,
@@ -53,70 +67,35 @@ export class ListarSalidasUseCase {
           desde: true,
           cupoTotal: true,
           paquete: { select: { id: true, nombre: true, destino: true, noches: true } },
-          tarifas: {
-            /**
-             * **El «desde» es el precio que UN viajero adulto puede pagar de verdad.** Nada más.
-             *
-             * Lo descubrí abriendo la pantalla, que es donde se ven estas cosas: toda salida con
-             * noche anunciaba el precio de MENOR —«Puebleando, desde $292.000» cuando un adulto
-             * paga $389.000—. Ninguna compuerta lo vio, porque ninguna sabe lo que significa.
-             *
-             * Se excluyen tres clases y por tres motivos distintos:
-             *
-             * - **Aditivas**: un suplemento de sencilla no es el precio «desde» de nada.
-             * - **De menor o de infante**: anunciar un precio que el comprador adulto no puede
-             *   pagar para sí no es un gancho, es publicidad engañosa.
-             *
-             * Las de **grupo** sí entran, con su per cápita y marcadas con `desdeEsDeGrupo`.
-             * Excluirlas borraba del catálogo productos que solo se venden en promo —«Ukumarí +
-             * Filandia» es uno—, y esconder un producto que la agencia vende es peor que
-             * anunciarlo con su condición al lado.
-             */
-            where: {
-              aditiva: false,
-              OR: [{ tipoPasajero: null }, { tipoPasajero: 'ADT' }],
-            },
-            orderBy: { ventaUnidades: 'asc' },
-            select: {
-              ventaUnidades: true,
-              monedaIso: true,
-              unidad: true,
-              cubrePasajeros: true,
-            },
-          },
+          // Se leen todas las tarifas: qué cuenta como «base» lo decide el dominio.
+          tarifas: { select: SELECCION_PARA_DESDE },
         },
       });
 
-      // Una salida sin tarifa no se puede anunciar: no se inventa un «desde», se omite. Aparecer
+      // Una salida sin «desde» no se puede anunciar: no se inventa un precio, se omite. Aparecer
       // en el catálogo sin precio obliga al asesor a preguntar por dentro qué pasó.
-      return filas
-        .filter((v) => v.tarifas.length > 0)
-        .map((v) => {
-          const porPersona = (x: {
-            ventaUnidades: bigint;
-            unidad: string;
-            cubrePasajeros: number;
-          }) =>
-            x.unidad === 'POR_GRUPO' && x.cubrePasajeros > 1
-              ? x.ventaUnidades / BigInt(x.cubrePasajeros)
-              : x.ventaUnidades;
-          const barata = v.tarifas.reduce((a, b) => (porPersona(b) < porPersona(a) ? b : a));
-          return {
-            vigenciaId: v.id,
-            paqueteId: v.paquete.id,
-            paqueteNombre: v.paquete.nombre,
-            destino: v.paquete.destino,
-            noches: v.paquete.noches,
-            fecha: aFecha(v.desde),
-            cupoTotal: v.cupoTotal,
-            desde: {
-              unidades: porPersona(barata).toString(),
-              moneda: monedaDeLaBase(barata.monedaIso),
-            },
-            desdeEsDeGrupo: barata.unidad === 'POR_GRUPO',
-            tarifas: v.tarifas.length,
-          };
+      const salidas: SalidaPublicada[] = [];
+      for (const v of filas) {
+        const tarifas = v.tarifas.map(aTarifaParaDesde);
+        // Una salida es una sola fecha y la consulta ya la acotó: sin filtro de «hoy». La
+        // contrato admite un solo «desde» por salida; con varias monedas sale la primera por código.
+        const [desde] = calcularDesde([{ activa: true, hasta: aFecha(v.desde), tarifas }], null);
+        if (!desde) continue;
+        salidas.push({
+          vigenciaId: v.id,
+          paqueteId: v.paquete.id,
+          paqueteNombre: v.paquete.nombre,
+          destino: v.paquete.destino,
+          noches: v.paquete.noches,
+          fecha: aFecha(v.desde),
+          cupoTotal: v.cupoTotal,
+          desde: { unidades: desde.precio.unidades.toString(), moneda: desde.precio.moneda },
+          presentacion: presentarDesde(desde, hoy, politicaPromo),
+          desdeEsDeGrupo: desde.esDeGrupo,
+          tarifas: tarifas.filter(esTarifaBase).length,
         });
+      }
+      return salidas;
     });
   }
 }

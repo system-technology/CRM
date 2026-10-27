@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { CotizarSalidaUseCase } from './application/cotizar-salida.use-case.js';
 import { ListarPaquetesUseCase } from './application/listar-paquetes.use-case.js';
+import { ListarPaquetesGestionUseCase } from './application/listar-paquetes-gestion.use-case.js';
+import { CatalogoListadoController } from './interface/catalogo-listado.controller.js';
 import { ListarSalidasUseCase } from './application/listar-salidas.use-case.js';
 import { CotizacionesUseCase } from './application/cotizaciones.use-case.js';
 import { AplicadorDeCatalogo } from './application/aplicador-de-catalogo.js';
@@ -23,6 +25,8 @@ import { LectorDeHistorialPrisma } from './infrastructure/historial.prisma.js';
 import { CotizacionesController } from './interface/cotizaciones.controller.js';
 import { CatalogoController } from './interface/catalogo.controller.js';
 import { SalidasController } from './interface/salidas.controller.js';
+import { CatalogoAjustesController } from './interface/catalogo-ajustes.controller.js';
+import { AjustesDeCatalogoUseCase } from './application/ajustes-de-catalogo.use-case.js';
 
 /**
  * Contexto de cotización: catálogo de paquetes y cálculo de precio.
@@ -33,7 +37,9 @@ import { SalidasController } from './interface/salidas.controller.js';
 @Module({
   controllers: [
     CatalogoController,
+    CatalogoAjustesController,
     CatalogoGestionController,
+    CatalogoListadoController,
     CatalogoVigenciasController,
     HistorialDePreciosController,
     ImportacionesController,
@@ -41,7 +47,9 @@ import { SalidasController } from './interface/salidas.controller.js';
     CotizacionesController,
   ],
   providers: [
+    AjustesDeCatalogoUseCase,
     ListarPaquetesUseCase,
+    ListarPaquetesGestionUseCase,
     ListarSalidasUseCase,
     CotizacionesUseCase,
     CotizarSalidaUseCase,
