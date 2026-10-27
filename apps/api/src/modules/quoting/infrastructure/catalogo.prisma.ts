@@ -345,7 +345,10 @@ export class CatalogoPrisma extends CatalogoPersistente {
   // -------------------------------------------------------------------------------------------
 
   private async resolverFormato(nombre: string): Promise<string> {
-    const formatos = await this.tx.formatoDeViaje.findMany({ select: { id: true, nombre: true } });
+    const formatos = await this.tx.formatoDeViaje.findMany({
+      where: { tenantId: this.tenantId },
+      select: { id: true, nombre: true },
+    });
     const clave = normalizarNombre(nombre);
     const formato = formatos.find((f) => normalizarNombre(f.nombre) === clave);
     if (!formato) throw new FormatoDeViajeDesconocidoError(nombre);

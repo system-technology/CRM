@@ -66,7 +66,11 @@ export class CrmPrisma extends PuertoCrm {
 
   async listarEtapas(): Promise<EtapaDefinida[]> {
     return this.prisma.conTenant(async (tx) => {
-      const filas = await tx.etapaPipeline.findMany({ orderBy: { orden: 'asc' } });
+      const { tenantId } = ContextoTenant.obtener();
+      const filas = await tx.etapaPipeline.findMany({
+        where: { tenantId },
+        orderBy: { orden: 'asc' },
+      });
       return filas.map(aEtapaDefinida);
     });
   }
