@@ -3,23 +3,15 @@
 @variant dark (&:where(.dark, .dark *));
 
 /**
- * Tokens del sistema de diseño de ViajaPro.
+ * Tokens del sistema de diseño de ViajaPro — Identidad Visual de Turismo (T-032).
  *
- * Los mismos que se subieron a Stitch, para que lo que se genera allí y lo que se construye
- * aquí hablen el mismo idioma. Ver docs/01-producto/06-diseno-y-ux.md.
- *
- * Criterio rector: esto es una HERRAMIENTA DE TRABAJO. Densidad sobre aire, radio mínimo,
- * neutro dominante con un solo acento.
+ * Combina la limpieza y densidad de una herramienta de trabajo con la identidad vibrante
+ * de las agencias de turismo: paleta caribeña, degradados temáticos, insignias con aro dorado
+ * y micro-animaciones fluidas (< 400ms) que respetan prefers-reduced-motion.
  */
 
 @theme {
-  /* Acento. Azul, decidido por el propietario el 2026-10-10 al entregar la especificación
-     visual (docs/01-producto/09-especificacion-visual.json). Sustituye al verde azulado
-     anterior, que se eligió antes de que existiera esa referencia.
-
-     Contraste medido sobre blanco, no estimado:
-       600 → 5.17  ·  700 → 6.70  ·  800 → 8.72   (AA pide 4.5 para texto normal)
-       500 → 3.68  ·  NO vale para texto. Solo bordes, fondos y elementos no textuales. */
+  /* Acento de marca base (Azul zafiro) */
   --color-acento-50: #eff6ff;
   --color-acento-100: #dbeafe;
   --color-acento-500: #3b82f6;
@@ -27,33 +19,77 @@
   --color-acento-700: #1d4ed8;
   --color-acento-800: #1e40af;
 
-  /* Semánticos con significado FIJO en todo el producto. No se usan por estética. */
-  --color-ok-50: #f0fdf4; /* confirmado, pagado, dentro de plazo */
+  /* Semánticos del CRM */
+  --color-ok-50: #f0fdf4;
   --color-ok-600: #16a34a;
   --color-ok-700: #15803d;
-  --color-aviso-50: #fffbeb; /* por vencer, requiere atención pronto */
+  --color-aviso-50: #fffbeb;
   --color-aviso-600: #d97706;
   --color-aviso-700: #b45309;
-  --color-alerta-50: #fef2f2; /* vencido, fallido, fuera de plazo */
+  --color-alerta-50: #fef2f2;
   --color-alerta-600: #dc2626;
   --color-alerta-700: #b91c1c;
 
+  /* Paleta Caribeña y Turística (T-032) */
+  /* Turquesa Caribeño (aguas cristalinas de islas, pasadías, beach clubs) */
+  --color-turquesa-50: #ecfeff;
+  --color-turquesa-100: #cffafe;
+  --color-turquesa-200: #a5f3fc;
+  --color-turquesa-500: #06b6d4;
+  --color-turquesa-600: #0891b2;
+  --color-turquesa-700: #0e7490;
+  --color-turquesa-800: #155e75;
+
+  /* Océano Profundo (mar abierto, navegación nocturna, cabeceras estructuradas) */
+  --color-oceano-800: #0f2b4c;
+  --color-oceano-900: #0b1f3a;
+  --color-oceano-950: #061122;
+
+  /* Coral Vivo (calidez, planes familiares, snorkel, atención WhatsApp) */
+  --color-coral-50: #fff1f2;
+  --color-coral-100: #ffe4e6;
+  --color-coral-400: #fb7185;
+  --color-coral-500: #f43f5e;
+  --color-coral-600: #e11d48;
+
+  /* Atardecer Tropical (salidas en lancha, promociones flash, tours al ocaso) */
+  --color-atardecer-50: #fff7ed;
+  --color-atardecer-100: #ffedd5;
+  --color-atardecer-500: #f97316;
+  --color-atardecer-600: #ea580c;
+  --color-atardecer-700: #c2410c;
+
+  /* Arena & Resalte Caribeño (playa blanca, resaltes de precio, aros dorados) */
+  --color-arena-100: #fef3c7;
+  --color-arena-200: #fde68a;
+  --color-arena-300: #fcd34d;
+  --color-resalte-400: #facc15;
+  --color-resalte-500: #eab308;
+  --color-dorado-400: #e0b85c;
+  --color-dorado-500: #c9a24b;
+  --color-dorado-600: #ab8635;
+
   --font-sans: Inter, ui-sans-serif, system-ui, sans-serif;
 
-  /* Escala de texto para densidad alta. El cuerpo es 13px, no 16px:
-     en una bandeja, cada píxel de alto de fila es una conversación menos visible. */
-  --text-xs: 0.6875rem; /* 11px — etiquetas */
-  --text-sm: 0.75rem; /* 12px — secundario */
-  --text-base: 0.8125rem; /* 13px — cuerpo */
-  --text-lg: 0.9375rem; /* 15px — títulos de sección */
-  --text-xl: 1.125rem; /* 18px — cifras destacadas */
+  /* Escala tipográfica */
+  --text-xs: 0.6875rem; /* 11px */
+  --text-sm: 0.75rem; /* 12px */
+  --text-base: 0.8125rem; /* 13px */
+  --text-lg: 0.9375rem; /* 15px */
+  --text-xl: 1.125rem; /* 18px */
+  --text-2xl: 1.375rem; /* 22px */
+  --text-3xl: 1.75rem; /* 28px */
 
   --radius-sm: 0.25rem;
   --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
 }
 
 :root {
   color-scheme: light;
+  /* Variable CSS para marca por agencia (T-038/T-039). Valor por defecto: Dorado Cartagena */
+  --color-acento-marca: #c9a24b;
 }
 
 body {
@@ -61,23 +97,148 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/**
- * Cifras tabulares. NO es cosmético: sin esto, los montos de una columna no se alinean por
- * posición decimal y comparar precios de un vistazo deja de ser posible — que es exactamente
- * lo que un asesor hace todo el día.
- */
+/* Cifras tabulares para alineación perfecta de montos */
 .cifra {
   font-variant-numeric: tabular-nums;
   font-feature-settings: 'tnum';
 }
 
-/* Foco visible siempre. Un CRM se usa con teclado o no se usa. */
+/* Foco accesible de alto contraste */
 *:focus-visible {
   outline: 2px solid var(--color-acento-600);
   outline-offset: 2px;
 }
 
 .dark body {
-  background-color: #0a0a0a;
+  background-color: #061122;
   color: #f5f5f5;
+}
+
+/**
+ * DEGRADADOS TURÍSTICOS OFICIALES (Identidad Visual T-032)
+ */
+.degradado-mar {
+  background: linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%);
+}
+
+.degradado-atardecer {
+  background: linear-gradient(135deg, #f97316 0%, #f43f5e 100%);
+}
+
+.degradado-caribe {
+  background: linear-gradient(135deg, #06b6d4 0%, #0284c7 50%, #0b1f3a 100%);
+}
+
+.degradado-dorado {
+  background: linear-gradient(135deg, #fde68a 0%, #c9a24b 100%);
+}
+
+.degradado-oceano-suave {
+  background: linear-gradient(180deg, rgba(6, 182, 212, 0.08) 0%, rgba(11, 31, 58, 0.02) 100%);
+}
+
+/**
+ * INSIGNIA CON ARO DORADO (#C9A24B)
+ * Estilo distintivo para duración, salidas, cupos y precios de excursión.
+ */
+.insignia-aro-dorado {
+  border: 1.5px solid #c9a24b;
+  box-shadow:
+    0 0 0 1px rgba(250, 204, 21, 0.2),
+    0 1px 3px rgba(201, 162, 75, 0.15);
+}
+
+/**
+ * MICRO-ANIMACIONES TURÍSTICAS (< 400ms)
+ */
+@keyframes flotarSuave {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes olasMar {
+  0% {
+    transform: translateX(0);
+  }
+  50% {
+    transform: translateX(-15px);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+
+@keyframes brilloEsqueleto {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.anim-flotar {
+  animation: flotarSuave 3s ease-in-out infinite;
+}
+
+.anim-olas {
+  animation: olasMar 6s ease-in-out infinite;
+}
+
+.tarjeta-turismo-hover {
+  transition:
+    transform 220ms cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 220ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.tarjeta-turismo-hover:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 10px 25px -5px rgba(11, 31, 58, 0.08),
+    0 8px 10px -6px rgba(11, 31, 58, 0.04);
+}
+
+.esqueleto-brillo {
+  background: linear-gradient(
+    90deg,
+    rgba(229, 231, 235, 0.6) 25%,
+    rgba(243, 244, 246, 0.9) 50%,
+    rgba(229, 231, 235, 0.6) 75%
+  );
+  background-size: 200% 100%;
+  animation: brilloEsqueleto 1.8s infinite;
+}
+
+.dark .esqueleto-brillo {
+  background: linear-gradient(
+    90deg,
+    rgba(30, 41, 59, 0.6) 25%,
+    rgba(51, 65, 85, 0.9) 50%,
+    rgba(30, 41, 59, 0.6) 75%
+  );
+  background-size: 200% 100%;
+  animation: brilloEsqueleto 1.8s infinite;
+}
+
+/**
+ * REGLA ESTRICTA: RESPETO A PREFERS-REDUCED-MOTION
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .tarjeta-turismo-hover:hover {
+    transform: none !important;
+  }
 }
