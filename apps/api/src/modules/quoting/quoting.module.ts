@@ -15,6 +15,10 @@ import { ImportacionesController } from './interface/importaciones.controller.js
 import { PrevisualizarImportacionUseCase } from './application/previsualizar-importacion.use-case.js';
 import { SugeridorDeMapeo } from './application/sugeridor-de-mapeo.js';
 import { SugeridorPorSinonimos } from './infrastructure/sugeridor-por-sinonimos.js';
+import { HistorialDePreciosController } from './interface/historial-de-precios.controller.js';
+import { HistorialDePreciosUseCase } from './application/historial-de-precios.use-case.js';
+import { LectorDeHistorial } from './application/puertos-de-historial.js';
+import { LectorDeHistorialPrisma } from './infrastructure/historial.prisma.js';
 import { CotizacionesController } from './interface/cotizaciones.controller.js';
 import { CatalogoController } from './interface/catalogo.controller.js';
 import { SalidasController } from './interface/salidas.controller.js';
@@ -30,6 +34,7 @@ import { SalidasController } from './interface/salidas.controller.js';
     CatalogoController,
     CatalogoGestionController,
     CatalogoVigenciasController,
+    HistorialDePreciosController,
     ImportacionesController,
     SalidasController,
     CotizacionesController,
@@ -44,6 +49,8 @@ import { SalidasController } from './interface/salidas.controller.js';
     { provide: SugeridorDeMapeo, useClass: SugeridorPorSinonimos },
     { provide: UnidadDeTrabajoDeCatalogo, useClass: UnidadDeTrabajoDeCatalogoPrisma },
     AplicadorPorId,
+    HistorialDePreciosUseCase,
+    { provide: LectorDeHistorial, useClass: LectorDeHistorialPrisma },
     { provide: UnidadDeTrabajoDeGestion, useClass: UnidadDeTrabajoDeGestionPrisma },
   ],
   exports: [],
