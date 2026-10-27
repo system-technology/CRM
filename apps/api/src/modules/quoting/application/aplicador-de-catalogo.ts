@@ -233,7 +233,7 @@ export class AplicadorDeCatalogo {
     }
     if (
       opciones.huellaDeEstadoEsperada !== undefined &&
-      opciones.huellaDeEstadoEsperada !== huellaDeEstado(informe) &&
+      opciones.huellaDeEstadoEsperada !== huellaDeEstado(informe, actual) &&
       !(informe.resumen.errores === 0 && estaConvergido(informe))
     ) {
       throw new PropuestaCambioError();

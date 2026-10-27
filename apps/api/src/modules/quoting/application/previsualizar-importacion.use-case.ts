@@ -66,6 +66,6 @@ export class PrevisualizarImportacionUseCase {
       elementos: [...lectura.errores, ...informe.elementos],
       resumen: { ...informe.resumen, errores: informe.resumen.errores + lectura.errores.length },
     };
-    return { informe: combinado, huella: huellaDeEstado(combinado) };
+    return { informe: combinado, huella: huellaDeEstado(combinado, actual) };
   }
 }

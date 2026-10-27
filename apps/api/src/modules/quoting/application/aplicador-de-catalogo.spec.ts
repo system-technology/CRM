@@ -359,7 +359,9 @@ describe('AplicadorDeCatalogo.aplicar', () => {
     const antes = trabajo.estado.auditoria.length;
 
     await expect(
-      aplicador.aplicar(p, contexto(), { huellaDeEstadoEsperada: huellaDeEstado(previa) }),
+      aplicador.aplicar(p, contexto(), {
+        huellaDeEstadoEsperada: huellaDeEstado(previa, { paquetes: [], mayoristas: [] }),
+      }),
     ).rejects.toBeInstanceOf(PropuestaCambioError);
     expect(trabajo.estado.auditoria).toHaveLength(antes);
     expect(trabajo.estado.paquetes[0]?.vigencias[0]?.tarifas[0]?.venta.unidades).toBe('900');
@@ -377,7 +379,9 @@ describe('AplicadorDeCatalogo.aplicar', () => {
         soportaM2: true,
       },
     ).informe;
-    const opciones = { huellaDeEstadoEsperada: huellaDeEstado(previa) };
+    const opciones = {
+      huellaDeEstadoEsperada: huellaDeEstado(previa, { paquetes: [], mayoristas: [] }),
+    };
 
     await aplicador.aplicar(p, contexto(), opciones);
     const auditoria = trabajo.estado.auditoria.length;
