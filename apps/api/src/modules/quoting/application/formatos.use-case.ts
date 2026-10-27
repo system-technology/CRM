@@ -21,6 +21,7 @@ import {
   PlantillaDeFormato,
 } from '@viajapro/contracts';
 import { PrismaService } from '../../../shared/prisma/prisma.service.js';
+import { PuertoDefinicionesDeCampo } from '../../../shared/puertos/puertos-hacia-crm.js';
 import { ContextoTenant } from '../../../shared/tenant/contexto-tenant.js';
 import { FormatoDeViajeDuplicadoError, FormatoDeViajeNoEncontradoError } from '../domain/errors.js';
 import { normalizarNombre } from '../domain/validar-y-planificar.js';
@@ -90,7 +91,10 @@ function columnaDeCampo(
 
 @Injectable()
 export class FormatosUseCase {
-  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
+  constructor(
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(PuertoDefinicionesDeCampo) private readonly definiciones: PuertoDefinicionesDeCampo,
+  ) {}
 
   listar(): Promise<{ datos: FormatoDeViaje[] }> {
     return this.prisma.conTenant(async (tx) => {
@@ -171,17 +175,11 @@ export class FormatosUseCase {
 
       const claves = vista.plantilla.camposPersonalizados;
       if (claves.length > 0) {
-        const definiciones = await tx.definicionCampoPersonalizado.findMany({
-          where: { entidad: 'PAQUETE', clave: { in: claves } },
-          orderBy: [{ orden: 'asc' }, { clave: 'asc' }],
-        });
+        // La tabla es de `crm` (R4): se pide por el puerto, en la misma transacción.
+        const { tenantId } = ContextoTenant.obtener();
+        const definiciones = await this.definiciones.deLosPaquetes(tx, tenantId, claves);
         for (const d of definiciones) {
-          const columna = columnaDeCampo(
-            d,
-            Array.isArray(d.opciones)
-              ? d.opciones.filter((o): o is string => typeof o === 'string')
-              : [],
-          );
+          const columna = columnaDeCampo(d, d.opciones);
           if (columna) columnas.push(columna);
         }
       }

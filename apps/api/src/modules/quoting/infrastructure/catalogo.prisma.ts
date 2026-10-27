@@ -14,6 +14,7 @@ import {
   type ProductoPropuesto,
   type TarifaPropuesta,
 } from '@viajapro/contracts';
+import { PuertoDefinicionesDeCampo } from '../../../shared/puertos/puertos-hacia-crm.js';
 import { PrismaService, type ClienteTenant } from '../../../shared/prisma/prisma.service.js';
 import { ContextoTenant } from '../../../shared/tenant/contexto-tenant.js';
 import {
@@ -87,6 +88,7 @@ export class CatalogoPrisma extends CatalogoPersistente {
   constructor(
     private readonly tx: ClienteTenant,
     private readonly tenantId: string,
+    private readonly definiciones: PuertoDefinicionesDeCampo,
   ) {
     super();
   }
@@ -125,10 +127,8 @@ export class CatalogoPrisma extends CatalogoPersistente {
         },
       }),
       this.tx.mayorista.findMany({ where: { eliminadoEn: null }, select: { nombre: true } }),
-      this.tx.definicionCampoPersonalizado.findMany({
-        where: { entidad: 'PAQUETE' },
-        select: { clave: true, tipo: true, obligatorio: true, opciones: true },
-      }),
+      // La tabla es de `crm` (R4): se pide por el puerto, dentro de la misma transacción.
+      this.definiciones.deLosPaquetes(this.tx, this.tenantId),
       this.tx.formatoDeViaje.findMany({ select: { nombre: true } }),
     ]);
 
@@ -139,7 +139,7 @@ export class CatalogoPrisma extends CatalogoPersistente {
         clave: d.clave,
         tipo: d.tipo,
         obligatorio: d.obligatorio,
-        opciones: comoTextos(d.opciones),
+        opciones: d.opciones,
       })),
       paquetes: paquetes.map((p): PaqueteActual => ({
         id: p.id,
@@ -441,7 +441,10 @@ export class RegistroDeCambiosPrisma extends RegistroDeCambios {
 
 @Injectable()
 export class UnidadDeTrabajoDeCatalogoPrisma extends UnidadDeTrabajoDeCatalogo {
-  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {
+  constructor(
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(PuertoDefinicionesDeCampo) private readonly definiciones: PuertoDefinicionesDeCampo,
+  ) {
     super();
   }
 
@@ -449,7 +452,7 @@ export class UnidadDeTrabajoDeCatalogoPrisma extends UnidadDeTrabajoDeCatalogo {
     const { tenantId } = ContextoTenant.obtener();
     return this.prisma.conTenant((tx) =>
       fn({
-        catalogo: new CatalogoPrisma(tx, tenantId),
+        catalogo: new CatalogoPrisma(tx, tenantId, this.definiciones),
         registro: new RegistroDeCambiosPrisma(tx, tenantId),
       }),
     );
