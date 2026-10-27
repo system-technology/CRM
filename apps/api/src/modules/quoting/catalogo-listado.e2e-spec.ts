@@ -81,7 +81,8 @@ async function crearPaquete(
       activo: opciones.activo ?? true,
     },
   });
-  const desde = opciones.publicada ? '2099-06-01' : '2099-01-01';
+  // `desde <= hasta` es un CHECK: una vigencia ya vencida empieza antes que su `hasta`.
+  const desde = opciones.publicada ? '2099-06-01' : opciones.hasta ? '2019-01-01' : '2099-01-01';
   const hasta = opciones.publicada ? '2099-06-01' : (opciones.hasta ?? '2099-12-31');
   const vigencia = await admin.vigencia.create({
     data: {
