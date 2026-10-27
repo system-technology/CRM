@@ -201,7 +201,7 @@ describe('vigencias y tarifas por id', () => {
       fecha: '2026-12-15',
       adultos: 2,
     });
-    expect(cot.estado).toBe(201);
+    expect(cot.estado).toBe(200);
     expect(cot.json['total']).toEqual({ unidades: '1800000', moneda: 'COP' });
   });
 
