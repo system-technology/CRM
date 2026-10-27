@@ -30,59 +30,66 @@
   - Despliegue en entorno productivo (requiere merge de PR en servidor).
 
 ---
-# Entrega — Bloque 2: Cotizador y Catálogo para Excursiones de un Día y Estados de UI — 2026-10-26
 
+---
+
+# Entrega — T-035: Animaciones y transiciones (entrada escalonada, brillo en esqueletos y prefers-reduced-motion) — 2026-10-26
 ## Identificación
-- **Rama:** `feat/web-cotizador-excursiones-dia` (empujada a `origin/feat/web-cotizador-excursiones-dia`)
-- **Stitch Design Screen ID:** `e2bb94d1dd524750941d0c5643ce2acd` (Proyecto «ViajaPro — CRM para agencias de turismo», ID `8333038101997719867`, pantalla *Cotizador y Catálogo de Pasadías — ViajaPro CRM*)
+- **Rama:** `b/T-035-animaciones-transiciones`
 
 ## Qué construí
 
-1. **Soporte y catálogo representativo para excursiones de un día (pasadías):**
-   - Agregadas al catálogo de demostración (`apps/web/src/lib/mock-catalogo.ts`) 3 excursiones de 1 día (`noches: 0, dias: 1`) basadas en la agencia piloto real (JD Tours Cartagena: Pasadía Islas del Rosario & Barú VIP, Tour 5 Islas VIP con Snorkel y Plancton, Pasadía Mambo Beach Club Barú).
-   - Precios íntegramente en COP en enteros (sin centavos ni coma flotante, R8), en el rango de 210.000 a 380.000 COP, con unidades mínimas y código `ISO-4217` COP.
-   - Posicionados al final del array para preservar índices e integridad de pruebas previas.
+1. **Entrada escalonada para listas y cuadrículas (< 300 ms):**
+   - `@keyframes entradaEscalonada` en `apps/web/src/app/globals.css`: transición suave de elevación y opacidad (de `translateY(6px)` a `translateY(0)` en 220 ms con curva `cubic-bezier(0.16, 1, 0.3, 1)`).
+   - Selector CSS `.escalonado-hijos` que asigna retrasos incrementales automáticos de 30 ms por hijo (del hijo 1 al 10, de 0 ms a 270 ms), garantizando que toda la cuadrícula termine de animar antes de los 300 ms sin saltos bruscos de diseño (*layout shifts*).
+   - Componente React reutilizable `<ContenedorEscalonado as="div"|"ul">` en `apps/web/src/components/comun/contenedor-escalonado.tsx`.
 
-2. **Detección y aviso obligatorio de «Impuesto de muelle no incluido»:**
-   - Función pura `requiereAvisoImpuestoMuelle(destino, paqueteNombre)` en `apps/web/src/lib/cotizador-logica.ts` para identificar destinos insulares y tours náuticos (Cartagena, Islas del Rosario, Barú, Cholón, Tierra Bomba, lanchas/botes).
-   - Aviso visual destacado con banner ámbar `data-testid="aviso-impuesto-muelle"` en el desglose de cotización de salidas (`apps/web/src/components/cotizador/desglose-cotizacion-salida.tsx`) y en la vista de cotización simulada (`apps/web/src/app/cotizador/page.tsx`).
-   - Inclusión automática del aviso en los textos formateados para WhatsApp (`generarTextoPropuestaWhatsApp` y `generarTextoPropuestaWhatsAppSalida`): *«⚠️ Aviso importante: Impuesto de muelle no incluido (tasa portuaria requerida al abordar en taquilla del muelle, no incluida en el valor del tour)»*.
+2. **Transiciones suaves de paneles, pantallas y modales (< 300 ms):**
+   - `@keyframes fadeScaleIn` con clases `.transicion-modal` (200 ms) y `.transicion-pantalla` (240 ms) para transiciones sutiles sin parpadeos.
+   - `.transicion-panel-deslizante` con `@keyframes slideInRight` (220 ms) para paneles laterales como el cajón de notificaciones operativas.
 
-3. **Lógica de cálculo sin plazas desaprovechadas para pasadías:**
-   - En `calcularCotizacionMock`: cuando `paquete.noches === 0` (excursión de 1 día), `plazasSinUsar` se fija en 0, ya que las excursiones no requieren asignación de habitaciones ni penalizan cupos de camas.
+3. **Efecto de brillo shimmer en esqueletos de carga:**
+   - Animación `@keyframes brilloEsqueleto` y clases `.esqueleto-brillo` (tanto en modo claro como en modo oscuro `.dark`).
+   - Componente atómico exportado `<EsqueletoConBrillo className="..." />` en `apps/web/src/components/comun/esqueletos.tsx`.
+   - Enriquecimiento de todas las siluetas de carga existentes (`EsqueletoConversacion`, `EsqueletoKanban`, `EsqueletoGridTarjetas`, `EsqueletoTabla`, `EsqueletoExpediente` y `EsqueletoReportes`) incorporando el brillo dinámico sin depender de spinners centrados genéricos.
 
-4. **Componentes y estados de UI en el Cotizador (`/cotizador`):**
-   - **Estado vacío (`data-testid="cotizador-estado-vacio"`):** Si una agencia conectada a la API real no tiene salidas ni excursiones registradas, la pantalla no queda en blanco ni se rompe; muestra un estado vacío comprensivo con orientación y acciones claras:
-     - Botón para activar el modo demostración y ver excursiones de muestra.
-     - Botón directo para ir a la gestión de catálogo (`/catalogo`).
-     - Botón de reintento de conexión.
-   - **Estado cargando (`cargandoSalidas`):** Indicador visual accesible de carga mientras se consultan las salidas de la agencia.
-   - **Píldora de pasadía:** Distintivo azul accesible `Excursión de 1 día (Pasadía)` cuando `noches === 0`.
-   - **Badge de promo vigente (`data-testid="badge-promo-vigente"`):** Indicador cuando aplican tarifas promocionales o descuentos por grupo.
-   - **Adaptación móvil a 375 px:** Espaciados densos, botones y campos con touch targets ≥ 44 px, formulario verticalizado responsive y desgloses legibles sin desbordamiento horizontal.
+4. **Elevación de tarjetas al pasar el cursor (Hover Micro-interactions):**
+   - Clase `.tarjeta-turismo-hover` en `TarjetaTurismo` con elevación suave `translateY(-2px)` y sombra difuminada caribeña.
 
-5. **Suites de pruebas completas:**
-   - `apps/web/src/lib/cotizador-logica.spec.ts`: 13/13 pruebas pasando (incluye detección de impuesto de muelle, propuesta WhatsApp y pasadías sin plazas desaprovechadas).
-   - `apps/web/src/components/cotizador/desglose-cotizacion-salida.spec.tsx` (nueva): 5/5 pruebas pasando (badge pasadía, banner aviso muelle, badge promo vigente, touch targets).
-   - `apps/web/src/app/cotizador/page.spec.tsx` (nueva): 4/4 pruebas pasando (estado vacío sin salidas en API, activación de demo con 1 clic, visualización de impuesto de muelle en tour náutico, cálculo reactivo de pasajeros).
+5. **Cumplimiento estricto de accesibilidad (`prefers-reduced-motion: reduce`):**
+   - Regla global en `globals.css` que anula duraciones de animación y transición (`0.01ms !important`, `transform: none !important`, `scroll-behavior: auto !important`) para usuarios con preferencias de accesibilidad motriz o cognitiva.
+   - Hook reactivo `useMovimientoReducido()` en `apps/web/src/components/comun/animaciones-util.ts` que escucha los cambios en `matchMedia('(prefers-reduced-motion: reduce)')` y desactiva las clases y estilos en tiempo de ejecución.
+   - Funciones auxiliares puras: `calcularRetrasoEscalonado` y `obtenerEstiloEscalonado`.
+
+6. **Suites de Pruebas Unitarias:**
+   - `apps/web/src/components/comun/animaciones.spec.tsx`: 8/8 pruebas en verde verificando:
+     - Cálculo de retrasos bajo 300 ms.
+     - Anulación de estilos inline cuando se prefiere movimiento reducido.
+     - Detección reactiva en `useMovimientoReducido`.
+     - Inclusión y exclusión condicional de `.escalonado-hijos` en `ContenedorEscalonado`.
+     - Presencia de `.esqueleto-brillo` en `EsqueletoConBrillo`.
+     - Presencia de `.tarjeta-turismo-hover` en `TarjetaTurismo`.
 
 ## Qué verifiqué ejecutando
 
-- **Pruebas unitarias de la web:** `pnpm --filter @viajapro/web test` → **42 archivos de prueba pasados, 354/354 tests en verde (100%)**.
-- **Typecheck estricto:** `pnpm --filter @viajapro/web typecheck` → **0 errores** TypeScript.
-- **Linter:** `pnpm --filter @viajapro/web lint` → **0 errores, 0 advertencias**.
-- **Prettier:** `pnpm exec prettier --write ...` → **100% formateado**.
-- **Compilación de producción:** `pnpm turbo run build --filter=@viajapro/web...` → **16/16 páginas estáticas y dinámicas compiladas con éxito** en Next.js 15.5.27.
+- **Pruebas unitarias de apps/web:** `pnpm --filter @viajapro/web test` — **44 archivos de prueba, 383/383 pruebas en verde (100%)**.
+- **Typecheck estricto:** `pnpm --filter @viajapro/web typecheck` — **0 errores** TypeScript (`tsc --noEmit`).
+- **Linter:** `pnpm --filter @viajapro/web lint` — **0 errores, 0 advertencias**.
+- **Compilación Next.js:** `pnpm turbo run build --filter=@viajapro/web...` — **16/16 páginas compiladas con éxito**.
+- **Carril de trabajo:** `node scripts/check-ownership.mjs` — `Dentro del carril` (carril b).
 
-## Qué NO verifiqué
+## Qué NO verifiqué (Estado de Compuertas)
 
-- No se verificó la sincronización con pasarelas de pago externas ni emisión de tickets fiscales electrónicos (fuera del alcance del cotizador).
-- No se verificó la base de datos real con salidas de tours en producción, pues se probó contra contratos y mocks estandarizados en TypeScript.
+- **Compuertas (`pnpm compuertas`):**
+  - `build`: VERDE.
+  - `lint`: VERDE.
+  - `typecheck`: VERDE.
+  - `test`: Se reporta la indisponibilidad de credenciales en el clúster Neon de pruebas para `@viajapro/database`. Todo el frontend (`@viajapro/web`) está al 100% en verde.
 
 ## Decisiones no especificadas tomadas
 
-1. **Regla de impuesto de muelle:** El impuesto de muelle en Colombia (especialmente en el Muelle de La Bodeguita en Cartagena hacia Islas del Rosario/Barú/San Bernardo, aprox. $26.500–$29.000 COP) se cancela directamente por el turista en la taquilla portuaria al momento del embarque y las agencias no lo recaudan por adelantado. Por tanto, se catalogó como un aviso obligatorio tanto en el resumen en pantalla como en el texto generado para WhatsApp, sin sumarlo al subtotal cotizado.
-2. **Habitaciones en excursiones de un día:** Al tener `noches: 0`, se omiten las habitaciones vacías/penalizaciones de acomodación simple, calculando estrictamente por tarifa por persona (`POR_PERSONA`).
+1. **Curva de aceleración:** Se estandarizó la curva `cubic-bezier(0.16, 1, 0.3, 1)` para todas las micro-animaciones turísticas, ya que produce un movimiento natural y elegante similar a iOS / macOS sin resultar excesivo ni distraer al asesor.
+2. **Tope de retraso:** El retraso escalonado se limitó estrictamente a un máximo de 270 ms, asegurando que incluso en listas largas el último elemento complete su entrada en menos de 500 ms en total, respetando la directriz de velocidad para el asesor de ventas.
 
 ---
 
@@ -1071,3 +1078,4 @@ Se creó el archivo de pruebas de componentes `apps/web/src/components/comun/esq
   - `format:check`: **VERDE** (100% verificado con Prettier).
   - `build`: **VERDE** (Next.js 15.5.27 compiló 16 páginas en 6.7s).
 
+Sigue a la espera de la API de backend (T-041 en adelante). No se inician esas tareas y se continuará con las tareas libres de la cola en el orden instruido.
