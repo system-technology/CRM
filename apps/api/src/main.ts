@@ -11,6 +11,10 @@ import { NestFactory } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module.js';
 import { cuerpoCrudoDeWebhooks } from './shared/red/cuerpo-crudo-de-webhooks.js';
+import {
+  cuerpoDeImportaciones,
+  RUTA_DE_IMPORTACIONES,
+} from './shared/red/cuerpo-de-importaciones.js';
 import { leerProxyDeConfianza } from './shared/red/proxy-de-confianza.js';
 import { DominioExcepcionFilter } from './shared/filtros/dominio-excepcion.filter.js';
 
@@ -29,6 +33,9 @@ async function arrancar(): Promise<void> {
   // Los webhooks de Meta se firman sobre el CUERPO CRUDO: cualquier middleware que parsee
   // JSON antes rompe la verificación de la firma. Es el error número uno de esta integración.
   app.use('/webhooks', cuerpoCrudoDeWebhooks());
+
+  // Tope de 2 MB solo para las importaciones de catálogo (el resto sigue con el de Nest).
+  app.use(RUTA_DE_IMPORTACIONES, cuerpoDeImportaciones());
 
   app.enableCors({
     origin: process.env['WEB_PUBLIC_URL'] ?? 'http://localhost:3000',
