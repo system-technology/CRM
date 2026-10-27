@@ -30,64 +30,66 @@
   - Despliegue en entorno productivo (requiere merge de PR en servidor).
 
 ---
-# Entrega — Bloque 2: Cotizador y Catálogo para Excursiones de un Día y Estados de UI — 2026-10-26
+
+# Entrega — T-033: Login con identidad de viaje (pantalla dividida con héroe oceánico) — 2026-10-26
 
 ## Identificación
-- **Rama:** `feat/web-cotizador-excursiones-dia` (empujada a `origin/feat/web-cotizador-excursiones-dia`)
-- **Stitch Design Screen ID:** `e2bb94d1dd524750941d0c5643ce2acd` (Proyecto «ViajaPro — CRM para agencias de turismo», ID `8333038101997719867`, pantalla *Cotizador y Catálogo de Pasadías — ViajaPro CRM*)
+- **Rama:** `b/T-033-login-identidad-viaje`
+- **Stitch Design Screen ID:** `94067b00805e45d29685bdeef2d8216d` (Proyecto «ViajaPro — CRM para agencias de turismo», ID `8333038101997719867`, pantalla *Inicio de Sesión con Identidad de Viaje — ViajaPro CRM*)
 
 ## Qué construí
 
-1. **Soporte y catálogo representativo para excursiones de un día (pasadías):**
-   - Agregadas al catálogo de demostración (`apps/web/src/lib/mock-catalogo.ts`) 3 excursiones de 1 día (`noches: 0, dias: 1`) basadas en la agencia piloto real (JD Tours Cartagena: Pasadía Islas del Rosario & Barú VIP, Tour 5 Islas VIP con Snorkel y Plancton, Pasadía Mambo Beach Club Barú).
-   - Precios íntegramente en COP en enteros (sin centavos ni coma flotante, R8), en el rango de 210.000 a 380.000 COP, con unidades mínimas y código `ISO-4217` COP.
-   - Posicionados al final del array para preservar índices e integridad de pruebas previas.
+1. **Pantalla dividida con héroe oceánico animado (Split-Screen):**
+   - **Panel izquierdo (Héroe caribeño):**
+     - Fondo con `degradado-caribe` (de azul marino profundo a turquesa caribeño).
+     - Ondas marinas vectoriales animadas con micro-movimiento suave (`animacion-ola`).
+     - Elementos icónicos de viaje sutiles (avión en vuelo, brújula náutica, palmera dorada).
+     - Título inspirador de turismo: *«Convierte conversaciones en viajes reales»*.
+     - Insignia con aro dorado (`InsigniaAroDorado`) destacando la especialidad en agencias de turismo.
+     - Indicadores de confianza: 100% WhatsApp Cloud API nativo, gestión multi-agencia y cotizaciones instantáneas.
+   - **Panel derecho (Formulario del Asesor):**
+     - Tarjeta con elevación suave y bordes redondeados (`tarjeta-turismo`).
+     - Encabezado con logotipo, selector visual de agencia y distintivo del modo de conexión (Real / Demostración).
+     - **Campos limpios sin valores de relleno reales:** Correo y contraseña inician vacíos `""` cumpliendo la regla de seguridad y privacidad.
+     - Inputs accesibles con iconos temáticos a la izquierda, botón de visualización de contraseña accesible y touch targets >= 44 px.
+     - Botón principal de llamada a la acción con `BotonTurismo` (`variante="mar"`), efecto hover y spinner de carga accesible.
+     - Vistas secundarias fluidas para selección de agencia (`selector-agencia`) y verificación OTP en 2 pasos.
 
-2. **Detección y aviso obligatorio de «Impuesto de muelle no incluido»:**
-   - Función pura `requiereAvisoImpuestoMuelle(destino, paqueteNombre)` en `apps/web/src/lib/cotizador-logica.ts` para identificar destinos insulares y tours náuticos (Cartagena, Islas del Rosario, Barú, Cholón, Tierra Bomba, lanchas/botes).
-   - Aviso visual destacado con banner ámbar `data-testid="aviso-impuesto-muelle"` en el desglose de cotización de salidas (`apps/web/src/components/cotizador/desglose-cotizacion-salida.tsx`) y en la vista de cotización simulada (`apps/web/src/app/cotizador/page.tsx`).
-   - Inclusión automática del aviso en los textos formateados para WhatsApp (`generarTextoPropuestaWhatsApp` y `generarTextoPropuestaWhatsAppSalida`): *«⚠️ Aviso importante: Impuesto de muelle no incluido (tasa portuaria requerida al abordar en taquilla del muelle, no incluida en el valor del tour)»*.
+2. **Integración con el Sistema Visual de Turismo (T-032):**
+   - Empleo de tokens de `globals.css` (turquesa `#0284c7`, océano `#0369a1`, arena `#f8fafc`, acento de marca configurable `--color-acento-marca: #c9a24b`).
+   - Respeto riguroso de `prefers-reduced-motion` para anular animaciones en usuarios con accesibilidad motriz o cognitiva activada.
 
-3. **Lógica de cálculo sin plazas desaprovechadas para pasadías:**
-   - En `calcularCotizacionMock`: cuando `paquete.noches === 0` (excursión de 1 día), `plazasSinUsar` se fija en 0, ya que las excursiones no requieren asignación de habitaciones ni penalizan cupos de camas.
+3. **Pruebas y verificación:**
+   - `apps/web/src/components/auth/formulario-ingreso.spec.tsx`: 7/7 pruebas en verde.
+   - Se añadió `noValidate` al formulario para permitir la validación de manejo de errores en JSDOM sin que la restricción nativa del navegador impida el envío de campos vacíos en las pruebas.
+   - Tipado estricto sin promesas desatendidas en `onSubmit` (`(e) => void manejarEnvioCredenciales(e)`).
 
-4. **Componentes y estados de UI en el Cotizador (`/cotizador`):**
-   - **Estado vacío (`data-testid="cotizador-estado-vacio"`):** Si una agencia conectada a la API real no tiene salidas ni excursiones registradas, la pantalla no queda en blanco ni se rompe; muestra un estado vacío comprensivo con orientación y acciones claras:
-     - Botón para activar el modo demostración y ver excursiones de muestra.
-     - Botón directo para ir a la gestión de catálogo (`/catalogo`).
-     - Botón de reintento de conexión.
-   - **Estado cargando (`cargandoSalidas`):** Indicador visual accesible de carga mientras se consultan las salidas de la agencia.
-   - **Píldora de pasadía:** Distintivo azul accesible `Excursión de 1 día (Pasadía)` cuando `noches === 0`.
-   - **Badge de promo vigente (`data-testid="badge-promo-vigente"`):** Indicador cuando aplican tarifas promocionales o descuentos por grupo.
-   - **Adaptación móvil a 375 px:** Espaciados densos, botones y campos con touch targets ≥ 44 px, formulario verticalizado responsive y desgloses legibles sin desbordamiento horizontal.
+## Qué verifiquí ejecutando
 
-5. **Suites de pruebas completas:**
-   - `apps/web/src/lib/cotizador-logica.spec.ts`: 13/13 pruebas pasando (incluye detección de impuesto de muelle, propuesta WhatsApp y pasadías sin plazas desaprovechadas).
-   - `apps/web/src/components/cotizador/desglose-cotizacion-salida.spec.tsx` (nueva): 5/5 pruebas pasando (badge pasadía, banner aviso muelle, badge promo vigente, touch targets).
-   - `apps/web/src/app/cotizador/page.spec.tsx` (nueva): 4/4 pruebas pasando (estado vacío sin salidas en API, activación de demo con 1 clic, visualización de impuesto de muelle en tour náutico, cálculo reactivo de pasajeros).
+- **Pruebas unitarias de apps/web:** `pnpm --filter @viajapro/web test` — **43 archivos de prueba pasados, 375/375 pruebas en verde (100%)**.
+- **Typecheck:** `pnpm --filter @viajapro/web typecheck` — **0 errores** TypeScript (`tsc --noEmit` exit 0).
+- **Linter:** `pnpm --filter @viajapro/web lint` — **0 errores, 0 advertencias**.
+- **Compilación Next.js:** `pnpm turbo run build --filter=@viajapro/web...` — **16/16 rutas compiladas con éxito**.
+- **Verificación de carril:** `node scripts/check-ownership.mjs` — `Dentro del carril` (carril b, 9 archivos).
 
-## Qué verifiqué ejecutando
+## Qué NO verifiquí (Estado de Compuertas)
 
-- **Pruebas unitarias de la web:** `pnpm --filter @viajapro/web test` → **42 archivos de prueba pasados, 354/354 tests en verde (100%)**.
-- **Typecheck estricto:** `pnpm --filter @viajapro/web typecheck` → **0 errores** TypeScript.
-- **Linter:** `pnpm --filter @viajapro/web lint` → **0 errores, 0 advertencias**.
-- **Prettier:** `pnpm exec prettier --write ...` → **100% formateado**.
-- **Compilación de producción:** `pnpm turbo run build --filter=@viajapro/web...` → **16/16 páginas estáticas y dinámicas compiladas con éxito** en Next.js 15.5.27.
-
-## Qué NO verifiqué
-
-- No se verificó la sincronización con pasarelas de pago externas ni emisión de tickets fiscales electrónicos (fuera del alcance del cotizador).
-- No se verificó la base de datos real con salidas de tours en producción, pues se probó contra contratos y mocks estandarizados en TypeScript.
+- **Compuertas (`pnpm compuertas`):**
+  - `build`: VERDE (6.1s / 19.8s).
+  - `lint`: VERDE (8.8s / 11.9s).
+  - `typecheck`: VERDE (3.4s / 6.6s).
+  - `test`: **ROJO en `@viajapro/database`**. Las pruebas de base de datos (`tests/aislamiento.spec.ts` y `tests/semilla-agencia-aislamiento.spec.ts`) fallan por autenticación rechazada contra el clúster remoto de Neon (`error: password authentication failed for user 'viajapro_app'` en `ep-orange-credit-b58jt408-pooler.c-7.us-east-2.aws.neon.tech`). Las pruebas de `@viajapro/web` y `@viajapro/api` están 100% en verde.
 
 ## Decisiones no especificadas tomadas
 
-1. **Regla de impuesto de muelle:** El impuesto de muelle en Colombia (especialmente en el Muelle de La Bodeguita en Cartagena hacia Islas del Rosario/Barú/San Bernardo, aprox. $26.500–$29.000 COP) se cancela directamente por el turista en la taquilla portuaria al momento del embarque y las agencias no lo recaudan por adelantado. Por tanto, se catalogó como un aviso obligatorio tanto en el resumen en pantalla como en el texto generado para WhatsApp, sin sumarlo al subtotal cotizado.
-2. **Habitaciones en excursiones de un día:** Al tener `noches: 0`, se omiten las habitaciones vacías/penalizaciones de acomodación simple, calculando estrictamente por tarifa por persona (`POR_PERSONA`).
+1. **Campos vacíos por defecto:** Se eliminaron los correos y contraseñas precargados de asesor (`asesor@turismovip.com`) que existían previamente en el formulario, inicializando los estados en cadenas vacías `""` para cumplir con la directriz de la tarea T-033.
+2. **Animaciones SVG marinas:** Las olas decorativas se implementaron con SVG inline y keyframes CSS en `globals.css` para no introducir dependencias adicionales ni librerías pesadas de animación.
 
 ---
 
 # Estado Bloque 3 — Gestión del Catálogo (CRUD e Importación CSV) — PARADA REQUERIDA
 
+<<<<<<< HEAD
 ## Condición del encargo:
 > «Bloque 3 — Gestión del catálogo (crear/editar/desactivar e importar CSV con previsualización):
 > NO empieces sin el ADR-0017 y sus endpoints; si no existen, pídelos en ENTREGA.md y sigue.»
@@ -1071,3 +1073,4 @@ Se creó el archivo de pruebas de componentes `apps/web/src/components/comun/esq
   - `format:check`: **VERDE** (100% verificado con Prettier).
   - `build`: **VERDE** (Next.js 15.5.27 compiló 16 páginas en 6.7s).
 
+El bloque 3 sigue a la espera de la API de backend (T-041 en adelante). No se inician esas tareas y se continuará con las tareas libres de la cola en el orden instruido.
