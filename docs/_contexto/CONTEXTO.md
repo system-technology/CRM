@@ -215,3 +215,17 @@ una tarea está bloqueada la salta. Su prompt actualizado está en `docs/09-ia/0
 **Qué hacer al volver el propietario:** (1) pasar a Antigravity el mensaje de prioridad; (2) entrar a `http://localhost:3000/ingresar` con `dueno-jdtours@agenciademo.test` y revisar el catálogo de
 JD Tours; (3) Redis (Memurai) o despliegue para ver conversaciones de WhatsApp; (4) iniciar la verificación del negocio en Meta; (5) decidir el PR #29; (6) pedir a JD Tours las fotos y su permiso.
 
+## 13. Reanudar tras el apagado del equipo (2026-10-26, 22:00)
+
+El propietario apagó el PC a las 22:00 (apagado programado con `shutdown /s`; se cancela con `shutdown /a`). **Al encender, no corre nada**: ni la API, ni la web, ni el túnel, ni los bucles de integración,
+ni los agentes. Lo que está en GitHub (PRs, ramas, `main`) y en Neon sigue intacto. Lo que no estuviera empujado a una rama se perdió: revisar `gh pr list` y las ramas `a/T-0xx`, `b/T-0xx`.
+
+Para volver a levantar el entorno de desarrollo, desde `D:\Projects\CRM` (rama `main`, `git pull` antes):
+
+1. `pnpm install --frozen-lockfile`, luego `pnpm exec turbo run build --force --filter=@viajapro/contracts --filter=@viajapro/domain --filter=@viajapro/database` (sin esto, falsos rojos por `dist` viejo).
+2. API: `pnpm --filter @viajapro/api dev` (log útil: redirigir a un fichero). Debe decir `Conectado como 'viajapro_app'` y `'viajapro_identidad'`. Escucha en `http://localhost:3333`.
+3. Web: `NEXT_PUBLIC_API_URL=http://localhost:3333 NEXT_PUBLIC_USE_REAL_AUTH=true pnpm --filter @viajapro/web dev` (en PowerShell: `$env:NEXT_PUBLIC_API_URL=...; $env:NEXT_PUBLIC_USE_REAL_AUTH='true'`). Escucha en `http://localhost:3000`. Entrada: `/ingresar`.
+4. Túnel de Meta (solo si se va a probar WhatsApp, con el propietario presente): `D:\Projects\_tools\cloudflared\cloudflared-windows-amd64.exe tunnel --url http://localhost:3333`; la URL cambia y hay que repegarla en el webhook de Meta (`<url>/webhooks/whatsapp`, sin `/api/v1`). El token temporal de Meta dura 24 h: puede estar vencido.
+5. Redis sigue sin existir: con `COLA_CHANGES=inerte` los mensajes recibidos se guardan pero no se procesan.
+6. Comprobar el estado: `node scripts/estado-de-arboles.mjs` y `gh pr list --state open`, y retomar la cadena del catálogo desde la siguiente tarea libre de `roadmap/tasks.yaml` (T-042 en curso al apagar; T-043 en adelante).
+
