@@ -13,6 +13,8 @@ import {
   Zap,
   ArrowRight,
   CornerDownLeft,
+  LayoutGrid,
+  FileSpreadsheet,
 } from 'lucide-react';
 import {
   buscarEnIndiceGlobal,
@@ -21,7 +23,7 @@ import {
 } from '../../lib/buscador-global-logica';
 import { useFocoModal } from '../../lib/use-foco-modal';
 
-interface ModalBusquedaGlobalProps {
+export interface ModalBusquedaGlobalProps {
   abierto: boolean;
   alCerrar: () => void;
 }
@@ -30,7 +32,21 @@ const CATEGORIA_INFO: Record<
   CategoriaBusqueda,
   { label: string; icon: React.ComponentType<{ className?: string }>; color: string }
 > = {
-  acciones: { label: 'Acciones Rápidas', icon: Zap, color: 'text-amber-600 dark:text-amber-400' },
+  modulos: {
+    label: 'Módulos del Sistema',
+    icon: LayoutGrid,
+    color: 'text-amber-500 dark:text-amber-400',
+  },
+  cotizaciones: {
+    label: 'Cotizaciones de Viaje',
+    icon: FileSpreadsheet,
+    color: 'text-sky-600 dark:text-sky-400',
+  },
+  acciones: {
+    label: 'Acciones Rápidas',
+    icon: Zap,
+    color: 'text-orange-600 dark:text-orange-400',
+  },
   conversaciones: {
     label: 'Conversaciones WhatsApp',
     icon: MessageSquare,
@@ -49,18 +65,28 @@ const CATEGORIA_INFO: Record<
   viajes: {
     label: 'Archivos de Viaje (TravelFiles)',
     icon: Briefcase,
-    color: 'text-indigo-600 dark:text-indigo-400',
-  },
-  catalogo: {
-    label: 'Catálogo de Mayoristas',
-    icon: Package,
     color: 'text-teal-600 dark:text-teal-400',
   },
+  catalogo: {
+    label: 'Catálogo de Excursiones y Paquetes',
+    icon: Package,
+    color: 'text-rose-600 dark:text-rose-400',
+  },
 };
+
+const CHIPS_FILTRO: Array<{ id: 'todas' | CategoriaBusqueda; label: string }> = [
+  { id: 'todas', label: 'Todos' },
+  { id: 'modulos', label: 'Módulos' },
+  { id: 'cotizaciones', label: 'Cotizaciones' },
+  { id: 'catalogo', label: 'Excursiones' },
+  { id: 'contactos', label: 'Contactos' },
+  { id: 'acciones', label: 'Acciones' },
+];
 
 export function ModalBusquedaGlobal({ abierto, alCerrar }: ModalBusquedaGlobalProps) {
   const router = useRouter();
   const [consulta, setConsulta] = useState('');
+  const [filtroActivo, setFiltroActivo] = useState<'todas' | CategoriaBusqueda>('todas');
   const [indiceSeleccionado, setIndiceSeleccionado] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -70,22 +96,33 @@ export function ModalBusquedaGlobal({ abierto, alCerrar }: ModalBusquedaGlobalPr
     elementoInicialRef: inputRef,
   });
 
-  // Enfocar input al abrir
+  // Reset al abrir
   useEffect(() => {
     if (abierto) {
       setConsulta('');
+      setFiltroActivo('todas');
       setIndiceSeleccionado(0);
     }
   }, [abierto]);
 
-  // Resultados agrupados
+  // Resultados agrupados según consulta
   const resultadosAgrupados = useMemo(() => {
     return buscarEnIndiceGlobal(consulta);
   }, [consulta]);
 
+  // Filtrado por chip si aplica
+  const resultadosFiltrados = useMemo(() => {
+    if (filtroActivo === 'todas') return resultadosAgrupados;
+    const filtrado: Partial<Record<CategoriaBusqueda, ResultadoBusqueda[]>> = {};
+    filtrado[filtroActivo] = resultadosAgrupados[filtroActivo] ?? [];
+    return filtrado as Record<CategoriaBusqueda, ResultadoBusqueda[]>;
+  }, [resultadosAgrupados, filtroActivo]);
+
   // Lista plana para navegación por teclado
   const itemsPlanos = useMemo(() => {
     const ordenCategorias: CategoriaBusqueda[] = [
+      'modulos',
+      'cotizaciones',
       'acciones',
       'conversaciones',
       'contactos',
@@ -95,10 +132,12 @@ export function ModalBusquedaGlobal({ abierto, alCerrar }: ModalBusquedaGlobalPr
     ];
     const lista: ResultadoBusqueda[] = [];
     for (const cat of ordenCategorias) {
-      lista.push(...resultadosAgrupados[cat]);
+      if (resultadosFiltrados[cat]) {
+        lista.push(...resultadosFiltrados[cat]);
+      }
     }
     return lista;
-  }, [resultadosAgrupados]);
+  }, [resultadosFiltrados]);
 
   // Manejo de teclado dentro del modal
   const manejarKeyDown = (e: React.KeyboardEvent) => {
@@ -124,28 +163,36 @@ export function ModalBusquedaGlobal({ abierto, alCerrar }: ModalBusquedaGlobalPr
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 p-4 pt-16 backdrop-blur-xs sm:pt-24"
-      onClick={alCerrar}
       role="dialog"
       aria-modal="true"
-      aria-label="Búsqueda Global"
+      aria-label="Paleta de comandos y búsqueda global"
+      onKeyDown={manejarKeyDown}
+      className="fixed inset-0 z-50 flex items-start justify-center p-4 pt-16 sm:pt-24"
+      data-testid="modal-busqueda-global"
     >
+      {/* Telón de fondo con desenfoque suave */}
+      <div
+        className="fixed inset-0 bg-neutral-900/60 backdrop-blur-xs transition-opacity"
+        onClick={alCerrar}
+        aria-hidden="true"
+      />
+
+      {/* Contenedor Modal */}
       <div
         ref={contenedorRef}
-        className="w-full max-w-2xl overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-2xl transition-all dark:border-neutral-800 dark:bg-neutral-900"
-        onClick={(e) => e.stopPropagation()}
-        onKeyDown={manejarKeyDown}
+        tabIndex={-1}
+        className="relative w-full max-w-2xl overflow-hidden rounded-2xl border border-amber-400/40 bg-white shadow-2xl transition-all dark:border-amber-500/30 dark:bg-neutral-900"
       >
         {/* Aviso dinámico para lectores de pantalla */}
         <div aria-live="polite" className="sr-only">
           {consulta.trim()
             ? `${itemsPlanos.length} resultados encontrados para ${consulta}`
-            : 'Búsqueda global abierta. Escribe un término para buscar.'}
+            : 'Búsqueda global abierta (paleta de comandos). Escribe un término para buscar o navegar.'}
         </div>
 
         {/* Cabecera / Input */}
         <div className="relative flex items-center border-b border-neutral-200 px-4 py-3 dark:border-neutral-800">
-          <Search className="h-5 w-5 text-neutral-400" />
+          <Search className="h-5 w-5 text-amber-500 dark:text-amber-400" />
           <input
             ref={inputRef}
             type="text"
@@ -154,7 +201,9 @@ export function ModalBusquedaGlobal({ abierto, alCerrar }: ModalBusquedaGlobalPr
               setConsulta(e.target.value);
               setIndiceSeleccionado(0);
             }}
-            placeholder="Buscar contactos, chats, oportunidades, viajes, paquetes o acciones..."
+            placeholder="Buscar contactos, chats, excursiones o escribir comando... (Ctrl+K)"
+            aria-label="Buscar en ViajaPro"
+            data-testid="input-paleta-comandos"
             className="w-full bg-transparent px-3 text-sm text-neutral-900 outline-hidden placeholder:text-neutral-400 dark:text-neutral-100"
           />
           {consulta ? (
@@ -176,8 +225,42 @@ export function ModalBusquedaGlobal({ abierto, alCerrar }: ModalBusquedaGlobalPr
           )}
         </div>
 
+        {/* Chips de filtro temático */}
+        <div
+          className="flex items-center gap-1.5 overflow-x-auto border-b border-neutral-100 px-4 py-2 text-xs select-none dark:border-neutral-800"
+          role="tablist"
+          aria-label="Filtrar por categoría"
+        >
+          {CHIPS_FILTRO.map((chip) => {
+            const activo = filtroActivo === chip.id;
+            return (
+              <button
+                key={chip.id}
+                type="button"
+                role="tab"
+                aria-selected={activo}
+                onClick={() => {
+                  setFiltroActivo(chip.id);
+                  setIndiceSeleccionado(0);
+                }}
+                className={`focus-visible:ring-acento-600 rounded-lg px-2.5 py-1 text-[11px] font-medium transition-colors focus-visible:ring-2 focus-visible:outline-none ${
+                  activo
+                    ? 'bg-amber-400 font-semibold text-neutral-950 shadow-2xs dark:bg-amber-400'
+                    : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700'
+                }`}
+              >
+                {chip.label}
+              </button>
+            );
+          })}
+        </div>
+
         {/* Lista de Resultados */}
-        <div className="max-h-[60vh] scrollbar-thin overflow-y-auto p-2">
+        <div
+          className="max-h-[55vh] overflow-y-auto p-2"
+          role="listbox"
+          aria-label="Resultados de búsqueda"
+        >
           {itemsPlanos.length === 0 ? (
             <div className="py-12 text-center text-sm text-neutral-500 dark:text-neutral-400">
               No se encontraron resultados para &ldquo;
@@ -185,10 +268,11 @@ export function ModalBusquedaGlobal({ abierto, alCerrar }: ModalBusquedaGlobalPr
               &rdquo;.
             </div>
           ) : (
-            Object.entries(resultadosAgrupados).map(([catKey, items]) => {
-              if (items.length === 0) return null;
+            Object.entries(resultadosFiltrados).map(([catKey, items]) => {
+              if (!items || items.length === 0) return null;
               const cat = catKey as CategoriaBusqueda;
               const info = CATEGORIA_INFO[cat];
+              if (!info) return null;
               const Icon = info.icon;
 
               return (
@@ -198,7 +282,7 @@ export function ModalBusquedaGlobal({ abierto, alCerrar }: ModalBusquedaGlobalPr
                     <span>{info.label}</span>
                   </div>
 
-                  <div className="space-y-0.5">
+                  <div className="space-y-1">
                     {items.map((item) => {
                       const idxGlobal = itemsPlanos.findIndex((p) => p.id === item.id);
                       const esSeleccionado = idxGlobal === indiceSeleccionado;
@@ -209,6 +293,7 @@ export function ModalBusquedaGlobal({ abierto, alCerrar }: ModalBusquedaGlobalPr
                           role="option"
                           aria-selected={esSeleccionado}
                           tabIndex={0}
+                          data-testid={`resultado-busqueda-${item.id}`}
                           onClick={() => {
                             alCerrar();
                             router.push(item.href);
@@ -223,7 +308,7 @@ export function ModalBusquedaGlobal({ abierto, alCerrar }: ModalBusquedaGlobalPr
                           onMouseEnter={() => setIndiceSeleccionado(idxGlobal)}
                           className={`focus-visible:ring-acento-600 flex cursor-pointer items-center justify-between rounded-xl px-3 py-2.5 transition-colors focus-visible:ring-2 focus-visible:outline-none ${
                             esSeleccionado
-                              ? 'bg-acento-50 dark:bg-acento-950/60 text-neutral-900 dark:text-neutral-50'
+                              ? 'border border-amber-400/60 bg-amber-50/80 text-neutral-900 shadow-2xs dark:border-amber-500/40 dark:bg-amber-950/30 dark:text-neutral-50'
                               : 'text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800/60'
                           }`}
                         >
@@ -231,7 +316,7 @@ export function ModalBusquedaGlobal({ abierto, alCerrar }: ModalBusquedaGlobalPr
                             <div
                               className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border ${
                                 esSeleccionado
-                                  ? 'border-acento-200 text-acento-700 dark:border-acento-800 dark:text-acento-400 bg-white dark:bg-neutral-900'
+                                  ? 'border-amber-400 bg-white text-amber-600 dark:border-amber-500 dark:bg-neutral-900 dark:text-amber-400'
                                   : 'border-neutral-200 bg-neutral-50 text-neutral-500 dark:border-neutral-800 dark:bg-neutral-800 dark:text-neutral-400'
                               }`}
                             >
@@ -256,7 +341,7 @@ export function ModalBusquedaGlobal({ abierto, alCerrar }: ModalBusquedaGlobalPr
 
                           <div className="flex items-center gap-1.5 pl-2">
                             {esSeleccionado && (
-                              <CornerDownLeft className="text-acento-600 dark:text-acento-400 h-3.5 w-3.5" />
+                              <CornerDownLeft className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
                             )}
                             <ArrowRight className="h-3.5 w-3.5 text-neutral-400 opacity-60" />
                           </div>
@@ -270,7 +355,7 @@ export function ModalBusquedaGlobal({ abierto, alCerrar }: ModalBusquedaGlobalPr
           )}
         </div>
 
-        {/* Footer con atajos */}
+        {/* Footer con atajos de teclado accesibles */}
         <div className="flex items-center justify-between border-t border-neutral-200 bg-neutral-50 px-4 py-2.5 text-[11px] text-neutral-500 dark:border-neutral-800 dark:bg-neutral-900/60 dark:text-neutral-400">
           <div className="flex items-center gap-4">
             <span className="flex items-center gap-1">
@@ -283,7 +368,7 @@ export function ModalBusquedaGlobal({ abierto, alCerrar }: ModalBusquedaGlobalPr
               <kbd className="rounded border border-neutral-300 bg-white px-1.5 py-0.5 text-[9px] font-semibold dark:border-neutral-700 dark:bg-neutral-800">
                 ↵
               </kbd>{' '}
-              Abrir
+              Seleccionar
             </span>
             <span className="flex items-center gap-1">
               <kbd className="rounded border border-neutral-300 bg-white px-1.5 py-0.5 text-[9px] font-semibold dark:border-neutral-700 dark:bg-neutral-800">
@@ -292,7 +377,9 @@ export function ModalBusquedaGlobal({ abierto, alCerrar }: ModalBusquedaGlobalPr
               Cerrar
             </span>
           </div>
-          <span className="text-[10px] text-neutral-400">ViajaPro Búsqueda Global</span>
+          <span className="text-[10px] font-medium text-amber-600 dark:text-amber-400">
+            ViajaPro Paleta de Comandos
+          </span>
         </div>
       </div>
     </div>

@@ -21,6 +21,8 @@ import {
   Building2,
   Check,
   LogOut,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import type { SesionActual } from '@viajapro/contracts';
 import { ModalBusquedaGlobal } from '../busqueda/modal-busqueda-global';
@@ -40,8 +42,10 @@ import { useFocoModal } from '../../lib/use-foco-modal';
 interface ModuloItem {
   id: string;
   label: string;
+  etiquetaCorta: string;
   href: string;
   icon: React.ComponentType<{ className?: string }>;
+  colorClase: string;
   activo: boolean;
   disponible: boolean;
 }
@@ -81,6 +85,7 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
   const { esDemo, alternarDemo, desactivarDemo } = useModoDemo();
 
   const [modoOscuro, setModoOscuro] = useState(false);
+  const [barraExpandida, setBarraExpandida] = useState(false);
   const [busquedaAbierta, setBusquedaAbierta] = useState(false);
   const [panelNotifAbierto, setPanelNotifAbierto] = useState(false);
   const [alertas, setAlertas] = useState<AlertaOperativa[]>([]);
@@ -100,10 +105,14 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const guardado = localStorage.getItem('viajapro_tema');
-      if (guardado === 'dark' || document.documentElement.classList.contains('dark')) {
+      const guardadoTema = localStorage.getItem('viajapro_tema');
+      if (guardadoTema === 'dark' || document.documentElement.classList.contains('dark')) {
         setModoOscuro(true);
         document.documentElement.classList.add('dark');
+      }
+      const guardadoBarra = localStorage.getItem('viajapro_barra_expandida');
+      if (guardadoBarra === 'true') {
+        setBarraExpandida(true);
       }
     }
     // Inicializar alertas operativas
@@ -131,6 +140,14 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
     } else {
       document.documentElement.classList.remove('dark');
       localStorage.setItem('viajapro_tema', 'light');
+    }
+  };
+
+  const alternarExpansion = () => {
+    const nuevo = !barraExpandida;
+    setBarraExpandida(nuevo);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('viajapro_barra_expandida', String(nuevo));
     }
   };
 
@@ -186,64 +203,80 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
     {
       id: 'bandeja',
       label: 'Bandeja de WhatsApp',
+      etiquetaCorta: 'Bandeja',
       href: '/bandeja',
       icon: MessageSquare,
+      colorClase: 'text-emerald-500 bg-emerald-50 dark:bg-emerald-950/60 dark:text-emerald-400',
       activo: pathname.startsWith('/bandeja'),
       disponible: true,
     },
     {
       id: 'pipeline',
       label: 'Pipeline / Oportunidades',
+      etiquetaCorta: 'Pipeline',
       href: '/pipeline',
       icon: Kanban,
+      colorClase: 'text-amber-500 bg-amber-50 dark:bg-amber-950/60 dark:text-amber-400',
       activo: pathname === '/pipeline',
       disponible: true,
     },
     {
       id: 'cotizador',
       label: 'Cotizador de Paquetes',
+      etiquetaCorta: 'Cotizar',
       href: '/cotizador',
       icon: FileText,
+      colorClase: 'text-sky-500 bg-sky-50 dark:bg-sky-950/60 dark:text-sky-400',
       activo: pathname === '/cotizador',
       disponible: true,
     },
     {
       id: 'viajes',
       label: 'Archivos de Viaje (TravelFiles)',
+      etiquetaCorta: 'Viajes',
       href: '/viajes',
       icon: Briefcase,
+      colorClase: 'text-teal-500 bg-teal-50 dark:bg-teal-950/60 dark:text-teal-400',
       activo: pathname.startsWith('/viajes'),
       disponible: true,
     },
     {
       id: 'contactos',
       label: 'Contactos y Viajeros',
+      etiquetaCorta: 'Contactos',
       href: '/contactos',
       icon: Users,
+      colorClase: 'text-purple-500 bg-purple-50 dark:bg-purple-950/60 dark:text-purple-400',
       activo: pathname.startsWith('/contactos'),
       disponible: true,
     },
     {
       id: 'catalogo',
       label: 'Catálogo de Mayoristas',
+      etiquetaCorta: 'Catálogo',
       href: '/catalogo',
       icon: Package,
+      colorClase: 'text-rose-500 bg-rose-50 dark:bg-rose-950/60 dark:text-rose-400',
       activo: pathname.startsWith('/catalogo'),
       disponible: true,
     },
     {
       id: 'reportes',
       label: 'Reportes y Cierres',
+      etiquetaCorta: 'Reportes',
       href: '/reportes',
       icon: BarChart3,
+      colorClase: 'text-orange-500 bg-orange-50 dark:bg-orange-950/60 dark:text-orange-400',
       activo: pathname.startsWith('/reportes'),
       disponible: true,
     },
     {
       id: 'configuracion',
       label: 'Configuración de Agencia',
+      etiquetaCorta: 'Ajustes',
       href: '/configuracion',
       icon: Settings,
+      colorClase: 'text-neutral-500 bg-neutral-100 dark:bg-neutral-800 dark:text-neutral-400',
       activo: pathname.startsWith('/configuracion'),
       disponible: true,
     },
@@ -251,32 +284,82 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
 
   return (
     <>
-      {/* 1. Barra Lateral de Escritorio (>=768px, ancho 56px fijo) */}
+      {/* 1. Barra Lateral de Escritorio (>=768px, con soporte de expansión suave) */}
       <aside
-        className="hidden h-full w-14 shrink-0 flex-col items-center justify-between border-r border-neutral-200 bg-white py-3 select-none md:flex dark:border-neutral-800 dark:bg-neutral-900"
+        className={`hidden h-full shrink-0 flex-col justify-between border-r border-neutral-200 bg-white py-3 transition-all duration-300 select-none md:flex dark:border-neutral-800 dark:bg-neutral-900 ${
+          barraExpandida ? 'w-60 px-3' : 'w-14 items-center'
+        }`}
         aria-label="Barra de módulos lateral"
+        data-testid="barra-modulos-escritorio"
       >
         {/* Top: Logo & Módulos */}
-        <div className="flex w-full flex-col items-center space-y-3">
-          {/* Logo */}
-          <Link
-            href="/bandeja"
-            title="ViajaPro — CRM Turístico"
-            className="bg-acento-700 focus-visible:ring-acento-600 flex h-10 w-10 items-center justify-center rounded-xl text-white shadow-sm transition-transform hover:scale-105 focus-visible:ring-2 focus-visible:outline-none"
-          >
-            <Plane className="h-5 w-5" />
-          </Link>
+        <div className="flex w-full flex-col space-y-3">
+          {/* Logo & Toggle expandir/colapsar */}
+          <div className="flex items-center justify-between px-1">
+            <Link
+              href="/bandeja"
+              title="ViajaPro - CRM Turístico"
+              className="degradado-mar focus-visible:ring-acento-600 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-white shadow-xs transition-transform hover:scale-105 focus-visible:ring-2 focus-visible:outline-none"
+            >
+              <Plane className="h-5 w-5" />
+            </Link>
+
+            {barraExpandida && (
+              <div className="min-w-0 flex-1 pl-2.5">
+                <span className="block truncate text-sm font-bold text-neutral-900 dark:text-neutral-100">
+                  ViajaPro
+                </span>
+                <span className="block truncate text-[10px] font-medium text-amber-600 dark:text-amber-400">
+                  CRM Turístico
+                </span>
+              </div>
+            )}
+
+            {/* Botón Colapsar / Expandir Barra */}
+            <button
+              type="button"
+              onClick={alternarExpansion}
+              title={barraExpandida ? 'Colapsar barra lateral' : 'Expandir barra lateral'}
+              aria-label={barraExpandida ? 'Colapsar barra lateral' : 'Expandir barra lateral'}
+              data-testid="boton-colapsar-barra"
+              className="focus-visible:ring-acento-600 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-700 focus-visible:ring-2 focus-visible:outline-none dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
+            >
+              {barraExpandida ? (
+                <ChevronLeft className="h-4 w-4" />
+              ) : (
+                <ChevronRight className="h-4 w-4" />
+              )}
+            </button>
+          </div>
 
           {/* Botón Buscador Global (Cmd+K) */}
-          <button
-            type="button"
-            onClick={() => setBusquedaAbierta(true)}
-            title="Búsqueda Global omnicanal (Cmd+K / Ctrl+K)"
-            aria-label="Abrir buscador global (Cmd+K)"
-            className="group focus-visible:ring-acento-600 relative flex h-9 w-9 items-center justify-center rounded-lg text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 focus-visible:ring-2 focus-visible:outline-none dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
-          >
-            <Search className="h-4 w-4" />
-          </button>
+          {barraExpandida ? (
+            <button
+              type="button"
+              onClick={() => setBusquedaAbierta(true)}
+              aria-label="Abrir paleta de comandos (Ctrl+K)"
+              data-testid="boton-busqueda-expandido"
+              className="focus-visible:ring-acento-600 flex h-9 w-full items-center justify-between rounded-xl border border-neutral-200/80 bg-neutral-50 px-2.5 text-xs text-neutral-500 transition-colors hover:border-neutral-300 hover:bg-neutral-100 focus-visible:ring-2 focus-visible:outline-none dark:border-neutral-800 dark:bg-neutral-800/60 dark:text-neutral-400 dark:hover:bg-neutral-800"
+            >
+              <span className="flex items-center gap-2">
+                <Search className="h-3.5 w-3.5 text-amber-500" />
+                <span className="truncate">Buscar o comando...</span>
+              </span>
+              <kbd className="rounded border border-neutral-300 bg-white px-1.5 py-0.5 text-[9px] font-semibold text-neutral-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-400">
+                Ctrl+K
+              </kbd>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setBusquedaAbierta(true)}
+              title="Búsqueda Global omnicanal (Cmd+K / Ctrl+K)"
+              aria-label="Abrir buscador global (Cmd+K)"
+              className="group focus-visible:ring-acento-600 relative mx-auto flex h-9 w-9 items-center justify-center rounded-lg text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 focus-visible:ring-2 focus-visible:outline-none dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
+            >
+              <Search className="h-4 w-4" />
+            </button>
+          )}
 
           {/* Indicador de Estado: Modo Real vs Modo Demo */}
           {esDemo ? (
@@ -286,26 +369,44 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
               title="Modo Demostración activo (datos simulados). Haz clic para salir y conectar la API real."
               aria-label="Salir del modo demostración"
               data-testid="boton-modo-demo-barra"
-              className="relative flex h-8 w-8 items-center justify-center rounded-lg border border-amber-300 bg-amber-50 text-amber-800 transition hover:bg-amber-100 dark:border-amber-700/60 dark:bg-amber-950/60 dark:text-amber-300"
+              className={`relative flex items-center rounded-lg border border-amber-300 bg-amber-50 text-amber-800 transition hover:bg-amber-100 dark:border-amber-700/60 dark:bg-amber-950/60 dark:text-amber-300 ${
+                barraExpandida
+                  ? 'h-8 w-full gap-2 px-2.5 text-xs font-semibold'
+                  : 'mx-auto h-8 w-8 justify-center'
+              }`}
             >
-              <span className="h-2 w-2 animate-pulse rounded-full bg-amber-500" />
+              <span className="h-2 w-2 shrink-0 animate-pulse rounded-full bg-amber-500" />
+              {barraExpandida && <span className="truncate">Modo Demo Activo</span>}
             </button>
           ) : (
             <div
               title={'API Conectada: ' + nombreAgenciaActiva}
               aria-label={'API Conectada: ' + nombreAgenciaActiva}
               data-testid="indicador-api-conectada"
-              className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400"
+              className={`flex items-center text-emerald-600 dark:text-emerald-400 ${
+                barraExpandida
+                  ? 'h-7 w-full gap-2 rounded-lg bg-emerald-50/80 px-2.5 text-xs font-medium dark:bg-emerald-950/40'
+                  : 'mx-auto h-6 w-6 justify-center rounded-full bg-emerald-50 dark:bg-emerald-950/50'
+              }`}
             >
-              <span className="h-2 w-2 rounded-full bg-emerald-500" />
+              <span className="h-2 w-2 shrink-0 rounded-full bg-emerald-500" />
+              {barraExpandida && (
+                <span className="truncate text-[11px] font-semibold text-emerald-800 dark:text-emerald-300">
+                  {nombreAgenciaActiva}
+                </span>
+              )}
             </div>
           )}
 
           {/* Separador */}
-          <div className="h-px w-8 bg-neutral-200 dark:bg-neutral-800" />
+          <div
+            className={`h-px bg-neutral-200 dark:bg-neutral-800 ${
+              barraExpandida ? 'w-full' : 'mx-auto w-8'
+            }`}
+          />
 
           {/* Lista de Módulos */}
-          <nav className="flex w-full flex-col items-center space-y-1 px-1">
+          <nav className="flex w-full flex-col space-y-1">
             {modulos.map((m) => {
               const Icon = m.icon;
               if (!m.disponible) {
@@ -313,9 +414,14 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
                   <div
                     key={m.id}
                     title={m.label + ' (Próximamente)'}
-                    className="group relative flex h-10 w-10 cursor-not-allowed items-center justify-center rounded-lg text-neutral-400 opacity-60 hover:bg-neutral-100 dark:text-neutral-500 dark:hover:bg-neutral-800"
+                    className={`group relative flex cursor-not-allowed items-center rounded-xl text-neutral-400 opacity-60 hover:bg-neutral-100 dark:text-neutral-500 dark:hover:bg-neutral-800 ${
+                      barraExpandida
+                        ? 'h-10 w-full gap-3 px-2.5 text-xs'
+                        : 'mx-auto h-10 w-10 justify-center'
+                    }`}
                   >
-                    <Icon className="h-5 w-5" />
+                    <Icon className="h-5 w-5 shrink-0" />
+                    {barraExpandida && <span className="truncate">{m.label}</span>}
                   </div>
                 );
               }
@@ -326,14 +432,40 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
                   href={m.href}
                   title={m.label}
                   aria-label={m.label}
-                  className={
-                    'focus-visible:ring-acento-600 flex h-10 w-10 items-center justify-center rounded-lg transition-colors focus-visible:ring-2 focus-visible:outline-none ' +
-                    (m.activo
-                      ? 'bg-acento-50 text-acento-700 dark:bg-acento-950/60 dark:text-acento-400 font-semibold'
-                      : 'text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200')
-                  }
+                  data-testid={`enlace-modulo-${m.id}`}
+                  className={`focus-visible:ring-acento-600 relative flex items-center rounded-xl transition-all duration-200 focus-visible:ring-2 focus-visible:outline-none ${
+                    barraExpandida
+                      ? 'h-10 w-full gap-2.5 px-2.5 text-xs font-medium'
+                      : 'mx-auto h-10 w-10 justify-center'
+                  } ${
+                    m.activo
+                      ? 'border border-amber-400/50 bg-amber-50/80 font-semibold text-neutral-900 shadow-2xs dark:border-amber-500/40 dark:bg-amber-950/30 dark:text-neutral-100'
+                      : 'text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200'
+                  }`}
                 >
-                  <Icon className="h-5 w-5" />
+                  {/* Icono temático con su color caribeño */}
+                  <div
+                    className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition-transform ${
+                      m.activo ? 'scale-105 shadow-2xs' : 'opacity-90'
+                    } ${m.colorClase}`}
+                  >
+                    <Icon className="h-4 w-4" />
+                  </div>
+
+                  {/* Etiqueta visible en modo expandido */}
+                  {barraExpandida && <span className="min-w-0 flex-1 truncate">{m.label}</span>}
+
+                  {/* Indicador animado de sección activa */}
+                  {m.activo && (
+                    <span
+                      className={`rounded-full bg-amber-500 dark:bg-amber-400 ${
+                        barraExpandida
+                          ? 'h-2 w-2 shrink-0'
+                          : 'absolute top-1 -right-0.5 h-2 w-2 ring-2 ring-white dark:ring-neutral-900'
+                      }`}
+                      data-testid={`indicador-activo-${m.id}`}
+                    />
+                  )}
                 </Link>
               );
             })}
@@ -341,31 +473,51 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
         </div>
 
         {/* Bottom: Campana + Meta de Cierres + Tema + Perfil */}
-        <div className="flex w-full flex-col items-center space-y-2.5 px-1">
+        <div
+          className={`flex w-full flex-col space-y-2.5 ${
+            barraExpandida ? 'px-1' : 'items-center px-1'
+          }`}
+        >
           {/* Botón Campana Notificaciones */}
           <button
             type="button"
             onClick={() => setPanelNotifAbierto(true)}
             title={'Alertas operativas (' + conteoNoLeidas + ' pendientes)'}
             aria-label={'Alertas operativas (' + conteoNoLeidas + ' pendientes)'}
-            className="focus-visible:ring-acento-600 relative flex h-9 w-9 items-center justify-center rounded-lg text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 focus-visible:ring-2 focus-visible:outline-none dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
+            className={`focus-visible:ring-acento-600 relative flex items-center rounded-lg text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 focus-visible:ring-2 focus-visible:outline-none dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200 ${
+              barraExpandida ? 'h-9 w-full gap-2.5 px-2.5 text-xs' : 'h-9 w-9 justify-center'
+            }`}
           >
-            <Bell className="h-4 w-4" />
-            {conteoNoLeidas > 0 && (
-              <span className="absolute top-1.5 right-1.5 flex h-2 w-2">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500" />
-              </span>
-            )}
+            <div className="relative shrink-0">
+              <Bell className="h-4 w-4" />
+              {conteoNoLeidas > 0 && (
+                <span className="absolute -top-1 -right-1 flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500" />
+                </span>
+              )}
+            </div>
+            {barraExpandida && <span className="truncate">Alertas ({conteoNoLeidas})</span>}
           </button>
 
           {/* Meta de cierres compacta */}
           <div
             title="Meta de cierres: $42.5M de $60M COP (71% completado)"
-            className="group border-ok-200 bg-ok-50/50 dark:border-ok-900/50 dark:bg-ok-950/30 relative flex h-9 w-9 cursor-help flex-col items-center justify-center rounded-lg border p-0.5 text-center transition-colors"
+            className={`group border-ok-200 bg-ok-50/50 dark:border-ok-900/50 dark:bg-ok-950/30 relative flex cursor-help rounded-lg border text-center transition-colors ${
+              barraExpandida
+                ? 'h-9 w-full items-center justify-between px-2.5'
+                : 'h-9 w-9 flex-col items-center justify-center p-0.5'
+            }`}
           >
-            <TrendingUp className="text-ok-600 dark:text-ok-400 h-3 w-3" />
-            <span className="cifra text-ok-700 dark:text-ok-300 text-[8px] leading-none font-bold">
+            <div className="flex items-center gap-1.5">
+              <TrendingUp className="text-ok-600 dark:text-ok-400 h-3.5 w-3.5 shrink-0" />
+              {barraExpandida && (
+                <span className="text-[11px] font-medium text-neutral-700 dark:text-neutral-300">
+                  Meta del mes
+                </span>
+              )}
+            </div>
+            <span className="cifra text-ok-700 dark:text-ok-300 text-[10px] leading-none font-bold">
               71%
             </span>
           </div>
@@ -376,16 +528,29 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
             onClick={alternarTema}
             title={modoOscuro ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
             aria-label={modoOscuro ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
-            className="focus-visible:ring-acento-600 flex h-9 w-9 items-center justify-center rounded-lg text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-800 focus-visible:ring-2 focus-visible:outline-none dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
+            className={`focus-visible:ring-acento-600 flex items-center rounded-lg text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-800 focus-visible:ring-2 focus-visible:outline-none dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200 ${
+              barraExpandida ? 'h-9 w-full gap-2.5 px-2.5 text-xs' : 'h-9 w-9 justify-center'
+            }`}
           >
-            {modoOscuro ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            {modoOscuro ? (
+              <Sun className="h-4 w-4 shrink-0" />
+            ) : (
+              <Moon className="h-4 w-4 shrink-0" />
+            )}
+            {barraExpandida && (
+              <span className="truncate">{modoOscuro ? 'Modo claro' : 'Modo oscuro'}</span>
+            )}
           </button>
 
           {/* Separador */}
-          <div className="h-px w-8 bg-neutral-200 dark:bg-neutral-800" />
+          <div
+            className={`h-px bg-neutral-200 dark:bg-neutral-800 ${
+              barraExpandida ? 'w-full' : 'w-8'
+            }`}
+          />
 
           {/* Avatar Asesor y Menú de Sesión */}
-          <div className="relative">
+          <div className="relative w-full">
             <button
               type="button"
               onClick={() => setMenuSesionAbierto((prev) => !prev)}
@@ -394,10 +559,26 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
               aria-haspopup="dialog"
               aria-expanded={menuSesionAbierto}
               data-testid="boton-avatar-sesion"
-              className="focus-visible:ring-acento-600 relative flex h-8 w-8 items-center justify-center rounded-full bg-neutral-200 text-xs font-bold text-neutral-700 transition-transform hover:scale-105 focus-visible:ring-2 focus-visible:outline-none dark:bg-neutral-700 dark:text-neutral-200"
+              className={`focus-visible:ring-acento-600 relative flex items-center rounded-xl text-xs font-bold text-neutral-700 transition-transform hover:scale-102 focus-visible:ring-2 focus-visible:outline-none dark:text-neutral-200 ${
+                barraExpandida
+                  ? 'h-10 w-full gap-2.5 bg-neutral-100/70 p-1.5 text-left dark:bg-neutral-800/70'
+                  : 'h-8 w-8 justify-center rounded-full bg-neutral-200 dark:bg-neutral-700'
+              }`}
             >
-              {iniciales}
-              <span className="bg-ok-500 absolute -right-0.5 -bottom-0.5 h-2.5 w-2.5 rounded-full border-2 border-white dark:border-neutral-900" />
+              <div className="relative flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-neutral-300 text-xs font-bold text-neutral-800 dark:bg-neutral-600 dark:text-neutral-100">
+                {iniciales}
+                <span className="bg-ok-500 absolute -right-0.5 -bottom-0.5 h-2 w-2 rounded-full border-2 border-white dark:border-neutral-900" />
+              </div>
+              {barraExpandida && (
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-xs font-semibold text-neutral-900 dark:text-neutral-100">
+                    {nombreUsuario}
+                  </p>
+                  <p className="truncate text-[10px] text-neutral-500 dark:text-neutral-400">
+                    {rolUsuario}
+                  </p>
+                </div>
+              )}
             </button>
           </div>
         </div>
@@ -417,7 +598,7 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
             className={
               'focus-visible:ring-acento-600 flex min-h-[44px] min-w-[44px] flex-col items-center justify-center rounded-xl transition-colors focus-visible:ring-2 focus-visible:outline-none ' +
               (pathname.startsWith('/bandeja')
-                ? 'bg-acento-50 text-acento-700 dark:bg-acento-950/60 dark:text-acento-400 font-semibold'
+                ? 'bg-emerald-50 font-semibold text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400'
                 : 'text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800')
             }
           >
@@ -433,7 +614,7 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
             className={
               'focus-visible:ring-acento-600 flex min-h-[44px] min-w-[44px] flex-col items-center justify-center rounded-xl transition-colors focus-visible:ring-2 focus-visible:outline-none ' +
               (pathname === '/pipeline'
-                ? 'bg-acento-50 text-acento-700 dark:bg-acento-950/60 dark:text-acento-400 font-semibold'
+                ? 'bg-amber-50 font-semibold text-amber-700 dark:bg-amber-950/60 dark:text-amber-400'
                 : 'text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800')
             }
           >
@@ -449,7 +630,7 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
             className={
               'focus-visible:ring-acento-600 flex min-h-[44px] min-w-[44px] flex-col items-center justify-center rounded-xl transition-colors focus-visible:ring-2 focus-visible:outline-none ' +
               (pathname === '/cotizador'
-                ? 'bg-acento-50 text-acento-700 dark:bg-acento-950/60 dark:text-acento-400 font-semibold'
+                ? 'bg-sky-50 font-semibold text-sky-700 dark:bg-sky-950/60 dark:text-sky-400'
                 : 'text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800')
             }
           >
@@ -465,7 +646,7 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
             className={
               'focus-visible:ring-acento-600 flex min-h-[44px] min-w-[44px] flex-col items-center justify-center rounded-xl transition-colors focus-visible:ring-2 focus-visible:outline-none ' +
               (pathname.startsWith('/viajes')
-                ? 'bg-acento-50 text-acento-700 dark:bg-acento-950/60 dark:text-acento-400 font-semibold'
+                ? 'bg-teal-50 font-semibold text-teal-700 dark:bg-teal-950/60 dark:text-teal-400'
                 : 'text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800')
             }
           >
@@ -473,55 +654,56 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
             <span className="text-[9px] leading-tight font-medium">Viajes</span>
           </Link>
 
-          {/* Buscador / Más */}
+          {/* Buscador / Comandos Móvil */}
           <button
             type="button"
             onClick={() => setBusquedaAbierta(true)}
-            title="Buscar o abrir menú (Cmd+K)"
-            aria-label="Buscar o abrir menú global"
+            title="Búsqueda Global"
+            aria-label="Búsqueda Global"
             className="focus-visible:ring-acento-600 flex min-h-[44px] min-w-[44px] flex-col items-center justify-center rounded-xl text-neutral-500 transition-colors hover:bg-neutral-100 focus-visible:ring-2 focus-visible:outline-none dark:text-neutral-400 dark:hover:bg-neutral-800"
           >
             <Search className="h-5 w-5" />
             <span className="text-[9px] leading-tight font-medium">Buscar</span>
           </button>
 
-          {/* Perfil Móvil */}
+          {/* Perfil / Sesión Móvil */}
           <button
             type="button"
             onClick={() => setMenuSesionAbierto(true)}
-            title={'Perfil y sesión (' + nombreUsuario + ')'}
-            aria-label={'Perfil y sesión (' + nombreUsuario + ')'}
+            title="Perfil y Sesión"
+            aria-label="Perfil y Sesión"
+            aria-haspopup="dialog"
+            aria-expanded={menuSesionAbierto}
             data-testid="boton-perfil-movil"
             className="focus-visible:ring-acento-600 flex min-h-[44px] min-w-[44px] flex-col items-center justify-center rounded-xl text-neutral-500 transition-colors hover:bg-neutral-100 focus-visible:ring-2 focus-visible:outline-none dark:text-neutral-400 dark:hover:bg-neutral-800"
           >
-            <div className="relative flex h-5 w-5 items-center justify-center rounded-full bg-neutral-200 text-[10px] font-bold text-neutral-700 dark:bg-neutral-700 dark:text-neutral-200">
+            <div className="relative flex h-6 w-6 items-center justify-center rounded-full bg-neutral-200 text-[10px] font-bold text-neutral-700 dark:bg-neutral-700 dark:text-neutral-200">
               {iniciales}
+              <span className="bg-ok-500 absolute -right-0.5 -bottom-0.5 h-2 w-2 rounded-full border border-white dark:border-neutral-900" />
             </div>
             <span className="text-[9px] leading-tight font-medium">Perfil</span>
           </button>
         </nav>
       )}
 
-      {/* Popover / Menú Desplegable de Sesión y Agencia Activa (ADR-0011) */}
+      {/* Popover / Diálogo de Sesión y Perfil (Accesible y Trampa de Foco) */}
       {menuSesionAbierto && (
         <>
-          {/* Telón de fondo */}
           <div
-            className="fixed inset-0 z-40 bg-black/20 backdrop-blur-[1px]"
+            className="backdrop-blur-2xs fixed inset-0 z-40 bg-black/20 dark:bg-black/40"
             onClick={() => setMenuSesionAbierto(false)}
-            aria-hidden="true"
             data-testid="telon-perfil-sesion"
           />
 
           <div
             ref={menuRef}
             role="dialog"
+            aria-label="Perfil de usuario y configuración de sesión"
             aria-modal="true"
-            aria-label="Perfil y sesión"
             data-testid="dialogo-perfil-sesion"
-            className="fixed right-4 bottom-16 left-4 z-50 w-[calc(100%-2rem)] max-w-xs rounded-2xl border border-neutral-200 bg-white p-4 shadow-2xl transition-all md:bottom-3 md:left-16 md:w-80 dark:border-neutral-800 dark:bg-neutral-900"
+            className="fixed z-50 rounded-2xl border border-neutral-200 bg-white p-4 shadow-xl select-none max-md:right-4 max-md:bottom-16 max-md:left-4 md:bottom-4 md:left-16 md:w-80 dark:border-neutral-800 dark:bg-neutral-900"
           >
-            {/* Cabecera de Usuario */}
+            {/* Header del Perfil */}
             <div className="flex items-center space-x-3 border-b border-neutral-100 pb-3 dark:border-neutral-800">
               <div className="bg-acento-100 text-acento-800 dark:bg-acento-950 dark:text-acento-300 flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-sm font-bold">
                 {iniciales}
@@ -671,7 +853,7 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
         </>
       )}
 
-      {/* Modal de Búsqueda Global (Cmd+K / Ctrl+K) */}
+      {/* Modal de Búsqueda Global / Paleta de Comandos (Cmd+K / Ctrl+K) */}
       <ModalBusquedaGlobal abierto={busquedaAbierta} alCerrar={() => setBusquedaAbierta(false)} />
 
       {/* Panel Desplegable de Notificaciones y Alertas Operativas */}

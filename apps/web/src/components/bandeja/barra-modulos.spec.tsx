@@ -1,18 +1,22 @@
+import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
-import React from 'react';
 import { BarraModulos, calcularIniciales } from './barra-modulos';
-import * as authApi from '../../lib/auth-api';
 import type { SesionActual } from '@viajapro/contracts';
+import * as authApi from '../../lib/auth-api';
 
 const mockPush = vi.fn();
 vi.mock('next/navigation', () => ({
   usePathname: () => '/bandeja',
   useRouter: () => ({
     push: mockPush,
-    replace: vi.fn(),
-    prefetch: vi.fn(),
   }),
+}));
+
+vi.mock('../../lib/inbox-socket', () => ({
+  inboxSocketManager: {
+    desconectar: vi.fn(),
+  },
 }));
 
 const SESION_ASESOR: SesionActual = {
@@ -113,6 +117,39 @@ describe('BarraModulos y Selector de Sesión (ADR-0011)', () => {
       expect(botonPerfilMovil).toBeDefined();
       expect(botonPerfilMovil.className).toContain('min-h-[44px]');
       expect(botonPerfilMovil.className).toContain('min-w-[44px]');
+    });
+  });
+
+  describe('Barra expandible y navegación enriquecida (T-034)', () => {
+    it('permite expandir y contraer la barra lateral con el botón toggle', () => {
+      render(<BarraModulos sesionInicial={SESION_ASESOR} />);
+
+      const btnToggle = screen.getByTestId('boton-colapsar-barra');
+      expect(btnToggle).toBeDefined();
+      expect(btnToggle.getAttribute('aria-label')).toBe('Expandir barra lateral');
+
+      // Click para expandir
+      fireEvent.click(btnToggle);
+      expect(btnToggle.getAttribute('aria-label')).toBe('Colapsar barra lateral');
+
+      // Comprobar que el texto del módulo es visible
+      const enlaceBandeja = screen.getByTestId('enlace-modulo-bandeja');
+      expect(enlaceBandeja.textContent).toContain('Bandeja de WhatsApp');
+
+      // Comprobar buscador expandido con atajo Ctrl+K
+      expect(screen.getByTestId('boton-busqueda-expandido')).toBeDefined();
+
+      // Click para contraer de nuevo
+      fireEvent.click(btnToggle);
+      expect(btnToggle.getAttribute('aria-label')).toBe('Expandir barra lateral');
+    });
+
+    it('muestra el indicador visual animado en el módulo activo', () => {
+      render(<BarraModulos sesionInicial={SESION_ASESOR} />);
+
+      const indicador = screen.getByTestId('indicador-activo-bandeja');
+      expect(indicador).toBeDefined();
+      expect(indicador.className).toContain('bg-amber-500');
     });
   });
 
