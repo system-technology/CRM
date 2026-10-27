@@ -277,7 +277,7 @@ export default function CatalogoPage() {
                     setBusqueda('');
                     setDestinoFiltro('TODOS');
                   }}
-                  className="text-acento-600 hover:text-acento-700 mt-4 text-xs font-semibold"
+                  className="text-acento-600 hover:text-acento-700 mt-4 flex min-h-[44px] items-center text-xs font-semibold"
                 >
                   Restablecer todos los filtros
                 </button>
@@ -304,7 +304,7 @@ export default function CatalogoPage() {
                   setDestinoFiltro('TODOS');
                   setSoloVigentes(false);
                 }}
-                className="text-acento-600 hover:text-acento-700 mt-4 text-xs font-semibold"
+                className="text-acento-600 hover:text-acento-700 mt-4 flex min-h-[44px] items-center text-xs font-semibold"
               >
                 Restablecer todos los filtros
               </button>
@@ -416,7 +416,7 @@ export default function CatalogoPage() {
                         <button
                           type="button"
                           onClick={() => setPaqueteSeleccionado(paquete)}
-                          className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-neutral-300 bg-white py-2 text-xs font-semibold text-neutral-700 hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
+                          className="flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-lg border border-neutral-300 bg-white py-2 text-xs font-semibold text-neutral-700 hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
                         >
                           <Eye className="h-3.5 w-3.5" />
                           Ver tarifario
@@ -424,7 +424,7 @@ export default function CatalogoPage() {
 
                         <Link
                           href="/cotizador"
-                          className="bg-acento-600 hover:bg-acento-700 flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-semibold text-white shadow-xs transition-colors"
+                          className="bg-acento-600 hover:bg-acento-700 flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-semibold text-white shadow-xs transition-colors"
                         >
                           <Compass className="h-3.5 w-3.5" />
                           Cotizar

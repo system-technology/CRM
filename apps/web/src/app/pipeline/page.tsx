@@ -29,6 +29,7 @@ export default function PipelinePage() {
   const { esDemo } = useModoDemo();
   const [tablero, setTablero] = useState<TableroPipeline>(() => obtenerMockTableroPipeline());
   const [vista, setVista] = useState<'kanban' | 'tabla'>('kanban');
+  const [etapaMovilId, setEtapaMovilId] = useState<string | null>(null);
   const [filtroTexto, setFiltroTexto] = useState('');
   const [filtroAsesor, setFiltroAsesor] = useState<string>('todos');
 
@@ -180,7 +181,7 @@ export default function PipelinePage() {
   }, [tablero, filtroTexto, filtroAsesor]);
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-neutral-100 text-neutral-900 select-none dark:bg-neutral-950 dark:text-neutral-100">
+    <div className="flex h-screen w-full max-w-full overflow-hidden bg-neutral-100 text-neutral-900 select-none dark:bg-neutral-950 dark:text-neutral-100">
       {/* Barra de Módulos (56px) */}
       <BarraModulos />
 
@@ -209,7 +210,7 @@ export default function PipelinePage() {
                 <button
                   type="button"
                   onClick={() => setVista('kanban')}
-                  className={`flex items-center space-x-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition-colors ${
+                  className={`flex min-h-[44px] items-center space-x-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-colors sm:min-h-[32px] sm:px-2.5 sm:py-1 ${
                     vista === 'kanban'
                       ? 'bg-white text-neutral-900 shadow-2xs dark:bg-neutral-700 dark:text-white'
                       : 'text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white'
@@ -221,7 +222,7 @@ export default function PipelinePage() {
                 <button
                   type="button"
                   onClick={() => setVista('tabla')}
-                  className={`flex items-center space-x-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition-colors ${
+                  className={`flex min-h-[44px] items-center space-x-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-colors sm:min-h-[32px] sm:px-2.5 sm:py-1 ${
                     vista === 'tabla'
                       ? 'bg-white text-neutral-900 shadow-2xs dark:bg-neutral-700 dark:text-white'
                       : 'text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white'
@@ -302,19 +303,78 @@ export default function PipelinePage() {
         ) : cargandoApi ? (
           <EsqueletoKanban />
         ) : vista === 'kanban' ? (
-          <div className="flex flex-1 overflow-x-auto overflow-y-hidden p-6">
-            <div className="flex min-w-full space-x-4">
-              {tableroFiltrado.columnas.map((columna) => (
-                <ColumnaKanban
-                  key={columna.etapa.id}
-                  columna={columna}
-                  etapas={tablero.columnas.map((c) => c.etapa)}
-                  onSolicitarMover={manejarSolicitudMover}
-                  onDropOportunidad={manejarDropOportunidad}
-                />
-              ))}
+          <>
+            {/* Selector de Etapas en Móvil (< md) para evitar scroll horizontal (T-023) */}
+            <div
+              className="flex shrink-0 gap-1.5 overflow-x-auto border-b border-neutral-200 bg-neutral-50/80 px-3 py-2 md:hidden dark:border-neutral-800 dark:bg-neutral-900/60"
+              role="tablist"
+              aria-label="Etapas del pipeline"
+            >
+              {tableroFiltrado.columnas.map((col) => {
+                const esActiva =
+                  (etapaMovilId ?? tableroFiltrado.columnas[0]?.etapa.id) === col.etapa.id;
+                return (
+                  <button
+                    key={col.etapa.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={esActiva}
+                    onClick={() => setEtapaMovilId(col.etapa.id)}
+                    className={`flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold transition-all ${
+                      esActiva
+                        ? 'bg-acento-600 text-white shadow-xs'
+                        : 'border border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300'
+                    }`}
+                  >
+                    <span>{col.etapa.nombre}</span>
+                    <span
+                      className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
+                        esActiva
+                          ? 'bg-white/20 text-white'
+                          : 'bg-neutral-100 text-neutral-700 dark:bg-neutral-700 dark:text-neutral-200'
+                      }`}
+                    >
+                      {col.total}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
-          </div>
+
+            {/* Vista Móvil (< md): Columna única a ancho completo sin desbordamiento horizontal */}
+            <div className="flex flex-1 overflow-y-auto p-3.5 md:hidden">
+              {tableroFiltrado.columnas
+                .filter(
+                  (col) => col.etapa.id === (etapaMovilId ?? tableroFiltrado.columnas[0]?.etapa.id),
+                )
+                .map((columna) => (
+                  <div key={columna.etapa.id} className="w-full">
+                    <ColumnaKanban
+                      columna={columna}
+                      etapas={tablero.columnas.map((c) => c.etapa)}
+                      onSolicitarMover={manejarSolicitudMover}
+                      onDropOportunidad={manejarDropOportunidad}
+                      anchoCompleto
+                    />
+                  </div>
+                ))}
+            </div>
+
+            {/* Vista Escritorio (>= md): Tablero Kanban horizontal multi-columna */}
+            <div className="hidden flex-1 overflow-x-auto overflow-y-hidden p-6 md:flex">
+              <div className="flex min-w-full space-x-4">
+                {tableroFiltrado.columnas.map((columna) => (
+                  <ColumnaKanban
+                    key={columna.etapa.id}
+                    columna={columna}
+                    etapas={tablero.columnas.map((c) => c.etapa)}
+                    onSolicitarMover={manejarSolicitudMover}
+                    onDropOportunidad={manejarDropOportunidad}
+                  />
+                ))}
+              </div>
+            </div>
+          </>
         ) : (
           /* Vista Tabla Compacta */
           <div className="flex-1 overflow-y-auto p-6">

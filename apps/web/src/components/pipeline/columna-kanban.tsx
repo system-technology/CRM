@@ -11,6 +11,8 @@ interface ColumnaKanbanProps {
   onDropOportunidad: (oportunidadId: string, nuevaEtapa: EtapaDefinida) => void;
   /** Todas las etapas del tablero, para el menú «mover a» de cada tarjeta. */
   etapas: EtapaDefinida[];
+  /** Si es true, ocupa el 100% de ancho en vista móvil para evitar scroll horizontal (T-023). */
+  anchoCompleto?: boolean;
 }
 
 /** Para las etapas que la agencia inventó y el vocabulario común no nombra. */
@@ -47,6 +49,7 @@ export function ColumnaKanban({
   etapas,
   onSolicitarMover,
   onDropOportunidad,
+  anchoCompleto = false,
 }: ColumnaKanbanProps) {
   const [arrastrandoEncima, setArrastrandoEncima] = useState(false);
 
@@ -81,7 +84,7 @@ export function ColumnaKanban({
       onDragOver={manejarDragOver}
       onDragLeave={manejarDragLeave}
       onDrop={manejarDrop}
-      className={`flex h-full max-w-[320px] min-w-[280px] flex-1 flex-col rounded-2xl border transition-colors ${
+      className={`flex h-full ${anchoCompleto ? 'w-full max-w-full min-w-full' : 'max-w-[320px] min-w-[280px] flex-1'} flex-col rounded-2xl border transition-colors ${
         arrastrandoEncima
           ? 'border-acento-500 bg-acento-50/40 dark:border-acento-400 dark:bg-acento-950/20 border-dashed'
           : 'border-neutral-200/90 bg-neutral-50/60 dark:border-neutral-800 dark:bg-neutral-900/40'

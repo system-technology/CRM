@@ -114,7 +114,7 @@ export function TarjetaSalidaPublicada({ salida }: TarjetaSalidaPublicadaProps) 
 
         <Link
           href={`/cotizador?paqueteId=${encodeURIComponent(salida.paqueteId)}&fecha=${encodeURIComponent(salida.fecha)}`}
-          className="bg-acento-600 hover:bg-acento-700 flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-xs font-bold text-white shadow-xs transition-colors"
+          className="bg-acento-600 hover:bg-acento-700 flex min-h-[44px] w-full items-center justify-center gap-2 rounded-lg py-2.5 text-xs font-bold text-white shadow-xs transition-colors"
         >
           <Compass className="h-4 w-4" />
           Cotizar esta salida

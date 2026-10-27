@@ -828,7 +828,7 @@ export default function BandejaConversacionPage() {
         </main>
 
         {/* Pie de redacción */}
-        <footer className="min-w-0 shrink-0 border-t border-neutral-200 bg-white p-3 pb-24 md:pb-3 dark:border-neutral-800 dark:bg-neutral-900">
+        <footer className="min-w-0 shrink-0 border-t border-neutral-200 bg-white p-3 pb-4 md:pb-3 dark:border-neutral-800 dark:bg-neutral-900">
           {!detalle.ventana.abierta || tiempoVentana.cerrada ? (
             <div className="space-y-3 rounded-xl border border-neutral-200 bg-neutral-50 p-4 text-xs dark:border-neutral-800 dark:bg-neutral-800/40">
               <div className="flex items-center justify-center space-x-1.5 font-semibold text-neutral-800 dark:text-neutral-200">
