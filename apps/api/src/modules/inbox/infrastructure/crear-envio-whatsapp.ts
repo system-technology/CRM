@@ -2,8 +2,8 @@
  * Qué adaptadores de envío usa el trabajador, decidido por el entorno. ADR-0018 §7.
  *
  * - El adaptador de red es siempre el real (`EnvioWhatsappGraph`); el falso solo existe en pruebas.
- * - La credencial: con `META_SYSTEM_USER_TOKEN` y `META_PHONE_NUMBER_ID_PRUEBA`, la de prueba, que
- *   solo sirve a ese número. Sin ellas, ninguna: cada mensaje queda `FALLIDO` y explicado, y el
+ * - La credencial: con `META_SYSTEM_USER_TOKEN`, `META_PHONE_NUMBER_ID_PRUEBA` y
+ *   `META_TENANT_ID_PRUEBA`, la de prueba, que solo sirve a ese número EN esa agencia. Sin ellas, ninguna: cada mensaje queda `FALLIDO` y explicado, y el
  *   arranque lo avisa. **El token jamás se registra.**
  */
 import { Logger } from '@nestjs/common';
@@ -31,9 +31,10 @@ export function crearCredencialesWhatsapp(
 ): PuertoCredencialesWhatsapp {
   const token = entorno['META_SYSTEM_USER_TOKEN'];
   const numero = entorno['META_PHONE_NUMBER_ID_PRUEBA'];
-  if (token && numero) return new CredencialesDePrueba(token, numero);
+  const tenant = entorno['META_TENANT_ID_PRUEBA'];
+  if (token && numero && tenant) return new CredencialesDePrueba(token, numero, tenant);
   new Logger('EnvioWhatsapp').warn(
-    'Sin META_SYSTEM_USER_TOKEN y META_PHONE_NUMBER_ID_PRUEBA: los mensajes salientes quedarán FALLIDOS.',
+    'Sin META_SYSTEM_USER_TOKEN, META_PHONE_NUMBER_ID_PRUEBA y META_TENANT_ID_PRUEBA: los mensajes salientes quedarán FALLIDOS.',
   );
   return new CredencialesNoConfiguradas();
 }

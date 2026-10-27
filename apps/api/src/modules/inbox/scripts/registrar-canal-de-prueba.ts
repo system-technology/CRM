@@ -14,6 +14,10 @@
  * Entorno: `META_PHONE_NUMBER_ID_PRUEBA`, `META_WABA_ID_PRUEBA`, `WHATSAPP_DIRECTORY_PEPPER`
  * (y `_VERSION`, 1 por omisión), `DATABASE_APP_URL` y `DATABASE_ALTAS_URL`.
  *
+ * Al terminar imprime el UUID de la agencia demo para `META_TENANT_ID_PRUEBA` si aún no está
+ * fijado: el envío saliente solo usa el token de la plataforma para esa agencia (T-060). El script
+ * no escribe el `.env`; se copia a mano.
+ *
  * Guardias (la decisión es pura y vive en `guardia-de-canal-de-prueba.ts`):
  *   1. Exige `APP_ENV=local`.
  *   2. Solo opera sobre la agencia de la semilla (slug `agencia-demo`).
@@ -101,6 +105,13 @@ async function principal(): Promise<void> {
       pimientaVersion: Number(process.env['WHATSAPP_DIRECTORY_PEPPER_VERSION'] ?? '1'),
     });
     console.log(`canal de prueba registrado para la agencia demo: ${resultado.tenantNombre}`);
+    // El envío saliente solo usa el token de la plataforma para ESTA agencia (T-060). El script no
+    // escribe el `.env`: dice qué fijar. Un UUID de tenant es nuestro, no un secreto ni un dato de Meta.
+    if (process.env['META_TENANT_ID_PRUEBA'] !== resultado.tenantId) {
+      console.log(
+        `Para poder ENVIAR desde este canal, fija en el .env: META_TENANT_ID_PRUEBA=${resultado.tenantId}`,
+      );
+    }
   } finally {
     await app.prisma.$disconnect();
     await altas.prisma.$disconnect();

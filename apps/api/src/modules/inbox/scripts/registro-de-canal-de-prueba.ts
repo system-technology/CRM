@@ -36,6 +36,8 @@ export interface PeticionDeRegistro {
 }
 
 export interface ResultadoDelRegistro {
+  /** El valor de `META_TENANT_ID_PRUEBA`: solo esta agencia envía con el token de prueba. */
+  readonly tenantId: string;
   readonly tenantNombre: string;
   readonly canalId: string;
   readonly cuentaId: string;
@@ -145,5 +147,5 @@ export async function registrarCanalDePrueba(
     throw error;
   }
 
-  return { tenantNombre: tenant.nombre, canalId, cuentaId };
+  return { tenantId: tenant.id, tenantNombre: tenant.nombre, canalId, cuentaId };
 }
