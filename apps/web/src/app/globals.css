@@ -1,93 +1,81 @@
 @import 'tailwindcss';
 
-@variant dark (&:where(.dark, .dark *));
+@layer base {
+  /**
+   * SISTEMA VISUAL TURÍSTICO VIAJAPRO (Identidad Visual T-032 / T-035)
+   *
+   * Combina la limpieza y densidad de una herramienta de trabajo con la identidad vibrante
+   * de las agencias de turismo: paleta caribeña, degradados temáticos, insignias con aro dorado
+   * y micro-animaciones fluidas (< 300ms) que respetan prefers-reduced-motion.
+   */
 
-/**
- * Tokens del sistema de diseño de ViajaPro — Identidad Visual de Turismo (T-032).
- *
- * Combina la limpieza y densidad de una herramienta de trabajo con la identidad vibrante
- * de las agencias de turismo: paleta caribeña, degradados temáticos, insignias con aro dorado
- * y micro-animaciones fluidas (< 400ms) que respetan prefers-reduced-motion.
- */
+  @theme {
+    /* 1. Azul Caribe / Océano (base marítima y confianza) */
+    --color-oceano-50: #f0fdfa;
+    --color-oceano-100: #ccfbf1;
+    --color-oceano-200: #99f6e4;
+    --color-oceano-300: #5eead4;
+    --color-oceano-400: #2dd4bf;
+    --color-oceano-500: #14b8a6;
+    --color-oceano-600: #0d9488;
+    --color-oceano-700: #0f766e;
+    --color-oceano-800: #115e59;
+    --color-oceano-900: #134e4a;
+    --color-oceano-950: #042f2e;
 
-@theme {
-  /* Acento de marca base (Azul zafiro) */
-  --color-acento-50: #eff6ff;
-  --color-acento-100: #dbeafe;
-  --color-acento-500: #3b82f6;
-  --color-acento-600: #2563eb;
-  --color-acento-700: #1d4ed8;
-  --color-acento-800: #1e40af;
+    /* 2. Turquesa Caribeño (acentos vivos y llamadas a la acción) */
+    --color-turquesa-50: #ecfeff;
+    --color-turquesa-100: #cffafe;
+    --color-turquesa-200: #a5f3fc;
+    --color-turquesa-300: #67e8f9;
+    --color-turquesa-400: #22d3ee;
+    --color-turquesa-500: #06b6d4;
+    --color-turquesa-600: #0891b2;
+    --color-turquesa-700: #0e7490;
+    --color-turquesa-800: #155e75;
+    --color-turquesa-900: #164e63;
+    --color-turquesa-950: #083344;
 
-  /* Semánticos del CRM */
-  --color-ok-50: #f0fdf4;
-  --color-ok-600: #16a34a;
-  --color-ok-700: #15803d;
-  --color-aviso-50: #fffbeb;
-  --color-aviso-600: #d97706;
-  --color-aviso-700: #b45309;
-  --color-alerta-50: #fef2f2;
-  --color-alerta-600: #dc2626;
-  --color-alerta-700: #b91c1c;
+    /* 3. Coral Atardecer (promociones, cupos limitados y alertas cálidas) */
+    --color-coral-50: #fff1f2;
+    --color-coral-100: #ffe4e6;
+    --color-coral-200: #fecdd3;
+    --color-coral-300: #fda4af;
+    --color-coral-400: #fb7185;
+    --color-coral-500: #f43f5e;
+    --color-coral-600: #e11d48;
+    --color-coral-700: #be123c;
+    --color-coral-800: #9f1239;
+    --color-coral-900: #881337;
+    --color-coral-950: #4c0519;
 
-  /* Paleta Caribeña y Turística (T-032) */
-  /* Turquesa Caribeño (aguas cristalinas de islas, pasadías, beach clubs) */
-  --color-turquesa-50: #ecfeff;
-  --color-turquesa-100: #cffafe;
-  --color-turquesa-200: #a5f3fc;
-  --color-turquesa-500: #06b6d4;
-  --color-turquesa-600: #0891b2;
-  --color-turquesa-700: #0e7490;
-  --color-turquesa-800: #155e75;
+    /* 4. Arena Tropical (fondos cálidos y superficies sutiles) */
+    --color-arena-50: #fdfbf7;
+    --color-arena-100: #f7f3ea;
+    --color-arena-200: #eee5d3;
+    --color-arena-300: #e1d2b5;
+    --color-arena-400: #d1b993;
+    --color-arena-500: #c2a177;
+    --color-arena-600: #b18c64;
+    --color-arena-700: #947152;
+    --color-arena-800: #795d46;
+    --color-arena-900: #634d3b;
+    --color-arena-950: #35281e;
 
-  /* Océano Profundo (mar abierto, navegación nocturna, cabeceras estructuradas) */
-  --color-oceano-800: #0f2b4c;
-  --color-oceano-900: #0b1f3a;
-  --color-oceano-950: #061122;
+    /* 5. Acento Dorado Cartagena (insignias de calidad y badges con aro dorado) */
+    --color-dorado-50: #fefce8;
+    --color-dorado-100: #fef9c3;
+    --color-dorado-200: #fef08a;
+    --color-dorado-300: #fde047;
+    --color-dorado-400: #facc15;
+    --color-dorado-500: #eab308;
+    --color-dorado-600: #ca8a04;
+    --color-dorado-700: #a16207;
+    --color-dorado-800: #854d0e;
+    --color-dorado-900: #713f12;
+    --color-dorado-950: #422006;
+  }
 
-  /* Coral Vivo (calidez, planes familiares, snorkel, atención WhatsApp) */
-  --color-coral-50: #fff1f2;
-  --color-coral-100: #ffe4e6;
-  --color-coral-400: #fb7185;
-  --color-coral-500: #f43f5e;
-  --color-coral-600: #e11d48;
-
-  /* Atardecer Tropical (salidas en lancha, promociones flash, tours al ocaso) */
-  --color-atardecer-50: #fff7ed;
-  --color-atardecer-100: #ffedd5;
-  --color-atardecer-500: #f97316;
-  --color-atardecer-600: #ea580c;
-  --color-atardecer-700: #c2410c;
-
-  /* Arena & Resalte Caribeño (playa blanca, resaltes de precio, aros dorados) */
-  --color-arena-100: #fef3c7;
-  --color-arena-200: #fde68a;
-  --color-arena-300: #fcd34d;
-  --color-resalte-400: #facc15;
-  --color-resalte-500: #eab308;
-  --color-dorado-400: #e0b85c;
-  --color-dorado-500: #c9a24b;
-  --color-dorado-600: #ab8635;
-
-  --font-sans: Inter, ui-sans-serif, system-ui, sans-serif;
-
-  /* Escala tipográfica */
-  --text-xs: 0.6875rem; /* 11px */
-  --text-sm: 0.75rem; /* 12px */
-  --text-base: 0.8125rem; /* 13px */
-  --text-lg: 0.9375rem; /* 15px */
-  --text-xl: 1.125rem; /* 18px */
-  --text-2xl: 1.375rem; /* 22px */
-  --text-3xl: 1.75rem; /* 28px */
-
-  --radius-sm: 0.25rem;
-  --radius-md: 0.5rem;
-  --radius-lg: 0.75rem;
-  --radius-xl: 1rem;
-}
-
-:root {
-  color-scheme: light;
   /* Variable CSS para marca por agencia (T-038/T-039). Valor por defecto: Dorado Cartagena */
   --color-acento-marca: #c9a24b;
 }
@@ -149,7 +137,7 @@ body {
 }
 
 /**
- * MICRO-ANIMACIONES TURÍSTICAS (< 400ms)
+ * ANIMACIONES Y TRANSICIONES (T-035 — < 300ms)
  */
 @keyframes flotarSuave {
   0%,
@@ -182,6 +170,39 @@ body {
   }
 }
 
+@keyframes entradaEscalonada {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeScaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
 .anim-flotar {
   animation: flotarSuave 3s ease-in-out infinite;
 }
@@ -189,6 +210,34 @@ body {
 .anim-olas {
   animation: olasMar 6s ease-in-out infinite;
 }
+
+.animacion-entrada-escalonada {
+  animation: entradaEscalonada 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.transicion-modal {
+  animation: fadeScaleIn 200ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.transicion-pantalla {
+  animation: fadeScaleIn 240ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.transicion-panel-deslizante {
+  animation: slideInRight 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Escalado automático de retrasos para hijos en listas y cuadrículas */
+.escalonado-hijos > *:nth-child(1) { animation: entradaEscalonada 220ms cubic-bezier(0.16, 1, 0.3, 1) both; animation-delay: 0ms; }
+.escalonado-hijos > *:nth-child(2) { animation: entradaEscalonada 220ms cubic-bezier(0.16, 1, 0.3, 1) both; animation-delay: 30ms; }
+.escalonado-hijos > *:nth-child(3) { animation: entradaEscalonada 220ms cubic-bezier(0.16, 1, 0.3, 1) both; animation-delay: 60ms; }
+.escalonado-hijos > *:nth-child(4) { animation: entradaEscalonada 220ms cubic-bezier(0.16, 1, 0.3, 1) both; animation-delay: 90ms; }
+.escalonado-hijos > *:nth-child(5) { animation: entradaEscalonada 220ms cubic-bezier(0.16, 1, 0.3, 1) both; animation-delay: 120ms; }
+.escalonado-hijos > *:nth-child(6) { animation: entradaEscalonada 220ms cubic-bezier(0.16, 1, 0.3, 1) both; animation-delay: 150ms; }
+.escalonado-hijos > *:nth-child(7) { animation: entradaEscalonada 220ms cubic-bezier(0.16, 1, 0.3, 1) both; animation-delay: 180ms; }
+.escalonado-hijos > *:nth-child(8) { animation: entradaEscalonada 220ms cubic-bezier(0.16, 1, 0.3, 1) both; animation-delay: 210ms; }
+.escalonado-hijos > *:nth-child(9) { animation: entradaEscalonada 220ms cubic-bezier(0.16, 1, 0.3, 1) both; animation-delay: 240ms; }
+.escalonado-hijos > *:nth-child(10) { animation: entradaEscalonada 220ms cubic-bezier(0.16, 1, 0.3, 1) both; animation-delay: 270ms; }
 
 .tarjeta-turismo-hover {
   transition:
@@ -211,7 +260,7 @@ body {
     rgba(229, 231, 235, 0.6) 75%
   );
   background-size: 200% 100%;
-  animation: brilloEsqueleto 1.8s infinite;
+  animation: brilloEsqueleto 1.6s infinite ease-in-out;
 }
 
 .dark .esqueleto-brillo {
@@ -222,7 +271,7 @@ body {
     rgba(30, 41, 59, 0.6) 75%
   );
   background-size: 200% 100%;
-  animation: brilloEsqueleto 1.8s infinite;
+  animation: brilloEsqueleto 1.6s infinite ease-in-out;
 }
 
 /**
