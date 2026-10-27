@@ -11,6 +11,10 @@ import { UnidadDeTrabajoDeGestion } from './application/puertos-de-gestion.js';
 import { UnidadDeTrabajoDeGestionPrisma } from './infrastructure/gestion-por-id.prisma.js';
 import { CatalogoVigenciasController } from './interface/catalogo-vigencias.controller.js';
 import { CatalogoGestionController } from './interface/catalogo-gestion.controller.js';
+import { ImportacionesController } from './interface/importaciones.controller.js';
+import { PrevisualizarImportacionUseCase } from './application/previsualizar-importacion.use-case.js';
+import { SugeridorDeMapeo } from './application/sugeridor-de-mapeo.js';
+import { SugeridorPorSinonimos } from './infrastructure/sugeridor-por-sinonimos.js';
 import { CotizacionesController } from './interface/cotizaciones.controller.js';
 import { CatalogoController } from './interface/catalogo.controller.js';
 import { SalidasController } from './interface/salidas.controller.js';
@@ -26,6 +30,7 @@ import { SalidasController } from './interface/salidas.controller.js';
     CatalogoController,
     CatalogoGestionController,
     CatalogoVigenciasController,
+    ImportacionesController,
     SalidasController,
     CotizacionesController,
   ],
@@ -35,6 +40,8 @@ import { SalidasController } from './interface/salidas.controller.js';
     CotizacionesUseCase,
     CotizarSalidaUseCase,
     AplicadorDeCatalogo,
+    PrevisualizarImportacionUseCase,
+    { provide: SugeridorDeMapeo, useClass: SugeridorPorSinonimos },
     { provide: UnidadDeTrabajoDeCatalogo, useClass: UnidadDeTrabajoDeCatalogoPrisma },
     AplicadorPorId,
     { provide: UnidadDeTrabajoDeGestion, useClass: UnidadDeTrabajoDeGestionPrisma },
