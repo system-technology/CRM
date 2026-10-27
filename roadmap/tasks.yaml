@@ -49,7 +49,7 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: backlog
+    status: done
     acceptance:
       - Un cliente que supera N peticiones por minuto a un endpoint de negocio recibe 429 con la cabecera
         Retry-After
@@ -60,6 +60,11 @@ tasks:
     files:
       - apps/api/src/shared/red/
       - apps/api/src/main.ts
+    started_at: 2026-10-27T01:44:58.126Z
+    done_at: 2026-10-27T01:44:58.127Z
+    evidence: "Mergeado en main por el PR #85 (rama a/T-002-limite-de-tasa-de-la-api) con el CI en verde: format,
+      analyze, tests y los demás checks obligatorios. Cierre automático (.github/workflows/cerrar-tarea.yml)."
+    commit: 05b7b05ee94d1573c28b08405531a4e95d100579
   - id: T-003
     title: Política de seguridad de contenido (CSP) y cabeceras de seguridad en la web
     type: security
