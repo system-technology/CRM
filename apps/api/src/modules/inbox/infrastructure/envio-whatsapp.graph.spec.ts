@@ -94,6 +94,32 @@ function atender(req: IncomingMessage, res: ServerResponse): void {
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ messaging_product: 'whatsapp' }));
         return;
+      case '504-vacio':
+        res.writeHead(504);
+        res.end();
+        return;
+      case '502-html':
+        res.writeHead(502, { 'Content-Type': 'text/html' });
+        res.end('<html><body><h1>502 Bad Gateway</h1></body></html>');
+        return;
+      case '500-vacio':
+        res.writeHead(500);
+        res.end();
+        return;
+      case '503-limitado':
+        // 5xx CON el sobre de Meta: Meta dijo que no lo aceptó. Sigue la tabla (reintentable).
+        errorDeMeta(res, 503, 130429, 'Rate limit hit');
+        return;
+      case 'redirige':
+        res.writeHead(302, { Location: '/v26.0/exito/messages' });
+        res.end();
+        return;
+      case 'enorme':
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(
+          JSON.stringify({ messages: [{ id: 'wamid.ENORME' }], relleno: 'x'.repeat(200_000) }),
+        );
+        return;
       default:
         res.writeHead(404);
         res.end();
@@ -207,6 +233,45 @@ describe('EnvioWhatsappGraph contra una Graph API falsa', () => {
       .enviarTexto(pedido('sin-id'))
       .catch((x: unknown) => x);
     expect(e).toBeInstanceOf(EnvioSinConfirmarError);
+  });
+
+  it.each(['504-vacio', '502-html', '500-vacio'])(
+    '%s (5xx sin el código de Meta): sin confirmar y NUNCA reintenta (pudo llegar)',
+    async (numero) => {
+      esperas.length = 0;
+      const e = await adaptador()
+        .enviarTexto(pedido(numero))
+        .catch((x: unknown) => x);
+      expect(e).toBeInstanceOf(EnvioSinConfirmarError);
+      expect((e as EnvioSinConfirmarError).reintentable).toBe(false);
+      expect(recibidos).toHaveLength(1);
+      expect(esperas).toEqual([]);
+    },
+  );
+
+  it('5xx CON código de Meta (130429): sigue siendo límite de tasa, reintentable', async () => {
+    const e = await adaptador()
+      .enviarTexto(pedido('503-limitado'))
+      .catch((x: unknown) => x);
+    expect(e).toBeInstanceOf(LimiteDeTasaError);
+    expect((e as LimiteDeTasaError).codigoMeta).toBe(130429);
+    expect(recibidos).toHaveLength(3);
+  });
+
+  it('una redirección no se sigue: sin confirmar, una sola petición', async () => {
+    const e = await adaptador()
+      .enviarTexto(pedido('redirige'))
+      .catch((x: unknown) => x);
+    expect(e).toBeInstanceOf(EnvioSinConfirmarError);
+    expect(recibidos).toHaveLength(1);
+  });
+
+  it('una respuesta por encima del tope de bytes no se lee: sin confirmar', async () => {
+    const e = await adaptador()
+      .enviarTexto(pedido('enorme'))
+      .catch((x: unknown) => x);
+    expect(e).toBeInstanceOf(EnvioSinConfirmarError);
+    expect(recibidos).toHaveLength(1);
   });
 
   it('conexión rechazada (la petición no salió): reintentable', async () => {
