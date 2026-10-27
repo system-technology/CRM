@@ -7,56 +7,23 @@ import {
   Clock,
   Compass,
   MapPin,
-  Sparkles,
   Users,
-  Ship,
-  Trees,
-  Landmark,
   CheckCircle2,
   AlertCircle,
   Eye,
 } from 'lucide-react';
-import type {
-  ProductoCatalogoAgrupado,
-  SalidaChipInfo,
-  TipoTurismo,
-} from '../../lib/catalogo-logica';
+import type { ProductoCatalogoAgrupado, SalidaChipInfo } from '../../lib/catalogo-logica';
+import { CONFIGURACIONES_TIPO_TURISMO, inferirTipoProducto } from '../comun/chip-tipo-producto';
+import { InsigniaPromo, InsigniaAroDorado } from '../comun/insignia-turismo';
 
 interface TarjetaExcursionCatalogoProps {
-  producto: ProductoCatalogoAgrupado;
+  producto: ProductoCatalogoAgrupado & {
+    imagen?: string | null;
+    camposPersonalizados?: Record<string, unknown> | null;
+  };
   alSeleccionar?: (producto: ProductoCatalogoAgrupado) => void;
   salidaSeleccionadaId?: string;
   onSeleccionarSalida?: (salida: SalidaChipInfo) => void;
-}
-
-function obtenerEstiloDegradado(tipo: TipoTurismo) {
-  switch (tipo) {
-    case 'PLAYA_NAUTICO':
-      return {
-        gradiente: 'from-cyan-600 via-teal-700 to-blue-800',
-        icono: Ship,
-        etiqueta: 'Tour náutico & playa',
-      };
-    case 'NATURALEZA':
-      return {
-        gradiente: 'from-emerald-600 via-teal-700 to-green-800',
-        icono: Trees,
-        etiqueta: 'Naturaleza & Ecoturismo',
-      };
-    case 'AVENTURA':
-      return {
-        gradiente: 'from-amber-600 via-orange-700 to-yellow-800',
-        icono: Compass,
-        etiqueta: 'Aventura & Expedición',
-      };
-    case 'CULTURAL_CIUDAD':
-    default:
-      return {
-        gradiente: 'from-indigo-600 via-purple-700 to-blue-800',
-        icono: Landmark,
-        etiqueta: 'Cultura & Ciudad',
-      };
-  }
 }
 
 export function TarjetaExcursionCatalogo({
@@ -65,8 +32,17 @@ export function TarjetaExcursionCatalogo({
   salidaSeleccionadaId,
   onSeleccionarSalida,
 }: TarjetaExcursionCatalogoProps) {
-  const estilo = obtenerEstiloDegradado(producto.tipoTurismo);
-  const IconoTipo = estilo.icono;
+  // Inferencia semántica del tipo de producto (T-036)
+  const tipoProductoId = inferirTipoProducto(producto.nombre, [producto.destino]);
+  const configTipo = CONFIGURACIONES_TIPO_TURISMO[tipoProductoId];
+  const IconoTipo = configTipo.icono;
+
+  // Extracción de imagen de campos personalizados o propiedad directa
+  const imagenUrl =
+    producto.imagen ||
+    (typeof producto.camposPersonalizados?.imagen === 'string'
+      ? producto.camposPersonalizados.imagen
+      : null);
 
   // Primera salida disponible o próxima
   const proximaSalida = producto.salidas[0];
@@ -77,68 +53,123 @@ export function TarjetaExcursionCatalogo({
   return (
     <article
       data-testid={`tarjeta-excursion-${producto.paqueteId}`}
-      className="flex w-full min-w-0 flex-col justify-between overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-xs transition-all hover:border-neutral-300 hover:shadow-md dark:border-neutral-800 dark:bg-neutral-900 dark:hover:border-neutral-700"
+      className="tarjeta-turismo-hover flex w-full min-w-0 flex-col justify-between overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-xs transition-all hover:border-neutral-300 hover:shadow-md dark:border-neutral-800 dark:bg-neutral-900 dark:hover:border-neutral-700"
     >
       <div>
-        {/* 1. Cabecera visual con degradado representativo y badges */}
-        <div
-          className={`relative overflow-hidden bg-gradient-to-r ${estilo.gradiente} p-4 text-white sm:p-5`}
-        >
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <span className="flex items-center gap-1.5 rounded-full bg-white/20 px-2.5 py-1 text-xs font-semibold backdrop-blur-xs">
-              <IconoTipo className="h-3.5 w-3.5" />
-              <span>{estilo.etiqueta}</span>
-            </span>
+        {/* 1. Cabecera visual: Foto si está disponible, o degradado sustituto con icono temático si no hay foto */}
+        {imagenUrl ? (
+          <div className="relative h-48 w-full overflow-hidden bg-neutral-900">
+            <img
+              src={imagenUrl}
+              alt={producto.nombre}
+              data-testid="imagen-producto-catalogo"
+              className="h-full w-full object-cover transition-transform duration-300 hover:scale-105"
+            />
+            {/* Superposición suave con degradado para garantizar legibilidad */}
+            <div className="absolute inset-0 flex flex-col justify-between bg-gradient-to-t from-black/85 via-black/35 to-black/20 p-4 text-white">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="flex items-center gap-1.5 rounded-full border border-white/20 bg-black/40 px-2.5 py-1 text-xs font-semibold backdrop-blur-xs">
+                  <IconoTipo className="h-3.5 w-3.5 text-cyan-300" />
+                  <span>{configTipo.etiqueta}</span>
+                </span>
 
-            <span className="rounded-full bg-black/30 px-2.5 py-1 text-xs font-bold text-white backdrop-blur-xs">
-              {producto.noches === 0
-                ? '1 día (Pasadía)'
-                : `${producto.dias}D / ${producto.noches}N`}
-            </span>
+                <InsigniaAroDorado tamano="sm">
+                  {producto.noches === 0
+                    ? '1 día (Pasadía)'
+                    : `${producto.dias}D / ${producto.noches}N`}
+                </InsigniaAroDorado>
+              </div>
+
+              <div>
+                <h3 className="text-base font-extrabold tracking-tight text-white drop-shadow-xs sm:text-lg">
+                  {producto.nombre}
+                </h3>
+                <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-white/90">
+                  <span className="flex items-center gap-1">
+                    <MapPin className="h-3.5 w-3.5 shrink-0 text-cyan-300" />
+                    {producto.destino}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Clock className="h-3.5 w-3.5 shrink-0 text-amber-300" />
+                    <span>Horario: {producto.horario}</span>
+                  </span>
+                </div>
+                {/* Badges de promociones e insignias */}
+                <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                  {producto.presentacion?.leyenda === 'PROMO_VENCIDA' ? (
+                    <span
+                      data-testid="badge-promo-vencida"
+                      className="flex items-center gap-1 rounded-full bg-neutral-200 px-2 py-0.5 text-[11px] font-semibold text-neutral-800"
+                    >
+                      Promo vencida
+                    </span>
+                  ) : producto.tienePromo ? (
+                    <InsigniaPromo data-testid="badge-promo-catalogo" />
+                  ) : null}
+                  {producto.desdeEsDeGrupo && (
+                    <span className="flex items-center gap-1 rounded-full bg-purple-200/90 px-2 py-0.5 text-[11px] font-semibold text-purple-950">
+                      <Users className="h-3 w-3" />
+                      Tarifa grupal
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
+        ) : (
+          <div
+            className={`relative overflow-hidden bg-gradient-to-br ${configTipo.degradadoSustituto} p-4 text-white sm:p-5`}
+          >
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="flex items-center gap-1.5 rounded-full bg-white/20 px-2.5 py-1 text-xs font-semibold backdrop-blur-xs">
+                <IconoTipo className="h-3.5 w-3.5" />
+                <span>{configTipo.etiqueta}</span>
+              </span>
 
-          <h3 className="mt-3 text-base font-extrabold tracking-tight text-white sm:text-lg">
-            {producto.nombre}
-          </h3>
+              <span className="rounded-full bg-black/30 px-2.5 py-1 text-xs font-bold text-white backdrop-blur-xs">
+                {producto.noches === 0
+                  ? '1 día (Pasadía)'
+                  : `${producto.dias}D / ${producto.noches}N`}
+              </span>
+            </div>
 
-          <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-white/90">
-            <span className="flex items-center gap-1">
-              <MapPin className="h-3.5 w-3.5 shrink-0 opacity-80" />
-              {producto.destino}
-            </span>
+            <h3 className="mt-3 text-base font-extrabold tracking-tight text-white sm:text-lg">
+              {producto.nombre}
+            </h3>
 
-            <span className="flex items-center gap-1">
-              <Clock className="h-3.5 w-3.5 shrink-0 opacity-80" />
-              <span>Horario: {producto.horario}</span>
-            </span>
+            <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-white/90">
+              <span className="flex items-center gap-1">
+                <MapPin className="h-3.5 w-3.5 shrink-0 opacity-80" />
+                {producto.destino}
+              </span>
+
+              <span className="flex items-center gap-1">
+                <Clock className="h-3.5 w-3.5 shrink-0 opacity-80" />
+                <span>Horario: {producto.horario}</span>
+              </span>
+            </div>
+
+            {/* Badges de promociones e insignias */}
+            <div className="mt-3 flex flex-wrap items-center gap-1.5">
+              {producto.presentacion?.leyenda === 'PROMO_VENCIDA' ? (
+                <span
+                  data-testid="badge-promo-vencida"
+                  className="flex items-center gap-1 rounded-full bg-neutral-200 px-2 py-0.5 text-[11px] font-semibold text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300"
+                >
+                  Promo vencida
+                </span>
+              ) : producto.tienePromo ? (
+                <InsigniaPromo data-testid="badge-promo-catalogo" />
+              ) : null}
+              {producto.desdeEsDeGrupo && (
+                <span className="flex items-center gap-1 rounded-full bg-purple-200/90 px-2 py-0.5 text-[11px] font-semibold text-purple-950">
+                  <Users className="h-3 w-3" />
+                  Tarifa grupal
+                </span>
+              )}
+            </div>
           </div>
-
-          {/* Badges de promociones */}
-          <div className="mt-3 flex flex-wrap items-center gap-1.5">
-            {producto.presentacion?.leyenda === 'PROMO_VENCIDA' ? (
-              <span
-                data-testid="badge-promo-vencida"
-                className="flex items-center gap-1 rounded-full bg-neutral-200 px-2 py-0.5 text-[11px] font-semibold text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300"
-              >
-                Promo vencida
-              </span>
-            ) : producto.tienePromo ? (
-              <span
-                data-testid="badge-promo-catalogo"
-                className="flex items-center gap-1 rounded-full bg-amber-400 px-2 py-0.5 text-[11px] font-bold text-neutral-950 shadow-xs"
-              >
-                <Sparkles className="h-3 w-3" />
-                Promo vigente
-              </span>
-            ) : null}
-            {producto.desdeEsDeGrupo && (
-              <span className="flex items-center gap-1 rounded-full bg-purple-200/90 px-2 py-0.5 text-[11px] font-semibold text-purple-950">
-                <Users className="h-3 w-3" />
-                Tarifa grupal
-              </span>
-            )}
-          </div>
-        </div>
+        )}
 
         {/* 2. Aviso de impuesto de muelle / tasa portuaria */}
         {producto.requiereImpuestoMuelle && (
@@ -203,12 +234,12 @@ export function TarjetaExcursionCatalogo({
                       className={`flex min-h-[36px] items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors ${colorChip} ${
                         esSeleccionada ? 'ring-2 ring-teal-500 ring-offset-1' : ''
                       }`}
-                      title={`Salida ${salida.fecha} · ${salida.etiquetaCupo}`}
+                      title={`Salida ${salida.fecha} • ${salida.etiquetaCupo}`}
                     >
                       <Calendar className="h-3 w-3 shrink-0" />
                       <span className="capitalize">{salida.etiquetaFecha}</span>
                       <span className="text-[10px] font-semibold opacity-90">
-                        · {salida.etiquetaCupo}
+                        • {salida.etiquetaCupo}
                       </span>
                     </button>
                   );

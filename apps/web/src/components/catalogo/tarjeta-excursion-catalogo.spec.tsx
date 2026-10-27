@@ -4,7 +4,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { TarjetaExcursionCatalogo } from './tarjeta-excursion-catalogo';
 import type { ProductoCatalogoAgrupado } from '../../lib/catalogo-logica';
 
-describe('TarjetaExcursionCatalogo — T-018', () => {
+describe('TarjetaExcursionCatalogo - T-018 & T-036', () => {
   const productoEjemplo: ProductoCatalogoAgrupado = {
     paqueteId: 'pkg-rosario-01',
     nombre: 'Pasadía Islas del Rosario & Barú VIP',
@@ -65,7 +65,7 @@ describe('TarjetaExcursionCatalogo — T-018', () => {
     expect(screen.getByText('Cartagena')).toBeDefined();
     expect(screen.getByText('1 día (Pasadía)')).toBeDefined();
     expect(screen.getByText(/Horario: 07:30 - 16:30/i)).toBeDefined();
-    expect(screen.getByText('Tour náutico & playa')).toBeDefined();
+    expect(screen.getByText('Isla & Beach Club')).toBeDefined();
   });
 
   it('2. Muestra chips de lo que incluye la excursión', () => {
@@ -147,5 +147,30 @@ describe('TarjetaExcursionCatalogo — T-018', () => {
     const listaTachada = screen.getByTestId('precio-lista-tachada');
     expect(listaTachada).toBeDefined();
     expect(listaTachada.textContent).toContain('320.000');
+  });
+
+  it('9. Renderiza imagen fotográfica si el producto trae imagen en sus campos (T-036)', () => {
+    const productoConFoto: ProductoCatalogoAgrupado = {
+      ...productoEjemplo,
+      imagen: '/_local/jd-tours/playa-sombrillas-isla.png',
+    };
+
+    render(<TarjetaExcursionCatalogo producto={productoConFoto} />);
+
+    const img = screen.getByTestId('imagen-producto-catalogo');
+    expect(img).toBeDefined();
+    expect(img.getAttribute('src')).toBe('/_local/jd-tours/playa-sombrillas-isla.png');
+  });
+
+  it('10. Infiere tipos de producto correctamente y muestra degradado temático sin foto (T-036)', () => {
+    const productoReserva: ProductoCatalogoAgrupado = {
+      ...productoEjemplo,
+      nombre: 'Parque Natural Tayrona & Senderismo',
+      destino: 'Santa Marta',
+      imagen: null,
+    };
+
+    render(<TarjetaExcursionCatalogo producto={productoReserva} />);
+    expect(screen.getByText('Reserva Natural & Ecoturismo')).toBeDefined();
   });
 });

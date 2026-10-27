@@ -248,6 +248,8 @@ export interface ProductoCatalogoAgrupado {
   desdeEsDeGrupo: boolean;
   presentacion?: PresentacionDePrecio | undefined;
   salidas: SalidaChipInfo[];
+  imagen?: string | null;
+  camposPersonalizados?: Record<string, unknown> | null;
 }
 
 /**
