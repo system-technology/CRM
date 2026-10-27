@@ -17,6 +17,7 @@ import { calcularDesde } from '@viajapro/domain';
 import { PrismaService } from '../../../shared/prisma/prisma.service.js';
 import { ContextoTenant } from '../../../shared/tenant/contexto-tenant.js';
 import { aTarifaParaDesde, hoyEnZona, SELECCION_PARA_DESDE } from './desde-de-tarifas.js';
+import { leerPromoVencida, presentarDesde } from './presentacion-de-precios.js';
 
 const aFecha = (d: Date): string => d.toISOString().slice(0, 10);
 
@@ -46,6 +47,7 @@ export class ListarPaquetesGestionUseCase {
         select: { zonaHoraria: true },
       });
       const hoy = hoyEnZona(agencia?.zonaHoraria ?? 'America/Bogota', ahora);
+      const politicaPromo = await leerPromoVencida(tx, tenantId);
 
       // Se pide uno de más para saber si hay página siguiente sin un COUNT (ver
       // `listar-paquetes.use-case.ts`).
@@ -96,6 +98,7 @@ export class ListarPaquetesGestionUseCase {
             unidades: d.precio.unidades.toString(),
             moneda: d.precio.moneda,
           })),
+          presentacion: desde.map((d) => presentarDesde(d, hoy, politicaPromo)),
           desdeEsDeGrupo: desde.some((d) => d.esDeGrupo),
           vigenciasActivas: vigencias.length,
         };

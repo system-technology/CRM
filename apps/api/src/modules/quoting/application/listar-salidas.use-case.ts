@@ -18,7 +18,9 @@ import { Inject, Injectable } from '@nestjs/common';
 import type { SalidaPublicada } from '@viajapro/contracts';
 import { calcularDesde, esTarifaBase } from '@viajapro/domain';
 import { PrismaService } from '../../../shared/prisma/prisma.service.js';
-import { aTarifaParaDesde, SELECCION_PARA_DESDE } from './desde-de-tarifas.js';
+import { ContextoTenant } from '../../../shared/tenant/contexto-tenant.js';
+import { aTarifaParaDesde, hoyEnZona, SELECCION_PARA_DESDE } from './desde-de-tarifas.js';
+import { leerPromoVencida, presentarDesde } from './presentacion-de-precios.js';
 
 const aFecha = (d: Date): string => d.toISOString().slice(0, 10);
 
@@ -38,8 +40,15 @@ export class ListarSalidasUseCase {
   // peticion real. Compila, arranca, y revienta al usarse. Ver cola 11c de `ESTADO.md`.
   constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
-  async ejecutar(params: ParametrosSalidas): Promise<SalidaPublicada[]> {
+  async ejecutar(params: ParametrosSalidas, ahora: Date = new Date()): Promise<SalidaPublicada[]> {
+    const { tenantId } = ContextoTenant.obtener();
     return this.prisma.conTenant(async (tx) => {
+      const agencia = await tx.tenant.findUnique({
+        where: { id: tenantId },
+        select: { zonaHoraria: true },
+      });
+      const hoy = hoyEnZona(agencia?.zonaHoraria ?? 'America/Bogota', ahora);
+      const politicaPromo = await leerPromoVencida(tx, tenantId);
       const filas = await tx.vigencia.findMany({
         where: {
           publicada: true,
@@ -81,6 +90,7 @@ export class ListarSalidasUseCase {
           fecha: aFecha(v.desde),
           cupoTotal: v.cupoTotal,
           desde: { unidades: desde.precio.unidades.toString(), moneda: desde.precio.moneda },
+          presentacion: presentarDesde(desde, hoy, politicaPromo),
           desdeEsDeGrupo: desde.esDeGrupo,
           tarifas: tarifas.filter(esTarifaBase).length,
         });

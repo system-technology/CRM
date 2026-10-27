@@ -17,6 +17,7 @@ import {
   POLITICA_POR_DEFECTO,
   calcularMargen,
   esSalidaProgramada,
+  presentarPrecio,
   resolverVigencia,
   type BaseDelMargen,
 } from '@viajapro/domain';
@@ -24,6 +25,8 @@ import { type ClienteTenant, PrismaService } from '../../../shared/prisma/prisma
 import { ContextoTenant } from '../../../shared/tenant/contexto-tenant.js';
 import { PaqueteNoEncontradoError, TarifasConCondicionNoEvaluableError } from '../domain/errors.js';
 import { monedaDeLaBase } from '../domain/moneda-de-la-base.js';
+import { hoyEnZona } from './desde-de-tarifas.js';
+import { leerPromoVencida } from './presentacion-de-precios.js';
 import {
   type Composicion,
   condicionNoEvaluable,
@@ -50,6 +53,8 @@ interface FilaTarifa {
   pasajerosMinimo: number | null;
   pasajerosMaximo: number | null;
   ocupaSilla: boolean | null;
+  listaUnidades: bigint | null;
+  promoHasta: Date | null;
 }
 
 const aFecha = (d: Date): string => d.toISOString().slice(0, 10);
@@ -117,6 +122,14 @@ export class CotizarSalidaUseCase {
     });
     const base: BaseDelMargen = (politica?.base as BaseDelMargen) ?? POLITICA_POR_DEFECTO.base;
 
+    // Presentación del precio (ADR-0017 §9): solo cambia cómo se PINTA, nunca la venta cotizada.
+    const agencia = await tx.tenant.findUnique({
+      where: { id: tenantId },
+      select: { zonaHoraria: true },
+    });
+    const hoy = hoyEnZona(agencia?.zonaHoraria ?? 'America/Bogota', new Date());
+    const politicaPromo = await leerPromoVencida(tx, tenantId);
+
     // `select` explicito y no `findMany` a secas. El neto es lo que la agencia le paga al
     // mayorista: no debe llegar a la capa de respuesta por inercia, sino porque alguien lo
     // escribio. Y cuando no se pide el margen, ni siquiera sale de la base: defensa en
@@ -140,6 +153,8 @@ export class CotizarSalidaUseCase {
         pasajerosMinimo: true,
         pasajerosMaximo: true,
         ocupaSilla: true,
+        listaUnidades: true,
+        promoHasta: true,
       },
     })) as unknown as FilaTarifa[];
 
@@ -164,6 +179,16 @@ export class CotizarSalidaUseCase {
         veces,
         precioUnitario: { unidades: t.ventaUnidades.toString(), moneda },
         total: { unidades: total.aPersistencia().unidades.toString(), moneda },
+        presentacion: presentarPrecio(
+          {
+            ventaUnidades: t.ventaUnidades,
+            listaUnidades: t.listaUnidades,
+            moneda,
+            promoHasta: t.promoHasta ? aFecha(t.promoHasta) : null,
+          },
+          hoy,
+          politicaPromo,
+        ),
         // Las claves se OMITEN enteras cuando no se piden, en vez de venir en `null`: asi una
         // pantalla que consuma esto no recibe el dato ni puede despejarlo, y un `Object.keys`
         // lo demuestra — que es la asercion que sobrevive a un `...spread` futuro.

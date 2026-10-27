@@ -16,6 +16,7 @@ import {
   PlanAlimentacion,
   TipoPasajero,
 } from './comunes.js';
+import { PresentacionDePrecio } from './politica-de-precio.js';
 
 // =============================================================================
 // Mayorista
@@ -280,6 +281,12 @@ export const ResumenDePaqueteGestion = Paquete.extend({
   /** Nulo = no aplica o no se declaró (un pasadía no tiene régimen, ADR-0017 M2). */
   planAlimentacion: PlanAlimentacion.nullable(),
   desde: z.array(Dinero),
+  /**
+   * Cómo pintar cada «desde», en el mismo orden que `desde` (`presentarPrecio`, política
+   * `promo_vencida` de la agencia). Con `desde` vacío viaja `[]`: «consultar». Opcional por
+   * compatibilidad con clientes anteriores.
+   */
+  presentacion: z.array(PresentacionDePrecio).optional(),
   desdeEsDeGrupo: z.boolean(),
   vigenciasActivas: z.number().int().min(0),
 });

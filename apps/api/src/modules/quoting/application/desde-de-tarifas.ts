@@ -17,6 +17,9 @@ export const SELECCION_PARA_DESDE = {
   edadMinima: true,
   edadMaxima: true,
   ocupaSilla: true,
+  // Solo para presentar el precio (`presentarPrecio`); no entran en el cálculo del «desde».
+  listaUnidades: true,
+  promoHasta: true,
 } as const;
 
 export interface FilaDeTarifaParaDesde {
@@ -29,6 +32,8 @@ export interface FilaDeTarifaParaDesde {
   edadMinima: number | null;
   edadMaxima: number | null;
   ocupaSilla: boolean | null;
+  listaUnidades?: bigint | null;
+  promoHasta?: Date | null;
 }
 
 export function aTarifaParaDesde(f: FilaDeTarifaParaDesde): TarifaParaDesde {
@@ -42,6 +47,8 @@ export function aTarifaParaDesde(f: FilaDeTarifaParaDesde): TarifaParaDesde {
     edadMinima: f.edadMinima,
     edadMaxima: f.edadMaxima,
     ocupaSilla: f.ocupaSilla,
+    listaUnidades: f.listaUnidades ?? null,
+    promoHasta: f.promoHasta ? f.promoHasta.toISOString().slice(0, 10) : null,
   };
 }
 

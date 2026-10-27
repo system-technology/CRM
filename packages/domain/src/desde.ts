@@ -29,6 +29,9 @@ export interface TarifaParaDesde {
   readonly edadMinima: number | null;
   readonly edadMaxima: number | null;
   readonly ocupaSilla: boolean | null;
+  /** Para presentar el precio (`presentarPrecio`); nunca entran en el cálculo del mínimo. */
+  readonly listaUnidades?: bigint | null;
+  readonly promoHasta?: string | null;
 }
 
 export interface VigenciaParaDesde {
@@ -42,6 +45,9 @@ export interface DesdeDeUnaMoneda {
   readonly precio: Money;
   /** El mínimo sale de una tarifa de GRUPO y es su per cápita: la pantalla debe decirlo. */
   readonly esDeGrupo: boolean;
+  /** Lista y fin de promo de la tarifa que dio el mínimo, para `presentarPrecio`. */
+  readonly listaUnidades: bigint | null;
+  readonly promoHasta: string | null;
 }
 
 export function esTarifaBase(t: TarifaParaDesde): boolean {
@@ -68,7 +74,15 @@ export function calcularDesde(
   vigencias: readonly VigenciaParaDesde[],
   hoy: string | null,
 ): DesdeDeUnaMoneda[] {
-  const minimos = new Map<CodigoMoneda, { unidades: bigint; esDeGrupo: boolean }>();
+  const minimos = new Map<
+    CodigoMoneda,
+    {
+      unidades: bigint;
+      esDeGrupo: boolean;
+      listaUnidades: bigint | null;
+      promoHasta: string | null;
+    }
+  >();
 
   for (const v of vigencias) {
     if (!v.activa || (hoy !== null && v.hasta < hoy)) continue;
@@ -77,7 +91,19 @@ export function calcularDesde(
       const unidades = porPersona(t);
       const actual = minimos.get(t.moneda);
       if (!actual || unidades < actual.unidades) {
-        minimos.set(t.moneda, { unidades, esDeGrupo: t.unidad === 'POR_GRUPO' });
+        minimos.set(t.moneda, {
+          unidades,
+          esDeGrupo: t.unidad === 'POR_GRUPO',
+          // Lista y venta de una tarifa de grupo se prorratean igual, para que el tachado sea
+          // comparable con el per cápita que se anuncia.
+          listaUnidades:
+            t.listaUnidades == null
+              ? null
+              : t.unidad === 'POR_GRUPO' && t.cubrePasajeros > 1
+                ? t.listaUnidades / BigInt(t.cubrePasajeros)
+                : t.listaUnidades,
+          promoHasta: t.promoHasta ?? null,
+        });
       }
     }
   }
@@ -87,5 +113,7 @@ export function calcularDesde(
     .map(([moneda, m]) => ({
       precio: Money.desdeUnidades(m.unidades, moneda),
       esDeGrupo: m.esDeGrupo,
+      listaUnidades: m.listaUnidades,
+      promoHasta: m.promoHasta,
     }));
 }
