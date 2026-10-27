@@ -13,6 +13,7 @@ import { CatalogoVigenciasController } from './interface/catalogo-vigencias.cont
 import { CatalogoGestionController } from './interface/catalogo-gestion.controller.js';
 import { ImportacionesController } from './interface/importaciones.controller.js';
 import { PrevisualizarImportacionUseCase } from './application/previsualizar-importacion.use-case.js';
+import { ConfirmarImportacionUseCase } from './application/confirmar-importacion.use-case.js';
 import { SugeridorDeMapeo } from './application/sugeridor-de-mapeo.js';
 import { SugeridorPorSinonimos } from './infrastructure/sugeridor-por-sinonimos.js';
 import { HistorialDePreciosController } from './interface/historial-de-precios.controller.js';
@@ -46,6 +47,7 @@ import { SalidasController } from './interface/salidas.controller.js';
     CotizarSalidaUseCase,
     AplicadorDeCatalogo,
     PrevisualizarImportacionUseCase,
+    ConfirmarImportacionUseCase,
     { provide: SugeridorDeMapeo, useClass: SugeridorPorSinonimos },
     { provide: UnidadDeTrabajoDeCatalogo, useClass: UnidadDeTrabajoDeCatalogoPrisma },
     AplicadorPorId,
