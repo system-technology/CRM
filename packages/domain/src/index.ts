@@ -7,6 +7,7 @@
  * Si algo necesita la base de datos, NestJS o la hora actual, no pertenece a este paquete.
  */
 
+export * from './desde.js';
 export * from './errors.js';
 export * from './money.js';
 export * from './ocupacion.js';

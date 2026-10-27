@@ -458,3 +458,43 @@ export const VigenciaDeGestion = z.object({
   tarifas: z.array(TarifaDeGestion),
 });
 export type VigenciaDeGestion = z.infer<typeof VigenciaDeGestion>;
+
+/** Quién originó un cambio de precio (ADR-0017 §8). Con IA, el actor es quien confirmó. */
+export const OrigenDeCambio = z.enum(['PANTALLA', 'ARCHIVO', 'API', 'IA']);
+export type OrigenDeCambio = z.infer<typeof OrigenDeCambio>;
+
+/**
+ * Una entrada del historial de precios de una tarifa (T-047). Se lee de `registros_auditoria`.
+ * `usuarioId` es solo el id, sin datos personales. En las entradas de `neto`, sin
+ * `cotizacion.ver_neto_y_margen`, `antes` y `despues` se omiten (la clave no viaja).
+ */
+export const CambioDePrecio = z.object({
+  id: z.string().regex(/^\d+$/),
+  instante: Instante,
+  usuarioId: Id.nullable(),
+  accion: z.string(),
+  campo: z.enum(['venta', 'neto', 'lista', 'promo_hasta']),
+  antes: z.string().nullable().optional(),
+  despues: z.string().nullable().optional(),
+  moneda: z.enum(['COP', 'USD', 'EUR', 'MXN']).nullable(),
+  origen: OrigenDeCambio.nullable(),
+});
+export type CambioDePrecio = z.infer<typeof CambioDePrecio>;
+
+export const ConsultaHistorialDePrecios = z
+  .object({
+    limite: z.coerce.number().int().min(1).max(100).default(20),
+    cursor: z
+      .string()
+      .regex(/^\d{1,18}$/)
+      .optional(),
+  })
+  .strict();
+export type ConsultaHistorialDePrecios = z.infer<typeof ConsultaHistorialDePrecios>;
+
+export const HistorialDePrecios = z.object({
+  datos: z.array(CambioDePrecio),
+  /** Pasar como `cursor` para la página siguiente; `null` si no hay más. */
+  siguienteCursor: z.string().nullable(),
+});
+export type HistorialDePrecios = z.infer<typeof HistorialDePrecios>;
