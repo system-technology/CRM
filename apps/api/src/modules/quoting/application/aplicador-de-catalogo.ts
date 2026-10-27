@@ -34,6 +34,7 @@ import type {
   TarifaPropuesta,
   OrigenDePropuesta,
 } from '@viajapro/contracts';
+import { estaConvergido, huellaDeEstado } from '../domain/huella-de-estado.js';
 import {
   PaqueteDuplicadoError,
   PaqueteNoEncontradoError,
@@ -66,6 +67,13 @@ export interface ContextoDeAplicacion {
 export interface OpcionesDeAplicacion {
   /** Huella de la previsualización que vio quien confirma; si no coincide, 409 `PROPUESTA_CAMBIO`. */
   readonly huellaEsperada?: string;
+  /**
+   * Huella de estado de la previsualización (`huellaDeEstado`): cubre la propuesta Y lo que el
+   * catálogo hace con ella. Distinta = 409, salvo con el plan ya convergido (nada que escribir).
+   */
+  readonly huellaDeEstadoEsperada?: string;
+  /** Datos del canal que se suman al detalle de `catalogo.propuesta_aplicada` (sin personales). */
+  readonly anotacion?: { readonly [clave: string]: JsonValue };
 }
 
 export interface ResultadoDeAplicacion {
@@ -223,6 +231,13 @@ export class AplicadorDeCatalogo {
     if (opciones.huellaEsperada !== undefined && opciones.huellaEsperada !== informe.huella) {
       throw new PropuestaCambioError();
     }
+    if (
+      opciones.huellaDeEstadoEsperada !== undefined &&
+      opciones.huellaDeEstadoEsperada !== huellaDeEstado(informe) &&
+      !(informe.resumen.errores === 0 && estaConvergido(informe))
+    ) {
+      throw new PropuestaCambioError();
+    }
     if (informe.resumen.errores > 0) {
       const errores = informe.elementos
         .filter((e) => e.nivel === 'ERROR')
@@ -322,6 +337,7 @@ export class AplicadorDeCatalogo {
         entidad: 'propuesta',
         entidadId: null,
         detalle: {
+          ...opciones.anotacion,
           origen,
           huella: informe.huella,
           creados: informe.resumen.creados,

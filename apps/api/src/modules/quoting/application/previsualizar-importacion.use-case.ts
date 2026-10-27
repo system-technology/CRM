@@ -17,6 +17,7 @@ import type {
   Permiso,
   RespuestaDePrevisualizacion,
 } from '@viajapro/contracts';
+import { huellaDeEstado } from '../domain/huella-de-estado.js';
 import { tablaAPropuesta } from '../domain/tabla-a-propuesta.js';
 import { huellaDePropuesta, validarYPlanificar } from '../domain/validar-y-planificar.js';
 import { UnidadDeTrabajoDeCatalogo } from './puertos-de-catalogo.js';
@@ -65,6 +66,6 @@ export class PrevisualizarImportacionUseCase {
       elementos: [...lectura.errores, ...informe.elementos],
       resumen: { ...informe.resumen, errores: informe.resumen.errores + lectura.errores.length },
     };
-    return { informe: combinado, huella: combinado.huella };
+    return { informe: combinado, huella: huellaDeEstado(combinado) };
   }
 }

@@ -17,6 +17,7 @@ import {
   Post,
 } from '@nestjs/common';
 import {
+  ConfirmarImportacion,
   EntradaDeImportacion,
   MAXIMO_DE_COLUMNAS_DE_IMPORTACION,
   MAXIMO_DE_FILAS_DE_IMPORTACION,
@@ -25,6 +26,7 @@ import {
 import { RequierePermiso } from '../../../shared/autorizacion/permiso.decorator.js';
 import { ContextoTenant } from '../../../shared/tenant/contexto-tenant.js';
 import { ZodValidationPipe } from '../../../shared/validacion/zod-validation.pipe.js';
+import { ConfirmarImportacionUseCase } from '../application/confirmar-importacion.use-case.js';
 import { PrevisualizarImportacionUseCase } from '../application/previsualizar-importacion.use-case.js';
 import { SugeridorDeMapeo } from '../application/sugeridor-de-mapeo.js';
 
@@ -64,6 +66,8 @@ export class ImportacionesController {
   constructor(
     @Inject(PrevisualizarImportacionUseCase)
     private readonly previsualizar: PrevisualizarImportacionUseCase,
+    @Inject(ConfirmarImportacionUseCase)
+    private readonly confirmar: ConfirmarImportacionUseCase,
     @Inject(SugeridorDeMapeo) private readonly sugeridor: SugeridorDeMapeo,
   ) {}
 
@@ -76,6 +80,18 @@ export class ImportacionesController {
   ) {
     const { tenantId, permisos } = ContextoTenant.obtener();
     return this.previsualizar.ejecutar(body, { tenantId, permisos: [...permisos] });
+  }
+
+  /** Todo o nada. 409 `PROPUESTA_CAMBIO` si la huella ya no coincide; 422 si alguna fila es ERROR. */
+  @Post('confirmar')
+  @HttpCode(200)
+  @RequierePermiso('catalogo.administrar')
+  async confirmarImportacion(
+    @Body({ transform: verificarTopesDeLaTabla }, new ZodValidationPipe(ConfirmarImportacion))
+    body: ConfirmarImportacion,
+  ) {
+    const { tenantId, usuarioId, permisos } = ContextoTenant.obtener();
+    return this.confirmar.ejecutar(body, { tenantId, usuarioId, permisos: [...permisos] });
   }
 
   @Post('sugerir-mapeo')

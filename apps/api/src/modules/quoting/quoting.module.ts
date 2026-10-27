@@ -9,6 +9,7 @@ import { UnidadDeTrabajoDeCatalogoPrisma } from './infrastructure/catalogo.prism
 import { CatalogoGestionController } from './interface/catalogo-gestion.controller.js';
 import { ImportacionesController } from './interface/importaciones.controller.js';
 import { PrevisualizarImportacionUseCase } from './application/previsualizar-importacion.use-case.js';
+import { ConfirmarImportacionUseCase } from './application/confirmar-importacion.use-case.js';
 import { SugeridorDeMapeo } from './application/sugeridor-de-mapeo.js';
 import { SugeridorPorSinonimos } from './infrastructure/sugeridor-por-sinonimos.js';
 import { CotizacionesController } from './interface/cotizaciones.controller.js';
@@ -36,6 +37,7 @@ import { SalidasController } from './interface/salidas.controller.js';
     CotizarSalidaUseCase,
     AplicadorDeCatalogo,
     PrevisualizarImportacionUseCase,
+    ConfirmarImportacionUseCase,
     { provide: SugeridorDeMapeo, useClass: SugeridorPorSinonimos },
     { provide: UnidadDeTrabajoDeCatalogo, useClass: UnidadDeTrabajoDeCatalogoPrisma },
   ],

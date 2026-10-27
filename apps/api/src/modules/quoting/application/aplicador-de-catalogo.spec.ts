@@ -19,11 +19,13 @@ import {
   PropuestaCambioError,
   PropuestaInvalidaError,
 } from '../domain/errors.js';
+import { huellaDeEstado } from '../domain/huella-de-estado.js';
 import {
   type CatalogoActual,
   type PaqueteActual,
   type VigenciaActual,
   normalizarNombre,
+  validarYPlanificar,
 } from '../domain/validar-y-planificar.js';
 import { AplicadorDeCatalogo, type ContextoDeAplicacion } from './aplicador-de-catalogo.js';
 import {
@@ -338,6 +340,51 @@ describe('AplicadorDeCatalogo.aplicar', () => {
     await expect(
       aplicador.aplicar(propuesta(producto('Uno')), contexto(), { huellaEsperada: 'a'.repeat(64) }),
     ).rejects.toBeInstanceOf(PropuestaCambioError);
+  });
+
+  it('huella de estado: si el catálogo cambió desde la previsualización, 409 y nada escrito', async () => {
+    const { trabajo, aplicador } = montar();
+    const p = propuesta(producto('Uno', [tarifa('Adulto', '1000')]));
+    const previa = validarYPlanificar(
+      p,
+      { paquetes: [], mayoristas: [] },
+      ['catalogo.administrar'],
+      {
+        tenantId: contexto().tenantId,
+        soportaM2: true,
+      },
+    ).informe;
+    // Otro cambia el precio mientras tanto.
+    await aplicador.aplicar(propuesta(producto('Uno', [tarifa('Adulto', '900')])), contexto());
+    const antes = trabajo.estado.auditoria.length;
+
+    await expect(
+      aplicador.aplicar(p, contexto(), { huellaDeEstadoEsperada: huellaDeEstado(previa) }),
+    ).rejects.toBeInstanceOf(PropuestaCambioError);
+    expect(trabajo.estado.auditoria).toHaveLength(antes);
+    expect(trabajo.estado.paquetes[0]?.vigencias[0]?.tarifas[0]?.venta.unidades).toBe('900');
+  });
+
+  it('huella de estado: reintentar con la huella de la primera previsualización converge sin escribir', async () => {
+    const { trabajo, aplicador } = montar();
+    const p = propuesta(producto('Uno', [tarifa('Adulto', '1000')]));
+    const previa = validarYPlanificar(
+      p,
+      { paquetes: [], mayoristas: [] },
+      ['catalogo.administrar'],
+      {
+        tenantId: contexto().tenantId,
+        soportaM2: true,
+      },
+    ).informe;
+    const opciones = { huellaDeEstadoEsperada: huellaDeEstado(previa) };
+
+    await aplicador.aplicar(p, contexto(), opciones);
+    const auditoria = trabajo.estado.auditoria.length;
+    const otra = await aplicador.aplicar(p, contexto(), opciones);
+
+    expect(otra.informe.resumen).toMatchObject({ creados: 0, actualizados: 0, sinCambios: 1 });
+    expect(trabajo.estado.auditoria).toHaveLength(auditoria);
   });
 
   it('rechaza el neto sin el permiso de neto y no escribe nada', async () => {
