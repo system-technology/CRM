@@ -25,6 +25,8 @@ import { LectorDeHistorialPrisma } from './infrastructure/historial.prisma.js';
 import { CotizacionesController } from './interface/cotizaciones.controller.js';
 import { CatalogoController } from './interface/catalogo.controller.js';
 import { SalidasController } from './interface/salidas.controller.js';
+import { CatalogoAjustesController } from './interface/catalogo-ajustes.controller.js';
+import { AjustesDeCatalogoUseCase } from './application/ajustes-de-catalogo.use-case.js';
 
 /**
  * Contexto de cotización: catálogo de paquetes y cálculo de precio.
@@ -35,6 +37,7 @@ import { SalidasController } from './interface/salidas.controller.js';
 @Module({
   controllers: [
     CatalogoController,
+    CatalogoAjustesController,
     CatalogoGestionController,
     CatalogoListadoController,
     CatalogoVigenciasController,
@@ -44,6 +47,7 @@ import { SalidasController } from './interface/salidas.controller.js';
     CotizacionesController,
   ],
   providers: [
+    AjustesDeCatalogoUseCase,
     ListarPaquetesUseCase,
     ListarPaquetesGestionUseCase,
     ListarSalidasUseCase,
