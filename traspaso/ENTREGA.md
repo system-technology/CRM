@@ -30,59 +30,71 @@
   - Despliegue en entorno productivo (requiere merge de PR en servidor).
 
 ---
-# Entrega — Bloque 2: Cotizador y Catálogo para Excursiones de un Día y Estados de UI — 2026-10-26
 
+---
+
+# Entrega — T-034: Navegación más rica (barra lateral enriquecida, migas de pan y paleta de comandos Ctrl+K) — 2026-10-26
 ## Identificación
-- **Rama:** `feat/web-cotizador-excursiones-dia` (empujada a `origin/feat/web-cotizador-excursiones-dia`)
-- **Stitch Design Screen ID:** `e2bb94d1dd524750941d0c5643ce2acd` (Proyecto «ViajaPro — CRM para agencias de turismo», ID `8333038101997719867`, pantalla *Cotizador y Catálogo de Pasadías — ViajaPro CRM*)
+- **Rama:** `b/T-034-navegacion-rica`
+- **Stitch Design Screen ID:** `8cd72d3c0c65422da494184b26e1154b` (Proyecto «ViajaPro — CRM para agencias de turismo», ID `8333038101997719867`, pantalla *Navegación Enriquecida & Paleta de Comandos (Ctrl+K) — ViajaPro CRM*)
 
 ## Qué construí
 
-1. **Soporte y catálogo representativo para excursiones de un día (pasadías):**
-   - Agregadas al catálogo de demostración (`apps/web/src/lib/mock-catalogo.ts`) 3 excursiones de 1 día (`noches: 0, dias: 1`) basadas en la agencia piloto real (JD Tours Cartagena: Pasadía Islas del Rosario & Barú VIP, Tour 5 Islas VIP con Snorkel y Plancton, Pasadía Mambo Beach Club Barú).
-   - Precios íntegramente en COP en enteros (sin centavos ni coma flotante, R8), en el rango de 210.000 a 380.000 COP, con unidades mínimas y código `ISO-4217` COP.
-   - Posicionados al final del array para preservar índices e integridad de pruebas previas.
+1. **Barra lateral de escritorio expandible y enriquecida con identidad caribeña:**
+   - **Alternancia suave de tamaño:** Botón accesible `boton-colapsar-barra` que expande la barra lateral de 56px (`w-14`) a 240px (`w-60`) con animación CSS suave de ancho y espaciado (<300 ms). Preferencia persistida en `localStorage` (`viajapro_barra_expandida`).
+   - **Codificación cromática por módulo:**
+     - *Bandeja de WhatsApp:* Icono verde esmeralda con fondo `bg-emerald-50 text-emerald-500`.
+     - *Cotizador de Paquetes:* Icono turquesa océano con `bg-sky-50 text-sky-500`.
+     - *Catálogo de Excursiones:* Icono coral cálido con `bg-rose-50 text-rose-500`.
+     - *Pipeline / Oportunidades:* Icono ámbar dorado con `bg-amber-50 text-amber-500`.
+     - *Contactos y Pasajeros:* Icono morado suave con `bg-purple-50 text-purple-500`.
+     - *Archivos de Viaje (TravelFiles):* Icono azul verdoso con `bg-teal-50 text-teal-500`.
+     - *Reportes y Cierres:* Icono naranja con `bg-orange-50 text-orange-500`.
+     - *Configuración:* Icono neutral con `bg-neutral-100 text-neutral-500`.
+   - **Indicador animado de módulo activo:** Borde dorado sutil (`border-amber-400/50 bg-amber-50/80`), resalte de texto y punto activo luminoso (`indicador-activo-[id]`).
+   - **Buscador integrado expandido:** Botón ancho con icono de lupa ámbar, texto descriptivo y badge del atajo `Ctrl+K`.
+   - **Barra inferior móvil (<768px):** Se preserva la barra inferior con touch targets mínimos de 44px (`min-h-[44px] min-w-[44px]`), etiquetas cortas y accesos a Bandeja, Pipeline, Cotizador, Viajes, Búsqueda y Perfil.
 
-2. **Detección y aviso obligatorio de «Impuesto de muelle no incluido»:**
-   - Función pura `requiereAvisoImpuestoMuelle(destino, paqueteNombre)` en `apps/web/src/lib/cotizador-logica.ts` para identificar destinos insulares y tours náuticos (Cartagena, Islas del Rosario, Barú, Cholón, Tierra Bomba, lanchas/botes).
-   - Aviso visual destacado con banner ámbar `data-testid="aviso-impuesto-muelle"` en el desglose de cotización de salidas (`apps/web/src/components/cotizador/desglose-cotizacion-salida.tsx`) y en la vista de cotización simulada (`apps/web/src/app/cotizador/page.tsx`).
-   - Inclusión automática del aviso en los textos formateados para WhatsApp (`generarTextoPropuestaWhatsApp` y `generarTextoPropuestaWhatsAppSalida`): *«⚠️ Aviso importante: Impuesto de muelle no incluido (tasa portuaria requerida al abordar en taquilla del muelle, no incluida en el valor del tour)»*.
+2. **Componente de Migas de Pan (`MigasPan`):**
+   - Implementado en `apps/web/src/components/comun/migas-pan.tsx` para jerarquía clara en pantallas de detalle (ej: `Inicio` > `Catálogo` > `Pasadía Islas del Rosario VIP`).
+   - Botón de retroceso rápido (`boton-volver-migas`), soporte para `aria-current="page"` en la última miga, truncamiento responsive y botón de acción principal contextual opcional (`accion-principal-migas`) con degradado caribeño.
 
-3. **Lógica de cálculo sin plazas desaprovechadas para pasadías:**
-   - En `calcularCotizacionMock`: cuando `paquete.noches === 0` (excursión de 1 día), `plazasSinUsar` se fija en 0, ya que las excursiones no requieren asignación de habitaciones ni penalizan cupos de camas.
+3. **Paleta de Comandos Avanzada (`ModalBusquedaGlobal` / `PaletaComandos`):**
+   - Modal centrado superpuesto accesible con `Ctrl+K` o `Cmd+K` desde cualquier pantalla.
+   - Pestañas/chips de filtro rápido: `Todos`, `Módulos`, `Cotizaciones`, `Excursiones`, `Contactos`, `Acciones`.
+   - Búsqueda en tiempo real indexando los 8 módulos, cotizaciones frecuentes en COP, excursiones y pasadías del catálogo, contactos y archivos de viaje.
+   - Navegación completa por teclado con `ArrowUp` / `ArrowDown`, `Enter` para ejecutar/redirigir, y `Escape` para cerrar.
+   - Indicadores visuales de atajos de teclado y anuncios dinámicos accesibles `aria-live="polite"` para lectores de pantalla.
 
-4. **Componentes y estados de UI en el Cotizador (`/cotizador`):**
-   - **Estado vacío (`data-testid="cotizador-estado-vacio"`):** Si una agencia conectada a la API real no tiene salidas ni excursiones registradas, la pantalla no queda en blanco ni se rompe; muestra un estado vacío comprensivo con orientación y acciones claras:
-     - Botón para activar el modo demostración y ver excursiones de muestra.
-     - Botón directo para ir a la gestión de catálogo (`/catalogo`).
-     - Botón de reintento de conexión.
-   - **Estado cargando (`cargandoSalidas`):** Indicador visual accesible de carga mientras se consultan las salidas de la agencia.
-   - **Píldora de pasadía:** Distintivo azul accesible `Excursión de 1 día (Pasadía)` cuando `noches === 0`.
-   - **Badge de promo vigente (`data-testid="badge-promo-vigente"`):** Indicador cuando aplican tarifas promocionales o descuentos por grupo.
-   - **Adaptación móvil a 375 px:** Espaciados densos, botones y campos con touch targets ≥ 44 px, formulario verticalizado responsive y desgloses legibles sin desbordamiento horizontal.
+4. **Componente de Accesos Rápidos Contextuales (`AccesoRapido`):**
+   - Ubicado en `apps/web/src/components/comun/acceso-rapido.tsx` para orientar al asesor comercial sobre la siguiente acción lógica recomendada (ej: pasar de una conversación en WhatsApp directamente a cotizar una excursión o registrar un TravelFile).
 
-5. **Suites de pruebas completas:**
-   - `apps/web/src/lib/cotizador-logica.spec.ts`: 13/13 pruebas pasando (incluye detección de impuesto de muelle, propuesta WhatsApp y pasadías sin plazas desaprovechadas).
-   - `apps/web/src/components/cotizador/desglose-cotizacion-salida.spec.tsx` (nueva): 5/5 pruebas pasando (badge pasadía, banner aviso muelle, badge promo vigente, touch targets).
-   - `apps/web/src/app/cotizador/page.spec.tsx` (nueva): 4/4 pruebas pasando (estado vacío sin salidas en API, activación de demo con 1 clic, visualización de impuesto de muelle en tour náutico, cálculo reactivo de pasajeros).
+5. **Suites de Pruebas Unitarias Automatizadas:**
+   - `apps/web/src/components/bandeja/barra-modulos.spec.tsx`: 17/17 pruebas en verde (incluye expansión/contracción, visualización de etiquetas, buscador expandido e indicador de módulo activo).
+   - `apps/web/src/components/comun/migas-pan.spec.tsx`: 4/4 pruebas en verde (nav semántico, botón volver, retroceso personalizado y acción principal).
+   - `apps/web/src/components/comun/acceso-rapido.spec.tsx`: 2/2 pruebas en verde (touch targets >= 44px, renderizado condicional).
+   - `apps/web/src/components/comun/paleta-comandos.spec.tsx`: 6/6 pruebas en verde (apertura, búsqueda, filtrado por chips, navegación con flechas y Enter, cierre por backdrop y Escape).
 
 ## Qué verifiqué ejecutando
 
-- **Pruebas unitarias de la web:** `pnpm --filter @viajapro/web test` → **42 archivos de prueba pasados, 354/354 tests en verde (100%)**.
-- **Typecheck estricto:** `pnpm --filter @viajapro/web typecheck` → **0 errores** TypeScript.
-- **Linter:** `pnpm --filter @viajapro/web lint` → **0 errores, 0 advertencias**.
-- **Prettier:** `pnpm exec prettier --write ...` → **100% formateado**.
-- **Compilación de producción:** `pnpm turbo run build --filter=@viajapro/web...` → **16/16 páginas estáticas y dinámicas compiladas con éxito** en Next.js 15.5.27.
+- **Pruebas unitarias de apps/web:** `pnpm --filter @viajapro/web test` — **46 suites de prueba, 389/389 tests en verde (100%)**.
+- **Typecheck estricto:** `pnpm --filter @viajapro/web typecheck` — **0 errores** TypeScript (`tsc --noEmit`).
+- **Linter:** `pnpm --filter @viajapro/web lint` — **0 errores, 0 advertencias**.
+- **Compilación de producción Next.js:** `pnpm turbo run build --filter=@viajapro/web...` — **16/16 rutas estáticas y dinámicas compiladas con éxito**.
+- **Carril de trabajo:** `node scripts/check-ownership.mjs` — `Dentro del carril` (carril b).
 
-## Qué NO verifiqué
+## Qué NO verifiquí (Estado de Compuertas)
 
-- No se verificó la sincronización con pasarelas de pago externas ni emisión de tickets fiscales electrónicos (fuera del alcance del cotizador).
-- No se verificó la base de datos real con salidas de tours en producción, pues se probó contra contratos y mocks estandarizados en TypeScript.
+- **Compuertas (`pnpm compuertas`):**
+  - `build`: VERDE.
+  - `lint`: VERDE.
+  - `typecheck`: VERDE.
+  - `test`: Se reporta la indisponibilidad de credenciales para el usuario `viajapro_app` en el servidor de base de datos Neon para `@viajapro/database` (`tests/aislamiento.spec.ts` y `tests/semilla-agencia-aislamiento.spec.ts`). Todas las pruebas de frontend (`@viajapro/web`) se encuentran 100% en verde.
 
 ## Decisiones no especificadas tomadas
 
-1. **Regla de impuesto de muelle:** El impuesto de muelle en Colombia (especialmente en el Muelle de La Bodeguita en Cartagena hacia Islas del Rosario/Barú/San Bernardo, aprox. $26.500–$29.000 COP) se cancela directamente por el turista en la taquilla portuaria al momento del embarque y las agencias no lo recaudan por adelantado. Por tanto, se catalogó como un aviso obligatorio tanto en el resumen en pantalla como en el texto generado para WhatsApp, sin sumarlo al subtotal cotizado.
-2. **Habitaciones en excursiones de un día:** Al tener `noches: 0`, se omiten las habitaciones vacías/penalizaciones de acomodación simple, calculando estrictamente por tarifa por persona (`POR_PERSONA`).
+1. **Persistencia de la barra lateral:** Se utilizó `localStorage` con la clave `viajapro_barra_expandida` para que el estado preferido por el asesor (barra contraída o barra ancha con etiquetas completas) persista entre recargas y cambios de ruta sin parpadeos.
+2. **Chips de filtro en la paleta de comandos:** Se añadieron chips accesibles que permiten al asesor filtrar de inmediato sólo por `Cotizaciones` o `Excursiones` cuando busca cotizar rápidamente mientras conversa por WhatsApp.
 
 ---
 
@@ -1071,3 +1083,4 @@ Se creó el archivo de pruebas de componentes `apps/web/src/components/comun/esq
   - `format:check`: **VERDE** (100% verificado con Prettier).
   - `build`: **VERDE** (Next.js 15.5.27 compiló 16 páginas en 6.7s).
 
+Sigue a la espera de la API de backend (T-041 en adelante). No se inician esas tareas y se continuará con las tareas libres de la cola en el orden instruido.
