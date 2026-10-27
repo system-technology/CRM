@@ -167,7 +167,7 @@ describe('rutas /api/v1/catalogo/paquetes', () => {
     expect(r.estado).toBe(201);
     paqueteId = String(r.json['id']);
 
-    const lista = await llamar(TENANT_A, 'GET', '/api/v1/paquetes?limite=100');
+    const lista = await llamar(TENANT_A, 'GET', '/api/v1/paquetes');
     const nombres = (lista.json['datos'] as { nombre: string }[]).map((p) => p.nombre);
     expect(nombres).toContain('Isla Corona');
 
@@ -196,7 +196,7 @@ describe('rutas /api/v1/catalogo/paquetes', () => {
   });
 
   it('el tenant B no ve el paquete ni puede editarlo o desactivarlo (404)', async () => {
-    const lista = await llamar(TENANT_B, 'GET', '/api/v1/paquetes?limite=100');
+    const lista = await llamar(TENANT_B, 'GET', '/api/v1/paquetes');
     const nombres = (lista.json['datos'] as { nombre: string }[]).map((p) => p.nombre);
     expect(nombres).not.toContain('Isla Corona');
 
