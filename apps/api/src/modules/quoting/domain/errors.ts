@@ -134,3 +134,67 @@ export class TarifasConCondicionNoEvaluableError extends InvariantError {
     );
   }
 }
+
+// =============================================================================
+// Catálogo gestionable (ADR-0017)
+// =============================================================================
+
+/**
+ * La propuesta tiene al menos un `ERROR` en su informe: no se aplica nada (todo o nada, D4).
+ * El filtro global solo devuelve `code` y `message`, así que el mensaje lista los primeros errores.
+ */
+export class PropuestaInvalidaError extends InvariantError {
+  readonly code = 'PROPUESTA_INVALIDA';
+  constructor(
+    readonly errores: readonly { readonly codigo: string; readonly ruta: string }[],
+    readonly total: number,
+  ) {
+    super(
+      `La propuesta de catálogo tiene ${total} error(es) y no se aplicó nada: ` +
+        errores
+          .slice(0, 5)
+          .map((e) => `${e.codigo} en ${e.ruta}`)
+          .join('; '),
+    );
+  }
+}
+
+/** La previsualización que vio quien confirma ya no es la propuesta que se va a aplicar. */
+export class PropuestaCambioError extends EstadoInvalidoError {
+  readonly code = 'PROPUESTA_CAMBIO';
+  constructor() {
+    super('El catálogo o la propuesta cambiaron desde la previsualización: vuelve a revisarla');
+  }
+}
+
+/** Otro cambio de catálogo de la misma agencia tiene el bloqueo y no lo soltó a tiempo. */
+export class CatalogoOcupadoError extends EstadoInvalidoError {
+  readonly code = 'CATALOGO_OCUPADO';
+  constructor() {
+    super('Otro cambio del catálogo de esta agencia está en curso: reintenta en unos segundos');
+  }
+}
+
+/** La propuesta nombra un formato de viaje que la agencia no tiene. */
+export class FormatoDeViajeDesconocidoError extends InvariantError {
+  readonly code = 'FORMATO_DE_VIAJE_DESCONOCIDO';
+  constructor(readonly formato: string) {
+    super(`La agencia no tiene un formato de viaje llamado '${formato}'`);
+  }
+}
+
+/** Una tarifa nombra una opción de salida que el producto no tiene (defecto del adaptador). */
+export class OpcionDeSalidaDesconocidaError extends InvariantError {
+  readonly code = 'OPCION_DE_SALIDA_DESCONOCIDA';
+  constructor(readonly etiqueta: string) {
+    super(`El producto no tiene una opción de salida '${etiqueta}'`);
+  }
+}
+
+/** Editar el paquete lo dejaría con la misma clave natural que otro de la agencia. */
+export class PaqueteDuplicadoError extends EstadoInvalidoError {
+  readonly code = 'PAQUETE_DUPLICADO';
+  constructor(readonly clave: string) {
+    super(`Ya existe otro paquete de la agencia con la clave '${clave}'`);
+  }
+}
