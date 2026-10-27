@@ -921,7 +921,7 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: backlog
+    status: done
     depends_on:
       - T-040
       - T-041
@@ -953,6 +953,11 @@ tasks:
       - apps/api/src/modules/quoting/quoting.module.ts
     source: arquitecto:ADR-0017 (importado 2026-10-26; id original T-034)
     created_at: 2026-10-26T00:00:00.000Z
+    started_at: 2026-10-27T00:40:19.786Z
+    done_at: 2026-10-27T00:40:19.786Z
+    evidence: "Mergeado en main por el PR #69 (rama a/T-042-aplicador-de-catalogo) con el CI en verde: format,
+      analyze, tests y los demás checks obligatorios. Cierre automático (.github/workflows/cerrar-tarea.yml)."
+    commit: 566e6e8e0f5d6c451492655d10462a79e25e153f
   - id: T-043
     title: "API: vigencias y tarifas gestionables por id a través del mismo validador y aplicador, con rechazo de
       empate"
