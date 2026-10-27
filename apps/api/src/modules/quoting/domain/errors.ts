@@ -191,6 +191,39 @@ export class OpcionDeSalidaDesconocidaError extends InvariantError {
   }
 }
 
+/** El producto tiene opciones de salida activas y la cotización no eligió ninguna. */
+export class OpcionDeSalidaRequeridaError extends InvariantError {
+  readonly code = 'OPCION_DE_SALIDA_REQUERIDA';
+  constructor(readonly opciones: readonly string[]) {
+    super(
+      `Este producto se cotiza por opción de salida (${opciones.join(', ')}): ` +
+        'elige una con opcionDeSalidaId',
+    );
+  }
+}
+
+/** La opción de salida pedida no existe, está inactiva o es de otro producto. */
+export class OpcionDeSalidaNoEncontradaError extends DomainError {
+  readonly code = 'OPCION_DE_SALIDA_NO_ENCONTRADO';
+  constructor(readonly opcionId: string) {
+    super(`No existe la opción de salida ${opcionId} en este producto`);
+  }
+}
+
+export class FormatoDeViajeNoEncontradoError extends DomainError {
+  readonly code = 'FORMATO_DE_VIAJE_NO_ENCONTRADO';
+  constructor(readonly formatoId: string) {
+    super(`No existe el formato de viaje ${formatoId} en esta agencia`);
+  }
+}
+
+export class FormatoDeViajeDuplicadoError extends EstadoInvalidoError {
+  readonly code = 'FORMATO_DE_VIAJE_DUPLICADO';
+  constructor(readonly nombre: string) {
+    super(`La agencia ya tiene un formato de viaje llamado '${nombre}'`);
+  }
+}
+
 /** Editar el paquete lo dejaría con la misma clave natural que otro de la agencia. */
 export class PaqueteDuplicadoError extends EstadoInvalidoError {
   readonly code = 'PAQUETE_DUPLICADO';

@@ -35,6 +35,8 @@ export const ComposicionDeVersion = z
     ninos: z.number().int().min(0).max(200).optional(),
     infantes: z.number().int().min(0).max(200).optional(),
     acomodacion: Acomodacion.optional(),
+    /** Obligatoria si el producto tiene opciones de salida (ADR-0017 §3.1). */
+    opcionDeSalidaId: Id.optional(),
     /** Hasta cuándo se honra el precio al cliente. Opcional: no todas las ofertas vencen. */
     vigenteHasta: FechaViaje.optional(),
   })
