@@ -1517,7 +1517,7 @@ tasks:
     phase: 1
     priority: P1
     effort: S
-    status: backlog
+    status: done
     depends_on: []
     acceptance:
       - Si registrarAceptado encuentra un mensaje FALLIDO sin codigo_error_meta, lo devuelve a PENDIENTE y
@@ -1530,6 +1530,11 @@ tasks:
       - apps/api/src/modules/inbox/application/
     source: auditor-seguridad:envio-whatsapp 2026-10-26
     created_at: 2026-10-26T23:56:03.909Z
+    started_at: 2026-10-27T01:50:17.247Z
+    done_at: 2026-10-27T01:50:17.247Z
+    evidence: "Mergeado en main por el PR #86 (rama a/T-059-t-060-seguridad-del-envio) con el CI en verde: format,
+      analyze, tests y los demás checks obligatorios. Cierre automático (.github/workflows/cerrar-tarea.yml)."
+    commit: fdb537b683205712effe2e3a5b211c7a2a53dc8b
   - id: T-060
     title: "Credencial de prueba de WhatsApp atada al tenant: que solo sirva a la agencia del canal registrado"
     type: security
