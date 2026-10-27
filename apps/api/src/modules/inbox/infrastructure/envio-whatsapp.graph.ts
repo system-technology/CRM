@@ -9,6 +9,11 @@
  * - **Un timeout o una conexión cortada a medias NO se reintentan**: la petición pudo llegar y Meta
  *   pudo enviarlo. Se lanza `EnvioSinConfirmarError` y el webhook de estado, correlacionado por
  *   `biz_opaque_callback_data`, dice la verdad después. Reintentar ahí es como se duplica (R5).
+ * - **Un 5xx SIN el código de error de Meta tampoco se reintenta**: un 502/504 del borde o de un
+ *   proxy no dice que Meta lo rechazara; la petición pudo llegar. Solo un 5xx que trae `error.code`
+ *   es Meta diciendo «no lo acepté», y ese sigue la tabla de `errorDeMeta`.
+ * - Sin redirecciones (`redirect: 'error'`: la Graph API no redirige, y seguir una reenviaría el
+ *   token) y con tope de bytes al leer la respuesta.
  * - **Nada del token, del destinatario ni del texto sale de aquí en un error ni en un log.** De la
  *   respuesta de error solo se lee `error.code` (número); `message` y `error_data.details` de Meta
  *   pueden repetir el número del viajero (R10).
@@ -51,26 +56,47 @@ function codigoDeRed(error: unknown): string | null {
   return typeof causa?.code === 'string' ? causa.code : null;
 }
 
-async function leerCodigoDeMeta(respuesta: Response): Promise<number | null> {
+/** Tope de bytes de una respuesta de la Graph API: las de `/messages` ocupan unos cientos. */
+export const TOPE_DE_RESPUESTA_BYTES = 64 * 1024;
+
+/**
+ * El cuerpo como JSON, leyendo como mucho `TOPE_DE_RESPUESTA_BYTES`. `null` si no hay cuerpo, si
+ * excede el tope, si la lectura falla (timeout, conexión cortada) o si no es JSON.
+ */
+async function leerJsonAcotado(respuesta: Response): Promise<unknown> {
+  if (respuesta.body === null) return null;
+  const lector: ReadableStreamDefaultReader<Uint8Array> = respuesta.body.getReader();
+  const trozos: Uint8Array[] = [];
+  let total = 0;
   try {
-    const cuerpo: unknown = await respuesta.json();
-    const error = (cuerpo as { error?: { code?: unknown } } | null)?.error;
-    return typeof error?.code === 'number' ? error.code : null;
+    for (;;) {
+      const { done, value } = await lector.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > TOPE_DE_RESPUESTA_BYTES) {
+        await lector.cancel().catch(() => undefined);
+        return null;
+      }
+      trozos.push(value);
+    }
+    return JSON.parse(Buffer.concat(trozos).toString('utf8')) as unknown;
   } catch {
-    // Sin cuerpo o no JSON (la página de un proxy): no hay código que leer.
+    // Sin cuerpo legible o no JSON (la página de un proxy): no hay nada que leer.
     return null;
   }
 }
 
+async function leerCodigoDeMeta(respuesta: Response): Promise<number | null> {
+  const cuerpo = await leerJsonAcotado(respuesta);
+  const error = (cuerpo as { error?: { code?: unknown } } | null)?.error;
+  return typeof error?.code === 'number' ? error.code : null;
+}
+
 async function leerWamid(respuesta: Response): Promise<string | null> {
-  try {
-    const cuerpo: unknown = await respuesta.json();
-    const mensajes = (cuerpo as { messages?: unknown } | null)?.messages;
-    const id = Array.isArray(mensajes) ? (mensajes[0] as { id?: unknown } | undefined)?.id : null;
-    return typeof id === 'string' && id.length > 0 && id.length <= 128 ? id : null;
-  } catch {
-    return null;
-  }
+  const cuerpo = await leerJsonAcotado(respuesta);
+  const mensajes = (cuerpo as { messages?: unknown } | null)?.messages;
+  const id = Array.isArray(mensajes) ? (mensajes[0] as { id?: unknown } | undefined)?.id : null;
+  return typeof id === 'string' && id.length > 0 && id.length <= 128 ? id : null;
 }
 
 export class EnvioWhatsappGraph extends PuertoEnvioWhatsapp {
@@ -126,6 +152,7 @@ export class EnvioWhatsappGraph extends PuertoEnvioWhatsapp {
           biz_opaque_callback_data: pedido.referencia,
         }),
         signal: AbortSignal.timeout(timeoutMs),
+        redirect: 'error',
       });
     } catch (error) {
       // Se descarta el error original: puede citar la URL o el cuerpo.
@@ -139,6 +166,10 @@ export class EnvioWhatsappGraph extends PuertoEnvioWhatsapp {
       if (wamid === null) throw new EnvioSinConfirmarError();
       return { wamid };
     }
-    throw errorDeMeta(await leerCodigoDeMeta(respuesta), respuesta.status);
+    const codigo = await leerCodigoDeMeta(respuesta);
+    // 5xx sin el sobre de error de Meta (502/504 del borde, HTML de un proxy, cuerpo vacío): nada
+    // dice que Meta lo rechazara y la petición pudo llegar. Sin confirmar, nunca reintentar (R5).
+    if (codigo === null && respuesta.status >= 500) throw new EnvioSinConfirmarError();
+    throw errorDeMeta(codigo, respuesta.status);
   }
 }
