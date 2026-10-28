@@ -1,7 +1,7 @@
 # Continuidad (Claude retomó por falta de cuota de Antigravity) - 2026-10-28
 
 - **Qué se tomó:** el trabajo sin commitear de Antigravity en T-011 (rama local `b/T-011-test-integracion-cotizador`), copiado tal cual a ramas limpias desde `origin/main` y verificado (web: cotizador-logica 15/15, page.spec 8/8, typecheck y lint en verde). El checkout original NO se tocó: sigue con sus cambios sin commitear.
-- **Dónde quedó:** parte web en este PR (`b/T-011-cotizador-web`); e2e de la API en `a/T-011-e2e-cotizador-api`; bitácora, ESTADO.md y evidencia de T-011 en `i/T-000-docs-t011`; HSTS y Permissions-Policy (mitad web de T-092) en #164 (`b/T-000-cabeceras-hsts-permissions`).
+- **Dónde quedó:** parte web en este PR (`b/T-011-cotizador-web-v2`; el #165 se cerró por un asunto de commit de más de 100 caracteres); e2e de la API en `a/T-011-e2e-cotizador-api`; bitácora, ESTADO.md y evidencia de T-011 en `i/T-000-docs-t011`; HSTS y Permissions-Policy (mitad web de T-092) en #164 (`b/T-000-cabeceras-hsts-permissions`).
 - **A medias:** (1) la e2e de la API solo se valida en el job `test` del CI (en local falla la credencial `DATABASE_IDENTIDAD_URL`); (2) T-092 sigue abierta en su mitad backend (token de invitación en el fragmento de la URL, `apps/api/src/modules/identity`); (3) T-099 (enmascarar teléfono) y T-039/T-056 siguen en backlog: T-039 y T-056 dependen de T-038 y T-054.
 - **Desde dónde continuar:** al volver, descarta el checkout viejo (`git checkout main && git pull`, sus cambios ya viven en los PR) y toma de `roadmap/tasks.yaml` el siguiente backlog web sin dependencias pendientes. Las ramas remotas `b/T-017..T-036` están ya integradas por squash (sus tareas figuran `done`): no las retomes.
 
