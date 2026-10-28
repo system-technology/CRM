@@ -368,7 +368,7 @@ export function DesgloseCotizacionSalida({
       )}
 
       {/* 5. Barra de Acciones de WhatsApp y Exportación */}
-      <section className="flex flex-col gap-3 rounded-2xl border border-neutral-200 bg-white p-5 shadow-xs sm:flex-row sm:items-center sm:justify-between dark:border-neutral-800 dark:bg-neutral-900">
+      <section className="flex flex-col gap-3 rounded-2xl border border-neutral-200 bg-white p-4 shadow-xs sm:flex-row sm:items-center sm:justify-between sm:p-5 dark:border-neutral-800 dark:bg-neutral-900">
         <div>
           <h4 className="text-xs font-bold text-neutral-900 dark:text-white">
             Compartir con el Viajero
@@ -378,13 +378,13 @@ export function DesgloseCotizacionSalida({
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-col flex-wrap items-stretch gap-2 sm:flex-row sm:items-center">
           {alGuardarCotizacion && (
             <button
               type="button"
               onClick={alGuardarCotizacion}
               disabled={guardando}
-              className="flex min-h-[44px] items-center gap-2 rounded-xl border border-purple-300 bg-purple-50 px-4 py-2.5 text-xs font-bold text-purple-800 shadow-2xs transition-colors hover:bg-purple-100 dark:border-purple-800 dark:bg-purple-950/40 dark:text-purple-300"
+              className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl border border-purple-300 bg-purple-50 px-4 py-2.5 text-xs font-bold text-purple-800 shadow-2xs transition-colors hover:bg-purple-100 sm:w-auto dark:border-purple-800 dark:bg-purple-950/40 dark:text-purple-300"
             >
               <Bookmark className="h-4 w-4" />
               <span>Guardar Oficial</span>
@@ -394,7 +394,7 @@ export function DesgloseCotizacionSalida({
           <button
             type="button"
             onClick={alCopiarWhatsApp}
-            className="bg-ok-600 hover:bg-ok-700 flex min-h-[44px] items-center gap-2 rounded-xl px-5 py-3 text-xs font-bold text-white shadow-xs transition-colors"
+            className="bg-ok-600 hover:bg-ok-700 flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl px-5 py-3 text-xs font-bold text-white shadow-xs transition-colors sm:w-auto"
           >
             {copiado ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
             {copiado ? '¡Copiado al Portapapeles!' : 'Copiar Propuesta para WhatsApp'}
