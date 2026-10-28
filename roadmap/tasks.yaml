@@ -514,7 +514,10 @@ tasks:
     phase: 1
     priority: P2
     effort: M
-    status: backlog
+    status: done
+    started_at: 2026-10-28T07:10:00.000Z
+    done_at: 2026-10-28T07:18:00.000Z
+    evidence: "Atajos de teclado en bandeja (flechas, j/k, /, Enter, Alt+P/R/F, Esc) con barra documentada en pantalla. Modales con trampa de foco y retorno al disparador (useFocoModal en ModalPlantillas, ModalReasignar, ModalGuardarCotizacion, ModalMotivoPerdida, ModalBusquedaGlobal). Botones solo-icono con aria-label y títulos. Tests en accesibilidad-logica.spec.ts, lista-conversaciones-teclado.spec.tsx y foco-modal.spec.tsx. 66/66 suites y 571 tests en verde."
     depends_on: []
     acceptance:
       - Todos los botones solo-icono tienen aria-label y los modales atrapan y devuelven el foco

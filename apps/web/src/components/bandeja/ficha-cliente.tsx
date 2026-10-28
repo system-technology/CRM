@@ -33,8 +33,9 @@ export function FichaCliente({ ficha, onCerrar }: FichaClienteProps) {
           {onCerrar && (
             <button
               onClick={onCerrar}
-              className="rounded-lg p-1.5 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
+              className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg p-1.5 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
               title="Ocultar ficha"
+              aria-label="Cerrar ficha de cliente"
             >
               <X className="h-4 w-4" />
             </button>
