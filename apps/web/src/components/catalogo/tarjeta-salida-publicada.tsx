@@ -345,10 +345,11 @@ export function TarjetaSalidaPublicada({
             href={`/cotizador?paqueteId=${encodeURIComponent(salida.paqueteId)}&fecha=${encodeURIComponent(salida.fecha)}`}
             data-testid="btn-cotizar-salida"
             onClick={() => onCotizar?.(salida)}
-            className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-teal-600 py-2.5 text-xs font-bold text-white shadow-xs transition-all hover:bg-teal-700 active:scale-98 dark:bg-teal-500 dark:hover:bg-teal-600"
+            className="flex min-h-[44px] w-full items-center justify-center gap-1.5 rounded-xl bg-teal-600 px-3 py-2.5 text-xs font-bold text-white shadow-xs transition-all hover:bg-teal-700 active:scale-98 dark:bg-teal-500 dark:hover:bg-teal-600"
           >
-            <Compass className="h-4 w-4" />
-            <span>Cotizar esta salida</span>
+            <Compass className="h-4 w-4 shrink-0" />
+            <span className="truncate sm:hidden">Cotizar</span>
+            <span className="hidden sm:inline">Cotizar esta salida</span>
           </Link>
         </div>
       </div>
