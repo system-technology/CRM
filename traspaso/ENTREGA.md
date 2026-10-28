@@ -229,6 +229,50 @@
   - Despliegue en entorno productivo (requiere merge de PR en servidor).
 
 ---
+# Entrega — T-033: Login con identidad de viaje (pantalla dividida con héroe oceánico) — 2026-10-26
+
+## Identificación
+- **Rama:** `b/T-033-login-identidad-viaje`
+- **Stitch Design Screen ID:** `310817e6eef4417286c884540166df0e` (Proyecto «ViajaPro — CRM para agencias de turismo», ID `8333038101997719867`, pantalla *Login con Identidad de Viaje — ViajaPro CRM*)
+
+## Qué construí
+
+1. **Pantalla dividida con héroe oceánico animado (Split-Screen):**
+   - **Panel izquierdo (Héroe caribeño):**
+     - Fondo con `degradado-caribe` (de azul marino profundo a turquesa caribeño).
+     - Ondas marinas vectoriales animadas con micro-movimiento suave (`animacion-ola`).
+     - Elementos icónicos de viaje sutiles (avión en vuelo, brújula náutica, palmera dorada).
+     - Título inspirador de turismo: *«Convierte conversaciones en viajes reales»*.
+     - Insignia con aro dorado (`InsigniaAroDorado`) destacando la especialidad en agencias de turismo.
+     - Indicadores de confianza: 100% WhatsApp Cloud API nativo, gestión multi-agencia y cotizaciones instantáneas.
+   - **Panel derecho (Formulario del Asesor):**
+     - Tarjeta con elevación suave y bordes redondeados (`tarjeta-turismo`).
+     - Encabezado con logotipo, selector visual de agencia y distintivo del modo de conexión (Real / Demostración).
+     - **Campos limpios sin valores de relleno reales:** Correo y contraseña inician vacíos `""` cumpliendo la regla de seguridad y privacidad.
+     - Inputs accesibles con iconos temáticos a la izquierda, botón de visualización de contraseña accesible y touch targets >= 44 px.
+     - Botón principal de llamada a la acción con `BotonTurismo` (`variante="mar"`), efecto hover y spinner de carga accesible.
+     - Vistas secundarias fluidas para selección de agencia (`selector-agencia`) y verificación OTP en 2 pasos.
+
+2. **Integración con el Sistema Visual de Turismo (T-032):**
+   - Empleo de tokens de `globals.css` (turquesa `#0284c7`, océano `#0369a1`, arena `#f8fafc`, acento de marca configurable `--color-acento-marca: #c9a24b`).
+   - Respeto riguroso de `prefers-reduced-motion` para anular animaciones en usuarios con accesibilidad motriz o cognitiva activada.
+
+3. **Pruebas y verificación:**
+   - `apps/web/src/components/auth/formulario-ingreso.spec.tsx`: 7/7 pruebas en verde.
+   - Se añadió `noValidate` al formulario para permitir la validación de manejo de errores en JSDOM sin que la restricción nativa del navegador impida el envío de campos vacíos en las pruebas.
+   - Tipado estricto sin promesas desatendidas en `onSubmit` (`(e) => void manejarEnvioCredenciales(e)`).
+
+## Qué verifiqué ejecutando
+
+- **Pruebas unitarias de apps/web:** `pnpm --filter @viajapro/web test` — **57 archivos de prueba pasados, 471/471 pruebas en verde (100%)**.
+- **Typecheck:** `pnpm --filter @viajapro/web typecheck` — **0 errores** TypeScript (`tsc --noEmit` exit 0).
+- **Linter:** `pnpm --filter @viajapro/web lint` — **0 errores, 0 advertencias**.
+- **Compilación Next.js:** `pnpm turbo run build --filter=@viajapro/web...` — **17/17 rutas compiladas con éxito**.
+- **Verificación de carril:** `node scripts/check-ownership.mjs` — `Dentro del carril` (carril b).
+
+---
+
+# Entrega — Bloque 2: Cotizador y Catálogo para Excursiones de un Día y Estados de UI — 2026-10-26
 
 2. **Accesos directos rápidos operacionales de alta conversión:**
    - Botón primario de viaje `+ Nueva cotización` (`data-testid="acceso-nueva-cotizacion"`) enlazando a `/cotizador`.
@@ -268,7 +312,6 @@
 
 ## Qué NO verifiqué (Reporte transparente de Compuertas)
 
-<<<<<<< HEAD
 - No se verificó la sincronización con pasarelas de pago externas ni emisión de tickets fiscales electrónicos (fuera del alcance del cotizador).
 - No se verificó la base de datos real con salidas de tours en producción, pues se probó contra contratos y mocks estandarizados en TypeScript.
 
@@ -1263,7 +1306,3 @@ Se creó el archivo de pruebas de componentes `apps/web/src/components/comun/esq
   - `typecheck`: **VERDE** (9/9 tareas exitosas en Turborepo, cero errores TypeScript).
   - `format:check`: **VERDE** (100% verificado con Prettier).
   - `build`: **VERDE** (Next.js 15.5.27 compiló 16 páginas en 6.7s).
-
-=======
-- **Compuertas monorepo:** `build`, `lint` y `typecheck` corren en verde; las pruebas de `@viajapro/database` en `pnpm compuertas` caen localmente por autenticación contra la base de datos externa Neon (`password authentication failed for user 'viajapro_app'`), lo cual corresponde al carril `a` (backend/database).
->>>>>>> 27b90f1 (docs(entregables): informe de completitud para tarea T-037)
