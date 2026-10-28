@@ -22,13 +22,13 @@ import { BarraModulos } from '../../components/bandeja/barra-modulos';
 import { DistintivoDatosDemo } from '../../components/comun/distintivo-datos-demo';
 import { BloquePoliticaPrecio } from '../../components/configuracion/bloque-politica-precio';
 import { BloqueAjustesCatalogo } from '../../components/configuracion/bloque-ajustes-catalogo';
+import { BloqueEtapasPipeline } from '../../components/configuracion/bloque-etapas-pipeline';
 import { usePermisos } from '../../lib/permisos';
 import {
   MOCK_MIEMBROS_EQUIPO,
   MOCK_CONFIGURACION_WABA,
   MOCK_CONFIGURACION_SLA,
   MOCK_CONFIGURACION_AGENCIA,
-  MOCK_ETAPAS_CONFIGURADAS,
   type MiembroEquipo,
   type ConfiguracionSla,
   type ConfiguracionAgencia,
@@ -658,46 +658,14 @@ export default function ConfiguracionPage() {
             </div>
           )}
 
-          {/* TAB 4: ETAPAS DEL PIPELINE */}
+          {/* TAB 4: ETAPAS DEL PIPELINE (T-025) */}
           {tabActiva === 'pipeline' && (
-            <div className="max-w-3xl space-y-6">
-              <div className="rounded-xl border border-neutral-200 bg-white p-5 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
-                <h3 className="font-semibold text-neutral-900 dark:text-white">
-                  Etapas Comerciales del CRM
-                </h3>
-                <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                  Flujo de conversión acordado según el lenguaje ubicuo de la agencia
-                </p>
-
-                <div className="mt-4 space-y-3">
-                  {MOCK_ETAPAS_CONFIGURADAS.map((etapa) => (
-                    <div
-                      key={etapa.codigo}
-                      className="flex items-center justify-between rounded-lg border border-neutral-200 p-3 dark:border-neutral-800 dark:bg-neutral-800/40"
-                    >
-                      <div className="flex items-center gap-3">
-                        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-neutral-200 text-xs font-bold text-neutral-700 dark:bg-neutral-700 dark:text-neutral-200">
-                          {etapa.orden}
-                        </span>
-                        <div>
-                          <p className="text-xs font-bold text-neutral-900 dark:text-white">
-                            {etapa.label}
-                          </p>
-                          <p className="text-[11px] text-neutral-500 dark:text-neutral-400">
-                            {etapa.descripcion}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-3">
-                        <span className="rounded bg-neutral-100 px-2 py-0.5 text-xs font-semibold text-neutral-700 dark:bg-neutral-700 dark:text-neutral-300">
-                          {etapa.probabilidad}% de Cierre
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+            <div
+              id="tab-contenido-pipeline"
+              data-testid="tab-contenido-pipeline"
+              className="max-w-4xl space-y-6"
+            >
+              <BloqueEtapasPipeline />
             </div>
           )}
 

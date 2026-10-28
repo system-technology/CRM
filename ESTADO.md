@@ -13,8 +13,8 @@
 | Última actualización | 2026-10-28 |
 | Actualizado por | Antigravity (`frontend`) |
 | Fase | **Fase 1 del backlog: «Un CRM mostrable y endurecido»** (M1 del [roadmap v2](docs/08-roadmap/01-roadmap.md)). Sin agencia real todavía |
-| Avance | Catálogo gestionable (T-031), importador masivo en 4 pasos (T-029, T-030), ajuste promo_vencida (T-028), tarjeta/ficha de excursión (T-018, T-051, T-019), inicio del asesor (T-020), cookies y banner (T-094, T-095), login oceánico (T-033), navegación enriquecida (T-034), animaciones fluidas con shimmer oceánico y movimiento reducido (T-035), tarjetas de producto por tipo de excursión (T-036), envío de cotización por WhatsApp (T-074) con CRM contacto y oportunidad (T-076), helpers únicos de formato es-CO (T-022), revisión a 375 px (T-023) y accesibilidad de la bandeja y modales con foco, teclado, etiquetas y contraste (T-024) completados |
-| Próximo hito | Etapas del pipeline configurables por la agencia (T-025) |
+| Avance | Catálogo gestionable (T-031), importador masivo en 4 pasos (T-029, T-030), ajuste promo_vencida (T-028), tarjeta/ficha de excursión (T-018, T-051, T-019), inicio del asesor (T-020), cookies y banner (T-094, T-095), login oceánico (T-033), navegación enriquecida (T-034), animaciones fluidas con shimmer oceánico y movimiento reducido (T-035), tarjetas de producto por tipo de excursión (T-036), envío de cotización por WhatsApp (T-074) con CRM contacto y oportunidad (T-076), helpers únicos de formato es-CO (T-022), revisión a 375 px (T-023), accesibilidad de la bandeja y modales (T-024) y etapas del pipeline configurables por la agencia (T-025) completados |
+| Próximo hito | Campos personalizados por agencia en la ficha del contacto y en las oportunidades (T-026) |
 
 ---
 

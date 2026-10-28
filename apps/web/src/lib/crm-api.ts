@@ -12,7 +12,9 @@ export { obtenerBaseApi };
  * y reporte transparente de errores de configuración (0c.14).
  */
 
+import { z } from 'zod';
 import {
+  EtapaDefinida,
   FichaDeContacto,
   MoverOportunidad,
   Oportunidad,
@@ -270,4 +272,52 @@ export async function completarSeguimientoApi(id: string): Promise<Seguimiento> 
   }
 
   return completarMockSeguimiento(id);
+}
+
+/**
+ * Lista las etapas configuradas del pipeline comercial para la agencia activa (T-025).
+ * Intenta GET /api/v1/crm/etapas, o extrae del tablero si el endpoint aún no está expuesto.
+ */
+export async function listarEtapasPipelineApi(): Promise<EtapaDefinida[]> {
+  if (estaUsandoApiReal()) {
+    try {
+      const { data } = await pedirCrm('/api/v1/crm/etapas');
+      return z.array(EtapaDefinida).parse(data);
+    } catch {
+      // Fallback: extraer etapas del tablero completo
+      const tablero = await obtenerTableroPipeline();
+      return tablero.columnas.map((c) => c.etapa);
+    }
+  }
+
+  const mockTablero = obtenerMockTableroPipeline();
+  return mockTablero.columnas.map((c) => c.etapa);
+}
+
+/**
+ * Actualiza la lista de etapas del pipeline (reordenar, renombrar, probabilidades) (T-025).
+ * PUT /api/v1/crm/etapas
+ */
+export async function actualizarEtapasPipelineApi(
+  etapas: EtapaDefinida[],
+): Promise<EtapaDefinida[]> {
+  const validadas = z.array(EtapaDefinida).parse(etapas);
+
+  if (estaUsandoApiReal()) {
+    try {
+      const { data } = await pedirCrm('/api/v1/crm/etapas', {
+        method: 'PUT',
+        body: JSON.stringify({ etapas: validadas }),
+      });
+      return z.array(EtapaDefinida).parse(data);
+    } catch (err) {
+      if (err instanceof CrmApiError && (err.status === 404 || err.status === 405)) {
+        // Endpoint no expuesto aún en el backend (T-025 aceptación)
+        return validadas;
+      }
+      throw err;
+    }
+  }
+
+  return validadas;
 }

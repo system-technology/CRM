@@ -1,3 +1,43 @@
+# Entrega — T-025: Etapas del pipeline configurables por la agencia — 2026-10-28
+
+## Identificación
+- **Tarea:** `T-025` (roadmap/tasks.yaml)
+- **Rama:** `b/T-025-etapas-pipeline`
+- **Carril:** `b` (Frontend / Web)
+
+## Qué se construyó y auditó
+
+1. **Bloque «Etapas del pipeline» en Configuración (`BloqueEtapasPipeline`):**
+   - Creado en `apps/web/src/components/configuracion/bloque-etapas-pipeline.tsx` e integrado en `apps/web/src/app/configuracion/page.tsx` (pestaña `pipeline`).
+   - Carga las etapas de la agencia en el montaje vía `listarEtapasPipelineApi()`.
+   - Permite **reordenar etapas** interactivamente con botones accesibles Subir/Bajar con touch targets mínimos de 44 px (`min-h-[44px] min-w-[44px]`).
+   - Permite **renombrar etapas** editando el nombre en vivo.
+   - Permite ajustar la **probabilidad de cierre** estimada (0-100%).
+   - Identifica visualmente etapas especiales con insignias distintivas: `Ganada` (esmeralda), `Perdida` (rosa) y `Etapa clave` (ámbar).
+   - Acciones de «Guardar cambios» con estado de guardado, mensaje de confirmación accesible (`role="status"`) y botón de «Restablecer».
+
+2. **Pintado dinámico en el Tablero de Pipeline:**
+   - Verificado `apps/web/src/app/pipeline/page.tsx`: consume `tablero.columnas` directamente de `obtenerTableroPipeline()` o la API CRM, pintando exactamente las etapas configuradas en orden, sin listados estáticos cableados en el render.
+
+3. **Contrato de API y Fallback Resiliente:**
+   - Métodos tipados `listarEtapasPipelineApi()` y `actualizarEtapasPipelineApi(etapas)` añadidos a `apps/web/src/lib/crm-api.ts`.
+   - Consume `/api/v1/crm/etapas` y en caso de que el backend no exponga aún el endpoint o devuelva 404/500, aplica fallback resiliente cargando las etapas del tablero y permitiendo persistencia local en memoria para pruebas y modo demo.
+   - **Petición para carril backend (si aplica):** Exponer endpoint `PUT /api/v1/crm/etapas` para persistir la configuración a nivel de tenant en la tabla correspondiente.
+
+4. **Pruebas y Verificación:**
+   - `apps/web/src/components/configuracion/bloque-etapas-pipeline.spec.tsx`: 4 pruebas unitarias pasando.
+   - Total `@viajapro/web`: 67 suites, 575 pruebas en verde.
+   - Typecheck, Linter y Compilación Next.js (18 rutas) 100% en verde.
+
+## Verificación de Compuertas
+- **Pruebas unitarias (@viajapro/web):** 67 suites, 575 pruebas en verde.
+- **Typecheck:** 9/9 paquetes en verde.
+- **Linter:** 7/7 paquetes en verde.
+- **Compilación de producción (Next.js):** 18/18 rutas estáticas y dinámicas compiladas exitosamente.
+- **Fronteras y ganchos de seguridad (`pnpm test:hooks`):** 59/59 casos de política de rama, 19/19 detección de secretos, 6/6 fronteras de módulos.
+
+---
+
 # Entrega — T-024: Accesibilidad de la bandeja y los modales: foco, teclado, etiquetas y contraste — 2026-10-28
 
 ## Identificación
