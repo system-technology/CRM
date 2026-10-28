@@ -89,6 +89,24 @@ describe('armarVersion', () => {
     expect(v.vigenteHasta).toBe('2026-11-30');
   });
 
+  it('guarda la opción de salida con la que cotizó el servidor, y null si no hubo (T-062)', () => {
+    const conOpcion = armarVersion(
+      {
+        ...calculo([linea('100')]),
+        opcionDeSalida: { id: '01932000-0000-7000-8000-000000000009', etiqueta: 'Lancha' },
+      },
+      POLITICA,
+      {},
+    );
+    expect(conOpcion.opcionDeSalidaId).toBe('01932000-0000-7000-8000-000000000009');
+
+    expect(armarVersion(calculo([linea('100')]), POLITICA, {}).opcionDeSalidaId).toBeNull();
+    expect(
+      armarVersion({ ...calculo([linea('100')]), opcionDeSalida: null }, POLITICA, {})
+        .opcionDeSalidaId,
+    ).toBeNull();
+  });
+
   it('sin líneas no hay nada que guardar', () => {
     expect(() => armarVersion(calculo([]), POLITICA, {})).toThrow(/no tiene líneas/i);
   });
