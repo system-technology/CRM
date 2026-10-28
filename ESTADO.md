@@ -4,14 +4,17 @@
 > bloquea, quién trabaja en qué. **La cola de trabajo ya no vive aquí:** vive en
 > [`roadmap/tasks.yaml`](roadmap/tasks.yaml) (ADR-0016). El historial anterior al 2026-10-20 está
 > íntegro en [`docs/_bitacora/archivo/ESTADO-hasta-2026-10-20.md`](docs/_bitacora/archivo/ESTADO-hasta-2026-10-20.md).
+>
+> **Al retomar tras compactar o en una sesión nueva, lee primero [`docs/_contexto/CONTEXTO.md`](docs/_contexto/CONTEXTO.md):**
+> el entorno vivo, las trampas conocidas, las decisiones del propietario y la cola inmediata.
 
 | Campo | Valor |
 |---|---|
-| Última actualización | 2026-10-26 |
-| Actualizado por | Claude (`documentador`) |
+| Última actualización | 2026-10-28 |
+| Actualizado por | Antigravity (`frontend`) |
 | Fase | **Fase 1 del backlog: «Un CRM mostrable y endurecido»** (M1 del [roadmap v2](docs/08-roadmap/01-roadmap.md)). Sin agencia real todavía |
-| Avance | Backend, base de datos, web y CI existen y se integran por PR. Falta lo que convierte esto en producto usable: trabajador con Redis, despliegue, canal de WhatsApp real y web conectada de punta a punta |
-| Próximo hito | Que un mensaje de WhatsApp recibido aparezca como conversación en la bandeja de la web real (hoy se guarda cifrado pero no se convierte en conversación) |
+| Avance | Catálogo gestionable (T-031), importador masivo en 4 pasos (T-029, T-030), ajuste promo_vencida (T-028), tarjeta/ficha de excursión (T-018, T-051, T-019), inicio del asesor (T-020), cookies y banner (T-094, T-095), login oceánico (T-033), navegación enriquecida (T-034) y animaciones fluidas con shimmer oceánico y movimiento reducido (T-035) y envío de cotización por WhatsApp (T-074) con gestión CRM de contacto y oportunidad en la bandeja (T-076) completados |
+| Próximo hito | Tarjetas de producto por tipo de excursión (T-036), marca e identidad por agencia (T-039) |
 
 ---
 
@@ -49,6 +52,7 @@ modo real, con la demostración explícita y visible; sigue **abierto**.
 | Cifrado de campos sensibles: ADR aceptado, **implementación sin integrar** (PR #29 abierto; no hay migración de cifrado en `main`) | [ADR-0015](docs/03-adr/0015-cifrado-de-campos-sensibles.md) |
 | Roadmap de producto v3, HubSpot como norte (**propuesta**, PR #43 abierto) | rama `docs/roadmap-producto-v3` |
 | Investigación verificada de HubSpot (PR #41 abierto) | rama `docs/investigacion-hubspot` |
+| Políticas de seguridad (8 políticas + `SECURITY.md`), **borrador sin aprobar**, con el estado real de cada una | [`docs/05-seguridad/00-indice-de-politicas.md`](docs/05-seguridad/00-indice-de-politicas.md) |
 
 ### Lo que NO existe todavía
 

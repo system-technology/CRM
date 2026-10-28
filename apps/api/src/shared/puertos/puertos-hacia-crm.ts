@@ -88,3 +88,27 @@ export abstract class PuertoNotasDeConversacion {
     conversacionId: string,
   ): Promise<NotaDeConversacionLeida[]>;
 }
+
+export interface DefinicionDeCampoLeida {
+  clave: string;
+  etiqueta: string;
+  tipo: 'TEXTO' | 'NUMERO' | 'FECHA' | 'BOOLEANO' | 'SELECCION' | 'SELECCION_MULTIPLE';
+  obligatorio: boolean;
+  orden: number;
+  /** Valores admitidos para los tipos de selección; vacío en los demás. */
+  opciones: string[];
+}
+
+/**
+ * Lo que `quoting` necesita de `crm`: las definiciones de campos personalizados de los paquetes
+ * del tenant, para validar `camposPersonalizados` y para generar las columnas de una plantilla.
+ * La tabla es de `crm` (R4): `quoting` no la toca, la pide por aquí.
+ */
+export abstract class PuertoDefinicionesDeCampo {
+  /** Las definiciones de `PAQUETE`; con `claves`, solo esas. Ordenadas por `orden` y `clave`. */
+  abstract deLosPaquetes(
+    tx: ClienteTenant,
+    tenantId: string,
+    claves?: readonly string[],
+  ): Promise<DefinicionDeCampoLeida[]>;
+}

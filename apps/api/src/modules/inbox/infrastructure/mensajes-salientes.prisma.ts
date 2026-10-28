@@ -60,14 +60,41 @@ export class MensajesSalientesPrisma extends PuertoMensajesSalientes {
     };
   }
 
+  /**
+   * Guarda el `wamid` que devolvió Meta. El estado no cambia —«aceptado» no es «enviado»; lo mueve
+   * el webhook `sent`— **salvo en una carrera** (T-059): si este intento se estancó, la cola lanzó
+   * otro, y ese otro encontró la reserva tomada y marcó el mensaje `FALLIDO` «sin confirmar»
+   * (sin `codigo_error_meta`), el acuse de Meta que llega ahora desmiente esa suposición. Se
+   * devuelve a `PENDIENTE` y se anula el motivo, para que los webhooks de estado —que ya lo
+   * identifican por `wamid`— lo hagan avanzar. Un `FALLIDO` con código de Meta es un rechazo real
+   * y no se toca.
+   */
   async registrarAceptado(tenantId: string, mensajeId: string, wamid: string): Promise<void> {
-    await this.prisma.conTenantResuelto(tenantId, (tx) =>
-      tx.mensaje.updateMany({
-        where: { id: mensajeId, tenantId, direccion: 'SALIENTE', wamid: null },
-        // El estado no cambia: «aceptado» no es «enviado». Lo mueve el webhook `sent`.
-        data: { wamid },
-      }),
-    );
+    await this.prisma.conTenantResuelto(tenantId, async (tx) => {
+      const base = { id: mensajeId, tenantId, direccion: 'SALIENTE' as const, wamid: null };
+      const revivido = await tx.mensaje.updateMany({
+        where: { ...base, estado: 'FALLIDO', codigoErrorMeta: null },
+        data: { wamid, estado: 'PENDIENTE', motivoFallo: null },
+      });
+      if (revivido.count === 1) {
+        const m = await tx.mensaje.findFirstOrThrow({
+          where: { id: mensajeId, tenantId },
+          select: { conversacionId: true },
+        });
+        // La bandeja ya mostraba el fallo: se le avisa de que dejó de serlo.
+        await tx.outbox.create({
+          data: {
+            tenantId,
+            agregado: 'mensaje',
+            agregadoId: mensajeId,
+            tipoEvento: TIPO_MENSAJE_ACTUALIZADO,
+            payload: { conversacionId: m.conversacionId },
+          },
+        });
+        return;
+      }
+      await tx.mensaje.updateMany({ where: base, data: { wamid } });
+    });
   }
 
   async registrarFallo(

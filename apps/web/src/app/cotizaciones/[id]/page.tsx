@@ -13,7 +13,6 @@
 import React, { use, useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import {
-  ArrowLeft,
   Calendar,
   Clock,
   Copy,
@@ -26,6 +25,7 @@ import {
 } from 'lucide-react';
 import type { Acomodacion, CotizacionGuardada, Contacto } from '@viajapro/contracts';
 import { BarraModulos } from '../../../components/bandeja/barra-modulos';
+import { MigasDePan } from '../../../components/comun/migas-de-pan';
 import { formatearDinero, formatearFecha, formatearTelefono } from '../../../lib/formato';
 import {
   obtenerCotizacionGuardadaApi,
@@ -203,15 +203,22 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
 
       <main className="flex-1 overflow-y-auto">
         <div className="mx-auto max-w-6xl space-y-6 p-4 sm:p-6 lg:p-8">
-          {/* Barra de navegación superior */}
-          <div className="flex items-center justify-between">
-            <Link
-              href="/cotizador"
-              className="flex min-h-[44px] items-center gap-2 text-xs font-bold text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              <span>Volver al Cotizador</span>
-            </Link>
+          {/* Migas de pan de turismo y estado oficial (T-034) */}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <MigasDePan
+              elementos={[
+                { etiqueta: 'Inicio', href: '/' },
+                { etiqueta: 'Cotizaciones', href: '/cotizaciones' },
+                {
+                  etiqueta: cotizacion?.titulo
+                    ? cotizacion.titulo
+                    : `Cotización #${id.slice(0, 8)}`,
+                },
+              ]}
+              mostrarBotonVolver
+              volverHref="/cotizaciones"
+              volverTexto="Volver a Cotizaciones"
+            />
 
             <span className="rounded-full bg-purple-100 px-3 py-1 text-xs font-bold text-purple-800 dark:bg-purple-950 dark:text-purple-300">
               Cotización Oficial Guardada

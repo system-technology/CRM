@@ -16,3 +16,7 @@ export * from './politica-de-precio.js';
 export * from './vigencias.js';
 export * from './cotizaciones.js';
 export * from './identidad.js';
+export * from './propuesta-de-catalogo.js';
+export * from './plantillas-de-catalogo.js';
+export * from './importacion.js';
+export * from './formatos.js';

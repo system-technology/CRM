@@ -35,6 +35,8 @@ export const ComposicionDeVersion = z
     ninos: z.number().int().min(0).max(200).optional(),
     infantes: z.number().int().min(0).max(200).optional(),
     acomodacion: Acomodacion.optional(),
+    /** Obligatoria si el producto tiene opciones de salida (ADR-0017 §3.1). */
+    opcionDeSalidaId: Id.optional(),
     /** Hasta cuándo se honra el precio al cliente. Opcional: no todas las ofertas vencen. */
     vigenteHasta: FechaViaje.optional(),
   })
@@ -87,6 +89,13 @@ export const VersionDeCotizacion = z.object({
   ninos: z.number().int().min(0),
   infantes: z.number().int().min(0),
   acomodacion: Acomodacion.nullable(),
+  /**
+   * La opción de salida con la que se cotizó (ADR-0017 §3.1, T-062). `null` = el producto no
+   * tenía opciones, o la versión es anterior a T-062. Pasarla como `opcionDeSalidaId` al volver a
+   * cotizar reproduce la misma composición. La API la envía siempre; es opcional en el esquema
+   * solo para que una respuesta anterior a T-062 siga validando.
+   */
+  opcionDeSalidaId: Id.nullable().optional(),
 
   /**
    * **Solo con `incluirMargen=true`.** Con la base (`SOBRE_EL_NETO`), el porcentaje y la venta, el

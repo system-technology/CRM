@@ -7,6 +7,23 @@
  */
 import type { ClienteTenant } from '../prisma/prisma.service.js';
 
+/** Lo mínimo de una conversación que `crm` necesita para colgarle algo. */
+export interface ConversacionParaCrm {
+  id: string;
+  contactoId: string;
+  asignadoAId: string | null;
+}
+
+/**
+ * Lo que `crm` le pide a `inbox`: resolver una conversación **que quien hace la petición ve**
+ * (la visibilidad de `docs/01-producto/12-visibilidad-de-conversaciones.md` la aplica `inbox`).
+ * Abre su propia transacción bajo el tenant de la petición; devuelve `null` si no existe o no se
+ * ve, sin distinguirlo.
+ */
+export abstract class PuertoConversacionesVisibles {
+  abstract resolver(conversacionId: string): Promise<ConversacionParaCrm | null>;
+}
+
 export abstract class PuertoConversacionesDeMiembro {
   /**
    * Pasa a «sin asignar» todas las conversaciones de un miembro que se da de baja, para que

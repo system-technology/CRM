@@ -15,6 +15,7 @@
 
 import { z } from 'zod';
 import { Acomodacion, Dinero, FechaViaje, Id, Instante, TipoPasajero } from './comunes.js';
+import { PresentacionDePrecio } from './politica-de-precio.js';
 
 /**
  * Eje 1 de ADR-0009: cómo publica su catálogo la agencia.
@@ -98,7 +99,9 @@ const TarifaBase = z.object({
 });
 
 /** Las dos invariantes de una tarifa, aplicadas igual al leerla que al crearla. */
-const coherenciaDeTarifa = <T extends z.ZodTypeAny>(esquema: T) =>
+const coherenciaDeTarifa = <T extends z.ZodTypeAny>(
+  esquema: T,
+): z.ZodEffects<z.ZodEffects<T, z.output<T>, z.input<T>>, z.output<T>, z.input<T>> =>
   esquema
     .refine(
       (t: z.infer<typeof TarifaBase>) => t.unidad !== 'POR_PERSONA' || t.cubrePasajeros === 1,
@@ -113,7 +116,7 @@ const coherenciaDeTarifa = <T extends z.ZodTypeAny>(esquema: T) =>
         message: 'el neto y la venta deben estar en la misma moneda',
         path: ['neto'],
       },
-    );
+    ) as z.ZodEffects<z.ZodEffects<T, z.output<T>, z.input<T>>, z.output<T>, z.input<T>>;
 
 export const Tarifa = coherenciaDeTarifa(TarifaBase);
 export type Tarifa = z.infer<typeof Tarifa>;
@@ -204,6 +207,11 @@ export const CotizarSalida = z.object({
   ninos: z.number().int().min(0).max(200).optional(),
   infantes: z.number().int().min(0).max(200).optional(),
   acomodacion: Acomodacion.optional(),
+  /**
+   * La opción de salida elegida (turno, modalidad). Obligatoria cuando el producto tiene opciones
+   * activas: sin ella la cotización responde `OPCION_DE_SALIDA_REQUERIDA`. ADR-0017 §3.1.
+   */
+  opcionDeSalidaId: Id.optional(),
 
   /**
    * Traer el margen de cada línea. **Por defecto NO**, y es deliberado.
@@ -243,9 +251,24 @@ export const SalidaPublicada = z.object({
   noches: z.number().int().min(0),
   fecha: FechaViaje,
   cupoTotal: z.number().int().nullable(),
+  /**
+   * El «desde» de la primera moneda por código (COP antes que USD). Se conserva para quien aún
+   * lee un solo precio; con una salida en varias monedas NO es todo el cuadro: usar
+   * `desdePorMoneda`.
+   */
   desde: Dinero,
   /**
-   * `true` cuando ese «desde» sale de una tarifa de GRUPO y es su per cápita — «$140.000 por
+   * Un mínimo por moneda, ordenado por código, igual que el listado de gestión: nunca un número
+   * que mezcle COP y USD. Opcional en el esquema por compatibilidad con respuestas previas; la API
+   * siempre lo envía y su primer elemento es `desde`.
+   */
+  desdePorMoneda: z.array(Dinero).min(1).optional(),
+  /** Cómo pintar el «desde» según la política `promo_vencida` (`presentarPrecio`). */
+  presentacion: PresentacionDePrecio.optional(),
+  /** Cómo pintar cada elemento de `desdePorMoneda`, en el mismo orden. */
+  presentacionPorMoneda: z.array(PresentacionDePrecio).min(1).optional(),
+  /**
+   * `true` cuando algún «desde» (de cualquier moneda) sale de una tarifa de GRUPO y es su per cápita — «$140.000 por
    * persona, en promo de pareja».
    *
    * La pantalla **tiene que decirlo**: una persona sola no puede comprar esa tarifa, y un
@@ -298,8 +321,20 @@ export const OpcionDePrecio = z.object({
    * no tiene. El nombre dice ahora lo que de verdad calcula.
    */
   masBarata: z.boolean(),
+  /** Cómo pintar el precio unitario según `promo_vencida`. El total y la venta no cambian. */
+  presentacion: PresentacionDePrecio.optional(),
 });
 export type OpcionDePrecio = z.infer<typeof OpcionDePrecio>;
+
+/** Un cargo que se paga en destino y no suma al total de la cotización. */
+export const CargoEnDestino = z.object({
+  concepto: z.string().min(1).max(120),
+  /** `null` = existe pero el monto no se conoce. */
+  monto: Dinero.nullable(),
+  unidad: UnidadDeCobro,
+  nota: z.string().max(300).optional(),
+});
+export type CargoEnDestino = z.infer<typeof CargoEnDestino>;
 
 export const CotizacionDeSalida = z.object({
   paqueteId: Id,
@@ -358,5 +393,126 @@ export const CotizacionDeSalida = z.object({
    * no de un interruptor que pueda contradecir al tarifario.
    */
   pideComposicion: z.boolean(),
+
+  /** La opción de salida con la que se cotizó; `null` si el producto no tiene opciones. */
+  opcionDeSalida: z.object({ id: Id, etiqueta: z.string() }).nullable().optional(),
+  /**
+   * Lo que el viajero paga en destino (tasa portuaria, impuesto de muelle). **Se muestra aparte y
+   * NUNCA entra en `total`.** Cada cargo trae su monto y su unidad de cobro.
+   */
+  cargosEnDestino: z.array(CargoEnDestino).optional(),
 });
 export type CotizacionDeSalida = z.infer<typeof CotizacionDeSalida>;
+
+// =============================================================================
+// Gestión por id desde la pantalla (ADR-0017 §4.1)
+// =============================================================================
+
+/**
+ * Edición parcial de una vigencia (`PATCH /api/v1/catalogo/vigencias/:id`). Mover la ventana pasa
+ * por el mismo validador que el alta: si el resultado empata con otra vigencia del paquete, es 409.
+ * `.strict()`: un `tenantId` o un `paqueteId` en el cuerpo es un 400 (una vigencia no cambia de paquete).
+ */
+export const EditarVigencia = z
+  .object({
+    desde: FechaViaje,
+    hasta: FechaViaje,
+    publicada: z.boolean(),
+    cupoTotal: z.number().int().min(0).max(1000).nullable(),
+  })
+  .partial()
+  .strict()
+  .refine((v) => Object.keys(v).length > 0, { message: 'no hay nada que cambiar' })
+  .refine((v) => v.desde === undefined || v.hasta === undefined || v.desde <= v.hasta, {
+    message: 'la fecha de inicio no puede ser posterior a la de fin',
+    path: ['hasta'],
+  });
+export type EditarVigencia = z.infer<typeof EditarVigencia>;
+
+/**
+ * Edición parcial de una tarifa (`PATCH /api/v1/catalogo/tarifas/:id`). El nombre es la clave de la
+ * tarifa dentro de su vigencia y no se edita aquí. Enviar `neto` exige `cotizacion.ver_neto_y_margen`.
+ */
+export const EditarTarifa = z
+  .object({
+    unidad: UnidadDeCobro,
+    cubrePasajeros: z.number().int().min(1).max(200),
+    neto: Dinero.nullable(),
+    venta: Dinero,
+    mayoristaId: Id.nullable(),
+    aditiva: z.boolean(),
+    condicion: CondicionDeTarifa,
+  })
+  .partial()
+  .strict()
+  .refine((t) => Object.keys(t).length > 0, { message: 'no hay nada que cambiar' });
+export type EditarTarifa = z.infer<typeof EditarTarifa>;
+
+/** Una tarifa como la ve quien administra el catálogo. Sin `cotizacion.ver_neto_y_margen` no lleva `neto`. */
+export const TarifaDeGestion = z.object({
+  id: Id,
+  nombre: z.string(),
+  unidad: UnidadDeCobro,
+  cubrePasajeros: z.number().int().min(1),
+  /** La clave se omite entera sin el permiso: ni siquiera viaja un `null` que delate el dato. */
+  neto: Dinero.nullable().optional(),
+  venta: Dinero,
+  lista: Dinero.nullable(),
+  promoHasta: FechaViaje.nullable(),
+  mayoristaId: Id.nullable(),
+  opcionDeSalida: z.string().nullable(),
+  aditiva: z.boolean(),
+  condicion: CondicionDeTarifa,
+});
+export type TarifaDeGestion = z.infer<typeof TarifaDeGestion>;
+
+export const VigenciaDeGestion = z.object({
+  id: Id,
+  paqueteId: Id,
+  desde: FechaViaje,
+  hasta: FechaViaje,
+  publicada: z.boolean(),
+  cupoTotal: z.number().int().nullable(),
+  tarifas: z.array(TarifaDeGestion),
+});
+export type VigenciaDeGestion = z.infer<typeof VigenciaDeGestion>;
+
+/** Quién originó un cambio de precio (ADR-0017 §8). Con IA, el actor es quien confirmó. */
+export const OrigenDeCambio = z.enum(['PANTALLA', 'ARCHIVO', 'API', 'IA']);
+export type OrigenDeCambio = z.infer<typeof OrigenDeCambio>;
+
+/**
+ * Una entrada del historial de precios de una tarifa (T-047). Se lee de `registros_auditoria`.
+ * `usuarioId` es solo el id, sin datos personales. En las entradas de `neto`, sin
+ * `cotizacion.ver_neto_y_margen`, `antes` y `despues` se omiten (la clave no viaja).
+ */
+export const CambioDePrecio = z.object({
+  id: z.string().regex(/^\d+$/),
+  instante: Instante,
+  usuarioId: Id.nullable(),
+  accion: z.string(),
+  campo: z.enum(['venta', 'neto', 'lista', 'promo_hasta']),
+  antes: z.string().nullable().optional(),
+  despues: z.string().nullable().optional(),
+  moneda: z.enum(['COP', 'USD', 'EUR', 'MXN']).nullable(),
+  origen: OrigenDeCambio.nullable(),
+});
+export type CambioDePrecio = z.infer<typeof CambioDePrecio>;
+
+export const ConsultaHistorialDePrecios = z
+  .object({
+    limite: z.coerce.number().int().min(1).max(100).default(20),
+    cursor: z
+      .string()
+      .regex(/^\d{1,18}$/)
+      .optional(),
+  })
+  .strict();
+export type ConsultaHistorialDePrecios = z.infer<typeof ConsultaHistorialDePrecios>;
+
+export const HistorialDePrecios = z.object({
+  datos: z.array(CambioDePrecio),
+  /** Pasar como `cursor` para la página siguiente; `null` si no hay más. */
+  siguienteCursor: z.string().nullable(),
+});
+export type HistorialDePrecios = z.infer<typeof HistorialDePrecios>;

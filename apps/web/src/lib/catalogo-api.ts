@@ -14,11 +14,21 @@ import {
   type CotizacionDeSalida,
   type CotizarSalida,
   type SalidaPublicada,
+  type Paquete,
+  type CrearPaquete,
+  type EditarPaquete,
+  type ResumenDePaqueteGestion,
+  Paquete as EsquemaPaquete,
   CotizacionDeSalida as EsquemaCotizacionDeSalida,
   SalidaPublicada as EsquemaSalidaPublicada,
+  CrearPaquete as EsquemaCrearPaquete,
+  EditarPaquete as EsquemaEditarPaquete,
+  ResumenDePaqueteGestion as EsquemaResumenDePaqueteGestion,
   ErrorApi as EsquemaError,
 } from '@viajapro/contracts';
 import { z } from 'zod';
+import { MOCK_PAQUETES_CATALOGO } from './mock-catalogo';
+import { construirResumenMockGestion } from './catalogo-gestion-logica';
 
 // Re-exportado de api-base (ADR-0011 §2)
 
@@ -134,4 +144,124 @@ export async function cotizarSalidaApi(
     body: JSON.stringify(peticion),
   });
   return EsquemaCotizacionDeSalida.parse(bruto);
+}
+
+/** Opción de salida de un producto, tal como la define el contrato `Paquete` (R3). */
+export type OpcionDeSalidaDePaquete = NonNullable<Paquete['opcionesDeSalida']>[number];
+
+const EsquemaOpcionesDePaquete = z.object({
+  opcionesDeSalida: EsquemaPaquete.shape.opcionesDeSalida,
+});
+
+/**
+ * Opciones de salida de un producto (turno, modalidad).
+ * GET /api/v1/paquetes/:id — el detalle trae `opcionesDeSalida`. Vacío si el producto no tiene.
+ */
+export async function obtenerOpcionesDeSalidaApi(
+  paqueteId: string,
+): Promise<OpcionDeSalidaDePaquete[]> {
+  const bruto = await pedirCatalogo<unknown>(`/api/v1/paquetes/${encodeURIComponent(paqueteId)}`);
+  return EsquemaOpcionesDePaquete.parse(bruto).opcionesDeSalida ?? [];
+}
+
+export interface PaginaGestionCatalogo {
+  datos: ResumenDePaqueteGestion[];
+  pageInfo: { nextCursor: string | null; hasMore: boolean };
+}
+
+const EsquemaPaginaGestion = z.object({
+  datos: z.array(EsquemaResumenDePaqueteGestion),
+  pageInfo: z.object({
+    nextCursor: z.string().nullable(),
+    hasMore: z.boolean(),
+  }),
+});
+
+/**
+ * Listado de gestión del catálogo (ADR-0017 §4.1).
+ * GET /api/v1/catalogo/paquetes
+ */
+export async function listarPaquetesGestionApi(params?: {
+  cursor?: string;
+  limite?: number;
+  incluirInactivos?: boolean;
+}): Promise<PaginaGestionCatalogo> {
+  if (!estaUsandoCatalogoReal()) {
+    const mock = construirResumenMockGestion(
+      MOCK_PAQUETES_CATALOGO,
+      params?.incluirInactivos ?? true,
+    );
+    return {
+      datos: mock,
+      pageInfo: { nextCursor: null, hasMore: false },
+    };
+  }
+
+  const query = new URLSearchParams();
+  if (params?.cursor) query.set('cursor', params.cursor);
+  if (params?.limite) query.set('limite', params.limite.toString());
+  if (params?.incluirInactivos) query.set('incluirInactivos', 'true');
+
+  const ruta = `/api/v1/catalogo/paquetes${query.toString() ? `?${query.toString()}` : ''}`;
+  const bruto = await pedirCatalogo<unknown>(ruta);
+  return EsquemaPaginaGestion.parse(bruto);
+}
+
+/**
+ * Alta de un producto desde la pantalla (ADR-0017 §4.1).
+ * POST /api/v1/catalogo/paquetes
+ */
+export async function crearPaqueteApi(
+  datos: CrearPaquete,
+): Promise<{ id: string | null; informe?: unknown }> {
+  EsquemaCrearPaquete.parse(datos);
+
+  if (!estaUsandoCatalogoReal()) {
+    return { id: `pkg-demo-${Date.now()}`, informe: { creado: true } };
+  }
+
+  return pedirCatalogo<{ id: string | null; informe?: unknown }>('/api/v1/catalogo/paquetes', {
+    method: 'POST',
+    body: JSON.stringify(datos),
+  });
+}
+
+/**
+ * Edición parcial de un producto (ADR-0017 §4.1).
+ * PATCH /api/v1/catalogo/paquetes/:id
+ */
+export async function editarPaqueteApi(
+  id: string,
+  datos: EditarPaquete,
+): Promise<{ id: string | null; informe?: unknown }> {
+  EsquemaEditarPaquete.parse(datos);
+
+  if (!estaUsandoCatalogoReal()) {
+    return { id, informe: { editado: true } };
+  }
+
+  return pedirCatalogo<{ id: string | null; informe?: unknown }>(
+    `/api/v1/catalogo/paquetes/${encodeURIComponent(id)}`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify(datos),
+    },
+  );
+}
+
+/**
+ * Baja lógica de un producto (ADR-0017 §4.1).
+ * POST /api/v1/catalogo/paquetes/:id/desactivar
+ */
+export async function desactivarPaqueteApi(id: string): Promise<{ id: string; activo: boolean }> {
+  if (!estaUsandoCatalogoReal()) {
+    return { id, activo: false };
+  }
+
+  return pedirCatalogo<{ id: string; activo: boolean }>(
+    `/api/v1/catalogo/paquetes/${encodeURIComponent(id)}/desactivar`,
+    {
+      method: 'POST',
+    },
+  );
 }

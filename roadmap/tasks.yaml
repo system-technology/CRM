@@ -49,7 +49,7 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: backlog
+    status: done
     acceptance:
       - Un cliente que supera N peticiones por minuto a un endpoint de negocio recibe 429 con la cabecera
         Retry-After
@@ -60,6 +60,11 @@ tasks:
     files:
       - apps/api/src/shared/red/
       - apps/api/src/main.ts
+    started_at: 2026-10-27T01:44:58.126Z
+    done_at: 2026-10-27T01:44:58.127Z
+    evidence: "Mergeado en main por el PR #85 (rama a/T-002-limite-de-tasa-de-la-api) con el CI en verde: format,
+      analyze, tests y los demás checks obligatorios. Cierre automático (.github/workflows/cerrar-tarea.yml)."
+    commit: 05b7b05ee94d1573c28b08405531a4e95d100579
   - id: T-003
     title: Política de seguridad de contenido (CSP) y cabeceras de seguridad en la web
     type: security
@@ -379,7 +384,7 @@ tasks:
     phase: 1
     priority: P0
     effort: M
-    status: backlog
+    status: done
     depends_on:
       - T-016
     acceptance:
@@ -403,7 +408,7 @@ tasks:
     phase: 1
     priority: P1
     effort: S
-    status: backlog
+    status: done
     depends_on:
       - T-016
     acceptance:
@@ -424,7 +429,7 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: backlog
+    status: done
     depends_on:
       - T-016
     acceptance:
@@ -435,6 +440,8 @@ tasks:
     files:
       - apps/web/src/app/page.tsx
       - apps/web/src/lib/crm-api.ts
+      - apps/web/src/lib/inicio-logica.ts
+      - apps/web/src/components/inicio/bloque-seguimientos-dia.tsx
     source: orquestador:2026-10-26 (cola de Antigravity)
     created_at: 2026-10-26T21:39:01.014Z
   - id: T-021
@@ -580,7 +587,7 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: blocked
+    status: done
     depends_on: []
     acceptance:
       - Configuración › Catálogo ofrece el ajuste promo_vencida con los valores ocultar y tachar, guardado por
@@ -592,15 +599,13 @@ tasks:
       - apps/web/src/components/catalogo/
     source: orquestador:2026-10-26 (cola de Antigravity)
     created_at: 2026-10-26T21:39:01.014Z
-    blocked_reason: Espera el ADR-0017 aceptado y sus endpoints en la API (carril backend); Antigravity pide lo
-      que falte en traspaso/ENTREGA.md
   - id: T-029
     title: "Asistente de importación de catálogo: subir archivo, previsualizar, ver errores por fila y confirmar"
     type: feature
     phase: 1
     priority: P1
     effort: M
-    status: blocked
+    status: done
     depends_on: []
     acceptance:
       - El asistente tiene cuatro pasos (archivo, mapeo de columnas, previsualización con errores por fila,
@@ -612,15 +617,13 @@ tasks:
       - apps/web/src/components/catalogo/
     source: orquestador:2026-10-26 (cola de Antigravity)
     created_at: 2026-10-26T21:39:01.014Z
-    blocked_reason: Espera el ADR-0017 aceptado y sus endpoints en la API (carril backend); Antigravity pide lo
-      que falte en traspaso/ENTREGA.md
   - id: T-030
     title: Descarga de plantillas CSV y Excel por tipo de producto
     type: feature
     phase: 1
     priority: P1
     effort: M
-    status: blocked
+    status: done
     depends_on: []
     acceptance:
       - Una pantalla lista las plantillas por tipo de producto (excursión de un día, paquete con hotel) y
@@ -632,15 +635,13 @@ tasks:
       - apps/web/src/components/catalogo/
     source: orquestador:2026-10-26 (cola de Antigravity)
     created_at: 2026-10-26T21:39:01.014Z
-    blocked_reason: Espera el ADR-0017 aceptado y sus endpoints en la API (carril backend); Antigravity pide lo
-      que falte en traspaso/ENTREGA.md
   - id: T-031
     title: "Pantalla de gestión del catálogo: crear, editar y desactivar productos, tarifas y salidas"
     type: feature
     phase: 1
     priority: P1
     effort: M
-    status: blocked
+    status: done
     depends_on: []
     acceptance:
       - Formularios con validación contra los contratos Zod y errores por campo en español
@@ -651,5 +652,1871 @@ tasks:
       - apps/web/src/components/catalogo/
     source: orquestador:2026-10-26 (cola de Antigravity)
     created_at: 2026-10-26T21:39:01.014Z
-    blocked_reason: Espera el ADR-0017 aceptado y sus endpoints en la API (carril backend); Antigravity pide lo
-      que falte en traspaso/ENTREGA.md
+  - id: T-032
+    title: "Sistema visual de turismo: paleta caribeña, degradados, iconografía por módulo y componentes base"
+    type: feature
+    phase: 1
+    priority: P0
+    effort: M
+    status: done
+    depends_on: []
+    acceptance:
+      - Los tokens de color, degradado, sombra y radio salen de un único sitio (globals.css y la configuración
+        de Tailwind) y siguen la sección «Identidad visual» de .agent/skills/ux-crm-turismo/SKILL.md; no hay
+        colores sueltos en los componentes
+      - Cada módulo (bandeja, pipeline, cotizaciones, catálogo, contactos, viajes, reportes, configuración)
+        tiene su icono y su color de acento coherentes en la barra lateral y en su cabecera
+      - Existen componentes base reutilizables con la nueva identidad (botón primario con degradado, tarjeta
+        con elevación al pasar el cursor, chip de tipo de producto, insignia de estado)
+      - Se mantiene el contraste AA y la pantalla sigue siendo limpia y ordenada; pnpm compuertas en verde y
+        capturas a 375 y 1280 px en traspaso/ENTREGA.md con el id de la pantalla de Stitch usada
+    files:
+      - apps/web/src/app/globals.css
+      - apps/web/src/components/comun/
+      - apps/web/src/app/layout.tsx
+    source: propietario:2026-10-26 (identidad visual)
+    created_at: 2026-10-26T23:32:24.203Z
+    started_at: 2026-10-28T02:22:52.487Z
+    done_at: 2026-10-28T02:22:52.487Z
+    evidence: "Mergeado en main por el PR #101 (rama b/T-032-sistema-visual-turismo) con el CI en verde: format,
+      analyze, tests y los demás checks obligatorios. Cierre automático (.github/workflows/cerrar-tarea.yml)."
+    commit: 81e094512d6dc257d6a0cd6e7230f3760dd90289
+  - id: T-033
+    title: "Login con identidad de viaje: pantalla dividida con héroe oceánico animado y formulario con
+      microinteracciones"
+    type: feature
+    phase: 1
+    priority: P0
+    effort: M
+    status: done
+    depends_on:
+      - T-032
+    acceptance:
+      - "apps/web/src/app/ingresar muestra una composición dividida: a un lado un héroe con degradado de mar y
+        atardecer, olas y elementos de viaje animados con CSS (por ejemplo un avión o una lancha que se
+        desplazan) y la promesa «Convierte conversaciones en viajes reales»; al otro, el formulario"
+      - El formulario entra con animación escalonada, los campos tienen estados de foco y error animados y el
+        botón muestra carga mientras ingresa
+      - Todas las animaciones respetan prefers-reduced-motion, duran menos de 400 ms por transición y no usan
+        dependencias nuevas salvo que se justifique en ENTREGA.md
+      - Sin valores de relleno reales en los campos (ni correo ni contraseña); usable a 375 px; tests del
+        formulario siguen en verde
+    files:
+      - apps/web/src/app/ingresar/page.tsx
+      - apps/web/src/components/auth/formulario-ingreso.tsx
+      - apps/web/src/app/globals.css
+    source: propietario:2026-10-26 (identidad visual)
+    created_at: 2026-10-26T23:32:24.204Z
+    started_at: 2026-10-28T05:49:50.500Z
+    done_at: 2026-10-28T05:49:50.501Z
+    evidence: "Mergeado en main por el PR #104 (rama b/T-033-login-identidad-viaje) con el CI en verde: format,
+      analyze, tests y los demás checks obligatorios. Cierre automático (.github/workflows/cerrar-tarea.yml)."
+    commit: 7e6156df6fc54e66739bd1dbad32c0ba78abbe29
+  - id: T-034
+    title: "Navegación más rica: barra lateral con iconos de color y etiquetas, migas, paleta de comandos y
+      accesos rápidos"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: done
+    depends_on:
+      - T-032
+    acceptance:
+      - La barra lateral muestra icono de color y etiqueta por módulo, indica la sección activa con animación
+        y se puede expandir o contraer; en móvil pasa a una barra inferior
+      - Hay migas de pan en las pantallas de detalle y una paleta de comandos con Ctrl+K para saltar a
+        módulos, buscar contactos, cotizaciones y productos
+      - Cada pantalla ofrece una acción principal visible y accesos rápidos a la siguiente acción lógica (por
+        ejemplo, de una conversación a cotizar)
+      - Navegable solo con teclado, con foco visible; tests de la paleta de comandos y capturas a 375 y 1280
+        px en ENTREGA.md
+    files:
+      - apps/web/src/components/bandeja/barra-modulos.tsx
+      - apps/web/src/components/comun/
+      - apps/web/src/app/layout.tsx
+    source: propietario:2026-10-26 (identidad visual)
+    created_at: 2026-10-26T23:32:24.205Z
+    started_at: 2026-10-28T05:51:00.000Z
+    done_at: 2026-10-28T06:06:00.000Z
+    evidence: "Implementado en rama b/T-034-navegacion-sidebar-migas-comandos. Stitch screen 14a4e161532b449c8001be6656399ee2. 60 suites y 497 tests en verde en @viajapro/web."
+  - id: T-035
+    title: "Animaciones y transiciones: entrada escalonada, hover, esqueletos con brillo y transiciones de página"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: done
+    depends_on:
+      - T-032
+    acceptance:
+      - Las listas y cuadrículas (bandeja, pipeline, catálogo, contactos) entran con animación escalonada
+        corta; las tarjetas se elevan al pasar el cursor; los esqueletos de carga tienen efecto de brillo
+      - Los cambios de pantalla y la apertura de paneles y modales tienen transición suave de menos de 300 ms
+      - "Todo respeta prefers-reduced-motion (sin movimiento cuando el usuario lo pide) y no degrada el
+        rendimiento: sin saltos de diseño al cargar"
+      - Utilidades de animación reutilizables en globals.css o un módulo de comun; test que verifica el
+        comportamiento con movimiento reducido
+    files:
+      - apps/web/src/app/globals.css
+      - apps/web/src/components/comun/
+    source: propietario:2026-10-26 (identidad visual)
+    created_at: 2026-10-26T23:32:24.205Z
+    started_at: 2026-10-28T06:17:00.000Z
+    done_at: 2026-10-28T06:34:00.000Z
+    evidence: "Implementado en rama b/T-035-animaciones-transiciones-esqueletos. Stitch screen ed51eb6813d7471487cf3b7a1b82d0e2. 61 suites y 508 tests en verde en @viajapro/web."
+  - id: T-036
+    title: "Tarjetas de producto con identidad por tipo de excursión: color, icono, degradado, promo y cupos"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: done
+    depends_on:
+      - T-032
+    acceptance:
+      - Cada tipo de producto (isla o beach club, reserva natural, city tour, excursión de ciudad, paquete con
+        hotel) tiene su color, icono y degradado cuando no hay foto
+      - La tarjeta muestra «Desde $X por persona», promo vigente con insignia, horarios, chips de lo que
+        incluye y cupos, con la nueva identidad
+      - "No hay datos de producto escritos en el código: salen de la API; tests de la lógica de tipos"
+    files:
+      - apps/web/src/components/catalogo/
+      - apps/web/src/app/catalogo/page.tsx
+      - apps/web/src/lib/catalogo-logica.ts
+    source: propietario:2026-10-26 (identidad visual)
+    created_at: 2026-10-26T23:32:24.205Z
+    started_at: 2026-10-28T06:35:00.000Z
+    done_at: 2026-10-28T06:45:00.000Z
+    evidence: "Implementado en rama b/T-036-tarjetas-producto-tipo-excursion. Stitch screen 9e60798823de4540a788622f805745ff. 61 suites y 517 tests en verde en @viajapro/web."
+  - id: T-037
+    title: Inicio con saludo, acciones rápidas y tarjetas de colores sobre el trabajo del día
+    type: feature
+    phase: 1
+    priority: P2
+    effort: M
+    status: done
+    depends_on:
+      - T-032
+    acceptance:
+      - apps/web/src/app/page.tsx da la bienvenida con el nombre del asesor y la hora del día y muestra
+        tarjetas de colores con conversaciones pendientes, oportunidades por etapa y cotizaciones por vencer
+      - Hay accesos rápidos a crear cotización, abrir la bandeja y ver el catálogo; las tarjetas entran con
+        animación y enlazan a su pantalla filtrada
+      - Estados cargando, error y vacío; usable a 375 px; datos reales de la API
+    files:
+      - apps/web/src/app/page.tsx
+      - apps/web/src/lib/crm-api.ts
+    source: propietario:2026-10-26 (identidad visual)
+    created_at: 2026-10-26T23:32:24.205Z
+    started_at: 2026-10-28T03:00:59.871Z
+    done_at: 2026-10-28T03:00:59.872Z
+    evidence: "Mergeado en main por el PR #114 (rama b/T-037-inicio-saludo-acciones-rapidas) con el CI en verde:
+      format, analyze, tests y los demás checks obligatorios. Cierre automático
+      (.github/workflows/cerrar-tarea.yml)."
+    commit: 332eae9c68167d26e8d28b71a85aeea64bf6abd5
+  - id: T-038
+    title: "Marca de la agencia en la API: nombre comercial, logo y color de acento por agencia"
+    type: feature
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    depends_on: []
+    acceptance:
+      - "GET y PUT bajo /api/v1/agencia/marca devuelven y guardan nombre comercial, logo (URL o archivo
+        validado: tipo y tamaño máximos) y color de acento, siempre del tenant de la sesión y con el permiso
+        de administrar la agencia (R1)"
+      - El color se valida (formato y contraste suficiente sobre blanco) y el logo se sirve sin ejecutar
+        contenido activo (sin SVG con scripts)
+      - Un test e2e comprueba que una agencia no lee ni cambia la marca de otra
+      - "Si guardar la marca exige columnas o tablas nuevas, NO se escribe migración: se reporta la lista
+        exacta al agente datos; pnpm compuertas en verde"
+    files:
+      - apps/api/src/modules/identity/
+      - packages/contracts/src/
+    source: propietario:2026-10-26 (marca por agencia)
+    created_at: 2026-10-26T23:39:32.870Z
+  - id: T-039
+    title: "Aplicar la marca de cada agencia: logo y color de acento en la cabecera, el login y los documentos"
+    type: feature
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    depends_on:
+      - T-038
+    acceptance:
+      - La cabecera y la barra lateral muestran el logo y el nombre comercial de la agencia de la sesión; el
+        color de acento se aplica mediante variables CSS sin romper el contraste AA
+      - Sin marca configurada, se ve la identidad de ViajaPro; con marca, la de la agencia; un test cubre
+        ambos casos
+      - Configuración permite subir el logo y elegir el color con vista previa en vivo
+      - No se copia ningún activo gráfico de terceros al repositorio; usable a 375 px
+    files:
+      - apps/web/src/app/configuracion/page.tsx
+      - apps/web/src/app/layout.tsx
+      - apps/web/src/components/comun/
+    source: propietario:2026-10-26 (marca por agencia)
+    created_at: 2026-10-26T23:39:32.871Z
+  - id: T-040
+    title: "Permiso catalogo.administrar: literal en PERMISOS, CHECK de roles por migración y concesión a los
+      roles sembrados (ADR-0017 M1)"
+    type: security
+    phase: 1
+    priority: P1
+    effort: S
+    status: done
+    human_required: true
+    depends_on: []
+    acceptance:
+      - "packages/contracts/src/identidad.ts: PERMISOS incluye 'catalogo.administrar' con su comentario"
+      - Una migración NUEVA en packages/database/prisma/migrations/ amplía el CHECK
+        roles_permisos_del_catalogo con 'catalogo.administrar' (no se edita 20261019230000)
+      - La misma migración concede el permiso a los roles DUENO y OPERACIONES de todos los tenants existentes
+        (ASESOR no); seed.ts lo concede en la semilla
+      - "apps/api/src/shared/autorizacion/permisos.spec.ts: con 'catalogo.administrar' pasa el guard; sin él,
+        PERMISO_DENEGADO"
+      - pnpm db:migrate && pnpm --filter @viajapro/database test verde; pnpm compuertas --rapido verde
+    files:
+      - packages/contracts/src/identidad.ts
+      - packages/database/prisma/migrations/
+      - packages/database/prisma/seed.ts
+      - apps/api/src/shared/autorizacion/permisos.spec.ts
+    source: arquitecto:ADR-0017 (importado 2026-10-26; id original T-032)
+    created_at: 2026-10-26T00:00:00.000Z
+    evidence: "Migración M1 20261026120000_permiso_catalogo_administrar integrada en main (PR #42) y aplicada a
+      Neon el 2026-10-26"
+    done_at: 2026-10-26T23:56:03.910Z
+  - id: T-041
+    title: Contrato PropuestaDeCatalogo y plantillas de sistema en contracts; núcleo puro validar y planificar en
+      quoting/domain (ADR-0017 §1-§3)
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: done
+    depends_on: []
+    unblocks:
+      - T-030
+    acceptance:
+      - packages/contracts/src/propuesta-de-catalogo.ts exporta PropuestaDeCatalogo (.strict(), version 1,
+        origen PANTALLA|ARCHIVO|API|IA, 1..500 productos), ProductoPropuesto, TarifaPropuesta, Procedencia e
+        InformeDeCatalogo; un cuerpo con tenantId es rechazado por parse
+      - "Refinamientos: origen API sin codigo en un producto es inválido; origen IA con un precio sin
+        procedencia.fuente y procedencia.fragmento es inválido (spec en
+        packages/contracts/src/propuesta-de-catalogo.spec.ts)"
+      - packages/contracts/src/plantillas-de-catalogo.ts exporta DescriptorDePlantilla y PLANTILLAS_DE_SISTEMA
+        con cuatro entradas (excursion-un-dia, pasadia, pasanoche, paquete-con-hotel), version 1, claves de
+        columna estables; los cuatro se exportan desde packages/contracts/src/index.ts
+      - "Función pura validarYPlanificar(propuesta, catalogoActual, permisos) en
+        apps/api/src/modules/quoting/domain/: noches > dias = ERROR; POR_PERSONA con cubrePasajeros != 1 =
+        ERROR; dos vigencias abiertas de igual longitud solapadas = ERROR VIGENCIA_EMPATADA usando
+        resolverVigencia de @viajapro/domain; neto sin permiso = ERROR NETO_SIN_PERMISO; producto sin
+        vigencias = AVISO SIN_PRECIO"
+      - "Clave natural: nombre normalizado + noches; «Piangüita + Ballenas» con 0 y con 1 noche son dos CREAR;
+        un nombre que casa con dos paquetes actuales = ERROR PAQUETE_AMBIGUO; misma propuesta contra el
+        catálogo ya igual = todo SIN_CAMBIOS; la huella es estable para la misma entrada y cambia con el
+        tenantId"
+      - Campos de M2 presentes en la propuesta producen AVISO CAMPO_NO_SOPORTADO_AUN y no ERROR
+      - ProductoPropuesto tiene opcionesDeSalida [{etiqueta, horaSalida?, horaRegreso?, puntoDeEncuentro?}] y
+        no tiene horaSalida ni horaRegreso sueltos; TarifaPropuesta.opcionDeSalida debe nombrar una etiqueta
+        del mismo producto (si no, ERROR OPCION_DE_SALIDA_DESCONOCIDA); etiqueta repetida en un producto =
+        ERROR
+      - Procedencia.confianza es number 0..1 (no enum); el spec lo fija
+      - pnpm --filter @viajapro/api test verde; pnpm compuertas --rapido verde
+    files:
+      - packages/contracts/src/propuesta-de-catalogo.ts
+      - packages/contracts/src/plantillas-de-catalogo.ts
+      - packages/contracts/src/index.ts
+      - apps/api/src/modules/quoting/domain/
+    source: arquitecto:ADR-0017 (importado 2026-10-26; id original T-033)
+    created_at: 2026-10-26T00:00:00.000Z
+    started_at: 2026-10-27T00:22:16.394Z
+    done_at: 2026-10-27T00:22:16.394Z
+    evidence: "Mergeado en main por el PR #63 (rama a/T-041-contrato-propuesta-de-catalogo) con el CI en verde:
+      format, analyze, tests y los demás checks obligatorios. Cierre automático
+      (.github/workflows/cerrar-tarea.yml)."
+    commit: 87c027a84e5544febedd0ee02ce66a9095586d7c
+  - id: T-042
+    title: "API: AplicadorDeCatalogo transaccional con auditoría (puerto RegistroDeCambios) y alta, edición y
+      desactivación de paquetes en /api/v1/catalogo/paquetes"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: done
+    depends_on:
+      - T-040
+      - T-041
+    unblocks:
+      - T-031
+    acceptance:
+      - AplicadorDeCatalogo en apps/api/src/modules/quoting/application/ aplica un Plan en una sola
+        prisma.conTenant con pg_advisory_xact_lock por tenant; es el único código de apps/api que hace
+        create/update sobre paquetes, vigencias o tarifas (grep en apps/api/src/modules lo demuestra; seed
+        aparte)
+      - "POST /api/v1/catalogo/paquetes construye una PropuestaDeCatalogo origen PANTALLA de un producto y la
+        pasa por validarYPlanificar y el aplicador; {nombre: Isla Corona, destino: Cartagena, dias: 1, noches:
+        0} responde 201 y aparece en GET /api/v1/paquetes"
+      - PATCH /api/v1/catalogo/paquetes/:id y POST .../:id/desactivar pasan por el mismo validador y
+        aplicador; no existe ruta DELETE de paquete; las tres llevan @RequierePermiso('catalogo.administrar')
+        y sin él dan 403
+      - "packages/contracts/src/catalogo.ts: CrearPaquete sin temporadas ni mayoristaId; EditarPaquete
+        parcial; CrearPrecio y CrearTemporada @deprecated"
+      - Cada escritura inserta en registros_auditoria (catalogo.paquete.creado|modificado|desactivado, usuario
+        del contexto, detalle.origen PANTALLA) en la misma transacción, por el puerto RegistroDeCambios
+      - "apps/api/src/modules/quoting/catalogo-gestion.e2e-spec.ts: crea en tenant A; tenant B recibe 404 en
+        PATCH y no ve la fila de auditoría; un cuerpo con tenantId responde 400"
+      - pnpm --filter @viajapro/api test verde; pnpm compuertas --rapido verde
+    files:
+      - packages/contracts/src/catalogo.ts
+      - apps/api/src/modules/quoting/application/
+      - apps/api/src/modules/quoting/interface/
+      - apps/api/src/modules/quoting/domain/errors.ts
+      - apps/api/src/modules/quoting/quoting.module.ts
+    source: arquitecto:ADR-0017 (importado 2026-10-26; id original T-034)
+    created_at: 2026-10-26T00:00:00.000Z
+    started_at: 2026-10-27T00:40:19.786Z
+    done_at: 2026-10-27T00:40:19.786Z
+    evidence: "Mergeado en main por el PR #69 (rama a/T-042-aplicador-de-catalogo) con el CI en verde: format,
+      analyze, tests y los demás checks obligatorios. Cierre automático (.github/workflows/cerrar-tarea.yml)."
+    commit: 566e6e8e0f5d6c451492655d10462a79e25e153f
+  - id: T-043
+    title: "API: vigencias y tarifas gestionables por id a través del mismo validador y aplicador, con rechazo de
+      empate"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: done
+    depends_on:
+      - T-042
+    unblocks:
+      - T-031
+    acceptance:
+      - Rutas GET /api/v1/catalogo/paquetes/:id/vigencias, POST /api/v1/catalogo/vigencias, PATCH
+        /api/v1/catalogo/vigencias/:id, POST /api/v1/catalogo/vigencias/:id/tarifas, PATCH y DELETE
+        /api/v1/catalogo/tarifas/:id, todas con @RequierePermiso('catalogo.administrar')
+      - Crear una vigencia abierta de igual longitud que otra solapada del mismo paquete responde 409
+        VIGENCIA_EMPATADA y no guarda nada
+      - Una petición con neto sin cotizacion.ver_neto_y_margen responde 403; GET de vigencias omite neto sin
+        ese permiso
+      - Cada cambio de venta o neto escribe catalogo.tarifa.modificada con {campo, antes, despues, moneda,
+        origen PANTALLA}; DELETE escribe catalogo.tarifa.eliminada con los valores previos
+      - Tras crear vigencia 2026-11-01..2027-06-30 con tarifa Adulto 900000 COP en Isla Corona, POST
+        /api/v1/catalogo/cotizar para 2026-12-15 con 2 adultos devuelve total 1800000
+      - "catalogo-gestion.e2e-spec.ts: tenant B no crea tarifa en una vigencia de A (404) ni cuelga un
+        mayoristaId de A"
+      - pnpm --filter @viajapro/api test verde; pnpm compuertas --rapido verde
+    files:
+      - packages/contracts/src/vigencias.ts
+      - apps/api/src/modules/quoting/application/
+      - apps/api/src/modules/quoting/interface/
+      - apps/api/src/modules/quoting/catalogo-gestion.e2e-spec.ts
+    source: arquitecto:ADR-0017 (importado 2026-10-26; id original T-035)
+    created_at: 2026-10-26T00:00:00.000Z
+    started_at: 2026-10-27T01:03:28.782Z
+    done_at: 2026-10-27T01:03:28.782Z
+    evidence: "Mergeado en main por el PR #72 (rama a/T-043-vigencias-y-tarifas-por-id) con el CI en verde:
+      format, analyze, tests y los demás checks obligatorios. Cierre automático
+      (.github/workflows/cerrar-tarea.yml)."
+    commit: 992513ef1eaba829d026dfce4c5ff645ad210e89
+  - id: T-044
+    title: "API: GET /api/v1/catalogo/paquetes, listado de gestión con «desde» derivado y paquetes «a consultar»"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: done
+    depends_on:
+      - T-043
+    unblocks:
+      - T-031
+      - T-018
+    acceptance:
+      - "packages/contracts/src/catalogo.ts exporta ResumenDePaqueteGestion: Paquete + desde (Dinero[], uno
+        por moneda) + desdeEsDeGrupo + vigenciasActivas"
+      - "packages/domain/src/desde.ts: calcularDesde pura; solo considera tarifas base (sin condición de edad,
+        ocupa silla, no aditivas) de vigencias activas con hasta >= hoy en la zona del tenant; mínimo per
+        cápita POR MONEDA; no se persiste"
+      - "Spec de calcularDesde: Adulto 900000 COP + Infante 0 COP = desde [900000 COP], nunca 0; Adulto 900000
+        COP + suplemento sencilla aditivo 150000 COP = [900000 COP]; Adulto 900000 COP + Adulto 250 USD =
+        [900000 COP, 250 USD] sin conversión; solo tarifas no base = []"
+      - Sin tarifas base, desde es []; ?incluirInactivos=true incluye los desactivados; paginación por cursor
+        (ParametrosPagina)
+      - "GET /api/v1/catalogo/salidas calcula su desde con la misma calcularDesde (grep: ningún otro cálculo
+        de desde en apps/api)"
+      - catalogo-gestion.e2e-spec.ts cubre desde con infante a 0 y suplemento aditivo, desde [] y que tenant B
+        no ve los de A
+      - pnpm --filter @viajapro/api test verde; pnpm compuertas --rapido verde
+    files:
+      - packages/domain/src/
+      - packages/contracts/src/catalogo.ts
+      - apps/api/src/modules/quoting/application/listar-salidas.use-case.ts
+      - apps/api/src/modules/quoting/application/listar-paquetes.use-case.ts
+      - apps/api/src/modules/quoting/interface/
+    source: arquitecto:ADR-0017 (importado 2026-10-26; id original T-036)
+    created_at: 2026-10-26T00:00:00.000Z
+    started_at: 2026-10-27T01:17:45.356Z
+    done_at: 2026-10-27T01:17:45.356Z
+    evidence: "Mergeado en main por el PR #78 (rama a/T-044-listado-de-gestion-con-desde) con el CI en verde:
+      format, analyze, tests y los demás checks obligatorios. Cierre automático
+      (.github/workflows/cerrar-tarea.yml)."
+    commit: c43bea824426f09cb2533f03424f410251c5e4b1
+  - id: T-045
+    title: "API: POST /api/v1/catalogo/importaciones/previsualizar ({tabla, mapeo} o {propuesta}) y sugerencia de
+      mapeo por sinónimos y por marcador de plantilla"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: done
+    depends_on:
+      - T-042
+    unblocks:
+      - T-029
+    acceptance:
+      - packages/contracts/src/importacion.ts exporta TablaDeImportacion (máx. 2000 x 40, celdas string),
+        MapeoDeColumnas y EntradaDeImportacion = {tabla, mapeo} | {propuesta}
+      - "Adaptador puro tabla+mapeo -> PropuestaDeCatalogo origen ARCHIVO en quoting/domain: '$ 1.236.000' COP
+        = 1236000; '12,50' USD = 1250; '15/12/2026' DD/MM/AAAA = 2026-12-15; '31/02/2026' = ERROR
+        FECHA_INVALIDA con fila y columna"
+      - "Fixture de las 19 filas de JD Tours: 17 OK, 2 AVISO SIN_PRECIO (Mantas, Coco Liso)"
+      - "POST /api/v1/catalogo/importaciones/sugerir-mapeo: con marcador
+        #viajapro;plantilla=excursion-un-dia;version=1 y encabezados de la plantilla, mapeo con confianza 1;
+        Tour/Precio/PVP/Valor/Fecha salida por sinónimos; un encabezado desconocido queda sin mapear. Puerto
+        SugeridorDeMapeo, sin dependencia ni servicio externo"
+      - Más de 2 MB de cuerpo o 2000 filas responde 413 sin validar filas
+      - "e2e: previsualizar no cambia el número de paquetes, vigencias, tarifas ni filas de auditoría; sin
+        catalogo.administrar, 403"
+      - pnpm --filter @viajapro/api test verde; pnpm compuertas --rapido verde
+    files:
+      - packages/contracts/src/importacion.ts
+      - packages/contracts/src/index.ts
+      - apps/api/src/modules/quoting/domain/
+      - apps/api/src/modules/quoting/application/
+      - apps/api/src/modules/quoting/interface/
+    source: arquitecto:ADR-0017 (importado 2026-10-26; id original T-037)
+    created_at: 2026-10-26T00:00:00.000Z
+    started_at: 2026-10-27T00:54:54.134Z
+    done_at: 2026-10-27T00:54:54.135Z
+    evidence: "Mergeado en main por el PR #71 (rama a/T-045-previsualizar-importacion) con el CI en verde: format,
+      analyze, tests y los demás checks obligatorios. Cierre automático (.github/workflows/cerrar-tarea.yml)."
+    commit: 4ad624c79862ab2d4cc797802610a923d5505868
+  - id: T-046
+    title: "API: POST /api/v1/catalogo/importaciones/confirmar, todo o nada, idempotente por convergencia y con
+      huella"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: done
+    depends_on:
+      - T-045
+    unblocks:
+      - T-029
+    acceptance:
+      - Recalcula en el servidor; huella distinta = 409 PROPUESTA_CAMBIO; alguna fila ERROR = 422 con informe
+        y nada escrito
+      - Aplica por AplicadorDeCatalogo (sin camino propio de escritura); no desactiva ni borra lo que no viene
+      - "e2e: confirmar el fixture de JD Tours crea 19 paquetes y 17 tarifas; confirmarlo otra vez responde
+        creados 0, actualizados 0, sinCambios 19 y no añade filas catalogo.tarifa.modificada"
+      - Cambiar un precio y confirmar escribe catalogo.tarifa.modificada con origen ARCHIVO y la huella, y una
+        fila catalogo.propuesta_aplicada con resumen, mapeo sugerido y confirmado
+      - Mapeo con neto sin cotizacion.ver_neto_y_margen = 403; tenant B no ve nada importado por A
+      - pnpm --filter @viajapro/api test verde; pnpm compuertas --rapido verde
+    files:
+      - apps/api/src/modules/quoting/application/
+      - apps/api/src/modules/quoting/interface/
+      - apps/api/src/modules/quoting/domain/errors.ts
+      - apps/api/src/modules/quoting/catalogo-gestion.e2e-spec.ts
+    source: arquitecto:ADR-0017 (importado 2026-10-26; id original T-038)
+    created_at: 2026-10-26T00:00:00.000Z
+    started_at: 2026-10-27T01:09:57.221Z
+    done_at: 2026-10-27T01:09:57.221Z
+    evidence: "Mergeado en main por el PR #74 (rama a/T-046-confirmar-importacion) con el CI en verde: format,
+      analyze, tests y los demás checks obligatorios. Cierre automático (.github/workflows/cerrar-tarea.yml)."
+    commit: 8df2dca7a7b0df19aa92b09ffbb30b38c22c317a
+  - id: T-047
+    title: "API: GET /api/v1/catalogo/tarifas/:id/historial de cambios de precio, con neto redactado sin permiso"
+    type: feature
+    phase: 1
+    priority: P2
+    effort: S
+    status: done
+    depends_on:
+      - T-043
+    unblocks:
+      - T-031
+    acceptance:
+      - Devuelve las filas de registros_auditoria de esa tarifa, más reciente primero, con actor (usuario o
+        clave), instante UTC, campo, antes, después y origen
+      - Sin cotizacion.ver_neto_y_margen las entradas de neto salen sin antes ni después
+      - "catalogo-gestion.e2e-spec.ts: dos cambios de venta = dos entradas en orden; tenant B recibe 404"
+      - pnpm --filter @viajapro/api test verde; pnpm compuertas --rapido verde
+    files:
+      - packages/contracts/src/vigencias.ts
+      - apps/api/src/modules/quoting/application/
+      - apps/api/src/modules/quoting/interface/
+    source: arquitecto:ADR-0017 (importado 2026-10-26; id original T-039)
+    created_at: 2026-10-26T00:00:00.000Z
+    started_at: 2026-10-27T01:14:43.571Z
+    done_at: 2026-10-27T01:14:43.571Z
+    evidence: "Mergeado en main por el PR #76 (rama a/T-047-historial-de-precios) con el CI en verde: format,
+      analyze, tests y los demás checks obligatorios. Cierre automático (.github/workflows/cerrar-tarea.yml)."
+    commit: 803a7fdb385c723e383e9746e6b8e0248c827a44
+  - id: T-048
+    title: "Migración M2: catálogo extendido, formatos_de_viaje con plantilla y politicas_de_precio.promo_vencida
+      (ADR-0017 §12)"
+    type: infra
+    phase: 1
+    priority: P1
+    effort: M
+    status: done
+    human_required: true
+    depends_on:
+      - T-040
+    acceptance:
+      - Migración NUEVA con exactamente M2 de ADR-0017 §12; ninguna columna nueva NOT NULL sin valor por
+        defecto; no se reescriben filas
+      - politicas_de_precio.promo_vencida enum OCULTAR|TACHAR NOT NULL DEFAULT 'OCULTAR'; todos los tenants
+        existentes quedan en OCULTAR
+      - formatos_de_viaje (id, tenant_id, nombre, orden, activo, plantilla jsonb) con UNIQUE (id, tenant_id) y
+        UNIQUE (tenant_id, nombre); paquetes.formato_id con foránea compuesta; cada tenant existente y la
+        semilla reciben los cuatro formatos de PLANTILLAS_DE_SISTEMA
+      - CHECK lista_unidades IS NULL OR lista_unidades > venta_unidades; único parcial (tenant_id, codigo)
+        WHERE codigo IS NOT NULL AND eliminado_en IS NULL; GIN en campos_personalizados; PAQUETE en
+        entidad_personalizable
+      - Tabla opciones_de_salida (id, tenant_id, paquete_id, etiqueta, hora_salida time, hora_regreso time,
+        punto_de_encuentro, orden, activa) con UNIQUE (id, tenant_id), UNIQUE (paquete_id, etiqueta) y foránea
+        compuesta (paquete_id, tenant_id); tarifas.opcion_de_salida_id nulable con foránea compuesta
+        (opcion_de_salida_id, tenant_id); paquetes NO recibe hora_salida ni hora_regreso
+      - "packages/database/tests/aislamiento.spec.ts: tablas_sin_aislamiento vacío con formatos_de_viaje y
+        opciones_de_salida; ambas con RLS USING y WITH CHECK; quitar la foránea compuesta del formato o de la
+        opción pone la prueba en rojo"
+      - semilla-catalogo-real.ts deja de poner SIN_ALIMENTACION a los pasadías
+      - pnpm db:migrate && pnpm --filter @viajapro/database test verde; pnpm compuertas --rapido verde
+    files:
+      - packages/database/prisma/schema.prisma
+      - packages/database/prisma/migrations/
+      - packages/database/tests/aislamiento.spec.ts
+      - packages/database/prisma/semilla-catalogo-real.ts
+      - packages/database/prisma/seed.ts
+    source: arquitecto:ADR-0017 (importado 2026-10-26; id original T-040)
+    created_at: 2026-10-26T00:00:00.000Z
+    evidence: "Migración M2 20261026120100_catalogo_extendido_formatos_y_opciones_de_salida integrada (PR #42) y
+      aplicada a Neon el 2026-10-26"
+    done_at: 2026-10-26T23:56:03.910Z
+  - id: T-049
+    title: "API: campos extendidos en propuesta, CRUD, importación y cotización; formatos de viaje y GET
+      /api/v1/catalogo/formatos/:id/plantilla"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: done
+    depends_on:
+      - T-048
+      - T-046
+    unblocks:
+      - T-030
+    acceptance:
+      - Los campos de M2 dejan de dar CAMPO_NO_SOPORTADO_AUN y se persisten por el aplicador; codigo pasa a
+        ser clave natural preferente
+      - camposPersonalizados se valida contra definiciones de entidad PAQUETE del tenant; clave no definida =
+        ERROR
+      - "Cotizar Isla Palma con 2 adultos: el total no incluye la tasa portuaria; la respuesta lista
+        cargosEnDestino con 29000 COP POR_PERSONA"
+      - "Opciones de salida: City Tour VIP con turnos Mañana 07:30-12:50 y Tarde 14:50-19:50 se crea por
+        pantalla, por importación (columna opcion_salida) y se lee en el listado; Isla Palma con tarifas
+        distintas para Lancha y Terrestre: cotizar sin opcionDeSalidaId responde OPCION_DE_SALIDA_REQUERIDA,
+        con Lancha usa solo su tarifa"
+      - Una tarifa cuya opción es de otro paquete = ERROR en el núcleo; una opción con tarifas no se borra, se
+        desactiva
+      - GET/POST/PATCH /api/v1/catalogo/formatos (catalogo.administrar); plantilla validada por
+        PlantillaDeFormato; GET /api/v1/catalogo/formatos/:id/plantilla devuelve un DescriptorDePlantilla
+        cuyas columnas incluyen los campos personalizados que el formato declara
+      - "e2e: tenant B recibe 404 al pedir la plantilla de un formato de A"
+      - pnpm --filter @viajapro/api test verde; pnpm compuertas --rapido verde
+    files:
+      - packages/contracts/src/catalogo.ts
+      - packages/contracts/src/plantillas-de-catalogo.ts
+      - apps/api/src/modules/quoting/application/
+      - apps/api/src/modules/quoting/domain/seleccion-de-tarifas.ts
+      - apps/api/src/modules/quoting/domain/
+      - apps/api/src/modules/quoting/interface/
+    source: arquitecto:ADR-0017 (importado 2026-10-26; id original T-041)
+    created_at: 2026-10-26T00:00:00.000Z
+    started_at: 2026-10-27T02:08:07.559Z
+    done_at: 2026-10-27T02:08:07.560Z
+    evidence: "Mergeado en main por el PR #81 (rama a/T-049-campos-extendidos-del-catalogo) con el CI en verde:
+      format, analyze, tests y los demás checks obligatorios. Cierre automático
+      (.github/workflows/cerrar-tarea.yml)."
+    commit: ee84a44bdf26a6d1a6df25255f0a68edc9884c49
+  - id: T-050
+    title: "Política promo_vencida: presentarPrecio en @viajapro/domain, GET/PATCH /api/v1/catalogo/ajustes y
+      `presentacion` en listado, salidas, cotización y previsualización"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: done
+    depends_on:
+      - T-048
+      - T-044
+    unblocks:
+      - T-028
+      - T-018
+      - T-017
+    acceptance:
+      - "packages/domain/src/presentacion-de-precio.ts: presentarPrecio(tarifa, hoy, politica) pura; spec:
+        promo vigente = lista tachada sin leyenda en ambos valores; vencida + OCULTAR = solo venta,
+        listaTachada null, leyenda null; vencida + TACHAR = lista tachada + leyenda PROMO_VENCIDA; promoHasta
+        null = vigente; la venta devuelta es siempre la de la tarifa"
+      - packages/contracts/src/politica-de-precio.ts exporta PromoVencida = OCULTAR|TACHAR y AjustesDeCatalogo
+        {promoVencida}; GET /api/v1/catalogo/ajustes responde OCULTAR en un tenant recién migrado
+      - PATCH /api/v1/catalogo/ajustes exige catalogo.administrar (403 sin él), solo acepta promoVencida y
+        escribe catalogo.ajustes.modificado con antes y después
+      - Listado de gestión, GET /api/v1/catalogo/salidas, la cotización y el informe de previsualización
+        devuelven `presentacion` calculada por presentarPrecio; ningún otro código de apps/api compara
+        promoHasta con la fecha
+      - "e2e: cambiar a TACHAR en tenant A no cambia la presentación de tenant B; la venta cotizada es igual
+        antes y después de vencer la promo"
+      - pnpm --filter @viajapro/api test verde; pnpm compuertas --rapido verde
+    files:
+      - packages/domain/src/
+      - packages/contracts/src/politica-de-precio.ts
+      - apps/api/src/modules/quoting/application/
+      - apps/api/src/modules/quoting/interface/
+    source: arquitecto:ADR-0017 (importado 2026-10-26; id original T-042)
+    created_at: 2026-10-26T00:00:00.000Z
+    started_at: 2026-10-27T01:30:23.008Z
+    done_at: 2026-10-27T01:30:23.009Z
+    evidence: "Mergeado en main por el PR #82 (rama a/T-050-politica-promo-vencida) con el CI en verde: format,
+      analyze, tests y los demás checks obligatorios. Cierre automático (.github/workflows/cerrar-tarea.yml)."
+    commit: ff459bda594ea9c7e3735dac0dff791bd52a835b
+  - id: T-051
+    title: "Web: tarjeta, ficha y desglose del cotizador pintan `presentacion` de la API sin decidir la promo en
+      el cliente"
+    type: feature
+    phase: 1
+    priority: P2
+    effort: S
+    status: done
+    depends_on:
+      - T-050
+      - T-018
+      - T-017
+    acceptance:
+      - apps/web/src/components/catalogo/ y apps/web/src/components/cotizador/desglose-cotizacion-salida.tsx
+        muestran listaTachada y la leyenda «promo vencida» solo si vienen en presentacion
+      - Ningún archivo de apps/web compara promoHasta con la fecha actual (grep)
+      - "apps/web/src/lib/catalogo-logica.spec.ts cubre: presentacion OCULTAR sin tachado, TACHAR con tachado
+        y leyenda, y que los cargos en destino no se suman al total mostrado"
+      - pnpm --filter @viajapro/web test verde; pnpm compuertas --rapido verde
+    files:
+      - apps/web/src/components/catalogo/
+      - apps/web/src/components/cotizador/desglose-cotizacion-salida.tsx
+      - apps/web/src/lib/catalogo-logica.ts
+      - apps/web/src/lib/catalogo-logica.spec.ts
+    source: arquitecto:ADR-0017 (importado 2026-10-26; id original T-043)
+    created_at: 2026-10-26T00:00:00.000Z
+  - id: T-052
+    title: "Web: plantilla y lectura .xlsx en el navegador (dependencia nueva, la añade una persona)"
+    type: feature
+    phase: 1
+    priority: P2
+    effort: M
+    status: blocked
+    blocked_reason: "human_required: apps/web/package.json es humanRequired; elegir biblioteca (exceljs o SheetJS)
+      con licencia y justificación"
+    human_required: true
+    depends_on:
+      - T-029
+      - T-030
+    acceptance:
+      - apps/web/package.json declara una sola biblioteca nueva, con licencia anotada en la descripción del PR
+      - La descarga genera hoja Catalogo y hoja oculta _viajapro con {formato, version} desde el
+        DescriptorDePlantilla
+      - Toda celda generada que empieza por = + - @ o tabulador se prefija con apóstrofo
+      - Un archivo de más de 5 MB se rechaza antes de abrirlo; el contenido se envía como {tabla, mapeo},
+        nunca el archivo
+      - Un spec de apps/web lee una plantilla generada y obtiene la misma tabla que su equivalente CSV
+      - pnpm --filter @viajapro/web test verde; pnpm compuertas --rapido verde
+    files:
+      - apps/web/package.json
+      - apps/web/src/lib/
+    source: arquitecto:ADR-0017 (importado 2026-10-26; id original T-044)
+    created_at: 2026-10-26T00:00:00.000Z
+  - id: T-053
+    title: "Migración M3: rol viajapro_claves, claves_api por tenant, directorio_claves_api global, disparador y
+      resolver_clave_api, registros_auditoria.clave_api_id y permiso integraciones.administrar (ADR-0017
+      §6.2)"
+    type: security
+    phase: 1
+    priority: P2
+    effort: M
+    status: blocked
+    blocked_reason: "human_required: migración del Owner. Bloqueada hasta implementar ADR-0017 §6.2 tal como quedó
+      tras la revisión de auditor-seguridad (S1, S2)"
+    human_required: true
+    depends_on:
+      - T-048
+    acceptance:
+      - Rol viajapro_claves NOLOGIN NOBYPASSRLS; ningún rol de login es miembro suyo
+      - claves_api con tenant_id y RLS (USING y WITH CHECK por 001), UNIQUE (id, tenant_id), prefijo único,
+        hash_secreto, ambitos text[], expira_en, revocada_en; ninguna columna guarda el secreto
+      - directorio_claves_api (prefijo PK, hash_secreto bytea, tenant_resuelto_id, clave_id, ambitos,
+        expira_en, revocada_en) SIN columna tenant_id, propiedad de viajapro_claves, declarada en
+        excepciones_rls con '{}' para viajapro_app, viajapro_altas, viajapro_webhook y viajapro_identidad; el
+        literal de aislamiento.spec.ts se amplía con ella (R1)
+      - Disparador SECURITY DEFINER de viajapro_claves sobre claves_api mantiene el directorio en INSERT y
+        UPDATE (revocar, vencer) en la misma transacción y rechaza cualquier UPDATE de tenant_id
+      - resolver_clave_api(p_prefijo, p_hash) propiedad de viajapro_claves, LANGUAGE sql STABLE STRICT, SET
+        search_path = '', sin SQL dinámico; filtra por prefijo y hash, no revocada, no vencida y tenant no
+        suspendido; en la migración el orden es REVOKE ALL FROM PUBLIC, GRANT EXECUTE TO viajapro_app y
+        después OWNER TO viajapro_claves
+      - registros_auditoria.clave_api_id nulable con foránea compuesta a claves_api
+      - "'integraciones.administrar' en el CHECK roles_permisos_del_catalogo y en PERMISOS; concedido solo a
+        DUENO"
+      - "aislamiento.spec.ts: ningún rol de login puede SELECT ni escribir directorio_claves_api;
+        viajapro_claves no tiene BYPASSRLS ni LOGIN ni miembros; resolver_clave_api solo la ejecuta
+        viajapro_app; el inventario de funciones SECURITY DEFINER pasa de 11 a 13 y una aserción falla si
+        alguna gana SQL dinámico o EXECUTE a otro rol; un UPDATE de claves_api.tenant_id falla"
+      - pnpm db:migrate && pnpm --filter @viajapro/database test verde; pnpm compuertas --rapido verde
+    files:
+      - packages/database/prisma/schema.prisma
+      - packages/database/prisma/migrations/
+      - packages/database/tests/aislamiento.spec.ts
+      - packages/contracts/src/identidad.ts
+    source: arquitecto:ADR-0017 (importado 2026-10-26; id original T-045)
+    created_at: 2026-10-26T00:00:00.000Z
+  - id: T-054
+    title: "API: autenticación por clave en /api/v1/publica/** y gestión de claves en identity (crear mostrando el
+      secreto una vez, listar, revocar)"
+    type: security
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    depends_on:
+      - T-053
+    acceptance:
+      - TenantMiddleware resuelve /api/v1/publica/** solo por Authorization Bearer vjp_live_… vía
+        ResolutorDeAcceso; una cookie de sesión en esas rutas = 401; una clave en cualquier otra ruta = 401
+      - Ningún tenantId de cuerpo, ruta, consulta o cabecera se lee (spec en apps/api/src/shared/tenant/)
+      - POST /api/v1/integraciones/claves (integraciones.administrar) devuelve el secreto una sola vez; GET
+        lista prefijo, nombre, ámbitos, último uso, sin secreto ni hash; POST .../:id/revocar hace que la
+        siguiente petición con esa clave responda 401
+      - "Ámbitos acotados por los permisos de quien crea la clave con permisoQueFalta
+        (identity/domain/permisos-incluidos.ts): catalogo:escribir exige catalogo.administrar y catalogo:neto
+        exige cotizacion.ver_neto_y_margen; e2e: un rol con integraciones.administrar sin ver_neto_y_margen
+        que pide catalogo:neto recibe 403 y no se crea ninguna fila"
+      - El atajo x-dev-tenant-id se ignora en /api/v1/publica/** incluso con APP_ENV=local (spec)
+      - Comparación del hash en tiempo constante; ultimo_uso_en se escribe como mucho una vez por minuto por
+        clave
+      - Crear y revocar escriben en registros_auditoria
+      - "e2e: una clave de tenant A nunca resuelve tenant B; clave vencida = 401"
+      - pnpm --filter @viajapro/api test verde; pnpm compuertas --rapido verde
+    files:
+      - apps/api/src/shared/tenant/tenant.middleware.ts
+      - apps/api/src/shared/puertos/puerto-de-acceso.ts
+      - apps/api/src/modules/identity/application/
+      - apps/api/src/modules/identity/infrastructure/
+      - apps/api/src/modules/identity/interface/
+    source: arquitecto:ADR-0017 (importado 2026-10-26; id original T-046)
+    created_at: 2026-10-26T00:00:00.000Z
+  - id: T-055
+    title: "API pública /api/v1/publica/catalogo: lectura, propuestas con Idempotency-Key, simulación, límites por
+      clave y auditoría del actor"
+    type: feature
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    depends_on:
+      - T-054
+      - T-049
+      - T-050
+      - T-002
+    acceptance:
+      - GET productos y productos/:codigo exigen ámbito catalogo:leer; neto solo con catalogo:neto; cada
+        precio trae venta, lista, promoHasta, promoVigente y presentacionSugerida
+      - POST propuestas?simular=true devuelve el informe sin escribir; POST propuestas sin Idempotency-Key =
+        400; misma clave y mismo cuerpo = misma respuesta sin re-aplicar; misma clave y otro cuerpo = 422
+        IDEMPOTENCY_KEY_REUTILIZADA (Redis, 24 h)
+      - Propuesta origen IA presentada con clave = 403; producto sin codigo = 422; todo o nada
+      - Más de 10 escrituras/min por clave = 429 con Retry-After (sobre el mecanismo de T-002, límites por
+        variable de entorno)
+      - Cada cambio de precio registra usuario_id null, clave_api_id e ip
+      - "e2e: la clave de A no lee ni escribe productos de B; OpenAPI generado desde los Zod incluye las
+        cuatro rutas"
+      - pnpm --filter @viajapro/api test verde; pnpm compuertas --rapido verde
+    files:
+      - packages/contracts/src/propuesta-de-catalogo.ts
+      - apps/api/src/modules/quoting/interface/
+      - apps/api/src/modules/quoting/application/
+      - apps/api/src/shared/red/
+    source: arquitecto:ADR-0017 (importado 2026-10-26; id original T-047)
+    created_at: 2026-10-26T00:00:00.000Z
+  - id: T-056
+    title: "Web: pantalla de claves de API en Configuración (crear, copiar una vez, ver último uso, revocar)"
+    type: feature
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    depends_on:
+      - T-054
+    acceptance:
+      - Visible solo con integraciones.administrar
+      - El secreto se muestra una vez tras crear, con botón copiar y aviso de que no se volverá a ver; no se
+        guarda en estado persistente del navegador
+      - La lista muestra prefijo, nombre, ámbitos, último uso en la zona del tenant y botón revocar con
+        confirmación
+      - Un spec de apps/web cubre que tras cerrar el diálogo el secreto no está en el estado
+      - pnpm --filter @viajapro/web test verde; pnpm compuertas --rapido verde
+    files:
+      - apps/web/src/app/configuracion/page.tsx
+      - apps/web/src/components/configuracion/
+    source: arquitecto:ADR-0017 (importado 2026-10-26; id original T-048)
+    created_at: 2026-10-26T00:00:00.000Z
+  - id: T-057
+    title: "API: frontera de la ingesta por IA, puerto ExtractorDeCatalogo con adaptador falso y entrada de
+      propuestas origen IA solo por sesión"
+    type: feature
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    depends_on:
+      - T-046
+    acceptance:
+      - Puerto ExtractorDeCatalogo en apps/api/src/modules/quoting/application/ que devuelve
+        PropuestaDeCatalogo origen IA; único adaptador un falso para pruebas; sin dependencia ni llamada
+        externa nueva
+      - El adaptador no recibe AplicadorDeCatalogo por inyección (spec del módulo lo comprueba)
+      - Una propuesta IA solo se confirma por /importaciones/confirmar con sesión y catalogo.administrar; el
+        actor auditado es la persona y detalle.fuente la procedencia
+      - La IA nunca propone neto; el adaptador descarta cualquier neto devuelto, sin excepción por permiso ni
+        por fuente (spec con un neto en la salida del falso)
+      - El contrato usado es PropuestaDeCatalogo con confianza number 0..1 (el de ADR-0017 §2), no otro
+      - Ninguna clase de apps/api obtiene URLs para la IA (el obtenedor es un proceso aparte, ADR-0017 §7.4b)
+      - pnpm --filter @viajapro/api test verde; pnpm compuertas --rapido verde
+    files:
+      - apps/api/src/modules/quoting/application/
+      - apps/api/src/modules/quoting/quoting.module.ts
+    source: arquitecto:ADR-0017 (importado 2026-10-26; id original T-049)
+    created_at: 2026-10-26T00:00:00.000Z
+  - id: T-058
+    title: "Web: revisión de una propuesta de la IA (fuente y cita por precio, editar o descartar, confirmar)"
+    type: feature
+    phase: 2
+    priority: P3
+    effort: M
+    status: blocked
+    blocked_reason: "Espera docs/09-ia/09-ingesta-de-catalogo-con-ia.md (PR #37) alineado con ADR-0017 §7 (solo
+      https, obtenedor en proceso aparte, nunca neto, contrato PropuestaDeCatalogo) y revisado por
+      auditor-seguridad. Activación con agencias reales: DPA del proveedor, aviso a la agencia, pruebas SSRF
+      en verde y regla de red verificada"
+    depends_on:
+      - T-057
+      - T-029
+    acceptance:
+      - Reutiliza la tabla de previsualización de T-029; cada precio muestra procedencia.fuente y el fragmento
+        literal
+      - Se puede editar o descartar cada producto; Confirmar envía la propuesta resultante a
+        /importaciones/confirmar y está deshabilitado mientras haya ERROR
+      - Los precios se pintan con la presentacion del informe (respeta promo_vencida)
+      - Nada se aplica sin pulsar Confirmar; un spec de apps/web lo cubre
+      - pnpm --filter @viajapro/web test verde; pnpm compuertas --rapido verde
+    files:
+      - apps/web/src/app/catalogo/
+      - apps/web/src/components/catalogo/
+    source: arquitecto:ADR-0017 (importado 2026-10-26; id original T-050)
+    created_at: 2026-10-26T00:00:00.000Z
+  - id: T-059
+    title: "Envío de WhatsApp: carrera tras un trabajo estancado deja el mensaje FALLIDO con wamid conocido"
+    type: bug
+    phase: 1
+    priority: P1
+    effort: S
+    status: done
+    depends_on: []
+    acceptance:
+      - Si registrarAceptado encuentra un mensaje FALLIDO sin codigo_error_meta, lo devuelve a PENDIENTE y
+        anula el motivo de fallo, en apps/api/src/modules/inbox/infrastructure/mensajes-salientes.prisma.ts
+      - Un test reproduce la carrera (el segundo intento marca FALLIDO «sin confirmar» y el primero guarda
+        después el wamid) y comprueba que el estado final sigue el acuse de Meta
+      - pnpm compuertas --rapido verde
+    files:
+      - apps/api/src/modules/inbox/infrastructure/mensajes-salientes.prisma.ts
+      - apps/api/src/modules/inbox/application/
+    source: auditor-seguridad:envio-whatsapp 2026-10-26
+    created_at: 2026-10-26T23:56:03.909Z
+    started_at: 2026-10-27T01:50:17.247Z
+    done_at: 2026-10-27T01:50:17.247Z
+    evidence: "Mergeado en main por el PR #86 (rama a/T-059-t-060-seguridad-del-envio) con el CI en verde: format,
+      analyze, tests y los demás checks obligatorios. Cierre automático (.github/workflows/cerrar-tarea.yml)."
+    commit: fdb537b683205712effe2e3a5b211c7a2a53dc8b
+  - id: T-060
+    title: "Credencial de prueba de WhatsApp atada al tenant: que solo sirva a la agencia del canal registrado"
+    type: security
+    phase: 1
+    priority: P1
+    effort: S
+    status: backlog
+    depends_on: []
+    acceptance:
+      - CredencialesDePrueba exige además un tenant configurado (por ejemplo META_TENANT_ID_PRUEBA) y se niega
+        a resolver credenciales para cualquier otro tenant, en
+        apps/api/src/modules/inbox/infrastructure/credenciales-whatsapp.entorno.ts
+      - Un test comprueba que una agencia distinta con el mismo phone_number_id no obtiene el token de la
+        plataforma
+      - El script canal:registrar-prueba y .env.example documentan la variable nueva; pnpm compuertas --rapido
+        verde
+    files:
+      - apps/api/src/modules/inbox/infrastructure/credenciales-whatsapp.entorno.ts
+      - apps/api/src/modules/inbox/scripts/
+    source: auditor-seguridad:envio-whatsapp 2026-10-26
+    created_at: 2026-10-26T23:56:03.910Z
+  - id: T-061
+    title: "Higiene del texto saliente de WhatsApp: filtrar caracteres de control y acotar el límite de tasa por
+      agencia"
+    type: security
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    depends_on: []
+    acceptance:
+      - El texto saliente rechaza o limpia caracteres de control (salvo saltos de línea y tabulaciones) antes
+        de encolar; test con casos límite
+      - El envío tiene un límite por agencia (grupo del limitador de la cola) para que una agencia no frene el
+        envío de las demás; test del limitador
+      - pnpm compuertas --rapido verde
+    files:
+      - apps/api/src/modules/inbox/application/
+      - apps/api/src/modules/inbox/infrastructure/
+    source: auditor-seguridad:envio-whatsapp 2026-10-26
+    created_at: 2026-10-26T23:56:03.910Z
+  - id: T-062
+    title: Persistir la opción de salida elegida en la versión de cotización guardada (hace falta una columna)
+    type: feature
+    phase: 1
+    priority: P1
+    effort: S
+    status: done
+    depends_on: []
+    acceptance:
+      - La versión de cotización guarda opcion_de_salida_id con tenant_id, clave foránea compuesta hacia
+        opciones_de_salida y RLS con USING y WITH CHECK, sin tocar migraciones ya aplicadas
+      - Al leer una cotización guardada se devuelve la opción elegida y la cotización reproduce el mismo total
+      - La suite de aislamiento incluye la aserción nueva; pnpm db:aislamiento verde
+    files:
+      - packages/database/prisma/schema.prisma
+      - apps/api/src/modules/quoting/
+    source: hallazgos de la tanda 2026-10-26
+    created_at: 2026-10-27T01:51:03.949Z
+    started_at: 2026-10-28T03:10:16.037Z
+    done_at: 2026-10-28T03:10:16.037Z
+    evidence: "Mergeado en main por el PR #121 (rama a/T-062-opcion-de-salida-en-la-version) con el CI en verde:
+      format, analyze, tests y los demás checks obligatorios. Cierre automático
+      (.github/workflows/cerrar-tarea.yml)."
+    commit: 00ea319d80558441fd9d887c0757def4863fb128
+  - id: T-063
+    title: "Web: enviar opcionDeSalidaId al cotizar y al guardar cuando el producto tiene opciones de salida"
+    type: bug
+    phase: 1
+    priority: P0
+    effort: S
+    status: done
+    depends_on: []
+    acceptance:
+      - Si el producto tiene opciones de salida activas, el cotizador de apps/web obliga a elegir una antes de
+        cotizar y manda opcionDeSalidaId; sin esto la API responde 422 OPCION_DE_SALIDA_REQUERIDA (Isla Palma
+        y City Tour VIP de JD Tours)
+      - Los cargos en destino que devuelve la API se muestran aparte con la etiqueta «No incluido» y nunca se
+        suman al total
+      - Tests del cotizador con y sin opciones; pnpm compuertas en verde
+    files:
+      - apps/web/src/app/cotizador/page.tsx
+      - apps/web/src/components/cotizador/
+      - apps/web/src/lib/cotizaciones-api.ts
+    source: hallazgos de la tanda 2026-10-26
+    created_at: 2026-10-27T01:51:03.950Z
+    started_at: 2026-10-28T01:41:34.119Z
+    done_at: 2026-10-28T01:41:34.119Z
+    evidence: "Mergeado en main por el PR #96 (rama b/T-063-opcion-de-salida-en-cotizador) con el CI en verde:
+      format, analyze, tests y los demás checks obligatorios. Cierre automático
+      (.github/workflows/cerrar-tarea.yml)."
+    commit: 5592d96f2ab5805b86ac43de5f1d785d9361c4c4
+  - id: T-064
+    title: "Catálogo: el neto guardado queda en la moneda anterior si quien cambia la venta no tiene permiso de
+      neto"
+    type: bug
+    phase: 1
+    priority: P2
+    effort: S
+    status: done
+    depends_on: []
+    acceptance:
+      - Cambiar la moneda de la venta sin el permiso cotizacion.ver_neto_y_margen rechaza el cambio o
+        convierte el neto de forma coherente, sin dejar neto y venta en monedas distintas
+      - Test e2e del caso; la auditoría sigue sin datos personales
+    files:
+      - apps/api/src/modules/quoting/application/
+      - apps/api/src/modules/quoting/infrastructure/
+    source: hallazgos de la tanda 2026-10-26
+    created_at: 2026-10-27T01:51:03.950Z
+    started_at: 2026-10-28T01:50:06.840Z
+    done_at: 2026-10-28T01:50:06.840Z
+    evidence: "Mergeado en main por el PR #98 (rama a/T-064-hallazgos-del-catalogo) con el CI en verde: format,
+      analyze, tests y los demás checks obligatorios. Cierre automático (.github/workflows/cerrar-tarea.yml)."
+    commit: 4d4653c4f51196e83388736ae6c4beae5b3320ee
+  - id: T-065
+    title: "Catálogo: el validador no detecta cambios solo en opciones de salida, cargos o formato; PATCH no puede
+      poner el plan de alimentación en nulo; validar la moneda contra la tabla"
+    type: bug
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    depends_on: []
+    acceptance:
+      - validarYPlanificar detecta como cambio una modificación que afecta solo a opciones de salida, cargos
+        en destino o formato, con test
+      - PATCH de un paquete permite poner planAlimentacion en null de forma explícita; la moneda de una tarifa
+        se valida contra la tabla monedas
+      - pnpm compuertas --rapido verde
+    files:
+      - apps/api/src/modules/quoting/domain/
+      - apps/api/src/modules/quoting/application/
+    source: hallazgos de la tanda 2026-10-26
+    created_at: 2026-10-27T01:51:03.950Z
+  - id: T-066
+    title: "GET /catalogo/salidas: el «desde» de una salida con varias monedas toma solo la primera por código"
+    type: bug
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    depends_on: []
+    acceptance:
+      - SalidaPublicada devuelve el «desde» por moneda (lista) igual que el listado de gestión, o documenta y
+        prueba la regla elegida; sin mezclar monedas en un solo número
+      - Test con una salida COP y USD; pnpm compuertas --rapido verde
+    files:
+      - apps/api/src/modules/quoting/application/listar-salidas.use-case.ts
+      - packages/contracts/src/catalogo.ts
+    source: hallazgos de la tanda 2026-10-26
+    created_at: 2026-10-27T01:51:03.950Z
+  - id: T-067
+    title: "Aserciones de comportamiento de vigencias, tarifas y políticas de precio en la suite de aislamiento
+      (T-012 pendiente: exige Postgres real)"
+    type: test
+    phase: 1
+    priority: P2
+    effort: S
+    status: done
+    depends_on: []
+    acceptance:
+      - aislamiento.spec.ts comprueba, para vigencias, tarifas y politicas_de_precio, que la lectura y la
+        escritura cruzada entre dos agencias dan 0 filas, 42501 o 23503, sin debilitar ninguna aserción
+        existente
+      - pnpm db:aislamiento verde en el CI
+    files:
+      - packages/database/tests/aislamiento.spec.ts
+    source: hallazgos de la tanda 2026-10-26
+    created_at: 2026-10-27T01:51:03.950Z
+    started_at: 2026-10-28T02:30:36.234Z
+    done_at: 2026-10-28T02:30:36.235Z
+    evidence: "Mergeado en main por el PR #95 (rama a/T-067-aislamiento-de-vigencias) con el CI en verde: format,
+      analyze, tests y los demás checks obligatorios. Cierre automático (.github/workflows/cerrar-tarea.yml)."
+    commit: 9454ba1f523ec83fb1cbd66320d53882b11c1fac
+  - id: T-068
+    title: "Limitador de tasa: límite combinado tenant+IP, límites distintos por endpoint y prueba e2e contra
+      Redis real"
+    type: security
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Los endpoints costosos (importación de catálogo, envío de mensajes) tienen un límite propio más bajo
+        que el general, configurable
+      - Existe una prueba contra Redis real en el CI o documentada como manual; si Redis falla se mantiene la
+        decisión de dejar pasar y registrar el error, y queda documentada
+    files:
+      - apps/api/src/shared/red/limite-de-tasa/
+    source: hallazgos de la tanda 2026-10-26
+    created_at: 2026-10-27T01:51:03.950Z
+  - id: T-069
+    title: "CSP de producción con nonce: hoy script-src sin nonce ni unsafe-inline impediría arrancar Next en el
+      sitio desplegado"
+    type: security
+    phase: 1
+    priority: P0
+    effort: M
+    status: done
+    depends_on: []
+    acceptance:
+      - apps/web emite una CSP con nonce por petición (middleware) para los scripts en línea de Next, sin
+        unsafe-inline ni unsafe-eval en producción
+      - Un build de producción levanta, hidrata y el login funciona con esa CSP (probado con el MCP playwright
+        o un test de humo); la prueba de cabeceras sigue verde
+      - Es requisito antes de cualquier despliegue
+    files:
+      - apps/web/next.config.mjs
+      - apps/web/src/
+    source: hallazgos de la tanda 2026-10-26
+    created_at: 2026-10-27T01:51:03.950Z
+    started_at: 2026-10-28T00:27:54.873Z
+    done_at: 2026-10-28T00:27:54.873Z
+    evidence: "Mergeado en main por el PR #93 (rama b/T-069-csp-con-nonce) con el CI en verde: format, analyze,
+      tests y los demás checks obligatorios. Cierre automático (.github/workflows/cerrar-tarea.yml)."
+    commit: 026be748bc48c6f1b852d396276e485bba40b366
+  - id: T-070
+    title: "Prueba inestable de aislamiento: vigilar que fileParallelism false en packages/database no oculte otro
+      cruce de bloqueos"
+    type: test
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: []
+    acceptance:
+      - El job test del CI pasa 10 veces seguidas sin reintentos en main; si vuelve a aparecer 40P01 se
+        documenta la consulta que bloquea
+    files:
+      - packages/database/vitest.config.ts
+    source: hallazgos de la tanda 2026-10-26
+    created_at: 2026-10-27T01:51:03.951Z
+  - id: T-071
+    title: "Registrar quién cambió un precio cuando lo hace una clave de API: columna de actor en la auditoría
+      (para la API pública)"
+    type: feature
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: []
+    acceptance:
+      - registros_auditoria identifica si el actor fue un usuario o una clave de API, con tenant_id y RLS
+        intactas
+      - El historial de precios muestra el actor sin datos personales; la suite de aislamiento sigue verde
+    files:
+      - packages/database/prisma/schema.prisma
+      - apps/api/src/modules/quoting/
+    source: hallazgos de la tanda 2026-10-26
+    created_at: 2026-10-27T01:51:03.951Z
+  - id: T-072
+    title: "Higiene del repositorio: ADR-0016 debe reflejar que el ciclo de OpenCode está detenido (se supersede,
+      no se edita)"
+    type: docs
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Existe un ADR nuevo que registra el estado detenido del ciclo autónomo de OpenCode, su causa (cuota y
+        lentitud) y las condiciones para reanudarlo, y supersede lo que corresponda del ADR-0016
+    files:
+      - docs/03-adr/
+    source: hallazgos de la tanda 2026-10-26
+    created_at: 2026-10-27T01:51:03.951Z
+  - id: T-073
+    title: Enviar la cotización por WhatsApp como texto con formato desde la conversación (API)
+    type: feature
+    phase: 1
+    priority: P0
+    effort: M
+    status: backlog
+    depends_on: []
+    acceptance:
+      - POST que arma el texto (producto, fecha, pasajeros, total, no incluido) desde una versión de
+        cotización y lo encola por el outbox existente, idempotente (R5)
+      - "Respeta la ventana de 24 h: fuera de ella responde error tipado, no envía"
+      - Tests unitarios y e2e; sin PII en logs
+    files:
+      - apps/api/src/modules/inbox/
+      - apps/api/src/modules/quoting/
+    source: ruta a la fase 1 (roadmap v3) 2026-10-27
+    created_at: 2026-10-28T01:47:57.806Z
+  - id: T-074
+    title: Botón «Enviar cotización» en la conversación de la bandeja
+    type: feature
+    phase: 1
+    priority: P0
+    effort: S
+    status: done
+    depends_on:
+      - T-073
+    acceptance:
+      - Desde una conversación se elige una cotización guardada, se ve la vista previa del texto y se envía;
+        estados enviando, enviado y fallido
+      - Tests de componente; usable a 375 px
+    files:
+      - apps/web/src/app/bandeja/
+      - apps/web/src/components/bandeja/modal-enviar-cotizacion.tsx
+      - packages/contracts/src/inbox.ts
+    source: ruta a la fase 1 (roadmap v3) 2026-10-27
+    created_at: 2026-10-28T01:47:57.807Z
+    started_at: 2026-10-28T04:10:00.000Z
+    done_at: 2026-10-28T04:35:00.000Z
+    evidence: "Implementado ModalEnviarCotizacion en la bandeja con selector de cotizaciones guardadas, vista previa formateada con emojis para WhatsApp, verificación de ventana 24h, gestión de estados (enviando, enviado, fallido) y contrato EnviarCotizacionCuerpo. Tests de componente unitarios completos y soporte 375 px."
+  - id: T-075
+    title: Alta y edición de contacto y crear oportunidad desde la conversación (API)
+    type: feature
+    phase: 1
+    priority: P0
+    effort: M
+    status: done
+    depends_on: []
+    acceptance:
+      - Endpoints para crear y editar contacto con teléfono E.164 y para crear oportunidad ligada a la
+        conversación, con RLS y contratos Zod
+      - Tests e2e; PII de viajeros tratada según R10
+    files:
+      - apps/api/src/modules/crm/
+    source: ruta a la fase 1 (roadmap v3) 2026-10-27
+    created_at: 2026-10-28T01:47:57.807Z
+    started_at: 2026-10-28T03:17:14.980Z
+    done_at: 2026-10-28T03:17:14.980Z
+    evidence: "Mergeado en main por el PR #103 (rama a/T-075-contacto-oportunidad-y-seguimientos) con el CI en
+      verde: format, analyze, tests y los demás checks obligatorios. Cierre automático
+      (.github/workflows/cerrar-tarea.yml)."
+    commit: 9d2f4660122a215b80610e9dae325913e5fa8abb
+  - id: T-076
+    title: Pantalla de contacto y botón «Crear oportunidad» en la conversación
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: done
+    depends_on: []
+    acceptance:
+      - Se puede completar el contacto y abrir una oportunidad en la etapa inicial desde la bandeja
+      - Tests de componente
+    files:
+      - apps/web/src/app/bandeja/
+      - apps/web/src/components/bandeja/modal-crear-oportunidad.tsx
+      - apps/web/src/components/bandeja/modal-editar-contacto.tsx
+      - apps/web/src/components/bandeja/ficha-cliente.tsx
+    source: ruta a la fase 1 (roadmap v3) 2026-10-27
+    created_at: 2026-10-28T01:47:57.807Z
+    started_at: 2026-10-28T04:15:00.000Z
+    done_at: 2026-10-28T04:35:00.000Z
+    evidence: "Implementados ModalEditarContacto y ModalCrearOportunidad en la ficha lateral y drawer de la bandeja, conectando con crearOportunidadDeConversacionApi y editarContactoApi. Soporta edición de contacto, apertura de oportunidad en etapa inicial NUEVO_LEAD y actualización reactiva de la ficha con tests de componente."
+
+  - id: T-077
+    title: Seguimientos con fecha sobre oportunidad o conversación (API) e inicio del asesor con pendientes
+    type: feature
+    phase: 1
+    priority: P0
+    effort: M
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Crear, listar y completar seguimientos con fecha, por asesor, con RLS
+      - Endpoint de pendientes del día que alimenta T-020
+      - Tests e2e
+    files:
+      - apps/api/src/modules/crm/
+    source: ruta a la fase 1 (roadmap v3) 2026-10-27
+    created_at: 2026-10-28T01:47:57.807Z
+  - id: T-078
+    title: Plantilla de reapertura fuera de la ventana de 24 h y respuestas rápidas
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: blocked
+    depends_on: []
+    acceptance:
+      - Envío de una plantilla aprobada cuando la ventana está cerrada, por el mismo outbox idempotente
+      - Respuestas rápidas por agencia (tabla con tenant_id y RLS)
+      - Documenta el estado de aprobación en Meta
+    files:
+      - apps/api/src/modules/inbox/
+    source: ruta a la fase 1 (roadmap v3) 2026-10-27
+    created_at: 2026-10-28T01:47:57.807Z
+    blocked_reason: La plantilla debe someterse a aprobación de Meta con la cuenta del propietario; el tiempo de
+      aprobación no está verificado
+  - id: T-079
+    title: "Redis y trabajador en staging: que los mensajes recibidos se conviertan en conversaciones"
+    type: feature
+    phase: 1
+    priority: P0
+    effort: M
+    status: blocked
+    depends_on: []
+    acceptance:
+      - Servicio Redis y proceso consumidor activos en el entorno de staging con COLA_CHANGES real
+      - Un mensaje de la app de prueba de Meta aparece como conversación en la bandeja
+      - Runbook en docs/
+    files:
+      - render.yaml
+      - infra/
+    source: ruta a la fase 1 (roadmap v3) 2026-10-27
+    created_at: 2026-10-28T01:47:57.807Z
+    blocked_reason: Requiere el despliegue en Render y la cuenta del propietario (M5.1); render.yaml e infra/ son
+      rutas protegidas
+  - id: T-080
+    title: Iniciar la verificación del negocio en Meta y la solicitud de Tech Provider
+    type: docs
+    phase: 1
+    priority: P0
+    effort: S
+    status: blocked
+    depends_on: []
+    acceptance:
+      - Verificación del negocio enviada en Meta con la documentación de la agencia o de la empresa
+      - Fecha de solicitud registrada en ESTADO.md
+    files:
+      - docs/04-integraciones/
+    source: ruta a la fase 1 (roadmap v3) 2026-10-27
+    created_at: 2026-10-28T01:47:57.807Z
+    blocked_reason: "Solo el propietario puede hacerla: exige documentos legales de la empresa y su cuenta de
+      Meta; tarda semanas"
+  - id: T-081
+    title: "Ensayo de la jornada piloto: 20 conversaciones, 5 cotizaciones recibidas, seguimientos y sin abrir el
+      WhatsApp del celular"
+    type: test
+    phase: 1
+    priority: P0
+    effort: M
+    status: blocked
+    depends_on:
+      - T-073
+      - T-074
+    acceptance:
+      - Con el número de prueba de Meta en staging, personal de la agencia atiende 20 conversaciones simuladas
+        y envía 5 cotizaciones que llegan a un teléfono
+      - Cada conversación sin cerrar termina con un seguimiento fechado
+      - Resultado y fallos registrados en docs/_bitacora/
+    files:
+      - docs/_bitacora/
+    source: ruta a la fase 1 (roadmap v3) 2026-10-27
+    created_at: 2026-10-28T01:47:57.807Z
+    blocked_reason: Depende de Redis y trabajador en staging y del número de prueba de Meta con el propietario presente
+  - id: T-082
+    title: "Migración: tabla seguimientos con RLS para varios seguimientos por oportunidad y por conversación
+      (T-077)"
+    type: feature
+    phase: 1
+    priority: P0
+    effort: M
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Tabla seguimientos con tenant_id, RLS USING y WITH CHECK, FK compuestas, CHECK de exactamente una de
+        oportunidad_id o conversacion_id e índice parcial de pendientes por asesor
+      - Aserciones en aislamiento.spec.ts; adaptador Prisma de PuertoSeguimientos que sustituye al provisional
+        en crm.module.ts
+    files:
+      - packages/database/prisma/
+      - apps/api/src/modules/crm/
+    source: auditoria de ciberseguridad 2026-10-28
+    created_at: 2026-10-28T02:09:17.389Z
+  - id: T-083
+    title: "Corregir .github/proteccion-main.json: la copia dice require_code_owner_reviews false y el servidor lo
+      tiene en true"
+    type: security
+    phase: 1
+    priority: P1
+    effort: S
+    status: backlog
+    depends_on: []
+    acceptance:
+      - El JSON refleja la protección real del servidor (gh api .../branches/main/protection) y ESTADO.md deja
+        de contradecirlo
+    files:
+      - .github/proteccion-main.json
+      - .github/PROTECCION-DE-RAMA.md
+    source: auditoria de ciberseguridad 2026-10-28
+    created_at: 2026-10-28T02:09:17.390Z
+  - id: T-084
+    title: "MCP postgres de los agentes: rol de solo lectura sin BYPASSRLS y versión fija; quitar @latest de
+      .mcp.json"
+    type: security
+    phase: 1
+    priority: P1
+    effort: S
+    status: backlog
+    depends_on: []
+    acceptance:
+      - .mcp.json usa un rol de solo SELECT que no salta RLS (migración del rol por datos) y paquetes con
+        versión exacta
+    files:
+      - .mcp.json
+      - packages/database/prisma/
+    source: auditoria de ciberseguridad 2026-10-28
+    created_at: 2026-10-28T02:09:17.390Z
+  - id: T-085
+    title: "Workflows con la App Integradora: acciones fijadas por SHA, persist-credentials false y npm ci
+      --ignore-scripts"
+    type: security
+    phase: 1
+    priority: P1
+    effort: S
+    status: backlog
+    depends_on: []
+    acceptance:
+      - cerrar-tarea.yml, mantener-ramas.yml y ownership.yml fijan create-github-app-token, checkout y
+        setup-node por SHA, sin persistir credenciales
+    files:
+      - .github/workflows/
+    source: auditoria de ciberseguridad 2026-10-28
+    created_at: 2026-10-28T02:09:17.390Z
+  - id: T-086
+    title: "Verificar los SHA de los PR de Dependabot #11 a #13 y probar pnpm/action-setup v6 antes de integrarlos"
+    type: security
+    phase: 1
+    priority: P1
+    effort: S
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Cada SHA coincide con la etiqueta oficial (gh api repos/<org>/<action>/git/ref/tags/<tag>) y el CI
+        pasa con pnpm/action-setup v6
+    files:
+      - .github/workflows/
+    source: auditoria de ciberseguridad 2026-10-28
+    created_at: 2026-10-28T02:09:17.390Z
+  - id: T-087
+    title: Dependabot para npm (solo seguridad) y job no obligatorio pnpm audit --prod
+    type: security
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    depends_on: []
+    acceptance:
+      - dependabot.yml cubre el ecosistema npm con grupos de seguridad y el CI informa de vulnerabilidades
+        altas
+    files:
+      - .github/dependabot.yml
+      - .github/workflows/ci.yml
+    source: auditoria de ciberseguridad 2026-10-28
+    created_at: 2026-10-28T02:09:17.390Z
+  - id: T-088
+    title: "Prueba de humo en staging: req.ip detrás del rewrite de Next y valor de API_TRUST_PROXY"
+    type: security
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Dos clientes distintos producen dos IP distintas en la API y el valor queda documentado
+    files:
+      - apps/api/src/shared/red/
+      - render.yaml
+    source: auditoria de ciberseguridad 2026-10-28
+    created_at: 2026-10-28T02:09:17.390Z
+  - id: T-089
+    title: Permisos de mutación en bandeja, CRM y cotizaciones, rol SOLO_LECTURA y matriz en 04-rbac.md
+    type: security
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Cada mutación lleva @RequierePermiso, existe el rol sembrado SOLO_LECTURA y hay pruebas 403 por ruta
+    files:
+      - apps/api/src/modules/inbox/
+      - apps/api/src/modules/crm/
+      - apps/api/src/modules/quoting/
+      - docs/05-seguridad/04-rbac.md
+    source: auditoria de ciberseguridad 2026-10-28
+    created_at: 2026-10-28T02:09:17.390Z
+  - id: T-090
+    title: ADR de PII en mensajes.texto y contactos.preferencias, con supresión, exportación por titular y
+      retención (antes de la agencia piloto)
+    type: security
+    phase: 1
+    priority: P1
+    effort: L
+    status: blocked
+    depends_on: []
+    acceptance:
+      - ADR que decide cifrado o tokenización de documentos detectados en mensajes; caso de uso de supresión y
+        exportación por contacto, auditado; plazo de retención por agencia
+    files:
+      - docs/03-adr/
+      - apps/api/src/modules/crm/
+    source: auditoria de ciberseguridad 2026-10-28
+    created_at: 2026-10-28T02:09:17.390Z
+    blocked_reason: "Es un ADR (ruta protegida) y decide cifrado y plazos legales: requiere al propietario y revisión legal"
+  - id: T-091
+    title: ParseUUIDPipe en GET /paquetes/:id y validación de paqueteId en /catalogo/salidas
+    type: bug
+    phase: 1
+    priority: P3
+    effort: S
+    status: done
+    depends_on: []
+    acceptance:
+      - Un id que no es UUID responde 400 y no 500 con traza
+    files:
+      - apps/api/src/modules/quoting/interface/
+    source: auditoria de ciberseguridad 2026-10-28
+    created_at: 2026-10-28T02:09:17.390Z
+    started_at: 2026-10-28T02:43:17.311Z
+    done_at: 2026-10-28T02:43:17.311Z
+    evidence: "Mergeado en main por el PR #117 (rama a/T-091-endurecimiento-de-la-api) con el CI en verde: format,
+      analyze, tests y los demás checks obligatorios. Cierre automático (.github/workflows/cerrar-tarea.yml)."
+    commit: 591f7aaa79b68a06f94b58040d9947656689de8b
+  - id: T-092
+    title: Token de invitación en el fragmento de la URL y cabeceras HSTS y Permissions-Policy en la web
+    type: security
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: []
+    acceptance:
+      - El token no llega a los logs de acceso; la web emite HSTS y una Permissions-Policy mínima
+    files:
+      - apps/api/src/modules/identity/
+      - apps/web/next.config.mjs
+    source: auditoria de ciberseguridad 2026-10-28
+    created_at: 2026-10-28T02:09:17.390Z
+  - id: T-093
+    title: "Aviso de privacidad y política de tratamiento de datos personales (Ley 1581): borrador publicable por
+      agencia y por ViajaPro"
+    type: docs
+    phase: 1
+    priority: P0
+    effort: M
+    status: blocked
+    depends_on: []
+    acceptance:
+      - Documento con responsable y encargado, finalidades, derechos del titular (conocer, actualizar,
+        rectificar, suprimir, revocar), canal de reclamos y plazos legales
+      - Publicado como páginas /privacidad y /terminos en apps/web
+      - Distingue ViajaPro (encargado) de cada agencia (responsable)
+    files:
+      - docs/05-seguridad/
+      - apps/web/src/app/privacidad/
+    source: ruta de seguridad y privacidad 2026-10-28
+    created_at: 2026-10-28T02:16:36.573Z
+    blocked_reason: Requiere revisión legal (Ley 1581 de 2012 y Decreto 1377 de 2013) y decisión del propietario
+      sobre el texto y los plazos
+  - id: T-094
+    title: Inventario de cookies y almacenamiento del navegador, y política de cookies
+    type: docs
+    phase: 1
+    priority: P1
+    effort: S
+    status: done
+    depends_on: []
+    acceptance:
+      - Lista de cada cookie y entrada de localStorage de apps/web y apps/api con finalidad, duración y
+        categoría (estrictamente necesaria o no)
+      - Política de cookies enlazada desde el pie de la web
+    files:
+      - docs/05-seguridad/
+      - apps/web/src/
+    source: ruta de seguridad y privacidad 2026-10-28
+    created_at: 2026-10-28T02:16:36.574Z
+  - id: T-095
+    title: "Banner de consentimiento de cookies: solo lo no esencial, con aceptar, rechazar y configurar, y
+      registro de la decisión"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: done
+    depends_on: []
+    acceptance:
+      - Las cookies esenciales (sesión, CSRF) no piden consentimiento; cualquier analítica o terceros queda
+        bloqueada hasta aceptar
+      - La decisión se guarda y se puede cambiar desde un enlace «Preferencias de cookies»
+      - Accesible, usable a 375 px, con tests
+    files:
+      - apps/web/src/components/privacidad/
+      - apps/web/src/app/layout.tsx
+    source: ruta de seguridad y privacidad 2026-10-28
+    created_at: 2026-10-28T02:16:36.574Z
+  - id: T-096
+    title: "Consentimiento del viajero: capturar y registrar la autorización de tratamiento de datos en la
+      conversación y el contacto"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on: []
+    acceptance:
+      - ConsentimientoContacto se registra con canal, finalidad, fecha y texto mostrado; se solicita en el
+        primer contacto por WhatsApp según la plantilla
+      - Revocar el consentimiento detiene los envíos de la finalidad afectada
+      - Tests e2e; sin PII en logs
+    files:
+      - apps/api/src/modules/crm/
+      - apps/api/src/modules/inbox/
+    source: ruta de seguridad y privacidad 2026-10-28
+    created_at: 2026-10-28T02:16:36.574Z
+  - id: T-097
+    title: "Derechos del titular: exportar y suprimir los datos de un contacto, auditado, con respuesta en los
+      plazos legales"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: L
+    status: blocked
+    depends_on: []
+    acceptance:
+      - Casos de uso de exportación y supresión por contacto que recorren Postgres, colas y caché (C5), con
+        registro de auditoría sin datos personales
+      - Pantalla del asesor para atender la solicitud y fecha límite visible
+      - Prueba que verifica cero rastros tras la supresión
+    files:
+      - apps/api/src/modules/crm/
+      - apps/web/src/app/contactos/
+    source: ruta de seguridad y privacidad 2026-10-28
+    created_at: 2026-10-28T02:16:36.574Z
+    blocked_reason: Depende del ADR de PII (T-090) y de la revisión legal de plazos de retención
+  - id: T-098
+    title: Registro Nacional de Bases de Datos (RNBD) ante la SIC y contrato de encargo del tratamiento con cada
+      agencia
+    type: docs
+    phase: 1
+    priority: P1
+    effort: M
+    status: blocked
+    depends_on: []
+    acceptance:
+      - Estado de la obligación de registro verificado por un abogado y, si aplica, registro presentado
+      - Plantilla de contrato de encargo con plazos de incidente, devolución y supresión
+    files:
+      - docs/05-seguridad/
+    source: ruta de seguridad y privacidad 2026-10-28
+    created_at: 2026-10-28T02:16:36.574Z
+    blocked_reason: Requiere revisión legal (Ley 1581 de 2012 y Decreto 1377 de 2013) y decisión del propietario
+      sobre el texto y los plazos
+  - id: T-099
+    title: "Mínima exposición de PII: no mostrar ni registrar teléfonos y documentos completos en logs, auditoría
+      ni errores"
+    type: security
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Revisión y prueba de que logs, auditoría y respuestas de error no contienen teléfono completo,
+        pasaporte ni fecha de nacimiento
+      - Enmascarado de teléfono en pantallas donde el rol no lo necesite
+    files:
+      - apps/api/src/shared/
+      - apps/web/src/
+    source: ruta de seguridad y privacidad 2026-10-28
+    created_at: 2026-10-28T02:16:36.574Z
+  - id: T-100
+    title: "Ficha 360 del contacto: datos, conversaciones, oportunidades, cotizaciones y seguimientos en una sola
+      pantalla"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Pantalla /contactos/[id] que consume /api/v1/crm/* y muestra línea de tiempo con estados cargando,
+        error y vacío
+      - Desde ella se edita el contacto, se crea una oportunidad y un seguimiento
+      - Tests de componente; usable a 375 px
+    files:
+      - apps/web/src/app/contactos/
+    source: cola de Antigravity ampliada 2026-10-28
+    created_at: 2026-10-28T02:37:57.684Z
+  - id: T-101
+    title: Lista de seguimientos del asesor con vencidos, de hoy y próximos, y acción de completar
+    type: feature
+    phase: 1
+    priority: P1
+    effort: S
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Pantalla /seguimientos con GET /api/v1/crm/seguimientos y POST .../completar; vencidos resaltados en
+        color de alerta
+      - Estados cargando, error y vacío; tests
+    files:
+      - apps/web/src/app/seguimientos/
+    source: cola de Antigravity ampliada 2026-10-28
+    created_at: 2026-10-28T02:37:57.685Z
+  - id: T-102
+    title: Pipeline tipo tablero (kanban) con arrastrar y soltar entre etapas, totales por etapa y tarjetas con
+      valor estimado
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Mover una oportunidad entre etapas con teclado y ratón, con actualización optimista y reversión si la
+        API falla
+      - Total en dinero entero por etapa y moneda (R8)
+      - Accesible y usable a 375 px; tests
+    files:
+      - apps/web/src/app/pipeline/
+    source: cola de Antigravity ampliada 2026-10-28
+    created_at: 2026-10-28T02:37:57.685Z
+  - id: T-103
+    title: Búsqueda global y filtros guardados en bandeja, contactos y oportunidades
+    type: feature
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Atajo de teclado y cuadro de búsqueda que encuentra por nombre, teléfono y destino sin exponer más de
+        lo que el rol puede ver
+      - Filtros recordados por el asesor (almacenamiento local) con opción de limpiar
+    files:
+      - apps/web/src/components/busqueda/
+    source: cola de Antigravity ampliada 2026-10-28
+    created_at: 2026-10-28T02:37:57.685Z
+  - id: T-104
+    title: "Respuestas rápidas en la bandeja: lista, insertar con «/» y administración por agencia"
+    type: feature
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Insertar una respuesta rápida en el compositor con «/», con vista previa y variables como {nombre}
+      - Pantalla de administración en Configuración; usa la API cuando exista (T-078) y mientras tanto un
+        estado «próximamente» honesto, sin datos falsos
+    files:
+      - apps/web/src/app/bandeja/
+      - apps/web/src/app/configuracion/
+    source: cola de Antigravity ampliada 2026-10-28
+    created_at: 2026-10-28T02:37:57.685Z
+  - id: T-105
+    title: "Onboarding de una agencia nueva: asistente de 4 pasos (marca, catálogo, equipo, conectar WhatsApp)"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: L
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Asistente que lleva a la agencia de la cuenta vacía a la primera cotización enviada, con progreso
+        guardado y cada paso saltable
+      - Los pasos reutilizan T-031/T-029 (catálogo), T-027 (equipo) y T-039 (marca); el paso de WhatsApp
+        explica qué se necesita sin pedir secretos en pantalla
+    files:
+      - apps/web/src/app/bienvenida/
+    source: cola de Antigravity ampliada 2026-10-28
+    created_at: 2026-10-28T02:37:57.685Z
+  - id: T-106
+    title: "Pantalla de conexión de WhatsApp en Configuración: estado del canal, número, calidad y ventana de 24 h
+      explicada"
+    type: feature
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Muestra el estado real del canal desde la API (o «no conectado» con los pasos) sin mostrar tokens
+      - Explica la ventana de 24 h y las plantillas con lenguaje de agencia, no de Meta
+    files:
+      - apps/web/src/app/configuracion/whatsapp/
+    source: cola de Antigravity ampliada 2026-10-28
+    created_at: 2026-10-28T02:37:57.685Z
+  - id: T-107
+    title: "Cotizaciones guardadas: listado con estado, versiones, reenvío por WhatsApp y duplicar"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Lista y detalle de cotizaciones guardadas con sus versiones; botón enviar por WhatsApp (usa T-074) y
+        duplicar como nueva versión
+      - No muestra neto ni margen a quien no tiene el permiso cotizacion.ver_neto_y_margen
+    files:
+      - apps/web/src/app/cotizaciones/
+    source: cola de Antigravity ampliada 2026-10-28
+    created_at: 2026-10-28T02:37:57.685Z
+  - id: T-108
+    title: Páginas públicas /privacidad, /terminos y /cookies con el texto aprobado y enlace en el pie y en el login
+    type: feature
+    phase: 1
+    priority: P1
+    effort: S
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Páginas estáticas que renderizan el texto de docs/05-seguridad una vez aprobado por el propietario
+        (T-093); mientras tanto, con el borrador y marca visible «borrador»
+      - Enlaces en el pie y en la pantalla de ingreso; legibles a 375 px
+    files:
+      - apps/web/src/app/privacidad/
+      - apps/web/src/app/terminos/
+      - apps/web/src/app/cookies/
+    source: cola de Antigravity ampliada 2026-10-28
+    created_at: 2026-10-28T02:37:57.685Z
+  - id: T-109
+    title: "Estados de sistema consistentes: página 404, error global, sin conexión y sesión expirada con mensajes
+      en español claro"
+    type: feature
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    depends_on: []
+    acceptance:
+      - not-found.tsx, error.tsx y aviso de sin conexión con la identidad visual de turismo; al expirar la
+        sesión lleva a /ingresar conservando el destino
+      - Tests de la lógica de clasificación de errores
+    files:
+      - apps/web/src/app/
+    source: cola de Antigravity ampliada 2026-10-28
+    created_at: 2026-10-28T02:37:57.685Z
+  - id: T-110
+    title: "Notificaciones en la web: aviso de mensaje nuevo, seguimiento vencido y cotización por vencer, con
+      preferencia por asesor"
+    type: feature
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Campana con contador y panel; sonido y notificación del navegador solo si el asesor lo activa
+      - Usa el canal en tiempo real existente (Socket.IO) y la API de pendientes; sin datos personales en el
+        título de la notificación
+    files:
+      - apps/web/src/components/notificaciones/
+    source: cola de Antigravity ampliada 2026-10-28
+    created_at: 2026-10-28T02:37:57.685Z
+  - id: T-111
+    title: Modo oscuro y preferencia de densidad con la paleta de turismo
+    type: feature
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Interruptor claro, oscuro y sistema; contraste AA en ambos; la marca de la agencia se adapta
+      - Sin parpadeo al cargar
+    files:
+      - apps/web/src/
+    source: cola de Antigravity ampliada 2026-10-28
+    created_at: 2026-10-28T02:37:57.685Z

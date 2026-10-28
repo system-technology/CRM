@@ -304,6 +304,7 @@ export class CotizacionesUseCase {
       ninos: c.ninos,
       infantes: c.infantes,
       acomodacion: c.acomodacion,
+      ...(c.opcionDeSalidaId ? { opcionDeSalidaId: c.opcionDeSalidaId } : {}),
       incluirMargen: true,
     });
 
@@ -341,6 +342,7 @@ export class CotizacionesUseCase {
       ninos: v.ninos,
       infantes: v.infantes,
       acomodacion: v.acomodacion,
+      opcionDeSalidaId: v.opcionDeSalidaId,
       politicaPorcentaje: v.politica.porcentaje,
       politicaBase: v.politica.base,
       politicaOrigen: v.politica.origenDeLaVenta,

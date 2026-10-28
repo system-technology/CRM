@@ -181,7 +181,25 @@ export function DesgloseCotizacionSalida({
                     {linea.veces}x
                   </td>
                   <td className="cifra px-4 py-3 text-right text-neutral-600 dark:text-neutral-400">
-                    {formatearDinero(linea.precioUnitario)}
+                    {linea.presentacion?.listaTachada && (
+                      <span
+                        data-testid="linea-lista-tachada"
+                        className="mr-1.5 text-[11px] font-semibold text-neutral-400 line-through dark:text-neutral-500"
+                      >
+                        {formatearDinero(linea.presentacion.listaTachada)}
+                      </span>
+                    )}
+                    <span>
+                      {formatearDinero(linea.presentacion?.venta ?? linea.precioUnitario)}
+                    </span>
+                    {linea.presentacion?.leyenda === 'PROMO_VENCIDA' && (
+                      <span
+                        data-testid="linea-promo-vencida"
+                        className="ml-1.5 inline-block rounded bg-rose-50 px-1.5 py-0.5 text-[9px] font-bold text-rose-700 dark:bg-rose-950/60 dark:text-rose-300"
+                      >
+                        Promo vencida
+                      </span>
+                    )}
                   </td>
                   <td className="cifra px-4 py-3 text-right text-sm font-black text-neutral-900 dark:text-white">
                     {formatearDinero(linea.total)}
@@ -204,6 +222,47 @@ export function DesgloseCotizacionSalida({
             </tfoot>
           </table>
         </div>
+
+        {/* Cargos que el viajero paga en destino: aparte y NUNCA dentro del total */}
+        {cotizacion.cargosEnDestino && cotizacion.cargosEnDestino.length > 0 && (
+          <div
+            data-testid="cargos-en-destino"
+            className="mt-4 rounded-xl border border-dashed border-neutral-300 bg-neutral-50 p-4 dark:border-neutral-700 dark:bg-neutral-800/40"
+          >
+            <div className="flex items-center gap-2">
+              <h3 className="text-xs font-bold text-neutral-800 dark:text-neutral-200">
+                Cargos en destino
+              </h3>
+              <span className="rounded-md bg-neutral-200 px-2 py-0.5 text-[10px] font-bold text-neutral-800 uppercase dark:bg-neutral-700 dark:text-neutral-100">
+                No incluido
+              </span>
+            </div>
+            <p className="mt-1 text-[11px] text-neutral-600 dark:text-neutral-400">
+              Se pagan en destino y no suman al total de la cotización.
+            </p>
+            <ul className="mt-2 space-y-1.5">
+              {cotizacion.cargosEnDestino.map((cargo, i) => (
+                <li
+                  key={`${cargo.concepto}-${i}`}
+                  className="flex items-start justify-between gap-3 text-xs"
+                >
+                  <span className="text-neutral-800 dark:text-neutral-200">
+                    {cargo.concepto}
+                    {cargo.nota && (
+                      <span className="block text-[11px] text-neutral-500">{cargo.nota}</span>
+                    )}
+                  </span>
+                  <span className="cifra shrink-0 text-right font-semibold text-neutral-900 dark:text-white">
+                    {cargo.monto ? formatearDinero(cargo.monto) : 'Monto por confirmar'}
+                    <span className="block text-[10px] font-normal text-neutral-500">
+                      {cargo.unidad === 'POR_PERSONA' ? 'por persona' : 'por grupo'}
+                    </span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         {/* Acción Destacada: Guardar Cotización debajo del Total (0c.22) */}
         {alGuardarCotizacion && (

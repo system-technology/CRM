@@ -25,7 +25,7 @@ import {
 } from '../application/puerto-crm.js';
 
 /** Lo que se trae de la oportunidad para pintar una tarjeta. Ni un campo más. */
-const PARA_LA_TARJETA = {
+export const PARA_LA_TARJETA = {
   id: true,
   titulo: true,
   destino: true,
@@ -66,7 +66,11 @@ export class CrmPrisma extends PuertoCrm {
 
   async listarEtapas(): Promise<EtapaDefinida[]> {
     return this.prisma.conTenant(async (tx) => {
-      const filas = await tx.etapaPipeline.findMany({ orderBy: { orden: 'asc' } });
+      const { tenantId } = ContextoTenant.obtener();
+      const filas = await tx.etapaPipeline.findMany({
+        where: { tenantId },
+        orderBy: { orden: 'asc' },
+      });
       return filas.map(aEtapaDefinida);
     });
   }
@@ -295,7 +299,7 @@ interface FilaOportunidad {
   etapa: FilaEtapa;
 }
 
-function aOportunidad(o: FilaOportunidad): Oportunidad {
+export function aOportunidad(o: FilaOportunidad): Oportunidad {
   return {
     id: o.id,
     contactoId: o.contactoId,
@@ -343,7 +347,7 @@ interface FilaContacto {
   consentimientos: { finalidad: string; revocadoEn: Date | null }[];
 }
 
-function aContacto(c: FilaContacto): Contacto {
+export function aContacto(c: FilaContacto): Contacto {
   return {
     id: c.id,
     nombre: c.nombre,

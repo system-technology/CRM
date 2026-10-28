@@ -825,3 +825,62 @@ bloqueada y no existe.
 - **Deuda declarada:** `plan_alimentacion` ya admite nulo, pero el contrato `Paquete` y la web
   aún lo tratan como obligatorio; la semilla real sigue poniendo `SIN_ALIMENTACION` hasta que
   T-041 y la web acepten el nulo. Ninguna fila existente queda nula.
+
+### La versión de cotización guarda la opción de salida (T-062, 2026-10-27)
+
+Migración `20261027130000_opcion_de_salida_en_la_version`.
+
+```
+  opciones_de_salida ◄──────────── versiones_cotizacion.opcion_de_salida_id (NULL)
+                       (opcion_de_salida_id, tenant_id)  NO ACTION, validada
+```
+
+**Por qué así.**
+
+- **Sin ella la versión no era reproducible.** Desde M2 el cotizador exige la opción cuando el
+  producto las tiene y elige las tarifas con ella; la versión guardada no la conservaba, así que
+  releer una cotización no decía con qué opción se formó el total ni permitía recotizarla igual.
+- **Se guarda la que usó el SERVIDOR**, no la que pidió el cliente (`armarVersion` la toma de
+  `calculo.opcionDeSalida`): si el producto no tiene opciones queda `NULL` aunque viniera una.
+- **Nula y sin relleno.** Las versiones son inmutables (disparador): las anteriores a T-062 quedan
+  en `NULL` = «no registrada», y no se reescribe la prueba.
+- **Compuesta y `NO ACTION`**, como `tarifas.opcion_de_salida_id`: una opción citada por una
+  versión se desactiva, no se borra; `SET NULL` sería además un UPDATE que el disparador rechaza.
+  Se crea `NOT VALID` y se valida en la misma migración (sin bloquear escrituras).
+- **Contrato:** `VersionDeCotizacion.opcionDeSalidaId` (`Id | null`). La API lo envía siempre; es
+  opcional en el esquema Zod solo para que una respuesta anterior siga validando.
+- Aserción `T-062` de `aislamiento.spec.ts`: foránea compuesta validada, control propio, lectura
+  cruzada en cero, 23503 al citar la opción ajena, 42501 al plantar con el tenant ajeno,
+  inmutabilidad de la columna y la opción citada no se borra.
+
+## Auditoría: quién actuó, usuario o clave de API (T-071, 2026-10-27)
+
+Migración `20261027140000_actor_en_la_auditoria`.
+
+```
+  registros_auditoria
+    usuario_id       uuid NULL
+    tipo_de_actor    tipo_de_actor NULL DEFAULT 'USUARIO'   USUARIO | CLAVE_DE_API
+    clave_de_api_id  uuid NULL   (sin foránea hasta M3; será COMPUESTA con tenant_id)
+    CHECK registros_auditoria_actor_coherente:
+      CLAVE_DE_API ⇔ clave_de_api_id NOT NULL, y entonces usuario_id NULL
+```
+
+**Por qué así.**
+
+- **Antes de la primera clave.** La API pública (M3) dejará cambiar precios con una clave; sin la
+  columna, ese cambio nacería con `usuario_id` nulo e indistinguible de un registro viejo.
+- **NULL en lo existente, USUARIO en lo nuevo.** `ADD COLUMN` sin DEFAULT y luego `SET DEFAULT`:
+  las filas anteriores quedan en NULL («sin la distinción») en vez de afirmar algo que nadie
+  registró, y ningún escritor actual tiene que cambiar.
+- **Enum y no tabla por tenant** (R12): quién puede escribir es invariante del sistema, no
+  política de la agencia.
+- **Sin datos personales.** Un tipo y un id opaco. El historial de precios devuelve
+  `actor: { tipo, claveDeApiId } | null` (contrato `CambioDePrecio`), nunca nombre ni correo.
+- **CHECK en dos pasos** (`NOT VALID` + `VALIDATE`): la bitácora es de escritura continua y la
+  validación no bloquea inserciones.
+- Aserción `T-071` de `aislamiento.spec.ts`: RLS forzada con `WITH CHECK`, `tenant_id NOT NULL`,
+  CHECK validado, DEFAULT USUARIO, control propio, lectura cruzada en cero, `WITH CHECK` al
+  plantar con el tenant ajeno y 23514 en las tres medias identidades.
+- **Cola (no bloquea, preexistente):** `registros_auditoria` no tiene foránea a `tenants` y su
+  clave es `BIGSERIAL`; no cambia con T-071.

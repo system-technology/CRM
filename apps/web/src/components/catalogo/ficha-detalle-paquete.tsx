@@ -22,6 +22,7 @@ import {
   agruparPreciosPorAcomodacion,
   verificarVigenciaTarifario,
 } from '../../lib/catalogo-logica';
+import { ChipTipoProducto } from '../comun/chip-tipo-producto';
 
 interface FichaDetallePaqueteProps {
   paquete: PaqueteConDetalle | null;
@@ -66,13 +67,14 @@ export function FichaDetallePaquete({
       onClick={alCerrar}
     >
       <div
-        className="flex h-full w-full max-w-2xl flex-col bg-white shadow-2xl transition-transform dark:bg-neutral-900"
+        className="anim-panel-lateral flex h-full w-full max-w-2xl flex-col bg-white shadow-2xl transition-transform dark:bg-neutral-900"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Cabecera */}
         <div className="flex items-start justify-between border-b border-neutral-200 px-6 py-4 dark:border-neutral-800">
           <div className="flex-1 pr-4">
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <ChipTipoProducto nombreReferencia={paquete.nombre} tamano="sm" />
               <span className="bg-acento-100 text-acento-800 dark:bg-acento-950 dark:text-acento-300 rounded px-2 py-0.5 text-xs font-semibold">
                 {paquete.destino} {paquete.paisIso ? '(' + paquete.paisIso + ')' : ''}
               </span>
@@ -306,6 +308,39 @@ export function FichaDetallePaquete({
               </ul>
             </div>
           </div>
+
+          {/* Cargos en destino (No incluidos en el total - ADR-0017 §9) */}
+          {paquete.cargosEnDestino && paquete.cargosEnDestino.length > 0 && (
+            <div className="rounded-xl border border-amber-200 bg-amber-50/40 p-4 dark:border-amber-900/40 dark:bg-amber-950/20">
+              <div className="flex items-center justify-between">
+                <h4 className="flex items-center gap-1.5 text-xs font-bold text-amber-800 uppercase dark:text-amber-300">
+                  <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                  Cargos a Pagar en Destino (No Incluidos)
+                </h4>
+                <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800 dark:bg-amber-900/60 dark:text-amber-200">
+                  Pago directo
+                </span>
+              </div>
+              <p className="mt-1 text-[11px] text-amber-700 dark:text-amber-300">
+                Estos valores se abonan en destino (impuestos de muelle, tasas o reservas naturales)
+                y nunca se suman al total de la cotización.
+              </p>
+              <ul className="mt-2.5 space-y-1.5 divide-y divide-amber-100 dark:divide-amber-900/40">
+                {paquete.cargosEnDestino.map((cargo, idx) => (
+                  <li
+                    key={idx}
+                    className="flex items-center justify-between pt-1.5 text-xs text-neutral-800 dark:text-neutral-200"
+                  >
+                    <span className="font-medium">{cargo.concepto}</span>
+                    <span className="cifra font-bold text-neutral-900 dark:text-white">
+                      {cargo.monto ? formatearDinero(cargo.monto) : 'Monto por confirmar'}{' '}
+                      {cargo.unidad === 'POR_PERSONA' ? 'por persona' : 'por grupo'}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           {/* Descripción general */}
           {paquete.descripcion && (

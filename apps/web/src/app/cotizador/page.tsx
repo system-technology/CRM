@@ -14,17 +14,7 @@ import React, { Suspense, useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useModoDemo } from '../../lib/modo-demo';
-import {
-  Calculator,
-  Compass,
-  Copy,
-  Check,
-  AlertCircle,
-  Bookmark,
-  Eye,
-  RefreshCw,
-  Ship,
-} from 'lucide-react';
+import { Calculator, Compass, Copy, Check, AlertCircle, Bookmark, Ship } from 'lucide-react';
 import { requiereAvisoImpuestoMuelle } from '../../lib/cotizador-logica';
 import type {
   Acomodacion,
@@ -40,17 +30,23 @@ import { AvisoConfiguracionTenant } from '../../components/crm/aviso-configuraci
 import { formatearErrorAmigable } from '../../lib/estados-ui-logica';
 import { DesgloseCotizacionSalida } from '../../components/cotizador/desglose-cotizacion-salida';
 import { ModalGuardarCotizacion } from '../../components/cotizador/modal-guardar-cotizacion';
+import { EstadoSinCatalogo } from '../../components/catalogo/estado-sin-catalogo';
 import { MOCK_PAQUETES_CATALOGO } from '../../lib/mock-catalogo';
 import {
   calcularCotizacionMock,
   generarTextoPropuestaWhatsApp,
   generarTextoPropuestaWhatsAppSalida,
   interpretarErrorCotizacion,
+  opcionesActivasDeSalida,
+  opcionDeSalidaAEnviar,
+  faltaElegirOpcionDeSalida,
 } from '../../lib/cotizador-logica';
 import {
   estaUsandoCatalogoReal,
   listarSalidasApi,
   cotizarSalidaApi,
+  obtenerOpcionesDeSalidaApi,
+  type OpcionDeSalidaDePaquete,
   CatalogoApiError,
 } from '../../lib/catalogo-api';
 import { listarContactos } from '../../lib/crm-api';
@@ -121,6 +117,48 @@ function ContenidoCotizador() {
     mensaje: string;
     esErrorAgencia: boolean;
   } | null>(null);
+
+  // Opciones de salida del producto (turno, modalidad; ADR-0017 §3.1). Con opciones activas la
+  // API exige `opcionDeSalidaId`: el asesor elige antes de cotizar y no se adivina por él.
+  const [opcionesDeSalida, setOpcionesDeSalida] = useState<OpcionDeSalidaDePaquete[]>([]);
+  const [opcionDeSalidaId, setOpcionDeSalidaId] = useState('');
+  // Para qué paquete ya se conocen las opciones. Derivar «cargando» de aquí (y no de un booleano
+  // que el efecto enciende tarde) evita cotizar sin opción en el render que cambia de paquete.
+  const [opcionesListasPara, setOpcionesListasPara] = useState('');
+  const [errorOpciones, setErrorOpciones] = useState<string | null>(null);
+  const cargandoOpciones = usarReal && !!paqueteId && opcionesListasPara !== paqueteId;
+
+  const opcionesActivas = useMemo(
+    () => opcionesActivasDeSalida(opcionesDeSalida),
+    [opcionesDeSalida],
+  );
+  const faltaOpcion = usarReal && faltaElegirOpcionDeSalida(opcionesDeSalida, opcionDeSalidaId);
+  const opcionAEnviar = usarReal
+    ? opcionDeSalidaAEnviar(opcionesDeSalida, opcionDeSalidaId)
+    : undefined;
+
+  useEffect(() => {
+    setOpcionesDeSalida([]);
+    setOpcionDeSalidaId('');
+    setOpcionesListasPara('');
+    setErrorOpciones(null);
+    if (!usarReal || !paqueteId) return;
+    let vigente = true;
+    obtenerOpcionesDeSalidaApi(paqueteId)
+      .then((ops) => {
+        if (!vigente) return;
+        setOpcionesDeSalida(ops);
+        setOpcionesListasPara(paqueteId);
+      })
+      .catch((err: unknown) => {
+        if (!vigente) return;
+        setErrorOpciones(formatearErrorAmigable(err));
+        setOpcionesListasPara(paqueteId);
+      });
+    return () => {
+      vigente = false;
+    };
+  }, [usarReal, paqueteId]);
 
   // Eje 3 de ADR-0009: pideComposicion gobernado por el tarifario
   const pideComposicion = useMemo(() => {
@@ -224,6 +262,14 @@ function ContenidoCotizador() {
   useEffect(() => {
     if (!paqueteId || !fecha) return;
 
+    // No se cotiza hasta saber si el producto tiene opciones, ni sin elegir una cuando las tiene.
+    if (usarReal && (cargandoOpciones || errorOpciones || faltaOpcion)) {
+      setCotizacionReal(null);
+      setCalculando(false);
+      setErrorMensaje(null);
+      return;
+    }
+
     setCalculando(true);
     setErrorMensaje(null);
 
@@ -231,6 +277,7 @@ function ContenidoCotizador() {
       cotizarSalidaApi({
         paqueteId,
         fecha,
+        ...(opcionAEnviar ? { opcionDeSalidaId: opcionAEnviar } : {}),
         adultos: pideComposicion ? adultos : undefined,
         ninos: pideComposicion ? ninos : undefined,
         infantes: pideComposicion ? infantes : undefined,
@@ -279,6 +326,10 @@ function ContenidoCotizador() {
     pideComposicion,
     acomodacionMock,
     markupExtraMock,
+    cargandoOpciones,
+    errorOpciones,
+    faltaOpcion,
+    opcionAEnviar,
   ]);
 
   // Copiar propuesta WhatsApp al portapapeles
@@ -317,6 +368,7 @@ function ContenidoCotizador() {
           ninos: pideComposicion ? ninos : 0,
           infantes: pideComposicion ? infantes : 0,
           acomodacion: acomodacionMock || undefined,
+          opcionDeSalidaId: opcionAEnviar,
           vigenteHasta: datos.vigenteHasta,
         },
       });
@@ -394,47 +446,15 @@ function ContenidoCotizador() {
             </div>
           )}
 
-          {/* Estado Vacío cuando la agencia no tiene salidas ni excursiones publicadas */}
+          {/* Estado Vacío cuando la agencia no tiene salidas ni excursiones publicadas (T-019) */}
           {!cargandoSalidas && !errorTenant && paquetesDisponibles.length === 0 ? (
-            <div
-              data-testid="cotizador-estado-vacio"
-              className="rounded-3xl border border-dashed border-neutral-300 bg-white p-8 text-center shadow-xs dark:border-neutral-800 dark:bg-neutral-900"
-            >
-              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-purple-50 text-purple-600 dark:bg-purple-950 dark:text-purple-300">
-                <Compass className="h-7 w-7" />
-              </div>
-              <h2 className="mt-4 text-base font-bold text-neutral-900 dark:text-white">
-                No hay excursiones ni salidas registradas en esta agencia
-              </h2>
-              <p className="mx-auto mt-2 max-w-md text-xs text-neutral-600 dark:text-neutral-400">
-                La agencia activa no cuenta con excursiones de un día ni salidas publicadas en la
-                API. Puedes publicar excursiones en la gestión del catálogo o activar el modo
-                demostración para explorar el cotizador con excursiones reales.
-              </p>
-              <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => alternarDemo()}
-                  className="flex min-h-[44px] items-center gap-2 rounded-xl bg-purple-700 px-4 py-2.5 text-xs font-bold text-white shadow-xs transition-colors hover:bg-purple-800"
-                >
-                  <Eye className="h-4 w-4" />
-                  <span>Ver excursiones de demostración</span>
-                </button>
-                <Link
-                  href="/catalogo"
-                  className="flex min-h-[44px] items-center gap-2 rounded-xl border border-neutral-200 bg-white px-4 py-2.5 text-xs font-bold text-neutral-700 transition-colors hover:bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-800 dark:text-neutral-300"
-                >
-                  <span>Ir al catálogo</span>
-                </Link>
-                <button
-                  type="button"
-                  onClick={cargarSalidasReales}
-                  className="flex min-h-[44px] items-center gap-2 rounded-xl border border-neutral-200 bg-white px-4 py-2.5 text-xs font-medium text-neutral-600 transition-colors hover:bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-800 dark:text-neutral-400"
-                >
-                  <RefreshCw className="h-3.5 w-3.5" />
-                  <span>Reintentar búsqueda</span>
-                </button>
-              </div>
+            <div data-testid="cotizador-estado-vacio" className="py-6">
+              <EstadoSinCatalogo
+                contexto="cotizador"
+                onVerDemo={() => alternarDemo()}
+                onImportar={() => router.push('/catalogo')}
+                hrefCrear="/catalogo/gestion"
+              />
             </div>
           ) : (
             !cargandoSalidas && (
@@ -467,6 +487,52 @@ function ContenidoCotizador() {
                         ))}
                       </select>
                     </div>
+
+                    {/* Opción de salida (turno / modalidad): obligatoria si el producto las tiene */}
+                    {usarReal && errorOpciones && (
+                      <p
+                        role="alert"
+                        data-testid="error-opciones-salida"
+                        className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-800"
+                      >
+                        No se pudieron cargar las opciones de salida del producto: {errorOpciones}{' '}
+                        Vuelve a elegir el paquete o recarga la página.
+                      </p>
+                    )}
+                    {usarReal && opcionesActivas.length > 0 && (
+                      <div data-testid="selector-opcion-salida">
+                        <label
+                          htmlFor="select-opcion-salida-cotizador"
+                          className="block text-xs font-semibold text-neutral-700 dark:text-neutral-300"
+                        >
+                          Opción de salida
+                        </label>
+                        <select
+                          id="select-opcion-salida-cotizador"
+                          value={opcionDeSalidaId}
+                          onChange={(e) => setOpcionDeSalidaId(e.target.value)}
+                          required
+                          aria-invalid={faltaOpcion}
+                          className="mt-1.5 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white p-2.5 text-xs text-neutral-900 shadow-2xs focus:border-purple-600 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                        >
+                          <option value="">Elige una opción…</option>
+                          {opcionesActivas.map((o) => (
+                            <option key={o.id} value={o.id}>
+                              {o.etiqueta}
+                              {o.horaSalida ? ` · ${o.horaSalida}` : ''}
+                            </option>
+                          ))}
+                        </select>
+                        {faltaOpcion && (
+                          <p
+                            data-testid="aviso-elegir-opcion"
+                            className="mt-1.5 text-[11px] text-amber-700 dark:text-amber-400"
+                          >
+                            Elige una opción de salida para ver el precio.
+                          </p>
+                        )}
+                      </div>
+                    )}
 
                     {/* Fecha de Salida */}
                     <div>

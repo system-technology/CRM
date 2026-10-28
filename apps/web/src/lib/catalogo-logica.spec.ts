@@ -6,6 +6,7 @@ import {
   Temporada as EsquemaTemporada,
   SalidaPublicada as EsquemaSalidaPublicada,
   type SalidaPublicada,
+  type CargoEnDestino,
 } from '@viajapro/contracts';
 import { MOCK_MAYORISTAS, MOCK_PAQUETES_CATALOGO } from './mock-catalogo';
 import {
@@ -17,6 +18,11 @@ import {
   formatearCondicionDesde,
   obtenerPrecioDesde,
   verificarVigenciaTarifario,
+  clasificarDisponibilidadCupos,
+  formatearHorarioExcursion,
+  interpretarPresentacionTarifa,
+  verificarCargosEnDestinoSeparados,
+  inferirTipoProducto,
 } from './catalogo-logica';
 
 describe('Pruebas del Catálogo de Paquetes y Tarifarios de Mayoristas', () => {
@@ -221,5 +227,149 @@ describe('Pruebas del Catálogo de Paquetes y Tarifarios de Mayoristas', () => {
     expect(infoGrupo.esGrupo).toBe(true);
     expect(infoGrupo.subtitulo).toContain('promo grupal');
     expect(infoGrupo.aviso).toContain('sujeto a compra en grupo');
+  });
+
+  // =============================================================================
+  // Pruebas T-018 & T-051: Horarios, Cupos, Presentación Promo y Cargos en Destino
+  // =============================================================================
+
+  it('15. formatearHorarioExcursion formatea horas de salida y regreso correctamente', () => {
+    expect(formatearHorarioExcursion('07:30', '16:00')).toBe('Salida: 07:30 · Regreso: 16:00');
+    expect(formatearHorarioExcursion('08:00', null)).toBe('Salida: 08:00');
+    expect(formatearHorarioExcursion(null, '17:00')).toBe('Regreso: 17:00');
+    expect(formatearHorarioExcursion(null, null)).toBeNull();
+  });
+
+  it('16. clasificarDisponibilidadCupos clasifica urgencia de cupos (T-018)', () => {
+    const disp = clasificarDisponibilidadCupos(15);
+    expect(disp.estado).toBe('DISPONIBLE');
+    expect(disp.etiqueta).toBe('15 cupos disponibles');
+
+    const ultimos = clasificarDisponibilidadCupos(4);
+    expect(ultimos.estado).toBe('ULTIMOS_CUPOS');
+    expect(ultimos.etiqueta).toBe('Últimos 4 cupos');
+
+    const agotado = clasificarDisponibilidadCupos(0);
+    expect(agotado.estado).toBe('AGOTADO');
+    expect(agotado.etiqueta).toBe('Agotado');
+
+    const programada = clasificarDisponibilidadCupos(null);
+    expect(programada.estado).toBe('PROGRAMADA');
+    expect(programada.etiqueta).toBe('Salida programada');
+  });
+
+  it('17. interpretarPresentacionTarifa con política OCULTAR no tacha ni muestra leyenda (T-051)', () => {
+    // Si la política es OCULTAR, la API devuelve venta sin listaTachada y sin leyenda
+    const presentacionOcultar = {
+      estado: 'PROMO_VENCIDA' as const,
+      venta: { unidades: '220000', moneda: 'COP' as const },
+      listaTachada: null,
+      leyenda: null,
+      promoVigente: false,
+    };
+
+    const res = interpretarPresentacionTarifa(presentacionOcultar);
+    expect(res.mostrarTachado).toBe(false);
+    expect(res.listaTachada).toBeNull();
+    expect(res.mostrarLeyendaVencida).toBe(false);
+    expect(res.promoVigente).toBe(false);
+    expect(res.esConsultar).toBe(false);
+  });
+
+  it('18. interpretarPresentacionTarifa con política TACHAR muestra lista tachada y leyenda promo vencida (T-051)', () => {
+    // Si la política es TACHAR, la API entrega listaTachada y leyenda: 'PROMO_VENCIDA'
+    const presentacionTachar = {
+      estado: 'PROMO_VENCIDA' as const,
+      venta: { unidades: '220000', moneda: 'COP' as const },
+      listaTachada: { unidades: '180000', moneda: 'COP' as const },
+      leyenda: 'PROMO_VENCIDA' as const,
+      promoVigente: false,
+    };
+
+    const res = interpretarPresentacionTarifa(presentacionTachar);
+    expect(res.mostrarTachado).toBe(true);
+    expect(res.listaTachada?.unidades).toBe('180000');
+    expect(res.mostrarLeyendaVencida).toBe(true);
+    expect(res.promoVigente).toBe(false);
+    expect(res.esConsultar).toBe(false);
+  });
+
+  it('19. verificarCargosEnDestinoSeparados asegura que los cargos nunca se suman al total (T-051 / ADR-0017 §9)', () => {
+    const totalPaquete = { unidades: '250000', moneda: 'COP' as const };
+    const cargosDestino: CargoEnDestino[] = [
+      {
+        concepto: 'Impuesto de muelle La Bodeguita',
+        monto: { unidades: '26500', moneda: 'COP' as const },
+        unidad: 'POR_PERSONA',
+      },
+      {
+        concepto: 'Entrada Parque Nacional Corales',
+        monto: { unidades: '15000', moneda: 'COP' as const },
+        unidad: 'POR_PERSONA',
+      },
+    ];
+
+    const resultado = verificarCargosEnDestinoSeparados(totalPaquete, cargosDestino);
+
+    // El total de la agencia se mantiene estrictamente igual al precio del paquete, sin sumarle los cargos
+    expect(resultado.totalAgencia.unidades).toBe('250000');
+    expect(resultado.totalNuncaIncluyeCargos).toBe(true);
+    expect(resultado.cargosEnDestino.length).toBe(2);
+    expect(resultado.sumaCargosEnDestino?.unidades).toBe('41500');
+    expect(resultado.sumaCargosEnDestino?.moneda).toBe('COP');
+  });
+
+  // =============================================================================
+  // Pruebas T-036: Inferencia de Tipo de Producto Turístico e Identidad Visual
+  // =============================================================================
+
+  it('20. inferirTipoProducto categoriza correctamente cada tipo de turismo y sus sinónimos (T-036)', () => {
+    // 1. Reserva natural / ecoturismo
+    expect(inferirTipoProducto('Caminata en Reserva Natural Cañón del Combeima')).toBe(
+      'reserva_natural',
+    );
+    expect(inferirTipoProducto('Tour de Avistamiento de Aves y Senderismo')).toBe(
+      'reserva_natural',
+    );
+    expect(inferirTipoProducto('Expedición Ecológica por los Manglares')).toBe('reserva_natural');
+    expect(inferirTipoProducto('Aventura a Cascada El Manto de la Novia')).toBe('reserva_natural');
+
+    // 2. Isla y beach club
+    expect(inferirTipoProducto('Pasadía en Isla Múcura y Tintipán')).toBe('isla_beach_club');
+    expect(inferirTipoProducto('Pasadía Bora Bora Beach Club Barú')).toBe('isla_beach_club');
+    expect(inferirTipoProducto('Día de Playa y Descanso en Cholón')).toBe('isla_beach_club');
+    expect(inferirTipoProducto('Tour Islas del Rosario')).toBe('isla_beach_club');
+
+    // 3. City tour y cultura
+    expect(inferirTipoProducto('City Tour Centro Histórico en Chiva')).toBe('city_tour');
+    expect(inferirTipoProducto('Recorrido Cultural y Castillo San Felipe')).toBe('city_tour');
+    expect(inferirTipoProducto('Graffiti Tour Comuna 13')).toBe('city_tour');
+    expect(inferirTipoProducto('Visita al Museo del Oro')).toBe('city_tour');
+
+    // 4. Aventura y náutica
+    expect(inferirTipoProducto('Alquiler de Lancha Deportiva y Careteo')).toBe('aventura_nautica');
+    expect(inferirTipoProducto('Buceo en Arrecifes y Snorkel')).toBe('aventura_nautica');
+    expect(inferirTipoProducto('Paseo al Atardecer en Catamarán')).toBe('aventura_nautica');
+    expect(inferirTipoProducto('Rafting Río Negro y Aventura Extrema')).toBe('aventura_nautica');
+
+    // 5. Paquete con hotel
+    expect(inferirTipoProducto('Paquete San Andrés 4 Noches con Hotel Todo Incluido')).toBe(
+      'paquete_hotel',
+    );
+    expect(inferirTipoProducto('Escapada Romántica en Resort & Spa')).toBe('paquete_hotel');
+    expect(inferirTipoProducto('Plan Eje Cafetero 3 Noches de Hospedaje')).toBe('paquete_hotel');
+
+    // 6. Excursión general (fallback)
+    expect(inferirTipoProducto('Experiencia Sorpresa en la Montaña')).toBe('excursion_general');
+
+    // 7. Deducción mediante etiquetas
+    expect(inferirTipoProducto('Paseo Tradicional', ['reserva', 'naturaleza'])).toBe(
+      'reserva_natural',
+    );
+    expect(inferirTipoProducto('Paseo Tradicional', ['playa', 'mar'])).toBe('isla_beach_club');
+    expect(inferirTipoProducto('Paseo Tradicional', ['nautica', 'lancha'])).toBe(
+      'aventura_nautica',
+    );
+    expect(inferirTipoProducto('Paseo Tradicional', ['hotel', 'noches'])).toBe('paquete_hotel');
   });
 });

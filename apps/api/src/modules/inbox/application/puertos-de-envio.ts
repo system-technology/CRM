@@ -69,7 +69,8 @@ export abstract class PuertoMensajesSalientes {
   abstract leerParaEnviar(tenantId: string, mensajeId: string): Promise<MensajePorEnviar | null>;
   /**
    * Guarda el `wamid` que devolvió Meta. Condicional: solo si aún no tenía (un webhook de estado
-   * pudo llegar primero y ya haberlo guardado).
+   * pudo llegar primero y ya haberlo guardado). Si el mensaje quedó `FALLIDO` «sin confirmar»
+   * (sin código de Meta) por un intento concurrente, vuelve a `PENDIENTE`: manda el acuse (T-059).
    */
   abstract registrarAceptado(tenantId: string, mensajeId: string, wamid: string): Promise<void>;
   /**

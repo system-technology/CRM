@@ -32,29 +32,11 @@ export default {
     : {}),
 
   async headers() {
-    const isDev = process.env.NODE_ENV !== 'production';
-    const apiOrigin = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3333';
-    const wsOrigin =
-      process.env.NEXT_PUBLIC_WS_URL ??
-      apiOrigin.replace('http://', 'ws://').replace('https://', 'wss://');
-
-    const csp = [
-      "default-src 'self'",
-      `connect-src 'self' ${apiOrigin} ${wsOrigin}`,
-      `script-src 'self'${isDev ? " 'unsafe-inline'" : ''}`,
-      "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: blob:",
-      "font-src 'self' data:",
-      "frame-ancestors 'none'",
-      "base-uri 'self'",
-      "form-action 'self'",
-    ].join('; ');
-
+    // La Content-Security-Policy la emite src/middleware.ts (lleva nonce por peticion, T-069).
     return [
       {
         source: '/:path*',
         headers: [
-          { key: 'Content-Security-Policy', value: csp },
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
         ],

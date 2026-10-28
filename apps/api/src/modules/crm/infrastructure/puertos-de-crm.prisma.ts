@@ -7,9 +7,11 @@
 import { Injectable } from '@nestjs/common';
 import type { ClienteTenant } from '../../../shared/prisma/prisma.service.js';
 import {
+  type DefinicionDeCampoLeida,
   type EntradaDeContacto,
   type NotaDeConversacionLeida,
   PuertoContactos,
+  PuertoDefinicionesDeCampo,
   PuertoNotasDeConversacion,
   PuertoReferenciasDeCrm,
 } from '../../../shared/puertos/puertos-hacia-crm.js';
@@ -24,6 +26,30 @@ export class ContactosDeCrm extends PuertoContactos {
       create: { tenantId: e.tenantId, telefonoE164: e.telefonoE164, nombre: e.nombrePerfil },
       select: { id: true },
     });
+  }
+}
+
+@Injectable()
+export class DefinicionesDeCampoDeCrm extends PuertoDefinicionesDeCampo {
+  async deLosPaquetes(
+    tx: ClienteTenant,
+    tenantId: string,
+    claves?: readonly string[],
+  ): Promise<DefinicionDeCampoLeida[]> {
+    const filas = await tx.definicionCampoPersonalizado.findMany({
+      where: { tenantId, entidad: 'PAQUETE', ...(claves ? { clave: { in: [...claves] } } : {}) },
+      orderBy: [{ orden: 'asc' }, { clave: 'asc' }],
+    });
+    return filas.map((d) => ({
+      clave: d.clave,
+      etiqueta: d.etiqueta,
+      tipo: d.tipo,
+      obligatorio: d.obligatorio,
+      orden: d.orden,
+      opciones: Array.isArray(d.opciones)
+        ? d.opciones.filter((o): o is string => typeof o === 'string')
+        : [],
+    }));
   }
 }
 
