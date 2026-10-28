@@ -1,3 +1,32 @@
+# Entrega — T-008: Adaptar el cliente de la web a la retirada de la ruta antigua de cotizacion de paquetes — 2026-10-28
+
+## Identificación
+- **Tarea:** `T-008` (roadmap/tasks.yaml)
+- **Rama:** `b/T-008-adaptar-cliente-cotizacion`
+- **Carril:** `b` (Frontend / Web)
+
+## Qué se construyó y auditó
+
+1. **Retirada de la ruta antigua en `apps/web/src/lib/api.ts`:**
+   - Eliminada la referencia y llamada a `/api/v1/paquetes/cotizar` que fue retirada del backend en T-007.
+   - Alineado el cliente con la ruta vigente `POST /api/v1/catalogo/cotizar` mediante delegación y re-exportación de `cotizarSalidaApi` (`CotizarSalida`).
+   - El cotizador oficial (`apps/web/src/app/cotizador/page.tsx`) sigue cotizando contra `/api/v1/catalogo/cotizar`.
+
+2. **Pruebas y Verificación:**
+   - Creada suite unitaria `apps/web/src/lib/api.spec.ts` (4 pruebas) que comprueba que `api.listarPaquetes` no llama a la ruta antigua, que `api.cotizarSalida` delega a la ruta vigente `/api/v1/catalogo/cotizar`, y que la gestión contractual de `ErrorApi` (`EsquemaError`, R3) opera correctamente.
+   - Total `@viajapro/web`: 73 suites, 606 pruebas en verde.
+   - Typecheck (9/9), Linter (7/7) y Next.js build (18 rutas) 100% en verde.
+   - Ganchos y fronteras (`pnpm test:hooks`): 59/59, 19/19, 6/6 en verde.
+
+## Verificación de Compuertas
+- **Pruebas unitarias (@viajapro/web):** 73 suites, 606 pruebas en verde.
+- **Typecheck:** 9/9 paquetes en verde.
+- **Linter:** 7/7 paquetes en verde.
+- **Compilación de producción (Next.js):** 18/18 rutas estáticas y dinámicas compiladas exitosamente.
+- **Fronteras y ganchos de seguridad (`pnpm test:hooks`):** 59/59 casos de política de rama, 19/19 detección de secretos, 6/6 fronteras de módulos.
+
+---
+
 # Entrega — T-027: Equipo e invitaciones: invitar asesores, asignar rol y ver quién tiene acceso — 2026-10-28
 
 ## Identificación
