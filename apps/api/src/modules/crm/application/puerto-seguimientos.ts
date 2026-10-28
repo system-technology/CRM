@@ -1,17 +1,14 @@
 /**
  * Puerto de seguimientos (T-077).
  *
- * El diseño completo necesita una tabla `seguimientos` (varios por oportunidad, y también sobre
- * conversaciones) que todavía no existe: la crea `datos` con aprobación del propietario. Mientras
- * tanto hay dos adaptadores detrás de este mismo puerto:
+ * Dos adaptadores detrás de este mismo puerto, con el mismo comportamiento:
  *
- *   · `SeguimientosSobreOportunidad` (Prisma): usa las columnas `proxima_tarea_*` que YA existen.
- *     Un seguimiento pendiente por oportunidad; sobre conversación lanza
- *     `SeguimientoNoSoportadoTodaviaError`.
- *   · `SeguimientosEnMemoria` (doble de pruebas): el comportamiento completo.
+ *   · `SeguimientosPrisma`: la tabla `seguimientos` (T-082). Varios por oportunidad, y también
+ *     sobre conversaciones.
+ *   · `SeguimientosEnMemoria` (doble de pruebas): el contrato ejecutable del puerto.
  *
- * Cuando exista la tabla se escribe un tercer adaptador y se cambia el `useClass`; ni el caso de
- * uso ni el contrato HTTP cambian.
+ * El provisional de T-077 sobre `oportunidades.proxima_tarea_*` se retiró con T-082; la migración
+ * copió a la tabla los seguimientos que había dejado.
  */
 import type { EstadoSeguimiento, Seguimiento } from '@viajapro/contracts';
 

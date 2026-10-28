@@ -1,5 +1,5 @@
 /**
- * Doble en memoria de `PuertoSeguimientos`: el comportamiento COMPLETO que tendrá el adaptador de
+ * Doble en memoria de `PuertoSeguimientos`: el mismo comportamiento que `SeguimientosPrisma` sobre
  * la tabla `seguimientos` (varios por oportunidad, y sobre conversaciones). Sirve para las
  * pruebas del caso de uso y como contrato ejecutable del puerto. No se registra en ningún módulo.
  */
