@@ -4,6 +4,9 @@ import './globals.css';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'swap' });
 
+// Sin renderizado dinamico las paginas se prerenderizan y no reciben el nonce de la CSP (T-069).
+export const dynamic = 'force-dynamic';
+
 export const metadata: Metadata = {
   title: 'ViajaPro',
   description: 'CRM para agencias de turismo. Convierte conversaciones en viajes reales.',

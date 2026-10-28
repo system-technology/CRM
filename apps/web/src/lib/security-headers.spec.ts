@@ -1,5 +1,8 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { NextConfig } from 'next';
+import { NextRequest } from 'next/server';
+import { buildCsp } from './csp';
+import { middleware } from '../middleware';
 
 interface HeadersEntry {
   source: string;
@@ -15,7 +18,10 @@ async function loadConfig(): Promise<NextConfigWithHeaders> {
   return configModule.default;
 }
 
-describe('Security headers in next.config.mjs', () => {
+const directiva = (csp: string, nombre: string): string =>
+  csp.split('; ').find((d) => d.startsWith(nombre)) ?? '';
+
+describe('Cabeceras de seguridad estaticas en next.config.mjs', () => {
   let config: NextConfigWithHeaders;
 
   beforeEach(async () => {
@@ -23,164 +29,98 @@ describe('Security headers in next.config.mjs', () => {
     config = await loadConfig();
   });
 
-  it('exports a headers function that returns CSP, X-Content-Type-Options, and Referrer-Policy', async () => {
-    expect(typeof config.headers).toBe('function');
+  it('emite X-Content-Type-Options y Referrer-Policy, y ya no la CSP (la emite el middleware)', async () => {
+    const entradas = await config.headers!();
+    const claves = entradas.flatMap((e) => e.headers.map((h) => h.key));
 
-    const headers = await config.headers!();
+    expect(claves).toContain('X-Content-Type-Options');
+    expect(claves).toContain('Referrer-Policy');
+    expect(claves).not.toContain('Content-Security-Policy');
 
-    expect(Array.isArray(headers)).toBe(true);
-    expect(headers.length).toBeGreaterThan(0);
-
-    const firstEntry = headers[0];
-    expect(firstEntry).toBeDefined();
-    if (!firstEntry) return;
-
-    expect(firstEntry).toHaveProperty('source');
-    expect(firstEntry).toHaveProperty('headers');
-    expect(Array.isArray(firstEntry.headers)).toBe(true);
-
-    const headerKeys = firstEntry.headers.map((h) => h.key);
-    expect(headerKeys).toContain('Content-Security-Policy');
-    expect(headerKeys).toContain('X-Content-Type-Options');
-    expect(headerKeys).toContain('Referrer-Policy');
-
-    const cspHeader = firstEntry.headers.find((h) => h.key === 'Content-Security-Policy');
-    const xContentTypeOptionsHeader = firstEntry.headers.find(
-      (h) => h.key === 'X-Content-Type-Options',
+    const todas = entradas.flatMap((e) => e.headers);
+    expect(todas.find((h) => h.key === 'X-Content-Type-Options')?.value).toBe('nosniff');
+    expect(todas.find((h) => h.key === 'Referrer-Policy')?.value).toBe(
+      'strict-origin-when-cross-origin',
     );
-    const referrerPolicyHeader = firstEntry.headers.find((h) => h.key === 'Referrer-Policy');
+  });
+});
 
-    expect(cspHeader).toBeDefined();
-    expect(cspHeader?.value).toBeTruthy();
-    expect(typeof cspHeader?.value).toBe('string');
-    expect(cspHeader?.value.length).toBeGreaterThan(0);
+describe('buildCsp', () => {
+  it('en produccion usa nonce y strict-dynamic, sin unsafe-inline ni unsafe-eval en script-src', () => {
+    const csp = buildCsp('abc123', { NODE_ENV: 'production' });
+    const script = directiva(csp, 'script-src');
 
-    expect(xContentTypeOptionsHeader).toBeDefined();
-    expect(xContentTypeOptionsHeader?.value).toBe('nosniff');
-
-    expect(referrerPolicyHeader).toBeDefined();
-    expect(referrerPolicyHeader?.value).toBe('strict-origin-when-cross-origin');
-
-    // Verify CSP contains expected directives
-    const cspValue = cspHeader?.value ?? '';
-    expect(cspValue).toContain("default-src 'self'");
-    expect(cspValue).toContain("connect-src 'self'");
-    expect(cspValue).toContain("style-src 'self' 'unsafe-inline'");
-    expect(cspValue).toContain("img-src 'self' data: blob:");
-    expect(cspValue).toContain("font-src 'self' data:");
-    expect(cspValue).toContain("frame-ancestors 'none'");
-    expect(cspValue).toContain("base-uri 'self'");
-    expect(cspValue).toContain("form-action 'self'");
-
-    // CSP should NOT contain unsafe-eval
-    expect(cspValue).not.toContain('unsafe-eval');
+    expect(script).toContain("'nonce-abc123'");
+    expect(script).toContain("'strict-dynamic'");
+    expect(script).not.toContain('unsafe-inline');
+    expect(script).not.toContain('unsafe-eval');
+    expect(csp).not.toContain('unsafe-eval');
   });
 
-  it("CSP permite 'unsafe-eval' solo en desarrollo (el recargador de React lo exige)", async () => {
-    const scriptSrc = async (nodeEnv: string): Promise<string> => {
-      vi.stubEnv('NODE_ENV', nodeEnv);
-      vi.resetModules();
-      const config = await loadConfig();
-      const entradas = await config.headers!();
-      const cabecera = entradas[0]!.headers.find((h) => h.key === 'Content-Security-Policy');
-      return (cabecera?.value ?? '').split('; ').find((d) => d.startsWith('script-src')) ?? '';
-    };
+  it("en desarrollo mantiene 'unsafe-inline' y 'unsafe-eval' (recargador de React)", () => {
+    const script = directiva(buildCsp('abc123', { NODE_ENV: 'development' }), 'script-src');
+    expect(script).toContain("'unsafe-eval'");
+    expect(script).toContain("'unsafe-inline'");
+  });
 
-    expect(await scriptSrc('development')).toContain("'unsafe-eval'");
-    expect(await scriptSrc('production')).not.toContain("'unsafe-eval'");
-    expect(await scriptSrc('test')).not.toContain("'unsafe-eval'");
+  it('en pruebas no permite unsafe-eval', () => {
+    expect(buildCsp('n', { NODE_ENV: 'test' })).not.toContain('unsafe-eval');
+  });
 
+  it('conserva el resto de directivas', () => {
+    const csp = buildCsp('n', { NODE_ENV: 'production' });
+    expect(csp).toContain("default-src 'self'");
+    expect(csp).toContain("connect-src 'self'");
+    expect(csp).toContain("style-src 'self' 'unsafe-inline'");
+    expect(csp).toContain("img-src 'self' data: blob:");
+    expect(csp).toContain("font-src 'self' data:");
+    expect(csp).toContain("frame-ancestors 'none'");
+    expect(csp).toContain("base-uri 'self'");
+    expect(csp).toContain("form-action 'self'");
+  });
+
+  it('incluye los origenes de API y WebSocket del entorno', () => {
+    const csp = buildCsp('n', {
+      NODE_ENV: 'production',
+      NEXT_PUBLIC_API_URL: 'https://api.example.com',
+      NEXT_PUBLIC_WS_URL: 'wss://ws.example.com',
+    });
+    expect(csp).toContain('https://api.example.com');
+    expect(csp).toContain('wss://ws.example.com');
+  });
+
+  it('deriva el origen WS del de la API cuando no hay NEXT_PUBLIC_WS_URL', () => {
+    expect(
+      buildCsp('n', { NODE_ENV: 'production', NEXT_PUBLIC_API_URL: 'https://api.example.com' }),
+    ).toContain('wss://api.example.com');
+    expect(
+      buildCsp('n', { NODE_ENV: 'production', NEXT_PUBLIC_API_URL: 'http://localhost:3333' }),
+    ).toContain('ws://localhost:3333');
+  });
+});
+
+describe('middleware', () => {
+  beforeEach(() => {
+    vi.stubEnv('NODE_ENV', 'production');
+  });
+  afterEach(() => {
     vi.unstubAllEnvs();
   });
 
-  it('CSP includes API and WebSocket origins from environment variables', async () => {
-    // Save original env
-    const originalApiUrl = process.env.NEXT_PUBLIC_API_URL;
-    const originalWsUrl = process.env.NEXT_PUBLIC_WS_URL;
+  it('pone la CSP con un nonce distinto por peticion y lo pasa en x-nonce', () => {
+    const r1 = middleware(new NextRequest('http://localhost:3000/'));
+    const r2 = middleware(new NextRequest('http://localhost:3000/'));
 
-    // Set test values
-    process.env.NEXT_PUBLIC_API_URL = 'https://api.example.com';
-    process.env.NEXT_PUBLIC_WS_URL = 'wss://api.example.com';
+    const csp1 = r1.headers.get('Content-Security-Policy') ?? '';
+    const csp2 = r2.headers.get('Content-Security-Policy') ?? '';
+    const nonce1 = /'nonce-([^']+)'/.exec(csp1)?.[1];
+    const nonce2 = /'nonce-([^']+)'/.exec(csp2)?.[1];
 
-    vi.resetModules();
-    const testConfig = await loadConfig();
-    const headers = await testConfig.headers!();
-
-    expect(headers.length).toBeGreaterThan(0);
-    const firstHeadersEntry = headers[0];
-    expect(firstHeadersEntry).toBeDefined();
-    if (!firstHeadersEntry) return;
-
-    const cspHeader = firstHeadersEntry.headers.find((h) => h.key === 'Content-Security-Policy');
-    const cspValue = cspHeader?.value ?? '';
-
-    expect(cspValue).toContain('https://api.example.com');
-    expect(cspValue).toContain('wss://api.example.com');
-
-    // Restore original env
-    if (originalApiUrl !== undefined) {
-      process.env.NEXT_PUBLIC_API_URL = originalApiUrl;
-    } else {
-      delete process.env.NEXT_PUBLIC_API_URL;
-    }
-    if (originalWsUrl !== undefined) {
-      process.env.NEXT_PUBLIC_WS_URL = originalWsUrl;
-    } else {
-      delete process.env.NEXT_PUBLIC_WS_URL;
-    }
-  });
-
-  it('falls back to deriving WS_URL from API_URL when NEXT_PUBLIC_WS_URL is not set', async () => {
-    const originalApiUrl = process.env.NEXT_PUBLIC_API_URL;
-    const originalWsUrl = process.env.NEXT_PUBLIC_WS_URL;
-
-    process.env.NEXT_PUBLIC_API_URL = 'https://api.example.com';
-    delete process.env.NEXT_PUBLIC_WS_URL;
-
-    vi.resetModules();
-    const testConfig = await loadConfig();
-    const headers = await testConfig.headers!();
-
-    expect(headers.length).toBeGreaterThan(0);
-    const firstHeadersEntry = headers[0];
-    expect(firstHeadersEntry).toBeDefined();
-    if (!firstHeadersEntry) return;
-
-    const cspHeader = firstHeadersEntry.headers.find((h) => h.key === 'Content-Security-Policy');
-    const cspValue = cspHeader?.value ?? '';
-
-    // Should derive wss:// from https://
-    expect(cspValue).toContain('wss://api.example.com');
-
-    // Test with http
-    delete process.env.NEXT_PUBLIC_WS_URL;
-    process.env.NEXT_PUBLIC_API_URL = 'http://localhost:3333';
-
-    vi.resetModules();
-    const testConfig2 = await loadConfig();
-    const headers2 = await testConfig2.headers!();
-
-    expect(headers2.length).toBeGreaterThan(0);
-    const firstHeadersEntry2 = headers2[0];
-    expect(firstHeadersEntry2).toBeDefined();
-    if (!firstHeadersEntry2) return;
-
-    const cspHeader2 = firstHeadersEntry2.headers.find((h) => h.key === 'Content-Security-Policy');
-    const cspValue2 = cspHeader2?.value ?? '';
-
-    // Should derive ws:// from http://
-    expect(cspValue2).toContain('ws://localhost:3333');
-
-    // Restore
-    if (originalApiUrl !== undefined) {
-      process.env.NEXT_PUBLIC_API_URL = originalApiUrl;
-    } else {
-      delete process.env.NEXT_PUBLIC_API_URL;
-    }
-    if (originalWsUrl !== undefined) {
-      process.env.NEXT_PUBLIC_WS_URL = originalWsUrl;
-    } else {
-      delete process.env.NEXT_PUBLIC_WS_URL;
-    }
+    expect(nonce1).toBeTruthy();
+    expect(nonce2).toBeTruthy();
+    expect(nonce1).not.toBe(nonce2);
+    // Next reenvia al render las cabeceras de peticion declaradas en x-middleware-override-headers.
+    expect(r1.headers.get('x-middleware-request-x-nonce')).toBe(nonce1);
+    expect(r1.headers.get('x-middleware-override-headers')).toContain('x-nonce');
   });
 });
