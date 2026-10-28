@@ -86,6 +86,29 @@ export default function BandejaConversacionPage() {
   // Estado de conversación retirada (0c.35)
   const [conversacionRetirada, setConversacionRetirada] = useState(false);
   const [modalReasignarAbierto, setModalReasignarAbierto] = useState(false);
+
+  // Atajos de teclado en el chat (T-024)
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if (e.altKey && e.key.toLowerCase() === 'p') {
+        e.preventDefault();
+        setModalPlantillasAbierto((prev) => !prev);
+      } else if (e.altKey && e.key.toLowerCase() === 'r') {
+        e.preventDefault();
+        setModalReasignarAbierto((prev) => !prev);
+      } else if (e.altKey && e.key.toLowerCase() === 'f') {
+        e.preventDefault();
+        setMostrarFichaLateral((prev) => !prev);
+      } else if (e.key === 'Escape') {
+        if (modalPlantillasAbierto) setModalPlantillasAbierto(false);
+        else if (modalReasignarAbierto) setModalReasignarAbierto(false);
+        else if (mostrarFichaLateral) setMostrarFichaLateral(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [modalPlantillasAbierto, modalReasignarAbierto, mostrarFichaLateral]);
   const [asignando, setAsignando] = useState(false);
 
   // Permisos de sesión para visibilidad y asignación (0c.35)
@@ -541,6 +564,7 @@ export default function BandejaConversacionPage() {
               href="/bandeja"
               className="flex h-11 min-h-[44px] w-11 min-w-[44px] shrink-0 items-center justify-center rounded-xl text-neutral-500 hover:bg-neutral-100 md:hidden dark:hover:bg-neutral-800"
               title="Volver a lista de conversaciones"
+              aria-label="Volver a lista de conversaciones"
             >
               <ArrowLeft className="h-4 w-4" />
             </Link>
@@ -656,6 +680,7 @@ export default function BandejaConversacionPage() {
               onClick={() => setMostrarFichaLateral((p) => !p)}
               className="flex h-11 min-h-[44px] w-11 min-w-[44px] shrink-0 items-center justify-center rounded-xl border border-neutral-200 text-neutral-600 hover:bg-neutral-100 xl:hidden dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
               title="Ver ficha del viajero"
+              aria-label="Alternar ficha de cliente"
             >
               <PanelRight className="h-4 w-4" />
             </button>
@@ -991,7 +1016,7 @@ export default function BandejaConversacionPage() {
                   <button
                     type="submit"
                     disabled={enviando || conversacionRetirada || !textoMensaje.trim()}
-                    aria-label="Enviar mensaje"
+                    aria-label={modoNota ? 'Guardar nota interna' : 'Enviar mensaje'}
                     className={`flex min-h-[44px] min-w-[44px] items-center justify-center self-end rounded-lg px-4 py-2.5 text-xs font-semibold text-white shadow-2xs disabled:opacity-50 ${
                       modoNota
                         ? 'bg-amber-600 hover:bg-amber-700'
