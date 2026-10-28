@@ -2434,7 +2434,7 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: backlog
+    status: done
     depends_on: []
     acceptance:
       - Mover una oportunidad entre etapas con teclado y ratón, con actualización optimista y reversión si la
@@ -2443,8 +2443,14 @@ tasks:
       - Accesible y usable a 375 px; tests
     files:
       - apps/web/src/app/pipeline/
+      - apps/web/src/components/pipeline/
+      - apps/web/src/lib/pipeline-logica.ts
+      - apps/web/src/lib/pipeline-logica.spec.ts
     source: cola de Antigravity ampliada 2026-10-28
     created_at: 2026-10-28T02:37:57.685Z
+    started_at: 2026-10-28T09:48:00.000Z
+    done_at: 2026-10-28T10:05:00.000Z
+    evidence: Tablero pipeline interactivo con drag and drop y menú por teclado, actualización optimista con reversión si falla la API, totales por etapa y moneda en enteros (R8) recalculados dinámicamente tanto en carga como tras movimiento, touch targets >= 44 px, modal de motivo de pérdida tipado y suites completas de pruebas unitarias y de componentes.
   - id: T-103
     title: Búsqueda global y filtros guardados en bandeja, contactos y oportunidades
     type: feature

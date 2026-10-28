@@ -1,3 +1,46 @@
+# Entrega — T-102: Pipeline tipo tablero (kanban) con arrastrar y soltar entre etapas, totales por etapa y tarjetas con valor estimado — 2026-10-28
+
+## Identificación
+- **Tarea:** `T-102` (roadmap/tasks.yaml)
+- **Rama:** `b/T-102-pipeline-tablero-kanban`
+- **Carril:** `b` (Frontend / Web)
+
+## Qué se construyó y auditó
+
+1. **Lógica de Totales y Aritmética de Dinero (R8) en `pipeline-logica.ts`:**
+   - Creadas funciones puras `sumarDinero` y `restarDinero` que operan con enteros `BigInt` serializados en texto, garantizando precisión absoluta en unidades enteras (pesos en COP) y protegiendo el aislamiento de monedas según R8 (no se mezclan divisas).
+   - Creada función pura `calcularTotalColumna(oportunidades, moneda)` para calcular dinámicamente sumas agregadas por etapa y moneda.
+   - Actualizada la función `moverOportunidadEnTablero` para recalcular dinámicamente tanto el conteo (`total`) como el valor monetario (`valorTotal`) en la columna origen (restando `valorEstimado`) y en la columna destino (sumando `valorEstimado`).
+
+2. **Tablero Kanban Interactivo (`/pipeline`) con Reversión Optimista:**
+   - Implementada actualización optimista inmediata con reversión automática en `ejecutarMovimiento`: si la llamada `moverOportunidadDeEtapa` a la API falla o rechaza, el tablero se restaura instantáneamente al estado previo (`setTablero(tableroPrevio)`) y notifica al usuario con un aviso descriptivo accesible.
+   - Movimiento interactivo por drag & drop (HTML5) con retroalimentación visual al arrastrar (`border-dashed`, resaltado de columna activa) y validación de etapa destino.
+   - Movimiento por teclado mediante menú contextual desplegable accesible en cada tarjeta (`TarjetaOportunidad`), permitiendo seleccionar cualquier etapa definida por la agencia.
+   - Modal de motivo de pérdida (`ModalMotivoPerdida`) que se activa automáticamente al mover una oportunidad a una etapa con `esPerdida: true`, exigiendo motivo tipado (`PRECIO`, `TIEMPO_DE_RESPUESTA`, etc.) y explicación obligatoria para `OTRO`.
+
+3. **Accesibilidad y Usabilidad Responsive (375 px):**
+   - Asegurados touch targets `>= 44 px` en todos los controles interactivos: selector de vista (Kanban / Tabla), botón de nueva oportunidad, campo de búsqueda, selector de asesor, botones de acción en tarjetas (enlace de chat y menú de mover por teclado), opciones del menú desplegable y botones del modal de pérdida.
+   - Vista alternativa en Tabla con scroll horizontal contenido y soporte para pantallas móviles desde 375 px.
+   - Atributos semánticos `role="status"` y `aria-live="polite"` para mensajes de notificación.
+
+4. **Pruebas y Verificación:**
+   - Creada suite de pruebas de lógica y componentes:
+     - `apps/web/src/lib/pipeline-logica.spec.ts` (19 pruebas en verde): validación de contratos, recálculo de `valorTotal` al mover oportunidades, aritmética entera de `Dinero`, sumas de columna y formateo de fechas.
+     - `apps/web/src/app/pipeline/page.spec.tsx` (8 pruebas en verde): renderizado de tablero con totales R8, movimiento por teclado con recálculo optimista, reversión ante fallo de API, drag & drop, modal de pérdida, cambio a vista tabla, filtros combinados y verificación de touch targets `>= 44 px`.
+   - Verificación global `@viajapro/web`: 82 suites de prueba, 665 pruebas unitarias 100% en verde.
+   - Typecheck (9/9) y Linter (7/7) del monorepo en verde.
+   - Compilación exitosa en Next.js (23 rutas).
+   - Ganchos de seguridad (`pnpm test:hooks`): 59/59, 19/19, 6/6 en verde.
+
+## Verificación de Compuertas
+- **Pruebas unitarias (@viajapro/web):** 82 suites, 665 pruebas en verde.
+- **Typecheck:** 9/9 paquetes en verde.
+- **Linter:** 7/7 paquetes en verde.
+- **Compilación de producción (Next.js):** 23/23 rutas compiladas exitosamente.
+- **Fronteras y ganchos de seguridad (`pnpm test:hooks`):** 59/59 casos de política de rama, 19/19 detección de secretos, 6/6 fronteras de módulos.
+
+---
+
 # Entrega — T-101: Lista de seguimientos del asesor con vencidos, de hoy y próximos, y acción de completar — 2026-10-28
 
 ## Identificación

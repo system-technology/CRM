@@ -14,10 +14,13 @@
 import { describe, expect, it } from 'vitest';
 import { MoverOportunidad } from '@viajapro/contracts';
 import {
+  calcularTotalColumna,
   esTareaAtrasada,
   formatearDineroCifra,
   formatearFechaTarea,
   moverOportunidadEnTablero,
+  restarDinero,
+  sumarDinero,
 } from './pipeline-logica';
 import { obtenerMockTableroPipeline } from './mock-pipeline';
 
@@ -61,8 +64,15 @@ describe('El contrato de movimiento', () => {
 describe('moverOportunidadEnTablero', () => {
   const OPORTUNIDAD = '00000000-0010-4000-8000-000000000001';
 
-  it('traslada la tarjeta a la columna destino sin alterar las demás', () => {
+  it('traslada la tarjeta a la columna destino sin alterar las demás y recalcula valorTotal (R8)', () => {
     const inicial = obtenerMockTableroPipeline();
+    const origenAntes = inicial.columnas.find((c) => c.etapa.id === ETAPA.nuevoLead);
+    const destinoAntes = inicial.columnas.find((c) => c.etapa.id === ETAPA.enCotizacion);
+
+    expect(origenAntes?.valorTotal?.unidades).toBe('18500000');
+    expect(destinoAntes?.valorTotal?.unidades).toBe('28300000');
+
+    // La oportunidad OPORTUNIDAD tiene valorEstimado: 6.200.000 COP
     const nuevo = moverOportunidadEnTablero(inicial, OPORTUNIDAD, {
       etapaId: ETAPA.enCotizacion,
       motivoPerdida: null,
@@ -74,6 +84,14 @@ describe('moverOportunidadEnTablero', () => {
 
     expect(origen?.oportunidades.some((op) => op.id === OPORTUNIDAD)).toBe(false);
     expect(destino?.oportunidades.some((op) => op.id === OPORTUNIDAD)).toBe(true);
+
+    // Totales de conteo y valor monetario recalculados dinámicamente
+    expect(origen?.total).toBe(2);
+    expect(destino?.total).toBe(3);
+    // 18.500.000 - 6.200.000 = 12.300.000 COP
+    expect(origen?.valorTotal?.unidades).toBe('12300000');
+    // 28.300.000 + 6.200.000 = 34.500.000 COP
+    expect(destino?.valorTotal?.unidades).toBe('34500000');
 
     // La tarjeta se lleva la etapa ENTERA, no solo su id: es lo que le permite pintar el
     // nombre que la agencia le puso sin volver a preguntar.
@@ -94,8 +112,41 @@ describe('moverOportunidadEnTablero', () => {
   });
 });
 
+describe('Aritmética de Dinero (R8)', () => {
+  it('sumarDinero suma unidades enteras en texto sin coma flotante', () => {
+    const a = { unidades: '1500000', moneda: 'COP' as const };
+    const b = { unidades: '2500000', moneda: 'COP' as const };
+    const resultado = sumarDinero(a, b);
+    expect(resultado).toEqual({ unidades: '4000000', moneda: 'COP' });
+  });
+
+  it('sumarDinero no mezcla monedas distintas', () => {
+    const cop = { unidades: '1000000', moneda: 'COP' as const };
+    const usd = { unidades: '500', moneda: 'USD' as const };
+    expect(sumarDinero(cop, usd)).toEqual(cop);
+  });
+
+  it('restarDinero descuenta unidades y no baja de cero', () => {
+    const a = { unidades: '5000000', moneda: 'COP' as const };
+    const b = { unidades: '2000000', moneda: 'COP' as const };
+    expect(restarDinero(a, b)).toEqual({ unidades: '3000000', moneda: 'COP' });
+
+    const mayor = { unidades: '10000000', moneda: 'COP' as const };
+    expect(restarDinero(a, mayor)).toEqual({ unidades: '0', moneda: 'COP' });
+  });
+
+  it('calcularTotalColumna suma las oportunidades de la misma moneda', () => {
+    const mock = obtenerMockTableroPipeline();
+    const colNuevoLead = mock.columnas[0]!;
+    const totalCalculado = calcularTotalColumna(colNuevoLead.oportunidades, 'COP');
+    // 6.200.000 + 4.800.000 + 7.500.000 = 18.500.000 COP
+    expect(totalCalculado.unidades).toBe('18500000');
+    expect(totalCalculado.moneda).toBe('COP');
+  });
+});
+
 describe('El dinero', () => {
-  it('el total de la columna viene del servidor y no se recalcula aquí', () => {
+  it('el total de la columna viene del servidor y coincide con el formato esperado', () => {
     const tablero = obtenerMockTableroPipeline();
     const columna = tablero.columnas.find((c) => c.etapa.id === ETAPA.nuevoLead);
     expect(columna?.valorTotal?.unidades).toBe('18500000');
