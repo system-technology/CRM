@@ -24,6 +24,7 @@ import {
   PlusCircle,
   PanelRight,
   Sparkles,
+  FileText,
   Zap,
 } from 'lucide-react';
 import { inboxApi } from '../../../lib/inbox-api';
@@ -52,6 +53,9 @@ import { ModalPlantillas } from '../../../components/bandeja/modal-plantillas';
 import { EnviarPlantilla } from '@viajapro/contracts';
 import { TarjetaCotizacion } from '../../../components/bandeja/tarjeta-cotizacion';
 import { PanelSugerencias } from '../../../components/bandeja/panel-sugerencias';
+import { ModalEnviarCotizacion } from '../../../components/bandeja/modal-enviar-cotizacion';
+import { ModalCrearOportunidad } from '../../../components/bandeja/modal-crear-oportunidad';
+import { ModalEditarContacto } from '../../../components/bandeja/modal-editar-contacto';
 import { MenuRespuestasRapidas } from '../../../components/bandeja/menu-respuestas-rapidas';
 import {
   detectarDisparadorSlash,
@@ -123,6 +127,11 @@ export default function BandejaConversacionPage() {
     return () => window.removeEventListener('keydown', handleGlobalKeyDown);
   }, [modalPlantillasAbierto, modalReasignarAbierto, mostrarFichaLateral, menuRespuestasAbierto]);
   const [asignando, setAsignando] = useState(false);
+
+  // Modales de Cotización y CRM (T-074, T-076)
+  const [modalEnviarCotizacionAbierto, setModalEnviarCotizacionAbierto] = useState(false);
+  const [modalCrearOportunidadAbierto, setModalCrearOportunidadAbierto] = useState(false);
+  const [modalEditarContactoAbierto, setModalEditarContactoAbierto] = useState(false);
 
   // Permisos de sesión para visibilidad y asignación (0c.35)
   const { sesion, puedeVerTodasConversaciones } = usePermisos();
@@ -1124,6 +1133,19 @@ export default function BandejaConversacionPage() {
 
                     <button
                       type="button"
+                      data-testid="boton-abrir-enviar-cotizacion"
+                      onClick={() => setModalEnviarCotizacionAbierto(true)}
+                      disabled={conversacionRetirada}
+                      className="flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 transition-colors hover:bg-emerald-100 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300"
+                      title="Enviar cotización por WhatsApp (T-074)"
+                      aria-label="Enviar cotización por WhatsApp"
+                    >
+                      <FileText className="h-3.5 w-3.5" />
+                      <span>Enviar cotización</span>
+                    </button>
+
+                    <button
+                      type="button"
                       id="btn-respuestas-rapidas"
                       data-testid="btn-respuestas-rapidas"
                       onClick={() => {
@@ -1211,7 +1233,11 @@ export default function BandejaConversacionPage() {
       {/* Columna Derecha: Ficha del Viajero permanente en pantallas xl */}
       {fichaContacto && (
         <aside className="hidden w-[340px] shrink-0 border-l border-neutral-200 xl:block dark:border-neutral-800">
-          <FichaCliente ficha={fichaContacto} />
+          <FichaCliente
+            ficha={fichaContacto}
+            onEditarContacto={() => setModalEditarContactoAbierto(true)}
+            onCrearOportunidad={() => setModalCrearOportunidadAbierto(true)}
+          />
         </aside>
       )}
 
@@ -1225,12 +1251,17 @@ export default function BandejaConversacionPage() {
             className="w-full max-w-sm bg-white shadow-2xl dark:bg-neutral-900"
             onClick={(e) => e.stopPropagation()}
           >
-            <FichaCliente ficha={fichaContacto} onCerrar={() => setMostrarFichaLateral(false)} />
+            <FichaCliente
+              ficha={fichaContacto}
+              onCerrar={() => setMostrarFichaLateral(false)}
+              onEditarContacto={() => setModalEditarContactoAbierto(true)}
+              onCrearOportunidad={() => setModalCrearOportunidadAbierto(true)}
+            />
           </div>
         </div>
       )}
 
-      {/* Modal de Plantillas HSM */}
+      {/* Modal de Reasignar */}
       <ModalReasignar
         abierto={modalReasignarAbierto}
         conversacionId={id}
@@ -1239,6 +1270,7 @@ export default function BandejaConversacionPage() {
         onReasignar={manejarReasignar}
       />
 
+      {/* Modal de Plantillas HSM */}
       <ModalPlantillas
         abierto={modalPlantillasAbierto}
         conversacionId={id}
@@ -1248,6 +1280,79 @@ export default function BandejaConversacionPage() {
           void manejarEnvioPlantilla(envio, texto);
         }}
       />
+
+      {/* Modal Enviar Cotización por WhatsApp (T-074) */}
+      {modalEnviarCotizacionAbierto && detalle && (
+        <ModalEnviarCotizacion
+          conversacionId={detalle.id}
+          contactoNombre={detalle.contactoNombre}
+          contactoTelefono={detalle.contactoTelefono}
+          ventanaAbierta={detalle.ventana.abierta && !tiempoVentana.cerrada}
+          cotizaciones={fichaContacto?.cotizaciones ?? []}
+          onCerrar={() => setModalEnviarCotizacionAbierto(false)}
+          onCotizacionEnviada={(nuevoMensaje) => {
+            setDetalle((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    mensajes: [...prev.mensajes, nuevoMensaje],
+                    ultimoMensajeTexto: nuevoMensaje.texto,
+                    ultimoMensajeEn: nuevoMensaje.ocurridoEn,
+                    ultimoMensajeDireccion: 'SALIENTE',
+                  }
+                : null,
+            );
+            scrollToBottom();
+          }}
+        />
+      )}
+
+      {/* Modal Crear Oportunidad en Pipeline (T-076) */}
+      {modalCrearOportunidadAbierto && detalle && (
+        <ModalCrearOportunidad
+          conversacionId={detalle.id}
+          contactoNombre={detalle.contactoNombre}
+          onCerrar={() => setModalCrearOportunidadAbierto(false)}
+          onOportunidadCreada={(nuevaOp) => {
+            setFichaContacto((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    oportunidadActual: nuevaOp,
+                  }
+                : null,
+            );
+          }}
+        />
+      )}
+
+      {/* Modal Editar Contacto (T-076) */}
+      {modalEditarContactoAbierto && fichaContacto && (
+        <ModalEditarContacto
+          contacto={fichaContacto.contacto}
+          onCerrar={() => setModalEditarContactoAbierto(false)}
+          onContactoActualizado={(contactoActualizado) => {
+            setFichaContacto((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    contacto: contactoActualizado,
+                  }
+                : null,
+            );
+            setDetalle((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    contactoNombre: contactoActualizado.nombre,
+                    contactoTelefono: contactoActualizado.telefono,
+                    etiquetas: contactoActualizado.etiquetas,
+                  }
+                : null,
+            );
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -15,7 +15,9 @@ export { obtenerBaseApi };
 import { z } from 'zod';
 import {
   Contacto,
+  CrearContacto,
   CrearOportunidad,
+  CrearOportunidadDeConversacion,
   CrearSeguimiento,
   EditarContacto,
   EtapaDefinida,
@@ -33,6 +35,8 @@ import {
 import { obtenerMockTableroPipeline } from './mock-pipeline';
 import { moverOportunidadEnTablero } from './pipeline-logica';
 import {
+  crearContactoMock,
+  crearOportunidadDeConversacionMock,
   obtenerMockFichaDeContacto,
   obtenerMockPendientesDelDia,
   completarMockSeguimiento,
@@ -253,6 +257,45 @@ export async function obtenerResumenTrabajoDelDia(): Promise<ResumenTrabajoDelDi
   const cotizaciones = cotizacionesResult.status === 'fulfilled' ? cotizacionesResult.value : null;
 
   return calcularResumenTrabajo(contadoresInbox, tablero, cotizaciones);
+}
+
+/**
+ * Crea una oportunidad asociada a una conversación desde la bandeja (T-076).
+ * POST /api/v1/crm/conversaciones/:id/oportunidades
+ */
+export async function crearOportunidadDeConversacionApi(
+  conversacionId: string,
+  datos: CrearOportunidadDeConversacion,
+): Promise<Oportunidad> {
+  const validado = CrearOportunidadDeConversacion.parse(datos);
+
+  if (estaUsandoApiReal()) {
+    const { data } = await pedirCrm(`/api/v1/crm/conversaciones/${conversacionId}/oportunidades`, {
+      method: 'POST',
+      body: JSON.stringify(validado),
+    });
+    return Oportunidad.parse(data);
+  }
+
+  return crearOportunidadDeConversacionMock(conversacionId, validado);
+}
+
+/**
+ * Crea un nuevo contacto (T-075, T-076).
+ * POST /api/v1/crm/contactos
+ */
+export async function crearContactoApi(datos: CrearContacto): Promise<Contacto> {
+  const validado = CrearContacto.parse(datos);
+
+  if (estaUsandoApiReal()) {
+    const { data } = await pedirCrm('/api/v1/crm/contactos', {
+      method: 'POST',
+      body: JSON.stringify(validado),
+    });
+    return Contacto.parse(data);
+  }
+
+  return crearContactoMock(validado);
 }
 
 /**

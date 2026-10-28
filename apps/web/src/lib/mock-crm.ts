@@ -1,6 +1,8 @@
 import {
   Contacto,
+  CrearContacto,
   CrearOportunidad,
+  CrearOportunidadDeConversacion,
   CrearSeguimiento,
   EditarContacto,
   FichaDeContacto,
@@ -162,6 +164,58 @@ export function obtenerMockFichaDeContacto(identificador: string): FichaDeContac
   };
 
   return FichaDeContacto.parse(fichaSinValidar);
+}
+
+export function crearOportunidadDeConversacionMock(
+  conversacionId: string,
+  datos: CrearOportunidadDeConversacion,
+): Oportunidad {
+  const ficha = obtenerMockFichaDeContacto(conversacionId);
+  const nuevaOportunidad: Oportunidad = {
+    id: crypto.randomUUID(),
+    contactoId: ficha.contacto.id,
+    contactoNombre: ficha.contacto.nombre,
+    titulo: datos.titulo,
+    destino: datos.destino ?? 'Destino no especificado',
+    paqueteId: null,
+    fechaSalida: datos.fechaSalida ?? null,
+    etapa: {
+      id: '01a114b2-5314-75b1-91ad-3be0518a6a01',
+      clave: 'NUEVO_LEAD',
+      nombre: 'Nuevo Lead',
+      orden: 1,
+      probabilidad: 10,
+      esGanada: false,
+      esPerdida: false,
+    },
+    valorEstimado: datos.valorEstimado ?? null,
+    probabilidad: 10,
+    asesorId: datos.asesorId ?? '00000000-0000-4000-a000-000000000001',
+    asesorNombre: 'Carlos Asesor',
+    proximaTarea: null,
+    motivoPerdida: null,
+    notaPerdida: null,
+    creadaEn: new Date().toISOString(),
+    ultimoContactoEn: new Date().toISOString(),
+  };
+
+  const validada = Oportunidad.parse(nuevaOportunidad);
+  mockOportunidadesContacto.set(ficha.contacto.id, validada);
+  return validada;
+}
+
+export function crearContactoMock(datos: CrearContacto): Contacto {
+  return Contacto.parse({
+    id: crypto.randomUUID(),
+    nombre: datos.nombre ?? null,
+    telefono: datos.telefono,
+    correo: datos.correo ?? null,
+    etiquetas: datos.etiquetas ?? [],
+    preferencias: datos.preferencias ?? null,
+    consentimientos: ['TRANSACCIONAL'],
+    creadoEn: new Date().toISOString(),
+    ultimoContactoEn: new Date().toISOString(),
+  });
 }
 
 const MOCK_PENDIENTES_INICIALES: Seguimiento[] = [

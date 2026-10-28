@@ -3,16 +3,23 @@
 import React from 'react';
 import Link from 'next/link';
 import { FichaDeContacto } from '@viajapro/contracts';
-import { Plane, PlusCircle, ExternalLink, StickyNote, X, Clock } from 'lucide-react';
+import { Plane, PlusCircle, ExternalLink, StickyNote, X, Clock, Edit3 } from 'lucide-react';
 import { generarColorAvatar, obtenerIniciales } from '../../lib/bandeja-logica';
 import { SeccionCamposPersonalizados } from '../contactos/seccion-campos-personalizados';
 
 interface FichaClienteProps {
   ficha: FichaDeContacto;
   onCerrar?: () => void;
+  onEditarContacto?: () => void;
+  onCrearOportunidad?: () => void;
 }
 
-export function FichaCliente({ ficha, onCerrar }: FichaClienteProps) {
+export function FichaCliente({
+  ficha,
+  onCerrar,
+  onEditarContacto,
+  onCrearOportunidad,
+}: FichaClienteProps) {
   const { contacto, oportunidadActual, cotizaciones, archivosDeViajeIds, notasInternas } = ficha;
   const avatarColores = generarColorAvatar(contacto.id);
   const iniciales = obtenerIniciales(contacto.nombre, contacto.telefono);
@@ -45,18 +52,32 @@ export function FichaCliente({ ficha, onCerrar }: FichaClienteProps) {
 
         {/* Sección 1: Identidad del Contacto */}
         <section className="space-y-2.5 rounded-xl border border-neutral-200 bg-neutral-50/50 p-3.5 dark:border-neutral-800 dark:bg-neutral-800/30">
-          <div className="flex items-center gap-3">
-            <div
-              className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-sm font-bold ${avatarColores.bg} ${avatarColores.text}`}
-            >
-              {iniciales}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div
+                className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-sm font-bold ${avatarColores.bg} ${avatarColores.text}`}
+              >
+                {iniciales}
+              </div>
+              <div className="min-w-0 flex-1">
+                <h3 className="truncate text-sm font-bold text-neutral-900 dark:text-neutral-100">
+                  {contacto.nombre || contacto.telefono}
+                </h3>
+                <p className="cifra text-xs text-neutral-500">{contacto.telefono}</p>
+              </div>
             </div>
-            <div className="min-w-0 flex-1">
-              <h3 className="truncate text-sm font-bold text-neutral-900 dark:text-neutral-100">
-                {contacto.nombre || contacto.telefono}
-              </h3>
-              <p className="cifra text-xs text-neutral-500">{contacto.telefono}</p>
-            </div>
+            {onEditarContacto && (
+              <button
+                type="button"
+                data-testid="btn-editar-contacto"
+                onClick={onEditarContacto}
+                className="flex h-8 w-8 items-center justify-center rounded-lg text-neutral-400 hover:bg-neutral-200/60 hover:text-neutral-700 dark:hover:bg-neutral-700 dark:hover:text-neutral-200"
+                title="Editar contacto"
+                aria-label="Editar contacto"
+              >
+                <Edit3 className="h-4 w-4" />
+              </button>
+            )}
           </div>
 
           {contacto.correo && (
@@ -98,15 +119,28 @@ export function FichaCliente({ ficha, onCerrar }: FichaClienteProps) {
         </section>
 
         {/* Sección 2: Oportunidad Viva */}
-        {oportunidadActual && (
+        {oportunidadActual ? (
           <section className="space-y-2 rounded-xl border border-neutral-200 bg-white p-3.5 shadow-2xs dark:border-neutral-800 dark:bg-neutral-800/40">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-bold tracking-wider text-neutral-400 uppercase">
                 Oportunidad Viva
               </span>
-              <span className="py-0.2 rounded-xs border border-neutral-300 bg-neutral-100 px-1.5 text-[10px] font-bold text-neutral-800 dark:border-neutral-700 dark:bg-neutral-700 dark:text-neutral-200">
-                {oportunidadActual.etapa.nombre}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="py-0.2 rounded-xs border border-neutral-300 bg-neutral-100 px-1.5 text-[10px] font-bold text-neutral-800 dark:border-neutral-700 dark:bg-neutral-700 dark:text-neutral-200">
+                  {oportunidadActual.etapa.nombre}
+                </span>
+                {onCrearOportunidad && (
+                  <button
+                    type="button"
+                    data-testid="btn-crear-oportunidad"
+                    onClick={onCrearOportunidad}
+                    className="text-acento-600 dark:text-acento-400 text-[10px] font-semibold hover:underline"
+                    title="Crear nueva oportunidad"
+                  >
+                    + Nueva
+                  </button>
+                )}
+              </div>
             </div>
 
             <h4 className="font-bold text-neutral-900 dark:text-neutral-100">
@@ -137,6 +171,21 @@ export function FichaCliente({ ficha, onCerrar }: FichaClienteProps) {
 
             {/* Campos Personalizados Oportunidad (T-026) */}
             <SeccionCamposPersonalizados entidad="oportunidad" entidadId={oportunidadActual.id} />
+          </section>
+        ) : (
+          <section className="space-y-2 rounded-xl border border-dashed border-neutral-300 bg-neutral-50/60 p-3.5 text-center dark:border-neutral-700 dark:bg-neutral-800/30">
+            <p className="text-xs text-neutral-500 dark:text-neutral-400">Sin oportunidad activa</p>
+            {onCrearOportunidad && (
+              <button
+                type="button"
+                data-testid="btn-crear-oportunidad"
+                onClick={onCrearOportunidad}
+                className="bg-acento-600 hover:bg-acento-700 inline-flex min-h-[36px] items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold text-white shadow-2xs transition-colors"
+              >
+                <PlusCircle className="h-3.5 w-3.5" />
+                <span>Crear oportunidad</span>
+              </button>
+            )}
           </section>
         )}
 
