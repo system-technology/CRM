@@ -104,22 +104,6 @@ export class SinEtapaInicialError extends EstadoInvalidoError {
   }
 }
 
-/**
- * Límite temporal, declarado: hasta que exista la tabla `seguimientos`, cada oportunidad guarda
- * UN seguimiento (las columnas `proxima_tarea_*`) y los de conversación no tienen dónde vivir.
- * Ver el informe de T-077 con la migración que hace falta.
- */
-export class SeguimientoNoSoportadoTodaviaError extends EstadoInvalidoError {
-  readonly code = 'SEGUIMIENTO_NO_SOPORTADO_TODAVIA';
-  constructor(readonly motivo: 'CONVERSACION' | 'OPORTUNIDAD_CON_PENDIENTE') {
-    super(
-      motivo === 'CONVERSACION'
-        ? 'Los seguimientos sobre una conversación necesitan la tabla `seguimientos`, que aún no existe.'
-        : 'Esta oportunidad ya tiene un seguimiento pendiente: complétalo antes de crear otro.',
-    );
-  }
-}
-
 /** Motivo de pérdida en una etapa que no lo es. */
 export class MotivoEnEtapaViva extends EstadoInvalidoError {
   readonly code = 'MOTIVO_EN_ETAPA_VIVA';

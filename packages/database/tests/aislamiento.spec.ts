@@ -4319,6 +4319,444 @@ describe('ADR-0017 — catálogo gestionable: M1 y M2', () => {
 });
 
 // ---------------------------------------------------------------------------------------
+// T-082 — `seguimientos`: tabla por agencia con destino oportunidad XOR conversación.
+// ---------------------------------------------------------------------------------------
+
+/** (columnas de la hija, padre, columnas del padre), en el orden de la foránea. */
+const FORANEAS_COMPUESTAS_SEGUIMIENTOS = [
+  [['contacto_id', 'tenant_id'], 'contactos', ['id', 'tenant_id']],
+  [
+    ['oportunidad_id', 'contacto_id', 'tenant_id'],
+    'oportunidades',
+    ['id', 'contacto_id', 'tenant_id'],
+  ],
+  [['conversacion_id', 'tenant_id'], 'conversaciones', ['id', 'tenant_id']],
+  [['asesor_id', 'tenant_id'], 'usuarios', ['id', 'tenant_id']],
+  [['creado_por', 'tenant_id'], 'usuarios', ['id', 'tenant_id']],
+  [['actualizado_por', 'tenant_id'], 'usuarios', ['id', 'tenant_id']],
+] as const;
+
+describe('T-082 — seguimientos: aislamiento, foráneas compuestas y un solo destino', () => {
+  const correo = (sufijo: string) => `fixture-aislamiento-${MARCA}-seg-${sufijo}@prueba.invalid`;
+  const identidadDe: Record<string, string> = {
+    [TENANT_A]: randomUUID(),
+    [TENANT_B]: randomUUID(),
+  };
+  const asesorDe: Record<string, string> = {};
+  const contactoDe: Record<string, string> = {};
+  /** Un segundo contacto de la MISMA agencia: para la coherencia oportunidad ↔ contacto. */
+  const otroContactoDe: Record<string, string> = {};
+  const oportunidadDe: Record<string, string> = {};
+  const conversacionDe: Record<string, string> = {};
+  const seguimientoOportunidadDe: Record<string, string> = {};
+  const seguimientoConversacionDe: Record<string, string> = {};
+
+  /** INSERT de un seguimiento con los destinos indicados; devuelve la promesa de la consulta. */
+  const insertar = (
+    c: Client,
+    v: {
+      tenant: string;
+      contacto: string;
+      oportunidad: string | null;
+      conversacion: string | null;
+      asesor?: string | null;
+    },
+  ) =>
+    c.query(
+      `INSERT INTO seguimientos (id, tenant_id, descripcion, vence_en, asesor_id, contacto_id,
+                                 oportunidad_id, conversacion_id, actualizado_en)
+       VALUES (gen_random_uuid(), $1, 'Llamar para confirmar', now() + interval '1 day', $2, $3,
+               $4, $5, now())
+       RETURNING id`,
+      [v.tenant, v.asesor ?? null, v.contacto, v.oportunidad, v.conversacion],
+    );
+
+  beforeAll(async () => {
+    for (const [i, tenant] of [TENANT_A, TENANT_B].entries()) {
+      // La identidad es global: la crea el propietario, como en la sección de ADR-0011.
+      await admin.query(
+        `INSERT INTO identidades (id, correo, nombre, actualizado_en) VALUES ($1, $2, 'Fixture', now())`,
+        [identidadDe[tenant], correo(String(i))],
+      );
+      await comoTenant(tenant, async (c) => {
+        const rol = await c.query(
+          `INSERT INTO roles (id, tenant_id, nombre, permisos, actualizado_en)
+           VALUES (gen_random_uuid(), $1, $2, ARRAY[]::text[], now())
+           RETURNING id`,
+          [tenant, `Asesor T-082 ${MARCA}`],
+        );
+        const asesor = await c.query(
+          `INSERT INTO usuarios (id, tenant_id, identidad_id, rol_id, correo, nombre, actualizado_en)
+           VALUES (gen_random_uuid(), $1, $2, $3, $4, 'Asesora de seguimientos', now())
+           RETURNING id`,
+          [tenant, identidadDe[tenant], (rol.rows[0] as { id: string }).id, correo(`u${i}`)],
+        );
+        asesorDe[tenant] = (asesor.rows[0] as { id: string }).id;
+
+        const etapa = await c.query(
+          `INSERT INTO etapas_pipeline (id, tenant_id, nombre, orden, creado_en)
+           VALUES (gen_random_uuid(), $1, $2, 82, now())
+           RETURNING id`,
+          [tenant, `Etapa T-082 ${MARCA}`],
+        );
+
+        for (const [destino, telefono] of [
+          [contactoDe, `+57382000000${i}`],
+          [otroContactoDe, `+57382000010${i}`],
+        ] as const) {
+          const contacto = await c.query(
+            `INSERT INTO contactos (id, tenant_id, telefono_e164, nombre, creado_en, actualizado_en)
+             VALUES (gen_random_uuid(), $1, $2, 'Cliente de seguimientos', now(), now())
+             RETURNING id`,
+            [tenant, telefono],
+          );
+          destino[tenant] = (contacto.rows[0] as { id: string }).id;
+        }
+
+        const oportunidad = await c.query(
+          `INSERT INTO oportunidades (id, tenant_id, contacto_id, etapa_id, titulo, creado_en, actualizado_en)
+           VALUES (gen_random_uuid(), $1, $2, $3, 'Cartagena en enero', now(), now())
+           RETURNING id`,
+          [tenant, contactoDe[tenant], (etapa.rows[0] as { id: string }).id],
+        );
+        oportunidadDe[tenant] = (oportunidad.rows[0] as { id: string }).id;
+
+        const cuenta = await c.query(
+          `INSERT INTO cuentas_whatsapp (id, tenant_id, waba_id, nombre, creado_en, actualizado_en)
+           VALUES (gen_random_uuid(), $1, $2, 'WABA de seguimientos', now(), now())
+           RETURNING id`,
+          [tenant, `9082000000000${i}`],
+        );
+        const canal = await c.query(
+          `INSERT INTO canales (id, tenant_id, cuenta_id, phone_number_id, numero_e164, creado_en, actualizado_en)
+           VALUES (gen_random_uuid(), $1, $2, $3, $4, now(), now())
+           RETURNING id`,
+          [tenant, (cuenta.rows[0] as { id: string }).id, `8082000000000${i}`, `+5760820000${i}`],
+        );
+        const conversacion = await c.query(
+          `INSERT INTO conversaciones (id, tenant_id, contacto_id, canal_id, creado_en, actualizado_en)
+           VALUES (gen_random_uuid(), $1, $2, $3, now(), now())
+           RETURNING id`,
+          [tenant, contactoDe[tenant], (canal.rows[0] as { id: string }).id],
+        );
+        conversacionDe[tenant] = (conversacion.rows[0] as { id: string }).id;
+
+        const s1 = await insertar(c, {
+          tenant,
+          contacto: contactoDe[tenant]!,
+          oportunidad: oportunidadDe[tenant],
+          conversacion: null,
+          asesor: asesorDe[tenant],
+        });
+        seguimientoOportunidadDe[tenant] = (s1.rows[0] as { id: string }).id;
+        const s2 = await insertar(c, {
+          tenant,
+          contacto: contactoDe[tenant]!,
+          oportunidad: null,
+          conversacion: conversacionDe[tenant],
+          asesor: asesorDe[tenant],
+        });
+        seguimientoConversacionDe[tenant] = (s2.rows[0] as { id: string }).id;
+      });
+    }
+  }, 60_000);
+
+  afterAll(async () => {
+    // `seguimientos → usuarios` y `usuarios → identidades` son RESTRICT, y las identidades son
+    // globales: el `borrarTenants` del final no las toca. Lo demás se lo lleva él.
+    for (const tenant of [TENANT_A, TENANT_B]) {
+      await comoTenant(tenant, (c) =>
+        c.query('DELETE FROM seguimientos WHERE tenant_id = $1', [tenant]),
+      );
+    }
+    const identidades = Object.values(identidadDe);
+    await admin.query('DELETE FROM usuarios WHERE identidad_id = ANY($1)', [identidades]);
+    await admin.query('DELETE FROM identidades WHERE id = ANY($1)', [identidades]);
+  }, 60_000);
+
+  it('71 — seguimientos: tenant_id NOT NULL, RLS forzada con USING y WITH CHECK, foráneas compuestas, CHECK y el índice parcial', async () => {
+    const { rows } = await admin.query(
+      `SELECT c.relrowsecurity, c.relforcerowsecurity,
+              (SELECT a.attnotnull FROM pg_attribute a
+                WHERE a.attrelid = c.oid AND a.attname = 'tenant_id'
+                  AND a.attnum > 0 AND NOT a.attisdropped) AS tenant_no_nulo,
+              (SELECT count(*)::int FROM pg_policy p
+                WHERE p.polrelid = c.oid AND p.polname = 'tenant_isolation'
+                  AND p.polqual IS NOT NULL AND p.polwithcheck IS NOT NULL) AS con_using_y_check,
+              EXISTS (SELECT 1 FROM excepciones_rls e WHERE e.tabla = c.relname) AS declarada
+         FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' AND c.relname = 'seguimientos'`,
+    );
+    expect(rows).toEqual([
+      {
+        relrowsecurity: true,
+        relforcerowsecurity: true,
+        tenant_no_nulo: true,
+        con_using_y_check: 1,
+        declarada: false,
+      },
+    ]);
+
+    // Los mismos privilegios de fila que cualquier tabla de negocio; ninguno para identidad.
+    for (const rol of ['viajapro_app', 'viajapro_altas', 'viajapro_webhook']) {
+      const p = await admin.query(
+        `SELECT p FROM unnest(ARRAY['SELECT','INSERT','UPDATE','DELETE']) AS p
+          WHERE has_table_privilege($1, 'public.seguimientos', p) ORDER BY 1`,
+        [rol],
+      );
+      expect(
+        p.rows.map((r) => r.p as string),
+        rol,
+      ).toEqual(['DELETE', 'INSERT', 'SELECT', 'UPDATE']);
+    }
+    const deIdentidad = await admin.query(
+      `SELECT p FROM unnest(ARRAY['SELECT','INSERT','UPDATE','DELETE']) AS p
+        WHERE has_table_privilege('viajapro_identidad', 'public.seguimientos', p)`,
+    );
+    expect(deIdentidad.rows).toEqual([]);
+
+    const foraneas = await admin.query(
+      `SELECT (SELECT array_agg(a.attname::text ORDER BY i)
+                 FROM generate_subscripts(c.conkey, 1) AS i
+                 JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = c.conkey[i]) AS columnas,
+              p.relname AS padre,
+              (SELECT array_agg(a.attname::text ORDER BY i)
+                 FROM generate_subscripts(c.confkey, 1) AS i
+                 JOIN pg_attribute a ON a.attrelid = c.confrelid AND a.attnum = c.confkey[i]) AS referidas,
+              c.convalidated
+         FROM pg_constraint c
+         JOIN pg_class p ON p.oid = c.confrelid
+        WHERE c.contype = 'f' AND c.conrelid = 'public.seguimientos'::regclass`,
+    );
+    for (const [columnas, padre, referidas] of FORANEAS_COMPUESTAS_SEGUIMIENTOS) {
+      expect(
+        foraneas.rows,
+        `falta la foránea compuesta seguimientos(${columnas.join(', ')}) → ${padre}`,
+      ).toContainEqual({
+        columnas: [...columnas],
+        padre,
+        referidas: [...referidas],
+        convalidated: true,
+      });
+    }
+    // Ninguna foránea simple desde ni hacia `seguimientos`.
+    const simples = await admin.query(FORANEAS_SIN_TENANT_SQL);
+    expect(
+      (simples.rows as Array<{ hija: string; padre: string }>).filter(
+        (r) => r.hija === 'seguimientos' || r.padre === 'seguimientos',
+      ),
+    ).toEqual([]);
+
+    const indice = await admin.query(
+      `SELECT pg_get_indexdef(i.indexrelid) AS def
+         FROM pg_index i JOIN pg_class x ON x.oid = i.indexrelid
+        WHERE i.indrelid = 'public.seguimientos'::regclass
+          AND x.relname = 'idx_seguimientos_pendientes_por_asesor'`,
+    );
+    expect(indice.rows).toHaveLength(1);
+    const def = (indice.rows[0] as { def: string }).def;
+    expect(def).toContain('(tenant_id, asesor_id, vence_en)');
+    expect(def).toContain('WHERE (completado_en IS NULL)');
+
+    const defectos = await admin.query(
+      "SELECT problema FROM tablas_sin_aislamiento WHERE problema IS NOT NULL AND tabla = 'seguimientos'",
+    );
+    expect(defectos.rows).toEqual([]);
+  });
+
+  it('72 — un tenant no ve, no modifica, no planta y no se cuelga de los seguimientos ni de los destinos de otro', async () => {
+    // Control: A ve lo suyo. Sin esto, «B ve cero» sería verde también con la tabla vacía.
+    const propios = await comoTenant(TENANT_A, (c) =>
+      c.query('SELECT id FROM seguimientos WHERE id = ANY($1)', [
+        [seguimientoOportunidadDe[TENANT_A], seguimientoConversacionDe[TENANT_A]],
+      ]),
+    );
+    expect(propios.rowCount).toBe(2);
+
+    // Lectura cruzada: cero filas, por id y por tenant_id.
+    const ajenos = await comoTenant(TENANT_B, async (c) => [
+      (
+        await c.query('SELECT id FROM seguimientos WHERE id = ANY($1)', [
+          [seguimientoOportunidadDe[TENANT_A], seguimientoConversacionDe[TENANT_A]],
+        ])
+      ).rowCount,
+      (await c.query('SELECT id FROM seguimientos WHERE tenant_id = $1', [TENANT_A])).rowCount,
+    ]);
+    expect(ajenos).toEqual([0, 0]);
+
+    // Completar, reescribir o borrar lo de A desde B: cero filas afectadas.
+    const cambios = await comoTenant(TENANT_B, async (c) => [
+      (
+        await c.query('UPDATE seguimientos SET completado_en = now() WHERE id = $1', [
+          seguimientoOportunidadDe[TENANT_A],
+        ])
+      ).rowCount,
+      (
+        await c.query("UPDATE seguimientos SET descripcion = 'secuestrado' WHERE tenant_id = $1", [
+          TENANT_A,
+        ])
+      ).rowCount,
+      (
+        await c.query('DELETE FROM seguimientos WHERE id = $1', [
+          seguimientoConversacionDe[TENANT_A],
+        ])
+      ).rowCount,
+    ]);
+    expect(cambios).toEqual([0, 0, 0]);
+
+    // Plantar una fila con el tenant de A desde B: WITH CHECK, 42501.
+    await expect(
+      comoTenant(TENANT_B, (c) =>
+        insertar(c, {
+          tenant: TENANT_A,
+          contacto: contactoDe[TENANT_A]!,
+          oportunidad: oportunidadDe[TENANT_A]!,
+          conversacion: null,
+        }),
+      ),
+    ).rejects.toMatchObject({ code: '42501' });
+
+    // Mover una fila propia al tenant de A: también WITH CHECK.
+    await expect(
+      comoTenant(TENANT_B, (c) =>
+        c.query('UPDATE seguimientos SET tenant_id = $1 WHERE id = $2', [
+          TENANT_A,
+          seguimientoOportunidadDe[TENANT_B],
+        ]),
+      ),
+    ).rejects.toMatchObject({ code: '42501' });
+
+    // Colgar una fila PROPIA de los padres de A: lo para la foránea compuesta (23503), porque la
+    // integridad referencial no pasa por RLS. Con foráneas simples, todas entrarían.
+    const colgadas: Array<[string, Parameters<typeof insertar>[1]]> = [
+      [
+        'oportunidad ajena',
+        {
+          tenant: TENANT_B,
+          contacto: contactoDe[TENANT_B]!,
+          oportunidad: oportunidadDe[TENANT_A]!,
+          conversacion: null,
+        },
+      ],
+      [
+        'conversación ajena',
+        {
+          tenant: TENANT_B,
+          contacto: contactoDe[TENANT_B]!,
+          oportunidad: null,
+          conversacion: conversacionDe[TENANT_A]!,
+        },
+      ],
+      [
+        'contacto ajeno',
+        {
+          tenant: TENANT_B,
+          contacto: contactoDe[TENANT_A]!,
+          oportunidad: null,
+          conversacion: conversacionDe[TENANT_B]!,
+        },
+      ],
+      [
+        'asesor ajeno',
+        {
+          tenant: TENANT_B,
+          contacto: contactoDe[TENANT_B]!,
+          oportunidad: oportunidadDe[TENANT_B]!,
+          conversacion: null,
+          asesor: asesorDe[TENANT_A]!,
+        },
+      ],
+    ];
+    for (const [caso, valores] of colgadas) {
+      await expect(
+        comoTenant(TENANT_B, (c) => insertar(c, valores)),
+        caso,
+      ).rejects.toMatchObject({ code: '23503' });
+    }
+    // Y reasignar una fila propia ya existente al asesor de A, igual.
+    await expect(
+      comoTenant(TENANT_B, (c) =>
+        c.query('UPDATE seguimientos SET asesor_id = $1 WHERE id = $2', [
+          asesorDe[TENANT_A],
+          seguimientoOportunidadDe[TENANT_B],
+        ]),
+      ),
+    ).rejects.toMatchObject({ code: '23503' });
+
+    // Lo de A, intacto.
+    const intacto = await comoTenant(TENANT_A, (c) =>
+      c.query('SELECT descripcion, completado_en FROM seguimientos WHERE id = $1', [
+        seguimientoOportunidadDe[TENANT_A],
+      ]),
+    );
+    expect(intacto.rows).toEqual([{ descripcion: 'Llamar para confirmar', completado_en: null }]);
+  });
+
+  it('73 — exactamente un destino: ni ninguno ni los dos, y la oportunidad es del mismo contacto', async () => {
+    // Ninguno: un compromiso que no se abre desde ningún sitio.
+    await expect(
+      comoTenant(TENANT_A, (c) =>
+        insertar(c, {
+          tenant: TENANT_A,
+          contacto: contactoDe[TENANT_A]!,
+          oportunidad: null,
+          conversacion: null,
+        }),
+      ),
+    ).rejects.toMatchObject({ code: '23514', constraint: 'seguimientos_exactamente_un_destino' });
+
+    // Los dos, aunque ambos sean de la propia agencia y del mismo contacto.
+    await expect(
+      comoTenant(TENANT_A, (c) =>
+        insertar(c, {
+          tenant: TENANT_A,
+          contacto: contactoDe[TENANT_A]!,
+          oportunidad: oportunidadDe[TENANT_A]!,
+          conversacion: conversacionDe[TENANT_A]!,
+        }),
+      ),
+    ).rejects.toMatchObject({ code: '23514', constraint: 'seguimientos_exactamente_un_destino' });
+
+    // Ni convertir uno válido en uno con los dos.
+    await expect(
+      comoTenant(TENANT_A, (c) =>
+        c.query('UPDATE seguimientos SET conversacion_id = $1 WHERE id = $2', [
+          conversacionDe[TENANT_A],
+          seguimientoOportunidadDe[TENANT_A],
+        ]),
+      ),
+    ).rejects.toMatchObject({ code: '23514' });
+
+    // La oportunidad de la propia agencia pero de OTRO contacto: la foránea de tres columnas.
+    await expect(
+      comoTenant(TENANT_A, (c) =>
+        insertar(c, {
+          tenant: TENANT_A,
+          contacto: otroContactoDe[TENANT_A]!,
+          oportunidad: oportunidadDe[TENANT_A]!,
+          conversacion: null,
+        }),
+      ),
+    ).rejects.toMatchObject({ code: '23503' });
+
+    // Control: el caso bueno sí entra (y se va con la transacción revertida de abajo).
+    await app.query('BEGIN');
+    try {
+      await app.query("SELECT set_config('app.current_tenant', $1, true)", [TENANT_A]);
+      const r = await insertar(app, {
+        tenant: TENANT_A,
+        contacto: contactoDe[TENANT_A]!,
+        oportunidad: oportunidadDe[TENANT_A]!,
+        conversacion: null,
+      });
+      expect(r.rowCount).toBe(1);
+    } finally {
+      await app.query('ROLLBACK');
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------------------
 // Cierres de la auditoría externa (2026-10-20): AUD-008 y la aserción de RLS forzada de AUD-013.
 //
 // Las dos son DINÁMICAS: enumeran el catálogo, no una lista escrita a mano, de modo que una tabla
