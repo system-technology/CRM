@@ -30,6 +30,7 @@ import { AppModule } from '../../app.module.js';
 import { DominioExcepcionFilter } from '../../shared/filtros/dominio-excepcion.filter.js';
 import { ContextoTenant } from '../../shared/tenant/contexto-tenant.js';
 import { CatalogoVigenciasController } from './interface/catalogo-vigencias.controller.js';
+import { PropuestaInvalidaError } from './domain/errors.js';
 
 const idDeTenant = (): string => `01932000-0000-7000-8000-${randomBytes(6).toString('hex')}`;
 const TENANT_A = idDeTenant();
@@ -359,6 +360,19 @@ describe('vigencias y tarifas por id', () => {
       unidades: '700000',
       moneda: 'COP',
     });
+  });
+
+  it('T-064: sin permiso de neto, cambiar la moneda de la venta se rechaza y neto y venta siguen en COP', async () => {
+    const controlador = app.get(CatalogoVigenciasController, { strict: false });
+    // Depende de la prueba anterior: la tarifa ya tiene neto 700000 COP.
+    await expect(
+      comoConPermisos(TENANT_A, ['catalogo.administrar'], () =>
+        controlador.editarTarifa(tarifaId, { venta: { unidades: '250', moneda: 'USD' } }),
+      ),
+    ).rejects.toBeInstanceOf(PropuestaInvalidaError);
+    const fila = await admin.tarifa.findUniqueOrThrow({ where: { id: tarifaId } });
+    expect(fila.monedaIso).toBe('COP');
+    expect(fila.netoUnidades).toBe(700000n);
   });
 
   it('DELETE borra la tarifa y audita catalogo.tarifa.eliminada con los valores previos', async () => {
