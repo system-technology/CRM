@@ -429,7 +429,7 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: backlog
+    status: done
     depends_on:
       - T-016
     acceptance:
@@ -440,6 +440,8 @@ tasks:
     files:
       - apps/web/src/app/page.tsx
       - apps/web/src/lib/crm-api.ts
+      - apps/web/src/lib/inicio-logica.ts
+      - apps/web/src/components/inicio/bloque-seguimientos-dia.tsx
     source: orquestador:2026-10-26 (cola de Antigravity)
     created_at: 2026-10-26T21:39:01.014Z
   - id: T-021

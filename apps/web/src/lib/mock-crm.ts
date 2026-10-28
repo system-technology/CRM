@@ -1,4 +1,4 @@
-import { FichaDeContacto } from '@viajapro/contracts';
+import { FichaDeContacto, PendientesDelDia, Seguimiento } from '@viajapro/contracts';
 import { MOCK_CONVERSACIONES } from './mock-inbox';
 
 function hashCadena(str: string): number {
@@ -112,4 +112,119 @@ export function obtenerMockFichaDeContacto(conversacionId: string): FichaDeConta
   };
 
   return FichaDeContacto.parse(fichaSinValidar);
+}
+
+const MOCK_PENDIENTES_INICIALES: Seguimiento[] = [
+  {
+    id: '01932000-0000-7000-8000-000000000071',
+    descripcion: 'Confirmar pago de anticipo $2.500.000 San Andrés Decameron',
+    venceEn: '2026-10-26T15:00:00.000Z',
+    completadoEn: null,
+    asesorId: '01932000-0000-7000-8000-000000000011',
+    asesorNombre: 'Laura Gómez',
+    contactoId: '01932000-0000-7000-8000-000000000021',
+    contactoNombre: 'Laura Restrepo',
+    oportunidadId: '01932000-0000-7000-8000-000000000031',
+    oportunidadTitulo: 'Paquete San Andrés Decameron',
+    conversacionId: '01932000-0000-7000-8000-000000000041',
+  },
+  {
+    id: '01932000-0000-7000-8000-000000000072',
+    descripcion: 'Enviar itinerario corregido con lancha privada Barú',
+    venceEn: '2026-10-27T08:30:00.000Z',
+    completadoEn: null,
+    asesorId: '01932000-0000-7000-8000-000000000011',
+    asesorNombre: 'Laura Gómez',
+    contactoId: '01932000-0000-7000-8000-000000000022',
+    contactoNombre: 'Carlos Mario Valencia',
+    oportunidadId: null,
+    oportunidadTitulo: null,
+    conversacionId: '01932000-0000-7000-8000-000000000042',
+  },
+  {
+    id: '01932000-0000-7000-8000-000000000073',
+    descripcion: 'Confirmar pasaportes y asistencia médica internacional',
+    venceEn: '2026-10-27T14:30:00.000Z',
+    completadoEn: null,
+    asesorId: '01932000-0000-7000-8000-000000000011',
+    asesorNombre: 'Laura Gómez',
+    contactoId: '01932000-0000-7000-8000-000000000023',
+    contactoNombre: 'Andrés Cepeda',
+    oportunidadId: '01932000-0000-7000-8000-000000000033',
+    oportunidadTitulo: 'Punta Cana Todo Incluido 5N',
+    conversacionId: '01932000-0000-7000-8000-000000000043',
+  },
+  {
+    id: '01932000-0000-7000-8000-000000000074',
+    descripcion: 'Enviar cotización formal Pasadía Bora Bora VIP (4 pax)',
+    venceEn: '2026-10-27T16:00:00.000Z',
+    completadoEn: null,
+    asesorId: '01932000-0000-7000-8000-000000000011',
+    asesorNombre: 'Laura Gómez',
+    contactoId: '01932000-0000-7000-8000-000000000024',
+    contactoNombre: 'Sofía Henao',
+    oportunidadId: null,
+    oportunidadTitulo: null,
+    conversacionId: '01932000-0000-7000-8000-000000000044',
+  },
+  {
+    id: '01932000-0000-7000-8000-000000000075',
+    descripcion: 'Seguimiento a objeción de hotel en Cartagena Centro Histórico',
+    venceEn: '2026-10-27T17:15:00.000Z',
+    completadoEn: null,
+    asesorId: '01932000-0000-7000-8000-000000000011',
+    asesorNombre: 'Laura Gómez',
+    contactoId: '01932000-0000-7000-8000-000000000025',
+    contactoNombre: 'Mariana Gómez',
+    oportunidadId: '01932000-0000-7000-8000-000000000035',
+    oportunidadTitulo: 'Cartagena Histórica & Encanto 3N',
+    conversacionId: '01932000-0000-7000-8000-000000000045',
+  },
+];
+
+let mockSeguimientosEstado: Seguimiento[] = [...MOCK_PENDIENTES_INICIALES];
+
+export function resetearMockSeguimientos(): void {
+  mockSeguimientosEstado = [...MOCK_PENDIENTES_INICIALES];
+}
+
+export function obtenerMockPendientesDelDia(): PendientesDelDia {
+  const ahora = new Date();
+  const fechaHoy = ahora.toISOString().slice(0, 10);
+  const inicioHoy = new Date(`${fechaHoy}T00:00:00.000Z`).getTime();
+  const finHoy = new Date(`${fechaHoy}T23:59:59.999Z`).getTime();
+
+  const pendientes = mockSeguimientosEstado.filter((s) => s.completadoEn === null);
+
+  const vencidos = pendientes
+    .filter((s) => new Date(s.venceEn).getTime() < inicioHoy)
+    .sort((a, b) => new Date(a.venceEn).getTime() - new Date(b.venceEn).getTime());
+
+  const deHoy = pendientes
+    .filter((s) => {
+      const ms = new Date(s.venceEn).getTime();
+      return ms >= inicioHoy && ms <= finHoy;
+    })
+    .sort((a, b) => new Date(a.venceEn).getTime() - new Date(b.venceEn).getTime());
+
+  return PendientesDelDia.parse({
+    fecha: fechaHoy,
+    vencidos,
+    deHoy,
+  });
+}
+
+export function completarMockSeguimiento(id: string): Seguimiento {
+  const index = mockSeguimientosEstado.findIndex((s) => s.id === id);
+  if (index === -1) {
+    throw new Error(`Seguimiento ${id} no encontrado en mock.`);
+  }
+
+  const actualizado: Seguimiento = {
+    ...mockSeguimientosEstado[index]!,
+    completadoEn: new Date().toISOString(),
+  };
+
+  mockSeguimientosEstado[index] = actualizado;
+  return Seguimiento.parse(actualizado);
 }
