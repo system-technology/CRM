@@ -1,3 +1,43 @@
+# Entrega — T-107: Cotizaciones guardadas: listado con estado, versiones, reenvío por WhatsApp y duplicar — 2026-10-28
+
+## Identificación
+- **Tarea:** `T-107` (roadmap/tasks.yaml)
+- **Rama:** `b/T-107-cotizaciones-guardadas-versiones`
+- **Carril:** `b` (Frontend / Web)
+
+## Qué se construyó y auditó
+
+1. **Lógica de Dominio y Cotizaciones (`cotizaciones-logica.ts` & `cotizaciones-api.ts`):**
+   - Funciones puras: `generarMensajeWhatsAppCotizacion`, `generarEnlaceWhatsApp` (`wa.me`), `duplicarVersionComoComposicion` y `duplicarCotizacionComoEntrada`.
+   - Función `calcularDesgloseMargen`: calcula venta, neto y margen con redondeo comercial, y garantiza que cuando `puedeVerNeto` es `false`, los campos `neto`, `margen` y `porcentaje` se omiten o enmascaran estrictamente (R10 / ADR-0011).
+   - Clientes de API: `cambiarEstadoCotizacionApi`, `duplicarVersionCotizacionApi` y `duplicarCotizacionApi`.
+
+2. **Componente Modal Enviar WhatsApp (`ModalEnviarWhatsAppCotizacion`):**
+   - Selector visual de versión a enviar con desglose de pasajeros y total.
+   - Vista previa formateada en tiempo real del mensaje de WhatsApp listo para compartir.
+   - Botón para copiar texto al portapapeles con retroalimentación instantánea.
+   - Recordatorio de la ventana de 24 horas de Meta y botones de acción rápida: «Marcar como Enviada» y «Abrir y Enviar por WhatsApp» (`wa.me` deep link).
+
+3. **Listado de Cotizaciones (`/cotizaciones`):**
+   - Botones rápidos «WhatsApp» (`btn-enviar-whatsapp-${id}`) y «Duplicar» (`btn-duplicar-${id}`) en tarjetas móviles y tabla de escritorio.
+   - Banner de confirmación y cambio optimista de estado al enviar.
+
+4. **Detalle de Cotización Guardada y Control de Versiones (`/cotizaciones/[id]`):**
+   - Respeto absoluto del permiso `cotizacion.ver_neto_y_margen` (R10 / ADR-0011):
+     - El panel «Auditoría Interna de Margen Comercial (ADR-0011)» solo se renderiza si el usuario tiene el permiso; se omite totalmente del DOM si no lo tiene.
+     - Las columnas «Neto Unit.» y «Margen Unit.» solo se renderizan si el usuario tiene el permiso.
+   - Botones de acción en la cabecera: «Enviar por WhatsApp», «Modificar (Nueva Versión)», y «Duplicar versión» (`btn-duplicar-version`).
+   - Propuesta de texto rápido para WhatsApp con botón de copia directa.
+
+5. **Verificación y Calidad Monorepo:**
+   - 4 suites de prueba dedicadas (`cotizaciones-logica.spec.ts`, `modal-enviar-whatsapp-cotizacion.spec.tsx`, `page.spec.tsx`, `[id]/page.spec.tsx`) con 33 tests en verde.
+   - 100 suites y 800 tests pasando en `@viajapro/web`.
+   - `pnpm typecheck` limpio en todos los 5 paquetes del monorepo.
+   - `pnpm lint` limpio (0 errores / advertencias).
+   - `pnpm test:hooks` limpio (59/59 políticas de rama, 19/19 reglas de secretos, 6/6 fronteras).
+
+---
+
 # Entrega — T-106: Pantalla de conexión de WhatsApp en Configuración: estado, calidad, tier y ventana de 24h — 2026-10-28
 
 ## Identificación

@@ -25,23 +25,35 @@ import {
   Database,
   Eye,
   Filter,
+  MessageSquare,
+  Copy,
+  Check,
 } from 'lucide-react';
-import type { FilaDeCotizacion, EstadoCotizacion } from '@viajapro/contracts';
+import type { FilaDeCotizacion, EstadoCotizacion, CotizacionGuardada } from '@viajapro/contracts';
 import { BarraModulos } from '../../components/bandeja/barra-modulos';
 import { DistintivoDatosDemo } from '../../components/comun/distintivo-datos-demo';
 import { formatearDinero, formatearFecha } from '../../lib/formato';
-import { listarCotizacionesApi, estaUsandoApiReal } from '../../lib/cotizaciones-api';
+import {
+  listarCotizacionesApi,
+  obtenerCotizacionGuardadaApi,
+  duplicarCotizacionApi,
+  estaUsandoApiReal,
+} from '../../lib/cotizaciones-api';
 import {
   filtrarFilasCotizacion,
   extraerResumenVisualCotizacion,
   generarCotizacionesSimuladasLote,
   paginarPorCursor,
+  cotizacionGuardadaAFila,
 } from '../../lib/cotizaciones-listado-logica';
 import { obtenerMockPaginaContactos } from '../../lib/mock-contactos';
+import { ModalEnviarWhatsAppCotizacion } from '../../components/cotizaciones/modal-enviar-whatsapp-cotizacion';
+import { usePermisos } from '../../lib/permisos';
 
 export default function CotizacionesPage() {
   const { esDemo } = useModoDemo();
   const usandoApiReal = !esDemo && estaUsandoApiReal();
+  const { puedeVerNetoYMargen: _puedeVerNetoYMargen } = usePermisos();
 
   // Estados principales de datos y paginación por cursor
   const [filas, setFilas] = useState<FilaDeCotizacion[]>([]);
@@ -51,6 +63,18 @@ export default function CotizacionesPage() {
 
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(false);
+
+  // Estados para WhatsApp modal y duplicación (T-107)
+  const [cotizacionParaWhatsApp, setCotizacionParaWhatsApp] = useState<CotizacionGuardada | null>(
+    null,
+  );
+  const [modalWhatsAppAbierto, setModalWhatsAppAbierto] = useState(false);
+  const [cargandoWhatsAppId, setCargandoWhatsAppId] = useState<string | null>(null);
+  const [duplicandoId, setDuplicandoId] = useState<string | null>(null);
+  const [notificacionAccion, setNotificacionAccion] = useState<{
+    texto: string;
+    tipo: 'exito' | 'error';
+  } | null>(null);
 
   // Filtros
   const [busqueda, setBusqueda] = useState('');
@@ -146,6 +170,47 @@ export default function CotizacionesPage() {
     }
   };
 
+  // Abrir modal de envío por WhatsApp (T-107)
+  const abrirWhatsAppModal = async (id: string) => {
+    setCargandoWhatsAppId(id);
+    try {
+      const cot = await obtenerCotizacionGuardadaApi(id);
+      setCotizacionParaWhatsApp(cot);
+      setModalWhatsAppAbierto(true);
+    } catch {
+      setNotificacionAccion({
+        texto: 'No fue posible abrir la cotización para WhatsApp.',
+        tipo: 'error',
+      });
+      setTimeout(() => setNotificacionAccion(null), 3500);
+    } finally {
+      setCargandoWhatsAppId(null);
+    }
+  };
+
+  // Duplicar cotización completa en borrador (T-107)
+  const manejarDuplicar = async (id: string, titulo: string) => {
+    setDuplicandoId(id);
+    try {
+      const nueva = await duplicarCotizacionApi(id, `${titulo} (Copia)`);
+      const nuevaFila = cotizacionGuardadaAFila(nueva);
+      setFilas((prev) => [nuevaFila, ...prev]);
+      setNotificacionAccion({
+        texto: `Cotización «${nueva.titulo}» creada exitosamente con estado BORRADOR.`,
+        tipo: 'exito',
+      });
+      setTimeout(() => setNotificacionAccion(null), 4000);
+    } catch {
+      setNotificacionAccion({
+        texto: 'Error al duplicar la cotización. Intenta nuevamente.',
+        tipo: 'error',
+      });
+      setTimeout(() => setNotificacionAccion(null), 4000);
+    } finally {
+      setDuplicandoId(null);
+    }
+  };
+
   // Filtrado reactivo en el cliente por búsqueda de texto
   const filasFiltradas = useMemo(() => {
     return filtrarFilasCotizacion(filas, busqueda, mapaContactos);
@@ -169,7 +234,7 @@ export default function CotizacionesPage() {
                     Directorio de Cotizaciones
                   </h1>
                   <p className="text-[11px] text-neutral-500 dark:text-neutral-400">
-                    Historial de cotizaciones emitidas, versiones inmutables y estados
+                    Historial de cotizaciones emitidas, versiones inmutables y reenvío comercial
                   </p>
                 </div>
                 <DistintivoDatosDemo visible={!usandoApiReal || modoEstres500} />
@@ -239,6 +304,35 @@ export default function CotizacionesPage() {
 
         {/* Contenido Principal */}
         <div className="mx-auto max-w-7xl px-3.5 py-6 sm:px-6">
+          {/* Notificación de acción rápida (Éxito o Error) */}
+          {notificacionAccion && (
+            <div
+              role="status"
+              className={`animate-in fade-in mb-4 flex items-center justify-between gap-3 rounded-2xl p-4 text-xs font-semibold shadow-xs duration-200 ${
+                notificacionAccion.tipo === 'exito'
+                  ? 'border border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200'
+                  : 'border border-rose-200 bg-rose-50 text-rose-900 dark:border-rose-800 dark:bg-rose-950/40 dark:text-rose-200'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                {notificacionAccion.tipo === 'exito' ? (
+                  <Check className="h-4 w-4 shrink-0 text-emerald-600" />
+                ) : (
+                  <AlertCircle className="h-4 w-4 shrink-0 text-rose-600" />
+                )}
+                <span>{notificacionAccion.texto}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setNotificacionAccion(null)}
+                aria-label="Cerrar aviso"
+                className="text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200"
+              >
+                ✕
+              </button>
+            </div>
+          )}
+
           {/* ESTADO 1: ERROR CON REINTENTO */}
           {error && !cargando && (
             <div
@@ -385,17 +479,45 @@ export default function CotizacionesPage() {
                         </div>
                       </div>
 
-                      <div className="mt-3 flex items-center justify-between border-t border-neutral-100 pt-2.5 text-[11px] text-neutral-500 dark:border-neutral-800">
+                      <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-neutral-100 pt-2.5 text-[11px] text-neutral-500 dark:border-neutral-800">
                         <span className="truncate pr-2">
                           Salida: {formatearFecha(resumen.fechaSalida)}
                         </span>
-                        <Link
-                          href={`/cotizaciones/${resumen.id}`}
-                          className="flex min-h-[44px] items-center gap-1 rounded-xl bg-neutral-100 px-3 py-1.5 text-xs font-semibold text-neutral-800 transition-colors hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
-                        >
-                          <Eye className="h-3.5 w-3.5" />
-                          <span>Ver</span>
-                        </Link>
+
+                        {/* Acciones Móviles: Ver, WhatsApp, Duplicar (T-107) */}
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <Link
+                            href={`/cotizaciones/${resumen.id}`}
+                            className="flex min-h-[44px] items-center gap-1 rounded-xl bg-neutral-100 px-3 py-1.5 text-xs font-semibold text-neutral-800 transition-colors hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
+                          >
+                            <Eye className="h-3.5 w-3.5" />
+                            <span>Ver</span>
+                          </Link>
+
+                          <button
+                            type="button"
+                            data-testid={`btn-enviar-whatsapp-${resumen.id}`}
+                            onClick={() => void abrirWhatsAppModal(resumen.id)}
+                            disabled={cargandoWhatsAppId === resumen.id}
+                            className="flex min-h-[44px] items-center gap-1 rounded-xl border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-800 transition-colors hover:bg-emerald-100 disabled:opacity-50 dark:border-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300"
+                            title="Enviar por WhatsApp"
+                          >
+                            <MessageSquare className="h-3.5 w-3.5" />
+                            <span>{cargandoWhatsAppId === resumen.id ? '...' : 'WhatsApp'}</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            data-testid={`btn-duplicar-${resumen.id}`}
+                            onClick={() => void manejarDuplicar(resumen.id, resumen.titulo)}
+                            disabled={duplicandoId === resumen.id}
+                            className="flex min-h-[44px] items-center gap-1 rounded-xl border border-neutral-200 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-700 transition-colors hover:bg-neutral-50 disabled:opacity-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300"
+                            title="Duplicar cotización"
+                          >
+                            <Copy className="h-3.5 w-3.5" />
+                            <span>{duplicandoId === resumen.id ? '...' : 'Duplicar'}</span>
+                          </button>
+                        </div>
                       </div>
                     </article>
                   );
@@ -412,7 +534,7 @@ export default function CotizacionesPage() {
                       <th className="px-3 py-3.5 text-center">Versión</th>
                       <th className="px-3 py-3.5 text-center">Estado</th>
                       <th className="px-5 py-3.5 text-right">Total Venta (COP)</th>
-                      <th className="px-4 py-3.5 text-center">Acción</th>
+                      <th className="px-4 py-3.5 text-right">Acciones</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800">
@@ -473,14 +595,43 @@ export default function CotizacionesPage() {
                               moneda: resumen.moneda,
                             })}
                           </td>
-                          <td className="px-4 py-4 text-center">
-                            <Link
-                              href={`/cotizaciones/${resumen.id}`}
-                              className="text-acento-600 hover:text-acento-700 dark:text-acento-400 inline-flex min-h-[44px] items-center gap-1 font-semibold"
-                            >
-                              <Eye className="h-4 w-4" />
-                              <span>Ver</span>
-                            </Link>
+                          <td className="px-4 py-4 text-right">
+                            <div className="flex items-center justify-end gap-1.5">
+                              <Link
+                                href={`/cotizaciones/${resumen.id}`}
+                                className="inline-flex min-h-[44px] items-center gap-1 rounded-xl px-2.5 py-1.5 text-xs font-semibold text-neutral-700 transition-colors hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
+                                title="Ver detalle y versiones"
+                              >
+                                <Eye className="h-3.5 w-3.5" />
+                                <span>Ver</span>
+                              </Link>
+
+                              <button
+                                type="button"
+                                data-testid={`btn-enviar-whatsapp-${resumen.id}`}
+                                onClick={() => void abrirWhatsAppModal(resumen.id)}
+                                disabled={cargandoWhatsAppId === resumen.id}
+                                className="inline-flex min-h-[44px] items-center gap-1 rounded-xl border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-xs font-semibold text-emerald-800 transition-colors hover:bg-emerald-100 disabled:opacity-50 dark:border-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300"
+                                title="Enviar propuesta por WhatsApp"
+                              >
+                                <MessageSquare className="h-3.5 w-3.5" />
+                                <span>
+                                  {cargandoWhatsAppId === resumen.id ? '...' : 'WhatsApp'}
+                                </span>
+                              </button>
+
+                              <button
+                                type="button"
+                                data-testid={`btn-duplicar-${resumen.id}`}
+                                onClick={() => void manejarDuplicar(resumen.id, resumen.titulo)}
+                                disabled={duplicandoId === resumen.id}
+                                className="inline-flex min-h-[44px] items-center gap-1 rounded-xl border border-neutral-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-neutral-700 transition-colors hover:bg-neutral-100 disabled:opacity-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300"
+                                title="Duplicar cotización"
+                              >
+                                <Copy className="h-3.5 w-3.5" />
+                                <span>{duplicandoId === resumen.id ? '...' : 'Duplicar'}</span>
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       );
@@ -513,6 +664,40 @@ export default function CotizacionesPage() {
                 </div>
               )}
             </div>
+          )}
+
+          {/* Modal de Envío WhatsApp (T-107) */}
+          {modalWhatsAppAbierto && cotizacionParaWhatsApp && (
+            <ModalEnviarWhatsAppCotizacion
+              cotizacion={cotizacionParaWhatsApp}
+              contacto={
+                cotizacionParaWhatsApp.contactoId
+                  ? (obtenerMockPaginaContactos().datos.find(
+                      (c) => c.id === cotizacionParaWhatsApp.contactoId,
+                    ) ?? {
+                      id: cotizacionParaWhatsApp.contactoId,
+                      nombre: mapaContactos[cotizacionParaWhatsApp.contactoId] ?? 'Cliente',
+                      telefono: '+573001234567',
+                      correo: null,
+                      etiquetas: [],
+                      preferencias: null,
+                      consentimientos: ['TRANSACCIONAL'],
+                      creadoEn: '2026-10-01T00:00:00.000Z',
+                      ultimoContactoEn: null,
+                    })
+                  : undefined
+              }
+              abierto={modalWhatsAppAbierto}
+              alCerrar={() => {
+                setModalWhatsAppAbierto(false);
+                setCotizacionParaWhatsApp(null);
+              }}
+              alEnviarExitoso={(actualizada) => {
+                setFilas((prev) =>
+                  prev.map((f) => (f.id === actualizada.id ? { ...f, estado: 'ENVIADA' } : f)),
+                );
+              }}
+            />
           )}
         </div>
       </main>
