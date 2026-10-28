@@ -8,13 +8,8 @@ import { obtenerBaseApi } from './api-base';
  * compilaría igual y fallaría en ejecución.
  */
 
-import {
-  type CotizacionCalculada,
-  type CotizarPaquete,
-  CotizacionCalculada as EsquemaCotizacion,
-  ErrorApi as EsquemaError,
-  type Paquete,
-} from '@viajapro/contracts';
+import { ErrorApi as EsquemaError, type Paquete } from '@viajapro/contracts';
+import { cotizarSalidaApi } from './catalogo-api';
 
 /**
  * Cabecera de desarrollo mientras no existe el módulo de autenticación.
@@ -72,18 +67,10 @@ export interface PaginaPaquetes {
 
 export const api = {
   listarPaquetes: () => pedir<PaginaPaquetes>('/api/v1/paquetes'),
-
-  cotizar: async (entrada: CotizarPaquete): Promise<CotizacionCalculada> => {
-    const bruto = await pedir<unknown>('/api/v1/paquetes/cotizar', {
-      method: 'POST',
-      body: JSON.stringify(entrada),
-    });
-    // Se valida la RESPUESTA, no solo la petición. Si el servidor cambia la forma de un campo,
-    // el fallo aparece aquí con el nombre del campo, y no diez componentes más abajo como un
-    // "undefined is not an object" sin pista de dónde vino.
-    return EsquemaCotizacion.parse(bruto);
-  },
+  cotizarSalida: cotizarSalidaApi,
 };
+
+export { cotizarSalidaApi } from './catalogo-api';
 
 /**
  * Helpers únicos de formato es-CO (T-022).
