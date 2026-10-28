@@ -585,7 +585,7 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: backlog
+    status: done
     depends_on: []
     acceptance:
       - Configuración › Catálogo ofrece el ajuste promo_vencida con los valores ocultar y tachar, guardado por

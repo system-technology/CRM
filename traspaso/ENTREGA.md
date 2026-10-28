@@ -1,3 +1,30 @@
+# Entrega — T-028: Ajuste de promoción vencida (ocultar o tachar) en Configuración y aplicación en catálogo/cotizador — 2026-10-27
+
+## Identificación
+- **Rama:** `b/T-028-ajuste-promo-vencida` (empujada a `origin/b/T-028-ajuste-promo-vencida`)
+- **Tarea:** T-028 (Ajuste «promoción vencida» [ocultar o tachar] en Configuración › Catálogo y su aplicación en tarjeta y cotizador)
+- **Carril:** `b` (Frontend / Web)
+- **Stitch Design Screen ID:** `4b4005013aba465685340f4b13c49203` (Proyecto «ViajaPro — CRM para agencias de turismo», ID `8333038101997719867`, pantalla *Configuración › Catálogo: Ajuste de Promoción Vencida — ViajaPro CRM*)
+
+## Qué construí
+1. **Cliente API (`apps/web/src/lib/catalogo-ajustes-api.ts`):**
+   - Consume `GET /api/v1/catalogo/ajustes` y `PATCH /api/v1/catalogo/ajustes` con esquema Zod `AjustesDeCatalogo` (`{ promoVencida: 'OCULTAR' | 'TACHAR' }`).
+2. **Componente de Configuración (`apps/web/src/components/configuracion/bloque-ajustes-catalogo.tsx` y `.spec.tsx`):**
+   - Panel de 2 columnas con selector interactivo de radio (`OCULTAR` vs `TACHAR`).
+   - Advertencia de que el precio cobrado al cliente no cambia (invariante de dominio R12 / ADR-0017 §9).
+   - Previsualización reactiva en vivo sobre tarjeta de excursión caribeña con precio tachado y badge condicionales.
+   - Pestaña `Catálogo` integrada en `apps/web/src/app/configuracion/page.tsx`.
+3. **Aplicación en Tarjeta de Catálogo (`apps/web/src/components/catalogo/tarjeta-salida-publicada.tsx` y `.spec.tsx`):**
+   - Respeta `salida.presentacion.listaTachada` y `salida.presentacion.leyenda === 'PROMO_VENCIDA'` calculados por la API.
+4. **Aplicación en Cotizador (`apps/web/src/components/cotizador/desglose-cotizacion-salida.tsx` y `.spec.tsx`):**
+   - Respeta `linea.presentacion.listaTachada` e `insignia-promo-vencida` calculados por la API.
+5. **Pruebas y verificación:**
+   - 48 suites pasando en `@viajapro/web`, 406/406 pruebas en verde.
+   - Tests específicos para ambos valores (`OCULTAR` y `TACHAR`) tanto en Configuración como en la Tarjeta y en el Cotizador.
+   - Typecheck, ESLint y `test:hooks` 100% en verde.
+
+---
+
 # Entrega — T-037: Inicio con Saludo según la Hora, Acciones Rápidas y Tarjetas de Colores — 2026-10-26
 
 ## Identificación

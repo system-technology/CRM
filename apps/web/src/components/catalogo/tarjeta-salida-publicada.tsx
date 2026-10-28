@@ -97,9 +97,33 @@ export function TarjetaSalidaPublicada({ salida }: TarjetaSalidaPublicadaProps) 
         <div className="mb-3 flex flex-wrap items-baseline justify-between gap-1">
           <span className="text-xs text-neutral-500 dark:text-neutral-400">Tarifa desde:</span>
           <div className="text-right">
+            {salida.presentacion?.listaTachada && (
+              <span
+                data-testid="tarifa-lista-tachada"
+                className="block text-xs text-neutral-400 line-through"
+              >
+                {formatearDinero(salida.presentacion.listaTachada)}
+              </span>
+            )}
             <span className="cifra text-lg font-extrabold text-neutral-900 dark:text-white">
-              {formatearDinero(salida.desde)}
+              {formatearDinero(salida.presentacion?.venta ?? salida.desde)}
             </span>
+            {salida.presentacion?.leyenda === 'PROMO_VENCIDA' && (
+              <span
+                data-testid="insignia-promo-vencida"
+                className="mt-0.5 block rounded bg-amber-100 px-1.5 py-0.5 text-[9px] font-semibold text-amber-800 dark:bg-amber-950 dark:text-amber-300"
+              >
+                Promoción vencida
+              </span>
+            )}
+            {salida.presentacion?.promoVigente && (
+              <span
+                data-testid="insignia-promo-vigente"
+                className="mt-0.5 block rounded bg-emerald-100 px-1.5 py-0.5 text-[9px] font-semibold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+              >
+                Promo vigente
+              </span>
+            )}
             <span
               className={`block text-[10px] ${
                 condicionDesde.esGrupo
