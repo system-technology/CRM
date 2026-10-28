@@ -51,6 +51,75 @@ export class PerdidaSinMotivoError extends EstadoInvalidoError {
   }
 }
 
+export class ConversacionNoEncontradaError extends DomainError {
+  readonly code = 'CONVERSACION_NO_ENCONTRADA';
+  constructor(readonly conversacionId: string) {
+    // Mismo error para «no existe» y «no la ves»: distinguirlos le diría a un asesor que hay una
+    // conversación ajena con ese id.
+    super(`No existe la conversación ${conversacionId} en esta agencia`);
+  }
+}
+
+export class AsesorNoEncontradoError extends DomainError {
+  readonly code = 'ASESOR_NO_ENCONTRADO';
+  constructor(readonly asesorId: string) {
+    super(`No existe el asesor ${asesorId} activo en esta agencia`);
+  }
+}
+
+export class PaqueteNoEncontradoError extends DomainError {
+  readonly code = 'PAQUETE_NO_ENCONTRADO';
+  constructor(readonly paqueteId: string) {
+    super(`No existe el paquete ${paqueteId} en esta agencia`);
+  }
+}
+
+export class SeguimientoNoEncontradoError extends DomainError {
+  readonly code = 'SEGUIMIENTO_NO_ENCONTRADO';
+  constructor(readonly seguimientoId: string) {
+    super(`No existe el seguimiento ${seguimientoId} en esta agencia`);
+  }
+}
+
+/** Otro contacto de la agencia ya tiene ese teléfono: es la llave del canal de WhatsApp. */
+export class TelefonoYaRegistradoError extends EstadoInvalidoError {
+  readonly code = 'TELEFONO_YA_REGISTRADO';
+  constructor(readonly telefonoE164: string) {
+    super(`Ya existe un contacto con el teléfono ${telefonoE164} en esta agencia`);
+  }
+}
+
+export class SeguimientoYaCompletadoError extends EstadoInvalidoError {
+  readonly code = 'SEGUIMIENTO_YA_COMPLETADO';
+  constructor(readonly seguimientoId: string) {
+    super(`El seguimiento ${seguimientoId} ya estaba completado`);
+  }
+}
+
+/** La agencia no tiene ninguna etapa de entrada al embudo (todas ganadas o perdidas, o ninguna). */
+export class SinEtapaInicialError extends EstadoInvalidoError {
+  readonly code = 'SIN_ETAPA_INICIAL';
+  constructor() {
+    super('La agencia no tiene una etapa inicial del embudo: configura al menos una etapa viva.');
+  }
+}
+
+/**
+ * Límite temporal, declarado: hasta que exista la tabla `seguimientos`, cada oportunidad guarda
+ * UN seguimiento (las columnas `proxima_tarea_*`) y los de conversación no tienen dónde vivir.
+ * Ver el informe de T-077 con la migración que hace falta.
+ */
+export class SeguimientoNoSoportadoTodaviaError extends EstadoInvalidoError {
+  readonly code = 'SEGUIMIENTO_NO_SOPORTADO_TODAVIA';
+  constructor(readonly motivo: 'CONVERSACION' | 'OPORTUNIDAD_CON_PENDIENTE') {
+    super(
+      motivo === 'CONVERSACION'
+        ? 'Los seguimientos sobre una conversación necesitan la tabla `seguimientos`, que aún no existe.'
+        : 'Esta oportunidad ya tiene un seguimiento pendiente: complétalo antes de crear otro.',
+    );
+  }
+}
+
 /** Motivo de pérdida en una etapa que no lo es. */
 export class MotivoEnEtapaViva extends EstadoInvalidoError {
   readonly code = 'MOTIVO_EN_ETAPA_VIVA';
