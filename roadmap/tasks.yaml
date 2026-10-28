@@ -1585,7 +1585,7 @@ tasks:
     phase: 1
     priority: P1
     effort: S
-    status: blocked
+    status: backlog
     depends_on: []
     acceptance:
       - La versión de cotización guarda opcion_de_salida_id con tenant_id, clave foránea compuesta hacia
@@ -1597,7 +1597,6 @@ tasks:
       - apps/api/src/modules/quoting/
     source: hallazgos de la tanda 2026-10-26
     created_at: 2026-10-27T01:51:03.949Z
-    blocked_reason: Requiere migración (agente datos) con aprobación del propietario, ya delegada en el orquestador
   - id: T-063
     title: "Web: enviar opcionDeSalidaId al cotizar y al guardar cuando el producto tiene opciones de salida"
     type: bug
@@ -1769,7 +1768,7 @@ tasks:
     phase: 1
     priority: P3
     effort: S
-    status: blocked
+    status: backlog
     depends_on: []
     acceptance:
       - registros_auditoria identifica si el actor fue un usuario o una clave de API, con tenant_id y RLS
@@ -1780,7 +1779,6 @@ tasks:
       - apps/api/src/modules/quoting/
     source: hallazgos de la tanda 2026-10-26
     created_at: 2026-10-27T01:51:03.951Z
-    blocked_reason: Requiere migración (agente datos) con aprobación del propietario, ya delegada en el orquestador
   - id: T-072
     title: "Higiene del repositorio: ADR-0016 debe reflejar que el ciclo de OpenCode está detenido (se supersede,
       no se edita)"
@@ -1981,7 +1979,7 @@ tasks:
     phase: 1
     priority: P1
     effort: S
-    status: blocked
+    status: backlog
     depends_on: []
     acceptance:
       - El JSON refleja la protección real del servidor (gh api .../branches/main/protection) y ESTADO.md deja
@@ -1991,7 +1989,6 @@ tasks:
       - .github/PROTECCION-DE-RAMA.md
     source: auditoria de ciberseguridad 2026-10-28
     created_at: 2026-10-28T02:09:17.390Z
-    blocked_reason: Toca .github/, que exige la aprobación del propietario por CODEOWNERS
   - id: T-084
     title: "MCP postgres de los agentes: rol de solo lectura sin BYPASSRLS y versión fija; quitar @latest de
       .mcp.json"
@@ -1999,7 +1996,7 @@ tasks:
     phase: 1
     priority: P1
     effort: S
-    status: blocked
+    status: backlog
     depends_on: []
     acceptance:
       - .mcp.json usa un rol de solo SELECT que no salta RLS (migración del rol por datos) y paquetes con
@@ -2009,7 +2006,6 @@ tasks:
       - packages/database/prisma/
     source: auditoria de ciberseguridad 2026-10-28
     created_at: 2026-10-28T02:09:17.390Z
-    blocked_reason: Requiere crear un rol de base de datos (migración) y tocar .mcp.json; aprobación del propietario
   - id: T-085
     title: "Workflows con la App Integradora: acciones fijadas por SHA, persist-credentials false y npm ci
       --ignore-scripts"
@@ -2017,7 +2013,7 @@ tasks:
     phase: 1
     priority: P1
     effort: S
-    status: blocked
+    status: backlog
     depends_on: []
     acceptance:
       - cerrar-tarea.yml, mantener-ramas.yml y ownership.yml fijan create-github-app-token, checkout y
@@ -2026,14 +2022,13 @@ tasks:
       - .github/workflows/
     source: auditoria de ciberseguridad 2026-10-28
     created_at: 2026-10-28T02:09:17.390Z
-    blocked_reason: Toca .github/, que exige la aprobación del propietario por CODEOWNERS
   - id: T-086
     title: "Verificar los SHA de los PR de Dependabot #11 a #13 y probar pnpm/action-setup v6 antes de integrarlos"
     type: security
     phase: 1
     priority: P1
     effort: S
-    status: blocked
+    status: backlog
     depends_on: []
     acceptance:
       - Cada SHA coincide con la etiqueta oficial (gh api repos/<org>/<action>/git/ref/tags/<tag>) y el CI
@@ -2042,14 +2037,13 @@ tasks:
       - .github/workflows/
     source: auditoria de ciberseguridad 2026-10-28
     created_at: 2026-10-28T02:09:17.390Z
-    blocked_reason: Toca .github/, que exige la aprobación del propietario por CODEOWNERS
   - id: T-087
     title: Dependabot para npm (solo seguridad) y job no obligatorio pnpm audit --prod
     type: security
     phase: 1
     priority: P2
     effort: S
-    status: blocked
+    status: backlog
     depends_on: []
     acceptance:
       - dependabot.yml cubre el ecosistema npm con grupos de seguridad y el CI informa de vulnerabilidades
@@ -2059,7 +2053,6 @@ tasks:
       - .github/workflows/ci.yml
     source: auditoria de ciberseguridad 2026-10-28
     created_at: 2026-10-28T02:09:17.390Z
-    blocked_reason: Toca .github/, que exige la aprobación del propietario por CODEOWNERS
   - id: T-088
     title: "Prueba de humo en staging: req.ip detrás del rewrite de Next y valor de API_TRUST_PROXY"
     type: security
