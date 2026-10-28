@@ -1,5 +1,17 @@
-import { FichaDeContacto, PendientesDelDia, Seguimiento } from '@viajapro/contracts';
+import {
+  Contacto,
+  CrearOportunidad,
+  CrearSeguimiento,
+  EditarContacto,
+  FichaDeContacto,
+  FiltroSeguimientos,
+  Oportunidad,
+  PaginaSeguimientos,
+  PendientesDelDia,
+  Seguimiento,
+} from '@viajapro/contracts';
 import { MOCK_CONVERSACIONES } from './mock-inbox';
+import { obtenerMockPaginaContactos } from './mock-contactos';
 
 function hashCadena(str: string): number {
   let hash = 0;
@@ -10,36 +22,81 @@ function hashCadena(str: string): number {
   return Math.abs(hash);
 }
 
+// Almacén mutable en memoria para mutaciones en modo demo/desconectado
+const mockContactosModificados = new Map<string, Contacto>();
+const mockOportunidadesContacto = new Map<string, Oportunidad>();
+const mockNotasContacto = new Map<
+  string,
+  Array<{ id: string; autorNombre: string | null; texto: string; escritaEn: string }>
+>();
+
 /**
- * Función mock para obtener la Ficha del Viajero por ID de conversación.
- * Atada estrictamente a la conversación solicitada (0d).
+ * Función mock para obtener la Ficha del Viajero por ID de contacto o de conversación.
  * Conforme 100% con los esquemas de @viajapro/contracts (FichaDeContacto, Contacto, Oportunidad, etc.).
  */
-export function obtenerMockFichaDeContacto(conversacionId: string): FichaDeContacto {
-  const conv = MOCK_CONVERSACIONES.find((c) => c.id === conversacionId);
+export function obtenerMockFichaDeContacto(identificador: string): FichaDeContacto {
+  // 1. Buscar en contactos modificados en memoria
+  let contacto: Contacto | undefined = mockContactosModificados.get(identificador);
 
-  // Derivar datos si la conversación no está en la lista estándar
-  const hash = hashCadena(conversacionId);
+  // 2. Buscar en la lista oficial de contactos mock
+  if (!contacto) {
+    const contactosMock = obtenerMockPaginaContactos().datos;
+    contacto = contactosMock.find((c) => c.id === identificador);
+  }
+
+  // 3. Buscar si el identificador es una conversación
+  const conv = MOCK_CONVERSACIONES.find(
+    (c) => c.id === identificador || c.contactoId === identificador,
+  );
+
+  const hash = hashCadena(identificador);
   const contactoId =
+    contacto?.id ??
     conv?.contactoId ??
     `00000000-0002-4000-8000-${hash.toString(16).padStart(12, '0').slice(0, 12)}`;
-  const nombre = conv?.contactoNombre ?? (conv ? null : 'Viajero Simulado');
-  const telefono = conv?.contactoTelefono ?? `+57300${((hash % 9000000) + 1000000).toString()}`;
-  const etiquetas = conv?.etiquetas && conv.etiquetas.length > 0 ? conv.etiquetas : ['Lead Nuevo'];
+
+  const nombre = contacto?.nombre ?? conv?.contactoNombre ?? (conv ? null : 'Viajero Simulado');
+  const telefono =
+    contacto?.telefono ??
+    conv?.contactoTelefono ??
+    `+57300${((hash % 9000000) + 1000000).toString()}`;
+  const etiquetas =
+    contacto?.etiquetas ??
+    (conv?.etiquetas && conv.etiquetas.length > 0 ? conv.etiquetas : ['Lead Nuevo']);
+  const preferencias =
+    contacto?.preferencias ??
+    'Prefiere hoteles 4+ estrellas frente al mar. Asientos de pasillo en vuelos matutinos.';
+  const consentimientos = contacto?.consentimientos ?? [
+    'TRANSACCIONAL' as const,
+    'PROMOCIONAL' as const,
+  ];
+
+  const oportunidadExistente = mockOportunidadesContacto.get(contactoId);
+  const notasExistentes = mockNotasContacto.get(contactoId) ?? [
+    {
+      id: `00000000-0006-4000-8000-${hash.toString(16).padStart(12, '0').slice(0, 12)}`,
+      autorNombre: conv?.asignadoANombre ?? 'Carlos Asesor',
+      texto: 'Cliente muy interesado en viajar antes del 20 de diciembre. Viaja con 2 niños.',
+      escritaEn: '2026-10-08T09:30:00.000Z',
+    },
+  ];
 
   const fichaSinValidar = {
     contacto: {
       id: contactoId,
       nombre,
       telefono,
-      correo: nombre ? `${nombre.toLowerCase().replace(/[^a-z0-9]/g, '.')}@ejemplo.com` : null,
+      correo:
+        contacto?.correo ??
+        (nombre ? `${nombre.toLowerCase().replace(/[^a-z0-9]/g, '.')}@ejemplo.com` : null),
       etiquetas,
-      preferencias: 'Prefiere hoteles 4+ estrellas frente al mar. Asientos de pasillo.',
-      consentimientos: ['TRANSACCIONAL' as const, 'PROMOCIONAL' as const],
-      creadoEn: '2026-01-15T10:00:00.000Z',
-      ultimoContactoEn: conv?.ultimoMensajeEn ?? '2026-10-10T14:30:00.000Z',
+      preferencias,
+      consentimientos,
+      creadoEn: contacto?.creadoEn ?? '2026-01-15T10:00:00.000Z',
+      ultimoContactoEn:
+        contacto?.ultimoContactoEn ?? conv?.ultimoMensajeEn ?? '2026-10-10T14:30:00.000Z',
     },
-    oportunidadActual: {
+    oportunidadActual: oportunidadExistente ?? {
       id: `00000000-0003-4000-8000-${hash.toString(16).padStart(12, '0').slice(0, 12)}`,
       contactoId,
       contactoNombre: nombre,
@@ -101,14 +158,7 @@ export function obtenerMockFichaDeContacto(conversacionId: string): FichaDeConta
       `00000000-0005-4000-8000-${(hash + 1).toString(16).padStart(12, '0').slice(0, 12)}`,
       `00000000-0005-4000-8000-${(hash + 2).toString(16).padStart(12, '0').slice(0, 12)}`,
     ],
-    notasInternas: [
-      {
-        id: `00000000-0006-4000-8000-${hash.toString(16).padStart(12, '0').slice(0, 12)}`,
-        autorNombre: conv?.asignadoANombre ?? 'Carlos Asesor',
-        texto: 'Cliente muy interesado en viajar antes del 20 de diciembre. Viaja con 2 niños.',
-        escritaEn: '2026-10-08T09:30:00.000Z',
-      },
-    ],
+    notasInternas: notasExistentes,
   };
 
   return FichaDeContacto.parse(fichaSinValidar);
@@ -227,4 +277,151 @@ export function completarMockSeguimiento(id: string): Seguimiento {
 
   mockSeguimientosEstado[index] = actualizado;
   return Seguimiento.parse(actualizado);
+}
+
+/**
+ * Edita un contacto en memoria (modo mock).
+ */
+export function editarMockContacto(id: string, cambios: EditarContacto): Contacto {
+  const fichaActual = obtenerMockFichaDeContacto(id);
+  const contactoPrevio = fichaActual.contacto;
+
+  const actualizado: Contacto = {
+    ...contactoPrevio,
+    ...(cambios.nombre !== undefined && { nombre: cambios.nombre }),
+    ...(cambios.telefono !== undefined && { telefono: cambios.telefono }),
+    ...(cambios.correo !== undefined && { correo: cambios.correo }),
+    ...(cambios.etiquetas !== undefined && { etiquetas: cambios.etiquetas }),
+    ...(cambios.preferencias !== undefined && { preferencias: cambios.preferencias }),
+    ultimoContactoEn: new Date().toISOString(),
+  };
+
+  const validado = Contacto.parse(actualizado);
+  mockContactosModificados.set(id, validado);
+  return validado;
+}
+
+/**
+ * Crea una oportunidad para un contacto en memoria (modo mock).
+ */
+export function crearMockOportunidad(cuerpo: CrearOportunidad): Oportunidad {
+  const ficha = obtenerMockFichaDeContacto(cuerpo.contactoId);
+  const ahora = new Date().toISOString();
+
+  const nuevaOportunidad = {
+    id: `01932000-0000-7000-8000-${Date.now().toString(16).slice(-12).padStart(12, '0')}`,
+    contactoId: cuerpo.contactoId,
+    contactoNombre: ficha.contacto.nombre,
+    titulo: cuerpo.titulo,
+    destino: cuerpo.destino ?? 'Cancún, México',
+    paqueteId: cuerpo.paqueteId ?? null,
+    fechaSalida: cuerpo.fechaSalida ?? null,
+    etapa: {
+      id: '01a114b2-5314-75b1-91ad-3be0518a6a01',
+      clave: 'NUEVO_LEAD' as const,
+      nombre: 'Nuevo lead',
+      orden: 1,
+      probabilidad: 20,
+      esGanada: false,
+      esPerdida: false,
+    },
+    valorEstimado: cuerpo.valorEstimado ?? {
+      unidades: '500000000',
+      moneda: 'COP' as const,
+    },
+    probabilidad: 20,
+    asesorId: cuerpo.asesorId ?? '00000000-0000-4000-a000-000000000001',
+    asesorNombre: 'Laura Gómez',
+    proximaTarea: null,
+    motivoPerdida: null,
+    notaPerdida: null,
+    creadaEn: ahora,
+    ultimoContactoEn: ahora,
+  };
+
+  const validada = Oportunidad.parse(nuevaOportunidad);
+  mockOportunidadesContacto.set(cuerpo.contactoId, validada);
+  return validada;
+}
+
+/**
+ * Crea un seguimiento en memoria (modo mock).
+ */
+export function crearMockSeguimiento(cuerpo: CrearSeguimiento): Seguimiento {
+  let contactoId = '00000000-0002-4000-8000-000000000001';
+  let contactoNombre: string | null = 'Viajero';
+  let oportunidadTitulo: string | null = null;
+
+  if (cuerpo.oportunidadId) {
+    for (const [, op] of mockOportunidadesContacto.entries()) {
+      if (op.id === cuerpo.oportunidadId) {
+        contactoId = op.contactoId;
+        contactoNombre = op.contactoNombre;
+        oportunidadTitulo = op.titulo;
+        break;
+      }
+    }
+  }
+
+  const nuevo: Seguimiento = {
+    id: `01932000-0000-7000-8000-${Date.now().toString(16).slice(-12).padStart(12, '0')}`,
+    descripcion: cuerpo.descripcion,
+    venceEn: cuerpo.venceEn,
+    completadoEn: null,
+    asesorId: '00000000-0000-4000-a000-000000000001',
+    asesorNombre: 'Laura Gómez',
+    contactoId,
+    contactoNombre,
+    oportunidadId: cuerpo.oportunidadId ?? null,
+    oportunidadTitulo,
+    conversacionId: cuerpo.conversacionId ?? null,
+  };
+
+  const validado = Seguimiento.parse(nuevo);
+  mockSeguimientosEstado.unshift(validado);
+  return validado;
+}
+
+/**
+ * Lista seguimientos filtrados en memoria (modo mock).
+ */
+export function listarMockSeguimientos(filtro: FiltroSeguimientos): PaginaSeguimientos {
+  let lista = [...mockSeguimientosEstado];
+
+  if (filtro.estado === 'PENDIENTE') {
+    lista = lista.filter((s) => s.completadoEn === null);
+  } else if (filtro.estado === 'COMPLETADO') {
+    lista = lista.filter((s) => s.completadoEn !== null);
+  }
+
+  if (filtro.oportunidadId) {
+    lista = lista.filter((s) => s.oportunidadId === filtro.oportunidadId);
+  }
+
+  if (filtro.conversacionId) {
+    lista = lista.filter((s) => s.conversacionId === filtro.conversacionId);
+  }
+
+  return {
+    datos: lista,
+    pageInfo: { nextCursor: null, hasMore: false },
+  };
+}
+
+/**
+ * Añade una nota interna al contacto en memoria (modo mock).
+ */
+export function agregarMockNotaInterna(
+  contactoId: string,
+  texto: string,
+  autorNombre: string = 'Laura Gómez',
+): void {
+  const notas = mockNotasContacto.get(contactoId) ?? [];
+  notas.unshift({
+    id: `00000000-0006-4000-8000-${Date.now().toString(16).slice(-12).padStart(12, '0')}`,
+    autorNombre,
+    texto,
+    escritaEn: new Date().toISOString(),
+  });
+  mockNotasContacto.set(contactoId, notas);
 }
