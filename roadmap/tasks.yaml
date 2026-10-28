@@ -779,7 +779,7 @@ tasks:
     phase: 1
     priority: P2
     effort: M
-    status: backlog
+    status: done
     depends_on:
       - T-032
     acceptance:
@@ -793,6 +793,12 @@ tasks:
       - apps/web/src/lib/crm-api.ts
     source: propietario:2026-10-26 (identidad visual)
     created_at: 2026-10-26T23:32:24.205Z
+    started_at: 2026-10-28T03:00:59.871Z
+    done_at: 2026-10-28T03:00:59.872Z
+    evidence: "Mergeado en main por el PR #114 (rama b/T-037-inicio-saludo-acciones-rapidas) con el CI en verde:
+      format, analyze, tests y los demás checks obligatorios. Cierre automático
+      (.github/workflows/cerrar-tarea.yml)."
+    commit: 332eae9c68167d26e8d28b71a85aeea64bf6abd5
   - id: T-038
     title: "Marca de la agencia en la API: nombre comercial, logo y color de acento por agencia"
     type: feature
