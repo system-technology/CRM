@@ -4027,6 +4027,166 @@ describe('ADR-0017 — catálogo gestionable: M1 y M2', () => {
       { column_default: "'OCULTAR'::promo_vencida", is_nullable: 'NO' },
     ]);
   });
+
+  it('71 — un tenant no ve, no escribe y no se cuelga de las vigencias, tarifas ni la política de precio de otro', async () => {
+    // La política de A la crea la 70, pero esta no depende del orden: se asegura para los dos.
+    for (const tenant of [TENANT_A, TENANT_B]) {
+      await comoTenant(tenant, (c) =>
+        c.query(
+          `INSERT INTO politicas_de_precio (tenant_id, actualizada_en) VALUES ($1, now())
+           ON CONFLICT (tenant_id) DO NOTHING`,
+          [tenant],
+        ),
+      );
+    }
+
+    // Control: A ve lo suyo. Sin esto, «B ve cero» sería verde también con las tablas vacías.
+    const propias = await comoTenant(TENANT_A, async (c) => ({
+      vigencias: (await c.query('SELECT id FROM vigencias WHERE id = $1', [vigenciaDe[TENANT_A]]))
+        .rowCount,
+      tarifas: (
+        await c.query('SELECT id FROM tarifas WHERE vigencia_id = $1', [vigenciaDe[TENANT_A]])
+      ).rowCount,
+      politicas: (
+        await c.query('SELECT tenant_id FROM politicas_de_precio WHERE tenant_id = $1', [TENANT_A])
+      ).rowCount,
+    }));
+    expect(propias).toEqual({ vigencias: 1, tarifas: 1, politicas: 1 });
+
+    // Lectura cruzada: cero filas, por id y por tenant_id.
+    const ajenas = await comoTenant(TENANT_B, async (c) => ({
+      vigencias: (await c.query('SELECT id FROM vigencias WHERE tenant_id = $1', [TENANT_A]))
+        .rowCount,
+      vigenciaPorId: (
+        await c.query('SELECT id FROM vigencias WHERE id = $1', [vigenciaDe[TENANT_A]])
+      ).rowCount,
+      tarifas: (await c.query('SELECT id FROM tarifas WHERE tenant_id = $1', [TENANT_A])).rowCount,
+      tarifasPorVigencia: (
+        await c.query('SELECT id FROM tarifas WHERE vigencia_id = $1', [vigenciaDe[TENANT_A]])
+      ).rowCount,
+      politicas: (
+        await c.query('SELECT tenant_id FROM politicas_de_precio WHERE tenant_id = $1', [TENANT_A])
+      ).rowCount,
+    }));
+    expect(ajenas).toEqual({
+      vigencias: 0,
+      vigenciaPorId: 0,
+      tarifas: 0,
+      tarifasPorVigencia: 0,
+      politicas: 0,
+    });
+
+    // Modificar o borrar lo de A desde B: cero filas afectadas.
+    const cambios = await comoTenant(TENANT_B, async (c) => [
+      (
+        await c.query("UPDATE vigencias SET hasta = '2027-12-31' WHERE id = $1", [
+          vigenciaDe[TENANT_A],
+        ])
+      ).rowCount,
+      (
+        await c.query('UPDATE tarifas SET venta_unidades = 1 WHERE vigencia_id = $1', [
+          vigenciaDe[TENANT_A],
+        ])
+      ).rowCount,
+      (
+        await c.query('UPDATE politicas_de_precio SET porcentaje = 99 WHERE tenant_id = $1', [
+          TENANT_A,
+        ])
+      ).rowCount,
+      (await c.query('DELETE FROM tarifas WHERE vigencia_id = $1', [vigenciaDe[TENANT_A]]))
+        .rowCount,
+      (await c.query('DELETE FROM vigencias WHERE id = $1', [vigenciaDe[TENANT_A]])).rowCount,
+      (await c.query('DELETE FROM politicas_de_precio WHERE tenant_id = $1', [TENANT_A])).rowCount,
+    ]);
+    expect(cambios).toEqual([0, 0, 0, 0, 0, 0]);
+
+    // Plantar filas con el tenant de A desde B: WITH CHECK, 42501.
+    await expect(
+      comoTenant(TENANT_B, (c) =>
+        c.query(
+          `INSERT INTO vigencias (id, tenant_id, paquete_id, desde, hasta)
+           VALUES (gen_random_uuid(), $1, $2, '2027-01-01', '2027-01-31')`,
+          [TENANT_A, paqueteDe[TENANT_A]],
+        ),
+      ),
+    ).rejects.toMatchObject({ code: '42501' });
+    await expect(
+      comoTenant(TENANT_B, (c) =>
+        c.query(
+          `INSERT INTO tarifas (id, tenant_id, vigencia_id, nombre, venta_unidades, moneda_iso,
+                                actualizado_en)
+           VALUES (gen_random_uuid(), $1, $2, 'Plantada', 100000, 'COP', now())`,
+          [TENANT_A, vigenciaDe[TENANT_A]],
+        ),
+      ),
+    ).rejects.toMatchObject({ code: '42501' });
+    await expect(
+      comoTenant(TENANT_B, (c) =>
+        c.query(
+          `INSERT INTO politicas_de_precio (tenant_id, actualizada_en) VALUES ($1, now())
+           ON CONFLICT (tenant_id) DO NOTHING`,
+          [TENANT_A],
+        ),
+      ),
+    ).rejects.toMatchObject({ code: '42501' });
+
+    // Mover una fila propia al tenant de A: el WITH CHECK también corta el UPDATE.
+    await expect(
+      comoTenant(TENANT_B, (c) =>
+        c.query('UPDATE tarifas SET tenant_id = $1 WHERE vigencia_id = $2', [
+          TENANT_A,
+          vigenciaDe[TENANT_B],
+        ]),
+      ),
+    ).rejects.toMatchObject({ code: '42501' });
+
+    // Colgarse del padre de A con una fila PROPIA: foránea compuesta, 23503.
+    await expect(
+      comoTenant(TENANT_B, (c) =>
+        c.query(
+          `INSERT INTO vigencias (id, tenant_id, paquete_id, desde, hasta)
+           VALUES (gen_random_uuid(), $1, $2, '2027-02-01', '2027-02-28')`,
+          [TENANT_B, paqueteDe[TENANT_A]],
+        ),
+      ),
+    ).rejects.toMatchObject({ code: '23503' });
+    await expect(
+      comoTenant(TENANT_B, (c) =>
+        c.query(
+          `INSERT INTO tarifas (id, tenant_id, vigencia_id, nombre, venta_unidades, moneda_iso,
+                                actualizado_en)
+           VALUES (gen_random_uuid(), $1, $2, 'Colgada de la vigencia ajena', 100000, 'COP', now())`,
+          [TENANT_B, vigenciaDe[TENANT_A]],
+        ),
+      ),
+    ).rejects.toMatchObject({ code: '23503' });
+
+    // Lo de A, intacto.
+    const intacto = await comoTenant(TENANT_A, async (c) => ({
+      vigencia: (
+        await c.query("SELECT to_char(hasta, 'YYYY-MM-DD') AS hasta FROM vigencias WHERE id = $1", [
+          vigenciaDe[TENANT_A],
+        ])
+      ).rows,
+      tarifas: (
+        await c.query(
+          'SELECT nombre, venta_unidades::text AS venta FROM tarifas WHERE vigencia_id = $1',
+          [vigenciaDe[TENANT_A]],
+        )
+      ).rows,
+      politica: (
+        await c.query(
+          'SELECT porcentaje::text AS porcentaje FROM politicas_de_precio WHERE tenant_id = $1',
+          [TENANT_A],
+        )
+      ).rows,
+    }));
+    expect(intacto).toEqual({
+      vigencia: [{ hasta: '2026-12-31' }],
+      tarifas: [{ nombre: 'Adulto', venta: '250000' }],
+      politica: [{ porcentaje: '20.000' }],
+    });
+  });
 });
 
 // ---------------------------------------------------------------------------------------
