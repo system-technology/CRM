@@ -14,7 +14,7 @@ import type {
   TarifaPropuesta,
 } from '@viajapro/contracts';
 import { describe, expect, it } from 'vitest';
-import { PaqueteNoEncontradoError } from '../domain/errors.js';
+import { PaqueteNoEncontradoError, PropuestaInvalidaError } from '../domain/errors.js';
 import {
   MayoristaNoEncontradoError,
   TarifaDuplicadaError,
@@ -473,6 +473,53 @@ describe('AplicadorPorId · tarifas', () => {
       .map((a) => JSON.stringify(a.cambio.detalle));
     expect(detalles).toHaveLength(1);
     expect(detalles.join()).not.toContain('700000');
+  });
+
+  it('T-064: sin permiso de neto, cambiar la moneda de la venta se rechaza y neto y venta no se tocan', async () => {
+    const { trabajo, servicio } = montar();
+    await servicio.crearVigencia(
+      nuevaVigencia('2027-01-01', '2027-01-31', [nuevaTarifa('Adulto', '900000', '700000')]),
+      contexto(ADMIN_CON_NETO),
+    );
+    const tarifaId = trabajo.estado.paquetes[0]?.vigencias[0]?.tarifas[0]?.id ?? '';
+    const antes = structuredClone(trabajo.estado);
+
+    const intento = servicio.editarTarifa(
+      tarifaId,
+      { venta: { unidades: '250', moneda: 'USD' } },
+      contexto(ADMIN),
+    );
+    await expect(intento).rejects.toBeInstanceOf(PropuestaInvalidaError);
+    await expect(intento).rejects.toMatchObject({
+      errores: [{ codigo: 'CAMBIO_DE_MONEDA_SIN_PERMISO_DE_NETO' }],
+    });
+    expect(trabajo.estado).toEqual(antes);
+  });
+
+  it('T-064: con permiso de neto, cambiar la moneda de la venta exige mandar el neto en esa moneda', async () => {
+    const { trabajo, servicio } = montar();
+    await servicio.crearVigencia(
+      nuevaVigencia('2027-01-01', '2027-01-31', [nuevaTarifa('Adulto', '900000', '700000')]),
+      contexto(ADMIN_CON_NETO),
+    );
+    const tarifaId = trabajo.estado.paquetes[0]?.vigencias[0]?.tarifas[0]?.id ?? '';
+
+    await expect(
+      servicio.editarTarifa(
+        tarifaId,
+        { venta: { unidades: '250', moneda: 'USD' } },
+        contexto(ADMIN_CON_NETO),
+      ),
+    ).rejects.toMatchObject({ errores: [{ codigo: 'MONEDA_INCOHERENTE' }] });
+
+    await servicio.editarTarifa(
+      tarifaId,
+      { venta: { unidades: '250', moneda: 'USD' }, neto: { unidades: '180', moneda: 'USD' } },
+      contexto(ADMIN_CON_NETO),
+    );
+    const t = trabajo.estado.paquetes[0]?.vigencias[0]?.tarifas[0];
+    expect(t?.venta.moneda).toBe('USD');
+    expect(t?.neto?.moneda).toBe('USD');
   });
 
   it('crear una tarifa con el mismo nombre y otro precio es TARIFA_DUPLICADA; idéntica, idempotente', async () => {

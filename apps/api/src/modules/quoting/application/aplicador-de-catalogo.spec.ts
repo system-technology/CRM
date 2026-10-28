@@ -87,7 +87,9 @@ class CatalogoMemoria extends CatalogoPersistente {
       destino: p.destino,
       dias: p.dias,
       noches: p.noches,
-      planAlimentacion: p.planAlimentacion ?? previo?.planAlimentacion ?? null,
+      // `undefined` = no tocar; `null` es un valor (pasadía sin alimentación), no «no tocar».
+      planAlimentacion:
+        p.planAlimentacion !== undefined ? p.planAlimentacion : (previo?.planAlimentacion ?? null),
       inclusiones: p.inclusiones ?? previo?.inclusiones ?? [],
       exclusiones: p.exclusiones ?? previo?.exclusiones ?? [],
     };
@@ -463,6 +465,29 @@ describe('AplicadorDeCatalogo.crearPaquete / editarPaquete', () => {
       entidadId: id,
       detalle: { origen: 'PANTALLA', antes: { nombre: 'Isla Corona' } },
     });
+  });
+
+  it('T-065: PATCH puede poner planAlimentacion en null de forma explícita', async () => {
+    const { trabajo, aplicador } = montar();
+    const alta = await aplicador.crearPaquete(
+      { ...ISLA, planAlimentacion: 'DESAYUNO' },
+      contexto(),
+    );
+    const id = alta.paquetes[0]?.id ?? '';
+    expect(trabajo.estado.paquetes[0]?.planAlimentacion).toBe('DESAYUNO');
+
+    const r = await aplicador.editarPaquete(id, { planAlimentacion: null }, contexto());
+
+    expect(r.paquetes[0]).toMatchObject({ id, accion: 'ACTUALIZAR' });
+    expect(trabajo.estado.paquetes[0]?.planAlimentacion).toBeNull();
+    expect(trabajo.estado.auditoria.at(-1)?.cambio).toMatchObject({
+      accion: 'catalogo.paquete.modificado',
+      detalle: { antes: { planAlimentacion: 'DESAYUNO' } },
+    });
+    // Sin el campo, el plan no se toca.
+    await aplicador.editarPaquete(id, { planAlimentacion: 'TODO_INCLUIDO' }, contexto());
+    await aplicador.editarPaquete(id, { destino: 'Barú' }, contexto());
+    expect(trabajo.estado.paquetes[0]?.planAlimentacion).toBe('TODO_INCLUIDO');
   });
 
   it('editar sin cambios reales converge: sin escritura ni auditoría', async () => {
