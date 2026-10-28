@@ -215,7 +215,7 @@ export function TarjetaSalidaPublicada({ salida }: TarjetaSalidaPublicadaProps) 
                   data-testid="tarifa-venta"
                   className="cifra text-lg font-black text-neutral-900 dark:text-white"
                 >
-                  {formatearDinero(salida.desde)}
+                  {formatearDinero(salida.presentacion?.venta ?? salida.desde)}
                 </span>
 
                 {/* Si hay múltiples monedas (desdePorMoneda), mostrarlas */}
@@ -232,7 +232,6 @@ export function TarjetaSalidaPublicada({ salida }: TarjetaSalidaPublicadaProps) 
                 )}
               </div>
             )}
-
             <span
               className={`block text-[10px] ${
                 condicionDesde.esGrupo
