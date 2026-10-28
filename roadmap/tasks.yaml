@@ -664,7 +664,7 @@ tasks:
     phase: 1
     priority: P0
     effort: M
-    status: backlog
+    status: done
     depends_on: []
     acceptance:
       - Los tokens de color, degradado, sombra y radio salen de un único sitio (globals.css y la configuración
@@ -682,6 +682,11 @@ tasks:
       - apps/web/src/app/layout.tsx
     source: propietario:2026-10-26 (identidad visual)
     created_at: 2026-10-26T23:32:24.203Z
+    started_at: 2026-10-28T02:22:52.487Z
+    done_at: 2026-10-28T02:22:52.487Z
+    evidence: "Mergeado en main por el PR #101 (rama b/T-032-sistema-visual-turismo) con el CI en verde: format,
+      analyze, tests y los demás checks obligatorios. Cierre automático (.github/workflows/cerrar-tarea.yml)."
+    commit: 81e094512d6dc257d6a0cd6e7230f3760dd90289
   - id: T-033
     title: "Login con identidad de viaje: pantalla dividida con héroe oceánico animado y formulario con
       microinteracciones"
