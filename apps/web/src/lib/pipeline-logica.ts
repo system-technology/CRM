@@ -1,4 +1,4 @@
-import { formatearDinero } from './formato';
+import { formatearDinero, formatearFecha } from './formato';
 import {
   ClaveEtapa,
   Dinero,
@@ -96,9 +96,7 @@ export function formatearTiempoRelativo(instante: string | null): string {
   const difDias = Math.floor(difHoras / 24);
   if (difDias === 1) return 'Ayer';
   if (difDias < 30) return `Hace ${difDias} d`;
-  return new Intl.DateTimeFormat('es-CO', { timeZone: 'America/Bogota' })
-    .format(new Date(instante))
-    .replace(/[\u202f\u00a0]/g, ' ');
+  return formatearFecha(instante);
 }
 
 /**

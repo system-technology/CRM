@@ -11,6 +11,7 @@ import type {
   PaginaDeCotizaciones,
   PendientesDelDia,
 } from '@viajapro/contracts';
+import { formatearFecha } from './formato';
 
 export interface ResumenTrabajoDelDia {
   conversacionesPendientes: number;
@@ -211,13 +212,7 @@ export function calcularRetrasoSeguimiento(venceEnIso: string, ahora: Date = new
  */
 export function formatearHoraSeguimiento(venceEnIso: string): string {
   try {
-    const date = new Date(venceEnIso);
-    return new Intl.DateTimeFormat('es-CO', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true,
-      timeZone: 'America/Bogota',
-    }).format(date);
+    return formatearFecha(venceEnIso, { estilo: 'hora' });
   } catch {
     return '';
   }
