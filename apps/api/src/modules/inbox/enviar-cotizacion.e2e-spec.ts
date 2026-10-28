@@ -36,6 +36,7 @@ let convCerrada: string;
 let convOtroContacto: string;
 let cotizacionA: string;
 let cotizacionB: string;
+let cotizacionCerrada: string;
 
 interface Cuerpo extends Partial<Mensaje> {
   error?: { code: string };
@@ -194,7 +195,9 @@ beforeAll(async () => {
     },
   });
   cotizacionB = await guardar(TENANT_B, contactoB.id, paqueteB.id);
-  void cerrada.contactoId;
+  // La conversación cerrada es de otro contacto: su cotización propia, para que la ventana (409)
+  // sea lo único que falle y no el contacto (422).
+  cotizacionCerrada = await guardar(TENANT_A, cerrada.contactoId, paquete.id);
 });
 
 afterAll(async () => {
@@ -242,7 +245,7 @@ describe('enviar cotización por WhatsApp', () => {
 
   it('fuera de la ventana de 24 h: 409 VENTANA_CERRADA y no guarda nada', async () => {
     const r = await post(TENANT_A, `/api/v1/conversaciones/${convCerrada}/cotizaciones`, {
-      cotizacionId: cotizacionA,
+      cotizacionId: cotizacionCerrada,
     });
     expect(r.estado).toBe(409);
     expect(r.json.error?.code).toBe('VENTANA_CERRADA');
