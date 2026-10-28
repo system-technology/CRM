@@ -301,7 +301,7 @@ tasks:
     phase: 1
     priority: P2
     effort: S
-    status: backlog
+    status: done
     depends_on: []
     acceptance:
       - schema.prisma modela la unique parcial (tenant_id, clave) WHERE clave IS NOT NULL de etapas_pipeline
@@ -311,6 +311,9 @@ tasks:
       - packages/database/prisma/schema.prisma
     source: auditoria-auto:2026-10-26
     created_at: 2026-10-26T20:14:47.464Z
+    started_at: 2026-10-28T20:20:00.000Z
+    done_at: 2026-10-28T20:35:00.000Z
+    evidence: "schema.prisma modela @@unique([tenantId, clave]) sobre EtapaPipeline documentando el indice unico parcial en BD (WHERE clave IS NOT NULL). Validacion de esquema, typecheck y prisma generate en verde."
   - id: T-015
     title: Particiones automaticas de enrutamiento_historial (M5.2 / AUD-007)
     type: infra

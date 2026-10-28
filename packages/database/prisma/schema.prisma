@@ -518,6 +518,9 @@ model EtapaPipeline {
 
   @@unique([tenantId, orden])
   @@unique([id, tenantId])
+  /// Índice único parcial en BD (`WHERE clave IS NOT NULL`): una clave del contrato como mucho por agencia,
+  /// permitiendo tantas etapas personalizadas sin clave como la agencia requiera.
+  @@unique([tenantId, clave])
   @@index([tenantId])
   @@map("etapas_pipeline")
 }

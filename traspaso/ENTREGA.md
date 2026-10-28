@@ -1,3 +1,26 @@
+# Entrega — T-014: Sincronizar unique parcial etapas_pipeline en schema.prisma — 2026-10-28
+
+## Identificación
+- **Tarea:** `T-014` (roadmap/tasks.yaml)
+- **Rama:** `b/T-014-unique-parcial-etapas-pipeline`
+- **Carril:** `b` (Database / Data model)
+
+## Qué se construyó y auditó
+
+1. **Sincronización del Modelo Prisma con Base de Datos (`schema.prisma`):**
+   - Se incorporó `@@unique([tenantId, clave])` al modelo `EtapaPipeline` en `packages/database/prisma/schema.prisma`.
+   - Se documentó la correspondencia con el índice único parcial de PostgreSQL `etapas_pipeline_tenant_id_clave_key` creado en la migración `20261010210000_crm_contactos_y_oportunidades` (`ON "etapas_pipeline" ("tenant_id", "clave") WHERE "clave" IS NOT NULL`).
+   - Se eliminó la deriva de modelado entre el esquema relacional de la base de datos y Prisma, habilitando el acceso tipado (`tenantId_clave`) en Prisma Client.
+
+2. **Validación y Pruebas Monorepo:**
+   - `prisma validate` en `@viajapro/database` 100% exitoso.
+   - Generación de cliente Prisma (`prisma generate`) y compilación TypeScript en verde.
+   - `pnpm typecheck` en verde en los 9 paquetes del monorepo.
+   - `pnpm lint` 100% limpio en todo el monorepo.
+   - `pnpm test:hooks` limpio (políticas de rama, guardianes de secretos y fronteras de módulos).
+
+---
+
 # Entrega — T-013: Corregir politicaDePrecio.findFirst() sin where (riesgo de fuga silenciosa) — 2026-10-28
 
 ## Identificación
