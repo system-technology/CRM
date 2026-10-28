@@ -89,6 +89,14 @@ export function FichaDetalleContacto({ contacto, onCerrar }: FichaDetalleContact
           </div>
         </div>
 
+        {/* Acceso a Ficha 360 */}
+        <Link
+          href={`/contactos/${id}`}
+          className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-teal-600 px-4 py-2.5 text-xs font-bold text-white shadow-xs transition-colors hover:bg-teal-700 dark:bg-teal-500 dark:hover:bg-teal-600"
+        >
+          <span>Abrir Ficha 360 Completa</span>
+        </Link>
+
         {/* Acciones Rápidas */}
         <div className="grid grid-cols-3 gap-2">
           <Link
