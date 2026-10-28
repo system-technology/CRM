@@ -1691,7 +1691,7 @@ tasks:
     phase: 1
     priority: P2
     effort: S
-    status: backlog
+    status: done
     depends_on: []
     acceptance:
       - aislamiento.spec.ts comprueba, para vigencias, tarifas y politicas_de_precio, que la lectura y la
@@ -1702,6 +1702,11 @@ tasks:
       - packages/database/tests/aislamiento.spec.ts
     source: hallazgos de la tanda 2026-10-26
     created_at: 2026-10-27T01:51:03.950Z
+    started_at: 2026-10-28T02:30:36.234Z
+    done_at: 2026-10-28T02:30:36.235Z
+    evidence: "Mergeado en main por el PR #95 (rama a/T-067-aislamiento-de-vigencias) con el CI en verde: format,
+      analyze, tests y los demás checks obligatorios. Cierre automático (.github/workflows/cerrar-tarea.yml)."
+    commit: 9454ba1f523ec83fb1cbd66320d53882b11c1fac
   - id: T-068
     title: "Limitador de tasa: límite combinado tenant+IP, límites distintos por endpoint y prueba e2e contra
       Redis real"
