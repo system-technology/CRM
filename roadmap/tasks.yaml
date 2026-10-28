@@ -2142,3 +2142,135 @@ tasks:
       - apps/web/next.config.mjs
     source: auditoria de ciberseguridad 2026-10-28
     created_at: 2026-10-28T02:09:17.390Z
+  - id: T-093
+    title: "Aviso de privacidad y política de tratamiento de datos personales (Ley 1581): borrador publicable por
+      agencia y por ViajaPro"
+    type: docs
+    phase: 1
+    priority: P0
+    effort: M
+    status: blocked
+    depends_on: []
+    acceptance:
+      - Documento con responsable y encargado, finalidades, derechos del titular (conocer, actualizar,
+        rectificar, suprimir, revocar), canal de reclamos y plazos legales
+      - Publicado como páginas /privacidad y /terminos en apps/web
+      - Distingue ViajaPro (encargado) de cada agencia (responsable)
+    files:
+      - docs/05-seguridad/
+      - apps/web/src/app/privacidad/
+    source: ruta de seguridad y privacidad 2026-10-28
+    created_at: 2026-10-28T02:16:36.573Z
+    blocked_reason: Requiere revisión legal (Ley 1581 de 2012 y Decreto 1377 de 2013) y decisión del propietario
+      sobre el texto y los plazos
+  - id: T-094
+    title: Inventario de cookies y almacenamiento del navegador, y política de cookies
+    type: docs
+    phase: 1
+    priority: P1
+    effort: S
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Lista de cada cookie y entrada de localStorage de apps/web y apps/api con finalidad, duración y
+        categoría (estrictamente necesaria o no)
+      - Política de cookies enlazada desde el pie de la web
+    files:
+      - docs/05-seguridad/
+      - apps/web/src/
+    source: ruta de seguridad y privacidad 2026-10-28
+    created_at: 2026-10-28T02:16:36.574Z
+  - id: T-095
+    title: "Banner de consentimiento de cookies: solo lo no esencial, con aceptar, rechazar y configurar, y
+      registro de la decisión"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Las cookies esenciales (sesión, CSRF) no piden consentimiento; cualquier analítica o terceros queda
+        bloqueada hasta aceptar
+      - La decisión se guarda y se puede cambiar desde un enlace «Preferencias de cookies»
+      - Accesible, usable a 375 px, con tests
+    files:
+      - apps/web/src/components/privacidad/
+      - apps/web/src/app/layout.tsx
+    source: ruta de seguridad y privacidad 2026-10-28
+    created_at: 2026-10-28T02:16:36.574Z
+  - id: T-096
+    title: "Consentimiento del viajero: capturar y registrar la autorización de tratamiento de datos en la
+      conversación y el contacto"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on: []
+    acceptance:
+      - ConsentimientoContacto se registra con canal, finalidad, fecha y texto mostrado; se solicita en el
+        primer contacto por WhatsApp según la plantilla
+      - Revocar el consentimiento detiene los envíos de la finalidad afectada
+      - Tests e2e; sin PII en logs
+    files:
+      - apps/api/src/modules/crm/
+      - apps/api/src/modules/inbox/
+    source: ruta de seguridad y privacidad 2026-10-28
+    created_at: 2026-10-28T02:16:36.574Z
+  - id: T-097
+    title: "Derechos del titular: exportar y suprimir los datos de un contacto, auditado, con respuesta en los
+      plazos legales"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: L
+    status: blocked
+    depends_on: []
+    acceptance:
+      - Casos de uso de exportación y supresión por contacto que recorren Postgres, colas y caché (C5), con
+        registro de auditoría sin datos personales
+      - Pantalla del asesor para atender la solicitud y fecha límite visible
+      - Prueba que verifica cero rastros tras la supresión
+    files:
+      - apps/api/src/modules/crm/
+      - apps/web/src/app/contactos/
+    source: ruta de seguridad y privacidad 2026-10-28
+    created_at: 2026-10-28T02:16:36.574Z
+    blocked_reason: Depende del ADR de PII (T-090) y de la revisión legal de plazos de retención
+  - id: T-098
+    title: Registro Nacional de Bases de Datos (RNBD) ante la SIC y contrato de encargo del tratamiento con cada
+      agencia
+    type: docs
+    phase: 1
+    priority: P1
+    effort: M
+    status: blocked
+    depends_on: []
+    acceptance:
+      - Estado de la obligación de registro verificado por un abogado y, si aplica, registro presentado
+      - Plantilla de contrato de encargo con plazos de incidente, devolución y supresión
+    files:
+      - docs/05-seguridad/
+    source: ruta de seguridad y privacidad 2026-10-28
+    created_at: 2026-10-28T02:16:36.574Z
+    blocked_reason: Requiere revisión legal (Ley 1581 de 2012 y Decreto 1377 de 2013) y decisión del propietario
+      sobre el texto y los plazos
+  - id: T-099
+    title: "Mínima exposición de PII: no mostrar ni registrar teléfonos y documentos completos en logs, auditoría
+      ni errores"
+    type: security
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Revisión y prueba de que logs, auditoría y respuestas de error no contienen teléfono completo,
+        pasaporte ni fecha de nacimiento
+      - Enmascarado de teléfono en pantallas donde el rol no lo necesite
+    files:
+      - apps/api/src/shared/
+      - apps/web/src/
+    source: ruta de seguridad y privacidad 2026-10-28
+    created_at: 2026-10-28T02:16:36.574Z
