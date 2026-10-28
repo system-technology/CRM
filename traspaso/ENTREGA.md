@@ -1,3 +1,30 @@
+# Entrega — T-010: Prueba de arranque con roles prohibidos y asercion relforcerowsecurity (M1.2) — 2026-10-28
+
+## Identificación
+- **Tarea:** `T-010` (roadmap/tasks.yaml)
+- **Rama:** `b/T-010-arranque-seguro-relforcerowsecurity`
+- **Carril:** `b` (Backend / Security / Database)
+
+## Qué se construyó y auditó
+
+1. **Guardia de Identidad de Conexión en Procesos de Datos (R2):**
+   - En `PrismaService`, `PrismaWebhookService` y `PrismaIdentidadService`, el método `onModuleInit()` ejecuta una consulta directa al catálogo de PostgreSQL para verificar la identidad del rol activo (`current_user`), `rolsuper` y `rolbypassrls`.
+   - Se asegura que ningún proceso de aplicación conecte con roles prohibidos (`postgres`, roles con privilegios de superusuario o roles con bypass RLS).
+   - 13/13 pruebas unitarias en `guardia-de-rol.spec.ts` verifican exhaustivamente el rechazo ante roles ajenos, superusuarios y bypass RLS.
+
+2. **Suite e2e de Arranque Seguro (`arranque-seguro.e2e-spec.ts`):**
+   - Se validó la suite e2e en `apps/api/src/shared/prisma/arranque-seguro.e2e-spec.ts` que simula conexiones reales contra la base de datos con roles prohibidos (`rolsuper` y `rolbypassrls`), comprobando que el inicio del módulo aborta de inmediato con el motivo exacto de seguridad.
+
+3. **Aserción Dinámica `relforcerowsecurity` (AUD-013):**
+   - Se verificó la prueba en `packages/database/tests/aislamiento.spec.ts` (suite AUD-013) que comprueba que todas las tablas de negocio (`relkind in ('r','p')`) que tienen `relrowsecurity` poseen obligatoriamente `relforcerowsecurity = true`, junto a su contraprueba que falla si una tabla carece de forzado de RLS.
+
+4. **Calidad y Compuertas Monorepo:**
+   - `pnpm lint` 100% limpio en todo el monorepo.
+   - `pnpm typecheck` 100% limpio en los 9 paquetes.
+   - `pnpm test:hooks` limpio (políticas de rama, guardianes de secretos y fronteras de módulos).
+
+---
+
 # Entrega — T-014: Sincronizar unique parcial etapas_pipeline en schema.prisma — 2026-10-28
 
 ## Identificación

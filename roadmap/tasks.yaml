@@ -222,7 +222,7 @@ tasks:
     phase: 1
     priority: P2
     effort: M
-    status: backlog
+    status: done
     depends_on: []
     acceptance:
       - Test e2e intenta arrancar la API con rol postgres (rolsuper) y verifica que aborta
@@ -237,6 +237,9 @@ tasks:
       - apps/api/src/shared/prisma/prisma-identidad.service.ts
     source: auditoria-auto:2026-10-26
     created_at: 2026-10-26T20:14:47.464Z
+    started_at: 2026-10-28T20:40:00.000Z
+    done_at: 2026-10-28T20:43:00.000Z
+    evidence: "Prueba e2e de arranque seguro verificada en apps/api/src/shared/prisma/arranque-seguro.e2e-spec.ts (abortando ante rolsuper o rolbypassrls en PrismaService, PrismaWebhookService y PrismaIdentidadService). Asercion relforcerowsecurity en CI verificada en aislamiento.spec.ts (AUD-013). 13/13 unit tests en guardia-de-rol.spec.ts en verde."
   - id: T-011
     title: Test de integracion automatico del cotizador (punta a punta web -> API -> BD)
     type: test
