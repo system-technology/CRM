@@ -22,6 +22,7 @@ import {
   formatearHorarioExcursion,
   interpretarPresentacionTarifa,
   verificarCargosEnDestinoSeparados,
+  inferirTipoProducto,
 } from './catalogo-logica';
 
 describe('Pruebas del Catálogo de Paquetes y Tarifarios de Mayoristas', () => {
@@ -316,5 +317,59 @@ describe('Pruebas del Catálogo de Paquetes y Tarifarios de Mayoristas', () => {
     expect(resultado.cargosEnDestino.length).toBe(2);
     expect(resultado.sumaCargosEnDestino?.unidades).toBe('41500');
     expect(resultado.sumaCargosEnDestino?.moneda).toBe('COP');
+  });
+
+  // =============================================================================
+  // Pruebas T-036: Inferencia de Tipo de Producto Turístico e Identidad Visual
+  // =============================================================================
+
+  it('20. inferirTipoProducto categoriza correctamente cada tipo de turismo y sus sinónimos (T-036)', () => {
+    // 1. Reserva natural / ecoturismo
+    expect(inferirTipoProducto('Caminata en Reserva Natural Cañón del Combeima')).toBe(
+      'reserva_natural',
+    );
+    expect(inferirTipoProducto('Tour de Avistamiento de Aves y Senderismo')).toBe(
+      'reserva_natural',
+    );
+    expect(inferirTipoProducto('Expedición Ecológica por los Manglares')).toBe('reserva_natural');
+    expect(inferirTipoProducto('Aventura a Cascada El Manto de la Novia')).toBe('reserva_natural');
+
+    // 2. Isla y beach club
+    expect(inferirTipoProducto('Pasadía en Isla Múcura y Tintipán')).toBe('isla_beach_club');
+    expect(inferirTipoProducto('Pasadía Bora Bora Beach Club Barú')).toBe('isla_beach_club');
+    expect(inferirTipoProducto('Día de Playa y Descanso en Cholón')).toBe('isla_beach_club');
+    expect(inferirTipoProducto('Tour Islas del Rosario')).toBe('isla_beach_club');
+
+    // 3. City tour y cultura
+    expect(inferirTipoProducto('City Tour Centro Histórico en Chiva')).toBe('city_tour');
+    expect(inferirTipoProducto('Recorrido Cultural y Castillo San Felipe')).toBe('city_tour');
+    expect(inferirTipoProducto('Graffiti Tour Comuna 13')).toBe('city_tour');
+    expect(inferirTipoProducto('Visita al Museo del Oro')).toBe('city_tour');
+
+    // 4. Aventura y náutica
+    expect(inferirTipoProducto('Alquiler de Lancha Deportiva y Careteo')).toBe('aventura_nautica');
+    expect(inferirTipoProducto('Buceo en Arrecifes y Snorkel')).toBe('aventura_nautica');
+    expect(inferirTipoProducto('Paseo al Atardecer en Catamarán')).toBe('aventura_nautica');
+    expect(inferirTipoProducto('Rafting Río Negro y Aventura Extrema')).toBe('aventura_nautica');
+
+    // 5. Paquete con hotel
+    expect(inferirTipoProducto('Paquete San Andrés 4 Noches con Hotel Todo Incluido')).toBe(
+      'paquete_hotel',
+    );
+    expect(inferirTipoProducto('Escapada Romántica en Resort & Spa')).toBe('paquete_hotel');
+    expect(inferirTipoProducto('Plan Eje Cafetero 3 Noches de Hospedaje')).toBe('paquete_hotel');
+
+    // 6. Excursión general (fallback)
+    expect(inferirTipoProducto('Experiencia Sorpresa en la Montaña')).toBe('excursion_general');
+
+    // 7. Deducción mediante etiquetas
+    expect(inferirTipoProducto('Paseo Tradicional', ['reserva', 'naturaleza'])).toBe(
+      'reserva_natural',
+    );
+    expect(inferirTipoProducto('Paseo Tradicional', ['playa', 'mar'])).toBe('isla_beach_club');
+    expect(inferirTipoProducto('Paseo Tradicional', ['nautica', 'lancha'])).toBe(
+      'aventura_nautica',
+    );
+    expect(inferirTipoProducto('Paseo Tradicional', ['hotel', 'noches'])).toBe('paquete_hotel');
   });
 });

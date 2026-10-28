@@ -771,7 +771,7 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: backlog
+    status: done
     depends_on:
       - T-032
     acceptance:
@@ -786,6 +786,9 @@ tasks:
       - apps/web/src/lib/catalogo-logica.ts
     source: propietario:2026-10-26 (identidad visual)
     created_at: 2026-10-26T23:32:24.205Z
+    started_at: 2026-10-28T06:35:00.000Z
+    done_at: 2026-10-28T06:45:00.000Z
+    evidence: "Implementado en rama b/T-036-tarjetas-producto-tipo-excursion. Stitch screen 9e60798823de4540a788622f805745ff. 61 suites y 517 tests en verde en @viajapro/web."
   - id: T-037
     title: Inicio con saludo, acciones rápidas y tarjetas de colores sobre el trabajo del día
     type: feature

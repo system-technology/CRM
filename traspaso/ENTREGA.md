@@ -1,3 +1,40 @@
+# Entrega — T-036: Tarjetas de producto con identidad por tipo de excursión (color, icono, degradado, promo y cupos) — 2026-10-28
+
+## Identificación
+- **Rama:** `b/T-036-tarjetas-producto-tipo-excursion` (empujada a `origin/b/T-036-tarjetas-producto-tipo-excursion`)
+- **Tarea:** T-036 (Tarjetas de producto con identidad por tipo de excursión: color, icono, degradado, promo y cupos)
+- **Carril:** `b` (Frontend / Web)
+- **Stitch Design Screen ID:** `9e60798823de4540a788622f805745ff` (Proyecto «ViajaPro — CRM para agencias de turismo», ID `8333038101997719867`, pantalla *Catálogo de Excursiones — Tarjetas con Identidad Visual Turística — ViajaPro CRM*)
+
+## Qué construí
+1. **Inferencia y Lógica de Tipos de Turismo (`apps/web/src/lib/catalogo-logica.ts`):**
+   - Tipos de producto turísticos tipados estrictamente: `isla_beach_club`, `reserva_natural`, `city_tour`, `aventura_nautica`, `paquete_hotel`, `excursion_general`.
+   - Función pura `inferirTipoProducto(nombre: string, etiquetas?: string[])` que reconoce léxico colombiano del sector turístico y previene falsos positivos (por ejemplo, 'recorrido' no activa la regla de 'eco').
+   - Re-exportada desde `apps/web/src/components/comun/chip-tipo-producto.tsx`.
+2. **Tarjeta de Salida Publicada (`apps/web/src/components/catalogo/tarjeta-salida-publicada.tsx`):**
+   - Cabecera temática cuando no hay foto: degradado representativo (`configTipo.degradadoSustituto`), marca de agua translúcida con el icono del tipo (`text-white/15`) y resplandor ambiental.
+   - Cabecera con fotografía real: superposición de gradiente oscuro protector para contraste AA WCAG.
+   - Insignia de duración con aro dorado oficial (`#c9a24b`).
+   - Insignia de promoción vigente con destello y aro dorado (`.insignia-aro-dorado border-[#c9a24b]`).
+   - Chip de cupos en vivo con semáforo de urgencia (`¡Últimos cupos!`, `quedan X`, `Agotado`).
+   - Horarios formateados (`formatearHorarioExcursion`) y lista de inclusiones destacadas con icono `CheckCircle`.
+   - Tarifa «Desde $X por persona» con soporte de `desdePorMoneda` y tachado cuando la política `promo_vencida` es TACHAR.
+   - Botón opcional «Ver ficha» conectado a la apertura del panel lateral `FichaDetallePaquete`.
+3. **Integración en la Experiencia de Catálogo:**
+   - `apps/web/src/app/catalogo/page.tsx`: Tarjetas reales y simuladas muestran su chip temático por tipo de excursión y conectan con la ficha de detalle.
+   - `apps/web/src/components/catalogo/ficha-detalle-paquete.tsx`: Cabecera de la ficha incluye el chip temático del tipo de producto.
+4. **Suites de Pruebas Unitarias:**
+   - `tarjeta-salida-publicada.spec.tsx`: 15 pruebas unitarias verificando los 6 tipos de turismo, degradados sustitutos, fotografías reales, aro dorado, cupos en vivo y políticas de promo vencida.
+   - `catalogo-logica.spec.ts`: 20 pruebas unitarias con cobertura exhaustiva de la categorización por léxico y etiquetas.
+
+## Qué verifiqué ejecutando
+- **Pruebas unitarias:** `pnpm --filter @viajapro/web test` — **61 suites pasadas, 517/517 pruebas en verde (100%)**.
+- **Typecheck estricto:** `pnpm typecheck` — **9/9 tareas exitosas** en Turborepo.
+- **Linter:** `pnpm lint` — **7/7 tareas exitosas**, 0 errores.
+- **Políticas de rama y secretos:** `pnpm test:hooks` — **59/59 política de rama, 19/19 secretos, 6/6 fronteras entre módulos en verde**.
+
+---
+
 # Entrega — T-035: Animaciones y transiciones (entrada escalonada, hover, esqueletos con brillo y transiciones de página) — 2026-10-28
 
 ## Identificación
