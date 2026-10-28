@@ -23,8 +23,39 @@ export function PieDePaginaPrivacidad() {
 
         <nav
           aria-label="Enlaces legales y de privacidad"
-          className="flex flex-wrap items-center justify-center gap-4 text-xs"
+          className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs"
         >
+          <Link
+            href="/privacidad"
+            data-testid="enlace-pie-privacidad"
+            className="inline-flex min-h-[44px] items-center gap-1.5 font-medium text-neutral-600 transition hover:text-teal-700 focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:outline-none dark:text-neutral-300 dark:hover:text-teal-400"
+          >
+            <span>Privacidad</span>
+          </Link>
+
+          <span className="hidden text-neutral-300 sm:inline dark:text-neutral-700">•</span>
+
+          <Link
+            href="/terminos"
+            data-testid="enlace-pie-terminos"
+            className="inline-flex min-h-[44px] items-center gap-1.5 font-medium text-neutral-600 transition hover:text-teal-700 focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:outline-none dark:text-neutral-300 dark:hover:text-teal-400"
+          >
+            <span>Términos del servicio</span>
+          </Link>
+
+          <span className="hidden text-neutral-300 sm:inline dark:text-neutral-700">•</span>
+
+          <Link
+            href="/cookies"
+            data-testid="enlace-pie-cookies"
+            className="inline-flex min-h-[44px] items-center gap-1.5 font-medium text-neutral-600 transition hover:text-teal-700 focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:outline-none dark:text-neutral-300 dark:hover:text-teal-400"
+          >
+            <Shield className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400" />
+            <span>Cookies</span>
+          </Link>
+
+          <span className="hidden text-neutral-300 sm:inline dark:text-neutral-700">•</span>
+
           <button
             type="button"
             onClick={dispararAperturaModalCookies}
@@ -34,17 +65,6 @@ export function PieDePaginaPrivacidad() {
             <Cookie className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400" />
             <span>Preferencias de cookies</span>
           </button>
-
-          <span className="hidden text-neutral-300 sm:inline dark:text-neutral-700">•</span>
-
-          <Link
-            href="/politica-cookies"
-            data-testid="enlace-pie-politica-cookies"
-            className="inline-flex min-h-[44px] items-center gap-1.5 font-medium text-neutral-600 transition hover:text-teal-700 focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:outline-none dark:text-neutral-300 dark:hover:text-teal-400"
-          >
-            <Shield className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400" />
-            <span>Política de cookies e inventario</span>
-          </Link>
         </nav>
       </div>
     </footer>

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   AlertCircle,
@@ -485,6 +486,44 @@ export function FormularioIngreso() {
               </form>
             )}
           </div>
+
+          {/* Enlaces legales públicos (T-108) */}
+          <footer
+            data-testid="pie-formulario-ingreso"
+            className="mt-6 text-center text-xs text-neutral-500 dark:text-neutral-400"
+          >
+            <nav
+              aria-label="Enlaces legales y de privacidad"
+              className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1"
+            >
+              <Link
+                href="/privacidad"
+                data-testid="enlace-login-privacidad"
+                className="inline-flex min-h-[44px] items-center text-neutral-600 hover:text-teal-700 hover:underline dark:text-neutral-400 dark:hover:text-teal-300"
+              >
+                Privacidad
+              </Link>
+              <span className="text-neutral-300 dark:text-neutral-700">·</span>
+              <Link
+                href="/terminos"
+                data-testid="enlace-login-terminos"
+                className="inline-flex min-h-[44px] items-center text-neutral-600 hover:text-teal-700 hover:underline dark:text-neutral-400 dark:hover:text-teal-300"
+              >
+                Términos
+              </Link>
+              <span className="text-neutral-300 dark:text-neutral-700">·</span>
+              <Link
+                href="/cookies"
+                data-testid="enlace-login-cookies"
+                className="inline-flex min-h-[44px] items-center text-neutral-600 hover:text-teal-700 hover:underline dark:text-neutral-400 dark:hover:text-teal-300"
+              >
+                Cookies
+              </Link>
+            </nav>
+            <p className="mt-1 text-[11px] text-neutral-400 dark:text-neutral-500">
+              ViajaPro CRM · Ley 1581 de 2012 y Ley 300 de Turismo (Colombia)
+            </p>
+          </footer>
         </div>
       </main>
     </div>
