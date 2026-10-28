@@ -116,6 +116,11 @@ export interface CatalogoActual {
   readonly definicionesDePaquete?: readonly DefinicionDeCampo[];
   /** Nombres de los formatos de viaje del tenant. Si se omite, no se valida `formato`. */
   readonly formatos?: readonly string[];
+  /**
+   * Códigos ISO de la tabla global `monedas`. Si se omite, no se valida la moneda de las tarifas
+   * ni de los cargos (compatibilidad con quien aún no la lee).
+   */
+  readonly monedas?: readonly string[];
 }
 
 export interface ContextoDePlanificacion {
@@ -397,6 +402,7 @@ export function validarYPlanificar(
         soportaM2,
         mayoristasConocidos,
         mayoristasAvisados,
+        monedas: catalogoActual.monedas,
       });
       const hayCambioDeTarifas = tarifasCambio.some((t) => t.accion !== 'SIN_CAMBIOS');
       let accionV: AccionDePlan;
@@ -510,6 +516,7 @@ interface ServiciosDeTarifa {
   readonly soportaM2: boolean;
   readonly mayoristasConocidos: Set<string>;
   readonly mayoristasAvisados: Set<string>;
+  readonly monedas: readonly string[] | undefined;
 }
 
 function planificarTarifas(
@@ -552,6 +559,29 @@ function planificarTarifas(
         'POR_PERSONA_CUBRE_UNO',
         'una tarifa por persona cubre exactamente a una persona',
         '.cubrePasajeros',
+      );
+    }
+    if (s.monedas !== undefined && !s.monedas.includes(tarifa.venta.moneda)) {
+      err(
+        'MONEDA_NO_HABILITADA',
+        `la moneda '${tarifa.venta.moneda}' no está habilitada en el sistema`,
+        '.venta.moneda',
+      );
+    }
+    const previa =
+      vigenciaActual?.tarifas.find((x) => normalizarNombre(x.nombre) === nombre) ?? null;
+    // Sin el permiso el neto no viaja en la propuesta y el puerto conserva el que ya hay. Cambiar
+    // entonces la moneda de la venta dejaría neto y venta en monedas distintas (T-064): se rechaza.
+    if (
+      !s.puedeVerNeto &&
+      tarifa.neto === null &&
+      previa?.neto != null &&
+      previa.neto.moneda !== tarifa.venta.moneda
+    ) {
+      err(
+        'CAMBIO_DE_MONEDA_SIN_PERMISO_DE_NETO',
+        'cambiar la moneda de una tarifa con neto exige el permiso cotizacion.ver_neto_y_margen',
+        '.venta.moneda',
       );
     }
     if (tarifa.neto !== null) {
@@ -619,8 +649,7 @@ function planificarTarifas(
       }
     }
 
-    const actual =
-      vigenciaActual?.tarifas.find((x) => normalizarNombre(x.nombre) === nombre) ?? null;
+    const actual = previa;
     cambios.push({
       accion:
         actual === null
@@ -714,7 +743,10 @@ const CODIGO_SINTETICO = '__edicion__';
 function opcionesCambian(producto: ProductoPropuesto, actual: PaqueteActual): boolean {
   const propuestas = producto.opcionesDeSalida ?? [];
   const previas = actual.opcionesDeSalida ?? [];
-  if (propuestas.length !== previas.filter((o) => o.activa).length) return true;
+  const activas = previas.filter((o) => o.activa);
+  if (propuestas.length !== activas.length) return true;
+  // El orden es dato (`orden` de la opción): reordenar sin tocar nada más también es un cambio.
+  if (propuestas.some((o, i) => activas[i]?.etiqueta !== o.etiqueta)) return true;
   return propuestas.some((o) => {
     const previa = previas.find(
       (x) => normalizarNombre(x.etiqueta) === normalizarNombre(o.etiqueta),
@@ -771,6 +803,17 @@ function validarCamposExtendidos(
       );
     }
     conceptos.add(clave);
+    if (
+      cargo.monto !== null &&
+      catalogo.monedas !== undefined &&
+      !catalogo.monedas.includes(cargo.monto.moneda)
+    ) {
+      err(
+        'MONEDA_NO_HABILITADA',
+        `cargosEnDestino[${i}].monto.moneda`,
+        `la moneda '${cargo.monto.moneda}' no está habilitada en el sistema`,
+      );
+    }
     if (cargo.monto !== null && BigInt(cargo.monto.unidades) < 0n) {
       err(
         'CARGO_EN_DESTINO_NEGATIVO',
