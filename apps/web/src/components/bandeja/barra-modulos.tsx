@@ -14,6 +14,7 @@ import {
   Settings,
   Sun,
   Moon,
+  Laptop,
   Plane,
   TrendingUp,
   Search,
@@ -29,6 +30,16 @@ import { CONFIGURACION_MODULOS, type ModuloViajaPro } from '../comun/iconos-modu
 import type { SesionActual } from '@viajapro/contracts';
 import { ModalBusquedaGlobal } from '../busqueda/modal-busqueda-global';
 import { PanelNotificaciones } from '../notificaciones/panel-notificaciones';
+import { SelectorTemaDensidad } from '../comun/selector-tema-densidad';
+import {
+  type ModoTema,
+  type DensidadVisual,
+  cargarPreferenciasTema,
+  guardarModoTema,
+  suscribirCambiosSistema,
+  resolverTemaEfectivo,
+  consultarPreferenciaSistemaOscuro,
+} from '../../lib/tema-y-densidad';
 import {
   type NotificacionWeb,
   generarNotificacionesIniciales,
@@ -89,7 +100,9 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
   const { sesion } = usePermisos(sesionInicial);
   const { esDemo, alternarDemo, desactivarDemo } = useModoDemo();
 
-  const [modoOscuro, setModoOscuro] = useState(false);
+  const [modoTema, setModoTema] = useState<ModoTema>('system');
+  const [_densidadVisual, setDensidadVisual] = useState<DensidadVisual>('comoda');
+  const [esOscuroEfectivo, setEsOscuroEfectivo] = useState(false);
   const [barraExpandida, setBarraExpandida] = useState(false);
   const [busquedaAbierta, setBusquedaAbierta] = useState(false);
   const [panelNotifAbierto, setPanelNotifAbierto] = useState(false);
@@ -112,16 +125,22 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const guardado = localStorage.getItem('viajapro_tema');
-      if (guardado === 'dark' || document.documentElement.classList.contains('dark')) {
-        setModoOscuro(true);
-        document.documentElement.classList.add('dark');
-      }
+      const prefs = cargarPreferenciasTema();
+      setModoTema(prefs.tema);
+      setDensidadVisual(prefs.densidad);
+      const sistemaOscuro = consultarPreferenciaSistemaOscuro();
+      setEsOscuroEfectivo(resolverTemaEfectivo(prefs.tema, sistemaOscuro) === 'dark');
+
       const expandidaGuardada = localStorage.getItem('viajapro_sidebar_expandida');
       if (expandidaGuardada === 'true') {
         setBarraExpandida(true);
       }
     }
+
+    const desuscribirSistema = suscribirCambiosSistema((sistemaEsOscuro) => {
+      const prefsActuales = cargarPreferenciasTema();
+      setEsOscuroEfectivo(resolverTemaEfectivo(prefsActuales.tema, sistemaEsOscuro) === 'dark');
+    });
 
     // 1. Cargar seguimientos pendientes del día de la API si está disponible
     void obtenerPendientesDelDiaApi()
@@ -150,6 +169,7 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
         : () => {};
 
     return () => {
+      desuscribirSistema();
       desuscribir();
     };
   }, []);
@@ -180,15 +200,13 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
   }, []);
 
   const alternarTema = () => {
-    const nuevo = !modoOscuro;
-    setModoOscuro(nuevo);
-    if (nuevo) {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('viajapro_tema', 'dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('viajapro_tema', 'light');
-    }
+    const orden: ModoTema[] = ['light', 'dark', 'system'];
+    const idx = orden.indexOf(modoTema);
+    const siguiente = orden[(idx + 1) % orden.length] ?? 'system';
+    guardarModoTema(siguiente);
+    setModoTema(siguiente);
+    const sistemaOscuro = consultarPreferenciaSistemaOscuro();
+    setEsOscuroEfectivo(resolverTemaEfectivo(siguiente, sistemaOscuro) === 'dark');
   };
 
   const manejarMarcarLeida = (id: string) => {
@@ -549,11 +567,30 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
                 <button
                   type="button"
                   onClick={alternarTema}
-                  title={modoOscuro ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
-                  aria-label={modoOscuro ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+                  data-testid="boton-alternar-tema"
+                  title={
+                    modoTema === 'dark'
+                      ? 'Tema Oscuro (clic para cambiar a Sistema)'
+                      : modoTema === 'light'
+                        ? 'Tema Claro (clic para cambiar a Oscuro)'
+                        : `Tema Sistema (${esOscuroEfectivo ? 'Oscuro' : 'Claro'})`
+                  }
+                  aria-label={
+                    modoTema === 'dark'
+                      ? 'Cambiar a modo sistema (tema oscuro activo)'
+                      : modoTema === 'light'
+                        ? 'Cambiar a modo oscuro (tema claro activo)'
+                        : 'Cambiar a modo claro (tema del sistema activo)'
+                  }
                   className="focus-visible:ring-acento-600 flex h-8 w-8 items-center justify-center rounded-lg text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-800 focus-visible:ring-2 focus-visible:outline-none dark:text-neutral-400 dark:hover:bg-neutral-800"
                 >
-                  {modoOscuro ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                  {modoTema === 'dark' ? (
+                    <Moon className="h-4 w-4 text-indigo-400" />
+                  ) : modoTema === 'light' ? (
+                    <Sun className="h-4 w-4 text-amber-500" />
+                  ) : (
+                    <Laptop className="h-4 w-4 text-neutral-500" />
+                  )}
                 </button>
 
                 <div
@@ -622,15 +659,34 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
                 </span>
               </div>
 
-              {/* Interruptor modo oscuro */}
+              {/* Interruptor modo oscuro y tema */}
               <button
                 type="button"
                 onClick={alternarTema}
-                title={modoOscuro ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
-                aria-label={modoOscuro ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+                data-testid="boton-alternar-tema-colapsado"
+                title={
+                  modoTema === 'dark'
+                    ? 'Tema Oscuro (clic para cambiar a Sistema)'
+                    : modoTema === 'light'
+                      ? 'Tema Claro (clic para cambiar a Oscuro)'
+                      : `Tema Sistema (${esOscuroEfectivo ? 'Oscuro' : 'Claro'})`
+                }
+                aria-label={
+                  modoTema === 'dark'
+                    ? 'Cambiar a modo sistema (tema oscuro activo)'
+                    : modoTema === 'light'
+                      ? 'Cambiar a modo oscuro (tema claro activo)'
+                      : 'Cambiar a modo claro (tema del sistema activo)'
+                }
                 className="focus-visible:ring-acento-600 flex h-11 min-h-[44px] w-11 min-w-[44px] items-center justify-center rounded-lg text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-800 focus-visible:ring-2 focus-visible:outline-none dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
               >
-                {modoOscuro ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                {modoTema === 'dark' ? (
+                  <Moon className="h-4 w-4 text-indigo-400" />
+                ) : modoTema === 'light' ? (
+                  <Sun className="h-4 w-4 text-amber-500" />
+                ) : (
+                  <Laptop className="h-4 w-4 text-neutral-500" />
+                )}
               </button>
 
               {/* Separador */}
@@ -911,6 +967,19 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
                   T-105
                 </span>
               </Link>
+
+              {/* Selector de Tema y Densidad Visual (T-111) */}
+              <div className="border-t border-neutral-100 py-3 dark:border-neutral-800">
+                <SelectorTemaDensidad
+                  compacto={true}
+                  onCambio={(nuevoTema, nuevaDensidad) => {
+                    setModoTema(nuevoTema);
+                    setDensidadVisual(nuevaDensidad);
+                    const sistemaOscuro = consultarPreferenciaSistemaOscuro();
+                    setEsOscuroEfectivo(resolverTemaEfectivo(nuevoTema, sistemaOscuro) === 'dark');
+                  }}
+                />
+              </div>
 
               {/* Interruptor explícito de Modo Demostración */}
               <div className="flex items-center justify-between border-t border-neutral-100 py-3 dark:border-neutral-800">

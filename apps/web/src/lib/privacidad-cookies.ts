@@ -88,6 +88,18 @@ export const INVENTARIO_COOKIES: readonly ItemInventarioCookie[] = [
     estrictamenteNecesaria: false,
   },
   {
+    id: 'storage-densidad',
+    nombre: 'viajapro_densidad',
+    tipo: 'localStorage',
+    proveedor: 'viajapro.com',
+    origen: '1er origen (apps/web)',
+    finalidad:
+      'Recordar la preferencia de densidad visual de la interfaz (cómoda o compacta) para optimizar el espacio de trabajo.',
+    duracion: 'Persistente',
+    categoria: 'PREFERENCIAS',
+    estrictamenteNecesaria: false,
+  },
+  {
     id: 'storage-demo',
     nombre: 'viajapro_modo_demo',
     tipo: 'localStorage',

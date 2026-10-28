@@ -1,3 +1,46 @@
+# Entrega — T-111: Modo oscuro y preferencia de densidad con la paleta de turismo — 2026-10-28
+
+## Identificación
+- **Tarea:** `T-111` (roadmap/tasks.yaml)
+- **Rama:** `b/T-111-modo-oscuro-densidad`
+- **Carril:** `b` (Frontend / Web)
+
+## Qué se construyó y auditó
+
+1. **Modelo Puro de Tema y Densidad (`tema-y-densidad.ts`):**
+   - Modos de tema soportados: `'light'` (Claro), `'dark'` (Oscuro) y `'system'` (Sigue preferencia del SO / navegador).
+   - Preferencias de densidad visual: `'comoda'` (espaciado generoso ergonómico) y `'compacta'` (factor 0.85 con celdas y filas reducidas para asesores comerciales con alta carga operativa).
+   - Claves oficiales de almacenamiento en `localStorage`: `viajapro_tema` y `viajapro_densidad` (registradas en el inventario de cookies de `privacidad-cookies.ts` bajo la categoría `PREFERENCIAS`).
+   - Lógica de resolución: `resolverTemaEfectivo(modo, sistemaEsOscuro)` calcula si el modo activo efectivo es claro u oscuro.
+   - Detección reactiva: `suscribirCambiosSistema` escucha `prefers-color-scheme: dark` mediante `matchMedia` sin causar re-renders innecesarios.
+
+2. **Garantía Anti-FOUC (Zero Flicker al Cargar):**
+   - `SCRIPT_ANTI_FOUC` inyectado directamente en `<head>` en `apps/web/src/app/layout.tsx`.
+   - Ejecución síncrona antes de la primera pintura: lee `localStorage.getItem('viajapro_tema')` y `matchMedia`, añadiendo inmediatamente la clase `.dark` a `document.documentElement` y fijando el atributo `data-densidad`.
+   - Compatible con CSP: lee dinámicamente `x-nonce` desde `headers()` de Next.js y lo asigna al elemento `<script nonce={nonce}>`.
+   - `suppressHydrationWarning` en la etiqueta `<html>` para evitar advertencias de hidratación de React.
+
+3. **Selector Accesible e Interactivo (`SelectorTemaDensidad`):**
+   - Grupos de radio accesibles (`role="radiogroup"`) para Tema (Claro, Oscuro, Sistema) y Densidad (Cómoda, Compacta).
+   - Cumplimiento de accesibilidad WCAG 2.5.5: todos los controles interactivos cuentan con `min-h-[44px]` y `min-w-[44px]`.
+   - Modos normal y compacto para incrustación flexible en barras laterales o modales de configuración.
+   - Respeto a la paleta turística de ViajaPro: tonos marinos/arena en claro y grafito/índigo suave en oscuro, manteniendo los acentos dorados (`--color-acento-marca: #c9a24b`).
+
+4. **Integración en BarraModulos (`barra-modulos.tsx`):**
+   - Botón de alternancia rápida tri-estado (`boton-alternar-tema` y `boton-alternar-tema-colapsado`) que rota ordenadamente: Claro -> Oscuro -> Sistema con tooltip informativo y accesibilidad por teclado.
+   - Selector completo incrustado en el diálogo accesible de perfil y sesión del asesor (`dialogo-perfil-sesion`).
+
+5. **Pruebas y Calidad Monorepo:**
+   - 13/13 tests unitarios en `tema-y-densidad.spec.ts`.
+   - 5/5 tests unitarios en `selector-tema-densidad.spec.tsx`.
+   - Tests de integración en `barra-modulos.spec.tsx` (21/21 tests pasando) y `revision-375px.spec.tsx` (4/4 tests pasando).
+   - 109 suites y 883 tests unitarios en `@viajapro/web` 100% en verde.
+   - `pnpm typecheck` en verde en los 5 paquetes del monorepo (`@viajapro/api`, `@viajapro/contracts`, `@viajapro/database`, `@viajapro/domain`, `@viajapro/web`).
+   - `pnpm lint` 100% limpio en todo el monorepo.
+   - `pnpm test:hooks` limpio (59/59 políticas de rama, 19/19 guardianes de secretos, 6/6 fronteras entre módulos).
+
+---
+
 # Entrega — T-110: Notificaciones en la web: aviso de mensaje nuevo, seguimiento vencido y cotización por vencer, con preferencia por asesor — 2026-10-28
 
 ## Identificación
