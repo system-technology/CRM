@@ -22,6 +22,12 @@ export interface DatosDeVersion {
   ninos: number;
   infantes: number;
   acomodacion: 'SENCILLA' | 'DOBLE' | 'TRIPLE' | 'CUADRUPLE' | null;
+  /**
+   * La opción de salida con la que el SERVIDOR cotizó (T-062), no la que pidió el cliente: si el
+   * producto no tiene opciones es `null` aunque viniera una. Volver a cotizar con ella reproduce
+   * el mismo total mientras el tarifario no cambie.
+   */
+  opcionDeSalidaId: string | null;
   politica: PoliticaAplicada;
   /** Las líneas tal como las calculó el servidor, con su margen si se calculó. */
   lineas: CotizacionDeSalida['lineas'];
@@ -85,6 +91,7 @@ export function armarVersion(
     ninos: calculo.ninos,
     infantes: calculo.infantes,
     acomodacion: extra.acomodacion ?? null,
+    opcionDeSalidaId: calculo.opcionDeSalida?.id ?? null,
     politica,
     lineas: calculo.lineas,
     ventaUnidades: venta,
