@@ -287,6 +287,20 @@ export type CrearNota = z.infer<typeof CrearNota>;
 // para que nada se defina dos veces (R3).
 export const EnviarTextoCuerpo = EnviarTexto.omit({ conversacionId: true });
 export type EnviarTextoCuerpo = z.infer<typeof EnviarTextoCuerpo>;
+/**
+ * `POST /api/v1/conversaciones/:id/cotizaciones` — envía una cotización guardada por WhatsApp como
+ * texto con formato (T-073). El servidor arma el texto desde la versión congelada: el cliente no
+ * manda texto ni importes. `version` omitida = la última. Responde `201` con el `Mensaje` (igual
+ * que `POST .../mensajes`); repetir la misma conversación + cotización + versión devuelve el mismo
+ * mensaje, no uno nuevo (R5). Sin clave de idempotencia del cliente: se deriva de esos tres datos.
+ */
+export const EnviarCotizacionCuerpo = z
+  .object({
+    cotizacionId: Id,
+    version: z.number().int().min(1).optional(),
+  })
+  .strict();
+export type EnviarCotizacionCuerpo = z.infer<typeof EnviarCotizacionCuerpo>;
 export const AsignarConversacionCuerpo = AsignarConversacion.omit({ conversacionId: true });
 export type AsignarConversacionCuerpo = z.infer<typeof AsignarConversacionCuerpo>;
 export const CambiarEstadoCuerpo = CambiarEstadoConversacion.omit({ conversacionId: true });
