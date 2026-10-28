@@ -40,6 +40,8 @@ export class LectorDeHistorialPrisma extends LectorDeHistorial {
         id: f.id.toString(),
         ocurridoEn: f.ocurridoEn,
         usuarioId: f.usuarioId,
+        tipoDeActor: f.tipoDeActor,
+        claveDeApiId: f.claveDeApiId,
         accion: f.accion,
         detalle: f.detalle,
       }));

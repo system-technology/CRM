@@ -5,6 +5,9 @@ export interface FilaDeHistorial {
   readonly id: string;
   readonly ocurridoEn: Date;
   readonly usuarioId: string | null;
+  /** `null` en los registros anteriores a T-071. */
+  readonly tipoDeActor: 'USUARIO' | 'CLAVE_DE_API' | null;
+  readonly claveDeApiId: string | null;
   readonly accion: string;
   readonly detalle: unknown;
 }
