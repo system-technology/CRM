@@ -1852,7 +1852,7 @@ tasks:
     phase: 1
     priority: P0
     effort: S
-    status: backlog
+    status: done
     depends_on:
       - T-073
     acceptance:
@@ -1861,8 +1861,13 @@ tasks:
       - Tests de componente; usable a 375 px
     files:
       - apps/web/src/app/bandeja/
+      - apps/web/src/components/bandeja/modal-enviar-cotizacion.tsx
+      - packages/contracts/src/inbox.ts
     source: ruta a la fase 1 (roadmap v3) 2026-10-27
     created_at: 2026-10-28T01:47:57.807Z
+    started_at: 2026-10-28T04:10:00.000Z
+    done_at: 2026-10-28T04:35:00.000Z
+    evidence: "Implementado ModalEnviarCotizacion en la bandeja con selector de cotizaciones guardadas, vista previa formateada con emojis para WhatsApp, verificación de ventana 24h, gestión de estados (enviando, enviado, fallido) y contrato EnviarCotizacionCuerpo. Tests de componente unitarios completos y soporte 375 px."
   - id: T-075
     title: Alta y edición de contacto y crear oportunidad desde la conversación (API)
     type: feature
@@ -1891,16 +1896,22 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: backlog
+    status: done
     depends_on: []
     acceptance:
       - Se puede completar el contacto y abrir una oportunidad en la etapa inicial desde la bandeja
       - Tests de componente
     files:
       - apps/web/src/app/bandeja/
-      - apps/web/src/app/contactos/
+      - apps/web/src/components/bandeja/modal-crear-oportunidad.tsx
+      - apps/web/src/components/bandeja/modal-editar-contacto.tsx
+      - apps/web/src/components/bandeja/ficha-cliente.tsx
     source: ruta a la fase 1 (roadmap v3) 2026-10-27
     created_at: 2026-10-28T01:47:57.807Z
+    started_at: 2026-10-28T04:15:00.000Z
+    done_at: 2026-10-28T04:35:00.000Z
+    evidence: "Implementados ModalEditarContacto y ModalCrearOportunidad en la ficha lateral y drawer de la bandeja, conectando con crearOportunidadDeConversacionApi y editarContactoApi. Soporta edición de contacto, apertura de oportunidad en etapa inicial NUEVO_LEAD y actualización reactiva de la ficha con tests de componente."
+
   - id: T-077
     title: Seguimientos con fecha sobre oportunidad o conversación (API) e inicio del asesor con pendientes
     type: feature
