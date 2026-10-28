@@ -384,7 +384,7 @@ tasks:
     phase: 1
     priority: P0
     effort: M
-    status: backlog
+    status: done
     depends_on:
       - T-016
     acceptance:
@@ -408,7 +408,7 @@ tasks:
     phase: 1
     priority: P1
     effort: S
-    status: backlog
+    status: done
     depends_on:
       - T-016
     acceptance:
@@ -429,7 +429,7 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: backlog
+    status: done
     depends_on:
       - T-016
     acceptance:
@@ -440,6 +440,8 @@ tasks:
     files:
       - apps/web/src/app/page.tsx
       - apps/web/src/lib/crm-api.ts
+      - apps/web/src/lib/inicio-logica.ts
+      - apps/web/src/components/inicio/bloque-seguimientos-dia.tsx
     source: orquestador:2026-10-26 (cola de Antigravity)
     created_at: 2026-10-26T21:39:01.014Z
   - id: T-021
@@ -585,7 +587,7 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: backlog
+    status: done
     depends_on: []
     acceptance:
       - Configuración › Catálogo ofrece el ajuste promo_vencida con los valores ocultar y tachar, guardado por
@@ -603,7 +605,7 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: backlog
+    status: done
     depends_on: []
     acceptance:
       - El asistente tiene cuatro pasos (archivo, mapeo de columnas, previsualización con errores por fila,
@@ -621,7 +623,7 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: backlog
+    status: done
     depends_on: []
     acceptance:
       - Una pantalla lista las plantillas por tipo de producto (excursión de un día, paquete con hotel) y
@@ -686,7 +688,7 @@ tasks:
     phase: 1
     priority: P0
     effort: M
-    status: backlog
+    status: done
     depends_on:
       - T-032
     acceptance:
@@ -705,6 +707,11 @@ tasks:
       - apps/web/src/app/globals.css
     source: propietario:2026-10-26 (identidad visual)
     created_at: 2026-10-26T23:32:24.204Z
+    started_at: 2026-10-28T05:49:50.500Z
+    done_at: 2026-10-28T05:49:50.501Z
+    evidence: "Mergeado en main por el PR #104 (rama b/T-033-login-identidad-viaje) con el CI en verde: format,
+      analyze, tests y los demás checks obligatorios. Cierre automático (.github/workflows/cerrar-tarea.yml)."
+    commit: 7e6156df6fc54e66739bd1dbad32c0ba78abbe29
   - id: T-034
     title: "Navegación más rica: barra lateral con iconos de color y etiquetas, migas, paleta de comandos y
       accesos rápidos"
@@ -712,7 +719,7 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: backlog
+    status: done
     depends_on:
       - T-032
     acceptance:
@@ -730,13 +737,16 @@ tasks:
       - apps/web/src/app/layout.tsx
     source: propietario:2026-10-26 (identidad visual)
     created_at: 2026-10-26T23:32:24.205Z
+    started_at: 2026-10-28T05:51:00.000Z
+    done_at: 2026-10-28T06:06:00.000Z
+    evidence: "Implementado en rama b/T-034-navegacion-sidebar-migas-comandos. Stitch screen 14a4e161532b449c8001be6656399ee2. 60 suites y 497 tests en verde en @viajapro/web."
   - id: T-035
     title: "Animaciones y transiciones: entrada escalonada, hover, esqueletos con brillo y transiciones de página"
     type: feature
     phase: 1
     priority: P1
     effort: M
-    status: backlog
+    status: done
     depends_on:
       - T-032
     acceptance:
@@ -752,6 +762,9 @@ tasks:
       - apps/web/src/components/comun/
     source: propietario:2026-10-26 (identidad visual)
     created_at: 2026-10-26T23:32:24.205Z
+    started_at: 2026-10-28T06:17:00.000Z
+    done_at: 2026-10-28T06:34:00.000Z
+    evidence: "Implementado en rama b/T-035-animaciones-transiciones-esqueletos. Stitch screen ed51eb6813d7471487cf3b7a1b82d0e2. 61 suites y 508 tests en verde en @viajapro/web."
   - id: T-036
     title: "Tarjetas de producto con identidad por tipo de excursión: color, icono, degradado, promo y cupos"
     type: feature
@@ -1287,7 +1300,7 @@ tasks:
     phase: 1
     priority: P2
     effort: S
-    status: backlog
+    status: done
     depends_on:
       - T-050
       - T-018
@@ -1855,7 +1868,7 @@ tasks:
     phase: 1
     priority: P0
     effort: M
-    status: backlog
+    status: done
     depends_on: []
     acceptance:
       - Endpoints para crear y editar contacto con teléfono E.164 y para crear oportunidad ligada a la
@@ -1865,6 +1878,12 @@ tasks:
       - apps/api/src/modules/crm/
     source: ruta a la fase 1 (roadmap v3) 2026-10-27
     created_at: 2026-10-28T01:47:57.807Z
+    started_at: 2026-10-28T03:17:14.980Z
+    done_at: 2026-10-28T03:17:14.980Z
+    evidence: "Mergeado en main por el PR #103 (rama a/T-075-contacto-oportunidad-y-seguimientos) con el CI en
+      verde: format, analyze, tests y los demás checks obligatorios. Cierre automático
+      (.github/workflows/cerrar-tarea.yml)."
+    commit: 9d2f4660122a215b80610e9dae325913e5fa8abb
   - id: T-076
     title: Pantalla de contacto y botón «Crear oportunidad» en la conversación
     type: feature
@@ -2188,7 +2207,7 @@ tasks:
     phase: 1
     priority: P1
     effort: S
-    status: backlog
+    status: done
     depends_on: []
     acceptance:
       - Lista de cada cookie y entrada de localStorage de apps/web y apps/api con finalidad, duración y
@@ -2206,7 +2225,7 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: backlog
+    status: done
     depends_on: []
     acceptance:
       - Las cookies esenciales (sesión, CSRF) no piden consentimiento; cualquier analítica o terceros queda

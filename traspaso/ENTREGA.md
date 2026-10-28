@@ -1,3 +1,277 @@
+# Entrega — T-035: Animaciones y transiciones (entrada escalonada, hover, esqueletos con brillo y transiciones de página) — 2026-10-28
+
+## Identificación
+- **Rama:** `b/T-035-animaciones-transiciones-esqueletos` (empujada a `origin/b/T-035-animaciones-transiciones-esqueletos`)
+- **Tarea:** T-035 (Animaciones y transiciones: entrada escalonada, hover, esqueletos con brillo y transiciones de página)
+- **Carril:** `b` (Frontend / Web)
+- **Stitch Design Screen ID:** `ed51eb6813d7471487cf3b7a1b82d0e2` (Proyecto «ViajaPro — CRM para agencias de turismo», ID `8333038101997719867`, pantalla *Sistema de Animaciones Fluidas, Shimmer Oceánico & Accesibilidad — ViajaPro CRM*)
+
+## Qué construí
+1. **Tokens y Utilidades de Animación en `globals.css`:**
+   - Shimmer oceánico-dorado (`brilloEsqueleto` y `.esqueleto-brillo`) con reflejo sutil caribeño (`rgba(6, 182, 212, 0.08)`) y arena dorada (`rgba(201, 162, 75, 0.12)`), soportado en temas claro y oscuro.
+   - Microinteracción de elevación elástica de tarjetas (`.tarjeta-turismo-hover` y `.tarjeta-elevacion`): traslación de -3px con aceleración por GPU, sombra turquesa y microescala táctil `active:scale-[0.995]` sin layout shift.
+   - Entrada escalonada (`.anim-entrada`, `.anim-retraso-1` a `.anim-retraso-6`): retrasos de 40ms a 240ms con curva fluida `cubic-bezier(0.16, 1, 0.3, 1)`.
+   - Transiciones suaves para modales (`.anim-modal` < 200ms) y paneles laterales desplegables (`.anim-panel-lateral` < 220ms).
+   - Directiva estricta `@media (prefers-reduced-motion: reduce)` según WCAG 2.2 AA que cancela animaciones, neutraliza el shimmer y elimina desplazamientos físicos.
+2. **Módulo Reutilizable de Animaciones (`apps/web/src/components/comun/animaciones.tsx`):**
+   - `obtenerClaseEscalonada(indice: number)`: Función utilitaria para listas y cuadrículas.
+   - `usePrefersReducedMotion()`: Hook reactivo con fallback seguro contra SSR.
+   - `<ShimmerBox />`: Componente accesible de esqueleto con destello shimmer y `aria-hidden="true"`.
+   - `<ContenedorEscalonado />`: Envoltorio automático para animar colecciones de componentes respetando accesibilidad.
+   - Exportado desde `apps/web/src/components/comun/index.ts`.
+3. **Esqueletos de Carga con Brillo (`apps/web/src/components/comun/esqueletos.tsx`):**
+   - Actualizados todos los esqueletos (`EsqueletoConversacion`, `EsqueletoKanban`, `EsqueletoGridTarjetas`, `EsqueletoTabla`, `EsqueletoExpediente`, `EsqueletoReportes`) para utilizar la clase `.esqueleto-brillo`.
+4. **Integración en Listas y Cuadrículas Clave:**
+   - **Catálogo (`apps/web/src/app/catalogo/page.tsx` y `tarjeta-salida-publicada.tsx`):** Entrada escalonada por índice y elevación interactiva con borde turquesa al pasar el cursor.
+   - **Pipeline Kanban (`apps/web/src/app/pipeline/page.tsx`, `columna-kanban.tsx`, `tarjeta-oportunidad.tsx`):** Tarjetas de oportunidad con elevación elástica y entrada secuencial por columna.
+   - **Bandeja de WhatsApp (`apps/web/src/components/bandeja/lista-conversaciones.tsx`):** Esqueletos de conversación con shimmer y animación escalonada al renderizar la lista.
+   - **Directorio de Contactos (`apps/web/src/app/contactos/page.tsx`):** Filas de tabla con entrada escalonada y resalte hover turquesa.
+   - **Seguimientos Diarios del Asesor (`apps/web/src/components/inicio/bloque-seguimientos-dia.tsx`):** Elevación hover y entrada escalonada de tareas.
+   - **Paleta de Comandos y Fichas Laterales (`modal-busqueda-global.tsx`, `ficha-detalle-paquete.tsx`):** Transiciones suaves de apertura y desplazamiento.
+5. **Suites de Pruebas Unitarias:**
+   - `apps/web/src/components/comun/animaciones.spec.tsx`: 11 pruebas unitarias cubriendo índices, límites, mockeo de `matchMedia`, `ShimmerBox` y desactivación de movimiento reducido.
+   - `apps/web/src/components/comun/esqueletos.spec.tsx`: 11 pruebas unitarias verificando estructura accesible y presencia de `.esqueleto-brillo`.
+
+## Qué verifiqué ejecutando
+- **Pruebas unitarias:** `pnpm --filter @viajapro/web test` — **61 suites pasadas, 508/508 pruebas en verde (100%)**.
+- **Typecheck estricto:** `pnpm typecheck` — **9/9 tareas exitosas** en Turborepo.
+- **Linter:** `pnpm lint` — **7/7 tareas exitosas**, 0 errores.
+- **Políticas de rama y secretos:** `pnpm test:hooks` — **59/59 política de rama, 19/19 secretos, 6/6 fronteras entre módulos en verde**.
+
+---
+
+# Entrega — T-034: Navegación más rica (barra lateral con iconos de color, migas, paleta de comandos y accesos rápidos) — 2026-10-28
+
+## Identificación
+- **Rama:** `b/T-034-navegacion-sidebar-migas-comandos` (empujada a `origin/b/T-034-navegacion-sidebar-migas-comandos`)
+- **Tarea:** T-034 (Navegación más rica: barra lateral con iconos de color y etiquetas, migas, paleta de comandos y accesos rápidos)
+- **Carril:** `b` (Frontend / Web)
+- **Stitch Design Screen ID:** `14a4e161532b449c8001be6656399ee2` (Proyecto «ViajaPro — CRM para agencias de turismo», ID `8333038101997719867`, pantalla *Navegación Enriquecida & Paleta de Comandos (Ctrl+K) — ViajaPro CRM*)
+
+## Qué construí
+1. **Barra lateral expandible / contraíble (`apps/web/src/components/bandeja/barra-modulos.tsx`):**
+   - Modo expandido (`w-60`) y modo compacto (`w-14`) con transición suave (`transition-[width] duration-300`).
+   - Botón toggle de expansión/colapso con atributo accesible `aria-expanded` y atajo de teclado global `Alt+S`.
+   - Persistencia de la preferencia de expansión en el navegador (`viajapro_sidebar_expandida` en `localStorage`).
+   - Módulos con paleta de color caribeña oficial (`CONFIGURACION_MODULOS`) y etiquetas legibles.
+   - Indicador animado de sección activa con aro dorado de marca (`#c9a24b`) y fondo turquesa suave.
+   - En móvil (< 768 px), la barra lateral se oculta limpiamente y pasa a una barra inferior fija con touch targets ergonómicos (`>= 44 px`).
+2. **Componente accesible de Migas de Pan (`apps/web/src/components/comun/migas-de-pan.tsx`):**
+   - Estructura semántica WAI-ARIA (`<nav aria-label="Migas de pan">`, `<ol>`, `aria-current="page"`).
+   - Botón opcional de retorno contextual con touch target ergonómico (`>= 44 px`).
+   - Integración en las pantallas de detalle clave: `/bandeja/[id]` (conversación activa) y `/cotizaciones/[id]` (cotización guardada).
+   - Exportado desde `apps/web/src/components/comun/index.ts`.
+3. **Paleta de Comandos Omnibox (`Ctrl+K` / `Cmd+K`) (`apps/web/src/components/busqueda/modal-busqueda-global.tsx`):**
+   - Modal flotante tipo Spotlight para agencias de turismo con atajos accesibles.
+   - Búsqueda integrada de:
+     - Contactos de viajeros (con nombre y teléfono).
+     - Cotizaciones oficiales guardadas (con título, tour y valor en COP).
+     - Excursiones y paquetes del catálogo de mayoristas.
+     - Conversaciones activas de WhatsApp.
+     - Acciones rápidas del asesor y saltos de navegación a módulos.
+   - Pestañas con filtros temáticos inmediatos (`[Todos]`, `[WhatsApp]`, `[Catálogo]`, `[Cotizaciones]`, `[Contactos]`, `[Acciones]`).
+   - Navegación íntegra por teclado (`↑ ↓` para navegar, `↵` para seleccionar, `Esc` para cerrar, `Tab` para cambiar filtro).
+   - Atrapamiento de foco accesible con `useFocoModal` y avisos `aria-live`.
+4. **Accesos Rápidos Operacionales:**
+   - Botón visible `+ Nueva cotización` en la cabecera de la conversación enlazando directamente al cotizador con parámetros del contacto.
+   - Miga de retorno directo y botones de acción rápida para minimizar clics del asesor.
+5. **Suites de Pruebas Unitarias:**
+   - `apps/web/src/components/comun/migas-de-pan.spec.tsx`: 3 pruebas verificando jerarquía semántica, página activa y botón de retorno.
+   - `apps/web/src/components/busqueda/modal-busqueda-global.spec.tsx`: 5 pruebas verificando renderizado, pestañas temáticas, búsqueda y navegación con teclado.
+   - `apps/web/src/lib/buscador-global-logica.spec.ts`: 11 pruebas verificando indexación de cotizaciones y filtros de categoría.
+   - `apps/web/src/components/bandeja/barra-modulos.spec.tsx`: 17 pruebas verificando enlaces, touch targets móviles, toggle de expansión y persistencia.
+
+## Qué verifiqué ejecutando
+- **Pruebas unitarias:** `pnpm --filter @viajapro/web test` — **60 suites pasadas, 497/497 pruebas en verde (100%)**.
+- **Typecheck estricto:** `pnpm typecheck` — **9/9 tareas exitosas**, compilación limpia de 16 páginas en Next.js 15.5.27.
+- **Linter:** `pnpm lint` — **0 errores, 0 advertencias**.
+- **Hooks y guardas de seguridad:** `pnpm test:hooks` — **59/59 política de rama, 19/19 secretos, 6/6 fronteras entre módulos**.
+- **Ownership de carril:** `node scripts/check-ownership.mjs` — **✔ Dentro del carril (`carril: b`)**.
+
+---
+
+# Entrega — T-094 y T-095: Inventario de cookies, política y banner de consentimiento accesible — 2026-10-28
+
+## Identificación
+- **Rama:** `b/T-094-t-095-politica-banner-cookies` (empujada a `origin/b/T-094-t-095-politica-banner-cookies`)
+- **Tareas:**
+  - T-094: Inventario de cookies y almacenamiento del navegador, y política de cookies.
+  - T-095: Banner de consentimiento de cookies: solo lo no esencial, con aceptar, rechazar y configurar, y registro de la decisión.
+- **Carril:** `b` (Frontend / Web)
+- **Stitch Design Screen ID:** `2c7d1f8d1494433e87f3d3abc9e8c1f4` (Proyecto «ViajaPro — CRM para agencias de turismo», ID `8333038101997719867`, pantalla *Consentimiento de Cookies y Configuración de Privacidad — ViajaPro CRM*)
+
+## Qué construí
+1. **Documento Técnico de Inventario y Política (`docs/05-seguridad/13-inventario-y-politica-de-cookies.md`):**
+   - Inventario exhaustivo y riguroso de cada cookie y clave de `localStorage` de `apps/web` y `apps/api`:
+     - Cookies técnicas backend: `viajapro.session_token` (HttpOnly, Secure, 7 días), `viajapro.csrf_token` (HttpOnly, Sesión).
+     - Almacenamiento frontend: `viajapro_consentimiento_cookies` (12 meses, necesaria para registro legal de consentimiento), `viajapro_tema` (preferencias), `viajapro_modo_demo` (preferencias), `_viajapro_telemetria_rendimiento` (analítica no esencial, 30 días).
+   - Marco legal colombiano integrado: Ley 1581 de 2012, Decreto 1074 de 2015, Guía de Cookies de la Superintendencia de Industria y Comercio (SIC), y leyes turísticas 300 de 1996 y 2068 de 2020.
+   - Actualización del índice maestro en `docs/05-seguridad/00-indice-de-politicas.md` (Política 13 en estado **Cumple**).
+2. **Lógica de Privacidad y Consentimiento (`apps/web/src/lib/privacidad-cookies.ts` y `.spec.ts`):**
+   - Tipos estrictos para categorías (`NECESARIAS`, `PREFERENCIAS`, `ANALITICA`) y decisiones (`ACEPTAR_TODO`, `SOLO_NECESARIAS`, `PERSONALIZADO`).
+   - Métodos seguros `obtenerConsentimientoGuardado()`, `guardarConsentimiento()`, `aceptarTodasLasCookies()`, `aceptarSoloCookiesNecesarias()`, `tieneConsentimientoPara()`.
+   - Limpieza automática de datos no consentidos (`limpiarDatosNoConsentidos`) y eventos reactivos de ventana (`EVENTO_CONSENTIMIENTO_ACTUALIZADO`, `EVENTO_ABRIR_MODAL_COOKIES`).
+   - 14/14 pruebas unitarias pasando.
+3. **Banner de Consentimiento Flotante (`apps/web/src/components/privacidad/banner-consentimiento-cookies.tsx` y `.spec.tsx`):**
+   - Tarjeta flotante inferior elegante, de alto contraste en modo claro/oscuro, con touch targets ergonómicos (≥ 44 px).
+   - Botones rápidos: «Aceptar todas», «Solo necesarias» (rechaza analítica y preferencias de inmediato sin fricción), «Configurar» (abre modal).
+   - 6/6 pruebas unitarias pasando.
+4. **Modal de Configuración Granular Accesible (`apps/web/src/components/privacidad/modal-preferencias-cookies.tsx` y `.spec.tsx`):**
+   - Atrapamiento de foco accesible con `useFocoModal`.
+   - Desglose por categorías con switches interactivos:
+     - Cookies Necesarias: bloqueadas permanentemente en activo con badge «Siempre activas».
+     - Preferencias: switch interactivo para ergonomía visual y modo demo.
+     - Analítica: switch interactivo, inactivo por defecto (*opt-in* estricto).
+   - 6/6 pruebas unitarias pasando.
+5. **Página Pública de Política e Inventario (`apps/web/src/app/politica-cookies/page.tsx` y `.spec.tsx`):**
+   - Ruta `/politica-cookies` con metadata SEO, tabla de inventario completa, guía de configuración en los principales navegadores (Chrome, Firefox, Safari, Edge) y botón interactivo para reabrir el modal de preferencias.
+   - 4/4 pruebas unitarias pasando.
+6. **Pie de Página Global y RootLayout (`apps/web/src/components/privacidad/pie-de-pagina-privacidad.tsx` y `apps/web/src/app/layout.tsx`):**
+   - Footer minimalista con enlace directo a «Preferencias de cookies» (reapertura en cualquier momento) y «Política de cookies e inventario».
+   - Inyectado en `RootLayout` con diseño responsive para 375 px y compatibilidad completa con SSR y directivas CSP (T-069).
+7. **Pruebas y Verificación:**
+   - 57 archivos de prueba en `@viajapro/web` con 471/471 pruebas en verde.
+   - Cero errores en `pnpm typecheck`, `pnpm lint`, `pnpm test:hooks`, `verificar-fronteras.mjs` y `check-ownership.mjs`.
+
+---
+
+# Entrega — T-020: Inicio con datos reales del asesor y seguimientos pendientes del día — 2026-10-27
+
+## Identificación
+- **Rama:** `b/T-020-inicio-asesor-pendientes-del-dia` (empujada a `origin/b/T-020-inicio-asesor-pendientes-del-dia`)
+- **Tarea:** T-020 (Inicio con datos reales del asesor: conversaciones pendientes, oportunidades por etapa y cotizaciones por vencer, alimentado por `GET /api/v1/crm/seguimientos/pendientes-del-dia`)
+- **Carril:** `b` (Frontend / Web)
+- **Stitch Design Screen ID:** `2cddf45a324e4f6caad99a67c45ca7bb` (Proyecto «ViajaPro — CRM para agencias de turismo», ID `8333038101997719867`, pantalla *Inicio del Asesor & Dashboard Operacional — ViajaPro CRM*)
+
+## Qué construí
+1. **Cliente API y Mock de CRM (`apps/web/src/lib/crm-api.ts` y `mock-crm.ts`):**
+   - Implementado `obtenerPendientesDelDiaApi(asesorId?: string): Promise<PendientesDelDia>` que consulta `GET /api/v1/crm/seguimientos/pendientes-del-dia` con soporte de cabeceras de sesión de tenant (`x-tenant-id`, `x-asesor-id`).
+   - Implementado `completarSeguimientoApi(id: string): Promise<Seguimiento>` que envía `POST /api/v1/crm/seguimientos/:id/completar`.
+   - Mock data completo y validado contra el esquema Zod `PendientesDelDia` del contrato `@viajapro/contracts` en `mock-crm.ts`, con casos para `vencidos` y `deHoy` asociados a contactos, oportunidades, paquetes turísticos cotizados y canales WhatsApp.
+2. **Lógica de Agregación y Métricas (`apps/web/src/lib/inicio-logica.ts` y `.spec.ts`):**
+   - `calcularMetricasSeguimientos`: computa totales de pendientes, cantidad de vencidos, de hoy y de alta prioridad.
+   - `clasificarUrgenciaSeguimiento`: categorización estricta (`VENCIDO`, `HOY`, `FUTURO`).
+   - `calcularRetrasoSeguimiento`: texto en es-CO con cálculo amigable del desfase temporal («hace X horas», «hace X días», «hoy», «en X horas»).
+   - `formatearHoraSeguimiento`: formato localizado con `Intl.DateTimeFormat`.
+   - 8/8 pruebas unitarias pasando en `inicio-logica.spec.ts`.
+3. **Componente de Seguimientos Diarios (`apps/web/src/components/inicio/bloque-seguimientos-dia.tsx` y `.spec.tsx`):**
+   - Filtros por pestañas (`TODOS`, `VENCIDOS`, `HOY`) con badges numéricos.
+   - Tarjetas de compromiso con badges de urgencia diferenciados (rojo para vencido, ámbar para hoy), datos del contacto, canal, motivo y enlace a la conversación (`/bandeja/[id]`) o al pipeline (`/pipeline`).
+   - Acción directa de completar seguimiento en un clic con microanimación y feedback táctil accesible (touch targets >= 44 px).
+   - Estados de carga (skeleton animado), error con botón de reintento y estado vacío ilustrado cuando no hay tareas pendientes.
+   - 6/6 pruebas unitarias pasando en `bloque-seguimientos-dia.spec.tsx`.
+4. **Integración en la Página Principal (`apps/web/src/app/page.tsx` y `page.spec.tsx`):**
+   - Integrado `obtenerPendientesDelDiaApi` junto a `obtenerConversacionesBandeja`, `obtenerOportunidadesPipeline` y `obtenerCotizacionesApi` usando el tenant de sesión.
+   - Las tres tarjetas principales enlazan a sus pantallas filtradas (`/bandeja`, `/pipeline`, `/cotizaciones`) y reflejan datos reales con estados cargando, error y vacío.
+   - Manejo del estado local para actualizar instantáneamente la lista de pendientes cuando un asesor completa un seguimiento desde el dashboard sin requerir recargar la página.
+   - 8/8 pruebas unitarias pasando en `page.spec.tsx`.
+5. **Pruebas y Verificación:**
+   - 54 archivos de prueba en `@viajapro/web` con 454/454 pruebas en verde.
+   - Cero violaciones de fronteras entre módulos (`verificar-fronteras.mjs`) y estricto respeto del carril frontend `b` (`check-ownership.mjs`).
+   - `typecheck`, `lint` y `test:hooks` 100% en verde.
+
+---
+
+# Entrega — T-028: Ajuste de promoción vencida (ocultar o tachar) en Configuración y aplicación en catálogo/cotizador — 2026-10-27
+
+## Identificación
+- **Rama:** `b/T-028-ajuste-promo-vencida` (empujada a `origin/b/T-028-ajuste-promo-vencida`)
+- **Tarea:** T-028 (Ajuste «promoción vencida» [ocultar o tachar] en Configuración › Catálogo y su aplicación en tarjeta y cotizador)
+- **Carril:** `b` (Frontend / Web)
+- **Stitch Design Screen ID:** `4b4005013aba465685340f4b13c49203` (Proyecto «ViajaPro — CRM para agencias de turismo», ID `8333038101997719867`, pantalla *Configuración › Catálogo: Ajuste de Promoción Vencida — ViajaPro CRM*)
+
+## Qué construí
+1. **Cliente API (`apps/web/src/lib/catalogo-ajustes-api.ts`):**
+   - Consume `GET /api/v1/catalogo/ajustes` y `PATCH /api/v1/catalogo/ajustes` con esquema Zod `AjustesDeCatalogo` (`{ promoVencida: 'OCULTAR' | 'TACHAR' }`).
+2. **Componente de Configuración (`apps/web/src/components/configuracion/bloque-ajustes-catalogo.tsx` y `.spec.tsx`):**
+   - Panel de 2 columnas con selector interactivo de radio (`OCULTAR` vs `TACHAR`).
+   - Advertencia de que el precio cobrado al cliente no cambia (invariante de dominio R12 / ADR-0017 §9).
+   - Previsualización reactiva en vivo sobre tarjeta de excursión caribeña con precio tachado y badge condicionales.
+   - Pestaña `Catálogo` integrada en `apps/web/src/app/configuracion/page.tsx`.
+3. **Aplicación en Tarjeta de Catálogo (`apps/web/src/components/catalogo/tarjeta-salida-publicada.tsx` y `.spec.tsx`):**
+   - Respeta `salida.presentacion.listaTachada` y `salida.presentacion.leyenda === 'PROMO_VENCIDA'` calculados por la API.
+4. **Aplicación en Cotizador (`apps/web/src/components/cotizador/desglose-cotizacion-salida.tsx` y `.spec.tsx`):**
+   - Respeta `linea.presentacion.listaTachada` e `insignia-promo-vencida` calculados por la API.
+5. **Pruebas y verificación:**
+   - 48 suites pasando en `@viajapro/web`, 406/406 pruebas en verde.
+   - Tests específicos para ambos valores (`OCULTAR` y `TACHAR`) tanto en Configuración como en la Tarjeta y en el Cotizador.
+   - Typecheck, ESLint y `test:hooks` 100% en verde.
+
+---
+
+# Entrega — T-018, T-051 y T-019: Tarjeta y ficha de excursión, presentación de promo y estado sin catálogo — 2026-10-27
+
+## Identificación
+- **Rama:** `b/T-018-t-051-t-019-tarjeta-ficha-sin-catalogo` (empujada a `origin/b/T-018-t-051-t-019-tarjeta-ficha-sin-catalogo`)
+- **Tareas:**
+  - T-018: Tarjeta y ficha de excursión en el catálogo: «desde», promo, horarios, qué incluye y cupos por salida («sáb 3 oct · quedan 4»).
+  - T-051: Tarjeta, ficha y desglose del cotizador pintan `presentacion` de la API sin decidir la promo en el cliente (cero comparaciones con `promoHasta`).
+  - T-019: Estado «sin catálogo todavía» (zero state) con dos acciones («Importar catálogo» y «Crear excursión») en catálogo y cotizador.
+- **Carril:** `b` (Frontend / Web)
+- **Stitch Design Screen ID:** `b86a95d7aa3246b087e0baa6fe1063fe` (Proyecto «ViajaPro — CRM para agencias de turismo», ID `8333038101997719867`, pantalla *Catálogo de Excursiones y Estado Sin Catálogo — ViajaPro CRM*)
+
+## Qué construí
+1. **Lógica de presentación y cálculo (`apps/web/src/lib/catalogo-logica.ts` y `.spec.ts`):**
+   - `formatearHorarioExcursion(horaSalida, horaRegreso)` para desplegar horarios de zarpe y retorno legibles.
+   - `clasificarDisponibilidadCupos(cupos)` (`DISPONIBLE`, `ULTIMOS_CUPOS`, `AGOTADO`, `PROGRAMADA`) para chips de urgencia comercial.
+   - `interpretarPresentacionTarifa(presentacion)`: centraliza el renderizado de `listaTachada`, `leyenda: 'PROMO_VENCIDA'`, `promoVigente` y `esConsultar` estrictamente desde la API sin comparaciones locales de fecha (T-051).
+   - `verificarCargosEnDestinoSeparados(totalVenta, cargosEnDestino)`: garantiza matemáticamente que los cargos en destino nunca se suman al precio del paquete ni a la cotización (R8, ADR-0017 §9).
+   - Cobertura completa en `catalogo-logica.spec.ts` (19 pruebas unitarias pasando).
+2. **Tarjeta de Salida Publicada (`apps/web/src/components/catalogo/tarjeta-salida-publicada.tsx` y `.spec.tsx`):**
+   - Degradado por tipo de producto (Pasadía con degradado turquesa/océano vs Multidía azul/índigo).
+   - Chip de cupos con formato de urgencia comercial («sáb 3 oct · quedan 4» / «Últimos 4 cupos» / «Agotado»).
+   - Horarios de salida/regreso e inclusiones del plan con chips visuales.
+   - Tarifa «desde» en moneda principal y desglose multimoneda `desdePorMoneda` (ej. COP y USD).
+   - Estado «Consultar» si no hay precio base o el estado de la API es `CONSULTAR`.
+   - Soporte para precio tachado (`data-testid="tarifa-lista-tachada"`) e insignias de promo vencida / promo vigente según `presentacion`.
+3. **Ficha de Detalle de Paquete (`apps/web/src/components/catalogo/ficha-detalle-paquete.tsx`):**
+   - Muestra bloque destacado de «Cargos a pagar en destino (No incluidos)», separando impuestos de muelle y entradas del total de la cotización.
+4. **Desglose del Cotizador (`apps/web/src/components/cotizador/desglose-cotizacion-salida.tsx` y `.spec.tsx`):**
+   - Renderiza `linea-lista-tachada` y badge `linea-promo-vencida` derivados de `linea.presentacion` entregado por la API (T-051).
+5. **Componente Estado Sin Catálogo (`apps/web/src/components/catalogo/estado-sin-catalogo.tsx` y `.spec.tsx`):**
+   - Zero state de alta conversión turística con dos botones de acción obligatorios:
+     - `data-testid="btn-sin-catalogo-importar"`: «Importar catálogo (CSV)»
+     - `data-testid="btn-sin-catalogo-crear"`: «Crear excursión»
+   - Integrado en `apps/web/src/app/catalogo/page.tsx` (cuando la agencia no tiene salidas publicadas en la API).
+   - Integrado en `apps/web/src/app/cotizador/page.tsx` (cuando la agencia no tiene productos activos en catálogo).
+   - Re-exportado en `apps/web/src/components/comun/estado-sin-catalogo.tsx`.
+6. **Verificación y Calidad:**
+   - 52 archivos de prueba y 432 tests pasando en `@viajapro/web`.
+   - 0 ocurrencias de `promoHasta` en el cliente (cero decisiones de expiración en navegador).
+   - `typecheck` con 0 errores, `lint` con 0 errores, `test:hooks` con 59/59 y 19/19 en verde.
+
+---
+
+# Entrega — T-029 y T-030: Asistente de importación de catálogo y descarga de plantillas CSV — 2026-10-27
+
+## Identificación
+- **Rama:** `b/T-029-t-030-asistente-importacion` (empujada a `origin/b/T-029-t-030-asistente-importacion`)
+- **Tareas:** T-029 (Asistente de importación en 4 etapas) y T-030 (Descarga de plantillas CSV oficiales)
+- **Carril:** `b` (Frontend / Web)
+- **Stitch Design Screen ID:** `1ae9a897573c4a5db87a584bf12605c0` (Proyecto «ViajaPro — CRM para agencias de turismo», ID `8333038101997719867`, pantalla *Asistente de Importación de Catálogo y Plantillas — ViajaPro CRM*)
+
+## Qué construí
+1. **Lógica de importación (`apps/web/src/lib/importacion-logica.ts` y `.spec.ts`):**
+   - Generación de CSV con marcador `#viajapro;plantilla=<formato>;version=<version>`, cabeceras oficiales y filas de ejemplo.
+   - Extracción de marcador `#viajapro;`, parsing CSV respetando comillas y delimitadores `,` o `;`.
+   - Algoritmo de correspondencia local fonética con cálculo de porcentaje de confianza.
+   - Clasificación de elementos de informe (`OK`, `AVISO`, `ERROR`) y cálculo de huella SHA-256.
+2. **Cliente API (`apps/web/src/lib/importaciones-api.ts`):**
+   - Consume `/api/v1/catalogo/formatos`, `/plantilla`, `/sugerir-mapeo`, `/previsualizar` y `/confirmar` con cabeceras de tenant y fallback a `PLANTILLAS_DE_SISTEMA`.
+3. **Descarga de Plantillas (`apps/web/src/components/catalogo/importacion/descarga-plantillas.tsx` y `.spec.tsx`):**
+   - Tarjetas por formato (Excursión de un día, Pasadía, Pasanoche, Paquete con hotel).
+   - Descarga directa de archivo CSV con nombre estandarizado y acción de importación directa.
+4. **Asistente Wizard en 4 Pasos (`apps/web/src/components/catalogo/importacion/asistente-importacion.tsx` y `.spec.tsx`):**
+   - Paso 1: Archivo y autocompletado de formato mediante marcador `#viajapro`.
+   - Paso 2: Correspondencia de columnas y selector de formato de fecha.
+   - Paso 3: Previsualización con KPIs, informe clasificado y huella SHA-256 (botón de confirmación deshabilitado si hay errores).
+   - Paso 4: Confirmación atómica todo-o-nada.
+5. **Pruebas y verificación:**
+   - 49 suites de prueba en `@viajapro/web`, 416/416 tests en verde.
+   - `typecheck` con 0 errores, `lint` con 0 errores, `test:hooks` con 59/59 y 19/19 en verde.
+
+---
+
 # Entrega — T-037: Inicio con Saludo según la Hora, Acciones Rápidas y Tarjetas de Colores — 2026-10-26
 
 ## Identificación
@@ -47,6 +321,50 @@
   - Despliegue en entorno productivo (requiere merge de PR en servidor).
 
 ---
+# Entrega — T-033: Login con identidad de viaje (pantalla dividida con héroe oceánico) — 2026-10-26
+
+## Identificación
+- **Rama:** `b/T-033-login-identidad-viaje`
+- **Stitch Design Screen ID:** `310817e6eef4417286c884540166df0e` (Proyecto «ViajaPro — CRM para agencias de turismo», ID `8333038101997719867`, pantalla *Login con Identidad de Viaje — ViajaPro CRM*)
+
+## Qué construí
+
+1. **Pantalla dividida con héroe oceánico animado (Split-Screen):**
+   - **Panel izquierdo (Héroe caribeño):**
+     - Fondo con `degradado-caribe` (de azul marino profundo a turquesa caribeño).
+     - Ondas marinas vectoriales animadas con micro-movimiento suave (`animacion-ola`).
+     - Elementos icónicos de viaje sutiles (avión en vuelo, brújula náutica, palmera dorada).
+     - Título inspirador de turismo: *«Convierte conversaciones en viajes reales»*.
+     - Insignia con aro dorado (`InsigniaAroDorado`) destacando la especialidad en agencias de turismo.
+     - Indicadores de confianza: 100% WhatsApp Cloud API nativo, gestión multi-agencia y cotizaciones instantáneas.
+   - **Panel derecho (Formulario del Asesor):**
+     - Tarjeta con elevación suave y bordes redondeados (`tarjeta-turismo`).
+     - Encabezado con logotipo, selector visual de agencia y distintivo del modo de conexión (Real / Demostración).
+     - **Campos limpios sin valores de relleno reales:** Correo y contraseña inician vacíos `""` cumpliendo la regla de seguridad y privacidad.
+     - Inputs accesibles con iconos temáticos a la izquierda, botón de visualización de contraseña accesible y touch targets >= 44 px.
+     - Botón principal de llamada a la acción con `BotonTurismo` (`variante="mar"`), efecto hover y spinner de carga accesible.
+     - Vistas secundarias fluidas para selección de agencia (`selector-agencia`) y verificación OTP en 2 pasos.
+
+2. **Integración con el Sistema Visual de Turismo (T-032):**
+   - Empleo de tokens de `globals.css` (turquesa `#0284c7`, océano `#0369a1`, arena `#f8fafc`, acento de marca configurable `--color-acento-marca: #c9a24b`).
+   - Respeto riguroso de `prefers-reduced-motion` para anular animaciones en usuarios con accesibilidad motriz o cognitiva activada.
+
+3. **Pruebas y verificación:**
+   - `apps/web/src/components/auth/formulario-ingreso.spec.tsx`: 7/7 pruebas en verde.
+   - Se añadió `noValidate` al formulario para permitir la validación de manejo de errores en JSDOM sin que la restricción nativa del navegador impida el envío de campos vacíos en las pruebas.
+   - Tipado estricto sin promesas desatendidas en `onSubmit` (`(e) => void manejarEnvioCredenciales(e)`).
+
+## Qué verifiqué ejecutando
+
+- **Pruebas unitarias de apps/web:** `pnpm --filter @viajapro/web test` — **57 archivos de prueba pasados, 471/471 pruebas en verde (100%)**.
+- **Typecheck:** `pnpm --filter @viajapro/web typecheck` — **0 errores** TypeScript (`tsc --noEmit` exit 0).
+- **Linter:** `pnpm --filter @viajapro/web lint` — **0 errores, 0 advertencias**.
+- **Compilación Next.js:** `pnpm turbo run build --filter=@viajapro/web...` — **17/17 rutas compiladas con éxito**.
+- **Verificación de carril:** `node scripts/check-ownership.mjs` — `Dentro del carril` (carril b).
+
+---
+
+# Entrega — Bloque 2: Cotizador y Catálogo para Excursiones de un Día y Estados de UI — 2026-10-26
 
 2. **Accesos directos rápidos operacionales de alta conversión:**
    - Botón primario de viaje `+ Nueva cotización` (`data-testid="acceso-nueva-cotizacion"`) enlazando a `/cotizador`.
@@ -86,7 +404,6 @@
 
 ## Qué NO verifiqué (Reporte transparente de Compuertas)
 
-<<<<<<< HEAD
 - No se verificó la sincronización con pasarelas de pago externas ni emisión de tickets fiscales electrónicos (fuera del alcance del cotizador).
 - No se verificó la base de datos real con salidas de tours en producción, pues se probó contra contratos y mocks estandarizados en TypeScript.
 
@@ -1081,7 +1398,3 @@ Se creó el archivo de pruebas de componentes `apps/web/src/components/comun/esq
   - `typecheck`: **VERDE** (9/9 tareas exitosas en Turborepo, cero errores TypeScript).
   - `format:check`: **VERDE** (100% verificado con Prettier).
   - `build`: **VERDE** (Next.js 15.5.27 compiló 16 páginas en 6.7s).
-
-=======
-- **Compuertas monorepo:** `build`, `lint` y `typecheck` corren en verde; las pruebas de `@viajapro/database` en `pnpm compuertas` caen localmente por autenticación contra la base de datos externa Neon (`password authentication failed for user 'viajapro_app'`), lo cual corresponde al carril `a` (backend/database).
->>>>>>> 27b90f1 (docs(entregables): informe de completitud para tarea T-037)

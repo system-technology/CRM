@@ -175,4 +175,130 @@ describe('DesgloseCotizacionSalida — cargos en destino (T-063)', () => {
     );
     expect(screen.queryByTestId('cargos-en-destino')).toBeNull();
   });
+
+  it('muestra listaTachada y leyenda «promo vencida» en la línea cuando viene en presentacion (T-051)', () => {
+    const cotizacionConPromoVencida: CotizacionDeSalida = {
+      ...base,
+      lineas: [
+        {
+          tarifaId: '01932000-0000-7000-8000-0000000000f1',
+          nombre: 'Tarifa Regular Adulto',
+          unidad: 'POR_PERSONA',
+          cubrePasajeros: 1,
+          precioUnitario: { unidades: '260000', moneda: 'COP' },
+          veces: 2,
+          total: { unidades: '520000', moneda: 'COP' },
+          masBarata: false,
+          presentacion: {
+            estado: 'PROMO_VENCIDA',
+            venta: { unidades: '260000', moneda: 'COP' },
+            listaTachada: { unidades: '220000', moneda: 'COP' },
+            leyenda: 'PROMO_VENCIDA',
+            promoVigente: false,
+          },
+        },
+      ],
+    };
+
+    render(
+      <DesgloseCotizacionSalida
+        cotizacion={cotizacionConPromoVencida}
+        copiado={false}
+        alCopiarWhatsApp={vi.fn()}
+      />,
+    );
+
+    const tachado = screen.getByTestId('linea-lista-tachada');
+    expect(tachado.textContent).toContain('220.000');
+
+    const leyenda = screen.getByTestId('linea-promo-vencida');
+    expect(leyenda.textContent).toBe('Promo vencida');
+  });
+});
+
+describe('DesgloseCotizacionSalida — política promo_vencida (T-028)', () => {
+  const baseCotizacion = {
+    paqueteId: '01932000-0000-7000-8000-000000000010',
+    paqueteNombre: 'Tour Islas del Rosario',
+    destino: 'Cartagena',
+    noches: 0,
+    pideComposicion: true,
+    total: { unidades: '250000', moneda: 'COP' },
+    alternativas: [],
+    noAplicables: [],
+    suplementos: [],
+  } as unknown as CotizacionDeSalida;
+
+  it('con promo_vencida OCULTAR (sin listaTachada) muestra el precio sin tachón ni insignia', () => {
+    const cotizacionOcultar: CotizacionDeSalida = {
+      ...baseCotizacion,
+      lineas: [
+        {
+          tarifaId: 'tarifa-1',
+          nombre: 'Pasadía Regular',
+          unidad: 'POR_PERSONA',
+          cubrePasajeros: 1,
+          veces: 1,
+          precioUnitario: { unidades: '250000', moneda: 'COP' },
+          total: { unidades: '250000', moneda: 'COP' },
+          masBarata: true,
+          presentacion: {
+            estado: 'PROMO_VENCIDA',
+            venta: { unidades: '250000', moneda: 'COP' },
+            listaTachada: null,
+            leyenda: null,
+            promoVigente: false,
+          },
+        },
+      ],
+    };
+
+    render(
+      <DesgloseCotizacionSalida
+        cotizacion={cotizacionOcultar}
+        copiado={false}
+        alCopiarWhatsApp={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByTestId('linea-lista-tachada')).toBeNull();
+    expect(screen.queryByTestId('linea-promo-vencida')).toBeNull();
+  });
+
+  it('con promo_vencida TACHAR enseña el precio tachado y la insignia de promo vencida en la línea', () => {
+    const cotizacionTachar: CotizacionDeSalida = {
+      ...baseCotizacion,
+      lineas: [
+        {
+          tarifaId: 'tarifa-1',
+          nombre: 'Pasadía Regular',
+          unidad: 'POR_PERSONA',
+          cubrePasajeros: 1,
+          veces: 1,
+          precioUnitario: { unidades: '250000', moneda: 'COP' },
+          total: { unidades: '250000', moneda: 'COP' },
+          masBarata: true,
+          presentacion: {
+            estado: 'PROMO_VENCIDA',
+            venta: { unidades: '250000', moneda: 'COP' },
+            listaTachada: { unidades: '300000', moneda: 'COP' },
+            leyenda: 'PROMO_VENCIDA',
+            promoVigente: false,
+          },
+        },
+      ],
+    };
+
+    render(
+      <DesgloseCotizacionSalida
+        cotizacion={cotizacionTachar}
+        copiado={false}
+        alCopiarWhatsApp={vi.fn()}
+      />,
+    );
+
+    const tachado = screen.getByTestId('linea-lista-tachada');
+    expect(tachado.textContent).toContain('300.000');
+    expect(screen.getByTestId('linea-promo-vencida')).toBeDefined();
+  });
 });

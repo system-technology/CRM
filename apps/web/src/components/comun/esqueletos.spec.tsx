@@ -87,54 +87,60 @@ describe('Componentes de Estado y Accesibilidad (0c.25 & 0c.31)', () => {
   });
 
   describe('Esqueletos de Carga — Accesibilidad y Lectores de Pantalla', () => {
-    it('EsqueletoConversacion tiene aria-busy="true" y texto para lector de pantalla', () => {
+    it('EsqueletoConversacion tiene aria-busy="true", texto accesible y efecto de brillo (shimmer T-035)', () => {
       const { container } = render(<EsqueletoConversacion />);
       const raiz = container.firstElementChild as HTMLElement;
 
       expect(raiz.getAttribute('aria-busy')).toBe('true');
       expect(raiz.getAttribute('aria-label')).toBe('Cargando conversación');
+      expect(container.querySelectorAll('.esqueleto-brillo').length).toBeGreaterThan(0);
     });
 
-    it('EsqueletoKanban tiene aria-busy="true" y texto para lector de pantalla', () => {
+    it('EsqueletoKanban tiene aria-busy="true", texto accesible y efecto de brillo', () => {
       const { container } = render(<EsqueletoKanban />);
       const raiz = container.firstElementChild as HTMLElement;
 
       expect(raiz.getAttribute('aria-busy')).toBe('true');
       expect(raiz.getAttribute('aria-label')).toBe('Cargando tablero kanban');
+      expect(container.querySelectorAll('.esqueleto-brillo').length).toBeGreaterThan(0);
     });
 
-    it('EsqueletoGridTarjetas tiene aria-busy="true", texto accesible y número configurable de tarjetas', () => {
+    it('EsqueletoGridTarjetas tiene aria-busy="true", texto accesible y elementos con esqueleto-brillo', () => {
       const { container } = render(<EsqueletoGridTarjetas cantidad={3} />);
       const raiz = container.firstElementChild as HTMLElement;
 
       expect(raiz.getAttribute('aria-busy')).toBe('true');
       expect(raiz.getAttribute('aria-label')).toBe('Cargando catálogo');
       expect(raiz.children.length).toBe(3);
+      expect(container.querySelectorAll('.esqueleto-brillo').length).toBeGreaterThan(0);
     });
 
-    it('EsqueletoTabla tiene aria-busy="true", texto accesible y número de filas configurable', () => {
+    it('EsqueletoTabla tiene aria-busy="true", texto accesible y número de filas configurable con brillo', () => {
       const { container } = render(<EsqueletoTabla filas={4} />);
       const raiz = container.firstElementChild as HTMLElement;
 
       expect(raiz.getAttribute('aria-busy')).toBe('true');
       expect(raiz.getAttribute('aria-label')).toBe('Cargando registros');
       expect(raiz.children.length).toBe(4);
+      expect(container.querySelectorAll('.esqueleto-brillo').length).toBeGreaterThan(0);
     });
 
-    it('EsqueletoExpediente tiene aria-busy="true" y texto accesible', () => {
+    it('EsqueletoExpediente tiene aria-busy="true", texto accesible y efecto brillo', () => {
       const { container } = render(<EsqueletoExpediente />);
       const raiz = container.firstElementChild as HTMLElement;
 
       expect(raiz.getAttribute('aria-busy')).toBe('true');
       expect(raiz.getAttribute('aria-label')).toBe('Cargando expedientes de viaje');
+      expect(container.querySelectorAll('.esqueleto-brillo').length).toBeGreaterThan(0);
     });
 
-    it('EsqueletoReportes tiene aria-busy="true" y texto accesible', () => {
+    it('EsqueletoReportes tiene aria-busy="true", texto accesible y efecto brillo', () => {
       const { container } = render(<EsqueletoReportes />);
       const raiz = container.firstElementChild as HTMLElement;
 
       expect(raiz.getAttribute('aria-busy')).toBe('true');
       expect(raiz.getAttribute('aria-label')).toBe('Cargando reportes comerciales');
+      expect(container.querySelectorAll('.esqueleto-brillo').length).toBeGreaterThan(0);
     });
   });
 });
