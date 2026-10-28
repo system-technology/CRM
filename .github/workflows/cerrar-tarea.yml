@@ -27,24 +27,29 @@ jobs:
       !startsWith(github.event.pull_request.head.ref, 'i/cerrar-')
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    # Todo se hace con el token de la app Integradora; el GITHUB_TOKEN del job no necesita nada.
+    permissions: {}
     steps:
       - name: Token de la app Integradora
         id: app
-        uses: actions/create-github-app-token@v3
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
         with:
           app-id: ${{ vars.INTEGRADORA_APP_ID }}
           private-key: ${{ secrets.INTEGRADORA_APP_KEY }}
-      - uses: actions/checkout@v4
+      # persist-credentials: false => el token de la app NO queda en .git/config mientras corren
+      # `npm ci` y el script. Solo se usa al final, de forma explícita, en el paso que empuja.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           ref: main
           token: ${{ steps.app.outputs.token }}
           fetch-depth: 1
-      - uses: actions/setup-node@v7
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 20
       - name: Dependencias del roadmap
         working-directory: tools/roadmap-mcp
-        run: npm ci
+        run: npm ci --ignore-scripts
       - name: Cerrar la tarea de la rama
         id: cerrar
         env:
@@ -66,7 +71,10 @@ jobs:
           git checkout -b "$rama"
           git add roadmap/tasks.yaml
           git commit -m "docs(roadmap): cerrar $IDS (PR #$PR) (T-000)"
-          git push origin "$rama"
+          # Autenticación explícita y solo para este push (lo mismo que hace checkout al persistir).
+          auth=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)
+          echo "::add-mask::$auth"
+          git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $auth" push origin "$rama"
           gh pr create --base main --head "$rama" \
             --title "docs(roadmap): cerrar $IDS (PR #$PR) (T-000)" \
             --body "Cierre automático: el PR #$PR (rama de la tarea) se mergeó en main. Generado por .github/workflows/cerrar-tarea.yml."

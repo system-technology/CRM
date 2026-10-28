@@ -1,74 +1,52 @@
 # Protección de la rama `main` en GitHub
 
-> **Estado: BLOQUEADO por el plan de la cuenta.** Es la mitad que falta de
-> [ADR-0005](../docs/03-adr/0005-modelo-de-ramas.md).
+> **Estado: ACTIVA.** Es la mitad de servidor de [ADR-0005](../docs/03-adr/0005-modelo-de-ramas.md).
+> La copia versionada de la configuración es [`proteccion-main.json`](proteccion-main.json); la
+> fuente de verdad es el servidor:
+>
+> ```bash
+> gh api repos/system-technology/CRM/branches/main/protection
+> ```
+>
+> Última comprobación contra el servidor: 2026-10-27 (T-083). Si el servidor y el JSON difieren,
+> manda el servidor y se corrige el JSON (o se aplica el JSON deliberadamente, ver más abajo).
 
-## El problema, en una línea
+## Historia, en una línea
 
-El repositorio es **privado** (`Alfavear/CRM`) y la cuenta está en el **plan gratuito**.
-GitHub no permite proteger ramas ni crear *rulesets* en repositorios privados del plan gratuito:
+Mientras el repositorio fue **privado** (`Alfavear/CRM`) en el plan gratuito, GitHub no permitía
+proteger ramas (`403: Upgrade to GitHub Pro or make this repository public`) y `main` solo tenía
+hooks locales. El repositorio pasó a **público** (`system-technology/CRM`) y la protección existe
+y es gratuita. El repositorio público implica que todo el código y la documentación son visibles:
+ningún secreto ni dato de cliente puede entrar jamás (R6, regla del check `secretos`).
 
-```
-403: Upgrade to GitHub Pro or make this repository public to enable this feature.
-```
+## Qué está configurado (copia de `proteccion-main.json`)
 
-Resultado: hoy **`main` no tiene ninguna protección de servidor**. Lo único que hay son los hooks
-locales, que son una barandilla contra el accidente, **no seguridad**.
-
-## Las tres salidas
-
-| Opción | Protección de `main` | Estrategia expuesta | Costo |
-|---|---|---|---|
-| **GitHub Pro** y seguir privado | ✅ Completa | No | De pago, mensual — verificar precio vigente |
-| **Repositorio público** | ✅ Completa, gratis | **Sí**, todo visible | Gratis |
-| **Seguir como está** | ❌ Solo hooks locales | No | Gratis, con riesgo asumido |
-
-**Recomendación: GitHub Pro.** Es la única que da las dos cosas. Mientras el proyecto siga siendo
-una sola persona con disciplina, la tercera opción es tolerable; en cuanto entre una segunda
-persona al repositorio, deja de serlo — porque la protección existe precisamente para los días en
-que alguien tiene prisa.
-
-Mientras tanto, la regla R11 la sostienen el agente `integrador` y los hooks. **Riesgo registrado
-en `ESTADO.md`.**
-
----
-
-## Qué configurar
-
-En GitHub → **Settings → Branches → Add branch protection rule**, patrón `main`:
-
-| Opción | Valor | Por qué |
+| Opción | Valor real | Por qué |
 |---|---|---|
-| **Require a pull request before merging** | ✅ | Nada entra sin revisión |
-| └ Required approvals | **1** | Con un equipo pequeño, uno basta y no bloquea |
-| └ Dismiss stale approvals on new commits | ✅ | Una aprobación es de un código concreto, no de una rama |
-| **Require status checks to pass** | ✅ | Las compuertas, en servidor |
-| └ Require branches to be up to date | ✅ | Obliga a ponerse al día antes de fusionar |
-| └ Checks requeridos | `typecheck`, `lint`, `test`, `build`, `aislamiento-tenants`, `secretos` | Ver `.github/workflows/ci.yml` |
-| **Require conversation resolution** | ✅ | Ningún comentario de revisión se queda sin respuesta |
-| **Require linear history** | ❌ | Usamos `merge --no-ff` a propósito: el commit de merge es la evidencia de la compuerta |
-| **Require signed commits** | Recomendado | Cuando el equipo tenga GPG configurado |
-| **Do not allow bypassing the above settings** | ✅ | **Incluye a los administradores** |
-| **Allow force pushes** | ❌ | Reescribir `main` rompe el repositorio de todos |
-| **Allow deletions** | ❌ | — |
-
----
+| **Require a pull request before merging** | Sí | Nada entra sin pasar por PR |
+| └ Required approvals | **0** | El control humano lo da el propietario de código, no un contador de aprobaciones |
+| └ Require review from Code Owners | **Sí** | Las rutas protegidas (`CODEOWNERS`: migraciones, RLS, cifrado, `.github/`, `infra/`, `scripts/`, dependencias, ADR…) esperan la aprobación del propietario |
+| └ Dismiss stale approvals on new commits | Sí | Una aprobación es de un código concreto |
+| └ Require approval of the most recent push | No | Con 0 aprobaciones requeridas no aporta |
+| **Require status checks to pass** | Sí, rama al día (`strict`) | Las compuertas, en servidor |
+| └ Checks requeridos (8) | `secretos`, `typecheck`, `lint`, `build`, `test`, `aislamiento-tenants`, `fronteras-entre-modulos`, `convencion-de-commits` | Ver `.github/workflows/ci.yml`. Los jobs informativos (p. ej. `auditoria-dependencias`) NO están en la lista |
+| **Require conversation resolution** | Sí | Ningún comentario de revisión se queda sin respuesta |
+| **Require linear history** | No | Se usa merge con commit a propósito: el commit de merge es la evidencia de la compuerta |
+| **Require signed commits** | No | Pendiente de que el equipo tenga firma configurada |
+| **Do not allow bypassing the above settings** (`enforce_admins`) | **Sí** | Incluye a los administradores |
+| **Allow force pushes / deletions** | No / No | Reescribir o borrar `main` rompe el repositorio de todos |
 
 ## La casilla que de verdad importa
 
-> **«Do not allow bypassing the above settings»** — incluir a los administradores.
+> **`enforce_admins`** — incluir a los administradores.
 
-Sin ella, el dueño del repositorio puede saltarse todo. Y la circunstancia en que alguien se salta
-una compuerta no es un martes tranquilo: es un viernes a las siete de la tarde con un cliente
-esperando. **Exactamente cuando más probable es el error caro.**
-
+Sin ella, el dueño del repositorio puede saltarse todo, y la circunstancia en que alguien se salta
+una compuerta no es un martes tranquilo sino un viernes a las siete con un cliente esperando.
 Si la protección no te incumbe a ti, no es una protección: es una sugerencia.
-
----
 
 ## Verificación
 
-Una vez configurada, comprobar que **falla** lo que debe fallar:
+Comprobar periódicamente que **falla** lo que debe fallar:
 
 ```bash
 # 1. Debe ser rechazado por el servidor
@@ -77,31 +55,27 @@ git commit --allow-empty -m "prueba: no debería entrar"
 git push origin main            # → rechazado: protected branch
 
 # 2. Un PR con CI en rojo no debe poder fusionarse
-# 3. Un PR sin aprobación no debe poder fusionarse
+# 3. Un PR que toca una ruta protegida sin aprobación del propietario no debe poder fusionarse
 ```
 
-Si cualquiera de las tres pasa, la protección no está bien puesta. **Una protección que no se ha
-probado no está configurada, está declarada.**
+Una protección que no se ha probado no está configurada, está declarada.
 
----
+## Cambiar la protección
 
-## Qué hacer en cuanto se desbloquee
+1. Editar `proteccion-main.json` (ruta protegida: la aprueba el propietario).
+2. Aplicarlo:
 
-Si se activa GitHub Pro (o el repositorio pasa a público), aplicar la configuración de arriba
-**el mismo día**. Se puede hacer desde la terminal:
+   ```bash
+   gh api -X PUT repos/system-technology/CRM/branches/main/protection \
+     --input .github/proteccion-main.json
+   ```
 
-```bash
-gh api -X PUT repos/Alfavear/CRM/branches/main/protection \
-  --input .github/proteccion-main.json
-```
+3. Releer con `gh api repos/system-technology/CRM/branches/main/protection` y comprobar que el
+   servidor coincide con el JSON. Si añades o quitas un check obligatorio, actualiza también
+   `ci.yml`, `docs/07-ingenieria/03-git.md` y la regla R11.
 
-Y después **probar que falla lo que debe fallar** — las tres comprobaciones de la sección anterior.
-Una protección sin probar está declarada, no configurada.
+## Qué la sostiene
 
-## Mientras tanto
-
-- Los hooks locales son toda la protección que hay. Son una barandilla, **no un muro**.
-- El agente `integrador` es la compuerta real, por procedimiento, no por mecanismo.
-- Funciona mientras el repositorio lo toque una sola persona con disciplina.
-  **Deja de funcionar el día que entre alguien más.**
-- **Riesgo asumido y registrado en `ESTADO.md`.**
+- **El servidor**: la protección de arriba. Ya no depende de la disciplina de una persona.
+- **Los hooks locales**: una barandilla contra el accidente, no seguridad.
+- **El agente `integrador` y el auto-merge**: las dos vías por las que un PR verde entra en `main`.

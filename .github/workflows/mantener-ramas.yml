@@ -26,10 +26,12 @@ jobs:
     if: vars.INTEGRADORA_APP_ID != ''
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    # Sin checkout y todo con el token de la app: el GITHUB_TOKEN del job no necesita nada.
+    permissions: {}
     steps:
       - name: Token de la app Integradora
         id: app
-        uses: actions/create-github-app-token@v3
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
         with:
           app-id: ${{ vars.INTEGRADORA_APP_ID }}
           private-key: ${{ secrets.INTEGRADORA_APP_KEY }}

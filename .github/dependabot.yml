@@ -1,8 +1,22 @@
 # Mantiene al dia los SHA de las acciones de GitHub (M1.5). Cada actualizacion llega como PR
 # semanal y se revisa; los SHA no se tocan a mano.
+#
+# npm (T-087): SOLO actualizaciones de seguridad. `open-pull-requests-limit: 0` apaga las de
+# version (sin ruido semanal); las de seguridad tienen su propio limite fijo en GitHub y se
+# agrupan en un solo PR. En un monorepo pnpm, un aviso que toque varios paquetes llega como uno.
 version: 2
 updates:
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
+
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 0
+    groups:
+      seguridad:
+        applies-to: security-updates
+        patterns: ['*']
