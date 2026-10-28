@@ -23,6 +23,7 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
+  Sparkles,
 } from 'lucide-react';
 import { CONFIGURACION_MODULOS, type ModuloViajaPro } from '../comun/iconos-modulos';
 import type { SesionActual } from '@viajapro/contracts';
@@ -835,8 +836,23 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
               )}
             </div>
 
-            {/* Acciones: Cerrar Sesión */}
-            <div className="mt-3">
+            {/* Acciones: Cerrar Sesión y Onboarding */}
+            <div className="mt-3 space-y-1">
+              <Link
+                href="/bienvenida"
+                onClick={() => setMenuSesionAbierto(false)}
+                data-testid="enlace-asistente-onboarding"
+                className="flex min-h-[44px] w-full items-center justify-between rounded-xl px-2.5 py-2 text-xs font-semibold text-neutral-700 transition hover:bg-neutral-100 dark:text-neutral-200 dark:hover:bg-neutral-800"
+              >
+                <span className="flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-amber-500" />
+                  <span>Asistente de Inicio</span>
+                </span>
+                <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                  T-105
+                </span>
+              </Link>
+
               {/* Interruptor explícito de Modo Demostración */}
               <div className="flex items-center justify-between border-t border-neutral-100 py-3 dark:border-neutral-800">
                 <div className="flex flex-col pr-2">

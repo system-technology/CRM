@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import {
   Calculator,
   Users,
@@ -15,6 +16,7 @@ import {
   Tag,
   FormInput,
   Zap,
+  Sparkles,
 } from 'lucide-react';
 import { BarraModulos } from '../../components/bandeja/barra-modulos';
 import { DistintivoDatosDemo } from '../../components/comun/distintivo-datos-demo';
@@ -109,7 +111,15 @@ export default function ConfiguracionPage() {
               </p>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
+              <Link
+                href="/bienvenida"
+                data-testid="btn-abrir-asistente-onboarding"
+                className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl border border-neutral-300 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-800 shadow-xs hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200"
+              >
+                <Sparkles className="h-4 w-4 text-amber-500" />
+                <span>Asistente de Inicio (T-105)</span>
+              </Link>
               <span className="flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400">
                 <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
                 WhatsApp Conectado
