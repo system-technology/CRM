@@ -77,10 +77,12 @@ export class ListarSalidasUseCase {
       const salidas: SalidaPublicada[] = [];
       for (const v of filas) {
         const tarifas = v.tarifas.map(aTarifaParaDesde);
-        // Una salida es una sola fecha y la consulta ya la acotó: sin filtro de «hoy». La
-        // contrato admite un solo «desde» por salida; con varias monedas sale la primera por código.
-        const [desde] = calcularDesde([{ activa: true, hasta: aFecha(v.desde), tarifas }], null);
+        // Una salida es una sola fecha y la consulta ya la acotó: sin filtro de «hoy». Hay un
+        // «desde» por moneda (nunca se mezclan); `desde` es el primero por código, por compatibilidad.
+        const porMoneda = calcularDesde([{ activa: true, hasta: aFecha(v.desde), tarifas }], null);
+        const [desde] = porMoneda;
         if (!desde) continue;
+        const presentaciones = porMoneda.map((d) => presentarDesde(d, hoy, politicaPromo));
         salidas.push({
           vigenciaId: v.id,
           paqueteId: v.paquete.id,
@@ -90,8 +92,13 @@ export class ListarSalidasUseCase {
           fecha: aFecha(v.desde),
           cupoTotal: v.cupoTotal,
           desde: { unidades: desde.precio.unidades.toString(), moneda: desde.precio.moneda },
+          desdePorMoneda: porMoneda.map((d) => ({
+            unidades: d.precio.unidades.toString(),
+            moneda: d.precio.moneda,
+          })),
           presentacion: presentarDesde(desde, hoy, politicaPromo),
-          desdeEsDeGrupo: desde.esDeGrupo,
+          presentacionPorMoneda: presentaciones,
+          desdeEsDeGrupo: porMoneda.some((d) => d.esDeGrupo),
           tarifas: tarifas.filter(esTarifaBase).length,
         });
       }

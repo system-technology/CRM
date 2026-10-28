@@ -585,7 +585,7 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: blocked
+    status: backlog
     depends_on: []
     acceptance:
       - Configuración › Catálogo ofrece el ajuste promo_vencida con los valores ocultar y tachar, guardado por
@@ -597,15 +597,13 @@ tasks:
       - apps/web/src/components/catalogo/
     source: orquestador:2026-10-26 (cola de Antigravity)
     created_at: 2026-10-26T21:39:01.014Z
-    blocked_reason: Espera el ADR-0017 aceptado y sus endpoints en la API (carril backend); Antigravity pide lo
-      que falte en traspaso/ENTREGA.md
   - id: T-029
     title: "Asistente de importación de catálogo: subir archivo, previsualizar, ver errores por fila y confirmar"
     type: feature
     phase: 1
     priority: P1
     effort: M
-    status: blocked
+    status: backlog
     depends_on: []
     acceptance:
       - El asistente tiene cuatro pasos (archivo, mapeo de columnas, previsualización con errores por fila,
@@ -617,15 +615,13 @@ tasks:
       - apps/web/src/components/catalogo/
     source: orquestador:2026-10-26 (cola de Antigravity)
     created_at: 2026-10-26T21:39:01.014Z
-    blocked_reason: Espera el ADR-0017 aceptado y sus endpoints en la API (carril backend); Antigravity pide lo
-      que falte en traspaso/ENTREGA.md
   - id: T-030
     title: Descarga de plantillas CSV y Excel por tipo de producto
     type: feature
     phase: 1
     priority: P1
     effort: M
-    status: blocked
+    status: backlog
     depends_on: []
     acceptance:
       - Una pantalla lista las plantillas por tipo de producto (excursión de un día, paquete con hotel) y
@@ -637,15 +633,13 @@ tasks:
       - apps/web/src/components/catalogo/
     source: orquestador:2026-10-26 (cola de Antigravity)
     created_at: 2026-10-26T21:39:01.014Z
-    blocked_reason: Espera el ADR-0017 aceptado y sus endpoints en la API (carril backend); Antigravity pide lo
-      que falte en traspaso/ENTREGA.md
   - id: T-031
     title: "Pantalla de gestión del catálogo: crear, editar y desactivar productos, tarifas y salidas"
     type: feature
     phase: 1
     priority: P1
     effort: M
-    status: blocked
+    status: backlog
     depends_on: []
     acceptance:
       - Formularios con validación contra los contratos Zod y errores por campo en español
@@ -656,15 +650,13 @@ tasks:
       - apps/web/src/components/catalogo/
     source: orquestador:2026-10-26 (cola de Antigravity)
     created_at: 2026-10-26T21:39:01.014Z
-    blocked_reason: Espera el ADR-0017 aceptado y sus endpoints en la API (carril backend); Antigravity pide lo
-      que falte en traspaso/ENTREGA.md
   - id: T-032
     title: "Sistema visual de turismo: paleta caribeña, degradados, iconografía por módulo y componentes base"
     type: feature
     phase: 1
     priority: P0
     effort: M
-    status: backlog
+    status: done
     depends_on: []
     acceptance:
       - Los tokens de color, degradado, sombra y radio salen de un único sitio (globals.css y la configuración
@@ -682,6 +674,11 @@ tasks:
       - apps/web/src/app/layout.tsx
     source: propietario:2026-10-26 (identidad visual)
     created_at: 2026-10-26T23:32:24.203Z
+    started_at: 2026-10-28T02:22:52.487Z
+    done_at: 2026-10-28T02:22:52.487Z
+    evidence: "Mergeado en main por el PR #101 (rama b/T-032-sistema-visual-turismo) con el CI en verde: format,
+      analyze, tests y los demás checks obligatorios. Cierre automático (.github/workflows/cerrar-tarea.yml)."
+    commit: 81e094512d6dc257d6a0cd6e7230f3760dd90289
   - id: T-033
     title: "Login con identidad de viaje: pantalla dividida con héroe oceánico animado y formulario con
       microinteracciones"
@@ -1635,7 +1632,7 @@ tasks:
     phase: 1
     priority: P2
     effort: S
-    status: backlog
+    status: done
     depends_on: []
     acceptance:
       - Cambiar la moneda de la venta sin el permiso cotizacion.ver_neto_y_margen rechaza el cambio o
@@ -1646,6 +1643,11 @@ tasks:
       - apps/api/src/modules/quoting/infrastructure/
     source: hallazgos de la tanda 2026-10-26
     created_at: 2026-10-27T01:51:03.950Z
+    started_at: 2026-10-28T01:50:06.840Z
+    done_at: 2026-10-28T01:50:06.840Z
+    evidence: "Mergeado en main por el PR #98 (rama a/T-064-hallazgos-del-catalogo) con el CI en verde: format,
+      analyze, tests y los demás checks obligatorios. Cierre automático (.github/workflows/cerrar-tarea.yml)."
+    commit: 4d4653c4f51196e83388736ae6c4beae5b3320ee
   - id: T-065
     title: "Catálogo: el validador no detecta cambios solo en opciones de salida, cargos o formato; PATCH no puede
       poner el plan de alimentación en nulo; validar la moneda contra la tabla"
@@ -1690,7 +1692,7 @@ tasks:
     phase: 1
     priority: P2
     effort: S
-    status: backlog
+    status: done
     depends_on: []
     acceptance:
       - aislamiento.spec.ts comprueba, para vigencias, tarifas y politicas_de_precio, que la lectura y la
@@ -1701,6 +1703,11 @@ tasks:
       - packages/database/tests/aislamiento.spec.ts
     source: hallazgos de la tanda 2026-10-26
     created_at: 2026-10-27T01:51:03.950Z
+    started_at: 2026-10-28T02:30:36.234Z
+    done_at: 2026-10-28T02:30:36.235Z
+    evidence: "Mergeado en main por el PR #95 (rama a/T-067-aislamiento-de-vigencias) con el CI en verde: format,
+      analyze, tests y los demás checks obligatorios. Cierre automático (.github/workflows/cerrar-tarea.yml)."
+    commit: 9454ba1f523ec83fb1cbd66320d53882b11c1fac
   - id: T-068
     title: "Limitador de tasa: límite combinado tenant+IP, límites distintos por endpoint y prueba e2e contra
       Redis real"
@@ -1795,3 +1802,482 @@ tasks:
       - docs/03-adr/
     source: hallazgos de la tanda 2026-10-26
     created_at: 2026-10-27T01:51:03.951Z
+  - id: T-073
+    title: Enviar la cotización por WhatsApp como texto con formato desde la conversación (API)
+    type: feature
+    phase: 1
+    priority: P0
+    effort: M
+    status: backlog
+    depends_on: []
+    acceptance:
+      - POST que arma el texto (producto, fecha, pasajeros, total, no incluido) desde una versión de
+        cotización y lo encola por el outbox existente, idempotente (R5)
+      - "Respeta la ventana de 24 h: fuera de ella responde error tipado, no envía"
+      - Tests unitarios y e2e; sin PII en logs
+    files:
+      - apps/api/src/modules/inbox/
+      - apps/api/src/modules/quoting/
+    source: ruta a la fase 1 (roadmap v3) 2026-10-27
+    created_at: 2026-10-28T01:47:57.806Z
+  - id: T-074
+    title: Botón «Enviar cotización» en la conversación de la bandeja
+    type: feature
+    phase: 1
+    priority: P0
+    effort: S
+    status: backlog
+    depends_on:
+      - T-073
+    acceptance:
+      - Desde una conversación se elige una cotización guardada, se ve la vista previa del texto y se envía;
+        estados enviando, enviado y fallido
+      - Tests de componente; usable a 375 px
+    files:
+      - apps/web/src/app/bandeja/
+    source: ruta a la fase 1 (roadmap v3) 2026-10-27
+    created_at: 2026-10-28T01:47:57.807Z
+  - id: T-075
+    title: Alta y edición de contacto y crear oportunidad desde la conversación (API)
+    type: feature
+    phase: 1
+    priority: P0
+    effort: M
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Endpoints para crear y editar contacto con teléfono E.164 y para crear oportunidad ligada a la
+        conversación, con RLS y contratos Zod
+      - Tests e2e; PII de viajeros tratada según R10
+    files:
+      - apps/api/src/modules/crm/
+    source: ruta a la fase 1 (roadmap v3) 2026-10-27
+    created_at: 2026-10-28T01:47:57.807Z
+  - id: T-076
+    title: Pantalla de contacto y botón «Crear oportunidad» en la conversación
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Se puede completar el contacto y abrir una oportunidad en la etapa inicial desde la bandeja
+      - Tests de componente
+    files:
+      - apps/web/src/app/bandeja/
+      - apps/web/src/app/contactos/
+    source: ruta a la fase 1 (roadmap v3) 2026-10-27
+    created_at: 2026-10-28T01:47:57.807Z
+  - id: T-077
+    title: Seguimientos con fecha sobre oportunidad o conversación (API) e inicio del asesor con pendientes
+    type: feature
+    phase: 1
+    priority: P0
+    effort: M
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Crear, listar y completar seguimientos con fecha, por asesor, con RLS
+      - Endpoint de pendientes del día que alimenta T-020
+      - Tests e2e
+    files:
+      - apps/api/src/modules/crm/
+    source: ruta a la fase 1 (roadmap v3) 2026-10-27
+    created_at: 2026-10-28T01:47:57.807Z
+  - id: T-078
+    title: Plantilla de reapertura fuera de la ventana de 24 h y respuestas rápidas
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: blocked
+    depends_on: []
+    acceptance:
+      - Envío de una plantilla aprobada cuando la ventana está cerrada, por el mismo outbox idempotente
+      - Respuestas rápidas por agencia (tabla con tenant_id y RLS)
+      - Documenta el estado de aprobación en Meta
+    files:
+      - apps/api/src/modules/inbox/
+    source: ruta a la fase 1 (roadmap v3) 2026-10-27
+    created_at: 2026-10-28T01:47:57.807Z
+    blocked_reason: La plantilla debe someterse a aprobación de Meta con la cuenta del propietario; el tiempo de
+      aprobación no está verificado
+  - id: T-079
+    title: "Redis y trabajador en staging: que los mensajes recibidos se conviertan en conversaciones"
+    type: feature
+    phase: 1
+    priority: P0
+    effort: M
+    status: blocked
+    depends_on: []
+    acceptance:
+      - Servicio Redis y proceso consumidor activos en el entorno de staging con COLA_CHANGES real
+      - Un mensaje de la app de prueba de Meta aparece como conversación en la bandeja
+      - Runbook en docs/
+    files:
+      - render.yaml
+      - infra/
+    source: ruta a la fase 1 (roadmap v3) 2026-10-27
+    created_at: 2026-10-28T01:47:57.807Z
+    blocked_reason: Requiere el despliegue en Render y la cuenta del propietario (M5.1); render.yaml e infra/ son
+      rutas protegidas
+  - id: T-080
+    title: Iniciar la verificación del negocio en Meta y la solicitud de Tech Provider
+    type: docs
+    phase: 1
+    priority: P0
+    effort: S
+    status: blocked
+    depends_on: []
+    acceptance:
+      - Verificación del negocio enviada en Meta con la documentación de la agencia o de la empresa
+      - Fecha de solicitud registrada en ESTADO.md
+    files:
+      - docs/04-integraciones/
+    source: ruta a la fase 1 (roadmap v3) 2026-10-27
+    created_at: 2026-10-28T01:47:57.807Z
+    blocked_reason: "Solo el propietario puede hacerla: exige documentos legales de la empresa y su cuenta de
+      Meta; tarda semanas"
+  - id: T-081
+    title: "Ensayo de la jornada piloto: 20 conversaciones, 5 cotizaciones recibidas, seguimientos y sin abrir el
+      WhatsApp del celular"
+    type: test
+    phase: 1
+    priority: P0
+    effort: M
+    status: blocked
+    depends_on:
+      - T-073
+      - T-074
+    acceptance:
+      - Con el número de prueba de Meta en staging, personal de la agencia atiende 20 conversaciones simuladas
+        y envía 5 cotizaciones que llegan a un teléfono
+      - Cada conversación sin cerrar termina con un seguimiento fechado
+      - Resultado y fallos registrados en docs/_bitacora/
+    files:
+      - docs/_bitacora/
+    source: ruta a la fase 1 (roadmap v3) 2026-10-27
+    created_at: 2026-10-28T01:47:57.807Z
+    blocked_reason: Depende de Redis y trabajador en staging y del número de prueba de Meta con el propietario presente
+  - id: T-082
+    title: "Migración: tabla seguimientos con RLS para varios seguimientos por oportunidad y por conversación
+      (T-077)"
+    type: feature
+    phase: 1
+    priority: P0
+    effort: M
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Tabla seguimientos con tenant_id, RLS USING y WITH CHECK, FK compuestas, CHECK de exactamente una de
+        oportunidad_id o conversacion_id e índice parcial de pendientes por asesor
+      - Aserciones en aislamiento.spec.ts; adaptador Prisma de PuertoSeguimientos que sustituye al provisional
+        en crm.module.ts
+    files:
+      - packages/database/prisma/
+      - apps/api/src/modules/crm/
+    source: auditoria de ciberseguridad 2026-10-28
+    created_at: 2026-10-28T02:09:17.389Z
+  - id: T-083
+    title: "Corregir .github/proteccion-main.json: la copia dice require_code_owner_reviews false y el servidor lo
+      tiene en true"
+    type: security
+    phase: 1
+    priority: P1
+    effort: S
+    status: blocked
+    depends_on: []
+    acceptance:
+      - El JSON refleja la protección real del servidor (gh api .../branches/main/protection) y ESTADO.md deja
+        de contradecirlo
+    files:
+      - .github/proteccion-main.json
+      - .github/PROTECCION-DE-RAMA.md
+    source: auditoria de ciberseguridad 2026-10-28
+    created_at: 2026-10-28T02:09:17.390Z
+    blocked_reason: Toca .github/, que exige la aprobación del propietario por CODEOWNERS
+  - id: T-084
+    title: "MCP postgres de los agentes: rol de solo lectura sin BYPASSRLS y versión fija; quitar @latest de
+      .mcp.json"
+    type: security
+    phase: 1
+    priority: P1
+    effort: S
+    status: blocked
+    depends_on: []
+    acceptance:
+      - .mcp.json usa un rol de solo SELECT que no salta RLS (migración del rol por datos) y paquetes con
+        versión exacta
+    files:
+      - .mcp.json
+      - packages/database/prisma/
+    source: auditoria de ciberseguridad 2026-10-28
+    created_at: 2026-10-28T02:09:17.390Z
+    blocked_reason: Requiere crear un rol de base de datos (migración) y tocar .mcp.json; aprobación del propietario
+  - id: T-085
+    title: "Workflows con la App Integradora: acciones fijadas por SHA, persist-credentials false y npm ci
+      --ignore-scripts"
+    type: security
+    phase: 1
+    priority: P1
+    effort: S
+    status: blocked
+    depends_on: []
+    acceptance:
+      - cerrar-tarea.yml, mantener-ramas.yml y ownership.yml fijan create-github-app-token, checkout y
+        setup-node por SHA, sin persistir credenciales
+    files:
+      - .github/workflows/
+    source: auditoria de ciberseguridad 2026-10-28
+    created_at: 2026-10-28T02:09:17.390Z
+    blocked_reason: Toca .github/, que exige la aprobación del propietario por CODEOWNERS
+  - id: T-086
+    title: "Verificar los SHA de los PR de Dependabot #11 a #13 y probar pnpm/action-setup v6 antes de integrarlos"
+    type: security
+    phase: 1
+    priority: P1
+    effort: S
+    status: blocked
+    depends_on: []
+    acceptance:
+      - Cada SHA coincide con la etiqueta oficial (gh api repos/<org>/<action>/git/ref/tags/<tag>) y el CI
+        pasa con pnpm/action-setup v6
+    files:
+      - .github/workflows/
+    source: auditoria de ciberseguridad 2026-10-28
+    created_at: 2026-10-28T02:09:17.390Z
+    blocked_reason: Toca .github/, que exige la aprobación del propietario por CODEOWNERS
+  - id: T-087
+    title: Dependabot para npm (solo seguridad) y job no obligatorio pnpm audit --prod
+    type: security
+    phase: 1
+    priority: P2
+    effort: S
+    status: blocked
+    depends_on: []
+    acceptance:
+      - dependabot.yml cubre el ecosistema npm con grupos de seguridad y el CI informa de vulnerabilidades
+        altas
+    files:
+      - .github/dependabot.yml
+      - .github/workflows/ci.yml
+    source: auditoria de ciberseguridad 2026-10-28
+    created_at: 2026-10-28T02:09:17.390Z
+    blocked_reason: Toca .github/, que exige la aprobación del propietario por CODEOWNERS
+  - id: T-088
+    title: "Prueba de humo en staging: req.ip detrás del rewrite de Next y valor de API_TRUST_PROXY"
+    type: security
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Dos clientes distintos producen dos IP distintas en la API y el valor queda documentado
+    files:
+      - apps/api/src/shared/red/
+      - render.yaml
+    source: auditoria de ciberseguridad 2026-10-28
+    created_at: 2026-10-28T02:09:17.390Z
+  - id: T-089
+    title: Permisos de mutación en bandeja, CRM y cotizaciones, rol SOLO_LECTURA y matriz en 04-rbac.md
+    type: security
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Cada mutación lleva @RequierePermiso, existe el rol sembrado SOLO_LECTURA y hay pruebas 403 por ruta
+    files:
+      - apps/api/src/modules/inbox/
+      - apps/api/src/modules/crm/
+      - apps/api/src/modules/quoting/
+      - docs/05-seguridad/04-rbac.md
+    source: auditoria de ciberseguridad 2026-10-28
+    created_at: 2026-10-28T02:09:17.390Z
+  - id: T-090
+    title: ADR de PII en mensajes.texto y contactos.preferencias, con supresión, exportación por titular y
+      retención (antes de la agencia piloto)
+    type: security
+    phase: 1
+    priority: P1
+    effort: L
+    status: blocked
+    depends_on: []
+    acceptance:
+      - ADR que decide cifrado o tokenización de documentos detectados en mensajes; caso de uso de supresión y
+        exportación por contacto, auditado; plazo de retención por agencia
+    files:
+      - docs/03-adr/
+      - apps/api/src/modules/crm/
+    source: auditoria de ciberseguridad 2026-10-28
+    created_at: 2026-10-28T02:09:17.390Z
+    blocked_reason: "Es un ADR (ruta protegida) y decide cifrado y plazos legales: requiere al propietario y revisión legal"
+  - id: T-091
+    title: ParseUUIDPipe en GET /paquetes/:id y validación de paqueteId en /catalogo/salidas
+    type: bug
+    phase: 1
+    priority: P3
+    effort: S
+    status: done
+    depends_on: []
+    acceptance:
+      - Un id que no es UUID responde 400 y no 500 con traza
+    files:
+      - apps/api/src/modules/quoting/interface/
+    source: auditoria de ciberseguridad 2026-10-28
+    created_at: 2026-10-28T02:09:17.390Z
+    started_at: 2026-10-28T02:43:17.311Z
+    done_at: 2026-10-28T02:43:17.311Z
+    evidence: "Mergeado en main por el PR #117 (rama a/T-091-endurecimiento-de-la-api) con el CI en verde: format,
+      analyze, tests y los demás checks obligatorios. Cierre automático (.github/workflows/cerrar-tarea.yml)."
+    commit: 591f7aaa79b68a06f94b58040d9947656689de8b
+  - id: T-092
+    title: Token de invitación en el fragmento de la URL y cabeceras HSTS y Permissions-Policy en la web
+    type: security
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: []
+    acceptance:
+      - El token no llega a los logs de acceso; la web emite HSTS y una Permissions-Policy mínima
+    files:
+      - apps/api/src/modules/identity/
+      - apps/web/next.config.mjs
+    source: auditoria de ciberseguridad 2026-10-28
+    created_at: 2026-10-28T02:09:17.390Z
+  - id: T-093
+    title: "Aviso de privacidad y política de tratamiento de datos personales (Ley 1581): borrador publicable por
+      agencia y por ViajaPro"
+    type: docs
+    phase: 1
+    priority: P0
+    effort: M
+    status: blocked
+    depends_on: []
+    acceptance:
+      - Documento con responsable y encargado, finalidades, derechos del titular (conocer, actualizar,
+        rectificar, suprimir, revocar), canal de reclamos y plazos legales
+      - Publicado como páginas /privacidad y /terminos en apps/web
+      - Distingue ViajaPro (encargado) de cada agencia (responsable)
+    files:
+      - docs/05-seguridad/
+      - apps/web/src/app/privacidad/
+    source: ruta de seguridad y privacidad 2026-10-28
+    created_at: 2026-10-28T02:16:36.573Z
+    blocked_reason: Requiere revisión legal (Ley 1581 de 2012 y Decreto 1377 de 2013) y decisión del propietario
+      sobre el texto y los plazos
+  - id: T-094
+    title: Inventario de cookies y almacenamiento del navegador, y política de cookies
+    type: docs
+    phase: 1
+    priority: P1
+    effort: S
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Lista de cada cookie y entrada de localStorage de apps/web y apps/api con finalidad, duración y
+        categoría (estrictamente necesaria o no)
+      - Política de cookies enlazada desde el pie de la web
+    files:
+      - docs/05-seguridad/
+      - apps/web/src/
+    source: ruta de seguridad y privacidad 2026-10-28
+    created_at: 2026-10-28T02:16:36.574Z
+  - id: T-095
+    title: "Banner de consentimiento de cookies: solo lo no esencial, con aceptar, rechazar y configurar, y
+      registro de la decisión"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Las cookies esenciales (sesión, CSRF) no piden consentimiento; cualquier analítica o terceros queda
+        bloqueada hasta aceptar
+      - La decisión se guarda y se puede cambiar desde un enlace «Preferencias de cookies»
+      - Accesible, usable a 375 px, con tests
+    files:
+      - apps/web/src/components/privacidad/
+      - apps/web/src/app/layout.tsx
+    source: ruta de seguridad y privacidad 2026-10-28
+    created_at: 2026-10-28T02:16:36.574Z
+  - id: T-096
+    title: "Consentimiento del viajero: capturar y registrar la autorización de tratamiento de datos en la
+      conversación y el contacto"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on: []
+    acceptance:
+      - ConsentimientoContacto se registra con canal, finalidad, fecha y texto mostrado; se solicita en el
+        primer contacto por WhatsApp según la plantilla
+      - Revocar el consentimiento detiene los envíos de la finalidad afectada
+      - Tests e2e; sin PII en logs
+    files:
+      - apps/api/src/modules/crm/
+      - apps/api/src/modules/inbox/
+    source: ruta de seguridad y privacidad 2026-10-28
+    created_at: 2026-10-28T02:16:36.574Z
+  - id: T-097
+    title: "Derechos del titular: exportar y suprimir los datos de un contacto, auditado, con respuesta en los
+      plazos legales"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: L
+    status: blocked
+    depends_on: []
+    acceptance:
+      - Casos de uso de exportación y supresión por contacto que recorren Postgres, colas y caché (C5), con
+        registro de auditoría sin datos personales
+      - Pantalla del asesor para atender la solicitud y fecha límite visible
+      - Prueba que verifica cero rastros tras la supresión
+    files:
+      - apps/api/src/modules/crm/
+      - apps/web/src/app/contactos/
+    source: ruta de seguridad y privacidad 2026-10-28
+    created_at: 2026-10-28T02:16:36.574Z
+    blocked_reason: Depende del ADR de PII (T-090) y de la revisión legal de plazos de retención
+  - id: T-098
+    title: Registro Nacional de Bases de Datos (RNBD) ante la SIC y contrato de encargo del tratamiento con cada
+      agencia
+    type: docs
+    phase: 1
+    priority: P1
+    effort: M
+    status: blocked
+    depends_on: []
+    acceptance:
+      - Estado de la obligación de registro verificado por un abogado y, si aplica, registro presentado
+      - Plantilla de contrato de encargo con plazos de incidente, devolución y supresión
+    files:
+      - docs/05-seguridad/
+    source: ruta de seguridad y privacidad 2026-10-28
+    created_at: 2026-10-28T02:16:36.574Z
+    blocked_reason: Requiere revisión legal (Ley 1581 de 2012 y Decreto 1377 de 2013) y decisión del propietario
+      sobre el texto y los plazos
+  - id: T-099
+    title: "Mínima exposición de PII: no mostrar ni registrar teléfonos y documentos completos en logs, auditoría
+      ni errores"
+    type: security
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Revisión y prueba de que logs, auditoría y respuestas de error no contienen teléfono completo,
+        pasaporte ni fecha de nacimiento
+      - Enmascarado de teléfono en pantallas donde el rol no lo necesite
+    files:
+      - apps/api/src/shared/
+      - apps/web/src/
+    source: ruta de seguridad y privacidad 2026-10-28
+    created_at: 2026-10-28T02:16:36.574Z
