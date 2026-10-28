@@ -13,7 +13,7 @@ import {
   inferirTipoProducto,
   type TipoProductoTurismo,
 } from '../../lib/catalogo-logica';
-import { formatearDinero } from '../../lib/api';
+import { formatearDinero, formatearFecha } from '../../lib/formato';
 import { obtenerClaseEscalonada } from '../comun/animaciones';
 import {
   ChipTipoProducto,
@@ -45,22 +45,9 @@ export function TarjetaSalidaPublicada({
   onVerFicha,
   onCotizar,
 }: TarjetaSalidaPublicadaProps) {
-  // Formatear fecha amigable para Colombia (ej: Sábado, 3 de octubre de 2026)
-  const fechaObj = new Date(salida.fecha + 'T12:00:00Z');
-  const fechaTexto = new Intl.DateTimeFormat('es-CO', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-    timeZone: 'UTC',
-  }).format(fechaObj);
-
-  const fechaTextoCorta = new Intl.DateTimeFormat('es-CO', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-    timeZone: 'UTC',
-  }).format(fechaObj);
+  // Formatear fecha amigable para Colombia con helper único (T-022)
+  const fechaTexto = formatearFecha(salida.fecha);
+  const fechaTextoCorta = formatearFecha(salida.fecha, { estilo: 'dia-mes' });
 
   const nochesTxt = formatearNochesLabel(salida.noches);
   const condicionDesde = formatearCondicionDesde(salida);
