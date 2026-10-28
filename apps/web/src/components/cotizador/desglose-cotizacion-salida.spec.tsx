@@ -126,3 +126,53 @@ describe('DesgloseCotizacionSalida — Excursiones y Pasadías (Bloque 2)', () =
     expect(btnGuardar.className).toContain('min-h-[44px]');
   });
 });
+
+describe('DesgloseCotizacionSalida — cargos en destino (T-063)', () => {
+  const base = {
+    paqueteId: '01932000-0000-7000-8000-000000000010',
+    paqueteNombre: 'Isla Palma',
+    destino: 'Cartagena',
+    noches: 0,
+    pideComposicion: true,
+    total: { unidades: '520000', moneda: 'COP' },
+    lineas: [],
+    alternativas: [],
+    noAplicables: [],
+    suplementos: [],
+  } as unknown as CotizacionDeSalida;
+
+  it('muestra los cargos aparte con «No incluido» y no los suma al total', () => {
+    const conCargos: CotizacionDeSalida = {
+      ...base,
+      cargosEnDestino: [
+        {
+          concepto: 'Tasa portuaria',
+          monto: { unidades: '30000', moneda: 'COP' },
+          unidad: 'POR_PERSONA',
+        },
+        { concepto: 'Impuesto de muelle', monto: null, unidad: 'POR_GRUPO' },
+      ],
+    };
+    render(
+      <DesgloseCotizacionSalida
+        cotizacion={conCargos}
+        copiado={false}
+        alCopiarWhatsApp={vi.fn()}
+      />,
+    );
+    const bloque = screen.getByTestId('cargos-en-destino');
+    expect(bloque.textContent).toContain('No incluido');
+    expect(bloque.textContent).toContain('Tasa portuaria');
+    expect(bloque.textContent).toContain('Monto por confirmar');
+    // El total sigue siendo el de la API (520.000), sin los 30.000 del cargo.
+    expect(screen.getAllByText(/520\.000/).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/550\.000/)).toBeNull();
+  });
+
+  it('sin cargos no pinta el bloque', () => {
+    render(
+      <DesgloseCotizacionSalida cotizacion={base} copiado={false} alCopiarWhatsApp={vi.fn()} />,
+    );
+    expect(screen.queryByTestId('cargos-en-destino')).toBeNull();
+  });
+});

@@ -14,6 +14,8 @@ import {
   type CotizacionDeSalida,
   type CotizarSalida,
   type SalidaPublicada,
+  type Paquete,
+  Paquete as EsquemaPaquete,
   CotizacionDeSalida as EsquemaCotizacionDeSalida,
   SalidaPublicada as EsquemaSalidaPublicada,
   ErrorApi as EsquemaError,
@@ -134,4 +136,22 @@ export async function cotizarSalidaApi(
     body: JSON.stringify(peticion),
   });
   return EsquemaCotizacionDeSalida.parse(bruto);
+}
+
+/** Opción de salida de un producto, tal como la define el contrato `Paquete` (R3). */
+export type OpcionDeSalidaDePaquete = NonNullable<Paquete['opcionesDeSalida']>[number];
+
+const EsquemaOpcionesDePaquete = z.object({
+  opcionesDeSalida: EsquemaPaquete.shape.opcionesDeSalida,
+});
+
+/**
+ * Opciones de salida de un producto (turno, modalidad).
+ * GET /api/v1/paquetes/:id — el detalle trae `opcionesDeSalida`. Vacío si el producto no tiene.
+ */
+export async function obtenerOpcionesDeSalidaApi(
+  paqueteId: string,
+): Promise<OpcionDeSalidaDePaquete[]> {
+  const bruto = await pedirCatalogo<unknown>(`/api/v1/paquetes/${encodeURIComponent(paqueteId)}`);
+  return EsquemaOpcionesDePaquete.parse(bruto).opcionesDeSalida ?? [];
 }
