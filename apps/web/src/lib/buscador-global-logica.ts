@@ -9,9 +9,16 @@ import { obtenerMockPaginaContactos } from './mock-contactos';
 import { obtenerMockTableroPipeline } from './mock-pipeline';
 import { MOCK_ARCHIVOS_VIAJE } from './mock-viajes';
 import { MOCK_PAQUETES_CATALOGO } from './mock-catalogo';
+import { MOCK_COTIZACIONES_INICIALES } from './mock-cotizaciones';
 
 export type CategoriaBusqueda =
-  'conversaciones' | 'contactos' | 'oportunidades' | 'viajes' | 'catalogo' | 'acciones';
+  | 'acciones'
+  | 'conversaciones'
+  | 'contactos'
+  | 'cotizaciones'
+  | 'oportunidades'
+  | 'viajes'
+  | 'catalogo';
 
 export interface ResultadoBusqueda {
   id: string;
@@ -101,7 +108,7 @@ export function normalizarTexto(texto: string): string {
 }
 
 /**
- * Genera el índice unificado en memoria para el buscador global.
+ * Genera el índice unificado en memoria para el buscador global y paleta de comandos.
  */
 export function construirIndiceGlobal(): ResultadoBusqueda[] {
   const items: ResultadoBusqueda[] = [];
@@ -134,7 +141,22 @@ export function construirIndiceGlobal(): ResultadoBusqueda[] {
     });
   }
 
-  // 4. Oportunidades del Pipeline (TableroPipeline.columnas)
+  // 4. Cotizaciones
+  for (const cot of MOCK_COTIZACIONES_INICIALES) {
+    const ult = cot.versiones[cot.versiones.length - 1];
+    const valor = ult?.venta ? Number(ult.venta.unidades).toLocaleString('es-CO') : '0';
+    const moneda = ult?.venta?.moneda || 'COP';
+    items.push({
+      id: `cot-${cot.id}`,
+      categoria: 'cotizaciones',
+      titulo: cot.titulo || `Cotización #${cot.id.slice(0, 8)}`,
+      subtitulo: `${ult?.paqueteNombre || 'Tour personalizado'} · $${valor} ${moneda}`,
+      href: `/cotizaciones/${cot.id}`,
+      etiquetaExtra: cot.estado,
+    });
+  }
+
+  // 5. Oportunidades del Pipeline (TableroPipeline.columnas)
   const tablero = obtenerMockTableroPipeline();
   const oportunidades = tablero.columnas.flatMap((col) => col.oportunidades);
   for (const op of oportunidades) {
@@ -152,7 +174,7 @@ export function construirIndiceGlobal(): ResultadoBusqueda[] {
     });
   }
 
-  // 5. Archivos de Viaje (TravelFiles)
+  // 6. Archivos de Viaje (TravelFiles)
   for (const v of MOCK_ARCHIVOS_VIAJE) {
     items.push({
       id: `viaje-${v.id}`,
@@ -164,7 +186,7 @@ export function construirIndiceGlobal(): ResultadoBusqueda[] {
     });
   }
 
-  // 6. Catálogo de Paquetes
+  // 7. Catálogo de Paquetes
   for (const p of MOCK_PAQUETES_CATALOGO) {
     items.push({
       id: `paq-${p.id}`,
@@ -180,17 +202,19 @@ export function construirIndiceGlobal(): ResultadoBusqueda[] {
 }
 
 /**
- * Ejecuta búsqueda omnicanal agrupada por categoría con límite configurable.
+ * Ejecuta búsqueda omnicanal agrupada por categoría con límite configurable y filtro opcional.
  */
 export function buscarEnIndiceGlobal(
   query: string,
   indice: ResultadoBusqueda[] = construirIndiceGlobal(),
   limitePorCategoria = 4,
+  filtroCategoria?: CategoriaBusqueda | 'todos',
 ): Record<CategoriaBusqueda, ResultadoBusqueda[]> {
   const vacio: Record<CategoriaBusqueda, ResultadoBusqueda[]> = {
     acciones: [],
     conversaciones: [],
     contactos: [],
+    cotizaciones: [],
     oportunidades: [],
     viajes: [],
     catalogo: [],
@@ -198,20 +222,34 @@ export function buscarEnIndiceGlobal(
 
   const qLimpia = normalizarTexto(query);
   if (!qLimpia) {
-    vacio.acciones = ACCIONES_RAPIDAS.slice(0, 6);
+    if (filtroCategoria && filtroCategoria !== 'todos') {
+      vacio[filtroCategoria] = indice
+        .filter((item) => item.categoria === filtroCategoria)
+        .slice(0, limitePorCategoria * 2);
+    } else {
+      vacio.acciones = ACCIONES_RAPIDAS.slice(0, 6);
+    }
     return vacio;
   }
 
   const palabras = qLimpia.split(/\s+/).filter(Boolean);
 
   for (const item of indice) {
+    if (filtroCategoria && filtroCategoria !== 'todos' && item.categoria !== filtroCategoria) {
+      continue;
+    }
+
     const textoAlineado = normalizarTexto(
       `${item.titulo} ${item.subtitulo} ${item.etiquetaExtra || ''}`,
     );
 
     const coincide = palabras.every((palabra) => textoAlineado.includes(palabra));
     if (coincide) {
-      if (vacio[item.categoria].length < limitePorCategoria) {
+      const limite =
+        filtroCategoria && filtroCategoria !== 'todos'
+          ? limitePorCategoria * 3
+          : limitePorCategoria;
+      if (vacio[item.categoria].length < limite) {
         vacio[item.categoria].push(item);
       }
     }
