@@ -17,12 +17,18 @@ import {
   MoverOportunidad,
   Oportunidad,
   PaginaContactos,
+  PendientesDelDia,
+  Seguimiento,
   TableroPipeline,
   ErrorApi as EsquemaError,
 } from '@viajapro/contracts';
 import { obtenerMockTableroPipeline } from './mock-pipeline';
 import { moverOportunidadEnTablero } from './pipeline-logica';
-import { obtenerMockFichaDeContacto } from './mock-crm';
+import {
+  obtenerMockFichaDeContacto,
+  obtenerMockPendientesDelDia,
+  completarMockSeguimiento,
+} from './mock-crm';
 import { obtenerMockPaginaContactos } from './mock-contactos';
 
 // Re-exportado de api-base (ADR-0011 §2)
@@ -235,4 +241,33 @@ export async function obtenerResumenTrabajoDelDia(): Promise<ResumenTrabajoDelDi
   const cotizaciones = cotizacionesResult.status === 'fulfilled' ? cotizacionesResult.value : null;
 
   return calcularResumenTrabajo(contadoresInbox, tablero, cotizaciones);
+}
+
+/**
+ * Consulta los seguimientos pendientes del día (vencidos y para hoy) para el asesor en sesión.
+ * GET /api/v1/crm/seguimientos/pendientes-del-dia[?asesorId=] (T-020)
+ */
+export async function obtenerPendientesDelDiaApi(asesorId?: string): Promise<PendientesDelDia> {
+  if (estaUsandoApiReal()) {
+    const qs = asesorId ? `?asesorId=${encodeURIComponent(asesorId)}` : '';
+    const { data } = await pedirCrm(`/api/v1/crm/seguimientos/pendientes-del-dia${qs}`);
+    return PendientesDelDia.parse(data);
+  }
+
+  return obtenerMockPendientesDelDia();
+}
+
+/**
+ * Marca un seguimiento como completado de inmediato.
+ * POST /api/v1/crm/seguimientos/:id/completar (T-020)
+ */
+export async function completarSeguimientoApi(id: string): Promise<Seguimiento> {
+  if (estaUsandoApiReal()) {
+    const { data } = await pedirCrm(`/api/v1/crm/seguimientos/${id}/completar`, {
+      method: 'POST',
+    });
+    return Seguimiento.parse(data);
+  }
+
+  return completarMockSeguimiento(id);
 }
