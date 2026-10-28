@@ -73,19 +73,72 @@ describe('Pruebas Unitarias del Buscador Global Omnicanal (buscador-global-logic
       expect(resultados.viajes[0]?.titulo).toContain('EXP-2026');
     });
 
-    it('encuentra contactos por nombre o teléfono', () => {
-      const resultados = buscarEnIndiceGlobal('Juan');
-      expect(resultados.contactos.length).toBeGreaterThan(0);
-      expect(resultados.contactos[0]?.titulo).toContain('Juan');
+    it('encuentra contactos por teléfono con formato o solo dígitos', () => {
+      const resultadosDigitos = buscarEnIndiceGlobal('3000012345');
+      expect(resultadosDigitos.contactos.length).toBeGreaterThan(0);
+      expect(resultadosDigitos.contactos[0]?.subtitulo).toContain('3000012345');
+
+      const resultadosEspaciados = buscarEnIndiceGlobal('+57 300 001 2345');
+      expect(resultadosEspaciados.contactos.length).toBeGreaterThan(0);
+      expect(resultadosEspaciados.contactos[0]?.titulo).toContain('Juan Pérez');
     });
 
-    it('encuentra conversaciones por contenido del mensaje o contacto', () => {
-      const resultados = buscarEnIndiceGlobal('paquete');
-      const totalEncontrados =
-        resultados.conversaciones.length +
-        resultados.oportunidades.length +
-        resultados.catalogo.length;
-      expect(totalEncontrados).toBeGreaterThan(0);
+    it('encuentra oportunidades por destino', () => {
+      const resultados = buscarEnIndiceGlobal('San Andrés', undefined, 4, 'oportunidades');
+      expect(resultados.oportunidades.length).toBeGreaterThan(0);
+      expect(resultados.oportunidades[0]?.subtitulo).toContain('San Andrés');
+    });
+
+    it('respeta la visibilidad y permisos del rol (T-103)', () => {
+      const sesionAsesor = {
+        identidad: {
+          id: '00000000-0000-4000-a000-000000000001',
+          correo: 'asesor@viajapro.com',
+          nombre: 'Carlos Asesor',
+        },
+        agencias: [],
+        tenantActivoId: '00000000-0000-4000-8000-000000000001',
+        acceso: {
+          usuarioId: '00000000-0000-4000-a000-000000000001',
+          rol: 'ASESOR',
+          permisos: ['conversaciones.responder'],
+        },
+      } as const;
+
+      const indiceAsesor = construirIndiceGlobal(
+        sesionAsesor as unknown as import('@viajapro/contracts').SesionActual,
+      );
+      // No debe exponer configuración de agencia al asesor
+      expect(indiceAsesor.some((i) => i.id === 'act-config')).toBe(false);
+      // No debe exponer reportes restringidos al asesor sin permiso de margen
+      expect(indiceAsesor.some((i) => i.id === 'act-reportes')).toBe(false);
+
+      const sesionAdmin = {
+        identidad: {
+          id: '00000000-0000-4000-a000-000000000099',
+          correo: 'admin@viajapro.com',
+          nombre: 'Administrador',
+        },
+        agencias: [],
+        tenantActivoId: '00000000-0000-4000-8000-000000000001',
+        acceso: {
+          usuarioId: '00000000-0000-4000-a000-000000000099',
+          rol: 'ADMIN',
+          permisos: [
+            'usuarios.administrar',
+            'roles.administrar',
+            'catalogo.administrar',
+            'cotizacion.ver_neto_y_margen',
+            'conversaciones.ver_todas',
+          ],
+        },
+      } as const;
+
+      const indiceAdmin = construirIndiceGlobal(
+        sesionAdmin as unknown as import('@viajapro/contracts').SesionActual,
+      );
+      expect(indiceAdmin.some((i) => i.id === 'act-config')).toBe(true);
+      expect(indiceAdmin.some((i) => i.id === 'act-reportes')).toBe(true);
     });
 
     it('respeta el límite por categoría', () => {

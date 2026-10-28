@@ -2457,7 +2457,10 @@ tasks:
     phase: 1
     priority: P2
     effort: M
-    status: backlog
+    status: done
+    started_at: 2026-10-28T10:10:00.000Z
+    done_at: 2026-10-28T10:52:00.000Z
+    evidence: Búsqueda global omnicanal con atajo Cmd+K/Ctrl+K que indexa y busca por nombre, teléfono normalizado (con o sin indicativo) y destino en oportunidades y catálogo, respetando el control de acceso y visibilidad por rol y permisos. Persistencia de filtros en localStorage mediante hook reactivo useFiltrosPersistidos con botón de limpieza y touch targets >= 44 px en bandeja, contactos y pipeline. 83 suites de prueba (677 tests) en verde.
     depends_on: []
     acceptance:
       - Atajo de teclado y cuadro de búsqueda que encuentra por nombre, teléfono y destino sin exponer más de

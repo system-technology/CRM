@@ -1,3 +1,57 @@
+# Entrega — T-103: Búsqueda global y filtros guardados en bandeja, contactos y oportunidades — 2026-10-28
+
+## Identificación
+- **Tarea:** `T-103` (roadmap/tasks.yaml)
+- **Rama:** `b/T-103-busqueda-global-filtros-guardados`
+- **Carril:** `b` (Frontend / Web)
+
+## Qué se construyó y auditó
+
+1. **Módulo de Persistencia de Filtros (`filtros-guardados-logica.ts`):**
+   - Implementado hook reactivo `useFiltrosPersistidos` con almacenamiento seguro en `localStorage` (tolerante a SSR e incógnito restringido).
+   - Tipado estricto `type` para configuraciones persistidas en Bandeja (`filtro`, `buscar`), Contactos (`busqueda`, `etiquetaFiltro`, `consentimientoFiltro`) y Pipeline (`filtroTexto`, `filtroAsesor`, `vista`).
+   - Soporte para ignorar campos que no deben activar la señal de limpieza (como `vista` en Kanban/Tabla mediante `camposIgnoradosParaActivo`).
+   - Función pura `hayFiltrosActivos` para detectar si el usuario ha modificado los filtros respecto al valor por defecto.
+   - Acciones de `actualizarFiltro` y `limpiarFiltros` que sincronizan tanto el estado de React como el almacenamiento del navegador.
+
+2. **Búsqueda Global Omnicanal y Paleta de Comandos (Cmd+K / Ctrl+K):**
+   - Enriquecido `buscador-global-logica.ts`:
+     - Búsqueda por número de teléfono normalizado (dígitos continuos o con formato internacional/espacios, con umbral `>= 4` dígitos) tanto en contactos como en conversaciones de WhatsApp.
+     - Búsqueda por destino en oportunidades comerciales del Pipeline (`op.destino`), permitiendo encontrar clientes y prospectos directamente por su destino turístico.
+     - Control estricto de visibilidad por rol y permisos (R10): un asesor sin el permiso `conversaciones.ver_todas` solo ve conversaciones asignadas a su identificador de usuario (`c.asignadoAId`); las acciones administrativas (`act-config`) y los reportes con margen comercial (`act-reportes`) quedan ocultos para usuarios sin las atribuciones requeridas.
+   - Enriquecido el modal `ModalBusquedaGlobal` con inyección de sesión vía `usePermisos` y botón de limpieza con objetivo táctil de 44 px.
+
+3. **Integración de Filtros Guardados y Botón Limpiar en Vistas Clave:**
+   - **Bandeja de Entrada (`lista-conversaciones.tsx`):**
+     - Persiste la pestaña seleccionada (`TODAS`, `SIN_ASIGNAR`, `MIAS`, etc.) y el texto de búsqueda.
+     - Botón accesible "Limpiar" (`min-h-[44px]` en móvil, touch target accesible) cuando hay filtros activos.
+   - **Contactos y Viajeros (`contactos/page.tsx`):**
+     - Persiste búsqueda textual, filtro de etiqueta y filtro de consentimiento (Ley 1581 / Meta).
+     - Botón accesible "Limpiar filtros" visible dinámicamente cuando `tieneFiltrosActivos` es verdadero.
+     - Touch targets `>= 44 px` en el campo de búsqueda y los selectores desplegables.
+   - **Pipeline de Oportunidades (`pipeline/page.tsx`):**
+     - Persiste el texto de búsqueda, el asesor seleccionado y la preferencia de visualización (Kanban vs. Tabla).
+     - Botón "Limpiar filtros" en la barra de herramientas cuando hay filtros activos (ignorando la vista para no confundir al asesor).
+
+4. **Pruebas y Verificación:**
+   - `apps/web/src/lib/filtros-guardados-logica.spec.ts` (8 pruebas unitarias): lectura, rescate ante JSON corrupto, guardado, limpieza y omisión de campos de visualización.
+   - `apps/web/src/lib/buscador-global-logica.spec.ts` (12 pruebas unitarias): normalización, búsqueda por teléfono con o sin indicativo, búsqueda por destino en oportunidades y restricción de visibilidad según rol de asesor o administrador.
+   - `apps/web/src/components/busqueda/modal-busqueda-global.spec.tsx` (7 pruebas unitarias): renderizado del diálogo, navegación por teclado, filtrado por destino y búsqueda por teléfono omnicanal.
+   - `apps/web/src/app/pipeline/page.spec.tsx` (9 pruebas unitarias): renderizado kanban con dinero entero R8, movimientos optimistas, modal de pérdida, cambio a tabla y botón "Limpiar filtros".
+   - `apps/web/src/app/contactos/page.spec.tsx` (6 pruebas unitarias): estados de carga, error accionable, aviso vacío y restablecimiento de filtros.
+   - Verificación global `@viajapro/web`: 83 suites de prueba, 677 pruebas unitarias en verde.
+   - Typecheck y linter del monorepo en verde (9/9 y 7/7 tareas).
+   - `pnpm test:hooks`: 59/59 política de rama, 19/19 secretos, 6/6 fronteras.
+
+## Verificación de Compuertas
+- **Pruebas unitarias (@viajapro/web):** 83 suites, 677 pruebas en verde.
+- **Typecheck:** 9/9 paquetes en verde.
+- **Linter:** 7/7 paquetes en verde.
+- **Compilación de producción (Next.js):** 23/23 rutas compiladas exitosamente.
+- **Fronteras y ganchos de seguridad (`pnpm test:hooks`):** 59/59 casos de política de rama, 19/19 detección de secretos, 6/6 fronteras de módulos.
+
+---
+
 # Entrega — T-102: Pipeline tipo tablero (kanban) con arrastrar y soltar entre etapas, totales por etapa y tarjetas con valor estimado — 2026-10-28
 
 ## Identificación

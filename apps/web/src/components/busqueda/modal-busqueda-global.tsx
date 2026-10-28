@@ -21,6 +21,7 @@ import {
   type CategoriaBusqueda,
 } from '../../lib/buscador-global-logica';
 import { useFocoModal } from '../../lib/use-foco-modal';
+import { usePermisos } from '../../lib/permisos';
 
 interface ModalBusquedaGlobalProps {
   abierto: boolean;
@@ -75,6 +76,7 @@ const PESTANAS_FILTRO: Array<{ id: CategoriaBusqueda | 'todos'; label: string }>
 
 export function ModalBusquedaGlobal({ abierto, alCerrar }: ModalBusquedaGlobalProps) {
   const router = useRouter();
+  const { sesion } = usePermisos();
   const [consulta, setConsulta] = useState('');
   const [filtroCategoria, setFiltroCategoria] = useState<CategoriaBusqueda | 'todos'>('todos');
   const [indiceSeleccionado, setIndiceSeleccionado] = useState(0);
@@ -95,10 +97,10 @@ export function ModalBusquedaGlobal({ abierto, alCerrar }: ModalBusquedaGlobalPr
     }
   }, [abierto]);
 
-  // Resultados agrupados
+  // Resultados agrupados (restringidos por rol según sesion actual)
   const resultadosAgrupados = useMemo(() => {
-    return buscarEnIndiceGlobal(consulta, undefined, 4, filtroCategoria);
-  }, [consulta, filtroCategoria]);
+    return buscarEnIndiceGlobal(consulta, undefined, 4, filtroCategoria, sesion);
+  }, [consulta, filtroCategoria, sesion]);
 
   // Lista plana para navegación por teclado
   const itemsPlanos = useMemo(() => {
@@ -186,7 +188,7 @@ export function ModalBusquedaGlobal({ abierto, alCerrar }: ModalBusquedaGlobalPr
                 inputRef.current?.focus();
               }}
               aria-label="Limpiar búsqueda"
-              className="rounded-md p-1 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200"
+              className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl p-2 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200"
             >
               <X className="h-4 w-4" />
             </button>

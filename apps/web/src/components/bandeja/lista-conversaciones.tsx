@@ -23,6 +23,12 @@ import {
 } from '../../lib/bandeja-logica';
 import { obtenerClaseEscalonada } from '../comun/animaciones';
 
+import {
+  useFiltrosPersistidos,
+  CLAVE_FILTROS_BANDEJA,
+  FILTROS_BANDEJA_DEFECTO,
+} from '../../lib/filtros-guardados-logica';
+
 export type DensidadBandeja = 'compacta' | 'comoda';
 
 const FILTROS: { id: FiltroBandeja; etiqueta: string }[] = [
@@ -36,8 +42,32 @@ const FILTROS: { id: FiltroBandeja; etiqueta: string }[] = [
 export function ListaConversaciones() {
   const { esDemo } = useModoDemo();
   const pathname = usePathname();
-  const [filtro, setFiltro] = useState<FiltroBandeja>('TODAS');
-  const [buscar, setBuscar] = useState('');
+
+  // Filtros persistidos en localStorage con opción de limpiar (T-103)
+  const {
+    filtros: filtrosGuardados,
+    actualizarFiltro,
+    limpiarFiltros,
+    tieneFiltrosActivos,
+  } = useFiltrosPersistidos(CLAVE_FILTROS_BANDEJA, FILTROS_BANDEJA_DEFECTO);
+
+  const filtro = filtrosGuardados.filtro;
+  const buscar = filtrosGuardados.buscar;
+
+  const setFiltro = useCallback(
+    (nuevoFiltro: FiltroBandeja) => {
+      actualizarFiltro('filtro', nuevoFiltro);
+    },
+    [actualizarFiltro],
+  );
+
+  const setBuscar = useCallback(
+    (nuevoBuscar: string) => {
+      actualizarFiltro('buscar', nuevoBuscar);
+    },
+    [actualizarFiltro],
+  );
+
   const [buscarDebounced, setBuscarDebounced] = useState('');
 
   const [pagina, setPagina] = useState<PaginaBandeja | null>(null);
@@ -263,26 +293,40 @@ export function ListaConversaciones() {
           />
         </div>
 
-        {/* Chips de Filtro con objetivo táctil >=44px en móvil */}
-        <div className="flex flex-wrap gap-1" role="tablist">
-          {FILTROS.map((f) => {
-            const activo = filtro === f.id;
-            return (
-              <button
-                key={f.id}
-                role="tab"
-                aria-selected={activo}
-                onClick={() => setFiltro(f.id)}
-                className={`focus-visible:ring-acento-600 flex min-h-[44px] items-center rounded-lg px-3 py-1.5 text-xs font-medium transition-colors focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:outline-none md:min-h-[32px] md:py-1 dark:focus-visible:ring-offset-neutral-900 ${
-                  activo
-                    ? 'bg-acento-700 font-semibold text-white shadow-2xs'
-                    : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700'
-                }`}
-              >
-                {f.etiqueta}
-              </button>
-            );
-          })}
+        {/* Chips de Filtro con objetivo táctil >=44px en móvil y opción de limpiar */}
+        <div className="flex flex-wrap items-center justify-between gap-1" role="tablist">
+          <div className="flex flex-wrap gap-1">
+            {FILTROS.map((f) => {
+              const activo = filtro === f.id;
+              return (
+                <button
+                  key={f.id}
+                  role="tab"
+                  aria-selected={activo}
+                  onClick={() => setFiltro(f.id)}
+                  className={`focus-visible:ring-acento-600 flex min-h-[44px] items-center rounded-lg px-3 py-1.5 text-xs font-medium transition-colors focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:outline-none md:min-h-[32px] md:py-1 dark:focus-visible:ring-offset-neutral-900 ${
+                    activo
+                      ? 'bg-acento-700 font-semibold text-white shadow-2xs'
+                      : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700'
+                  }`}
+                >
+                  {f.etiqueta}
+                </button>
+              );
+            })}
+          </div>
+
+          {tieneFiltrosActivos && (
+            <button
+              type="button"
+              onClick={limpiarFiltros}
+              title="Limpiar filtros guardados"
+              aria-label="Limpiar filtros de la bandeja"
+              className="flex min-h-[44px] items-center px-2 py-1 text-[11px] font-semibold text-neutral-500 hover:text-neutral-800 focus:outline-hidden md:min-h-[32px] dark:text-neutral-400 dark:hover:text-neutral-200"
+            >
+              Limpiar
+            </button>
+          )}
         </div>
       </div>
 
