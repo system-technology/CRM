@@ -33,6 +33,14 @@ export function aEntrada(fila: FilaDeHistorial, puedeVerNeto: boolean): CambioDe
     id: fila.id,
     instante: fila.ocurridoEn.toISOString(),
     usuarioId: fila.usuarioId,
+    // Solo el tipo y el id opaco de la clave: ningún dato personal del actor (T-071).
+    actor:
+      fila.tipoDeActor === null
+        ? null
+        : {
+            tipo: fila.tipoDeActor,
+            claveDeApiId: fila.tipoDeActor === 'CLAVE_DE_API' ? fila.claveDeApiId : null,
+          },
     accion: fila.accion,
     moneda: uno(MONEDAS, d['moneda']),
     origen: uno(ORIGENES, d['origen']),

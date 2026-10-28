@@ -182,7 +182,9 @@ tasks:
     status: done
     started_at: 2026-10-28T08:14:00.000Z
     done_at: 2026-10-28T08:20:00.000Z
-    evidence: "Eliminada la llamada a /api/v1/paquetes/cotizar de apps/web/src/lib/api.ts y alineada con cotizarSalidaApi a la ruta vigente /api/v1/catalogo/cotizar. Test unitario en api.spec.ts y cotizador/page.spec.tsx en verde. 73 suites y 606 pruebas web en verde."
+    evidence: Eliminada la llamada a /api/v1/paquetes/cotizar de apps/web/src/lib/api.ts y alineada con
+      cotizarSalidaApi a la ruta vigente /api/v1/catalogo/cotizar. Test unitario en api.spec.ts y
+      cotizador/page.spec.tsx en verde. 73 suites y 606 pruebas web en verde.
     depends_on:
       - T-007
     acceptance:
@@ -476,7 +478,9 @@ tasks:
     status: done
     started_at: 2026-10-28T06:33:00.000Z
     done_at: 2026-10-28T06:45:00.000Z
-    evidence: "Módulo único apps/web/src/lib/formato.ts con dinero COP en enteros con punto de miles (R8), fechas UTC a America/Bogota (R9), teléfonos móviles y fijos de Colombia, y cupos amigables. 23 pruebas en formato.spec.ts y pantallas migradas. 65/65 suites pasando (562 pruebas)."
+    evidence: Módulo único apps/web/src/lib/formato.ts con dinero COP en enteros con punto de miles (R8), fechas
+      UTC a America/Bogota (R9), teléfonos móviles y fijos de Colombia, y cupos amigables. 23 pruebas en
+      formato.spec.ts y pantallas migradas. 65/65 suites pasando (562 pruebas).
     depends_on: []
     acceptance:
       - Existe un módulo de formato en apps/web/src/lib/ y ninguna pantalla formatea dinero o fechas a mano;
@@ -497,7 +501,9 @@ tasks:
     status: done
     started_at: 2026-10-28T06:50:00.000Z
     done_at: 2026-10-28T07:05:00.000Z
-    evidence: "Cero scroll horizontal y touch targets >= 44px en bandeja, pipeline, cotizador y catálogo. Tabla pipeline con wrapper overflow-x-auto, botones con clases min-h-[44px] min-w-[44px], pruebas en revision-375px.spec.tsx y reporte en traspaso/ENTREGA.md. 66/66 suites y 566 pruebas en verde."
+    evidence: Cero scroll horizontal y touch targets >= 44px en bandeja, pipeline, cotizador y catálogo. Tabla
+      pipeline con wrapper overflow-x-auto, botones con clases min-h-[44px] min-w-[44px], pruebas en
+      revision-375px.spec.tsx y reporte en traspaso/ENTREGA.md. 66/66 suites y 566 pruebas en verde.
     depends_on:
       - T-017
       - T-018
@@ -521,7 +527,11 @@ tasks:
     status: done
     started_at: 2026-10-28T07:10:00.000Z
     done_at: 2026-10-28T07:18:00.000Z
-    evidence: "Atajos de teclado en bandeja (flechas, j/k, /, Enter, Alt+P/R/F, Esc) con barra documentada en pantalla. Modales con trampa de foco y retorno al disparador (useFocoModal en ModalPlantillas, ModalReasignar, ModalGuardarCotizacion, ModalMotivoPerdida, ModalBusquedaGlobal). Botones solo-icono con aria-label y títulos. Tests en accesibilidad-logica.spec.ts, lista-conversaciones-teclado.spec.tsx y foco-modal.spec.tsx. 66/66 suites y 571 tests en verde."
+    evidence: Atajos de teclado en bandeja (flechas, j/k, /, Enter, Alt+P/R/F, Esc) con barra documentada en
+      pantalla. Modales con trampa de foco y retorno al disparador (useFocoModal en ModalPlantillas,
+      ModalReasignar, ModalGuardarCotizacion, ModalMotivoPerdida, ModalBusquedaGlobal). Botones solo-icono con
+      aria-label y títulos. Tests en accesibilidad-logica.spec.ts, lista-conversaciones-teclado.spec.tsx y
+      foco-modal.spec.tsx. 66/66 suites y 571 tests en verde.
     depends_on: []
     acceptance:
       - Todos los botones solo-icono tienen aria-label y los modales atrapan y devuelven el foco
@@ -542,7 +552,10 @@ tasks:
     status: done
     started_at: 2026-10-28T07:20:00.000Z
     done_at: 2026-10-28T07:30:00.000Z
-    evidence: "BloqueEtapasPipeline en pestaña pipeline de Configuración que permite listar, reordenar (subir/bajar con touch targets >= 44px), renombrar y calibrar probabilidades de cierre. Tablero de pipeline consume columnas dinámicas de la API. Métodos listarEtapasPipelineApi y actualizarEtapasPipelineApi en crm-api con fallback resiliente. Tests en bloque-etapas-pipeline.spec.tsx. 67/67 suites y 575 tests en verde."
+    evidence: BloqueEtapasPipeline en pestaña pipeline de Configuración que permite listar, reordenar (subir/bajar
+      con touch targets >= 44px), renombrar y calibrar probabilidades de cierre. Tablero de pipeline consume
+      columnas dinámicas de la API. Métodos listarEtapasPipelineApi y actualizarEtapasPipelineApi en crm-api
+      con fallback resiliente. Tests en bloque-etapas-pipeline.spec.tsx. 67/67 suites y 575 tests en verde.
     depends_on:
       - T-016
     acceptance:
@@ -566,7 +579,11 @@ tasks:
     status: done
     started_at: 2026-10-28T07:35:00.000Z
     done_at: 2026-10-28T07:50:00.000Z
-    evidence: "Contratos canónicos TipoCampoPersonalizado, DefinicionCampoPersonalizado y ValorCampoPersonalizado en packages/contracts sin redefinición (R3). BloqueCamposPersonalizados en Configuración para contactos y oportunidades con modal accesible (useFocoModal). SeccionCamposPersonalizados en ficha de contacto y ficha de viajero/oportunidad en bandeja. Tests en contracts, lib y components (70 suites y 589 tests web en verde)."
+    evidence: Contratos canónicos TipoCampoPersonalizado, DefinicionCampoPersonalizado y ValorCampoPersonalizado
+      en packages/contracts sin redefinición (R3). BloqueCamposPersonalizados en Configuración para contactos
+      y oportunidades con modal accesible (useFocoModal). SeccionCamposPersonalizados en ficha de contacto y
+      ficha de viajero/oportunidad en bandeja. Tests en contracts, lib y components (70 suites y 589 tests web
+      en verde).
     depends_on:
       - T-016
     acceptance:
@@ -589,7 +606,10 @@ tasks:
     status: done
     started_at: 2026-10-28T07:55:00.000Z
     done_at: 2026-10-28T08:06:00.000Z
-    evidence: "Componente BloqueEquipo en Configuración › Equipo que lista usuarios y roles (DUENO, ASESOR, OPERACIONES) desde la API, con modal accesible para invitar por correo (useFocoModal), soporte de errores en español con 'Qué hacer' (interpretarErrorInvitacion), usable a 375 px (touch targets >= 44 px). Pruebas en bloque-equipo.spec.tsx y equipo-api.spec.ts. 72 suites y 602 pruebas en verde."
+    evidence: Componente BloqueEquipo en Configuración › Equipo que lista usuarios y roles (DUENO, ASESOR,
+      OPERACIONES) desde la API, con modal accesible para invitar por correo (useFocoModal), soporte de
+      errores en español con 'Qué hacer' (interpretarErrorInvitacion), usable a 375 px (touch targets >= 44
+      px). Pruebas en bloque-equipo.spec.tsx y equipo-api.spec.ts. 72 suites y 602 pruebas en verde.
     depends_on:
       - T-016
     acceptance:
@@ -762,7 +782,8 @@ tasks:
     created_at: 2026-10-26T23:32:24.205Z
     started_at: 2026-10-28T05:51:00.000Z
     done_at: 2026-10-28T06:06:00.000Z
-    evidence: "Implementado en rama b/T-034-navegacion-sidebar-migas-comandos. Stitch screen 14a4e161532b449c8001be6656399ee2. 60 suites y 497 tests en verde en @viajapro/web."
+    evidence: Implementado en rama b/T-034-navegacion-sidebar-migas-comandos. Stitch screen
+      14a4e161532b449c8001be6656399ee2. 60 suites y 497 tests en verde en @viajapro/web.
   - id: T-035
     title: "Animaciones y transiciones: entrada escalonada, hover, esqueletos con brillo y transiciones de página"
     type: feature
@@ -787,7 +808,8 @@ tasks:
     created_at: 2026-10-26T23:32:24.205Z
     started_at: 2026-10-28T06:17:00.000Z
     done_at: 2026-10-28T06:34:00.000Z
-    evidence: "Implementado en rama b/T-035-animaciones-transiciones-esqueletos. Stitch screen ed51eb6813d7471487cf3b7a1b82d0e2. 61 suites y 508 tests en verde en @viajapro/web."
+    evidence: Implementado en rama b/T-035-animaciones-transiciones-esqueletos. Stitch screen
+      ed51eb6813d7471487cf3b7a1b82d0e2. 61 suites y 508 tests en verde en @viajapro/web.
   - id: T-036
     title: "Tarjetas de producto con identidad por tipo de excursión: color, icono, degradado, promo y cupos"
     type: feature
@@ -811,7 +833,8 @@ tasks:
     created_at: 2026-10-26T23:32:24.205Z
     started_at: 2026-10-28T06:35:00.000Z
     done_at: 2026-10-28T06:45:00.000Z
-    evidence: "Implementado en rama b/T-036-tarjetas-producto-tipo-excursion. Stitch screen 9e60798823de4540a788622f805745ff. 61 suites y 517 tests en verde en @viajapro/web."
+    evidence: Implementado en rama b/T-036-tarjetas-producto-tipo-excursion. Stitch screen
+      9e60798823de4540a788622f805745ff. 61 suites y 517 tests en verde en @viajapro/web.
   - id: T-037
     title: Inicio con saludo, acciones rápidas y tarjetas de colores sobre el trabajo del día
     type: feature
@@ -1824,7 +1847,7 @@ tasks:
     phase: 1
     priority: P3
     effort: S
-    status: backlog
+    status: done
     depends_on: []
     acceptance:
       - registros_auditoria identifica si el actor fue un usuario o una clave de API, con tenant_id y RLS
@@ -1835,6 +1858,11 @@ tasks:
       - apps/api/src/modules/quoting/
     source: hallazgos de la tanda 2026-10-26
     created_at: 2026-10-27T01:51:03.951Z
+    started_at: 2026-10-28T14:07:29.107Z
+    done_at: 2026-10-28T14:07:29.108Z
+    evidence: "Mergeado en main por el PR #122 (rama a/T-071-actor-en-la-auditoria) con el CI en verde: format,
+      analyze, tests y los demás checks obligatorios. Cierre automático (.github/workflows/cerrar-tarea.yml)."
+    commit: 2ff87512c85dc0f50f6ae86f988b80e01a477da2
   - id: T-072
     title: "Higiene del repositorio: ADR-0016 debe reflejar que el ciclo de OpenCode está detenido (se supersede,
       no se edita)"
@@ -1890,7 +1918,10 @@ tasks:
     created_at: 2026-10-28T01:47:57.807Z
     started_at: 2026-10-28T04:10:00.000Z
     done_at: 2026-10-28T04:35:00.000Z
-    evidence: "Implementado ModalEnviarCotizacion en la bandeja con selector de cotizaciones guardadas, vista previa formateada con emojis para WhatsApp, verificación de ventana 24h, gestión de estados (enviando, enviado, fallido) y contrato EnviarCotizacionCuerpo. Tests de componente unitarios completos y soporte 375 px."
+    evidence: Implementado ModalEnviarCotizacion en la bandeja con selector de cotizaciones guardadas, vista
+      previa formateada con emojis para WhatsApp, verificación de ventana 24h, gestión de estados (enviando,
+      enviado, fallido) y contrato EnviarCotizacionCuerpo. Tests de componente unitarios completos y soporte
+      375 px.
   - id: T-075
     title: Alta y edición de contacto y crear oportunidad desde la conversación (API)
     type: feature
@@ -1933,8 +1964,10 @@ tasks:
     created_at: 2026-10-28T01:47:57.807Z
     started_at: 2026-10-28T04:15:00.000Z
     done_at: 2026-10-28T04:35:00.000Z
-    evidence: "Implementados ModalEditarContacto y ModalCrearOportunidad en la ficha lateral y drawer de la bandeja, conectando con crearOportunidadDeConversacionApi y editarContactoApi. Soporta edición de contacto, apertura de oportunidad en etapa inicial NUEVO_LEAD y actualización reactiva de la ficha con tests de componente."
-
+    evidence: Implementados ModalEditarContacto y ModalCrearOportunidad en la ficha lateral y drawer de la
+      bandeja, conectando con crearOportunidadDeConversacionApi y editarContactoApi. Soporta edición de
+      contacto, apertura de oportunidad en etapa inicial NUEVO_LEAD y actualización reactiva de la ficha con
+      tests de componente.
   - id: T-077
     title: Seguimientos con fecha sobre oportunidad o conversación (API) e inicio del asesor con pendientes
     type: feature
@@ -2492,7 +2525,10 @@ tasks:
     status: done
     started_at: 2026-10-28T08:25:00.000Z
     done_at: 2026-10-28T08:35:00.000Z
-    evidence: "Implementadas páginas estáticas públicas /privacidad, /terminos y /cookies con marca visible badge-borrador, textos conformes a la Ley 1581/2012 y ESCNNA, inventario oficial de cookies y enlaces en PieDePaginaPrivacidad y FormularioIngreso con touch targets >= 44 px. 4 suites de pruebas (15 tests) y 77 suites (620 tests) web en verde."
+    evidence: Implementadas páginas estáticas públicas /privacidad, /terminos y /cookies con marca visible
+      badge-borrador, textos conformes a la Ley 1581/2012 y ESCNNA, inventario oficial de cookies y enlaces en
+      PieDePaginaPrivacidad y FormularioIngreso con touch targets >= 44 px. 4 suites de pruebas (15 tests) y
+      77 suites (620 tests) web en verde.
     depends_on: []
     acceptance:
       - Páginas estáticas que renderizan el texto de docs/05-seguridad una vez aprobado por el propietario

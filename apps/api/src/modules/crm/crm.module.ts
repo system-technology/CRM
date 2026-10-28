@@ -19,7 +19,7 @@ import { VerTablero } from './application/ver-tablero.js';
 import { CrmPuertosModule } from './crm-puertos.module.js';
 import { CrmPrisma } from './infrastructure/crm.prisma.js';
 import { EscrituraCrmPrisma } from './infrastructure/escritura-crm.prisma.js';
-import { SeguimientosSobreOportunidad } from './infrastructure/seguimientos-sobre-oportunidad.prisma.js';
+import { SeguimientosPrisma } from './infrastructure/seguimientos.prisma.js';
 import { CrmController } from './interface/crm.controller.js';
 
 @Module({
@@ -33,9 +33,8 @@ import { CrmController } from './interface/crm.controller.js';
     GestionarSeguimientos,
     { provide: PuertoCrm, useClass: CrmPrisma },
     { provide: PuertoEscrituraCrm, useClass: EscrituraCrmPrisma },
-    // Provisional: columnas `proxima_tarea_*`. Se cambia por el adaptador de la tabla
-    // `seguimientos` cuando `datos` la cree. Ver `puerto-seguimientos.ts`.
-    { provide: PuertoSeguimientos, useClass: SeguimientosSobreOportunidad },
+    // Tabla `seguimientos` (T-082). Sustituye al provisional sobre `proxima_tarea_*`.
+    { provide: PuertoSeguimientos, useClass: SeguimientosPrisma },
   ],
 })
 export class CrmModule {}

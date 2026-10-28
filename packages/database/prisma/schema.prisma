@@ -75,6 +75,7 @@ model Tenant {
   canales           Canal[]
   notasInternas     NotaInterna[]
   consentimientos   ConsentimientoContacto[]
+  seguimientos      Seguimiento[]
 
   conversaciones Conversacion[]
   mensajes       Mensaje[]
@@ -471,6 +472,9 @@ model Usuario {
   cotizacionesCreadas        Cotizacion[]             @relation("CotizacionCreadoPor")
   cotizacionesActualizadas   Cotizacion[]             @relation("CotizacionActualizadoPor")
   versionesCotizacionCreadas VersionCotizacion[]      @relation("VersionCotizacionCreadoPor")
+  seguimientosAsignados      Seguimiento[]            @relation("SeguimientoAsesor")
+  seguimientosCreados        Seguimiento[]            @relation("SeguimientoCreadoPor")
+  seguimientosActualizados   Seguimiento[]            @relation("SeguimientoActualizadoPor")
 
   @@unique([tenantId, correo])
   @@unique([tenantId, identidadId])
@@ -1180,6 +1184,7 @@ model Contacto {
   consentimientos ConsentimientoContacto[]
   conversaciones  Conversacion[]
   cotizaciones    Cotizacion[]
+  seguimientos    Seguimiento[]
 
   /// Dos agencias distintas pueden tener el mismo teléfono de cliente: la unicidad
   /// es POR TENANT, nunca global.
@@ -1307,9 +1312,10 @@ model Oportunidad {
   actualizadoPor   Usuario? @relation("OportunidadActualizadoPor", fields: [actualizadoPorId, tenantId], references: [id, tenantId], onDelete: Restrict, onUpdate: Restrict)
 
   cotizaciones Cotizacion[]
+  seguimientos Seguimiento[]
 
   @@unique([id, tenantId])
-  /// Destino de la foránea de tres columnas de `cotizaciones`: la oportunidad de una cotización
+  /// Destino de la foránea de tres columnas de `cotizaciones` y de `seguimientos`: la oportunidad de una cotización
   /// tiene que ser del MISMO contacto que la cotización.
   @@unique([id, contactoId, tenantId])
   /// El tablero: una consulta por columna, filtrada por tenant y ordenada por actividad.
@@ -1368,6 +1374,54 @@ model NotaInterna {
   @@map("notas_internas")
 }
 
+/// Algo que un asesor se comprometió a hacer, con fecha, sobre una oportunidad o sobre una
+/// conversación — exactamente una de las dos (CHECK `seguimientos_exactamente_un_destino`).
+/// T-082. Sustituye a las columnas `proxima_tarea_*` de `oportunidades` como fuente de los
+/// seguimientos: aquí caben varios por oportunidad y también los de una conversación.
+model Seguimiento {
+  id       String @id @default(uuid(7)) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  descripcion  String    @db.VarChar(200)
+  venceEn      DateTime  @map("vence_en") @db.Timestamptz(3)
+  /// Nulo mientras esté pendiente.
+  completadoEn DateTime? @map("completado_en") @db.Timestamptz(3)
+
+  /// Nulo solo si lo creó una automatización sin dueño. Compuesta con el tenant.
+  asesorId String?  @map("asesor_id") @db.Uuid
+  asesor   Usuario? @relation("SeguimientoAsesor", fields: [asesorId, tenantId], references: [id, tenantId], onDelete: Restrict, onUpdate: Restrict)
+
+  /// Denormalizado del destino para pintar «pendientes del día» sin un join condicional.
+  contactoId String   @map("contacto_id") @db.Uuid
+  contacto   Contacto @relation(fields: [contactoId, tenantId], references: [id, tenantId], onDelete: Cascade, onUpdate: Restrict)
+
+  /// Foránea de TRES columnas: la oportunidad es de esta agencia y de este mismo contacto.
+  oportunidadId String?      @map("oportunidad_id") @db.Uuid
+  oportunidad   Oportunidad? @relation(fields: [oportunidadId, contactoId, tenantId], references: [id, contactoId, tenantId], onDelete: Cascade, onUpdate: Restrict)
+
+  conversacionId String?       @map("conversacion_id") @db.Uuid
+  conversacion   Conversacion? @relation(fields: [conversacionId, tenantId], references: [id, tenantId], onDelete: Cascade, onUpdate: Restrict)
+
+  creadoEn      DateTime @default(now()) @map("creado_en") @db.Timestamptz(3)
+  actualizadoEn DateTime @updatedAt @map("actualizado_en") @db.Timestamptz(3)
+
+  creadoPorId      String?  @map("creado_por") @db.Uuid
+  actualizadoPorId String?  @map("actualizado_por") @db.Uuid
+  creadoPor        Usuario? @relation("SeguimientoCreadoPor", fields: [creadoPorId, tenantId], references: [id, tenantId], onDelete: Restrict, onUpdate: Restrict)
+  actualizadoPor   Usuario? @relation("SeguimientoActualizadoPor", fields: [actualizadoPorId, tenantId], references: [id, tenantId], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([id, tenantId])
+  /// «Pendientes del día» de un asesor. PARCIAL en la migración (`WHERE completado_en IS NULL`);
+  /// Prisma no modela el WHERE, igual que `idx_oportunidades_tareas_pendientes`.
+  @@index([tenantId, asesorId, venceEn], map: "idx_seguimientos_pendientes_por_asesor")
+  @@index([tenantId, venceEn])
+  @@index([tenantId, oportunidadId])
+  @@index([tenantId, conversacionId])
+  @@index([tenantId, contactoId])
+  @@map("seguimientos")
+}
+
 // =============================================================================
 // AUDITORÍA
 // =============================================================================
@@ -1377,19 +1431,34 @@ model RegistroAuditoria {
   id       BigInt @id @default(autoincrement())
   tenantId String @map("tenant_id") @db.Uuid
 
-  usuarioId String? @map("usuario_id") @db.Uuid
-  accion    String  @db.VarChar(80)
-  entidad   String  @db.VarChar(80)
-  entidadId String? @map("entidad_id") @db.Uuid
+  usuarioId    String?      @map("usuario_id") @db.Uuid
+  /// Quién actuó (T-071): USUARIO (`usuarioId`) o CLAVE_DE_API (`claveDeApiId`). NULL = registro
+  /// anterior a T-071. Un CHECK de la migración exige CLAVE_DE_API ⇔ hay clave, y sin usuario.
+  tipoDeActor  TipoDeActor? @default(USUARIO) @map("tipo_de_actor")
+  /// Sin relación todavía: la tabla de claves de API (ADR-0017 M3) no existe. Cuando exista, la
+  /// foránea será COMPUESTA con `tenantId`.
+  claveDeApiId String?      @map("clave_de_api_id") @db.Uuid
+  accion       String       @db.VarChar(80)
+  entidad      String       @db.VarChar(80)
+  entidadId    String?      @map("entidad_id") @db.Uuid
   /// Qué cambió. Nunca contenido de mensajes ni números de documento: R10.
-  detalle   Json?   @db.JsonB
-  ip        String? @db.Inet
+  detalle      Json?        @db.JsonB
+  ip           String?      @db.Inet
 
   ocurridoEn DateTime @default(now()) @map("ocurrido_en") @db.Timestamptz(3)
 
   @@index([tenantId, ocurridoEn(sort: Desc)])
   @@index([tenantId, entidad, entidadId])
   @@map("registros_auditoria")
+}
+
+/// Quién escribió un registro de auditoría. Invariante del sistema, no política de la agencia
+/// (R12): por eso es enum y no tabla.
+enum TipoDeActor {
+  USUARIO
+  CLAVE_DE_API
+
+  @@map("tipo_de_actor")
 }
 
 // =============================================================================
@@ -1511,6 +1580,7 @@ model Conversacion {
 
   mensajes      Mensaje[]
   notasInternas NotaInterna[]
+  seguimientos  Seguimiento[]
 
   /// El invariante del modelo: UN hilo por contacto y canal. Es lo que permite que el
   /// webhook haga ON CONFLICT DO UPDATE sin carreras — dos mensajes del mismo viajero
