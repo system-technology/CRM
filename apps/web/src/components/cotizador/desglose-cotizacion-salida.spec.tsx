@@ -175,6 +175,45 @@ describe('DesgloseCotizacionSalida — cargos en destino (T-063)', () => {
     );
     expect(screen.queryByTestId('cargos-en-destino')).toBeNull();
   });
+
+  it('muestra listaTachada y leyenda «promo vencida» en la línea cuando viene en presentacion (T-051)', () => {
+    const cotizacionConPromoVencida: CotizacionDeSalida = {
+      ...base,
+      lineas: [
+        {
+          tarifaId: '01932000-0000-7000-8000-0000000000f1',
+          nombre: 'Tarifa Regular Adulto',
+          unidad: 'POR_PERSONA',
+          cubrePasajeros: 1,
+          precioUnitario: { unidades: '260000', moneda: 'COP' },
+          veces: 2,
+          total: { unidades: '520000', moneda: 'COP' },
+          masBarata: false,
+          presentacion: {
+            estado: 'PROMO_VENCIDA',
+            venta: { unidades: '260000', moneda: 'COP' },
+            listaTachada: { unidades: '220000', moneda: 'COP' },
+            leyenda: 'PROMO_VENCIDA',
+            promoVigente: false,
+          },
+        },
+      ],
+    };
+
+    render(
+      <DesgloseCotizacionSalida
+        cotizacion={cotizacionConPromoVencida}
+        copiado={false}
+        alCopiarWhatsApp={vi.fn()}
+      />,
+    );
+
+    const tachado = screen.getByTestId('linea-lista-tachada');
+    expect(tachado.textContent).toContain('220.000');
+
+    const leyenda = screen.getByTestId('linea-promo-vencida');
+    expect(leyenda.textContent).toBe('Promo vencida');
+  });
 });
 
 describe('DesgloseCotizacionSalida — política promo_vencida (T-028)', () => {
@@ -223,7 +262,7 @@ describe('DesgloseCotizacionSalida — política promo_vencida (T-028)', () => {
     );
 
     expect(screen.queryByTestId('linea-lista-tachada')).toBeNull();
-    expect(screen.queryByTestId('linea-insignia-promo-vencida')).toBeNull();
+    expect(screen.queryByTestId('linea-promo-vencida')).toBeNull();
   });
 
   it('con promo_vencida TACHAR enseña el precio tachado y la insignia de promo vencida en la línea', () => {
@@ -260,6 +299,6 @@ describe('DesgloseCotizacionSalida — política promo_vencida (T-028)', () => {
 
     const tachado = screen.getByTestId('linea-lista-tachada');
     expect(tachado.textContent).toContain('300.000');
-    expect(screen.getByTestId('linea-insignia-promo-vencida')).toBeDefined();
+    expect(screen.getByTestId('linea-promo-vencida')).toBeDefined();
   });
 });

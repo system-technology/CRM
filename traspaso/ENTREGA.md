@@ -25,6 +25,80 @@
 
 ---
 
+# Entrega — T-018, T-051 y T-019: Tarjeta y ficha de excursión, presentación de promo y estado sin catálogo — 2026-10-27
+
+## Identificación
+- **Rama:** `b/T-018-t-051-t-019-tarjeta-ficha-sin-catalogo` (empujada a `origin/b/T-018-t-051-t-019-tarjeta-ficha-sin-catalogo`)
+- **Tareas:**
+  - T-018: Tarjeta y ficha de excursión en el catálogo: «desde», promo, horarios, qué incluye y cupos por salida («sáb 3 oct · quedan 4»).
+  - T-051: Tarjeta, ficha y desglose del cotizador pintan `presentacion` de la API sin decidir la promo en el cliente (cero comparaciones con `promoHasta`).
+  - T-019: Estado «sin catálogo todavía» (zero state) con dos acciones («Importar catálogo» y «Crear excursión») en catálogo y cotizador.
+- **Carril:** `b` (Frontend / Web)
+- **Stitch Design Screen ID:** `b86a95d7aa3246b087e0baa6fe1063fe` (Proyecto «ViajaPro — CRM para agencias de turismo», ID `8333038101997719867`, pantalla *Catálogo de Excursiones y Estado Sin Catálogo — ViajaPro CRM*)
+
+## Qué construí
+1. **Lógica de presentación y cálculo (`apps/web/src/lib/catalogo-logica.ts` y `.spec.ts`):**
+   - `formatearHorarioExcursion(horaSalida, horaRegreso)` para desplegar horarios de zarpe y retorno legibles.
+   - `clasificarDisponibilidadCupos(cupos)` (`DISPONIBLE`, `ULTIMOS_CUPOS`, `AGOTADO`, `PROGRAMADA`) para chips de urgencia comercial.
+   - `interpretarPresentacionTarifa(presentacion)`: centraliza el renderizado de `listaTachada`, `leyenda: 'PROMO_VENCIDA'`, `promoVigente` y `esConsultar` estrictamente desde la API sin comparaciones locales de fecha (T-051).
+   - `verificarCargosEnDestinoSeparados(totalVenta, cargosEnDestino)`: garantiza matemáticamente que los cargos en destino nunca se suman al precio del paquete ni a la cotización (R8, ADR-0017 §9).
+   - Cobertura completa en `catalogo-logica.spec.ts` (19 pruebas unitarias pasando).
+2. **Tarjeta de Salida Publicada (`apps/web/src/components/catalogo/tarjeta-salida-publicada.tsx` y `.spec.tsx`):**
+   - Degradado por tipo de producto (Pasadía con degradado turquesa/océano vs Multidía azul/índigo).
+   - Chip de cupos con formato de urgencia comercial («sáb 3 oct · quedan 4» / «Últimos 4 cupos» / «Agotado»).
+   - Horarios de salida/regreso e inclusiones del plan con chips visuales.
+   - Tarifa «desde» en moneda principal y desglose multimoneda `desdePorMoneda` (ej. COP y USD).
+   - Estado «Consultar» si no hay precio base o el estado de la API es `CONSULTAR`.
+   - Soporte para precio tachado (`data-testid="tarifa-lista-tachada"`) e insignias de promo vencida / promo vigente según `presentacion`.
+3. **Ficha de Detalle de Paquete (`apps/web/src/components/catalogo/ficha-detalle-paquete.tsx`):**
+   - Muestra bloque destacado de «Cargos a pagar en destino (No incluidos)», separando impuestos de muelle y entradas del total de la cotización.
+4. **Desglose del Cotizador (`apps/web/src/components/cotizador/desglose-cotizacion-salida.tsx` y `.spec.tsx`):**
+   - Renderiza `linea-lista-tachada` y badge `linea-promo-vencida` derivados de `linea.presentacion` entregado por la API (T-051).
+5. **Componente Estado Sin Catálogo (`apps/web/src/components/catalogo/estado-sin-catalogo.tsx` y `.spec.tsx`):**
+   - Zero state de alta conversión turística con dos botones de acción obligatorios:
+     - `data-testid="btn-sin-catalogo-importar"`: «Importar catálogo (CSV)»
+     - `data-testid="btn-sin-catalogo-crear"`: «Crear excursión»
+   - Integrado en `apps/web/src/app/catalogo/page.tsx` (cuando la agencia no tiene salidas publicadas en la API).
+   - Integrado en `apps/web/src/app/cotizador/page.tsx` (cuando la agencia no tiene productos activos en catálogo).
+   - Re-exportado en `apps/web/src/components/comun/estado-sin-catalogo.tsx`.
+6. **Verificación y Calidad:**
+   - 52 archivos de prueba y 432 tests pasando en `@viajapro/web`.
+   - 0 ocurrencias de `promoHasta` en el cliente (cero decisiones de expiración en navegador).
+   - `typecheck` con 0 errores, `lint` con 0 errores, `test:hooks` con 59/59 y 19/19 en verde.
+
+---
+
+# Entrega — T-029 y T-030: Asistente de importación de catálogo y descarga de plantillas CSV — 2026-10-27
+
+## Identificación
+- **Rama:** `b/T-029-t-030-asistente-importacion` (empujada a `origin/b/T-029-t-030-asistente-importacion`)
+- **Tareas:** T-029 (Asistente de importación en 4 etapas) y T-030 (Descarga de plantillas CSV oficiales)
+- **Carril:** `b` (Frontend / Web)
+- **Stitch Design Screen ID:** `1ae9a897573c4a5db87a584bf12605c0` (Proyecto «ViajaPro — CRM para agencias de turismo», ID `8333038101997719867`, pantalla *Asistente de Importación de Catálogo y Plantillas — ViajaPro CRM*)
+
+## Qué construí
+1. **Lógica de importación (`apps/web/src/lib/importacion-logica.ts` y `.spec.ts`):**
+   - Generación de CSV con marcador `#viajapro;plantilla=<formato>;version=<version>`, cabeceras oficiales y filas de ejemplo.
+   - Extracción de marcador `#viajapro;`, parsing CSV respetando comillas y delimitadores `,` o `;`.
+   - Algoritmo de correspondencia local fonética con cálculo de porcentaje de confianza.
+   - Clasificación de elementos de informe (`OK`, `AVISO`, `ERROR`) y cálculo de huella SHA-256.
+2. **Cliente API (`apps/web/src/lib/importaciones-api.ts`):**
+   - Consume `/api/v1/catalogo/formatos`, `/plantilla`, `/sugerir-mapeo`, `/previsualizar` y `/confirmar` con cabeceras de tenant y fallback a `PLANTILLAS_DE_SISTEMA`.
+3. **Descarga de Plantillas (`apps/web/src/components/catalogo/importacion/descarga-plantillas.tsx` y `.spec.tsx`):**
+   - Tarjetas por formato (Excursión de un día, Pasadía, Pasanoche, Paquete con hotel).
+   - Descarga directa de archivo CSV con nombre estandarizado y acción de importación directa.
+4. **Asistente Wizard en 4 Pasos (`apps/web/src/components/catalogo/importacion/asistente-importacion.tsx` y `.spec.tsx`):**
+   - Paso 1: Archivo y autocompletado de formato mediante marcador `#viajapro`.
+   - Paso 2: Correspondencia de columnas y selector de formato de fecha.
+   - Paso 3: Previsualización con KPIs, informe clasificado y huella SHA-256 (botón de confirmación deshabilitado si hay errores).
+   - Paso 4: Confirmación atómica todo-o-nada.
+5. **Pruebas y verificación:**
+   - 49 suites de prueba en `@viajapro/web`, 416/416 tests en verde.
+   - `typecheck` con 0 errores, `lint` con 0 errores, `test:hooks` con 59/59 y 19/19 en verde.
+>>>>>>> origin/main
+
+---
+
 # Entrega — T-037: Inicio con Saludo según la Hora, Acciones Rápidas y Tarjetas de Colores — 2026-10-26
 
 ## Identificación

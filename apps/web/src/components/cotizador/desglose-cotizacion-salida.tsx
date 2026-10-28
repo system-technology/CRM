@@ -184,7 +184,7 @@ export function DesgloseCotizacionSalida({
                     {linea.presentacion?.listaTachada && (
                       <span
                         data-testid="linea-lista-tachada"
-                        className="block text-[11px] text-neutral-400 line-through"
+                        className="mr-1.5 text-[11px] font-semibold text-neutral-400 line-through dark:text-neutral-500"
                       >
                         {formatearDinero(linea.presentacion.listaTachada)}
                       </span>
@@ -194,8 +194,8 @@ export function DesgloseCotizacionSalida({
                     </span>
                     {linea.presentacion?.leyenda === 'PROMO_VENCIDA' && (
                       <span
-                        data-testid="linea-insignia-promo-vencida"
-                        className="mt-0.5 block text-[9px] font-semibold text-amber-600 dark:text-amber-400"
+                        data-testid="linea-promo-vencida"
+                        className="ml-1.5 inline-block rounded bg-rose-50 px-1.5 py-0.5 text-[9px] font-bold text-rose-700 dark:bg-rose-950/60 dark:text-rose-300"
                       >
                         Promo vencida
                       </span>
