@@ -374,4 +374,37 @@ describe('Pruebas del Catálogo de Paquetes y Tarifarios de Mayoristas', () => {
     expect(islas!.salidas[1]!.fecha).toBe('2026-10-15');
     expect(islas!.salidas[1]!.estadoCupo).toBe('DISPONIBLE');
   });
+
+  it('22. agruparSalidasPorProducto preserva presentacion y promoVencida si la salida incluye PresentacionDePrecio', () => {
+    const salidasConPresentacion: SalidaPublicada[] = [
+      {
+        vigenciaId: 'v-20',
+        paqueteId: 'pkg-promo-vencida',
+        paqueteNombre: 'Tour Islas del Rosario VIP',
+        destino: 'Cartagena',
+        noches: 0,
+        fecha: '2026-11-01',
+        cupoTotal: 10,
+        desde: { unidades: '280000', moneda: 'COP' },
+        desdeEsDeGrupo: false,
+        tarifas: 1,
+        presentacion: {
+          estado: 'PROMO_VENCIDA',
+          venta: { unidades: '280000', moneda: 'COP' },
+          listaTachada: { unidades: '350000', moneda: 'COP' },
+          leyenda: 'PROMO_VENCIDA',
+          promoVigente: false,
+        },
+      },
+    ];
+
+    const agrupados = agruparSalidasPorProducto(salidasConPresentacion);
+    expect(agrupados.length).toBe(1);
+    const prod = agrupados[0]!;
+    expect(prod.presentacion).toBeDefined();
+    expect(prod.presentacion?.estado).toBe('PROMO_VENCIDA');
+    expect(prod.presentacion?.listaTachada?.unidades).toBe('350000');
+    expect(prod.presentacion?.leyenda).toBe('PROMO_VENCIDA');
+    expect(prod.salidas[0]!.presentacion?.estado).toBe('PROMO_VENCIDA');
+  });
 });

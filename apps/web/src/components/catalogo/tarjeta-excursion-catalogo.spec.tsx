@@ -126,4 +126,26 @@ describe('TarjetaExcursionCatalogo — T-018', () => {
     const enlaceCotizar = screen.getByRole('link', { name: /cotizar/i });
     expect(enlaceCotizar.getAttribute('href')).toContain('/cotizador?paqueteId=pkg-rosario-01');
   });
+
+  it('8. Muestra precio de lista tachado y badge «Promo vencida» según la política de la agencia', () => {
+    const productoPromoVencida: ProductoCatalogoAgrupado = {
+      ...productoEjemplo,
+      tienePromo: false,
+      presentacion: {
+        estado: 'PROMO_VENCIDA',
+        venta: { unidades: '250000', moneda: 'COP' },
+        listaTachada: { unidades: '320000', moneda: 'COP' },
+        leyenda: 'PROMO_VENCIDA',
+        promoVigente: false,
+      },
+    };
+
+    render(<TarjetaExcursionCatalogo producto={productoPromoVencida} />);
+
+    expect(screen.getByTestId('badge-promo-vencida')).toBeDefined();
+    expect(screen.getByTestId('badge-promo-vencida').textContent).toContain('Promo vencida');
+    const listaTachada = screen.getByTestId('precio-lista-tachada');
+    expect(listaTachada).toBeDefined();
+    expect(listaTachada.textContent).toContain('320.000');
+  });
 });

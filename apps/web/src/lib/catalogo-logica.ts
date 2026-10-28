@@ -6,6 +6,7 @@ import type {
   Temporada,
   TipoPasajero,
   SalidaPublicada,
+  PresentacionDePrecio,
 } from '@viajapro/contracts';
 import type { PaqueteConDetalle } from './mock-catalogo';
 
@@ -226,6 +227,7 @@ export interface SalidaChipInfo {
   estadoCupo: EstadoCupo;
   desde: Dinero;
   desdeEsDeGrupo: boolean;
+  presentacion?: PresentacionDePrecio | undefined;
 }
 
 export interface ProductoCatalogoAgrupado {
@@ -244,6 +246,7 @@ export interface ProductoCatalogoAgrupado {
   precioEtiqueta: string;
   tienePromo: boolean;
   desdeEsDeGrupo: boolean;
+  presentacion?: PresentacionDePrecio | undefined;
   salidas: SalidaChipInfo[];
 }
 
@@ -266,7 +269,8 @@ export function calcularEstadoCupo(cupoTotal: number | null): EstadoCupo {
  */
 export function formatearChipSalida(
   salida: Pick<SalidaPublicada, 'vigenciaId' | 'fecha' | 'cupoTotal' | 'desde'> & {
-    desdeEsDeGrupo?: boolean;
+    desdeEsDeGrupo?: boolean | undefined;
+    presentacion?: PresentacionDePrecio | undefined;
   },
 ): SalidaChipInfo {
   const fechaObj = new Date(salida.fecha + 'T12:00:00Z');
@@ -299,6 +303,7 @@ export function formatearChipSalida(
     estadoCupo,
     desde: salida.desde,
     desdeEsDeGrupo: salida.desdeEsDeGrupo ?? false,
+    ...(salida.presentacion ? { presentacion: salida.presentacion } : {}),
   };
 }
 
@@ -467,31 +472,35 @@ export function agruparSalidasPorProducto(salidas: SalidaPublicada[]): ProductoC
         requiereImpuestoMuelle: reqMuelle,
         precioDesde: s.desde,
         precioEtiqueta: obtenerEtiquetaPrecio(s.desde),
-        tienePromo: s.tarifas > 1,
+        tienePromo: s.tarifas > 1 || s.presentacion?.promoVigente === true,
         desdeEsDeGrupo: s.desdeEsDeGrupo,
         salidas: [],
+        ...(s.presentacion ? { presentacion: s.presentacion } : {}),
       };
       mapa.set(s.paqueteId, prod);
     }
 
-    prod.salidas.push(formatearChipSalida(s));
+    const prodActual = prod;
+    prodActual.salidas.push(formatearChipSalida(s));
 
     // Actualizar menor precio si esta salida es más económica
-    if (s.desde && prod.precioDesde) {
-      if (Number(s.desde.unidades) < Number(prod.precioDesde.unidades)) {
-        prod.precioDesde = s.desde;
-        prod.precioEtiqueta = obtenerEtiquetaPrecio(s.desde);
+    if (s.desde && prodActual.precioDesde) {
+      if (Number(s.desde.unidades) < Number(prodActual.precioDesde.unidades)) {
+        prodActual.precioDesde = s.desde;
+        prodActual.precioEtiqueta = obtenerEtiquetaPrecio(s.desde);
+        if (s.presentacion) prodActual.presentacion = s.presentacion;
       }
-    } else if (s.desde && !prod.precioDesde) {
-      prod.precioDesde = s.desde;
-      prod.precioEtiqueta = obtenerEtiquetaPrecio(s.desde);
+    } else if (s.desde && !prodActual.precioDesde) {
+      prodActual.precioDesde = s.desde;
+      prodActual.precioEtiqueta = obtenerEtiquetaPrecio(s.desde);
+      if (s.presentacion) prodActual.presentacion = s.presentacion;
     }
 
-    if (s.tarifas > 1) {
-      prod.tienePromo = true;
+    if (s.tarifas > 1 || s.presentacion?.promoVigente) {
+      prodActual.tienePromo = true;
     }
     if (s.desdeEsDeGrupo) {
-      prod.desdeEsDeGrupo = true;
+      prodActual.desdeEsDeGrupo = true;
     }
   }
 
