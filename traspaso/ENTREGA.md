@@ -1,3 +1,51 @@
+# Entrega — T-109: Estados de sistema consistentes: página 404, error global, sin conexión y sesión expirada — 2026-10-28
+
+## Identificación
+- **Tarea:** `T-109` (roadmap/tasks.yaml)
+- **Rama:** `b/T-109-estados-sistema-consistentes`
+- **Carril:** `b` (Frontend / Web)
+
+## Qué se construyó y auditó
+
+1. **Lógica Pura de Clasificación de Errores (`errores-sistema.ts`):**
+   - Funciones puras: `esErrorSinConexion`, `esErrorSesionExpirada`, `esErrorNoEncontrado`, `construirUrlRedireccionIngreso`, `sanitizarRutaRedireccion` y `clasificarErrorSistema`.
+   - Clasificación transparente en español claro: 404 (No encontrado), 401 (Sesión expirada), 403 (Acceso denegado), sin conexión (pérdida de red/timeout) y 5xx (servidor).
+   - Protección contra open redirect: exigencia estricta de rutas relativas con sanitización contra protocolos y secuencias maliciosas (`//evil.com`).
+   - Cero exposición de stack traces, rutas internas o credenciales en pantallas cliente (R6).
+
+2. **Página 404 Personalizada con Identidad Turística (`apps/web/src/app/not-found.tsx`):**
+   - Identidad visual temática náutica/turismo con brújula animada e insignias de estado.
+   - Mensaje amigable: «Esta ruta no está en nuestro mapa».
+   - Enlace principal hacia la bandeja de WhatsApp (`/bandeja`) y accesos rápidos directos a `/cotizador`, `/catalogo` y `/pipeline` con touch targets `>= 44 px`.
+
+3. **Capturador Global de Errores (`apps/web/src/app/error.tsx`):**
+   - React Error Boundary cliente para capturar fallos no controlados en Next.js.
+   - Evaluación contextual mediante `clasificarErrorSistema`.
+   - Botón directo para iniciar sesión conservando la ruta solicitada si la sesión expiró.
+   - Botón de «Reintentar» conectado a `reset()` para fallos recuperables.
+   - Indicador discreto del digest de soporte técnico sin filtrar detalles del stack trace.
+
+4. **Aviso Flotante de Conexión en Tiempo Real (`AvisoSinConexion`):**
+   - Escucha los eventos `offline` y `online` de la ventana del navegador.
+   - Banner persistente superior en color ámbar de advertencia si se pierde internet, con botón «Comprobar red».
+   - Toast automático «Conexión restablecida con ViajaPro» al recuperar conectividad.
+   - Montado globalmente en `RootLayout` (`apps/web/src/app/layout.tsx`).
+
+5. **Conservación de Destino y Alerta de Sesión en Ingreso (`FormularioIngreso`):**
+   - Lee `redirigir` y `motivo` de la URL.
+   - Muestra aviso visible de sesión expirada indicando el destino pendiente de continuar.
+   - Tras autenticación exitosa, redirige al destino seguro conservado en vez de forzar `/bandeja`.
+   - Envuelto en `<Suspense>` en `apps/web/src/app/ingresar/page.tsx`.
+
+6. **Verificación y Calidad Monorepo:**
+   - 5 suites de prueba dedicadas (`errores-sistema.spec.ts`, `not-found.spec.tsx`, `error.spec.tsx`, `aviso-sin-conexion.spec.tsx`, `formulario-ingreso.spec.tsx`) con 39 tests en verde.
+   - 104 suites y 832 tests unitarios pasando sin errores en `@viajapro/web`.
+   - `pnpm typecheck` limpio en los 5 paquetes del monorepo.
+   - `pnpm lint` limpio (0 errores / advertencias).
+   - `pnpm test:hooks` limpio (59/59 políticas de rama, 19/19 secretos, 6/6 fronteras).
+
+---
+
 # Entrega — T-107: Cotizaciones guardadas: listado con estado, versiones, reenvío por WhatsApp y duplicar — 2026-10-28
 
 ## Identificación
