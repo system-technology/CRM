@@ -5,3 +5,5 @@ export * from './chip-tipo-producto';
 export * from './iconos-modulos';
 export * from './esqueletos';
 export * from './distintivo-datos-demo';
+export * from './migas-de-pan';
+export * from './animaciones';
