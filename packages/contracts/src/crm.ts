@@ -401,3 +401,39 @@ export const PendientesDelDia = z.object({
   deHoy: z.array(Seguimiento),
 });
 export type PendientesDelDia = z.infer<typeof PendientesDelDia>;
+
+// =============================================================================
+// Campos personalizados por agencia (T-026)
+// =============================================================================
+
+/** Tipos de datos admitidos para campos personalizados configurados por la agencia (R12). */
+export const TipoCampoPersonalizado = z.enum(['texto', 'numero', 'fecha', 'lista']);
+export type TipoCampoPersonalizado = z.infer<typeof TipoCampoPersonalizado>;
+
+/** Entidades comerciales que admiten campos personalizados. */
+export const EntidadCampoPersonalizado = z.enum(['contacto', 'oportunidad']);
+export type EntidadCampoPersonalizado = z.infer<typeof EntidadCampoPersonalizado>;
+
+/**
+ * Definición de un campo personalizado por la agencia (R12).
+ * Permite a agencias de turismo extender contactos y oportunidades con atributos propios
+ * (pasaportes, preferencias aéreas, presupuestos, flexibilidad de fechas).
+ */
+export const DefinicionCampoPersonalizado = z.object({
+  id: z.string().min(1),
+  entidad: EntidadCampoPersonalizado,
+  nombre: z.string().min(1).max(100),
+  clave: z.string().min(1).max(80),
+  tipo: TipoCampoPersonalizado,
+  opciones: z.array(z.string().min(1).max(100)).optional(),
+  requerido: z.boolean().default(false),
+  descripcion: z.string().max(300).optional(),
+});
+export type DefinicionCampoPersonalizado = z.infer<typeof DefinicionCampoPersonalizado>;
+
+export const ValorCampoPersonalizado = z.object({
+  campoId: z.string().min(1),
+  clave: z.string().min(1).max(80),
+  valor: z.union([z.string(), z.number(), z.boolean()]).nullable(),
+});
+export type ValorCampoPersonalizado = z.infer<typeof ValorCampoPersonalizado>;
