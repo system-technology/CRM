@@ -2274,3 +2274,204 @@ tasks:
       - apps/web/src/
     source: ruta de seguridad y privacidad 2026-10-28
     created_at: 2026-10-28T02:16:36.574Z
+  - id: T-100
+    title: "Ficha 360 del contacto: datos, conversaciones, oportunidades, cotizaciones y seguimientos en una sola
+      pantalla"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Pantalla /contactos/[id] que consume /api/v1/crm/* y muestra línea de tiempo con estados cargando,
+        error y vacío
+      - Desde ella se edita el contacto, se crea una oportunidad y un seguimiento
+      - Tests de componente; usable a 375 px
+    files:
+      - apps/web/src/app/contactos/
+    source: cola de Antigravity ampliada 2026-10-28
+    created_at: 2026-10-28T02:37:57.684Z
+  - id: T-101
+    title: Lista de seguimientos del asesor con vencidos, de hoy y próximos, y acción de completar
+    type: feature
+    phase: 1
+    priority: P1
+    effort: S
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Pantalla /seguimientos con GET /api/v1/crm/seguimientos y POST .../completar; vencidos resaltados en
+        color de alerta
+      - Estados cargando, error y vacío; tests
+    files:
+      - apps/web/src/app/seguimientos/
+    source: cola de Antigravity ampliada 2026-10-28
+    created_at: 2026-10-28T02:37:57.685Z
+  - id: T-102
+    title: Pipeline tipo tablero (kanban) con arrastrar y soltar entre etapas, totales por etapa y tarjetas con
+      valor estimado
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Mover una oportunidad entre etapas con teclado y ratón, con actualización optimista y reversión si la
+        API falla
+      - Total en dinero entero por etapa y moneda (R8)
+      - Accesible y usable a 375 px; tests
+    files:
+      - apps/web/src/app/pipeline/
+    source: cola de Antigravity ampliada 2026-10-28
+    created_at: 2026-10-28T02:37:57.685Z
+  - id: T-103
+    title: Búsqueda global y filtros guardados en bandeja, contactos y oportunidades
+    type: feature
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Atajo de teclado y cuadro de búsqueda que encuentra por nombre, teléfono y destino sin exponer más de
+        lo que el rol puede ver
+      - Filtros recordados por el asesor (almacenamiento local) con opción de limpiar
+    files:
+      - apps/web/src/components/busqueda/
+    source: cola de Antigravity ampliada 2026-10-28
+    created_at: 2026-10-28T02:37:57.685Z
+  - id: T-104
+    title: "Respuestas rápidas en la bandeja: lista, insertar con «/» y administración por agencia"
+    type: feature
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Insertar una respuesta rápida en el compositor con «/», con vista previa y variables como {nombre}
+      - Pantalla de administración en Configuración; usa la API cuando exista (T-078) y mientras tanto un
+        estado «próximamente» honesto, sin datos falsos
+    files:
+      - apps/web/src/app/bandeja/
+      - apps/web/src/app/configuracion/
+    source: cola de Antigravity ampliada 2026-10-28
+    created_at: 2026-10-28T02:37:57.685Z
+  - id: T-105
+    title: "Onboarding de una agencia nueva: asistente de 4 pasos (marca, catálogo, equipo, conectar WhatsApp)"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: L
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Asistente que lleva a la agencia de la cuenta vacía a la primera cotización enviada, con progreso
+        guardado y cada paso saltable
+      - Los pasos reutilizan T-031/T-029 (catálogo), T-027 (equipo) y T-039 (marca); el paso de WhatsApp
+        explica qué se necesita sin pedir secretos en pantalla
+    files:
+      - apps/web/src/app/bienvenida/
+    source: cola de Antigravity ampliada 2026-10-28
+    created_at: 2026-10-28T02:37:57.685Z
+  - id: T-106
+    title: "Pantalla de conexión de WhatsApp en Configuración: estado del canal, número, calidad y ventana de 24 h
+      explicada"
+    type: feature
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Muestra el estado real del canal desde la API (o «no conectado» con los pasos) sin mostrar tokens
+      - Explica la ventana de 24 h y las plantillas con lenguaje de agencia, no de Meta
+    files:
+      - apps/web/src/app/configuracion/whatsapp/
+    source: cola de Antigravity ampliada 2026-10-28
+    created_at: 2026-10-28T02:37:57.685Z
+  - id: T-107
+    title: "Cotizaciones guardadas: listado con estado, versiones, reenvío por WhatsApp y duplicar"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Lista y detalle de cotizaciones guardadas con sus versiones; botón enviar por WhatsApp (usa T-074) y
+        duplicar como nueva versión
+      - No muestra neto ni margen a quien no tiene el permiso cotizacion.ver_neto_y_margen
+    files:
+      - apps/web/src/app/cotizaciones/
+    source: cola de Antigravity ampliada 2026-10-28
+    created_at: 2026-10-28T02:37:57.685Z
+  - id: T-108
+    title: Páginas públicas /privacidad, /terminos y /cookies con el texto aprobado y enlace en el pie y en el login
+    type: feature
+    phase: 1
+    priority: P1
+    effort: S
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Páginas estáticas que renderizan el texto de docs/05-seguridad una vez aprobado por el propietario
+        (T-093); mientras tanto, con el borrador y marca visible «borrador»
+      - Enlaces en el pie y en la pantalla de ingreso; legibles a 375 px
+    files:
+      - apps/web/src/app/privacidad/
+      - apps/web/src/app/terminos/
+      - apps/web/src/app/cookies/
+    source: cola de Antigravity ampliada 2026-10-28
+    created_at: 2026-10-28T02:37:57.685Z
+  - id: T-109
+    title: "Estados de sistema consistentes: página 404, error global, sin conexión y sesión expirada con mensajes
+      en español claro"
+    type: feature
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    depends_on: []
+    acceptance:
+      - not-found.tsx, error.tsx y aviso de sin conexión con la identidad visual de turismo; al expirar la
+        sesión lleva a /ingresar conservando el destino
+      - Tests de la lógica de clasificación de errores
+    files:
+      - apps/web/src/app/
+    source: cola de Antigravity ampliada 2026-10-28
+    created_at: 2026-10-28T02:37:57.685Z
+  - id: T-110
+    title: "Notificaciones en la web: aviso de mensaje nuevo, seguimiento vencido y cotización por vencer, con
+      preferencia por asesor"
+    type: feature
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Campana con contador y panel; sonido y notificación del navegador solo si el asesor lo activa
+      - Usa el canal en tiempo real existente (Socket.IO) y la API de pendientes; sin datos personales en el
+        título de la notificación
+    files:
+      - apps/web/src/components/notificaciones/
+    source: cola de Antigravity ampliada 2026-10-28
+    created_at: 2026-10-28T02:37:57.685Z
+  - id: T-111
+    title: Modo oscuro y preferencia de densidad con la paleta de turismo
+    type: feature
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Interruptor claro, oscuro y sistema; contraste AA en ambos; la marca de la agencia se adapta
+      - Sin parpadeo al cargar
+    files:
+      - apps/web/src/
+    source: cola de Antigravity ampliada 2026-10-28
+    created_at: 2026-10-28T02:37:57.685Z
