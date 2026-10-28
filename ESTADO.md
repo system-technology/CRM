@@ -52,6 +52,7 @@ modo real, con la demostración explícita y visible; sigue **abierto**.
 | Cifrado de campos sensibles: ADR aceptado, **implementación sin integrar** (PR #29 abierto; no hay migración de cifrado en `main`) | [ADR-0015](docs/03-adr/0015-cifrado-de-campos-sensibles.md) |
 | Roadmap de producto v3, HubSpot como norte (**propuesta**, PR #43 abierto) | rama `docs/roadmap-producto-v3` |
 | Investigación verificada de HubSpot (PR #41 abierto) | rama `docs/investigacion-hubspot` |
+| Políticas de seguridad (8 políticas + `SECURITY.md`), **borrador sin aprobar**, con el estado real de cada una | [`docs/05-seguridad/00-indice-de-politicas.md`](docs/05-seguridad/00-indice-de-politicas.md) |
 
 ### Lo que NO existe todavía
 
