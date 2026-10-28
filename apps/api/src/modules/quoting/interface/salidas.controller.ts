@@ -18,6 +18,7 @@ import {
   Query,
 } from '@nestjs/common';
 import {
+  Id,
   CotizarSalida as CotizarSalidaContrato,
   type CotizacionDeSalida,
   type CotizarSalida as PeticionCotizar,
@@ -58,6 +59,10 @@ export class SalidasController {
     }
     if (hasta && !FORMATO_FECHA.test(hasta)) {
       throw new BadRequestException('`hasta` va en formato AAAA-MM-DD');
+    }
+
+    if (paqueteId !== undefined && !Id.safeParse(paqueteId).success) {
+      throw new BadRequestException('`paqueteId` debe ser un UUID');
     }
 
     const pedido = Number(limite ?? LIMITE_SALIDAS);
