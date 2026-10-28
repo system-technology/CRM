@@ -3,6 +3,7 @@ import { CrmModule } from './modules/crm/crm.module.js';
 import { IdentityModule } from './modules/identity/identity.module.js';
 import { InboxModule } from './modules/inbox/inbox.module.js';
 import { NotificationsModule } from './modules/notifications/notifications.module.js';
+import { QuotingPuertosModule } from './modules/quoting/quoting-puertos.module.js';
 import { QuotingModule } from './modules/quoting/quoting.module.js';
 import { SaludController } from './salud.controller.js';
 import { SharedModule } from './shared/shared.module.js';
@@ -19,6 +20,7 @@ import { OriginCheckMiddleware } from './shared/red/origin-check.middleware.js';
     NotificationsModule,
     IdentityModule,
     QuotingModule,
+    QuotingPuertosModule,
     InboxModule,
     CrmModule,
   ],

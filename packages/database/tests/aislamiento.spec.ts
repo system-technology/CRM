@@ -2924,18 +2924,22 @@ function insertarVersion(
   paqueteId: string,
   numero: number,
   v: VersionDePrueba = VERSION_SANA,
-  { conRetorno = true }: { conRetorno?: boolean } = {},
+  {
+    conRetorno = true,
+    opcionDeSalidaId = null,
+  }: { conRetorno?: boolean; opcionDeSalidaId?: string | null } = {},
 ) {
   return c.query(
     `INSERT INTO versiones_cotizacion
        (id, tenant_id, cotizacion_id, numero, paquete_id, paquete_nombre, destino, noches,
         fecha_salida, vigencia_id, vigencia_desde, vigencia_hasta, de_salida_programada,
         adultos, ninos, infantes, politica_porcentaje, politica_base, politica_origen,
-        politica_redondeo, lineas, venta_unidades, neto_unidades, margen_unidades, moneda_iso)
+        politica_redondeo, lineas, venta_unidades, neto_unidades, margen_unidades, moneda_iso,
+        opcion_de_salida_id)
      VALUES (gen_random_uuid(), $1, $2, $3, $4, 'Parque del Café', 'Quindío', 1,
              '2026-12-05', gen_random_uuid(), '2026-12-01', '2026-12-15', false,
              2, 1, 0, 20, 'SOBRE_EL_NETO', 'DERIVADA_DEL_NETO',
-             1000, $5::jsonb, $6, $7, $8, $9)
+             1000, $5::jsonb, $6, $7, $8, $9, $10::uuid)
      ${conRetorno ? 'RETURNING id' : ''}`,
     [
       tenant,
@@ -2947,6 +2951,7 @@ function insertarVersion(
       v.neto,
       v.margen,
       v.moneda ?? 'COP',
+      opcionDeSalidaId,
     ],
   );
 }
@@ -3332,6 +3337,130 @@ describe('Cotizaciones — cabecera mutable y versiones inmutables', () => {
         ),
       ),
     ).rejects.toThrow(/estado_exige_envio/);
+  });
+
+  it('T-062 — versiones_cotizacion.opcion_de_salida_id: foránea COMPUESTA y validada, y no cruza agencias', async () => {
+    // La foránea existe, es de dos columnas con el tenant, apunta a opciones_de_salida y está
+    // validada. Con una simple, la versión de una agencia podría citar la opción de otra.
+    const { rows } = await admin.query(
+      `SELECT (SELECT array_agg(a.attname::text ORDER BY i)
+                 FROM generate_subscripts(c.conkey, 1) AS i
+                 JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = c.conkey[i]) AS columnas,
+              (SELECT array_agg(a.attname::text ORDER BY i)
+                 FROM generate_subscripts(c.confkey, 1) AS i
+                 JOIN pg_attribute a ON a.attrelid = c.confrelid AND a.attnum = c.confkey[i]) AS referidas,
+              c.convalidated
+         FROM pg_constraint c
+        WHERE c.contype = 'f'
+          AND c.conrelid = 'public.versiones_cotizacion'::regclass
+          AND c.confrelid = 'public.opciones_de_salida'::regclass`,
+    );
+    expect(rows).toEqual([
+      {
+        columnas: ['opcion_de_salida_id', 'tenant_id'],
+        referidas: ['id', 'tenant_id'],
+        convalidated: true,
+      },
+    ]);
+
+    // Una opción de salida por agencia, de su propio paquete, y una cotización nueva por agencia
+    // (la del beforeAll ya está ENVIADA y su versión 1 la usan otras aserciones).
+    const opcionDe: Record<string, string> = {};
+    const cotizacionNuevaDe: Record<string, string> = {};
+    for (const tenant of [TENANT_A, TENANT_B]) {
+      await comoTenant(tenant, async (c) => {
+        const o = await c.query(
+          `INSERT INTO opciones_de_salida (id, tenant_id, paquete_id, etiqueta, actualizado_en)
+           VALUES (gen_random_uuid(), $1, $2, 'Turno mañana', now())
+           RETURNING id`,
+          [tenant, paqueteDe[tenant]],
+        );
+        opcionDe[tenant] = (o.rows[0] as { id: string }).id;
+        const k = await c.query(
+          `INSERT INTO cotizaciones (id, tenant_id, contacto_id, titulo, creado_en, actualizado_en)
+           VALUES (gen_random_uuid(), $1, $2, 'Con opción de salida', now(), now())
+           RETURNING id`,
+          [tenant, contactoDe[tenant]],
+        );
+        cotizacionNuevaDe[tenant] = (k.rows[0] as { id: string }).id;
+      });
+    }
+
+    // Control: A guarda una versión con SU opción y la relee. Sin esto, «B no la ve» sería verde
+    // también con la columna rota.
+    const propia = await comoTenant(TENANT_A, async (c) => {
+      await insertarVersion(
+        c,
+        TENANT_A,
+        cotizacionNuevaDe[TENANT_A] ?? '',
+        paqueteDe[TENANT_A] ?? '',
+        1,
+        VERSION_SANA,
+        { opcionDeSalidaId: opcionDe[TENANT_A] ?? null },
+      );
+      return c.query(
+        'SELECT opcion_de_salida_id FROM versiones_cotizacion WHERE cotizacion_id = $1',
+        [cotizacionNuevaDe[TENANT_A]],
+      );
+    });
+    expect(propia.rows).toEqual([{ opcion_de_salida_id: opcionDe[TENANT_A] }]);
+
+    // Lectura cruzada: B no ve la versión de A ni, por la columna, qué opción eligió.
+    const ajena = await comoTenant(TENANT_B, (c) =>
+      c.query('SELECT id FROM versiones_cotizacion WHERE opcion_de_salida_id = $1', [
+        opcionDe[TENANT_A],
+      ]),
+    );
+    expect(ajena.rowCount).toBe(0);
+
+    // B, con SU tenant_id y SU cotización, citando la opción de A: lo para la foránea compuesta
+    // (23503), porque la integridad referencial no pasa por RLS.
+    await expect(
+      comoTenant(TENANT_B, (c) =>
+        insertarVersion(
+          c,
+          TENANT_B,
+          cotizacionNuevaDe[TENANT_B] ?? '',
+          paqueteDe[TENANT_B] ?? '',
+          1,
+          VERSION_SANA,
+          { opcionDeSalidaId: opcionDe[TENANT_A] ?? null },
+        ),
+      ),
+    ).rejects.toMatchObject({ code: '23503' });
+
+    // B plantando una versión con el tenant y la opción de A: lo para el WITH CHECK. Sin
+    // RETURNING, para que solo el WITH CHECK pueda pararlo (ver la 48).
+    await expect(
+      comoTenant(TENANT_B, (c) =>
+        insertarVersion(
+          c,
+          TENANT_A,
+          cotizacionNuevaDe[TENANT_A] ?? '',
+          paqueteDe[TENANT_A] ?? '',
+          2,
+          VERSION_SANA,
+          { conRetorno: false, opcionDeSalidaId: opcionDe[TENANT_A] ?? null },
+        ),
+      ),
+    ).rejects.toThrow(/row-level security/i);
+
+    // La columna es tan inmutable como el resto de la versión: ni su propia agencia la cambia.
+    await expect(
+      comoTenant(TENANT_A, (c) =>
+        c.query(
+          'UPDATE versiones_cotizacion SET opcion_de_salida_id = NULL WHERE cotizacion_id = $1',
+          [cotizacionNuevaDe[TENANT_A]],
+        ),
+      ),
+    ).rejects.toThrow(/inmutable/i);
+
+    // Una opción citada por una versión no se borra (NO ACTION): se desactiva.
+    await expect(
+      comoTenant(TENANT_A, (c) =>
+        c.query('DELETE FROM opciones_de_salida WHERE id = $1', [opcionDe[TENANT_A]]),
+      ),
+    ).rejects.toMatchObject({ code: '23503' });
   });
 });
 // =========================================================================================
@@ -4026,6 +4155,166 @@ describe('ADR-0017 — catálogo gestionable: M1 y M2', () => {
     expect(columna.rows).toEqual([
       { column_default: "'OCULTAR'::promo_vencida", is_nullable: 'NO' },
     ]);
+  });
+
+  it('71 — un tenant no ve, no escribe y no se cuelga de las vigencias, tarifas ni la política de precio de otro', async () => {
+    // La política de A la crea la 70, pero esta no depende del orden: se asegura para los dos.
+    for (const tenant of [TENANT_A, TENANT_B]) {
+      await comoTenant(tenant, (c) =>
+        c.query(
+          `INSERT INTO politicas_de_precio (tenant_id, actualizada_en) VALUES ($1, now())
+           ON CONFLICT (tenant_id) DO NOTHING`,
+          [tenant],
+        ),
+      );
+    }
+
+    // Control: A ve lo suyo. Sin esto, «B ve cero» sería verde también con las tablas vacías.
+    const propias = await comoTenant(TENANT_A, async (c) => ({
+      vigencias: (await c.query('SELECT id FROM vigencias WHERE id = $1', [vigenciaDe[TENANT_A]]))
+        .rowCount,
+      tarifas: (
+        await c.query('SELECT id FROM tarifas WHERE vigencia_id = $1', [vigenciaDe[TENANT_A]])
+      ).rowCount,
+      politicas: (
+        await c.query('SELECT tenant_id FROM politicas_de_precio WHERE tenant_id = $1', [TENANT_A])
+      ).rowCount,
+    }));
+    expect(propias).toEqual({ vigencias: 1, tarifas: 1, politicas: 1 });
+
+    // Lectura cruzada: cero filas, por id y por tenant_id.
+    const ajenas = await comoTenant(TENANT_B, async (c) => ({
+      vigencias: (await c.query('SELECT id FROM vigencias WHERE tenant_id = $1', [TENANT_A]))
+        .rowCount,
+      vigenciaPorId: (
+        await c.query('SELECT id FROM vigencias WHERE id = $1', [vigenciaDe[TENANT_A]])
+      ).rowCount,
+      tarifas: (await c.query('SELECT id FROM tarifas WHERE tenant_id = $1', [TENANT_A])).rowCount,
+      tarifasPorVigencia: (
+        await c.query('SELECT id FROM tarifas WHERE vigencia_id = $1', [vigenciaDe[TENANT_A]])
+      ).rowCount,
+      politicas: (
+        await c.query('SELECT tenant_id FROM politicas_de_precio WHERE tenant_id = $1', [TENANT_A])
+      ).rowCount,
+    }));
+    expect(ajenas).toEqual({
+      vigencias: 0,
+      vigenciaPorId: 0,
+      tarifas: 0,
+      tarifasPorVigencia: 0,
+      politicas: 0,
+    });
+
+    // Modificar o borrar lo de A desde B: cero filas afectadas.
+    const cambios = await comoTenant(TENANT_B, async (c) => [
+      (
+        await c.query("UPDATE vigencias SET hasta = '2027-12-31' WHERE id = $1", [
+          vigenciaDe[TENANT_A],
+        ])
+      ).rowCount,
+      (
+        await c.query('UPDATE tarifas SET venta_unidades = 1 WHERE vigencia_id = $1', [
+          vigenciaDe[TENANT_A],
+        ])
+      ).rowCount,
+      (
+        await c.query('UPDATE politicas_de_precio SET porcentaje = 99 WHERE tenant_id = $1', [
+          TENANT_A,
+        ])
+      ).rowCount,
+      (await c.query('DELETE FROM tarifas WHERE vigencia_id = $1', [vigenciaDe[TENANT_A]]))
+        .rowCount,
+      (await c.query('DELETE FROM vigencias WHERE id = $1', [vigenciaDe[TENANT_A]])).rowCount,
+      (await c.query('DELETE FROM politicas_de_precio WHERE tenant_id = $1', [TENANT_A])).rowCount,
+    ]);
+    expect(cambios).toEqual([0, 0, 0, 0, 0, 0]);
+
+    // Plantar filas con el tenant de A desde B: WITH CHECK, 42501.
+    await expect(
+      comoTenant(TENANT_B, (c) =>
+        c.query(
+          `INSERT INTO vigencias (id, tenant_id, paquete_id, desde, hasta)
+           VALUES (gen_random_uuid(), $1, $2, '2027-01-01', '2027-01-31')`,
+          [TENANT_A, paqueteDe[TENANT_A]],
+        ),
+      ),
+    ).rejects.toMatchObject({ code: '42501' });
+    await expect(
+      comoTenant(TENANT_B, (c) =>
+        c.query(
+          `INSERT INTO tarifas (id, tenant_id, vigencia_id, nombre, venta_unidades, moneda_iso,
+                                actualizado_en)
+           VALUES (gen_random_uuid(), $1, $2, 'Plantada', 100000, 'COP', now())`,
+          [TENANT_A, vigenciaDe[TENANT_A]],
+        ),
+      ),
+    ).rejects.toMatchObject({ code: '42501' });
+    await expect(
+      comoTenant(TENANT_B, (c) =>
+        c.query(
+          `INSERT INTO politicas_de_precio (tenant_id, actualizada_en) VALUES ($1, now())
+           ON CONFLICT (tenant_id) DO NOTHING`,
+          [TENANT_A],
+        ),
+      ),
+    ).rejects.toMatchObject({ code: '42501' });
+
+    // Mover una fila propia al tenant de A: el WITH CHECK también corta el UPDATE.
+    await expect(
+      comoTenant(TENANT_B, (c) =>
+        c.query('UPDATE tarifas SET tenant_id = $1 WHERE vigencia_id = $2', [
+          TENANT_A,
+          vigenciaDe[TENANT_B],
+        ]),
+      ),
+    ).rejects.toMatchObject({ code: '42501' });
+
+    // Colgarse del padre de A con una fila PROPIA: foránea compuesta, 23503.
+    await expect(
+      comoTenant(TENANT_B, (c) =>
+        c.query(
+          `INSERT INTO vigencias (id, tenant_id, paquete_id, desde, hasta)
+           VALUES (gen_random_uuid(), $1, $2, '2027-02-01', '2027-02-28')`,
+          [TENANT_B, paqueteDe[TENANT_A]],
+        ),
+      ),
+    ).rejects.toMatchObject({ code: '23503' });
+    await expect(
+      comoTenant(TENANT_B, (c) =>
+        c.query(
+          `INSERT INTO tarifas (id, tenant_id, vigencia_id, nombre, venta_unidades, moneda_iso,
+                                actualizado_en)
+           VALUES (gen_random_uuid(), $1, $2, 'Colgada de la vigencia ajena', 100000, 'COP', now())`,
+          [TENANT_B, vigenciaDe[TENANT_A]],
+        ),
+      ),
+    ).rejects.toMatchObject({ code: '23503' });
+
+    // Lo de A, intacto.
+    const intacto = await comoTenant(TENANT_A, async (c) => ({
+      vigencia: (
+        await c.query("SELECT to_char(hasta, 'YYYY-MM-DD') AS hasta FROM vigencias WHERE id = $1", [
+          vigenciaDe[TENANT_A],
+        ])
+      ).rows,
+      tarifas: (
+        await c.query(
+          'SELECT nombre, venta_unidades::text AS venta FROM tarifas WHERE vigencia_id = $1',
+          [vigenciaDe[TENANT_A]],
+        )
+      ).rows,
+      politica: (
+        await c.query(
+          'SELECT porcentaje::text AS porcentaje FROM politicas_de_precio WHERE tenant_id = $1',
+          [TENANT_A],
+        )
+      ).rows,
+    }));
+    expect(intacto).toEqual({
+      vigencia: [{ hasta: '2026-12-31' }],
+      tarifas: [{ nombre: 'Adulto', venta: '250000' }],
+      politica: [{ porcentaje: '20.000' }],
+    });
   });
 });
 

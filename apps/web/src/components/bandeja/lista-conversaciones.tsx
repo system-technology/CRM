@@ -21,6 +21,7 @@ import {
   obtenerIniciales,
   calcularTiempoRestanteVentana,
 } from '../../lib/bandeja-logica';
+import { obtenerClaseEscalonada } from '../comun/animaciones';
 
 export type DensidadBandeja = 'compacta' | 'comoda';
 
@@ -312,12 +313,9 @@ export function ListaConversaciones() {
         {cargando ? (
           <div className="space-y-2 p-3">
             {[1, 2, 3, 4, 5, 6].map((i) => (
-              <div
-                key={i}
-                className="animate-pulse rounded-lg bg-neutral-100 p-3 dark:bg-neutral-800/40"
-              >
-                <div className="h-4 w-3/4 rounded bg-neutral-200 dark:bg-neutral-700"></div>
-                <div className="mt-2 h-3 w-1/2 rounded bg-neutral-200 dark:bg-neutral-700"></div>
+              <div key={i} className="esqueleto-brillo rounded-lg p-3">
+                <div className="h-4 w-3/4 rounded bg-transparent"></div>
+                <div className="mt-2 h-3 w-1/2 rounded bg-transparent"></div>
               </div>
             ))}
           </div>
@@ -358,7 +356,7 @@ export function ListaConversaciones() {
                   ref={(el) => {
                     itemRefs.current[idx] = el;
                   }}
-                  className={`focus-visible:ring-acento-600 block p-3 transition-colors focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-inset ${
+                  className={`focus-visible:ring-acento-600 block p-3 transition-colors focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-inset ${obtenerClaseEscalonada(idx)} ${
                     esActiva
                       ? 'bg-acento-50/80 border-acento-700 dark:bg-acento-950/40 border-l-4'
                       : 'hover:bg-neutral-50 dark:hover:bg-neutral-800/50'

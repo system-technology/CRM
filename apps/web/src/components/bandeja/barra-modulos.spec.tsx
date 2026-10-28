@@ -114,6 +114,41 @@ describe('BarraModulos y Selector de Sesión (ADR-0011)', () => {
       expect(botonPerfilMovil.className).toContain('min-h-[44px]');
       expect(botonPerfilMovil.className).toContain('min-w-[44px]');
     });
+
+    it('permite expandir y contraer la barra lateral de escritorio con botón toggle (T-034)', () => {
+      render(<BarraModulos sesionInicial={SESION_ASESOR} />);
+
+      const sidebar = screen.getByTestId('sidebar-escritorio');
+      expect(sidebar.getAttribute('data-expandida')).toBe('false');
+
+      const botonToggle = screen.getByTestId('boton-toggle-sidebar');
+      expect(botonToggle.getAttribute('aria-expanded')).toBe('false');
+
+      // Expandir
+      fireEvent.click(botonToggle);
+      expect(sidebar.getAttribute('data-expandida')).toBe('true');
+      expect(botonToggle.getAttribute('aria-expanded')).toBe('true');
+      expect(localStorage.getItem('viajapro_sidebar_expandida')).toBe('true');
+
+      // Contraer
+      fireEvent.click(botonToggle);
+      expect(sidebar.getAttribute('data-expandida')).toBe('false');
+      expect(botonToggle.getAttribute('aria-expanded')).toBe('false');
+      expect(localStorage.getItem('viajapro_sidebar_expandida')).toBe('false');
+    });
+
+    it('muestra los títulos de los módulos y el nombre del asesor al estar expandida (T-034)', () => {
+      localStorage.setItem('viajapro_sidebar_expandida', 'true');
+      render(<BarraModulos sesionInicial={SESION_ASESOR} />);
+
+      const sidebar = screen.getByTestId('sidebar-escritorio');
+      expect(sidebar.getAttribute('data-expandida')).toBe('true');
+      expect(within(sidebar).getByText('Bandeja de WhatsApp')).toBeDefined();
+      expect(within(sidebar).getByText('Carlos Asesor')).toBeDefined();
+      expect(within(sidebar).getByText('Viajes El Sol')).toBeDefined();
+
+      localStorage.removeItem('viajapro_sidebar_expandida');
+    });
   });
 
   describe('Interacción con Menú de Sesión y Perfil', () => {

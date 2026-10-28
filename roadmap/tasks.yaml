@@ -384,7 +384,7 @@ tasks:
     phase: 1
     priority: P0
     effort: M
-    status: backlog
+    status: done
     depends_on:
       - T-016
     acceptance:
@@ -408,7 +408,7 @@ tasks:
     phase: 1
     priority: P1
     effort: S
-    status: backlog
+    status: done
     depends_on:
       - T-016
     acceptance:
@@ -429,7 +429,7 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: backlog
+    status: done
     depends_on:
       - T-016
     acceptance:
@@ -440,6 +440,8 @@ tasks:
     files:
       - apps/web/src/app/page.tsx
       - apps/web/src/lib/crm-api.ts
+      - apps/web/src/lib/inicio-logica.ts
+      - apps/web/src/components/inicio/bloque-seguimientos-dia.tsx
     source: orquestador:2026-10-26 (cola de Antigravity)
     created_at: 2026-10-26T21:39:01.014Z
   - id: T-021
@@ -585,7 +587,7 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: blocked
+    status: done
     depends_on: []
     acceptance:
       - Configuración › Catálogo ofrece el ajuste promo_vencida con los valores ocultar y tachar, guardado por
@@ -597,15 +599,13 @@ tasks:
       - apps/web/src/components/catalogo/
     source: orquestador:2026-10-26 (cola de Antigravity)
     created_at: 2026-10-26T21:39:01.014Z
-    blocked_reason: Espera el ADR-0017 aceptado y sus endpoints en la API (carril backend); Antigravity pide lo
-      que falte en traspaso/ENTREGA.md
   - id: T-029
     title: "Asistente de importación de catálogo: subir archivo, previsualizar, ver errores por fila y confirmar"
     type: feature
     phase: 1
     priority: P1
     effort: M
-    status: blocked
+    status: done
     depends_on: []
     acceptance:
       - El asistente tiene cuatro pasos (archivo, mapeo de columnas, previsualización con errores por fila,
@@ -617,15 +617,13 @@ tasks:
       - apps/web/src/components/catalogo/
     source: orquestador:2026-10-26 (cola de Antigravity)
     created_at: 2026-10-26T21:39:01.014Z
-    blocked_reason: Espera el ADR-0017 aceptado y sus endpoints en la API (carril backend); Antigravity pide lo
-      que falte en traspaso/ENTREGA.md
   - id: T-030
     title: Descarga de plantillas CSV y Excel por tipo de producto
     type: feature
     phase: 1
     priority: P1
     effort: M
-    status: blocked
+    status: done
     depends_on: []
     acceptance:
       - Una pantalla lista las plantillas por tipo de producto (excursión de un día, paquete con hotel) y
@@ -637,8 +635,6 @@ tasks:
       - apps/web/src/components/catalogo/
     source: orquestador:2026-10-26 (cola de Antigravity)
     created_at: 2026-10-26T21:39:01.014Z
-    blocked_reason: Espera el ADR-0017 aceptado y sus endpoints en la API (carril backend); Antigravity pide lo
-      que falte en traspaso/ENTREGA.md
   - id: T-031
     title: "Pantalla de gestión del catálogo: crear, editar y desactivar productos, tarifas y salidas"
     type: feature
@@ -692,7 +688,7 @@ tasks:
     phase: 1
     priority: P0
     effort: M
-    status: backlog
+    status: done
     depends_on:
       - T-032
     acceptance:
@@ -711,6 +707,11 @@ tasks:
       - apps/web/src/app/globals.css
     source: propietario:2026-10-26 (identidad visual)
     created_at: 2026-10-26T23:32:24.204Z
+    started_at: 2026-10-28T05:49:50.500Z
+    done_at: 2026-10-28T05:49:50.501Z
+    evidence: "Mergeado en main por el PR #104 (rama b/T-033-login-identidad-viaje) con el CI en verde: format,
+      analyze, tests y los demás checks obligatorios. Cierre automático (.github/workflows/cerrar-tarea.yml)."
+    commit: 7e6156df6fc54e66739bd1dbad32c0ba78abbe29
   - id: T-034
     title: "Navegación más rica: barra lateral con iconos de color y etiquetas, migas, paleta de comandos y
       accesos rápidos"
@@ -718,7 +719,7 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: backlog
+    status: done
     depends_on:
       - T-032
     acceptance:
@@ -736,13 +737,16 @@ tasks:
       - apps/web/src/app/layout.tsx
     source: propietario:2026-10-26 (identidad visual)
     created_at: 2026-10-26T23:32:24.205Z
+    started_at: 2026-10-28T05:51:00.000Z
+    done_at: 2026-10-28T06:06:00.000Z
+    evidence: "Implementado en rama b/T-034-navegacion-sidebar-migas-comandos. Stitch screen 14a4e161532b449c8001be6656399ee2. 60 suites y 497 tests en verde en @viajapro/web."
   - id: T-035
     title: "Animaciones y transiciones: entrada escalonada, hover, esqueletos con brillo y transiciones de página"
     type: feature
     phase: 1
     priority: P1
     effort: M
-    status: backlog
+    status: done
     depends_on:
       - T-032
     acceptance:
@@ -758,6 +762,9 @@ tasks:
       - apps/web/src/components/comun/
     source: propietario:2026-10-26 (identidad visual)
     created_at: 2026-10-26T23:32:24.205Z
+    started_at: 2026-10-28T06:17:00.000Z
+    done_at: 2026-10-28T06:34:00.000Z
+    evidence: "Implementado en rama b/T-035-animaciones-transiciones-esqueletos. Stitch screen ed51eb6813d7471487cf3b7a1b82d0e2. 61 suites y 508 tests en verde en @viajapro/web."
   - id: T-036
     title: "Tarjetas de producto con identidad por tipo de excursión: color, icono, degradado, promo y cupos"
     type: feature
@@ -785,7 +792,7 @@ tasks:
     phase: 1
     priority: P2
     effort: M
-    status: backlog
+    status: done
     depends_on:
       - T-032
     acceptance:
@@ -799,6 +806,12 @@ tasks:
       - apps/web/src/lib/crm-api.ts
     source: propietario:2026-10-26 (identidad visual)
     created_at: 2026-10-26T23:32:24.205Z
+    started_at: 2026-10-28T03:00:59.871Z
+    done_at: 2026-10-28T03:00:59.872Z
+    evidence: "Mergeado en main por el PR #114 (rama b/T-037-inicio-saludo-acciones-rapidas) con el CI en verde:
+      format, analyze, tests y los demás checks obligatorios. Cierre automático
+      (.github/workflows/cerrar-tarea.yml)."
+    commit: 332eae9c68167d26e8d28b71a85aeea64bf6abd5
   - id: T-038
     title: "Marca de la agencia en la API: nombre comercial, logo y color de acento por agencia"
     type: feature
@@ -1287,7 +1300,7 @@ tasks:
     phase: 1
     priority: P2
     effort: S
-    status: backlog
+    status: done
     depends_on:
       - T-050
       - T-018
@@ -1591,7 +1604,7 @@ tasks:
     phase: 1
     priority: P1
     effort: S
-    status: blocked
+    status: done
     depends_on: []
     acceptance:
       - La versión de cotización guarda opcion_de_salida_id con tenant_id, clave foránea compuesta hacia
@@ -1604,6 +1617,12 @@ tasks:
     source: hallazgos de la tanda 2026-10-26
     created_at: 2026-10-27T01:51:03.949Z
     blocked_reason: Requiere migración (agente datos) con aprobación del propietario, ya delegada en el orquestador
+    started_at: 2026-10-28T03:10:16.037Z
+    done_at: 2026-10-28T03:10:16.037Z
+    evidence: "Mergeado en main por el PR #121 (rama a/T-062-opcion-de-salida-en-la-version) con el CI en verde:
+      format, analyze, tests y los demás checks obligatorios. Cierre automático
+      (.github/workflows/cerrar-tarea.yml)."
+    commit: 00ea319d80558441fd9d887c0757def4863fb128
   - id: T-063
     title: "Web: enviar opcionDeSalidaId al cotizar y al guardar cuando el producto tiene opciones de salida"
     type: bug
@@ -1698,7 +1717,7 @@ tasks:
     phase: 1
     priority: P2
     effort: S
-    status: backlog
+    status: done
     depends_on: []
     acceptance:
       - aislamiento.spec.ts comprueba, para vigencias, tarifas y politicas_de_precio, que la lectura y la
@@ -1709,6 +1728,11 @@ tasks:
       - packages/database/tests/aislamiento.spec.ts
     source: hallazgos de la tanda 2026-10-26
     created_at: 2026-10-27T01:51:03.950Z
+    started_at: 2026-10-28T02:30:36.234Z
+    done_at: 2026-10-28T02:30:36.235Z
+    evidence: "Mergeado en main por el PR #95 (rama a/T-067-aislamiento-de-vigencias) con el CI en verde: format,
+      analyze, tests y los demás checks obligatorios. Cierre automático (.github/workflows/cerrar-tarea.yml)."
+    commit: 9454ba1f523ec83fb1cbd66320d53882b11c1fac
   - id: T-068
     title: "Limitador de tasa: límite combinado tenant+IP, límites distintos por endpoint y prueba e2e contra
       Redis real"
@@ -1844,7 +1868,7 @@ tasks:
     phase: 1
     priority: P0
     effort: M
-    status: backlog
+    status: done
     depends_on: []
     acceptance:
       - Endpoints para crear y editar contacto con teléfono E.164 y para crear oportunidad ligada a la
@@ -1854,6 +1878,12 @@ tasks:
       - apps/api/src/modules/crm/
     source: ruta a la fase 1 (roadmap v3) 2026-10-27
     created_at: 2026-10-28T01:47:57.807Z
+    started_at: 2026-10-28T03:17:14.980Z
+    done_at: 2026-10-28T03:17:14.980Z
+    evidence: "Mergeado en main por el PR #103 (rama a/T-075-contacto-oportunidad-y-seguimientos) con el CI en
+      verde: format, analyze, tests y los demás checks obligatorios. Cierre automático
+      (.github/workflows/cerrar-tarea.yml)."
+    commit: 9d2f4660122a215b80610e9dae325913e5fa8abb
   - id: T-076
     title: Pantalla de contacto y botón «Crear oportunidad» en la conversación
     type: feature
@@ -2122,7 +2152,7 @@ tasks:
     phase: 1
     priority: P3
     effort: S
-    status: backlog
+    status: done
     depends_on: []
     acceptance:
       - Un id que no es UUID responde 400 y no 500 con traza
@@ -2130,6 +2160,11 @@ tasks:
       - apps/api/src/modules/quoting/interface/
     source: auditoria de ciberseguridad 2026-10-28
     created_at: 2026-10-28T02:09:17.390Z
+    started_at: 2026-10-28T02:43:17.311Z
+    done_at: 2026-10-28T02:43:17.311Z
+    evidence: "Mergeado en main por el PR #117 (rama a/T-091-endurecimiento-de-la-api) con el CI en verde: format,
+      analyze, tests y los demás checks obligatorios. Cierre automático (.github/workflows/cerrar-tarea.yml)."
+    commit: 591f7aaa79b68a06f94b58040d9947656689de8b
   - id: T-092
     title: Token de invitación en el fragmento de la URL y cabeceras HSTS y Permissions-Policy en la web
     type: security
@@ -2172,7 +2207,7 @@ tasks:
     phase: 1
     priority: P1
     effort: S
-    status: backlog
+    status: done
     depends_on: []
     acceptance:
       - Lista de cada cookie y entrada de localStorage de apps/web y apps/api con finalidad, duración y
@@ -2190,7 +2225,7 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: backlog
+    status: done
     depends_on: []
     acceptance:
       - Las cookies esenciales (sesión, CSRF) no piden consentimiento; cualquier analítica o terceros queda
@@ -2277,3 +2312,204 @@ tasks:
       - apps/web/src/
     source: ruta de seguridad y privacidad 2026-10-28
     created_at: 2026-10-28T02:16:36.574Z
+  - id: T-100
+    title: "Ficha 360 del contacto: datos, conversaciones, oportunidades, cotizaciones y seguimientos en una sola
+      pantalla"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Pantalla /contactos/[id] que consume /api/v1/crm/* y muestra línea de tiempo con estados cargando,
+        error y vacío
+      - Desde ella se edita el contacto, se crea una oportunidad y un seguimiento
+      - Tests de componente; usable a 375 px
+    files:
+      - apps/web/src/app/contactos/
+    source: cola de Antigravity ampliada 2026-10-28
+    created_at: 2026-10-28T02:37:57.684Z
+  - id: T-101
+    title: Lista de seguimientos del asesor con vencidos, de hoy y próximos, y acción de completar
+    type: feature
+    phase: 1
+    priority: P1
+    effort: S
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Pantalla /seguimientos con GET /api/v1/crm/seguimientos y POST .../completar; vencidos resaltados en
+        color de alerta
+      - Estados cargando, error y vacío; tests
+    files:
+      - apps/web/src/app/seguimientos/
+    source: cola de Antigravity ampliada 2026-10-28
+    created_at: 2026-10-28T02:37:57.685Z
+  - id: T-102
+    title: Pipeline tipo tablero (kanban) con arrastrar y soltar entre etapas, totales por etapa y tarjetas con
+      valor estimado
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Mover una oportunidad entre etapas con teclado y ratón, con actualización optimista y reversión si la
+        API falla
+      - Total en dinero entero por etapa y moneda (R8)
+      - Accesible y usable a 375 px; tests
+    files:
+      - apps/web/src/app/pipeline/
+    source: cola de Antigravity ampliada 2026-10-28
+    created_at: 2026-10-28T02:37:57.685Z
+  - id: T-103
+    title: Búsqueda global y filtros guardados en bandeja, contactos y oportunidades
+    type: feature
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Atajo de teclado y cuadro de búsqueda que encuentra por nombre, teléfono y destino sin exponer más de
+        lo que el rol puede ver
+      - Filtros recordados por el asesor (almacenamiento local) con opción de limpiar
+    files:
+      - apps/web/src/components/busqueda/
+    source: cola de Antigravity ampliada 2026-10-28
+    created_at: 2026-10-28T02:37:57.685Z
+  - id: T-104
+    title: "Respuestas rápidas en la bandeja: lista, insertar con «/» y administración por agencia"
+    type: feature
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Insertar una respuesta rápida en el compositor con «/», con vista previa y variables como {nombre}
+      - Pantalla de administración en Configuración; usa la API cuando exista (T-078) y mientras tanto un
+        estado «próximamente» honesto, sin datos falsos
+    files:
+      - apps/web/src/app/bandeja/
+      - apps/web/src/app/configuracion/
+    source: cola de Antigravity ampliada 2026-10-28
+    created_at: 2026-10-28T02:37:57.685Z
+  - id: T-105
+    title: "Onboarding de una agencia nueva: asistente de 4 pasos (marca, catálogo, equipo, conectar WhatsApp)"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: L
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Asistente que lleva a la agencia de la cuenta vacía a la primera cotización enviada, con progreso
+        guardado y cada paso saltable
+      - Los pasos reutilizan T-031/T-029 (catálogo), T-027 (equipo) y T-039 (marca); el paso de WhatsApp
+        explica qué se necesita sin pedir secretos en pantalla
+    files:
+      - apps/web/src/app/bienvenida/
+    source: cola de Antigravity ampliada 2026-10-28
+    created_at: 2026-10-28T02:37:57.685Z
+  - id: T-106
+    title: "Pantalla de conexión de WhatsApp en Configuración: estado del canal, número, calidad y ventana de 24 h
+      explicada"
+    type: feature
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Muestra el estado real del canal desde la API (o «no conectado» con los pasos) sin mostrar tokens
+      - Explica la ventana de 24 h y las plantillas con lenguaje de agencia, no de Meta
+    files:
+      - apps/web/src/app/configuracion/whatsapp/
+    source: cola de Antigravity ampliada 2026-10-28
+    created_at: 2026-10-28T02:37:57.685Z
+  - id: T-107
+    title: "Cotizaciones guardadas: listado con estado, versiones, reenvío por WhatsApp y duplicar"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Lista y detalle de cotizaciones guardadas con sus versiones; botón enviar por WhatsApp (usa T-074) y
+        duplicar como nueva versión
+      - No muestra neto ni margen a quien no tiene el permiso cotizacion.ver_neto_y_margen
+    files:
+      - apps/web/src/app/cotizaciones/
+    source: cola de Antigravity ampliada 2026-10-28
+    created_at: 2026-10-28T02:37:57.685Z
+  - id: T-108
+    title: Páginas públicas /privacidad, /terminos y /cookies con el texto aprobado y enlace en el pie y en el login
+    type: feature
+    phase: 1
+    priority: P1
+    effort: S
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Páginas estáticas que renderizan el texto de docs/05-seguridad una vez aprobado por el propietario
+        (T-093); mientras tanto, con el borrador y marca visible «borrador»
+      - Enlaces en el pie y en la pantalla de ingreso; legibles a 375 px
+    files:
+      - apps/web/src/app/privacidad/
+      - apps/web/src/app/terminos/
+      - apps/web/src/app/cookies/
+    source: cola de Antigravity ampliada 2026-10-28
+    created_at: 2026-10-28T02:37:57.685Z
+  - id: T-109
+    title: "Estados de sistema consistentes: página 404, error global, sin conexión y sesión expirada con mensajes
+      en español claro"
+    type: feature
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    depends_on: []
+    acceptance:
+      - not-found.tsx, error.tsx y aviso de sin conexión con la identidad visual de turismo; al expirar la
+        sesión lleva a /ingresar conservando el destino
+      - Tests de la lógica de clasificación de errores
+    files:
+      - apps/web/src/app/
+    source: cola de Antigravity ampliada 2026-10-28
+    created_at: 2026-10-28T02:37:57.685Z
+  - id: T-110
+    title: "Notificaciones en la web: aviso de mensaje nuevo, seguimiento vencido y cotización por vencer, con
+      preferencia por asesor"
+    type: feature
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Campana con contador y panel; sonido y notificación del navegador solo si el asesor lo activa
+      - Usa el canal en tiempo real existente (Socket.IO) y la API de pendientes; sin datos personales en el
+        título de la notificación
+    files:
+      - apps/web/src/components/notificaciones/
+    source: cola de Antigravity ampliada 2026-10-28
+    created_at: 2026-10-28T02:37:57.685Z
+  - id: T-111
+    title: Modo oscuro y preferencia de densidad con la paleta de turismo
+    type: feature
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Interruptor claro, oscuro y sistema; contraste AA en ambos; la marca de la agencia se adapta
+      - Sin parpadeo al cargar
+    files:
+      - apps/web/src/
+    source: cola de Antigravity ampliada 2026-10-28
+    created_at: 2026-10-28T02:37:57.685Z

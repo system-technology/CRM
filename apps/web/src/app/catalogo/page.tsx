@@ -16,12 +16,17 @@ import {
   MapPin,
   Utensils,
   Calendar,
+  Upload,
+  FileSpreadsheet,
 } from 'lucide-react';
 import type {
   PlanAlimentacion,
   SalidaPublicada,
   ResumenDePaqueteGestion,
 } from '@viajapro/contracts';
+import { DescargaPlantillas } from '../../components/catalogo/importacion/descarga-plantillas';
+import { AsistenteImportacion } from '../../components/catalogo/importacion/asistente-importacion';
+import type { FormatoConPlantilla } from '../../lib/importaciones-api';
 import { BarraModulos } from '../../components/bandeja/barra-modulos';
 import { DistintivoDatosDemo } from '../../components/comun/distintivo-datos-demo';
 import { EsqueletoGridTarjetas, AvisoErrorAccionable } from '../../components/comun/esqueletos';
@@ -35,6 +40,8 @@ import { TarjetaSalidaPublicada } from '../../components/catalogo/tarjeta-salida
 import { TablaGestionCatalogo } from '../../components/catalogo/tabla-gestion-catalogo';
 import { ModalFormularioPaquete } from '../../components/catalogo/modal-formulario-paquete';
 import { DialogoDesactivarPaquete } from '../../components/catalogo/dialogo-desactivar-paquete';
+import { EstadoSinCatalogo } from '../../components/catalogo/estado-sin-catalogo';
+import { obtenerClaseEscalonada } from '../../components/comun/animaciones';
 import { MOCK_PAQUETES_CATALOGO, type PaqueteConDetalle } from '../../lib/mock-catalogo';
 import {
   filtrarPaquetes,
@@ -75,9 +82,11 @@ export default function CatalogoPage() {
   const [destinoFiltro, setDestinoFiltro] = useState<string>('TODOS');
   const [soloVigentes, setSoloVigentes] = useState<boolean>(true);
   const [paqueteSeleccionado, setPaqueteSeleccionado] = useState<PaqueteConDetalle | null>(null);
-
-  // Pestaña activa: 'EXPLORAR' o 'GESTION' (T-031)
-  const [pestanaActiva, setPestanaActiva] = useState<'EXPLORAR' | 'GESTION'>('EXPLORAR');
+  const [pestañaActiva, setPestañaActiva] = useState<'EXPLORAR' | 'PLANTILLAS' | 'GESTION'>(
+    'EXPLORAR',
+  );
+  const [asistenteImportacionAbierto, setAsistenteImportacionAbierto] = useState(false);
+  const [formatoParaImportar, setFormatoParaImportar] = useState('excursion-un-dia');
 
   // Estado para gestión del catálogo (T-031)
   const [paquetesGestion, setPaquetesGestion] = useState<ResumenDePaqueteGestion[]>([]);
@@ -218,7 +227,17 @@ export default function CatalogoPage() {
             </div>
 
             {/* Acciones principales */}
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setAsistenteImportacionAbierto(true)}
+                data-testid="btn-abrir-asistente-importacion"
+                className="flex min-h-[44px] items-center gap-1.5 rounded-xl border border-neutral-300 bg-white px-3.5 py-2.5 text-xs font-semibold text-neutral-800 shadow-2xs hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
+              >
+                <Upload className="h-4 w-4 text-teal-600 dark:text-teal-400" />
+                <span>Importar archivo (CSV)</span>
+              </button>
+
               <Link
                 href="/cotizador"
                 className="bg-acento-600 hover:bg-acento-700 flex min-h-[44px] items-center gap-1.5 rounded-xl px-4 py-2.5 text-xs font-semibold text-white shadow-xs transition-colors"
@@ -227,39 +246,55 @@ export default function CatalogoPage() {
                 Ir al Cotizador
               </Link>
             </div>
-            {/* Selector de Pestañas: Explorar vs Gestión (T-031) */}
-            <div className="mt-4 flex flex-wrap items-center gap-1 rounded-xl border border-neutral-200 bg-neutral-100 p-1 dark:border-neutral-800 dark:bg-neutral-800">
-              <button
-                type="button"
-                onClick={() => setPestanaActiva('EXPLORAR')}
-                data-testid="tab-explorar-catalogo"
-                className={`flex min-h-[36px] items-center gap-1.5 rounded-lg px-4 py-1.5 text-xs font-semibold transition-colors ${
-                  pestanaActiva === 'EXPLORAR'
-                    ? 'bg-white text-neutral-900 shadow-2xs dark:bg-neutral-700 dark:text-white'
-                    : 'text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white'
-                }`}
-              >
-                <Eye className="h-3.5 w-3.5" />
-                <span>Explorar salidas y tarifas</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setPestanaActiva('GESTION')}
-                data-testid="tab-gestion-catalogo"
-                className={`flex min-h-[36px] items-center gap-1.5 rounded-lg px-4 py-1.5 text-xs font-semibold transition-colors ${
-                  pestanaActiva === 'GESTION'
-                    ? 'bg-white text-teal-800 shadow-2xs dark:bg-neutral-700 dark:text-teal-300'
-                    : 'text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white'
-                }`}
-              >
-                <Package className="h-3.5 w-3.5" />
-                <span>Gestión de productos ({paquetesGestion.length})</span>
-              </button>
-            </div>
+          </div>
+
+          {/* Pestañas de Vista */}
+          <div className="mt-4 flex border-b border-neutral-200 dark:border-neutral-800">
+            <button
+              type="button"
+              onClick={() => setPestañaActiva('EXPLORAR')}
+              data-testid="tab-catalogo-explorar"
+              className={`flex min-h-[44px] items-center gap-2 border-b-2 px-4 py-2.5 text-xs font-bold transition-colors ${
+                pestañaActiva === 'EXPLORAR'
+                  ? 'border-teal-600 text-teal-700 dark:border-teal-400 dark:text-teal-300'
+                  : 'border-transparent text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-white'
+              }`}
+            >
+              <Package className="h-4 w-4" />
+              <span>Explorar catálogo y salidas</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setPestañaActiva('PLANTILLAS')}
+              data-testid="tab-catalogo-plantillas"
+              className={`flex min-h-[44px] items-center gap-2 border-b-2 px-4 py-2.5 text-xs font-bold transition-colors ${
+                pestañaActiva === 'PLANTILLAS'
+                  ? 'border-teal-600 text-teal-700 dark:border-teal-400 dark:text-teal-300'
+                  : 'border-transparent text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-white'
+              }`}
+            >
+              <FileSpreadsheet className="h-4 w-4" />
+              <span>Plantillas de importación CSV (T-030)</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setPestañaActiva('GESTION')}
+              data-testid="tab-gestion-catalogo"
+              className={`flex min-h-[44px] items-center gap-2 border-b-2 px-4 py-2.5 text-xs font-bold transition-colors ${
+                pestañaActiva === 'GESTION'
+                  ? 'border-teal-600 text-teal-700 dark:border-teal-400 dark:text-teal-300'
+                  : 'border-transparent text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-white'
+              }`}
+            >
+              <Package className="h-4 w-4" />
+              <span>Gestión de productos ({paquetesGestion.length})</span>
+            </button>
           </div>
 
           {/* Filtros y Búsqueda (solo en vista Explorar) */}
-          {pestanaActiva === 'EXPLORAR' && (
+          {pestañaActiva === 'EXPLORAR' && (
             <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-4">
               {/* Buscador */}
               <div className="relative">
@@ -326,7 +361,7 @@ export default function CatalogoPage() {
 
         {/* Contenido */}
         <section className="min-w-0 flex-1 p-3.5 pb-24 sm:p-6 md:pb-6">
-          {pestanaActiva === 'GESTION' ? (
+          {pestañaActiva === 'GESTION' ? (
             <TablaGestionCatalogo
               paquetes={paquetesGestion}
               alCrear={() => {
@@ -342,6 +377,13 @@ export default function CatalogoPage() {
                 setDialogoDesactivarAbierto(true);
               }}
               cargando={cargandoGestion}
+            />
+          ) : pestañaActiva === 'PLANTILLAS' ? (
+            <DescargaPlantillas
+              alElegirParaImportar={(fmt: FormatoConPlantilla) => {
+                setFormatoParaImportar(fmt.formato);
+                setAsistenteImportacionAbierto(true);
+              }}
             />
           ) : (
             <>
@@ -390,7 +432,14 @@ export default function CatalogoPage() {
                 <EsqueletoGridTarjetas cantidad={6} />
               ) : usarReal && !errorTenant ? (
                 /* LISTADO REAL DE SALIDAS PUBLICADAS (0c.16.1) */
-                salidasFiltradas.length === 0 ? (
+                salidasReales.length === 0 ? (
+                  /* Estado «Sin catálogo todavía» (T-019) */
+                  <EstadoSinCatalogo
+                    onImportar={() => setAsistenteImportacionAbierto(true)}
+                    hrefCrear="/catalogo/gestion"
+                    contexto="catalogo"
+                  />
+                ) : salidasFiltradas.length === 0 ? (
                   <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-neutral-300 py-16 text-center dark:border-neutral-800">
                     <Calendar className="h-10 w-10 text-neutral-400" />
                     <h3 className="mt-3 text-sm font-bold text-neutral-800 dark:text-white">
@@ -412,13 +461,23 @@ export default function CatalogoPage() {
                   </div>
                 ) : (
                   <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-                    {salidasFiltradas.map((salida) => (
-                      <TarjetaSalidaPublicada key={salida.vigenciaId} salida={salida} />
+                    {salidasFiltradas.map((salida, idx) => (
+                      <TarjetaSalidaPublicada
+                        key={salida.vigenciaId}
+                        salida={salida}
+                        indice={idx}
+                      />
                     ))}
                   </div>
                 )
               ) : /* LISTADO MOCK (MODO SIMULADO O FALLBACK) */
-              paquetesFiltrados.length === 0 ? (
+              MOCK_PAQUETES_CATALOGO.length === 0 ? (
+                <EstadoSinCatalogo
+                  onImportar={() => setAsistenteImportacionAbierto(true)}
+                  hrefCrear="/catalogo/gestion"
+                  contexto="catalogo"
+                />
+              ) : paquetesFiltrados.length === 0 ? (
                 <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-neutral-300 py-16 text-center dark:border-neutral-800">
                   <Package className="h-10 w-10 text-neutral-400" />
                   <h3 className="mt-3 text-sm font-bold text-neutral-800 dark:text-white">
@@ -439,14 +498,14 @@ export default function CatalogoPage() {
                 </div>
               ) : (
                 <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-                  {paquetesFiltrados.map((paquete) => {
+                  {paquetesFiltrados.map((paquete, idx) => {
                     const precioDesde = obtenerPrecioDesde(paquete);
                     const vigencia = verificarVigenciaTarifario(paquete.temporadas);
 
                     return (
                       <article
                         key={paquete.id}
-                        className="flex flex-col justify-between overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-xs transition-shadow hover:shadow-md dark:border-neutral-800 dark:bg-neutral-900"
+                        className={`tarjeta-turismo-hover flex flex-col justify-between overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-xs hover:border-cyan-500/40 dark:border-neutral-800 dark:bg-neutral-900 ${obtenerClaseEscalonada(idx)}`}
                       >
                         <div>
                           {/* Cabecera de la tarjeta */}
@@ -577,7 +636,16 @@ export default function CatalogoPage() {
         alCerrar={() => setPaqueteSeleccionado(null)}
       />
 
-      {/* 4. Modales de Gestión del Catálogo (T-031) */}
+      {/* 4. Asistente de Importación de Catálogo (T-029) */}
+      <AsistenteImportacion
+        abierto={asistenteImportacionAbierto}
+        formatoInicial={formatoParaImportar}
+        alCerrar={() => setAsistenteImportacionAbierto(false)}
+        alFinalizarImportacion={() => {
+          setPestañaActiva('EXPLORAR');
+        }}
+      />
+
       <ModalFormularioPaquete
         abierto={modalPaqueteAbierto}
         alCerrar={() => {

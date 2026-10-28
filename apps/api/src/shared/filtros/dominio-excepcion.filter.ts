@@ -24,6 +24,7 @@ import {
   ProhibidoError,
 } from '@viajapro/domain';
 import type { Response } from 'express';
+import { redactarPII } from '../privacidad/enmascarar.js';
 import { ContextoTenant } from '../tenant/contexto-tenant.js';
 
 @Catch()
@@ -65,7 +66,7 @@ export class DominioExcepcionFilter implements ExceptionFilter {
                     : HttpStatus.BAD_REQUEST;
 
       this.log.warn(
-        `${excepcion.code}: ${excepcion.message}` +
+        redactarPII(`${excepcion.code}: ${excepcion.message}`) +
           (ctx ? `  [tenant ${ctx.tenantId} · traza ${ctx.trazaId}]` : ''),
       );
 
@@ -94,7 +95,9 @@ export class DominioExcepcionFilter implements ExceptionFilter {
     // o un mensaje de PostgreSQL filtran nombres de tablas y estructura interna.
     this.log.error(
       `Error no controlado${ctx ? ` [tenant ${ctx.tenantId} · traza ${ctx.trazaId}]` : ''}`,
-      excepcion instanceof Error ? excepcion.stack : String(excepcion),
+      redactarPII(
+        excepcion instanceof Error ? (excepcion.stack ?? excepcion.message) : String(excepcion),
+      ),
     );
 
     res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({

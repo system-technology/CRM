@@ -6,6 +6,7 @@ import type {
   Temporada,
   TipoPasajero,
   SalidaPublicada,
+  CargoEnDestino,
 } from '@viajapro/contracts';
 import type { PaqueteConDetalle } from './mock-catalogo';
 
@@ -207,5 +208,143 @@ export function formatearCondicionDesde(salida: Pick<SalidaPublicada, 'desdeEsDe
   return {
     subtitulo: 'por persona (COP)',
     esGrupo: false,
+  };
+}
+
+/**
+ * Formatea el horario de salida y regreso de una excursión de forma legible.
+ */
+export function formatearHorarioExcursion(
+  horaSalida?: string | null,
+  horaRegreso?: string | null,
+): string | null {
+  if (horaSalida && horaRegreso) {
+    return `Salida: ${horaSalida} · Regreso: ${horaRegreso}`;
+  }
+  if (horaSalida) {
+    return `Salida: ${horaSalida}`;
+  }
+  if (horaRegreso) {
+    return `Regreso: ${horaRegreso}`;
+  }
+  return null;
+}
+
+export type EstadoCupos = 'DISPONIBLE' | 'ULTIMOS_CUPOS' | 'AGOTADO' | 'PROGRAMADA';
+
+export interface InfoDisponibilidadCupos {
+  estado: EstadoCupos;
+  etiqueta: string;
+  claseColor: string;
+}
+
+/**
+ * Clasifica la disponibilidad de cupos de una salida para mostrar chips de urgencia o estado.
+ */
+export function clasificarDisponibilidadCupos(cupos: number | null): InfoDisponibilidadCupos {
+  if (cupos === null) {
+    return {
+      estado: 'PROGRAMADA',
+      etiqueta: 'Salida programada',
+      claseColor: 'bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300',
+    };
+  }
+  if (cupos <= 0) {
+    return {
+      estado: 'AGOTADO',
+      etiqueta: 'Agotado',
+      claseColor: 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300',
+    };
+  }
+  if (cupos <= 5) {
+    return {
+      estado: 'ULTIMOS_CUPOS',
+      etiqueta: `Últimos ${cupos} cupos`,
+      claseColor: 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300',
+    };
+  }
+  return {
+    estado: 'DISPONIBLE',
+    etiqueta: `${cupos} cupos disponibles`,
+    claseColor: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300',
+  };
+}
+
+/**
+ * Formatea la presentación de tarifas según la política promo_vencida calculada por la API (T-051).
+ * La web NUNCA compara fechas ni decide si la promo venció: respeta estrictamente lo que entrega la API.
+ */
+export function interpretarPresentacionTarifa(presentacion?: {
+  estado: 'CONSULTAR' | 'VIGENTE' | 'PROMO_VIGENTE' | 'PROMO_VENCIDA';
+  venta: Dinero | null;
+  listaTachada: Dinero | null;
+  leyenda: 'PROMO_VENCIDA' | null;
+  promoVigente: boolean;
+}): {
+  mostrarTachado: boolean;
+  listaTachada: Dinero | null;
+  mostrarLeyendaVencida: boolean;
+  promoVigente: boolean;
+  esConsultar: boolean;
+} {
+  if (!presentacion) {
+    return {
+      mostrarTachado: false,
+      listaTachada: null,
+      mostrarLeyendaVencida: false,
+      promoVigente: false,
+      esConsultar: false,
+    };
+  }
+
+  const esConsultar = presentacion.estado === 'CONSULTAR' || presentacion.venta === null;
+  const mostrarTachado = Boolean(presentacion.listaTachada);
+  const mostrarLeyendaVencida = presentacion.leyenda === 'PROMO_VENCIDA';
+
+  return {
+    mostrarTachado,
+    listaTachada: presentacion.listaTachada,
+    mostrarLeyendaVencida,
+    promoVigente: presentacion.promoVigente,
+    esConsultar,
+  };
+}
+
+/**
+ * Verifica y asegura que los cargos en destino se mantengan separados del precio del paquete/cotización
+ * y nunca se sumen al total a cobrar por la agencia (R8, ADR-0017 §9).
+ */
+export function verificarCargosEnDestinoSeparados(
+  totalVenta: Dinero,
+  cargosEnDestino: CargoEnDestino[] = [],
+): {
+  totalAgencia: Dinero;
+  cargosEnDestino: CargoEnDestino[];
+  sumaCargosEnDestino: Dinero | null;
+  totalNuncaIncluyeCargos: boolean;
+} {
+  let totalCargosCentavos = 0n;
+  let mismaMoneda = true;
+
+  for (const cargo of cargosEnDestino) {
+    if (cargo.monto) {
+      if (cargo.monto.moneda === totalVenta.moneda) {
+        totalCargosCentavos += BigInt(cargo.monto.unidades);
+      } else {
+        mismaMoneda = false;
+      }
+    }
+  }
+
+  const sumaCargosEnDestino: Dinero | null =
+    cargosEnDestino.length > 0 && mismaMoneda
+      ? { unidades: totalCargosCentavos.toString(), moneda: totalVenta.moneda }
+      : null;
+
+  return {
+    totalAgencia: totalVenta,
+    cargosEnDestino,
+    sumaCargosEnDestino,
+    totalNuncaIncluyeCargos: true,
   };
 }

@@ -22,6 +22,7 @@ import {
   AvisoErrorAccionable,
   AvisoVacio,
 } from '../../components/comun/esqueletos';
+import { obtenerClaseEscalonada } from '../../components/comun/animaciones';
 import { formatearErrorAmigable } from '../../lib/estados-ui-logica';
 import { construirMensajeErrorAccionable } from '../../lib/estados-ui-logica';
 import { FichaDetalleContacto } from '../../components/contactos/ficha-detalle-contacto';
@@ -234,7 +235,7 @@ export default function ContactosPage() {
                       </td>
                     </tr>
                   ) : (
-                    contactosFiltrados.map((c) => {
+                    contactosFiltrados.map((c, idx) => {
                       const avatarColores = generarColorAvatar(c.id);
                       const iniciales = obtenerIniciales(c.nombre, c.telefono);
                       const tienePromocional = c.consentimientos.includes('PROMOCIONAL');
@@ -243,7 +244,7 @@ export default function ContactosPage() {
                         <tr
                           key={c.id}
                           onClick={() => setContactoSeleccionado(c)}
-                          className="cursor-pointer transition-colors hover:bg-neutral-50/80 dark:hover:bg-neutral-800/40"
+                          className={`cursor-pointer transition-colors hover:bg-cyan-50/40 dark:hover:bg-neutral-800/40 ${obtenerClaseEscalonada(idx)}`}
                         >
                           {/* Nombre + Avatar */}
                           <td className="px-5 py-3">
