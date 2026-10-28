@@ -1635,7 +1635,7 @@ tasks:
     phase: 1
     priority: P2
     effort: S
-    status: backlog
+    status: done
     depends_on: []
     acceptance:
       - Cambiar la moneda de la venta sin el permiso cotizacion.ver_neto_y_margen rechaza el cambio o
@@ -1646,6 +1646,11 @@ tasks:
       - apps/api/src/modules/quoting/infrastructure/
     source: hallazgos de la tanda 2026-10-26
     created_at: 2026-10-27T01:51:03.950Z
+    started_at: 2026-10-28T01:50:06.840Z
+    done_at: 2026-10-28T01:50:06.840Z
+    evidence: "Mergeado en main por el PR #98 (rama a/T-064-hallazgos-del-catalogo) con el CI en verde: format,
+      analyze, tests y los demás checks obligatorios. Cierre automático (.github/workflows/cerrar-tarea.yml)."
+    commit: 4d4653c4f51196e83388736ae6c4beae5b3320ee
   - id: T-065
     title: "Catálogo: el validador no detecta cambios solo en opciones de salida, cargos o formato; PATCH no puede
       poner el plan de alimentación en nulo; validar la moneda contra la tabla"
