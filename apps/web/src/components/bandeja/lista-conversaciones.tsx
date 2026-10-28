@@ -23,6 +23,12 @@ import {
 } from '../../lib/bandeja-logica';
 import { obtenerClaseEscalonada } from '../comun/animaciones';
 
+import {
+  useFiltrosPersistidos,
+  CLAVE_FILTROS_BANDEJA,
+  FILTROS_BANDEJA_DEFECTO,
+} from '../../lib/filtros-guardados-logica';
+
 export type DensidadBandeja = 'compacta' | 'comoda';
 
 const FILTROS: { id: FiltroBandeja; etiqueta: string }[] = [
@@ -36,8 +42,32 @@ const FILTROS: { id: FiltroBandeja; etiqueta: string }[] = [
 export function ListaConversaciones() {
   const { esDemo } = useModoDemo();
   const pathname = usePathname();
-  const [filtro, setFiltro] = useState<FiltroBandeja>('TODAS');
-  const [buscar, setBuscar] = useState('');
+
+  // Filtros persistidos en localStorage con opción de limpiar (T-103)
+  const {
+    filtros: filtrosGuardados,
+    actualizarFiltro,
+    limpiarFiltros,
+    tieneFiltrosActivos,
+  } = useFiltrosPersistidos(CLAVE_FILTROS_BANDEJA, FILTROS_BANDEJA_DEFECTO);
+
+  const filtro = filtrosGuardados.filtro;
+  const buscar = filtrosGuardados.buscar;
+
+  const setFiltro = useCallback(
+    (nuevoFiltro: FiltroBandeja) => {
+      actualizarFiltro('filtro', nuevoFiltro);
+    },
+    [actualizarFiltro],
+  );
+
+  const setBuscar = useCallback(
+    (nuevoBuscar: string) => {
+      actualizarFiltro('buscar', nuevoBuscar);
+    },
+    [actualizarFiltro],
+  );
+
   const [buscarDebounced, setBuscarDebounced] = useState('');
 
   const [pagina, setPagina] = useState<PaginaBandeja | null>(null);
@@ -173,14 +203,16 @@ export function ListaConversaciones() {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'ArrowDown') {
+    const enInputBusqueda = document.activeElement === busquedaInputRef.current;
+
+    if (e.key === 'ArrowDown' || (e.key === 'j' && !enInputBusqueda)) {
       e.preventDefault();
       setIndiceSeleccionado((prev) => {
         const next = Math.min(prev + 1, conversaciones.length - 1);
         itemRefs.current[next]?.focus();
         return next;
       });
-    } else if (e.key === 'ArrowUp') {
+    } else if (e.key === 'ArrowUp' || (e.key === 'k' && !enInputBusqueda)) {
       e.preventDefault();
       setIndiceSeleccionado((prev) => {
         const next = Math.max(prev - 1, 0);
@@ -188,9 +220,13 @@ export function ListaConversaciones() {
         return next;
       });
     } else if (e.key === '/') {
-      if (document.activeElement !== busquedaInputRef.current) {
+      if (!enInputBusqueda) {
         e.preventDefault();
         busquedaInputRef.current?.focus();
+      }
+    } else if (e.key === 'Escape') {
+      if (enInputBusqueda) {
+        busquedaInputRef.current?.blur();
       }
     }
   };
@@ -237,7 +273,7 @@ export function ListaConversaciones() {
             type="button"
             onClick={() => setDensidad((d) => (d === 'comoda' ? 'compacta' : 'comoda'))}
             title={densidad === 'comoda' ? 'Cambiar a vista compacta' : 'Cambiar a vista cómoda'}
-            className="focus-visible:ring-acento-600 flex min-h-[36px] items-center gap-1 rounded-md border border-neutral-200 px-2.5 py-1 text-xs text-neutral-600 hover:bg-neutral-100 focus-visible:ring-2 focus-visible:outline-none md:min-h-[28px] dark:border-neutral-700 dark:text-neutral-400 dark:hover:bg-neutral-800"
+            className="focus-visible:ring-acento-600 flex min-h-[44px] items-center gap-1 rounded-md border border-neutral-200 px-2.5 py-1 text-xs text-neutral-600 hover:bg-neutral-100 focus-visible:ring-2 focus-visible:outline-none md:min-h-[28px] dark:border-neutral-700 dark:text-neutral-400 dark:hover:bg-neutral-800"
           >
             <Rows3 className="h-3.5 w-3.5" />
             <span className="text-[11px] capitalize">{densidad}</span>
@@ -257,26 +293,40 @@ export function ListaConversaciones() {
           />
         </div>
 
-        {/* Chips de Filtro con objetivo táctil >=44px en móvil */}
-        <div className="flex flex-wrap gap-1" role="tablist">
-          {FILTROS.map((f) => {
-            const activo = filtro === f.id;
-            return (
-              <button
-                key={f.id}
-                role="tab"
-                aria-selected={activo}
-                onClick={() => setFiltro(f.id)}
-                className={`focus-visible:ring-acento-600 flex min-h-[44px] items-center rounded-lg px-3 py-1.5 text-xs font-medium transition-colors focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:outline-none md:min-h-[32px] md:py-1 dark:focus-visible:ring-offset-neutral-900 ${
-                  activo
-                    ? 'bg-acento-700 font-semibold text-white shadow-2xs'
-                    : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700'
-                }`}
-              >
-                {f.etiqueta}
-              </button>
-            );
-          })}
+        {/* Chips de Filtro con objetivo táctil >=44px en móvil y opción de limpiar */}
+        <div className="flex flex-wrap items-center justify-between gap-1" role="tablist">
+          <div className="flex flex-wrap gap-1">
+            {FILTROS.map((f) => {
+              const activo = filtro === f.id;
+              return (
+                <button
+                  key={f.id}
+                  role="tab"
+                  aria-selected={activo}
+                  onClick={() => setFiltro(f.id)}
+                  className={`focus-visible:ring-acento-600 flex min-h-[44px] items-center rounded-lg px-3 py-1.5 text-xs font-medium transition-colors focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:outline-none md:min-h-[32px] md:py-1 dark:focus-visible:ring-offset-neutral-900 ${
+                    activo
+                      ? 'bg-acento-700 font-semibold text-white shadow-2xs'
+                      : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700'
+                  }`}
+                >
+                  {f.etiqueta}
+                </button>
+              );
+            })}
+          </div>
+
+          {tieneFiltrosActivos && (
+            <button
+              type="button"
+              onClick={limpiarFiltros}
+              title="Limpiar filtros guardados"
+              aria-label="Limpiar filtros de la bandeja"
+              className="flex min-h-[44px] items-center px-2 py-1 text-[11px] font-semibold text-neutral-500 hover:text-neutral-800 focus:outline-hidden md:min-h-[32px] dark:text-neutral-400 dark:hover:text-neutral-200"
+            >
+              Limpiar
+            </button>
+          )}
         </div>
       </div>
 
@@ -432,6 +482,40 @@ export function ListaConversaciones() {
             )}
           </div>
         )}
+      </div>
+      {/* Barra de atajos de teclado accesibles documentados (T-024) */}
+      <div
+        data-testid="barra-atajos-teclado"
+        className="hidden border-t border-neutral-100 bg-neutral-50/80 px-3 py-1.5 text-[10px] text-neutral-500 sm:flex sm:items-center sm:justify-between dark:border-neutral-800 dark:bg-neutral-900/60 dark:text-neutral-400"
+      >
+        <span className="flex items-center gap-1 font-mono">
+          <kbd className="rounded bg-neutral-200/70 px-1 py-0.5 text-[9px] dark:bg-neutral-800">
+            ↑
+          </kbd>
+          <kbd className="rounded bg-neutral-200/70 px-1 py-0.5 text-[9px] dark:bg-neutral-800">
+            ↓
+          </kbd>
+          <span>o</span>
+          <kbd className="rounded bg-neutral-200/70 px-1 py-0.5 text-[9px] dark:bg-neutral-800">
+            J
+          </kbd>
+          <kbd className="rounded bg-neutral-200/70 px-1 py-0.5 text-[9px] dark:bg-neutral-800">
+            K
+          </kbd>
+          <span>navegar</span>
+        </span>
+        <span className="flex items-center gap-1 font-mono">
+          <kbd className="rounded bg-neutral-200/70 px-1 py-0.5 text-[9px] dark:bg-neutral-800">
+            /
+          </kbd>
+          <span>buscar</span>
+        </span>
+        <span className="flex items-center gap-1 font-mono">
+          <kbd className="rounded bg-neutral-200/70 px-1 py-0.5 text-[9px] dark:bg-neutral-800">
+            ↵
+          </kbd>
+          <span>abrir</span>
+        </span>
       </div>
     </div>
   );

@@ -1,6 +1,7 @@
 import { formatearErrorAmigable } from './estados-ui-logica';
+import { formatearDinero, formatearFecha } from './formato';
 /**
- * Lógica pura para el guardado y versionado de cotizaciones comerciales (0c.22).
+ * Lógica pura para el guardado y versionado de cotizaciones comerciales (0c.22 y T-107).
  *
  * Conforme a @viajapro/contracts (GuardarCotizacion, AnadirVersionACotizacion, ComposicionDeVersion, CotizacionGuardada, VersionDeCotizacion).
  * Invariante R3: Esquemas Zod estrictos. Quien guarda manda COMPOSICIÓN Y SALIDA,
@@ -10,6 +11,7 @@ import { formatearErrorAmigable } from './estados-ui-logica';
 import {
   type Acomodacion,
   type AnadirVersionACotizacion,
+  type CotizacionGuardada,
   type GuardarCotizacion,
   type VersionDeCotizacion,
   AnadirVersionACotizacion as EsquemaAnadirVersionACotizacion,
@@ -199,5 +201,139 @@ export function interpretarErrorCotizaciones(error: unknown): {
     codigo: 'DESCONOCIDO',
     mensaje: msg,
     esErrorAgencia: false,
+  };
+}
+
+/**
+ * Genera el texto completo de propuesta comercial para WhatsApp a partir de una versión cotizada.
+ * Estricto R10: Cero filtración de neto o margen al cliente.
+ */
+export function generarMensajeWhatsAppCotizacion(
+  cotizacion: { titulo: string },
+  version: VersionDeCotizacion,
+  opciones?: { contactoNombre?: string | undefined },
+): string {
+  const nombreViajero = opciones?.contactoNombre?.trim() || 'Viajero';
+  const linesText = version.lineas
+    .map((l) => `  • ${l.nombre} (${l.veces}x) — *${formatearDinero(l.total)}*`)
+    .join('\n');
+
+  let msg =
+    `¡Hola, ${nombreViajero}! Te comparto la ${cotizacion.titulo} (Versión ${version.numero}):\n\n` +
+    `🌴 *${version.paqueteNombre.toUpperCase()}*\n` +
+    `📍 *Destino:* ${version.destino}\n` +
+    `📅 *Fecha de Salida:* ${formatearFecha(version.fechaSalida)} (${version.noches} noches)\n` +
+    `👥 *Pasajeros:* ${version.adultos} adulto(s)${version.ninos > 0 ? `, ${version.ninos} niño(s)` : ''}${version.infantes > 0 ? `, ${version.infantes} infante(s)` : ''}\n\n` +
+    `📋 *Desglose de Tarifas:*\n` +
+    `${linesText}\n\n` +
+    `💰 *TOTAL VENTA:* *${formatearDinero(version.venta)}*`;
+
+  if (version.vigenteHasta) {
+    msg += `\n⏳ *Oferta vigente hasta:* ${formatearFecha(version.vigenteHasta)}`;
+  }
+
+  msg += `\n\n_Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
+  return msg;
+}
+
+/**
+ * Genera enlace universal de WhatsApp (wa.me) con número limpio y texto URL-encoded.
+ */
+export function generarEnlaceWhatsApp(telefonoE164: string, mensaje: string): string {
+  const digitos = telefonoE164.replace(/\D/g, '');
+  const mensajeCodificado = encodeURIComponent(mensaje);
+  return `https://wa.me/${digitos}?text=${mensajeCodificado}`;
+}
+
+/**
+ * Extrae la composición exacta de una versión existente para duplicarla como versión N+1.
+ */
+export function duplicarVersionComoComposicion(
+  version: VersionDeCotizacion,
+): AnadirVersionACotizacion {
+  return armarComposicionDeVersion({
+    paqueteId: version.paqueteId,
+    fecha: version.fechaSalida,
+    adultos: version.adultos,
+    ninos: version.ninos,
+    infantes: version.infantes,
+    acomodacion: (version.acomodacion as Acomodacion) || undefined,
+    opcionDeSalidaId: version.opcionDeSalidaId || undefined,
+    vigenteHasta: version.vigenteHasta || undefined,
+  });
+}
+
+/**
+ * Extrae los datos para clonar una cotización completa como una nueva cotización en borrador.
+ */
+export function duplicarCotizacionComoEntrada(
+  cotizacion: CotizacionGuardada,
+  version?: VersionDeCotizacion,
+  tituloNuevo?: string,
+): GuardarCotizacion {
+  const v = version ?? cotizacion.versiones[cotizacion.versiones.length - 1]!;
+  return armarCuerpoGuardarCotizacion({
+    contactoId: cotizacion.contactoId,
+    oportunidadId: cotizacion.oportunidadId || undefined,
+    titulo: tituloNuevo?.trim() || `${cotizacion.titulo} (Copia)`,
+    composicion: {
+      paqueteId: v.paqueteId,
+      fecha: v.fechaSalida,
+      adultos: v.adultos,
+      ninos: v.ninos,
+      infantes: v.infantes,
+      acomodacion: (v.acomodacion as Acomodacion) || undefined,
+      opcionDeSalidaId: v.opcionDeSalidaId || undefined,
+      vigenteHasta: v.vigenteHasta || undefined,
+    },
+  });
+}
+
+export interface DesgloseMargenSeguro {
+  visible: boolean;
+  netoTotalCOP?: number | undefined;
+  ventaTotalCOP?: number | undefined;
+  margenBrutoCOP?: number | undefined;
+  margenPorcentaje?: number | undefined;
+  baseCalculo?: string | undefined;
+  politicaPorcentaje?: number | undefined;
+}
+
+/**
+ * Calcula el desglose de margen para uso exclusivo de asesores autorizados (ADR-0011).
+ * Si puedeVerNeto es falso, garantiza CERO filtración de datos sensibles.
+ */
+export function calcularDesgloseMargen(
+  version: VersionDeCotizacion,
+  puedeVerNeto: boolean,
+): DesgloseMargenSeguro {
+  if (!puedeVerNeto) {
+    return { visible: false };
+  }
+
+  const venta = parseInt(version.venta.unidades, 10);
+  const neto = version.neto ? parseInt(version.neto.unidades, 10) : undefined;
+  const margen = version.margen
+    ? parseInt(version.margen.unidades, 10)
+    : neto !== undefined
+      ? Math.max(0, venta - neto)
+      : version.politica
+        ? Math.round((venta * version.politica.porcentaje) / (100 + version.politica.porcentaje))
+        : undefined;
+
+  const netoFinal = neto ?? (margen !== undefined ? Math.max(0, venta - margen) : undefined);
+  const porcentaje =
+    margen !== undefined && venta > 0
+      ? +((margen / venta) * 100).toFixed(1)
+      : version.politica?.porcentaje;
+
+  return {
+    visible: true,
+    netoTotalCOP: netoFinal,
+    ventaTotalCOP: venta,
+    margenBrutoCOP: margen,
+    margenPorcentaje: porcentaje,
+    baseCalculo: version.politica?.base,
+    politicaPorcentaje: version.politica?.porcentaje,
   };
 }

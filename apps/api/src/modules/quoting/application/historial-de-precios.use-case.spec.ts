@@ -1,6 +1,7 @@
 import 'reflect-metadata';
 
 import { RequestMethod } from '@nestjs/common';
+import { CambioDePrecio } from '@viajapro/contracts';
 import { describe, expect, it } from 'vitest';
 import { CLAVE_PERMISOS_REQUERIDOS } from '../../../shared/autorizacion/permiso.decorator.js';
 import { TarifaNoEncontradaError } from '../domain/errores-de-gestion.js';
@@ -9,15 +10,21 @@ import { HistorialDePreciosUseCase } from './historial-de-precios.use-case.js';
 import { type FilaDeHistorial, LectorDeHistorial } from './puertos-de-historial.js';
 
 const USUARIO = '01932000-0000-7000-8000-000000000001';
+const CLAVE = '01932000-0000-7000-8000-0000000000aa';
 
 const fila = (
   id: number,
   detalle: unknown,
   accion = 'catalogo.tarifa.modificada',
+  actor: Pick<FilaDeHistorial, 'usuarioId' | 'tipoDeActor' | 'claveDeApiId'> = {
+    usuarioId: USUARIO,
+    tipoDeActor: 'USUARIO',
+    claveDeApiId: null,
+  },
 ): FilaDeHistorial => ({
   id: String(id),
   ocurridoEn: new Date(Date.UTC(2026, 9, 1, 0, 0, id)),
-  usuarioId: USUARIO,
+  ...actor,
   accion,
   detalle,
 });
@@ -93,6 +100,35 @@ describe('HistorialDePreciosUseCase', () => {
     const p3 = await uc.ejecutar('t', { limite: 2, cursor: '2' }, true);
     expect(p3.datos).toEqual([]);
     expect(p3.siguienteCursor).toBeNull();
+  });
+
+  it('dice si actuó un usuario o una clave de API, sin datos personales; null en lo anterior a T-071', async () => {
+    const uc = new HistorialDePreciosUseCase(
+      new LectorFalso([
+        fila(3, cambio('venta', '1', '2'), 'catalogo.tarifa.modificada', {
+          usuarioId: null,
+          tipoDeActor: 'CLAVE_DE_API',
+          claveDeApiId: CLAVE,
+        }),
+        fila(2, cambio('venta', '0', '1')),
+        fila(1, cambio('venta', null, '0'), 'catalogo.tarifa.creada', {
+          usuarioId: USUARIO,
+          tipoDeActor: null,
+          claveDeApiId: null,
+        }),
+      ]),
+    );
+    const r = await uc.ejecutar('t', { limite: 20 }, true);
+    expect(r.datos.map((d) => [d.usuarioId, d.actor])).toEqual([
+      [null, { tipo: 'CLAVE_DE_API', claveDeApiId: CLAVE }],
+      [USUARIO, { tipo: 'USUARIO', claveDeApiId: null }],
+      [USUARIO, null],
+    ]);
+    // Lo que sale cumple el contrato, y del actor solo viajan tipo e identificadores opacos.
+    for (const d of r.datos) {
+      expect(CambioDePrecio.parse(d)).toEqual(d);
+      expect(Object.keys(d.actor ?? {}).sort()).toEqual(d.actor ? ['claveDeApiId', 'tipo'] : []);
+    }
   });
 
   it('una tarifa inexistente es TarifaNoEncontradaError (404)', async () => {

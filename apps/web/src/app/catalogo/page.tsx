@@ -41,6 +41,7 @@ import { TablaGestionCatalogo } from '../../components/catalogo/tabla-gestion-ca
 import { ModalFormularioPaquete } from '../../components/catalogo/modal-formulario-paquete';
 import { DialogoDesactivarPaquete } from '../../components/catalogo/dialogo-desactivar-paquete';
 import { EstadoSinCatalogo } from '../../components/catalogo/estado-sin-catalogo';
+import { ChipTipoProducto } from '../../components/comun/chip-tipo-producto';
 import { obtenerClaseEscalonada } from '../../components/comun/animaciones';
 import { MOCK_PAQUETES_CATALOGO, type PaqueteConDetalle } from '../../lib/mock-catalogo';
 import {
@@ -227,12 +228,12 @@ export default function CatalogoPage() {
             </div>
 
             {/* Acciones principales */}
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-col flex-wrap items-stretch gap-2 sm:flex-row sm:items-center">
               <button
                 type="button"
                 onClick={() => setAsistenteImportacionAbierto(true)}
                 data-testid="btn-abrir-asistente-importacion"
-                className="flex min-h-[44px] items-center gap-1.5 rounded-xl border border-neutral-300 bg-white px-3.5 py-2.5 text-xs font-semibold text-neutral-800 shadow-2xs hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
+                className="flex min-h-[44px] w-full items-center justify-center gap-1.5 rounded-xl border border-neutral-300 bg-white px-3.5 py-2.5 text-xs font-semibold text-neutral-800 shadow-2xs hover:bg-neutral-50 sm:w-auto dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
               >
                 <Upload className="h-4 w-4 text-teal-600 dark:text-teal-400" />
                 <span>Importar archivo (CSV)</span>
@@ -240,7 +241,7 @@ export default function CatalogoPage() {
 
               <Link
                 href="/cotizador"
-                className="bg-acento-600 hover:bg-acento-700 flex min-h-[44px] items-center gap-1.5 rounded-xl px-4 py-2.5 text-xs font-semibold text-white shadow-xs transition-colors"
+                className="bg-acento-600 hover:bg-acento-700 flex min-h-[44px] w-full items-center justify-center gap-1.5 rounded-xl px-4 py-2.5 text-xs font-semibold text-white shadow-xs transition-colors sm:w-auto"
               >
                 <Compass className="h-4 w-4" />
                 Ir al Cotizador
@@ -248,13 +249,13 @@ export default function CatalogoPage() {
             </div>
           </div>
 
-          {/* Pestañas de Vista */}
-          <div className="mt-4 flex border-b border-neutral-200 dark:border-neutral-800">
+          {/* Pestañas de Vista con scroll horizontal fluido para móvil */}
+          <div className="mt-4 flex overflow-x-auto border-b border-neutral-200 dark:border-neutral-800">
             <button
               type="button"
               onClick={() => setPestañaActiva('EXPLORAR')}
               data-testid="tab-catalogo-explorar"
-              className={`flex min-h-[44px] items-center gap-2 border-b-2 px-4 py-2.5 text-xs font-bold transition-colors ${
+              className={`flex min-h-[44px] shrink-0 items-center gap-2 border-b-2 px-4 py-2.5 text-xs font-bold transition-colors ${
                 pestañaActiva === 'EXPLORAR'
                   ? 'border-teal-600 text-teal-700 dark:border-teal-400 dark:text-teal-300'
                   : 'border-transparent text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-white'
@@ -268,21 +269,21 @@ export default function CatalogoPage() {
               type="button"
               onClick={() => setPestañaActiva('PLANTILLAS')}
               data-testid="tab-catalogo-plantillas"
-              className={`flex min-h-[44px] items-center gap-2 border-b-2 px-4 py-2.5 text-xs font-bold transition-colors ${
+              className={`flex min-h-[44px] shrink-0 items-center gap-2 border-b-2 px-4 py-2.5 text-xs font-bold transition-colors ${
                 pestañaActiva === 'PLANTILLAS'
                   ? 'border-teal-600 text-teal-700 dark:border-teal-400 dark:text-teal-300'
                   : 'border-transparent text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-white'
               }`}
             >
               <FileSpreadsheet className="h-4 w-4" />
-              <span>Plantillas de importación CSV (T-030)</span>
+              <span>Plantillas CSV (T-030)</span>
             </button>
 
             <button
               type="button"
               onClick={() => setPestañaActiva('GESTION')}
               data-testid="tab-gestion-catalogo"
-              className={`flex min-h-[44px] items-center gap-2 border-b-2 px-4 py-2.5 text-xs font-bold transition-colors ${
+              className={`flex min-h-[44px] shrink-0 items-center gap-2 border-b-2 px-4 py-2.5 text-xs font-bold transition-colors ${
                 pestañaActiva === 'GESTION'
                   ? 'border-teal-600 text-teal-700 dark:border-teal-400 dark:text-teal-300'
                   : 'border-transparent text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-white'
@@ -466,6 +467,33 @@ export default function CatalogoPage() {
                         key={salida.vigenciaId}
                         salida={salida}
                         indice={idx}
+                        onVerFicha={(sal) => {
+                          const paqEncontrado = MOCK_PAQUETES_CATALOGO.find(
+                            (p) => p.id === sal.paqueteId,
+                          );
+                          if (paqEncontrado) {
+                            setPaqueteSeleccionado(paqEncontrado);
+                            return;
+                          }
+                          const paqGenerado: PaqueteConDetalle = {
+                            id: sal.paqueteId,
+                            nombre: sal.paqueteNombre,
+                            destino: sal.destino,
+                            paisIso: 'CO',
+                            dias: sal.noches + 1,
+                            noches: sal.noches,
+                            planAlimentacion: 'SIN_ALIMENTACION',
+                            inclusiones: [],
+                            exclusiones: [],
+                            descripcion: `Salida programada para ${sal.fecha} con destino a ${sal.destino}.`,
+                            activo: true,
+                            mayoristaId: null,
+                            mayorista: null,
+                            creadoEn: new Date().toISOString(),
+                            temporadas: [],
+                          };
+                          setPaqueteSeleccionado(paqGenerado);
+                        }}
                       />
                     ))}
                   </div>
@@ -515,9 +543,12 @@ export default function CatalogoPage() {
                                 <MapPin className="h-3 w-3" />
                                 {paquete.destino}
                               </span>
-                              <span className="rounded-full bg-neutral-100 px-2.5 py-0.5 text-[11px] font-medium text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400">
-                                {paquete.dias}D / {paquete.noches}N
-                              </span>
+                              <div className="flex items-center gap-1.5">
+                                <ChipTipoProducto nombreReferencia={paquete.nombre} tamano="sm" />
+                                <span className="rounded-full bg-neutral-100 px-2.5 py-0.5 text-[11px] font-medium text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400">
+                                  {paquete.dias}D / {paquete.noches}N
+                                </span>
+                              </div>
                             </div>
 
                             <h3 className="mt-3 line-clamp-2 text-sm font-bold text-neutral-900 dark:text-white">

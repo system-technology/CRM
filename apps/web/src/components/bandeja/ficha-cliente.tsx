@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { FichaDeContacto } from '@viajapro/contracts';
 import { Plane, PlusCircle, ExternalLink, StickyNote, X, Clock, Edit3 } from 'lucide-react';
 import { generarColorAvatar, obtenerIniciales } from '../../lib/bandeja-logica';
+import { SeccionCamposPersonalizados } from '../contactos/seccion-campos-personalizados';
 
 interface FichaClienteProps {
   ficha: FichaDeContacto;
@@ -40,8 +41,9 @@ export function FichaCliente({
           {onCerrar && (
             <button
               onClick={onCerrar}
-              className="rounded-lg p-1.5 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
+              className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg p-1.5 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
               title="Ocultar ficha"
+              aria-label="Cerrar ficha de cliente"
             >
               <X className="h-4 w-4" />
             </button>
@@ -100,6 +102,9 @@ export function FichaCliente({
               <span className="font-bold">💡 Preferencias:</span> {contacto.preferencias}
             </div>
           )}
+
+          {/* Campos Personalizados Viajero (T-026) */}
+          <SeccionCamposPersonalizados entidad="contacto" entidadId={contacto.id} />
 
           <div className="flex flex-wrap gap-1 pt-1 text-[10px]">
             {contacto.consentimientos.map((c) => (
@@ -163,6 +168,9 @@ export function FichaCliente({
                 </p>
               </div>
             )}
+
+            {/* Campos Personalizados Oportunidad (T-026) */}
+            <SeccionCamposPersonalizados entidad="oportunidad" entidadId={oportunidadActual.id} />
           </section>
         ) : (
           <section className="space-y-2 rounded-xl border border-dashed border-neutral-300 bg-neutral-50/60 p-3.5 text-center dark:border-neutral-700 dark:bg-neutral-800/30">

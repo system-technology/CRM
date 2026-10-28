@@ -24,13 +24,38 @@ import {
   estaUsandoApiReal,
   CrmApiError,
 } from '../../lib/crm-api';
+import {
+  useFiltrosPersistidos,
+  CLAVE_FILTROS_PIPELINE,
+  FILTROS_PIPELINE_DEFECTO,
+  type FiltrosPipelinePersistidos,
+} from '../../lib/filtros-guardados-logica';
+
+const CAMPOS_IGNORADOS_PIPELINE: (keyof FiltrosPipelinePersistidos)[] = ['vista'];
 
 export default function PipelinePage() {
   const { esDemo } = useModoDemo();
   const [tablero, setTablero] = useState<TableroPipeline>(() => obtenerMockTableroPipeline());
-  const [vista, setVista] = useState<'kanban' | 'tabla'>('kanban');
-  const [filtroTexto, setFiltroTexto] = useState('');
-  const [filtroAsesor, setFiltroAsesor] = useState<string>('todos');
+
+  // Filtros persistidos en localStorage con opción de limpiar (T-103)
+  const {
+    filtros: filtrosPersistidos,
+    actualizarFiltro,
+    limpiarFiltros,
+    tieneFiltrosActivos,
+  } = useFiltrosPersistidos(
+    CLAVE_FILTROS_PIPELINE,
+    FILTROS_PIPELINE_DEFECTO,
+    CAMPOS_IGNORADOS_PIPELINE,
+  );
+
+  const vista = filtrosPersistidos.vista;
+  const filtroTexto = filtrosPersistidos.filtroTexto;
+  const filtroAsesor = filtrosPersistidos.filtroAsesor;
+
+  const setVista = (v: 'kanban' | 'tabla') => actualizarFiltro('vista', v);
+  const setFiltroTexto = (v: string) => actualizarFiltro('filtroTexto', v);
+  const setFiltroAsesor = (v: string) => actualizarFiltro('filtroAsesor', v);
 
   // Estado del origen de datos y configuración (Tarea 0c.14)
   const [esModoSimulado, setEsModoSimulado] = useState<boolean>(!estaUsandoApiReal());
@@ -94,24 +119,37 @@ export default function PipelinePage() {
     setTimeout(() => setMensajeFeedback(null), 3000);
   };
 
-  // Mover oportunidad (actualización optimista + persistencia en API)
+  // Mover oportunidad (actualización optimista + persistencia en API con reversión)
   const ejecutarMovimiento = async (
     oportunidadId: string,
     nuevaEtapa: EtapaDefinida,
     motivoPerdida: MotivoPerdida | null = null,
     notaPerdida: string | null = null,
   ) => {
-    // 1. Actualización optimista local
+    const tableroPrevio = tablero;
+    let nuevoTablero: TableroPipeline;
     try {
-      const nuevoTablero = moverOportunidadEnTablero(tablero, oportunidadId, {
+      nuevoTablero = moverOportunidadEnTablero(tablero, oportunidadId, {
         etapaId: nuevaEtapa.id,
         motivoPerdida,
         notaPerdida,
       });
-      setTablero(nuevoTablero);
-      mostrarAviso(`Oportunidad movida a "${nuevaEtapa.nombre}" con éxito.`);
+    } catch (errorValidacion) {
+      console.error(errorValidacion);
+      mostrarAviso(
+        errorValidacion instanceof Error
+          ? errorValidacion.message
+          : 'Error al mover la oportunidad.',
+      );
+      return;
+    }
 
-      // 2. Persistencia en la API
+    // 1. Actualización optimista local
+    setTablero(nuevoTablero);
+    mostrarAviso(`Oportunidad movida a "${nuevaEtapa.nombre}" con éxito.`);
+
+    // 2. Persistencia en la API
+    try {
       await moverOportunidadDeEtapa(oportunidadId, {
         etapaId: nuevaEtapa.id,
         motivoPerdida,
@@ -119,7 +157,9 @@ export default function PipelinePage() {
       });
     } catch (e) {
       console.error(e);
-      mostrarAviso('Error al persistir el movimiento de oportunidad.');
+      // Reversión optimista ante error en la API
+      setTablero(tableroPrevio);
+      mostrarAviso('Error al persistir el movimiento de oportunidad. Se revirtió el cambio.');
     }
   };
 
@@ -204,12 +244,12 @@ export default function PipelinePage() {
 
             {/* Controles de Vista y Acción Principal */}
             <div className="flex items-center space-x-3">
-              {/* Selector Kanban / Tabla */}
-              <div className="flex items-center rounded-xl border border-neutral-200 bg-neutral-100 p-1 dark:border-neutral-800 dark:bg-neutral-800">
+              {/* Selector Kanban / Tabla con touch target >= 44px */}
+              <div className="flex items-center rounded-xl border border-neutral-200 bg-neutral-100 p-0.5 dark:border-neutral-800 dark:bg-neutral-800">
                 <button
                   type="button"
                   onClick={() => setVista('kanban')}
-                  className={`flex items-center space-x-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition-colors ${
+                  className={`flex min-h-[44px] items-center space-x-1.5 rounded-lg px-3 py-2 text-xs font-semibold transition-colors ${
                     vista === 'kanban'
                       ? 'bg-white text-neutral-900 shadow-2xs dark:bg-neutral-700 dark:text-white'
                       : 'text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white'
@@ -221,7 +261,7 @@ export default function PipelinePage() {
                 <button
                   type="button"
                   onClick={() => setVista('tabla')}
-                  className={`flex items-center space-x-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition-colors ${
+                  className={`flex min-h-[44px] items-center space-x-1.5 rounded-lg px-3 py-2 text-xs font-semibold transition-colors ${
                     vista === 'tabla'
                       ? 'bg-white text-neutral-900 shadow-2xs dark:bg-neutral-700 dark:text-white'
                       : 'text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white'
@@ -265,6 +305,7 @@ export default function PipelinePage() {
                 <select
                   value={filtroAsesor}
                   onChange={(e) => setFiltroAsesor(e.target.value)}
+                  aria-label="Filtrar por asesor"
                   className="focus:border-acento-500 min-h-[44px] w-full rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-xs text-neutral-700 focus:outline-hidden sm:w-auto dark:border-neutral-800 dark:bg-neutral-800 dark:text-neutral-200"
                 >
                   <option value="todos">Todos los asesores</option>
@@ -273,11 +314,28 @@ export default function PipelinePage() {
                   <option value="Carlos Rodríguez">Carlos Rodríguez</option>
                 </select>
               </div>
+
+              {/* Botón Limpiar Filtros */}
+              {tieneFiltrosActivos && (
+                <button
+                  type="button"
+                  onClick={limpiarFiltros}
+                  title="Limpiar filtros guardados"
+                  aria-label="Limpiar filtros del pipeline"
+                  className="flex min-h-[44px] items-center rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2 text-xs font-semibold text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 focus:outline-hidden dark:border-neutral-800 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700 dark:hover:text-neutral-100"
+                >
+                  Limpiar filtros
+                </button>
+              )}
             </div>
 
-            {/* Aviso flotante */}
+            {/* Aviso flotante accesible */}
             {mensajeFeedback && (
-              <div className="bg-ok-50 text-ok-800 dark:bg-ok-950/80 dark:text-ok-300 animate-in fade-in rounded-xl px-3 py-1 text-xs font-medium duration-200">
+              <div
+                role="status"
+                aria-live="polite"
+                className="bg-ok-50 text-ok-800 dark:bg-ok-950/80 dark:text-ok-300 animate-in fade-in rounded-xl px-3 py-1.5 text-xs font-medium duration-200"
+              >
                 {mensajeFeedback}
               </div>
             )}
@@ -302,8 +360,8 @@ export default function PipelinePage() {
         ) : cargandoApi ? (
           <EsqueletoKanban />
         ) : vista === 'kanban' ? (
-          <div className="flex flex-1 overflow-x-auto overflow-y-hidden p-6">
-            <div className="flex min-w-full space-x-4">
+          <div className="flex flex-1 overflow-x-auto overflow-y-hidden p-3 sm:p-6">
+            <div className="flex min-w-full space-x-3 sm:space-x-4">
               {tableroFiltrado.columnas.map((columna) => (
                 <ColumnaKanban
                   key={columna.etapa.id}
@@ -316,10 +374,10 @@ export default function PipelinePage() {
             </div>
           </div>
         ) : (
-          /* Vista Tabla Compacta */
-          <div className="flex-1 overflow-y-auto p-6">
-            <div className="rounded-2xl border border-neutral-200 bg-white shadow-2xs dark:border-neutral-800 dark:bg-neutral-900">
-              <table className="w-full text-left text-xs">
+          /* Vista Tabla Compacta con scroll horizontal contenido en móvil */
+          <div className="flex-1 overflow-y-auto p-3 sm:p-6">
+            <div className="overflow-x-auto rounded-2xl border border-neutral-200 bg-white shadow-2xs dark:border-neutral-800 dark:bg-neutral-900">
+              <table className="w-full min-w-[680px] text-left text-xs">
                 <thead className="border-b border-neutral-200 bg-neutral-50 text-[11px] font-semibold text-neutral-500 dark:border-neutral-800 dark:bg-neutral-800/50 dark:text-neutral-400">
                   <tr>
                     <th className="px-4 py-3">Oportunidad</th>
@@ -372,7 +430,8 @@ export default function PipelinePage() {
                           <td className="px-4 py-3 text-center">
                             <Link
                               href="/bandeja"
-                              className="text-acento-600 hover:text-acento-700 dark:text-acento-400 font-medium"
+                              aria-label={`Abrir chat con ${op.contactoNombre || 'cliente'}`}
+                              className="text-acento-600 hover:text-acento-700 dark:text-acento-400 inline-flex min-h-[44px] min-w-[44px] items-center justify-center font-medium"
                             >
                               Chat
                             </Link>

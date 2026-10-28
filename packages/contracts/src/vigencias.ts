@@ -481,15 +481,22 @@ export type VigenciaDeGestion = z.infer<typeof VigenciaDeGestion>;
 export const OrigenDeCambio = z.enum(['PANTALLA', 'ARCHIVO', 'API', 'IA']);
 export type OrigenDeCambio = z.infer<typeof OrigenDeCambio>;
 
+/** Quién escribió el registro (T-071): un usuario o una clave de API. */
+export const TipoDeActor = z.enum(['USUARIO', 'CLAVE_DE_API']);
+export type TipoDeActor = z.infer<typeof TipoDeActor>;
+
 /**
  * Una entrada del historial de precios de una tarifa (T-047). Se lee de `registros_auditoria`.
- * `usuarioId` es solo el id, sin datos personales. En las entradas de `neto`, sin
+ * `usuarioId` es solo el id, sin datos personales. `actor` dice si actuó un usuario o una clave de
+ * API (T-071) y, si fue una clave, su id; nunca nombre ni correo. `actor` es `null` en los
+ * registros anteriores a T-071, que no hacían la distinción. En las entradas de `neto`, sin
  * `cotizacion.ver_neto_y_margen`, `antes` y `despues` se omiten (la clave no viaja).
  */
 export const CambioDePrecio = z.object({
   id: z.string().regex(/^\d+$/),
   instante: Instante,
   usuarioId: Id.nullable(),
+  actor: z.object({ tipo: TipoDeActor, claveDeApiId: Id.nullable() }).nullable(),
   accion: z.string(),
   campo: z.enum(['venta', 'neto', 'lista', 'promo_hasta']),
   antes: z.string().nullable().optional(),

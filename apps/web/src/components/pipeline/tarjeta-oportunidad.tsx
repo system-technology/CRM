@@ -80,7 +80,7 @@ export function TarjetaOportunidad({
       tabIndex={0}
       role="article"
       aria-label={`Oportunidad: ${titulo}, cliente ${contactoNombre || 'anónimo'}, etapa ${etapa.nombre}`}
-      className={`group tarjeta-elevacion relative cursor-grab rounded-2xl border border-neutral-200 bg-white p-4 shadow-2xs hover:border-cyan-500/40 active:cursor-grabbing dark:border-neutral-800 dark:bg-neutral-900/90 dark:hover:border-cyan-500/40 ${claseAnimacion}`.trim()}
+      className={`group tarjeta-elevacion relative cursor-grab rounded-2xl border border-neutral-200 bg-white p-4 shadow-2xs hover:border-cyan-500/40 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-cyan-500 active:cursor-grabbing dark:border-neutral-800 dark:bg-neutral-900/90 dark:hover:border-cyan-500/40 ${claseAnimacion}`.trim()}
     >
       {/* Fila superior: Destino + Probabilidad */}
       <div className="mb-2 flex items-center justify-between text-[11px]">
@@ -175,36 +175,38 @@ export function TarjetaOportunidad({
           {asesorNombre || 'Sin asignar'}
         </span>
 
-        <div className="flex items-center space-x-1.5">
-          {/* Enlace rápido a chat */}
+        <div className="flex items-center space-x-1">
+          {/* Enlace rápido a chat con touch target >= 44px */}
           <Link
             href="/bandeja"
             title="Abrir conversación en bandeja"
-            className="rounded-lg p-1 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
+            aria-label={`Abrir conversación de WhatsApp con ${contactoNombre || 'cliente'}`}
+            className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-cyan-500 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
           >
-            <MessageSquare className="h-3.5 w-3.5" />
+            <MessageSquare className="h-4 w-4" />
           </Link>
 
-          {/* Menú de accesibilidad por teclado para mover etapa */}
+          {/* Menú de accesibilidad por teclado para mover etapa con touch target >= 44px */}
           <div className="relative">
             <button
               type="button"
               onClick={() => setMenuAbierto(!menuAbierto)}
               title="Mover de etapa con teclado"
+              aria-label={`Mover oportunidad ${titulo} de etapa`}
               aria-haspopup="true"
               aria-expanded={menuAbierto}
-              className="flex items-center space-x-0.5 rounded-lg border border-neutral-200 bg-white px-1.5 py-1 text-[10px] text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700"
+              className="flex min-h-[44px] min-w-[44px] items-center justify-center space-x-1 rounded-xl border border-neutral-200 bg-white px-2 py-1 text-xs text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-cyan-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700"
             >
-              <ArrowRightLeft className="h-2.5 w-2.5" />
-              <ChevronDown className="h-2.5 w-2.5" />
+              <ArrowRightLeft className="h-3.5 w-3.5" />
+              <ChevronDown className="h-3 w-3" />
             </button>
 
             {menuAbierto && (
               <div
                 role="menu"
-                className="absolute right-0 bottom-full z-20 mb-1 w-44 rounded-xl border border-neutral-200 bg-white py-1 shadow-lg dark:border-neutral-700 dark:bg-neutral-800"
+                className="absolute right-0 bottom-full z-20 mb-1 w-48 rounded-xl border border-neutral-200 bg-white py-1 shadow-lg dark:border-neutral-700 dark:bg-neutral-800"
               >
-                <div className="border-b border-neutral-100 px-2 py-1 text-[9px] font-semibold text-neutral-400 uppercase dark:border-neutral-700">
+                <div className="border-b border-neutral-100 px-3 py-1.5 text-[9px] font-semibold text-neutral-400 uppercase dark:border-neutral-700">
                   Mover a etapa:
                 </div>
                 {etapasDisponibles.map((etapaDestino) => (
@@ -216,7 +218,7 @@ export function TarjetaOportunidad({
                       setMenuAbierto(false);
                       onSolicitarMover(oportunidad, etapaDestino);
                     }}
-                    className="flex w-full items-center px-3 py-1.5 text-left text-xs text-neutral-700 hover:bg-neutral-100 dark:text-neutral-200 dark:hover:bg-neutral-700"
+                    className="flex min-h-[44px] w-full items-center px-3 py-2 text-left text-xs text-neutral-700 hover:bg-neutral-100 dark:text-neutral-200 dark:hover:bg-neutral-700"
                   >
                     {etapaDestino.nombre}
                   </button>

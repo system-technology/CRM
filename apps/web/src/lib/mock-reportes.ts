@@ -1,60 +1,25 @@
-import type { Dinero } from '@viajapro/contracts';
+import type {
+  RangoPeriodo,
+  RolVistaReporte,
+  VentaPorDestino,
+  EtapaConversion,
+  RendimientoAsesor,
+  ReporteComercial,
+} from './reportes-logica';
 
-export type RangoPeriodo = 'ultimos_30_dias' | 'este_mes' | 'trimestre' | 'ano';
-export type RolVistaReporte = 'DUENO' | 'ASESOR';
-
-export interface VentaPorDestino {
-  destino: string;
-  totalVentas: Dinero;
-  porcentaje: number;
-  paquetesVendidos: number;
-}
-
-export interface EtapaConversion {
-  etapaId: string;
-  nombre: string;
-  cantidad: number;
-  porcentajeEmbudo: number;
-}
-
-export interface RendimientoAsesor {
-  asesorId: string;
-  nombre: string;
-  correo: string;
-  avatar: string;
-  conversaciones: number;
-  oportunidadesGanadas: number;
-  totalVentas: Dinero;
-  tiempoRespuestaMinutos: number;
-}
-
-export interface ReporteComercial {
-  periodo: RangoPeriodo;
-  ventasTotales: Dinero;
-  ventasPeriodoAnterior: Dinero;
-  cambioVentasPorcentaje: number;
-  oportunidadesCreadas: number;
-  oportunidadesPeriodoAnterior: number;
-  cambioOportunidadesPorcentaje: number;
-  oportunidadesGanadas: number;
-  oportunidadesPerdidas: number;
-  tasaConversion: number;
-  tasaConversionPeriodoAnterior: number;
-  tiempoRespuestaPromedioMinutos: number;
-  tiempoRespuestaPeriodoAnteriorMinutos: number;
-  costoNetoTotal: Dinero;
-  margenTotal: Dinero;
-  margenPorcentaje: number;
-  metaMesVentas: Dinero;
-  porcentajeMetaMes: number;
-  ventasPorDestino: VentaPorDestino[];
-  conversionPorEtapa: EtapaConversion[];
-  rendimientoAsesores: RendimientoAsesor[];
-}
+export type {
+  RangoPeriodo,
+  RolVistaReporte,
+  VentaPorDestino,
+  EtapaConversion,
+  RendimientoAsesor,
+  ReporteComercial,
+};
 
 export const MOCK_REPORTES_POR_PERIODO: Record<RangoPeriodo, ReporteComercial> = {
   ultimos_30_dias: {
     periodo: 'ultimos_30_dias',
+    tieneDatosReales: true,
     ventasTotales: { unidades: '48950000', moneda: 'COP' }, // $48.950.000 COP
     ventasPeriodoAnterior: { unidades: '42200000', moneda: 'COP' }, // $42.200.000 COP
     cambioVentasPorcentaje: 16.0,
@@ -155,6 +120,7 @@ export const MOCK_REPORTES_POR_PERIODO: Record<RangoPeriodo, ReporteComercial> =
   },
   este_mes: {
     periodo: 'este_mes',
+    tieneDatosReales: true,
     ventasTotales: { unidades: '36800000', moneda: 'COP' },
     ventasPeriodoAnterior: { unidades: '31500000', moneda: 'COP' },
     cambioVentasPorcentaje: 16.8,
@@ -249,6 +215,7 @@ export const MOCK_REPORTES_POR_PERIODO: Record<RangoPeriodo, ReporteComercial> =
   },
   trimestre: {
     periodo: 'trimestre',
+    tieneDatosReales: true,
     ventasTotales: { unidades: '142600000', moneda: 'COP' },
     ventasPeriodoAnterior: { unidades: '121000000', moneda: 'COP' },
     cambioVentasPorcentaje: 17.9,
@@ -349,6 +316,7 @@ export const MOCK_REPORTES_POR_PERIODO: Record<RangoPeriodo, ReporteComercial> =
   },
   ano: {
     periodo: 'ano',
+    tieneDatosReales: true,
     ventasTotales: { unidades: '530000000', moneda: 'COP' },
     ventasPeriodoAnterior: { unidades: '450000000', moneda: 'COP' },
     cambioVentasPorcentaje: 17.8,

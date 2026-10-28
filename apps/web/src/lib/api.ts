@@ -8,13 +8,8 @@ import { obtenerBaseApi } from './api-base';
  * compilaría igual y fallaría en ejecución.
  */
 
-import {
-  type CotizacionCalculada,
-  type CotizarPaquete,
-  CotizacionCalculada as EsquemaCotizacion,
-  ErrorApi as EsquemaError,
-  type Paquete,
-} from '@viajapro/contracts';
+import { ErrorApi as EsquemaError, type Paquete } from '@viajapro/contracts';
+import { cotizarSalidaApi } from './catalogo-api';
 
 /**
  * Cabecera de desarrollo mientras no existe el módulo de autenticación.
@@ -72,27 +67,21 @@ export interface PaginaPaquetes {
 
 export const api = {
   listarPaquetes: () => pedir<PaginaPaquetes>('/api/v1/paquetes'),
-
-  cotizar: async (entrada: CotizarPaquete): Promise<CotizacionCalculada> => {
-    const bruto = await pedir<unknown>('/api/v1/paquetes/cotizar', {
-      method: 'POST',
-      body: JSON.stringify(entrada),
-    });
-    // Se valida la RESPUESTA, no solo la petición. Si el servidor cambia la forma de un campo,
-    // el fallo aparece aquí con el nombre del campo, y no diez componentes más abajo como un
-    // "undefined is not an object" sin pista de dónde vino.
-    return EsquemaCotizacion.parse(bruto);
-  },
+  cotizarSalida: cotizarSalidaApi,
 };
 
-/** Formatea dinero para mostrar. Nunca se usa para calcular: eso es del servidor. */
-export function formatearDinero(d: { unidades: string; moneda: string }): string {
-  const decimales = d.moneda === 'COP' ? 0 : 2;
-  const valor = Number(d.unidades) / 10 ** decimales;
-  return new Intl.NumberFormat('es-CO', {
-    style: 'currency',
-    currency: d.moneda,
-    minimumFractionDigits: decimales,
-    maximumFractionDigits: decimales,
-  }).format(valor);
-}
+export { cotizarSalidaApi } from './catalogo-api';
+
+/**
+ * Helpers únicos de formato es-CO (T-022).
+ * Centralizados en ./formato para garantizar consistencia en todo el CRM.
+ */
+export {
+  formatearDinero,
+  formatearCOP,
+  formatearDineroCifra,
+  formatearFecha,
+  formatearFechaHora,
+  formatearTelefono,
+  formatearCupo,
+} from './formato';

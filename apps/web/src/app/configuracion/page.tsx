@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import {
   Calculator,
   Users,
@@ -8,58 +9,51 @@ import {
   Clock,
   Kanban,
   Building2,
-  ShieldCheck,
   CheckCircle2,
   AlertTriangle,
-  Send,
-  Plus,
   Save,
-  Lock,
-  Phone,
   Tag,
+  FormInput,
+  Zap,
+  Sparkles,
 } from 'lucide-react';
 import { BarraModulos } from '../../components/bandeja/barra-modulos';
 import { DistintivoDatosDemo } from '../../components/comun/distintivo-datos-demo';
 import { BloquePoliticaPrecio } from '../../components/configuracion/bloque-politica-precio';
 import { BloqueAjustesCatalogo } from '../../components/configuracion/bloque-ajustes-catalogo';
+import { BloqueEtapasPipeline } from '../../components/configuracion/bloque-etapas-pipeline';
+import { BloqueCamposPersonalizados } from '../../components/configuracion/bloque-campos-personalizados';
+import { BloqueEquipo } from '../../components/configuracion/bloque-equipo';
+import { BloqueRespuestasRapidas } from '../../components/configuracion/bloque-respuestas-rapidas';
+import { BloqueConexionWhatsapp } from '../../components/configuracion/bloque-conexion-whatsapp';
 import { usePermisos } from '../../lib/permisos';
 import {
-  MOCK_MIEMBROS_EQUIPO,
-  MOCK_CONFIGURACION_WABA,
   MOCK_CONFIGURACION_SLA,
   MOCK_CONFIGURACION_AGENCIA,
-  MOCK_ETAPAS_CONFIGURADAS,
-  type MiembroEquipo,
   type ConfiguracionSla,
   type ConfiguracionAgencia,
 } from '../../lib/mock-configuracion';
-import {
-  validarSla,
-  validarReglaDuenoActivo,
-  verificarSaludConexion,
-  validarFormatoNit,
-} from '../../lib/configuracion-logica';
+import { validarSla, validarFormatoNit } from '../../lib/configuracion-logica';
 
-type TabConfig = 'equipo' | 'whatsapp' | 'sla' | 'pipeline' | 'agencia' | 'precios' | 'catalogo';
+type TabConfig =
+  | 'equipo'
+  | 'whatsapp'
+  | 'sla'
+  | 'pipeline'
+  | 'agencia'
+  | 'precios'
+  | 'catalogo'
+  | 'campos'
+  | 'respuestas';
 
 export default function ConfiguracionPage() {
-  const { puedeVerNetoYMargen } = usePermisos();
+  const { puedeVerNetoYMargen, sesion } = usePermisos();
   const [tabActiva, setTabActiva] = useState<TabConfig>('equipo');
-  const [miembros, setMiembros] = useState<MiembroEquipo[]>(MOCK_MIEMBROS_EQUIPO);
-  const [waba] = useState(MOCK_CONFIGURACION_WABA);
   const [sla, setSla] = useState<ConfiguracionSla>(MOCK_CONFIGURACION_SLA);
   const [agencia, setAgencia] = useState<ConfiguracionAgencia>(MOCK_CONFIGURACION_AGENCIA);
   const [guardadoExitoso, setGuardadoExitoso] = useState(false);
   const [errorSla, setErrorSla] = useState<string | null>(null);
   const [errorNit, setErrorNit] = useState<string | null>(null);
-  const [modalInvitar, setModalInvitar] = useState(false);
-  const [nuevoNombre, setNuevoNombre] = useState('');
-  const [nuevoEmail, setNuevoEmail] = useState('');
-  const [nuevoTelefono, setNuevoTelefono] = useState('');
-  const [nuevoRol, setNuevoRol] = useState<'DUENO' | 'ASESOR'>('ASESOR');
-
-  const saludWaba = verificarSaludConexion(waba);
-  const reglaDueno = validarReglaDuenoActivo(miembros);
 
   const guardarCambiosSla = (e: React.FormEvent) => {
     e.preventDefault();
@@ -82,38 +76,6 @@ export default function ConfiguracionPage() {
       return;
     }
     setErrorNit(null);
-    setGuardadoExitoso(true);
-    setTimeout(() => setGuardadoExitoso(false), 3000);
-  };
-
-  const invitarMiembro = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!nuevoNombre.trim() || !nuevoEmail.trim()) return;
-
-    const iniciales = nuevoNombre
-      .trim()
-      .split(' ')
-      .map((p) => p[0])
-      .slice(0, 2)
-      .join('')
-      .toUpperCase();
-
-    const nuevo: MiembroEquipo = {
-      id: `01932000-0000-7000-8000-${Date.now().toString(16).padStart(12, '0').slice(-12)}`,
-      nombre: nuevoNombre.trim(),
-      email: nuevoEmail.trim(),
-      telefono: nuevoTelefono.trim() || '+573000000000',
-      rol: nuevoRol,
-      estado: 'INVITADO',
-      fechaIngreso: new Date().toISOString().split('T')[0] ?? '2026-10-11',
-      avatarIniciales: iniciales || 'AS',
-    };
-
-    setMiembros([...miembros, nuevo]);
-    setModalInvitar(false);
-    setNuevoNombre('');
-    setNuevoEmail('');
-    setNuevoTelefono('');
     setGuardadoExitoso(true);
     setTimeout(() => setGuardadoExitoso(false), 3000);
   };
@@ -141,7 +103,15 @@ export default function ConfiguracionPage() {
               </p>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
+              <Link
+                href="/bienvenida"
+                data-testid="btn-abrir-asistente-onboarding"
+                className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl border border-neutral-300 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-800 shadow-xs hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200"
+              >
+                <Sparkles className="h-4 w-4 text-amber-500" />
+                <span>Asistente de Inicio (T-105)</span>
+              </Link>
               <span className="flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400">
                 <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
                 WhatsApp Conectado
@@ -173,12 +143,14 @@ export default function ConfiguracionPage() {
             >
               <Users className="h-4 w-4" />
               <span>Miembros y Roles</span>
-              <span className="rounded-full bg-neutral-200 px-1.5 py-0.5 text-[10px] text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300">
-                {miembros.length}
+              <span className="rounded-full bg-purple-100 px-1.5 py-0.5 text-[10px] font-bold text-purple-800 dark:bg-purple-950 dark:text-purple-300">
+                T-027
               </span>
             </button>
 
             <button
+              id="tab-btn-whatsapp"
+              data-testid="tab-btn-whatsapp"
               onClick={() => setTabActiva('whatsapp')}
               className={`flex items-center gap-2 border-b-2 px-4 py-2 text-xs font-medium transition-colors ${
                 tabActiva === 'whatsapp'
@@ -188,6 +160,9 @@ export default function ConfiguracionPage() {
             >
               <MessageSquare className="h-4 w-4" />
               <span>Canal WhatsApp (WABA)</span>
+              <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                T-106
+              </span>
             </button>
 
             <button
@@ -260,279 +235,56 @@ export default function ConfiguracionPage() {
                 T-028
               </span>
             </button>
+
+            <button
+              id="tab-btn-campos"
+              data-testid="tab-btn-campos"
+              onClick={() => setTabActiva('campos')}
+              className={`flex items-center gap-2 border-b-2 px-4 py-2 text-xs font-medium transition-colors ${
+                tabActiva === 'campos'
+                  ? 'border-purple-600 text-purple-700 dark:border-purple-400 dark:text-purple-300'
+                  : 'border-transparent text-neutral-500 hover:border-neutral-300 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200'
+              }`}
+            >
+              <FormInput className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+              <span>Campos Personalizados</span>
+              <span className="rounded-full bg-purple-100 px-1.5 py-0.5 text-[10px] font-bold text-purple-800 dark:bg-purple-950 dark:text-purple-300">
+                T-026
+              </span>
+            </button>
+
+            <button
+              id="tab-btn-respuestas"
+              data-testid="tab-btn-respuestas"
+              onClick={() => setTabActiva('respuestas')}
+              className={`flex items-center gap-2 border-b-2 px-4 py-2 text-xs font-medium transition-colors ${
+                tabActiva === 'respuestas'
+                  ? 'border-amber-600 text-amber-700 dark:border-amber-400 dark:text-amber-300'
+                  : 'border-transparent text-neutral-500 hover:border-neutral-300 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200'
+              }`}
+            >
+              <Zap className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+              <span>Respuestas Rápidas</span>
+              <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                T-104
+              </span>
+            </button>
           </nav>
         </header>
 
         {/* Contenido según Pestaña */}
         <div className="flex-1 p-6">
-          {/* TAB 1: EQUIPO Y ROLES */}
+          {/* TAB 1: EQUIPO Y ROLES (T-027) */}
           {tabActiva === 'equipo' && (
-            <div className="space-y-6">
-              {/* Tarjetas Resumen */}
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
-                <div className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
-                  <span className="text-xs font-medium text-neutral-500 dark:text-neutral-400">
-                    Total Usuarios
-                  </span>
-                  <p className="mt-1 text-2xl font-bold text-neutral-900 dark:text-white">
-                    {miembros.length}
-                  </p>
-                </div>
-
-                <div className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
-                  <span className="text-xs font-medium text-neutral-500 dark:text-neutral-400">
-                    Dueños Activos
-                  </span>
-                  <p className="mt-1 text-2xl font-bold text-blue-600 dark:text-blue-400">
-                    {reglaDueno.cantidadDuenos}
-                  </p>
-                </div>
-
-                <div className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
-                  <span className="text-xs font-medium text-neutral-500 dark:text-neutral-400">
-                    Asesores Comerciales
-                  </span>
-                  <p className="mt-1 text-2xl font-bold text-neutral-900 dark:text-white">
-                    {miembros.filter((m) => m.rol === 'ASESOR' && m.estado === 'ACTIVO').length}
-                  </p>
-                </div>
-
-                <div className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
-                  <span className="text-xs font-medium text-neutral-500 dark:text-neutral-400">
-                    Invitaciones Pendientes
-                  </span>
-                  <p className="mt-1 text-2xl font-bold text-amber-600 dark:text-amber-400">
-                    {miembros.filter((m) => m.estado === 'INVITADO').length}
-                  </p>
-                </div>
-              </div>
-
-              {/* Botón de Invitar */}
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-sm font-semibold text-neutral-900 dark:text-white">
-                    Usuarios de la Agencia
-                  </h2>
-                  <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                    Control de accesos y responsabilidades de atención al cliente
-                  </p>
-                </div>
-                <button
-                  onClick={() => setModalInvitar(true)}
-                  className="flex items-center gap-1.5 rounded-lg bg-neutral-900 px-3.5 py-2 text-xs font-medium text-white shadow-sm hover:bg-neutral-800 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-100"
-                >
-                  <Plus className="h-4 w-4" />
-                  <span>Invitar Miembro</span>
-                </button>
-              </div>
-
-              {/* Tabla de Miembros */}
-              <div className="overflow-x-auto rounded-xl border border-neutral-200 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
-                <table className="w-full text-left text-xs">
-                  <thead className="border-b border-neutral-200 bg-neutral-50 font-semibold text-neutral-600 dark:border-neutral-800 dark:bg-neutral-800/50 dark:text-neutral-300">
-                    <tr>
-                      <th className="px-4 py-3">Miembro</th>
-                      <th className="px-4 py-3">Contacto</th>
-                      <th className="px-4 py-3">Rol</th>
-                      <th className="px-4 py-3">Estado</th>
-                      <th className="px-4 py-3">Fecha de Ingreso</th>
-                      <th className="px-4 py-3 text-right">Acción</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-neutral-200 dark:divide-neutral-800">
-                    {miembros.length === 0 ? (
-                      <tr>
-                        <td colSpan={6} className="p-8 text-center text-xs text-neutral-400">
-                          <p>No hay miembros registrados en el equipo.</p>
-                          <button
-                            type="button"
-                            onClick={() => setModalInvitar(true)}
-                            className="mt-2 font-semibold text-neutral-900 underline dark:text-white"
-                          >
-                            Invitar al primer miembro
-                          </button>
-                        </td>
-                      </tr>
-                    ) : (
-                      miembros.map((m) => (
-                        <tr
-                          key={m.id}
-                          className="hover:bg-neutral-50/50 dark:hover:bg-neutral-800/30"
-                        >
-                          <td className="px-4 py-3.5">
-                            <div className="flex items-center gap-3">
-                              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-neutral-200 font-bold text-neutral-700 dark:bg-neutral-700 dark:text-neutral-200">
-                                {m.avatarIniciales}
-                              </div>
-                              <div>
-                                <p className="font-semibold text-neutral-900 dark:text-white">
-                                  {m.nombre}
-                                </p>
-                                <p className="text-[11px] text-neutral-500 dark:text-neutral-400">
-                                  {m.email}
-                                </p>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3.5 text-neutral-600 dark:text-neutral-300">
-                            <div className="flex items-center gap-1.5">
-                              <Phone className="h-3.5 w-3.5 text-neutral-400" />
-                              <span>{m.telefono}</span>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3.5">
-                            <span
-                              className={`inline-flex items-center rounded px-2 py-0.5 text-[11px] font-semibold ${
-                                m.rol === 'DUENO'
-                                  ? 'bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300'
-                                  : 'bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300'
-                              }`}
-                            >
-                              {m.rol === 'DUENO' ? 'Dueño / Admin' : 'Asesor Comercial'}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3.5">
-                            <span
-                              className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${
-                                m.estado === 'ACTIVO'
-                                  ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400'
-                                  : 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400'
-                              }`}
-                            >
-                              <span
-                                className={`h-1.5 w-1.5 rounded-full ${
-                                  m.estado === 'ACTIVO' ? 'bg-emerald-500' : 'bg-amber-500'
-                                }`}
-                              />
-                              {m.estado === 'ACTIVO' ? 'Activo' : 'Invitación Enviada'}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3.5 text-neutral-500 dark:text-neutral-400">
-                            {m.fechaIngreso}
-                          </td>
-                          <td className="px-4 py-3.5 text-right">
-                            <button
-                              type="button"
-                              title="Gestionar permisos del usuario"
-                              className="rounded px-2.5 py-1 text-xs text-neutral-600 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
-                            >
-                              Editar
-                            </button>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Banner de Gobierno */}
-              <div className="flex items-start gap-3 rounded-xl border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-800 dark:bg-neutral-900/50">
-                <ShieldCheck className="h-5 w-5 shrink-0 text-blue-600 dark:text-blue-400" />
-                <div className="text-xs text-neutral-600 dark:text-neutral-400">
-                  <p className="font-semibold text-neutral-900 dark:text-white">
-                    Aislamiento R1 y Principio de Mínimo Privilegio:
-                  </p>
-                  <p className="mt-0.5">
-                    Cada agencia opera con un esquema aislado en la base de datos (PostgreSQL RLS).
-                    Los asesores solo gestionan sus conversaciones asignadas y oportunidades
-                    activas. Solo los dueños de agencia pueden modificar integraciones y tarifas.
-                  </p>
-                </div>
-              </div>
+            <div id="tab-contenido-equipo" data-testid="tab-contenido-equipo">
+              <BloqueEquipo />
             </div>
           )}
 
-          {/* TAB 2: WHATSAPP CLOUD API */}
+          {/* TAB 2: WHATSAPP CLOUD API (T-106) */}
           {tabActiva === 'whatsapp' && (
-            <div className="max-w-4xl space-y-6">
-              {/* Card de Estado de Salud */}
-              <div className="rounded-xl border border-neutral-200 bg-white p-5 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400">
-                      <MessageSquare className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-neutral-900 dark:text-white">
-                        WhatsApp Business Account (WABA)
-                      </h3>
-                      <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                        Canal nativo oficial vía Meta Cloud API
-                      </p>
-                    </div>
-                  </div>
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300">
-                    <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
-                    {saludWaba.estado === 'OPTIMO' ? 'Conexión Saludable' : 'Atención Requerida'}
-                  </span>
-                </div>
-
-                <div className="mt-4 grid grid-cols-1 gap-4 border-t border-neutral-200 pt-4 sm:grid-cols-2 dark:border-neutral-800">
-                  <div>
-                    <span className="text-[11px] text-neutral-500 dark:text-neutral-400">
-                      Número Verificado
-                    </span>
-                    <p className="text-sm font-semibold text-neutral-900 dark:text-white">
-                      {waba.numeroE164}
-                    </p>
-                  </div>
-                  <div>
-                    <span className="text-[11px] text-neutral-500 dark:text-neutral-400">
-                      Nombre Visible en Meta
-                    </span>
-                    <p className="text-sm font-semibold text-neutral-900 dark:text-white">
-                      {waba.nombreVisible}
-                    </p>
-                  </div>
-                  <div>
-                    <span className="text-[11px] text-neutral-500 dark:text-neutral-400">
-                      Phone Number ID
-                    </span>
-                    <p className="font-mono text-xs text-neutral-700 dark:text-neutral-300">
-                      {waba.phoneNumberId}
-                    </p>
-                  </div>
-                  <div>
-                    <span className="text-[11px] text-neutral-500 dark:text-neutral-400">
-                      WABA Account ID
-                    </span>
-                    <p className="font-mono text-xs text-neutral-700 dark:text-neutral-300">
-                      {waba.wabaId}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Webhook & Cifrado */}
-              <div className="rounded-xl border border-neutral-200 bg-white p-5 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
-                <h4 className="text-xs font-semibold tracking-wider text-neutral-500 uppercase dark:text-neutral-400">
-                  Infraestructura de Webhook y Seguridad
-                </h4>
-
-                <div className="mt-3 space-y-3">
-                  <div>
-                    <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300">
-                      URL del Webhook de Recepción
-                    </label>
-                    <input
-                      type="text"
-                      readOnly
-                      value={waba.webhookUrl}
-                      className="mt-1 w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2 font-mono text-xs text-neutral-600 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300"
-                    />
-                  </div>
-
-                  <div className="flex items-center gap-2 rounded-lg bg-neutral-50 p-3 text-xs text-neutral-600 dark:bg-neutral-800/60 dark:text-neutral-400">
-                    <Lock className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
-                    <span>
-                      <strong>Regla R6 (Cero secretos en frontend):</strong> Las llaves de acceso
-                      permanente de Meta Cloud API están cifradas con AES-256-GCM en el backend y no
-                      se exponen al navegador.
-                    </span>
-                  </div>
-                </div>
-              </div>
+            <div id="tab-contenido-whatsapp" data-testid="tab-contenido-whatsapp">
+              <BloqueConexionWhatsapp />
             </div>
           )}
 
@@ -658,46 +410,25 @@ export default function ConfiguracionPage() {
             </div>
           )}
 
-          {/* TAB 4: ETAPAS DEL PIPELINE */}
+          {/* TAB 8: CAMPOS PERSONALIZADOS (T-026) */}
+          {tabActiva === 'campos' && (
+            <div
+              id="tab-contenido-campos"
+              data-testid="tab-contenido-campos"
+              className="max-w-4xl space-y-6"
+            >
+              <BloqueCamposPersonalizados />
+            </div>
+          )}
+
+          {/* TAB 4: ETAPAS DEL PIPELINE (T-025) */}
           {tabActiva === 'pipeline' && (
-            <div className="max-w-3xl space-y-6">
-              <div className="rounded-xl border border-neutral-200 bg-white p-5 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
-                <h3 className="font-semibold text-neutral-900 dark:text-white">
-                  Etapas Comerciales del CRM
-                </h3>
-                <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                  Flujo de conversión acordado según el lenguaje ubicuo de la agencia
-                </p>
-
-                <div className="mt-4 space-y-3">
-                  {MOCK_ETAPAS_CONFIGURADAS.map((etapa) => (
-                    <div
-                      key={etapa.codigo}
-                      className="flex items-center justify-between rounded-lg border border-neutral-200 p-3 dark:border-neutral-800 dark:bg-neutral-800/40"
-                    >
-                      <div className="flex items-center gap-3">
-                        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-neutral-200 text-xs font-bold text-neutral-700 dark:bg-neutral-700 dark:text-neutral-200">
-                          {etapa.orden}
-                        </span>
-                        <div>
-                          <p className="text-xs font-bold text-neutral-900 dark:text-white">
-                            {etapa.label}
-                          </p>
-                          <p className="text-[11px] text-neutral-500 dark:text-neutral-400">
-                            {etapa.descripcion}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-3">
-                        <span className="rounded bg-neutral-100 px-2 py-0.5 text-xs font-semibold text-neutral-700 dark:bg-neutral-700 dark:text-neutral-300">
-                          {etapa.probabilidad}% de Cierre
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+            <div
+              id="tab-contenido-pipeline"
+              data-testid="tab-contenido-pipeline"
+              className="max-w-4xl space-y-6"
+            >
+              <BloqueEtapasPipeline />
             </div>
           )}
 
@@ -817,96 +548,22 @@ export default function ConfiguracionPage() {
               </form>
             </div>
           )}
+
+          {/* TAB 9: RESPUESTAS RÁPIDAS (T-104) */}
+          {tabActiva === 'respuestas' && (
+            <div
+              id="tab-contenido-respuestas"
+              data-testid="tab-contenido-respuestas"
+              className="max-w-5xl"
+            >
+              <BloqueRespuestasRapidas
+                tenantId={sesion?.tenantActivoId ?? null}
+                nombreAgencia={agencia.nombreComercial}
+              />
+            </div>
+          )}
         </div>
       </main>
-
-      {/* Modal Invitar Miembro */}
-      {modalInvitar && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl dark:bg-neutral-900">
-            <h3 className="text-base font-semibold text-neutral-900 dark:text-white">
-              Invitar Nuevo Miembro al Equipo
-            </h3>
-            <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-              Se enviará un correo de bienvenida con acceso al CRM de la agencia
-            </p>
-
-            <form onSubmit={invitarMiembro} className="mt-4 space-y-3">
-              <div>
-                <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300">
-                  Nombre Completo
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Ej: Laura Restrepo"
-                  value={nuevoNombre}
-                  onChange={(e) => setNuevoNombre(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2 text-xs text-neutral-900 focus:border-blue-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300">
-                  Correo Electrónico
-                </label>
-                <input
-                  type="email"
-                  required
-                  placeholder="laura@viajesaventura.com"
-                  value={nuevoEmail}
-                  onChange={(e) => setNuevoEmail(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2 text-xs text-neutral-900 focus:border-blue-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300">
-                  Teléfono E.164 (WhatsApp)
-                </label>
-                <input
-                  type="text"
-                  placeholder="+573001234567"
-                  value={nuevoTelefono}
-                  onChange={(e) => setNuevoTelefono(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2 text-xs text-neutral-900 focus:border-blue-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300">
-                  Rol Asignado
-                </label>
-                <select
-                  value={nuevoRol}
-                  onChange={(e) => setNuevoRol(e.target.value as 'DUENO' | 'ASESOR')}
-                  className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2 text-xs text-neutral-900 focus:border-blue-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
-                >
-                  <option value="ASESOR">Asesor Comercial</option>
-                  <option value="DUENO">Dueño / Administrador</option>
-                </select>
-              </div>
-
-              <div className="mt-5 flex justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setModalInvitar(false)}
-                  className="rounded-lg border border-neutral-300 px-4 py-2 text-xs font-medium text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="flex items-center gap-1.5 rounded-lg bg-neutral-900 px-4 py-2 text-xs font-medium text-white shadow-sm hover:bg-neutral-800 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-100"
-                >
-                  <Send className="h-3.5 w-3.5" />
-                  <span>Enviar Invitación</span>
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

@@ -258,4 +258,68 @@ describe('BarraModulos y Selector de Sesión (ADR-0011)', () => {
       expect(toggleDemo.getAttribute('aria-checked')).toBe('true');
     });
   });
+
+  describe('Notificaciones Web y Socket en Tiempo Real (T-110)', () => {
+    it('abre el panel de notificaciones al hacer clic en la campana de escritorio', () => {
+      render(<BarraModulos sesionInicial={SESION_ASESOR} />);
+
+      const botonCampana = screen.getByRole('button', {
+        name: /Alertas operativas|Notificaciones/i,
+      });
+      fireEvent.click(botonCampana);
+
+      expect(screen.getByRole('dialog', { name: /Panel de Notificaciones/i })).toBeDefined();
+    });
+
+    it('abre el panel de notificaciones desde el diálogo de perfil', () => {
+      render(<BarraModulos sesionInicial={SESION_ASESOR} />);
+
+      fireEvent.click(screen.getByTestId('boton-avatar-sesion'));
+      const botonNotifPerfil = screen.getByTestId('boton-abrir-notificaciones-perfil');
+      expect(botonNotifPerfil).toBeDefined();
+
+      fireEvent.click(botonNotifPerfil);
+      expect(screen.getByRole('dialog', { name: /Panel de Notificaciones/i })).toBeDefined();
+    });
+  });
+
+  describe('Modo Oscuro y Preferencia de Densidad (T-111)', () => {
+    it('cicla los temas (light -> dark -> system) con el botón de alternar tema', () => {
+      render(<BarraModulos sesionInicial={SESION_ASESOR} />);
+
+      const botonTema = screen.getByTestId('boton-alternar-tema-colapsado');
+      expect(botonTema).toBeDefined();
+
+      // De system -> pasa a light
+      fireEvent.click(botonTema);
+      expect(localStorage.getItem('viajapro_tema')).toBe('light');
+
+      // De light -> pasa a dark
+      fireEvent.click(botonTema);
+      expect(localStorage.getItem('viajapro_tema')).toBe('dark');
+
+      // De dark -> pasa a system
+      fireEvent.click(botonTema);
+      expect(localStorage.getItem('viajapro_tema')).toBe('system');
+    });
+
+    it('renderiza SelectorTemaDensidad dentro del diálogo de perfil y permite cambiar densidad', () => {
+      render(<BarraModulos sesionInicial={SESION_ASESOR} />);
+
+      fireEvent.click(screen.getByTestId('boton-avatar-sesion'));
+      expect(screen.getByTestId('dialogo-perfil-sesion')).toBeDefined();
+
+      // Debe contener las opciones de tema
+      expect(screen.getByRole('radio', { name: /Claro/i })).toBeDefined();
+      expect(screen.getByRole('radio', { name: /Oscuro/i })).toBeDefined();
+      expect(screen.getByRole('radio', { name: /Sistema/i })).toBeDefined();
+
+      // Debe contener las opciones de densidad
+      const radioCompacta = screen.getByRole('radio', { name: /Compacta/i });
+      expect(radioCompacta).toBeDefined();
+
+      fireEvent.click(radioCompacta);
+      expect(localStorage.getItem('viajapro_densidad')).toBe('compacta');
+    });
+  });
 });

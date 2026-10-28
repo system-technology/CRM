@@ -2,14 +2,9 @@
 
 import React from 'react';
 import { Palmtree, Trees, Landmark, Ship, Hotel, Compass } from 'lucide-react';
+import { inferirTipoProducto, type TipoProductoTurismo } from '../../lib/catalogo-logica';
 
-export type TipoProductoTurismo =
-  | 'isla_beach_club'
-  | 'reserva_natural'
-  | 'city_tour'
-  | 'aventura_nautica'
-  | 'paquete_hotel'
-  | 'excursion_general';
+export { inferirTipoProducto, type TipoProductoTurismo };
 
 export interface ConfiguracionTipoTurismo {
   id: TipoProductoTurismo;
@@ -20,7 +15,6 @@ export interface ConfiguracionTipoTurismo {
   colorBorde: string;
   degradadoSustituto: string;
 }
-
 export const CONFIGURACIONES_TIPO_TURISMO: Record<TipoProductoTurismo, ConfiguracionTipoTurismo> = {
   isla_beach_club: {
     id: 'isla_beach_club',
@@ -77,74 +71,6 @@ export const CONFIGURACIONES_TIPO_TURISMO: Record<TipoProductoTurismo, Configura
     degradadoSustituto: 'from-cyan-600 via-blue-700 to-[#0B1F3A]',
   },
 };
-
-/**
- * Infiere el tipo de excursión a partir del título, descripción o etiquetas.
- */
-export function inferirTipoProducto(nombre: string, etiquetas?: string[]): TipoProductoTurismo {
-  const texto = `${nombre} ${(etiquetas ?? []).join(' ')}`.toLowerCase();
-
-  // 1. Ecoturismo y reservas naturales (alta prioridad semántica)
-  if (
-    texto.includes('reserva') ||
-    texto.includes('parque natural') ||
-    texto.includes('manglar') ||
-    texto.includes('selva') ||
-    texto.includes('fauna') ||
-    texto.includes('eco')
-  ) {
-    return 'reserva_natural';
-  }
-
-  // 2. Playas, islas y clubes de playa
-  if (
-    texto.includes('isla') ||
-    texto.includes('playa') ||
-    texto.includes('beach') ||
-    texto.includes('cholon') ||
-    texto.includes('rosario') ||
-    texto.includes('baru')
-  ) {
-    return 'isla_beach_club';
-  }
-
-  // 3. Ciudades y cultura
-  if (
-    texto.includes('city') ||
-    texto.includes('historico') ||
-    texto.includes('ciudad') ||
-    texto.includes('cultural') ||
-    texto.includes('chiva') ||
-    texto.includes('castillo')
-  ) {
-    return 'city_tour';
-  }
-
-  // 4. Náutica y aventura
-  if (
-    texto.includes('lancha') ||
-    texto.includes('bote') ||
-    texto.includes('yate') ||
-    texto.includes('nautic') ||
-    texto.includes('buceo') ||
-    texto.includes('snorkel') ||
-    texto.includes('pesca')
-  ) {
-    return 'aventura_nautica';
-  }
-
-  // 5. Acomodación y hotel
-  if (
-    texto.includes('hotel') ||
-    texto.includes('acomodacion') ||
-    texto.includes('noches') ||
-    texto.includes('resort')
-  ) {
-    return 'paquete_hotel';
-  }
-
-  return 'excursion_general';
-}
 
 export interface ChipTipoProductoProps extends React.HTMLAttributes<HTMLSpanElement> {
   tipo?: TipoProductoTurismo;

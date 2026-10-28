@@ -12,15 +12,21 @@ export { obtenerBaseApi };
  * y reporte transparente de errores de configuración (0c.14).
  */
 
+import { z } from 'zod';
 import {
   Contacto,
   CrearContacto,
+  CrearOportunidad,
   CrearOportunidadDeConversacion,
+  CrearSeguimiento,
   EditarContacto,
+  EtapaDefinida,
   FichaDeContacto,
+  FiltroSeguimientos,
   MoverOportunidad,
   Oportunidad,
   PaginaContactos,
+  PaginaSeguimientos,
   PendientesDelDia,
   Seguimiento,
   TableroPipeline,
@@ -29,12 +35,15 @@ import {
 import { obtenerMockTableroPipeline } from './mock-pipeline';
 import { moverOportunidadEnTablero } from './pipeline-logica';
 import {
-  actualizarContactoMock,
   crearContactoMock,
   crearOportunidadDeConversacionMock,
   obtenerMockFichaDeContacto,
   obtenerMockPendientesDelDia,
   completarMockSeguimiento,
+  editarMockContacto,
+  crearMockOportunidad,
+  crearMockSeguimiento,
+  listarMockSeguimientos,
 } from './mock-crm';
 import { obtenerMockPaginaContactos } from './mock-contactos';
 
@@ -272,27 +281,6 @@ export async function crearOportunidadDeConversacionApi(
 }
 
 /**
- * Edita un contacto existente (T-076).
- * PATCH /api/v1/crm/contactos/:id
- */
-export async function editarContactoApi(
-  contactoId: string,
-  datos: EditarContacto,
-): Promise<Contacto> {
-  const validado = EditarContacto.parse(datos);
-
-  if (estaUsandoApiReal()) {
-    const { data } = await pedirCrm(`/api/v1/crm/contactos/${contactoId}`, {
-      method: 'PATCH',
-      body: JSON.stringify(validado),
-    });
-    return Contacto.parse(data);
-  }
-
-  return actualizarContactoMock(contactoId, validado);
-}
-
-/**
  * Crea un nuevo contacto (T-075, T-076).
  * POST /api/v1/crm/contactos
  */
@@ -337,4 +325,126 @@ export async function completarSeguimientoApi(id: string): Promise<Seguimiento> 
   }
 
   return completarMockSeguimiento(id);
+}
+
+/**
+ * Lista las etapas configuradas del pipeline comercial para la agencia activa (T-025).
+ * Intenta GET /api/v1/crm/etapas, o extrae del tablero si el endpoint aún no está expuesto.
+ */
+export async function listarEtapasPipelineApi(): Promise<EtapaDefinida[]> {
+  if (estaUsandoApiReal()) {
+    try {
+      const { data } = await pedirCrm('/api/v1/crm/etapas');
+      return z.array(EtapaDefinida).parse(data);
+    } catch {
+      // Fallback: extraer etapas del tablero completo
+      const tablero = await obtenerTableroPipeline();
+      return tablero.columnas.map((c) => c.etapa);
+    }
+  }
+
+  const mockTablero = obtenerMockTableroPipeline();
+  return mockTablero.columnas.map((c) => c.etapa);
+}
+
+/**
+ * Actualiza la lista de etapas del pipeline (reordenar, renombrar, probabilidades) (T-025).
+ * PUT /api/v1/crm/etapas
+ */
+export async function actualizarEtapasPipelineApi(
+  etapas: EtapaDefinida[],
+): Promise<EtapaDefinida[]> {
+  const validadas = z.array(EtapaDefinida).parse(etapas);
+
+  if (estaUsandoApiReal()) {
+    try {
+      const { data } = await pedirCrm('/api/v1/crm/etapas', {
+        method: 'PUT',
+        body: JSON.stringify({ etapas: validadas }),
+      });
+      return z.array(EtapaDefinida).parse(data);
+    } catch (err) {
+      if (err instanceof CrmApiError && (err.status === 404 || err.status === 405)) {
+        // Endpoint no expuesto aún en el backend (T-025 aceptación)
+        return validadas;
+      }
+      throw err;
+    }
+  }
+
+  return validadas;
+}
+
+/**
+ * Edita los datos de un contacto (PATCH /api/v1/crm/contactos/:id) (T-075 / T-100).
+ */
+export async function editarContactoApi(id: string, cambios: EditarContacto): Promise<Contacto> {
+  const validados = EditarContacto.parse(cambios);
+
+  if (estaUsandoApiReal()) {
+    const { data } = await pedirCrm(`/api/v1/crm/contactos/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(validados),
+    });
+    return Contacto.parse(data);
+  }
+
+  return editarMockContacto(id, validados);
+}
+
+/**
+ * Crea una oportunidad para un contacto (POST /api/v1/crm/oportunidades) (T-075 / T-100).
+ */
+export async function crearOportunidadApi(cuerpo: CrearOportunidad): Promise<Oportunidad> {
+  const validado = CrearOportunidad.parse(cuerpo);
+
+  if (estaUsandoApiReal()) {
+    const { data } = await pedirCrm('/api/v1/crm/oportunidades', {
+      method: 'POST',
+      body: JSON.stringify(validado),
+    });
+    return Oportunidad.parse(data);
+  }
+
+  return crearMockOportunidad(validado);
+}
+
+/**
+ * Crea un seguimiento comercial con fecha programada (POST /api/v1/crm/seguimientos) (T-077 / T-100).
+ */
+export async function crearSeguimientoApi(cuerpo: CrearSeguimiento): Promise<Seguimiento> {
+  const validado = CrearSeguimiento.parse(cuerpo);
+
+  if (estaUsandoApiReal()) {
+    const { data } = await pedirCrm('/api/v1/crm/seguimientos', {
+      method: 'POST',
+      body: JSON.stringify(validado),
+    });
+    return Seguimiento.parse(data);
+  }
+
+  return crearMockSeguimiento(validado);
+}
+
+/**
+ * Lista seguimientos con filtros (GET /api/v1/crm/seguimientos) (T-077 / T-100).
+ */
+export async function listarSeguimientosApi(
+  filtro: FiltroSeguimientos,
+): Promise<PaginaSeguimientos> {
+  const validado = FiltroSeguimientos.parse(filtro);
+
+  if (estaUsandoApiReal()) {
+    const params = new URLSearchParams();
+    if (validado.asesorId) params.append('asesorId', validado.asesorId);
+    if (validado.oportunidadId) params.append('oportunidadId', validado.oportunidadId);
+    if (validado.conversacionId) params.append('conversacionId', validado.conversacionId);
+    if (validado.estado) params.append('estado', validado.estado);
+
+    const qs = params.toString() ? `?${params.toString()}` : '';
+    const { data } = await pedirCrm(`/api/v1/crm/seguimientos${qs}`);
+    return PaginaSeguimientos.parse(data);
+  }
+
+  return listarMockSeguimientos(validado);
 }

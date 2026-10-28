@@ -12,6 +12,7 @@
 
 import React, { use, useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
+import { useParams } from 'next/navigation';
 import {
   Calendar,
   Clock,
@@ -22,29 +23,49 @@ import {
   AlertCircle,
   FileText,
   User,
+  MessageSquare,
+  Shield,
 } from 'lucide-react';
 import type { Acomodacion, CotizacionGuardada, Contacto } from '@viajapro/contracts';
 import { BarraModulos } from '../../../components/bandeja/barra-modulos';
 import { MigasDePan } from '../../../components/comun/migas-de-pan';
-import { formatearDinero } from '../../../lib/api';
+import { formatearDinero, formatearFecha, formatearTelefono } from '../../../lib/formato';
 import {
   obtenerCotizacionGuardadaApi,
   anadirVersionCotizacionApi,
+  duplicarVersionCotizacionApi,
 } from '../../../lib/cotizaciones-api';
 import {
   armarCuerpoAnadirVersion,
   ordenarVersiones,
   obtenerUltimaVersion,
   interpretarErrorCotizaciones,
+  calcularDesgloseMargen,
 } from '../../../lib/cotizaciones-logica';
 import { listarContactos } from '../../../lib/crm-api';
+import { ModalEnviarWhatsAppCotizacion } from '../../../components/cotizaciones/modal-enviar-whatsapp-cotizacion';
+import { usePermisos } from '../../../lib/permisos';
 
 interface PageProps {
-  params: Promise<{ id: string }>;
+  params?: Promise<{ id: string }>;
 }
 
-export default function PaginaCotizacionGuardada({ params }: PageProps) {
-  const { id } = use(params);
+export default function PaginaCotizacionGuardada({ params: paramsPromise }: PageProps) {
+  const routerParams = useParams();
+  const idFromParams = routerParams?.['id'] as string | undefined;
+
+  let idFromProps: string | undefined;
+  if (paramsPromise) {
+    try {
+      const unwrapped = use(paramsPromise);
+      idFromProps = unwrapped.id;
+    } catch {
+      // Ignorar fallo si no es un Promise directamente unwrappable
+    }
+  }
+
+  const id = idFromProps ?? idFromParams ?? '01932000-0000-7000-8000-000000000001';
+  const { puedeVerNetoYMargen } = usePermisos();
 
   const [cotizacion, setCotizacion] = useState<CotizacionGuardada | null>(null);
   const [cargando, setCargando] = useState(true);
@@ -57,6 +78,14 @@ export default function PaginaCotizacionGuardada({ params }: PageProps) {
   // Versión seleccionada actualmente
   const [versionSeleccionadaNumero, setVersionSeleccionadaNumero] = useState<number>(1);
   const [copiado, setCopiado] = useState(false);
+
+  // Modal WhatsApp y duplicación de versiones (T-107)
+  const [modalWhatsAppAbierto, setModalWhatsAppAbierto] = useState(false);
+  const [duplicandoVersion, setDuplicandoVersion] = useState(false);
+  const [notificacion, setNotificacion] = useState<{
+    texto: string;
+    tipo: 'exito' | 'error';
+  } | null>(null);
 
   // Contacto asociado
   const [contacto, setContacto] = useState<Contacto | null>(null);
@@ -168,6 +197,34 @@ export default function PaginaCotizacionGuardada({ params }: PageProps) {
     }
   };
 
+  // Duplicar versión actual como versión N+1 (T-107)
+  const manejarDuplicarVersion = async () => {
+    if (!cotizacion || !versionActual || duplicandoVersion) return;
+    setDuplicandoVersion(true);
+    try {
+      const actualizada = await duplicarVersionCotizacionApi(cotizacion.id, versionActual.numero);
+      setCotizacion(actualizada);
+      const ultima = obtenerUltimaVersion(actualizada.versiones);
+      if (ultima) {
+        setVersionSeleccionadaNumero(ultima.numero);
+      }
+      setNotificacion({
+        texto: `Versión ${versionActual.numero} duplicada exitosamente como Versión ${ultima?.numero ?? ''}.`,
+        tipo: 'exito',
+      });
+      setTimeout(() => setNotificacion(null), 3500);
+    } catch (err: unknown) {
+      const interpretado = interpretarErrorCotizaciones(err);
+      setNotificacion({
+        texto: `Error al duplicar versión: ${interpretado.mensaje}`,
+        tipo: 'error',
+      });
+      setTimeout(() => setNotificacion(null), 4000);
+    } finally {
+      setDuplicandoVersion(false);
+    }
+  };
+
   // Generador de propuesta WhatsApp para la versión seleccionada
   const copiarPropuestaWhatsApp = () => {
     if (!cotizacion || !versionActual) return;
@@ -181,7 +238,7 @@ export default function PaginaCotizacionGuardada({ params }: PageProps) {
 
 🌴 *${versionActual.paqueteNombre.toUpperCase()}*
 📍 *Destino:* ${versionActual.destino}
-📅 *Fecha de Salida:* ${versionActual.fechaSalida} (${versionActual.noches} noches)
+📅 *Fecha de Salida:* ${formatearFecha(versionActual.fechaSalida)} (${versionActual.noches} noches)
 👥 *Pasajeros:* ${versionActual.adultos} adulto(s)${versionActual.ninos > 0 ? `, ${versionActual.ninos} niño(s)` : ''}${versionActual.infantes > 0 ? `, ${versionActual.infantes} infante(s)` : ''}
 
 📋 *Desglose de Tarifas:*
@@ -273,6 +330,35 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
             </div>
           )}
 
+          {/* Notificación de acción rápida (Éxito o Error) */}
+          {notificacion && (
+            <div
+              role="status"
+              className={`animate-in fade-in flex items-center justify-between gap-3 rounded-2xl p-4 text-xs font-semibold shadow-xs duration-200 ${
+                notificacion.tipo === 'exito'
+                  ? 'border border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200'
+                  : 'border border-rose-200 bg-rose-50 text-rose-900 dark:border-rose-800 dark:bg-rose-950/40 dark:text-rose-200'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                {notificacion.tipo === 'exito' ? (
+                  <Check className="h-4 w-4 shrink-0 text-emerald-600" />
+                ) : (
+                  <AlertCircle className="h-4 w-4 shrink-0 text-rose-600" />
+                )}
+                <span>{notificacion.texto}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setNotificacion(null)}
+                aria-label="Cerrar aviso"
+                className="text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200"
+              >
+                ✕
+              </button>
+            </div>
+          )}
+
           {/* Contenido de la Cotización Guardada */}
           {!cargando && !errorCarga && cotizacion && versionActual && (
             <>
@@ -304,7 +390,9 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
                         Viajero: <strong>{contacto?.nombre || 'Contacto registrado'}</strong>
                       </span>
                       {contacto?.telefono && (
-                        <span className="font-mono text-neutral-500">({contacto.telefono})</span>
+                        <span className="font-mono text-neutral-500">
+                          ({formatearTelefono(contacto.telefono)})
+                        </span>
                       )}
                       <span className="flex items-center gap-1.5">
                         <FileText className="h-3.5 w-3.5 text-neutral-400" />
@@ -314,19 +402,42 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
                     </div>
                   </div>
 
-                  {/* Botón Prominente: Modificar (Crear Nueva Versión) */}
-                  <div className="flex flex-col gap-2 sm:items-end">
+                  {/* Acciones de Cabecera: WhatsApp, Modificar y Duplicar Versión (T-107) */}
+                  <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+                    <button
+                      type="button"
+                      data-testid="btn-abrir-modal-whatsapp"
+                      onClick={() => setModalWhatsAppAbierto(true)}
+                      className="flex min-h-[44px] items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white shadow-xs transition-colors hover:bg-emerald-700"
+                      title="Enviar propuesta de esta cotización por WhatsApp"
+                    >
+                      <MessageSquare className="h-4 w-4" />
+                      <span>Enviar por WhatsApp</span>
+                    </button>
+
                     <button
                       type="button"
                       onClick={abrirModalModificar}
-                      className="flex min-h-[44px] items-center justify-center gap-2 rounded-xl bg-purple-700 px-5 py-2.5 text-xs font-bold text-white shadow-xs transition-colors hover:bg-purple-800"
+                      className="flex min-h-[44px] items-center justify-center gap-2 rounded-xl bg-purple-700 px-4 py-2.5 text-xs font-bold text-white shadow-xs transition-colors hover:bg-purple-800"
+                      title="Modificar parámetros creando una nueva versión"
                     >
                       <Edit3 className="h-4 w-4" />
-                      <span>Modificar (Nueva Versión)</span>
+                      <span>Modificar</span>
                     </button>
-                    <span className="text-[11px] text-neutral-400">
-                      Crea la versión {cotizacion.versiones.length + 1} sin alterar las anteriores
-                    </span>
+
+                    <button
+                      type="button"
+                      data-testid="btn-duplicar-version"
+                      onClick={() => void manejarDuplicarVersion()}
+                      disabled={duplicandoVersion}
+                      className="flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-neutral-300 bg-white px-4 py-2.5 text-xs font-bold text-neutral-700 shadow-xs transition-colors hover:bg-neutral-50 disabled:opacity-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200"
+                      title="Duplicar esta versión exacta como versión siguiente"
+                    >
+                      <Copy className="h-4 w-4" />
+                      <span>
+                        {duplicandoVersion ? 'Duplicando...' : `Duplicar v${versionActual.numero}`}
+                      </span>
+                    </button>
                   </div>
                 </div>
               </div>
@@ -389,8 +500,9 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
 
               {/* Detalle de la Versión Activa */}
               <div className="grid gap-6 lg:grid-cols-12">
-                {/* Columna Izquierda: Parámetros e Invariantes */}
+                {/* Columna Izquierda: Parámetros e Invariantes + Panel Auditoría Confidencial */}
                 <div className="space-y-4 lg:col-span-4">
+                  {/* Tarjeta de Parámetros de Viaje */}
                   <div className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-xs dark:border-neutral-800 dark:bg-neutral-900">
                     <div className="flex items-center justify-between border-b border-neutral-100 pb-3 dark:border-neutral-800">
                       <span className="text-xs font-bold text-purple-700 dark:text-purple-300">
@@ -452,6 +564,87 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
                       )}
                     </div>
                   </div>
+
+                  {/* Panel de Auditoría Interna de Margen Comercial (ADR-0011 / R10) */}
+                  {/* Estricto: Sólo se renderiza si el usuario cuenta con cotizacion.ver_neto_y_margen */}
+                  {puedeVerNetoYMargen && (
+                    <div
+                      data-testid="panel-auditoria-margen"
+                      className="rounded-2xl border border-amber-200 bg-amber-50/70 p-5 shadow-xs dark:border-amber-900/40 dark:bg-amber-950/30"
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-amber-200/60 pb-3 dark:border-amber-900/60">
+                        <div className="flex items-center gap-2">
+                          <Shield className="h-4 w-4 text-amber-700 dark:text-amber-400" />
+                          <h3 className="text-xs font-bold text-amber-950 dark:text-amber-200">
+                            Auditoría de Margen (ADR-0011)
+                          </h3>
+                        </div>
+                        <span className="rounded-full bg-amber-200/80 px-2 py-0.5 text-[10px] font-bold text-amber-900 dark:bg-amber-900 dark:text-amber-200">
+                          cotizacion.ver_neto_y_margen
+                        </span>
+                      </div>
+
+                      {(() => {
+                        const desglose = calcularDesgloseMargen(versionActual, true);
+                        return (
+                          <div className="mt-4 space-y-2.5 text-xs">
+                            <div className="flex items-center justify-between rounded-xl bg-white/80 p-2.5 shadow-2xs dark:bg-neutral-900/80">
+                              <span className="text-neutral-600 dark:text-neutral-400">
+                                Costo Neto Total:
+                              </span>
+                              <span className="cifra font-extrabold text-neutral-900 dark:text-white">
+                                {desglose.netoTotalCOP !== undefined
+                                  ? formatearDinero({
+                                      unidades: String(desglose.netoTotalCOP),
+                                      moneda: 'COP',
+                                    })
+                                  : 'No disponible'}
+                              </span>
+                            </div>
+
+                            <div className="flex items-center justify-between rounded-xl bg-white/80 p-2.5 shadow-2xs dark:bg-neutral-900/80">
+                              <span className="text-neutral-600 dark:text-neutral-400">
+                                Margen Bruto (COP):
+                              </span>
+                              <span className="cifra font-extrabold text-emerald-700 dark:text-emerald-400">
+                                {desglose.margenBrutoCOP !== undefined
+                                  ? formatearDinero({
+                                      unidades: String(desglose.margenBrutoCOP),
+                                      moneda: 'COP',
+                                    })
+                                  : 'No disponible'}
+                              </span>
+                            </div>
+
+                            <div className="flex items-center justify-between rounded-xl bg-white/80 p-2.5 shadow-2xs dark:bg-neutral-900/80">
+                              <span className="text-neutral-600 dark:text-neutral-400">
+                                Margen % Comercial:
+                              </span>
+                              <span className="cifra font-extrabold text-purple-700 dark:text-purple-400">
+                                {desglose.margenPorcentaje !== undefined
+                                  ? `${desglose.margenPorcentaje}%`
+                                  : 'N/A'}
+                              </span>
+                            </div>
+
+                            <div className="flex items-center justify-between rounded-xl bg-white/80 p-2.5 shadow-2xs dark:bg-neutral-900/80">
+                              <span className="text-neutral-600 dark:text-neutral-400">
+                                Base de Cálculo:
+                              </span>
+                              <span className="font-semibold text-neutral-800 dark:text-neutral-200">
+                                {desglose.baseCalculo ?? 'SOBRE_EL_NETO'}
+                              </span>
+                            </div>
+
+                            <p className="pt-1 text-[10px] leading-relaxed text-amber-800 dark:text-amber-300">
+                              * Confidencial: El neto del mayorista y el margen se omiten en
+                              propuestas por WhatsApp y al cliente final (R10).
+                            </p>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
                 </div>
 
                 {/* Columna Derecha: Tabla de Líneas y Total */}
@@ -480,6 +673,16 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
                             <th className="px-4 py-2.5 text-left font-medium">Concepto</th>
                             <th className="px-4 py-2.5 text-left font-medium">Modalidad</th>
                             <th className="px-4 py-2.5 text-right font-medium">Cantidad</th>
+                            {puedeVerNetoYMargen && (
+                              <>
+                                <th className="px-4 py-2.5 text-right font-medium text-amber-800 dark:text-amber-300">
+                                  Neto Unit.
+                                </th>
+                                <th className="px-4 py-2.5 text-right font-medium text-amber-800 dark:text-amber-300">
+                                  Margen Unit.
+                                </th>
+                              </>
+                            )}
                             <th className="px-4 py-2.5 text-right font-medium">Precio Unitario</th>
                             <th className="px-4 py-2.5 text-right font-medium">Subtotal Venta</th>
                           </tr>
@@ -496,6 +699,27 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
                               <td className="cifra px-4 py-3 text-right font-semibold text-neutral-700 dark:text-neutral-300">
                                 {linea.veces}x
                               </td>
+                              {puedeVerNetoYMargen && (
+                                <>
+                                  <td className="cifra px-4 py-3 text-right text-amber-800 dark:text-amber-300">
+                                    {linea.margen
+                                      ? formatearDinero({
+                                          unidades: String(
+                                            Math.max(
+                                              0,
+                                              parseInt(linea.precioUnitario.unidades, 10) -
+                                                parseInt(linea.margen.unidades, 10),
+                                            ),
+                                          ),
+                                          moneda: linea.precioUnitario.moneda,
+                                        })
+                                      : '—'}
+                                  </td>
+                                  <td className="cifra px-4 py-3 text-right text-amber-800 dark:text-amber-300">
+                                    {linea.margen ? formatearDinero(linea.margen) : '—'}
+                                  </td>
+                                </>
+                              )}
                               <td className="cifra px-4 py-3 text-right text-neutral-600 dark:text-neutral-400">
                                 {formatearDinero(linea.precioUnitario)}
                               </td>
@@ -508,7 +732,7 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
                         <tfoot>
                           <tr className="border-t-2 border-neutral-200 bg-neutral-50/80 font-bold dark:border-neutral-700 dark:bg-neutral-800/60">
                             <td
-                              colSpan={4}
+                              colSpan={puedeVerNetoYMargen ? 6 : 4}
                               className="px-4 py-3 text-right text-neutral-800 dark:text-neutral-200"
                             >
                               Total Venta Versión {versionActual.numero}:
@@ -529,21 +753,52 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
                         Propuesta para WhatsApp (Versión {versionActual.numero})
                       </h4>
                       <p className="text-[11px] text-neutral-500">
-                        Copia el texto comercial listo para compartir con el cliente
+                        Envía directamente con seguimiento de estado o copia el texto comercial
                       </p>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={copiarPropuestaWhatsApp}
-                      className="bg-ok-600 hover:bg-ok-700 flex min-h-[44px] w-full shrink-0 items-center justify-center gap-2 rounded-xl px-5 py-3 text-xs font-bold text-white shadow-xs transition-colors sm:w-auto"
-                    >
-                      {copiado ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                      {copiado ? '¡Copiado al Portapapeles!' : 'Copiar Propuesta WhatsApp'}
-                    </button>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        data-testid="btn-abrir-whatsapp-inferior"
+                        onClick={() => setModalWhatsAppAbierto(true)}
+                        className="flex min-h-[44px] items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white shadow-xs transition-colors hover:bg-emerald-700"
+                      >
+                        <MessageSquare className="h-4 w-4" />
+                        <span>Abrir Envío WhatsApp</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={copiarPropuestaWhatsApp}
+                        className="flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-neutral-300 bg-white px-4 py-2.5 text-xs font-bold text-neutral-700 shadow-xs transition-colors hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200"
+                      >
+                        {copiado ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                        <span>{copiado ? '¡Copiado!' : 'Copiar Texto'}</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
+
+              {/* Modal de Envío WhatsApp (T-107) */}
+              {modalWhatsAppAbierto && (
+                <ModalEnviarWhatsAppCotizacion
+                  cotizacion={cotizacion}
+                  contacto={contacto}
+                  versionInicial={versionActual.numero}
+                  abierto={modalWhatsAppAbierto}
+                  alCerrar={() => setModalWhatsAppAbierto(false)}
+                  alEnviarExitoso={(actualizada) => {
+                    setCotizacion(actualizada);
+                    setNotificacion({
+                      texto: 'Cotización marcada como enviada exitosamente.',
+                      tipo: 'exito',
+                    });
+                    setTimeout(() => setNotificacion(null), 3000);
+                  }}
+                />
+              )}
             </>
           )}
 

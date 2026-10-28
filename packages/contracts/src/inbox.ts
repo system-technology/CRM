@@ -287,28 +287,26 @@ export type CrearNota = z.infer<typeof CrearNota>;
 // para que nada se defina dos veces (R3).
 export const EnviarTextoCuerpo = EnviarTexto.omit({ conversacionId: true });
 export type EnviarTextoCuerpo = z.infer<typeof EnviarTextoCuerpo>;
+/**
+ * `POST /api/v1/conversaciones/:id/cotizaciones` — envía una cotización guardada por WhatsApp como
+ * texto con formato (T-073). El servidor arma el texto desde la versión congelada: el cliente no
+ * manda texto ni importes. `version` omitida = la última. Responde `201` con el `Mensaje` (igual
+ * que `POST .../mensajes`); repetir la misma conversación + cotización + versión devuelve el mismo
+ * mensaje, no uno nuevo (R5). Sin clave de idempotencia del cliente: se deriva de esos tres datos.
+ */
+export const EnviarCotizacionCuerpo = z
+  .object({
+    cotizacionId: Id,
+    version: z.number().int().min(1).optional(),
+  })
+  .strict();
+export type EnviarCotizacionCuerpo = z.infer<typeof EnviarCotizacionCuerpo>;
 export const AsignarConversacionCuerpo = AsignarConversacion.omit({ conversacionId: true });
 export type AsignarConversacionCuerpo = z.infer<typeof AsignarConversacionCuerpo>;
 export const CambiarEstadoCuerpo = CambiarEstadoConversacion.omit({ conversacionId: true });
 export type CambiarEstadoCuerpo = z.infer<typeof CambiarEstadoCuerpo>;
 export const CrearNotaCuerpo = CrearNota.omit({ conversacionId: true });
 export type CrearNotaCuerpo = z.infer<typeof CrearNotaCuerpo>;
-
-/**
- * Enviar una cotización guardada por WhatsApp como mensaje de la conversación (T-073, T-074).
- * POST /api/v1/conversaciones/:id/cotizaciones
- *
- * El servidor formatea el texto estructurado (producto, pasajeros, desglose, total, no incluidos)
- * y lo envía al viajero por WhatsApp. Si la ventana de 24h está cerrada, responde 422 VENTANA_CERRADA.
- */
-export const EnviarCotizacionCuerpo = z
-  .object({
-    cotizacionId: Id,
-    version: z.number().int().min(1).optional(),
-    claveIdempotencia: z.string().uuid().optional(),
-  })
-  .strict();
-export type EnviarCotizacionCuerpo = z.infer<typeof EnviarCotizacionCuerpo>;
 
 // =============================================================================
 // Tiempo real

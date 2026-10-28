@@ -152,4 +152,42 @@ describe('ListaConversaciones — Navegación y atajos por teclado (0c.32)', () 
       '/bandeja/00000000-0000-4000-8000-000000000802',
     );
   });
+
+  it('5. Navega con teclas J y K estilo vim y desenfoca buscador con Escape (T-024)', async () => {
+    await act(async () => {
+      render(<ListaConversaciones />);
+      await Promise.resolve();
+    });
+
+    const region = screen.getByRole('region', { name: /Lista de conversaciones/i });
+
+    // J para bajar
+    fireEvent.keyDown(region, { key: 'j' });
+    expect(document.activeElement?.textContent).toContain('Beatriz Segundo');
+
+    // K para subir
+    fireEvent.keyDown(region, { key: 'k' });
+    expect(document.activeElement?.textContent).toContain('Andrés Primero');
+
+    // Enfocar con / y desenfocar con Escape
+    const inputBusqueda = screen.getByPlaceholderText(/Buscar por nombre o teléfono/i);
+    fireEvent.keyDown(region, { key: '/' });
+    expect(document.activeElement).toBe(inputBusqueda);
+
+    fireEvent.keyDown(region, { key: 'Escape' });
+    expect(document.activeElement).not.toBe(inputBusqueda);
+  });
+
+  it('6. Muestra la barra accesible de atajos de teclado documentados en pantalla (T-024)', async () => {
+    await act(async () => {
+      render(<ListaConversaciones />);
+      await Promise.resolve();
+    });
+
+    const barra = screen.getByTestId('barra-atajos-teclado');
+    expect(barra).toBeDefined();
+    expect(barra.textContent).toContain('navegar');
+    expect(barra.textContent).toContain('buscar');
+    expect(barra.textContent).toContain('abrir');
+  });
 });

@@ -35,6 +35,979 @@
 
 ---
 
+# Entrega — T-010: Prueba de arranque con roles prohibidos y asercion relforcerowsecurity (M1.2) — 2026-10-28
+
+## Identificación
+- **Tarea:** `T-010` (roadmap/tasks.yaml)
+- **Rama:** `b/T-010-arranque-seguro-relforcerowsecurity`
+- **Carril:** `b` (Backend / Security / Database)
+
+## Qué se construyó y auditó
+
+1. **Guardia de Identidad de Conexión en Procesos de Datos (R2):**
+   - En `PrismaService`, `PrismaWebhookService` y `PrismaIdentidadService`, el método `onModuleInit()` ejecuta una consulta directa al catálogo de PostgreSQL para verificar la identidad del rol activo (`current_user`), `rolsuper` y `rolbypassrls`.
+   - Se asegura que ningún proceso de aplicación conecte con roles prohibidos (`postgres`, roles con privilegios de superusuario o roles con bypass RLS).
+   - 13/13 pruebas unitarias en `guardia-de-rol.spec.ts` verifican exhaustivamente el rechazo ante roles ajenos, superusuarios y bypass RLS.
+
+2. **Suite e2e de Arranque Seguro (`arranque-seguro.e2e-spec.ts`):**
+   - Se validó la suite e2e en `apps/api/src/shared/prisma/arranque-seguro.e2e-spec.ts` que simula conexiones reales contra la base de datos con roles prohibidos (`rolsuper` y `rolbypassrls`), comprobando que el inicio del módulo aborta de inmediato con el motivo exacto de seguridad.
+
+3. **Aserción Dinámica `relforcerowsecurity` (AUD-013):**
+   - Se verificó la prueba en `packages/database/tests/aislamiento.spec.ts` (suite AUD-013) que comprueba que todas las tablas de negocio (`relkind in ('r','p')`) que tienen `relrowsecurity` poseen obligatoriamente `relforcerowsecurity = true`, junto a su contraprueba que falla si una tabla carece de forzado de RLS.
+
+4. **Calidad y Compuertas Monorepo:**
+   - `pnpm lint` 100% limpio en todo el monorepo.
+   - `pnpm typecheck` 100% limpio en los 9 paquetes.
+   - `pnpm test:hooks` limpio (políticas de rama, guardianes de secretos y fronteras de módulos).
+
+---
+
+# Entrega — T-014: Sincronizar unique parcial etapas_pipeline en schema.prisma — 2026-10-28
+
+## Identificación
+- **Tarea:** `T-014` (roadmap/tasks.yaml)
+- **Rama:** `b/T-014-unique-parcial-etapas-pipeline`
+- **Carril:** `b` (Database / Data model)
+
+## Qué se construyó y auditó
+
+1. **Sincronización del Modelo Prisma con Base de Datos (`schema.prisma`):**
+   - Se incorporó `@@unique([tenantId, clave])` al modelo `EtapaPipeline` en `packages/database/prisma/schema.prisma`.
+   - Se documentó la correspondencia con el índice único parcial de PostgreSQL `etapas_pipeline_tenant_id_clave_key` creado en la migración `20261010210000_crm_contactos_y_oportunidades` (`ON "etapas_pipeline" ("tenant_id", "clave") WHERE "clave" IS NOT NULL`).
+   - Se eliminó la deriva de modelado entre el esquema relacional de la base de datos y Prisma, habilitando el acceso tipado (`tenantId_clave`) en Prisma Client.
+
+2. **Validación y Pruebas Monorepo:**
+   - `prisma validate` en `@viajapro/database` 100% exitoso.
+   - Generación de cliente Prisma (`prisma generate`) y compilación TypeScript en verde.
+   - `pnpm typecheck` en verde en los 9 paquetes del monorepo.
+   - `pnpm lint` 100% limpio en todo el monorepo.
+   - `pnpm test:hooks` limpio (políticas de rama, guardianes de secretos y fronteras de módulos).
+
+---
+
+# Entrega — T-013: Corregir politicaDePrecio.findFirst() sin where (riesgo de fuga silenciosa) — 2026-10-28
+
+## Identificación
+- **Tarea:** `T-013` (roadmap/tasks.yaml)
+- **Rama:** `b/T-013-politica-precio-where`
+- **Carril:** `b` (Backend / Quoting)
+
+## Qué se construyó y auditó
+
+1. **Aislamiento Multitenant Estricto en `CotizarSalidaUseCase` (R1):**
+   - Se validó que la consulta en producción de `politicaDePrecio` en `apps/api/src/modules/quoting/application/cotizar-salida.use-case.ts` emplea `tx.politicaDePrecio.findUnique({ where: { tenantId }, select: { base: true } })`.
+   - Se elimina de raíz el riesgo de usar `findFirst()` sin cláusula `where`, el cual ante conexiones de superusuario, migraciones, jobs de background o fallos de configuración de RLS podría filtrar silenciosamente la política de precios de otra agencia.
+
+2. **Pruebas Unitarias de Regresión y Bypass RLS (`cotizar-salida.use-case.spec.ts`):**
+   - Se implementó suite unitaria exhaustiva en `apps/api/src/modules/quoting/application/cotizar-salida.use-case.spec.ts`.
+   - Caso 1: Verifica que `CotizarSalidaUseCase.calcular` invoque `findUnique` con `{ where: { tenantId } }` y nunca `findFirst`.
+   - Caso 2 (Simulación de rol con bypass RLS): Se probó un escenario con múltiples políticas de distintas agencias existentes en base de datos. Si la agencia solicitante no tiene política configurada, el caso de uso recurre a la política por defecto del sistema (`POLITICA_POR_DEFECTO.base = 'SOBRE_EL_NETO'`), impidiendo terminantemente que se retorne o aplique la política de otra agencia.
+
+3. **Guardianes de Arquitectura y Calidad:**
+   - Aserción de consultas sin filtro en tablas multitenant (`consultas-sin-filtro.spec.ts`) 100% en verde.
+   - 2/2 tests en `cotizar-salida.use-case.spec.ts` en verde.
+   - `pnpm lint` 100% limpio en todo el monorepo.
+   - `pnpm typecheck` 100% limpio en los 9 paquetes.
+   - `pnpm test:hooks` limpio (políticas de rama, guardianes de secretos y fronteras de módulos).
+
+---
+
+# Entrega — T-021: Reportes sin mocks: métricas calculadas desde la API o marcadas como no disponibles — 2026-10-28
+
+## Identificación
+- **Tarea:** `T-021` (roadmap/tasks.yaml)
+- **Rama:** `b/T-021-reportes-sin-mocks`
+- **Carril:** `b` (Frontend / Web)
+
+## Qué se construyó y auditó
+
+1. **Eliminación Total de Dependencias de Mock en la Vista (`apps/web/src/app/reportes/page.tsx`):**
+   - Se eliminaron todos los imports de `mock-reportes`. La página ahora solo importa los tipos y funciones puras de `reportes-logica.ts`.
+   - Se conecta de forma reactiva con `obtenerTableroPipeline()` del cliente de CRM (`crm-api.ts`), consumiendo los datos reales del pipeline comercial del tenant.
+
+2. **Cálculo en Tiempo Real desde Pipeline y Manejo de Métricas No Disponibles:**
+   - La función `calcularReporteDesdePipeline` en `reportes-logica.ts` computa dinámicamente las oportunidades ganadas, perdidas, tasa de conversión, ventas totales por destino y rendimiento de asesores a partir del `TableroPipeline`.
+   - Para las métricas que el backend aún no provee (comparativos con períodos anteriores, meta comercial mensual, SLA de primera respuesta en WhatsApp), la lógica retorna `null` y la UI renderiza explícitamente distintivos o textos «Aún sin datos» en lugar de inventar cifras ficticias.
+   - En estados vacíos (sin ventas por destino, sin conversiones en embudo o sin rendimiento por asesor), se despliegan mensajes claros informando que aún no hay datos para el período seleccionado.
+
+3. **Confidencialidad de Margen y Costo Neto (R10 / ADR-0011):**
+   - Se mantiene intacto el bloqueo de seguridad comercial: los asesores operativos jamás reciben ni visualizan costos netos de mayoristas ni márgenes comerciales (`costoNetoTotal`, `margenTotal`, `margenPorcentaje` permanecen `null`).
+   - Únicamente los usuarios con rol Dueño o permisos de margen autorizados por el servidor pueden ver dicha sección confidencial.
+
+4. **Accesibilidad y Ergonomía (WCAG 2.5.5):**
+   - El selector de período, los botones del conmutador de rol (Dueño/Asesor) y el botón de impresión cuentan con dimensiones de área táctil mínima de `min-h-[44px]`.
+   - Soporte para modo oscuro con contraste AA verificado.
+
+5. **Pruebas y Calidad Monorepo:**
+   - 8/8 tests unitarios en `reportes-logica.spec.ts` en verde (verificando R8, BigInt dinero, tasa de conversión sin división por cero, roles R10, y «Aún sin datos»).
+   - 3/3 tests en `reportes-permisos.spec.tsx` en verde.
+   - 109 suites y 886 tests unitarios en `@viajapro/web` 100% en verde.
+   - `pnpm typecheck` en verde en los 5 paquetes.
+   - `pnpm lint` 100% limpio.
+   - `pnpm test:hooks` limpio (59/59 políticas de rama, 19/19 guardianes de secretos, 6/6 fronteras entre módulos).
+
+---
+
+# Entrega — T-111: Modo oscuro y preferencia de densidad con la paleta de turismo — 2026-10-28
+
+## Identificación
+- **Tarea:** `T-111` (roadmap/tasks.yaml)
+- **Rama:** `b/T-111-modo-oscuro-densidad`
+- **Carril:** `b` (Frontend / Web)
+
+## Qué se construyó y auditó
+
+1. **Modelo Puro de Tema y Densidad (`tema-y-densidad.ts`):**
+   - Modos de tema soportados: `'light'` (Claro), `'dark'` (Oscuro) y `'system'` (Sigue preferencia del SO / navegador).
+   - Preferencias de densidad visual: `'comoda'` (espaciado generoso ergonómico) y `'compacta'` (factor 0.85 con celdas y filas reducidas para asesores comerciales con alta carga operativa).
+   - Claves oficiales de almacenamiento en `localStorage`: `viajapro_tema` y `viajapro_densidad` (registradas en el inventario de cookies de `privacidad-cookies.ts` bajo la categoría `PREFERENCIAS`).
+   - Lógica de resolución: `resolverTemaEfectivo(modo, sistemaEsOscuro)` calcula si el modo activo efectivo es claro u oscuro.
+   - Detección reactiva: `suscribirCambiosSistema` escucha `prefers-color-scheme: dark` mediante `matchMedia` sin causar re-renders innecesarios.
+
+2. **Garantía Anti-FOUC (Zero Flicker al Cargar):**
+   - `SCRIPT_ANTI_FOUC` inyectado directamente en `<head>` en `apps/web/src/app/layout.tsx`.
+   - Ejecución síncrona antes de la primera pintura: lee `localStorage.getItem('viajapro_tema')` y `matchMedia`, añadiendo inmediatamente la clase `.dark` a `document.documentElement` y fijando el atributo `data-densidad`.
+   - Compatible con CSP: lee dinámicamente `x-nonce` desde `headers()` de Next.js y lo asigna al elemento `<script nonce={nonce}>`.
+   - `suppressHydrationWarning` en la etiqueta `<html>` para evitar advertencias de hidratación de React.
+
+3. **Selector Accesible e Interactivo (`SelectorTemaDensidad`):**
+   - Grupos de radio accesibles (`role="radiogroup"`) para Tema (Claro, Oscuro, Sistema) y Densidad (Cómoda, Compacta).
+   - Cumplimiento de accesibilidad WCAG 2.5.5: todos los controles interactivos cuentan con `min-h-[44px]` y `min-w-[44px]`.
+   - Modos normal y compacto para incrustación flexible en barras laterales o modales de configuración.
+   - Respeto a la paleta turística de ViajaPro: tonos marinos/arena en claro y grafito/índigo suave en oscuro, manteniendo los acentos dorados (`--color-acento-marca: #c9a24b`).
+
+4. **Integración en BarraModulos (`barra-modulos.tsx`):**
+   - Botón de alternancia rápida tri-estado (`boton-alternar-tema` y `boton-alternar-tema-colapsado`) que rota ordenadamente: Claro -> Oscuro -> Sistema con tooltip informativo y accesibilidad por teclado.
+   - Selector completo incrustado en el diálogo accesible de perfil y sesión del asesor (`dialogo-perfil-sesion`).
+
+5. **Pruebas y Calidad Monorepo:**
+   - 13/13 tests unitarios en `tema-y-densidad.spec.ts`.
+   - 5/5 tests unitarios en `selector-tema-densidad.spec.tsx`.
+   - Tests de integración en `barra-modulos.spec.tsx` (21/21 tests pasando) y `revision-375px.spec.tsx` (4/4 tests pasando).
+   - 109 suites y 883 tests unitarios en `@viajapro/web` 100% en verde.
+   - `pnpm typecheck` en verde en los 5 paquetes del monorepo (`@viajapro/api`, `@viajapro/contracts`, `@viajapro/database`, `@viajapro/domain`, `@viajapro/web`).
+   - `pnpm lint` 100% limpio en todo el monorepo.
+   - `pnpm test:hooks` limpio (59/59 políticas de rama, 19/19 guardianes de secretos, 6/6 fronteras entre módulos).
+
+---
+
+# Entrega — T-110: Notificaciones en la web: aviso de mensaje nuevo, seguimiento vencido y cotización por vencer, con preferencia por asesor — 2026-10-28
+
+## Identificación
+- **Tarea:** `T-110` (roadmap/tasks.yaml)
+- **Rama:** `b/T-110-notificaciones-web`
+- **Carril:** `b` (Frontend / Web)
+
+## Qué se construyó y auditó
+
+1. **Gestión de Preferencias por Asesor (`preferencias-notificaciones.ts`):**
+   - Invariante de consentimiento: sonido de campana y notificaciones de escritorio desactivados por defecto (`sonidoHabilitado: false`, `navegadorHabilitado: false`); solo se activan por decisión expresa del asesor.
+   - Síntesis nativa de audio con Web Audio API: oscilador dual suave en Do5 (523.25 Hz) y Mi5 (659.25 Hz), con caída exponencial, sin archivos `.mp3` ni dependencias externas.
+   - Solicitud accesible de permiso nativo de notificaciones (`Notification.requestPermission()`).
+   - Invariante R10 / Cero PII en títulos: `TITULOS_SEGUROS_NOTIFICACION` define títulos estrictamente genéricos y sanitizados («Nuevo mensaje de WhatsApp», «Seguimiento comercial vencido», «Cotización próxima a vencer»), prohibiendo nombres o teléfonos en las alertas de escritorio.
+
+2. **Lógica de Agregación y Canal de Tiempo Real (`notificaciones-web.ts`):**
+   - Definición del modelo unificado `NotificacionWeb` con tipos: `'mensaje_nuevo'`, `'seguimiento_vencido'`, `'cotizacion_por_vencer'`, `'alerta_operativa'`.
+   - `procesarEventoSocketNotificacion`: escucha eventos entrantes de Socket.IO (`MENSAJE_NUEVO` con dirección `ENTRANTE`), inyecta la notificación en tiempo real y dispara sonido/notificación de escritorio si el asesor las tiene activas.
+   - `generarNotificacionesIniciales`: combina pendientes de la API CRM (`obtenerPendientesDelDiaApi`), cotizaciones próximas a vencer y alertas operativas previas.
+   - Funciones inmutables puras de estado: `contarNotificacionesNoLeidas`, `marcarNotificacionLeida`, `marcarTodasNotificacionesLeidas`, `descartarNotificacion` y `adaptarAlertaOperativaANotificacion`.
+
+3. **Panel Desplegable Interactivo de Notificaciones (`PanelNotificaciones`):**
+   - Cabecera con contador de pendientes, acceso a ajustes de asesor, marcar todas leídas y cierre accesible (Esc / botón).
+   - Sección colapsable de preferencias del asesor con interruptores accesibles para sonido y notificaciones de escritorio, distintivo de garantía R10 y botón «Probar» para verificar el sonido sintetizado.
+   - Filtros por categoría: Todas, WhatsApp, Seguimientos, Cotizaciones, Operativas.
+   - Tarjetas de notificación con icono por tipo, distintivo no leído, detalle, acción contextual directa con navegación segura (`accionTexto`, `href`) y botón descartar.
+
+4. **Integración Global en BarraModulos (`barra-modulos.tsx`):**
+   - Suscripción limpia al canal Socket.IO (`inboxSocketManager.suscribirEvento`) con desuscripción al desmontar.
+   - Indicador visual de campana con contador dinámico e indicador ping animado.
+   - Integración dual: campana en barra lateral de escritorio (expandida y colapsada) y acceso directo en el popover de perfil accesible en móviles.
+
+5. **Verificación y Calidad:**
+   - 4 suites de prueba directamente asociadas (`preferencias-notificaciones.spec.ts`, `notificaciones-web.spec.ts`, `panel-notificaciones.spec.tsx`, `barra-modulos.spec.tsx`) con 48 tests en verde.
+   - 107 suites y 863 tests en verde en `@viajapro/web`.
+   - `pnpm typecheck` limpio en los 5 paquetes del monorepo.
+   - `pnpm lint` limpio (0 errores).
+   - `pnpm test:hooks` limpio (59/59 políticas de rama, 19/19 secretos, 6/6 fronteras).
+
+---
+
+# Entrega — T-109: Estados de sistema consistentes: página 404, error global, sin conexión y sesión expirada — 2026-10-28
+
+## Identificación
+- **Tarea:** `T-109` (roadmap/tasks.yaml)
+- **Rama:** `b/T-109-estados-sistema-consistentes`
+- **Carril:** `b` (Frontend / Web)
+
+## Qué se construyó y auditó
+
+1. **Lógica Pura de Clasificación de Errores (`errores-sistema.ts`):**
+   - Funciones puras: `esErrorSinConexion`, `esErrorSesionExpirada`, `esErrorNoEncontrado`, `construirUrlRedireccionIngreso`, `sanitizarRutaRedireccion` y `clasificarErrorSistema`.
+   - Clasificación transparente en español claro: 404 (No encontrado), 401 (Sesión expirada), 403 (Acceso denegado), sin conexión (pérdida de red/timeout) y 5xx (servidor).
+   - Protección contra open redirect: exigencia estricta de rutas relativas con sanitización contra protocolos y secuencias maliciosas (`//evil.com`).
+   - Cero exposición de stack traces, rutas internas o credenciales en pantallas cliente (R6).
+
+2. **Página 404 Personalizada con Identidad Turística (`apps/web/src/app/not-found.tsx`):**
+   - Identidad visual temática náutica/turismo con brújula animada e insignias de estado.
+   - Mensaje amigable: «Esta ruta no está en nuestro mapa».
+   - Enlace principal hacia la bandeja de WhatsApp (`/bandeja`) y accesos rápidos directos a `/cotizador`, `/catalogo` y `/pipeline` con touch targets `>= 44 px`.
+
+3. **Capturador Global de Errores (`apps/web/src/app/error.tsx`):**
+   - React Error Boundary cliente para capturar fallos no controlados en Next.js.
+   - Evaluación contextual mediante `clasificarErrorSistema`.
+   - Botón directo para iniciar sesión conservando la ruta solicitada si la sesión expiró.
+   - Botón de «Reintentar» conectado a `reset()` para fallos recuperables.
+   - Indicador discreto del digest de soporte técnico sin filtrar detalles del stack trace.
+
+4. **Aviso Flotante de Conexión en Tiempo Real (`AvisoSinConexion`):**
+   - Escucha los eventos `offline` y `online` de la ventana del navegador.
+   - Banner persistente superior en color ámbar de advertencia si se pierde internet, con botón «Comprobar red».
+   - Toast automático «Conexión restablecida con ViajaPro» al recuperar conectividad.
+   - Montado globalmente en `RootLayout` (`apps/web/src/app/layout.tsx`).
+
+5. **Conservación de Destino y Alerta de Sesión en Ingreso (`FormularioIngreso`):**
+   - Lee `redirigir` y `motivo` de la URL.
+   - Muestra aviso visible de sesión expirada indicando el destino pendiente de continuar.
+   - Tras autenticación exitosa, redirige al destino seguro conservado en vez de forzar `/bandeja`.
+   - Envuelto en `<Suspense>` en `apps/web/src/app/ingresar/page.tsx`.
+
+6. **Verificación y Calidad Monorepo:**
+   - 5 suites de prueba dedicadas (`errores-sistema.spec.ts`, `not-found.spec.tsx`, `error.spec.tsx`, `aviso-sin-conexion.spec.tsx`, `formulario-ingreso.spec.tsx`) con 39 tests en verde.
+   - 104 suites y 832 tests unitarios pasando sin errores en `@viajapro/web`.
+   - `pnpm typecheck` limpio en los 5 paquetes del monorepo.
+   - `pnpm lint` limpio (0 errores / advertencias).
+   - `pnpm test:hooks` limpio (59/59 políticas de rama, 19/19 secretos, 6/6 fronteras).
+
+---
+
+# Entrega — T-107: Cotizaciones guardadas: listado con estado, versiones, reenvío por WhatsApp y duplicar — 2026-10-28
+
+## Identificación
+- **Tarea:** `T-107` (roadmap/tasks.yaml)
+- **Rama:** `b/T-107-cotizaciones-guardadas-versiones`
+- **Carril:** `b` (Frontend / Web)
+
+## Qué se construyó y auditó
+
+1. **Lógica de Dominio y Cotizaciones (`cotizaciones-logica.ts` & `cotizaciones-api.ts`):**
+   - Funciones puras: `generarMensajeWhatsAppCotizacion`, `generarEnlaceWhatsApp` (`wa.me`), `duplicarVersionComoComposicion` y `duplicarCotizacionComoEntrada`.
+   - Función `calcularDesgloseMargen`: calcula venta, neto y margen con redondeo comercial, y garantiza que cuando `puedeVerNeto` es `false`, los campos `neto`, `margen` y `porcentaje` se omiten o enmascaran estrictamente (R10 / ADR-0011).
+   - Clientes de API: `cambiarEstadoCotizacionApi`, `duplicarVersionCotizacionApi` y `duplicarCotizacionApi`.
+
+2. **Componente Modal Enviar WhatsApp (`ModalEnviarWhatsAppCotizacion`):**
+   - Selector visual de versión a enviar con desglose de pasajeros y total.
+   - Vista previa formateada en tiempo real del mensaje de WhatsApp listo para compartir.
+   - Botón para copiar texto al portapapeles con retroalimentación instantánea.
+   - Recordatorio de la ventana de 24 horas de Meta y botones de acción rápida: «Marcar como Enviada» y «Abrir y Enviar por WhatsApp» (`wa.me` deep link).
+
+3. **Listado de Cotizaciones (`/cotizaciones`):**
+   - Botones rápidos «WhatsApp» (`btn-enviar-whatsapp-${id}`) y «Duplicar» (`btn-duplicar-${id}`) en tarjetas móviles y tabla de escritorio.
+   - Banner de confirmación y cambio optimista de estado al enviar.
+
+4. **Detalle de Cotización Guardada y Control de Versiones (`/cotizaciones/[id]`):**
+   - Respeto absoluto del permiso `cotizacion.ver_neto_y_margen` (R10 / ADR-0011):
+     - El panel «Auditoría Interna de Margen Comercial (ADR-0011)» solo se renderiza si el usuario tiene el permiso; se omite totalmente del DOM si no lo tiene.
+     - Las columnas «Neto Unit.» y «Margen Unit.» solo se renderizan si el usuario tiene el permiso.
+   - Botones de acción en la cabecera: «Enviar por WhatsApp», «Modificar (Nueva Versión)», y «Duplicar versión» (`btn-duplicar-version`).
+   - Propuesta de texto rápido para WhatsApp con botón de copia directa.
+
+5. **Verificación y Calidad Monorepo:**
+   - 4 suites de prueba dedicadas (`cotizaciones-logica.spec.ts`, `modal-enviar-whatsapp-cotizacion.spec.tsx`, `page.spec.tsx`, `[id]/page.spec.tsx`) con 33 tests en verde.
+   - 100 suites y 800 tests pasando en `@viajapro/web`.
+   - `pnpm typecheck` limpio en todos los 5 paquetes del monorepo.
+   - `pnpm lint` limpio (0 errores / advertencias).
+   - `pnpm test:hooks` limpio (59/59 políticas de rama, 19/19 reglas de secretos, 6/6 fronteras).
+
+---
+
+# Entrega — T-106: Pantalla de conexión de WhatsApp en Configuración: estado, calidad, tier y ventana de 24h — 2026-10-28
+
+## Identificación
+- **Tarea:** `T-106` (roadmap/tasks.yaml)
+- **Rama:** `b/T-106-pantalla-conexion-whatsapp`
+- **Carril:** `b` (Frontend / Web)
+
+## Qué se construyó y auditó
+
+1. **Lógica de Dominio y Conexión de WhatsApp (`whatsapp-conexion-logica.ts`):**
+   - Tipos e interfaces estrictas: `CalidadMeta` ('GREEN' | 'YELLOW' | 'RED' | 'UNKNOWN'), `TierMensajeriaMeta` ('TIER_50' | 'TIER_1K' | 'TIER_10K' | 'TIER_100K' | 'TIER_UNLIMITED'), `DatosConexionWhatsApp`, `SimulacionVentana24h` y `PlantillaAgencia`.
+   - Interpretación de métricas de Meta Cloud API con lenguaje coloquial y transparente para agencias de viajes colombianas (evitando tecnicismos opacos de Meta).
+   - Función pura `calcularEstadoVentana24h`: determina apertura de la ventana de 24 horas a partir del timestamp del último mensaje del cliente en UTC, calculando minutos/horas restantes, porcentaje de avance, tipo de mensaje permitido ('LIBRE_ASESOR' vs. 'SOLO_PLANTILLA_HSM') y consejos operativos según SLAs de atención turística.
+   - Catálogo de 4 plantillas oficiales pre-aprobadas de uso frecuente en agencias: seguimiento de cotizaciones, confirmación de salidas/excursiones con punto de encuentro, solicitud de documentos para asistencia médica y reactivación de viajeros.
+   - Asignación estricta de Regla R6: prohibición de almacenamiento o exposición de access tokens o app secrets en frontend; sólo identificadores públicos (Phone Number ID, WABA ID) y estado de cifrado AES-256-GCM en backend.
+
+2. **Componente de Configuración de WhatsApp (`BloqueConexionWhatsapp`):**
+   - Tarjeta principal de estado con indicador de salud y botón de alternancia entre estado conectado y desconectado.
+   - En estado conectado: métricas en tiempo real (número telefónico verificado, nombre comercial visible, badge de calidad con semáforo y descripción, límite diario de conversaciones según tier, e identificadores públicos WABA y Phone Number ID).
+   - Aviso explícito de cumplimiento de la Regla R6 (Cero secretos en frontend, llaves AES-256-GCM seguras en backend).
+   - Bloque de webhook oficial de recepción con botón de copiado al portapapeles y retroalimentación inmediata.
+   - En estado desconectado: guía clara en 3 pasos para agencias sin número WABA (línea telefónica limpia, Meta Business Suite verificado con RUT y vinculación técnica).
+   - Sección pedagógica: explicación detallada de la regla de 24 horas en dos columnas ilustrativas («Ventana Abierta: Chatea libremente con cotizaciones y notas de voz» vs. «Ventana Cerrada: Requiere plantilla oficial pre-aprobada HSM»).
+   - Simulador interactivo de ventana de 24 horas con selector de tiempo transcurrido (hace 2h, 18h por vencer, 26h expirada), barra de progreso dinámica y consejos contextuales para asesores.
+   - Vitrina de plantillas oficiales aprobadas con variables resaltadas y finalidad comercial.
+   - Cumplimiento de accesibilidad y dimensiones táctiles mínimas `>= 44 px`.
+
+3. **Integración en Rutas Web:**
+   - Integrado en la pestaña `Canal WhatsApp (WABA)` de `apps/web/src/app/configuracion/page.tsx` con insignia identificadora `T-106`.
+   - Creada la ruta dedicada `apps/web/src/app/configuracion/whatsapp/page.tsx` con navegación mediante `BarraModulos`, migas de pan y enlaces rápidos a `/bienvenida` (onboarding) y `/inbox` (bandeja de WhatsApp).
+
+4. **Verificación y Calidad Monorepo:**
+   - 3 suites de prueba dedicadas (`whatsapp-conexion-logica.spec.ts`, `bloque-conexion-whatsapp.spec.tsx`, `page.spec.tsx`) con 18 pruebas unitarias pasando al 100%.
+   - 97 archivos de pruebas unitarias y 780 tests pasando sin fallos en `@viajapro/web`.
+   - `pnpm typecheck` limpio en todos los paquetes (Next.js compiló 25 rutas con 0 errores).
+   - `pnpm lint` limpio (0 advertencias o errores).
+   - `pnpm test:hooks` validando 59/59 políticas de rama, 19/19 reglas de secretos y 6/6 fronteras entre módulos.
+
+---
+
+# Entrega — T-105: Onboarding de una agencia nueva: asistente de 4 pasos — 2026-10-28
+
+## Qué se construyó y auditó
+
+1. **Lógica de Dominio y Estado del Asistente (`onboarding-logica.ts`):**
+   - Tipos e interfaces estrictas para los 4 pasos: Marca, Catálogo, Equipo y WhatsApp.
+   - Cálculo automático del avance porcentual (25% por paso completado u omitido).
+   - Validaciones de negocio: obligatoriedad de nombre comercial, formato de NIT colombiano (con dígito de verificación), colores HEX válidos, correos electrónicos válidos y ausencia estricta de secretos en pantalla (Regla R6).
+   - Secuencia estricta con funciones puras para avanzar, omitir y reiniciar pasos.
+   - Persistencia local con aislamiento por tenant (`viajapro:onboarding:<tenantId>`).
+
+2. **Componentes del Asistente de 4 Pasos (`apps/web/src/components/onboarding/`):**
+   - `paso-marca.tsx`: Identidad de la agencia con selector de paletas turísticas colombianas (`Dorado Cartagena`, `Azul Caribe`, `Verde Esmeralda`, etc.), color personalizado y previsualización en vivo de una tarjeta de cotización oficial.
+   - `paso-catalogo.tsx`: Carga instantánea de pasadías y circuitos de muestra en Colombia con precios en COP (`formatearCOP`), creación manual rápida o enlace al importador masivo en 4 pasos (T-029).
+   - `paso-equipo.tsx`: Invitación de asesores con explicación accesible de los roles (`ASESOR`, `ADMIN_AGENCIA`, `OPERATIVO`) y gestión de errores.
+   - `paso-whatsapp.tsx`: Guía honesta de requisitos para Meta Cloud API (número exclusivo, Meta Business Suite verificado, Display Name aprobado) con modo simulador de pruebas inmediato y cero secretos en pantalla (Regla R6).
+   - `resumen-onboarding-completado.tsx`: Pantalla de celebración con el botón principal «Crear y enviar mi primera cotización» (`/cotizador`) y accesos directos a bandeja, pipeline y configuración.
+   - `asistente-onboarding.tsx`: Orquestador con barra de progreso, tiempos estimados, navegación por pestañas y diseño responsive.
+
+3. **Página de Onboarding (`apps/web/src/app/bienvenida/page.tsx`):**
+   - Ruta `/bienvenida` accesible con cabecera de agencia, navegación unificada `BarraModulos` y targets táctiles `>= 44 px`.
+   - Enlace desde el banner de inicio de cuenta vacía (`/`) y desde el menú de sesión de usuario en `BarraModulos` y cabecera de `Configuración`.
+
+4. **Verificación y Calidad:**
+   - 7 archivos de pruebas unitarias y de integración para onboarding con 39 pruebas en verde.
+   - 94 archivos de prueba y 762 pruebas unitarias pasando al 100% en `@viajapro/web`.
+   - Next.js build: 24 rutas compiladas y optimizadas exitosamente.
+   - TypeScript `typecheck` en 9 paquetes y ESLint `lint` en 7 paquetes limpios.
+   - Hooks de repositorio: 59/59 políticas de rama, 19/19 detección de secretos y 6/6 fronteras entre módulos en verde.
+
+---
+
+# Entrega — T-104: Respuestas rápidas en la bandeja: lista, insertar con «/» y administración por agencia — 2026-10-28
+
+## Identificación
+- **Tarea:** `T-104` (roadmap/tasks.yaml)
+- **Rama:** `b/T-104-respuestas-rapidas-bandeja`
+- **Carril:** `b` (Frontend / Web)
+
+## Qué se construyó y auditó
+
+1. **Módulo de Lógica Pura de Respuestas Rápidas (`respuestas-rapidas-logica.ts`):**
+   - Modelado tipado de datos: interfaces `RespuestaRapida`, `CategoriaRespuestaRapida` y `ContextoInterpolacion` con soporte estricto para `exactOptionalPropertyTypes: true`.
+   - Semillero de respuestas rápidas esenciales para agencias de viajes: saludo inicial cordial, datos bancarios de cuenta para pagos en COP (Bancolombia), requisitos de documentación e identificación según destino, horarios de atención al viajero, seguimiento comercial de cotización y mensaje de cierre o despedida.
+   - Función pura `interpolarVariables`: sustituye etiquetas `{nombre}`, `{asesor}`, `{agencia}`, `{destino}` con los datos contextuales del viajero y el asesor en sesión, proveyendo sustitutos amigables cuando no están disponibles.
+   - Función pura `detectarDisparadorSlash`: detección robusta del comando «/» al inicio de línea o tras espacios/saltos de línea, ignorando URLs y slashes en medio de palabras.
+   - Función pura `reemplazarComandoSlash`: sustituye con precisión el atajo por el texto expandido e interpolado y calcula la nueva posición del cursor.
+   - Función pura `filtrarRespuestasRapidas`: filtra por atajo, título, contenido y categoría seleccionada, priorizando coincidencias exactas y de prefijo en el atajo.
+   - Funciones de persistencia aislada por tenant en almacenamiento del navegador con inicialización y restablecimiento a valores por defecto.
+
+2. **Menú Flotante Accesible en el Compositor (`menu-respuestas-rapidas.tsx`):**
+   - Popover flotante con atributos semánticos `role="dialog"`, `role="listbox"` y opciones con `role="option"`.
+   - Previsualización dinámica en tiempo real que renderiza el texto ya interpolado con el nombre del viajero y del asesor.
+   - Navegación completa por teclado: flecha abajo / arriba para alternar opciones, Enter / Tab para insertar y Escape para cancelar.
+   - Objetivos táctiles `>= 44 px` en todas las opciones y botones para garantizar accesibilidad móvil.
+
+3. **Integración en el Compositor de la Bandeja (`apps/web/src/app/bandeja/[id]/page.tsx`):**
+   - Escucha de escritura en el textarea para desplegar automáticamente el menú flotante al tipear «/».
+   - Inserción limpia con posicionamiento del cursor al final del texto insertado.
+   - Botón accesible `btn-respuestas-rapidas` en la barra de herramientas del chat (al lado de Sugerencias y Nota Interna) para permitir la apertura táctil del selector de respuestas rápidas sin requerir teclado físico.
+   - Cierre reactivo con la tecla Escape y al enviar mensaje.
+
+4. **Sección de Administración en Configuración (`bloque-respuestas-rapidas.tsx` & `/configuracion`):**
+   - Pestaña dedicada `Respuestas Rápidas` (`tab-btn-respuestas`) en `/configuracion` con distintivo `T-104`.
+   - Estado honesto visible que documenta la persistencia local de la agencia hasta la disponibilidad del endpoint de API de Respuestas Rápidas (T-078).
+   - Filtro por categorías (`General`, `Cotizaciones`, `Pagos`, `Operaciones`) y buscador instantáneo por atajo o texto.
+   - Tarjetas de respuesta con visor de vista previa interactivo para probar la interpolación con un nombre de viajero de muestra.
+   - Modal de alta y edición con botones de inserción rápida de variables (`+ {nombre}`, `+ {asesor}`, `+ {agencia}`, `+ {destino}`) y validaciones de formato.
+   - Opciones para eliminar y restablecer a los valores predeterminados con confirmación previa.
+
+5. **Pruebas y Verificación:**
+   - `apps/web/src/lib/respuestas-rapidas-logica.spec.ts` (22 pruebas unitarias en verde).
+   - `apps/web/src/components/bandeja/menu-respuestas-rapidas.spec.tsx` (7 pruebas unitarias en verde).
+   - `apps/web/src/components/configuracion/bloque-respuestas-rapidas.spec.tsx` (10 pruebas unitarias en verde).
+   - `apps/web/src/app/bandeja/bandeja-respuestas-rapidas.spec.tsx` (7 pruebas unitarias de integración en verde).
+   - Verificación global `@viajapro/web`: 87 suites de prueba, 723 pruebas unitarias 100% en verde.
+   - Verificación de tipos `pnpm typecheck`: 9/9 paquetes en verde.
+   - Verificación de estilos `pnpm lint`: 7/7 paquetes en verde.
+   - Compilación exitosa de producción Next.js (23 rutas).
+   - Ganchos de política y seguridad `pnpm test:hooks`: 59/59 casos de política de rama, 19/19 detección de secretos, 6/6 fronteras de módulos.
+
+## Verificación de Compuertas
+- **Pruebas unitarias (@viajapro/web):** 87 suites, 723 pruebas en verde.
+- **Typecheck:** 9/9 paquetes en verde.
+- **Linter:** 7/7 paquetes en verde.
+- **Compilación de producción (Next.js):** 23/23 rutas compiladas exitosamente.
+- **Fronteras y ganchos de seguridad (`pnpm test:hooks`):** 59/59 casos de política de rama, 19/19 detección de secretos, 6/6 fronteras de módulos.
+
+---
+
+# Entrega — T-103: Búsqueda global y filtros guardados en bandeja, contactos y oportunidades — 2026-10-28
+
+## Identificación
+- **Tarea:** `T-103` (roadmap/tasks.yaml)
+- **Rama:** `b/T-103-busqueda-global-filtros-guardados`
+- **Carril:** `b` (Frontend / Web)
+
+## Qué se construyó y auditó
+
+1. **Módulo de Persistencia de Filtros (`filtros-guardados-logica.ts`):**
+   - Implementado hook reactivo `useFiltrosPersistidos` con almacenamiento seguro en `localStorage` (tolerante a SSR e incógnito restringido).
+   - Tipado estricto `type` para configuraciones persistidas en Bandeja (`filtro`, `buscar`), Contactos (`busqueda`, `etiquetaFiltro`, `consentimientoFiltro`) y Pipeline (`filtroTexto`, `filtroAsesor`, `vista`).
+   - Soporte para ignorar campos que no deben activar la señal de limpieza (como `vista` en Kanban/Tabla mediante `camposIgnoradosParaActivo`).
+   - Función pura `hayFiltrosActivos` para detectar si el usuario ha modificado los filtros respecto al valor por defecto.
+   - Acciones de `actualizarFiltro` y `limpiarFiltros` que sincronizan tanto el estado de React como el almacenamiento del navegador.
+
+2. **Búsqueda Global Omnicanal y Paleta de Comandos (Cmd+K / Ctrl+K):**
+   - Enriquecido `buscador-global-logica.ts`:
+     - Búsqueda por número de teléfono normalizado (dígitos continuos o con formato internacional/espacios, con umbral `>= 4` dígitos) tanto en contactos como en conversaciones de WhatsApp.
+     - Búsqueda por destino en oportunidades comerciales del Pipeline (`op.destino`), permitiendo encontrar clientes y prospectos directamente por su destino turístico.
+     - Control estricto de visibilidad por rol y permisos (R10): un asesor sin el permiso `conversaciones.ver_todas` solo ve conversaciones asignadas a su identificador de usuario (`c.asignadoAId`); las acciones administrativas (`act-config`) y los reportes con margen comercial (`act-reportes`) quedan ocultos para usuarios sin las atribuciones requeridas.
+   - Enriquecido el modal `ModalBusquedaGlobal` con inyección de sesión vía `usePermisos` y botón de limpieza con objetivo táctil de 44 px.
+
+3. **Integración de Filtros Guardados y Botón Limpiar en Vistas Clave:**
+   - **Bandeja de Entrada (`lista-conversaciones.tsx`):**
+     - Persiste la pestaña seleccionada (`TODAS`, `SIN_ASIGNAR`, `MIAS`, etc.) y el texto de búsqueda.
+     - Botón accesible "Limpiar" (`min-h-[44px]` en móvil, touch target accesible) cuando hay filtros activos.
+   - **Contactos y Viajeros (`contactos/page.tsx`):**
+     - Persiste búsqueda textual, filtro de etiqueta y filtro de consentimiento (Ley 1581 / Meta).
+     - Botón accesible "Limpiar filtros" visible dinámicamente cuando `tieneFiltrosActivos` es verdadero.
+     - Touch targets `>= 44 px` en el campo de búsqueda y los selectores desplegables.
+   - **Pipeline de Oportunidades (`pipeline/page.tsx`):**
+     - Persiste el texto de búsqueda, el asesor seleccionado y la preferencia de visualización (Kanban vs. Tabla).
+     - Botón "Limpiar filtros" en la barra de herramientas cuando hay filtros activos (ignorando la vista para no confundir al asesor).
+
+4. **Pruebas y Verificación:**
+   - `apps/web/src/lib/filtros-guardados-logica.spec.ts` (8 pruebas unitarias): lectura, rescate ante JSON corrupto, guardado, limpieza y omisión de campos de visualización.
+   - `apps/web/src/lib/buscador-global-logica.spec.ts` (12 pruebas unitarias): normalización, búsqueda por teléfono con o sin indicativo, búsqueda por destino en oportunidades y restricción de visibilidad según rol de asesor o administrador.
+   - `apps/web/src/components/busqueda/modal-busqueda-global.spec.tsx` (7 pruebas unitarias): renderizado del diálogo, navegación por teclado, filtrado por destino y búsqueda por teléfono omnicanal.
+   - `apps/web/src/app/pipeline/page.spec.tsx` (9 pruebas unitarias): renderizado kanban con dinero entero R8, movimientos optimistas, modal de pérdida, cambio a tabla y botón "Limpiar filtros".
+   - `apps/web/src/app/contactos/page.spec.tsx` (6 pruebas unitarias): estados de carga, error accionable, aviso vacío y restablecimiento de filtros.
+   - Verificación global `@viajapro/web`: 83 suites de prueba, 677 pruebas unitarias en verde.
+   - Typecheck y linter del monorepo en verde (9/9 y 7/7 tareas).
+   - `pnpm test:hooks`: 59/59 política de rama, 19/19 secretos, 6/6 fronteras.
+
+## Verificación de Compuertas
+- **Pruebas unitarias (@viajapro/web):** 83 suites, 677 pruebas en verde.
+- **Typecheck:** 9/9 paquetes en verde.
+- **Linter:** 7/7 paquetes en verde.
+- **Compilación de producción (Next.js):** 23/23 rutas compiladas exitosamente.
+- **Fronteras y ganchos de seguridad (`pnpm test:hooks`):** 59/59 casos de política de rama, 19/19 detección de secretos, 6/6 fronteras de módulos.
+
+---
+
+# Entrega — T-102: Pipeline tipo tablero (kanban) con arrastrar y soltar entre etapas, totales por etapa y tarjetas con valor estimado — 2026-10-28
+
+## Identificación
+- **Tarea:** `T-102` (roadmap/tasks.yaml)
+- **Rama:** `b/T-102-pipeline-tablero-kanban`
+- **Carril:** `b` (Frontend / Web)
+
+## Qué se construyó y auditó
+
+1. **Lógica de Totales y Aritmética de Dinero (R8) en `pipeline-logica.ts`:**
+   - Creadas funciones puras `sumarDinero` y `restarDinero` que operan con enteros `BigInt` serializados en texto, garantizando precisión absoluta en unidades enteras (pesos en COP) y protegiendo el aislamiento de monedas según R8 (no se mezclan divisas).
+   - Creada función pura `calcularTotalColumna(oportunidades, moneda)` para calcular dinámicamente sumas agregadas por etapa y moneda.
+   - Actualizada la función `moverOportunidadEnTablero` para recalcular dinámicamente tanto el conteo (`total`) como el valor monetario (`valorTotal`) en la columna origen (restando `valorEstimado`) y en la columna destino (sumando `valorEstimado`).
+
+2. **Tablero Kanban Interactivo (`/pipeline`) con Reversión Optimista:**
+   - Implementada actualización optimista inmediata con reversión automática en `ejecutarMovimiento`: si la llamada `moverOportunidadDeEtapa` a la API falla o rechaza, el tablero se restaura instantáneamente al estado previo (`setTablero(tableroPrevio)`) y notifica al usuario con un aviso descriptivo accesible.
+   - Movimiento interactivo por drag & drop (HTML5) con retroalimentación visual al arrastrar (`border-dashed`, resaltado de columna activa) y validación de etapa destino.
+   - Movimiento por teclado mediante menú contextual desplegable accesible en cada tarjeta (`TarjetaOportunidad`), permitiendo seleccionar cualquier etapa definida por la agencia.
+   - Modal de motivo de pérdida (`ModalMotivoPerdida`) que se activa automáticamente al mover una oportunidad a una etapa con `esPerdida: true`, exigiendo motivo tipado (`PRECIO`, `TIEMPO_DE_RESPUESTA`, etc.) y explicación obligatoria para `OTRO`.
+
+3. **Accesibilidad y Usabilidad Responsive (375 px):**
+   - Asegurados touch targets `>= 44 px` en todos los controles interactivos: selector de vista (Kanban / Tabla), botón de nueva oportunidad, campo de búsqueda, selector de asesor, botones de acción en tarjetas (enlace de chat y menú de mover por teclado), opciones del menú desplegable y botones del modal de pérdida.
+   - Vista alternativa en Tabla con scroll horizontal contenido y soporte para pantallas móviles desde 375 px.
+   - Atributos semánticos `role="status"` y `aria-live="polite"` para mensajes de notificación.
+
+4. **Pruebas y Verificación:**
+   - Creada suite de pruebas de lógica y componentes:
+     - `apps/web/src/lib/pipeline-logica.spec.ts` (19 pruebas en verde): validación de contratos, recálculo de `valorTotal` al mover oportunidades, aritmética entera de `Dinero`, sumas de columna y formateo de fechas.
+     - `apps/web/src/app/pipeline/page.spec.tsx` (8 pruebas en verde): renderizado de tablero con totales R8, movimiento por teclado con recálculo optimista, reversión ante fallo de API, drag & drop, modal de pérdida, cambio a vista tabla, filtros combinados y verificación de touch targets `>= 44 px`.
+   - Verificación global `@viajapro/web`: 82 suites de prueba, 665 pruebas unitarias 100% en verde.
+   - Typecheck (9/9) y Linter (7/7) del monorepo en verde.
+   - Compilación exitosa en Next.js (23 rutas).
+   - Ganchos de seguridad (`pnpm test:hooks`): 59/59, 19/19, 6/6 en verde.
+
+## Verificación de Compuertas
+- **Pruebas unitarias (@viajapro/web):** 82 suites, 665 pruebas en verde.
+- **Typecheck:** 9/9 paquetes en verde.
+- **Linter:** 7/7 paquetes en verde.
+- **Compilación de producción (Next.js):** 23/23 rutas compiladas exitosamente.
+- **Fronteras y ganchos de seguridad (`pnpm test:hooks`):** 59/59 casos de política de rama, 19/19 detección de secretos, 6/6 fronteras de módulos.
+
+---
+
+# Entrega — T-101: Lista de seguimientos del asesor con vencidos, de hoy y próximos, y acción de completar — 2026-10-28
+
+## Identificación
+- **Tarea:** `T-101` (roadmap/tasks.yaml)
+- **Rama:** `b/T-101-lista-seguimientos-asesor`
+- **Carril:** `b` (Frontend / Web)
+
+## Qué se construyó y auditó
+
+1. **Pantalla Principal de Seguimientos (`/seguimientos`):**
+   - Creada página `apps/web/src/app/seguimientos/page.tsx` consumiendo `GET /api/v1/crm/seguimientos` (con fallback de demostración en `mock-crm.ts`) y `POST /api/v1/crm/seguimientos/:id/completar`.
+   - Cabecera con migas de pan accesibles, título de nivel `H1`, resumen descriptivo, botón de recarga con spinner visual y botón de acción principal `+ Agendar Seguimiento` (touch targets `>= 44 px`).
+   - 4 tarjetas KPI con métricas en tiempo real: Vencidos (resaltado en alerta `rose-700`), Para Hoy (`amber-700`), Próximos (`teal-700`) y Completados (`emerald-700`). Cada tarjeta permite alternar el filtro con un clic.
+   - Pestañas de filtrado rápido (`Pendientes`, `Vencidos`, `Hoy`, `Próximos`, `Completados`), cuadro de búsqueda omnicanal (por descripción, cliente u oportunidad) y selector de asesor asignado.
+
+2. **Componente de Tarjeta de Seguimiento (`TarjetaSeguimiento`):**
+   - Creado `apps/web/src/components/seguimientos/tarjeta-seguimiento.tsx` con accesibilidad ARIA, etiquetas semánticas y touch targets mínimos de 44 px.
+   - Resaltado especial de tareas vencidas con borde y fondo suave de alerta (`border-rose-300 bg-rose-50/30`), indicación del retraso acumulado («Venció hace X horas / días»), insignia de urgencia y enlaces directos a la Ficha 360 del contacto (`/contactos/[id]`), la oportunidad en el Pipeline (`/pipeline`) y el chat de WhatsApp (`/bandeja/[id]`).
+   - Botón interactivo de completar con actualización reactiva inmediata (optimista) y control de estados durante la llamada de red (`Loader2`).
+
+3. **Lógica de Categorización y Módulos Conectados:**
+   - Creado módulo de dominio puro `apps/web/src/lib/seguimientos-logica.ts` para clasificar tareas (`VENCIDO`, `HOY`, `PROXIMO`, `COMPLETADO`), calcular métricas consolidadas, filtrar y ordenar según reglas de urgencia (R9).
+   - Actualizado `BloqueSeguimientosDia` (`apps/web/src/components/inicio/bloque-seguimientos-dia.tsx`) incorporando pie de página con enlace accesible `Ver todos los seguimientos` hacia `/seguimientos`.
+   - Enriquecido el almacén `mock-crm.ts` con tareas de prueba para todas las categorías (vencidas, hoy, próximas y completadas).
+
+4. **Pruebas y Verificación:**
+   - Creadas 2 suites de pruebas unitarias:
+     - `apps/web/src/lib/seguimientos-logica.spec.ts` (14 pruebas): clasificación, métricas, ordenación y formateo de vencimientos.
+     - `apps/web/src/app/seguimientos/page.spec.tsx` (9 pruebas): renderizado de cabecera y KPIs, filtrado por pestaña, búsqueda por texto, acción de completar, estados vacío y de error con reintento, y modal de creación de tareas.
+   - Suite total `@viajapro/web`: 81 suites, 653 pruebas en verde.
+   - Typecheck (9/9), Linter (7/7) y Next.js build (23 rutas compiladas) 100% en verde.
+   - Ganchos y fronteras (`pnpm test:hooks`): 59/59, 19/19, 6/6 en verde.
+
+## Verificación de Compuertas
+- **Pruebas unitarias (@viajapro/web):** 81 suites, 653 pruebas en verde.
+- **Typecheck:** 9/9 paquetes en verde.
+- **Linter:** 7/7 paquetes en verde.
+- **Compilación de producción (Next.js):** 23/23 rutas compiladas exitosamente.
+- **Fronteras y ganchos de seguridad (`pnpm test:hooks`):** 59/59 casos de política de rama, 19/19 detección de secretos, 6/6 fronteras de módulos.
+
+---
+
+# Entrega — T-100: Ficha 360 del contacto: datos, conversaciones, oportunidades, cotizaciones y seguimientos en una sola pantalla — 2026-10-28
+
+## Identificación
+- **Tarea:** `T-100` (roadmap/tasks.yaml)
+- **Rama:** `b/T-100-ficha-360-contacto`
+- **Carril:** `b` (Frontend / Web)
+
+## Qué se construyó y auditó
+
+1. **Pantalla Dinámica `/contactos/[id]`:**
+   - Creada ruta dinámica `apps/web/src/app/contactos/[id]/page.tsx` con soporte para datos en vivo (`crm-api.ts`) y datos simulados enriquecidos (`mock-crm.ts`).
+   - Cabecera con datos de identidad del viajero, consentimientos legales, insignias de etiquetas, canal preferido y métricas consolidadas (Total Cotizado, Seguimientos Pendientes, Conversaciones Vinculadas).
+   - Sistema de 4 pestañas interactivas:
+     - **Línea de Tiempo 360**: cronología unificada de hitos comerciales (creación, cotizaciones, oportunidades, notas internas, seguimientos y viajes confirmados).
+     - **Oportunidad & Cotizaciones**: estado del embudo comercial, probabilidad, fecha esperada de cierre, próxima tarea y tarjetas detalladas de cotizaciones emitidas.
+     - **Seguimientos**: listado de compromisos comerciales ordenados cronológicamente con opción de marcar como completado en un clic.
+     - **Campos Personalizados**: integración completa con el motor de metadatos por agencia (`SeccionCamposPersonalizados`, T-026).
+   - Manejo exhaustivo de estados: cargando con esqueleto (`EsqueletoFichaContacto`), error accionable (`AvisoErrorAccionable`, `construirMensajeErrorAccionable`) y vacío para cada subsección (`AvisoVacio`).
+
+2. **Modales Interactivos y Accesibilidad:**
+   - Creado `ModalEditarContacto` (`apps/web/src/components/contactos/modal-editar-contacto.tsx`) con foco atrapado (`useFocoModal`), etiquetas ARIA y edición de nombre, teléfono, correo y etiquetas.
+   - Creado `ModalCrearOportunidad` (`apps/web/src/components/contactos/modal-crear-oportunidad.tsx`) para iniciar negociaciones asociadas al contacto con selector de etapa, valor estimado en COP (R8) y fecha estimada de cierre.
+   - Creado `ModalCrearSeguimiento` (`apps/web/src/components/contactos/modal-crear-seguimiento.tsx`) para agendar llamadas, cotizaciones o reuniones con selector de fecha/hora y asociación automática a la oportunidad actual.
+   - Touch targets mínimos `>= 44 px` en todos los controles, inputs y botones de acción conforme a directrices móviles a 375 px.
+
+3. **Lógica de Dominio y Línea de Tiempo:**
+   - Creado módulo `apps/web/src/lib/contacto-360-logica.ts` con funciones puras para calcular métricas y fusionar eventos heterogéneos en una secuencia cronológica inversa.
+   - Creado componente visual `apps/web/src/components/contactos/linea-tiempo-360.tsx` con iconografía diferenciada por tipo de evento.
+   - Conectada la lista de contactos (`/contactos`) y la ficha lateral (`ficha-detalle-contacto.tsx`) con enlace directo «Abrir Ficha 360 Completa».
+
+4. **Pruebas y Verificación:**
+   - Creadas 2 suites de pruebas unitarias:
+     - `apps/web/src/lib/contacto-360-logica.spec.ts` (3 tests): cálculo de métricas y construcción de línea de tiempo cronológica.
+     - `apps/web/src/app/contactos/[id]/page.spec.tsx` (7 tests): renderizado de datos del contacto, estados cargando/error, cambio de pestañas, apertura y guardado en modales de edición, oportunidad y seguimiento.
+   - Suite total `@viajapro/web`: 79 suites, 630 pruebas en verde.
+   - Typecheck (9/9), Linter (7/7) y Next.js build (22 rutas) 100% en verde.
+   - Ganchos y fronteras (`pnpm test:hooks`): 59/59, 19/19, 6/6 en verde.
+
+## Verificación de Compuertas
+- **Pruebas unitarias (@viajapro/web):** 79 suites, 630 pruebas en verde.
+- **Typecheck:** 9/9 paquetes en verde.
+- **Linter:** 7/7 paquetes en verde.
+- **Compilación de producción (Next.js):** 22/22 rutas compiladas exitosamente.
+- **Fronteras y ganchos de seguridad (`pnpm test:hooks`):** 59/59 casos de política de rama, 19/19 detección de secretos, 6/6 fronteras de módulos.
+
+---
+
+# Entrega — T-108: Páginas públicas /privacidad, /terminos y /cookies con el texto aprobado y enlace en el pie y en el login — 2026-10-28
+
+## Identificación
+- **Tarea:** `T-108` (roadmap/tasks.yaml)
+- **Rama:** `b/T-108-paginas-legales-publicas`
+- **Carril:** `b` (Frontend / Web)
+
+## Qué se construyó y auditó
+
+1. **Páginas Legales Públicas Accesibles:**
+   - Creada página `/privacidad` (`apps/web/src/app/privacidad/page.tsx`) con el marco de la Ley 1581 de 2012, Decreto 1074 de 2015, distinción de roles Responsable vs Encargado, tratamiento de datos sensibles (R10) y procedimientos de Habeas Data con canal PQRS.
+   - Creada página `/terminos` (`apps/web/src/app/terminos/page.tsx`) con términos de licenciamiento SaaS B2B para agencias de viajes, reglas de WhatsApp Cloud API (ventana de 24h, plantillas, anti-SPAM), prevención y denuncia de ESCNNA (Leyes 679/2001 y 1336/2009) y propiedad y aislamiento de datos (RLS R1, R2).
+   - Creada página `/cookies` (`apps/web/src/app/cookies/page.tsx`) con tabla de inventario técnico desde `INVENTARIO_COOKIES` y botón de apertura de preferencias (`BotonAbrirPreferencias`).
+   - Todas las páginas cuentan con la marca visible «borrador en revisión jurídica» (`badge-borrador`) conforme al criterio de aceptación mientras se formaliza T-093.
+
+2. **Enlaces en Pie de Página y Pantalla de Ingreso:**
+   - Actualizado `PieDePaginaPrivacidad` (`apps/web/src/components/privacidad/pie-de-pagina-privacidad.tsx`) con enlaces a las tres páginas y botón interactivo de cookies, garantizando touch targets `>= 44 px` y legibilidad en viewports móviles de 375 px.
+   - Actualizado `FormularioIngreso` (`apps/web/src/components/auth/formulario-ingreso.tsx`) integrando el pie legal con los tres enlaces para información previa al inicio de sesión.
+   - Actualizada la página complementaria `apps/web/src/app/politica-cookies/page.tsx` con la insignia de borrador.
+
+3. **Pruebas y Verificación:**
+   - Creadas 4 suites unitarias dedicadas: `privacidad/page.spec.tsx` (4 tests), `terminos/page.spec.tsx` (4 tests), `cookies/page.spec.tsx` (3 tests), y `pie-de-pagina-privacidad.spec.tsx` (3 tests).
+   - Total `@viajapro/web`: 77 suites, 620 tests en verde.
+   - Typecheck (9/9), Linter (7/7) y Next.js build (21 rutas estáticas/dinámicas) 100% en verde.
+   - Ganchos y fronteras (`pnpm test:hooks`): 59/59, 19/19, 6/6 en verde.
+
+## Verificación de Compuertas
+- **Pruebas unitarias (@viajapro/web):** 77 suites, 620 pruebas en verde.
+- **Typecheck:** 9/9 paquetes en verde.
+- **Linter:** 7/7 paquetes en verde.
+- **Compilación de producción (Next.js):** 21/21 rutas compiladas exitosamente sin errores de prerender ni tipos.
+- **Fronteras y ganchos de seguridad (`pnpm test:hooks`):** 59/59 casos de política de rama, 19/19 detección de secretos, 6/6 fronteras de módulos.
+
+---
+
+# Entrega — T-008: Adaptar el cliente de la web a la retirada de la ruta antigua de cotizacion de paquetes — 2026-10-28
+
+## Identificación
+- **Tarea:** `T-008` (roadmap/tasks.yaml)
+- **Rama:** `b/T-008-adaptar-cliente-cotizacion`
+- **Carril:** `b` (Frontend / Web)
+
+## Qué se construyó y auditó
+
+1. **Retirada de la ruta antigua en `apps/web/src/lib/api.ts`:**
+   - Eliminada la referencia y llamada a `/api/v1/paquetes/cotizar` que fue retirada del backend en T-007.
+   - Alineado el cliente con la ruta vigente `POST /api/v1/catalogo/cotizar` mediante delegación y re-exportación de `cotizarSalidaApi` (`CotizarSalida`).
+   - El cotizador oficial (`apps/web/src/app/cotizador/page.tsx`) sigue cotizando contra `/api/v1/catalogo/cotizar`.
+
+2. **Pruebas y Verificación:**
+   - Creada suite unitaria `apps/web/src/lib/api.spec.ts` (4 pruebas) que comprueba que `api.listarPaquetes` no llama a la ruta antigua, que `api.cotizarSalida` delega a la ruta vigente `/api/v1/catalogo/cotizar`, y que la gestión contractual de `ErrorApi` (`EsquemaError`, R3) opera correctamente.
+   - Total `@viajapro/web`: 73 suites, 606 pruebas en verde.
+   - Typecheck (9/9), Linter (7/7) y Next.js build (18 rutas) 100% en verde.
+   - Ganchos y fronteras (`pnpm test:hooks`): 59/59, 19/19, 6/6 en verde.
+
+## Verificación de Compuertas
+- **Pruebas unitarias (@viajapro/web):** 73 suites, 606 pruebas en verde.
+- **Typecheck:** 9/9 paquetes en verde.
+- **Linter:** 7/7 paquetes en verde.
+- **Compilación de producción (Next.js):** 18/18 rutas estáticas y dinámicas compiladas exitosamente.
+- **Fronteras y ganchos de seguridad (`pnpm test:hooks`):** 59/59 casos de política de rama, 19/19 detección de secretos, 6/6 fronteras de módulos.
+
+---
+
+# Entrega — T-027: Equipo e invitaciones: invitar asesores, asignar rol y ver quién tiene acceso — 2026-10-28
+
+## Identificación
+- **Tarea:** `T-027` (roadmap/tasks.yaml)
+- **Rama:** `b/T-027-equipo-e-invitaciones`
+- **Carril:** `b` (Frontend / Web)
+
+## Qué se construyó y auditó
+
+1. **Capa API de Equipo y Roles (`apps/web/src/lib/equipo-api.ts`):**
+   - Funciones `listarMiembrosEquipoApi`, `listarRolesAgenciaApi`, `invitarMiembroApi`.
+   - Soporte para backend real `/api/v1/equipo` con fallback a simulación en caché local para modo demo/offline.
+   - Traductor y mapeador de errores `interpretarErrorInvitacion` que convierte códigos (`CODIGO_INVALIDO`, `DEMASIADOS_INTENTOS`, `INVITACION_INVALIDA`, `PERMISO_DENEGADO`, `SIN_SESION`, `CORREO_INVALIDO`, `ROL_INVALIDO`) a explicaciones claras en español con orientación explícita de «Qué hacer».
+
+2. **Componente de Gestión de Equipo (`BloqueEquipo`):**
+   - Creado en `apps/web/src/components/configuracion/bloque-equipo.tsx` e integrado en `apps/web/src/app/configuracion/page.tsx` en la pestaña `equipo`.
+   - Tarjetas de resumen métrico: Total Usuarios, Dueños Activos, Asesores Comerciales, Invitaciones Pendientes.
+   - Tabla responsiva de miembros y estados (`ACTIVO`, `INVITADO`, `SUSPENDIDO`) con insignias visuales y fecha de ingreso con formato Colombia (`es-CO`).
+   - Modal accesible de invitación (`useFocoModal`, WCAG 2.1) con selección de rol (`DUENO`, `ASESOR`, `OPERACIONES`), validación de correo electrónico y gestión de estados de carga y error en español con banner «Qué hacer».
+   - Totalmente operable a 375 px de viewport móvil con touch targets >= 44 px sin desbordamiento horizontal.
+
+3. **Pruebas y Verificación:**
+   - `apps/web/src/lib/equipo-api.spec.ts`: 8 tests en verde.
+   - `apps/web/src/components/configuracion/bloque-equipo.spec.tsx`: 5 tests en verde.
+   - Total `@viajapro/web`: 72 suites, 602 tests en verde.
+   - Typecheck (9/9), Linter (7/7) y Next.js build (18 rutas) 100% en verde.
+   - Ganchos y fronteras (`pnpm test:hooks`): 59/59, 19/19, 6/6 en verde.
+
+## Verificación de Compuertas
+- **Pruebas unitarias (@viajapro/web):** 72 suites, 602 pruebas en verde.
+- **Typecheck:** 9/9 paquetes en verde.
+- **Linter:** 7/7 paquetes en verde.
+- **Compilación de producción (Next.js):** 18/18 rutas estáticas y dinámicas compiladas exitosamente.
+- **Fronteras y ganchos de seguridad (`pnpm test:hooks`):** 59/59 casos de política de rama, 19/19 detección de secretos, 6/6 fronteras de módulos.
+
+---
+
+# Entrega — T-026: Campos personalizados por agencia en la ficha del contacto y en las oportunidades — 2026-10-28
+
+## Identificación
+- **Tarea:** `T-026` (roadmap/tasks.yaml)
+- **Rama:** `b/T-026-campos-personalizados`
+- **Carril:** `b` (Frontend / Web)
+
+## Qué se construyó y auditó
+
+1. **Contratos Zod Centralizados (Regla R3):**
+   - Incorporados esquemas canónicos en `packages/contracts/src/crm.ts`: `TipoCampoPersonalizado` (`texto`, `numero`, `fecha`, `lista`), `EntidadCampoPersonalizado` (`contacto`, `oportunidad`), `DefinicionCampoPersonalizado` y `ValorCampoPersonalizado`.
+   - Pruebas de contrato añadidas en `packages/contracts/src/crm.spec.ts` (3 tests adicionales, 88 tests en verde).
+   - Ningún tipo redefinido en frontend: la web importa directamente desde `@viajapro/contracts`.
+
+2. **Bloque «Campos Personalizados» en Configuración (`BloqueCamposPersonalizados`):**
+   - Creado en `apps/web/src/components/configuracion/bloque-campos-personalizados.tsx` y montado en `apps/web/src/app/configuracion/page.tsx` (pestaña `campos`).
+   - Pestañas interactivas para alternar entre campos de «Viajeros / Contactos» y «Oportunidades Comerciales».
+   - Modal accesible para creación de nuevos campos con gestión de foco (`useFocoModal`, WCAG 2.1.2 / 2.4.3), validación de nombres y claves normalizadas (`normalizarClaveCampo`).
+   - Soporte de los 4 tipos de datos: texto, número, fecha y lista con opciones delimitadas por coma.
+   - Eliminación interactiva con aviso accesible y feedback visual.
+
+3. **Sección y Edición en Ficha de Contacto y Oportunidad (`SeccionCamposPersonalizados`):**
+   - Creado componente `apps/web/src/components/contactos/seccion-campos-personalizados.tsx`.
+   - Integrado en `apps/web/src/components/contactos/ficha-detalle-contacto.tsx` (detalle de viajero).
+   - Integrado en `apps/web/src/components/bandeja/ficha-cliente.tsx` tanto para atributos del contacto como para atributos de la oportunidad viva.
+   - Validación tipada por tipo de dato en vivo antes de guardar con feedback de error en línea (`validarValorCampoPersonalizado`).
+   - Persistencia local resiliente y callback `onGuardar` desacoplado.
+
+4. **Petición para carril backend (si aplica):**
+   - Exponer endpoints `GET/POST/PUT/DELETE /api/v1/crm/campos-personalizados` y persistencia en columnas JSONB o tabla asociada por tenant `tenant_id` (R1) para almacenamiento en base de datos.
+
+5. **Pruebas y Verificación:**
+   - `packages/contracts/src/crm.spec.ts`: 28 tests en verde.
+   - `apps/web/src/lib/campos-personalizados-logica.spec.ts`: 7 tests en verde.
+   - `apps/web/src/components/configuracion/bloque-campos-personalizados.spec.tsx`: 5 tests en verde.
+   - `apps/web/src/components/contactos/seccion-campos-personalizados.spec.tsx`: 2 tests en verde.
+   - Total `@viajapro/web`: 70 suites, 589 tests en verde.
+   - Typecheck (9/9), Linter (7/7) y Next.js build (18 rutas) 100% en verde.
+
+## Verificación de Compuertas
+- **Pruebas unitarias (@viajapro/web):** 70 suites, 589 pruebas en verde.
+- **Pruebas unitarias (@viajapro/contracts):** 6 suites, 88 pruebas en verde.
+- **Typecheck:** 9/9 paquetes en verde.
+- **Linter:** 7/7 paquetes en verde.
+- **Compilación de producción (Next.js):** 18/18 rutas estáticas y dinámicas compiladas exitosamente.
+- **Fronteras y ganchos de seguridad (`pnpm test:hooks`):** 59/59 casos de política de rama, 19/19 detección de secretos, 6/6 fronteras de módulos.
+
+---
+
+# Entrega — T-025: Etapas del pipeline configurables por la agencia — 2026-10-28
+
+## Identificación
+- **Tarea:** `T-025` (roadmap/tasks.yaml)
+- **Rama:** `b/T-025-etapas-pipeline`
+- **Carril:** `b` (Frontend / Web)
+
+## Qué se construyó y auditó
+
+1. **Bloque «Etapas del pipeline» en Configuración (`BloqueEtapasPipeline`):**
+   - Creado en `apps/web/src/components/configuracion/bloque-etapas-pipeline.tsx` e integrado en `apps/web/src/app/configuracion/page.tsx` (pestaña `pipeline`).
+   - Carga las etapas de la agencia en el montaje vía `listarEtapasPipelineApi()`.
+   - Permite **reordenar etapas** interactivamente con botones accesibles Subir/Bajar con touch targets mínimos de 44 px (`min-h-[44px] min-w-[44px]`).
+   - Permite **renombrar etapas** editando el nombre en vivo.
+   - Permite ajustar la **probabilidad de cierre** estimada (0-100%).
+   - Identifica visualmente etapas especiales con insignias distintivas: `Ganada` (esmeralda), `Perdida` (rosa) y `Etapa clave` (ámbar).
+   - Acciones de «Guardar cambios» con estado de guardado, mensaje de confirmación accesible (`role="status"`) y botón de «Restablecer».
+
+2. **Pintado dinámico en el Tablero de Pipeline:**
+   - Verificado `apps/web/src/app/pipeline/page.tsx`: consume `tablero.columnas` directamente de `obtenerTableroPipeline()` o la API CRM, pintando exactamente las etapas configuradas en orden, sin listados estáticos cableados en el render.
+
+3. **Contrato de API y Fallback Resiliente:**
+   - Métodos tipados `listarEtapasPipelineApi()` y `actualizarEtapasPipelineApi(etapas)` añadidos a `apps/web/src/lib/crm-api.ts`.
+   - Consume `/api/v1/crm/etapas` y en caso de que el backend no exponga aún el endpoint o devuelva 404/500, aplica fallback resiliente cargando las etapas del tablero y permitiendo persistencia local en memoria para pruebas y modo demo.
+   - **Petición para carril backend (si aplica):** Exponer endpoint `PUT /api/v1/crm/etapas` para persistir la configuración a nivel de tenant en la tabla correspondiente.
+
+4. **Pruebas y Verificación:**
+   - `apps/web/src/components/configuracion/bloque-etapas-pipeline.spec.tsx`: 4 pruebas unitarias pasando.
+   - Total `@viajapro/web`: 67 suites, 575 pruebas en verde.
+   - Typecheck, Linter y Compilación Next.js (18 rutas) 100% en verde.
+
+## Verificación de Compuertas
+- **Pruebas unitarias (@viajapro/web):** 67 suites, 575 pruebas en verde.
+- **Typecheck:** 9/9 paquetes en verde.
+- **Linter:** 7/7 paquetes en verde.
+- **Compilación de producción (Next.js):** 18/18 rutas estáticas y dinámicas compiladas exitosamente.
+- **Fronteras y ganchos de seguridad (`pnpm test:hooks`):** 59/59 casos de política de rama, 19/19 detección de secretos, 6/6 fronteras de módulos.
+
+---
+
+# Entrega — T-024: Accesibilidad de la bandeja y los modales: foco, teclado, etiquetas y contraste — 2026-10-28
+
+## Identificación
+- **Tarea:** `T-024` (roadmap/tasks.yaml)
+- **Rama:** `b/T-024-accesibilidad-bandeja-modales`
+- **Carril:** `b` (Frontend / Web)
+
+## Qué se construyó y auditó
+
+1. **Gestión Accesible de Teclado en la Bandeja:**
+   - Navegación bidireccional por teclado con flechas (`ArrowDown`/`ArrowUp`) y estilo vim (`j`/`k`).
+   - Atajos directos: `/` para enfocar la búsqueda, `Escape` para desenfocarla o cerrar paneles/modales, `Enter` para abrir conversaciones o enviar mensajes.
+   - Atajos globales del chat: `Alt+P` para abrir selector de plantillas oficiales, `Alt+R` para reasignar asesor, `Alt+F` para alternar ficha CRM lateral.
+   - Barra visible documentada en pantalla (`data-testid="barra-atajos-teclado"`) informando combinaciones clave.
+
+2. **Foco y Trampa de Foco en Modales (WCAG 2.4.3 / 2.1.2):**
+   - Hook unificado `useFocoModal` probado y validado en:
+     - `ModalPlantillas`
+     - `ModalReasignar`
+     - `ModalGuardarCotizacion`
+     - `ModalMotivoPerdida`
+     - `ModalBusquedaGlobal`
+   - Garantiza que al abrir el modal el foco se ubica en el primer elemento interactivo, el tabulador cicla dentro del diálogo sin escapar al documento de fondo, y al cerrarse (por botón o tecla `Escape`) el foco regresa limpiamente al elemento disparador.
+
+3. **Etiquetas Accesibles y Contraste (WCAG 1.1.1 / 1.4.3):**
+   - Todos los botones de solo icono cuentan con `aria-label` descriptivo y `title`:
+     - Botón de volver a lista: `aria-label="Volver a lista de conversaciones"`.
+     - Botón de ficha lateral: `aria-label="Alternar ficha de cliente"`.
+     - Botón de cerrar ficha: `aria-label="Cerrar ficha de cliente"`.
+     - Botón de envío de mensaje/nota: `aria-label="Enviar mensaje"` o `aria-label="Guardar nota interna"`.
+     - Botones de cierre en `ModalPlantillas` y `ModalReasignar`.
+   - Helper `validarContrasteWCAG` en `apps/web/src/lib/accesibilidad-logica.ts` para verificar ratios de contraste 4.5:1 (texto normal) y 3:1 (texto grande) en temas claro y oscuro.
+
+4. **Pruebas y Verificación:**
+   - `apps/web/src/lib/accesibilidad-logica.spec.ts`: 6 pruebas en verde.
+   - `apps/web/src/components/bandeja/lista-conversaciones-teclado.spec.tsx`: 6 pruebas en verde.
+   - `apps/web/src/components/comun/foco-modal.spec.tsx`: 11 pruebas en verde.
+   - Total `@viajapro/web`: 66 suites, 571 pruebas en verde.
+
+## Verificación de Compuertas
+- **Pruebas unitarias (@viajapro/web):** 66 suites, 571 pruebas en verde.
+- **Typecheck:** 9/9 paquetes en verde.
+- **Linter:** 7/7 paquetes en verde.
+- **Compilación de producción (Next.js):** 18/18 rutas estáticas y dinámicas compiladas exitosamente.
+- **Fronteras y ganchos de seguridad (`pnpm test:hooks`):** 59/59 casos de política de rama, 19/19 detección de secretos, 6/6 fronteras de módulos.
+
+---
+
+# Entrega — T-023: Revisión a 375 px de bandeja, pipeline, cotizador y catálogo con correcciones — 2026-10-28
+
+## Identificación
+- **Tarea:** `T-023` (roadmap/tasks.yaml)
+- **Rama:** `b/T-023-revision-375px-movil`
+- **Carril:** `b` (Frontend / Web)
+
+## Qué se construyó y auditó
+
+1. **Garantía de Cero Desbordamiento Horizontal a 375 px (Viewport Móvil Estricto):**
+   - **Bandeja (`/bandeja` y `/bandeja/[id]`):**
+     - Contención de layout flex/grid con `w-full max-w-full overflow-hidden`.
+     - `BarraModulos`: los enlaces en la barra colapsada y botones operativos tienen touch targets de 44 px (`min-h-[44px] min-w-[44px]`, `h-11 w-11`).
+     - `ListaConversaciones`: selector de densidad y pestañas de filtro optimizados para mobile touch targets (`min-h-[44px]`).
+     - Detalle de conversación: botones de notas, sugerencias y botón de envío (`min-h-[44px] min-w-[44px]`) con área de interacción táctil cómoda sin solapamientos.
+   - **Pipeline (`/pipeline`):**
+     - Botones de alternancia de vista (Kanban / Tabla) con `min-h-[44px]`.
+     - Contenedor Kanban con espaciado móvil adaptativo (`p-3 sm:p-6 space-x-3 sm:space-x-4`).
+     - Vista de tabla envuelta en contenedor con `overflow-x-auto rounded-2xl` y `min-w-[680px]` para garantizar scroll interno de datos tabulares sin romper el viewport general de 375 px.
+   - **Cotizador (`/cotizador`):**
+     - `DesgloseCotizacionSalida`: botones de acción principales («Guardar Oficial» y «Copiar Propuesta para WhatsApp») adaptados a disposición apilada móvil `flex-col sm:flex-row w-full sm:w-auto min-h-[44px]` con touch target completo.
+     - Barra de acciones inferior del cotizador con botones expandidos `w-full sm:w-auto min-h-[44px]`.
+   - **Catálogo (`/catalogo`):**
+     - Acciones de cabecera («Importar archivo CSV» e «Ir al Cotizador») en disposición vertical en pantallas angostas con `w-full sm:w-auto min-h-[44px]`.
+     - Barra de pestañas con desplazamiento horizontal seguro (`overflow-x-auto shrink-0 min-h-[44px]`).
+     - `TarjetaSalidaPublicada`: botón de cotizar adaptativo con texto conciso en móvil («Cotizar» vs «Cotizar esta salida») y touch targets `>= 44px`.
+
+2. **Auditoría de Viewports a 375 px y 1280 px:**
+   - **375 px (Mobile Portrait):**
+     - Ancho total de pantalla sin scroll horizontal no deseado en ninguna de las cuatro vistas.
+     - Elementos interactivos táctiles cumplen el estándar WCAG 2.5.5 / 2.5.8 (mínimo 44 × 44 px).
+     - Formularios, selects y campos de entrada con tipografía >= 16px para prevenir auto-zoom en iOS Safari.
+   - **1280 px (Desktop Standard):**
+     - Disposición multi-columna (Bandeja con 3 columnas: módulos, lista, conversación/ficha; Pipeline Kanban completo; Cotizador con panel lateral; Catálogo en grid responsive de 3 columnas).
+
+3. **Pruebas Automatizadas:**
+   - Creada suite `apps/web/src/components/comun/revision-375px.spec.tsx` verificando dimensiones y clases de touch target en los componentes clave.
+   - 66 archivos de prueba pasados, 566 pruebas unitarias en verde.
+
+## Verificación de Compuertas
+- **Pruebas unitarias (@viajapro/web):** 66 suites, 566 pruebas en verde.
+- **Typecheck:** 9/9 paquetes en verde.
+- **Linter:** 7/7 paquetes en verde.
+- **Compilación de producción (Next.js):** 18/18 rutas estáticas y dinámicas compiladas exitosamente.
+- **Fronteras y ganchos de seguridad (`pnpm test:hooks`):** 59/59 casos de política de rama, 19/19 detección de secretos, 6/6 fronteras de módulos.
+
+---
+
+# Entrega — T-022: Auditoría de formatos es-CO: dinero, fechas, teléfonos y cupos con helpers únicos — 2026-10-26
+
+## Identificación
+- **Tarea:** `T-022` (roadmap/tasks.yaml)
+- **Rama:** `b/T-022-helpers-formato-es-co` (creada desde `origin/main` en commit `f51880a`)
+- **Carril:** Frontend (`apps/web`, `packages/ui`, `packages/sdk`)
+
+## Qué se construyó
+
+1. **Módulo Centralizado de Formato (`apps/web/src/lib/formato.ts`):**
+   - **Dinero (`formatearDinero`, `formatearCOP`, `formatearDineroCifra`):**
+     - Cumplimiento estricto de R8: Dinero en enteros, unidad mínima de la moneda (en COP es el peso, no el centavo).
+     - Presentación sin decimales y con punto de miles para COP (`$ 350.000`, `$ 12.500.000`, `$ 1.000.000.000`).
+     - Monedas extranjeras con 2 decimales y coma decimal (`$ 1.250,50 USD`).
+     - Soporta contratos Zod (`{ unidades, moneda }`), objetos con `monto`, números primitivos y bigints.
+   - **Fechas (`formatearFecha`, `formatearFechaHora`):**
+     - Cumplimiento de R9: Fechas en UTC en la base, zona horaria oficial del tenant en presentación (`America/Bogota`).
+     - Formato estándar colombiano legible: «sáb 3 oct 2026».
+     - Manejo de casos límite: cadenas de fecha pura `YYYY-MM-DD` fijadas a mediodía UTC para evitar desfases a la víspera en cualquier cliente; y timestamps UTC de madrugada convertidos con exactitud a la hora local en Bogotá (UTC-5).
+   - **Teléfonos (`formatearTelefono`):**
+     - Formato móvil colombiano estándar de 10 dígitos: «+57 300 123 4567» (con opción local «300 123 4567»).
+     - Teléfonos fijos nacionales con indicativo departamental: «+57 (601) 234 5678».
+     - Limpieza y preservación de números extranjeros.
+   - **Cupos (`formatearCupo`):**
+     - Formato declarativo para salidas y tours: «Agotado», «1 cupo disponible», «12 de 20 cupos», «Cupos libres».
+
+2. **Integración en Componentes y Pantallas:**
+   - `apps/web/src/lib/api.ts`: reexporta los helpers únicos hacia toda la aplicación.
+   - `apps/web/src/lib/pipeline-logica.ts`: delega el formato de cifras en `formato.ts`.
+   - `apps/web/src/lib/contactos-logica.ts`: delega `formatearTelefonoVisual` en `formato.ts`.
+   - `apps/web/src/app/cotizaciones/page.tsx`: salidas con fecha formateada en vistas móvil y tabla.
+   - `apps/web/src/app/cotizaciones/[id]/page.tsx`: propuesta de WhatsApp con fecha formateada y teléfono del contacto formateado.
+   - `apps/web/src/components/catalogo/tarjeta-salida-publicada.tsx`: fecha de salida formateada legiblemente.
+
+3. **Pruebas y Cobertura:**
+   - `apps/web/src/lib/formato.spec.ts`: 23/23 pruebas unitarias cubriendo todos los casos límite (cero, millones, miles de millones, medianoche UTC frente a Bogotá, móviles, fijos y cupos).
+   - Suite total de `@viajapro/web`: 43 archivos de prueba, 377 pruebas en verde.
+
+## Verificación de Compuertas
+
+- **Pruebas unitarias (@viajapro/web):** 43 suites, 377 pruebas en verde en 10.90s.
+- **Typecheck (@viajapro/web):** 0 errores (`tsc --noEmit`).
+- **Linter (@viajapro/web):** 0 advertencias, 0 errores (`eslint src`).
+- **Prettier:** 100% formateado según reglas de estilo del monorepo.
+- **Compilación de producción (Next.js):** 16/16 páginas estáticas y dinámicas compiladas exitosamente.
+- **Fronteras y ganchos de seguridad (`pnpm test:hooks`):** 59/59 casos de política de rama, 19/19 detección de secretos, 6/6 fronteras de módulos.
+
+---
+
+# Entrega — T-036: Tarjetas de producto con identidad por tipo de excursión (color, icono, degradado, promo y cupos) — 2026-10-28
+
+## Identificación
+- **Rama:** `b/T-036-tarjetas-producto-tipo-excursion` (empujada a `origin/b/T-036-tarjetas-producto-tipo-excursion`)
+- **Tarea:** T-036 (Tarjetas de producto con identidad por tipo de excursión: color, icono, degradado, promo y cupos)
+- **Carril:** `b` (Frontend / Web)
+- **Stitch Design Screen ID:** `9e60798823de4540a788622f805745ff` (Proyecto «ViajaPro — CRM para agencias de turismo», ID `8333038101997719867`, pantalla *Catálogo de Excursiones — Tarjetas con Identidad Visual Turística — ViajaPro CRM*)
+
+## Qué construí
+1. **Inferencia y Lógica de Tipos de Turismo (`apps/web/src/lib/catalogo-logica.ts`):**
+   - Tipos de producto turísticos tipados estrictamente: `isla_beach_club`, `reserva_natural`, `city_tour`, `aventura_nautica`, `paquete_hotel`, `excursion_general`.
+   - Función pura `inferirTipoProducto(nombre: string, etiquetas?: string[])` que reconoce léxico colombiano del sector turístico y previene falsos positivos (por ejemplo, 'recorrido' no activa la regla de 'eco').
+   - Re-exportada desde `apps/web/src/components/comun/chip-tipo-producto.tsx`.
+2. **Tarjeta de Salida Publicada (`apps/web/src/components/catalogo/tarjeta-salida-publicada.tsx`):**
+   - Cabecera temática cuando no hay foto: degradado representativo (`configTipo.degradadoSustituto`), marca de agua translúcida con el icono del tipo (`text-white/15`) y resplandor ambiental.
+   - Cabecera con fotografía real: superposición de gradiente oscuro protector para contraste AA WCAG.
+   - Insignia de duración con aro dorado oficial (`#c9a24b`).
+   - Insignia de promoción vigente con destello y aro dorado (`.insignia-aro-dorado border-[#c9a24b]`).
+   - Chip de cupos en vivo con semáforo de urgencia (`¡Últimos cupos!`, `quedan X`, `Agotado`).
+   - Horarios formateados (`formatearHorarioExcursion`) y lista de inclusiones destacadas con icono `CheckCircle`.
+   - Tarifa «Desde $X por persona» con soporte de `desdePorMoneda` y tachado cuando la política `promo_vencida` es TACHAR.
+   - Botón opcional «Ver ficha» conectado a la apertura del panel lateral `FichaDetallePaquete`.
+3. **Integración en la Experiencia de Catálogo:**
+   - `apps/web/src/app/catalogo/page.tsx`: Tarjetas reales y simuladas muestran su chip temático por tipo de excursión y conectan con la ficha de detalle.
+   - `apps/web/src/components/catalogo/ficha-detalle-paquete.tsx`: Cabecera de la ficha incluye el chip temático del tipo de producto.
+4. **Suites de Pruebas Unitarias:**
+   - `tarjeta-salida-publicada.spec.tsx`: 15 pruebas unitarias verificando los 6 tipos de turismo, degradados sustitutos, fotografías reales, aro dorado, cupos en vivo y políticas de promo vencida.
+   - `catalogo-logica.spec.ts`: 20 pruebas unitarias con cobertura exhaustiva de la categorización por léxico y etiquetas.
+
+## Qué verifiqué ejecutando
+- **Pruebas unitarias:** `pnpm --filter @viajapro/web test` — **61 suites pasadas, 517/517 pruebas en verde (100%)**.
+- **Typecheck estricto:** `pnpm typecheck` — **9/9 tareas exitosas** en Turborepo.
+- **Linter:** `pnpm lint` — **7/7 tareas exitosas**, 0 errores.
+- **Políticas de rama y secretos:** `pnpm test:hooks` — **59/59 política de rama, 19/19 secretos, 6/6 fronteras entre módulos en verde**.
+
+---
+
 ### 2026-10-27 — T-031: Pantalla de gestión del catálogo (crear, editar, desactivar productos)
 
 - **Tarea de la cola:** T-031 (Pantalla de gestión del catálogo: crear, editar y desactivar productos, tarifas y salidas).
@@ -63,6 +1036,9 @@
   - `test:hooks`: **VERDE** (59/59 casos de política de ramas y protección de secretos).
 - **Qué NO verifiqué:**
   - Despliegue en producción (a la espera de merge en GitHub por CI).
+
+---
+
 # Entrega — T-035: Animaciones y transiciones (entrada escalonada, hover, esqueletos con brillo y transiciones de página) — 2026-10-28
 
 ## Identificación

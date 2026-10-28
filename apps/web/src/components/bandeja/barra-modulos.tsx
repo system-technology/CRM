@@ -14,6 +14,7 @@ import {
   Settings,
   Sun,
   Moon,
+  Laptop,
   Plane,
   TrendingUp,
   Search,
@@ -23,17 +24,33 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
+  Sparkles,
 } from 'lucide-react';
 import { CONFIGURACION_MODULOS, type ModuloViajaPro } from '../comun/iconos-modulos';
 import type { SesionActual } from '@viajapro/contracts';
 import { ModalBusquedaGlobal } from '../busqueda/modal-busqueda-global';
 import { PanelNotificaciones } from '../notificaciones/panel-notificaciones';
+import { SelectorTemaDensidad } from '../comun/selector-tema-densidad';
 import {
-  generarAlertasOperativas,
-  marcarAlertaLeida,
-  contarAlertasNoLeidas,
-  type AlertaOperativa,
-} from '../../lib/notificaciones-logica';
+  type ModoTema,
+  type DensidadVisual,
+  cargarPreferenciasTema,
+  guardarModoTema,
+  suscribirCambiosSistema,
+  resolverTemaEfectivo,
+  consultarPreferenciaSistemaOscuro,
+} from '../../lib/tema-y-densidad';
+import {
+  type NotificacionWeb,
+  generarNotificacionesIniciales,
+  procesarEventoSocketNotificacion,
+  contarNotificacionesNoLeidas,
+  marcarNotificacionLeida,
+  marcarTodasNotificacionesLeidas,
+  descartarNotificacion,
+} from '../../lib/notificaciones-web';
+import { generarAlertasOperativas } from '../../lib/notificaciones-logica';
+import { obtenerPendientesDelDiaApi } from '../../lib/crm-api';
 import { usePermisos } from '../../lib/permisos';
 import { useModoDemo } from '../../lib/modo-demo';
 import { cambiarAgenciaActivaApi, cerrarSesionApi } from '../../lib/auth-api';
@@ -83,11 +100,15 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
   const { sesion } = usePermisos(sesionInicial);
   const { esDemo, alternarDemo, desactivarDemo } = useModoDemo();
 
-  const [modoOscuro, setModoOscuro] = useState(false);
+  const [modoTema, setModoTema] = useState<ModoTema>('system');
+  const [_densidadVisual, setDensidadVisual] = useState<DensidadVisual>('comoda');
+  const [esOscuroEfectivo, setEsOscuroEfectivo] = useState(false);
   const [barraExpandida, setBarraExpandida] = useState(false);
   const [busquedaAbierta, setBusquedaAbierta] = useState(false);
   const [panelNotifAbierto, setPanelNotifAbierto] = useState(false);
-  const [alertas, setAlertas] = useState<AlertaOperativa[]>([]);
+  const [notificaciones, setNotificaciones] = useState<NotificacionWeb[]>(() =>
+    generarNotificacionesIniciales(null, undefined, generarAlertasOperativas()),
+  );
   const [menuSesionAbierto, setMenuSesionAbierto] = useState(false);
   const [cambiandoAgencia, setCambiandoAgencia] = useState<string | null>(null);
   const [cerrandoSesion, setCerrandoSesion] = useState(false);
@@ -104,18 +125,53 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const guardado = localStorage.getItem('viajapro_tema');
-      if (guardado === 'dark' || document.documentElement.classList.contains('dark')) {
-        setModoOscuro(true);
-        document.documentElement.classList.add('dark');
-      }
+      const prefs = cargarPreferenciasTema();
+      setModoTema(prefs.tema);
+      setDensidadVisual(prefs.densidad);
+      const sistemaOscuro = consultarPreferenciaSistemaOscuro();
+      setEsOscuroEfectivo(resolverTemaEfectivo(prefs.tema, sistemaOscuro) === 'dark');
+
       const expandidaGuardada = localStorage.getItem('viajapro_sidebar_expandida');
       if (expandidaGuardada === 'true') {
         setBarraExpandida(true);
       }
     }
-    // Inicializar alertas operativas
-    setAlertas(generarAlertasOperativas());
+
+    const desuscribirSistema = suscribirCambiosSistema((sistemaEsOscuro) => {
+      const prefsActuales = cargarPreferenciasTema();
+      setEsOscuroEfectivo(resolverTemaEfectivo(prefsActuales.tema, sistemaEsOscuro) === 'dark');
+    });
+
+    // 1. Cargar seguimientos pendientes del día de la API si está disponible
+    void obtenerPendientesDelDiaApi()
+      .then((pendientes) => {
+        if (pendientes) {
+          setNotificaciones((prev) => {
+            const nuevas = generarNotificacionesIniciales(
+              pendientes,
+              undefined,
+              generarAlertasOperativas(),
+            );
+            const idsNuevas = new Set(nuevas.map((n) => n.id));
+            const previasSinDuplicados = prev.filter((p) => !idsNuevas.has(p.id));
+            return [...previasSinDuplicados, ...nuevas];
+          });
+        }
+      })
+      .catch(() => null);
+
+    // 2. Suscribirse a eventos Socket.IO en tiempo real (T-110)
+    const desuscribir =
+      typeof inboxSocketManager?.suscribirEvento === 'function'
+        ? inboxSocketManager.suscribirEvento((evento) => {
+            setNotificaciones((prev) => procesarEventoSocketNotificacion(evento, prev));
+          })
+        : () => {};
+
+    return () => {
+      desuscribirSistema();
+      desuscribir();
+    };
   }, []);
 
   const alternarSidebar = () => {
@@ -144,23 +200,25 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
   }, []);
 
   const alternarTema = () => {
-    const nuevo = !modoOscuro;
-    setModoOscuro(nuevo);
-    if (nuevo) {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('viajapro_tema', 'dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('viajapro_tema', 'light');
-    }
+    const orden: ModoTema[] = ['light', 'dark', 'system'];
+    const idx = orden.indexOf(modoTema);
+    const siguiente = orden[(idx + 1) % orden.length] ?? 'system';
+    guardarModoTema(siguiente);
+    setModoTema(siguiente);
+    const sistemaOscuro = consultarPreferenciaSistemaOscuro();
+    setEsOscuroEfectivo(resolverTemaEfectivo(siguiente, sistemaOscuro) === 'dark');
   };
 
   const manejarMarcarLeida = (id: string) => {
-    setAlertas((prev) => marcarAlertaLeida(prev, id));
+    setNotificaciones((prev) => marcarNotificacionLeida(prev, id));
   };
 
   const manejarMarcarTodasLeidas = () => {
-    setAlertas((prev) => prev.map((a) => ({ ...a, leida: true })));
+    setNotificaciones((prev) => marcarTodasNotificacionesLeidas(prev));
+  };
+
+  const manejarDescartar = (id: string) => {
+    setNotificaciones((prev) => descartarNotificacion(prev, id));
   };
 
   const manejarCambioAgencia = async (tenantId: string) => {
@@ -193,7 +251,7 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
     }
   };
 
-  const conteoNoLeidas = contarAlertasNoLeidas(alertas);
+  const conteoNoLeidas = contarNotificacionesNoLeidas(notificaciones);
 
   const nombreUsuario = sesion?.identidad?.nombre ?? 'Asesor ViajaPro';
   const correoUsuario = sesion?.identidad?.correo ?? 'asesor@viajapro.com';
@@ -320,7 +378,7 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
               <Link
                 href="/bandeja"
                 title="ViajaPro — CRM Turístico"
-                className="bg-acento-700 focus-visible:ring-acento-600 flex h-10 w-10 items-center justify-center rounded-xl text-white shadow-sm transition-transform hover:scale-105 focus-visible:ring-2 focus-visible:outline-none"
+                className="bg-acento-700 focus-visible:ring-acento-600 flex h-11 min-h-[44px] w-11 min-w-[44px] items-center justify-center rounded-xl text-white shadow-sm transition-transform hover:scale-105 focus-visible:ring-2 focus-visible:outline-none"
               >
                 <Plane className="h-5 w-5" />
               </Link>
@@ -461,7 +519,7 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
                             ? 'border-l-4 border-[#c9a24b] bg-sky-50 font-semibold text-sky-950 shadow-2xs dark:bg-sky-950/60 dark:text-sky-100'
                             : 'text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200'
                         }`
-                      : `h-10 w-10 justify-center ${
+                      : `h-11 min-h-[44px] w-11 min-w-[44px] justify-center ${
                           m.activo
                             ? 'bg-sky-50 font-semibold text-sky-700 shadow-xs ring-2 ring-[#c9a24b] dark:bg-sky-950/60 dark:text-sky-300'
                             : 'text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200'
@@ -509,11 +567,30 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
                 <button
                   type="button"
                   onClick={alternarTema}
-                  title={modoOscuro ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
-                  aria-label={modoOscuro ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+                  data-testid="boton-alternar-tema"
+                  title={
+                    modoTema === 'dark'
+                      ? 'Tema Oscuro (clic para cambiar a Sistema)'
+                      : modoTema === 'light'
+                        ? 'Tema Claro (clic para cambiar a Oscuro)'
+                        : `Tema Sistema (${esOscuroEfectivo ? 'Oscuro' : 'Claro'})`
+                  }
+                  aria-label={
+                    modoTema === 'dark'
+                      ? 'Cambiar a modo sistema (tema oscuro activo)'
+                      : modoTema === 'light'
+                        ? 'Cambiar a modo oscuro (tema claro activo)'
+                        : 'Cambiar a modo claro (tema del sistema activo)'
+                  }
                   className="focus-visible:ring-acento-600 flex h-8 w-8 items-center justify-center rounded-lg text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-800 focus-visible:ring-2 focus-visible:outline-none dark:text-neutral-400 dark:hover:bg-neutral-800"
                 >
-                  {modoOscuro ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                  {modoTema === 'dark' ? (
+                    <Moon className="h-4 w-4 text-indigo-400" />
+                  ) : modoTema === 'light' ? (
+                    <Sun className="h-4 w-4 text-amber-500" />
+                  ) : (
+                    <Laptop className="h-4 w-4 text-neutral-500" />
+                  )}
                 </button>
 
                 <div
@@ -560,7 +637,7 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
                 onClick={() => setPanelNotifAbierto(true)}
                 title={'Alertas operativas (' + conteoNoLeidas + ' pendientes)'}
                 aria-label={'Alertas operativas (' + conteoNoLeidas + ' pendientes)'}
-                className="focus-visible:ring-acento-600 relative flex h-9 w-9 items-center justify-center rounded-lg text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 focus-visible:ring-2 focus-visible:outline-none dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
+                className="focus-visible:ring-acento-600 relative flex h-11 min-h-[44px] w-11 min-w-[44px] items-center justify-center rounded-lg text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 focus-visible:ring-2 focus-visible:outline-none dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
               >
                 <Bell className="h-4 w-4" />
                 {conteoNoLeidas > 0 && (
@@ -574,7 +651,7 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
               {/* Meta de cierres compacta */}
               <div
                 title="Meta de cierres: $42.5M de $60M COP (71% completado)"
-                className="group border-ok-200 bg-ok-50/50 dark:border-ok-900/50 dark:bg-ok-950/30 relative flex h-9 w-9 cursor-help flex-col items-center justify-center rounded-lg border p-0.5 text-center transition-colors"
+                className="group border-ok-200 bg-ok-50/50 dark:border-ok-900/50 dark:bg-ok-950/30 relative flex h-10 w-10 cursor-help flex-col items-center justify-center rounded-lg border p-0.5 text-center transition-colors"
               >
                 <TrendingUp className="text-ok-600 dark:text-ok-400 h-3 w-3" />
                 <span className="cifra text-ok-700 dark:text-ok-300 text-[8px] leading-none font-bold">
@@ -582,15 +659,34 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
                 </span>
               </div>
 
-              {/* Interruptor modo oscuro */}
+              {/* Interruptor modo oscuro y tema */}
               <button
                 type="button"
                 onClick={alternarTema}
-                title={modoOscuro ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
-                aria-label={modoOscuro ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
-                className="focus-visible:ring-acento-600 flex h-9 w-9 items-center justify-center rounded-lg text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-800 focus-visible:ring-2 focus-visible:outline-none dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
+                data-testid="boton-alternar-tema-colapsado"
+                title={
+                  modoTema === 'dark'
+                    ? 'Tema Oscuro (clic para cambiar a Sistema)'
+                    : modoTema === 'light'
+                      ? 'Tema Claro (clic para cambiar a Oscuro)'
+                      : `Tema Sistema (${esOscuroEfectivo ? 'Oscuro' : 'Claro'})`
+                }
+                aria-label={
+                  modoTema === 'dark'
+                    ? 'Cambiar a modo sistema (tema oscuro activo)'
+                    : modoTema === 'light'
+                      ? 'Cambiar a modo oscuro (tema claro activo)'
+                      : 'Cambiar a modo claro (tema del sistema activo)'
+                }
+                className="focus-visible:ring-acento-600 flex h-11 min-h-[44px] w-11 min-w-[44px] items-center justify-center rounded-lg text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-800 focus-visible:ring-2 focus-visible:outline-none dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
               >
-                {modoOscuro ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                {modoTema === 'dark' ? (
+                  <Moon className="h-4 w-4 text-indigo-400" />
+                ) : modoTema === 'light' ? (
+                  <Sun className="h-4 w-4 text-amber-500" />
+                ) : (
+                  <Laptop className="h-4 w-4 text-neutral-500" />
+                )}
               </button>
 
               {/* Separador */}
@@ -606,10 +702,12 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
                   aria-haspopup="dialog"
                   aria-expanded={menuSesionAbierto}
                   data-testid="boton-avatar-sesion"
-                  className="focus-visible:ring-acento-600 relative flex h-8 w-8 items-center justify-center rounded-full bg-neutral-200 text-xs font-bold text-neutral-700 transition-transform hover:scale-105 focus-visible:ring-2 focus-visible:outline-none dark:bg-neutral-700 dark:text-neutral-200"
+                  className="focus-visible:ring-acento-600 relative flex h-11 min-h-[44px] w-11 min-w-[44px] items-center justify-center rounded-full text-xs font-bold transition-transform hover:scale-105 focus-visible:ring-2 focus-visible:outline-none"
                 >
-                  {iniciales}
-                  <span className="bg-ok-500 absolute -right-0.5 -bottom-0.5 h-2.5 w-2.5 rounded-full border-2 border-white dark:border-neutral-900" />
+                  <div className="relative flex h-8 w-8 items-center justify-center rounded-full bg-neutral-200 text-neutral-700 dark:bg-neutral-700 dark:text-neutral-200">
+                    {iniciales}
+                    <span className="bg-ok-500 absolute -right-0.5 -bottom-0.5 h-2.5 w-2.5 rounded-full border-2 border-white dark:border-neutral-900" />
+                  </div>
                 </button>
               </div>
             </div>
@@ -833,8 +931,56 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
               )}
             </div>
 
-            {/* Acciones: Cerrar Sesión */}
-            <div className="mt-3">
+            {/* Acciones: Cerrar Sesión y Onboarding */}
+            <div className="mt-3 space-y-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setMenuSesionAbierto(false);
+                  setPanelNotifAbierto(true);
+                }}
+                data-testid="boton-abrir-notificaciones-perfil"
+                className="flex min-h-[44px] w-full items-center justify-between rounded-xl px-2.5 py-2 text-xs font-semibold text-neutral-700 transition hover:bg-neutral-100 dark:text-neutral-200 dark:hover:bg-neutral-800"
+              >
+                <span className="flex items-center gap-2">
+                  <Bell className="text-acento-600 dark:text-acento-400 h-4 w-4" />
+                  <span>Notificaciones y Alertas</span>
+                </span>
+                {conteoNoLeidas > 0 && (
+                  <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-bold text-red-700 dark:bg-red-950 dark:text-red-300">
+                    {conteoNoLeidas}
+                  </span>
+                )}
+              </button>
+
+              <Link
+                href="/bienvenida"
+                onClick={() => setMenuSesionAbierto(false)}
+                data-testid="enlace-asistente-onboarding"
+                className="flex min-h-[44px] w-full items-center justify-between rounded-xl px-2.5 py-2 text-xs font-semibold text-neutral-700 transition hover:bg-neutral-100 dark:text-neutral-200 dark:hover:bg-neutral-800"
+              >
+                <span className="flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-amber-500" />
+                  <span>Asistente de Inicio</span>
+                </span>
+                <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                  T-105
+                </span>
+              </Link>
+
+              {/* Selector de Tema y Densidad Visual (T-111) */}
+              <div className="border-t border-neutral-100 py-3 dark:border-neutral-800">
+                <SelectorTemaDensidad
+                  compacto={true}
+                  onCambio={(nuevoTema, nuevaDensidad) => {
+                    setModoTema(nuevoTema);
+                    setDensidadVisual(nuevaDensidad);
+                    const sistemaOscuro = consultarPreferenciaSistemaOscuro();
+                    setEsOscuroEfectivo(resolverTemaEfectivo(nuevoTema, sistemaOscuro) === 'dark');
+                  }}
+                />
+              </div>
+
               {/* Interruptor explícito de Modo Demostración */}
               <div className="flex items-center justify-between border-t border-neutral-100 py-3 dark:border-neutral-800">
                 <div className="flex flex-col pr-2">
@@ -892,9 +1038,10 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
       <PanelNotificaciones
         abierto={panelNotifAbierto}
         alCerrar={() => setPanelNotifAbierto(false)}
-        alertas={alertas}
+        notificaciones={notificaciones}
         alMarcarLeida={manejarMarcarLeida}
         alMarcarTodasLeidas={manejarMarcarTodasLeidas}
+        alDescartar={manejarDescartar}
       />
     </>
   );

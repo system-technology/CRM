@@ -26,6 +26,11 @@ export interface CambioRegistrado {
 /** Quién hace el cambio. El tenant lo toma el adaptador del contexto de la petición. */
 export interface ActorDelCambio {
   readonly usuarioId: string | null;
+  /**
+   * La clave de API que hace el cambio, si lo hace una (T-071, para la API pública). Con clave,
+   * `usuarioId` debe ser `null`: la base lo exige con un CHECK.
+   */
+  readonly claveDeApiId?: string | null;
 }
 
 export abstract class RegistroDeCambios {

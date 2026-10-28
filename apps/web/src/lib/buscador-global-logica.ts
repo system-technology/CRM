@@ -4,12 +4,14 @@
  * Cero dependencias de UI, 100% testeable en Vitest.
  */
 
-import { MOCK_CONVERSACIONES } from './mock-inbox';
+import { MOCK_CONVERSACIONES, ID_ASESOR_ACTUAL } from './mock-inbox';
 import { obtenerMockPaginaContactos } from './mock-contactos';
 import { obtenerMockTableroPipeline } from './mock-pipeline';
 import { MOCK_ARCHIVOS_VIAJE } from './mock-viajes';
 import { MOCK_PAQUETES_CATALOGO } from './mock-catalogo';
 import { MOCK_COTIZACIONES_INICIALES } from './mock-cotizaciones';
+import type { SesionActual } from '@viajapro/contracts';
+import { puedeVerTodasConversaciones, puedeVerNetoYMargen, tienePermiso } from './permisos';
 
 export type CategoriaBusqueda =
   | 'acciones'
@@ -82,7 +84,7 @@ export const ACCIONES_RAPIDAS: ResultadoBusqueda[] = [
     id: 'act-reportes',
     categoria: 'acciones',
     titulo: 'Ver Reportes y Cierres',
-    subtitulo: 'Métricas gerenciales y cumplimiento de meta',
+    subtitulo: 'Métricas comerciales y cumplimiento de meta',
     href: '/reportes',
     etiquetaExtra: 'Métricas',
   },
@@ -109,15 +111,41 @@ export function normalizarTexto(texto: string): string {
 
 /**
  * Genera el índice unificado en memoria para el buscador global y paleta de comandos.
+ * Respeta permisos de sesión: asesores sin permiso no ven conversaciones de otros
+ * ni acciones de configuración restringidas (T-103).
  */
-export function construirIndiceGlobal(): ResultadoBusqueda[] {
+export function construirIndiceGlobal(sesion?: SesionActual | null): ResultadoBusqueda[] {
   const items: ResultadoBusqueda[] = [];
 
-  // 1. Acciones rápidas
-  items.push(...ACCIONES_RAPIDAS);
+  // 1. Acciones rápidas (filtradas según permisos)
+  const puedeAdministrar =
+    !sesion ||
+    tienePermiso(sesion, 'usuarios.administrar') ||
+    tienePermiso(sesion, 'roles.administrar') ||
+    tienePermiso(sesion, 'catalogo.administrar');
 
-  // 2. Conversaciones de WhatsApp
+  const puedeReportes = !sesion || puedeVerNetoYMargen(sesion);
+
+  for (const accion of ACCIONES_RAPIDAS) {
+    if (accion.id === 'act-config' && !puedeAdministrar) {
+      continue;
+    }
+    if (accion.id === 'act-reportes' && !puedeReportes) {
+      continue;
+    }
+    items.push(accion);
+  }
+
+  // 2. Conversaciones de WhatsApp (restringidas al asesor si no tiene permiso conversaciones.ver_todas)
+  const verTodasConvs = !sesion || puedeVerTodasConversaciones(sesion);
+  const miUsuarioId = sesion?.acceso?.usuarioId ?? sesion?.identidad?.id ?? ID_ASESOR_ACTUAL;
+
   for (const c of MOCK_CONVERSACIONES) {
+    if (!verTodasConvs && c.asignadoAId && c.asignadoAId !== miUsuarioId) {
+      // Excluir conversaciones de otros asesores
+      continue;
+    }
+
     items.push({
       id: `conv-${c.id}`,
       categoria: 'conversaciones',
@@ -136,7 +164,7 @@ export function construirIndiceGlobal(): ResultadoBusqueda[] {
       categoria: 'contactos',
       titulo: ct.nombre || 'Cliente',
       subtitulo: `${ct.telefono} · ${ct.correo || 'Sin correo'}`,
-      href: `/contactos?id=${ct.id}`,
+      href: `/contactos/${ct.id}`,
       etiquetaExtra: ct.etiquetas.join(', '),
     });
   }
@@ -156,7 +184,7 @@ export function construirIndiceGlobal(): ResultadoBusqueda[] {
     });
   }
 
-  // 5. Oportunidades del Pipeline (TableroPipeline.columnas)
+  // 5. Oportunidades del Pipeline (TableroPipeline.columnas) con Destino indexado
   const tablero = obtenerMockTableroPipeline();
   const oportunidades = tablero.columnas.flatMap((col) => col.oportunidades);
   for (const op of oportunidades) {
@@ -168,7 +196,7 @@ export function construirIndiceGlobal(): ResultadoBusqueda[] {
       id: `oport-${op.id}`,
       categoria: 'oportunidades',
       titulo: op.titulo,
-      subtitulo: `${op.contactoNombre} · $${valorCop} ${moneda}`,
+      subtitulo: `${op.contactoNombre || 'Cliente'}${op.destino ? ` · ${op.destino}` : ''} · $${valorCop} ${moneda}`,
       href: `/pipeline?op=${op.id}`,
       etiquetaExtra: op.etapa.nombre,
     });
@@ -203,13 +231,17 @@ export function construirIndiceGlobal(): ResultadoBusqueda[] {
 
 /**
  * Ejecuta búsqueda omnicanal agrupada por categoría con límite configurable y filtro opcional.
+ * Encuentra por nombre, teléfono y destino sin exponer más de lo que el rol puede ver (T-103).
  */
 export function buscarEnIndiceGlobal(
   query: string,
-  indice: ResultadoBusqueda[] = construirIndiceGlobal(),
+  indiceOpcional?: ResultadoBusqueda[],
   limitePorCategoria = 4,
   filtroCategoria?: CategoriaBusqueda | 'todos',
+  sesion?: SesionActual | null,
 ): Record<CategoriaBusqueda, ResultadoBusqueda[]> {
+  const indice = indiceOpcional ?? construirIndiceGlobal(sesion);
+
   const vacio: Record<CategoriaBusqueda, ResultadoBusqueda[]> = {
     acciones: [],
     conversaciones: [],
@@ -227,12 +259,13 @@ export function buscarEnIndiceGlobal(
         .filter((item) => item.categoria === filtroCategoria)
         .slice(0, limitePorCategoria * 2);
     } else {
-      vacio.acciones = ACCIONES_RAPIDAS.slice(0, 6);
+      vacio.acciones = indice.filter((item) => item.categoria === 'acciones').slice(0, 6);
     }
     return vacio;
   }
 
   const palabras = qLimpia.split(/\s+/).filter(Boolean);
+  const digitosQuery = qLimpia.replace(/\D/g, '');
 
   for (const item of indice) {
     if (filtroCategoria && filtroCategoria !== 'todos' && item.categoria !== filtroCategoria) {
@@ -242,9 +275,14 @@ export function buscarEnIndiceGlobal(
     const textoAlineado = normalizarTexto(
       `${item.titulo} ${item.subtitulo} ${item.etiquetaExtra || ''}`,
     );
+    const digitosItem = (item.subtitulo + ' ' + item.titulo).replace(/\D/g, '');
 
-    const coincide = palabras.every((palabra) => textoAlineado.includes(palabra));
-    if (coincide) {
+    // Coincide por palabras de texto (nombre, destino, código)
+    const coincideTexto = palabras.every((palabra) => textoAlineado.includes(palabra));
+    // Coincide por secuencia de dígitos telefónicos si se buscan al menos 4 dígitos
+    const coincideTelefono = digitosQuery.length >= 4 && digitosItem.includes(digitosQuery);
+
+    if (coincideTexto || coincideTelefono) {
       const limite =
         filtroCategoria && filtroCategoria !== 'todos'
           ? limitePorCategoria * 3
