@@ -559,7 +559,10 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: backlog
+    status: done
+    started_at: 2026-10-28T07:35:00.000Z
+    done_at: 2026-10-28T07:50:00.000Z
+    evidence: "Contratos canónicos TipoCampoPersonalizado, DefinicionCampoPersonalizado y ValorCampoPersonalizado en packages/contracts sin redefinición (R3). BloqueCamposPersonalizados en Configuración para contactos y oportunidades con modal accesible (useFocoModal). SeccionCamposPersonalizados en ficha de contacto y ficha de viajero/oportunidad en bandeja. Tests en contracts, lib y components (70 suites y 589 tests web en verde)."
     depends_on:
       - T-016
     acceptance:
