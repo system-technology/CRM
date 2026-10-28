@@ -14,7 +14,7 @@ import React, { Suspense, useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useModoDemo } from '../../lib/modo-demo';
-import { Calculator, Compass, Copy, Check, AlertCircle, Bookmark, Ship } from 'lucide-react';
+import { Calculator, Compass, Copy, Check, AlertCircle, Bookmark, Ship, Users } from 'lucide-react';
 import { requiereAvisoImpuestoMuelle } from '../../lib/cotizador-logica';
 import type {
   Acomodacion,
@@ -93,7 +93,7 @@ function ContenidoCotizador() {
   const [infantes, setInfantes] = useState(0);
 
   // Parámetros modo mock / v1
-  const [acomodacionMock] = useState<Acomodacion | ''>('');
+  const [acomodacionMock, setAcomodacionMock] = useState<Acomodacion | ''>('');
   const [markupExtraMock] = useState(0);
 
   // Respuestas y Estados
@@ -697,6 +697,31 @@ function ContenidoCotizador() {
                       )}
                     </div>
 
+                    {/* Selector de Acomodación en modo demostración */}
+                    {!usarReal && (
+                      <div className="border-t border-neutral-100 pt-4 dark:border-neutral-800">
+                        <label
+                          htmlFor="select-acomodacion-mock"
+                          className="block text-xs font-semibold text-neutral-700 dark:text-neutral-300"
+                        >
+                          Acomodación
+                        </label>
+                        <select
+                          id="select-acomodacion-mock"
+                          aria-label="Acomodación"
+                          value={acomodacionMock}
+                          onChange={(e) => setAcomodacionMock(e.target.value as Acomodacion | '')}
+                          className="mt-1.5 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white p-2.5 text-xs text-neutral-900 shadow-2xs focus:border-purple-600 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                        >
+                          <option value="">Sugerida automáticamente</option>
+                          <option value="SENCILLA">Sencilla (1 persona)</option>
+                          <option value="DOBLE">Doble (2 personas)</option>
+                          <option value="TRIPLE">Triple (3 personas)</option>
+                          <option value="CUADRUPLE">Cuádruple (4 personas)</option>
+                        </select>
+                      </div>
+                    )}
+
                     {/* Alternador modo Real / Mock */}
                     <div className="pt-2">
                       <button
@@ -853,6 +878,24 @@ function ContenidoCotizador() {
                               directamente en taquilla antes de abordar la embarcación (aprox.
                               $26.500 COP por persona en taquilla del muelle de La Bodeguita /
                               puntos de zarpe). No está incluida en el valor del tour.
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Aviso de Plazas Sin Usar */}
+                        {cotizacionMock.plazasSinUsar > 0 && (
+                          <div
+                            data-testid="aviso-plazas-sin-usar"
+                            role="note"
+                            className="mt-4 flex items-start gap-3 rounded-xl border border-amber-300 bg-amber-50/90 p-3.5 text-xs text-amber-900 shadow-2xs dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-200"
+                          >
+                            <Users className="mt-0.5 h-4 w-4 shrink-0 text-amber-700 dark:text-amber-400" />
+                            <div>
+                              <span className="font-bold">Aviso de acomodación:</span>{' '}
+                              {cotizacionMock.plazasSinUsar === 1
+                                ? '1 plaza sin usar, se paga igual'
+                                : `${cotizacionMock.plazasSinUsar} plazas sin usar, se pagan igual`}
+                              {' '}debido a la distribución en habitaciones {cotizacionMock.acomodacion.toLowerCase()}s.
                             </div>
                           </div>
                         )}
