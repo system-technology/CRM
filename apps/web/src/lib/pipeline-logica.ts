@@ -108,9 +108,66 @@ export function esTareaAtrasada(venceEn: string | null): boolean {
 }
 
 /**
+ * Suma dos valores Dinero en enteros según R8 (sin coma flotante ni mezclar monedas).
+ */
+export function sumarDinero(base: Dinero | null, delta: Dinero | null): Dinero | null {
+  if (!delta) return base;
+  if (!base) return delta;
+  if (base.moneda !== delta.moneda) {
+    // Si difieren las monedas, no se mezclan directamente (R8)
+    return base;
+  }
+  const total = BigInt(base.unidades) + BigInt(delta.unidades);
+  return {
+    unidades: total.toString(),
+    moneda: base.moneda,
+  };
+}
+
+/**
+ * Resta dos valores Dinero en enteros según R8 (sin coma flotante ni resultados negativos).
+ */
+export function restarDinero(base: Dinero | null, delta: Dinero | null): Dinero | null {
+  if (!delta) return base;
+  if (!base) return null;
+  if (base.moneda !== delta.moneda) {
+    return base;
+  }
+  const resta = BigInt(base.unidades) - BigInt(delta.unidades);
+  const total = resta < 0n ? 0n : resta;
+  return {
+    unidades: total.toString(),
+    moneda: base.moneda,
+  };
+}
+
+/**
+ * Calcula dinámicamente la suma del valor estimado de una lista de oportunidades para una moneda dada (R8).
+ */
+export function calcularTotalColumna(
+  oportunidades: Oportunidad[],
+  moneda: 'COP' | 'USD' | 'EUR' | 'MXN' = 'COP',
+): Dinero {
+  let acumulado = 0n;
+  for (const op of oportunidades) {
+    if (op.valorEstimado && op.valorEstimado.moneda === moneda) {
+      try {
+        acumulado += BigInt(op.valorEstimado.unidades);
+      } catch {
+        // Ignorar posibles valores no enteros
+      }
+    }
+  }
+  return {
+    unidades: acumulado.toString(),
+    moneda,
+  };
+}
+
+/**
  * Mueve una oportunidad dentro de la estructura inmutable del TableroPipeline.
  * Valida estrictamente la operación con el esquema MoverOportunidad de @viajapro/contracts (R3).
- * Invariante: No recalcula sumas en cliente (los totales de servidor se conservan).
+ * Invariante: Recalcula total numérico y valor monetario entero (R8) tanto en columna origen como destino.
  */
 export function moverOportunidadEnTablero(
   tablero: TableroPipeline,
@@ -163,22 +220,26 @@ export function moverOportunidadEnTablero(
     notaPerdida: movValidado.notaPerdida,
   });
 
-  // Retornar nuevo TableroPipeline inmutable
+  // Retornar nuevo TableroPipeline inmutable con totales y valores monetarios recalculados (R8)
   const nuevasColumnas = tablero.columnas.map((col) => {
-    // Si es la columna origen, remover la tarjeta y decrementar contador
+    // Si es la columna origen, remover la tarjeta, decrementar contador y restar valorTotal
     if (col.etapa.id === etapaOrigen.id && col.etapa.id !== etapaDestino.id) {
       return {
         ...col,
         total: Math.max(0, col.total - 1),
+        valorTotal: restarDinero(col.valorTotal, tarjetaEncontrada.valorEstimado),
         oportunidades: col.oportunidades.filter((op) => op.id !== oportunidadId),
       };
     }
 
-    // Si es la columna destino, agregar la tarjeta actualizada al inicio e incrementar contador
+    // Si es la columna destino, agregar la tarjeta actualizada al inicio, incrementar contador y sumar valorTotal
     if (col.etapa.id === etapaDestino.id && col.etapa.id !== etapaOrigen.id) {
       return {
         ...col,
         total: col.total + 1,
+        valorTotal: col.valorTotal
+          ? sumarDinero(col.valorTotal, tarjetaEncontrada.valorEstimado)
+          : tarjetaEncontrada.valorEstimado,
         oportunidades: [tarjetaActualizada, ...col.oportunidades],
       };
     }
