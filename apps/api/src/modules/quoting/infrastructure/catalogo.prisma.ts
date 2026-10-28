@@ -106,7 +106,7 @@ export class CatalogoPrisma extends CatalogoPersistente {
   }
 
   async leer(): Promise<CatalogoActual> {
-    const [paquetes, mayoristas, definiciones, formatos] = await Promise.all([
+    const [paquetes, mayoristas, definiciones, formatos, monedas] = await Promise.all([
       this.tx.paquete.findMany({
         where: { eliminadoEn: null },
         orderBy: { id: 'asc' },
@@ -133,11 +133,14 @@ export class CatalogoPrisma extends CatalogoPersistente {
         where: { tenantId: this.tenantId },
         select: { nombre: true },
       }),
+      // Tabla global de referencia (sin `tenant_id`, `viajapro_app` solo la lee): no lleva where.
+      this.tx.moneda.findMany({ select: { codigoIso: true } }),
     ]);
 
     return {
       mayoristas: mayoristas.map((m) => m.nombre),
       formatos: formatos.map((f) => f.nombre),
+      monedas: monedas.map((m) => m.codigoIso),
       definicionesDePaquete: definiciones.map((d) => ({
         clave: d.clave,
         tipo: d.tipo,
