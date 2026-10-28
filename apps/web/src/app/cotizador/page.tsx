@@ -908,12 +908,12 @@ function ContenidoCotizador() {
                           </table>
                         </div>
 
-                        <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-neutral-100 pt-4 dark:border-neutral-800">
+                        <div className="mt-6 flex flex-col flex-wrap items-stretch justify-between gap-3 border-t border-neutral-100 pt-4 sm:flex-row sm:items-center dark:border-neutral-800">
                           <button
                             type="button"
                             onClick={() => setModalGuardarAbierto(true)}
                             disabled={guardandoCotizacion}
-                            className="flex min-h-[44px] items-center gap-2 rounded-xl bg-purple-700 px-4 py-2.5 text-xs font-bold text-white shadow-xs transition-colors hover:bg-purple-800"
+                            className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-purple-700 px-4 py-2.5 text-xs font-bold text-white shadow-xs transition-colors hover:bg-purple-800 sm:w-auto"
                           >
                             <Bookmark className="h-4 w-4" />
                             <span>Guardar Cotización Oficial</span>
@@ -921,7 +921,7 @@ function ContenidoCotizador() {
                           <button
                             type="button"
                             onClick={copiarPropuestaWhatsApp}
-                            className="bg-ok-600 hover:bg-ok-700 flex min-h-[44px] items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold text-white shadow-xs transition-colors"
+                            className="bg-ok-600 hover:bg-ok-700 flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold text-white shadow-xs transition-colors sm:w-auto"
                           >
                             {copiado ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                             <span>

@@ -916,7 +916,7 @@ export default function BandejaConversacionPage() {
                       <button
                         type="button"
                         onClick={() => setModoNota(false)}
-                        className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                        className={`flex min-h-[40px] items-center rounded-md px-2.5 py-1 text-xs font-medium transition-colors sm:min-h-[32px] ${
                           !modoNota
                             ? 'bg-white font-semibold text-neutral-900 shadow-2xs dark:bg-neutral-700 dark:text-neutral-100'
                             : 'text-neutral-600 hover:text-neutral-900 dark:text-neutral-400'
@@ -927,7 +927,7 @@ export default function BandejaConversacionPage() {
                       <button
                         type="button"
                         onClick={() => setModoNota(true)}
-                        className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                        className={`flex min-h-[40px] items-center rounded-md px-2.5 py-1 text-xs font-medium transition-colors sm:min-h-[32px] ${
                           modoNota
                             ? 'bg-amber-400 font-bold text-amber-950 shadow-2xs'
                             : 'text-neutral-600 hover:text-neutral-900 dark:text-neutral-400'
@@ -940,7 +940,7 @@ export default function BandejaConversacionPage() {
                     <button
                       type="button"
                       onClick={() => setSugerenciasAbierto((p) => !p)}
-                      className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-semibold transition-colors ${
+                      className={`flex min-h-[40px] items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-semibold transition-colors sm:min-h-[32px] ${
                         sugerenciasAbierto
                           ? 'border-purple-300 bg-purple-100 text-purple-900 dark:border-purple-800 dark:bg-purple-950 dark:text-purple-200'
                           : 'border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-100 dark:border-purple-900/60 dark:bg-purple-950/40 dark:text-purple-300'
@@ -991,7 +991,8 @@ export default function BandejaConversacionPage() {
                   <button
                     type="submit"
                     disabled={enviando || conversacionRetirada || !textoMensaje.trim()}
-                    className={`self-end rounded-lg px-4 py-2.5 text-xs font-semibold text-white shadow-2xs disabled:opacity-50 ${
+                    aria-label="Enviar mensaje"
+                    className={`flex min-h-[44px] min-w-[44px] items-center justify-center self-end rounded-lg px-4 py-2.5 text-xs font-semibold text-white shadow-2xs disabled:opacity-50 ${
                       modoNota
                         ? 'bg-amber-600 hover:bg-amber-700'
                         : 'bg-acento-700 hover:bg-acento-800'

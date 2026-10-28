@@ -1,3 +1,51 @@
+# Entrega — T-023: Revisión a 375 px de bandeja, pipeline, cotizador y catálogo con correcciones — 2026-10-28
+
+## Identificación
+- **Tarea:** `T-023` (roadmap/tasks.yaml)
+- **Rama:** `b/T-023-revision-375px-movil`
+- **Carril:** `b` (Frontend / Web)
+
+## Qué se construyó y auditó
+
+1. **Garantía de Cero Desbordamiento Horizontal a 375 px (Viewport Móvil Estricto):**
+   - **Bandeja (`/bandeja` y `/bandeja/[id]`):**
+     - Contención de layout flex/grid con `w-full max-w-full overflow-hidden`.
+     - `BarraModulos`: los enlaces en la barra colapsada y botones operativos tienen touch targets de 44 px (`min-h-[44px] min-w-[44px]`, `h-11 w-11`).
+     - `ListaConversaciones`: selector de densidad y pestañas de filtro optimizados para mobile touch targets (`min-h-[44px]`).
+     - Detalle de conversación: botones de notas, sugerencias y botón de envío (`min-h-[44px] min-w-[44px]`) con área de interacción táctil cómoda sin solapamientos.
+   - **Pipeline (`/pipeline`):**
+     - Botones de alternancia de vista (Kanban / Tabla) con `min-h-[44px]`.
+     - Contenedor Kanban con espaciado móvil adaptativo (`p-3 sm:p-6 space-x-3 sm:space-x-4`).
+     - Vista de tabla envuelta en contenedor con `overflow-x-auto rounded-2xl` y `min-w-[680px]` para garantizar scroll interno de datos tabulares sin romper el viewport general de 375 px.
+   - **Cotizador (`/cotizador`):**
+     - `DesgloseCotizacionSalida`: botones de acción principales («Guardar Oficial» y «Copiar Propuesta para WhatsApp») adaptados a disposición apilada móvil `flex-col sm:flex-row w-full sm:w-auto min-h-[44px]` con touch target completo.
+     - Barra de acciones inferior del cotizador con botones expandidos `w-full sm:w-auto min-h-[44px]`.
+   - **Catálogo (`/catalogo`):**
+     - Acciones de cabecera («Importar archivo CSV» e «Ir al Cotizador») en disposición vertical en pantallas angostas con `w-full sm:w-auto min-h-[44px]`.
+     - Barra de pestañas con desplazamiento horizontal seguro (`overflow-x-auto shrink-0 min-h-[44px]`).
+     - `TarjetaSalidaPublicada`: botón de cotizar adaptativo con texto conciso en móvil («Cotizar» vs «Cotizar esta salida») y touch targets `>= 44px`.
+
+2. **Auditoría de Viewports a 375 px y 1280 px:**
+   - **375 px (Mobile Portrait):**
+     - Ancho total de pantalla sin scroll horizontal no deseado en ninguna de las cuatro vistas.
+     - Elementos interactivos táctiles cumplen el estándar WCAG 2.5.5 / 2.5.8 (mínimo 44 × 44 px).
+     - Formularios, selects y campos de entrada con tipografía >= 16px para prevenir auto-zoom en iOS Safari.
+   - **1280 px (Desktop Standard):**
+     - Disposición multi-columna (Bandeja con 3 columnas: módulos, lista, conversación/ficha; Pipeline Kanban completo; Cotizador con panel lateral; Catálogo en grid responsive de 3 columnas).
+
+3. **Pruebas Automatizadas:**
+   - Creada suite `apps/web/src/components/comun/revision-375px.spec.tsx` verificando dimensiones y clases de touch target en los componentes clave.
+   - 66 archivos de prueba pasados, 566 pruebas unitarias en verde.
+
+## Verificación de Compuertas
+- **Pruebas unitarias (@viajapro/web):** 66 suites, 566 pruebas en verde.
+- **Typecheck:** 9/9 paquetes en verde.
+- **Linter:** 7/7 paquetes en verde.
+- **Compilación de producción (Next.js):** 18/18 rutas estáticas y dinámicas compiladas exitosamente.
+- **Fronteras y ganchos de seguridad (`pnpm test:hooks`):** 59/59 casos de política de rama, 19/19 detección de secretos, 6/6 fronteras de módulos.
+
+---
+
 # Entrega — T-022: Auditoría de formatos es-CO: dinero, fechas, teléfonos y cupos con helpers únicos — 2026-10-26
 
 ## Identificación
