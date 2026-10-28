@@ -1855,7 +1855,7 @@ tasks:
     phase: 1
     priority: P0
     effort: M
-    status: backlog
+    status: done
     depends_on: []
     acceptance:
       - Endpoints para crear y editar contacto con teléfono E.164 y para crear oportunidad ligada a la
@@ -1865,6 +1865,12 @@ tasks:
       - apps/api/src/modules/crm/
     source: ruta a la fase 1 (roadmap v3) 2026-10-27
     created_at: 2026-10-28T01:47:57.807Z
+    started_at: 2026-10-28T03:17:14.980Z
+    done_at: 2026-10-28T03:17:14.980Z
+    evidence: "Mergeado en main por el PR #103 (rama a/T-075-contacto-oportunidad-y-seguimientos) con el CI en
+      verde: format, analyze, tests y los demás checks obligatorios. Cierre automático
+      (.github/workflows/cerrar-tarea.yml)."
+    commit: 9d2f4660122a215b80610e9dae325913e5fa8abb
   - id: T-076
     title: Pantalla de contacto y botón «Crear oportunidad» en la conversación
     type: feature
