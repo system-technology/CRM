@@ -1,3 +1,52 @@
+# Entrega — T-026: Campos personalizados por agencia en la ficha del contacto y en las oportunidades — 2026-10-28
+
+## Identificación
+- **Tarea:** `T-026` (roadmap/tasks.yaml)
+- **Rama:** `b/T-026-campos-personalizados`
+- **Carril:** `b` (Frontend / Web)
+
+## Qué se construyó y auditó
+
+1. **Contratos Zod Centralizados (Regla R3):**
+   - Incorporados esquemas canónicos en `packages/contracts/src/crm.ts`: `TipoCampoPersonalizado` (`texto`, `numero`, `fecha`, `lista`), `EntidadCampoPersonalizado` (`contacto`, `oportunidad`), `DefinicionCampoPersonalizado` y `ValorCampoPersonalizado`.
+   - Pruebas de contrato añadidas en `packages/contracts/src/crm.spec.ts` (3 tests adicionales, 88 tests en verde).
+   - Ningún tipo redefinido en frontend: la web importa directamente desde `@viajapro/contracts`.
+
+2. **Bloque «Campos Personalizados» en Configuración (`BloqueCamposPersonalizados`):**
+   - Creado en `apps/web/src/components/configuracion/bloque-campos-personalizados.tsx` y montado en `apps/web/src/app/configuracion/page.tsx` (pestaña `campos`).
+   - Pestañas interactivas para alternar entre campos de «Viajeros / Contactos» y «Oportunidades Comerciales».
+   - Modal accesible para creación de nuevos campos con gestión de foco (`useFocoModal`, WCAG 2.1.2 / 2.4.3), validación de nombres y claves normalizadas (`normalizarClaveCampo`).
+   - Soporte de los 4 tipos de datos: texto, número, fecha y lista con opciones delimitadas por coma.
+   - Eliminación interactiva con aviso accesible y feedback visual.
+
+3. **Sección y Edición en Ficha de Contacto y Oportunidad (`SeccionCamposPersonalizados`):**
+   - Creado componente `apps/web/src/components/contactos/seccion-campos-personalizados.tsx`.
+   - Integrado en `apps/web/src/components/contactos/ficha-detalle-contacto.tsx` (detalle de viajero).
+   - Integrado en `apps/web/src/components/bandeja/ficha-cliente.tsx` tanto para atributos del contacto como para atributos de la oportunidad viva.
+   - Validación tipada por tipo de dato en vivo antes de guardar con feedback de error en línea (`validarValorCampoPersonalizado`).
+   - Persistencia local resiliente y callback `onGuardar` desacoplado.
+
+4. **Petición para carril backend (si aplica):**
+   - Exponer endpoints `GET/POST/PUT/DELETE /api/v1/crm/campos-personalizados` y persistencia en columnas JSONB o tabla asociada por tenant `tenant_id` (R1) para almacenamiento en base de datos.
+
+5. **Pruebas y Verificación:**
+   - `packages/contracts/src/crm.spec.ts`: 28 tests en verde.
+   - `apps/web/src/lib/campos-personalizados-logica.spec.ts`: 7 tests en verde.
+   - `apps/web/src/components/configuracion/bloque-campos-personalizados.spec.tsx`: 5 tests en verde.
+   - `apps/web/src/components/contactos/seccion-campos-personalizados.spec.tsx`: 2 tests en verde.
+   - Total `@viajapro/web`: 70 suites, 589 tests en verde.
+   - Typecheck (9/9), Linter (7/7) y Next.js build (18 rutas) 100% en verde.
+
+## Verificación de Compuertas
+- **Pruebas unitarias (@viajapro/web):** 70 suites, 589 pruebas en verde.
+- **Pruebas unitarias (@viajapro/contracts):** 6 suites, 88 pruebas en verde.
+- **Typecheck:** 9/9 paquetes en verde.
+- **Linter:** 7/7 paquetes en verde.
+- **Compilación de producción (Next.js):** 18/18 rutas estáticas y dinámicas compiladas exitosamente.
+- **Fronteras y ganchos de seguridad (`pnpm test:hooks`):** 59/59 casos de política de rama, 19/19 detección de secretos, 6/6 fronteras de módulos.
+
+---
+
 # Entrega — T-025: Etapas del pipeline configurables por la agencia — 2026-10-28
 
 ## Identificación

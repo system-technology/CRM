@@ -21,6 +21,7 @@ import {
   EtapaDefinida,
   MoverOportunidad,
   Oportunidad,
+  DefinicionCampoPersonalizado,
   type MotivoPerdida,
 } from './crm.js';
 
@@ -219,5 +220,44 @@ describe('CrearSeguimiento (T-077)', () => {
     expect(
       CrearSeguimiento.safeParse({ ...base, venceEn: '2026-10-28', oportunidadId: OP }).success,
     ).toBe(false);
+  });
+});
+
+describe('DefinicionCampoPersonalizado (T-026)', () => {
+  it('valida una definición de campo personalizada completa para contacto', () => {
+    const res = DefinicionCampoPersonalizado.safeParse({
+      id: 'campo-1',
+      entidad: 'contacto',
+      nombre: 'Número de Pasaporte',
+      clave: 'numero_pasaporte',
+      tipo: 'texto',
+      requerido: false,
+      descripcion: 'Documento internacional para reservas',
+    });
+    expect(res.success).toBe(true);
+  });
+
+  it('valida una definición de campo de tipo lista con opciones', () => {
+    const res = DefinicionCampoPersonalizado.safeParse({
+      id: 'campo-2',
+      entidad: 'oportunidad',
+      nombre: 'Flexibilidad de Fechas',
+      clave: 'flexibilidad_fechas',
+      tipo: 'lista',
+      opciones: ['Fechas Exactas', 'Flexible +/- 3 días'],
+      requerido: true,
+    });
+    expect(res.success).toBe(true);
+  });
+
+  it('rechaza tipos de dato no admitidos', () => {
+    const res = DefinicionCampoPersonalizado.safeParse({
+      id: 'campo-3',
+      entidad: 'contacto',
+      nombre: 'Campo Invalido',
+      clave: 'campo_invalido',
+      tipo: 'archivo_binario',
+    });
+    expect(res.success).toBe(false);
   });
 });
