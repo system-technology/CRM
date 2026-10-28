@@ -39,6 +39,10 @@ export default {
         headers: [
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+          // HSTS: el navegador ignora la cabecera sobre http (desarrollo local); en https fuerza TLS.
+          { key: 'Strict-Transport-Security', value: 'max-age=31536000; includeSubDomains' },
+          // Permissions-Policy minima: la app no usa camara, microfono ni geolocalizacion.
+          { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
         ],
       },
     ];
