@@ -14,17 +14,23 @@ export { obtenerBaseApi };
 import {
   type AnadirVersionACotizacion,
   type CotizacionGuardada,
+  type EstadoCotizacion,
   type GuardarCotizacion,
   type VersionDeCotizacion,
   type ListarCotizaciones,
   type PaginaDeCotizaciones,
   AnadirVersionACotizacion as EsquemaAnadirVersionACotizacion,
+  CambiarEstadoDeCotizacion as EsquemaCambiarEstadoDeCotizacion,
   CotizacionGuardada as EsquemaCotizacionGuardada,
   GuardarCotizacion as EsquemaGuardarCotizacion,
   PaginaDeCotizaciones as EsquemaPaginaDeCotizaciones,
   ErrorApi as EsquemaError,
 } from '@viajapro/contracts';
 import { cotizacionGuardadaAFila, paginarPorCursor } from './cotizaciones-listado-logica';
+import {
+  duplicarVersionComoComposicion,
+  duplicarCotizacionComoEntrada,
+} from './cotizaciones-logica';
 import {
   guardarMockCotizacion,
   obtenerMockCotizacionPorId,
@@ -406,4 +412,84 @@ export async function listarCotizacionesApi(
   );
 
   return paginarPorCursor(filas, params?.cursor, params?.limite ?? 25);
+}
+
+/**
+ * Cambia el estado del ciclo de vida de una cotización.
+ * POST /api/v1/cotizaciones/:id/estado
+ */
+export async function cambiarEstadoCotizacionApi(
+  cotizacionId: string,
+  nuevoEstado: EstadoCotizacion,
+): Promise<CotizacionGuardada> {
+  const validado = EsquemaCambiarEstadoDeCotizacion.parse({ estado: nuevoEstado });
+
+  if (estaUsandoApiReal()) {
+    const respuesta = await pedirCotizaciones<unknown>(
+      `/api/v1/cotizaciones/${cotizacionId}/estado`,
+      {
+        method: 'POST',
+        body: JSON.stringify(validado),
+      },
+    );
+    return EsquemaCotizacionGuardada.parse(respuesta);
+  }
+
+  const cotizacion = obtenerMockCotizacionPorId(cotizacionId);
+  if (!cotizacion) {
+    throw new CotizacionesApiError(
+      'COTIZACION_NO_ENCONTRADA',
+      `La cotización ${cotizacionId} no existe.`,
+      404,
+    );
+  }
+
+  const ahora = new Date().toISOString();
+  const actualizada: CotizacionGuardada = {
+    ...cotizacion,
+    estado: nuevoEstado,
+    enviadaEn: nuevoEstado === 'ENVIADA' ? ahora : cotizacion.enviadaEn,
+    versionEnviada:
+      nuevoEstado === 'ENVIADA'
+        ? (cotizacion.versionEnviada ??
+          cotizacion.versiones[cotizacion.versiones.length - 1]!.numero)
+        : cotizacion.versionEnviada,
+    actualizadaEn: ahora,
+  };
+
+  guardarMockCotizacion(actualizada);
+  return EsquemaCotizacionGuardada.parse(actualizada);
+}
+
+/**
+ * Duplica la versión especificada como la versión siguiente (N+1) en la misma cotización.
+ */
+export async function duplicarVersionCotizacionApi(
+  cotizacionId: string,
+  versionNumero: number,
+): Promise<CotizacionGuardada> {
+  const cotizacion = await obtenerCotizacionGuardadaApi(cotizacionId);
+  const version = cotizacion.versiones.find((v) => v.numero === versionNumero);
+  if (!version) {
+    throw new CotizacionesApiError(
+      'VERSION_NO_ENCONTRADA',
+      `La versión ${versionNumero} no existe en la cotización.`,
+      404,
+    );
+  }
+
+  const cuerpo = duplicarVersionComoComposicion(version);
+  return await anadirVersionCotizacionApi(cotizacionId, cuerpo);
+}
+
+/**
+ * Duplica una cotización completa con su última versión como una nueva cotización en BORRADOR.
+ */
+export async function duplicarCotizacionApi(
+  cotizacionId: string,
+  tituloNuevo?: string,
+): Promise<CotizacionGuardada> {
+  const cotizacion = await obtenerCotizacionGuardadaApi(cotizacionId);
+  const cuerpo = duplicarCotizacionComoEntrada(cotizacion, undefined, tituloNuevo);
+  return await guardarCotizacionApi(cuerpo);
 }
