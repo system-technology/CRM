@@ -1,3 +1,44 @@
+# Entrega — T-110: Notificaciones en la web: aviso de mensaje nuevo, seguimiento vencido y cotización por vencer, con preferencia por asesor — 2026-10-28
+
+## Identificación
+- **Tarea:** `T-110` (roadmap/tasks.yaml)
+- **Rama:** `b/T-110-notificaciones-web`
+- **Carril:** `b` (Frontend / Web)
+
+## Qué se construyó y auditó
+
+1. **Gestión de Preferencias por Asesor (`preferencias-notificaciones.ts`):**
+   - Invariante de consentimiento: sonido de campana y notificaciones de escritorio desactivados por defecto (`sonidoHabilitado: false`, `navegadorHabilitado: false`); solo se activan por decisión expresa del asesor.
+   - Síntesis nativa de audio con Web Audio API: oscilador dual suave en Do5 (523.25 Hz) y Mi5 (659.25 Hz), con caída exponencial, sin archivos `.mp3` ni dependencias externas.
+   - Solicitud accesible de permiso nativo de notificaciones (`Notification.requestPermission()`).
+   - Invariante R10 / Cero PII en títulos: `TITULOS_SEGUROS_NOTIFICACION` define títulos estrictamente genéricos y sanitizados («Nuevo mensaje de WhatsApp», «Seguimiento comercial vencido», «Cotización próxima a vencer»), prohibiendo nombres o teléfonos en las alertas de escritorio.
+
+2. **Lógica de Agregación y Canal de Tiempo Real (`notificaciones-web.ts`):**
+   - Definición del modelo unificado `NotificacionWeb` con tipos: `'mensaje_nuevo'`, `'seguimiento_vencido'`, `'cotizacion_por_vencer'`, `'alerta_operativa'`.
+   - `procesarEventoSocketNotificacion`: escucha eventos entrantes de Socket.IO (`MENSAJE_NUEVO` con dirección `ENTRANTE`), inyecta la notificación en tiempo real y dispara sonido/notificación de escritorio si el asesor las tiene activas.
+   - `generarNotificacionesIniciales`: combina pendientes de la API CRM (`obtenerPendientesDelDiaApi`), cotizaciones próximas a vencer y alertas operativas previas.
+   - Funciones inmutables puras de estado: `contarNotificacionesNoLeidas`, `marcarNotificacionLeida`, `marcarTodasNotificacionesLeidas`, `descartarNotificacion` y `adaptarAlertaOperativaANotificacion`.
+
+3. **Panel Desplegable Interactivo de Notificaciones (`PanelNotificaciones`):**
+   - Cabecera con contador de pendientes, acceso a ajustes de asesor, marcar todas leídas y cierre accesible (Esc / botón).
+   - Sección colapsable de preferencias del asesor con interruptores accesibles para sonido y notificaciones de escritorio, distintivo de garantía R10 y botón «Probar» para verificar el sonido sintetizado.
+   - Filtros por categoría: Todas, WhatsApp, Seguimientos, Cotizaciones, Operativas.
+   - Tarjetas de notificación con icono por tipo, distintivo no leído, detalle, acción contextual directa con navegación segura (`accionTexto`, `href`) y botón descartar.
+
+4. **Integración Global en BarraModulos (`barra-modulos.tsx`):**
+   - Suscripción limpia al canal Socket.IO (`inboxSocketManager.suscribirEvento`) con desuscripción al desmontar.
+   - Indicador visual de campana con contador dinámico e indicador ping animado.
+   - Integración dual: campana en barra lateral de escritorio (expandida y colapsada) y acceso directo en el popover de perfil accesible en móviles.
+
+5. **Verificación y Calidad:**
+   - 4 suites de prueba directamente asociadas (`preferencias-notificaciones.spec.ts`, `notificaciones-web.spec.ts`, `panel-notificaciones.spec.tsx`, `barra-modulos.spec.tsx`) con 48 tests en verde.
+   - 107 suites y 863 tests en verde en `@viajapro/web`.
+   - `pnpm typecheck` limpio en los 5 paquetes del monorepo.
+   - `pnpm lint` limpio (0 errores).
+   - `pnpm test:hooks` limpio (59/59 políticas de rama, 19/19 secretos, 6/6 fronteras).
+
+---
+
 # Entrega — T-109: Estados de sistema consistentes: página 404, error global, sin conexión y sesión expirada — 2026-10-28
 
 ## Identificación

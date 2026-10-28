@@ -50,6 +50,8 @@ vi.mock('../../lib/inbox-socket', () => ({
   useInboxSocket: () => 'conectado',
   inboxSocketManager: {
     suscribir: vi.fn(() => () => {}),
+    suscribirEvento: vi.fn(() => () => {}),
+    desconectar: vi.fn(),
   },
 }));
 
