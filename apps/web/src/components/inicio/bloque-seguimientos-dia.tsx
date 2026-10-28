@@ -301,6 +301,20 @@ export function BloqueSeguimientosDia({
           })}
         </div>
       )}
+
+      {/* Pie con enlace a todos los seguimientos */}
+      <div className="mt-4 flex items-center justify-between border-t border-neutral-100 pt-3 dark:border-neutral-800">
+        <span className="text-xs text-neutral-500 dark:text-neutral-400">
+          {totalPendientes} compromisos en agenda
+        </span>
+        <Link
+          href="/seguimientos"
+          className="inline-flex min-h-[44px] items-center gap-1.5 text-xs font-bold text-teal-600 hover:text-teal-700 hover:underline dark:text-teal-400"
+        >
+          <span>Ver todos los seguimientos</span>
+          <ExternalLink className="h-3.5 w-3.5" />
+        </Link>
+      </div>
     </section>
   );
 }

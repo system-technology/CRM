@@ -1,3 +1,45 @@
+# Entrega — T-101: Lista de seguimientos del asesor con vencidos, de hoy y próximos, y acción de completar — 2026-10-28
+
+## Identificación
+- **Tarea:** `T-101` (roadmap/tasks.yaml)
+- **Rama:** `b/T-101-lista-seguimientos-asesor`
+- **Carril:** `b` (Frontend / Web)
+
+## Qué se construyó y auditó
+
+1. **Pantalla Principal de Seguimientos (`/seguimientos`):**
+   - Creada página `apps/web/src/app/seguimientos/page.tsx` consumiendo `GET /api/v1/crm/seguimientos` (con fallback de demostración en `mock-crm.ts`) y `POST /api/v1/crm/seguimientos/:id/completar`.
+   - Cabecera con migas de pan accesibles, título de nivel `H1`, resumen descriptivo, botón de recarga con spinner visual y botón de acción principal `+ Agendar Seguimiento` (touch targets `>= 44 px`).
+   - 4 tarjetas KPI con métricas en tiempo real: Vencidos (resaltado en alerta `rose-700`), Para Hoy (`amber-700`), Próximos (`teal-700`) y Completados (`emerald-700`). Cada tarjeta permite alternar el filtro con un clic.
+   - Pestañas de filtrado rápido (`Pendientes`, `Vencidos`, `Hoy`, `Próximos`, `Completados`), cuadro de búsqueda omnicanal (por descripción, cliente u oportunidad) y selector de asesor asignado.
+
+2. **Componente de Tarjeta de Seguimiento (`TarjetaSeguimiento`):**
+   - Creado `apps/web/src/components/seguimientos/tarjeta-seguimiento.tsx` con accesibilidad ARIA, etiquetas semánticas y touch targets mínimos de 44 px.
+   - Resaltado especial de tareas vencidas con borde y fondo suave de alerta (`border-rose-300 bg-rose-50/30`), indicación del retraso acumulado («Venció hace X horas / días»), insignia de urgencia y enlaces directos a la Ficha 360 del contacto (`/contactos/[id]`), la oportunidad en el Pipeline (`/pipeline`) y el chat de WhatsApp (`/bandeja/[id]`).
+   - Botón interactivo de completar con actualización reactiva inmediata (optimista) y control de estados durante la llamada de red (`Loader2`).
+
+3. **Lógica de Categorización y Módulos Conectados:**
+   - Creado módulo de dominio puro `apps/web/src/lib/seguimientos-logica.ts` para clasificar tareas (`VENCIDO`, `HOY`, `PROXIMO`, `COMPLETADO`), calcular métricas consolidadas, filtrar y ordenar según reglas de urgencia (R9).
+   - Actualizado `BloqueSeguimientosDia` (`apps/web/src/components/inicio/bloque-seguimientos-dia.tsx`) incorporando pie de página con enlace accesible `Ver todos los seguimientos` hacia `/seguimientos`.
+   - Enriquecido el almacén `mock-crm.ts` con tareas de prueba para todas las categorías (vencidas, hoy, próximas y completadas).
+
+4. **Pruebas y Verificación:**
+   - Creadas 2 suites de pruebas unitarias:
+     - `apps/web/src/lib/seguimientos-logica.spec.ts` (14 pruebas): clasificación, métricas, ordenación y formateo de vencimientos.
+     - `apps/web/src/app/seguimientos/page.spec.tsx` (9 pruebas): renderizado de cabecera y KPIs, filtrado por pestaña, búsqueda por texto, acción de completar, estados vacío y de error con reintento, y modal de creación de tareas.
+   - Suite total `@viajapro/web`: 81 suites, 653 pruebas en verde.
+   - Typecheck (9/9), Linter (7/7) y Next.js build (23 rutas compiladas) 100% en verde.
+   - Ganchos y fronteras (`pnpm test:hooks`): 59/59, 19/19, 6/6 en verde.
+
+## Verificación de Compuertas
+- **Pruebas unitarias (@viajapro/web):** 81 suites, 653 pruebas en verde.
+- **Typecheck:** 9/9 paquetes en verde.
+- **Linter:** 7/7 paquetes en verde.
+- **Compilación de producción (Next.js):** 23/23 rutas compiladas exitosamente.
+- **Fronteras y ganchos de seguridad (`pnpm test:hooks`):** 59/59 casos de política de rama, 19/19 detección de secretos, 6/6 fronteras de módulos.
+
+---
+
 # Entrega — T-100: Ficha 360 del contacto: datos, conversaciones, oportunidades, cotizaciones y seguimientos en una sola pantalla — 2026-10-28
 
 ## Identificación

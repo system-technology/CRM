@@ -2411,7 +2411,10 @@ tasks:
     phase: 1
     priority: P1
     effort: S
-    status: backlog
+    status: done
+    started_at: 2026-10-28T09:22:00.000Z
+    done_at: 2026-10-28T09:40:00.000Z
+    evidence: "Implementada pantalla /seguimientos con consumo de GET /api/v1/crm/seguimientos y POST .../:id/completar, resaltado de vencidos en color de alerta (rose-700), categorización en tiempo real (Vencidos, Para Hoy, Próximos, Completados), tarjetas KPI, búsqueda por texto, filtro de asesor, modal para agendar seguimiento, estados cargando, error y vacío, y 23 tests unitarios y de componente en verde."
     depends_on: []
     acceptance:
       - Pantalla /seguimientos con GET /api/v1/crm/seguimientos y POST .../completar; vencidos resaltados en
@@ -2419,6 +2422,9 @@ tasks:
       - Estados cargando, error y vacío; tests
     files:
       - apps/web/src/app/seguimientos/
+      - apps/web/src/components/seguimientos/
+      - apps/web/src/lib/seguimientos-logica.ts
+      - apps/web/src/lib/mock-crm.ts
     source: cola de Antigravity ampliada 2026-10-28
     created_at: 2026-10-28T02:37:57.685Z
   - id: T-102
