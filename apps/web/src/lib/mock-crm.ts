@@ -1,5 +1,14 @@
-import { FichaDeContacto } from '@viajapro/contracts';
+import {
+  Contacto,
+  CrearContacto,
+  CrearOportunidadDeConversacion,
+  EditarContacto,
+  FichaDeContacto,
+  Oportunidad,
+} from '@viajapro/contracts';
 import { MOCK_CONVERSACIONES } from './mock-inbox';
+
+const MOCK_FICHAS = new Map<string, FichaDeContacto>();
 
 function hashCadena(str: string): number {
   let hash = 0;
@@ -16,6 +25,9 @@ function hashCadena(str: string): number {
  * Conforme 100% con los esquemas de @viajapro/contracts (FichaDeContacto, Contacto, Oportunidad, etc.).
  */
 export function obtenerMockFichaDeContacto(conversacionId: string): FichaDeContacto {
+  const guardada = MOCK_FICHAS.get(conversacionId);
+  if (guardada) return guardada;
+
   const conv = MOCK_CONVERSACIONES.find((c) => c.id === conversacionId);
 
   // Derivar datos si la conversación no está en la lista estándar
@@ -111,5 +123,85 @@ export function obtenerMockFichaDeContacto(conversacionId: string): FichaDeConta
     ],
   };
 
-  return FichaDeContacto.parse(fichaSinValidar);
+  const ficha = FichaDeContacto.parse(fichaSinValidar);
+  MOCK_FICHAS.set(conversacionId, ficha);
+  return ficha;
+}
+
+export function actualizarContactoMock(contactoId: string, datos: EditarContacto): Contacto {
+  for (const [, ficha] of MOCK_FICHAS) {
+    if (ficha.contacto.id === contactoId) {
+      if (datos.nombre !== undefined) ficha.contacto.nombre = datos.nombre;
+      if (datos.telefono !== undefined) ficha.contacto.telefono = datos.telefono;
+      if (datos.correo !== undefined) ficha.contacto.correo = datos.correo;
+      if (datos.etiquetas !== undefined) ficha.contacto.etiquetas = datos.etiquetas;
+      if (datos.preferencias !== undefined) ficha.contacto.preferencias = datos.preferencias;
+      return ficha.contacto;
+    }
+  }
+
+  return Contacto.parse({
+    id: contactoId,
+    nombre: datos.nombre ?? 'Viajero Simulado',
+    telefono: datos.telefono ?? '+573001234567',
+    correo: datos.correo ?? null,
+    etiquetas: datos.etiquetas ?? ['Lead Nuevo'],
+    preferencias: datos.preferencias ?? null,
+    consentimientos: ['TRANSACCIONAL'],
+    creadoEn: new Date().toISOString(),
+    ultimoContactoEn: new Date().toISOString(),
+  });
+}
+
+export function crearOportunidadDeConversacionMock(
+  conversacionId: string,
+  datos: CrearOportunidadDeConversacion,
+): Oportunidad {
+  const ficha = obtenerMockFichaDeContacto(conversacionId);
+  const nuevaOportunidad: Oportunidad = {
+    id: crypto.randomUUID(),
+    contactoId: ficha.contacto.id,
+    contactoNombre: ficha.contacto.nombre,
+    titulo: datos.titulo,
+    destino: datos.destino ?? 'Destino no especificado',
+    paqueteId: null,
+    fechaSalida: datos.fechaSalida ?? null,
+    etapa: {
+      id: '01a114b2-5314-75b1-91ad-3be0518a6a01',
+      clave: 'NUEVO_LEAD',
+      nombre: 'Nuevo Lead',
+      orden: 1,
+      probabilidad: 10,
+      esGanada: false,
+      esPerdida: false,
+    },
+    valorEstimado: datos.valorEstimado ?? null,
+    probabilidad: 10,
+    asesorId: datos.asesorId ?? '00000000-0000-4000-a000-000000000001',
+    asesorNombre: 'Carlos Asesor',
+    proximaTarea: null,
+    motivoPerdida: null,
+    notaPerdida: null,
+    creadaEn: new Date().toISOString(),
+    ultimoContactoEn: new Date().toISOString(),
+  };
+
+  const validada = Oportunidad.parse(nuevaOportunidad);
+  ficha.oportunidadActual = validada;
+  MOCK_FICHAS.set(conversacionId, ficha);
+  return validada;
+}
+
+export function crearContactoMock(datos: CrearContacto): Contacto {
+  return Contacto.parse({
+    id: crypto.randomUUID(),
+    nombre: datos.nombre ?? null,
+    telefono: datos.telefono,
+    correo: datos.correo ?? null,
+    etiquetas: datos.etiquetas ?? [],
+    preferencias: datos.preferencias ?? null,
+    consentimientos: ['TRANSACCIONAL'],
+    creadoEn: new Date().toISOString(),
+    ultimoContactoEn: new Date().toISOString(),
+  });
 }

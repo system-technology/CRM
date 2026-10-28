@@ -294,6 +294,22 @@ export type CambiarEstadoCuerpo = z.infer<typeof CambiarEstadoCuerpo>;
 export const CrearNotaCuerpo = CrearNota.omit({ conversacionId: true });
 export type CrearNotaCuerpo = z.infer<typeof CrearNotaCuerpo>;
 
+/**
+ * Enviar una cotización guardada por WhatsApp como mensaje de la conversación (T-073, T-074).
+ * POST /api/v1/conversaciones/:id/cotizaciones
+ *
+ * El servidor formatea el texto estructurado (producto, pasajeros, desglose, total, no incluidos)
+ * y lo envía al viajero por WhatsApp. Si la ventana de 24h está cerrada, responde 422 VENTANA_CERRADA.
+ */
+export const EnviarCotizacionCuerpo = z
+  .object({
+    cotizacionId: Id,
+    version: z.number().int().min(1).optional(),
+    claveIdempotencia: z.string().uuid().optional(),
+  })
+  .strict();
+export type EnviarCotizacionCuerpo = z.infer<typeof EnviarCotizacionCuerpo>;
+
 // =============================================================================
 // Tiempo real
 // =============================================================================

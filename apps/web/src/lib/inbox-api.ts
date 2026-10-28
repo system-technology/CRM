@@ -25,6 +25,7 @@ import {
   NotaDeConversacion as EsquemaNotaDeConversacion,
   ListaDeNotas as EsquemaListaDeNotas,
   EnviarTextoCuerpo as EsquemaEnviarTextoCuerpo,
+  EnviarCotizacionCuerpo as EsquemaEnviarCotizacionCuerpo,
   AsignarConversacionCuerpo as EsquemaAsignarConversacionCuerpo,
   CambiarEstadoCuerpo as EsquemaCambiarEstadoCuerpo,
   CrearNotaCuerpo as EsquemaCrearNotaCuerpo,
@@ -35,6 +36,7 @@ import {
   type ConversacionDetalle,
   type ConversacionResumen,
   type CrearNota,
+  type EnviarCotizacionCuerpo,
   type EnviarTexto,
   type Mensaje,
   type PaginaBandeja,
@@ -47,6 +49,7 @@ import {
   cambiarEstadoConversacionMock,
   consultarBandejaMock,
   crearNotaMock,
+  enviarCotizacionMock,
   enviarTextoMock,
   obtenerConversacionDetalleMock,
 } from './mock-inbox';
@@ -249,6 +252,29 @@ export const inboxApi = {
       {
         method: 'POST',
         body: JSON.stringify(cuerpo),
+      },
+    );
+    return EsquemaMensaje.parse(bruto);
+  },
+
+  /**
+   * Envía una cotización guardada por WhatsApp al viajero de la conversación (T-073, T-074).
+   * POST /api/v1/conversaciones/:id/cotizaciones
+   */
+  enviarCotizacion: async (
+    conversacionId: string,
+    cuerpo: EnviarCotizacionCuerpo,
+  ): Promise<Mensaje> => {
+    if (!estaUsandoApiRealInbox()) {
+      return enviarCotizacionMock(conversacionId, cuerpo);
+    }
+
+    const payload = EsquemaEnviarCotizacionCuerpo.parse(cuerpo);
+    const bruto = await pedirInbox<unknown>(
+      `/api/v1/conversaciones/${conversacionId}/cotizaciones`,
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
       },
     );
     return EsquemaMensaje.parse(bruto);

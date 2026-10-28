@@ -13,6 +13,10 @@ export { obtenerBaseApi };
  */
 
 import {
+  Contacto,
+  CrearContacto,
+  CrearOportunidadDeConversacion,
+  EditarContacto,
   FichaDeContacto,
   MoverOportunidad,
   Oportunidad,
@@ -22,7 +26,12 @@ import {
 } from '@viajapro/contracts';
 import { obtenerMockTableroPipeline } from './mock-pipeline';
 import { moverOportunidadEnTablero } from './pipeline-logica';
-import { obtenerMockFichaDeContacto } from './mock-crm';
+import {
+  actualizarContactoMock,
+  crearContactoMock,
+  crearOportunidadDeConversacionMock,
+  obtenerMockFichaDeContacto,
+} from './mock-crm';
 import { obtenerMockPaginaContactos } from './mock-contactos';
 
 // Re-exportado de api-base (ADR-0011 §2)
@@ -235,4 +244,64 @@ export async function obtenerResumenTrabajoDelDia(): Promise<ResumenTrabajoDelDi
   const cotizaciones = cotizacionesResult.status === 'fulfilled' ? cotizacionesResult.value : null;
 
   return calcularResumenTrabajo(contadoresInbox, tablero, cotizaciones);
+}
+
+/**
+ * Crea una oportunidad asociada a una conversación desde la bandeja (T-076).
+ * POST /api/v1/crm/conversaciones/:id/oportunidades
+ */
+export async function crearOportunidadDeConversacionApi(
+  conversacionId: string,
+  datos: CrearOportunidadDeConversacion,
+): Promise<Oportunidad> {
+  const validado = CrearOportunidadDeConversacion.parse(datos);
+
+  if (estaUsandoApiReal()) {
+    const { data } = await pedirCrm(`/api/v1/crm/conversaciones/${conversacionId}/oportunidades`, {
+      method: 'POST',
+      body: JSON.stringify(validado),
+    });
+    return Oportunidad.parse(data);
+  }
+
+  return crearOportunidadDeConversacionMock(conversacionId, validado);
+}
+
+/**
+ * Edita un contacto existente (T-076).
+ * PATCH /api/v1/crm/contactos/:id
+ */
+export async function editarContactoApi(
+  contactoId: string,
+  datos: EditarContacto,
+): Promise<Contacto> {
+  const validado = EditarContacto.parse(datos);
+
+  if (estaUsandoApiReal()) {
+    const { data } = await pedirCrm(`/api/v1/crm/contactos/${contactoId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(validado),
+    });
+    return Contacto.parse(data);
+  }
+
+  return actualizarContactoMock(contactoId, validado);
+}
+
+/**
+ * Crea un nuevo contacto (T-075, T-076).
+ * POST /api/v1/crm/contactos
+ */
+export async function crearContactoApi(datos: CrearContacto): Promise<Contacto> {
+  const validado = CrearContacto.parse(datos);
+
+  if (estaUsandoApiReal()) {
+    const { data } = await pedirCrm('/api/v1/crm/contactos', {
+      method: 'POST',
+      body: JSON.stringify(validado),
+    });
+    return Contacto.parse(data);
+  }
+
+  return crearContactoMock(validado);
 }

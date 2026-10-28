@@ -1,3 +1,40 @@
+# Entrega — T-074 y T-076: Enviar cotización por WhatsApp y Gestión CRM de contacto y oportunidad — 2026-10-27
+
+## Identificación
+- **Rama:** `b/T-074-t-076-enviar-cotizacion-contacto-crm`
+- **Tareas:**
+  - T-074 (Botón «Enviar cotización» en la conversación de la bandeja)
+  - T-076 (Pantalla/modal de contacto y botón «Crear oportunidad» en la conversación)
+- **Carril:** `b` (Frontend / Web)
+- **Stitch Design Screen ID:** `534cbe1440c34cfa86668289dbe5408d` (Proyecto «ViajaPro — CRM para agencias de turismo», ID `8333038101997719867`, pantalla *Bandeja WhatsApp con Modal Cotización & Panel CRM — ViajaPro CRM*)
+
+## Qué construí
+1. **Contratos (`packages/contracts/src/inbox.ts`):**
+   - Esquema `EnviarCotizacionCuerpo`: `{ cotizacionId: Id, version?: number, claveIdempotencia?: string }`.
+2. **Backend API (`apps/api/src/modules/inbox/`):**
+   - Ruta `POST /api/v1/conversaciones/:id/cotizaciones` en `ConversacionesController`, `ActuarEnConversacionUseCase` y `ConversacionesPrisma`.
+   - Control de ventana 24h (`VentanaCerradaError`), idempotencia por clave (R5) y creación de evento outbox.
+3. **Módulo Web (`apps/web/src/`):**
+   - `ModalEnviarCotizacion` (`apps/web/src/components/bandeja/modal-enviar-cotizacion.tsx`):
+     - Selector de cotizaciones guardadas con precios formateados en COP.
+     - Vista previa formateada con emojis para WhatsApp.
+     - Alerta de ventana de servicio de 24h.
+     - Gestión de estados: `inactivo`, `enviando`, `enviado`, `fallido`.
+   - `ModalCrearOportunidad` (`apps/web/src/components/bandeja/modal-crear-oportunidad.tsx`):
+     - Formulario con título, destino, valor estimado (R8) y fecha de salida.
+     - Apertura directa en etapa inicial `NUEVO_LEAD`.
+   - `ModalEditarContacto` (`apps/web/src/components/bandeja/modal-editar-contacto.tsx`):
+     - Edición de nombre, teléfono internacional (E.164), correo, etiquetas y preferencias.
+   - `FichaCliente` (`apps/web/src/components/bandeja/ficha-cliente.tsx`):
+     - Botón `data-testid="btn-editar-contacto"` y botón `data-testid="btn-crear-oportunidad"`.
+     - Estado visual explícito cuando no hay oportunidad activa.
+   - Conexión completa en `apps/web/src/app/bandeja/[id]/page.tsx` para escritorio y drawer táctil.
+4. **Pruebas y verificación:**
+   - 53 suites de prueba en `@viajapro/web`, 433/433 tests pasando en verde.
+   - `typecheck` con 0 errores, `lint` con 0 errores, `test:hooks` con 59/59 y 19/19 en verde.
+
+---
+
 # Entrega — T-029 y T-030: Asistente de importación de catálogo y descarga de plantillas CSV — 2026-10-27
 
 ## Identificación

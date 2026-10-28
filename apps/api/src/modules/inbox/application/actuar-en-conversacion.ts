@@ -15,6 +15,7 @@ import type {
   CambiarEstadoCuerpo,
   ConversacionResumen,
   CrearNotaCuerpo,
+  EnviarCotizacionCuerpo,
   EnviarTextoCuerpo,
   Mensaje,
   NotaDeConversacion,
@@ -37,6 +38,24 @@ export class ActuarEnConversacionUseCase {
   async responder(id: string, e: EnviarTextoCuerpo, ahora = new Date()): Promise<Mensaje> {
     const ctx = ContextoTenant.obtener();
     const m = await this.conversaciones.responder(visibilidadDe(ctx), ctx.usuarioId, id, e, ahora);
+    if (!m) throw new ConversacionNoEncontradaError();
+    await this.avisar(ctx.tenantId);
+    return m;
+  }
+
+  async enviarCotizacion(
+    id: string,
+    e: EnviarCotizacionCuerpo,
+    ahora = new Date(),
+  ): Promise<Mensaje> {
+    const ctx = ContextoTenant.obtener();
+    const m = await this.conversaciones.enviarCotizacion(
+      visibilidadDe(ctx),
+      ctx.usuarioId,
+      id,
+      e,
+      ahora,
+    );
     if (!m) throw new ConversacionNoEncontradaError();
     await this.avisar(ctx.tenantId);
     return m;

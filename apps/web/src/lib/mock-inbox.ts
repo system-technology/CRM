@@ -15,6 +15,7 @@ import {
   type CambiarEstadoConversacion,
   type ConsultarBandeja,
   type CrearNota,
+  type EnviarCotizacionCuerpo,
   type EnviarTexto,
   type PaginaBandeja,
 } from '@viajapro/contracts';
@@ -421,6 +422,55 @@ export async function enviarTextoMock(entrada: EnviarTexto): Promise<Mensaje> {
   const resumen = MOCK_CONVERSACIONES.find((c) => c.id === entrada.conversacionId);
   if (resumen) {
     resumen.ultimoMensajeTexto = entrada.texto;
+    resumen.ultimoMensajeEn = ahora;
+    resumen.ultimoMensajeDireccion = 'SALIENTE';
+  }
+
+  return nuevoMensaje;
+}
+
+export async function enviarCotizacionMock(
+  conversacionId: string,
+  cuerpo: EnviarCotizacionCuerpo,
+): Promise<Mensaje> {
+  const detalle = await obtenerConversacionDetalleMock(conversacionId, 100);
+  if (!detalle) {
+    throw new Error('Conversación no encontrada');
+  }
+
+  if (!detalle.ventana.abierta) {
+    throw new Error(
+      'VENTANA_CERRADA: No se puede enviar cotizaciones fuera de la ventana de 24 horas',
+    );
+  }
+
+  const ahora = new Date().toISOString();
+  const versionNum = cuerpo.version ?? 1;
+  const texto = `✈️ *Propuesta de Viaje Personalizada (v${versionNum})*\n\nTe compartimos los detalles de la cotización preparada especialmente para ti. Para revisar itinerario, condiciones y opciones de pago, ingresa aquí.\n\n_ViajaPro CRM_`;
+
+  const nuevoMensaje = Mensaje.parse({
+    id: crypto.randomUUID(),
+    conversacionId,
+    direccion: 'SALIENTE',
+    tipo: 'TEXTO',
+    texto,
+    adjuntos: [],
+    estado: 'ENTREGADO',
+    motivoFallo: null,
+    autorId: ID_ASESOR_ACTUAL,
+    autorNombre: NOMBRE_ASESOR_ACTUAL,
+    ocurridoEn: ahora,
+    cotizacionId: cuerpo.cotizacionId,
+  });
+
+  detalle.mensajes.push(nuevoMensaje);
+  detalle.ultimoMensajeTexto = texto;
+  detalle.ultimoMensajeEn = ahora;
+  detalle.ultimoMensajeDireccion = 'SALIENTE';
+
+  const resumen = MOCK_CONVERSACIONES.find((c) => c.id === conversacionId);
+  if (resumen) {
+    resumen.ultimoMensajeTexto = texto;
     resumen.ultimoMensajeEn = ahora;
     resumen.ultimoMensajeDireccion = 'SALIENTE';
   }
