@@ -2509,7 +2509,7 @@ tasks:
     phase: 1
     priority: P1
     effort: L
-    status: backlog
+    status: done
     depends_on: []
     acceptance:
       - Asistente que lleva a la agencia de la cuenta vacía a la primera cotización enviada, con progreso

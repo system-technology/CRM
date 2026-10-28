@@ -1,3 +1,40 @@
+# Entrega — T-105: Onboarding de una agencia nueva: asistente de 4 pasos — 2026-10-28
+
+## Identificación
+- **Tarea:** `T-105` (roadmap/tasks.yaml)
+- **Rama:** `b/T-105-onboarding-agencia-nueva`
+- **Carril:** `b` (Frontend / Web)
+
+## Qué se construyó y auditó
+
+1. **Lógica de Dominio y Estado del Asistente (`onboarding-logica.ts`):**
+   - Tipos e interfaces estrictas para los 4 pasos: Marca, Catálogo, Equipo y WhatsApp.
+   - Cálculo automático del avance porcentual (25% por paso completado u omitido).
+   - Validaciones de negocio: obligatoriedad de nombre comercial, formato de NIT colombiano (con dígito de verificación), colores HEX válidos, correos electrónicos válidos y ausencia estricta de secretos en pantalla (Regla R6).
+   - Secuencia estricta con funciones puras para avanzar, omitir y reiniciar pasos.
+   - Persistencia local con aislamiento por tenant (`viajapro:onboarding:<tenantId>`).
+
+2. **Componentes del Asistente de 4 Pasos (`apps/web/src/components/onboarding/`):**
+   - `paso-marca.tsx`: Identidad de la agencia con selector de paletas turísticas colombianas (`Dorado Cartagena`, `Azul Caribe`, `Verde Esmeralda`, etc.), color personalizado y previsualización en vivo de una tarjeta de cotización oficial.
+   - `paso-catalogo.tsx`: Carga instantánea de pasadías y circuitos de muestra en Colombia con precios en COP (`formatearCOP`), creación manual rápida o enlace al importador masivo en 4 pasos (T-029).
+   - `paso-equipo.tsx`: Invitación de asesores con explicación accesible de los roles (`ASESOR`, `ADMIN_AGENCIA`, `OPERATIVO`) y gestión de errores.
+   - `paso-whatsapp.tsx`: Guía honesta de requisitos para Meta Cloud API (número exclusivo, Meta Business Suite verificado, Display Name aprobado) con modo simulador de pruebas inmediato y cero secretos en pantalla (Regla R6).
+   - `resumen-onboarding-completado.tsx`: Pantalla de celebración con el botón principal «Crear y enviar mi primera cotización» (`/cotizador`) y accesos directos a bandeja, pipeline y configuración.
+   - `asistente-onboarding.tsx`: Orquestador con barra de progreso, tiempos estimados, navegación por pestañas y diseño responsive.
+
+3. **Página de Onboarding (`apps/web/src/app/bienvenida/page.tsx`):**
+   - Ruta `/bienvenida` accesible con cabecera de agencia, navegación unificada `BarraModulos` y targets táctiles `>= 44 px`.
+   - Enlace desde el banner de inicio de cuenta vacía (`/`) y desde el menú de sesión de usuario en `BarraModulos` y cabecera de `Configuración`.
+
+4. **Verificación y Calidad:**
+   - 7 archivos de pruebas unitarias y de integración para onboarding con 39 pruebas en verde.
+   - 94 archivos de prueba y 762 pruebas unitarias pasando al 100% en `@viajapro/web`.
+   - Next.js build: 24 rutas compiladas y optimizadas exitosamente.
+   - TypeScript `typecheck` en 9 paquetes y ESLint `lint` en 7 paquetes limpios.
+   - Hooks de repositorio: 59/59 políticas de rama, 19/19 detección de secretos y 6/6 fronteras entre módulos en verde.
+
+---
+
 # Entrega — T-104: Respuestas rápidas en la bandeja: lista, insertar con «/» y administración por agencia — 2026-10-28
 
 ## Identificación

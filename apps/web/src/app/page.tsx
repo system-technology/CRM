@@ -234,7 +234,15 @@ export default function InicioPage() {
                           </p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Link
+                          href="/bienvenida"
+                          data-testid="enlace-asistente-bienvenida-inicio"
+                          className="inline-flex min-h-[44px] items-center gap-1.5 rounded-lg border border-amber-300 bg-white px-3.5 py-2 text-xs font-semibold text-amber-900 shadow-xs hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200"
+                        >
+                          <Sparkles className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                          <span>Asistente de 4 pasos (T-105)</span>
+                        </Link>
                         <Link
                           href="/cotizador"
                           className="inline-flex min-h-[44px] items-center gap-1.5 rounded-lg bg-amber-500 px-3.5 py-2 text-xs font-semibold text-neutral-900 shadow-xs hover:bg-amber-400"
