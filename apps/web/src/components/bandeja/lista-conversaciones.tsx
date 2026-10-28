@@ -173,14 +173,16 @@ export function ListaConversaciones() {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'ArrowDown') {
+    const enInputBusqueda = document.activeElement === busquedaInputRef.current;
+
+    if (e.key === 'ArrowDown' || (e.key === 'j' && !enInputBusqueda)) {
       e.preventDefault();
       setIndiceSeleccionado((prev) => {
         const next = Math.min(prev + 1, conversaciones.length - 1);
         itemRefs.current[next]?.focus();
         return next;
       });
-    } else if (e.key === 'ArrowUp') {
+    } else if (e.key === 'ArrowUp' || (e.key === 'k' && !enInputBusqueda)) {
       e.preventDefault();
       setIndiceSeleccionado((prev) => {
         const next = Math.max(prev - 1, 0);
@@ -188,9 +190,13 @@ export function ListaConversaciones() {
         return next;
       });
     } else if (e.key === '/') {
-      if (document.activeElement !== busquedaInputRef.current) {
+      if (!enInputBusqueda) {
         e.preventDefault();
         busquedaInputRef.current?.focus();
+      }
+    } else if (e.key === 'Escape') {
+      if (enInputBusqueda) {
+        busquedaInputRef.current?.blur();
       }
     }
   };
@@ -432,6 +438,40 @@ export function ListaConversaciones() {
             )}
           </div>
         )}
+      </div>
+      {/* Barra de atajos de teclado accesibles documentados (T-024) */}
+      <div
+        data-testid="barra-atajos-teclado"
+        className="hidden border-t border-neutral-100 bg-neutral-50/80 px-3 py-1.5 text-[10px] text-neutral-500 sm:flex sm:items-center sm:justify-between dark:border-neutral-800 dark:bg-neutral-900/60 dark:text-neutral-400"
+      >
+        <span className="flex items-center gap-1 font-mono">
+          <kbd className="rounded bg-neutral-200/70 px-1 py-0.5 text-[9px] dark:bg-neutral-800">
+            ↑
+          </kbd>
+          <kbd className="rounded bg-neutral-200/70 px-1 py-0.5 text-[9px] dark:bg-neutral-800">
+            ↓
+          </kbd>
+          <span>o</span>
+          <kbd className="rounded bg-neutral-200/70 px-1 py-0.5 text-[9px] dark:bg-neutral-800">
+            J
+          </kbd>
+          <kbd className="rounded bg-neutral-200/70 px-1 py-0.5 text-[9px] dark:bg-neutral-800">
+            K
+          </kbd>
+          <span>navegar</span>
+        </span>
+        <span className="flex items-center gap-1 font-mono">
+          <kbd className="rounded bg-neutral-200/70 px-1 py-0.5 text-[9px] dark:bg-neutral-800">
+            /
+          </kbd>
+          <span>buscar</span>
+        </span>
+        <span className="flex items-center gap-1 font-mono">
+          <kbd className="rounded bg-neutral-200/70 px-1 py-0.5 text-[9px] dark:bg-neutral-800">
+            ↵
+          </kbd>
+          <span>abrir</span>
+        </span>
       </div>
     </div>
   );

@@ -1,3 +1,51 @@
+# Entrega — T-024: Accesibilidad de la bandeja y los modales: foco, teclado, etiquetas y contraste — 2026-10-28
+
+## Identificación
+- **Tarea:** `T-024` (roadmap/tasks.yaml)
+- **Rama:** `b/T-024-accesibilidad-bandeja-modales`
+- **Carril:** `b` (Frontend / Web)
+
+## Qué se construyó y auditó
+
+1. **Gestión Accesible de Teclado en la Bandeja:**
+   - Navegación bidireccional por teclado con flechas (`ArrowDown`/`ArrowUp`) y estilo vim (`j`/`k`).
+   - Atajos directos: `/` para enfocar la búsqueda, `Escape` para desenfocarla o cerrar paneles/modales, `Enter` para abrir conversaciones o enviar mensajes.
+   - Atajos globales del chat: `Alt+P` para abrir selector de plantillas oficiales, `Alt+R` para reasignar asesor, `Alt+F` para alternar ficha CRM lateral.
+   - Barra visible documentada en pantalla (`data-testid="barra-atajos-teclado"`) informando combinaciones clave.
+
+2. **Foco y Trampa de Foco en Modales (WCAG 2.4.3 / 2.1.2):**
+   - Hook unificado `useFocoModal` probado y validado en:
+     - `ModalPlantillas`
+     - `ModalReasignar`
+     - `ModalGuardarCotizacion`
+     - `ModalMotivoPerdida`
+     - `ModalBusquedaGlobal`
+   - Garantiza que al abrir el modal el foco se ubica en el primer elemento interactivo, el tabulador cicla dentro del diálogo sin escapar al documento de fondo, y al cerrarse (por botón o tecla `Escape`) el foco regresa limpiamente al elemento disparador.
+
+3. **Etiquetas Accesibles y Contraste (WCAG 1.1.1 / 1.4.3):**
+   - Todos los botones de solo icono cuentan con `aria-label` descriptivo y `title`:
+     - Botón de volver a lista: `aria-label="Volver a lista de conversaciones"`.
+     - Botón de ficha lateral: `aria-label="Alternar ficha de cliente"`.
+     - Botón de cerrar ficha: `aria-label="Cerrar ficha de cliente"`.
+     - Botón de envío de mensaje/nota: `aria-label="Enviar mensaje"` o `aria-label="Guardar nota interna"`.
+     - Botones de cierre en `ModalPlantillas` y `ModalReasignar`.
+   - Helper `validarContrasteWCAG` en `apps/web/src/lib/accesibilidad-logica.ts` para verificar ratios de contraste 4.5:1 (texto normal) y 3:1 (texto grande) en temas claro y oscuro.
+
+4. **Pruebas y Verificación:**
+   - `apps/web/src/lib/accesibilidad-logica.spec.ts`: 6 pruebas en verde.
+   - `apps/web/src/components/bandeja/lista-conversaciones-teclado.spec.tsx`: 6 pruebas en verde.
+   - `apps/web/src/components/comun/foco-modal.spec.tsx`: 11 pruebas en verde.
+   - Total `@viajapro/web`: 66 suites, 571 pruebas en verde.
+
+## Verificación de Compuertas
+- **Pruebas unitarias (@viajapro/web):** 66 suites, 571 pruebas en verde.
+- **Typecheck:** 9/9 paquetes en verde.
+- **Linter:** 7/7 paquetes en verde.
+- **Compilación de producción (Next.js):** 18/18 rutas estáticas y dinámicas compiladas exitosamente.
+- **Fronteras y ganchos de seguridad (`pnpm test:hooks`):** 59/59 casos de política de rama, 19/19 detección de secretos, 6/6 fronteras de módulos.
+
+---
+
 # Entrega — T-023: Revisión a 375 px de bandeja, pipeline, cotizador y catálogo con correcciones — 2026-10-28
 
 ## Identificación
