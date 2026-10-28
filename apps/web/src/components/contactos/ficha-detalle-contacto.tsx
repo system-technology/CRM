@@ -3,6 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { type Contacto } from '@viajapro/contracts';
+import { SeccionCamposPersonalizados } from './seccion-campos-personalizados';
 import {
   X,
   Phone,
@@ -147,6 +148,9 @@ export function FichaDetalleContacto({ contacto, onCerrar }: FichaDetalleContact
             {preferencias || 'Sin preferencias registradas aún.'}
           </div>
         </div>
+
+        {/* Campos Personalizados por Agencia (T-026) */}
+        <SeccionCamposPersonalizados entidad="contacto" entidadId={id} />
 
         {/* Consentimientos Legales (Ley 1581 / Meta) */}
         <div>

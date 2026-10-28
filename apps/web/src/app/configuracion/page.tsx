@@ -17,12 +17,14 @@ import {
   Lock,
   Phone,
   Tag,
+  FormInput,
 } from 'lucide-react';
 import { BarraModulos } from '../../components/bandeja/barra-modulos';
 import { DistintivoDatosDemo } from '../../components/comun/distintivo-datos-demo';
 import { BloquePoliticaPrecio } from '../../components/configuracion/bloque-politica-precio';
 import { BloqueAjustesCatalogo } from '../../components/configuracion/bloque-ajustes-catalogo';
 import { BloqueEtapasPipeline } from '../../components/configuracion/bloque-etapas-pipeline';
+import { BloqueCamposPersonalizados } from '../../components/configuracion/bloque-campos-personalizados';
 import { usePermisos } from '../../lib/permisos';
 import {
   MOCK_MIEMBROS_EQUIPO,
@@ -40,7 +42,8 @@ import {
   validarFormatoNit,
 } from '../../lib/configuracion-logica';
 
-type TabConfig = 'equipo' | 'whatsapp' | 'sla' | 'pipeline' | 'agencia' | 'precios' | 'catalogo';
+type TabConfig =
+  'equipo' | 'whatsapp' | 'sla' | 'pipeline' | 'agencia' | 'precios' | 'catalogo' | 'campos';
 
 export default function ConfiguracionPage() {
   const { puedeVerNetoYMargen } = usePermisos();
@@ -258,6 +261,23 @@ export default function ConfiguracionPage() {
               <span>Catálogo</span>
               <span className="rounded-full bg-teal-100 px-1.5 py-0.5 text-[10px] font-bold text-teal-800 dark:bg-teal-950 dark:text-teal-300">
                 T-028
+              </span>
+            </button>
+
+            <button
+              id="tab-btn-campos"
+              data-testid="tab-btn-campos"
+              onClick={() => setTabActiva('campos')}
+              className={`flex items-center gap-2 border-b-2 px-4 py-2 text-xs font-medium transition-colors ${
+                tabActiva === 'campos'
+                  ? 'border-purple-600 text-purple-700 dark:border-purple-400 dark:text-purple-300'
+                  : 'border-transparent text-neutral-500 hover:border-neutral-300 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200'
+              }`}
+            >
+              <FormInput className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+              <span>Campos Personalizados</span>
+              <span className="rounded-full bg-purple-100 px-1.5 py-0.5 text-[10px] font-bold text-purple-800 dark:bg-purple-950 dark:text-purple-300">
+                T-026
               </span>
             </button>
           </nav>
@@ -655,6 +675,17 @@ export default function ConfiguracionPage() {
           {tabActiva === 'catalogo' && (
             <div id="tab-contenido-catalogo" data-testid="tab-contenido-catalogo">
               <BloqueAjustesCatalogo />
+            </div>
+          )}
+
+          {/* TAB 8: CAMPOS PERSONALIZADOS (T-026) */}
+          {tabActiva === 'campos' && (
+            <div
+              id="tab-contenido-campos"
+              data-testid="tab-contenido-campos"
+              className="max-w-4xl space-y-6"
+            >
+              <BloqueCamposPersonalizados />
             </div>
           )}
 

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { FichaDeContacto } from '@viajapro/contracts';
 import { Plane, PlusCircle, ExternalLink, StickyNote, X, Clock } from 'lucide-react';
 import { generarColorAvatar, obtenerIniciales } from '../../lib/bandeja-logica';
+import { SeccionCamposPersonalizados } from '../contactos/seccion-campos-personalizados';
 
 interface FichaClienteProps {
   ficha: FichaDeContacto;
@@ -81,6 +82,9 @@ export function FichaCliente({ ficha, onCerrar }: FichaClienteProps) {
             </div>
           )}
 
+          {/* Campos Personalizados Viajero (T-026) */}
+          <SeccionCamposPersonalizados entidad="contacto" entidadId={contacto.id} />
+
           <div className="flex flex-wrap gap-1 pt-1 text-[10px]">
             {contacto.consentimientos.map((c) => (
               <span
@@ -130,6 +134,9 @@ export function FichaCliente({ ficha, onCerrar }: FichaClienteProps) {
                 </p>
               </div>
             )}
+
+            {/* Campos Personalizados Oportunidad (T-026) */}
+            <SeccionCamposPersonalizados entidad="oportunidad" entidadId={oportunidadActual.id} />
           </section>
         )}
 
