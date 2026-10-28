@@ -16,15 +16,15 @@ export function EsqueletoConversacion() {
       {/* Cabecera del chat */}
       <div className="flex h-16 shrink-0 items-center justify-between border-b border-neutral-200 bg-white px-5 dark:border-neutral-800 dark:bg-neutral-900">
         <div className="flex items-center gap-3">
-          <div className="h-9 w-9 shrink-0 animate-pulse rounded-full bg-neutral-200 dark:bg-neutral-700" />
+          <div className="esqueleto-brillo h-9 w-9 shrink-0 rounded-full" />
           <div className="space-y-1.5">
-            <div className="h-3.5 w-32 animate-pulse rounded bg-neutral-200 dark:bg-neutral-700" />
-            <div className="h-2.5 w-24 animate-pulse rounded bg-neutral-100 dark:bg-neutral-800" />
+            <div className="esqueleto-brillo h-3.5 w-32 rounded" />
+            <div className="esqueleto-brillo h-2.5 w-24 rounded" />
           </div>
         </div>
         <div className="flex gap-2">
-          <div className="h-8 w-20 animate-pulse rounded-lg bg-neutral-100 dark:bg-neutral-800" />
-          <div className="h-8 w-8 animate-pulse rounded-lg bg-neutral-100 dark:bg-neutral-800" />
+          <div className="esqueleto-brillo h-8 w-20 rounded-lg" />
+          <div className="esqueleto-brillo h-8 w-8 rounded-lg" />
         </div>
       </div>
 
@@ -32,36 +32,36 @@ export function EsqueletoConversacion() {
       <div className="flex-1 space-y-4 overflow-hidden p-6">
         {/* Mensaje entrante */}
         <div className="flex items-start gap-2.5">
-          <div className="h-7 w-7 shrink-0 animate-pulse rounded-full bg-neutral-200 dark:bg-neutral-700" />
+          <div className="esqueleto-brillo h-7 w-7 shrink-0 rounded-full" />
           <div className="max-w-md space-y-2 rounded-2xl rounded-tl-sm bg-white p-4 shadow-2xs dark:bg-neutral-900">
-            <div className="h-3 w-48 animate-pulse rounded bg-neutral-200 dark:bg-neutral-700" />
-            <div className="h-3 w-36 animate-pulse rounded bg-neutral-100 dark:bg-neutral-800" />
+            <div className="esqueleto-brillo h-3 w-48 rounded" />
+            <div className="esqueleto-brillo h-3 w-36 rounded" />
           </div>
         </div>
 
         {/* Mensaje saliente */}
         <div className="flex justify-end">
-          <div className="max-w-md space-y-2 rounded-2xl rounded-tr-sm bg-purple-100/60 p-4 dark:bg-purple-950/30">
-            <div className="h-3 w-40 animate-pulse rounded bg-purple-200/80 dark:bg-purple-800/50" />
-            <div className="h-3 w-56 animate-pulse rounded bg-purple-200/60 dark:bg-purple-800/40" />
+          <div className="max-w-md space-y-2 rounded-2xl rounded-tr-sm bg-cyan-50/50 p-4 dark:bg-cyan-950/30">
+            <div className="esqueleto-brillo h-3 w-40 rounded" />
+            <div className="esqueleto-brillo h-3 w-56 rounded" />
           </div>
         </div>
 
         {/* Tarjeta comercial o cotización */}
         <div className="mx-auto max-w-sm rounded-xl border border-neutral-200 bg-white p-4 shadow-2xs dark:border-neutral-800 dark:bg-neutral-900">
-          <div className="h-3.5 w-28 animate-pulse rounded bg-neutral-200 dark:bg-neutral-700" />
-          <div className="mt-2.5 h-3 w-full animate-pulse rounded bg-neutral-100 dark:bg-neutral-800" />
+          <div className="esqueleto-brillo h-3.5 w-28 rounded" />
+          <div className="esqueleto-brillo mt-2.5 h-3 w-full rounded" />
           <div className="mt-3 flex justify-between">
-            <div className="h-3 w-16 animate-pulse rounded bg-neutral-200 dark:bg-neutral-700" />
-            <div className="h-3 w-20 animate-pulse rounded bg-purple-200 dark:bg-purple-800" />
+            <div className="esqueleto-brillo h-3 w-16 rounded" />
+            <div className="esqueleto-brillo h-3 w-20 rounded" />
           </div>
         </div>
 
         {/* Otro mensaje entrante */}
         <div className="flex items-start gap-2.5">
-          <div className="h-7 w-7 shrink-0 animate-pulse rounded-full bg-neutral-200 dark:bg-neutral-700" />
+          <div className="esqueleto-brillo h-7 w-7 shrink-0 rounded-full" />
           <div className="max-w-sm space-y-2 rounded-2xl rounded-tl-sm bg-white p-4 shadow-2xs dark:bg-neutral-900">
-            <div className="h-3 w-32 animate-pulse rounded bg-neutral-200 dark:bg-neutral-700" />
+            <div className="esqueleto-brillo h-3 w-32 rounded" />
           </div>
         </div>
       </div>
@@ -69,8 +69,8 @@ export function EsqueletoConversacion() {
       {/* Barra de envío */}
       <div className="border-t border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
         <div className="flex items-center gap-3">
-          <div className="h-10 flex-1 animate-pulse rounded-xl bg-neutral-100 dark:bg-neutral-800" />
-          <div className="h-10 w-10 animate-pulse rounded-xl bg-purple-200 dark:bg-purple-900" />
+          <div className="esqueleto-brillo h-10 flex-1 rounded-xl" />
+          <div className="esqueleto-brillo h-10 w-10 rounded-xl" />
         </div>
       </div>
     </div>
@@ -79,7 +79,7 @@ export function EsqueletoConversacion() {
 
 /**
  * Esqueleto para el tablero Kanban en Pipeline (0c.25).
- * Sustituye el spinner centrado por 4 columnas pulse.
+ * Sustituye el spinner centrado por 4 columnas pulse con brillo shimmer.
  */
 export function EsqueletoKanban() {
   return (
@@ -97,10 +97,10 @@ export function EsqueletoKanban() {
             {/* Cabecera de columna */}
             <div className="border-b border-neutral-200/80 pb-3 dark:border-neutral-800">
               <div className="flex items-center justify-between">
-                <div className="h-3.5 w-24 animate-pulse rounded bg-neutral-200 dark:bg-neutral-700" />
-                <div className="h-4 w-6 animate-pulse rounded-full bg-neutral-200 dark:bg-neutral-700" />
+                <div className="esqueleto-brillo h-3.5 w-24 rounded" />
+                <div className="esqueleto-brillo h-4 w-6 rounded-full" />
               </div>
-              <div className="mt-2 h-2.5 w-32 animate-pulse rounded bg-neutral-100 dark:bg-neutral-800" />
+              <div className="esqueleto-brillo mt-2 h-2.5 w-32 rounded" />
             </div>
 
             {/* Tarjetas esqueleto */}
@@ -110,11 +110,11 @@ export function EsqueletoKanban() {
                   key={card}
                   className="rounded-xl border border-neutral-200 bg-white p-4 shadow-2xs dark:border-neutral-800 dark:bg-neutral-900"
                 >
-                  <div className="h-3.5 w-36 animate-pulse rounded bg-neutral-200 dark:bg-neutral-700" />
-                  <div className="mt-2 h-2.5 w-24 animate-pulse rounded bg-neutral-100 dark:bg-neutral-800" />
+                  <div className="esqueleto-brillo h-3.5 w-36 rounded" />
+                  <div className="esqueleto-brillo mt-2 h-2.5 w-24 rounded" />
                   <div className="mt-3 flex items-center justify-between pt-2">
-                    <div className="h-3 w-16 animate-pulse rounded bg-purple-100 dark:bg-purple-950/60" />
-                    <div className="h-5 w-5 animate-pulse rounded-full bg-neutral-200 dark:bg-neutral-700" />
+                    <div className="esqueleto-brillo h-3 w-16 rounded" />
+                    <div className="esqueleto-brillo h-5 w-5 rounded-full" />
                   </div>
                 </div>
               ))}
@@ -128,7 +128,7 @@ export function EsqueletoKanban() {
 
 /**
  * Esqueleto para la cuadrícula de paquetes del Catálogo (0c.25).
- * Sustituye el spinner centrado por 6 tarjetas pulse en grid.
+ * Sustituye el spinner centrado por 6 tarjetas pulse con efecto de brillo (shimmer) en grid.
  */
 export function EsqueletoGridTarjetas({ cantidad = 6 }: { cantidad?: number }) {
   return (
@@ -142,19 +142,19 @@ export function EsqueletoGridTarjetas({ cantidad = 6 }: { cantidad?: number }) {
           key={i}
           className="overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-2xs dark:border-neutral-800 dark:bg-neutral-900"
         >
-          {/* Imagen esqueleto */}
-          <div className="h-40 w-full animate-pulse bg-neutral-200 dark:bg-neutral-800" />
+          {/* Imagen esqueleto con shimmer */}
+          <div className="esqueleto-brillo h-40 w-full" />
           {/* Contenido */}
           <div className="space-y-3 p-5">
             <div className="flex items-center justify-between">
-              <div className="h-3 w-20 animate-pulse rounded-full bg-neutral-200 dark:bg-neutral-700" />
-              <div className="h-3 w-16 animate-pulse rounded bg-neutral-100 dark:bg-neutral-800" />
+              <div className="esqueleto-brillo h-3 w-20 rounded-full" />
+              <div className="esqueleto-brillo h-3 w-16 rounded" />
             </div>
-            <div className="h-4 w-3/4 animate-pulse rounded bg-neutral-200 dark:bg-neutral-700" />
-            <div className="h-3 w-1/2 animate-pulse rounded bg-neutral-100 dark:bg-neutral-800" />
+            <div className="esqueleto-brillo h-4 w-3/4 rounded" />
+            <div className="esqueleto-brillo h-3 w-1/2 rounded" />
             <div className="flex items-baseline justify-between border-t border-neutral-100 pt-3 dark:border-neutral-800">
-              <div className="h-2.5 w-16 animate-pulse rounded bg-neutral-100 dark:bg-neutral-800" />
-              <div className="h-5 w-24 animate-pulse rounded bg-purple-200 dark:bg-purple-900" />
+              <div className="esqueleto-brillo h-2.5 w-16 rounded" />
+              <div className="esqueleto-brillo h-5 w-24 rounded" />
             </div>
           </div>
         </div>
@@ -179,17 +179,17 @@ export function EsqueletoTabla({ filas = 6 }: { filas?: number }) {
           className="flex items-center justify-between rounded-xl border border-neutral-100 bg-neutral-50/60 p-3.5 dark:border-neutral-800/60 dark:bg-neutral-900/40"
         >
           <div className="flex items-center gap-3">
-            <div className="h-8 w-8 animate-pulse rounded-full bg-neutral-200 dark:bg-neutral-700" />
+            <div className="esqueleto-brillo h-8 w-8 rounded-full" />
             <div className="space-y-1.5">
-              <div className="h-3.5 w-36 animate-pulse rounded bg-neutral-200 dark:bg-neutral-700" />
-              <div className="h-2.5 w-24 animate-pulse rounded bg-neutral-100 dark:bg-neutral-800" />
+              <div className="esqueleto-brillo h-3.5 w-36 rounded" />
+              <div className="esqueleto-brillo h-2.5 w-24 rounded" />
             </div>
           </div>
           <div className="hidden space-y-1.5 sm:block">
-            <div className="h-3 w-28 animate-pulse rounded bg-neutral-200 dark:bg-neutral-700" />
-            <div className="h-2.5 w-16 animate-pulse rounded bg-neutral-100 dark:bg-neutral-800" />
+            <div className="esqueleto-brillo h-3 w-28 rounded" />
+            <div className="esqueleto-brillo h-2.5 w-16 rounded" />
           </div>
-          <div className="h-4 w-16 animate-pulse rounded-full bg-neutral-200 dark:bg-neutral-700" />
+          <div className="esqueleto-brillo h-4 w-16 rounded-full" />
         </div>
       ))}
     </div>
@@ -208,14 +208,14 @@ export function EsqueletoExpediente() {
     >
       {/* Sidebar esqueleto */}
       <div className="w-80 shrink-0 space-y-3 border-r border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
-        <div className="h-8 w-full animate-pulse rounded-lg bg-neutral-100 dark:bg-neutral-800" />
+        <div className="esqueleto-brillo h-8 w-full rounded-lg" />
         {Array.from({ length: 5 }).map((_, i) => (
           <div key={i} className="space-y-2 rounded-xl p-3">
             <div className="flex justify-between">
-              <div className="h-3 w-20 animate-pulse rounded bg-neutral-200 dark:bg-neutral-700" />
-              <div className="h-3 w-12 animate-pulse rounded-full bg-neutral-100 dark:bg-neutral-800" />
+              <div className="esqueleto-brillo h-3 w-20 rounded" />
+              <div className="esqueleto-brillo h-3 w-12 rounded-full" />
             </div>
-            <div className="h-3.5 w-32 animate-pulse rounded bg-neutral-200 dark:bg-neutral-700" />
+            <div className="esqueleto-brillo h-3.5 w-32 rounded" />
           </div>
         ))}
       </div>
@@ -224,20 +224,20 @@ export function EsqueletoExpediente() {
       <div className="flex-1 space-y-6 p-6">
         <div className="flex justify-between border-b border-neutral-200 pb-4 dark:border-neutral-800">
           <div className="space-y-2">
-            <div className="h-5 w-48 animate-pulse rounded bg-neutral-200 dark:bg-neutral-700" />
-            <div className="h-3 w-32 animate-pulse rounded bg-neutral-100 dark:bg-neutral-800" />
+            <div className="esqueleto-brillo h-5 w-48 rounded" />
+            <div className="esqueleto-brillo h-3 w-32 rounded" />
           </div>
-          <div className="h-7 w-28 animate-pulse rounded-lg bg-neutral-200 dark:bg-neutral-700" />
+          <div className="esqueleto-brillo h-7 w-28 rounded-lg" />
         </div>
         <div className="grid gap-4 sm:grid-cols-3">
           {[1, 2, 3].map((k) => (
             <div
               key={k}
-              className="h-20 animate-pulse rounded-xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900"
+              className="esqueleto-brillo h-20 rounded-xl border border-neutral-200 dark:border-neutral-800"
             />
           ))}
         </div>
-        <div className="h-64 animate-pulse rounded-2xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900" />
+        <div className="esqueleto-brillo h-64 rounded-2xl border border-neutral-200 dark:border-neutral-800" />
       </div>
     </div>
   );
@@ -261,19 +261,19 @@ export function EsqueletoReportes() {
             className="rounded-xl border border-neutral-200 bg-white p-4 shadow-2xs dark:border-neutral-800 dark:bg-neutral-900"
           >
             <div className="flex justify-between">
-              <div className="h-3 w-24 animate-pulse rounded bg-neutral-200 dark:bg-neutral-700" />
-              <div className="h-4 w-10 animate-pulse rounded-full bg-neutral-100 dark:bg-neutral-800" />
+              <div className="esqueleto-brillo h-3 w-24 rounded" />
+              <div className="esqueleto-brillo h-4 w-10 rounded-full" />
             </div>
-            <div className="mt-3 h-6 w-32 animate-pulse rounded bg-neutral-200 dark:bg-neutral-700" />
-            <div className="mt-2 h-2.5 w-20 animate-pulse rounded bg-neutral-100 dark:bg-neutral-800" />
+            <div className="esqueleto-brillo mt-3 h-6 w-32 rounded" />
+            <div className="esqueleto-brillo mt-2 h-2.5 w-20 rounded" />
           </div>
         ))}
       </div>
 
       {/* Gráficos y tablas */}
       <div className="grid gap-6 lg:grid-cols-2">
-        <div className="h-64 animate-pulse rounded-2xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900" />
-        <div className="h-64 animate-pulse rounded-2xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900" />
+        <div className="esqueleto-brillo h-64 rounded-2xl border border-neutral-200 dark:border-neutral-800" />
+        <div className="esqueleto-brillo h-64 rounded-2xl border border-neutral-200 dark:border-neutral-800" />
       </div>
     </div>
   );

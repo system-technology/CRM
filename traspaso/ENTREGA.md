@@ -1,3 +1,45 @@
+# Entrega — T-035: Animaciones y transiciones (entrada escalonada, hover, esqueletos con brillo y transiciones de página) — 2026-10-28
+
+## Identificación
+- **Rama:** `b/T-035-animaciones-transiciones-esqueletos` (empujada a `origin/b/T-035-animaciones-transiciones-esqueletos`)
+- **Tarea:** T-035 (Animaciones y transiciones: entrada escalonada, hover, esqueletos con brillo y transiciones de página)
+- **Carril:** `b` (Frontend / Web)
+- **Stitch Design Screen ID:** `ed51eb6813d7471487cf3b7a1b82d0e2` (Proyecto «ViajaPro — CRM para agencias de turismo», ID `8333038101997719867`, pantalla *Sistema de Animaciones Fluidas, Shimmer Oceánico & Accesibilidad — ViajaPro CRM*)
+
+## Qué construí
+1. **Tokens y Utilidades de Animación en `globals.css`:**
+   - Shimmer oceánico-dorado (`brilloEsqueleto` y `.esqueleto-brillo`) con reflejo sutil caribeño (`rgba(6, 182, 212, 0.08)`) y arena dorada (`rgba(201, 162, 75, 0.12)`), soportado en temas claro y oscuro.
+   - Microinteracción de elevación elástica de tarjetas (`.tarjeta-turismo-hover` y `.tarjeta-elevacion`): traslación de -3px con aceleración por GPU, sombra turquesa y microescala táctil `active:scale-[0.995]` sin layout shift.
+   - Entrada escalonada (`.anim-entrada`, `.anim-retraso-1` a `.anim-retraso-6`): retrasos de 40ms a 240ms con curva fluida `cubic-bezier(0.16, 1, 0.3, 1)`.
+   - Transiciones suaves para modales (`.anim-modal` < 200ms) y paneles laterales desplegables (`.anim-panel-lateral` < 220ms).
+   - Directiva estricta `@media (prefers-reduced-motion: reduce)` según WCAG 2.2 AA que cancela animaciones, neutraliza el shimmer y elimina desplazamientos físicos.
+2. **Módulo Reutilizable de Animaciones (`apps/web/src/components/comun/animaciones.tsx`):**
+   - `obtenerClaseEscalonada(indice: number)`: Función utilitaria para listas y cuadrículas.
+   - `usePrefersReducedMotion()`: Hook reactivo con fallback seguro contra SSR.
+   - `<ShimmerBox />`: Componente accesible de esqueleto con destello shimmer y `aria-hidden="true"`.
+   - `<ContenedorEscalonado />`: Envoltorio automático para animar colecciones de componentes respetando accesibilidad.
+   - Exportado desde `apps/web/src/components/comun/index.ts`.
+3. **Esqueletos de Carga con Brillo (`apps/web/src/components/comun/esqueletos.tsx`):**
+   - Actualizados todos los esqueletos (`EsqueletoConversacion`, `EsqueletoKanban`, `EsqueletoGridTarjetas`, `EsqueletoTabla`, `EsqueletoExpediente`, `EsqueletoReportes`) para utilizar la clase `.esqueleto-brillo`.
+4. **Integración en Listas y Cuadrículas Clave:**
+   - **Catálogo (`apps/web/src/app/catalogo/page.tsx` y `tarjeta-salida-publicada.tsx`):** Entrada escalonada por índice y elevación interactiva con borde turquesa al pasar el cursor.
+   - **Pipeline Kanban (`apps/web/src/app/pipeline/page.tsx`, `columna-kanban.tsx`, `tarjeta-oportunidad.tsx`):** Tarjetas de oportunidad con elevación elástica y entrada secuencial por columna.
+   - **Bandeja de WhatsApp (`apps/web/src/components/bandeja/lista-conversaciones.tsx`):** Esqueletos de conversación con shimmer y animación escalonada al renderizar la lista.
+   - **Directorio de Contactos (`apps/web/src/app/contactos/page.tsx`):** Filas de tabla con entrada escalonada y resalte hover turquesa.
+   - **Seguimientos Diarios del Asesor (`apps/web/src/components/inicio/bloque-seguimientos-dia.tsx`):** Elevación hover y entrada escalonada de tareas.
+   - **Paleta de Comandos y Fichas Laterales (`modal-busqueda-global.tsx`, `ficha-detalle-paquete.tsx`):** Transiciones suaves de apertura y desplazamiento.
+5. **Suites de Pruebas Unitarias:**
+   - `apps/web/src/components/comun/animaciones.spec.tsx`: 11 pruebas unitarias cubriendo índices, límites, mockeo de `matchMedia`, `ShimmerBox` y desactivación de movimiento reducido.
+   - `apps/web/src/components/comun/esqueletos.spec.tsx`: 11 pruebas unitarias verificando estructura accesible y presencia de `.esqueleto-brillo`.
+
+## Qué verifiqué ejecutando
+- **Pruebas unitarias:** `pnpm --filter @viajapro/web test` — **61 suites pasadas, 508/508 pruebas en verde (100%)**.
+- **Typecheck estricto:** `pnpm typecheck` — **9/9 tareas exitosas** en Turborepo.
+- **Linter:** `pnpm lint` — **7/7 tareas exitosas**, 0 errores.
+- **Políticas de rama y secretos:** `pnpm test:hooks` — **59/59 política de rama, 19/19 secretos, 6/6 fronteras entre módulos en verde**.
+
+---
+
 # Entrega — T-034: Navegación más rica (barra lateral con iconos de color, migas, paleta de comandos y accesos rápidos) — 2026-10-28
 
 ## Identificación

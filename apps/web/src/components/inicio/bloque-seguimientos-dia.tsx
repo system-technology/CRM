@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import type { PendientesDelDia, Seguimiento } from '@viajapro/contracts';
 import { calcularRetrasoSeguimiento, formatearHoraSeguimiento } from '../../lib/inicio-logica';
+import { obtenerClaseEscalonada } from '../comun/animaciones';
 
 export interface BloqueSeguimientosDiaProps {
   pendientes: PendientesDelDia | null;
@@ -192,7 +193,7 @@ export function BloqueSeguimientosDia({
       {/* LISTA DE SEGUIMIENTOS */}
       {itemsAMostrar.length > 0 && (
         <div className="mt-4 space-y-3" data-testid="lista-seguimientos-items">
-          {itemsAMostrar.map(({ item, esVencido }) => {
+          {itemsAMostrar.map(({ item, esVencido }, idx) => {
             const retraso = calcularRetrasoSeguimiento(item.venceEn);
             const hora = formatearHoraSeguimiento(item.venceEn);
             const estaCompletando = completandoId === item.id;
@@ -201,10 +202,10 @@ export function BloqueSeguimientosDia({
               <div
                 key={item.id}
                 data-testid={`item-seguimiento-${item.id}`}
-                className={`group flex flex-col justify-between gap-3 rounded-xl border p-4 transition-all duration-200 sm:flex-row sm:items-center ${
+                className={`group tarjeta-turismo-hover flex flex-col justify-between gap-3 rounded-xl border p-4 sm:flex-row sm:items-center ${obtenerClaseEscalonada(idx)} ${
                   esVencido
                     ? 'border-rose-200 bg-rose-50/40 hover:border-rose-300 dark:border-rose-900/50 dark:bg-rose-950/20'
-                    : 'dark:bg-neutral-850 border-neutral-200 bg-white hover:border-neutral-300 dark:border-neutral-800 dark:hover:border-neutral-700'
+                    : 'dark:bg-neutral-850 border-neutral-200 bg-white hover:border-teal-500/40 dark:border-neutral-800 dark:hover:border-teal-500/30'
                 }`}
               >
                 <div className="flex flex-1 items-start gap-3">

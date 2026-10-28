@@ -20,6 +20,7 @@ import {
   NOMBRES_MOTIVOS_PERDIDA,
 } from '../../lib/pipeline-logica';
 import { generarColorAvatar, obtenerIniciales } from '../../lib/bandeja-logica';
+import { obtenerClaseEscalonada } from '../comun/animaciones';
 
 interface TarjetaOportunidadProps {
   oportunidad: Oportunidad;
@@ -32,12 +33,14 @@ interface TarjetaOportunidadProps {
    */
   etapas: EtapaDefinida[];
   onSolicitarMover: (oportunidad: Oportunidad, nuevaEtapa: EtapaDefinida) => void;
+  indice?: number;
 }
 
 export function TarjetaOportunidad({
   oportunidad,
   etapas,
   onSolicitarMover,
+  indice,
 }: TarjetaOportunidadProps) {
   const [menuAbierto, setMenuAbierto] = useState(false);
 
@@ -68,6 +71,8 @@ export function TarjetaOportunidad({
     e.dataTransfer.effectAllowed = 'move';
   };
 
+  const claseAnimacion = indice !== undefined ? obtenerClaseEscalonada(indice) : '';
+
   return (
     <div
       draggable
@@ -75,7 +80,7 @@ export function TarjetaOportunidad({
       tabIndex={0}
       role="article"
       aria-label={`Oportunidad: ${titulo}, cliente ${contactoNombre || 'anónimo'}, etapa ${etapa.nombre}`}
-      className="group relative cursor-grab rounded-2xl border border-neutral-200 bg-white p-4 shadow-2xs transition-all hover:border-neutral-300 hover:shadow-md active:cursor-grabbing dark:border-neutral-800 dark:bg-neutral-900/90 dark:hover:border-neutral-700"
+      className={`group tarjeta-elevacion relative cursor-grab rounded-2xl border border-neutral-200 bg-white p-4 shadow-2xs hover:border-cyan-500/40 active:cursor-grabbing dark:border-neutral-800 dark:bg-neutral-900/90 dark:hover:border-cyan-500/40 ${claseAnimacion}`.trim()}
     >
       {/* Fila superior: Destino + Probabilidad */}
       <div className="mb-2 flex items-center justify-between text-[11px]">
