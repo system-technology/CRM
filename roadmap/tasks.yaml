@@ -1591,7 +1591,7 @@ tasks:
     phase: 1
     priority: P1
     effort: S
-    status: blocked
+    status: done
     depends_on: []
     acceptance:
       - La versión de cotización guarda opcion_de_salida_id con tenant_id, clave foránea compuesta hacia
@@ -1604,6 +1604,12 @@ tasks:
     source: hallazgos de la tanda 2026-10-26
     created_at: 2026-10-27T01:51:03.949Z
     blocked_reason: Requiere migración (agente datos) con aprobación del propietario, ya delegada en el orquestador
+    started_at: 2026-10-28T03:10:16.037Z
+    done_at: 2026-10-28T03:10:16.037Z
+    evidence: "Mergeado en main por el PR #121 (rama a/T-062-opcion-de-salida-en-la-version) con el CI en verde:
+      format, analyze, tests y los demás checks obligatorios. Cierre automático
+      (.github/workflows/cerrar-tarea.yml)."
+    commit: 00ea319d80558441fd9d887c0757def4863fb128
   - id: T-063
     title: "Web: enviar opcionDeSalidaId al cotizar y al guardar cuando el producto tiene opciones de salida"
     type: bug
