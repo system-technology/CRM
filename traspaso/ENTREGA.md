@@ -1,3 +1,40 @@
+# Entrega — T-027: Equipo e invitaciones: invitar asesores, asignar rol y ver quién tiene acceso — 2026-10-28
+
+## Identificación
+- **Tarea:** `T-027` (roadmap/tasks.yaml)
+- **Rama:** `b/T-027-equipo-e-invitaciones`
+- **Carril:** `b` (Frontend / Web)
+
+## Qué se construyó y auditó
+
+1. **Capa API de Equipo y Roles (`apps/web/src/lib/equipo-api.ts`):**
+   - Funciones `listarMiembrosEquipoApi`, `listarRolesAgenciaApi`, `invitarMiembroApi`.
+   - Soporte para backend real `/api/v1/equipo` con fallback a simulación en caché local para modo demo/offline.
+   - Traductor y mapeador de errores `interpretarErrorInvitacion` que convierte códigos (`CODIGO_INVALIDO`, `DEMASIADOS_INTENTOS`, `INVITACION_INVALIDA`, `PERMISO_DENEGADO`, `SIN_SESION`, `CORREO_INVALIDO`, `ROL_INVALIDO`) a explicaciones claras en español con orientación explícita de «Qué hacer».
+
+2. **Componente de Gestión de Equipo (`BloqueEquipo`):**
+   - Creado en `apps/web/src/components/configuracion/bloque-equipo.tsx` e integrado en `apps/web/src/app/configuracion/page.tsx` en la pestaña `equipo`.
+   - Tarjetas de resumen métrico: Total Usuarios, Dueños Activos, Asesores Comerciales, Invitaciones Pendientes.
+   - Tabla responsiva de miembros y estados (`ACTIVO`, `INVITADO`, `SUSPENDIDO`) con insignias visuales y fecha de ingreso con formato Colombia (`es-CO`).
+   - Modal accesible de invitación (`useFocoModal`, WCAG 2.1) con selección de rol (`DUENO`, `ASESOR`, `OPERACIONES`), validación de correo electrónico y gestión de estados de carga y error en español con banner «Qué hacer».
+   - Totalmente operable a 375 px de viewport móvil con touch targets >= 44 px sin desbordamiento horizontal.
+
+3. **Pruebas y Verificación:**
+   - `apps/web/src/lib/equipo-api.spec.ts`: 8 tests en verde.
+   - `apps/web/src/components/configuracion/bloque-equipo.spec.tsx`: 5 tests en verde.
+   - Total `@viajapro/web`: 72 suites, 602 tests en verde.
+   - Typecheck (9/9), Linter (7/7) y Next.js build (18 rutas) 100% en verde.
+   - Ganchos y fronteras (`pnpm test:hooks`): 59/59, 19/19, 6/6 en verde.
+
+## Verificación de Compuertas
+- **Pruebas unitarias (@viajapro/web):** 72 suites, 602 pruebas en verde.
+- **Typecheck:** 9/9 paquetes en verde.
+- **Linter:** 7/7 paquetes en verde.
+- **Compilación de producción (Next.js):** 18/18 rutas estáticas y dinámicas compiladas exitosamente.
+- **Fronteras y ganchos de seguridad (`pnpm test:hooks`):** 59/59 casos de política de rama, 19/19 detección de secretos, 6/6 fronteras de módulos.
+
+---
+
 # Entrega — T-026: Campos personalizados por agencia en la ficha del contacto y en las oportunidades — 2026-10-28
 
 ## Identificación
