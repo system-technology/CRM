@@ -1795,3 +1795,161 @@ tasks:
       - docs/03-adr/
     source: hallazgos de la tanda 2026-10-26
     created_at: 2026-10-27T01:51:03.951Z
+  - id: T-073
+    title: Enviar la cotización por WhatsApp como texto con formato desde la conversación (API)
+    type: feature
+    phase: 1
+    priority: P0
+    effort: M
+    status: backlog
+    depends_on: []
+    acceptance:
+      - POST que arma el texto (producto, fecha, pasajeros, total, no incluido) desde una versión de
+        cotización y lo encola por el outbox existente, idempotente (R5)
+      - "Respeta la ventana de 24 h: fuera de ella responde error tipado, no envía"
+      - Tests unitarios y e2e; sin PII en logs
+    files:
+      - apps/api/src/modules/inbox/
+      - apps/api/src/modules/quoting/
+    source: ruta a la fase 1 (roadmap v3) 2026-10-27
+    created_at: 2026-10-28T01:47:57.806Z
+  - id: T-074
+    title: Botón «Enviar cotización» en la conversación de la bandeja
+    type: feature
+    phase: 1
+    priority: P0
+    effort: S
+    status: backlog
+    depends_on:
+      - T-073
+    acceptance:
+      - Desde una conversación se elige una cotización guardada, se ve la vista previa del texto y se envía;
+        estados enviando, enviado y fallido
+      - Tests de componente; usable a 375 px
+    files:
+      - apps/web/src/app/bandeja/
+    source: ruta a la fase 1 (roadmap v3) 2026-10-27
+    created_at: 2026-10-28T01:47:57.807Z
+  - id: T-075
+    title: Alta y edición de contacto y crear oportunidad desde la conversación (API)
+    type: feature
+    phase: 1
+    priority: P0
+    effort: M
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Endpoints para crear y editar contacto con teléfono E.164 y para crear oportunidad ligada a la
+        conversación, con RLS y contratos Zod
+      - Tests e2e; PII de viajeros tratada según R10
+    files:
+      - apps/api/src/modules/crm/
+    source: ruta a la fase 1 (roadmap v3) 2026-10-27
+    created_at: 2026-10-28T01:47:57.807Z
+  - id: T-076
+    title: Pantalla de contacto y botón «Crear oportunidad» en la conversación
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Se puede completar el contacto y abrir una oportunidad en la etapa inicial desde la bandeja
+      - Tests de componente
+    files:
+      - apps/web/src/app/bandeja/
+      - apps/web/src/app/contactos/
+    source: ruta a la fase 1 (roadmap v3) 2026-10-27
+    created_at: 2026-10-28T01:47:57.807Z
+  - id: T-077
+    title: Seguimientos con fecha sobre oportunidad o conversación (API) e inicio del asesor con pendientes
+    type: feature
+    phase: 1
+    priority: P0
+    effort: M
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Crear, listar y completar seguimientos con fecha, por asesor, con RLS
+      - Endpoint de pendientes del día que alimenta T-020
+      - Tests e2e
+    files:
+      - apps/api/src/modules/crm/
+    source: ruta a la fase 1 (roadmap v3) 2026-10-27
+    created_at: 2026-10-28T01:47:57.807Z
+  - id: T-078
+    title: Plantilla de reapertura fuera de la ventana de 24 h y respuestas rápidas
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: blocked
+    depends_on: []
+    acceptance:
+      - Envío de una plantilla aprobada cuando la ventana está cerrada, por el mismo outbox idempotente
+      - Respuestas rápidas por agencia (tabla con tenant_id y RLS)
+      - Documenta el estado de aprobación en Meta
+    files:
+      - apps/api/src/modules/inbox/
+    source: ruta a la fase 1 (roadmap v3) 2026-10-27
+    created_at: 2026-10-28T01:47:57.807Z
+    blocked_reason: La plantilla debe someterse a aprobación de Meta con la cuenta del propietario; el tiempo de
+      aprobación no está verificado
+  - id: T-079
+    title: "Redis y trabajador en staging: que los mensajes recibidos se conviertan en conversaciones"
+    type: feature
+    phase: 1
+    priority: P0
+    effort: M
+    status: blocked
+    depends_on: []
+    acceptance:
+      - Servicio Redis y proceso consumidor activos en el entorno de staging con COLA_CHANGES real
+      - Un mensaje de la app de prueba de Meta aparece como conversación en la bandeja
+      - Runbook en docs/
+    files:
+      - render.yaml
+      - infra/
+    source: ruta a la fase 1 (roadmap v3) 2026-10-27
+    created_at: 2026-10-28T01:47:57.807Z
+    blocked_reason: Requiere el despliegue en Render y la cuenta del propietario (M5.1); render.yaml e infra/ son
+      rutas protegidas
+  - id: T-080
+    title: Iniciar la verificación del negocio en Meta y la solicitud de Tech Provider
+    type: docs
+    phase: 1
+    priority: P0
+    effort: S
+    status: blocked
+    depends_on: []
+    acceptance:
+      - Verificación del negocio enviada en Meta con la documentación de la agencia o de la empresa
+      - Fecha de solicitud registrada en ESTADO.md
+    files:
+      - docs/04-integraciones/
+    source: ruta a la fase 1 (roadmap v3) 2026-10-27
+    created_at: 2026-10-28T01:47:57.807Z
+    blocked_reason: "Solo el propietario puede hacerla: exige documentos legales de la empresa y su cuenta de
+      Meta; tarda semanas"
+  - id: T-081
+    title: "Ensayo de la jornada piloto: 20 conversaciones, 5 cotizaciones recibidas, seguimientos y sin abrir el
+      WhatsApp del celular"
+    type: test
+    phase: 1
+    priority: P0
+    effort: M
+    status: blocked
+    depends_on:
+      - T-073
+      - T-074
+    acceptance:
+      - Con el número de prueba de Meta en staging, personal de la agencia atiende 20 conversaciones simuladas
+        y envía 5 cotizaciones que llegan a un teléfono
+      - Cada conversación sin cerrar termina con un seguimiento fechado
+      - Resultado y fallos registrados en docs/_bitacora/
+    files:
+      - docs/_bitacora/
+    source: ruta a la fase 1 (roadmap v3) 2026-10-27
+    created_at: 2026-10-28T01:47:57.807Z
+    blocked_reason: Depende de Redis y trabajador en staging y del número de prueba de Meta con el propietario presente
