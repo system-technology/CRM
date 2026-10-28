@@ -490,7 +490,10 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: backlog
+    status: done
+    started_at: 2026-10-28T06:50:00.000Z
+    done_at: 2026-10-28T07:05:00.000Z
+    evidence: "Cero scroll horizontal y touch targets >= 44px en bandeja, pipeline, cotizador y catálogo. Tabla pipeline con wrapper overflow-x-auto, botones con clases min-h-[44px] min-w-[44px], pruebas en revision-375px.spec.tsx y reporte en traspaso/ENTREGA.md. 66/66 suites y 566 pruebas en verde."
     depends_on:
       - T-017
       - T-018

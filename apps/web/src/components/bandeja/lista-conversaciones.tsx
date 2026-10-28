@@ -237,7 +237,7 @@ export function ListaConversaciones() {
             type="button"
             onClick={() => setDensidad((d) => (d === 'comoda' ? 'compacta' : 'comoda'))}
             title={densidad === 'comoda' ? 'Cambiar a vista compacta' : 'Cambiar a vista cómoda'}
-            className="focus-visible:ring-acento-600 flex min-h-[36px] items-center gap-1 rounded-md border border-neutral-200 px-2.5 py-1 text-xs text-neutral-600 hover:bg-neutral-100 focus-visible:ring-2 focus-visible:outline-none md:min-h-[28px] dark:border-neutral-700 dark:text-neutral-400 dark:hover:bg-neutral-800"
+            className="focus-visible:ring-acento-600 flex min-h-[44px] items-center gap-1 rounded-md border border-neutral-200 px-2.5 py-1 text-xs text-neutral-600 hover:bg-neutral-100 focus-visible:ring-2 focus-visible:outline-none md:min-h-[28px] dark:border-neutral-700 dark:text-neutral-400 dark:hover:bg-neutral-800"
           >
             <Rows3 className="h-3.5 w-3.5" />
             <span className="text-[11px] capitalize">{densidad}</span>
