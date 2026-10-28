@@ -535,7 +535,10 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: backlog
+    status: done
+    started_at: 2026-10-28T07:20:00.000Z
+    done_at: 2026-10-28T07:30:00.000Z
+    evidence: "BloqueEtapasPipeline en pestaña pipeline de Configuración que permite listar, reordenar (subir/bajar con touch targets >= 44px), renombrar y calibrar probabilidades de cierre. Tablero de pipeline consume columnas dinámicas de la API. Métodos listarEtapasPipelineApi y actualizarEtapasPipelineApi en crm-api con fallback resiliente. Tests en bloque-etapas-pipeline.spec.tsx. 67/67 suites y 575 tests en verde."
     depends_on:
       - T-016
     acceptance:
