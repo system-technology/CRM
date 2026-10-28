@@ -1,3 +1,39 @@
+# Entrega — T-021: Reportes sin mocks: métricas calculadas desde la API o marcadas como no disponibles — 2026-10-28
+
+## Identificación
+- **Tarea:** `T-021` (roadmap/tasks.yaml)
+- **Rama:** `b/T-021-reportes-sin-mocks`
+- **Carril:** `b` (Frontend / Web)
+
+## Qué se construyó y auditó
+
+1. **Eliminación Total de Dependencias de Mock en la Vista (`apps/web/src/app/reportes/page.tsx`):**
+   - Se eliminaron todos los imports de `mock-reportes`. La página ahora solo importa los tipos y funciones puras de `reportes-logica.ts`.
+   - Se conecta de forma reactiva con `obtenerTableroPipeline()` del cliente de CRM (`crm-api.ts`), consumiendo los datos reales del pipeline comercial del tenant.
+
+2. **Cálculo en Tiempo Real desde Pipeline y Manejo de Métricas No Disponibles:**
+   - La función `calcularReporteDesdePipeline` en `reportes-logica.ts` computa dinámicamente las oportunidades ganadas, perdidas, tasa de conversión, ventas totales por destino y rendimiento de asesores a partir del `TableroPipeline`.
+   - Para las métricas que el backend aún no provee (comparativos con períodos anteriores, meta comercial mensual, SLA de primera respuesta en WhatsApp), la lógica retorna `null` y la UI renderiza explícitamente distintivos o textos «Aún sin datos» en lugar de inventar cifras ficticias.
+   - En estados vacíos (sin ventas por destino, sin conversiones en embudo o sin rendimiento por asesor), se despliegan mensajes claros informando que aún no hay datos para el período seleccionado.
+
+3. **Confidencialidad de Margen y Costo Neto (R10 / ADR-0011):**
+   - Se mantiene intacto el bloqueo de seguridad comercial: los asesores operativos jamás reciben ni visualizan costos netos de mayoristas ni márgenes comerciales (`costoNetoTotal`, `margenTotal`, `margenPorcentaje` permanecen `null`).
+   - Únicamente los usuarios con rol Dueño o permisos de margen autorizados por el servidor pueden ver dicha sección confidencial.
+
+4. **Accesibilidad y Ergonomía (WCAG 2.5.5):**
+   - El selector de período, los botones del conmutador de rol (Dueño/Asesor) y el botón de impresión cuentan con dimensiones de área táctil mínima de `min-h-[44px]`.
+   - Soporte para modo oscuro con contraste AA verificado.
+
+5. **Pruebas y Calidad Monorepo:**
+   - 8/8 tests unitarios en `reportes-logica.spec.ts` en verde (verificando R8, BigInt dinero, tasa de conversión sin división por cero, roles R10, y «Aún sin datos»).
+   - 3/3 tests en `reportes-permisos.spec.tsx` en verde.
+   - 109 suites y 886 tests unitarios en `@viajapro/web` 100% en verde.
+   - `pnpm typecheck` en verde en los 5 paquetes.
+   - `pnpm lint` 100% limpio.
+   - `pnpm test:hooks` limpio (59/59 políticas de rama, 19/19 guardianes de secretos, 6/6 fronteras entre módulos).
+
+---
+
 # Entrega — T-111: Modo oscuro y preferencia de densidad con la paleta de turismo — 2026-10-28
 
 ## Identificación

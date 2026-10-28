@@ -456,7 +456,14 @@ tasks:
     phase: 1
     priority: P2
     effort: M
-    status: backlog
+    status: done
+    started_at: 2026-10-28T14:36:00.000Z
+    done_at: 2026-10-28T14:49:00.000Z
+    evidence:
+      - apps/web/src/app/reportes/page.tsx sin imports de mock-reportes y con estados «Aún sin datos»
+      - apps/web/src/lib/reportes-logica.ts con cálculo en tiempo real desde TableroPipeline
+      - apps/web/src/lib/reportes-logica.spec.ts actualizado con 8 pruebas en verde
+      - Área táctil accesible WCAG min-h-[44px] en selector de períodos, conmutador de rol e impresión
     depends_on:
       - T-016
     acceptance:
