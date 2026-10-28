@@ -41,6 +41,7 @@ import { TablaGestionCatalogo } from '../../components/catalogo/tabla-gestion-ca
 import { ModalFormularioPaquete } from '../../components/catalogo/modal-formulario-paquete';
 import { DialogoDesactivarPaquete } from '../../components/catalogo/dialogo-desactivar-paquete';
 import { EstadoSinCatalogo } from '../../components/catalogo/estado-sin-catalogo';
+import { ChipTipoProducto } from '../../components/comun/chip-tipo-producto';
 import { obtenerClaseEscalonada } from '../../components/comun/animaciones';
 import { MOCK_PAQUETES_CATALOGO, type PaqueteConDetalle } from '../../lib/mock-catalogo';
 import {
@@ -466,6 +467,33 @@ export default function CatalogoPage() {
                         key={salida.vigenciaId}
                         salida={salida}
                         indice={idx}
+                        onVerFicha={(sal) => {
+                          const paqEncontrado = MOCK_PAQUETES_CATALOGO.find(
+                            (p) => p.id === sal.paqueteId,
+                          );
+                          if (paqEncontrado) {
+                            setPaqueteSeleccionado(paqEncontrado);
+                            return;
+                          }
+                          const paqGenerado: PaqueteConDetalle = {
+                            id: sal.paqueteId,
+                            nombre: sal.paqueteNombre,
+                            destino: sal.destino,
+                            paisIso: 'CO',
+                            dias: sal.noches + 1,
+                            noches: sal.noches,
+                            planAlimentacion: 'SIN_ALIMENTACION',
+                            inclusiones: [],
+                            exclusiones: [],
+                            descripcion: `Salida programada para ${sal.fecha} con destino a ${sal.destino}.`,
+                            activo: true,
+                            mayoristaId: null,
+                            mayorista: null,
+                            creadoEn: new Date().toISOString(),
+                            temporadas: [],
+                          };
+                          setPaqueteSeleccionado(paqGenerado);
+                        }}
                       />
                     ))}
                   </div>
@@ -515,9 +543,12 @@ export default function CatalogoPage() {
                                 <MapPin className="h-3 w-3" />
                                 {paquete.destino}
                               </span>
-                              <span className="rounded-full bg-neutral-100 px-2.5 py-0.5 text-[11px] font-medium text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400">
-                                {paquete.dias}D / {paquete.noches}N
-                              </span>
+                              <div className="flex items-center gap-1.5">
+                                <ChipTipoProducto nombreReferencia={paquete.nombre} tamano="sm" />
+                                <span className="rounded-full bg-neutral-100 px-2.5 py-0.5 text-[11px] font-medium text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400">
+                                  {paquete.dias}D / {paquete.noches}N
+                                </span>
+                              </div>
                             </div>
 
                             <h3 className="mt-3 line-clamp-2 text-sm font-bold text-neutral-900 dark:text-white">
