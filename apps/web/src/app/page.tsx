@@ -19,14 +19,21 @@ import {
 } from 'lucide-react';
 import { BarraModulos } from '../components/bandeja/barra-modulos';
 import { DistintivoDatosDemo } from '../components/comun/distintivo-datos-demo';
+import { BloqueSeguimientosDia } from '../components/inicio/bloque-seguimientos-dia';
 import { obtenerSesionActualApi } from '../lib/auth-api';
-import { obtenerResumenTrabajoDelDia, type ResumenTrabajoDelDia } from '../lib/crm-api';
+import {
+  obtenerResumenTrabajoDelDia,
+  obtenerPendientesDelDiaApi,
+  completarSeguimientoApi,
+  type ResumenTrabajoDelDia,
+} from '../lib/crm-api';
 import { obtenerMensajeBienvenida } from '../lib/inicio-logica';
-import type { SesionActual } from '@viajapro/contracts';
+import type { PendientesDelDia, SesionActual } from '@viajapro/contracts';
 
 export default function InicioPage() {
   const [sesion, setSesion] = useState<SesionActual | null>(null);
   const [resumen, setResumen] = useState<ResumenTrabajoDelDia | null>(null);
+  const [pendientes, setPendientes] = useState<PendientesDelDia | null>(null);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -34,12 +41,14 @@ export default function InicioPage() {
     setCargando(true);
     setError(null);
     try {
-      const [sesionRes, resumenRes] = await Promise.all([
+      const [sesionRes, resumenRes, pendientesRes] = await Promise.all([
         obtenerSesionActualApi().catch(() => null),
         obtenerResumenTrabajoDelDia(),
+        obtenerPendientesDelDiaApi().catch(() => null),
       ]);
       setSesion(sesionRes);
       setResumen(resumenRes);
+      setPendientes(pendientesRes);
     } catch {
       setError(
         'No pudimos conectar con los servicios de tu agencia. Comprueba tu conexión a internet e intenta nuevamente.',
@@ -48,6 +57,18 @@ export default function InicioPage() {
       setCargando(false);
     }
   }, []);
+
+  const handleCompletarSeguimiento = async (id: string) => {
+    await completarSeguimientoApi(id);
+    setPendientes((actual) => {
+      if (!actual) return null;
+      return {
+        ...actual,
+        vencidos: actual.vencidos.filter((v) => v.id !== id),
+        deHoy: actual.deHoy.filter((h) => h.id !== id),
+      };
+    });
+  };
 
   useEffect(() => {
     void cargarDatos();
@@ -183,6 +204,7 @@ export default function InicioPage() {
                   </div>
                 ))}
               </div>
+              <BloqueSeguimientosDia pendientes={null} cargando={true} />
             </div>
           )}
 
@@ -190,38 +212,40 @@ export default function InicioPage() {
           {!cargando && !error && resumen && (
             <div className="space-y-8">
               {/* Notificación si la cuenta está completamente vacía (onboarding para agencias nuevas) */}
-              {resumen.estaVacio && (
-                <div
-                  data-testid="inicio-vacio"
-                  className="rounded-2xl border border-amber-200 bg-amber-50/80 p-5 dark:border-amber-900/40 dark:bg-amber-950/20"
-                >
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-400/20 text-amber-700 ring-2 ring-amber-400 dark:text-amber-300">
-                        <Sparkles className="h-5 w-5" />
+              {resumen.estaVacio &&
+                (!pendientes ||
+                  (pendientes.vencidos.length === 0 && pendientes.deHoy.length === 0)) && (
+                  <div
+                    data-testid="inicio-vacio"
+                    className="rounded-2xl border border-amber-200 bg-amber-50/80 p-5 dark:border-amber-900/40 dark:bg-amber-950/20"
+                  >
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-400/20 text-amber-700 ring-2 ring-amber-400 dark:text-amber-300">
+                          <Sparkles className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <h2 className="text-sm font-bold text-amber-950 dark:text-amber-100">
+                            ¡Te damos la bienvenida a tu CRM de turismo!
+                          </h2>
+                          <p className="mt-0.5 text-xs text-amber-800 dark:text-amber-300">
+                            Aún no tienes actividad registrada para hoy. Comienza cotizando para un
+                            cliente o explorando las excursiones disponibles.
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <h2 className="text-sm font-bold text-amber-950 dark:text-amber-100">
-                          ¡Te damos la bienvenida a tu CRM de turismo!
-                        </h2>
-                        <p className="mt-0.5 text-xs text-amber-800 dark:text-amber-300">
-                          Aún no tienes actividad registrada para hoy. Comienza cotizando para un
-                          cliente o explorando las excursiones disponibles.
-                        </p>
+                      <div className="flex items-center gap-2">
+                        <Link
+                          href="/cotizador"
+                          className="inline-flex min-h-[44px] items-center gap-1.5 rounded-lg bg-amber-500 px-3.5 py-2 text-xs font-semibold text-neutral-900 shadow-xs hover:bg-amber-400"
+                        >
+                          <PlusCircle className="h-4 w-4" />
+                          <span>Crear primera cotización</span>
+                        </Link>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Link
-                        href="/cotizador"
-                        className="inline-flex min-h-[44px] items-center gap-1.5 rounded-lg bg-amber-500 px-3.5 py-2 text-xs font-semibold text-neutral-900 shadow-xs hover:bg-amber-400"
-                      >
-                        <PlusCircle className="h-4 w-4" />
-                        <span>Crear primera cotización</span>
-                      </Link>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
 
               {/* BLOQUE DE 4 TARJETAS CON PALETA CARIBEÑA DE VIAJAPRO */}
               <section aria-labelledby="seccion-trabajo-dia">
@@ -367,7 +391,14 @@ export default function InicioPage() {
                 </div>
               </section>
 
-              {/* SECCIÓN 2: ACCESOS RÁPIDOS OPERACIONALES */}
+              {/* SECCIÓN 2: SEGUIMIENTOS PENDIENTES DEL DÍA (T-020) */}
+              <BloqueSeguimientosDia
+                pendientes={pendientes}
+                cargando={false}
+                alCompletarSeguimiento={handleCompletarSeguimiento}
+              />
+
+              {/* SECCIÓN 3: ACCESOS RÁPIDOS OPERACIONALES */}
               <section aria-labelledby="seccion-accesos-rapidos">
                 <h2
                   id="seccion-accesos-rapidos"

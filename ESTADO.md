@@ -10,11 +10,11 @@
 
 | Campo | Valor |
 |---|---|
-| Última actualización | 2026-10-27 |
+| Última actualización | 2026-10-28 |
 | Actualizado por | Antigravity (`frontend`) |
 | Fase | **Fase 1 del backlog: «Un CRM mostrable y endurecido»** (M1 del [roadmap v2](docs/08-roadmap/01-roadmap.md)). Sin agencia real todavía |
-| Avance | Backend, base de datos, web y CI existen y se integran por PR. Catálogo completo (T-028..T-031), fichas y tarjetas (T-018, T-051, T-019), envío de cotizaciones por WhatsApp en la bandeja (T-074) y gestión de contacto/oportunidad en CRM (T-076). |
-| Próximo hito | Inicio del asesor con pendientes del día (T-020) y políticas de cookies (T-094, T-095). |
+| Avance | Catálogo gestionable (T-031), importador masivo en 4 pasos (T-029, T-030), ajuste promo_vencida (T-028), tarjeta/ficha de excursión (T-018, T-051, T-019), inicio del asesor (T-020), cookies y banner (T-094, T-095), login oceánico (T-033), navegación enriquecida (T-034) y animaciones fluidas con shimmer oceánico y movimiento reducido (T-035) y envío de cotización por WhatsApp (T-074) con gestión CRM de contacto y oportunidad en la bandeja (T-076) completados |
+| Próximo hito | Tarjetas de producto por tipo de excursión (T-036), marca e identidad por agencia (T-039) |
 
 ---
 

@@ -12,6 +12,7 @@ import {
   interpretarPresentacionTarifa,
 } from '../../lib/catalogo-logica';
 import { formatearDinero } from '../../lib/api';
+import { obtenerClaseEscalonada } from '../comun/animaciones';
 
 export interface TarjetaSalidaPublicadaProps {
   salida: SalidaPublicada & {
@@ -19,9 +20,15 @@ export interface TarjetaSalidaPublicadaProps {
     horaRegreso?: string | null;
     inclusiones?: string[];
   };
+  indice?: number;
+  className?: string;
 }
 
-export function TarjetaSalidaPublicada({ salida }: TarjetaSalidaPublicadaProps) {
+export function TarjetaSalidaPublicada({
+  salida,
+  indice,
+  className = '',
+}: TarjetaSalidaPublicadaProps) {
   // Formatear fecha amigable para Colombia (ej: Sábado, 3 de octubre de 2026)
   const fechaObj = new Date(salida.fecha + 'T12:00:00Z');
   const fechaTexto = new Intl.DateTimeFormat('es-CO', {
@@ -65,10 +72,12 @@ export function TarjetaSalidaPublicada({ salida }: TarjetaSalidaPublicadaProps) 
     salida.desde.unidades === '0' ||
     salida.desde.unidades === '';
 
+  const claseAnimacion = indice !== undefined ? obtenerClaseEscalonada(indice) : '';
+
   return (
     <article
       data-testid="tarjeta-salida-publicada"
-      className="group flex w-full min-w-0 flex-col justify-between overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-xs transition-all hover:border-neutral-300 hover:shadow-lg dark:border-neutral-800 dark:bg-neutral-900 dark:hover:border-neutral-700"
+      className={`group tarjeta-turismo-hover flex w-full min-w-0 flex-col justify-between overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-xs hover:border-cyan-500/50 dark:border-neutral-800 dark:bg-neutral-900 dark:hover:border-cyan-500/40 ${claseAnimacion} ${className}`.trim()}
     >
       <div>
         {/* Cabecera visual con degradado representativo */}
@@ -215,7 +224,7 @@ export function TarjetaSalidaPublicada({ salida }: TarjetaSalidaPublicadaProps) 
                   data-testid="tarifa-venta"
                   className="cifra text-lg font-black text-neutral-900 dark:text-white"
                 >
-                  {formatearDinero(salida.desde)}
+                  {formatearDinero(salida.presentacion?.venta ?? salida.desde)}
                 </span>
 
                 {/* Si hay múltiples monedas (desdePorMoneda), mostrarlas */}
@@ -232,7 +241,6 @@ export function TarjetaSalidaPublicada({ salida }: TarjetaSalidaPublicadaProps) 
                 )}
               </div>
             )}
-
             <span
               className={`block text-[10px] ${
                 condicionDesde.esGrupo

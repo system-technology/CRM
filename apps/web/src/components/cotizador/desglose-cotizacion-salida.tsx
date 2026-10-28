@@ -189,7 +189,9 @@ export function DesgloseCotizacionSalida({
                         {formatearDinero(linea.presentacion.listaTachada)}
                       </span>
                     )}
-                    <span>{formatearDinero(linea.precioUnitario)}</span>
+                    <span>
+                      {formatearDinero(linea.presentacion?.venta ?? linea.precioUnitario)}
+                    </span>
                     {linea.presentacion?.leyenda === 'PROMO_VENCIDA' && (
                       <span
                         data-testid="linea-promo-vencida"

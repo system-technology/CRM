@@ -5,7 +5,12 @@
  * agregación de métricas del trabajo diario y formateo accesible.
  */
 
-import type { ContadoresBandeja, TableroPipeline, PaginaDeCotizaciones } from '@viajapro/contracts';
+import type {
+  ContadoresBandeja,
+  TableroPipeline,
+  PaginaDeCotizaciones,
+  PendientesDelDia,
+} from '@viajapro/contracts';
 
 export interface ResumenTrabajoDelDia {
   conversacionesPendientes: number;
@@ -122,4 +127,98 @@ export function calcularResumenTrabajo(
     totalVentasEstimadasCop: totalEstimado.toString(),
     estaVacio,
   };
+}
+
+export interface MetricasSeguimientos {
+  totalVencidos: number;
+  totalHoy: number;
+  totalPendientes: number;
+  estaAlDia: boolean;
+  tieneVencidos: boolean;
+}
+
+/**
+ * Calcula las métricas resumidas del bloque de seguimientos del asesor (T-020).
+ */
+export function calcularMetricasSeguimientos(
+  pendientes: PendientesDelDia | null,
+): MetricasSeguimientos {
+  const totalVencidos = pendientes?.vencidos?.length ?? 0;
+  const totalHoy = pendientes?.deHoy?.length ?? 0;
+  const totalPendientes = totalVencidos + totalHoy;
+
+  return {
+    totalVencidos,
+    totalHoy,
+    totalPendientes,
+    estaAlDia: totalPendientes === 0,
+    tieneVencidos: totalVencidos > 0,
+  };
+}
+
+export type UrgenciaSeguimiento = 'VENCIDO' | 'HOY_URGENTE' | 'HOY_PROGRAMADO';
+
+/**
+ * Determina el nivel de urgencia de un seguimiento para su tratamiento visual y prioridad.
+ */
+export function clasificarUrgenciaSeguimiento(
+  venceEnIso: string,
+  ahora: Date = new Date(),
+): UrgenciaSeguimiento {
+  const diffMs = ahora.getTime() - new Date(venceEnIso).getTime();
+  if (diffMs > 0) {
+    return 'VENCIDO';
+  }
+  // Menos de 2 horas para vencer = urgente
+  if (Math.abs(diffMs) <= 2 * 60 * 60 * 1000) {
+    return 'HOY_URGENTE';
+  }
+  return 'HOY_PROGRAMADO';
+}
+
+/**
+ * Retorna el texto amigable de retraso o tiempo restante en español colombiano.
+ */
+export function calcularRetrasoSeguimiento(venceEnIso: string, ahora: Date = new Date()): string {
+  const diffMs = ahora.getTime() - new Date(venceEnIso).getTime();
+  if (diffMs > 0) {
+    const min = Math.floor(diffMs / 60000);
+    if (min < 60) {
+      return `Vencido hace ${min} min`;
+    }
+    const horas = Math.floor(min / 60);
+    if (horas < 24) {
+      return `Vencido hace ${horas} h`;
+    }
+    const dias = Math.floor(horas / 24);
+    return `Vencido hace ${dias} d`;
+  }
+
+  const faltanMs = -diffMs;
+  const min = Math.floor(faltanMs / 60000);
+  if (min < 60) {
+    return `En ${min} min`;
+  }
+  const horas = Math.floor(min / 60);
+  if (horas < 24) {
+    return `En ${horas} h`;
+  }
+  return 'Programado para hoy';
+}
+
+/**
+ * Formatea la hora del seguimiento en formato amigable de Colombia (ej: 02:30 p. m.).
+ */
+export function formatearHoraSeguimiento(venceEnIso: string): string {
+  try {
+    const date = new Date(venceEnIso);
+    return new Intl.DateTimeFormat('es-CO', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+      timeZone: 'America/Bogota',
+    }).format(date);
+  } catch {
+    return '';
+  }
 }

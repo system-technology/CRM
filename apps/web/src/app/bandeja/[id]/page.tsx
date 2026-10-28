@@ -32,6 +32,7 @@ import { usePermisos } from '../../../lib/permisos';
 import { ModalReasignar } from '../../../components/bandeja/modal-reasignar';
 import { obtenerFichaDeContacto } from '../../../lib/crm-api';
 import { EsqueletoConversacion, AvisoErrorAccionable } from '../../../components/comun/esqueletos';
+import { MigasDePan } from '../../../components/comun/migas-de-pan';
 import {
   construirMensajeErrorAccionable,
   formatearErrorAmigable,
@@ -530,6 +531,17 @@ export default function BandejaConversacionPage() {
     <div className="flex h-full w-full overflow-hidden bg-neutral-100 dark:bg-neutral-950">
       {/* Columna Central: Conversación (Chat) */}
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-white dark:bg-neutral-900">
+        {/* Migas de pan de turismo (T-034) */}
+        <div className="hidden border-b border-neutral-100 bg-neutral-50/50 px-4 py-1 sm:block dark:border-neutral-800/60 dark:bg-neutral-950/40">
+          <MigasDePan
+            elementos={[
+              { etiqueta: 'Inicio', href: '/' },
+              { etiqueta: 'Bandeja', href: '/bandeja' },
+              { etiqueta: detalle.contactoNombre || detalle.contactoTelefono || 'Conversación' },
+            ]}
+          />
+        </div>
+
         {/* Cabecera de la conversación (Tarea 0b.6) */}
         <header className="flex min-w-0 shrink-0 items-center justify-between border-b border-neutral-200 bg-white px-2.5 py-2 sm:px-4 sm:py-2.5 dark:border-neutral-800 dark:bg-neutral-900">
           <div className="flex min-w-0 flex-1 items-center gap-2">

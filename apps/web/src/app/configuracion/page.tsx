@@ -16,10 +16,12 @@ import {
   Save,
   Lock,
   Phone,
+  Tag,
 } from 'lucide-react';
 import { BarraModulos } from '../../components/bandeja/barra-modulos';
 import { DistintivoDatosDemo } from '../../components/comun/distintivo-datos-demo';
 import { BloquePoliticaPrecio } from '../../components/configuracion/bloque-politica-precio';
+import { BloqueAjustesCatalogo } from '../../components/configuracion/bloque-ajustes-catalogo';
 import { usePermisos } from '../../lib/permisos';
 import {
   MOCK_MIEMBROS_EQUIPO,
@@ -38,7 +40,7 @@ import {
   validarFormatoNit,
 } from '../../lib/configuracion-logica';
 
-type TabConfig = 'equipo' | 'whatsapp' | 'sla' | 'pipeline' | 'agencia' | 'precios';
+type TabConfig = 'equipo' | 'whatsapp' | 'sla' | 'pipeline' | 'agencia' | 'precios' | 'catalogo';
 
 export default function ConfiguracionPage() {
   const { puedeVerNetoYMargen } = usePermisos();
@@ -241,6 +243,23 @@ export default function ConfiguracionPage() {
                 </span>
               </button>
             )}
+
+            <button
+              id="tab-btn-catalogo"
+              data-testid="tab-btn-catalogo"
+              onClick={() => setTabActiva('catalogo')}
+              className={`flex items-center gap-2 border-b-2 px-4 py-2 text-xs font-medium transition-colors ${
+                tabActiva === 'catalogo'
+                  ? 'border-teal-600 text-teal-700 dark:border-teal-400 dark:text-teal-300'
+                  : 'border-transparent text-neutral-500 hover:border-neutral-300 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200'
+              }`}
+            >
+              <Tag className="h-4 w-4 text-teal-600 dark:text-teal-400" />
+              <span>Catálogo</span>
+              <span className="rounded-full bg-teal-100 px-1.5 py-0.5 text-[10px] font-bold text-teal-800 dark:bg-teal-950 dark:text-teal-300">
+                T-028
+              </span>
+            </button>
           </nav>
         </header>
 
@@ -629,6 +648,13 @@ export default function ConfiguracionPage() {
           {tabActiva === 'precios' && (
             <div id="tab-contenido-precios">
               <BloquePoliticaPrecio puedeVerNetoYMargen={puedeVerNetoYMargen} />
+            </div>
+          )}
+
+          {/* TAB 7: CATÁLOGO Y AJUSTES DE PROMOCIÓN (T-028 - ADR-0017 §9) */}
+          {tabActiva === 'catalogo' && (
+            <div id="tab-contenido-catalogo" data-testid="tab-contenido-catalogo">
+              <BloqueAjustesCatalogo />
             </div>
           )}
 
