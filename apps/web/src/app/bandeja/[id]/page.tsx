@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import type {
@@ -24,6 +24,7 @@ import {
   PlusCircle,
   PanelRight,
   Sparkles,
+  Zap,
 } from 'lucide-react';
 import { inboxApi } from '../../../lib/inbox-api';
 import { useInboxSocket } from '../../../lib/inbox-socket';
@@ -51,6 +52,16 @@ import { ModalPlantillas } from '../../../components/bandeja/modal-plantillas';
 import { EnviarPlantilla } from '@viajapro/contracts';
 import { TarjetaCotizacion } from '../../../components/bandeja/tarjeta-cotizacion';
 import { PanelSugerencias } from '../../../components/bandeja/panel-sugerencias';
+import { MenuRespuestasRapidas } from '../../../components/bandeja/menu-respuestas-rapidas';
+import {
+  detectarDisparadorSlash,
+  filtrarRespuestasRapidas,
+  interpolarVariables,
+  obtenerRespuestasRapidas,
+  reemplazarComandoSlash,
+  type ContextoInterpolacion,
+  type RespuestaRapida,
+} from '../../../lib/respuestas-rapidas-logica';
 
 export default function BandejaConversacionPage() {
   const params = useParams();
@@ -86,6 +97,7 @@ export default function BandejaConversacionPage() {
   // Estado de conversación retirada (0c.35)
   const [conversacionRetirada, setConversacionRetirada] = useState(false);
   const [modalReasignarAbierto, setModalReasignarAbierto] = useState(false);
+  const [menuRespuestasAbierto, setMenuRespuestasAbierto] = useState(false);
 
   // Atajos de teclado en el chat (T-024)
   useEffect(() => {
@@ -100,7 +112,8 @@ export default function BandejaConversacionPage() {
         e.preventDefault();
         setMostrarFichaLateral((prev) => !prev);
       } else if (e.key === 'Escape') {
-        if (modalPlantillasAbierto) setModalPlantillasAbierto(false);
+        if (menuRespuestasAbierto) setMenuRespuestasAbierto(false);
+        else if (modalPlantillasAbierto) setModalPlantillasAbierto(false);
         else if (modalReasignarAbierto) setModalReasignarAbierto(false);
         else if (mostrarFichaLateral) setMostrarFichaLateral(false);
       }
@@ -108,7 +121,7 @@ export default function BandejaConversacionPage() {
 
     window.addEventListener('keydown', handleGlobalKeyDown);
     return () => window.removeEventListener('keydown', handleGlobalKeyDown);
-  }, [modalPlantillasAbierto, modalReasignarAbierto, mostrarFichaLateral]);
+  }, [modalPlantillasAbierto, modalReasignarAbierto, mostrarFichaLateral, menuRespuestasAbierto]);
   const [asignando, setAsignando] = useState(false);
 
   // Permisos de sesión para visibilidad y asignación (0c.35)
@@ -119,6 +132,138 @@ export default function BandejaConversacionPage() {
     miUsuarioId,
     puedeVerTodasConversaciones,
   );
+
+  // Respuestas rápidas (T-104)
+  const [catalogoRespuestas, setCatalogoRespuestas] = useState<RespuestaRapida[]>(() =>
+    obtenerRespuestasRapidas(sesion?.tenantActivoId),
+  );
+  const [querySlash, setQuerySlash] = useState('');
+  const [disparadorSlashInfo, setDisparadorSlashInfo] = useState<{
+    indiceInicio: number;
+    longitudComando: number;
+  } | null>(null);
+  const [indiceSeleccionadoRR, setIndiceSeleccionadoRR] = useState(0);
+
+  useEffect(() => {
+    setCatalogoRespuestas(obtenerRespuestasRapidas(sesion?.tenantActivoId));
+  }, [sesion?.tenantActivoId]);
+
+  const nombreAgenciaActiva =
+    sesion?.agencias?.find((a) => a.id === sesion?.tenantActivoId)?.nombre || 'Nuestra Agencia';
+
+  const contextoInterpolacion: ContextoInterpolacion = useMemo(
+    () => ({
+      nombreCliente: detalle?.contactoNombre ?? null,
+      nombreAsesor: sesion?.identidad?.nombre ?? null,
+      nombreAgencia: nombreAgenciaActiva,
+      destino: fichaContacto?.oportunidadActual?.destino ?? null,
+    }),
+    [
+      detalle?.contactoNombre,
+      sesion?.identidad?.nombre,
+      nombreAgenciaActiva,
+      fichaContacto?.oportunidadActual?.destino,
+    ],
+  );
+
+  const respuestasFiltradas = useMemo(
+    () => filtrarRespuestasRapidas(catalogoRespuestas, querySlash),
+    [catalogoRespuestas, querySlash],
+  );
+
+  const insertarRespuestaRapida = useCallback(
+    (rr: RespuestaRapida, textoInterpolado: string) => {
+      if (disparadorSlashInfo) {
+        const { nuevoTexto, nuevaPosCursor } = reemplazarComandoSlash(
+          textoMensaje,
+          disparadorSlashInfo.indiceInicio,
+          disparadorSlashInfo.longitudComando,
+          textoInterpolado,
+        );
+        setTextoMensaje(nuevoTexto);
+        setTimeout(() => {
+          if (textareaRef.current) {
+            textareaRef.current.focus();
+            textareaRef.current.setSelectionRange(nuevaPosCursor, nuevaPosCursor);
+          }
+        }, 10);
+      } else {
+        const nuevoTexto = textoMensaje.trim()
+          ? `${textoMensaje} ${textoInterpolado}`
+          : textoInterpolado;
+        setTextoMensaje(nuevoTexto);
+        setTimeout(() => {
+          if (textareaRef.current) {
+            textareaRef.current.focus();
+            const fin = nuevoTexto.length;
+            textareaRef.current.setSelectionRange(fin, fin);
+          }
+        }, 10);
+      }
+
+      setMenuRespuestasAbierto(false);
+      setDisparadorSlashInfo(null);
+    },
+    [disparadorSlashInfo, textoMensaje],
+  );
+
+  const manejarCambioTexto = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const val = e.target.value;
+    setTextoMensaje(val);
+
+    if (!modoNota) {
+      const cursorPos = e.target.selectionStart;
+      const disparador = detectarDisparadorSlash(val, cursorPos);
+      if (disparador && disparador.activo) {
+        setMenuRespuestasAbierto(true);
+        setQuerySlash(disparador.query);
+        setDisparadorSlashInfo({
+          indiceInicio: disparador.indiceInicio,
+          longitudComando: disparador.longitudComando,
+        });
+        setIndiceSeleccionadoRR(0);
+      } else {
+        setMenuRespuestasAbierto(false);
+        setDisparadorSlashInfo(null);
+      }
+    }
+  };
+
+  const manejarKeyDownTextarea = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (menuRespuestasAbierto && respuestasFiltradas.length > 0) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setIndiceSeleccionadoRR((prev) => (prev + 1) % respuestasFiltradas.length);
+        return;
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setIndiceSeleccionadoRR(
+          (prev) => (prev - 1 + respuestasFiltradas.length) % respuestasFiltradas.length,
+        );
+        return;
+      }
+      if (e.key === 'Enter' || e.key === 'Tab') {
+        e.preventDefault();
+        const seleccionada = respuestasFiltradas[indiceSeleccionadoRR];
+        if (seleccionada) {
+          const texto = interpolarVariables(seleccionada.contenido, contextoInterpolacion);
+          insertarRespuestaRapida(seleccionada, texto);
+        }
+        return;
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setMenuRespuestasAbierto(false);
+        return;
+      }
+    }
+
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      void manejarEnvio();
+    }
+  };
 
   // Atajos de teclado
 
@@ -976,6 +1121,31 @@ export default function BandejaConversacionPage() {
                       <Sparkles className="h-3.5 w-3.5" />
                       <span>Sugerencias</span>
                     </button>
+
+                    <button
+                      type="button"
+                      id="btn-respuestas-rapidas"
+                      data-testid="btn-respuestas-rapidas"
+                      onClick={() => {
+                        setMenuRespuestasAbierto((p) => !p);
+                        setQuerySlash('');
+                        setDisparadorSlashInfo(null);
+                        setIndiceSeleccionadoRR(0);
+                      }}
+                      className={`flex min-h-[40px] items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-semibold transition-colors sm:min-h-[32px] ${
+                        menuRespuestasAbierto
+                          ? 'border-amber-300 bg-amber-100 text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200'
+                          : 'border-neutral-200 bg-neutral-50 text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300'
+                      }`}
+                      title="Respuestas Rápidas (o escribe «/» en el chat)"
+                      aria-label="Abrir respuestas rápidas"
+                    >
+                      <Zap className="h-3.5 w-3.5 text-amber-500" />
+                      <span className="hidden sm:inline">Respuestas</span>
+                      <span className="rounded bg-amber-100 px-1 font-mono text-[10px] text-amber-800 dark:bg-amber-900/60 dark:text-amber-300">
+                        /
+                      </span>
+                    </button>
                   </div>
                 </div>
 
@@ -989,22 +1159,28 @@ export default function BandejaConversacionPage() {
                   </div>
                 )}
 
-                <div className="flex gap-2">
+                <div className="relative flex gap-2">
+                  {menuRespuestasAbierto && (
+                    <MenuRespuestasRapidas
+                      respuestas={respuestasFiltradas}
+                      query={querySlash}
+                      contexto={contextoInterpolacion}
+                      indiceSeleccionado={indiceSeleccionadoRR}
+                      onSeleccionar={insertarRespuestaRapida}
+                      onCerrar={() => setMenuRespuestasAbierto(false)}
+                    />
+                  )}
+
                   <textarea
                     ref={textareaRef}
                     rows={2}
                     value={textoMensaje}
-                    onChange={(e) => setTextoMensaje(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        void manejarEnvio();
-                      }
-                    }}
+                    onChange={manejarCambioTexto}
+                    onKeyDown={manejarKeyDownTextarea}
                     placeholder={
                       modoNota
                         ? 'Escribe una nota interna para el equipo (nunca se envía al cliente)...'
-                        : 'Escribe tu respuesta a cliente...'
+                        : 'Escribe tu respuesta a cliente o «/» para respuestas rápidas...'
                     }
                     disabled={enviando || conversacionRetirada}
                     className={`flex-1 rounded-lg border p-2.5 text-xs focus:outline-none ${
