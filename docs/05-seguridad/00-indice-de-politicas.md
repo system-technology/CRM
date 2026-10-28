@@ -22,6 +22,7 @@ mecanismo pero falta prueba, cobertura o despliegue. *No se cumple*: no existe t
 | 10 | [Retención, supresión y respaldo](10-retencion-supresion-y-respaldo.md) (criterio C5) | B | **No se cumple** | Ningún trabajo programado de retención ni servicio de supresión; restauración nunca probada |
 | 11 | [Divulgación responsable](11-divulgacion-responsable.md) + [`SECURITY.md`](../../SECURITY.md) | B | **Parcial** | Canal de correo inexistente (sin dominio); reporte privado de GitHub sin verificar |
 | 12 | [Uso aceptable para agentes de IA](12-uso-aceptable-agentes-ia.md) | B | **Parcial** | Hooks solo protegen a Claude Code; permisos `node:*` permiten leer `.env` |
+| 13 | [Inventario y política de cookies](13-inventario-y-politica-de-cookies.md) (T-094, T-095) | B | **Cumple** | Política pública, inventario completo apps/web y apps/api, banner accesible con bloqueo de lo no esencial |
 
 ## Documentos existentes que estas políticas enlazan
 
