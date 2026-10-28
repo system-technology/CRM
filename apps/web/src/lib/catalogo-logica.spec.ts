@@ -17,6 +17,13 @@ import {
   formatearCondicionDesde,
   obtenerPrecioDesde,
   verificarVigenciaTarifario,
+  calcularEstadoCupo,
+  formatearChipSalida,
+  obtenerEtiquetaPrecio,
+  detectarTipoTurismo,
+  formatearHorarioExcursion,
+  requiereAvisoImpuestoMuelle,
+  agruparSalidasPorProducto,
 } from './catalogo-logica';
 
 describe('Pruebas del Catálogo de Paquetes y Tarifarios de Mayoristas', () => {
@@ -221,5 +228,183 @@ describe('Pruebas del Catálogo de Paquetes y Tarifarios de Mayoristas', () => {
     expect(infoGrupo.esGrupo).toBe(true);
     expect(infoGrupo.subtitulo).toContain('promo grupal');
     expect(infoGrupo.aviso).toContain('sujeto a compra en grupo');
+  });
+
+  // =============================================================================
+  // Pruebas T-018: Tarjeta y ficha de excursión en el catálogo
+  // =============================================================================
+
+  it('15. calcularEstadoCupo clasifica cupos disponibles, últimos cupos y agotado', () => {
+    expect(calcularEstadoCupo(null)).toBe('DISPONIBLE');
+    expect(calcularEstadoCupo(0)).toBe('AGOTADO');
+    expect(calcularEstadoCupo(3)).toBe('ULTIMOS_CUPOS');
+    expect(calcularEstadoCupo(5)).toBe('ULTIMOS_CUPOS');
+    expect(calcularEstadoCupo(6)).toBe('DISPONIBLE');
+    expect(calcularEstadoCupo(20)).toBe('DISPONIBLE');
+  });
+
+  it('16. formatearChipSalida genera etiquetas accesibles y formato amigable es-CO', () => {
+    const salidaDispo = formatearChipSalida({
+      vigenciaId: 'v1',
+      fecha: '2026-10-03',
+      cupoTotal: 12,
+      desde: { unidades: '250000', moneda: 'COP' },
+    });
+    expect(salidaDispo.etiquetaFecha).toContain('3');
+    expect(salidaDispo.etiquetaCupo).toBe('12 cupos');
+    expect(salidaDispo.estadoCupo).toBe('DISPONIBLE');
+
+    const salidaCritica = formatearChipSalida({
+      vigenciaId: 'v2',
+      fecha: '2026-10-04',
+      cupoTotal: 4,
+      desde: { unidades: '250000', moneda: 'COP' },
+    });
+    expect(salidaCritica.etiquetaCupo).toBe('quedan 4');
+    expect(salidaCritica.estadoCupo).toBe('ULTIMOS_CUPOS');
+
+    const salidaAgotada = formatearChipSalida({
+      vigenciaId: 'v3',
+      fecha: '2026-10-07',
+      cupoTotal: 0,
+      desde: { unidades: '250000', moneda: 'COP' },
+    });
+    expect(salidaAgotada.etiquetaCupo).toBe('Agotado');
+    expect(salidaAgotada.estadoCupo).toBe('AGOTADO');
+
+    const salidaAbierta = formatearChipSalida({
+      vigenciaId: 'v4',
+      fecha: '2026-10-10',
+      cupoTotal: null,
+      desde: { unidades: '250000', moneda: 'COP' },
+    });
+    expect(salidaAbierta.etiquetaCupo).toBe('Cupos abiertos');
+    expect(salidaAbierta.estadoCupo).toBe('DISPONIBLE');
+  });
+
+  it('17. obtenerEtiquetaPrecio devuelve "Consultar" ante tarifas sin precio publicado o $0 (UX Turismo)', () => {
+    expect(obtenerEtiquetaPrecio(null)).toBe('Consultar');
+    expect(obtenerEtiquetaPrecio(undefined)).toBe('Consultar');
+    expect(obtenerEtiquetaPrecio({ unidades: '0', moneda: 'COP' })).toBe('Consultar');
+
+    const conPrecio = obtenerEtiquetaPrecio({ unidades: '250000', moneda: 'COP' });
+    expect(conPrecio).toContain('Desde');
+    expect(conPrecio).toContain('250.000');
+    expect(conPrecio).toContain('por persona');
+  });
+
+  it('18. detectarTipoTurismo categoriza playa/náutico, naturaleza, aventura y cultural', () => {
+    expect(detectarTipoTurismo('Cartagena', 'Pasadía Islas del Rosario VIP')).toBe('PLAYA_NAUTICO');
+    expect(detectarTipoTurismo('San Andrés', 'Tour Bahía')).toBe('PLAYA_NAUTICO');
+    expect(detectarTipoTurismo('Eje Cafetero', 'Puebleando en Quindío')).toBe('NATURALEZA');
+    expect(detectarTipoTurismo('San Gil', 'Rafting en Río Fonce')).toBe('AVENTURA');
+    expect(detectarTipoTurismo('Bogotá', 'City Tour Centro Histórico')).toBe('CULTURAL_CIUDAD');
+  });
+
+  it('19. formatearHorarioExcursion asigna turnos lógicos de operación', () => {
+    expect(formatearHorarioExcursion(0, 'Pasadía Islas del Rosario')).toBe('07:30 - 16:30');
+    expect(formatearHorarioExcursion(0, 'Tour Atardecer en la Bahía (Tarde)')).toBe(
+      '14:00 - 19:30',
+    );
+    expect(formatearHorarioExcursion(0, 'Plancton Luminoso Nocturno')).toBe('18:30 - 22:30');
+    expect(formatearHorarioExcursion(2, 'Puebleando en Quindío')).toBe('3 días / 2 noches');
+  });
+
+  it('20. requiereAvisoImpuestoMuelle detecta destinos marítimos e insulares', () => {
+    expect(requiereAvisoImpuestoMuelle('Cartagena', 'Tour 5 Islas VIP')).toBe(true);
+    expect(requiereAvisoImpuestoMuelle('Bolívar', 'Pasadía Barú Mambo Beach')).toBe(true);
+    expect(requiereAvisoImpuestoMuelle('Buenaventura', 'Lancha a Piangüita')).toBe(true);
+    expect(requiereAvisoImpuestoMuelle('Quindío', 'Parque del Café')).toBe(false);
+  });
+
+  it('21. agruparSalidasPorProducto consolida salidas en una sola tarjeta con chips cronológicos', () => {
+    const salidasMixtas: SalidaPublicada[] = [
+      {
+        vigenciaId: 'v-10',
+        paqueteId: 'pkg-islas',
+        paqueteNombre: 'Pasadía Islas del Rosario & Barú VIP',
+        destino: 'Cartagena',
+        noches: 0,
+        fecha: '2026-10-15',
+        cupoTotal: 10,
+        desde: { unidades: '260000', moneda: 'COP' },
+        desdeEsDeGrupo: false,
+        tarifas: 2,
+      },
+      {
+        vigenciaId: 'v-11',
+        paqueteId: 'pkg-islas',
+        paqueteNombre: 'Pasadía Islas del Rosario & Barú VIP',
+        destino: 'Cartagena',
+        noches: 0,
+        fecha: '2026-10-04',
+        cupoTotal: 3,
+        desde: { unidades: '250000', moneda: 'COP' },
+        desdeEsDeGrupo: false,
+        tarifas: 1,
+      },
+      {
+        vigenciaId: 'v-12',
+        paqueteId: 'pkg-eje',
+        paqueteNombre: 'Puebleando en el Quindío',
+        destino: 'Eje Cafetero',
+        noches: 2,
+        fecha: '2026-10-12',
+        cupoTotal: 15,
+        desde: { unidades: '410000', moneda: 'COP' },
+        desdeEsDeGrupo: false,
+        tarifas: 1,
+      },
+    ];
+
+    const agrupados = agruparSalidasPorProducto(salidasMixtas);
+    expect(agrupados.length).toBe(2);
+
+    const islas = agrupados.find((p) => p.paqueteId === 'pkg-islas');
+    expect(islas).toBeDefined();
+    expect(islas!.nombre).toBe('Pasadía Islas del Rosario & Barú VIP');
+    expect(islas!.tipoTurismo).toBe('PLAYA_NAUTICO');
+    expect(islas!.requiereImpuestoMuelle).toBe(true);
+    expect(islas!.tienePromo).toBe(true);
+    expect(islas!.precioDesde?.unidades).toBe('250000');
+    expect(islas!.salidas.length).toBe(2);
+    // Deben estar ordenadas cronológicamente
+    expect(islas!.salidas[0]!.fecha).toBe('2026-10-04');
+    expect(islas!.salidas[0]!.estadoCupo).toBe('ULTIMOS_CUPOS');
+    expect(islas!.salidas[1]!.fecha).toBe('2026-10-15');
+    expect(islas!.salidas[1]!.estadoCupo).toBe('DISPONIBLE');
+  });
+
+  it('22. agruparSalidasPorProducto preserva presentacion y promoVencida si la salida incluye PresentacionDePrecio', () => {
+    const salidasConPresentacion: SalidaPublicada[] = [
+      {
+        vigenciaId: 'v-20',
+        paqueteId: 'pkg-promo-vencida',
+        paqueteNombre: 'Tour Islas del Rosario VIP',
+        destino: 'Cartagena',
+        noches: 0,
+        fecha: '2026-11-01',
+        cupoTotal: 10,
+        desde: { unidades: '280000', moneda: 'COP' },
+        desdeEsDeGrupo: false,
+        tarifas: 1,
+        presentacion: {
+          estado: 'PROMO_VENCIDA',
+          venta: { unidades: '280000', moneda: 'COP' },
+          listaTachada: { unidades: '350000', moneda: 'COP' },
+          leyenda: 'PROMO_VENCIDA',
+          promoVigente: false,
+        },
+      },
+    ];
+
+    const agrupados = agruparSalidasPorProducto(salidasConPresentacion);
+    expect(agrupados.length).toBe(1);
+    const prod = agrupados[0]!;
+    expect(prod.presentacion).toBeDefined();
+    expect(prod.presentacion?.estado).toBe('PROMO_VENCIDA');
+    expect(prod.presentacion?.listaTachada?.unidades).toBe('350000');
+    expect(prod.presentacion?.leyenda).toBe('PROMO_VENCIDA');
+    expect(prod.salidas[0]!.presentacion?.estado).toBe('PROMO_VENCIDA');
   });
 });

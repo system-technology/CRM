@@ -72,6 +72,59 @@
 - **Typecheck estricto:** `pnpm --filter @viajapro/web typecheck` → **0 errores** TypeScript.
 - **Linter:** `pnpm --filter @viajapro/web lint` → **0 errores, 0 advertencias**.
 - **Prettier:** `pnpm exec prettier --write ...` → **100% formateado**.
+
+---
+
+# Entrega — T-018: Tarjeta y Ficha de Excursión en el Catálogo — 2026-10-26
+
+## Identificación
+- **Tarea:** T-018 (`Tarjeta y ficha de excursión en el catálogo: «desde», promo, horarios, qué incluye y cupos por salida`)
+- **Rama:** `b/T-018-tarjeta-ficha-excursion` (empujada a `origin/b/T-018-tarjeta-ficha-excursion`)
+- **Stitch Design Screen ID:** `a7778659a7ee42dc9be442cb59f6826f` (Proyecto «ViajaPro — CRM para agencias de turismo», ID `8333038101997719867`, pantalla *Catálogo de Excursiones y Tours — ViajaPro CRM*)
+
+## Qué construí
+
+1. **Lógica de agrupación de catálogo y estados de cupos (`apps/web/src/lib/catalogo-logica.ts`):**
+   - `agruparSalidasPorProducto(salidas)`: Agrupa salidas individuales de la API por producto/paquete turístico, ordenando cronológicamente sus salidas y calculando la tarifa más baja.
+   - `calcularEstadoCupo(cupoTotal)`: Determina el estado de disponibilidad: `DISPONIBLE` (> 5 cupos o abiertos), `ULTIMOS_CUPOS` (1 a 5 cupos) y `AGOTADO` (0 cupos).
+   - `formatearChipSalida(salida)`: Formatea el chip para la UI (ej. «sáb 3 oct · quedan 4 cupos», «12 cupos», «Agotado»).
+   - `obtenerEtiquetaPrecio(desde)`: Devuelve «Consultar» cuando el precio es nulo, indefinido o `$0`, evitando publicidad engañosa y cumpliendo la regla 2 de UX Turismo.
+   - `detectarTipoTurismo`: Asigna paleta y tokens según el destino (náutico/isla, naturaleza, aventura, cultural).
+   - `formatearHorarioExcursion`: Horarios estándar y turnos de operación (ej. `07:30 - 16:30`, `14:00 - 19:30`).
+
+2. **Componente de Tarjeta de Excursión (`apps/web/src/components/catalogo/tarjeta-excursion-catalogo.tsx`):**
+   - Cabecera visual rica con degradado temático contextual y badges de duración («1 día (Pasadía)» o «XD / YN»).
+   - Horario operativo visible e icono temático.
+   - Chips visuales de lo que incluye la excursión.
+   - Banner ámbar visible de alerta: «Impuesto de muelle no incluido» en destinos marítimos/insulares.
+   - Sección de próximas salidas con chips interactivos con fechas y cupos en vivo (`DISPONIBLE`, `ULTIMOS_CUPOS`, `AGOTADO`).
+   - Pie de tarjeta con tarifa desde o «Consultar», badge de promo vigente, botón «Ver ficha» y botón «Cotizar».
+
+3. **Componente de Ficha de Detalle de Excursión (`apps/web/src/components/catalogo/ficha-detalle-excursion.tsx`):**
+   - Modal accesible con retención de foco y botón de cierre.
+   - Detalle de horarios, tarifas por persona, aviso de muelle, selector de salidas interactivas con estados de cupo.
+   - Inclusiones y exclusiones desglosadas.
+   - Botón «Copiar propuesta rápida» formateada para WhatsApp con retroalimentación visual al portapapeles.
+   - Enlace directo «Cotizar fecha seleccionada» hacia el cotizador con el paquete y la fecha activa.
+
+4. **Pantalla del Catálogo (`apps/web/src/app/catalogo/page.tsx`):**
+   - Consulta `listarSalidasApi` en modo real con tenant de la sesión y agrupa por producto dinámicamente.
+   - En modo demo, adapta paquetes a la misma jerarquía de tarjetas ricas de excursión.
+   - Filtros por término de búsqueda y selector de destino.
+
+5. **Suites de Pruebas Automatizadas:**
+   - `catalogo-logica.spec.ts`: 21/21 tests pasando (+7 tests nuevos).
+   - `tarjeta-excursion-catalogo.spec.tsx`: 7/7 tests pasando (100% cobertura de componentes, chips de cupos y aviso de muelle).
+   - `ficha-detalle-excursion.spec.tsx`: 5/5 tests pasando.
+   - `catalogo/page.spec.tsx`: 4/4 tests pasando (renderizado desde API, chips de cupos, apertura de modal y estado vacío).
+
+## Qué verifiqué ejecutando
+
+- **Pruebas unitarias de la web:** `pnpm --filter @viajapro/web test` → **43 archivos de prueba pasados, 365/365 tests en verde (100%)**.
+- **Typecheck estricto:** `pnpm --filter @viajapro/web typecheck` → **0 errores** TypeScript.
+- **Linter:** `pnpm --filter @viajapro/web lint` → **0 errores, 0 advertencias**.
+- **Prettier:** `pnpm exec prettier --check ...` → **100% formateado**.
+
 - **Compilación de producción:** `pnpm turbo run build --filter=@viajapro/web...` → **16/16 páginas estáticas y dinámicas compiladas con éxito** en Next.js 15.5.27.
 
 ## Qué NO verifiqué
@@ -111,9 +164,13 @@
 
 ## Solicitud al equipo de Backend / Integrador:
 De acuerdo con las reglas de carril (el carril frontend no toca `apps/api`, `packages/database` ni `packages/contracts`), **se solicita al agente de backend / arquitectura implementar los contratos y endpoints de ADR-0017** antes de iniciar la construcción del frontend del Bloque 3.
+- No se verificó la conexión con APIs de mayoristas externos en tiempo real (fuera del alcance de la tarea).
 
+## Decisiones no especificadas tomadas
+
+1. **Comportamiento ante producto sin precio:** Si un producto no tiene precio asignado o su valor es `$0`, la tarjeta muestra de forma honesta «Consultar» en lugar de un precio ficticio, cumpliendo la regla de no inventar datos del CRM.
+2. **Umbral de últimos cupos:** Cuando los cupos de una salida son 5 o menos, se muestra con estado `ULTIMOS_CUPOS` con distintivo ámbar para generar urgencia comercial al asesor de viajes.
 ---
-
 
 
 # Entrega — Bloque 1: Modo real por defecto y modo demostracion opcional — 2026-10-26
