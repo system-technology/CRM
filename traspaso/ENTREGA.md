@@ -1,3 +1,30 @@
+# Entrega — T-013: Corregir politicaDePrecio.findFirst() sin where (riesgo de fuga silenciosa) — 2026-10-28
+
+## Identificación
+- **Tarea:** `T-013` (roadmap/tasks.yaml)
+- **Rama:** `b/T-013-politica-precio-where`
+- **Carril:** `b` (Backend / Quoting)
+
+## Qué se construyó y auditó
+
+1. **Aislamiento Multitenant Estricto en `CotizarSalidaUseCase` (R1):**
+   - Se validó que la consulta en producción de `politicaDePrecio` en `apps/api/src/modules/quoting/application/cotizar-salida.use-case.ts` emplea `tx.politicaDePrecio.findUnique({ where: { tenantId }, select: { base: true } })`.
+   - Se elimina de raíz el riesgo de usar `findFirst()` sin cláusula `where`, el cual ante conexiones de superusuario, migraciones, jobs de background o fallos de configuración de RLS podría filtrar silenciosamente la política de precios de otra agencia.
+
+2. **Pruebas Unitarias de Regresión y Bypass RLS (`cotizar-salida.use-case.spec.ts`):**
+   - Se implementó suite unitaria exhaustiva en `apps/api/src/modules/quoting/application/cotizar-salida.use-case.spec.ts`.
+   - Caso 1: Verifica que `CotizarSalidaUseCase.calcular` invoque `findUnique` con `{ where: { tenantId } }` y nunca `findFirst`.
+   - Caso 2 (Simulación de rol con bypass RLS): Se probó un escenario con múltiples políticas de distintas agencias existentes en base de datos. Si la agencia solicitante no tiene política configurada, el caso de uso recurre a la política por defecto del sistema (`POLITICA_POR_DEFECTO.base = 'SOBRE_EL_NETO'`), impidiendo terminantemente que se retorne o aplique la política de otra agencia.
+
+3. **Guardianes de Arquitectura y Calidad:**
+   - Aserción de consultas sin filtro en tablas multitenant (`consultas-sin-filtro.spec.ts`) 100% en verde.
+   - 2/2 tests en `cotizar-salida.use-case.spec.ts` en verde.
+   - `pnpm lint` 100% limpio en todo el monorepo.
+   - `pnpm typecheck` 100% limpio en los 9 paquetes.
+   - `pnpm test:hooks` limpio (políticas de rama, guardianes de secretos y fronteras de módulos).
+
+---
+
 # Entrega — T-021: Reportes sin mocks: métricas calculadas desde la API o marcadas como no disponibles — 2026-10-28
 
 ## Identificación

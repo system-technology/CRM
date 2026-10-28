@@ -281,7 +281,7 @@ tasks:
     phase: 1
     priority: P2
     effort: S
-    status: backlog
+    status: done
     depends_on: []
     acceptance:
       - "politicaDePrecio.findUnique({ where: { tenantId } }) en lugar de findFirst()"
@@ -289,8 +289,12 @@ tasks:
       - pnpm compuertas --rapido verde
     files:
       - apps/api/src/modules/quoting/application/cotizar-salida.use-case.ts:113-117
+      - apps/api/src/modules/quoting/application/cotizar-salida.use-case.spec.ts
     source: auditoria-auto:2026-10-26
     created_at: 2026-10-26T20:14:47.464Z
+    started_at: 2026-10-28T19:50:00.000Z
+    done_at: 2026-10-28T20:15:00.000Z
+    evidence: "findUnique({ where: { tenantId } }) verificado con tests unitarios en cotizar-salida.use-case.spec.ts probando aislamiento estricto incluso con bypass de RLS. CI en verde."
   - id: T-014
     title: Sincronizar unique parcial etapas_pipeline en schema.prisma
     type: refactor
