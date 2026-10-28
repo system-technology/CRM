@@ -13,7 +13,6 @@ import type {
   ContadoresBandeja,
   ConversacionDetalle,
   ConversacionResumen,
-  EnviarCotizacionCuerpo,
   EstadoConversacion,
   Mensaje,
   NotaDeConversacion,
@@ -59,18 +58,6 @@ export abstract class PuertoConversaciones {
     autorId: string | null,
     id: string,
     entrada: { texto: string; claveIdempotencia: string },
-    ahora: Date,
-  ): Promise<Mensaje | null>;
-
-  /**
-   * Envía una cotización guardada como mensaje formateado de WhatsApp (T-073, T-074).
-   * Lanza `VentanaCerradaError` si la ventana de 24h está cerrada.
-   */
-  abstract enviarCotizacion(
-    v: Visibilidad,
-    autorId: string | null,
-    id: string,
-    entrada: EnviarCotizacionCuerpo,
     ahora: Date,
   ): Promise<Mensaje | null>;
 

@@ -25,7 +25,6 @@ import {
   ConsultarBandeja,
   ConsultarMensajes,
   CrearNotaCuerpo,
-  EnviarCotizacionCuerpo,
   EnviarTextoCuerpo,
   type AdjuntoDeConversacion,
   type ContadoresBandeja,
@@ -96,16 +95,6 @@ export class ConversacionesController {
     @Body(new ZodValidationPipe(EnviarTextoCuerpo)) cuerpo: EnviarTextoCuerpo,
   ): Promise<Mensaje> {
     return this.actuar.responder(id, cuerpo);
-  }
-
-  /** Enviar cotización guardada por WhatsApp (T-073, T-074). */
-  @Post(':id/cotizaciones')
-  @HttpCode(201)
-  enviarCotizacion(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body(new ZodValidationPipe(EnviarCotizacionCuerpo)) cuerpo: EnviarCotizacionCuerpo,
-  ): Promise<Mensaje> {
-    return this.actuar.enviarCotizacion(id, cuerpo);
   }
 
   /** Una nota interna no asigna. */

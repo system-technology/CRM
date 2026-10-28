@@ -20,7 +20,6 @@ import type {
   ContadoresBandeja,
   ConversacionDetalle,
   ConversacionResumen,
-  EnviarCotizacionCuerpo,
   EstadoConversacion,
   Mensaje,
   NotaDeConversacion,
@@ -430,105 +429,6 @@ export class ConversacionesPrisma extends PuertoConversaciones {
 
       // Responder es tomar: solo si sigue sin asignar. Condicional en la base, no en la memoria:
       // dos asesores que responden a la vez no se pisan, gana el primero.
-      const quedaAsignada = asignacionTrasResponder(conv.asignadoAId, autorId);
-      let tomada = false;
-      if (conv.asignadoAId === null && quedaAsignada !== null) {
-        const r = await tx.conversacion.updateMany({
-          where: { id, tenantId, asignadoAId: null },
-          data: { asignadoAId: quedaAsignada },
-        });
-        tomada = r.count === 1;
-      }
-
-      await escribirEvento(tx, {
-        tenantId,
-        agregado: 'mensaje',
-        agregadoId: creado.id,
-        tipo: TIPO_MENSAJE_SALIENTE_CREADO,
-        payload: { conversacionId: id, canalId: conv.canalId },
-      });
-      if (tomada) {
-        await escribirEvento(tx, {
-          tenantId,
-          agregado: 'conversacion',
-          agregadoId: id,
-          tipo: TIPO_CONVERSACION_ACTUALIZADA,
-          payload: { anteriorAsignadoAId: null },
-        });
-      }
-      return aMensaje(creado);
-    });
-  }
-
-  async enviarCotizacion(
-    v: Visibilidad,
-    autorId: string | null,
-    id: string,
-    entrada: EnviarCotizacionCuerpo,
-    ahora: Date,
-  ): Promise<Mensaje | null> {
-    const clave = entrada.claveIdempotencia ?? crypto.randomUUID();
-    const { tenantId } = ContextoTenant.obtener();
-    return this.prisma.conTenant(async (tx) => {
-      const conv = await tx.conversacion.findFirst({
-        where: unaConversacion(tenantId, v, id),
-        select: {
-          id: true,
-          canalId: true,
-          asignadoAId: true,
-          ultimoMensajeClienteEn: true,
-          primeraRespuestaEn: true,
-        },
-      });
-      if (!conv) return null;
-
-      const previo = await tx.mensaje.findFirst({
-        where: { tenantId, claveIdempotencia: clave },
-        select: PARA_EL_MENSAJE,
-      });
-      if (previo) {
-        if (previo.conversacionId !== id) throw new ClaveDeIdempotenciaEnUsoError();
-        return aMensaje(previo);
-      }
-
-      exigirVentanaAbierta(conv.ultimoMensajeClienteEn, ahora);
-
-      const cot = await tx.cotizacion.findFirst({
-        where: { id: entrada.cotizacionId, tenantId, eliminadoEn: null },
-        include: { versiones: { orderBy: { numero: 'desc' }, take: 1 } },
-      });
-
-      const tituloCot = cot?.titulo ?? 'Cotización de Viaje';
-      const versionNum = entrada.version ?? cot?.versiones[0]?.numero ?? 1;
-      const texto = `✈️ *Propuesta de Viaje: ${tituloCot} (v${versionNum})*\n\nTe compartimos los detalles de la cotización preparada especialmente para ti. Para revisar itinerario, condiciones y opciones de pago, ingresa aquí.\n\n_ViajaPro CRM_`;
-
-      const creado = await tx.mensaje.create({
-        data: {
-          tenantId,
-          conversacionId: id,
-          direccion: 'SALIENTE',
-          tipo: 'TEXTO',
-          estado: 'PENDIENTE',
-          texto,
-          cotizacionId: entrada.cotizacionId,
-          autorId,
-          claveIdempotencia: clave,
-          ocurridoEn: ahora,
-        },
-        select: PARA_EL_MENSAJE,
-      });
-
-      await tx.conversacion.update({
-        where: { id },
-        data: {
-          ultimoMensajeEn: ahora,
-          ultimoMensajeDireccion: 'SALIENTE',
-          ultimoMensajeTexto: texto.slice(0, 200),
-          primeraRespuestaEn: conv.primeraRespuestaEn ?? ahora,
-          actualizadoPorId: autorId,
-        },
-      });
-
       const quedaAsignada = asignacionTrasResponder(conv.asignadoAId, autorId);
       let tomada = false;
       if (conv.asignadoAId === null && quedaAsignada !== null) {

@@ -74,10 +74,6 @@ class PuertoQueNoVeNada extends PuertoConversaciones {
     this.anota(v);
     return Promise.resolve(null);
   }
-  enviarCotizacion(v: Visibilidad): Promise<null> {
-    this.anota(v);
-    return Promise.resolve(null);
-  }
   crearNota(v: Visibilidad): Promise<null> {
     this.anota(v);
     return Promise.resolve(null);
