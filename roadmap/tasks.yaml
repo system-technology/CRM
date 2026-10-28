@@ -1885,7 +1885,7 @@ tasks:
     phase: 1
     priority: P0
     effort: M
-    status: backlog
+    status: done
     depends_on: []
     acceptance:
       - POST que arma el texto (producto, fecha, pasajeros, total, no incluido) desde una versión de
@@ -1897,6 +1897,12 @@ tasks:
       - apps/api/src/modules/quoting/
     source: ruta a la fase 1 (roadmap v3) 2026-10-27
     created_at: 2026-10-28T01:47:57.806Z
+    started_at: 2026-10-28T15:18:06.410Z
+    done_at: 2026-10-28T15:18:06.410Z
+    evidence: "Mergeado en main por el PR #102 (rama a/T-073-enviar-cotizacion-por-whatsapp) con el CI en verde:
+      format, analyze, tests y los demás checks obligatorios. Cierre automático
+      (.github/workflows/cerrar-tarea.yml)."
+    commit: 0b09bc07a408df7d9aade01d85bf5f69f0c61f39
   - id: T-074
     title: Botón «Enviar cotización» en la conversación de la bandeja
     type: feature
@@ -2390,7 +2396,10 @@ tasks:
     status: done
     started_at: 2026-10-28T08:50:00.000Z
     done_at: 2026-10-28T09:12:00.000Z
-    evidence: "Implementada ruta dinámica /contactos/[id] con ficha 360 unificada (datos, conversaciones, cotizaciones, oportunidades, seguimientos, campos personalizados y notas internas), línea de tiempo cronológica, modales interactivos para editar contacto, crear oportunidad y agendar seguimiento con touch targets >= 44 px, estados cargando, error y vacío, y 10 tests de componente y lógica en verde."
+    evidence: Implementada ruta dinámica /contactos/[id] con ficha 360 unificada (datos, conversaciones,
+      cotizaciones, oportunidades, seguimientos, campos personalizados y notas internas), línea de tiempo
+      cronológica, modales interactivos para editar contacto, crear oportunidad y agendar seguimiento con
+      touch targets >= 44 px, estados cargando, error y vacío, y 10 tests de componente y lógica en verde.
     depends_on: []
     acceptance:
       - Pantalla /contactos/[id] que consume /api/v1/crm/* y muestra línea de tiempo con estados cargando,
@@ -2414,7 +2423,11 @@ tasks:
     status: done
     started_at: 2026-10-28T09:22:00.000Z
     done_at: 2026-10-28T09:40:00.000Z
-    evidence: "Implementada pantalla /seguimientos con consumo de GET /api/v1/crm/seguimientos y POST .../:id/completar, resaltado de vencidos en color de alerta (rose-700), categorización en tiempo real (Vencidos, Para Hoy, Próximos, Completados), tarjetas KPI, búsqueda por texto, filtro de asesor, modal para agendar seguimiento, estados cargando, error y vacío, y 23 tests unitarios y de componente en verde."
+    evidence: Implementada pantalla /seguimientos con consumo de GET /api/v1/crm/seguimientos y POST
+      .../:id/completar, resaltado de vencidos en color de alerta (rose-700), categorización en tiempo real
+      (Vencidos, Para Hoy, Próximos, Completados), tarjetas KPI, búsqueda por texto, filtro de asesor, modal
+      para agendar seguimiento, estados cargando, error y vacío, y 23 tests unitarios y de componente en
+      verde.
     depends_on: []
     acceptance:
       - Pantalla /seguimientos con GET /api/v1/crm/seguimientos y POST .../completar; vencidos resaltados en
@@ -2450,7 +2463,10 @@ tasks:
     created_at: 2026-10-28T02:37:57.685Z
     started_at: 2026-10-28T09:48:00.000Z
     done_at: 2026-10-28T10:05:00.000Z
-    evidence: Tablero pipeline interactivo con drag and drop y menú por teclado, actualización optimista con reversión si falla la API, totales por etapa y moneda en enteros (R8) recalculados dinámicamente tanto en carga como tras movimiento, touch targets >= 44 px, modal de motivo de pérdida tipado y suites completas de pruebas unitarias y de componentes.
+    evidence: Tablero pipeline interactivo con drag and drop y menú por teclado, actualización optimista con
+      reversión si falla la API, totales por etapa y moneda en enteros (R8) recalculados dinámicamente tanto
+      en carga como tras movimiento, touch targets >= 44 px, modal de motivo de pérdida tipado y suites
+      completas de pruebas unitarias y de componentes.
   - id: T-103
     title: Búsqueda global y filtros guardados en bandeja, contactos y oportunidades
     type: feature
