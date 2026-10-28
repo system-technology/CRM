@@ -201,3 +201,38 @@ export async function listarContactos(buscar?: string): Promise<PaginaContactos>
 
   return mock;
 }
+
+import { calcularResumenTrabajo, type ResumenTrabajoDelDia } from './inicio-logica';
+export type { ResumenTrabajoDelDia };
+
+/**
+ * Consulta y agrega métricas clave del trabajo diario para la pantalla de Inicio (T-037).
+ * Carga en paralelo contadores de WhatsApp, oportunidades de pipeline y cotizaciones.
+ */
+export async function obtenerResumenTrabajoDelDia(): Promise<ResumenTrabajoDelDia> {
+  const [tableroResult, inboxResult, cotizacionesResult] = await Promise.allSettled([
+    obtenerTableroPipeline(),
+    (async () => {
+      try {
+        const { inboxApi } = await import('./inbox-api');
+        return await inboxApi.obtenerContadores();
+      } catch {
+        return null;
+      }
+    })(),
+    (async () => {
+      try {
+        const { listarCotizacionesApi } = await import('./cotizaciones-api');
+        return await listarCotizacionesApi({ limite: 20 });
+      } catch {
+        return null;
+      }
+    })(),
+  ]);
+
+  const tablero = tableroResult.status === 'fulfilled' ? tableroResult.value : null;
+  const contadoresInbox = inboxResult.status === 'fulfilled' ? inboxResult.value : null;
+  const cotizaciones = cotizacionesResult.status === 'fulfilled' ? cotizacionesResult.value : null;
+
+  return calcularResumenTrabajo(contadoresInbox, tablero, cotizaciones);
+}

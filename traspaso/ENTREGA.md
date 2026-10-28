@@ -45,6 +45,23 @@
 
 ---
 
+# Entrega — T-037: Inicio con Saludo según la Hora, Acciones Rápidas y Tarjetas de Colores — 2026-10-26
+
+## Identificación
+- **Rama:** `b/T-037-inicio-saludo-acciones-rapidas` (empujada a `origin/b/T-037-inicio-saludo-acciones-rapidas`)
+- **Tarea:** T-037 (Inicio con saludo, acciones rápidas y tarjetas de colores sobre el trabajo del día)
+- **Carril:** `b` (Frontend / Web)
+- **Stitch Design Screen ID:** `c2dece7a590a4f86a730daf773aaaaee` (Proyecto «ViajaPro — CRM para agencias de turismo», ID `8333038101997719867`, pantalla *Inicio & Dashboard Operacional - Laura Gómez - ViajaPro CRM*)
+
+## Qué construí
+
+1. **Saludo dinámico con identidad de turismo y contexto de agencia (`apps/web/src/app/page.tsx`):**
+   - Saludo contextual según la hora del día en español colombiano (`¡Buenos días!`, `¡Buenas tardes!`, `¡Buenas noches!`) implementado en `apps/web/src/lib/inicio-logica.ts` (`obtenerSaludoSegunHora`, `obtenerMensajeBienvenida`).
+   - Personalización con el nombre del asesor comercial activo (`sesion.identidad.nombre`), avatar con iniciales e insignia de aro dorado (`ring-2 ring-amber-400`).
+   - Identificación de la agencia activa (ej. *JD Tours Cartagena*), indicador de «Turno activo» con pulsación visual y fecha/hora en vivo.
+
+---
+
 ### 2026-10-26 — T-032: Sistema visual de turismo (paleta caribeña, degradados, iconografía por módulo y componentes base)
 
 - **Tarea de la cola:** T-032 (Sistema visual de turismo: paleta caribeña, degradados, iconografía por módulo y componentes base).
@@ -77,104 +94,44 @@
   - Despliegue en entorno productivo (requiere merge de PR en servidor).
 
 ---
-# Entrega — Bloque 2: Cotizador y Catálogo para Excursiones de un Día y Estados de UI — 2026-10-26
 
-## Identificación
-- **Rama:** `feat/web-cotizador-excursiones-dia` (empujada a `origin/feat/web-cotizador-excursiones-dia`)
-- **Stitch Design Screen ID:** `e2bb94d1dd524750941d0c5643ce2acd` (Proyecto «ViajaPro — CRM para agencias de turismo», ID `8333038101997719867`, pantalla *Cotizador y Catálogo de Pasadías — ViajaPro CRM*)
+2. **Accesos directos rápidos operacionales de alta conversión:**
+   - Botón primario de viaje `+ Nueva cotización` (`data-testid="acceso-nueva-cotizacion"`) enlazando a `/cotizador`.
+   - Botón `Bandeja WhatsApp` (`data-testid="acceso-abrir-bandeja"`) con distintivo numérico de conversaciones pendientes enlazando a `/bandeja`.
+   - Botón `Ver catálogo` (`data-testid="acceso-ver-catalogo"`) con aro dorado enlazando a `/catalogo`.
+   - Botón `Pipeline` (`data-testid="acceso-ver-pipeline"`) enlazando a `/pipeline`.
 
-## Qué construí
+3. **Cuatro tarjetas métricas con la paleta caribeña de ViajaPro:**
+   - **Tarjeta 1 - Turquesa Caribeño (`#06B6D4`):** `Conversaciones pendientes` (`data-testid="tarjeta-conversaciones-pendientes"`), con detalle de chats sin asignar y ventana de 24h WhatsApp activa. Enlace directo a `/bandeja`.
+   - **Tarjeta 2 - Océano Profundo (`#0284C7`):** `Oportunidades en Pipeline` (`data-testid="tarjeta-oportunidades-etapa"`), con desglose por etapas (`nuevoLead`, `enCotizacion`, `enNegociacion`) y cifra total destacada. Enlace directo a `/pipeline`.
+   - **Tarjeta 3 - Coral Cálido (`#FB7185`):** `Cotizaciones por vencer` (`data-testid="tarjeta-cotizaciones-vencer"`), indicando seguimiento prioritario y bloqueo de cupos con mayoristas. Enlace a `/cotizaciones`.
+   - **Tarjeta 4 - Atardecer Tropical (`#F97316`) con Aro Dorado (`#C9A24B`):** `Catálogo de excursiones` (`data-testid="tarjeta-catalogo-turismo"`), con acceso directo a pasadías y tours en COP. Enlace a `/catalogo`.
+   - Animación de entrada fluida y escalonada respetando estrictamente `prefers-reduced-motion` (`motion-reduce:transition-none motion-reduce:transform-none`).
 
-1. **Soporte y catálogo representativo para excursiones de un día (pasadías):**
-   - Agregadas al catálogo de demostración (`apps/web/src/lib/mock-catalogo.ts`) 3 excursiones de 1 día (`noches: 0, dias: 1`) basadas en la agencia piloto real (JD Tours Cartagena: Pasadía Islas del Rosario & Barú VIP, Tour 5 Islas VIP con Snorkel y Plancton, Pasadía Mambo Beach Club Barú).
-   - Precios íntegramente en COP en enteros (sin centavos ni coma flotante, R8), en el rango de 210.000 a 380.000 COP, con unidades mínimas y código `ISO-4217` COP.
-   - Posicionados al final del array para preservar índices e integridad de pruebas previas.
+4. **Secciones de destinos populares y rendimiento comercial:**
+   - Accesos directos para cotizar destinos de alta demanda (Cartagena & Barú, San Andrés & Providencia, Santa Marta & Tayrona, Eje Cafetero).
+   - Bloque de acceso directo a reportes y rendimiento comercial con cálculos reales BigInt (R8).
 
-2. **Detección y aviso obligatorio de «Impuesto de muelle no incluido»:**
-   - Función pura `requiereAvisoImpuestoMuelle(destino, paqueteNombre)` en `apps/web/src/lib/cotizador-logica.ts` para identificar destinos insulares y tours náuticos (Cartagena, Islas del Rosario, Barú, Cholón, Tierra Bomba, lanchas/botes).
-   - Aviso visual destacado con banner ámbar `data-testid="aviso-impuesto-muelle"` en el desglose de cotización de salidas (`apps/web/src/components/cotizador/desglose-cotizacion-salida.tsx`) y en la vista de cotización simulada (`apps/web/src/app/cotizador/page.tsx`).
-   - Inclusión automática del aviso en los textos formateados para WhatsApp (`generarTextoPropuestaWhatsApp` y `generarTextoPropuestaWhatsAppSalida`): *«⚠️ Aviso importante: Impuesto de muelle no incluido (tasa portuaria requerida al abordar en taquilla del muelle, no incluida en el valor del tour)»*.
+5. **Manejo completo de estados:**
+   - **Cargando (`data-testid="inicio-cargando"`):** Esqueleto de alta fidelidad con brillo mientras se consultan la sesión y las métricas.
+   - **Error (`data-testid="inicio-error"`):** Banner amigable en es-CO con botón de reintento funcional (`data-testid="boton-reintentar"`).
+   - **Vacío (`data-testid="inicio-vacio"`):** Mensaje de bienvenida para agencias recién creadas sin actividad con botón para crear su primera cotización.
+   - **Responsive a 375 px:** Diseñado para pantalla de móvil con touch targets `>= 44 px` y sin desbordamiento horizontal.
 
-3. **Lógica de cálculo sin plazas desaprovechadas para pasadías:**
-   - En `calcularCotizacionMock`: cuando `paquete.noches === 0` (excursión de 1 día), `plazasSinUsar` se fija en 0, ya que las excursiones no requieren asignación de habitaciones ni penalizan cupos de camas.
-
-4. **Componentes y estados de UI en el Cotizador (`/cotizador`):**
-   - **Estado vacío (`data-testid="cotizador-estado-vacio"`):** Si una agencia conectada a la API real no tiene salidas ni excursiones registradas, la pantalla no queda en blanco ni se rompe; muestra un estado vacío comprensivo con orientación y acciones claras:
-     - Botón para activar el modo demostración y ver excursiones de muestra.
-     - Botón directo para ir a la gestión de catálogo (`/catalogo`).
-     - Botón de reintento de conexión.
-   - **Estado cargando (`cargandoSalidas`):** Indicador visual accesible de carga mientras se consultan las salidas de la agencia.
-   - **Píldora de pasadía:** Distintivo azul accesible `Excursión de 1 día (Pasadía)` cuando `noches === 0`.
-   - **Badge de promo vigente (`data-testid="badge-promo-vigente"`):** Indicador cuando aplican tarifas promocionales o descuentos por grupo.
-   - **Adaptación móvil a 375 px:** Espaciados densos, botones y campos con touch targets ≥ 44 px, formulario verticalizado responsive y desgloses legibles sin desbordamiento horizontal.
-
-5. **Suites de pruebas completas:**
-   - `apps/web/src/lib/cotizador-logica.spec.ts`: 13/13 pruebas pasando (incluye detección de impuesto de muelle, propuesta WhatsApp y pasadías sin plazas desaprovechadas).
-   - `apps/web/src/components/cotizador/desglose-cotizacion-salida.spec.tsx` (nueva): 5/5 pruebas pasando (badge pasadía, banner aviso muelle, badge promo vigente, touch targets).
-   - `apps/web/src/app/cotizador/page.spec.tsx` (nueva): 4/4 pruebas pasando (estado vacío sin salidas en API, activación de demo con 1 clic, visualización de impuesto de muelle en tour náutico, cálculo reactivo de pasajeros).
+6. **Lógica desacoplada y suites de pruebas completas:**
+   - `apps/web/src/lib/inicio-logica.ts`: Funciones puras de saludo, bienvenida y agregación `calcularResumenTrabajo`.
+   - `apps/web/src/lib/inicio-logica.spec.ts`: 4 pruebas unitarias cubriendo rangos horarios, personalización y detección de estado vacío.
+   - `apps/web/src/app/page.spec.tsx`: 5 pruebas de componente con React Testing Library verificando saludo, accesos rápidos, tarjetas caribeñas, estado vacío y recuperación ante errores de red.
 
 ## Qué verifiqué ejecutando
 
-- **Pruebas unitarias de la web:** `pnpm --filter @viajapro/web test` → **42 archivos de prueba pasados, 354/354 tests en verde (100%)**.
-- **Typecheck estricto:** `pnpm --filter @viajapro/web typecheck` → **0 errores** TypeScript.
-- **Linter:** `pnpm --filter @viajapro/web lint` → **0 errores, 0 advertencias**.
-- **Prettier:** `pnpm exec prettier --write ...` → **100% formateado**.
+- **Pruebas unitarias de la web:** `pnpm --filter @viajapro/web test` — **44 suites pasadas, 364/364 tests en verde (100%)**.
+- **Pruebas específicas de Inicio:** `pnpm --filter @viajapro/web test "src/app/page.spec.tsx"` y `src/lib/inicio-logica.spec.ts` — **9/9 tests en verde**.
+- **Typecheck estricto:** `pnpm --filter @viajapro/web typecheck` — **0 errores** TypeScript.
+- **Linter:** `pnpm --filter @viajapro/web lint` — **0 errores / 0 advertencias**.
+- **Ownership de carril:** `node scripts/check-ownership.mjs` — **✔ Dentro del carril (`carril: b`, ficheros: 5)**.
 
----
-
-# Entrega — T-018: Tarjeta y Ficha de Excursión en el Catálogo — 2026-10-26
-
-## Identificación
-- **Tarea:** T-018 (`Tarjeta y ficha de excursión en el catálogo: «desde», promo, horarios, qué incluye y cupos por salida`)
-- **Rama:** `b/T-018-tarjeta-ficha-excursion` (empujada a `origin/b/T-018-tarjeta-ficha-excursion`)
-- **Stitch Design Screen ID:** `a7778659a7ee42dc9be442cb59f6826f` (Proyecto «ViajaPro — CRM para agencias de turismo», ID `8333038101997719867`, pantalla *Catálogo de Excursiones y Tours — ViajaPro CRM*)
-
-## Qué construí
-
-1. **Lógica de agrupación de catálogo y estados de cupos (`apps/web/src/lib/catalogo-logica.ts`):**
-   - `agruparSalidasPorProducto(salidas)`: Agrupa salidas individuales de la API por producto/paquete turístico, ordenando cronológicamente sus salidas y calculando la tarifa más baja.
-   - `calcularEstadoCupo(cupoTotal)`: Determina el estado de disponibilidad: `DISPONIBLE` (> 5 cupos o abiertos), `ULTIMOS_CUPOS` (1 a 5 cupos) y `AGOTADO` (0 cupos).
-   - `formatearChipSalida(salida)`: Formatea el chip para la UI (ej. «sáb 3 oct · quedan 4 cupos», «12 cupos», «Agotado»).
-   - `obtenerEtiquetaPrecio(desde)`: Devuelve «Consultar» cuando el precio es nulo, indefinido o `$0`, evitando publicidad engañosa y cumpliendo la regla 2 de UX Turismo.
-   - `detectarTipoTurismo`: Asigna paleta y tokens según el destino (náutico/isla, naturaleza, aventura, cultural).
-   - `formatearHorarioExcursion`: Horarios estándar y turnos de operación (ej. `07:30 - 16:30`, `14:00 - 19:30`).
-
-2. **Componente de Tarjeta de Excursión (`apps/web/src/components/catalogo/tarjeta-excursion-catalogo.tsx`):**
-   - Cabecera visual rica con degradado temático contextual y badges de duración («1 día (Pasadía)» o «XD / YN»).
-   - Horario operativo visible e icono temático.
-   - Chips visuales de lo que incluye la excursión.
-   - Banner ámbar visible de alerta: «Impuesto de muelle no incluido» en destinos marítimos/insulares.
-   - Sección de próximas salidas con chips interactivos con fechas y cupos en vivo (`DISPONIBLE`, `ULTIMOS_CUPOS`, `AGOTADO`).
-   - Pie de tarjeta con tarifa desde o «Consultar», badge de promo vigente, botón «Ver ficha» y botón «Cotizar».
-
-3. **Componente de Ficha de Detalle de Excursión (`apps/web/src/components/catalogo/ficha-detalle-excursion.tsx`):**
-   - Modal accesible con retención de foco y botón de cierre.
-   - Detalle de horarios, tarifas por persona, aviso de muelle, selector de salidas interactivas con estados de cupo.
-   - Inclusiones y exclusiones desglosadas.
-   - Botón «Copiar propuesta rápida» formateada para WhatsApp con retroalimentación visual al portapapeles.
-   - Enlace directo «Cotizar fecha seleccionada» hacia el cotizador con el paquete y la fecha activa.
-
-4. **Pantalla del Catálogo (`apps/web/src/app/catalogo/page.tsx`):**
-   - Consulta `listarSalidasApi` en modo real con tenant de la sesión y agrupa por producto dinámicamente.
-   - En modo demo, adapta paquetes a la misma jerarquía de tarjetas ricas de excursión.
-   - Filtros por término de búsqueda y selector de destino.
-
-5. **Suites de Pruebas Automatizadas:**
-   - `catalogo-logica.spec.ts`: 21/21 tests pasando (+7 tests nuevos).
-   - `tarjeta-excursion-catalogo.spec.tsx`: 7/7 tests pasando (100% cobertura de componentes, chips de cupos y aviso de muelle).
-   - `ficha-detalle-excursion.spec.tsx`: 5/5 tests pasando.
-   - `catalogo/page.spec.tsx`: 4/4 tests pasando (renderizado desde API, chips de cupos, apertura de modal y estado vacío).
-
-## Qué verifiqué ejecutando
-
-- **Pruebas unitarias de la web:** `pnpm --filter @viajapro/web test` → **43 archivos de prueba pasados, 365/365 tests en verde (100%)**.
-- **Typecheck estricto:** `pnpm --filter @viajapro/web typecheck` → **0 errores** TypeScript.
-- **Linter:** `pnpm --filter @viajapro/web lint` → **0 errores, 0 advertencias**.
-- **Prettier:** `pnpm exec prettier --check ...` → **100% formateado**.
-
-- **Compilación de producción:** `pnpm turbo run build --filter=@viajapro/web...` → **16/16 páginas estáticas y dinámicas compiladas con éxito** en Next.js 15.5.27.
-
-## Qué NO verifiqué
+## Qué NO verifiqué (Reporte transparente de Compuertas)
 
 - No se verificó la sincronización con pasarelas de pago externas ni emisión de tickets fiscales electrónicos (fuera del alcance del cotizador).
 - No se verificó la base de datos real con salidas de tours en producción, pues se probó contra contratos y mocks estandarizados en TypeScript.
@@ -211,13 +168,9 @@
 
 ## Solicitud al equipo de Backend / Integrador:
 De acuerdo con las reglas de carril (el carril frontend no toca `apps/api`, `packages/database` ni `packages/contracts`), **se solicita al agente de backend / arquitectura implementar los contratos y endpoints de ADR-0017** antes de iniciar la construcción del frontend del Bloque 3.
-- No se verificó la conexión con APIs de mayoristas externos en tiempo real (fuera del alcance de la tarea).
 
-## Decisiones no especificadas tomadas
-
-1. **Comportamiento ante producto sin precio:** Si un producto no tiene precio asignado o su valor es `$0`, la tarjeta muestra de forma honesta «Consultar» en lugar de un precio ficticio, cumpliendo la regla de no inventar datos del CRM.
-2. **Umbral de últimos cupos:** Cuando los cupos de una salida son 5 o menos, se muestra con estado `ULTIMOS_CUPOS` con distintivo ámbar para generar urgencia comercial al asesor de viajes.
 ---
+
 
 
 # Entrega — Bloque 1: Modo real por defecto y modo demostracion opcional — 2026-10-26
@@ -1175,3 +1128,115 @@ Se creó el archivo de pruebas de componentes `apps/web/src/components/comun/esq
   - `format:check`: **VERDE** (100% verificado con Prettier).
   - `build`: **VERDE** (Next.js 15.5.27 compiló 16 páginas en 6.7s).
 
+- **Compuertas monorepo:** `build`, `lint` y `typecheck` corren en verde; las pruebas de `@viajapro/database` en `pnpm compuertas` caen localmente por autenticación contra la base de datos externa Neon (`password authentication failed for user 'viajapro_app'`), lo cual corresponde al carril `a` (backend/database).
+
+
+---
+# Entrega — Bloque 2: Cotizador y Catálogo para Excursiones de un Día y Estados de UI — 2026-10-26
+
+## Identificación
+- **Rama:** `feat/web-cotizador-excursiones-dia` (empujada a `origin/feat/web-cotizador-excursiones-dia`)
+- **Stitch Design Screen ID:** `e2bb94d1dd524750941d0c5643ce2acd` (Proyecto «ViajaPro — CRM para agencias de turismo», ID `8333038101997719867`, pantalla *Cotizador y Catálogo de Pasadías — ViajaPro CRM*)
+
+## Qué construí
+
+1. **Soporte y catálogo representativo para excursiones de un día (pasadías):**
+   - Agregadas al catálogo de demostración (`apps/web/src/lib/mock-catalogo.ts`) 3 excursiones de 1 día (`noches: 0, dias: 1`) basadas en la agencia piloto real (JD Tours Cartagena: Pasadía Islas del Rosario & Barú VIP, Tour 5 Islas VIP con Snorkel y Plancton, Pasadía Mambo Beach Club Barú).
+   - Precios íntegramente en COP en enteros (sin centavos ni coma flotante, R8), en el rango de 210.000 a 380.000 COP, con unidades mínimas y código `ISO-4217` COP.
+   - Posicionados al final del array para preservar índices e integridad de pruebas previas.
+
+2. **Detección y aviso obligatorio de «Impuesto de muelle no incluido»:**
+   - Función pura `requiereAvisoImpuestoMuelle(destino, paqueteNombre)` en `apps/web/src/lib/cotizador-logica.ts` para identificar destinos insulares y tours náuticos (Cartagena, Islas del Rosario, Barú, Cholón, Tierra Bomba, lanchas/botes).
+   - Aviso visual destacado con banner ámbar `data-testid="aviso-impuesto-muelle"` en el desglose de cotización de salidas (`apps/web/src/components/cotizador/desglose-cotizacion-salida.tsx`) y en la vista de cotización simulada (`apps/web/src/app/cotizador/page.tsx`).
+   - Inclusión automática del aviso en los textos formateados para WhatsApp (`generarTextoPropuestaWhatsApp` y `generarTextoPropuestaWhatsAppSalida`): *«⚠️ Aviso importante: Impuesto de muelle no incluido (tasa portuaria requerida al abordar en taquilla del muelle, no incluida en el valor del tour)»*.
+
+3. **Lógica de cálculo sin plazas desaprovechadas para pasadías:**
+   - En `calcularCotizacionMock`: cuando `paquete.noches === 0` (excursión de 1 día), `plazasSinUsar` se fija en 0, ya que las excursiones no requieren asignación de habitaciones ni penalizan cupos de camas.
+
+4. **Componentes y estados de UI en el Cotizador (`/cotizador`):**
+   - **Estado vacío (`data-testid="cotizador-estado-vacio"`):** Si una agencia conectada a la API real no tiene salidas ni excursiones registradas, la pantalla no queda en blanco ni se rompe; muestra un estado vacío comprensivo con orientación y acciones claras:
+     - Botón para activar el modo demostración y ver excursiones de muestra.
+     - Botón directo para ir a la gestión de catálogo (`/catalogo`).
+     - Botón de reintento de conexión.
+   - **Estado cargando (`cargandoSalidas`):** Indicador visual accesible de carga mientras se consultan las salidas de la agencia.
+   - **Píldora de pasadía:** Distintivo azul accesible `Excursión de 1 día (Pasadía)` cuando `noches === 0`.
+   - **Badge de promo vigente (`data-testid="badge-promo-vigente"`):** Indicador cuando aplican tarifas promocionales o descuentos por grupo.
+   - **Adaptación móvil a 375 px:** Espaciados densos, botones y campos con touch targets ≥ 44 px, formulario verticalizado responsive y desgloses legibles sin desbordamiento horizontal.
+
+5. **Suites de pruebas completas:**
+   - `apps/web/src/lib/cotizador-logica.spec.ts`: 13/13 pruebas pasando (incluye detección de impuesto de muelle, propuesta WhatsApp y pasadías sin plazas desaprovechadas).
+   - `apps/web/src/components/cotizador/desglose-cotizacion-salida.spec.tsx` (nueva): 5/5 pruebas pasando (badge pasadía, banner aviso muelle, badge promo vigente, touch targets).
+   - `apps/web/src/app/cotizador/page.spec.tsx` (nueva): 4/4 pruebas pasando (estado vacío sin salidas en API, activación de demo con 1 clic, visualización de impuesto de muelle en tour náutico, cálculo reactivo de pasajeros).
+
+## Qué verifiqué ejecutando
+
+- **Pruebas unitarias de la web:** `pnpm --filter @viajapro/web test` → **42 archivos de prueba pasados, 354/354 tests en verde (100%)**.
+- **Typecheck estricto:** `pnpm --filter @viajapro/web typecheck` → **0 errores** TypeScript.
+- **Linter:** `pnpm --filter @viajapro/web lint` → **0 errores, 0 advertencias**.
+- **Prettier:** `pnpm exec prettier --write ...` → **100% formateado**.
+
+---
+
+# Entrega — T-018: Tarjeta y Ficha de Excursión en el Catálogo — 2026-10-26
+
+## Identificación
+- **Tarea:** T-018 (`Tarjeta y ficha de excursión en el catálogo: «desde», promo, horarios, qué incluye y cupos por salida`)
+- **Rama:** `b/T-018-tarjeta-ficha-excursion` (empujada a `origin/b/T-018-tarjeta-ficha-excursion`)
+- **Stitch Design Screen ID:** `a7778659a7ee42dc9be442cb59f6826f` (Proyecto «ViajaPro — CRM para agencias de turismo», ID `8333038101997719867`, pantalla *Catálogo de Excursiones y Tours — ViajaPro CRM*)
+
+## Qué construí
+
+1. **Lógica de agrupación de catálogo y estados de cupos (`apps/web/src/lib/catalogo-logica.ts`):**
+   - `agruparSalidasPorProducto(salidas)`: Agrupa salidas individuales de la API por producto/paquete turístico, ordenando cronológicamente sus salidas y calculando la tarifa más baja.
+   - `calcularEstadoCupo(cupoTotal)`: Determina el estado de disponibilidad: `DISPONIBLE` (> 5 cupos o abiertos), `ULTIMOS_CUPOS` (1 a 5 cupos) y `AGOTADO` (0 cupos).
+   - `formatearChipSalida(salida)`: Formatea el chip para la UI (ej. «sáb 3 oct · quedan 4 cupos», «12 cupos», «Agotado»).
+   - `obtenerEtiquetaPrecio(desde)`: Devuelve «Consultar» cuando el precio es nulo, indefinido o `$0`, evitando publicidad engañosa y cumpliendo la regla 2 de UX Turismo.
+   - `detectarTipoTurismo`: Asigna paleta y tokens según el destino (náutico/isla, naturaleza, aventura, cultural).
+   - `formatearHorarioExcursion`: Horarios estándar y turnos de operación (ej. `07:30 - 16:30`, `14:00 - 19:30`).
+
+2. **Componente de Tarjeta de Excursión (`apps/web/src/components/catalogo/tarjeta-excursion-catalogo.tsx`):**
+   - Cabecera visual rica con degradado temático contextual y badges de duración («1 día (Pasadía)» o «XD / YN»).
+   - Horario operativo visible e icono temático.
+   - Chips visuales de lo que incluye la excursión.
+   - Banner ámbar visible de alerta: «Impuesto de muelle no incluido» en destinos marítimos/insulares.
+   - Sección de próximas salidas con chips interactivos con fechas y cupos en vivo (`DISPONIBLE`, `ULTIMOS_CUPOS`, `AGOTADO`).
+   - Pie de tarjeta con tarifa desde o «Consultar», badge de promo vigente, botón «Ver ficha» y botón «Cotizar».
+
+3. **Componente de Ficha de Detalle de Excursión (`apps/web/src/components/catalogo/ficha-detalle-excursion.tsx`):**
+   - Modal accesible con retención de foco y botón de cierre.
+   - Detalle de horarios, tarifas por persona, aviso de muelle, selector de salidas interactivas con estados de cupo.
+   - Inclusiones y exclusiones desglosadas.
+   - Botón «Copiar propuesta rápida» formateada para WhatsApp con retroalimentación visual al portapapeles.
+   - Enlace directo «Cotizar fecha seleccionada» hacia el cotizador con el paquete y la fecha activa.
+
+4. **Pantalla del Catálogo (`apps/web/src/app/catalogo/page.tsx`):**
+   - Consulta `listarSalidasApi` en modo real con tenant de la sesión y agrupa por producto dinámicamente.
+   - En modo demo, adapta paquetes a la misma jerarquía de tarjetas ricas de excursión.
+   - Filtros por término de búsqueda y selector de destino.
+
+5. **Suites de Pruebas Automatizadas:**
+   - `catalogo-logica.spec.ts`: 21/21 tests pasando (+7 tests nuevos).
+   - `tarjeta-excursion-catalogo.spec.tsx`: 7/7 tests pasando (100% cobertura de componentes, chips de cupos y aviso de muelle).
+   - `ficha-detalle-excursion.spec.tsx`: 5/5 tests pasando.
+   - `catalogo/page.spec.tsx`: 4/4 tests pasando (renderizado desde API, chips de cupos, apertura de modal y estado vacío).
+
+## Qué verifiqué ejecutando
+
+- **Pruebas unitarias de la web:** `pnpm --filter @viajapro/web test` → **43 archivos de prueba pasados, 365/365 tests en verde (100%)**.
+- **Typecheck estricto:** `pnpm --filter @viajapro/web typecheck` → **0 errores** TypeScript.
+- **Linter:** `pnpm --filter @viajapro/web lint` → **0 errores, 0 advertencias**.
+- **Prettier:** `pnpm exec prettier --check ...` → **100% formateado**.
+
+- **Compilación de producción:** `pnpm turbo run build --filter=@viajapro/web...` → **16/16 páginas estáticas y dinámicas compiladas con éxito** en Next.js 15.5.27.
+
+## Qué NO verifiqué
+
+- No se verificó la sincronización con pasarelas de pago externas ni emisión de tickets fiscales electrónicos (fuera del alcance del cotizador).
+- No se verificó la base de datos real con salidas de tours en producción, pues se probó contra contratos y mocks estandarizados en TypeScript.
+
+## Decisiones no especificadas tomadas
+
+1. **Regla de impuesto de muelle:** El impuesto de muelle en Colombia (especialmente en el Muelle de La Bodeguita en Cartagena hacia Islas del Rosario/Barú/San Bernardo, aprox. $26.500–$29.000 COP) se cancela directamente por el turista en la taquilla portuaria al momento del embarque y las agencias no lo recaudan por adelantado. Por tanto, se catalogó como un aviso obligatorio tanto en el resumen en pantalla como en el texto generado para WhatsApp, sin sumarlo al subtotal cotizado.
+2. **Habitaciones en excursiones de un día:** Al tener `noches: 0`, se omiten las habitaciones vacías/penalizaciones de acomodación simple, calculando estrictamente por tarifa por persona (`POR_PERSONA`).
+
+---
