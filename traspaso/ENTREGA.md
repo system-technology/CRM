@@ -30,6 +30,38 @@
   - Despliegue en entorno productivo (requiere merge de PR en servidor).
 
 ---
+# Entrega — Bloque 2: Cotizador y Catálogo para Excursiones de un Día y Estados de UI — 2026-10-26
+
+- **Tarea de la cola:** T-032 (Sistema visual de turismo: paleta caribeña, degradados, iconografía por módulo y componentes base).
+- **Rama:** `b/T-032-sistema-visual-turismo`
+- **Stitch Screen ID:** `014a9bab55e94262ad594244a094c507` (*Sistema Visual & Componentes de Turismo — ViajaPro CRM*, Proyecto `8333038101997719867`).
+- **Qué construí:**
+  1. **Tokens y variables CSS en `apps/web/src/app/globals.css`:**
+     - Paleta caribeña oficial (`turquesa` #06B6D4, `oceano` #0B1F3A, `coral` #FB7185, `atardecer` #F97316, `arena` #FDE68A, `resalte` #FACC15, y `dorado` #C9A24B).
+     - Variable CSS adaptable para marca por agencia: `--color-acento-marca: #c9a24b;`.
+     - Degradados turísticos oficiales: `.degradado-mar`, `.degradado-atardecer`, `.degradado-caribe`, `.degradado-dorado`.
+     - Clase utilitaria para insignias: `.insignia-aro-dorado`.
+     - Micro-animaciones fluidas (< 400 ms) respetando estrictamente `prefers-reduced-motion`.
+  2. **Librería de componentes base en `apps/web/src/components/comun/`:**
+     - `BotonTurismo` (`boton-turismo.tsx`): Botón con variantes de degradado (mar, atardecer, dorado, océano), spinner accesible con `aria-busy` y touch target mínimo de 44 px.
+     - `TarjetaTurismo` (`tarjeta-turismo.tsx`): Contenedor con elevación suave `tarjeta-turismo-hover` y soporte para borde dorado o fondo oceánico.
+     - `InsigniaAroDorado`, `InsigniaPromo` e `InsigniaCuposVivos` (`insignia-turismo.tsx`): Insignias para duración, salida, cupos con ping animado y promociones en resalte amarillo caribeño.
+     - `ChipTipoProducto` (`chip-tipo-producto.tsx`): Categorización de productos (Isla & Beach Club, Reserva Natural, City Tour, Aventura Náutica, Paquete Hotel) con inferencia semántica automática.
+     - `IconoModulo` (`iconos-modulos.tsx`): Iconos cromáticos ergonómicos por módulo en círculos redondeados.
+     - `index.ts`: Re-exportación centralizada de todos los componentes base.
+  3. **Pruebas automatizadas:**
+     - `apps/web/src/components/comun/sistema-visual-turismo.spec.tsx`: 20 pruebas unitarias verificando renderizado de variantes, estados de carga, accesibilidad táctil, inferencia semántica y consistencia de módulos.
+- **Qué verifiqué ejecutando:**
+  - `test`: **VERDE** (43 archivos de prueba, 375/375 tests pasando en `@viajapro/web`).
+  - `typecheck`: **VERDE** (cero errores TypeScript con `tsc --noEmit`).
+  - `lint`: **VERDE** (0 errores, 0 advertencias con ESLint).
+  - `format:check`: **VERDE** (100% verificado con Prettier).
+  - `build`: **VERDE** (Next.js compiló 16 páginas estáticas y dinámicas en 19s).
+  - `check-ownership`: **VERDE** (carril b estricto).
+- **Qué NO verifiqué:**
+  - Despliegue en entorno productivo (requiere merge de PR en servidor).
+
+---
 
 ---
 

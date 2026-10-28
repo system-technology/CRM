@@ -251,11 +251,24 @@ export const SalidaPublicada = z.object({
   noches: z.number().int().min(0),
   fecha: FechaViaje,
   cupoTotal: z.number().int().nullable(),
+  /**
+   * El «desde» de la primera moneda por código (COP antes que USD). Se conserva para quien aún
+   * lee un solo precio; con una salida en varias monedas NO es todo el cuadro: usar
+   * `desdePorMoneda`.
+   */
   desde: Dinero,
+  /**
+   * Un mínimo por moneda, ordenado por código, igual que el listado de gestión: nunca un número
+   * que mezcle COP y USD. Opcional en el esquema por compatibilidad con respuestas previas; la API
+   * siempre lo envía y su primer elemento es `desde`.
+   */
+  desdePorMoneda: z.array(Dinero).min(1).optional(),
   /** Cómo pintar el «desde» según la política `promo_vencida` (`presentarPrecio`). */
   presentacion: PresentacionDePrecio.optional(),
+  /** Cómo pintar cada elemento de `desdePorMoneda`, en el mismo orden. */
+  presentacionPorMoneda: z.array(PresentacionDePrecio).min(1).optional(),
   /**
-   * `true` cuando ese «desde» sale de una tarifa de GRUPO y es su per cápita — «$140.000 por
+   * `true` cuando algún «desde» (de cualquier moneda) sale de una tarifa de GRUPO y es su per cápita — «$140.000 por
    * persona, en promo de pareja».
    *
    * La pantalla **tiene que decirlo**: una persona sola no puede comprar esa tarifa, y un
