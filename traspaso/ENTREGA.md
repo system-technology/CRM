@@ -1,3 +1,50 @@
+# Entrega — T-100: Ficha 360 del contacto: datos, conversaciones, oportunidades, cotizaciones y seguimientos en una sola pantalla — 2026-10-28
+
+## Identificación
+- **Tarea:** `T-100` (roadmap/tasks.yaml)
+- **Rama:** `b/T-100-ficha-360-contacto`
+- **Carril:** `b` (Frontend / Web)
+
+## Qué se construyó y auditó
+
+1. **Pantalla Dinámica `/contactos/[id]`:**
+   - Creada ruta dinámica `apps/web/src/app/contactos/[id]/page.tsx` con soporte para datos en vivo (`crm-api.ts`) y datos simulados enriquecidos (`mock-crm.ts`).
+   - Cabecera con datos de identidad del viajero, consentimientos legales, insignias de etiquetas, canal preferido y métricas consolidadas (Total Cotizado, Seguimientos Pendientes, Conversaciones Vinculadas).
+   - Sistema de 4 pestañas interactivas:
+     - **Línea de Tiempo 360**: cronología unificada de hitos comerciales (creación, cotizaciones, oportunidades, notas internas, seguimientos y viajes confirmados).
+     - **Oportunidad & Cotizaciones**: estado del embudo comercial, probabilidad, fecha esperada de cierre, próxima tarea y tarjetas detalladas de cotizaciones emitidas.
+     - **Seguimientos**: listado de compromisos comerciales ordenados cronológicamente con opción de marcar como completado en un clic.
+     - **Campos Personalizados**: integración completa con el motor de metadatos por agencia (`SeccionCamposPersonalizados`, T-026).
+   - Manejo exhaustivo de estados: cargando con esqueleto (`EsqueletoFichaContacto`), error accionable (`AvisoErrorAccionable`, `construirMensajeErrorAccionable`) y vacío para cada subsección (`AvisoVacio`).
+
+2. **Modales Interactivos y Accesibilidad:**
+   - Creado `ModalEditarContacto` (`apps/web/src/components/contactos/modal-editar-contacto.tsx`) con foco atrapado (`useFocoModal`), etiquetas ARIA y edición de nombre, teléfono, correo y etiquetas.
+   - Creado `ModalCrearOportunidad` (`apps/web/src/components/contactos/modal-crear-oportunidad.tsx`) para iniciar negociaciones asociadas al contacto con selector de etapa, valor estimado en COP (R8) y fecha estimada de cierre.
+   - Creado `ModalCrearSeguimiento` (`apps/web/src/components/contactos/modal-crear-seguimiento.tsx`) para agendar llamadas, cotizaciones o reuniones con selector de fecha/hora y asociación automática a la oportunidad actual.
+   - Touch targets mínimos `>= 44 px` en todos los controles, inputs y botones de acción conforme a directrices móviles a 375 px.
+
+3. **Lógica de Dominio y Línea de Tiempo:**
+   - Creado módulo `apps/web/src/lib/contacto-360-logica.ts` con funciones puras para calcular métricas y fusionar eventos heterogéneos en una secuencia cronológica inversa.
+   - Creado componente visual `apps/web/src/components/contactos/linea-tiempo-360.tsx` con iconografía diferenciada por tipo de evento.
+   - Conectada la lista de contactos (`/contactos`) y la ficha lateral (`ficha-detalle-contacto.tsx`) con enlace directo «Abrir Ficha 360 Completa».
+
+4. **Pruebas y Verificación:**
+   - Creadas 2 suites de pruebas unitarias:
+     - `apps/web/src/lib/contacto-360-logica.spec.ts` (3 tests): cálculo de métricas y construcción de línea de tiempo cronológica.
+     - `apps/web/src/app/contactos/[id]/page.spec.tsx` (7 tests): renderizado de datos del contacto, estados cargando/error, cambio de pestañas, apertura y guardado en modales de edición, oportunidad y seguimiento.
+   - Suite total `@viajapro/web`: 79 suites, 630 pruebas en verde.
+   - Typecheck (9/9), Linter (7/7) y Next.js build (22 rutas) 100% en verde.
+   - Ganchos y fronteras (`pnpm test:hooks`): 59/59, 19/19, 6/6 en verde.
+
+## Verificación de Compuertas
+- **Pruebas unitarias (@viajapro/web):** 79 suites, 630 pruebas en verde.
+- **Typecheck:** 9/9 paquetes en verde.
+- **Linter:** 7/7 paquetes en verde.
+- **Compilación de producción (Next.js):** 22/22 rutas compiladas exitosamente.
+- **Fronteras y ganchos de seguridad (`pnpm test:hooks`):** 59/59 casos de política de rama, 19/19 detección de secretos, 6/6 fronteras de módulos.
+
+---
+
 # Entrega — T-108: Páginas públicas /privacidad, /terminos y /cookies con el texto aprobado y enlace en el pie y en el login — 2026-10-28
 
 ## Identificación

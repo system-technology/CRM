@@ -332,7 +332,14 @@ export default function ContactosPage() {
                               >
                                 <MessageSquare className="h-4 w-4" />
                               </Link>
-                              <ChevronRight className="h-4 w-4 text-neutral-300 dark:text-neutral-600" />
+                              <Link
+                                href={`/contactos/${c.id}`}
+                                onClick={(e) => e.stopPropagation()}
+                                title="Abrir Ficha 360"
+                                className="flex min-h-[36px] min-w-[36px] items-center justify-center rounded-lg text-neutral-400 hover:bg-neutral-100 hover:text-teal-600 dark:hover:bg-neutral-800 dark:hover:text-teal-400"
+                              >
+                                <ChevronRight className="h-4 w-4" />
+                              </Link>
                             </div>
                           </td>
                         </tr>

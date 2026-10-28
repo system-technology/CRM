@@ -2387,7 +2387,10 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: backlog
+    status: done
+    started_at: 2026-10-28T08:50:00.000Z
+    done_at: 2026-10-28T09:12:00.000Z
+    evidence: "Implementada ruta dinámica /contactos/[id] con ficha 360 unificada (datos, conversaciones, cotizaciones, oportunidades, seguimientos, campos personalizados y notas internas), línea de tiempo cronológica, modales interactivos para editar contacto, crear oportunidad y agendar seguimiento con touch targets >= 44 px, estados cargando, error y vacío, y 10 tests de componente y lógica en verde."
     depends_on: []
     acceptance:
       - Pantalla /contactos/[id] que consume /api/v1/crm/* y muestra línea de tiempo con estados cargando,
@@ -2396,6 +2399,10 @@ tasks:
       - Tests de componente; usable a 375 px
     files:
       - apps/web/src/app/contactos/
+      - apps/web/src/components/contactos/
+      - apps/web/src/lib/contacto-360-logica.ts
+      - apps/web/src/lib/crm-api.ts
+      - apps/web/src/lib/mock-crm.ts
     source: cola de Antigravity ampliada 2026-10-28
     created_at: 2026-10-28T02:37:57.684Z
   - id: T-101

@@ -14,11 +14,17 @@ export { obtenerBaseApi };
 
 import { z } from 'zod';
 import {
+  Contacto,
+  CrearOportunidad,
+  CrearSeguimiento,
+  EditarContacto,
   EtapaDefinida,
   FichaDeContacto,
+  FiltroSeguimientos,
   MoverOportunidad,
   Oportunidad,
   PaginaContactos,
+  PaginaSeguimientos,
   PendientesDelDia,
   Seguimiento,
   TableroPipeline,
@@ -30,6 +36,10 @@ import {
   obtenerMockFichaDeContacto,
   obtenerMockPendientesDelDia,
   completarMockSeguimiento,
+  editarMockContacto,
+  crearMockOportunidad,
+  crearMockSeguimiento,
+  listarMockSeguimientos,
 } from './mock-crm';
 import { obtenerMockPaginaContactos } from './mock-contactos';
 
@@ -320,4 +330,78 @@ export async function actualizarEtapasPipelineApi(
   }
 
   return validadas;
+}
+
+/**
+ * Edita los datos de un contacto (PATCH /api/v1/crm/contactos/:id) (T-075 / T-100).
+ */
+export async function editarContactoApi(id: string, cambios: EditarContacto): Promise<Contacto> {
+  const validados = EditarContacto.parse(cambios);
+
+  if (estaUsandoApiReal()) {
+    const { data } = await pedirCrm(`/api/v1/crm/contactos/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(validados),
+    });
+    return Contacto.parse(data);
+  }
+
+  return editarMockContacto(id, validados);
+}
+
+/**
+ * Crea una oportunidad para un contacto (POST /api/v1/crm/oportunidades) (T-075 / T-100).
+ */
+export async function crearOportunidadApi(cuerpo: CrearOportunidad): Promise<Oportunidad> {
+  const validado = CrearOportunidad.parse(cuerpo);
+
+  if (estaUsandoApiReal()) {
+    const { data } = await pedirCrm('/api/v1/crm/oportunidades', {
+      method: 'POST',
+      body: JSON.stringify(validado),
+    });
+    return Oportunidad.parse(data);
+  }
+
+  return crearMockOportunidad(validado);
+}
+
+/**
+ * Crea un seguimiento comercial con fecha programada (POST /api/v1/crm/seguimientos) (T-077 / T-100).
+ */
+export async function crearSeguimientoApi(cuerpo: CrearSeguimiento): Promise<Seguimiento> {
+  const validado = CrearSeguimiento.parse(cuerpo);
+
+  if (estaUsandoApiReal()) {
+    const { data } = await pedirCrm('/api/v1/crm/seguimientos', {
+      method: 'POST',
+      body: JSON.stringify(validado),
+    });
+    return Seguimiento.parse(data);
+  }
+
+  return crearMockSeguimiento(validado);
+}
+
+/**
+ * Lista seguimientos con filtros (GET /api/v1/crm/seguimientos) (T-077 / T-100).
+ */
+export async function listarSeguimientosApi(
+  filtro: FiltroSeguimientos,
+): Promise<PaginaSeguimientos> {
+  const validado = FiltroSeguimientos.parse(filtro);
+
+  if (estaUsandoApiReal()) {
+    const params = new URLSearchParams();
+    if (validado.asesorId) params.append('asesorId', validado.asesorId);
+    if (validado.oportunidadId) params.append('oportunidadId', validado.oportunidadId);
+    if (validado.conversacionId) params.append('conversacionId', validado.conversacionId);
+    if (validado.estado) params.append('estado', validado.estado);
+
+    const qs = params.toString() ? `?${params.toString()}` : '';
+    const { data } = await pedirCrm(`/api/v1/crm/seguimientos${qs}`);
+    return PaginaSeguimientos.parse(data);
+  }
+
+  return listarMockSeguimientos(validado);
 }
