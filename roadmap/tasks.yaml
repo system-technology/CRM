@@ -2109,7 +2109,7 @@ tasks:
     phase: 1
     priority: P3
     effort: S
-    status: backlog
+    status: done
     depends_on: []
     acceptance:
       - Un id que no es UUID responde 400 y no 500 con traza
@@ -2117,6 +2117,11 @@ tasks:
       - apps/api/src/modules/quoting/interface/
     source: auditoria de ciberseguridad 2026-10-28
     created_at: 2026-10-28T02:09:17.390Z
+    started_at: 2026-10-28T02:43:17.311Z
+    done_at: 2026-10-28T02:43:17.311Z
+    evidence: "Mergeado en main por el PR #117 (rama a/T-091-endurecimiento-de-la-api) con el CI en verde: format,
+      analyze, tests y los demás checks obligatorios. Cierre automático (.github/workflows/cerrar-tarea.yml)."
+    commit: 591f7aaa79b68a06f94b58040d9947656689de8b
   - id: T-092
     title: Token de invitación en el fragmento de la URL y cabeceras HSTS y Permissions-Policy en la web
     type: security
