@@ -14,7 +14,10 @@
 
 import { describe, expect, it } from 'vitest';
 import {
+  CrearContacto,
   CrearOportunidad,
+  CrearSeguimiento,
+  EditarContacto,
   EtapaDefinida,
   MoverOportunidad,
   Oportunidad,
@@ -176,5 +179,45 @@ describe('CrearOportunidad', () => {
     });
     expect(r.success).toBe(true);
     expect(r.data && 'etapa' in r.data).toBe(false);
+  });
+});
+
+describe('Contacto: alta y edición (T-075)', () => {
+  it('el alta exige teléfono y rellena etiquetas vacías', () => {
+    const r = CrearContacto.parse({ telefono: '+57 300 123 4567' });
+    expect(r.etiquetas).toEqual([]);
+    expect(CrearContacto.safeParse({ nombre: 'Ana' }).success).toBe(false);
+  });
+
+  it('el correo debe ser un correo', () => {
+    expect(CrearContacto.safeParse({ telefono: '+573001234567', correo: 'no-es' }).success).toBe(
+      false,
+    );
+  });
+
+  it('editar exige al menos un campo; null es un valor válido (borrar)', () => {
+    expect(EditarContacto.safeParse({}).success).toBe(false);
+    expect(EditarContacto.safeParse({ correo: null }).success).toBe(true);
+  });
+});
+
+describe('CrearSeguimiento (T-077)', () => {
+  const OP = '33333333-3333-4333-8333-333333333333';
+  const CONV = '44444444-4444-4444-8444-444444444444';
+  const base = { descripcion: 'Llamar', venceEn: '2026-10-28T15:00:00.000Z' };
+
+  it('exactamente uno: oportunidad o conversación', () => {
+    expect(CrearSeguimiento.safeParse({ ...base, oportunidadId: OP }).success).toBe(true);
+    expect(CrearSeguimiento.safeParse({ ...base, conversacionId: CONV }).success).toBe(true);
+    expect(CrearSeguimiento.safeParse(base).success).toBe(false);
+    expect(
+      CrearSeguimiento.safeParse({ ...base, oportunidadId: OP, conversacionId: CONV }).success,
+    ).toBe(false);
+  });
+
+  it('la fecha es un instante con zona', () => {
+    expect(
+      CrearSeguimiento.safeParse({ ...base, venceEn: '2026-10-28', oportunidadId: OP }).success,
+    ).toBe(false);
   });
 });

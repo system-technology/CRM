@@ -287,3 +287,117 @@ export const FichaDeContacto = z.object({
   ),
 });
 export type FichaDeContacto = z.infer<typeof FichaDeContacto>;
+
+// =============================================================================
+// Alta y edición de contacto (T-075)
+// =============================================================================
+
+/**
+ * El teléfono se acepta tal como lo escribe una persona («+57 300 123 4567», «0057 300…») y el
+ * servidor lo normaliza a E.164 con `PhoneNumber`; lo que sale en `Contacto.telefono` ya es
+ * canónico. Sin código de país se rechaza: adivinarlo crea un contacto al que nunca llega nada.
+ */
+const telefonoEscrito = z.string().trim().min(8).max(30);
+
+export const CrearContacto = z.object({
+  telefono: telefonoEscrito,
+  nombre: z.string().trim().min(1).max(200).nullish(),
+  correo: z.string().trim().email().max(320).nullish(),
+  etiquetas: z.array(z.string().trim().min(1).max(40)).max(20).default([]),
+  /** R10: puede contener dato de salud. No entra al índice de búsqueda ni a la auditoría. */
+  preferencias: z.string().max(2000).nullish(),
+});
+export type CrearContacto = z.infer<typeof CrearContacto>;
+
+/**
+ * Edición parcial (`PATCH`): lo que no viene no se toca; `null` borra un campo opcional.
+ * Cambiar `telefono` cambia la llave del canal de WhatsApp: si ya lo tiene otro contacto de la
+ * agencia, responde 409 `TELEFONO_YA_REGISTRADO`.
+ */
+export const EditarContacto = z
+  .object({
+    telefono: telefonoEscrito,
+    nombre: z.string().trim().min(1).max(200).nullable(),
+    correo: z.string().trim().email().max(320).nullable(),
+    etiquetas: z.array(z.string().trim().min(1).max(40)).max(20),
+    preferencias: z.string().max(2000).nullable(),
+  })
+  .partial()
+  .refine((v) => Object.values(v).some((x) => x !== undefined), {
+    message: 'No hay nada que editar.',
+  });
+export type EditarContacto = z.infer<typeof EditarContacto>;
+
+/**
+ * Crear oportunidad desde una conversación: `POST /api/v1/crm/conversaciones/:id/oportunidades`.
+ * El contacto sale de la conversación (no viaja en el cuerpo). Si no se manda `asesorId`, queda
+ * asignada a quien la crea.
+ */
+export const CrearOportunidadDeConversacion = CrearOportunidad.omit({ contactoId: true });
+export type CrearOportunidadDeConversacion = z.infer<typeof CrearOportunidadDeConversacion>;
+
+// =============================================================================
+// Seguimientos (T-077)
+// =============================================================================
+
+/**
+ * Un seguimiento: algo que un asesor se comprometió a hacer, con fecha, sobre una oportunidad o
+ * sobre una conversación (exactamente una de las dos).
+ */
+export const Seguimiento = z.object({
+  id: Id,
+  descripcion: z.string().min(1).max(200),
+  venceEn: Instante,
+  /** Null mientras esté pendiente. */
+  completadoEn: Instante.nullable(),
+  asesorId: Id.nullable(),
+  asesorNombre: z.string().max(200).nullable(),
+  contactoId: Id,
+  contactoNombre: z.string().max(200).nullable(),
+  oportunidadId: Id.nullable(),
+  oportunidadTitulo: z.string().max(200).nullable(),
+  conversacionId: Id.nullable(),
+});
+export type Seguimiento = z.infer<typeof Seguimiento>;
+
+/** `POST /api/v1/crm/seguimientos`. El asesor lo fija el servidor (ver la ruta). */
+export const CrearSeguimiento = z
+  .object({
+    descripcion: z.string().trim().min(1).max(200),
+    venceEn: Instante,
+    oportunidadId: Id.optional(),
+    conversacionId: Id.optional(),
+  })
+  .refine((v) => (v.oportunidadId === undefined) !== (v.conversacionId === undefined), {
+    message: 'Indica oportunidadId o conversacionId, uno solo.',
+  });
+export type CrearSeguimiento = z.infer<typeof CrearSeguimiento>;
+
+export const EstadoSeguimiento = z.enum(['PENDIENTE', 'COMPLETADO', 'TODOS']);
+export type EstadoSeguimiento = z.infer<typeof EstadoSeguimiento>;
+
+/** Query de `GET /api/v1/crm/seguimientos`. `asesorId=yo` es el atajo del usuario en sesión. */
+export const FiltroSeguimientos = z.object({
+  asesorId: z.union([Id, z.literal('yo')]).optional(),
+  oportunidadId: Id.optional(),
+  conversacionId: Id.optional(),
+  estado: EstadoSeguimiento.default('PENDIENTE'),
+});
+export type FiltroSeguimientos = z.infer<typeof FiltroSeguimientos>;
+
+export const PaginaSeguimientos = pagina(Seguimiento);
+export type PaginaSeguimientos = z.infer<typeof PaginaSeguimientos>;
+
+/**
+ * `GET /api/v1/crm/seguimientos/pendientes-del-dia[?asesorId=]` — lo que alimenta el inicio del
+ * asesor. «Hoy» se calcula en la zona horaria de la agencia (R9), no en la del servidor.
+ */
+export const PendientesDelDia = z.object({
+  /** AAAA-MM-DD del «hoy» de la agencia con que se calculó. */
+  fecha: FechaViaje,
+  /** Pendientes cuya fecha ya pasó antes de hoy, los más viejos primero. */
+  vencidos: z.array(Seguimiento),
+  /** Pendientes que vencen hoy (incluidos los que ya pasaron de hora), por hora. */
+  deHoy: z.array(Seguimiento),
+});
+export type PendientesDelDia = z.infer<typeof PendientesDelDia>;

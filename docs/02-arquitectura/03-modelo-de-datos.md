@@ -826,6 +826,33 @@ bloqueada y no existe.
   aún lo tratan como obligatorio; la semilla real sigue poniendo `SIN_ALIMENTACION` hasta que
   T-041 y la web acepten el nulo. Ninguna fila existente queda nula.
 
+### La versión de cotización guarda la opción de salida (T-062, 2026-10-27)
+
+Migración `20261027130000_opcion_de_salida_en_la_version`.
+
+```
+  opciones_de_salida ◄──────────── versiones_cotizacion.opcion_de_salida_id (NULL)
+                       (opcion_de_salida_id, tenant_id)  NO ACTION, validada
+```
+
+**Por qué así.**
+
+- **Sin ella la versión no era reproducible.** Desde M2 el cotizador exige la opción cuando el
+  producto las tiene y elige las tarifas con ella; la versión guardada no la conservaba, así que
+  releer una cotización no decía con qué opción se formó el total ni permitía recotizarla igual.
+- **Se guarda la que usó el SERVIDOR**, no la que pidió el cliente (`armarVersion` la toma de
+  `calculo.opcionDeSalida`): si el producto no tiene opciones queda `NULL` aunque viniera una.
+- **Nula y sin relleno.** Las versiones son inmutables (disparador): las anteriores a T-062 quedan
+  en `NULL` = «no registrada», y no se reescribe la prueba.
+- **Compuesta y `NO ACTION`**, como `tarifas.opcion_de_salida_id`: una opción citada por una
+  versión se desactiva, no se borra; `SET NULL` sería además un UPDATE que el disparador rechaza.
+  Se crea `NOT VALID` y se valida en la misma migración (sin bloquear escrituras).
+- **Contrato:** `VersionDeCotizacion.opcionDeSalidaId` (`Id | null`). La API lo envía siempre; es
+  opcional en el esquema Zod solo para que una respuesta anterior siga validando.
+- Aserción `T-062` de `aislamiento.spec.ts`: foránea compuesta validada, control propio, lectura
+  cruzada en cero, 23503 al citar la opción ajena, 42501 al plantar con el tenant ajeno,
+  inmutabilidad de la columna y la opción citada no se borra.
+
 ## Auditoría: quién actuó, usuario o clave de API (T-071, 2026-10-27)
 
 Migración `20261027140000_actor_en_la_auditoria`.

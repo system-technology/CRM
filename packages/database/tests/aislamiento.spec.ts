@@ -2924,18 +2924,22 @@ function insertarVersion(
   paqueteId: string,
   numero: number,
   v: VersionDePrueba = VERSION_SANA,
-  { conRetorno = true }: { conRetorno?: boolean } = {},
+  {
+    conRetorno = true,
+    opcionDeSalidaId = null,
+  }: { conRetorno?: boolean; opcionDeSalidaId?: string | null } = {},
 ) {
   return c.query(
     `INSERT INTO versiones_cotizacion
        (id, tenant_id, cotizacion_id, numero, paquete_id, paquete_nombre, destino, noches,
         fecha_salida, vigencia_id, vigencia_desde, vigencia_hasta, de_salida_programada,
         adultos, ninos, infantes, politica_porcentaje, politica_base, politica_origen,
-        politica_redondeo, lineas, venta_unidades, neto_unidades, margen_unidades, moneda_iso)
+        politica_redondeo, lineas, venta_unidades, neto_unidades, margen_unidades, moneda_iso,
+        opcion_de_salida_id)
      VALUES (gen_random_uuid(), $1, $2, $3, $4, 'Parque del Café', 'Quindío', 1,
              '2026-12-05', gen_random_uuid(), '2026-12-01', '2026-12-15', false,
              2, 1, 0, 20, 'SOBRE_EL_NETO', 'DERIVADA_DEL_NETO',
-             1000, $5::jsonb, $6, $7, $8, $9)
+             1000, $5::jsonb, $6, $7, $8, $9, $10::uuid)
      ${conRetorno ? 'RETURNING id' : ''}`,
     [
       tenant,
@@ -2947,6 +2951,7 @@ function insertarVersion(
       v.neto,
       v.margen,
       v.moneda ?? 'COP',
+      opcionDeSalidaId,
     ],
   );
 }
@@ -3332,6 +3337,130 @@ describe('Cotizaciones — cabecera mutable y versiones inmutables', () => {
         ),
       ),
     ).rejects.toThrow(/estado_exige_envio/);
+  });
+
+  it('T-062 — versiones_cotizacion.opcion_de_salida_id: foránea COMPUESTA y validada, y no cruza agencias', async () => {
+    // La foránea existe, es de dos columnas con el tenant, apunta a opciones_de_salida y está
+    // validada. Con una simple, la versión de una agencia podría citar la opción de otra.
+    const { rows } = await admin.query(
+      `SELECT (SELECT array_agg(a.attname::text ORDER BY i)
+                 FROM generate_subscripts(c.conkey, 1) AS i
+                 JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = c.conkey[i]) AS columnas,
+              (SELECT array_agg(a.attname::text ORDER BY i)
+                 FROM generate_subscripts(c.confkey, 1) AS i
+                 JOIN pg_attribute a ON a.attrelid = c.confrelid AND a.attnum = c.confkey[i]) AS referidas,
+              c.convalidated
+         FROM pg_constraint c
+        WHERE c.contype = 'f'
+          AND c.conrelid = 'public.versiones_cotizacion'::regclass
+          AND c.confrelid = 'public.opciones_de_salida'::regclass`,
+    );
+    expect(rows).toEqual([
+      {
+        columnas: ['opcion_de_salida_id', 'tenant_id'],
+        referidas: ['id', 'tenant_id'],
+        convalidated: true,
+      },
+    ]);
+
+    // Una opción de salida por agencia, de su propio paquete, y una cotización nueva por agencia
+    // (la del beforeAll ya está ENVIADA y su versión 1 la usan otras aserciones).
+    const opcionDe: Record<string, string> = {};
+    const cotizacionNuevaDe: Record<string, string> = {};
+    for (const tenant of [TENANT_A, TENANT_B]) {
+      await comoTenant(tenant, async (c) => {
+        const o = await c.query(
+          `INSERT INTO opciones_de_salida (id, tenant_id, paquete_id, etiqueta, actualizado_en)
+           VALUES (gen_random_uuid(), $1, $2, 'Turno mañana', now())
+           RETURNING id`,
+          [tenant, paqueteDe[tenant]],
+        );
+        opcionDe[tenant] = (o.rows[0] as { id: string }).id;
+        const k = await c.query(
+          `INSERT INTO cotizaciones (id, tenant_id, contacto_id, titulo, creado_en, actualizado_en)
+           VALUES (gen_random_uuid(), $1, $2, 'Con opción de salida', now(), now())
+           RETURNING id`,
+          [tenant, contactoDe[tenant]],
+        );
+        cotizacionNuevaDe[tenant] = (k.rows[0] as { id: string }).id;
+      });
+    }
+
+    // Control: A guarda una versión con SU opción y la relee. Sin esto, «B no la ve» sería verde
+    // también con la columna rota.
+    const propia = await comoTenant(TENANT_A, async (c) => {
+      await insertarVersion(
+        c,
+        TENANT_A,
+        cotizacionNuevaDe[TENANT_A] ?? '',
+        paqueteDe[TENANT_A] ?? '',
+        1,
+        VERSION_SANA,
+        { opcionDeSalidaId: opcionDe[TENANT_A] ?? null },
+      );
+      return c.query(
+        'SELECT opcion_de_salida_id FROM versiones_cotizacion WHERE cotizacion_id = $1',
+        [cotizacionNuevaDe[TENANT_A]],
+      );
+    });
+    expect(propia.rows).toEqual([{ opcion_de_salida_id: opcionDe[TENANT_A] }]);
+
+    // Lectura cruzada: B no ve la versión de A ni, por la columna, qué opción eligió.
+    const ajena = await comoTenant(TENANT_B, (c) =>
+      c.query('SELECT id FROM versiones_cotizacion WHERE opcion_de_salida_id = $1', [
+        opcionDe[TENANT_A],
+      ]),
+    );
+    expect(ajena.rowCount).toBe(0);
+
+    // B, con SU tenant_id y SU cotización, citando la opción de A: lo para la foránea compuesta
+    // (23503), porque la integridad referencial no pasa por RLS.
+    await expect(
+      comoTenant(TENANT_B, (c) =>
+        insertarVersion(
+          c,
+          TENANT_B,
+          cotizacionNuevaDe[TENANT_B] ?? '',
+          paqueteDe[TENANT_B] ?? '',
+          1,
+          VERSION_SANA,
+          { opcionDeSalidaId: opcionDe[TENANT_A] ?? null },
+        ),
+      ),
+    ).rejects.toMatchObject({ code: '23503' });
+
+    // B plantando una versión con el tenant y la opción de A: lo para el WITH CHECK. Sin
+    // RETURNING, para que solo el WITH CHECK pueda pararlo (ver la 48).
+    await expect(
+      comoTenant(TENANT_B, (c) =>
+        insertarVersion(
+          c,
+          TENANT_A,
+          cotizacionNuevaDe[TENANT_A] ?? '',
+          paqueteDe[TENANT_A] ?? '',
+          2,
+          VERSION_SANA,
+          { conRetorno: false, opcionDeSalidaId: opcionDe[TENANT_A] ?? null },
+        ),
+      ),
+    ).rejects.toThrow(/row-level security/i);
+
+    // La columna es tan inmutable como el resto de la versión: ni su propia agencia la cambia.
+    await expect(
+      comoTenant(TENANT_A, (c) =>
+        c.query(
+          'UPDATE versiones_cotizacion SET opcion_de_salida_id = NULL WHERE cotizacion_id = $1',
+          [cotizacionNuevaDe[TENANT_A]],
+        ),
+      ),
+    ).rejects.toThrow(/inmutable/i);
+
+    // Una opción citada por una versión no se borra (NO ACTION): se desactiva.
+    await expect(
+      comoTenant(TENANT_A, (c) =>
+        c.query('DELETE FROM opciones_de_salida WHERE id = $1', [opcionDe[TENANT_A]]),
+      ),
+    ).rejects.toMatchObject({ code: '23503' });
   });
 });
 // =========================================================================================

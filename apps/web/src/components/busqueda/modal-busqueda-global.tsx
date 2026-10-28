@@ -11,6 +11,7 @@ import {
   Briefcase,
   Package,
   Zap,
+  FileText,
   ArrowRight,
   CornerDownLeft,
 } from 'lucide-react';
@@ -41,6 +42,11 @@ const CATEGORIA_INFO: Record<
     icon: Users,
     color: 'text-blue-600 dark:text-blue-400',
   },
+  cotizaciones: {
+    label: 'Cotizaciones',
+    icon: FileText,
+    color: 'text-amber-600 dark:text-amber-400',
+  },
   oportunidades: {
     label: 'Pipeline / Oportunidades',
     icon: Kanban,
@@ -58,9 +64,19 @@ const CATEGORIA_INFO: Record<
   },
 };
 
+const PESTANAS_FILTRO: Array<{ id: CategoriaBusqueda | 'todos'; label: string }> = [
+  { id: 'todos', label: 'Todos' },
+  { id: 'conversaciones', label: 'WhatsApp' },
+  { id: 'catalogo', label: 'Catálogo' },
+  { id: 'cotizaciones', label: 'Cotizaciones' },
+  { id: 'contactos', label: 'Contactos' },
+  { id: 'acciones', label: 'Acciones' },
+];
+
 export function ModalBusquedaGlobal({ abierto, alCerrar }: ModalBusquedaGlobalProps) {
   const router = useRouter();
   const [consulta, setConsulta] = useState('');
+  const [filtroCategoria, setFiltroCategoria] = useState<CategoriaBusqueda | 'todos'>('todos');
   const [indiceSeleccionado, setIndiceSeleccionado] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -74,14 +90,15 @@ export function ModalBusquedaGlobal({ abierto, alCerrar }: ModalBusquedaGlobalPr
   useEffect(() => {
     if (abierto) {
       setConsulta('');
+      setFiltroCategoria('todos');
       setIndiceSeleccionado(0);
     }
   }, [abierto]);
 
   // Resultados agrupados
   const resultadosAgrupados = useMemo(() => {
-    return buscarEnIndiceGlobal(consulta);
-  }, [consulta]);
+    return buscarEnIndiceGlobal(consulta, undefined, 4, filtroCategoria);
+  }, [consulta, filtroCategoria]);
 
   // Lista plana para navegación por teclado
   const itemsPlanos = useMemo(() => {
@@ -89,13 +106,16 @@ export function ModalBusquedaGlobal({ abierto, alCerrar }: ModalBusquedaGlobalPr
       'acciones',
       'conversaciones',
       'contactos',
+      'cotizaciones',
       'oportunidades',
       'viajes',
       'catalogo',
     ];
     const lista: ResultadoBusqueda[] = [];
     for (const cat of ordenCategorias) {
-      lista.push(...resultadosAgrupados[cat]);
+      if (resultadosAgrupados[cat]) {
+        lista.push(...resultadosAgrupados[cat]);
+      }
     }
     return lista;
   }, [resultadosAgrupados]);
@@ -124,15 +144,16 @@ export function ModalBusquedaGlobal({ abierto, alCerrar }: ModalBusquedaGlobalPr
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 p-4 pt-16 backdrop-blur-xs sm:pt-24"
+      className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 p-4 pt-12 backdrop-blur-xs sm:pt-20"
       onClick={alCerrar}
       role="dialog"
       aria-modal="true"
-      aria-label="Búsqueda Global"
+      aria-label="Paleta de Comandos y Búsqueda Global"
+      data-testid="modal-paleta-comandos"
     >
       <div
         ref={contenedorRef}
-        className="w-full max-w-2xl overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-2xl transition-all dark:border-neutral-800 dark:bg-neutral-900"
+        className="anim-modal w-full max-w-2xl overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-2xl transition-all dark:border-neutral-800 dark:bg-neutral-900"
         onClick={(e) => e.stopPropagation()}
         onKeyDown={manejarKeyDown}
       >
@@ -140,10 +161,10 @@ export function ModalBusquedaGlobal({ abierto, alCerrar }: ModalBusquedaGlobalPr
         <div aria-live="polite" className="sr-only">
           {consulta.trim()
             ? `${itemsPlanos.length} resultados encontrados para ${consulta}`
-            : 'Búsqueda global abierta. Escribe un término para buscar.'}
+            : 'Búsqueda global abierta. Escribe un término o selecciona una categoría para buscar.'}
         </div>
 
-        {/* Cabecera / Input */}
+        {/* Cabecera / Omnibox Input */}
         <div className="relative flex items-center border-b border-neutral-200 px-4 py-3 dark:border-neutral-800">
           <Search className="h-5 w-5 text-neutral-400" />
           <input
@@ -154,7 +175,7 @@ export function ModalBusquedaGlobal({ abierto, alCerrar }: ModalBusquedaGlobalPr
               setConsulta(e.target.value);
               setIndiceSeleccionado(0);
             }}
-            placeholder="Buscar contactos, chats, oportunidades, viajes, paquetes o acciones..."
+            placeholder="Buscar contactos, chats, cotizaciones, paquetes o acciones... (Ctrl+K)"
             className="w-full bg-transparent px-3 text-sm text-neutral-900 outline-hidden placeholder:text-neutral-400 dark:text-neutral-100"
           />
           {consulta ? (
@@ -176,8 +197,34 @@ export function ModalBusquedaGlobal({ abierto, alCerrar }: ModalBusquedaGlobalPr
           )}
         </div>
 
+        {/* Pestañas de Filtro Temático (T-034) */}
+        <div className="flex scrollbar-none items-center gap-1.5 overflow-x-auto border-b border-neutral-100 bg-neutral-50/70 px-3 py-2 dark:border-neutral-800/60 dark:bg-neutral-950/40">
+          {PESTANAS_FILTRO.map((tab) => {
+            const estaActiva = filtroCategoria === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                data-testid={`filtro-categoria-${tab.id}`}
+                onClick={() => {
+                  setFiltroCategoria(tab.id);
+                  setIndiceSeleccionado(0);
+                  inputRef.current?.focus();
+                }}
+                className={`focus-visible:ring-acento-600 inline-flex shrink-0 items-center rounded-lg px-2.5 py-1 text-xs font-medium transition-colors focus-visible:ring-2 focus-visible:outline-none ${
+                  estaActiva
+                    ? 'bg-acento-700 dark:bg-acento-600 text-white shadow-xs'
+                    : 'text-neutral-600 hover:bg-neutral-200/70 dark:text-neutral-400 dark:hover:bg-neutral-800'
+                }`}
+              >
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
+
         {/* Lista de Resultados */}
-        <div className="max-h-[60vh] scrollbar-thin overflow-y-auto p-2">
+        <div className="max-h-[55vh] scrollbar-thin overflow-y-auto p-2">
           {itemsPlanos.length === 0 ? (
             <div className="py-12 text-center text-sm text-neutral-500 dark:text-neutral-400">
               No se encontraron resultados para &ldquo;
@@ -221,9 +268,9 @@ export function ModalBusquedaGlobal({ abierto, alCerrar }: ModalBusquedaGlobalPr
                             }
                           }}
                           onMouseEnter={() => setIndiceSeleccionado(idxGlobal)}
-                          className={`focus-visible:ring-acento-600 flex cursor-pointer items-center justify-between rounded-xl px-3 py-2.5 transition-colors focus-visible:ring-2 focus-visible:outline-none ${
+                          className={`focus-visible:ring-acento-600 flex min-h-[44px] cursor-pointer items-center justify-between rounded-xl px-3 py-2 transition-colors focus-visible:ring-2 focus-visible:outline-none ${
                             esSeleccionado
-                              ? 'bg-acento-50 dark:bg-acento-950/60 text-neutral-900 dark:text-neutral-50'
+                              ? 'bg-sky-50 text-neutral-900 ring-1 ring-amber-400/50 dark:bg-sky-950/60 dark:text-neutral-50 dark:ring-amber-500/50'
                               : 'text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800/60'
                           }`}
                         >
@@ -270,9 +317,9 @@ export function ModalBusquedaGlobal({ abierto, alCerrar }: ModalBusquedaGlobalPr
           )}
         </div>
 
-        {/* Footer con atajos */}
+        {/* Footer con atajos de navegación rápida */}
         <div className="flex items-center justify-between border-t border-neutral-200 bg-neutral-50 px-4 py-2.5 text-[11px] text-neutral-500 dark:border-neutral-800 dark:bg-neutral-900/60 dark:text-neutral-400">
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-3 sm:gap-4">
             <span className="flex items-center gap-1">
               <kbd className="rounded border border-neutral-300 bg-white px-1.5 py-0.5 text-[9px] font-semibold dark:border-neutral-700 dark:bg-neutral-800">
                 ↑↓
@@ -283,7 +330,7 @@ export function ModalBusquedaGlobal({ abierto, alCerrar }: ModalBusquedaGlobalPr
               <kbd className="rounded border border-neutral-300 bg-white px-1.5 py-0.5 text-[9px] font-semibold dark:border-neutral-700 dark:bg-neutral-800">
                 ↵
               </kbd>{' '}
-              Abrir
+              Seleccionar
             </span>
             <span className="flex items-center gap-1">
               <kbd className="rounded border border-neutral-300 bg-white px-1.5 py-0.5 text-[9px] font-semibold dark:border-neutral-700 dark:bg-neutral-800">
@@ -292,7 +339,9 @@ export function ModalBusquedaGlobal({ abierto, alCerrar }: ModalBusquedaGlobalPr
               Cerrar
             </span>
           </div>
-          <span className="text-[10px] text-neutral-400">ViajaPro Búsqueda Global</span>
+          <span className="hidden text-[10px] text-neutral-400 sm:inline-block">
+            Paleta de Comandos · ViajaPro
+          </span>
         </div>
       </div>
     </div>

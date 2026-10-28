@@ -181,7 +181,25 @@ export function DesgloseCotizacionSalida({
                     {linea.veces}x
                   </td>
                   <td className="cifra px-4 py-3 text-right text-neutral-600 dark:text-neutral-400">
-                    {formatearDinero(linea.precioUnitario)}
+                    {linea.presentacion?.listaTachada && (
+                      <span
+                        data-testid="linea-lista-tachada"
+                        className="mr-1.5 text-[11px] font-semibold text-neutral-400 line-through dark:text-neutral-500"
+                      >
+                        {formatearDinero(linea.presentacion.listaTachada)}
+                      </span>
+                    )}
+                    <span>
+                      {formatearDinero(linea.presentacion?.venta ?? linea.precioUnitario)}
+                    </span>
+                    {linea.presentacion?.leyenda === 'PROMO_VENCIDA' && (
+                      <span
+                        data-testid="linea-promo-vencida"
+                        className="ml-1.5 inline-block rounded bg-rose-50 px-1.5 py-0.5 text-[9px] font-bold text-rose-700 dark:bg-rose-950/60 dark:text-rose-300"
+                      >
+                        Promo vencida
+                      </span>
+                    )}
                   </td>
                   <td className="cifra px-4 py-3 text-right text-sm font-black text-neutral-900 dark:text-white">
                     {formatearDinero(linea.total)}

@@ -342,6 +342,7 @@ export class CotizacionesUseCase {
       ninos: v.ninos,
       infantes: v.infantes,
       acomodacion: v.acomodacion,
+      opcionDeSalidaId: v.opcionDeSalidaId,
       politicaPorcentaje: v.politica.porcentaje,
       politicaBase: v.politica.base,
       politicaOrigen: v.politica.origenDeLaVenta,
