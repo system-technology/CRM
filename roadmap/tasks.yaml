@@ -645,7 +645,7 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: blocked
+    status: done
     depends_on: []
     acceptance:
       - Formularios con validación contra los contratos Zod y errores por campo en español
@@ -656,8 +656,6 @@ tasks:
       - apps/web/src/components/catalogo/
     source: orquestador:2026-10-26 (cola de Antigravity)
     created_at: 2026-10-26T21:39:01.014Z
-    blocked_reason: Espera el ADR-0017 aceptado y sus endpoints en la API (carril backend); Antigravity pide lo
-      que falte en traspaso/ENTREGA.md
   - id: T-032
     title: "Sistema visual de turismo: paleta caribeña, degradados, iconografía por módulo y componentes base"
     type: feature
