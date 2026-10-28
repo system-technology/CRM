@@ -12,7 +12,6 @@ import {
   CheckCircle2,
   AlertTriangle,
   Save,
-  Lock,
   Tag,
   FormInput,
   Zap,
@@ -26,19 +25,15 @@ import { BloqueEtapasPipeline } from '../../components/configuracion/bloque-etap
 import { BloqueCamposPersonalizados } from '../../components/configuracion/bloque-campos-personalizados';
 import { BloqueEquipo } from '../../components/configuracion/bloque-equipo';
 import { BloqueRespuestasRapidas } from '../../components/configuracion/bloque-respuestas-rapidas';
+import { BloqueConexionWhatsapp } from '../../components/configuracion/bloque-conexion-whatsapp';
 import { usePermisos } from '../../lib/permisos';
 import {
-  MOCK_CONFIGURACION_WABA,
   MOCK_CONFIGURACION_SLA,
   MOCK_CONFIGURACION_AGENCIA,
   type ConfiguracionSla,
   type ConfiguracionAgencia,
 } from '../../lib/mock-configuracion';
-import {
-  validarSla,
-  verificarSaludConexion,
-  validarFormatoNit,
-} from '../../lib/configuracion-logica';
+import { validarSla, validarFormatoNit } from '../../lib/configuracion-logica';
 
 type TabConfig =
   | 'equipo'
@@ -54,14 +49,11 @@ type TabConfig =
 export default function ConfiguracionPage() {
   const { puedeVerNetoYMargen, sesion } = usePermisos();
   const [tabActiva, setTabActiva] = useState<TabConfig>('equipo');
-  const [waba] = useState(MOCK_CONFIGURACION_WABA);
   const [sla, setSla] = useState<ConfiguracionSla>(MOCK_CONFIGURACION_SLA);
   const [agencia, setAgencia] = useState<ConfiguracionAgencia>(MOCK_CONFIGURACION_AGENCIA);
   const [guardadoExitoso, setGuardadoExitoso] = useState(false);
   const [errorSla, setErrorSla] = useState<string | null>(null);
   const [errorNit, setErrorNit] = useState<string | null>(null);
-
-  const saludWaba = verificarSaludConexion(waba);
 
   const guardarCambiosSla = (e: React.FormEvent) => {
     e.preventDefault();
@@ -157,6 +149,8 @@ export default function ConfiguracionPage() {
             </button>
 
             <button
+              id="tab-btn-whatsapp"
+              data-testid="tab-btn-whatsapp"
               onClick={() => setTabActiva('whatsapp')}
               className={`flex items-center gap-2 border-b-2 px-4 py-2 text-xs font-medium transition-colors ${
                 tabActiva === 'whatsapp'
@@ -166,6 +160,9 @@ export default function ConfiguracionPage() {
             >
               <MessageSquare className="h-4 w-4" />
               <span>Canal WhatsApp (WABA)</span>
+              <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                T-106
+              </span>
             </button>
 
             <button
@@ -284,96 +281,10 @@ export default function ConfiguracionPage() {
             </div>
           )}
 
-          {/* TAB 2: WHATSAPP CLOUD API */}
+          {/* TAB 2: WHATSAPP CLOUD API (T-106) */}
           {tabActiva === 'whatsapp' && (
-            <div className="max-w-4xl space-y-6">
-              {/* Card de Estado de Salud */}
-              <div className="rounded-xl border border-neutral-200 bg-white p-5 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400">
-                      <MessageSquare className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-neutral-900 dark:text-white">
-                        WhatsApp Business Account (WABA)
-                      </h3>
-                      <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                        Canal nativo oficial vía Meta Cloud API
-                      </p>
-                    </div>
-                  </div>
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300">
-                    <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
-                    {saludWaba.estado === 'OPTIMO' ? 'Conexión Saludable' : 'Atención Requerida'}
-                  </span>
-                </div>
-
-                <div className="mt-4 grid grid-cols-1 gap-4 border-t border-neutral-200 pt-4 sm:grid-cols-2 dark:border-neutral-800">
-                  <div>
-                    <span className="text-[11px] text-neutral-500 dark:text-neutral-400">
-                      Número Verificado
-                    </span>
-                    <p className="text-sm font-semibold text-neutral-900 dark:text-white">
-                      {waba.numeroE164}
-                    </p>
-                  </div>
-                  <div>
-                    <span className="text-[11px] text-neutral-500 dark:text-neutral-400">
-                      Nombre Visible en Meta
-                    </span>
-                    <p className="text-sm font-semibold text-neutral-900 dark:text-white">
-                      {waba.nombreVisible}
-                    </p>
-                  </div>
-                  <div>
-                    <span className="text-[11px] text-neutral-500 dark:text-neutral-400">
-                      Phone Number ID
-                    </span>
-                    <p className="font-mono text-xs text-neutral-700 dark:text-neutral-300">
-                      {waba.phoneNumberId}
-                    </p>
-                  </div>
-                  <div>
-                    <span className="text-[11px] text-neutral-500 dark:text-neutral-400">
-                      WABA Account ID
-                    </span>
-                    <p className="font-mono text-xs text-neutral-700 dark:text-neutral-300">
-                      {waba.wabaId}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Webhook & Cifrado */}
-              <div className="rounded-xl border border-neutral-200 bg-white p-5 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
-                <h4 className="text-xs font-semibold tracking-wider text-neutral-500 uppercase dark:text-neutral-400">
-                  Infraestructura de Webhook y Seguridad
-                </h4>
-
-                <div className="mt-3 space-y-3">
-                  <div>
-                    <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300">
-                      URL del Webhook de Recepción
-                    </label>
-                    <input
-                      type="text"
-                      readOnly
-                      value={waba.webhookUrl}
-                      className="mt-1 w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2 font-mono text-xs text-neutral-600 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300"
-                    />
-                  </div>
-
-                  <div className="flex items-center gap-2 rounded-lg bg-neutral-50 p-3 text-xs text-neutral-600 dark:bg-neutral-800/60 dark:text-neutral-400">
-                    <Lock className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
-                    <span>
-                      <strong>Regla R6 (Cero secretos en frontend):</strong> Las llaves de acceso
-                      permanente de Meta Cloud API están cifradas con AES-256-GCM en el backend y no
-                      se exponen al navegador.
-                    </span>
-                  </div>
-                </div>
-              </div>
+            <div id="tab-contenido-whatsapp" data-testid="tab-contenido-whatsapp">
+              <BloqueConexionWhatsapp />
             </div>
           )}
 

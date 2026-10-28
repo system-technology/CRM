@@ -1,9 +1,44 @@
-# Entrega — T-105: Onboarding de una agencia nueva: asistente de 4 pasos — 2026-10-28
+# Entrega — T-106: Pantalla de conexión de WhatsApp en Configuración: estado, calidad, tier y ventana de 24h — 2026-10-28
 
 ## Identificación
-- **Tarea:** `T-105` (roadmap/tasks.yaml)
-- **Rama:** `b/T-105-onboarding-agencia-nueva`
+- **Tarea:** `T-106` (roadmap/tasks.yaml)
+- **Rama:** `b/T-106-pantalla-conexion-whatsapp`
 - **Carril:** `b` (Frontend / Web)
+
+## Qué se construyó y auditó
+
+1. **Lógica de Dominio y Conexión de WhatsApp (`whatsapp-conexion-logica.ts`):**
+   - Tipos e interfaces estrictas: `CalidadMeta` ('GREEN' | 'YELLOW' | 'RED' | 'UNKNOWN'), `TierMensajeriaMeta` ('TIER_50' | 'TIER_1K' | 'TIER_10K' | 'TIER_100K' | 'TIER_UNLIMITED'), `DatosConexionWhatsApp`, `SimulacionVentana24h` y `PlantillaAgencia`.
+   - Interpretación de métricas de Meta Cloud API con lenguaje coloquial y transparente para agencias de viajes colombianas (evitando tecnicismos opacos de Meta).
+   - Función pura `calcularEstadoVentana24h`: determina apertura de la ventana de 24 horas a partir del timestamp del último mensaje del cliente en UTC, calculando minutos/horas restantes, porcentaje de avance, tipo de mensaje permitido ('LIBRE_ASESOR' vs. 'SOLO_PLANTILLA_HSM') y consejos operativos según SLAs de atención turística.
+   - Catálogo de 4 plantillas oficiales pre-aprobadas de uso frecuente en agencias: seguimiento de cotizaciones, confirmación de salidas/excursiones con punto de encuentro, solicitud de documentos para asistencia médica y reactivación de viajeros.
+   - Asignación estricta de Regla R6: prohibición de almacenamiento o exposición de access tokens o app secrets en frontend; sólo identificadores públicos (Phone Number ID, WABA ID) y estado de cifrado AES-256-GCM en backend.
+
+2. **Componente de Configuración de WhatsApp (`BloqueConexionWhatsapp`):**
+   - Tarjeta principal de estado con indicador de salud y botón de alternancia entre estado conectado y desconectado.
+   - En estado conectado: métricas en tiempo real (número telefónico verificado, nombre comercial visible, badge de calidad con semáforo y descripción, límite diario de conversaciones según tier, e identificadores públicos WABA y Phone Number ID).
+   - Aviso explícito de cumplimiento de la Regla R6 (Cero secretos en frontend, llaves AES-256-GCM seguras en backend).
+   - Bloque de webhook oficial de recepción con botón de copiado al portapapeles y retroalimentación inmediata.
+   - En estado desconectado: guía clara en 3 pasos para agencias sin número WABA (línea telefónica limpia, Meta Business Suite verificado con RUT y vinculación técnica).
+   - Sección pedagógica: explicación detallada de la regla de 24 horas en dos columnas ilustrativas («Ventana Abierta: Chatea libremente con cotizaciones y notas de voz» vs. «Ventana Cerrada: Requiere plantilla oficial pre-aprobada HSM»).
+   - Simulador interactivo de ventana de 24 horas con selector de tiempo transcurrido (hace 2h, 18h por vencer, 26h expirada), barra de progreso dinámica y consejos contextuales para asesores.
+   - Vitrina de plantillas oficiales aprobadas con variables resaltadas y finalidad comercial.
+   - Cumplimiento de accesibilidad y dimensiones táctiles mínimas `>= 44 px`.
+
+3. **Integración en Rutas Web:**
+   - Integrado en la pestaña `Canal WhatsApp (WABA)` de `apps/web/src/app/configuracion/page.tsx` con insignia identificadora `T-106`.
+   - Creada la ruta dedicada `apps/web/src/app/configuracion/whatsapp/page.tsx` con navegación mediante `BarraModulos`, migas de pan y enlaces rápidos a `/bienvenida` (onboarding) y `/inbox` (bandeja de WhatsApp).
+
+4. **Verificación y Calidad Monorepo:**
+   - 3 suites de prueba dedicadas (`whatsapp-conexion-logica.spec.ts`, `bloque-conexion-whatsapp.spec.tsx`, `page.spec.tsx`) con 18 pruebas unitarias pasando al 100%.
+   - 97 archivos de pruebas unitarias y 780 tests pasando sin fallos en `@viajapro/web`.
+   - `pnpm typecheck` limpio en todos los paquetes (Next.js compiló 25 rutas con 0 errores).
+   - `pnpm lint` limpio (0 advertencias o errores).
+   - `pnpm test:hooks` validando 59/59 políticas de rama, 19/19 reglas de secretos y 6/6 fronteras entre módulos.
+
+---
+
+# Entrega — T-105: Onboarding de una agencia nueva: asistente de 4 pasos — 2026-10-28
 
 ## Qué se construyó y auditó
 
