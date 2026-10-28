@@ -22,6 +22,7 @@ describe('Pruebas Unitarias del Buscador Global Omnicanal (buscador-global-logic
       expect(categorias.has('acciones')).toBe(true);
       expect(categorias.has('conversaciones')).toBe(true);
       expect(categorias.has('contactos')).toBe(true);
+      expect(categorias.has('cotizaciones')).toBe(true);
       expect(categorias.has('oportunidades')).toBe(true);
       expect(categorias.has('viajes')).toBe(true);
       expect(categorias.has('catalogo')).toBe(true);
@@ -33,6 +34,27 @@ describe('Pruebas Unitarias del Buscador Global Omnicanal (buscador-global-logic
       const resultados = buscarEnIndiceGlobal('');
       expect(resultados.acciones.length).toBeGreaterThan(0);
       expect(resultados.conversaciones).toHaveLength(0);
+      expect(resultados.cotizaciones).toHaveLength(0);
+    });
+
+    it('encuentra cotizaciones por título o destino de versión', () => {
+      const resultados = buscarEnIndiceGlobal('San Andrés');
+      expect(resultados.cotizaciones.length).toBeGreaterThan(0);
+      expect(resultados.cotizaciones[0]?.titulo).toContain('San Andrés');
+      expect(resultados.cotizaciones[0]?.href).toContain('/cotizaciones/');
+    });
+
+    it('filtra estrictamente por categoría cuando se especifica filtroCategoria', () => {
+      const soloCotizaciones = buscarEnIndiceGlobal('San Andrés', undefined, 4, 'cotizaciones');
+      expect(soloCotizaciones.cotizaciones.length).toBeGreaterThan(0);
+      expect(soloCotizaciones.contactos).toHaveLength(0);
+      expect(soloCotizaciones.acciones).toHaveLength(0);
+    });
+
+    it('devuelve elementos de la categoría seleccionada cuando la consulta está vacía pero hay filtro', () => {
+      const catalogoVacio = buscarEnIndiceGlobal('', undefined, 4, 'catalogo');
+      expect(catalogoVacio.catalogo.length).toBeGreaterThan(0);
+      expect(catalogoVacio.acciones).toHaveLength(0);
     });
 
     it('encuentra paquetes turísticos por destino o mayorista', () => {

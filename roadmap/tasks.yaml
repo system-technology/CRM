@@ -688,7 +688,7 @@ tasks:
     phase: 1
     priority: P0
     effort: M
-    status: backlog
+    status: done
     depends_on:
       - T-032
     acceptance:
@@ -707,6 +707,9 @@ tasks:
       - apps/web/src/app/globals.css
     source: propietario:2026-10-26 (identidad visual)
     created_at: 2026-10-26T23:32:24.204Z
+    started_at: 2026-10-28T05:40:00.000Z
+    done_at: 2026-10-28T05:49:38.000Z
+    evidence: "Mergeado en main por el PR #104 (rama b/T-033-login-identidad-viaje) con todos los 8 checks en verde. Stitch screen 310817e6eef4417286c884540166df0e."
   - id: T-034
     title: "Navegación más rica: barra lateral con iconos de color y etiquetas, migas, paleta de comandos y
       accesos rápidos"
@@ -714,7 +717,7 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: backlog
+    status: done
     depends_on:
       - T-032
     acceptance:
@@ -732,6 +735,9 @@ tasks:
       - apps/web/src/app/layout.tsx
     source: propietario:2026-10-26 (identidad visual)
     created_at: 2026-10-26T23:32:24.205Z
+    started_at: 2026-10-28T05:51:00.000Z
+    done_at: 2026-10-28T06:06:00.000Z
+    evidence: "Implementado en rama b/T-034-navegacion-sidebar-migas-comandos. Stitch screen 14a4e161532b449c8001be6656399ee2. 60 suites y 497 tests en verde en @viajapro/web."
   - id: T-035
     title: "Animaciones y transiciones: entrada escalonada, hover, esqueletos con brillo y transiciones de página"
     type: feature

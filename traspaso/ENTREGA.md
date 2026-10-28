@@ -1,3 +1,53 @@
+# Entrega — T-034: Navegación más rica (barra lateral con iconos de color, migas, paleta de comandos y accesos rápidos) — 2026-10-28
+
+## Identificación
+- **Rama:** `b/T-034-navegacion-sidebar-migas-comandos` (empujada a `origin/b/T-034-navegacion-sidebar-migas-comandos`)
+- **Tarea:** T-034 (Navegación más rica: barra lateral con iconos de color y etiquetas, migas, paleta de comandos y accesos rápidos)
+- **Carril:** `b` (Frontend / Web)
+- **Stitch Design Screen ID:** `14a4e161532b449c8001be6656399ee2` (Proyecto «ViajaPro — CRM para agencias de turismo», ID `8333038101997719867`, pantalla *Navegación Enriquecida & Paleta de Comandos (Ctrl+K) — ViajaPro CRM*)
+
+## Qué construí
+1. **Barra lateral expandible / contraíble (`apps/web/src/components/bandeja/barra-modulos.tsx`):**
+   - Modo expandido (`w-60`) y modo compacto (`w-14`) con transición suave (`transition-[width] duration-300`).
+   - Botón toggle de expansión/colapso con atributo accesible `aria-expanded` y atajo de teclado global `Alt+S`.
+   - Persistencia de la preferencia de expansión en el navegador (`viajapro_sidebar_expandida` en `localStorage`).
+   - Módulos con paleta de color caribeña oficial (`CONFIGURACION_MODULOS`) y etiquetas legibles.
+   - Indicador animado de sección activa con aro dorado de marca (`#c9a24b`) y fondo turquesa suave.
+   - En móvil (< 768 px), la barra lateral se oculta limpiamente y pasa a una barra inferior fija con touch targets ergonómicos (`>= 44 px`).
+2. **Componente accesible de Migas de Pan (`apps/web/src/components/comun/migas-de-pan.tsx`):**
+   - Estructura semántica WAI-ARIA (`<nav aria-label="Migas de pan">`, `<ol>`, `aria-current="page"`).
+   - Botón opcional de retorno contextual con touch target ergonómico (`>= 44 px`).
+   - Integración en las pantallas de detalle clave: `/bandeja/[id]` (conversación activa) y `/cotizaciones/[id]` (cotización guardada).
+   - Exportado desde `apps/web/src/components/comun/index.ts`.
+3. **Paleta de Comandos Omnibox (`Ctrl+K` / `Cmd+K`) (`apps/web/src/components/busqueda/modal-busqueda-global.tsx`):**
+   - Modal flotante tipo Spotlight para agencias de turismo con atajos accesibles.
+   - Búsqueda integrada de:
+     - Contactos de viajeros (con nombre y teléfono).
+     - Cotizaciones oficiales guardadas (con título, tour y valor en COP).
+     - Excursiones y paquetes del catálogo de mayoristas.
+     - Conversaciones activas de WhatsApp.
+     - Acciones rápidas del asesor y saltos de navegación a módulos.
+   - Pestañas con filtros temáticos inmediatos (`[Todos]`, `[WhatsApp]`, `[Catálogo]`, `[Cotizaciones]`, `[Contactos]`, `[Acciones]`).
+   - Navegación íntegra por teclado (`↑ ↓` para navegar, `↵` para seleccionar, `Esc` para cerrar, `Tab` para cambiar filtro).
+   - Atrapamiento de foco accesible con `useFocoModal` y avisos `aria-live`.
+4. **Accesos Rápidos Operacionales:**
+   - Botón visible `+ Nueva cotización` en la cabecera de la conversación enlazando directamente al cotizador con parámetros del contacto.
+   - Miga de retorno directo y botones de acción rápida para minimizar clics del asesor.
+5. **Suites de Pruebas Unitarias:**
+   - `apps/web/src/components/comun/migas-de-pan.spec.tsx`: 3 pruebas verificando jerarquía semántica, página activa y botón de retorno.
+   - `apps/web/src/components/busqueda/modal-busqueda-global.spec.tsx`: 5 pruebas verificando renderizado, pestañas temáticas, búsqueda y navegación con teclado.
+   - `apps/web/src/lib/buscador-global-logica.spec.ts`: 11 pruebas verificando indexación de cotizaciones y filtros de categoría.
+   - `apps/web/src/components/bandeja/barra-modulos.spec.tsx`: 17 pruebas verificando enlaces, touch targets móviles, toggle de expansión y persistencia.
+
+## Qué verifiqué ejecutando
+- **Pruebas unitarias:** `pnpm --filter @viajapro/web test` — **60 suites pasadas, 497/497 pruebas en verde (100%)**.
+- **Typecheck estricto:** `pnpm typecheck` — **9/9 tareas exitosas**, compilación limpia de 16 páginas en Next.js 15.5.27.
+- **Linter:** `pnpm lint` — **0 errores, 0 advertencias**.
+- **Hooks y guardas de seguridad:** `pnpm test:hooks` — **59/59 política de rama, 19/19 secretos, 6/6 fronteras entre módulos**.
+- **Ownership de carril:** `node scripts/check-ownership.mjs` — **✔ Dentro del carril (`carril: b`)**.
+
+---
+
 # Entrega — T-094 y T-095: Inventario de cookies, política y banner de consentimiento accesible — 2026-10-28
 
 ## Identificación
