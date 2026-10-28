@@ -7,9 +7,12 @@ import {
   BREAKPOINT_MOVIL_MAX_PX,
   ANCHO_MINIMO_TEST_MOVIL_PX,
   TAMANO_MINIMO_TACTIL_PX,
+  ATAJOS_BANDEJA,
+  coincideAtajo,
+  validarContrasteWCAG,
 } from './accesibilidad-logica';
 
-describe('accesibilidad-logica (WCAG AA & Directrices Móviles)', () => {
+describe('accesibilidad-logica (WCAG AA & Directrices Móviles, T-024)', () => {
   it('valida correctamente el tamaño mínimo táctil de 44 px (WCAG 2.5.5)', () => {
     expect(TAMANO_MINIMO_TACTIL_PX).toBe(44);
     // Chip defectuoso de 24px según DISENO-BANDEJA.md
@@ -69,5 +72,38 @@ describe('accesibilidad-logica (WCAG AA & Directrices Móviles)', () => {
     const inferiores = obtenerModulosBarraInferior(todos);
     expect(inferiores.length).toBe(4);
     expect(inferiores.map((m) => m.id)).toEqual(['bandeja', 'pipeline', 'cotizador', 'viajes']);
+  });
+
+  it('declara y valida atajos de teclado oficiales para la bandeja (T-024)', () => {
+    expect(ATAJOS_BANDEJA.length).toBeGreaterThanOrEqual(8);
+    expect(ATAJOS_BANDEJA.some((a) => a.tecla === 'j')).toBe(true);
+    expect(ATAJOS_BANDEJA.some((a) => a.tecla === 'k')).toBe(true);
+    expect(ATAJOS_BANDEJA.some((a) => a.tecla === 'p' && a.modificador === 'Alt')).toBe(true);
+    expect(ATAJOS_BANDEJA.some((a) => a.tecla === 'Escape')).toBe(true);
+
+    const atajoAltP = ATAJOS_BANDEJA.find((a) => a.tecla === 'p' && a.modificador === 'Alt')!;
+    expect(coincideAtajo({ key: 'p', altKey: true }, atajoAltP)).toBe(true);
+    expect(coincideAtajo({ key: 'p', altKey: false }, atajoAltP)).toBe(false);
+
+    const atajoJ = ATAJOS_BANDEJA.find((a) => a.tecla === 'j')!;
+    expect(coincideAtajo({ key: 'j' }, atajoJ)).toBe(true);
+    expect(coincideAtajo({ key: 'j', altKey: true }, atajoJ)).toBe(false);
+  });
+
+  it('valida ratios de contraste WCAG AA (4.5:1 / 3:1) y AAA (7:1 / 4.5:1)', () => {
+    // Contraste insuficiente (< 4.5 para texto normal)
+    const ratioBajo = validarContrasteWCAG(3.2);
+    expect(ratioBajo.nivelAA).toBe(false);
+    expect(ratioBajo.nivelAAA).toBe(false);
+
+    // Texto grande con ratio 3.2 cumple AA pero no AAA
+    const ratioGrande = validarContrasteWCAG(3.2, true);
+    expect(ratioGrande.nivelAA).toBe(true);
+    expect(ratioGrande.nivelAAA).toBe(false);
+
+    // Contraste alto (7.5) cumple AA y AAA
+    const ratioAlto = validarContrasteWCAG(7.5);
+    expect(ratioAlto.nivelAA).toBe(true);
+    expect(ratioAlto.nivelAAA).toBe(true);
   });
 });

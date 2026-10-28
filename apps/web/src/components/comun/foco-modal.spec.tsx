@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import { useFocoModal } from '../../lib/use-foco-modal';
 import { ModalPlantillas } from '../bandeja/modal-plantillas';
+import { ModalReasignar } from '../bandeja/modal-reasignar';
 import { ModalGuardarCotizacion } from '../cotizador/modal-guardar-cotizacion';
 import { ModalMotivoPerdida } from '../pipeline/modal-motivo-perdida';
 import { ModalBusquedaGlobal } from '../busqueda/modal-busqueda-global';
@@ -445,6 +446,59 @@ describe('0c.32: Gestión Accesible de Teclado y Foco en Modales (WCAG AA)', () 
         await new Promise((r) => setTimeout(r, 30));
       });
 
+      expect(document.activeElement).toBe(disparador);
+    });
+  });
+
+  describe('Modal 5: ModalReasignar (Bandeja / T-024)', () => {
+    it('posiciona foco dentro, atrapa el foco, cierra con Esc y devuelve el foco al disparador', async () => {
+      const onCerrarMock = vi.fn();
+      const onReasignarMock = vi.fn().mockResolvedValue(undefined);
+
+      function ArnesReasignar() {
+        const [abierto, setAbierto] = useState(false);
+        return (
+          <div>
+            <button data-testid="btn-disparador-reasignar" onClick={() => setAbierto(true)}>
+              Reasignar Conversación
+            </button>
+            <ModalReasignar
+              abierto={abierto}
+              conversacionId="conv-test-123"
+              asignadoActualId={null}
+              onCerrar={() => {
+                setAbierto(false);
+                onCerrarMock();
+              }}
+              onReasignar={onReasignarMock}
+            />
+          </div>
+        );
+      }
+
+      render(<ArnesReasignar />);
+      const disparador = screen.getByTestId('btn-disparador-reasignar');
+      disparador.focus();
+
+      fireEvent.click(disparador);
+
+      await act(async () => {
+        await new Promise((r) => setTimeout(r, 60));
+      });
+
+      const modal = screen.getByRole('dialog');
+      expect(modal).toBeDefined();
+      expect(modal.contains(document.activeElement)).toBe(true);
+
+      // Cerrar presionando Escape
+      fireEvent.keyDown(document, { key: 'Escape' });
+      expect(onCerrarMock).toHaveBeenCalledTimes(1);
+
+      await act(async () => {
+        await new Promise((r) => setTimeout(r, 30));
+      });
+
+      // El foco debe regresar al botón disparador
       expect(document.activeElement).toBe(disparador);
     });
   });
