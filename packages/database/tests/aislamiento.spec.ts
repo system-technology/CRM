@@ -4322,3 +4322,126 @@ describe('AUD-008 y AUD-013 — comprobaciones dinámicas de privilegios y de RL
     }
   });
 });
+
+// =========================================================================================
+// T-071 — `registros_auditoria` distingue usuario de clave de API
+//
+// Dos columnas nuevas (`tipo_de_actor`, `clave_de_api_id`) en una tabla que ya era de negocio.
+// Lo que no puede pasar: que añadirlas abra la bitácora entre agencias, o que un registro diga a
+// medias quién actuó.
+// =========================================================================================
+
+describe('T-071 — actor en la auditoría', () => {
+  it('T-071 — registros_auditoria sigue aislada, el actor es coherente y lo nuevo nace USUARIO', async () => {
+    // Catálogo: tenant_id NOT NULL, RLS habilitada y FORZADA con WITH CHECK, CHECK validado y el
+    // DEFAULT de las filas nuevas.
+    const { rows } = await admin.query(
+      `SELECT c.relrowsecurity, c.relforcerowsecurity,
+              (SELECT a.attnotnull FROM pg_attribute a
+                WHERE a.attrelid = c.oid AND a.attname = 'tenant_id') AS tenant_not_null,
+              (SELECT count(*)::int FROM pg_policy p
+                WHERE p.polrelid = c.oid AND p.polname = 'tenant_isolation'
+                  AND p.polwithcheck IS NOT NULL) AS con_check,
+              (SELECT k.convalidated FROM pg_constraint k
+                WHERE k.conrelid = c.oid AND k.conname = 'registros_auditoria_actor_coherente') AS check_validado,
+              (SELECT pg_get_expr(d.adbin, d.adrelid) FROM pg_attrdef d
+                 JOIN pg_attribute a ON a.attrelid = d.adrelid AND a.attnum = d.adnum
+                WHERE d.adrelid = c.oid AND a.attname = 'tipo_de_actor') AS por_defecto
+         FROM pg_class c
+        WHERE c.oid = 'public.registros_auditoria'::regclass`,
+    );
+    expect(rows).toHaveLength(1);
+    const cat = rows[0] as {
+      relrowsecurity: boolean;
+      relforcerowsecurity: boolean;
+      tenant_not_null: boolean;
+      con_check: number;
+      check_validado: boolean;
+      por_defecto: string;
+    };
+    expect(cat).toMatchObject({
+      relrowsecurity: true,
+      relforcerowsecurity: true,
+      tenant_not_null: true,
+      con_check: 1,
+      check_validado: true,
+    });
+    expect(cat.por_defecto).toMatch(/^'USUARIO'::/);
+
+    const accion = `t071.prueba.${MARCA}`;
+    const clave = randomUUID();
+    const usuario = randomUUID();
+
+    // Control: A escribe uno por clave y otro sin decir el tipo, y los relee con su tipo. Sin
+    // esto, «B ve cero» sería verde también con la tabla vacía.
+    const propias = await comoTenant(TENANT_A, async (c) => {
+      await c.query(
+        `INSERT INTO registros_auditoria (tenant_id, tipo_de_actor, clave_de_api_id, accion, entidad)
+         VALUES ($1, 'CLAVE_DE_API', $2, $3, 'tarifa')`,
+        [TENANT_A, clave, accion],
+      );
+      await c.query(
+        `INSERT INTO registros_auditoria (tenant_id, usuario_id, accion, entidad)
+         VALUES ($1, $2, $3, 'tarifa')`,
+        [TENANT_A, usuario, accion],
+      );
+      return c.query(
+        `SELECT tipo_de_actor::text AS tipo, clave_de_api_id, usuario_id
+           FROM registros_auditoria WHERE accion = $1 ORDER BY id`,
+        [accion],
+      );
+    });
+    expect(propias.rows).toEqual([
+      { tipo: 'CLAVE_DE_API', clave_de_api_id: clave, usuario_id: null },
+      { tipo: 'USUARIO', clave_de_api_id: null, usuario_id: usuario },
+    ]);
+
+    // Lectura cruzada: B no ve los registros de A, ni por acción ni por la clave.
+    const ajenas = await comoTenant(TENANT_B, async (c) => ({
+      porAccion: (await c.query('SELECT id FROM registros_auditoria WHERE accion = $1', [accion]))
+        .rowCount,
+      porClave: (
+        await c.query('SELECT id FROM registros_auditoria WHERE clave_de_api_id = $1', [clave])
+      ).rowCount,
+    }));
+    expect(ajenas).toEqual({ porAccion: 0, porClave: 0 });
+
+    // B plantando un registro de clave con el tenant de A: lo para el WITH CHECK (sin RETURNING,
+    // para que solo el WITH CHECK pueda pararlo; ver la 48).
+    await expect(
+      comoTenant(TENANT_B, (c) =>
+        c.query(
+          `INSERT INTO registros_auditoria (tenant_id, tipo_de_actor, clave_de_api_id, accion, entidad)
+           VALUES ($1, 'CLAVE_DE_API', $2, 'plantado', 'tarifa')`,
+          [TENANT_A, randomUUID()],
+        ),
+      ),
+    ).rejects.toThrow(/row-level security/i);
+
+    // Media identidad no es representable (23514): clave con tipo USUARIO, tipo CLAVE_DE_API sin
+    // clave, y clave con un usuario al lado.
+    for (const [tipo, conClave, conUsuario] of [
+      ['USUARIO', true, false],
+      ['CLAVE_DE_API', false, false],
+      ['CLAVE_DE_API', true, true],
+    ] as const) {
+      await expect(
+        comoTenant(TENANT_A, (c) =>
+          c.query(
+            `INSERT INTO registros_auditoria (tenant_id, tipo_de_actor, clave_de_api_id, usuario_id,
+                                              accion, entidad)
+             VALUES ($1, $2::tipo_de_actor, $3, $4, $5, 'tarifa')`,
+            [
+              TENANT_A,
+              tipo,
+              conClave ? randomUUID() : null,
+              conUsuario ? randomUUID() : null,
+              accion,
+            ],
+          ),
+        ),
+        `${tipo} clave=${conClave} usuario=${conUsuario}`,
+      ).rejects.toMatchObject({ code: '23514' });
+    }
+  });
+});

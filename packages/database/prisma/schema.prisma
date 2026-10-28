@@ -1376,19 +1376,34 @@ model RegistroAuditoria {
   id       BigInt @id @default(autoincrement())
   tenantId String @map("tenant_id") @db.Uuid
 
-  usuarioId String? @map("usuario_id") @db.Uuid
-  accion    String  @db.VarChar(80)
-  entidad   String  @db.VarChar(80)
-  entidadId String? @map("entidad_id") @db.Uuid
+  usuarioId    String?      @map("usuario_id") @db.Uuid
+  /// Quién actuó (T-071): USUARIO (`usuarioId`) o CLAVE_DE_API (`claveDeApiId`). NULL = registro
+  /// anterior a T-071. Un CHECK de la migración exige CLAVE_DE_API ⇔ hay clave, y sin usuario.
+  tipoDeActor  TipoDeActor? @default(USUARIO) @map("tipo_de_actor")
+  /// Sin relación todavía: la tabla de claves de API (ADR-0017 M3) no existe. Cuando exista, la
+  /// foránea será COMPUESTA con `tenantId`.
+  claveDeApiId String?      @map("clave_de_api_id") @db.Uuid
+  accion       String       @db.VarChar(80)
+  entidad      String       @db.VarChar(80)
+  entidadId    String?      @map("entidad_id") @db.Uuid
   /// Qué cambió. Nunca contenido de mensajes ni números de documento: R10.
-  detalle   Json?   @db.JsonB
-  ip        String? @db.Inet
+  detalle      Json?        @db.JsonB
+  ip           String?      @db.Inet
 
   ocurridoEn DateTime @default(now()) @map("ocurrido_en") @db.Timestamptz(3)
 
   @@index([tenantId, ocurridoEn(sort: Desc)])
   @@index([tenantId, entidad, entidadId])
   @@map("registros_auditoria")
+}
+
+/// Quién escribió un registro de auditoría. Invariante del sistema, no política de la agencia
+/// (R12): por eso es enum y no tabla.
+enum TipoDeActor {
+  USUARIO
+  CLAVE_DE_API
+
+  @@map("tipo_de_actor")
 }
 
 // =============================================================================
