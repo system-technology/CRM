@@ -21,6 +21,7 @@ vi.mock('../../lib/catalogo-api', async (importOriginal) => {
     estaUsandoCatalogoReal: vi.fn(() => true),
     listarSalidasApi: vi.fn(),
     cotizarSalidaApi: vi.fn(),
+    obtenerOpcionesDeSalidaApi: vi.fn().mockResolvedValue([]),
   };
 });
 
@@ -34,7 +35,12 @@ vi.mock('../../lib/crm-api', async (importOriginal) => {
   };
 });
 
-import { estaUsandoCatalogoReal, listarSalidasApi } from '../../lib/catalogo-api';
+import {
+  estaUsandoCatalogoReal,
+  listarSalidasApi,
+  cotizarSalidaApi,
+  obtenerOpcionesDeSalidaApi,
+} from '../../lib/catalogo-api';
 import CotizadorPage from './page';
 
 describe('CotizadorPage — Excursiones de un Día y Estados de UI (Bloque 2)', () => {
@@ -126,5 +132,78 @@ describe('CotizadorPage — Excursiones de un Día y Estados de UI (Bloque 2)', 
 
     // Sigue renderizando sin romper
     expect(screen.getByText(/Total Cotización/i)).toBeDefined();
+  });
+});
+
+describe('CotizadorPage — opción de salida (T-063)', () => {
+  const PAQUETE = '01932000-0000-7000-8000-000000000010';
+  const OPCION = '01932000-0000-7000-8000-0000000000a1';
+  const salida = {
+    vigenciaId: '01932000-0000-7000-8000-0000000000e1',
+    paqueteId: PAQUETE,
+    paqueteNombre: 'Isla Palma',
+    destino: 'Cartagena',
+    noches: 0,
+    fecha: '2026-10-15',
+    cupoTotal: null,
+    desde: { unidades: '260000', moneda: 'COP' },
+    desdeEsDeGrupo: false,
+    tarifas: 1,
+  };
+  const cotizacion = {
+    paqueteId: PAQUETE,
+    paqueteNombre: 'Isla Palma',
+    destino: 'Cartagena',
+    noches: 0,
+    pideComposicion: true,
+    total: { unidades: '520000', moneda: 'COP' },
+    lineas: [],
+    alternativas: [],
+    noAplicables: [],
+    suplementos: [],
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    localStorage.clear();
+    vi.mocked(estaUsandoCatalogoReal).mockReturnValue(true);
+    vi.mocked(listarSalidasApi).mockResolvedValue([salida] as never);
+    vi.mocked(cotizarSalidaApi).mockResolvedValue(cotizacion as never);
+  });
+
+  it('con opciones activas no cotiza hasta elegir una y luego envía opcionDeSalidaId', async () => {
+    vi.mocked(obtenerOpcionesDeSalidaApi).mockResolvedValue([
+      {
+        id: OPCION,
+        etiqueta: 'Turno mañana',
+        horaSalida: '08:00',
+        horaRegreso: null,
+        puntoDeEncuentro: null,
+        orden: 1,
+        activa: true,
+      },
+    ]);
+    render(<CotizadorPage />);
+
+    const selector = await screen.findByLabelText('Opción de salida');
+    expect(screen.getByTestId('aviso-elegir-opcion')).toBeDefined();
+    expect(cotizarSalidaApi).not.toHaveBeenCalled();
+
+    fireEvent.change(selector, { target: { value: OPCION } });
+
+    await waitFor(() => {
+      expect(cotizarSalidaApi).toHaveBeenCalledWith(
+        expect.objectContaining({ paqueteId: PAQUETE, opcionDeSalidaId: OPCION }),
+      );
+    });
+  });
+
+  it('sin opciones cotiza como siempre, sin selector ni opcionDeSalidaId', async () => {
+    vi.mocked(obtenerOpcionesDeSalidaApi).mockResolvedValue([]);
+    render(<CotizadorPage />);
+
+    await waitFor(() => expect(cotizarSalidaApi).toHaveBeenCalled());
+    expect(screen.queryByTestId('selector-opcion-salida')).toBeNull();
+    expect(vi.mocked(cotizarSalidaApi).mock.calls[0]![0]).not.toHaveProperty('opcionDeSalidaId');
   });
 });
