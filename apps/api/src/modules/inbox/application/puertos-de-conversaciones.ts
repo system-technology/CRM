@@ -21,6 +21,13 @@ import type {
 } from '@viajapro/contracts';
 import type { Visibilidad } from '../../../shared/autorizacion/visibilidad-de-conversaciones.js';
 
+/** Lo que se guarda al responder. `cotizacion`: si el mensaje la lleva (T-073). */
+export interface EntradaDeRespuesta {
+  texto: string;
+  claveIdempotencia: string;
+  cotizacion?: { id: string; contactoId: string };
+}
+
 export abstract class PuertoConversaciones {
   abstract listar(
     v: Visibilidad,
@@ -57,7 +64,7 @@ export abstract class PuertoConversaciones {
     v: Visibilidad,
     autorId: string | null,
     id: string,
-    entrada: { texto: string; claveIdempotencia: string },
+    entrada: EntradaDeRespuesta,
     ahora: Date,
   ): Promise<Mensaje | null>;
 

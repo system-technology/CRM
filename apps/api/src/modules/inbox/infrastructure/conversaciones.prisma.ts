@@ -33,11 +33,15 @@ import {
 import { type ClienteTenant, PrismaService } from '../../../shared/prisma/prisma.service.js';
 import { PuertoNotasDeConversacion } from '../../../shared/puertos/puertos-hacia-crm.js';
 import { ContextoTenant } from '../../../shared/tenant/contexto-tenant.js';
-import { PuertoConversaciones } from '../application/puertos-de-conversaciones.js';
+import {
+  type EntradaDeRespuesta,
+  PuertoConversaciones,
+} from '../application/puertos-de-conversaciones.js';
 import { asignacionTrasResponder } from '../domain/asignacion-de-conversacion.js';
 import {
   ClaveDeIdempotenciaEnUsoError,
   ConversacionModificadaError,
+  CotizacionDeOtroContactoError,
   SinUsuarioError,
   UsuarioNoAsignableError,
 } from '../domain/errores-de-conversacion.js';
@@ -352,7 +356,7 @@ export class ConversacionesPrisma extends PuertoConversaciones {
     v: Visibilidad,
     autorId: string | null,
     id: string,
-    entrada: { texto: string; claveIdempotencia: string },
+    entrada: EntradaDeRespuesta,
     ahora: Date,
   ): Promise<Mensaje | null> {
     try {
@@ -369,7 +373,7 @@ export class ConversacionesPrisma extends PuertoConversaciones {
     v: Visibilidad,
     autorId: string | null,
     id: string,
-    entrada: { texto: string; claveIdempotencia: string },
+    entrada: EntradaDeRespuesta,
     ahora: Date,
   ): Promise<Mensaje | null> {
     const { tenantId } = ContextoTenant.obtener();
@@ -379,12 +383,17 @@ export class ConversacionesPrisma extends PuertoConversaciones {
         select: {
           id: true,
           canalId: true,
+          contactoId: true,
           asignadoAId: true,
           ultimoMensajeClienteEn: true,
           primeraRespuestaEn: true,
         },
       });
       if (!conv) return null;
+      // Una cotización solo se envía a la conversación de SU contacto.
+      if (entrada.cotizacion && entrada.cotizacion.contactoId !== conv.contactoId) {
+        throw new CotizacionDeOtroContactoError();
+      }
 
       // La clave se mira ANTES de la ventana: un reintento después de que la ventana cerró
       // devuelve el mensaje que ya se guardó, no un error.
@@ -411,6 +420,7 @@ export class ConversacionesPrisma extends PuertoConversaciones {
           texto: entrada.texto,
           autorId,
           claveIdempotencia: entrada.claveIdempotencia,
+          ...(entrada.cotizacion ? { cotizacionId: entrada.cotizacion.id } : {}),
           ocurridoEn: ahora,
         },
         select: PARA_EL_MENSAJE,

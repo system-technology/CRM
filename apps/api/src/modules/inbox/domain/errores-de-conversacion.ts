@@ -64,6 +64,24 @@ export class ClaveDeIdempotenciaEnUsoError extends EstadoInvalidoError {
   }
 }
 
+/** La cotización (o su versión) no existe en esta agencia. 404, como una ajena. */
+export class CotizacionParaEnvioNoEncontradaError extends DomainError {
+  readonly code = 'COTIZACION_PARA_ENVIO_NO_ENCONTRADA';
+
+  constructor() {
+    super('No existe esa cotización o esa versión en esta agencia.');
+  }
+}
+
+/** La cotización es de otro contacto: no se manda a una conversación que no es de su viajero. */
+export class CotizacionDeOtroContactoError extends InvariantError {
+  readonly code = 'COTIZACION_DE_OTRO_CONTACTO';
+
+  constructor() {
+    super('Esa cotización es de otro contacto: no se puede enviar a esta conversación.');
+  }
+}
+
 export class CursorInvalidoError extends InvariantError {
   readonly code = 'CURSOR_INVALIDO';
 

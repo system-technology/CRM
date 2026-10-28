@@ -29,6 +29,7 @@ import { CatalogoController } from './interface/catalogo.controller.js';
 import { SalidasController } from './interface/salidas.controller.js';
 import { CatalogoAjustesController } from './interface/catalogo-ajustes.controller.js';
 import { AjustesDeCatalogoUseCase } from './application/ajustes-de-catalogo.use-case.js';
+import { QuotingPuertosModule } from './quoting-puertos.module.js';
 
 /**
  * Contexto de cotización: catálogo de paquetes y cálculo de precio.
@@ -37,6 +38,7 @@ import { AjustesDeCatalogoUseCase } from './application/ajustes-de-catalogo.use-
  * será por evento de dominio o por un puerto declarado aquí. Regla R4.
  */
 @Module({
+  imports: [QuotingPuertosModule],
   controllers: [
     CatalogoController,
     CatalogoAjustesController,
