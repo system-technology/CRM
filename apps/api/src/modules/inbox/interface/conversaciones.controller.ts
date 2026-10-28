@@ -25,6 +25,7 @@ import {
   ConsultarBandeja,
   ConsultarMensajes,
   CrearNotaCuerpo,
+  EnviarCotizacionCuerpo,
   EnviarTextoCuerpo,
   type AdjuntoDeConversacion,
   type ContadoresBandeja,
@@ -40,12 +41,15 @@ import {
 import { ZodValidationPipe } from '../../../shared/validacion/zod-validation.pipe.js';
 import { ActuarEnConversacionUseCase } from '../application/actuar-en-conversacion.js';
 import { ConsultarBandejaUseCase } from '../application/consultar-bandeja.js';
+import { EnviarCotizacionPorWhatsapp } from '../application/enviar-cotizacion-por-whatsapp.js';
 
 @Controller('api/v1/conversaciones')
 export class ConversacionesController {
   constructor(
     @Inject(ConsultarBandejaUseCase) private readonly consultar: ConsultarBandejaUseCase,
     @Inject(ActuarEnConversacionUseCase) private readonly actuar: ActuarEnConversacionUseCase,
+    @Inject(EnviarCotizacionPorWhatsapp)
+    private readonly enviarCotizacionPorWhatsapp: EnviarCotizacionPorWhatsapp,
   ) {}
 
   @Get()
@@ -95,6 +99,20 @@ export class ConversacionesController {
     @Body(new ZodValidationPipe(EnviarTextoCuerpo)) cuerpo: EnviarTextoCuerpo,
   ): Promise<Mensaje> {
     return this.actuar.responder(id, cuerpo);
+  }
+
+  /**
+   * Envía una cotización guardada como texto con formato (T-073). Mismo `201 Mensaje` que
+   * `POST :id/mensajes`; `409 VENTANA_CERRADA` fuera de las 24 h; `404` si la conversación o la
+   * cotización no existen (o no son visibles); `422 COTIZACION_DE_OTRO_CONTACTO`.
+   */
+  @Post(':id/cotizaciones')
+  @HttpCode(201)
+  enviarCotizacion(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ZodValidationPipe(EnviarCotizacionCuerpo)) cuerpo: EnviarCotizacionCuerpo,
+  ): Promise<Mensaje> {
+    return this.enviarCotizacionPorWhatsapp.ejecutar(id, cuerpo);
   }
 
   /** Una nota interna no asigna. */

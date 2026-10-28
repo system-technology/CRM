@@ -10,6 +10,7 @@
 import { Module } from '@nestjs/common';
 import { ActuarEnConversacionUseCase } from './application/actuar-en-conversacion.js';
 import { ConsultarBandejaUseCase } from './application/consultar-bandeja.js';
+import { EnviarCotizacionPorWhatsapp } from './application/enviar-cotizacion-por-whatsapp.js';
 import { EmitirEventosEnVivo } from './application/emitir-eventos-en-vivo.js';
 import { PuertoConversaciones } from './application/puertos-de-conversaciones.js';
 import {
@@ -50,6 +51,7 @@ import { WebhookWhatsappController } from './interface/webhook-whatsapp.controll
     // --- La bandeja del asesor (REST): visibilidad dentro de la agencia ----------------------
     ConsultarBandejaUseCase,
     ActuarEnConversacionUseCase,
+    EnviarCotizacionPorWhatsapp,
     { provide: PuertoConversaciones, useClass: ConversacionesPrisma },
     { provide: PuertoAvisoAlRelay, useFactory: crearAvisoAlRelay, inject: [BUS_EN_MEMORIA] },
     // --- Bandeja en vivo (Socket.IO) -----------------------------------------------------
