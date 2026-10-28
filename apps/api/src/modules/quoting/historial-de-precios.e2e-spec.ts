@@ -58,6 +58,7 @@ interface Entrada {
   origen: string | null;
   moneda: string | null;
   usuarioId: string | null;
+  actor: { tipo: string; claveDeApiId: string | null } | null;
   instante: string;
 }
 const entradas = (json: Record<string, unknown>): Entrada[] => json['datos'] as Entrada[];
@@ -184,10 +185,13 @@ describe('historial de precios de una tarifa', () => {
       ['venta', null, '900000'],
     ]);
     expect(datos[0]).toMatchObject({ origen: 'PANTALLA', moneda: 'COP', usuarioId: USUARIO_A });
+    // T-071: el actor es un usuario, y del actor solo viaja el tipo (y el id opaco de una clave).
+    expect(datos[0]?.actor).toEqual({ tipo: 'USUARIO', claveDeApiId: null });
     expect(Number(datos[0]?.id)).toBeGreaterThan(Number(datos[1]?.id));
     expect(Object.keys(datos[0] ?? {}).sort()).toEqual(
       [
         'accion',
+        'actor',
         'antes',
         'campo',
         'despues',

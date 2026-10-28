@@ -439,6 +439,8 @@ export class RegistroDeCambiosPrisma extends RegistroDeCambios {
       data: cambios.map((c) => ({
         tenantId: this.tenantId,
         usuarioId: actor.usuarioId,
+        tipoDeActor: actor.claveDeApiId ? 'CLAVE_DE_API' : 'USUARIO',
+        claveDeApiId: actor.claveDeApiId ?? null,
         accion: c.accion,
         entidad: c.entidad,
         entidadId: c.entidadId,
