@@ -2,7 +2,7 @@
 
 import { useModoDemo } from '../../lib/modo-demo';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import {
   Package,
@@ -19,7 +19,11 @@ import {
   Upload,
   FileSpreadsheet,
 } from 'lucide-react';
-import type { PlanAlimentacion, SalidaPublicada } from '@viajapro/contracts';
+import type {
+  PlanAlimentacion,
+  SalidaPublicada,
+  ResumenDePaqueteGestion,
+} from '@viajapro/contracts';
 import { DescargaPlantillas } from '../../components/catalogo/importacion/descarga-plantillas';
 import { AsistenteImportacion } from '../../components/catalogo/importacion/asistente-importacion';
 import type { FormatoConPlantilla } from '../../lib/importaciones-api';
@@ -33,6 +37,9 @@ import {
 import { AvisoConfiguracionTenant } from '../../components/crm/aviso-configuracion-tenant';
 import { FichaDetallePaquete } from '../../components/catalogo/ficha-detalle-paquete';
 import { TarjetaSalidaPublicada } from '../../components/catalogo/tarjeta-salida-publicada';
+import { TablaGestionCatalogo } from '../../components/catalogo/tabla-gestion-catalogo';
+import { ModalFormularioPaquete } from '../../components/catalogo/modal-formulario-paquete';
+import { DialogoDesactivarPaquete } from '../../components/catalogo/dialogo-desactivar-paquete';
 import { EstadoSinCatalogo } from '../../components/catalogo/estado-sin-catalogo';
 import { obtenerClaseEscalonada } from '../../components/comun/animaciones';
 import { MOCK_PAQUETES_CATALOGO, type PaqueteConDetalle } from '../../lib/mock-catalogo';
@@ -43,7 +50,19 @@ import {
   extraerDestinosDeSalidas,
   filtrarSalidasPublicadas,
 } from '../../lib/catalogo-logica';
-import { estaUsandoCatalogoReal, listarSalidasApi } from '../../lib/catalogo-api';
+import {
+  estaUsandoCatalogoReal,
+  listarSalidasApi,
+  listarPaquetesGestionApi,
+  crearPaqueteApi,
+  editarPaqueteApi,
+  desactivarPaqueteApi,
+} from '../../lib/catalogo-api';
+import {
+  type FormularioPaqueteValores,
+  validarFormularioCrearPaquete,
+  validarFormularioEditarPaquete,
+} from '../../lib/catalogo-gestion-logica';
 import { formatearDinero } from '../../lib/api';
 
 export default function CatalogoPage() {
@@ -63,9 +82,67 @@ export default function CatalogoPage() {
   const [destinoFiltro, setDestinoFiltro] = useState<string>('TODOS');
   const [soloVigentes, setSoloVigentes] = useState<boolean>(true);
   const [paqueteSeleccionado, setPaqueteSeleccionado] = useState<PaqueteConDetalle | null>(null);
-  const [pestañaActiva, setPestañaActiva] = useState<'EXPLORAR' | 'PLANTILLAS'>('EXPLORAR');
+  const [pestañaActiva, setPestañaActiva] = useState<'EXPLORAR' | 'PLANTILLAS' | 'GESTION'>(
+    'EXPLORAR',
+  );
   const [asistenteImportacionAbierto, setAsistenteImportacionAbierto] = useState(false);
   const [formatoParaImportar, setFormatoParaImportar] = useState('excursion-un-dia');
+
+  // Estado para gestión del catálogo (T-031)
+  const [paquetesGestion, setPaquetesGestion] = useState<ResumenDePaqueteGestion[]>([]);
+  const [cargandoGestion, setCargandoGestion] = useState(false);
+  const [modalPaqueteAbierto, setModalPaqueteAbierto] = useState(false);
+  const [paqueteAEditar, setPaqueteAEditar] = useState<ResumenDePaqueteGestion | null>(null);
+  const [dialogoDesactivarAbierto, setDialogoDesactivarAbierto] = useState(false);
+  const [paqueteADesactivar, setPaqueteADesactivar] = useState<ResumenDePaqueteGestion | null>(
+    null,
+  );
+  const [desactivando, setDesactivando] = useState(false);
+
+  const cargarGestion = useCallback(() => {
+    setCargandoGestion(true);
+    listarPaquetesGestionApi({ incluirInactivos: true })
+      .then((res) => {
+        setPaquetesGestion(res.datos);
+      })
+      .catch((err) => {
+        console.error('Error cargando gestión de catálogo:', err);
+      })
+      .finally(() => {
+        setCargandoGestion(false);
+      });
+  }, []);
+
+  useEffect(() => {
+    cargarGestion();
+  }, [cargarGestion, usarReal]);
+
+  async function handleGuardarPaquete(valores: FormularioPaqueteValores, idEdicion?: string) {
+    if (idEdicion) {
+      const validado = validarFormularioEditarPaquete(valores);
+      if (validado.exito) {
+        await editarPaqueteApi(idEdicion, validado.datos);
+      }
+    } else {
+      const validado = validarFormularioCrearPaquete(valores);
+      if (validado.exito) {
+        await crearPaqueteApi(validado.datos);
+      }
+    }
+    cargarGestion();
+  }
+
+  async function handleConfirmarDesactivar(id: string) {
+    try {
+      setDesactivando(true);
+      await desactivarPaqueteApi(id);
+      setDialogoDesactivarAbierto(false);
+      setPaqueteADesactivar(null);
+      cargarGestion();
+    } finally {
+      setDesactivando(false);
+    }
+  }
 
   // Carga de salidas reales si el interruptor está activo (0c.16.1)
   useEffect(() => {
@@ -200,6 +277,20 @@ export default function CatalogoPage() {
               <FileSpreadsheet className="h-4 w-4" />
               <span>Plantillas de importación CSV (T-030)</span>
             </button>
+
+            <button
+              type="button"
+              onClick={() => setPestañaActiva('GESTION')}
+              data-testid="tab-gestion-catalogo"
+              className={`flex min-h-[44px] items-center gap-2 border-b-2 px-4 py-2.5 text-xs font-bold transition-colors ${
+                pestañaActiva === 'GESTION'
+                  ? 'border-teal-600 text-teal-700 dark:border-teal-400 dark:text-teal-300'
+                  : 'border-transparent text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-white'
+              }`}
+            >
+              <Package className="h-4 w-4" />
+              <span>Gestión de productos ({paquetesGestion.length})</span>
+            </button>
           </div>
 
           {/* Filtros y Búsqueda (solo en vista Explorar) */}
@@ -270,7 +361,24 @@ export default function CatalogoPage() {
 
         {/* Contenido */}
         <section className="min-w-0 flex-1 p-3.5 pb-24 sm:p-6 md:pb-6">
-          {pestañaActiva === 'PLANTILLAS' ? (
+          {pestañaActiva === 'GESTION' ? (
+            <TablaGestionCatalogo
+              paquetes={paquetesGestion}
+              alCrear={() => {
+                setPaqueteAEditar(null);
+                setModalPaqueteAbierto(true);
+              }}
+              alEditar={(p) => {
+                setPaqueteAEditar(p);
+                setModalPaqueteAbierto(true);
+              }}
+              alDesactivar={(p) => {
+                setPaqueteADesactivar(p);
+                setDialogoDesactivarAbierto(true);
+              }}
+              cargando={cargandoGestion}
+            />
+          ) : pestañaActiva === 'PLANTILLAS' ? (
             <DescargaPlantillas
               alElegirParaImportar={(fmt: FormatoConPlantilla) => {
                 setFormatoParaImportar(fmt.formato);
@@ -536,6 +644,27 @@ export default function CatalogoPage() {
         alFinalizarImportacion={() => {
           setPestañaActiva('EXPLORAR');
         }}
+      />
+
+      <ModalFormularioPaquete
+        abierto={modalPaqueteAbierto}
+        alCerrar={() => {
+          setModalPaqueteAbierto(false);
+          setPaqueteAEditar(null);
+        }}
+        alGuardar={handleGuardarPaquete}
+        paqueteAEditar={paqueteAEditar}
+      />
+
+      <DialogoDesactivarPaquete
+        abierto={dialogoDesactivarAbierto}
+        paquete={paqueteADesactivar}
+        alCerrar={() => {
+          setDialogoDesactivarAbierto(false);
+          setPaqueteADesactivar(null);
+        }}
+        alConfirmar={handleConfirmarDesactivar}
+        cargando={desactivando}
       />
     </div>
   );
