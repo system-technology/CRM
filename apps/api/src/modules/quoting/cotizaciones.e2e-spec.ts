@@ -185,6 +185,8 @@ describe('cotizaciones guardadas', () => {
     expect(v1.numero).toBe(1);
     expect(v1.venta).toEqual({ unidades: '2400000', moneda: 'COP' });
     expect(v1.paqueteNombre).toBe('San Andrés fixture');
+    // Paquete sin opciones de salida: la versión lo dice en `null`, no omite la clave (T-062).
+    expect(v1.opcionDeSalidaId).toBeNull();
     expect(v1.politica).toBeUndefined();
     sinPistasDelNeto(r.json);
     expect(v1.lineas).toHaveLength(1);

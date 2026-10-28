@@ -729,7 +729,8 @@ model OpcionDeSalida {
   creadoEn      DateTime @default(now()) @map("creado_en") @db.Timestamptz(3)
   actualizadoEn DateTime @updatedAt @map("actualizado_en") @db.Timestamptz(3)
 
-  tarifas Tarifa[]
+  tarifas             Tarifa[]
+  versionesCotizacion VersionCotizacion[]
 
   @@unique([id, tenantId])
   @@unique([paqueteId, etiqueta])
@@ -1989,6 +1990,12 @@ model VersionCotizacion {
   infantes    Int          @db.SmallInt
   acomodacion Acomodacion?
 
+  /// La opción de salida con la que se cotizó (ADR-0017 §3.1, T-062). Nula = el producto no tenía
+  /// opciones, o la versión es anterior a T-062. Foránea COMPUESTA con el tenant; `NoAction`: una
+  /// opción citada por una versión no se borra, se desactiva.
+  opcionDeSalidaId String?         @map("opcion_de_salida_id") @db.Uuid
+  opcionDeSalida   OpcionDeSalida? @relation(fields: [opcionDeSalidaId, tenantId], references: [id, tenantId], onDelete: NoAction, onUpdate: Restrict)
+
   /// La política de precio TAL COMO ESTABA al congelar. Cambiarla después no toca esto.
   politicaPorcentaje Decimal         @map("politica_porcentaje") @db.Decimal(6, 3)
   politicaBase       BaseDelMargen   @map("politica_base")
@@ -2018,5 +2025,6 @@ model VersionCotizacion {
   @@unique([id, tenantId])
   @@unique([tenantId, cotizacionId, numero])
   @@index([tenantId, paqueteId])
+  @@index([tenantId, opcionDeSalidaId])
   @@map("versiones_cotizacion")
 }
