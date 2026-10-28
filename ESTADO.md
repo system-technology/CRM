@@ -13,8 +13,8 @@
 | Última actualización | 2026-10-27 |
 | Actualizado por | Antigravity (`frontend`) |
 | Fase | **Fase 1 del backlog: «Un CRM mostrable y endurecido»** (M1 del [roadmap v2](docs/08-roadmap/01-roadmap.md)). Sin agencia real todavía |
-| Avance | Catálogo gestionable (T-031), importador masivo en 4 pasos con marcadores #viajapro y plantillas CSV (T-029, T-030), ajuste promo_vencida (T-028), y tarjeta/ficha de excursión con estado sin catálogo (T-018, T-051, T-019) completados |
-| Próximo hito | Botón «Enviar cotización» (T-074) y contacto + oportunidad CRM (T-076), seguido de inicio del asesor (T-020) |
+| Avance | Catálogo gestionable (T-031), importador masivo en 4 pasos con marcadores #viajapro y plantillas CSV (T-029, T-030), ajuste promo_vencida (T-028), tarjeta/ficha de excursión con estado sin catálogo (T-018, T-051, T-019), y panel de inicio con datos reales del asesor y compromisos del día (T-020) completados |
+| Próximo hito | Inventario de cookies y almacenamiento con política (T-094) y banner de consentimiento no esencial configurable (T-095) |
 
 ---
 

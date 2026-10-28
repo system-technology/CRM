@@ -4,7 +4,12 @@ import {
   obtenerSaludoSegunHora,
   obtenerMensajeBienvenida,
   calcularResumenTrabajo,
+  calcularMetricasSeguimientos,
+  clasificarUrgenciaSeguimiento,
+  calcularRetrasoSeguimiento,
+  formatearHoraSeguimiento,
 } from './inicio-logica';
+import type { PendientesDelDia } from '@viajapro/contracts';
 
 describe('Inicio Lógica (T-037) - Saludo temporal y agregación de métricas de turismo', () => {
   it('1. obtenerSaludoSegunHora retorna saludo adecuado según la franja horaria en Colombia', () => {
@@ -213,5 +218,109 @@ describe('Inicio Lógica (T-037) - Saludo temporal y agregación de métricas de
 
     // Suma estimada: 3M + 5M + 8M = 16.000.000 COP
     expect(resumen.totalVentasEstimadasCop).toBe('16000000');
+  });
+});
+
+describe('Inicio Lógica (T-020) - Seguimientos pendientes del día', () => {
+  const ahora = new Date('2026-10-27T15:00:00.000Z');
+
+  const pendientesMock: PendientesDelDia = {
+    fecha: '2026-10-27',
+    vencidos: [
+      {
+        id: '01932000-0000-7000-8000-000000000071',
+        descripcion: 'Confirmar pago de anticipo',
+        venceEn: '2026-10-26T15:00:00.000Z',
+        completadoEn: null,
+        asesorId: '01932000-0000-7000-8000-000000000011',
+        asesorNombre: 'Laura Gómez',
+        contactoId: '01932000-0000-7000-8000-000000000021',
+        contactoNombre: 'Laura Restrepo',
+        oportunidadId: '01932000-0000-7000-8000-000000000031',
+        oportunidadTitulo: 'Paquete San Andrés',
+        conversacionId: null,
+      },
+    ],
+    deHoy: [
+      {
+        id: '01932000-0000-7000-8000-000000000072',
+        descripcion: 'Enviar cotización formal Bora Bora',
+        venceEn: '2026-10-27T16:00:00.000Z',
+        completadoEn: null,
+        asesorId: '01932000-0000-7000-8000-000000000011',
+        asesorNombre: 'Laura Gómez',
+        contactoId: '01932000-0000-7000-8000-000000000022',
+        contactoNombre: 'Sofía Henao',
+        oportunidadId: null,
+        oportunidadTitulo: null,
+        conversacionId: '01932000-0000-7000-8000-000000000042',
+      },
+      {
+        id: '01932000-0000-7000-8000-000000000073',
+        descripcion: 'Llamar a cliente por vuelos',
+        venceEn: '2026-10-27T18:00:00.000Z',
+        completadoEn: null,
+        asesorId: '01932000-0000-7000-8000-000000000011',
+        asesorNombre: 'Laura Gómez',
+        contactoId: '01932000-0000-7000-8000-000000000023',
+        contactoNombre: 'Carlos Mario',
+        oportunidadId: null,
+        oportunidadTitulo: null,
+        conversacionId: null,
+      },
+    ],
+  };
+
+  it('1. calcularMetricasSeguimientos resume vencidos, de hoy y estado al día', () => {
+    const metricas = calcularMetricasSeguimientos(pendientesMock);
+    expect(metricas.totalVencidos).toBe(1);
+    expect(metricas.totalHoy).toBe(2);
+    expect(metricas.totalPendientes).toBe(3);
+    expect(metricas.tieneVencidos).toBe(true);
+    expect(metricas.estaAlDia).toBe(false);
+
+    const vacio = calcularMetricasSeguimientos({ fecha: '2026-10-27', vencidos: [], deHoy: [] });
+    expect(vacio.totalPendientes).toBe(0);
+    expect(vacio.estaAlDia).toBe(true);
+    expect(vacio.tieneVencidos).toBe(false);
+
+    const nulo = calcularMetricasSeguimientos(null);
+    expect(nulo.totalPendientes).toBe(0);
+    expect(nulo.estaAlDia).toBe(true);
+  });
+
+  it('2. clasificarUrgenciaSeguimiento distingue entre vencido, urgente y programado', () => {
+    // Vencido
+    expect(clasificarUrgenciaSeguimiento('2026-10-27T14:00:00.000Z', ahora)).toBe('VENCIDO');
+
+    // Hoy urgente (< 2 horas)
+    expect(clasificarUrgenciaSeguimiento('2026-10-27T16:00:00.000Z', ahora)).toBe('HOY_URGENTE');
+
+    // Hoy programado (> 2 horas)
+    expect(clasificarUrgenciaSeguimiento('2026-10-27T18:00:00.000Z', ahora)).toBe('HOY_PROGRAMADO');
+  });
+
+  it('3. calcularRetrasoSeguimiento formatea el tiempo transcurrido o restante', () => {
+    // Vencido hace 35 min
+    const hace35m = new Date(ahora.getTime() - 35 * 60 * 1000).toISOString();
+    expect(calcularRetrasoSeguimiento(hace35m, ahora)).toBe('Vencido hace 35 min');
+
+    // Vencido hace 3 horas
+    const hace3h = new Date(ahora.getTime() - 3 * 3600 * 1000).toISOString();
+    expect(calcularRetrasoSeguimiento(hace3h, ahora)).toBe('Vencido hace 3 h');
+
+    // Vencido hace 2 días
+    const hace2d = new Date(ahora.getTime() - 48 * 3600 * 1000).toISOString();
+    expect(calcularRetrasoSeguimiento(hace2d, ahora)).toBe('Vencido hace 2 d');
+
+    // En 45 min
+    const en45m = new Date(ahora.getTime() + 45 * 60 * 1000).toISOString();
+    expect(calcularRetrasoSeguimiento(en45m, ahora)).toBe('En 45 min');
+  });
+
+  it('4. formatearHoraSeguimiento devuelve formato legible de hora colombiana', () => {
+    const hora = formatearHoraSeguimiento('2026-10-27T19:30:00.000Z');
+    expect(hora).toBeTruthy();
+    expect(hora.length).toBeGreaterThan(3);
   });
 });
