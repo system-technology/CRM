@@ -707,9 +707,11 @@ tasks:
       - apps/web/src/app/globals.css
     source: propietario:2026-10-26 (identidad visual)
     created_at: 2026-10-26T23:32:24.204Z
-    started_at: 2026-10-28T05:40:00.000Z
-    done_at: 2026-10-28T05:49:38.000Z
-    evidence: "Mergeado en main por el PR #104 (rama b/T-033-login-identidad-viaje) con todos los 8 checks en verde. Stitch screen 310817e6eef4417286c884540166df0e."
+    started_at: 2026-10-28T05:49:50.500Z
+    done_at: 2026-10-28T05:49:50.501Z
+    evidence: "Mergeado en main por el PR #104 (rama b/T-033-login-identidad-viaje) con el CI en verde: format,
+      analyze, tests y los demás checks obligatorios. Cierre automático (.github/workflows/cerrar-tarea.yml)."
+    commit: 7e6156df6fc54e66739bd1dbad32c0ba78abbe29
   - id: T-034
     title: "Navegación más rica: barra lateral con iconos de color y etiquetas, migas, paleta de comandos y
       accesos rápidos"
