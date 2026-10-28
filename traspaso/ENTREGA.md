@@ -31,6 +31,49 @@
    - Conexión completa en `apps/web/src/app/bandeja/[id]/page.tsx` para escritorio y drawer táctil.
 4. **Pruebas y verificación:**
    - 53 suites de prueba en `@viajapro/web`, 433/433 tests pasando en verde.
+
+---
+
+# Entrega — T-018, T-051 y T-019: Tarjeta y ficha de excursión, presentación de promo y estado sin catálogo — 2026-10-27
+
+## Identificación
+- **Rama:** `b/T-018-t-051-t-019-tarjeta-ficha-sin-catalogo` (empujada a `origin/b/T-018-t-051-t-019-tarjeta-ficha-sin-catalogo`)
+- **Tareas:**
+  - T-018: Tarjeta y ficha de excursión en el catálogo: «desde», promo, horarios, qué incluye y cupos por salida («sáb 3 oct · quedan 4»).
+  - T-051: Tarjeta, ficha y desglose del cotizador pintan `presentacion` de la API sin decidir la promo en el cliente (cero comparaciones con `promoHasta`).
+  - T-019: Estado «sin catálogo todavía» (zero state) con dos acciones («Importar catálogo» y «Crear excursión») en catálogo y cotizador.
+- **Carril:** `b` (Frontend / Web)
+- **Stitch Design Screen ID:** `b86a95d7aa3246b087e0baa6fe1063fe` (Proyecto «ViajaPro — CRM para agencias de turismo», ID `8333038101997719867`, pantalla *Catálogo de Excursiones y Estado Sin Catálogo — ViajaPro CRM*)
+
+## Qué construí
+1. **Lógica de presentación y cálculo (`apps/web/src/lib/catalogo-logica.ts` y `.spec.ts`):**
+   - `formatearHorarioExcursion(horaSalida, horaRegreso)` para desplegar horarios de zarpe y retorno legibles.
+   - `clasificarDisponibilidadCupos(cupos)` (`DISPONIBLE`, `ULTIMOS_CUPOS`, `AGOTADO`, `PROGRAMADA`) para chips de urgencia comercial.
+   - `interpretarPresentacionTarifa(presentacion)`: centraliza el renderizado de `listaTachada`, `leyenda: 'PROMO_VENCIDA'`, `promoVigente` y `esConsultar` estrictamente desde la API sin comparaciones locales de fecha (T-051).
+   - `verificarCargosEnDestinoSeparados(totalVenta, cargosEnDestino)`: garantiza matemáticamente que los cargos en destino nunca se suman al precio del paquete ni a la cotización (R8, ADR-0017 §9).
+   - Cobertura completa en `catalogo-logica.spec.ts` (19 pruebas unitarias pasando).
+2. **Tarjeta de Salida Publicada (`apps/web/src/components/catalogo/tarjeta-salida-publicada.tsx` y `.spec.tsx`):**
+   - Degradado por tipo de producto (Pasadía con degradado turquesa/océano vs Multidía azul/índigo).
+   - Chip de cupos con formato de urgencia comercial («sáb 3 oct · quedan 4» / «Últimos 4 cupos» / «Agotado»).
+   - Horarios de salida/regreso e inclusiones del plan con chips visuales.
+   - Tarifa «desde» en moneda principal y desglose multimoneda `desdePorMoneda` (ej. COP y USD).
+   - Estado «Consultar» si no hay precio base o el estado de la API es `CONSULTAR`.
+   - Soporte para precio tachado (`data-testid="tarifa-lista-tachada"`) e insignias de promo vencida / promo vigente según `presentacion`.
+3. **Ficha de Detalle de Paquete (`apps/web/src/components/catalogo/ficha-detalle-paquete.tsx`):**
+   - Muestra bloque destacado de «Cargos a pagar en destino (No incluidos)», separando impuestos de muelle y entradas del total de la cotización.
+4. **Desglose del Cotizador (`apps/web/src/components/cotizador/desglose-cotizacion-salida.tsx` y `.spec.tsx`):**
+   - Renderiza `linea-lista-tachada` y badge `linea-promo-vencida` derivados de `linea.presentacion` entregado por la API (T-051).
+5. **Componente Estado Sin Catálogo (`apps/web/src/components/catalogo/estado-sin-catalogo.tsx` y `.spec.tsx`):**
+   - Zero state de alta conversión turística con dos botones de acción obligatorios:
+     - `data-testid="btn-sin-catalogo-importar"`: «Importar catálogo (CSV)»
+     - `data-testid="btn-sin-catalogo-crear"`: «Crear excursión»
+   - Integrado en `apps/web/src/app/catalogo/page.tsx` (cuando la agencia no tiene salidas publicadas en la API).
+   - Integrado en `apps/web/src/app/cotizador/page.tsx` (cuando la agencia no tiene productos activos en catálogo).
+   - Re-exportado en `apps/web/src/components/comun/estado-sin-catalogo.tsx`.
+6. **Verificación y Calidad:**
+   - 52 archivos de prueba y 432 tests pasando en `@viajapro/web`.
+   - 0 ocurrencias de `promoHasta` en el cliente (cero decisiones de expiración en navegador).
+>>>>>>> origin/main
    - `typecheck` con 0 errores, `lint` con 0 errores, `test:hooks` con 59/59 y 19/19 en verde.
 
 ---

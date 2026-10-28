@@ -16,7 +16,6 @@
 | Avance | Backend, base de datos, web y CI existen y se integran por PR. Catálogo completo (T-028..T-031), fichas y tarjetas (T-018, T-051, T-019), envío de cotizaciones por WhatsApp en la bandeja (T-074) y gestión de contacto/oportunidad en CRM (T-076). |
 | Próximo hito | Inicio del asesor con pendientes del día (T-020) y políticas de cookies (T-094, T-095). |
 
-
 ---
 
 ## 1. Dónde estamos

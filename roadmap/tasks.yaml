@@ -384,7 +384,7 @@ tasks:
     phase: 1
     priority: P0
     effort: M
-    status: backlog
+    status: done
     depends_on:
       - T-016
     acceptance:
@@ -408,7 +408,7 @@ tasks:
     phase: 1
     priority: P1
     effort: S
-    status: backlog
+    status: done
     depends_on:
       - T-016
     acceptance:
@@ -1287,7 +1287,7 @@ tasks:
     phase: 1
     priority: P2
     effort: S
-    status: backlog
+    status: done
     depends_on:
       - T-050
       - T-018
