@@ -603,7 +603,7 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: backlog
+    status: done
     depends_on: []
     acceptance:
       - El asistente tiene cuatro pasos (archivo, mapeo de columnas, previsualización con errores por fila,
@@ -621,7 +621,7 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: backlog
+    status: done
     depends_on: []
     acceptance:
       - Una pantalla lista las plantillas por tipo de producto (excursión de un día, paquete con hotel) y

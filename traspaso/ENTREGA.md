@@ -1,3 +1,33 @@
+# Entrega — T-029 y T-030: Asistente de importación de catálogo y descarga de plantillas CSV — 2026-10-27
+
+## Identificación
+- **Rama:** `b/T-029-t-030-asistente-importacion` (empujada a `origin/b/T-029-t-030-asistente-importacion`)
+- **Tareas:** T-029 (Asistente de importación en 4 etapas) y T-030 (Descarga de plantillas CSV oficiales)
+- **Carril:** `b` (Frontend / Web)
+- **Stitch Design Screen ID:** `1ae9a897573c4a5db87a584bf12605c0` (Proyecto «ViajaPro — CRM para agencias de turismo», ID `8333038101997719867`, pantalla *Asistente de Importación de Catálogo y Plantillas — ViajaPro CRM*)
+
+## Qué construí
+1. **Lógica de importación (`apps/web/src/lib/importacion-logica.ts` y `.spec.ts`):**
+   - Generación de CSV con marcador `#viajapro;plantilla=<formato>;version=<version>`, cabeceras oficiales y filas de ejemplo.
+   - Extracción de marcador `#viajapro;`, parsing CSV respetando comillas y delimitadores `,` o `;`.
+   - Algoritmo de correspondencia local fonética con cálculo de porcentaje de confianza.
+   - Clasificación de elementos de informe (`OK`, `AVISO`, `ERROR`) y cálculo de huella SHA-256.
+2. **Cliente API (`apps/web/src/lib/importaciones-api.ts`):**
+   - Consume `/api/v1/catalogo/formatos`, `/plantilla`, `/sugerir-mapeo`, `/previsualizar` y `/confirmar` con cabeceras de tenant y fallback a `PLANTILLAS_DE_SISTEMA`.
+3. **Descarga de Plantillas (`apps/web/src/components/catalogo/importacion/descarga-plantillas.tsx` y `.spec.tsx`):**
+   - Tarjetas por formato (Excursión de un día, Pasadía, Pasanoche, Paquete con hotel).
+   - Descarga directa de archivo CSV con nombre estandarizado y acción de importación directa.
+4. **Asistente Wizard en 4 Pasos (`apps/web/src/components/catalogo/importacion/asistente-importacion.tsx` y `.spec.tsx`):**
+   - Paso 1: Archivo y autocompletado de formato mediante marcador `#viajapro`.
+   - Paso 2: Correspondencia de columnas y selector de formato de fecha.
+   - Paso 3: Previsualización con KPIs, informe clasificado y huella SHA-256 (botón de confirmación deshabilitado si hay errores).
+   - Paso 4: Confirmación atómica todo-o-nada.
+5. **Pruebas y verificación:**
+   - 49 suites de prueba en `@viajapro/web`, 416/416 tests en verde.
+   - `typecheck` con 0 errores, `lint` con 0 errores, `test:hooks` con 59/59 y 19/19 en verde.
+
+---
+
 # Entrega — T-037: Inicio con Saludo según la Hora, Acciones Rápidas y Tarjetas de Colores — 2026-10-26
 
 ## Identificación
