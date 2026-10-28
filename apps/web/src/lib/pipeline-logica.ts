@@ -1,3 +1,4 @@
+import { formatearDinero, formatearFecha } from './formato';
 import {
   ClaveEtapa,
   Dinero,
@@ -53,16 +54,7 @@ export const NOMBRES_MOTIVOS_PERDIDA: Record<MotivoPerdida, string> = {
  */
 export function formatearDineroCifra(dinero: Dinero | null): string {
   if (!dinero) return '$0';
-  const decimales = dinero.moneda === 'COP' ? 0 : 2;
-  const unidades = Number(dinero.unidades);
-  if (!Number.isFinite(unidades)) return '$0';
-
-  return new Intl.NumberFormat('es-CO', {
-    style: 'currency',
-    currency: dinero.moneda,
-    minimumFractionDigits: decimales,
-    maximumFractionDigits: decimales,
-  }).format(unidades / 10 ** decimales);
+  return formatearDinero(dinero);
 }
 
 /**
@@ -104,9 +96,7 @@ export function formatearTiempoRelativo(instante: string | null): string {
   const difDias = Math.floor(difHoras / 24);
   if (difDias === 1) return 'Ayer';
   if (difDias < 30) return `Hace ${difDias} d`;
-  return new Intl.DateTimeFormat('es-CO', { timeZone: 'America/Bogota' })
-    .format(new Date(instante))
-    .replace(/[\u202f\u00a0]/g, ' ');
+  return formatearFecha(instante);
 }
 
 /**

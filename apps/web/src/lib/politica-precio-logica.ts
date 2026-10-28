@@ -9,6 +9,7 @@
 
 import { Money, calcularVenta, calcularMargen } from '@viajapro/domain';
 import type { PoliticaDePrecio } from '@viajapro/contracts';
+import { formatearDinero } from './formato';
 
 export interface EjemploPrecioResultado {
   readonly netoFormateado: string;
@@ -22,18 +23,10 @@ export interface EjemploPrecioResultado {
 }
 
 /**
- * Formatea un valor numérico de pesos colombianos a formato visual COP ($1.200.000).
+ * Formatea un valor numérico de pesos colombianos a formato visual COP ($ 1.200.000).
  */
 export function formatearPesosCop(unidades: number | bigint): string {
-  const num = typeof unidades === 'bigint' ? Number(unidades) : unidades;
-  return new Intl.NumberFormat('es-CO', {
-    style: 'currency',
-    currency: 'COP',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  })
-    .format(num)
-    .replace(/[\u202f\u00a0]/g, ' ');
+  return formatearDinero(unidades, { moneda: 'COP' });
 }
 
 /**
