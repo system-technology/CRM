@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Calendar, Compass, MapPin, Sparkles, Users, Clock, CheckCircle } from 'lucide-react';
+import { Calendar, Compass, MapPin, Sparkles, Users, Clock, CheckCircle, Eye } from 'lucide-react';
 import type { SalidaPublicada } from '@viajapro/contracts';
 import {
   formatearNochesLabel,
@@ -10,24 +10,40 @@ import {
   clasificarDisponibilidadCupos,
   formatearHorarioExcursion,
   interpretarPresentacionTarifa,
+  inferirTipoProducto,
+  type TipoProductoTurismo,
 } from '../../lib/catalogo-logica';
 import { formatearDinero } from '../../lib/api';
 import { obtenerClaseEscalonada } from '../comun/animaciones';
+import {
+  ChipTipoProducto,
+  CONFIGURACIONES_TIPO_TURISMO,
+  InsigniaAroDorado,
+  InsigniaPromo,
+} from '../comun';
+
+export type SalidaPublicadaConDetalles = SalidaPublicada & {
+  horaSalida?: string | null;
+  horaRegreso?: string | null;
+  inclusiones?: string[];
+  fotoUrl?: string | null;
+  tipo?: TipoProductoTurismo | null;
+};
 
 export interface TarjetaSalidaPublicadaProps {
-  salida: SalidaPublicada & {
-    horaSalida?: string | null;
-    horaRegreso?: string | null;
-    inclusiones?: string[];
-  };
+  salida: SalidaPublicadaConDetalles;
   indice?: number;
   className?: string;
+  onVerFicha?: (salida: SalidaPublicadaConDetalles) => void;
+  onCotizar?: (salida: SalidaPublicadaConDetalles) => void;
 }
 
 export function TarjetaSalidaPublicada({
   salida,
   indice,
   className = '',
+  onVerFicha,
+  onCotizar,
 }: TarjetaSalidaPublicadaProps) {
   // Formatear fecha amigable para Colombia (ej: Sábado, 3 de octubre de 2026)
   const fechaObj = new Date(salida.fecha + 'T12:00:00Z');
@@ -60,11 +76,11 @@ export function TarjetaSalidaPublicada({
         : `${fechaTextoCorta} · quedan ${salida.cupoTotal}`
       : 'Salida programada';
 
-  // Degradado y temática visual por tipo de producto (Pasadía vs Multidía)
-  const esPasadia = salida.noches === 0;
-  const estiloDegradado = esPasadia
-    ? 'from-teal-600 via-teal-700 to-cyan-800'
-    : 'from-blue-600 via-indigo-700 to-purple-800';
+  // Identidad visual por tipo de producto (T-036)
+  const tipo = salida.tipo ?? inferirTipoProducto(salida.paqueteNombre, salida.inclusiones);
+  const configTipo =
+    CONFIGURACIONES_TIPO_TURISMO[tipo] ?? CONFIGURACIONES_TIPO_TURISMO.excursion_general;
+  const IconoTipo = configTipo.icono;
 
   const esConsultar =
     presentacionInfo.esConsultar ||
@@ -77,45 +93,111 @@ export function TarjetaSalidaPublicada({
   return (
     <article
       data-testid="tarjeta-salida-publicada"
+      data-tipo-producto={tipo}
       className={`group tarjeta-turismo-hover flex w-full min-w-0 flex-col justify-between overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-xs hover:border-cyan-500/50 dark:border-neutral-800 dark:bg-neutral-900 dark:hover:border-cyan-500/40 ${claseAnimacion} ${className}`.trim()}
     >
       <div>
-        {/* Cabecera visual con degradado representativo */}
-        <div
-          className={`relative h-28 bg-gradient-to-br ${estiloDegradado} overflow-hidden p-4 text-white`}
-        >
-          <div className="absolute inset-0 bg-black/10 backdrop-blur-[1px]" />
-          <div className="pointer-events-none absolute -right-6 -bottom-6 h-24 w-24 rounded-full bg-white/10 blur-xl" />
+        {/* Cabecera visual con identidad por tipo o fotografía (T-036) */}
+        {salida.fotoUrl ? (
+          <div
+            data-testid="cabecera-con-foto"
+            className="relative flex h-32 flex-col justify-between overflow-hidden bg-neutral-900 bg-cover bg-center p-4 text-white"
+            style={{ backgroundImage: `url(${salida.fotoUrl})` }}
+          >
+            <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/20" />
+            <div className="relative flex items-center justify-between gap-2">
+              <span className="flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-1 text-xs font-semibold text-white shadow-2xs backdrop-blur-md">
+                <Calendar className="h-3.5 w-3.5" />
+                <span className="capitalize">{fechaTexto}</span>
+              </span>
 
-          <div className="relative flex items-center justify-between gap-2">
-            <span className="flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-1 text-xs font-semibold text-white backdrop-blur-md">
-              <Calendar className="h-3.5 w-3.5" />
-              <span className="capitalize">{fechaTexto}</span>
-            </span>
+              <InsigniaAroDorado
+                data-testid="insignia-duracion-salida"
+                variante="dorado"
+                tamano="sm"
+                className="border-[#c9a24b] bg-black/40 font-semibold text-amber-200 backdrop-blur-md"
+              >
+                {nochesTxt}
+              </InsigniaAroDorado>
+            </div>
 
-            <span className="rounded-full bg-black/25 px-2.5 py-0.5 text-[11px] font-semibold text-white/95 backdrop-blur-md">
-              {nochesTxt}
-            </span>
+            <div className="relative mt-auto flex items-center justify-between gap-2 pt-2">
+              <span className="flex items-center gap-1 text-xs font-medium text-white/95">
+                <MapPin className="h-3.5 w-3.5 shrink-0 text-white/80" />
+                <span className="max-w-[120px] truncate">{salida.destino}</span>
+              </span>
+
+              <ChipTipoProducto
+                tipo={tipo}
+                tamano="sm"
+                data-testid="chip-tipo-producto-cabecera"
+                className="border-white/30 bg-white/95 text-neutral-900 shadow-xs backdrop-blur-sm dark:bg-neutral-900/90 dark:text-white"
+              />
+            </div>
           </div>
+        ) : (
+          <div
+            data-testid="cabecera-sin-foto"
+            className={`relative flex h-32 flex-col justify-between overflow-hidden bg-gradient-to-br ${configTipo.degradadoSustituto} p-4 text-white`}
+          >
+            <div className="absolute inset-0 bg-black/10 backdrop-blur-[1px]" />
+            <div className="pointer-events-none absolute -top-6 -left-6 h-20 w-20 rounded-full bg-white/10 blur-xl" />
+            {/* Marca de agua decorativa del icono del tipo de producto */}
+            <IconoTipo
+              data-testid="icono-marca-agua-tipo"
+              className="pointer-events-none absolute -right-3 -bottom-3 h-24 w-24 text-white/15"
+              aria-hidden="true"
+            />
 
-          <div className="relative mt-3 flex items-center justify-between">
-            <span className="flex items-center gap-1 text-xs font-medium text-white/90">
-              <MapPin className="h-3.5 w-3.5 shrink-0 text-white/80" />
-              {salida.destino}
-            </span>
+            <div className="relative flex items-center justify-between gap-2">
+              <span className="flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-1 text-xs font-semibold text-white shadow-2xs backdrop-blur-md">
+                <Calendar className="h-3.5 w-3.5" />
+                <span className="capitalize">{fechaTexto}</span>
+              </span>
 
-            {/* Chip de disponibilidad de cupos con urgencia */}
+              <InsigniaAroDorado
+                data-testid="insignia-duracion-salida"
+                variante="dorado"
+                tamano="sm"
+                className="border-[#c9a24b] bg-black/40 font-semibold text-amber-200 backdrop-blur-md"
+              >
+                {nochesTxt}
+              </InsigniaAroDorado>
+            </div>
+
+            <div className="relative mt-auto flex items-center justify-between gap-2 pt-2">
+              <span className="flex items-center gap-1 text-xs font-medium text-white/95">
+                <MapPin className="h-3.5 w-3.5 shrink-0 text-white/80" />
+                <span className="max-w-[120px] truncate">{salida.destino}</span>
+              </span>
+
+              <ChipTipoProducto
+                tipo={tipo}
+                tamano="sm"
+                data-testid="chip-tipo-producto-cabecera"
+                className="border-white/30 bg-white/95 text-neutral-900 shadow-xs backdrop-blur-sm dark:bg-neutral-900/90 dark:text-white"
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Título y Badges */}
+        <div className="p-4 pb-2">
+          {/* Chip de disponibilidad de cupos con urgencia */}
+          <div className="mb-2 flex items-center justify-between">
             <span
               data-testid="chip-cupos-salida"
               className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold shadow-xs ${infoCupos.claseColor}`}
             >
               {chipCuposTexto}
             </span>
+            {salida.cupoTotal !== null && salida.cupoTotal > 0 && salida.cupoTotal <= 5 && (
+              <span className="text-[10px] font-semibold text-amber-600 dark:text-amber-400">
+                ¡Últimos cupos!
+              </span>
+            )}
           </div>
-        </div>
 
-        {/* Título y Badges */}
-        <div className="p-4 pb-2">
           <h3 className="line-clamp-2 text-base font-bold text-neutral-900 transition-colors group-hover:text-teal-700 dark:text-white dark:group-hover:text-teal-400">
             {salida.paqueteNombre}
           </h3>
@@ -123,7 +205,10 @@ export function TarjetaSalidaPublicada({
           <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
             {/* Horario si existe */}
             {horario && (
-              <span className="flex items-center gap-1 rounded-md bg-neutral-100 px-2 py-0.5 text-[11px] font-medium text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300">
+              <span
+                data-testid="horario-salida"
+                className="flex items-center gap-1 rounded-md bg-neutral-100 px-2 py-0.5 text-[11px] font-medium text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300"
+              >
                 <Clock className="h-3 w-3 text-neutral-500" />
                 {horario}
               </span>
@@ -138,20 +223,23 @@ export function TarjetaSalidaPublicada({
             )}
 
             {salida.desdeEsDeGrupo && (
-              <span className="flex items-center gap-1 rounded-md bg-purple-50 px-2 py-0.5 text-[11px] font-semibold text-purple-700 dark:bg-purple-950/50 dark:text-purple-300">
+              <span
+                data-testid="insignia-promo-grupal"
+                className="flex items-center gap-1 rounded-md bg-purple-50 px-2 py-0.5 text-[11px] font-semibold text-purple-700 dark:bg-purple-950/50 dark:text-purple-300"
+              >
                 <Users className="h-3 w-3" />
                 Promo grupal
               </span>
             )}
 
-            {/* Promo vigente si la API lo declara */}
+            {/* Promo vigente si la API lo declara (con aro dorado T-036) */}
             {presentacionInfo.promoVigente && (
-              <span
+              <InsigniaPromo
                 data-testid="insignia-promo-vigente"
-                className="flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300"
+                className="insignia-aro-dorado border-[#c9a24b] font-bold text-neutral-950"
               >
                 Promo vigente
-              </span>
+              </InsigniaPromo>
             )}
 
             {/* Promo vencida tachada según política de la API (T-028 / T-051) */}
@@ -168,23 +256,23 @@ export function TarjetaSalidaPublicada({
 
         {/* Chips de lo que incluye (si vienen en la salida) */}
         {salida.inclusiones && salida.inclusiones.length > 0 && (
-          <div className="border-t border-neutral-100 px-4 py-2 dark:border-neutral-800/80">
-            <span className="mb-1 block text-[10px] font-semibold tracking-wider text-neutral-400 uppercase">
-              Incluye
+          <div className="border-t border-neutral-100 px-4 py-2.5 dark:border-neutral-800/80">
+            <span className="mb-1.5 block text-[10px] font-bold tracking-wider text-neutral-400 uppercase">
+              ¿Qué incluye la excursión?
             </span>
             <div className="flex flex-wrap gap-1.5">
               {salida.inclusiones.slice(0, 3).map((inc, i) => (
                 <span
                   key={i}
-                  className="flex items-center gap-1 rounded bg-neutral-50 px-2 py-0.5 text-[10px] text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300"
+                  className="flex items-center gap-1 rounded-md bg-neutral-50 px-2 py-0.5 text-[10px] text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300"
                 >
-                  <CheckCircle className="h-2.5 w-2.5 text-teal-600 dark:text-teal-400" />
-                  <span className="max-w-[120px] truncate">{inc}</span>
+                  <CheckCircle className="h-2.5 w-2.5 shrink-0 text-teal-600 dark:text-teal-400" />
+                  <span className="max-w-[130px] truncate">{inc}</span>
                 </span>
               ))}
               {salida.inclusiones.length > 3 && (
-                <span className="rounded bg-neutral-100 px-1.5 py-0.5 text-[10px] font-medium text-neutral-500 dark:bg-neutral-800">
-                  +{salida.inclusiones.length - 3}
+                <span className="rounded-md bg-neutral-100 px-1.5 py-0.5 text-[10px] font-semibold text-neutral-500 dark:bg-neutral-800">
+                  +{salida.inclusiones.length - 3} más
                 </span>
               )}
             </div>
@@ -193,7 +281,7 @@ export function TarjetaSalidaPublicada({
       </div>
 
       {/* Pie de tarjeta con Tarifa Desde y Botón Cotizar */}
-      <div className="border-t border-neutral-100 bg-neutral-50/60 p-4 dark:border-neutral-800/80 dark:bg-neutral-800/30">
+      <div className="border-t border-neutral-100 bg-neutral-50/70 p-4 dark:border-neutral-800/80 dark:bg-neutral-800/30">
         <div className="mb-3 flex flex-wrap items-baseline justify-between gap-1">
           <span className="text-xs font-medium text-neutral-500 dark:text-neutral-400">
             Tarifa desde:
@@ -253,14 +341,29 @@ export function TarjetaSalidaPublicada({
           </div>
         </div>
 
-        <Link
-          href={`/cotizador?paqueteId=${encodeURIComponent(salida.paqueteId)}&fecha=${encodeURIComponent(salida.fecha)}`}
-          data-testid="btn-cotizar-salida"
-          className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-teal-600 py-2.5 text-xs font-bold text-white shadow-xs transition-all hover:bg-teal-700 active:scale-98 dark:bg-teal-500 dark:hover:bg-teal-600"
-        >
-          <Compass className="h-4 w-4" />
-          <span>Cotizar esta salida</span>
-        </Link>
+        <div className={`grid ${onVerFicha ? 'grid-cols-2 gap-2' : 'grid-cols-1'}`}>
+          {onVerFicha && (
+            <button
+              type="button"
+              onClick={() => onVerFicha(salida)}
+              data-testid="btn-ver-ficha-salida"
+              className="flex min-h-[44px] items-center justify-center gap-1.5 rounded-xl border border-neutral-300 bg-white px-3 py-2 text-xs font-semibold text-neutral-800 transition-colors hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
+            >
+              <Eye className="h-4 w-4 shrink-0 text-neutral-500" />
+              <span>Ver ficha</span>
+            </button>
+          )}
+
+          <Link
+            href={`/cotizador?paqueteId=${encodeURIComponent(salida.paqueteId)}&fecha=${encodeURIComponent(salida.fecha)}`}
+            data-testid="btn-cotizar-salida"
+            onClick={() => onCotizar?.(salida)}
+            className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-teal-600 py-2.5 text-xs font-bold text-white shadow-xs transition-all hover:bg-teal-700 active:scale-98 dark:bg-teal-500 dark:hover:bg-teal-600"
+          >
+            <Compass className="h-4 w-4" />
+            <span>Cotizar esta salida</span>
+          </Link>
+        </div>
       </div>
     </article>
   );

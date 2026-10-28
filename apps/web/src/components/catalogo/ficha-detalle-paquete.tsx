@@ -22,6 +22,7 @@ import {
   agruparPreciosPorAcomodacion,
   verificarVigenciaTarifario,
 } from '../../lib/catalogo-logica';
+import { ChipTipoProducto } from '../comun/chip-tipo-producto';
 
 interface FichaDetallePaqueteProps {
   paquete: PaqueteConDetalle | null;
@@ -72,7 +73,8 @@ export function FichaDetallePaquete({
         {/* Cabecera */}
         <div className="flex items-start justify-between border-b border-neutral-200 px-6 py-4 dark:border-neutral-800">
           <div className="flex-1 pr-4">
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <ChipTipoProducto nombreReferencia={paquete.nombre} tamano="sm" />
               <span className="bg-acento-100 text-acento-800 dark:bg-acento-950 dark:text-acento-300 rounded px-2 py-0.5 text-xs font-semibold">
                 {paquete.destino} {paquete.paisIso ? '(' + paquete.paisIso + ')' : ''}
               </span>
