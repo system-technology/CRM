@@ -5,7 +5,7 @@
  * que tipa el formulario en la web. Un contrato, una validación.
  */
 
-import { Controller, Get, Inject, Param, Query } from '@nestjs/common';
+import { Controller, Get, Inject, Param, ParseUUIDPipe, Query } from '@nestjs/common';
 import { ParametrosPagina } from '@viajapro/contracts';
 import { ZodValidationPipe } from '../../../shared/validacion/zod-validation.pipe.js';
 import { autorizarMargen } from '../../../shared/autorizacion/margen.js';
@@ -31,7 +31,10 @@ export class CatalogoController {
   }
 
   @Get('paquetes/:id')
-  async detalle(@Param('id') id: string, @Query('incluirMargen') incluirMargen?: string) {
+  async detalle(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Query('incluirMargen') incluirMargen?: string,
+  ) {
     // Solo la cadena `true` activa el neto: cualquier otra cosa es el valor seguro.
     return this.listarPaquetes.detalle(id, autorizarMargen(incluirMargen === 'true'));
   }
