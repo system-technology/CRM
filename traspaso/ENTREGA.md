@@ -1,3 +1,31 @@
+### 2026-10-27 — T-031: Pantalla de gestión del catálogo (crear, editar, desactivar productos)
+
+- **Tarea de la cola:** T-031 (Pantalla de gestión del catálogo: crear, editar y desactivar productos, tarifas y salidas).
+- **Rama:** `b/T-031-gestion-catalogo`
+- **Stitch Screen ID:** `fd289cef536d46779e25b27d5e7cca0e` (*Gestión del Catálogo — ViajaPro CRM*, Proyecto `8333038101997719867`).
+- **Qué construí:**
+  1. **Lógica pura y validaciones en `apps/web/src/lib/catalogo-gestion-logica.ts`:**
+     - Funciones puras `validarFormularioCrearPaquete` y `validarFormularioEditarPaquete` que validan contra los esquemas Zod de `@viajapro/contracts` (`CrearPaquete` y `EditarPaquete`), generando mensajes de error amigables por campo en español y validando la regla de coherencia de días y noches (ej. 1D/0N para pasadías o días = noches o noches + 1 para paquetes con hotel).
+     - Funciones de filtrado reactivo `filtrarPaquetesGestion` y mapeo seguro de datos `prepararDatosFormulario`.
+  2. **Cliente API en `apps/web/src/lib/catalogo-api.ts`:**
+     - Integración con los endpoints del backend: `listarPaquetesGestionApi` (`GET /api/v1/catalogo/paquetes/gestion`), `crearPaqueteApi` (`POST /api/v1/catalogo/paquetes`), `editarPaqueteApi` (`PATCH /api/v1/catalogo/paquetes/:id`), y `desactivarPaqueteApi` (`PATCH /api/v1/catalogo/paquetes/:id/desactivar`), con tolerancia a fallos y fallback al modo de demostración.
+  3. **Componentes visuales de gestión en `apps/web/src/components/catalogo/`:**
+     - `TablaGestionCatalogo` (`tabla-gestion-catalogo.tsx`): Tarjetas KPI en cabecera (Total productos, Activos para venta, Pausados/Inactivos), botón de acción rápida `+ Nuevo producto`, buscador por texto, filtro por destino, pestañas de estado segmentadas y tabla responsiva (con visualización de código, destino, duración, tarifa «desde», total de vigencias, badge de estado y botones de acción accesibles con touch target >= 44 px).
+     - `ModalFormularioPaquete` (`modal-formulario-paquete.tsx`): Modal accesible con foco atrapado para dar de alta y editar productos turísticos. Valida en tiempo real y muestra errores en español por campo.
+     - `DialogoDesactivarPaquete` (`dialogo-desactivar-paquete.tsx`): Diálogo de confirmación accesible que advierte que la desactivación retira el producto del cotizador pero preserva de forma inmutable el historial de cotizaciones y viajes confirmados.
+  4. **Integración en la página de catálogo (`apps/web/src/app/catalogo/page.tsx`):**
+     - Selector de vista segmentado que permite conmutar entre «Explorar salidas y tarifas» y «Gestión del catálogo», manteniendo el estado y sincronizándose con la API.
+  5. **Pruebas automatizadas (22 tests nuevos):**
+     - `catalogo-gestion-logica.spec.ts`: 8 tests unitarios de validación, coherencia de noches, edición parcial y filtrado.
+     - `tabla-gestion-catalogo.spec.tsx`: 7 tests para KPIs, filtrado por búsqueda y estado, y callbacks de crear, editar y desactivar.
+     - `modal-formulario-paquete.spec.tsx`: 7 tests para renderizado en modo nuevo/edición, validación en español y confirmación de desactivación.
+- **Qué verifiqué ejecutando:**
+  - `test`: **VERDE** (47 archivos de prueba, 410 tests pasando en `@viajapro/web`; 4 suites, 24 tests en `@viajapro/api`).
+  - `typecheck`: **VERDE** (cero errores en todo el monorepo con `tsc --noEmit` y Next.js build).
+  - `lint`: **VERDE** (0 errores, 0 advertencias en todo el monorepo).
+  - `test:hooks`: **VERDE** (59/59 casos de política de ramas y protección de secretos).
+- **Qué NO verifiqué:**
+  - Despliegue en producción (a la espera de merge en GitHub por CI).
 # Entrega — T-035: Animaciones y transiciones (entrada escalonada, hover, esqueletos con brillo y transiciones de página) — 2026-10-28
 
 ## Identificación
