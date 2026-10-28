@@ -24,13 +24,38 @@ import {
   estaUsandoApiReal,
   CrmApiError,
 } from '../../lib/crm-api';
+import {
+  useFiltrosPersistidos,
+  CLAVE_FILTROS_PIPELINE,
+  FILTROS_PIPELINE_DEFECTO,
+  type FiltrosPipelinePersistidos,
+} from '../../lib/filtros-guardados-logica';
+
+const CAMPOS_IGNORADOS_PIPELINE: (keyof FiltrosPipelinePersistidos)[] = ['vista'];
 
 export default function PipelinePage() {
   const { esDemo } = useModoDemo();
   const [tablero, setTablero] = useState<TableroPipeline>(() => obtenerMockTableroPipeline());
-  const [vista, setVista] = useState<'kanban' | 'tabla'>('kanban');
-  const [filtroTexto, setFiltroTexto] = useState('');
-  const [filtroAsesor, setFiltroAsesor] = useState<string>('todos');
+
+  // Filtros persistidos en localStorage con opción de limpiar (T-103)
+  const {
+    filtros: filtrosPersistidos,
+    actualizarFiltro,
+    limpiarFiltros,
+    tieneFiltrosActivos,
+  } = useFiltrosPersistidos(
+    CLAVE_FILTROS_PIPELINE,
+    FILTROS_PIPELINE_DEFECTO,
+    CAMPOS_IGNORADOS_PIPELINE,
+  );
+
+  const vista = filtrosPersistidos.vista;
+  const filtroTexto = filtrosPersistidos.filtroTexto;
+  const filtroAsesor = filtrosPersistidos.filtroAsesor;
+
+  const setVista = (v: 'kanban' | 'tabla') => actualizarFiltro('vista', v);
+  const setFiltroTexto = (v: string) => actualizarFiltro('filtroTexto', v);
+  const setFiltroAsesor = (v: string) => actualizarFiltro('filtroAsesor', v);
 
   // Estado del origen de datos y configuración (Tarea 0c.14)
   const [esModoSimulado, setEsModoSimulado] = useState<boolean>(!estaUsandoApiReal());
@@ -280,6 +305,7 @@ export default function PipelinePage() {
                 <select
                   value={filtroAsesor}
                   onChange={(e) => setFiltroAsesor(e.target.value)}
+                  aria-label="Filtrar por asesor"
                   className="focus:border-acento-500 min-h-[44px] w-full rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-xs text-neutral-700 focus:outline-hidden sm:w-auto dark:border-neutral-800 dark:bg-neutral-800 dark:text-neutral-200"
                 >
                   <option value="todos">Todos los asesores</option>
@@ -288,6 +314,19 @@ export default function PipelinePage() {
                   <option value="Carlos Rodríguez">Carlos Rodríguez</option>
                 </select>
               </div>
+
+              {/* Botón Limpiar Filtros */}
+              {tieneFiltrosActivos && (
+                <button
+                  type="button"
+                  onClick={limpiarFiltros}
+                  title="Limpiar filtros guardados"
+                  aria-label="Limpiar filtros del pipeline"
+                  className="flex min-h-[44px] items-center rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2 text-xs font-semibold text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 focus:outline-hidden dark:border-neutral-800 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700 dark:hover:text-neutral-100"
+                >
+                  Limpiar filtros
+                </button>
+              )}
             </div>
 
             {/* Aviso flotante accesible */}

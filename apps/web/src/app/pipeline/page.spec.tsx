@@ -23,6 +23,9 @@ describe('PipelinePage (T-102) — Tablero Kanban y Lista de Oportunidades', () 
   beforeEach(() => {
     vi.restoreAllMocks();
     vi.spyOn(console, 'error').mockImplementation(() => {});
+    if (typeof window !== 'undefined' && window.localStorage) {
+      window.localStorage.clear();
+    }
   });
 
   it('1. Renderiza el tablero Kanban con sus columnas, tarjetas y totales por etapa en dinero entero (R8)', () => {
@@ -256,5 +259,23 @@ describe('PipelinePage (T-102) — Tablero Kanban y Lista de Oportunidades', () 
     const enlaceChat = screen.getAllByRole('link', { name: /Abrir conversación de WhatsApp/i })[0]!;
     expect(enlaceChat.className).toContain('min-h-[44px]');
     expect(enlaceChat.className).toContain('min-w-[44px]');
+  });
+
+  it('9. Muestra el botón de limpiar filtros cuando hay filtros activos y los restablece al pulsarlo (T-103)', () => {
+    render(<PipelinePage />);
+
+    expect(screen.queryByRole('button', { name: /Limpiar filtros del pipeline/i })).toBeNull();
+
+    const inputBusqueda = screen.getByPlaceholderText(/Buscar por cliente, destino o título.../i);
+    fireEvent.change(inputBusqueda, { target: { value: 'San Andrés' } });
+
+    const botonLimpiar = screen.getByRole('button', { name: /Limpiar filtros del pipeline/i });
+    expect(botonLimpiar).toBeDefined();
+    expect(botonLimpiar.className).toContain('min-h-[44px]');
+
+    fireEvent.click(botonLimpiar);
+
+    expect(inputBusqueda).toHaveProperty('value', '');
+    expect(screen.queryByRole('button', { name: /Limpiar filtros del pipeline/i })).toBeNull();
   });
 });

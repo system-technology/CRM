@@ -34,6 +34,11 @@ import {
   obtenerEtiquetasDisponibles,
 } from '../../lib/contactos-logica';
 import { generarColorAvatar, obtenerIniciales } from '../../lib/bandeja-logica';
+import {
+  useFiltrosPersistidos,
+  CLAVE_FILTROS_CONTACTOS,
+  FILTROS_CONTACTOS_DEFECTO,
+} from '../../lib/filtros-guardados-logica';
 
 export default function ContactosPage() {
   const { esDemo } = useModoDemo();
@@ -63,9 +68,22 @@ export default function ContactosPage() {
   useEffect(() => {
     cargarContactos();
   }, [esDemo]);
-  const [busqueda, setBusqueda] = useState('');
-  const [etiquetaFiltro, setEtiquetaFiltro] = useState('todas');
-  const [consentimientoFiltro, setConsentimientoFiltro] = useState('todos');
+
+  // Filtros persistidos en localStorage con opción de limpiar (T-103)
+  const {
+    filtros: filtrosPersistidos,
+    actualizarFiltro,
+    limpiarFiltros,
+    tieneFiltrosActivos,
+  } = useFiltrosPersistidos(CLAVE_FILTROS_CONTACTOS, FILTROS_CONTACTOS_DEFECTO);
+
+  const busqueda = filtrosPersistidos.busqueda;
+  const etiquetaFiltro = filtrosPersistidos.etiquetaFiltro;
+  const consentimientoFiltro = filtrosPersistidos.consentimientoFiltro;
+
+  const setBusqueda = (v: string) => actualizarFiltro('busqueda', v);
+  const setEtiquetaFiltro = (v: string) => actualizarFiltro('etiquetaFiltro', v);
+  const setConsentimientoFiltro = (v: string) => actualizarFiltro('consentimientoFiltro', v);
 
   // Contacto seleccionado para la ficha lateral
   const [contactoSeleccionado, setContactoSeleccionado] = useState<Contacto | null>(null);
@@ -137,13 +155,14 @@ export default function ContactosPage() {
             <div className="flex flex-1 flex-wrap items-center gap-3">
               {/* Input de Búsqueda */}
               <div className="relative max-w-sm min-w-[240px] flex-1">
-                <Search className="absolute top-2.5 left-3 h-3.5 w-3.5 text-neutral-400" />
+                <Search className="absolute top-3 left-3 h-3.5 w-3.5 text-neutral-400" />
                 <input
                   type="text"
                   value={busqueda}
                   onChange={(e) => setBusqueda(e.target.value)}
                   placeholder="Buscar por nombre, teléfono o correo..."
-                  className="focus:border-acento-500 w-full rounded-xl border border-neutral-200 bg-neutral-50 py-1.5 pr-3 pl-8 text-xs text-neutral-900 placeholder-neutral-400 focus:bg-white focus:outline-hidden dark:border-neutral-800 dark:bg-neutral-800/50 dark:text-neutral-100"
+                  aria-label="Buscar contactos"
+                  className="focus:border-acento-500 min-h-[44px] w-full rounded-xl border border-neutral-200 bg-neutral-50 py-2 pr-3 pl-8 text-xs text-neutral-900 placeholder-neutral-400 focus:bg-white focus:outline-hidden dark:border-neutral-800 dark:bg-neutral-800/50 dark:text-neutral-100"
                 />
               </div>
 
@@ -153,7 +172,8 @@ export default function ContactosPage() {
                 <select
                   value={etiquetaFiltro}
                   onChange={(e) => setEtiquetaFiltro(e.target.value)}
-                  className="focus:border-acento-500 rounded-xl border border-neutral-200 bg-neutral-50 px-2.5 py-1.5 text-xs text-neutral-700 focus:outline-hidden dark:border-neutral-800 dark:bg-neutral-800 dark:text-neutral-200"
+                  aria-label="Filtrar por etiqueta"
+                  className="focus:border-acento-500 min-h-[44px] rounded-xl border border-neutral-200 bg-neutral-50 px-2.5 py-2 text-xs text-neutral-700 focus:outline-hidden dark:border-neutral-800 dark:bg-neutral-800 dark:text-neutral-200"
                 >
                   <option value="todas">Todas las etiquetas</option>
                   {etiquetasDisponibles.map((et) => (
@@ -170,13 +190,27 @@ export default function ContactosPage() {
                 <select
                   value={consentimientoFiltro}
                   onChange={(e) => setConsentimientoFiltro(e.target.value)}
-                  className="focus:border-acento-500 rounded-xl border border-neutral-200 bg-neutral-50 px-2.5 py-1.5 text-xs text-neutral-700 focus:outline-hidden dark:border-neutral-800 dark:bg-neutral-800 dark:text-neutral-200"
+                  aria-label="Filtrar por consentimiento"
+                  className="focus:border-acento-500 min-h-[44px] rounded-xl border border-neutral-200 bg-neutral-50 px-2.5 py-2 text-xs text-neutral-700 focus:outline-hidden dark:border-neutral-800 dark:bg-neutral-800 dark:text-neutral-200"
                 >
                   <option value="todos">Todos los consentimientos</option>
                   <option value="PROMOCIONAL">Con permiso de Marketing</option>
                   <option value="TRANSACCIONAL">Solo transaccional</option>
                 </select>
               </div>
+
+              {/* Botón Limpiar Filtros */}
+              {tieneFiltrosActivos && (
+                <button
+                  type="button"
+                  onClick={limpiarFiltros}
+                  title="Limpiar filtros guardados"
+                  aria-label="Limpiar filtros de contactos"
+                  className="flex min-h-[44px] items-center rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2 text-xs font-semibold text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 focus:outline-hidden dark:border-neutral-800 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700 dark:hover:text-neutral-100"
+                >
+                  Limpiar filtros
+                </button>
+              )}
             </div>
 
             <div className="text-[11px] text-neutral-400">
@@ -225,11 +259,7 @@ export default function ContactosPage() {
                           }
                           accion={{
                             label: 'Restablecer filtros',
-                            onClick: () => {
-                              setBusqueda('');
-                              setEtiquetaFiltro('todas');
-                              setConsentimientoFiltro('todos');
-                            },
+                            onClick: limpiarFiltros,
                           }}
                         />
                       </td>

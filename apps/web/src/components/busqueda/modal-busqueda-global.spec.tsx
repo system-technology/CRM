@@ -74,4 +74,23 @@ describe('ModalBusquedaGlobal — Paleta de Comandos (Ctrl+K) (T-034)', () => {
     const opciones = screen.getAllByRole('option');
     expect(opciones.length).toBeGreaterThan(0);
   });
+
+  it('encuentra contactos al buscar por teléfono en el modal', () => {
+    render(<ModalBusquedaGlobal abierto={true} alCerrar={vi.fn()} />);
+
+    const input = screen.getByPlaceholderText(/Buscar contactos, chats/i);
+    fireEvent.change(input, { target: { value: '3000012345' } });
+
+    expect(screen.getAllByText('Juan Pérez').length).toBeGreaterThan(0);
+  });
+
+  it('encuentra elementos por destino (ej. Cancún o San Andrés)', () => {
+    render(<ModalBusquedaGlobal abierto={true} alCerrar={vi.fn()} />);
+
+    const input = screen.getByPlaceholderText(/Buscar contactos, chats/i);
+    fireEvent.change(input, { target: { value: 'Cancún' } });
+
+    const resultados = screen.getAllByRole('option');
+    expect(resultados.length).toBeGreaterThan(0);
+  });
 });
