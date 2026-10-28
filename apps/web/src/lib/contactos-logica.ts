@@ -1,3 +1,4 @@
+import { formatearTelefono } from './formato';
 import { type Contacto, Consentimiento } from '@viajapro/contracts';
 
 /**
@@ -53,8 +54,5 @@ export function obtenerEtiquetasDisponibles(contactos: Contacto[]): string[] {
  * Formatea un teléfono E.164 colombiano (+573001234567) con espaciado legible (+57 300 123 4567).
  */
 export function formatearTelefonoVisual(telefono: string): string {
-  if (telefono.startsWith('+57') && telefono.length === 13) {
-    return `+57 ${telefono.slice(3, 6)} ${telefono.slice(6, 9)} ${telefono.slice(9)}`;
-  }
-  return telefono;
+  return formatearTelefono(telefono);
 }

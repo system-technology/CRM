@@ -85,14 +85,16 @@ export const api = {
   },
 };
 
-/** Formatea dinero para mostrar. Nunca se usa para calcular: eso es del servidor. */
-export function formatearDinero(d: { unidades: string; moneda: string }): string {
-  const decimales = d.moneda === 'COP' ? 0 : 2;
-  const valor = Number(d.unidades) / 10 ** decimales;
-  return new Intl.NumberFormat('es-CO', {
-    style: 'currency',
-    currency: d.moneda,
-    minimumFractionDigits: decimales,
-    maximumFractionDigits: decimales,
-  }).format(valor);
-}
+/**
+ * Helpers únicos de formato es-CO (T-022).
+ * Centralizados en ./formato para garantizar consistencia en todo el CRM.
+ */
+export {
+  formatearDinero,
+  formatearCOP,
+  formatearDineroCifra,
+  formatearFecha,
+  formatearFechaHora,
+  formatearTelefono,
+  formatearCupo,
+} from './formato';

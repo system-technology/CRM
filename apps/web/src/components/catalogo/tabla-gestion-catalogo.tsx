@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import type { ResumenDePaqueteGestion } from '@viajapro/contracts';
 import { filtrarPaquetesGestion } from '../../lib/catalogo-gestion-logica';
+import { formatearDinero } from '../../lib/formato';
 
 interface TablaGestionCatalogoProps {
   paquetes: ResumenDePaqueteGestion[];
@@ -253,13 +254,7 @@ export function TablaGestionCatalogo({
               <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800">
                 {paquetesFiltrados.map((p) => {
                   const tarifaDesde = p.desde?.[0];
-                  const textoDesde = tarifaDesde
-                    ? new Intl.NumberFormat('es-CO', {
-                        style: 'currency',
-                        currency: tarifaDesde.moneda,
-                        maximumFractionDigits: 0,
-                      }).format(Number(tarifaDesde.unidades))
-                    : 'A consultar';
+                  const textoDesde = tarifaDesde ? formatearDinero(tarifaDesde) : 'A consultar';
 
                   return (
                     <tr

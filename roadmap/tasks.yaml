@@ -469,7 +469,10 @@ tasks:
     phase: 1
     priority: P1
     effort: S
-    status: backlog
+    status: done
+    started_at: 2026-10-28T06:33:00.000Z
+    done_at: 2026-10-28T06:45:00.000Z
+    evidence: "Módulo único apps/web/src/lib/formato.ts con dinero COP en enteros con punto de miles (R8), fechas UTC a America/Bogota (R9), teléfonos móviles y fijos de Colombia, y cupos amigables. 23 pruebas en formato.spec.ts y pantallas migradas. 65/65 suites pasando (562 pruebas)."
     depends_on: []
     acceptance:
       - Existe un módulo de formato en apps/web/src/lib/ y ninguna pantalla formatea dinero o fechas a mano;
