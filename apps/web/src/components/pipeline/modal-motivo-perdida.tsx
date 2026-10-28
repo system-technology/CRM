@@ -72,7 +72,7 @@ export function ModalMotivoPerdida({
           <button
             type="button"
             onClick={onCancelar}
-            className="rounded-lg p-1 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-600 dark:hover:bg-neutral-800 dark:hover:text-neutral-300"
+            className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl p-2 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-600 dark:hover:bg-neutral-800 dark:hover:text-neutral-300"
             aria-label="Cerrar modal"
           >
             <X className="h-5 w-5" />
@@ -95,7 +95,7 @@ export function ModalMotivoPerdida({
               return (
                 <label
                   key={m}
-                  className={`focus-within:ring-acento-600 flex cursor-pointer items-center justify-between rounded-xl border p-3 text-xs transition-colors focus-within:ring-2 ${
+                  className={`focus-within:ring-acento-600 flex min-h-[44px] cursor-pointer items-center justify-between rounded-xl border p-3 text-xs transition-colors focus-within:ring-2 ${
                     seleccionado
                       ? 'border-acento-600 bg-acento-50/60 text-acento-900 dark:border-acento-500 dark:bg-acento-950/40 dark:text-acento-200 font-medium'
                       : 'border-neutral-200 hover:bg-neutral-50 dark:border-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-800/60'
@@ -160,13 +160,13 @@ export function ModalMotivoPerdida({
             <button
               type="button"
               onClick={onCancelar}
-              className="rounded-xl px-4 py-2 text-xs font-medium text-neutral-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
+              className="flex min-h-[44px] items-center justify-center rounded-xl px-4 py-2.5 text-xs font-medium text-neutral-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
             >
               Cancelar
             </button>
             <button
               type="submit"
-              className="rounded-xl bg-amber-600 px-4 py-2 text-xs font-medium text-white shadow-xs transition-colors hover:bg-amber-700"
+              className="flex min-h-[44px] items-center justify-center rounded-xl bg-amber-600 px-4 py-2.5 text-xs font-medium text-white shadow-xs transition-colors hover:bg-amber-700"
             >
               Confirmar pérdida
             </button>

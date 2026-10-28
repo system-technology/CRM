@@ -94,24 +94,37 @@ export default function PipelinePage() {
     setTimeout(() => setMensajeFeedback(null), 3000);
   };
 
-  // Mover oportunidad (actualización optimista + persistencia en API)
+  // Mover oportunidad (actualización optimista + persistencia en API con reversión)
   const ejecutarMovimiento = async (
     oportunidadId: string,
     nuevaEtapa: EtapaDefinida,
     motivoPerdida: MotivoPerdida | null = null,
     notaPerdida: string | null = null,
   ) => {
-    // 1. Actualización optimista local
+    const tableroPrevio = tablero;
+    let nuevoTablero: TableroPipeline;
     try {
-      const nuevoTablero = moverOportunidadEnTablero(tablero, oportunidadId, {
+      nuevoTablero = moverOportunidadEnTablero(tablero, oportunidadId, {
         etapaId: nuevaEtapa.id,
         motivoPerdida,
         notaPerdida,
       });
-      setTablero(nuevoTablero);
-      mostrarAviso(`Oportunidad movida a "${nuevaEtapa.nombre}" con éxito.`);
+    } catch (errorValidacion) {
+      console.error(errorValidacion);
+      mostrarAviso(
+        errorValidacion instanceof Error
+          ? errorValidacion.message
+          : 'Error al mover la oportunidad.',
+      );
+      return;
+    }
 
-      // 2. Persistencia en la API
+    // 1. Actualización optimista local
+    setTablero(nuevoTablero);
+    mostrarAviso(`Oportunidad movida a "${nuevaEtapa.nombre}" con éxito.`);
+
+    // 2. Persistencia en la API
+    try {
       await moverOportunidadDeEtapa(oportunidadId, {
         etapaId: nuevaEtapa.id,
         motivoPerdida,
@@ -119,7 +132,9 @@ export default function PipelinePage() {
       });
     } catch (e) {
       console.error(e);
-      mostrarAviso('Error al persistir el movimiento de oportunidad.');
+      // Reversión optimista ante error en la API
+      setTablero(tableroPrevio);
+      mostrarAviso('Error al persistir el movimiento de oportunidad. Se revirtió el cambio.');
     }
   };
 
@@ -275,9 +290,13 @@ export default function PipelinePage() {
               </div>
             </div>
 
-            {/* Aviso flotante */}
+            {/* Aviso flotante accesible */}
             {mensajeFeedback && (
-              <div className="bg-ok-50 text-ok-800 dark:bg-ok-950/80 dark:text-ok-300 animate-in fade-in rounded-xl px-3 py-1 text-xs font-medium duration-200">
+              <div
+                role="status"
+                aria-live="polite"
+                className="bg-ok-50 text-ok-800 dark:bg-ok-950/80 dark:text-ok-300 animate-in fade-in rounded-xl px-3 py-1.5 text-xs font-medium duration-200"
+              >
                 {mensajeFeedback}
               </div>
             )}
@@ -372,7 +391,8 @@ export default function PipelinePage() {
                           <td className="px-4 py-3 text-center">
                             <Link
                               href="/bandeja"
-                              className="text-acento-600 hover:text-acento-700 dark:text-acento-400 font-medium"
+                              aria-label={`Abrir chat con ${op.contactoNombre || 'cliente'}`}
+                              className="text-acento-600 hover:text-acento-700 dark:text-acento-400 inline-flex min-h-[44px] min-w-[44px] items-center justify-center font-medium"
                             >
                               Chat
                             </Link>
