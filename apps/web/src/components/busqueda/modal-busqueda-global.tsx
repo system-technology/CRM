@@ -153,7 +153,7 @@ export function ModalBusquedaGlobal({ abierto, alCerrar }: ModalBusquedaGlobalPr
     >
       <div
         ref={contenedorRef}
-        className="w-full max-w-2xl overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-2xl transition-all dark:border-neutral-800 dark:bg-neutral-900"
+        className="anim-modal w-full max-w-2xl overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-2xl transition-all dark:border-neutral-800 dark:bg-neutral-900"
         onClick={(e) => e.stopPropagation()}
         onKeyDown={manejarKeyDown}
       >

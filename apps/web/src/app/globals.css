@@ -190,43 +190,134 @@ body {
   animation: olasMar 6s ease-in-out infinite;
 }
 
-.tarjeta-turismo-hover {
+/**
+ * ELEVACIÓN Y MICROINTERACCIONES DE TARJETAS (T-035)
+ * Elevación elástica suave al pasar el cursor sin layout shift.
+ */
+.tarjeta-turismo-hover,
+.tarjeta-elevacion {
   transition:
     transform 220ms cubic-bezier(0.16, 1, 0.3, 1),
-    box-shadow 220ms cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow 220ms cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 200ms ease;
 }
 
-.tarjeta-turismo-hover:hover {
-  transform: translateY(-2px);
+.tarjeta-turismo-hover:hover,
+.tarjeta-elevacion:hover {
+  transform: translateY(-3px);
   box-shadow:
-    0 10px 25px -5px rgba(11, 31, 58, 0.08),
-    0 8px 10px -6px rgba(11, 31, 58, 0.04);
+    0 12px 24px -6px rgba(11, 31, 58, 0.1),
+    0 6px 12px -4px rgba(6, 182, 212, 0.08);
 }
 
+.tarjeta-turismo-hover:active,
+.tarjeta-elevacion:active {
+  transform: translateY(-1px) scale(0.995);
+}
+
+/**
+ * ESQUELETOS CON SHIMMER OCEÁNICO & DORADO (T-035)
+ */
 .esqueleto-brillo {
   background: linear-gradient(
-    90deg,
-    rgba(229, 231, 235, 0.6) 25%,
-    rgba(243, 244, 246, 0.9) 50%,
-    rgba(229, 231, 235, 0.6) 75%
+    115deg,
+    rgba(229, 231, 235, 0.7) 20%,
+    rgba(243, 244, 246, 0.95) 40%,
+    rgba(201, 162, 75, 0.12) 50%,
+    rgba(6, 182, 212, 0.08) 55%,
+    rgba(243, 244, 246, 0.95) 60%,
+    rgba(229, 231, 235, 0.7) 80%
   );
-  background-size: 200% 100%;
-  animation: brilloEsqueleto 1.8s infinite;
+  background-size: 250% 100%;
+  animation: brilloEsqueleto 2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
 
 .dark .esqueleto-brillo {
   background: linear-gradient(
-    90deg,
-    rgba(30, 41, 59, 0.6) 25%,
-    rgba(51, 65, 85, 0.9) 50%,
-    rgba(30, 41, 59, 0.6) 75%
+    115deg,
+    rgba(30, 41, 59, 0.7) 20%,
+    rgba(51, 65, 85, 0.95) 40%,
+    rgba(201, 162, 75, 0.15) 50%,
+    rgba(6, 182, 212, 0.1) 55%,
+    rgba(51, 65, 85, 0.95) 60%,
+    rgba(30, 41, 59, 0.7) 80%
   );
-  background-size: 200% 100%;
-  animation: brilloEsqueleto 1.8s infinite;
+  background-size: 250% 100%;
+  animation: brilloEsqueleto 2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
 
 /**
- * REGLA ESTRICTA: RESPETO A PREFERS-REDUCED-MOTION
+ * ENTRADA ESCALONADA (STAGGERED ENTRANCE) (T-035)
+ * Duración < 300ms para inmediatez percibida en CRM.
+ */
+@keyframes entradaEscalonada {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.anim-entrada {
+  animation: entradaEscalonada 250ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: transform, opacity;
+}
+
+.anim-retraso-1 {
+  animation-delay: 40ms;
+}
+.anim-retraso-2 {
+  animation-delay: 80ms;
+}
+.anim-retraso-3 {
+  animation-delay: 120ms;
+}
+.anim-retraso-4 {
+  animation-delay: 160ms;
+}
+.anim-retraso-5 {
+  animation-delay: 200ms;
+}
+.anim-retraso-6 {
+  animation-delay: 240ms;
+}
+
+/**
+ * TRANSICIONES DE PANELES Y MODALES (< 250ms)
+ */
+@keyframes aparicionModal {
+  from {
+    opacity: 0;
+    transform: scale(0.97) translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.anim-modal {
+  animation: aparicionModal 200ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes deslizamientoLateral {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.anim-panel-lateral {
+  animation: deslizamientoLateral 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/**
+ * REGLA ESTRICTA: RESPETO A PREFERS-REDUCED-MOTION (T-035 & WCAG 2.2)
  */
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -238,7 +329,24 @@ body {
     scroll-behavior: auto !important;
   }
 
-  .tarjeta-turismo-hover:hover {
+  .tarjeta-turismo-hover:hover,
+  .tarjeta-elevacion:hover {
     transform: none !important;
+    box-shadow: none !important;
+  }
+
+  .esqueleto-brillo {
+    animation: none !important;
+    background-position: 0 0 !important;
+  }
+
+  .anim-entrada,
+  .anim-modal,
+  .anim-panel-lateral,
+  .anim-flotar,
+  .anim-olas {
+    animation: none !important;
+    transform: none !important;
+    opacity: 1 !important;
   }
 }

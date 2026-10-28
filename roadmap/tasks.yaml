@@ -746,7 +746,7 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: backlog
+    status: done
     depends_on:
       - T-032
     acceptance:
@@ -762,6 +762,9 @@ tasks:
       - apps/web/src/components/comun/
     source: propietario:2026-10-26 (identidad visual)
     created_at: 2026-10-26T23:32:24.205Z
+    started_at: 2026-10-28T06:17:00.000Z
+    done_at: 2026-10-28T06:34:00.000Z
+    evidence: "Implementado en rama b/T-035-animaciones-transiciones-esqueletos. Stitch screen ed51eb6813d7471487cf3b7a1b82d0e2. 61 suites y 508 tests en verde en @viajapro/web."
   - id: T-036
     title: "Tarjetas de producto con identidad por tipo de excursión: color, icono, degradado, promo y cupos"
     type: feature

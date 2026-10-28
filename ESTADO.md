@@ -13,8 +13,8 @@
 | Última actualización | 2026-10-28 |
 | Actualizado por | Antigravity (`frontend`) |
 | Fase | **Fase 1 del backlog: «Un CRM mostrable y endurecido»** (M1 del [roadmap v2](docs/08-roadmap/01-roadmap.md)). Sin agencia real todavía |
-| Avance | Catálogo gestionable (T-031), importador masivo en 4 pasos (T-029, T-030), ajuste promo_vencida (T-028), tarjeta/ficha de excursión (T-018, T-051, T-019), inicio del asesor (T-020), cookies y banner (T-094, T-095), login con identidad oceánica de viaje (T-033) y navegación enriquecida con barra lateral expandible, migas de pan y paleta de comandos Ctrl+K (T-034) completados |
-| Próximo hito | Animaciones y transiciones (T-035), tarjetas de producto por tipo (T-036), marca por agencia (T-039) |
+| Avance | Catálogo gestionable (T-031), importador masivo en 4 pasos (T-029, T-030), ajuste promo_vencida (T-028), tarjeta/ficha de excursión (T-018, T-051, T-019), inicio del asesor (T-020), cookies y banner (T-094, T-095), login oceánico (T-033), navegación enriquecida (T-034) y animaciones fluidas con shimmer oceánico y movimiento reducido (T-035) completados |
+| Próximo hito | Tarjetas de producto por tipo de excursión (T-036), marca e identidad por agencia (T-039) |
 
 ---
 

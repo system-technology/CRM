@@ -34,6 +34,7 @@ import { AvisoConfiguracionTenant } from '../../components/crm/aviso-configuraci
 import { FichaDetallePaquete } from '../../components/catalogo/ficha-detalle-paquete';
 import { TarjetaSalidaPublicada } from '../../components/catalogo/tarjeta-salida-publicada';
 import { EstadoSinCatalogo } from '../../components/catalogo/estado-sin-catalogo';
+import { obtenerClaseEscalonada } from '../../components/comun/animaciones';
 import { MOCK_PAQUETES_CATALOGO, type PaqueteConDetalle } from '../../lib/mock-catalogo';
 import {
   filtrarPaquetes,
@@ -352,8 +353,12 @@ export default function CatalogoPage() {
                   </div>
                 ) : (
                   <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-                    {salidasFiltradas.map((salida) => (
-                      <TarjetaSalidaPublicada key={salida.vigenciaId} salida={salida} />
+                    {salidasFiltradas.map((salida, idx) => (
+                      <TarjetaSalidaPublicada
+                        key={salida.vigenciaId}
+                        salida={salida}
+                        indice={idx}
+                      />
                     ))}
                   </div>
                 )
@@ -385,14 +390,14 @@ export default function CatalogoPage() {
                 </div>
               ) : (
                 <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-                  {paquetesFiltrados.map((paquete) => {
+                  {paquetesFiltrados.map((paquete, idx) => {
                     const precioDesde = obtenerPrecioDesde(paquete);
                     const vigencia = verificarVigenciaTarifario(paquete.temporadas);
 
                     return (
                       <article
                         key={paquete.id}
-                        className="flex flex-col justify-between overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-xs transition-shadow hover:shadow-md dark:border-neutral-800 dark:bg-neutral-900"
+                        className={`tarjeta-turismo-hover flex flex-col justify-between overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-xs hover:border-cyan-500/40 dark:border-neutral-800 dark:bg-neutral-900 ${obtenerClaseEscalonada(idx)}`}
                       >
                         <div>
                           {/* Cabecera de la tarjeta */}

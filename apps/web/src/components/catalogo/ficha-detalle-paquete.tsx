@@ -66,7 +66,7 @@ export function FichaDetallePaquete({
       onClick={alCerrar}
     >
       <div
-        className="flex h-full w-full max-w-2xl flex-col bg-white shadow-2xl transition-transform dark:bg-neutral-900"
+        className="anim-panel-lateral flex h-full w-full max-w-2xl flex-col bg-white shadow-2xl transition-transform dark:bg-neutral-900"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Cabecera */}

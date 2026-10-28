@@ -118,12 +118,13 @@ export function ColumnaKanban({
             <span className="mt-1 text-[10px]">Arrastra una tarjeta aquí</span>
           </div>
         ) : (
-          oportunidades.map((op) => (
+          oportunidades.map((op, idx) => (
             <TarjetaOportunidad
               key={op.id}
               oportunidad={op}
               etapas={etapas}
               onSolicitarMover={onSolicitarMover}
+              indice={idx}
             />
           ))
         )}
