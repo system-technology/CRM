@@ -1,3 +1,61 @@
+# Entrega — T-104: Respuestas rápidas en la bandeja: lista, insertar con «/» y administración por agencia — 2026-10-28
+
+## Identificación
+- **Tarea:** `T-104` (roadmap/tasks.yaml)
+- **Rama:** `b/T-104-respuestas-rapidas-bandeja`
+- **Carril:** `b` (Frontend / Web)
+
+## Qué se construyó y auditó
+
+1. **Módulo de Lógica Pura de Respuestas Rápidas (`respuestas-rapidas-logica.ts`):**
+   - Modelado tipado de datos: interfaces `RespuestaRapida`, `CategoriaRespuestaRapida` y `ContextoInterpolacion` con soporte estricto para `exactOptionalPropertyTypes: true`.
+   - Semillero de respuestas rápidas esenciales para agencias de viajes: saludo inicial cordial, datos bancarios de cuenta para pagos en COP (Bancolombia), requisitos de documentación e identificación según destino, horarios de atención al viajero, seguimiento comercial de cotización y mensaje de cierre o despedida.
+   - Función pura `interpolarVariables`: sustituye etiquetas `{nombre}`, `{asesor}`, `{agencia}`, `{destino}` con los datos contextuales del viajero y el asesor en sesión, proveyendo sustitutos amigables cuando no están disponibles.
+   - Función pura `detectarDisparadorSlash`: detección robusta del comando «/» al inicio de línea o tras espacios/saltos de línea, ignorando URLs y slashes en medio de palabras.
+   - Función pura `reemplazarComandoSlash`: sustituye con precisión el atajo por el texto expandido e interpolado y calcula la nueva posición del cursor.
+   - Función pura `filtrarRespuestasRapidas`: filtra por atajo, título, contenido y categoría seleccionada, priorizando coincidencias exactas y de prefijo en el atajo.
+   - Funciones de persistencia aislada por tenant en almacenamiento del navegador con inicialización y restablecimiento a valores por defecto.
+
+2. **Menú Flotante Accesible en el Compositor (`menu-respuestas-rapidas.tsx`):**
+   - Popover flotante con atributos semánticos `role="dialog"`, `role="listbox"` y opciones con `role="option"`.
+   - Previsualización dinámica en tiempo real que renderiza el texto ya interpolado con el nombre del viajero y del asesor.
+   - Navegación completa por teclado: flecha abajo / arriba para alternar opciones, Enter / Tab para insertar y Escape para cancelar.
+   - Objetivos táctiles `>= 44 px` en todas las opciones y botones para garantizar accesibilidad móvil.
+
+3. **Integración en el Compositor de la Bandeja (`apps/web/src/app/bandeja/[id]/page.tsx`):**
+   - Escucha de escritura en el textarea para desplegar automáticamente el menú flotante al tipear «/».
+   - Inserción limpia con posicionamiento del cursor al final del texto insertado.
+   - Botón accesible `btn-respuestas-rapidas` en la barra de herramientas del chat (al lado de Sugerencias y Nota Interna) para permitir la apertura táctil del selector de respuestas rápidas sin requerir teclado físico.
+   - Cierre reactivo con la tecla Escape y al enviar mensaje.
+
+4. **Sección de Administración en Configuración (`bloque-respuestas-rapidas.tsx` & `/configuracion`):**
+   - Pestaña dedicada `Respuestas Rápidas` (`tab-btn-respuestas`) en `/configuracion` con distintivo `T-104`.
+   - Estado honesto visible que documenta la persistencia local de la agencia hasta la disponibilidad del endpoint de API de Respuestas Rápidas (T-078).
+   - Filtro por categorías (`General`, `Cotizaciones`, `Pagos`, `Operaciones`) y buscador instantáneo por atajo o texto.
+   - Tarjetas de respuesta con visor de vista previa interactivo para probar la interpolación con un nombre de viajero de muestra.
+   - Modal de alta y edición con botones de inserción rápida de variables (`+ {nombre}`, `+ {asesor}`, `+ {agencia}`, `+ {destino}`) y validaciones de formato.
+   - Opciones para eliminar y restablecer a los valores predeterminados con confirmación previa.
+
+5. **Pruebas y Verificación:**
+   - `apps/web/src/lib/respuestas-rapidas-logica.spec.ts` (22 pruebas unitarias en verde).
+   - `apps/web/src/components/bandeja/menu-respuestas-rapidas.spec.tsx` (7 pruebas unitarias en verde).
+   - `apps/web/src/components/configuracion/bloque-respuestas-rapidas.spec.tsx` (10 pruebas unitarias en verde).
+   - `apps/web/src/app/bandeja/bandeja-respuestas-rapidas.spec.tsx` (7 pruebas unitarias de integración en verde).
+   - Verificación global `@viajapro/web`: 87 suites de prueba, 723 pruebas unitarias 100% en verde.
+   - Verificación de tipos `pnpm typecheck`: 9/9 paquetes en verde.
+   - Verificación de estilos `pnpm lint`: 7/7 paquetes en verde.
+   - Compilación exitosa de producción Next.js (23 rutas).
+   - Ganchos de política y seguridad `pnpm test:hooks`: 59/59 casos de política de rama, 19/19 detección de secretos, 6/6 fronteras de módulos.
+
+## Verificación de Compuertas
+- **Pruebas unitarias (@viajapro/web):** 87 suites, 723 pruebas en verde.
+- **Typecheck:** 9/9 paquetes en verde.
+- **Linter:** 7/7 paquetes en verde.
+- **Compilación de producción (Next.js):** 23/23 rutas compiladas exitosamente.
+- **Fronteras y ganchos de seguridad (`pnpm test:hooks`):** 59/59 casos de política de rama, 19/19 detección de secretos, 6/6 fronteras de módulos.
+
+---
+
 # Entrega — T-103: Búsqueda global y filtros guardados en bandeja, contactos y oportunidades — 2026-10-28
 
 ## Identificación

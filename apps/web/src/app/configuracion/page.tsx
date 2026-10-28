@@ -14,6 +14,7 @@ import {
   Lock,
   Tag,
   FormInput,
+  Zap,
 } from 'lucide-react';
 import { BarraModulos } from '../../components/bandeja/barra-modulos';
 import { DistintivoDatosDemo } from '../../components/comun/distintivo-datos-demo';
@@ -22,6 +23,7 @@ import { BloqueAjustesCatalogo } from '../../components/configuracion/bloque-aju
 import { BloqueEtapasPipeline } from '../../components/configuracion/bloque-etapas-pipeline';
 import { BloqueCamposPersonalizados } from '../../components/configuracion/bloque-campos-personalizados';
 import { BloqueEquipo } from '../../components/configuracion/bloque-equipo';
+import { BloqueRespuestasRapidas } from '../../components/configuracion/bloque-respuestas-rapidas';
 import { usePermisos } from '../../lib/permisos';
 import {
   MOCK_CONFIGURACION_WABA,
@@ -37,10 +39,18 @@ import {
 } from '../../lib/configuracion-logica';
 
 type TabConfig =
-  'equipo' | 'whatsapp' | 'sla' | 'pipeline' | 'agencia' | 'precios' | 'catalogo' | 'campos';
+  | 'equipo'
+  | 'whatsapp'
+  | 'sla'
+  | 'pipeline'
+  | 'agencia'
+  | 'precios'
+  | 'catalogo'
+  | 'campos'
+  | 'respuestas';
 
 export default function ConfiguracionPage() {
-  const { puedeVerNetoYMargen } = usePermisos();
+  const { puedeVerNetoYMargen, sesion } = usePermisos();
   const [tabActiva, setTabActiva] = useState<TabConfig>('equipo');
   const [waba] = useState(MOCK_CONFIGURACION_WABA);
   const [sla, setSla] = useState<ConfiguracionSla>(MOCK_CONFIGURACION_SLA);
@@ -233,6 +243,23 @@ export default function ConfiguracionPage() {
               <span>Campos Personalizados</span>
               <span className="rounded-full bg-purple-100 px-1.5 py-0.5 text-[10px] font-bold text-purple-800 dark:bg-purple-950 dark:text-purple-300">
                 T-026
+              </span>
+            </button>
+
+            <button
+              id="tab-btn-respuestas"
+              data-testid="tab-btn-respuestas"
+              onClick={() => setTabActiva('respuestas')}
+              className={`flex items-center gap-2 border-b-2 px-4 py-2 text-xs font-medium transition-colors ${
+                tabActiva === 'respuestas'
+                  ? 'border-amber-600 text-amber-700 dark:border-amber-400 dark:text-amber-300'
+                  : 'border-transparent text-neutral-500 hover:border-neutral-300 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200'
+              }`}
+            >
+              <Zap className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+              <span>Respuestas Rápidas</span>
+              <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                T-104
               </span>
             </button>
           </nav>
@@ -598,6 +625,20 @@ export default function ConfiguracionPage() {
                   </button>
                 </div>
               </form>
+            </div>
+          )}
+
+          {/* TAB 9: RESPUESTAS RÁPIDAS (T-104) */}
+          {tabActiva === 'respuestas' && (
+            <div
+              id="tab-contenido-respuestas"
+              data-testid="tab-contenido-respuestas"
+              className="max-w-5xl"
+            >
+              <BloqueRespuestasRapidas
+                tenantId={sesion?.tenantActivoId ?? null}
+                nombreAgencia={agencia.nombreComercial}
+              />
             </div>
           )}
         </div>
