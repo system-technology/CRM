@@ -10,11 +10,11 @@
 
 | Campo | Valor |
 |---|---|
-| Última actualización | 2026-10-26 |
-| Actualizado por | Claude (`documentador`) |
+| Última actualización | 2026-10-28 |
+| Actualizado por | Antigravity (`frontend`) |
 | Fase | **Fase 1 del backlog: «Un CRM mostrable y endurecido»** (M1 del [roadmap v2](docs/08-roadmap/01-roadmap.md)). Sin agencia real todavía |
-| Avance | Backend, base de datos, web y CI existen y se integran por PR. Falta lo que convierte esto en producto usable: trabajador con Redis, despliegue, canal de WhatsApp real y web conectada de punta a punta |
-| Próximo hito | Que un mensaje de WhatsApp recibido aparezca como conversación en la bandeja de la web real (hoy se guarda cifrado pero no se convierte en conversación) |
+| Avance | Catálogo gestionable (T-031), importador masivo en 4 pasos con marcadores #viajapro y plantillas CSV (T-029, T-030), ajuste promo_vencida (T-028), tarjeta/ficha de excursión con estado sin catálogo (T-018, T-051, T-019), inicio del asesor (T-020), e inventario de cookies con política y banner de consentimiento accesible (T-094, T-095) completados |
+| Próximo hito | Identidad visual, login, navegación, animaciones, tarjetas por tipo, inicio y marca por agencia (T-033 a T-037, T-039) |
 
 ---
 

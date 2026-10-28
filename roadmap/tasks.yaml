@@ -384,7 +384,7 @@ tasks:
     phase: 1
     priority: P0
     effort: M
-    status: backlog
+    status: done
     depends_on:
       - T-016
     acceptance:
@@ -408,7 +408,7 @@ tasks:
     phase: 1
     priority: P1
     effort: S
-    status: backlog
+    status: done
     depends_on:
       - T-016
     acceptance:
@@ -429,7 +429,7 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: backlog
+    status: done
     depends_on:
       - T-016
     acceptance:
@@ -440,6 +440,8 @@ tasks:
     files:
       - apps/web/src/app/page.tsx
       - apps/web/src/lib/crm-api.ts
+      - apps/web/src/lib/inicio-logica.ts
+      - apps/web/src/components/inicio/bloque-seguimientos-dia.tsx
     source: orquestador:2026-10-26 (cola de Antigravity)
     created_at: 2026-10-26T21:39:01.014Z
   - id: T-021
@@ -585,7 +587,7 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: backlog
+    status: done
     depends_on: []
     acceptance:
       - Configuración › Catálogo ofrece el ajuste promo_vencida con los valores ocultar y tachar, guardado por
@@ -603,7 +605,7 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: backlog
+    status: done
     depends_on: []
     acceptance:
       - El asistente tiene cuatro pasos (archivo, mapeo de columnas, previsualización con errores por fila,
@@ -621,7 +623,7 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: backlog
+    status: done
     depends_on: []
     acceptance:
       - Una pantalla lista las plantillas por tipo de producto (excursión de un día, paquete con hotel) y
@@ -779,7 +781,7 @@ tasks:
     phase: 1
     priority: P2
     effort: M
-    status: backlog
+    status: done
     depends_on:
       - T-032
     acceptance:
@@ -793,6 +795,12 @@ tasks:
       - apps/web/src/lib/crm-api.ts
     source: propietario:2026-10-26 (identidad visual)
     created_at: 2026-10-26T23:32:24.205Z
+    started_at: 2026-10-28T03:00:59.871Z
+    done_at: 2026-10-28T03:00:59.872Z
+    evidence: "Mergeado en main por el PR #114 (rama b/T-037-inicio-saludo-acciones-rapidas) con el CI en verde:
+      format, analyze, tests y los demás checks obligatorios. Cierre automático
+      (.github/workflows/cerrar-tarea.yml)."
+    commit: 332eae9c68167d26e8d28b71a85aeea64bf6abd5
   - id: T-038
     title: "Marca de la agencia en la API: nombre comercial, logo y color de acento por agencia"
     type: feature
@@ -1281,7 +1289,7 @@ tasks:
     phase: 1
     priority: P2
     effort: S
-    status: backlog
+    status: done
     depends_on:
       - T-050
       - T-018
@@ -1585,7 +1593,7 @@ tasks:
     phase: 1
     priority: P1
     effort: S
-    status: blocked
+    status: done
     depends_on: []
     acceptance:
       - La versión de cotización guarda opcion_de_salida_id con tenant_id, clave foránea compuesta hacia
@@ -1598,6 +1606,12 @@ tasks:
     source: hallazgos de la tanda 2026-10-26
     created_at: 2026-10-27T01:51:03.949Z
     blocked_reason: Requiere migración (agente datos) con aprobación del propietario, ya delegada en el orquestador
+    started_at: 2026-10-28T03:10:16.037Z
+    done_at: 2026-10-28T03:10:16.037Z
+    evidence: "Mergeado en main por el PR #121 (rama a/T-062-opcion-de-salida-en-la-version) con el CI en verde:
+      format, analyze, tests y los demás checks obligatorios. Cierre automático
+      (.github/workflows/cerrar-tarea.yml)."
+    commit: 00ea319d80558441fd9d887c0757def4863fb128
   - id: T-063
     title: "Web: enviar opcionDeSalidaId al cotizar y al guardar cuando el producto tiene opciones de salida"
     type: bug
@@ -1843,7 +1857,7 @@ tasks:
     phase: 1
     priority: P0
     effort: M
-    status: backlog
+    status: done
     depends_on: []
     acceptance:
       - Endpoints para crear y editar contacto con teléfono E.164 y para crear oportunidad ligada a la
@@ -1853,6 +1867,12 @@ tasks:
       - apps/api/src/modules/crm/
     source: ruta a la fase 1 (roadmap v3) 2026-10-27
     created_at: 2026-10-28T01:47:57.807Z
+    started_at: 2026-10-28T03:17:14.980Z
+    done_at: 2026-10-28T03:17:14.980Z
+    evidence: "Mergeado en main por el PR #103 (rama a/T-075-contacto-oportunidad-y-seguimientos) con el CI en
+      verde: format, analyze, tests y los demás checks obligatorios. Cierre automático
+      (.github/workflows/cerrar-tarea.yml)."
+    commit: 9d2f4660122a215b80610e9dae325913e5fa8abb
   - id: T-076
     title: Pantalla de contacto y botón «Crear oportunidad» en la conversación
     type: feature
@@ -2176,7 +2196,7 @@ tasks:
     phase: 1
     priority: P1
     effort: S
-    status: backlog
+    status: done
     depends_on: []
     acceptance:
       - Lista de cada cookie y entrada de localStorage de apps/web y apps/api con finalidad, duración y
@@ -2194,7 +2214,7 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: backlog
+    status: done
     depends_on: []
     acceptance:
       - Las cookies esenciales (sesión, CSRF) no piden consentimiento; cualquier analítica o terceros queda

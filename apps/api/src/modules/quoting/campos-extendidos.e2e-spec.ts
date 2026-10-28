@@ -448,6 +448,44 @@ describe('ida y vuelta de los campos extendidos', () => {
       expect(r.json['total']).toEqual({ unidades: '500000', moneda: 'COP' });
     });
 
+    it('la cotización guardada conserva la opción elegida y, recotizada con ella, da el mismo total (T-062)', async () => {
+      const opcion = await admin.opcionDeSalida.findFirstOrThrow({
+        where: { paqueteId, etiqueta: 'Lancha' },
+      });
+      const contacto = await admin.contacto.create({
+        data: {
+          tenantId: TENANT_A,
+          telefonoE164: `+57301${Math.floor(Math.random() * 9e6 + 1e6)}`,
+          nombre: 'Viajero de la lancha',
+        },
+      });
+
+      const guardada = await llamar(TENANT_A, 'POST', '/api/v1/cotizaciones', {
+        contactoId: contacto.id,
+        titulo: 'Isla Palma en lancha',
+        version: { paqueteId, fecha: '2027-02-10', adultos: 2, opcionDeSalidaId: opcion.id },
+      });
+      expect(guardada.estado).toBe(201);
+      const id = guardada.json['id'] as string;
+
+      const leida = await llamar(TENANT_A, 'GET', `/api/v1/cotizaciones/${id}`);
+      expect(leida.estado).toBe(200);
+      const [v1] = leida.json['versiones'] as Array<{
+        opcionDeSalidaId: string | null;
+        venta: unknown;
+      }>;
+      expect(v1?.opcionDeSalidaId).toBe(opcion.id);
+      expect(v1?.venta).toEqual({ unidades: '640000', moneda: 'COP' });
+
+      // Recotizar con lo que devolvió la lectura reproduce el total guardado.
+      const otra = await cotizar(TENANT_A, { opcionDeSalidaId: v1?.opcionDeSalidaId });
+      expect(otra.json['total']).toEqual(v1?.venta);
+
+      // Y el tenant B no la lee.
+      const ajena = await llamar(TENANT_B, 'GET', `/api/v1/cotizaciones/${id}`);
+      expect(ajena.estado).toBe(404);
+    });
+
     it('una opción inexistente es 404', async () => {
       const r = await cotizar(TENANT_A, { opcionDeSalidaId: randomUUID() });
       expect(r.estado).toBe(404);

@@ -47,6 +47,7 @@ export function aVersionDeCotizacion(
     ninos: v.ninos,
     infantes: v.infantes,
     acomodacion: v.acomodacion,
+    opcionDeSalidaId: v.opcionDeSalidaId,
     ...(incluirMargen
       ? {
           politica: {
