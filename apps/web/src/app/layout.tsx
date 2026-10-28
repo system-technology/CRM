@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google';
 import './globals.css';
 import { BannerConsentimientoCookies } from '../components/privacidad/banner-consentimiento-cookies';
 import { PieDePaginaPrivacidad } from '../components/privacidad/pie-de-pagina-privacidad';
+import { AvisoSinConexion } from '../components/comun/aviso-sin-conexion';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'swap' });
 
@@ -18,6 +19,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="es-CO" className={inter.variable}>
       <body className="flex min-h-screen flex-col">
+        <AvisoSinConexion />
         <div className="flex-1">{children}</div>
         <PieDePaginaPrivacidad />
         <BannerConsentimientoCookies />

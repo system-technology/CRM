@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   AlertCircle,
   ArrowRight,
@@ -24,11 +24,17 @@ import * as authApi from '../../lib/auth-api';
 import type { AuthApiError } from '../../lib/auth-api';
 import type { SesionActual, AgenciaDeAcceso } from '@viajapro/contracts';
 import { BotonTurismo } from '../comun/boton-turismo';
+import { sanitizarRutaRedireccion } from '../../lib/errores-sistema';
 
 type PasoIngreso = 'credenciales' | 'selector-agencia' | 'codigo';
 
 export function FormularioIngreso() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const paramRedirigir = searchParams?.get('redirigir');
+  const paramMotivo = searchParams?.get('motivo');
+  const destinoFinal = sanitizarRutaRedireccion(paramRedirigir, '/bandeja');
+
   const [paso, setPaso] = useState<PasoIngreso>('credenciales');
   // Sin valores reales de relleno preestablecidos (T-033)
   const [correo, setCorreo] = useState('');
@@ -61,7 +67,7 @@ export function FormularioIngreso() {
         // Agencia fijada o agencia única
         setExito(true);
         setTimeout(() => {
-          router.push('/bandeja');
+          router.push(destinoFinal);
         }, 500);
       }
     } catch (err) {
@@ -84,7 +90,7 @@ export function FormularioIngreso() {
       setSesion(resSesion);
       setExito(true);
       setTimeout(() => {
-        router.push('/bandeja');
+        router.push(destinoFinal);
       }, 500);
     } catch (err) {
       const errorObj = err as AuthApiError;
@@ -241,6 +247,29 @@ export function FormularioIngreso() {
 
           {/* Tarjeta Principal del Formulario */}
           <div className="mt-6 rounded-2xl border border-neutral-200 bg-white p-6 shadow-xs transition-all duration-300 sm:p-7 dark:border-neutral-800 dark:bg-neutral-900">
+            {/* Aviso de Sesión Expirada (T-109) */}
+            {paramMotivo === 'sesion_expirada' && (
+              <div
+                role="status"
+                aria-live="polite"
+                data-testid="aviso-sesion-expirada"
+                className="mb-5 flex items-start gap-2.5 rounded-xl border border-sky-200 bg-sky-50/90 p-3.5 text-xs text-sky-950 shadow-2xs dark:border-sky-900/60 dark:bg-sky-950/40 dark:text-sky-200"
+              >
+                <Lock className="mt-0.5 h-4 w-4 shrink-0 text-sky-600 dark:text-sky-400" />
+                <div>
+                  <p className="font-bold">Tu sesión ha expirado por inactividad</p>
+                  <p className="mt-0.5 leading-relaxed">
+                    Ingresa tus credenciales nuevamente para continuar de inmediato hacia tu
+                    destino:{' '}
+                    <span className="font-mono font-bold text-sky-700 dark:text-sky-300">
+                      {destinoFinal}
+                    </span>
+                    .
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* Indicador de modo API Real / Simulado */}
             <div
               className={`mb-5 flex items-start gap-2.5 rounded-xl border p-3 text-xs leading-relaxed ${

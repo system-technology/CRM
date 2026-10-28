@@ -5,17 +5,21 @@ import { FormularioIngreso } from './formulario-ingreso';
 import * as authApi from '../../lib/auth-api';
 
 const pushMock = vi.fn();
+let mockSearchParams = new URLSearchParams();
+
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
     push: pushMock,
     replace: vi.fn(),
   }),
+  useSearchParams: () => mockSearchParams,
 }));
 
 describe('FormularioIngreso (0c.29)', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     pushMock.mockClear();
+    mockSearchParams = new URLSearchParams();
   });
 
   afterEach(() => {
@@ -229,5 +233,58 @@ describe('FormularioIngreso (0c.29)', () => {
     fireEvent.click(botonVolver);
 
     expect(screen.getByLabelText(/^contraseña$/i)).toBeDefined();
+  });
+
+  it('muestra aviso de sesión expirada cuando motivo=sesion_expirada e indica el destino conservado (T-109)', () => {
+    mockSearchParams = new URLSearchParams('motivo=sesion_expirada&redirigir=%2Fcotizador');
+    render(<FormularioIngreso />);
+
+    const aviso = screen.getByTestId('aviso-sesion-expirada');
+    expect(aviso).toBeDefined();
+    expect(aviso.textContent).toContain('Tu sesión ha expirado por inactividad');
+    expect(aviso.textContent).toContain('/cotizador');
+  });
+
+  it('redirige al destino conservado en parametro redirigir tras inicio exitoso (T-109)', async () => {
+    mockSearchParams = new URLSearchParams('redirigir=%2Fcotizaciones%2F123');
+
+    vi.spyOn(authApi, 'iniciarSesionApi').mockResolvedValue({
+      identidad: {
+        id: '01932000-0000-7000-8000-000000000001',
+        correo: 'asesor@viajapro.com',
+        nombre: 'Asesor',
+      },
+      agencias: [
+        {
+          id: '01932000-0000-7000-8000-00000000000a',
+          nombre: 'Viajes El Sol',
+          slug: 'viajes-el-sol',
+        },
+      ],
+      tenantActivoId: '01932000-0000-7000-8000-00000000000a',
+      acceso: {
+        usuarioId: '01932000-0000-7000-8000-000000000001',
+        rol: 'ASESOR',
+        permisos: ['conversaciones.ver_todas'],
+      },
+    });
+
+    render(<FormularioIngreso />);
+
+    fireEvent.change(screen.getByLabelText(/correo electrónico/i), {
+      target: { value: 'asesor@viajapro.com' },
+    });
+    fireEvent.change(screen.getByLabelText(/^contraseña$/i), {
+      target: { value: 'ClaveSegura123*' },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /ingresar a viajapro/i }));
+
+    await waitFor(
+      () => {
+        expect(pushMock).toHaveBeenCalledWith('/cotizaciones/123');
+      },
+      { timeout: 1000 },
+    );
   });
 });

@@ -1,3 +1,4 @@
+import React, { Suspense } from 'react';
 import { redirect } from 'next/navigation';
 import { estaAuthHabilitada } from '../../lib/auth-api';
 import { FormularioIngreso } from '../../components/auth/formulario-ingreso';
@@ -18,5 +19,9 @@ export default function IngresarPage() {
     redirect('/bandeja');
   }
 
-  return <FormularioIngreso />;
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-neutral-50 dark:bg-neutral-950" />}>
+      <FormularioIngreso />
+    </Suspense>
+  );
 }
