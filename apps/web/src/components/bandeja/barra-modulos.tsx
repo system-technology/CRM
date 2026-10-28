@@ -30,11 +30,16 @@ import type { SesionActual } from '@viajapro/contracts';
 import { ModalBusquedaGlobal } from '../busqueda/modal-busqueda-global';
 import { PanelNotificaciones } from '../notificaciones/panel-notificaciones';
 import {
-  generarAlertasOperativas,
-  marcarAlertaLeida,
-  contarAlertasNoLeidas,
-  type AlertaOperativa,
-} from '../../lib/notificaciones-logica';
+  type NotificacionWeb,
+  generarNotificacionesIniciales,
+  procesarEventoSocketNotificacion,
+  contarNotificacionesNoLeidas,
+  marcarNotificacionLeida,
+  marcarTodasNotificacionesLeidas,
+  descartarNotificacion,
+} from '../../lib/notificaciones-web';
+import { generarAlertasOperativas } from '../../lib/notificaciones-logica';
+import { obtenerPendientesDelDiaApi } from '../../lib/crm-api';
 import { usePermisos } from '../../lib/permisos';
 import { useModoDemo } from '../../lib/modo-demo';
 import { cambiarAgenciaActivaApi, cerrarSesionApi } from '../../lib/auth-api';
@@ -88,7 +93,9 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
   const [barraExpandida, setBarraExpandida] = useState(false);
   const [busquedaAbierta, setBusquedaAbierta] = useState(false);
   const [panelNotifAbierto, setPanelNotifAbierto] = useState(false);
-  const [alertas, setAlertas] = useState<AlertaOperativa[]>([]);
+  const [notificaciones, setNotificaciones] = useState<NotificacionWeb[]>(() =>
+    generarNotificacionesIniciales(null, undefined, generarAlertasOperativas()),
+  );
   const [menuSesionAbierto, setMenuSesionAbierto] = useState(false);
   const [cambiandoAgencia, setCambiandoAgencia] = useState<string | null>(null);
   const [cerrandoSesion, setCerrandoSesion] = useState(false);
@@ -115,8 +122,36 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
         setBarraExpandida(true);
       }
     }
-    // Inicializar alertas operativas
-    setAlertas(generarAlertasOperativas());
+
+    // 1. Cargar seguimientos pendientes del día de la API si está disponible
+    void obtenerPendientesDelDiaApi()
+      .then((pendientes) => {
+        if (pendientes) {
+          setNotificaciones((prev) => {
+            const nuevas = generarNotificacionesIniciales(
+              pendientes,
+              undefined,
+              generarAlertasOperativas(),
+            );
+            const idsNuevas = new Set(nuevas.map((n) => n.id));
+            const previasSinDuplicados = prev.filter((p) => !idsNuevas.has(p.id));
+            return [...previasSinDuplicados, ...nuevas];
+          });
+        }
+      })
+      .catch(() => null);
+
+    // 2. Suscribirse a eventos Socket.IO en tiempo real (T-110)
+    const desuscribir =
+      typeof inboxSocketManager?.suscribirEvento === 'function'
+        ? inboxSocketManager.suscribirEvento((evento) => {
+            setNotificaciones((prev) => procesarEventoSocketNotificacion(evento, prev));
+          })
+        : () => {};
+
+    return () => {
+      desuscribir();
+    };
   }, []);
 
   const alternarSidebar = () => {
@@ -157,11 +192,15 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
   };
 
   const manejarMarcarLeida = (id: string) => {
-    setAlertas((prev) => marcarAlertaLeida(prev, id));
+    setNotificaciones((prev) => marcarNotificacionLeida(prev, id));
   };
 
   const manejarMarcarTodasLeidas = () => {
-    setAlertas((prev) => prev.map((a) => ({ ...a, leida: true })));
+    setNotificaciones((prev) => marcarTodasNotificacionesLeidas(prev));
+  };
+
+  const manejarDescartar = (id: string) => {
+    setNotificaciones((prev) => descartarNotificacion(prev, id));
   };
 
   const manejarCambioAgencia = async (tenantId: string) => {
@@ -194,7 +233,7 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
     }
   };
 
-  const conteoNoLeidas = contarAlertasNoLeidas(alertas);
+  const conteoNoLeidas = contarNotificacionesNoLeidas(notificaciones);
 
   const nombreUsuario = sesion?.identidad?.nombre ?? 'Asesor ViajaPro';
   const correoUsuario = sesion?.identidad?.correo ?? 'asesor@viajapro.com';
@@ -838,6 +877,26 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
 
             {/* Acciones: Cerrar Sesión y Onboarding */}
             <div className="mt-3 space-y-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setMenuSesionAbierto(false);
+                  setPanelNotifAbierto(true);
+                }}
+                data-testid="boton-abrir-notificaciones-perfil"
+                className="flex min-h-[44px] w-full items-center justify-between rounded-xl px-2.5 py-2 text-xs font-semibold text-neutral-700 transition hover:bg-neutral-100 dark:text-neutral-200 dark:hover:bg-neutral-800"
+              >
+                <span className="flex items-center gap-2">
+                  <Bell className="text-acento-600 dark:text-acento-400 h-4 w-4" />
+                  <span>Notificaciones y Alertas</span>
+                </span>
+                {conteoNoLeidas > 0 && (
+                  <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-bold text-red-700 dark:bg-red-950 dark:text-red-300">
+                    {conteoNoLeidas}
+                  </span>
+                )}
+              </button>
+
               <Link
                 href="/bienvenida"
                 onClick={() => setMenuSesionAbierto(false)}
@@ -910,9 +969,10 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
       <PanelNotificaciones
         abierto={panelNotifAbierto}
         alCerrar={() => setPanelNotifAbierto(false)}
-        alertas={alertas}
+        notificaciones={notificaciones}
         alMarcarLeida={manejarMarcarLeida}
         alMarcarTodasLeidas={manejarMarcarTodasLeidas}
+        alDescartar={manejarDescartar}
       />
     </>
   );

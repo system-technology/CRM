@@ -258,4 +258,28 @@ describe('BarraModulos y Selector de Sesión (ADR-0011)', () => {
       expect(toggleDemo.getAttribute('aria-checked')).toBe('true');
     });
   });
+
+  describe('Notificaciones Web y Socket en Tiempo Real (T-110)', () => {
+    it('abre el panel de notificaciones al hacer clic en la campana de escritorio', () => {
+      render(<BarraModulos sesionInicial={SESION_ASESOR} />);
+
+      const botonCampana = screen.getByRole('button', {
+        name: /Alertas operativas|Notificaciones/i,
+      });
+      fireEvent.click(botonCampana);
+
+      expect(screen.getByRole('dialog', { name: /Panel de Notificaciones/i })).toBeDefined();
+    });
+
+    it('abre el panel de notificaciones desde el diálogo de perfil', () => {
+      render(<BarraModulos sesionInicial={SESION_ASESOR} />);
+
+      fireEvent.click(screen.getByTestId('boton-avatar-sesion'));
+      const botonNotifPerfil = screen.getByTestId('boton-abrir-notificaciones-perfil');
+      expect(botonNotifPerfil).toBeDefined();
+
+      fireEvent.click(botonNotifPerfil);
+      expect(screen.getByRole('dialog', { name: /Panel de Notificaciones/i })).toBeDefined();
+    });
+  });
 });
