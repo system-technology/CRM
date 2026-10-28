@@ -33,6 +33,7 @@ import {
 import { AvisoConfiguracionTenant } from '../../components/crm/aviso-configuracion-tenant';
 import { FichaDetallePaquete } from '../../components/catalogo/ficha-detalle-paquete';
 import { TarjetaSalidaPublicada } from '../../components/catalogo/tarjeta-salida-publicada';
+import { EstadoSinCatalogo } from '../../components/catalogo/estado-sin-catalogo';
 import { MOCK_PAQUETES_CATALOGO, type PaqueteConDetalle } from '../../lib/mock-catalogo';
 import {
   filtrarPaquetes,
@@ -322,7 +323,14 @@ export default function CatalogoPage() {
                 <EsqueletoGridTarjetas cantidad={6} />
               ) : usarReal && !errorTenant ? (
                 /* LISTADO REAL DE SALIDAS PUBLICADAS (0c.16.1) */
-                salidasFiltradas.length === 0 ? (
+                salidasReales.length === 0 ? (
+                  /* Estado «Sin catálogo todavía» (T-019) */
+                  <EstadoSinCatalogo
+                    onImportar={() => setAsistenteImportacionAbierto(true)}
+                    hrefCrear="/catalogo/gestion"
+                    contexto="catalogo"
+                  />
+                ) : salidasFiltradas.length === 0 ? (
                   <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-neutral-300 py-16 text-center dark:border-neutral-800">
                     <Calendar className="h-10 w-10 text-neutral-400" />
                     <h3 className="mt-3 text-sm font-bold text-neutral-800 dark:text-white">
@@ -350,7 +358,13 @@ export default function CatalogoPage() {
                   </div>
                 )
               ) : /* LISTADO MOCK (MODO SIMULADO O FALLBACK) */
-              paquetesFiltrados.length === 0 ? (
+              MOCK_PAQUETES_CATALOGO.length === 0 ? (
+                <EstadoSinCatalogo
+                  onImportar={() => setAsistenteImportacionAbierto(true)}
+                  hrefCrear="/catalogo/gestion"
+                  contexto="catalogo"
+                />
+              ) : paquetesFiltrados.length === 0 ? (
                 <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-neutral-300 py-16 text-center dark:border-neutral-800">
                   <Package className="h-10 w-10 text-neutral-400" />
                   <h3 className="mt-3 text-sm font-bold text-neutral-800 dark:text-white">
