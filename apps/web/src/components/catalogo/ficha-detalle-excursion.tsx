@@ -123,9 +123,29 @@ export function FichaDetalleExcursion({ producto, alCerrar }: FichaDetalleExcurs
                 Tarifa de referencia:
               </span>
               <div className="mt-1 font-bold text-neutral-800 dark:text-neutral-200">
+                {producto.presentacion?.listaTachada && (
+                  <span
+                    data-testid="precio-lista-tachada"
+                    className="mr-2 text-xs text-neutral-400 line-through dark:text-neutral-500"
+                  >
+                    {new Intl.NumberFormat('es-CO', {
+                      style: 'currency',
+                      currency: producto.presentacion.listaTachada.moneda,
+                      maximumFractionDigits: 0,
+                    }).format(Number(producto.presentacion.listaTachada.unidades))}
+                  </span>
+                )}
                 <span className="text-base text-teal-700 dark:text-teal-400">
                   {producto.precioEtiqueta}
                 </span>
+                {producto.presentacion?.leyenda === 'PROMO_VENCIDA' && (
+                  <span
+                    data-testid="badge-promo-vencida"
+                    className="ml-2 rounded bg-neutral-200 px-1.5 py-0.5 text-[10px] font-bold text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300"
+                  >
+                    Promo vencida
+                  </span>
+                )}
               </div>
             </div>
           </div>
