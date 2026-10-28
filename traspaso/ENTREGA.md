@@ -1,3 +1,38 @@
+# Entrega — T-108: Páginas públicas /privacidad, /terminos y /cookies con el texto aprobado y enlace en el pie y en el login — 2026-10-28
+
+## Identificación
+- **Tarea:** `T-108` (roadmap/tasks.yaml)
+- **Rama:** `b/T-108-paginas-legales-publicas`
+- **Carril:** `b` (Frontend / Web)
+
+## Qué se construyó y auditó
+
+1. **Páginas Legales Públicas Accesibles:**
+   - Creada página `/privacidad` (`apps/web/src/app/privacidad/page.tsx`) con el marco de la Ley 1581 de 2012, Decreto 1074 de 2015, distinción de roles Responsable vs Encargado, tratamiento de datos sensibles (R10) y procedimientos de Habeas Data con canal PQRS.
+   - Creada página `/terminos` (`apps/web/src/app/terminos/page.tsx`) con términos de licenciamiento SaaS B2B para agencias de viajes, reglas de WhatsApp Cloud API (ventana de 24h, plantillas, anti-SPAM), prevención y denuncia de ESCNNA (Leyes 679/2001 y 1336/2009) y propiedad y aislamiento de datos (RLS R1, R2).
+   - Creada página `/cookies` (`apps/web/src/app/cookies/page.tsx`) con tabla de inventario técnico desde `INVENTARIO_COOKIES` y botón de apertura de preferencias (`BotonAbrirPreferencias`).
+   - Todas las páginas cuentan con la marca visible «borrador en revisión jurídica» (`badge-borrador`) conforme al criterio de aceptación mientras se formaliza T-093.
+
+2. **Enlaces en Pie de Página y Pantalla de Ingreso:**
+   - Actualizado `PieDePaginaPrivacidad` (`apps/web/src/components/privacidad/pie-de-pagina-privacidad.tsx`) con enlaces a las tres páginas y botón interactivo de cookies, garantizando touch targets `>= 44 px` y legibilidad en viewports móviles de 375 px.
+   - Actualizado `FormularioIngreso` (`apps/web/src/components/auth/formulario-ingreso.tsx`) integrando el pie legal con los tres enlaces para información previa al inicio de sesión.
+   - Actualizada la página complementaria `apps/web/src/app/politica-cookies/page.tsx` con la insignia de borrador.
+
+3. **Pruebas y Verificación:**
+   - Creadas 4 suites unitarias dedicadas: `privacidad/page.spec.tsx` (4 tests), `terminos/page.spec.tsx` (4 tests), `cookies/page.spec.tsx` (3 tests), y `pie-de-pagina-privacidad.spec.tsx` (3 tests).
+   - Total `@viajapro/web`: 77 suites, 620 tests en verde.
+   - Typecheck (9/9), Linter (7/7) y Next.js build (21 rutas estáticas/dinámicas) 100% en verde.
+   - Ganchos y fronteras (`pnpm test:hooks`): 59/59, 19/19, 6/6 en verde.
+
+## Verificación de Compuertas
+- **Pruebas unitarias (@viajapro/web):** 77 suites, 620 pruebas en verde.
+- **Typecheck:** 9/9 paquetes en verde.
+- **Linter:** 7/7 paquetes en verde.
+- **Compilación de producción (Next.js):** 21/21 rutas compiladas exitosamente sin errores de prerender ni tipos.
+- **Fronteras y ganchos de seguridad (`pnpm test:hooks`):** 59/59 casos de política de rama, 19/19 detección de secretos, 6/6 fronteras de módulos.
+
+---
+
 # Entrega — T-008: Adaptar el cliente de la web a la retirada de la ruta antigua de cotizacion de paquetes — 2026-10-28
 
 ## Identificación
