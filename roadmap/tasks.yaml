@@ -2194,7 +2194,7 @@ tasks:
     phase: 1
     priority: P1
     effort: S
-    status: backlog
+    status: done
     depends_on: []
     acceptance:
       - Lista de cada cookie y entrada de localStorage de apps/web y apps/api con finalidad, duración y
@@ -2212,7 +2212,7 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: backlog
+    status: done
     depends_on: []
     acceptance:
       - Las cookies esenciales (sesión, CSRF) no piden consentimiento; cualquier analítica o terceros queda
