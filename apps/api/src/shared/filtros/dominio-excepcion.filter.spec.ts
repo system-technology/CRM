@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import { DomainError } from '@viajapro/domain';
 import { describe, expect, it, vi } from 'vitest';
 import { DominioExcepcionFilter } from './dominio-excepcion.filter.js';
@@ -37,5 +38,14 @@ describe('DominioExcepcionFilter: errores de cliente de body-parser (AUD-017)', 
     expect(estadoPara(deHttpErrors(500, false))).toBe(500);
     expect(estadoPara(deHttpErrors(413, false))).toBe(500);
     expect(estadoPara(new Error('boom'))).toBe(500);
+  });
+});
+
+describe('DominioExcepcionFilter: PII fuera de los logs (T-099)', () => {
+  it('el log de un error de dominio no lleva el teléfono completo', () => {
+    const warn = vi.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+    estadoPara(new Otro('Contacto 573001234567 inválido'));
+    expect(String(warn.mock.calls[0]?.[0])).not.toContain('573001234567');
+    warn.mockRestore();
   });
 });
