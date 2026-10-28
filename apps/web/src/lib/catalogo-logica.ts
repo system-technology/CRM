@@ -348,3 +348,109 @@ export function verificarCargosEnDestinoSeparados(
     totalNuncaIncluyeCargos: true,
   };
 }
+
+export type TipoProductoTurismo =
+  | 'isla_beach_club'
+  | 'reserva_natural'
+  | 'city_tour'
+  | 'aventura_nautica'
+  | 'paquete_hotel'
+  | 'excursion_general';
+
+/**
+ * Infiere el tipo de excursión a partir del título, descripción o etiquetas (T-036).
+ * Asigna identidades de color, icono y degradado en base a vocabulario turístico.
+ */
+export function inferirTipoProducto(nombre: string, etiquetas?: string[]): TipoProductoTurismo {
+  const texto = `${nombre} ${(etiquetas ?? []).join(' ')}`.toLowerCase();
+
+  // 1. Ecoturismo y reservas naturales (alta prioridad semántica)
+  if (
+    texto.includes('reserva') ||
+    texto.includes('parque natural') ||
+    texto.includes('manglar') ||
+    texto.includes('manglares') ||
+    texto.includes('selva') ||
+    texto.includes('fauna') ||
+    texto.includes('flora') ||
+    texto.includes('ecotur') ||
+    /\beco\b/.test(texto) ||
+    texto.includes('senderismo') ||
+    texto.includes('avistamiento') ||
+    texto.includes('cascada') ||
+    texto.includes('cueva')
+  ) {
+    return 'reserva_natural';
+  }
+
+  // 2. Playas, islas y clubes de playa
+  if (
+    texto.includes('isla') ||
+    texto.includes('islas') ||
+    texto.includes('playa') ||
+    texto.includes('beach') ||
+    texto.includes('cholon') ||
+    texto.includes('cholón') ||
+    texto.includes('rosario') ||
+    texto.includes('baru') ||
+    texto.includes('barú') ||
+    texto.includes('cayo') ||
+    texto.includes('palmar') ||
+    texto.includes('beach club')
+  ) {
+    return 'isla_beach_club';
+  }
+
+  // 3. Ciudades, cultura e historia
+  if (
+    texto.includes('city') ||
+    texto.includes('historico') ||
+    texto.includes('histórico') ||
+    texto.includes('ciudad') ||
+    texto.includes('cultural') ||
+    texto.includes('chiva') ||
+    texto.includes('castillo') ||
+    texto.includes('museo') ||
+    texto.includes('comuna') ||
+    texto.includes('graffiti') ||
+    texto.includes('monumento') ||
+    texto.includes('recorrido')
+  ) {
+    return 'city_tour';
+  }
+
+  // 4. Náutica, buceo y deportes de agua
+  if (
+    texto.includes('lancha') ||
+    texto.includes('bote') ||
+    texto.includes('yate') ||
+    texto.includes('nautic') ||
+    texto.includes('náutic') ||
+    texto.includes('buceo') ||
+    texto.includes('snorkel') ||
+    texto.includes('careteo') ||
+    texto.includes('pesca') ||
+    texto.includes('kayak') ||
+    texto.includes('catamaran') ||
+    texto.includes('catamarán') ||
+    texto.includes('jetski') ||
+    texto.includes('rafting')
+  ) {
+    return 'aventura_nautica';
+  }
+
+  // 5. Acomodación y hotel / resorts
+  if (
+    texto.includes('hotel') ||
+    texto.includes('acomodacion') ||
+    texto.includes('acomodación') ||
+    texto.includes('noches') ||
+    texto.includes('resort') ||
+    texto.includes('hospedaje') ||
+    texto.includes('alojamiento')
+  ) {
+    return 'paquete_hotel';
+  }
+
+  return 'excursion_general';
+}

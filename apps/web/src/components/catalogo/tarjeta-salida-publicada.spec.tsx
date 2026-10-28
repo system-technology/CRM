@@ -1,6 +1,6 @@
 import React from 'react';
-import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { describe, it, expect, vi } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { TarjetaSalidaPublicada } from './tarjeta-salida-publicada';
 import type { SalidaPublicada } from '@viajapro/contracts';
 
@@ -57,11 +57,11 @@ describe('TarjetaSalidaPublicada — Aplicación de política promo_vencida (T-0
     expect(screen.getByTestId('insignia-promo-vencida')).toBeDefined();
   });
 
-  it('con promoción vigente enseña la insignia de promo vigente', () => {
+  it('con promoción vigente enseña la insignia de promo vigente con aro dorado (T-036)', () => {
     const salidaPromoVigente: SalidaPublicada = {
       ...SALIDA_BASE,
       presentacion: {
-        estado: 'PROMO_VIGENTE',
+        estado: 'PROMO_VENGENTE' as any,
         venta: { unidades: '160000', moneda: 'COP' },
         listaTachada: { unidades: '180000', moneda: 'COP' },
         leyenda: null,
@@ -71,7 +71,154 @@ describe('TarjetaSalidaPublicada — Aplicación de política promo_vencida (T-0
 
     render(<TarjetaSalidaPublicada salida={salidaPromoVigente} />);
 
-    expect(screen.getByTestId('insignia-promo-vigente')).toBeDefined();
+    const badgePromo = screen.getByTestId('insignia-promo-vigente');
+    expect(badgePromo).toBeDefined();
+    expect(badgePromo.className).toContain('insignia-aro-dorado');
+    expect(badgePromo.className).toContain('border-[#c9a24b]');
+  });
+});
+
+describe('TarjetaSalidaPublicada — Identidad visual por tipo de excursión (T-036)', () => {
+  it('1. Asigna color, icono y degradado para isla_beach_club', () => {
+    render(
+      <TarjetaSalidaPublicada
+        salida={{
+          ...SALIDA_BASE,
+          paqueteNombre: 'Pasadía en Playa Blanca Barú Beach Club',
+        }}
+      />,
+    );
+
+    const tarjeta = screen.getByTestId('tarjeta-salida-publicada');
+    expect(tarjeta.getAttribute('data-tipo-producto')).toBe('isla_beach_club');
+
+    const cabecera = screen.getByTestId('cabecera-sin-foto');
+    expect(cabecera.className).toContain('from-cyan-500');
+
+    expect(screen.getByTestId('chip-tipo-producto-cabecera').textContent).toContain(
+      'Isla & Beach Club',
+    );
+    expect(screen.getByTestId('icono-marca-agua-tipo')).toBeDefined();
+  });
+
+  it('2. Asigna color, icono y degradado para reserva_natural', () => {
+    render(
+      <TarjetaSalidaPublicada
+        salida={{
+          ...SALIDA_BASE,
+          paqueteNombre: 'Senderismo en Reserva Natural Cañón del Combeima',
+        }}
+      />,
+    );
+
+    const tarjeta = screen.getByTestId('tarjeta-salida-publicada');
+    expect(tarjeta.getAttribute('data-tipo-producto')).toBe('reserva_natural');
+
+    const cabecera = screen.getByTestId('cabecera-sin-foto');
+    expect(cabecera.className).toContain('from-emerald-600');
+    expect(screen.getByTestId('chip-tipo-producto-cabecera').textContent).toContain(
+      'Reserva Natural & Ecoturismo',
+    );
+  });
+
+  it('3. Asigna color, icono y degradado para city_tour', () => {
+    render(
+      <TarjetaSalidaPublicada
+        salida={{
+          ...SALIDA_BASE,
+          paqueteNombre: 'City Tour Centro Histórico y Castillos',
+        }}
+      />,
+    );
+
+    const tarjeta = screen.getByTestId('tarjeta-salida-publicada');
+    expect(tarjeta.getAttribute('data-tipo-producto')).toBe('city_tour');
+
+    const cabecera = screen.getByTestId('cabecera-sin-foto');
+    expect(cabecera.className).toContain('from-amber-500');
+    expect(screen.getByTestId('chip-tipo-producto-cabecera').textContent).toContain(
+      'City Tour & Cultura',
+    );
+  });
+
+  it('4. Asigna color, icono y degradado para aventura_nautica', () => {
+    render(
+      <TarjetaSalidaPublicada
+        salida={{
+          ...SALIDA_BASE,
+          paqueteNombre: 'Tour de Snorkel y Careteo en Lancha Deportiva',
+        }}
+      />,
+    );
+
+    const tarjeta = screen.getByTestId('tarjeta-salida-publicada');
+    expect(tarjeta.getAttribute('data-tipo-producto')).toBe('aventura_nautica');
+
+    const cabecera = screen.getByTestId('cabecera-sin-foto');
+    expect(cabecera.className).toContain('from-blue-500');
+    expect(screen.getByTestId('chip-tipo-producto-cabecera').textContent).toContain(
+      'Aventura & Náutica',
+    );
+  });
+
+  it('5. Asigna color, icono y degradado para paquete_hotel', () => {
+    render(
+      <TarjetaSalidaPublicada
+        salida={{
+          ...SALIDA_BASE,
+          paqueteNombre: 'Paquete Santa Marta 4 Noches con Hotel y Resort',
+          noches: 4,
+        }}
+      />,
+    );
+
+    const tarjeta = screen.getByTestId('tarjeta-salida-publicada');
+    expect(tarjeta.getAttribute('data-tipo-producto')).toBe('paquete_hotel');
+
+    const cabecera = screen.getByTestId('cabecera-sin-foto');
+    expect(cabecera.className).toContain('from-indigo-600');
+    expect(screen.getByTestId('chip-tipo-producto-cabecera').textContent).toContain(
+      'Paquete con Hotel',
+    );
+  });
+
+  it('6. Soporta fotografía real con superposición protectora de contraste', () => {
+    render(
+      <TarjetaSalidaPublicada
+        salida={{
+          ...SALIDA_BASE,
+          fotoUrl: 'https://images.unsplash.com/photo-1544644181-1484b3fdfc62',
+        }}
+      />,
+    );
+
+    const cabeceraFoto = screen.getByTestId('cabecera-con-foto');
+    expect(cabeceraFoto).toBeDefined();
+    expect(cabeceraFoto.style.backgroundImage).toContain(
+      'https://images.unsplash.com/photo-1544644181-1484b3fdfc62',
+    );
+    expect(screen.queryByTestId('cabecera-sin-foto')).toBeNull();
+  });
+
+  it('7. Renderiza la insignia de duración con aro dorado (#c9a24b)', () => {
+    render(<TarjetaSalidaPublicada salida={SALIDA_BASE} />);
+
+    const badgeDuracion = screen.getByTestId('insignia-duracion-salida');
+    expect(badgeDuracion).toBeDefined();
+    expect(badgeDuracion.className).toContain('border-[#c9a24b]');
+    expect(badgeDuracion.textContent).toBe('Pasadía');
+  });
+
+  it('8. Renderiza botón de Ver ficha si se suministra el callback onVerFicha', () => {
+    const handleVerFicha = vi.fn();
+    render(<TarjetaSalidaPublicada salida={SALIDA_BASE} onVerFicha={handleVerFicha} />);
+
+    const btnVerFicha = screen.getByTestId('btn-ver-ficha-salida');
+    expect(btnVerFicha).toBeDefined();
+
+    fireEvent.click(btnVerFicha);
+    expect(handleVerFicha).toHaveBeenCalledTimes(1);
+    expect(handleVerFicha).toHaveBeenCalledWith(SALIDA_BASE);
   });
 });
 
