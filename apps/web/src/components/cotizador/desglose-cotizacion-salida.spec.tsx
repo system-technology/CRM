@@ -175,4 +175,43 @@ describe('DesgloseCotizacionSalida — cargos en destino (T-063)', () => {
     );
     expect(screen.queryByTestId('cargos-en-destino')).toBeNull();
   });
+
+  it('muestra listaTachada y leyenda «promo vencida» en la línea cuando viene en presentacion (T-051)', () => {
+    const cotizacionConPromoVencida: CotizacionDeSalida = {
+      ...base,
+      lineas: [
+        {
+          tarifaId: '01932000-0000-7000-8000-0000000000f1',
+          nombre: 'Tarifa Regular Adulto',
+          unidad: 'POR_PERSONA',
+          cubrePasajeros: 1,
+          precioUnitario: { unidades: '260000', moneda: 'COP' },
+          veces: 2,
+          total: { unidades: '520000', moneda: 'COP' },
+          masBarata: false,
+          presentacion: {
+            estado: 'PROMO_VENCIDA',
+            venta: { unidades: '260000', moneda: 'COP' },
+            listaTachada: { unidades: '220000', moneda: 'COP' },
+            leyenda: 'PROMO_VENCIDA',
+            promoVigente: false,
+          },
+        },
+      ],
+    };
+
+    render(
+      <DesgloseCotizacionSalida
+        cotizacion={cotizacionConPromoVencida}
+        copiado={false}
+        alCopiarWhatsApp={vi.fn()}
+      />,
+    );
+
+    const tachado = screen.getByTestId('linea-lista-tachada');
+    expect(tachado.textContent).toContain('220.000');
+
+    const leyenda = screen.getByTestId('linea-promo-vencida');
+    expect(leyenda.textContent).toBe('Promo vencida');
+  });
 });
