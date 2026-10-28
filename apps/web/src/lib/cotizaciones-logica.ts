@@ -25,6 +25,7 @@ export interface EntradaComposicionVersion {
   infantes?: number | undefined;
   acomodacion?: Acomodacion | undefined;
   vigenteHasta?: string | undefined;
+  opcionDeSalidaId?: string | undefined;
   [key: string]: unknown;
 }
 
@@ -58,6 +59,9 @@ export function armarComposicionDeVersion(
   }
   if (entrada.acomodacion) {
     composicionLimpia['acomodacion'] = entrada.acomodacion;
+  }
+  if (entrada.opcionDeSalidaId) {
+    composicionLimpia['opcionDeSalidaId'] = entrada.opcionDeSalidaId;
   }
   if (entrada.vigenteHasta) {
     composicionLimpia['vigenteHasta'] = entrada.vigenteHasta;

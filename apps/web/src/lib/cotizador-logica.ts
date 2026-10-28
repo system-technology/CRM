@@ -190,6 +190,13 @@ export function interpretarErrorCotizacion(error: unknown): {
         esErrorAgencia: true,
       };
     }
+    if (code === 'OPCION_DE_SALIDA_REQUERIDA') {
+      return {
+        codigo: 'OPCION_DE_SALIDA_REQUERIDA',
+        mensaje: 'Este producto se cotiza por opción de salida: elige una antes de cotizar.',
+        esErrorAgencia: false,
+      };
+    }
     if (code === 'PAQUETE_NO_ENCONTRADO') {
       return {
         codigo: 'PAQUETE_NO_ENCONTRADO',
@@ -212,6 +219,42 @@ export function interpretarErrorCotizacion(error: unknown): {
     mensaje: msg,
     esErrorAgencia: false,
   };
+}
+
+/** Forma mínima de una opción de salida para decidir si hay que elegir (contrato `Paquete`). */
+interface OpcionElegible {
+  id: string;
+  activa: boolean;
+  orden: number;
+}
+
+/** Solo las opciones activas, en su orden. Las inactivas no se ofrecen ni se envían. */
+export function opcionesActivasDeSalida<T extends OpcionElegible>(
+  opciones: readonly T[] | undefined | null,
+): T[] {
+  return (opciones ?? []).filter((o) => o.activa).sort((a, b) => a.orden - b.orden);
+}
+
+/**
+ * La opción de salida a enviar a la API: la elegida si sigue siendo una opción activa del
+ * producto. `undefined` si el producto no tiene opciones (nada cambia) o no hay elección válida.
+ */
+export function opcionDeSalidaAEnviar(
+  opciones: readonly OpcionElegible[] | undefined | null,
+  elegidaId: string,
+): string | undefined {
+  return opcionesActivasDeSalida(opciones).find((o) => o.id === elegidaId)?.id;
+}
+
+/** `true` si el producto tiene opciones activas y todavía no hay una elegida válida. */
+export function faltaElegirOpcionDeSalida(
+  opciones: readonly OpcionElegible[] | undefined | null,
+  elegidaId: string,
+): boolean {
+  return (
+    opcionesActivasDeSalida(opciones).length > 0 &&
+    opcionDeSalidaAEnviar(opciones, elegidaId) === undefined
+  );
 }
 
 /**
