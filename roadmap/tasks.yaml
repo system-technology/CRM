@@ -1958,3 +1958,187 @@ tasks:
     source: ruta a la fase 1 (roadmap v3) 2026-10-27
     created_at: 2026-10-28T01:47:57.807Z
     blocked_reason: Depende de Redis y trabajador en staging y del número de prueba de Meta con el propietario presente
+  - id: T-082
+    title: "Migración: tabla seguimientos con RLS para varios seguimientos por oportunidad y por conversación
+      (T-077)"
+    type: feature
+    phase: 1
+    priority: P0
+    effort: M
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Tabla seguimientos con tenant_id, RLS USING y WITH CHECK, FK compuestas, CHECK de exactamente una de
+        oportunidad_id o conversacion_id e índice parcial de pendientes por asesor
+      - Aserciones en aislamiento.spec.ts; adaptador Prisma de PuertoSeguimientos que sustituye al provisional
+        en crm.module.ts
+    files:
+      - packages/database/prisma/
+      - apps/api/src/modules/crm/
+    source: auditoria de ciberseguridad 2026-10-28
+    created_at: 2026-10-28T02:09:17.389Z
+  - id: T-083
+    title: "Corregir .github/proteccion-main.json: la copia dice require_code_owner_reviews false y el servidor lo
+      tiene en true"
+    type: security
+    phase: 1
+    priority: P1
+    effort: S
+    status: blocked
+    depends_on: []
+    acceptance:
+      - El JSON refleja la protección real del servidor (gh api .../branches/main/protection) y ESTADO.md deja
+        de contradecirlo
+    files:
+      - .github/proteccion-main.json
+      - .github/PROTECCION-DE-RAMA.md
+    source: auditoria de ciberseguridad 2026-10-28
+    created_at: 2026-10-28T02:09:17.390Z
+    blocked_reason: Toca .github/, que exige la aprobación del propietario por CODEOWNERS
+  - id: T-084
+    title: "MCP postgres de los agentes: rol de solo lectura sin BYPASSRLS y versión fija; quitar @latest de
+      .mcp.json"
+    type: security
+    phase: 1
+    priority: P1
+    effort: S
+    status: blocked
+    depends_on: []
+    acceptance:
+      - .mcp.json usa un rol de solo SELECT que no salta RLS (migración del rol por datos) y paquetes con
+        versión exacta
+    files:
+      - .mcp.json
+      - packages/database/prisma/
+    source: auditoria de ciberseguridad 2026-10-28
+    created_at: 2026-10-28T02:09:17.390Z
+    blocked_reason: Requiere crear un rol de base de datos (migración) y tocar .mcp.json; aprobación del propietario
+  - id: T-085
+    title: "Workflows con la App Integradora: acciones fijadas por SHA, persist-credentials false y npm ci
+      --ignore-scripts"
+    type: security
+    phase: 1
+    priority: P1
+    effort: S
+    status: blocked
+    depends_on: []
+    acceptance:
+      - cerrar-tarea.yml, mantener-ramas.yml y ownership.yml fijan create-github-app-token, checkout y
+        setup-node por SHA, sin persistir credenciales
+    files:
+      - .github/workflows/
+    source: auditoria de ciberseguridad 2026-10-28
+    created_at: 2026-10-28T02:09:17.390Z
+    blocked_reason: Toca .github/, que exige la aprobación del propietario por CODEOWNERS
+  - id: T-086
+    title: "Verificar los SHA de los PR de Dependabot #11 a #13 y probar pnpm/action-setup v6 antes de integrarlos"
+    type: security
+    phase: 1
+    priority: P1
+    effort: S
+    status: blocked
+    depends_on: []
+    acceptance:
+      - Cada SHA coincide con la etiqueta oficial (gh api repos/<org>/<action>/git/ref/tags/<tag>) y el CI
+        pasa con pnpm/action-setup v6
+    files:
+      - .github/workflows/
+    source: auditoria de ciberseguridad 2026-10-28
+    created_at: 2026-10-28T02:09:17.390Z
+    blocked_reason: Toca .github/, que exige la aprobación del propietario por CODEOWNERS
+  - id: T-087
+    title: Dependabot para npm (solo seguridad) y job no obligatorio pnpm audit --prod
+    type: security
+    phase: 1
+    priority: P2
+    effort: S
+    status: blocked
+    depends_on: []
+    acceptance:
+      - dependabot.yml cubre el ecosistema npm con grupos de seguridad y el CI informa de vulnerabilidades
+        altas
+    files:
+      - .github/dependabot.yml
+      - .github/workflows/ci.yml
+    source: auditoria de ciberseguridad 2026-10-28
+    created_at: 2026-10-28T02:09:17.390Z
+    blocked_reason: Toca .github/, que exige la aprobación del propietario por CODEOWNERS
+  - id: T-088
+    title: "Prueba de humo en staging: req.ip detrás del rewrite de Next y valor de API_TRUST_PROXY"
+    type: security
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Dos clientes distintos producen dos IP distintas en la API y el valor queda documentado
+    files:
+      - apps/api/src/shared/red/
+      - render.yaml
+    source: auditoria de ciberseguridad 2026-10-28
+    created_at: 2026-10-28T02:09:17.390Z
+  - id: T-089
+    title: Permisos de mutación en bandeja, CRM y cotizaciones, rol SOLO_LECTURA y matriz en 04-rbac.md
+    type: security
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Cada mutación lleva @RequierePermiso, existe el rol sembrado SOLO_LECTURA y hay pruebas 403 por ruta
+    files:
+      - apps/api/src/modules/inbox/
+      - apps/api/src/modules/crm/
+      - apps/api/src/modules/quoting/
+      - docs/05-seguridad/04-rbac.md
+    source: auditoria de ciberseguridad 2026-10-28
+    created_at: 2026-10-28T02:09:17.390Z
+  - id: T-090
+    title: ADR de PII en mensajes.texto y contactos.preferencias, con supresión, exportación por titular y
+      retención (antes de la agencia piloto)
+    type: security
+    phase: 1
+    priority: P1
+    effort: L
+    status: blocked
+    depends_on: []
+    acceptance:
+      - ADR que decide cifrado o tokenización de documentos detectados en mensajes; caso de uso de supresión y
+        exportación por contacto, auditado; plazo de retención por agencia
+    files:
+      - docs/03-adr/
+      - apps/api/src/modules/crm/
+    source: auditoria de ciberseguridad 2026-10-28
+    created_at: 2026-10-28T02:09:17.390Z
+    blocked_reason: "Es un ADR (ruta protegida) y decide cifrado y plazos legales: requiere al propietario y revisión legal"
+  - id: T-091
+    title: ParseUUIDPipe en GET /paquetes/:id y validación de paqueteId en /catalogo/salidas
+    type: bug
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Un id que no es UUID responde 400 y no 500 con traza
+    files:
+      - apps/api/src/modules/quoting/interface/
+    source: auditoria de ciberseguridad 2026-10-28
+    created_at: 2026-10-28T02:09:17.390Z
+  - id: T-092
+    title: Token de invitación en el fragmento de la URL y cabeceras HSTS y Permissions-Policy en la web
+    type: security
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: []
+    acceptance:
+      - El token no llega a los logs de acceso; la web emite HSTS y una Permissions-Policy mínima
+    files:
+      - apps/api/src/modules/identity/
+      - apps/web/next.config.mjs
+    source: auditoria de ciberseguridad 2026-10-28
+    created_at: 2026-10-28T02:09:17.390Z
