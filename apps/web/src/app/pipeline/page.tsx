@@ -204,12 +204,12 @@ export default function PipelinePage() {
 
             {/* Controles de Vista y Acción Principal */}
             <div className="flex items-center space-x-3">
-              {/* Selector Kanban / Tabla */}
-              <div className="flex items-center rounded-xl border border-neutral-200 bg-neutral-100 p-1 dark:border-neutral-800 dark:bg-neutral-800">
+              {/* Selector Kanban / Tabla con touch target >= 44px */}
+              <div className="flex items-center rounded-xl border border-neutral-200 bg-neutral-100 p-0.5 dark:border-neutral-800 dark:bg-neutral-800">
                 <button
                   type="button"
                   onClick={() => setVista('kanban')}
-                  className={`flex items-center space-x-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition-colors ${
+                  className={`flex min-h-[44px] items-center space-x-1.5 rounded-lg px-3 py-2 text-xs font-semibold transition-colors ${
                     vista === 'kanban'
                       ? 'bg-white text-neutral-900 shadow-2xs dark:bg-neutral-700 dark:text-white'
                       : 'text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white'
@@ -221,7 +221,7 @@ export default function PipelinePage() {
                 <button
                   type="button"
                   onClick={() => setVista('tabla')}
-                  className={`flex items-center space-x-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition-colors ${
+                  className={`flex min-h-[44px] items-center space-x-1.5 rounded-lg px-3 py-2 text-xs font-semibold transition-colors ${
                     vista === 'tabla'
                       ? 'bg-white text-neutral-900 shadow-2xs dark:bg-neutral-700 dark:text-white'
                       : 'text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white'
@@ -302,8 +302,8 @@ export default function PipelinePage() {
         ) : cargandoApi ? (
           <EsqueletoKanban />
         ) : vista === 'kanban' ? (
-          <div className="flex flex-1 overflow-x-auto overflow-y-hidden p-6">
-            <div className="flex min-w-full space-x-4">
+          <div className="flex flex-1 overflow-x-auto overflow-y-hidden p-3 sm:p-6">
+            <div className="flex min-w-full space-x-3 sm:space-x-4">
               {tableroFiltrado.columnas.map((columna) => (
                 <ColumnaKanban
                   key={columna.etapa.id}
@@ -316,10 +316,10 @@ export default function PipelinePage() {
             </div>
           </div>
         ) : (
-          /* Vista Tabla Compacta */
-          <div className="flex-1 overflow-y-auto p-6">
-            <div className="rounded-2xl border border-neutral-200 bg-white shadow-2xs dark:border-neutral-800 dark:bg-neutral-900">
-              <table className="w-full text-left text-xs">
+          /* Vista Tabla Compacta con scroll horizontal contenido en móvil */
+          <div className="flex-1 overflow-y-auto p-3 sm:p-6">
+            <div className="overflow-x-auto rounded-2xl border border-neutral-200 bg-white shadow-2xs dark:border-neutral-800 dark:bg-neutral-900">
+              <table className="w-full min-w-[680px] text-left text-xs">
                 <thead className="border-b border-neutral-200 bg-neutral-50 text-[11px] font-semibold text-neutral-500 dark:border-neutral-800 dark:bg-neutral-800/50 dark:text-neutral-400">
                   <tr>
                     <th className="px-4 py-3">Oportunidad</th>

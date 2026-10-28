@@ -320,7 +320,7 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
               <Link
                 href="/bandeja"
                 title="ViajaPro — CRM Turístico"
-                className="bg-acento-700 focus-visible:ring-acento-600 flex h-10 w-10 items-center justify-center rounded-xl text-white shadow-sm transition-transform hover:scale-105 focus-visible:ring-2 focus-visible:outline-none"
+                className="bg-acento-700 focus-visible:ring-acento-600 flex h-11 min-h-[44px] w-11 min-w-[44px] items-center justify-center rounded-xl text-white shadow-sm transition-transform hover:scale-105 focus-visible:ring-2 focus-visible:outline-none"
               >
                 <Plane className="h-5 w-5" />
               </Link>
@@ -461,7 +461,7 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
                             ? 'border-l-4 border-[#c9a24b] bg-sky-50 font-semibold text-sky-950 shadow-2xs dark:bg-sky-950/60 dark:text-sky-100'
                             : 'text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200'
                         }`
-                      : `h-10 w-10 justify-center ${
+                      : `h-11 min-h-[44px] w-11 min-w-[44px] justify-center ${
                           m.activo
                             ? 'bg-sky-50 font-semibold text-sky-700 shadow-xs ring-2 ring-[#c9a24b] dark:bg-sky-950/60 dark:text-sky-300'
                             : 'text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200'
@@ -560,7 +560,7 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
                 onClick={() => setPanelNotifAbierto(true)}
                 title={'Alertas operativas (' + conteoNoLeidas + ' pendientes)'}
                 aria-label={'Alertas operativas (' + conteoNoLeidas + ' pendientes)'}
-                className="focus-visible:ring-acento-600 relative flex h-9 w-9 items-center justify-center rounded-lg text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 focus-visible:ring-2 focus-visible:outline-none dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
+                className="focus-visible:ring-acento-600 relative flex h-11 min-h-[44px] w-11 min-w-[44px] items-center justify-center rounded-lg text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 focus-visible:ring-2 focus-visible:outline-none dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
               >
                 <Bell className="h-4 w-4" />
                 {conteoNoLeidas > 0 && (
@@ -574,7 +574,7 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
               {/* Meta de cierres compacta */}
               <div
                 title="Meta de cierres: $42.5M de $60M COP (71% completado)"
-                className="group border-ok-200 bg-ok-50/50 dark:border-ok-900/50 dark:bg-ok-950/30 relative flex h-9 w-9 cursor-help flex-col items-center justify-center rounded-lg border p-0.5 text-center transition-colors"
+                className="group border-ok-200 bg-ok-50/50 dark:border-ok-900/50 dark:bg-ok-950/30 relative flex h-10 w-10 cursor-help flex-col items-center justify-center rounded-lg border p-0.5 text-center transition-colors"
               >
                 <TrendingUp className="text-ok-600 dark:text-ok-400 h-3 w-3" />
                 <span className="cifra text-ok-700 dark:text-ok-300 text-[8px] leading-none font-bold">
@@ -588,7 +588,7 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
                 onClick={alternarTema}
                 title={modoOscuro ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
                 aria-label={modoOscuro ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
-                className="focus-visible:ring-acento-600 flex h-9 w-9 items-center justify-center rounded-lg text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-800 focus-visible:ring-2 focus-visible:outline-none dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
+                className="focus-visible:ring-acento-600 flex h-11 min-h-[44px] w-11 min-w-[44px] items-center justify-center rounded-lg text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-800 focus-visible:ring-2 focus-visible:outline-none dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
               >
                 {modoOscuro ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
               </button>
@@ -606,10 +606,12 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
                   aria-haspopup="dialog"
                   aria-expanded={menuSesionAbierto}
                   data-testid="boton-avatar-sesion"
-                  className="focus-visible:ring-acento-600 relative flex h-8 w-8 items-center justify-center rounded-full bg-neutral-200 text-xs font-bold text-neutral-700 transition-transform hover:scale-105 focus-visible:ring-2 focus-visible:outline-none dark:bg-neutral-700 dark:text-neutral-200"
+                  className="focus-visible:ring-acento-600 relative flex h-11 min-h-[44px] w-11 min-w-[44px] items-center justify-center rounded-full text-xs font-bold transition-transform hover:scale-105 focus-visible:ring-2 focus-visible:outline-none"
                 >
-                  {iniciales}
-                  <span className="bg-ok-500 absolute -right-0.5 -bottom-0.5 h-2.5 w-2.5 rounded-full border-2 border-white dark:border-neutral-900" />
+                  <div className="relative flex h-8 w-8 items-center justify-center rounded-full bg-neutral-200 text-neutral-700 dark:bg-neutral-700 dark:text-neutral-200">
+                    {iniciales}
+                    <span className="bg-ok-500 absolute -right-0.5 -bottom-0.5 h-2.5 w-2.5 rounded-full border-2 border-white dark:border-neutral-900" />
+                  </div>
                 </button>
               </div>
             </div>
