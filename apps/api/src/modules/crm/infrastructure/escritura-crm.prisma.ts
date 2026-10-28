@@ -9,6 +9,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import type { Contacto, Oportunidad } from '@viajapro/contracts';
 import { PrismaService } from '../../../shared/prisma/prisma.service.js';
+import { PuertoExistenciaDePaquete } from '../../../shared/puertos/puertos-hacia-quoting.js';
 import { ContextoTenant } from '../../../shared/tenant/contexto-tenant.js';
 import { TelefonoYaRegistradoError } from '../domain/errors.js';
 import {
@@ -25,7 +26,10 @@ function esViolacionDeUnicidad(error: unknown): boolean {
 
 @Injectable()
 export class EscrituraCrmPrisma extends PuertoEscrituraCrm {
-  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {
+  constructor(
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(PuertoExistenciaDePaquete) private readonly paquetes: PuertoExistenciaDePaquete,
+  ) {
     super();
   }
 
@@ -113,13 +117,8 @@ export class EscrituraCrmPrisma extends PuertoEscrituraCrm {
 
   async existePaquete(paqueteId: string): Promise<boolean> {
     const { tenantId } = ContextoTenant.obtener();
-    return this.prisma.conTenant(async (tx) => {
-      const p = await tx.paquete.findFirst({
-        where: { id: paqueteId, tenantId, eliminadoEn: null },
-        select: { id: true },
-      });
-      return p !== null;
-    });
+    // R4: el catálogo es de `quoting`; se pregunta por su puerto, en la misma transacción.
+    return this.prisma.conTenant((tx) => this.paquetes.existePaquete(tx, tenantId, paqueteId));
   }
 
   async etapaInicial(): Promise<{ id: string } | null> {
