@@ -8,14 +8,10 @@ import {
   Clock,
   Kanban,
   Building2,
-  ShieldCheck,
   CheckCircle2,
   AlertTriangle,
-  Send,
-  Plus,
   Save,
   Lock,
-  Phone,
   Tag,
   FormInput,
 } from 'lucide-react';
@@ -25,19 +21,17 @@ import { BloquePoliticaPrecio } from '../../components/configuracion/bloque-poli
 import { BloqueAjustesCatalogo } from '../../components/configuracion/bloque-ajustes-catalogo';
 import { BloqueEtapasPipeline } from '../../components/configuracion/bloque-etapas-pipeline';
 import { BloqueCamposPersonalizados } from '../../components/configuracion/bloque-campos-personalizados';
+import { BloqueEquipo } from '../../components/configuracion/bloque-equipo';
 import { usePermisos } from '../../lib/permisos';
 import {
-  MOCK_MIEMBROS_EQUIPO,
   MOCK_CONFIGURACION_WABA,
   MOCK_CONFIGURACION_SLA,
   MOCK_CONFIGURACION_AGENCIA,
-  type MiembroEquipo,
   type ConfiguracionSla,
   type ConfiguracionAgencia,
 } from '../../lib/mock-configuracion';
 import {
   validarSla,
-  validarReglaDuenoActivo,
   verificarSaludConexion,
   validarFormatoNit,
 } from '../../lib/configuracion-logica';
@@ -48,21 +42,14 @@ type TabConfig =
 export default function ConfiguracionPage() {
   const { puedeVerNetoYMargen } = usePermisos();
   const [tabActiva, setTabActiva] = useState<TabConfig>('equipo');
-  const [miembros, setMiembros] = useState<MiembroEquipo[]>(MOCK_MIEMBROS_EQUIPO);
   const [waba] = useState(MOCK_CONFIGURACION_WABA);
   const [sla, setSla] = useState<ConfiguracionSla>(MOCK_CONFIGURACION_SLA);
   const [agencia, setAgencia] = useState<ConfiguracionAgencia>(MOCK_CONFIGURACION_AGENCIA);
   const [guardadoExitoso, setGuardadoExitoso] = useState(false);
   const [errorSla, setErrorSla] = useState<string | null>(null);
   const [errorNit, setErrorNit] = useState<string | null>(null);
-  const [modalInvitar, setModalInvitar] = useState(false);
-  const [nuevoNombre, setNuevoNombre] = useState('');
-  const [nuevoEmail, setNuevoEmail] = useState('');
-  const [nuevoTelefono, setNuevoTelefono] = useState('');
-  const [nuevoRol, setNuevoRol] = useState<'DUENO' | 'ASESOR'>('ASESOR');
 
   const saludWaba = verificarSaludConexion(waba);
-  const reglaDueno = validarReglaDuenoActivo(miembros);
 
   const guardarCambiosSla = (e: React.FormEvent) => {
     e.preventDefault();
@@ -85,38 +72,6 @@ export default function ConfiguracionPage() {
       return;
     }
     setErrorNit(null);
-    setGuardadoExitoso(true);
-    setTimeout(() => setGuardadoExitoso(false), 3000);
-  };
-
-  const invitarMiembro = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!nuevoNombre.trim() || !nuevoEmail.trim()) return;
-
-    const iniciales = nuevoNombre
-      .trim()
-      .split(' ')
-      .map((p) => p[0])
-      .slice(0, 2)
-      .join('')
-      .toUpperCase();
-
-    const nuevo: MiembroEquipo = {
-      id: `01932000-0000-7000-8000-${Date.now().toString(16).padStart(12, '0').slice(-12)}`,
-      nombre: nuevoNombre.trim(),
-      email: nuevoEmail.trim(),
-      telefono: nuevoTelefono.trim() || '+573000000000',
-      rol: nuevoRol,
-      estado: 'INVITADO',
-      fechaIngreso: new Date().toISOString().split('T')[0] ?? '2026-10-11',
-      avatarIniciales: iniciales || 'AS',
-    };
-
-    setMiembros([...miembros, nuevo]);
-    setModalInvitar(false);
-    setNuevoNombre('');
-    setNuevoEmail('');
-    setNuevoTelefono('');
     setGuardadoExitoso(true);
     setTimeout(() => setGuardadoExitoso(false), 3000);
   };
@@ -176,8 +131,8 @@ export default function ConfiguracionPage() {
             >
               <Users className="h-4 w-4" />
               <span>Miembros y Roles</span>
-              <span className="rounded-full bg-neutral-200 px-1.5 py-0.5 text-[10px] text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300">
-                {miembros.length}
+              <span className="rounded-full bg-purple-100 px-1.5 py-0.5 text-[10px] font-bold text-purple-800 dark:bg-purple-950 dark:text-purple-300">
+                T-027
               </span>
             </button>
 
@@ -285,181 +240,10 @@ export default function ConfiguracionPage() {
 
         {/* Contenido según Pestaña */}
         <div className="flex-1 p-6">
-          {/* TAB 1: EQUIPO Y ROLES */}
+          {/* TAB 1: EQUIPO Y ROLES (T-027) */}
           {tabActiva === 'equipo' && (
-            <div className="space-y-6">
-              {/* Tarjetas Resumen */}
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
-                <div className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
-                  <span className="text-xs font-medium text-neutral-500 dark:text-neutral-400">
-                    Total Usuarios
-                  </span>
-                  <p className="mt-1 text-2xl font-bold text-neutral-900 dark:text-white">
-                    {miembros.length}
-                  </p>
-                </div>
-
-                <div className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
-                  <span className="text-xs font-medium text-neutral-500 dark:text-neutral-400">
-                    Dueños Activos
-                  </span>
-                  <p className="mt-1 text-2xl font-bold text-blue-600 dark:text-blue-400">
-                    {reglaDueno.cantidadDuenos}
-                  </p>
-                </div>
-
-                <div className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
-                  <span className="text-xs font-medium text-neutral-500 dark:text-neutral-400">
-                    Asesores Comerciales
-                  </span>
-                  <p className="mt-1 text-2xl font-bold text-neutral-900 dark:text-white">
-                    {miembros.filter((m) => m.rol === 'ASESOR' && m.estado === 'ACTIVO').length}
-                  </p>
-                </div>
-
-                <div className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
-                  <span className="text-xs font-medium text-neutral-500 dark:text-neutral-400">
-                    Invitaciones Pendientes
-                  </span>
-                  <p className="mt-1 text-2xl font-bold text-amber-600 dark:text-amber-400">
-                    {miembros.filter((m) => m.estado === 'INVITADO').length}
-                  </p>
-                </div>
-              </div>
-
-              {/* Botón de Invitar */}
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-sm font-semibold text-neutral-900 dark:text-white">
-                    Usuarios de la Agencia
-                  </h2>
-                  <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                    Control de accesos y responsabilidades de atención al cliente
-                  </p>
-                </div>
-                <button
-                  onClick={() => setModalInvitar(true)}
-                  className="flex items-center gap-1.5 rounded-lg bg-neutral-900 px-3.5 py-2 text-xs font-medium text-white shadow-sm hover:bg-neutral-800 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-100"
-                >
-                  <Plus className="h-4 w-4" />
-                  <span>Invitar Miembro</span>
-                </button>
-              </div>
-
-              {/* Tabla de Miembros */}
-              <div className="overflow-x-auto rounded-xl border border-neutral-200 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
-                <table className="w-full text-left text-xs">
-                  <thead className="border-b border-neutral-200 bg-neutral-50 font-semibold text-neutral-600 dark:border-neutral-800 dark:bg-neutral-800/50 dark:text-neutral-300">
-                    <tr>
-                      <th className="px-4 py-3">Miembro</th>
-                      <th className="px-4 py-3">Contacto</th>
-                      <th className="px-4 py-3">Rol</th>
-                      <th className="px-4 py-3">Estado</th>
-                      <th className="px-4 py-3">Fecha de Ingreso</th>
-                      <th className="px-4 py-3 text-right">Acción</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-neutral-200 dark:divide-neutral-800">
-                    {miembros.length === 0 ? (
-                      <tr>
-                        <td colSpan={6} className="p-8 text-center text-xs text-neutral-400">
-                          <p>No hay miembros registrados en el equipo.</p>
-                          <button
-                            type="button"
-                            onClick={() => setModalInvitar(true)}
-                            className="mt-2 font-semibold text-neutral-900 underline dark:text-white"
-                          >
-                            Invitar al primer miembro
-                          </button>
-                        </td>
-                      </tr>
-                    ) : (
-                      miembros.map((m) => (
-                        <tr
-                          key={m.id}
-                          className="hover:bg-neutral-50/50 dark:hover:bg-neutral-800/30"
-                        >
-                          <td className="px-4 py-3.5">
-                            <div className="flex items-center gap-3">
-                              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-neutral-200 font-bold text-neutral-700 dark:bg-neutral-700 dark:text-neutral-200">
-                                {m.avatarIniciales}
-                              </div>
-                              <div>
-                                <p className="font-semibold text-neutral-900 dark:text-white">
-                                  {m.nombre}
-                                </p>
-                                <p className="text-[11px] text-neutral-500 dark:text-neutral-400">
-                                  {m.email}
-                                </p>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3.5 text-neutral-600 dark:text-neutral-300">
-                            <div className="flex items-center gap-1.5">
-                              <Phone className="h-3.5 w-3.5 text-neutral-400" />
-                              <span>{m.telefono}</span>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3.5">
-                            <span
-                              className={`inline-flex items-center rounded px-2 py-0.5 text-[11px] font-semibold ${
-                                m.rol === 'DUENO'
-                                  ? 'bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300'
-                                  : 'bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300'
-                              }`}
-                            >
-                              {m.rol === 'DUENO' ? 'Dueño / Admin' : 'Asesor Comercial'}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3.5">
-                            <span
-                              className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${
-                                m.estado === 'ACTIVO'
-                                  ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400'
-                                  : 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400'
-                              }`}
-                            >
-                              <span
-                                className={`h-1.5 w-1.5 rounded-full ${
-                                  m.estado === 'ACTIVO' ? 'bg-emerald-500' : 'bg-amber-500'
-                                }`}
-                              />
-                              {m.estado === 'ACTIVO' ? 'Activo' : 'Invitación Enviada'}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3.5 text-neutral-500 dark:text-neutral-400">
-                            {m.fechaIngreso}
-                          </td>
-                          <td className="px-4 py-3.5 text-right">
-                            <button
-                              type="button"
-                              title="Gestionar permisos del usuario"
-                              className="rounded px-2.5 py-1 text-xs text-neutral-600 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
-                            >
-                              Editar
-                            </button>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Banner de Gobierno */}
-              <div className="flex items-start gap-3 rounded-xl border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-800 dark:bg-neutral-900/50">
-                <ShieldCheck className="h-5 w-5 shrink-0 text-blue-600 dark:text-blue-400" />
-                <div className="text-xs text-neutral-600 dark:text-neutral-400">
-                  <p className="font-semibold text-neutral-900 dark:text-white">
-                    Aislamiento R1 y Principio de Mínimo Privilegio:
-                  </p>
-                  <p className="mt-0.5">
-                    Cada agencia opera con un esquema aislado en la base de datos (PostgreSQL RLS).
-                    Los asesores solo gestionan sus conversaciones asignadas y oportunidades
-                    activas. Solo los dueños de agencia pueden modificar integraciones y tarifas.
-                  </p>
-                </div>
-              </div>
+            <div id="tab-contenido-equipo" data-testid="tab-contenido-equipo">
+              <BloqueEquipo />
             </div>
           )}
 
@@ -818,94 +602,6 @@ export default function ConfiguracionPage() {
           )}
         </div>
       </main>
-
-      {/* Modal Invitar Miembro */}
-      {modalInvitar && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl dark:bg-neutral-900">
-            <h3 className="text-base font-semibold text-neutral-900 dark:text-white">
-              Invitar Nuevo Miembro al Equipo
-            </h3>
-            <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-              Se enviará un correo de bienvenida con acceso al CRM de la agencia
-            </p>
-
-            <form onSubmit={invitarMiembro} className="mt-4 space-y-3">
-              <div>
-                <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300">
-                  Nombre Completo
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Ej: Laura Restrepo"
-                  value={nuevoNombre}
-                  onChange={(e) => setNuevoNombre(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2 text-xs text-neutral-900 focus:border-blue-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300">
-                  Correo Electrónico
-                </label>
-                <input
-                  type="email"
-                  required
-                  placeholder="laura@viajesaventura.com"
-                  value={nuevoEmail}
-                  onChange={(e) => setNuevoEmail(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2 text-xs text-neutral-900 focus:border-blue-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300">
-                  Teléfono E.164 (WhatsApp)
-                </label>
-                <input
-                  type="text"
-                  placeholder="+573001234567"
-                  value={nuevoTelefono}
-                  onChange={(e) => setNuevoTelefono(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2 text-xs text-neutral-900 focus:border-blue-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300">
-                  Rol Asignado
-                </label>
-                <select
-                  value={nuevoRol}
-                  onChange={(e) => setNuevoRol(e.target.value as 'DUENO' | 'ASESOR')}
-                  className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2 text-xs text-neutral-900 focus:border-blue-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
-                >
-                  <option value="ASESOR">Asesor Comercial</option>
-                  <option value="DUENO">Dueño / Administrador</option>
-                </select>
-              </div>
-
-              <div className="mt-5 flex justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setModalInvitar(false)}
-                  className="rounded-lg border border-neutral-300 px-4 py-2 text-xs font-medium text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="flex items-center gap-1.5 rounded-lg bg-neutral-900 px-4 py-2 text-xs font-medium text-white shadow-sm hover:bg-neutral-800 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-100"
-                >
-                  <Send className="h-3.5 w-3.5" />
-                  <span>Enviar Invitación</span>
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

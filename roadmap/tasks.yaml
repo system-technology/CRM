@@ -582,7 +582,10 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: backlog
+    status: done
+    started_at: 2026-10-28T07:55:00.000Z
+    done_at: 2026-10-28T08:06:00.000Z
+    evidence: "Componente BloqueEquipo en Configuración › Equipo que lista usuarios y roles (DUENO, ASESOR, OPERACIONES) desde la API, con modal accesible para invitar por correo (useFocoModal), soporte de errores en español con 'Qué hacer' (interpretarErrorInvitacion), usable a 375 px (touch targets >= 44 px). Pruebas en bloque-equipo.spec.tsx y equipo-api.spec.ts. 72 suites y 602 pruebas en verde."
     depends_on:
       - T-016
     acceptance:
@@ -593,6 +596,7 @@ tasks:
     files:
       - apps/web/src/app/configuracion/page.tsx
       - apps/web/src/components/configuracion/
+      - apps/web/src/lib/equipo-api.ts
     source: orquestador:2026-10-26 (cola de Antigravity)
     created_at: 2026-10-26T21:39:01.014Z
   - id: T-028

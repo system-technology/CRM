@@ -13,8 +13,8 @@
 | Última actualización | 2026-10-28 |
 | Actualizado por | Antigravity (`frontend`) |
 | Fase | **Fase 1 del backlog: «Un CRM mostrable y endurecido»** (M1 del [roadmap v2](docs/08-roadmap/01-roadmap.md)). Sin agencia real todavía |
-| Avance | Catálogo gestionable (T-031), importador masivo en 4 pasos (T-029, T-030), ajuste promo_vencida (T-028), tarjeta/ficha de excursión (T-018, T-051, T-019), inicio del asesor (T-020), cookies y banner (T-094, T-095), login oceánico (T-033), navegación enriquecida (T-034), animaciones fluidas con shimmer oceánico y movimiento reducido (T-035), tarjetas de producto por tipo de excursión (T-036), envío de cotización por WhatsApp (T-074) con CRM contacto y oportunidad (T-076), helpers únicos de formato es-CO (T-022), revisión a 375 px (T-023), accesibilidad de la bandeja y modales (T-024), etapas del pipeline configurables (T-025) y campos personalizados por agencia en contactos y oportunidades (T-026) completados |
-| Próximo hito | Equipo e invitaciones: invitar asesores, asignar rol y ver quién tiene acceso (T-027) |
+| Avance | Catálogo gestionable (T-031), importador masivo en 4 pasos (T-029, T-030), ajuste promo_vencida (T-028), tarjeta/ficha de excursión (T-018, T-051, T-019), inicio del asesor (T-020), cookies y banner (T-094, T-095), login oceánico (T-033), navegación enriquecida (T-034), animaciones fluidas con shimmer oceánico y movimiento reducido (T-035), tarjetas de producto por tipo de excursión (T-036), envío de cotización por WhatsApp (T-074) con CRM contacto y oportunidad (T-076), helpers únicos de formato es-CO (T-022), revisión a 375 px (T-023), accesibilidad de la bandeja y modales (T-024), etapas del pipeline configurables (T-025), campos personalizados por agencia en contactos y oportunidades (T-026) y equipo e invitaciones de asesores con roles y gestión de errores (T-027) completados |
+| Próximo hito | Reportes sin mocks: métricas calculadas desde la API o marcadas como no disponibles (T-021) / Ficha 360 del contacto (T-100) |
 
 ---
 
