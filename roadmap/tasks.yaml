@@ -585,7 +585,7 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: blocked
+    status: backlog
     depends_on: []
     acceptance:
       - Configuración › Catálogo ofrece el ajuste promo_vencida con los valores ocultar y tachar, guardado por
@@ -597,15 +597,13 @@ tasks:
       - apps/web/src/components/catalogo/
     source: orquestador:2026-10-26 (cola de Antigravity)
     created_at: 2026-10-26T21:39:01.014Z
-    blocked_reason: Espera el ADR-0017 aceptado y sus endpoints en la API (carril backend); Antigravity pide lo
-      que falte en traspaso/ENTREGA.md
   - id: T-029
     title: "Asistente de importación de catálogo: subir archivo, previsualizar, ver errores por fila y confirmar"
     type: feature
     phase: 1
     priority: P1
     effort: M
-    status: blocked
+    status: backlog
     depends_on: []
     acceptance:
       - El asistente tiene cuatro pasos (archivo, mapeo de columnas, previsualización con errores por fila,
@@ -617,15 +615,13 @@ tasks:
       - apps/web/src/components/catalogo/
     source: orquestador:2026-10-26 (cola de Antigravity)
     created_at: 2026-10-26T21:39:01.014Z
-    blocked_reason: Espera el ADR-0017 aceptado y sus endpoints en la API (carril backend); Antigravity pide lo
-      que falte en traspaso/ENTREGA.md
   - id: T-030
     title: Descarga de plantillas CSV y Excel por tipo de producto
     type: feature
     phase: 1
     priority: P1
     effort: M
-    status: blocked
+    status: backlog
     depends_on: []
     acceptance:
       - Una pantalla lista las plantillas por tipo de producto (excursión de un día, paquete con hotel) y
@@ -637,15 +633,13 @@ tasks:
       - apps/web/src/components/catalogo/
     source: orquestador:2026-10-26 (cola de Antigravity)
     created_at: 2026-10-26T21:39:01.014Z
-    blocked_reason: Espera el ADR-0017 aceptado y sus endpoints en la API (carril backend); Antigravity pide lo
-      que falte en traspaso/ENTREGA.md
   - id: T-031
     title: "Pantalla de gestión del catálogo: crear, editar y desactivar productos, tarifas y salidas"
     type: feature
     phase: 1
     priority: P1
     effort: M
-    status: blocked
+    status: backlog
     depends_on: []
     acceptance:
       - Formularios con validación contra los contratos Zod y errores por campo en español
@@ -656,8 +650,6 @@ tasks:
       - apps/web/src/components/catalogo/
     source: orquestador:2026-10-26 (cola de Antigravity)
     created_at: 2026-10-26T21:39:01.014Z
-    blocked_reason: Espera el ADR-0017 aceptado y sus endpoints en la API (carril backend); Antigravity pide lo
-      que falte en traspaso/ENTREGA.md
   - id: T-032
     title: "Sistema visual de turismo: paleta caribeña, degradados, iconografía por módulo y componentes base"
     type: feature
