@@ -115,7 +115,14 @@ export function TarjetaExcursionCatalogo({
 
           {/* Badges de promociones */}
           <div className="mt-3 flex flex-wrap items-center gap-1.5">
-            {producto.tienePromo && (
+            {producto.presentacion?.leyenda === 'PROMO_VENCIDA' ? (
+              <span
+                data-testid="badge-promo-vencida"
+                className="flex items-center gap-1 rounded-full bg-neutral-200 px-2 py-0.5 text-[11px] font-semibold text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300"
+              >
+                Promo vencida
+              </span>
+            ) : producto.tienePromo ? (
               <span
                 data-testid="badge-promo-catalogo"
                 className="flex items-center gap-1 rounded-full bg-amber-400 px-2 py-0.5 text-[11px] font-bold text-neutral-950 shadow-xs"
@@ -123,7 +130,7 @@ export function TarjetaExcursionCatalogo({
                 <Sparkles className="h-3 w-3" />
                 Promo vigente
               </span>
-            )}
+            ) : null}
             {producto.desdeEsDeGrupo && (
               <span className="flex items-center gap-1 rounded-full bg-purple-200/90 px-2 py-0.5 text-[11px] font-semibold text-purple-950">
                 <Users className="h-3 w-3" />
@@ -231,6 +238,18 @@ export function TarjetaExcursionCatalogo({
         <div className="mb-3 flex items-baseline justify-between gap-1">
           <span className="text-xs text-neutral-500 dark:text-neutral-400">Tarifa de salida:</span>
           <div className="text-right">
+            {producto.presentacion?.listaTachada && (
+              <span
+                data-testid="precio-lista-tachada"
+                className="mr-2 text-xs text-neutral-400 line-through dark:text-neutral-500"
+              >
+                {new Intl.NumberFormat('es-CO', {
+                  style: 'currency',
+                  currency: producto.presentacion.listaTachada.moneda,
+                  maximumFractionDigits: 0,
+                }).format(Number(producto.presentacion.listaTachada.unidades))}
+              </span>
+            )}
             <span
               data-testid="precio-producto-catalogo"
               className="cifra text-base font-extrabold text-neutral-900 sm:text-lg dark:text-white"
