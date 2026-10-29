@@ -2733,7 +2733,7 @@ tasks:
     phase: 1
     priority: P1
     effort: S
-    status: backlog
+    status: done
     depends_on: []
     acceptance:
       - Lee location.hash (#token=...), lo borra de la URL con history.replaceState y lo envia en el cuerpo de
@@ -2746,6 +2746,12 @@ tasks:
       - apps/web/src/lib/invitacion-token.spec.ts
     source: cola de Antigravity reabastecida 2026-10-29
     created_at: 2026-10-29T00:04:03.704Z
+    started_at: 2026-10-29T11:42:19.110Z
+    done_at: 2026-10-29T11:42:19.110Z
+    evidence: "Mergeado en main por el PR #173 (rama b/T-112-aceptar-invitacion-fragmento) con el CI en verde:
+      format, analyze, tests y los demás checks obligatorios. Cierre automático
+      (.github/workflows/cerrar-tarea.yml)."
+    commit: 453a4fc941f8588429e6eb6d96548cdeb92c835e
   - id: T-113
     title: Cuenta regresiva de la ventana de 24 h en la conversacion con aviso al vencer
     type: feature
