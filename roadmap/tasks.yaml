@@ -2275,7 +2275,7 @@ tasks:
     phase: 1
     priority: P3
     effort: S
-    status: backlog
+    status: done
     depends_on: []
     acceptance:
       - El token no llega a los logs de acceso; la web emite HSTS y una Permissions-Policy mínima
@@ -2284,6 +2284,12 @@ tasks:
       - apps/web/next.config.mjs
     source: auditoria de ciberseguridad 2026-10-28
     created_at: 2026-10-28T02:09:17.390Z
+    started_at: 2026-10-29T00:17:58.654Z
+    done_at: 2026-10-29T00:17:58.655Z
+    evidence: "Mergeado en main por el PR #169 (rama a/T-092-token-invitacion-en-fragmento) con el CI en verde:
+      format, analyze, tests y los demás checks obligatorios. Cierre automático
+      (.github/workflows/cerrar-tarea.yml)."
+    commit: 6e3c92946377bcb317a3532e954cb879c64671ce
   - id: T-093
     title: "Aviso de privacidad y política de tratamiento de datos personales (Ley 1581): borrador publicable por
       agencia y por ViajaPro"
