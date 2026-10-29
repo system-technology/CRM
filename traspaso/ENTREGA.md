@@ -1,3 +1,31 @@
+# Entrega — T-115: Lista de ensayo de jornada para el piloto — 2026-10-29
+
+## Identificación
+- **Tarea:** `T-115` (roadmap/tasks.yaml)
+- **Rama:** `b/T-115-lista-ensayo-jornada`
+- **Carril:** `b` (Frontend / Web)
+- **Stitch Design Screen ID:** `78ff430d803c4940bc74e2663a4e212f` (Proyecto «ViajaPro — CRM para agencias de turismo», ID `8333038101997719867`)
+
+## Qué se construyó
+
+1. **Lógica pura de evaluación del ensayo de jornada (`apps/web/src/lib/ensayo-logica.ts`):**
+   - `calcularEstadoEnsayoJornada`: evalúa el criterio de salida de Fase 1 definido en `docs/08-roadmap/04-ruta-al-entregable-fase-1.md` (`>= 20` conversaciones atendidas, `>= 5` cotizaciones enviadas, y seguimientos fechados cubriendo las conversaciones sin cerrar).
+   - **Garantía de cero datos de demostración en modo real:** si `modoDemo` es `false` y `origenDatosEsDemo` es `true`, todos los contadores se fuerzan a `0` (`datosDemoDescartadosEnModoReal: true`). Asimismo, `criterioFase1Cumplido` solo otorga la marca verde cuando las 3 metas se alcanzan en modo real (`!modoDemo`).
+   - Funciones auxiliares `contarCotizacionesEnviadas` y `contarSeguimientosFechados` compatibles con los esquemas `PaginaDeCotizaciones` y `PaginaSeguimientos` de `@viajapro/contracts`.
+
+2. **Pantalla `/ensayo` (`apps/web/src/app/ensayo/page.tsx`):**
+   - Consulta directamente los endpoints reales (`/api/v1/conversaciones/contadores`, `/api/v1/cotizaciones`, `/api/v1/crm/seguimientos`) sin recurrir jamás a mocks cuando opera en modo real.
+   - Muestra insignia de modo real (`insignia-modo-real-ensayo`), banner de marca verde al cumplir el criterio de Fase 1 (`marca-verde-fase-1`), tarjetas de progreso de los 3 contadores reales con barras y marcas individuales (`check-conversaciones`, `check-cotizaciones`, `check-seguimientos`) y accesos operativos al flujo del piloto.
+
+3. **Pruebas y verificación:**
+   - 6/6 pruebas unitarias en `apps/web/src/lib/ensayo-logica.spec.ts`.
+   - 2/2 pruebas de interfaz en `apps/web/src/app/ensayo/page.spec.tsx`.
+   - `pnpm typecheck` y `pnpm lint` en verde.
+
+## Qué quedó pendiente
+- Nada bloqueante en frontend para T-115. Ejecución de la jornada real con los asesores de la agencia piloto pendiente del despliegue de staging.
+
+---
 # Entrega — T-112: Página /aceptar-invitacion con lectura del token en el fragmento de la URL — 2026-10-29
 
 ## Identificación
