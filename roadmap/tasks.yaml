@@ -2758,7 +2758,7 @@ tasks:
     phase: 1
     priority: P1
     effort: S
-    status: backlog
+    status: done
     depends_on: []
     acceptance:
       - Muestra horas y minutos restantes desde el ultimo mensaje del cliente; cambia a aviso ambar bajo 2 h y
@@ -2772,6 +2772,12 @@ tasks:
       - apps/web/src/components/bandeja/
     source: cola de Antigravity reabastecida 2026-10-29
     created_at: 2026-10-29T00:04:03.706Z
+    started_at: 2026-10-29T12:15:01.218Z
+    done_at: 2026-10-29T12:15:01.218Z
+    evidence: "Mergeado en main por el PR #175 (rama b/T-113-cuenta-regresiva-ventana-24h) con el CI en verde:
+      format, analyze, tests y los demás checks obligatorios. Cierre automático
+      (.github/workflows/cerrar-tarea.yml)."
+    commit: e361749997e53e667f30c6f4f7a9555fddd5e536
   - id: T-114
     title: Vista imprimible y compartible de la cotizacion (PDF por impresion del navegador)
     type: feature
