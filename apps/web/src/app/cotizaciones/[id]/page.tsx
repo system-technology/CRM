@@ -24,6 +24,7 @@ import {
   FileText,
   User,
   MessageSquare,
+  Printer,
   Shield,
 } from 'lucide-react';
 import type { Acomodacion, CotizacionGuardada, Contacto } from '@viajapro/contracts';
@@ -424,6 +425,16 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
                       <Edit3 className="h-4 w-4" />
                       <span>Modificar</span>
                     </button>
+
+                    <Link
+                      href={`/cotizaciones/${cotizacion.id}/imprimir`}
+                      data-testid="enlace-vista-imprimible"
+                      className="flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-neutral-300 bg-white px-4 py-2.5 text-xs font-bold text-neutral-700 shadow-xs transition-colors hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200"
+                      title="Abrir vista imprimible A4 para el cliente (sin neto ni margen)"
+                    >
+                      <Printer className="h-4 w-4" />
+                      <span>Imprimir / PDF</span>
+                    </Link>
 
                     <button
                       type="button"
