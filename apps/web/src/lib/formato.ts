@@ -292,6 +292,85 @@ export function formatearTelefono(
 }
 
 /**
+ * Enmascara un número telefónico ocultando los dígitos intermedios y dejando visibles
+ * el indicativo de país/operador inicial y los últimos 4 dígitos (R10, T-099).
+ * Ejemplo: "+573001234567" -> "+57 300 *** 4567"
+ */
+export function enmascararTelefono(telefono: string | null | undefined): string {
+  if (!telefono) return '';
+  const limpio = telefono.trim();
+  if (!limpio) return '';
+
+  const soloDigitos = limpio.replace(/\D/g, '');
+  if (soloDigitos.length <= 4) {
+    return `***${soloDigitos.slice(-2)}`;
+  }
+
+  // Móvil colombiano de 10 dígitos con o sin prefijo 57
+  let digitosCol = soloDigitos;
+  if (digitosCol.startsWith('57') && digitosCol.length === 12) {
+    digitosCol = digitosCol.slice(2);
+  }
+  if (digitosCol.length === 10 && digitosCol.startsWith('3')) {
+    const prefijo = digitosCol.slice(0, 3);
+    const ultimos4 = digitosCol.slice(-4);
+    return `+57 ${prefijo} *** ${ultimos4}`;
+  }
+
+  // Internacional o fijo: conservar últimos 4 dígitos
+  const ultimos4 = soloDigitos.slice(-4);
+  if (limpio.startsWith('+')) {
+    const prefijoPais = soloDigitos.slice(0, Math.min(2, soloDigitos.length - 4));
+    return `+${prefijoPais} *** ${ultimos4}`;
+  }
+  return `*** ${ultimos4}`;
+}
+
+/**
+ * Roles operativos o de solo lectura que no requieren ver el teléfono completo del viajero
+ * en listados generales (T-099).
+ */
+const ROLES_CON_TELEFONO_ENMASCARADO = new Set([
+  'OPERACIONES',
+  'SOLO_LECTURA',
+  'CONTABILIDAD',
+  'AUDITOR',
+]);
+
+/**
+ * Devuelve el teléfono completo formateado para roles comerciales/administrativos (`DUENO`, `ASESOR`),
+ * o enmascarado cuando el rol activo no necesita ver el número completo (`OPERACIONES`, `SOLO_LECTURA`).
+ */
+export function formatearTelefonoSegunRol(
+  telefono: string | null | undefined,
+  rol?: string | null,
+  opciones?: OpcionesFormatoTelefono,
+): string {
+  if (!telefono) return '';
+  const rolNormalizado = rol?.trim().toUpperCase();
+  if (rolNormalizado && ROLES_CON_TELEFONO_ENMASCARADO.has(rolNormalizado)) {
+    return enmascararTelefono(telefono);
+  }
+  return formatearTelefono(telefono, opciones);
+}
+
+/**
+ * Redacta teléfonos E.164, números de pasaporte/documento y fechas de nacimiento que pudieran
+ * aparecer accidentalmente en mensajes de error o diagnóstico del cliente (R10, T-099).
+ */
+export function sanitizarPiiEnTexto(texto: string | null | undefined): string {
+  if (!texto) return '';
+  return (
+    texto
+      // Teléfonos E.164 (+573001234567) o móviles de 10 dígitos (3001234567)
+      .replace(/\+[1-9]\d{6,10}(\d{4})\b/g, '+***$1')
+      .replace(/\b(3\d{2})\d{3}(\d{4})\b/g, '$1***$2')
+      // Pasaportes alfanuméricos (ej. PA1234567, AB9876543)
+      .replace(/\b([A-Z]{2})\d{3,6}(\d{2})\b/g, '$1***$2')
+  );
+}
+
+/**
  * Formato descriptivo de cupos por salida o excursión.
  */
 export function formatearCupo(

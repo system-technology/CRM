@@ -1,4 +1,4 @@
-import { formatearTelefono } from './formato';
+import { formatearTelefonoSegunRol } from './formato';
 import { type Contacto, Consentimiento } from '@viajapro/contracts';
 
 /**
@@ -51,8 +51,9 @@ export function obtenerEtiquetasDisponibles(contactos: Contacto[]): string[] {
 }
 
 /**
- * Formatea un teléfono E.164 colombiano (+573001234567) con espaciado legible (+57 300 123 4567).
+ * Formatea un teléfono E.164 colombiano (+573001234567) con espaciado legible (+57 300 123 4567)
+ * o enmascarado (+57 300 *** 4567) cuando el rol activo no requiere ver el número completo (T-099).
  */
-export function formatearTelefonoVisual(telefono: string): string {
-  return formatearTelefono(telefono);
+export function formatearTelefonoVisual(telefono: string, rol?: string | null): string {
+  return formatearTelefonoSegunRol(telefono, rol);
 }
