@@ -35,7 +35,8 @@ export function claveDeCorreoDeInvitacion(hashDelToken: string): string {
   return `invitacion-${hashDelToken.slice(0, 32)}`;
 }
 
+/** El token va en el fragmento (#): no viaja al servidor, ni a logs, ni en Referer (T-092). */
 export function enlaceDeInvitacion(urlDeLaWeb: string, token: string): string {
   const base = urlDeLaWeb.replace(/\/+$/, '');
-  return `${base}/aceptar-invitacion?token=${encodeURIComponent(token)}`;
+  return `${base}/aceptar-invitacion#token=${encodeURIComponent(token)}`;
 }
