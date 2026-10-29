@@ -260,10 +260,18 @@ tasks:
       - Corre en CI contra Neon (o Postgres local de test)
       - pnpm compuertas --rapido verde
     files:
-      - apps/api/src/modules/quoting/cotizaciones.e2e-spec.ts
-      - apps/api/src/modules/quoting/catalogo.e2e-spec.ts
+      - apps/api/src/modules/quoting/cotizador-punta-a-punta.e2e-spec.ts
+      - apps/web/src/lib/cotizador-logica.spec.ts
+      - apps/web/src/lib/mock-catalogo.ts
+      - apps/web/src/app/cotizador/page.tsx
+      - apps/web/src/app/cotizador/page.spec.tsx
     source: auditoria-auto:2026-10-26
     created_at: 2026-10-26T20:14:47.464Z
+    started_at: 2026-10-28T16:00:00.000Z
+    evidence: "PR #168 (web) y #166 (e2e API); el estado done lo pone cerrar-tarea al mergearlos. e2e nueva
+      cotizador-punta-a-punta.e2e-spec.ts: 2 ADT + 2 CHD el 2027-12-24 en doble = 9.100.000 COP, margen
+      1.820.000 (20 %); 3 ADT en doble = promo pareja en noAplicables con 'sobra 1'. Web: cotizador-logica
+      15/15 y cotizador/page.spec 8/8. Bitacora 2026-10-28-t-011."
   - id: T-012
     title: Aserciones de comportamiento para vigencias, tarifas, politicas_de_precio en aislamiento.spec.ts
     type: test
