@@ -157,7 +157,7 @@ async function persona(correoDe: string, nombre: string, tenantId: string, rolId
 function tokenDelUltimoCorreo(para: string): string {
   const mensajes = correoDePrueba.para(para);
   const texto = mensajes[mensajes.length - 1]?.texto ?? '';
-  const token = /aceptar-invitacion\?token=([A-Za-z0-9_%-]+)/.exec(texto)?.[1];
+  const token = /aceptar-invitacion#token=([A-Za-z0-9_%-]+)/.exec(texto)?.[1];
   if (!token) throw new Error(`No hay enlace de invitación para ${para}.`);
   const decodificado = decodeURIComponent(token);
   hashesDeTokens.push(hashearTokenDeInvitacion(decodificado));
