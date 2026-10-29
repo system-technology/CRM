@@ -1,3 +1,31 @@
+# Entrega — T-113: Cuenta regresiva de la ventana de 24 h en la conversación con aviso al vencer — 2026-10-29
+
+## Identificación
+- **Tarea:** `T-113` (roadmap/tasks.yaml)
+- **Rama:** `b/T-113-cuenta-regresiva-ventana-24h`
+- **Carril:** `b` (Frontend / Web)
+
+## Qué se construyó
+
+1. **Lógica pura de ventana de 24 h con reloj inyectable (`apps/web/src/lib/ventana-24h.ts`):**
+   - `calcularExpiracionDesdeUltimoMensaje`: calcula el vencimiento exacto a las 24 h del último mensaje entrante del viajero.
+   - `calcularCuentaRegresivaVentana24h`: calcula horas y minutos restantes con reloj inyectable (`RelojInyectable`), clasificando el estado en `'abierta'` (> 2 h), `'ambar'` (<= 2 h y > 0 ms) y `'cerrada'` (vencida o cerrada por el servidor) con explicación detallada.
+   - `evaluarReaperturaConPlantilla`: determina si el botón de plantilla de reapertura está habilitado (al menos una plantilla `APROBADA`) o deshabilitado con explicación clara si no hay ninguna plantilla aprobada.
+
+2. **Componentes de bandeja (`apps/web/src/components/bandeja/cuenta-regresiva-ventana-24h.tsx`) e integración en conversación (`apps/web/src/app/bandeja/[id]/page.tsx`):**
+   - `InsigniaCuentaRegresiva24h`: insignia de cabecera con horas y minutos restantes, transición a ámbar bajo 2 h y estado «Cerrada».
+   - `BannerAvisoVentana24h`: franja preventiva en ámbar bajo 2 h con acceso directo a plantillas.
+   - `CompositorVentanaCerrada24h`: bloque de compositor cerrado con explicación de la regla de 24 h de Meta, preservación de borrador y botón de plantilla de reapertura (deshabilitado cuando no hay plantilla aprobada).
+
+3. **Pruebas y verificación:**
+   - 9/9 pruebas unitarias en `apps/web/src/lib/ventana-24h.spec.ts`.
+   - 4/4 pruebas de componentes en `apps/web/src/components/bandeja/cuenta-regresiva-ventana-24h.spec.tsx`.
+   - `pnpm typecheck` y `pnpm lint` en verde.
+
+## Qué quedó pendiente
+- Nada bloqueante en frontend para T-113.
+
+---
 # Continuidad (Claude retomó por falta de cuota de Antigravity) - 2026-10-28
 
 - **Qué se tomó:** el trabajo sin commitear de Antigravity en T-011 (rama local `b/T-011-test-integracion-cotizador`), copiado tal cual a ramas limpias desde `origin/main` y verificado (web: cotizador-logica 15/15, page.spec 8/8, typecheck y lint en verde). El checkout original NO se tocó: sigue con sus cambios sin commitear.
