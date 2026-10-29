@@ -2778,7 +2778,7 @@ tasks:
     phase: 1
     priority: P2
     effort: M
-    status: backlog
+    status: done
     depends_on: []
     acceptance:
       - Ruta de solo lectura con desglose, vigencia, condiciones y marca de la agencia; estilos de impresion A4
@@ -2789,6 +2789,12 @@ tasks:
       - apps/web/src/app/cotizaciones/[id]/imprimir/page.spec.tsx
     source: cola de Antigravity reabastecida 2026-10-29
     created_at: 2026-10-29T00:04:03.706Z
+    started_at: 2026-10-29T11:55:32.907Z
+    done_at: 2026-10-29T11:55:32.908Z
+    evidence: "Mergeado en main por el PR #176 (rama b/T-114-vista-imprimible-cotizacion) con el CI en verde:
+      format, analyze, tests y los demás checks obligatorios. Cierre automático
+      (.github/workflows/cerrar-tarea.yml)."
+    commit: bff272ed786735f11d25fb67237573cf6e308a6f
   - id: T-115
     title: Lista de ensayo de jornada en la web para el piloto (checklist de las 20 conversaciones y 5 cotizaciones)
     type: feature
