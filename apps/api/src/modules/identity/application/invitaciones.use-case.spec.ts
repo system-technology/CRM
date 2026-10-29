@@ -256,3 +256,12 @@ describe('AceptarInvitacionUseCase', () => {
     ).rejects.toBeInstanceOf(InvitacionInvalidaError);
   });
 });
+
+describe('enlaceDeInvitacion', () => {
+  it('pone el token en el fragmento, nunca en la ruta ni en la query', () => {
+    const url = enlaceDeInvitacion('http://web/', 'a b/c');
+    expect(url).toBe('http://web/aceptar-invitacion#token=a%20b%2Fc');
+    expect(new URL(url).search).toBe('');
+    expect(new URL(url).pathname).toBe('/aceptar-invitacion');
+  });
+});
