@@ -91,7 +91,11 @@ describe('Pruebas del Catálogo de Paquetes y Tarifarios de Mayoristas', () => {
     const sanAndres = MOCK_PAQUETES_CATALOGO[0]!;
     const vigSanAndres = verificarVigenciaTarifario(sanAndres.temporadas, '2027-03-01');
     expect(vigSanAndres.estaVigente).toBe(true);
-    expect(vigSanAndres.temporadasVigentes.length).toBe(2);
+    // «Vigente» = no vencida (hasta >= referencia): las 2 temporadas en curso o próximas
+    // más la temporada alta de diciembre 2027, que aún no empieza pero tampoco venció.
+    expect(vigSanAndres.temporadasVigentes.length).toBe(3);
+    expect(vigSanAndres.temporadasVigentes.map((t) => t.hasta)).toContain('2028-01-15');
+    expect(vigSanAndres.proximoVencimiento).toBe('2027-06-15');
 
     const vencido = MOCK_PAQUETES_CATALOGO.find((p) => p.nombre.includes('Tarifario Vencido'));
     expect(vencido).toBeDefined();
