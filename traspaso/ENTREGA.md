@@ -26,6 +26,32 @@
 - Nada bloqueante en frontend para T-112. Verificación visual interactiva contra correo real en staging pendiente del despliegue en Render.
 
 ---
+# Entrega — T-114: Vista imprimible y compartible de la cotización (A4, PDF por impresión del navegador) — 2026-10-29
+
+## Identificación
+- **Tarea:** `T-114` (roadmap/tasks.yaml)
+- **Rama:** `b/T-114-vista-imprimible-cotizacion`
+- **Carril:** `b` (Frontend / Web)
+- **Stitch Design Screen ID:** `9e26f29f8f3844b1b0a64b2f4f16ec0d` (Proyecto «ViajaPro — CRM para agencias de turismo», ID `8333038101997719867`)
+
+## Qué se construyó
+
+1. **Proyección de confidencialidad de cara al cliente (`proyectarVersionParaVistaCliente` en `apps/web/src/app/cotizaciones/[id]/imprimir/page.tsx`):**
+   - Elimina de forma determinista cualquier campo de costo interno (`neto`), utilidad (`margen`) o reglas de marcaje (`politica`) del objeto `VersionDeCotizacion`, garantizando cumplimiento estricto de R10 / ADR-0011 incluso si quien abre la vista tiene rol Dueño.
+
+2. **Ruta de solo lectura e impresión A4 (`apps/web/src/app/cotizaciones/[id]/imprimir/page.tsx`):**
+   - Hoja editorial con reglas `@page { size: A4 portrait }`, marca e identificación fiscal de la agencia, código de referencia y vigencia (`vigenteHasta`), datos del viajero, resumen de salida y acomodación, tabla de desglose de tarifas en COP (`formatearDinero`), total de venta y condiciones comerciales/legales (Ley 679 de 2001 y aviso de impuestos en destino no incluidos).
+   - Barra de herramientas superior (`print:hidden`) con selector de versión, botón «Imprimir o guardar PDF» (`window.print()`) y enlace de retorno a `/cotizaciones/[id]`.
+   - Enlace directo «Imprimir / PDF» añadido en la cabecera de `/cotizaciones/[id]`.
+
+3. **Pruebas y verificación:**
+   - 3/3 pruebas en `apps/web/src/app/cotizaciones/[id]/imprimir/page.spec.tsx`, incluyendo la prueba explícita de que una versión con `neto`, `margen` y `politica` jamás expone esos valores en el DOM renderizado.
+   - `pnpm typecheck` y `pnpm lint` en verde.
+
+## Qué quedó pendiente
+- Nada bloqueante en frontend para T-114.
+
+---
 # Continuidad (Claude retomó por falta de cuota de Antigravity) - 2026-10-28
 
 - **Qué se tomó:** el trabajo sin commitear de Antigravity en T-011 (rama local `b/T-011-test-integracion-cotizador`), copiado tal cual a ramas limpias desde `origin/main` y verificado (web: cotizador-logica 15/15, page.spec 8/8, typecheck y lint en verde). El checkout original NO se tocó: sigue con sus cambios sin commitear.
