@@ -2721,3 +2721,78 @@ tasks:
       tests en verde en @viajapro/web.
     source: cola de Antigravity ampliada 2026-10-28
     created_at: 2026-10-28T02:37:57.685Z
+  - id: T-112
+    title: Pagina /aceptar-invitacion que lee el token del fragmento de la URL
+    type: feature
+    phase: 1
+    priority: P1
+    effort: S
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Lee location.hash (#token=...), lo borra de la URL con history.replaceState y lo envia en el cuerpo de
+        POST /api/v1/auth/invitaciones/aceptar
+      - "Estados: token ausente, invalido o vencido, exito y error de red; sin el token en logs ni Referer"
+      - Prueba unitaria de la logica de lectura del fragmento
+    files:
+      - apps/web/src/app/aceptar-invitacion/page.tsx
+      - apps/web/src/lib/invitacion-token.ts
+      - apps/web/src/lib/invitacion-token.spec.ts
+    source: cola de Antigravity reabastecida 2026-10-29
+    created_at: 2026-10-29T00:04:03.704Z
+  - id: T-113
+    title: Cuenta regresiva de la ventana de 24 h en la conversacion con aviso al vencer
+    type: feature
+    phase: 1
+    priority: P1
+    effort: S
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Muestra horas y minutos restantes desde el ultimo mensaje del cliente; cambia a aviso ambar bajo 2 h y
+        a cerrada con explicacion
+      - Si esta cerrada, el compositor ofrece la plantilla de reapertura (deshabilitada si no hay plantilla
+        aprobada)
+      - Logica pura de calculo con pruebas y reloj inyectable
+    files:
+      - apps/web/src/lib/ventana-24h.ts
+      - apps/web/src/lib/ventana-24h.spec.ts
+      - apps/web/src/components/bandeja/
+    source: cola de Antigravity reabastecida 2026-10-29
+    created_at: 2026-10-29T00:04:03.706Z
+  - id: T-114
+    title: Vista imprimible y compartible de la cotizacion (PDF por impresion del navegador)
+    type: feature
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Ruta de solo lectura con desglose, vigencia, condiciones y marca de la agencia; estilos de impresion A4
+      - Sin neto ni margen en la vista del cliente; boton Imprimir o guardar PDF
+      - Prueba de que la vista de cliente no expone costos
+    files:
+      - apps/web/src/app/cotizaciones/[id]/imprimir/page.tsx
+      - apps/web/src/app/cotizaciones/[id]/imprimir/page.spec.tsx
+    source: cola de Antigravity reabastecida 2026-10-29
+    created_at: 2026-10-29T00:04:03.706Z
+  - id: T-115
+    title: Lista de ensayo de jornada en la web para el piloto (checklist de las 20 conversaciones y 5 cotizaciones)
+    type: feature
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    depends_on: []
+    acceptance:
+      - "Pantalla interna con contadores calculados desde datos reales: conversaciones atendidas, cotizaciones
+        enviadas, seguimientos fechados"
+      - Marca verde cuando se cumple el criterio de Fase 1 de docs/08-roadmap/04-ruta-al-entregable-fase-1.md
+      - Sin datos de demostracion cuando el modo es real
+    files:
+      - apps/web/src/app/ensayo/page.tsx
+      - apps/web/src/lib/ensayo-logica.ts
+      - apps/web/src/lib/ensayo-logica.spec.ts
+    source: cola de Antigravity reabastecida 2026-10-29
+    created_at: 2026-10-29T00:04:03.706Z
