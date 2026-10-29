@@ -1,3 +1,28 @@
+# Entrega — Mitad web de T-099: Enmascarado de teléfono por rol y sanitización de PII en cliente — 2026-10-29
+
+## Identificación
+- **Tarea:** `T-099` (mitad `apps/web/src/`; la rama usa `T-000` para no cerrar automáticamente `T-099` antes de su mitad backend en `apps/api/src/shared/`)
+- **Rama:** `b/T-000-enmascarar-telefono-pii`
+- **Carril:** `b` (Frontend / Web)
+
+## Qué se construyó
+
+1. **Enmascarado de teléfono según rol y sanitización de PII (`apps/web/src/lib/formato.ts`):**
+   - `enmascararTelefono`: oculta los dígitos intermedios de números móviles e internacionales conservando los últimos 4 dígitos (`+57 300 *** 4567`).
+   - `formatearTelefonoSegunRol`: muestra el teléfono completo a roles comerciales/administrativos (`DUENO`, `ASESOR`) y lo enmascara automáticamente para roles que no requieren ver el número completo (`OPERACIONES`, `SOLO_LECTURA`, `CONTABILIDAD`, `AUDITOR`).
+   - `sanitizarPiiEnTexto`: redacta números telefónicos E.164 y números de pasaporte que pudieran filtrarse en textos de error o diagnóstico en el navegador (R10).
+
+2. **Integración en el directorio de contactos (`apps/web/src/lib/contactos-logica.ts`, `apps/web/src/app/contactos/page.tsx`):**
+   - `formatearTelefonoVisual` recibe el rol activo de la sesión (`usePermisos`) y aplica `formatearTelefonoSegunRol`.
+
+3. **Pruebas y verificación:**
+   - Nuevas pruebas unitarias en `apps/web/src/lib/formato.spec.ts` y verificación de `apps/web/src/app/contactos/page.spec.tsx`.
+   - `pnpm typecheck` y `pnpm lint` en verde.
+
+## Qué quedó pendiente
+- Mitad backend de `T-099` en `apps/api/src/shared/` (corresponde al carril `a`).
+
+---
 # Entrega — T-115: Lista de ensayo de jornada para el piloto — 2026-10-29
 
 ## Identificación
