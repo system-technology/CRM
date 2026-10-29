@@ -249,7 +249,7 @@ tasks:
     phase: 1
     priority: P2
     effort: M
-    status: backlog
+    status: done
     depends_on: []
     acceptance:
       - Test e2e en apps/api o apps/web que hace POST /api/v1/paquetes/cotizar (o ruta vigente) con
@@ -268,10 +268,10 @@ tasks:
     source: auditoria-auto:2026-10-26
     created_at: 2026-10-26T20:14:47.464Z
     started_at: 2026-10-28T16:00:00.000Z
-    evidence: "PR #168 (web) y #166 (e2e API); el estado done lo pone cerrar-tarea al mergearlos. e2e nueva
-      cotizador-punta-a-punta.e2e-spec.ts: 2 ADT + 2 CHD el 2027-12-24 en doble = 9.100.000 COP, margen
-      1.820.000 (20 %); 3 ADT en doble = promo pareja en noAplicables con 'sobra 1'. Web: cotizador-logica
-      15/15 y cotizador/page.spec 8/8. Bitacora 2026-10-28-t-011."
+    evidence: "Mergeado en main por el PR #166 (rama a/T-011-e2e-cotizador-api) con el CI en verde: format,
+      analyze, tests y los demás checks obligatorios. Cierre automático (.github/workflows/cerrar-tarea.yml)."
+    done_at: 2026-10-29T00:07:04.443Z
+    commit: eda0ec6e1229bdda595da1b12d3f1a4e17a90eb8
   - id: T-012
     title: Aserciones de comportamiento para vigencias, tarifas, politicas_de_precio en aislamiento.spec.ts
     type: test
