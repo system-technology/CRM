@@ -45,6 +45,21 @@ describe('Cabeceras de seguridad estaticas en next.config.mjs', () => {
   });
 });
 
+describe('HSTS y Permissions-Policy (T-092, mitad web)', () => {
+  it('emite Strict-Transport-Security y una Permissions-Policy minima', async () => {
+    vi.resetModules();
+    const config = await loadConfig();
+    const todas = (await config.headers!()).flatMap((e) => e.headers);
+
+    expect(todas.find((h) => h.key === 'Strict-Transport-Security')?.value).toBe(
+      'max-age=31536000; includeSubDomains',
+    );
+    expect(todas.find((h) => h.key === 'Permissions-Policy')?.value).toBe(
+      'camera=(), microphone=(), geolocation=()',
+    );
+  });
+});
+
 describe('buildCsp', () => {
   it('en produccion usa nonce y strict-dynamic, sin unsafe-inline ni unsafe-eval en script-src', () => {
     const csp = buildCsp('abc123', { NODE_ENV: 'production' });
