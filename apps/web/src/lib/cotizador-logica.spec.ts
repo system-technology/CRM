@@ -293,4 +293,60 @@ describe('Pruebas del Módulo de Cotización y Generación de Propuestas', () =>
     const texto = generarTextoPropuestaWhatsApp(cotizacion);
     expect(texto).toContain('Impuesto de muelle no incluido');
   });
+
+  it('14. calcularCotizacionMock caso canónico T-011: 2 adultos + 2 niños en diciembre = temporada alta, doble, 2 habitaciones, $9.100.000 COP, margen 20%', () => {
+    const paqueteSanAndres = MOCK_PAQUETES_CATALOGO.find((p) => p.destino === 'San Andrés')!;
+    expect(paqueteSanAndres).toBeDefined();
+
+    const cotizacion = calcularCotizacionMock(
+      {
+        paqueteId: paqueteSanAndres.id,
+        fechaSalida: '2027-12-24',
+        pasajeros: { adultos: 2, ninos: 2, infantes: 0 },
+        acomodacion: 'DOBLE',
+      },
+      paqueteSanAndres,
+    );
+
+    expect(cotizacion.temporadaNombre).toBe('Temporada alta — diciembre');
+    expect(cotizacion.acomodacion).toBe('DOBLE');
+    // 4 ocupantes en acomodación doble = 2 habitaciones
+    expect(cotizacion.habitaciones).toHaveLength(2);
+    expect(cotizacion.plazasSinUsar).toBe(0);
+
+    // Desglose de precios: 2x ADT (2.690.000 c/u) = 5.380.000 + 2x CHD (1.860.000 c/u) = 3.720.000
+    // Total Venta = 9.100.000 COP
+    expect(cotizacion.totalVenta.unidades).toBe('9100000');
+    expect(cotizacion.totalVenta.moneda).toBe('COP');
+
+    // Costo neto: 2x 2.150.000 + 2x 1.490.000 = 7.280.000 COP
+    expect(cotizacion.totalNeto?.unidades).toBe('7280000');
+
+    // Margen: 9.100.000 - 7.280.000 = 1.820.000 COP (exactamente 20.0%)
+    expect(cotizacion.margen?.unidades).toBe('1820000');
+    expect(cotizacion.margenPorcentaje).toBeCloseTo(20.0, 1);
+  });
+
+  it('15. calcularCotizacionMock caso canónico T-011: 3 adultos en doble detecta 1 plaza sin usar y propuesta WhatsApp incluye nota explicativa', () => {
+    const paqueteSanAndres = MOCK_PAQUETES_CATALOGO.find((p) => p.destino === 'San Andrés')!;
+    expect(paqueteSanAndres).toBeDefined();
+
+    const cotizacion = calcularCotizacionMock(
+      {
+        paqueteId: paqueteSanAndres.id,
+        fechaSalida: '2027-12-24',
+        pasajeros: { adultos: 3, ninos: 0, infantes: 0 },
+        acomodacion: 'DOBLE',
+      },
+      paqueteSanAndres,
+    );
+
+    // 3 adultos en habitaciones dobles (2 plazas c/u) = 2 habitaciones (4 plazas totales), 1 plaza sin usar
+    expect(cotizacion.habitaciones).toHaveLength(2);
+    expect(cotizacion.plazasSinUsar).toBe(1);
+
+    // Propuesta WhatsApp avisa honestamente de la plaza no ocupada
+    const textoWhatsApp = generarTextoPropuestaWhatsApp(cotizacion);
+    expect(textoWhatsApp).toContain('Incluye 1 plaza(s) no ocupada(s)');
+  });
 });

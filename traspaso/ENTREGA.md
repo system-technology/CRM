@@ -1,3 +1,27 @@
+# Continuidad (Claude retomó por falta de cuota de Antigravity) - 2026-10-28
+
+- **Qué se tomó:** el trabajo sin commitear de Antigravity en T-011 (rama local `b/T-011-test-integracion-cotizador`), copiado tal cual a ramas limpias desde `origin/main` y verificado (web: cotizador-logica 15/15, page.spec 8/8, typecheck y lint en verde). El checkout original NO se tocó: sigue con sus cambios sin commitear.
+- **Dónde quedó:** parte web en este PR (`b/T-011-cotizador-web-v2`; el #165 se cerró por un asunto de commit de más de 100 caracteres); e2e de la API en `a/T-011-e2e-cotizador-api`; bitácora, ESTADO.md y evidencia de T-011 en `i/T-000-docs-t011`; HSTS y Permissions-Policy (mitad web de T-092) en #164 (`b/T-000-cabeceras-hsts-permissions`).
+- **A medias:** (1) la e2e de la API solo se valida en el job `test` del CI (en local falla la credencial `DATABASE_IDENTIDAD_URL`); (2) T-092 sigue abierta en su mitad backend (token de invitación en el fragmento de la URL, `apps/api/src/modules/identity`); (3) T-099 (enmascarar teléfono) y T-039/T-056 siguen en backlog: T-039 y T-056 dependen de T-038 y T-054.
+- **Desde dónde continuar:** al volver, descarta el checkout viejo (`git checkout main && git pull`, sus cambios ya viven en los PR) y toma de `roadmap/tasks.yaml` el siguiente backlog web sin dependencias pendientes. Las ramas remotas `b/T-017..T-036` están ya integradas por squash (sus tareas figuran `done`): no las retomes.
+
+---
+# Entrega - T-011: Test de integracion automatico del cotizador (punta a punta) - 2026-10-28
+
+## Identificación
+- **Tarea:** `T-011` (roadmap/tasks.yaml)
+- **Rama:** `b/T-011-test-integracion-cotizador`
+- **Carril:** `b` (Backend / Test) + web
+
+## Qué se construyó
+
+1. **e2e de la API contra Neon** (`apps/api/src/modules/quoting/cotizador-punta-a-punta.e2e-spec.ts`): tarifario creado por HTTP; `POST /api/v1/catalogo/cotizar` con 2 ADT + 2 CHD el 2027-12-24 en doble = 9.100.000 COP y margen 1.820.000 (20 %); guardado y relectura por `/api/v1/cotizaciones` (venta, neto 7.280.000, margen); sin `incluirMargen` no se filtra neto ni margen; 3 ADT en doble = promo de pareja en `noAplicables` con «sobra 1».
+2. **Web:** temporada alta de diciembre en el catálogo de demostración, aviso visible «1 plaza sin usar, se paga igual», selector de acomodación en modo demo; `cotizador-logica.spec.ts` 15/15 y `cotizador/page.spec.tsx` 8/8.
+
+## Pendiente para el propietario
+- En local, las e2e que arrancan la app fallan con la credencial de `DATABASE_IDENTIDAD_URL` (también la suite existente de cotizaciones). La e2e nueva se verifica en el job `test` del CI. Ver la bitácora `docs/_bitacora/2026-10-28-t-011-test-integracion-cotizador.md`.
+
+---
 # Entrega — T-074 y T-076: Enviar cotización por WhatsApp y Gestión CRM de contacto y oportunidad — 2026-10-27
 
 ## Identificación

@@ -133,6 +133,81 @@ describe('CotizadorPage — Excursiones de un Día y Estados de UI (Bloque 2)', 
     // Sigue renderizando sin romper
     expect(screen.getByText(/Total Cotización/i)).toBeDefined();
   });
+
+  it('5. Caso canónico T-011: 2 adultos + 2 niños en diciembre cotiza $9.100.000 COP con 2 habitaciones dobles', async () => {
+    vi.mocked(estaUsandoCatalogoReal).mockReturnValue(false);
+
+    act(() => {
+      render(<CotizadorPage />);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByLabelText(/paquete turístico/i)).toBeDefined();
+    });
+
+    // Seleccionar San Andrés y fecha de temporada alta diciembre
+    const selectPaquete = screen.getByLabelText(/paquete turístico/i);
+    const inputFecha = screen.getByLabelText(/fecha de salida/i);
+    const selectAcomodacion = screen.getByLabelText('Acomodación');
+    act(() => {
+      fireEvent.change(selectPaquete, { target: { value: '01932000-0000-7000-8000-000000000001' } });
+      fireEvent.change(inputFecha, { target: { value: '2027-12-24' } });
+      fireEvent.change(selectAcomodacion, { target: { value: 'DOBLE' } });
+    });
+
+    // Incrementar a 2 niños (actualmente 0)
+    act(() => {
+      const btnsMas = screen.getAllByRole('button', { name: '+' });
+      fireEvent.click(btnsMas[1]!); // 1 niño
+    });
+    act(() => {
+      const btnsMas = screen.getAllByRole('button', { name: '+' });
+      fireEvent.click(btnsMas[1]!); // 2 niños
+    });
+
+    await waitFor(() => {
+      const totalCell = screen.getByText(/Total Cotización/i).parentElement;
+      expect(totalCell?.textContent).toContain('$ 9.100.000');
+    });
+    // Tarifa de temporada alta diciembre en doble: 2 × 2.690.000 + 2 × 1.860.000
+    expect(screen.getAllByText('$ 5.380.000').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('$ 3.720.000').length).toBeGreaterThan(0);
+    expect(screen.queryByTestId('aviso-plazas-sin-usar')).toBeNull();
+  });
+
+  it('6. Caso canónico T-011: 3 adultos en doble muestra aviso explícito "1 plaza sin usar, se paga igual"', async () => {
+    vi.mocked(estaUsandoCatalogoReal).mockReturnValue(false);
+
+    act(() => {
+      render(<CotizadorPage />);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByLabelText(/paquete turístico/i)).toBeDefined();
+    });
+
+    // Seleccionar San Andrés y fecha de temporada alta diciembre
+    const selectPaquete = screen.getByLabelText(/paquete turístico/i);
+    const inputFecha = screen.getByLabelText(/fecha de salida/i);
+    const selectAcomodacion = screen.getByLabelText('Acomodación');
+    act(() => {
+      fireEvent.change(selectPaquete, { target: { value: '01932000-0000-7000-8000-000000000001' } });
+      fireEvent.change(inputFecha, { target: { value: '2027-12-24' } });
+      fireEvent.change(selectAcomodacion, { target: { value: 'DOBLE' } });
+    });
+
+    // Incrementar a 3 adultos (inicialmente 2)
+    const btnsMas = screen.getAllByRole('button', { name: '+' });
+    act(() => {
+      fireEvent.click(btnsMas[0]!); // 3 adultos
+    });
+
+    await waitFor(() => {
+      const avisoPlazas = screen.getByTestId('aviso-plazas-sin-usar');
+      expect(avisoPlazas).toBeDefined();
+      expect(avisoPlazas.textContent).toContain('1 plaza sin usar, se paga igual');
+    });
+  });
 });
 
 describe('CotizadorPage — opción de salida (T-063)', () => {
