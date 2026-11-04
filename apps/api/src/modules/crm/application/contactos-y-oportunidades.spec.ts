@@ -33,6 +33,9 @@ class EscrituraDoble extends PuertoEscrituraCrm {
   paquetes = new Set<string>();
   etapa: { id: string } | null = { id: 'etapa-lead' };
 
+  otorgarConsentimiento = (): Promise<Contacto | null> => Promise.resolve(null);
+  revocarConsentimiento = (): Promise<Contacto | null> => Promise.resolve(null);
+
   private aContacto(c: NuevoContacto & { id: string }): Contacto {
     return {
       id: c.id,

@@ -42,6 +42,7 @@ class MensajesFalsos extends PuertoMensajesSalientes {
       canalId: '01932000-0000-7000-8000-0000000000bb',
       phoneNumberId: NUMERO_DE_PRUEBA,
       canalActivo: true,
+      consentimientoRevocado: false,
       ultimoMensajeClienteEn: new Date(AHORA.getTime() - 2 * HORA),
       ...fila,
     };
@@ -161,6 +162,16 @@ describe('EnviarMensajeSaliente — la ventana de 24 h y el canal', () => {
     expect(await caso.ejecutar(TENANT, MENSAJE, false, AHORA)).toMatchObject({
       estado: 'FALLIDO',
       codigo: 'CANAL_NO_ACTIVO',
+    });
+    expect(meta.pedidos).toHaveLength(0);
+  });
+
+  it('un contacto que revocó el consentimiento no recibe nada (T-096)', async () => {
+    const meta = new EnvioWhatsappFalso();
+    const { caso } = montar(meta, { consentimientoRevocado: true });
+    expect(await caso.ejecutar(TENANT, MENSAJE, false, AHORA)).toMatchObject({
+      estado: 'FALLIDO',
+      codigo: 'CONSENTIMIENTO_REVOCADO',
     });
     expect(meta.pedidos).toHaveLength(0);
   });

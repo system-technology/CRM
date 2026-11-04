@@ -156,6 +156,17 @@ export class CanalNoActivoError extends EstadoInvalidoError {
   }
 }
 
+/**
+ * El titular revocó el consentimiento (T-096, Ley 1581): no se le envía nada por ningún canal.
+ * No lleva datos del contacto (R10).
+ */
+export class ConsentimientoRevocadoError extends EstadoInvalidoError {
+  readonly code = 'CONSENTIMIENTO_REVOCADO';
+  constructor() {
+    super('El contacto revocó su autorización de tratamiento de datos: no se le puede escribir.');
+  }
+}
+
 const AUTORIZACION = new Set([0, 3, 10, 190, 131005]);
 const LIMITE_DE_TASA = new Set([4, 80007, 130429, 131056]);
 const POLITICA = new Set([368, 131031, 131042]);

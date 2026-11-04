@@ -4,7 +4,7 @@
  *
  * Todo corre bajo el tenant de la petición; el adaptador no recibe `tenantId`.
  */
-import type { Contacto, Dinero, Oportunidad } from '@viajapro/contracts';
+import type { Consentimiento, Contacto, Dinero, Oportunidad } from '@viajapro/contracts';
 
 export interface NuevoContacto {
   telefonoE164: string;
@@ -36,7 +36,34 @@ export interface NuevaOportunidad {
   creadoPorId: string | null;
 }
 
+export interface NuevoConsentimiento {
+  finalidad: Consentimiento;
+  canal: string;
+  prueba: string;
+  textoMostrado: string;
+  versionAviso: string;
+  registradoPorId: string | null;
+}
+
 export abstract class PuertoEscrituraCrm {
+  /**
+   * Registra el consentimiento. Si la finalidad ya estaba vigente no escribe nada (conserva la
+   * prueba original). `null` si el contacto no existe en esta agencia.
+   */
+  abstract otorgarConsentimiento(
+    contactoId: string,
+    datos: NuevoConsentimiento,
+  ): Promise<Contacto | null>;
+
+  /**
+   * Marca `revocado_en` en la fila vigente de la finalidad; idempotente. La fila se conserva
+   * (la ley pide poder demostrar el histórico). `null` si el contacto no existe en esta agencia.
+   */
+  abstract revocarConsentimiento(
+    contactoId: string,
+    finalidad: Consentimiento,
+  ): Promise<Contacto | null>;
+
   /** @throws TelefonoYaRegistradoError si otro contacto de la agencia ya lo tiene. */
   abstract crearContacto(datos: NuevoContacto): Promise<Contacto>;
 

@@ -1219,6 +1219,10 @@ model ConsentimientoContacto {
   /// De dónde salió: «whatsapp:wamid...», «formulario-web», «importacion-csv». Es la prueba.
   prueba    String         @db.VarChar(200)
   canal     String?        @db.VarChar(40)
+  /// Lo que se le mostró al titular al pedir el permiso (T-096). Nulo en las filas migradas.
+  textoMostrado String? @map("texto_mostrado") @db.VarChar(2000)
+  /// Versión del aviso de privacidad vigente al otorgar.
+  versionAviso  String? @map("version_aviso") @db.VarChar(40)
 
   otorgadoEn DateTime  @default(now()) @map("otorgado_en") @db.Timestamptz(3)
   revocadoEn DateTime? @map("revocado_en") @db.Timestamptz(3)
