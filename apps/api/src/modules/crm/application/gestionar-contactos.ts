@@ -7,7 +7,13 @@
  * R10: `preferencias` puede ser dato de salud. Aquí no se registra su valor en ningún log.
  */
 import { Inject, Injectable } from '@nestjs/common';
-import type { Contacto, CrearContacto, EditarContacto } from '@viajapro/contracts';
+import type {
+  Contacto,
+  CrearContacto,
+  EditarContacto,
+  OtorgarConsentimiento,
+  RevocarConsentimiento,
+} from '@viajapro/contracts';
 import { PhoneNumber } from '@viajapro/domain';
 import { ContactoNoEncontradoError } from '../domain/errors.js';
 import { type CambiosDeContacto, PuertoEscrituraCrm } from './puerto-escritura-crm.js';
@@ -55,5 +61,29 @@ export class GestionarContactos {
     const editado = await this.escritura.editarContacto(contactoId, cambios, actorId);
     if (!editado) throw new ContactoNoEncontradoError(contactoId);
     return editado;
+  }
+
+  /** T-096. La prueba (canal, texto, versión) viaja entera; el texto no se escribe en ningún log. */
+  async otorgarConsentimiento(
+    contactoId: string,
+    entrada: OtorgarConsentimiento,
+    actorId: string | null,
+  ): Promise<Contacto> {
+    const c = await this.escritura.otorgarConsentimiento(contactoId, {
+      ...entrada,
+      registradoPorId: actorId,
+    });
+    if (!c) throw new ContactoNoEncontradoError(contactoId);
+    return c;
+  }
+
+  /** T-096. Revocar detiene los envíos: lo hace cumplir el trabajador de envíos del inbox. */
+  async revocarConsentimiento(
+    contactoId: string,
+    entrada: RevocarConsentimiento,
+  ): Promise<Contacto> {
+    const c = await this.escritura.revocarConsentimiento(contactoId, entrada.finalidad);
+    if (!c) throw new ContactoNoEncontradoError(contactoId);
+    return c;
   }
 }

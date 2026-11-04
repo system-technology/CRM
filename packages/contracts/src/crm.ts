@@ -329,6 +329,27 @@ export const EditarContacto = z
 export type EditarContacto = z.infer<typeof EditarContacto>;
 
 /**
+ * Registrar el consentimiento de un contacto: `POST /api/v1/crm/contactos/:id/consentimientos` (T-096).
+ *
+ * La prueba es lo que permite demostrarlo (Ley 1581): canal, texto que se le mostró y versión del
+ * aviso. Si la finalidad ya estaba vigente, no se duplica ni se pisa la prueba original.
+ */
+export const OtorgarConsentimiento = z.object({
+  finalidad: Consentimiento,
+  /** Canal por el que se obtuvo: `whatsapp`, `formulario-web`, `presencial`. */
+  canal: z.string().trim().min(1).max(40),
+  /** De dónde sale la prueba: `whatsapp:<wamid>`, `formulario-web`, `importacion-csv`. */
+  prueba: z.string().trim().min(1).max(200),
+  textoMostrado: z.string().trim().min(1).max(2000),
+  versionAviso: z.string().trim().min(1).max(40),
+});
+export type OtorgarConsentimiento = z.infer<typeof OtorgarConsentimiento>;
+
+/** `POST /api/v1/crm/contactos/:id/consentimientos/revocar`: detiene los envíos de la finalidad. */
+export const RevocarConsentimiento = z.object({ finalidad: Consentimiento });
+export type RevocarConsentimiento = z.infer<typeof RevocarConsentimiento>;
+
+/**
  * Crear oportunidad desde una conversación: `POST /api/v1/crm/conversaciones/:id/oportunidades`.
  * El contacto sale de la conversación (no viaja en el cuerpo). Si no se manda `asesorId`, queda
  * asignada a quien la crea.
