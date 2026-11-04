@@ -122,6 +122,15 @@ describe('semilla de agencia desde JSON', () => {
     await comoTenant(tenantA, async (tx) => {
       const roles = await tx.rol.findMany({ where: { tenantId: tenantA } });
       expect(roles.find((x) => x.clave === 'DUENO')?.permisos).toContain('catalogo.administrar');
+      // T-089: DUENO y ASESOR nacen con los de escritura; OPERACIONES, sin ninguno.
+      const escritura = ['bandeja.operar', 'crm.escribir', 'cotizacion.escribir'];
+      for (const clave of ['DUENO', 'ASESOR']) {
+        expect(roles.find((x) => x.clave === clave)?.permisos).toEqual(
+          expect.arrayContaining(escritura),
+        );
+      }
+      const operaciones = roles.find((x) => x.clave === 'OPERACIONES')?.permisos ?? [];
+      expect(operaciones.filter((p) => escritura.includes(p))).toEqual([]);
       expect(await tx.politicaDePrecio.count({ where: { tenantId: tenantA } })).toBe(1);
       expect(await tx.usuario.count({ where: { tenantId: tenantA, correo: CORREO_A } })).toBe(1);
 
