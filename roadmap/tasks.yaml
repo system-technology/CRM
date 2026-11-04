@@ -2835,3 +2835,85 @@ tasks:
     evidence: "Mergeado en main por el PR #178 (rama b/T-115-lista-ensayo-jornada) con el CI en verde: format,
       analyze, tests y los demás checks obligatorios. Cierre automático (.github/workflows/cerrar-tarea.yml)."
     commit: 64cb8e5b550e5d71d2597e21b7310df7fdb21a53
+  - id: T-116
+    title: "Consentimiento del contacto en la ficha: otorgar, revocar y ver el texto mostrado"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Usa POST /api/v1/crm/contactos/:id/consentimientos y .../consentimientos/revocar con los contratos
+        OtorgarConsentimiento y RevocarConsentimiento de packages/contracts/src/crm.ts
+      - Muestra por finalidad (TRANSACCIONAL, PROMOCIONAL) el estado vigente o revocado, fecha, canal y
+        version del aviso
+      - "Sin texto legal inventado: el texto mostrado y la version vienen de una constante configurable
+        marcada PENDIENTE_REVISION_LEGAL"
+      - Pruebas de la logica de estado y de la pantalla
+    files:
+      - apps/web/src/components/crm/consentimientos.tsx
+      - apps/web/src/lib/consentimientos-logica.ts
+      - apps/web/src/lib/consentimientos-logica.spec.ts
+    source: cola de Antigravity reabastecida 2026-11-04
+    created_at: 2026-11-04T23:48:05.402Z
+  - id: T-117
+    title: Mensajes claros en es-CO para los errores del envio (ventana cerrada, consentimiento revocado,
+      cotizacion de otro contacto)
+    type: feature
+    phase: 1
+    priority: P1
+    effort: S
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Mapa de codigos de error de la API (VENTANA_CERRADA, CONSENTIMIENTO_REVOCADO,
+        COTIZACION_DE_OTRO_CONTACTO y los demas del modulo inbox) a mensaje y accion sugerida
+      - El compositor y el modal Enviar cotizacion usan el mapa; el codigo crudo nunca se muestra al asesor
+      - Pruebas del mapa, incluido un codigo desconocido
+    files:
+      - apps/web/src/lib/errores-de-envio.ts
+      - apps/web/src/lib/errores-de-envio.spec.ts
+      - apps/web/src/components/bandeja/
+    source: cola de Antigravity reabastecida 2026-11-04
+    created_at: 2026-11-04T23:48:05.404Z
+  - id: T-118
+    title: Acciones de la web segun permisos del usuario (bandeja.operar, crm.escribir, cotizacion.escribir)
+    type: feature
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    depends_on: []
+    acceptance:
+      - "Lee los permisos de la sesion (contrato de identidad en packages/contracts/src/identidad.ts) y
+        deshabilita con explicacion los botones de mutacion si falta el permiso; nunca confia solo en esto: la
+        API valida"
+      - Etiquetas de los permisos nuevos en el mapa de roles y permisos
+      - Pruebas con un usuario de solo lectura (OPERACIONES) y uno con todos los permisos
+      - Si el backend de T-089 aun no esta integrado, los permisos nuevos se tratan como concedidos en modo
+        demo y se documenta
+    files:
+      - apps/web/src/lib/permisos.ts
+      - apps/web/src/lib/permisos.spec.ts
+    source: cola de Antigravity reabastecida 2026-11-04
+    created_at: 2026-11-04T23:48:05.405Z
+  - id: T-119
+    title: Exportar a CSV desde contactos, oportunidades y cotizaciones (solo lo que el usuario ve)
+    type: feature
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Boton Exportar en cada listado; genera CSV en el navegador con es-CO (separador punto y coma, UTF-8
+        con BOM, fechas en zona del tenant)
+      - No incluye neto ni margen si el usuario no tiene cotizacion.ver_neto_y_margen; protege contra
+        inyeccion de formulas (prefijo en celdas que empiezan por = + - @)
+      - Pruebas de escape de formulas y de columnas segun permiso
+    files:
+      - apps/web/src/lib/exportar-csv.ts
+      - apps/web/src/lib/exportar-csv.spec.ts
+    source: cola de Antigravity reabastecida 2026-11-04
+    created_at: 2026-11-04T23:48:05.405Z
