@@ -21,6 +21,7 @@ import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import { VentanaCerradaError } from '../domain/errores-de-conversacion.js';
 import {
   CanalNoActivoError,
+  ConsentimientoRevocadoError,
   ErrorDeEnvioWhatsapp,
   EnvioRechazadoError,
   EnvioSinConfirmarError,
@@ -73,6 +74,10 @@ export class EnviarMensajeSaliente {
     if (m.tipo !== 'TEXTO' || !m.texto) {
       return this.fallar(tenantId, mensajeId, new EnvioRechazadoError(null));
     }
+    // T-096: revocar detiene los envíos. Se mira aquí y no al encolar: pudo revocarse en la cola.
+    if (m.consentimientoRevocado) {
+      return this.fallar(tenantId, mensajeId, new ConsentimientoRevocadoError());
+    }
     if (!m.canalActivo) return this.fallar(tenantId, mensajeId, new CanalNoActivoError());
     try {
       exigirVentanaAbierta(m.ultimoMensajeClienteEn, ahora);
@@ -121,7 +126,8 @@ export class EnviarMensajeSaliente {
   private async fallar(
     tenantId: string,
     mensajeId: string,
-    error: ErrorDeEnvioWhatsapp | VentanaCerradaError | CanalNoActivoError,
+    error:
+      ErrorDeEnvioWhatsapp | VentanaCerradaError | CanalNoActivoError | ConsentimientoRevocadoError,
   ): Promise<ResultadoDeEnvio> {
     const codigoMeta = error instanceof ErrorDeEnvioWhatsapp ? error.codigoMeta : null;
     const escrito = await this.mensajes.registrarFallo(tenantId, mensajeId, {

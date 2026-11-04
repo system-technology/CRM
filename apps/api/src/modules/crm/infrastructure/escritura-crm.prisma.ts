@@ -7,7 +7,7 @@
  */
 import { Inject, Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import type { Contacto, Oportunidad } from '@viajapro/contracts';
+import type { Consentimiento, Contacto, Oportunidad } from '@viajapro/contracts';
 import { PrismaService } from '../../../shared/prisma/prisma.service.js';
 import { PuertoExistenciaDePaquete } from '../../../shared/puertos/puertos-hacia-quoting.js';
 import { ContextoTenant } from '../../../shared/tenant/contexto-tenant.js';
@@ -15,6 +15,7 @@ import { TelefonoYaRegistradoError } from '../domain/errors.js';
 import {
   type CambiosDeContacto,
   type NuevaOportunidad,
+  type NuevoConsentimiento,
   type NuevoContacto,
   PuertoEscrituraCrm,
 } from '../application/puerto-escritura-crm.js';
@@ -91,6 +92,72 @@ export class EscrituraCrmPrisma extends PuertoEscrituraCrm {
       }
       throw error;
     }
+  }
+
+  async otorgarConsentimiento(
+    contactoId: string,
+    d: NuevoConsentimiento,
+  ): Promise<Contacto | null> {
+    const { tenantId } = ContextoTenant.obtener();
+    return this.prisma.conTenant(async (tx) => {
+      const existente = await tx.contacto.findFirst({
+        where: { id: contactoId, tenantId, eliminadoEn: null },
+        select: { id: true },
+      });
+      if (!existente) return null;
+      // Índice único parcial (tenant, contacto, finalidad) WHERE revocado_en IS NULL: la
+      // comprobación previa evita el error en el caso normal; la carrera la resuelve el índice.
+      const vigente = await tx.consentimientoContacto.findFirst({
+        where: { tenantId, contactoId, finalidad: d.finalidad, revocadoEn: null },
+        select: { id: true },
+      });
+      if (!vigente) {
+        await tx.consentimientoContacto.create({
+          data: {
+            tenantId,
+            contactoId,
+            finalidad: d.finalidad,
+            canal: d.canal,
+            prueba: d.prueba,
+            textoMostrado: d.textoMostrado,
+            versionAviso: d.versionAviso,
+            registradoPorId: d.registradoPorId,
+          },
+        });
+      }
+      return this.contactoConConsentimientos(tx, tenantId, contactoId);
+    });
+  }
+
+  async revocarConsentimiento(
+    contactoId: string,
+    finalidad: Consentimiento,
+  ): Promise<Contacto | null> {
+    const { tenantId } = ContextoTenant.obtener();
+    return this.prisma.conTenant(async (tx) => {
+      const existente = await tx.contacto.findFirst({
+        where: { id: contactoId, tenantId, eliminadoEn: null },
+        select: { id: true },
+      });
+      if (!existente) return null;
+      await tx.consentimientoContacto.updateMany({
+        where: { tenantId, contactoId, finalidad, revocadoEn: null },
+        data: { revocadoEn: new Date() },
+      });
+      return this.contactoConConsentimientos(tx, tenantId, contactoId);
+    });
+  }
+
+  private async contactoConConsentimientos(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    contactoId: string,
+  ): Promise<Contacto> {
+    const c = await tx.contacto.findFirstOrThrow({
+      where: { id: contactoId, tenantId },
+      include: { consentimientos: true },
+    });
+    return aContacto(c);
   }
 
   async existeContacto(contactoId: string): Promise<boolean> {
