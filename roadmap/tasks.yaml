@@ -2206,7 +2206,7 @@ tasks:
     phase: 1
     priority: P2
     effort: S
-    status: backlog
+    status: done
     depends_on: []
     acceptance:
       - Dos clientes distintos producen dos IP distintas en la API y el valor queda documentado
@@ -2215,6 +2215,11 @@ tasks:
       - render.yaml
     source: auditoria de ciberseguridad 2026-10-28
     created_at: 2026-10-28T02:09:17.390Z
+    started_at: 2026-11-04T23:33:25.207Z
+    done_at: 2026-11-04T23:33:25.207Z
+    evidence: "Mergeado en main por el PR #183 (rama a/T-088-smoke-req-ip) con el CI en verde: format, analyze,
+      tests y los demás checks obligatorios. Cierre automático (.github/workflows/cerrar-tarea.yml)."
+    commit: 3d185e362d93c641814310fcb1c492bf28b51ec2
   - id: T-089
     title: Permisos de mutación en bandeja, CRM y cotizaciones, rol SOLO_LECTURA y matriz en 04-rbac.md
     type: security
