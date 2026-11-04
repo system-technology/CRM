@@ -6,6 +6,9 @@ import {
   formatearFecha,
   formatearFechaHora,
   formatearTelefono,
+  enmascararTelefono,
+  formatearTelefonoSegunRol,
+  sanitizarPiiEnTexto,
   formatearCupo,
 } from './formato';
 
@@ -151,6 +154,31 @@ describe('Módulo único de formato es-CO (T-022)', () => {
     it('indica "Cupos libres" cuando no hay restricción de cupo', () => {
       expect(formatearCupo(null)).toBe('Cupos libres');
       expect(formatearCupo(undefined)).toBe('Cupos libres');
+    });
+  });
+
+  describe('5. Enmascarado de Teléfono y Sanitización de PII (T-099 / R10)', () => {
+    it('enmascara móviles colombianos e internacionales ocultando dígitos centrales', () => {
+      expect(enmascararTelefono('+573001234567')).toBe('+57 300 *** 4567');
+      expect(enmascararTelefono('3109876543')).toBe('+57 310 *** 6543');
+      expect(enmascararTelefono('+13051234567')).toBe('+13 *** 4567');
+    });
+
+    it('enmascara el teléfono cuando el rol es OPERACIONES o SOLO_LECTURA y lo muestra completo a ASESOR o DUENO', () => {
+      expect(formatearTelefonoSegunRol('+573001234567', 'ASESOR')).toBe('+57 300 123 4567');
+      expect(formatearTelefonoSegunRol('+573001234567', 'DUENO')).toBe('+57 300 123 4567');
+      expect(formatearTelefonoSegunRol('+573001234567', 'OPERACIONES')).toBe('+57 300 *** 4567');
+      expect(formatearTelefonoSegunRol('+573001234567', 'SOLO_LECTURA')).toBe('+57 300 *** 4567');
+    });
+
+    it('sanitiza teléfonos y pasaportes en mensajes de error o diagnóstico', () => {
+      const textoCrudo =
+        'Fallo al sincronizar contacto +573001234567 con pasaporte PA9876543 en la agencia.';
+      const limpio = sanitizarPiiEnTexto(textoCrudo);
+      expect(limpio).not.toContain('3001234567');
+      expect(limpio).not.toContain('PA9876543');
+      expect(limpio).toContain('+***4567');
+      expect(limpio).toContain('PA***43');
     });
   });
 });
