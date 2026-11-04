@@ -14,13 +14,11 @@ import {
   UserPlus,
   UserMinus,
   UserCheck,
-  Clock,
   Send,
   AlertTriangle,
   RotateCcw,
   Check,
   CheckCheck,
-  Lock,
   PlusCircle,
   PanelRight,
   Sparkles,
@@ -50,6 +48,13 @@ import {
 } from '../../../lib/bandeja-logica';
 import { FichaCliente } from '../../../components/bandeja/ficha-cliente';
 import { ModalPlantillas } from '../../../components/bandeja/modal-plantillas';
+import {
+  InsigniaCuentaRegresiva24h,
+  BannerAvisoVentana24h,
+  CompositorVentanaCerrada24h,
+} from '../../../components/bandeja/cuenta-regresiva-ventana-24h';
+import { calcularCuentaRegresivaVentana24h } from '../../../lib/ventana-24h';
+import { obtenerMockPlantillasDisponibles } from '../../../lib/mock-plantillas';
 import { EnviarPlantilla } from '@viajapro/contracts';
 import { TarjetaCotizacion } from '../../../components/bandeja/tarjeta-cotizacion';
 import { PanelSugerencias } from '../../../components/bandeja/panel-sugerencias';
@@ -293,6 +298,19 @@ export default function BandejaConversacionPage() {
     cerrada: boolean;
     texto: string;
   }>({ minutos: 0, horas: 0, cerrada: false, texto: '' });
+
+  const estadoVentana24h = useMemo(() => {
+    const ultimoEntrante = detalle?.mensajes
+      ?.filter((m) => m.direccion === 'ENTRANTE')
+      .slice(-1)[0]?.ocurridoEn;
+    return calcularCuentaRegresivaVentana24h({
+      expiraEn: detalle?.ventana?.expiraEn ?? null,
+      ultimoMensajeClienteEn: ultimoEntrante ?? null,
+      abiertaServidor: detalle?.ventana ? detalle.ventana.abierta && !tiempoVentana.cerrada : false,
+    });
+  }, [detalle?.ventana, detalle?.mensajes, tiempoVentana]);
+
+  const plantillasDisponibles = useMemo(() => obtenerMockPlantillasDisponibles().plantillas, []);
 
   // Evaluar cierre de ventana con borrador (0c.19)
   useEffect(() => {
@@ -791,26 +809,8 @@ export default function BandejaConversacionPage() {
 
           {/* Estado de 24h + SLA + Acción Primaria «Nueva Cotización» */}
           <div className="flex shrink-0 items-center gap-1.5">
-            {/* Cuenta atrás viva de 24h */}
-            {tiempoVentana.cerrada ? (
-              <span className="flex shrink-0 items-center gap-1 rounded-md bg-neutral-100 px-1.5 py-1 text-[10px] font-semibold text-neutral-600 sm:text-[11px] dark:bg-neutral-800 dark:text-neutral-400">
-                <Clock className="h-3 w-3 text-neutral-400" />
-                <span className="hidden sm:inline">24h </span>
-                <span>Cerrada</span>
-              </span>
-            ) : (
-              <span
-                className={`flex shrink-0 items-center gap-1 rounded-md px-1.5 py-1 text-[10px] font-semibold sm:text-[11px] ${
-                  tiempoVentana.minutos <= 120
-                    ? 'border border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300'
-                    : 'bg-ok-50 text-ok-800 border-ok-200 dark:bg-ok-950/40 dark:text-ok-300 dark:border-ok-900 border'
-                }`}
-              >
-                <Clock className="h-3 w-3" />
-                <span className="hidden sm:inline">Ventana 24h · </span>
-                <span>{tiempoVentana.texto}</span>
-              </span>
-            )}
+            {/* Cuenta atrás viva de 24h (T-113) */}
+            <InsigniaCuentaRegresiva24h estado={estadoVentana24h} />
 
             {/* SLA Badge (visible a partir de sm) */}
             {detalle.slaVenceEn && (
@@ -868,26 +868,11 @@ export default function BandejaConversacionPage() {
         )}
 
         {/* Historial de Mensajes: único contenedor con scroll propio */}
-        {/* Banner de advertencia si la ventana está por cerrar (<2h) */}
-        {tiempoVentana.minutos <= 120 && !tiempoVentana.cerrada && (
-          <div className="flex shrink-0 items-center justify-between border-b border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-300">
-            <div className="flex items-center space-x-2">
-              <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
-              <span>
-                <strong>Ventana de Meta por cerrar: </strong>
-                Quedan {tiempoVentana.texto}. Envía tu respuesta ahora o la reapertura exigirá una
-                plantilla aprobada.
-              </span>
-            </div>
-            <button
-              type="button"
-              onClick={() => setModalPlantillasAbierto(true)}
-              className="text-[11px] font-semibold underline hover:text-amber-950 dark:hover:text-amber-100"
-            >
-              Ver plantillas
-            </button>
-          </div>
-        )}
+        {/* Banner de advertencia si la ventana está por cerrar (<2h) (T-113) */}
+        <BannerAvisoVentana24h
+          estado={estadoVentana24h}
+          onAbrirPlantillas={() => setModalPlantillasAbierto(true)}
+        />
 
         <main
           ref={chatContainerRef}
@@ -1020,57 +1005,14 @@ export default function BandejaConversacionPage() {
 
         {/* Pie de redacción */}
         <footer className="min-w-0 shrink-0 border-t border-neutral-200 bg-white p-3 pb-24 md:pb-3 dark:border-neutral-800 dark:bg-neutral-900">
-          {!detalle.ventana.abierta || tiempoVentana.cerrada ? (
-            <div className="space-y-3 rounded-xl border border-neutral-200 bg-neutral-50 p-4 text-xs dark:border-neutral-800 dark:bg-neutral-800/40">
-              <div className="flex items-center justify-center space-x-1.5 font-semibold text-neutral-800 dark:text-neutral-200">
-                <Lock className="h-4 w-4 text-neutral-500" />
-                <span>Ventana de 24 horas cerrada por Meta</span>
-              </div>
-              <p className="text-center text-neutral-500 dark:text-neutral-400">
-                No es posible enviar mensajes de texto libre pasadas 24 horas desde el último
-                mensaje del viajero. Utiliza una plantilla HSM aprobada.
-              </p>
-
-              {/* Aviso visible de borrador preservado con aria-live (0c.19) */}
-              {(avisoBorrador.debeMostrar || textoMensaje.trim().length > 0) && (
-                <div
-                  aria-live="polite"
-                  className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-amber-900 dark:border-amber-700/60 dark:bg-amber-950/40 dark:text-amber-200"
-                >
-                  <div className="flex items-start gap-2">
-                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
-                    <div className="min-w-0 flex-1">
-                      <p className="font-bold text-amber-950 dark:text-amber-100">
-                        La ventana se cerró; tu borrador sigue aquí
-                      </p>
-                      <p className="mt-1 line-clamp-2 rounded bg-amber-100/70 p-1.5 text-[11px] text-amber-800 italic dark:bg-amber-900/40 dark:text-amber-300">
-                        «{textoMensaje.trim()}»
-                      </p>
-                    </div>
-                  </div>
-                  <div className="mt-2.5 flex w-full sm:justify-end">
-                    <button
-                      type="button"
-                      onClick={() => setModalPlantillasAbierto(true)}
-                      className="flex min-h-[44px] w-full min-w-[44px] items-center justify-center gap-1.5 rounded-lg bg-amber-600 px-3 py-2 text-center text-xs font-semibold text-white shadow-xs transition-colors hover:bg-amber-700 sm:w-auto"
-                    >
-                      <PlusCircle className="h-4 w-4" />
-                      Usar borrador en plantilla
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              <div className="flex justify-center">
-                <button
-                  type="button"
-                  onClick={() => setModalPlantillasAbierto(true)}
-                  className="bg-acento-700 hover:bg-acento-800 flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg px-4 py-2 font-semibold text-white shadow-sm transition-colors"
-                >
-                  Seleccionar plantilla aprobada
-                </button>
-              </div>
-            </div>
+          {!detalle.ventana.abierta || tiempoVentana.cerrada || estadoVentana24h.cerrada ? (
+            <CompositorVentanaCerrada24h
+              estado={estadoVentana24h}
+              plantillas={plantillasDisponibles}
+              textoBorrador={textoMensaje}
+              mostrarAvisoBorrador={avisoBorrador.debeMostrar}
+              onAbrirPlantillas={() => setModalPlantillasAbierto(true)}
+            />
           ) : (
             <div className="space-y-2">
               {sugerenciasAbierto && (
