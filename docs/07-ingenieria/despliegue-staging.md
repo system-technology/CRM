@@ -95,7 +95,16 @@ de la web y de la API. Esperar a que emita los certificados.
 
 - `/salud/listo` con `rol` distinto de `postgres` y del propietario.
 - El trabajador arrancó: en sus logs, `Trabajador del inbox en marcha.`
-- `API_TRUST_PROXY`: dos intentos de código fallidos desde dos redes distintas no se limitan entre sí.
+- `API_TRUST_PROXY` (T-088): dos intentos de código fallidos desde dos redes distintas no se limitan
+  entre sí. Procedimiento: (1) desde la red A y desde la red B (p. ej. wifi y datos móviles) haz
+  seis `POST /api/v1/auth/sign-in/email` fallidos con el mismo correo inexistente a la URL pública
+  de la **web**, que pasa por el rewrite de Next. (2) Si la red B recibe 429 por los intentos de
+  A, el valor está de menos: `req.ip` es el proxy. (3) Si una cabecera `x-forwarded-for: 1.2.3.4`
+  escrita a mano cambia la cuota, está de más. (4) El valor correcto es el número de saltos
+  propios entre el cliente y la API (balanceador de Render + Next = `2` si el rewrite apunta a la
+  API por la red privada; confirmar contando). Anotar aquí el valor medido y la fecha. **Valor
+  medido: pendiente de la primera ejecución en staging.** La aritmética está fijada en
+  `apps/api/src/shared/red/ip-detras-del-rewrite.spec.ts`.
 - Staging **no** se suscribe al número real de WhatsApp. El Paso 2 de Meta (modo desarrollo) usa
   `https://api.staging.<dominio>/webhooks/whatsapp`.
 
