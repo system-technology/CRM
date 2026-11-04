@@ -13,6 +13,11 @@ import { type MensajePorEnviar, PuertoMensajesSalientes } from '../application/p
 import type { ErrorDeEnvioWhatsapp } from '../domain/errores-de-envio.js';
 import { TIPO_MENSAJE_ACTUALIZADO } from '../domain/evento-de-dominio.js';
 
+/** Revocado = hubo consentimiento transaccional y ninguna fila vigente (sin registro no cuenta). */
+function estaRevocado(filas: { revocadoEn: Date | null }[]): boolean {
+  return filas.length > 0 && filas.every((f) => f.revocadoEn !== null);
+}
+
 @Injectable()
 export class MensajesSalientesPrisma extends PuertoMensajesSalientes {
   constructor(@Inject(PrismaWebhookService) private readonly prisma: PrismaWebhookService) {
@@ -34,7 +39,16 @@ export class MensajesSalientesPrisma extends PuertoMensajesSalientes {
             select: {
               ultimoMensajeClienteEn: true,
               // Solo lectura del teléfono por la relación, como ya hace `mapeo.ts`.
-              contacto: { select: { telefonoE164: true } },
+              contacto: {
+                select: {
+                  telefonoE164: true,
+                  // Solo la finalidad y si está vigente; nada más del consentimiento.
+                  consentimientos: {
+                    where: { finalidad: 'TRANSACCIONAL' },
+                    select: { revocadoEn: true },
+                  },
+                },
+              },
               canal: {
                 select: { id: true, phoneNumberId: true, estado: true, eliminadoEn: true },
               },
@@ -55,6 +69,7 @@ export class MensajesSalientesPrisma extends PuertoMensajesSalientes {
       destinoE164: fila.conversacion.contacto.telefonoE164,
       canalId: canal.id,
       phoneNumberId: canal.phoneNumberId,
+      consentimientoRevocado: estaRevocado(fila.conversacion.contacto.consentimientos),
       canalActivo: canal.estado === 'ACTIVO' && canal.eliminadoEn === null,
       ultimoMensajeClienteEn: fila.conversacion.ultimoMensajeClienteEn,
     };

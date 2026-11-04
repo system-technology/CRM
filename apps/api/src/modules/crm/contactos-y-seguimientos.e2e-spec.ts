@@ -123,3 +123,62 @@ describe('seguimientos (T-077)', () => {
     expect(r.status).toBe(404);
   });
 });
+
+describe('consentimiento del contacto (T-096)', () => {
+  const telefono = `+5731${Math.floor(10_000_000 + Math.random() * 89_999_999)}`;
+  let contactoId = '';
+  const consentimiento = {
+    finalidad: 'TRANSACCIONAL',
+    canal: 'whatsapp',
+    prueba: 'whatsapp:wamid.e2e',
+    textoMostrado: 'Autorizo el tratamiento de mis datos para atender mi solicitud de viaje.',
+    versionAviso: 'v0-borrador',
+  };
+
+  it('registra el consentimiento con su prueba y es idempotente', async () => {
+    const alta = await enviar('/api/v1/crm/contactos', 'POST', { telefono });
+    contactoId = ((await alta.json()) as { id: string }).id;
+
+    const r1 = await enviar(
+      `/api/v1/crm/contactos/${contactoId}/consentimientos`,
+      'POST',
+      consentimiento,
+    );
+    expect(r1.status).toBe(201);
+    expect(((await r1.json()) as { consentimientos: string[] }).consentimientos).toEqual([
+      'TRANSACCIONAL',
+    ]);
+    const r2 = await enviar(
+      `/api/v1/crm/contactos/${contactoId}/consentimientos`,
+      'POST',
+      consentimiento,
+    );
+    expect(r2.status).toBe(201);
+    expect(((await r2.json()) as { consentimientos: string[] }).consentimientos).toEqual([
+      'TRANSACCIONAL',
+    ]);
+  });
+
+  it('revocar quita la finalidad vigente y un contacto inexistente es 404', async () => {
+    const r = await enviar(`/api/v1/crm/contactos/${contactoId}/consentimientos/revocar`, 'POST', {
+      finalidad: 'TRANSACCIONAL',
+    });
+    expect(r.status).toBe(201);
+    expect(((await r.json()) as { consentimientos: string[] }).consentimientos).toEqual([]);
+
+    const nulo = await enviar(
+      '/api/v1/crm/contactos/00000000-0000-4000-8000-000000000000/consentimientos/revocar',
+      'POST',
+      { finalidad: 'PROMOCIONAL' },
+    );
+    expect(nulo.status).toBe(404);
+  });
+
+  it('sin texto mostrado es 400 o 422', async () => {
+    const r = await enviar(`/api/v1/crm/contactos/${contactoId}/consentimientos`, 'POST', {
+      ...consentimiento,
+      textoMostrado: '',
+    });
+    expect([400, 422]).toContain(r.status);
+  });
+});

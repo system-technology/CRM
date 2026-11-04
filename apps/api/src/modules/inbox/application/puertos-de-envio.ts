@@ -60,6 +60,11 @@ export interface MensajePorEnviar {
   canalId: string;
   phoneNumberId: string;
   canalActivo: boolean;
+  /**
+   * `true` si el contacto revocó el consentimiento `TRANSACCIONAL` (hubo filas y ninguna vigente).
+   * Un contacto sin registro de consentimiento NO cuenta como revocado.
+   */
+  consentimientoRevocado: boolean;
   ultimoMensajeClienteEn: Date | null;
 }
 

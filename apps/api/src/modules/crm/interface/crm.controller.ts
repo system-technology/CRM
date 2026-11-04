@@ -31,6 +31,8 @@ import {
   EditarContacto as EditarContactoContrato,
   FiltroSeguimientos as FiltroSeguimientosContrato,
   MoverOportunidad as MovimientoContrato,
+  OtorgarConsentimiento as OtorgarConsentimientoContrato,
+  RevocarConsentimiento as RevocarConsentimientoContrato,
   type Contacto,
   type CrearContacto,
   type CrearOportunidad,
@@ -39,6 +41,8 @@ import {
   type EditarContacto,
   type FiltroSeguimientos,
   type MoverOportunidad as Movimiento,
+  type OtorgarConsentimiento,
+  type RevocarConsentimiento,
   type FichaDeContacto,
   type Oportunidad,
   type PaginaContactos,
@@ -143,6 +147,24 @@ export class CrmController {
     @Body(new ZodValidationPipe(EditarContactoContrato)) cuerpo: EditarContacto,
   ): Promise<Contacto> {
     return this.contactosUC.editar(id, cuerpo, ContextoTenant.obtener().usuarioId);
+  }
+
+  /** T-096: registra el consentimiento (con su prueba) de una finalidad. Idempotente. */
+  @Post('contactos/:id/consentimientos')
+  async otorgarConsentimiento(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ZodValidationPipe(OtorgarConsentimientoContrato)) cuerpo: OtorgarConsentimiento,
+  ): Promise<Contacto> {
+    return this.contactosUC.otorgarConsentimiento(id, cuerpo, ContextoTenant.obtener().usuarioId);
+  }
+
+  /** T-096: revoca la finalidad; el trabajador de envíos deja de escribirle al contacto. */
+  @Post('contactos/:id/consentimientos/revocar')
+  async revocarConsentimiento(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ZodValidationPipe(RevocarConsentimientoContrato)) cuerpo: RevocarConsentimiento,
+  ): Promise<Contacto> {
+    return this.contactosUC.revocarConsentimiento(id, cuerpo);
   }
 
   /** Crear oportunidad sobre un contacto. Nace en la etapa inicial del embudo de la agencia. */
