@@ -2354,7 +2354,7 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: backlog
+    status: done
     depends_on: []
     acceptance:
       - ConsentimientoContacto se registra con canal, finalidad, fecha y texto mostrado; se solicita en el
@@ -2366,6 +2366,11 @@ tasks:
       - apps/api/src/modules/inbox/
     source: ruta de seguridad y privacidad 2026-10-28
     created_at: 2026-10-28T02:16:36.574Z
+    started_at: 2026-11-04T23:36:26.617Z
+    done_at: 2026-11-04T23:36:26.617Z
+    evidence: "Mergeado en main por el PR #182 (rama a/T-096-consentimiento-viajero) con el CI en verde: format,
+      analyze, tests y los demás checks obligatorios. Cierre automático (.github/workflows/cerrar-tarea.yml)."
+    commit: 4ed01426f984b7dbcc9f1dea4ea94b0c4ef493e3
   - id: T-097
     title: "Derechos del titular: exportar y suprimir los datos de un contacto, auditado, con respuesta en los
       plazos legales"
