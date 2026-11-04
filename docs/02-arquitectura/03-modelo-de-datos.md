@@ -884,3 +884,31 @@ Migración `20261027140000_actor_en_la_auditoria`.
   plantar con el tenant ajeno y 23514 en las tres medias identidades.
 - **Cola (no bloquea, preexistente):** `registros_auditoria` no tiene foránea a `tenants` y su
   clave es `BIGSERIAL`; no cambia con T-071.
+
+## Permisos de mutación: RBAC en las escrituras (T-089, 2026-11-04)
+
+Migración `20261104130000_permisos_de_mutacion_rbac`. Sin tabla nueva ni cambio de forma.
+
+```
+  roles_permisos_del_catalogo   + 'bandeja.operar', 'crm.escribir', 'cotizacion.escribir'
+
+  rol sembrado    bandeja.operar   crm.escribir   cotizacion.escribir
+  DUENO                 sí              sí                 sí
+  ASESOR                sí              sí                 sí
+  OPERACIONES           no              no                 no      (solo lectura fuera del catálogo)
+  propios (sin clave)   sin cambio: los compone la agencia
+```
+
+**Por qué así.**
+
+- **OPERACIONES es el rol de solo lectura sembrado.** No se añade `SOLO_LECTURA` ni se amplía
+  `roles_clave_sembrada`: el rol de lectura ya existe, y un cuarto sembrado sería un rol inventado.
+- **Relleno sin duplicar ni quitar.** Solo se añaden los permisos que faltan, agencia por agencia
+  con `app.current_tenant` (RLS forzada alcanza al dueño); la migración aborta si queda un
+  DUENO/ASESOR sin los tres, con repetidos, o un OPERACIONES con alguno.
+- **CHECK en dos pasos** (`NOT VALID` + `VALIDATE`): solo amplía la lista, así que lo existente
+  siempre valida.
+- **Ojo:** el relleno de ADR-0011 (2026-10-19) pasó los usuarios `SOLO_LECTURA` antiguos a
+  ASESOR, que ahora escribe. Sin agencia real todavía, no hay a quién afectar.
+- Prueba: `packages/database/tests/permisos-de-mutacion.spec.ts` reejecuta el relleno sobre
+  agencias sembradas como antes, dentro de una transacción que se deshace.
