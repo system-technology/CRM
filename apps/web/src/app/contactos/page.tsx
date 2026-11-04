@@ -1,6 +1,7 @@
 'use client';
 
 import { useModoDemo } from '../../lib/modo-demo';
+import { usePermisos } from '../../lib/permisos';
 
 import React, { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
@@ -42,6 +43,8 @@ import {
 
 export default function ContactosPage() {
   const { esDemo } = useModoDemo();
+  const { sesion } = usePermisos();
+  const rolActivo = sesion?.acceso?.rol ?? null;
   const [pagina, setPagina] = useState(() => obtenerMockPaginaContactos());
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -301,7 +304,7 @@ export default function ContactosPage() {
 
                           {/* Teléfono */}
                           <td className="cifra px-4 py-3 font-medium text-neutral-700 dark:text-neutral-300">
-                            {formatearTelefonoVisual(c.telefono)}
+                            {formatearTelefonoVisual(c.telefono, rolActivo)}
                           </td>
 
                           {/* Correo */}
