@@ -2953,7 +2953,7 @@ tasks:
     phase: 1
     priority: P3
     effort: S
-    status: backlog
+    status: done
     depends_on: []
     acceptance:
       - Boton Exportar en cada listado; genera CSV en el navegador con es-CO (separador punto y coma, UTF-8
@@ -2966,6 +2966,11 @@ tasks:
       - apps/web/src/lib/exportar-csv.spec.ts
     source: cola de Antigravity reabastecida 2026-11-04
     created_at: 2026-11-04T23:48:05.405Z
+    started_at: 2026-11-05T03:54:22.456Z
+    done_at: 2026-11-05T03:54:22.458Z
+    evidence: "Mergeado en main por el PR #214 (rama b/T-119-exportar-csv) con el CI en verde: format, analyze,
+      tests y los demás checks obligatorios. Cierre automático (.github/workflows/cerrar-tarea.yml)."
+    commit: 549cf8c25b06299f06afbe5842b2fc27e33549a1
   - id: T-120
     title: "API: etapas del pipeline por agencia (listar, crear, editar, reordenar) que la web ya llama en
       /crm/etapas"
