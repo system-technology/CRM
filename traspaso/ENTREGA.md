@@ -1,3 +1,33 @@
+# Entrega — T-127: Atajos de teclado en la bandeja y ayuda accesible — 2026-11-04
+
+## Identificación
+- **Tarea:** `T-127`
+- **Rama:** `b/T-127-atajos-teclado-bandeja`
+- **Carril:** `b` (Frontend / Web)
+
+## Qué se construyó
+1. **Atajos globales de la bandeja:**
+   - `j`: Siguiente conversación en la lista.
+   - `k`: Conversación anterior en la lista.
+   - `r`: Enfocar compositor de texto para redacción de mensaje.
+   - `c`: Abrir modal «Enviar cotización por WhatsApp».
+   - `s`: Abrir modal «Crear oportunidad / seguimiento».
+   - `?`: Mostrar diálogo accesible con la ayuda de atajos.
+   - `Escape`: Cerrar modal o panel activo.
+2. **Protección contra activación en campos editables:**
+   - Los atajos de un solo carácter no se disparan si el foco está en un `<input>`, `<textarea>`, `<select>`, o elemento con `contenteditable` o rol de texto/búsqueda.
+3. **Preferencia configurable persistida:**
+   - Se almacena en `localStorage` bajo `viajapro_atajos_teclado_habilitados` (por defecto `true`).
+   - Se puede alternar directamente desde el modal de ayuda con un switch accesible (`role="switch"`, `aria-checked`).
+   - Si se desactiva, las pulsaciones de un solo carácter quedan deshabilitadas fuera de campos de texto.
+4. **Pruebas y verificación:**
+   - Pruebas unitarias de la lógica pura y persistencia en `src/lib/atajos-teclado-bandeja.spec.ts` (14 pruebas).
+   - Pruebas unitarias del diálogo de ayuda en `src/components/bandeja/modal-ayuda-atajos.spec.tsx` (5 pruebas).
+   - Pruebas de integración de la bandeja con teclado y compositor en `src/app/bandeja/bandeja-atajos-teclado.spec.tsx` (8 pruebas).
+   - 128 suites de pruebas de `@viajapro/web` pasando (1031 pruebas), typecheck y lint en verde sin advertencias.
+
+---
+
 # Entrega — T-124: Reportes sin cifras inventadas y aviso de «solo en este navegador» — 2026-11-04
 
 ## Identificación
