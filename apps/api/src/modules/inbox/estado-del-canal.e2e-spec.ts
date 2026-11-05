@@ -56,8 +56,8 @@ async function agencia(
       wabaId: `waba-ec-${randomBytes(4).toString('hex')}`,
       estado: opciones.estadoCuenta ?? 'ACTIVO',
       tokenCifrado: Buffer.from(TOKEN_SECRETO),
-      tokenNonce: Buffer.from('nonce-de-prueba'),
-      tokenTag: Buffer.from('tag-de-prueba'),
+      tokenNonce: randomBytes(12),
+      tokenTag: randomBytes(16),
       claveVersion: 1,
     },
   });
