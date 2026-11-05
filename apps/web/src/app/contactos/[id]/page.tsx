@@ -16,6 +16,7 @@ import { ModalEditarContacto } from '../../../components/contactos/modal-editar-
 import { ModalCrearOportunidad } from '../../../components/contactos/modal-crear-oportunidad';
 import { ModalCrearSeguimiento } from '../../../components/contactos/modal-crear-seguimiento';
 import { SeccionCamposPersonalizados } from '../../../components/contactos/seccion-campos-personalizados';
+import { PanelConsentimientosContacto } from '../../../components/crm/consentimientos';
 import {
   AvisoErrorAccionable,
   AvisoVacio,
@@ -80,7 +81,7 @@ export default function Contacto360Page({ params: paramsPromise }: Contacto360Pa
 
   // Pestaña activa
   const [pestanaActiva, setPestanaActiva] = useState<
-    'cronologia' | 'oportunidades' | 'seguimientos' | 'campos'
+    'cronologia' | 'oportunidades' | 'seguimientos' | 'campos' | 'consentimientos'
   >('cronologia');
 
   // Modales
@@ -457,9 +458,36 @@ export default function Contacto360Page({ params: paramsPromise }: Contacto360Pa
             >
               <span>Campos Personalizados</span>
             </button>
+
+            <button
+              type="button"
+              data-testid="tab-consentimientos"
+              onClick={() => setPestanaActiva('consentimientos')}
+              className={`flex min-h-[44px] items-center gap-2 border-b-2 px-4 py-2 transition-colors ${
+                pestanaActiva === 'consentimientos'
+                  ? 'border-teal-600 text-teal-600 dark:border-teal-400 dark:text-teal-400'
+                  : 'border-transparent text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200'
+              }`}
+            >
+              <span>Consentimientos Ley 1581</span>
+              <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-[10px] dark:bg-neutral-800">
+                {contacto.consentimientos.length}
+              </span>
+            </button>
           </div>
 
           {/* Contenido de la Pestaña Activa */}
+          {pestanaActiva === 'consentimientos' && (
+            <div className="pt-2">
+              <PanelConsentimientosContacto
+                contacto={contacto}
+                onContactoActualizado={(contactoActualizado) => {
+                  setFicha((prev) => (prev ? { ...prev, contacto: contactoActualizado } : null));
+                }}
+              />
+            </div>
+          )}
+
           {pestanaActiva === 'cronologia' && (
             <section aria-label="Historial cronológico 360" className="pt-2">
               <LineaTiempo360 eventos={eventosLineaTiempo} />

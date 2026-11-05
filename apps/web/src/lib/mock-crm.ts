@@ -11,6 +11,8 @@ import {
   PaginaSeguimientos,
   PendientesDelDia,
   Seguimiento,
+  OtorgarConsentimiento,
+  RevocarConsentimiento,
 } from '@viajapro/contracts';
 import { MOCK_CONVERSACIONES } from './mock-inbox';
 import { obtenerMockPaginaContactos } from './mock-contactos';
@@ -517,4 +519,51 @@ export function agregarMockNotaInterna(
     escritaEn: new Date().toISOString(),
   });
   mockNotasContacto.set(contactoId, notas);
+}
+
+/**
+ * Otorga consentimiento a un contacto en memoria (modo mock) (T-116).
+ */
+export function otorgarMockConsentimiento(
+  contactoId: string,
+  cuerpo: OtorgarConsentimiento,
+): Contacto {
+  const fichaActual = obtenerMockFichaDeContacto(contactoId);
+  const contactoPrevio = fichaActual.contacto;
+  const yaExiste = contactoPrevio.consentimientos.includes(cuerpo.finalidad);
+  const nuevos = yaExiste
+    ? contactoPrevio.consentimientos
+    : [...contactoPrevio.consentimientos, cuerpo.finalidad];
+
+  const actualizado: Contacto = {
+    ...contactoPrevio,
+    consentimientos: nuevos,
+    ultimoContactoEn: new Date().toISOString(),
+  };
+
+  const validado = Contacto.parse(actualizado);
+  mockContactosModificados.set(contactoId, validado);
+  return validado;
+}
+
+/**
+ * Revoca consentimiento a un contacto en memoria (modo mock) (T-116).
+ */
+export function revocarMockConsentimiento(
+  contactoId: string,
+  cuerpo: RevocarConsentimiento,
+): Contacto {
+  const fichaActual = obtenerMockFichaDeContacto(contactoId);
+  const contactoPrevio = fichaActual.contacto;
+  const nuevos = contactoPrevio.consentimientos.filter((c) => c !== cuerpo.finalidad);
+
+  const actualizado: Contacto = {
+    ...contactoPrevio,
+    consentimientos: nuevos,
+    ultimoContactoEn: new Date().toISOString(),
+  };
+
+  const validado = Contacto.parse(actualizado);
+  mockContactosModificados.set(contactoId, validado);
+  return validado;
 }
