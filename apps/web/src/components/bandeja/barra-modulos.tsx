@@ -16,7 +16,6 @@ import {
   Moon,
   Laptop,
   Plane,
-  TrendingUp,
   Search,
   Bell,
   Building2,
@@ -43,6 +42,7 @@ import {
 import {
   type NotificacionWeb,
   generarNotificacionesIniciales,
+  crearNotificacionSeguimientoVencido,
   procesarEventoSocketNotificacion,
   contarNotificacionesNoLeidas,
   marcarNotificacionLeida,
@@ -52,7 +52,7 @@ import {
 import { generarAlertasOperativas } from '../../lib/notificaciones-logica';
 import { obtenerPendientesDelDiaApi } from '../../lib/crm-api';
 import { usePermisos } from '../../lib/permisos';
-import { useModoDemo } from '../../lib/modo-demo';
+import { useModoDemo, esModoDemo } from '../../lib/modo-demo';
 import { cambiarAgenciaActivaApi, cerrarSesionApi } from '../../lib/auth-api';
 import { inboxSocketManager } from '../../lib/inbox-socket';
 import { useFocoModal } from '../../lib/use-foco-modal';
@@ -106,8 +106,9 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
   const [barraExpandida, setBarraExpandida] = useState(false);
   const [busquedaAbierta, setBusquedaAbierta] = useState(false);
   const [panelNotifAbierto, setPanelNotifAbierto] = useState(false);
+  // Fuera del modo demostración la campana parte vacía: solo muestra lo que llega de la API.
   const [notificaciones, setNotificaciones] = useState<NotificacionWeb[]>(() =>
-    generarNotificacionesIniciales(null, undefined, generarAlertasOperativas()),
+    esModoDemo() ? generarNotificacionesIniciales(null, undefined, generarAlertasOperativas()) : [],
   );
   const [menuSesionAbierto, setMenuSesionAbierto] = useState(false);
   const [cambiandoAgencia, setCambiandoAgencia] = useState<string | null>(null);
@@ -145,7 +146,15 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
     // 1. Cargar seguimientos pendientes del día de la API si está disponible
     void obtenerPendientesDelDiaApi()
       .then((pendientes) => {
-        if (pendientes) {
+        if (pendientes && !esModoDemo()) {
+          setNotificaciones((prev) => {
+            const nuevas = pendientes.vencidos.map((v) =>
+              crearNotificacionSeguimientoVencido(v.id, v.descripcion),
+            );
+            const ids = new Set(nuevas.map((n) => n.id));
+            return [...prev.filter((p) => !ids.has(p.id)), ...nuevas];
+          });
+        } else if (pendientes) {
           setNotificaciones((prev) => {
             const nuevas = generarNotificacionesIniciales(
               pendientes,
@@ -253,9 +262,9 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
 
   const conteoNoLeidas = contarNotificacionesNoLeidas(notificaciones);
 
-  const nombreUsuario = sesion?.identidad?.nombre ?? 'Asesor ViajaPro';
-  const correoUsuario = sesion?.identidad?.correo ?? 'asesor@viajapro.com';
-  const rolUsuario = sesion?.acceso?.rol ?? 'Asesor Comercial';
+  const nombreUsuario = sesion?.identidad?.nombre ?? (esDemo ? 'Asesor ViajaPro' : 'Tu cuenta');
+  const correoUsuario = sesion?.identidad?.correo ?? (esDemo ? 'asesor@viajapro.com' : '');
+  const rolUsuario = sesion?.acceso?.rol ?? (esDemo ? 'Asesor Comercial' : '');
   const iniciales = calcularIniciales(sesion?.identidad?.nombre, sesion?.identidad?.correo);
   const agenciaActiva =
     sesion?.agencias?.find((a) => a.id === sesion.tenantActivoId) ?? sesion?.agencias?.[0];
@@ -592,16 +601,6 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
                     <Laptop className="h-4 w-4 text-neutral-500" />
                   )}
                 </button>
-
-                <div
-                  title="Meta de cierres: $42.5M de $60M COP (71% completado)"
-                  className="group border-ok-200 bg-ok-50/50 dark:border-ok-900/50 dark:bg-ok-950/30 flex h-7 items-center gap-1 rounded-md border px-1.5"
-                >
-                  <TrendingUp className="text-ok-600 dark:text-ok-400 h-3 w-3" />
-                  <span className="cifra text-ok-700 dark:text-ok-300 text-[10px] font-bold">
-                    71%
-                  </span>
-                </div>
               </div>
 
               {/* Tarjeta de Perfil del Asesor */}
@@ -647,17 +646,6 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
                   </span>
                 )}
               </button>
-
-              {/* Meta de cierres compacta */}
-              <div
-                title="Meta de cierres: $42.5M de $60M COP (71% completado)"
-                className="group border-ok-200 bg-ok-50/50 dark:border-ok-900/50 dark:bg-ok-950/30 relative flex h-10 w-10 cursor-help flex-col items-center justify-center rounded-lg border p-0.5 text-center transition-colors"
-              >
-                <TrendingUp className="text-ok-600 dark:text-ok-400 h-3 w-3" />
-                <span className="cifra text-ok-700 dark:text-ok-300 text-[8px] leading-none font-bold">
-                  71%
-                </span>
-              </div>
 
               {/* Interruptor modo oscuro y tema */}
               <button

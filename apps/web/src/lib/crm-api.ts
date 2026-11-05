@@ -256,9 +256,23 @@ export async function obtenerResumenTrabajoDelDia(): Promise<ResumenTrabajoDelDi
     })(),
   ]);
 
+  // 401 con auth real: la sesión murió; nunca se disimula con ceros ni maqueta (T-126).
+  if (
+    tableroResult.status === 'rejected' &&
+    tableroResult.reason instanceof CrmApiError &&
+    tableroResult.reason.status === 401
+  ) {
+    throw tableroResult.reason;
+  }
+
   const tablero = tableroResult.status === 'fulfilled' ? tableroResult.value : null;
   const contadoresInbox = inboxResult.status === 'fulfilled' ? inboxResult.value : null;
   const cotizaciones = cotizacionesResult.status === 'fulfilled' ? cotizacionesResult.value : null;
+
+  // Si ninguna fuente respondió, un resumen en ceros mentiría ("no tienes nada"): es un error.
+  if (!tablero && !contadoresInbox && !cotizaciones) {
+    throw new Error('Ninguna fuente del resumen del día respondió');
+  }
 
   return calcularResumenTrabajo(contadoresInbox, tablero, cotizaciones);
 }
