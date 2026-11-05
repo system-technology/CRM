@@ -1,3 +1,47 @@
+# Entrega — T-142: Web /reportes sobre GET /api/v1/reportes/resumen: instantes UTC, ventasPorMoneda por moneda y fuera el cálculo desde el tablero — 2026-11-04
+
+## Identificación
+- **Tarea:** `T-142`
+- **Rama:** `b/T-142-web-reportes-resumen`
+- **Carril:** `b` (Frontend / Web)
+
+## Qué se construyó
+1. **Conexión integral a `GET /api/v1/reportes/resumen` con instantes UTC:**
+   - La pantalla `/reportes` (`ReportesPage`) se conecta directamente a la API de resumen sin depender de ningún cálculo ni mock local derivado del pipeline.
+   - La función `convertirPeriodoAInstantesUtc(periodo, ahora?, zona?)` convierte el periodo seleccionado a instantes UTC ISO (`desde` inclusivo, `hasta` exclusivo) según la zona horaria de la agencia (`America/Bogota` por defecto).
+   - El selector de periodo filtra de verdad invocando la API con los nuevos instantes y calcula la variación contra el periodo anterior equivalente (`rangoAnterior`).
+   - El subtítulo refleja las fechas exactas formateadas en hora de Colombia: `Del {fechaDesde} al {fechaHasta} (hora de Colombia).`
+
+2. **Una tarjeta / fila por moneda en ventas (R8):**
+   - Se procesa `ventasPorMoneda` de forma estricta: cada moneda tiene su propia fila con unidades en formato de moneda (`formatearDinero`), conteo de cotizaciones aceptadas y variación porcentual con BigInt.
+   - Ninguna cifra suma monedas ni asume COP.
+
+3. **Eliminación de `calcularReporteDesdePipeline` y cálculo desde el tablero:**
+   - Se removió completamente `calcularReporteDesdePipeline` y `obtenerReportePorPeriodo` de `reportes-logica.ts`, así como el uso del tablero truncado a 20 tarjetas por columna.
+   - Los valores `null` o indefinidos se representan como «Aún sin datos» (`TEXTO_SIN_DATOS`), jamás como `0` ni `0 %`.
+
+4. **Cohortes explícitas y protagonismo de la mediana en SLA:**
+   - Cada KPI incluye su cohorte:
+     - Cotizaciones: `X aceptadas de Y enviadas en el periodo (Z creadas)`.
+     - Oportunidades: `X creadas en el periodo (Y ganadas · Z perdidas · W abiertas)`.
+     - Primera respuesta: `X de Y conversaciones nuevas respondidas en el periodo`.
+   - El KPI de primera respuesta destaca la **mediana** como valor principal en la cifra grande (`vista.respuesta.medianaTexto`), dejando el promedio en el pie junto a la cohorte.
+
+5. **Costo neto y margen comercial estrictamente confidenciales:**
+   - La sección de margen (`seccion-margen-confidencial`) se muestra únicamente si la respuesta del servidor incluye las claves confidenciales (`neto`, `margen`, `margenPorcentaje`), el usuario cuenta con el permiso `cotizacion.ver_neto_y_margen` y se encuentra en la vista de Dueño (Gerencial).
+   - Se respetan dos monedas (COP y USD) simultáneamente tanto en ventas como en margen confidencial.
+   - Si el usuario conmuta voluntariamente a «Vista Asesor (Operativa)», la sección se oculta inmediatamente del DOM.
+
+## Pruebas y verificación
+- **Unitarias y permisos:**
+  - `src/lib/reportes-logica.spec.ts`: 9 pruebas verificando conversión UTC, variación porcentual BigInt, márgenes BigInt, múltiples monedas aisladas, cohortes y eliminación de `calcularReporteDesdePipeline`.
+  - `src/app/reportes/reportes-permisos.spec.tsx`: 6 pruebas validando ocultamiento sin permiso, visualización con dos monedas con permiso, toggle a vista asesor, filtrado UTC real y manejo de error 403.
+- **Suite completa:** 135 suites de prueba de `@viajapro/web` pasando al 100% (1096 pruebas).
+- **TypeScript y Lint:** `pnpm typecheck` y `pnpm lint` limpios con 0 errores.
+- **Protección de hooks:** `pnpm test:hooks` pasando 59/59, 19/19 y 6/6.
+
+---
+
 # Entrega — T-130: Presupuesto de rendimiento de la web: carga diferida y tamaño por ruta — 2026-11-04
 
 ## Identificación
