@@ -2975,7 +2975,7 @@ tasks:
         mutar; reordenar es una operacion atomica
       - "La tabla etapas_pipeline ya existe (T-014): sin migracion salvo que falte algo; con RLS y prueba e2e
         de aislamiento entre agencias"
-      - La web deja de simular el guardado ante un 404 (T-128)
+      - La web deja de simular el guardado ante un 404 (lo cubre T-124)
     files:
       - apps/api/src/modules/crm/
       - packages/contracts/src/crm.ts
