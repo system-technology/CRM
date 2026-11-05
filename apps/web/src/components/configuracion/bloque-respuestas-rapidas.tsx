@@ -1,5 +1,6 @@
 'use client';
 
+import { AvisoSoloLocal } from '../../components/comun/aviso-solo-local';
 import React, { useState, useMemo } from 'react';
 import {
   CATEGORIAS_RESPUESTA_RAPIDA,
@@ -176,6 +177,7 @@ export function BloqueRespuestasRapidas({
 
   return (
     <div className="space-y-6">
+      <AvisoSoloLocal que="las respuestas rápidas" />
       {/* Cabecera de la Sección */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
