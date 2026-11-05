@@ -112,6 +112,30 @@ de miel cuesta más que diez horas de asesor.
 
 ---
 
+## Transversal — Multiidioma
+
+Decidido por el propietario el 2026-11-04: entra en esta versión. Diseño en
+[ADR-0020](../03-adr/0020-multiidioma-interfaz-viajero-catalogo-y-plantillas.md); orden y
+tareas en el [roadmap de multiidioma](../08-roadmap/07-roadmap-multiidioma.md).
+
+### Entra
+
+| Capacidad | Detalle |
+|---|---|
+| Interfaz | Español de Colombia (fuente), inglés y portugués de Brasil. Idioma por usuario, con el de la agencia por defecto |
+| Cotización al viajero | Por WhatsApp y en la vista imprimible, en el idioma del contacto. El envío guarda en qué idioma salió |
+| Idioma del contacto | Lo fija el asesor; el sistema solo lo sugiere |
+| Catálogo | Traducciones por agencia de nombre, destino, descripción, incluye/no incluye, opciones de salida y tarifas, con caída al idioma de la agencia |
+| Plantillas de WhatsApp | Se elige la aprobada en el idioma del contacto; si no existe, la caída es visible |
+
+### No entra en v1
+
+Variantes regionales de español; idiomas de derecha a izquierda; traducción automática del catálogo
+con IA; traducción de las páginas legales (se muestran en español con aviso); traducción de los datos
+internos que escribe la agencia (etapas, etiquetas, campos personalizados).
+
+---
+
 ## Fuera de v1 por completo
 
 | Fuera | Por qué | Cuándo |
@@ -120,7 +144,6 @@ de miel cuesta más que diez horas de asesor.
 | Marca blanca de la interfaz | Solo el PDF y el color de acento en v1 | Plan enterprise |
 | Portal del viajero | Interesante, no urgente | v2 |
 | Turismo corporativo | Otro producto, otro comprador, otras necesidades | v3 |
-| Multi-idioma de la interfaz | Español primero. Mercado objetivo definido | v2 |
 | Integración con ERP contable | Vía API cuando haya demanda concreta | v2 |
 
 ---

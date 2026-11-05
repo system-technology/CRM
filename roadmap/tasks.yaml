@@ -3694,3 +3694,470 @@ tasks:
     source: roadmap de reportes 2026-11-04 (docs/08-roadmap/06-roadmap-de-reportes.md)
     created_at: 2026-11-05T01:14:46.636Z
     owner: backend
+  - id: T-152
+    title: Glosario por idioma (es-CO, en-US, pt-BR) en el lenguaje ubicuo
+    type: docs
+    phase: 2
+    priority: P1
+    effort: S
+    status: backlog
+    depends_on: []
+    acceptance:
+      - docs/01-producto/02-lenguaje-ubicuo.md tiene la sección «Glosario por idioma» con los términos de
+        ADR-0020 §7 y los que falten
+      - Cada término dudoso (Cotización/Orçamento, Tarifa neta, Mayorista/Operadora) tiene una decisión y su
+        motivo
+      - Ningún término en inglés del glosario contradice el nombre de código del lenguaje ubicuo (TravelFile
+        no es Booking)
+    files:
+      - docs/01-producto/02-lenguaje-ubicuo.md
+    source: ADR-0020 multiidioma 2026-11-04 (docs/08-roadmap/07-roadmap-multiidioma.md)
+    created_at: 2026-11-05T02:38:48.839Z
+    owner: experto-turismo
+  - id: T-153
+    title: "Migración M-i1: idioma en tenants, usuarios, contactos y mensajes"
+    type: feature
+    phase: 2
+    priority: P1
+    effort: S
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Migración nueva con tenants.idioma y tenants.idioma_de_contenido NOT NULL DEFAULT es-CO, y
+        usuarios.idioma, contactos.idioma, mensajes.idioma nulables, todas varchar(10) con CHECK
+        ^[a-z]{2}(-[A-Z]{2})?$
+      - Ninguna migración aplicada se modifica; schema.prisma refleja las columnas
+      - aislamiento.spec.ts sigue verde sin tocar el literal de excepciones
+      - Revisión de auditor-seguridad registrada en el PR
+    files:
+      - packages/database/prisma/schema.prisma
+      - packages/database/prisma/migrations/
+    source: ADR-0020 multiidioma 2026-11-04 (docs/08-roadmap/07-roadmap-multiidioma.md)
+    created_at: 2026-11-05T02:38:48.840Z
+    owner: datos
+  - id: T-154
+    title: "Paquete packages/i18n: núcleo de traducción, formato por idioma y diccionario del viajero"
+    type: feature
+    phase: 2
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on:
+      - T-152
+    acceptance:
+      - packages/i18n sin dependencias externas exporta IDIOMAS_SOPORTADOS (es-CO, en-US, pt-BR), t, plural
+        con Intl.PluralRules, interpolación {x} y la equivalencia con códigos de Meta (es_CO, en_US, pt_BR y
+        respaldo es, en)
+      - formatearDinero(dinero, idioma) usa MONEDAS de @viajapro/domain para los decimales; 350000 COP en
+        es-CO da «$ 350.000» y en en-US contiene «COP»
+      - "formatearFechaDeViaje(date, idioma) no usa la zona del navegador: 2026-12-15 da «15 de diciembre de
+        2026», «December 15, 2026», «15 de dezembro de 2026»"
+      - Diccionario viajero.* completo en los tres idiomas; una prueba falla si falta una clave, si una hoja
+        está vacía o si los marcadores {x} difieren
+      - package.json y pnpm-workspace.yaml los modifica una persona (humanRequired)
+    files:
+      - packages/domain/src/
+      - apps/api/src/modules/quoting/domain/texto-de-cotizacion-whatsapp.ts
+    source: ADR-0020 multiidioma 2026-11-04 (docs/08-roadmap/07-roadmap-multiidioma.md)
+    created_at: 2026-11-05T02:38:48.840Z
+    owner: backend
+  - id: T-155
+    title: "API: idioma del usuario, del contacto y de la agencia en contratos y rutas"
+    type: feature
+    phase: 2
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on:
+      - T-153
+    acceptance:
+      - Zod Idioma en packages/contracts; la sesión devuelve idioma resuelto (usuario → agencia → es-CO)
+      - El usuario cambia su preferencia por una ruta propia; null vuelve al de la agencia
+      - Contacto expone y acepta idioma (nulable); el cambio se audita con antes y después
+      - El contrato de ajustes de agencia (rama a/T-000-api-ajustes-agencia o su sucesora) incluye idioma e
+        idioma_de_contenido; cambiar idioma_de_contenido con paquetes responde 409 CATALOGO_NO_VACIO
+      - "e2e: un idioma fuera de la lista responde 400; la agencia A no cambia el idioma de un contacto de B"
+    files:
+      - packages/contracts/src/
+      - apps/api/src/modules/identity/
+      - apps/api/src/modules/crm/
+    source: ADR-0020 multiidioma 2026-11-04 (docs/08-roadmap/07-roadmap-multiidioma.md)
+    created_at: 2026-11-05T02:38:48.840Z
+    owner: backend
+  - id: T-156
+    title: Cotización por WhatsApp en el idioma pedido, con idioma congelado en el mensaje
+    type: feature
+    phase: 2
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on:
+      - T-154
+      - T-155
+    acceptance:
+      - EnviarCotizacionCuerpo acepta idioma opcional; por defecto el del contacto y, si es nulo, el de la
+        agencia
+      - textoDeCotizacionParaWhatsapp recibe idioma y usa viajero.* de packages/i18n; no quedan rótulos ni
+        meses literales en español
+      - mensajes.idioma guarda el idioma del texto enviado; el texto libre del asesor lo deja nulo
+      - "La clave de idempotencia es idéntica a la actual cuando el idioma es el de contenido de la agencia y
+        añade |idioma cuando no; prueba: misma versión en es-CO y en-US produce dos mensajes, repetir en-US
+        produce uno"
+      - El texto nunca lleva neto ni margen en ningún idioma (prueba existente ampliada a en-US y pt-BR)
+    files:
+      - apps/api/src/modules/quoting/domain/texto-de-cotizacion-whatsapp.ts
+      - apps/api/src/modules/quoting/infrastructure/cotizacion-para-whatsapp.prisma.ts
+      - apps/api/src/modules/inbox/application/enviar-cotizacion-por-whatsapp.ts
+      - apps/api/src/modules/inbox/domain/clave-de-envio-de-cotizacion.ts
+    source: ADR-0020 multiidioma 2026-11-04 (docs/08-roadmap/07-roadmap-multiidioma.md)
+    created_at: 2026-11-05T02:38:48.841Z
+    owner: backend
+  - id: T-157
+    title: "Web: infraestructura de i18n con diccionarios tipados, cookie de idioma y trinquete de literales"
+    type: feature
+    phase: 2
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on:
+      - T-154
+      - T-155
+    acceptance:
+      - "apps/web/src/i18n/ con es-CO como fuente as const; en-US y pt-BR satisfies Diccionario: una clave
+        faltante rompe pnpm typecheck"
+      - useT() en cliente y obtenerT() en servidor; el proveedor carga solo el diccionario activo; <html lang>
+        sigue al idioma
+      - Cookie vp_idioma fijada al recibir la sesión; middleware.ts y la CSP no cambian
+      - formato.ts recibe idioma, usa MONEDAS para decimales y mantiene la zona del tenant (R9)
+      - "Prueba de completitud: hojas no vacías, mismos marcadores, plurales con todas las categorías de
+        Intl.PluralRules"
+      - "Escáner de literales JSX con la API de typescript y línea base por archivo: falla si un archivo sube
+        su recuento"
+      - Pseudolocale es-XA disponible solo en desarrollo; selector de idioma en el perfil
+    files:
+      - apps/web/src/app/layout.tsx
+      - apps/web/src/lib/formato.ts
+      - apps/web/src/lib/
+    source: ADR-0020 multiidioma 2026-11-04 (docs/08-roadmap/07-roadmap-multiidioma.md)
+    created_at: 2026-11-05T02:38:48.841Z
+    owner: frontend
+  - id: T-158
+    title: "Web: extraer a claves los textos de navegación, barra de módulos, auth, aceptar invitación,
+      onboarding, errores y componentes comunes"
+    type: refactor
+    phase: 2
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on:
+      - T-157
+    acceptance:
+      - La línea base del escáner de literales es 0 en todos los archivos del área
+      - Las claves son estables por contexto y pantalla, nunca el texto en español
+      - Las pruebas existentes del área siguen verdes en es-CO sin cambiar sus afirmaciones
+      - Una prueba renderiza el área en en-US y comprueba que no aparece ninguna cadena de la fuente
+    files:
+      - apps/web/src/components/comun/
+      - apps/web/src/components/auth/
+      - apps/web/src/components/onboarding/
+      - apps/web/src/components/bandeja/barra-modulos.tsx
+    source: ADR-0020 multiidioma 2026-11-04 (docs/08-roadmap/07-roadmap-multiidioma.md)
+    created_at: 2026-11-05T02:38:48.841Z
+    owner: frontend
+  - id: T-159
+    title: "Web: extraer a claves los textos de bandeja y sus componentes"
+    type: refactor
+    phase: 2
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on:
+      - T-157
+    acceptance:
+      - La línea base del escáner de literales es 0 en todos los archivos del área
+      - Las claves son estables por contexto y pantalla, nunca el texto en español
+      - Las pruebas existentes del área siguen verdes en es-CO sin cambiar sus afirmaciones
+      - Una prueba renderiza el área en en-US y comprueba que no aparece ninguna cadena de la fuente
+    files:
+      - apps/web/src/app/bandeja/
+      - apps/web/src/components/bandeja/
+    source: ADR-0020 multiidioma 2026-11-04 (docs/08-roadmap/07-roadmap-multiidioma.md)
+    created_at: 2026-11-05T02:38:48.841Z
+    owner: frontend
+  - id: T-160
+    title: "Web: extraer a claves los textos de cotizador, cotizaciones y comparador de versiones"
+    type: refactor
+    phase: 2
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on:
+      - T-157
+    acceptance:
+      - La línea base del escáner de literales es 0 en todos los archivos del área
+      - Las claves son estables por contexto y pantalla, nunca el texto en español
+      - Las pruebas existentes del área siguen verdes en es-CO sin cambiar sus afirmaciones
+      - Una prueba renderiza el área en en-US y comprueba que no aparece ninguna cadena de la fuente
+    files:
+      - apps/web/src/app/cotizador/
+      - apps/web/src/app/cotizaciones/
+      - apps/web/src/components/cotizador/
+      - apps/web/src/components/cotizaciones/
+    source: ADR-0020 multiidioma 2026-11-04 (docs/08-roadmap/07-roadmap-multiidioma.md)
+    created_at: 2026-11-05T02:38:48.841Z
+    owner: frontend
+  - id: T-161
+    title: "Web: extraer a claves los textos de catálogo e importación"
+    type: refactor
+    phase: 2
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on:
+      - T-157
+    acceptance:
+      - La línea base del escáner de literales es 0 en todos los archivos del área
+      - Las claves son estables por contexto y pantalla, nunca el texto en español
+      - Las pruebas existentes del área siguen verdes en es-CO sin cambiar sus afirmaciones
+      - Una prueba renderiza el área en en-US y comprueba que no aparece ninguna cadena de la fuente
+    files:
+      - apps/web/src/app/catalogo/
+      - apps/web/src/components/catalogo/
+    source: ADR-0020 multiidioma 2026-11-04 (docs/08-roadmap/07-roadmap-multiidioma.md)
+    created_at: 2026-11-05T02:38:48.841Z
+    owner: frontend
+  - id: T-162
+    title: "Web: extraer a claves los textos de inicio, contactos, pipeline, seguimientos, reportes,
+      notificaciones, configuración y aviso de páginas legales"
+    type: refactor
+    phase: 2
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on:
+      - T-157
+    acceptance:
+      - La línea base del escáner de literales es 0 en todos los archivos del área
+      - Las claves son estables por contexto y pantalla, nunca el texto en español
+      - Las pruebas existentes del área siguen verdes en es-CO sin cambiar sus afirmaciones
+      - Una prueba renderiza el área en en-US y comprueba que no aparece ninguna cadena de la fuente
+    files:
+      - apps/web/src/app/page.tsx
+      - apps/web/src/app/contactos/
+      - apps/web/src/app/pipeline/
+      - apps/web/src/app/seguimientos/
+      - apps/web/src/app/reportes/
+      - apps/web/src/components/configuracion/
+    source: ADR-0020 multiidioma 2026-11-04 (docs/08-roadmap/07-roadmap-multiidioma.md)
+    created_at: 2026-11-05T02:38:48.841Z
+    owner: frontend
+  - id: T-163
+    title: Traducir los diccionarios de interfaz a en-US y pt-BR con el glosario
+    type: feature
+    phase: 2
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on:
+      - T-152
+      - T-158
+      - T-159
+      - T-160
+      - T-161
+      - T-162
+    acceptance:
+      - en-US y pt-BR completos (typecheck y prueba de completitud verdes)
+      - Los términos del glosario viven bajo glosario.* y las frases los interpolan
+      - experto-turismo revisa una muestra de 50 cadenas por idioma y su veredicto queda en el PR
+    files:
+      - apps/web/src/lib/
+    source: ADR-0020 multiidioma 2026-11-04 (docs/08-roadmap/07-roadmap-multiidioma.md)
+    created_at: 2026-11-05T02:38:48.841Z
+    owner: frontend
+  - id: T-164
+    title: "Modal de envío de cotización: selector de idioma y «recordar para este contacto»"
+    type: feature
+    phase: 2
+    priority: P1
+    effort: S
+    status: backlog
+    depends_on:
+      - T-156
+      - T-157
+    acceptance:
+      - El selector preselecciona el idioma del contacto o, si es nulo, el de la agencia
+      - Enviar en otro idioma no cambia el contacto salvo con «recordar»
+      - "Prueba: enviar en en-US manda idioma en-US en el cuerpo"
+    files:
+      - apps/web/src/components/bandeja/modal-enviar-cotizacion.tsx
+      - apps/web/src/components/cotizaciones/modal-enviar-whatsapp-cotizacion.tsx
+    source: ADR-0020 multiidioma 2026-11-04 (docs/08-roadmap/07-roadmap-multiidioma.md)
+    created_at: 2026-11-05T02:38:48.841Z
+    owner: frontend
+  - id: T-165
+    title: Vista imprimible de cotización en el idioma del contacto
+    type: feature
+    phase: 2
+    priority: P1
+    effort: S
+    status: backlog
+    depends_on:
+      - T-154
+      - T-157
+    acceptance:
+      - ?idioma= elige el idioma; por defecto el del contacto; rótulos desde viajero.* de packages/i18n
+      - Plurales correctos (sin «adulto(s)») en los tres idiomas
+      - Sigue sin exponer neto, margen ni política (proyectarVersionParaVistaCliente intacta)
+      - El bloque legal colombiano sale en español con un aviso traducido
+    files:
+      - apps/web/src/app/cotizaciones/[id]/imprimir/page.tsx
+    source: ADR-0020 multiidioma 2026-11-04 (docs/08-roadmap/07-roadmap-multiidioma.md)
+    created_at: 2026-11-05T02:38:48.841Z
+    owner: frontend
+  - id: T-166
+    title: QA del primer entregable multiidioma
+    type: test
+    phase: 2
+    priority: P1
+    effort: S
+    status: backlog
+    depends_on:
+      - T-163
+      - T-164
+      - T-165
+    acceptance:
+      - Recorrido de las rutas principales en en-US y pt-BR sin ninguna cadena de la fuente
+      - revision-375px.spec.tsx pasa en pt-BR y es-XA
+      - "Cotización enviada en en-US de punta a punta: mensaje con idioma en-US y texto en inglés"
+    files:
+      - apps/web/src/components/comun/revision-375px.spec.tsx
+    source: ADR-0020 multiidioma 2026-11-04 (docs/08-roadmap/07-roadmap-multiidioma.md)
+    created_at: 2026-11-05T02:38:48.841Z
+    owner: qa
+  - id: T-167
+    title: "Migración M-i2: tablas de traducción del catálogo"
+    type: feature
+    phase: 2
+    priority: P2
+    effort: S
+    status: backlog
+    depends_on:
+      - T-153
+    acceptance:
+      - traducciones_paquete, traducciones_opcion_de_salida y traducciones_tarifa con tenant_id, UNIQUE
+        (entidad, idioma), UNIQUE (id, tenant_id), foránea compuesta con CASCADE y CHECK de forma del idioma
+      - Ninguna columna de dinero, fecha u hora en ellas
+      - RLS aplicada por policies/001; aislamiento.spec.ts verde sin tocar excepciones
+      - Revisión de auditor-seguridad registrada en el PR
+    files:
+      - packages/database/prisma/schema.prisma
+      - packages/database/prisma/migrations/
+    source: ADR-0020 multiidioma 2026-11-04 (docs/08-roadmap/07-roadmap-multiidioma.md)
+    created_at: 2026-11-05T02:38:48.842Z
+    owner: datos
+  - id: T-168
+    title: "API: traducciones del catálogo en CRUD, núcleo de propuestas y texto de cotización"
+    type: feature
+    phase: 2
+    priority: P2
+    effort: M
+    status: backlog
+    depends_on:
+      - T-167
+      - T-156
+    acceptance:
+      - resolverTextoDeCatalogo cae por campo al idioma base y devuelve los campos caídos
+      - CRUD de traducciones bajo catalogo.administrar; traducir al idioma base responde
+        TRADUCCION_EN_IDIOMA_BASE
+      - PropuestaDeCatalogo acepta traducciones opcionales con version 1; aplicar dos veces converge; lo que
+        no viene no se borra
+      - El descriptor de plantilla acepta columnas campo@idioma sin cambiar de version
+      - El texto de WhatsApp usa nombre, destino, opción y tarifa traducidos y la respuesta de
+        previsualización lista los campos caídos
+      - "e2e: la agencia A no lee ni escribe traducciones de B"
+    files:
+      - apps/api/src/modules/quoting/application/
+      - apps/api/src/modules/quoting/domain/
+      - packages/contracts/src/
+    source: ADR-0020 multiidioma 2026-11-04 (docs/08-roadmap/07-roadmap-multiidioma.md)
+    created_at: 2026-11-05T02:38:48.842Z
+    owner: backend
+  - id: T-169
+    title: "Web: pestaña de traducciones del paquete, columnas @idioma en importación y aviso de campos caídos"
+    type: feature
+    phase: 2
+    priority: P2
+    effort: M
+    status: backlog
+    depends_on:
+      - T-168
+    acceptance:
+      - La ficha del paquete edita la traducción de un idioma con el texto base al lado
+      - El asistente de importación mapea columnas nombre@en-US y similares
+      - El modal de envío muestra «N campos saldrán en <idioma base>» antes de enviar
+    files:
+      - apps/web/src/components/catalogo/
+      - apps/web/src/components/catalogo/importacion/
+    source: ADR-0020 multiidioma 2026-11-04 (docs/08-roadmap/07-roadmap-multiidioma.md)
+    created_at: 2026-11-05T02:38:48.842Z
+    owner: frontend
+  - id: T-170
+    title: QA del catálogo traducido
+    type: test
+    phase: 2
+    priority: P2
+    effort: S
+    status: backlog
+    depends_on:
+      - T-169
+    acceptance:
+      - "Importación con columnas @en-US aplicada dos veces: 0 cambios la segunda"
+      - Caída por campo verificada con un paquete traducido a medias
+      - Aislamiento A/B de traducciones en e2e
+    files:
+      - apps/api/src/modules/quoting/
+    source: ADR-0020 multiidioma 2026-11-04 (docs/08-roadmap/07-roadmap-multiidioma.md)
+    created_at: 2026-11-05T02:38:48.842Z
+    owner: qa
+  - id: T-171
+    title: elegirPlantilla por idioma con caída explícita
+    type: feature
+    phase: 2
+    priority: P2
+    effort: S
+    status: backlog
+    depends_on:
+      - T-154
+    acceptance:
+      - "Función pura en inbox/domain: código exacto de Meta, luego idioma base, luego otra variante del
+        idioma en orden alfabético; solo APROBADA y no eliminada"
+      - "Sin plantilla en el idioma: envío manual responde 409 PLANTILLA_SIN_IDIOMA con los idiomas aprobados;
+        envío automático cae al idioma de la agencia y lo registra en mensajes.idioma"
+      - El agente whatsapp revisa los códigos de idioma y lo deja en el PR
+    files:
+      - apps/api/src/modules/inbox/domain/
+      - packages/contracts/src/plantillas.ts
+    source: ADR-0020 multiidioma 2026-11-04 (docs/08-roadmap/07-roadmap-multiidioma.md)
+    created_at: 2026-11-05T02:38:48.842Z
+    owner: backend
+  - id: T-172
+    title: "Web: plantillas con estado por idioma y sugerencia de idioma del contacto"
+    type: feature
+    phase: 2
+    priority: P2
+    effort: M
+    status: backlog
+    depends_on:
+      - T-171
+      - T-157
+    acceptance:
+      - El selector agrupa por nombre y muestra el estado por idioma; la caída a otro idioma exige un clic
+      - La bandeja sugiere el idioma del contacto con un detector de palabras frecuentes que corre en el
+        navegador sobre los mensajes visibles, más el prefijo del teléfono como desempate
+      - La sugerencia no escribe nada ni sale del navegador; «Fijar» llama al PATCH de contacto
+    files:
+      - apps/web/src/components/bandeja/modal-plantillas.tsx
+      - apps/web/src/components/bandeja/ficha-cliente.tsx
+    source: ADR-0020 multiidioma 2026-11-04 (docs/08-roadmap/07-roadmap-multiidioma.md)
+    created_at: 2026-11-05T02:38:48.842Z
+    owner: frontend
