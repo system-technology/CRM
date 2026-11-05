@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import {
   BarChart3,
   TrendingUp,
@@ -13,7 +14,6 @@ import {
   Calendar,
 } from 'lucide-react';
 import type { TableroPipeline } from '@viajapro/contracts';
-import { ReportesReales } from '../../components/reportes/reportes-reales';
 import { BarraModulos } from '../../components/bandeja/barra-modulos';
 import { DistintivoDatosDemo } from '../../components/comun/distintivo-datos-demo';
 import { EsqueletoReportes } from '../../components/comun/esqueletos';
@@ -27,6 +27,13 @@ import {
 import { usePermisos } from '../../lib/permisos';
 import { obtenerTableroPipeline } from '../../lib/crm-api';
 import { esModoDemo } from '../../lib/modo-demo';
+
+const ReportesReales = dynamic(
+  () => import('../../components/reportes/reportes-reales').then((m) => m.ReportesReales),
+  {
+    loading: () => <EsqueletoReportes />,
+  },
+);
 
 const PERIODOS: RangoPeriodo[] = ['ultimos_30_dias', 'este_mes', 'trimestre', 'ano'];
 
