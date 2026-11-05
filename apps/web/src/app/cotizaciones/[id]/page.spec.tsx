@@ -204,4 +204,53 @@ describe('PaginaCotizacionGuardada (Detalle T-107)', () => {
       expect(screen.getAllByText('Versión 2').length).toBeGreaterThan(0);
     });
   });
+
+  it('deshabilita el botón de comparar si solo existe una versión', async () => {
+    vi.spyOn(authApi, 'obtenerSesionActualApi').mockResolvedValue(sesionSinPermisoNeto);
+
+    render(<PaginaCotizacionGuardada />);
+
+    await waitFor(() => {
+      const btn = screen.getByTestId<HTMLButtonElement>('btn-comparar-versiones');
+      expect(btn).toBeDefined();
+      expect(btn.disabled).toBe(true);
+    });
+  });
+
+  it('habilita y abre el modal de comparación lado a lado cuando hay múltiples versiones', async () => {
+    vi.spyOn(authApi, 'obtenerSesionActualApi').mockResolvedValue(sesionSinPermisoNeto);
+
+    const cotizacionConMultiplesVersiones: CotizacionGuardada = {
+      ...cotizacionPrueba,
+      versiones: [
+        cotizacionPrueba.versiones[0]!,
+        {
+          ...cotizacionPrueba.versiones[0]!,
+          id: '01932000-0000-7000-8000-000000000012',
+          numero: 2,
+          adultos: 3,
+          venta: { unidades: '7500000', moneda: 'COP' },
+        },
+      ],
+    };
+
+    vi.spyOn(cotizacionesApi, 'obtenerCotizacionGuardadaApi').mockResolvedValue(
+      cotizacionConMultiplesVersiones,
+    );
+
+    render(<PaginaCotizacionGuardada />);
+
+    await waitFor(() => {
+      const btn = screen.getByTestId<HTMLButtonElement>('btn-comparar-versiones');
+      expect(btn).toBeDefined();
+      expect(btn.disabled).toBe(false);
+    });
+
+    fireEvent.click(screen.getByTestId('btn-comparar-versiones'));
+
+    await waitFor(() => {
+      expect(screen.getByRole('dialog')).toBeDefined();
+      expect(screen.getByText('Comparar Versiones Lado a Lado')).toBeDefined();
+    });
+  });
 });

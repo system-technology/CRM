@@ -26,6 +26,7 @@ import {
   MessageSquare,
   Printer,
   Shield,
+  Scale,
 } from 'lucide-react';
 import type { Acomodacion, CotizacionGuardada, Contacto } from '@viajapro/contracts';
 import { BarraModulos } from '../../../components/bandeja/barra-modulos';
@@ -45,6 +46,7 @@ import {
 } from '../../../lib/cotizaciones-logica';
 import { listarContactos } from '../../../lib/crm-api';
 import { ModalEnviarWhatsAppCotizacion } from '../../../components/cotizaciones/modal-enviar-whatsapp-cotizacion';
+import { ModalCompararVersiones } from '../../../components/cotizaciones/modal-comparar-versiones';
 import { usePermisos } from '../../../lib/permisos';
 
 interface PageProps {
@@ -93,6 +95,7 @@ export default function PaginaCotizacionGuardada({ params: paramsPromise }: Page
 
   // Modal para crear nueva versión
   const [modalModificarAbierto, setModalModificarAbierto] = useState(false);
+  const [modalCompararAbierto, setModalCompararAbierto] = useState(false);
   const [guardandoVersion, setGuardandoVersion] = useState(false);
   const [errorModificar, setErrorModificar] = useState<string | null>(null);
 
@@ -448,6 +451,22 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
                       <span>
                         {duplicandoVersion ? 'Duplicando...' : `Duplicar v${versionActual.numero}`}
                       </span>
+                    </button>
+
+                    <button
+                      type="button"
+                      data-testid="btn-comparar-versiones"
+                      onClick={() => setModalCompararAbierto(true)}
+                      disabled={cotizacion.versiones.length < 2}
+                      className="flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-neutral-300 bg-white px-4 py-2.5 text-xs font-bold text-neutral-700 shadow-xs transition-colors hover:bg-neutral-50 disabled:opacity-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200"
+                      title={
+                        cotizacion.versiones.length < 2
+                          ? 'Se requieren al menos 2 versiones para comparar'
+                          : 'Comparar diferencias lado a lado entre dos versiones'
+                      }
+                    >
+                      <Scale className="h-4 w-4" />
+                      <span>Comparar versiones</span>
                     </button>
                   </div>
                 </div>
@@ -1045,6 +1064,17 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
                 </form>
               </div>
             </div>
+          )}
+          {/* Modal Comparar Versiones Lado a Lado (T-128) */}
+          {modalCompararAbierto && cotizacion && cotizacion.versiones.length >= 2 && (
+            <ModalCompararVersiones
+              abierto={modalCompararAbierto}
+              onCerrar={() => setModalCompararAbierto(false)}
+              versiones={cotizacion.versiones}
+              versionInicialA={1}
+              versionInicialB={versionActual?.numero ?? 2}
+              tituloCotizacion={cotizacion.titulo}
+            />
           )}
         </div>
       </main>

@@ -13,7 +13,9 @@ import {
   PuertoPublicadorDeEventos,
   type PuertoSuscriptorDeEventos,
 } from '../application/puertos-de-eventos.js';
+import { AvisoAlRelayEnProceso } from './aviso-al-relay.en-proceso.js';
 import { AvisoAlRelayInerte, AvisoAlRelayRedis } from './aviso-al-relay.redis.js';
+import type { CompartidoDelInbox } from './compartido-en-proceso.js';
 import type { EventoDeDominio } from '../domain/evento-de-dominio.js';
 import { BusDeEventosEnMemoria } from './bus-de-eventos.en-memoria.js';
 import { PublicadorRedis, SuscriptorRedis } from './bus-de-eventos.redis.js';
@@ -28,7 +30,14 @@ function urlDeRedis(): string {
   return url;
 }
 
-export function crearBusEnMemoriaSiSePide(): BusDeEventosEnMemoria | null {
+/**
+ * `compartido` solo existe en modo `unico` (`main-unico.ts`): el bus ya está creado y es el MISMO
+ * que usa el relay del contexto del trabajador. Sin él, se elige por `BUS_DE_EVENTOS`.
+ */
+export function crearBusEnMemoriaSiSePide(
+  compartido?: CompartidoDelInbox | null,
+): BusDeEventosEnMemoria | null {
+  if (compartido) return compartido.bus;
   return enMemoria() ? new BusDeEventosEnMemoria() : null;
 }
 
@@ -59,6 +68,11 @@ export function crearPublicadorDelTrabajador(): PuertoPublicadorDeEventos {
  * La pista hacia el relay del trabajador. Con el bus en memoria no hay trabajador al otro lado de
  * Redis: la pista no tiene a quién llegar y las pruebas vacían el outbox a mano.
  */
-export function crearAvisoAlRelay(bus: BusDeEventosEnMemoria | null): PuertoAvisoAlRelay {
+export function crearAvisoAlRelay(
+  bus: BusDeEventosEnMemoria | null,
+  compartido?: CompartidoDelInbox | null,
+): PuertoAvisoAlRelay {
+  // Modo `unico`: el relay vive en este proceso y lee los mismos avisos en memoria.
+  if (compartido) return new AvisoAlRelayEnProceso(compartido.avisos);
   return bus ? new AvisoAlRelayInerte() : new AvisoAlRelayRedis(urlDeRedis());
 }
