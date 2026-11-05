@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import ReportesPage from './page';
 import * as authApi from '../../lib/auth-api';
+import * as reportesApi from '../../lib/reportes-api';
 import type { SesionActual } from '@viajapro/contracts';
 
 vi.mock('next/navigation', () => ({
@@ -63,6 +64,8 @@ const SESION_DUENO: SesionActual = {
 describe('ReportesPage - Ocultamiento de Costo Neto y Margen sin permiso (0c.27)', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    // El bloque confidencial de este archivo se prueba con los datos de demostración.
+    localStorage.setItem('viajapro_modo_demo', 'true');
   });
 
   it('NO renderiza Costo Neto Mayoristas ni Margen Comercial en el DOM cuando la sesión carece de permiso', async () => {
@@ -112,5 +115,43 @@ describe('ReportesPage - Ocultamiento de Costo Neto y Margen sin permiso (0c.27)
     // Al conmutar voluntariamente a vista asesor, la sección se oculta
     expect(screen.queryByTestId('seccion-margen-confidencial')).toBeNull();
     expect(screen.queryByText(/Costo Neto Mayoristas:/i)).toBeNull();
+  });
+
+  it('modo real: lee el resumen de la API y, sin permiso, el DOM no tiene margen ni neto', async () => {
+    localStorage.removeItem('viajapro_modo_demo');
+    vi.spyOn(authApi, 'obtenerSesionActualApi').mockResolvedValue(SESION_ASESOR);
+    const espia = vi.spyOn(reportesApi, 'obtenerResumenDeReportesApi').mockResolvedValue({
+      periodo: { desde: '2026-10-05T05:00:00.000Z', hasta: '2026-11-04T05:00:00.000Z' },
+      cotizaciones: { creadas: 1, enviadas: 1, aceptadas: 1, tasaAceptacion: 100 },
+      ventasPorMoneda: [
+        {
+          moneda: 'COP',
+          cotizacionesAceptadas: 1,
+          ventas: { unidades: '2500000', moneda: 'COP' },
+        },
+      ],
+      oportunidades: {
+        creadas: 0,
+        ganadas: 0,
+        perdidas: 0,
+        abiertas: 0,
+        tasaConversion: null,
+        porEtapa: [],
+      },
+      respuesta: {
+        conversacionesNuevas: 0,
+        conversacionesRespondidas: 0,
+        promedioMinutos: null,
+        medianaMinutos: null,
+      },
+    });
+
+    render(<ReportesPage />);
+
+    expect(await screen.findByTestId('ventas-COP')).toBeDefined();
+    expect(espia).toHaveBeenCalled();
+    expect(screen.queryByTestId('seccion-margen-confidencial')).toBeNull();
+    expect(screen.queryByText(/Costo neto/i)).toBeNull();
+    expect(screen.queryByText(/Margen/i)).toBeNull();
   });
 });

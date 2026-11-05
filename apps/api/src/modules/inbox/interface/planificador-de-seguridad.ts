@@ -9,7 +9,8 @@
  *     minutos de inactividad, y un periodo corto no lo dejaría dormir.
  *
  * Cada pasada reúne los changes pendientes (bajo el candado de transacción) y el outbox de todas
- * las agencias. Los envíos sin resolver y los arrendamientos vencidos se suman con el paso 4.
+ * las agencias, y los envíos sin resolver: reencola los pendientes vencidos y marca «sin confirmar»
+ * las reservas sin `wamid` (nunca las reenvía).
  *
  * Nunca lanza: un barrido fallido no tumba al proceso ni impide el siguiente.
  */
@@ -22,6 +23,7 @@ import {
 } from '@nestjs/common';
 import { BarrerPendientes } from '../application/barrer-pendientes.js';
 import { PuertoCoordinacionDelBarrido } from '../application/puertos-de-barrido.js';
+import { RecuperarEnviosSinResolver } from '../application/recuperar-envios-sin-resolver.js';
 import { RelevarOutbox } from '../application/relevar-outbox.js';
 import {
   type ConfiguracionDelBarrido,
@@ -43,6 +45,7 @@ export class PlanificadorDeSeguridad implements OnApplicationBootstrap, OnModule
     @Inject(PuertoCoordinacionDelBarrido)
     private readonly coordinacion: PuertoCoordinacionDelBarrido,
     @Inject(RelevarOutbox) private readonly relevo: RelevarOutbox,
+    @Inject(RecuperarEnviosSinResolver) private readonly envios: RecuperarEnviosSinResolver,
   ) {}
 
   onApplicationBootstrap(): void {
@@ -82,6 +85,12 @@ export class PlanificadorDeSeguridad implements OnApplicationBootstrap, OnModule
       await this.relevo.barrer();
     } catch (error) {
       this.log.error(`El barrido del outbox falló (${sanearError(error).codigo}).`);
+    }
+    try {
+      // Va DESPUÉS del outbox: un envío recién escrito ya tiene su evento publicado.
+      await this.envios.barrer();
+    } catch (error) {
+      this.log.error(`El barrido de envíos falló (${sanearError(error).codigo}).`);
     }
   }
 

@@ -44,8 +44,10 @@ const { PuertoCoordinacionDelBarrido } =
 const { PuertoPublicadorDeEventos, PuertoAvisoDeOutbox } =
   await import('../modules/inbox/application/puertos-de-eventos.js');
 const { BarridoEnProceso } = await import('../modules/inbox/infrastructure/barrido.en-proceso.js');
-const { ColaDeEnviosEnMemoriaTemporal, ReservaDeEnvioEnMemoriaTemporal } =
-  await import('../modules/inbox/infrastructure/cola-de-envios.en-memoria-temporal.js');
+const { ColaDeEnviosPostgres } =
+  await import('../modules/inbox/infrastructure/cola-de-envios.postgres.js');
+const { ReservaDeEnvioPostgres } =
+  await import('../modules/inbox/infrastructure/reserva-de-envio.postgres.js');
 const { ModoDeDespliegueInvalidoError } =
   await import('../shared/despliegue/modo-de-despliegue.js');
 
@@ -85,8 +87,8 @@ describe('arranque del modo unico', () => {
     try {
       // Los puertos son los de memoria, no los de BullMQ.
       expect(ctx.get(PuertoCoordinacionDelBarrido)).toBeInstanceOf(BarridoEnProceso);
-      expect(ctx.get(PuertoColaDeEnvios)).toBeInstanceOf(ColaDeEnviosEnMemoriaTemporal);
-      expect(ctx.get(PuertoReservaDeEnvio)).toBeInstanceOf(ReservaDeEnvioEnMemoriaTemporal);
+      expect(ctx.get(PuertoColaDeEnvios)).toBeInstanceOf(ColaDeEnviosPostgres);
+      expect(ctx.get(PuertoReservaDeEnvio)).toBeInstanceOf(ReservaDeEnvioPostgres);
       // El bus y los avisos son EXACTAMENTE los compartidos con la API.
       expect(ctx.get(PuertoPublicadorDeEventos)).toBe(compartido.bus);
       expect(ctx.get(PuertoAvisoDeOutbox)).toBe(compartido.avisos);
