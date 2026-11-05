@@ -8,6 +8,8 @@ import {
   PuertoCotizacionParaWhatsapp,
   PuertoExistenciaDePaquete,
 } from '../../shared/puertos/puertos-hacia-quoting.js';
+import { PuertoCotizacionesParaReportes } from '../../shared/puertos/puertos-de-reportes.js';
+import { CotizacionesParaReportesPrisma } from './infrastructure/cotizaciones-para-reportes.prisma.js';
 import { CotizacionParaWhatsappPrisma } from './infrastructure/cotizacion-para-whatsapp.prisma.js';
 import { ExistenciaDePaqueteDeQuoting } from './infrastructure/puertos-de-quoting.prisma.js';
 
@@ -16,7 +18,12 @@ import { ExistenciaDePaqueteDeQuoting } from './infrastructure/puertos-de-quotin
   providers: [
     { provide: PuertoExistenciaDePaquete, useClass: ExistenciaDePaqueteDeQuoting },
     { provide: PuertoCotizacionParaWhatsapp, useClass: CotizacionParaWhatsappPrisma },
+    { provide: PuertoCotizacionesParaReportes, useClass: CotizacionesParaReportesPrisma },
   ],
-  exports: [PuertoExistenciaDePaquete, PuertoCotizacionParaWhatsapp],
+  exports: [
+    PuertoExistenciaDePaquete,
+    PuertoCotizacionParaWhatsapp,
+    PuertoCotizacionesParaReportes,
+  ],
 })
 export class QuotingPuertosModule {}
