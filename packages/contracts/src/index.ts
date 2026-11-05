@@ -20,3 +20,4 @@ export * from './propuesta-de-catalogo.js';
 export * from './plantillas-de-catalogo.js';
 export * from './importacion.js';
 export * from './formatos.js';
+export * from './reportes.js';
