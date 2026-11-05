@@ -109,7 +109,7 @@ export const MOCK_SESION_UNICA_AGENCIA: SesionActualTipo = {
   acceso: {
     usuarioId: '01932000-0000-7000-8000-000000000011',
     rol: 'Asesor Comercial',
-    permisos: ['conversaciones.ver_todas'],
+    permisos: ['conversaciones.ver_todas', 'bandeja.operar', 'crm.escribir', 'cotizacion.escribir'],
   },
 };
 
@@ -140,6 +140,10 @@ export const MOCK_SESION_DUENO: SesionActualTipo = {
       'usuarios.administrar',
       'roles.administrar',
       'conversaciones.ver_todas',
+      'catalogo.administrar',
+      'bandeja.operar',
+      'crm.escribir',
+      'cotizacion.escribir',
     ],
   },
 };
@@ -310,7 +314,12 @@ export async function cambiarAgenciaActivaApi(tenantId: string): Promise<SesionA
       acceso: {
         usuarioId: '01932000-0000-7000-8000-000000000099',
         rol: 'Asesor',
-        permisos: ['conversaciones.ver_todas'],
+        permisos: [
+          'conversaciones.ver_todas',
+          'bandeja.operar',
+          'crm.escribir',
+          'cotizacion.escribir',
+        ],
       },
     };
     return sesionEnMemoriaMock;
