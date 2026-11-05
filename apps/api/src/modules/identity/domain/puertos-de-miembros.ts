@@ -1,6 +1,7 @@
 /**
  * Puertos de las invitaciones y de la alta de miembros. Sin framework ni Prisma.
  */
+import type { MiembroDeAgencia } from '@viajapro/contracts';
 import type { DatosDeInvitacion } from './invitacion.js';
 
 export abstract class PuertoInvitaciones {
@@ -26,6 +27,8 @@ export type ResultadoDeBaja =
   'baja' | 'ya_de_baja' | 'no_encontrado' | 'ultimo_dueno' | { faltaPermiso: string };
 
 export abstract class PuertoMiembros {
+  /** Con el tenant de la PETICIÓN y bajo RLS: los miembros de esta agencia, activos primero. */
+  abstract listar(): Promise<MiembroDeAgencia[]>;
   /**
    * Con el tenant de la PETICIÓN y bajo RLS: el rol existe en esta agencia. `null` si no.
    * Devuelve de paso los nombres que lleva el correo.
