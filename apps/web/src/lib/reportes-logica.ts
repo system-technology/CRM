@@ -22,9 +22,11 @@ export interface EtapaConversion {
 export interface RendimientoAsesor {
   asesorId: string;
   nombre: string;
-  correo: string;
+  /** null = no se conoce el correo real: no se fabrica uno. */
+  correo: string | null;
   avatar: string;
-  conversaciones: number;
+  /** null = la API aún no entrega conversaciones por asesor: no se estima. */
+  conversaciones: number | null;
   oportunidadesGanadas: number;
   totalVentas: Dinero;
   tiempoRespuestaMinutos: number | null;
@@ -245,9 +247,9 @@ export function calcularReporteDesdePipeline(
       return {
         asesorId: id,
         nombre: data.nombre,
-        correo: `${data.nombre.toLowerCase().replace(/\s+/g, '.')}@agencia.com`,
+        correo: null,
         avatar: iniciales || 'AS',
-        conversaciones: data.ganadas * 3, // estimado en base a interacciones
+        conversaciones: null, // No inventar: la API aún no cuenta conversaciones por asesor
         oportunidadesGanadas: data.ganadas,
         totalVentas: { unidades: String(data.totalVentas), moneda: 'COP' },
         tiempoRespuestaMinutos: null, // No inventar SLA sin API (T-021)
@@ -268,9 +270,11 @@ export function calcularReporteDesdePipeline(
     tasaConversion: ganadas + perdidas > 0 ? tasaConversion : null,
     metaMesVentas: null, // Aún sin meta configurada por API
     porcentajeMetaMes: null,
-    costoNetoTotal: { unidades: String((totalVentasGanadas * 80n) / 100n), moneda: 'COP' },
-    margenTotal: { unidades: String((totalVentasGanadas * 20n) / 100n), moneda: 'COP' },
-    margenPorcentaje: 20.0,
+    // T-124: el tablero no trae neto ni margen. Sin cifra real, no se muestra (nada de 20 %/80 %).
+    // El margen saldrá de las cotizaciones guardadas (permiso cotizacion.ver_neto_y_margen).
+    costoNetoTotal: null,
+    margenTotal: null,
+    margenPorcentaje: null,
     tiempoRespuestaPromedioMinutos: null, // Aún sin datos SLA en API
     tiempoRespuestaPeriodoAnteriorMinutos: null,
     ventasPorDestino,
