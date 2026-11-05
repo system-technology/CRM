@@ -38,6 +38,7 @@ import {
   formatearErrorAmigable,
   construirMensajeErrorAccionable,
 } from '../../../lib/estados-ui-logica';
+import { usePermisos, explicacionFaltaPermiso } from '../../../lib/permisos';
 import {
   ArrowLeft,
   MessageSquare,
@@ -106,6 +107,8 @@ export default function Contacto360Page({ params: paramsPromise }: Contacto360Pa
   const [seguimientos, setSeguimientos] = useState<Seguimiento[]>([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const { puedeEscribirCrm } = usePermisos();
 
   // Pestaña activa
   const [pestanaActiva, setPestanaActiva] = useState<
@@ -279,8 +282,10 @@ export default function Contacto360Page({ params: paramsPromise }: Contacto360Pa
             </Link>
             <button
               type="button"
+              disabled={!puedeEscribirCrm}
+              title={!puedeEscribirCrm ? explicacionFaltaPermiso('crm.escribir') : undefined}
               onClick={() => setModalEditarAbierto(true)}
-              className="flex min-h-[44px] items-center gap-1.5 rounded-xl border border-neutral-200 bg-white px-3.5 py-2 text-xs font-bold text-neutral-700 shadow-2xs hover:bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
+              className="flex min-h-[44px] items-center gap-1.5 rounded-xl border border-neutral-200 bg-white px-3.5 py-2 text-xs font-bold text-neutral-700 shadow-2xs hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-neutral-800 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
             >
               <Edit3 className="h-4 w-4" />
               <span>Editar Datos</span>
@@ -348,16 +353,20 @@ export default function Contacto360Page({ params: paramsPromise }: Contacto360Pa
               <div className="flex flex-wrap items-center gap-2 pt-2 md:pt-0">
                 <button
                   type="button"
+                  disabled={!puedeEscribirCrm}
+                  title={!puedeEscribirCrm ? explicacionFaltaPermiso('crm.escribir') : undefined}
                   onClick={() => setModalOportunidadAbierto(true)}
-                  className="flex min-h-[44px] items-center gap-1.5 rounded-xl bg-teal-600 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-teal-700 dark:bg-teal-500 dark:hover:bg-teal-600"
+                  className="flex min-h-[44px] items-center gap-1.5 rounded-xl bg-teal-600 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-teal-500 dark:hover:bg-teal-600"
                 >
                   <Kanban className="h-4 w-4" />
                   <span>Nueva Oportunidad</span>
                 </button>
                 <button
                   type="button"
+                  disabled={!puedeEscribirCrm}
+                  title={!puedeEscribirCrm ? explicacionFaltaPermiso('crm.escribir') : undefined}
                   onClick={() => setModalSeguimientoAbierto(true)}
-                  className="flex min-h-[44px] items-center gap-1.5 rounded-xl border border-neutral-300 bg-white px-4 py-2 text-xs font-bold text-neutral-700 shadow-2xs hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
+                  className="flex min-h-[44px] items-center gap-1.5 rounded-xl border border-neutral-300 bg-white px-4 py-2 text-xs font-bold text-neutral-700 shadow-2xs hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
                 >
                   <Clock className="h-4 w-4" />
                   <span>Agendar Seguimiento</span>

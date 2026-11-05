@@ -35,7 +35,7 @@ const SESION_ASESOR: SesionActual = {
   acceso: {
     usuarioId: MI_USUARIO_ID,
     rol: 'Asesor Comercial',
-    permisos: [],
+    permisos: ['bandeja.operar'],
   },
 };
 
