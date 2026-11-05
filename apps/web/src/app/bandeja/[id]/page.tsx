@@ -24,10 +24,11 @@ import {
   Sparkles,
   FileText,
   Zap,
+  Lock,
 } from 'lucide-react';
 import { inboxApi } from '../../../lib/inbox-api';
 import { useInboxSocket } from '../../../lib/inbox-socket';
-import { usePermisos } from '../../../lib/permisos';
+import { usePermisos, explicacionFaltaPermiso } from '../../../lib/permisos';
 import { ModalReasignar } from '../../../components/bandeja/modal-reasignar';
 import { obtenerFichaDeContacto } from '../../../lib/crm-api';
 import { EsqueletoConversacion, AvisoErrorAccionable } from '../../../components/comun/esqueletos';
@@ -138,8 +139,8 @@ export default function BandejaConversacionPage() {
   const [modalCrearOportunidadAbierto, setModalCrearOportunidadAbierto] = useState(false);
   const [modalEditarContactoAbierto, setModalEditarContactoAbierto] = useState(false);
 
-  // Permisos de sesión para visibilidad y asignación (0c.35)
-  const { sesion, puedeVerTodasConversaciones } = usePermisos();
+  // Permisos de sesión para visibilidad y asignación (0c.35, T-118)
+  const { sesion, puedeVerTodasConversaciones, puedeOperarBandeja } = usePermisos();
   const miUsuarioId = sesion?.acceso?.usuarioId ?? null;
   const permisosAsignacion = calcularPermisosAsignacion(
     detalle,
@@ -768,10 +769,14 @@ export default function BandejaConversacionPage() {
                   <button
                     type="button"
                     onClick={() => void manejarTomar()}
-                    disabled={asignando || conversacionRetirada}
+                    disabled={asignando || conversacionRetirada || !puedeOperarBandeja}
                     data-testid="boton-tomar"
-                    className="bg-primary-50 text-primary-700 hover:bg-primary-100 dark:bg-primary-950/40 dark:text-primary-300 flex min-h-[44px] items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-bold disabled:opacity-50 md:min-h-[28px]"
-                    title="Asignarme esta conversación"
+                    className="bg-primary-50 text-primary-700 hover:bg-primary-100 dark:bg-primary-950/40 dark:text-primary-300 flex min-h-[44px] items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-bold disabled:cursor-not-allowed disabled:opacity-50 md:min-h-[28px]"
+                    title={
+                      !puedeOperarBandeja
+                        ? explicacionFaltaPermiso('bandeja.operar')
+                        : 'Asignarme esta conversación'
+                    }
                   >
                     <UserPlus className="h-3 w-3" />
                     <span>Tomar</span>
@@ -781,10 +786,14 @@ export default function BandejaConversacionPage() {
                   <button
                     type="button"
                     onClick={() => void manejarSoltar()}
-                    disabled={asignando || conversacionRetirada}
+                    disabled={asignando || conversacionRetirada || !puedeOperarBandeja}
                     data-testid="boton-soltar"
-                    className="flex min-h-[44px] items-center gap-1 rounded-md border border-neutral-200 px-2 py-0.5 text-[10px] font-semibold text-neutral-600 hover:bg-neutral-50 disabled:opacity-50 md:min-h-[28px] dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
-                    title="Devolver a la cola común"
+                    className="flex min-h-[44px] items-center gap-1 rounded-md border border-neutral-200 px-2 py-0.5 text-[10px] font-semibold text-neutral-600 hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-50 md:min-h-[28px] dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+                    title={
+                      !puedeOperarBandeja
+                        ? explicacionFaltaPermiso('bandeja.operar')
+                        : 'Devolver a la cola común'
+                    }
                   >
                     <UserMinus className="h-3 w-3" />
                     <span>Soltar</span>
@@ -794,10 +803,14 @@ export default function BandejaConversacionPage() {
                   <button
                     type="button"
                     onClick={() => setModalReasignarAbierto(true)}
-                    disabled={asignando || conversacionRetirada}
+                    disabled={asignando || conversacionRetirada || !puedeOperarBandeja}
                     data-testid="boton-reasignar"
-                    className="flex min-h-[44px] items-center gap-1 rounded-md border border-neutral-200 px-2 py-0.5 text-[10px] font-semibold text-neutral-600 hover:bg-neutral-50 disabled:opacity-50 md:min-h-[28px] dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
-                    title="Reasignar a otro asesor de la agencia"
+                    className="flex min-h-[44px] items-center gap-1 rounded-md border border-neutral-200 px-2 py-0.5 text-[10px] font-semibold text-neutral-600 hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-50 md:min-h-[28px] dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+                    title={
+                      !puedeOperarBandeja
+                        ? explicacionFaltaPermiso('bandeja.operar')
+                        : 'Reasignar a otro asesor de la agencia'
+                    }
                   >
                     <UserCheck className="h-3 w-3" />
                     <span>Reasignar</span>
@@ -1077,9 +1090,13 @@ export default function BandejaConversacionPage() {
                       type="button"
                       data-testid="boton-abrir-enviar-cotizacion"
                       onClick={() => setModalEnviarCotizacionAbierto(true)}
-                      disabled={conversacionRetirada}
-                      className="flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 transition-colors hover:bg-emerald-100 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300"
-                      title="Enviar cotización por WhatsApp (T-074)"
+                      disabled={conversacionRetirada || !puedeOperarBandeja}
+                      className="flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 transition-colors hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300"
+                      title={
+                        !puedeOperarBandeja
+                          ? explicacionFaltaPermiso('bandeja.operar')
+                          : 'Enviar cotización por WhatsApp (T-074)'
+                      }
                       aria-label="Enviar cotización por WhatsApp"
                     >
                       <FileText className="h-3.5 w-3.5" />
@@ -1123,6 +1140,19 @@ export default function BandejaConversacionPage() {
                   </div>
                 )}
 
+                {!puedeOperarBandeja && (
+                  <div
+                    data-testid="aviso-solo-lectura-bandeja"
+                    className="flex items-center gap-2 rounded-lg border border-neutral-200 bg-neutral-100/90 p-2 text-xs text-neutral-600 dark:border-neutral-800 dark:bg-neutral-900/60 dark:text-neutral-300"
+                  >
+                    <Lock className="h-3.5 w-3.5 shrink-0 text-neutral-500" />
+                    <span>
+                      Modo solo lectura: Tu rol no cuenta con el permiso «Operar bandeja»
+                      (bandeja.operar).
+                    </span>
+                  </div>
+                )}
+
                 <div className="relative flex gap-2">
                   {menuRespuestasAbierto && (
                     <MenuRespuestasRapidas
@@ -1142,11 +1172,13 @@ export default function BandejaConversacionPage() {
                     onChange={manejarCambioTexto}
                     onKeyDown={manejarKeyDownTextarea}
                     placeholder={
-                      modoNota
-                        ? 'Escribe una nota interna para el equipo (nunca se envía al cliente)...'
-                        : 'Escribe tu respuesta a cliente o «/» para respuestas rápidas...'
+                      !puedeOperarBandeja
+                        ? 'Modo solo lectura: Requiere permiso «bandeja.operar» para responder...'
+                        : modoNota
+                          ? 'Escribe una nota interna para el equipo (nunca se envía al cliente)...'
+                          : 'Escribe tu respuesta a cliente o «/» para respuestas rápidas...'
                     }
-                    disabled={enviando || conversacionRetirada}
+                    disabled={enviando || conversacionRetirada || !puedeOperarBandeja}
                     className={`flex-1 rounded-lg border p-2.5 text-xs focus:outline-none ${
                       modoNota
                         ? 'border-amber-300 bg-amber-50/50 focus:border-amber-500 dark:border-amber-900/60 dark:bg-amber-950/20'
@@ -1155,9 +1187,21 @@ export default function BandejaConversacionPage() {
                   />
                   <button
                     type="submit"
-                    disabled={enviando || conversacionRetirada || !textoMensaje.trim()}
+                    disabled={
+                      enviando ||
+                      conversacionRetirada ||
+                      !puedeOperarBandeja ||
+                      !textoMensaje.trim()
+                    }
+                    title={
+                      !puedeOperarBandeja
+                        ? explicacionFaltaPermiso('bandeja.operar')
+                        : modoNota
+                          ? 'Guardar nota interna'
+                          : 'Enviar mensaje'
+                    }
                     aria-label={modoNota ? 'Guardar nota interna' : 'Enviar mensaje'}
-                    className={`flex min-h-[44px] min-w-[44px] items-center justify-center self-end rounded-lg px-4 py-2.5 text-xs font-semibold text-white shadow-2xs disabled:opacity-50 ${
+                    className={`flex min-h-[44px] min-w-[44px] items-center justify-center self-end rounded-lg px-4 py-2.5 text-xs font-semibold text-white shadow-2xs disabled:cursor-not-allowed disabled:opacity-50 ${
                       modoNota
                         ? 'bg-amber-600 hover:bg-amber-700'
                         : 'bg-acento-700 hover:bg-acento-800'

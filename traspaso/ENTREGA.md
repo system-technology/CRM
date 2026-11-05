@@ -1,3 +1,43 @@
+# Entrega — T-118: Acciones según permisos (bandeja.operar, crm.escribir, cotizacion.escribir) — 2026-11-04
+
+## Identificación
+- **Tarea:** `T-118` (roadmap/tasks.yaml)
+- **Rama:** `b/T-118-acciones-segun-permisos`
+- **Carril:** `b` (Frontend / Web)
+
+## Qué se construyó
+
+1. **Gestión y evaluación de permisos de mutación (`apps/web/src/lib/permisos.ts`):**
+   - Constantes de permisos de mutación granulares: `PERMISO_BANDEJA_OPERAR` (`bandeja.operar`), `PERMISO_CRM_ESCRIBIR` (`crm.escribir`), `PERMISO_COTIZACION_ESCRIBIR` (`cotizacion.escribir`).
+   - `MAPA_ETIQUETAS_PERMISOS` con nombres amigables en es-CO, descripciones comprensibles y categorías (`bandeja`, `crm`, `cotizacion`, `catalogo`, `administracion`).
+   - `explicacionFaltaPermiso` y `evaluarAccionMutacion` para generar explicaciones claras y atributos de botón (`disabled`, `title`, `aria-disabled`).
+   - `tienePermiso`, `puedeOperarBandeja`, `puedeEscribirCrm`, `puedeEscribirCotizacion`, `puedeAdministrarCatalogo`, `puedeAdministrarUsuarios`, `puedeAdministrarRoles`.
+   - Garantía de rol `OPERACIONES` como solo lectura estricta (ADR-0011 y migración `20261104130000_permisos_de_mutacion_rbac`): deniega sistemáticamente `bandeja.operar`, `crm.escribir` y `cotizacion.escribir`.
+   - Soporte para exploración en modo demo (`esModoDemo()`) concediendo permisos de mutación si no hay sesión.
+
+2. **Deshabilitación con explicación en la interfaz:**
+   - **Bandeja de WhatsApp (`apps/web/src/app/bandeja/[id]/page.tsx`):**
+     - Botones `Tomar`, `Soltar`, `Reasignar`, `Enviar cotización`, compositor textarea y botón de envío deshabilitados con mensaje explicativo si falta `bandeja.operar`.
+     - Aviso visible accesible de sólo lectura en el compositor indicando que el rol actual no cuenta con el permiso `bandeja.operar`.
+   - **Ficha y Contactos (`apps/web/src/app/contactos/[id]/page.tsx`, `apps/web/src/components/crm/consentimientos.tsx`):**
+     - Botones `Editar Datos`, `Nueva Oportunidad`, `Agendar Seguimiento`, `Otorgar consentimiento` y `Revocar consentimiento` deshabilitados con título explicativo si falta `crm.escribir`.
+   - **Cotizador (`apps/web/src/app/cotizador/page.tsx`):**
+     - Botón `Guardar Cotización Oficial` deshabilitado con título explicativo si falta `cotizacion.escribir`.
+
+3. **Pruebas y verificación:**
+   - Pruebas exhaustivas en `apps/web/src/lib/permisos.spec.ts` (18 pruebas):
+     - Usuario de solo lectura `OPERACIONES`: denegación estricta de las tres mutaciones.
+     - Usuario con permisos completos `DUENO` y `ASESOR`: concesión de las mutaciones.
+     - Casos límite: sin sesión, sin tenant activo.
+     - Modo demo y hook `usePermisos`.
+   - 121 suites y 972 pruebas de `@viajapro/web` en verde.
+   - `pnpm --filter @viajapro/web typecheck` y `pnpm --filter @viajapro/web lint` pasando sin errores.
+
+## Qué quedó pendiente
+- Ninguno. La API de NestJS valida adicionalmente cada mutación del lado servidor (R1, R2, ADR-0011).
+
+---
+
 # Entrega — T-116: Consentimiento del contacto en la ficha (otorgar, revocar y ver texto mostrado) — 2026-11-04
 
 ## Identificación

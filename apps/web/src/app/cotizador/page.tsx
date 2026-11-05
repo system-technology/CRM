@@ -30,6 +30,7 @@ import { AvisoConfiguracionTenant } from '../../components/crm/aviso-configuraci
 import { formatearErrorAmigable } from '../../lib/estados-ui-logica';
 import { DesgloseCotizacionSalida } from '../../components/cotizador/desglose-cotizacion-salida';
 import { ModalGuardarCotizacion } from '../../components/cotizador/modal-guardar-cotizacion';
+import { usePermisos, explicacionFaltaPermiso } from '../../lib/permisos';
 import { EstadoSinCatalogo } from '../../components/catalogo/estado-sin-catalogo';
 import { MOCK_PAQUETES_CATALOGO } from '../../lib/mock-catalogo';
 import {
@@ -117,6 +118,8 @@ function ContenidoCotizador() {
     mensaje: string;
     esErrorAgencia: boolean;
   } | null>(null);
+
+  const { puedeEscribirCotizacion } = usePermisos();
 
   // Opciones de salida del producto (turno, modalidad; ADR-0017 §3.1). Con opciones activas la
   // API exige `opcionDeSalidaId`: el asesor elige antes de cotizar y no se adivina por él.
@@ -894,8 +897,9 @@ function ContenidoCotizador() {
                               <span className="font-bold">Aviso de acomodación:</span>{' '}
                               {cotizacionMock.plazasSinUsar === 1
                                 ? '1 plaza sin usar, se paga igual'
-                                : `${cotizacionMock.plazasSinUsar} plazas sin usar, se pagan igual`}
-                              {' '}debido a la distribución en habitaciones {cotizacionMock.acomodacion.toLowerCase()}s.
+                                : `${cotizacionMock.plazasSinUsar} plazas sin usar, se pagan igual`}{' '}
+                              debido a la distribución en habitaciones{' '}
+                              {cotizacionMock.acomodacion.toLowerCase()}s.
                             </div>
                           </div>
                         )}
@@ -955,8 +959,13 @@ function ContenidoCotizador() {
                           <button
                             type="button"
                             onClick={() => setModalGuardarAbierto(true)}
-                            disabled={guardandoCotizacion}
-                            className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-purple-700 px-4 py-2.5 text-xs font-bold text-white shadow-xs transition-colors hover:bg-purple-800 sm:w-auto"
+                            disabled={guardandoCotizacion || !puedeEscribirCotizacion}
+                            title={
+                              !puedeEscribirCotizacion
+                                ? explicacionFaltaPermiso('cotizacion.escribir')
+                                : undefined
+                            }
+                            className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-purple-700 px-4 py-2.5 text-xs font-bold text-white shadow-xs transition-colors hover:bg-purple-800 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
                           >
                             <Bookmark className="h-4 w-4" />
                             <span>Guardar Cotización Oficial</span>
