@@ -2961,3 +2961,515 @@ tasks:
       - apps/web/src/lib/exportar-csv.spec.ts
     source: cola de Antigravity reabastecida 2026-11-04
     created_at: 2026-11-04T23:48:05.405Z
+  - id: T-131
+    title: "Captura: historial de cambios de etapa de la oportunidad y cerrada_en (sin esto no hay embudo temporal)"
+    type: feature
+    phase: 1
+    priority: P0
+    effort: M
+    status: backlog
+    depends_on: []
+    acceptance:
+      - "Tabla nueva oportunidad_cambios_etapa con tenant_id, RLS (aplicar_aislamiento_tenant) y foraneas
+        COMPUESTAS con el tenant: oportunidad_id, etapa_desde_id (nula en el alta), etapa_hasta_id, es_ganada
+        y es_perdida copiadas de la etapa en ese momento, motivo_perdida, asesor_id de la oportunidad en ese
+        momento, usuario_id que la movio, ocurrido_en timestamptz UTC"
+      - crearOportunidad y moverOportunidad escriben la fila en la MISMA transaccion que el cambio; si la
+        escritura falla, el cambio de etapa se revierte
+      - Al pasar a una etapa es_ganada o es_perdida se fija oportunidades.cerrada_en; al reabrir (pasar a una
+        etapa viva) se vacia, y el historial conserva el motivo anterior
+      - Indice (tenant_id, oportunidad_id, ocurrido_en) e indice (tenant_id, ocurrido_en)
+      - "e2e: mover A->B->perdida->A deja 4 filas en orden y cerrada_en nula al final; una agencia no lee el
+        historial de otra (job aislamiento-tenants en verde)"
+      - Migracion nueva, sin tocar las aplicadas; aprobacion del propietario (ruta protegida)
+    files:
+      - packages/database/prisma/schema.prisma
+      - packages/database/prisma/migrations/
+      - apps/api/src/modules/crm/infrastructure/crm.prisma.ts
+      - apps/api/src/modules/crm/infrastructure/escritura-crm.prisma.ts
+      - apps/api/src/modules/crm/crm.e2e-spec.ts
+    source: roadmap de reportes 2026-11-04 (docs/08-roadmap/06-roadmap-de-reportes.md)
+    created_at: 2026-11-05T01:14:46.630Z
+    owner: datos
+  - id: T-132
+    title: "Captura: historial de estados de la cotizacion con instante de aceptacion, rechazo o vencimiento"
+    type: feature
+    phase: 1
+    priority: P0
+    effort: M
+    status: backlog
+    depends_on: []
+    acceptance:
+      - "Tabla nueva cotizacion_cambios_estado con tenant_id, RLS y foranea COMPUESTA: cotizacion_id,
+        estado_desde, estado_hasta, usuario_id, ocurrido_en UTC"
+      - cambiarEstado (cotizaciones.use-case.ts) escribe la fila en la misma transaccion que el UPDATE
+        bloqueado; el alta en BORRADOR escribe la fila inicial
+      - "Sin relleno retroactivo inventado: las cotizaciones anteriores quedan sin fila y el reporte las
+        declara «sin instante de decision»"
+      - "e2e: BORRADOR->ENVIADA->ACEPTADA deja 3 filas con instantes crecientes; aislamiento entre agencias en
+        verde"
+      - Migracion nueva; aprobacion del propietario
+    files:
+      - packages/database/prisma/schema.prisma
+      - packages/database/prisma/migrations/
+      - apps/api/src/modules/quoting/application/cotizaciones.use-case.ts
+      - apps/api/src/modules/quoting/cotizaciones.e2e-spec.ts
+    source: roadmap de reportes 2026-11-04 (docs/08-roadmap/06-roadmap-de-reportes.md)
+    created_at: 2026-11-05T01:14:46.632Z
+    owner: datos
+  - id: T-133
+    title: "Captura: origen del lead como tabla por agencia (R12) y columna en la oportunidad"
+    type: feature
+    phase: 1
+    priority: P0
+    effort: M
+    status: backlog
+    depends_on: []
+    acceptance:
+      - "Tabla origenes_lead por tenant (nombre, clave opcional, activo, orden) con RLS y semilla: WhatsApp
+        directo, Anuncio de Meta, Instagram, Referido, Cliente que vuelve, Otro"
+      - oportunidades.origen_id nullable con foranea COMPUESTA con el tenant; un origen usado no se borra, se
+        desactiva
+      - "Contrato Zod en packages/contracts (crm.ts): origenId opcional al crear la oportunidad, listado GET
+        /crm/origenes"
+      - La oportunidad creada desde una conversacion hereda el origen de la conversacion si T-134 lo detecto
+      - "e2e: crear con origen de otra agencia responde 404/422; aislamiento en verde"
+      - Migracion nueva; aprobacion del propietario
+    files:
+      - packages/database/prisma/schema.prisma
+      - packages/database/prisma/migrations/
+      - packages/contracts/src/crm.ts
+      - apps/api/src/modules/crm/infrastructure/escritura-crm.prisma.ts
+      - apps/api/src/modules/crm/interface/crm.controller.ts
+    source: roadmap de reportes 2026-11-04 (docs/08-roadmap/06-roadmap-de-reportes.md)
+    created_at: 2026-11-05T01:14:46.632Z
+    owner: datos
+  - id: T-134
+    title: "Captura: referral de Click-to-WhatsApp en el primer mensaje entrante y origen «Anuncio de Meta»
+      automatico"
+    type: feature
+    phase: 1
+    priority: P0
+    effort: M
+    status: backlog
+    depends_on:
+      - T-133
+    acceptance:
+      - El parseo del change extrae messages[].referral (source_type, source_id, source_url, headline,
+        ctwa_clid) cuando viene; sin referral no cambia nada
+      - Se guarda en la conversacion solo la PRIMERA vez (primer toque), en columnas acotadas y no en el texto
+        del mensaje; nunca se registra en logs
+      - La oportunidad que nace de esa conversacion recibe el origen «Anuncio de Meta» de T-133
+      - Prueba unitaria con un payload real de referral de la documentacion de Meta y uno sin referral; e2e
+        del webhook sigue en verde
+    files:
+      - apps/api/src/modules/inbox/domain/contenido-del-cambio.ts
+      - apps/api/src/modules/inbox/infrastructure/bandeja.prisma.ts
+      - packages/database/prisma/schema.prisma
+      - packages/database/prisma/migrations/
+    source: roadmap de reportes 2026-11-04 (docs/08-roadmap/06-roadmap-de-reportes.md)
+    created_at: 2026-11-05T01:14:46.632Z
+    owner: backend
+  - id: T-135
+    title: "Captura: politica de atencion por agencia (minutos de SLA, horario semanal, horas de silencio) como
+      tabla, no constante"
+    type: feature
+    phase: 1
+    priority: P0
+    effort: M
+    status: backlog
+    depends_on: []
+    acceptance:
+      - "Tabla politica_de_atencion, una fila por tenant con RLS: minutos_sla_primera_respuesta (por defecto
+        15), horario semanal (dia, desde, hasta en hora local), horas_de_silencio_nuevo_episodio (por defecto
+        12)"
+      - GET y PUT /api/v1/configuracion/atencion con contrato Zod; el PUT exige un permiso de administracion
+        existente (usuarios.administrar o el que decida el arquitecto)
+      - La pantalla de Configuracion deja de mostrar el SLA de la maqueta y lee este endpoint (o la tarea
+        queda enlazada a la de frontend que lo haga)
+      - "e2e: una agencia no lee ni cambia la politica de otra"
+      - Migracion nueva; aprobacion del propietario
+    files:
+      - packages/database/prisma/schema.prisma
+      - packages/database/prisma/migrations/
+      - packages/contracts/src/
+      - apps/api/src/modules/inbox/
+    source: roadmap de reportes 2026-11-04 (docs/08-roadmap/06-roadmap-de-reportes.md)
+    created_at: 2026-11-05T01:14:46.633Z
+    owner: datos
+  - id: T-136
+    title: "Armar conversaciones.sla_vence_en en cada entrante que abre un episodio: hoy nadie lo escribe y el
+      filtro SLA_VENCIDO siempre sale vacio"
+    type: bug
+    phase: 1
+    priority: P0
+    effort: S
+    status: backlog
+    depends_on:
+      - T-135
+    acceptance:
+      - registrarEntrante fija sla_vence_en = instante + minutos de la politica de T-135 cuando el mensaje
+        abre un episodio (ultimo mensaje humano saliente o ninguno, o silencio mayor que horas_de_silencio)
+      - Al responder un humano, el episodio se da por atendido (la proyeccion del contrato anula slaVenceEn)
+        sin perder la evidencia historica, que vive en mensajes
+      - Mensajes desordenados (reintento de Meta de hace horas) no reabren un episodio ya respondido
+      - "e2e: entrante -> filtro SLA_VENCIDO lo lista tras el plazo -> respuesta humana -> deja de listarlo;
+        segundo episodio dias despues vuelve a armarse"
+    files:
+      - apps/api/src/modules/inbox/infrastructure/bandeja.prisma.ts
+      - apps/api/src/modules/inbox/infrastructure/conversaciones.prisma.ts
+    source: roadmap de reportes 2026-11-04 (docs/08-roadmap/06-roadmap-de-reportes.md)
+    created_at: 2026-11-05T01:14:46.633Z
+    owner: backend
+  - id: T-137
+    title: "Reportes: primera respuesta por episodio con mediana, p90, episodios sin respuesta y % dentro del SLA
+      (amplia GET /reportes/resumen del PR #213)"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on:
+      - T-135
+    acceptance:
+      - "Empieza despues de integrar el PR #213; modifica su puerto PuertoRespuestaParaReportes, no crea otro
+        endpoint"
+      - "Episodio y respuesta definidos como en docs/08-roadmap/06-roadmap-de-reportes.md R1: solo salientes
+        con autor humano y no FALLIDO cuentan como respuesta"
+      - Devuelve n de episodios, respondidos, sin respuesta, mediana y p90 en minutos y % en SLA; sin promedio
+        en la web; percentiles nulos si n < 5 (muestraInsuficiente)
+      - Desglose por asesor que respondio; SET LOCAL statement_timeout en la transaccion del reporte
+      - Indice mensajes (tenant_id, conversacion_id, direccion, ocurrido_en) solo si EXPLAIN con datos de
+        prueba de volumen lo justifica; si se agrega, migracion aparte con aprobacion del propietario
+      - "e2e: un cliente que vuelve tras 3 dias genera un segundo episodio; uno sin respuesta cuenta en el
+        denominador del % SLA"
+    files:
+      - apps/api/src/modules/inbox/
+      - apps/api/src/modules/analytics/
+      - packages/contracts/src/reportes.ts
+    source: roadmap de reportes 2026-11-04 (docs/08-roadmap/06-roadmap-de-reportes.md)
+    created_at: 2026-11-05T01:14:46.633Z
+    owner: backend
+  - id: T-138
+    title: "Reportes: GET /reportes/pendientes con conversaciones sin responder, ventanas de 24 h por cerrar,
+      seguimientos vencidos y carga por asesor"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on: []
+    acceptance:
+      - "Sin responder: ultimo_mensaje_direccion ENTRANTE y estado distinto de CERRADA, en tramos de
+        antiguedad; ventana por cerrar: ultimo_mensaje_cliente_en + 24 h dentro de las proximas 4 h"
+      - Seguimientos vencidos (completado_en nulo y vence_en pasado) con dias de atraso en la zona del tenant;
+        oportunidades vivas sin seguimiento pendiente
+      - "Carga por asesor: asignadas abiertas, sin responder, oportunidades vivas y seguimientos vencidos"
+      - "Respeta la visibilidad de conversaciones: un asesor sin conversaciones.ver_todas solo ve lo suyo"
+      - Puerto de lectura en cada modulo dueno (inbox, crm) compuesto en analytics, con tenant_id explicito en
+        cada tabla del SQL
+    files:
+      - apps/api/src/modules/analytics/
+      - apps/api/src/shared/puertos/
+      - packages/contracts/src/reportes.ts
+    source: roadmap de reportes 2026-11-04 (docs/08-roadmap/06-roadmap-de-reportes.md)
+    created_at: 2026-11-05T01:14:46.633Z
+    owner: backend
+  - id: T-139
+    title: "Reportes: GET /reportes/cotizaciones-abiertas con antiguedad desde el envio y vencidas de hecho por
+      vigencia"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: S
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Cotizaciones ENVIADA por tramos de 0-2, 3-7, 8-14 y mas de 14 dias desde enviada_en, en la zona del
+        tenant
+      - "Vencidas de hecho: ENVIADA con vigente_hasta de la version enviada anterior a hoy (no depende del
+        estado VENCIDA manual)"
+      - Por asesor (creado_por) y por moneda; valor de venta por moneda sin mezclar; sin neto ni margen salvo
+        con cotizacion.ver_neto_y_margen
+      - Puerto en quoting compuesto en analytics; tenant_id explicito en el SQL
+    files:
+      - apps/api/src/modules/quoting/
+      - apps/api/src/modules/analytics/
+      - packages/contracts/src/reportes.ts
+    source: roadmap de reportes 2026-11-04 (docs/08-roadmap/06-roadmap-de-reportes.md)
+    created_at: 2026-11-05T01:14:46.633Z
+    owner: backend
+  - id: T-140
+    title: "Reportes: ventas por destino, paquete y asesor, motivos de perdida, cohortes por instante de decision
+      y cierre, e indicadores de calidad del dato"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on:
+      - T-131
+      - T-132
+    acceptance:
+      - "Empieza despues de integrar el PR #213 y amplia su resumen"
+      - Ventas y margen por moneda y por destino/paquete/asesor con cobertura de margen (cotizaciones con neto
+        conocido / total); margen % solo sobre las filas con neto
+      - Cuando T-132 existe, la venta se ancla al instante de aceptacion; las cotizaciones sin historial se
+        declaran aparte
+      - Motivos de perdida por mes de cerrada_en (T-131) y por asesor; nota visible para OTRO
+      - "Indicadores: ganadas sin cotizacion aceptada, ENVIADA con vigencia vencida, ventas sin margen
+        conocido"
+      - Agrupaciones por mes con date_trunc en la zona del tenant (tenants.zona_horaria), no en UTC
+    files:
+      - apps/api/src/modules/analytics/
+      - apps/api/src/modules/quoting/
+      - apps/api/src/modules/crm/
+      - packages/contracts/src/reportes.ts
+    source: roadmap de reportes 2026-11-04 (docs/08-roadmap/06-roadmap-de-reportes.md)
+    created_at: 2026-11-05T01:14:46.634Z
+    owner: backend
+  - id: T-141
+    title: "Permiso reportes.ver_equipo: hoy cualquier miembro lee el resumen de toda la agencia"
+    type: security
+    phase: 1
+    priority: P1
+    effort: S
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Permiso nuevo en PERMISOS (packages/contracts/src/identidad.ts) y en el CHECK de permisos de roles,
+        por migracion nueva; sembrado en DUENO y OPERACIONES
+      - Sin el permiso, los endpoints de reportes devuelven solo lo del propio usuario (no un 403 en blanco)
+      - La decision de politica (si el asesor ve cifras del equipo) la confirma el dueno-de-producto antes de
+        integrar
+      - "e2e: un ASESOR no recibe cifras de otro asesor; un DUENO si"
+    files:
+      - packages/contracts/src/identidad.ts
+      - packages/database/prisma/migrations/
+      - apps/api/src/modules/analytics/
+    source: roadmap de reportes 2026-11-04 (docs/08-roadmap/06-roadmap-de-reportes.md)
+    created_at: 2026-11-05T01:14:46.634Z
+    owner: datos
+  - id: T-142
+    title: "Web /reportes sobre GET /api/v1/reportes/resumen: instantes UTC, ventasPorMoneda por moneda y fuera el
+      calculo desde el tablero"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on: []
+    acceptance:
+      - "No se integra antes que el PR #213; puede construirse contra su contrato
+        packages/contracts/src/reportes.ts"
+      - El periodo elegido se convierte en desde/hasta como instantes UTC con la zona horaria de la agencia
+        (hasta exclusivo); el selector filtra de verdad
+      - Una tarjeta por moneda de ventasPorMoneda; ninguna cifra suma monedas ni asume COP
+      - Se elimina calcularReporteDesdePipeline y su uso del tablero (truncado a 20 tarjetas por columna);
+        null se pinta como «Sin datos», nunca como 0
+      - Muestra la cohorte de cada cifra (p. ej. «aceptadas de las enviadas en el periodo») y la mediana, no
+        el promedio
+      - Margen y neto solo si vienen en la respuesta; pruebas con y sin cotizacion.ver_neto_y_margen y con dos
+        monedas
+    files:
+      - apps/web/src/app/reportes/page.tsx
+      - apps/web/src/lib/reportes-logica.ts
+      - apps/web/src/lib/reportes-logica.spec.ts
+      - apps/web/src/app/reportes/reportes-permisos.spec.tsx
+    source: roadmap de reportes 2026-11-04 (docs/08-roadmap/06-roadmap-de-reportes.md)
+    created_at: 2026-11-05T01:14:46.635Z
+    owner: frontend
+  - id: T-143
+    title: "Web: vistas de pendientes de atencion, cotizaciones abiertas por antiguedad y seguimientos vencidos
+      (asesor y dueno)"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on:
+      - T-138
+      - T-139
+    acceptance:
+      - "El asesor ve lo suyo al entrar a /reportes (o en el inicio): sin responder, ventanas por cerrar,
+        cotizaciones abiertas por tramo y seguimientos vencidos, cada uno con enlace a la conversacion,
+        cotizacion o seguimiento"
+      - El dueno ve la tabla de carga por asesor con n en cada fila
+      - Fechas y tramos en la zona de la agencia; 375 px usable
+    files:
+      - apps/web/src/app/reportes/
+      - apps/web/src/lib/
+    source: roadmap de reportes 2026-11-04 (docs/08-roadmap/06-roadmap-de-reportes.md)
+    created_at: 2026-11-05T01:14:46.635Z
+    owner: frontend
+  - id: T-144
+    title: "e2e de reportes nuevos: dos agencias, dos monedas, permisos de margen y de equipo, limites del periodo
+      en la zona del tenant"
+    type: test
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on:
+      - T-138
+      - T-139
+    acceptance:
+      - Cada endpoint de reportes nuevo se llama con datos de dos agencias y ninguna cifra de la B aparece en
+        la A
+      - Una venta en COP y otra en USD salen en filas separadas; ningun campo suma ambas
+      - "Un usuario sin cotizacion.ver_neto_y_margen no recibe las claves neto ni margen en el JSON (no null:
+        ausentes)"
+      - Una venta a las 23:30 del ultimo dia del mes en America/Bogota cae en ese mes en las agrupaciones
+        mensuales
+      - Con n < 5 los percentiles vienen nulos y muestraInsuficiente verdadero
+    files:
+      - apps/api/src/modules/analytics/
+    source: roadmap de reportes 2026-11-04 (docs/08-roadmap/06-roadmap-de-reportes.md)
+    created_at: 2026-11-05T01:14:46.635Z
+    owner: qa
+  - id: T-145
+    title: "Reportes V1: embudo temporal (conversion etapa a etapa en N dias) y mediana de dias por etapa desde el
+      historial"
+    type: feature
+    phase: 2
+    priority: P2
+    effort: M
+    status: backlog
+    depends_on:
+      - T-131
+    acceptance:
+      - "Disparador: al menos 8 semanas de historial de T-131 en la agencia piloto; antes, el endpoint
+        responde muestraInsuficiente"
+      - Conversion de cada etapa a la siguiente por cohorte de entrada a la etapa; mediana y p90 de dias en
+        etapa
+      - Usa las banderas es_ganada/es_perdida guardadas en el historial, no las de la etapa viva
+    files:
+      - apps/api/src/modules/analytics/
+      - apps/api/src/modules/crm/
+    source: roadmap de reportes 2026-11-04 (docs/08-roadmap/06-roadmap-de-reportes.md)
+    created_at: 2026-11-05T01:14:46.635Z
+    owner: backend
+  - id: T-146
+    title: "Reportes V1: oportunidades, tasa de cierre por cohorte y ventas por moneda segun origen del lead"
+    type: feature
+    phase: 2
+    priority: P2
+    effort: S
+    status: backlog
+    depends_on:
+      - T-133
+      - T-134
+    acceptance:
+      - "Por origen: creadas, ganadas, perdidas, abiertas y tasa de cierre por cohorte de mes de creacion"
+      - Oportunidades sin origen como fila propia, nunca repartidas
+      - Ventas por origen y moneda sin mezclar
+    files:
+      - apps/api/src/modules/analytics/
+      - apps/api/src/modules/crm/
+    source: roadmap de reportes 2026-11-04 (docs/08-roadmap/06-roadmap-de-reportes.md)
+    created_at: 2026-11-05T01:14:46.635Z
+    owner: backend
+  - id: T-147
+    title: "Reportes V1: pipeline ponderado por moneda y mes de fecha de viaje"
+    type: feature
+    phase: 2
+    priority: P2
+    effort: S
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Suma de valor_estimado x coalesce(probabilidad de la oportunidad, de la etapa)/100 por moneda, de
+        oportunidades vivas, por mes de fecha_viaje_desde en la zona del tenant
+      - Sin valor o sin fecha se cuentan aparte
+      - Se titula «pipeline ponderado» hasta que exista una calibracion contra ventas reales con el historial
+        de T-131
+    files:
+      - apps/api/src/modules/analytics/
+      - apps/api/src/modules/crm/
+    source: roadmap de reportes 2026-11-04 (docs/08-roadmap/06-roadmap-de-reportes.md)
+    created_at: 2026-11-05T01:14:46.635Z
+    owner: backend
+  - id: T-148
+    title: "Reportes V1 (Operaciones): salidas proximas con pasajeros por fecha, paquete y opcion de salida, y
+      ocupacion contra cupo informativo"
+    type: feature
+    phase: 2
+    priority: P2
+    effort: M
+    status: backlog
+    depends_on:
+      - T-132
+    acceptance:
+      - "Desde versiones enviadas de cotizaciones ACEPTADA: suma de adultos, ninos e infantes por
+        fecha_salida, paquete y opcion_de_salida (hora y punto de encuentro), proximos 7 a 30 dias"
+      - Ocupacion = pasajeros / vigencias.cupo_total solo donde la vigencia publicada tiene cupo; se rotula
+        informativo (ADR-0009)
+      - Sin documentos ni datos sensibles de viajeros (R10); nombre del contacto solo dentro de la visibilidad
+        del usuario
+    files:
+      - apps/api/src/modules/analytics/
+      - apps/api/src/modules/quoting/
+    source: roadmap de reportes 2026-11-04 (docs/08-roadmap/06-roadmap-de-reportes.md)
+    created_at: 2026-11-05T01:14:46.636Z
+    owner: backend
+  - id: T-149
+    title: Congelar el mayorista en cada version nueva de cotizacion para reportar ventas por proveedor sin
+      reescribir la historia
+    type: feature
+    phase: 2
+    priority: P2
+    effort: S
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Columnas nullables mayorista_id y mayorista_nombre en versiones_cotizacion, rellenadas al congelar;
+        las versiones viejas quedan nulas y se declaran
+      - El disparador de inmutabilidad sigue rechazando UPDATE; la migracion no reescribe filas existentes
+      - Migracion nueva; aprobacion del propietario
+    files:
+      - packages/database/prisma/schema.prisma
+      - packages/database/prisma/migrations/
+      - apps/api/src/modules/quoting/
+    source: roadmap de reportes 2026-11-04 (docs/08-roadmap/06-roadmap-de-reportes.md)
+    created_at: 2026-11-05T01:14:46.636Z
+    owner: datos
+  - id: T-150
+    title: "Web: pantallas de reportes V1 (embudo temporal, origen, pipeline ponderado, salidas proximas para
+      Operaciones)"
+    type: feature
+    phase: 2
+    priority: P2
+    effort: M
+    status: backlog
+    depends_on:
+      - T-145
+      - T-146
+      - T-147
+      - T-148
+    acceptance:
+      - Cada vista muestra n, periodo y cohorte; dinero por moneda; muestraInsuficiente como mensaje, no como 0
+      - Salidas proximas visible para OPERACIONES sin margen
+    files:
+      - apps/web/src/app/reportes/
+    source: roadmap de reportes 2026-11-04 (docs/08-roadmap/06-roadmap-de-reportes.md)
+    created_at: 2026-11-05T01:14:46.636Z
+    owner: frontend
+  - id: T-151
+    title: "Tablero del pipeline: el valor por columna suma valor_estimado de monedas distintas"
+    type: bug
+    phase: 1
+    priority: P1
+    effort: S
+    status: backlog
+    depends_on: []
+    acceptance:
+      - tableroPorEtapa agrupa la suma por (etapa, moneda_iso) y el contrato expone una lista de Dinero por
+        columna
+      - Oportunidades sin valor se cuentan aparte
+      - e2e con una oportunidad en COP y otra en USD en la misma etapa
+    files:
+      - apps/api/src/modules/crm/infrastructure/crm.prisma.ts
+      - packages/contracts/src/crm.ts
+    source: roadmap de reportes 2026-11-04 (docs/08-roadmap/06-roadmap-de-reportes.md)
+    created_at: 2026-11-05T01:14:46.636Z
+    owner: backend
