@@ -1,3 +1,91 @@
+# Entrega — T-128: Comparar dos versiones de una cotización lado a lado — 2026-11-04
+
+## Identificación
+- **Tarea:** `T-128`
+- **Rama:** `b/T-128-comparar-cotizaciones`
+- **Carril:** `b` (Frontend / Web)
+
+## Qué se construyó
+1. **Lógica pura de comparación (`apps/web/src/lib/cotizaciones-diff.ts`):**
+   - Comparación lado a lado de dos versiones inmutables de una cotización (`VersionDeCotizacion`).
+   - Aritmética monetaria exacta con BigInt en enteros de la unidad mínima (R8) con formato de moneda ISO 4217 (`restarDinero`, `formatearDeltaDinero`, `determinarEfectoMonetario`).
+   - Comparativa de parámetros de viaje: adultos, niños, infantes, total pasajeros, fecha de salida, noches, acomodación, vigencia de oferta y opción de salida.
+   - Comparativa línea por línea de tarifas: clasificación en `MODIFICADA`, `AGREGADA`, `ELIMINADA` y `SIN_CAMBIO`, calculando el delta total por línea.
+   - Resumen textual estructurado de cambios y efecto sobre el total con cálculo de porcentaje de variación.
+2. **Aislamiento y seguridad de márgenes (ADR-0011):**
+   - Omisión estricta de costos netos y márgenes comerciales (`undefined`) si el usuario carece del permiso `cotizacion.ver_neto_y_margen`.
+   - Se muestra aviso de acceso restringido en lugar de las filas de neto/margen.
+3. **Componente de interfaz accesible (`apps/web/src/components/cotizaciones/modal-comparar-versiones.tsx`):**
+   - Modal WCAG (`role="dialog"`, `aria-labelledby`) con selectores dinámicos para versión base (A) y versión comparada (B), botón para invertir versiones, y badge visual del efecto en el total.
+   - Tres tablas comparativas ordenadas: parámetros de composición, desglose línea por línea y totales finales consolidados.
+   - Integración directa en la vista de detalle `/cotizaciones/[id]` mediante el botón accesible «Comparar versiones» (`btn-comparar-versiones`).
+4. **Pruebas y verificación:**
+   - Pruebas unitarias de la lógica pura en `cotizaciones-diff.spec.ts` (8 pruebas).
+   - Pruebas unitarias del modal en `modal-comparar-versiones.spec.tsx` (6 pruebas).
+   - Pruebas de integración del botón y modal en `page.spec.tsx` (6 pruebas).
+   - Toda la suite de `@viajapro/web` en verde (127 suites, 1020 pruebas), typecheck y lint sin advertencias ni errores.
+
+---
+
+# Entrega — T-127: Atajos de teclado en la bandeja y ayuda accesible — 2026-11-04
+
+## Identificación
+- **Tarea:** `T-127`
+- **Rama:** `b/T-127-atajos-teclado-bandeja`
+- **Carril:** `b` (Frontend / Web)
+
+## Qué se construyó
+1. **Atajos globales de la bandeja:**
+   - `j`: Siguiente conversación en la lista.
+   - `k`: Conversación anterior en la lista.
+   - `r`: Enfocar compositor de texto para redacción de mensaje.
+   - `c`: Abrir modal «Enviar cotización por WhatsApp».
+   - `s`: Abrir modal «Crear oportunidad / seguimiento».
+   - `?`: Mostrar diálogo accesible con la ayuda de atajos.
+   - `Escape`: Cerrar modal o panel activo.
+2. **Protección contra activación en campos editables:**
+   - Los atajos de un solo carácter no se disparan si el foco está en un `<input>`, `<textarea>`, `<select>`, o elemento con `contenteditable` o rol de texto/búsqueda.
+3. **Preferencia configurable persistida:**
+   - Se almacena en `localStorage` bajo `viajapro_atajos_teclado_habilitados` (por defecto `true`).
+   - Se puede alternar directamente desde el modal de ayuda con un switch accesible (`role="switch"`, `aria-checked`).
+   - Si se desactiva, las pulsaciones de un solo carácter quedan deshabilitadas fuera de campos de texto.
+4. **Pruebas y verificación:**
+   - Pruebas unitarias de la lógica pura y persistencia en `src/lib/atajos-teclado-bandeja.spec.ts` (14 pruebas).
+   - Pruebas unitarias del diálogo de ayuda en `src/components/bandeja/modal-ayuda-atajos.spec.tsx` (5 pruebas).
+   - Pruebas de integración de la bandeja con teclado y compositor en `src/app/bandeja/bandeja-atajos-teclado.spec.tsx` (8 pruebas).
+   - 128 suites de pruebas de `@viajapro/web` pasando (1031 pruebas), typecheck y lint en verde sin advertencias.
+
+---
+
+# Entrega — T-124: Reportes sin cifras inventadas y aviso de «solo en este navegador» — 2026-11-04
+
+## Identificación
+- **Tarea:** `T-124`
+- **Rama:** `b/T-000-reportes-sin-cifras-inventadas`
+- **Carril:** `b` (Frontend / Web)
+
+## Qué se construyó
+1. **Reportes:** se eliminan las constantes del 20 % (margen) y 80 % (costo) y el estimado `conversaciones = ganadas * 3` y el correo `@agencia.com` fabricado. Sin cifra real la vista dice «Aún sin datos». El listado de cotizaciones no trae margen (ADR-0011) y el tablero tampoco, así que el margen real queda para una tarea que lo calcule desde las cotizaciones guardadas con `cotizacion.ver_neto_y_margen`.
+2. **Componente común `AvisoSoloLocal`** (`components/comun/aviso-solo-local.tsx`): visible solo en modo real.
+3. **/cotizaciones y modal Enviar por WhatsApp:** en modo real los nombres y el contacto salen de `GET /crm/contactos`; ya no hay nombre «Cliente» ni teléfono `+573001234567` de relleno (si el contacto no se conoce, el modal pide el teléfono). En demo todo sigue igual.
+
+## Pantallas que SOLO usan localStorage en modo real (con aviso)
+- Campos personalizados (configuración y sección en la ficha: el aviso está en configuración).
+- Respuestas rápidas (configuración).
+- Filtros guardados de contactos y pipeline (aviso cuando hay filtros restaurados).
+- Onboarding (asistente).
+- Preferencias de notificación (panel de notificaciones).
+
+## Sin aviso todavía
+- Filtros recordados de la lista de la bandeja (`lista-conversaciones.tsx`).
+- El modal `bandeja/modal-enviar-cotizacion` ya recibe el teléfono real de la conversación.
+
+## Qué quedó pendiente
+- Margen y costo reales en reportes desde las cotizaciones (necesita pedir cada cotización con `incluirMargen` o un agregado del servidor: escalar a `backend`).
+- Persistir en la API las pantallas de la lista de arriba.
+- Etapas `/crm/etapas`, miembros y estado del canal: no se tocaron (otro agente).
+
+---
 # Entrega — T-117: Mensajes claros en es-CO para los errores del envío — 2026-11-04
 
 ## Identificación

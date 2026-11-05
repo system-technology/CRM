@@ -7,6 +7,8 @@
     "dev": "dotenv -e ../../.env -- tsx watch src/main.ts",
     "build": "tsc -p tsconfig.build.json",
     "start": "node dist/main.js",
+    "dev:unico": "dotenv -v MODO_DESPLIEGUE=unico -e ../../.env -- tsx watch src/main-unico.ts",
+    "start:unico": "node dist/main-unico.js",
     "worker": "dotenv -e ../../.env -- tsx src/worker.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "dotenv -e ../../.env -- vitest run",

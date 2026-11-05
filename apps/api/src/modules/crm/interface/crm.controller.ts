@@ -61,6 +61,7 @@ import {
 } from '@viajapro/contracts';
 import { RequierePermiso } from '../../../shared/autorizacion/permiso.decorator.js';
 import { ContextoTenant } from '../../../shared/tenant/contexto-tenant.js';
+import { RequierePermiso } from '../../../shared/autorizacion/permiso.decorator.js';
 import { ZodValidationPipe } from '../../../shared/validacion/zod-validation.pipe.js';
 import { CrearOportunidadUseCase } from '../application/crear-oportunidad.js';
 import { GestionarEtapas } from '../application/gestionar-etapas.js';
@@ -99,6 +100,7 @@ export class CrmController {
    * `PATCH` y no `PUT`: mover no reemplaza la oportunidad, cambia una cosa de ella. Las reglas
    * de pérdida se aplican en el caso de uso y salen como error de dominio tipado.
    */
+  @RequierePermiso('crm.escribir')
   @Patch('oportunidades/:id/etapa')
   async moverDeEtapa(
     @Param('id', ParseUUIDPipe) id: string,
@@ -144,6 +146,7 @@ export class CrmController {
   // ---------------------------------------------------------------------------
 
   /** Alta de contacto. El teléfono se normaliza a E.164; duplicado en la agencia: 409. */
+  @RequierePermiso('crm.escribir')
   @Post('contactos')
   async crearContacto(
     @Body(new ZodValidationPipe(CrearContactoContrato)) cuerpo: CrearContacto,
@@ -152,6 +155,7 @@ export class CrmController {
   }
 
   /** Edición parcial: solo se toca lo que viene. */
+  @RequierePermiso('crm.escribir')
   @Patch('contactos/:id')
   async editarContacto(
     @Param('id', ParseUUIDPipe) id: string,
@@ -161,6 +165,7 @@ export class CrmController {
   }
 
   /** T-096: registra el consentimiento (con su prueba) de una finalidad. Idempotente. */
+  @RequierePermiso('crm.escribir')
   @Post('contactos/:id/consentimientos')
   async otorgarConsentimiento(
     @Param('id', ParseUUIDPipe) id: string,
@@ -170,6 +175,7 @@ export class CrmController {
   }
 
   /** T-096: revoca la finalidad; el trabajador de envíos deja de escribirle al contacto. */
+  @RequierePermiso('crm.escribir')
   @Post('contactos/:id/consentimientos/revocar')
   async revocarConsentimiento(
     @Param('id', ParseUUIDPipe) id: string,
@@ -179,6 +185,7 @@ export class CrmController {
   }
 
   /** Crear oportunidad sobre un contacto. Nace en la etapa inicial del embudo de la agencia. */
+  @RequierePermiso('crm.escribir')
   @Post('oportunidades')
   async crearOportunidadDeContacto(
     @Body(new ZodValidationPipe(CrearOportunidadContrato)) cuerpo: CrearOportunidad,
@@ -187,6 +194,7 @@ export class CrmController {
   }
 
   /** Crear oportunidad desde una conversación: el contacto sale de ella. */
+  @RequierePermiso('crm.escribir')
   @Post('conversaciones/:conversacionId/oportunidades')
   async crearOportunidadDeConversacion(
     @Param('conversacionId', ParseUUIDPipe) conversacionId: string,
@@ -225,6 +233,7 @@ export class CrmController {
     return { datos, pageInfo: { nextCursor: null, hasMore: false } };
   }
 
+  @RequierePermiso('crm.escribir')
   @Post('seguimientos')
   async crearSeguimiento(
     @Body(new ZodValidationPipe(CrearSeguimientoContrato)) cuerpo: CrearSeguimiento,
@@ -232,6 +241,7 @@ export class CrmController {
     return this.seguimientos.crear(cuerpo, ContextoTenant.obtener().usuarioId);
   }
 
+  @RequierePermiso('crm.escribir')
   @Post('seguimientos/:id/completar')
   async completarSeguimiento(@Param('id', ParseUUIDPipe) id: string): Promise<Seguimiento> {
     return this.seguimientos.completar(id, new Date());
