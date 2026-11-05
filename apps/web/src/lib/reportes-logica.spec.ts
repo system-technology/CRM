@@ -276,8 +276,8 @@ describe('Pruebas del Módulo de Reportes, Métricas y Cierres (Screen 4)', () =
   it('7. obtenerEtiquetaPeriodo retorna nombres claros en español para todos los períodos', () => {
     expect(obtenerEtiquetaPeriodo('ultimos_30_dias')).toBe('Últimos 30 días');
     expect(obtenerEtiquetaPeriodo('este_mes')).toBe('Este mes');
-    expect(obtenerEtiquetaPeriodo('trimestre')).toBe('Último trimestre');
-    expect(obtenerEtiquetaPeriodo('ano')).toBe('Año completo');
+    expect(obtenerEtiquetaPeriodo('trimestre')).toBe('Últimos 90 días');
+    expect(obtenerEtiquetaPeriodo('ano')).toBe('Este año');
   });
 
   it('8. obtenerReportePorPeriodo entrega datos consistentes con o sin tablero opcional', () => {

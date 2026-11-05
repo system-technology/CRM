@@ -23,6 +23,8 @@ import {
   type EtapaResumida,
   type MovimientoDeOportunidad,
 } from '../application/puerto-crm.js';
+import { EtapaNoEncontradaError, OportunidadNoEncontradaError } from '../domain/errors.js';
+import { registrarCambioDeEtapa } from './historial-de-etapas.prisma.js';
 
 /** Lo que se trae de la oportunidad para pintar una tarjeta. Ni un campo más. */
 export const PARA_LA_TARJETA = {
@@ -133,14 +135,57 @@ export class CrmPrisma extends PuertoCrm {
     });
   }
 
+  /**
+   * El movimiento, su fila del historial (T-131) y `cerrada_en`, en UNA transacción.
+   *
+   * `FOR UPDATE` sobre la oportunidad: dos movimientos simultáneos de la misma tarjeta se
+   * serializan, y el segundo lee como «etapa de origen» la que dejó el primero, no la de antes.
+   * Sin el bloqueo, el historial tendría dos filas con el mismo origen y una transición inventada.
+   *
+   * `cerrada_en`: se fija con el instante del historial al llegar a una etapa ganada o perdida
+   * (también si ya estaba cerrada y pasa de ganada a perdida: es un cierre nuevo), y se VACÍA al
+   * volver a una etapa viva. El historial conserva el cierre anterior y su motivo.
+   */
   async moverOportunidad(m: MovimientoDeOportunidad): Promise<Oportunidad> {
+    const { tenantId } = ContextoTenant.obtener();
     return this.prisma.conTenant(async (tx) => {
+      const [actual] = await tx.$queryRaw<Array<{ etapa_id: string; asesor_id: string | null }>>`
+        SELECT etapa_id::text AS etapa_id, asesor_id::text AS asesor_id
+          FROM oportunidades
+         WHERE tenant_id = ${tenantId}::uuid
+           AND id = ${m.oportunidadId}::uuid
+           AND eliminado_en IS NULL
+           FOR UPDATE`;
+      if (!actual) throw new OportunidadNoEncontradaError(m.oportunidadId);
+
+      // Las banderas se leen DENTRO de la transacción: son las que se copian al historial.
+      const destino = await tx.etapaPipeline.findFirst({
+        where: { id: m.etapaId, tenantId },
+        select: { esGanada: true, esPerdida: true },
+      });
+      if (!destino) throw new EtapaNoEncontradaError(m.etapaId);
+
+      const ocurridoEn = await registrarCambioDeEtapa(tx, {
+        tenantId,
+        oportunidadId: m.oportunidadId,
+        origen: 'CAMBIO',
+        etapaDesdeId: actual.etapa_id,
+        etapaHastaId: m.etapaId,
+        esGanada: destino.esGanada,
+        esPerdida: destino.esPerdida,
+        motivoPerdida: m.motivoPerdida,
+        asesorId: actual.asesor_id,
+        usuarioId: m.actorId,
+      });
+
       const actualizada = await tx.oportunidad.update({
-        where: { id: m.oportunidadId },
+        where: { id_tenantId: { id: m.oportunidadId, tenantId } },
         data: {
           etapaId: m.etapaId,
           motivoPerdida: m.motivoPerdida,
           notaPerdida: m.notaPerdida,
+          cerradaEn: destino.esGanada || destino.esPerdida ? ocurridoEn : null,
+          actualizadoPorId: m.actorId,
         },
         select: PARA_LA_TARJETA,
       });
@@ -170,7 +215,10 @@ export class CrmPrisma extends PuertoCrm {
             include: { autor: { select: { nombre: true } } },
           },
           oportunidades: {
-            where: { eliminadoEn: null, cerradaEn: null },
+            // «Viva» se decide por la etapa y no por `cerrada_en`: antes de T-131 nada escribía
+            // `cerrada_en`, y las oportunidades que ya estaban cerradas lo siguen teniendo nulo
+            // (la migración no inventa la fecha). Con el filtro viejo, una ganada era «la actual».
+            where: { eliminadoEn: null, etapa: { esGanada: false, esPerdida: false } },
             orderBy: { actualizadoEn: 'desc' },
             take: 1,
             select: PARA_LA_TARJETA,
@@ -264,7 +312,7 @@ interface FilaEtapa {
   esPerdida: boolean;
 }
 
-function aEtapaDefinida(e: FilaEtapa): EtapaDefinida {
+export function aEtapaDefinida(e: FilaEtapa): EtapaDefinida {
   return {
     id: e.id,
     clave: aClave(e.clave),

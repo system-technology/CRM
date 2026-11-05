@@ -1,7 +1,8 @@
 import { LimitadorDeEnvios } from '../application/limitador-de-envios.js';
 
 /**
- * Solo para pruebas: se elige con `LIMITADOR_OTP=memoria`. No sirve con más de una réplica.
+ * Se elige con `LIMITADOR_OTP=memoria` (pruebas) y siempre en modo `unico` (ADR-0019). No sirve con
+ * más de una réplica: en modo `escalado` se usa Redis.
  */
 export class LimitadorDeEnviosEnMemoria extends LimitadorDeEnvios {
   private readonly cuentas = new Map<string, { n: number; vence: number }>();

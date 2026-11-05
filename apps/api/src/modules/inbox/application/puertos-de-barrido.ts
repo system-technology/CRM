@@ -34,8 +34,16 @@ export abstract class PuertoReencolador {
   abstract reencolar(recepcionId: Buffer, indice: number): Promise<void>;
 }
 
-/** Lo que comparten los trabajadores para no pisarse: un turno por intervalo. */
+/**
+ * Lo que comparten los trabajadores para no pisarse: un turno por intervalo.
+ *
+ * El turno se pide CON la tarea, y no aparte, porque en modo `unico` es un candado de
+ * transacción de PostgreSQL que solo dura lo que dura la tarea.
+ */
 export abstract class PuertoCoordinacionDelBarrido {
-  /** `true` si este proceso se queda con el turno del intervalo; los demás saltan el barrido. */
-  abstract adquirirTurno(duracionMs: number): Promise<boolean>;
+  /**
+   * Si este proceso se queda con el turno, corre `tarea` y devuelve `true`; si otro lo tiene,
+   * no corre nada y devuelve `false`. `duracionMs` es lo máximo que debe durar el turno.
+   */
+  abstract conTurno(duracionMs: number, tarea: () => Promise<void>): Promise<boolean>;
 }

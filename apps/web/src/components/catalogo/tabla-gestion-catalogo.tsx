@@ -137,8 +137,9 @@ export function TablaGestionCatalogo({
               value={busqueda}
               onChange={(e) => setBusqueda(e.target.value)}
               placeholder="Buscar por código, nombre o destino..."
+              aria-label="Buscar productos por código, nombre o destino"
               data-testid="buscador-gestion-catalogo"
-              className="min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white pr-3 pl-9 text-xs text-neutral-900 placeholder-neutral-400 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+              className="min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white pr-3 pl-9 text-xs text-neutral-900 placeholder-neutral-400 focus:border-teal-500 focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
             />
           </div>
 
@@ -147,8 +148,9 @@ export function TablaGestionCatalogo({
             <select
               value={filtroDestino}
               onChange={(e) => setFiltroDestino(e.target.value)}
+              aria-label="Filtrar productos por destino"
               data-testid="filtro-destino-gestion"
-              className="min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-xs text-neutral-700 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200"
+              className="min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-xs text-neutral-700 focus:border-teal-500 focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200"
             >
               <option value="TODOS">Todos los destinos</option>
               {destinos.map((dest) => (
@@ -161,12 +163,18 @@ export function TablaGestionCatalogo({
         </div>
 
         {/* Pestañas Segmentadas de Estado */}
-        <div className="flex rounded-xl border border-neutral-200 bg-neutral-100 p-1 dark:border-neutral-800 dark:bg-neutral-800">
+        <div
+          role="tablist"
+          aria-label="Filtro por estado de producto"
+          className="flex flex-wrap rounded-xl border border-neutral-200 bg-neutral-100 p-1 dark:border-neutral-800 dark:bg-neutral-800"
+        >
           <button
             type="button"
+            role="tab"
+            aria-selected={filtroEstado === 'TODOS'}
             onClick={() => setFiltroEstado('TODOS')}
             data-testid="tab-estado-todos"
-            className={`min-h-[36px] rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+            className={`min-h-[44px] rounded-lg px-3 py-2 text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:outline-hidden ${
               filtroEstado === 'TODOS'
                 ? 'bg-white text-neutral-900 shadow-2xs dark:bg-neutral-700 dark:text-white'
                 : 'text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white'
@@ -176,9 +184,11 @@ export function TablaGestionCatalogo({
           </button>
           <button
             type="button"
+            role="tab"
+            aria-selected={filtroEstado === 'ACTIVOS'}
             onClick={() => setFiltroEstado('ACTIVOS')}
             data-testid="tab-estado-activos"
-            className={`min-h-[36px] rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+            className={`min-h-[44px] rounded-lg px-3 py-2 text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:outline-hidden ${
               filtroEstado === 'ACTIVOS'
                 ? 'bg-white text-emerald-800 shadow-2xs dark:bg-neutral-700 dark:text-emerald-300'
                 : 'text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white'
@@ -188,9 +198,11 @@ export function TablaGestionCatalogo({
           </button>
           <button
             type="button"
+            role="tab"
+            aria-selected={filtroEstado === 'INACTIVOS'}
             onClick={() => setFiltroEstado('INACTIVOS')}
             data-testid="tab-estado-inactivos"
-            className={`min-h-[36px] rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+            className={`min-h-[44px] rounded-lg px-3 py-2 text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:outline-hidden ${
               filtroEstado === 'INACTIVOS'
                 ? 'bg-white text-neutral-700 shadow-2xs dark:bg-neutral-700 dark:text-neutral-300'
                 : 'text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white'
@@ -329,11 +341,11 @@ export function TablaGestionCatalogo({
                             type="button"
                             onClick={() => alEditar(p)}
                             data-testid={`boton-editar-paquete-${p.id}`}
-                            className="flex min-h-[36px] min-w-[36px] items-center justify-center rounded-lg border border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
+                            className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50 focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
                             title="Editar producto"
                             aria-label={`Editar ${p.nombre}`}
                           >
-                            <Edit className="h-3.5 w-3.5" />
+                            <Edit className="h-4 w-4" />
                           </button>
 
                           {p.activo && (
@@ -341,11 +353,11 @@ export function TablaGestionCatalogo({
                               type="button"
                               onClick={() => alDesactivar(p)}
                               data-testid={`boton-desactivar-paquete-${p.id}`}
-                              className="flex min-h-[36px] min-w-[36px] items-center justify-center rounded-lg border border-neutral-200 bg-white text-amber-700 hover:bg-amber-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-amber-400 dark:hover:bg-amber-950/30"
+                              className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-neutral-200 bg-white text-amber-700 hover:bg-amber-50 focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-amber-400 dark:hover:bg-amber-950/30"
                               title="Desactivar producto"
                               aria-label={`Desactivar ${p.nombre}`}
                             >
-                              <PowerOff className="h-3.5 w-3.5" />
+                              <PowerOff className="h-4 w-4" />
                             </button>
                           )}
                         </div>
