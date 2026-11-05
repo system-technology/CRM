@@ -1,5 +1,6 @@
 'use client';
 
+import { AvisoSoloLocal } from '../../components/comun/aviso-solo-local';
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
@@ -214,6 +215,7 @@ export function PanelNotificaciones({
             className="border-b border-neutral-200 bg-neutral-50/90 p-4 dark:border-neutral-800 dark:bg-neutral-950/60"
             data-testid="seccion-preferencias-notificaciones"
           >
+            <AvisoSoloLocal que="las preferencias de aviso" className="mb-3" />
             <div className="mb-3 flex items-center justify-between">
               <span className="text-xs font-bold text-neutral-800 dark:text-neutral-200">
                 Preferencias de Aviso por Asesor

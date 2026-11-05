@@ -29,7 +29,13 @@ import {
   Copy,
   Check,
 } from 'lucide-react';
-import type { FilaDeCotizacion, EstadoCotizacion, CotizacionGuardada } from '@viajapro/contracts';
+import type {
+  FilaDeCotizacion,
+  EstadoCotizacion,
+  CotizacionGuardada,
+  Contacto,
+} from '@viajapro/contracts';
+import { listarContactos } from '../../lib/crm-api';
 import { BarraModulos } from '../../components/bandeja/barra-modulos';
 import { DistintivoDatosDemo } from '../../components/comun/distintivo-datos-demo';
 import { formatearDinero, formatearFecha } from '../../lib/formato';
@@ -82,17 +88,38 @@ export default function CotizacionesPage() {
   const [modoEstres500, setModoEstres500] = useState(false);
   const [filasEstres500, setFilasEstres500] = useState<FilaDeCotizacion[]>([]);
 
-  // Mapa de nombres de contactos para búsqueda rápida y etiquetas
+  // Contactos para nombres y para el modal de envío. En demo salen del mock; en modo real, de la
+  // API: nunca nombres ni teléfonos de relleno (T-124).
+  const [contactosConocidos, setContactosConocidos] = useState<Contacto[]>(() =>
+    usandoApiReal ? [] : obtenerMockPaginaContactos().datos,
+  );
+  useEffect(() => {
+    if (!usandoApiReal) {
+      setContactosConocidos(obtenerMockPaginaContactos().datos);
+      return;
+    }
+    let activo = true;
+    listarContactos()
+      .then((pagina) => {
+        if (activo) setContactosConocidos(pagina.datos);
+      })
+      .catch(() => {
+        // Sin nombres: la fila muestra solo lo que sí se sabe.
+        if (activo) setContactosConocidos([]);
+      });
+    return () => {
+      activo = false;
+    };
+  }, [usandoApiReal]);
   const mapaContactos = useMemo(() => {
     const mapa: Record<string, string> = {};
-    const contactos = obtenerMockPaginaContactos().datos;
-    for (const c of contactos) {
+    for (const c of contactosConocidos) {
       if (c.nombre) {
         mapa[c.id] = c.nombre;
       }
     }
     return mapa;
-  }, []);
+  }, [contactosConocidos]);
 
   // Carga inicial o reinicio de listado
   const cargarInicial = async (estres = modoEstres500, estado = estadoFiltro) => {
@@ -672,19 +699,20 @@ export default function CotizacionesPage() {
               cotizacion={cotizacionParaWhatsApp}
               contacto={
                 cotizacionParaWhatsApp.contactoId
-                  ? (obtenerMockPaginaContactos().datos.find(
-                      (c) => c.id === cotizacionParaWhatsApp.contactoId,
-                    ) ?? {
-                      id: cotizacionParaWhatsApp.contactoId,
-                      nombre: mapaContactos[cotizacionParaWhatsApp.contactoId] ?? 'Cliente',
-                      telefono: '+573001234567',
-                      correo: null,
-                      etiquetas: [],
-                      preferencias: null,
-                      consentimientos: ['TRANSACCIONAL'],
-                      creadoEn: '2026-10-01T00:00:00.000Z',
-                      ultimoContactoEn: null,
-                    })
+                  ? (contactosConocidos.find((c) => c.id === cotizacionParaWhatsApp.contactoId) ??
+                    (usandoApiReal
+                      ? undefined
+                      : {
+                          id: cotizacionParaWhatsApp.contactoId,
+                          nombre: mapaContactos[cotizacionParaWhatsApp.contactoId] ?? 'Cliente',
+                          telefono: '+573001234567',
+                          correo: null,
+                          etiquetas: [],
+                          preferencias: null,
+                          consentimientos: ['TRANSACCIONAL'],
+                          creadoEn: '2026-10-01T00:00:00.000Z',
+                          ultimoContactoEn: null,
+                        }))
                   : undefined
               }
               abierto={modalWhatsAppAbierto}
