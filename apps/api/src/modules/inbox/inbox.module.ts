@@ -10,6 +10,10 @@
 import { Module } from '@nestjs/common';
 import { ActuarEnConversacionUseCase } from './application/actuar-en-conversacion.js';
 import { ConsultarBandejaUseCase } from './application/consultar-bandeja.js';
+import { ConsultarEstadoDelCanal } from './application/consultar-estado-del-canal.js';
+import { PuertoEstadoDelCanal } from './application/puerto-estado-del-canal.js';
+import { EstadoDelCanalPrisma } from './infrastructure/estado-del-canal.prisma.js';
+import { CanalesController } from './interface/canales.controller.js';
 import { EnviarCotizacionPorWhatsapp } from './application/enviar-cotizacion-por-whatsapp.js';
 import { EmitirEventosEnVivo } from './application/emitir-eventos-en-vivo.js';
 import { PuertoConversaciones } from './application/puertos-de-conversaciones.js';
@@ -45,9 +49,12 @@ import { WebhookWhatsappController } from './interface/webhook-whatsapp.controll
 
 @Module({
   imports: [InboxPuertosModule],
-  controllers: [WebhookWhatsappController, ConversacionesController],
+  controllers: [WebhookWhatsappController, ConversacionesController, CanalesController],
   providers: [
     RegistrarRecepcion,
+    // --- Estado del canal de WhatsApp (T-122) ---
+    ConsultarEstadoDelCanal,
+    { provide: PuertoEstadoDelCanal, useClass: EstadoDelCanalPrisma },
     // --- La bandeja del asesor (REST): visibilidad dentro de la agencia ----------------------
     ConsultarBandejaUseCase,
     ActuarEnConversacionUseCase,
