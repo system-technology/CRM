@@ -29,6 +29,8 @@ import { PrismaIdentidadService } from './infrastructure/prisma-identidad.servic
 import { SesionesBetterAuth } from './infrastructure/sesiones.better-auth.js';
 import { MiembrosController } from './interface/miembros.controller.js';
 import { AuthController } from './interface/auth.controller.js';
+import { AjustesDeAgenciaUseCase } from './application/ajustes-de-agencia.use-case.js';
+import { AgenciaAjustesController } from './interface/agencia-ajustes.controller.js';
 
 /**
  * Identidad y acceso (ADR-0011).
@@ -48,6 +50,7 @@ import { AuthController } from './interface/auth.controller.js';
     InvitacionesController,
     AceptarInvitacionController,
     MiembrosController,
+    AgenciaAjustesController,
   ],
   providers: [
     PrismaIdentidadService,
@@ -60,6 +63,7 @@ import { AuthController } from './interface/auth.controller.js';
     AceptarInvitacionUseCase,
     DarDeBajaMiembroUseCase,
     ListarMiembrosUseCase,
+    AjustesDeAgenciaUseCase,
     { provide: ResolutorDeAcceso, useExisting: ResolverAcceso },
     { provide: PuertoSesiones, useClass: SesionesBetterAuth },
     { provide: PuertoMembresias, useClass: MembresiasPrisma },
