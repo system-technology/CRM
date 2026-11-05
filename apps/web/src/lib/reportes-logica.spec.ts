@@ -1,29 +1,58 @@
 import { describe, expect, it } from 'vitest';
-import type { TableroPipeline } from '@viajapro/contracts';
+import type { ResumenDeReportes } from '@viajapro/contracts';
+import * as logica from './reportes-logica';
 import {
   calcularMargenReporte,
-  calcularReporteDesdePipeline,
   calcularTasaConversion,
   calcularVariacionPorcentual,
-  filtrarMetricasPorRol,
+  convertirPeriodoAInstantesUtc,
+  formatearMinutosReporte,
+  formatearPorcentajeReporte,
   obtenerEtiquetaPeriodo,
-  obtenerReportePorPeriodo,
-  type ReporteComercial,
+  TEXTO_SIN_DATOS,
+  transformarResumenReporte,
 } from './reportes-logica';
 
-describe('Pruebas del Módulo de Reportes, Métricas y Cierres (Screen 4)', () => {
-  it('1. calcularTasaConversion calcula el porcentaje de éxito y es seguro ante cero', () => {
+describe('reportes-logica (T-142)', () => {
+  it('1. convertirPeriodoAInstantesUtc convierte periodos a instantes UTC con zona horaria de la agencia', () => {
+    // 2026-11-04 10:00:00 en Bogotá (UTC-5) -> 2026-11-04T15:00:00.000Z
+    const ahora = new Date('2026-11-04T15:00:00.000Z');
+
+    const esteMes = convertirPeriodoAInstantesUtc('este_mes', ahora);
+    // Inicio del mes en Bogotá: 2026-11-01 00:00:00 Bogotá -> 2026-11-01T05:00:00.000Z
+    expect(esteMes.desde).toBe('2026-11-01T05:00:00.000Z');
+    expect(Date.parse(esteMes.hasta)).toBeGreaterThan(Date.parse(esteMes.desde));
+
+    const ultimos30 = convertirPeriodoAInstantesUtc('ultimos_30_dias', ahora);
+    expect(Date.parse(ultimos30.hasta)).toBeGreaterThan(Date.parse(ultimos30.desde));
+
+    const trimestre = convertirPeriodoAInstantesUtc('trimestre', ahora);
+    expect(Date.parse(trimestre.hasta)).toBeGreaterThan(Date.parse(trimestre.desde));
+
+    const ano = convertirPeriodoAInstantesUtc('ano', ahora);
+    // Inicio de año 2026 en Bogotá -> 2026-01-01T05:00:00.000Z
+    expect(ano.desde).toBe('2026-01-01T05:00:00.000Z');
+  });
+
+  it('2. etiquetas de periodos en español', () => {
+    expect(obtenerEtiquetaPeriodo('ultimos_30_dias')).toBe('Últimos 30 días');
+    expect(obtenerEtiquetaPeriodo('este_mes')).toBe('Este mes');
+    expect(obtenerEtiquetaPeriodo('trimestre')).toBe('Últimos 90 días');
+    expect(obtenerEtiquetaPeriodo('ano')).toBe('Este año');
+  });
+
+  it('3. calcularTasaConversion calcula porcentaje sobre cerradas y entrega null si no hay cerradas', () => {
     // 18 ganadas y 6 perdidas = 18 / 24 = 75.0%
     expect(calcularTasaConversion(18, 6)).toBe(75.0);
 
-    // 0 ganadas y 0 perdidas no lanza excepción ni NaN
-    expect(calcularTasaConversion(0, 0)).toBe(0);
+    // 0 ganadas y 0 perdidas: null (no inventa 0%)
+    expect(calcularTasaConversion(0, 0)).toBeNull();
 
     // Solo ganadas
     expect(calcularTasaConversion(5, 0)).toBe(100.0);
   });
 
-  it('2. calcularVariacionPorcentual calcula deltas positivos y negativos con 1 decimal', () => {
+  it('4. calcularVariacionPorcentual calcula deltas con 1 decimal y entrega null si base <= 0', () => {
     // De 42.2M a 48.95M
     const delta = calcularVariacionPorcentual(48950000, 42200000);
     expect(delta).toBe(16.0);
@@ -32,12 +61,12 @@ describe('Pruebas del Módulo de Reportes, Métricas y Cierres (Screen 4)', () =
     const deltaNegativo = calcularVariacionPorcentual(80, 100);
     expect(deltaNegativo).toBe(-20.0);
 
-    // Base cero
-    expect(calcularVariacionPorcentual(50, 0)).toBe(100.0);
-    expect(calcularVariacionPorcentual(0, 0)).toBe(0);
+    // Base cero: null (no inventa +100%)
+    expect(calcularVariacionPorcentual(50, 0)).toBeNull();
+    expect(calcularVariacionPorcentual(0, 0)).toBeNull();
   });
 
-  it('3. calcularMargenReporte calcula margen y porcentaje usando BigInt sin redondeos engañosos (R8)', () => {
+  it('5. calcularMargenReporte calcula margen y porcentaje usando BigInt (R8)', () => {
     const venta = { unidades: '50000000', moneda: 'COP' as const };
     const neto = { unidades: '40000000', moneda: 'COP' as const };
 
@@ -47,269 +76,126 @@ describe('Pruebas del Módulo de Reportes, Métricas y Cierres (Screen 4)', () =
     expect(resultado.porcentaje).toBe(20.0);
   });
 
-  it('4. filtrarMetricasPorRol oculta márgenes a la vista de asesor y los mantiene para el dueño', () => {
-    const reporteBase: ReporteComercial = {
-      periodo: 'ultimos_30_dias',
-      ventasTotales: { unidades: '50000000', moneda: 'COP' },
-      ventasPeriodoAnterior: null,
-      cambioVentasPorcentaje: null,
-      oportunidadesCreadas: 10,
-      oportunidadesPeriodoAnterior: null,
-      cambioOportunidadesPorcentaje: null,
-      oportunidadesGanadas: 5,
-      oportunidadesPerdidas: 2,
-      tasaConversion: 71.4,
-      tiempoRespuestaPromedioMinutos: null,
-      costoNetoTotal: { unidades: '40000000', moneda: 'COP' },
-      margenTotal: { unidades: '10000000', moneda: 'COP' },
-      margenPorcentaje: 20.0,
-      metaMesVentas: null,
-      porcentajeMetaMes: null,
-      ventasPorDestino: [],
-      conversionPorEtapa: [],
-      rendimientoAsesores: [],
-      tieneDatosReales: true,
-    };
+  it('6. formatearPorcentajeReporte y formatearMinutosReporte entregan «Aún sin datos» ante null/undefined', () => {
+    expect(formatearPorcentajeReporte(null)).toBe(TEXTO_SIN_DATOS);
+    expect(formatearPorcentajeReporte(undefined)).toBe(TEXTO_SIN_DATOS);
+    expect(formatearPorcentajeReporte(25.4)).toContain('25,4');
 
-    expect(Number(reporteBase.margenTotal?.unidades)).toBeGreaterThan(0);
-    expect(reporteBase.margenPorcentaje).toBeGreaterThan(0);
-
-    const reporteAsesor = filtrarMetricasPorRol(reporteBase, 'ASESOR');
-    expect(reporteAsesor.margenTotal).toBeNull();
-    expect(reporteAsesor.costoNetoTotal).toBeNull();
-    expect(reporteAsesor.margenPorcentaje).toBeNull();
-
-    // Mantiene métricas operativas intactas
-    expect(reporteAsesor.oportunidadesCreadas).toBe(reporteBase.oportunidadesCreadas);
-    expect(reporteAsesor.tasaConversion).toBe(reporteBase.tasaConversion);
-    expect(reporteAsesor.ventasTotales?.unidades).toBe('50000000');
+    expect(formatearMinutosReporte(null)).toBe(TEXTO_SIN_DATOS);
+    expect(formatearMinutosReporte(undefined)).toBe(TEXTO_SIN_DATOS);
+    expect(formatearMinutosReporte(12.3)).toContain('12,3 min');
   });
 
-  it('5. calcularReporteDesdePipeline entrega «Aún sin datos» (null) cuando el tablero está vacío o ausente', () => {
-    const reporteVacio = calcularReporteDesdePipeline(null, 'DUENO', 'ultimos_30_dias');
-
-    expect(reporteVacio.tieneDatosReales).toBe(false);
-    expect(reporteVacio.ventasTotales).toBeNull();
-    expect(reporteVacio.ventasPeriodoAnterior).toBeNull();
-    expect(reporteVacio.cambioVentasPorcentaje).toBeNull();
-    expect(reporteVacio.oportunidadesCreadas).toBe(0);
-    expect(reporteVacio.tasaConversion).toBeNull();
-    expect(reporteVacio.metaMesVentas).toBeNull();
-    expect(reporteVacio.tiempoRespuestaPromedioMinutos).toBeNull();
-    expect(reporteVacio.ventasPorDestino).toHaveLength(0);
-    expect(reporteVacio.conversionPorEtapa).toHaveLength(0);
-    expect(reporteVacio.rendimientoAsesores).toHaveLength(0);
-  });
-
-  it('6. calcularReporteDesdePipeline calcula métricas reales sin inventar SLA ni comparativos históricos', () => {
-    const etapaInicial = {
-      id: '01a114b2-5314-75b1-91ad-3be0518a6a01',
-      clave: 'NUEVO_LEAD' as const,
-      nombre: 'Contacto Inicial',
-      esGanada: false,
-      esPerdida: false,
-      orden: 0,
-      probabilidad: 10,
-    };
-    const etapaGanada = {
-      id: '01a114b2-5314-75b1-91ad-3be0518a6a02',
-      clave: 'GANADA' as const,
-      nombre: 'Ganada',
-      esGanada: true,
-      esPerdida: false,
-      orden: 1,
-      probabilidad: 100,
-    };
-    const etapaPerdida = {
-      id: '01a114b2-5314-75b1-91ad-3be0518a6a03',
-      clave: 'PERDIDA' as const,
-      nombre: 'Perdida',
-      esGanada: false,
-      esPerdida: true,
-      orden: 2,
-      probabilidad: 0,
-    };
-
-    const tableroMock: TableroPipeline = {
-      columnas: [
+  it('7. transformarResumenReporte maneja múltiples monedas sin sumarlas ni asumir COP', () => {
+    const mockResumen: ResumenDeReportes = {
+      periodo: { desde: '2026-10-01T05:00:00.000Z', hasta: '2026-11-01T05:00:00.000Z' },
+      cotizaciones: { creadas: 4, enviadas: 3, aceptadas: 1, tasaAceptacion: 33.3 },
+      ventasPorMoneda: [
         {
-          etapa: etapaInicial,
-          total: 1,
-          valorTotal: { unidades: '6000000', moneda: 'COP' },
-          oportunidades: [
-            {
-              id: '00000000-0010-4000-8000-000000000001',
-              titulo: 'Luna de miel Cartagena',
-              contactoId: '00000000-0002-4000-8000-000000000001',
-              contactoNombre: 'Laura Gómez',
-              etapa: etapaInicial,
-              paqueteId: null,
-              fechaSalida: null,
-              ultimoContactoEn: null,
-              valorEstimado: { unidades: '6000000', moneda: 'COP' },
-              probabilidad: 10,
-              destino: 'Cartagena',
-              asesorId: null,
-              asesorNombre: null,
-              proximaTarea: null,
-              motivoPerdida: null,
-              notaPerdida: null,
-              creadaEn: '2026-10-20T10:00:00Z',
-            },
-          ],
+          moneda: 'COP',
+          cotizacionesAceptadas: 1,
+          ventas: { unidades: '9100000', moneda: 'COP' },
         },
         {
-          etapa: etapaGanada,
-          total: 2,
-          valorTotal: { unidades: '12000000', moneda: 'COP' },
-          oportunidades: [
-            {
-              id: '00000000-0010-4000-8000-000000000002',
-              titulo: 'Excursión Barú VIP',
-              contactoId: '00000000-0002-4000-8000-000000000002',
-              contactoNombre: 'Carlos Ruiz',
-              etapa: etapaGanada,
-              paqueteId: null,
-              fechaSalida: null,
-              ultimoContactoEn: null,
-              valorEstimado: { unidades: '4000000', moneda: 'COP' },
-              probabilidad: 100,
-              destino: 'Cartagena',
-              asesorId: '00000000-0000-4000-a000-000000000001',
-              asesorNombre: 'Mariana Pérez',
-              proximaTarea: null,
-              motivoPerdida: null,
-              notaPerdida: null,
-              creadaEn: '2026-10-21T10:00:00Z',
-            },
-            {
-              id: '00000000-0010-4000-8000-000000000003',
-              titulo: 'Tour Eje Cafetero',
-              contactoId: '00000000-0002-4000-8000-000000000003',
-              contactoNombre: 'Sofia Duque',
-              etapa: etapaGanada,
-              paqueteId: null,
-              fechaSalida: null,
-              ultimoContactoEn: null,
-              valorEstimado: { unidades: '8000000', moneda: 'COP' },
-              probabilidad: 100,
-              destino: 'Eje Cafetero',
-              asesorId: '00000000-0000-4000-a000-000000000002',
-              asesorNombre: 'Andrés Morales',
-              proximaTarea: null,
-              motivoPerdida: null,
-              notaPerdida: null,
-              creadaEn: '2026-10-22T10:00:00Z',
-            },
-          ],
-        },
-        {
-          etapa: etapaPerdida,
-          total: 1,
-          valorTotal: { unidades: '2000000', moneda: 'COP' },
-          oportunidades: [
-            {
-              id: '00000000-0010-4000-8000-000000000004',
-              titulo: 'Cotización vencida',
-              contactoId: '00000000-0002-4000-8000-000000000004',
-              contactoNombre: 'Juan Meza',
-              etapa: etapaPerdida,
-              paqueteId: null,
-              fechaSalida: null,
-              ultimoContactoEn: null,
-              valorEstimado: { unidades: '2000000', moneda: 'COP' },
-              probabilidad: 0,
-              destino: null,
-              asesorId: null,
-              asesorNombre: null,
-              proximaTarea: null,
-              motivoPerdida: null,
-              notaPerdida: null,
-              creadaEn: '2026-10-23T10:00:00Z',
-            },
-          ],
+          moneda: 'USD',
+          cotizacionesAceptadas: 2,
+          ventas: { unidades: '250000', moneda: 'USD' },
         },
       ],
+      oportunidades: {
+        creadas: 5,
+        ganadas: 1,
+        perdidas: 1,
+        abiertas: 3,
+        tasaConversion: 50.0,
+        porEtapa: [
+          {
+            etapaId: '01932000-0000-7000-8000-0000000000e1',
+            nombre: 'Nuevo',
+            orden: 1,
+            esGanada: false,
+            esPerdida: false,
+            cantidad: 3,
+          },
+        ],
+      },
+      respuesta: {
+        conversacionesNuevas: 10,
+        conversacionesRespondidas: 8,
+        promedioMinutos: 15.5,
+        medianaMinutos: 9.0,
+      },
     };
 
-    const reporte = calcularReporteDesdePipeline(tableroMock, 'DUENO', 'este_mes');
+    const vista = transformarResumenReporte(mockResumen);
 
-    expect(reporte.tieneDatosReales).toBe(true);
-    expect(reporte.oportunidadesCreadas).toBe(4);
-    expect(reporte.oportunidadesGanadas).toBe(2);
-    expect(reporte.oportunidadesPerdidas).toBe(1);
+    expect(vista.filasVentas).toHaveLength(2);
+    expect(vista.filasVentas[0]?.moneda).toBe('COP');
+    expect(vista.filasVentas[0]?.ventas.unidades).toBe('9100000');
+    expect(vista.filasVentas[1]?.moneda).toBe('USD');
+    expect(vista.filasVentas[1]?.ventas.unidades).toBe('250000');
 
-    // Tasa de conversión: 2 ganadas / (2 ganadas + 1 perdida) = 66.7%
-    expect(reporte.tasaConversion).toBe(66.7);
-
-    // Ventas totales ganadas: 4M + 8M = 12M COP
-    expect(reporte.ventasTotales?.unidades).toBe('12000000');
-    expect(reporte.ventasTotales?.moneda).toBe('COP');
-
-    // Métricas no disponibles en backend permanecen en null (no inventadas)
-    expect(reporte.ventasPeriodoAnterior).toBeNull();
-    expect(reporte.cambioVentasPorcentaje).toBeNull();
-    expect(reporte.tiempoRespuestaPromedioMinutos).toBeNull();
-    expect(reporte.metaMesVentas).toBeNull();
-
-    // Ventas por destino agrupadas
-    expect(reporte.ventasPorDestino).toHaveLength(2);
-    const cartagena = reporte.ventasPorDestino.find((d) => d.destino === 'Cartagena');
-    expect(cartagena?.totalVentas.unidades).toBe('4000000');
-    const eje = reporte.ventasPorDestino.find((d) => d.destino === 'Eje Cafetero');
-    expect(eje?.totalVentas.unidades).toBe('8000000');
-
-    // Rendimiento de asesores
-    expect(reporte.rendimientoAsesores).toHaveLength(2);
-    const mariana = reporte.rendimientoAsesores.find(
-      (a) => a.asesorId === '00000000-0000-4000-a000-000000000001',
+    // Cohortes explícitas
+    expect(vista.cotizaciones.cohorteTexto).toBe(
+      '1 aceptada de 3 enviadas en el periodo (4 creadas)',
     );
-    expect(mariana?.nombre).toBe('Mariana Pérez');
-    expect(mariana?.oportunidadesGanadas).toBe(1);
-    expect(mariana?.totalVentas.unidades).toBe('4000000');
-    expect(mariana?.tiempoRespuestaMinutos).toBeNull(); // Sin inventar SLA
+    expect(vista.oportunidades.cohorteTexto).toBe(
+      '5 creadas en el periodo (1 ganadas · 1 perdidas · 3 abiertas)',
+    );
+    expect(vista.respuesta.cohorteTexto).toBe(
+      '8 de 10 conversaciones nuevas respondidas en el periodo',
+    );
 
-    // Embudo por etapas
-    expect(reporte.conversionPorEtapa).toHaveLength(3);
+    // Mediana como valor protagonista
+    expect(vista.respuesta.medianaTexto).toContain('9 min');
+    expect(vista.respuesta.promedioTexto).toContain('15,5 min');
+
+    // Sin datos confidenciales en la respuesta
+    expect(vista.hayConfidencial).toBe(false);
+    expect(vista.filasVentas[0]?.confidencial).toBeUndefined();
   });
 
-  it('7. obtenerEtiquetaPeriodo retorna nombres claros en español para todos los períodos', () => {
-    expect(obtenerEtiquetaPeriodo('ultimos_30_dias')).toBe('Últimos 30 días');
-    expect(obtenerEtiquetaPeriodo('este_mes')).toBe('Este mes');
-    expect(obtenerEtiquetaPeriodo('trimestre')).toBe('Últimos 90 días');
-    expect(obtenerEtiquetaPeriodo('ano')).toBe('Este año');
-  });
-
-  it('8. obtenerReportePorPeriodo entrega datos consistentes con o sin tablero opcional', () => {
-    const rep = obtenerReportePorPeriodo('ultimos_30_dias', 'DUENO');
-    expect(rep.periodo).toBe('ultimos_30_dias');
-  });
-});
-
-describe('calcularReporteDesdePipeline sin cifras inventadas (T-124)', () => {
-  it('no fabrica costo ni margen: el tablero no los trae', async () => {
-    const { calcularReporteDesdePipeline } = await import('./reportes-logica');
-    const tablero = {
-      columnas: [
+  it('8. transformarResumenReporte preserva confidencial si el servidor lo entrega', () => {
+    const mockResumen: ResumenDeReportes = {
+      periodo: { desde: '2026-10-01T05:00:00.000Z', hasta: '2026-11-01T05:00:00.000Z' },
+      cotizaciones: { creadas: 1, enviadas: 1, aceptadas: 1, tasaAceptacion: 100 },
+      ventasPorMoneda: [
         {
-          etapa: { id: 'e1', nombre: 'Ganada', orden: 1, esGanada: true, esPerdida: false },
-          oportunidades: [
-            {
-              id: 'o1',
-              destino: 'Cartagena',
-              valorEstimado: { unidades: '1000000', moneda: 'COP' },
-              asesorId: 'a1',
-              asesorNombre: 'Ana Perez',
-            },
-          ],
+          moneda: 'COP',
+          cotizacionesAceptadas: 1,
+          ventas: { unidades: '10000000', moneda: 'COP' },
+          neto: { unidades: '8000000', moneda: 'COP' },
+          margen: { unidades: '2000000', moneda: 'COP' },
+          margenPorcentaje: 20.0,
+          cotizacionesSinNeto: 0,
         },
       ],
-    } as unknown as Parameters<typeof calcularReporteDesdePipeline>[0];
-    const r = calcularReporteDesdePipeline(tablero, 'DUENO');
-    expect(r.costoNetoTotal).toBeNull();
-    expect(r.margenTotal).toBeNull();
-    expect(r.margenPorcentaje).toBeNull();
-    expect(r.rendimientoAsesores[0]?.correo).toBeNull();
-    expect(r.rendimientoAsesores[0]?.conversaciones).toBeNull();
+      oportunidades: {
+        creadas: 0,
+        ganadas: 0,
+        perdidas: 0,
+        abiertas: 0,
+        tasaConversion: null,
+        porEtapa: [],
+      },
+      respuesta: {
+        conversacionesNuevas: 0,
+        conversacionesRespondidas: 0,
+        promedioMinutos: null,
+        medianaMinutos: null,
+      },
+    };
+
+    const vista = transformarResumenReporte(mockResumen);
+    expect(vista.hayConfidencial).toBe(true);
+    expect(vista.filasVentas[0]?.confidencial).toBeDefined();
+    expect(vista.filasVentas[0]?.confidencial?.neto?.unidades).toBe('8000000');
+    expect(vista.filasVentas[0]?.confidencial?.margen?.unidades).toBe('2000000');
+    expect(vista.filasVentas[0]?.confidencial?.margenPorcentaje).toBe(20.0);
+  });
+
+  it('9. calcularReporteDesdePipeline y obtenerReportePorPeriodo fueron eliminados', () => {
+    expect((logica as Record<string, unknown>).calcularReporteDesdePipeline).toBeUndefined();
+    expect((logica as Record<string, unknown>).obtenerReportePorPeriodo).toBeUndefined();
   });
 });
