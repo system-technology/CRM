@@ -38,6 +38,7 @@ let admin: PrismaClient;
 let adminPg: Client;
 let paqueteId = '';
 let contactoId = '';
+let identidadId = '';
 
 async function llamar<T>(
   metodo: 'GET' | 'POST',
@@ -83,6 +84,35 @@ beforeAll(async () => {
       nombre: 'Agencia cotizador punta a punta',
     },
   });
+  // `x-dev-usuario-id` tiene que ser un usuario REAL de la agencia: guardar una cotización deja
+  // su fila en el historial de estados (T-132), con una foránea compuesta a `usuarios`. El rol
+  // lleva los permisos que usan las rutas de esta prueba.
+  const identidad = await admin.identidad.create({
+    data: {
+      correo: `fixture-aislamiento-cotizador-${TENANT.slice(-12)}@fixture-identidad.test`,
+      nombre: 'Asesora del cotizador',
+    },
+  });
+  identidadId = identidad.id;
+  const rol = await admin.rol.create({
+    data: {
+      tenantId: TENANT,
+      nombre: 'Asesor',
+      clave: 'ASESOR',
+      permisos: ['catalogo.administrar', 'cotizacion.escribir'],
+    },
+  });
+  await admin.usuario.create({
+    data: {
+      id: USUARIO,
+      tenantId: TENANT,
+      identidadId: identidad.id,
+      rolId: rol.id,
+      correo: identidad.correo,
+      nombre: identidad.nombre,
+    },
+  });
+
   contactoId = (
     await admin.contacto.create({
       data: {
@@ -152,6 +182,10 @@ afterAll(async () => {
       await adminPg.query('BEGIN');
       await modulo.borrarTenants(adminPg, [TENANT]);
       await adminPg.query('COMMIT');
+      // La identidad es global: `borrarTenants` no la toca.
+      if (identidadId) {
+        await adminPg.query('DELETE FROM identidades WHERE id = $1', [identidadId]);
+      }
     } finally {
       await adminPg.end();
     }
