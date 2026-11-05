@@ -161,6 +161,35 @@ export const InvitarMiembro = z.object({
 });
 export type InvitarMiembro = z.infer<typeof InvitarMiembro>;
 
+/**
+ * Un miembro de la agencia, tal como lo lista `GET /api/v1/identidad/miembros` (T-121).
+ *
+ * `id` es el de `usuarios` (la pertenencia a ESTA agencia, el mismo que usa
+ * `POST /miembros/:id/baja`), nunca el de la identidad global. `rol.clave` es `null` en un rol
+ * personalizado. `estado` es `INACTIVO` para quien está dado de baja. Las invitaciones aun no
+ * aceptadas no se listan (se guardan por hash del token, sin correo recuperable) y no hay
+ * telefono: la tabla `usuarios` no lo tiene.
+ */
+export const MiembroDeAgencia = z.object({
+  id: z.string().uuid(),
+  nombre: z.string(),
+  correo: z.string(),
+  rol: z.object({
+    id: z.string().uuid(),
+    clave: z.string().nullable(),
+    nombre: z.string(),
+  }),
+  estado: z.enum(['ACTIVO', 'INACTIVO']),
+  /** ISO 8601 UTC. */
+  creadoEn: z.string().datetime(),
+  ultimoAccesoEn: z.string().datetime().nullable(),
+});
+export type MiembroDeAgencia = z.infer<typeof MiembroDeAgencia>;
+
+/** Respuesta de `GET /api/v1/identidad/miembros`: activos primero, luego por nombre. */
+export const ListaDeMiembros = z.array(MiembroDeAgencia);
+export type ListaDeMiembros = z.infer<typeof ListaDeMiembros>;
+
 /** Cuerpo de `POST /api/v1/auth/invitaciones/aceptar`. */
 export const AceptarInvitacion = z.object({
   token: z.string().min(20).max(200),
