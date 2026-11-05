@@ -38,6 +38,7 @@ import {
   type PaginaMensajes,
   type RespuestaOk,
 } from '@viajapro/contracts';
+import { RequierePermiso } from '../../../shared/autorizacion/permiso.decorator.js';
 import { ZodValidationPipe } from '../../../shared/validacion/zod-validation.pipe.js';
 import { ActuarEnConversacionUseCase } from '../application/actuar-en-conversacion.js';
 import { ConsultarBandejaUseCase } from '../application/consultar-bandeja.js';
@@ -92,6 +93,7 @@ export class ConversacionesController {
   }
 
   /** Responder es tomar: si la conversación no tenía asesor, queda asignada a quien responde. */
+  @RequierePermiso('bandeja.operar')
   @Post(':id/mensajes')
   @HttpCode(201)
   responder(
@@ -106,6 +108,7 @@ export class ConversacionesController {
    * `POST :id/mensajes`; `409 VENTANA_CERRADA` fuera de las 24 h; `404` si la conversación o la
    * cotización no existen (o no son visibles); `422 COTIZACION_DE_OTRO_CONTACTO`.
    */
+  @RequierePermiso('bandeja.operar')
   @Post(':id/cotizaciones')
   @HttpCode(201)
   enviarCotizacion(
@@ -116,6 +119,7 @@ export class ConversacionesController {
   }
 
   /** Una nota interna no asigna. */
+  @RequierePermiso('bandeja.operar')
   @Post(':id/notas')
   @HttpCode(201)
   nota(
@@ -134,6 +138,7 @@ export class ConversacionesController {
   }
 
   /** Cambiar el estado no asigna. */
+  @RequierePermiso('bandeja.operar')
   @Patch(':id/estado')
   estado(
     @Param('id', ParseUUIDPipe) id: string,
@@ -146,6 +151,7 @@ export class ConversacionesController {
    * Tomar (`usuarioId` = uno mismo), reasignar (otro miembro activo de la agencia) o soltar
    * (`null`). `PUT` porque fija el valor completo de la asignación: repetirlo no cambia nada.
    */
+  @RequierePermiso('bandeja.operar')
   @Put(':id/asignacion')
   asignar(
     @Param('id', ParseUUIDPipe) id: string,

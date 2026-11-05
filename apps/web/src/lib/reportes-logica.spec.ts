@@ -285,3 +285,31 @@ describe('Pruebas del Módulo de Reportes, Métricas y Cierres (Screen 4)', () =
     expect(rep.periodo).toBe('ultimos_30_dias');
   });
 });
+
+describe('calcularReporteDesdePipeline sin cifras inventadas (T-124)', () => {
+  it('no fabrica costo ni margen: el tablero no los trae', async () => {
+    const { calcularReporteDesdePipeline } = await import('./reportes-logica');
+    const tablero = {
+      columnas: [
+        {
+          etapa: { id: 'e1', nombre: 'Ganada', orden: 1, esGanada: true, esPerdida: false },
+          oportunidades: [
+            {
+              id: 'o1',
+              destino: 'Cartagena',
+              valorEstimado: { unidades: '1000000', moneda: 'COP' },
+              asesorId: 'a1',
+              asesorNombre: 'Ana Perez',
+            },
+          ],
+        },
+      ],
+    } as unknown as Parameters<typeof calcularReporteDesdePipeline>[0];
+    const r = calcularReporteDesdePipeline(tablero, 'DUENO');
+    expect(r.costoNetoTotal).toBeNull();
+    expect(r.margenTotal).toBeNull();
+    expect(r.margenPorcentaje).toBeNull();
+    expect(r.rendimientoAsesores[0]?.correo).toBeNull();
+    expect(r.rendimientoAsesores[0]?.conversaciones).toBeNull();
+  });
+});
