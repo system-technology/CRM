@@ -6,6 +6,8 @@
  *   pnpm dev:nube                 genera .env, migra, siembra (solo la primera vez), arranca api y web
  *   pnpm dev:nube --resembrar     fuerza de nuevo la semilla
  *   pnpm dev:nube --solo-preparar migra y siembra, sin arrancar api ni web
+ *   pnpm dev:nube --reescribir-env  solo FUERA de un Codespace y con un .env ya existente: lo
+ *                                 reescribe para apuntar a localhost (si no, se niega a correr)
  *
  * Secuencia (la misma de README y de la bitacora de veracidad):
  *   db:migrate:deploy -> roles:dev -> db:seed -> identidad:sembrar-dev -> api + web
@@ -36,6 +38,16 @@ const urlWeb = enCodespaces ? `https://${nombre}-3000.${dominio}` : 'http://loca
 const urlApi = enCodespaces ? `https://${nombre}-3333.${dominio}` : 'http://localhost:3333';
 
 // --- .env ---------------------------------------------------------------------------------
+// Este script REESCRIBE DATABASE_URL, DIRECT_URL y las cuatro URLs de los roles de aplicacion para
+// apuntar a la base del contenedor (localhost). Si ya hay un .env fuera de un Codespace, casi
+// seguro es el de alguien que desarrolla contra Neon: se negaria a perderlo en silencio.
+if (!enCodespaces && existsSync('.env') && !args.has('--reescribir-env')) {
+  fallar(
+    'Ya existe un .env y no estas en un Codespace: este script lo reescribiria para apuntar a la\n' +
+      'base del contenedor (localhost) y perderias tus URLs de base de datos.\n' +
+      'Hazlo a proposito con --reescribir-env (guarda antes una copia de tu .env).',
+  );
+}
 if (!existsSync('.env')) {
   if (!existsSync('.env.example')) fallar('No encuentro .env.example: ejecuta desde la raiz.');
   writeFileSync('.env', readFileSync('.env.example', 'utf8'));
