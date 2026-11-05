@@ -3152,7 +3152,7 @@ tasks:
     phase: 1
     priority: P2
     effort: M
-    status: backlog
+    status: done
     depends_on: []
     acceptance:
       - Recorrido completo con teclado y lector de pantalla del cotizador y del catalogo; foco visible y
@@ -3164,6 +3164,12 @@ tasks:
       - apps/web/src/app/catalogo/
     source: "cola de Antigravity reabastecida 2026-11-04 (recuperadas: no entraron con #187)"
     created_at: 2026-11-05T00:45:13.087Z
+    started_at: 2026-11-05T02:39:07.458Z
+    done_at: 2026-11-05T02:39:07.459Z
+    evidence: "Mergeado en main por el PR #230 (rama b/T-129-accesibilidad-cotizador-catalogo) con el CI en verde:
+      format, analyze, tests y los demás checks obligatorios. Cierre automático
+      (.github/workflows/cerrar-tarea.yml)."
+    commit: 931e9d74b469d898ca5d5f6e4abda8fa16ddeada
   - id: T-130
     title: "Presupuesto de rendimiento de la web: carga diferida y tamano por ruta"
     type: feature
