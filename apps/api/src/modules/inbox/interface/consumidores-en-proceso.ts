@@ -10,7 +10,7 @@ import { Inject, Injectable, type OnModuleDestroy, type OnModuleInit } from '@ne
 import { EnviarMensajeSaliente } from '../application/enviar-mensaje-saliente.js';
 import { ProcesarChange } from '../application/procesar-change.js';
 import { ColaDeChangesEnProceso } from '../infrastructure/cola-de-changes.en-proceso.js';
-import { ColaDeEnviosEnMemoriaTemporal } from '../infrastructure/cola-de-envios.en-memoria-temporal.js';
+import { ColaDeEnviosPostgres } from '../infrastructure/cola-de-envios.postgres.js';
 import { sanearError } from './consumidor-de-changes.js';
 import { leerTrabajoDeEnvio, sanearErrorDeEnvio } from './consumidor-de-envios.js';
 
@@ -39,12 +39,12 @@ export class ConsumidorDeChangesEnProceso implements OnModuleInit, OnModuleDestr
   }
 }
 
-/** TEMPORAL-PASO-4: se reemplaza cuando la cola de envíos pase a Postgres. */
+/** Conecta la cola de envíos sobre Postgres (reclamo con arrendamiento) con el caso de uso. */
 @Injectable()
 export class ConsumidorDeEnviosEnProceso implements OnModuleInit, OnModuleDestroy {
   constructor(
     @Inject(EnviarMensajeSaliente) private readonly enviar: EnviarMensajeSaliente,
-    @Inject(ColaDeEnviosEnMemoriaTemporal) private readonly cola: ColaDeEnviosEnMemoriaTemporal,
+    @Inject(ColaDeEnviosPostgres) private readonly cola: ColaDeEnviosPostgres,
   ) {}
 
   onModuleInit(): void {
