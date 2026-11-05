@@ -25,6 +25,8 @@ export interface MovimientoDeOportunidad {
   etapaId: string;
   motivoPerdida: MotivoPerdida | null;
   notaPerdida: string | null;
+  /** Quién la mueve. Queda en el historial de etapas (T-131); nulo sin usuario. */
+  actorId: string | null;
 }
 
 export abstract class PuertoCrm {
@@ -47,6 +49,11 @@ export abstract class PuertoCrm {
 
   abstract buscarOportunidad(oportunidadId: string): Promise<Oportunidad | null>;
 
+  /**
+   * Cambia la etapa y, en la MISMA transacción, añade la fila del historial de etapas (T-131) y
+   * fija o vacía `cerrada_en`: se fija al llegar a una etapa ganada o perdida y se vacía al
+   * reabrir (volver a una etapa viva). Si el historial no se puede escribir, el cambio no ocurre.
+   */
   abstract moverOportunidad(movimiento: MovimientoDeOportunidad): Promise<Oportunidad>;
 
   /** La ficha del panel lateral de la bandeja: una sola consulta, no tres encadenadas. */
