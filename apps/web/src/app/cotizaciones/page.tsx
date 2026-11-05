@@ -28,7 +28,9 @@ import {
   MessageSquare,
   Copy,
   Check,
+  Download,
 } from 'lucide-react';
+import { exportarCotizacionesCSV, descargarArchivoCSV } from '../../lib/exportar-csv';
 import type {
   FilaDeCotizacion,
   EstadoCotizacion,
@@ -59,7 +61,14 @@ import { usePermisos } from '../../lib/permisos';
 export default function CotizacionesPage() {
   const { esDemo } = useModoDemo();
   const usandoApiReal = !esDemo && estaUsandoApiReal();
-  const { puedeVerNetoYMargen: _puedeVerNetoYMargen } = usePermisos();
+  const { puedeVerNetoYMargen } = usePermisos();
+
+  const manejarExportarCSV = () => {
+    const csv = exportarCotizacionesCSV(filasFiltradas, {
+      puedeVerNetoYMargen,
+    });
+    descargarArchivoCSV(csv, `cotizaciones-viajapro-${new Date().toISOString().slice(0, 10)}.csv`);
+  };
 
   // Estados principales de datos y paginación por cursor
   const [filas, setFilas] = useState<FilaDeCotizacion[]>([]);
@@ -310,20 +319,35 @@ export default function CotizacionesPage() {
               </div>
 
               {/* Selector de Estado */}
-              <div className="flex w-full items-center gap-2 sm:w-auto">
-                <Filter className="h-4 w-4 shrink-0 text-neutral-400" />
-                <select
-                  value={estadoFiltro}
-                  onChange={(e) => setEstadoFiltro(e.target.value as EstadoCotizacion | 'TODOS')}
-                  className="focus:border-acento-500 focus:ring-acento-500 min-h-[44px] w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 text-xs font-semibold text-neutral-700 focus:outline-hidden sm:w-auto dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200"
+              <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+                <div className="flex items-center gap-2">
+                  <Filter className="h-4 w-4 shrink-0 text-neutral-400" />
+                  <select
+                    value={estadoFiltro}
+                    onChange={(e) => setEstadoFiltro(e.target.value as EstadoCotizacion | 'TODOS')}
+                    className="focus:border-acento-500 focus:ring-acento-500 min-h-[44px] w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 text-xs font-semibold text-neutral-700 focus:outline-hidden sm:w-auto dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200"
+                  >
+                    <option value="TODOS">Todos los estados</option>
+                    <option value="BORRADOR">Borrador</option>
+                    <option value="ENVIADA">Enviada</option>
+                    <option value="ACEPTADA">Aceptada</option>
+                    <option value="RECHAZADA">Rechazada</option>
+                    <option value="VENCIDA">Vencida</option>
+                  </select>
+                </div>
+
+                {/* Botón Exportar CSV (T-119) */}
+                <button
+                  type="button"
+                  onClick={manejarExportarCSV}
+                  data-testid="boton-exportar-cotizaciones-csv"
+                  title="Exportar cotizaciones a CSV en formato es-CO (separador punto y coma, UTF-8 con BOM)"
+                  aria-label="Exportar cotizaciones a CSV"
+                  className="flex min-h-[44px] items-center gap-1.5 rounded-xl border border-neutral-200 bg-white px-3 py-2 text-xs font-semibold text-neutral-700 shadow-2xs hover:bg-neutral-50 hover:text-neutral-900 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
                 >
-                  <option value="TODOS">Todos los estados</option>
-                  <option value="BORRADOR">Borrador</option>
-                  <option value="ENVIADA">Enviada</option>
-                  <option value="ACEPTADA">Aceptada</option>
-                  <option value="RECHAZADA">Rechazada</option>
-                  <option value="VENCIDA">Vencida</option>
-                </select>
+                  <Download className="h-4 w-4 text-neutral-500 dark:text-neutral-400" />
+                  <span>Exportar CSV</span>
+                </button>
               </div>
             </div>
           </div>
