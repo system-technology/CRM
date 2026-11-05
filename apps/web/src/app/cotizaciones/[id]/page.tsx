@@ -12,6 +12,7 @@
 
 import React, { use, useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { useParams } from 'next/navigation';
 import {
   Calendar,
@@ -45,9 +46,24 @@ import {
   calcularDesgloseMargen,
 } from '../../../lib/cotizaciones-logica';
 import { listarContactos } from '../../../lib/crm-api';
-import { ModalEnviarWhatsAppCotizacion } from '../../../components/cotizaciones/modal-enviar-whatsapp-cotizacion';
-import { ModalCompararVersiones } from '../../../components/cotizaciones/modal-comparar-versiones';
 import { usePermisos } from '../../../lib/permisos';
+
+// Carga diferida de modales pesados (T-130)
+const ModalEnviarWhatsAppCotizacion = dynamic(
+  () =>
+    import('../../../components/cotizaciones/modal-enviar-whatsapp-cotizacion').then(
+      (m) => m.ModalEnviarWhatsAppCotizacion,
+    ),
+  { ssr: false },
+);
+
+const ModalCompararVersiones = dynamic(
+  () =>
+    import('../../../components/cotizaciones/modal-comparar-versiones').then(
+      (m) => m.ModalCompararVersiones,
+    ),
+  { ssr: false },
+);
 
 interface PageProps {
   params?: Promise<{ id: string }>;

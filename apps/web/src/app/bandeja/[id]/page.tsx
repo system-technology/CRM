@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { useParams } from 'next/navigation';
 import type {
   ConversacionDetalle,
@@ -28,7 +29,6 @@ import {
 import { inboxApi } from '../../../lib/inbox-api';
 import { useInboxSocket } from '../../../lib/inbox-socket';
 import { usePermisos } from '../../../lib/permisos';
-import { ModalReasignar } from '../../../components/bandeja/modal-reasignar';
 import { obtenerFichaDeContacto } from '../../../lib/crm-api';
 import { EsqueletoConversacion, AvisoErrorAccionable } from '../../../components/comun/esqueletos';
 import { MigasDePan } from '../../../components/comun/migas-de-pan';
@@ -47,7 +47,6 @@ import {
   obtenerIniciales,
 } from '../../../lib/bandeja-logica';
 import { FichaCliente } from '../../../components/bandeja/ficha-cliente';
-import { ModalPlantillas } from '../../../components/bandeja/modal-plantillas';
 import {
   InsigniaCuentaRegresiva24h,
   BannerAvisoVentana24h,
@@ -58,9 +57,6 @@ import { obtenerMockPlantillasDisponibles } from '../../../lib/mock-plantillas';
 import { EnviarPlantilla } from '@viajapro/contracts';
 import { TarjetaCotizacion } from '../../../components/bandeja/tarjeta-cotizacion';
 import { PanelSugerencias } from '../../../components/bandeja/panel-sugerencias';
-import { ModalEnviarCotizacion } from '../../../components/bandeja/modal-enviar-cotizacion';
-import { ModalCrearOportunidad } from '../../../components/bandeja/modal-crear-oportunidad';
-import { ModalEditarContacto } from '../../../components/bandeja/modal-editar-contacto';
 import { MenuRespuestasRapidas } from '../../../components/bandeja/menu-respuestas-rapidas';
 import { useBandejaAtajos, debeProcesarAtajo } from '../../../lib/atajos-teclado-bandeja';
 import { AlertaErrorEnvio } from '../../../components/bandeja/alerta-error-envio';
@@ -74,6 +70,39 @@ import {
   type ContextoInterpolacion,
   type RespuestaRapida,
 } from '../../../lib/respuestas-rapidas-logica';
+
+// Carga diferida de modales secundarios de la bandeja (T-130)
+const ModalReasignar = dynamic(
+  () => import('../../../components/bandeja/modal-reasignar').then((m) => m.ModalReasignar),
+  { ssr: false },
+);
+
+const ModalPlantillas = dynamic(
+  () => import('../../../components/bandeja/modal-plantillas').then((m) => m.ModalPlantillas),
+  { ssr: false },
+);
+
+const ModalEnviarCotizacion = dynamic(
+  () =>
+    import('../../../components/bandeja/modal-enviar-cotizacion').then(
+      (m) => m.ModalEnviarCotizacion,
+    ),
+  { ssr: false },
+);
+
+const ModalCrearOportunidad = dynamic(
+  () =>
+    import('../../../components/bandeja/modal-crear-oportunidad').then(
+      (m) => m.ModalCrearOportunidad,
+    ),
+  { ssr: false },
+);
+
+const ModalEditarContacto = dynamic(
+  () =>
+    import('../../../components/bandeja/modal-editar-contacto').then((m) => m.ModalEditarContacto),
+  { ssr: false },
+);
 
 export default function BandejaConversacionPage() {
   const params = useParams();
