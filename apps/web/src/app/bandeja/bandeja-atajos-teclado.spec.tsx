@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, act, fireEvent } from '@testing-library/react';
+import { render, screen, act, fireEvent, waitFor } from '@testing-library/react';
 import BandejaConversacionPage from './[id]/page';
 import { inboxApi } from '../../lib/inbox-api';
 import * as authApi from '../../lib/auth-api';
@@ -173,7 +173,9 @@ describe('Atajos de teclado en la bandeja (T-127)', () => {
     expect(screen.queryByRole('dialog', { name: /Enviar cotización/i })).toBeNull();
 
     fireEvent.keyDown(window, { key: 'c' });
-    expect(screen.getByRole('dialog')).toBeDefined();
+    await waitFor(() => {
+      expect(screen.getByRole('dialog')).toBeDefined();
+    });
     expect(screen.getByText(/Enviar cotización por WhatsApp/i)).toBeDefined();
   });
 
@@ -185,7 +187,9 @@ describe('Atajos de teclado en la bandeja (T-127)', () => {
     });
 
     fireEvent.keyDown(window, { key: 's' });
-    expect(screen.getByRole('dialog')).toBeDefined();
+    await waitFor(() => {
+      expect(screen.getByRole('dialog')).toBeDefined();
+    });
     expect(screen.getByText(/Abrir Oportunidad en Pipeline/i)).toBeDefined();
   });
 

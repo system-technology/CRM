@@ -108,7 +108,9 @@ describe('Contacto360Page (T-100) — Pantalla Ficha 360 del Contacto', () => {
 
     fireEvent.click(screen.getByText(/Editar Datos/i));
 
-    expect(screen.getByRole('dialog')).toBeDefined();
+    await waitFor(() => {
+      expect(screen.getByRole('dialog')).toBeDefined();
+    });
     expect(screen.getByRole('heading', { name: /Editar Ficha del Contacto/i })).toBeDefined();
 
     const inputNombre = screen.getByLabelText(/Nombre completo/i);
@@ -135,7 +137,9 @@ describe('Contacto360Page (T-100) — Pantalla Ficha 360 del Contacto', () => {
 
     fireEvent.click(screen.getByText(/Nueva Oportunidad/i));
 
-    expect(screen.getByRole('dialog')).toBeDefined();
+    await waitFor(() => {
+      expect(screen.getByRole('dialog')).toBeDefined();
+    });
     expect(screen.getByRole('heading', { name: /Nueva Oportunidad Comercial/i })).toBeDefined();
 
     const inputTitulo = screen.getByLabelText(/Título de la oportunidad/i);
@@ -171,7 +175,9 @@ describe('Contacto360Page (T-100) — Pantalla Ficha 360 del Contacto', () => {
 
     fireEvent.click(screen.getByText(/Agendar Seguimiento/i));
 
-    expect(screen.getByRole('dialog')).toBeDefined();
+    await waitFor(() => {
+      expect(screen.getByRole('dialog')).toBeDefined();
+    });
     expect(screen.getByRole('heading', { name: /Agendar Seguimiento/i })).toBeDefined();
 
     const inputDesc = screen.getByLabelText(/Compromiso \/ Tarea comercial/i);

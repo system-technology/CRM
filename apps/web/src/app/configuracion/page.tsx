@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import {
   Calculator,
   Users,
@@ -19,13 +20,6 @@ import {
 } from 'lucide-react';
 import { BarraModulos } from '../../components/bandeja/barra-modulos';
 import { DistintivoDatosDemo } from '../../components/comun/distintivo-datos-demo';
-import { BloquePoliticaPrecio } from '../../components/configuracion/bloque-politica-precio';
-import { BloqueAjustesCatalogo } from '../../components/configuracion/bloque-ajustes-catalogo';
-import { BloqueEtapasPipeline } from '../../components/configuracion/bloque-etapas-pipeline';
-import { BloqueCamposPersonalizados } from '../../components/configuracion/bloque-campos-personalizados';
-import { BloqueEquipo } from '../../components/configuracion/bloque-equipo';
-import { BloqueRespuestasRapidas } from '../../components/configuracion/bloque-respuestas-rapidas';
-import { BloqueConexionWhatsapp } from '../../components/configuracion/bloque-conexion-whatsapp';
 import { usePermisos } from '../../lib/permisos';
 import {
   MOCK_CONFIGURACION_SLA,
@@ -34,6 +28,60 @@ import {
   type ConfiguracionAgencia,
 } from '../../lib/mock-configuracion';
 import { validarSla, validarFormatoNit } from '../../lib/configuracion-logica';
+
+// Carga diferida de los bloques de pestañas de configuración (T-130)
+const BloquePoliticaPrecio = dynamic(
+  () =>
+    import('../../components/configuracion/bloque-politica-precio').then(
+      (m) => m.BloquePoliticaPrecio,
+    ),
+  { ssr: false },
+);
+
+const BloqueAjustesCatalogo = dynamic(
+  () =>
+    import('../../components/configuracion/bloque-ajustes-catalogo').then(
+      (m) => m.BloqueAjustesCatalogo,
+    ),
+  { ssr: false },
+);
+
+const BloqueEtapasPipeline = dynamic(
+  () =>
+    import('../../components/configuracion/bloque-etapas-pipeline').then(
+      (m) => m.BloqueEtapasPipeline,
+    ),
+  { ssr: false },
+);
+
+const BloqueCamposPersonalizados = dynamic(
+  () =>
+    import('../../components/configuracion/bloque-campos-personalizados').then(
+      (m) => m.BloqueCamposPersonalizados,
+    ),
+  { ssr: false },
+);
+
+const BloqueEquipo = dynamic(
+  () => import('../../components/configuracion/bloque-equipo').then((m) => m.BloqueEquipo),
+  { ssr: false },
+);
+
+const BloqueRespuestasRapidas = dynamic(
+  () =>
+    import('../../components/configuracion/bloque-respuestas-rapidas').then(
+      (m) => m.BloqueRespuestasRapidas,
+    ),
+  { ssr: false },
+);
+
+const BloqueConexionWhatsapp = dynamic(
+  () =>
+    import('../../components/configuracion/bloque-conexion-whatsapp').then(
+      (m) => m.BloqueConexionWhatsapp,
+    ),
+  { ssr: false },
+);
 
 type TabConfig =
   | 'equipo'

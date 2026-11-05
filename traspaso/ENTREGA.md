@@ -1,3 +1,50 @@
+# Entrega — T-130: Presupuesto de rendimiento de la web: carga diferida y tamaño por ruta — 2026-11-04
+
+## Identificación
+- **Tarea:** `T-130`
+- **Rama:** `b/T-130-presupuesto-rendimiento-web`
+- **Carril:** `b` (Frontend / Web)
+
+## Qué se construyó y optimizó
+1. **Carga diferida (`next/dynamic`) de componentes pesados y modales:**
+   - **Reportes (`apps/web/src/app/reportes/page.tsx`):**
+     - Carga diferida de `ReportesReales` con esqueleto de carga accesible (`EsqueletoReportes`).
+   - **Cotizador (`apps/web/src/app/cotizador/page.tsx`):**
+     - Carga diferida de `ModalGuardarCotizacion`.
+   - **Catálogo (`apps/web/src/app/catalogo/page.tsx`):**
+     - Carga diferida de modales pesados, asistentes y tablas secundarias: `DescargaPlantillas`, `AsistenteImportacion`, `FichaDetallePaquete`, `ModalFormularioPaquete`, `DialogoDesactivarPaquete` y `TablaGestionCatalogo`.
+   - **Configuración (`apps/web/src/app/configuracion/page.tsx`):**
+     - Carga diferida de los 7 bloques de configuración por pestaña: `BloquePoliticaPrecio`, `BloqueAjustesCatalogo`, `BloqueEtapasPipeline`, `BloqueCamposPersonalizados`, `BloqueEquipo`, `BloqueRespuestasRapidas` y `BloqueConexionWhatsapp`.
+   - **Detalle de Cotización (`apps/web/src/app/cotizaciones/[id]/page.tsx`):**
+     - Carga diferida de `ModalEnviarWhatsAppCotizacion` y `ModalCompararVersiones`.
+   - **Ficha 360 del Contacto (`apps/web/src/app/contactos/[id]/page.tsx`):**
+     - Carga diferida de modales y paneles secundarios: `ModalEditarContacto`, `ModalCrearOportunidad`, `ModalCrearSeguimiento` y `PanelConsentimientosContacto`.
+   - **Bandeja de Conversación (`apps/web/src/app/bandeja/[id]/page.tsx`):**
+     - Carga diferida de modales de acción: `ModalReasignar`, `ModalPlantillas`, `ModalEnviarCotizacion`, `ModalCrearOportunidad` y `ModalEditarContacto`.
+
+2. **Medición del tamaño de JS por ruta (`next build`) y comparativa de rendimiento:**
+
+| Ruta | Tamaño Inicial | Tamaño Optimizado | Δ Tamaño Ruta | First Load JS Inicial | First Load JS Optimizado | Presupuesto Acordado | Cumple |
+|---|---|---|---|---|---|---|:---:|
+| **JS Compartido (global)** | 103 kB | 103 kB | 0% | 103 kB | 103 kB | <= 110 kB | ✅ |
+| `/configuracion` | 27.5 kB | 6.41 kB | **-76.7%** | 230 kB | 196 kB (-34 kB) | <= 200 kB | ✅ |
+| `/catalogo` | 28.4 kB | 12.2 kB | **-57.0%** | 229 kB | 215 kB (-14 kB) | <= 220 kB | ✅ |
+| `/bandeja/[id]` | 31.2 kB | 25.7 kB | **-17.6%** | 204 kB | 198 kB (-6 kB) | <= 200 kB | ✅ |
+| `/contactos/[id]` | 14.4 kB | 8.89 kB | **-38.3%** | 213 kB | 208 kB (-5 kB) | <= 210 kB | ✅ |
+| `/cotizaciones/[id]` | 12.9 kB | 9.65 kB | **-25.2%** | 214 kB | 208 kB (-6 kB) | <= 210 kB | ✅ |
+| `/reportes` | 10.0 kB | 7.93 kB | **-20.7%** | 205 kB | 202 kB (-3 kB) | <= 205 kB | ✅ |
+| `/cotizador` | 14.8 kB | 12.2 kB | **-17.6%** | 219 kB | 219 kB | <= 220 kB | ✅ |
+
+3. **Sin dependencias nuevas:**
+   - No se añadieron librerías externas ni se modificaron `package.json` o `pnpm-lock.yaml`.
+
+4. **Pruebas y verificación:**
+   - 135 suites de pruebas en `@viajapro/web` ejecutadas y pasando al 100% (1081 pruebas).
+   - `pnpm typecheck` limpio sin errores.
+   - `pnpm lint` limpio sin advertencias ni errores.
+
+---
+
 # Entrega — T-000: Equipo conectado a `GET /api/v1/identidad/miembros` — 2026-11-04
 
 ## Identificación
