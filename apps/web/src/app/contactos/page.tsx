@@ -1,5 +1,6 @@
 'use client';
 
+import { AvisoSoloLocal } from '../../components/comun/aviso-solo-local';
 import { useModoDemo } from '../../lib/modo-demo';
 import { usePermisos } from '../../lib/permisos';
 
@@ -220,6 +221,7 @@ export default function ContactosPage() {
               Mostrando {contactosFiltrados.length} de {pagina.datos.length}
             </div>
           </div>
+          {tieneFiltrosActivos && <AvisoSoloLocal que="los filtros recordados" className="mt-2" />}
         </header>
 
         {/* Tabla de Contactos con Estados (0c.25) */}

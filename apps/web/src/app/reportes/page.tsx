@@ -305,8 +305,9 @@ export default function ReportesPage() {
                         Utilidad Bruta y Margen Real (Venta − Costo Mayorista)
                       </div>
                       <p className="mt-1 text-xs text-neutral-600 dark:text-neutral-400">
-                        Calculado sobre expedientes confirmados. Oculto por política en la vista
-                        operativa de asesores.
+                        Se calcula desde las cotizaciones guardadas; mientras no haya cifra real se
+                        muestra «Aún sin datos». Oculto por política en la vista operativa de
+                        asesores.
                       </p>
                     </div>
 
@@ -483,15 +484,17 @@ export default function ReportesPage() {
                                   <div className="font-semibold text-neutral-900 dark:text-white">
                                     {asesor.nombre}
                                   </div>
-                                  <div className="text-[11px] text-neutral-400">
-                                    {asesor.correo}
-                                  </div>
+                                  {asesor.correo && (
+                                    <div className="text-[11px] text-neutral-400">
+                                      {asesor.correo}
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                             </td>
 
                             <td className="cifra px-4 py-3 text-right text-neutral-700 dark:text-neutral-300">
-                              {asesor.conversaciones}
+                              {asesor.conversaciones ?? '—'}
                             </td>
 
                             <td className="cifra text-ok-700 dark:text-ok-400 px-4 py-3 text-right font-bold">
