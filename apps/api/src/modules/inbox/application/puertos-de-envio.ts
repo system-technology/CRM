@@ -101,7 +101,25 @@ export abstract class PuertoColaDeEnvios {
  * llamada, la marca sigue ahí y el reintento no vuelve a enviar (R5).
  */
 export abstract class PuertoReservaDeEnvio {
-  /** `true` si la reserva es nueva; `false` si ya existía (un intento anterior pudo enviar). */
-  abstract reservar(mensajeId: string): Promise<boolean>;
-  abstract liberar(mensajeId: string): Promise<void>;
+  /**
+   * `true` si la reserva es nueva; `false` si ya existía (un intento anterior pudo enviar).
+   * Lleva el tenant porque la reserva durable vive en la fila del mensaje, bajo RLS (ADR-0019).
+   */
+  abstract reservar(tenantId: string, mensajeId: string): Promise<boolean>;
+  abstract liberar(tenantId: string, mensajeId: string): Promise<void>;
+}
+
+/**
+ * Lo que el barrido de seguridad necesita saber de los envíos sin resolver de UNA agencia
+ * (ADR-0019 §3.2 y §1.3). Solo lista identificadores: reclamar y marcar lo hacen la cola y
+ * `PuertoMensajesSalientes`, cada uno con su propia transacción corta.
+ */
+export abstract class PuertoEnviosSinResolver {
+  /** Pendientes sin `wamid`, no reservados y con el arrendamiento vencido (o sin él). */
+  abstract listarListos(tenantId: string, limite: number): Promise<string[]>;
+  /**
+   * Reservados, sin `wamid` y con el arrendamiento vencido: el proceso murió entre la reserva y la
+   * respuesta de Meta. NO se reenvían; se marcan «sin confirmar».
+   */
+  abstract listarSinConfirmar(tenantId: string, limite: number): Promise<string[]>;
 }

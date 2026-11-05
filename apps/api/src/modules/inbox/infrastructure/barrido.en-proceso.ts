@@ -17,6 +17,9 @@ import {
 } from '../application/puertos-de-barrido.js';
 import type { ColaDeChangesEnProceso } from './cola-de-changes.en-proceso.js';
 
+/** Tope de la transacción que sostiene el candado (C8), sea cual sea el periodo del barrido. */
+export const TIMEOUT_MAXIMO_DEL_CANDADO_MS = 300_000;
+
 /** Lo único que el candado necesita de la base: una transacción con consulta cruda. */
 export interface TransaccionConConsulta {
   $queryRaw<T = unknown>(consulta: TemplateStringsArray, ...valores: unknown[]): Promise<T>;
@@ -54,8 +57,13 @@ export class BarridoEnProceso extends PuertoReencolador implements PuertoCoordin
         await fn();
         return true;
       },
-      // La transacción solo sostiene el candado; el trabajo usa otras conexiones del pool.
-      { timeout: Math.max(5_000, duracionMs), maxWait: 5_000 },
+      // La transacción solo sostiene el candado; el trabajo usa otras conexiones del pool. Acotada
+      // (C8): con el periodo de 60 min, una transacción colgada retendría una conexión del pool y
+      // el candado una hora; el barrido de changes cabe de sobra en cinco minutos.
+      {
+        timeout: Math.min(TIMEOUT_MAXIMO_DEL_CANDADO_MS, Math.max(5_000, duracionMs)),
+        maxWait: 5_000,
+      },
     );
   }
 

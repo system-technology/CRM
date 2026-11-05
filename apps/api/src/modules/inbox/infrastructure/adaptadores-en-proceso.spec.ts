@@ -8,14 +8,11 @@ import { AvisosDeOutboxEnMemoria } from './avisos-de-outbox.en-memoria.js';
 import { AvisoAlRelayEnProceso } from './aviso-al-relay.en-proceso.js';
 import {
   BarridoEnProceso,
+  TIMEOUT_MAXIMO_DEL_CANDADO_MS,
   type ClienteConTransacciones,
   type TransaccionConConsulta,
 } from './barrido.en-proceso.js';
 import { ColaDeChangesEnProceso } from './cola-de-changes.en-proceso.js';
-import {
-  ColaDeEnviosEnMemoriaTemporal,
-  ReservaDeEnvioEnMemoriaTemporal,
-} from './cola-de-envios.en-memoria-temporal.js';
 import { crearCompartidoDelInbox } from './compartido-en-proceso.js';
 
 const id = (n: number): Buffer => Buffer.alloc(32, n);
@@ -98,9 +95,11 @@ describe('BarridoEnProceso', () => {
   function baseFalsa(libre: () => boolean): {
     prisma: ClienteConTransacciones;
     consultas: string[];
+    opcionesVistas: Array<{ timeout?: number; maxWait?: number }>;
     abiertas: () => number;
   } {
     const consultas: string[] = [];
+    const opcionesVistas: Array<{ timeout?: number; maxWait?: number }> = [];
     let abiertas = 0;
     const tx: TransaccionConConsulta = {
       $queryRaw: <T>(plantilla: TemplateStringsArray): Promise<T> => {
@@ -109,7 +108,11 @@ describe('BarridoEnProceso', () => {
       },
     };
     const prisma: ClienteConTransacciones = {
-      async $transaction<T>(fn: (t: TransaccionConConsulta) => Promise<T>): Promise<T> {
+      async $transaction<T>(
+        fn: (t: TransaccionConConsulta) => Promise<T>,
+        opciones?: { timeout?: number; maxWait?: number },
+      ): Promise<T> {
+        if (opciones) opcionesVistas.push(opciones);
         abiertas += 1;
         try {
           return await fn(tx);
@@ -118,7 +121,7 @@ describe('BarridoEnProceso', () => {
         }
       },
     };
-    return { prisma, consultas, abiertas: () => abiertas };
+    return { prisma, consultas, opcionesVistas, abiertas: () => abiertas };
   }
 
   beforeEach(() => {
@@ -150,6 +153,15 @@ describe('BarridoEnProceso', () => {
     // Candado de TRANSACCIÓN, no de sesión: funciona a través del pooler de Neon.
     expect(consultas.join('\n')).toMatch(/pg_try_advisory_xact_lock/);
     expect(consultas.join('\n')).not.toMatch(/pg_try_advisory_lock\(/);
+  });
+
+  it('la transacción del candado tiene un timeout ACOTADO aunque el periodo sea de 60 min (C8)', async () => {
+    const { prisma, opcionesVistas } = baseFalsa(() => true);
+    const barrido = new BarridoEnProceso(new ColaDeChangesEnProceso(), prisma);
+    await barrido.conTurno(3_600_000, () => Promise.resolve());
+    await barrido.conTurno(1_000, () => Promise.resolve());
+    expect(opcionesVistas[0]?.timeout).toBe(TIMEOUT_MAXIMO_DEL_CANDADO_MS);
+    expect(opcionesVistas[1]?.timeout).toBe(5_000);
   });
 
   it('con el candado ocupado no corre la tarea', async () => {
@@ -205,56 +217,5 @@ describe('compartido del proceso unico', () => {
     expect(c.avisos).toBeDefined();
     expect(c.colaDeChanges).toBeInstanceOf(ColaDeChangesEnProceso);
     vi.restoreAllMocks();
-  });
-});
-
-describe('TEMPORAL-PASO-4: envíos y reserva en memoria', () => {
-  beforeEach(() => {
-    vi.useFakeTimers();
-    vi.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
-  });
-  afterEach(() => {
-    vi.useRealTimers();
-    vi.restoreAllMocks();
-  });
-
-  it('una reserva por mensaje: la segunda se niega, y liberar la reabre', async () => {
-    const reserva = new ReservaDeEnvioEnMemoriaTemporal();
-    expect(await reserva.reservar('m-1')).toBe(true);
-    expect(await reserva.reservar('m-1')).toBe(false);
-    expect(await reserva.reservar('m-2')).toBe(true);
-    await reserva.liberar('m-1');
-    expect(await reserva.reservar('m-1')).toBe(true);
-  });
-
-  it('el mismo mensaje encolado dos veces se envía una vez (R5)', async () => {
-    const cola = new ColaDeEnviosEnMemoriaTemporal();
-    const enviar = vi.fn(() => new Promise<void>(() => undefined));
-    cola.conectar(enviar);
-    await cola.encolar('t-1', 'm-1');
-    await cola.encolar('t-1', 'm-1');
-    await vi.advanceTimersByTimeAsync(0);
-    expect(enviar).toHaveBeenCalledTimes(1);
-    expect(enviar.mock.calls[0]).toEqual(['t-1', 'm-1', { intento: 1, ultimoIntento: false }]);
-  });
-
-  it('reintenta seis veces desde 3 s y el último intento llega marcado', async () => {
-    const cola = new ColaDeEnviosEnMemoriaTemporal();
-    const ultimos: boolean[] = [];
-    cola.conectar((_t, _m, c) => {
-      ultimos.push(c.ultimoIntento);
-      return Promise.reject(new Error('Meta caído'));
-    });
-    await cola.encolar('t-1', 'm-1');
-    await vi.advanceTimersByTimeAsync(3_000 + 6_000 + 12_000 + 24_000 + 48_000);
-    expect(ultimos).toEqual([false, false, false, false, false, true]);
-  });
-
-  it('cierre ordenado', async () => {
-    const cola = new ColaDeEnviosEnMemoriaTemporal();
-    cola.conectar(() => Promise.resolve());
-    await expect(cola.cerrar()).resolves.toBe(0);
-    await cola.encolar('t-1', 'm-9'); // cerrada: no entra
-    await vi.advanceTimersByTimeAsync(0);
   });
 });

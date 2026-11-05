@@ -14,14 +14,17 @@ import {
   PuertoAvisoDeOutbox,
   PuertoPublicadorDeEventos,
 } from './application/puertos-de-eventos.js';
-import { PuertoColaDeEnvios, PuertoReservaDeEnvio } from './application/puertos-de-envio.js';
+import {
+  PuertoColaDeEnvios,
+  PuertoEnviosSinResolver,
+  PuertoReservaDeEnvio,
+} from './application/puertos-de-envio.js';
+import { RecuperarEnviosSinResolver } from './application/recuperar-envios-sin-resolver.js';
 import { PrismaWebhookService } from '../../shared/prisma/prisma-webhook.service.js';
 import { BarridoEnProceso } from './infrastructure/barrido.en-proceso.js';
 import { ColaDeChangesEnProceso } from './infrastructure/cola-de-changes.en-proceso.js';
-import {
-  ColaDeEnviosEnMemoriaTemporal,
-  ReservaDeEnvioEnMemoriaTemporal,
-} from './infrastructure/cola-de-envios.en-memoria-temporal.js';
+import { ColaDeEnviosPostgres } from './infrastructure/cola-de-envios.postgres.js';
+import { ReservaDeEnvioPostgres } from './infrastructure/reserva-de-envio.postgres.js';
 import {
   COMPARTIDO_DEL_INBOX,
   type CompartidoDelInbox,
@@ -59,21 +62,25 @@ export class InboxWorkerUnicoModule {
         { provide: OPCIONES_DEL_RELAY, useValue: { barridoMs: 0 } },
         PlanificadorDeRelay,
         PlanificadorDeSeguridad,
-        // TEMPORAL-PASO-4: envíos y reserva en memoria hasta la cola sobre Postgres.
+        // Envíos sobre Postgres (ADR-0019 §1.2): reclamo con arrendamiento y reserva durable en la
+        // fila del mensaje, bajo RLS y con el pool del trabajador.
         {
-          provide: ColaDeEnviosEnMemoriaTemporal,
-          useFactory: (): ColaDeEnviosEnMemoriaTemporal => {
-            const log = new Logger('ColaDeEnviosEnMemoriaTemporal');
-            return new ColaDeEnviosEnMemoriaTemporal((clave, contexto, error) =>
+          provide: ColaDeEnviosPostgres,
+          useFactory: (prisma: PrismaWebhookService): ColaDeEnviosPostgres => {
+            const log = new Logger('ColaDeEnviosPostgres');
+            return new ColaDeEnviosPostgres(prisma, (clave, contexto, error) =>
               // Clase y código, nunca el mensaje: puede traer el número del viajero (R10).
               log.error(
                 `Envío ${clave.slice(0, 14)} falló (intento ${contexto.intento}): ${sanearErrorDeEnvio(error).codigo}`,
               ),
             );
           },
+          inject: [PrismaWebhookService],
         },
-        { provide: PuertoColaDeEnvios, useExisting: ColaDeEnviosEnMemoriaTemporal },
-        { provide: PuertoReservaDeEnvio, useClass: ReservaDeEnvioEnMemoriaTemporal },
+        { provide: PuertoColaDeEnvios, useExisting: ColaDeEnviosPostgres },
+        { provide: PuertoEnviosSinResolver, useExisting: ColaDeEnviosPostgres },
+        { provide: PuertoReservaDeEnvio, useClass: ReservaDeEnvioPostgres },
+        RecuperarEnviosSinResolver,
         ConsumidorDeEnviosEnProceso,
       ],
     };
