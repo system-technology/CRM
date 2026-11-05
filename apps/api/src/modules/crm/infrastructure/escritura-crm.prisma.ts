@@ -11,7 +11,7 @@ import type { Consentimiento, Contacto, Oportunidad } from '@viajapro/contracts'
 import { PrismaService } from '../../../shared/prisma/prisma.service.js';
 import { PuertoExistenciaDePaquete } from '../../../shared/puertos/puertos-hacia-quoting.js';
 import { ContextoTenant } from '../../../shared/tenant/contexto-tenant.js';
-import { TelefonoYaRegistradoError } from '../domain/errors.js';
+import { EtapaNoEncontradaError, TelefonoYaRegistradoError } from '../domain/errors.js';
 import {
   type CambiosDeContacto,
   type NuevaOportunidad,
@@ -20,6 +20,7 @@ import {
   PuertoEscrituraCrm,
 } from '../application/puerto-escritura-crm.js';
 import { PARA_LA_TARJETA, aContacto, aOportunidad } from './crm.prisma.js';
+import { registrarCambioDeEtapa } from './historial-de-etapas.prisma.js';
 
 function esViolacionDeUnicidad(error: unknown): boolean {
   return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002';
@@ -204,9 +205,21 @@ export class EscrituraCrmPrisma extends PuertoEscrituraCrm {
     });
   }
 
+  /**
+   * El alta y su primera fila del historial de etapas (`ALTA`, T-131), en la misma transacción:
+   * sin ella, el embudo temporal no sabría cuándo entró la oportunidad en su primera etapa. Las
+   * banderas se leen de la etapa dentro de la transacción. Si la etapa fuera terminal (hoy no lo
+   * es: `etapaInicial` elige una viva), `cerrada_en` nace con el instante del historial.
+   */
   async crearOportunidad(d: NuevaOportunidad): Promise<Oportunidad> {
     const { tenantId } = ContextoTenant.obtener();
     return this.prisma.conTenant(async (tx) => {
+      const etapa = await tx.etapaPipeline.findFirst({
+        where: { id: d.etapaId, tenantId },
+        select: { esGanada: true, esPerdida: true },
+      });
+      if (!etapa) throw new EtapaNoEncontradaError(d.etapaId);
+
       const o = await tx.oportunidad.create({
         data: {
           tenantId,
@@ -224,6 +237,27 @@ export class EscrituraCrmPrisma extends PuertoEscrituraCrm {
         },
         select: PARA_LA_TARJETA,
       });
+
+      const ocurridoEn = await registrarCambioDeEtapa(tx, {
+        tenantId,
+        oportunidadId: o.id,
+        origen: 'ALTA',
+        etapaDesdeId: null,
+        etapaHastaId: d.etapaId,
+        esGanada: etapa.esGanada,
+        esPerdida: etapa.esPerdida,
+        motivoPerdida: null,
+        asesorId: d.asesorId,
+        usuarioId: d.creadoPorId,
+      });
+
+      if (etapa.esGanada || etapa.esPerdida) {
+        await tx.oportunidad.update({
+          where: { id_tenantId: { id: o.id, tenantId } },
+          data: { cerradaEn: ocurridoEn },
+          select: { id: true },
+        });
+      }
       return aOportunidad(o);
     });
   }

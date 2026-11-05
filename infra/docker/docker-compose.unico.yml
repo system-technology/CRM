@@ -1,0 +1,150 @@
+# Modo `unico` en local (ADR-0019 paso 7): API + trabajador en UN proceso, web Next.js, Postgres 16
+# y Mailpit. SIN Redis, sin REDIS_URL. Es la primera prueba completa antes de la nube.
+#
+#   pnpm infra:unico:up       genera .env.unico (secretos al azar, fuera de git), construye y levanta
+#   pnpm infra:unico:down     detiene (conserva la base); `pnpm infra:unico:reset` la borra
+#
+# Valores de DESARROLLO: la base solo existe dentro de este compose. Los secretos NO estan aqui (R6):
+# vienen de `.env.unico`, que genera scripts/infra-unico.mjs. Sin ese archivo, `${VAR:?}` aborta.
+# Runbook: docs/07-ingenieria/runbook-modo-unico.md
+name: viajapro-unico
+
+x-api-entorno: &api-entorno
+  MODO_DESPLIEGUE: unico # sin valor por omision; main-unico.js aborta si falta
+  APP_ENV: local
+  API_PORT: '3333'
+  API_PUBLIC_URL: http://localhost:3333
+  WEB_PUBLIC_URL: http://localhost:3000
+  # Saltos de proxy de confianza (el limite de intentos usa req.ip). Vacio = ninguno: aqui no hay
+  # proxy delante. Detras de Fly, 1. Ver el runbook.
+  API_TRUST_PROXY: ${API_TRUST_PROXY:-}
+  # Los cuatro roles de aplicacion; NUNCA el propietario (R2). `connection_limit>=2` en el del
+  # trabajador: el candado del barrido retiene una conexion y la tarea necesita otra (hallazgo C8).
+  DATABASE_APP_URL: postgresql://viajapro_app:${DB_DEV_PASSWORD:?}@postgres:5432/viajapro?schema=public
+  DATABASE_ALTAS_URL: postgresql://viajapro_altas:${DB_DEV_PASSWORD:?}@postgres:5432/viajapro?schema=public
+  DATABASE_WEBHOOK_URL: postgresql://viajapro_webhook:${DB_DEV_PASSWORD:?}@postgres:5432/viajapro?schema=public&connection_limit=3
+  DATABASE_IDENTIDAD_URL: postgresql://viajapro_identidad:${DB_DEV_PASSWORD:?}@postgres:5432/viajapro?schema=public
+  BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?}
+  ENCRYPTION_MASTER_KEY: ${ENCRYPTION_MASTER_KEY:?}
+  CORREO_PAYLOAD_KEY: ${CORREO_PAYLOAD_KEY:?}
+  WEBHOOK_PAYLOAD_KEY: ${WEBHOOK_PAYLOAD_KEY:?}
+  WEBHOOK_PAYLOAD_KEY_VERSION: '1'
+  WHATSAPP_DIRECTORY_PEPPER: ${WHATSAPP_DIRECTORY_PEPPER:?}
+  WHATSAPP_DIRECTORY_PEPPER_VERSION: '1'
+  WHATSAPP_WEBHOOK_VERIFY_TOKEN: ${WHATSAPP_WEBHOOK_VERIFY_TOKEN:?}
+  META_APP_SECRET: ${META_APP_SECRET:?}
+  MAIL_PROVIDER: mailpit
+  MAIL_SMTP_HOST: mailpit
+  MAIL_SMTP_PORT: '1025'
+  # Sin REDIS_URL a proposito: si el modo unico dependiera de Redis, aqui fallaria.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: viajapro
+      POSTGRES_PASSWORD: viajapro # propietario de desarrollo; solo escucha en 127.0.0.1
+      POSTGRES_DB: viajapro
+    ports:
+      - '127.0.0.1:${POSTGRES_PUERTO:-5433}:5432' # 5433: no choca con `pnpm infra:up`
+    volumes:
+      - postgres-unico-data:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U viajapro -d viajapro']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  mailpit:
+    image: axllent/mailpit:latest
+    restart: unless-stopped
+    ports:
+      - '127.0.0.1:8025:8025' # bandeja de correo (OTP, invitaciones). Choca con `pnpm infra:up`.
+
+  # Una vez por `up`: migraciones -> roles -> semilla -> identidades. Idempotente.
+  # Comparte la red de `postgres` (como .devcontainer/): para los scripts de siembra la base es
+  # `localhost`, que es lo unico que sus guardias de anfitrion local aceptan.
+  preparar:
+    build:
+      context: ../..
+      dockerfile: apps/api/Dockerfile
+      target: build # el runtime no trae tsx ni pnpm; el build si
+    image: viajapro-unico-preparar:local
+    network_mode: service:postgres
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: 'no'
+    volumes:
+      - ./unico/preparar.sh:/preparar.sh:ro
+    environment:
+      APP_ENV: local
+      DATABASE_URL: postgresql://viajapro:viajapro@localhost:5432/viajapro?schema=public
+      DIRECT_URL: postgresql://viajapro:viajapro@localhost:5432/viajapro?schema=public
+      DATABASE_APP_URL: postgresql://viajapro_app:${DB_DEV_PASSWORD:?}@localhost:5432/viajapro?schema=public
+      DATABASE_ALTAS_URL: postgresql://viajapro_altas:${DB_DEV_PASSWORD:?}@localhost:5432/viajapro?schema=public
+      DATABASE_WEBHOOK_URL: postgresql://viajapro_webhook:${DB_DEV_PASSWORD:?}@localhost:5432/viajapro?schema=public
+      DATABASE_IDENTIDAD_URL: postgresql://viajapro_identidad:${DB_DEV_PASSWORD:?}@localhost:5432/viajapro?schema=public
+      DB_DEV_PASSWORD: ${DB_DEV_PASSWORD:?}
+      IDENTIDAD_DEV_PASSWORD: ${IDENTIDAD_DEV_PASSWORD:?}
+      WHATSAPP_DIRECTORY_PEPPER: ${WHATSAPP_DIRECTORY_PEPPER:?}
+      WHATSAPP_DIRECTORY_PEPPER_VERSION: '1'
+      # Solo los usa `docker compose run --rm preparar canal` (ids ficticios, no son secretos).
+      META_PHONE_NUMBER_ID_PRUEBA: ${META_PHONE_NUMBER_ID_PRUEBA:-100000000000001}
+      META_WABA_ID_PRUEBA: ${META_WABA_ID_PRUEBA:-100000000000002}
+    command: ['bash', '/preparar.sh']
+
+  api:
+    build:
+      context: ../..
+      dockerfile: apps/api/Dockerfile
+    image: viajapro-unico-api:local
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mailpit:
+        condition: service_started
+      preparar:
+        condition: service_completed_successfully
+    environment: *api-entorno
+    # Un solo proceso: API, Socket.IO, webhook y trabajo asincrono.
+    command: ['node', 'dist/main-unico.js']
+    ports:
+      - '3333:3333' # tambien es la URL del webhook de Meta cuando se abre un tunel
+    # La sonda usa /salud (no toca la base). `/salud/listo` es la verificacion completa.
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:3333/salud').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
+    # El cierre ordenado puede tardar (una llamada a Meta ~32 s, Q5); Docker mata a los 10 s por omision.
+    stop_grace_period: 45s
+
+  web:
+    build:
+      context: ../..
+      dockerfile: apps/web/Dockerfile
+      args:
+        # Se incrusta en el JS al CONSTRUIR: es la URL que ve el NAVEGADOR, no la interna.
+        NEXT_PUBLIC_API_URL: http://localhost:3333
+        NEXT_PUBLIC_USE_REAL_AUTH: 'true'
+    image: viajapro-unico-web:local
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - '3000:3000'
+
+volumes:
+  postgres-unico-data:

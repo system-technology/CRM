@@ -105,7 +105,7 @@ export class CrmController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body(new ZodValidationPipe(MovimientoContrato)) movimiento: Movimiento,
   ): Promise<Oportunidad> {
-    return this.mover.ejecutar(id, movimiento);
+    return this.mover.ejecutar(id, movimiento, ContextoTenant.obtener().usuarioId);
   }
 
   /**
