@@ -179,9 +179,96 @@ describe('ModalEnviarCotizacion (T-074)', () => {
     fireEvent.click(botonEnviar);
 
     await waitFor(() => {
-      expect(screen.getByTestId('alerta-error-envio-cotizacion')).toBeDefined();
+      const alerta = screen.getByTestId('alerta-error-envio-cotizacion');
+      expect(alerta).toBeDefined();
       expect(screen.getByText(/La ventana de servicio de 24 horas está cerrada/)).toBeDefined();
+      expect(alerta.textContent).not.toContain('VENTANA_CERRADA');
       expect(botonEnviar.textContent).toContain('Reintentar envío');
+    });
+  });
+
+  it('traduce CONSENTIMIENTO_REVOCADO a mensaje de Habeas Data sin código crudo (T-117)', async () => {
+    vi.spyOn(inboxApi, 'enviarCotizacion').mockRejectedValueOnce({
+      code: 'CONSENTIMIENTO_REVOCADO',
+      message: 'El contacto revocó el consentimiento',
+    });
+
+    render(
+      <ModalEnviarCotizacion
+        conversacionId="conv-123"
+        contactoNombre="Laura Gómez"
+        contactoTelefono="+573109876543"
+        ventanaAbierta={true}
+        cotizaciones={cotizacionesEjemplo}
+        onCerrar={vi.fn()}
+        onCotizacionEnviada={vi.fn()}
+      />,
+    );
+
+    const botonEnviar = screen.getByTestId('boton-confirmar-enviar-cotizacion');
+    fireEvent.click(botonEnviar);
+
+    await waitFor(() => {
+      const alerta = screen.getByTestId('alerta-error-envio-cotizacion');
+      expect(screen.getByText('Autorización de datos revocada')).toBeDefined();
+      expect(screen.getByText(/Ley 1581/)).toBeDefined();
+      expect(alerta.textContent).not.toContain('CONSENTIMIENTO_REVOCADO');
+    });
+  });
+
+  it('traduce COTIZACION_DE_OTRO_CONTACTO explicando que pertenece a otro viajero (T-117)', async () => {
+    vi.spyOn(inboxApi, 'enviarCotizacion').mockRejectedValueOnce({
+      error: { code: 'COTIZACION_DE_OTRO_CONTACTO' },
+    });
+
+    render(
+      <ModalEnviarCotizacion
+        conversacionId="conv-123"
+        contactoNombre="Laura Gómez"
+        contactoTelefono="+573109876543"
+        ventanaAbierta={true}
+        cotizaciones={cotizacionesEjemplo}
+        onCerrar={vi.fn()}
+        onCotizacionEnviada={vi.fn()}
+      />,
+    );
+
+    const botonEnviar = screen.getByTestId('boton-confirmar-enviar-cotizacion');
+    fireEvent.click(botonEnviar);
+
+    await waitFor(() => {
+      const alerta = screen.getByTestId('alerta-error-envio-cotizacion');
+      expect(screen.getByText('Cotización de otro contacto')).toBeDefined();
+      expect(screen.getByText(/otro viajero/)).toBeDefined();
+      expect(alerta.textContent).not.toContain('COTIZACION_DE_OTRO_CONTACTO');
+    });
+  });
+
+  it('traduce código desconocido a mensaje amigable en es-CO sin mostrar código crudo (T-117)', async () => {
+    vi.spyOn(inboxApi, 'enviarCotizacion').mockRejectedValueOnce({
+      code: 'ERROR_SISTEMA_INTERNO_FATAL_999',
+    });
+
+    render(
+      <ModalEnviarCotizacion
+        conversacionId="conv-123"
+        contactoNombre="Laura Gómez"
+        contactoTelefono="+573109876543"
+        ventanaAbierta={true}
+        cotizaciones={cotizacionesEjemplo}
+        onCerrar={vi.fn()}
+        onCotizacionEnviada={vi.fn()}
+      />,
+    );
+
+    const botonEnviar = screen.getByTestId('boton-confirmar-enviar-cotizacion');
+    fireEvent.click(botonEnviar);
+
+    await waitFor(() => {
+      const alerta = screen.getByTestId('alerta-error-envio-cotizacion');
+      expect(screen.getByText('Inconveniente al enviar el mensaje')).toBeDefined();
+      expect(screen.getByText(/Ocurrió un contratiempo/)).toBeDefined();
+      expect(alerta.textContent).not.toContain('ERROR_SISTEMA_INTERNO_FATAL_999');
     });
   });
 

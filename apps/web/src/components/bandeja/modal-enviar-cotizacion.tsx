@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import type { CotizacionResumen, Mensaje } from '@viajapro/contracts';
 import { FileText, X, Send, AlertTriangle, CheckCircle2, Loader2, Sparkles } from 'lucide-react';
 import { inboxApi } from '../../lib/inbox-api';
+import { interpretarErrorDeEnvio, type DetalleErrorEnvio } from '../../lib/errores-de-envio';
 
 export interface ModalEnviarCotizacionProps {
   conversacionId: string;
@@ -58,7 +59,7 @@ export function ModalEnviarCotizacion({
     cotizaciones[0]?.id ?? '',
   );
   const [estadoEnvio, setEstadoEnvio] = useState<EstadoEnvioCotizacion>('inactivo');
-  const [errorMensaje, setErrorMensaje] = useState<string | null>(null);
+  const [errorDetalle, setErrorDetalle] = useState<DetalleErrorEnvio | null>(null);
 
   const cotizacionActual =
     cotizaciones.find((c) => c.id === cotizacionSeleccionadaId) ?? cotizaciones[0] ?? null;
@@ -70,7 +71,7 @@ export function ModalEnviarCotizacion({
   const manejarEnvio = async () => {
     if (!cotizacionActual) return;
     setEstadoEnvio('enviando');
-    setErrorMensaje(null);
+    setErrorDetalle(null);
 
     try {
       const mensaje = await inboxApi.enviarCotizacion(conversacionId, {
@@ -85,17 +86,8 @@ export function ModalEnviarCotizacion({
       }, 1200);
     } catch (err) {
       setEstadoEnvio('fallido');
-      if (err instanceof Error) {
-        if (err.message.includes('VENTANA_CERRADA')) {
-          setErrorMensaje(
-            'La ventana de servicio de 24 horas está cerrada. Envía una plantilla aprobada por Meta para reanudar el contacto.',
-          );
-        } else {
-          setErrorMensaje(err.message);
-        }
-      } else {
-        setErrorMensaje('Ocurrió un error al enviar la cotización por WhatsApp.');
-      }
+      const detalle = interpretarErrorDeEnvio(err);
+      setErrorDetalle(detalle);
     }
   };
 
@@ -210,7 +202,7 @@ export function ModalEnviarCotizacion({
           )}
 
           {/* Mensajes de error en caso de fallo */}
-          {errorMensaje && (
+          {errorDetalle && (
             <div
               data-testid="alerta-error-envio-cotizacion"
               role="alert"
@@ -218,8 +210,11 @@ export function ModalEnviarCotizacion({
             >
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-600 dark:text-red-400" />
               <div className="min-w-0 flex-1">
-                <p className="font-semibold">Error al enviar</p>
-                <p className="mt-0.5 text-[11px] leading-relaxed">{errorMensaje}</p>
+                <p className="font-semibold">{errorDetalle.titulo}</p>
+                <p className="mt-0.5 text-[11px] leading-relaxed">{errorDetalle.mensaje}</p>
+                <p className="mt-1 text-[11px] font-medium text-red-700 dark:text-red-300">
+                  💡 {errorDetalle.accionSugerida}
+                </p>
               </div>
             </div>
           )}
