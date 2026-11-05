@@ -20,11 +20,13 @@ import {
   CrearOportunidadDeConversacion,
   CrearSeguimiento,
   EditarContacto,
+  EditarEtapa,
   EtapaDefinida,
   FichaDeContacto,
   FiltroSeguimientos,
   MoverOportunidad,
   Oportunidad,
+  ReordenarEtapas,
   PaginaContactos,
   PaginaSeguimientos,
   PendientesDelDia,
@@ -332,51 +334,58 @@ export async function completarSeguimientoApi(id: string): Promise<Seguimiento> 
 }
 
 /**
- * Lista las etapas configuradas del pipeline comercial para la agencia activa (T-025).
- * Intenta GET /api/v1/crm/etapas, o extrae del tablero si el endpoint aún no está expuesto.
+ * Lista las etapas del pipeline de la agencia (GET /api/v1/crm/etapas). Sin respaldo: si la API
+ * falla, el error llega a la pantalla (antes se sustituía por el tablero y ocultaba el fallo).
  */
 export async function listarEtapasPipelineApi(): Promise<EtapaDefinida[]> {
   if (estaUsandoApiReal()) {
-    try {
-      const { data } = await pedirCrm('/api/v1/crm/etapas');
-      return z.array(EtapaDefinida).parse(data);
-    } catch {
-      // Fallback: extraer etapas del tablero completo
-      const tablero = await obtenerTableroPipeline();
-      return tablero.columnas.map((c) => c.etapa);
-    }
+    const { data } = await pedirCrm('/api/v1/crm/etapas');
+    return z
+      .array(EtapaDefinida)
+      .parse(data)
+      .sort((a, b) => a.orden - b.orden);
   }
 
-  const mockTablero = obtenerMockTableroPipeline();
-  return mockTablero.columnas.map((c) => c.etapa);
+  return obtenerMockTableroPipeline().columnas.map((c) => c.etapa);
 }
 
 /**
- * Actualiza la lista de etapas del pipeline (reordenar, renombrar, probabilidades) (T-025).
- * PUT /api/v1/crm/etapas
+ * Guarda los cambios de etapas contra la API real: un PATCH /crm/etapas/:id por cada etapa cuyo
+ * nombre o probabilidad cambió, y un POST /crm/etapas/reordenar si cambió el orden. Requiere
+ * `crm.escribir`. Un fallo se propaga (no hay simulación). Devuelve la lista ya guardada.
  */
 export async function actualizarEtapasPipelineApi(
-  etapas: EtapaDefinida[],
+  originales: EtapaDefinida[],
+  editadas: EtapaDefinida[],
 ): Promise<EtapaDefinida[]> {
-  const validadas = z.array(EtapaDefinida).parse(etapas);
-
-  if (estaUsandoApiReal()) {
-    try {
-      const { data } = await pedirCrm('/api/v1/crm/etapas', {
-        method: 'PUT',
-        body: JSON.stringify({ etapas: validadas }),
-      });
-      return z.array(EtapaDefinida).parse(data);
-    } catch (err) {
-      if (err instanceof CrmApiError && (err.status === 404 || err.status === 405)) {
-        // Endpoint no expuesto aún en el backend (T-025 aceptación)
-        return validadas;
-      }
-      throw err;
-    }
+  if (!estaUsandoApiReal()) {
+    return editadas.map((e, i) => ({ ...e, orden: i }));
   }
 
-  return validadas;
+  for (const nueva of editadas) {
+    const previa = originales.find((o) => o.id === nueva.id);
+    if (!previa) continue;
+    const cambios: EditarEtapa = {};
+    if (nueva.nombre.trim() !== previa.nombre) cambios.nombre = nueva.nombre.trim();
+    if (nueva.probabilidad !== previa.probabilidad) cambios.probabilidad = nueva.probabilidad;
+    if (Object.keys(cambios).length === 0) continue;
+    await pedirCrm(`/api/v1/crm/etapas/${nueva.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(EditarEtapa.parse(cambios)),
+    });
+  }
+
+  const idsPrevios = originales.map((o) => o.id);
+  const idsNuevos = editadas.map((e) => e.id);
+  if (idsPrevios.join() !== idsNuevos.join()) {
+    const { data } = await pedirCrm('/api/v1/crm/etapas/reordenar', {
+      method: 'POST',
+      body: JSON.stringify(ReordenarEtapas.parse({ ids: idsNuevos })),
+    });
+    return z.array(EtapaDefinida).parse(data);
+  }
+
+  return listarEtapasPipelineApi();
 }
 
 /**
