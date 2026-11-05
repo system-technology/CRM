@@ -61,7 +61,6 @@ import {
 } from '@viajapro/contracts';
 import { RequierePermiso } from '../../../shared/autorizacion/permiso.decorator.js';
 import { ContextoTenant } from '../../../shared/tenant/contexto-tenant.js';
-import { RequierePermiso } from '../../../shared/autorizacion/permiso.decorator.js';
 import { ZodValidationPipe } from '../../../shared/validacion/zod-validation.pipe.js';
 import { CrearOportunidadUseCase } from '../application/crear-oportunidad.js';
 import { GestionarEtapas } from '../application/gestionar-etapas.js';
