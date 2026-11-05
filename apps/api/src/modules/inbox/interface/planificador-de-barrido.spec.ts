@@ -12,6 +12,11 @@ class Turnos extends PuertoCoordinacionDelBarrido {
     this.libre = false;
     return Promise.resolve(r);
   }
+  async conTurno(_duracionMs: number, tarea: () => Promise<void>): Promise<boolean> {
+    if (!(await this.adquirirTurno())) return false;
+    await tarea();
+    return true;
+  }
 }
 
 describe('PlanificadorDeBarrido', () => {
@@ -53,7 +58,7 @@ describe('PlanificadorDeBarrido', () => {
 
   it('si Redis no responde al pedir el turno, tampoco lanza', async () => {
     const turnos = new Turnos();
-    turnos.adquirirTurno = () => Promise.reject(new Error('ECONNREFUSED'));
+    turnos.conTurno = () => Promise.reject(new Error('ECONNREFUSED'));
     const ejecutar = vi.fn();
     const p = new PlanificadorDeBarrido(barrer(ejecutar), turnos);
     await expect(p.tick()).resolves.toBeUndefined();
