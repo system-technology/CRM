@@ -113,4 +113,63 @@ describe('BloqueEquipo (T-027)', () => {
       expect(screen.getByText(/Invitación despachada a nuevo.exitoso@agencia.com/i)).toBeDefined();
     });
   });
+
+  describe('modo real', () => {
+    beforeEach(() => {
+      localStorage.removeItem('viajapro_modo_demo');
+    });
+
+    it('403: muestra «no tienes permiso para ver el equipo» y no usa el mock', async () => {
+      vi.spyOn(equipoApi, 'listarMiembrosEquipoApi').mockRejectedValueOnce(
+        new equipoApi.ErrorMiembrosApi('PERMISO_DENEGADO', 'x', 403),
+      );
+      render(<BloqueEquipo />);
+      await waitFor(() => {
+        expect(screen.getByTestId('equipo-sin-permiso')).toBeDefined();
+      });
+      expect(screen.getByText(/No tienes permiso para ver el equipo/i)).toBeDefined();
+      expect(screen.queryByText(/Alejandro Morales/i)).toBeNull();
+    });
+
+    it('error de red: mensaje y reintento', async () => {
+      vi.spyOn(equipoApi, 'listarMiembrosEquipoApi').mockRejectedValueOnce(
+        new equipoApi.ErrorMiembrosApi('ERROR_CONEXION', 'No fue posible conectar.'),
+      );
+      render(<BloqueEquipo />);
+      await waitFor(() => {
+        expect(screen.getByTestId('equipo-error')).toBeDefined();
+      });
+      expect(screen.getByRole('button', { name: /Reintentar/i })).toBeDefined();
+    });
+
+    it('lista vacía real: estado vacío, sin mock', async () => {
+      vi.spyOn(equipoApi, 'listarMiembrosEquipoApi').mockResolvedValueOnce([]);
+      render(<BloqueEquipo />);
+      await waitFor(() => {
+        expect(screen.getByText(/No hay miembros registrados/i)).toBeDefined();
+      });
+    });
+
+    it('muestra rol propio por nombre y no pide teléfono al invitar', async () => {
+      vi.spyOn(equipoApi, 'listarMiembrosEquipoApi').mockResolvedValueOnce([
+        {
+          id: '1',
+          nombre: 'Laura Restrepo',
+          email: 'laura@agencia.co',
+          rolClave: null,
+          rolNombre: 'Coordinadora de grupos',
+          estado: 'ACTIVO',
+          fechaIngreso: '2026-10-01T15:00:00.000Z',
+          avatarIniciales: 'LR',
+        },
+      ]);
+      render(<BloqueEquipo />);
+      await waitFor(() => {
+        expect(screen.getByText('Coordinadora de grupos')).toBeDefined();
+      });
+      expect(screen.getByText('LR')).toBeDefined();
+      fireEvent.click(screen.getByRole('button', { name: /Invitar Asesor/i }));
+      expect(screen.queryByLabelText(/Teléfono WhatsApp/i)).toBeNull();
+    });
+  });
 });
