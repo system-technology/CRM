@@ -83,7 +83,7 @@ export class ReservaDeEnvioRedis extends PuertoReservaDeEnvio {
     await this.redis.quit();
   }
 
-  async reservar(mensajeId: string): Promise<boolean> {
+  async reservar(_tenantId: string, mensajeId: string): Promise<boolean> {
     const r = await this.redis.set(
       claveDeReserva(mensajeId),
       '1',
@@ -94,7 +94,7 @@ export class ReservaDeEnvioRedis extends PuertoReservaDeEnvio {
     return r === 'OK';
   }
 
-  async liberar(mensajeId: string): Promise<void> {
+  async liberar(_tenantId: string, mensajeId: string): Promise<void> {
     await this.redis.del(claveDeReserva(mensajeId));
   }
 }
