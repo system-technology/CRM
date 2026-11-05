@@ -164,6 +164,7 @@ La suite web usa mocks de la API; la de la API no ejercita la web.
 
 | # | Riesgo | Gravedad | Mitigación |
 |---|---|---|---|
+| 0 | **Riesgo de mercado, no medido:** ninguna agencia ha visto el flujo ni dicho que cambiaría su forma de trabajar. Hay más procesos (21 ADR, 20 roles, 172 tareas) que contacto con el comprador | Alta | Demo del flujo (aunque sea en una máquina o por túnel) a JD Tours en cuanto H1-H6 corra; congelar alcance nuevo hasta entonces |
 | 1 | **Flujo completo nunca probado:** puede esconder fallos de integración web↔API que ningún test actual ve | Alta | T-126: campaña funcional, hallazgos en `.md`, corregir hasta cero bloqueantes |
 | 2 | Envío a Meta real sin probar; credenciales y verificación de negocio pendientes | Alta | Prueba con número de prueba antes de cualquier agencia; T-080 depende del propietario |
 | 3 | **Datos de viajeros reales sin cifrado de campos sensibles ni derechos del titular** | Alta (legal) | No cargar datos reales hasta C1-C5; cifrado ADR-0015 |
@@ -171,9 +172,11 @@ La suite web usa mocks de la API; la de la API no ejercita la web.
 | 5 | Alcance: el producto promete bloques (reservas, pagos, IA) que no existen | Media | La oferta inicial se limita a bandeja + CRM + cotizador, como dice el estado |
 | 6 | Un solo propietario como cuello para rutas sensibles y cuentas externas | Media | Aprobación delegada, pero cuentas y trámites legales siguen siendo suyos |
 | 7 | Multiidioma añade ~31 días de agente y choca con la extracción de textos del frontend | Media | Decidir prioridad frente a reportes |
-| 8 | Dependencia de IA para revisar IA | Media | Pruebas automáticas como árbitro, revisión humana solo en rutas sensibles y aislamiento |
+| 8 | Dependencia de IA para revisar IA: ya hubo pruebas equivocadas (`comoAgencia`, CHECK con NULL) | **Alta** | Antes de datos reales, revisión independiente del aislamiento (RLS, roles) por un tercero humano |
 
 ## 8. Qué sigue, en orden
+
+> Congelado hasta cerrar H1-H6: multiidioma, reportes avanzados y cualquier funcionalidad nueva.
 
 1. **Terminar la cola actual:** #234 (función de zona horaria), #212 (estado del canal), #241 (zona en
    `/reportes`).
