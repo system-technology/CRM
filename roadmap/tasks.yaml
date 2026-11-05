@@ -3104,7 +3104,7 @@ tasks:
     phase: 1
     priority: P2
     effort: S
-    status: backlog
+    status: done
     depends_on: []
     acceptance:
       - j/k navegan conversaciones, r enfoca el compositor, c abre Enviar cotizacion, s crea seguimiento, ?
@@ -3117,6 +3117,11 @@ tasks:
       - apps/web/src/components/bandeja/ayuda-atajos.tsx
     source: "cola de Antigravity reabastecida 2026-11-04 (recuperadas: no entraron con #187)"
     created_at: 2026-11-05T00:45:13.085Z
+    started_at: 2026-11-05T01:39:51.736Z
+    done_at: 2026-11-05T01:39:51.736Z
+    evidence: "Mergeado en main por el PR #217 (rama b/T-127-atajos-teclado-bandeja) con el CI en verde: format,
+      analyze, tests y los demás checks obligatorios. Cierre automático (.github/workflows/cerrar-tarea.yml)."
+    commit: 31cdab3e9b98110db80912a97df29e0a98f01292
   - id: T-128
     title: Comparar dos versiones de una cotizacion lado a lado
     type: feature
