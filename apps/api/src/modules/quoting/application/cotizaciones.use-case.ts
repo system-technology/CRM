@@ -85,6 +85,31 @@ function decodificarCursor(c: string): { en: string; id: string } {
   return { en, id };
 }
 
+/**
+ * Añade una fila al historial de estados (T-132) con la transacción del llamador: nunca abre otra,
+ * para que historial y cambio se confirmen juntos o no se confirme ninguno. La tabla es de solo
+ * añadir (lo impone un disparador) y su CHECK solo admite las transiciones de
+ * `estado-de-cotizacion.ts`. Quién: el usuario de la petición (nulo sin usuario). Sin PII.
+ */
+async function registrarCambioDeEstado(
+  tx: ClienteTenant,
+  tenantId: string,
+  cotizacionId: string,
+  desde: EstadoCotizacion | null,
+  hasta: EstadoCotizacion,
+): Promise<void> {
+  await tx.cotizacionCambioEstado.create({
+    data: {
+      tenantId,
+      cotizacionId,
+      estadoDesde: desde,
+      estadoHasta: hasta,
+      usuarioId: ContextoTenant.obtener().usuarioId,
+    },
+    select: { id: true },
+  });
+}
+
 @Injectable()
 export class CotizacionesUseCase {
   // `@Inject` explícito: sin él, bajo `tsx`, Nest construye esto con cero dependencias.
@@ -130,6 +155,8 @@ export class CotizacionesUseCase {
       await tx.versionCotizacion.create({
         data: { tenantId, cotizacionId: cabecera.id, numero: 1, ...datos },
       });
+      // T-132: la fila de alta del historial, en esta misma transacción.
+      await registrarCambioDeEstado(tx, tenantId, cabecera.id, null, 'BORRADOR');
 
       return this.leerEn(tx, tenantId, cabecera.id, incluirMargen);
     });
@@ -182,6 +209,10 @@ export class CotizacionesUseCase {
    * Pide una transición. Bloquea la cabecera (dos clics a la vez no deben ganar los dos). Al
    * enviar, fija la versión que vio el cliente —la última— y el instante; el CHECK de la base
    * exige las dos cosas en cuanto el estado deja de ser BORRADOR.
+   *
+   * T-132: la fila del historial (de dónde, a dónde, quién, cuándo) se añade en la MISMA
+   * transacción y bajo el mismo bloqueo, antes del UPDATE. Si no se puede escribir, la transición
+   * no ocurre. Es lo que da el instante de aceptación, rechazo o vencimiento.
    */
   async cambiarEstado(cotizacionId: string, nuevo: EstadoCotizacion): Promise<CotizacionGuardada> {
     const { tenantId } = ContextoTenant.obtener();
@@ -196,6 +227,7 @@ export class CotizacionesUseCase {
       if (!fila) throw new CotizacionNoEncontradaError(cotizacionId);
 
       transitar(fila.estado, nuevo);
+      await registrarCambioDeEstado(tx, tenantId, cotizacionId, fila.estado, nuevo);
 
       const envio =
         nuevo === 'ENVIADA'
