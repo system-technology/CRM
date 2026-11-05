@@ -2903,7 +2903,7 @@ tasks:
     phase: 1
     priority: P1
     effort: S
-    status: backlog
+    status: done
     depends_on: []
     acceptance:
       - Mapa de codigos de error de la API (VENTANA_CERRADA, CONSENTIMIENTO_REVOCADO,
@@ -2916,6 +2916,11 @@ tasks:
       - apps/web/src/components/bandeja/
     source: cola de Antigravity reabastecida 2026-11-04
     created_at: 2026-11-04T23:48:05.404Z
+    started_at: 2026-11-05T00:39:19.509Z
+    done_at: 2026-11-05T00:39:19.510Z
+    evidence: "Mergeado en main por el PR #198 (rama b/T-117-mensajes-errores-envio) con el CI en verde: format,
+      analyze, tests y los demás checks obligatorios. Cierre automático (.github/workflows/cerrar-tarea.yml)."
+    commit: 425d649812b33edda8de7b5d00a55c70a00f620a
   - id: T-118
     title: Acciones de la web segun permisos del usuario (bandeja.operar, crm.escribir, cotizacion.escribir)
     type: feature
