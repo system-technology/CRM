@@ -266,6 +266,130 @@ jobs:
           DIRECT_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'neondb') }}
 
   # ---------------------------------------------------------------------------
+  # ADR-0019 paso 6: el modo `unico` (un proceso, colas sobre Postgres) corre SIN Redis. Este job
+  # no tiene servicio de Redis ni `REDIS_URL`, y lo comprueba: si algun dia alguien lo agrega, el
+  # job se pone rojo en vez de probar otra cosa. Corre contra Postgres REAL, igual que `test`.
+  #
+  # NO es obligatorio al principio (no esta en `.github/proteccion-main.json`): se vuelve
+  # obligatorio cuando haya dado verde varias veces seguidas y el propietario lo decida.
+  #
+  # Lo que corre:
+  #   * las e2e del modo unico: proceso entero (`proceso-unico`), envios sobre Postgres
+  #     (`envios-postgres`, `envios-garantias`) y changes concurrentes y recuperacion al arrancar
+  #     (`changes-en-proceso`), mas la prueba unitaria de dos consumidores sobre un envio;
+  #   * las pruebas de `packages/database/tests` que el job `aislamiento-tenants` NO corre porque
+  #     solo ejecuta `test:aislamiento`: la migracion de envios, los permisos de mutacion y los
+  #     historiales. Corren con los roles de aplicacion (`DATABASE_*_URL` de roles-de-desarrollo).
+  modo-unico-sin-redis:
+    name: modo-unico-sin-redis
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: viajapro
+          POSTGRES_PASSWORD: viajapro
+          POSTGRES_DB: neondb
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Generar el cliente de Prisma
+        run: pnpm db:generate
+        env:
+          DATABASE_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'neondb') }}
+          DIRECT_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'neondb') }}
+
+      # Los paquetes de los que depende la API se importan desde `dist/`.
+      - name: Construir contratos, dominio y base de datos
+        run: pnpm exec turbo run build --filter='@viajapro/api^...'
+
+      - name: Secretos efimeros de prueba
+        run: |
+          {
+            echo "WHATSAPP_DIRECTORY_PEPPER=$(openssl rand -hex 32)"
+            echo "WEBHOOK_PAYLOAD_KEY=$(openssl rand -base64 32)"
+            echo "WEBHOOK_PAYLOAD_KEY_VERSION=1"
+            echo "META_APP_SECRET=$(openssl rand -hex 16)"
+            echo "WHATSAPP_WEBHOOK_VERIFY_TOKEN=$(openssl rand -hex 16)"
+            echo "BETTER_AUTH_SECRET=$(openssl rand -base64 48)"
+            echo "CORREO_PAYLOAD_KEY=$(openssl rand -base64 32)"
+          } >> "$GITHUB_ENV"
+
+      - name: Migraciones
+        run: pnpm db:migrate:deploy
+        env:
+          DATABASE_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'neondb') }}
+          DIRECT_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'neondb') }}
+
+      - name: Semilla
+        run: pnpm --filter @viajapro/domain build && pnpm db:seed
+        env:
+          DATABASE_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'neondb') }}
+          DIRECT_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'neondb') }}
+
+      - name: Contraseñas de desarrollo para los roles de login
+        run: node packages/database/scripts/roles-de-desarrollo.mjs
+        env:
+          DATABASE_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'neondb') }}
+          DIRECT_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'neondb') }}
+          DB_DEV_PASSWORD: clave-de-integracion-continua
+
+      # La garantia del job: no hay Redis. Ni la variable, ni nada escuchando en su puerto.
+      - name: Comprobar que no hay Redis
+        run: |
+          if [ -n "${REDIS_URL:-}" ]; then echo "REDIS_URL no debe existir en este job"; exit 1; fi
+          if (exec 3<>/dev/tcp/127.0.0.1/6379) 2>/dev/null; then echo "Hay algo escuchando en el puerto de Redis"; exit 1; fi
+          echo "Sin REDIS_URL y sin Redis: correcto."
+
+      # Con `CI=true` las e2e de este grupo no se saltan nunca: sin base de datos fallan.
+      - name: Pruebas del modo unico, sin Redis y con base de datos real
+        run: >-
+          pnpm --filter @viajapro/api exec vitest run
+          src/proceso-unico/proceso-unico.e2e-spec.ts
+          src/modules/inbox/envios-postgres.e2e-spec.ts
+          src/modules/inbox/envios-garantias.e2e-spec.ts
+          src/modules/inbox/changes-en-proceso.e2e-spec.ts
+          src/modules/inbox/application/enviar-mensaje-saliente.concurrencia.spec.ts
+        env:
+          DATABASE_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'neondb') }}
+          DIRECT_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'neondb') }}
+          MODO_DESPLIEGUE: unico
+          APP_ENV: local
+
+      # Estas pruebas existen pero ningun job las corria: `aislamiento-tenants` solo ejecuta
+      # `test:aislamiento`. Un filtro que no coincide con ningun archivo se ignora (algunas viven en
+      # ramas que aun no han entrado), pero al menos uno debe coincidir.
+      - name: Pruebas de base de datos que el job de aislamiento no corre
+        run: |
+          pnpm --filter @viajapro/database run fixtures:limpiar
+          pnpm --filter @viajapro/database exec vitest run \
+            tests/envios-sin-redis.spec.ts \
+            tests/permisos-de-mutacion.spec.ts \
+            tests/historial-de-etapas.spec.ts \
+            tests/historial-de-estados-cotizacion.spec.ts
+        env:
+          DATABASE_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'neondb') }}
+          DIRECT_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'neondb') }}
+
+  # ---------------------------------------------------------------------------
   # ADR-0013: las imagenes que Render va a ejecutar tienen que construirse y arrancar el codigo
   # correcto ANTES de que exista una cuenta. No se publican en ningun registro.
   imagenes:
