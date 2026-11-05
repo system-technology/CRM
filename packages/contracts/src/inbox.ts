@@ -389,3 +389,54 @@ export const RespuestaDeUnirse = z.discriminatedUnion('ok', [
   z.object({ ok: z.literal(false), error: z.literal('SALA_NO_PERMITIDA') }),
 ]);
 export type RespuestaDeUnirse = z.infer<typeof RespuestaDeUnirse>;
+
+// =============================================================================
+// Estado del canal de WhatsApp de la agencia (T-122)
+//
+//   GET /api/v1/canales/whatsapp/estado
+//
+// Lo que la pantalla de Configuración puede afirmar con verdad: qué números tiene la agencia, en
+// qué estado están y qué ha pasado en ellos. Nunca viaja un token ni ningún secreto (R6), ni el
+// contenido de un mensaje (R10): solo instantes y el motivo ya traducido de un fallo.
+// Sin plantillas ni calidad del número: eso depende de Meta (T-078).
+// =============================================================================
+
+export const EstadoDelCanal = z.enum(['ACTIVO', 'SUSPENDIDO', 'REVOCADO']);
+export type EstadoDelCanal = z.infer<typeof EstadoDelCanal>;
+
+/** El último mensaje saliente de un canal que terminó en FALLIDO. */
+export const EnvioFallido = z.object({
+  /** El instante de Meta (R9) en que se emitió el mensaje. */
+  ocurridoEn: Instante,
+  /** Ya traducido para una persona; null si Meta no dio motivo. */
+  motivo: z.string().max(500).nullable(),
+  /** El código crudo de Meta (131047, 470...), para soporte. */
+  codigoErrorMeta: z.number().int().nullable(),
+});
+export type EnvioFallido = z.infer<typeof EnvioFallido>;
+
+export const CanalWhatsappEstado = z.object({
+  id: Id,
+  numeroE164: TelefonoE164,
+  nombreVisible: z.string().nullable(),
+  /** Estado del número. */
+  estado: EstadoDelCanal,
+  /** Estado de la cuenta de WhatsApp Business a la que pertenece el número. */
+  estadoCuenta: EstadoDelCanal,
+  /** true solo si el número y su cuenta están ACTIVO: es el único caso en que se opera. */
+  conectado: z.boolean(),
+  conectadoDesde: Instante,
+  /** El último mensaje ENTRANTE recibido por este número, o null si no ha llegado ninguno. */
+  ultimaRecepcionEn: Instante.nullable(),
+  /** El último saliente fallido, o null si ninguno ha fallado. */
+  ultimoEnvioFallido: EnvioFallido.nullable(),
+});
+export type CanalWhatsappEstado = z.infer<typeof CanalWhatsappEstado>;
+
+export const EstadoCanalWhatsapp = z.object({
+  /** true si al menos un número está conectado. */
+  conectado: z.boolean(),
+  /** Vacío si la agencia aún no ha conectado ningún número. */
+  canales: z.array(CanalWhatsappEstado),
+});
+export type EstadoCanalWhatsapp = z.infer<typeof EstadoCanalWhatsapp>;
