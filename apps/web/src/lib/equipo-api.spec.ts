@@ -4,6 +4,10 @@ import {
   listarRolesAgenciaApi,
   listarMiembrosEquipoApi,
   invitarMiembroApi,
+  darDeBajaMiembroApi,
+  ErrorMiembrosApi,
+  inicialesDeNombre,
+  miembroDesdeApi,
 } from './equipo-api';
 
 describe('equipo-api (T-027)', () => {
@@ -106,6 +110,122 @@ describe('equipo-api (T-027)', () => {
           method: 'POST',
         }),
       );
+    });
+  });
+
+  describe('modo real: GET /api/v1/identidad/miembros', () => {
+    const ID = '01932000-0000-7000-8000-0000000000a1';
+    const ROL = '01932000-0000-7000-8000-0000000000c1';
+    const api = {
+      id: ID,
+      nombre: 'Laura Restrepo',
+      correo: 'laura@agencia.co',
+      rol: { id: ROL, clave: null, nombre: 'Coordinadora de grupos' },
+      estado: 'ACTIVO',
+      creadoEn: '2026-10-01T15:00:00.000Z',
+      ultimoAccesoEn: null,
+    };
+
+    beforeEach(() => {
+      localStorage.removeItem('viajapro_modo_demo');
+      localStorage.setItem('viajapro_miembros_equipo_cache', JSON.stringify([{ id: 'cache' }]));
+    });
+
+    it('adapta el contrato: sin teléfono, iniciales del nombre, rol propio por nombre', async () => {
+      globalThis.fetch = vi.fn().mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve([api]),
+      });
+      const lista = await listarMiembrosEquipoApi();
+      expect(globalThis.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/v1/identidad/miembros'),
+        expect.objectContaining({ method: 'GET' }),
+      );
+      expect(lista).toHaveLength(1);
+      const m = lista[0];
+      expect(m?.telefono).toBeUndefined();
+      expect(m?.avatarIniciales).toBe('LR');
+      expect(m?.rolClave).toBeNull();
+      expect(m?.rolNombre).toBe('Coordinadora de grupos');
+      expect(m?.fechaIngreso).toBe('2026-10-01T15:00:00.000Z');
+      expect(m?.estado).toBe('ACTIVO');
+    });
+
+    it('una lista vacía es vacía: no cae a localStorage ni al mock', async () => {
+      globalThis.fetch = vi
+        .fn()
+        .mockResolvedValueOnce({ ok: true, status: 200, json: () => Promise.resolve([]) });
+      expect(await listarMiembrosEquipoApi()).toEqual([]);
+    });
+
+    it('403 lanza ErrorMiembrosApi con estado 403 (sin permiso)', async () => {
+      globalThis.fetch = vi.fn().mockResolvedValueOnce({
+        ok: false,
+        status: 403,
+        json: () => Promise.resolve({ error: { code: 'PERMISO_DENEGADO', message: 'no' } }),
+      });
+      await expect(listarMiembrosEquipoApi()).rejects.toMatchObject({
+        codigo: 'PERMISO_DENEGADO',
+        estado: 403,
+      });
+    });
+
+    it('error de red lanza ErrorMiembrosApi, sin cache ni mock', async () => {
+      globalThis.fetch = vi.fn().mockRejectedValueOnce(new Error('red'));
+      await expect(listarMiembrosEquipoApi()).rejects.toBeInstanceOf(ErrorMiembrosApi);
+    });
+
+    it('una respuesta fuera de contrato se rechaza', async () => {
+      globalThis.fetch = vi.fn().mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve([{ id: 'x' }]),
+      });
+      await expect(listarMiembrosEquipoApi()).rejects.toMatchObject({
+        codigo: 'RESPUESTA_INVALIDA',
+      });
+    });
+
+    it('la baja usa POST /miembros/:id/baja con el mismo id', async () => {
+      globalThis.fetch = vi.fn().mockResolvedValueOnce({ ok: true, status: 204 });
+      await darDeBajaMiembroApi(ID);
+      expect(globalThis.fetch).toHaveBeenCalledWith(
+        expect.stringContaining(`/api/v1/identidad/miembros/${ID}/baja`),
+        expect.objectContaining({ method: 'POST' }),
+      );
+    });
+
+    it('invitar en modo real no escribe en localStorage', async () => {
+      localStorage.removeItem('viajapro_miembros_equipo_cache');
+      globalThis.fetch = vi.fn().mockResolvedValueOnce({
+        ok: true,
+        status: 202,
+        json: () => Promise.resolve({ ok: true }),
+      });
+      await invitarMiembroApi({ correo: 'a@b.co', rolId: ROL });
+      expect(localStorage.getItem('viajapro_miembros_equipo_cache')).toBeNull();
+    });
+  });
+
+  describe('adaptadores', () => {
+    it('iniciales: dos palabras, una palabra y fallback al correo', () => {
+      expect(inicialesDeNombre('maría del mar')).toBe('MD');
+      expect(inicialesDeNombre('Carlos')).toBe('C');
+      expect(inicialesDeNombre('', 'ana.gomez@x.co')).toBe('AG');
+    });
+
+    it('miembroDesdeApi conserva INACTIVO y no inventa INVITADO', () => {
+      const m = miembroDesdeApi({
+        id: '01932000-0000-7000-8000-0000000000a2',
+        nombre: 'Z',
+        correo: 'z@x.co',
+        rol: { id: '01932000-0000-7000-8000-0000000000c2', clave: 'ASESOR', nombre: 'Asesor' },
+        estado: 'INACTIVO',
+        creadoEn: '2026-01-01T00:00:00.000Z',
+        ultimoAccesoEn: null,
+      });
+      expect(m.estado).toBe('INACTIVO');
     });
   });
 });

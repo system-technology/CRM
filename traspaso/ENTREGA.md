@@ -45,6 +45,27 @@
 
 ---
 
+# Entrega — T-000: Equipo conectado a `GET /api/v1/identidad/miembros` — 2026-11-04
+
+## Identificación
+- **Rama:** `b/T-000-web-miembros-api` (carril `b`, Frontend / Web). Origen: auditoría de veracidad 2026-11-04.
+
+## Qué quedó en la API
+- La lista de miembros de Configuración/Equipo (`GET /api/v1/identidad/miembros`, contrato `ListaDeMiembros`, permiso `usuarios.administrar`). Se valida con Zod; una respuesta fuera de contrato se rechaza.
+- La baja de un miembro (`POST /api/v1/identidad/miembros/:id/baja`, mismo id de la lista) con botón «Dar de baja» y confirmación en línea.
+
+## Qué cambió en pantalla (modo real)
+- Sin `telefono` (no existe en la API): ni en la tabla ni en el formulario de invitación (también se oculta «Nombre», que el contrato `InvitarMiembro` no envía).
+- Iniciales derivadas del nombre; `fechaIngreso` = `creadoEn` formateado es-CO; `rol.clave` nulo se muestra por `rol.nombre`.
+- Sin estado `INVITADO`: las invitaciones pendientes no son listables, así que el contador queda en 0 en modo real.
+- Sin localStorage ni mock: carga (esqueleto), vacío, error con «Reintentar» y 403 «No tienes permiso para ver el equipo».
+- Invitar en modo real ya no escribe en la caché local.
+
+## Qué quedó local
+- Modo demo: lista del mock y caché de `localStorage` (con estado `INVITADO` y teléfono), con su distintivo visible.
+- Los tres roles de `ROLES_PREDEFINIDOS_AGENCIA` del selector de invitación siguen siendo constantes del cliente: no hay endpoint de roles. Escalar a `backend` si hace falta listarlos.
+- Los contadores «Dueños/Asesores activos» se calculan en el cliente por `rol.clave`; un rol propio no cuenta en ninguno.
+
 # Entrega — T-129: Accesibilidad del cotizador y del catálogo (foco, etiquetas, contraste, 44px) — 2026-11-04
 
 ## Identificación
