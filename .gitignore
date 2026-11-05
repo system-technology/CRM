@@ -62,3 +62,6 @@ secrets/
 # Activos de agencias (logos, fotos) para demostraciones locales: NUNCA al repositorio, es publico
 # y no tenemos permiso de terceros para publicarlos. Se sirven solo en desarrollo.
 apps/web/public/_local/
+
+# Cerebro persistente: el checkpoint es local y nunca va al repositorio
+docs/_contexto/CHECKPOINT.local.md

@@ -100,7 +100,10 @@
       "Bash(node .claude/hooks/autorizar-integracion.mjs:*)",
       "Bash(docker compose:*)"
     ],
-    "ask": ["Bash(terraform:*)", "Bash(npm install:*)"],
+    "ask": [
+      "Bash(terraform:*)",
+      "Bash(npm install:*)"
+    ],
     "deny": [
       "Read(./.env)",
       "Read(./.env.local)",
@@ -145,6 +148,14 @@
             "command": "node .claude/hooks/session-start.mjs"
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/contexto-persistente.mjs inicio"
+          }
+        ]
       }
     ],
     "PreToolUse": [
@@ -184,6 +195,24 @@
           {
             "type": "command",
             "command": "node .claude/hooks/recordatorio-estado.mjs"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/contexto-persistente.mjs parada"
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/contexto-persistente.mjs compactar"
           }
         ]
       }
