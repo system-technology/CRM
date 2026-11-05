@@ -86,8 +86,8 @@ El indice completo de la documentacion esta en [`docs/README.md`](docs/README.md
 
 ## Puesta en marcha local
 
-> Todavia no hay codigo de aplicacion. Estos pasos quedan definidos para que la Fase 0 del
-> roadmap los deje funcionando sin discusion.
+> La web arranca en **modo real** (habla con la API): necesita base de datos, migraciones y semilla.
+> La maqueta con datos simulados es explicita y visible; ver `.env.example`.
 
 ```bash
 # 1. Requisitos: Node 22.11+ y pnpm 9+. Docker es opcional (ver paso 4).
@@ -99,9 +99,20 @@ pnpm install
 # 3. Variables de entorno
 cp .env.example .env     # completar los valores marcados
 
-# 4. Arrancar todo
+# 4. Base de datos, migraciones y semilla (ver los pasos 4 y 5 de abajo)
+
+# 5. Arrancar todo
 pnpm dev                 # api :3333 | web :3000
 ```
+
+`pnpm dev` **no arranca el trabajador**. Sin el, los envios de WhatsApp quedan en cola. En otra
+terminal (necesita Redis en `REDIS_URL`):
+
+```bash
+pnpm --filter @viajapro/api worker
+```
+
+> Proximamente: un modo sin Redis para desarrollo, con un solo proceso (ADR-0019).
 
 ### Paso 4 — Base de datos: dos caminos
 
@@ -130,8 +141,9 @@ Servicios auxiliares en local: MinIO `:9001`, Mailpit `:8025`, Jaeger `:16686`.
 ### Paso 5 — Migraciones y datos de ejemplo
 
 ```bash
-pnpm db:migrate
-pnpm db:seed             # agencia demo + usuarios + catálogo de ejemplo
+pnpm db:setup            # migraciones + rol de aplicación (no se salta RLS)
+pnpm db:seed             # agencia demo + catálogo de ejemplo; imprime el tenant
+pnpm --filter @viajapro/api identidad:sembrar-dev   # usuarios (clave: IDENTIDAD_DEV_PASSWORD)
 pnpm --filter @viajapro/database test:aislamiento   # la compuerta que importa
 ```
 
@@ -147,5 +159,6 @@ pnpm --filter @viajapro/database test:aislamiento   # la compuerta que importa
 
 ## Estado del proyecto
 
-**Fase 0 — Fundaciones.** El repositorio contiene el andamiaje documental y de configuracion.
-No hay codigo de aplicacion todavia. Ver el [roadmap](docs/08-roadmap/01-roadmap.md).
+El repositorio tiene API, web, esquema con RLS, cotizador, catalogo, autenticacion, bandeja y
+recepcion de WhatsApp. El punto exacto esta en [`ESTADO.md`](ESTADO.md); el plan, en el
+[roadmap](docs/08-roadmap/01-roadmap.md).
