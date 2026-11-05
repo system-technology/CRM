@@ -97,6 +97,56 @@ export const EtapaDefinida = z.object({
 export type EtapaDefinida = z.infer<typeof EtapaDefinida>;
 
 /**
+ * Alta de una etapa propia de la agencia (T-120). Nace al final del embudo y sin clave: la clave
+ * es el puente con el vocabulario común y la asignan las migraciones, no la pantalla.
+ * `esGanada` y `esPerdida` son excluyentes: una etapa que fuera las dos cosas no tendría sentido.
+ */
+export const CrearEtapa = z
+  .object({
+    nombre: z.string().trim().min(1).max(80),
+    probabilidad: z.number().int().min(0).max(100).default(0),
+    esGanada: z.boolean().default(false),
+    esPerdida: z.boolean().default(false),
+  })
+  .strict()
+  .refine((e) => !(e.esGanada && e.esPerdida), {
+    message: 'Una etapa no puede ser ganada y perdida a la vez.',
+    path: ['esPerdida'],
+  });
+export type CrearEtapa = z.infer<typeof CrearEtapa>;
+
+/** Edición parcial: solo se toca lo que viene. Ni `orden` ni `clave` se editan por aquí. */
+export const EditarEtapa = z
+  .object({
+    nombre: z.string().trim().min(1).max(80).optional(),
+    probabilidad: z.number().int().min(0).max(100).optional(),
+    esGanada: z.boolean().optional(),
+    esPerdida: z.boolean().optional(),
+  })
+  .strict()
+  .refine((e) => Object.values(e).some((v) => v !== undefined), {
+    message: 'Indica al menos un campo a cambiar.',
+  })
+  .refine((e) => !(e.esGanada === true && e.esPerdida === true), {
+    message: 'Una etapa no puede ser ganada y perdida a la vez.',
+    path: ['esPerdida'],
+  });
+export type EditarEtapa = z.infer<typeof EditarEtapa>;
+
+/**
+ * El orden completo del embudo: todos los ids de las etapas de la agencia, sin repetir, en el
+ * orden deseado. Se aplica de forma atómica.
+ */
+export const ReordenarEtapas = z
+  .object({ ids: z.array(Id).min(1).max(50) })
+  .strict()
+  .refine((r) => new Set(r.ids).size === r.ids.length, {
+    message: 'Hay ids repetidos.',
+    path: ['ids'],
+  });
+export type ReordenarEtapas = z.infer<typeof ReordenarEtapas>;
+
+/**
  * Por qué se perdió.
  *
  * Exigirlo es una decisión de producto, no un capricho del formulario: sin motivo, el embudo

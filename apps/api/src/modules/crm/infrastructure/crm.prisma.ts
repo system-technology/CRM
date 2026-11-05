@@ -312,7 +312,7 @@ interface FilaEtapa {
   esPerdida: boolean;
 }
 
-function aEtapaDefinida(e: FilaEtapa): EtapaDefinida {
+export function aEtapaDefinida(e: FilaEtapa): EtapaDefinida {
   return {
     id: e.id,
     clave: aClave(e.clave),
