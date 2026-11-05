@@ -32,13 +32,13 @@ export class EnvioWhatsappFalso extends PuertoEnvioWhatsapp {
 export class ReservaDeEnvioEnMemoria extends PuertoReservaDeEnvio {
   readonly reservados = new Set<string>();
 
-  reservar(mensajeId: string): Promise<boolean> {
+  reservar(_tenantId: string, mensajeId: string): Promise<boolean> {
     if (this.reservados.has(mensajeId)) return Promise.resolve(false);
     this.reservados.add(mensajeId);
     return Promise.resolve(true);
   }
 
-  liberar(mensajeId: string): Promise<void> {
+  liberar(_tenantId: string, mensajeId: string): Promise<void> {
     this.reservados.delete(mensajeId);
     return Promise.resolve();
   }

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo, use } from 'react';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { useParams } from 'next/navigation';
 import {
   type FichaDeContacto,
@@ -12,11 +13,7 @@ import {
 } from '@viajapro/contracts';
 import { BarraModulos } from '../../../components/bandeja/barra-modulos';
 import { LineaTiempo360 } from '../../../components/contactos/linea-tiempo-360';
-import { ModalEditarContacto } from '../../../components/contactos/modal-editar-contacto';
-import { ModalCrearOportunidad } from '../../../components/contactos/modal-crear-oportunidad';
-import { ModalCrearSeguimiento } from '../../../components/contactos/modal-crear-seguimiento';
 import { SeccionCamposPersonalizados } from '../../../components/contactos/seccion-campos-personalizados';
-import { PanelConsentimientosContacto } from '../../../components/crm/consentimientos';
 import {
   AvisoErrorAccionable,
   AvisoVacio,
@@ -54,6 +51,37 @@ import {
   ExternalLink,
   Plus,
 } from 'lucide-react';
+
+// Carga diferida de modales y paneles secundarios (T-130)
+const ModalEditarContacto = dynamic(
+  () =>
+    import('../../../components/contactos/modal-editar-contacto').then(
+      (m) => m.ModalEditarContacto,
+    ),
+  { ssr: false },
+);
+
+const ModalCrearOportunidad = dynamic(
+  () =>
+    import('../../../components/contactos/modal-crear-oportunidad').then(
+      (m) => m.ModalCrearOportunidad,
+    ),
+  { ssr: false },
+);
+
+const ModalCrearSeguimiento = dynamic(
+  () =>
+    import('../../../components/contactos/modal-crear-seguimiento').then(
+      (m) => m.ModalCrearSeguimiento,
+    ),
+  { ssr: false },
+);
+
+const PanelConsentimientosContacto = dynamic(
+  () =>
+    import('../../../components/crm/consentimientos').then((m) => m.PanelConsentimientosContacto),
+  { ssr: false },
+);
 
 interface Contacto360PageProps {
   params?: Promise<{ id: string }>;

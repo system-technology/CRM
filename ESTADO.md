@@ -10,58 +10,78 @@
 
 | Campo | Valor |
 |---|---|
-| Última actualización | 2026-10-28 |
-| Actualizado por | Antigravity (`backend`) |
+| Última actualización | 2026-11-04 |
+| Actualizado por | `documentador` (auditoría de veracidad) |
 | Fase | **Fase 1 del backlog: «Un CRM mostrable y endurecido»** (M1 del [roadmap v2](docs/08-roadmap/01-roadmap.md)). Sin agencia real todavía |
-| Avance | Catálogo gestionable (T-031), importador masivo en 4 pasos (T-029, T-030), ajuste promo_vencida (T-028), tarjeta/ficha de excursión (T-018, T-051, T-019), inicio del asesor (T-020), cookies y banner (T-094, T-095), login oceánico (T-033), navegación enriquecida (T-034), animaciones fluidas con shimmer oceánico y movimiento reducido (T-035), tarjetas de producto por tipo de excursión (T-036), envío de cotización por WhatsApp (T-074) con CRM contacto y oportunidad (T-076), helpers únicos de formato es-CO (T-022), revisión a 375 px (T-023), accesibilidad de la bandeja y modales (T-024), etapas del pipeline configurables (T-025), campos personalizados por agencia en contactos y oportunidades (T-026), equipo e invitaciones de asesores con roles y gestión de errores (T-027), adaptación del cliente web a la retirada de ruta antigua de cotización (T-008), páginas legales públicas /privacidad, /terminos y /cookies (T-108), ficha 360 del contacto (T-100), lista de seguimientos del asesor con vencidos, de hoy y próximos (T-101), pipeline tipo tablero kanban con drag and drop, totales por etapa y reversión optimista (T-102), búsqueda global y filtros guardados en bandeja, contactos y oportunidades (T-103), respuestas rápidas en la bandeja con inserción «/» y administración en configuración (T-104), asistente de onboarding de 4 pasos para nueva agencia (marca, catálogo, equipo, conectar WhatsApp) (T-105), pantalla de conexión de WhatsApp en Configuración con calidad, tier, estado, regla de 24 horas y plantillas oficiales (T-106), cotizaciones guardadas con versiones inmutables, duplicación, modal para enviar por WhatsApp y confidencialidad estricta de neto/margen comercial (R10 / ADR-0011) (T-107), estados de sistema consistentes (404, error global, aviso sin conexión y sesión expirada conservando destino) (T-109), notificaciones web con canal Socket.IO, avisos de mensaje nuevo, seguimiento vencido y cotización por vencer, preferencias por asesor y confidencialidad de cero PII (R10) (T-110), modo oscuro y preferencia de densidad con la paleta de turismo (T-111), reportes comerciales sin mocks calculados desde la API o marcados como «Aún sin datos» (T-021), corrección de politicaDePrecio.findUnique con where explícito para blindar contra fuga silenciosa con roles bypass RLS (T-013), sincronización del índice unique parcial etapas_pipeline en schema.prisma (T-014) y verificación de prueba de arranque con roles prohibidos y aserción relforcerowsecurity (T-010) y test de integración automático del cotizador punta a punta contra Neon con los casos canónicos de diciembre y plaza sin usar (T-011) completados |
-| Próximo hito | Aserciones de comportamiento en aislamiento (T-012) / Particiones automáticas de enrutamiento_historial (T-015) |
+| Avance | 86 tareas `done` en `roadmap/tasks.yaml`. «Done» significa integrada en `main`, **no** probada de punta a punta con la web: ver §1 y la [matriz](docs/_bitacora/2026-11-04-auditoria-de-veracidad.md) |
+| Próximo hito | Correr la jornada completa **en local** (Redis, trabajador, túnel, web contra API real) antes de pagar hosting |
 
 ---
 
 ## 1. Dónde estamos
 
-Verificado el 2026-10-26 contra GitHub y contra `origin/main` (`e802990`). Tres categorías, sin mezclar.
+Auditado el 2026-11-04 sobre `origin/main` (`98c2a08`). Detalle y evidencia por capacidad:
+[`docs/_bitacora/2026-11-04-auditoria-de-veracidad.md`](docs/_bitacora/2026-11-04-auditoria-de-veracidad.md).
 
-### Es real (en `main`, con CI)
+**Veredicto: no hay hoy un flujo completo usable por una agencia. Seguimos en local.** Cada pieza del
+backend tiene pruebas e2e en CI, pero la web nunca se prueba contra la API, WhatsApp no se ha probado
+entrando y saliendo contra Meta real, y con `.env.example` la web arranca en maqueta.
+
+### Es real (backend en `main`, probado en CI contra Postgres 16 y Redis 7)
+
+El job `test` ejecuta 121 archivos y 965 pruebas; `aislamiento-tenants` prueba RLS. Última corrida de `main`
+(run 41942116518): 9 jobs en verde. Ninguna prueba abre un navegador.
 
 | Qué | Evidencia |
 |---|---|
-| Repositorio **público** `system-technology/CRM` (antes privado en `Alfavear`) | `gh repo view`: `PUBLIC` |
-| **`main` tiene protección de servidor:** PR obligatorio, 8 checks (`secretos`, `typecheck`, `lint`, `build`, `test`, `aislamiento-tenants`, `fronteras-entre-modulos`, `convencion-de-commits`), rama al día (`strict`), administradores incluidos, sin force-push, conversaciones resueltas, revisión de CODEOWNERS | `gh api .../branches/main/protection`; copia en `.github/proteccion-main.json` |
-| **El CI funciona:** 10 jobs en la última corrida de `main` (los 8 obligatorios más `imagenes-de-despliegue` y `politica-de-rama`) | `gh run view` |
-| Esquema del inbox, identidad global y roles por agencia, cotizaciones, auditoría de lecturas de datos sensibles (R10, T-006), cabecera `Origin` en toda mutación (T-001), CSP en la web (T-003) | PRs #1, #23, #25, #16 y anteriores |
-| Cotizador, catálogo sembrado, bandeja web con pantalla de ingreso y asignación | PR #39 y anteriores |
-| **Recepción de WhatsApp probada de punta a punta el 2026-10-26** con la app de prueba de Meta, mediante un túnel temporal: firma válida, mensaje guardado cifrado | Dato aportado por el encargo del propietario; no queda registro en el repositorio (el túnel era temporal). Ver la [bitácora de hoy](docs/_bitacora/2026-10-26-sincronia-del-hilo.md) |
-| La API real arranca contra Neon con los roles de aplicación verificados (R2) | Dato aportado por el encargo; sin registro en el repo |
-| Migraciones **M1 y M2** del catálogo gestionable, en el repositorio | PR #42 (integrado). **No aplicadas a Neon** |
-| Envío saliente de WhatsApp implementado (cola, idempotencia, acuses de estado) | PR #44 (integrado). **Sin probar contra Meta real** |
-| Workflow `Deploy staging` en `main` | Corre en verde, pero termina «en verde con un aviso» si faltan los secretos del entorno `staging` (diseño del workflow). **No verificado** que haya algo desplegado en Render |
+| Aislamiento entre agencias (RLS, cuatro roles, arranque que aborta con rol equivocado) | Job `aislamiento-tenants`, `arranque-seguro.e2e-spec.ts` |
+| `main` protegida: PR, 8 checks, rama al día, administradores incluidos | `.github/proteccion-main.json` |
+| Identidad: sesión, OTP, invitaciones, baja de miembros | `identity.e2e-spec.ts`, `invitaciones.e2e-spec.ts` |
+| Catálogo: listar, crear, editar, tarifas, vigencias, historial, importar, ajuste de promoción | `apps/api/src/modules/quoting/*.e2e-spec.ts` |
+| Cotizador: calcular, guardar, versiones, estados; el texto enviado no lleva neto ni margen | `cotizador-punta-a-punta`, `cotizaciones`, `enviar-cotizacion.e2e-spec.ts` |
+| Bandeja: listar, notas, estado, asignación, visibilidad por asesor, tiempo real (Socket.IO con Redis) | `inbox-visibilidad`, `inbox-tiempo-real(-redis)` |
+| Recepción: webhook firmado → Redis real → consumidor → mensaje (payload cifrado) | `inbox-webhook`, `inbox-bullmq.e2e-spec.ts` |
+| CRM: contactos, oportunidades, pipeline, seguimientos con fecha, consentimiento | `crm.e2e-spec.ts`, `contactos-y-seguimientos.e2e-spec.ts` |
+| Envío de texto y de cotización a WhatsApp: cola, idempotencia, ventana de 24 h | `enviar-cotizacion.e2e-spec.ts` (6); **contra Graph API falsa** |
+| Una recepción manual real: botón «Probar» de Meta por túnel, 2026-10-26 | Sin registro en el repo; ver [bitácora](docs/_bitacora/2026-10-26-sincronia-del-hilo.md) |
 
-### Es maqueta
+**No probado:** web contra API (ni en CI ni documentado en navegador desde el 2026-10-27); envío contra
+`graph.facebook.com`; un mensaje desde un celular real; correo con Postmark real; trabajador y Redis en una
+máquina del propietario.
 
-La web enseña **datos de demostración** (Cancún, Europa…) en pipeline, contactos y reportes. Solo el
-cotizador, el catálogo y la bandeja usan la API. El PR #47 (T-016) cambia el valor por defecto a
-modo real, con la demostración explícita y visible; sigue **abierto**.
+### Es maqueta (la pantalla no habla con la API, o finge)
 
-### Es diseño (documentado, no construido)
+| Qué | Cómo |
+|---|---|
+| Con `.env.example` tal cual, **toda la web** | Trae `NEXT_PUBLIC_USE_REAL_CRM=false` y `USE_REAL_INBOX=false`; `USE_REAL_AUTH` no está y sin él la sesión es mock |
+| `/configuracion` (SLA, agencia, estado de WhatsApp, plantillas oficiales), `/viajes` | `mock-configuracion.ts`, `mock-viajes.ts`, `mock-plantillas.ts` |
+| Equipo (lista de miembros) | Pide `GET /api/v1/identidad/usuarios`, que no existe; cae a `localStorage` o mock |
+| Etapas del pipeline configurables (T-025) | La web llama `/api/v1/crm/etapas`, que no existe; ante 404 simula el guardado |
+| Campos personalizados, respuestas rápidas, filtros guardados, onboarding, preferencias de notificación | Solo `localStorage` |
+| Margen y costo neto de `/reportes` | Constantes del 20 % y 80 % de las ventas, no datos |
+| `/catalogo`, `/cotizador`, `/cotizaciones`, `/contactos` | Reales por defecto en código, pero conservan ramas y estado inicial mock (nombres de contacto; teléfono `+573001234567` en el modal de `/cotizaciones`) |
+
+### Es diseño (documentado, no construido o no integrado)
 
 | Qué | Dónde |
 |---|---|
-| Catálogo gestionable por la agencia, cuatro canales de alta (**Aceptado**, 2026-10-26) | [ADR-0017](docs/03-adr/0017-catalogo-gestionable-por-la-agencia.md) |
-| Envío saliente de WhatsApp (**Propuesto**) | [ADR-0018](docs/03-adr/0018-envio-saliente-de-whatsapp.md) |
-| Cifrado de campos sensibles: ADR aceptado, **implementación sin integrar** (PR #29 abierto; no hay migración de cifrado en `main`) | [ADR-0015](docs/03-adr/0015-cifrado-de-campos-sensibles.md) |
-| Roadmap de producto v3, HubSpot como norte (**propuesta**, PR #43 abierto) | rama `docs/roadmap-producto-v3` |
-| Investigación verificada de HubSpot (PR #41 abierto) | rama `docs/investigacion-hubspot` |
-| Políticas de seguridad (8 políticas + `SECURITY.md`), **borrador sin aprobar**, con el estado real de cada una | [`docs/05-seguridad/00-indice-de-politicas.md`](docs/05-seguridad/00-indice-de-politicas.md) |
+| Permisos de mutación en la API: la migración está en `main`; **los controladores no los exigen** | PR #191 abierto. T-089 figura `done` solo por la migración |
+| Despliegue mínimo de un proceso sin Redis (**Propuesto**) | PR #200, ADR-0019 |
+| Cifrado de campos sensibles: ADR aceptado, sin implementar; `mensajes.texto` está en claro | [ADR-0015](docs/03-adr/0015-cifrado-de-campos-sensibles.md), PR #29 abierto |
+| Envío saliente de WhatsApp (**Propuesto**, ya implementado) | [ADR-0018](docs/03-adr/0018-envio-saliente-de-whatsapp.md) |
+| Despliegue en Render: `render.yaml` y [runbook](docs/07-ingenieria/runbook-redis-staging.md) | `Deploy staging` termina en verde con el aviso «Faltan los secretos del Environment staging» |
+| Políticas de seguridad: borrador sin aprobar | [`docs/05-seguridad/00-indice-de-politicas.md`](docs/05-seguridad/00-indice-de-politicas.md) |
 
-### Lo que NO existe todavía
+### Lo que NO existe
 
-- **Redis y trabajador en local:** los mensajes recibidos no se convierten en conversaciones.
-- **Despliegue en Render:** el blueprint existe; no hay servicio vivo verificado.
-- **Verificación del negocio en Meta** y solicitud de Tech Provider: sin iniciar.
-- **Web conectada de punta a punta a la API real:** T-016 está en el PR #47.
-- **Catálogo gestionable** (M1/M2 sin aplicar; sin API ni pantallas), **pagos**, **automatizaciones**.
-- Una agencia real con datos reales. El criterio C1–C5 del roadmap v2 sigue mandando sobre cuándo entra una.
+- **Ninguna prueba que ejercite la web contra la API** (sin Playwright ni equivalente).
+- **Un servicio desplegado:** no hay URL viva verificable. T-079 está `done` por el runbook.
+- **Redis y trabajador corriendo en la máquina de desarrollo.** El trabajador es `apps/api/src/worker.ts`; `pnpm dev` no lo arranca; `apps/worker` es un README.
+- **Un mensaje de celular real visto en la bandeja, ni una respuesta recibida en el celular.**
+- **Plantilla de reapertura** fuera de la ventana de 24 h (T-078), **verificación del negocio en Meta** (T-080), Tech Provider.
+- **Derechos del titular** (exportar y suprimir datos, T-097), aviso de privacidad aprobado (T-093), RNBD (T-098).
+- **API pública por claves e ingesta con IA** del catálogo (T-053 a T-058); **pagos**, **automatizaciones**, archivos de viaje reales.
+- Una agencia real con datos reales (criterio C1–C5 del roadmap v2).
 
 ## 2. Cómo se trabaja desde el 2026-10-26
 
@@ -73,29 +93,25 @@ modo real, con la demostración explícita y visible; sigue **abierto**.
 
 | Carril | Quién | En qué |
 |---|---|---|
-| Frontend (`apps/web`, `packages/ui`, `packages/sdk`) | Antigravity | Cola **T-016 a T-031** de `roadmap/tasks.yaml`. Prompt: [`docs/09-ia/08-prompt-antigravity.md`](docs/09-ia/08-prompt-antigravity.md). Skill: `.agent/skills/ux-crm-turismo`. Ramas `b/T-0NN-…` |
-| Backend (`apps/api`) | Agentes de Claude (`backend`, `whatsapp`) | Envío saliente (PR #44 integrado; PRs #46 y #48 abiertos: canal de prueba y nombre de variable) |
-| Datos | Agentes de Claude (`datos`) | M1/M2 integradas; aplicarlas a Neon espera al propietario |
+| Frontend (`apps/web`, `packages/ui`, `packages/sdk`) | Antigravity | Cola de `roadmap/tasks.yaml` (ramas `b/`; pendientes T-118 y T-119). Prompt: [`docs/09-ia/08-prompt-antigravity.md`](docs/09-ia/08-prompt-antigravity.md). Skill: `.agent/skills/ux-crm-turismo`. Ramas `b/T-0NN-…` |
+| Backend (`apps/api`) | Agentes de Claude (`backend`, `whatsapp`) | Permisos en controladores (PR #191, abierto) |
+| Datos | Agentes de Claude (`datos`) | Migraciones al día en `main` (30) |
 | Integración y documentación | `integrador`, `documentador` | Hilo, ADR, bitácora |
-| Producto y estrategia | `jefe-de-producto`, `dueno-de-producto` | Roadmap v3 (PR #43) |
+| Producto y estrategia | `jefe-de-producto`, `dueno-de-producto` | Roadmap v3 integrado; ADR-0019 propuesto (PR #200) |
 | Ciclo OpenCode | **Detenido** | Ver arriba |
 
 ## 3. Bloqueos reales
 
 | Bloqueo | Qué impide | Dueño |
 |---|---|---|
-| Sin Redis ni trabajador local | Mensajes recibidos no pasan a conversación; el envío saliente no se puede ejercitar completo | `backend`, `devops` |
-| Sin servicio desplegado en Render ni secretos del entorno `staging` | Nada que enseñar a una agencia; el workflow `Deploy staging` no hace nada útil | Propietario (cuentas y secretos), `devops` |
-| Verificación del negocio en Meta / Tech Provider sin iniciar | Solo se puede operar con el número de prueba; no hay lanzamiento | Propietario |
-| M1 y M2 sin aplicar a Neon | El catálogo gestionable no puede empezar | Propietario (migraciones son ruta protegida) |
-| PR #29 (implementación del ADR-0015) abierto | El texto de los mensajes y otros campos con PII no están cifrados con el esquema del ADR | `backend`, `datos` |
-| Tarifario real del mayorista de la agencia piloto | El catálogo sigue con datos verosímiles | Propietario / agencia |
-| ADR-0018 en estado «Propuesto»; pendientes `arquitecto`, `auditor-seguridad`, `datos` | Su implementación (PR #44) ya está integrada sin ese cierre | `arquitecto`, `auditor-seguridad` |
-| Ramas atrasadas: varios PR abiertos aparecen `BEHIND` (p. ej. #46) | No integran hasta ponerse al día con `main` | Dueño de cada rama |
-| Cuota del ciclo OpenCode agotada | Ciclo detenido | Propietario (decisión tomada: no se reanuda por ahora) |
-
-El bloqueo de la protección de `main` y el del CI por facturación, que figuraban en la versión
-anterior de este archivo, **están resueltos**.
+| Sin Redis ni trabajador en la máquina del propietario (no hay Docker) | No se puede ver un mensaje convertirse en conversación ni enviar una respuesta | Propietario, `devops` |
+| Sin prueba web↔API | Nada permite afirmar que una pantalla funciona con la API real | `qa`, `frontend` |
+| Endpoints que la web llama y no existen: `identidad/usuarios`, `crm/etapas`, estado del canal, plantillas | Equipo, etapas y Configuración siguen en maqueta | `backend` |
+| PR #191 (permisos en controladores) abierto | Cualquier miembro puede escribir en bandeja, CRM y cotizaciones | `backend` |
+| Sin secretos del entorno `staging` ni servicio en Render | No hay nada que enseñar fuera de local | Propietario |
+| Verificación del negocio en Meta / Tech Provider sin iniciar (T-080) | Solo número de prueba; no hay lanzamiento | Propietario |
+| PR #29 (cifrado) abierto; ADR-0018 sin cierre de `auditor-seguridad` | Texto de mensajes en claro | `backend`, `datos`, `auditor-seguridad` |
+| Tarifario real de la agencia piloto | El catálogo sigue con datos verosímiles | Propietario / agencia |
 
 ## 4. Decisiones vigentes
 
@@ -117,10 +133,10 @@ El índice completo de ADR y su estado está en [`docs/README.md`](docs/README.m
 
 | Qué | Dónde |
 |---|---|
-| La cola de trabajo | [`roadmap/tasks.yaml`](roadmap/tasks.yaml): T-001, T-003, T-006 y T-007 hechas; T-004 y T-005 descartadas; el resto, en backlog; T-028 a T-031 bloqueadas |
+| La cola de trabajo | [`roadmap/tasks.yaml`](roadmap/tasks.yaml): 86 `done`. Ojo: `done` = integrada, no probada con la web (T-089 solo cubre la migración; T-117 sigue en `backlog` aunque el PR #198 está integrado) |
 | Roadmap técnico v2 | [`docs/08-roadmap/01-roadmap.md`](docs/08-roadmap/01-roadmap.md) |
-| Roadmap de producto v3 | `docs/08-roadmap/02-roadmap-producto-v3.md` (en el PR #43; aún no está en `main`) |
-| Qué ocurrió cada día | [`docs/_bitacora/`](docs/_bitacora/) (hoy: [2026-10-26](docs/_bitacora/2026-10-26-sincronia-del-hilo.md)) |
+| Roadmap de producto v3 | [`docs/08-roadmap/02-roadmap-producto-v3.md`](docs/08-roadmap/02-roadmap-producto-v3.md); ruta a la Fase 1: [`04-ruta-al-entregable-fase-1.md`](docs/08-roadmap/04-ruta-al-entregable-fase-1.md) |
+| Qué ocurrió cada día | [`docs/_bitacora/`](docs/_bitacora/) (hoy: [2026-11-04, auditoría de veracidad con la matriz por capacidad](docs/_bitacora/2026-11-04-auditoria-de-veracidad.md)) |
 | Historial completo anterior de este archivo | [`docs/_bitacora/archivo/ESTADO-hasta-2026-10-20.md`](docs/_bitacora/archivo/ESTADO-hasta-2026-10-20.md) |
 | Auditorías externas e integral (AUD-001…017) | Mismo archivo; informes en `roadmap/audits/` |
 | Qué árboles de trabajo están atrasados | `node scripts/estado-de-arboles.mjs` (en un PR en curso; ver [`docs/07-ingenieria/03-git.md`](docs/07-ingenieria/03-git.md#sincronía-cómo-no-trabajar-con-cosas-atrasadas)) |

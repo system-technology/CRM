@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { X, AlertCircle, CheckCircle2, PackagePlus, Edit } from 'lucide-react';
 import type { PlanAlimentacion, ResumenDePaqueteGestion } from '@viajapro/contracts';
+import { useFocoModal } from '../../lib/use-foco-modal';
 import {
   validarFormularioCrearPaquete,
   validarFormularioEditarPaquete,
@@ -39,6 +40,13 @@ export function ModalFormularioPaquete({
   const [errores, setErrores] = useState<Record<string, string>>({});
   const [guardando, setGuardando] = useState(false);
   const [errorServidor, setErrorServidor] = useState<string | null>(null);
+
+  const inputNombreRef = useRef<HTMLInputElement>(null);
+  const contenedorRef = useFocoModal<HTMLDivElement>({
+    abierto,
+    alCerrar,
+    elementoInicialRef: inputNombreRef,
+  });
 
   useEffect(() => {
     if (!abierto) return;
@@ -119,9 +127,14 @@ export function ModalFormularioPaquete({
       role="dialog"
       aria-modal="true"
       aria-labelledby="titulo-modal-paquete"
+      onClick={alCerrar}
       className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/60 p-4 backdrop-blur-xs"
     >
-      <div className="relative flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-2xl dark:border-neutral-800 dark:bg-neutral-900">
+      <div
+        ref={contenedorRef}
+        onClick={(e) => e.stopPropagation()}
+        className="relative flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-2xl dark:border-neutral-800 dark:bg-neutral-900"
+      >
         {/* Cabecera */}
         <div className="flex items-center justify-between border-b border-neutral-100 bg-neutral-50 px-6 py-4 dark:border-neutral-800 dark:bg-neutral-800/50">
           <div className="flex items-center gap-2.5">
@@ -147,7 +160,7 @@ export function ModalFormularioPaquete({
             type="button"
             onClick={alCerrar}
             data-testid="boton-cerrar-modal-paquete"
-            className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
+            className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700 focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:outline-hidden dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
             aria-label="Cerrar modal"
           >
             <X className="h-5 w-5" />
@@ -164,6 +177,7 @@ export function ModalFormularioPaquete({
           {errorServidor && (
             <div
               role="alert"
+              aria-live="assertive"
               data-testid="error-servidor-paquete"
               className="mb-4 flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 p-3.5 text-xs text-red-800 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300"
             >
@@ -182,20 +196,25 @@ export function ModalFormularioPaquete({
                 Nombre del producto *
               </label>
               <input
+                ref={inputNombreRef}
                 id="campo-nombre-paquete"
                 data-testid="input-nombre-paquete"
                 type="text"
                 value={nombre}
                 onChange={(e) => setNombre(e.target.value)}
+                aria-invalid={Boolean(errores.nombre)}
+                aria-describedby={errores.nombre ? 'error-campo-nombre' : undefined}
                 placeholder="Ej. Pasadía Islas del Rosario & Barú VIP"
-                className={`mt-1.5 min-h-[44px] w-full rounded-xl border px-3.5 py-2.5 text-xs text-neutral-900 placeholder-neutral-400 focus:outline-hidden dark:bg-neutral-800 dark:text-white ${
+                className={`mt-1.5 min-h-[44px] w-full rounded-xl border px-3.5 py-2.5 text-xs text-neutral-900 placeholder-neutral-400 focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:outline-hidden dark:bg-neutral-800 dark:text-white ${
                   errores.nombre
                     ? 'border-red-500 ring-1 ring-red-500'
-                    : 'border-neutral-300 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 dark:border-neutral-700'
+                    : 'border-neutral-300 focus:border-teal-500 dark:border-neutral-700'
                 }`}
               />
               {errores.nombre && (
                 <p
+                  id="error-campo-nombre"
+                  role="alert"
                   data-testid="error-campo-nombre"
                   className="mt-1 text-xs text-red-600 dark:text-red-400"
                 >
@@ -219,15 +238,19 @@ export function ModalFormularioPaquete({
                   type="text"
                   value={destino}
                   onChange={(e) => setDestino(e.target.value)}
+                  aria-invalid={Boolean(errores.destino)}
+                  aria-describedby={errores.destino ? 'error-campo-destino' : undefined}
                   placeholder="Ej. Cartagena, San Andrés, Santa Marta"
-                  className={`mt-1.5 min-h-[44px] w-full rounded-xl border px-3.5 py-2.5 text-xs text-neutral-900 placeholder-neutral-400 focus:outline-hidden dark:bg-neutral-800 dark:text-white ${
+                  className={`mt-1.5 min-h-[44px] w-full rounded-xl border px-3.5 py-2.5 text-xs text-neutral-900 placeholder-neutral-400 focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:outline-hidden dark:bg-neutral-800 dark:text-white ${
                     errores.destino
                       ? 'border-red-500 ring-1 ring-red-500'
-                      : 'border-neutral-300 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 dark:border-neutral-700'
+                      : 'border-neutral-300 focus:border-teal-500 dark:border-neutral-700'
                   }`}
                 />
                 {errores.destino && (
                   <p
+                    id="error-campo-destino"
+                    role="alert"
                     data-testid="error-campo-destino"
                     className="mt-1 text-xs text-red-600 dark:text-red-400"
                   >
@@ -249,11 +272,15 @@ export function ModalFormularioPaquete({
                   type="text"
                   value={codigo}
                   onChange={(e) => setCodigo(e.target.value)}
+                  aria-invalid={Boolean(errores.codigo)}
+                  aria-describedby={errores.codigo ? 'error-campo-codigo' : undefined}
                   placeholder="Ej. PKG-CTG-001"
-                  className="mt-1.5 min-h-[44px] w-full rounded-xl border border-neutral-300 px-3.5 py-2.5 text-xs text-neutral-900 placeholder-neutral-400 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                  className="mt-1.5 min-h-[44px] w-full rounded-xl border border-neutral-300 px-3.5 py-2.5 text-xs text-neutral-900 placeholder-neutral-400 focus:border-teal-500 focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                 />
                 {errores.codigo && (
                   <p
+                    id="error-campo-codigo"
+                    role="alert"
                     data-testid="error-campo-codigo"
                     className="mt-1 text-xs text-red-600 dark:text-red-400"
                   >
@@ -280,14 +307,18 @@ export function ModalFormularioPaquete({
                   max={365}
                   value={dias}
                   onChange={(e) => setDias(e.target.value)}
-                  className={`mt-1.5 min-h-[44px] w-full rounded-xl border px-3.5 py-2.5 text-xs text-neutral-900 placeholder-neutral-400 focus:outline-hidden dark:bg-neutral-800 dark:text-white ${
+                  aria-invalid={Boolean(errores.dias)}
+                  aria-describedby={errores.dias ? 'error-campo-dias' : undefined}
+                  className={`mt-1.5 min-h-[44px] w-full rounded-xl border px-3.5 py-2.5 text-xs text-neutral-900 placeholder-neutral-400 focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:outline-hidden dark:bg-neutral-800 dark:text-white ${
                     errores.dias
                       ? 'border-red-500 ring-1 ring-red-500'
-                      : 'border-neutral-300 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 dark:border-neutral-700'
+                      : 'border-neutral-300 focus:border-teal-500 dark:border-neutral-700'
                   }`}
                 />
                 {errores.dias && (
                   <p
+                    id="error-campo-dias"
+                    role="alert"
                     data-testid="error-campo-dias"
                     className="mt-1 text-xs text-red-600 dark:text-red-400"
                   >
@@ -311,10 +342,12 @@ export function ModalFormularioPaquete({
                   max={364}
                   value={noches}
                   onChange={(e) => setNoches(e.target.value)}
-                  className={`mt-1.5 min-h-[44px] w-full rounded-xl border px-3.5 py-2.5 text-xs text-neutral-900 placeholder-neutral-400 focus:outline-hidden dark:bg-neutral-800 dark:text-white ${
+                  aria-invalid={Boolean(errores.noches)}
+                  aria-describedby={errores.noches ? 'error-campo-noches' : undefined}
+                  className={`mt-1.5 min-h-[44px] w-full rounded-xl border px-3.5 py-2.5 text-xs text-neutral-900 placeholder-neutral-400 focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:outline-hidden dark:bg-neutral-800 dark:text-white ${
                     errores.noches
                       ? 'border-red-500 ring-1 ring-red-500'
-                      : 'border-neutral-300 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 dark:border-neutral-700'
+                      : 'border-neutral-300 focus:border-teal-500 dark:border-neutral-700'
                   }`}
                 />
                 <p className="mt-1 text-[11px] text-neutral-500 dark:text-neutral-400">
@@ -322,6 +355,8 @@ export function ModalFormularioPaquete({
                 </p>
                 {errores.noches && (
                   <p
+                    id="error-campo-noches"
+                    role="alert"
                     data-testid="error-campo-noches"
                     className="mt-1 text-xs text-red-600 dark:text-red-400"
                   >

@@ -144,7 +144,7 @@ describe('EnviarMensajeSaliente — idempotencia (R5)', () => {
 
   it('si un intento anterior murió a mitad de la llamada, NO se reenvía: queda sin confirmar', async () => {
     const { caso, reservas, mensajes } = montar(meta);
-    await reservas.reservar(MENSAJE); // el proceso murió después de reservar y antes de registrar
+    await reservas.reservar(TENANT, MENSAJE); // el proceso murió después de reservar y antes de registrar
     const r = await caso.ejecutar(TENANT, MENSAJE, false, AHORA);
     expect(r).toMatchObject({ estado: 'FALLIDO', codigo: 'WHATSAPP_ENVIO_SIN_CONFIRMAR' });
     expect(meta.pedidos).toHaveLength(0);

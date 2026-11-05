@@ -76,6 +76,7 @@ model Tenant {
   notasInternas     NotaInterna[]
   consentimientos   ConsentimientoContacto[]
   seguimientos      Seguimiento[]
+  cambiosDeEtapa    OportunidadCambioEtapa[]
 
   conversaciones Conversacion[]
   mensajes       Mensaje[]
@@ -84,6 +85,7 @@ model Tenant {
 
   cotizaciones        Cotizacion[]
   versionesCotizacion VersionCotizacion[]
+  cambiosDeCotizacion CotizacionCambioEstado[]
 
   roles            Rol[]
   formatosDeViaje  FormatoDeViaje[]
@@ -472,9 +474,12 @@ model Usuario {
   cotizacionesCreadas        Cotizacion[]             @relation("CotizacionCreadoPor")
   cotizacionesActualizadas   Cotizacion[]             @relation("CotizacionActualizadoPor")
   versionesCotizacionCreadas VersionCotizacion[]      @relation("VersionCotizacionCreadoPor")
+  cambiosDeCotizacionHechos  CotizacionCambioEstado[] @relation("CambioCotizacionUsuario")
   seguimientosAsignados      Seguimiento[]            @relation("SeguimientoAsesor")
   seguimientosCreados        Seguimiento[]            @relation("SeguimientoCreadoPor")
   seguimientosActualizados   Seguimiento[]            @relation("SeguimientoActualizadoPor")
+  cambiosDeEtapaComoAsesor   OportunidadCambioEtapa[] @relation("CambioEtapaAsesor")
+  cambiosDeEtapaHechos       OportunidadCambioEtapa[] @relation("CambioEtapaUsuario")
 
   @@unique([tenantId, correo])
   @@unique([tenantId, identidadId])
@@ -515,6 +520,8 @@ model EtapaPipeline {
   creadoEn DateTime @default(now()) @map("creado_en") @db.Timestamptz(3)
 
   oportunidades Oportunidad[]
+  cambiosDesde  OportunidadCambioEtapa[] @relation("CambioEtapaDesde")
+  cambiosHasta  OportunidadCambioEtapa[] @relation("CambioEtapaHasta")
 
   @@unique([tenantId, orden])
   @@unique([id, tenantId])
@@ -1318,8 +1325,9 @@ model Oportunidad {
   creadoPor        Usuario? @relation("OportunidadCreadoPor", fields: [creadoPorId, tenantId], references: [id, tenantId], onDelete: Restrict, onUpdate: Restrict)
   actualizadoPor   Usuario? @relation("OportunidadActualizadoPor", fields: [actualizadoPorId, tenantId], references: [id, tenantId], onDelete: Restrict, onUpdate: Restrict)
 
-  cotizaciones Cotizacion[]
-  seguimientos Seguimiento[]
+  cotizaciones   Cotizacion[]
+  seguimientos   Seguimiento[]
+  cambiosDeEtapa OportunidadCambioEtapa[]
 
   @@unique([id, tenantId])
   /// Destino de la foránea de tres columnas de `cotizaciones` y de `seguimientos`: la oportunidad de una cotización
@@ -1346,6 +1354,64 @@ enum MotivoPerdida {
   OTRO
 
   @@map("motivo_perdida")
+}
+
+/// Historial de etapas de la oportunidad (T-131). **Solo añadir**: un disparador rechaza UPDATE,
+/// DELETE y TRUNCATE (salvo la purga declarada de una agencia), así que no lleva
+/// `actualizado_en` ni `actualizado_por`: `ocurrido_en` es su `creado_en` y `usuario_id` su
+/// `creado_por`. Una fila por alta (`ALTA`), por movimiento (`CAMBIO`) y la foto que dejó la
+/// migración para lo que ya existía (`MIGRACION`: NO es un cambio, ver la migración).
+///
+/// Las banderas `es_ganada`/`es_perdida` y el `asesor_id` son COPIAS del momento: la etapa se
+/// podrá reconfigurar y la oportunidad reasignar sin reescribir la historia. Sin PII (R10): no
+/// se copia `nota_perdida`, que es texto libre.
+///
+/// Foráneas COMPUESTAS con el tenant y todas `Restrict`: una acción referencial correría como
+/// propietario, que es media salida del disparador (mismo criterio que `VersionCotizacion`).
+model OportunidadCambioEtapa {
+  id       String @id @default(uuid(7)) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  oportunidadId String      @map("oportunidad_id") @db.Uuid
+  oportunidad   Oportunidad @relation(fields: [oportunidadId, tenantId], references: [id, tenantId], onDelete: Restrict, onUpdate: Restrict)
+
+  origen OrigenCambioEtapa
+
+  /// Nula en el alta y en la foto de la migración; un CHECK lo ata al origen `CAMBIO`.
+  etapaDesdeId String?        @map("etapa_desde_id") @db.Uuid
+  etapaDesde   EtapaPipeline? @relation("CambioEtapaDesde", fields: [etapaDesdeId, tenantId], references: [id, tenantId], onDelete: Restrict, onUpdate: Restrict)
+  etapaHastaId String         @map("etapa_hasta_id") @db.Uuid
+  etapaHasta   EtapaPipeline  @relation("CambioEtapaHasta", fields: [etapaHastaId, tenantId], references: [id, tenantId], onDelete: Restrict, onUpdate: Restrict)
+
+  esGanada      Boolean        @map("es_ganada")
+  esPerdida     Boolean        @map("es_perdida")
+  /// Solo en etapas de pérdida, y obligatorio en un `CAMBIO` a pérdida (CHECK en la migración).
+  motivoPerdida MotivoPerdida? @map("motivo_perdida")
+
+  /// El asesor asignado en ese instante, no el de hoy.
+  asesorId  String?  @map("asesor_id") @db.Uuid
+  asesor    Usuario? @relation("CambioEtapaAsesor", fields: [asesorId, tenantId], references: [id, tenantId], onDelete: Restrict, onUpdate: Restrict)
+  /// Quién lo hizo. Nulo en la foto de la migración y sin usuario (automatización).
+  usuarioId String?  @map("usuario_id") @db.Uuid
+  usuario   Usuario? @relation("CambioEtapaUsuario", fields: [usuarioId, tenantId], references: [id, tenantId], onDelete: Restrict, onUpdate: Restrict)
+
+  /// UTC, puesto por la base en la misma transacción que el cambio.
+  ocurridoEn DateTime @default(now()) @map("ocurrido_en") @db.Timestamptz(3)
+
+  @@unique([id, tenantId])
+  @@index([tenantId, oportunidadId, ocurridoEn, id], map: "idx_oportunidad_cambios_etapa_por_oportunidad")
+  @@index([tenantId, ocurridoEn], map: "idx_oportunidad_cambios_etapa_por_instante")
+  @@map("oportunidad_cambios_etapa")
+}
+
+/// De dónde sale una fila del historial de etapas. Enum del motor, no política de la agencia.
+enum OrigenCambioEtapa {
+  ALTA
+  CAMBIO
+  MIGRACION
+
+  @@map("origen_cambio_etapa")
 }
 
 /// Nota interna sobre un contacto. La escribe el asesor; el cliente no la ve jamás.
@@ -1963,8 +2029,9 @@ model Cotizacion {
   enviadaEn              DateTime?          @map("enviada_en") @db.Timestamptz(3)
   versionVistaPorCliente VersionCotizacion? @relation("VersionEnviada", fields: [tenantId, id, versionEnviada], references: [tenantId, cotizacionId, numero], onDelete: NoAction, onUpdate: NoAction, map: "cotizaciones_version_enviada_fkey")
 
-  versiones VersionCotizacion[] @relation("VersionesDeLaCotizacion")
+  versiones VersionCotizacion[]      @relation("VersionesDeLaCotizacion")
   mensajes  Mensaje[]
+  cambios   CotizacionCambioEstado[]
 
   creadoEn      DateTime  @default(now()) @map("creado_en") @db.Timestamptz(3)
   actualizadoEn DateTime  @updatedAt @map("actualizado_en") @db.Timestamptz(3)
@@ -2055,4 +2122,37 @@ model VersionCotizacion {
   @@index([tenantId, paqueteId])
   @@index([tenantId, opcionDeSalidaId])
   @@map("versiones_cotizacion")
+}
+
+/// Historial de estados de la cotización (T-132). **Solo añadir**: un disparador rechaza UPDATE,
+/// DELETE y TRUNCATE (salvo la purga declarada de una agencia), así que no lleva
+/// `actualizado_en` ni `actualizado_por`. Una fila por alta (`BORRADOR`, sin origen) y por
+/// transición; un CHECK admite solo las de la máquina de estados. La fila con `estado_hasta =
+/// ACEPTADA` es el instante de la venta.
+///
+/// Sin relleno: las cotizaciones anteriores a la migración no tienen filas, y el reporte las
+/// declara «sin instante de decisión». Foráneas compuestas con el tenant y `Restrict`.
+model CotizacionCambioEstado {
+  id       String @id @default(uuid(7)) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  cotizacionId String     @map("cotizacion_id") @db.Uuid
+  cotizacion   Cotizacion @relation(fields: [cotizacionId, tenantId], references: [id, tenantId], onDelete: Restrict, onUpdate: Restrict)
+
+  /// Nulo solo en el alta.
+  estadoDesde EstadoCotizacion? @map("estado_desde")
+  estadoHasta EstadoCotizacion  @map("estado_hasta")
+
+  /// Quién lo hizo; nulo sin usuario.
+  usuarioId String?  @map("usuario_id") @db.Uuid
+  usuario   Usuario? @relation("CambioCotizacionUsuario", fields: [usuarioId, tenantId], references: [id, tenantId], onDelete: Restrict, onUpdate: Restrict)
+
+  /// UTC, en la misma transacción que el cambio de la cotización.
+  ocurridoEn DateTime @default(now()) @map("ocurrido_en") @db.Timestamptz(3)
+
+  @@unique([id, tenantId])
+  @@index([tenantId, cotizacionId, ocurridoEn, id], map: "idx_cotizacion_cambios_estado_por_cotizacion")
+  @@index([tenantId, estadoHasta, ocurridoEn], map: "idx_cotizacion_cambios_estado_por_estado")
+  @@map("cotizacion_cambios_estado")
 }

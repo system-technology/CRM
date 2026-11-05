@@ -4,6 +4,7 @@ import { useModoDemo } from '../../lib/modo-demo';
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import {
   Package,
   Search,
@@ -24,8 +25,6 @@ import type {
   SalidaPublicada,
   ResumenDePaqueteGestion,
 } from '@viajapro/contracts';
-import { DescargaPlantillas } from '../../components/catalogo/importacion/descarga-plantillas';
-import { AsistenteImportacion } from '../../components/catalogo/importacion/asistente-importacion';
 import type { FormatoConPlantilla } from '../../lib/importaciones-api';
 import { BarraModulos } from '../../components/bandeja/barra-modulos';
 import { DistintivoDatosDemo } from '../../components/comun/distintivo-datos-demo';
@@ -35,11 +34,7 @@ import {
   formatearErrorAmigable,
 } from '../../lib/estados-ui-logica';
 import { AvisoConfiguracionTenant } from '../../components/crm/aviso-configuracion-tenant';
-import { FichaDetallePaquete } from '../../components/catalogo/ficha-detalle-paquete';
 import { TarjetaSalidaPublicada } from '../../components/catalogo/tarjeta-salida-publicada';
-import { TablaGestionCatalogo } from '../../components/catalogo/tabla-gestion-catalogo';
-import { ModalFormularioPaquete } from '../../components/catalogo/modal-formulario-paquete';
-import { DialogoDesactivarPaquete } from '../../components/catalogo/dialogo-desactivar-paquete';
 import { EstadoSinCatalogo } from '../../components/catalogo/estado-sin-catalogo';
 import { ChipTipoProducto } from '../../components/comun/chip-tipo-producto';
 import { obtenerClaseEscalonada } from '../../components/comun/animaciones';
@@ -59,6 +54,50 @@ import {
   editarPaqueteApi,
   desactivarPaqueteApi,
 } from '../../lib/catalogo-api';
+
+// Carga diferida de modales, asistentes y paneles secundarios pesados (T-130)
+const TablaGestionCatalogo = dynamic(
+  () =>
+    import('../../components/catalogo/tabla-gestion-catalogo').then((m) => m.TablaGestionCatalogo),
+  { ssr: false },
+);
+const DescargaPlantillas = dynamic(
+  () =>
+    import('../../components/catalogo/importacion/descarga-plantillas').then(
+      (m) => m.DescargaPlantillas,
+    ),
+  { ssr: false },
+);
+
+const AsistenteImportacion = dynamic(
+  () =>
+    import('../../components/catalogo/importacion/asistente-importacion').then(
+      (m) => m.AsistenteImportacion,
+    ),
+  { ssr: false },
+);
+
+const FichaDetallePaquete = dynamic(
+  () =>
+    import('../../components/catalogo/ficha-detalle-paquete').then((m) => m.FichaDetallePaquete),
+  { ssr: false },
+);
+
+const ModalFormularioPaquete = dynamic(
+  () =>
+    import('../../components/catalogo/modal-formulario-paquete').then(
+      (m) => m.ModalFormularioPaquete,
+    ),
+  { ssr: false },
+);
+
+const DialogoDesactivarPaquete = dynamic(
+  () =>
+    import('../../components/catalogo/dialogo-desactivar-paquete').then(
+      (m) => m.DialogoDesactivarPaquete,
+    ),
+  { ssr: false },
+);
 import {
   type FormularioPaqueteValores,
   validarFormularioCrearPaquete,
@@ -250,12 +289,20 @@ export default function CatalogoPage() {
           </div>
 
           {/* Pestañas de Vista con scroll horizontal fluido para móvil */}
-          <div className="mt-4 flex overflow-x-auto border-b border-neutral-200 dark:border-neutral-800">
+          <div
+            role="tablist"
+            aria-label="Vistas del catálogo"
+            className="mt-4 flex overflow-x-auto border-b border-neutral-200 dark:border-neutral-800"
+          >
             <button
               type="button"
+              role="tab"
+              id="tab-catalogo-explorar"
+              aria-selected={pestañaActiva === 'EXPLORAR'}
+              aria-controls="panel-catalogo-explorar"
               onClick={() => setPestañaActiva('EXPLORAR')}
               data-testid="tab-catalogo-explorar"
-              className={`flex min-h-[44px] shrink-0 items-center gap-2 border-b-2 px-4 py-2.5 text-xs font-bold transition-colors ${
+              className={`flex min-h-[44px] shrink-0 items-center gap-2 border-b-2 px-4 py-2.5 text-xs font-bold transition-colors focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:outline-hidden ${
                 pestañaActiva === 'EXPLORAR'
                   ? 'border-teal-600 text-teal-700 dark:border-teal-400 dark:text-teal-300'
                   : 'border-transparent text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-white'
@@ -267,9 +314,13 @@ export default function CatalogoPage() {
 
             <button
               type="button"
+              role="tab"
+              id="tab-catalogo-plantillas"
+              aria-selected={pestañaActiva === 'PLANTILLAS'}
+              aria-controls="panel-catalogo-plantillas"
               onClick={() => setPestañaActiva('PLANTILLAS')}
               data-testid="tab-catalogo-plantillas"
-              className={`flex min-h-[44px] shrink-0 items-center gap-2 border-b-2 px-4 py-2.5 text-xs font-bold transition-colors ${
+              className={`flex min-h-[44px] shrink-0 items-center gap-2 border-b-2 px-4 py-2.5 text-xs font-bold transition-colors focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:outline-hidden ${
                 pestañaActiva === 'PLANTILLAS'
                   ? 'border-teal-600 text-teal-700 dark:border-teal-400 dark:text-teal-300'
                   : 'border-transparent text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-white'
@@ -281,9 +332,13 @@ export default function CatalogoPage() {
 
             <button
               type="button"
+              role="tab"
+              id="tab-gestion-catalogo"
+              aria-selected={pestañaActiva === 'GESTION'}
+              aria-controls="panel-catalogo-gestion"
               onClick={() => setPestañaActiva('GESTION')}
               data-testid="tab-gestion-catalogo"
-              className={`flex min-h-[44px] shrink-0 items-center gap-2 border-b-2 px-4 py-2.5 text-xs font-bold transition-colors ${
+              className={`flex min-h-[44px] shrink-0 items-center gap-2 border-b-2 px-4 py-2.5 text-xs font-bold transition-colors focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:outline-hidden ${
                 pestañaActiva === 'GESTION'
                   ? 'border-teal-600 text-teal-700 dark:border-teal-400 dark:text-teal-300'
                   : 'border-transparent text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-white'
@@ -302,19 +357,23 @@ export default function CatalogoPage() {
                 <Search className="absolute top-2.5 left-3 h-4 w-4 text-neutral-400" />
                 <input
                   type="text"
+                  id="buscador-catalogo-explorar"
+                  aria-label="Buscar productos por destino o nombre"
                   value={busqueda}
                   onChange={(e) => setBusqueda(e.target.value)}
                   placeholder="Buscar por destino o nombre..."
-                  className="focus:border-acento-500 focus:ring-acento-500 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white py-2.5 pr-3 pl-9 text-xs text-neutral-900 placeholder-neutral-400 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                  className="focus:border-acento-500 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white py-2.5 pr-3 pl-9 text-xs text-neutral-900 placeholder-neutral-400 focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                 />
               </div>
 
               {/* Selector de Destino */}
               <div>
                 <select
+                  id="selector-destino-catalogo"
+                  aria-label="Filtrar por destino"
                   value={destinoFiltro}
                   onChange={(e) => setDestinoFiltro(e.target.value)}
-                  className="focus:border-acento-500 focus:ring-acento-500 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white px-3.5 py-2.5 text-xs text-neutral-700 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200"
+                  className="focus:border-acento-500 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white px-3.5 py-2.5 text-xs text-neutral-700 focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200"
                 >
                   <option value="TODOS">Todos los destinos ({destinosDisponibles.length})</option>
                   {destinosDisponibles.map((dest) => (
@@ -329,9 +388,11 @@ export default function CatalogoPage() {
               {!usarReal && (
                 <div>
                   <select
+                    id="selector-plan-catalogo"
+                    aria-label="Filtrar por plan de alimentación"
                     value={planFiltro}
                     onChange={(e) => setPlanFiltro(e.target.value as PlanAlimentacion | 'TODOS')}
-                    className="focus:border-acento-500 focus:ring-acento-500 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white px-3.5 py-2.5 text-xs text-neutral-700 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200"
+                    className="focus:border-acento-500 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white px-3.5 py-2.5 text-xs text-neutral-700 focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200"
                   >
                     <option value="TODOS">Todo tipo de plan</option>
                     <option value="SOLO_DESAYUNO">Solo Desayuno</option>
@@ -351,7 +412,7 @@ export default function CatalogoPage() {
                 <button
                   type="button"
                   onClick={() => setUsarReal(!usarReal)}
-                  className="text-acento-600 hover:text-acento-700 dark:text-acento-400 flex min-h-[44px] items-center px-2 py-2 text-xs font-semibold"
+                  className="text-acento-600 hover:text-acento-700 dark:text-acento-400 flex min-h-[44px] items-center px-2 py-2 text-xs font-semibold focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:outline-hidden"
                 >
                   {usarReal ? 'Cambiar a Demo' : 'Probar API Real'}
                 </button>
@@ -361,7 +422,12 @@ export default function CatalogoPage() {
         </header>
 
         {/* Contenido */}
-        <section className="min-w-0 flex-1 p-3.5 pb-24 sm:p-6 md:pb-6">
+        <section
+          role="tabpanel"
+          id={`panel-catalogo-${pestañaActiva.toLowerCase()}`}
+          aria-labelledby={`tab-catalogo-${pestañaActiva.toLowerCase()}`}
+          className="min-w-0 flex-1 p-3.5 pb-24 sm:p-6 md:pb-6"
+        >
           {pestañaActiva === 'GESTION' ? (
             <TablaGestionCatalogo
               paquetes={paquetesGestion}

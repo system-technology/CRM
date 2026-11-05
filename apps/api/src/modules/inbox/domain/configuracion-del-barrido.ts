@@ -28,6 +28,16 @@ export const POR_DEFECTO_DEL_BARRIDO: ConfiguracionDelBarrido = {
   maxReencolados: 10,
 };
 
+/**
+ * En modo `unico` el barrido es de SEGURIDAD y no el camino normal (ADR-0019 §1.3): una vez al
+ * arrancar y cada 60 minutos. Un periodo corto mantendría despierta la base (Neon suspende el
+ * cómputo tras 5 minutos de inactividad). Los reintentos cortos ya los hace la cola en memoria.
+ */
+export const POR_DEFECTO_DEL_BARRIDO_UNICO: ConfiguracionDelBarrido = {
+  ...POR_DEFECTO_DEL_BARRIDO,
+  intervaloMs: 3_600_000,
+};
+
 function entero(
   entorno: Record<string, string | undefined>,
   nombre: string,
@@ -46,29 +56,18 @@ function entero(
 
 export function configuracionDelBarrido(
   entorno: Record<string, string | undefined> = process.env,
+  porDefecto: ConfiguracionDelBarrido = POR_DEFECTO_DEL_BARRIDO,
 ): ConfiguracionDelBarrido {
   return {
-    intervaloMs: entero(
-      entorno,
-      'BARRIDO_INTERVALO_MS',
-      POR_DEFECTO_DEL_BARRIDO.intervaloMs,
-      1_000,
-      3_600_000,
-    ),
+    intervaloMs: entero(entorno, 'BARRIDO_INTERVALO_MS', porDefecto.intervaloMs, 1_000, 3_600_000),
     antiguedadMinimaS: entero(
       entorno,
       'BARRIDO_ANTIGUEDAD_S',
-      POR_DEFECTO_DEL_BARRIDO.antiguedadMinimaS,
+      porDefecto.antiguedadMinimaS,
       0,
       86_400,
     ),
-    limite: entero(entorno, 'BARRIDO_LIMITE', POR_DEFECTO_DEL_BARRIDO.limite, 1, 1_000),
-    maxReencolados: entero(
-      entorno,
-      'BARRIDO_MAX_REENCOLADOS',
-      POR_DEFECTO_DEL_BARRIDO.maxReencolados,
-      1,
-      1_000,
-    ),
+    limite: entero(entorno, 'BARRIDO_LIMITE', porDefecto.limite, 1, 1_000),
+    maxReencolados: entero(entorno, 'BARRIDO_MAX_REENCOLADOS', porDefecto.maxReencolados, 1, 1_000),
   };
 }

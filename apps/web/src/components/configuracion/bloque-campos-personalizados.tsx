@@ -1,5 +1,6 @@
 'use client';
 
+import { AvisoSoloLocal } from '../../components/comun/aviso-solo-local';
 import React, { useState, useEffect } from 'react';
 import {
   FormInput,
@@ -126,6 +127,7 @@ export function BloqueCamposPersonalizados() {
 
   return (
     <div className="space-y-6">
+      <AvisoSoloLocal que="los campos personalizados" />
       {/* Cabecera del Módulo */}
       <div className="rounded-xl border border-neutral-200 bg-white p-5 shadow-xs dark:border-neutral-800 dark:bg-neutral-900">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

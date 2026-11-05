@@ -1,3 +1,245 @@
+
+# Entrega — T-142: Web /reportes sobre GET /api/v1/reportes/resumen: instantes UTC, ventasPorMoneda por moneda y fuera el cálculo desde el tablero — 2026-11-04
+
+## Identificación
+- **Tarea:** `T-142`
+- **Rama:** `b/T-142-web-reportes-resumen`
+- **Carril:** `b` (Frontend / Web)
+
+## Qué se construyó
+1. **Conexión integral a `GET /api/v1/reportes/resumen` con instantes UTC:**
+   - La pantalla `/reportes` (`ReportesPage`) se conecta directamente a la API de resumen sin depender de ningún cálculo ni mock local derivado del pipeline.
+   - La función `convertirPeriodoAInstantesUtc(periodo, ahora?, zona?)` convierte el periodo seleccionado a instantes UTC ISO (`desde` inclusivo, `hasta` exclusivo) según la zona horaria de la agencia (`America/Bogota` por defecto).
+   - El selector de periodo filtra de verdad invocando la API con los nuevos instantes y calcula la variación contra el periodo anterior equivalente (`rangoAnterior`).
+   - El subtítulo refleja las fechas exactas formateadas en hora de Colombia: `Del {fechaDesde} al {fechaHasta} (hora de Colombia).`
+
+2. **Una tarjeta / fila por moneda en ventas (R8):**
+   - Se procesa `ventasPorMoneda` de forma estricta: cada moneda tiene su propia fila con unidades en formato de moneda (`formatearDinero`), conteo de cotizaciones aceptadas y variación porcentual con BigInt.
+   - Ninguna cifra suma monedas ni asume COP.
+
+3. **Eliminación de `calcularReporteDesdePipeline` y cálculo desde el tablero:**
+   - Se removió completamente `calcularReporteDesdePipeline` y `obtenerReportePorPeriodo` de `reportes-logica.ts`, así como el uso del tablero truncado a 20 tarjetas por columna.
+   - Los valores `null` o indefinidos se representan como «Aún sin datos» (`TEXTO_SIN_DATOS`), jamás como `0` ni `0 %`.
+
+4. **Cohortes explícitas y protagonismo de la mediana en SLA:**
+   - Cada KPI incluye su cohorte:
+     - Cotizaciones: `X aceptadas de Y enviadas en el periodo (Z creadas)`.
+     - Oportunidades: `X creadas en el periodo (Y ganadas · Z perdidas · W abiertas)`.
+     - Primera respuesta: `X de Y conversaciones nuevas respondidas en el periodo`.
+   - El KPI de primera respuesta destaca la **mediana** como valor principal en la cifra grande (`vista.respuesta.medianaTexto`), dejando el promedio en el pie junto a la cohorte.
+
+5. **Costo neto y margen comercial estrictamente confidenciales:**
+   - La sección de margen (`seccion-margen-confidencial`) se muestra únicamente si la respuesta del servidor incluye las claves confidenciales (`neto`, `margen`, `margenPorcentaje`), el usuario cuenta con el permiso `cotizacion.ver_neto_y_margen` y se encuentra en la vista de Dueño (Gerencial).
+   - Se respetan dos monedas (COP y USD) simultáneamente tanto en ventas como en margen confidencial.
+   - Si el usuario conmuta voluntariamente a «Vista Asesor (Operativa)», la sección se oculta inmediatamente del DOM.
+
+## Pruebas y verificación
+- **Unitarias y permisos:**
+  - `src/lib/reportes-logica.spec.ts`: 9 pruebas verificando conversión UTC, variación porcentual BigInt, márgenes BigInt, múltiples monedas aisladas, cohortes y eliminación de `calcularReporteDesdePipeline`.
+  - `src/app/reportes/reportes-permisos.spec.tsx`: 6 pruebas validando ocultamiento sin permiso, visualización con dos monedas con permiso, toggle a vista asesor, filtrado UTC real y manejo de error 403.
+- **Suite completa:** 135 suites de prueba de `@viajapro/web` pasando al 100% (1096 pruebas).
+- **TypeScript y Lint:** `pnpm typecheck` y `pnpm lint` limpios con 0 errores.
+- **Protección de hooks:** `pnpm test:hooks` pasando 59/59, 19/19 y 6/6.
+
+---
+
+# Entrega — T-130: Presupuesto de rendimiento de la web: carga diferida y tamaño por ruta — 2026-11-04
+
+## Identificación
+- **Tarea:** `T-130`
+- **Rama:** `b/T-130-presupuesto-rendimiento-web`
+- **Carril:** `b` (Frontend / Web)
+
+## Qué se construyó y optimizó
+1. **Carga diferida (`next/dynamic`) de componentes pesados y modales:**
+   - **Reportes (`apps/web/src/app/reportes/page.tsx`):**
+     - Carga diferida de `ReportesReales` con esqueleto de carga accesible (`EsqueletoReportes`).
+   - **Cotizador (`apps/web/src/app/cotizador/page.tsx`):**
+     - Carga diferida de `ModalGuardarCotizacion`.
+   - **Catálogo (`apps/web/src/app/catalogo/page.tsx`):**
+     - Carga diferida de modales pesados, asistentes y tablas secundarias: `DescargaPlantillas`, `AsistenteImportacion`, `FichaDetallePaquete`, `ModalFormularioPaquete`, `DialogoDesactivarPaquete` y `TablaGestionCatalogo`.
+   - **Configuración (`apps/web/src/app/configuracion/page.tsx`):**
+     - Carga diferida de los 7 bloques de configuración por pestaña: `BloquePoliticaPrecio`, `BloqueAjustesCatalogo`, `BloqueEtapasPipeline`, `BloqueCamposPersonalizados`, `BloqueEquipo`, `BloqueRespuestasRapidas` y `BloqueConexionWhatsapp`.
+   - **Detalle de Cotización (`apps/web/src/app/cotizaciones/[id]/page.tsx`):**
+     - Carga diferida de `ModalEnviarWhatsAppCotizacion` y `ModalCompararVersiones`.
+   - **Ficha 360 del Contacto (`apps/web/src/app/contactos/[id]/page.tsx`):**
+     - Carga diferida de modales y paneles secundarios: `ModalEditarContacto`, `ModalCrearOportunidad`, `ModalCrearSeguimiento` y `PanelConsentimientosContacto`.
+   - **Bandeja de Conversación (`apps/web/src/app/bandeja/[id]/page.tsx`):**
+     - Carga diferida de modales de acción: `ModalReasignar`, `ModalPlantillas`, `ModalEnviarCotizacion`, `ModalCrearOportunidad` y `ModalEditarContacto`.
+
+2. **Medición del tamaño de JS por ruta (`next build`) y comparativa de rendimiento:**
+
+| Ruta | Tamaño Inicial | Tamaño Optimizado | Δ Tamaño Ruta | First Load JS Inicial | First Load JS Optimizado | Presupuesto Acordado | Cumple |
+|---|---|---|---|---|---|---|:---:|
+| **JS Compartido (global)** | 103 kB | 103 kB | 0% | 103 kB | 103 kB | <= 110 kB | ✅ |
+| `/configuracion` | 27.5 kB | 6.41 kB | **-76.7%** | 230 kB | 196 kB (-34 kB) | <= 200 kB | ✅ |
+| `/catalogo` | 28.4 kB | 12.2 kB | **-57.0%** | 229 kB | 215 kB (-14 kB) | <= 220 kB | ✅ |
+| `/bandeja/[id]` | 31.2 kB | 25.7 kB | **-17.6%** | 204 kB | 198 kB (-6 kB) | <= 200 kB | ✅ |
+| `/contactos/[id]` | 14.4 kB | 8.89 kB | **-38.3%** | 213 kB | 208 kB (-5 kB) | <= 210 kB | ✅ |
+| `/cotizaciones/[id]` | 12.9 kB | 9.65 kB | **-25.2%** | 214 kB | 208 kB (-6 kB) | <= 210 kB | ✅ |
+| `/reportes` | 10.0 kB | 7.93 kB | **-20.7%** | 205 kB | 202 kB (-3 kB) | <= 205 kB | ✅ |
+| `/cotizador` | 14.8 kB | 12.2 kB | **-17.6%** | 219 kB | 219 kB | <= 220 kB | ✅ |
+
+3. **Sin dependencias nuevas:**
+   - No se añadieron librerías externas ni se modificaron `package.json` o `pnpm-lock.yaml`.
+
+4. **Pruebas y verificación:**
+   - 135 suites de pruebas en `@viajapro/web` ejecutadas y pasando al 100% (1081 pruebas).
+   - `pnpm typecheck` limpio sin errores.
+   - `pnpm lint` limpio sin advertencias ni errores.
+
+---
+
+# Entrega — T-000: Equipo conectado a `GET /api/v1/identidad/miembros` — 2026-11-04
+
+## Identificación
+- **Rama:** `b/T-000-web-miembros-api` (carril `b`, Frontend / Web). Origen: auditoría de veracidad 2026-11-04.
+
+## Qué quedó en la API
+- La lista de miembros de Configuración/Equipo (`GET /api/v1/identidad/miembros`, contrato `ListaDeMiembros`, permiso `usuarios.administrar`). Se valida con Zod; una respuesta fuera de contrato se rechaza.
+- La baja de un miembro (`POST /api/v1/identidad/miembros/:id/baja`, mismo id de la lista) con botón «Dar de baja» y confirmación en línea.
+
+## Qué cambió en pantalla (modo real)
+- Sin `telefono` (no existe en la API): ni en la tabla ni en el formulario de invitación (también se oculta «Nombre», que el contrato `InvitarMiembro` no envía).
+- Iniciales derivadas del nombre; `fechaIngreso` = `creadoEn` formateado es-CO; `rol.clave` nulo se muestra por `rol.nombre`.
+- Sin estado `INVITADO`: las invitaciones pendientes no son listables, así que el contador queda en 0 en modo real.
+- Sin localStorage ni mock: carga (esqueleto), vacío, error con «Reintentar» y 403 «No tienes permiso para ver el equipo».
+- Invitar en modo real ya no escribe en la caché local.
+
+## Qué quedó local
+- Modo demo: lista del mock y caché de `localStorage` (con estado `INVITADO` y teléfono), con su distintivo visible.
+- Los tres roles de `ROLES_PREDEFINIDOS_AGENCIA` del selector de invitación siguen siendo constantes del cliente: no hay endpoint de roles. Escalar a `backend` si hace falta listarlos.
+- Los contadores «Dueños/Asesores activos» se calculan en el cliente por `rol.clave`; un rol propio no cuenta en ninguno.
+
+# Entrega — T-129: Accesibilidad del cotizador y del catálogo (foco, etiquetas, contraste, 44px) — 2026-11-04
+
+## Identificación
+- **Tarea:** `T-129`
+- **Rama:** `b/T-129-accesibilidad-cotizador-catalogo`
+- **Carril:** `b` (Frontend / Web)
+
+## Qué se construyó y corrigió
+1. **Gestión de foco y modales accesibles (`useFocoModal`):**
+   - Integrado `useFocoModal` en todos los modales y diálogos del cotizador y catálogo:
+     - `ModalGuardarCotizacion` (`apps/web/src/components/cotizador/modal-guardar-cotizacion.tsx`)
+     - `ModalFormularioPaquete` (`apps/web/src/components/catalogo/modal-formulario-paquete.tsx`)
+     - `DialogoDesactivarPaquete` (`apps/web/src/components/catalogo/dialogo-desactivar-paquete.tsx`) con foco inicial en el botón seguro de cancelar
+     - `FichaDetallePaquete` (`apps/web/src/components/catalogo/ficha-detalle-paquete.tsx`)
+     - `AsistenteImportacion` (`apps/web/src/components/catalogo/importacion/asistente-importacion.tsx`)
+   - Garantizado: trampa de foco (focus trap con Tab / Shift+Tab), cierre inmediato con `Escape`, y devolución automática de foco al elemento disparador (trigger).
+
+2. **Etiquetas y asociación de errores (`aria-describedby`, `aria-invalid`, `role="alert"`):**
+   - Cotizador (`apps/web/src/app/cotizador/page.tsx`):
+     - Selector de opciones de salida con `aria-invalid`, `aria-describedby="aviso-elegir-opcion"` y anuncio dinámico con `role="alert"`.
+     - Steppers de pasajeros agrupados bajo `role="group" aria-label="Composición del grupo de pasajeros"`, botones con `aria-label="Aumentar adultos"`, `aria-label="Disminuir adultos"` (y niños / infantes), y contadores con `aria-live="polite"` y `aria-atomic="true"`.
+     - Mensajes de error de cotización con `role="alert"` y `aria-live="assertive"`.
+   - Catálogo (`apps/web/src/app/catalogo/page.tsx` y componentes de gestión):
+     - Navegación de secciones con `role="tablist"`, `role="tab"`, `aria-selected` y `role="tabpanel"`.
+     - Campos de búsqueda y filtrado con `aria-label` explícito y visible.
+     - `ModalFormularioPaquete`: errores de validación asociados a cada input mediante `aria-invalid="true"` y `aria-describedby="error-campo-..."` apuntando a mensajes con `role="alert"`.
+
+3. **Objetivos táctiles mínimos de 44px (WCAG 2.5.5 / 2.5.8):**
+   - Botón de cerrar de `FichaDetallePaquete` ampliado de tamaño sub-44px a `min-h-[44px] min-w-[44px]`.
+   - Botones de acción en tablas de gestión de catálogo actualizados a `min-h-[44px] min-w-[44px]`.
+   - Selectores, inputs y botones de pestañas asegurados con `min-h-[44px]`.
+   - Anillos de foco visibles (`focus-visible:ring-2 focus-visible:outline-hidden`) para navegación por teclado sin ocultar el indicador de foco.
+
+4. **Pruebas y verificación con testing-library por roles:**
+   - Creado `src/app/cotizador/cotizador-accesibilidad.spec.tsx` (4 pruebas unitarias de roles, labels, live regions, aria-invalid y trampa de foco con Escape).
+   - Creado `src/app/catalogo/catalogo-accesibilidad.spec.tsx` (5 pruebas unitarias de tablist/tab, inputs con accesible name, modal focus trap/escape y diálogo de confirmación seguro).
+   - Ajustadas pruebas existentes en `page.spec.tsx` para consultar los steppers mediante sus roles y nombres accesibles.
+   - Toda la suite de `@viajapro/web` en verde (132 archivos, 1056 pruebas pasando), typecheck, lint y test:hooks limpios.
+
+---
+
+# Entrega — T-128: Comparar dos versiones de una cotización lado a lado — 2026-11-04
+
+## Identificación
+- **Tarea:** `T-128`
+- **Rama:** `b/T-128-comparar-cotizaciones`
+- **Carril:** `b` (Frontend / Web)
+
+## Qué se construyó
+1. **Lógica pura de comparación (`apps/web/src/lib/cotizaciones-diff.ts`):**
+   - Comparación lado a lado de dos versiones inmutables de una cotización (`VersionDeCotizacion`).
+   - Aritmética monetaria exacta con BigInt en enteros de la unidad mínima (R8) con formato de moneda ISO 4217 (`restarDinero`, `formatearDeltaDinero`, `determinarEfectoMonetario`).
+   - Comparativa de parámetros de viaje: adultos, niños, infantes, total pasajeros, fecha de salida, noches, acomodación, vigencia de oferta y opción de salida.
+   - Comparativa línea por línea de tarifas: clasificación en `MODIFICADA`, `AGREGADA`, `ELIMINADA` y `SIN_CAMBIO`, calculando el delta total por línea.
+   - Resumen textual estructurado de cambios y efecto sobre el total con cálculo de porcentaje de variación.
+2. **Aislamiento y seguridad de márgenes (ADR-0011):**
+   - Omisión estricta de costos netos y márgenes comerciales (`undefined`) si el usuario carece del permiso `cotizacion.ver_neto_y_margen`.
+   - Se muestra aviso de acceso restringido en lugar de las filas de neto/margen.
+3. **Componente de interfaz accesible (`apps/web/src/components/cotizaciones/modal-comparar-versiones.tsx`):**
+   - Modal WCAG (`role="dialog"`, `aria-labelledby`) con selectores dinámicos para versión base (A) y versión comparada (B), botón para invertir versiones, y badge visual del efecto en el total.
+   - Tres tablas comparativas ordenadas: parámetros de composición, desglose línea por línea y totales finales consolidados.
+   - Integración directa en la vista de detalle `/cotizaciones/[id]` mediante el botón accesible «Comparar versiones» (`btn-comparar-versiones`).
+4. **Pruebas y verificación:**
+   - Pruebas unitarias de la lógica pura en `cotizaciones-diff.spec.ts` (8 pruebas).
+   - Pruebas unitarias del modal en `modal-comparar-versiones.spec.tsx` (6 pruebas).
+   - Pruebas de integración del botón y modal en `page.spec.tsx` (6 pruebas).
+   - Toda la suite de `@viajapro/web` en verde (127 suites, 1020 pruebas), typecheck y lint sin advertencias ni errores.
+
+---
+
+# Entrega — T-127: Atajos de teclado en la bandeja y ayuda accesible — 2026-11-04
+
+## Identificación
+- **Tarea:** `T-127`
+- **Rama:** `b/T-127-atajos-teclado-bandeja`
+- **Carril:** `b` (Frontend / Web)
+
+## Qué se construyó
+1. **Atajos globales de la bandeja:**
+   - `j`: Siguiente conversación en la lista.
+   - `k`: Conversación anterior en la lista.
+   - `r`: Enfocar compositor de texto para redacción de mensaje.
+   - `c`: Abrir modal «Enviar cotización por WhatsApp».
+   - `s`: Abrir modal «Crear oportunidad / seguimiento».
+   - `?`: Mostrar diálogo accesible con la ayuda de atajos.
+   - `Escape`: Cerrar modal o panel activo.
+2. **Protección contra activación en campos editables:**
+   - Los atajos de un solo carácter no se disparan si el foco está en un `<input>`, `<textarea>`, `<select>`, o elemento con `contenteditable` o rol de texto/búsqueda.
+3. **Preferencia configurable persistida:**
+   - Se almacena en `localStorage` bajo `viajapro_atajos_teclado_habilitados` (por defecto `true`).
+   - Se puede alternar directamente desde el modal de ayuda con un switch accesible (`role="switch"`, `aria-checked`).
+   - Si se desactiva, las pulsaciones de un solo carácter quedan deshabilitadas fuera de campos de texto.
+4. **Pruebas y verificación:**
+   - Pruebas unitarias de la lógica pura y persistencia en `src/lib/atajos-teclado-bandeja.spec.ts` (14 pruebas).
+   - Pruebas unitarias del diálogo de ayuda en `src/components/bandeja/modal-ayuda-atajos.spec.tsx` (5 pruebas).
+   - Pruebas de integración de la bandeja con teclado y compositor en `src/app/bandeja/bandeja-atajos-teclado.spec.tsx` (8 pruebas).
+   - 128 suites de pruebas de `@viajapro/web` pasando (1031 pruebas), typecheck y lint en verde sin advertencias.
+
+---
+
+# Entrega — T-124: Reportes sin cifras inventadas y aviso de «solo en este navegador» — 2026-11-04
+
+## Identificación
+- **Tarea:** `T-124`
+- **Rama:** `b/T-000-reportes-sin-cifras-inventadas`
+- **Carril:** `b` (Frontend / Web)
+
+## Qué se construyó
+1. **Reportes:** se eliminan las constantes del 20 % (margen) y 80 % (costo) y el estimado `conversaciones = ganadas * 3` y el correo `@agencia.com` fabricado. Sin cifra real la vista dice «Aún sin datos». El listado de cotizaciones no trae margen (ADR-0011) y el tablero tampoco, así que el margen real queda para una tarea que lo calcule desde las cotizaciones guardadas con `cotizacion.ver_neto_y_margen`.
+2. **Componente común `AvisoSoloLocal`** (`components/comun/aviso-solo-local.tsx`): visible solo en modo real.
+3. **/cotizaciones y modal Enviar por WhatsApp:** en modo real los nombres y el contacto salen de `GET /crm/contactos`; ya no hay nombre «Cliente» ni teléfono `+573001234567` de relleno (si el contacto no se conoce, el modal pide el teléfono). En demo todo sigue igual.
+
+## Pantallas que SOLO usan localStorage en modo real (con aviso)
+- Campos personalizados (configuración y sección en la ficha: el aviso está en configuración).
+- Respuestas rápidas (configuración).
+- Filtros guardados de contactos y pipeline (aviso cuando hay filtros restaurados).
+- Onboarding (asistente).
+- Preferencias de notificación (panel de notificaciones).
+
+## Sin aviso todavía
+- Filtros recordados de la lista de la bandeja (`lista-conversaciones.tsx`).
+- El modal `bandeja/modal-enviar-cotizacion` ya recibe el teléfono real de la conversación.
+
+## Qué quedó pendiente
+- Margen y costo reales en reportes desde las cotizaciones (necesita pedir cada cotización con `incluirMargen` o un agregado del servidor: escalar a `backend`).
+- Persistir en la API las pantallas de la lista de arriba.
+- Etapas `/crm/etapas`, miembros y estado del canal: no se tocaron (otro agente).
+
+---
 # Entrega — T-118: Acciones según permisos (bandeja.operar, crm.escribir, cotizacion.escribir) — 2026-11-04
 
 ## Identificación
@@ -37,7 +279,6 @@
 - Ninguno. La API de NestJS valida adicionalmente cada mutación del lado servidor (R1, R2, ADR-0011).
 
 ---
-
 # Entrega — T-117: Mensajes claros en es-CO para los errores del envío — 2026-11-04
 
 ## Identificación
@@ -2705,3 +2946,27 @@ Se creó el archivo de pruebas de componentes `apps/web/src/components/comun/esq
   - `typecheck`: **VERDE** (9/9 tareas exitosas en Turborepo, cero errores TypeScript).
   - `format:check`: **VERDE** (100% verificado con Prettier).
   - `build`: **VERDE** (Next.js 15.5.27 compiló 16 páginas en 6.7s).
+
+
+---
+
+# Entrega — T-000: Reportes conectados a `GET /api/v1/reportes/resumen` — 2026-11-04
+
+## Identificación
+- **Rama:** `b/T-000-web-reportes-api` (carril `b`, Frontend / Web). Origen: auditoría de veracidad 2026-11-04.
+
+## Qué quedó en la API
+- Cotizaciones (creadas, enviadas, aceptadas, tasa de aceptación), ventas por moneda, oportunidades (creadas, ganadas, perdidas, abiertas, tasa de conversión, por etapa) y respuesta (nuevas, respondidas, promedio y mediana). El cliente valida la consulta y la respuesta con `ConsultarResumenDeReportes` / `ResumenDeReportes`.
+- Neto, margen, porcentaje y cotizaciones sin neto: solo se pintan si las claves vienen en la fila (permiso `cotizacion.ver_neto_y_margen`). Sin el permiso no hay sección ni texto de margen.
+- La variación de ventas se pide con una segunda llamada al periodo anterior contiguo y de igual duración, y se calcula por moneda con BigInt; si esa llamada falla o no hay base, se muestra «Aún sin datos» (no +100 %).
+
+## Qué quedó local en la web
+- La conversión de «este mes», «últimos 30 días», «últimos 90 días» y «este año» a instantes UTC con la zona horaria (`reportes-periodo.ts`, incluye horario de verano). **La zona de la agencia no viaja en la sesión ni en un contrato todavía: se usa `America/Bogota` (`ZONA_HORARIA_COLOMBIA`).** Si la agencia tiene otra, hace falta que `backend` la exponga.
+- «Foto actual del pipeline» (conteo por etapa hoy) sigue saliendo del tablero: el endpoint cuenta las oportunidades creadas en el periodo, no la foto abierta de hoy.
+- Se renombraron dos etiquetas para que digan lo que se calcula: «Último trimestre» pasa a «Últimos 90 días» y «Año completo» a «Este año» (hasta hoy).
+- Modo demo: sin cambios, con mocks y distintivo visible.
+
+## Qué falta en la API (escalar a `backend`)
+- Ventas por destino y rendimiento por asesor por periodo: en modo real la pantalla dice «Aún sin datos» y ya no los calcula del tablero (asumía COP y no respetaba el periodo).
+- Meta comercial: no existe; en modo real la tarjeta se retiró.
+- Estados: esqueleto de carga, vacío (sin actividad), error con «Reintentar» y 403 «No tienes permiso para ver los reportes».
