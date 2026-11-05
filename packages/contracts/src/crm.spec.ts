@@ -15,6 +15,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   CrearContacto,
+  CrearEtapa,
+  EditarEtapa,
+  ReordenarEtapas,
   CrearOportunidad,
   CrearSeguimiento,
   EditarContacto,
@@ -259,5 +262,41 @@ describe('DefinicionCampoPersonalizado (T-026)', () => {
       tipo: 'archivo_binario',
     });
     expect(res.success).toBe(false);
+  });
+});
+
+describe('etapas del pipeline: alta, edición y reordenamiento (T-120)', () => {
+  const ID_A = '01932000-0000-7000-8000-00000000000a';
+  const ID_B = '01932000-0000-7000-8000-00000000000b';
+
+  it('CrearEtapa aplica los valores por defecto y recorta el nombre', () => {
+    const r = CrearEtapa.parse({ nombre: '  Esperando anticipo ' });
+    expect(r).toEqual({
+      nombre: 'Esperando anticipo',
+      probabilidad: 0,
+      esGanada: false,
+      esPerdida: false,
+    });
+  });
+
+  it('CrearEtapa rechaza ganada y perdida a la vez, probabilidad fuera de rango y campos extra', () => {
+    expect(CrearEtapa.safeParse({ nombre: 'X', esGanada: true, esPerdida: true }).success).toBe(
+      false,
+    );
+    expect(CrearEtapa.safeParse({ nombre: 'X', probabilidad: 101 }).success).toBe(false);
+    expect(CrearEtapa.safeParse({ nombre: 'X', clave: 'GANADA' }).success).toBe(false);
+  });
+
+  it('EditarEtapa exige al menos un campo y no deja editar orden ni clave', () => {
+    expect(EditarEtapa.safeParse({}).success).toBe(false);
+    expect(EditarEtapa.safeParse({ orden: 2 }).success).toBe(false);
+    expect(EditarEtapa.safeParse({ nombre: 'Nueva' }).success).toBe(true);
+  });
+
+  it('ReordenarEtapas exige ids únicos y UUID', () => {
+    expect(ReordenarEtapas.safeParse({ ids: [ID_A, ID_B] }).success).toBe(true);
+    expect(ReordenarEtapas.safeParse({ ids: [ID_A, ID_A] }).success).toBe(false);
+    expect(ReordenarEtapas.safeParse({ ids: ['no-uuid'] }).success).toBe(false);
+    expect(ReordenarEtapas.safeParse({ ids: [] }).success).toBe(false);
   });
 });
