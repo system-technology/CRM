@@ -363,12 +363,12 @@ beforeAll(async () => {
       tenantId: TENANT_A,
       nombre: 'Dueño',
       clave: 'DUENO',
-      permisos: ['conversaciones.ver_todas', 'usuarios.administrar'],
+      permisos: ['conversaciones.ver_todas', 'usuarios.administrar', 'bandeja.operar'],
     },
   });
   rolAsesorA = (
     await admin.rol.create({
-      data: { tenantId: TENANT_A, nombre: 'Asesor', clave: 'ASESOR', permisos: [] },
+      data: { tenantId: TENANT_A, nombre: 'Asesor', clave: 'ASESOR', permisos: ['bandeja.operar'] },
     })
   ).id;
   // El rol de B TIENE `ver_todas`: aun así Bruno no puede ver nada de la agencia A.
@@ -377,7 +377,7 @@ beforeAll(async () => {
       tenantId: TENANT_B,
       nombre: 'Dueño',
       clave: 'DUENO',
-      permisos: ['conversaciones.ver_todas', 'usuarios.administrar'],
+      permisos: ['conversaciones.ver_todas', 'usuarios.administrar', 'bandeja.operar'],
     },
   });
   await persona('dueno', TENANT_A, rolDueno.id);
@@ -388,13 +388,17 @@ beforeAll(async () => {
   // Roles personalizados (sin clave sembrada): Gina solo administra usuarios; Dora tiene los mismos
   // permisos que el Dueño pero NO es el rol Dueño.
   const rolGestor = await admin.rol.create({
-    data: { tenantId: TENANT_A, nombre: 'Gestor', permisos: ['usuarios.administrar'] },
+    data: {
+      tenantId: TENANT_A,
+      nombre: 'Gestor',
+      permisos: ['usuarios.administrar', 'bandeja.operar'],
+    },
   });
   const rolCopropietario = await admin.rol.create({
     data: {
       tenantId: TENANT_A,
       nombre: 'Copropietario',
-      permisos: ['conversaciones.ver_todas', 'usuarios.administrar'],
+      permisos: ['conversaciones.ver_todas', 'usuarios.administrar', 'bandeja.operar'],
     },
   });
   await persona('gina', TENANT_A, rolGestor.id);
@@ -688,7 +692,7 @@ describe('tiempo real', () => {
       expect(ana.de(e.c2).map((x) => x.tipo)).toEqual(['MENSAJE_NUEVO']);
       expect(ana.cerrado()).toBe(false);
     } finally {
-      await admin.rol.update({ where: { id: rolAsesorA }, data: { permisos: [] } });
+      await admin.rol.update({ where: { id: rolAsesorA }, data: { permisos: ['bandeja.operar'] } });
     }
 
     // Al quitarlo, igual.
@@ -759,6 +763,25 @@ describe('asignación', () => {
     // Y la nota quedó en el hilo.
     const notas = await api('ana', 'GET', `/api/v1/conversaciones/${e.c3}/notas`);
     expect(JSON.stringify(notas.json)).toContain('Pidió cotización a Cancún');
+  });
+
+  it('T-089: sin bandeja.operar, mutar la bandeja da 403 con la misma sesión', async () => {
+    const e = await escenario();
+    // Se le quita el permiso al rol y se restaura al final: el guard lo lee en cada petición.
+    await admin.rol.update({ where: { id: rolAsesorA }, data: { permisos: [] } });
+    try {
+      const r = await api('ana', 'POST', `/api/v1/conversaciones/${e.c1}/mensajes`, {
+        texto: 'No debería salir',
+        claveIdempotencia: randomUUID(),
+      });
+      expect(r.status).toBe(403);
+      expect(
+        (await api('ana', 'PUT', `/api/v1/conversaciones/${e.c1}/asignacion`, { usuarioId: null }))
+          .status,
+      ).toBe(403);
+    } finally {
+      await admin.rol.update({ where: { id: rolAsesorA }, data: { permisos: ['bandeja.operar'] } });
+    }
   });
 
   it('CA10: el Dueño responde en C1: C1 sigue asignada a Ana', async () => {

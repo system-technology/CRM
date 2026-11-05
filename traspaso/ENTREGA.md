@@ -38,6 +38,41 @@
 
 ---
 
+# Entrega — T-117: Mensajes claros en es-CO para los errores del envío — 2026-11-04
+
+## Identificación
+- **Tarea:** `T-117` (roadmap/tasks.yaml)
+- **Rama:** `b/T-117-mensajes-errores-envio`
+- **Carril:** `b` (Frontend / Web)
+
+## Qué se construyó
+
+1. **Mapeo exhaustivo de errores de envío en es-CO (`apps/web/src/lib/errores-de-envio.ts`):**
+   - Mapa tipado (`MAPA_ERRORES_ENVIO`) que traduce todos los códigos del módulo `inbox` y WhatsApp (`VENTANA_CERRADA`, `WHATSAPP_FUERA_DE_VENTANA`, `CONSENTIMIENTO_REVOCADO`, `COTIZACION_DE_OTRO_CONTACTO`, `COTIZACION_PARA_ENVIO_NO_ENCONTRADA`, `CONVERSACION_NO_ENCONTRADA`, `CONVERSACION_MODIFICADA`, `CLAVE_DE_IDEMPOTENCIA_EN_USO`, `USUARIO_NO_ASIGNABLE`, `WHATSAPP_DESTINATARIO_NO_DISPONIBLE`, `WHATSAPP_LIMITE_DE_TASA`, `WHATSAPP_CREDENCIAL_INVALIDA`, `WHATSAPP_FALLO_TRANSITORIO`, `WHATSAPP_INALCANZABLE`, `WHATSAPP_ENVIO_SIN_CONFIRMAR`, `CANAL_NO_ACTIVO`, `SIN_USUARIO`, `ERROR_CONEXION`, etc.) a un título claro, explicación comprensible en es-CO, acción sugerida y tipo semántico de acción (`tipoAccion`).
+   - `extraerCodigoError`: extrae códigos de error de objetos `InboxErrorApi`, `ErrorApi`, instancias de `Error` o cadenas de texto sin exponer el código técnico.
+   - `interpretarErrorDeEnvio`: función pura que garantiza que **el asesor de agencia nunca ve el código crudo** (ni en título, mensaje, acción sugerida, ni en textos visibles), y ofrece un fallback seguro en es-CO para cualquier código desconocido.
+
+2. **Componente de alerta accesible para el envío (`apps/web/src/components/bandeja/alerta-error-envio.tsx`):**
+   - Componente `AlertaErrorEnvio` con `role="alert"` y `aria-live="assertive"`, icono semántico, título y explicación clara.
+   - Acciones contextuales con botones accesibles: «Abrir plantillas» ante ventana cerrada, «Recargar chat» ante concurrencia/idempotencia, «Reintentar envío» ante fallos transitorios, y botón de descarte.
+   - Cumple accesibilidad con área táctil mínima (>= 44px).
+
+3. **Integración en Bandeja y Modal Enviar Cotización:**
+   - En el compositor de `apps/web/src/app/bandeja/[id]/page.tsx`: integra `AlertaErrorEnvio` y sanitiza los motivos de fallo en los mensajes salientes para que el asesor nunca vea códigos crudos.
+   - En `apps/web/src/components/bandeja/modal-enviar-cotizacion.tsx`: reemplaza el manejo crudo de errores con `interpretarErrorDeEnvio`, mostrando título, mensaje y acción sugerida ante cualquier fallo de la API.
+
+4. **Pruebas y verificación:**
+   - `apps/web/src/lib/errores-de-envio.spec.ts` (24 pruebas): validación de cada código de error, extracción desde distintas estructuras, manejo de códigos desconocidos y verificación estricta de que ningún código crudo aparece en los textos visibles.
+   - `apps/web/src/components/bandeja/alerta-error-envio.spec.tsx` (6 pruebas): renderizado accesible, acciones contextuales y descarte.
+   - `apps/web/src/components/bandeja/modal-enviar-cotizacion.spec.tsx` (10 pruebas): validación de `VENTANA_CERRADA`, `CONSENTIMIENTO_REVOCADO`, `COTIZACION_DE_OTRO_CONTACTO` y códigos desconocidos en el modal.
+   - `apps/web/src/app/bandeja/bandeja-errores-envio.spec.tsx` (3 pruebas): integración en la página de conversación de bandeja.
+   - Total de la suite web: 124 archivos y 1001 pruebas pasando en verde.
+   - `pnpm typecheck` y `pnpm lint` en verde.
+
+## Qué quedó pendiente
+- Ninguno para T-117. Listo para continuar con T-118 (Acciones según permisos).
+
+---
 # Entrega — T-116: Consentimiento del contacto en la ficha (otorgar, revocar y ver texto mostrado) — 2026-11-04
 
 ## Identificación

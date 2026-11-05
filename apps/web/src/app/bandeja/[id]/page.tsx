@@ -63,6 +63,8 @@ import { ModalEnviarCotizacion } from '../../../components/bandeja/modal-enviar-
 import { ModalCrearOportunidad } from '../../../components/bandeja/modal-crear-oportunidad';
 import { ModalEditarContacto } from '../../../components/bandeja/modal-editar-contacto';
 import { MenuRespuestasRapidas } from '../../../components/bandeja/menu-respuestas-rapidas';
+import { AlertaErrorEnvio } from '../../../components/bandeja/alerta-error-envio';
+import { interpretarErrorDeEnvio, type DetalleErrorEnvio } from '../../../lib/errores-de-envio';
 import {
   detectarDisparadorSlash,
   filtrarRespuestasRapidas,
@@ -93,7 +95,7 @@ export default function BandejaConversacionPage() {
 
   const [modoNota, setModoNota] = useState(false);
   const [enviando, setEnviando] = useState(false);
-  const [errorEnvio, setErrorEnvio] = useState<string | null>(null);
+  const [errorEnvio, setErrorEnvio] = useState<DetalleErrorEnvio | null>(null);
 
   // Modal de plantillas Meta HSM
   const [modalPlantillasAbierto, setModalPlantillasAbierto] = useState(false);
@@ -546,7 +548,9 @@ export default function BandejaConversacionPage() {
         setTimeout(() => scrollToBottom('smooth'), 50);
       } catch (err) {
         setErrorEnvio(
-          formatearErrorAmigable(err, 'No fue posible guardar la nota interna en este momento.'),
+          interpretarErrorDeEnvio(err, {
+            mensaje: 'No fue posible guardar la nota interna en este momento.',
+          }),
         );
       } finally {
         setEnviando(false);
@@ -593,17 +597,16 @@ export default function BandejaConversacionPage() {
         };
       });
     } catch (err) {
-      const msgError = formatearErrorAmigable(
-        err,
-        'No fue posible enviar el mensaje a través de Meta.',
-      );
-      setErrorEnvio(msgError);
+      const errorDetalle = interpretarErrorDeEnvio(err);
+      setErrorEnvio(errorDetalle);
       setDetalle((prev) => {
         if (!prev) return null;
         return {
           ...prev,
           mensajes: prev.mensajes.map((m) =>
-            m.id === tempId ? { ...m, estado: 'FALLIDO', motivoFallo: msgError } : m,
+            m.id === tempId
+              ? { ...m, estado: 'FALLIDO', motivoFallo: errorDetalle.textoParaMostrar }
+              : m,
           ),
         };
       });
@@ -615,6 +618,7 @@ export default function BandejaConversacionPage() {
   const reintentarMensaje = async (m: Mensaje) => {
     if (!detalle) return;
     const { clave: claveIdem } = claveDeReintento(idempotenciaMapRef.current, m.id);
+    setErrorEnvio(null);
 
     setDetalle((prev) => {
       if (!prev) return null;
@@ -641,13 +645,16 @@ export default function BandejaConversacionPage() {
         };
       });
     } catch (err) {
-      const msgError = formatearErrorAmigable(err, 'No fue posible reintentar el envío.');
+      const errorDetalle = interpretarErrorDeEnvio(err);
+      setErrorEnvio(errorDetalle);
       setDetalle((prev) => {
         if (!prev) return null;
         return {
           ...prev,
           mensajes: prev.mensajes.map((msg) =>
-            msg.id === m.id ? { ...msg, estado: 'FALLIDO', motivoFallo: msgError } : msg,
+            msg.id === m.id
+              ? { ...msg, estado: 'FALLIDO', motivoFallo: errorDetalle.textoParaMostrar }
+              : msg,
           ),
         };
       });
@@ -657,6 +664,7 @@ export default function BandejaConversacionPage() {
   const manejarEnvioPlantilla = async (envio: EnviarPlantilla, textoInterpolado: string) => {
     try {
       setEnviando(true);
+      setErrorEnvio(null);
       const mensajeEnviado = await inboxApi.enviarTexto({
         conversacionId: envio.conversacionId,
         texto: textoInterpolado,
@@ -985,7 +993,11 @@ export default function BandejaConversacionPage() {
                     {esFallido && (
                       <div className="border-alerta-200 dark:border-alerta-900 mt-2 border-t pt-1.5">
                         <p className="text-alerta-800 dark:text-alerta-300 text-[11px] font-medium">
-                          {m.motivoFallo || 'Error al conectar con WhatsApp API.'}
+                          {
+                            interpretarErrorDeEnvio(
+                              m.motivoFallo || 'Error al conectar con WhatsApp API.',
+                            ).textoParaMostrar
+                          }
                         </p>
                         <button
                           onClick={() => void reintentarMensaje(m)}
@@ -1131,13 +1143,13 @@ export default function BandejaConversacionPage() {
                 </div>
 
                 {errorEnvio && (
-                  <div
-                    role="alert"
-                    aria-live="assertive"
-                    className="border-alerta-200 bg-alerta-50 text-alerta-800 dark:border-alerta-900 dark:bg-alerta-950/40 dark:text-alerta-300 rounded-lg border p-2 text-xs"
-                  >
-                    {errorEnvio}
-                  </div>
+                  <AlertaErrorEnvio
+                    error={errorEnvio}
+                    onDescartar={() => setErrorEnvio(null)}
+                    onAbrirPlantillas={() => setModalPlantillasAbierto(true)}
+                    onRecargar={() => void cargarHistorial()}
+                    onReintentar={() => void manejarEnvio()}
+                  />
                 )}
 
                 {!puedeOperarBandeja && (
