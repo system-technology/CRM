@@ -33,6 +33,7 @@ const idDeTenant = (): string => `01932000-0000-7000-8000-${randomBytes(6).toStr
 const TENANT_A = idDeTenant();
 const TENANT_B = idDeTenant();
 const USUARIO_A = randomUUID();
+let identidadA = '';
 
 let app: INestApplication;
 let base: string;
@@ -158,6 +159,34 @@ beforeAll(async () => {
       },
     });
   }
+  // `x-dev-usuario-id` es un usuario REAL de A: guardar una cotización deja su fila en el
+  // historial de estados (T-132), con foránea compuesta a `usuarios`. El rol lleva los permisos
+  // que usan las rutas de esta prueba.
+  const identidad = await admin.identidad.create({
+    data: {
+      correo: `fixture-aislamiento-extendidos-${TENANT_A.slice(-12)}@fixture-identidad.test`,
+      nombre: 'Asesora de A',
+    },
+  });
+  identidadA = identidad.id;
+  const rol = await admin.rol.create({
+    data: {
+      tenantId: TENANT_A,
+      nombre: 'Asesor',
+      clave: 'ASESOR',
+      permisos: ['catalogo.administrar', 'cotizacion.escribir'],
+    },
+  });
+  await admin.usuario.create({
+    data: {
+      id: USUARIO_A,
+      tenantId: TENANT_A,
+      identidadId: identidad.id,
+      rolId: rol.id,
+      correo: identidad.correo,
+      nombre: identidad.nombre,
+    },
+  });
   await admin.definicionCampoPersonalizado.create({
     data: {
       tenantId: TENANT_A,
@@ -195,6 +224,8 @@ afterAll(async () => {
       await adminPg.query('BEGIN');
       await modulo.borrarTenants(adminPg, [TENANT_A, TENANT_B]);
       await adminPg.query('COMMIT');
+      // La identidad es global: `borrarTenants` no la toca.
+      if (identidadA) await adminPg.query('DELETE FROM identidades WHERE id = $1', [identidadA]);
     } finally {
       await adminPg.end();
     }
