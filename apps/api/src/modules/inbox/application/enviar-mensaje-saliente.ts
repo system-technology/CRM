@@ -18,6 +18,7 @@
  *      en el último intento, donde se marca `FALLIDO`.
  */
 import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
+import { limpiarTextoSaliente } from '@viajapro/contracts';
 import { VentanaCerradaError } from '../domain/errores-de-conversacion.js';
 import {
   CanalNoActivoError,
@@ -71,7 +72,10 @@ export class EnviarMensajeSaliente {
     if (m.aceptadoPorMeta || m.estado !== 'PENDIENTE') return { estado: 'YA_RESUELTO' };
 
     // Mínimo vertical: solo texto. Plantillas, medios e interactivos no salen por aquí todavía.
-    if (m.tipo !== 'TEXTO' || !m.texto) {
+    // T-061: el texto se limpia también aquí (el contrato ya lo hace al entrar), por si el mensaje
+    // llegó por otra vía; si no queda nada que enviar, se rechaza sin llamar a Meta.
+    const texto = m.tipo === 'TEXTO' && m.texto ? limpiarTextoSaliente(m.texto) : '';
+    if (!texto) {
       return this.fallar(tenantId, mensajeId, new EnvioRechazadoError(null));
     }
     // T-096: revocar detiene los envíos. Se mira aquí y no al encolar: pudo revocarse en la cola.
@@ -107,7 +111,7 @@ export class EnviarMensajeSaliente {
       const { wamid } = await this.whatsapp.enviarTexto({
         credencial,
         para: m.destinoE164,
-        texto: m.texto,
+        texto,
         referencia: mensajeId,
       });
       await this.mensajes.registrarAceptado(tenantId, mensajeId, wamid);
