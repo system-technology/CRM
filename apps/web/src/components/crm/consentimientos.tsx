@@ -21,6 +21,7 @@ import {
   TEXTOS_LEGALES_CONSENTIMIENTO,
 } from '../../lib/consentimientos-logica';
 import { formatearFechaHora } from '../../lib/formato';
+import { usePermisos, explicacionFaltaPermiso } from '../../lib/permisos';
 
 export interface PanelConsentimientosContactoProps {
   contacto: Contacto;
@@ -33,6 +34,8 @@ export function PanelConsentimientosContacto({
   onContactoActualizado,
   modoCompacto = false,
 }: PanelConsentimientosContactoProps) {
+  const { puedeEscribirCrm, cargando } = usePermisos();
+  const deshabilitadoPorPermiso = !cargando && !puedeEscribirCrm;
   const [cargandoFinalidad, setCargandoFinalidad] = useState<Consentimiento | null>(null);
   const [errorAccion, setErrorAccion] = useState<string | null>(null);
   const [modalFinalidadTexto, setModalFinalidadTexto] =
@@ -258,8 +261,13 @@ export function PanelConsentimientosContacto({
                       type="button"
                       data-testid={`btn-revocar-${testIdSuffix}`}
                       onClick={() => setConfirmarRevocar(item.finalidad)}
-                      disabled={enProceso}
-                      className="inline-flex min-h-[44px] items-center gap-1.5 rounded-lg border border-rose-300 bg-white px-3 py-1.5 text-xs font-bold text-rose-700 shadow-2xs hover:bg-rose-50 disabled:opacity-50 dark:border-rose-800 dark:bg-neutral-800 dark:text-rose-300 dark:hover:bg-neutral-700"
+                      disabled={enProceso || deshabilitadoPorPermiso}
+                      title={
+                        deshabilitadoPorPermiso
+                          ? explicacionFaltaPermiso('crm.escribir')
+                          : undefined
+                      }
+                      className="inline-flex min-h-[44px] items-center gap-1.5 rounded-lg border border-rose-300 bg-white px-3 py-1.5 text-xs font-bold text-rose-700 shadow-2xs hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-rose-800 dark:bg-neutral-800 dark:text-rose-300 dark:hover:bg-neutral-700"
                     >
                       <ShieldAlert className="h-4 w-4" />
                       <span>Revocar consentimiento</span>
@@ -270,8 +278,11 @@ export function PanelConsentimientosContacto({
                     type="button"
                     data-testid={`btn-otorgar-${testIdSuffix}`}
                     onClick={() => void manejarOtorgar(item.finalidad)}
-                    disabled={enProceso}
-                    className="inline-flex min-h-[44px] items-center gap-1.5 rounded-lg bg-teal-600 px-3 py-1.5 text-xs font-bold text-white shadow-2xs hover:bg-teal-700 focus-visible:outline-2 focus-visible:outline-teal-600 disabled:opacity-50"
+                    disabled={enProceso || deshabilitadoPorPermiso}
+                    title={
+                      deshabilitadoPorPermiso ? explicacionFaltaPermiso('crm.escribir') : undefined
+                    }
+                    className="inline-flex min-h-[44px] items-center gap-1.5 rounded-lg bg-teal-600 px-3 py-1.5 text-xs font-bold text-white shadow-2xs hover:bg-teal-700 focus-visible:outline-2 focus-visible:outline-teal-600 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {enProceso ? (
                       <RefreshCw className="h-3.5 w-3.5 animate-spin" />

@@ -30,6 +30,7 @@ import { DistintivoDatosDemo } from '../../components/comun/distintivo-datos-dem
 import { AvisoConfiguracionTenant } from '../../components/crm/aviso-configuracion-tenant';
 import { formatearErrorAmigable } from '../../lib/estados-ui-logica';
 import { DesgloseCotizacionSalida } from '../../components/cotizador/desglose-cotizacion-salida';
+import { usePermisos, explicacionFaltaPermiso } from '../../lib/permisos';
 import { EstadoSinCatalogo } from '../../components/catalogo/estado-sin-catalogo';
 
 const ModalGuardarCotizacion = dynamic(() =>
@@ -123,6 +124,8 @@ function ContenidoCotizador() {
     mensaje: string;
     esErrorAgencia: boolean;
   } | null>(null);
+
+  const { puedeEscribirCotizacion } = usePermisos();
 
   // Opciones de salida del producto (turno, modalidad; ADR-0017 §3.1). Con opciones activas la
   // API exige `opcionDeSalidaId`: el asesor elige antes de cotizar y no se adivina por él.
@@ -995,8 +998,13 @@ function ContenidoCotizador() {
                           <button
                             type="button"
                             onClick={() => setModalGuardarAbierto(true)}
-                            disabled={guardandoCotizacion}
-                            className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-purple-700 px-4 py-2.5 text-xs font-bold text-white shadow-xs transition-colors hover:bg-purple-800 sm:w-auto"
+                            disabled={guardandoCotizacion || !puedeEscribirCotizacion}
+                            title={
+                              !puedeEscribirCotizacion
+                                ? explicacionFaltaPermiso('cotizacion.escribir')
+                                : undefined
+                            }
+                            className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-purple-700 px-4 py-2.5 text-xs font-bold text-white shadow-xs transition-colors hover:bg-purple-800 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
                           >
                             <Bookmark className="h-4 w-4" />
                             <span>Guardar Cotización Oficial</span>
