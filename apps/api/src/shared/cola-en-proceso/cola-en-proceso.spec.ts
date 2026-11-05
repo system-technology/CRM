@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ColaEnProceso, type OpcionesDeColaEnProceso } from './cola-en-proceso.js';
 
@@ -11,6 +12,21 @@ const base = <T>(extra: Partial<OpcionesDeColaEnProceso<T>> = {}): OpcionesDeCol
 describe('ColaEnProceso', () => {
   beforeEach(() => vi.useFakeTimers());
   afterEach(() => vi.useRealTimers());
+
+  it('un trabajo NO hereda el AsyncLocalStorage de quien lo encola, ni en el reintento (C3)', async () => {
+    const als = new AsyncLocalStorage<{ tenant: string }>();
+    const vistos: Array<string | undefined> = [];
+    const cola = new ColaEnProceso<string>(base({ intentos: 2 }), (_d, c) => {
+      vistos.push(als.getStore()?.tenant);
+      return c.intento < 2 ? Promise.reject(new Error('cae')) : Promise.resolve();
+    });
+    // Dos «peticiones» de agencias distintas encolan desde su propio contexto.
+    als.run({ tenant: 'A' }, () => cola.encolar('a', 'x'));
+    als.run({ tenant: 'B' }, () => cola.encolar('b', 'y'));
+    await vi.advanceTimersByTimeAsync(5_000);
+    expect(vistos).toHaveLength(4);
+    expect(vistos.every((v) => v === undefined)).toBe(true);
+  });
 
   it('despacha al instante, sin esperar a ningún barrido', async () => {
     const procesar = vi.fn(() => Promise.resolve());
