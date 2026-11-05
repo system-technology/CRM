@@ -2927,7 +2927,7 @@ tasks:
     phase: 1
     priority: P2
     effort: M
-    status: backlog
+    status: done
     depends_on: []
     acceptance:
       - "Lee los permisos de la sesion (contrato de identidad en packages/contracts/src/identidad.ts) y
@@ -2942,6 +2942,11 @@ tasks:
       - apps/web/src/lib/permisos.spec.ts
     source: cola de Antigravity reabastecida 2026-11-04
     created_at: 2026-11-04T23:48:05.405Z
+    started_at: 2026-11-05T03:46:01.894Z
+    done_at: 2026-11-05T03:46:01.894Z
+    evidence: "Mergeado en main por el PR #208 (rama b/T-118-acciones-segun-permisos) con el CI en verde: format,
+      analyze, tests y los demás checks obligatorios. Cierre automático (.github/workflows/cerrar-tarea.yml)."
+    commit: 3870d14e0ede53dbd33473218927eee7ec2b582c
   - id: T-119
     title: Exportar a CSV desde contactos, oportunidades y cotizaciones (solo lo que el usuario ve)
     type: feature
