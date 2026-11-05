@@ -8,7 +8,7 @@
  * proceso largo, y un temporizador cabe sin infraestructura nueva.
  *
  * **Varios trabajadores.** Cada uno tiene su temporizador, pero solo el que gana el turno del
- * intervalo (`SET NX PX` en Redis) barre. Si el turno falla, el `jobId` sigue impidiendo el
+ * intervalo barre (`SET NX PX` en Redis). Si el turno falla, el `jobId` sigue impidiendo el
  * duplicado: el turno ahorra trabajo, no es lo que da la corrección.
  */
 import {
@@ -53,11 +53,12 @@ export class PlanificadorDeBarrido implements OnModuleInit, OnModuleDestroy {
   async tick(): Promise<void> {
     try {
       // El turno dura un poco menos que el intervalo, para que el siguiente lo encuentre libre.
-      const turno = await this.coordinacion.adquirirTurno(
+      await this.coordinacion.conTurno(
         Math.max(1_000, this.config.intervaloMs - 2_000),
+        async () => {
+          await this.barrer.ejecutar(this.config);
+        },
       );
-      if (!turno) return;
-      await this.barrer.ejecutar(this.config);
     } catch (error) {
       // Solo la clase y el código: el mensaje de un error de base puede traer la fila.
       this.log.error(

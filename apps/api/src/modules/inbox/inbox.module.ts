@@ -43,6 +43,11 @@ import { PuertoRecepciones } from './application/puerto-recepciones.js';
 import { PuertoColaDeChanges } from './application/puertos-de-proceso.js';
 import { ColaDeChangesBullmq } from './infrastructure/cola-de-changes.bullmq.js';
 import { ColaDeChangesInerte } from './infrastructure/cola-de-changes.inerte.js';
+import {
+  COMPARTIDO_DEL_INBOX,
+  type CompartidoDelInbox,
+} from './infrastructure/compartido-en-proceso.js';
+import { esModoUnico } from '../../shared/despliegue/modo-de-despliegue.js';
 import { RegistrarRecepcion } from './application/registrar-recepcion.js';
 import { RecepcionesPrisma } from './infrastructure/recepciones.prisma.js';
 import { WebhookWhatsappController } from './interface/webhook-whatsapp.controller.js';
@@ -60,7 +65,11 @@ import { WebhookWhatsappController } from './interface/webhook-whatsapp.controll
     ActuarEnConversacionUseCase,
     EnviarCotizacionPorWhatsapp,
     { provide: PuertoConversaciones, useClass: ConversacionesPrisma },
-    { provide: PuertoAvisoAlRelay, useFactory: crearAvisoAlRelay, inject: [BUS_EN_MEMORIA] },
+    {
+      provide: PuertoAvisoAlRelay,
+      useFactory: crearAvisoAlRelay,
+      inject: [BUS_EN_MEMORIA, { token: COMPARTIDO_DEL_INBOX, optional: true }],
+    },
     // --- Bandeja en vivo (Socket.IO) -----------------------------------------------------
     BandejaEnVivoGateway,
     { provide: PuertoEmisionEnVivo, useExisting: BandejaEnVivoGateway },
@@ -69,7 +78,12 @@ import { WebhookWhatsappController } from './interface/webhook-whatsapp.controll
     { provide: PuertoLecturaDeMensajes, useClass: LecturaDeMensajesPrisma },
     { provide: PuertoLecturaDeConversaciones, useClass: LecturaDeConversacionesPrisma },
     // El bus se elige al instanciar: `BUS_DE_EVENTOS=memoria` o Redis.
-    { provide: BUS_EN_MEMORIA, useFactory: crearBusEnMemoriaSiSePide },
+    // En modo `unico` el bus es el compartido con el contexto del trabajador (ADR-0019 §1.1).
+    {
+      provide: BUS_EN_MEMORIA,
+      useFactory: crearBusEnMemoriaSiSePide,
+      inject: [{ token: COMPARTIDO_DEL_INBOX, optional: true }],
+    },
     {
       provide: PuertoSuscriptorDeEventos,
       useFactory: crearSuscriptor,
@@ -82,9 +96,17 @@ import { WebhookWhatsappController } from './interface/webhook-whatsapp.controll
     },
     { provide: PuertoRecepciones, useClass: RecepcionesPrisma },
     {
-      // Cola explícita, sin respaldo silencioso: o hay Redis o se declara 'inerte'.
+      // Cola explícita, sin respaldo silencioso: en modo `unico` la compartida en proceso; si no,
+      // o hay Redis o se declara 'inerte'.
       provide: PuertoColaDeChanges,
-      useFactory: (): PuertoColaDeChanges => {
+      inject: [{ token: COMPARTIDO_DEL_INBOX, optional: true }],
+      useFactory: (compartido?: CompartidoDelInbox | null): PuertoColaDeChanges => {
+        if (compartido) return compartido.colaDeChanges;
+        if (esModoUnico(process.env)) {
+          throw new Error(
+            'MODO_DESPLIEGUE=unico exige arrancar con main-unico.ts: aquí no hay cola en proceso.',
+          );
+        }
         if (process.env['COLA_CHANGES'] === 'inerte') return new ColaDeChangesInerte();
         const url = process.env['REDIS_URL'];
         if (!url) throw new Error('Falta REDIS_URL (o COLA_CHANGES=inerte en desarrollo).');
