@@ -1711,6 +1711,12 @@ model Mensaje {
   /// motivo_fallo es para el humano y este es para el soporte y las métricas.
   codigoErrorMeta Int?    @map("codigo_error_meta")
 
+  /// Estado del envío sin Redis (ADR-0019 §1.2): reserva durable, intentos y arrendamiento.
+  /// Solo salientes (CHECK). El índice parcial de pendientes lo pone la migración 20261104140000.
+  envioReservadoEn DateTime? @map("envio_reservado_en") @db.Timestamptz(3)
+  envioIntentos    Int       @default(0) @map("envio_intentos")
+  envioSiguienteEn DateTime? @map("envio_siguiente_en") @db.Timestamptz(3)
+
   /// Quién lo envió. Nulo en los entrantes y en los que manda una automatización — y un
   /// CHECK impide que un ENTRANTE tenga autor, que sería un mensaje puesto en boca del
   /// viajero.

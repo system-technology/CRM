@@ -8,6 +8,8 @@ import {
   PuertoConversacionesDeMiembro,
   PuertoConversacionesVisibles,
 } from '../../shared/puertos/puertos-hacia-inbox.js';
+import { PuertoRespuestaParaReportes } from '../../shared/puertos/puertos-de-reportes.js';
+import { RespuestaParaReportesPrisma } from './infrastructure/respuesta-para-reportes.prisma.js';
 import { ConversacionesDeMiembroDeInbox } from './infrastructure/conversaciones-de-miembro.prisma.js';
 import { ConversacionesVisiblesDeInbox } from './infrastructure/conversaciones-visibles.prisma.js';
 
@@ -16,7 +18,12 @@ import { ConversacionesVisiblesDeInbox } from './infrastructure/conversaciones-v
   providers: [
     { provide: PuertoConversacionesDeMiembro, useClass: ConversacionesDeMiembroDeInbox },
     { provide: PuertoConversacionesVisibles, useClass: ConversacionesVisiblesDeInbox },
+    { provide: PuertoRespuestaParaReportes, useClass: RespuestaParaReportesPrisma },
   ],
-  exports: [PuertoConversacionesDeMiembro, PuertoConversacionesVisibles],
+  exports: [
+    PuertoConversacionesDeMiembro,
+    PuertoConversacionesVisibles,
+    PuertoRespuestaParaReportes,
+  ],
 })
 export class InboxPuertosModule {}
