@@ -24,8 +24,14 @@ export const COMPARTIDO_DEL_INBOX = Symbol('COMPARTIDO_DEL_INBOX');
 
 /** Código y clase de un error, nunca su mensaje: el de una base de datos puede traer la fila (R10). */
 function codigoSeguro(error: unknown): string {
-  const e = error as { code?: unknown; constructor?: { name?: string } } | null;
+  const e = error as {
+    code?: unknown;
+    codigo?: unknown;
+    constructor?: { name?: string };
+  } | null;
   const clase = e?.constructor?.name ?? 'Error';
+  // `ErrorDeTrabajo` (el que sube del consumidor) lleva `codigo`; un error de base, `code`.
+  if (typeof e?.codigo === 'string') return e.codigo;
   return typeof e?.code === 'string' ? `${clase}:${e.code}` : clase;
 }
 
