@@ -2226,7 +2226,7 @@ tasks:
     phase: 1
     priority: P2
     effort: M
-    status: backlog
+    status: done
     depends_on: []
     acceptance:
       - Cada mutación lleva @RequierePermiso, existe el rol sembrado SOLO_LECTURA y hay pruebas 403 por ruta
@@ -2237,6 +2237,11 @@ tasks:
       - docs/05-seguridad/04-rbac.md
     source: auditoria de ciberseguridad 2026-10-28
     created_at: 2026-10-28T02:09:17.390Z
+    started_at: 2026-11-05T00:05:27.666Z
+    done_at: 2026-11-05T00:05:27.666Z
+    evidence: "Mergeado en main por el PR #186 (rama a/T-089-permisos-rbac-migracion) con el CI en verde: format,
+      analyze, tests y los demás checks obligatorios. Cierre automático (.github/workflows/cerrar-tarea.yml)."
+    commit: 6a6fe517b5185babf11b039c3c21942a2d5f8265
   - id: T-090
     title: ADR de PII en mensajes.texto y contactos.preferencias, con supresión, exportación por titular y
       retención (antes de la agencia piloto)
