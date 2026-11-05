@@ -28,7 +28,11 @@ export class MoverOportunidadUseCase {
 
   constructor(@Inject(PuertoCrm) private readonly crm: PuertoCrm) {}
 
-  async ejecutar(oportunidadId: string, movimiento: Movimiento): Promise<Oportunidad> {
+  async ejecutar(
+    oportunidadId: string,
+    movimiento: Movimiento,
+    actorId: string | null,
+  ): Promise<Oportunidad> {
     const oportunidad = await this.crm.buscarOportunidad(oportunidadId);
     if (!oportunidad) throw new OportunidadNoEncontradaError(oportunidadId);
 
@@ -44,6 +48,7 @@ export class MoverOportunidadUseCase {
       etapaId: movimiento.etapaId,
       motivoPerdida: movimiento.motivoPerdida,
       notaPerdida: movimiento.notaPerdida,
+      actorId,
     });
 
     this.log.log(
