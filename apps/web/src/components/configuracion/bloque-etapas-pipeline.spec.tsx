@@ -5,6 +5,12 @@ import { BloqueEtapasPipeline } from './bloque-etapas-pipeline';
 import * as crmApi from '../../lib/crm-api';
 import type { EtapaDefinida } from '@viajapro/contracts';
 
+let puedeEscribirCrm = true;
+vi.mock('../../lib/permisos', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../lib/permisos')>();
+  return { ...actual, usePermisos: () => ({ puedeEscribirCrm }) };
+});
+
 const ETAPAS_MOCK: EtapaDefinida[] = [
   {
     id: '01a114b2-5314-75b1-91ad-3be0518a6a01',
@@ -38,6 +44,7 @@ const ETAPAS_MOCK: EtapaDefinida[] = [
 describe('BloqueEtapasPipeline (T-025)', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    puedeEscribirCrm = true;
   });
 
   it('1. Carga y renderiza el listado de etapas ordenadas desde la API', async () => {
@@ -111,6 +118,53 @@ describe('BloqueEtapasPipeline (T-025)', () => {
     });
 
     expect(spyActualizar).toHaveBeenCalledTimes(1);
+    expect(spyActualizar).toHaveBeenCalledWith(ETAPAS_MOCK, expect.any(Array));
     expect(await screen.findByText('Etapas del pipeline guardadas correctamente.')).toBeDefined();
+  });
+
+  it('5. Error real al guardar: se muestra y no se simula el guardado', async () => {
+    vi.spyOn(crmApi, 'listarEtapasPipelineApi').mockResolvedValue(ETAPAS_MOCK);
+    vi.spyOn(crmApi, 'actualizarEtapasPipelineApi').mockRejectedValue(new Error('Sin permiso'));
+    await act(async () => {
+      render(<BloqueEtapasPipeline />);
+      await Promise.resolve();
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /Guardar etapas/i }));
+      await Promise.resolve();
+    });
+    expect(await screen.findByRole('alert')).toBeDefined();
+    expect(screen.queryByText('Etapas del pipeline guardadas correctamente.')).toBeNull();
+  });
+
+  it('6. Error de carga con reintento y estado vacio', async () => {
+    const spy = vi
+      .spyOn(crmApi, 'listarEtapasPipelineApi')
+      .mockRejectedValueOnce(new Error('caido'))
+      .mockResolvedValueOnce([]);
+    await act(async () => {
+      render(<BloqueEtapasPipeline />);
+      await Promise.resolve();
+    });
+    expect(await screen.findByRole('alert')).toBeDefined();
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /Reintentar/i }));
+      await Promise.resolve();
+    });
+    expect(spy).toHaveBeenCalledTimes(2);
+    expect(await screen.findByTestId('etapas-vacio')).toBeDefined();
+  });
+
+  it('7. Sin crm.escribir los controles de edicion quedan deshabilitados', async () => {
+    puedeEscribirCrm = false;
+    vi.spyOn(crmApi, 'listarEtapasPipelineApi').mockResolvedValue(ETAPAS_MOCK);
+    await act(async () => {
+      render(<BloqueEtapasPipeline />);
+      await Promise.resolve();
+    });
+    expect(
+      screen.getByRole<HTMLButtonElement>('button', { name: /Guardar etapas/i }).disabled,
+    ).toBe(true);
+    expect(screen.getByDisplayValue<HTMLInputElement>('Nuevo prospecto').disabled).toBe(true);
   });
 });

@@ -4,6 +4,7 @@
  * Sin caída a datos simulados: un fallo se lanza como `ErrorReportesApi`.
  */
 import {
+  AjustesDeAgencia,
   ConsultarResumenDeReportes,
   ErrorApi,
   ResumenDeReportes,
@@ -79,4 +80,27 @@ export async function obtenerResumenDeReportesApi(
     );
   }
   return parseo.data;
+}
+
+/**
+ * `GET /api/v1/agencia/ajustes`: zona horaria IANA de la agencia (R9). Si falla (red, 403,
+ * formato) devuelve `null` y quien llama usa el respaldo; nunca rompe el reporte.
+ */
+export async function obtenerZonaHorariaAgenciaApi(senal?: AbortSignal): Promise<string | null> {
+  try {
+    const res = await fetch(`${obtenerBaseApi()}/api/v1/agencia/ajustes`, {
+      method: 'GET',
+      headers: { Accept: 'application/json', ...cabecerasDeTenantDev() },
+      credentials: 'include',
+      ...(senal ? { signal: senal } : {}),
+    });
+    if (!res.ok) return null;
+    const parseo = AjustesDeAgencia.safeParse(await res.json().catch(() => null));
+    if (!parseo.success) return null;
+    // Una zona que Intl no reconoce haría lanzar RangeError al calcular el periodo.
+    new Intl.DateTimeFormat('es-CO', { timeZone: parseo.data.zonaHoraria });
+    return parseo.data.zonaHoraria;
+  } catch {
+    return null;
+  }
 }
