@@ -204,7 +204,7 @@ describe.skipIf(!CORRE)('envíos sobre Postgres: dos agencias, dos consumidores,
           `#${contexto.intento} ${e.constructor?.name ?? '?'}:${String(typeof e.code === 'string' ? e.code : typeof e.codigo === 'string' ? e.codigo : '')}`,
         );
       },
-      { esperaBaseMs: 50, concurrencia: 2 },
+      { esperaBaseMs: 50 },
     );
     const caso = new EnviarMensajeSaliente(
       mensajes,
@@ -248,11 +248,14 @@ describe.skipIf(!CORRE)('envíos sobre Postgres: dos agencias, dos consumidores,
         };
         const ref = cuerpo.biz_opaque_callback_data ?? '?';
         peticiones.set(ref, (peticiones.get(ref) ?? 0) + 1);
+        // El número se fija AQUÍ: leído dentro del temporizador, varias respuestas concurrentes
+        // compartirían el último valor y repetirían el wamid (P2002 en mensajes_tenant_id_wamid_key).
         contador += 1;
+        const numero = contador;
         // Un poco de latencia: ensancha la carrera entre los dos consumidores.
         setTimeout(() => {
           res.writeHead(200, { 'content-type': 'application/json' });
-          res.end(JSON.stringify({ messages: [{ id: `wamid.FALSO.${MARCA}.${contador}` }] }));
+          res.end(JSON.stringify({ messages: [{ id: `wamid.FALSO.${MARCA}.${numero}` }] }));
         }, 40);
       });
     });
