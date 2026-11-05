@@ -4,9 +4,9 @@
  * **El catálogo de permisos es código, no tabla.** Lo que el sistema sabe hacer es un
  * invariante del dominio; cómo lo agrupa cada agencia en roles es política (tabla `roles`,
  * R12). Este enum es la fuente de verdad, y la base lo refleja en el `CHECK
- * roles_permisos_del_catalogo` (migración `20261019230000`, ampliado en `20261026120000`). Añadir un permiso es editar
- * los dos: un permiso que la base no admite no se puede asignar, y uno que el código no
- * conoce no autoriza nada.
+ * roles_permisos_del_catalogo` (migración `20261019230000`, ampliado en `20261026120000` y
+ * `20261104130000`). Añadir un permiso es editar los dos: un permiso que la base no admite no
+ * se puede asignar, y uno que el código no conoce no autoriza nada.
  */
 
 import { z } from 'zod';
@@ -26,6 +26,18 @@ export const PERMISOS = [
    * `cotizacion.ver_neto_y_margen`. Migración `20261026120000`.
    */
   'catalogo.administrar',
+  /**
+   * Operar la bandeja: las mutaciones sobre conversaciones y mensajes (T-089). Ver las
+   * conversaciones ajenas sigue exigiendo `conversaciones.ver_todas`. Migración `20261104130000`.
+   */
+  'bandeja.operar',
+  /** Las mutaciones del CRM: contactos, oportunidades, seguimientos (T-089). */
+  'crm.escribir',
+  /**
+   * Crear cotizaciones y sus versiones (T-089). Ver el neto y el margen sigue exigiendo
+   * `cotizacion.ver_neto_y_margen`.
+   */
+  'cotizacion.escribir',
 ] as const;
 
 export const Permiso = z.enum(PERMISOS);
