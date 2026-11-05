@@ -107,6 +107,14 @@ describe('migración 20261104130000 — permisos de mutación', () => {
 
       await admin.query(sql.slice(0, corte));
 
+      // El contexto no queda colgado al terminar la migración. Se lee ANTES de cualquier otro
+      // set_config de esta prueba: la siembra lo dejó en `parcial` y el bucle de la migración en
+      // la última agencia, así que solo el reinicio final de la migración lo deja vacío.
+      const { rows } = await admin.query<{ t: string | null }>(
+        "SELECT current_setting('app.current_tenant', true) AS t",
+      );
+      expect(rows[0]?.t ?? '').toBe('');
+
       expect(await permisosPorNombre(vieja)).toEqual({
         Dueño: [...DUENO_ANTES, ...ESCRITURA],
         Asesor: ESCRITURA,
@@ -118,12 +126,6 @@ describe('migración 20261104130000 — permisos de mutación', () => {
         Asesor: ['crm.escribir', 'bandeja.operar', 'cotizacion.escribir'],
         Operaciones: [],
       });
-
-      // El contexto no queda colgado al terminar la migración.
-      const { rows } = await admin.query<{ t: string | null }>(
-        "SELECT current_setting('app.current_tenant', true) AS t",
-      );
-      expect(rows[0]?.t ?? '').toBe('');
 
       // Y el catálogo cerrado sigue cerrado: uno inventado lo rechaza la base.
       await admin.query("SELECT set_config('app.current_tenant', $1, true)", [vieja]);
