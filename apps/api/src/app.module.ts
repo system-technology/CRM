@@ -1,4 +1,6 @@
 import { type MiddlewareConsumer, Module, type NestModule } from '@nestjs/common';
+import { AnalyticsModule } from './modules/analytics/analytics.module.js';
+import { CrmReportesModule } from './modules/crm/crm-reportes.module.js';
 import { CrmModule } from './modules/crm/crm.module.js';
 import { IdentityModule } from './modules/identity/identity.module.js';
 import { InboxModule } from './modules/inbox/inbox.module.js';
@@ -23,6 +25,8 @@ import { OriginCheckMiddleware } from './shared/red/origin-check.middleware.js';
     QuotingPuertosModule,
     InboxModule,
     CrmModule,
+    CrmReportesModule,
+    AnalyticsModule,
   ],
   controllers: [SaludController],
 })
