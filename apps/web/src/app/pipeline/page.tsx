@@ -1,5 +1,6 @@
 'use client';
 
+import { AvisoSoloLocal } from '../../components/comun/aviso-solo-local';
 import { useModoDemo } from '../../lib/modo-demo';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -340,6 +341,7 @@ export default function PipelinePage() {
               </div>
             )}
           </div>
+          {tieneFiltrosActivos && <AvisoSoloLocal que="los filtros recordados" className="mt-2" />}
         </header>
 
         {/* Cuerpo Principal del Tablero Kanban */}
