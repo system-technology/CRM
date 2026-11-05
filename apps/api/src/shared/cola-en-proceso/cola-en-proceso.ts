@@ -10,7 +10,14 @@
  *
  * **No registra nada.** Los datos pueden llevar PII o secretos; quien la usa decide qué se dice,
  * por los ganchos `alFallar` y `alAgotar`, que reciben la clave y el error pero nunca el dato.
+ *
+ * **Aislamiento de contexto asíncrono (C3 de la auditoría de #211).** Un trabajo se despacha desde
+ * quien lo encola (una petición HTTP, un temporizador) y heredaría su `AsyncLocalStorage`: el
+ * tenant, el usuario o la traza de OTRA ejecución. Cada trabajo corre, en cambio, en el contexto
+ * capturado cuando se CONSTRUYÓ la cola (el arranque del proceso), que no lleva nada. La cola se
+ * construye al arrancar, nunca dentro de una petición.
  */
+import { AsyncResource } from 'node:async_hooks';
 
 export interface ContextoDeIntento {
   /** 1 para el primer intento. */
@@ -58,6 +65,10 @@ export class ColaEnProceso<T> {
   private readonly reintentos = new Map<string, NodeJS.Timeout>();
   private readonly recordadas = new Map<string, number>();
   private cerrada = false;
+  /** Ejecuta una función en el contexto asíncrono de la construcción de la cola (C3). */
+  private readonly aislar: (fn: () => Promise<void>) => Promise<void> = AsyncResource.bind(
+    (fn: () => Promise<void>) => fn(),
+  );
 
   constructor(
     private readonly opciones: OpcionesDeColaEnProceso<T>,
@@ -136,7 +147,7 @@ export class ColaEnProceso<T> {
       const entrada = this.esperando.shift();
       if (!entrada) return;
       const id = ++this.contador;
-      const corrida = this.correr(entrada).finally(() => {
+      const corrida = this.aislar(() => this.correr(entrada)).finally(() => {
         this.activos.delete(id);
         this.bombear();
       });
