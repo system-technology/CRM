@@ -2846,7 +2846,7 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: backlog
+    status: done
     depends_on: []
     acceptance:
       - Usa POST /api/v1/crm/contactos/:id/consentimientos y .../consentimientos/revocar con los contratos
@@ -2862,6 +2862,11 @@ tasks:
       - apps/web/src/lib/consentimientos-logica.spec.ts
     source: cola de Antigravity reabastecida 2026-11-04
     created_at: 2026-11-04T23:48:05.402Z
+    started_at: 2026-11-05T00:13:56.165Z
+    done_at: 2026-11-05T00:13:56.165Z
+    evidence: "Mergeado en main por el PR #190 (rama b/T-116-consentimientos-ficha) con el CI en verde: format,
+      analyze, tests y los demás checks obligatorios. Cierre automático (.github/workflows/cerrar-tarea.yml)."
+    commit: 981698fbbc52fc3e00beaaf5781d4b57c8ad30f0
   - id: T-117
     title: Mensajes claros en es-CO para los errores del envio (ventana cerrada, consentimiento revocado,
       cotizacion de otro contacto)
