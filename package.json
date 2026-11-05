@@ -32,6 +32,7 @@
     "db:setup": "pnpm db:migrate:deploy && pnpm --filter @viajapro/database run rol:crear",
     "db:migrate:deploy": "pnpm --filter @viajapro/database run migrate:deploy",
     "db:aislamiento": "pnpm --filter @viajapro/database run test:aislamiento",
+    "dev:nube": "node scripts/dev-nube.mjs",
     "db:seed:crm": "pnpm --filter @viajapro/database seed:crm"
   },
   "devDependencies": {
