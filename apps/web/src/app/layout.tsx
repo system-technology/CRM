@@ -4,6 +4,7 @@ import { headers } from 'next/headers';
 import './globals.css';
 import { BannerConsentimientoCookies } from '../components/privacidad/banner-consentimiento-cookies';
 import { PieDePaginaPrivacidad } from '../components/privacidad/pie-de-pagina-privacidad';
+import { GuardaSesion } from '../components/auth/guarda-sesion';
 import { AvisoSinConexion } from '../components/comun/aviso-sin-conexion';
 import { SCRIPT_ANTI_FOUC } from '../lib/tema-y-densidad';
 
@@ -33,7 +34,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       </head>
       <body className="flex min-h-screen flex-col">
         <AvisoSinConexion />
-        <div className="flex-1">{children}</div>
+        <div className="flex-1">
+          <GuardaSesion>{children}</GuardaSesion>
+        </div>
         <PieDePaginaPrivacidad />
         <BannerConsentimientoCookies />
       </body>
