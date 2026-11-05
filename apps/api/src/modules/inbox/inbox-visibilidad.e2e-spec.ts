@@ -363,12 +363,12 @@ beforeAll(async () => {
       tenantId: TENANT_A,
       nombre: 'Dueño',
       clave: 'DUENO',
-      permisos: ['conversaciones.ver_todas', 'usuarios.administrar'],
+      permisos: ['conversaciones.ver_todas', 'usuarios.administrar', 'bandeja.operar'],
     },
   });
   rolAsesorA = (
     await admin.rol.create({
-      data: { tenantId: TENANT_A, nombre: 'Asesor', clave: 'ASESOR', permisos: [] },
+      data: { tenantId: TENANT_A, nombre: 'Asesor', clave: 'ASESOR', permisos: ['bandeja.operar'] },
     })
   ).id;
   // El rol de B TIENE `ver_todas`: aun así Bruno no puede ver nada de la agencia A.
@@ -377,7 +377,7 @@ beforeAll(async () => {
       tenantId: TENANT_B,
       nombre: 'Dueño',
       clave: 'DUENO',
-      permisos: ['conversaciones.ver_todas', 'usuarios.administrar'],
+      permisos: ['conversaciones.ver_todas', 'usuarios.administrar', 'bandeja.operar'],
     },
   });
   await persona('dueno', TENANT_A, rolDueno.id);
@@ -688,7 +688,7 @@ describe('tiempo real', () => {
       expect(ana.de(e.c2).map((x) => x.tipo)).toEqual(['MENSAJE_NUEVO']);
       expect(ana.cerrado()).toBe(false);
     } finally {
-      await admin.rol.update({ where: { id: rolAsesorA }, data: { permisos: [] } });
+      await admin.rol.update({ where: { id: rolAsesorA }, data: { permisos: ['bandeja.operar'] } });
     }
 
     // Al quitarlo, igual.
@@ -759,6 +759,19 @@ describe('asignación', () => {
     // Y la nota quedó en el hilo.
     const notas = await api('ana', 'GET', `/api/v1/conversaciones/${e.c3}/notas`);
     expect(JSON.stringify(notas.json)).toContain('Pidió cotización a Cancún');
+  });
+
+  it('T-089: sin bandeja.operar, mutar la bandeja da 403 aunque la persona administre usuarios', async () => {
+    const e = await escenario();
+    const r = await api('gina', 'POST', `/api/v1/conversaciones/${e.c1}/mensajes`, {
+      texto: 'No debería salir',
+      claveIdempotencia: randomUUID(),
+    });
+    expect(r.status).toBe(403);
+    expect(
+      (await api('gina', 'PUT', `/api/v1/conversaciones/${e.c1}/asignacion`, { usuarioId: null }))
+        .status,
+    ).toBe(403);
   });
 
   it('CA10: el Dueño responde en C1: C1 sigue asignada a Ana', async () => {
