@@ -21,6 +21,7 @@ protección de servidor. Este párrafo caduca: el punto exacto está en `ESTADO.
 
 ## 2. Antes de hacer cualquier cosa
 
+0. El hook inyecta el **cerebro persistente** (`docs/_contexto/CHECKPOINT.local.md` + `DIARIO.md`). Verificar con `gh`/`git` antes de afirmar. Tras cada hito, escribir el checkpoint (local, sin PR); al cerrar un lote, consolidar en `DIARIO.md`.
 1. Leer `ESTADO.md` — es el hilo vivo: en qué vamos, qué sigue, qué está bloqueado.
 2. Si la tarea toca arquitectura, leer el ADR correspondiente en `docs/03-adr/`.
 3. Si la tarea toca dominio, leer `docs/02-arquitectura/02-contextos-delimitados.md` y
