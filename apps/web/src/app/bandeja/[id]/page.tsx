@@ -63,6 +63,7 @@ import { ModalEnviarCotizacion } from '../../../components/bandeja/modal-enviar-
 import { ModalCrearOportunidad } from '../../../components/bandeja/modal-crear-oportunidad';
 import { ModalEditarContacto } from '../../../components/bandeja/modal-editar-contacto';
 import { MenuRespuestasRapidas } from '../../../components/bandeja/menu-respuestas-rapidas';
+import { useBandejaAtajos, debeProcesarAtajo } from '../../../lib/atajos-teclado-bandeja';
 import { AlertaErrorEnvio } from '../../../components/bandeja/alerta-error-envio';
 import { interpretarErrorDeEnvio, type DetalleErrorEnvio } from '../../../lib/errores-de-envio';
 import {
@@ -96,6 +97,7 @@ export default function BandejaConversacionPage() {
   const [modoNota, setModoNota] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [errorEnvio, setErrorEnvio] = useState<DetalleErrorEnvio | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   // Modal de plantillas Meta HSM
   const [modalPlantillasAbierto, setModalPlantillasAbierto] = useState(false);
@@ -111,35 +113,88 @@ export default function BandejaConversacionPage() {
   const [modalReasignarAbierto, setModalReasignarAbierto] = useState(false);
   const [menuRespuestasAbierto, setMenuRespuestasAbierto] = useState(false);
 
-  // Atajos de teclado en el chat (T-024)
+  // Modales de Cotización y CRM (T-074, T-076)
+  const [modalEnviarCotizacionAbierto, setModalEnviarCotizacionAbierto] = useState(false);
+  const [modalCrearOportunidadAbierto, setModalCrearOportunidadAbierto] = useState(false);
+  const [modalEditarContactoAbierto, setModalEditarContactoAbierto] = useState(false);
+
+  // Atajos de teclado en la bandeja (T-127 y T-024)
+  const { irASiguiente, irAAnterior, modalAyudaAbierto, setModalAyudaAbierto, atajosHabilitados } =
+    useBandejaAtajos();
+
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      // Atajos con modificador Alt (T-024)
       if (e.altKey && e.key.toLowerCase() === 'p') {
         e.preventDefault();
         setModalPlantillasAbierto((prev) => !prev);
+        return;
       } else if (e.altKey && e.key.toLowerCase() === 'r') {
         e.preventDefault();
         setModalReasignarAbierto((prev) => !prev);
+        return;
       } else if (e.altKey && e.key.toLowerCase() === 'f') {
         e.preventDefault();
         setMostrarFichaLateral((prev) => !prev);
+        return;
       } else if (e.key === 'Escape') {
-        if (menuRespuestasAbierto) setMenuRespuestasAbierto(false);
+        if (modalAyudaAbierto) setModalAyudaAbierto(false);
+        else if (menuRespuestasAbierto) setMenuRespuestasAbierto(false);
         else if (modalPlantillasAbierto) setModalPlantillasAbierto(false);
         else if (modalReasignarAbierto) setModalReasignarAbierto(false);
+        else if (modalEnviarCotizacionAbierto) setModalEnviarCotizacionAbierto(false);
+        else if (modalCrearOportunidadAbierto) setModalCrearOportunidadAbierto(false);
+        else if (modalEditarContactoAbierto) setModalEditarContactoAbierto(false);
         else if (mostrarFichaLateral) setMostrarFichaLateral(false);
+        return;
+      }
+
+      // Atajos de un solo carácter para navegación y acciones rápidas (T-127)
+      if (!debeProcesarAtajo(e, atajosHabilitados)) {
+        return;
+      }
+
+      const key = e.key;
+
+      if (key === 'r' || key === 'R') {
+        e.preventDefault();
+        textareaRef.current?.focus();
+      } else if (key === 'c' || key === 'C') {
+        e.preventDefault();
+        setModalEnviarCotizacionAbierto(true);
+      } else if (key === 's' || key === 'S') {
+        e.preventDefault();
+        setModalCrearOportunidadAbierto(true);
+      } else if (key === '?' || (key === '/' && e.shiftKey)) {
+        e.preventDefault();
+        setModalAyudaAbierto(true);
+      } else if (key === 'j' || key === 'J') {
+        e.preventDefault();
+        irASiguiente(id);
+      } else if (key === 'k' || key === 'K') {
+        e.preventDefault();
+        irAAnterior(id);
       }
     };
 
     window.addEventListener('keydown', handleGlobalKeyDown);
     return () => window.removeEventListener('keydown', handleGlobalKeyDown);
-  }, [modalPlantillasAbierto, modalReasignarAbierto, mostrarFichaLateral, menuRespuestasAbierto]);
+  }, [
+    modalPlantillasAbierto,
+    modalReasignarAbierto,
+    mostrarFichaLateral,
+    menuRespuestasAbierto,
+    modalEnviarCotizacionAbierto,
+    modalCrearOportunidadAbierto,
+    modalEditarContactoAbierto,
+    modalAyudaAbierto,
+    atajosHabilitados,
+    id,
+    irASiguiente,
+    irAAnterior,
+    setModalAyudaAbierto,
+  ]);
   const [asignando, setAsignando] = useState(false);
-
-  // Modales de Cotización y CRM (T-074, T-076)
-  const [modalEnviarCotizacionAbierto, setModalEnviarCotizacionAbierto] = useState(false);
-  const [modalCrearOportunidadAbierto, setModalCrearOportunidadAbierto] = useState(false);
-  const [modalEditarContactoAbierto, setModalEditarContactoAbierto] = useState(false);
 
   // Permisos de sesión para visibilidad y asignación (0c.35, T-118)
   const { sesion, puedeVerTodasConversaciones, puedeOperarBandeja } = usePermisos();
@@ -291,7 +346,6 @@ export default function BandejaConversacionPage() {
 
   // Mapa de claves de idempotencia para garantizar R5
   const idempotenciaMapRef = useRef<Record<string, string>>({});
-  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const mensajeRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   // Tiempo restante de la ventana de 24h

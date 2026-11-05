@@ -3104,7 +3104,7 @@ tasks:
     phase: 1
     priority: P2
     effort: S
-    status: backlog
+    status: done
     depends_on: []
     acceptance:
       - j/k navegan conversaciones, r enfoca el compositor, c abre Enviar cotizacion, s crea seguimiento, ?
@@ -3117,13 +3117,18 @@ tasks:
       - apps/web/src/components/bandeja/ayuda-atajos.tsx
     source: "cola de Antigravity reabastecida 2026-11-04 (recuperadas: no entraron con #187)"
     created_at: 2026-11-05T00:45:13.085Z
+    started_at: 2026-11-05T01:39:51.736Z
+    done_at: 2026-11-05T01:39:51.736Z
+    evidence: "Mergeado en main por el PR #217 (rama b/T-127-atajos-teclado-bandeja) con el CI en verde: format,
+      analyze, tests y los demás checks obligatorios. Cierre automático (.github/workflows/cerrar-tarea.yml)."
+    commit: 31cdab3e9b98110db80912a97df29e0a98f01292
   - id: T-128
     title: Comparar dos versiones de una cotizacion lado a lado
     type: feature
     phase: 1
     priority: P2
     effort: M
-    status: backlog
+    status: done
     depends_on: []
     acceptance:
       - "Desde cotizaciones guardadas se eligen dos versiones y se ve la diferencia por linea: pasajeros,
@@ -3136,6 +3141,11 @@ tasks:
       - apps/web/src/app/cotizaciones/
     source: "cola de Antigravity reabastecida 2026-11-04 (recuperadas: no entraron con #187)"
     created_at: 2026-11-05T00:45:13.087Z
+    started_at: 2026-11-05T02:00:41.431Z
+    done_at: 2026-11-05T02:00:41.431Z
+    evidence: "Mergeado en main por el PR #222 (rama b/T-128-comparar-cotizaciones) con el CI en verde: format,
+      analyze, tests y los demás checks obligatorios. Cierre automático (.github/workflows/cerrar-tarea.yml)."
+    commit: b165f9200dc579b87e24353a05cd0632427164ac
   - id: T-129
     title: Accesibilidad del cotizador y del catalogo (foco, etiquetas, contraste, teclado)
     type: feature

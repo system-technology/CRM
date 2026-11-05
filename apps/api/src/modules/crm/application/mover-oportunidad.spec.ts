@@ -13,6 +13,8 @@ import { PuertoCrm, type EtapaResumida, type MovimientoDeOportunidad } from './p
 const VIVA: EtapaResumida = { id: 'e-viva', nombre: 'En negociación', esPerdida: false };
 const PERDIDA: EtapaResumida = { id: 'e-perdida', nombre: 'Se fue con otra', esPerdida: true };
 
+const ACTOR = 'u-asesora';
+
 const OPORTUNIDAD = {
   id: 'o-1',
   etapa: { id: 'e-viva', nombre: 'En negociación' } as unknown as EtapaDefinida,
@@ -67,7 +69,7 @@ describe('MoverOportunidadUseCase', () => {
   });
 
   it('mueve a una etapa viva sin motivo', async () => {
-    await caso.ejecutar('o-1', { etapaId: VIVA.id, motivoPerdida: null, notaPerdida: null });
+    await caso.ejecutar('o-1', { etapaId: VIVA.id, motivoPerdida: null, notaPerdida: null }, ACTOR);
     expect(puerto.escrituras).toHaveLength(1);
   });
 
@@ -75,23 +77,33 @@ describe('MoverOportunidadUseCase', () => {
     // La aserción que importa: ni una escritura. Validar después de escribir sería dejar la
     // oportunidad perdida y sin motivo, que es el estado que la regla existe para impedir.
     await expect(
-      caso.ejecutar('o-1', { etapaId: PERDIDA.id, motivoPerdida: null, notaPerdida: null }),
+      caso.ejecutar('o-1', { etapaId: PERDIDA.id, motivoPerdida: null, notaPerdida: null }, ACTOR),
     ).rejects.toThrow(/motivo/i);
     expect(puerto.escrituras).toHaveLength(0);
   });
 
   it('mueve a pérdida con motivo', async () => {
-    await caso.ejecutar('o-1', {
-      etapaId: PERDIDA.id,
-      motivoPerdida: 'PRECIO',
-      notaPerdida: null,
-    });
+    await caso.ejecutar(
+      'o-1',
+      {
+        etapaId: PERDIDA.id,
+        motivoPerdida: 'PRECIO',
+        notaPerdida: null,
+      },
+      ACTOR,
+    );
     expect(puerto.escrituras[0]?.motivoPerdida).toBe('PRECIO');
+  });
+
+  it('pasa al puerto QUIÉN mueve, para el historial de etapas (T-131)', async () => {
+    await caso.ejecutar('o-1', { etapaId: VIVA.id, motivoPerdida: null, notaPerdida: null }, ACTOR);
+    await caso.ejecutar('o-1', { etapaId: VIVA.id, motivoPerdida: null, notaPerdida: null }, null);
+    expect(puerto.escrituras.map((e) => e.actorId)).toEqual([ACTOR, null]);
   });
 
   it('NO escribe si lleva motivo a una etapa viva', async () => {
     await expect(
-      caso.ejecutar('o-1', { etapaId: VIVA.id, motivoPerdida: 'PRECIO', notaPerdida: null }),
+      caso.ejecutar('o-1', { etapaId: VIVA.id, motivoPerdida: 'PRECIO', notaPerdida: null }, ACTOR),
     ).rejects.toThrow();
     expect(puerto.escrituras).toHaveLength(0);
   });
@@ -99,7 +111,7 @@ describe('MoverOportunidadUseCase', () => {
   it('juzga por esPerdida, no por el nombre ni por la clave', async () => {
     // «Se fue con otra» no es ninguna clave canónica y aun así exige motivo.
     await expect(
-      caso.ejecutar('o-1', { etapaId: PERDIDA.id, motivoPerdida: null, notaPerdida: null }),
+      caso.ejecutar('o-1', { etapaId: PERDIDA.id, motivoPerdida: null, notaPerdida: null }, ACTOR),
     ).rejects.toThrow(/Se fue con otra/);
   });
 
@@ -107,7 +119,7 @@ describe('MoverOportunidadUseCase', () => {
     // Con RLS puesto, el id de otra agencia simplemente no se ve. El error no debe insinuar
     // que existe en algún sitio.
     await expect(
-      caso.ejecutar('o-1', { etapaId: 'e-de-otra', motivoPerdida: null, notaPerdida: null }),
+      caso.ejecutar('o-1', { etapaId: 'e-de-otra', motivoPerdida: null, notaPerdida: null }, ACTOR),
     ).rejects.toThrow(/ETAPA_NO_ENCONTRADA|No existe la etapa/);
     expect(puerto.escrituras).toHaveLength(0);
   });
@@ -116,14 +128,18 @@ describe('MoverOportunidadUseCase', () => {
     // Si se juzgara primero el motivo, un id inexistente con motivo daría «motivo sobrante»,
     // que manda a buscar el problema al sitio equivocado.
     await expect(
-      caso.ejecutar('o-1', { etapaId: 'e-de-otra', motivoPerdida: 'PRECIO', notaPerdida: null }),
+      caso.ejecutar(
+        'o-1',
+        { etapaId: 'e-de-otra', motivoPerdida: 'PRECIO', notaPerdida: null },
+        ACTOR,
+      ),
     ).rejects.toThrow(/No existe la etapa/);
   });
 
   it('no busca la etapa si la oportunidad no existe', async () => {
     puerto.oportunidad = null;
     await expect(
-      caso.ejecutar('o-404', { etapaId: VIVA.id, motivoPerdida: null, notaPerdida: null }),
+      caso.ejecutar('o-404', { etapaId: VIVA.id, motivoPerdida: null, notaPerdida: null }, ACTOR),
     ).rejects.toThrow(/No existe la oportunidad/);
     expect(puerto.escrituras).toHaveLength(0);
   });
