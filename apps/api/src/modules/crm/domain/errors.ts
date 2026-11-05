@@ -5,7 +5,7 @@
  * asesor entienda. El texto en español es para el registro, no para la pantalla.
  */
 
-import { DomainError, EstadoInvalidoError } from '@viajapro/domain';
+import { DomainError, EstadoInvalidoError, InvariantError } from '@viajapro/domain';
 
 export class OportunidadNoEncontradaError extends DomainError {
   readonly code = 'OPORTUNIDAD_NO_ENCONTRADA';
@@ -112,5 +112,24 @@ export class MotivoEnEtapaViva extends EstadoInvalidoError {
       `'${etapa}' no es una etapa de pérdida, así que no lleva motivo. Una tarjeta devuelta a ` +
         'negociación con el motivo pegado hace que el informe cuente una pérdida que no existe.',
     );
+  }
+}
+
+/** El orden pedido no es una permutación de las etapas de la agencia (falta alguna o sobra un id). */
+export class OrdenDeEtapasInvalidoError extends InvariantError {
+  readonly code = 'ORDEN_DE_ETAPAS_INVALIDO';
+  constructor() {
+    super(
+      'El orden debe incluir exactamente las etapas de la agencia, una vez cada una. Otra ' +
+        'persona pudo haber añadido o cambiado etapas: recarga el embudo.',
+    );
+  }
+}
+
+/** Dos altas o reordenamientos simultáneos chocaron por la posición. Reintentable. */
+export class OrdenDeEtapaOcupadoError extends EstadoInvalidoError {
+  readonly code = 'ORDEN_DE_ETAPA_OCUPADO';
+  constructor() {
+    super('Otra persona modificó el embudo al mismo tiempo. Recarga e inténtalo de nuevo.');
   }
 }
