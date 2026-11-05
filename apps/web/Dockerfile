@@ -12,8 +12,11 @@ RUN pnpm install --frozen-lockfile
 # el build se niega a seguir.
 # Render pasa las variables del servicio como build-arg; hay que declararlas aqui.
 ARG NEXT_PUBLIC_API_URL
+# Opcional: `true` = sesion real contra la API. Vacio = como antes (la web decide por su cuenta).
+ARG NEXT_PUBLIC_USE_REAL_AUTH=
 RUN test -n "$NEXT_PUBLIC_API_URL" || (echo "Falta el argumento NEXT_PUBLIC_API_URL" && exit 1)
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL \
+    NEXT_PUBLIC_USE_REAL_AUTH=$NEXT_PUBLIC_USE_REAL_AUTH \
     NEXT_OUTPUT_STANDALONE=1 \
     NEXT_TELEMETRY_DISABLED=1
 RUN pnpm --filter "@viajapro/web..." run build
