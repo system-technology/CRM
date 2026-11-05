@@ -1,5 +1,6 @@
 'use client';
 
+import { AvisoSoloLocal } from '../../components/comun/aviso-solo-local';
 import React, { useState, useEffect } from 'react';
 import {
   Sparkles,
@@ -138,6 +139,7 @@ export function AsistenteOnboarding({
 
   return (
     <div data-testid="asistente-onboarding" className="mx-auto max-w-5xl space-y-8">
+      <AvisoSoloLocal que="el avance y los datos de este asistente" />
       {/* Encabezado del Asistente */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
