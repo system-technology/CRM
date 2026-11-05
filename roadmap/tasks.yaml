@@ -2917,3 +2917,77 @@ tasks:
       - apps/web/src/lib/exportar-csv.spec.ts
     source: cola de Antigravity reabastecida 2026-11-04
     created_at: 2026-11-04T23:48:05.405Z
+  - id: T-120
+    title: Atajos de teclado en la bandeja con ayuda en pantalla
+    type: feature
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    depends_on: []
+    acceptance:
+      - j/k navegan conversaciones, r enfoca el compositor, c abre Enviar cotizacion, s crea seguimiento, ?
+        muestra la ayuda; no se activan mientras se escribe en un campo
+      - Logica pura del mapa de atajos con pruebas; compatible con lector de pantalla (anuncia la accion)
+      - Se pueden desactivar en preferencias
+    files:
+      - apps/web/src/lib/atajos-teclado.ts
+      - apps/web/src/lib/atajos-teclado.spec.ts
+      - apps/web/src/components/bandeja/ayuda-atajos.tsx
+    source: cola de Antigravity reabastecida 2026-11-04
+    created_at: 2026-11-05T00:01:10.989Z
+  - id: T-121
+    title: Comparar dos versiones de una cotizacion lado a lado
+    type: feature
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    depends_on: []
+    acceptance:
+      - "Desde cotizaciones guardadas se eligen dos versiones y se ve la diferencia por linea: pasajeros,
+        salida, cargos, descuentos, total (dinero en enteros con moneda ISO)"
+      - Resalta lo que cambio y su efecto sobre el total; sin neto ni margen si el usuario no tiene el permiso
+      - Logica pura de diff con pruebas
+    files:
+      - apps/web/src/lib/cotizaciones-diff.ts
+      - apps/web/src/lib/cotizaciones-diff.spec.ts
+      - apps/web/src/app/cotizaciones/
+    source: cola de Antigravity reabastecida 2026-11-04
+    created_at: 2026-11-05T00:01:10.991Z
+  - id: T-122
+    title: Accesibilidad del cotizador y del catalogo (foco, etiquetas, contraste, teclado)
+    type: feature
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Recorrido completo con teclado y lector de pantalla del cotizador y del catalogo; foco visible y
+        gestionado en modales
+      - Etiquetas y errores asociados a cada campo; contraste AA; objetivos tactiles de 44 px
+      - Pruebas de testing-library por roles; lista de lo corregido en traspaso/ENTREGA.md
+    files:
+      - apps/web/src/app/cotizador/
+      - apps/web/src/app/catalogo/
+    source: cola de Antigravity reabastecida 2026-11-04
+    created_at: 2026-11-05T00:01:10.991Z
+  - id: T-123
+    title: "Presupuesto de rendimiento de la web: carga diferida y tamano por ruta"
+    type: feature
+    phase: 1
+    priority: P3
+    effort: M
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Carga diferida (next/dynamic) de modales pesados, editor de cotizacion y graficos de reportes
+      - Medicion del tamano de JS por ruta con `next build` documentada en traspaso/ENTREGA.md; ninguna ruta
+        de uso diario supera su presupuesto acordado en el documento
+      - Sin dependencias nuevas
+    files:
+      - apps/web/src/app/
+      - apps/web/next.config.mjs
+    source: cola de Antigravity reabastecida 2026-11-04
+    created_at: 2026-11-05T00:01:10.991Z
