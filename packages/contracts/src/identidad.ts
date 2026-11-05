@@ -215,3 +215,20 @@ export type IniciarSesionConCodigo = z.infer<typeof IniciarSesionConCodigo>;
 /** La única respuesta de invitar, aceptar y pedir código: `{ ok: true }`. */
 export const RespuestaOk = z.object({ ok: z.literal(true) });
 export type RespuestaOk = z.infer<typeof RespuestaOk>;
+
+/**
+ * Respuesta de `GET /api/v1/agencia/ajustes`: lo que la web necesita de la agencia activa para
+ * presentar (zona horaria para formatear fechas, moneda y país por defecto). Lee de `tenants`.
+ *
+ * Solo lectura: `viajapro_app` tiene únicamente SELECT sobre `tenants` (ver
+ * `excepciones_rls`), así que cambiar la zona horaria es una decisión de datos aún pendiente.
+ * Las fechas siguen en UTC en la base (R9); esto solo gobierna la presentación.
+ */
+export const AjustesDeAgencia = z.object({
+  nombre: z.string(),
+  paisIso: z.string().length(2),
+  monedaIso: z.string().length(3),
+  /** Nombre IANA, p. ej. `America/Bogota`. */
+  zonaHoraria: z.string(),
+});
+export type AjustesDeAgencia = z.infer<typeof AjustesDeAgencia>;
