@@ -310,6 +310,39 @@ describe('invitar', () => {
   });
 });
 
+describe('listar miembros (T-121)', () => {
+  it('el dueño ve a los miembros de SU agencia y nunca a los de otra', async () => {
+    const dueno = await comoDueno();
+    const r = await dueno.llamar('GET', '/api/v1/identidad/miembros');
+    expect(r.estado).toBe(200);
+    const lista = r.json as unknown as Array<{ correo: string; estado: string; rol: unknown }>;
+    const correos = lista.map((m) => m.correo);
+    expect(correos).toContain(ANA);
+    expect(correos).toContain(BETO);
+    expect(correos).not.toContain(EVA);
+    expect(lista.find((m) => m.correo === ANA)).toMatchObject({
+      estado: 'ACTIVO',
+      rol: { clave: 'DUENO' },
+    });
+  });
+
+  it('no filtra credenciales ni datos de la identidad global', async () => {
+    const dueno = await comoDueno();
+    const r = await dueno.llamar('GET', '/api/v1/identidad/miembros');
+    const texto = JSON.stringify(r.json);
+    expect(texto).not.toMatch(/hash|contrasena|identidadId|token/i);
+  });
+
+  it('sin el permiso (asesor) da 403; sin sesión, 401', async () => {
+    const beto = new Navegador();
+    await beto.entrar(BETO);
+    const r = await beto.llamar('GET', '/api/v1/identidad/miembros');
+    expect(r.estado).toBe(403);
+    expect(r.json.error?.code).toBe('PERMISO_DENEGADO');
+    expect((await new Navegador().llamar('GET', '/api/v1/identidad/miembros')).estado).toBe(401);
+  });
+});
+
 describe('nadie reparte más de lo que tiene', () => {
   it('invitarse a sí mismo con un rol superior da 403 y no envía ni guarda nada', async () => {
     const dueno = await comoDueno();
