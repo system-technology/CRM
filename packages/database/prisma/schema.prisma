@@ -85,6 +85,7 @@ model Tenant {
 
   cotizaciones        Cotizacion[]
   versionesCotizacion VersionCotizacion[]
+  cambiosDeCotizacion CotizacionCambioEstado[]
 
   roles            Rol[]
   formatosDeViaje  FormatoDeViaje[]
@@ -473,6 +474,7 @@ model Usuario {
   cotizacionesCreadas        Cotizacion[]             @relation("CotizacionCreadoPor")
   cotizacionesActualizadas   Cotizacion[]             @relation("CotizacionActualizadoPor")
   versionesCotizacionCreadas VersionCotizacion[]      @relation("VersionCotizacionCreadoPor")
+  cambiosDeCotizacionHechos  CotizacionCambioEstado[] @relation("CambioCotizacionUsuario")
   seguimientosAsignados      Seguimiento[]            @relation("SeguimientoAsesor")
   seguimientosCreados        Seguimiento[]            @relation("SeguimientoCreadoPor")
   seguimientosActualizados   Seguimiento[]            @relation("SeguimientoActualizadoPor")
@@ -2027,8 +2029,9 @@ model Cotizacion {
   enviadaEn              DateTime?          @map("enviada_en") @db.Timestamptz(3)
   versionVistaPorCliente VersionCotizacion? @relation("VersionEnviada", fields: [tenantId, id, versionEnviada], references: [tenantId, cotizacionId, numero], onDelete: NoAction, onUpdate: NoAction, map: "cotizaciones_version_enviada_fkey")
 
-  versiones VersionCotizacion[] @relation("VersionesDeLaCotizacion")
+  versiones VersionCotizacion[]      @relation("VersionesDeLaCotizacion")
   mensajes  Mensaje[]
+  cambios   CotizacionCambioEstado[]
 
   creadoEn      DateTime  @default(now()) @map("creado_en") @db.Timestamptz(3)
   actualizadoEn DateTime  @updatedAt @map("actualizado_en") @db.Timestamptz(3)
@@ -2119,4 +2122,37 @@ model VersionCotizacion {
   @@index([tenantId, paqueteId])
   @@index([tenantId, opcionDeSalidaId])
   @@map("versiones_cotizacion")
+}
+
+/// Historial de estados de la cotización (T-132). **Solo añadir**: un disparador rechaza UPDATE,
+/// DELETE y TRUNCATE (salvo la purga declarada de una agencia), así que no lleva
+/// `actualizado_en` ni `actualizado_por`. Una fila por alta (`BORRADOR`, sin origen) y por
+/// transición; un CHECK admite solo las de la máquina de estados. La fila con `estado_hasta =
+/// ACEPTADA` es el instante de la venta.
+///
+/// Sin relleno: las cotizaciones anteriores a la migración no tienen filas, y el reporte las
+/// declara «sin instante de decisión». Foráneas compuestas con el tenant y `Restrict`.
+model CotizacionCambioEstado {
+  id       String @id @default(uuid(7)) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  cotizacionId String     @map("cotizacion_id") @db.Uuid
+  cotizacion   Cotizacion @relation(fields: [cotizacionId, tenantId], references: [id, tenantId], onDelete: Restrict, onUpdate: Restrict)
+
+  /// Nulo solo en el alta.
+  estadoDesde EstadoCotizacion? @map("estado_desde")
+  estadoHasta EstadoCotizacion  @map("estado_hasta")
+
+  /// Quién lo hizo; nulo sin usuario.
+  usuarioId String?  @map("usuario_id") @db.Uuid
+  usuario   Usuario? @relation("CambioCotizacionUsuario", fields: [usuarioId, tenantId], references: [id, tenantId], onDelete: Restrict, onUpdate: Restrict)
+
+  /// UTC, en la misma transacción que el cambio de la cotización.
+  ocurridoEn DateTime @default(now()) @map("ocurrido_en") @db.Timestamptz(3)
+
+  @@unique([id, tenantId])
+  @@index([tenantId, cotizacionId, ocurridoEn, id], map: "idx_cotizacion_cambios_estado_por_cotizacion")
+  @@index([tenantId, estadoHasta, ocurridoEn], map: "idx_cotizacion_cambios_estado_por_estado")
+  @@map("cotizacion_cambios_estado")
 }

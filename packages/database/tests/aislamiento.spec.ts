@@ -3470,6 +3470,346 @@ describe('Cotizaciones — cabecera mutable y versiones inmutables', () => {
   });
 });
 // =========================================================================================
+// T-132 — `cotizacion_cambios_estado`: historial de estados de la cotización, de solo añadir.
+//
+// Tabla de negocio con `tenant_id` (no excepción). Lo que no puede pasar: que una agencia lea o
+// plante el historial de otra, que una fila cuelgue de la cotización o del usuario de otra, que
+// alguien reescriba o borre la historia, o que entre una transición que la máquina no admite.
+// Numeradas desde la 78 (T-131 usa de la 74 a la 77).
+// =========================================================================================
+
+/** (columnas de la hija, padre, columnas del padre), en el orden de la foránea. */
+const FORANEAS_COMPUESTAS_HISTORIAL_DE_COTIZACION = [
+  [['cotizacion_id', 'tenant_id'], 'cotizaciones', ['id', 'tenant_id']],
+  [['usuario_id', 'tenant_id'], 'usuarios', ['id', 'tenant_id']],
+] as const;
+
+describe('T-132 — cotizacion_cambios_estado: aislamiento, foráneas compuestas y solo añadir', () => {
+  const correo = (sufijo: string) => `fixture-aislamiento-${MARCA}-hcot-${sufijo}@prueba.invalid`;
+  const identidadDe: Record<string, string> = {
+    [TENANT_A]: randomUUID(),
+    [TENANT_B]: randomUUID(),
+  };
+  const usuarioDe: Record<string, string> = {};
+  const cotizacionDe: Record<string, string> = {};
+  const filaDe: Record<string, string> = {};
+
+  interface Fila {
+    tenant: string;
+    cotizacion: string;
+    usuario: string | null;
+    desde: string | null;
+    hasta: string;
+  }
+
+  const insertar = (c: Client, v: Fila) =>
+    c.query(
+      `INSERT INTO cotizacion_cambios_estado
+         (id, tenant_id, cotizacion_id, estado_desde, estado_hasta, usuario_id)
+       VALUES (gen_random_uuid(), $1, $2, $3::estado_cotizacion, $4::estado_cotizacion, $5)
+       RETURNING id`,
+      [v.tenant, v.cotizacion, v.desde, v.hasta, v.usuario],
+    );
+
+  beforeAll(async () => {
+    for (const [i, tenant] of [TENANT_A, TENANT_B].entries()) {
+      await admin.query(
+        `INSERT INTO identidades (id, correo, nombre, actualizado_en) VALUES ($1, $2, 'Fixture', now())`,
+        [identidadDe[tenant], correo(String(i))],
+      );
+      await comoTenant(tenant, async (c) => {
+        const rol = await c.query(
+          `INSERT INTO roles (id, tenant_id, nombre, permisos, actualizado_en)
+           VALUES (gen_random_uuid(), $1, $2, ARRAY['cotizacion.escribir']::text[], now())
+           RETURNING id`,
+          [tenant, `Asesor T-132 ${MARCA}`],
+        );
+        const usuario = await c.query(
+          `INSERT INTO usuarios (id, tenant_id, identidad_id, rol_id, correo, nombre, actualizado_en)
+           VALUES (gen_random_uuid(), $1, $2, $3, $4, 'Asesora de cotizaciones', now())
+           RETURNING id`,
+          [tenant, identidadDe[tenant], (rol.rows[0] as { id: string }).id, correo(`u${i}`)],
+        );
+        usuarioDe[tenant] = (usuario.rows[0] as { id: string }).id;
+
+        const contacto = await c.query(
+          `INSERT INTO contactos (id, tenant_id, telefono_e164, creado_en, actualizado_en)
+           VALUES (gen_random_uuid(), $1, $2, now(), now()) RETURNING id`,
+          [tenant, `+57313200000${i}`],
+        );
+        const cotizacion = await c.query(
+          `INSERT INTO cotizaciones (id, tenant_id, contacto_id, titulo, actualizado_en)
+           VALUES (gen_random_uuid(), $1, $2, 'Historial T-132', now()) RETURNING id`,
+          [tenant, (contacto.rows[0] as { id: string }).id],
+        );
+        cotizacionDe[tenant] = (cotizacion.rows[0] as { id: string }).id;
+
+        const fila = await insertar(c, {
+          tenant,
+          cotizacion: cotizacionDe[tenant] ?? '',
+          usuario: usuarioDe[tenant] ?? null,
+          desde: null,
+          hasta: 'BORRADOR',
+        });
+        filaDe[tenant] = (fila.rows[0] as { id: string }).id;
+      });
+    }
+  }, 60_000);
+
+  afterAll(async () => {
+    // El historial solo lo borra la purga declarada por el propietario, y retiene a `usuarios`
+    // (RESTRICT), que retiene a las identidades globales: se purga primero, agencia por agencia y
+    // con su contexto. Lo demás se lo lleva el `borrarTenants` del final.
+    for (const tenant of [TENANT_A, TENANT_B]) {
+      await admin.query('BEGIN');
+      try {
+        await admin.query("SELECT set_config('viajapro.purga_de_tenants', $1, true)", [tenant]);
+        await admin.query("SELECT set_config('app.current_tenant', $1, true)", [tenant]);
+        await admin.query('DELETE FROM cotizacion_cambios_estado WHERE tenant_id = $1', [tenant]);
+        await admin.query('COMMIT');
+      } catch (error) {
+        await admin.query('ROLLBACK');
+        throw error;
+      }
+    }
+    const identidades = Object.values(identidadDe);
+    await admin.query('DELETE FROM usuarios WHERE identidad_id = ANY($1)', [identidades]);
+    await admin.query('DELETE FROM identidades WHERE id = ANY($1)', [identidades]);
+  }, 60_000);
+
+  it('78 — cotizacion_cambios_estado: tenant_id NOT NULL, RLS forzada con USING y WITH CHECK, foráneas compuestas validadas, índices, y no es excepción', async () => {
+    const { rows } = await admin.query(
+      `SELECT c.relrowsecurity, c.relforcerowsecurity,
+              (SELECT a.attnotnull FROM pg_attribute a
+                WHERE a.attrelid = c.oid AND a.attname = 'tenant_id'
+                  AND a.attnum > 0 AND NOT a.attisdropped) AS tenant_no_nulo,
+              (SELECT count(*)::int FROM pg_policy p
+                WHERE p.polrelid = c.oid AND p.polname = 'tenant_isolation'
+                  AND p.polqual IS NOT NULL AND p.polwithcheck IS NOT NULL) AS con_using_y_check,
+              EXISTS (SELECT 1 FROM excepciones_rls e WHERE e.tabla = c.relname) AS declarada
+         FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' AND c.relname = 'cotizacion_cambios_estado'`,
+    );
+    expect(rows).toEqual([
+      {
+        relrowsecurity: true,
+        relforcerowsecurity: true,
+        tenant_no_nulo: true,
+        con_using_y_check: 1,
+        declarada: false,
+      },
+    ]);
+
+    // Los roles de negocio leen e insertan (el UPDATE y el DELETE los para el disparador: ver la
+    // 80); `viajapro_identidad`, nada.
+    for (const rol of ['viajapro_app', 'viajapro_altas', 'viajapro_webhook']) {
+      for (const p of ['SELECT', 'INSERT']) {
+        const r = await admin.query(
+          `SELECT has_table_privilege($1, 'public.cotizacion_cambios_estado', $2) AS puede`,
+          [rol, p],
+        );
+        expect((r.rows[0] as { puede: boolean }).puede, `${rol} ${p}`).toBe(true);
+      }
+    }
+    const deIdentidad = await admin.query(
+      `SELECT p FROM unnest(ARRAY['SELECT','INSERT','UPDATE','DELETE']) AS p
+        WHERE has_table_privilege('viajapro_identidad', 'public.cotizacion_cambios_estado', p)`,
+    );
+    expect(deIdentidad.rows).toEqual([]);
+
+    const foraneas = await admin.query(
+      `SELECT (SELECT array_agg(a.attname::text ORDER BY i)
+                 FROM generate_subscripts(c.conkey, 1) AS i
+                 JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = c.conkey[i]) AS columnas,
+              p.relname AS padre,
+              (SELECT array_agg(a.attname::text ORDER BY i)
+                 FROM generate_subscripts(c.confkey, 1) AS i
+                 JOIN pg_attribute a ON a.attrelid = c.confrelid AND a.attnum = c.confkey[i]) AS referidas,
+              c.convalidated
+         FROM pg_constraint c
+         JOIN pg_class p ON p.oid = c.confrelid
+        WHERE c.contype = 'f' AND c.conrelid = 'public.cotizacion_cambios_estado'::regclass`,
+    );
+    for (const [columnas, padre, referidas] of FORANEAS_COMPUESTAS_HISTORIAL_DE_COTIZACION) {
+      expect(
+        foraneas.rows,
+        `falta la foránea compuesta cotizacion_cambios_estado(${columnas.join(', ')}) → ${padre}`,
+      ).toContainEqual({
+        columnas: [...columnas],
+        padre,
+        referidas: [...referidas],
+        convalidated: true,
+      });
+    }
+    const simples = await admin.query(FORANEAS_SIN_TENANT_SQL);
+    expect(
+      (simples.rows as Array<{ hija: string; padre: string }>).filter(
+        (r) => r.hija === 'cotizacion_cambios_estado' || r.padre === 'cotizacion_cambios_estado',
+      ),
+    ).toEqual([]);
+
+    const indices = await admin.query(
+      `SELECT x.relname AS nombre, pg_get_indexdef(i.indexrelid) AS def
+         FROM pg_index i JOIN pg_class x ON x.oid = i.indexrelid
+        WHERE i.indrelid = 'public.cotizacion_cambios_estado'::regclass AND i.indisvalid`,
+    );
+    const defs = Object.fromEntries(
+      (indices.rows as Array<{ nombre: string; def: string }>).map((r) => [r.nombre, r.def]),
+    );
+    expect(defs['idx_cotizacion_cambios_estado_por_cotizacion']).toContain(
+      '(tenant_id, cotizacion_id, ocurrido_en, id)',
+    );
+    expect(defs['idx_cotizacion_cambios_estado_por_estado']).toContain(
+      '(tenant_id, estado_hasta, ocurrido_en)',
+    );
+
+    const defectos = await admin.query(
+      "SELECT problema FROM tablas_sin_aislamiento WHERE problema IS NOT NULL AND tabla = 'cotizacion_cambios_estado'",
+    );
+    expect(defectos.rows).toEqual([]);
+  });
+
+  it('79 — un tenant no ve, no planta y no se cuelga del historial de cotizaciones ni de los padres de otro', async () => {
+    // Control: A ve lo suyo. Sin esto, «B ve cero» sería verde también con la tabla vacía.
+    const propias = await comoTenant(TENANT_A, (c) =>
+      c.query('SELECT id FROM cotizacion_cambios_estado WHERE id = $1', [filaDe[TENANT_A]]),
+    );
+    expect(propias.rowCount).toBe(1);
+
+    const ajenas = await comoTenant(TENANT_B, async (c) => [
+      (await c.query('SELECT id FROM cotizacion_cambios_estado WHERE id = $1', [filaDe[TENANT_A]]))
+        .rowCount,
+      (
+        await c.query('SELECT id FROM cotizacion_cambios_estado WHERE cotizacion_id = $1', [
+          cotizacionDe[TENANT_A],
+        ])
+      ).rowCount,
+      (await c.query('SELECT id FROM cotizacion_cambios_estado WHERE tenant_id = $1', [TENANT_A]))
+        .rowCount,
+    ]);
+    expect(ajenas).toEqual([0, 0, 0]);
+
+    // Plantar una fila con el tenant de A desde B: WITH CHECK, 42501.
+    await expect(
+      comoTenant(TENANT_B, (c) =>
+        insertar(c, {
+          tenant: TENANT_A,
+          cotizacion: cotizacionDe[TENANT_A] ?? '',
+          usuario: null,
+          desde: 'BORRADOR',
+          hasta: 'ENVIADA',
+        }),
+      ),
+    ).rejects.toMatchObject({ code: '42501' });
+
+    // Colgar una fila PROPIA de los padres de A: la para la foránea compuesta (23503).
+    const propio: Fila = {
+      tenant: TENANT_B,
+      cotizacion: cotizacionDe[TENANT_B] ?? '',
+      usuario: usuarioDe[TENANT_B] ?? null,
+      desde: 'BORRADOR',
+      hasta: 'ENVIADA',
+    };
+    const colgadas: Array<[string, Fila]> = [
+      ['cotización ajena', { ...propio, cotizacion: cotizacionDe[TENANT_A] ?? '' }],
+      ['usuario ajeno', { ...propio, usuario: usuarioDe[TENANT_A] ?? null }],
+    ];
+    for (const [caso, valores] of colgadas) {
+      await expect(
+        comoTenant(TENANT_B, (c) => insertar(c, valores)),
+        caso,
+      ).rejects.toMatchObject({ code: '23503' });
+    }
+  });
+
+  it('80 — el historial de cotizaciones es de solo añadir: ni la agencia ni el propietario lo reescriben, y solo la purga declarada lo borra', async () => {
+    const id = filaDe[TENANT_A];
+    const reescribir =
+      "UPDATE cotizacion_cambios_estado SET estado_hasta = 'BORRADOR' WHERE id = $1";
+    const borrar = 'DELETE FROM cotizacion_cambios_estado WHERE id = $1';
+
+    await expect(comoTenant(TENANT_A, (c) => c.query(reescribir, [id]))).rejects.toThrow(
+      /solo añadir/i,
+    );
+    await expect(comoTenant(TENANT_A, (c) => c.query(borrar, [id]))).rejects.toThrow(
+      /solo añadir/i,
+    );
+    await expect(
+      comoTenant(TENANT_A, async (c) => {
+        await c.query("SELECT set_config('viajapro.purga_de_tenants', $1, true)", [TENANT_A]);
+        return c.query(borrar, [id]);
+      }),
+    ).rejects.toThrow(/solo añadir/i);
+    const cruzado = await comoTenant(TENANT_B, async (c) => [
+      (await c.query(reescribir, [id])).rowCount,
+      (await c.query(borrar, [id])).rowCount,
+    ]);
+    expect(cruzado).toEqual([0, 0]);
+
+    const comoPropietario = async (sentencias: string[]) => {
+      await admin.query('BEGIN');
+      try {
+        await admin.query("SELECT set_config('app.current_tenant', $1, true)", [TENANT_A]);
+        let afectadas = 0;
+        for (const s of sentencias) {
+          afectadas = (await admin.query(s, s.includes('$1') ? [id] : [])).rowCount ?? 0;
+        }
+        return `aceptada:${afectadas}`;
+      } catch (error) {
+        return (error as Error).message;
+      } finally {
+        await admin.query('ROLLBACK');
+      }
+    };
+    const purga = `SELECT set_config('viajapro.purga_de_tenants', '${TENANT_A}', true)`;
+    expect(await comoPropietario([reescribir])).toMatch(/solo añadir/i);
+    expect(await comoPropietario([purga, reescribir])).toMatch(/solo añadir/i);
+    expect(await comoPropietario([borrar])).toMatch(/solo añadir/i);
+    expect(await comoPropietario(['TRUNCATE cotizacion_cambios_estado'])).toMatch(/solo añadir/i);
+    expect(await comoPropietario([purga, borrar])).toBe('aceptada:1');
+
+    const { rows } = await comoTenant(TENANT_A, (c) =>
+      c.query('SELECT estado_hasta::text AS hasta FROM cotizacion_cambios_estado WHERE id = $1', [
+        id,
+      ]),
+    );
+    expect(rows).toEqual([{ hasta: 'BORRADOR' }]);
+  });
+
+  it('81 — solo entran las transiciones de la máquina de estados', async () => {
+    const intento = (desde: string | null, hasta: string) =>
+      comoTenant(TENANT_A, (c) =>
+        insertar(c, {
+          tenant: TENANT_A,
+          cotizacion: cotizacionDe[TENANT_A] ?? '',
+          usuario: null,
+          desde,
+          hasta,
+        }),
+      );
+    for (const [desde, hasta] of [
+      [null, 'ENVIADA'],
+      ['BORRADOR', 'ACEPTADA'],
+      ['ENVIADA', 'BORRADOR'],
+      ['ACEPTADA', 'RECHAZADA'],
+      ['ENVIADA', 'ENVIADA'],
+    ] as const) {
+      await expect(intento(desde, hasta), `${desde ?? '(alta)'} → ${hasta}`).rejects.toMatchObject({
+        code: '23514',
+      });
+    }
+    // Y las válidas entran (la fila de alta ya la escribió el beforeAll).
+    for (const [desde, hasta] of [
+      ['BORRADOR', 'ENVIADA'],
+      ['ENVIADA', 'ACEPTADA'],
+      ['ENVIADA', 'RECHAZADA'],
+      ['ENVIADA', 'VENCIDA'],
+    ] as const) {
+      await expect(intento(desde, hasta), `${desde} → ${hasta}`).resolves.toBeDefined();
+    }
+  });
+});
+// =========================================================================================
 // ADR-0011 — identidad global, pertenencias por agencia y roles como tabla
 //
 // Las tablas de identidad son GLOBALES (una persona existe antes de elegir agencia) y por eso
