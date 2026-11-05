@@ -44,6 +44,11 @@ imprime el usuario `dueno@agenciademo.test` y su clave de desarrollo (también e
 | Correo (OTP, invitaciones) | http://localhost:8025 |
 | Postgres (propietario de desarrollo) | `127.0.0.1:5433`, usuario `viajapro` |
 
+> **Sesión de la web.** El compose pasa `NEXT_PUBLIC_USE_REAL_AUTH=true` como `build.args`, pero
+> `apps/web/Dockerfile` aún no declara ese `ARG` (Docker solo avisa y lo ignora). Hasta que entre el PR
+> `b/T-000-web-dockerfile-auth-real`, la web arranca con la sesión por defecto (maqueta) y el ingreso
+> real no se puede probar.
+
 ## 2. Cómo verificar la salud
 
 - `GET /salud` → `{"estado":"ok"}`: el proceso está vivo. **No toca la base.** Es lo que usa la sonda
