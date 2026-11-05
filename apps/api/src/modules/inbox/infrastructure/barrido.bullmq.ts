@@ -64,6 +64,12 @@ export class BarridoBullmq extends PuertoReencolador implements PuertoCoordinaci
     );
   }
 
+  async conTurno(duracionMs: number, tarea: () => Promise<void>): Promise<boolean> {
+    if (!(await this.adquirirTurno(duracionMs))) return false;
+    await tarea();
+    return true;
+  }
+
   async adquirirTurno(duracionMs: number): Promise<boolean> {
     const r = await this.conexion.set(
       `${this.nombreDeCola}:barrido:turno`,
