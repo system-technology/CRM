@@ -10,6 +10,8 @@
 > `roadmap/tasks.yaml` (qué sigue). Este archivo **no los sustituye**: los resume y enlaza, y guarda lo que
 > no cabe en ellos (el entorno vivo, las trampas, el modo de trabajo).
 >
+> **Desde 2026-11-05 lo que cambia vive en `DIARIO.md` y `CHECKPOINT.local.md`; las secciones 10–14 de abajo son históricas (octubre).**
+>
 > Última actualización: **2026-10-27 (madrugada)**. El propietario está AUSENTE: se trabaja desatendido dentro de los límites de §12.
 
 ---
