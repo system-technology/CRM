@@ -1,3 +1,44 @@
+# Entrega — T-129: Accesibilidad del cotizador y del catálogo (foco, etiquetas, contraste, 44px) — 2026-11-04
+
+## Identificación
+- **Tarea:** `T-129`
+- **Rama:** `b/T-129-accesibilidad-cotizador-catalogo`
+- **Carril:** `b` (Frontend / Web)
+
+## Qué se construyó y corrigió
+1. **Gestión de foco y modales accesibles (`useFocoModal`):**
+   - Integrado `useFocoModal` en todos los modales y diálogos del cotizador y catálogo:
+     - `ModalGuardarCotizacion` (`apps/web/src/components/cotizador/modal-guardar-cotizacion.tsx`)
+     - `ModalFormularioPaquete` (`apps/web/src/components/catalogo/modal-formulario-paquete.tsx`)
+     - `DialogoDesactivarPaquete` (`apps/web/src/components/catalogo/dialogo-desactivar-paquete.tsx`) con foco inicial en el botón seguro de cancelar
+     - `FichaDetallePaquete` (`apps/web/src/components/catalogo/ficha-detalle-paquete.tsx`)
+     - `AsistenteImportacion` (`apps/web/src/components/catalogo/importacion/asistente-importacion.tsx`)
+   - Garantizado: trampa de foco (focus trap con Tab / Shift+Tab), cierre inmediato con `Escape`, y devolución automática de foco al elemento disparador (trigger).
+
+2. **Etiquetas y asociación de errores (`aria-describedby`, `aria-invalid`, `role="alert"`):**
+   - Cotizador (`apps/web/src/app/cotizador/page.tsx`):
+     - Selector de opciones de salida con `aria-invalid`, `aria-describedby="aviso-elegir-opcion"` y anuncio dinámico con `role="alert"`.
+     - Steppers de pasajeros agrupados bajo `role="group" aria-label="Composición del grupo de pasajeros"`, botones con `aria-label="Aumentar adultos"`, `aria-label="Disminuir adultos"` (y niños / infantes), y contadores con `aria-live="polite"` y `aria-atomic="true"`.
+     - Mensajes de error de cotización con `role="alert"` y `aria-live="assertive"`.
+   - Catálogo (`apps/web/src/app/catalogo/page.tsx` y componentes de gestión):
+     - Navegación de secciones con `role="tablist"`, `role="tab"`, `aria-selected` y `role="tabpanel"`.
+     - Campos de búsqueda y filtrado con `aria-label` explícito y visible.
+     - `ModalFormularioPaquete`: errores de validación asociados a cada input mediante `aria-invalid="true"` y `aria-describedby="error-campo-..."` apuntando a mensajes con `role="alert"`.
+
+3. **Objetivos táctiles mínimos de 44px (WCAG 2.5.5 / 2.5.8):**
+   - Botón de cerrar de `FichaDetallePaquete` ampliado de tamaño sub-44px a `min-h-[44px] min-w-[44px]`.
+   - Botones de acción en tablas de gestión de catálogo actualizados a `min-h-[44px] min-w-[44px]`.
+   - Selectores, inputs y botones de pestañas asegurados con `min-h-[44px]`.
+   - Anillos de foco visibles (`focus-visible:ring-2 focus-visible:outline-hidden`) para navegación por teclado sin ocultar el indicador de foco.
+
+4. **Pruebas y verificación con testing-library por roles:**
+   - Creado `src/app/cotizador/cotizador-accesibilidad.spec.tsx` (4 pruebas unitarias de roles, labels, live regions, aria-invalid y trampa de foco con Escape).
+   - Creado `src/app/catalogo/catalogo-accesibilidad.spec.tsx` (5 pruebas unitarias de tablist/tab, inputs con accesible name, modal focus trap/escape y diálogo de confirmación seguro).
+   - Ajustadas pruebas existentes en `page.spec.tsx` para consultar los steppers mediante sus roles y nombres accesibles.
+   - Toda la suite de `@viajapro/web` en verde (132 archivos, 1056 pruebas pasando), typecheck, lint y test:hooks limpios.
+
+---
+
 # Entrega — T-128: Comparar dos versiones de una cotización lado a lado — 2026-11-04
 
 ## Identificación

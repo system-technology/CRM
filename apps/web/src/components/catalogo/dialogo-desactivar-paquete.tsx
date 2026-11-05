@@ -1,8 +1,9 @@
 'use client';
 
-import React from 'react';
+import React, { useRef } from 'react';
 import { AlertTriangle, X, ShieldAlert } from 'lucide-react';
 import type { ResumenDePaqueteGestion } from '@viajapro/contracts';
+import { useFocoModal } from '../../lib/use-foco-modal';
 
 interface DialogoDesactivarPaqueteProps {
   abierto: boolean;
@@ -19,17 +20,30 @@ export function DialogoDesactivarPaquete({
   alConfirmar,
   cargando = false,
 }: DialogoDesactivarPaqueteProps) {
+  const botonCancelarRef = useRef<HTMLButtonElement>(null);
+  const contenedorRef = useFocoModal<HTMLDivElement>({
+    abierto,
+    alCerrar,
+    elementoInicialRef: botonCancelarRef,
+  });
+
   if (!abierto || !paquete) return null;
 
   return (
     <div
-      role="dialog"
+      role="alertdialog"
       aria-modal="true"
       aria-labelledby="titulo-dialogo-desactivar"
+      aria-describedby="descripcion-dialogo-desactivar"
       data-testid="dialogo-desactivar-paquete"
+      onClick={alCerrar}
       className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/60 p-4 backdrop-blur-xs"
     >
-      <div className="relative w-full max-w-md overflow-hidden rounded-2xl border border-neutral-200 bg-white p-6 shadow-2xl dark:border-neutral-800 dark:bg-neutral-900">
+      <div
+        ref={contenedorRef}
+        onClick={(e) => e.stopPropagation()}
+        className="relative w-full max-w-md overflow-hidden rounded-2xl border border-neutral-200 bg-white p-6 shadow-2xl dark:border-neutral-800 dark:bg-neutral-900"
+      >
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300">
@@ -46,14 +60,14 @@ export function DialogoDesactivarPaquete({
             type="button"
             onClick={alCerrar}
             data-testid="boton-cerrar-dialogo-desactivar"
-            className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
+            className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700 focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:outline-hidden dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
             aria-label="Cerrar diálogo"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        <div className="mt-4 space-y-3">
+        <div id="descripcion-dialogo-desactivar" className="mt-4 space-y-3">
           <p className="text-xs text-neutral-600 dark:text-neutral-300">
             Estás a punto de desactivar el paquete:{' '}
             <strong className="font-semibold text-neutral-900 dark:text-white">
@@ -82,11 +96,12 @@ export function DialogoDesactivarPaquete({
 
         <div className="mt-6 flex flex-col-reverse justify-end gap-2 sm:flex-row">
           <button
+            ref={botonCancelarRef}
             type="button"
             onClick={alCerrar}
             disabled={cargando}
             data-testid="boton-cancelar-desactivar"
-            className="flex min-h-[44px] items-center justify-center rounded-xl border border-neutral-300 bg-white px-4 py-2.5 text-xs font-semibold text-neutral-700 hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200"
+            className="flex min-h-[44px] items-center justify-center rounded-xl border border-neutral-300 bg-white px-4 py-2.5 text-xs font-semibold text-neutral-700 hover:bg-neutral-50 focus-visible:ring-2 focus-visible:ring-neutral-600 focus-visible:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200"
           >
             Cancelar
           </button>
@@ -97,7 +112,8 @@ export function DialogoDesactivarPaquete({
             }}
             disabled={cargando}
             data-testid="boton-confirmar-desactivar"
-            className="flex min-h-[44px] items-center justify-center rounded-xl bg-amber-600 px-5 py-2.5 text-xs font-bold text-white shadow-xs transition-colors hover:bg-amber-700 disabled:opacity-50"
+            aria-label="Desactivar paquete"
+            className="flex min-h-[44px] items-center justify-center rounded-xl bg-amber-600 px-5 py-2.5 text-xs font-bold text-white shadow-xs transition-colors hover:bg-amber-700 focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:outline-hidden disabled:opacity-50"
           >
             {cargando ? 'Desactivando...' : 'Confirmar desactivación'}
           </button>
