@@ -2,6 +2,7 @@ import { Logger } from '@nestjs/common';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { BarrerPendientes } from '../application/barrer-pendientes.js';
 import { PuertoCoordinacionDelBarrido } from '../application/puertos-de-barrido.js';
+import type { RecuperarEnviosSinResolver } from '../application/recuperar-envios-sin-resolver.js';
 import type { RelevarOutbox } from '../application/relevar-outbox.js';
 import { AvisosDeOutboxEnMemoria } from '../infrastructure/avisos-de-outbox.en-memoria.js';
 import { PlanificadorDeRelay } from './planificador-de-relay.js';
@@ -38,15 +39,18 @@ describe('PlanificadorDeSeguridad (modo unico)', () => {
     p: PlanificadorDeSeguridad;
     changes: ReturnType<typeof vi.fn>;
     outbox: ReturnType<typeof vi.fn>;
+    envios: ReturnType<typeof vi.fn>;
   } {
     const changes = vi.fn(() => Promise.resolve({}));
     const outbox = vi.fn(() => Promise.resolve(0));
+    const envios = vi.fn(() => Promise.resolve({ reencolados: 0, sinConfirmar: 0 }));
     const p = new PlanificadorDeSeguridad(
       { ejecutar: changes } as unknown as BarrerPendientes,
       opciones.turnos ?? new Turnos(),
       { barrer: outbox } as unknown as RelevarOutbox,
+      { barrer: envios } as unknown as RecuperarEnviosSinResolver,
     );
-    return { p, changes, outbox };
+    return { p, changes, outbox, envios };
   }
 
   it('barre al arrancar SIN antigüedad mínima: lo recibido antes del reinicio no espera una hora', async () => {
@@ -98,6 +102,32 @@ describe('PlanificadorDeSeguridad (modo unico)', () => {
     expect(outbox).toHaveBeenCalledTimes(1);
     expect(escrito.join('\n')).toContain('Error:P2010');
     expect(escrito.join('\n')).not.toMatch(/573001112233|Failing row/);
+  });
+
+  it('barre los envíos sin resolver al arrancar y cada periodo (C6)', async () => {
+    const { p, envios } = armar();
+    p.onApplicationBootstrap();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(envios).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(3_600_000);
+    expect(envios).toHaveBeenCalledTimes(2);
+    await p.onModuleDestroy();
+  });
+
+  it('con el turno ocupado los envíos se barren igual: su reclamo es SKIP LOCKED', async () => {
+    const turnos = new Turnos();
+    turnos.libre = false;
+    const { p, envios } = armar({ turnos });
+    await p.pasada('periodica');
+    expect(envios).toHaveBeenCalledTimes(1);
+  });
+
+  it('un fallo del barrido de envíos no lanza ni trae el mensaje del error (R10)', async () => {
+    const { p, envios } = armar();
+    envios.mockRejectedValue(Object.assign(new Error('fila 573001112233'), { code: 'P2010' }));
+    await expect(p.pasada('periodica')).resolves.toBeUndefined();
+    expect(escrito.join(' | ')).toContain('Error:P2010');
+    expect(escrito.join(' | ')).not.toMatch(/573001112233/);
   });
 
   it('un fallo del outbox no lanza', async () => {

@@ -101,7 +101,7 @@ export class EnviarMensajeSaliente {
       throw error;
     }
 
-    if (!(await this.reservas.reservar(mensajeId))) {
+    if (!(await this.reservas.reservar(tenantId, mensajeId))) {
       // Un intento anterior pudo llegar a Meta. Reenviar podría duplicarlo: no se reenvía.
       this.log.warn('Reserva de envío ya existente: se marca sin confirmar, sin reenviar.');
       return this.fallar(tenantId, mensajeId, new EnvioSinConfirmarError());
@@ -120,7 +120,7 @@ export class EnviarMensajeSaliente {
       if (!(error instanceof ErrorDeEnvioWhatsapp)) throw error;
       if (error.reintentable) {
         // Meta respondió que NO lo aceptó: reintentar es seguro, así que se suelta la reserva.
-        await this.reservas.liberar(mensajeId);
+        await this.reservas.liberar(tenantId, mensajeId);
         if (!ultimoIntento) throw error;
       }
       return this.fallar(tenantId, mensajeId, error);
