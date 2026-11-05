@@ -7,6 +7,7 @@
  * escribe. El `tenantId` va también en cada predicado, como defensa en profundidad.
  */
 import { Inject, Injectable } from '@nestjs/common';
+import type { MiembroDeAgencia } from '@viajapro/contracts';
 import { PrismaService } from '../../../shared/prisma/prisma.service.js';
 import { permisoQueFalta } from '../domain/permisos-incluidos.js';
 import { PuertoConversacionesDeMiembro } from '../../../shared/puertos/puertos-hacia-inbox.js';
@@ -26,6 +27,39 @@ export class MiembrosPrisma extends PuertoMiembros {
     private readonly conversaciones: PuertoConversacionesDeMiembro,
   ) {
     super();
+  }
+
+  async listar(): Promise<MiembroDeAgencia[]> {
+    const { tenantId } = ContextoTenant.obtener();
+    return this.prisma.conTenant(async (tx) => {
+      const filas = await tx.usuario.findMany({
+        where: { tenantId },
+        select: {
+          id: true,
+          nombre: true,
+          correo: true,
+          activo: true,
+          eliminadoEn: true,
+          creadoEn: true,
+          ultimoAccesoEn: true,
+          rol: { select: { id: true, clave: true, nombre: true } },
+        },
+      });
+      const miembros = filas.map((u): MiembroDeAgencia => ({
+        id: u.id,
+        nombre: u.nombre,
+        correo: u.correo,
+        rol: { id: u.rol.id, clave: u.rol.clave, nombre: u.rol.nombre },
+        estado: u.activo && u.eliminadoEn === null ? 'ACTIVO' : 'INACTIVO',
+        creadoEn: u.creadoEn.toISOString(),
+        ultimoAccesoEn: u.ultimoAccesoEn?.toISOString() ?? null,
+      }));
+      return miembros.sort(
+        (a, b) =>
+          Number(b.estado === 'ACTIVO') - Number(a.estado === 'ACTIVO') ||
+          a.nombre.localeCompare(b.nombre, 'es'),
+      );
+    });
   }
 
   async describirInvitacion(rolId: string): Promise<DescripcionDeInvitacion | null> {
