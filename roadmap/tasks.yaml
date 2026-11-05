@@ -3490,7 +3490,7 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: backlog
+    status: done
     depends_on: []
     acceptance:
       - "No se integra antes que el PR #213; puede construirse contra su contrato
@@ -3512,6 +3512,11 @@ tasks:
     source: roadmap de reportes 2026-11-04 (docs/08-roadmap/06-roadmap-de-reportes.md)
     created_at: 2026-11-05T01:14:46.635Z
     owner: frontend
+    started_at: 2026-11-05T03:33:51.611Z
+    done_at: 2026-11-05T03:33:51.611Z
+    evidence: "Mergeado en main por el PR #237 (rama b/T-142-web-reportes-resumen) con el CI en verde: format,
+      analyze, tests y los demás checks obligatorios. Cierre automático (.github/workflows/cerrar-tarea.yml)."
+    commit: 0f7cab86f7b3d6ae65d8a158a87670ef0fafd4c4
   - id: T-143
     title: "Web: vistas de pendientes de atencion, cotizaciones abiertas por antiguedad y seguimientos vencidos
       (asesor y dueno)"
