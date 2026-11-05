@@ -39,7 +39,7 @@ jobs:
           ref: main
           token: ${{ steps.app.outputs.token }}
           fetch-depth: 1
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@v7.1.0
         with:
           node-version: 20
       - name: Dependencias del roadmap
