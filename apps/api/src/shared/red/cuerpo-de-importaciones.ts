@@ -15,5 +15,12 @@ import { MAXIMO_DE_CUERPO_DE_IMPORTACION_EN_BYTES } from '@viajapro/contracts';
 export const RUTA_DE_IMPORTACIONES = '/api/v1/catalogo/importaciones';
 
 export function cuerpoDeImportaciones(): RequestHandler {
-  return express.json({ limit: MAXIMO_DE_CUERPO_DE_IMPORTACION_EN_BYTES });
+  const analizador = express.json({ limit: MAXIMO_DE_CUERPO_DE_IMPORTACION_EN_BYTES });
+  // NO devolver `express.json(...)` tal cual: la función se llama `jsonParser`, y Nest decide si
+  // registra su analizador global buscando una capa con ese nombre (`isMiddlewareApplied`). Al
+  // encontrar esta, daba el suyo por montado y OMITÍA el global: todas las demás rutas se
+  // quedaban con `req.body` vacío (H-2 de T-126). Envolverla le cambia el nombre.
+  return function cuerpoJsonDeImportaciones(req, res, next) {
+    analizador(req, res, next);
+  };
 }
