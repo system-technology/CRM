@@ -1,4 +1,3 @@
-
 # Entrega — T-142: Web /reportes sobre GET /api/v1/reportes/resumen: instantes UTC, ventasPorMoneda por moneda y fuera el cálculo desde el tablero — 2026-11-04
 
 ## Identificación
@@ -110,6 +109,8 @@
 - Modo demo: lista del mock y caché de `localStorage` (con estado `INVITADO` y teléfono), con su distintivo visible.
 - Los tres roles de `ROLES_PREDEFINIDOS_AGENCIA` del selector de invitación siguen siendo constantes del cliente: no hay endpoint de roles. Escalar a `backend` si hace falta listarlos.
 - Los contadores «Dueños/Asesores activos» se calculan en el cliente por `rol.clave`; un rol propio no cuenta en ninguno.
+
+---
 
 # Entrega — T-129: Accesibilidad del cotizador y del catálogo (foco, etiquetas, contraste, 44px) — 2026-11-04
 
@@ -240,6 +241,7 @@
 - Etapas `/crm/etapas`, miembros y estado del canal: no se tocaron (otro agente).
 
 ---
+
 # Entrega — T-118: Acciones según permisos (bandeja.operar, crm.escribir, cotizacion.escribir) — 2026-11-04
 
 ## Identificación
@@ -279,6 +281,7 @@
 - Ninguno. La API de NestJS valida adicionalmente cada mutación del lado servidor (R1, R2, ADR-0011).
 
 ---
+
 # Entrega — T-117: Mensajes claros en es-CO para los errores del envío — 2026-11-04
 
 ## Identificación
