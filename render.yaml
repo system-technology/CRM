@@ -120,6 +120,14 @@ services:
         sync: false
       - key: POSTMARK_SERVER_TOKEN
         sync: false
+      # Envío saliente a Meta (ADR-0018): el que llama a Graph API es el trabajador, no la API.
+      # Solo la fase de prueba (un número, una agencia). Sin estas tres, los envíos quedan FALLIDO.
+      - key: META_SYSTEM_USER_TOKEN
+        sync: false
+      - key: META_PHONE_NUMBER_ID_PRUEBA
+        sync: false
+      - key: META_TENANT_ID_PRUEBA
+        sync: false
       - key: REDIS_URL
         fromService:
           type: keyvalue
