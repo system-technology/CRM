@@ -1,3 +1,43 @@
+# Entrega — T-119: Exportar a CSV desde contactos, oportunidades y cotizaciones — 2026-11-04
+
+## Identificación
+- **Tarea:** `T-119` (roadmap/tasks.yaml)
+- **Rama:** `b/T-119-exportar-csv`
+- **Carril:** `b` (Frontend / Web)
+
+## Qué se construyó
+
+1. **Utilidades de exportación a CSV en es-CO (`apps/web/src/lib/exportar-csv.ts`):**
+   - Formato estándar es-CO: separador de punto y coma (`;`), codificación UTF-8 con BOM (`\uFEFF`) para compatibilidad directa con Microsoft Excel y LibreOffice, fechas en zona horaria del tenant (`America/Bogota`, R9) y montos en enteros de COP (R8).
+   - **Protección contra Inyección de Fórmulas (CWE-1236 / CSV Injection):** `sanitizarInyeccionFormula` antepone un apóstrofo (`'`) a cualquier celda cuyo valor inicie con `=`, `+`, `-`, `@`, `\t` o `\r`, neutralizando la ejecución de fórmulas y comandos DDE al abrir el archivo en hojas de cálculo.
+   - **Filtrado estricto por permisos (R10 / ADR-0011):** En cotizaciones, las columnas `Tarifa neta` y `Margen comercial` se excluyen de los encabezados y de las filas a menos que el usuario cuente explícitamente con el permiso `cotizacion.ver_neto_y_margen`.
+   - Funciones especializadas:
+     - `exportarContactosCSV(contactos, opciones)`
+     - `exportarOportunidadesCSV(oportunidades, opciones)`
+     - `exportarCotizacionesCSV(cotizaciones, opciones)`
+     - `descargarArchivoCSV(contenido, nombreArchivo)`: genera Blob de tipo `text/csv;charset=utf-8` y dispara la descarga nativa en el navegador.
+
+2. **Botón accesible «Exportar CSV» en cada listado:**
+   - **Contactos (`apps/web/src/app/contactos/page.tsx`):** botón «Exportar CSV» junto a la barra de filtros, descargando los contactos visibles respetando filtros aplicados.
+   - **Pipeline de Oportunidades (`apps/web/src/app/pipeline/page.tsx`):** botón «Exportar CSV» junto a los filtros de búsqueda y asesor, exportando todas las oportunidades del embudo.
+   - **Listado de Cotizaciones (`apps/web/src/app/cotizaciones/page.tsx`):** botón «Exportar CSV» junto a los filtros de estado, respetando el permiso `cotizacion.ver_neto_y_margen` del usuario activo.
+
+3. **Pruebas y verificación:**
+   - 13 pruebas unitarias exhaustivas en `apps/web/src/lib/exportar-csv.spec.ts`:
+     - Protección de fórmulas (`=`, `+`, `-`, `@`, caracteres de control).
+     - Generación es-CO con BOM y separador `;`.
+     - Exportación de contactos con sanitización de teléfonos y nombres.
+     - Exportación de oportunidades con importes y fechas formateadas.
+     - Filtrado estricto de columnas de neto y margen según permiso.
+     - Simulación de descarga en navegador.
+   - 125 suites y 1014 pruebas de `@viajapro/web` en verde.
+   - `pnpm typecheck` y `pnpm lint` en verde sin errores ni advertencias.
+
+## Qué quedó pendiente
+- Ninguno. La funcionalidad de exportación corre de forma pura en el navegador sin dependencias adicionales.
+
+---
+
 # Entrega — T-117: Mensajes claros en es-CO para los errores del envío — 2026-11-04
 
 ## Identificación

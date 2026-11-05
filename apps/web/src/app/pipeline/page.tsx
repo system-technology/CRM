@@ -5,7 +5,8 @@ import { useModoDemo } from '../../lib/modo-demo';
 import React, { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { EtapaDefinida, MotivoPerdida, Oportunidad, TableroPipeline } from '@viajapro/contracts';
-import { Kanban, Table as TableIcon, Search, Filter, Plus } from 'lucide-react';
+import { Kanban, Table as TableIcon, Search, Filter, Plus, Download } from 'lucide-react';
+import { exportarOportunidadesCSV, descargarArchivoCSV } from '../../lib/exportar-csv';
 import { BarraModulos } from '../../components/bandeja/barra-modulos';
 import { ColumnaKanban } from '../../components/pipeline/columna-kanban';
 import { ModalMotivoPerdida } from '../../components/pipeline/modal-motivo-perdida';
@@ -219,6 +220,16 @@ export default function PipelinePage() {
     };
   }, [tablero, filtroTexto, filtroAsesor]);
 
+  const todasLasOportunidades = useMemo(
+    () => tableroFiltrado.columnas.flatMap((c) => c.oportunidades),
+    [tableroFiltrado],
+  );
+
+  const manejarExportarCSV = () => {
+    const csv = exportarOportunidadesCSV(todasLasOportunidades);
+    descargarArchivoCSV(csv, `oportunidades-viajapro-${new Date().toISOString().slice(0, 10)}.csv`);
+  };
+
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-neutral-100 text-neutral-900 select-none dark:bg-neutral-950 dark:text-neutral-100">
       {/* Barra de Módulos (56px) */}
@@ -327,6 +338,19 @@ export default function PipelinePage() {
                   Limpiar filtros
                 </button>
               )}
+
+              {/* Botón Exportar CSV (T-119) */}
+              <button
+                type="button"
+                onClick={manejarExportarCSV}
+                data-testid="boton-exportar-oportunidades-csv"
+                title="Exportar oportunidades a CSV en formato es-CO (separador punto y coma, UTF-8 con BOM)"
+                aria-label="Exportar oportunidades a CSV"
+                className="flex min-h-[44px] items-center gap-1.5 rounded-xl border border-neutral-200 bg-white px-3 py-2 text-xs font-semibold text-neutral-700 shadow-2xs hover:bg-neutral-50 hover:text-neutral-900 focus:outline-hidden dark:border-neutral-800 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
+              >
+                <Download className="h-3.5 w-3.5 text-neutral-500 dark:text-neutral-400" />
+                <span>Exportar CSV</span>
+              </button>
             </div>
 
             {/* Aviso flotante accesible */}
