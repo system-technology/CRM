@@ -45,6 +45,7 @@ const raiz = raizPrincipal();
 const dirContexto = join(raiz, 'docs', '_contexto');
 const rutaCheckpoint = join(dirContexto, 'CHECKPOINT.local.md');
 const rutaDiario = join(dirContexto, 'DIARIO.md');
+const rutaMarco = join(dirContexto, 'MARCO.md');
 
 function leer(ruta, maxLineas, desdeElFinal = false) {
   try {
@@ -73,6 +74,10 @@ try {
     const partes = ['# Cerebro persistente de ViajaPro (inyectado al iniciar la sesión)'];
     const checkpoint = leer(rutaCheckpoint, MAX_LINEAS_CHECKPOINT);
     const diario = leer(rutaDiario, MAX_LINEAS_DIARIO);
+    const marco = leer(rutaMarco, 120);
+    if (marco) partes.push(`## MARCO DE TRABAJO
+
+${marco}`);
     if (checkpoint) {
       const h = horasDesde(rutaCheckpoint);
       partes.push(

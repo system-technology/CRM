@@ -23,7 +23,7 @@
 - La primera demo a JD Tours la ve **el dueño** (agencia pequeña): vista gerencial además de bandeja
   y cotizador. La verificación de negocio con Meta (T-080) la lleva el propietario.
 - PRs grandes por carril y tanda (lotes); migraciones y aislamiento van aparte.
-- Contexto persistente en archivos, no en la memoria del modelo (esta entrada).
+- Contexto persistente en archivos, no en la memoria del modelo. Estructura y marco de trabajo en `MARCO.md` (se inyecta al iniciar).
 
 **Verificado**
 - H-2 (la API devolvía cuerpo JSON vacío salvo en importaciones) → PR #248, en `main`.
