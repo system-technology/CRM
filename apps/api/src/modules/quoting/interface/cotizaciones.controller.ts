@@ -18,6 +18,7 @@ import {
   type PaginaDeCotizaciones,
 } from '@viajapro/contracts';
 import { autorizarMargen } from '../../../shared/autorizacion/margen.js';
+import { RequierePermiso } from '../../../shared/autorizacion/permiso.decorator.js';
 import { ZodValidationPipe } from '../../../shared/validacion/zod-validation.pipe.js';
 import { CotizacionesUseCase } from '../application/cotizaciones.use-case.js';
 
@@ -32,6 +33,7 @@ const pideMargen = (v: string | undefined): boolean => autorizarMargen(v === 'tr
 export class CotizacionesController {
   constructor(@Inject(CotizacionesUseCase) private readonly cotizaciones: CotizacionesUseCase) {}
 
+  @RequierePermiso('cotizacion.escribir')
   @Post()
   async guardar(
     @Body(new ZodValidationPipe(GuardarCotizacion)) body: GuardarCotizacion,
@@ -40,6 +42,7 @@ export class CotizacionesController {
     return this.cotizaciones.guardar(body, pideMargen(incluirMargen));
   }
 
+  @RequierePermiso('cotizacion.escribir')
   @Post(':id/versiones')
   async anadirVersion(
     @Param('id', new ParseUUIDPipe()) id: string,
@@ -57,6 +60,7 @@ export class CotizacionesController {
     return this.cotizaciones.listar(params);
   }
 
+  @RequierePermiso('cotizacion.escribir')
   @Post(':id/estado')
   async cambiarEstado(
     @Param('id', new ParseUUIDPipe()) id: string,
