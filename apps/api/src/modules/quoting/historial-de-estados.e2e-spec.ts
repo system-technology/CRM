@@ -53,10 +53,16 @@ let admin: PrismaClient;
 let adminPg: Client;
 const agencias = {} as Record<'A' | 'B', Agencia>;
 
-/** Lee como la agencia `tenant`: con su contexto, como la API. */
+/**
+ * Lee como la agencia `tenant`, como la API: con el ROL de la API y su contexto. `adminPg` es el
+ * propietario, que en Neon/CI no queda sujeto a RLS: sin bajar de rol, una «lectura cruzada»
+ * devolvería las filas de la otra agencia y la prueba no probaría nada. El `LOCAL` vuelve solo al
+ * COMMIT o al ROLLBACK.
+ */
 async function comoAgencia<T>(tenant: string, sql: string, params: unknown[]): Promise<T[]> {
   await adminPg.query('BEGIN');
   try {
+    await adminPg.query('SET LOCAL ROLE "viajapro_app"');
     await adminPg.query("SELECT set_config('app.current_tenant', $1, true)", [tenant]);
     const { rows } = await adminPg.query(sql, params);
     await adminPg.query('COMMIT');
