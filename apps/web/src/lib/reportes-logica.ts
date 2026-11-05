@@ -1,10 +1,24 @@
-import type { Dinero, TableroPipeline } from '@viajapro/contracts';
-import { esModoDemo } from './modo-demo';
-import { MOCK_REPORTES_POR_PERIODO } from './mock-reportes';
+/**
+ * Lógica pura del módulo de Reportes y agregados ejecutivos (ADR-0011, T-142).
+ *
+ * Reglas:
+ * - El periodo elegido se convierte en instantes UTC desde/hasta con la zona horaria
+ *   de la agencia (hasta exclusivo).
+ * - Una tarjeta por moneda de ventasPorMoneda: ninguna cifra suma monedas ni asume COP (R8).
+ * - Se elimina calcularReporteDesdePipeline y el cálculo truncado a 20 tarjetas del tablero.
+ * - null se pinta como «Aún sin datos» (o «Sin datos»), nunca como 0 o 0 %.
+ * - Cohorte explícita de cada cifra y protagonismo de la mediana en tiempos de respuesta.
+ * - Margen y neto solo si vienen en la respuesta (bajo permiso cotizacion.ver_neto_y_margen).
+ */
 
-export type RangoPeriodo = 'ultimos_30_dias' | 'este_mes' | 'trimestre' | 'ano';
+import type { Dinero, ResumenDeReportes } from '@viajapro/contracts';
+import { rangoDePeriodo, type PeriodoDeReporte, type RangoDeInstantes } from './reportes-periodo';
+import { ZONA_HORARIA_COLOMBIA } from './formato';
+
+export type RangoPeriodo = PeriodoDeReporte;
 export type RolVistaReporte = 'DUENO' | 'ASESOR';
 
+/** @deprecated Tipos legados para compatibilidad de tipos mock existentes */
 export interface VentaPorDestino {
   destino: string;
   totalVentas: Dinero;
@@ -22,9 +36,9 @@ export interface EtapaConversion {
 export interface RendimientoAsesor {
   asesorId: string;
   nombre: string;
-  correo: string;
+  correo: string | null;
   avatar: string;
-  conversaciones: number;
+  conversaciones: number | null;
   oportunidadesGanadas: number;
   totalVentas: Dinero;
   tiempoRespuestaMinutos: number | null;
@@ -55,33 +69,59 @@ export interface ReporteComercial {
   tieneDatosReales: boolean;
 }
 
+export const TEXTO_SIN_DATOS = 'Aún sin datos';
+
+export function obtenerEtiquetaPeriodo(periodo: RangoPeriodo): string {
+  switch (periodo) {
+    case 'ultimos_30_dias':
+      return 'Últimos 30 días';
+    case 'este_mes':
+      return 'Este mes';
+    case 'trimestre':
+      return 'Últimos 90 días';
+    case 'ano':
+      return 'Este año';
+  }
+}
+
+/**
+ * Convierte un periodo elegido a su rango [desde, hasta) en instantes UTC (R9),
+ * aplicando la zona horaria de la agencia (por defecto Bogotá: America/Bogota).
+ */
+export function convertirPeriodoAInstantesUtc(
+  periodo: RangoPeriodo,
+  ahora?: Date,
+  zona: string = ZONA_HORARIA_COLOMBIA,
+): RangoDeInstantes {
+  return rangoDePeriodo(periodo, ahora ?? new Date(), zona);
+}
+
 /**
  * Calcula la tasa de conversión porcentual (ganadas / cerradas).
- * Protegido contra división por cero.
+ * Retorna null si no hay cerradas (sin inventar 0%).
  */
-export function calcularTasaConversion(ganadas: number, perdidas: number): number {
+export function calcularTasaConversion(ganadas: number, perdidas: number): number | null {
   const cerradas = ganadas + perdidas;
-  if (cerradas <= 0) return 0;
+  if (cerradas <= 0) return null;
   return Math.round((ganadas / cerradas) * 1000) / 10;
 }
 
 /**
- * Calcula la variación porcentual entre dos cantidades consecutivas.
- * Retorna el delta con 1 decimal de precisión (+16.5, -4.2, etc.).
+ * Calcula la variación porcentual entre dos cantidades consecutivas en enteros BigInt.
+ * Retorna el delta con 1 decimal de precisión (+16.5, -4.2), o null si el valor anterior <= 0.
  */
 export function calcularVariacionPorcentual(
-  actual: number | bigint,
-  anterior: number | bigint,
-): number {
-  const vActual = typeof actual === 'bigint' ? Number(actual) : actual;
-  const vAnterior = typeof anterior === 'bigint' ? Number(anterior) : anterior;
-
-  if (vAnterior === 0) {
-    return vActual > 0 ? 100 : 0;
-  }
-
-  const delta = ((vActual - vAnterior) / vAnterior) * 100;
-  return Math.round(delta * 10) / 10;
+  actual: number | bigint | string,
+  anterior: number | bigint | string,
+): number | null {
+  const a = BigInt(actual);
+  const b = BigInt(anterior);
+  if (b <= 0n) return null;
+  const delta = (a - b) * 1000n;
+  const signo = delta < 0n ? -1n : 1n;
+  const abs = delta < 0n ? -delta : delta;
+  const decimas = signo * ((abs + b / 2n) / b);
+  return Number(decimas) / 10;
 }
 
 /**
@@ -95,7 +135,6 @@ export function calcularMargenReporte(
   const uVenta = BigInt(venta.unidades);
   const uNeto = BigInt(neto.unidades);
   const uMargen = uVenta - uNeto;
-
   const porcentaje = uVenta > 0n ? Math.round((Number(uMargen) / Number(uVenta)) * 1000) / 10 : 0;
 
   return {
@@ -107,219 +146,145 @@ export function calcularMargenReporte(
   };
 }
 
-/**
- * Filtra el reporte según el rol del usuario para cumplir con las reglas de negocio
- * de confidencialidad de margen comercial (ADR-0011).
- */
-export function filtrarMetricasPorRol(
-  reporte: ReporteComercial,
-  rol: RolVistaReporte,
-): ReporteComercial {
-  if (rol === 'ASESOR') {
-    return {
-      ...reporte,
-      costoNetoTotal: null,
-      margenTotal: null,
-      margenPorcentaje: null,
-    };
-  }
-  return reporte;
+/** Formatea porcentaje con un decimal o «Aún sin datos» si es null/undefined. */
+export function formatearPorcentajeReporte(valor: number | null | undefined): string {
+  if (valor === null || valor === undefined) return TEXTO_SIN_DATOS;
+  return `${new Intl.NumberFormat('es-CO', { maximumFractionDigits: 1 }).format(valor)} %`;
 }
 
-/**
- * Calcula el reporte comercial en tiempo real agregando los datos del tablero de CRM.
- * Si alguna métrica no existe en el backend, devuelve null para que la UI pinte «Aún sin datos»
- * en lugar de inventar números (Criterio T-021).
- */
-export function calcularReporteDesdePipeline(
-  tablero: TableroPipeline | null,
-  rol: RolVistaReporte = 'DUENO',
-  periodo: RangoPeriodo = 'ultimos_30_dias',
-): ReporteComercial {
-  if (!tablero || tablero.columnas.length === 0) {
-    return {
-      periodo,
-      ventasTotales: null,
-      ventasPeriodoAnterior: null,
-      cambioVentasPorcentaje: null,
-      oportunidadesCreadas: 0,
-      oportunidadesPeriodoAnterior: null,
-      cambioOportunidadesPorcentaje: null,
-      oportunidadesGanadas: 0,
-      oportunidadesPerdidas: 0,
-      tasaConversion: null,
-      metaMesVentas: null,
-      porcentajeMetaMes: null,
-      costoNetoTotal: null,
-      margenTotal: null,
-      margenPorcentaje: null,
-      tiempoRespuestaPromedioMinutos: null,
-      tiempoRespuestaPeriodoAnteriorMinutos: null,
-      ventasPorDestino: [],
-      conversionPorEtapa: [],
-      rendimientoAsesores: [],
-      tieneDatosReales: false,
-    };
-  }
+/** Formatea minutos con un decimal o «Aún sin datos» si es null/undefined. */
+export function formatearMinutosReporte(valor: number | null | undefined): string {
+  if (valor === null || valor === undefined) return TEXTO_SIN_DATOS;
+  return `${new Intl.NumberFormat('es-CO', { maximumFractionDigits: 1 }).format(valor)} min`;
+}
 
-  let totalVentasGanadas = 0n;
-  let ganadas = 0;
-  let perdidas = 0;
-
-  const destinosMap = new Map<string, { total: bigint; paquetes: number }>();
-  const asesoresMap = new Map<string, { nombre: string; ganadas: number; totalVentas: bigint }>();
-  const etapasCalculadas: EtapaConversion[] = [];
-
-  const todasLasOportunidades = tablero.columnas.flatMap((c) => c.oportunidades);
-  const totalCreadas = todasLasOportunidades.length;
-
-  for (const col of tablero.columnas) {
-    const cantidadEnEtapa = col.oportunidades.length;
-    const porcentaje = totalCreadas > 0 ? Math.round((cantidadEnEtapa / totalCreadas) * 100) : 0;
-
-    etapasCalculadas.push({
-      etapaId: col.etapa.id,
-      nombre: col.etapa.nombre,
-      cantidad: cantidadEnEtapa,
-      porcentajeEmbudo: porcentaje,
-    });
-
-    if (col.etapa.esGanada) {
-      ganadas += cantidadEnEtapa;
-      for (const op of col.oportunidades) {
-        const val = op.valorEstimado ? BigInt(op.valorEstimado.unidades) : 0n;
-        totalVentasGanadas += val;
-
-        // Agrupar por destino
-        const dest = op.destino || 'Otros Destinos';
-        const destActual = destinosMap.get(dest) ?? { total: 0n, paquetes: 0 };
-        destinosMap.set(dest, {
-          total: destActual.total + val,
-          paquetes: destActual.paquetes + 1,
-        });
-
-        // Agrupar por asesor
-        if (op.asesorId && op.asesorNombre) {
-          const asesorActual = asesoresMap.get(op.asesorId) ?? {
-            nombre: op.asesorNombre,
-            ganadas: 0,
-            totalVentas: 0n,
-          };
-          asesoresMap.set(op.asesorId, {
-            nombre: op.asesorNombre,
-            ganadas: asesorActual.ganadas + 1,
-            totalVentas: asesorActual.totalVentas + val,
-          });
-        }
-      }
-    } else if (col.etapa.esPerdida) {
-      perdidas += cantidadEnEtapa;
-    }
-  }
-
-  const tasaConversion = calcularTasaConversion(ganadas, perdidas);
-
-  const ventasPorDestino: VentaPorDestino[] = Array.from(destinosMap.entries()).map(
-    ([destino, data]) => {
-      const porcentaje =
-        totalVentasGanadas > 0n
-          ? Math.round((Number(data.total) / Number(totalVentasGanadas)) * 1000) / 10
-          : 0;
-      return {
-        destino,
-        totalVentas: { unidades: String(data.total), moneda: 'COP' },
-        porcentaje,
-        paquetesVendidos: data.paquetes,
-      };
-    },
-  );
-
-  const rendimientoAsesores: RendimientoAsesor[] = Array.from(asesoresMap.entries()).map(
-    ([id, data]) => {
-      const iniciales = data.nombre
-        .split(' ')
-        .map((p) => p[0])
-        .slice(0, 2)
-        .join('')
-        .toUpperCase();
-      return {
-        asesorId: id,
-        nombre: data.nombre,
-        correo: `${data.nombre.toLowerCase().replace(/\s+/g, '.')}@agencia.com`,
-        avatar: iniciales || 'AS',
-        conversaciones: data.ganadas * 3, // estimado en base a interacciones
-        oportunidadesGanadas: data.ganadas,
-        totalVentas: { unidades: String(data.totalVentas), moneda: 'COP' },
-        tiempoRespuestaMinutos: null, // No inventar SLA sin API (T-021)
-      };
-    },
-  );
-
-  const reporteCalculado: ReporteComercial = {
-    periodo,
-    ventasTotales: { unidades: String(totalVentasGanadas), moneda: 'COP' },
-    ventasPeriodoAnterior: null, // Aún sin datos históricos en API
-    cambioVentasPorcentaje: null, // Aún sin datos comparativos
-    oportunidadesCreadas: totalCreadas,
-    oportunidadesPeriodoAnterior: null,
-    cambioOportunidadesPorcentaje: null,
-    oportunidadesGanadas: ganadas,
-    oportunidadesPerdidas: perdidas,
-    tasaConversion: ganadas + perdidas > 0 ? tasaConversion : null,
-    metaMesVentas: null, // Aún sin meta configurada por API
-    porcentajeMetaMes: null,
-    costoNetoTotal: { unidades: String((totalVentasGanadas * 80n) / 100n), moneda: 'COP' },
-    margenTotal: { unidades: String((totalVentasGanadas * 20n) / 100n), moneda: 'COP' },
-    margenPorcentaje: 20.0,
-    tiempoRespuestaPromedioMinutos: null, // Aún sin datos SLA en API
-    tiempoRespuestaPeriodoAnteriorMinutos: null,
-    ventasPorDestino,
-    conversionPorEtapa: etapasCalculadas,
-    rendimientoAsesores,
-    tieneDatosReales: totalCreadas > 0,
+export interface FilaVentaMoneda {
+  moneda: string;
+  ventas: Dinero;
+  cotizacionesAceptadas: number;
+  variacionPorcentaje: number | null;
+  confidencial?: {
+    neto: Dinero | null;
+    margen: Dinero | null;
+    margenPorcentaje: number | null;
+    cotizacionesSinNeto: number;
   };
-
-  return filtrarMetricasPorRol(reporteCalculado, rol);
 }
 
-/**
- * Obtiene el reporte comercial correspondiente al período y rol.
- * Si estamos en modo demo y no hay pipeline cargado, provee el dataset de muestra.
- */
-export function obtenerReportePorPeriodo(
-  periodo: RangoPeriodo,
-  rol: RolVistaReporte = 'DUENO',
-  tableroOpcional?: TableroPipeline | null,
-): ReporteComercial {
-  if (tableroOpcional !== undefined && tableroOpcional !== null) {
-    return calcularReporteDesdePipeline(tableroOpcional, rol, periodo);
-  }
+export interface VistaReporteResumen {
+  periodo: { desde: string; hasta: string };
+  filasVentas: FilaVentaMoneda[];
+  hayConfidencial: boolean;
+  cotizaciones: {
+    creadas: number;
+    enviadas: number;
+    aceptadas: number;
+    tasaAceptacionTexto: string;
+    tasaAceptacionValor: number | null;
+    cohorteTexto: string;
+  };
+  oportunidades: {
+    creadas: number;
+    ganadas: number;
+    perdidas: number;
+    abiertas: number;
+    tasaConversionTexto: string;
+    tasaConversionValor: number | null;
+    cohorteTexto: string;
+    porEtapa: Array<{
+      etapaId: string;
+      nombre: string;
+      orden: number;
+      cantidad: number;
+    }>;
+  };
+  respuesta: {
+    conversacionesNuevas: number;
+    conversacionesRespondidas: number;
+    medianaTexto: string;
+    medianaValor: number | null;
+    promedioTexto: string;
+    promedioValor: number | null;
+    cohorteTexto: string;
+  };
+}
 
-  // Fallback para modo demo / pruebas unitarias de permisos
-  if (esModoDemo() || typeof window === 'undefined') {
-    const base = MOCK_REPORTES_POR_PERIODO[periodo] ?? MOCK_REPORTES_POR_PERIODO.ultimos_30_dias;
-    const baseConDatos: ReporteComercial = {
-      ...base,
-      tieneDatosReales: true,
+export function transformarResumenReporte(
+  resumen: ResumenDeReportes,
+  resumenAnterior?: ResumenDeReportes | null,
+): VistaReporteResumen {
+  const filasVentas: FilaVentaMoneda[] = resumen.ventasPorMoneda.map((f) => {
+    const previa = resumenAnterior?.ventasPorMoneda.find((p) => p.moneda === f.moneda);
+    const variacionPorcentaje = previa
+      ? calcularVariacionPorcentual(f.ventas.unidades, previa.ventas.unidades)
+      : null;
+
+    const fila: FilaVentaMoneda = {
+      moneda: f.moneda,
+      ventas: f.ventas,
+      cotizacionesAceptadas: f.cotizacionesAceptadas,
+      variacionPorcentaje,
     };
-    return filtrarMetricasPorRol(baseConDatos, rol);
-  }
 
-  return calcularReporteDesdePipeline(null, rol, periodo);
-}
+    const tieneConfidencial =
+      'neto' in f || 'margen' in f || 'margenPorcentaje' in f || 'cotizacionesSinNeto' in f;
 
-/**
- * Retorna la etiqueta legible del período.
- */
-export function obtenerEtiquetaPeriodo(periodo: RangoPeriodo): string {
-  switch (periodo) {
-    case 'ultimos_30_dias':
-      return 'Últimos 30 días';
-    case 'este_mes':
-      return 'Este mes';
-    case 'trimestre':
-      return 'Último trimestre';
-    case 'ano':
-      return 'Año completo';
-  }
+    if (tieneConfidencial) {
+      fila.confidencial = {
+        neto: f.neto ?? null,
+        margen: f.margen ?? null,
+        margenPorcentaje: f.margenPorcentaje ?? null,
+        cotizacionesSinNeto: f.cotizacionesSinNeto ?? 0,
+      };
+    }
+
+    return fila;
+  });
+
+  const hayConfidencial = filasVentas.some((f) => f.confidencial !== undefined);
+
+  const cotizacionesAceptadasTexto =
+    resumen.cotizaciones.aceptadas === 1
+      ? '1 aceptada'
+      : `${resumen.cotizaciones.aceptadas} aceptadas`;
+  const cotizacionesEnviadasTexto =
+    resumen.cotizaciones.enviadas === 1 ? '1 enviada' : `${resumen.cotizaciones.enviadas} enviadas`;
+
+  return {
+    periodo: resumen.periodo,
+    filasVentas,
+    hayConfidencial,
+    cotizaciones: {
+      creadas: resumen.cotizaciones.creadas,
+      enviadas: resumen.cotizaciones.enviadas,
+      aceptadas: resumen.cotizaciones.aceptadas,
+      tasaAceptacionTexto: formatearPorcentajeReporte(resumen.cotizaciones.tasaAceptacion),
+      tasaAceptacionValor: resumen.cotizaciones.tasaAceptacion,
+      cohorteTexto: `${cotizacionesAceptadasTexto} de ${cotizacionesEnviadasTexto} en el periodo (${resumen.cotizaciones.creadas} creadas)`,
+    },
+    oportunidades: {
+      creadas: resumen.oportunidades.creadas,
+      ganadas: resumen.oportunidades.ganadas,
+      perdidas: resumen.oportunidades.perdidas,
+      abiertas: resumen.oportunidades.abiertas,
+      tasaConversionTexto: formatearPorcentajeReporte(resumen.oportunidades.tasaConversion),
+      tasaConversionValor: resumen.oportunidades.tasaConversion,
+      cohorteTexto: `${resumen.oportunidades.creadas} creadas en el periodo (${resumen.oportunidades.ganadas} ganadas · ${resumen.oportunidades.perdidas} perdidas · ${resumen.oportunidades.abiertas} abiertas)`,
+      porEtapa: resumen.oportunidades.porEtapa.map((e) => ({
+        etapaId: e.etapaId,
+        nombre: e.nombre,
+        orden: e.orden,
+        cantidad: e.cantidad,
+      })),
+    },
+    respuesta: {
+      conversacionesNuevas: resumen.respuesta.conversacionesNuevas,
+      conversacionesRespondidas: resumen.respuesta.conversacionesRespondidas,
+      medianaTexto: formatearMinutosReporte(resumen.respuesta.medianaMinutos),
+      medianaValor: resumen.respuesta.medianaMinutos,
+      promedioTexto: formatearMinutosReporte(resumen.respuesta.promedioMinutos),
+      promedioValor: resumen.respuesta.promedioMinutos,
+      cohorteTexto: `${resumen.respuesta.conversacionesRespondidas} de ${resumen.respuesta.conversacionesNuevas} conversaciones nuevas respondidas en el periodo`,
+    },
+  };
 }

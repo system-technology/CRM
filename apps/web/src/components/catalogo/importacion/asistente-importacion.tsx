@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Upload,
   ArrowRight,
@@ -22,6 +22,7 @@ import type {
   RespuestaDeConfirmacion,
 } from '@viajapro/contracts';
 import { PLANTILLAS_DE_SISTEMA } from '@viajapro/contracts';
+import { useFocoModal } from '../../../lib/use-foco-modal';
 import {
   parsearCsvAImportacion,
   sugerirMapeoLocal,
@@ -81,6 +82,13 @@ export function AsistenteImportacion({
   const plantillaActiva: DescriptorDePlantilla =
     PLANTILLAS_DE_SISTEMA.find((p) => p.formato === formatoSeleccionado) ??
     PLANTILLAS_DE_SISTEMA[0]!;
+
+  const botonCerrarRef = useRef<HTMLButtonElement>(null);
+  const contenedorRef = useFocoModal<HTMLDivElement>({
+    abierto,
+    alCerrar,
+    elementoInicialRef: botonCerrarRef,
+  });
 
   useEffect(() => {
     if (formatoInicial) {
@@ -275,9 +283,14 @@ export function AsistenteImportacion({
       aria-modal="true"
       aria-labelledby="titulo-asistente-importacion"
       data-testid="asistente-importacion-modal"
+      onClick={alCerrar}
       className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/60 p-4 backdrop-blur-xs"
     >
-      <div className="relative flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-2xl dark:border-neutral-800 dark:bg-neutral-900">
+      <div
+        ref={contenedorRef}
+        onClick={(e) => e.stopPropagation()}
+        className="relative flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-2xl dark:border-neutral-800 dark:bg-neutral-900"
+      >
         {/* Cabecera del Asistente */}
         <div className="flex items-center justify-between border-b border-neutral-100 bg-neutral-50 px-6 py-4 dark:border-neutral-800 dark:bg-neutral-800/50">
           <div className="flex items-center gap-3">
@@ -305,10 +318,11 @@ export function AsistenteImportacion({
           </div>
 
           <button
+            ref={botonCerrarRef}
             type="button"
             onClick={alCerrar}
             data-testid="boton-cerrar-asistente"
-            className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
+            className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700 focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:outline-hidden dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
             aria-label="Cerrar asistente"
           >
             <X className="h-5 w-5" />

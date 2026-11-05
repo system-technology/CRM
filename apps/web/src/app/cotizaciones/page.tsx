@@ -28,8 +28,16 @@ import {
   MessageSquare,
   Copy,
   Check,
+  Download,
 } from 'lucide-react';
-import type { FilaDeCotizacion, EstadoCotizacion, CotizacionGuardada } from '@viajapro/contracts';
+import { exportarCotizacionesCSV, descargarArchivoCSV } from '../../lib/exportar-csv';
+import type {
+  FilaDeCotizacion,
+  EstadoCotizacion,
+  CotizacionGuardada,
+  Contacto,
+} from '@viajapro/contracts';
+import { listarContactos } from '../../lib/crm-api';
 import { BarraModulos } from '../../components/bandeja/barra-modulos';
 import { DistintivoDatosDemo } from '../../components/comun/distintivo-datos-demo';
 import { formatearDinero, formatearFecha } from '../../lib/formato';
@@ -53,7 +61,14 @@ import { usePermisos } from '../../lib/permisos';
 export default function CotizacionesPage() {
   const { esDemo } = useModoDemo();
   const usandoApiReal = !esDemo && estaUsandoApiReal();
-  const { puedeVerNetoYMargen: _puedeVerNetoYMargen } = usePermisos();
+  const { puedeVerNetoYMargen } = usePermisos();
+
+  const manejarExportarCSV = () => {
+    const csv = exportarCotizacionesCSV(filasFiltradas, {
+      puedeVerNetoYMargen,
+    });
+    descargarArchivoCSV(csv, `cotizaciones-viajapro-${new Date().toISOString().slice(0, 10)}.csv`);
+  };
 
   // Estados principales de datos y paginación por cursor
   const [filas, setFilas] = useState<FilaDeCotizacion[]>([]);
@@ -82,17 +97,38 @@ export default function CotizacionesPage() {
   const [modoEstres500, setModoEstres500] = useState(false);
   const [filasEstres500, setFilasEstres500] = useState<FilaDeCotizacion[]>([]);
 
-  // Mapa de nombres de contactos para búsqueda rápida y etiquetas
+  // Contactos para nombres y para el modal de envío. En demo salen del mock; en modo real, de la
+  // API: nunca nombres ni teléfonos de relleno (T-124).
+  const [contactosConocidos, setContactosConocidos] = useState<Contacto[]>(() =>
+    usandoApiReal ? [] : obtenerMockPaginaContactos().datos,
+  );
+  useEffect(() => {
+    if (!usandoApiReal) {
+      setContactosConocidos(obtenerMockPaginaContactos().datos);
+      return;
+    }
+    let activo = true;
+    listarContactos()
+      .then((pagina) => {
+        if (activo) setContactosConocidos(pagina.datos);
+      })
+      .catch(() => {
+        // Sin nombres: la fila muestra solo lo que sí se sabe.
+        if (activo) setContactosConocidos([]);
+      });
+    return () => {
+      activo = false;
+    };
+  }, [usandoApiReal]);
   const mapaContactos = useMemo(() => {
     const mapa: Record<string, string> = {};
-    const contactos = obtenerMockPaginaContactos().datos;
-    for (const c of contactos) {
+    for (const c of contactosConocidos) {
       if (c.nombre) {
         mapa[c.id] = c.nombre;
       }
     }
     return mapa;
-  }, []);
+  }, [contactosConocidos]);
 
   // Carga inicial o reinicio de listado
   const cargarInicial = async (estres = modoEstres500, estado = estadoFiltro) => {
@@ -283,20 +319,35 @@ export default function CotizacionesPage() {
               </div>
 
               {/* Selector de Estado */}
-              <div className="flex w-full items-center gap-2 sm:w-auto">
-                <Filter className="h-4 w-4 shrink-0 text-neutral-400" />
-                <select
-                  value={estadoFiltro}
-                  onChange={(e) => setEstadoFiltro(e.target.value as EstadoCotizacion | 'TODOS')}
-                  className="focus:border-acento-500 focus:ring-acento-500 min-h-[44px] w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 text-xs font-semibold text-neutral-700 focus:outline-hidden sm:w-auto dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200"
+              <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+                <div className="flex items-center gap-2">
+                  <Filter className="h-4 w-4 shrink-0 text-neutral-400" />
+                  <select
+                    value={estadoFiltro}
+                    onChange={(e) => setEstadoFiltro(e.target.value as EstadoCotizacion | 'TODOS')}
+                    className="focus:border-acento-500 focus:ring-acento-500 min-h-[44px] w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 text-xs font-semibold text-neutral-700 focus:outline-hidden sm:w-auto dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200"
+                  >
+                    <option value="TODOS">Todos los estados</option>
+                    <option value="BORRADOR">Borrador</option>
+                    <option value="ENVIADA">Enviada</option>
+                    <option value="ACEPTADA">Aceptada</option>
+                    <option value="RECHAZADA">Rechazada</option>
+                    <option value="VENCIDA">Vencida</option>
+                  </select>
+                </div>
+
+                {/* Botón Exportar CSV (T-119) */}
+                <button
+                  type="button"
+                  onClick={manejarExportarCSV}
+                  data-testid="boton-exportar-cotizaciones-csv"
+                  title="Exportar cotizaciones a CSV en formato es-CO (separador punto y coma, UTF-8 con BOM)"
+                  aria-label="Exportar cotizaciones a CSV"
+                  className="flex min-h-[44px] items-center gap-1.5 rounded-xl border border-neutral-200 bg-white px-3 py-2 text-xs font-semibold text-neutral-700 shadow-2xs hover:bg-neutral-50 hover:text-neutral-900 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
                 >
-                  <option value="TODOS">Todos los estados</option>
-                  <option value="BORRADOR">Borrador</option>
-                  <option value="ENVIADA">Enviada</option>
-                  <option value="ACEPTADA">Aceptada</option>
-                  <option value="RECHAZADA">Rechazada</option>
-                  <option value="VENCIDA">Vencida</option>
-                </select>
+                  <Download className="h-4 w-4 text-neutral-500 dark:text-neutral-400" />
+                  <span>Exportar CSV</span>
+                </button>
               </div>
             </div>
           </div>
@@ -672,19 +723,20 @@ export default function CotizacionesPage() {
               cotizacion={cotizacionParaWhatsApp}
               contacto={
                 cotizacionParaWhatsApp.contactoId
-                  ? (obtenerMockPaginaContactos().datos.find(
-                      (c) => c.id === cotizacionParaWhatsApp.contactoId,
-                    ) ?? {
-                      id: cotizacionParaWhatsApp.contactoId,
-                      nombre: mapaContactos[cotizacionParaWhatsApp.contactoId] ?? 'Cliente',
-                      telefono: '+573001234567',
-                      correo: null,
-                      etiquetas: [],
-                      preferencias: null,
-                      consentimientos: ['TRANSACCIONAL'],
-                      creadoEn: '2026-10-01T00:00:00.000Z',
-                      ultimoContactoEn: null,
-                    })
+                  ? (contactosConocidos.find((c) => c.id === cotizacionParaWhatsApp.contactoId) ??
+                    (usandoApiReal
+                      ? undefined
+                      : {
+                          id: cotizacionParaWhatsApp.contactoId,
+                          nombre: mapaContactos[cotizacionParaWhatsApp.contactoId] ?? 'Cliente',
+                          telefono: '+573001234567',
+                          correo: null,
+                          etiquetas: [],
+                          preferencias: null,
+                          consentimientos: ['TRANSACCIONAL'],
+                          creadoEn: '2026-10-01T00:00:00.000Z',
+                          ultimoContactoEn: null,
+                        }))
                   : undefined
               }
               abierto={modalWhatsAppAbierto}

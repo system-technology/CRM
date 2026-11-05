@@ -161,6 +161,35 @@ export const InvitarMiembro = z.object({
 });
 export type InvitarMiembro = z.infer<typeof InvitarMiembro>;
 
+/**
+ * Un miembro de la agencia, tal como lo lista `GET /api/v1/identidad/miembros` (T-121).
+ *
+ * `id` es el de `usuarios` (la pertenencia a ESTA agencia, el mismo que usa
+ * `POST /miembros/:id/baja`), nunca el de la identidad global. `rol.clave` es `null` en un rol
+ * personalizado. `estado` es `INACTIVO` para quien está dado de baja. Las invitaciones aun no
+ * aceptadas no se listan (se guardan por hash del token, sin correo recuperable) y no hay
+ * telefono: la tabla `usuarios` no lo tiene.
+ */
+export const MiembroDeAgencia = z.object({
+  id: z.string().uuid(),
+  nombre: z.string(),
+  correo: z.string(),
+  rol: z.object({
+    id: z.string().uuid(),
+    clave: z.string().nullable(),
+    nombre: z.string(),
+  }),
+  estado: z.enum(['ACTIVO', 'INACTIVO']),
+  /** ISO 8601 UTC. */
+  creadoEn: z.string().datetime(),
+  ultimoAccesoEn: z.string().datetime().nullable(),
+});
+export type MiembroDeAgencia = z.infer<typeof MiembroDeAgencia>;
+
+/** Respuesta de `GET /api/v1/identidad/miembros`: activos primero, luego por nombre. */
+export const ListaDeMiembros = z.array(MiembroDeAgencia);
+export type ListaDeMiembros = z.infer<typeof ListaDeMiembros>;
+
 /** Cuerpo de `POST /api/v1/auth/invitaciones/aceptar`. */
 export const AceptarInvitacion = z.object({
   token: z.string().min(20).max(200),
@@ -186,3 +215,20 @@ export type IniciarSesionConCodigo = z.infer<typeof IniciarSesionConCodigo>;
 /** La única respuesta de invitar, aceptar y pedir código: `{ ok: true }`. */
 export const RespuestaOk = z.object({ ok: z.literal(true) });
 export type RespuestaOk = z.infer<typeof RespuestaOk>;
+
+/**
+ * Respuesta de `GET /api/v1/agencia/ajustes`: lo que la web necesita de la agencia activa para
+ * presentar (zona horaria para formatear fechas, moneda y país por defecto). Lee de `tenants`.
+ *
+ * Solo lectura: `viajapro_app` tiene únicamente SELECT sobre `tenants` (ver
+ * `excepciones_rls`), así que cambiar la zona horaria es una decisión de datos aún pendiente.
+ * Las fechas siguen en UTC en la base (R9); esto solo gobierna la presentación.
+ */
+export const AjustesDeAgencia = z.object({
+  nombre: z.string(),
+  paisIso: z.string().length(2),
+  monedaIso: z.string().length(3),
+  /** Nombre IANA, p. ej. `America/Bogota`. */
+  zonaHoraria: z.string(),
+});
+export type AjustesDeAgencia = z.infer<typeof AjustesDeAgencia>;

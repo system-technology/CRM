@@ -2927,7 +2927,7 @@ tasks:
     phase: 1
     priority: P2
     effort: M
-    status: backlog
+    status: done
     depends_on: []
     acceptance:
       - "Lee los permisos de la sesion (contrato de identidad en packages/contracts/src/identidad.ts) y
@@ -2942,13 +2942,18 @@ tasks:
       - apps/web/src/lib/permisos.spec.ts
     source: cola de Antigravity reabastecida 2026-11-04
     created_at: 2026-11-04T23:48:05.405Z
+    started_at: 2026-11-05T03:46:01.894Z
+    done_at: 2026-11-05T03:46:01.894Z
+    evidence: "Mergeado en main por el PR #208 (rama b/T-118-acciones-segun-permisos) con el CI en verde: format,
+      analyze, tests y los demás checks obligatorios. Cierre automático (.github/workflows/cerrar-tarea.yml)."
+    commit: 3870d14e0ede53dbd33473218927eee7ec2b582c
   - id: T-119
     title: Exportar a CSV desde contactos, oportunidades y cotizaciones (solo lo que el usuario ve)
     type: feature
     phase: 1
     priority: P3
     effort: S
-    status: backlog
+    status: done
     depends_on: []
     acceptance:
       - Boton Exportar en cada listado; genera CSV en el navegador con es-CO (separador punto y coma, UTF-8
@@ -2961,3 +2966,1225 @@ tasks:
       - apps/web/src/lib/exportar-csv.spec.ts
     source: cola de Antigravity reabastecida 2026-11-04
     created_at: 2026-11-04T23:48:05.405Z
+    started_at: 2026-11-05T03:54:22.456Z
+    done_at: 2026-11-05T03:54:22.458Z
+    evidence: "Mergeado en main por el PR #214 (rama b/T-119-exportar-csv) con el CI en verde: format, analyze,
+      tests y los demás checks obligatorios. Cierre automático (.github/workflows/cerrar-tarea.yml)."
+    commit: 549cf8c25b06299f06afbe5842b2fc27e33549a1
+  - id: T-120
+    title: "API: etapas del pipeline por agencia (listar, crear, editar, reordenar) que la web ya llama en
+      /crm/etapas"
+    type: feature
+    phase: 1
+    priority: P0
+    effort: M
+    status: backlog
+    depends_on: []
+    acceptance:
+      - GET/POST/PATCH /api/v1/crm/etapas con contratos en packages/contracts y permiso crm.escribir para
+        mutar; reordenar es una operacion atomica
+      - "La tabla etapas_pipeline ya existe (T-014): sin migracion salvo que falte algo; con RLS y prueba e2e
+        de aislamiento entre agencias"
+      - La web deja de simular el guardado ante un 404 (lo cubre T-124)
+    files:
+      - apps/api/src/modules/crm/
+      - packages/contracts/src/crm.ts
+    source: "auditoria de veracidad 2026-11-04 (PR #202)"
+    created_at: 2026-11-05T00:44:42.915Z
+  - id: T-121
+    title: "Web: la lista de miembros llama GET /identidad/usuarios que no existe; usar el endpoint real de
+      miembros"
+    type: bug
+    phase: 1
+    priority: P0
+    effort: S
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Determinar si el endpoint correcto es /api/v1/identidad/miembros (miembros.controller) y alinear la
+        web con el contrato; sin caer a localStorage ni mock en modo real
+      - Si falta el listado en la API, agregarlo con permiso usuarios.administrar y prueba
+      - Prueba de la logica de la web con respuesta real y con error
+    files:
+      - apps/web/src/lib/
+      - apps/api/src/modules/identity/interface/miembros.controller.ts
+    source: "auditoria de veracidad 2026-11-04 (PR #202)"
+    created_at: 2026-11-05T00:44:42.917Z
+  - id: T-122
+    title: "API: estado del canal de WhatsApp de la agencia (conectado, numero, ultimo mensaje, errores) para la
+      pantalla de Configuracion"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on: []
+    acceptance:
+      - "GET /api/v1/canales/whatsapp/estado (o ruta vigente) con lo que se sabe de
+        cuentas_whatsapp/enrutamiento: numero, estado, ultima recepcion y ultimo envio fallido, sin exponer
+        tokens"
+      - La pantalla /configuracion deja de mostrar datos de relleno en modo real
+      - Sin plantillas (T-078 depende de Meta)
+    files:
+      - apps/api/src/modules/inbox/
+      - packages/contracts/src/inbox.ts
+    source: "auditoria de veracidad 2026-11-04 (PR #202)"
+    created_at: 2026-11-05T00:44:42.917Z
+  - id: T-123
+    title: "Web en modo real por defecto: .env.example y README coherentes (USE_REAL_*, NEXT_PUBLIC_USE_REAL_AUTH)
+      y arranque documentado"
+    type: bug
+    phase: 1
+    priority: P0
+    effort: S
+    status: backlog
+    depends_on: []
+    acceptance:
+      - .env.example deja USE_REAL_CRM, USE_REAL_INBOX y NEXT_PUBLIC_USE_REAL_AUTH en modo real; la maqueta es
+        explicita y visible
+      - README con el arranque local real (pnpm install, base, migraciones, semilla, pnpm dev, trabajador o
+        modo unico), sin la frase «todavia no hay codigo»
+      - "Ruta protegida del propietario (.env.example): el PR lo dice"
+    files:
+      - .env.example
+      - README.md
+    source: "auditoria de veracidad 2026-11-04 (PR #202)"
+    created_at: 2026-11-05T00:44:42.917Z
+  - id: T-124
+    title: "Web: reportes sin margen ni costo inventados; las pantallas que solo usan localStorage dicen que son
+      locales o hablan con la API"
+    type: bug
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Reportes calculan margen y costo desde cotizaciones reales (permiso cotizacion.ver_neto_y_margen) o no
+        muestran la cifra; se eliminan las constantes del 20 % y del 80 %
+      - "Campos personalizados, respuestas rapidas, filtros guardados, onboarding y preferencias: en modo
+        real, o persisten en la API o muestran un aviso visible de que son solo locales; lista de cuales
+        quedan locales en traspaso/ENTREGA.md"
+      - "Plantillas y nombres de contacto en /cotizaciones y el modal Enviar cotizacion: sin telefono de
+        relleno en modo real"
+    files:
+      - apps/web/src/app/reportes/
+      - apps/web/src/app/cotizaciones/
+    source: "auditoria de veracidad 2026-11-04 (PR #202)"
+    created_at: 2026-11-05T00:44:42.917Z
+  - id: T-125
+    title: "Suite e2e web a API con Playwright: ingreso, bandeja, enviar cotizacion y seguimiento"
+    type: test
+    phase: 1
+    priority: P1
+    effort: L
+    status: backlog
+    depends_on: []
+    acceptance:
+      - "Playwright como dependencia de desarrollo justificada en el PR (ruta protegida: dependencias); corre
+        contra la API real en el modo unico sin Redis (ADR-0019) con base de datos del CI"
+      - "Casos: ingreso con OTP de Mailpit o sesion de desarrollo, abrir una conversacion sembrada, responder,
+        enviar una cotizacion y crear un seguimiento; el envio sale contra Graph API falsa"
+      - Job de CI no obligatorio al inicio; informe de fallos como artefacto
+    files:
+      - apps/web/e2e/
+      - .github/workflows/
+    source: "auditoria de veracidad 2026-11-04 (PR #202)"
+    created_at: 2026-11-05T00:44:42.917Z
+  - id: T-126
+    title: Campana de pruebas funcionales completas en local y bitacora de hallazgos
+    type: test
+    phase: 1
+    priority: P0
+    effort: M
+    status: backlog
+    depends_on: []
+    acceptance:
+      - "Stack completo local en modo unico contra la base de desarrollo: API, web, correo de prueba"
+      - Recorrido de cada capacidad del MVP (H1 a H6) en el navegador, con evidencia, y cada hallazgo en
+        docs/_bitacora/hallazgos-funcionales-AAAA-MM-DD.md con severidad, pasos, esperado, obtenido y duenio
+      - Cada hallazgo corregido o convertido en tarea; la prueba se repite hasta cero hallazgos bloqueantes
+    files:
+      - docs/_bitacora/
+    source: "auditoria de veracidad 2026-11-04 (PR #202)"
+    created_at: 2026-11-05T00:44:42.917Z
+  - id: T-127
+    title: Atajos de teclado en la bandeja con ayuda en pantalla
+    type: feature
+    phase: 1
+    priority: P2
+    effort: S
+    status: done
+    depends_on: []
+    acceptance:
+      - j/k navegan conversaciones, r enfoca el compositor, c abre Enviar cotizacion, s crea seguimiento, ?
+        muestra la ayuda; no se activan mientras se escribe en un campo
+      - Logica pura del mapa de atajos con pruebas; compatible con lector de pantalla
+      - Se pueden desactivar en preferencias
+    files:
+      - apps/web/src/lib/atajos-teclado.ts
+      - apps/web/src/lib/atajos-teclado.spec.ts
+      - apps/web/src/components/bandeja/ayuda-atajos.tsx
+    source: "cola de Antigravity reabastecida 2026-11-04 (recuperadas: no entraron con #187)"
+    created_at: 2026-11-05T00:45:13.085Z
+    started_at: 2026-11-05T01:39:51.736Z
+    done_at: 2026-11-05T01:39:51.736Z
+    evidence: "Mergeado en main por el PR #217 (rama b/T-127-atajos-teclado-bandeja) con el CI en verde: format,
+      analyze, tests y los demás checks obligatorios. Cierre automático (.github/workflows/cerrar-tarea.yml)."
+    commit: 31cdab3e9b98110db80912a97df29e0a98f01292
+  - id: T-128
+    title: Comparar dos versiones de una cotizacion lado a lado
+    type: feature
+    phase: 1
+    priority: P2
+    effort: M
+    status: done
+    depends_on: []
+    acceptance:
+      - "Desde cotizaciones guardadas se eligen dos versiones y se ve la diferencia por linea: pasajeros,
+        salida, cargos, descuentos, total (dinero en enteros con moneda ISO)"
+      - Resalta lo que cambio y su efecto sobre el total; sin neto ni margen si el usuario no tiene el permiso
+      - Logica pura de diff con pruebas
+    files:
+      - apps/web/src/lib/cotizaciones-diff.ts
+      - apps/web/src/lib/cotizaciones-diff.spec.ts
+      - apps/web/src/app/cotizaciones/
+    source: "cola de Antigravity reabastecida 2026-11-04 (recuperadas: no entraron con #187)"
+    created_at: 2026-11-05T00:45:13.087Z
+    started_at: 2026-11-05T02:00:41.431Z
+    done_at: 2026-11-05T02:00:41.431Z
+    evidence: "Mergeado en main por el PR #222 (rama b/T-128-comparar-cotizaciones) con el CI en verde: format,
+      analyze, tests y los demás checks obligatorios. Cierre automático (.github/workflows/cerrar-tarea.yml)."
+    commit: b165f9200dc579b87e24353a05cd0632427164ac
+  - id: T-129
+    title: Accesibilidad del cotizador y del catalogo (foco, etiquetas, contraste, teclado)
+    type: feature
+    phase: 1
+    priority: P2
+    effort: M
+    status: done
+    depends_on: []
+    acceptance:
+      - Recorrido completo con teclado y lector de pantalla del cotizador y del catalogo; foco visible y
+        gestionado en modales
+      - Etiquetas y errores asociados a cada campo; contraste AA; objetivos tactiles de 44 px
+      - Pruebas de testing-library por roles; lista de lo corregido en traspaso/ENTREGA.md
+    files:
+      - apps/web/src/app/cotizador/
+      - apps/web/src/app/catalogo/
+    source: "cola de Antigravity reabastecida 2026-11-04 (recuperadas: no entraron con #187)"
+    created_at: 2026-11-05T00:45:13.087Z
+    started_at: 2026-11-05T02:39:07.458Z
+    done_at: 2026-11-05T02:39:07.459Z
+    evidence: "Mergeado en main por el PR #230 (rama b/T-129-accesibilidad-cotizador-catalogo) con el CI en verde:
+      format, analyze, tests y los demás checks obligatorios. Cierre automático
+      (.github/workflows/cerrar-tarea.yml)."
+    commit: 931e9d74b469d898ca5d5f6e4abda8fa16ddeada
+  - id: T-130
+    title: "Presupuesto de rendimiento de la web: carga diferida y tamano por ruta"
+    type: feature
+    phase: 1
+    priority: P3
+    effort: M
+    status: done
+    depends_on: []
+    acceptance:
+      - Carga diferida (next/dynamic) de modales pesados, editor de cotizacion y graficos de reportes
+      - Medicion del tamano de JS por ruta con next build documentada en traspaso/ENTREGA.md; ninguna ruta de
+        uso diario supera su presupuesto acordado
+      - Sin dependencias nuevas
+    files:
+      - apps/web/src/app/
+      - apps/web/next.config.mjs
+    source: "cola de Antigravity reabastecida 2026-11-04 (recuperadas: no entraron con #187)"
+    created_at: 2026-11-05T00:45:13.087Z
+    started_at: 2026-11-05T03:12:08.323Z
+    done_at: 2026-11-05T03:12:08.324Z
+    evidence: "Mergeado en main por el PR #235 (rama b/T-130-presupuesto-rendimiento-web) con el CI en verde:
+      format, analyze, tests y los demás checks obligatorios. Cierre automático
+      (.github/workflows/cerrar-tarea.yml)."
+    commit: 80dfee3bfcaca42e16716ab365baded5b0aababa
+  - id: T-131
+    title: "Captura: historial de cambios de etapa de la oportunidad y cerrada_en (sin esto no hay embudo temporal)"
+    type: feature
+    phase: 1
+    priority: P0
+    effort: M
+    status: backlog
+    depends_on: []
+    acceptance:
+      - "Tabla nueva oportunidad_cambios_etapa con tenant_id, RLS (aplicar_aislamiento_tenant) y foraneas
+        COMPUESTAS con el tenant: oportunidad_id, etapa_desde_id (nula en el alta), etapa_hasta_id, es_ganada
+        y es_perdida copiadas de la etapa en ese momento, motivo_perdida, asesor_id de la oportunidad en ese
+        momento, usuario_id que la movio, ocurrido_en timestamptz UTC"
+      - crearOportunidad y moverOportunidad escriben la fila en la MISMA transaccion que el cambio; si la
+        escritura falla, el cambio de etapa se revierte
+      - Al pasar a una etapa es_ganada o es_perdida se fija oportunidades.cerrada_en; al reabrir (pasar a una
+        etapa viva) se vacia, y el historial conserva el motivo anterior
+      - Indice (tenant_id, oportunidad_id, ocurrido_en) e indice (tenant_id, ocurrido_en)
+      - "e2e: mover A->B->perdida->A deja 4 filas en orden y cerrada_en nula al final; una agencia no lee el
+        historial de otra (job aislamiento-tenants en verde)"
+      - Migracion nueva, sin tocar las aplicadas; aprobacion del propietario (ruta protegida)
+    files:
+      - packages/database/prisma/schema.prisma
+      - packages/database/prisma/migrations/
+      - apps/api/src/modules/crm/infrastructure/crm.prisma.ts
+      - apps/api/src/modules/crm/infrastructure/escritura-crm.prisma.ts
+      - apps/api/src/modules/crm/crm.e2e-spec.ts
+    source: roadmap de reportes 2026-11-04 (docs/08-roadmap/06-roadmap-de-reportes.md)
+    created_at: 2026-11-05T01:14:46.630Z
+    owner: datos
+  - id: T-132
+    title: "Captura: historial de estados de la cotizacion con instante de aceptacion, rechazo o vencimiento"
+    type: feature
+    phase: 1
+    priority: P0
+    effort: M
+    status: backlog
+    depends_on: []
+    acceptance:
+      - "Tabla nueva cotizacion_cambios_estado con tenant_id, RLS y foranea COMPUESTA: cotizacion_id,
+        estado_desde, estado_hasta, usuario_id, ocurrido_en UTC"
+      - cambiarEstado (cotizaciones.use-case.ts) escribe la fila en la misma transaccion que el UPDATE
+        bloqueado; el alta en BORRADOR escribe la fila inicial
+      - "Sin relleno retroactivo inventado: las cotizaciones anteriores quedan sin fila y el reporte las
+        declara «sin instante de decision»"
+      - "e2e: BORRADOR->ENVIADA->ACEPTADA deja 3 filas con instantes crecientes; aislamiento entre agencias en
+        verde"
+      - Migracion nueva; aprobacion del propietario
+    files:
+      - packages/database/prisma/schema.prisma
+      - packages/database/prisma/migrations/
+      - apps/api/src/modules/quoting/application/cotizaciones.use-case.ts
+      - apps/api/src/modules/quoting/cotizaciones.e2e-spec.ts
+    source: roadmap de reportes 2026-11-04 (docs/08-roadmap/06-roadmap-de-reportes.md)
+    created_at: 2026-11-05T01:14:46.632Z
+    owner: datos
+  - id: T-133
+    title: "Captura: origen del lead como tabla por agencia (R12) y columna en la oportunidad"
+    type: feature
+    phase: 1
+    priority: P0
+    effort: M
+    status: backlog
+    depends_on: []
+    acceptance:
+      - "Tabla origenes_lead por tenant (nombre, clave opcional, activo, orden) con RLS y semilla: WhatsApp
+        directo, Anuncio de Meta, Instagram, Referido, Cliente que vuelve, Otro"
+      - oportunidades.origen_id nullable con foranea COMPUESTA con el tenant; un origen usado no se borra, se
+        desactiva
+      - "Contrato Zod en packages/contracts (crm.ts): origenId opcional al crear la oportunidad, listado GET
+        /crm/origenes"
+      - La oportunidad creada desde una conversacion hereda el origen de la conversacion si T-134 lo detecto
+      - "e2e: crear con origen de otra agencia responde 404/422; aislamiento en verde"
+      - Migracion nueva; aprobacion del propietario
+    files:
+      - packages/database/prisma/schema.prisma
+      - packages/database/prisma/migrations/
+      - packages/contracts/src/crm.ts
+      - apps/api/src/modules/crm/infrastructure/escritura-crm.prisma.ts
+      - apps/api/src/modules/crm/interface/crm.controller.ts
+    source: roadmap de reportes 2026-11-04 (docs/08-roadmap/06-roadmap-de-reportes.md)
+    created_at: 2026-11-05T01:14:46.632Z
+    owner: datos
+  - id: T-134
+    title: "Captura: referral de Click-to-WhatsApp en el primer mensaje entrante y origen «Anuncio de Meta»
+      automatico"
+    type: feature
+    phase: 1
+    priority: P0
+    effort: M
+    status: backlog
+    depends_on:
+      - T-133
+    acceptance:
+      - El parseo del change extrae messages[].referral (source_type, source_id, source_url, headline,
+        ctwa_clid) cuando viene; sin referral no cambia nada
+      - Se guarda en la conversacion solo la PRIMERA vez (primer toque), en columnas acotadas y no en el texto
+        del mensaje; nunca se registra en logs
+      - La oportunidad que nace de esa conversacion recibe el origen «Anuncio de Meta» de T-133
+      - Prueba unitaria con un payload real de referral de la documentacion de Meta y uno sin referral; e2e
+        del webhook sigue en verde
+    files:
+      - apps/api/src/modules/inbox/domain/contenido-del-cambio.ts
+      - apps/api/src/modules/inbox/infrastructure/bandeja.prisma.ts
+      - packages/database/prisma/schema.prisma
+      - packages/database/prisma/migrations/
+    source: roadmap de reportes 2026-11-04 (docs/08-roadmap/06-roadmap-de-reportes.md)
+    created_at: 2026-11-05T01:14:46.632Z
+    owner: backend
+  - id: T-135
+    title: "Captura: politica de atencion por agencia (minutos de SLA, horario semanal, horas de silencio) como
+      tabla, no constante"
+    type: feature
+    phase: 1
+    priority: P0
+    effort: M
+    status: backlog
+    depends_on: []
+    acceptance:
+      - "Tabla politica_de_atencion, una fila por tenant con RLS: minutos_sla_primera_respuesta (por defecto
+        15), horario semanal (dia, desde, hasta en hora local), horas_de_silencio_nuevo_episodio (por defecto
+        12)"
+      - GET y PUT /api/v1/configuracion/atencion con contrato Zod; el PUT exige un permiso de administracion
+        existente (usuarios.administrar o el que decida el arquitecto)
+      - La pantalla de Configuracion deja de mostrar el SLA de la maqueta y lee este endpoint (o la tarea
+        queda enlazada a la de frontend que lo haga)
+      - "e2e: una agencia no lee ni cambia la politica de otra"
+      - Migracion nueva; aprobacion del propietario
+    files:
+      - packages/database/prisma/schema.prisma
+      - packages/database/prisma/migrations/
+      - packages/contracts/src/
+      - apps/api/src/modules/inbox/
+    source: roadmap de reportes 2026-11-04 (docs/08-roadmap/06-roadmap-de-reportes.md)
+    created_at: 2026-11-05T01:14:46.633Z
+    owner: datos
+  - id: T-136
+    title: "Armar conversaciones.sla_vence_en en cada entrante que abre un episodio: hoy nadie lo escribe y el
+      filtro SLA_VENCIDO siempre sale vacio"
+    type: bug
+    phase: 1
+    priority: P0
+    effort: S
+    status: backlog
+    depends_on:
+      - T-135
+    acceptance:
+      - registrarEntrante fija sla_vence_en = instante + minutos de la politica de T-135 cuando el mensaje
+        abre un episodio (ultimo mensaje humano saliente o ninguno, o silencio mayor que horas_de_silencio)
+      - Al responder un humano, el episodio se da por atendido (la proyeccion del contrato anula slaVenceEn)
+        sin perder la evidencia historica, que vive en mensajes
+      - Mensajes desordenados (reintento de Meta de hace horas) no reabren un episodio ya respondido
+      - "e2e: entrante -> filtro SLA_VENCIDO lo lista tras el plazo -> respuesta humana -> deja de listarlo;
+        segundo episodio dias despues vuelve a armarse"
+    files:
+      - apps/api/src/modules/inbox/infrastructure/bandeja.prisma.ts
+      - apps/api/src/modules/inbox/infrastructure/conversaciones.prisma.ts
+    source: roadmap de reportes 2026-11-04 (docs/08-roadmap/06-roadmap-de-reportes.md)
+    created_at: 2026-11-05T01:14:46.633Z
+    owner: backend
+  - id: T-137
+    title: "Reportes: primera respuesta por episodio con mediana, p90, episodios sin respuesta y % dentro del SLA
+      (amplia GET /reportes/resumen del PR #213)"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on:
+      - T-135
+    acceptance:
+      - "Empieza despues de integrar el PR #213; modifica su puerto PuertoRespuestaParaReportes, no crea otro
+        endpoint"
+      - "Episodio y respuesta definidos como en docs/08-roadmap/06-roadmap-de-reportes.md R1: solo salientes
+        con autor humano y no FALLIDO cuentan como respuesta"
+      - Devuelve n de episodios, respondidos, sin respuesta, mediana y p90 en minutos y % en SLA; sin promedio
+        en la web; percentiles nulos si n < 5 (muestraInsuficiente)
+      - Desglose por asesor que respondio; SET LOCAL statement_timeout en la transaccion del reporte
+      - Indice mensajes (tenant_id, conversacion_id, direccion, ocurrido_en) solo si EXPLAIN con datos de
+        prueba de volumen lo justifica; si se agrega, migracion aparte con aprobacion del propietario
+      - "e2e: un cliente que vuelve tras 3 dias genera un segundo episodio; uno sin respuesta cuenta en el
+        denominador del % SLA"
+    files:
+      - apps/api/src/modules/inbox/
+      - apps/api/src/modules/analytics/
+      - packages/contracts/src/reportes.ts
+    source: roadmap de reportes 2026-11-04 (docs/08-roadmap/06-roadmap-de-reportes.md)
+    created_at: 2026-11-05T01:14:46.633Z
+    owner: backend
+  - id: T-138
+    title: "Reportes: GET /reportes/pendientes con conversaciones sin responder, ventanas de 24 h por cerrar,
+      seguimientos vencidos y carga por asesor"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on: []
+    acceptance:
+      - "Sin responder: ultimo_mensaje_direccion ENTRANTE y estado distinto de CERRADA, en tramos de
+        antiguedad; ventana por cerrar: ultimo_mensaje_cliente_en + 24 h dentro de las proximas 4 h"
+      - Seguimientos vencidos (completado_en nulo y vence_en pasado) con dias de atraso en la zona del tenant;
+        oportunidades vivas sin seguimiento pendiente
+      - "Carga por asesor: asignadas abiertas, sin responder, oportunidades vivas y seguimientos vencidos"
+      - "Respeta la visibilidad de conversaciones: un asesor sin conversaciones.ver_todas solo ve lo suyo"
+      - Puerto de lectura en cada modulo dueno (inbox, crm) compuesto en analytics, con tenant_id explicito en
+        cada tabla del SQL
+    files:
+      - apps/api/src/modules/analytics/
+      - apps/api/src/shared/puertos/
+      - packages/contracts/src/reportes.ts
+    source: roadmap de reportes 2026-11-04 (docs/08-roadmap/06-roadmap-de-reportes.md)
+    created_at: 2026-11-05T01:14:46.633Z
+    owner: backend
+  - id: T-139
+    title: "Reportes: GET /reportes/cotizaciones-abiertas con antiguedad desde el envio y vencidas de hecho por
+      vigencia"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: S
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Cotizaciones ENVIADA por tramos de 0-2, 3-7, 8-14 y mas de 14 dias desde enviada_en, en la zona del
+        tenant
+      - "Vencidas de hecho: ENVIADA con vigente_hasta de la version enviada anterior a hoy (no depende del
+        estado VENCIDA manual)"
+      - Por asesor (creado_por) y por moneda; valor de venta por moneda sin mezclar; sin neto ni margen salvo
+        con cotizacion.ver_neto_y_margen
+      - Puerto en quoting compuesto en analytics; tenant_id explicito en el SQL
+    files:
+      - apps/api/src/modules/quoting/
+      - apps/api/src/modules/analytics/
+      - packages/contracts/src/reportes.ts
+    source: roadmap de reportes 2026-11-04 (docs/08-roadmap/06-roadmap-de-reportes.md)
+    created_at: 2026-11-05T01:14:46.633Z
+    owner: backend
+  - id: T-140
+    title: "Reportes: ventas por destino, paquete y asesor, motivos de perdida, cohortes por instante de decision
+      y cierre, e indicadores de calidad del dato"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on:
+      - T-131
+      - T-132
+    acceptance:
+      - "Empieza despues de integrar el PR #213 y amplia su resumen"
+      - Ventas y margen por moneda y por destino/paquete/asesor con cobertura de margen (cotizaciones con neto
+        conocido / total); margen % solo sobre las filas con neto
+      - Cuando T-132 existe, la venta se ancla al instante de aceptacion; las cotizaciones sin historial se
+        declaran aparte
+      - Motivos de perdida por mes de cerrada_en (T-131) y por asesor; nota visible para OTRO
+      - "Indicadores: ganadas sin cotizacion aceptada, ENVIADA con vigencia vencida, ventas sin margen
+        conocido"
+      - Agrupaciones por mes con date_trunc en la zona del tenant (tenants.zona_horaria), no en UTC
+    files:
+      - apps/api/src/modules/analytics/
+      - apps/api/src/modules/quoting/
+      - apps/api/src/modules/crm/
+      - packages/contracts/src/reportes.ts
+    source: roadmap de reportes 2026-11-04 (docs/08-roadmap/06-roadmap-de-reportes.md)
+    created_at: 2026-11-05T01:14:46.634Z
+    owner: backend
+  - id: T-141
+    title: "Permiso reportes.ver_equipo: hoy cualquier miembro lee el resumen de toda la agencia"
+    type: security
+    phase: 1
+    priority: P1
+    effort: S
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Permiso nuevo en PERMISOS (packages/contracts/src/identidad.ts) y en el CHECK de permisos de roles,
+        por migracion nueva; sembrado en DUENO y OPERACIONES
+      - Sin el permiso, los endpoints de reportes devuelven solo lo del propio usuario (no un 403 en blanco)
+      - La decision de politica (si el asesor ve cifras del equipo) la confirma el dueno-de-producto antes de
+        integrar
+      - "e2e: un ASESOR no recibe cifras de otro asesor; un DUENO si"
+    files:
+      - packages/contracts/src/identidad.ts
+      - packages/database/prisma/migrations/
+      - apps/api/src/modules/analytics/
+    source: roadmap de reportes 2026-11-04 (docs/08-roadmap/06-roadmap-de-reportes.md)
+    created_at: 2026-11-05T01:14:46.634Z
+    owner: datos
+  - id: T-142
+    title: "Web /reportes sobre GET /api/v1/reportes/resumen: instantes UTC, ventasPorMoneda por moneda y fuera el
+      calculo desde el tablero"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: done
+    depends_on: []
+    acceptance:
+      - "No se integra antes que el PR #213; puede construirse contra su contrato
+        packages/contracts/src/reportes.ts"
+      - El periodo elegido se convierte en desde/hasta como instantes UTC con la zona horaria de la agencia
+        (hasta exclusivo); el selector filtra de verdad
+      - Una tarjeta por moneda de ventasPorMoneda; ninguna cifra suma monedas ni asume COP
+      - Se elimina calcularReporteDesdePipeline y su uso del tablero (truncado a 20 tarjetas por columna);
+        null se pinta como «Sin datos», nunca como 0
+      - Muestra la cohorte de cada cifra (p. ej. «aceptadas de las enviadas en el periodo») y la mediana, no
+        el promedio
+      - Margen y neto solo si vienen en la respuesta; pruebas con y sin cotizacion.ver_neto_y_margen y con dos
+        monedas
+    files:
+      - apps/web/src/app/reportes/page.tsx
+      - apps/web/src/lib/reportes-logica.ts
+      - apps/web/src/lib/reportes-logica.spec.ts
+      - apps/web/src/app/reportes/reportes-permisos.spec.tsx
+    source: roadmap de reportes 2026-11-04 (docs/08-roadmap/06-roadmap-de-reportes.md)
+    created_at: 2026-11-05T01:14:46.635Z
+    owner: frontend
+    started_at: 2026-11-05T03:33:51.611Z
+    done_at: 2026-11-05T03:33:51.611Z
+    evidence: "Mergeado en main por el PR #237 (rama b/T-142-web-reportes-resumen) con el CI en verde: format,
+      analyze, tests y los demás checks obligatorios. Cierre automático (.github/workflows/cerrar-tarea.yml)."
+    commit: 0f7cab86f7b3d6ae65d8a158a87670ef0fafd4c4
+  - id: T-143
+    title: "Web: vistas de pendientes de atencion, cotizaciones abiertas por antiguedad y seguimientos vencidos
+      (asesor y dueno)"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on:
+      - T-138
+      - T-139
+    acceptance:
+      - "El asesor ve lo suyo al entrar a /reportes (o en el inicio): sin responder, ventanas por cerrar,
+        cotizaciones abiertas por tramo y seguimientos vencidos, cada uno con enlace a la conversacion,
+        cotizacion o seguimiento"
+      - El dueno ve la tabla de carga por asesor con n en cada fila
+      - Fechas y tramos en la zona de la agencia; 375 px usable
+    files:
+      - apps/web/src/app/reportes/
+      - apps/web/src/lib/
+    source: roadmap de reportes 2026-11-04 (docs/08-roadmap/06-roadmap-de-reportes.md)
+    created_at: 2026-11-05T01:14:46.635Z
+    owner: frontend
+  - id: T-144
+    title: "e2e de reportes nuevos: dos agencias, dos monedas, permisos de margen y de equipo, limites del periodo
+      en la zona del tenant"
+    type: test
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on:
+      - T-138
+      - T-139
+    acceptance:
+      - Cada endpoint de reportes nuevo se llama con datos de dos agencias y ninguna cifra de la B aparece en
+        la A
+      - Una venta en COP y otra en USD salen en filas separadas; ningun campo suma ambas
+      - "Un usuario sin cotizacion.ver_neto_y_margen no recibe las claves neto ni margen en el JSON (no null:
+        ausentes)"
+      - Una venta a las 23:30 del ultimo dia del mes en America/Bogota cae en ese mes en las agrupaciones
+        mensuales
+      - Con n < 5 los percentiles vienen nulos y muestraInsuficiente verdadero
+    files:
+      - apps/api/src/modules/analytics/
+    source: roadmap de reportes 2026-11-04 (docs/08-roadmap/06-roadmap-de-reportes.md)
+    created_at: 2026-11-05T01:14:46.635Z
+    owner: qa
+  - id: T-145
+    title: "Reportes V1: embudo temporal (conversion etapa a etapa en N dias) y mediana de dias por etapa desde el
+      historial"
+    type: feature
+    phase: 2
+    priority: P2
+    effort: M
+    status: backlog
+    depends_on:
+      - T-131
+    acceptance:
+      - "Disparador: al menos 8 semanas de historial de T-131 en la agencia piloto; antes, el endpoint
+        responde muestraInsuficiente"
+      - Conversion de cada etapa a la siguiente por cohorte de entrada a la etapa; mediana y p90 de dias en
+        etapa
+      - Usa las banderas es_ganada/es_perdida guardadas en el historial, no las de la etapa viva
+    files:
+      - apps/api/src/modules/analytics/
+      - apps/api/src/modules/crm/
+    source: roadmap de reportes 2026-11-04 (docs/08-roadmap/06-roadmap-de-reportes.md)
+    created_at: 2026-11-05T01:14:46.635Z
+    owner: backend
+  - id: T-146
+    title: "Reportes V1: oportunidades, tasa de cierre por cohorte y ventas por moneda segun origen del lead"
+    type: feature
+    phase: 2
+    priority: P2
+    effort: S
+    status: backlog
+    depends_on:
+      - T-133
+      - T-134
+    acceptance:
+      - "Por origen: creadas, ganadas, perdidas, abiertas y tasa de cierre por cohorte de mes de creacion"
+      - Oportunidades sin origen como fila propia, nunca repartidas
+      - Ventas por origen y moneda sin mezclar
+    files:
+      - apps/api/src/modules/analytics/
+      - apps/api/src/modules/crm/
+    source: roadmap de reportes 2026-11-04 (docs/08-roadmap/06-roadmap-de-reportes.md)
+    created_at: 2026-11-05T01:14:46.635Z
+    owner: backend
+  - id: T-147
+    title: "Reportes V1: pipeline ponderado por moneda y mes de fecha de viaje"
+    type: feature
+    phase: 2
+    priority: P2
+    effort: S
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Suma de valor_estimado x coalesce(probabilidad de la oportunidad, de la etapa)/100 por moneda, de
+        oportunidades vivas, por mes de fecha_viaje_desde en la zona del tenant
+      - Sin valor o sin fecha se cuentan aparte
+      - Se titula «pipeline ponderado» hasta que exista una calibracion contra ventas reales con el historial
+        de T-131
+    files:
+      - apps/api/src/modules/analytics/
+      - apps/api/src/modules/crm/
+    source: roadmap de reportes 2026-11-04 (docs/08-roadmap/06-roadmap-de-reportes.md)
+    created_at: 2026-11-05T01:14:46.635Z
+    owner: backend
+  - id: T-148
+    title: "Reportes V1 (Operaciones): salidas proximas con pasajeros por fecha, paquete y opcion de salida, y
+      ocupacion contra cupo informativo"
+    type: feature
+    phase: 2
+    priority: P2
+    effort: M
+    status: backlog
+    depends_on:
+      - T-132
+    acceptance:
+      - "Desde versiones enviadas de cotizaciones ACEPTADA: suma de adultos, ninos e infantes por
+        fecha_salida, paquete y opcion_de_salida (hora y punto de encuentro), proximos 7 a 30 dias"
+      - Ocupacion = pasajeros / vigencias.cupo_total solo donde la vigencia publicada tiene cupo; se rotula
+        informativo (ADR-0009)
+      - Sin documentos ni datos sensibles de viajeros (R10); nombre del contacto solo dentro de la visibilidad
+        del usuario
+    files:
+      - apps/api/src/modules/analytics/
+      - apps/api/src/modules/quoting/
+    source: roadmap de reportes 2026-11-04 (docs/08-roadmap/06-roadmap-de-reportes.md)
+    created_at: 2026-11-05T01:14:46.636Z
+    owner: backend
+  - id: T-149
+    title: Congelar el mayorista en cada version nueva de cotizacion para reportar ventas por proveedor sin
+      reescribir la historia
+    type: feature
+    phase: 2
+    priority: P2
+    effort: S
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Columnas nullables mayorista_id y mayorista_nombre en versiones_cotizacion, rellenadas al congelar;
+        las versiones viejas quedan nulas y se declaran
+      - El disparador de inmutabilidad sigue rechazando UPDATE; la migracion no reescribe filas existentes
+      - Migracion nueva; aprobacion del propietario
+    files:
+      - packages/database/prisma/schema.prisma
+      - packages/database/prisma/migrations/
+      - apps/api/src/modules/quoting/
+    source: roadmap de reportes 2026-11-04 (docs/08-roadmap/06-roadmap-de-reportes.md)
+    created_at: 2026-11-05T01:14:46.636Z
+    owner: datos
+  - id: T-150
+    title: "Web: pantallas de reportes V1 (embudo temporal, origen, pipeline ponderado, salidas proximas para
+      Operaciones)"
+    type: feature
+    phase: 2
+    priority: P2
+    effort: M
+    status: backlog
+    depends_on:
+      - T-145
+      - T-146
+      - T-147
+      - T-148
+    acceptance:
+      - Cada vista muestra n, periodo y cohorte; dinero por moneda; muestraInsuficiente como mensaje, no como 0
+      - Salidas proximas visible para OPERACIONES sin margen
+    files:
+      - apps/web/src/app/reportes/
+    source: roadmap de reportes 2026-11-04 (docs/08-roadmap/06-roadmap-de-reportes.md)
+    created_at: 2026-11-05T01:14:46.636Z
+    owner: frontend
+  - id: T-151
+    title: "Tablero del pipeline: el valor por columna suma valor_estimado de monedas distintas"
+    type: bug
+    phase: 1
+    priority: P1
+    effort: S
+    status: backlog
+    depends_on: []
+    acceptance:
+      - tableroPorEtapa agrupa la suma por (etapa, moneda_iso) y el contrato expone una lista de Dinero por
+        columna
+      - Oportunidades sin valor se cuentan aparte
+      - e2e con una oportunidad en COP y otra en USD en la misma etapa
+    files:
+      - apps/api/src/modules/crm/infrastructure/crm.prisma.ts
+      - packages/contracts/src/crm.ts
+    source: roadmap de reportes 2026-11-04 (docs/08-roadmap/06-roadmap-de-reportes.md)
+    created_at: 2026-11-05T01:14:46.636Z
+    owner: backend
+  - id: T-152
+    title: Glosario por idioma (es-CO, en-US, pt-BR) en el lenguaje ubicuo
+    type: docs
+    phase: 2
+    priority: P1
+    effort: S
+    status: backlog
+    depends_on: []
+    acceptance:
+      - docs/01-producto/02-lenguaje-ubicuo.md tiene la sección «Glosario por idioma» con los términos de
+        ADR-0020 §7 y los que falten
+      - Cada término dudoso (Cotización/Orçamento, Tarifa neta, Mayorista/Operadora) tiene una decisión y su
+        motivo
+      - Ningún término en inglés del glosario contradice el nombre de código del lenguaje ubicuo (TravelFile
+        no es Booking)
+    files:
+      - docs/01-producto/02-lenguaje-ubicuo.md
+    source: ADR-0020 multiidioma 2026-11-04 (docs/08-roadmap/07-roadmap-multiidioma.md)
+    created_at: 2026-11-05T02:38:48.839Z
+    owner: experto-turismo
+  - id: T-153
+    title: "Migración M-i1: idioma en tenants, usuarios, contactos y mensajes"
+    type: feature
+    phase: 2
+    priority: P1
+    effort: S
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Migración nueva con tenants.idioma y tenants.idioma_de_contenido NOT NULL DEFAULT es-CO, y
+        usuarios.idioma, contactos.idioma, mensajes.idioma nulables, todas varchar(10) con CHECK
+        ^[a-z]{2}(-[A-Z]{2})?$
+      - Ninguna migración aplicada se modifica; schema.prisma refleja las columnas
+      - aislamiento.spec.ts sigue verde sin tocar el literal de excepciones
+      - Revisión de auditor-seguridad registrada en el PR
+    files:
+      - packages/database/prisma/schema.prisma
+      - packages/database/prisma/migrations/
+    source: ADR-0020 multiidioma 2026-11-04 (docs/08-roadmap/07-roadmap-multiidioma.md)
+    created_at: 2026-11-05T02:38:48.840Z
+    owner: datos
+  - id: T-154
+    title: "Paquete packages/i18n: núcleo de traducción, formato por idioma y diccionario del viajero"
+    type: feature
+    phase: 2
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on:
+      - T-152
+    acceptance:
+      - packages/i18n sin dependencias externas exporta IDIOMAS_SOPORTADOS (es-CO, en-US, pt-BR), t, plural
+        con Intl.PluralRules, interpolación {x} y la equivalencia con códigos de Meta (es_CO, en_US, pt_BR y
+        respaldo es, en)
+      - formatearDinero(dinero, idioma) usa MONEDAS de @viajapro/domain para los decimales; 350000 COP en
+        es-CO da «$ 350.000» y en en-US contiene «COP»
+      - "formatearFechaDeViaje(date, idioma) no usa la zona del navegador: 2026-12-15 da «15 de diciembre de
+        2026», «December 15, 2026», «15 de dezembro de 2026»"
+      - Diccionario viajero.* completo en los tres idiomas; una prueba falla si falta una clave, si una hoja
+        está vacía o si los marcadores {x} difieren
+      - package.json y pnpm-workspace.yaml los modifica una persona (humanRequired)
+    files:
+      - packages/domain/src/
+      - apps/api/src/modules/quoting/domain/texto-de-cotizacion-whatsapp.ts
+    source: ADR-0020 multiidioma 2026-11-04 (docs/08-roadmap/07-roadmap-multiidioma.md)
+    created_at: 2026-11-05T02:38:48.840Z
+    owner: backend
+  - id: T-155
+    title: "API: idioma del usuario, del contacto y de la agencia en contratos y rutas"
+    type: feature
+    phase: 2
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on:
+      - T-153
+    acceptance:
+      - Zod Idioma en packages/contracts; la sesión devuelve idioma resuelto (usuario → agencia → es-CO)
+      - El usuario cambia su preferencia por una ruta propia; null vuelve al de la agencia
+      - Contacto expone y acepta idioma (nulable); el cambio se audita con antes y después
+      - El contrato de ajustes de agencia (rama a/T-000-api-ajustes-agencia o su sucesora) incluye idioma e
+        idioma_de_contenido; cambiar idioma_de_contenido con paquetes responde 409 CATALOGO_NO_VACIO
+      - "e2e: un idioma fuera de la lista responde 400; la agencia A no cambia el idioma de un contacto de B"
+    files:
+      - packages/contracts/src/
+      - apps/api/src/modules/identity/
+      - apps/api/src/modules/crm/
+    source: ADR-0020 multiidioma 2026-11-04 (docs/08-roadmap/07-roadmap-multiidioma.md)
+    created_at: 2026-11-05T02:38:48.840Z
+    owner: backend
+  - id: T-156
+    title: Cotización por WhatsApp en el idioma pedido, con idioma congelado en el mensaje
+    type: feature
+    phase: 2
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on:
+      - T-154
+      - T-155
+    acceptance:
+      - EnviarCotizacionCuerpo acepta idioma opcional; por defecto el del contacto y, si es nulo, el de la
+        agencia
+      - textoDeCotizacionParaWhatsapp recibe idioma y usa viajero.* de packages/i18n; no quedan rótulos ni
+        meses literales en español
+      - mensajes.idioma guarda el idioma del texto enviado; el texto libre del asesor lo deja nulo
+      - "La clave de idempotencia es idéntica a la actual cuando el idioma es el de contenido de la agencia y
+        añade |idioma cuando no; prueba: misma versión en es-CO y en-US produce dos mensajes, repetir en-US
+        produce uno"
+      - El texto nunca lleva neto ni margen en ningún idioma (prueba existente ampliada a en-US y pt-BR)
+    files:
+      - apps/api/src/modules/quoting/domain/texto-de-cotizacion-whatsapp.ts
+      - apps/api/src/modules/quoting/infrastructure/cotizacion-para-whatsapp.prisma.ts
+      - apps/api/src/modules/inbox/application/enviar-cotizacion-por-whatsapp.ts
+      - apps/api/src/modules/inbox/domain/clave-de-envio-de-cotizacion.ts
+    source: ADR-0020 multiidioma 2026-11-04 (docs/08-roadmap/07-roadmap-multiidioma.md)
+    created_at: 2026-11-05T02:38:48.841Z
+    owner: backend
+  - id: T-157
+    title: "Web: infraestructura de i18n con diccionarios tipados, cookie de idioma y trinquete de literales"
+    type: feature
+    phase: 2
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on:
+      - T-154
+      - T-155
+    acceptance:
+      - "apps/web/src/i18n/ con es-CO como fuente as const; en-US y pt-BR satisfies Diccionario: una clave
+        faltante rompe pnpm typecheck"
+      - useT() en cliente y obtenerT() en servidor; el proveedor carga solo el diccionario activo; <html lang>
+        sigue al idioma
+      - Cookie vp_idioma fijada al recibir la sesión; middleware.ts y la CSP no cambian
+      - formato.ts recibe idioma, usa MONEDAS para decimales y mantiene la zona del tenant (R9)
+      - "Prueba de completitud: hojas no vacías, mismos marcadores, plurales con todas las categorías de
+        Intl.PluralRules"
+      - "Escáner de literales JSX con la API de typescript y línea base por archivo: falla si un archivo sube
+        su recuento"
+      - Pseudolocale es-XA disponible solo en desarrollo; selector de idioma en el perfil
+    files:
+      - apps/web/src/app/layout.tsx
+      - apps/web/src/lib/formato.ts
+      - apps/web/src/lib/
+    source: ADR-0020 multiidioma 2026-11-04 (docs/08-roadmap/07-roadmap-multiidioma.md)
+    created_at: 2026-11-05T02:38:48.841Z
+    owner: frontend
+  - id: T-158
+    title: "Web: extraer a claves los textos de navegación, barra de módulos, auth, aceptar invitación,
+      onboarding, errores y componentes comunes"
+    type: refactor
+    phase: 2
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on:
+      - T-157
+    acceptance:
+      - La línea base del escáner de literales es 0 en todos los archivos del área
+      - Las claves son estables por contexto y pantalla, nunca el texto en español
+      - Las pruebas existentes del área siguen verdes en es-CO sin cambiar sus afirmaciones
+      - Una prueba renderiza el área en en-US y comprueba que no aparece ninguna cadena de la fuente
+    files:
+      - apps/web/src/components/comun/
+      - apps/web/src/components/auth/
+      - apps/web/src/components/onboarding/
+      - apps/web/src/components/bandeja/barra-modulos.tsx
+    source: ADR-0020 multiidioma 2026-11-04 (docs/08-roadmap/07-roadmap-multiidioma.md)
+    created_at: 2026-11-05T02:38:48.841Z
+    owner: frontend
+  - id: T-159
+    title: "Web: extraer a claves los textos de bandeja y sus componentes"
+    type: refactor
+    phase: 2
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on:
+      - T-157
+    acceptance:
+      - La línea base del escáner de literales es 0 en todos los archivos del área
+      - Las claves son estables por contexto y pantalla, nunca el texto en español
+      - Las pruebas existentes del área siguen verdes en es-CO sin cambiar sus afirmaciones
+      - Una prueba renderiza el área en en-US y comprueba que no aparece ninguna cadena de la fuente
+    files:
+      - apps/web/src/app/bandeja/
+      - apps/web/src/components/bandeja/
+    source: ADR-0020 multiidioma 2026-11-04 (docs/08-roadmap/07-roadmap-multiidioma.md)
+    created_at: 2026-11-05T02:38:48.841Z
+    owner: frontend
+  - id: T-160
+    title: "Web: extraer a claves los textos de cotizador, cotizaciones y comparador de versiones"
+    type: refactor
+    phase: 2
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on:
+      - T-157
+    acceptance:
+      - La línea base del escáner de literales es 0 en todos los archivos del área
+      - Las claves son estables por contexto y pantalla, nunca el texto en español
+      - Las pruebas existentes del área siguen verdes en es-CO sin cambiar sus afirmaciones
+      - Una prueba renderiza el área en en-US y comprueba que no aparece ninguna cadena de la fuente
+    files:
+      - apps/web/src/app/cotizador/
+      - apps/web/src/app/cotizaciones/
+      - apps/web/src/components/cotizador/
+      - apps/web/src/components/cotizaciones/
+    source: ADR-0020 multiidioma 2026-11-04 (docs/08-roadmap/07-roadmap-multiidioma.md)
+    created_at: 2026-11-05T02:38:48.841Z
+    owner: frontend
+  - id: T-161
+    title: "Web: extraer a claves los textos de catálogo e importación"
+    type: refactor
+    phase: 2
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on:
+      - T-157
+    acceptance:
+      - La línea base del escáner de literales es 0 en todos los archivos del área
+      - Las claves son estables por contexto y pantalla, nunca el texto en español
+      - Las pruebas existentes del área siguen verdes en es-CO sin cambiar sus afirmaciones
+      - Una prueba renderiza el área en en-US y comprueba que no aparece ninguna cadena de la fuente
+    files:
+      - apps/web/src/app/catalogo/
+      - apps/web/src/components/catalogo/
+    source: ADR-0020 multiidioma 2026-11-04 (docs/08-roadmap/07-roadmap-multiidioma.md)
+    created_at: 2026-11-05T02:38:48.841Z
+    owner: frontend
+  - id: T-162
+    title: "Web: extraer a claves los textos de inicio, contactos, pipeline, seguimientos, reportes,
+      notificaciones, configuración y aviso de páginas legales"
+    type: refactor
+    phase: 2
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on:
+      - T-157
+    acceptance:
+      - La línea base del escáner de literales es 0 en todos los archivos del área
+      - Las claves son estables por contexto y pantalla, nunca el texto en español
+      - Las pruebas existentes del área siguen verdes en es-CO sin cambiar sus afirmaciones
+      - Una prueba renderiza el área en en-US y comprueba que no aparece ninguna cadena de la fuente
+    files:
+      - apps/web/src/app/page.tsx
+      - apps/web/src/app/contactos/
+      - apps/web/src/app/pipeline/
+      - apps/web/src/app/seguimientos/
+      - apps/web/src/app/reportes/
+      - apps/web/src/components/configuracion/
+    source: ADR-0020 multiidioma 2026-11-04 (docs/08-roadmap/07-roadmap-multiidioma.md)
+    created_at: 2026-11-05T02:38:48.841Z
+    owner: frontend
+  - id: T-163
+    title: Traducir los diccionarios de interfaz a en-US y pt-BR con el glosario
+    type: feature
+    phase: 2
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on:
+      - T-152
+      - T-158
+      - T-159
+      - T-160
+      - T-161
+      - T-162
+    acceptance:
+      - en-US y pt-BR completos (typecheck y prueba de completitud verdes)
+      - Los términos del glosario viven bajo glosario.* y las frases los interpolan
+      - experto-turismo revisa una muestra de 50 cadenas por idioma y su veredicto queda en el PR
+    files:
+      - apps/web/src/lib/
+    source: ADR-0020 multiidioma 2026-11-04 (docs/08-roadmap/07-roadmap-multiidioma.md)
+    created_at: 2026-11-05T02:38:48.841Z
+    owner: frontend
+  - id: T-164
+    title: "Modal de envío de cotización: selector de idioma y «recordar para este contacto»"
+    type: feature
+    phase: 2
+    priority: P1
+    effort: S
+    status: backlog
+    depends_on:
+      - T-156
+      - T-157
+    acceptance:
+      - El selector preselecciona el idioma del contacto o, si es nulo, el de la agencia
+      - Enviar en otro idioma no cambia el contacto salvo con «recordar»
+      - "Prueba: enviar en en-US manda idioma en-US en el cuerpo"
+    files:
+      - apps/web/src/components/bandeja/modal-enviar-cotizacion.tsx
+      - apps/web/src/components/cotizaciones/modal-enviar-whatsapp-cotizacion.tsx
+    source: ADR-0020 multiidioma 2026-11-04 (docs/08-roadmap/07-roadmap-multiidioma.md)
+    created_at: 2026-11-05T02:38:48.841Z
+    owner: frontend
+  - id: T-165
+    title: Vista imprimible de cotización en el idioma del contacto
+    type: feature
+    phase: 2
+    priority: P1
+    effort: S
+    status: backlog
+    depends_on:
+      - T-154
+      - T-157
+    acceptance:
+      - ?idioma= elige el idioma; por defecto el del contacto; rótulos desde viajero.* de packages/i18n
+      - Plurales correctos (sin «adulto(s)») en los tres idiomas
+      - Sigue sin exponer neto, margen ni política (proyectarVersionParaVistaCliente intacta)
+      - El bloque legal colombiano sale en español con un aviso traducido
+    files:
+      - apps/web/src/app/cotizaciones/[id]/imprimir/page.tsx
+    source: ADR-0020 multiidioma 2026-11-04 (docs/08-roadmap/07-roadmap-multiidioma.md)
+    created_at: 2026-11-05T02:38:48.841Z
+    owner: frontend
+  - id: T-166
+    title: QA del primer entregable multiidioma
+    type: test
+    phase: 2
+    priority: P1
+    effort: S
+    status: backlog
+    depends_on:
+      - T-163
+      - T-164
+      - T-165
+    acceptance:
+      - Recorrido de las rutas principales en en-US y pt-BR sin ninguna cadena de la fuente
+      - revision-375px.spec.tsx pasa en pt-BR y es-XA
+      - "Cotización enviada en en-US de punta a punta: mensaje con idioma en-US y texto en inglés"
+    files:
+      - apps/web/src/components/comun/revision-375px.spec.tsx
+    source: ADR-0020 multiidioma 2026-11-04 (docs/08-roadmap/07-roadmap-multiidioma.md)
+    created_at: 2026-11-05T02:38:48.841Z
+    owner: qa
+  - id: T-167
+    title: "Migración M-i2: tablas de traducción del catálogo"
+    type: feature
+    phase: 2
+    priority: P2
+    effort: S
+    status: backlog
+    depends_on:
+      - T-153
+    acceptance:
+      - traducciones_paquete, traducciones_opcion_de_salida y traducciones_tarifa con tenant_id, UNIQUE
+        (entidad, idioma), UNIQUE (id, tenant_id), foránea compuesta con CASCADE y CHECK de forma del idioma
+      - Ninguna columna de dinero, fecha u hora en ellas
+      - RLS aplicada por policies/001; aislamiento.spec.ts verde sin tocar excepciones
+      - Revisión de auditor-seguridad registrada en el PR
+    files:
+      - packages/database/prisma/schema.prisma
+      - packages/database/prisma/migrations/
+    source: ADR-0020 multiidioma 2026-11-04 (docs/08-roadmap/07-roadmap-multiidioma.md)
+    created_at: 2026-11-05T02:38:48.842Z
+    owner: datos
+  - id: T-168
+    title: "API: traducciones del catálogo en CRUD, núcleo de propuestas y texto de cotización"
+    type: feature
+    phase: 2
+    priority: P2
+    effort: M
+    status: backlog
+    depends_on:
+      - T-167
+      - T-156
+    acceptance:
+      - resolverTextoDeCatalogo cae por campo al idioma base y devuelve los campos caídos
+      - CRUD de traducciones bajo catalogo.administrar; traducir al idioma base responde
+        TRADUCCION_EN_IDIOMA_BASE
+      - PropuestaDeCatalogo acepta traducciones opcionales con version 1; aplicar dos veces converge; lo que
+        no viene no se borra
+      - El descriptor de plantilla acepta columnas campo@idioma sin cambiar de version
+      - El texto de WhatsApp usa nombre, destino, opción y tarifa traducidos y la respuesta de
+        previsualización lista los campos caídos
+      - "e2e: la agencia A no lee ni escribe traducciones de B"
+    files:
+      - apps/api/src/modules/quoting/application/
+      - apps/api/src/modules/quoting/domain/
+      - packages/contracts/src/
+    source: ADR-0020 multiidioma 2026-11-04 (docs/08-roadmap/07-roadmap-multiidioma.md)
+    created_at: 2026-11-05T02:38:48.842Z
+    owner: backend
+  - id: T-169
+    title: "Web: pestaña de traducciones del paquete, columnas @idioma en importación y aviso de campos caídos"
+    type: feature
+    phase: 2
+    priority: P2
+    effort: M
+    status: backlog
+    depends_on:
+      - T-168
+    acceptance:
+      - La ficha del paquete edita la traducción de un idioma con el texto base al lado
+      - El asistente de importación mapea columnas nombre@en-US y similares
+      - El modal de envío muestra «N campos saldrán en <idioma base>» antes de enviar
+    files:
+      - apps/web/src/components/catalogo/
+      - apps/web/src/components/catalogo/importacion/
+    source: ADR-0020 multiidioma 2026-11-04 (docs/08-roadmap/07-roadmap-multiidioma.md)
+    created_at: 2026-11-05T02:38:48.842Z
+    owner: frontend
+  - id: T-170
+    title: QA del catálogo traducido
+    type: test
+    phase: 2
+    priority: P2
+    effort: S
+    status: backlog
+    depends_on:
+      - T-169
+    acceptance:
+      - "Importación con columnas @en-US aplicada dos veces: 0 cambios la segunda"
+      - Caída por campo verificada con un paquete traducido a medias
+      - Aislamiento A/B de traducciones en e2e
+    files:
+      - apps/api/src/modules/quoting/
+    source: ADR-0020 multiidioma 2026-11-04 (docs/08-roadmap/07-roadmap-multiidioma.md)
+    created_at: 2026-11-05T02:38:48.842Z
+    owner: qa
+  - id: T-171
+    title: elegirPlantilla por idioma con caída explícita
+    type: feature
+    phase: 2
+    priority: P2
+    effort: S
+    status: backlog
+    depends_on:
+      - T-154
+    acceptance:
+      - "Función pura en inbox/domain: código exacto de Meta, luego idioma base, luego otra variante del
+        idioma en orden alfabético; solo APROBADA y no eliminada"
+      - "Sin plantilla en el idioma: envío manual responde 409 PLANTILLA_SIN_IDIOMA con los idiomas aprobados;
+        envío automático cae al idioma de la agencia y lo registra en mensajes.idioma"
+      - El agente whatsapp revisa los códigos de idioma y lo deja en el PR
+    files:
+      - apps/api/src/modules/inbox/domain/
+      - packages/contracts/src/plantillas.ts
+    source: ADR-0020 multiidioma 2026-11-04 (docs/08-roadmap/07-roadmap-multiidioma.md)
+    created_at: 2026-11-05T02:38:48.842Z
+    owner: backend
+  - id: T-172
+    title: "Web: plantillas con estado por idioma y sugerencia de idioma del contacto"
+    type: feature
+    phase: 2
+    priority: P2
+    effort: M
+    status: backlog
+    depends_on:
+      - T-171
+      - T-157
+    acceptance:
+      - El selector agrupa por nombre y muestra el estado por idioma; la caída a otro idioma exige un clic
+      - La bandeja sugiere el idioma del contacto con un detector de palabras frecuentes que corre en el
+        navegador sobre los mensajes visibles, más el prefijo del teléfono como desempate
+      - La sugerencia no escribe nada ni sale del navegador; «Fijar» llama al PATCH de contacto
+    files:
+      - apps/web/src/components/bandeja/modal-plantillas.tsx
+      - apps/web/src/components/bandeja/ficha-cliente.tsx
+    source: ADR-0020 multiidioma 2026-11-04 (docs/08-roadmap/07-roadmap-multiidioma.md)
+    created_at: 2026-11-05T02:38:48.842Z
+    owner: frontend

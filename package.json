@@ -27,11 +27,16 @@
     "infra:up": "docker compose -f infra/docker/docker-compose.yml up -d",
     "infra:down": "docker compose -f infra/docker/docker-compose.yml down",
     "infra:reset": "docker compose -f infra/docker/docker-compose.yml down -v && pnpm infra:up",
+    "infra:unico:up": "node scripts/infra-unico.mjs up",
+    "infra:unico:down": "node scripts/infra-unico.mjs down",
+    "infra:unico:reset": "node scripts/infra-unico.mjs reset",
+    "infra:unico:logs": "node scripts/infra-unico.mjs logs",
     "prepare": "husky",
     "preflight": "node scripts/preflight.mjs",
     "db:setup": "pnpm db:migrate:deploy && pnpm --filter @viajapro/database run rol:crear",
     "db:migrate:deploy": "pnpm --filter @viajapro/database run migrate:deploy",
     "db:aislamiento": "pnpm --filter @viajapro/database run test:aislamiento",
+    "dev:nube": "node scripts/dev-nube.mjs",
     "db:seed:crm": "pnpm --filter @viajapro/database seed:crm"
   },
   "devDependencies": {

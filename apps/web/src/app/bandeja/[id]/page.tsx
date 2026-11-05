@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { useParams } from 'next/navigation';
 import type {
   ConversacionDetalle,
@@ -24,11 +25,11 @@ import {
   Sparkles,
   FileText,
   Zap,
+  Lock,
 } from 'lucide-react';
 import { inboxApi } from '../../../lib/inbox-api';
 import { useInboxSocket } from '../../../lib/inbox-socket';
-import { usePermisos } from '../../../lib/permisos';
-import { ModalReasignar } from '../../../components/bandeja/modal-reasignar';
+import { usePermisos, explicacionFaltaPermiso } from '../../../lib/permisos';
 import { obtenerFichaDeContacto } from '../../../lib/crm-api';
 import { EsqueletoConversacion, AvisoErrorAccionable } from '../../../components/comun/esqueletos';
 import { MigasDePan } from '../../../components/comun/migas-de-pan';
@@ -47,7 +48,6 @@ import {
   obtenerIniciales,
 } from '../../../lib/bandeja-logica';
 import { FichaCliente } from '../../../components/bandeja/ficha-cliente';
-import { ModalPlantillas } from '../../../components/bandeja/modal-plantillas';
 import {
   InsigniaCuentaRegresiva24h,
   BannerAvisoVentana24h,
@@ -58,10 +58,8 @@ import { obtenerMockPlantillasDisponibles } from '../../../lib/mock-plantillas';
 import { EnviarPlantilla } from '@viajapro/contracts';
 import { TarjetaCotizacion } from '../../../components/bandeja/tarjeta-cotizacion';
 import { PanelSugerencias } from '../../../components/bandeja/panel-sugerencias';
-import { ModalEnviarCotizacion } from '../../../components/bandeja/modal-enviar-cotizacion';
-import { ModalCrearOportunidad } from '../../../components/bandeja/modal-crear-oportunidad';
-import { ModalEditarContacto } from '../../../components/bandeja/modal-editar-contacto';
 import { MenuRespuestasRapidas } from '../../../components/bandeja/menu-respuestas-rapidas';
+import { useBandejaAtajos, debeProcesarAtajo } from '../../../lib/atajos-teclado-bandeja';
 import { AlertaErrorEnvio } from '../../../components/bandeja/alerta-error-envio';
 import { interpretarErrorDeEnvio, type DetalleErrorEnvio } from '../../../lib/errores-de-envio';
 import {
@@ -73,6 +71,39 @@ import {
   type ContextoInterpolacion,
   type RespuestaRapida,
 } from '../../../lib/respuestas-rapidas-logica';
+
+// Carga diferida de modales secundarios de la bandeja (T-130)
+const ModalReasignar = dynamic(
+  () => import('../../../components/bandeja/modal-reasignar').then((m) => m.ModalReasignar),
+  { ssr: false },
+);
+
+const ModalPlantillas = dynamic(
+  () => import('../../../components/bandeja/modal-plantillas').then((m) => m.ModalPlantillas),
+  { ssr: false },
+);
+
+const ModalEnviarCotizacion = dynamic(
+  () =>
+    import('../../../components/bandeja/modal-enviar-cotizacion').then(
+      (m) => m.ModalEnviarCotizacion,
+    ),
+  { ssr: false },
+);
+
+const ModalCrearOportunidad = dynamic(
+  () =>
+    import('../../../components/bandeja/modal-crear-oportunidad').then(
+      (m) => m.ModalCrearOportunidad,
+    ),
+  { ssr: false },
+);
+
+const ModalEditarContacto = dynamic(
+  () =>
+    import('../../../components/bandeja/modal-editar-contacto').then((m) => m.ModalEditarContacto),
+  { ssr: false },
+);
 
 export default function BandejaConversacionPage() {
   const params = useParams();
@@ -95,6 +126,7 @@ export default function BandejaConversacionPage() {
   const [modoNota, setModoNota] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [errorEnvio, setErrorEnvio] = useState<DetalleErrorEnvio | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   // Modal de plantillas Meta HSM
   const [modalPlantillasAbierto, setModalPlantillasAbierto] = useState(false);
@@ -110,38 +142,91 @@ export default function BandejaConversacionPage() {
   const [modalReasignarAbierto, setModalReasignarAbierto] = useState(false);
   const [menuRespuestasAbierto, setMenuRespuestasAbierto] = useState(false);
 
-  // Atajos de teclado en el chat (T-024)
-  useEffect(() => {
-    const handleGlobalKeyDown = (e: KeyboardEvent) => {
-      if (e.altKey && e.key.toLowerCase() === 'p') {
-        e.preventDefault();
-        setModalPlantillasAbierto((prev) => !prev);
-      } else if (e.altKey && e.key.toLowerCase() === 'r') {
-        e.preventDefault();
-        setModalReasignarAbierto((prev) => !prev);
-      } else if (e.altKey && e.key.toLowerCase() === 'f') {
-        e.preventDefault();
-        setMostrarFichaLateral((prev) => !prev);
-      } else if (e.key === 'Escape') {
-        if (menuRespuestasAbierto) setMenuRespuestasAbierto(false);
-        else if (modalPlantillasAbierto) setModalPlantillasAbierto(false);
-        else if (modalReasignarAbierto) setModalReasignarAbierto(false);
-        else if (mostrarFichaLateral) setMostrarFichaLateral(false);
-      }
-    };
-
-    window.addEventListener('keydown', handleGlobalKeyDown);
-    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
-  }, [modalPlantillasAbierto, modalReasignarAbierto, mostrarFichaLateral, menuRespuestasAbierto]);
-  const [asignando, setAsignando] = useState(false);
-
   // Modales de Cotización y CRM (T-074, T-076)
   const [modalEnviarCotizacionAbierto, setModalEnviarCotizacionAbierto] = useState(false);
   const [modalCrearOportunidadAbierto, setModalCrearOportunidadAbierto] = useState(false);
   const [modalEditarContactoAbierto, setModalEditarContactoAbierto] = useState(false);
 
-  // Permisos de sesión para visibilidad y asignación (0c.35)
-  const { sesion, puedeVerTodasConversaciones } = usePermisos();
+  // Atajos de teclado en la bandeja (T-127 y T-024)
+  const { irASiguiente, irAAnterior, modalAyudaAbierto, setModalAyudaAbierto, atajosHabilitados } =
+    useBandejaAtajos();
+
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      // Atajos con modificador Alt (T-024)
+      if (e.altKey && e.key.toLowerCase() === 'p') {
+        e.preventDefault();
+        setModalPlantillasAbierto((prev) => !prev);
+        return;
+      } else if (e.altKey && e.key.toLowerCase() === 'r') {
+        e.preventDefault();
+        setModalReasignarAbierto((prev) => !prev);
+        return;
+      } else if (e.altKey && e.key.toLowerCase() === 'f') {
+        e.preventDefault();
+        setMostrarFichaLateral((prev) => !prev);
+        return;
+      } else if (e.key === 'Escape') {
+        if (modalAyudaAbierto) setModalAyudaAbierto(false);
+        else if (menuRespuestasAbierto) setMenuRespuestasAbierto(false);
+        else if (modalPlantillasAbierto) setModalPlantillasAbierto(false);
+        else if (modalReasignarAbierto) setModalReasignarAbierto(false);
+        else if (modalEnviarCotizacionAbierto) setModalEnviarCotizacionAbierto(false);
+        else if (modalCrearOportunidadAbierto) setModalCrearOportunidadAbierto(false);
+        else if (modalEditarContactoAbierto) setModalEditarContactoAbierto(false);
+        else if (mostrarFichaLateral) setMostrarFichaLateral(false);
+        return;
+      }
+
+      // Atajos de un solo carácter para navegación y acciones rápidas (T-127)
+      if (!debeProcesarAtajo(e, atajosHabilitados)) {
+        return;
+      }
+
+      const key = e.key;
+
+      if (key === 'r' || key === 'R') {
+        e.preventDefault();
+        textareaRef.current?.focus();
+      } else if (key === 'c' || key === 'C') {
+        e.preventDefault();
+        setModalEnviarCotizacionAbierto(true);
+      } else if (key === 's' || key === 'S') {
+        e.preventDefault();
+        setModalCrearOportunidadAbierto(true);
+      } else if (key === '?' || (key === '/' && e.shiftKey)) {
+        e.preventDefault();
+        setModalAyudaAbierto(true);
+      } else if (key === 'j' || key === 'J') {
+        e.preventDefault();
+        irASiguiente(id);
+      } else if (key === 'k' || key === 'K') {
+        e.preventDefault();
+        irAAnterior(id);
+      }
+    };
+
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [
+    modalPlantillasAbierto,
+    modalReasignarAbierto,
+    mostrarFichaLateral,
+    menuRespuestasAbierto,
+    modalEnviarCotizacionAbierto,
+    modalCrearOportunidadAbierto,
+    modalEditarContactoAbierto,
+    modalAyudaAbierto,
+    atajosHabilitados,
+    id,
+    irASiguiente,
+    irAAnterior,
+    setModalAyudaAbierto,
+  ]);
+  const [asignando, setAsignando] = useState(false);
+
+  // Permisos de sesión para visibilidad y asignación (0c.35, T-118)
+  const { sesion, puedeVerTodasConversaciones, puedeOperarBandeja } = usePermisos();
   const miUsuarioId = sesion?.acceso?.usuarioId ?? null;
   const permisosAsignacion = calcularPermisosAsignacion(
     detalle,
@@ -290,7 +375,6 @@ export default function BandejaConversacionPage() {
 
   // Mapa de claves de idempotencia para garantizar R5
   const idempotenciaMapRef = useRef<Record<string, string>>({});
-  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const mensajeRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   // Tiempo restante de la ventana de 24h
@@ -776,10 +860,14 @@ export default function BandejaConversacionPage() {
                   <button
                     type="button"
                     onClick={() => void manejarTomar()}
-                    disabled={asignando || conversacionRetirada}
+                    disabled={asignando || conversacionRetirada || !puedeOperarBandeja}
                     data-testid="boton-tomar"
-                    className="bg-primary-50 text-primary-700 hover:bg-primary-100 dark:bg-primary-950/40 dark:text-primary-300 flex min-h-[44px] items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-bold disabled:opacity-50 md:min-h-[28px]"
-                    title="Asignarme esta conversación"
+                    className="bg-primary-50 text-primary-700 hover:bg-primary-100 dark:bg-primary-950/40 dark:text-primary-300 flex min-h-[44px] items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-bold disabled:cursor-not-allowed disabled:opacity-50 md:min-h-[28px]"
+                    title={
+                      !puedeOperarBandeja
+                        ? explicacionFaltaPermiso('bandeja.operar')
+                        : 'Asignarme esta conversación'
+                    }
                   >
                     <UserPlus className="h-3 w-3" />
                     <span>Tomar</span>
@@ -789,10 +877,14 @@ export default function BandejaConversacionPage() {
                   <button
                     type="button"
                     onClick={() => void manejarSoltar()}
-                    disabled={asignando || conversacionRetirada}
+                    disabled={asignando || conversacionRetirada || !puedeOperarBandeja}
                     data-testid="boton-soltar"
-                    className="flex min-h-[44px] items-center gap-1 rounded-md border border-neutral-200 px-2 py-0.5 text-[10px] font-semibold text-neutral-600 hover:bg-neutral-50 disabled:opacity-50 md:min-h-[28px] dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
-                    title="Devolver a la cola común"
+                    className="flex min-h-[44px] items-center gap-1 rounded-md border border-neutral-200 px-2 py-0.5 text-[10px] font-semibold text-neutral-600 hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-50 md:min-h-[28px] dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+                    title={
+                      !puedeOperarBandeja
+                        ? explicacionFaltaPermiso('bandeja.operar')
+                        : 'Devolver a la cola común'
+                    }
                   >
                     <UserMinus className="h-3 w-3" />
                     <span>Soltar</span>
@@ -802,10 +894,14 @@ export default function BandejaConversacionPage() {
                   <button
                     type="button"
                     onClick={() => setModalReasignarAbierto(true)}
-                    disabled={asignando || conversacionRetirada}
+                    disabled={asignando || conversacionRetirada || !puedeOperarBandeja}
                     data-testid="boton-reasignar"
-                    className="flex min-h-[44px] items-center gap-1 rounded-md border border-neutral-200 px-2 py-0.5 text-[10px] font-semibold text-neutral-600 hover:bg-neutral-50 disabled:opacity-50 md:min-h-[28px] dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
-                    title="Reasignar a otro asesor de la agencia"
+                    className="flex min-h-[44px] items-center gap-1 rounded-md border border-neutral-200 px-2 py-0.5 text-[10px] font-semibold text-neutral-600 hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-50 md:min-h-[28px] dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+                    title={
+                      !puedeOperarBandeja
+                        ? explicacionFaltaPermiso('bandeja.operar')
+                        : 'Reasignar a otro asesor de la agencia'
+                    }
                   >
                     <UserCheck className="h-3 w-3" />
                     <span>Reasignar</span>
@@ -1089,9 +1185,13 @@ export default function BandejaConversacionPage() {
                       type="button"
                       data-testid="boton-abrir-enviar-cotizacion"
                       onClick={() => setModalEnviarCotizacionAbierto(true)}
-                      disabled={conversacionRetirada}
-                      className="flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 transition-colors hover:bg-emerald-100 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300"
-                      title="Enviar cotización por WhatsApp (T-074)"
+                      disabled={conversacionRetirada || !puedeOperarBandeja}
+                      className="flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 transition-colors hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300"
+                      title={
+                        !puedeOperarBandeja
+                          ? explicacionFaltaPermiso('bandeja.operar')
+                          : 'Enviar cotización por WhatsApp (T-074)'
+                      }
                       aria-label="Enviar cotización por WhatsApp"
                     >
                       <FileText className="h-3.5 w-3.5" />
@@ -1135,6 +1235,19 @@ export default function BandejaConversacionPage() {
                   />
                 )}
 
+                {!puedeOperarBandeja && (
+                  <div
+                    data-testid="aviso-solo-lectura-bandeja"
+                    className="flex items-center gap-2 rounded-lg border border-neutral-200 bg-neutral-100/90 p-2 text-xs text-neutral-600 dark:border-neutral-800 dark:bg-neutral-900/60 dark:text-neutral-300"
+                  >
+                    <Lock className="h-3.5 w-3.5 shrink-0 text-neutral-500" />
+                    <span>
+                      Modo solo lectura: Tu rol no cuenta con el permiso «Operar bandeja»
+                      (bandeja.operar).
+                    </span>
+                  </div>
+                )}
+
                 <div className="relative flex gap-2">
                   {menuRespuestasAbierto && (
                     <MenuRespuestasRapidas
@@ -1154,11 +1267,13 @@ export default function BandejaConversacionPage() {
                     onChange={manejarCambioTexto}
                     onKeyDown={manejarKeyDownTextarea}
                     placeholder={
-                      modoNota
-                        ? 'Escribe una nota interna para el equipo (nunca se envía al cliente)...'
-                        : 'Escribe tu respuesta a cliente o «/» para respuestas rápidas...'
+                      !puedeOperarBandeja
+                        ? 'Modo solo lectura: Requiere permiso «bandeja.operar» para responder...'
+                        : modoNota
+                          ? 'Escribe una nota interna para el equipo (nunca se envía al cliente)...'
+                          : 'Escribe tu respuesta a cliente o «/» para respuestas rápidas...'
                     }
-                    disabled={enviando || conversacionRetirada}
+                    disabled={enviando || conversacionRetirada || !puedeOperarBandeja}
                     className={`flex-1 rounded-lg border p-2.5 text-xs focus:outline-none ${
                       modoNota
                         ? 'border-amber-300 bg-amber-50/50 focus:border-amber-500 dark:border-amber-900/60 dark:bg-amber-950/20'
@@ -1167,9 +1282,21 @@ export default function BandejaConversacionPage() {
                   />
                   <button
                     type="submit"
-                    disabled={enviando || conversacionRetirada || !textoMensaje.trim()}
+                    disabled={
+                      enviando ||
+                      conversacionRetirada ||
+                      !puedeOperarBandeja ||
+                      !textoMensaje.trim()
+                    }
+                    title={
+                      !puedeOperarBandeja
+                        ? explicacionFaltaPermiso('bandeja.operar')
+                        : modoNota
+                          ? 'Guardar nota interna'
+                          : 'Enviar mensaje'
+                    }
                     aria-label={modoNota ? 'Guardar nota interna' : 'Enviar mensaje'}
-                    className={`flex min-h-[44px] min-w-[44px] items-center justify-center self-end rounded-lg px-4 py-2.5 text-xs font-semibold text-white shadow-2xs disabled:opacity-50 ${
+                    className={`flex min-h-[44px] min-w-[44px] items-center justify-center self-end rounded-lg px-4 py-2.5 text-xs font-semibold text-white shadow-2xs disabled:cursor-not-allowed disabled:opacity-50 ${
                       modoNota
                         ? 'bg-amber-600 hover:bg-amber-700'
                         : 'bg-acento-700 hover:bg-acento-800'

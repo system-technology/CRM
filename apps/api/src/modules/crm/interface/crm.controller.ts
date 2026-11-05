@@ -15,6 +15,7 @@ import {
   Body,
   Controller,
   Get,
+  HttpCode,
   Inject,
   NotFoundException,
   Param,
@@ -25,6 +26,9 @@ import {
 } from '@nestjs/common';
 import {
   CrearContacto as CrearContactoContrato,
+  CrearEtapa as CrearEtapaContrato,
+  EditarEtapa as EditarEtapaContrato,
+  ReordenarEtapas as ReordenarEtapasContrato,
   CrearOportunidad as CrearOportunidadContrato,
   CrearOportunidadDeConversacion as CrearOportunidadDeConversacionContrato,
   CrearSeguimiento as CrearSeguimientoContrato,
@@ -35,6 +39,10 @@ import {
   RevocarConsentimiento as RevocarConsentimientoContrato,
   type Contacto,
   type CrearContacto,
+  type CrearEtapa,
+  type EditarEtapa,
+  type EtapaDefinida,
+  type ReordenarEtapas,
   type CrearOportunidad,
   type CrearOportunidadDeConversacion,
   type CrearSeguimiento,
@@ -51,9 +59,11 @@ import {
   type Seguimiento,
   type TableroPipeline,
 } from '@viajapro/contracts';
+import { RequierePermiso } from '../../../shared/autorizacion/permiso.decorator.js';
 import { ContextoTenant } from '../../../shared/tenant/contexto-tenant.js';
 import { ZodValidationPipe } from '../../../shared/validacion/zod-validation.pipe.js';
 import { CrearOportunidadUseCase } from '../application/crear-oportunidad.js';
+import { GestionarEtapas } from '../application/gestionar-etapas.js';
 import { GestionarContactos } from '../application/gestionar-contactos.js';
 import { GestionarSeguimientos } from '../application/gestionar-seguimientos.js';
 import { MoverOportunidadUseCase } from '../application/mover-oportunidad.js';
@@ -74,6 +84,7 @@ export class CrmController {
     @Inject(GestionarContactos) private readonly contactosUC: GestionarContactos,
     @Inject(CrearOportunidadUseCase) private readonly crearOportunidad: CrearOportunidadUseCase,
     @Inject(GestionarSeguimientos) private readonly seguimientos: GestionarSeguimientos,
+    @Inject(GestionarEtapas) private readonly etapas: GestionarEtapas,
   ) {}
 
   /** El tablero del pipeline, con sus columnas tal como esta agencia las tiene configuradas. */
@@ -88,12 +99,13 @@ export class CrmController {
    * `PATCH` y no `PUT`: mover no reemplaza la oportunidad, cambia una cosa de ella. Las reglas
    * de pérdida se aplican en el caso de uso y salen como error de dominio tipado.
    */
+  @RequierePermiso('crm.escribir')
   @Patch('oportunidades/:id/etapa')
   async moverDeEtapa(
     @Param('id', ParseUUIDPipe) id: string,
     @Body(new ZodValidationPipe(MovimientoContrato)) movimiento: Movimiento,
   ): Promise<Oportunidad> {
-    return this.mover.ejecutar(id, movimiento);
+    return this.mover.ejecutar(id, movimiento, ContextoTenant.obtener().usuarioId);
   }
 
   /**
@@ -133,6 +145,7 @@ export class CrmController {
   // ---------------------------------------------------------------------------
 
   /** Alta de contacto. El teléfono se normaliza a E.164; duplicado en la agencia: 409. */
+  @RequierePermiso('crm.escribir')
   @Post('contactos')
   async crearContacto(
     @Body(new ZodValidationPipe(CrearContactoContrato)) cuerpo: CrearContacto,
@@ -141,6 +154,7 @@ export class CrmController {
   }
 
   /** Edición parcial: solo se toca lo que viene. */
+  @RequierePermiso('crm.escribir')
   @Patch('contactos/:id')
   async editarContacto(
     @Param('id', ParseUUIDPipe) id: string,
@@ -150,6 +164,7 @@ export class CrmController {
   }
 
   /** T-096: registra el consentimiento (con su prueba) de una finalidad. Idempotente. */
+  @RequierePermiso('crm.escribir')
   @Post('contactos/:id/consentimientos')
   async otorgarConsentimiento(
     @Param('id', ParseUUIDPipe) id: string,
@@ -159,6 +174,7 @@ export class CrmController {
   }
 
   /** T-096: revoca la finalidad; el trabajador de envíos deja de escribirle al contacto. */
+  @RequierePermiso('crm.escribir')
   @Post('contactos/:id/consentimientos/revocar')
   async revocarConsentimiento(
     @Param('id', ParseUUIDPipe) id: string,
@@ -168,6 +184,7 @@ export class CrmController {
   }
 
   /** Crear oportunidad sobre un contacto. Nace en la etapa inicial del embudo de la agencia. */
+  @RequierePermiso('crm.escribir')
   @Post('oportunidades')
   async crearOportunidadDeContacto(
     @Body(new ZodValidationPipe(CrearOportunidadContrato)) cuerpo: CrearOportunidad,
@@ -176,6 +193,7 @@ export class CrmController {
   }
 
   /** Crear oportunidad desde una conversación: el contacto sale de ella. */
+  @RequierePermiso('crm.escribir')
   @Post('conversaciones/:conversacionId/oportunidades')
   async crearOportunidadDeConversacion(
     @Param('conversacionId', ParseUUIDPipe) conversacionId: string,
@@ -214,6 +232,7 @@ export class CrmController {
     return { datos, pageInfo: { nextCursor: null, hasMore: false } };
   }
 
+  @RequierePermiso('crm.escribir')
   @Post('seguimientos')
   async crearSeguimiento(
     @Body(new ZodValidationPipe(CrearSeguimientoContrato)) cuerpo: CrearSeguimiento,
@@ -221,8 +240,46 @@ export class CrmController {
     return this.seguimientos.crear(cuerpo, ContextoTenant.obtener().usuarioId);
   }
 
+  @RequierePermiso('crm.escribir')
   @Post('seguimientos/:id/completar')
   async completarSeguimiento(@Param('id', ParseUUIDPipe) id: string): Promise<Seguimiento> {
     return this.seguimientos.completar(id, new Date());
+  }
+
+  // ---------------------------------------------------------------------------
+  // T-120: etapas del pipeline de la agencia
+  // ---------------------------------------------------------------------------
+
+  /** Las etapas de ESTA agencia, en su orden. Leer no exige permiso de escritura. */
+  @Get('etapas')
+  async listarEtapas(): Promise<EtapaDefinida[]> {
+    return this.etapas.listar();
+  }
+
+  @Post('etapas')
+  @RequierePermiso('crm.escribir')
+  async crearEtapa(
+    @Body(new ZodValidationPipe(CrearEtapaContrato)) cuerpo: CrearEtapa,
+  ): Promise<EtapaDefinida> {
+    return this.etapas.crear(cuerpo);
+  }
+
+  /** Reordena todo el embudo en una transacción. Devuelve la lista ya ordenada. */
+  @Post('etapas/reordenar')
+  @HttpCode(200)
+  @RequierePermiso('crm.escribir')
+  async reordenarEtapas(
+    @Body(new ZodValidationPipe(ReordenarEtapasContrato)) cuerpo: ReordenarEtapas,
+  ): Promise<EtapaDefinida[]> {
+    return this.etapas.reordenar(cuerpo);
+  }
+
+  @Patch('etapas/:id')
+  @RequierePermiso('crm.escribir')
+  async editarEtapa(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ZodValidationPipe(EditarEtapaContrato)) cuerpo: EditarEtapa,
+  ): Promise<EtapaDefinida> {
+    return this.etapas.editar(id, cuerpo);
   }
 }

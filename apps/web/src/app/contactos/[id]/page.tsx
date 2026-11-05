@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo, use } from 'react';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { useParams } from 'next/navigation';
 import {
   type FichaDeContacto,
@@ -12,11 +13,7 @@ import {
 } from '@viajapro/contracts';
 import { BarraModulos } from '../../../components/bandeja/barra-modulos';
 import { LineaTiempo360 } from '../../../components/contactos/linea-tiempo-360';
-import { ModalEditarContacto } from '../../../components/contactos/modal-editar-contacto';
-import { ModalCrearOportunidad } from '../../../components/contactos/modal-crear-oportunidad';
-import { ModalCrearSeguimiento } from '../../../components/contactos/modal-crear-seguimiento';
 import { SeccionCamposPersonalizados } from '../../../components/contactos/seccion-campos-personalizados';
-import { PanelConsentimientosContacto } from '../../../components/crm/consentimientos';
 import {
   AvisoErrorAccionable,
   AvisoVacio,
@@ -41,6 +38,7 @@ import {
   formatearErrorAmigable,
   construirMensajeErrorAccionable,
 } from '../../../lib/estados-ui-logica';
+import { usePermisos, explicacionFaltaPermiso } from '../../../lib/permisos';
 import {
   ArrowLeft,
   MessageSquare,
@@ -53,6 +51,37 @@ import {
   ExternalLink,
   Plus,
 } from 'lucide-react';
+
+// Carga diferida de modales y paneles secundarios (T-130)
+const ModalEditarContacto = dynamic(
+  () =>
+    import('../../../components/contactos/modal-editar-contacto').then(
+      (m) => m.ModalEditarContacto,
+    ),
+  { ssr: false },
+);
+
+const ModalCrearOportunidad = dynamic(
+  () =>
+    import('../../../components/contactos/modal-crear-oportunidad').then(
+      (m) => m.ModalCrearOportunidad,
+    ),
+  { ssr: false },
+);
+
+const ModalCrearSeguimiento = dynamic(
+  () =>
+    import('../../../components/contactos/modal-crear-seguimiento').then(
+      (m) => m.ModalCrearSeguimiento,
+    ),
+  { ssr: false },
+);
+
+const PanelConsentimientosContacto = dynamic(
+  () =>
+    import('../../../components/crm/consentimientos').then((m) => m.PanelConsentimientosContacto),
+  { ssr: false },
+);
 
 interface Contacto360PageProps {
   params?: Promise<{ id: string }>;
@@ -78,6 +107,8 @@ export default function Contacto360Page({ params: paramsPromise }: Contacto360Pa
   const [seguimientos, setSeguimientos] = useState<Seguimiento[]>([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const { puedeEscribirCrm } = usePermisos();
 
   // Pestaña activa
   const [pestanaActiva, setPestanaActiva] = useState<
@@ -251,8 +282,10 @@ export default function Contacto360Page({ params: paramsPromise }: Contacto360Pa
             </Link>
             <button
               type="button"
+              disabled={!puedeEscribirCrm}
+              title={!puedeEscribirCrm ? explicacionFaltaPermiso('crm.escribir') : undefined}
               onClick={() => setModalEditarAbierto(true)}
-              className="flex min-h-[44px] items-center gap-1.5 rounded-xl border border-neutral-200 bg-white px-3.5 py-2 text-xs font-bold text-neutral-700 shadow-2xs hover:bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
+              className="flex min-h-[44px] items-center gap-1.5 rounded-xl border border-neutral-200 bg-white px-3.5 py-2 text-xs font-bold text-neutral-700 shadow-2xs hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-neutral-800 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
             >
               <Edit3 className="h-4 w-4" />
               <span>Editar Datos</span>
@@ -320,16 +353,20 @@ export default function Contacto360Page({ params: paramsPromise }: Contacto360Pa
               <div className="flex flex-wrap items-center gap-2 pt-2 md:pt-0">
                 <button
                   type="button"
+                  disabled={!puedeEscribirCrm}
+                  title={!puedeEscribirCrm ? explicacionFaltaPermiso('crm.escribir') : undefined}
                   onClick={() => setModalOportunidadAbierto(true)}
-                  className="flex min-h-[44px] items-center gap-1.5 rounded-xl bg-teal-600 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-teal-700 dark:bg-teal-500 dark:hover:bg-teal-600"
+                  className="flex min-h-[44px] items-center gap-1.5 rounded-xl bg-teal-600 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-teal-500 dark:hover:bg-teal-600"
                 >
                   <Kanban className="h-4 w-4" />
                   <span>Nueva Oportunidad</span>
                 </button>
                 <button
                   type="button"
+                  disabled={!puedeEscribirCrm}
+                  title={!puedeEscribirCrm ? explicacionFaltaPermiso('crm.escribir') : undefined}
                   onClick={() => setModalSeguimientoAbierto(true)}
-                  className="flex min-h-[44px] items-center gap-1.5 rounded-xl border border-neutral-300 bg-white px-4 py-2 text-xs font-bold text-neutral-700 shadow-2xs hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
+                  className="flex min-h-[44px] items-center gap-1.5 rounded-xl border border-neutral-300 bg-white px-4 py-2 text-xs font-bold text-neutral-700 shadow-2xs hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
                 >
                   <Clock className="h-4 w-4" />
                   <span>Agendar Seguimiento</span>
