@@ -1642,7 +1642,7 @@ tasks:
     phase: 1
     priority: P1
     effort: S
-    status: backlog
+    status: done
     depends_on: []
     acceptance:
       - CredencialesDePrueba exige además un tenant configurado (por ejemplo META_TENANT_ID_PRUEBA) y se niega
@@ -1657,6 +1657,11 @@ tasks:
       - apps/api/src/modules/inbox/scripts/
     source: auditor-seguridad:envio-whatsapp 2026-10-26
     created_at: 2026-10-26T23:56:03.910Z
+    done_at: 2026-11-05T00:17:45.475Z
+    evidence: "Ya en main: CredencialesDePrueba exige tenantIdDePrueba (META_TENANT_ID_PRUEBA) ademas del
+      phone_number_id y rechaza con CredencialNoDisponibleError a otra agencia aunque use el mismo numero;
+      probado en enviar-mensaje-saliente.spec.ts (OTRA_AGENCIA con NUMERO_DE_PRUEBA no llama a Meta).
+      .env.example documenta la variable y canal:registrar-prueba la imprime."
   - id: T-061
     title: "Higiene del texto saliente de WhatsApp: filtrar caracteres de control y acotar el límite de tasa por
       agencia"
@@ -1758,7 +1763,7 @@ tasks:
     phase: 1
     priority: P2
     effort: S
-    status: backlog
+    status: done
     depends_on: []
     acceptance:
       - validarYPlanificar detecta como cambio una modificación que afecta solo a opciones de salida, cargos
@@ -1771,13 +1776,18 @@ tasks:
       - apps/api/src/modules/quoting/application/
     source: hallazgos de la tanda 2026-10-26
     created_at: 2026-10-27T01:51:03.950Z
+    done_at: 2026-11-05T00:15:28.393Z
+    evidence: "Ya resuelta en main por el commit 7d545c9: paqueteCambia detecta cambios solo en opciones de
+      salida, cargos y formato; moneda validada contra la tabla monedas; PATCH admite plan de alimentacion en
+      nulo. Cubierta por hallazgos-del-catalogo.spec.ts y aplicador-de-catalogo.spec.ts."
+    commit: 7d545c9
   - id: T-066
     title: "GET /catalogo/salidas: el «desde» de una salida con varias monedas toma solo la primera por código"
     type: bug
     phase: 1
     priority: P2
     effort: S
-    status: backlog
+    status: done
     depends_on: []
     acceptance:
       - SalidaPublicada devuelve el «desde» por moneda (lista) igual que el listado de gestión, o documenta y
@@ -1788,6 +1798,11 @@ tasks:
       - packages/contracts/src/catalogo.ts
     source: hallazgos de la tanda 2026-10-26
     created_at: 2026-10-27T01:51:03.950Z
+    done_at: 2026-11-05T00:15:28.395Z
+    evidence: "Ya resuelta en main por el commit 7d545c9: ListarSalidasUseCase devuelve desdePorMoneda y
+      presentacionPorMoneda sin mezclar monedas; SalidaPublicada documenta que desde es la primera moneda.
+      listar-salidas.use-case.spec.ts prueba una salida con COP y USD."
+    commit: 7d545c9
   - id: T-067
     title: "Aserciones de comportamiento de vigencias, tarifas y políticas de precio en la suite de aislamiento
       (T-012 pendiente: exige Postgres real)"
@@ -2010,7 +2025,7 @@ tasks:
     phase: 1
     priority: P0
     effort: M
-    status: backlog
+    status: done
     depends_on: []
     acceptance:
       - Crear, listar y completar seguimientos con fecha, por asesor, con RLS
@@ -2020,6 +2035,10 @@ tasks:
       - apps/api/src/modules/crm/
     source: ruta a la fase 1 (roadmap v3) 2026-10-27
     created_at: 2026-10-28T01:47:57.807Z
+    done_at: 2026-11-05T00:15:28.395Z
+    evidence: "Ya cubierta en main: tabla seguimientos con RLS (PR #111) y /api/v1/crm/seguimientos con crear,
+      listar, completar y pendientes-del-dia; pruebas en gestionar-seguimientos.spec.ts y
+      contactos-y-seguimientos.e2e-spec.ts."
   - id: T-078
     title: Plantilla de reapertura fuera de la ventana de 24 h y respuestas rápidas
     type: feature
@@ -2044,7 +2063,7 @@ tasks:
     phase: 1
     priority: P0
     effort: M
-    status: blocked
+    status: done
     depends_on: []
     acceptance:
       - Servicio Redis y proceso consumidor activos en el entorno de staging con COLA_CHANGES real
@@ -2057,6 +2076,11 @@ tasks:
     created_at: 2026-10-28T01:47:57.807Z
     blocked_reason: Requiere el despliegue en Render y la cuenta del propietario (M5.1); render.yaml e infra/ son
       rutas protegidas
+    started_at: 2026-11-05T00:22:47.976Z
+    done_at: 2026-11-05T00:22:47.976Z
+    evidence: "Mergeado en main por el PR #195 (rama i/T-079-redis-staging-render) con el CI en verde: format,
+      analyze, tests y los demás checks obligatorios. Cierre automático (.github/workflows/cerrar-tarea.yml)."
+    commit: 098e70cd05042a0c7068d370bddb002cfd580896
   - id: T-080
     title: Iniciar la verificación del negocio en Meta y la solicitud de Tech Provider
     type: docs
