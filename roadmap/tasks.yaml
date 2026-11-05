@@ -3097,7 +3097,7 @@ tasks:
     phase: 1
     priority: P0
     effort: M
-    status: done
+    status: in_progress
     depends_on: []
     acceptance:
       - "Stack completo local en modo unico contra la base de desarrollo: API, web, correo de prueba"
@@ -3109,10 +3109,6 @@ tasks:
     source: "auditoria de veracidad 2026-11-04 (PR #202)"
     created_at: 2026-11-05T00:44:42.917Z
     started_at: 2026-11-05T20:02:35.079Z
-    done_at: 2026-11-05T20:02:35.080Z
-    evidence: "Mergeado en main por el PR #248 (rama a/T-126-cuerpo-json) con el CI en verde: format, analyze,
-      tests y los demás checks obligatorios. Cierre automático (.github/workflows/cerrar-tarea.yml)."
-    commit: f7fc6b32adead1898e28c6c83569d2900568e8eb
   - id: T-127
     title: Atajos de teclado en la bandeja con ayuda en pantalla
     type: feature

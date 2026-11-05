@@ -42,3 +42,17 @@ Ningun hallazgo funcional del producto: no se observo el producto.
 2. Autorizar un cluster Postgres local nuevo (`initdb` con `trust` en un puerto libre, p. ej. 5434) con
    variables definidas por entorno y un `.env` aislado, y que el agente que lo corra tenga las
    herramientas de navegador.
+
+## Actualización (2026-11-05, noche): recorrido en Codespaces, parcial
+
+El recorrido sí se empezó en Codespaces (`pnpm dev:nube`). La tabla de arriba describe el intento local
+sin Docker y queda como historia. T-126 sigue **en curso**: H1–H6 no están cerrados.
+
+| Id | Hallazgo | Severidad | Estado |
+|---|---|---|---|
+| H-1 | La raíz abría sin login y con datos inventados | bloqueante | Corregido en PR #249, dentro del lote #250 (pendiente de integrar) |
+| H-2 | La API devolvía cuerpo JSON vacío salvo en importaciones | bloqueante | Corregido: PR #248, en `main` |
+| H-3 | Error de hidratación en `/ingresar` | por clasificar | Abierto; falta tarea en `roadmap/tasks.yaml` |
+| H-4 | `/login` responde 404 | por clasificar | Abierto; falta tarea en `roadmap/tasks.yaml` |
+
+Sin verificar: que H-1 esté resuelto en el navegador (depende de integrar #250 y reiniciar el Codespace).
