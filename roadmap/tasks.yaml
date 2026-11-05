@@ -2961,3 +2961,140 @@ tasks:
       - apps/web/src/lib/exportar-csv.spec.ts
     source: cola de Antigravity reabastecida 2026-11-04
     created_at: 2026-11-04T23:48:05.405Z
+  - id: T-120
+    title: "API: etapas del pipeline por agencia (listar, crear, editar, reordenar) que la web ya llama en
+      /crm/etapas"
+    type: feature
+    phase: 1
+    priority: P0
+    effort: M
+    status: backlog
+    depends_on: []
+    acceptance:
+      - GET/POST/PATCH /api/v1/crm/etapas con contratos en packages/contracts y permiso crm.escribir para
+        mutar; reordenar es una operacion atomica
+      - "La tabla etapas_pipeline ya existe (T-014): sin migracion salvo que falte algo; con RLS y prueba e2e
+        de aislamiento entre agencias"
+      - La web deja de simular el guardado ante un 404 (T-128)
+    files:
+      - apps/api/src/modules/crm/
+      - packages/contracts/src/crm.ts
+    source: "auditoria de veracidad 2026-11-04 (PR #202)"
+    created_at: 2026-11-05T00:44:42.915Z
+  - id: T-121
+    title: "Web: la lista de miembros llama GET /identidad/usuarios que no existe; usar el endpoint real de
+      miembros"
+    type: bug
+    phase: 1
+    priority: P0
+    effort: S
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Determinar si el endpoint correcto es /api/v1/identidad/miembros (miembros.controller) y alinear la
+        web con el contrato; sin caer a localStorage ni mock en modo real
+      - Si falta el listado en la API, agregarlo con permiso usuarios.administrar y prueba
+      - Prueba de la logica de la web con respuesta real y con error
+    files:
+      - apps/web/src/lib/
+      - apps/api/src/modules/identity/interface/miembros.controller.ts
+    source: "auditoria de veracidad 2026-11-04 (PR #202)"
+    created_at: 2026-11-05T00:44:42.917Z
+  - id: T-122
+    title: "API: estado del canal de WhatsApp de la agencia (conectado, numero, ultimo mensaje, errores) para la
+      pantalla de Configuracion"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on: []
+    acceptance:
+      - "GET /api/v1/canales/whatsapp/estado (o ruta vigente) con lo que se sabe de
+        cuentas_whatsapp/enrutamiento: numero, estado, ultima recepcion y ultimo envio fallido, sin exponer
+        tokens"
+      - La pantalla /configuracion deja de mostrar datos de relleno en modo real
+      - Sin plantillas (T-078 depende de Meta)
+    files:
+      - apps/api/src/modules/inbox/
+      - packages/contracts/src/inbox.ts
+    source: "auditoria de veracidad 2026-11-04 (PR #202)"
+    created_at: 2026-11-05T00:44:42.917Z
+  - id: T-123
+    title: "Web en modo real por defecto: .env.example y README coherentes (USE_REAL_*, NEXT_PUBLIC_USE_REAL_AUTH)
+      y arranque documentado"
+    type: bug
+    phase: 1
+    priority: P0
+    effort: S
+    status: backlog
+    depends_on: []
+    acceptance:
+      - .env.example deja USE_REAL_CRM, USE_REAL_INBOX y NEXT_PUBLIC_USE_REAL_AUTH en modo real; la maqueta es
+        explicita y visible
+      - README con el arranque local real (pnpm install, base, migraciones, semilla, pnpm dev, trabajador o
+        modo unico), sin la frase «todavia no hay codigo»
+      - "Ruta protegida del propietario (.env.example): el PR lo dice"
+    files:
+      - .env.example
+      - README.md
+    source: "auditoria de veracidad 2026-11-04 (PR #202)"
+    created_at: 2026-11-05T00:44:42.917Z
+  - id: T-124
+    title: "Web: reportes sin margen ni costo inventados; las pantallas que solo usan localStorage dicen que son
+      locales o hablan con la API"
+    type: bug
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on: []
+    acceptance:
+      - Reportes calculan margen y costo desde cotizaciones reales (permiso cotizacion.ver_neto_y_margen) o no
+        muestran la cifra; se eliminan las constantes del 20 % y del 80 %
+      - "Campos personalizados, respuestas rapidas, filtros guardados, onboarding y preferencias: en modo
+        real, o persisten en la API o muestran un aviso visible de que son solo locales; lista de cuales
+        quedan locales en traspaso/ENTREGA.md"
+      - "Plantillas y nombres de contacto en /cotizaciones y el modal Enviar cotizacion: sin telefono de
+        relleno en modo real"
+    files:
+      - apps/web/src/app/reportes/
+      - apps/web/src/app/cotizaciones/
+    source: "auditoria de veracidad 2026-11-04 (PR #202)"
+    created_at: 2026-11-05T00:44:42.917Z
+  - id: T-125
+    title: "Suite e2e web a API con Playwright: ingreso, bandeja, enviar cotizacion y seguimiento"
+    type: test
+    phase: 1
+    priority: P1
+    effort: L
+    status: backlog
+    depends_on: []
+    acceptance:
+      - "Playwright como dependencia de desarrollo justificada en el PR (ruta protegida: dependencias); corre
+        contra la API real en el modo unico sin Redis (ADR-0019) con base de datos del CI"
+      - "Casos: ingreso con OTP de Mailpit o sesion de desarrollo, abrir una conversacion sembrada, responder,
+        enviar una cotizacion y crear un seguimiento; el envio sale contra Graph API falsa"
+      - Job de CI no obligatorio al inicio; informe de fallos como artefacto
+    files:
+      - apps/web/e2e/
+      - .github/workflows/
+    source: "auditoria de veracidad 2026-11-04 (PR #202)"
+    created_at: 2026-11-05T00:44:42.917Z
+  - id: T-126
+    title: Campana de pruebas funcionales completas en local y bitacora de hallazgos
+    type: test
+    phase: 1
+    priority: P0
+    effort: M
+    status: backlog
+    depends_on: []
+    acceptance:
+      - "Stack completo local en modo unico contra la base de desarrollo: API, web, correo de prueba"
+      - Recorrido de cada capacidad del MVP (H1 a H6) en el navegador, con evidencia, y cada hallazgo en
+        docs/_bitacora/hallazgos-funcionales-AAAA-MM-DD.md con severidad, pasos, esperado, obtenido y duenio
+      - Cada hallazgo corregido o convertido en tarea; la prueba se repite hasta cero hallazgos bloqueantes
+    files:
+      - docs/_bitacora/
+    source: "auditoria de veracidad 2026-11-04 (PR #202)"
+    created_at: 2026-11-05T00:44:42.917Z
