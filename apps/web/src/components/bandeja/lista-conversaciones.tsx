@@ -28,6 +28,7 @@ import {
   CLAVE_FILTROS_BANDEJA,
   FILTROS_BANDEJA_DEFECTO,
 } from '../../lib/filtros-guardados-logica';
+import { useBandejaAtajos } from '../../lib/atajos-teclado-bandeja';
 
 export type DensidadBandeja = 'compacta' | 'comoda';
 
@@ -42,6 +43,7 @@ const FILTROS: { id: FiltroBandeja; etiqueta: string }[] = [
 export function ListaConversaciones() {
   const { esDemo } = useModoDemo();
   const pathname = usePathname();
+  const { setConversaciones: setConversacionesContexto, setModalAyudaAbierto } = useBandejaAtajos();
 
   // Filtros persistidos en localStorage con opción de limpiar (T-103)
   const {
@@ -72,6 +74,10 @@ export function ListaConversaciones() {
 
   const [pagina, setPagina] = useState<PaginaBandeja | null>(null);
   const [conversaciones, setConversaciones] = useState<ConversacionResumen[]>([]);
+
+  useEffect(() => {
+    setConversacionesContexto(conversaciones);
+  }, [conversaciones, setConversacionesContexto]);
   const [cargando, setCargando] = useState(true);
   const [cargandoMas, setCargandoMas] = useState(false);
   const [densidad, setDensidad] = useState<DensidadBandeja>('comoda');
@@ -227,6 +233,11 @@ export function ListaConversaciones() {
     } else if (e.key === 'Escape') {
       if (enInputBusqueda) {
         busquedaInputRef.current?.blur();
+      }
+    } else if (e.key === '?' || (e.key === '/' && e.shiftKey)) {
+      if (!enInputBusqueda) {
+        e.preventDefault();
+        setModalAyudaAbierto(true);
       }
     }
   };
@@ -510,6 +521,17 @@ export function ListaConversaciones() {
           </kbd>
           <span>buscar</span>
         </span>
+        <button
+          type="button"
+          onClick={() => setModalAyudaAbierto(true)}
+          className="flex items-center gap-1 font-mono text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-100"
+          aria-label="Ver ayuda de atajos de teclado"
+        >
+          <kbd className="rounded bg-neutral-200/70 px-1 py-0.5 text-[9px] dark:bg-neutral-800">
+            ?
+          </kbd>
+          <span>ayuda</span>
+        </button>
         <span className="flex items-center gap-1 font-mono">
           <kbd className="rounded bg-neutral-200/70 px-1 py-0.5 text-[9px] dark:bg-neutral-800">
             ↵

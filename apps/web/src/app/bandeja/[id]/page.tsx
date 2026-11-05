@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { useParams } from 'next/navigation';
 import type {
   ConversacionDetalle,
@@ -28,7 +29,6 @@ import {
 import { inboxApi } from '../../../lib/inbox-api';
 import { useInboxSocket } from '../../../lib/inbox-socket';
 import { usePermisos } from '../../../lib/permisos';
-import { ModalReasignar } from '../../../components/bandeja/modal-reasignar';
 import { obtenerFichaDeContacto } from '../../../lib/crm-api';
 import { EsqueletoConversacion, AvisoErrorAccionable } from '../../../components/comun/esqueletos';
 import { MigasDePan } from '../../../components/comun/migas-de-pan';
@@ -47,7 +47,6 @@ import {
   obtenerIniciales,
 } from '../../../lib/bandeja-logica';
 import { FichaCliente } from '../../../components/bandeja/ficha-cliente';
-import { ModalPlantillas } from '../../../components/bandeja/modal-plantillas';
 import {
   InsigniaCuentaRegresiva24h,
   BannerAvisoVentana24h,
@@ -58,10 +57,8 @@ import { obtenerMockPlantillasDisponibles } from '../../../lib/mock-plantillas';
 import { EnviarPlantilla } from '@viajapro/contracts';
 import { TarjetaCotizacion } from '../../../components/bandeja/tarjeta-cotizacion';
 import { PanelSugerencias } from '../../../components/bandeja/panel-sugerencias';
-import { ModalEnviarCotizacion } from '../../../components/bandeja/modal-enviar-cotizacion';
-import { ModalCrearOportunidad } from '../../../components/bandeja/modal-crear-oportunidad';
-import { ModalEditarContacto } from '../../../components/bandeja/modal-editar-contacto';
 import { MenuRespuestasRapidas } from '../../../components/bandeja/menu-respuestas-rapidas';
+import { useBandejaAtajos, debeProcesarAtajo } from '../../../lib/atajos-teclado-bandeja';
 import { AlertaErrorEnvio } from '../../../components/bandeja/alerta-error-envio';
 import { interpretarErrorDeEnvio, type DetalleErrorEnvio } from '../../../lib/errores-de-envio';
 import {
@@ -73,6 +70,39 @@ import {
   type ContextoInterpolacion,
   type RespuestaRapida,
 } from '../../../lib/respuestas-rapidas-logica';
+
+// Carga diferida de modales secundarios de la bandeja (T-130)
+const ModalReasignar = dynamic(
+  () => import('../../../components/bandeja/modal-reasignar').then((m) => m.ModalReasignar),
+  { ssr: false },
+);
+
+const ModalPlantillas = dynamic(
+  () => import('../../../components/bandeja/modal-plantillas').then((m) => m.ModalPlantillas),
+  { ssr: false },
+);
+
+const ModalEnviarCotizacion = dynamic(
+  () =>
+    import('../../../components/bandeja/modal-enviar-cotizacion').then(
+      (m) => m.ModalEnviarCotizacion,
+    ),
+  { ssr: false },
+);
+
+const ModalCrearOportunidad = dynamic(
+  () =>
+    import('../../../components/bandeja/modal-crear-oportunidad').then(
+      (m) => m.ModalCrearOportunidad,
+    ),
+  { ssr: false },
+);
+
+const ModalEditarContacto = dynamic(
+  () =>
+    import('../../../components/bandeja/modal-editar-contacto').then((m) => m.ModalEditarContacto),
+  { ssr: false },
+);
 
 export default function BandejaConversacionPage() {
   const params = useParams();
@@ -95,6 +125,7 @@ export default function BandejaConversacionPage() {
   const [modoNota, setModoNota] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [errorEnvio, setErrorEnvio] = useState<DetalleErrorEnvio | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   // Modal de plantillas Meta HSM
   const [modalPlantillasAbierto, setModalPlantillasAbierto] = useState(false);
@@ -110,35 +141,88 @@ export default function BandejaConversacionPage() {
   const [modalReasignarAbierto, setModalReasignarAbierto] = useState(false);
   const [menuRespuestasAbierto, setMenuRespuestasAbierto] = useState(false);
 
-  // Atajos de teclado en el chat (T-024)
+  // Modales de Cotización y CRM (T-074, T-076)
+  const [modalEnviarCotizacionAbierto, setModalEnviarCotizacionAbierto] = useState(false);
+  const [modalCrearOportunidadAbierto, setModalCrearOportunidadAbierto] = useState(false);
+  const [modalEditarContactoAbierto, setModalEditarContactoAbierto] = useState(false);
+
+  // Atajos de teclado en la bandeja (T-127 y T-024)
+  const { irASiguiente, irAAnterior, modalAyudaAbierto, setModalAyudaAbierto, atajosHabilitados } =
+    useBandejaAtajos();
+
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      // Atajos con modificador Alt (T-024)
       if (e.altKey && e.key.toLowerCase() === 'p') {
         e.preventDefault();
         setModalPlantillasAbierto((prev) => !prev);
+        return;
       } else if (e.altKey && e.key.toLowerCase() === 'r') {
         e.preventDefault();
         setModalReasignarAbierto((prev) => !prev);
+        return;
       } else if (e.altKey && e.key.toLowerCase() === 'f') {
         e.preventDefault();
         setMostrarFichaLateral((prev) => !prev);
+        return;
       } else if (e.key === 'Escape') {
-        if (menuRespuestasAbierto) setMenuRespuestasAbierto(false);
+        if (modalAyudaAbierto) setModalAyudaAbierto(false);
+        else if (menuRespuestasAbierto) setMenuRespuestasAbierto(false);
         else if (modalPlantillasAbierto) setModalPlantillasAbierto(false);
         else if (modalReasignarAbierto) setModalReasignarAbierto(false);
+        else if (modalEnviarCotizacionAbierto) setModalEnviarCotizacionAbierto(false);
+        else if (modalCrearOportunidadAbierto) setModalCrearOportunidadAbierto(false);
+        else if (modalEditarContactoAbierto) setModalEditarContactoAbierto(false);
         else if (mostrarFichaLateral) setMostrarFichaLateral(false);
+        return;
+      }
+
+      // Atajos de un solo carácter para navegación y acciones rápidas (T-127)
+      if (!debeProcesarAtajo(e, atajosHabilitados)) {
+        return;
+      }
+
+      const key = e.key;
+
+      if (key === 'r' || key === 'R') {
+        e.preventDefault();
+        textareaRef.current?.focus();
+      } else if (key === 'c' || key === 'C') {
+        e.preventDefault();
+        setModalEnviarCotizacionAbierto(true);
+      } else if (key === 's' || key === 'S') {
+        e.preventDefault();
+        setModalCrearOportunidadAbierto(true);
+      } else if (key === '?' || (key === '/' && e.shiftKey)) {
+        e.preventDefault();
+        setModalAyudaAbierto(true);
+      } else if (key === 'j' || key === 'J') {
+        e.preventDefault();
+        irASiguiente(id);
+      } else if (key === 'k' || key === 'K') {
+        e.preventDefault();
+        irAAnterior(id);
       }
     };
 
     window.addEventListener('keydown', handleGlobalKeyDown);
     return () => window.removeEventListener('keydown', handleGlobalKeyDown);
-  }, [modalPlantillasAbierto, modalReasignarAbierto, mostrarFichaLateral, menuRespuestasAbierto]);
+  }, [
+    modalPlantillasAbierto,
+    modalReasignarAbierto,
+    mostrarFichaLateral,
+    menuRespuestasAbierto,
+    modalEnviarCotizacionAbierto,
+    modalCrearOportunidadAbierto,
+    modalEditarContactoAbierto,
+    modalAyudaAbierto,
+    atajosHabilitados,
+    id,
+    irASiguiente,
+    irAAnterior,
+    setModalAyudaAbierto,
+  ]);
   const [asignando, setAsignando] = useState(false);
-
-  // Modales de Cotización y CRM (T-074, T-076)
-  const [modalEnviarCotizacionAbierto, setModalEnviarCotizacionAbierto] = useState(false);
-  const [modalCrearOportunidadAbierto, setModalCrearOportunidadAbierto] = useState(false);
-  const [modalEditarContactoAbierto, setModalEditarContactoAbierto] = useState(false);
 
   // Permisos de sesión para visibilidad y asignación (0c.35)
   const { sesion, puedeVerTodasConversaciones } = usePermisos();
@@ -290,7 +374,6 @@ export default function BandejaConversacionPage() {
 
   // Mapa de claves de idempotencia para garantizar R5
   const idempotenciaMapRef = useRef<Record<string, string>>({});
-  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const mensajeRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   // Tiempo restante de la ventana de 24h

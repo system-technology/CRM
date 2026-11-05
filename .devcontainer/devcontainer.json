@@ -1,0 +1,37 @@
+{
+  "name": "ViajaPro (Node 22 + Postgres 16 + Redis 7 + Mailpit)",
+  "dockerComposeFile": "docker-compose.yml",
+  "service": "app",
+  "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
+  "shutdownAction": "stopCompose",
+
+  "forwardPorts": [3000, 3333, 8025],
+  "portsAttributes": {
+    "3000": { "label": "web (Next.js)", "onAutoForward": "openBrowser" },
+    "3333": { "label": "api (NestJS)", "onAutoForward": "notify" },
+    "8025": { "label": "Mailpit (correo de desarrollo)", "onAutoForward": "silent" }
+  },
+
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
+
+  "customizations": {
+    "vscode": {
+      "extensions": ["dbaeumer.vscode-eslint", "esbenp.prettier-vscode", "Prisma.prisma"]
+    }
+  },
+
+  "secrets": {
+    "META_APP_ID": { "description": "App ID de Meta (opcional)." },
+    "META_APP_SECRET": { "description": "App Secret de Meta: firma de webhooks (opcional)." },
+    "WHATSAPP_WEBHOOK_VERIFY_TOKEN": {
+      "description": "Token de verificacion del webhook. Elige una cadena aleatoria."
+    },
+    "META_SYSTEM_USER_TOKEN": { "description": "Token del usuario de sistema (opcional)." },
+    "META_PHONE_NUMBER_ID_PRUEBA": { "description": "Numero de prueba de Meta (opcional)." },
+    "META_WABA_ID_PRUEBA": { "description": "WABA de prueba de Meta (opcional)." },
+    "META_TENANT_ID_PRUEBA": {
+      "description": "UUID de la agencia dueña del canal de prueba (opcional)."
+    },
+    "ANTHROPIC_API_KEY": { "description": "Clave de la API de Claude (opcional)." }
+  }
+}

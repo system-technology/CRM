@@ -8,15 +8,104 @@
 import {
   type InvitarMiembro as InvitarMiembroTipo,
   InvitarMiembro as EsquemaInvitarMiembro,
-  RespuestaOk as EsquemaRespuestaOk,
   ErrorApi as EsquemaErrorApi,
+  ListaDeMiembros as EsquemaListaDeMiembros,
+  type MiembroDeAgencia,
 } from '@viajapro/contracts';
 import { obtenerBaseApi } from './api-base';
 import { esModoDemo } from './modo-demo';
 import { cabecerasDeTenantDev } from './cabeceras-tenant';
-import { MOCK_MIEMBROS_EQUIPO, type MiembroEquipo, type RolMiembro } from './mock-configuracion';
+import {
+  MOCK_MIEMBROS_EQUIPO,
+  type MiembroEquipo as MiembroMock,
+  type RolMiembro,
+} from './mock-configuracion';
 
-export type { MiembroEquipo, RolMiembro };
+export type { RolMiembro };
+
+/**
+ * Miembro tal como lo muestra la pantalla. En modo real viene de `MiembroDeAgencia`
+ * (sin teléfono: la tabla `usuarios` no lo tiene). `INVITADO` solo existe en modo demo:
+ * las invitaciones pendientes no son listables en la API.
+ */
+export interface MiembroEquipo {
+  id: string;
+  nombre: string;
+  email: string;
+  /** Solo en modo demo. */
+  telefono?: string;
+  /** Clave del rol sembrado; `null` en un rol propio de la agencia. */
+  rolClave: string | null;
+  rolNombre: string;
+  estado: 'ACTIVO' | 'INACTIVO' | 'INVITADO';
+  /** Fecha ISO (UTC en real: `creadoEn`; presentación en la pantalla). */
+  fechaIngreso: string;
+  avatarIniciales: string;
+}
+
+/** Iniciales (máx. 2) derivadas del nombre; cae al correo si el nombre está vacío. */
+export function inicialesDeNombre(nombre: string, correo = ''): string {
+  const base = nombre.trim() || correo.split('@')[0] || '';
+  const partes = base.split(/[\s._-]+/).filter(Boolean);
+  const letras = partes
+    .slice(0, 2)
+    .map((p) => Array.from(p)[0] ?? '')
+    .join('')
+    .toUpperCase();
+  return letras || '?';
+}
+
+/** Fecha de alta legible (es-CO). `creadoEn` (instante UTC) se muestra en la zona del navegador. */
+export function formatearFechaIngreso(iso: string): string {
+  const soloFecha = iso.length === 10;
+  const d = new Date(soloFecha ? `${iso}T00:00:00Z` : iso);
+  if (Number.isNaN(d.getTime())) return '—';
+  return new Intl.DateTimeFormat('es-CO', {
+    dateStyle: 'medium',
+    ...(soloFecha ? { timeZone: 'UTC' } : {}),
+  }).format(d);
+}
+
+/** Adapta el contrato de la API a lo que pinta la pantalla. */
+export function miembroDesdeApi(m: MiembroDeAgencia): MiembroEquipo {
+  return {
+    id: m.id,
+    nombre: m.nombre,
+    email: m.correo,
+    rolClave: m.rol.clave,
+    rolNombre: m.rol.nombre,
+    estado: m.estado,
+    fechaIngreso: m.creadoEn,
+    avatarIniciales: inicialesDeNombre(m.nombre, m.correo),
+  };
+}
+
+function miembroDesdeMock(m: MiembroMock): MiembroEquipo {
+  return {
+    id: m.id,
+    nombre: m.nombre,
+    email: m.email,
+    telefono: m.telefono,
+    rolClave: m.rol,
+    rolNombre: m.rol === 'DUENO' ? 'Dueño / Administrador' : 'Asesor Comercial',
+    estado: m.estado,
+    fechaIngreso: m.fechaIngreso,
+    avatarIniciales: m.avatarIniciales,
+  };
+}
+
+/** Error al leer o modificar miembros; `codigo` es el de la API o `ERROR_CONEXION`/`ERROR_SERVIDOR`. */
+export class ErrorMiembrosApi extends Error {
+  readonly codigo: string;
+  readonly estado: number | null;
+
+  constructor(codigo: string, mensaje: string, estado: number | null = null) {
+    super(mensaje);
+    this.name = 'ErrorMiembrosApi';
+    this.codigo = codigo;
+    this.estado = estado;
+  }
+}
 
 export interface RolAgencia {
   id: string;
@@ -127,16 +216,18 @@ export function listarRolesAgenciaApi(): Promise<RolAgencia[]> {
 }
 
 /**
- * Lista los miembros del equipo y sus estados.
+ * Lista los miembros del equipo (`GET /api/v1/identidad/miembros`, requiere `usuarios.administrar`).
+ * En modo real no cae a localStorage ni a datos simulados: lanza `ErrorMiembrosApi`.
  */
 export async function listarMiembrosEquipoApi(): Promise<MiembroEquipo[]> {
   if (esModoDemo()) {
-    return obtenerMiembrosCache();
+    return obtenerMiembrosCache().map(miembroDesdeMock);
   }
 
   const base = obtenerBaseApi();
+  let res: Response;
   try {
-    const res = await fetch(`${base}/api/v1/identidad/usuarios`, {
+    res = await fetch(`${base}/api/v1/identidad/miembros`, {
       method: 'GET',
       headers: {
         Accept: 'application/json',
@@ -144,19 +235,83 @@ export async function listarMiembrosEquipoApi(): Promise<MiembroEquipo[]> {
       },
       credentials: 'include',
     });
-
-    if (!res.ok) {
-      return obtenerMiembrosCache();
-    }
-
-    const json = (await res.json()) as unknown;
-    if (Array.isArray(json) && json.length > 0) {
-      return json as MiembroEquipo[];
-    }
-    return obtenerMiembrosCache();
   } catch {
-    return obtenerMiembrosCache();
+    throw new ErrorMiembrosApi(
+      'ERROR_CONEXION',
+      'No fue posible conectar con el servidor de ViajaPro.',
+    );
   }
+
+  if (!res.ok) {
+    const raw = (await res.json().catch(() => null)) as unknown;
+    const err = EsquemaErrorApi.safeParse(raw);
+    if (res.status === 403) {
+      throw new ErrorMiembrosApi(
+        err.success ? err.data.error.code : 'PERMISO_DENEGADO',
+        'No tienes permiso para ver el equipo.',
+        403,
+      );
+    }
+    throw new ErrorMiembrosApi(
+      err.success ? err.data.error.code : 'ERROR_SERVIDOR',
+      err.success ? err.data.error.message : `El servidor respondió con error ${res.status}.`,
+      res.status,
+    );
+  }
+
+  const parseo = EsquemaListaDeMiembros.safeParse(await res.json().catch(() => null));
+  if (!parseo.success) {
+    throw new ErrorMiembrosApi(
+      'RESPUESTA_INVALIDA',
+      'El servidor devolvió una lista de miembros con un formato inesperado.',
+      res.status,
+    );
+  }
+  return parseo.data.map(miembroDesdeApi);
+}
+
+/**
+ * Da de baja a un miembro (`POST /api/v1/identidad/miembros/:id/baja`, mismo id de la lista).
+ */
+export async function darDeBajaMiembroApi(id: string): Promise<void> {
+  if (esModoDemo()) {
+    const restantes = obtenerMiembrosCache().map((m) =>
+      m.id === id ? { ...m, estado: 'INACTIVO' as const } : m,
+    );
+    try {
+      localStorage.setItem(CLAVE_STORAGE_EQUIPO, JSON.stringify(restantes));
+    } catch {
+      // cuota de storage llena: la baja demo es solo ilustrativa
+    }
+    return;
+  }
+
+  const base = obtenerBaseApi();
+  let res: Response;
+  try {
+    res = await fetch(`${base}/api/v1/identidad/miembros/${encodeURIComponent(id)}/baja`, {
+      method: 'POST',
+      headers: { Accept: 'application/json', ...cabecerasDeTenantDev() },
+      credentials: 'include',
+    });
+  } catch {
+    throw new ErrorMiembrosApi(
+      'ERROR_CONEXION',
+      'No fue posible conectar con el servidor de ViajaPro.',
+    );
+  }
+  if (res.ok) return;
+
+  const err = EsquemaErrorApi.safeParse(await res.json().catch(() => null));
+  throw new ErrorMiembrosApi(
+    res.status === 403 ? 'PERMISO_DENEGADO' : err.success ? err.data.error.code : 'ERROR_SERVIDOR',
+    res.status === 403
+      ? 'No tienes permiso para dar de baja miembros.'
+      : err.success
+        ? err.data.error.message
+        : `El servidor respondió con error ${res.status}.`,
+    res.status,
+  );
 }
 
 /**
@@ -214,13 +369,6 @@ export async function invitarMiembroApi(datos: {
 
   // 202 Accepted según contrato NestJS
   if (respuesta.status === 202 || respuesta.status === 200 || respuesta.status === 201) {
-    const raw = (await respuesta.json().catch(() => ({ ok: true }))) as unknown;
-    const okParse = EsquemaRespuestaOk.safeParse(raw);
-    if (okParse.success) {
-      guardarMiembroInvitadoEnCache(datos);
-      return { ok: true };
-    }
-    guardarMiembroInvitadoEnCache(datos);
     return { ok: true };
   }
 
@@ -258,13 +406,13 @@ export async function invitarMiembroApi(datos: {
   );
 }
 
-function obtenerMiembrosCache(): MiembroEquipo[] {
+function obtenerMiembrosCache(): MiembroMock[] {
   if (typeof window === 'undefined') return MOCK_MIEMBROS_EQUIPO;
   try {
     const raw = localStorage.getItem(CLAVE_STORAGE_EQUIPO);
     if (!raw) return MOCK_MIEMBROS_EQUIPO;
     const parsed = JSON.parse(raw) as unknown;
-    if (Array.isArray(parsed) && parsed.length > 0) return parsed as MiembroEquipo[];
+    if (Array.isArray(parsed) && parsed.length > 0) return parsed as MiembroMock[];
     return MOCK_MIEMBROS_EQUIPO;
   } catch {
     return MOCK_MIEMBROS_EQUIPO;
@@ -291,7 +439,7 @@ function guardarMiembroInvitadoEnCache(datos: {
     const rolEncontrado = ROLES_PREDEFINIDOS_AGENCIA.find((r) => r.id === datos.rolId);
     const rolKey: RolMiembro = rolEncontrado?.clave === 'DUENO' ? 'DUENO' : 'ASESOR';
 
-    const nuevo: MiembroEquipo = {
+    const nuevo: MiembroMock = {
       id: `01932000-0000-7000-8000-${Date.now().toString(16).padStart(12, '0').slice(-12)}`,
       nombre: datos.nombre?.trim() || datos.correo.split('@')[0] || 'Asesor Invitado',
       email: datos.correo.trim().toLowerCase(),

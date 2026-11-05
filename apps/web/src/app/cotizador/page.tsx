@@ -11,6 +11,7 @@
  */
 
 import React, { Suspense, useEffect, useState, useMemo } from 'react';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useModoDemo } from '../../lib/modo-demo';
@@ -29,8 +30,13 @@ import { DistintivoDatosDemo } from '../../components/comun/distintivo-datos-dem
 import { AvisoConfiguracionTenant } from '../../components/crm/aviso-configuracion-tenant';
 import { formatearErrorAmigable } from '../../lib/estados-ui-logica';
 import { DesgloseCotizacionSalida } from '../../components/cotizador/desglose-cotizacion-salida';
-import { ModalGuardarCotizacion } from '../../components/cotizador/modal-guardar-cotizacion';
 import { EstadoSinCatalogo } from '../../components/catalogo/estado-sin-catalogo';
+
+const ModalGuardarCotizacion = dynamic(() =>
+  import('../../components/cotizador/modal-guardar-cotizacion').then(
+    (m) => m.ModalGuardarCotizacion,
+  ),
+);
 import { MOCK_PAQUETES_CATALOGO } from '../../lib/mock-catalogo';
 import {
   calcularCotizacionMock,
@@ -478,7 +484,7 @@ function ContenidoCotizador() {
                         id="select-paquete-cotizador"
                         value={paqueteId}
                         onChange={(e) => setPaqueteId(e.target.value)}
-                        className="mt-1.5 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white p-2.5 text-xs text-neutral-900 shadow-2xs focus:border-purple-600 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                        className="mt-1.5 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white p-2.5 text-xs text-neutral-900 shadow-2xs focus:border-purple-600 focus-visible:ring-2 focus-visible:ring-purple-600 focus-visible:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                       >
                         {paquetesDisponibles.map((p) => (
                           <option key={p.id} value={p.id}>
@@ -513,7 +519,8 @@ function ContenidoCotizador() {
                           onChange={(e) => setOpcionDeSalidaId(e.target.value)}
                           required
                           aria-invalid={faltaOpcion}
-                          className="mt-1.5 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white p-2.5 text-xs text-neutral-900 shadow-2xs focus:border-purple-600 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                          aria-describedby={faltaOpcion ? 'aviso-elegir-opcion' : undefined}
+                          className="mt-1.5 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white p-2.5 text-xs text-neutral-900 shadow-2xs focus:border-purple-600 focus-visible:ring-2 focus-visible:ring-purple-600 focus-visible:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                         >
                           <option value="">Elige una opción…</option>
                           {opcionesActivas.map((o) => (
@@ -525,8 +532,10 @@ function ContenidoCotizador() {
                         </select>
                         {faltaOpcion && (
                           <p
+                            id="aviso-elegir-opcion"
+                            role="alert"
                             data-testid="aviso-elegir-opcion"
-                            className="mt-1.5 text-[11px] text-amber-700 dark:text-amber-400"
+                            className="mt-1.5 text-[11px] font-medium text-amber-700 dark:text-amber-400"
                           >
                             Elige una opción de salida para ver el precio.
                           </p>
@@ -556,18 +565,21 @@ function ContenidoCotizador() {
                         type="date"
                         value={fecha}
                         onChange={(e) => setFecha(e.target.value)}
-                        className="mt-1.5 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white p-2.5 text-xs text-neutral-900 shadow-2xs focus:border-purple-600 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                        className="mt-1.5 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white p-2.5 text-xs text-neutral-900 shadow-2xs focus:border-purple-600 focus-visible:ring-2 focus-visible:ring-purple-600 focus-visible:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                       />
                       {fechasDelPaquete.length > 0 && (
                         <div className="mt-2">
-                          <span className="text-[11px] text-neutral-400">Salidas programadas:</span>
+                          <span className="text-[11px] font-medium text-neutral-600 dark:text-neutral-400">
+                            Salidas programadas:
+                          </span>
                           <div className="mt-1 flex flex-wrap gap-1">
                             {fechasDelPaquete.map((f) => (
                               <button
                                 key={f}
                                 type="button"
                                 onClick={() => setFecha(f)}
-                                className={`flex min-h-[44px] items-center rounded-lg px-3 py-2 text-xs font-semibold transition-colors ${
+                                aria-label={`Seleccionar salida programada ${f}`}
+                                className={`flex min-h-[44px] items-center rounded-lg px-3 py-2 text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-purple-600 focus-visible:outline-hidden ${
                                   fecha === f
                                     ? 'bg-purple-700 text-white'
                                     : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-300'
@@ -600,14 +612,18 @@ function ContenidoCotizador() {
                           tarifa global de salida.
                         </p>
                       ) : (
-                        <div className="mt-3 space-y-3">
+                        <div
+                          role="group"
+                          aria-label="Composición del grupo de pasajeros"
+                          className="mt-3 space-y-3"
+                        >
                           {/* Adultos */}
                           <div className="flex items-center justify-between">
                             <div>
                               <span className="text-xs font-medium text-neutral-700 dark:text-neutral-300">
                                 Adultos
                               </span>
-                              <span className="block text-[10px] text-neutral-400">
+                              <span className="block text-[10px] text-neutral-500 dark:text-neutral-400">
                                 Mayor a 12 años
                               </span>
                             </div>
@@ -615,17 +631,24 @@ function ContenidoCotizador() {
                               <button
                                 type="button"
                                 onClick={() => setAdultos(Math.max(1, adultos - 1))}
-                                className="flex h-11 min-h-[44px] w-11 min-w-[44px] items-center justify-center rounded-lg border border-neutral-300 bg-white text-sm font-bold text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                                aria-label="Disminuir adultos"
+                                className="flex h-11 min-h-[44px] w-11 min-w-[44px] items-center justify-center rounded-lg border border-neutral-300 bg-white text-sm font-bold text-neutral-700 hover:bg-neutral-100 focus-visible:ring-2 focus-visible:ring-purple-600 focus-visible:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                               >
                                 -
                               </button>
-                              <span className="cifra w-6 text-center text-sm font-bold text-neutral-900 dark:text-white">
+                              <span
+                                aria-live="polite"
+                                aria-atomic="true"
+                                aria-label={`${adultos} adultos`}
+                                className="cifra w-6 text-center text-sm font-bold text-neutral-900 dark:text-white"
+                              >
                                 {adultos}
                               </span>
                               <button
                                 type="button"
                                 onClick={() => setAdultos(adultos + 1)}
-                                className="flex h-11 min-h-[44px] w-11 min-w-[44px] items-center justify-center rounded-lg border border-neutral-300 bg-white text-sm font-bold text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                                aria-label="Aumentar adultos"
+                                className="flex h-11 min-h-[44px] w-11 min-w-[44px] items-center justify-center rounded-lg border border-neutral-300 bg-white text-sm font-bold text-neutral-700 hover:bg-neutral-100 focus-visible:ring-2 focus-visible:ring-purple-600 focus-visible:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                               >
                                 +
                               </button>
@@ -638,7 +661,7 @@ function ContenidoCotizador() {
                               <span className="text-xs font-medium text-neutral-700 dark:text-neutral-300">
                                 Niños
                               </span>
-                              <span className="block text-[10px] text-neutral-400">
+                              <span className="block text-[10px] text-neutral-500 dark:text-neutral-400">
                                 2 a 11 años
                               </span>
                             </div>
@@ -646,17 +669,24 @@ function ContenidoCotizador() {
                               <button
                                 type="button"
                                 onClick={() => setNinos(Math.max(0, ninos - 1))}
-                                className="flex h-11 min-h-[44px] w-11 min-w-[44px] items-center justify-center rounded-lg border border-neutral-300 bg-white text-sm font-bold text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                                aria-label="Disminuir niños"
+                                className="flex h-11 min-h-[44px] w-11 min-w-[44px] items-center justify-center rounded-lg border border-neutral-300 bg-white text-sm font-bold text-neutral-700 hover:bg-neutral-100 focus-visible:ring-2 focus-visible:ring-purple-600 focus-visible:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                               >
                                 -
                               </button>
-                              <span className="cifra w-6 text-center text-sm font-bold text-neutral-900 dark:text-white">
+                              <span
+                                aria-live="polite"
+                                aria-atomic="true"
+                                aria-label={`${ninos} niños`}
+                                className="cifra w-6 text-center text-sm font-bold text-neutral-900 dark:text-white"
+                              >
                                 {ninos}
                               </span>
                               <button
                                 type="button"
                                 onClick={() => setNinos(ninos + 1)}
-                                className="flex h-11 min-h-[44px] w-11 min-w-[44px] items-center justify-center rounded-lg border border-neutral-300 bg-white text-sm font-bold text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                                aria-label="Aumentar niños"
+                                className="flex h-11 min-h-[44px] w-11 min-w-[44px] items-center justify-center rounded-lg border border-neutral-300 bg-white text-sm font-bold text-neutral-700 hover:bg-neutral-100 focus-visible:ring-2 focus-visible:ring-purple-600 focus-visible:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                               >
                                 +
                               </button>
@@ -669,7 +699,7 @@ function ContenidoCotizador() {
                               <span className="text-xs font-medium text-neutral-700 dark:text-neutral-300">
                                 Infantes
                               </span>
-                              <span className="block text-[10px] text-neutral-400">
+                              <span className="block text-[10px] text-neutral-500 dark:text-neutral-400">
                                 Menores de 2 años
                               </span>
                             </div>
@@ -677,17 +707,24 @@ function ContenidoCotizador() {
                               <button
                                 type="button"
                                 onClick={() => setInfantes(Math.max(0, infantes - 1))}
-                                className="flex h-11 min-h-[44px] w-11 min-w-[44px] items-center justify-center rounded-lg border border-neutral-300 bg-white text-sm font-bold text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                                aria-label="Disminuir infantes"
+                                className="flex h-11 min-h-[44px] w-11 min-w-[44px] items-center justify-center rounded-lg border border-neutral-300 bg-white text-sm font-bold text-neutral-700 hover:bg-neutral-100 focus-visible:ring-2 focus-visible:ring-purple-600 focus-visible:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                               >
                                 -
                               </button>
-                              <span className="cifra w-6 text-center text-sm font-bold text-neutral-900 dark:text-white">
+                              <span
+                                aria-live="polite"
+                                aria-atomic="true"
+                                aria-label={`${infantes} infantes`}
+                                className="cifra w-6 text-center text-sm font-bold text-neutral-900 dark:text-white"
+                              >
                                 {infantes}
                               </span>
                               <button
                                 type="button"
                                 onClick={() => setInfantes(infantes + 1)}
-                                className="flex h-11 min-h-[44px] w-11 min-w-[44px] items-center justify-center rounded-lg border border-neutral-300 bg-white text-sm font-bold text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                                aria-label="Aumentar infantes"
+                                className="flex h-11 min-h-[44px] w-11 min-w-[44px] items-center justify-center rounded-lg border border-neutral-300 bg-white text-sm font-bold text-neutral-700 hover:bg-neutral-100 focus-visible:ring-2 focus-visible:ring-purple-600 focus-visible:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                               >
                                 +
                               </button>
@@ -711,7 +748,7 @@ function ContenidoCotizador() {
                           aria-label="Acomodación"
                           value={acomodacionMock}
                           onChange={(e) => setAcomodacionMock(e.target.value as Acomodacion | '')}
-                          className="mt-1.5 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white p-2.5 text-xs text-neutral-900 shadow-2xs focus:border-purple-600 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                          className="mt-1.5 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white p-2.5 text-xs text-neutral-900 shadow-2xs focus:border-purple-600 focus-visible:ring-2 focus-visible:ring-purple-600 focus-visible:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                         >
                           <option value="">Sugerida automáticamente</option>
                           <option value="SENCILLA">Sencilla (1 persona)</option>
@@ -727,7 +764,7 @@ function ContenidoCotizador() {
                       <button
                         type="button"
                         onClick={() => alternarDemo()}
-                        className="w-full text-center text-xs font-semibold text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200"
+                        className="flex min-h-[44px] w-full items-center justify-center rounded-xl p-2.5 text-center text-xs font-semibold text-neutral-600 hover:text-neutral-900 focus-visible:ring-2 focus-visible:ring-purple-600 focus-visible:outline-hidden dark:text-neutral-400 dark:hover:text-neutral-200"
                       >
                         Modo: {usarReal ? 'Conectado a API real' : 'Modo demostración (simulado)'}{' '}
                         (Alternar)
@@ -763,6 +800,8 @@ function ContenidoCotizador() {
                   {/* Mensajes de Error de Dominio (0c.16.3) */}
                   {!calculando && errorMensaje && (
                     <div
+                      role="alert"
+                      aria-live="assertive"
                       className={`rounded-2xl border p-6 ${
                         errorMensaje.esErrorAgencia
                           ? 'border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-300'
@@ -894,8 +933,9 @@ function ContenidoCotizador() {
                               <span className="font-bold">Aviso de acomodación:</span>{' '}
                               {cotizacionMock.plazasSinUsar === 1
                                 ? '1 plaza sin usar, se paga igual'
-                                : `${cotizacionMock.plazasSinUsar} plazas sin usar, se pagan igual`}
-                              {' '}debido a la distribución en habitaciones {cotizacionMock.acomodacion.toLowerCase()}s.
+                                : `${cotizacionMock.plazasSinUsar} plazas sin usar, se pagan igual`}{' '}
+                              debido a la distribución en habitaciones{' '}
+                              {cotizacionMock.acomodacion.toLowerCase()}s.
                             </div>
                           </div>
                         )}
