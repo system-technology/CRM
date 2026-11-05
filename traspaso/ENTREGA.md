@@ -1,3 +1,35 @@
+# Entrega — T-116: Consentimiento del contacto en la ficha (otorgar, revocar y ver texto mostrado) — 2026-11-04
+
+## Identificación
+- **Tarea:** `T-116` (roadmap/tasks.yaml)
+- **Rama:** `b/T-116-consentimientos-ficha`
+- **Carril:** `b` (Frontend / Web)
+- **Stitch Design Screen ID:** `3ad3298edeba4fee9a14dc092596da15` (Proyecto «ViajaPro — CRM para agencias de turismo», ID `8333038101997719867`)
+
+## Qué se construyó
+
+1. **Lógica pura y contratos de consentimientos (`apps/web/src/lib/consentimientos-logica.ts`):**
+   - Constantes legales marcadas explícitamente como `PENDIENTE_REVISION_LEGAL` (`VERSION_AVISO_PENDIENTE_REVISION_LEGAL`, `TEXTO_MOSTRADO_TRANSACCIONAL_PENDIENTE_REVISION_LEGAL`, `TEXTO_MOSTRADO_PROMOCIONAL_PENDIENTE_REVISION_LEGAL`). Sin texto legal inventado en runtime.
+   - `construirCuerpoOtorgarConsentimiento` y `construirCuerpoRevocarConsentimiento` validados contra contratos Zod de `@viajapro/contracts` (R3).
+   - `calcularEstadoFinalidad` y `calcularEstadosConsentimiento` para determinar de forma pura el estado vigente/revocado, fechas, canal, versión y texto mostrado por cada finalidad (`TRANSACCIONAL`, `PROMOCIONAL`).
+   - Conexión con `POST /api/v1/crm/contactos/:id/consentimientos` y `POST /api/v1/crm/contactos/:id/consentimientos/revocar` a través de `crm-api.ts` con fallback resiliente en `mock-crm.ts`.
+
+2. **Componente de gestión de consentimientos (`apps/web/src/components/crm/consentimientos.tsx`):**
+   - `PanelConsentimientosContacto`: tarjeta accesible por cada finalidad con badge de estado («Vigente» en verde esmeralda, «Revocado / No otorgado» en neutro), metadatos de trazabilidad (canal, fecha de otorgamiento/revocación, versión del aviso).
+   - Botón accesible «Ver texto mostrado» con modal interactivo que despliega el texto exacto presentado al titular y la versión legal con el badge `[VERSIÓN: PENDIENTE_REVISION_LEGAL]`.
+   - Botones «Otorgar consentimiento» y «Revocar consentimiento» con diálogo de confirmación preventiva, estados de carga y feedback accesible de errores.
+   - Integración en la Ficha 360 del Contacto (`apps/web/src/app/contactos/[id]/page.tsx`) mediante la pestaña dedicada `Consentimientos Ley 1581`.
+
+3. **Pruebas y verificación:**
+   - 12/12 pruebas unitarias e interactivas en `apps/web/src/lib/consentimientos-logica.spec.ts`.
+   - 7/7 pruebas de la Ficha 360 en `apps/web/src/app/contactos/[id]/page.spec.tsx`.
+   - 121 suites y 965 pruebas de `@viajapro/web` pasando en verde.
+   - `pnpm typecheck` y `pnpm lint` en verde.
+
+## Qué quedó pendiente
+- Revisión legal formal de los textos y versiones del aviso por parte del área jurídica de cada agencia antes de producción real.
+
+---
 # Entrega — Mitad web de T-099: Enmascarado de teléfono por rol y sanitización de PII en cliente — 2026-10-29
 
 ## Identificación

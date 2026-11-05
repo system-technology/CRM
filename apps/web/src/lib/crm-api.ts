@@ -30,6 +30,8 @@ import {
   PendientesDelDia,
   Seguimiento,
   TableroPipeline,
+  OtorgarConsentimiento,
+  RevocarConsentimiento,
   ErrorApi as EsquemaError,
 } from '@viajapro/contracts';
 import { obtenerMockTableroPipeline } from './mock-pipeline';
@@ -44,6 +46,8 @@ import {
   crearMockOportunidad,
   crearMockSeguimiento,
   listarMockSeguimientos,
+  otorgarMockConsentimiento,
+  revocarMockConsentimiento,
 } from './mock-crm';
 import { obtenerMockPaginaContactos } from './mock-contactos';
 
@@ -447,4 +451,46 @@ export async function listarSeguimientosApi(
   }
 
   return listarMockSeguimientos(validado);
+}
+
+/**
+ * Registra el consentimiento informado del contacto para una finalidad (T-116 / T-096).
+ * POST /api/v1/crm/contactos/:id/consentimientos
+ */
+export async function otorgarConsentimientoContactoApi(
+  contactoId: string,
+  cuerpo: OtorgarConsentimiento,
+): Promise<Contacto> {
+  const validado = OtorgarConsentimiento.parse(cuerpo);
+
+  if (estaUsandoApiReal()) {
+    const { data } = await pedirCrm(`/api/v1/crm/contactos/${contactoId}/consentimientos`, {
+      method: 'POST',
+      body: JSON.stringify(validado),
+    });
+    return Contacto.parse(data);
+  }
+
+  return otorgarMockConsentimiento(contactoId, validado);
+}
+
+/**
+ * Revoca el consentimiento del contacto para una finalidad (T-116 / T-096).
+ * POST /api/v1/crm/contactos/:id/consentimientos/revocar
+ */
+export async function revocarConsentimientoContactoApi(
+  contactoId: string,
+  cuerpo: RevocarConsentimiento,
+): Promise<Contacto> {
+  const validado = RevocarConsentimiento.parse(cuerpo);
+
+  if (estaUsandoApiReal()) {
+    const { data } = await pedirCrm(`/api/v1/crm/contactos/${contactoId}/consentimientos/revocar`, {
+      method: 'POST',
+      body: JSON.stringify(validado),
+    });
+    return Contacto.parse(data);
+  }
+
+  return revocarMockConsentimiento(contactoId, validado);
 }
