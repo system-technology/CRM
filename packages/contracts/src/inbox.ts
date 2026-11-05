@@ -246,6 +246,20 @@ export type AdjuntoDeConversacion = z.infer<typeof AdjuntoDeConversacion>;
 // =============================================================================
 
 /**
+ * Higiene del texto saliente (T-061). Quita los caracteres de control (C0 salvo tabulación y salto
+ * de línea, DEL y C1) y los de formato bidireccional, que pueden invertir lo que ve el viajero,
+ * por ejemplo para disfrazar un enlace. `\r\n` y `\r` pasan a `\n` y se recortan los extremos. Se
+ * conservan `\n`, `\t`, los emojis y todo el texto imprimible.
+ */
+const CARACTERES_PROHIBIDOS =
+  // eslint-disable-next-line no-control-regex -- justamente se filtran caracteres de control
+  /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F‎‏‪-‮⁦-⁩]/g;
+
+export function limpiarTextoSaliente(texto: string): string {
+  return texto.replace(/\r\n?/g, '\n').replace(CARACTERES_PROHIBIDOS, '').trim();
+}
+
+/**
  * Enviar un mensaje de texto.
  *
  * Solo vale **dentro** de la ventana de servicio. Fuera, la API responde
@@ -254,7 +268,8 @@ export type AdjuntoDeConversacion = z.infer<typeof AdjuntoDeConversacion>;
  */
 export const EnviarTexto = z.object({
   conversacionId: Id,
-  texto: z.string().min(1).max(4096),
+  // Se acota antes de limpiar (no se procesa un cuerpo gigante) y debe quedar algo después.
+  texto: z.string().max(4096).transform(limpiarTextoSaliente).pipe(z.string().min(1)),
   /**
    * Clave de idempotencia que genera el cliente. Dos envíos con la misma clave producen **un**
    * mensaje: sin esto, un doble clic o un reintento de red le manda dos veces lo mismo al

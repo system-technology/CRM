@@ -96,6 +96,24 @@ describe('EnviarMensajeSaliente — el camino feliz', () => {
   });
 });
 
+describe('EnviarMensajeSaliente — higiene del texto (T-061)', () => {
+  it('quita los caracteres de control antes de llamar a Meta y conserva saltos y emojis', async () => {
+    const meta = new EnvioWhatsappFalso({ wamid: 'wamid.OK' });
+    const { caso } = montar(meta, { texto: 'Hola\u0000 Sofía‎ ✈️\r\nPlan‮ a San Andrés\u0007' });
+    await caso.ejecutar(TENANT, MENSAJE, false, AHORA);
+    expect(meta.pedidos[0]?.texto).toBe('Hola Sofía ✈️\nPlan a San Andrés');
+  });
+
+  it('un texto que solo tenía caracteres de control no llega a Meta: queda FALLIDO', async () => {
+    const meta = new EnvioWhatsappFalso({ wamid: 'wamid.OK' });
+    const { caso, mensajes } = montar(meta, { texto: '\u0000\u0007‮  ' });
+    const r = await caso.ejecutar(TENANT, MENSAJE, false, AHORA);
+    expect(r.estado).toBe('FALLIDO');
+    expect(meta.pedidos).toHaveLength(0);
+    expect(mensajes.fila?.estado).toBe('FALLIDO');
+  });
+});
+
 describe('EnviarMensajeSaliente — idempotencia (R5)', () => {
   let meta: EnvioWhatsappFalso;
   beforeEach(() => {
