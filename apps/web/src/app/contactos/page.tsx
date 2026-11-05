@@ -16,7 +16,9 @@ import {
   Tag,
   ChevronRight,
   UserCheck,
+  Download,
 } from 'lucide-react';
+import { exportarContactosCSV, descargarArchivoCSV } from '../../lib/exportar-csv';
 import { BarraModulos } from '../../components/bandeja/barra-modulos';
 import { DistintivoDatosDemo } from '../../components/comun/distintivo-datos-demo';
 import {
@@ -103,6 +105,11 @@ export default function ContactosPage() {
     () => filtrarContactos(pagina.datos, busqueda, etiquetaFiltro, consentimientoFiltro),
     [pagina.datos, busqueda, etiquetaFiltro, consentimientoFiltro],
   );
+
+  const manejarExportarCSV = () => {
+    const csv = exportarContactosCSV(contactosFiltrados);
+    descargarArchivoCSV(csv, `contactos-viajapro-${new Date().toISOString().slice(0, 10)}.csv`);
+  };
 
   // Métricas rápidas
   const totalPromocionales = pagina.datos.filter((c) =>
@@ -215,6 +222,19 @@ export default function ContactosPage() {
                   Limpiar filtros
                 </button>
               )}
+
+              {/* Botón Exportar CSV (T-119) */}
+              <button
+                type="button"
+                onClick={manejarExportarCSV}
+                data-testid="boton-exportar-contactos-csv"
+                title="Exportar listado a CSV en formato es-CO (separador punto y coma, UTF-8 con BOM)"
+                aria-label="Exportar contactos a CSV"
+                className="flex min-h-[44px] items-center gap-1.5 rounded-xl border border-neutral-200 bg-white px-3 py-2 text-xs font-semibold text-neutral-700 shadow-2xs hover:bg-neutral-50 hover:text-neutral-900 focus:outline-hidden dark:border-neutral-800 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
+              >
+                <Download className="h-3.5 w-3.5 text-neutral-500 dark:text-neutral-400" />
+                <span>Exportar CSV</span>
+              </button>
             </div>
 
             <div className="text-[11px] text-neutral-400">
