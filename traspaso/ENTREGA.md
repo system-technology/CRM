@@ -1,3 +1,73 @@
+# Entrega — T-129: Accesibilidad del cotizador y del catálogo (foco, etiquetas, contraste, 44px) — 2026-11-04
+
+## Identificación
+- **Tarea:** `T-129`
+- **Rama:** `b/T-129-accesibilidad-cotizador-catalogo`
+- **Carril:** `b` (Frontend / Web)
+
+## Qué se construyó y corrigió
+1. **Gestión de foco y modales accesibles (`useFocoModal`):**
+   - Integrado `useFocoModal` en todos los modales y diálogos del cotizador y catálogo:
+     - `ModalGuardarCotizacion` (`apps/web/src/components/cotizador/modal-guardar-cotizacion.tsx`)
+     - `ModalFormularioPaquete` (`apps/web/src/components/catalogo/modal-formulario-paquete.tsx`)
+     - `DialogoDesactivarPaquete` (`apps/web/src/components/catalogo/dialogo-desactivar-paquete.tsx`) con foco inicial en el botón seguro de cancelar
+     - `FichaDetallePaquete` (`apps/web/src/components/catalogo/ficha-detalle-paquete.tsx`)
+     - `AsistenteImportacion` (`apps/web/src/components/catalogo/importacion/asistente-importacion.tsx`)
+   - Garantizado: trampa de foco (focus trap con Tab / Shift+Tab), cierre inmediato con `Escape`, y devolución automática de foco al elemento disparador (trigger).
+
+2. **Etiquetas y asociación de errores (`aria-describedby`, `aria-invalid`, `role="alert"`):**
+   - Cotizador (`apps/web/src/app/cotizador/page.tsx`):
+     - Selector de opciones de salida con `aria-invalid`, `aria-describedby="aviso-elegir-opcion"` y anuncio dinámico con `role="alert"`.
+     - Steppers de pasajeros agrupados bajo `role="group" aria-label="Composición del grupo de pasajeros"`, botones con `aria-label="Aumentar adultos"`, `aria-label="Disminuir adultos"` (y niños / infantes), y contadores con `aria-live="polite"` y `aria-atomic="true"`.
+     - Mensajes de error de cotización con `role="alert"` y `aria-live="assertive"`.
+   - Catálogo (`apps/web/src/app/catalogo/page.tsx` y componentes de gestión):
+     - Navegación de secciones con `role="tablist"`, `role="tab"`, `aria-selected` y `role="tabpanel"`.
+     - Campos de búsqueda y filtrado con `aria-label` explícito y visible.
+     - `ModalFormularioPaquete`: errores de validación asociados a cada input mediante `aria-invalid="true"` y `aria-describedby="error-campo-..."` apuntando a mensajes con `role="alert"`.
+
+3. **Objetivos táctiles mínimos de 44px (WCAG 2.5.5 / 2.5.8):**
+   - Botón de cerrar de `FichaDetallePaquete` ampliado de tamaño sub-44px a `min-h-[44px] min-w-[44px]`.
+   - Botones de acción en tablas de gestión de catálogo actualizados a `min-h-[44px] min-w-[44px]`.
+   - Selectores, inputs y botones de pestañas asegurados con `min-h-[44px]`.
+   - Anillos de foco visibles (`focus-visible:ring-2 focus-visible:outline-hidden`) para navegación por teclado sin ocultar el indicador de foco.
+
+4. **Pruebas y verificación con testing-library por roles:**
+   - Creado `src/app/cotizador/cotizador-accesibilidad.spec.tsx` (4 pruebas unitarias de roles, labels, live regions, aria-invalid y trampa de foco con Escape).
+   - Creado `src/app/catalogo/catalogo-accesibilidad.spec.tsx` (5 pruebas unitarias de tablist/tab, inputs con accesible name, modal focus trap/escape y diálogo de confirmación seguro).
+   - Ajustadas pruebas existentes en `page.spec.tsx` para consultar los steppers mediante sus roles y nombres accesibles.
+   - Toda la suite de `@viajapro/web` en verde (132 archivos, 1056 pruebas pasando), typecheck, lint y test:hooks limpios.
+
+---
+
+# Entrega — T-128: Comparar dos versiones de una cotización lado a lado — 2026-11-04
+
+## Identificación
+- **Tarea:** `T-128`
+- **Rama:** `b/T-128-comparar-cotizaciones`
+- **Carril:** `b` (Frontend / Web)
+
+## Qué se construyó
+1. **Lógica pura de comparación (`apps/web/src/lib/cotizaciones-diff.ts`):**
+   - Comparación lado a lado de dos versiones inmutables de una cotización (`VersionDeCotizacion`).
+   - Aritmética monetaria exacta con BigInt en enteros de la unidad mínima (R8) con formato de moneda ISO 4217 (`restarDinero`, `formatearDeltaDinero`, `determinarEfectoMonetario`).
+   - Comparativa de parámetros de viaje: adultos, niños, infantes, total pasajeros, fecha de salida, noches, acomodación, vigencia de oferta y opción de salida.
+   - Comparativa línea por línea de tarifas: clasificación en `MODIFICADA`, `AGREGADA`, `ELIMINADA` y `SIN_CAMBIO`, calculando el delta total por línea.
+   - Resumen textual estructurado de cambios y efecto sobre el total con cálculo de porcentaje de variación.
+2. **Aislamiento y seguridad de márgenes (ADR-0011):**
+   - Omisión estricta de costos netos y márgenes comerciales (`undefined`) si el usuario carece del permiso `cotizacion.ver_neto_y_margen`.
+   - Se muestra aviso de acceso restringido en lugar de las filas de neto/margen.
+3. **Componente de interfaz accesible (`apps/web/src/components/cotizaciones/modal-comparar-versiones.tsx`):**
+   - Modal WCAG (`role="dialog"`, `aria-labelledby`) con selectores dinámicos para versión base (A) y versión comparada (B), botón para invertir versiones, y badge visual del efecto en el total.
+   - Tres tablas comparativas ordenadas: parámetros de composición, desglose línea por línea y totales finales consolidados.
+   - Integración directa en la vista de detalle `/cotizaciones/[id]` mediante el botón accesible «Comparar versiones» (`btn-comparar-versiones`).
+4. **Pruebas y verificación:**
+   - Pruebas unitarias de la lógica pura en `cotizaciones-diff.spec.ts` (8 pruebas).
+   - Pruebas unitarias del modal en `modal-comparar-versiones.spec.tsx` (6 pruebas).
+   - Pruebas de integración del botón y modal en `page.spec.tsx` (6 pruebas).
+   - Toda la suite de `@viajapro/web` en verde (127 suites, 1020 pruebas), typecheck y lint sin advertencias ni errores.
+
+---
+
 # Entrega — T-127: Atajos de teclado en la bandeja y ayuda accesible — 2026-11-04
 
 ## Identificación
@@ -2724,3 +2794,27 @@ Se creó el archivo de pruebas de componentes `apps/web/src/components/comun/esq
   - `typecheck`: **VERDE** (9/9 tareas exitosas en Turborepo, cero errores TypeScript).
   - `format:check`: **VERDE** (100% verificado con Prettier).
   - `build`: **VERDE** (Next.js 15.5.27 compiló 16 páginas en 6.7s).
+
+
+---
+
+# Entrega — T-000: Reportes conectados a `GET /api/v1/reportes/resumen` — 2026-11-04
+
+## Identificación
+- **Rama:** `b/T-000-web-reportes-api` (carril `b`, Frontend / Web). Origen: auditoría de veracidad 2026-11-04.
+
+## Qué quedó en la API
+- Cotizaciones (creadas, enviadas, aceptadas, tasa de aceptación), ventas por moneda, oportunidades (creadas, ganadas, perdidas, abiertas, tasa de conversión, por etapa) y respuesta (nuevas, respondidas, promedio y mediana). El cliente valida la consulta y la respuesta con `ConsultarResumenDeReportes` / `ResumenDeReportes`.
+- Neto, margen, porcentaje y cotizaciones sin neto: solo se pintan si las claves vienen en la fila (permiso `cotizacion.ver_neto_y_margen`). Sin el permiso no hay sección ni texto de margen.
+- La variación de ventas se pide con una segunda llamada al periodo anterior contiguo y de igual duración, y se calcula por moneda con BigInt; si esa llamada falla o no hay base, se muestra «Aún sin datos» (no +100 %).
+
+## Qué quedó local en la web
+- La conversión de «este mes», «últimos 30 días», «últimos 90 días» y «este año» a instantes UTC con la zona horaria (`reportes-periodo.ts`, incluye horario de verano). **La zona de la agencia no viaja en la sesión ni en un contrato todavía: se usa `America/Bogota` (`ZONA_HORARIA_COLOMBIA`).** Si la agencia tiene otra, hace falta que `backend` la exponga.
+- «Foto actual del pipeline» (conteo por etapa hoy) sigue saliendo del tablero: el endpoint cuenta las oportunidades creadas en el periodo, no la foto abierta de hoy.
+- Se renombraron dos etiquetas para que digan lo que se calcula: «Último trimestre» pasa a «Últimos 90 días» y «Año completo» a «Este año» (hasta hoy).
+- Modo demo: sin cambios, con mocks y distintivo visible.
+
+## Qué falta en la API (escalar a `backend`)
+- Ventas por destino y rendimiento por asesor por periodo: en modo real la pantalla dice «Aún sin datos» y ya no los calcula del tablero (asumía COP y no respetaba el periodo).
+- Meta comercial: no existe; en modo real la tarjeta se retiró.
+- Estados: esqueleto de carga, vacío (sin actividad), error con «Reintentar» y 403 «No tienes permiso para ver los reportes».

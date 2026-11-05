@@ -75,6 +75,8 @@ describe.skipIf(!CORRE)('envíos sobre Postgres: dos agencias, dos consumidores,
   const A: Agencia = { tenant: '', canal: '', conversacion: '' };
   const B: Agencia = { tenant: '', canal: '', conversacion: '' };
   const instancias: Instancia[] = [];
+  /** Clase y código de lo que falló en las colas (nunca el mensaje: R10). */
+  const fallosDeCola: string[] = [];
 
   async function sembrarAgencia(a: Agencia, etiqueta: string): Promise<void> {
     a.tenant = `01932000-0000-7000-8000-${randomUUID().slice(-12)}`;
@@ -179,7 +181,12 @@ describe.skipIf(!CORRE)('envíos sobre Postgres: dos agencias, dos consumidores,
     for (;;) {
       const f = await fila(a, id);
       if (f?.wamid) return f.wamid;
-      if (Date.now() > limite) throw new Error('Se agotó la espera del wamid.');
+      if (Date.now() > limite) {
+        // Diagnóstico sin contenido: estado de la fila y códigos de los fallos de las colas.
+        throw new Error(
+          `Se agotó la espera del wamid. Fila: ${JSON.stringify(f)}. Fallos de cola: ${JSON.stringify(fallosDeCola)}.`,
+        );
+      }
       await dormir(100);
     }
   }
@@ -189,7 +196,16 @@ describe.skipIf(!CORRE)('envíos sobre Postgres: dos agencias, dos consumidores,
     await prisma.onModuleInit();
     const mensajes = new MensajesSalientesPrisma(prisma);
     const reservas = new ReservaDeEnvioPostgres(prisma);
-    const cola = new ColaDeEnviosPostgres(prisma, undefined, { esperaBaseMs: 50 });
+    const cola = new ColaDeEnviosPostgres(
+      prisma,
+      (_clave, contexto, error) => {
+        const e = error as { constructor?: { name?: string }; code?: unknown; codigo?: unknown };
+        fallosDeCola.push(
+          `#${contexto.intento} ${e.constructor?.name ?? '?'}:${String(typeof e.code === 'string' ? e.code : typeof e.codigo === 'string' ? e.codigo : '')}`,
+        );
+      },
+      { esperaBaseMs: 50 },
+    );
     const caso = new EnviarMensajeSaliente(
       mensajes,
       new CredencialesDeLaPrueba(),
@@ -232,11 +248,14 @@ describe.skipIf(!CORRE)('envíos sobre Postgres: dos agencias, dos consumidores,
         };
         const ref = cuerpo.biz_opaque_callback_data ?? '?';
         peticiones.set(ref, (peticiones.get(ref) ?? 0) + 1);
+        // El número se fija AQUÍ: leído dentro del temporizador, varias respuestas concurrentes
+        // compartirían el último valor y repetirían el wamid (P2002 en mensajes_tenant_id_wamid_key).
         contador += 1;
+        const numero = contador;
         // Un poco de latencia: ensancha la carrera entre los dos consumidores.
         setTimeout(() => {
           res.writeHead(200, { 'content-type': 'application/json' });
-          res.end(JSON.stringify({ messages: [{ id: `wamid.FALSO.${MARCA}.${contador}` }] }));
+          res.end(JSON.stringify({ messages: [{ id: `wamid.FALSO.${MARCA}.${numero}` }] }));
         }, 40);
       });
     });

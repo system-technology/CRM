@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import Link from 'next/link';
 import {
   X,
@@ -16,6 +16,7 @@ import {
 import type { Acomodacion, TipoPasajero } from '@viajapro/contracts';
 import { formatearDinero } from '../../lib/api';
 import { usePermisos } from '../../lib/permisos';
+import { useFocoModal } from '../../lib/use-foco-modal';
 import { MOCK_SESION_DUENO } from '../../lib/auth-api';
 import type { PaqueteConDetalle } from '../../lib/mock-catalogo';
 import {
@@ -48,6 +49,13 @@ export function FichaDetallePaquete({
   const tienePermisoNeto = puedeVerNetoProp !== undefined ? puedeVerNetoProp : puedeVerNetoHook;
   const [temporadaSeleccionadaId, setTemporadaSeleccionadaId] = useState<string>('');
 
+  const botonCerrarRef = useRef<HTMLButtonElement>(null);
+  const contenedorRef = useFocoModal<HTMLDivElement>({
+    abierto: Boolean(paquete),
+    alCerrar,
+    elementoInicialRef: botonCerrarRef,
+  });
+
   if (!paquete) return null;
 
   const temporadaActiva =
@@ -67,6 +75,7 @@ export function FichaDetallePaquete({
       onClick={alCerrar}
     >
       <div
+        ref={contenedorRef}
         className="anim-panel-lateral flex h-full w-full max-w-2xl flex-col bg-white shadow-2xl transition-transform dark:bg-neutral-900"
         onClick={(e) => e.stopPropagation()}
       >
@@ -93,10 +102,11 @@ export function FichaDetallePaquete({
             </h2>
           </div>
           <button
+            ref={botonCerrarRef}
             type="button"
             onClick={alCerrar}
-            className="rounded-lg p-1 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-600 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
-            aria-label="Cerrar ficha de paquete"
+            className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg p-2.5 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-600 focus-visible:ring-2 focus-visible:ring-neutral-600 focus-visible:outline-hidden dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
+            aria-label="Cerrar detalle"
           >
             <X className="h-5 w-5" />
           </button>
@@ -357,18 +367,18 @@ export function FichaDetallePaquete({
         </div>
 
         {/* Pie de acción */}
-        <div className="flex items-center justify-between border-t border-neutral-200 bg-neutral-50/50 px-6 py-4 dark:border-neutral-800 dark:bg-neutral-800/40">
+        <div className="flex flex-col-reverse justify-between gap-3 border-t border-neutral-200 bg-neutral-50/50 px-6 py-4 sm:flex-row sm:items-center dark:border-neutral-800 dark:bg-neutral-800/40">
           <button
             type="button"
             onClick={alCerrar}
-            className="rounded-lg border border-neutral-300 px-4 py-2 text-xs font-medium text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+            className="flex min-h-[44px] items-center justify-center rounded-xl border border-neutral-300 px-4 py-2.5 text-xs font-semibold text-neutral-700 hover:bg-neutral-100 focus-visible:ring-2 focus-visible:ring-neutral-600 focus-visible:outline-hidden dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
           >
             Volver al catálogo
           </button>
 
           <Link
             href="/cotizador"
-            className="bg-acento-600 hover:bg-acento-700 flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-bold text-white shadow-xs transition-colors"
+            className="bg-acento-600 hover:bg-acento-700 flex min-h-[44px] items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-xs font-bold text-white shadow-xs transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-hidden"
           >
             <Compass className="h-4 w-4" />
             Cotizar este paquete ahora
