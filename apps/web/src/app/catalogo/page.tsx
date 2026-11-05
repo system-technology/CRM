@@ -4,6 +4,7 @@ import { useModoDemo } from '../../lib/modo-demo';
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import {
   Package,
   Search,
@@ -24,8 +25,6 @@ import type {
   SalidaPublicada,
   ResumenDePaqueteGestion,
 } from '@viajapro/contracts';
-import { DescargaPlantillas } from '../../components/catalogo/importacion/descarga-plantillas';
-import { AsistenteImportacion } from '../../components/catalogo/importacion/asistente-importacion';
 import type { FormatoConPlantilla } from '../../lib/importaciones-api';
 import { BarraModulos } from '../../components/bandeja/barra-modulos';
 import { DistintivoDatosDemo } from '../../components/comun/distintivo-datos-demo';
@@ -35,11 +34,7 @@ import {
   formatearErrorAmigable,
 } from '../../lib/estados-ui-logica';
 import { AvisoConfiguracionTenant } from '../../components/crm/aviso-configuracion-tenant';
-import { FichaDetallePaquete } from '../../components/catalogo/ficha-detalle-paquete';
 import { TarjetaSalidaPublicada } from '../../components/catalogo/tarjeta-salida-publicada';
-import { TablaGestionCatalogo } from '../../components/catalogo/tabla-gestion-catalogo';
-import { ModalFormularioPaquete } from '../../components/catalogo/modal-formulario-paquete';
-import { DialogoDesactivarPaquete } from '../../components/catalogo/dialogo-desactivar-paquete';
 import { EstadoSinCatalogo } from '../../components/catalogo/estado-sin-catalogo';
 import { ChipTipoProducto } from '../../components/comun/chip-tipo-producto';
 import { obtenerClaseEscalonada } from '../../components/comun/animaciones';
@@ -59,6 +54,50 @@ import {
   editarPaqueteApi,
   desactivarPaqueteApi,
 } from '../../lib/catalogo-api';
+
+// Carga diferida de modales, asistentes y paneles secundarios pesados (T-130)
+const TablaGestionCatalogo = dynamic(
+  () =>
+    import('../../components/catalogo/tabla-gestion-catalogo').then((m) => m.TablaGestionCatalogo),
+  { ssr: false },
+);
+const DescargaPlantillas = dynamic(
+  () =>
+    import('../../components/catalogo/importacion/descarga-plantillas').then(
+      (m) => m.DescargaPlantillas,
+    ),
+  { ssr: false },
+);
+
+const AsistenteImportacion = dynamic(
+  () =>
+    import('../../components/catalogo/importacion/asistente-importacion').then(
+      (m) => m.AsistenteImportacion,
+    ),
+  { ssr: false },
+);
+
+const FichaDetallePaquete = dynamic(
+  () =>
+    import('../../components/catalogo/ficha-detalle-paquete').then((m) => m.FichaDetallePaquete),
+  { ssr: false },
+);
+
+const ModalFormularioPaquete = dynamic(
+  () =>
+    import('../../components/catalogo/modal-formulario-paquete').then(
+      (m) => m.ModalFormularioPaquete,
+    ),
+  { ssr: false },
+);
+
+const DialogoDesactivarPaquete = dynamic(
+  () =>
+    import('../../components/catalogo/dialogo-desactivar-paquete').then(
+      (m) => m.DialogoDesactivarPaquete,
+    ),
+  { ssr: false },
+);
 import {
   type FormularioPaqueteValores,
   validarFormularioCrearPaquete,

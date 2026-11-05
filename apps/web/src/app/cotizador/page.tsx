@@ -11,6 +11,7 @@
  */
 
 import React, { Suspense, useEffect, useState, useMemo } from 'react';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useModoDemo } from '../../lib/modo-demo';
@@ -29,8 +30,13 @@ import { DistintivoDatosDemo } from '../../components/comun/distintivo-datos-dem
 import { AvisoConfiguracionTenant } from '../../components/crm/aviso-configuracion-tenant';
 import { formatearErrorAmigable } from '../../lib/estados-ui-logica';
 import { DesgloseCotizacionSalida } from '../../components/cotizador/desglose-cotizacion-salida';
-import { ModalGuardarCotizacion } from '../../components/cotizador/modal-guardar-cotizacion';
 import { EstadoSinCatalogo } from '../../components/catalogo/estado-sin-catalogo';
+
+const ModalGuardarCotizacion = dynamic(() =>
+  import('../../components/cotizador/modal-guardar-cotizacion').then(
+    (m) => m.ModalGuardarCotizacion,
+  ),
+);
 import { MOCK_PAQUETES_CATALOGO } from '../../lib/mock-catalogo';
 import {
   calcularCotizacionMock,
