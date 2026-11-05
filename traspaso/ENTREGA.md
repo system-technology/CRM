@@ -38,6 +38,35 @@
 
 ---
 
+# Entrega — T-124: Reportes sin cifras inventadas y aviso de «solo en este navegador» — 2026-11-04
+
+## Identificación
+- **Tarea:** `T-124`
+- **Rama:** `b/T-000-reportes-sin-cifras-inventadas`
+- **Carril:** `b` (Frontend / Web)
+
+## Qué se construyó
+1. **Reportes:** se eliminan las constantes del 20 % (margen) y 80 % (costo) y el estimado `conversaciones = ganadas * 3` y el correo `@agencia.com` fabricado. Sin cifra real la vista dice «Aún sin datos». El listado de cotizaciones no trae margen (ADR-0011) y el tablero tampoco, así que el margen real queda para una tarea que lo calcule desde las cotizaciones guardadas con `cotizacion.ver_neto_y_margen`.
+2. **Componente común `AvisoSoloLocal`** (`components/comun/aviso-solo-local.tsx`): visible solo en modo real.
+3. **/cotizaciones y modal Enviar por WhatsApp:** en modo real los nombres y el contacto salen de `GET /crm/contactos`; ya no hay nombre «Cliente» ni teléfono `+573001234567` de relleno (si el contacto no se conoce, el modal pide el teléfono). En demo todo sigue igual.
+
+## Pantallas que SOLO usan localStorage en modo real (con aviso)
+- Campos personalizados (configuración y sección en la ficha: el aviso está en configuración).
+- Respuestas rápidas (configuración).
+- Filtros guardados de contactos y pipeline (aviso cuando hay filtros restaurados).
+- Onboarding (asistente).
+- Preferencias de notificación (panel de notificaciones).
+
+## Sin aviso todavía
+- Filtros recordados de la lista de la bandeja (`lista-conversaciones.tsx`).
+- El modal `bandeja/modal-enviar-cotizacion` ya recibe el teléfono real de la conversación.
+
+## Qué quedó pendiente
+- Margen y costo reales en reportes desde las cotizaciones (necesita pedir cada cotización con `incluirMargen` o un agregado del servidor: escalar a `backend`).
+- Persistir en la API las pantallas de la lista de arriba.
+- Etapas `/crm/etapas`, miembros y estado del canal: no se tocaron (otro agente).
+
+---
 # Entrega — T-117: Mensajes claros en es-CO para los errores del envío — 2026-11-04
 
 ## Identificación
