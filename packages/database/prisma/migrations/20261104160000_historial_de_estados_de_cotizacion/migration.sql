@@ -34,6 +34,12 @@
 -- reemplaza en la misma migración que lo permita; sin eso, el INSERT del historial falla y la
 -- transición nueva se deshace, que es el fallo ruidoso que se quiere.
 --
+-- **El `estado_desde IS NOT NULL` del CHECK de §3 NO sobra: no se «simplifica».** Un CHECK solo
+-- rechaza FALSE; acepta TRUE y también NULL. Sin esa guarda, `estado_desde` NULL con
+-- `estado_hasta = 'ENVIADA'` daba `FALSE OR NULL OR NULL` = NULL y la fila entraba (un alta
+-- directamente en ENVIADA). Con la guarda, el segundo bloque es FALSE y el CHECK rechaza. Lo
+-- vigila la aserción 81 de `aislamiento.spec.ts`.
+--
 -- **Segura en caliente.** Tabla nueva y vacía: las foráneas NOT VALID son cambio de catálogo y la
 -- validación no recorre nada. `cotizaciones` y `usuarios` reciben un SHARE ROW EXCLUSIVE breve al
 -- crear la foránea (bloquea escrituras en ellas durante la transacción de la migración, no
@@ -103,8 +109,10 @@ ALTER TABLE "cotizacion_cambios_estado"
   ADD CONSTRAINT "cotizacion_cambios_estado_transicion_valida"
   CHECK (
     ("estado_desde" IS NULL AND "estado_hasta" = 'BORRADOR')
-    OR ("estado_desde" = 'BORRADOR' AND "estado_hasta" = 'ENVIADA')
-    OR ("estado_desde" = 'ENVIADA' AND "estado_hasta" IN ('ACEPTADA', 'RECHAZADA', 'VENCIDA'))
+    OR ("estado_desde" IS NOT NULL AND (
+          ("estado_desde" = 'BORRADOR' AND "estado_hasta" = 'ENVIADA')
+          OR ("estado_desde" = 'ENVIADA' AND "estado_hasta" IN ('ACEPTADA', 'RECHAZADA', 'VENCIDA'))
+        ))
   )
   NOT VALID;
 
