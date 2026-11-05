@@ -112,3 +112,12 @@ export class NoPuedeDejarSinDuenoError extends EstadoInvalidoError {
     super('La agencia no puede quedarse sin un Dueño activo.');
   }
 }
+
+/** La fila de la agencia activa no existe en `tenants` (no debería pasar con sesión vigente). 404. */
+export class AgenciaNoEncontradaError extends DomainError {
+  readonly code = 'AGENCIA_NO_ENCONTRADA';
+
+  constructor() {
+    super('No existe la agencia.');
+  }
+}
