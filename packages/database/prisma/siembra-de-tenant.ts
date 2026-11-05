@@ -24,13 +24,22 @@ export const ROLES_SEMBRADOS = [
       'roles.administrar',
       'conversaciones.ver_todas',
       'catalogo.administrar',
+      'bandeja.operar',
+      'crm.escribir',
+      'cotizacion.escribir',
     ],
   },
-  { clave: 'ASESOR', nombre: 'Asesor', permisos: [] },
+  {
+    clave: 'ASESOR',
+    nombre: 'Asesor',
+    // T-089: el Asesor atiende la bandeja, escribe en el CRM y cotiza.
+    permisos: ['bandeja.operar', 'crm.escribir', 'cotizacion.escribir'],
+  },
   {
     clave: 'OPERACIONES',
     nombre: 'Operaciones',
-    // ADR-0017 D2: Operaciones mantiene el catálogo; el Asesor no.
+    // ADR-0017 D2: Operaciones mantiene el catálogo; el Asesor no. T-089: fuera del catálogo es
+    // de solo lectura, sin `bandeja.operar`, `crm.escribir` ni `cotizacion.escribir`.
     permisos: ['conversaciones.ver_todas', 'catalogo.administrar'],
   },
 ] as const;
