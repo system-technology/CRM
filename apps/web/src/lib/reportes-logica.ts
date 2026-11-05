@@ -322,8 +322,8 @@ export function obtenerEtiquetaPeriodo(periodo: RangoPeriodo): string {
     case 'este_mes':
       return 'Este mes';
     case 'trimestre':
-      return 'Último trimestre';
+      return 'Últimos 90 días';
     case 'ano':
-      return 'Año completo';
+      return 'Este año';
   }
 }

@@ -13,6 +13,7 @@ import {
   Calendar,
 } from 'lucide-react';
 import type { TableroPipeline } from '@viajapro/contracts';
+import { ReportesReales } from '../../components/reportes/reportes-reales';
 import { BarraModulos } from '../../components/bandeja/barra-modulos';
 import { DistintivoDatosDemo } from '../../components/comun/distintivo-datos-demo';
 import { EsqueletoReportes } from '../../components/comun/esqueletos';
@@ -35,11 +36,15 @@ export default function ReportesPage() {
   const [rol, setRol] = useState<RolVistaReporte>('DUENO');
   const [tablero, setTablero] = useState<TableroPipeline | null>(null);
   const [cargando, setCargando] = useState(false);
-  const [esDemo, setEsDemo] = useState(false);
+  const [modo, setModo] = useState<'pendiente' | 'demo' | 'real'>('pendiente');
+  const esDemo = modo === 'demo';
 
   useEffect(() => {
     let activo = true;
-    setEsDemo(esModoDemo());
+    const demo = esModoDemo();
+    setModo(demo ? 'demo' : 'real');
+    // Modo real: el resumen lo pide el componente a GET /api/v1/reportes/resumen.
+    if (!demo) return;
 
     const cargarDatos = async () => {
       try {
@@ -166,8 +171,14 @@ export default function ReportesPage() {
 
         {/* Contenido Principal con Estados (0c.25) */}
         <div className="flex-1 space-y-6 p-6">
-          {cargando ? (
+          {modo === 'pendiente' || (modo === 'demo' && cargando) ? (
             <EsqueletoReportes />
+          ) : modo === 'real' ? (
+            <ReportesReales
+              periodo={periodo}
+              esDueno={esDueño}
+              puedeVerNetoYMargen={puedeVerNetoYMargen}
+            />
           ) : (
             <>
               {/* Fila 1: KPIs Principales */}

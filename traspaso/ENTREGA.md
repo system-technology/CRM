@@ -2753,3 +2753,27 @@ Se creó el archivo de pruebas de componentes `apps/web/src/components/comun/esq
   - `typecheck`: **VERDE** (9/9 tareas exitosas en Turborepo, cero errores TypeScript).
   - `format:check`: **VERDE** (100% verificado con Prettier).
   - `build`: **VERDE** (Next.js 15.5.27 compiló 16 páginas en 6.7s).
+
+
+---
+
+# Entrega — T-000: Reportes conectados a `GET /api/v1/reportes/resumen` — 2026-11-04
+
+## Identificación
+- **Rama:** `b/T-000-web-reportes-api` (carril `b`, Frontend / Web). Origen: auditoría de veracidad 2026-11-04.
+
+## Qué quedó en la API
+- Cotizaciones (creadas, enviadas, aceptadas, tasa de aceptación), ventas por moneda, oportunidades (creadas, ganadas, perdidas, abiertas, tasa de conversión, por etapa) y respuesta (nuevas, respondidas, promedio y mediana). El cliente valida la consulta y la respuesta con `ConsultarResumenDeReportes` / `ResumenDeReportes`.
+- Neto, margen, porcentaje y cotizaciones sin neto: solo se pintan si las claves vienen en la fila (permiso `cotizacion.ver_neto_y_margen`). Sin el permiso no hay sección ni texto de margen.
+- La variación de ventas se pide con una segunda llamada al periodo anterior contiguo y de igual duración, y se calcula por moneda con BigInt; si esa llamada falla o no hay base, se muestra «Aún sin datos» (no +100 %).
+
+## Qué quedó local en la web
+- La conversión de «este mes», «últimos 30 días», «últimos 90 días» y «este año» a instantes UTC con la zona horaria (`reportes-periodo.ts`, incluye horario de verano). **La zona de la agencia no viaja en la sesión ni en un contrato todavía: se usa `America/Bogota` (`ZONA_HORARIA_COLOMBIA`).** Si la agencia tiene otra, hace falta que `backend` la exponga.
+- «Foto actual del pipeline» (conteo por etapa hoy) sigue saliendo del tablero: el endpoint cuenta las oportunidades creadas en el periodo, no la foto abierta de hoy.
+- Se renombraron dos etiquetas para que digan lo que se calcula: «Último trimestre» pasa a «Últimos 90 días» y «Año completo» a «Este año» (hasta hoy).
+- Modo demo: sin cambios, con mocks y distintivo visible.
+
+## Qué falta en la API (escalar a `backend`)
+- Ventas por destino y rendimiento por asesor por periodo: en modo real la pantalla dice «Aún sin datos» y ya no los calcula del tablero (asumía COP y no respetaba el periodo).
+- Meta comercial: no existe; en modo real la tarjeta se retiró.
+- Estados: esqueleto de carga, vacío (sin actividad), error con «Reintentar» y 403 «No tienes permiso para ver los reportes».
