@@ -123,11 +123,11 @@ describe('CotizadorPage — Excursiones de un Día y Estados de UI (Bloque 2)', 
     });
 
     // Contador de adultos
-    const btnsMas = screen.getAllByRole('button', { name: '+' });
-    expect(btnsMas.length).toBeGreaterThan(0);
+    const btnMasAdultos = screen.getByRole('button', { name: /aumentar adultos/i });
+    expect(btnMasAdultos).toBeDefined();
 
     act(() => {
-      fireEvent.click(btnsMas[0]!);
+      fireEvent.click(btnMasAdultos);
     });
 
     // Sigue renderizando sin romper
@@ -150,19 +150,21 @@ describe('CotizadorPage — Excursiones de un Día y Estados de UI (Bloque 2)', 
     const inputFecha = screen.getByLabelText(/fecha de salida/i);
     const selectAcomodacion = screen.getByLabelText('Acomodación');
     act(() => {
-      fireEvent.change(selectPaquete, { target: { value: '01932000-0000-7000-8000-000000000001' } });
+      fireEvent.change(selectPaquete, {
+        target: { value: '01932000-0000-7000-8000-000000000001' },
+      });
       fireEvent.change(inputFecha, { target: { value: '2027-12-24' } });
       fireEvent.change(selectAcomodacion, { target: { value: 'DOBLE' } });
     });
 
     // Incrementar a 2 niños (actualmente 0)
     act(() => {
-      const btnsMas = screen.getAllByRole('button', { name: '+' });
-      fireEvent.click(btnsMas[1]!); // 1 niño
+      const btnMasNinos = screen.getByRole('button', { name: /aumentar niños/i });
+      fireEvent.click(btnMasNinos); // 1 niño
     });
     act(() => {
-      const btnsMas = screen.getAllByRole('button', { name: '+' });
-      fireEvent.click(btnsMas[1]!); // 2 niños
+      const btnMasNinos = screen.getByRole('button', { name: /aumentar niños/i });
+      fireEvent.click(btnMasNinos); // 2 niños
     });
 
     await waitFor(() => {
@@ -191,15 +193,17 @@ describe('CotizadorPage — Excursiones de un Día y Estados de UI (Bloque 2)', 
     const inputFecha = screen.getByLabelText(/fecha de salida/i);
     const selectAcomodacion = screen.getByLabelText('Acomodación');
     act(() => {
-      fireEvent.change(selectPaquete, { target: { value: '01932000-0000-7000-8000-000000000001' } });
+      fireEvent.change(selectPaquete, {
+        target: { value: '01932000-0000-7000-8000-000000000001' },
+      });
       fireEvent.change(inputFecha, { target: { value: '2027-12-24' } });
       fireEvent.change(selectAcomodacion, { target: { value: 'DOBLE' } });
     });
 
     // Incrementar a 3 adultos (inicialmente 2)
-    const btnsMas = screen.getAllByRole('button', { name: '+' });
+    const btnMasAdultos = screen.getByRole('button', { name: /aumentar adultos/i });
     act(() => {
-      fireEvent.click(btnsMas[0]!); // 3 adultos
+      fireEvent.click(btnMasAdultos); // 3 adultos
     });
 
     await waitFor(() => {
