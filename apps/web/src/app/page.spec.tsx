@@ -101,7 +101,9 @@ describe('InicioPage (T-020 & T-037) - Inicio del asesor con datos reales y pend
 
     expect(await screen.findByText(/Laura Gómez/i)).toBeDefined();
     expect(screen.getByText('JD Tours Cartagena')).toBeDefined();
-    expect(screen.getByText(/Turno activo/i)).toBeDefined();
+    expect(screen.queryByText(/Turno activo/i)).toBeNull();
+    expect(screen.queryByText(/Destinos populares/i)).toBeNull();
+    expect(screen.queryByTitle(/Meta de cierres/i)).toBeNull();
   });
 
   it('2. Presenta accesos rápidos directos a cotizador, bandeja, catálogo y pipeline', async () => {

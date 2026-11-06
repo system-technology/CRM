@@ -14,6 +14,19 @@ import {
 } from './reportes-logica';
 
 describe('reportes-logica (T-142)', () => {
+  it('1b. la zona de la agencia cambia los instantes UTC de los limites de este_mes', () => {
+    const ahora = new Date('2026-11-04T15:00:00.000Z');
+    expect(convertirPeriodoAInstantesUtc('este_mes', ahora, 'America/Bogota').desde).toBe(
+      '2026-11-01T05:00:00.000Z',
+    );
+    expect(convertirPeriodoAInstantesUtc('este_mes', ahora, 'America/Mexico_City').desde).toBe(
+      '2026-11-01T06:00:00.000Z',
+    );
+    expect(convertirPeriodoAInstantesUtc('este_mes', ahora, 'Europe/Madrid').desde).toBe(
+      '2026-10-31T23:00:00.000Z',
+    );
+  });
+
   it('1. convertirPeriodoAInstantesUtc convierte periodos a instantes UTC con zona horaria de la agencia', () => {
     // 2026-11-04 10:00:00 en Bogotá (UTC-5) -> 2026-11-04T15:00:00.000Z
     const ahora = new Date('2026-11-04T15:00:00.000Z');

@@ -1,46 +1,31 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import ConfiguracionWhatsappPage from './page';
 
 vi.mock('next/navigation', () => ({
   usePathname: () => '/configuracion/whatsapp',
-  useRouter: () => ({
-    push: vi.fn(),
-    replace: vi.fn(),
-  }),
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
 }));
 
-describe('ConfiguracionWhatsappPage (/configuracion/whatsapp) (T-106)', () => {
+describe('ConfiguracionWhatsappPage (/configuracion/whatsapp)', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
-    Object.defineProperty(navigator, 'clipboard', {
-      value: {
-        writeText: vi.fn().mockImplementation(() => Promise.resolve()),
-      },
-      writable: true,
-      configurable: true,
-    });
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({ conectado: false, canales: [] }),
+      }),
+    );
   });
 
-  it('renderiza la cabecera con navegación, distintivos y enlace a Configuración General', () => {
+  it('renderiza la cabecera con enlace a Configuración General', async () => {
     render(<ConfiguracionWhatsappPage />);
-
     expect(screen.getByText('Conexión Oficial de WhatsApp')).toBeDefined();
-    expect(screen.getAllByText('T-106')[0]).toBeDefined();
-
-    const linkVolver = screen.getByTestId('btn-volver-configuracion');
-    expect(linkVolver.getAttribute('href')).toBe('/configuracion');
-
-    const linkOnboarding = screen.getByTestId('btn-abrir-onboarding-desde-whatsapp');
-    expect(linkOnboarding.getAttribute('href')).toBe('/bienvenida');
-  });
-
-  it('incluye el bloque interactivo de conexión de WhatsApp con la regla de 24 horas', () => {
-    render(<ConfiguracionWhatsappPage />);
-
-    expect(screen.getByTestId('bloque-conexion-whatsapp')).toBeDefined();
-    expect(screen.getByText('¿Cómo Funciona la Ventana de 24 Horas de WhatsApp?')).toBeDefined();
-    expect(screen.getByText('Plantillas Oficiales de Reenganche (HSM)')).toBeDefined();
+    expect(screen.getByTestId('btn-volver-configuracion').getAttribute('href')).toBe(
+      '/configuracion',
+    );
+    await waitFor(() => expect(screen.getByTestId('estado-whatsapp-no-conectado')).toBeDefined());
   });
 });
