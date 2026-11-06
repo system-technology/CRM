@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { EtapaDefinida } from '@viajapro/contracts';
 import {
   GitCommit,
@@ -14,6 +14,7 @@ import {
   ShieldAlert,
 } from 'lucide-react';
 import { listarEtapasPipelineApi, actualizarEtapasPipelineApi } from '../../lib/crm-api';
+import { usePermisos, explicacionFaltaPermiso } from '../../lib/permisos';
 import { formatearErrorAmigable } from '../../lib/estados-ui-logica';
 
 /**
@@ -23,70 +24,48 @@ import { formatearErrorAmigable } from '../../lib/estados-ui-logica';
  */
 export function BloqueEtapasPipeline() {
   const [etapas, setEtapas] = useState<EtapaDefinida[]>([]);
+  const [originales, setOriginales] = useState<EtapaDefinida[]>([]);
   const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState(false);
   const [mensajeExito, setMensajeExito] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [errorCarga, setErrorCarga] = useState<string | null>(null);
+  const { puedeEscribirCrm } = usePermisos();
 
-  useEffect(() => {
-    let montado = true;
-    listarEtapasPipelineApi()
+  const cargar = useCallback(() => {
+    setCargando(true);
+    setErrorCarga(null);
+    return listarEtapasPipelineApi()
       .then((datos) => {
-        if (montado) {
-          // Ordenar por campo orden ascendente
-          const ordenadas = [...datos].sort((a, b) => a.orden - b.orden);
-          setEtapas(ordenadas);
-          setCargando(false);
-        }
+        const ordenadas = [...datos].sort((a, b) => a.orden - b.orden);
+        setEtapas(ordenadas);
+        setOriginales(ordenadas);
       })
       .catch((err) => {
-        if (montado) {
-          setError(formatearErrorAmigable(err, 'No fue posible cargar las etapas del pipeline.'));
-          setCargando(false);
-        }
-      });
-
-    return () => {
-      montado = false;
-    };
+        setErrorCarga(
+          formatearErrorAmigable(err, 'No fue posible cargar las etapas del pipeline.'),
+        );
+      })
+      .finally(() => setCargando(false));
   }, []);
 
-  const moverArriba = (indice: number) => {
-    if (indice <= 0) return;
+  useEffect(() => {
+    void cargar();
+  }, [cargar]);
+
+  const mover = (indice: number, delta: -1 | 1) => {
+    const destino = indice + delta;
+    if (destino < 0 || destino >= etapas.length) return;
     const nuevas = [...etapas];
-    const actual = nuevas[indice];
-    const anterior = nuevas[indice - 1];
-
-    if (!actual || !anterior) return;
-
-    // Intercambiar orden numérico
-    const ordenTemp = actual.orden;
-    actual.orden = anterior.orden;
-    anterior.orden = ordenTemp;
-
-    nuevas[indice - 1] = actual;
-    nuevas[indice] = anterior;
-
+    const a = nuevas[indice];
+    const b = nuevas[destino];
+    if (!a || !b) return;
+    nuevas[indice] = b;
+    nuevas[destino] = a;
     setEtapas(nuevas);
   };
-
-  const moverAbajo = (indice: number) => {
-    if (indice >= etapas.length - 1) return;
-    const nuevas = [...etapas];
-    const actual = nuevas[indice];
-    const siguiente = nuevas[indice + 1];
-
-    if (!actual || !siguiente) return;
-
-    const ordenTemp = actual.orden;
-    actual.orden = siguiente.orden;
-    siguiente.orden = ordenTemp;
-
-    nuevas[indice + 1] = actual;
-    nuevas[indice] = siguiente;
-
-    setEtapas(nuevas);
-  };
+  const moverArriba = (indice: number) => mover(indice, -1);
+  const moverAbajo = (indice: number) => mover(indice, 1);
 
   const actualizarNombre = (id: string, nuevoNombre: string) => {
     setEtapas((prev) => prev.map((e) => (e.id === id ? { ...e, nombre: nuevoNombre } : e)));
@@ -103,8 +82,10 @@ export function BloqueEtapasPipeline() {
     setMensajeExito(null);
 
     try {
-      const actualizadas = await actualizarEtapasPipelineApi(etapas);
-      setEtapas(actualizadas);
+      const actualizadas = await actualizarEtapasPipelineApi(originales, etapas);
+      const ordenadas = [...actualizadas].sort((a, b) => a.orden - b.orden);
+      setEtapas(ordenadas);
+      setOriginales(ordenadas);
       setMensajeExito('Etapas del pipeline guardadas correctamente.');
       setTimeout(() => setMensajeExito(null), 4000);
     } catch (err) {
@@ -127,7 +108,7 @@ export function BloqueEtapasPipeline() {
             </h2>
             <p className="text-xs text-neutral-500 dark:text-neutral-400">
               Configura el embudo de ventas, nombres personalizados, orden y probabilidad por etapa
-              (ADR-0016 / T-025).
+              .
             </p>
           </div>
         </div>
@@ -135,7 +116,8 @@ export function BloqueEtapasPipeline() {
         <button
           type="button"
           onClick={() => void guardarCambios()}
-          disabled={guardando || cargando}
+          disabled={guardando || cargando || !puedeEscribirCrm || etapas.length === 0}
+          title={!puedeEscribirCrm ? explicacionFaltaPermiso('crm.escribir') : undefined}
           className="bg-primary-600 hover:bg-primary-700 flex min-h-[44px] w-full shrink-0 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-xs font-semibold text-white shadow-2xs transition-colors disabled:opacity-50 sm:w-auto"
         >
           <Save className="h-4 w-4" />
@@ -174,6 +156,27 @@ export function BloqueEtapasPipeline() {
             />
           ))}
         </div>
+      ) : errorCarga ? (
+        <div
+          role="alert"
+          className="mt-5 flex flex-col gap-3 rounded-xl border border-rose-200 bg-rose-50 p-4 text-xs text-rose-800 dark:border-rose-900/40 dark:bg-rose-950/40 dark:text-rose-300"
+        >
+          <span>{errorCarga}</span>
+          <button
+            type="button"
+            onClick={() => void cargar()}
+            className="min-h-[44px] w-full rounded-xl border border-rose-300 bg-white px-4 text-xs font-semibold sm:w-auto sm:self-start dark:bg-neutral-900"
+          >
+            Reintentar
+          </button>
+        </div>
+      ) : etapas.length === 0 ? (
+        <p
+          data-testid="etapas-vacio"
+          className="mt-5 rounded-xl border border-dashed border-neutral-300 p-6 text-center text-xs text-neutral-500 dark:border-neutral-700"
+        >
+          Tu agencia todavía no tiene etapas de pipeline configuradas.
+        </p>
       ) : (
         <div className="mt-5 space-y-3" role="list" aria-label="Listado de etapas configuradas">
           {etapas.map((etapa, idx) => {
@@ -190,7 +193,7 @@ export function BloqueEtapasPipeline() {
                     <button
                       type="button"
                       onClick={() => moverArriba(idx)}
-                      disabled={idx === 0}
+                      disabled={idx === 0 || !puedeEscribirCrm}
                       title={`Mover etapa "${etapa.nombre}" hacia arriba`}
                       aria-label={`Mover etapa "${etapa.nombre}" hacia arriba`}
                       className="flex h-11 min-h-[44px] w-11 min-w-[44px] items-center justify-center rounded-lg border border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-100 disabled:opacity-30 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300"
@@ -200,7 +203,7 @@ export function BloqueEtapasPipeline() {
                     <button
                       type="button"
                       onClick={() => moverAbajo(idx)}
-                      disabled={idx === etapas.length - 1}
+                      disabled={idx === etapas.length - 1 || !puedeEscribirCrm}
                       title={`Mover etapa "${etapa.nombre}" hacia abajo`}
                       aria-label={`Mover etapa "${etapa.nombre}" hacia abajo`}
                       className="flex h-11 min-h-[44px] w-11 min-w-[44px] items-center justify-center rounded-lg border border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-100 disabled:opacity-30 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300"
@@ -211,7 +214,7 @@ export function BloqueEtapasPipeline() {
 
                   {/* Número de orden */}
                   <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-neutral-200 text-xs font-bold text-neutral-700 dark:bg-neutral-700 dark:text-neutral-200">
-                    {etapa.orden}
+                    {idx + 1}
                   </span>
 
                   {/* Input de Nombre editable */}
@@ -220,6 +223,7 @@ export function BloqueEtapasPipeline() {
                       type="text"
                       value={etapa.nombre}
                       onChange={(e) => actualizarNombre(etapa.id, e.target.value)}
+                      disabled={!puedeEscribirCrm}
                       aria-label={`Nombre de la etapa ${etapa.nombre}`}
                       className="focus:border-acento-600 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-xs font-semibold text-neutral-900 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                     />
@@ -239,6 +243,7 @@ export function BloqueEtapasPipeline() {
                       onChange={(e) =>
                         actualizarProbabilidad(etapa.id, parseInt(e.target.value, 10))
                       }
+                      disabled={!puedeEscribirCrm}
                       aria-label={`Probabilidad de cierre para ${etapa.nombre}`}
                       className="cifra min-h-[36px] w-12 bg-transparent text-center text-xs font-bold text-neutral-900 focus:outline-hidden dark:text-white"
                     />

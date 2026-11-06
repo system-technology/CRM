@@ -4,7 +4,6 @@ import React from 'react';
 import Link from 'next/link';
 import { ChevronLeft, MessageSquare, Sparkles } from 'lucide-react';
 import { BarraModulos } from '../../../components/bandeja/barra-modulos';
-import { DistintivoDatosDemo } from '../../../components/comun/distintivo-datos-demo';
 import { BloqueConexionWhatsapp } from '../../../components/configuracion/bloque-conexion-whatsapp';
 
 export default function ConfiguracionWhatsappPage() {
@@ -36,14 +35,12 @@ export default function ConfiguracionWhatsappPage() {
                 <h1 className="text-xl font-bold tracking-tight text-neutral-900 dark:text-white">
                   Conexión Oficial de WhatsApp
                 </h1>
-                <DistintivoDatosDemo visible={true} />
                 <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
                   T-106
                 </span>
               </div>
               <p className="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400">
-                Monitorea el estado de tu canal empresarial, calidad de línea, tier de envíos y la
-                regla de ventana de 24 horas
+                Estado de tu número de WhatsApp Business y la regla de la ventana de 24 horas
               </p>
             </div>
 

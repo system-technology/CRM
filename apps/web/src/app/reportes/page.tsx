@@ -14,7 +14,11 @@ import { BarraModulos } from '../../components/bandeja/barra-modulos';
 import { EsqueletoReportes } from '../../components/comun/esqueletos';
 import { formatearDinero, ZONA_HORARIA_COLOMBIA } from '../../lib/formato';
 import { usePermisos } from '../../lib/permisos';
-import { ErrorReportesApi, obtenerResumenDeReportesApi } from '../../lib/reportes-api';
+import {
+  ErrorReportesApi,
+  obtenerResumenDeReportesApi,
+  obtenerZonaHorariaAgenciaApi,
+} from '../../lib/reportes-api';
 import { diasDelRango, rangoAnterior } from '../../lib/reportes-periodo';
 import {
   convertirPeriodoAInstantesUtc,
@@ -35,12 +39,12 @@ const etiquetaClase = 'text-xs font-medium text-neutral-500 dark:text-neutral-40
 const cifraGrandeClase = 'cifra mt-2 text-2xl font-extrabold text-neutral-900 dark:text-white';
 const pieClase = 'mt-1 text-[11px] text-neutral-400 dark:text-neutral-500';
 
-function formatearFechaCorta(instanteIso: string): string {
+function formatearFechaCorta(instanteIso: string, zona: string): string {
   const ts = Date.parse(instanteIso);
   if (Number.isNaN(ts)) return instanteIso;
   return new Intl.DateTimeFormat('es-CO', {
     dateStyle: 'medium',
-    timeZone: ZONA_HORARIA_COLOMBIA,
+    timeZone: zona,
   }).format(new Date(ts));
 }
 
@@ -65,6 +69,9 @@ export default function ReportesPage({ ahora }: ReportesPageProps) {
   const [rol, setRol] = useState<RolVistaReporte>('DUENO');
   const [estado, setEstado] = useState<EstadoReportes>({ tipo: 'cargando' });
   const [intento, setIntento] = useState(0);
+  // Zona IANA de la agencia (R9). `null` mientras se lee; si falla, respaldo a Bogotá.
+  const [zonaAgencia, setZonaAgencia] = useState<string | null>(null);
+  const zona = zonaAgencia ?? ZONA_HORARIA_COLOMBIA;
 
   const rolEfectivo: RolVistaReporte = puedeVerNetoYMargen ? rol : 'ASESOR';
   const esDueño = rolEfectivo === 'DUENO';
@@ -76,8 +83,20 @@ export default function ReportesPage({ ahora }: ReportesPageProps) {
 
   useEffect(() => {
     const control = new AbortController();
+    void obtenerZonaHorariaAgenciaApi(control.signal).then((z) => {
+      if (!control.signal.aborted) setZonaAgencia(z ?? ZONA_HORARIA_COLOMBIA);
+    });
+    return () => {
+      control.abort();
+    };
+  }, []);
+
+  useEffect(() => {
+    // Los límites del periodo dependen de la zona: se espera a conocerla (el esqueleto sigue visible).
+    if (zonaAgencia === null) return;
+    const control = new AbortController();
     const reloj = ahora ? ahora() : new Date();
-    const rango = convertirPeriodoAInstantesUtc(periodo, reloj);
+    const rango = convertirPeriodoAInstantesUtc(periodo, reloj, zonaAgencia);
     const previo = rangoAnterior(rango);
 
     void (async () => {
@@ -112,7 +131,7 @@ export default function ReportesPage({ ahora }: ReportesPageProps) {
     return () => {
       control.abort();
     };
-  }, [periodo, intento, ahora]);
+  }, [periodo, intento, ahora, zonaAgencia]);
 
   const vista = estado.tipo === 'listo' ? estado.vista : null;
 
@@ -137,9 +156,10 @@ export default function ReportesPage({ ahora }: ReportesPageProps) {
               </div>
               <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
                 {vista
-                  ? `Del ${formatearFechaCorta(vista.periodo.desde)} al ${formatearFechaCorta(
+                  ? `Del ${formatearFechaCorta(vista.periodo.desde, zona)} al ${formatearFechaCorta(
                       new Date(Date.parse(vista.periodo.hasta) - 1).toISOString(),
-                    )} (hora de Colombia).`
+                      zona,
+                    )} (zona horaria: ${zona}).`
                   : 'Lectura ejecutiva de ventas, cuellos de botella en el embudo y tiempos de atención.'}
               </p>
             </div>
