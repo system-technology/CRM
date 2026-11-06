@@ -252,6 +252,36 @@ describe('ReportesPage - Permisos, dos monedas y GET /api/v1/reportes/resumen (T
     );
   });
 
+  it('usa la zona horaria de la agencia (GET /agencia/ajustes) para los limites y el subtitulo', async () => {
+    vi.spyOn(authApi, 'obtenerSesionActualApi').mockResolvedValue(SESION_ASESOR);
+    vi.spyOn(reportesApi, 'obtenerZonaHorariaAgenciaApi').mockResolvedValue('Europe/Madrid');
+    const espia = vi
+      .spyOn(reportesApi, 'obtenerResumenDeReportesApi')
+      .mockResolvedValue(fixtureDosMonedas(false));
+
+    render(<ReportesPage ahora={() => new Date('2026-11-04T15:00:00.000Z')} />);
+    await screen.findByTestId('kpi-ventas');
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'este_mes' } });
+
+    await waitFor(() => {
+      expect(espia.mock.calls.some((c) => c[0]?.desde === '2026-10-31T23:00:00.000Z')).toBe(true);
+    });
+    expect(screen.getByText(/zona horaria: Europe\/Madrid/)).toBeDefined();
+    expect(screen.queryByText(/hora de Colombia/)).toBeNull();
+  });
+
+  it('si la zona de la agencia no se puede leer, usa America/Bogota sin romper', async () => {
+    vi.spyOn(authApi, 'obtenerSesionActualApi').mockResolvedValue(SESION_ASESOR);
+    vi.spyOn(reportesApi, 'obtenerZonaHorariaAgenciaApi').mockResolvedValue(null);
+    vi.spyOn(reportesApi, 'obtenerResumenDeReportesApi').mockResolvedValue(
+      fixtureDosMonedas(false),
+    );
+
+    render(<ReportesPage />);
+    await screen.findByTestId('kpi-ventas');
+    expect(screen.getByText(/zona horaria: America\/Bogota/)).toBeDefined();
+  });
+
   it('muestra alerta de sin permiso ante error 403 de la API', async () => {
     vi.spyOn(authApi, 'obtenerSesionActualApi').mockResolvedValue(SESION_ASESOR);
     vi.spyOn(reportesApi, 'obtenerResumenDeReportesApi').mockRejectedValue(

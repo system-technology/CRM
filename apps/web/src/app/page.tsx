@@ -1,7 +1,9 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { destinoDeIngreso } from '../lib/rutas-publicas';
 import {
   MessageSquare,
   Kanban,
@@ -12,7 +14,6 @@ import {
   AlertCircle,
   RefreshCw,
   Sparkles,
-  MapPin,
   ChevronRight,
   BarChart3,
   Building2,
@@ -30,26 +31,47 @@ import {
 import { obtenerMensajeBienvenida } from '../lib/inicio-logica';
 import type { PendientesDelDia, SesionActual } from '@viajapro/contracts';
 
+function esSesionExpirada(err: unknown): boolean {
+  const e = err as { status?: number; statusHttp?: number; code?: string } | null;
+  return e?.status === 401 || e?.statusHttp === 401 || e?.code === 'SIN_SESION';
+}
+
 export default function InicioPage() {
+  const router = useRouter();
+  const routerRef = useRef(router);
+  routerRef.current = router;
   const [sesion, setSesion] = useState<SesionActual | null>(null);
   const [resumen, setResumen] = useState<ResumenTrabajoDelDia | null>(null);
   const [pendientes, setPendientes] = useState<PendientesDelDia | null>(null);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [errorSeguimientos, setErrorSeguimientos] = useState(false);
 
   const cargarDatos = useCallback(async () => {
     setCargando(true);
     setError(null);
+    setErrorSeguimientos(false);
     try {
       const [sesionRes, resumenRes, pendientesRes] = await Promise.all([
-        obtenerSesionActualApi().catch(() => null),
+        obtenerSesionActualApi().catch((err: unknown) => {
+          if (esSesionExpirada(err)) throw err;
+          return null;
+        }),
         obtenerResumenTrabajoDelDia(),
-        obtenerPendientesDelDiaApi().catch(() => null),
+        obtenerPendientesDelDiaApi().catch((err: unknown) => {
+          if (esSesionExpirada(err)) throw err;
+          setErrorSeguimientos(true);
+          return null;
+        }),
       ]);
       setSesion(sesionRes);
       setResumen(resumenRes);
       setPendientes(pendientesRes);
-    } catch {
+    } catch (err) {
+      if (esSesionExpirada(err)) {
+        routerRef.current.replace(destinoDeIngreso('/'));
+        return;
+      }
       setError(
         'No pudimos conectar con los servicios de tu agencia. Comprueba tu conexión a internet e intenta nuevamente.',
       );
@@ -76,7 +98,7 @@ export default function InicioPage() {
 
   const nombreUsuario = sesion?.identidad?.nombre ?? null;
   const agenciaActiva =
-    sesion?.agencias?.find((a) => a.id === sesion.tenantActivoId)?.nombre ?? 'JD Tours Cartagena';
+    sesion?.agencias?.find((a) => a.id === sesion.tenantActivoId)?.nombre ?? null;
 
   const mensajeBienvenida = obtenerMensajeBienvenida(nombreUsuario);
 
@@ -111,20 +133,18 @@ export default function InicioPage() {
                   <h1 className="text-xl font-bold tracking-tight text-neutral-900 sm:text-2xl dark:text-neutral-50">
                     {mensajeBienvenida}
                   </h1>
-                  <DistintivoDatosDemo visible={true} />
+                  <DistintivoDatosDemo />
                 </div>
                 <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-neutral-500 dark:text-neutral-400">
-                  <span className="flex items-center gap-1 font-medium text-neutral-700 dark:text-neutral-300">
-                    <Building2 className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-400" />
-                    {agenciaActiva}
-                  </span>
-                  <span>•</span>
-                  <span className="inline-flex items-center gap-1 font-medium text-emerald-600 dark:text-emerald-400">
-                    <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
-                    Turno activo
-                  </span>
-                  <span>•</span>
-                  <span>CRM Turismo WhatsApp</span>
+                  {agenciaActiva && (
+                    <span
+                      data-testid="inicio-agencia"
+                      className="flex items-center gap-1 font-medium text-neutral-700 dark:text-neutral-300"
+                    >
+                      <Building2 className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-400" />
+                      {agenciaActiva}
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
@@ -264,9 +284,6 @@ export default function InicioPage() {
                   >
                     Trabajo del día y métricas activas
                   </h2>
-                  <span className="text-xs text-neutral-500 dark:text-neutral-400">
-                    Actualizado en tiempo real
-                  </span>
                 </div>
 
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -297,7 +314,7 @@ export default function InicioPage() {
                         <strong className="font-semibold text-cyan-800 dark:text-cyan-300">
                           {resumen.conversacionesSinAsignar}
                         </strong>{' '}
-                        sin asignar · Ventana 24h WhatsApp activa
+                        sin asignar
                       </p>
                     </div>
                   </Link>
@@ -400,11 +417,28 @@ export default function InicioPage() {
               </section>
 
               {/* SECCIÓN 2: SEGUIMIENTOS PENDIENTES DEL DÍA (T-020) */}
-              <BloqueSeguimientosDia
-                pendientes={pendientes}
-                cargando={false}
-                alCompletarSeguimiento={handleCompletarSeguimiento}
-              />
+              {errorSeguimientos ? (
+                <div
+                  role="alert"
+                  data-testid="seguimientos-error"
+                  className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-900 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-200"
+                >
+                  <p className="font-semibold">No pudimos cargar tus seguimientos de hoy</p>
+                  <button
+                    type="button"
+                    onClick={() => void cargarDatos()}
+                    className="mt-2 min-h-[44px] text-xs font-semibold underline"
+                  >
+                    Reintentar
+                  </button>
+                </div>
+              ) : (
+                <BloqueSeguimientosDia
+                  pendientes={pendientes}
+                  cargando={false}
+                  alCompletarSeguimiento={handleCompletarSeguimiento}
+                />
+              )}
 
               {/* SECCIÓN 3: ACCESOS RÁPIDOS OPERACIONALES */}
               <section aria-labelledby="seccion-accesos-rapidos">
@@ -500,57 +534,7 @@ export default function InicioPage() {
               </section>
 
               {/* SECCIÓN 3: DESTINOS DE VIAJE POPULARES & REPORTES */}
-              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                {/* Destinos destacados para cotización directa */}
-                <div className="rounded-xl border border-neutral-200 bg-white p-5 shadow-xs dark:border-neutral-800 dark:bg-neutral-900">
-                  <div className="flex items-center justify-between">
-                    <h3 className="flex items-center gap-1.5 text-sm font-bold text-neutral-900 dark:text-neutral-100">
-                      <MapPin className="h-4 w-4 text-rose-500" />
-                      Destinos populares para cotizar
-                    </h3>
-                    <Link
-                      href="/catalogo"
-                      className="text-xs font-medium text-cyan-700 hover:underline dark:text-cyan-400"
-                    >
-                      Ver todos
-                    </Link>
-                  </div>
-                  <div className="mt-4 grid grid-cols-2 gap-2.5">
-                    {[
-                      {
-                        nombre: 'Islas del Rosario & Barú',
-                        tipo: 'Pasadía nàutico',
-                        tag: 'Top ventas',
-                      },
-                      {
-                        nombre: 'San Andrés & Providencia',
-                        tipo: 'Paquete de playa',
-                        tag: 'Promo',
-                      },
-                      { nombre: 'Santa Marta & Tayrona', tipo: 'Ecoturismo', tag: 'Disponible' },
-                      { nombre: 'Eje Cafetero', tipo: 'Cultura & Hacienda', tag: 'Familiar' },
-                    ].map((dest) => (
-                      <Link
-                        key={dest.nombre}
-                        href={`/cotizador?destino=${encodeURIComponent(dest.nombre)}`}
-                        className="group flex flex-col justify-between rounded-lg border border-neutral-200/80 bg-neutral-50/60 p-3 transition hover:border-cyan-300 hover:bg-cyan-50/40 dark:border-neutral-800 dark:bg-neutral-800/40 dark:hover:border-cyan-700"
-                      >
-                        <p className="text-xs font-semibold text-neutral-800 group-hover:text-cyan-800 dark:text-neutral-200 dark:group-hover:text-cyan-300">
-                          {dest.nombre}
-                        </p>
-                        <div className="mt-2 flex items-center justify-between text-[10px]">
-                          <span className="text-neutral-500 dark:text-neutral-400">
-                            {dest.tipo}
-                          </span>
-                          <span className="rounded bg-white px-1.5 py-0.5 font-medium text-cyan-800 shadow-2xs dark:bg-neutral-700 dark:text-cyan-300">
-                            {dest.tag}
-                          </span>
-                        </div>
-                      </Link>
-                    ))}
-                  </div>
-                </div>
-
+              <div className="grid grid-cols-1 gap-6">
                 {/* Enlace directo a rendimiento y métricas */}
                 <div className="flex flex-col justify-between rounded-xl border border-neutral-200 bg-white p-5 shadow-xs dark:border-neutral-800 dark:bg-neutral-900">
                   <div>
@@ -572,12 +556,7 @@ export default function InicioPage() {
                     </p>
                   </div>
                   <div className="mt-5 flex items-center justify-between border-t border-neutral-100 pt-3 dark:border-neutral-800">
-                    <div className="flex items-center gap-2">
-                      <div className="h-2 w-2 rounded-full bg-emerald-500" />
-                      <span className="text-xs font-medium text-neutral-700 dark:text-neutral-300">
-                        Cálculos reales sin datos simulados (R8)
-                      </span>
-                    </div>
+                    <span />
                     <Link
                       href="/reportes"
                       className="inline-flex min-h-[36px] items-center gap-1 rounded-md bg-neutral-100 px-3 py-1.5 text-xs font-semibold text-neutral-800 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
