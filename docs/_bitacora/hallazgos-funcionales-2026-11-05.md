@@ -52,7 +52,7 @@ sin Docker y queda como historia. T-126 sigue **en curso**: H1–H6 no están ce
 |---|---|---|---|
 | H-1 | La raíz abría sin login y con datos inventados | bloqueante | Corregido en PR #249, dentro del lote #250 (pendiente de integrar) |
 | H-2 | La API devolvía cuerpo JSON vacío salvo en importaciones | bloqueante | Corregido: PR #248, en `main` |
-| H-3 | Error de hidratación en `/ingresar` | por clasificar | Abierto; falta tarea en `roadmap/tasks.yaml` |
-| H-4 | `/login` responde 404 | por clasificar | Abierto; falta tarea en `roadmap/tasks.yaml` |
+| H-3 | Error de hidratación en `/ingresar` | por clasificar | Abierto; tarea T-173 |
+| H-4 | `/login` responde 404 | por clasificar | Abierto; tarea T-174 |
 
 Sin verificar: que H-1 esté resuelto en el navegador (depende de integrar #250 y reiniciar el Codespace).
