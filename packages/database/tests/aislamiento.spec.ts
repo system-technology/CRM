@@ -429,6 +429,10 @@ const MATRIZ_FUNCIONES: Readonly<Record<string, readonly string[]>> = {
   // Duodécima (ADR-0011), también SIN ningún EXECUTE: la función del disparador de `usuarios`
   // que mantiene `accesos_identidad`. Un GRANT sobre ella dejaría apuntar pertenencias a mano.
   sincronizar_acceso_identidad: [],
+  // Decimotercera (migración 20261104170000): el PATCH de ajustes de la agencia. `tenants` es
+  // global y `viajapro_app` la tiene `{SELECT}`; la zona horaria se escribe solo por aquí, y solo
+  // la fila del contexto. Aserciones 90 y 91.
+  actualizar_zona_horaria_de_la_agencia: ['viajapro_app'],
 };
 
 const PROPIETARIO_ESPERADO: Readonly<Record<string, string>> = {
@@ -444,6 +448,7 @@ const PROPIETARIO_ESPERADO: Readonly<Record<string, string>> = {
   propagar_estado_cuenta: 'viajapro_enrutador',
   contar_reencolado_barrido: 'viajapro_staging',
   sincronizar_acceso_identidad: 'viajapro_accesos',
+  actualizar_zona_horaria_de_la_agencia: 'viajapro_ajustes',
 };
 
 /**
@@ -891,8 +896,8 @@ describe('ADR-0008 — directorio de enrutamiento, staging y separación de role
     );
     expect(
       rows.length,
-      'faltan funciones de ADR-0008: eran seis, la auditoría de implementación añadió purgar_payloads, la tarea 4f propagar_estado_canal, el relay de barrido listar_changes_pendientes, y los huecos del disparador propagar_estado_cuenta y contar_reencolado_barrido, y ADR-0011 sincronizar_acceso_identidad',
-    ).toBe(12);
+      'faltan funciones de ADR-0008: eran seis, la auditoría de implementación añadió purgar_payloads, la tarea 4f propagar_estado_canal, el relay de barrido listar_changes_pendientes, y los huecos del disparador propagar_estado_cuenta y contar_reencolado_barrido, ADR-0011 sincronizar_acceso_identidad, y los ajustes de la agencia actualizar_zona_horaria_de_la_agencia',
+    ).toBe(13);
     expect(rows.filter((r) => r.publico)).toEqual([]);
   });
 
@@ -905,7 +910,7 @@ describe('ADR-0008 — directorio de enrutamiento, staging y separación de role
        WHERE n.nspname = 'public' AND p.proname = ANY($1) ORDER BY 1`,
       [Object.keys(MATRIZ_FUNCIONES)],
     );
-    expect(rows.length).toBe(12);
+    expect(rows.length).toBe(13);
 
     for (const fila of rows) {
       const config = (fila.proconfig as string[] | null) ?? [];
@@ -921,15 +926,16 @@ describe('ADR-0008 — directorio de enrutamiento, staging y separación de role
     }
   });
 
-  it('14 — los tres propietarios no son credenciales ni se saltan RLS', async () => {
+  it('14 — los cuatro propietarios no son credenciales ni se saltan RLS', async () => {
     const { rows } = await admin.query(
       `SELECT rolname, rolcanlogin, rolbypassrls, rolsuper,
               EXISTS (SELECT 1 FROM pg_roles s WHERE s.rolname = 'neon_superuser')
                 AND pg_has_role(rolname, 'neon_superuser', 'MEMBER') AS hereda_neon
-       FROM pg_roles WHERE rolname IN ('viajapro_enrutador','viajapro_staging','viajapro_accesos') ORDER BY 1`,
+       FROM pg_roles WHERE rolname IN ('viajapro_enrutador','viajapro_staging','viajapro_accesos','viajapro_ajustes') ORDER BY 1`,
     );
-    // El tercero es de ADR-0011: dueño del disparador que escribe `accesos_identidad`.
-    expect(rows.length).toBe(3);
+    // El tercero es de ADR-0011: dueño del disparador que escribe `accesos_identidad`. El cuarto,
+    // de la migración 20261104170000: dueño de la función que cambia la zona horaria.
+    expect(rows.length).toBe(4);
     for (const r of rows) {
       expect(r.rolcanlogin, `${r.rolname} puede iniciar sesión`).toBe(false);
       expect(r.rolbypassrls, `${r.rolname} tiene BYPASSRLS`).toBe(false);
@@ -5727,5 +5733,123 @@ describe('T-131 — oportunidad_cambios_etapa: aislamiento, foráneas compuestas
     for (const [caso, fn] of casos) {
       await expect(fn(), caso).rejects.toMatchObject({ code: '23514' });
     }
+  });
+});
+
+/**
+ * Migración 20261104170000 — la zona horaria de la agencia se escribe por una función.
+ *
+ * `tenants` es global (excepción de RLS) y `viajapro_app` la tiene declarada `{SELECT}`. Un GRANT
+ * UPDATE de columna habría dejado que un `WHERE` equivocado en la API reescribiera la fila de otra
+ * agencia. La función toma la agencia de `app.current_tenant` y nunca de un parámetro; estas dos
+ * aserciones fijan que eso es lo que pasa, con el rol de la API de verdad (`app`) y no con el
+ * propietario. El comportamiento fino (errores, alias de zona) vive en
+ * `zona-horaria-de-la-agencia.spec.ts`.
+ */
+describe('Ajustes de la agencia — zona horaria por función, nunca por GRANT sobre tenants', () => {
+  const FUNCION = 'actualizar_zona_horaria_de_la_agencia';
+
+  /** En una transacción de `app` que se deshace: la zona de los fixtures no cambia de verdad. */
+  async function enTransaccionDeApp<T>(tenant: string, fn: () => Promise<T>): Promise<T> {
+    await app.query('BEGIN');
+    try {
+      await app.query("SELECT set_config('app.current_tenant', $1, true)", [tenant]);
+      return await fn();
+    } finally {
+      await app.query('ROLLBACK');
+    }
+  }
+
+  it('90 — viajapro_ajustes es solo propietario: NOLOGIN, sin miembros de login, y solo SELECT y UPDATE(zona_horaria, actualizado_en) sobre tenants', async () => {
+    const roles = await rolesAVigilar(admin);
+    expect(roles).toContain('viajapro_app');
+    const { rows: indirectos } = await admin.query(
+      `SELECT rolname FROM unnest($1::text[]) AS rolname
+       WHERE pg_has_role(rolname, 'viajapro_ajustes', 'MEMBER')`,
+      [roles],
+    );
+    expect(indirectos, 'roles de login que pueden actuar como viajapro_ajustes').toEqual([]);
+
+    const { rows: tablas } = await admin.query(
+      `SELECT c.relname AS tabla, array_agg(p ORDER BY p) AS privilegios
+       FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+       CROSS JOIN unnest(ARRAY['SELECT','INSERT','UPDATE','DELETE','TRUNCATE','REFERENCES','TRIGGER']) p
+       WHERE n.nspname = 'public' AND c.relkind IN ('r', 'p')
+         AND has_table_privilege('viajapro_ajustes', c.oid, p)
+       GROUP BY 1 ORDER BY 1`,
+    );
+    expect(tablas).toEqual([{ tabla: 'tenants', privilegios: ['SELECT'] }]);
+
+    const { rows: columnas } = await admin.query(
+      `SELECT a.attname AS columna
+       FROM pg_attribute a
+       WHERE a.attrelid = 'public.tenants'::regclass AND a.attnum > 0 AND NOT a.attisdropped
+         AND has_column_privilege('viajapro_ajustes', 'public.tenants', a.attname, 'UPDATE')
+       ORDER BY 1`,
+    );
+    expect(columnas.map((r) => r.columna as string)).toEqual(['actualizado_en', 'zona_horaria']);
+
+    // Y la API sigue sin escribir `tenants` por ningún camino directo, ni de tabla ni de columna.
+    const { rows: app_ } = await admin.query(
+      `SELECT has_table_privilege('viajapro_app', 'public.tenants', 'UPDATE') AS tabla,
+              has_any_column_privilege('viajapro_app', 'public.tenants', 'UPDATE') AS columna,
+              has_any_column_privilege('viajapro_app', 'public.tenants', 'INSERT') AS insercion`,
+    );
+    expect(app_[0]).toEqual({ tabla: false, columna: false, insercion: false });
+    await enTransaccionDeApp(TENANT_A, async () => {
+      await esperarPermisoDenegado(
+        app,
+        () =>
+          app.query("UPDATE tenants SET zona_horaria = 'Europe/Madrid' WHERE id = $1", [TENANT_A]),
+        'UPDATE directo de tenants como viajapro_app',
+      );
+    });
+  });
+
+  it('91 — con el contexto de A, la función cambia A y es imposible alcanzar B', async () => {
+    const zonaDe = async (tenant: string): Promise<string> => {
+      const { rows } = await admin.query('SELECT zona_horaria FROM tenants WHERE id = $1', [
+        tenant,
+      ]);
+      return rows[0]?.zona_horaria as string;
+    };
+    const antesB = await zonaDe(TENANT_B);
+
+    await enTransaccionDeApp(TENANT_A, async () => {
+      const { rows } = await app.query(`SELECT public.${FUNCION}($1) AS zona`, [
+        'America/Mexico_City',
+      ]);
+      expect(rows[0]?.zona).toBe('America/Mexico_City');
+      const { rows: vista } = await app.query(
+        'SELECT id, zona_horaria FROM tenants WHERE id = ANY($1)',
+        [[TENANT_A, TENANT_B]],
+      );
+      const porId = Object.fromEntries(
+        vista.map((r) => [r.id as string, r.zona_horaria as string]),
+      );
+      expect(porId[TENANT_A]).toBe('America/Mexico_City');
+      expect(porId[TENANT_B], 'la función escribió la fila de otra agencia').toBe(antesB);
+    });
+
+    // La firma no tiene por dónde nombrar otra agencia: un solo argumento, la zona.
+    const { rows: firma } = await admin.query(
+      `SELECT pg_get_function_identity_arguments(p.oid) AS argumentos
+       FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+       WHERE n.nspname = 'public' AND p.proname = $1`,
+      [FUNCION],
+    );
+    expect(firma.map((r) => r.argumentos as string)).toEqual(['zona text']);
+
+    // Sin contexto, nada se escribe.
+    await app.query('BEGIN');
+    try {
+      await app.query("SELECT set_config('app.current_tenant', '', true)");
+      await expect(
+        app.query(`SELECT public.${FUNCION}($1)`, ['Europe/Madrid']),
+      ).rejects.toMatchObject({ code: '42501' });
+    } finally {
+      await app.query('ROLLBACK');
+    }
+    expect(await zonaDe(TENANT_B)).toBe(antesB);
   });
 });
