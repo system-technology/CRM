@@ -59,6 +59,11 @@ Riesgos de dejarlo publico:
 - Cualquiera con la URL llega a **toda** la API, no solo al webhook. Defensas que ya existen:
   autenticacion por sesion, RLS, limite de tasa y firma HMAC del webhook (que exige
   `META_APP_SECRET` cargado; sin el, el webhook no se puede validar).
+- `dev-nube` deja `APP_ENV=local`, que habilita el atajo `x-dev-tenant-id` (todos los permisos,
+  sin sesion). Desde T-175 el atajo solo atiende peticiones cuyo socket y cadena
+  `X-Forwarded-For`/`Forwarded` son de loopback, asi que lo que llega por el reenvio de puertos
+  publico se rechaza con 401. Si alguien lo debilita, el puerto publico vuelve a abrir el tenant
+  demo a internet.
 - La URL cambia si se crea otro Codespace y hay que actualizarla en Meta.
 - Solo datos sinteticos en esta base: **nunca** cargar datos reales de clientes (CLAUDE.md,
   entornos). Un Codespace no es produccion ni staging.
