@@ -4634,7 +4634,7 @@ tasks:
     phase: 1
     priority: P1
     effort: L
-    status: ready
+    status: in_progress
     depends_on: [T-193]
     acceptance:
       - "Playwright en CI: ingreso, bandeja, webhook firmado, mensaje visible, cotizar, enviar"

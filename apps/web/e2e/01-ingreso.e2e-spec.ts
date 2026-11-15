@@ -1,0 +1,47 @@
+import { mkdirSync } from 'node:fs';
+import path from 'node:path';
+import { RUTA_SESION } from '../playwright.config';
+import { credenciales } from './auxiliares';
+import { expect, test } from './fixtures';
+
+/** H1: ingresar con un usuario sembrado y ver la bandeja. Deja la sesion para el resto. */
+
+test.describe('sin sesion', () => {
+  test.use({ storageState: { cookies: [], origins: [] } });
+
+  test('la pantalla de ingreso es la de la API real, no la maqueta', async ({ page }) => {
+    await page.goto('/ingresar');
+    await expect(page.getByText('Modo de Producción (API Real)')).toBeVisible();
+    await expect(page.locator('#campo-correo')).toBeVisible();
+  });
+
+  test('una ruta protegida sin sesion lleva a /ingresar y no muestra datos', async ({ page }) => {
+    await page.goto('/bandeja');
+    await expect(page).toHaveURL(/\/ingresar/, { timeout: 20_000 });
+    await expect(page.getByRole('region', { name: 'Lista de conversaciones' })).toHaveCount(0);
+  });
+
+  test('una clave equivocada muestra el error y no abre sesion', async ({ page }) => {
+    const { correo } = credenciales();
+    await page.goto('/ingresar');
+    await page.locator('#campo-correo').fill(correo);
+    await page.locator('#campo-contrasena').fill('clave-equivocada-0000');
+    await page.getByRole('button', { name: /Ingresar a ViajaPro/ }).click();
+    await expect(page.getByText('Error de autenticación')).toBeVisible();
+    await expect(page).toHaveURL(/\/ingresar/);
+  });
+});
+
+test('ingresa con el usuario sembrado y ve la bandeja', async ({ page }) => {
+  const { correo, clave } = credenciales();
+  await page.goto('/ingresar');
+  await page.locator('#campo-correo').fill(correo);
+  await page.locator('#campo-contrasena').fill(clave);
+  await page.getByRole('button', { name: /Ingresar a ViajaPro/ }).click();
+
+  await expect(page).toHaveURL(/\/bandeja/, { timeout: 20_000 });
+  await expect(page.getByRole('region', { name: 'Lista de conversaciones' })).toBeVisible();
+
+  mkdirSync(path.dirname(RUTA_SESION), { recursive: true });
+  await page.context().storageState({ path: RUTA_SESION });
+});
