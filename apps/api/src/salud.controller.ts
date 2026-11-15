@@ -72,8 +72,10 @@ export class SaludController {
         rol: rol?.usuario ?? null,
         aislamiento: 'forzado',
         ...(trabajador ? { trabajador } : {}),
-        ...(cola ? { cola } : {}),
-        ...(colaDeSalida ? { colaDeSalida } : {}),
+        // Ruta pública y sin sesión: solo el estado de cada cola. Antigüedad y recuento quedan en
+        // Redis para la vigilancia interna; aquí revelarían el volumen de la operación.
+        ...(cola ? { cola: { estado: cola.estado } } : {}),
+        ...(colaDeSalida ? { colaDeSalida: { estado: colaDeSalida.estado } } : {}),
       };
     } catch (error) {
       this.logger.error('Health check falló', error);

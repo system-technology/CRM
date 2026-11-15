@@ -66,7 +66,13 @@ describe('SaludController', () => {
         { leer: () => Promise.resolve(cola), leerSalida: () => Promise.resolve(colaDeSalida) },
       );
       const r = await c.listo(mockRes as Response);
-      expect(r).toMatchObject({ estado: 'ok', cola, colaDeSalida });
+      expect(r).toMatchObject({
+        estado: 'ok',
+        cola: { estado: 'atascada' },
+        colaDeSalida: { estado: 'ok' },
+      });
+      // Pública y sin sesión: ni antigüedad ni recuento, que revelarían el volumen de la operación.
+      expect(JSON.stringify(r)).not.toMatch(/masViejaS|pendientes|umbralMin/);
       expect(mockRes.status).toHaveBeenCalledWith(HttpStatus.OK);
     });
 

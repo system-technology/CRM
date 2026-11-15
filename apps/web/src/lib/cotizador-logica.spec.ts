@@ -416,3 +416,26 @@ describe('Selector de acomodación (T-219)', () => {
     ]);
   });
 });
+
+describe('fechaDeHoy / fechaPorOmision (R9)', () => {
+  it('usa el día de la zona del tenant, sin desfase UTC', async () => {
+    const { fechaDeHoy } = await import('./cotizador-logica');
+    // 2026-11-16 02:30 UTC = 2026-11-15 21:30 en Bogotá
+    expect(fechaDeHoy(new Date('2026-11-16T02:30:00Z'))).toBe('2026-11-15');
+    expect(fechaDeHoy(new Date('2026-11-15T05:00:00Z'))).toBe('2026-11-15');
+    expect(fechaDeHoy(new Date('2026-11-15T04:59:00Z'))).toBe('2026-11-14');
+  });
+
+  it('elige la primera salida futura del paquete o, sin salidas, hoy', async () => {
+    const { fechaPorOmision } = await import('./cotizador-logica');
+    const salidas = [
+      { paqueteId: 'a', fecha: '2026-12-20' },
+      { paqueteId: 'a', fecha: '2026-11-20' },
+      { paqueteId: 'a', fecha: '2026-10-03' },
+      { paqueteId: 'b', fecha: '2026-11-16' },
+    ];
+    expect(fechaPorOmision(salidas, 'a', '2026-11-15')).toBe('2026-11-20');
+    expect(fechaPorOmision(salidas, 'c', '2026-11-15')).toBe('2026-11-15');
+    expect(fechaPorOmision([], '', '2026-11-15')).toBe('2026-11-15');
+  });
+});
