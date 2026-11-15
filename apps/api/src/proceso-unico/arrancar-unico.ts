@@ -18,6 +18,8 @@ import type { INestApplication, INestApplicationContext } from '@nestjs/common';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { configurarApi } from '../configurar-api.js';
 import { crearCompartidoDelInbox } from '../modules/inbox/infrastructure/compartido-en-proceso.js';
+import { comprobarClavesDeCamposAlArrancar } from '../shared/cifrado/versiones-de-clave.prisma.js';
+import { PrismaWebhookService } from '../shared/prisma/prisma-webhook.service.js';
 import { leerModoDeDespliegue } from '../shared/despliegue/modo-de-despliegue.js';
 import { ApiUnicoModule, TrabajadorUnicoModule } from './proceso-unico.module.js';
 
@@ -49,6 +51,19 @@ export async function arrancarUnico(entorno: Entorno = process.env): Promise<Pro
     TrabajadorUnicoModule.forRoot(compartido),
     { bufferLogs: true },
   );
+
+  // T-226 (b): con el rol del trabajador ya verificado, y antes de abrir el puerto. Los
+  // consumidores en proceso ya se conectaron al crear el contexto: hasta que esto aborte pueden
+  // tomar trabajos (T-234 lo moverá antes del contexto).
+  try {
+    await comprobarClavesDeCamposAlArrancar(
+      trabajador.get(PrismaWebhookService, { strict: false }),
+      entorno,
+    );
+  } catch (error) {
+    await trabajador.close();
+    throw error;
+  }
 
   const puerto = Number(entorno['API_PORT'] ?? 3333);
   let api: NestExpressApplication;

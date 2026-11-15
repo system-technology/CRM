@@ -11,6 +11,8 @@ import { NestFactory } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module.js';
 import { configurarApi } from './configurar-api.js';
+import { comprobarClavesDeCamposAlArrancar } from './shared/cifrado/versiones-de-clave.prisma.js';
+import { PrismaService } from './shared/prisma/prisma.service.js';
 import { LoggerJson } from './shared/observabilidad/logger-json.js';
 
 async function arrancar(): Promise<void> {
@@ -19,6 +21,11 @@ async function arrancar(): Promise<void> {
   // T-203: logs JSON con tenant_id/trace_id y sin PII. Vacía el búfer de `bufferLogs`.
   app.useLogger(new LoggerJson());
   configurarApi(app);
+
+  // T-226 (b): tras verificar el rol (onModuleInit) y antes de escuchar, abortar si hay datos
+  // cifrados con una versión de clave que este proceso no tiene.
+  await app.init();
+  await comprobarClavesDeCamposAlArrancar(app.get(PrismaService));
 
   const puerto = Number(process.env['API_PORT'] ?? 3333);
   await app.listen(puerto);
