@@ -4959,7 +4959,7 @@ tasks:
     phase: 2
     priority: P3
     effort: S
-    status: ready
+    status: in_progress
     depends_on: []
     acceptance:
       - "MotivoPerdida pasa a tabla por tenant (R12)"
@@ -5076,7 +5076,9 @@ tasks:
     phase: 1
     priority: P0
     effort: S
-    status: in_progress
+    status: done
+    done_at: 2026-11-15T18:55:00.000Z
+    evidence: "Integrado en main por el PR #267 (8b4c070)"
     depends_on: []
     acceptance:
       - "pnpm audit --prod --audit-level=high sin criticas: next >= 15.5.28, multer >= 2.5.0, body-parser >= 1.20.9, postcss parcheado"
@@ -5132,7 +5134,7 @@ tasks:
     phase: 2
     priority: P2
     effort: S
-    status: ready
+    status: in_progress
     depends_on: [T-203]
     acceptance:
       - "Funcion SECURITY DEFINER que devuelve solo la antiguedad y el conteo de envios pendientes (sin ids de tenant ni texto)"
@@ -5149,7 +5151,9 @@ tasks:
     phase: 1
     priority: P3
     effort: S
-    status: in_progress
+    status: done
+    done_at: 2026-11-15T18:55:00.000Z
+    evidence: "Integrado en main por el PR #267 (8b4c070)"
     depends_on: [T-222]
     acceptance:
       - "calcularCotizacionMock y temporadaNombre dejan de leer tarifarioDemo (temporadas); mock-catalogo sin TemporadaDemo/PrecioDemo"
@@ -5202,7 +5206,9 @@ tasks:
     phase: 1
     priority: P2
     effort: S
-    status: in_progress
+    status: done
+    done_at: 2026-11-15T18:55:00.000Z
+    evidence: "Integrado en main por el PR #267 (8b4c070)"
     depends_on: [T-212]
     acceptance:
       - "El contrato del listado de contactos no incluye preferencias; solo la ficha las descifra (auditado)"

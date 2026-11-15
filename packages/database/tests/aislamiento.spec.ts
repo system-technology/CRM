@@ -447,6 +447,9 @@ const MATRIZ_FUNCIONES: Readonly<Record<string, readonly string[]>> = {
   // Duodécima (ADR-0011), también SIN ningún EXECUTE: la función del disparador de `usuarios`
   // que mantiene `accesos_identidad`. Un GRANT sobre ella dejaría apuntar pertenencias a mano.
   sincronizar_acceso_identidad: [],
+  // Decimotercera (T-223): la antigüedad y el conteo de la cola de SALIDA entre agencias. Solo
+  // dos enteros; la ejecuta el trabajador, que publica la medida para `/salud/listo`.
+  medir_cola_de_salida: ['viajapro_webhook'],
 };
 
 const PROPIETARIO_ESPERADO: Readonly<Record<string, string>> = {
@@ -462,6 +465,7 @@ const PROPIETARIO_ESPERADO: Readonly<Record<string, string>> = {
   propagar_estado_cuenta: 'viajapro_enrutador',
   contar_reencolado_barrido: 'viajapro_staging',
   sincronizar_acceso_identidad: 'viajapro_accesos',
+  medir_cola_de_salida: 'viajapro_metricas',
 };
 
 /**
@@ -909,8 +913,8 @@ describe('ADR-0008 — directorio de enrutamiento, staging y separación de role
     );
     expect(
       rows.length,
-      'faltan funciones de ADR-0008: eran seis, la auditoría de implementación añadió purgar_payloads, la tarea 4f propagar_estado_canal, el relay de barrido listar_changes_pendientes, y los huecos del disparador propagar_estado_cuenta y contar_reencolado_barrido, y ADR-0011 sincronizar_acceso_identidad',
-    ).toBe(12);
+      'faltan funciones de ADR-0008: eran seis, la auditoría de implementación añadió purgar_payloads, la tarea 4f propagar_estado_canal, el relay de barrido listar_changes_pendientes, y los huecos del disparador propagar_estado_cuenta y contar_reencolado_barrido, ADR-0011 sincronizar_acceso_identidad, y T-223 medir_cola_de_salida',
+    ).toBe(13);
     expect(rows.filter((r) => r.publico)).toEqual([]);
   });
 
@@ -923,7 +927,7 @@ describe('ADR-0008 — directorio de enrutamiento, staging y separación de role
        WHERE n.nspname = 'public' AND p.proname = ANY($1) ORDER BY 1`,
       [Object.keys(MATRIZ_FUNCIONES)],
     );
-    expect(rows.length).toBe(12);
+    expect(rows.length).toBe(13);
 
     for (const fila of rows) {
       const config = (fila.proconfig as string[] | null) ?? [];
@@ -944,10 +948,11 @@ describe('ADR-0008 — directorio de enrutamiento, staging y separación de role
       `SELECT rolname, rolcanlogin, rolbypassrls, rolsuper,
               EXISTS (SELECT 1 FROM pg_roles s WHERE s.rolname = 'neon_superuser')
                 AND pg_has_role(rolname, 'neon_superuser', 'MEMBER') AS hereda_neon
-       FROM pg_roles WHERE rolname IN ('viajapro_enrutador','viajapro_staging','viajapro_accesos') ORDER BY 1`,
+       FROM pg_roles WHERE rolname IN ('viajapro_enrutador','viajapro_staging','viajapro_accesos','viajapro_metricas') ORDER BY 1`,
     );
-    // El tercero es de ADR-0011: dueño del disparador que escribe `accesos_identidad`.
-    expect(rows.length).toBe(3);
+    // El tercero es de ADR-0011: dueño del disparador que escribe `accesos_identidad`. El cuarto,
+    // de T-223: dueño de `medir_cola_de_salida`.
+    expect(rows.length).toBe(4);
     for (const r of rows) {
       expect(r.rolcanlogin, `${r.rolname} puede iniciar sesión`).toBe(false);
       expect(r.rolbypassrls, `${r.rolname} tiene BYPASSRLS`).toBe(false);
@@ -2332,6 +2337,163 @@ describe('CRM — contactos, oportunidades y la ficha del panel lateral', () => 
       expect(`${fila.relname}:${fila.con_check}`).toBe(`${fila.relname}:1`);
     }
   });
+
+  it('T-214 — motivos_de_perdida: tabla por agencia con RLS forzada, foránea compuesta desde oportunidades y no es excepción', async () => {
+    const { rows } = await admin.query(
+      `SELECT c.relrowsecurity, c.relforcerowsecurity,
+              (SELECT a.attnotnull FROM pg_attribute a
+                WHERE a.attrelid = c.oid AND a.attname = 'tenant_id'
+                  AND a.attnum > 0 AND NOT a.attisdropped) AS tenant_no_nulo,
+              (SELECT count(*)::int FROM pg_policy p
+                WHERE p.polrelid = c.oid AND p.polname = 'tenant_isolation'
+                  AND p.polqual IS NOT NULL AND p.polwithcheck IS NOT NULL) AS con_using_y_check,
+              EXISTS (SELECT 1 FROM excepciones_rls e WHERE e.tabla = c.relname) AS declarada
+         FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' AND c.relname = 'motivos_de_perdida'`,
+    );
+    expect(rows).toEqual([
+      {
+        relrowsecurity: true,
+        relforcerowsecurity: true,
+        tenant_no_nulo: true,
+        con_using_y_check: 1,
+        declarada: false,
+      },
+    ]);
+
+    for (const rol of ['viajapro_app', 'viajapro_altas', 'viajapro_webhook']) {
+      const p = await admin.query(
+        `SELECT p FROM unnest(ARRAY['SELECT','INSERT','UPDATE','DELETE']) AS p
+          WHERE has_table_privilege($1, 'public.motivos_de_perdida', p) ORDER BY 1`,
+        [rol],
+      );
+      expect(
+        p.rows.map((r) => r.p as string),
+        rol,
+      ).toEqual(['DELETE', 'INSERT', 'SELECT', 'UPDATE']);
+    }
+    const deIdentidad = await admin.query(
+      `SELECT p FROM unnest(ARRAY['SELECT','INSERT','UPDATE','DELETE']) AS p
+        WHERE has_table_privilege('viajapro_identidad', 'public.motivos_de_perdida', p)`,
+    );
+    expect(deIdentidad.rows).toEqual([]);
+
+    // La oportunidad apunta al motivo con la foránea COMPUESTA con el tenant, validada.
+    const foranea = await admin.query(
+      `SELECT (SELECT array_agg(a.attname::text ORDER BY i)
+                 FROM generate_subscripts(c.conkey, 1) AS i
+                 JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = c.conkey[i]) AS columnas,
+              (SELECT array_agg(a.attname::text ORDER BY i)
+                 FROM generate_subscripts(c.confkey, 1) AS i
+                 JOIN pg_attribute a ON a.attrelid = c.confrelid AND a.attnum = c.confkey[i]) AS referidas,
+              c.convalidated
+         FROM pg_constraint c
+        WHERE c.contype = 'f' AND c.conrelid = 'public.oportunidades'::regclass
+          AND c.confrelid = 'public.motivos_de_perdida'::regclass`,
+    );
+    expect(foranea.rows).toEqual([
+      {
+        columnas: ['motivo_perdida_id', 'tenant_id'],
+        referidas: ['id', 'tenant_id'],
+        convalidated: true,
+      },
+    ]);
+    const simples = await admin.query(FORANEAS_SIN_TENANT_SQL);
+    expect(
+      (simples.rows as Array<{ hija: string; padre: string }>).filter(
+        (r) => r.hija === 'motivos_de_perdida' || r.padre === 'motivos_de_perdida',
+      ),
+    ).toEqual([]);
+
+    const defectos = await admin.query(
+      "SELECT problema FROM tablas_sin_aislamiento WHERE problema IS NOT NULL AND tabla = 'motivos_de_perdida'",
+    );
+    expect(defectos.rows).toEqual([]);
+  });
+
+  it('T-214 — un tenant no ve, no escribe y no se cuelga de los motivos de pérdida de otro', async () => {
+    // El motivo enum de la oportunidad de A se traslada a un motivo DE A (el disparador de
+    // compatibilidad lo crea si la agencia no lo tenía sembrado, como estas de prueba).
+    const deA = await comoTenant(TENANT_A, async (c) => {
+      await c.query(
+        "UPDATE oportunidades SET motivo_perdida = 'PRECIO', nota_perdida = NULL WHERE id = $1",
+        [oportunidadDe[TENANT_A]],
+      );
+      const { rows: r } = await c.query(
+        `SELECT m.tenant_id, m.clave FROM oportunidades o
+           JOIN motivos_de_perdida m ON m.id = o.motivo_perdida_id
+          WHERE o.id = $1`,
+        [oportunidadDe[TENANT_A]],
+      );
+      const propio = await c.query(
+        `INSERT INTO motivos_de_perdida (id, tenant_id, etiqueta, orden, actualizado_en)
+         VALUES (gen_random_uuid(), $1, 'Visa negada', 50, now()) RETURNING id`,
+        [TENANT_A],
+      );
+      return { traslado: r, propio: (propio.rows[0] as { id: string }).id };
+    });
+    expect(deA.traslado).toEqual([{ tenant_id: TENANT_A, clave: 'PRECIO' }]);
+
+    // Lectura, edición y borrado cruzados: cero filas.
+    const cruzado = await comoTenant(TENANT_B, async (c) => [
+      (await c.query('SELECT id FROM motivos_de_perdida WHERE id = $1', [deA.propio])).rowCount,
+      (await c.query('SELECT id FROM motivos_de_perdida WHERE tenant_id = $1', [TENANT_A]))
+        .rowCount,
+      (
+        await c.query("UPDATE motivos_de_perdida SET etiqueta = 'Plantado' WHERE id = $1", [
+          deA.propio,
+        ])
+      ).rowCount,
+      (await c.query('DELETE FROM motivos_de_perdida WHERE id = $1', [deA.propio])).rowCount,
+    ]);
+    expect(cruzado).toEqual([0, 0, 0, 0]);
+
+    // Plantar un motivo en A desde B: lo rechaza WITH CHECK.
+    await expect(
+      comoTenant(TENANT_B, (c) =>
+        c.query(
+          `INSERT INTO motivos_de_perdida (id, tenant_id, etiqueta, orden, actualizado_en)
+           VALUES (gen_random_uuid(), $1, 'Plantado por B', 1, now())`,
+          [TENANT_A],
+        ),
+      ),
+    ).rejects.toThrow(/row-level security/i);
+
+    // Colgar la oportunidad de B del motivo de A: el id lo recalcula el disparador desde el enum,
+    // y queda un motivo DE B. Sin disparador, lo pararía la foránea compuesta (comprobada arriba).
+    const deB = await comoTenant(TENANT_B, async (c) => {
+      await c.query(
+        "UPDATE oportunidades SET motivo_perdida = 'PRECIO', motivo_perdida_id = $2 WHERE id = $1",
+        [oportunidadDe[TENANT_B], deA.propio],
+      );
+      const { rows: r } = await c.query(
+        `SELECT o.motivo_perdida_id <> $2 AS distinto, m.tenant_id, m.clave
+           FROM oportunidades o JOIN motivos_de_perdida m ON m.id = o.motivo_perdida_id
+          WHERE o.id = $1`,
+        [oportunidadDe[TENANT_B], deA.propio],
+      );
+      return r as unknown[];
+    });
+    expect(deB).toEqual([{ distinto: true, tenant_id: TENANT_B, clave: 'PRECIO' }]);
+
+    // Quitar el motivo quita el id: la pareja enum/id va junta.
+    const sinMotivo = await comoTenant(TENANT_A, async (c) => {
+      await c.query('UPDATE oportunidades SET motivo_perdida = NULL WHERE id = $1', [
+        oportunidadDe[TENANT_A],
+      ]);
+      const { rows: r } = await c.query(
+        'SELECT motivo_perdida_id FROM oportunidades WHERE id = $1',
+        [oportunidadDe[TENANT_A]],
+      );
+      return r as unknown[];
+    });
+    expect(sinMotivo).toEqual([{ motivo_perdida_id: null }]);
+    await comoTenant(TENANT_B, (c) =>
+      c.query('UPDATE oportunidades SET motivo_perdida = NULL WHERE id = $1', [
+        oportunidadDe[TENANT_B],
+      ]),
+    );
+  });
 });
 // =============================================================================
 // INBOX — conversaciones, mensajes, adjuntos y el espejo de plantillas
@@ -2925,6 +3087,103 @@ describe('Inbox — conversaciones, mensajes y el espejo de plantillas de Meta',
     );
     for (const f of tipos.rows as Array<{ attname: string; tipo: string }>) {
       expect(`${f.attname}:${f.tipo}`).toBe(`${f.attname}:timestamp(3) with time zone`);
+    }
+  });
+
+  it('T-223 — medir_cola_de_salida suma las agencias y devuelve solo dos enteros, sin dejar el contexto cambiado', async () => {
+    // La forma del resultado es la frontera: la función ve `mensajes` de TODAS las agencias.
+    const firma = await admin.query(
+      `SELECT pg_get_function_result(p.oid) AS resultado,
+              pg_get_function_identity_arguments(p.oid) AS argumentos
+         FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+        WHERE n.nspname = 'public' AND p.proname = 'medir_cola_de_salida'`,
+    );
+    expect(firma.rows).toEqual([
+      { resultado: 'TABLE(mas_vieja_s integer, pendientes integer)', argumentos: '' },
+    ]);
+
+    // Solo el trabajador. La 20 lo mira en el catálogo; esto, en el comportamiento.
+    for (const rol of ['viajapro_app', 'viajapro_altas']) {
+      await expect(
+        conRol(rol, 'SELECT * FROM medir_cola_de_salida()'),
+        `${rol} pudo medir la cola de salida`,
+      ).rejects.toThrow(/permission denied/i);
+    }
+
+    // El dueño no lee más que las columnas del recuento: ni el texto cifrado de un mensaje.
+    expect(
+      (
+        await admin.query(
+          `SELECT has_column_privilege('viajapro_metricas', 'public.mensajes', 'texto_cifrado', 'SELECT') AS texto,
+                  has_table_privilege('viajapro_metricas', 'public.mensajes', 'SELECT') AS tabla`,
+        )
+      ).rows,
+    ).toEqual([{ texto: false, tabla: false }]);
+
+    // Ningún rol de login puede actuar como el dueño, ni por un camino indirecto.
+    const comoDueno = await admin.query(
+      `SELECT rolname FROM unnest($1::text[]) AS rolname
+        WHERE pg_has_role(rolname, 'viajapro_metricas', 'MEMBER')`,
+      [await rolesAVigilar(admin)],
+    );
+    expect(comoDueno.rows, 'roles de login que pueden actuar como viajapro_metricas').toEqual([]);
+
+    type Medida = { mas_vieja_s: number; pendientes: number };
+    const medir = async (): Promise<Medida> => {
+      const { rows } = await conRol('viajapro_webhook', 'SELECT * FROM medir_cola_de_salida()');
+      expect(rows).toHaveLength(1);
+      expect(Object.keys(rows[0] as object).sort(), 'devuelve algo más que dos enteros').toEqual([
+        'mas_vieja_s',
+        'pendientes',
+      ]);
+      return rows[0] as Medida;
+    };
+
+    // Otras corridas pueden tener pendientes a la vez: se mide la DIFERENCIA, nunca el total.
+    const antes = await medir();
+
+    // Un pendiente en A (20 min), otro en B (40 min) y, en B, uno ya aceptado por Meta (con wamid)
+    // de hace 100 días, que NO es cola de salida.
+    const pendiente = (tenant: string, minutos: number, wamid: string | null) =>
+      comoTenant(tenant, (c) =>
+        c.query(
+          `INSERT INTO mensajes (id, tenant_id, conversacion_id, direccion, tipo, estado, wamid,
+                                 ocurrido_en, creado_en, actualizado_en)
+           VALUES (gen_random_uuid(), $1, $2, 'SALIENTE', 'TEXTO', 'PENDIENTE', $3,
+                   now(), now() - make_interval(mins => $4::int), now())`,
+          [tenant, conversacionDe[tenant], wamid, minutos],
+        ),
+      );
+    await pendiente(TENANT_A, 20, null);
+    await pendiente(TENANT_B, 40, null);
+    await pendiente(TENANT_B, 100 * 24 * 60, `wamid.${randomUUID()}`);
+
+    const despues = await medir();
+    expect(despues.pendientes, 'no suma los pendientes de las dos agencias').toBeGreaterThanOrEqual(
+      antes.pendientes + 2,
+    );
+    expect(despues.mas_vieja_s, 'no ve el pendiente de 40 min de B').toBeGreaterThanOrEqual(
+      40 * 60,
+    );
+    if (antes.mas_vieja_s < 50 * 86_400) {
+      expect(
+        despues.mas_vieja_s,
+        'cuenta como pendiente un mensaje que ya tiene wamid',
+      ).toBeLessThan(50 * 86_400);
+    }
+
+    // El llamador sale con SU agencia en el contexto, no con la última que recorrió la función.
+    await admin.query('BEGIN');
+    try {
+      await admin.query('SET LOCAL ROLE viajapro_webhook');
+      await admin.query("SELECT set_config('app.current_tenant', $1, true)", [TENANT_B]);
+      await admin.query('SELECT * FROM medir_cola_de_salida()');
+      const { rows } = await admin.query(
+        "SELECT current_setting('app.current_tenant', true) AS tenant",
+      );
+      expect(rows[0]?.tenant).toBe(TENANT_B);
+    } finally {
+      await admin.query('ROLLBACK');
     }
   });
 });
@@ -5845,6 +6104,9 @@ const COLUMNAS_DE_TEXTO_DECLARADAS: readonly string[] = [
   'mayoristas.notas',
   'mensajes.motivo_fallo',
   'mensajes.wamid',
+  // T-214: catálogo de la agencia, sin PII de viajeros.
+  'motivos_de_perdida.clave',
+  'motivos_de_perdida.etiqueta',
   'opciones_de_salida.etiqueta',
   'opciones_de_salida.punto_de_encuentro',
   'oportunidades.destino',

@@ -16,7 +16,12 @@
 
 import { PrismaClient } from '@prisma/client';
 import { sembrarCatalogoReal } from './semilla-catalogo-real.js';
-import { sembrarEtapas, sembrarFormatos, sembrarRoles } from './siembra-de-tenant.js';
+import {
+  sembrarEtapas,
+  sembrarFormatos,
+  sembrarMotivosDePerdida,
+  sembrarRoles,
+} from './siembra-de-tenant.js';
 
 const prisma = new PrismaClient();
 
@@ -95,6 +100,7 @@ async function main() {
   // Las etapas y su lógica de idempotencia viven en siembra-de-tenant.ts (compartida con las
   // agencias de prospecto).
   await sembrarEtapas(prisma, tenant.id);
+  await sembrarMotivosDePerdida(prisma, tenant.id);
 
   // --- Campos personalizados ---------------------------------------------
   // Se siembran para que la columna jsonb y las definiciones se ejerciten desde el principio.

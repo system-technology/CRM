@@ -59,13 +59,33 @@ describe('SaludController', () => {
     it('informa la cola atascada pero no degrada estado ni cambia el HTTP', async () => {
       mockPrisma.$queryRaw.mockResolvedValue([{ usuario: 'viajapro_app', bypassa: false }]);
       const cola = { estado: 'atascada', masViejaS: 900, pendientes: 3, umbralMin: 5 } as const;
+      const colaDeSalida = { estado: 'ok', masViejaS: 12, pendientes: 1 } as const;
       const c = new SaludController(
         mockPrisma as unknown as PrismaService,
         { leer: () => Promise.resolve({ estado: 'ok', edadSegundos: 2 } as EstadoDelTrabajador) },
-        { leer: () => Promise.resolve(cola) },
+        { leer: () => Promise.resolve(cola), leerSalida: () => Promise.resolve(colaDeSalida) },
       );
       const r = await c.listo(mockRes as Response);
-      expect(r).toMatchObject({ estado: 'ok', cola });
+      expect(r).toMatchObject({ estado: 'ok', cola, colaDeSalida });
+      expect(mockRes.status).toHaveBeenCalledWith(HttpStatus.OK);
+    });
+
+    it('T-223: informa la cola de salida aparte, y sin medida queda sin_verificar sin degradar', async () => {
+      mockPrisma.$queryRaw.mockResolvedValue([{ usuario: 'viajapro_app', bypassa: false }]);
+      const c = new SaludController(
+        mockPrisma as unknown as PrismaService,
+        { leer: () => Promise.resolve({ estado: 'ok', edadSegundos: 2 } as EstadoDelTrabajador) },
+        {
+          leer: () => Promise.resolve({ estado: 'ok', masViejaS: 0, pendientes: 0 }),
+          leerSalida: () => Promise.resolve({ estado: 'sin_verificar' }),
+        },
+      );
+      const r = await c.listo(mockRes as Response);
+      expect(r).toMatchObject({
+        estado: 'ok',
+        cola: { estado: 'ok' },
+        colaDeSalida: { estado: 'sin_verificar' },
+      });
       expect(mockRes.status).toHaveBeenCalledWith(HttpStatus.OK);
     });
   });

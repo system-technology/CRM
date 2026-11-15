@@ -466,6 +466,7 @@ y `tablas_sin_aislamiento` imputa cada partición a su tabla raíz.
   | `purgar_payloads` | `viajapro_staging` | `viajapro_webhook` |
   | `listar_changes_pendientes` | `viajapro_staging` | `viajapro_webhook` |
   | `contar_reencolado_barrido` | `viajapro_staging` | `viajapro_webhook` |
+  | `medir_cola_de_salida` (T-223) | `viajapro_metricas` | `viajapro_webhook` |
 
 ---
 
@@ -524,7 +525,7 @@ erDiagram
 |---|---|
 | **Etapas: tabla por tenant con columna `clave`** | Ya era tabla (R12). La `clave` —`NUEVO_LEAD`…`PERDIDA`— es el puente con el enum cerrado del contrato. Nullable a propósito: una agencia puede tener más etapas que las cinco del contrato, y una etapa sin clave existe pero hoy no es representable en la API. Forzar un valor metería dos etapas en la misma columna del tablero |
 | **Consentimiento: tabla, no columnas** | La Ley 1581 de 2012 no pide saber *si* hay consentimiento: pide demostrar cuándo, con qué finalidad y por qué canal, y registrar la revocación. Tres columnas sobrescribibles no demuestran nada. Índice único **parcial**: una finalidad vigente por contacto, histórico completo de las revocadas |
-| **Motivo de pérdida: enum del motor** | Al revés que las etapas, y no es incoherencia: la etapa es el proceso de venta de cada agencia; el motivo es la taxonomía con la que se compara el rendimiento entre agencias y se decide si tocar el markup o el SLA. Si cada una inventa la suya, esa comparación no existe. `OTRO` + explicación obligatoria es la válvula |
+| **Motivo de pérdida: enum del motor** *(superada por T-214, 2026-11-15: ver «Motivos de pérdida por agencia» al final; la taxonomía común sobrevive como `clave`)* | Al revés que las etapas, y no es incoherencia: la etapa es el proceso de venta de cada agencia; el motivo es la taxonomía con la que se compara el rendimiento entre agencias y se decide si tocar el markup o el SLA. Si cada una inventa la suya, esa comparación no existe. `OTRO` + explicación obligatoria es la válvula |
 | **La regla de pérdida, partida entre base y contrato** | «`OTRO` exige explicación» y «no hay nota sin motivo» son comprobaciones de **la fila** y van en `CHECK`. «Perdida ⇒ hay motivo» y «hay motivo ⇒ está perdida» **no pueden** ser un `CHECK`: la etapa vive en otra tabla y un `CHECK` no mira otra tabla. Hacerlo con un disparador sería esconder una regla de negocio donde nadie la busca y pagarla en cada movimiento de tarjeta. Esas dos se quedan en el contrato, que las aplica a la web, a la API y a cualquier integración |
 | **Próxima tarea: tres columnas, no tabla `tareas`** | El contrato expone UNA próxima tarea. Una tabla para una fila por oportunidad añade un join a la consulta más caliente a cambio de nada que hoy se use. `CHECK`: las tres o ninguna. El día que haga falta historial, es una tabla nueva |
 | **Notas internas colgando del contacto** | `conversaciones` todavía no existe como tabla y el panel lateral las pide por contacto. Cuando el inbox la cree, `conversacion_id UUID NULL` con clave foránea compuesta es una migración aditiva de un minuto. Al revés habría forzado al inbox a existir antes que el pipeline |
@@ -950,3 +951,73 @@ Migración `20261104130000_permisos_de_mutacion_rbac`. Sin tabla nueva ni cambio
   ASESOR, que ahora escribe. Sin agencia real todavía, no hay a quién afectar.
 - Prueba: `packages/database/tests/permisos-de-mutacion.spec.ts` reejecuta el relleno sobre
   agencias sembradas como antes, dentro de una transacción que se deshace.
+
+## Cola de salida medida entre agencias (T-223, 2026-11-15)
+
+Migración `20261115140000_medir_cola_de_salida`. Sin tabla nueva: un rol propietario y una función.
+
+```
+  trabajador (viajapro_webhook), cada 30 s
+        │  SELECT * FROM medir_cola_de_salida()          -> (mas_vieja_s int, pendientes int)
+        ▼                                                SECURITY DEFINER, search_path vacío
+  viajapro_metricas (NOLOGIN, NOBYPASSRLS)               dueño; SELECT solo de columnas:
+        │  para cada tenant:                               mensajes(tenant_id, estado, wamid, creado_en)
+        │    set_config('app.current_tenant', t, true)     tenants(id)
+        │    min(creado_en), count(*) WHERE estado = 'PENDIENTE' AND wamid IS NULL
+        │  restaura el app.current_tenant del llamador     (idx_mensajes_envios_pendientes)
+        ▼
+  Redis  viajapro:cola-salida:antiguedad  ->  /salud/listo  { colaDeSalida: { estado, masViejaS, pendientes } }
+```
+
+**Por qué así.**
+
+- **RLS intacta.** Ningún rol se salta RLS (aserción 14) y la tabla no gana una segunda política ni
+  una excepción: la función ve una agencia por consulta, fijando el contexto como lo hace la API.
+- **La forma es la frontera.** Una fila, dos enteros: ni ids, ni tenant, ni texto, ni desglose por
+  agencia. Sin argumentos que abusar.
+- **Rol nuevo y no `viajapro_staging`.** El staging ya guarda criptogramas de todas las agencias;
+  darle además `mensajes` juntaría dos superficies. `viajapro_metricas` solo tiene SELECT de cuatro
+  columnas de `mensajes` y del `id` de `tenants` (no puede leer `texto_cifrado` aunque cambie el
+  cuerpo). Ningún rol de login es miembro suyo.
+- **Sin `SET app.current_tenant` en la cabecera de la función:** con un dueño sin superusuario,
+  PostgreSQL ≥ 15 rechaza fijar un parámetro de marcador de posición en `proconfig`. La función
+  guarda y restaura el valor del llamador a mano.
+- **No degrada `/salud/listo`.** Igual que la de entrada: se informa en `colaDeSalida`, el HTTP y
+  `estado` no cambian. Sin la migración, el trabajador publica nada y la API dice `sin_verificar`.
+- Pruebas: aserciones 12, 13, 14 y 20 (matriz, dueño, propietarios) y `T-223` en el bloque del
+  inbox de `aislamiento.spec.ts`; `antiguedad-de-cola.spec.ts` y `salud.controller.spec.ts` en la API.
+
+## Motivos de pérdida por agencia (T-214, 2026-11-15)
+
+Migración `20261115150000_motivos_de_perdida_por_agencia`. **Fase de compatibilidad**: la tabla y
+la foránea existen, la API sigue escribiendo el enum.
+
+```
+  tenants 1──n motivos_de_perdida (id, tenant_id, clave?, etiqueta, orden, activo, exige_nota, auditoría)
+                     ▲  UNIQUE (tenant_id, clave), (tenant_id, etiqueta), (id, tenant_id)
+                     │  FK compuesta (motivo_perdida_id, tenant_id), NO ACTION
+  oportunidades.motivo_perdida  (enum, lo escribe la API)
+        │  BEFORE INSERT/UPDATE OF motivo_perdida, motivo_perdida_id  (SECURITY INVOKER, bajo RLS)
+        └─► oportunidades.motivo_perdida_id = motivo de la agencia con clave = enum
+            (si la agencia no lo tiene, lo crea con la etiqueta canónica)
+        CHECK oportunidades_motivo_perdida_pareja: los dos nulos o los dos presentes
+```
+
+**Por qué así.**
+
+- **R12.** Cada agencia pierde por motivos propios; un enum exigía una migración para cada uno.
+- **La taxonomía común no se pierde.** Los siete sembrados llevan `clave` = valor del enum, y la
+  comparación entre agencias se hace por `clave`; los motivos propios van con `clave` nula, como
+  `roles.clave` y `etapas_pipeline.clave`. Retirar un motivo es `activo = false`.
+- **Compatibilidad y no corte.** Contrato, casos de uso y web siguen con el enum; el disparador
+  mantiene la foránea sin tocar ningún camino de escritura. Es SECURITY INVOKER a propósito: no
+  puede colgar una oportunidad del motivo de otra agencia, porque busca y crea bajo la RLS de
+  quien escribe.
+- **Siembra:** la migración siembra los siete por agencia existente (con las etiquetas que hoy
+  pinta la web); `sembrarMotivosDePerdida` (`siembra-de-tenant.ts`) los siembra en la demo y en las
+  agencias de prospecto.
+- **Lo que queda (backend + frontend):** contrato con `motivoPerdidaId` y listado de motivos por
+  agencia, casos de uso que escriban el id y validen `exige_nota`, la web que pinte la lista; después,
+  una migración que retire el enum, el disparador y la pareja. `oportunidad_cambios_etapa` (solo
+  añadir) conserva su enum: no admite el UPDATE de un relleno.
+
