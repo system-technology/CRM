@@ -34,7 +34,10 @@ export const ComposicionDeVersion = z
     adultos: z.number().int().min(1).max(200).optional(),
     ninos: z.number().int().min(0).max(200).optional(),
     infantes: z.number().int().min(0).max(200).optional(),
-    /** Edades por pasajero (T-179): ver `EdadesDePasajeros`. No se guardan en la versión. */
+    /**
+     * Edades por pasajero (T-179): ver `EdadesDePasajeros`. Se guardan en la versión (T-217) y la
+     * lectura las devuelve, para que volver a cotizar desde ella no pierda la tarifa de menor.
+     */
     ...EdadesDePasajeros,
     acomodacion: Acomodacion.optional(),
     /** Obligatoria si el producto tiene opciones de salida (ADR-0017 §3.1). */
@@ -93,6 +96,15 @@ export const VersionDeCotizacion = z.object({
   infantes: z.number().int().min(0),
   acomodacion: Acomodacion.nullable(),
   /**
+   * Edades con las que se cotizó (T-179, T-217). Arreglo vacío = no se declararon (o la versión es
+   * anterior a T-217); si no, una por niño / infante. La API las envía siempre; son opcionales en
+   * el esquema solo para que una respuesta anterior a T-217 siga validando.
+   */
+  edadesNinos: z.array(z.number().int().min(0)).optional(),
+  edadesInfantes: z.array(z.number().int().min(0)).optional(),
+  /** Cuántos infantes ocupan silla propia. `null` = no se declaró (no es lo mismo que 0). */
+  infantesConSilla: z.number().int().min(0).nullable().optional(),
+  /**
    * La opción de salida con la que se cotizó (ADR-0017 §3.1, T-062). `null` = el producto no
    * tenía opciones, o la versión es anterior a T-062. Pasarla como `opcionDeSalidaId` al volver a
    * cotizar reproduce la misma composición. La API la envía siempre; es opcional en el esquema
@@ -121,6 +133,34 @@ export const VersionDeCotizacion = z.object({
   vigenteHasta: FechaViaje.nullable(),
 });
 export type VersionDeCotizacion = z.infer<typeof VersionDeCotizacion>;
+
+/**
+ * La composición que reproduce una versión: lo que hay que mandar a
+ * `POST /api/v1/cotizaciones/:id/versiones` para volver a cotizarla (T-217).
+ *
+ * Reenvía edades y silla solo si la versión las declaró: un arreglo vacío con niños declarados
+ * significa «no se recogieron», y mandarlo violaría `coherenciaDeEdades`. `vigenteHasta` no se
+ * copia a propósito: la vigencia de la oferta es una decisión nueva en cada versión; quien quiera
+ * conservarla la añade.
+ */
+export function composicionDesdeVersion(v: VersionDeCotizacion): ComposicionDeVersion {
+  const edadesNinos = v.edadesNinos ?? [];
+  const edadesInfantes = v.edadesInfantes ?? [];
+  return {
+    paqueteId: v.paqueteId,
+    fecha: v.fechaSalida,
+    adultos: v.adultos,
+    ninos: v.ninos,
+    infantes: v.infantes,
+    ...(edadesNinos.length > 0 ? { edadesNinos: [...edadesNinos] } : {}),
+    ...(edadesInfantes.length > 0 ? { edadesInfantes: [...edadesInfantes] } : {}),
+    ...(v.infantesConSilla !== null && v.infantesConSilla !== undefined
+      ? { infantesConSilla: v.infantesConSilla }
+      : {}),
+    ...(v.acomodacion ? { acomodacion: v.acomodacion } : {}),
+    ...(v.opcionDeSalidaId ? { opcionDeSalidaId: v.opcionDeSalidaId } : {}),
+  };
+}
 
 /** `GET /api/v1/cotizaciones/:id` — la cabecera con TODAS sus versiones, de la 1 a la última. */
 export const CotizacionGuardada = z.object({

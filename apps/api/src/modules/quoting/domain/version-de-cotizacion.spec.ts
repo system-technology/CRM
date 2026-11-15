@@ -107,6 +107,22 @@ describe('armarVersion', () => {
     ).toBeNull();
   });
 
+  it('T-217: conserva edades y silla de la petición; sin ellas, vacío y null', () => {
+    const v = armarVersion(calculo([linea('100')]), POLITICA, {
+      edadesNinos: [7, 3],
+      edadesInfantes: [1],
+      infantesConSilla: 0,
+    });
+    expect(v.edadesNinos).toEqual([7, 3]);
+    expect(v.edadesInfantes).toEqual([1]);
+    expect(v.infantesConSilla).toBe(0);
+
+    const sin = armarVersion(calculo([linea('100')]), POLITICA, {});
+    expect(sin.edadesNinos).toEqual([]);
+    expect(sin.edadesInfantes).toEqual([]);
+    expect(sin.infantesConSilla).toBeNull();
+  });
+
   it('sin líneas no hay nada que guardar', () => {
     expect(() => armarVersion(calculo([]), POLITICA, {})).toThrow(/no tiene líneas/i);
   });

@@ -335,7 +335,7 @@ export class CotizacionesUseCase {
       adultos: c.adultos,
       ninos: c.ninos,
       infantes: c.infantes,
-      // Las edades solo sirven para evaluar tarifas; la versión guardada no las conserva.
+      // Las edades eligen tarifas y, desde T-217, también se conservan en la versión.
       ...(c.edadesNinos ? { edadesNinos: c.edadesNinos } : {}),
       ...(c.edadesInfantes ? { edadesInfantes: c.edadesInfantes } : {}),
       ...(c.infantesConSilla !== undefined ? { infantesConSilla: c.infantesConSilla } : {}),
@@ -362,6 +362,9 @@ export class CotizacionesUseCase {
     const v = armarVersion(calculo, politica, {
       ...(c.acomodacion ? { acomodacion: c.acomodacion } : {}),
       ...(c.vigenteHasta ? { vigenteHasta: c.vigenteHasta } : {}),
+      ...(c.edadesNinos ? { edadesNinos: c.edadesNinos } : {}),
+      ...(c.edadesInfantes ? { edadesInfantes: c.edadesInfantes } : {}),
+      ...(c.infantesConSilla !== undefined ? { infantesConSilla: c.infantesConSilla } : {}),
     });
 
     return {
@@ -378,6 +381,9 @@ export class CotizacionesUseCase {
       ninos: v.ninos,
       infantes: v.infantes,
       acomodacion: v.acomodacion,
+      edadesNinos: v.edadesNinos,
+      edadesInfantes: v.edadesInfantes,
+      infantesConSilla: v.infantesConSilla,
       opcionDeSalidaId: v.opcionDeSalidaId,
       politicaPorcentaje: v.politica.porcentaje,
       politicaBase: v.politica.base,

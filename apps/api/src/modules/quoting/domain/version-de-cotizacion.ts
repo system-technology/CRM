@@ -23,6 +23,13 @@ export interface DatosDeVersion {
   infantes: number;
   acomodacion: 'SENCILLA' | 'DOBLE' | 'TRIPLE' | 'CUADRUPLE' | null;
   /**
+   * Las edades y la silla con las que se cotizó (T-217). Vienen de la PETICIÓN, ya validada por
+   * `coherenciaDeEdades`: el cálculo no las devuelve. Vacío / `null` = no se declararon.
+   */
+  edadesNinos: number[];
+  edadesInfantes: number[];
+  infantesConSilla: number | null;
+  /**
    * La opción de salida con la que el SERVIDOR cotizó (T-062), no la que pidió el cliente: si el
    * producto no tiene opciones es `null` aunque viniera una. Volver a cotizar con ella reproduce
    * el mismo total mientras el tarifario no cambie.
@@ -42,7 +49,13 @@ export interface DatosDeVersion {
 export function armarVersion(
   calculo: CotizacionDeSalida,
   politica: PoliticaAplicada,
-  extra: { acomodacion?: DatosDeVersion['acomodacion']; vigenteHasta?: string },
+  extra: {
+    acomodacion?: DatosDeVersion['acomodacion'];
+    vigenteHasta?: string;
+    edadesNinos?: readonly number[];
+    edadesInfantes?: readonly number[];
+    infantesConSilla?: number;
+  },
 ): DatosDeVersion {
   if (calculo.lineas.length === 0) throw new CotizacionSinLineasError();
 
@@ -91,6 +104,9 @@ export function armarVersion(
     ninos: calculo.ninos,
     infantes: calculo.infantes,
     acomodacion: extra.acomodacion ?? null,
+    edadesNinos: [...(extra.edadesNinos ?? [])],
+    edadesInfantes: [...(extra.edadesInfantes ?? [])],
+    infantesConSilla: extra.infantesConSilla ?? null,
     opcionDeSalidaId: calculo.opcionDeSalida?.id ?? null,
     politica,
     lineas: calculo.lineas,
