@@ -5383,8 +5383,9 @@ tasks:
     phase: 1
     priority: P2
     effort: S
-    status: in_progress
-    notes: "Endpoint y contrato en este PR (permiso usuarios.administrar); quedan Z5 con NULL y los comentarios de policies/002"
+    status: done
+    done_at: 2026-11-16T00:30:00.000Z
+    evidence: "API en #278 (db8c875) y pantalla en #279 (a7fb3d5); lo pendiente de pruebas y comentarios pasa a T-237"
     depends_on: []
     acceptance:
       - "El endpoint exige permiso de dueno o administrador (la funcion no comprueba RBAC; solo viajapro_app la ejecuta)"
@@ -5398,3 +5399,21 @@ tasks:
     source: rehecho del PR #234 y su auditoria de seguridad, 2026-11-15
     created_at: 2026-11-15T23:45:00.000Z
     owner: backend
+  - id: T-237
+    title: "Datos: Z5 ejercita app.current_tenant NULL y policies/002 al dia con viajapro_metricas"
+    type: test
+    phase: 1
+    priority: P3
+    effort: S
+    status: ready
+    depends_on: [T-236]
+    acceptance:
+      - "Z5 de aislamiento.spec.ts prueba el contexto NULL en una conexion nueva, ademas de ''"
+      - "policies/002: comentarios de roles y propietarios al dia; viajapro_metricas en las mismas listas que viajapro_ajustes"
+      - "e2e de 403 sin usuarios.administrar por HTTP (sin el atajo x-dev-tenant-id)"
+    files:
+      - packages/database/tests/aislamiento.spec.ts
+      - packages/database/prisma/policies/002-rol-aplicacion.sql
+    source: auditorias de seguridad del rehecho de #234 y de T-236, 2026-11-15
+    created_at: 2026-11-16T00:30:00.000Z
+    owner: datos
