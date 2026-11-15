@@ -309,9 +309,9 @@ export function calcularCotizacionMock(
   paquete: PaqueteConDetalle,
 ): CotizacionCalculada {
   const temporada =
-    paquete.temporadas.find(
+    paquete.tarifarioDemo.find(
       (t) => entrada.fechaSalida >= t.desde && entrada.fechaSalida <= t.hasta,
-    ) ?? paquete.temporadas[0]!;
+    ) ?? paquete.tarifarioDemo[0]!;
 
   const totalPasajeros =
     entrada.pasajeros.adultos + entrada.pasajeros.ninos + entrada.pasajeros.infantes;

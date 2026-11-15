@@ -8,6 +8,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
 import { QuotingPuertosModule } from './modules/quoting/quoting-puertos.module.js';
 import { QuotingModule } from './modules/quoting/quoting.module.js';
 import { SaludController } from './salud.controller.js';
+import { LectorDeCola, LectorDeColaRedis } from './shared/observabilidad/antiguedad-de-cola.js';
 import {
   LectorDelLatido,
   LectorDelLatidoRedis,
@@ -35,6 +36,12 @@ import { OriginCheckMiddleware } from './shared/red/origin-check.middleware.js';
   ],
   controllers: [SaludController],
   providers: [
+    {
+      // T-203: antigüedad de la cola, medida por el trabajador y publicada en Redis.
+      provide: LectorDeCola,
+      useFactory: (): LectorDeCola | null =>
+        seExigeElLatido() ? new LectorDeColaRedis(process.env['REDIS_URL'] ?? '') : null,
+    },
     {
       // T-194: la API lee el latido del trabajador. `null` donde no hay trabajador aparte.
       provide: LectorDelLatido,

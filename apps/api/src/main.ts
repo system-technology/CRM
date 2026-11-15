@@ -11,10 +11,13 @@ import { NestFactory } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module.js';
 import { configurarApi } from './configurar-api.js';
+import { LoggerJson } from './shared/observabilidad/logger-json.js';
 
 async function arrancar(): Promise<void> {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, { bufferLogs: true });
 
+  // T-203: logs JSON con tenant_id/trace_id y sin PII. Vacía el búfer de `bufferLogs`.
+  app.useLogger(new LoggerJson());
   configurarApi(app);
 
   const puerto = Number(process.env['API_PORT'] ?? 3333);
@@ -28,9 +31,6 @@ async function arrancar(): Promise<void> {
 arrancar().catch((error) => {
   // Si el arranque falla —por ejemplo, porque el rol puede saltarse RLS— el proceso NO debe
   // quedarse vivo a medias: es preferible que el despliegue falle de forma visible.
-  new Logger('arranque').error(
-    'La API no pudo arrancar',
-    error instanceof Error ? error.stack : error,
-  );
+  new Logger('arranque').error('La API no pudo arrancar', error);
   process.exit(1);
 });

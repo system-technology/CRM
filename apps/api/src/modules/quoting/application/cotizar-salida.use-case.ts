@@ -317,7 +317,10 @@ export class CotizarSalidaUseCase {
     // Si todas las tarifas aplicables tienen condiciones no evaluables, no hay alternativas
     // de grupo y no se cubren todos los pasajeros → error de dominio tipado.
     const cubiertos = lineas.reduce((n, l) => n + l.veces, 0);
-    if (sinEvaluar.length > 0 && alternativas.length === 0 && cubiertos < pasajeros) {
+    // T-190: el infante solo cuenta como «por cubrir» si el producto tiene una tarifa INF.
+    const porCubrir =
+      adultos + ninos + (filas.some((f) => f.tipoPasajero === 'INF') ? infantes : 0);
+    if (sinEvaluar.length > 0 && alternativas.length === 0 && cubiertos < porCubrir) {
       throw new TarifasConCondicionNoEvaluableError([...new Set(sinEvaluar)]);
     }
 

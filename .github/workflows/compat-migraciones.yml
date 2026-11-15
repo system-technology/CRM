@@ -1,0 +1,63 @@
+# T-209. Aviso (NO obligatorio) cuando una migracion nueva de un PR rompe a la version anterior
+# de la aplicacion. La regla (CLAUDE.md, devops): las migraciones corren ANTES del despliegue y
+# deben convivir con la version vieja en ejecucion -> «expandir y luego contraer».
+#
+# Es una heuristica sobre el texto del SQL: avisa, nunca falla. Un falso positivo se resuelve
+# marcando la casilla del PR; un falso negativo lo cubre la lista de .github/pull_request_template.md.
+# Workflow aparte (y no un job de ci.yml) para no tocar la compuerta ni la lista de checks obligatorios.
+name: Compatibilidad de migraciones
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'packages/database/prisma/migrations/**'
+
+permissions:
+  contents: read
+
+jobs:
+  compat-migraciones:
+    name: compat-migraciones
+    runs-on: ubuntu-latest
+    # No es una compuerta: ni la lista de checks obligatorios (.github/proteccion-main.json) lo incluye.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Buscar operaciones destructivas en migraciones nuevas
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -u
+          dir='packages/database/prisma/migrations'
+          avisos=0
+
+          # Una migracion ya aplicada no se edita (CLAUDE.md §10): se corrige con una nueva.
+          for f in $(git diff --name-only --diff-filter=MDR "$BASE_SHA"...HEAD -- "$dir"); do
+            echo "::warning file=$f::Migracion existente modificada/borrada/renombrada. No se editan migraciones ya aplicadas: crea una nueva."
+            avisos=$((avisos + 1))
+          done
+
+          for f in $(git diff --name-only --diff-filter=A "$BASE_SHA"...HEAD -- "$dir" | grep '\.sql$' || true); do
+            # Solo lineas de codigo: se descartan comentarios SQL (--).
+            sql=$(sed 's/--.*$//' "$f")
+            while IFS='#' read -r patron mensaje; do
+              if echo "$sql" | grep -Piq "$patron"; then
+                echo "::warning file=$f::$mensaje"
+                avisos=$((avisos + 1))
+              fi
+            done <<'PATRONES'
+          DROP[[:space:]]+COLUMN#DROP COLUMN: la version anterior aun lee esa columna. Primero deja de usarla (despliegue 1), borra despues (despliegue 2).
+          DROP[[:space:]]+TABLE#DROP TABLE: la version anterior aun puede leer/escribir la tabla. Contrae en un despliegue posterior.
+          ALTER[[:space:]]+COLUMN[^;]*[[:space:]]TYPE#ALTER COLUMN ... TYPE: reescribe la tabla (bloqueo) y puede romper a la version anterior. Usa columna nueva + copia + cambio de lectura.
+          RENAME[[:space:]]+(COLUMN|TO)#RENAME: la version anterior sigue usando el nombre viejo. Anade el nombre nuevo, migra, y borra el viejo despues.
+          SET[[:space:]]+NOT[[:space:]]+NULL#SET NOT NULL: la version anterior puede seguir escribiendo nulos. Rellena y exige en un despliegue posterior.
+          ADD[[:space:]]+COLUMN(?![^;]*DEFAULT)[^;]*NOT[[:space:]]+NULL#ADD COLUMN ... NOT NULL: sin DEFAULT la version anterior no puede insertar. Pon DEFAULT o hazla nullable primero.
+          DROP[[:space:]]+TYPE#DROP TYPE / enum: la version anterior puede usar el tipo.
+          PATRONES
+          done
+
+          echo "Avisos: $avisos (informativo; no bloquea)."
+          exit 0

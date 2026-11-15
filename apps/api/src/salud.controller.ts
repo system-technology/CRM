@@ -2,6 +2,7 @@ import { Controller, Get, Inject, HttpStatus, Optional, Res } from '@nestjs/comm
 import type { Response } from 'express';
 import { Logger } from '@nestjs/common';
 import { PrismaService } from './shared/prisma/prisma.service.js';
+import { LectorDeCola } from './shared/observabilidad/antiguedad-de-cola.js';
 import { LectorDelLatido } from './shared/salud/latido-del-trabajador.js';
 
 @Controller('salud')
@@ -16,6 +17,8 @@ export class SaludController {
     @Inject(PrismaService) private readonly prisma: PrismaService,
     // Opcional: sin lector (pruebas, modo unico, sin Redis) el latido no se informa ni se exige.
     @Optional() @Inject(LectorDelLatido) private readonly latido?: LectorDelLatido,
+    // Opcional por lo mismo. Informa la antigüedad de la cola; NO cambia `estado` ni el HTTP.
+    @Optional() @Inject(LectorDeCola) private readonly cola?: LectorDeCola,
   ) {}
 
   /** Para el balanceador: ¿el proceso está vivo? */
@@ -56,6 +59,9 @@ export class SaludController {
       // y un trabajador caido no debe impedir desplegarla ni sacarla de rotacion. Se informa en
       // el cuerpo (`estado: 'degradado'`) para la sonda de staging y para la vigilancia externa.
       const trabajador = this.latido ? await this.latido.leer() : null;
+      // T-203: cola atascada se informa aparte (`cola.estado`) y NO degrada `estado`: la sonda de
+      // despliegue exige `"estado":"ok"` y un atraso no debe impedir desplegar su arreglo.
+      const cola = this.cola ? await this.cola.leer() : null;
       res.status(HttpStatus.OK);
       return {
         estado: trabajador && trabajador.estado !== 'ok' ? 'degradado' : 'ok',
@@ -63,6 +69,7 @@ export class SaludController {
         rol: rol?.usuario ?? null,
         aislamiento: 'forzado',
         ...(trabajador ? { trabajador } : {}),
+        ...(cola ? { cola } : {}),
       };
     } catch (error) {
       this.logger.error('Health check falló', error);

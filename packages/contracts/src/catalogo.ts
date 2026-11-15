@@ -16,7 +16,7 @@ import {
   PlanAlimentacion,
   TipoPasajero,
 } from './comunes.js';
-import { CargoEnDestino } from './vigencias.js';
+import { CargoEnDestino, TarifaPublica } from './vigencias.js';
 import { PresentacionDePrecio } from './politica-de-precio.js';
 
 // =============================================================================
@@ -46,82 +46,30 @@ export const CrearMayorista = Mayorista.pick({ nombre: true }).extend({
 export type CrearMayorista = z.infer<typeof CrearMayorista>;
 
 // =============================================================================
-// Precio
+// Detalle de paquete: vigencias y tarifas (ADR-0025 paso 2)
 // =============================================================================
 
 /**
- * Precio por temporada, acomodación y tipo de pasajero.
+ * Una tarifa tal como la lee el detalle del paquete: lo mismo que lee el cotizador.
  *
- * `neto` NUNCA se expone a un usuario que no sea del tenant: es lo que cobra el mayorista.
- * El contrato público de cara al viajero usa `PrecioPublico`, que solo lleva la venta.
+ * `neto` solo existe con `incluirMargen=true` (R10): sin el flag la clave no viaja. Con el flag,
+ * `null` significa que el mayorista no ha entregado el neto, que es legítimo (ADR-0009 §5).
  */
-export const Precio = z.object({
-  id: Id,
-  acomodacion: Acomodacion,
-  tipoPasajero: TipoPasajero,
-  /** Solo con `incluirMargen=true`: sin el flag la clave no existe en la respuesta. */
-  neto: Dinero.optional(),
-  venta: Dinero,
-  /** Edad de corte. "Niño de 2 a 11 años" es condición comercial del tarifario. */
-  edadMinima: z.number().int().min(0).max(120).nullable(),
-  edadMaxima: z.number().int().min(0).max(120).nullable(),
+export const TarifaDeDetalle = TarifaPublica.extend({
+  neto: Dinero.nullable().optional(),
 });
-export type Precio = z.infer<typeof Precio>;
+export type TarifaDeDetalle = z.infer<typeof TarifaDeDetalle>;
 
-/** Lo que ve el viajero: sin tarifa neta ni margen. */
-export const PrecioPublico = Precio.omit({ neto: true });
-export type PrecioPublico = z.infer<typeof PrecioPublico>;
-
-/** @deprecated ADR-0017: el precio vive en `Tarifa` (vigencias). Se retira con las temporadas. */
-export const CrearPrecio = z
-  .object({
-    acomodacion: Acomodacion,
-    tipoPasajero: TipoPasajero,
-    neto: Dinero,
-    venta: Dinero,
-    edadMinima: z.number().int().min(0).max(120).optional(),
-    edadMaxima: z.number().int().min(0).max(120).optional(),
-  })
-  .refine((p) => p.neto.moneda === p.venta.moneda, {
-    message: 'el neto y la venta deben estar en la misma moneda',
-    path: ['venta'],
-  })
-  .refine((p) => p.edadMinima == null || p.edadMaxima == null || p.edadMinima <= p.edadMaxima, {
-    message: 'la edad mínima no puede superar a la máxima',
-    path: ['edadMaxima'],
-  })
-  .refine((p) => p.tipoPasajero !== 'ADT' || (p.edadMinima == null && p.edadMaxima == null), {
-    message: 'un adulto no lleva rango de edad: el rango define a niños e infantes',
-    path: ['edadMinima'],
-  });
-export type CrearPrecio = z.infer<typeof CrearPrecio>;
-
-// =============================================================================
-// Temporada
-// =============================================================================
-
-export const Temporada = z.object({
+/** Una vigencia con sus tarifas. Sin nombre: «Temporada baja» ya no existe (ADR-0025). */
+export const VigenciaDeDetalle = z.object({
   id: Id,
-  nombre: z.string().min(1).max(80),
   desde: FechaViaje,
   hasta: FechaViaje,
-  precios: z.array(Precio),
+  publicada: z.boolean(),
+  cupoTotal: z.number().int().min(0).nullable(),
+  tarifas: z.array(TarifaDeDetalle),
 });
-export type Temporada = z.infer<typeof Temporada>;
-
-/** @deprecated ADR-0017: la temporada se reemplazó por la vigencia (`vigencias.ts`). */
-export const CrearTemporada = z
-  .object({
-    nombre: z.string().min(1).max(80),
-    desde: FechaViaje,
-    hasta: FechaViaje,
-    precios: z.array(CrearPrecio).min(1, 'una temporada sin precios no sirve para cotizar'),
-  })
-  .refine((t) => t.desde <= t.hasta, {
-    message: 'la fecha de inicio no puede ser posterior a la de fin',
-    path: ['hasta'],
-  });
-export type CrearTemporada = z.infer<typeof CrearTemporada>;
+export type VigenciaDeDetalle = z.infer<typeof VigenciaDeDetalle>;
 
 // =============================================================================
 // Paquete
@@ -162,6 +110,16 @@ export const Paquete = z.object({
     .optional(),
 });
 export type Paquete = z.infer<typeof Paquete>;
+
+/** `GET /api/v1/paquetes/:id`. Reemplaza a `temporadas` por lo que lee el cotizador (ADR-0025). */
+export const DetalleDePaquete = Paquete.extend({
+  actualizadoEn: Instante,
+  mayorista: z
+    .object({ id: Id, nombre: z.string(), diasTimeLimit: z.number().int().nullable() })
+    .nullable(),
+  vigencias: z.array(VigenciaDeDetalle),
+});
+export type DetalleDePaquete = z.infer<typeof DetalleDePaquete>;
 
 /** Campos que el formulario de alta y el de edición comparten. */
 const CamposDePaquete = z.object({

@@ -4193,7 +4193,8 @@ tasks:
     phase: 1
     priority: P1
     effort: S
-    status: in_progress
+    status: done
+    done_at: 2026-11-15T16:30:00.000Z
     depends_on: []
     acceptance:
       - /ingresar carga sin errores de hidratacion en la consola del navegador
@@ -4203,13 +4204,15 @@ tasks:
     source: campana funcional T-126 2026-11-05 (docs/_bitacora/hallazgos-funcionales-2026-11-05.md)
     created_at: 2026-11-05T23:30:00.000Z
     owner: frontend
+    evidence: "Integrado en main por el PR #256 (473b155)"
   - id: T-174
     title: "Web: /login responde 404; redirigir o decidir la ruta unica de acceso (H-4)"
     type: bug
     phase: 1
     priority: P1
     effort: S
-    status: in_progress
+    status: done
+    done_at: 2026-11-15T16:30:00.000Z
     depends_on: []
     acceptance:
       - /login lleva a /ingresar o se documenta que no existe; hoy responde 404
@@ -4220,13 +4223,15 @@ tasks:
     source: campana funcional T-126 2026-11-05 (docs/_bitacora/hallazgos-funcionales-2026-11-05.md)
     created_at: 2026-11-05T23:30:00.000Z
     owner: frontend
+    evidence: "Integrado en main por el PR #256 (473b155)"
   - id: T-175
     title: "Seguridad: el atajo x-dev-tenant-id no puede atender peticiones de internet en Codespaces (A1)"
     type: security
     phase: 1
     priority: P0
     effort: S
-    status: in_progress
+    status: done
+    done_at: 2026-11-15T16:30:00.000Z
     depends_on: []
     acceptance:
       - "El atajo exige conexion de loopback sin X-Forwarded-For ademas de APP_ENV=local"
@@ -4240,6 +4245,7 @@ tasks:
     source: auditoria integral 2026-11-15 (docs/_auditorias/2026-11-15-auditoria-integral.md)
     created_at: 2026-11-15T16:00:00.000Z
     owner: backend
+    evidence: "Integrado en main por el PR #256 (473b155)"
   - id: T-176
     title: "API: POST /conversaciones/:id/leida exige permiso de bandeja (bajo)"
     type: security
@@ -4263,7 +4269,8 @@ tasks:
     phase: 1
     priority: P0
     effort: S
-    status: in_progress
+    status: done
+    done_at: 2026-11-15T16:30:00.000Z
     depends_on: []
     acceptance:
       - "Crear oportunidad desde la bandeja guarda 5000000 como 5000000 COP; '5.000.000' tambien"
@@ -4278,13 +4285,15 @@ tasks:
     source: auditoria integral 2026-11-15 (docs/_auditorias/2026-11-15-auditoria-integral.md)
     created_at: 2026-11-15T16:00:00.000Z
     owner: frontend
+    evidence: "Integrado en main por el PR #256 (473b155)"
   - id: T-178
     title: "Web: sin datos inventados en modo real (tarjeta de cotizacion en la bandeja e impresion) (A4)"
     type: bug
     phase: 1
     priority: P0
     effort: M
-    status: in_progress
+    status: done
+    done_at: 2026-11-15T16:30:00.000Z
     depends_on: []
     acceptance:
       - "La tarjeta de la bandeja muestra la cotizacion real por su id, o solo el texto enviado"
@@ -4296,13 +4305,15 @@ tasks:
     source: auditoria integral 2026-11-15 (docs/_auditorias/2026-11-15-auditoria-integral.md)
     created_at: 2026-11-15T16:00:00.000Z
     owner: frontend
+    evidence: "Integrado en main por el PR #256 (473b155)"
   - id: T-179
     title: "Cotizador: edad por pasajero para cotizar familias en productos con noche (C1)"
     type: feature
     phase: 1
     priority: P0
     effort: L
-    status: in_progress
+    status: done
+    done_at: 2026-11-15T16:30:00.000Z
     depends_on: []
     acceptance:
       - "CotizarSalida en packages/contracts recibe la edad de cada nino e infante y si el infante ocupa silla"
@@ -4317,13 +4328,15 @@ tasks:
     source: auditoria integral 2026-11-15 (docs/_auditorias/2026-11-15-auditoria-integral.md)
     created_at: 2026-11-15T16:00:00.000Z
     owner: backend
+    evidence: "Integrado en main por el PR #256 (473b155)"
   - id: T-180
     title: "Datos: semilla de paquetes con hotel en vigencias y tarifas; retirar Temporada/Precio (A9)"
     type: refactor
     phase: 1
     priority: P1
     effort: M
-    status: in_progress
+    status: done
+    done_at: 2026-11-15T16:30:00.000Z
     depends_on: [T-179]
     acceptance:
       - "Los paquetes de la semilla (San Andres, Cartagena, Punta Cana) se cotizan con el cotizador actual"
@@ -4334,13 +4347,15 @@ tasks:
     source: auditoria integral 2026-11-15 (docs/_auditorias/2026-11-15-auditoria-integral.md)
     created_at: 2026-11-15T16:00:00.000Z
     owner: datos
+    evidence: "Integrado en main por el PR #256 (473b155)"
   - id: T-181
     title: "CRM: totales del pipeline por moneda (A5)"
     type: bug
     phase: 1
     priority: P1
     effort: S
-    status: in_progress
+    status: done
+    done_at: 2026-11-15T16:30:00.000Z
     depends_on: []
     acceptance:
       - "El tablero agrupa por etapa y moneda, o la creacion rechaza monedas distintas de la del tenant"
@@ -4353,13 +4368,15 @@ tasks:
     source: auditoria integral 2026-11-15 (docs/_auditorias/2026-11-15-auditoria-integral.md)
     created_at: 2026-11-15T16:00:00.000Z
     owner: backend
+    evidence: "Integrado en main por el PR #256 (473b155)"
   - id: T-182
     title: "Bandeja: el SLA se activa con mensajes reales (A6)"
     type: bug
     phase: 1
     priority: P1
     effort: M
-    status: in_progress
+    status: done
+    done_at: 2026-11-15T16:30:00.000Z
     depends_on: []
     acceptance:
       - "Al recibir el primer entrante sin respuesta se fija sla_vence_en segun el plazo de la agencia"
@@ -4370,13 +4387,15 @@ tasks:
     source: auditoria integral 2026-11-15 (docs/_auditorias/2026-11-15-auditoria-integral.md)
     created_at: 2026-11-15T16:00:00.000Z
     owner: backend
+    evidence: "Integrado en main por el PR #256 (473b155)"
   - id: T-183
     title: "Reportes: ventas por fecha de aceptacion (A7)"
     type: bug
     phase: 1
     priority: P1
     effort: S
-    status: in_progress
+    status: done
+    done_at: 2026-11-15T16:30:00.000Z
     depends_on: []
     acceptance:
       - "Ventas del periodo agrupa por el cambio a ACEPTADA en cotizacion_cambios_estado"
@@ -4388,13 +4407,15 @@ tasks:
     source: auditoria integral 2026-11-15 (docs/_auditorias/2026-11-15-auditoria-integral.md)
     created_at: 2026-11-15T16:00:00.000Z
     owner: backend
+    evidence: "Integrado en main por el PR #256 (473b155)"
   - id: T-184
     title: "Reportes: metricas honestas para el dueno (n minimo y nombres) (A8 M13 M14)"
     type: bug
     phase: 1
     priority: P1
     effort: S
-    status: in_progress
+    status: done
+    done_at: 2026-11-15T16:30:00.000Z
     depends_on: []
     acceptance:
       - "Las tasas muestran 'n insuficiente' por debajo de un minimo y enseñan n"
@@ -4406,13 +4427,15 @@ tasks:
     source: auditoria integral 2026-11-15 (docs/_auditorias/2026-11-15-auditoria-integral.md)
     created_at: 2026-11-15T16:00:00.000Z
     owner: frontend
+    evidence: "Integrado en main por el PR #256 (473b155)"
   - id: T-185
     title: "Bandeja: plantilla y errores de envio visibles (M1)"
     type: bug
     phase: 1
     priority: P1
     effort: S
-    status: in_progress
+    status: done
+    done_at: 2026-11-15T16:30:00.000Z
     depends_on: []
     acceptance:
       - "Con la API real, 'Enviar plantilla' queda deshabilitado hasta que exista el endpoint de plantillas"
@@ -4423,13 +4446,15 @@ tasks:
     source: auditoria integral 2026-11-15 (docs/_auditorias/2026-11-15-auditoria-integral.md)
     created_at: 2026-11-15T16:00:00.000Z
     owner: frontend
+    evidence: "Integrado en main por el PR #256 (473b155)"
   - id: T-186
     title: "Bandeja: reasignar con los miembros reales de la agencia (M2)"
     type: feature
     phase: 1
     priority: P1
     effort: M
-    status: in_progress
+    status: done
+    done_at: 2026-11-15T16:30:00.000Z
     depends_on: []
     acceptance:
       - "Lectura de asignables con permiso de bandeja (decision del arquitecto)"
@@ -4440,13 +4465,15 @@ tasks:
     source: auditoria integral 2026-11-15 (docs/_auditorias/2026-11-15-auditoria-integral.md)
     created_at: 2026-11-15T16:00:00.000Z
     owner: backend
+    evidence: "Integrado en main por el PR #256 (473b155)"
   - id: T-187
     title: "Reportes: primera respuesta con grupo coherente y p90 (M12)"
     type: bug
     phase: 1
     priority: P2
     effort: M
-    status: in_progress
+    status: done
+    done_at: 2026-11-15T16:30:00.000Z
     depends_on: []
     acceptance:
       - "Numerador y denominador salen del mismo grupo de conversaciones"
@@ -4457,13 +4484,15 @@ tasks:
     source: auditoria integral 2026-11-15 (docs/_auditorias/2026-11-15-auditoria-integral.md)
     created_at: 2026-11-15T16:00:00.000Z
     owner: backend
+    evidence: "Integrado en main por el PR #256 (473b155)"
   - id: T-188
     title: "Cotizador: filtrar tarifas por acomodacion (C2)"
     type: bug
     phase: 1
     priority: P0
     effort: M
-    status: in_progress
+    status: done
+    done_at: 2026-11-15T16:30:00.000Z
     depends_on: [T-179]
     acceptance:
       - "La peticion lleva acomodacion y se exige cuando las tarifas la traen"
@@ -4475,13 +4504,15 @@ tasks:
     source: auditoria integral 2026-11-15 (docs/_auditorias/2026-11-15-auditoria-integral.md)
     created_at: 2026-11-15T16:00:00.000Z
     owner: backend
+    evidence: "Integrado en main por el PR #256 (473b155)"
   - id: T-189
     title: "Cotizador: no sumar tarifas de distinta moneda en el calculo (M8)"
     type: bug
     phase: 1
     priority: P1
     effort: S
-    status: in_progress
+    status: done
+    done_at: 2026-11-15T16:30:00.000Z
     depends_on: []
     acceptance:
       - "El calculo agrupa por moneda o rechaza con error de dominio, igual que al guardar"
@@ -4490,13 +4521,14 @@ tasks:
     source: auditoria integral 2026-11-15 (docs/_auditorias/2026-11-15-auditoria-integral.md)
     created_at: 2026-11-15T16:00:00.000Z
     owner: backend
+    evidence: "Integrado en main por el PR #256 (473b155)"
   - id: T-190
     title: "Cotizador: el infante no se cobra con una tarifa sin tipo de pasajero (M9)"
     type: bug
     phase: 1
     priority: P2
     effort: S
-    status: ready
+    status: in_progress
     depends_on: []
     acceptance:
       - "Una tarifa sin tipo cubre adultos y ninos; el infante solo con tarifa INF explicita o politica del tenant (R12)"
@@ -4539,13 +4571,15 @@ tasks:
     source: auditoria integral 2026-11-15 (docs/_auditorias/2026-11-15-auditoria-integral.md)
     created_at: 2026-11-15T16:00:00.000Z
     owner: arquitecto
+    notes: "ADR-0023 propuesto en main; falta aceptarlo y corregir el comentario de schema.prisma y el lenguaje ubicuo"
   - id: T-193
     title: "Dev: pnpm dev construye contracts y domain antes de arrancar (A11)"
     type: infra
     phase: 1
     priority: P1
     effort: S
-    status: in_progress
+    status: done
+    done_at: 2026-11-15T16:30:00.000Z
     depends_on: []
     acceptance:
       - "En un clon nuevo, pnpm install && pnpm dev deja la web en 200"
@@ -4556,13 +4590,15 @@ tasks:
     source: auditoria integral 2026-11-15 (docs/_auditorias/2026-11-15-auditoria-integral.md)
     created_at: 2026-11-15T16:00:00.000Z
     owner: devops
+    evidence: "Integrado en main por el PR #256 (473b155)"
   - id: T-194
     title: "Dev y staging: el trabajador arranca y se vigila (A12)"
     type: infra
     phase: 1
     priority: P1
     effort: M
-    status: in_progress
+    status: done
+    done_at: 2026-11-15T16:30:00.000Z
     depends_on: []
     acceptance:
       - "dev:nube arranca el trabajador"
@@ -4574,13 +4610,15 @@ tasks:
     source: auditoria integral 2026-11-15 (docs/_auditorias/2026-11-15-auditoria-integral.md)
     created_at: 2026-11-15T16:00:00.000Z
     owner: devops
+    evidence: "Integrado en main por el PR #256 (473b155)"
   - id: T-195
     title: "Pruebas: las e2e validan cada respuesta que consume la web contra su esquema Zod (A14)"
     type: test
     phase: 1
     priority: P1
     effort: M
-    status: in_progress
+    status: done
+    done_at: 2026-11-15T16:30:00.000Z
     depends_on: []
     acceptance:
       - "Bandeja, detalle, mensajes, reportes y cotizacion guardada hacen Esquema.parse en sus e2e"
@@ -4589,13 +4627,14 @@ tasks:
     source: auditoria integral 2026-11-15 (docs/_auditorias/2026-11-15-auditoria-integral.md)
     created_at: 2026-11-15T16:00:00.000Z
     owner: qa
+    evidence: "Integrado en main por el PR #256 (473b155)"
   - id: T-196
     title: "Pruebas: e2e de navegador minima del flujo H1-H6 (A15)"
     type: test
     phase: 1
     priority: P1
     effort: L
-    status: ready
+    status: in_progress
     depends_on: [T-193]
     acceptance:
       - "Playwright en CI: ingreso, bandeja, webhook firmado, mensaje visible, cotizar, enviar"
@@ -4612,7 +4651,8 @@ tasks:
     phase: 1
     priority: P1
     effort: S
-    status: in_progress
+    status: done
+    done_at: 2026-11-15T16:30:00.000Z
     depends_on: []
     acceptance:
       - "Contactos, consentimientos, seguimientos y oportunidades ajenos dan 404 y no cambian la fila"
@@ -4621,13 +4661,15 @@ tasks:
     source: auditoria integral 2026-11-15 (docs/_auditorias/2026-11-15-auditoria-integral.md)
     created_at: 2026-11-15T16:00:00.000Z
     owner: qa
+    evidence: "Integrado en main por el PR #256 (473b155)"
   - id: T-198
     title: "Bandeja: una sola regla de ventana de 24 h (M5)"
     type: refactor
     phase: 1
     priority: P2
     effort: S
-    status: in_progress
+    status: done
+    done_at: 2026-11-15T16:30:00.000Z
     depends_on: []
     acceptance:
       - "La web consume VentanaServicio de la API en vez de recalcularla"
@@ -4636,13 +4678,15 @@ tasks:
     source: auditoria integral 2026-11-15 (docs/_auditorias/2026-11-15-auditoria-integral.md)
     created_at: 2026-11-15T16:00:00.000Z
     owner: frontend
+    evidence: "Integrado en main por el PR #256 (473b155)"
   - id: T-199
     title: "CI: las pruebas de Redis y Postgres no se omiten en silencio (M6)"
     type: test
     phase: 1
     priority: P2
     effort: S
-    status: in_progress
+    status: done
+    done_at: 2026-11-15T16:30:00.000Z
     depends_on: []
     acceptance:
       - "Variable EXIGIR en el paso de pruebas: si falta REDIS_URL o DATABASE_URL, fallan"
@@ -4651,13 +4695,15 @@ tasks:
     source: auditoria integral 2026-11-15 (docs/_auditorias/2026-11-15-auditoria-integral.md)
     created_at: 2026-11-15T16:00:00.000Z
     owner: qa
+    evidence: "Integrado en main por el PR #256 (473b155)"
   - id: T-200
     title: "Pruebas: casos borde de dinero del cotizador (M7)"
     type: test
     phase: 1
     priority: P2
     effort: S
-    status: in_progress
+    status: done
+    done_at: 2026-11-15T16:30:00.000Z
     depends_on: []
     acceptance:
       - "Venta menor que neto, markup negativo, infante sin adulto, cantidad cero, mezcla COP/USD"
@@ -4666,13 +4712,15 @@ tasks:
     source: auditoria integral 2026-11-15 (docs/_auditorias/2026-11-15-auditoria-integral.md)
     created_at: 2026-11-15T16:00:00.000Z
     owner: qa
+    evidence: "Integrado en main por el PR #256 (473b155)"
   - id: T-201
     title: "Pruebas web: aserciones con contenido exacto (bajo)"
     type: test
     phase: 1
     priority: P3
     effort: S
-    status: in_progress
+    status: done
+    done_at: 2026-11-15T16:30:00.000Z
     depends_on: []
     acceptance:
       - "Las aserciones toBeDefined/toBeTruthy que no fallan ante una mutacion se sustituyen"
@@ -4681,13 +4729,15 @@ tasks:
     source: auditoria integral 2026-11-15 (docs/_auditorias/2026-11-15-auditoria-integral.md)
     created_at: 2026-11-15T16:00:00.000Z
     owner: frontend
+    evidence: "Integrado en main por el PR #256 (473b155)"
   - id: T-202
     title: "Pipeline: guardar etapas sin estados a medias (M24)"
     type: bug
     phase: 1
     priority: P3
     effort: S
-    status: in_progress
+    status: done
+    done_at: 2026-11-15T16:30:00.000Z
     depends_on: []
     acceptance:
       - "Si un PATCH falla, el mensaje dice que etapas se guardaron"
@@ -4696,13 +4746,14 @@ tasks:
     source: auditoria integral 2026-11-15 (docs/_auditorias/2026-11-15-auditoria-integral.md)
     created_at: 2026-11-15T16:00:00.000Z
     owner: frontend
+    evidence: "Integrado en main por el PR #256 (473b155)"
   - id: T-203
     title: "Operacion: observabilidad minima (logs, monitor, alerta de cola, runbooks) (C3)"
     type: infra
     phase: 2
     priority: P1
     effort: M
-    status: ready
+    status: in_progress
     depends_on: []
     acceptance:
       - "Logs estructurados con tenant_id y trace_id"
@@ -4721,7 +4772,8 @@ tasks:
     phase: 1
     priority: P1
     effort: S
-    status: in_progress
+    status: done
+    done_at: 2026-11-15T16:30:00.000Z
     depends_on: []
     acceptance:
       - "Sin secretos el job falla o publica un estado 'omitido' visible"
@@ -4730,13 +4782,15 @@ tasks:
     source: auditoria integral 2026-11-15 (docs/_auditorias/2026-11-15-auditoria-integral.md)
     created_at: 2026-11-15T16:00:00.000Z
     owner: devops
+    evidence: "Integrado en main por el PR #256 (473b155)"
   - id: T-205
     title: "Operacion: respaldo y restauracion probada (A13)"
     type: infra
     phase: 2
     priority: P1
     effort: M
-    status: in_progress
+    status: done
+    done_at: 2026-11-15T16:30:00.000Z
     depends_on: []
     acceptance:
       - "RPO y RTO escritos"
@@ -4747,13 +4801,15 @@ tasks:
     source: auditoria integral 2026-11-15 (docs/_auditorias/2026-11-15-auditoria-integral.md)
     created_at: 2026-11-15T16:00:00.000Z
     owner: devops
+    evidence: "Integrado en main por el PR #256 (473b155)"
   - id: T-206
     title: "CI: auditoria de dependencias y escaneo de imagenes (M15)"
     type: security
     phase: 1
     priority: P2
     effort: S
-    status: in_progress
+    status: done
+    done_at: 2026-11-15T16:30:00.000Z
     depends_on: []
     acceptance:
       - "pnpm audit --prod con umbral alto y Trivy sobre la imagen construida"
@@ -4762,13 +4818,15 @@ tasks:
     source: auditoria integral 2026-11-15 (docs/_auditorias/2026-11-15-auditoria-integral.md)
     created_at: 2026-11-15T16:00:00.000Z
     owner: devops
+    evidence: "Integrado en main por el PR #256 (473b155)"
   - id: T-207
     title: "CI: acciones fijadas por SHA y Dependabot revisado (M16)"
     type: security
     phase: 1
     priority: P2
     effort: S
-    status: in_progress
+    status: done
+    done_at: 2026-11-15T16:30:00.000Z
     depends_on: []
     acceptance:
       - "ownership, cerrar-tarea y mantener-ramas con SHA"
@@ -4780,13 +4838,15 @@ tasks:
     source: auditoria integral 2026-11-15 (docs/_auditorias/2026-11-15-auditoria-integral.md)
     created_at: 2026-11-15T16:00:00.000Z
     owner: devops
+    evidence: "Integrado en main por el PR #256 (473b155)"
   - id: T-208
     title: "Dev: fijar Node 22.20 e imagenes de infra (M17)"
     type: infra
     phase: 1
     priority: P2
     effort: S
-    status: in_progress
+    status: done
+    done_at: 2026-11-15T16:30:00.000Z
     depends_on: []
     acceptance:
       - "Devcontainer y docker-compose con version fijada igual que el Dockerfile"
@@ -4796,13 +4856,14 @@ tasks:
     source: auditoria integral 2026-11-15 (docs/_auditorias/2026-11-15-auditoria-integral.md)
     created_at: 2026-11-15T16:00:00.000Z
     owner: devops
+    evidence: "Integrado en main por el PR #256 (473b155)"
   - id: T-209
     title: "Migraciones: comprobar compatibilidad con la version anterior (M18)"
     type: infra
     phase: 2
     priority: P3
     effort: M
-    status: ready
+    status: in_progress
     depends_on: []
     acceptance:
       - "Lista de comprobacion en PRs de migracion y prueba de suite vieja sobre esquema nuevo"
@@ -4817,7 +4878,8 @@ tasks:
     phase: 2
     priority: P2
     effort: S
-    status: in_progress
+    status: done
+    done_at: 2026-11-15T16:30:00.000Z
     depends_on: []
     acceptance:
       - "Tabla de costo fijo por servicio y formula por tenant activo, con costo de IA"
@@ -4826,13 +4888,15 @@ tasks:
     source: auditoria integral 2026-11-15 (docs/_auditorias/2026-11-15-auditoria-integral.md)
     created_at: 2026-11-15T16:00:00.000Z
     owner: analista-datos
+    evidence: "Integrado en main por el PR #256 (473b155)"
   - id: T-211
     title: "Operacion: runbook de rotacion de claves (bajo)"
     type: docs
     phase: 2
     priority: P3
     effort: S
-    status: in_progress
+    status: done
+    done_at: 2026-11-15T16:30:00.000Z
     depends_on: []
     acceptance:
       - "Procedimiento para BETTER_AUTH_SECRET, META_APP_SECRET y ENCRYPTION_MASTER_KEY"
@@ -4841,6 +4905,7 @@ tasks:
     source: auditoria integral 2026-11-15 (docs/_auditorias/2026-11-15-auditoria-integral.md)
     created_at: 2026-11-15T16:00:00.000Z
     owner: devops
+    evidence: "Integrado en main por el PR #256 (473b155)"
   - id: T-212
     title: "Seguridad: implementar ADR-0015 (cifrado de mensajes y preferencias, lectura auditada) (A2)"
     type: security
@@ -4877,6 +4942,7 @@ tasks:
     source: auditoria integral 2026-11-15 (docs/_auditorias/2026-11-15-auditoria-integral.md)
     created_at: 2026-11-15T16:00:00.000Z
     owner: dueno-de-producto
+    notes: "ADR-0024 propuesto en main; falta aceptarlo y la historia de usuario (analista-producto)"
   - id: T-214
     title: "CRM: motivos de perdida por agencia y vocabulario 'Oportunidad nueva' (bajo)"
     type: refactor
@@ -4900,7 +4966,8 @@ tasks:
     phase: 1
     priority: P1
     effort: S
-    status: in_progress
+    status: done
+    done_at: 2026-11-15T16:30:00.000Z
     depends_on: []
     acceptance:
       - "ESTADO.md refleja #191, #200, #211, #220, margen real y rutas existentes"
@@ -4915,13 +4982,15 @@ tasks:
     source: auditoria integral 2026-11-15 (docs/_auditorias/2026-11-15-auditoria-integral.md)
     created_at: 2026-11-15T16:00:00.000Z
     owner: documentador
+    evidence: "Integrado en main por el PR #256 (473b155)"
   - id: T-216
     title: "Cotizador: error tipado cuando un pasajero no queda cubierto por ninguna tarifa (seguimiento de T-179)"
     type: bug
     phase: 1
     priority: P1
     effort: S
-    status: in_progress
+    status: done
+    done_at: 2026-11-15T16:30:00.000Z
     depends_on: [T-179]
     acceptance:
       - "Un nino de 14 con solo tarifa de menor 2-11 no deja el total corto en silencio: error tipado con el pasajero sin tarifa"
@@ -4932,13 +5001,15 @@ tasks:
     source: entrega de T-179, 2026-11-15
     created_at: 2026-11-15T16:00:00.000Z
     owner: backend
+    evidence: "Integrado en main por el PR #256 (473b155)"
   - id: T-217
     title: "Datos: la version de cotizacion guarda las edades de ninos e infantes (seguimiento de T-179)"
     type: feature
     phase: 1
     priority: P2
     effort: S
-    status: in_progress
+    status: done
+    done_at: 2026-11-15T16:30:00.000Z
     depends_on: [T-179]
     acceptance:
       - "versiones_cotizacion conserva edades y silla de infantes (migracion nueva)"
@@ -4949,13 +5020,15 @@ tasks:
     source: entrega de T-179, 2026-11-15
     created_at: 2026-11-15T16:00:00.000Z
     owner: datos
+    evidence: "Integrado en main por el PR #256 (473b155)"
   - id: T-218
     title: "Dominio: el precio de venta nunca queda bajo el neto por redondeo, y el redondeo depende de la moneda"
     type: bug
     phase: 1
     priority: P1
     effort: S
-    status: in_progress
+    status: done
+    done_at: 2026-11-15T16:30:00.000Z
     depends_on: []
     acceptance:
       - "Neto COP 1.000.100, markup 0,01 % y redondeoVenta 1000: la venta no queda en 1.000.000 (bajo el neto); se redondea hacia arriba o se rechaza"
@@ -4967,13 +5040,15 @@ tasks:
     source: pruebas de T-200, 2026-11-15
     created_at: 2026-11-15T16:30:00.000Z
     owner: backend
+    evidence: "Integrado en main por el PR #256 (473b155)"
   - id: T-219
     title: "Cotizador web: selector de acomodacion desde el inicio, solo con las acomodaciones del producto (seguimiento de T-188)"
     type: feature
     phase: 1
     priority: P2
     effort: S
-    status: in_progress
+    status: done
+    done_at: 2026-11-15T16:30:00.000Z
     depends_on: [T-188]
     acceptance:
       - "El contrato de la cotizacion de salida (o un endpoint de tarifas) expone acomodacionesDisponibles"
@@ -4984,6 +5059,7 @@ tasks:
     source: entrega de T-188, 2026-11-15
     created_at: 2026-11-15T16:45:00.000Z
     owner: frontend
+    evidence: "Integrado en main por el PR #256 (473b155)"
   - id: T-220
     title: "Seguridad: actualizar next >= 15.5.28 (RCE critica en el optimizador de imagenes) y dependencias vulnerables"
     type: security
@@ -5009,7 +5085,7 @@ tasks:
     phase: 1
     priority: P1
     effort: S
-    status: ready
+    status: in_progress
     depends_on: [T-217]
     acceptance:
       - "duplicarVersionComoComposicion en apps/web/src/lib/cotizaciones-logica.ts usa composicionDesdeVersion; re-cotizar una version con nino no da 422"
@@ -5024,7 +5100,7 @@ tasks:
     phase: 1
     priority: P2
     effort: M
-    status: ready
+    status: in_progress
     depends_on: [T-180]
     acceptance:
       - "El detalle de paquete y la ficha web muestran vigencias y tarifas, no temporadas"
@@ -5036,4 +5112,37 @@ tasks:
     source: entrega de T-180, 2026-11-15
     created_at: 2026-11-15T17:00:00.000Z
     owner: backend
+  - id: T-223
+    title: "Operacion: medir la antiguedad de la cola de salida (envios pendientes) entre agencias"
+    type: infra
+    phase: 2
+    priority: P2
+    effort: S
+    status: ready
+    depends_on: [T-203]
+    acceptance:
+      - "Funcion SECURITY DEFINER que devuelve solo la antiguedad y el conteo de envios pendientes (sin ids de tenant ni texto)"
+      - "El trabajador la publica junto a la de entrada y /salud/listo la informa"
+    files:
+      - packages/database/prisma/migrations
+      - apps/api/src/shared/observabilidad/antiguedad-de-cola.ts
+    source: entrega de T-203, 2026-11-15
+    created_at: 2026-11-15T17:00:00.000Z
+    owner: datos
+  - id: T-224
+    title: "Web: el simulador sin conexion del cotizador usa vigencias y tarifas, no la matriz de temporadas"
+    type: refactor
+    phase: 1
+    priority: P3
+    effort: S
+    status: ready
+    depends_on: [T-222]
+    acceptance:
+      - "calcularCotizacionMock y temporadaNombre dejan de leer tarifarioDemo (temporadas); mock-catalogo sin TemporadaDemo/PrecioDemo"
+    files:
+      - apps/web/src/lib/cotizador-logica.ts
+      - apps/web/src/lib/mock-catalogo.ts
+    source: entrega de T-222, 2026-11-15
+    created_at: 2026-11-15T17:30:00.000Z
+    owner: frontend
 

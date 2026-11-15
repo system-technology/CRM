@@ -2,15 +2,16 @@ import { describe, expect, it } from 'vitest';
 import {
   Mayorista as EsquemaMayorista,
   Paquete as EsquemaPaquete,
-  Precio as EsquemaPrecio,
-  Temporada as EsquemaTemporada,
+  CONDICION_SIEMPRE,
+  VigenciaDeDetalle as EsquemaVigenciaDeDetalle,
   SalidaPublicada as EsquemaSalidaPublicada,
   type SalidaPublicada,
   type CargoEnDestino,
 } from '@viajapro/contracts';
 import { MOCK_MAYORISTAS, MOCK_PAQUETES_CATALOGO } from './mock-catalogo';
 import {
-  agruparPreciosPorAcomodacion,
+  describirCondicionDeTarifa,
+  describirUnidadDeTarifa,
   extraerDestinosDeSalidas,
   filtrarPaquetes,
   filtrarSalidasPublicadas,
@@ -60,19 +61,16 @@ describe('Pruebas del Catálogo de Paquetes y Tarifarios de Mayoristas', () => {
     }
   });
 
-  it('3. Todas las temporadas y precios mock validan con sus esquemas Zod (R3)', () => {
+  it('3. Las vigencias y tarifas mock validan con sus esquemas Zod (R3) y salen de los datos de muestra', () => {
     for (const p of MOCK_PAQUETES_CATALOGO) {
-      expect(p.temporadas.length).toBeGreaterThan(0);
-      for (const t of p.temporadas) {
-        const resTemp = EsquemaTemporada.safeParse(t);
-        expect(resTemp.success).toBe(true);
-
-        for (const pr of t.precios) {
-          const resPrecio = EsquemaPrecio.safeParse(pr);
-          expect(resPrecio.success).toBe(true);
-          expect(pr.venta.moneda).toBe('COP');
-          expect(pr.neto?.moneda).toBe('COP');
-          expect(BigInt(pr.venta.unidades)).toBeGreaterThan(BigInt(pr.neto?.unidades ?? '0'));
+      expect(p.vigencias.length).toBeGreaterThan(0);
+      expect(p.vigencias.length).toBe(p.tarifarioDemo.length);
+      for (const v of p.vigencias) {
+        expect(EsquemaVigenciaDeDetalle.safeParse(v).success).toBe(true);
+        for (const t of v.tarifas) {
+          expect(t.venta.moneda).toBe('COP');
+          expect(t.neto?.moneda).toBe('COP');
+          expect(BigInt(t.venta.unidades)).toBeGreaterThan(BigInt(t.neto?.unidades ?? '0'));
         }
       }
     }
@@ -89,19 +87,19 @@ describe('Pruebas del Catálogo de Paquetes y Tarifarios de Mayoristas', () => {
 
   it('5. verificarVigenciaTarifario detecta temporadas vigentes y expiradas', () => {
     const sanAndres = MOCK_PAQUETES_CATALOGO[0]!;
-    const vigSanAndres = verificarVigenciaTarifario(sanAndres.temporadas, '2027-03-01');
+    const vigSanAndres = verificarVigenciaTarifario(sanAndres.vigencias, '2027-03-01');
     expect(vigSanAndres.estaVigente).toBe(true);
     // «Vigente» = no vencida (hasta >= referencia): las 2 temporadas en curso o próximas
     // más la temporada alta de diciembre 2027, que aún no empieza pero tampoco venció.
-    expect(vigSanAndres.temporadasVigentes.length).toBe(3);
-    expect(vigSanAndres.temporadasVigentes.map((t) => t.hasta)).toContain('2028-01-15');
+    expect(vigSanAndres.vigenciasVigentes.length).toBe(3);
+    expect(vigSanAndres.vigenciasVigentes.map((t) => t.hasta)).toContain('2028-01-15');
     expect(vigSanAndres.proximoVencimiento).toBe('2027-06-15');
 
     const vencido = MOCK_PAQUETES_CATALOGO.find((p) => p.nombre.includes('Tarifario Vencido'));
     expect(vencido).toBeDefined();
-    const vigVencido = verificarVigenciaTarifario(vencido!.temporadas, '2027-03-01');
+    const vigVencido = verificarVigenciaTarifario(vencido!.vigencias, '2027-03-01');
     expect(vigVencido.estaVigente).toBe(false);
-    expect(vigVencido.temporadasVigentes.length).toBe(0);
+    expect(vigVencido.vigenciasVigentes.length).toBe(0);
   });
 
   it('6. filtrarPaquetes filtra por texto (nombre, destino o mayorista)', () => {
@@ -126,16 +124,49 @@ describe('Pruebas del Catálogo de Paquetes y Tarifarios de Mayoristas', () => {
     expect(soloVigentes.some((p) => p.nombre.includes('Tarifario Vencido'))).toBe(false);
   });
 
-  it('8. agruparPreciosPorAcomodacion estructura correctamente la matriz de tarifas', () => {
-    const temporadaSanAndres = MOCK_PAQUETES_CATALOGO[0]!.temporadas[0]!;
-    const matriz = agruparPreciosPorAcomodacion(temporadaSanAndres.precios);
+  it('8. describirCondicionDeTarifa y describirUnidadDeTarifa dicen a quién aplica la tarifa', () => {
+    const sanAndres = MOCK_PAQUETES_CATALOGO[0]!;
+    const tarifas = sanAndres.vigencias[0]!.tarifas;
+    const menor = tarifas.find((t) => t.condicion.tipoPasajero === 'CHD')!;
+    expect(describirCondicionDeTarifa(menor.condicion)).toBe('Doble · Niño de 2 a 11 años');
+    expect(describirUnidadDeTarifa(menor)).toBe('por persona');
+    expect(describirCondicionDeTarifa(CONDICION_SIEMPRE)).toBe('Aplica siempre');
+    expect(
+      describirCondicionDeTarifa({ ...CONDICION_SIEMPRE, tipoPasajero: 'INF', ocupaSilla: false }),
+    ).toBe('Infante · sin silla');
+    expect(
+      describirUnidadDeTarifa({ unidad: 'POR_GRUPO', cubrePasajeros: 2, aditiva: false }),
+    ).toBe('por grupo de 2');
+    expect(
+      describirUnidadDeTarifa({ unidad: 'POR_PERSONA', cubrePasajeros: 1, aditiva: true }),
+    ).toBe('por persona (suplemento)');
+  });
 
-    expect(matriz.DOBLE.ADT).toBeDefined();
-    expect(matriz.DOBLE.ADT?.venta.unidades).toBe('1590000');
-    expect(matriz.DOBLE.CHD?.venta.unidades).toBe('1110000');
-    expect(matriz.DOBLE.INF?.venta.unidades).toBe('220000');
-    expect(matriz.SENCILLA.ADT?.venta.unidades).toBe('2290000');
-    expect(matriz.SENCILLA.CHD).toBeUndefined();
+  it('8b. el «desde» ignora suplementos, tarifas de grupo y de niño', () => {
+    const t = (venta: string, extra: object) => ({
+      id: 'x',
+      nombre: 'x',
+      unidad: 'POR_PERSONA' as const,
+      cubrePasajeros: 1,
+      aditiva: false,
+      venta: { unidades: venta, moneda: 'COP' as const },
+      condicion: { ...CONDICION_SIEMPRE },
+      ...extra,
+    });
+    const vig = {
+      id: 'v',
+      desde: '2027-01-01',
+      hasta: '2027-01-31',
+      publicada: false,
+      cupoTotal: null,
+      tarifas: [
+        t('500000', {}),
+        t('50000', { aditiva: true }),
+        t('90000', { unidad: 'POR_GRUPO' as const, cubrePasajeros: 2 }),
+        t('300000', { condicion: { ...CONDICION_SIEMPRE, tipoPasajero: 'CHD' as const } }),
+      ],
+    };
+    expect(obtenerPrecioDesde({ vigencias: [vig] })?.unidades).toBe('500000');
   });
 
   // =============================================================================

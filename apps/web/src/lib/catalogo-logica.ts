@@ -1,12 +1,11 @@
 import type {
-  Acomodacion,
+  CondicionDeTarifa,
   Dinero,
   PlanAlimentacion,
-  Precio,
-  Temporada,
-  TipoPasajero,
   SalidaPublicada,
   CargoEnDestino,
+  TarifaDeDetalle,
+  VigenciaDeDetalle,
 } from '@viajapro/contracts';
 import type { PaqueteConDetalle } from './mock-catalogo';
 
@@ -20,25 +19,29 @@ export interface FiltroCatalogo {
 
 export interface VigenciaTarifario {
   estaVigente: boolean;
-  temporadasVigentes: Temporada[];
+  vigenciasVigentes: VigenciaDeDetalle[];
   proximoVencimiento: string | null;
 }
 
 /**
- * Obtiene el precio de venta más económico ("Desde") para adultos en este paquete.
+ * Obtiene el precio de venta más económico ("Desde") para adultos en este paquete: la tarifa por
+ * persona, no aditiva, de adulto (o sin tipo, que cubre adultos y niños) y en pesos.
  */
-export function obtenerPrecioDesde(paquete: PaqueteConDetalle): Dinero | null {
+export function obtenerPrecioDesde(paquete: Pick<PaqueteConDetalle, 'vigencias'>): Dinero | null {
   let menorPrecio: Dinero | null = null;
   let menorValor = Infinity;
 
-  for (const temporada of paquete.temporadas) {
-    for (const precio of temporada.precios) {
-      if (precio.tipoPasajero === 'ADT') {
-        const val = Number(precio.venta.unidades);
-        if (val < menorValor) {
-          menorValor = val;
-          menorPrecio = precio.venta;
-        }
+  for (const vigencia of paquete.vigencias) {
+    for (const t of vigencia.tarifas) {
+      const esBaseDeAdulto =
+        t.unidad === 'POR_PERSONA' &&
+        !t.aditiva &&
+        (t.condicion.tipoPasajero === 'ADT' || t.condicion.tipoPasajero === null);
+      if (!esBaseDeAdulto || t.venta.moneda !== 'COP') continue;
+      const val = Number(t.venta.unidades);
+      if (val < menorValor) {
+        menorValor = val;
+        menorPrecio = t.venta;
       }
     }
   }
@@ -47,25 +50,25 @@ export function obtenerPrecioDesde(paquete: PaqueteConDetalle): Dinero | null {
 }
 
 /**
- * Verifica si las temporadas del paquete siguen vigentes según una fecha de referencia.
- * Por defecto usa la fecha actual UTC (o la fecha del sistema).
+ * Verifica si las vigencias del paquete siguen vigentes según una fecha de referencia («vigente»
+ * = no vencida: `hasta >= referencia`). Por defecto usa la fecha actual UTC.
  */
 export function verificarVigenciaTarifario(
-  temporadas: Temporada[],
+  vigencias: readonly VigenciaDeDetalle[],
   fechaReferencia: string = new Date().toISOString().slice(0, 10),
 ): VigenciaTarifario {
-  const temporadasVigentes = temporadas.filter((t) => t.hasta >= fechaReferencia);
-  const estaVigente = temporadasVigentes.length > 0;
+  const vigenciasVigentes = vigencias.filter((v) => v.hasta >= fechaReferencia);
+  const estaVigente = vigenciasVigentes.length > 0;
 
   let proximoVencimiento: string | null = null;
   if (estaVigente) {
-    const fechas = temporadasVigentes.map((t) => t.hasta).sort();
+    const fechas = vigenciasVigentes.map((v) => v.hasta).sort();
     proximoVencimiento = fechas[0] ?? null;
   }
 
   return {
     estaVigente,
-    temporadasVigentes,
+    vigenciasVigentes,
     proximoVencimiento,
   };
 }
@@ -105,7 +108,7 @@ export function filtrarPaquetes(
     }
 
     if (filtro.soloVigentes) {
-      const vigencia = verificarVigenciaTarifario(p.temporadas, fechaRef);
+      const vigencia = verificarVigenciaTarifario(p.vigencias, fechaRef);
       if (!vigencia.estaVigente || !p.activo) {
         return false;
       }
@@ -115,25 +118,45 @@ export function filtrarPaquetes(
   });
 }
 
+const ETIQUETA_TIPO_PASAJERO = { ADT: 'Adulto', CHD: 'Niño', INF: 'Infante' } as const;
+
 /**
- * Agrupa la lista de precios de una temporada por acomodación y tipo de pasajero
- * para construir la matriz de tarifas en la UI de forma limpia y accesible.
+ * Describe en una frase cuándo aplica una tarifa («Doble · Niño de 2 a 11 años»). Todo nulo es
+ * «Aplica siempre»: es lo que lleva la mayoría de un tarifario real.
  */
-export function agruparPreciosPorAcomodacion(
-  precios: Precio[],
-): Record<Acomodacion, Partial<Record<TipoPasajero, Precio>>> {
-  const matriz: Record<Acomodacion, Partial<Record<TipoPasajero, Precio>>> = {
-    SENCILLA: {},
-    DOBLE: {},
-    TRIPLE: {},
-    CUADRUPLE: {},
-  };
-
-  for (const p of precios) {
-    matriz[p.acomodacion][p.tipoPasajero] = p;
+export function describirCondicionDeTarifa(c: CondicionDeTarifa): string {
+  const partes: string[] = [];
+  if (c.acomodacion) partes.push(c.acomodacion.charAt(0) + c.acomodacion.slice(1).toLowerCase());
+  if (c.tipoPasajero) {
+    let tipo: string = ETIQUETA_TIPO_PASAJERO[c.tipoPasajero];
+    if (c.edadMinima !== null && c.edadMaxima !== null) {
+      tipo += ` de ${c.edadMinima} a ${c.edadMaxima} años`;
+    } else if (c.edadMinima !== null) {
+      tipo += ` desde ${c.edadMinima} años`;
+    } else if (c.edadMaxima !== null) {
+      tipo += ` hasta ${c.edadMaxima} años`;
+    }
+    partes.push(tipo);
+  } else if (c.edadMinima !== null || c.edadMaxima !== null) {
+    partes.push(`${c.edadMinima ?? 0} a ${c.edadMaxima ?? 99} años`);
   }
+  if (c.ocupaSilla !== null) partes.push(c.ocupaSilla ? 'con silla' : 'sin silla');
+  if (c.pasajerosMinimo !== null && c.pasajerosMaximo !== null) {
+    partes.push(`${c.pasajerosMinimo} a ${c.pasajerosMaximo} pasajeros`);
+  } else if (c.pasajerosMinimo !== null) {
+    partes.push(`desde ${c.pasajerosMinimo} pasajeros`);
+  } else if (c.pasajerosMaximo !== null) {
+    partes.push(`hasta ${c.pasajerosMaximo} pasajeros`);
+  }
+  return partes.length > 0 ? partes.join(' · ') : 'Aplica siempre';
+}
 
-  return matriz;
+/** «por persona», «por grupo de 2» y «suplemento» (se suma al precio base). */
+export function describirUnidadDeTarifa(
+  t: Pick<TarifaDeDetalle, 'unidad' | 'cubrePasajeros' | 'aditiva'>,
+): string {
+  const base = t.unidad === 'POR_PERSONA' ? 'por persona' : `por grupo de ${t.cubrePasajeros}`;
+  return t.aditiva ? `${base} (suplemento)` : base;
 }
 
 /**

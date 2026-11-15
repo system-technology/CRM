@@ -71,7 +71,7 @@ describe('FichaDetallePaquete - Control de permiso de neto y margen (0c.27)', ()
 
     // Muestra los precios de venta al público
     expect(screen.getByRole('heading', { name: /San Andrés/i })).toBeDefined();
-    expect(screen.getByText(/Matriz de Tarifas/i)).toBeDefined();
+    expect(screen.getByText(/Tarifas de la vigencia/i)).toBeDefined();
 
     // R10 / 0c.27: Ningún texto "Neto:" en el DOM
     const elementosNeto = screen.queryAllByText(/neto:/i);

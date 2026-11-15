@@ -556,7 +556,8 @@ export default function CatalogoPage() {
                             mayoristaId: null,
                             mayorista: null,
                             creadoEn: new Date().toISOString(),
-                            temporadas: [],
+                            vigencias: [],
+                            tarifarioDemo: [],
                           };
                           setPaqueteSeleccionado(paqGenerado);
                         }}
@@ -594,7 +595,7 @@ export default function CatalogoPage() {
                 <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
                   {paquetesFiltrados.map((paquete, idx) => {
                     const precioDesde = obtenerPrecioDesde(paquete);
-                    const vigencia = verificarVigenciaTarifario(paquete.temporadas);
+                    const vigencia = verificarVigenciaTarifario(paquete.vigencias);
 
                     return (
                       <article

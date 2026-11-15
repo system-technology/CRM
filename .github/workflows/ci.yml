@@ -270,6 +270,159 @@ jobs:
           DIRECT_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'neondb') }}
 
   # ---------------------------------------------------------------------------
+  # T-196. La PRIMERA prueba que ejercita la web contra la API real: Postgres 16 + semilla, API en
+  # modo `unico` (sin Redis), web construida y servida con `next start`, y Playwright (Chromium)
+  # recorriendo el flujo H1-H6. NO es obligatorio todavia (no esta en proteccion-main.json): se
+  # mide primero cuanto tarda y cuanto flaquea; cuando lleve una semana verde, se anade a los checks
+  # requeridos. Secretos de prueba efimeros: nacen y mueren con el job. El envio por WhatsApp
+  # (Graph API falsa) queda como `test.fixme` en la suite.
+  navegador:
+    name: navegador
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: viajapro
+          POSTGRES_PASSWORD: viajapro
+          POSTGRES_DB: neondb
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'neondb') }}
+      DIRECT_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'neondb') }}
+      APP_ENV: local
+      # Ids ficticios del numero de prueba: los usan canal:registrar-prueba y el webhook de la suite.
+      # Distintos del canal demo de la semilla (100000000000001, SUSPENDIDO a proposito): con el mismo
+      # numero, canal:registrar-prueba se niega a reactivarlo y el job cae antes de las pruebas.
+      META_PHONE_NUMBER_ID_PRUEBA: '100000000000077'
+      META_WABA_ID_PRUEBA: '100000000000078'
+
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Generar el cliente de Prisma
+        run: pnpm db:generate
+
+      # Secretos de prueba: aleatorios y efimeros. Nada en GitHub. ENCRYPTION_MASTER_KEY y las dos
+      # claves de desarrollo (roles e identidad) no estan en el job `test`: aqui arranca la API real.
+      - name: Secretos efimeros de prueba
+        run: |
+          {
+            echo "WHATSAPP_DIRECTORY_PEPPER=$(openssl rand -hex 32)"
+            echo "WHATSAPP_DIRECTORY_PEPPER_VERSION=1"
+            echo "WEBHOOK_PAYLOAD_KEY=$(openssl rand -base64 32)"
+            echo "WEBHOOK_PAYLOAD_KEY_VERSION=1"
+            echo "META_APP_SECRET=$(openssl rand -hex 16)"
+            echo "WHATSAPP_WEBHOOK_VERIFY_TOKEN=$(openssl rand -hex 16)"
+            echo "BETTER_AUTH_SECRET=$(openssl rand -base64 48)"
+            echo "CORREO_PAYLOAD_KEY=$(openssl rand -base64 32)"
+            echo "ENCRYPTION_MASTER_KEY=$(openssl rand -base64 32)"
+            echo "DB_DEV_PASSWORD=$(openssl rand -hex 12)"
+            echo "IDENTIDAD_DEV_PASSWORD=$(openssl rand -hex 12)"
+          } >> "$GITHUB_ENV"
+
+      - name: Migraciones
+        run: pnpm db:migrate:deploy
+
+      # Pone clave a los cuatro roles de aplicacion y exporta sus URLs por GITHUB_ENV.
+      - name: Contraseñas de desarrollo para los roles de login
+        run: node packages/database/scripts/roles-de-desarrollo.mjs > /dev/null
+
+      - name: Semilla, identidades de desarrollo y canal de WhatsApp de prueba
+        run: |
+          pnpm --filter @viajapro/domain build
+          pnpm db:seed
+          pnpm --filter @viajapro/api identidad:sembrar-dev
+          pnpm --filter @viajapro/api canal:registrar-prueba
+
+      # La web incrusta NEXT_PUBLIC_* al construir. La API se construye aparte: `start:unico` corre dist/.
+      - name: Construir API y web
+        run: |
+          pnpm --filter "@viajapro/api..." run build
+          pnpm --filter "@viajapro/web..." run build
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:3333
+          NEXT_PUBLIC_USE_REAL_AUTH: 'true'
+          NEXT_PUBLIC_USE_REAL_CRM: 'true'
+          NEXT_PUBLIC_USE_REAL_INBOX: 'true'
+          NEXT_TELEMETRY_DISABLED: '1'
+
+      # Un solo proceso, sin REDIS_URL a proposito. connection_limit>=2 en el rol del trabajador
+      # (runbook-modo-unico §3). Los cuatro DATABASE_*_URL llegaron por GITHUB_ENV.
+      - name: Arrancar la API (modo unico)
+        run: |
+          sep='?'; case "$DATABASE_WEBHOOK_URL" in *\?*) sep='&' ;; esac
+          export DATABASE_WEBHOOK_URL="${DATABASE_WEBHOOK_URL}${sep}connection_limit=3"
+          nohup pnpm --filter @viajapro/api start:unico > api.log 2>&1 &
+        env:
+          MODO_DESPLIEGUE: unico
+          API_PORT: '3333'
+          API_PUBLIC_URL: http://localhost:3333
+          WEB_PUBLIC_URL: http://localhost:3000
+          MAIL_PROVIDER: memoria
+
+      - name: Arrancar la web
+        run: nohup pnpm --filter @viajapro/web start > web.log 2>&1 &
+        env:
+          NEXT_TELEMETRY_DISABLED: '1'
+
+      - name: Esperar a la API (/salud/listo) y a la web
+        run: |
+          esperar() {
+            for _ in $(seq 1 60); do
+              curl -fsS "$1" > /dev/null 2>&1 && return 0
+              sleep 2
+            done
+            echo "::error::No respondio a tiempo: $1"
+            echo '--- api.log ---'; tail -n 80 api.log || true
+            echo '--- web.log ---'; tail -n 80 web.log || true
+            return 1
+          }
+          esperar http://localhost:3333/salud/listo
+          esperar http://localhost:3000/ingresar
+
+      - name: Instalar Chromium de Playwright
+        run: pnpm --filter @viajapro/web exec playwright install --with-deps chromium
+
+      - name: Flujo H1-H6 en navegador
+        run: pnpm --filter @viajapro/web test:e2e:navegador
+        env:
+          E2E_WEB_URL: http://localhost:3000
+          E2E_API_URL: http://localhost:3333
+          E2E_TRACE: retain-on-failure
+
+      # Solo si falla: el reporte HTML, los trazos y los registros de ambos procesos.
+      - name: Subir reporte y registros (solo si falla)
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: navegador-reporte
+          path: |
+            apps/web/playwright-report
+            apps/web/test-results
+            api.log
+            web.log
+          retention-days: 7
+          if-no-files-found: ignore
+
+  # ---------------------------------------------------------------------------
   # ADR-0013: las imagenes que Render va a ejecutar tienen que construirse y arrancar el codigo
   # correcto ANTES de que exista una cuenta. No se publican en ningun registro.
   imagenes:

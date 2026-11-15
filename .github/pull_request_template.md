@@ -31,6 +31,14 @@
 - [ ] **Sin importaciones directas entre módulos** (regla R4)
 - [ ] **Contrato cambiado** → sus consumidores están actualizados
 - [ ] **Migración nueva** → es segura en caliente y compatible con la versión anterior en ejecución
+  (las migraciones corren ANTES del despliegue: durante minutos la versión vieja usa el esquema nuevo).
+  Marca solo lo que aplique y explica el resto en «Riesgos»:
+  - [ ] Solo **expande**: tabla/columna/índice nuevos; nada se borra ni se renombra en este PR
+  - [ ] Columna nueva `NOT NULL` → lleva `DEFAULT` (la versión vieja no la conoce y sigue insertando)
+  - [ ] Sin `DROP COLUMN`/`DROP TABLE`/`DROP TYPE`, sin `ALTER ... TYPE`, sin `RENAME`, sin `SET NOT NULL` sobre lo existente; si hace falta, es el paso **contraer** y la versión que dejó de usarlo ya lleva ≥1 despliegue en producción
+  - [ ] Probado: la **suite de la versión anterior (`main`)** pasa contra el esquema nuevo
+  - [ ] Índice sobre tabla grande → `CREATE INDEX CONCURRENTLY` o tabla pequeña (sin bloqueo largo)
+  - [ ] Tabla/rol/función nuevos → el aviso `compat-migraciones` (no obligatorio) no marcó nada, o cada aviso está justificado arriba
 - [ ] **Ninguna migración ya aplicada fue editada**
 - [ ] **Sin `any`** en TypeScript
 - [ ] **Dinero en enteros** (unidad mínima de la moneda; en COP, el peso) + ISO-4217, nunca coma flotante

@@ -14,6 +14,7 @@ import {
   type CotizacionGuardada,
   type GuardarCotizacion,
   type VersionDeCotizacion,
+  composicionDesdeVersion,
   AnadirVersionACotizacion as EsquemaAnadirVersionACotizacion,
   ComposicionDeVersion as EsquemaComposicionDeVersion,
   GuardarCotizacion as EsquemaGuardarCotizacion,
@@ -259,16 +260,10 @@ export function generarEnlaceWhatsApp(telefonoE164: string, mensaje: string): st
 export function duplicarVersionComoComposicion(
   version: VersionDeCotizacion,
 ): AnadirVersionACotizacion {
-  return armarComposicionDeVersion({
-    paqueteId: version.paqueteId,
-    fecha: version.fechaSalida,
-    adultos: version.adultos,
-    ninos: version.ninos,
-    infantes: version.infantes,
-    acomodacion: (version.acomodacion as Acomodacion) || undefined,
-    opcionDeSalidaId: version.opcionDeSalidaId || undefined,
-    vigenteHasta: version.vigenteHasta || undefined,
-  });
+  // T-221: `composicionDesdeVersion` (contrato) reenvía edades y silla; sin ellas el servidor
+  // responde 422 al re-cotizar una versión con niño. No copia `vigenteHasta` a propósito: la
+  // vigencia de la oferta es una decisión nueva en cada versión (ver el contrato).
+  return EsquemaAnadirVersionACotizacion.parse(composicionDesdeVersion(version));
 }
 
 /**
