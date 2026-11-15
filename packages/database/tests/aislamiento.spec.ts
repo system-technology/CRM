@@ -2690,6 +2690,14 @@ describe('CRM — contactos, oportunidades y la ficha del panel lateral', () => 
     );
     expect(rows).toHaveLength(1);
     expect((rows[0] as { convalidated: boolean }).convalidated).toBe(true);
+    // T-233: por definición, no solo por nombre (un CHECK `true` con ese nombre pasaba). Misma
+    // normalización que el cinturón de 20261115210000: sin espacios, paréntesis, comillas dobles
+    // ni los casts que el motor añade a `clave` (VARCHAR).
+    const def = (rows[0] as { def: string }).def;
+    expect(
+      def.replace(/::character varying|::text|[\s()"]/g, ''),
+      `definición de motivos_de_perdida_otro_exige_nota: ${def}`,
+    ).toBe("CHECKclaveISDISTINCTFROM'OTRO'ORexige_nota");
   });
 });
 // =============================================================================
@@ -3428,6 +3436,33 @@ describe('Inbox — conversaciones, mensajes y el espejo de plantillas de Meta',
         WHERE member = 'viajapro_metricas'::regrole`,
     );
     expect(miembroDe, 'roles de los que viajapro_metricas es miembro').toEqual([]);
+  });
+
+  it('T-233 — viajapro_metricas es dueño SOLO de medir_cola_de_salida y nadie le concede EXECUTE', async () => {
+    // La superficie en funciones (la de columnas la fija la prueba anterior). Una función
+    // SECURITY DEFINER más de su propiedad correría con sus privilegios; un EXECUTE concedido le
+    // daría una puerta que no es la suya. El mismo par lo exige el cinturón de 20261115210000.
+    const { rows: propias } = await admin.query(
+      `SELECT format('%s.%s', n.nspname, p.proname) AS funcion
+         FROM pg_proc p
+         JOIN pg_namespace n ON n.oid = p.pronamespace
+        WHERE p.proowner = 'viajapro_metricas'::regrole
+        ORDER BY 1`,
+    );
+    expect(
+      (propias as Array<{ funcion: string }>).map((r) => r.funcion),
+      'funciones de las que viajapro_metricas es dueño',
+    ).toEqual(['public.medir_cola_de_salida']);
+
+    // Se excluye la entrada del propio dueño, que el motor materializa en el ACL de
+    // medir_cola_de_salida al revocar a PUBLIC.
+    const { rows: concedidas } = await admin.query(
+      `SELECT p.oid::regprocedure::text AS funcion, x.privilege_type AS privilegio
+         FROM pg_proc p, aclexplode(p.proacl) x
+        WHERE x.grantee = 'viajapro_metricas'::regrole
+          AND p.proowner <> x.grantee`,
+    );
+    expect(concedidas, 'funciones que conceden EXECUTE a viajapro_metricas').toEqual([]);
   });
 
   it('T-230 — si medir_cola_de_salida falla a mitad, el llamador conserva SU app.current_tenant', async () => {

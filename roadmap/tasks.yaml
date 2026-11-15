@@ -5194,7 +5194,7 @@ tasks:
     priority: P1
     effort: M
     status: in_progress
-    notes: "(a) en el PR general del 2026-11-15; (b) y (c) siguen solo diseño, piden migracion del agente datos"
+    notes: "(a) en #267; (b) arranque que aborta con clave_version sin clave, en este PR; (c) recifrado por lotes en cola"
     depends_on: [T-212]
     acceptance:
       - "Al arrancar, abortar si hay filas con clave_version sin clave que las abra"
@@ -5267,7 +5267,9 @@ tasks:
     phase: 1
     priority: P2
     effort: S
-    status: in_progress
+    status: done
+    done_at: 2026-11-15T20:00:00.000Z
+    evidence: "Integrado en main por el PR #272 (e52e78b)"
     depends_on: []
     acceptance:
       - "Prueba que fija la superficie exacta de columnas de viajapro_metricas"
@@ -5285,7 +5287,9 @@ tasks:
     phase: 1
     priority: P3
     effort: S
-    status: in_progress
+    status: done
+    done_at: 2026-11-15T20:00:00.000Z
+    evidence: "Integrado en main por el PR #272 (e52e78b)"
     depends_on: []
     acceptance:
       - "ADR-0008 (por supersesion o addendum) lista la funcion y el rol NOLOGIN"
@@ -5302,7 +5306,9 @@ tasks:
     phase: 1
     priority: P3
     effort: S
-    status: in_progress
+    status: done
+    done_at: 2026-11-15T20:00:00.000Z
+    evidence: "Integrado en main por el PR #272 (e52e78b)"
     depends_on: [T-229]
     acceptance:
       - "Asignar un motivo desactivado falla tambien por SQL directo (hoy solo lo frena la API; carrera buscar/escribir en dos transacciones)"
@@ -5319,7 +5325,7 @@ tasks:
     phase: 1
     priority: P3
     effort: S
-    status: ready
+    status: in_progress
     depends_on: [T-230]
     acceptance:
       - "Cinturon y prueba: pg_proc con proowner = viajapro_metricas es exactamente {medir_cola_de_salida} y ninguna funcion concede EXECUTE a viajapro_metricas"
@@ -5330,3 +5336,22 @@ tasks:
     source: auditoria de seguridad de T-230/T-232, 2026-11-15 (cola R13)
     created_at: 2026-11-15T20:05:00.000Z
     owner: datos
+  - id: T-234
+    title: "Cifrado: comprobar las claves ANTES de levantar el contexto del trabajador y de la API"
+    type: security
+    phase: 1
+    priority: P2
+    effort: S
+    status: ready
+    depends_on: [T-226]
+    acceptance:
+      - "Con una clave_version huerfana, ningun consumidor (BullMQ o en proceso) llega a tomar un trabajo: la comprobacion corre antes de createApplicationContext, o los consumidores se conectan en onApplicationBootstrap tras un proveedor que comprueba"
+      - "En la API, los planificadores de onApplicationBootstrap no arrancan antes de la comprobacion"
+      - "El adaptador de versiones reutiliza conTenant en vez de reimplementar set_config"
+    files:
+      - apps/api/src/worker.ts
+      - apps/api/src/proceso-unico
+      - apps/api/src/shared/cifrado
+    source: auditoria de seguridad de T-226 (b), 2026-11-15
+    created_at: 2026-11-15T20:30:00.000Z
+    owner: backend
