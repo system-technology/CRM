@@ -282,7 +282,14 @@ export type MoverOportunidad = z.infer<typeof MoverOportunidad>;
 export const ColumnaPipeline = z.object({
   etapa: EtapaDefinida,
   total: z.number().int().min(0),
+  /**
+   * Total de la columna cuando todas sus oportunidades están en UNA moneda. `null` si la
+   * columna está vacía o mezcla monedas: sumar pesos con dólares sería inventarse una cifra
+   * (R8, T-181). El desglose está siempre en `valoresPorMoneda`.
+   */
   valorTotal: Dinero.nullable(),
+  /** Un total por moneda, ordenado por código ISO. Vacío si nada tiene valor estimado. */
+  valoresPorMoneda: z.array(Dinero).default([]),
   oportunidades: z.array(Oportunidad),
 });
 export type ColumnaPipeline = z.infer<typeof ColumnaPipeline>;

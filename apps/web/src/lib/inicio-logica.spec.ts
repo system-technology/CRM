@@ -88,6 +88,7 @@ describe('Inicio Lógica (T-037) - Saludo temporal y agregación de métricas de
           etapa: etapaLead,
           total: 1,
           valorTotal: { unidades: '3000000', moneda: 'COP' },
+          valoresPorMoneda: [{ unidades: '3000000', moneda: 'COP' }],
           oportunidades: [
             {
               id: '00000000-0010-4000-8000-000000000001',
@@ -114,6 +115,7 @@ describe('Inicio Lógica (T-037) - Saludo temporal y agregación de métricas de
           etapa: etapaCotiz,
           total: 1,
           valorTotal: { unidades: '5000000', moneda: 'COP' },
+          valoresPorMoneda: [{ unidades: '5000000', moneda: 'COP' }],
           oportunidades: [
             {
               id: '00000000-0010-4000-8000-000000000002',
@@ -140,6 +142,7 @@ describe('Inicio Lógica (T-037) - Saludo temporal y agregación de métricas de
           etapa: etapaGanada,
           total: 1,
           valorTotal: { unidades: '8000000', moneda: 'COP' },
+          valoresPorMoneda: [{ unidades: '8000000', moneda: 'COP' }],
           oportunidades: [
             {
               id: '00000000-0010-4000-8000-000000000003',

@@ -8,7 +8,12 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { Contacto, EtapaDefinida, FichaDeContacto, Oportunidad } from '@viajapro/contracts';
 import { MoverOportunidadUseCase } from './mover-oportunidad.js';
-import { PuertoCrm, type EtapaResumida, type MovimientoDeOportunidad } from './puerto-crm.js';
+import {
+  PuertoCrm,
+  type EtapaResumida,
+  type MovimientoDeOportunidad,
+  type TotalesDeEtapa,
+} from './puerto-crm.js';
 
 const VIVA: EtapaResumida = { id: 'e-viva', nombre: 'En negociación', esPerdida: false };
 const PERDIDA: EtapaResumida = { id: 'e-perdida', nombre: 'Se fue con otra', esPerdida: true };
@@ -31,15 +36,8 @@ class PuertoEspia extends PuertoCrm {
   listarEtapas(): Promise<EtapaDefinida[]> {
     return Promise.resolve([]);
   }
-  tableroPorEtapa(): Promise<
-    Map<string, { total: number; valorUnidades: bigint | null; oportunidades: Oportunidad[] }>
-  > {
-    return Promise.resolve(
-      new Map<
-        string,
-        { total: number; valorUnidades: bigint | null; oportunidades: Oportunidad[] }
-      >(),
-    );
+  tableroPorEtapa(): Promise<Map<string, TotalesDeEtapa>> {
+    return Promise.resolve(new Map<string, TotalesDeEtapa>());
   }
   buscarEtapa(id: string): Promise<EtapaResumida | null> {
     return Promise.resolve(this.etapas.get(id) ?? null);

@@ -22,6 +22,7 @@ import {
   PuertoCrm,
   type EtapaResumida,
   type MovimientoDeOportunidad,
+  type TotalesDeEtapa,
 } from '../application/puerto-crm.js';
 import { EtapaNoEncontradaError, OportunidadNoEncontradaError } from '../domain/errors.js';
 import { registrarCambioDeEtapa } from './historial-de-etapas.prisma.js';
@@ -77,38 +78,39 @@ export class CrmPrisma extends PuertoCrm {
     });
   }
 
-  async tableroPorEtapa(
-    limitePorColumna: number,
-  ): Promise<
-    Map<string, { total: number; valorUnidades: bigint | null; oportunidades: Oportunidad[] }>
-  > {
+  async tableroPorEtapa(limitePorColumna: number): Promise<Map<string, TotalesDeEtapa>> {
     return this.prisma.conTenant(async (tx) => {
       // Los totales se agrupan en la base. Contarlos sobre las tarjetas devueltas daría una
       // cifra que encoge cada vez que se pagina, que es peor que no darla.
+      // Por etapa Y moneda: sumar pesos con dólares en un solo total es inventarse una cifra
+      // (R8, T-181). Una oportunidad sin valor estimado cuenta, pero no suma.
       const totales = await tx.oportunidad.groupBy({
-        by: ['etapaId'],
+        by: ['etapaId', 'monedaIso'],
         where: { eliminadoEn: null },
         _count: { _all: true },
         _sum: { valorEstimadoUnidades: true },
       });
 
-      const mapa = new Map<
-        string,
-        { total: number; valorUnidades: bigint | null; oportunidades: Oportunidad[] }
-      >();
-
+      const mapa = new Map<string, TotalesDeEtapa>();
       for (const t of totales) {
+        const actual = mapa.get(t.etapaId) ?? { total: 0, valores: [], oportunidades: [] };
+        actual.total += t._count._all;
+        const suma = t._sum.valorEstimadoUnidades;
+        if (suma !== null && t.monedaIso !== null) {
+          actual.valores.push({ monedaIso: t.monedaIso, unidades: suma });
+        }
+        mapa.set(t.etapaId, actual);
+      }
+
+      for (const [etapaId, datos] of mapa) {
         const tarjetas = await tx.oportunidad.findMany({
-          where: { etapaId: t.etapaId, eliminadoEn: null },
+          where: { etapaId, eliminadoEn: null },
           orderBy: { actualizadoEn: 'desc' },
           take: limitePorColumna,
           select: PARA_LA_TARJETA,
         });
-        mapa.set(t.etapaId, {
-          total: t._count._all,
-          valorUnidades: t._sum.valorEstimadoUnidades,
-          oportunidades: tarjetas.map(aOportunidad),
-        });
+        datos.oportunidades = tarjetas.map(aOportunidad);
+        datos.valores.sort((a, b) => a.monedaIso.localeCompare(b.monedaIso));
       }
 
       return mapa;

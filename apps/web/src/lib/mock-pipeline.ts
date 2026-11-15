@@ -26,6 +26,7 @@ export function obtenerMockTableroPipeline(): TableroPipeline {
         unidades: '18500000', // 18.500.000 COP
         moneda: 'COP',
       },
+      valoresPorMoneda: [{ unidades: '18500000', moneda: 'COP' }],
       oportunidades: [
         {
           id: '00000000-0010-4000-8000-000000000001',
@@ -139,6 +140,7 @@ export function obtenerMockTableroPipeline(): TableroPipeline {
         unidades: '28300000', // 28.300.000 COP
         moneda: 'COP',
       },
+      valoresPorMoneda: [{ unidades: '28300000', moneda: 'COP' }],
       oportunidades: [
         {
           id: '00000000-0010-4000-8000-000000000004',
@@ -221,6 +223,7 @@ export function obtenerMockTableroPipeline(): TableroPipeline {
         unidades: '23500000', // 23.500.000 COP
         moneda: 'COP',
       },
+      valoresPorMoneda: [{ unidades: '23500000', moneda: 'COP' }],
       oportunidades: [
         {
           id: '00000000-0010-4000-8000-000000000006',
@@ -303,6 +306,7 @@ export function obtenerMockTableroPipeline(): TableroPipeline {
         unidades: '16200000', // 16.200.000 COP
         moneda: 'COP',
       },
+      valoresPorMoneda: [{ unidades: '16200000', moneda: 'COP' }],
       oportunidades: [
         {
           id: '00000000-0010-4000-8000-000000000008',
@@ -354,6 +358,7 @@ export function obtenerMockTableroPipeline(): TableroPipeline {
         unidades: '8900000', // 8.900.000 COP
         moneda: 'COP',
       },
+      valoresPorMoneda: [{ unidades: '8900000', moneda: 'COP' }],
       oportunidades: [
         {
           id: '00000000-0010-4000-8000-000000000009',
