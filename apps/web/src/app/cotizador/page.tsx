@@ -435,7 +435,9 @@ function ContenidoCotizador() {
           ninos: pideComposicion ? ninos : 0,
           infantes: pideComposicion ? infantes : 0,
           ...(pideComposicion ? edades : {}),
-          acomodacion: acomodacionMock || undefined,
+          // Con la API real la acomodación elegida vive en `acomodacionReal` (T-188/T-219): guardar
+          // con la de maqueta daba 422 o guardaba otra distinta de la mostrada.
+          acomodacion: (usarReal ? acomodacionReal : acomodacionMock) || undefined,
           opcionDeSalidaId: opcionAEnviar,
           vigenteHasta: datos.vigenteHasta,
         },
