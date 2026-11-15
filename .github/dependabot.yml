@@ -6,3 +6,13 @@ updates:
     directory: /
     schedule:
       interval: weekly
+  # T-207: dependencias npm. Un solo PR semanal agrupado por tipo de actualizacion, para que el
+  # propietario revise uno y no veinte. Las mayores van aparte: rompen cosas y se miran solas.
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      menores-y-parches:
+        update-types: [minor, patch]

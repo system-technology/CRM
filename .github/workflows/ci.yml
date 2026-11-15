@@ -179,6 +179,10 @@ jobs:
           DIRECT_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'neondb') }}
           REDIS_URL: redis://localhost:6379
           APP_ENV: local
+          # T-199: las suites de Redis y de Postgres NO pueden omitirse en silencio. Con estas
+          # variables, si falta REDIS_URL o DATABASE_URL la suite falla en vez de saltarse.
+          VIAJAPRO_EXIGIR_REDIS: '1'
+          VIAJAPRO_EXIGIR_POSTGRES: '1'
 
       # AUD-013. Esta prueba MUTA los roles del clúster (ALTER ROLE viajapro_app SUPERUSER unos
       # milisegundos) para demostrar que cada proceso aborta; corre SOLA, después de pnpm test,
@@ -287,6 +291,20 @@ jobs:
             Promise.all([import('@viajapro/domain'), import('@viajapro/contracts'), import('@prisma/client')])
               .then(([, , p]) => { new p.PrismaClient(); console.log('imagen de la API: ok'); })"
 
+      # T-206. Solo vulnerabilidades ALTAS/CRITICAS con correccion disponible. De momento NO
+      # bloquea (continue-on-error): este job es una de las compuertas obligatorias y no se ha
+      # medido todavia que salen de las imagenes base. Cuando salga limpio, quitar la linea
+      # `continue-on-error` para que sea obligatorio. El tag de la accion es mutable en origen:
+      # por eso va fijada por SHA del commit (v0.36.0).
+      - name: Escanear la imagen de la API (Trivy)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        continue-on-error: true
+        with:
+          image-ref: viajapro-api
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+
       - name: Construir la imagen de la web
         run: >-
           docker build -f apps/web/Dockerfile
@@ -298,6 +316,40 @@ jobs:
           test "$(docker run --rm --entrypoint id viajapro-web -u)" != "0"
           docker run --rm --entrypoint test viajapro-web -f apps/web/server.js
           docker images --format '{{.Repository}} {{.Size}}' | grep '^viajapro-'
+
+      - name: Escanear la imagen de la web (Trivy)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        continue-on-error: true # ver nota de la imagen de la API
+        with:
+          image-ref: viajapro-web
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+
+  # ---------------------------------------------------------------------------
+  # T-206. Auditoria de dependencias de produccion. Hoy `pnpm audit --prod --audit-level=high`
+  # encuentra 16 altas y 4 criticas (next, multer/body-parser via @nestjs/platform-express,
+  # tinypool/vitest/happy-dom via better-auth, zod, postcss), asi que NO es obligatorio todavia:
+  # `continue-on-error` lo deja en amarillo y visible sin romper `main`. Cuando se resuelvan las
+  # actualizaciones (PRs de Dependabot), quitar `continue-on-error` y ponerlo como check requerido.
+  auditoria:
+    name: auditoria-dependencias
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      # No hace falta instalar: audit lee pnpm-lock.yaml.
+      - name: pnpm audit (produccion, umbral alto)
+        run: pnpm audit --prod --audit-level=high
 
   # ---------------------------------------------------------------------------
   # Regla R4: los módulos no se importan entre sí. Es lo que permite extraer
