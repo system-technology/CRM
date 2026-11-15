@@ -240,6 +240,33 @@ describe('motivos de pérdida por agencia (T-229)', () => {
     expect(sinNota.status).toBe(422);
   });
 
+  it('T-232: quitarle exigeNota a OTRO es 422 MOTIVO_OTRO_EXIGE_NOTA y no lo cambia', async () => {
+    const otro = (await listar(TENANT_A, '?incluirInactivos=true')).find((m) => m.clave === 'OTRO');
+    const r = await como(TENANT_A, `${RUTA}/${otro?.id}`, 'PATCH', { exigeNota: false });
+    expect(r.status).toBe(422);
+    expect(((await r.json()) as { error: { code: string } }).error.code).toBe(
+      'MOTIVO_OTRO_EXIGE_NOTA',
+    );
+    const despues = (await listar(TENANT_A, '?incluirInactivos=true')).find(
+      (m) => m.clave === 'OTRO',
+    );
+    expect(despues?.exigeNota).toBe(true);
+  });
+
+  it('T-232: cerrar por ENUM con un motivo de sistema desactivado es 409 (lo ve la base)', async () => {
+    const oportunidad = await nuevaOportunidad(TENANT_A, '+573001110006');
+    const precio = (await listar(TENANT_A)).find((m) => m.clave === 'PRECIO');
+    await como(TENANT_A, `${RUTA}/${precio?.id}`, 'PATCH', { activo: false });
+    const r = await cerrar(TENANT_A, oportunidad, await etapaPerdida(TENANT_A), {
+      motivoPerdida: 'PRECIO',
+    });
+    await como(TENANT_A, `${RUTA}/${precio?.id}`, 'PATCH', { activo: true });
+    expect(r.status).toBe(409);
+    expect(((await r.json()) as { error: { code: string } }).error.code).toBe(
+      'MOTIVO_DE_PERDIDA_INACTIVO',
+    );
+  });
+
   it('sin motivoPerdidaId el enum de siempre sigue funcionando (compatibilidad)', async () => {
     const oportunidad = await nuevaOportunidad(TENANT_A, '+573001110004');
     const r = await cerrar(TENANT_A, oportunidad, await etapaPerdida(TENANT_A), {
