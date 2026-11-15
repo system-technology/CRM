@@ -26,6 +26,8 @@ import {
 } from '@nestjs/common';
 import {
   CrearContacto as CrearContactoContrato,
+  ActualizarMotivoDePerdida as ActualizarMotivoContrato,
+  CrearMotivoDePerdida as CrearMotivoContrato,
   CrearEtapa as CrearEtapaContrato,
   EditarEtapa as EditarEtapaContrato,
   ReordenarEtapas as ReordenarEtapasContrato,
@@ -39,6 +41,9 @@ import {
   RevocarConsentimiento as RevocarConsentimientoContrato,
   type Contacto,
   type CrearContacto,
+  type ActualizarMotivoDePerdida,
+  type CrearMotivoDePerdida,
+  type MotivoDePerdida,
   type CrearEtapa,
   type EditarEtapa,
   type EtapaDefinida,
@@ -64,6 +69,7 @@ import { ContextoTenant } from '../../../shared/tenant/contexto-tenant.js';
 import { ZodValidationPipe } from '../../../shared/validacion/zod-validation.pipe.js';
 import { CrearOportunidadUseCase } from '../application/crear-oportunidad.js';
 import { GestionarEtapas } from '../application/gestionar-etapas.js';
+import { GestionarMotivosDePerdida } from '../application/gestionar-motivos-de-perdida.js';
 import { GestionarContactos } from '../application/gestionar-contactos.js';
 import { GestionarSeguimientos } from '../application/gestionar-seguimientos.js';
 import { MoverOportunidadUseCase } from '../application/mover-oportunidad.js';
@@ -85,6 +91,7 @@ export class CrmController {
     @Inject(CrearOportunidadUseCase) private readonly crearOportunidad: CrearOportunidadUseCase,
     @Inject(GestionarSeguimientos) private readonly seguimientos: GestionarSeguimientos,
     @Inject(GestionarEtapas) private readonly etapas: GestionarEtapas,
+    @Inject(GestionarMotivosDePerdida) private readonly motivos: GestionarMotivosDePerdida,
   ) {}
 
   /** El tablero del pipeline, con sus columnas tal como esta agencia las tiene configuradas. */
@@ -281,5 +288,34 @@ export class CrmController {
     @Body(new ZodValidationPipe(EditarEtapaContrato)) cuerpo: EditarEtapa,
   ): Promise<EtapaDefinida> {
     return this.etapas.editar(id, cuerpo);
+  }
+
+  // ---------------------------------------------------------------------------
+  // T-229: motivos de pérdida de la agencia. Sin DELETE: retirar es `activo: false`.
+  // ---------------------------------------------------------------------------
+
+  /** Los motivos de ESTA agencia, en su orden. Activos por defecto. Leer no exige permiso. */
+  @Get('motivos-de-perdida')
+  async listarMotivosDePerdida(
+    @Query('incluirInactivos') incluirInactivos?: string,
+  ): Promise<MotivoDePerdida[]> {
+    return this.motivos.listar(incluirInactivos === 'true');
+  }
+
+  @Post('motivos-de-perdida')
+  @RequierePermiso('crm.escribir')
+  async crearMotivoDePerdida(
+    @Body(new ZodValidationPipe(CrearMotivoContrato)) cuerpo: CrearMotivoDePerdida,
+  ): Promise<MotivoDePerdida> {
+    return this.motivos.crear(cuerpo, ContextoTenant.obtener().usuarioId);
+  }
+
+  @Patch('motivos-de-perdida/:id')
+  @RequierePermiso('crm.escribir')
+  async actualizarMotivoDePerdida(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ZodValidationPipe(ActualizarMotivoContrato)) cuerpo: ActualizarMotivoDePerdida,
+  ): Promise<MotivoDePerdida> {
+    return this.motivos.actualizar(id, cuerpo, ContextoTenant.obtener().usuarioId);
   }
 }

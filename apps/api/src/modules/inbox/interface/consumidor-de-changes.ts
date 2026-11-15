@@ -10,7 +10,7 @@ import {
   Injectable,
   Logger,
   type OnModuleDestroy,
-  type OnModuleInit,
+  type OnApplicationBootstrap,
 } from '@nestjs/common';
 import { Worker } from 'bullmq';
 import type { Redis } from 'ioredis';
@@ -59,7 +59,7 @@ export function sanearError(error: unknown): ErrorDeTrabajo {
 }
 
 @Injectable()
-export class ConsumidorDeChanges implements OnModuleInit, OnModuleDestroy {
+export class ConsumidorDeChanges implements OnApplicationBootstrap, OnModuleDestroy {
   private readonly log = new Logger(ConsumidorDeChanges.name);
   private worker: Worker<DatosDelTrabajo> | null = null;
   private conexion: Redis | null = null;
@@ -68,7 +68,7 @@ export class ConsumidorDeChanges implements OnModuleInit, OnModuleDestroy {
 
   constructor(@Inject(ProcesarChange) private readonly procesar: ProcesarChange) {}
 
-  onModuleInit(): void {
+  onApplicationBootstrap(): void {
     const url = process.env['REDIS_URL'];
     if (!url) throw new Error('Falta REDIS_URL: el trabajador no tiene de dónde recoger.');
 

@@ -4959,7 +4959,10 @@ tasks:
     phase: 2
     priority: P3
     effort: S
-    status: in_progress
+    status: done
+    done_at: 2026-11-15T19:40:00.000Z
+    evidence: "Tabla en #268 (46e88a6); contrato, API y UI en #271 (2252fd0)"
+    notes: "Tabla, RLS y siembra integradas en el PR #268 (46e88a6); faltan contrato, API y UI de motivos (T-229)"
     depends_on: []
     acceptance:
       - "MotivoPerdida pasa a tabla por tenant (R12)"
@@ -5134,7 +5137,9 @@ tasks:
     phase: 2
     priority: P2
     effort: S
-    status: in_progress
+    status: done
+    done_at: 2026-11-15T19:00:00.000Z
+    evidence: "Integrado en main por el PR #268 (46e88a6)"
     depends_on: [T-203]
     acceptance:
       - "Funcion SECURITY DEFINER que devuelve solo la antiguedad y el conteo de envios pendientes (sin ids de tenant ni texto)"
@@ -5189,7 +5194,7 @@ tasks:
     priority: P1
     effort: M
     status: in_progress
-    notes: "(a) en el PR general del 2026-11-15; (b) y (c) siguen solo diseño, piden migracion del agente datos"
+    notes: "(a) en #267; (b) arranque que aborta con clave_version sin clave, en este PR; (c) recifrado por lotes en cola"
     depends_on: [T-212]
     acceptance:
       - "Al arrancar, abortar si hay filas con clave_version sin clave que las abra"
@@ -5218,4 +5223,157 @@ tasks:
     source: auditoria de seguridad de T-212, 2026-11-15
     created_at: 2026-11-15T17:30:00.000Z
     owner: backend
-
+  - id: T-228
+    title: "Salud: /salud/listo publico solo informa el estado de cada cola"
+    type: security
+    phase: 1
+    priority: P2
+    effort: S
+    status: done
+    depends_on: []
+    acceptance:
+      - "Sin masViejaS, pendientes ni umbralMin en la respuesta publica"
+      - "La sonda de despliegue sigue viendo estado ok"
+    files:
+      - apps/api/src/salud.controller.ts
+    source: auditoria de seguridad de T-223/T-214, 2026-11-15
+    created_at: 2026-11-15T19:00:00.000Z
+    done_at: 2026-11-15T19:10:00.000Z
+    evidence: "Integrado en main por el PR #269 (5c6e247)"
+    owner: backend
+  - id: T-229
+    title: "CRM: contrato, API y UI de motivos de perdida por agencia (resto de T-214)"
+    type: feature
+    phase: 1
+    priority: P2
+    effort: M
+    status: done
+    done_at: 2026-11-15T19:40:00.000Z
+    evidence: "Integrado en main por el PR #271 (2252fd0)"
+    depends_on: []
+    acceptance:
+      - "La agencia ve y edita sus motivos; cerrar como perdida pide un motivo activo de su agencia"
+      - "Prueba HTTP de aislamiento: un motivo de otra agencia se rechaza"
+    files:
+      - packages/contracts/src/crm.ts
+      - apps/api/src/modules/crm
+      - apps/web
+    source: auditoria de seguridad de T-223/T-214, 2026-11-15
+    created_at: 2026-11-15T19:00:00.000Z
+    owner: backend
+  - id: T-230
+    title: "Datos: endurecer medir_cola_de_salida y el disparador de motivos"
+    type: security
+    phase: 1
+    priority: P2
+    effort: S
+    status: done
+    done_at: 2026-11-15T20:00:00.000Z
+    evidence: "Integrado en main por el PR #272 (e52e78b)"
+    depends_on: []
+    acceptance:
+      - "Prueba que fija la superficie exacta de columnas de viajapro_metricas"
+      - "Prueba de que un error dentro de la funcion restaura app.current_tenant del llamador"
+      - "ON CONFLICT en el disparador que siembra motivos"
+    files:
+      - packages/database/prisma/migrations
+      - packages/database/tests/aislamiento.spec.ts
+    source: auditoria de seguridad de T-223/T-214, 2026-11-15
+    created_at: 2026-11-15T19:00:00.000Z
+    owner: datos
+  - id: T-231
+    title: "ADR: registrar medir_cola_de_salida y el rol viajapro_metricas en ADR-0008 y R2"
+    type: docs
+    phase: 1
+    priority: P3
+    effort: S
+    status: done
+    done_at: 2026-11-15T20:00:00.000Z
+    evidence: "Integrado en main por el PR #272 (e52e78b)"
+    depends_on: []
+    acceptance:
+      - "ADR-0008 (por supersesion o addendum) lista la funcion y el rol NOLOGIN"
+      - "CLAUDE.md R2 menciona viajapro_metricas junto a viajapro_accesos"
+    files:
+      - docs/03-adr
+      - CLAUDE.md
+    source: auditoria de seguridad de T-223/T-214, 2026-11-15
+    created_at: 2026-11-15T19:00:00.000Z
+    owner: arquitecto
+  - id: T-232
+    title: "Datos: el disparador de motivos comprueba activo y el OTRO de sistema fija exige_nota"
+    type: security
+    phase: 1
+    priority: P3
+    effort: S
+    status: done
+    done_at: 2026-11-15T20:00:00.000Z
+    evidence: "Integrado en main por el PR #272 (e52e78b)"
+    depends_on: [T-229]
+    acceptance:
+      - "Asignar un motivo desactivado falla tambien por SQL directo (hoy solo lo frena la API; carrera buscar/escribir en dos transacciones)"
+      - "El motivo de clave OTRO no puede quedar con exige_nota = false"
+    files:
+      - packages/database/prisma/migrations
+      - apps/api/src/modules/crm
+    source: auditoria de seguridad de T-229, 2026-11-15 (cola R13, sin cruce entre agencias)
+    created_at: 2026-11-15T19:40:00.000Z
+    owner: datos
+  - id: T-233
+    title: "Datos: superficie de viajapro_metricas tambien en funciones y CHECK comparado por definicion"
+    type: security
+    phase: 1
+    priority: P3
+    effort: S
+    status: done
+    done_at: 2026-11-15T20:40:00.000Z
+    evidence: "Integrado en main por el PR #273 (26aa5d1)"
+    depends_on: [T-230]
+    acceptance:
+      - "Cinturon y prueba: pg_proc con proowner = viajapro_metricas es exactamente {medir_cola_de_salida} y ninguna funcion concede EXECUTE a viajapro_metricas"
+      - "El cinturon de 20261115200000 compara pg_get_constraintdef del CHECK motivos_de_perdida_otro_exige_nota, no solo su nombre"
+    files:
+      - packages/database/prisma/migrations
+      - packages/database/tests/aislamiento.spec.ts
+    source: auditoria de seguridad de T-230/T-232, 2026-11-15 (cola R13)
+    created_at: 2026-11-15T20:05:00.000Z
+    owner: datos
+  - id: T-234
+    title: "Cifrado: comprobar las claves ANTES de levantar el contexto del trabajador y de la API"
+    type: security
+    phase: 1
+    priority: P2
+    effort: S
+    status: done
+    done_at: 2026-11-15T21:00:00.000Z
+    evidence: "Integrado en main por el PR #274 (e46ee11)"
+    depends_on: [T-226]
+    acceptance:
+      - "Con una clave_version huerfana, ningun consumidor (BullMQ o en proceso) llega a tomar un trabajo: la comprobacion corre antes de createApplicationContext, o los consumidores se conectan en onApplicationBootstrap tras un proveedor que comprueba"
+      - "En la API, los planificadores de onApplicationBootstrap no arrancan antes de la comprobacion"
+      - "El adaptador de versiones reutiliza conTenant en vez de reimplementar set_config"
+    files:
+      - apps/api/src/worker.ts
+      - apps/api/src/proceso-unico
+      - apps/api/src/shared/cifrado
+    source: auditoria de seguridad de T-226 (b), 2026-11-15
+    created_at: 2026-11-15T20:30:00.000Z
+    owner: backend
+  - id: T-235
+    title: "Arranque: prueba de arquitectura de que nada de interface/ arranca en onModuleInit"
+    type: test
+    phase: 1
+    priority: P3
+    effort: S
+    status: ready
+    depends_on: [T-234]
+    acceptance:
+      - "EscuchaDeAvisosDelRelay se suscribe en onApplicationBootstrap, como el resto de lo que toma trabajo"
+      - "Una prueba falla si una clase de interface/ (consumidores, planificadores) declara onModuleInit"
+      - "comprobacion-al-arrancar.spec.ts documenta por que usa abortOnError false"
+    files:
+      - apps/api/src/modules/inbox/infrastructure/aviso-al-relay.redis.ts
+      - apps/api/src/shared/cifrado/comprobacion-al-arrancar.spec.ts
+    source: auditoria de seguridad de T-234, 2026-11-15 (cola R13)
+    created_at: 2026-11-15T20:55:00.000Z
+    owner: backend

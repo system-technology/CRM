@@ -10,9 +10,11 @@
 import { Module } from '@nestjs/common';
 import { CrearOportunidadUseCase } from './application/crear-oportunidad.js';
 import { GestionarEtapas } from './application/gestionar-etapas.js';
+import { GestionarMotivosDePerdida } from './application/gestionar-motivos-de-perdida.js';
 import { GestionarContactos } from './application/gestionar-contactos.js';
 import { GestionarSeguimientos } from './application/gestionar-seguimientos.js';
 import { MoverOportunidadUseCase } from './application/mover-oportunidad.js';
+import { PuertoMotivosDePerdida } from './application/puerto-motivos-de-perdida.js';
 import { PuertoEtapas } from './application/puerto-etapas.js';
 import { PuertoCrm } from './application/puerto-crm.js';
 import { PuertoEscrituraCrm } from './application/puerto-escritura-crm.js';
@@ -21,6 +23,7 @@ import { VerTablero } from './application/ver-tablero.js';
 import { CrmPuertosModule } from './crm-puertos.module.js';
 import { CrmPrisma } from './infrastructure/crm.prisma.js';
 import { EtapasPrisma } from './infrastructure/etapas.prisma.js';
+import { MotivosDePerdidaPrisma } from './infrastructure/motivos-de-perdida.prisma.js';
 import { EscrituraCrmPrisma } from './infrastructure/escritura-crm.prisma.js';
 import { SeguimientosPrisma } from './infrastructure/seguimientos.prisma.js';
 import { CrmController } from './interface/crm.controller.js';
@@ -36,6 +39,8 @@ import { CrmController } from './interface/crm.controller.js';
     GestionarSeguimientos,
     GestionarEtapas,
     { provide: PuertoEtapas, useClass: EtapasPrisma },
+    GestionarMotivosDePerdida,
+    { provide: PuertoMotivosDePerdida, useClass: MotivosDePerdidaPrisma },
     { provide: PuertoCrm, useClass: CrmPrisma },
     { provide: PuertoEscrituraCrm, useClass: EscrituraCrmPrisma },
     // Tabla `seguimientos` (T-082). Sustituye al provisional sobre `proxima_tarea_*`.

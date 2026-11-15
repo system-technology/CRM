@@ -6,7 +6,12 @@
  * Solo pegamento, como sus equivalentes de BullMQ: validan el trabajo, llaman al caso de uso y
  * dejan subir el error SANEADO (clase y código, nunca el mensaje: R10).
  */
-import { Inject, Injectable, type OnModuleDestroy, type OnModuleInit } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  type OnModuleDestroy,
+  type OnApplicationBootstrap,
+} from '@nestjs/common';
 import { EnviarMensajeSaliente } from '../application/enviar-mensaje-saliente.js';
 import { ProcesarChange } from '../application/procesar-change.js';
 import { ColaDeChangesEnProceso } from '../infrastructure/cola-de-changes.en-proceso.js';
@@ -15,13 +20,13 @@ import { sanearError } from './consumidor-de-changes.js';
 import { leerTrabajoDeEnvio, sanearErrorDeEnvio } from './consumidor-de-envios.js';
 
 @Injectable()
-export class ConsumidorDeChangesEnProceso implements OnModuleInit, OnModuleDestroy {
+export class ConsumidorDeChangesEnProceso implements OnApplicationBootstrap, OnModuleDestroy {
   constructor(
     @Inject(ProcesarChange) private readonly procesar: ProcesarChange,
     @Inject(ColaDeChangesEnProceso) private readonly cola: ColaDeChangesEnProceso,
   ) {}
 
-  onModuleInit(): void {
+  onApplicationBootstrap(): void {
     this.cola.conectar((recepcionId, indice) => this.atender(recepcionId, indice));
   }
 
@@ -41,13 +46,13 @@ export class ConsumidorDeChangesEnProceso implements OnModuleInit, OnModuleDestr
 
 /** Conecta la cola de envíos sobre Postgres (reclamo con arrendamiento) con el caso de uso. */
 @Injectable()
-export class ConsumidorDeEnviosEnProceso implements OnModuleInit, OnModuleDestroy {
+export class ConsumidorDeEnviosEnProceso implements OnApplicationBootstrap, OnModuleDestroy {
   constructor(
     @Inject(EnviarMensajeSaliente) private readonly enviar: EnviarMensajeSaliente,
     @Inject(ColaDeEnviosPostgres) private readonly cola: ColaDeEnviosPostgres,
   ) {}
 
-  onModuleInit(): void {
+  onApplicationBootstrap(): void {
     this.cola.conectar((tenantId, mensajeId, contexto) =>
       this.atender({ tenantId, mensajeId }, contexto.ultimoIntento),
     );

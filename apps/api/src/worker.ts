@@ -21,6 +21,8 @@ async function arrancar(): Promise<void> {
   app.useLogger(new LoggerJson());
   app.enableShutdownHooks();
   const log = new Logger('Worker');
+  // T-226 (b) / T-234: la comprobación de claves vive en `WorkerModule` y corre dentro de
+  // `createApplicationContext`, antes de que los consumidores se conecten (onApplicationBootstrap).
   // T-194: latido en Redis que lee `/salud/listo` de la API (el trabajador no sirve HTTP).
   const url = process.env['REDIS_URL'];
   if (url) {

@@ -10,7 +10,7 @@ import {
   Injectable,
   Logger,
   type OnModuleDestroy,
-  type OnModuleInit,
+  type OnApplicationBootstrap,
 } from '@nestjs/common';
 import { UnrecoverableError, Worker } from 'bullmq';
 import type { Redis } from 'ioredis';
@@ -24,7 +24,7 @@ import {
 } from '../infrastructure/cola-de-correo.bullmq.js';
 
 @Injectable()
-export class ConsumidorDeCorreo implements OnModuleInit, OnModuleDestroy {
+export class ConsumidorDeCorreo implements OnApplicationBootstrap, OnModuleDestroy {
   private readonly log = new Logger(ConsumidorDeCorreo.name);
   private worker: Worker | null = null;
   private conexion: Redis | null = null;
@@ -35,7 +35,7 @@ export class ConsumidorDeCorreo implements OnModuleInit, OnModuleDestroy {
 
   constructor(@Inject(PuertoCorreo) private readonly correo: PuertoCorreo) {}
 
-  onModuleInit(): void {
+  onApplicationBootstrap(): void {
     const url = process.env['REDIS_URL'];
     if (!url) {
       throw new Error('Falta REDIS_URL: el trabajador de correo no tiene de dónde recoger.');

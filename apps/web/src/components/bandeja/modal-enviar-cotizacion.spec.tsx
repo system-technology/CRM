@@ -1,7 +1,7 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { ModalEnviarCotizacion, generarTextoWhatsAppCotizacion } from './modal-enviar-cotizacion';
+import { ModalEnviarCotizacion } from './modal-enviar-cotizacion';
 import type { CotizacionResumen, Mensaje } from '@viajapro/contracts';
 import { inboxApi } from '../../lib/inbox-api';
 
@@ -35,18 +35,40 @@ describe('ModalEnviarCotizacion (T-074)', () => {
     vi.clearAllMocks();
   });
 
-  it('formatea correctamente el texto estructurado para WhatsApp', () => {
-    const texto = generarTextoWhatsAppCotizacion(
-      cotizacionesEjemplo[0]!,
-      'Carlos Pérez',
-      '+573001234567',
+  it('la vista previa es un resumen honesto, con nota de que no lleva neto ni margen', () => {
+    render(
+      <ModalEnviarCotizacion
+        conversacionId="conv-123"
+        contactoNombre="Laura Gómez"
+        contactoTelefono="+573109876543"
+        ventanaAbierta={true}
+        cotizaciones={cotizacionesEjemplo}
+        onCerrar={vi.fn()}
+        onCotizacionEnviada={vi.fn()}
+      />,
     );
+    const vista = screen.getByTestId('vista-previa-texto-cotizacion');
+    expect(vista.textContent).not.toContain('Propuesta de Viaje');
+    expect(vista.textContent).toContain('v1');
+    expect(vista.textContent).toContain('Vigente hasta: 2026-11-30');
+    expect(vista.textContent).toContain('sin neto ni margen');
+  });
 
-    expect(texto).toContain('✈️ *Propuesta de Viaje: Escapada Caribe Cancún (v1)*');
-    expect(texto).toContain('👤 Para: Carlos Pérez');
-    expect(texto).toContain('💵 Inversión total: $ 5.400.000 COP');
-    expect(texto).toContain('📅 Vigencia de tarifa: Hasta 2026-11-30');
-    expect(texto).toContain('📋 *Detalles de tu cotización:*');
+  it('no muestra vigencia rota cuando vigenteHasta es null', () => {
+    render(
+      <ModalEnviarCotizacion
+        conversacionId="conv-123"
+        contactoNombre={null}
+        contactoTelefono="+573109876543"
+        ventanaAbierta={true}
+        cotizaciones={[cotizacionesEjemplo[1]!]}
+        onCerrar={vi.fn()}
+        onCotizacionEnviada={vi.fn()}
+      />,
+    );
+    expect(screen.queryByTestId('vigencia-cotizacion')).toBeNull();
+    const vista = screen.getByTestId('vista-previa-texto-cotizacion');
+    expect(vista.textContent).not.toMatch(/null|undefined|Vigente hasta/);
   });
 
   it('renderiza la lista de cotizaciones y la vista previa formateada', () => {

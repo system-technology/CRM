@@ -1,11 +1,13 @@
 'use client';
 
-import React from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { type ContactoDeLista } from '@viajapro/contracts';
 import { SeccionCamposPersonalizados } from './seccion-campos-personalizados';
 import {
   X,
+  Loader2,
+  AlertTriangle,
   Phone,
   Tag,
   Heart,
@@ -18,6 +20,7 @@ import {
 } from 'lucide-react';
 import { generarColorAvatar, obtenerIniciales } from '../../lib/bandeja-logica';
 import { formatearTelefonoVisual } from '../../lib/contactos-logica';
+import { obtenerFichaDeContacto } from '../../lib/crm-api';
 
 interface FichaDetalleContactoProps {
   /** El listado no trae `preferencias` (dato sensible): solo la ficha completa las incluye. */
@@ -26,17 +29,33 @@ interface FichaDetalleContactoProps {
 }
 
 export function FichaDetalleContacto({ contacto, onCerrar }: FichaDetalleContactoProps) {
-  const {
-    id,
-    nombre,
-    telefono,
-    correo,
-    etiquetas,
-    preferencias,
-    consentimientos,
-    creadoEn,
-    ultimoContactoEn,
-  } = contacto;
+  const { id, nombre, telefono, correo, etiquetas, consentimientos, creadoEn, ultimoContactoEn } =
+    contacto;
+
+  // El listado no trae `preferencias` (PII cifrada): se piden a la ficha al abrir el panel.
+  const [estadoPreferencias, setEstadoPreferencias] = useState<'cargando' | 'listo' | 'error'>(
+    'cargando',
+  );
+  const [preferencias, setPreferencias] = useState<string | null>(contacto.preferencias ?? null);
+  const [intento, setIntento] = useState(0);
+  const reintentar = useCallback(() => setIntento((n) => n + 1), []);
+
+  useEffect(() => {
+    let vigente = true;
+    setEstadoPreferencias('cargando');
+    obtenerFichaDeContacto(id)
+      .then((ficha) => {
+        if (!vigente) return;
+        setPreferencias(ficha.contacto.preferencias);
+        setEstadoPreferencias('listo');
+      })
+      .catch(() => {
+        if (vigente) setEstadoPreferencias('error');
+      });
+    return () => {
+      vigente = false;
+    };
+  }, [id, intento]);
 
   const avatarColores = generarColorAvatar(id);
   const iniciales = obtenerIniciales(nombre, telefono);
@@ -147,18 +166,46 @@ export function FichaDetalleContacto({ contacto, onCerrar }: FichaDetalleContact
           </div>
         </div>
 
-        {/* Preferencias de Viaje (solo si la ficha las trae) */}
-        {preferencias !== undefined && (
-          <div>
-            <div className="mb-2 flex items-center space-x-1.5 text-xs font-bold text-neutral-800 dark:text-neutral-200">
-              <Heart className="h-3.5 w-3.5 text-neutral-400" />
-              <span>Preferencias de Viaje y Recompra:</span>
+        {/* Preferencias de Viaje (se cargan desde la ficha) */}
+        <div data-testid="seccion-preferencias">
+          <div className="mb-2 flex items-center space-x-1.5 text-xs font-bold text-neutral-800 dark:text-neutral-200">
+            <Heart className="h-3.5 w-3.5 text-neutral-400" />
+            <span>Preferencias de Viaje y Recompra:</span>
+          </div>
+          {estadoPreferencias === 'cargando' ? (
+            <div
+              data-testid="preferencias-cargando"
+              role="status"
+              aria-label="Cargando preferencias"
+              className="flex items-center gap-2 rounded-xl border border-neutral-200 bg-neutral-50/60 p-3 text-xs text-neutral-500 dark:border-neutral-800 dark:bg-neutral-800/40"
+            >
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              <div className="h-3 w-2/3 animate-pulse rounded bg-neutral-200 dark:bg-neutral-700" />
             </div>
+          ) : estadoPreferencias === 'error' ? (
+            <div
+              data-testid="preferencias-error"
+              role="alert"
+              className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-800 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300"
+            >
+              <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+              <div>
+                <p>No se pudieron cargar las preferencias del contacto. Revisa tu conexión.</p>
+                <button
+                  type="button"
+                  onClick={reintentar}
+                  className="mt-1 min-h-[44px] font-semibold underline"
+                >
+                  Reintentar
+                </button>
+              </div>
+            </div>
+          ) : (
             <div className="rounded-xl border border-neutral-200 bg-neutral-50/60 p-3 text-xs leading-relaxed text-neutral-700 dark:border-neutral-800 dark:bg-neutral-800/40 dark:text-neutral-300">
               {preferencias || 'Sin preferencias registradas aún.'}
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
         {/* Campos Personalizados por Agencia (T-026) */}
         <SeccionCamposPersonalizados entidad="contacto" entidadId={id} />

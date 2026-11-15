@@ -127,6 +127,7 @@ export default function PipelinePage() {
     nuevaEtapa: EtapaDefinida,
     motivoPerdida: MotivoPerdida | null = null,
     notaPerdida: string | null = null,
+    motivoPerdidaId?: string,
   ) => {
     const tableroPrevio = tablero;
     let nuevoTablero: TableroPipeline;
@@ -156,6 +157,7 @@ export default function PipelinePage() {
         etapaId: nuevaEtapa.id,
         motivoPerdida,
         notaPerdida,
+        ...(motivoPerdidaId ? { motivoPerdidaId } : {}),
       });
     } catch (e) {
       console.error(e);
@@ -477,12 +479,13 @@ export default function PipelinePage() {
       {oportunidadPendientePerdida && (
         <ModalMotivoPerdida
           oportunidad={oportunidadPendientePerdida.oportunidad}
-          onConfirmar={(motivo, nota) => {
+          onConfirmar={(motivo, nota, motivoPerdidaId) => {
             void ejecutarMovimiento(
               oportunidadPendientePerdida.oportunidad.id,
               oportunidadPendientePerdida.etapaDestino,
               motivo,
               nota,
+              motivoPerdidaId,
             );
             setOportunidadPendientePerdida(null);
           }}

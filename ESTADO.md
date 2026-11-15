@@ -10,71 +10,54 @@
 
 | Campo | Valor |
 |---|---|
-| Última actualización | 2026-11-15 |
-| Actualizado por | `documentador` (T-215: hilo al día con `main` y con el PR #256) |
-| Fase | **Fase 1 del backlog: «Un CRM mostrable y endurecido»** (M1 del [roadmap v2](docs/08-roadmap/01-roadmap.md)). Sin agencia real todavía. Prioridad vigente: cerrar H1–H6 y la demo a JD Tours ([`MARCO.md`](docs/_contexto/MARCO.md) §6) |
-| Avance | 93 tareas `done` en `roadmap/tasks.yaml` (`main` tenía 94; se reabrió T-079, cuyo runbook no es un despliegue vivo). El PR #256 no cierra ninguna: las deja `in_progress`. «Done» significa integrada en `main`, **no** probada de punta a punta con la web |
-| Próximo hito | Integrar el PR #256 y correr el flujo H1–H6 en navegador contra la API real (T-126, en curso) |
+| Última actualización | 2026-11-15 (segundo cierre del día; `main` en `e46ee11`) |
+| Actualizado por | Claude (hilo al día con los PR #256 a #274) |
+| Fase | **Fase 1 del backlog: «Un CRM mostrable y endurecido»** (M1 del [roadmap v2](docs/08-roadmap/01-roadmap.md)). Sin agencia real todavía. Prioridad vigente: la demo a JD Tours ([`MARCO.md`](docs/_contexto/MARCO.md) §6) |
+| Avance | 150 tareas `done` en `roadmap/tasks.yaml`. «Done» significa integrada en `main`, **no** desplegada ni probada con Meta real |
+| Próximo hito | Que el propietario cargue la clave de cifrado y decida el despliegue; después, prueba con Meta real (T-080). Del lado del código solo queda cola menor: T-235 y T-226 (c), recifrado por lotes, que solo hace falta cuando haya una clave real que rotar |
 
 ---
 
 ## 1. Dónde estamos
 
-Verificado el 2026-11-15 sobre `origin/main` (`762fb42`) y la rama `claude/repository-status-d4ug6p`
-(23 commits por delante). Fuente: [auditoría integral 2026-11-15](docs/_auditorias/2026-11-15-auditoria-integral.md)
-y [plan de corrección](docs/08-roadmap/02-plan-correccion-auditoria-2026-11-15.md). La matriz anterior
-(2026-11-04) describía otro repositorio: presentaba como diseño lo que ya estaba integrado.
+Verificado el 2026-11-15 sobre `origin/main` (`e46ee11`, PR #274) con `git log` y `roadmap/tasks.yaml`.
+Fuente de la corrección de rumbo: [auditoría integral 2026-11-15](docs/_auditorias/2026-11-15-auditoria-integral.md)
+y su [plan](docs/08-roadmap/02-plan-correccion-auditoria-2026-11-15.md). Entrada del día:
+[bitácora](docs/_bitacora/2026-11-15-mvp-en-navegador-y-cierre-de-auditoria.md).
 
-**Veredicto: sigue sin haber un flujo completo verificado en navegador por una agencia. Seguimos en
-local.** El backend tiene pruebas e2e en CI; la web nunca se prueba contra la API (sin Playwright);
-WhatsApp no se ha probado entrando y saliendo contra Meta real.
+**Veredicto: el flujo H1–H6 ya se recorre en un navegador, en CI, contra la API real. Pero la Graph
+API es falsa y no hay nada desplegado.** Ninguna agencia lo ha visto ni un mensaje de celular real ha
+entrado. Seguimos en local.
 
 ### Es real (en `main`)
 
-`main` tiene 309 archivos de prueba (147 API, 138 web, 9 contracts, 8 database, 7 domain) y 32
-migraciones. La rama los sube a 325. **No se ejecutaron en esta sesión**; la última cifra de pruebas
-medida es la de la auditoría (1325 en la API) y no se repite como actual. Ninguna prueba abre un
-navegador.
-
 | Qué | Evidencia |
 |---|---|
-| Aislamiento entre agencias (RLS, cuatro roles, arranque que aborta con rol equivocado) | Job `aislamiento-tenants`, `arranque-seguro.e2e-spec.ts` |
-| `main` protegida: PR, 8 checks obligatorios, rama al día, administradores incluidos | `.github/proteccion-main.json` |
-| Permisos de mutación exigidos en los controladores (PR #191, integrado) | `apps/api/src/shared/autorizacion/mutaciones-con-permiso.spec.ts`; la única excepción documentada es marcar una conversación como leída |
-| Modo de un solo proceso sin Redis (PR #211) y envíos sobre Postgres (PR #220); ADR-0019 | `apps/api/src/proceso-unico/`, `cola-de-envios.postgres.ts`, `reserva-de-envio.postgres.ts`; [runbook](docs/07-ingenieria/runbook-modo-unico.md) |
-| Envío saliente a WhatsApp: cola, idempotencia, ventana de 24 h; ADR-0018 | `envio-whatsapp.graph.ts`, `enviar-cotizacion.e2e-spec.ts`; **contra Graph API falsa** |
-| Identidad: sesión, OTP, invitaciones, baja de miembros; `GET /identidad/miembros` | `identity.e2e-spec.ts`, `invitaciones.e2e-spec.ts`, `miembros.controller.ts` |
-| Ajustes de la agencia y estado del canal de WhatsApp | `agencia-ajustes.e2e-spec.ts`, `estado-del-canal.e2e-spec.ts` |
-| CRM: contactos, oportunidades, pipeline, etapas configurables (`/crm/etapas`), seguimientos, consentimiento | `crm.e2e-spec.ts`, `etapas.e2e-spec.ts`, `contactos-y-seguimientos.e2e-spec.ts` |
-| Catálogo y cotizador: el texto enviado no lleva neto ni margen | `apps/api/src/modules/quoting/*.e2e-spec.ts`, `enviar-cotizacion.e2e-spec.ts` |
-| Bandeja: listar, notas, estado, asignación, visibilidad por asesor, tiempo real | `inbox-visibilidad`, `inbox-tiempo-real(-redis)` |
-| Recepción: webhook firmado → cola → consumidor → mensaje (payload cifrado) | `inbox-webhook`, `inbox-bullmq.e2e-spec.ts` |
-| Reportes con margen real: sale de la base y lo protege `cotizacion.ver_neto_y_margen` | `analytics/interface`, `reportes.e2e-spec.ts` (ya no son constantes del 20 % y 80 %) |
-| Web contra la API en equipo y etapas | `equipo-api.ts` llama `/identidad/miembros`; `crm-api.ts` llama `/crm/etapas` y propaga el error en vez de simular |
-| Una recepción manual real: botón «Probar» de Meta por túnel, 2026-10-26 | Sin registro en el repo; ver [bitácora](docs/_bitacora/2026-10-26-sincronia-del-hilo.md) |
+| Suite de navegador (Playwright, job `navegador` del CI): ingreso, páginas, H2–H6 y, contra una Graph API falsa, responder desde la bandeja (queda ENVIADO por el webhook de estado `sent`) y enviar una cotización por WhatsApp sin neto ni margen | `apps/web/e2e/`; PR #263 y #266 |
+| Aislamiento entre agencias (RLS, cuatro roles de aplicación, arranque que aborta con rol equivocado) | Job `aislamiento-tenants`, `arranque-seguro.e2e-spec.ts` |
+| Función `SECURITY DEFINER` `medir_cola_de_salida` con dueño `NOLOGIN` `viajapro_metricas`; motivos de pérdida por agencia (RLS forzada, FK compuesta) | PR #268 y #272–#273; ADR-0026 y R2. La superficie del rol la fijan pruebas y migraciones de comprobación |
+| Cifrado de PII en reposo (ADR-0015): `mensajes.texto` y campos sensibles cifrados; la demo se siembra con `demo:sembrar-cifrada` | PR #264 y #266. **La clave de producción no está cargada en ningún entorno** |
+| `main` protegida: PR, 8 checks obligatorios (10 en total), rama al día, administradores incluidos | `.github/proteccion-main.json` |
+| Permisos de mutación exigidos en los controladores | `mutaciones-con-permiso.spec.ts` |
+| Modo de un solo proceso sin Redis y envíos sobre Postgres (ADR-0019) | `apps/api/src/proceso-unico/`; [runbook](docs/07-ingenieria/runbook-modo-unico.md) |
+| Envío saliente a WhatsApp: cola, idempotencia, ventana de 24 h (ADR-0018) | `enviar-cotizacion.e2e-spec.ts`; **contra Graph API falsa** |
+| Recepción: webhook firmado → cola → consumidor → mensaje cifrado | `inbox-webhook`, `inbox-bullmq.e2e-spec.ts` |
+| Identidad, ajustes de la agencia, estado del canal, CRM con etapas configurables, catálogo, cotizador, bandeja con visibilidad por asesor y tiempo real | e2e de cada módulo en `apps/api/src/modules/` |
+| Reportes con margen real, protegido por `cotizacion.ver_neto_y_margen` | `reportes.e2e-spec.ts` |
+| Cotizador y catálogo consultan desde hoy en la zona del tenant y eligen la primera salida; el simulador trabaja sobre vigencias | PR #267 y #269 |
+| `/salud/listo` público solo informa el estado de cada cola (T-228) | PR #269 |
+| Motivos de pérdida por agencia: la agencia los gestiona en Configuración, el pipeline los ofrece al cerrar como perdida, un motivo de otra agencia da 404; motivos propios con nota; motivo desactivado rechazado también en la base | PR #271 y #272; `motivos-de-perdida.e2e-spec.ts`, `aislamiento.spec.ts` |
+| Arranque seguro del cifrado: la API, el trabajador y el modo único abortan si hay datos con una versión de clave que no tienen, **antes** de que ningún consumidor o planificador tome trabajo | PR #273 y #274; `comprobacion-al-arrancar.spec.ts` |
+| Dependencias: `pnpm audit` de producción pasó de 3 críticas y 15 altas a 0 y 1 (queda zod v3; zod 4 lo decide el propietario) | PR #267 |
 
-**No probado:** web contra API (ni en CI ni en navegador documentado); envío contra `graph.facebook.com`;
-un mensaje desde un celular real; correo con Postmark real.
+El repositorio tiene 39 migraciones. Cifras de pruebas: no se midieron en esta sesión y no se repiten.
 
-### En el PR #256, sin integrar (rama `claude/repository-status-d4ug6p`)
+**Defecto real que halló la suite:** la bandeja nunca ofrecía cotizaciones para enviar con la API real,
+porque la ficha de CRM las trae vacías (R4). Ahora la bandeja las pide a `quoting`. Antes, la suite
+había hallado que el modal de guardado ignoraba título y contacto. Detalle en la bitácora.
 
-Estas correcciones de la auditoría están en la rama, **no en `main`**. Su estado en `tasks.yaml` es
-`in_progress` hasta que el PR entre.
-
-| Tarea | Qué corrige | Hallazgo |
-|---|---|---|
-| T-173, T-174 | Error de hidratación en `/ingresar`; `/login` daba 404; redirección abierta en `redirigir` | H-3, H-4 |
-| T-175 | El atajo `x-dev-tenant-id` solo atiende peticiones desde loopback | A1 |
-| T-177, T-178 | Dinero en unidad mínima en la bandeja; sin datos inventados en modo real | A3, A4 |
-| T-179, T-188, T-189, T-216 | Cotizar familias con edad por pasajero; filtrar por acomodación; no sumar monedas distintas; error tipado si un pasajero no tiene tarifa | C1, C2, M8 |
-| T-181 | Totales del pipeline por moneda | A5 |
-| T-182 | El SLA de primera respuesta se activa con mensajes reales | A6 |
-| T-183, T-184, T-187 | Ventas por fecha de aceptación; métricas con n mínimo; primera respuesta sobre un mismo grupo, con p90 | A7, A8, M12 |
-| T-185 | La bandeja muestra los errores de envío y no manda texto libre como plantilla | M1 |
-| T-193 | `pnpm dev` construye `contracts` y `domain` antes de arrancar | A11 |
-| T-195, T-197, T-200 | Pruebas: contratos en e2e, aislamiento HTTP del CRM, bordes de dinero | A14, M4, M7 |
-
-T-176 quedó `dropped` (el permiso de «leída» es una excepción de diseño probada).
+**No probado:** envío contra `graph.facebook.com`; un mensaje desde un celular real; correo con
+Postmark real; las migraciones contra una base de producción (solo corren en el CI).
 
 ### Es maqueta (la pantalla no habla con la API, o finge)
 
@@ -82,24 +65,20 @@ T-176 quedó `dropped` (el permiso de «leída» es una excepción de diseño pr
 |---|---|
 | `/configuracion`: SLA y plantillas oficiales; `/viajes` | `mock-configuracion.ts`, `mock-plantillas.ts`, `mock-viajes.ts`; no hay endpoint de plantillas |
 | Campos personalizados, respuestas rápidas, filtros guardados, onboarding, preferencias de notificación | Solo `localStorage` |
-| `/catalogo`, `/cotizador`, `/cotizaciones`, `/contactos` | Reales por defecto, pero conservan ramas y estado inicial mock |
 | Con `.env.example` | Trae `NEXT_PUBLIC_USE_REAL_CRM`, `USE_REAL_INBOX` y `USE_REAL_AUTH` en `true`; el valor `false` vuelve a la maqueta |
 
 ### Es diseño o está a medias
 
 | Qué | Dónde |
 |---|---|
-| Cifrado de campos sensibles: ADR-0015 aceptado, **sin implementar**; `mensajes.texto` está en claro. El PR #29 abierto es solo de documentación | [ADR-0015](docs/03-adr/0015-cifrado-de-campos-sensibles.md), T-212 |
-| Despliegue en Render: `render.yaml` sigue con la topología de ADR-0013 (web, API, trabajador, Redis); el [runbook](docs/07-ingenieria/runbook-redis-staging.md) no despliega nada. `Deploy staging` termina en verde con el aviso «Faltan los secretos del Environment staging» (A10) | T-079 reabierta |
-| Despliegue de ADR-0019 en Fly: sin ejecutar (pasos 8 a 10 del plan) | [ADR-0019](docs/03-adr/0019-despliegue-minimo-un-proceso-sin-redis.md) §7 |
-| Operación antes del piloto: respaldo, costo y rotación de claves, **escritos como propuesta y sin ensayar** | [`docs/06-operacion/`](docs/06-operacion/): `respaldo-y-restauracion.md`, `costo-por-tenant.md`, `rotacion-de-claves.md` |
+| Despliegue: `render.yaml` sigue con la topología de ADR-0013; `Deploy staging` termina en verde con el aviso «Faltan los secretos del Environment staging». Fly (ADR-0019 §7) sin ejecutar | T-079 reabierta |
+| Operación antes del piloto: respaldo, costo y rotación de claves, **propuestas sin ensayar** | [`docs/06-operacion/`](docs/06-operacion/) |
 | Políticas de seguridad: borrador sin aprobar | [`docs/05-seguridad/00-indice-de-politicas.md`](docs/05-seguridad/00-indice-de-politicas.md) |
+| ADR-0023 (fiscal) y ADR-0024: propuestos. Las fuentes de la DIAN del 0023 **no están verificadas** | [`docs/03-adr/`](docs/03-adr/) |
 
 ### Lo que NO existe
 
-- **Ninguna prueba que ejercite la web contra la API** (sin Playwright ni equivalente; T-196 y vecinas siguen en la cola).
 - **Un servicio desplegado:** no hay URL viva verificable.
-- **Redis y trabajador corriendo en la máquina del propietario.** El trabajador es `apps/api/src/worker.ts`; `apps/worker` es un README. Con `MODO_DESPLIEGUE=unico` no hacen falta.
 - **Un mensaje de celular real visto en la bandeja, ni una respuesta recibida en el celular.**
 - **Plantilla de reapertura** fuera de la ventana de 24 h (T-078), **verificación del negocio en Meta** (T-080), Tech Provider.
 - **Derechos del titular** (T-097), aviso de privacidad aprobado (T-093), RNBD (T-098).
@@ -117,9 +96,9 @@ T-176 quedó `dropped` (el permiso de «leída» es una excepción de diseño pr
 
 | Carril | Quién | En qué |
 |---|---|---|
-| Frontend (`apps/web`, `packages/ui`, `packages/sdk`) | Agente `frontend` (Claude) | Campaña funcional H1–H6 (T-126), lotes del PR #256 |
-| Backend (`apps/api`) | Agentes `backend`, `whatsapp` | Cotizador, reportes, SLA (PR #256); cifrado de PII (T-212) en cola |
-| Datos | Agente `datos` | 32 migraciones en `main`; función de zona horaria (PR #234, abierto) |
+| Frontend (`apps/web`, `packages/ui`, `packages/sdk`) | Agente `frontend` (Claude) | Suite de navegador, vista previa del envío, UI de motivos de pérdida |
+| Backend (`apps/api`) | Agentes `backend`, `whatsapp` | Cola menor: T-235 (prueba de arquitectura del arranque), T-226 (c) |
+| Datos | Agente `datos` | 39 migraciones en `main` |
 | Integración y documentación | `integrador`, `documentador` | Hilo, ADR, bitácora, `docs/06-operacion/` |
 | Producto y estrategia | `jefe-de-producto`, `dueno-de-producto` | Roadmap v3; demo a JD Tours |
 | Ciclo OpenCode | **Detenido** | Ver arriba |
@@ -128,12 +107,11 @@ T-176 quedó `dropped` (el permiso de «leída» es una excepción de diseño pr
 
 | Bloqueo | Qué impide | Dueño |
 |---|---|---|
-| PR #256 sin integrar | Las correcciones de la auditoría (seguridad del atajo de desarrollo, dinero, cotizador de familias) no están en `main` | `integrador`, propietario (rutas protegidas) |
-| Sin prueba web↔API | Nada permite afirmar que una pantalla funciona con la API real | `qa`, `frontend` |
+| `CAMPOS_SENSIBLES_KEY` y `_VERSION=1` sin cargar en Render, y sin copia guardada de la clave | Sin ella el cifrado no puede usarse desplegado; perder la clave pierde los datos | Propietario |
+| `STAGING_DESPLIEGUE=desactivado` y sin secretos del entorno `staging` ni servicio en Render o Fly | No hay nada que enseñar fuera de local | Propietario |
+| Verificación del negocio en Meta / Tech Provider sin iniciar (T-080); falta un mensaje desde un celular | Solo número de prueba y Graph falsa; no hay lanzamiento | Propietario |
+| Decidir zod 4 y los ADR-0023 y 0024 | Queda 1 vulnerabilidad alta en producción; el trabajo fiscal no avanza | Propietario |
 | Sin Redis ni trabajador en la máquina del propietario (no hay Docker) | Con `unico` no hace falta Redis; falta el recorrido real en Codespaces | Propietario, `devops` |
-| Sin secretos del entorno `staging` ni servicio en Render o Fly | No hay nada que enseñar fuera de local | Propietario |
-| Verificación del negocio en Meta / Tech Provider sin iniciar (T-080) | Solo número de prueba; no hay lanzamiento | Propietario |
-| Cifrado de PII sin implementar (T-212, A2) | Texto de mensajes en claro; bloquea datos reales | `backend`, `datos`, `auditor-seguridad` |
 | Tarifario real de la agencia piloto | El catálogo sigue con datos verosímiles | Propietario / agencia |
 
 ## 4. Decisiones vigentes
@@ -158,7 +136,7 @@ El índice completo de ADR y su estado está en [`docs/README.md`](docs/README.m
 
 | Qué | Dónde |
 |---|---|
-| La cola de trabajo | [`roadmap/tasks.yaml`](roadmap/tasks.yaml): 93 `done`, 20 `in_progress`, 28 `ready`, 10 `blocked`, 65 `backlog`, 3 `dropped`. Ojo: `done` = integrada, no probada con la web (T-079 se reabrió: el runbook no es un despliegue vivo) |
+| La cola de trabajo | [`roadmap/tasks.yaml`](roadmap/tasks.yaml): 143 `done`, 5 `in_progress`, 5 `ready`, 10 `blocked`, 65 `backlog`, 3 `dropped`. `done` = integrada, no desplegada (T-079 sigue reabierta) |
 | Roadmap técnico v2 | [`docs/08-roadmap/01-roadmap.md`](docs/08-roadmap/01-roadmap.md); plan de la auditoría: [`02-plan-correccion-auditoria-2026-11-15.md`](docs/08-roadmap/02-plan-correccion-auditoria-2026-11-15.md) |
 | Roadmap de producto v3 | [`docs/08-roadmap/02-roadmap-producto-v3.md`](docs/08-roadmap/02-roadmap-producto-v3.md); ruta a la Fase 1: [`04-ruta-al-entregable-fase-1.md`](docs/08-roadmap/04-ruta-al-entregable-fase-1.md) |
 | Qué ocurrió cada día | [`docs/_bitacora/`](docs/_bitacora/) y [`docs/_contexto/DIARIO.md`](docs/_contexto/DIARIO.md); última auditoría: [2026-11-15 integral](docs/_auditorias/2026-11-15-auditoria-integral.md) |

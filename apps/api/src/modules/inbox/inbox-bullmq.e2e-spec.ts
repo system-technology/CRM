@@ -305,7 +305,7 @@ describe.skipIf(!CORRE)('BullMQ real: POST -> Redis -> consumidor -> mensajes', 
     expect(await mensajesDe(wamid)).toHaveLength(0);
 
     // Arranca el consumidor: el mensaje llega a `mensajes` con su tenant.
-    consumidor.onModuleInit();
+    consumidor.onApplicationBootstrap();
     const filas = await esperar(async () => {
       const f = await mensajesDe(wamid);
       return f.length > 0 ? f : undefined;

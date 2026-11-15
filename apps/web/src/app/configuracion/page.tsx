@@ -54,6 +54,14 @@ const BloqueEtapasPipeline = dynamic(
   { ssr: false },
 );
 
+const BloqueMotivosPerdida = dynamic(
+  () =>
+    import('../../components/configuracion/bloque-motivos-perdida').then(
+      (m) => m.BloqueMotivosPerdida,
+    ),
+  { ssr: false },
+);
+
 const BloqueCamposPersonalizados = dynamic(
   () =>
     import('../../components/configuracion/bloque-campos-personalizados').then(
@@ -477,6 +485,7 @@ export default function ConfiguracionPage() {
               className="max-w-4xl space-y-6"
             >
               <BloqueEtapasPipeline />
+              <BloqueMotivosPerdida />
             </div>
           )}
 

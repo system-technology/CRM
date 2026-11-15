@@ -15,15 +15,14 @@
  *   recifrado con la cuenta sacada de la base (se rota antes de 2^31). Este servicio no puede
  *   contar entre procesos; el trabajo no existe todavía (cola, T-212).
  * - **Rotación robusta (T-226).** Hecho: la maestra (y la previa) no puede coincidir con otra clase
- *   de secreto (`separadaDeOtrasClases`, al arrancar). PENDIENTE, a falta de migración del agente
- *   `datos` — diseño de la tarea T-226:
- *   (b) comprobación de arranque: contar filas con `*_clave_version` distinta de la vigente y de
- *       `vigente - 1` (si hay previa) en las cinco tablas cifradas (`mensajes`, `conversaciones`,
- *       `contactos`, `notas_internas`, `adjuntos`) y abortar con el recuento por tabla y versión.
- *       El rol de la API está bajo RLS y solo ve su agencia: contar entre agencias exige una
- *       función SECURITY DEFINER propiedad de un rol sin login (p. ej. `contar_versiones_de_clave()`
- *       devolviendo `(tabla, version, filas)`, sin ids ni contenido), con EXECUTE solo para los
- *       roles de la API y del trabajador, y su alta en la prueba de aislamiento.
+ *   de secreto (`separadaDeOtrasClases`, al arrancar). Hecho también (b): al arrancar, la API,
+ *   el trabajador y el modo único abortan si hay datos con una `*_clave_version` que ninguna clave
+ *   cargada abre (`comprobacion-de-claves.ts`). Aborta DENTRO del arranque de Nest (T-234): la
+ *   comprobación es el `onModuleInit` de la raíz (`comprobacion-al-arrancar.ts`), tras el rol y
+ *   antes de cualquier `onApplicationBootstrap`, donde se conectan consumidores y planificadores.
+ *   Lee las versiones agencia por agencia bajo RLS (con el `conTenant` de cada proceso);
+ *   a volumen, una función SECURITY DEFINER `contar_versiones_de_clave()` (rol sin login, sin ids
+ *   ni contenido) solo cambiaría el adaptador. PENDIENTE:
  *   (c) recifrado por lotes: trabajo en cola que, por agencia (`conTenant`), lee un lote de filas
  *       con versión vieja, descifra con la previa y reescribe con la vigente en la misma
  *       transacción (`UPDATE ... WHERE id = $ AND *_clave_version = $vieja`, idempotente), hasta

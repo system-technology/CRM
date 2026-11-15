@@ -20,6 +20,11 @@ async function arrancar(): Promise<void> {
   app.useLogger(new LoggerJson());
   configurarApi(app);
 
+  // T-226 (b) / T-234: `init()` verifica el rol (onModuleInit) y comprueba las claves de los datos
+  // cifrados (raíz, `AppModule`) ANTES de los planificadores (onApplicationBootstrap): si hay una
+  // versión sin clave, rechaza y nada llega a escuchar.
+  await app.init();
+
   const puerto = Number(process.env['API_PORT'] ?? 3333);
   await app.listen(puerto);
 

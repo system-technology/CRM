@@ -16,7 +16,7 @@ import {
   Injectable,
   Logger,
   type OnModuleDestroy,
-  type OnModuleInit,
+  type OnApplicationBootstrap,
 } from '@nestjs/common';
 import { BarrerPendientes } from '../application/barrer-pendientes.js';
 import { PuertoCoordinacionDelBarrido } from '../application/puertos-de-barrido.js';
@@ -27,7 +27,7 @@ import {
 import { sanearError } from './consumidor-de-changes.js';
 
 @Injectable()
-export class PlanificadorDeBarrido implements OnModuleInit, OnModuleDestroy {
+export class PlanificadorDeBarrido implements OnApplicationBootstrap, OnModuleDestroy {
   private readonly log = new Logger(PlanificadorDeBarrido.name);
   private temporizador: NodeJS.Timeout | null = null;
   private config: ConfiguracionDelBarrido = configuracionDelBarrido();
@@ -38,7 +38,7 @@ export class PlanificadorDeBarrido implements OnModuleInit, OnModuleDestroy {
     private readonly coordinacion: PuertoCoordinacionDelBarrido,
   ) {}
 
-  onModuleInit(): void {
+  onApplicationBootstrap(): void {
     this.config = configuracionDelBarrido();
     this.temporizador = setInterval(() => void this.tick(), this.config.intervaloMs);
     // No retener el proceso vivo por el temporizador: el que lo retiene es el consumidor.

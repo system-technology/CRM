@@ -320,7 +320,7 @@ describe.skipIf(!CORRE)('Barrido: un POST guardado cuyo encolado falló llega a 
     expect(r.reencolados).toBe(1);
     expect(await trabajosConId(`${hex}-0`)).toBe(1);
 
-    consumidor.onModuleInit();
+    consumidor.onApplicationBootstrap();
     const filas = await esperar(async () => {
       const f = await mensajesDe(wamid);
       return f.length > 0 ? f : undefined;
@@ -417,7 +417,7 @@ describe.skipIf(!CORRE)('Barrido: un POST guardado cuyo encolado falló llega a 
     // Sin el borrado previo, el `add` habría sido un no-op y el trabajo seguiría `failed`.
     expect(await (await cola.getJob(trabajoId))?.getState()).not.toBe('failed');
 
-    consumidor.onModuleInit();
+    consumidor.onApplicationBootstrap();
     const filas = await esperar(async () => {
       const f = await mensajesDe(wamid);
       return f.length > 0 ? f : undefined;

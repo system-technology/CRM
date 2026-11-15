@@ -83,6 +83,8 @@ export class InboxWorkerUnicoModule {
         RecuperarEnviosSinResolver,
         ConsumidorDeEnviosEnProceso,
       ],
+      // Lo ve la raíz (`TrabajadorUnicoModule`), que declara tras él la comprobación de claves (T-234).
+      exports: [PrismaWebhookService],
     };
   }
 }

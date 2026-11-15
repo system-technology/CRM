@@ -1021,3 +1021,47 @@ la foránea existen, la API sigue escribiendo el enum.
   una migración que retire el enum, el disparador y la pareja. `oportunidad_cambios_etapa` (solo
   añadir) conserva su enum: no admite el UPDATE de un relleno.
 
+### El id escrito manda (T-229, migración `20261115190000_motivo_de_perdida_respeta_id`)
+
+El disparador de 20261115150000 recalculaba el id desde el enum en cada escritura: un motivo propio
+(clave nula, sin valor de enum) acababa en «Otro», y la API tuvo que rechazarlo. Ahora:
+
+```
+  BEFORE INSERT/UPDATE OF motivo_perdida, motivo_perdida_id, nota_perdida  (SECURITY INVOKER, search_path '')
+    a. llega un motivo_perdida_id no nulo NUEVO  → se respeta; debe ser de la agencia (si no, 23503)
+                                                   enum := su clave, u OTRO si es propio
+    b. si no, cambia el enum (o la pareja quedaría coja) → id desde el enum, como antes
+    c. si no cambia ninguno (solo la nota, o el mismo enum) → el id se queda
+    en los tres: motivo con exige_nota ⇒ nota_perdida no vacía (23514)
+  CHECK oportunidades_nota_perdida_exige_motivo: nota ⇒ hay motivo
+  (cae oportunidades_motivo_otro_exige_nota: «OTRO exige nota» pasa a ser el dato exige_nota)
+```
+
+**Por qué cae el CHECK de `OTRO`.** Un motivo propio se guarda con enum `OTRO`; el CHECK le
+exigiría nota aunque la agencia no la pida. La regla es el dato `exige_nota` (R12): el `OTRO`
+sembrado lo lleva, así que los clientes que solo escriben el enum no notan nada. El historial de
+etapas sigue guardando el enum (`OTRO` para los propios). La creación del motivo canónico usa
+`ON CONFLICT (tenant_id, clave)` (T-230): una etiqueta repetida falla con su índice en vez de
+tragarse. La API (`mover-oportunidad.ts`) escribe el id cuando llega `motivoPerdidaId`.
+
+### Motivo retirado y «Otro» con nota, en la base (T-230/T-232, migración `20261115200000_endurecer_metricas_y_motivos`)
+
+```
+  motivo_de_perdida_desde_enum (CREATE OR REPLACE, mismo dueño, INVOKER, search_path '')
+    si el id CAMBIA (INSERT, camino a o b) y el motivo tiene activo = false → SQLSTATE VP001
+       («MOTIVO_DE_PERDIDA_INACTIVO: …»; la API → 409 MOTIVO_DE_PERDIDA_INACTIVO)
+    camino c (nota, mismo id, mismo enum): un motivo ya puesto y luego retirado se conserva
+  CHECK motivos_de_perdida_otro_exige_nota: clave IS DISTINCT FROM 'OTRO' OR exige_nota
+       (antes, reparación agencia por agencia; NOT VALID + VALIDATE; la API → 422 MOTIVO_OTRO_EXIGE_NOTA)
+```
+
+**Por qué.** La API comprobaba `activo` en una transacción y escribía en otra, y en el camino del
+enum no lo miraba: un motivo retirado se podía asignar por SQL directo o por un cliente antiguo.
+`VP001` es de una clase (`VP`) que PostgreSQL no usa. Sin `FOR SHARE` sobre el motivo: una
+desactivación simultánea equivale a una que llega justo después, que también se permitiría.
+«Otro» sin explicación es una pérdida que no se puede atribuir; por eso es CHECK y no solo regla
+de la API. `medir_cola_de_salida` no se reescribe: un error a mitad aborta la (sub)transacción y
+el motor deshace su `set_config` local; lo fija una prueba de comportamiento (T-230 en
+`aislamiento.spec.ts`), junto con la superficie EXACTA de columnas de `viajapro_metricas`, que
+también comprueba el cinturón de la migración.
+

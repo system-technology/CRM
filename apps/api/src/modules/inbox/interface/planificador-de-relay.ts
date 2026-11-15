@@ -17,7 +17,7 @@ import {
   Logger,
   Optional,
   type OnModuleDestroy,
-  type OnModuleInit,
+  type OnApplicationBootstrap,
 } from '@nestjs/common';
 import { RelevarOutbox } from '../application/relevar-outbox.js';
 import { PuertoAvisoDeOutbox } from '../application/puertos-de-eventos.js';
@@ -34,7 +34,7 @@ export interface OpcionesDelRelay {
 }
 
 @Injectable()
-export class PlanificadorDeRelay implements OnModuleInit, OnModuleDestroy {
+export class PlanificadorDeRelay implements OnApplicationBootstrap, OnModuleDestroy {
   private readonly log = new Logger(PlanificadorDeRelay.name);
   private avisos: NodeJS.Timeout | null = null;
   private barrido: NodeJS.Timeout | null = null;
@@ -50,7 +50,7 @@ export class PlanificadorDeRelay implements OnModuleInit, OnModuleDestroy {
     if (opciones) this.intervaloDeBarridoMs = opciones.barridoMs;
   }
 
-  onModuleInit(): void {
+  onApplicationBootstrap(): void {
     this.avisos = setInterval(() => void this.tickDeAvisos(), this.intervaloDeAvisosMs);
     this.avisos.unref();
     if (this.intervaloDeBarridoMs > 0) {
