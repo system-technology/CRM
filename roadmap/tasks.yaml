@@ -5377,3 +5377,23 @@ tasks:
     source: auditoria de seguridad de T-234, 2026-11-15 (cola R13)
     created_at: 2026-11-15T20:55:00.000Z
     owner: backend
+  - id: T-236
+    title: "Ajustes: PATCH /api/v1/agencia/ajustes con la zona horaria (usa actualizar_zona_horaria_de_la_agencia)"
+    type: feature
+    phase: 1
+    priority: P2
+    effort: S
+    status: ready
+    depends_on: []
+    acceptance:
+      - "El endpoint exige permiso de dueno o administrador (la funcion no comprueba RBAC; solo viajapro_app la ejecuta)"
+      - "El esquema Zod acota la zona (p. ej. <= 64 caracteres) y 22023 se traduce a 422, P0002 a 404"
+      - "Z5 de aislamiento.spec.ts ejercita de verdad app.current_tenant NULL (hoy probablemente prueba '')"
+      - "policies/002: comentarios al dia (roles y propietarios) y viajapro_metricas en las mismas listas que viajapro_ajustes"
+    files:
+      - apps/api/src/modules/identity
+      - packages/contracts
+      - packages/database/prisma/policies/002-rol-aplicacion.sql
+    source: rehecho del PR #234 y su auditoria de seguridad, 2026-11-15
+    created_at: 2026-11-15T23:45:00.000Z
+    owner: backend

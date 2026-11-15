@@ -450,6 +450,10 @@ const MATRIZ_FUNCIONES: Readonly<Record<string, readonly string[]>> = {
   // Decimotercera (T-223): la antigüedad y el conteo de la cola de SALIDA entre agencias. Solo
   // dos enteros; la ejecuta el trabajador, que publica la medida para `/salud/listo`.
   medir_cola_de_salida: ['viajapro_webhook'],
+  // Decimocuarta (migración 20261116090000, rehace el PR #234): el PATCH de ajustes de la
+  // agencia. `tenants` es global y `viajapro_app` la tiene `{SELECT}`; la zona horaria se escribe
+  // solo por aquí, y solo la fila de `app.current_tenant`.
+  actualizar_zona_horaria_de_la_agencia: ['viajapro_app'],
 };
 
 const PROPIETARIO_ESPERADO: Readonly<Record<string, string>> = {
@@ -466,6 +470,7 @@ const PROPIETARIO_ESPERADO: Readonly<Record<string, string>> = {
   contar_reencolado_barrido: 'viajapro_staging',
   sincronizar_acceso_identidad: 'viajapro_accesos',
   medir_cola_de_salida: 'viajapro_metricas',
+  actualizar_zona_horaria_de_la_agencia: 'viajapro_ajustes',
 };
 
 /**
@@ -913,8 +918,8 @@ describe('ADR-0008 — directorio de enrutamiento, staging y separación de role
     );
     expect(
       rows.length,
-      'faltan funciones de ADR-0008: eran seis, la auditoría de implementación añadió purgar_payloads, la tarea 4f propagar_estado_canal, el relay de barrido listar_changes_pendientes, y los huecos del disparador propagar_estado_cuenta y contar_reencolado_barrido, ADR-0011 sincronizar_acceso_identidad, y T-223 medir_cola_de_salida',
-    ).toBe(13);
+      'faltan funciones de ADR-0008: eran seis, la auditoría de implementación añadió purgar_payloads, la tarea 4f propagar_estado_canal, el relay de barrido listar_changes_pendientes, y los huecos del disparador propagar_estado_cuenta y contar_reencolado_barrido, ADR-0011 sincronizar_acceso_identidad, T-223 medir_cola_de_salida, y los ajustes de la agencia actualizar_zona_horaria_de_la_agencia',
+    ).toBe(14);
     expect(rows.filter((r) => r.publico)).toEqual([]);
   });
 
@@ -927,7 +932,7 @@ describe('ADR-0008 — directorio de enrutamiento, staging y separación de role
        WHERE n.nspname = 'public' AND p.proname = ANY($1) ORDER BY 1`,
       [Object.keys(MATRIZ_FUNCIONES)],
     );
-    expect(rows.length).toBe(13);
+    expect(rows.length).toBe(14);
 
     for (const fila of rows) {
       const config = (fila.proconfig as string[] | null) ?? [];
@@ -943,16 +948,17 @@ describe('ADR-0008 — directorio de enrutamiento, staging y separación de role
     }
   });
 
-  it('14 — los tres propietarios no son credenciales ni se saltan RLS', async () => {
+  it('14 — los propietarios no son credenciales ni se saltan RLS', async () => {
     const { rows } = await admin.query(
       `SELECT rolname, rolcanlogin, rolbypassrls, rolsuper,
               EXISTS (SELECT 1 FROM pg_roles s WHERE s.rolname = 'neon_superuser')
                 AND pg_has_role(rolname, 'neon_superuser', 'MEMBER') AS hereda_neon
-       FROM pg_roles WHERE rolname IN ('viajapro_enrutador','viajapro_staging','viajapro_accesos','viajapro_metricas') ORDER BY 1`,
+       FROM pg_roles WHERE rolname IN ('viajapro_enrutador','viajapro_staging','viajapro_accesos','viajapro_metricas','viajapro_ajustes') ORDER BY 1`,
     );
     // El tercero es de ADR-0011: dueño del disparador que escribe `accesos_identidad`. El cuarto,
-    // de T-223: dueño de `medir_cola_de_salida`.
-    expect(rows.length).toBe(4);
+    // de T-223: dueño de `medir_cola_de_salida`. El quinto, de la migración 20261116090000: dueño
+    // de `actualizar_zona_horaria_de_la_agencia`.
+    expect(rows.length).toBe(5);
     for (const r of rows) {
       expect(r.rolcanlogin, `${r.rolname} puede iniciar sesión`).toBe(false);
       expect(r.rolbypassrls, `${r.rolname} tiene BYPASSRLS`).toBe(false);
@@ -6614,5 +6620,242 @@ describe('ADR-0015 — cifrado de las columnas con PII sensible', () => {
       }
     }
     expect(leidas).toBeGreaterThan(0);
+  });
+});
+
+/**
+ * Migración 20261116090000 (rehace el PR #234) — la zona horaria de la agencia se escribe por una
+ * función, nunca por un GRANT sobre `tenants`.
+ *
+ * `tenants` es global (excepción de RLS) y `viajapro_app` la tiene declarada `{SELECT}`. Un GRANT
+ * UPDATE de columna habría dejado que un `WHERE` equivocado en la API reescribiera la fila de otra
+ * agencia. La función toma la agencia de `app.current_tenant` y nunca de un parámetro. Todo se
+ * prueba con la conexión de la API de verdad (`app`, que es `viajapro_app`) y dentro de
+ * transacciones que se deshacen: la zona de los fixtures no cambia. El contrato fino (alias de
+ * zona, formas del uuid) vive en `zona-horaria-de-la-agencia.spec.ts`.
+ */
+describe('Ajustes de la agencia — zona horaria por función, nunca por GRANT sobre tenants', () => {
+  const FUNCION = 'public.actualizar_zona_horaria_de_la_agencia';
+
+  /** En una transacción de `app` que se deshace siempre. `contexto === undefined` no fija el GUC. */
+  async function enTransaccionDeApp<T>(
+    contexto: string | undefined,
+    fn: () => Promise<T>,
+  ): Promise<T> {
+    await app.query('BEGIN');
+    try {
+      if (contexto !== undefined) {
+        await app.query("SELECT set_config('app.current_tenant', $1, true)", [contexto]);
+      }
+      return await fn();
+    } finally {
+      await app.query('ROLLBACK');
+    }
+  }
+
+  /** El SQLSTATE de una sentencia, con punto de guardado para no abortar la transacción. */
+  async function codigoDe(accion: () => Promise<unknown>): Promise<string | undefined> {
+    await app.query('SAVEPOINT intento_zona');
+    try {
+      await accion();
+      await app.query('RELEASE SAVEPOINT intento_zona');
+      return undefined;
+    } catch (error) {
+      await app.query('ROLLBACK TO SAVEPOINT intento_zona');
+      return (error as { code?: string }).code;
+    }
+  }
+
+  const cambiar = (zona: string | null) =>
+    app.query<{ zona: string }>(`SELECT ${FUNCION}($1) AS zona`, [zona]);
+
+  const zonaDe = async (tenant: string): Promise<string> => {
+    const { rows } = await admin.query('SELECT zona_horaria FROM tenants WHERE id = $1', [tenant]);
+    return rows[0]?.zona_horaria as string;
+  };
+
+  it('Z1 — viajapro_ajustes es solo propietario: superficie exacta, sin miembros de login, dueño solo de su función', async () => {
+    const { rows: superficie } = await admin.query(
+      `SELECT format('%s.%s.%s:%s', n.nspname, c.relname, a.attname, p.priv) AS privilegio
+         FROM pg_class c
+         JOIN pg_namespace n ON n.oid = c.relnamespace
+         JOIN pg_attribute a ON a.attrelid = c.oid AND a.attnum > 0 AND NOT a.attisdropped
+        CROSS JOIN unnest(ARRAY['SELECT', 'INSERT', 'UPDATE', 'REFERENCES']) AS p(priv)
+        WHERE n.nspname NOT IN ('pg_catalog', 'information_schema')
+          AND n.nspname NOT LIKE 'pg\\_toast%'
+          AND n.nspname NOT LIKE 'pg\\_temp%'
+          AND c.relkind IN ('r', 'p', 'v', 'm', 'f')
+          AND has_column_privilege('viajapro_ajustes', c.oid, a.attnum, p.priv)
+          AND NOT has_column_privilege('public', c.oid, a.attnum, p.priv)
+        ORDER BY 1`,
+    );
+    expect(
+      (superficie as Array<{ privilegio: string }>).map((r) => r.privilegio),
+      'superficie de columnas de viajapro_ajustes',
+    ).toEqual([
+      'public.tenants.actualizado_en:UPDATE',
+      'public.tenants.id:SELECT',
+      'public.tenants.zona_horaria:UPDATE',
+    ]);
+
+    const { rows: deTabla } = await admin.query(
+      `SELECT c.oid::regclass::text AS tabla, x.privilege_type AS privilegio
+         FROM pg_class c, aclexplode(c.relacl) x
+        WHERE x.grantee = 'viajapro_ajustes'::regrole`,
+    );
+    expect(deTabla, 'privilegios de TABLA de viajapro_ajustes').toEqual([]);
+
+    const { rows: miembroDe } = await admin.query(
+      `SELECT roleid::regrole::text AS rol FROM pg_auth_members
+        WHERE member = 'viajapro_ajustes'::regrole`,
+    );
+    expect(miembroDe, 'roles de los que viajapro_ajustes es miembro').toEqual([]);
+
+    const { rows: comoDueno } = await admin.query(
+      `SELECT rolname FROM unnest($1::text[]) AS rolname
+        WHERE pg_has_role(rolname, 'viajapro_ajustes', 'MEMBER')`,
+      [await rolesAVigilar(admin)],
+    );
+    expect(comoDueno, 'roles de login que pueden actuar como viajapro_ajustes').toEqual([]);
+
+    const { rows: propias } = await admin.query(
+      `SELECT format('%s.%s', n.nspname, p.proname) AS funcion
+         FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+        WHERE p.proowner = 'viajapro_ajustes'::regrole
+        ORDER BY 1`,
+    );
+    expect(
+      (propias as Array<{ funcion: string }>).map((r) => r.funcion),
+      'funciones de las que viajapro_ajustes es dueño',
+    ).toEqual(['public.actualizar_zona_horaria_de_la_agencia']);
+
+    const { rows: concedidas } = await admin.query(
+      `SELECT p.oid::regprocedure::text AS funcion
+         FROM pg_proc p, aclexplode(p.proacl) x
+        WHERE x.grantee = 'viajapro_ajustes'::regrole
+          AND p.proowner <> x.grantee`,
+    );
+    expect(concedidas, 'funciones que conceden EXECUTE a viajapro_ajustes').toEqual([]);
+
+    // La firma no tiene por dónde nombrar otra agencia: un solo argumento, la zona.
+    const { rows: firma } = await admin.query(
+      `SELECT pg_get_function_identity_arguments(p.oid) AS argumentos,
+              pg_get_function_result(p.oid) AS resultado
+         FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+        WHERE n.nspname = 'public' AND p.proname = 'actualizar_zona_horaria_de_la_agencia'`,
+    );
+    expect(firma).toEqual([{ argumentos: 'zona text', resultado: 'text' }]);
+
+    // La API sigue sin escribir `tenants` por ningún camino directo, ni de tabla ni de columna.
+    const { rows: directo } = await admin.query(
+      `SELECT has_table_privilege('viajapro_app', 'public.tenants', 'UPDATE') AS tabla,
+              has_any_column_privilege('viajapro_app', 'public.tenants', 'UPDATE') AS columna,
+              has_any_column_privilege('viajapro_app', 'public.tenants', 'INSERT') AS insercion`,
+    );
+    expect(directo[0]).toEqual({ tabla: false, columna: false, insercion: false });
+  });
+
+  it('Z2 (a) — viajapro_app cambia la zona de SU agencia y actualizado_en avanza', async () => {
+    const antesA = await zonaDe(TENANT_A);
+    expect(antesA, 'el fixture ya tiene la zona que se va a escribir').not.toBe(
+      'America/Mexico_City',
+    );
+    await enTransaccionDeApp(TENANT_A, async () => {
+      const { rows: antes } = await app.query<{ actualizado_en: Date }>(
+        'SELECT actualizado_en FROM tenants WHERE id = $1',
+        [TENANT_A],
+      );
+      const { rows } = await cambiar('America/Mexico_City');
+      expect(rows).toEqual([{ zona: 'America/Mexico_City' }]);
+      const { rows: despues } = await app.query<{ zona_horaria: string; actualizado_en: Date }>(
+        'SELECT zona_horaria, actualizado_en FROM tenants WHERE id = $1',
+        [TENANT_A],
+      );
+      expect(despues[0]?.zona_horaria).toBe('America/Mexico_City');
+      expect(despues[0]?.actualizado_en.getTime()).toBeGreaterThanOrEqual(
+        antes[0]?.actualizado_en.getTime() ?? Number.POSITIVE_INFINITY,
+      );
+    });
+    // Se deshizo: la fila confirmada no cambió.
+    expect(await zonaDe(TENANT_A)).toBe(antesA);
+  });
+
+  it('Z3 (b) — con el contexto de A no hay forma de cambiar la zona de B', async () => {
+    const antesB = await zonaDe(TENANT_B);
+
+    await enTransaccionDeApp(TENANT_A, async () => {
+      await cambiar('Europe/Madrid');
+      const { rows } = await app.query<{ id: string; zona_horaria: string }>(
+        'SELECT id, zona_horaria FROM tenants WHERE id = ANY($1)',
+        [[TENANT_A, TENANT_B]],
+      );
+      const porId = Object.fromEntries(rows.map((r) => [r.id, r.zona_horaria]));
+      expect(porId[TENANT_A]).toBe('Europe/Madrid');
+      expect(porId[TENANT_B], 'la función escribió la fila de otra agencia').toBe(antesB);
+
+      // El atajo que la migración evita: UPDATE directo de tenants con el rol de la API.
+      for (const sql of [
+        `UPDATE tenants SET zona_horaria = 'Europe/Madrid' WHERE id = '${TENANT_B}'`,
+        `UPDATE tenants SET zona_horaria = 'Europe/Madrid'`,
+        `UPDATE tenants SET actualizado_en = now() WHERE id = '${TENANT_A}'`,
+      ]) {
+        await esperarPermisoDenegado(app, () => app.query(sql), sql);
+      }
+    });
+
+    // Ni los otros roles de login: solo la API ejecuta la función.
+    for (const rol of ['viajapro_altas', 'viajapro_webhook', 'viajapro_identidad']) {
+      await admin.query('BEGIN');
+      try {
+        await admin.query(`SET LOCAL ROLE ${ident(rol)}`);
+        await admin.query("SELECT set_config('app.current_tenant', $1, true)", [TENANT_B]);
+        await expect(
+          admin.query(`SELECT ${FUNCION}($1)`, ['Europe/Madrid']),
+          `${rol} pudo cambiar la zona horaria`,
+        ).rejects.toMatchObject({ code: '42501' });
+      } finally {
+        await admin.query('ROLLBACK');
+      }
+    }
+
+    expect(await zonaDe(TENANT_B)).toBe(antesB);
+  });
+
+  it('Z4 (c) — una zona inválida falla con 22023 y no escribe nada', async () => {
+    const antesA = await zonaDe(TENANT_A);
+    await enTransaccionDeApp(TENANT_A, async () => {
+      for (const zona of [
+        null,
+        '',
+        'Marte/Olympus_Mons',
+        'america/bogota',
+        'posix/America/Bogota',
+      ]) {
+        expect(await codigoDe(() => cambiar(zona)), String(zona)).toBe('22023');
+      }
+      const { rows } = await app.query('SELECT zona_horaria FROM tenants WHERE id = $1', [
+        TENANT_A,
+      ]);
+      expect(rows[0]?.zona_horaria).toBe(antesA);
+    });
+  });
+
+  it('Z5 (d) — sin app.current_tenant (o con uno que no es una agencia) falla y no escribe nada', async () => {
+    const antesA = await zonaDe(TENANT_A);
+    const antesB = await zonaDe(TENANT_B);
+
+    // GUC sin fijar en esta transacción, vacío, o que no es un uuid canónico: 42501.
+    for (const contexto of [undefined, '', 'agencia-a', `{${TENANT_A}}`]) {
+      await enTransaccionDeApp(contexto, async () => {
+        expect(await codigoDe(() => cambiar('Europe/Madrid')), String(contexto)).toBe('42501');
+      });
+    }
+    // Un uuid bien formado que no es ninguna agencia: P0002, y ninguna fila se toca.
+    await enTransaccionDeApp(randomUUID(), async () => {
+      expect(await codigoDe(() => cambiar('Europe/Madrid'))).toBe('P0002');
+    });
+
+    expect(await zonaDe(TENANT_A)).toBe(antesA);
+    expect(await zonaDe(TENANT_B)).toBe(antesB);
   });
 });
