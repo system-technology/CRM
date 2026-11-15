@@ -61,10 +61,9 @@ describe('Pruebas del Catálogo de Paquetes y Tarifarios de Mayoristas', () => {
     }
   });
 
-  it('3. Las vigencias y tarifas mock validan con sus esquemas Zod (R3) y salen de los datos de muestra', () => {
+  it('3. Las vigencias y tarifas mock validan con sus esquemas Zod (R3)', () => {
     for (const p of MOCK_PAQUETES_CATALOGO) {
       expect(p.vigencias.length).toBeGreaterThan(0);
-      expect(p.vigencias.length).toBe(p.tarifarioDemo.length);
       for (const v of p.vigencias) {
         expect(EsquemaVigenciaDeDetalle.safeParse(v).success).toBe(true);
         for (const t of v.tarifas) {

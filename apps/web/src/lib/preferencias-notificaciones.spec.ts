@@ -123,12 +123,14 @@ describe('preferencias-notificaciones (T-110)', () => {
       },
       connect: vi.fn(),
     };
-    const mockAudioContext = vi.fn().mockImplementation(() => ({
-      currentTime: 0,
-      destination: {},
-      createOscillator: vi.fn().mockReturnValue(mockOscillator),
-      createGain: vi.fn().mockReturnValue(mockGain),
-    }));
+    const mockAudioContext = vi.fn().mockImplementation(function () {
+      return {
+        currentTime: 0,
+        destination: {},
+        createOscillator: vi.fn().mockReturnValue(mockOscillator),
+        createGain: vi.fn().mockReturnValue(mockGain),
+      };
+    });
 
     Object.defineProperty(window, 'AudioContext', {
       value: mockAudioContext,

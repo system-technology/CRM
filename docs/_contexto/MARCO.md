@@ -46,6 +46,10 @@ sesión nueva o degradada
    └─► pegar «Retoma desde el cerebro persistente» y seguir el protocolo del §2
 ```
 
+Lo hacen cumplir dos hooks (`contexto-persistente.mjs`): `hito` recuerda el checkpoint justo
+después de un merge, un PR o un push; `parada` **impide terminar el turno** si el checkpoint es
+más viejo que el último commit (o lleva más de 2 h con el árbol sucio). Bloquea una sola vez.
+
 ## 5. Marco de entrega
 
 - **Carriles:** `a/` backend y base de datos, `b/` frontend, `i/` docs e integración. Un PR no

@@ -142,7 +142,7 @@ export const MOCK_CONFIGURACION_AGENCIA: ConfiguracionAgencia = {
 export const MOCK_ETAPAS_CONFIGURADAS: EtapaConfigurada[] = [
   {
     codigo: 'NUEVO_LEAD',
-    label: 'Nuevo Lead',
+    label: 'Oportunidad nueva',
     orden: 1,
     probabilidad: 10,
     descripcion: 'Contacto recibido vía WhatsApp sin cotizar aún',

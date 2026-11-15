@@ -557,7 +557,6 @@ export default function CatalogoPage() {
                             mayorista: null,
                             creadoEn: new Date().toISOString(),
                             vigencias: [],
-                            tarifarioDemo: [],
                           };
                           setPaqueteSeleccionado(paqGenerado);
                         }}

@@ -329,7 +329,7 @@ describe('Pruebas del Módulo de Cotización y Generación de Propuestas', () =>
       paqueteSanAndres,
     );
 
-    expect(cotizacion.temporadaNombre).toBe('Temporada alta — diciembre');
+    expect(cotizacion.temporadaNombre).toBe('Vigencia del 2027-12-15 al 2028-01-15');
     expect(cotizacion.acomodacion).toBe('DOBLE');
     // 4 ocupantes en acomodación doble = 2 habitaciones
     expect(cotizacion.habitaciones).toHaveLength(2);

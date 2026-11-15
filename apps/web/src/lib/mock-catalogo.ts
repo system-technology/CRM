@@ -1,79 +1,62 @@
 import type {
   Acomodacion,
-  Dinero,
   Mayorista,
   Paquete,
+  TarifaDeDetalle,
   TipoPasajero,
   VigenciaDeDetalle,
 } from '@viajapro/contracts';
 
 /**
  * Un paquete tal como lo pinta la ficha: el contrato `Paquete` más el mayorista y las
- * **vigencias con sus tarifas**, que es lo que lee el cotizador (ADR-0025 paso 2).
+ * **vigencias con sus tarifas**, que es lo que lee el cotizador (ADR-0025 paso 2), también el
+ * simulador sin API (`calcularCotizacionMock`).
  */
 export interface PaqueteConDetalle extends Paquete {
   mayorista: Mayorista | null;
   vigencias: VigenciaDeDetalle[];
-  /**
-   * SOLO para el simulador sin API (`calcularCotizacionMock`). Es la matriz acomodación × tipo de
-   * pasajero con que se escribieron los datos de muestra; `vigencias` se deriva de ella y es lo
-   * único que la interfaz lee. No es un contrato ni viene de la API.
-   */
-  tarifarioDemo: TemporadaDemo[];
 }
-
-/** Forma interna de los datos de muestra. No se exporta a la API ni a `contracts`. */
-export interface PrecioDemo {
-  id: string;
-  acomodacion: Acomodacion;
-  tipoPasajero: TipoPasajero;
-  neto?: Dinero;
-  venta: Dinero;
-  edadMinima: number | null;
-  edadMaxima: number | null;
-}
-
-export interface TemporadaDemo {
-  id: string;
-  nombre: string;
-  desde: string;
-  hasta: string;
-  precios: PrecioDemo[];
-}
-
-type PaqueteDemo = Omit<PaqueteConDetalle, 'vigencias' | 'tarifarioDemo'> & {
-  temporadas: TemporadaDemo[];
-};
 
 const ETIQUETA_TIPO: Record<TipoPasajero, string> = { ADT: 'Adulto', CHD: 'Niño', INF: 'Infante' };
 
-/** Una temporada de muestra es una vigencia de rango sin publicar; cada precio, una tarifa. */
-export function vigenciaDesdeTemporadaDemo(t: TemporadaDemo): VigenciaDeDetalle {
+/** Una tarifa por persona de muestra, en COP (unidad mínima = el peso, R8). */
+function tarifa(
+  id: string,
+  acomodacion: Acomodacion,
+  tipoPasajero: TipoPasajero,
+  neto: number,
+  venta: number,
+  edadMinima: number | null,
+  edadMaxima: number | null,
+): TarifaDeDetalle {
   return {
-    id: t.id,
-    desde: t.desde,
-    hasta: t.hasta,
-    publicada: false,
-    cupoTotal: null,
-    tarifas: t.precios.map((pr) => ({
-      id: pr.id,
-      nombre: `${ETIQUETA_TIPO[pr.tipoPasajero]} en ${pr.acomodacion.toLowerCase()}`,
-      unidad: 'POR_PERSONA',
-      cubrePasajeros: 1,
-      aditiva: false,
-      ...(pr.neto ? { neto: pr.neto } : {}),
-      venta: pr.venta,
-      condicion: {
-        acomodacion: pr.acomodacion,
-        tipoPasajero: pr.tipoPasajero,
-        edadMinima: pr.edadMinima,
-        edadMaxima: pr.edadMaxima,
-        pasajerosMinimo: null,
-        pasajerosMaximo: null,
-        ocupaSilla: null,
-      },
-    })),
+    id,
+    nombre: `${ETIQUETA_TIPO[tipoPasajero]} en ${acomodacion.toLowerCase()}`,
+    unidad: 'POR_PERSONA',
+    cubrePasajeros: 1,
+    aditiva: false,
+    neto: { unidades: String(neto), moneda: 'COP' },
+    venta: { unidades: String(venta), moneda: 'COP' },
+    condicion: {
+      acomodacion,
+      tipoPasajero,
+      edadMinima,
+      edadMaxima,
+      pasajerosMinimo: null,
+      pasajerosMaximo: null,
+      ocupaSilla: null,
+    },
   };
+}
+
+/** Una vigencia de rango sin publicar con sus tarifas. No tiene nombre (ADR-0025). */
+function vigencia(
+  id: string,
+  desde: string,
+  hasta: string,
+  tarifas: TarifaDeDetalle[],
+): VigenciaDeDetalle {
+  return { id, desde, hasta, publicada: false, cupoTotal: null, tarifas };
 }
 
 export const MAYORISTA_CARIBE: Mayorista = {
@@ -100,7 +83,7 @@ export const OPERADORA_ANDINA: Mayorista = {
 
 export const MOCK_MAYORISTAS: Mayorista[] = [MAYORISTA_CARIBE, OPERADORA_ANDINA];
 
-const PAQUETES_DEMO: PaqueteDemo[] = [
+export const MOCK_PAQUETES_CATALOGO: PaqueteConDetalle[] = [
   {
     id: '01932000-0000-7000-8000-000000000001',
     nombre: 'San Andrés — 4 días / 3 noches, todo incluido',
@@ -127,175 +110,117 @@ const PAQUETES_DEMO: PaqueteDemo[] = [
     ],
     creadoEn: '2026-02-01T10:00:00.000Z',
     mayorista: MAYORISTA_CARIBE,
-    temporadas: [
-      {
-        id: '01932000-0000-7000-8000-0000000000b1',
-        nombre: 'Temporada Baja 2027',
-        desde: '2027-02-01',
-        hasta: '2027-06-15',
-        precios: [
-          {
-            id: '01932000-0000-7000-8000-0000000000c1',
-            acomodacion: 'DOBLE',
-            tipoPasajero: 'ADT',
-            neto: { unidades: '1280000', moneda: 'COP' },
-            venta: { unidades: '1590000', moneda: 'COP' },
-            edadMinima: null,
-            edadMaxima: null,
-          },
-          {
-            id: '01932000-0000-7000-8000-0000000000c2',
-            acomodacion: 'TRIPLE',
-            tipoPasajero: 'ADT',
-            neto: { unidades: '1150000', moneda: 'COP' },
-            venta: { unidades: '1430000', moneda: 'COP' },
-            edadMinima: null,
-            edadMaxima: null,
-          },
-          {
-            id: '01932000-0000-7000-8000-0000000000c3',
-            acomodacion: 'CUADRUPLE',
-            tipoPasajero: 'ADT',
-            neto: { unidades: '1080000', moneda: 'COP' },
-            venta: { unidades: '1340000', moneda: 'COP' },
-            edadMinima: null,
-            edadMaxima: null,
-          },
-          {
-            id: '01932000-0000-7000-8000-0000000000c4',
-            acomodacion: 'SENCILLA',
-            tipoPasajero: 'ADT',
-            neto: { unidades: '1850000', moneda: 'COP' },
-            venta: { unidades: '2290000', moneda: 'COP' },
-            edadMinima: null,
-            edadMaxima: null,
-          },
-          {
-            id: '01932000-0000-7000-8000-0000000000c5',
-            acomodacion: 'DOBLE',
-            tipoPasajero: 'CHD',
-            neto: { unidades: '890000', moneda: 'COP' },
-            venta: { unidades: '1110000', moneda: 'COP' },
-            edadMinima: 2,
-            edadMaxima: 11,
-          },
-          {
-            id: '01932000-0000-7000-8000-0000000000c6',
-            acomodacion: 'DOBLE',
-            tipoPasajero: 'INF',
-            neto: { unidades: '180000', moneda: 'COP' },
-            venta: { unidades: '220000', moneda: 'COP' },
-            edadMinima: 0,
-            edadMaxima: 1,
-          },
-        ],
-      },
-      {
-        id: '01932000-0000-7000-8000-0000000000b2',
-        nombre: 'Temporada Alta / Vacaciones 2027',
-        desde: '2027-06-16',
-        hasta: '2027-08-20',
-        precios: [
-          {
-            id: '01932000-0000-7000-8000-0000000000c7',
-            acomodacion: 'DOBLE',
-            tipoPasajero: 'ADT',
-            neto: { unidades: '1580000', moneda: 'COP' },
-            venta: { unidades: '1980000', moneda: 'COP' },
-            edadMinima: null,
-            edadMaxima: null,
-          },
-          {
-            id: '01932000-0000-7000-8000-0000000000c8',
-            acomodacion: 'TRIPLE',
-            tipoPasajero: 'ADT',
-            neto: { unidades: '1420000', moneda: 'COP' },
-            venta: { unidades: '1790000', moneda: 'COP' },
-            edadMinima: null,
-            edadMaxima: null,
-          },
-          {
-            id: '01932000-0000-7000-8000-0000000000c9',
-            acomodacion: 'SENCILLA',
-            tipoPasajero: 'ADT',
-            neto: { unidades: '2200000', moneda: 'COP' },
-            venta: { unidades: '2750000', moneda: 'COP' },
-            edadMinima: null,
-            edadMaxima: null,
-          },
-          {
-            id: '01932000-0000-7000-8000-0000000000ca',
-            acomodacion: 'DOBLE',
-            tipoPasajero: 'CHD',
-            neto: { unidades: '1090000', moneda: 'COP' },
-            venta: { unidades: '1350000', moneda: 'COP' },
-            edadMinima: 2,
-            edadMaxima: 11,
-          },
-        ],
-      },
-      {
-        id: '01932000-0000-7000-8000-0000000000bf',
-        nombre: 'Temporada alta — diciembre',
-        desde: '2027-12-15',
-        hasta: '2028-01-15',
-        precios: [
-          {
-            id: '01932000-0000-7000-8000-0000000000cf',
-            acomodacion: 'DOBLE',
-            tipoPasajero: 'ADT',
-            neto: { unidades: '2150000', moneda: 'COP' },
-            venta: { unidades: '2690000', moneda: 'COP' },
-            edadMinima: null,
-            edadMaxima: null,
-          },
-          {
-            id: '01932000-0000-7000-8000-0000000000d1',
-            acomodacion: 'TRIPLE',
-            tipoPasajero: 'ADT',
-            neto: { unidades: '1980000', moneda: 'COP' },
-            venta: { unidades: '2480000', moneda: 'COP' },
-            edadMinima: null,
-            edadMaxima: null,
-          },
-          {
-            id: '01932000-0000-7000-8000-0000000000d2',
-            acomodacion: 'CUADRUPLE',
-            tipoPasajero: 'ADT',
-            neto: { unidades: '1850000', moneda: 'COP' },
-            venta: { unidades: '2310000', moneda: 'COP' },
-            edadMinima: null,
-            edadMaxima: null,
-          },
-          {
-            id: '01932000-0000-7000-8000-0000000000d3',
-            acomodacion: 'SENCILLA',
-            tipoPasajero: 'ADT',
-            neto: { unidades: '3100000', moneda: 'COP' },
-            venta: { unidades: '3870000', moneda: 'COP' },
-            edadMinima: null,
-            edadMaxima: null,
-          },
-          {
-            id: '01932000-0000-7000-8000-0000000000d4',
-            acomodacion: 'DOBLE',
-            tipoPasajero: 'CHD',
-            neto: { unidades: '1490000', moneda: 'COP' },
-            venta: { unidades: '1860000', moneda: 'COP' },
-            edadMinima: 2,
-            edadMaxima: 11,
-          },
-          {
-            id: '01932000-0000-7000-8000-0000000000d5',
-            acomodacion: 'DOBLE',
-            tipoPasajero: 'INF',
-            neto: { unidades: '220000', moneda: 'COP' },
-            venta: { unidades: '270000', moneda: 'COP' },
-            edadMinima: 0,
-            edadMaxima: 1,
-          },
-        ],
-      },
+    vigencias: [
+      vigencia('01932000-0000-7000-8000-0000000000b1', '2027-02-01', '2027-06-15', [
+        tarifa(
+          '01932000-0000-7000-8000-0000000000c1',
+          'DOBLE',
+          'ADT',
+          1280000,
+          1590000,
+          null,
+          null,
+        ),
+        tarifa(
+          '01932000-0000-7000-8000-0000000000c2',
+          'TRIPLE',
+          'ADT',
+          1150000,
+          1430000,
+          null,
+          null,
+        ),
+        tarifa(
+          '01932000-0000-7000-8000-0000000000c3',
+          'CUADRUPLE',
+          'ADT',
+          1080000,
+          1340000,
+          null,
+          null,
+        ),
+        tarifa(
+          '01932000-0000-7000-8000-0000000000c4',
+          'SENCILLA',
+          'ADT',
+          1850000,
+          2290000,
+          null,
+          null,
+        ),
+        tarifa('01932000-0000-7000-8000-0000000000c5', 'DOBLE', 'CHD', 890000, 1110000, 2, 11),
+        tarifa('01932000-0000-7000-8000-0000000000c6', 'DOBLE', 'INF', 180000, 220000, 0, 1),
+      ]),
+      vigencia('01932000-0000-7000-8000-0000000000b2', '2027-06-16', '2027-08-20', [
+        tarifa(
+          '01932000-0000-7000-8000-0000000000c7',
+          'DOBLE',
+          'ADT',
+          1580000,
+          1980000,
+          null,
+          null,
+        ),
+        tarifa(
+          '01932000-0000-7000-8000-0000000000c8',
+          'TRIPLE',
+          'ADT',
+          1420000,
+          1790000,
+          null,
+          null,
+        ),
+        tarifa(
+          '01932000-0000-7000-8000-0000000000c9',
+          'SENCILLA',
+          'ADT',
+          2200000,
+          2750000,
+          null,
+          null,
+        ),
+        tarifa('01932000-0000-7000-8000-0000000000ca', 'DOBLE', 'CHD', 1090000, 1350000, 2, 11),
+      ]),
+      vigencia('01932000-0000-7000-8000-0000000000bf', '2027-12-15', '2028-01-15', [
+        tarifa(
+          '01932000-0000-7000-8000-0000000000cf',
+          'DOBLE',
+          'ADT',
+          2150000,
+          2690000,
+          null,
+          null,
+        ),
+        tarifa(
+          '01932000-0000-7000-8000-0000000000d1',
+          'TRIPLE',
+          'ADT',
+          1980000,
+          2480000,
+          null,
+          null,
+        ),
+        tarifa(
+          '01932000-0000-7000-8000-0000000000d2',
+          'CUADRUPLE',
+          'ADT',
+          1850000,
+          2310000,
+          null,
+          null,
+        ),
+        tarifa(
+          '01932000-0000-7000-8000-0000000000d3',
+          'SENCILLA',
+          'ADT',
+          3100000,
+          3870000,
+          null,
+          null,
+        ),
+        tarifa('01932000-0000-7000-8000-0000000000d4', 'DOBLE', 'CHD', 1490000, 1860000, 2, 11),
+        tarifa('01932000-0000-7000-8000-0000000000d5', 'DOBLE', 'INF', 220000, 270000, 0, 1),
+      ]),
     ],
   },
   {
@@ -324,51 +249,37 @@ const PAQUETES_DEMO: PaqueteDemo[] = [
     ],
     creadoEn: '2026-02-05T14:15:00.000Z',
     mayorista: OPERADORA_ANDINA,
-    temporadas: [
-      {
-        id: '01932000-0000-7000-8000-0000000000b3',
-        nombre: 'Temporada Regular 2027',
-        desde: '2027-01-15',
-        hasta: '2027-11-30',
-        precios: [
-          {
-            id: '01932000-0000-7000-8000-0000000000cb',
-            acomodacion: 'DOBLE',
-            tipoPasajero: 'ADT',
-            neto: { unidades: '1020000', moneda: 'COP' },
-            venta: { unidades: '1290000', moneda: 'COP' },
-            edadMinima: null,
-            edadMaxima: null,
-          },
-          {
-            id: '01932000-0000-7000-8000-0000000000cc',
-            acomodacion: 'TRIPLE',
-            tipoPasajero: 'ADT',
-            neto: { unidades: '930000', moneda: 'COP' },
-            venta: { unidades: '1180000', moneda: 'COP' },
-            edadMinima: null,
-            edadMaxima: null,
-          },
-          {
-            id: '01932000-0000-7000-8000-0000000000cd',
-            acomodacion: 'SENCILLA',
-            tipoPasajero: 'ADT',
-            neto: { unidades: '1430000', moneda: 'COP' },
-            venta: { unidades: '1790000', moneda: 'COP' },
-            edadMinima: null,
-            edadMaxima: null,
-          },
-          {
-            id: '01932000-0000-7000-8000-0000000000ce',
-            acomodacion: 'DOBLE',
-            tipoPasajero: 'CHD',
-            neto: { unidades: '710000', moneda: 'COP' },
-            venta: { unidades: '890000', moneda: 'COP' },
-            edadMinima: 2,
-            edadMaxima: 11,
-          },
-        ],
-      },
+    vigencias: [
+      vigencia('01932000-0000-7000-8000-0000000000b3', '2027-01-15', '2027-11-30', [
+        tarifa(
+          '01932000-0000-7000-8000-0000000000cb',
+          'DOBLE',
+          'ADT',
+          1020000,
+          1290000,
+          null,
+          null,
+        ),
+        tarifa(
+          '01932000-0000-7000-8000-0000000000cc',
+          'TRIPLE',
+          'ADT',
+          930000,
+          1180000,
+          null,
+          null,
+        ),
+        tarifa(
+          '01932000-0000-7000-8000-0000000000cd',
+          'SENCILLA',
+          'ADT',
+          1430000,
+          1790000,
+          null,
+          null,
+        ),
+        tarifa('01932000-0000-7000-8000-0000000000ce', 'DOBLE', 'CHD', 710000, 890000, 2, 11),
+      ]),
     ],
   },
   {
@@ -397,51 +308,37 @@ const PAQUETES_DEMO: PaqueteDemo[] = [
     ],
     creadoEn: '2026-02-10T16:00:00.000Z',
     mayorista: MAYORISTA_CARIBE,
-    temporadas: [
-      {
-        id: '01932000-0000-7000-8000-0000000000b4',
-        nombre: 'Caribe Total 2027',
-        desde: '2027-03-01',
-        hasta: '2027-12-15',
-        precios: [
-          {
-            id: '01932000-0000-7000-8000-0000000000cf',
-            acomodacion: 'DOBLE',
-            tipoPasajero: 'ADT',
-            neto: { unidades: '3150000', moneda: 'COP' },
-            venta: { unidades: '3890000', moneda: 'COP' },
-            edadMinima: null,
-            edadMaxima: null,
-          },
-          {
-            id: '01932000-0000-7000-8000-0000000000d0',
-            acomodacion: 'TRIPLE',
-            tipoPasajero: 'ADT',
-            neto: { unidades: '2900000', moneda: 'COP' },
-            venta: { unidades: '3590000', moneda: 'COP' },
-            edadMinima: null,
-            edadMaxima: null,
-          },
-          {
-            id: '01932000-0000-7000-8000-0000000000d1',
-            acomodacion: 'SENCILLA',
-            tipoPasajero: 'ADT',
-            neto: { unidades: '4200000', moneda: 'COP' },
-            venta: { unidades: '5200000', moneda: 'COP' },
-            edadMinima: null,
-            edadMaxima: null,
-          },
-          {
-            id: '01932000-0000-7000-8000-0000000000d2',
-            acomodacion: 'DOBLE',
-            tipoPasajero: 'CHD',
-            neto: { unidades: '1700000', moneda: 'COP' },
-            venta: { unidades: '2100000', moneda: 'COP' },
-            edadMinima: 2,
-            edadMaxima: 11,
-          },
-        ],
-      },
+    vigencias: [
+      vigencia('01932000-0000-7000-8000-0000000000b4', '2027-03-01', '2027-12-15', [
+        tarifa(
+          '01932000-0000-7000-8000-0000000000cf',
+          'DOBLE',
+          'ADT',
+          3150000,
+          3890000,
+          null,
+          null,
+        ),
+        tarifa(
+          '01932000-0000-7000-8000-0000000000d0',
+          'TRIPLE',
+          'ADT',
+          2900000,
+          3590000,
+          null,
+          null,
+        ),
+        tarifa(
+          '01932000-0000-7000-8000-0000000000d1',
+          'SENCILLA',
+          'ADT',
+          4200000,
+          5200000,
+          null,
+          null,
+        ),
+        tarifa('01932000-0000-7000-8000-0000000000d2', 'DOBLE', 'CHD', 1700000, 2100000, 2, 11),
+      ]),
     ],
   },
   {
@@ -470,51 +367,37 @@ const PAQUETES_DEMO: PaqueteDemo[] = [
     ],
     creadoEn: '2026-02-12T11:20:00.000Z',
     mayorista: OPERADORA_ANDINA,
-    temporadas: [
-      {
-        id: '01932000-0000-7000-8000-0000000000b5',
-        nombre: 'Riviera Maya 2027',
-        desde: '2027-04-01',
-        hasta: '2027-10-31',
-        precios: [
-          {
-            id: '01932000-0000-7000-8000-0000000000d3',
-            acomodacion: 'DOBLE',
-            tipoPasajero: 'ADT',
-            neto: { unidades: '2800000', moneda: 'COP' },
-            venta: { unidades: '3450000', moneda: 'COP' },
-            edadMinima: null,
-            edadMaxima: null,
-          },
-          {
-            id: '01932000-0000-7000-8000-0000000000d4',
-            acomodacion: 'TRIPLE',
-            tipoPasajero: 'ADT',
-            neto: { unidades: '2590000', moneda: 'COP' },
-            venta: { unidades: '3190000', moneda: 'COP' },
-            edadMinima: null,
-            edadMaxima: null,
-          },
-          {
-            id: '01932000-0000-7000-8000-0000000000d5',
-            acomodacion: 'SENCILLA',
-            tipoPasajero: 'ADT',
-            neto: { unidades: '3800000', moneda: 'COP' },
-            venta: { unidades: '4690000', moneda: 'COP' },
-            edadMinima: null,
-            edadMaxima: null,
-          },
-          {
-            id: '01932000-0000-7000-8000-0000000000d6',
-            acomodacion: 'DOBLE',
-            tipoPasajero: 'CHD',
-            neto: { unidades: '1580000', moneda: 'COP' },
-            venta: { unidades: '1950000', moneda: 'COP' },
-            edadMinima: 2,
-            edadMaxima: 11,
-          },
-        ],
-      },
+    vigencias: [
+      vigencia('01932000-0000-7000-8000-0000000000b5', '2027-04-01', '2027-10-31', [
+        tarifa(
+          '01932000-0000-7000-8000-0000000000d3',
+          'DOBLE',
+          'ADT',
+          2800000,
+          3450000,
+          null,
+          null,
+        ),
+        tarifa(
+          '01932000-0000-7000-8000-0000000000d4',
+          'TRIPLE',
+          'ADT',
+          2590000,
+          3190000,
+          null,
+          null,
+        ),
+        tarifa(
+          '01932000-0000-7000-8000-0000000000d5',
+          'SENCILLA',
+          'ADT',
+          3800000,
+          4690000,
+          null,
+          null,
+        ),
+        tarifa('01932000-0000-7000-8000-0000000000d6', 'DOBLE', 'CHD', 1580000, 1950000, 2, 11),
+      ]),
     ],
   },
   {
@@ -544,60 +427,38 @@ const PAQUETES_DEMO: PaqueteDemo[] = [
     ],
     creadoEn: '2026-02-15T09:00:00.000Z',
     mayorista: OPERADORA_ANDINA,
-    temporadas: [
-      {
-        id: '01932000-0000-7000-8000-0000000000b6',
-        nombre: 'Cultura Cafetera 2027',
-        desde: '2027-01-10',
-        hasta: '2027-12-20',
-        precios: [
-          {
-            id: '01932000-0000-7000-8000-0000000000d7',
-            acomodacion: 'DOBLE',
-            tipoPasajero: 'ADT',
-            neto: { unidades: '920000', moneda: 'COP' },
-            venta: { unidades: '1150000', moneda: 'COP' },
-            edadMinima: null,
-            edadMaxima: null,
-          },
-          {
-            id: '01932000-0000-7000-8000-0000000000d8',
-            acomodacion: 'TRIPLE',
-            tipoPasajero: 'ADT',
-            neto: { unidades: '820000', moneda: 'COP' },
-            venta: { unidades: '1020000', moneda: 'COP' },
-            edadMinima: null,
-            edadMaxima: null,
-          },
-          {
-            id: '01932000-0000-7000-8000-0000000000d9',
-            acomodacion: 'CUADRUPLE',
-            tipoPasajero: 'ADT',
-            neto: { unidades: '760000', moneda: 'COP' },
-            venta: { unidades: '950000', moneda: 'COP' },
-            edadMinima: null,
-            edadMaxima: null,
-          },
-          {
-            id: '01932000-0000-7000-8000-0000000000da',
-            acomodacion: 'SENCILLA',
-            tipoPasajero: 'ADT',
-            neto: { unidades: '1240000', moneda: 'COP' },
-            venta: { unidades: '1550000', moneda: 'COP' },
-            edadMinima: null,
-            edadMaxima: null,
-          },
-          {
-            id: '01932000-0000-7000-8000-0000000000db',
-            acomodacion: 'DOBLE',
-            tipoPasajero: 'CHD',
-            neto: { unidades: '620000', moneda: 'COP' },
-            venta: { unidades: '780000', moneda: 'COP' },
-            edadMinima: 2,
-            edadMaxima: 11,
-          },
-        ],
-      },
+    vigencias: [
+      vigencia('01932000-0000-7000-8000-0000000000b6', '2027-01-10', '2027-12-20', [
+        tarifa('01932000-0000-7000-8000-0000000000d7', 'DOBLE', 'ADT', 920000, 1150000, null, null),
+        tarifa(
+          '01932000-0000-7000-8000-0000000000d8',
+          'TRIPLE',
+          'ADT',
+          820000,
+          1020000,
+          null,
+          null,
+        ),
+        tarifa(
+          '01932000-0000-7000-8000-0000000000d9',
+          'CUADRUPLE',
+          'ADT',
+          760000,
+          950000,
+          null,
+          null,
+        ),
+        tarifa(
+          '01932000-0000-7000-8000-0000000000da',
+          'SENCILLA',
+          'ADT',
+          1240000,
+          1550000,
+          null,
+          null,
+        ),
+        tarifa('01932000-0000-7000-8000-0000000000db', 'DOBLE', 'CHD', 620000, 780000, 2, 11),
+      ]),
     ],
   },
   {
@@ -616,24 +477,10 @@ const PAQUETES_DEMO: PaqueteDemo[] = [
     exclusiones: ['Entrada Tayrona', 'Almuerzos'],
     creadoEn: '2026-01-01T08:00:00.000Z',
     mayorista: OPERADORA_ANDINA,
-    temporadas: [
-      {
-        id: '01932000-0000-7000-8000-0000000000b7',
-        nombre: 'Temporada Expirada 2026',
-        desde: '2026-01-01',
-        hasta: '2026-06-30',
-        precios: [
-          {
-            id: '01932000-0000-7000-8000-0000000000dc',
-            acomodacion: 'DOBLE',
-            tipoPasajero: 'ADT',
-            neto: { unidades: '800000', moneda: 'COP' },
-            venta: { unidades: '990000', moneda: 'COP' },
-            edadMinima: null,
-            edadMaxima: null,
-          },
-        ],
-      },
+    vigencias: [
+      vigencia('01932000-0000-7000-8000-0000000000b7', '2026-01-01', '2026-06-30', [
+        tarifa('01932000-0000-7000-8000-0000000000dc', 'DOBLE', 'ADT', 800000, 990000, null, null),
+      ]),
     ],
   },
   {
@@ -662,33 +509,11 @@ const PAQUETES_DEMO: PaqueteDemo[] = [
     ],
     creadoEn: '2026-02-18T08:00:00.000Z',
     mayorista: MAYORISTA_CARIBE,
-    temporadas: [
-      {
-        id: '01932000-0000-7000-8000-0000000000e1',
-        nombre: 'Tarifario Excursiones 2026-2027',
-        desde: '2026-01-01',
-        hasta: '2027-12-31',
-        precios: [
-          {
-            id: '01932000-0000-7000-8000-0000000000f1',
-            acomodacion: 'DOBLE',
-            tipoPasajero: 'ADT',
-            neto: { unidades: '195000', moneda: 'COP' },
-            venta: { unidades: '260000', moneda: 'COP' },
-            edadMinima: null,
-            edadMaxima: null,
-          },
-          {
-            id: '01932000-0000-7000-8000-0000000000f2',
-            acomodacion: 'DOBLE',
-            tipoPasajero: 'CHD',
-            neto: { unidades: '150000', moneda: 'COP' },
-            venta: { unidades: '195000', moneda: 'COP' },
-            edadMinima: 3,
-            edadMaxima: 10,
-          },
-        ],
-      },
+    vigencias: [
+      vigencia('01932000-0000-7000-8000-0000000000e1', '2026-01-01', '2027-12-31', [
+        tarifa('01932000-0000-7000-8000-0000000000f1', 'DOBLE', 'ADT', 195000, 260000, null, null),
+        tarifa('01932000-0000-7000-8000-0000000000f2', 'DOBLE', 'CHD', 150000, 195000, 3, 10),
+      ]),
     ],
   },
   {
@@ -716,33 +541,11 @@ const PAQUETES_DEMO: PaqueteDemo[] = [
     ],
     creadoEn: '2026-02-18T09:00:00.000Z',
     mayorista: MAYORISTA_CARIBE,
-    temporadas: [
-      {
-        id: '01932000-0000-7000-8000-0000000000e2',
-        nombre: 'Tarifario Excursiones 2026-2027',
-        desde: '2026-01-01',
-        hasta: '2027-12-31',
-        precios: [
-          {
-            id: '01932000-0000-7000-8000-0000000000f3',
-            acomodacion: 'DOBLE',
-            tipoPasajero: 'ADT',
-            neto: { unidades: '260000', moneda: 'COP' },
-            venta: { unidades: '340000', moneda: 'COP' },
-            edadMinima: null,
-            edadMaxima: null,
-          },
-          {
-            id: '01932000-0000-7000-8000-0000000000f4',
-            acomodacion: 'DOBLE',
-            tipoPasajero: 'CHD',
-            neto: { unidades: '210000', moneda: 'COP' },
-            venta: { unidades: '270000', moneda: 'COP' },
-            edadMinima: 3,
-            edadMaxima: 10,
-          },
-        ],
-      },
+    vigencias: [
+      vigencia('01932000-0000-7000-8000-0000000000e2', '2026-01-01', '2027-12-31', [
+        tarifa('01932000-0000-7000-8000-0000000000f3', 'DOBLE', 'ADT', 260000, 340000, null, null),
+        tarifa('01932000-0000-7000-8000-0000000000f4', 'DOBLE', 'CHD', 210000, 270000, 3, 10),
+      ]),
     ],
   },
   {
@@ -766,32 +569,10 @@ const PAQUETES_DEMO: PaqueteDemo[] = [
     exclusiones: ['Deportes náuticos', 'Consumos fuera del bono asignado'],
     creadoEn: '2026-02-18T10:00:00.000Z',
     mayorista: OPERADORA_ANDINA,
-    temporadas: [
-      {
-        id: '01932000-0000-7000-8000-0000000000e3',
-        nombre: 'Tarifario Excursiones 2026-2027',
-        desde: '2026-01-01',
-        hasta: '2027-12-31',
-        precios: [
-          {
-            id: '01932000-0000-7000-8000-0000000000f5',
-            acomodacion: 'DOBLE',
-            tipoPasajero: 'ADT',
-            neto: { unidades: '165000', moneda: 'COP' },
-            venta: { unidades: '220000', moneda: 'COP' },
-            edadMinima: null,
-            edadMaxima: null,
-          },
-        ],
-      },
+    vigencias: [
+      vigencia('01932000-0000-7000-8000-0000000000e3', '2026-01-01', '2027-12-31', [
+        tarifa('01932000-0000-7000-8000-0000000000f5', 'DOBLE', 'ADT', 165000, 220000, null, null),
+      ]),
     ],
   },
 ];
-
-export const MOCK_PAQUETES_CATALOGO: PaqueteConDetalle[] = PAQUETES_DEMO.map(
-  ({ temporadas, ...resto }) => ({
-    ...resto,
-    vigencias: temporadas.map(vigenciaDesdeTemporadaDemo),
-    tarifarioDemo: temporadas,
-  }),
-);

@@ -6,7 +6,7 @@ import { usePermisos } from '../../lib/permisos';
 
 import React, { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
-import { type Contacto } from '@viajapro/contracts';
+import { type ContactoDeLista } from '@viajapro/contracts';
 import {
   Users,
   Search,
@@ -92,7 +92,7 @@ export default function ContactosPage() {
   const setConsentimientoFiltro = (v: string) => actualizarFiltro('consentimientoFiltro', v);
 
   // Contacto seleccionado para la ficha lateral
-  const [contactoSeleccionado, setContactoSeleccionado] = useState<Contacto | null>(null);
+  const [contactoSeleccionado, setContactoSeleccionado] = useState<ContactoDeLista | null>(null);
 
   // Lista de etiquetas únicas para el selector
   const etiquetasDisponibles = useMemo(

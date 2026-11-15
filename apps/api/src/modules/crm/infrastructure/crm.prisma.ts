@@ -14,7 +14,13 @@
  */
 
 import { Inject, Injectable } from '@nestjs/common';
-import type { Contacto, EtapaDefinida, FichaDeContacto, Oportunidad } from '@viajapro/contracts';
+import type {
+  Contacto,
+  ContactoDeLista,
+  EtapaDefinida,
+  FichaDeContacto,
+  Oportunidad,
+} from '@viajapro/contracts';
 import { ClaveEtapa } from '@viajapro/contracts';
 import {
   filtroDeNotasPorVisibilidad,
@@ -283,7 +289,7 @@ export class CrmPrisma extends PuertoCrm {
     });
   }
 
-  async listarContactos(p: { buscar: string | null; limite: number }): Promise<Contacto[]> {
+  async listarContactos(p: { buscar: string | null; limite: number }): Promise<ContactoDeLista[]> {
     return this.prisma.conTenant(async (tx) => {
       const filas = await tx.contacto.findMany({
         where: {
@@ -301,11 +307,9 @@ export class CrmPrisma extends PuertoCrm {
         orderBy: { ultimoContactoEn: 'desc' },
         take: p.limite,
       });
-      const { tenantId } = ContextoTenant.obtener();
-      const registro = new RegistroDeLectura();
-      const contactos = filas.map((c) => aContactoDescifrado(c, this.cifrado, tenantId, registro));
-      await registro.registrar(tx, 'Contacto', null);
-      return contactos;
+      // T-227: el listado NO descifra `preferencias` (puede ser dato de salud) ni, por tanto,
+      // deja fila de lectura sensible: no se lee ningún dato sensible. Solo la ficha las devuelve.
+      return filas.map(aContactoDeLista);
     });
   }
 }
@@ -407,20 +411,20 @@ export function aOportunidad(o: FilaOportunidad): Oportunidad {
   };
 }
 
-interface FilaContacto {
+/** Lo que el listado necesita de la fila: sin `preferencias`. */
+interface FilaContactoDeLista {
   id: string;
   nombre: string | null;
   telefonoE164: string;
   correo: string | null;
   etiquetas: string[];
-  preferencias: string | null;
   creadoEn: Date;
   ultimoContactoEn: Date | null;
   consentimientos: { finalidad: string; revocadoEn: Date | null }[];
 }
 
 /** La fila tal como sale de la base: `preferencias` en sus cuatro columnas cifradas. */
-type FilaContactoCifrada = Omit<FilaContacto, 'preferencias'> & {
+type FilaContactoCifrada = FilaContactoDeLista & {
   tenantId: string;
   preferenciasCifrado: Uint8Array | null;
   preferenciasNonce: Uint8Array | null;
@@ -443,17 +447,16 @@ export function aContactoDescifrado(
   const columna = COLUMNAS_CIFRADAS.CONTACTOS_PREFERENCIAS;
   const preferencias = cifrado.descifrarDeFila(columna, tenantId, c, campoDePreferencias(c));
   registro?.anotar(columna, c.id, preferencias);
-  return aContacto({ ...c, preferencias });
+  return { ...aContactoDeLista(c), preferencias };
 }
 
-export function aContacto(c: FilaContacto): Contacto {
+export function aContactoDeLista(c: FilaContactoDeLista): ContactoDeLista {
   return {
     id: c.id,
     nombre: c.nombre,
     telefono: c.telefonoE164,
     correo: c.correo,
     etiquetas: c.etiquetas,
-    preferencias: c.preferencias,
     // Solo los vigentes. Un consentimiento revocado sigue en la tabla porque la ley pide poder
     // demostrar la revocación, pero hacia fuera el contacto ya no lo tiene.
     consentimientos: c.consentimientos

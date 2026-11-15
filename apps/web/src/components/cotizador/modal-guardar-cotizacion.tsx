@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import type { Contacto } from '@viajapro/contracts';
+import type { ContactoDeLista } from '@viajapro/contracts';
 import { Bookmark, X, AlertCircle, Calendar, User, FileText, CheckCircle2 } from 'lucide-react';
 import { useFocoModal } from '../../lib/use-foco-modal';
 
@@ -17,7 +17,7 @@ export interface ModalGuardarCotizacionProps {
   error: { codigo: string; mensaje: string; esErrorAgencia: boolean } | null;
   tituloSugerido: string;
   contactoIdInicial?: string | undefined;
-  contactosDisponibles: Contacto[];
+  contactosDisponibles: ContactoDeLista[];
   paqueteNombre: string;
   fechaSalida: string;
   adultos: number;

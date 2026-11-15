@@ -35,7 +35,7 @@ import type {
   FilaDeCotizacion,
   EstadoCotizacion,
   CotizacionGuardada,
-  Contacto,
+  ContactoDeLista,
 } from '@viajapro/contracts';
 import { listarContactos } from '../../lib/crm-api';
 import { BarraModulos } from '../../components/bandeja/barra-modulos';
@@ -99,7 +99,7 @@ export default function CotizacionesPage() {
 
   // Contactos para nombres y para el modal de envío. En demo salen del mock; en modo real, de la
   // API: nunca nombres ni teléfonos de relleno (T-124).
-  const [contactosConocidos, setContactosConocidos] = useState<Contacto[]>(() =>
+  const [contactosConocidos, setContactosConocidos] = useState<ContactoDeLista[]>(() =>
     usandoApiReal ? [] : obtenerMockPaginaContactos().datos,
   );
   useEffect(() => {
@@ -732,7 +732,6 @@ export default function CotizacionesPage() {
                           telefono: '+573001234567',
                           correo: null,
                           etiquetas: [],
-                          preferencias: null,
                           consentimientos: ['TRANSACCIONAL'],
                           creadoEn: '2026-10-01T00:00:00.000Z',
                           ultimoContactoEn: null,

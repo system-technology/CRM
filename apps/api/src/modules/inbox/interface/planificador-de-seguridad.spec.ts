@@ -139,11 +139,10 @@ describe('PlanificadorDeSeguridad (modo unico)', () => {
   it('no apila pasadas: si hay una en curso, devuelve la misma', async () => {
     const { p, changes } = armar();
     let soltar: () => void = () => undefined;
-    changes.mockImplementation(
-      () =>
-        new Promise((r) => {
-          soltar = () => r({});
-        }),
+    changes.mockReturnValue(
+      new Promise((r) => {
+        soltar = () => r({});
+      }),
     );
     const a = p.pasada('periodica');
     const b = p.pasada('periodica');

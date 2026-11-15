@@ -6,7 +6,7 @@
  */
 
 import type {
-  Contacto,
+  ContactoDeLista,
   EtapaDefinida,
   FichaDeContacto,
   MotivoPerdida,
@@ -65,5 +65,5 @@ export abstract class PuertoCrm {
   abstract listarContactos(parametros: {
     buscar: string | null;
     limite: number;
-  }): Promise<Contacto[]>;
+  }): Promise<ContactoDeLista[]>;
 }

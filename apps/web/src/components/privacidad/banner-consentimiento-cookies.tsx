@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ShieldCheck, Sliders, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
 import {
@@ -13,7 +13,15 @@ import {
 } from '../../lib/privacidad-cookies';
 import { ModalPreferenciasCookies } from './modal-preferencias-cookies';
 
+/**
+ * Variable CSS con la altura que ocupa el banner mientras está visible. Las pantallas de altura
+ * completa (la bandeja) la restan de su alto para que el banner no tape su parte inferior, p. ej.
+ * el compositor. Sin banner vale 0 (usan `var(--altura-banner-cookies, 0px)`).
+ */
+export const VARIABLE_ALTURA_BANNER_COOKIES = '--altura-banner-cookies';
+
 export function BannerConsentimientoCookies() {
+  const bannerRef = useRef<HTMLElement | null>(null);
   const [montado, setMontado] = useState<boolean>(false);
   const [mostrarBanner, setMostrarBanner] = useState<boolean>(false);
   const [modalAbierto, setModalAbierto] = useState<boolean>(false);
@@ -46,6 +54,27 @@ export function BannerConsentimientoCookies() {
     };
   }, []);
 
+  useEffect(() => {
+    const raiz = document.documentElement;
+    const banner = bannerRef.current;
+    if (!mostrarBanner || !banner) {
+      raiz.style.removeProperty(VARIABLE_ALTURA_BANNER_COOKIES);
+      return;
+    }
+    const publicar = () =>
+      raiz.style.setProperty(VARIABLE_ALTURA_BANNER_COOKIES, `${banner.offsetHeight}px`);
+    publicar();
+    // Con el texto en varias líneas (móvil) o al girar la pantalla la altura cambia.
+    const observador = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(publicar);
+    observador?.observe(banner);
+    window.addEventListener('resize', publicar);
+    return () => {
+      observador?.disconnect();
+      window.removeEventListener('resize', publicar);
+      raiz.style.removeProperty(VARIABLE_ALTURA_BANNER_COOKIES);
+    };
+  }, [mostrarBanner, montado]);
+
   if (!montado) return null;
 
   const manejarAceptarTodas = () => {
@@ -62,6 +91,7 @@ export function BannerConsentimientoCookies() {
     <>
       {mostrarBanner && (
         <section
+          ref={bannerRef}
           role="region"
           aria-label="Consentimiento de cookies y privacidad"
           data-testid="banner-consentimiento-cookies"

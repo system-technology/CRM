@@ -29,7 +29,7 @@ import {
   Shield,
   Scale,
 } from 'lucide-react';
-import type { Acomodacion, CotizacionGuardada, Contacto } from '@viajapro/contracts';
+import type { Acomodacion, CotizacionGuardada, ContactoDeLista } from '@viajapro/contracts';
 import { BarraModulos } from '../../../components/bandeja/barra-modulos';
 import { MigasDePan } from '../../../components/comun/migas-de-pan';
 import { formatearDinero, formatearFecha, formatearTelefono } from '../../../lib/formato';
@@ -107,7 +107,7 @@ export default function PaginaCotizacionGuardada({ params: paramsPromise }: Page
   } | null>(null);
 
   // Contacto asociado
-  const [contacto, setContacto] = useState<Contacto | null>(null);
+  const [contacto, setContacto] = useState<ContactoDeLista | null>(null);
 
   // Modal para crear nueva versión
   const [modalModificarAbierto, setModalModificarAbierto] = useState(false);

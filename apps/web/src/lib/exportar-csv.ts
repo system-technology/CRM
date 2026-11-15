@@ -18,7 +18,7 @@
  *      si el usuario cuenta explícitamente con el permiso 'cotizacion.ver_neto_y_margen'.
  */
 
-import type { Contacto, Oportunidad, FilaDeCotizacion, Dinero } from '@viajapro/contracts';
+import type { ContactoDeLista, Oportunidad, FilaDeCotizacion, Dinero } from '@viajapro/contracts';
 import { formatearFecha, ZONA_HORARIA_COLOMBIA } from './formato';
 
 export const BOM_UTF8 = '\uFEFF';
@@ -162,13 +162,12 @@ export const ENCABEZADOS_CONTACTOS = [
   'Correo electrónico',
   'Etiquetas',
   'Consentimientos',
-  'Preferencias',
   'Fecha de creación',
   'Último contacto',
 ] as const;
 
 export function exportarContactosCSV(
-  contactos: readonly Contacto[],
+  contactos: readonly ContactoDeLista[],
   opciones?: OpcionesExportacionCSV,
 ): string {
   const zona = opciones?.zonaHoraria ?? ZONA_HORARIA_COLOMBIA;
@@ -180,7 +179,6 @@ export function exportarContactosCSV(
     c.correo ?? '',
     c.etiquetas.join(', '),
     c.consentimientos.join(', '),
-    c.preferencias ?? '',
     formatearFechaParaCSV(c.creadoEn, zona, true),
     formatearFechaParaCSV(c.ultimoContactoEn, zona, true),
   ]);

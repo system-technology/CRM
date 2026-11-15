@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { type Contacto } from '@viajapro/contracts';
+import { type ContactoDeLista } from '@viajapro/contracts';
 import { SeccionCamposPersonalizados } from './seccion-campos-personalizados';
 import {
   X,
@@ -20,7 +20,8 @@ import { generarColorAvatar, obtenerIniciales } from '../../lib/bandeja-logica';
 import { formatearTelefonoVisual } from '../../lib/contactos-logica';
 
 interface FichaDetalleContactoProps {
-  contacto: Contacto;
+  /** El listado no trae `preferencias` (dato sensible): solo la ficha completa las incluye. */
+  contacto: ContactoDeLista & { preferencias?: string | null };
   onCerrar: () => void;
 }
 
@@ -146,16 +147,18 @@ export function FichaDetalleContacto({ contacto, onCerrar }: FichaDetalleContact
           </div>
         </div>
 
-        {/* Preferencias de Viaje */}
-        <div>
-          <div className="mb-2 flex items-center space-x-1.5 text-xs font-bold text-neutral-800 dark:text-neutral-200">
-            <Heart className="h-3.5 w-3.5 text-neutral-400" />
-            <span>Preferencias de Viaje y Recompra:</span>
+        {/* Preferencias de Viaje (solo si la ficha las trae) */}
+        {preferencias !== undefined && (
+          <div>
+            <div className="mb-2 flex items-center space-x-1.5 text-xs font-bold text-neutral-800 dark:text-neutral-200">
+              <Heart className="h-3.5 w-3.5 text-neutral-400" />
+              <span>Preferencias de Viaje y Recompra:</span>
+            </div>
+            <div className="rounded-xl border border-neutral-200 bg-neutral-50/60 p-3 text-xs leading-relaxed text-neutral-700 dark:border-neutral-800 dark:bg-neutral-800/40 dark:text-neutral-300">
+              {preferencias || 'Sin preferencias registradas aún.'}
+            </div>
           </div>
-          <div className="rounded-xl border border-neutral-200 bg-neutral-50/60 p-3 text-xs leading-relaxed text-neutral-700 dark:border-neutral-800 dark:bg-neutral-800/40 dark:text-neutral-300">
-            {preferencias || 'Sin preferencias registradas aún.'}
-          </div>
-        </div>
+        )}
 
         {/* Campos Personalizados por Agencia (T-026) */}
         <SeccionCamposPersonalizados entidad="contacto" entidadId={id} />
