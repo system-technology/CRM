@@ -1,6 +1,7 @@
 import { formatearDinero, formatearFecha } from './formato';
 import {
   ClaveEtapa,
+  type ColumnaPipeline,
   Dinero,
   EtapaDefinida,
   MotivoPerdida,
@@ -53,8 +54,52 @@ export const NOMBRES_MOTIVOS_PERDIDA: Record<MotivoPerdida, string> = {
  * el cotizador.
  */
 export function formatearDineroCifra(dinero: Dinero | null): string {
-  if (!dinero) return '$0';
+  // Sin valor no es «$0»: cero y «no hay nada» no son lo mismo en un tablero de ventas.
+  if (!dinero) return '—';
   return formatearDinero(dinero);
+}
+
+/**
+ * Total de una columna para pintar: una cifra si hay una sola moneda, el desglose si hay varias
+ * (nunca se suman pesos con dólares, R8, T-181) y «—» si no hay nada.
+ */
+export function formatearTotalesDeColumna(
+  col: Pick<ColumnaPipeline, 'valorTotal' | 'valoresPorMoneda'>,
+): string {
+  if (col.valoresPorMoneda.length > 1)
+    return col.valoresPorMoneda.map((v) => formatearDinero(v)).join(' + ');
+  return formatearDineroCifra(col.valorTotal ?? col.valoresPorMoneda[0] ?? null);
+}
+
+/** Suma o resta `delta` en la entrada de su moneda; las demás monedas no se tocan. */
+export function ajustarPorMoneda(
+  valores: readonly Dinero[],
+  delta: Dinero | null,
+  signo: 1 | -1,
+): Dinero[] {
+  if (!delta) return [...valores];
+  const existe = valores.some((v) => v.moneda === delta.moneda);
+  const base = existe ? valores : [...valores, { unidades: '0', moneda: delta.moneda }];
+  return base
+    .map((v) => {
+      if (v.moneda !== delta.moneda) return v;
+      const total = BigInt(v.unidades) + BigInt(signo) * BigInt(delta.unidades);
+      return { unidades: (total < 0n ? 0n : total).toString(), moneda: v.moneda };
+    })
+    .filter((v) => v.unidades !== '0')
+    .sort((a, b) => a.moneda.localeCompare(b.moneda));
+}
+
+/** Recalcula `valorTotal` desde el desglose: solo hay total único con una sola moneda. */
+function conTotales<T extends { valoresPorMoneda: Dinero[] }>(
+  col: T,
+  valoresPorMoneda: Dinero[],
+): T & { valorTotal: Dinero | null } {
+  return {
+    ...col,
+    valoresPorMoneda,
+    valorTotal: valoresPorMoneda.length === 1 ? (valoresPorMoneda[0] ?? null) : null,
+  };
 }
 
 /**
@@ -224,24 +269,26 @@ export function moverOportunidadEnTablero(
   const nuevasColumnas = tablero.columnas.map((col) => {
     // Si es la columna origen, remover la tarjeta, decrementar contador y restar valorTotal
     if (col.etapa.id === etapaOrigen.id && col.etapa.id !== etapaDestino.id) {
-      return {
-        ...col,
-        total: Math.max(0, col.total - 1),
-        valorTotal: restarDinero(col.valorTotal, tarjetaEncontrada.valorEstimado),
-        oportunidades: col.oportunidades.filter((op) => op.id !== oportunidadId),
-      };
+      return conTotales(
+        {
+          ...col,
+          total: Math.max(0, col.total - 1),
+          oportunidades: col.oportunidades.filter((op) => op.id !== oportunidadId),
+        },
+        ajustarPorMoneda(col.valoresPorMoneda, tarjetaEncontrada.valorEstimado, -1),
+      );
     }
 
     // Si es la columna destino, agregar la tarjeta actualizada al inicio, incrementar contador y sumar valorTotal
     if (col.etapa.id === etapaDestino.id && col.etapa.id !== etapaOrigen.id) {
-      return {
-        ...col,
-        total: col.total + 1,
-        valorTotal: col.valorTotal
-          ? sumarDinero(col.valorTotal, tarjetaEncontrada.valorEstimado)
-          : tarjetaEncontrada.valorEstimado,
-        oportunidades: [tarjetaActualizada, ...col.oportunidades],
-      };
+      return conTotales(
+        {
+          ...col,
+          total: col.total + 1,
+          oportunidades: [tarjetaActualizada, ...col.oportunidades],
+        },
+        ajustarPorMoneda(col.valoresPorMoneda, tarjetaEncontrada.valorEstimado, 1),
+      );
     }
 
     // Si se actualizó dentro de la misma columna (ej. edición de nota de pérdida)

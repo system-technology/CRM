@@ -24,6 +24,7 @@ import type {
 import { errorDeMeta } from '../domain/errores-de-envio.js';
 import { estadoTrasReporte } from '../domain/estado-de-entrega.js';
 import { TIPO_MENSAJE_ACTUALIZADO } from '../domain/evento-de-dominio.js';
+import { slaTrasEntrante } from '../domain/plazo-de-primera-respuesta.js';
 
 /** Un `failed` de webhook no trae estado HTTP: se clasifica como un 4xx (definitivo). */
 const HTTP_DE_UN_ESTADO_FALLIDO = 400;
@@ -65,7 +66,13 @@ export class BandejaPrisma extends PuertoBandeja {
         },
         update: {},
         create: { tenantId, canalId, contactoId: contacto.id },
-        select: { id: true, ultimoMensajeClienteEn: true, ultimoMensajeEn: true },
+        select: {
+          id: true,
+          ultimoMensajeClienteEn: true,
+          ultimoMensajeEn: true,
+          slaVenceEn: true,
+          primeraRespuestaEn: true,
+        },
       });
 
       const insertados = await tx.mensaje.createMany({
@@ -126,6 +133,17 @@ export class BandejaPrisma extends PuertoBandeja {
             : {}),
         },
       });
+
+      // El SLA de primera respuesta (T-182). Después del `DUPLICADO`: un wamid repetido nunca llega
+      // aquí, así que no mueve el plazo. Condicional en la base (`sla_vence_en IS NULL` y sin
+      // primera respuesta): dos entrantes simultáneos no se pisan, gana el primero.
+      const sla = slaTrasEntrante(conversacion, m.instante);
+      if (sla) {
+        await tx.conversacion.updateMany({
+          where: { id: conversacion.id, tenantId, slaVenceEn: null, primeraRespuestaEn: null },
+          data: { slaVenceEn: sla },
+        });
+      }
 
       // Mismo cambio de estado, misma transacción (outbox). Solo identificadores: ni el
       // teléfono ni el texto viajan en el evento.

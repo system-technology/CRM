@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { ClaveEtapa, ColumnaPipeline, EtapaDefinida, Oportunidad } from '@viajapro/contracts';
 import { TarjetaOportunidad } from './tarjeta-oportunidad';
-import { formatearDineroCifra } from '../../lib/pipeline-logica';
+import { formatearTotalesDeColumna } from '../../lib/pipeline-logica';
 
 interface ColumnaKanbanProps {
   columna: ColumnaPipeline;
@@ -50,7 +50,7 @@ export function ColumnaKanban({
 }: ColumnaKanbanProps) {
   const [arrastrandoEncima, setArrastrandoEncima] = useState(false);
 
-  const { etapa, total, valorTotal, oportunidades } = columna;
+  const { etapa, total, oportunidades } = columna;
   // El color se elige por la clave canónica, que puede no existir: una agencia con una etapa
   // propia —«Esperando anticipo»— no tiene clave, y entonces se usa un gris neutro. Pintarla
   // de rojo o de verde por adivinanza sería peor que no pintarla.
@@ -105,7 +105,7 @@ export function ColumnaKanban({
         <div className="mt-1 flex items-baseline justify-between text-[11px] text-neutral-500 dark:text-neutral-400">
           <span>Total en etapa:</span>
           <span className="cifra font-semibold text-neutral-900 dark:text-neutral-200">
-            {formatearDineroCifra(valorTotal)}
+            {formatearTotalesDeColumna(columna)}
           </span>
         </div>
       </div>

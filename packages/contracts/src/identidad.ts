@@ -190,6 +190,23 @@ export type MiembroDeAgencia = z.infer<typeof MiembroDeAgencia>;
 export const ListaDeMiembros = z.array(MiembroDeAgencia);
 export type ListaDeMiembros = z.infer<typeof ListaDeMiembros>;
 
+/**
+ * Un miembro al que se puede asignar una conversación (ADR-0022). Solo id y nombre: es lo que
+ * el modal de reasignar necesita, y nada más (minimización, Ley 1581). `id` es el de `usuarios`,
+ * el mismo que acepta `PUT /api/v1/conversaciones/:id/asignacion`.
+ */
+export const MiembroAsignable = z
+  .object({
+    id: z.string().uuid(),
+    nombre: z.string(),
+  })
+  .strict();
+export type MiembroAsignable = z.infer<typeof MiembroAsignable>;
+
+/** Respuesta de `GET /api/v1/identidad/miembros/asignables`: ordenada por nombre (`es`). */
+export const ListaDeMiembrosAsignables = z.array(MiembroAsignable);
+export type ListaDeMiembrosAsignables = z.infer<typeof ListaDeMiembrosAsignables>;
+
 /** Cuerpo de `POST /api/v1/auth/invitaciones/aceptar`. */
 export const AceptarInvitacion = z.object({
   token: z.string().min(20).max(200),

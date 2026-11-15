@@ -24,6 +24,7 @@ class CotizacionesFalsas extends PuertoCotizacionesParaReportes {
       creadas: 1,
       enviadas: 1,
       aceptadas: 1,
+      aceptadasSinFecha: 0,
       ventasPorMoneda: [
         {
           moneda: 'COP',
@@ -60,6 +61,8 @@ class RespuestaFalsa extends PuertoRespuestaParaReportes {
       conversacionesRespondidas: 0,
       promedioMinutos: null,
       medianaMinutos: null,
+      p90Minutos: null,
+      sinResponder: 0,
     });
   }
 }

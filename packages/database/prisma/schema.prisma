@@ -758,6 +758,9 @@ enum PlanAlimentacion {
   @@map("plan_alimentacion")
 }
 
+/// **En retiro (ADR-0025, propuesto).** Nadie escribe aquí desde T-180: el precio vive en
+/// `Vigencia` + `Tarifa`, que es lo que lee el cotizador. Queda solo el lector del detalle de paquete.
+///
 /// Rango de fechas con precio propio: temporada alta, baja, puente festivo.
 ///
 /// En Colombia los puentes festivos son su propia temporada y pueden costar como la alta.
@@ -784,6 +787,8 @@ model Temporada {
   @@map("temporadas")
 }
 
+/// **En retiro (ADR-0025, propuesto).** No se escribe: usar `Tarifa`.
+///
 /// Precio de un paquete, por temporada, acomodación y tipo de pasajero.
 ///
 /// **Aquí está la trampa del dominio.** El precio NO es "por pasajero": es *por persona en
@@ -2084,6 +2089,14 @@ model VersionCotizacion {
   ninos       Int          @db.SmallInt
   infantes    Int          @db.SmallInt
   acomodacion Acomodacion?
+
+  /// Edades con las que se cotizó (T-179, T-217). Vacío = no se declararon (o versión anterior a
+  /// T-217); si no, exactamente `ninos` / `infantes` elementos (CHECK). NOT NULL porque Prisma no
+  /// modela listas opcionales.
+  edadesNinos      Int[] @default([]) @map("edades_ninos") @db.SmallInt
+  edadesInfantes   Int[] @default([]) @map("edades_infantes") @db.SmallInt
+  /// Cuántos infantes ocupan silla propia. Nulo = no se declaró, que no es lo mismo que 0.
+  infantesConSilla Int?  @map("infantes_con_silla") @db.SmallInt
 
   /// La opción de salida con la que se cotizó (ADR-0017 §3.1, T-062). Nula = el producto no tenía
   /// opciones, o la versión es anterior a T-062. Foránea COMPUESTA con el tenant; `NoAction`: una

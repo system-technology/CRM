@@ -6,8 +6,10 @@
  * **El neto no sale de la base sin permiso.** Con `incluirMargen = false` las sumas de neto y
  * margen ni siquiera forman parte de la consulta: no hay valor que filtrar después.
  *
- * Las ventas salen de la versión que vio el cliente (`version_enviada`) de las cotizaciones
- * aceptadas enviadas en el rango, agrupadas por moneda: nunca se suman monedas distintas (R8).
+ * Las ventas salen de la versión que vio el cliente (`version_enviada`) de las cotizaciones cuyo
+ * cambio a ACEPTADA (`cotizacion_cambios_estado`, T-132) cae en el rango: la fecha de la venta es
+ * la de la aceptación, no la del envío. Las aceptadas sin esa fila (anteriores a T-132) se cuentan
+ * aparte (`aceptadasSinFecha`, por `enviada_en`), no se suman. Agrupadas por moneda: nunca se suman monedas distintas (R8).
  * Los totales llegan como texto (`::text`) para no pasar por un `number`: en COP superan el
  * entero seguro de JS.
  */
@@ -26,6 +28,10 @@ interface FilaDeConteos {
   creadas: number;
   enviadas: number;
   aceptadas: number;
+}
+
+interface FilaDeSinFecha {
+  n: number;
 }
 
 interface FilaDeVentas {
@@ -85,14 +91,33 @@ export class CotizacionesParaReportesPrisma extends PuertoCotizacionesParaReport
          WHERE c.tenant_id = ${tenantId}::uuid
            AND c.eliminado_en IS NULL
            AND c.estado = 'ACEPTADA'
-           AND c.enviada_en >= ${desde} AND c.enviada_en < ${hasta}
+           AND EXISTS (
+                 SELECT 1 FROM cotizacion_cambios_estado h
+                  WHERE h.tenant_id = ${tenantId}::uuid
+                    AND h.cotizacion_id = c.id
+                    AND h.estado_hasta = 'ACEPTADA'
+                    AND h.ocurrido_en >= ${desde} AND h.ocurrido_en < ${hasta})
          GROUP BY v.moneda_iso
          ORDER BY v.moneda_iso`;
+
+      const [sinFecha] = await tx.$queryRaw<FilaDeSinFecha[]>`
+        SELECT COUNT(*)::int AS n
+          FROM cotizaciones c
+         WHERE c.tenant_id = ${tenantId}::uuid
+           AND c.eliminado_en IS NULL
+           AND c.estado = 'ACEPTADA'
+           AND c.enviada_en >= ${desde} AND c.enviada_en < ${hasta}
+           AND NOT EXISTS (
+                 SELECT 1 FROM cotizacion_cambios_estado h
+                  WHERE h.tenant_id = ${tenantId}::uuid
+                    AND h.cotizacion_id = c.id
+                    AND h.estado_hasta = 'ACEPTADA')`;
 
       return {
         creadas: conteos?.creadas ?? 0,
         enviadas: conteos?.enviadas ?? 0,
         aceptadas: conteos?.aceptadas ?? 0,
+        aceptadasSinFecha: sinFecha?.n ?? 0,
         ventasPorMoneda: ventas.map((f) => aVenta(f, incluirMargen)),
       };
     });

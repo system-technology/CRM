@@ -11,7 +11,7 @@
  */
 
 import { Inject, Injectable } from '@nestjs/common';
-import type { Dinero, TableroPipeline } from '@viajapro/contracts';
+import { Dinero, type TableroPipeline } from '@viajapro/contracts';
 import { PuertoCrm } from './puerto-crm.js';
 
 /** Cuántas tarjetas se pintan por columna antes de paginar. */
@@ -35,7 +35,7 @@ export class VerTablero {
         return {
           etapa,
           total: datos?.total ?? 0,
-          valorTotal: aDinero(datos?.valorUnidades ?? null),
+          ...totalesEnDinero(datos?.valores ?? []),
           oportunidades: datos?.oportunidades ?? [],
         };
       });
@@ -45,18 +45,24 @@ export class VerTablero {
 }
 
 /**
- * El total de la columna, en la forma del contrato.
+ * Los totales de la columna, en la forma del contrato.
  *
- * Va como cadena porque un total en pesos colombianos supera el entero seguro de JavaScript en
+ * Van como cadena porque un total en pesos colombianos supera el entero seguro de JavaScript en
  * cuanto hay unas pocas oportunidades grandes, y se corrompería en silencio al deserializar
- * (R8). `null` cuando la columna está vacía: cero y «no hay nada» no son lo mismo en un tablero
- * de ventas.
- *
- * La moneda está fija en COP mientras el mercado base sea Colombia. El día que una agencia
- * cotice en dólares, sumar dos monedas distintas en un total sería un error silencioso: por eso
- * esto tiene que fallar ruidosamente antes que inventarse una conversión.
+ * (R8). `valorTotal` es `null` cuando la columna está vacía (cero y «no hay nada» no son lo
+ * mismo en un tablero de ventas) **y cuando mezcla monedas**: sumar pesos con dólares sería
+ * inventarse una cifra. El desglose va siempre en `valoresPorMoneda` (T-181).
  */
-function aDinero(unidades: bigint | null): Dinero | null {
-  if (unidades === null) return null;
-  return { unidades: unidades.toString(), moneda: 'COP' };
+export function totalesEnDinero(valores: readonly { monedaIso: string; unidades: bigint }[]): {
+  valorTotal: Dinero | null;
+  valoresPorMoneda: Dinero[];
+} {
+  // `parse` y no un cast: una moneda fuera del contrato debe fallar ruidosamente.
+  const valoresPorMoneda = valores.map((v) =>
+    Dinero.parse({ unidades: v.unidades.toString(), moneda: v.monedaIso }),
+  );
+  return {
+    valorTotal: valoresPorMoneda.length === 1 ? (valoresPorMoneda[0] ?? null) : null,
+    valoresPorMoneda,
+  };
 }

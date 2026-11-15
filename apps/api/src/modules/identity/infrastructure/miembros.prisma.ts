@@ -7,7 +7,7 @@
  * escribe. El `tenantId` va también en cada predicado, como defensa en profundidad.
  */
 import { Inject, Injectable } from '@nestjs/common';
-import type { MiembroDeAgencia } from '@viajapro/contracts';
+import type { MiembroAsignable, MiembroDeAgencia } from '@viajapro/contracts';
 import { PrismaService } from '../../../shared/prisma/prisma.service.js';
 import { permisoQueFalta } from '../domain/permisos-incluidos.js';
 import { PuertoConversacionesDeMiembro } from '../../../shared/puertos/puertos-hacia-inbox.js';
@@ -59,6 +59,24 @@ export class MiembrosPrisma extends PuertoMiembros {
           Number(b.estado === 'ACTIVO') - Number(a.estado === 'ACTIVO') ||
           a.nombre.localeCompare(b.nombre, 'es'),
       );
+    });
+  }
+
+  async listarAsignables(): Promise<MiembroAsignable[]> {
+    const { tenantId } = ContextoTenant.obtener();
+    return this.prisma.conTenant(async (tx) => {
+      const filas = await tx.usuario.findMany({
+        where: {
+          tenantId,
+          activo: true,
+          eliminadoEn: null,
+          rol: { permisos: { has: 'bandeja.operar' } },
+        },
+        select: { id: true, nombre: true },
+      });
+      return filas
+        .map((u): MiembroAsignable => ({ id: u.id, nombre: u.nombre }))
+        .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
     });
   }
 

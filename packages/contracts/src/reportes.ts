@@ -21,11 +21,16 @@
  *   · cotizaciones `creadas`: `creadoEn` en el rango; `enviadas`: `enviadaEn` en el rango;
  *   · `aceptadas`: de las enviadas en el rango, las que hoy están ACEPTADA. `tasaAceptacion` es
  *     aceptadas / enviadas (la aceptación no guarda su propio instante);
- *   · ventas: la versión enviada de esas cotizaciones aceptadas;
+ *   · ventas: la versión enviada de las cotizaciones cuyo CAMBIO A ACEPTADA (historial de estados)
+ *     cae en el rango: es el instante de la venta, no el del envío. Las aceptadas anteriores al
+ *     historial no tienen ese instante y no entran en `ventasPorMoneda`: se cuentan aparte en
+ *     `cotizaciones.aceptadasSinFecha` (las enviadas en el rango);
  *   · oportunidades: las CREADAS en el rango, clasificadas por su etapa de hoy.
  *     `tasaConversion` es ganadas / (ganadas + perdidas), `null` si ninguna se cerró.
- *   · respuesta: conversaciones cuya primera respuesta cae en el rango, medida desde el primer
- *     mensaje entrante del viajero.
+ *   · respuesta: las conversaciones CREADAS en el rango (excluidas las que abrió el asesor, sin
+ *     mensaje entrante previo). Numerador, denominador, mediana y p90 salen de ese mismo grupo:
+ *     `conversacionesRespondidas` + `sinResponder` = `conversacionesNuevas`, y el tiempo se mide
+ *     desde el primer mensaje entrante del viajero hasta la primera respuesta.
  * Las tasas y promedios son `null` (no 0) cuando no hay base para calcularlos.
  */
 
@@ -61,6 +66,12 @@ export const ResumenDeCotizaciones = z.object({
   creadas: z.number().int().min(0),
   enviadas: z.number().int().min(0),
   aceptadas: z.number().int().min(0),
+  /**
+   * Aceptadas, enviadas en el rango, SIN fila de cambio a ACEPTADA (anteriores al historial de
+   * estados): no tienen fecha de venta y por eso no suman en `ventasPorMoneda`. Opcional: una
+   * API anterior no lo envía.
+   */
+  aceptadasSinFecha: z.number().int().min(0).optional(),
   /** Porcentaje con un decimal; `null` si no se envió ninguna. */
   tasaAceptacion: z.number().min(0).max(100).nullable(),
 });
@@ -105,6 +116,12 @@ export const ResumenDeRespuesta = z.object({
   /** Minutos con un decimal; `null` si ninguna conversación tiene una respuesta medible. */
   promedioMinutos: z.number().min(0).nullable(),
   medianaMinutos: z.number().min(0).nullable(),
+  /** Percentil 90 del tiempo de primera respuesta del mismo grupo. Opcional: API anterior. */
+  p90Minutos: z.number().min(0).nullable().optional(),
+  /** Del grupo de `conversacionesNuevas`, las que aún no tienen respuesta. Opcional. */
+  sinResponder: z.number().int().min(0).optional(),
+  /** respondidas / nuevas, en porcentaje con un decimal; `null` sin conversaciones. Opcional. */
+  tasaRespuesta: z.number().min(0).max(100).nullable().optional(),
 });
 export type ResumenDeRespuesta = z.infer<typeof ResumenDeRespuesta>;
 

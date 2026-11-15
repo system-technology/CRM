@@ -1,7 +1,8 @@
-import { Controller, Get, Inject, HttpStatus, Res } from '@nestjs/common';
+import { Controller, Get, Inject, HttpStatus, Optional, Res } from '@nestjs/common';
 import type { Response } from 'express';
 import { Logger } from '@nestjs/common';
 import { PrismaService } from './shared/prisma/prisma.service.js';
+import { LectorDelLatido } from './shared/salud/latido-del-trabajador.js';
 
 @Controller('salud')
 export class SaludController {
@@ -11,7 +12,11 @@ export class SaludController {
   // metadatos de decorador que Nest necesita para resolver el tipo. Sin esto, Nest construye la
   // clase CON CERO DEPENDENCIAS y sin quejarse, y el fallo sale como `undefined` en la primera
   // peticion real. Compila, arranca, y revienta al usarse. Ver cola 11c de `ESTADO.md`.
-  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
+  constructor(
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+    // Opcional: sin lector (pruebas, modo unico, sin Redis) el latido no se informa ni se exige.
+    @Optional() @Inject(LectorDelLatido) private readonly latido?: LectorDelLatido,
+  ) {}
 
   /** Para el balanceador: ¿el proceso está vivo? */
   @Get()
@@ -47,12 +52,17 @@ export class SaludController {
         };
       }
 
+      // El trabajador viejo NO tumba la API (HTTP 200): Render usa esta ruta como sonda de la API
+      // y un trabajador caido no debe impedir desplegarla ni sacarla de rotacion. Se informa en
+      // el cuerpo (`estado: 'degradado'`) para la sonda de staging y para la vigilancia externa.
+      const trabajador = this.latido ? await this.latido.leer() : null;
       res.status(HttpStatus.OK);
       return {
-        estado: 'ok',
+        estado: trabajador && trabajador.estado !== 'ok' ? 'degradado' : 'ok',
         baseDeDatos: 'ok',
         rol: rol?.usuario ?? null,
         aislamiento: 'forzado',
+        ...(trabajador ? { trabajador } : {}),
       };
     } catch (error) {
       this.logger.error('Health check falló', error);

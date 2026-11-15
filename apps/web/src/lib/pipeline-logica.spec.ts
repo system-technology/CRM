@@ -16,7 +16,9 @@ import { MoverOportunidad } from '@viajapro/contracts';
 import {
   calcularTotalColumna,
   esTareaAtrasada,
+  ajustarPorMoneda,
   formatearDineroCifra,
+  formatearTotalesDeColumna,
   formatearFechaTarea,
   moverOportunidadEnTablero,
   restarDinero,
@@ -161,7 +163,7 @@ describe('El dinero', () => {
   });
 
   it('sin dinero devuelve algo legible, no «NaN»', () => {
-    expect(formatearDineroCifra(null)).toBe('$0');
+    expect(formatearDineroCifra(null)).toBe('—');
   });
 });
 
@@ -198,5 +200,46 @@ describe('Formateo determinista de fechas de tareas (0c.14.3 — Hidratación)',
   it('con fecha nula o inválida devuelve raya amigable sin lanzar excepción', () => {
     expect(formatearFechaTarea(null)).toBe('—');
     expect(formatearFechaTarea('fecha-invalida')).toBe('—');
+  });
+});
+
+describe('totales por moneda en el tablero (T-181, R8)', () => {
+  it('nunca suma monedas: una cifra por moneda unida con +', () => {
+    const texto = formatearTotalesDeColumna({
+      valorTotal: null,
+      valoresPorMoneda: [
+        { unidades: '5000000', moneda: 'COP' },
+        { unidades: '200000', moneda: 'USD' },
+      ],
+    });
+    expect(texto).toContain('5.000.000');
+    expect(texto).toContain('2.000');
+    expect(texto).toContain(' + ');
+  });
+
+  it('columna vacía: guion, no $0', () => {
+    expect(formatearTotalesDeColumna({ valorTotal: null, valoresPorMoneda: [] })).toBe('—');
+  });
+
+  it('mover una tarjeta en USD a una columna en COP deja dos monedas y total nulo', () => {
+    const r = ajustarPorMoneda(
+      [{ unidades: '5000000', moneda: 'COP' }],
+      { unidades: '200000', moneda: 'USD' },
+      1,
+    );
+    expect(r).toEqual([
+      { unidades: '5000000', moneda: 'COP' },
+      { unidades: '200000', moneda: 'USD' },
+    ]);
+  });
+
+  it('restar hasta cero quita la moneda del desglose', () => {
+    expect(
+      ajustarPorMoneda(
+        [{ unidades: '200000', moneda: 'USD' }],
+        { unidades: '200000', moneda: 'USD' },
+        -1,
+      ),
+    ).toEqual([]);
   });
 });

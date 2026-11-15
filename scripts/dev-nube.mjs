@@ -3,14 +3,14 @@
  * Arranca el stack completo en un entorno de nube (Codespaces con .devcontainer/) o en
  * cualquier maquina con Postgres y Redis en localhost.
  *
- *   pnpm dev:nube                 genera .env, migra, siembra (solo la primera vez), arranca api y web
+ *   pnpm dev:nube                 genera .env, migra, siembra (solo la primera vez), arranca api, trabajador y web
  *   pnpm dev:nube --resembrar     fuerza de nuevo la semilla
- *   pnpm dev:nube --solo-preparar migra y siembra, sin arrancar api ni web
+ *   pnpm dev:nube --solo-preparar migra y siembra, sin arrancar api, trabajador ni web
  *   pnpm dev:nube --reescribir-env  solo FUERA de un Codespace y con un .env ya existente: lo
  *                                 reescribe para apuntar a localhost (si no, se niega a correr)
  *
  * Secuencia (la misma de README y de la bitacora de veracidad):
- *   db:migrate:deploy -> roles:dev -> db:seed -> identidad:sembrar-dev -> api + web
+ *   db:migrate:deploy -> roles:dev -> db:seed -> identidad:sembrar-dev -> api + worker + web
  *
  * R6: no hay secretos en el repositorio. Lo sensible llega por variables de entorno (en
  * Codespaces, "secrets" del usuario) y lo que falta se GENERA al azar y vive solo en `.env`,
@@ -120,7 +120,8 @@ fijar('REDIS_URL', 'redis://localhost:6379');
 fijar('MAIL_PROVIDER', 'mailpit');
 fijar('MAIL_SMTP_HOST', 'localhost');
 fijar('MAIL_SMTP_PORT', '1025');
-fijar('COLA_CORREO', 'memoria'); // sin trabajador aparte: el correo sale al instante a Mailpit
+// El correo sigue en memoria (sale al instante a Mailpit); el trabajador se ocupa del inbox.
+fijar('COLA_CORREO', 'memoria');
 fijar('APP_ENV', 'local');
 fijar('API_PUBLIC_URL', urlApi);
 fijar('WEB_PUBLIC_URL', urlWeb);
@@ -175,6 +176,10 @@ if (args.has('--solo-preparar')) process.exit(0);
 // --- Arranque -----------------------------------------------------------------------------
 const definiciones = [
   ['api', ['--filter', '@viajapro/api', 'dev'], {}],
+  // T-194: el trabajador (BullMQ: changes y envios del inbox, relay, barrido) ya no queda fuera.
+  // Sin el, un mensaje entrante de WhatsApp se guarda en el staging y nadie lo procesa. Escribe
+  // el latido en Redis que informa /salud/listo.
+  ['worker', ['--filter', '@viajapro/api', 'worker'], {}],
   [
     'web',
     ['--filter', '@viajapro/web', 'dev'],

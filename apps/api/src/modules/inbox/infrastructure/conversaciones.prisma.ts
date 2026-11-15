@@ -575,10 +575,18 @@ export class ConversacionesPrisma extends PuertoConversaciones {
       if (!conv) return null;
 
       if (usuarioId !== null) {
-        // Miembro activo de ESTA agencia: bajo RLS, uno de otra agencia no existe aquí. Los tres
-        // casos (otra agencia, de baja, inexistente) dan el mismo error.
+        // Miembro asignable de ESTA agencia (ADR-0022): activo y con `bandeja.operar` en su rol,
+        // el mismo criterio que lista `GET /identidad/miembros/asignables`. Bajo RLS, uno de otra
+        // agencia no existe aquí. Todos los casos (otra agencia, de baja, inexistente, sin el
+        // permiso) dan el mismo error.
         const destino = await tx.usuario.findFirst({
-          where: { id: usuarioId, tenantId, activo: true, eliminadoEn: null },
+          where: {
+            id: usuarioId,
+            tenantId,
+            activo: true,
+            eliminadoEn: null,
+            rol: { permisos: { has: 'bandeja.operar' } },
+          },
           select: { id: true },
         });
         if (!destino) throw new UsuarioNoAsignableError();

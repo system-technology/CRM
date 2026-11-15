@@ -15,6 +15,8 @@ interface ModalPlantillasProps {
   abierto: boolean;
   conversacionId: string;
   borradorPrevio?: string;
+  /** Si viene, el envío queda deshabilitado y se muestra este texto. */
+  envioDeshabilitadoMotivo?: string | undefined;
   onCerrar: () => void;
   onEnviarPlantilla: (envio: EnviarPlantilla, textoInterpolado: string) => void;
 }
@@ -23,6 +25,7 @@ export function ModalPlantillas({
   abierto,
   conversacionId,
   borradorPrevio,
+  envioDeshabilitadoMotivo,
   onCerrar,
   onEnviarPlantilla,
 }: ModalPlantillasProps) {
@@ -70,6 +73,7 @@ export function ModalPlantillas({
 
   const manejarEnvio = (e: React.FormEvent) => {
     e.preventDefault();
+    if (envioDeshabilitadoMotivo) return;
 
     const claveIdempotencia = generarClaveIdempotencia();
     const datosEnvio = {
@@ -308,6 +312,16 @@ export function ModalPlantillas({
             </div>
           )}
 
+          {envioDeshabilitadoMotivo && (
+            <div
+              role="status"
+              data-testid="plantillas-envio-deshabilitado"
+              className="rounded-xl bg-amber-50 p-3 text-xs text-amber-800 dark:bg-amber-950/40 dark:text-amber-300"
+            >
+              {envioDeshabilitadoMotivo}
+            </div>
+          )}
+
           {/* Footer del Formulario */}
           <div className="flex items-center justify-between border-t border-neutral-100 pt-4 dark:border-neutral-800">
             <span className="text-[11px] text-neutral-500 dark:text-neutral-400">
@@ -323,7 +337,9 @@ export function ModalPlantillas({
               </button>
               <button
                 type="submit"
-                className="bg-acento-600 hover:bg-acento-700 flex items-center space-x-1.5 rounded-xl px-4 py-2 text-xs font-semibold text-white shadow-xs transition-colors"
+                disabled={Boolean(envioDeshabilitadoMotivo)}
+                title={envioDeshabilitadoMotivo}
+                className="bg-acento-600 hover:bg-acento-700 flex items-center space-x-1.5 rounded-xl px-4 py-2 text-xs font-semibold text-white shadow-xs transition-colors disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Send className="h-3.5 w-3.5" />
                 <span>Enviar plantilla</span>

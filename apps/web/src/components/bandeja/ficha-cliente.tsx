@@ -4,6 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { FichaDeContacto } from '@viajapro/contracts';
 import { Plane, PlusCircle, ExternalLink, StickyNote, X, Clock, Edit3 } from 'lucide-react';
+import { formatearDinero } from '../../lib/formato';
 import { generarColorAvatar, obtenerIniciales } from '../../lib/bandeja-logica';
 import { SeccionCamposPersonalizados } from '../contactos/seccion-campos-personalizados';
 
@@ -152,10 +153,7 @@ export function FichaCliente({
 
             {oportunidadActual.valorEstimado && (
               <p className="cifra text-acento-700 dark:text-acento-400 font-bold">
-                Valor estimado:
-                {(parseInt(oportunidadActual.valorEstimado.unidades, 10) / 100).toLocaleString(
-                  'es-CO',
-                )}{' '}
+                Valor estimado: {formatearDinero(oportunidadActual.valorEstimado)}{' '}
                 {oportunidadActual.valorEstimado.moneda}
               </p>
             )}
@@ -241,8 +239,7 @@ export function FichaCliente({
                     </span>
                   </div>
                   <p className="cifra mt-1.5 font-bold text-neutral-900 dark:text-neutral-100">
-                    $ {(parseInt(cot.precioVenta.unidades, 10) / 100).toLocaleString('es-CO')}{' '}
-                    {cot.precioVenta.moneda}
+                    {formatearDinero(cot.precioVenta)} {cot.precioVenta.moneda}
                   </p>
                   {cot.vigenteHasta && (
                     <p className="mt-0.5 text-[10px] text-neutral-400">

@@ -1,10 +1,11 @@
+import { RUTAS_DE_ACCESO } from './redirigir-a-ingreso';
+
 /**
  * Rutas que se pueden abrir sin sesión (T-126). Todo lo demás es del dashboard y exige sesión
  * cuando la autenticación real está activa.
  */
 const PREFIJOS_PUBLICOS = [
-  '/ingresar',
-  '/iniciar-sesion',
+  ...RUTAS_DE_ACCESO,
   '/aceptar-invitacion',
   '/terminos',
   '/privacidad',

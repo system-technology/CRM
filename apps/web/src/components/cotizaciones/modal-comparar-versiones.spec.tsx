@@ -143,9 +143,13 @@ describe('ModalCompararVersiones (T-128)', () => {
       await Promise.resolve();
     });
 
-    expect(screen.getByRole('dialog')).toBeDefined();
-    expect(screen.getByText('Comparar Versiones Lado a Lado')).toBeDefined();
-    expect(screen.getByText(/Cotización Cartagena Familia/i)).toBeDefined();
+    expect(screen.getByRole('dialog').getAttribute('aria-modal')).toBe('true');
+    expect(screen.getByText('Comparar Versiones Lado a Lado').textContent).toBe(
+      'Comparar Versiones Lado a Lado',
+    );
+    expect(screen.getByText(/Cotización Cartagena Familia/i).textContent).toBe(
+      'Cotización Cartagena Familia · Cartagena Mágica 4D/3N',
+    );
 
     // Selectores de versión
     const selectA = screen.getByLabelText<HTMLSelectElement>(/Versión Base \(A\)/i);
@@ -154,20 +158,28 @@ describe('ModalCompararVersiones (T-128)', () => {
     expect(selectB.value).toBe('2');
 
     // Muestra diferencias en parámetros
-    expect(screen.getByText('Adultos')).toBeDefined();
-    expect(screen.getByText('Niños')).toBeDefined();
-    expect(screen.getByText('Acomodación')).toBeDefined();
-    expect(screen.getByText('Cambió acomodación')).toBeDefined();
+    const fila = (etiqueta: string) => screen.getByText(etiqueta).closest('tr')?.textContent;
+    expect(fila('Adultos')).toBe('Adultos22—');
+    expect(fila('Niños')).toBe('Niños01+1');
+    expect(fila('Acomodación')).toBe('AcomodaciónDOBLETRIPLECambió acomodación');
 
-    // Muestra líneas con badges
-    expect(screen.getByText('Hotel Barú Playa 4★')).toBeDefined();
-    expect(screen.getByText('Modificada')).toBeDefined();
-    expect(screen.getByText('Traslado Privado Aeropuerto')).toBeDefined();
-    expect(screen.getByText('Añadida')).toBeDefined();
+    // Muestra líneas con su estado y diferencia exacta
+    expect(fila('Hotel Barú Playa 4★')).toBe(
+      'Hotel Barú Playa 4★Modificada$ 2.000.0002x a $ 1.000.000$ 3.000.0003x a $ 1.000.000+ $ 1.000.000 COP',
+    );
+    expect(screen.getByText('Modificada').closest('tr')?.textContent).toContain(
+      'Hotel Barú Playa 4★',
+    );
+    expect(fila('Traslado Privado Aeropuerto')).toContain('Añadida');
+    expect(fila('Traslado Privado Aeropuerto')).toContain('+ $ 150.000 COP');
 
-    // Muestra Total Venta y variación
-    expect(screen.getByText('Total Venta al Cliente')).toBeDefined();
-    expect(screen.getByText(/Variación Total:/i)).toBeDefined();
+    // Muestra Total Venta y variación con importes exactos
+    expect(fila('Total Venta al Cliente')).toBe(
+      'Total Venta al Cliente$ 2.000.000$ 3.150.000+ $ 1.150.000 COP+57.5 %',
+    );
+    expect(screen.getByText(/Variación Total:/i).textContent).toContain(
+      'Variación Total: + $ 1.150.000 COP (+57.5 %)',
+    );
   });
 
   it('permite invertir versiones con el botón correspondiente', async () => {
@@ -207,7 +219,9 @@ describe('ModalCompararVersiones (T-128)', () => {
 
     expect(screen.queryByText('Tarifa Neta Proveedor')).toBeNull();
     expect(screen.queryByText('Margen Comercial Agencia')).toBeNull();
-    expect(screen.getByText(/Costos netos y márgenes comerciales restringidos/i)).toBeDefined();
+    expect(screen.getByText(/Costos netos y márgenes comerciales restringidos/i).textContent).toBe(
+      'Costos netos y márgenes comerciales restringidos (requiere permiso cotizacion.ver_neto_y_margen).',
+    );
   });
 
   it('muestra costos netos y margen cuando el usuario tiene permiso cotizacion.ver_neto_y_margen', async () => {
@@ -221,8 +235,13 @@ describe('ModalCompararVersiones (T-128)', () => {
       />,
     );
 
-    expect(await screen.findByText('Tarifa Neta Proveedor')).toBeDefined();
-    expect(await screen.findByText('Margen Comercial Agencia')).toBeDefined();
+    expect((await screen.findByText('Tarifa Neta Proveedor')).closest('tr')?.textContent).toMatch(
+      /^Tarifa Neta Proveedor\$ /,
+    );
+    expect(
+      (await screen.findByText('Margen Comercial Agencia')).closest('tr')?.textContent,
+    ).toMatch(/^Margen Comercial Agencia\$ /);
+    expect(screen.queryByText(/Costos netos y márgenes comerciales restringidos/i)).toBeNull();
   });
 
   it('ejecuta onCerrar al hacer clic en el botón de cerrar y con tecla Escape', () => {

@@ -120,6 +120,12 @@ export class TenantMiddleware implements NestMiddleware {
    */
   private atajoDeDesarrollo(req: Request): Omit<ContextoPeticion, 'trazaId'> | null {
     if (process.env['APP_ENV'] !== 'local') return null;
+    // APP_ENV=local no basta: en Codespaces el puerto se publica y el reenvío llega a loopback
+    // con X-Forwarded-For de quien sea en internet (T-175). Toda la cadena tiene que ser local.
+    if (!peticionDesdeLoopback(req)) {
+      this.log.warn('Atajo de desarrollo rechazado: la petición no viene de esta máquina.');
+      return null;
+    }
     const tenantId = req.headers['x-dev-tenant-id'];
     if (typeof tenantId !== 'string' || tenantId.length === 0) return null;
     const usuarioId = req.headers['x-dev-usuario-id'];
@@ -131,6 +137,46 @@ export class TenantMiddleware implements NestMiddleware {
       permisos: new Set(PERMISOS),
     };
   }
+}
+
+const LOOPBACK =
+  /^(127\.\d{1,3}\.\d{1,3}\.\d{1,3}|::1|::ffff:127\.\d{1,3}\.\d{1,3}\.\d{1,3}|localhost)$/i;
+
+/** Quita corchetes y puerto de una dirección de `Forwarded`/`X-Forwarded-For`. */
+function direccionLimpia(valor: string): string {
+  const v = valor.trim().replace(/^"|"$/g, '');
+  const ipv6 = /^\[([^\]]+)\](?::\d+)?$/.exec(v);
+  if (ipv6?.[1]) return ipv6[1];
+  const ipv4ConPuerto = /^(\d{1,3}(?:\.\d{1,3}){3}):\d+$/.exec(v);
+  return ipv4ConPuerto?.[1] ?? v;
+}
+
+function valoresDeCabecera(valor: string | string[] | undefined): string[] {
+  if (valor === undefined) return [];
+  return (Array.isArray(valor) ? valor : [valor]).flatMap((v) => v.split(','));
+}
+
+/**
+ * Verdadero solo si el socket y TODAS las direcciones de `X-Forwarded-For`, `X-Real-IP` y
+ * `Forwarded: for=` son de loopback. Un proxy local (el rewrite de Next en desarrollo) pasa;
+ * cualquier salto desde fuera de la máquina —o una cadena que no se puede leer— no.
+ */
+export function peticionDesdeLoopback(req: Request): boolean {
+  const socket = req.socket?.remoteAddress;
+  if (!socket || !LOOPBACK.test(socket)) return false;
+
+  const reenviadas = [
+    ...valoresDeCabecera(req.headers['x-forwarded-for']),
+    ...valoresDeCabecera(req.headers['x-real-ip']),
+    ...valoresDeCabecera(req.headers['forwarded']).flatMap((tramo) =>
+      tramo
+        .split(';')
+        .map((p) => p.trim())
+        .filter((p) => /^for=/i.test(p))
+        .map((p) => p.slice(4)),
+    ),
+  ];
+  return reenviadas.every((d) => LOOPBACK.test(direccionLimpia(d)));
 }
 
 const MENSAJES = {

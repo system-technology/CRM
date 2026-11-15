@@ -13,6 +13,9 @@ import {
   MapPin,
 } from 'lucide-react';
 import { crearOportunidadDeConversacionApi } from '../../lib/crm-api';
+import { parsearMontoAUnidades } from '../../lib/dinero-entrada';
+
+const MONEDA_OPORTUNIDAD = 'COP' as const;
 
 export interface ModalCrearOportunidadProps {
   conversacionId: string;
@@ -47,12 +50,10 @@ export function ModalCrearOportunidad({
     setError(null);
 
     try {
-      const valorDinero = valorEstimado.trim()
-        ? {
-            // Guardamos en centavos enteros conforme a la regla R8
-            unidades: Math.round(parseFloat(valorEstimado.replace(/[^\d.]/g, '')) * 100).toString(),
-            moneda: 'COP' as const,
-          }
+      // R8: COP en pesos enteros (la unidad mínima del COP es el peso, no el centavo).
+      const unidadesValor = parsearMontoAUnidades(valorEstimado, MONEDA_OPORTUNIDAD);
+      const valorDinero = unidadesValor
+        ? { unidades: unidadesValor, moneda: MONEDA_OPORTUNIDAD }
         : undefined;
 
       const nuevaOportunidad = await crearOportunidadDeConversacionApi(conversacionId, {
@@ -180,9 +181,8 @@ export function ModalCrearOportunidad({
                   <input
                     id="input-valor-oportunidad"
                     data-testid="input-valor-oportunidad"
-                    type="number"
-                    min="0"
-                    step="1000"
+                    type="text"
+                    inputMode="numeric"
                     value={valorEstimado}
                     onChange={(e) => setValorEstimado(e.target.value)}
                     placeholder="Ej. 5000000"

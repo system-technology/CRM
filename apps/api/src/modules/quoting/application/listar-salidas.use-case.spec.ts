@@ -24,6 +24,7 @@ interface FilaTarifa {
   ocupaSilla: boolean | null;
   listaUnidades: bigint | null;
   promoHasta: Date | null;
+  acomodacion?: string | null;
 }
 
 const tarifa = (venta: bigint, moneda: string, extra: Partial<FilaTarifa> = {}): FilaTarifa => ({
@@ -118,6 +119,21 @@ describe('ListarSalidasUseCase: «desde» por moneda (T-066)', () => {
   it('la respuesta cumple el contrato SalidaPublicada (R3)', async () => {
     const salidas = await ejecutar(montar([tarifa(320000n, 'COP'), tarifa(90n, 'USD')]));
     for (const s of salidas) expect(SalidaPublicada.safeParse(s).success).toBe(true);
+  });
+
+  it('T-219: expone las acomodaciones de la salida en orden, y las omite si no hay', async () => {
+    const [con] = await ejecutar(
+      montar([
+        tarifa(300000n, 'COP', { acomodacion: 'TRIPLE' }),
+        tarifa(400000n, 'COP', { acomodacion: 'DOBLE' }),
+        tarifa(90000n, 'COP', { acomodacion: null, aditiva: true }),
+      ]),
+    );
+    expect(con?.acomodacionesDisponibles).toEqual(['DOBLE', 'TRIPLE']);
+    expect(SalidaPublicada.safeParse(con).success).toBe(true);
+
+    const [sin] = await ejecutar(montar([tarifa(320000n, 'COP')]));
+    expect(sin && 'acomodacionesDisponibles' in sin).toBe(false);
   });
 
   it('una salida sin tarifa base no se anuncia', async () => {

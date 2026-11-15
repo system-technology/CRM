@@ -38,6 +38,17 @@ import { MensajesSalientesPrisma } from './infrastructure/mensajes-salientes.pri
 import { ReservaDeEnvioPostgres } from './infrastructure/reserva-de-envio.postgres.js';
 
 const CORRE = Boolean(process.env['DATABASE_URL']);
+
+// T-199: con VIAJAPRO_EXIGIR_POSTGRES=1 (el CI la fija) esta suite NO puede omitirse en silencio: si falta DATABASE_URL, falla.
+if (!CORRE && process.env['VIAJAPRO_EXIGIR_POSTGRES'] === '1') {
+  describe('envios-postgres — suite exigida', () => {
+    it('VIAJAPRO_EXIGIR_POSTGRES=1 pero falta DATABASE_URL: una prueba que se omite en silencio no protege nada', () => {
+      throw new Error(
+        'VIAJAPRO_EXIGIR_POSTGRES=1 pero no hay DATABASE_URL. Esta suite no puede omitirse.',
+      );
+    });
+  });
+}
 const MARCA = randomUUID().slice(0, 8);
 const dormir = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 

@@ -9,6 +9,7 @@
       "outputs": ["dist/**", ".next/**", "!.next/cache/**"]
     },
     "dev": {
+      "dependsOn": ["^build"],
       "cache": false,
       "persistent": true
     },
@@ -33,7 +34,9 @@
         "WEBHOOK_PAYLOAD_KEY_VERSION",
         "META_APP_SECRET",
         "WHATSAPP_WEBHOOK_VERIFY_TOKEN",
-        "REDIS_URL"
+        "REDIS_URL",
+        "VIAJAPRO_EXIGIR_REDIS",
+        "VIAJAPRO_EXIGIR_POSTGRES"
       ],
       "cache": false
     },

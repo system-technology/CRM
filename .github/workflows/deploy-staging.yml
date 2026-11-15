@@ -1,8 +1,11 @@
 # Despliegue de STAGING (ADR-0013 §6 y §7). Publica lo que ya entro en `main` y paso el CI:
 #   migrate deploy (rama de staging, rol propietario) -> deploy hook de cada servicio -> /salud
 #
-# Sin cuentas todavia: si faltan los secretos del Environment `staging`, el workflow termina
-# en VERDE con un aviso y no hace nada. Asi no rompe el CI de nadie.
+# Sin secretos del Environment `staging` el workflow FALLA (T-204): un despliegue que no
+# desplego no puede verse verde, porque nadie lo mira y parece que staging esta al dia. No es un
+# check obligatorio de `main`, asi que el rojo no bloquea a nadie. Para decir «todavia no hay
+# staging» a proposito, definir la variable del repositorio STAGING_DESPLIEGUE=desactivado:
+# entonces termina en verde pero con un resumen «OMITIDO» inequivoco, y se puede quitar al conectar.
 #
 # Lo que usa y lo que NO usa:
 #   - Secretos del Environment `staging` (limitado a `main`): DIRECT_URL y los deploy hooks.
@@ -47,10 +50,20 @@ jobs:
         id: secretos
         env:
           DIRECT_URL: ${{ secrets.DIRECT_URL }}
+          DESPLIEGUE: ${{ vars.STAGING_DESPLIEGUE }}
         run: |
           if [ -z "$DIRECT_URL" ]; then
             echo "listo=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::Faltan los secretos del Environment 'staging' (DIRECT_URL). No se migra ni se despliega. Ver docs/07-ingenieria/despliegue-staging.md"
+            if [ "$DESPLIEGUE" = "desactivado" ]; then
+              echo "## Staging: OMITIDO (no se desplego nada)" >> "$GITHUB_STEP_SUMMARY"
+              echo "Faltan los secretos del Environment \`staging\` y STAGING_DESPLIEGUE=desactivado. No se migro ni se desplego." >> "$GITHUB_STEP_SUMMARY"
+              echo "::warning::Staging OMITIDO: sin secretos y STAGING_DESPLIEGUE=desactivado. No se desplego nada."
+            else
+              echo "## Staging: NO DESPLEGADO" >> "$GITHUB_STEP_SUMMARY"
+              echo "Faltan los secretos del Environment \`staging\` (DIRECT_URL). Ver docs/07-ingenieria/despliegue-staging.md. Para omitirlo a proposito: variable STAGING_DESPLIEGUE=desactivado." >> "$GITHUB_STEP_SUMMARY"
+              echo "::error::Faltan los secretos del Environment 'staging' (DIRECT_URL): NO se migro ni se desplego. Definir los secretos o STAGING_DESPLIEGUE=desactivado."
+              exit 1
+            fi
           else
             echo "listo=true" >> "$GITHUB_OUTPUT"
           fi
@@ -108,6 +121,7 @@ jobs:
       HOOK_WORKER: ${{ secrets.RENDER_DEPLOY_HOOK_WORKER }}
       HOOK_WEB: ${{ secrets.RENDER_DEPLOY_HOOK_WEB }}
       STAGING_API_URL: ${{ vars.STAGING_API_URL }}
+      SHA: ${{ github.event.workflow_run.head_sha }}
     steps:
       # Un hook es una URL con un token: se llama sin imprimirla y sin `-v`.
       # Primero API y trabajador (que pueden tener migraciones nuevas esperando), luego la web.
@@ -117,12 +131,18 @@ jobs:
             nombre="${par%%:*}"
             url="${par#*:}"
             if [ -z "$url" ]; then
-              echo "::warning::Falta RENDER_DEPLOY_HOOK_${nombre}: ese servicio no se despliega."
+              echo "::error::Falta RENDER_DEPLOY_HOOK_${nombre}: ese servicio NO se despliega."
+              faltan="${faltan:-} ${nombre}"
               continue
             fi
             curl --fail --silent --show-error --max-time 30 -X POST "$url" > /dev/null
             echo "Despliegue de ${nombre} solicitado."
           done
+          # Los demas servicios ya se pidieron; pero un despliegue parcial no es un exito.
+          if [ -n "${faltan:-}" ]; then
+            echo "## Staging: despliegue INCOMPLETO, sin hook:${faltan}" >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
 
       # Limite conocido: el hook responde al instante y el servicio anterior sigue sano unos
       # minutos, asi que esto confirma que la API contesta y que el rol no salta RLS, no que
@@ -130,13 +150,15 @@ jobs:
       - name: Sonda de salud
         run: |
           if [ -z "$STAGING_API_URL" ]; then
-            echo "::notice::Sin la variable STAGING_API_URL no hay sonda final."
-            exit 0
+            echo "::error::Sin la variable STAGING_API_URL no hay sonda final: no se puede afirmar que staging quedo arriba."
+            echo "## Staging: desplegado SIN verificar (falta STAGING_API_URL)" >> "$GITHUB_STEP_SUMMARY"
+            exit 1
           fi
           sleep 60
           for i in $(seq 1 20); do
             if curl --fail --silent --max-time 10 "$STAGING_API_URL/salud/listo" | grep -q '"estado":"ok"'; then
               echo "La API de staging esta lista."
+              echo "## Staging: desplegado y verificado (${SHA})" >> "$GITHUB_STEP_SUMMARY"
               exit 0
             fi
             sleep 15

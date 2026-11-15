@@ -16,7 +16,12 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useModoDemo } from '../../lib/modo-demo';
 import { Calculator, Compass, Copy, Check, AlertCircle, Bookmark, Ship, Users } from 'lucide-react';
-import { requiereAvisoImpuestoMuelle } from '../../lib/cotizador-logica';
+import {
+  ACOMODACIONES_EN_ORDEN,
+  ETIQUETA_ACOMODACION,
+  acomodacionesParaElSelector,
+  requiereAvisoImpuestoMuelle,
+} from '../../lib/cotizador-logica';
 import type {
   Acomodacion,
   CotizacionCalculada,
@@ -32,6 +37,8 @@ import { formatearErrorAmigable } from '../../lib/estados-ui-logica';
 import { DesgloseCotizacionSalida } from '../../components/cotizador/desglose-cotizacion-salida';
 import { usePermisos, explicacionFaltaPermiso } from '../../lib/permisos';
 import { EstadoSinCatalogo } from '../../components/catalogo/estado-sin-catalogo';
+import { EdadesDePasajeros } from '../../components/cotizador/edades-de-pasajeros';
+import { edadesParaEnviar } from '../../lib/cotizador-edades';
 
 const ModalGuardarCotizacion = dynamic(() =>
   import('../../components/cotizador/modal-guardar-cotizacion').then(
@@ -98,9 +105,22 @@ function ContenidoCotizador() {
   const [adultos, setAdultos] = useState(2);
   const [ninos, setNinos] = useState(0);
   const [infantes, setInfantes] = useState(0);
+  // Edades por pasajero (T-179): la tarifa de menor tiene rango de edad.
+  const [edadesNinos, setEdadesNinos] = useState<(number | null)[]>([]);
+  const [edadesInfantes, setEdadesInfantes] = useState<(number | null)[]>([]);
+  const [infantesConSilla, setInfantesConSilla] = useState<boolean[]>([]);
 
   // Parámetros modo mock / v1
   const [acomodacionMock, setAcomodacionMock] = useState<Acomodacion | ''>('');
+  // T-188/T-219: acomodación para la API real. El selector aparece desde el inicio cuando la
+  // salida (o la cotización) trae sus acomodaciones, y como último recurso cuando la API dijo que
+  // el tarifario la exige (ACOMODACION_*). Se reinicia al cambiar de paquete.
+  const [acomodacionReal, setAcomodacionReal] = useState<Acomodacion | ''>('');
+  const [pideAcomodacion, setPideAcomodacion] = useState(false);
+  useEffect(() => {
+    setAcomodacionReal('');
+    setPideAcomodacion(false);
+  }, [paqueteId]);
   const [markupExtraMock] = useState(0);
 
   // Respuestas y Estados
@@ -168,6 +188,11 @@ function ContenidoCotizador() {
       vigente = false;
     };
   }, [usarReal, paqueteId]);
+
+  const edades = useMemo(
+    () => edadesParaEnviar({ ninos, infantes, edadesNinos, edadesInfantes, infantesConSilla }),
+    [ninos, infantes, edadesNinos, edadesInfantes, infantesConSilla],
+  );
 
   // Eje 3 de ADR-0009: pideComposicion gobernado por el tarifario
   const pideComposicion = useMemo(() => {
@@ -262,6 +287,28 @@ function ContenidoCotizador() {
     return salidasDisponibles.filter((s) => s.paqueteId === paqueteId).map((s) => s.fecha);
   }, [usarReal, paqueteId, salidasDisponibles]);
 
+  // Acomodaciones que ofrece el selector (T-219); se declara antes del efecto de cotización.
+  const acomodacionesOfrecidas = useMemo(
+    () =>
+      usarReal
+        ? acomodacionesParaElSelector({
+            salidas: salidasDisponibles,
+            paqueteId,
+            fecha,
+            cotizacion: cotizacionReal,
+            pedidaPorLaApi: pideAcomodacion,
+          })
+        : [],
+    [usarReal, salidasDisponibles, paqueteId, fecha, cotizacionReal, pideAcomodacion],
+  );
+
+  // Una acomodación elegida que ya no existe para esta salida se descarta.
+  useEffect(() => {
+    if (acomodacionReal && acomodacionesOfrecidas.length > 0) {
+      if (!acomodacionesOfrecidas.includes(acomodacionReal)) setAcomodacionReal('');
+    }
+  }, [acomodacionReal, acomodacionesOfrecidas]);
+
   // Paquete actualmente seleccionado
   const paqueteSeleccionado = useMemo(() => {
     return paquetesDisponibles.find((p) => p.id === paqueteId) ?? paquetesDisponibles[0];
@@ -290,6 +337,8 @@ function ContenidoCotizador() {
         adultos: pideComposicion ? adultos : undefined,
         ninos: pideComposicion ? ninos : undefined,
         infantes: pideComposicion ? infantes : undefined,
+        ...(pideComposicion ? edades : {}),
+        ...(acomodacionReal ? { acomodacion: acomodacionReal } : {}),
       })
         .then((res) => {
           setCotizacionReal(res);
@@ -297,7 +346,14 @@ function ContenidoCotizador() {
         })
         .catch((err: unknown) => {
           setCotizacionReal(null);
-          setErrorMensaje(interpretarErrorCotizacion(err));
+          const interpretado = interpretarErrorCotizacion(err);
+          if (
+            interpretado.codigo === 'ACOMODACION_REQUERIDA' ||
+            interpretado.codigo === 'ACOMODACION_NO_DISPONIBLE'
+          ) {
+            setPideAcomodacion(true);
+          }
+          setErrorMensaje(interpretado);
         })
         .finally(() => {
           setCalculando(false);
@@ -332,7 +388,9 @@ function ContenidoCotizador() {
     adultos,
     ninos,
     infantes,
+    edades,
     pideComposicion,
+    acomodacionReal,
     acomodacionMock,
     markupExtraMock,
     cargandoOpciones,
@@ -376,6 +434,7 @@ function ContenidoCotizador() {
           adultos: pideComposicion ? adultos : 2,
           ninos: pideComposicion ? ninos : 0,
           infantes: pideComposicion ? infantes : 0,
+          ...(pideComposicion ? edades : {}),
           acomodacion: acomodacionMock || undefined,
           opcionDeSalidaId: opcionAEnviar,
           vigenteHasta: datos.vigenteHasta,
@@ -733,6 +792,19 @@ function ContenidoCotizador() {
                               </button>
                             </div>
                           </div>
+
+                          {usarReal && (
+                            <EdadesDePasajeros
+                              ninos={ninos}
+                              infantes={infantes}
+                              edadesNinos={edadesNinos}
+                              edadesInfantes={edadesInfantes}
+                              infantesConSilla={infantesConSilla}
+                              onEdadesNinos={setEdadesNinos}
+                              onEdadesInfantes={setEdadesInfantes}
+                              onInfantesConSilla={setInfantesConSilla}
+                            />
+                          )}
                         </div>
                       )}
                     </div>
@@ -754,10 +826,38 @@ function ContenidoCotizador() {
                           className="mt-1.5 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white p-2.5 text-xs text-neutral-900 shadow-2xs focus:border-purple-600 focus-visible:ring-2 focus-visible:ring-purple-600 focus-visible:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                         >
                           <option value="">Sugerida automáticamente</option>
-                          <option value="SENCILLA">Sencilla (1 persona)</option>
-                          <option value="DOBLE">Doble (2 personas)</option>
-                          <option value="TRIPLE">Triple (3 personas)</option>
-                          <option value="CUADRUPLE">Cuádruple (4 personas)</option>
+                          {/* Modo maqueta: las cuatro, porque el catálogo simulado no las declara. */}
+                          {ACOMODACIONES_EN_ORDEN.map((a) => (
+                            <option key={a} value={a}>
+                              {ETIQUETA_ACOMODACION[a]}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+
+                    {/* Selector de Acomodación con la API real (T-188/T-219): solo con las acomodaciones del producto */}
+                    {usarReal && acomodacionesOfrecidas.length > 0 && (
+                      <div className="border-t border-neutral-100 pt-4 dark:border-neutral-800">
+                        <label
+                          htmlFor="select-acomodacion"
+                          className="block text-xs font-semibold text-neutral-700 dark:text-neutral-300"
+                        >
+                          Acomodación
+                        </label>
+                        <select
+                          id="select-acomodacion"
+                          aria-label="Acomodación"
+                          value={acomodacionReal}
+                          onChange={(e) => setAcomodacionReal(e.target.value as Acomodacion | '')}
+                          className="mt-1.5 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white p-2.5 text-xs text-neutral-900 shadow-2xs focus:border-purple-600 focus-visible:ring-2 focus-visible:ring-purple-600 focus-visible:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                        >
+                          <option value="">Elige una acomodación</option>
+                          {acomodacionesOfrecidas.map((a) => (
+                            <option key={a} value={a}>
+                              {ETIQUETA_ACOMODACION[a]}
+                            </option>
+                          ))}
                         </select>
                       </div>
                     )}

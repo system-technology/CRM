@@ -194,6 +194,25 @@ afterAll(async () => {
 });
 
 describe('cotizador punta a punta (T-011)', () => {
+  it('T-188: un tarifario por acomodación exige `acomodacion`, y una sin tarifas es 422', async () => {
+    const sin = await llamar<{ error: { code: string } }>('POST', '/api/v1/catalogo/cotizar', {
+      paqueteId,
+      fecha: FECHA_DICIEMBRE,
+      adultos: 2,
+    });
+    expect(sin.estado).toBe(422);
+    expect(sin.json.error.code).toBe('ACOMODACION_REQUERIDA');
+
+    const otra = await llamar<{ error: { code: string } }>('POST', '/api/v1/catalogo/cotizar', {
+      paqueteId,
+      fecha: FECHA_DICIEMBRE,
+      adultos: 2,
+      acomodacion: 'SENCILLA',
+    });
+    expect(otra.estado).toBe(422);
+    expect(otra.json.error.code).toBe('ACOMODACION_NO_DISPONIBLE');
+  });
+
   it('2 adultos + 2 niños en diciembre, doble: $9.100.000 COP con margen del 20 %', async () => {
     const r = await llamar<CotizacionDeSalida>('POST', '/api/v1/catalogo/cotizar', {
       paqueteId,

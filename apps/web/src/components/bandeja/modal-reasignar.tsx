@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { X, UserCheck, Users, Loader2 } from 'lucide-react';
-import { ASESORES } from '../../lib/mock-inbox';
+import type { MiembroAsignable } from '@viajapro/contracts';
+import { listarMiembrosAsignablesApi } from '../../lib/miembros-asignables-api';
 import { useFocoModal } from '../../lib/use-foco-modal';
 
 export interface ModalReasignarProps {
@@ -22,6 +23,35 @@ export function ModalReasignar({
   const [seleccionado, setSeleccionado] = useState<string | null>(asignadoActualId);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [miembros, setMiembros] = useState<MiembroAsignable[]>([]);
+  const [cargando, setCargando] = useState(false);
+  const [errorLista, setErrorLista] = useState<string | null>(null);
+
+  // La lista se pide al abrir (ADR-0022): lo que se ofrece es lo que el PUT acepta.
+  useEffect(() => {
+    if (!abierto) return;
+    let vigente = true;
+    setCargando(true);
+    setErrorLista(null);
+    listarMiembrosAsignablesApi()
+      .then((lista) => {
+        if (vigente) setMiembros(lista);
+      })
+      .catch((e: unknown) => {
+        if (vigente) {
+          setMiembros([]);
+          setErrorLista(
+            e instanceof Error ? e.message : 'No fue posible cargar a quién se puede asignar.',
+          );
+        }
+      })
+      .finally(() => {
+        if (vigente) setCargando(false);
+      });
+    return () => {
+      vigente = false;
+    };
+  }, [abierto]);
 
   const contenedorRef = useFocoModal<HTMLDivElement>({
     abierto,
@@ -116,8 +146,25 @@ export function ModalReasignar({
             )}
           </button>
 
-          {/* Opciones de Asesores */}
-          {ASESORES.map((asesor) => {
+          {/* Opciones de miembros asignables */}
+          {cargando && (
+            <p
+              role="status"
+              className="flex items-center gap-2 px-1 text-xs text-neutral-500 dark:text-neutral-400"
+            >
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              Cargando equipo...
+            </p>
+          )}
+          {errorLista && (
+            <p
+              role="alert"
+              className="rounded-lg border border-red-200 bg-red-50 p-2.5 text-xs text-red-700 dark:border-red-900/50 dark:bg-red-950/50 dark:text-red-300"
+            >
+              {errorLista}
+            </p>
+          )}
+          {miembros.map((asesor) => {
             const esActivo = seleccionado === asesor.id;
             return (
               <button
@@ -138,7 +185,6 @@ export function ModalReasignar({
                     <p className="text-xs font-bold text-neutral-900 dark:text-neutral-100">
                       {asesor.nombre}
                     </p>
-                    <p className="text-[10px] text-neutral-400">Asesor de viajes</p>
                   </div>
                 </div>
                 {esActivo && (

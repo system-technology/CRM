@@ -36,6 +36,17 @@ if (!CORRE) {
   );
 }
 
+// T-199: con VIAJAPRO_EXIGIR_REDIS=1 (el CI la fija) esta suite NO puede omitirse en silencio: si falta Redis real (REDIS_URL y CI=true o PRUEBA_BULLMQ=1), falla.
+if (!CORRE && process.env['VIAJAPRO_EXIGIR_REDIS'] === '1') {
+  describe('limite-otp-redis — suite exigida', () => {
+    it('VIAJAPRO_EXIGIR_REDIS=1 pero falta Redis real (REDIS_URL y CI=true o PRUEBA_BULLMQ=1): una prueba que se omite en silencio no protege nada', () => {
+      throw new Error(
+        'VIAJAPRO_EXIGIR_REDIS=1 pero no hay Redis real (REDIS_URL y CI=true o PRUEBA_BULLMQ=1). Esta suite no puede omitirse.',
+      );
+    });
+  });
+}
+
 const ORIGEN_WEB = 'http://localhost:3000';
 const MARCA = randomBytes(4).toString('hex');
 const CORREO_REAL = `fixture-otp-redis-${MARCA}-real@fixture-identidad.test`;

@@ -156,7 +156,7 @@ describe('reportes-logica (T-142)', () => {
       '5 creadas en el periodo (1 ganadas · 1 perdidas · 3 abiertas)',
     );
     expect(vista.respuesta.cohorteTexto).toBe(
-      '8 de 10 conversaciones nuevas respondidas en el periodo',
+      '8 de 10 respondidas (n insuficiente para el porcentaje)',
     );
 
     // Mediana como valor protagonista

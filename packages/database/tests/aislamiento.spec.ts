@@ -3200,15 +3200,22 @@ describe('Cotizaciones — cabecera mutable y versiones inmutables', () => {
 
     // El propietario tampoco: ni UPDATE —con o sin declarar purga—, ni DELETE sin declararla,
     // ni TRUNCATE. Todo dentro de BEGIN … ROLLBACK: ver la cabecera de este bloque.
-    const rechazoDelPropietario = async (sentencias: string[]) => {
-      await admin.query('BEGIN');
-      try {
-        for (const s of sentencias) await admin.query(s, s.includes('$1') ? [id] : []);
-        return 'aceptada';
-      } catch (error) {
-        return (error as Error).message;
-      } finally {
-        await admin.query('ROLLBACK');
+    // Un deadlock (40P01) no es el rechazo que se prueba: en el CI las pruebas de la api corren
+    // a la vez contra la misma base, y un TRUNCATE ... CASCADE puede cruzarse con su limpieza y
+    // ser abortado por el motor antes de llegar al disparador. Se reintenta; la aserción sigue
+    // exigiendo que sea el disparador quien rechace.
+    const rechazoDelPropietario = async (sentencias: string[]): Promise<string> => {
+      for (let intento = 1; ; intento++) {
+        await admin.query('BEGIN');
+        try {
+          for (const s of sentencias) await admin.query(s, s.includes('$1') ? [id] : []);
+          return 'aceptada';
+        } catch (error) {
+          const codigo = (error as { code?: string }).code;
+          if (codigo !== '40P01' || intento >= 5) return (error as Error).message;
+        } finally {
+          await admin.query('ROLLBACK');
+        }
       }
     };
     expect(

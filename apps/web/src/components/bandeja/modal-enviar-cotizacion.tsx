@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import type { CotizacionResumen, Mensaje } from '@viajapro/contracts';
 import { FileText, X, Send, AlertTriangle, CheckCircle2, Loader2, Sparkles } from 'lucide-react';
+import { formatearDinero } from '../../lib/formato';
 import { inboxApi } from '../../lib/inbox-api';
 import { interpretarErrorDeEnvio, type DetalleErrorEnvio } from '../../lib/errores-de-envio';
 
@@ -24,10 +25,7 @@ export function generarTextoWhatsAppCotizacion(
   contactoTelefono: string,
 ): string {
   const nombreDestinatario = contactoNombre?.trim() || contactoTelefono;
-  const precioEntero = parseInt(cotizacion.precioVenta.unidades, 10);
-  const precioFormateado = (precioEntero / 100).toLocaleString('es-CO', {
-    maximumFractionDigits: 0,
-  });
+  const precioFormateado = formatearDinero(cotizacion.precioVenta);
 
   const validezTexto = cotizacion.vigenteHasta
     ? `Hasta ${cotizacion.vigenteHasta}`
@@ -35,7 +33,7 @@ export function generarTextoWhatsAppCotizacion(
 
   return `✈️ *Propuesta de Viaje: ${cotizacion.titulo} (v${cotizacion.version})*
 👤 Para: ${nombreDestinatario}
-💵 Inversión total: $ ${precioFormateado} ${cotizacion.precioVenta.moneda}
+💵 Inversión total: ${precioFormateado} ${cotizacion.precioVenta.moneda}
 📅 Vigencia de tarifa: ${validezTexto}
 
 📋 *Detalles de tu cotización:*
@@ -171,8 +169,7 @@ export function ModalEnviarCotizacion({
               >
                 {cotizaciones.map((cot) => (
                   <option key={cot.id} value={cot.id}>
-                    {cot.titulo} (v{cot.version}) — $
-                    {(parseInt(cot.precioVenta.unidades, 10) / 100).toLocaleString('es-CO')}{' '}
+                    {cot.titulo} (v{cot.version}) — {formatearDinero(cot.precioVenta)}{' '}
                     {cot.precioVenta.moneda}
                   </option>
                 ))}

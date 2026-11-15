@@ -133,7 +133,32 @@ describe('BloqueEtapasPipeline (T-025)', () => {
       fireEvent.click(screen.getByRole('button', { name: /Guardar etapas/i }));
       await Promise.resolve();
     });
-    expect(await screen.findByRole('alert')).toBeDefined();
+    expect((await screen.findByRole('alert')).textContent).toContain('Sin permiso');
+    expect(screen.queryByText('Etapas del pipeline guardadas correctamente.')).toBeNull();
+  });
+
+  it('5b. Fallo parcial al guardar: la pantalla dice qué etapas se guardaron y cuáles no (T-202)', async () => {
+    vi.spyOn(crmApi, 'listarEtapasPipelineApi').mockResolvedValue(ETAPAS_MOCK);
+    vi.spyOn(crmApi, 'actualizarEtapasPipelineApi').mockRejectedValue(
+      new crmApi.GuardadoEtapasParcialError(
+        ['Nuevo prospecto'],
+        ['Cotización enviada'],
+        false,
+        new Error('Error en API CRM (500)'),
+        ETAPAS_MOCK,
+      ),
+    );
+    await act(async () => {
+      render(<BloqueEtapasPipeline />);
+      await Promise.resolve();
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /Guardar etapas/i }));
+      await Promise.resolve();
+    });
+    const alerta = await screen.findByRole('alert');
+    expect(alerta.textContent).toContain('Se guardaron: Nuevo prospecto.');
+    expect(alerta.textContent).toContain('No se guardaron: Cotización enviada.');
     expect(screen.queryByText('Etapas del pipeline guardadas correctamente.')).toBeNull();
   });
 

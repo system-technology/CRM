@@ -7,7 +7,10 @@ import {
   estaUsandoApiReal,
   obtenerTenantDemo,
   CrmApiError,
+  actualizarEtapasPipelineApi,
+  GuardadoEtapasParcialError,
 } from './crm-api';
+import type { EtapaDefinida } from '@viajapro/contracts';
 
 describe('Cliente de API CRM (crm-api.ts)', () => {
   it('obtenerTableroPipeline devuelve un TableroPipeline válido con columnas y totales', async () => {
@@ -255,5 +258,102 @@ describe('0c.34: Con la API real encendida, un fallo es un error, nunca datos si
       const contactos = await listarContactos();
       expect(contactos.datos.length).toBeGreaterThan(0);
     });
+  });
+});
+
+describe('T-202: guardado de etapas con fallo a mitad (actualizarEtapasPipelineApi)', () => {
+  const originalFetch = globalThis.fetch;
+  const originalCrmEnv = process.env['NEXT_PUBLIC_USE_REAL_CRM'];
+  const originalTenantEnv = process.env['NEXT_PUBLIC_DEV_TENANT_ID'];
+
+  const etapa = (n: number, nombre: string, probabilidad: number): EtapaDefinida => ({
+    id: `01a114b2-5314-75b1-91ad-3be0518a6a0${n}`,
+    clave: null,
+    nombre,
+    orden: n,
+    probabilidad,
+    esGanada: false,
+    esPerdida: false,
+  });
+  const originales = [etapa(1, 'Nuevo', 10), etapa(2, 'Cotizado', 40), etapa(3, 'Cerrado', 90)];
+
+  beforeEach(() => {
+    process.env['NEXT_PUBLIC_USE_REAL_CRM'] = 'true';
+    process.env['NEXT_PUBLIC_DEV_TENANT_ID'] = '01932000-0000-7000-8000-00000000000a';
+  });
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+    if (originalCrmEnv !== undefined) process.env['NEXT_PUBLIC_USE_REAL_CRM'] = originalCrmEnv;
+    else delete process.env['NEXT_PUBLIC_USE_REAL_CRM'];
+    if (originalTenantEnv !== undefined)
+      process.env['NEXT_PUBLIC_DEV_TENANT_ID'] = originalTenantEnv;
+    else delete process.env['NEXT_PUBLIC_DEV_TENANT_ID'];
+  });
+
+  it('si el segundo PATCH falla, el error dice qué etapas se guardaron y cuáles no', async () => {
+    let llamadas = 0;
+    globalThis.fetch = () => {
+      llamadas += 1;
+      if (llamadas === 1) {
+        return Promise.resolve(new Response(JSON.stringify({ data: {} }), { status: 200 }));
+      }
+      return Promise.resolve(new Response('{}', { status: 500, statusText: 'Boom' }));
+    };
+    const editadas = [
+      etapa(1, 'Prospecto', 10),
+      etapa(2, 'Propuesta', 40),
+      etapa(3, 'Cerrado', 95),
+    ];
+
+    const error = await actualizarEtapasPipelineApi(originales, editadas).catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(GuardadoEtapasParcialError);
+    const parcial = error as GuardadoEtapasParcialError;
+    expect(llamadas).toBe(2);
+    expect(parcial.guardadas).toEqual(['Prospecto']);
+    expect(parcial.noGuardadas).toEqual(['Propuesta', 'Cerrado']);
+    expect(parcial.reordenPendiente).toBe(false);
+    expect(parcial.message).toContain('Se guardaron: Prospecto.');
+    expect(parcial.message).toContain('No se guardaron: Propuesta, Cerrado.');
+    expect(parcial.originalesActualizados.map((e) => e.nombre)).toEqual([
+      'Prospecto',
+      'Cotizado',
+      'Cerrado',
+    ]);
+  });
+
+  it('si falla el primer PATCH, dice que no se guardó ninguna etapa', async () => {
+    globalThis.fetch = () => Promise.resolve(new Response('{}', { status: 500 }));
+    const error = await actualizarEtapasPipelineApi(originales, [
+      etapa(1, 'Prospecto', 10),
+      etapa(2, 'Cotizado', 40),
+      etapa(3, 'Cerrado', 90),
+    ]).catch((e: unknown) => e);
+
+    expect((error as GuardadoEtapasParcialError).guardadas).toEqual([]);
+    expect((error as GuardadoEtapasParcialError).message).toContain('No se guardó ninguna etapa.');
+    expect((error as GuardadoEtapasParcialError).noGuardadas).toEqual(['Prospecto']);
+  });
+
+  it('si los PATCH pasan y falla reordenar, informa que el orden no se guardó', async () => {
+    globalThis.fetch = (url) =>
+      Promise.resolve(
+        (typeof url === 'string' ? url : url instanceof URL ? url.href : url.url).endsWith(
+          '/reordenar',
+        )
+          ? new Response('{}', { status: 500 })
+          : new Response(JSON.stringify({ data: {} }), { status: 200 }),
+      );
+    const error = await actualizarEtapasPipelineApi(originales, [
+      etapa(2, 'Propuesta', 40),
+      etapa(1, 'Nuevo', 10),
+      etapa(3, 'Cerrado', 90),
+    ]).catch((e: unknown) => e);
+
+    const parcial = error as GuardadoEtapasParcialError;
+    expect(parcial.guardadas).toEqual(['Propuesta']);
+    expect(parcial.reordenPendiente).toBe(true);
+    expect(parcial.message).toContain('El nuevo orden de las etapas no se guardó.');
   });
 });

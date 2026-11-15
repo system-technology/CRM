@@ -15,15 +15,22 @@ describe('BloqueEquipo (T-027)', () => {
     render(<BloqueEquipo />);
 
     await waitFor(() => {
-      expect(screen.getByText(/Equipo y Permisos de la Agencia/i)).toBeDefined();
-    });
-
-    expect(screen.getByText(/Total Usuarios/i)).toBeDefined();
-    expect(screen.getByText(/Dueños Activos/i)).toBeDefined();
-    expect(screen.getByText(/Asesores Activos/i)).toBeDefined();
-    await waitFor(() => {
       expect(screen.getAllByText(/Alejandro Morales/i).length).toBeGreaterThan(0);
     });
+
+    expect(screen.getByText(/Equipo y Permisos de la Agencia/i).textContent).toMatch(
+      /^Equipo y Permisos de la Agencia/,
+    );
+    const valorTarjeta = (etiqueta: RegExp) =>
+      screen.getByText(etiqueta).nextElementSibling?.textContent;
+    const filasMiembros = screen.getAllByRole('row').length - 1; // menos la cabecera
+    expect(filasMiembros).toBeGreaterThan(0);
+    expect(valorTarjeta(/Total Usuarios/i)).toBe(String(filasMiembros));
+    expect(valorTarjeta(/Dueños Activos/i)).toMatch(/^\d+$/);
+    expect(valorTarjeta(/Asesores Activos/i)).toMatch(/^\d+$/);
+    expect(
+      Number(valorTarjeta(/Dueños Activos/i)) + Number(valorTarjeta(/Asesores Activos/i)),
+    ).toBeLessThanOrEqual(filasMiembros);
   });
 
   it('abre el modal para invitar y permite cerrarlo', async () => {
@@ -34,7 +41,9 @@ describe('BloqueEquipo (T-027)', () => {
     });
 
     fireEvent.click(screen.getByRole('button', { name: /Invitar Asesor/i }));
-    expect(screen.getByText(/Invitar Asesor a la Agencia/i)).toBeDefined();
+    expect(screen.getByText(/Invitar Asesor a la Agencia/i).textContent).toBe(
+      'Invitar Asesor a la Agencia',
+    );
 
     fireEvent.click(screen.getByRole('button', { name: /Cancelar/i }));
     expect(screen.queryByText(/Invitar Asesor a la Agencia/i)).toBeNull();
@@ -62,8 +71,12 @@ describe('BloqueEquipo (T-027)', () => {
     fireEvent.click(screen.getByRole('button', { name: /Enviar Invitación/i }));
 
     await waitFor(() => {
-      expect(screen.getByText(/límite de envíos/i)).toBeDefined();
-      expect(screen.getByText(/Espera 10 minutos antes de intentar invitar/i)).toBeDefined();
+      expect(screen.getByText(/límite de envíos/i).textContent).toBe(
+        'Se ha excedido el límite de envíos de invitaciones permitidas.',
+      );
+      expect(screen.getByText(/Espera 10 minutos antes de intentar invitar/i).textContent).toBe(
+        'Qué hacer: Espera 10 minutos antes de intentar invitar nuevamente para proteger tu reputación.',
+      );
     });
   });
 
@@ -110,7 +123,9 @@ describe('BloqueEquipo (T-027)', () => {
     fireEvent.click(screen.getByRole('button', { name: /Enviar Invitación/i }));
 
     await waitFor(() => {
-      expect(screen.getByText(/Invitación despachada a nuevo.exitoso@agencia.com/i)).toBeDefined();
+      expect(
+        screen.getByText(/Invitación despachada a nuevo.exitoso@agencia.com/i).textContent,
+      ).toMatch(/^Invitación despachada a nuevo\.exitoso@agencia\.com/);
     });
   });
 
@@ -125,9 +140,14 @@ describe('BloqueEquipo (T-027)', () => {
       );
       render(<BloqueEquipo />);
       await waitFor(() => {
-        expect(screen.getByTestId('equipo-sin-permiso')).toBeDefined();
+        expect(screen.getByTestId('equipo-sin-permiso').getAttribute('role')).toBe('alert');
       });
-      expect(screen.getByText(/No tienes permiso para ver el equipo/i)).toBeDefined();
+      expect(screen.getByText(/No tienes permiso para ver el equipo/i).textContent).toBe(
+        'No tienes permiso para ver el equipo.',
+      );
+      expect(screen.getByTestId('equipo-sin-permiso').textContent).toContain(
+        'usuarios.administrar',
+      );
       expect(screen.queryByText(/Alejandro Morales/i)).toBeNull();
     });
 
@@ -137,16 +157,20 @@ describe('BloqueEquipo (T-027)', () => {
       );
       render(<BloqueEquipo />);
       await waitFor(() => {
-        expect(screen.getByTestId('equipo-error')).toBeDefined();
+        expect(screen.getByTestId('equipo-error').textContent).toContain(
+          'No se pudo cargar el equipo.No fue posible conectar.',
+        );
       });
-      expect(screen.getByRole('button', { name: /Reintentar/i })).toBeDefined();
+      expect(screen.getByRole('button', { name: /Reintentar/i }).textContent).toBe('Reintentar');
     });
 
     it('lista vacía real: estado vacío, sin mock', async () => {
       vi.spyOn(equipoApi, 'listarMiembrosEquipoApi').mockResolvedValueOnce([]);
       render(<BloqueEquipo />);
       await waitFor(() => {
-        expect(screen.getByText(/No hay miembros registrados/i)).toBeDefined();
+        expect(screen.getByText(/No hay miembros registrados/i).textContent).toBe(
+          'No hay miembros registrados en la agencia.',
+        );
       });
     });
 
@@ -165,9 +189,11 @@ describe('BloqueEquipo (T-027)', () => {
       ]);
       render(<BloqueEquipo />);
       await waitFor(() => {
-        expect(screen.getByText('Coordinadora de grupos')).toBeDefined();
+        expect(screen.getByText('Coordinadora de grupos').closest('tr')?.textContent).toContain(
+          'Laura Restrepo',
+        );
       });
-      expect(screen.getByText('LR')).toBeDefined();
+      expect(screen.getByText('LR').closest('tr')?.textContent).toContain('laura@agencia.co');
       fireEvent.click(screen.getByRole('button', { name: /Invitar Asesor/i }));
       expect(screen.queryByLabelText(/Teléfono WhatsApp/i)).toBeNull();
     });

@@ -37,7 +37,7 @@ services:
       retries: 10
 
   minio:
-    image: minio/minio:latest
+    image: minio/minio:latest # sin fijar: MinIO dejo de publicar en Docker Hub; elegir registro antes de fijar (T-208)
     container_name: viajapro-minio
     restart: unless-stopped
     command: server /data --console-address ":9001"
@@ -51,7 +51,7 @@ services:
       - minio-data:/data
 
   mailpit:
-    image: axllent/mailpit:latest
+    image: axllent/mailpit:v1.33.1
     container_name: viajapro-mailpit
     restart: unless-stopped
     ports:
@@ -59,7 +59,7 @@ services:
       - '8025:8025'
 
   jaeger:
-    image: jaegertracing/all-in-one:latest
+    image: jaegertracing/all-in-one:1.76.0
     container_name: viajapro-jaeger
     restart: unless-stopped
     environment:

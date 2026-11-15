@@ -39,6 +39,8 @@ export interface CotizacionesAgregadas {
   enviadas: number;
   /** De las enviadas en el rango, las que hoy están aceptadas. */
   aceptadas: number;
+  /** Aceptadas enviadas en el rango sin fila de cambio a ACEPTADA (previas a T-132): sin fecha de venta. */
+  aceptadasSinFecha: number;
   ventasPorMoneda: VentaAgregada[];
 }
 
@@ -71,6 +73,9 @@ export interface RespuestaAgregada {
   conversacionesRespondidas: number;
   promedioMinutos: number | null;
   medianaMinutos: number | null;
+  p90Minutos: number | null;
+  /** Del mismo grupo que `conversacionesNuevas`: las creadas en el rango sin primera respuesta. */
+  sinResponder: number;
 }
 
 /** Lo que `analytics` le pide a `inbox`. */

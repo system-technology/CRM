@@ -71,6 +71,42 @@ export interface ReporteComercial {
 
 export const TEXTO_SIN_DATOS = 'Aún sin datos';
 
+/**
+ * Denominador mínimo para mostrar una tasa como porcentaje (T-184). Con menos casos
+ * cerrados/enviados el porcentaje engaña (1 ganada y 0 perdidas = 100 %), así que se
+ * muestra «n insuficiente (n = X)». Es política de presentación, no de dominio.
+ */
+export const N_MINIMO_TASA = 20;
+
+/** Texto de una tasa junto a su denominador: porcentaje solo si n alcanza el mínimo. */
+export function formatearTasaConN(valor: number | null, n: number): string {
+  if (valor === null || n <= 0) return TEXTO_SIN_DATOS;
+  if (n < N_MINIMO_TASA) return `n insuficiente (n = ${n})`;
+  return `${formatearPorcentajeReporte(valor)} (n = ${n})`;
+}
+
+/**
+ * «X de Y respondidas (Z %)». Numerador y denominador son del mismo grupo (las conversaciones
+ * creadas en el periodo). Con menos de `N_MINIMO_TASA` conversaciones no se muestra el porcentaje.
+ */
+export function formatearTasaDeRespuesta(
+  respondidas: number,
+  nuevas: number,
+  tasa: number | null,
+): string {
+  if (nuevas <= 0) return TEXTO_SIN_DATOS;
+  const base = `${respondidas} de ${nuevas} respondidas`;
+  if (nuevas < N_MINIMO_TASA || tasa === null) return `${base} (n insuficiente para el porcentaje)`;
+  return `${base} (${formatearPorcentajeReporte(tasa)})`;
+}
+
+/** Un percentil (p90) con pocas respuestas medidas es ruido: bajo el mínimo no se muestra. */
+export function formatearP90(valor: number | null, respondidas: number): string {
+  if (valor === null || respondidas <= 0) return TEXTO_SIN_DATOS;
+  if (respondidas < N_MINIMO_TASA) return `n insuficiente (n = ${respondidas})`;
+  return formatearMinutosReporte(valor);
+}
+
 export function obtenerEtiquetaPeriodo(periodo: RangoPeriodo): string {
   switch (periodo) {
     case 'ultimos_30_dias':
@@ -168,6 +204,8 @@ export interface FilaVentaMoneda {
     margen: Dinero | null;
     margenPorcentaje: number | null;
     cotizacionesSinNeto: number;
+    /** Aceptadas con neto conocido: base sobre la que se calculan neto y margen. */
+    cotizacionesConNeto: number;
   };
 }
 
@@ -179,8 +217,12 @@ export interface VistaReporteResumen {
     creadas: number;
     enviadas: number;
     aceptadas: number;
+    /** Aceptadas sin fecha de aceptación: quedan fuera de «Ventas del período». */
+    aceptadasSinFecha: number;
     tasaAceptacionTexto: string;
     tasaAceptacionValor: number | null;
+    /** Denominador de la tasa de aceptación: cotizaciones enviadas. */
+    tasaAceptacionN: number;
     cohorteTexto: string;
   };
   oportunidades: {
@@ -190,6 +232,8 @@ export interface VistaReporteResumen {
     abiertas: number;
     tasaConversionTexto: string;
     tasaConversionValor: number | null;
+    /** Denominador de la tasa de victoria: ganadas + perdidas (cerradas). */
+    tasaConversionN: number;
     cohorteTexto: string;
     porEtapa: Array<{
       etapaId: string;
@@ -205,6 +249,12 @@ export interface VistaReporteResumen {
     medianaValor: number | null;
     promedioTexto: string;
     promedioValor: number | null;
+    p90Texto: string;
+    p90Valor: number | null;
+    sinResponder: number;
+    tasaRespuestaValor: number | null;
+    /** «X de Y respondidas (Z %)»; sin porcentaje bajo `N_MINIMO_TASA`. */
+    tasaRespuestaTexto: string;
     cohorteTexto: string;
   };
 }
@@ -235,6 +285,7 @@ export function transformarResumenReporte(
         margen: f.margen ?? null,
         margenPorcentaje: f.margenPorcentaje ?? null,
         cotizacionesSinNeto: f.cotizacionesSinNeto ?? 0,
+        cotizacionesConNeto: Math.max(0, f.cotizacionesAceptadas - (f.cotizacionesSinNeto ?? 0)),
       };
     }
 
@@ -250,6 +301,13 @@ export function transformarResumenReporte(
   const cotizacionesEnviadasTexto =
     resumen.cotizaciones.enviadas === 1 ? '1 enviada' : `${resumen.cotizaciones.enviadas} enviadas`;
 
+  const { conversacionesNuevas, conversacionesRespondidas } = resumen.respuesta;
+  const tasaRespuesta =
+    resumen.respuesta.tasaRespuesta ??
+    (conversacionesNuevas > 0
+      ? Math.round((conversacionesRespondidas / conversacionesNuevas) * 1000) / 10
+      : null);
+
   return {
     periodo: resumen.periodo,
     filasVentas,
@@ -258,8 +316,13 @@ export function transformarResumenReporte(
       creadas: resumen.cotizaciones.creadas,
       enviadas: resumen.cotizaciones.enviadas,
       aceptadas: resumen.cotizaciones.aceptadas,
-      tasaAceptacionTexto: formatearPorcentajeReporte(resumen.cotizaciones.tasaAceptacion),
+      aceptadasSinFecha: resumen.cotizaciones.aceptadasSinFecha ?? 0,
+      tasaAceptacionTexto: formatearTasaConN(
+        resumen.cotizaciones.tasaAceptacion,
+        resumen.cotizaciones.enviadas,
+      ),
       tasaAceptacionValor: resumen.cotizaciones.tasaAceptacion,
+      tasaAceptacionN: resumen.cotizaciones.enviadas,
       cohorteTexto: `${cotizacionesAceptadasTexto} de ${cotizacionesEnviadasTexto} en el periodo (${resumen.cotizaciones.creadas} creadas)`,
     },
     oportunidades: {
@@ -267,8 +330,12 @@ export function transformarResumenReporte(
       ganadas: resumen.oportunidades.ganadas,
       perdidas: resumen.oportunidades.perdidas,
       abiertas: resumen.oportunidades.abiertas,
-      tasaConversionTexto: formatearPorcentajeReporte(resumen.oportunidades.tasaConversion),
+      tasaConversionTexto: formatearTasaConN(
+        resumen.oportunidades.tasaConversion,
+        resumen.oportunidades.ganadas + resumen.oportunidades.perdidas,
+      ),
       tasaConversionValor: resumen.oportunidades.tasaConversion,
+      tasaConversionN: resumen.oportunidades.ganadas + resumen.oportunidades.perdidas,
       cohorteTexto: `${resumen.oportunidades.creadas} creadas en el periodo (${resumen.oportunidades.ganadas} ganadas · ${resumen.oportunidades.perdidas} perdidas · ${resumen.oportunidades.abiertas} abiertas)`,
       porEtapa: resumen.oportunidades.porEtapa.map((e) => ({
         etapaId: e.etapaId,
@@ -284,7 +351,28 @@ export function transformarResumenReporte(
       medianaValor: resumen.respuesta.medianaMinutos,
       promedioTexto: formatearMinutosReporte(resumen.respuesta.promedioMinutos),
       promedioValor: resumen.respuesta.promedioMinutos,
-      cohorteTexto: `${resumen.respuesta.conversacionesRespondidas} de ${resumen.respuesta.conversacionesNuevas} conversaciones nuevas respondidas en el periodo`,
+      p90Texto: formatearP90(
+        resumen.respuesta.p90Minutos ?? null,
+        resumen.respuesta.conversacionesRespondidas,
+      ),
+      p90Valor: resumen.respuesta.p90Minutos ?? null,
+      sinResponder:
+        resumen.respuesta.sinResponder ??
+        Math.max(
+          0,
+          resumen.respuesta.conversacionesNuevas - resumen.respuesta.conversacionesRespondidas,
+        ),
+      tasaRespuestaValor: tasaRespuesta,
+      tasaRespuestaTexto: formatearTasaDeRespuesta(
+        resumen.respuesta.conversacionesRespondidas,
+        resumen.respuesta.conversacionesNuevas,
+        tasaRespuesta,
+      ),
+      cohorteTexto: formatearTasaDeRespuesta(
+        resumen.respuesta.conversacionesRespondidas,
+        resumen.respuesta.conversacionesNuevas,
+        tasaRespuesta,
+      ),
     },
   };
 }

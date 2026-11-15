@@ -242,3 +242,83 @@ describe('Condiciones que la entrada actual no permite evaluar', () => {
     expect(condicionNoEvaluable(tarifaCHD, sinNinos)).toBeNull();
   });
 });
+
+describe('Con la edad de cada pasajero (T-179)', () => {
+  const menor = con({
+    tipoPasajero: 'CHD',
+    edadMinima: 2,
+    edadMaxima: 11,
+  });
+  const adulto = con({ tipoPasajero: 'ADT' });
+  const familia = (edadesNinos: number[]): Composicion => ({
+    adultos: 2,
+    ninos: edadesNinos.length,
+    infantes: 0,
+    edadesNinos,
+  });
+
+  it('un niño de 7 entra en el rango 2-11: la tarifa de menor se cobra una vez y la de adulto dos', () => {
+    expect(condicionNoEvaluable(menor, familia([7]))).toBeNull();
+    expect(vecesQueSeCobra(menor, familia([7]))).toBe(1);
+    expect(vecesQueSeCobra(adulto, familia([7]))).toBe(2);
+  });
+
+  it('los extremos del rango entran (2 y 11)', () => {
+    expect(vecesQueSeCobra(menor, familia([2, 11]))).toBe(2);
+  });
+
+  it('un niño de 14 queda fuera del rango, con motivo legible', () => {
+    expect(vecesQueSeCobra(menor, familia([14]))).toBeNull();
+    expect(motivoNoAplica(menor, familia([14]))).toMatch(/Ningún pasajero CHD tiene de 2 a 11/);
+  });
+
+  it('con dos niños cuenta solo al que cabe en el rango', () => {
+    expect(vecesQueSeCobra(menor, familia([7, 13]))).toBe(1);
+  });
+
+  it('un infante con silla cumple ocupaSilla=true y uno en brazos cumple ocupaSilla=false', () => {
+    const conSilla = con({ tipoPasajero: 'INF', ocupaSilla: true });
+    const enBrazos = con({ tipoPasajero: 'INF', ocupaSilla: false });
+    const c: Composicion = { adultos: 2, ninos: 0, infantes: 2, infantesConSilla: 1 };
+    expect(vecesQueSeCobra(conSilla, c)).toBe(1);
+    expect(vecesQueSeCobra(enBrazos, c)).toBe(1);
+    expect(vecesQueSeCobra(enBrazos, { ...c, infantesConSilla: 2 })).toBeNull();
+    expect(vecesQueSeCobra(conSilla, { ...c, infantesConSilla: 0 })).toBeNull();
+  });
+
+  it('un infante con rango de edad usa edadesInfantes', () => {
+    const inf = con({ tipoPasajero: 'INF', edadMinima: 0, edadMaxima: 1 });
+    const c: Composicion = { adultos: 1, ninos: 0, infantes: 1, edadesInfantes: [1] };
+    expect(vecesQueSeCobra(inf, c)).toBe(1);
+    expect(vecesQueSeCobra(inf, { ...c, edadesInfantes: [3] })).toBeNull();
+  });
+
+  it('sin edades sigue siendo no evaluable (no se inventa la edad)', () => {
+    const sinEdades: Composicion = { adultos: 2, ninos: 1, infantes: 0 };
+    expect(vecesQueSeCobra(menor, sinEdades)).toBeNull();
+    expect(condicionNoEvaluable(menor, sinEdades)).toMatch(/no recoge la edad/);
+  });
+
+  it('infante sin saber si ocupa silla sigue siendo no evaluable', () => {
+    const inf = con({ tipoPasajero: 'INF', ocupaSilla: false });
+    const c: Composicion = { adultos: 1, ninos: 0, infantes: 1, edadesInfantes: [1] };
+    expect(condicionNoEvaluable(inf, c)).toMatch(/silla/);
+  });
+
+  it('una tarifa de grupo por tipo y edad mide contra el subgrupo que cumple', () => {
+    const promoMenores = con({
+      unidad: 'POR_GRUPO',
+      cubrePasajeros: 2,
+      tipoPasajero: 'CHD',
+      edadMinima: 2,
+      edadMaxima: 11,
+    });
+    expect(vecesQueSeCobra(promoMenores, familia([5, 8]))).toBe(1);
+    expect(vecesQueSeCobra(promoMenores, familia([5, 14]))).toBeNull();
+  });
+
+  it('un rango de edad sin tipo de pasajero sigue sin poder evaluarse: de los adultos no se pregunta la edad', () => {
+    const sinTipo = con({ edadMinima: 2, edadMaxima: 11 });
+    expect(condicionNoEvaluable(sinTipo, familia([7]))).toMatch(/no recoge la edad/);
+  });
+});

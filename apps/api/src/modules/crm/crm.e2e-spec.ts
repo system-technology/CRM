@@ -36,6 +36,7 @@ import 'reflect-metadata';
 import { Logger, type INestApplication } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { TableroPipeline } from '@viajapro/contracts';
 import { AppModule } from '../../app.module.js';
 import { DominioExcepcionFilter } from '../../shared/filtros/dominio-excepcion.filter.js';
 import { PrismaService } from '../../shared/prisma/prisma.service.js';
@@ -120,6 +121,19 @@ describe('GET /api/v1/crm/tablero', () => {
     const primera = cuerpo.columnas[0];
     expect(typeof primera?.etapa).toBe('object');
     expect(primera?.etapa.nombre.length).toBeGreaterThan(0);
+  });
+
+  it('cumple el contrato y nunca suma monedas distintas en un total (T-181, R8)', async () => {
+    const r = await fetch(new URL('/api/v1/crm/tablero', base), { headers: comoAgencia() });
+    expect(r.status).toBe(200);
+    const tablero = TableroPipeline.parse(await r.json());
+    for (const col of tablero.columnas) {
+      const monedas = new Set(col.valoresPorMoneda.map((v) => v.moneda));
+      expect(monedas.size).toBe(col.valoresPorMoneda.length);
+      if (col.valoresPorMoneda.length === 1)
+        expect(col.valorTotal).toEqual(col.valoresPorMoneda[0]);
+      else expect(col.valorTotal).toBeNull();
+    }
   });
 
   it('SIN cabecera de tenant devuelve 401, no datos de nadie', async () => {

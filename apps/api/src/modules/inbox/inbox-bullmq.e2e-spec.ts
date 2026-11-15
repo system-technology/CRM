@@ -50,6 +50,17 @@ if (!CORRE) {
   );
 }
 
+// T-199: con VIAJAPRO_EXIGIR_REDIS=1 (el CI la fija) esta suite NO puede omitirse en silencio: si falta Redis real (REDIS_URL y CI=true o PRUEBA_BULLMQ=1), falla.
+if (!CORRE && process.env['VIAJAPRO_EXIGIR_REDIS'] === '1') {
+  describe('inbox-bullmq — suite exigida', () => {
+    it('VIAJAPRO_EXIGIR_REDIS=1 pero falta Redis real (REDIS_URL y CI=true o PRUEBA_BULLMQ=1): una prueba que se omite en silencio no protege nada', () => {
+      throw new Error(
+        'VIAJAPRO_EXIGIR_REDIS=1 pero no hay Redis real (REDIS_URL y CI=true o PRUEBA_BULLMQ=1). Esta suite no puede omitirse.',
+      );
+    });
+  });
+}
+
 const SECRETO = randomBytes(24).toString('hex');
 const MARCA = randomUUID();
 const PIMIENTA = process.env['WHATSAPP_DIRECTORY_PEPPER'] ?? '';

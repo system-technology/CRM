@@ -28,7 +28,7 @@ import { type INestApplication, Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { PrismaClient } from '@prisma/client';
-import type { CotizacionGuardada, ResumenDeReportes } from '@viajapro/contracts';
+import { CotizacionGuardada, ResumenDeReportes } from '@viajapro/contracts';
 import { hashPassword } from 'better-auth/crypto';
 import { Client } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -107,7 +107,11 @@ async function reporte(
     },
   );
   const texto = await r.text();
-  return { estado: r.status, texto, json: JSON.parse(texto) as ResumenDeReportes };
+  const json: unknown = JSON.parse(texto);
+  // T-195: todo 200 cumple el contrato que consume la web. Se valida y se devuelve el cuerpo
+  // CRUDO: `parse` descarta claves desconocidas, y las pruebas de fuga necesitan verlas.
+  if (r.status === 200) ResumenDeReportes.parse(json);
+  return { estado: r.status, texto, json: json as ResumenDeReportes };
 }
 
 async function crearAgencia(tenant: string, sufijo: string, ventaUnidades: bigint) {
@@ -207,7 +211,7 @@ async function cotizar(
     version: { paqueteId: datos.paquete, fecha: FECHA, adultos },
   });
   expect(g.estado).toBe(201);
-  let cot = g.json as CotizacionGuardada;
+  let cot = CotizacionGuardada.parse(g.json);
   for (const estado of hasta === 'ACEPTADA'
     ? ['ENVIADA', 'ACEPTADA']
     : hasta === 'ENVIADA'
@@ -217,7 +221,7 @@ async function cotizar(
       estado,
     });
     expect(t.estado).toBe(201);
-    cot = t.json as CotizacionGuardada;
+    cot = CotizacionGuardada.parse(t.json);
   }
   return cot;
 }
@@ -356,7 +360,7 @@ describe('GET /api/v1/reportes/resumen', () => {
       `/api/v1/cotizaciones/${aceptadaA.id}?incluirMargen=true`,
       TENANT_A,
     );
-    const v1 = (leida.json as CotizacionGuardada).versiones[0]!;
+    const v1 = CotizacionGuardada.parse(leida.json).versiones[0]!;
     expect(v1.venta).toEqual({ unidades: '2400000', moneda: 'COP' });
 
     expect(r.json.ventasPorMoneda).toHaveLength(1);
@@ -389,6 +393,9 @@ describe('GET /api/v1/reportes/resumen', () => {
       conversacionesRespondidas: 1,
       promedioMinutos: 10,
       medianaMinutos: 10,
+      p90Minutos: 10,
+      sinResponder: 0,
+      tasaRespuesta: 100,
     });
   });
 
@@ -405,6 +412,21 @@ describe('GET /api/v1/reportes/resumen', () => {
     expect(sin.json.cotizaciones).toEqual(con.json.cotizaciones);
     expect(sin.json.oportunidades).toEqual(con.json.oportunidades);
     expect(sin.json.respuesta).toEqual(con.json.respuesta);
+  });
+
+  it('las ventas se agrupan por el instante de la ACEPTACION, no por el envio (T-183)', async () => {
+    // Un rango que termina ANTES de que existiera la aceptacion no trae ventas, aunque ya haya
+    // cotizaciones aceptadas: el envio y la aceptacion de este fixture son de hoy.
+    const antes = await reporte('duenoA', {
+      desde: new Date(Date.now() - 300 * 24 * 3600_000).toISOString(),
+      hasta: new Date(Date.now() - 24 * 3600_000).toISOString(),
+    });
+    expect(antes.estado).toBe(200);
+    expect(antes.json.ventasPorMoneda).toEqual([]);
+    // Y con el rango de hoy, la venta esta (la aceptada de A tiene su fila de cambio).
+    const hoy = await reporte('duenoA');
+    expect(hoy.json.ventasPorMoneda[0]?.cotizacionesAceptadas).toBe(1);
+    expect(hoy.json.cotizaciones.aceptadasSinFecha).toBeUndefined();
   });
 
   it('otra agencia ve solo lo suyo: no mezcla cifras ni etapas de A', async () => {
@@ -432,6 +454,9 @@ describe('GET /api/v1/reportes/resumen', () => {
       conversacionesRespondidas: 0,
       promedioMinutos: null,
       medianaMinutos: null,
+      p90Minutos: null,
+      sinResponder: 0,
+      tasaRespuesta: null,
     });
     // Nada de A en el texto: ni su etapa ni su venta.
     expect(r.texto).not.toContain('2400000');

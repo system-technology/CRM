@@ -29,7 +29,7 @@ jobs:
     steps:
       - name: Token de la app Integradora
         id: app
-        uses: actions/create-github-app-token@v3
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
         with:
           app-id: ${{ vars.INTEGRADORA_APP_ID }}
           private-key: ${{ secrets.INTEGRADORA_APP_KEY }}

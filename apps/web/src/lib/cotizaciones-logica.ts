@@ -25,6 +25,9 @@ export interface EntradaComposicionVersion {
   adultos?: number | undefined;
   ninos?: number | undefined;
   infantes?: number | undefined;
+  edadesNinos?: number[] | undefined;
+  edadesInfantes?: number[] | undefined;
+  infantesConSilla?: number | undefined;
   acomodacion?: Acomodacion | undefined;
   vigenteHasta?: string | undefined;
   opcionDeSalidaId?: string | undefined;
@@ -58,6 +61,11 @@ export function armarComposicionDeVersion(
   }
   if (typeof entrada.infantes === 'number' && entrada.infantes >= 0) {
     composicionLimpia['infantes'] = entrada.infantes;
+  }
+  if (entrada.edadesNinos) composicionLimpia['edadesNinos'] = entrada.edadesNinos;
+  if (entrada.edadesInfantes) composicionLimpia['edadesInfantes'] = entrada.edadesInfantes;
+  if (typeof entrada.infantesConSilla === 'number') {
+    composicionLimpia['infantesConSilla'] = entrada.infantesConSilla;
   }
   if (entrada.acomodacion) {
     composicionLimpia['acomodacion'] = entrada.acomodacion;

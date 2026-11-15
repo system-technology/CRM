@@ -35,4 +35,27 @@ describe('formatos de viaje', () => {
     ).toBe(true);
     expect(CotizarSalida.safeParse({ ...base, opcionDeSalidaId: 'x' }).success).toBe(false);
   });
+
+  it('CotizarSalida: las edades deben coincidir con la cantidad declarada (T-179)', () => {
+    const base = { paqueteId: '01932000-0000-7000-8000-000000000001', fecha: '2027-02-10' };
+    // Retrocompatible: sin edades sigue válido.
+    expect(CotizarSalida.safeParse({ ...base, adultos: 2, ninos: 1 }).success).toBe(true);
+    expect(
+      CotizarSalida.safeParse({ ...base, adultos: 2, ninos: 1, edadesNinos: [7] }).success,
+    ).toBe(true);
+    const sobran = CotizarSalida.safeParse({ ...base, adultos: 2, ninos: 1, edadesNinos: [7, 9] });
+    expect(sobran.success).toBe(false);
+    expect(sobran.error?.issues[0]?.path).toEqual(['edadesNinos']);
+    expect(CotizarSalida.safeParse({ ...base, adultos: 1, edadesNinos: [7] }).success).toBe(false);
+    expect(
+      CotizarSalida.safeParse({ ...base, adultos: 2, infantes: 1, edadesInfantes: [1] }).success,
+    ).toBe(true);
+    expect(
+      CotizarSalida.safeParse({ ...base, adultos: 2, infantes: 1, infantesConSilla: 2 }).success,
+    ).toBe(false);
+    // Un niño no puede tener 18 años.
+    expect(
+      CotizarSalida.safeParse({ ...base, adultos: 2, ninos: 1, edadesNinos: [18] }).success,
+    ).toBe(false);
+  });
 });

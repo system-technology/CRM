@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { type CrearOportunidad, type Oportunidad } from '@viajapro/contracts';
 import { useFocoModal } from '../../lib/use-foco-modal';
 import { X, Kanban, Loader2, AlertCircle } from 'lucide-react';
+import { parsearMontoAUnidades } from '../../lib/dinero-entrada';
 import { formatearErrorAmigable } from '../../lib/estados-ui-logica';
 
 interface ModalCrearOportunidadProps {
@@ -40,20 +41,19 @@ export function ModalCrearOportunidad({
       return;
     }
 
-    const valorNumero = parseInt(valorEstimadoCop.replace(/\D/g, ''), 10);
+    const unidadesValor = parsearMontoAUnidades(valorEstimadoCop, 'COP');
 
     const cuerpo: CrearOportunidad = {
       contactoId,
       titulo: titulo.trim(),
       destino: destino.trim() || null,
       fechaSalida: fechaSalida || null,
-      valorEstimado:
-        Number.isFinite(valorNumero) && valorNumero > 0
-          ? {
-              unidades: String(valorNumero), // R8: COP en pesos enteros
-              moneda: 'COP',
-            }
-          : null,
+      valorEstimado: unidadesValor
+        ? {
+            unidades: unidadesValor, // R8: COP en pesos enteros
+            moneda: 'COP',
+          }
+        : null,
     };
 
     setGuardando(true);

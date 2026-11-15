@@ -82,6 +82,7 @@ export function armarResumen(entrada: {
       creadas: c.creadas,
       enviadas: c.enviadas,
       aceptadas: c.aceptadas,
+      ...(c.aceptadasSinFecha > 0 ? { aceptadasSinFecha: c.aceptadasSinFecha } : {}),
       tasaAceptacion: porcentaje(c.aceptadas, c.enviadas),
     },
     ventasPorMoneda: c.ventasPorMoneda.map(ventasDeUnaMoneda),
@@ -105,6 +106,12 @@ export function armarResumen(entrada: {
       conversacionesRespondidas: respuesta.conversacionesRespondidas,
       promedioMinutos: respuesta.promedioMinutos,
       medianaMinutos: respuesta.medianaMinutos,
+      p90Minutos: respuesta.p90Minutos,
+      sinResponder: respuesta.sinResponder,
+      tasaRespuesta: porcentaje(
+        respuesta.conversacionesRespondidas,
+        respuesta.conversacionesNuevas,
+      ),
     },
   };
 }

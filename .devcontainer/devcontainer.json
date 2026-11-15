@@ -12,6 +12,13 @@
     "8025": { "label": "Mailpit (correo de desarrollo)", "onAutoForward": "silent" }
   },
 
+  // Node EXACTO, el mismo del Dockerfile y de .nvmrc (22.20.0). La imagen solo fija el mayor
+  // (los tags de typescript-node no traen menor de Node); la feature instala 22.20.0 y lo deja
+  // por defecto. Si se cambia aqui, cambiar tambien .nvmrc y apps/*/Dockerfile.
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": { "version": "22.20.0" }
+  },
+
   "postCreateCommand": "bash .devcontainer/post-create.sh",
 
   "customizations": {

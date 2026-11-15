@@ -16,7 +16,7 @@ import {
   presentaCookieDeSesion,
 } from '../puertos/puerto-de-acceso.js';
 import { ContextoTenant } from './contexto-tenant.js';
-import { TenantMiddleware, esRutaSinTenant } from './tenant.middleware.js';
+import { TenantMiddleware, esRutaSinTenant, peticionDesdeLoopback } from './tenant.middleware.js';
 
 class Resolutor extends ResolutorDeAcceso {
   constructor(private readonly respuesta: ResultadoDeAcceso) {
@@ -43,8 +43,17 @@ const CONCEDIDO: ResultadoDeAcceso = {
   },
 };
 
-function peticion(ruta: string, cabeceras: Record<string, string> = {}): Request {
-  return { originalUrl: ruta, url: ruta, headers: cabeceras } as unknown as Request;
+function peticion(
+  ruta: string,
+  cabeceras: Record<string, string> = {},
+  remoteAddress = '127.0.0.1',
+): Request {
+  return {
+    originalUrl: ruta,
+    url: ruta,
+    headers: cabeceras,
+    socket: { remoteAddress },
+  } as unknown as Request;
 }
 function respuesta() {
   const cookies: string[] = [];
@@ -60,6 +69,7 @@ async function correr(
   resolutor: ResolutorDeAcceso,
   ruta: string,
   cabeceras: Record<string, string> = {},
+  remoteAddress?: string,
 ): Promise<{ contexto: ReturnType<typeof ContextoTenant.obtenerONulo>; llamado: boolean }> {
   let contexto: ReturnType<typeof ContextoTenant.obtenerONulo> = null;
   let llamado = false;
@@ -67,7 +77,11 @@ async function correr(
     llamado = true;
     contexto = ContextoTenant.obtenerONulo();
   };
-  await new TenantMiddleware(resolutor).use(peticion(ruta, cabeceras), respuesta().res, siguiente);
+  await new TenantMiddleware(resolutor).use(
+    peticion(ruta, cabeceras, remoteAddress),
+    respuesta().res,
+    siguiente,
+  );
   return { contexto, llamado };
 }
 
@@ -134,6 +148,55 @@ describe('la cabecera de desarrollo', () => {
     await expect(
       correr(new Resolutor(suspendida), '/api/v1/crm/tablero', cabecera),
     ).rejects.toBeInstanceOf(UnauthorizedException);
+  });
+});
+
+describe('la cabecera de desarrollo solo desde esta máquina (T-175)', () => {
+  const cabecera = { 'x-dev-tenant-id': 'tenant-de-la-cabecera' };
+
+  it.each(['127.0.0.1', '::1', '::ffff:127.0.0.1'])(
+    'acepta el socket de loopback %s',
+    async (ip) => {
+      process.env['APP_ENV'] = 'local';
+      const { contexto } = await correr(
+        new Resolutor(SIN_SESION),
+        '/api/v1/crm/tablero',
+        cabecera,
+        ip,
+      );
+      expect(contexto?.tenantId).toBe('tenant-de-la-cabecera');
+    },
+  );
+
+  it('acepta un proxy local (rewrite de Next) con X-Forwarded-For de loopback', async () => {
+    process.env['APP_ENV'] = 'local';
+    const { contexto } = await correr(new Resolutor(SIN_SESION), '/api/v1/crm/tablero', {
+      ...cabecera,
+      'x-forwarded-for': '::1, 127.0.0.1',
+    });
+    expect(contexto?.tenantId).toBe('tenant-de-la-cabecera');
+  });
+
+  it.each([
+    ['socket externo', {}, '203.0.113.7'],
+    [
+      'reenvío de Codespaces (X-Forwarded-For de internet)',
+      { 'x-forwarded-for': '203.0.113.7' },
+      '127.0.0.1',
+    ],
+    ['cadena mixta', { 'x-forwarded-for': '127.0.0.1, 198.51.100.4' }, '127.0.0.1'],
+    ['X-Real-IP externa', { 'x-real-ip': '198.51.100.4' }, '127.0.0.1'],
+    ['Forwarded externo', { forwarded: 'for="[2001:db8::1]:443";proto=https' }, '127.0.0.1'],
+    ['X-Forwarded-For ilegible', { 'x-forwarded-for': 'unknown' }, '127.0.0.1'],
+  ])('rechaza con APP_ENV=local: %s', async (_caso, extra, ip) => {
+    process.env['APP_ENV'] = 'local';
+    await expect(
+      correr(new Resolutor(SIN_SESION), '/api/v1/crm/tablero', { ...cabecera, ...extra }, ip),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+  });
+
+  it('sin socket conocido no es loopback', () => {
+    expect(peticionDesdeLoopback({ headers: {} } as unknown as Request)).toBe(false);
   });
 });
 

@@ -56,7 +56,7 @@ import {
 import { calcularCuentaRegresivaVentana24h } from '../../../lib/ventana-24h';
 import { obtenerMockPlantillasDisponibles } from '../../../lib/mock-plantillas';
 import { EnviarPlantilla } from '@viajapro/contracts';
-import { TarjetaCotizacion } from '../../../components/bandeja/tarjeta-cotizacion';
+import { TarjetaCotizacionEnviada } from '../../../components/bandeja/tarjeta-cotizacion-enviada';
 import { PanelSugerencias } from '../../../components/bandeja/panel-sugerencias';
 import { MenuRespuestasRapidas } from '../../../components/bandeja/menu-respuestas-rapidas';
 import { useBandejaAtajos, debeProcesarAtajo } from '../../../lib/atajos-teclado-bandeja';
@@ -77,6 +77,13 @@ const ModalReasignar = dynamic(
   () => import('../../../components/bandeja/modal-reasignar').then((m) => m.ModalReasignar),
   { ssr: false },
 );
+
+const MOTIVO_PLANTILLAS_NO_DISPONIBLES = {
+  titulo: 'Plantillas aún no disponibles',
+  mensaje: 'El envío de plantillas llega con las plantillas aprobadas por Meta.',
+  accionSugerida: 'Mientras tanto, espera a que el cliente escriba para responderle.',
+  reintentable: false,
+} as const;
 
 const ModalPlantillas = dynamic(
   () => import('../../../components/bandeja/modal-plantillas').then((m) => m.ModalPlantillas),
@@ -386,9 +393,12 @@ export default function BandejaConversacionPage() {
   }>({ minutos: 0, horas: 0, cerrada: false, texto: '' });
 
   const estadoVentana24h = useMemo(() => {
-    const ultimoEntrante = detalle?.mensajes
-      ?.filter((m) => m.direccion === 'ENTRANTE')
-      .slice(-1)[0]?.ocurridoEn;
+    // La fuente de verdad es `detalle.ventana` (VentanaServicio de la API, T-198). Con la API real
+    // NO se recalcula desde los mensajes: `expiraEn` nulo significa que el cliente nunca escribió.
+    // El respaldo desde el último mensaje entrante (24 h propias) solo vale en modo maqueta.
+    const ultimoEntrante = inboxApi.isModoReal()
+      ? undefined
+      : detalle?.mensajes?.filter((m) => m.direccion === 'ENTRANTE').slice(-1)[0]?.ocurridoEn;
     return calcularCuentaRegresivaVentana24h({
       expiraEn: detalle?.ventana?.expiraEn ?? null,
       ultimoMensajeClienteEn: ultimoEntrante ?? null,
@@ -396,6 +406,8 @@ export default function BandejaConversacionPage() {
     });
   }, [detalle?.ventana, detalle?.mensajes, tiempoVentana]);
 
+  // Con la API real aún no hay endpoint de plantillas aprobadas por Meta (T-185).
+  const plantillasNoDisponibles = inboxApi.isModoReal();
   const plantillasDisponibles = useMemo(() => obtenerMockPlantillasDisponibles().plantillas, []);
 
   // Evaluar cierre de ventana con borrador (0c.19)
@@ -535,11 +547,17 @@ export default function BandejaConversacionPage() {
   // Manejadores de asignación («Tomar», «Soltar», «Reasignar») (0c.35)
   const manejarTomar = async () => {
     if (!detalle || asignando) return;
+    // Sin identidad de usuario no se toma: nunca se inventa un id (T-185).
+    if (!miUsuarioId) {
+      setErrorEnvio(interpretarErrorDeEnvio({ code: 'SIN_USUARIO' }));
+      return;
+    }
+    setErrorEnvio(null);
     setAsignando(true);
     try {
       const res = await inboxApi.asignarConversacion({
         conversacionId: detalle.id,
-        usuarioId: miUsuarioId ?? '00000000-0000-4000-a000-000000000001',
+        usuarioId: miUsuarioId,
       });
       setDetalle((prev) =>
         prev
@@ -551,7 +569,13 @@ export default function BandejaConversacionPage() {
           : prev,
       );
     } catch (e) {
-      console.error('Error al tomar conversación:', e);
+      setErrorEnvio(
+        interpretarErrorDeEnvio(e, {
+          titulo: 'No se pudo tomar la conversación',
+          mensaje: 'La conversación no quedó asignada a ti.',
+          accionSugerida: 'Vuelve a intentarlo; si persiste, actualiza la bandeja.',
+        }),
+      );
     } finally {
       setAsignando(false);
     }
@@ -559,6 +583,7 @@ export default function BandejaConversacionPage() {
 
   const manejarSoltar = async () => {
     if (!detalle || asignando) return;
+    setErrorEnvio(null);
     setAsignando(true);
     try {
       await inboxApi.asignarConversacion({
@@ -575,7 +600,13 @@ export default function BandejaConversacionPage() {
           : prev,
       );
     } catch (e) {
-      console.error('Error al soltar conversación:', e);
+      setErrorEnvio(
+        interpretarErrorDeEnvio(e, {
+          titulo: 'No se pudo soltar la conversación',
+          mensaje: 'La conversación sigue asignada.',
+          accionSugerida: 'Vuelve a intentarlo; si persiste, actualiza la bandeja.',
+        }),
+      );
     } finally {
       setAsignando(false);
     }
@@ -745,6 +776,15 @@ export default function BandejaConversacionPage() {
   };
 
   const manejarEnvioPlantilla = async (envio: EnviarPlantilla, textoInterpolado: string) => {
+    if (plantillasNoDisponibles) {
+      setErrorEnvio(
+        interpretarErrorDeEnvio(
+          { code: 'PLANTILLAS_NO_DISPONIBLES' },
+          MOTIVO_PLANTILLAS_NO_DISPONIBLES,
+        ),
+      );
+      return;
+    }
     try {
       setEnviando(true);
       setErrorEnvio(null);
@@ -762,25 +802,14 @@ export default function BandejaConversacionPage() {
           ultimoMensajeTexto: textoInterpolado,
           ultimoMensajeEn: mensajeEnviado.ocurridoEn,
           ultimoMensajeDireccion: 'SALIENTE',
-          ventana: {
-            abierta: true,
-            expiraEn: new Date(Date.now() + 24 * 3600000).toISOString(),
-            minutosRestantes: 1440,
-          },
+          // La ventana de 24 h solo la abre un mensaje del cliente (el servidor la informa).
         };
-      });
-
-      setTiempoVentana({
-        minutos: 1440,
-        horas: 24,
-        cerrada: false,
-        texto: '24 h 0 min',
       });
 
       setTextoMensaje('');
       setTimeout(() => scrollToBottom('smooth'), 50);
     } catch (e) {
-      console.error('Error al enviar plantilla:', e);
+      setErrorEnvio(interpretarErrorDeEnvio(e));
     } finally {
       setEnviando(false);
     }
@@ -1015,15 +1044,7 @@ export default function BandejaConversacionPage() {
               >
                 {/* Renderizado de tarjeta de cotización si tiene referencia */}
                 {m.cotizacionId ? (
-                  <TarjetaCotizacion
-                    id={m.cotizacionId}
-                    titulo="Paquete Turístico Cancún Todo Incluido"
-                    destino="Cancún, México"
-                    unidades="1250000000"
-                    moneda="COP"
-                    vigenteHasta="2026-10-20"
-                    version={1}
-                  />
+                  <TarjetaCotizacionEnviada cotizacionId={m.cotizacionId} texto={m.texto} />
                 ) : (
                   <div
                     className={`max-w-[85%] rounded-2xl p-3 text-xs shadow-2xs sm:max-w-[70%] ${
@@ -1114,13 +1135,24 @@ export default function BandejaConversacionPage() {
         {/* Pie de redacción */}
         <footer className="min-w-0 shrink-0 border-t border-neutral-200 bg-white p-3 pb-24 md:pb-3 dark:border-neutral-800 dark:bg-neutral-900">
           {!detalle.ventana.abierta || tiempoVentana.cerrada || estadoVentana24h.cerrada ? (
-            <CompositorVentanaCerrada24h
-              estado={estadoVentana24h}
-              plantillas={plantillasDisponibles}
-              textoBorrador={textoMensaje}
-              mostrarAvisoBorrador={avisoBorrador.debeMostrar}
-              onAbrirPlantillas={() => setModalPlantillasAbierto(true)}
-            />
+            <div className="space-y-2">
+              {errorEnvio && (
+                <AlertaErrorEnvio
+                  error={errorEnvio}
+                  onDescartar={() => setErrorEnvio(null)}
+                  onAbrirPlantillas={() => setModalPlantillasAbierto(true)}
+                  onRecargar={() => void cargarHistorial()}
+                  onReintentar={() => setErrorEnvio(null)}
+                />
+              )}
+              <CompositorVentanaCerrada24h
+                estado={estadoVentana24h}
+                plantillas={plantillasDisponibles}
+                textoBorrador={textoMensaje}
+                mostrarAvisoBorrador={avisoBorrador.debeMostrar}
+                onAbrirPlantillas={() => setModalPlantillasAbierto(true)}
+              />
+            </div>
           ) : (
             <div className="space-y-2">
               {sugerenciasAbierto && (
@@ -1356,6 +1388,9 @@ export default function BandejaConversacionPage() {
         abierto={modalPlantillasAbierto}
         conversacionId={id}
         borradorPrevio={textoMensaje}
+        envioDeshabilitadoMotivo={
+          plantillasNoDisponibles ? MOTIVO_PLANTILLAS_NO_DISPONIBLES.mensaje : undefined
+        }
         onCerrar={() => setModalPlantillasAbierto(false)}
         onEnviarPlantilla={(envio, texto) => {
           void manejarEnvioPlantilla(envio, texto);

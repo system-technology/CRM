@@ -29,13 +29,23 @@ describe('FormularioIngreso (0c.29)', () => {
   it('renderiza formulario de credenciales por defecto con campos accesibles', () => {
     render(<FormularioIngreso />);
 
-    expect(screen.getByRole('heading', { level: 1, name: /viajapro/i })).toBeDefined();
-    expect(screen.getByLabelText(/correo electrónico/i)).toBeDefined();
-    expect(screen.getByLabelText(/^contraseña$/i)).toBeDefined();
-    expect(screen.getByRole('button', { name: /ingresar a viajapro/i })).toBeDefined();
+    expect(screen.getByRole('heading', { level: 1, name: /viajapro/i }).textContent).toBe(
+      'ViajaPro',
+    );
+    const correo = screen.getByLabelText<HTMLInputElement>(/correo electrónico/i);
+    expect(correo.type).toBe('email');
+    expect(correo.autocomplete).toBe('email');
+    expect(correo.value).toBe('');
+    const clave = screen.getByLabelText<HTMLInputElement>(/^contraseña$/i);
+    expect(clave.type).toBe('password');
+    expect(clave.autocomplete).toBe('current-password');
+    expect(screen.getByRole('button', { name: /ingresar a viajapro/i }).textContent).toBe(
+      'Ingresar a ViajaPro',
+    );
     expect(
-      screen.getByRole('button', { name: /ingresar con código de 6 dígitos por correo/i }),
-    ).toBeDefined();
+      screen.getByRole('button', { name: /ingresar con código de 6 dígitos por correo/i })
+        .textContent,
+    ).toBe('Ingresar con código de 6 dígitos por correo');
   });
 
   it('permite alternar la visibilidad de la contraseña con botón accesible', () => {
@@ -48,7 +58,10 @@ describe('FormularioIngreso (0c.29)', () => {
 
     fireEvent.click(botonToggle);
     expect(inputClave.type).toBe('text');
-    expect(screen.getByRole('button', { name: /ocultar contraseña/i })).toBeDefined();
+    expect(
+      screen.getByRole('button', { name: /ocultar contraseña/i }).getAttribute('aria-label'),
+    ).toMatch(/ocultar contraseña/i);
+    expect(screen.queryByRole('button', { name: /mostrar contraseña/i })).toBeNull();
 
     fireEvent.click(screen.getByRole('button', { name: /ocultar contraseña/i }));
     expect(inputClave.type).toBe('password');
@@ -70,7 +83,6 @@ describe('FormularioIngreso (0c.29)', () => {
 
     await waitFor(() => {
       const alerta = screen.getByRole('alert');
-      expect(alerta).toBeDefined();
       expect(alerta.getAttribute('aria-live')).toBe('assertive');
       expect(alerta.textContent).toContain('Correo o contraseña incorrectos');
     });
@@ -104,7 +116,9 @@ describe('FormularioIngreso (0c.29)', () => {
     fireEvent.click(botonIngresar);
 
     await waitFor(() => {
-      expect(screen.getByText(/ingreso exitoso. redirigiendo/i)).toBeDefined();
+      expect(screen.getByText(/ingreso exitoso. redirigiendo/i).textContent).toMatch(
+        /^Ingreso exitoso\. Redirigiendo/,
+      );
     });
 
     await waitFor(
@@ -145,10 +159,10 @@ describe('FormularioIngreso (0c.29)', () => {
 
     await waitFor(() => {
       expect(
-        screen.getByRole('heading', { level: 2, name: /selecciona una agencia/i }),
-      ).toBeDefined();
-      expect(screen.getByText('Viajes El Sol')).toBeDefined();
-      expect(screen.getByText('Turismo Caribe SAS')).toBeDefined();
+        screen.getByRole('heading', { level: 2, name: /selecciona una agencia/i }).textContent,
+      ).toMatch(/^Selecciona una agencia/i);
+      expect(screen.getByText('Viajes El Sol').textContent).toBe('Viajes El Sol');
+      expect(screen.getByText('Turismo Caribe SAS').textContent).toBe('Turismo Caribe SAS');
     });
   });
 
@@ -225,14 +239,15 @@ describe('FormularioIngreso (0c.29)', () => {
     fireEvent.click(botonIrAOtp);
 
     // Debe mostrar el aviso de Rebanada 4
-    expect(screen.getByText(/próximamente/i)).toBeDefined();
-    expect(screen.getByLabelText(/código de 6 dígitos/i)).toBeDefined();
+    expect(screen.getByText(/próximamente/i).textContent).toMatch(/próximamente/i);
+    expect(screen.getByLabelText<HTMLInputElement>(/código de 6 dígitos/i).type).toBe('text');
 
     // Volver a contraseña
     const botonVolver = screen.getByRole('button', { name: /volver al ingreso con contraseña/i });
     fireEvent.click(botonVolver);
 
-    expect(screen.getByLabelText(/^contraseña$/i)).toBeDefined();
+    expect(screen.getByLabelText<HTMLInputElement>(/^contraseña$/i).type).toBe('password');
+    expect(screen.queryByLabelText(/código de 6 dígitos/i)).toBeNull();
   });
 
   it('muestra aviso de sesión expirada cuando motivo=sesion_expirada e indica el destino conservado (T-109)', () => {
@@ -240,7 +255,6 @@ describe('FormularioIngreso (0c.29)', () => {
     render(<FormularioIngreso />);
 
     const aviso = screen.getByTestId('aviso-sesion-expirada');
-    expect(aviso).toBeDefined();
     expect(aviso.textContent).toContain('Tu sesión ha expirado por inactividad');
     expect(aviso.textContent).toContain('/cotizador');
   });

@@ -21,7 +21,7 @@
  * Ver ADR-0009 §2, eje 2, y ADR-0006 (nivel 1: configuración por tenant).
  */
 
-import { ImporteInvalidoError, Money } from './money.js';
+import { type CodigoMoneda, ImporteInvalidoError, Money, milesimasDePorcentaje } from './money.js';
 
 /**
  * Sobre qué se calcula el porcentaje.
@@ -56,13 +56,38 @@ export interface PoliticaDePrecio {
   readonly redondeoVenta: number;
 }
 
+/**
+ * Paso de redondeo de la venta por defecto, **en unidades mínimas**, según la moneda.
+ *
+ * «Unidad mínima» no es lo mismo en todas: 1.000 es $1.000 en COP pero USD 10 en USD. Por eso el
+ * valor depende de la moneda y se elige para que el paso sea una cifra comercial razonable:
+ *
+ * | Moneda | Paso | Equivale a |
+ * |---|---|---|
+ * | COP | 1.000 | $1.000 |
+ * | USD, EUR | 100 | 1 unidad (1 dólar / 1 euro) |
+ * | MXN | 100 | 1 peso mexicano |
+ */
+export const REDONDEO_VENTA_POR_DEFECTO: Readonly<Record<CodigoMoneda, number>> = {
+  COP: 1_000,
+  USD: 100,
+  EUR: 100,
+  MXN: 100,
+};
+
 /** Lo que recibe una agencia nueva si no configura nada. La instrucción del propietario. */
 export const POLITICA_POR_DEFECTO: PoliticaDePrecio = {
   porcentaje: 20,
   base: 'SOBRE_EL_NETO',
   origenDeLaVenta: 'DERIVADA_DEL_NETO',
-  redondeoVenta: 1_000,
+  // Pensado para COP, el mercado base. Para otra moneda usa `politicaPorDefecto(moneda)`.
+  redondeoVenta: REDONDEO_VENTA_POR_DEFECTO.COP,
 };
+
+/** La política por defecto con el redondeo que corresponde a la moneda. */
+export function politicaPorDefecto(moneda: CodigoMoneda): PoliticaDePrecio {
+  return { ...POLITICA_POR_DEFECTO, redondeoVenta: REDONDEO_VENTA_POR_DEFECTO[moneda] };
+}
 
 /** El margen de una línea. `porcentaje` es `null` cuando el denominador es cero. */
 export interface Margen {
@@ -76,15 +101,12 @@ export interface Margen {
 const ESCALA = 100_000n;
 
 function milesimas(porcentaje: number): bigint {
-  if (!Number.isFinite(porcentaje)) {
-    throw new ImporteInvalidoError(`'${porcentaje}' no es un porcentaje finito`);
-  }
-  if (porcentaje < 0) {
+  if (Number.isFinite(porcentaje) && porcentaje < 0) {
     throw new ImporteInvalidoError(
       'el margen no puede ser negativo: vender bajo el neto es pérdida',
     );
   }
-  return BigInt(Math.round(porcentaje * 1000));
+  return milesimasDePorcentaje(porcentaje);
 }
 
 /** División entera con redondeo medio hacia arriba, sobre magnitudes. */
@@ -116,7 +138,24 @@ export function redondearA(importe: Money, paso: number): Money {
 }
 
 /**
+ * Redondea la venta al paso, pero **nunca por debajo del neto**: si el medio-arriba la dejaría
+ * bajo el neto (neto 1.000.100 + 0,01 % = 1.000.200 → 1.000.000), se sube al siguiente múltiplo.
+ * Vender bajo el neto por redondeo sería una pérdida que nadie decidió.
+ */
+function redondearVenta(bruto: Money, neto: Money, paso: number): Money {
+  const redondeada = redondearA(bruto, paso);
+  if (!redondeada.mayorQue(neto) && !redondeada.igualA(neto)) {
+    if (paso <= 1) return redondeada;
+    const { unidades, moneda } = redondeada.aPersistencia();
+    return Money.desdeUnidades(unidades + BigInt(paso), moneda);
+  }
+  return redondeada;
+}
+
+/**
  * El precio de venta que sale de un neto, según la política de la agencia.
+ *
+ * El redondeo es medio hacia arriba, con la salvedad de que la venta nunca queda bajo el neto.
  *
  * No consulta `origenDeLaVenta`: con `FIJADA_EN_EL_TARIFARIO` esta función sigue sirviendo, pero
  * como **sugerencia** al capturar, no como la verdad. Quién decide eso es la capa de aplicación.
@@ -125,7 +164,7 @@ export function calcularVenta(neto: Money, politica: PoliticaDePrecio): Money {
   const p = milesimas(politica.porcentaje);
 
   if (politica.base === 'SOBRE_EL_NETO') {
-    return redondearA(neto.aplicarMarkup(politica.porcentaje), politica.redondeoVenta);
+    return redondearVenta(neto.aplicarMarkup(politica.porcentaje), neto, politica.redondeoVenta);
   }
 
   // Comisión sobre la venta: venta = neto / (1 − p). Con p = 100 % la venta sería infinita y con
@@ -139,7 +178,7 @@ export function calcularVenta(neto: Money, politica: PoliticaDePrecio): Money {
   const { unidades, moneda } = neto.aPersistencia();
   const bruto = Money.desdeUnidades(dividirRedondeando(unidades * ESCALA, ESCALA - p), moneda);
 
-  return redondearA(bruto, politica.redondeoVenta);
+  return redondearVenta(bruto, neto, politica.redondeoVenta);
 }
 
 /**

@@ -194,35 +194,89 @@ export const CrearVigencia = z
 export type CrearVigencia = z.infer<typeof CrearVigencia>;
 
 /**
+ * Edades por pasajero (T-179). **Opcionales y retrocompatibles**: sin ellas la cotización se
+ * comporta como siempre y una tarifa con rango de edad o `ocupaSilla` sigue siendo no evaluable
+ * (error tipado), porque inventar la edad de un niño es cobrarle mal.
+ *
+ * - `edadesNinos`: una edad por cada niño declarado (misma longitud que `ninos`).
+ * - `edadesInfantes`: una edad por cada infante declarado (misma longitud que `infantes`).
+ * - `infantesConSilla`: cuántos de los infantes ocupan silla propia (0..`infantes`).
+ */
+export const EdadesDePasajeros = {
+  edadesNinos: z.array(z.number().int().min(0).max(17)).max(200).optional(),
+  edadesInfantes: z.array(z.number().int().min(0).max(5)).max(200).optional(),
+  infantesConSilla: z.number().int().min(0).max(200).optional(),
+};
+
+/** La longitud de cada lista debe coincidir con la cantidad declarada; se señala el campo exacto. */
+export function coherenciaDeEdades(
+  c: {
+    ninos?: number | undefined;
+    infantes?: number | undefined;
+    edadesNinos?: number[] | undefined;
+    edadesInfantes?: number[] | undefined;
+    infantesConSilla?: number | undefined;
+  },
+  ctx: z.RefinementCtx,
+): void {
+  const ninos = c.ninos ?? 0;
+  const infantes = c.infantes ?? 0;
+  if (c.edadesNinos !== undefined && c.edadesNinos.length !== ninos) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: `se declararon ${ninos} niño(s) y ${c.edadesNinos.length} edad(es)`,
+      path: ['edadesNinos'],
+    });
+  }
+  if (c.edadesInfantes !== undefined && c.edadesInfantes.length !== infantes) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: `se declararon ${infantes} infante(s) y ${c.edadesInfantes.length} edad(es)`,
+      path: ['edadesInfantes'],
+    });
+  }
+  if (c.infantesConSilla !== undefined && c.infantesConSilla > infantes) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'no puede haber más infantes con silla que infantes',
+      path: ['infantesConSilla'],
+    });
+  }
+}
+
+/**
  * Cotizar: paquete y fecha. **La composición de pasajeros es opcional a propósito.**
  *
  * Eje 3 de ADR-0009: si las tarifas aplicables traen condición de acomodación o de tipo de
  * pasajero, el cotizador la pide; si no, no. **Se deriva del dato**, no de un interruptor que
  * pueda contradecir al tarifario.
  */
-export const CotizarSalida = z.object({
-  paqueteId: Id,
-  fecha: FechaViaje,
-  adultos: z.number().int().min(1).max(200).optional(),
-  ninos: z.number().int().min(0).max(200).optional(),
-  infantes: z.number().int().min(0).max(200).optional(),
-  acomodacion: Acomodacion.optional(),
-  /**
-   * La opción de salida elegida (turno, modalidad). Obligatoria cuando el producto tiene opciones
-   * activas: sin ella la cotización responde `OPCION_DE_SALIDA_REQUERIDA`. ADR-0017 §3.1.
-   */
-  opcionDeSalidaId: Id.optional(),
+export const CotizarSalida = z
+  .object({
+    paqueteId: Id,
+    fecha: FechaViaje,
+    adultos: z.number().int().min(1).max(200).optional(),
+    ninos: z.number().int().min(0).max(200).optional(),
+    infantes: z.number().int().min(0).max(200).optional(),
+    ...EdadesDePasajeros,
+    acomodacion: Acomodacion.optional(),
+    /**
+     * La opción de salida elegida (turno, modalidad). Obligatoria cuando el producto tiene opciones
+     * activas: sin ella la cotización responde `OPCION_DE_SALIDA_REQUERIDA`. ADR-0017 §3.1.
+     */
+    opcionDeSalidaId: Id.optional(),
 
-  /**
-   * Traer el margen de cada línea. **Por defecto NO**, y es deliberado.
-   *
-   * El margen revela el neto por resta. Lo pide la pantalla del asesor, que sabe lo que hace;
-   * cualquier otra cosa que llame a esta ruta recibe una cotización sin él. Cuando exista
-   * autenticación, esto además se comprobará contra el rol — pero el valor por defecto seguro
-   * vale hoy y no cuesta nada.
-   */
-  incluirMargen: z.boolean().default(false),
-});
+    /**
+     * Traer el margen de cada línea. **Por defecto NO**, y es deliberado.
+     *
+     * El margen revela el neto por resta. Lo pide la pantalla del asesor, que sabe lo que hace;
+     * cualquier otra cosa que llame a esta ruta recibe una cotización sin él. Cuando exista
+     * autenticación, esto además se comprobará contra el rol — pero el valor por defecto seguro
+     * vale hoy y no cuesta nada.
+     */
+    incluirMargen: z.boolean().default(false),
+  })
+  .superRefine(coherenciaDeEdades);
 export type CotizarSalida = z.infer<typeof CotizarSalida>;
 
 /** Por qué no se pudo resolver una fecha. Se devuelve tal cual para que la pantalla lo explique. */
@@ -279,6 +333,14 @@ export const SalidaPublicada = z.object({
   desdeEsDeGrupo: z.boolean(),
   /** Cuántas tarifas distintas tiene. Más de una significa que hay promoción o condición. */
   tarifas: z.number().int().min(1),
+  /**
+   * Las acomodaciones con precio en esta salida, en orden de ocupación (SENCILLA, DOBLE, TRIPLE,
+   * CUADRUPLE). **Se omite cuando el tarifario no distingue acomodación.** Permite que el
+   * cotizador muestre el selector antes del primer cálculo (T-219). Es la unión de las tarifas de
+   * la salida: con opciones de salida, una acomodación atada a otra opción puede figurar aquí y
+   * sigue validándola la cotización (`ACOMODACION_NO_DISPONIBLE`).
+   */
+  acomodacionesDisponibles: z.array(Acomodacion).min(1).optional(),
 });
 export type SalidaPublicada = z.infer<typeof SalidaPublicada>;
 
@@ -393,6 +455,12 @@ export const CotizacionDeSalida = z.object({
    * no de un interruptor que pueda contradecir al tarifario.
    */
   pideComposicion: z.boolean(),
+
+  /**
+   * Las acomodaciones con precio para esta salida y opción, en orden de ocupación. **Se omite
+   * cuando el tarifario no distingue acomodación** (entonces no hay nada que elegir).
+   */
+  acomodacionesDisponibles: z.array(Acomodacion).min(1).optional(),
 
   /** La opción de salida con la que se cotizó; `null` si el producto no tiene opciones. */
   opcionDeSalida: z.object({ id: Id, etiqueta: z.string() }).nullable().optional(),

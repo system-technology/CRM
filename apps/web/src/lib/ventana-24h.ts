@@ -2,6 +2,12 @@
  * Lógica pura de la cuenta regresiva de la ventana de atención al cliente de 24 horas de Meta
  * con reloj inyectable y evaluación de plantillas de reapertura (T-113).
  *
+ * FUENTE DE VERDAD (T-198): la API calcula la ventana (`VentanaServicio` en packages/contracts,
+ * `apps/api/.../ventana-de-servicio.ts`) y la web debe pasar `expiraEn` y `abiertaServidor` de
+ * `detalle.ventana`. Este módulo solo traduce ese estado a cuenta regresiva/etiquetas contra el
+ * reloj local. `ultimoMensajeClienteEn` y `DURACION_VENTANA_24H_MS` son RESPALDO DE MODO MAQUETA
+ * (sin API): no usarlos con datos reales.
+ *
  * Reglas de dominio:
  * - La ventana dura 24 horas desde el último mensaje entrante del viajero (`ultimoMensajeClienteEn`)
  *   o hasta el instante `expiraEn` calculado por el backend.

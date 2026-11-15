@@ -4,6 +4,7 @@
  * más barata: solo se traduce la forma de la fila y se calcula «hoy» en la zona de la agencia.
  */
 
+import { Acomodacion } from '@viajapro/contracts';
 import type { TarifaParaDesde } from '@viajapro/domain';
 
 /** Las columnas de `tarifas` que `calcularDesde` necesita. Se usa en los `select` de Prisma. */
@@ -14,6 +15,8 @@ export const SELECCION_PARA_DESDE = {
   cubrePasajeros: true,
   aditiva: true,
   tipoPasajero: true,
+  // Solo para listar las acomodaciones del tarifario (T-219); no entra en el «desde».
+  acomodacion: true,
   edadMinima: true,
   edadMaxima: true,
   ocupaSilla: true,
@@ -61,4 +64,17 @@ export function hoyEnZona(zonaHoraria: string, ahora: Date): string {
     month: '2-digit',
     day: '2-digit',
   }).format(ahora);
+}
+
+/**
+ * Las acomodaciones del contrato presentes en un conjunto de tarifas, en orden de ocupación.
+ * `undefined` si no hay ninguna: el campo del contrato se omite entonces.
+ */
+export function acomodacionesParaContrato(ordenadas: readonly string[]): Acomodacion[] | undefined {
+  const validas: Acomodacion[] = [];
+  for (const a of ordenadas) {
+    const r = Acomodacion.safeParse(a);
+    if (r.success) validas.push(r.data);
+  }
+  return validas.length > 0 ? validas : undefined;
 }

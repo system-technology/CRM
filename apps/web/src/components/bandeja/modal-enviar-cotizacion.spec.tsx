@@ -11,7 +11,7 @@ const cotizacionesEjemplo: CotizacionResumen[] = [
     version: 1,
     titulo: 'Escapada Caribe Cancún',
     precioVenta: {
-      unidades: '540000000', // 5.400.000 COP
+      unidades: '5400000', // 5.400.000 COP (unidad mínima COP = peso)
       moneda: 'COP',
     },
     vigenteHasta: '2026-11-30',
@@ -22,7 +22,7 @@ const cotizacionesEjemplo: CotizacionResumen[] = [
     version: 2,
     titulo: 'Tour Europa Soñada',
     precioVenta: {
-      unidades: '1850000000', // 18.500.000 COP
+      unidades: '18500000', // 18.500.000 COP
       moneda: 'COP',
     },
     vigenteHasta: null,
