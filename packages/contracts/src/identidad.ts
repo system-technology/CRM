@@ -237,8 +237,8 @@ export type RespuestaOk = z.infer<typeof RespuestaOk>;
  * Respuesta de `GET /api/v1/agencia/ajustes`: lo que la web necesita de la agencia activa para
  * presentar (zona horaria para formatear fechas, moneda y país por defecto). Lee de `tenants`.
  *
- * Solo lectura: `viajapro_app` tiene únicamente SELECT sobre `tenants` (ver
- * `excepciones_rls`), así que cambiar la zona horaria es una decisión de datos aún pendiente.
+ * Solo se lee de `tenants`; la zona se cambia con `PATCH` (`ActualizarAjustesDeAgencia`), que pasa
+ * por la función `actualizar_zona_horaria_de_la_agencia` y no por un UPDATE (ADR-0027).
  * Las fechas siguen en UTC en la base (R9); esto solo gobierna la presentación.
  */
 export const AjustesDeAgencia = z.object({
@@ -249,3 +249,14 @@ export const AjustesDeAgencia = z.object({
   zonaHoraria: z.string(),
 });
 export type AjustesDeAgencia = z.infer<typeof AjustesDeAgencia>;
+
+/**
+ * Cuerpo de `PATCH /api/v1/agencia/ajustes` (permiso `usuarios.administrar`). Hoy solo la zona
+ * horaria. La forma la valida aquí; que sea un nombre IANA real lo decide la base (422 si no).
+ */
+export const ActualizarAjustesDeAgencia = z
+  .object({
+    zonaHoraria: z.string().min(1).max(64).regex(/^\S+$/, 'Sin espacios'),
+  })
+  .strict();
+export type ActualizarAjustesDeAgencia = z.infer<typeof ActualizarAjustesDeAgencia>;

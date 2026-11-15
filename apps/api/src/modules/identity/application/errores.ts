@@ -7,6 +7,7 @@ import type { CodigoDeErrorDeAcceso } from '@viajapro/contracts';
 import {
   DemasiadosIntentosError,
   DomainError,
+  InvariantError,
   EstadoInvalidoError,
   NoAutenticadoError,
   ProhibidoError,
@@ -119,5 +120,14 @@ export class AgenciaNoEncontradaError extends DomainError {
 
   constructor() {
     super('No existe la agencia.');
+  }
+}
+
+/** La zona horaria no es un nombre IANA que la base y `Intl` conozcan (SQLSTATE 22023). 422. */
+export class ZonaHorariaInvalidaError extends InvariantError {
+  readonly code = 'ZONA_HORARIA_INVALIDA';
+
+  constructor() {
+    super('La zona horaria no es válida.');
   }
 }

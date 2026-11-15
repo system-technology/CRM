@@ -8,6 +8,7 @@ import 'reflect-metadata';
 import { RequestMethod } from '@nestjs/common';
 import type { Permiso } from '@viajapro/contracts';
 import { describe, expect, it } from 'vitest';
+import { AgenciaAjustesController } from '../../modules/identity/interface/agencia-ajustes.controller.js';
 import { CrmController } from '../../modules/crm/interface/crm.controller.js';
 import { ConversacionesController } from '../../modules/inbox/interface/conversaciones.controller.js';
 import { CotizacionesController } from '../../modules/quoting/interface/cotizaciones.controller.js';
@@ -26,6 +27,7 @@ const CONTROLADORES: ReadonlyArray<readonly [abstract new (...args: never[]) => 
     [ConversacionesController, 'bandeja.operar'],
     [CrmController, 'crm.escribir'],
     [CotizacionesController, 'cotizacion.escribir'],
+    [AgenciaAjustesController, 'usuarios.administrar'],
   ];
 
 describe('mutaciones con permiso (T-089)', () => {
