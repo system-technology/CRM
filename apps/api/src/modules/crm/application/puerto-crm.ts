@@ -24,6 +24,11 @@ export interface MovimientoDeOportunidad {
   oportunidadId: string;
   etapaId: string;
   motivoPerdida: MotivoPerdida | null;
+  /**
+   * El motivo de la agencia (T-229), ya validado. Nulo = solo el enum (compatibilidad): la base
+   * resuelve el id desde él. Con id, la base lo respeta y deriva el enum (OTRO si es propio).
+   */
+  motivoPerdidaId: string | null;
   notaPerdida: string | null;
   /** Quién la mueve. Queda en el historial de etapas (T-131); nulo sin usuario. */
   actorId: string | null;

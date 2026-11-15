@@ -1021,3 +1021,26 @@ la foránea existen, la API sigue escribiendo el enum.
   una migración que retire el enum, el disparador y la pareja. `oportunidad_cambios_etapa` (solo
   añadir) conserva su enum: no admite el UPDATE de un relleno.
 
+### El id escrito manda (T-229, migración `20261115190000_motivo_de_perdida_respeta_id`)
+
+El disparador de 20261115150000 recalculaba el id desde el enum en cada escritura: un motivo propio
+(clave nula, sin valor de enum) acababa en «Otro», y la API tuvo que rechazarlo. Ahora:
+
+```
+  BEFORE INSERT/UPDATE OF motivo_perdida, motivo_perdida_id, nota_perdida  (SECURITY INVOKER, search_path '')
+    a. llega un motivo_perdida_id no nulo NUEVO  → se respeta; debe ser de la agencia (si no, 23503)
+                                                   enum := su clave, u OTRO si es propio
+    b. si no, cambia el enum (o la pareja quedaría coja) → id desde el enum, como antes
+    c. si no cambia ninguno (solo la nota, o el mismo enum) → el id se queda
+    en los tres: motivo con exige_nota ⇒ nota_perdida no vacía (23514)
+  CHECK oportunidades_nota_perdida_exige_motivo: nota ⇒ hay motivo
+  (cae oportunidades_motivo_otro_exige_nota: «OTRO exige nota» pasa a ser el dato exige_nota)
+```
+
+**Por qué cae el CHECK de `OTRO`.** Un motivo propio se guarda con enum `OTRO`; el CHECK le
+exigiría nota aunque la agencia no la pida. La regla es el dato `exige_nota` (R12): el `OTRO`
+sembrado lo lleva, así que los clientes que solo escriben el enum no notan nada. El historial de
+etapas sigue guardando el enum (`OTRO` para los propios). La creación del motivo canónico usa
+`ON CONFLICT (tenant_id, clave)` (T-230): una etiqueta repetida falla con su índice en vez de
+tragarse. La API (`mover-oportunidad.ts`) escribe el id cuando llega `motivoPerdidaId`.
+

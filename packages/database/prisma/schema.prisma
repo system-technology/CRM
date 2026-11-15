@@ -1316,15 +1316,15 @@ model Oportunidad {
   proximaTareaVenceEn     DateTime? @map("proxima_tarea_vence_en") @db.Timestamptz(3)
   proximaTareaCompletada  Boolean?  @map("proxima_tarea_completada")
 
-  /// Por qué se perdió. El texto libre es obligatorio cuando el motivo es OTRO, y lo exige un
-  /// CHECK.
+  /// Por qué se perdió. El texto libre es obligatorio cuando el motivo lo pide
+  /// (`MotivoDePerdida.exigeNota`; el OTRO sembrado lo lleva), y lo exige el disparador.
   ///
-  /// **En transición (T-214).** El motivo es ya de la agencia (`MotivoDePerdida`, R12), pero la
-  /// API sigue escribiendo el enum: un disparador de la migración 20261115150000 mantiene
-  /// `motivoPerdidaId` desde `motivoPerdida` (clave = valor del enum) y un CHECK
-  /// (`oportunidades_motivo_perdida_pareja`) exige que vayan juntos. **No escribir
-  /// `motivoPerdidaId` a mano**: el disparador lo recalcula desde el enum. Cuando la API pase a
-  /// escribir el id, una migración retira el enum, el disparador y el CHECK.
+  /// **En transición (T-214, T-229).** El motivo es de la agencia (`MotivoDePerdida`, R12) y el
+  /// enum convive con él. El disparador `oportunidades_motivo_de_perdida_desde_enum`
+  /// (20261115190000) mantiene la pareja: si se escribe `motivoPerdidaId`, MANDA y el enum se
+  /// deriva (su `clave`, u `OTRO` si el motivo es propio); si solo se escribe el enum (clientes
+  /// antiguos), el id se resuelve desde él. Un CHECK (`oportunidades_motivo_perdida_pareja`)
+  /// exige que vayan juntos. Cuando nadie escriba el enum, una migración lo retira.
   motivoPerdida   MotivoPerdida?   @map("motivo_perdida")
   motivoPerdidaId String?          @map("motivo_perdida_id") @db.Uuid
   motivoDePerdida MotivoDePerdida? @relation(fields: [motivoPerdidaId, tenantId], references: [id, tenantId], onDelete: NoAction, onUpdate: Restrict)

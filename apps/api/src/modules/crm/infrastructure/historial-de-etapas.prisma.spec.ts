@@ -116,6 +116,7 @@ const mover = (prisma: PrismaService, etapaId: string, motivo: 'PRECIO' | null =
       oportunidadId: 'o-1',
       etapaId,
       motivoPerdida: motivo,
+      motivoPerdidaId: null,
       notaPerdida: null,
       actorId: ACTOR,
     }),

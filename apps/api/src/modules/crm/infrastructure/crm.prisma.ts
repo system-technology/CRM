@@ -207,6 +207,9 @@ export class CrmPrisma extends PuertoCrm {
         data: {
           etapaId: m.etapaId,
           motivoPerdida: m.motivoPerdida,
+          // Solo si llega: un `null` explícito no aporta nada (el disparador resuelve el id desde
+          // el enum, y al reabrir lo vacía con él). Con id, el disparador lo respeta (20261115190000).
+          ...(m.motivoPerdidaId !== null ? { motivoPerdidaId: m.motivoPerdidaId } : {}),
           notaPerdida: m.notaPerdida,
           cerradaEn: destino.esGanada || destino.esPerdida ? ocurridoEn : null,
           actualizadoPorId: m.actorId,
