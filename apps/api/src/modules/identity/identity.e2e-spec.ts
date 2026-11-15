@@ -739,14 +739,22 @@ describe('el permiso «ver neto y margen» en el detalle del paquete antiguo', (
 });
 
 describe('la cabecera de desarrollo', () => {
-  it('con APP_ENV=local y sin sesión, funciona', async () => {
+  it('con APP_ENV=local, sin sesión y desde esta máquina, funciona', async () => {
     expect(process.env['APP_ENV']).toBe('local');
-    const nav = new Navegador();
+    const nav = new Navegador('127.0.0.1');
     const r = await nav.llamar('GET', '/api/v1/crm/contactos', {
       cabeceras: { 'x-dev-tenant-id': TENANT_A },
     });
     expect(r.estado).toBe(200);
     expect(nombresDeContactos(r)).toContain('Contacto de A');
+  });
+
+  it('con APP_ENV=local pero llegando de otra máquina (reenvío de Codespaces), da 401 (T-175)', async () => {
+    const nav = new Navegador('203.0.113.7');
+    const r = await nav.llamar('GET', '/api/v1/crm/contactos', {
+      cabeceras: { 'x-dev-tenant-id': TENANT_A },
+    });
+    expect(r.estado).toBe(401);
   });
 
   it('en cualquier otro entorno se ignora', async () => {
