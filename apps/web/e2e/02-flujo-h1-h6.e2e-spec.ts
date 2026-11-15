@@ -133,7 +133,10 @@ test('H6: cotiza un producto de la semilla y guarda la cotizacion', async ({ pag
     }
     await expect(guardar).toBeVisible({ timeout: 3_000 });
   }).toPass({ timeout: 40_000, intervals: [500, 1_000, 2_000] });
-  await expect(errorDeCotizacion).toHaveCount(0);
+  // Con el texto de la alerta en el fallo: «esperaba 0, recibio 1» no deja diagnosticar nada.
+  const textoDeLaAlerta =
+    (await errorDeCotizacion.count()) > 0 ? await errorDeCotizacion.first().innerText() : '';
+  expect(textoDeLaAlerta, 'el cotizador mostro una alerta de error al cotizar').toBe('');
 
   await guardar.click();
   const dialogo = page.getByRole('dialog', { name: 'Guardar Cotización Oficial' });
