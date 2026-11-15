@@ -55,7 +55,8 @@ import {
 } from '../../../components/bandeja/cuenta-regresiva-ventana-24h';
 import { calcularCuentaRegresivaVentana24h } from '../../../lib/ventana-24h';
 import { obtenerMockPlantillasDisponibles } from '../../../lib/mock-plantillas';
-import { EnviarPlantilla } from '@viajapro/contracts';
+import { EnviarPlantilla, type CotizacionResumen } from '@viajapro/contracts';
+import { listarCotizacionesApi } from '../../../lib/cotizaciones-api';
 import { TarjetaCotizacionEnviada } from '../../../components/bandeja/tarjeta-cotizacion-enviada';
 import { PanelSugerencias } from '../../../components/bandeja/panel-sugerencias';
 import { MenuRespuestasRapidas } from '../../../components/bandeja/menu-respuestas-rapidas';
@@ -151,6 +152,11 @@ export default function BandejaConversacionPage() {
 
   // Modales de Cotización y CRM (T-074, T-076)
   const [modalEnviarCotizacionAbierto, setModalEnviarCotizacionAbierto] = useState(false);
+  /**
+   * Cotizaciones del contacto, pedidas a `quoting`. La ficha de `crm` las trae vacías a propósito
+   * (R4: `crm` no lee de `quoting`), así que el modal de envío no tendría nada que elegir.
+   */
+  const [cotizacionesContacto, setCotizacionesContacto] = useState<CotizacionResumen[]>([]);
   const [modalCrearOportunidadAbierto, setModalCrearOportunidadAbierto] = useState(false);
   const [modalEditarContactoAbierto, setModalEditarContactoAbierto] = useState(false);
 
@@ -449,6 +455,26 @@ export default function BandejaConversacionPage() {
   };
 
   // Cargar historial de conversación
+  const cargarCotizacionesDelContacto = useCallback(async (contactoId: string) => {
+    try {
+      const pagina = await listarCotizacionesApi({ contactoId, limite: 50 });
+      setCotizacionesContacto(
+        pagina.datos.map((fila) => ({
+          id: fila.id,
+          version: fila.numeroDeVersiones,
+          titulo: fila.titulo,
+          precioVenta: fila.venta,
+          vigenteHasta: null,
+          enviadaEn: fila.enviadaEn,
+        })),
+      );
+    } catch (e) {
+      // No tumba la conversación: el modal mostrará «No hay cotizaciones guardadas».
+      console.error('[bandeja] No se pudieron cargar las cotizaciones del contacto:', e);
+      setCotizacionesContacto([]);
+    }
+  }, []);
+
   const cargarHistorial = useCallback(async () => {
     if (!id) return;
     setCargando(true);
@@ -467,6 +493,7 @@ export default function BandejaConversacionPage() {
         }
         const ficha = await obtenerFichaDeContacto(data.contactoId ?? data.id);
         setFichaContacto(ficha);
+        if (data.contactoId) void cargarCotizacionesDelContacto(data.contactoId);
         setTiempoVentana(calcularTiempoRestanteVentana(data.ventana.expiraEn));
         setTimeout(() => scrollToBottom('auto'), 50);
       }
@@ -478,7 +505,7 @@ export default function BandejaConversacionPage() {
     } finally {
       setCargando(false);
     }
-  }, [id, scrollToBottom]);
+  }, [id, scrollToBottom, cargarCotizacionesDelContacto]);
 
   useEffect(() => {
     void cargarHistorial();
@@ -1404,7 +1431,11 @@ export default function BandejaConversacionPage() {
           contactoNombre={detalle.contactoNombre}
           contactoTelefono={detalle.contactoTelefono}
           ventanaAbierta={detalle.ventana.abierta && !tiempoVentana.cerrada}
-          cotizaciones={fichaContacto?.cotizaciones ?? []}
+          cotizaciones={
+            cotizacionesContacto.length > 0
+              ? cotizacionesContacto
+              : (fichaContacto?.cotizaciones ?? [])
+          }
           onCerrar={() => setModalEnviarCotizacionAbierto(false)}
           onCotizacionEnviada={(nuevoMensaje) => {
             setDetalle((prev) =>
