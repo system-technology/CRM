@@ -25,7 +25,7 @@ import { randomBytes, randomUUID } from 'node:crypto';
 import { Logger, type INestApplication } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { PrismaClient } from '@prisma/client';
-import type { CotizacionGuardada } from '@viajapro/contracts';
+import { CotizacionGuardada } from '@viajapro/contracts';
 import { Client } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { AppModule } from '../../app.module.js';
@@ -177,7 +177,7 @@ describe('cotizaciones guardadas', () => {
       version: composicion(2),
     });
     expect(r.estado).toBe(201);
-    guardada = r.json as CotizacionGuardada;
+    guardada = CotizacionGuardada.parse(r.json);
 
     expect(guardada.estado).toBe('BORRADOR');
     expect(guardada.versiones).toHaveLength(1);
@@ -243,7 +243,7 @@ describe('cotizaciones guardadas', () => {
       composicion(3),
     );
     expect(r.estado).toBe(201);
-    const c = r.json as CotizacionGuardada;
+    const c = CotizacionGuardada.parse(r.json);
     expect(c.versiones.map((v) => v.numero)).toEqual([1, 2]);
     expect(c.versiones[1]!.venta).toEqual({ unidades: '4500000', moneda: 'COP' });
     expect(c.versiones[1]!.adultos).toBe(3);
@@ -328,7 +328,7 @@ describe('listado y estados', () => {
       version: composicion(adultos),
     });
     expect(r.estado).toBe(201);
-    return r.json as CotizacionGuardada;
+    return CotizacionGuardada.parse(r.json);
   };
   const pausa = () => new Promise((r) => setTimeout(r, 15));
 
@@ -465,7 +465,7 @@ describe('listado y estados', () => {
       composicion(2),
     );
     expect(v.estado).toBe(201);
-    expect((v.json as CotizacionGuardada).versionEnviada).toBe(1);
+    expect(CotizacionGuardada.parse(v.json).versionEnviada).toBe(1);
 
     const ok = await llamar('POST', `/api/v1/cotizaciones/${id}/estado`, TENANT_A, {
       estado: 'ACEPTADA',

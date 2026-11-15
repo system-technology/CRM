@@ -28,7 +28,7 @@ import { type INestApplication, Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { PrismaClient } from '@prisma/client';
-import type { CotizacionGuardada, ResumenDeReportes } from '@viajapro/contracts';
+import { CotizacionGuardada, ResumenDeReportes } from '@viajapro/contracts';
 import { hashPassword } from 'better-auth/crypto';
 import { Client } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -107,7 +107,11 @@ async function reporte(
     },
   );
   const texto = await r.text();
-  return { estado: r.status, texto, json: JSON.parse(texto) as ResumenDeReportes };
+  const json: unknown = JSON.parse(texto);
+  // T-195: todo 200 cumple el contrato que consume la web. Se valida y se devuelve el cuerpo
+  // CRUDO: `parse` descarta claves desconocidas, y las pruebas de fuga necesitan verlas.
+  if (r.status === 200) ResumenDeReportes.parse(json);
+  return { estado: r.status, texto, json: json as ResumenDeReportes };
 }
 
 async function crearAgencia(tenant: string, sufijo: string, ventaUnidades: bigint) {
@@ -207,7 +211,7 @@ async function cotizar(
     version: { paqueteId: datos.paquete, fecha: FECHA, adultos },
   });
   expect(g.estado).toBe(201);
-  let cot = g.json as CotizacionGuardada;
+  let cot = CotizacionGuardada.parse(g.json);
   for (const estado of hasta === 'ACEPTADA'
     ? ['ENVIADA', 'ACEPTADA']
     : hasta === 'ENVIADA'
@@ -217,7 +221,7 @@ async function cotizar(
       estado,
     });
     expect(t.estado).toBe(201);
-    cot = t.json as CotizacionGuardada;
+    cot = CotizacionGuardada.parse(t.json);
   }
   return cot;
 }
@@ -356,7 +360,7 @@ describe('GET /api/v1/reportes/resumen', () => {
       `/api/v1/cotizaciones/${aceptadaA.id}?incluirMargen=true`,
       TENANT_A,
     );
-    const v1 = (leida.json as CotizacionGuardada).versiones[0]!;
+    const v1 = CotizacionGuardada.parse(leida.json).versiones[0]!;
     expect(v1.venta).toEqual({ unidades: '2400000', moneda: 'COP' });
 
     expect(r.json.ventasPorMoneda).toHaveLength(1);

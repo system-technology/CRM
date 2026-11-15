@@ -4951,4 +4951,22 @@ tasks:
     source: entrega de T-179, 2026-11-15
     created_at: 2026-11-15T16:00:00.000Z
     owner: datos
+  - id: T-218
+    title: "Dominio: el precio de venta nunca queda bajo el neto por redondeo, y el redondeo depende de la moneda"
+    type: bug
+    phase: 1
+    priority: P1
+    effort: S
+    status: ready
+    depends_on: []
+    acceptance:
+      - "Neto COP 1.000.100, markup 0,01 % y redondeoVenta 1000: la venta no queda en 1.000.000 (bajo el neto); se redondea hacia arriba o se rechaza"
+      - "redondeoVenta se interpreta segun la moneda (en USD, 1000 unidades minimas son 10 dolares): politica por moneda o por tenant"
+      - "Un markup que aplicarPorcentaje redondearia a 0 se rechaza o se avisa, no desaparece en silencio"
+      - "Las pruebas de packages/domain/src/dinero-casos-borde.spec.ts que hoy fijan el comportamiento se actualizan"
+    files:
+      - packages/domain/src/precio-de-venta.ts
+    source: pruebas de T-200, 2026-11-15
+    created_at: 2026-11-15T16:30:00.000Z
+    owner: backend
 

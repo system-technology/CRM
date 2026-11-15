@@ -17,7 +17,16 @@ import { type INestApplication, Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { PrismaClient } from '@prisma/client';
-import { EVENTO_SOCKET_BANDEJA, EventoBandeja, RUTA_SOCKET_BANDEJA } from '@viajapro/contracts';
+import {
+  ContadoresBandeja,
+  ConversacionDetalle,
+  EVENTO_SOCKET_BANDEJA,
+  EventoBandeja,
+  ListaDeNotas,
+  PaginaBandeja,
+  PaginaMensajes,
+  RUTA_SOCKET_BANDEJA,
+} from '@viajapro/contracts';
 import { hashPassword } from 'better-auth/crypto';
 import { Client } from 'pg';
 import { io as clienteIo, type Socket } from 'socket.io-client';
@@ -457,12 +466,14 @@ describe('lectura', () => {
   it('CA1: Ana consulta la bandeja con filtro TODAS y recibe exactamente C1 y C3', async () => {
     const r = await api('ana', 'GET', '/api/v1/conversaciones?filtro=TODAS');
     expect(r.status).toBe(200);
+    PaginaBandeja.parse(r.json);
     expect(idsDe(r).sort()).toEqual([e.c1, e.c3].sort());
   });
 
   it('CA2: el Dueño consulta la bandeja con filtro TODAS y recibe C1, C2 y C3', async () => {
     const r = await api('dueno', 'GET', '/api/v1/conversaciones?filtro=TODAS');
     expect(r.status).toBe(200);
+    PaginaBandeja.parse(r.json);
     expect(idsDe(r).sort()).toEqual([e.c1, e.c2, e.c3].sort());
   });
 
@@ -485,9 +496,15 @@ describe('lectura', () => {
 
   it('CA3: y las propias y las de la cola común sí se leen', async () => {
     for (const id of [e.c1, e.c3]) {
-      expect((await api('ana', 'GET', `/api/v1/conversaciones/${id}`)).status).toBe(200);
-      expect((await api('ana', 'GET', `/api/v1/conversaciones/${id}/mensajes`)).status).toBe(200);
-      expect((await api('ana', 'GET', `/api/v1/conversaciones/${id}/notas`)).status).toBe(200);
+      const detalle = await api('ana', 'GET', `/api/v1/conversaciones/${id}`);
+      expect(detalle.status).toBe(200);
+      ConversacionDetalle.parse(detalle.json);
+      const mensajes = await api('ana', 'GET', `/api/v1/conversaciones/${id}/mensajes`);
+      expect(mensajes.status).toBe(200);
+      PaginaMensajes.parse(mensajes.json);
+      const notas = await api('ana', 'GET', `/api/v1/conversaciones/${id}/notas`);
+      expect(notas.status).toBe(200);
+      ListaDeNotas.parse(notas.json);
     }
   });
 
@@ -549,6 +566,7 @@ describe('lectura', () => {
   it('CA5: los contadores de sin leer de Ana no suman los mensajes de C2', async () => {
     const ana = await api('ana', 'GET', '/api/v1/conversaciones/contadores');
     expect(ana.status).toBe(200);
+    ContadoresBandeja.parse(ana.json);
     // C1 (2) + C3 (1); los 5 de C2 no cuentan.
     expect(ana.json).toMatchObject({
       todas: 2,
@@ -558,6 +576,7 @@ describe('lectura', () => {
       mensajesSinLeer: 3,
     });
     const dueno = await api('dueno', 'GET', '/api/v1/conversaciones/contadores');
+    ContadoresBandeja.parse(dueno.json);
     expect(dueno.json).toMatchObject({ todas: 3, sinAsignar: 1, mensajesSinLeer: 8 });
   });
 
@@ -599,7 +618,7 @@ describe('lectura', () => {
 
   it('la paginación de la bandeja respeta la visibilidad página a página', async () => {
     const primera = await api('dueno', 'GET', '/api/v1/conversaciones?limite=2');
-    const pageInfo = primera.json['pageInfo'] as { nextCursor: string | null; hasMore: boolean };
+    const { pageInfo } = PaginaBandeja.parse(primera.json);
     expect(idsDe(primera)).toHaveLength(2);
     expect(pageInfo.hasMore).toBe(true);
     const segunda = await api(
