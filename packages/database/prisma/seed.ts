@@ -137,7 +137,13 @@ async function main() {
     );
   }
 
-  // --- Catálogo de paquetes ----------------------------------------------
+  // --- Paquetes con hotel ---------------------------------------------------
+  //
+  // En vigencias y tarifas (ADR-0009), el modelo que lee el cotizador. Hasta T-180 vivían en
+  // `temporadas`/`precios`, que el cotizador no lee: estos tres paquetes no se podían cotizar.
+  // Cada temporada es una vigencia de rango (no publicada) y cada precio, una tarifa POR_PERSONA
+  // con su acomodación, tipo de pasajero y edad de corte. Tras T-188, cotizarlos exige
+  // `acomodacion`; con niños o infantes, también sus edades (T-179).
   //
   // Tres patrones reales del tarifario colombiano, elegidos a propósito:
   //   · San Andrés: el destino más vendido. Temporada alta de diciembre y puente festivo.
@@ -160,12 +166,12 @@ async function main() {
         'Seguro de asistencia médica',
       ],
       exclusiones: ['Impuesto de ingreso a la isla', 'Tours opcionales', 'Gastos no especificados'],
-      temporadas: [
+      vigencias: [
         {
           nombre: 'Temporada baja',
           desde: '2027-02-01',
           hasta: '2027-06-15',
-          precios: [
+          tarifas: [
             { acomodacion: 'DOBLE', tipoPasajero: 'ADT', neto: 1_280_000, venta: 1_590_000 },
             { acomodacion: 'TRIPLE', tipoPasajero: 'ADT', neto: 1_150_000, venta: 1_430_000 },
             { acomodacion: 'CUADRUPLE', tipoPasajero: 'ADT', neto: 1_080_000, venta: 1_340_000 },
@@ -200,7 +206,7 @@ async function main() {
           nombre: 'Temporada alta — diciembre',
           desde: '2027-12-15',
           hasta: '2028-01-15',
-          precios: [
+          tarifas: [
             { acomodacion: 'DOBLE', tipoPasajero: 'ADT', neto: 2_150_000, venta: 2_690_000 },
             { acomodacion: 'TRIPLE', tipoPasajero: 'ADT', neto: 1_980_000, venta: 2_480_000 },
             { acomodacion: 'CUADRUPLE', tipoPasajero: 'ADT', neto: 1_850_000, venta: 2_310_000 },
@@ -225,10 +231,11 @@ async function main() {
         },
         {
           // En Colombia los puentes festivos son su propia temporada y cuestan como la alta.
+          // Cae DENTRO de la alta: gana por ser la vigencia más corta (`resolverVigencia`).
           nombre: 'Puente de Reyes',
           desde: '2028-01-06',
           hasta: '2028-01-09',
-          precios: [
+          tarifas: [
             { acomodacion: 'DOBLE', tipoPasajero: 'ADT', neto: 1_890_000, venta: 2_360_000 },
             { acomodacion: 'TRIPLE', tipoPasajero: 'ADT', neto: 1_740_000, venta: 2_170_000 },
             {
@@ -259,12 +266,12 @@ async function main() {
         'Seguro de asistencia médica',
       ],
       exclusiones: ['Almuerzos y cenas', 'Tour a Islas del Rosario', 'Propinas'],
-      temporadas: [
+      vigencias: [
         {
           nombre: 'Temporada baja',
           desde: '2027-02-01',
           hasta: '2027-06-15',
-          precios: [
+          tarifas: [
             { acomodacion: 'DOBLE', tipoPasajero: 'ADT', neto: 980_000, venta: 1_250_000 },
             { acomodacion: 'TRIPLE', tipoPasajero: 'ADT', neto: 880_000, venta: 1_120_000 },
             { acomodacion: 'CUADRUPLE', tipoPasajero: 'ADT', neto: 820_000, venta: 1_040_000 },
@@ -297,12 +304,12 @@ async function main() {
         'Seguro de asistencia médica internacional',
       ],
       exclusiones: ['Tarjeta de turista dominicana', 'Excursiones', 'Gastos personales'],
-      temporadas: [
+      vigencias: [
         {
           nombre: 'Temporada media',
           desde: '2027-05-01',
           hasta: '2027-11-30',
-          precios: [
+          tarifas: [
             { acomodacion: 'DOBLE', tipoPasajero: 'ADT', neto: 4_280_000, venta: 5_350_000 },
             { acomodacion: 'TRIPLE', tipoPasajero: 'ADT', neto: 3_990_000, venta: 4_990_000 },
             { acomodacion: 'SENCILLA', tipoPasajero: 'ADT', neto: 6_150_000, venta: 7_690_000 },
@@ -330,45 +337,75 @@ async function main() {
     },
   ];
 
+  const ETIQUETA_TIPO = { ADT: 'Adulto', CHD: 'Niño', INF: 'Infante' } as const;
+  const nombreDeTarifa = (t: {
+    acomodacion: string;
+    tipoPasajero: string;
+    edadMinima?: number;
+    edadMaxima?: number;
+  }): string => {
+    const tipo = ETIQUETA_TIPO[t.tipoPasajero as keyof typeof ETIQUETA_TIPO];
+    const edad =
+      t.edadMinima !== undefined && t.edadMaxima !== undefined
+        ? ` de ${t.edadMinima} a ${t.edadMaxima} años`
+        : '';
+    return `${tipo}${edad} en ${t.acomodacion.toLowerCase()}`;
+  };
+
+  // Idempotente por vigencia, no por paquete: una base sembrada antes de T-180 ya tiene los
+  // paquetes (con temporadas) y sin esto se quedaría sin vigencias para siempre.
   for (const p of paquetes) {
-    const existente = await prisma.paquete.findFirst({
-      where: { tenantId: tenant.id, nombre: p.nombre },
-    });
-    if (existente) {
-      console.log(`  ya existe: ${p.nombre}`);
-      continue;
-    }
+    const { vigencias, ...datosPaquete } = p;
+    const paquete =
+      (await prisma.paquete.findFirst({ where: { tenantId: tenant.id, nombre: p.nombre } })) ??
+      (await prisma.paquete.create({ data: { tenantId: tenant.id, ...datosPaquete } }));
 
-    const { temporadas, ...datosPaquete } = p;
-    const paquete = await prisma.paquete.create({
-      data: { tenantId: tenant.id, ...datosPaquete },
-    });
-
-    for (const t of temporadas) {
-      const temporada = await prisma.temporada.create({
-        data: {
+    let tarifasCreadas = 0;
+    for (const v of vigencias) {
+      const vigencia = await prisma.vigencia.upsert({
+        where: {
+          tenantId_paqueteId_desde_hasta: {
+            tenantId: tenant.id,
+            paqueteId: paquete.id,
+            desde: new Date(v.desde),
+            hasta: new Date(v.hasta),
+          },
+        },
+        update: {},
+        // Un rango, no una salida: `publicada` solo vale para un día (CHECK).
+        create: {
           tenantId: tenant.id,
           paqueteId: paquete.id,
-          nombre: t.nombre,
-          desde: new Date(t.desde),
-          hasta: new Date(t.hasta),
+          desde: new Date(v.desde),
+          hasta: new Date(v.hasta),
+          publicada: false,
         },
       });
-      await prisma.precio.createMany({
-        data: t.precios.map((pr) => ({
+      if ((await prisma.tarifa.count({ where: { vigenciaId: vigencia.id } })) > 0) continue;
+
+      const { count } = await prisma.tarifa.createMany({
+        data: v.tarifas.map((t) => ({
           tenantId: tenant.id,
-          temporadaId: temporada.id,
-          acomodacion: pr.acomodacion as never,
-          tipoPasajero: pr.tipoPasajero as never,
-          netoUnidades: cop(pr.neto),
-          ventaUnidades: cop(pr.venta),
+          vigenciaId: vigencia.id,
+          nombre: nombreDeTarifa(t),
+          unidad: 'POR_PERSONA' as const,
+          cubrePasajeros: 1,
+          netoUnidades: cop(t.neto),
+          ventaUnidades: cop(t.venta),
           monedaIso: 'COP',
-          edadMinima: pr.edadMinima ?? null,
-          edadMaxima: pr.edadMaxima ?? null,
+          mayoristaId: p.mayoristaId,
+          acomodacion: t.acomodacion as never,
+          tipoPasajero: t.tipoPasajero as never,
+          edadMinima: t.edadMinima ?? null,
+          edadMaxima: t.edadMaxima ?? null,
         })),
       });
+      tarifasCreadas += count;
     }
-    console.log(`  creado: ${p.nombre}  (${temporadas.length} temporadas)`);
+    console.log(
+      `  ${p.nombre}: ${vigencias.length} vigencias (${vigencias.map((v) => v.nombre).join(', ')}), ` +
+        `${tarifasCreadas} tarifas nuevas`,
+    );
   }
 
   // --- Catálogo real de Agencias André's Tours ----------------------------
@@ -622,8 +659,6 @@ async function main() {
 
   const resumen = {
     paquetes: await prisma.paquete.count({ where: { tenantId: tenant.id } }),
-    temporadas: await prisma.temporada.count({ where: { tenantId: tenant.id } }),
-    precios: await prisma.precio.count({ where: { tenantId: tenant.id } }),
     vigencias: await prisma.vigencia.count({ where: { tenantId: tenant.id } }),
     tarifas: await prisma.tarifa.count({ where: { tenantId: tenant.id } }),
     contactos: await prisma.contacto.count({ where: { tenantId: tenant.id } }),
