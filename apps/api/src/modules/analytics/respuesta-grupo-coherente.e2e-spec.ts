@@ -30,7 +30,7 @@ const TENANT_B = idDeTenant();
 const HORA = 3600_000;
 const MIN = 60_000;
 
-let app: Awaited<ReturnType<typeof NestFactory.createApplicationContext>>;
+let app: Awaited<ReturnType<typeof NestFactory.create>>;
 let admin: PrismaClient;
 let adminPg: Client;
 let adaptador: RespuestaParaReportesPrisma;
@@ -139,7 +139,10 @@ beforeAll(async () => {
   });
 
   Logger.overrideLogger(false);
-  app = await NestFactory.createApplicationContext(AppModule, { logger: false });
+  // `create` y no `createApplicationContext`: el gateway de la bandeja en vivo necesita el
+  // servidor HTTP al arrancar. No hace falta escuchar: la prueba usa el adaptador directo.
+  app = await NestFactory.create(AppModule, { logger: false });
+  await app.init();
   adaptador = new RespuestaParaReportesPrisma(app.get(PrismaService));
 });
 
