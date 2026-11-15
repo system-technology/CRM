@@ -238,7 +238,9 @@ afterAll(async () => {
       type Limpiador = (c: Client, ids: string[]) => Promise<unknown>;
       // Especificador no literal: el limpiador es JS sin tipos y se comparte con el paquete de base de datos.
       const ruta = '../../../../../packages/database/scripts/borrar-tenants.mjs';
-      const modulo = (await import(ruta)) as { borrarTenants: Limpiador };
+      const modulo = (await import(new URL(ruta, import.meta.url).href)) as {
+        borrarTenants: Limpiador;
+      };
       await admin.query('BEGIN');
       await modulo.borrarTenants(admin, [TENANT, TENANT_B]);
       await admin.query('COMMIT');
