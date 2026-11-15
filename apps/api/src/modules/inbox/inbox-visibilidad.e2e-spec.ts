@@ -934,9 +934,12 @@ describe('asignación', () => {
   });
 
   it('CA17: una conversación nueva que abre el webhook entra sin asignar y la ven todos los miembros', async () => {
+    // Se busca por el teléfono del contacto: desde ADR-0015 (concreción 5) la bandeja no busca en el
+    // texto de los mensajes, que va cifrado.
+    const telefono = `+57302${Math.floor(Math.random() * 9e6 + 1e6)}`;
     const r = await bandeja.registrarEntrante(TENANT_A, canal.A, {
       wamid: `wamid.vis.${randomUUID()}`,
-      deTelefono: `+57302${Math.floor(Math.random() * 9e6 + 1e6)}`,
+      deTelefono: telefono,
       nombrePerfil: 'Viajera nueva',
       instante: new Date(),
       tipo: 'TEXTO',
@@ -951,7 +954,11 @@ describe('asignación', () => {
 
     // Beto está dado de baja por CA15: miran Ana y el dueño; y la fila dice «sin asignar».
     for (const quien of ['ana', 'dueno'] as const) {
-      const lista = await api(quien, 'GET', '/api/v1/conversaciones?buscar=Cartagena');
+      const lista = await api(
+        quien,
+        'GET',
+        `/api/v1/conversaciones?buscar=${encodeURIComponent(telefono)}`,
+      );
       const filas = lista.json['datos'] as Array<{ asignadoAId: string | null }>;
       expect(filas).toHaveLength(1);
       expect(filas[0]?.asignadoAId).toBeNull();
@@ -1068,9 +1075,12 @@ describe('SLA de primera respuesta', () => {
     const marca = `sla-${randomBytes(4).toString('hex')}`;
     const wamid = `wamid.sla.${randomUUID()}`;
     const hace2h = new Date(Date.now() - 2 * 3600_000);
+    // Un solo teléfono para los tres entrantes: son del MISMO hilo, y es por lo que se busca (desde
+    // ADR-0015 la bandeja no busca en el texto cifrado de los mensajes).
+    const telefono = `+57302${Math.floor(Math.random() * 9e6 + 1e6)}`;
     const mensaje = (id: string, instante: Date) => ({
       wamid: id,
-      deTelefono: `+57302${Math.floor(Math.random() * 9e6 + 1e6)}`,
+      deTelefono: telefono,
       nombrePerfil: 'Viajera con SLA',
       instante,
       tipo: 'TEXTO' as const,
@@ -1084,7 +1094,7 @@ describe('SLA de primera respuesta', () => {
     const primero = mensaje(wamid, hace2h);
     expect(await bandeja.registrarEntrante(TENANT_A, canal.A, primero)).toBe('CREADO');
 
-    const buscar = encodeURIComponent(marca);
+    const buscar = encodeURIComponent(telefono);
     const vencidas = await api(
       'dueno',
       'GET',
