@@ -9,15 +9,12 @@
  * que lo hace del lado de la API. Todo es sintético: nombres y teléfonos de `@agenciademo.test`
  * y del rango de ejemplo de la semilla; ninguna persona real.
  */
-import {
-  columnasDeTexto,
-  columnasDeUltimoMensaje,
-} from '../../../shared/cifrado/columnas-de-prisma.js';
+import { columnasDeTexto, columnasDeUltimoMensaje } from '../shared/cifrado/columnas-de-prisma.js';
 import {
   COLUMNAS_CIFRADAS,
   type PuertoCifradoDeCampos,
-} from '../../../shared/cifrado/puerto-de-cifrado.js';
-import { uuidV7 } from '../../../shared/cifrado/uuid-v7.js';
+} from '../shared/cifrado/puerto-de-cifrado.js';
+import { uuidV7 } from '../shared/cifrado/uuid-v7.js';
 
 /** El tope de la vista previa que declara el contrato; se recorta antes de cifrar. */
 const TOPE_DE_VISTA_PREVIA = 200;

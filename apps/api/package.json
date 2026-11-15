@@ -15,7 +15,7 @@
     "lint": "eslint src",
     "identidad:sembrar-dev": "dotenv -e ../../.env -- tsx src/modules/identity/scripts/sembrar-credenciales-dev.ts",
     "canal:registrar-prueba": "dotenv -e ../../.env -- tsx src/modules/inbox/scripts/registrar-canal-de-prueba.ts",
-    "demo:sembrar-cifrada": "dotenv -e ../../.env -- tsx src/modules/inbox/scripts/sembrar-demo-cifrada.ts"
+    "demo:sembrar-cifrada": "dotenv -e ../../.env -- tsx src/demo/sembrar-demo-cifrada.ts"
   },
   "dependencies": {
     "@nestjs/common": "^10.4.15",

@@ -11,7 +11,7 @@
  *   - las notas solo se escriben si la conversación aún no tiene ninguna.
  */
 import type { PrismaClient } from '@prisma/client';
-import type { PuertoCifradoDeCampos } from '../../../shared/cifrado/puerto-de-cifrado.js';
+import type { PuertoCifradoDeCampos } from '../shared/cifrado/puerto-de-cifrado.js';
 import { armarLaDemoCifrada, PLAN_DE_LA_DEMO } from './demo-cifrada.js';
 
 /** El canal de la semilla (`seed.ts`): la bandeja de la demo cuelga de él. */

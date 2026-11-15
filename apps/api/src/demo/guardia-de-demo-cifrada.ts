@@ -5,7 +5,10 @@
  * donde hay agencias reales. En una base remota exige un opt-in explícito Y que no exista ni una
  * agencia ajena a la semilla. Los motivos no incluyen valores del entorno: solo nombres y conteos.
  */
-import { esAnfitrionLocal, SLUG_DE_LA_AGENCIA_DEMO } from './guardia-de-canal-de-prueba.js';
+import {
+  esAnfitrionLocal,
+  SLUG_DE_LA_AGENCIA_DEMO,
+} from '../modules/inbox/scripts/guardia-de-canal-de-prueba.js';
 
 export interface EntradaGuardiaDeDemoCifrada {
   readonly appEnv: string | undefined;

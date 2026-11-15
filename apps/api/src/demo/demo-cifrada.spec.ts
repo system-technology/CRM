@@ -1,10 +1,10 @@
 import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
-import { CifradoDeCampos } from '../../../shared/cifrado/cifrado-de-campos.js';
+import { CifradoDeCampos } from '../shared/cifrado/cifrado-de-campos.js';
 import {
   CampoCifradoIlegibleError,
   COLUMNAS_CIFRADAS,
-} from '../../../shared/cifrado/puerto-de-cifrado.js';
+} from '../shared/cifrado/puerto-de-cifrado.js';
 import { armarLaDemoCifrada, PLAN_DE_LA_DEMO } from './demo-cifrada.js';
 
 const cifrado = new CifradoDeCampos({

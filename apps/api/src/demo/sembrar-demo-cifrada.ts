@@ -26,9 +26,12 @@ import { PrismaClient } from '@prisma/client';
 import {
   CifradoDeCampos,
   clavesDeCamposDesdeEntorno,
-} from '../../../shared/cifrado/cifrado-de-campos.js';
-import { resolverCadena, verificarIdentidad } from '../../../shared/prisma/guardia-de-rol.js';
-import { esAnfitrionLocal, SLUG_DE_LA_AGENCIA_DEMO } from './guardia-de-canal-de-prueba.js';
+} from '../shared/cifrado/cifrado-de-campos.js';
+import { resolverCadena, verificarIdentidad } from '../shared/prisma/guardia-de-rol.js';
+import {
+  esAnfitrionLocal,
+  SLUG_DE_LA_AGENCIA_DEMO,
+} from '../modules/inbox/scripts/guardia-de-canal-de-prueba.js';
 import { decidirSiSePuedeSembrarLaDemoCifrada } from './guardia-de-demo-cifrada.js';
 import { sembrarDemoCifrada, SiembraDeDemoCifradaError } from './siembra-de-demo-cifrada.js';
 
