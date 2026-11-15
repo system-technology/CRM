@@ -95,6 +95,51 @@ describe('errores-sistema (T-109)', () => {
       expect(sanitizarRutaRedireccion('javascript:alert(1)', '/bandeja')).toBe('/bandeja');
       expect(sanitizarRutaRedireccion(null, '/bandeja')).toBe('/bandeja');
     });
+
+    // Vectores que el analizador de URL convierte en `//host` (auditoría del PR #256).
+    const VECTORES_HOSTILES = [
+      '/\\evil.com',
+      '/\\/evil.com',
+      '\\\\evil.com',
+      '/\t/evil.com',
+      '/\n/evil.com',
+      '/\r/evil.com',
+      ' //evil.com',
+      '/%5Cevil.com'.replace('%5C', '\\'),
+      'http:evil.com',
+    ];
+
+    it.each(VECTORES_HOSTILES)('nunca sale del origen con %j', (vector) => {
+      expect(sanitizarRutaRedireccion(vector, '/bandeja')).toBe('/bandeja');
+      expect(construirUrlRedireccionIngreso(vector)).toBe('/ingresar?motivo=sesion_expirada');
+    });
+
+    it('todo destino aceptado resuelve al mismo origen', () => {
+      const origen = 'https://app.viajapro.co';
+      for (const v of [...VECTORES_HOSTILES, '/pipeline?x=1#a', '/cotizaciones/123']) {
+        expect(new URL(sanitizarRutaRedireccion(v), origen).origin).toBe(origen);
+      }
+    });
+
+    it('conserva consulta y fragmento de un destino legítimo', () => {
+      expect(sanitizarRutaRedireccion('/pipeline?etapa=2#tarjeta')).toBe(
+        '/pipeline?etapa=2#tarjeta',
+      );
+    });
+
+    it('rechaza cualquier ruta de acceso como destino, con consulta o barra final', () => {
+      for (const r of [
+        '/login',
+        '/login/',
+        '/login?x=1',
+        '/ingresar?motivo=y',
+        '/iniciar-sesion#a',
+      ]) {
+        expect(sanitizarRutaRedireccion(r)).toBe('/bandeja');
+        expect(construirUrlRedireccionIngreso(r)).toBe('/ingresar?motivo=sesion_expirada');
+      }
+      expect(sanitizarRutaRedireccion('/login-historial')).toBe('/login-historial');
+    });
   });
 
   describe('clasificarErrorSistema', () => {

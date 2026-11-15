@@ -7,6 +7,8 @@
  * se filtren trazas de pila (stack traces) ni secretos (R6).
  */
 
+import { RUTA_INGRESO, RUTAS_DE_ACCESO } from './redirigir-a-ingreso';
+
 export type TipoErrorSistema =
   | 'NO_ENCONTRADO'
   | 'SESION_EXPIRADA'
@@ -125,33 +127,51 @@ export function esErrorNoEncontrado(error: unknown, status?: number): boolean {
 }
 
 /**
+ * Devuelve la ruta interna normalizada (ruta + consulta + fragmento) o `null` si no es segura.
+ *
+ * No basta con mirar el prefijo: el analizador de URL del navegador convierte `\` y descarta
+ * tabuladores y saltos de línea, así que `/\\evil.com` o `/<TAB>/evil.com` resuelven a
+ * `https://evil.com/`. Se resuelve contra un origen centinela y se exige que no cambie, y se
+ * rechazan de entrada la barra invertida y los caracteres de control.
+ */
+export function rutaInternaSegura(ruta: string | null | undefined): string | null {
+  if (!ruta) return null;
+  const candidata = ruta.trim();
+  // eslint-disable-next-line no-control-regex
+  if (!candidata.startsWith('/') || /[\\\u0000-\u001f\u007f]/.test(candidata)) return null;
+
+  const ORIGEN_CENTINELA = 'http://viajapro.invalid';
+  let url: URL;
+  try {
+    url = new URL(candidata, ORIGEN_CENTINELA);
+  } catch {
+    return null;
+  }
+  if (url.origin !== ORIGEN_CENTINELA) return null;
+  return `${url.pathname}${url.search}${url.hash}`;
+}
+
+/** Una ruta de acceso nunca es destino tras ingresar: provocaría un rebote al formulario. */
+function esRutaDeAcceso(rutaNormalizada: string): boolean {
+  const pathname = rutaNormalizada.split(/[?#]/)[0] ?? '';
+  const sinBarraFinal = pathname.length > 1 ? pathname.replace(/\/+$/, '') : pathname;
+  return (RUTAS_DE_ACCESO as readonly string[]).includes(sinBarraFinal);
+}
+
+/**
  * Construye una URL segura para redirigir a /ingresar conservando el destino actual.
- * Evita ataques de redirección abierta exigiendo rutas relativas que inicien con `/`
- * y no con `//` ni protocolos externos.
+ * Evita redirecciones abiertas con `rutaInternaSegura`.
  */
 export function construirUrlRedireccionIngreso(
   rutaActual?: string,
   motivo = 'sesion_expirada',
 ): string {
-  const base = '/ingresar';
-  if (!rutaActual) {
+  const base = RUTA_INGRESO;
+  const ruta = rutaInternaSegura(rutaActual);
+  if (!ruta || esRutaDeAcceso(ruta)) {
     return `${base}?motivo=${encodeURIComponent(motivo)}`;
   }
-
-  // Sanitización de seguridad contra open redirects
-  const esRutaRelativaSegura =
-    rutaActual.startsWith('/') && !rutaActual.startsWith('//') && !rutaActual.includes('://');
-
-  if (
-    !esRutaRelativaSegura ||
-    rutaActual === '/ingresar' ||
-    rutaActual === '/iniciar-sesion' ||
-    rutaActual === '/login'
-  ) {
-    return `${base}?motivo=${encodeURIComponent(motivo)}`;
-  }
-
-  return `${base}?redirigir=${encodeURIComponent(rutaActual)}&motivo=${encodeURIComponent(motivo)}`;
+  return `${base}?redirigir=${encodeURIComponent(ruta)}&motivo=${encodeURIComponent(motivo)}`;
 }
 
 /**
@@ -161,18 +181,8 @@ export function sanitizarRutaRedireccion(
   paramRedirigir: string | null | undefined,
   fallback = '/bandeja',
 ): string {
-  if (!paramRedirigir) return fallback;
-
-  const ruta = paramRedirigir.trim();
-  const esSegura =
-    ruta.startsWith('/') &&
-    !ruta.startsWith('//') &&
-    !ruta.includes('://') &&
-    ruta !== '/ingresar' &&
-    ruta !== '/iniciar-sesion' &&
-    ruta !== '/login';
-
-  return esSegura ? ruta : fallback;
+  const ruta = rutaInternaSegura(paramRedirigir);
+  return ruta && !esRutaDeAcceso(ruta) ? ruta : fallback;
 }
 
 /**

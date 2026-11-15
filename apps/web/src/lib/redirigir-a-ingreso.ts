@@ -4,6 +4,9 @@
  */
 export const RUTA_INGRESO = '/ingresar';
 
+/** Única lista de rutas de acceso: la canónica y sus alias. Públicas y nunca destino tras ingresar. */
+export const RUTAS_DE_ACCESO = [RUTA_INGRESO, '/iniciar-sesion', '/login'] as const;
+
 type Consulta = Record<string, string | string[] | undefined>;
 
 export function destinoIngresoDesdeAlias(consulta: Consulta | undefined): string {
