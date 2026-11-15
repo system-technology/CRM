@@ -148,6 +148,9 @@ export function rutaInternaSegura(ruta: string | null | undefined): string | nul
     return null;
   }
   if (url.origin !== ORIGEN_CENTINELA) return null;
+  // La normalización de segmentos con punto puede producir una ruta relativa al protocolo:
+  // `/.//evil.com` → pathname `//evil.com`, que el navegador lleva a otro dominio.
+  if (url.pathname.startsWith('//')) return null;
   return `${url.pathname}${url.search}${url.hash}`;
 }
 

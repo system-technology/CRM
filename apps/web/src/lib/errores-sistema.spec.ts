@@ -107,6 +107,10 @@ describe('errores-sistema (T-109)', () => {
       ' //evil.com',
       '/%5Cevil.com'.replace('%5C', '\\'),
       'http:evil.com',
+      '/.//evil.com',
+      '/a/..//evil.com',
+      '/%2e//evil.com',
+      '/./\\evil.com',
     ];
 
     it.each(VECTORES_HOSTILES)('nunca sale del origen con %j', (vector) => {
