@@ -74,8 +74,20 @@ function pasajeros(c: Composicion): Pasajero[] {
   return lista;
 }
 
+/**
+ * **Regla del infante (T-190, M9).** Una tarifa sin `tipoPasajero` cubre adultos y niños, **nunca
+ * infantes**: el infante solo se cobra con una tarifa `INF` explícita. Antes una tarifa «para
+ * todos» se aplicaba también al infante, que en la práctica viaja gratis o con tarifa propia, y
+ * se le cobraba como adulto. Si el producto no tiene tarifa `INF`, el infante no paga.
+ *
+ * Es la convención del sector y un invariante de dominio (R12: no se parametriza). Si una agencia
+ * cobra el infante con la tarifa general, la salida es cargar una tarifa `INF` con ese precio, no
+ * un interruptor por tenant; si aparece esa necesidad, se decide con `arquitecto` (ADR-0006).
+ */
 const delTipo = (t: CondicionDeCobro, c: Composicion): Pasajero[] =>
-  pasajeros(c).filter((p) => t.tipoPasajero === null || p.tipo === t.tipoPasajero);
+  pasajeros(c).filter((p) =>
+    t.tipoPasajero === null ? p.tipo !== 'INF' : p.tipo === t.tipoPasajero,
+  );
 
 const exigeEdad = (t: CondicionDeCobro): boolean => t.edadMinima !== null || t.edadMaxima !== null;
 
@@ -122,12 +134,14 @@ export function exigeComposicion(t: CondicionDeCobro): boolean {
 /**
  * **A cuántos de este grupo se les cobra esta tarifa.**
  *
- * Una tarifa sin `tipoPasajero` es para todos; una con `ADT` solo para los adultos. Esta función
+ * Una tarifa sin `tipoPasajero` es para adultos y niños (el infante solo con tarifa `INF`
+ * explícita, T-190); una con `ADT` solo para los adultos. Esta función
  * es la que faltaba: sin ella, la condición decidía si la tarifa estaba disponible pero no a
  * quién se le aplicaba.
  */
 export function pasajerosQueCubre(t: CondicionDeCobro, c: Composicion): number {
-  if (!filtraPasajeros(t)) return totalDePasajeros(c);
+  // Sin ningún filtro la tarifa es «para todos» menos los infantes (ver `delTipo`).
+  if (!filtraPasajeros(t)) return c.adultos + c.ninos;
   // Con un dato que falta, el pasajero cuenta como cubierto: así `condicionNoEvaluable` ve que hay
   // a quién preguntarle y responde con error tipado, en vez de decir «no hay pasajeros».
   return delTipo(t, c).filter((p) => lePasaDato(t, p) || cumple(t, p)).length;
@@ -154,12 +168,16 @@ export function pasajerosSinTarifa(
 ): string[] {
   const porPersona = cobradas.filter((t) => t.unidad === 'POR_PERSONA');
   const sin: string[] = [];
+  // T-190: sin tarifa `INF` entre las cobradas, el infante no paga y no es un «sin tarifa».
+  const hayTarifaInfante = porPersona.some((t) => t.tipoPasajero === 'INF');
   const contador = { ADT: 0, CHD: 0, INF: 0 };
   const nombre = { ADT: 'adulto', CHD: 'niño', INF: 'infante' };
   for (const p of pasajeros(c)) {
     contador[p.tipo] += 1;
+    if (p.tipo === 'INF' && !hayTarifaInfante) continue;
     const cubierto = porPersona.some(
-      (t) => (t.tipoPasajero === null || t.tipoPasajero === p.tipo) && cumple(t, p),
+      (t) =>
+        (t.tipoPasajero === null ? p.tipo !== 'INF' : t.tipoPasajero === p.tipo) && cumple(t, p),
     );
     if (cubierto) continue;
     const edad = p.edad === null ? '' : ` (${p.edad} años)`;

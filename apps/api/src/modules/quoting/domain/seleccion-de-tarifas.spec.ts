@@ -7,6 +7,8 @@ import {
   esSuplemento,
   exigeComposicion,
   motivoNoAplica,
+  pasajerosQueCubre,
+  pasajerosSinTarifa,
   totalDePasajeros,
   vecesQueSeCobra,
 } from './seleccion-de-tarifas.js';
@@ -320,5 +322,46 @@ describe('Con la edad de cada pasajero (T-179)', () => {
   it('un rango de edad sin tipo de pasajero sigue sin poder evaluarse: de los adultos no se pregunta la edad', () => {
     const sinTipo = con({ edadMinima: 2, edadMaxima: 11 });
     expect(condicionNoEvaluable(sinTipo, familia([7]))).toMatch(/no recoge la edad/);
+  });
+});
+
+describe('El infante solo se cobra con una tarifa INF explícita (T-190)', () => {
+  const conInfante: Composicion = { adultos: 2, ninos: 1, infantes: 1 };
+
+  it('una tarifa sin tipo cubre adultos y niños, no al infante', () => {
+    expect(pasajerosQueCubre(base, conInfante)).toBe(3);
+    expect(vecesQueSeCobra(base, conInfante)).toBe(3);
+  });
+
+  it('sin tarifa INF el infante no paga: solo hay líneas para los demás', () => {
+    expect(
+      vecesQueSeCobra(con({ tipoPasajero: 'INF' }), { adultos: 2, ninos: 0, infantes: 0 }),
+    ).toBeNull();
+    // La suma de lo cobrado deja fuera al infante, y eso no es «un pasajero sin tarifa».
+    expect(pasajerosSinTarifa([base], conInfante)).toEqual([]);
+  });
+
+  it('con tarifa INF explícita, el infante se cobra con ella y solo con ella', () => {
+    const inf = con({ tipoPasajero: 'INF' });
+    expect(vecesQueSeCobra(inf, conInfante)).toBe(1);
+    expect(pasajerosQueCubre(base, conInfante) + pasajerosQueCubre(inf, conInfante)).toBe(
+      totalDePasajeros(conInfante),
+    );
+    expect(pasajerosSinTarifa([base, inf], conInfante)).toEqual([]);
+  });
+
+  it('un infante que la tarifa INF no cubre (silla) sí se avisa como sin tarifa', () => {
+    const infConSilla = con({ tipoPasajero: 'INF', ocupaSilla: true });
+    const c: Composicion = { adultos: 1, ninos: 0, infantes: 2, infantesConSilla: 1 };
+    expect(pasajerosSinTarifa([base, infConSilla], c)).toEqual(['infante 2']);
+  });
+
+  it('una promo de pareja sin tipo no cuenta al infante para el múltiplo del grupo', () => {
+    // Antes la base era 3 (2 adultos + infante) y la promo de pareja no aplicaba.
+    expect(vecesQueSeCobra(promoPareja, { adultos: 2, ninos: 0, infantes: 1 })).toBe(1);
+  });
+
+  it('un grupo solo de infantes no activa una tarifa sin tipo', () => {
+    expect(vecesQueSeCobra(base, { adultos: 0, ninos: 0, infantes: 2 })).toBeNull();
   });
 });
