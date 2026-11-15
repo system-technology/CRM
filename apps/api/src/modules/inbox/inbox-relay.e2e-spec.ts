@@ -263,13 +263,31 @@ describe('POST firmado -> trabajador -> mensajes', () => {
     });
 
     const m = await admin.query(
-      `SELECT id, tenant_id, direccion::text, tipo::text, texto, conversacion_id FROM mensajes WHERE wamid = $1`,
+      `SELECT id, tenant_id, direccion::text, tipo::text, conversacion_id,
+              texto_cifrado, texto_nonce, texto_tag, texto_clave_version
+         FROM mensajes WHERE wamid = $1`,
       [wamid],
     );
     expect(m.rows).toHaveLength(1);
     expect(m.rows[0].tenant_id).toBe(TENANT);
     expect(m.rows[0].direccion).toBe('ENTRANTE');
-    expect(m.rows[0].texto).toContain('San Andrés');
+    // ADR-0015: en disco va cifrado (sin el claro); abre con la agencia y la fila dueñas.
+    const crudo = m.rows[0] as {
+      id: string;
+      texto_cifrado: Buffer;
+      texto_nonce: Buffer;
+      texto_tag: Buffer;
+      texto_clave_version: number;
+    };
+    expect(crudo.texto_cifrado.includes(Buffer.from('San Andrés', 'utf8'))).toBe(false);
+    expect(
+      cifradoDePrueba().descifrar('mensajes.texto', TENANT, crudo.id, {
+        cifrado: crudo.texto_cifrado,
+        nonce: crudo.texto_nonce,
+        tag: crudo.texto_tag,
+        claveVersion: crudo.texto_clave_version,
+      }),
+    ).toContain('San Andrés');
 
     const c = await admin.query(
       `SELECT c.tenant_id, c.canal_id, c.mensajes_sin_leer, c.ultimo_mensaje_direccion::text AS dir,

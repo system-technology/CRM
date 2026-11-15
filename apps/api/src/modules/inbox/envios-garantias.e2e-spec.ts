@@ -150,26 +150,32 @@ describe.skipIf(!CORRE)('envíos en modo unico: garantías sobre Postgres, sin R
       eliminado?: boolean;
     } = {},
   ): Promise<string> {
+    // El id va en el AAD del texto cifrado (ADR-0015): se genera antes del INSERT, como en la API.
     const id = randomUUID();
+    const t = cifradoDePrueba().cifrar('mensajes.texto', a.tenant, id, `Garantias ${MARCA}`);
     await admin.query('BEGIN');
     try {
       await admin.query("SELECT set_config('app.current_tenant', $1, true)", [a.tenant]);
       await admin.query(
-        `INSERT INTO mensajes (id, tenant_id, conversacion_id, direccion, tipo, estado, texto, ocurrido_en,
+        `INSERT INTO mensajes (id, tenant_id, conversacion_id, direccion, tipo, estado,
+                               texto_cifrado, texto_nonce, texto_tag, texto_clave_version, ocurrido_en,
                                envio_reservado_en, envio_siguiente_en, envio_intentos, eliminado_en,
                                actualizado_en)
-         VALUES ($1, $2, $3, 'SALIENTE', 'TEXTO', $4::estado_mensaje, $5, now(),
-                 CASE WHEN $6::int IS NULL THEN NULL ELSE now() - ($6::int * interval '1 second') END,
-                 CASE WHEN $7::int IS NULL THEN NULL ELSE now() + ($7::int * interval '1 second') END,
-                 $8::int,
-                 CASE WHEN $9::boolean THEN now() ELSE NULL END,
+         VALUES ($1, $2, $3, 'SALIENTE', 'TEXTO', $4::estado_mensaje, $5, $6, $7, $8, now(),
+                 CASE WHEN $9::int IS NULL THEN NULL ELSE now() - ($9::int * interval '1 second') END,
+                 CASE WHEN $10::int IS NULL THEN NULL ELSE now() + ($10::int * interval '1 second') END,
+                 $11::int,
+                 CASE WHEN $12::boolean THEN now() ELSE NULL END,
                  now())`,
         [
           id,
           a.tenant,
           a.conversacion,
           e.estado ?? 'PENDIENTE',
-          `Garantias ${MARCA}`,
+          t.cifrado,
+          t.nonce,
+          t.tag,
+          t.claveVersion,
           e.reservadoHaceS ?? null,
           e.siguienteEnS ?? null,
           e.intentos ?? 0,
