@@ -73,6 +73,9 @@ export interface RespuestaAgregada {
   conversacionesRespondidas: number;
   promedioMinutos: number | null;
   medianaMinutos: number | null;
+  p90Minutos: number | null;
+  /** Del mismo grupo que `conversacionesNuevas`: las creadas en el rango sin primera respuesta. */
+  sinResponder: number;
 }
 
 /** Lo que `analytics` le pide a `inbox`. */

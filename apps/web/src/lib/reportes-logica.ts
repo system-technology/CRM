@@ -85,6 +85,28 @@ export function formatearTasaConN(valor: number | null, n: number): string {
   return `${formatearPorcentajeReporte(valor)} (n = ${n})`;
 }
 
+/**
+ * «X de Y respondidas (Z %)». Numerador y denominador son del mismo grupo (las conversaciones
+ * creadas en el periodo). Con menos de `N_MINIMO_TASA` conversaciones no se muestra el porcentaje.
+ */
+export function formatearTasaDeRespuesta(
+  respondidas: number,
+  nuevas: number,
+  tasa: number | null,
+): string {
+  if (nuevas <= 0) return TEXTO_SIN_DATOS;
+  const base = `${respondidas} de ${nuevas} respondidas`;
+  if (nuevas < N_MINIMO_TASA || tasa === null) return `${base} (n insuficiente para el porcentaje)`;
+  return `${base} (${formatearPorcentajeReporte(tasa)})`;
+}
+
+/** Un percentil (p90) con pocas respuestas medidas es ruido: bajo el mínimo no se muestra. */
+export function formatearP90(valor: number | null, respondidas: number): string {
+  if (valor === null || respondidas <= 0) return TEXTO_SIN_DATOS;
+  if (respondidas < N_MINIMO_TASA) return `n insuficiente (n = ${respondidas})`;
+  return formatearMinutosReporte(valor);
+}
+
 export function obtenerEtiquetaPeriodo(periodo: RangoPeriodo): string {
   switch (periodo) {
     case 'ultimos_30_dias':
@@ -227,6 +249,12 @@ export interface VistaReporteResumen {
     medianaValor: number | null;
     promedioTexto: string;
     promedioValor: number | null;
+    p90Texto: string;
+    p90Valor: number | null;
+    sinResponder: number;
+    tasaRespuestaValor: number | null;
+    /** «X de Y respondidas (Z %)»; sin porcentaje bajo `N_MINIMO_TASA`. */
+    tasaRespuestaTexto: string;
     cohorteTexto: string;
   };
 }
@@ -273,6 +301,13 @@ export function transformarResumenReporte(
   const cotizacionesEnviadasTexto =
     resumen.cotizaciones.enviadas === 1 ? '1 enviada' : `${resumen.cotizaciones.enviadas} enviadas`;
 
+  const { conversacionesNuevas, conversacionesRespondidas } = resumen.respuesta;
+  const tasaRespuesta =
+    resumen.respuesta.tasaRespuesta ??
+    (conversacionesNuevas > 0
+      ? Math.round((conversacionesRespondidas / conversacionesNuevas) * 1000) / 10
+      : null);
+
   return {
     periodo: resumen.periodo,
     filasVentas,
@@ -316,7 +351,28 @@ export function transformarResumenReporte(
       medianaValor: resumen.respuesta.medianaMinutos,
       promedioTexto: formatearMinutosReporte(resumen.respuesta.promedioMinutos),
       promedioValor: resumen.respuesta.promedioMinutos,
-      cohorteTexto: `${resumen.respuesta.conversacionesRespondidas} de ${resumen.respuesta.conversacionesNuevas} conversaciones nuevas respondidas en el periodo`,
+      p90Texto: formatearP90(
+        resumen.respuesta.p90Minutos ?? null,
+        resumen.respuesta.conversacionesRespondidas,
+      ),
+      p90Valor: resumen.respuesta.p90Minutos ?? null,
+      sinResponder:
+        resumen.respuesta.sinResponder ??
+        Math.max(
+          0,
+          resumen.respuesta.conversacionesNuevas - resumen.respuesta.conversacionesRespondidas,
+        ),
+      tasaRespuestaValor: tasaRespuesta,
+      tasaRespuestaTexto: formatearTasaDeRespuesta(
+        resumen.respuesta.conversacionesRespondidas,
+        resumen.respuesta.conversacionesNuevas,
+        tasaRespuesta,
+      ),
+      cohorteTexto: formatearTasaDeRespuesta(
+        resumen.respuesta.conversacionesRespondidas,
+        resumen.respuesta.conversacionesNuevas,
+        tasaRespuesta,
+      ),
     },
   };
 }

@@ -27,8 +27,10 @@
  *     `cotizaciones.aceptadasSinFecha` (las enviadas en el rango);
  *   · oportunidades: las CREADAS en el rango, clasificadas por su etapa de hoy.
  *     `tasaConversion` es ganadas / (ganadas + perdidas), `null` si ninguna se cerró.
- *   · respuesta: conversaciones cuya primera respuesta cae en el rango, medida desde el primer
- *     mensaje entrante del viajero.
+ *   · respuesta: las conversaciones CREADAS en el rango (excluidas las que abrió el asesor, sin
+ *     mensaje entrante previo). Numerador, denominador, mediana y p90 salen de ese mismo grupo:
+ *     `conversacionesRespondidas` + `sinResponder` = `conversacionesNuevas`, y el tiempo se mide
+ *     desde el primer mensaje entrante del viajero hasta la primera respuesta.
  * Las tasas y promedios son `null` (no 0) cuando no hay base para calcularlos.
  */
 
@@ -114,6 +116,12 @@ export const ResumenDeRespuesta = z.object({
   /** Minutos con un decimal; `null` si ninguna conversación tiene una respuesta medible. */
   promedioMinutos: z.number().min(0).nullable(),
   medianaMinutos: z.number().min(0).nullable(),
+  /** Percentil 90 del tiempo de primera respuesta del mismo grupo. Opcional: API anterior. */
+  p90Minutos: z.number().min(0).nullable().optional(),
+  /** Del grupo de `conversacionesNuevas`, las que aún no tienen respuesta. Opcional. */
+  sinResponder: z.number().int().min(0).optional(),
+  /** respondidas / nuevas, en porcentaje con un decimal; `null` sin conversaciones. Opcional. */
+  tasaRespuesta: z.number().min(0).max(100).nullable().optional(),
 });
 export type ResumenDeRespuesta = z.infer<typeof ResumenDeRespuesta>;
 

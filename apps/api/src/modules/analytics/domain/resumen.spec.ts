@@ -27,6 +27,8 @@ const vacia: RespuestaAgregada = {
   conversacionesRespondidas: 0,
   promedioMinutos: null,
   medianaMinutos: null,
+  p90Minutos: null,
+  sinResponder: 0,
 };
 
 const sinCotizaciones: CotizacionesAgregadas = {
@@ -134,6 +136,48 @@ describe('armarResumen', () => {
       porEtapa: [],
     });
     expect(r.respuesta.promedioMinutos).toBeNull();
+    expect(r.respuesta.p90Minutos).toBeNull();
+    expect(r.respuesta.tasaRespuesta).toBeNull();
+    expect(r.respuesta.sinResponder).toBe(0);
+  });
+
+  it('respuesta: tasa = respondidas / nuevas, del mismo grupo; respondidas + sinResponder = nuevas', () => {
+    const r = armarResumen({
+      rango,
+      cotizaciones: sinCotizaciones,
+      etapas: [],
+      respuesta: {
+        conversacionesNuevas: 8,
+        conversacionesRespondidas: 6,
+        promedioMinutos: 12.5,
+        medianaMinutos: 9,
+        p90Minutos: 30.2,
+        sinResponder: 2,
+      },
+    });
+    expect(r.respuesta).toEqual({
+      conversacionesNuevas: 8,
+      conversacionesRespondidas: 6,
+      promedioMinutos: 12.5,
+      medianaMinutos: 9,
+      p90Minutos: 30.2,
+      sinResponder: 2,
+      tasaRespuesta: 75,
+    });
+    expect(r.respuesta.conversacionesRespondidas + (r.respuesta.sinResponder ?? 0)).toBe(
+      r.respuesta.conversacionesNuevas,
+    );
+  });
+
+  it('respuesta: con nuevas pero ninguna respondida, la tasa es 0 y los tiempos null', () => {
+    const r = armarResumen({
+      rango,
+      cotizaciones: sinCotizaciones,
+      etapas: [],
+      respuesta: { ...vacia, conversacionesNuevas: 3, sinResponder: 3 },
+    });
+    expect(r.respuesta.tasaRespuesta).toBe(0);
+    expect(r.respuesta.medianaMinutos).toBeNull();
   });
 
   it('no mezcla monedas: una fila por moneda, en el orden recibido', () => {

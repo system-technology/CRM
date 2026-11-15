@@ -4448,7 +4448,7 @@ tasks:
     phase: 1
     priority: P2
     effort: M
-    status: ready
+    status: in_progress
     depends_on: []
     acceptance:
       - "Numerador y denominador salen del mismo grupo de conversaciones"

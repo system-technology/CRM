@@ -400,7 +400,11 @@ function ReportesListo({
           <span className={etiquetaClase}>Primera respuesta (mediana)</span>
           <div className={cifraGrandeClase}>{vista.respuesta.medianaTexto}</div>
           <div className={pieClase}>
-            Promedio: {vista.respuesta.promedioTexto} · {vista.respuesta.cohorteTexto}
+            {vista.respuesta.tasaRespuestaTexto} · de las conversaciones creadas en el periodo
+          </div>
+          <div className={pieClase}>
+            p90: {vista.respuesta.p90Texto} · Promedio: {vista.respuesta.promedioTexto}
+            {vista.respuesta.sinResponder > 0 && ` · ${vista.respuesta.sinResponder} sin responder`}
           </div>
         </div>
       </section>

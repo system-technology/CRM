@@ -61,6 +61,8 @@ class RespuestaFalsa extends PuertoRespuestaParaReportes {
       conversacionesRespondidas: 0,
       promedioMinutos: null,
       medianaMinutos: null,
+      p90Minutos: null,
+      sinResponder: 0,
     });
   }
 }

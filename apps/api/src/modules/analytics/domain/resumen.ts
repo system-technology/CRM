@@ -106,6 +106,12 @@ export function armarResumen(entrada: {
       conversacionesRespondidas: respuesta.conversacionesRespondidas,
       promedioMinutos: respuesta.promedioMinutos,
       medianaMinutos: respuesta.medianaMinutos,
+      p90Minutos: respuesta.p90Minutos,
+      sinResponder: respuesta.sinResponder,
+      tasaRespuesta: porcentaje(
+        respuesta.conversacionesRespondidas,
+        respuesta.conversacionesNuevas,
+      ),
     },
   };
 }

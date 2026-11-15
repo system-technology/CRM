@@ -393,6 +393,9 @@ describe('GET /api/v1/reportes/resumen', () => {
       conversacionesRespondidas: 1,
       promedioMinutos: 10,
       medianaMinutos: 10,
+      p90Minutos: 10,
+      sinResponder: 0,
+      tasaRespuesta: 100,
     });
   });
 
@@ -451,6 +454,9 @@ describe('GET /api/v1/reportes/resumen', () => {
       conversacionesRespondidas: 0,
       promedioMinutos: null,
       medianaMinutos: null,
+      p90Minutos: null,
+      sinResponder: 0,
+      tasaRespuesta: null,
     });
     // Nada de A en el texto: ni su etapa ni su venta.
     expect(r.texto).not.toContain('2400000');

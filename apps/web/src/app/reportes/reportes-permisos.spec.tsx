@@ -238,7 +238,7 @@ describe('ReportesPage - Permisos, dos monedas y GET /api/v1/reportes/resumen (T
     expect(kpiRespuesta.textContent).toContain('8,5 min');
     expect(kpiRespuesta.textContent).toContain('Promedio: 14,2 min');
     expect(kpiRespuesta.textContent).toContain(
-      '8 de 10 conversaciones nuevas respondidas en el periodo',
+      '8 de 10 respondidas (n insuficiente para el porcentaje)',
     );
 
     const kpiCotizaciones = screen.getByTestId('kpi-cotizaciones');
