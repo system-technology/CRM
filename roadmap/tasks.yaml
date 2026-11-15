@@ -5383,7 +5383,8 @@ tasks:
     phase: 1
     priority: P2
     effort: S
-    status: ready
+    status: in_progress
+    notes: "Endpoint y contrato en este PR (permiso usuarios.administrar); quedan Z5 con NULL y los comentarios de policies/002"
     depends_on: []
     acceptance:
       - "El endpoint exige permiso de dueno o administrador (la funcion no comprueba RBAC; solo viajapro_app la ejecuta)"

@@ -1,7 +1,8 @@
 /**
  * `GET /api/v1/agencia/ajustes` contra PostgreSQL con RLS: dos agencias, cada una lee solo la suya
- * (zona horaria, moneda y país propios). El PATCH no existe todavía: `viajapro_app` solo tiene
- * SELECT sobre `tenants`. El 403 por permisos no aplica a este GET (cualquier miembro lo lee).
+ * (zona horaria, moneda y país propios). El PATCH cambia la zona por la función SECURITY DEFINER
+ * (ADR-0027) y no toca a la otra agencia. El 403 sin `usuarios.administrar` no se puede probar por
+ * HTTP (el atajo de desarrollo concede todos los permisos): lo fija `agencia-ajustes.controller.spec.ts`.
  */
 import 'reflect-metadata';
 
@@ -28,6 +29,17 @@ let adminPg: Client;
 const leer = (tenantId: string) =>
   fetch(new URL('/api/v1/agencia/ajustes', base), {
     headers: { 'x-dev-tenant-id': tenantId, 'x-dev-usuario-id': USUARIO },
+  });
+
+const cambiar = (tenantId: string, cuerpo: unknown) =>
+  fetch(new URL('/api/v1/agencia/ajustes', base), {
+    method: 'PATCH',
+    headers: {
+      'content-type': 'application/json',
+      'x-dev-tenant-id': tenantId,
+      'x-dev-usuario-id': USUARIO,
+    },
+    body: JSON.stringify(cuerpo),
   });
 
 beforeAll(async () => {
@@ -98,5 +110,43 @@ describe('GET /api/v1/agencia/ajustes', () => {
   it('sin agencia en el contexto no responde 200', async () => {
     const r = await fetch(new URL('/api/v1/agencia/ajustes', base));
     expect(r.status).not.toBe(200);
+  });
+});
+
+describe('PATCH /api/v1/agencia/ajustes', () => {
+  it('cambia la zona de la agencia A y no toca a la B', async () => {
+    const r = await cambiar(TENANT_A, { zonaHoraria: 'America/Lima' });
+    expect(r.status).toBe(200);
+    expect(AjustesDeAgencia.parse(await r.json())).toMatchObject({
+      nombre: 'Agencia A',
+      zonaHoraria: 'America/Lima',
+    });
+    const a = AjustesDeAgencia.parse(await (await leer(TENANT_A)).json());
+    expect(a.zonaHoraria).toBe('America/Lima');
+    const b = AjustesDeAgencia.parse(await (await leer(TENANT_B)).json());
+    expect(b.zonaHoraria).toBe('America/Mexico_City');
+  });
+
+  it('zona inexistente: 422 ZONA_HORARIA_INVALIDA y la zona no cambia', async () => {
+    // Estado propio: no depender del orden de las pruebas.
+    expect((await cambiar(TENANT_A, { zonaHoraria: 'America/Lima' })).status).toBe(200);
+    const r = await cambiar(TENANT_A, { zonaHoraria: 'Marte/Olympus_Mons' });
+    expect(r.status).toBe(422);
+    expect(await r.json()).toMatchObject({ error: { code: 'ZONA_HORARIA_INVALIDA' } });
+    const a = AjustesDeAgencia.parse(await (await leer(TENANT_A)).json());
+    expect(a.zonaHoraria).toBe('America/Lima');
+  });
+
+  it('un alias que Intl no conoce (posix/) también es 422', async () => {
+    const r = await cambiar(TENANT_A, { zonaHoraria: 'posix/America/Bogota' });
+    expect(r.status).toBe(422);
+  });
+
+  it('cuerpo con campos ajenos o sin espacios válidos: 4xx y B intacta', async () => {
+    const r = await cambiar(TENANT_A, { zonaHoraria: 'America/Lima', tenantId: TENANT_B });
+    expect(r.status).toBeGreaterThanOrEqual(400);
+    expect(r.status).toBeLessThan(500);
+    const b = AjustesDeAgencia.parse(await (await leer(TENANT_B)).json());
+    expect(b.zonaHoraria).toBe('America/Mexico_City');
   });
 });
