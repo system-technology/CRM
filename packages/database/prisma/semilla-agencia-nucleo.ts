@@ -26,6 +26,7 @@ import {
   NOMBRE_FORMATO_EXCURSION_DE_UN_DIA,
   sembrarEtapas,
   sembrarFormatos,
+  sembrarMotivosDePerdida,
   sembrarRoles,
 } from './siembra-de-tenant.js';
 
@@ -245,6 +246,7 @@ export async function sembrarAgenciaDesdeCatalogo(
       },
     });
     await sembrarEtapas(tx, tenant.id);
+    await sembrarMotivosDePerdida(tx, tenant.id);
     const formatos = await sembrarFormatos(tx, tenant.id);
 
     // La política de la agencia: las mismas cifras por defecto que la demo. `AMBOS` como en
