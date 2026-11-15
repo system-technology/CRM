@@ -1,7 +1,9 @@
 # ADR-0019 — Despliegue mínimo: un solo proceso y la cola sobre Postgres, sin Redis
 
-- **Estado:** Propuesto. **El propietario ya confirmó la dirección** (2026-11-04): un proceso, colas
-  sobre Postgres, sin Redis y el host fiable más barato. Falta aprobar este documento.
+- **Estado:** Aceptado (2026-11-15). Estaba «Propuesto» aunque el código ya está en `main` (PR #211, modo `unico`;
+  PR #220, envíos sobre Postgres). **El propietario confirmó la dirección** (2026-11-04): un proceso, colas
+  sobre Postgres, sin Redis y el host fiable más barato. Lo que **no** está hecho es el despliegue en Fly
+  (pasos 8 a 10 de §7): `render.yaml` sigue con la topología de ADR-0013.
   El punto 3.3 (varios roles en un proceso) toca el aislamiento entre agencias y por eso no se rige
   por la regla de una sola vuelta: pasa por `auditor-seguridad` las veces que haga falta (R13).
 - **Fecha:** 2026-11-04

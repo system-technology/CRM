@@ -2068,7 +2068,7 @@ tasks:
     phase: 1
     priority: P0
     effort: M
-    status: done
+    status: ready
     depends_on: []
     acceptance:
       - Servicio Redis y proceso consumidor activos en el entorno de staging con COLA_CHANGES real
@@ -2081,11 +2081,9 @@ tasks:
     created_at: 2026-10-28T01:47:57.807Z
     blocked_reason: Requiere el despliegue en Render y la cuenta del propietario (M5.1); render.yaml e infra/ son
       rutas protegidas
-    started_at: 2026-11-05T00:22:47.976Z
-    done_at: 2026-11-05T00:22:47.976Z
-    evidence: "Mergeado en main por el PR #195 (rama i/T-079-redis-staging-render) con el CI en verde: format,
-      analyze, tests y los demás checks obligatorios. Cierre automático (.github/workflows/cerrar-tarea.yml)."
-    commit: 098e70cd05042a0c7068d370bddb002cfd580896
+    reopened_at: 2026-11-15T17:00:00.000Z
+    reopened_note: "Reabierta (auditoria 2026-11-15, M22). El PR #195 integro solo el runbook docs/07-ingenieria/runbook-redis-staging.md, que declara no desplegar nada: no hay servicio Redis ni trabajador activos en staging ni un mensaje de Meta convertido en conversacion alli. Se cierra cuando haya un servicio vivo verificable. ADR-0019 cambia el camino (un proceso sin Redis, desplegado en Fly): al replantearla, decidir si se renombra a 'proceso unico en staging'."
+    prior_evidence: "PR #195 (commit 098e70c, rama i/T-079-redis-staging-render): cierre automatico por el runbook, con el CI en verde."
   - id: T-080
     title: Iniciar la verificación del negocio en Meta y la solicitud de Tech Provider
     type: docs
@@ -4325,7 +4323,7 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: ready
+    status: in_progress
     depends_on: [T-179]
     acceptance:
       - "Los paquetes de la semilla (San Andres, Cartagena, Punta Cana) se cotizan con el cotizador actual"
@@ -4530,7 +4528,7 @@ tasks:
     phase: 2
     priority: P2
     effort: M
-    status: ready
+    status: in_progress
     depends_on: []
     acceptance:
       - "ADR sobre comision frente a margen"
@@ -4564,7 +4562,7 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: ready
+    status: in_progress
     depends_on: []
     acceptance:
       - "dev:nube arranca el trabajador"
@@ -4629,7 +4627,7 @@ tasks:
     phase: 1
     priority: P2
     effort: S
-    status: ready
+    status: in_progress
     depends_on: []
     acceptance:
       - "La web consume VentanaServicio de la API en vez de recalcularla"
@@ -4644,7 +4642,7 @@ tasks:
     phase: 1
     priority: P2
     effort: S
-    status: ready
+    status: in_progress
     depends_on: []
     acceptance:
       - "Variable EXIGIR en el paso de pruebas: si falta REDIS_URL o DATABASE_URL, fallan"
@@ -4674,7 +4672,7 @@ tasks:
     phase: 1
     priority: P3
     effort: S
-    status: ready
+    status: in_progress
     depends_on: []
     acceptance:
       - "Las aserciones toBeDefined/toBeTruthy que no fallan ante una mutacion se sustituyen"
@@ -4689,7 +4687,7 @@ tasks:
     phase: 1
     priority: P3
     effort: S
-    status: ready
+    status: in_progress
     depends_on: []
     acceptance:
       - "Si un PATCH falla, el mensaje dice que etapas se guardaron"
@@ -4723,7 +4721,7 @@ tasks:
     phase: 1
     priority: P1
     effort: S
-    status: ready
+    status: in_progress
     depends_on: []
     acceptance:
       - "Sin secretos el job falla o publica un estado 'omitido' visible"
@@ -4738,7 +4736,7 @@ tasks:
     phase: 2
     priority: P1
     effort: M
-    status: ready
+    status: in_progress
     depends_on: []
     acceptance:
       - "RPO y RTO escritos"
@@ -4755,7 +4753,7 @@ tasks:
     phase: 1
     priority: P2
     effort: S
-    status: ready
+    status: in_progress
     depends_on: []
     acceptance:
       - "pnpm audit --prod con umbral alto y Trivy sobre la imagen construida"
@@ -4770,7 +4768,7 @@ tasks:
     phase: 1
     priority: P2
     effort: S
-    status: ready
+    status: in_progress
     depends_on: []
     acceptance:
       - "ownership, cerrar-tarea y mantener-ramas con SHA"
@@ -4788,7 +4786,7 @@ tasks:
     phase: 1
     priority: P2
     effort: S
-    status: ready
+    status: in_progress
     depends_on: []
     acceptance:
       - "Devcontainer y docker-compose con version fijada igual que el Dockerfile"
@@ -4819,7 +4817,7 @@ tasks:
     phase: 2
     priority: P2
     effort: S
-    status: ready
+    status: in_progress
     depends_on: []
     acceptance:
       - "Tabla de costo fijo por servicio y formula por tenant activo, con costo de IA"
@@ -4834,7 +4832,7 @@ tasks:
     phase: 2
     priority: P3
     effort: S
-    status: ready
+    status: in_progress
     depends_on: []
     acceptance:
       - "Procedimiento para BETTER_AUTH_SECRET, META_APP_SECRET y ENCRYPTION_MASTER_KEY"
@@ -4868,7 +4866,7 @@ tasks:
     phase: 2
     priority: P2
     effort: L
-    status: ready
+    status: in_progress
     depends_on: []
     acceptance:
       - "Historia y ADR del contexto booking"
@@ -4902,7 +4900,7 @@ tasks:
     phase: 1
     priority: P1
     effort: S
-    status: ready
+    status: in_progress
     depends_on: []
     acceptance:
       - "ESTADO.md refleja #191, #200, #211, #220, margen real y rutas existentes"
@@ -4940,7 +4938,7 @@ tasks:
     phase: 1
     priority: P2
     effort: S
-    status: ready
+    status: in_progress
     depends_on: [T-179]
     acceptance:
       - "versiones_cotizacion conserva edades y silla de infantes (migracion nueva)"
@@ -4957,7 +4955,7 @@ tasks:
     phase: 1
     priority: P1
     effort: S
-    status: ready
+    status: in_progress
     depends_on: []
     acceptance:
       - "Neto COP 1.000.100, markup 0,01 % y redondeoVenta 1000: la venta no queda en 1.000.000 (bajo el neto); se redondea hacia arriba o se rechaza"
@@ -4975,7 +4973,7 @@ tasks:
     phase: 1
     priority: P2
     effort: S
-    status: ready
+    status: in_progress
     depends_on: [T-188]
     acceptance:
       - "El contrato de la cotizacion de salida (o un endpoint de tarifas) expone acomodacionesDisponibles"
@@ -4986,4 +4984,56 @@ tasks:
     source: entrega de T-188, 2026-11-15
     created_at: 2026-11-15T16:45:00.000Z
     owner: frontend
+  - id: T-220
+    title: "Seguridad: actualizar next >= 15.5.28 (RCE critica en el optimizador de imagenes) y dependencias vulnerables"
+    type: security
+    phase: 1
+    priority: P0
+    effort: S
+    status: ready
+    depends_on: []
+    acceptance:
+      - "pnpm audit --prod --audit-level=high sin criticas: next >= 15.5.28, multer >= 2.5.0, body-parser >= 1.20.9, postcss parcheado"
+      - "Revisar vitest/tinypool/happy-dom/vite que llegan por better-auth y zod v3 en apps/api"
+      - "Cuando quede limpio, quitar continue-on-error del job auditoria-dependencias (T-206)"
+    files:
+      - apps/web/package.json
+      - apps/api/package.json
+      - pnpm-lock.yaml
+    source: job auditoria-dependencias de T-206, 2026-11-15 (4 criticas, 16 altas)
+    created_at: 2026-11-15T17:00:00.000Z
+    owner: devops
+  - id: T-221
+    title: "Web: re-cotizar desde una version reenvia las edades (composicionDesdeVersion)"
+    type: bug
+    phase: 1
+    priority: P1
+    effort: S
+    status: ready
+    depends_on: [T-217]
+    acceptance:
+      - "duplicarVersionComoComposicion en apps/web/src/lib/cotizaciones-logica.ts usa composicionDesdeVersion; re-cotizar una version con nino no da 422"
+    files:
+      - apps/web/src/lib/cotizaciones-logica.ts
+    source: entrega de T-217, 2026-11-15
+    created_at: 2026-11-15T17:00:00.000Z
+    owner: frontend
+  - id: T-222
+    title: "Catalogo: retirar los lectores de Temporada/Precio (paso 2 del ADR-0025)"
+    type: refactor
+    phase: 1
+    priority: P2
+    effort: M
+    status: ready
+    depends_on: [T-180]
+    acceptance:
+      - "El detalle de paquete y la ficha web muestran vigencias y tarifas, no temporadas"
+      - "Ningun lector de Temporada/Precio en apps/ ni packages/contracts; luego migracion DROP segun ADR-0025"
+    files:
+      - apps/api/src/modules/quoting/application/listar-paquetes.use-case.ts
+      - packages/contracts/src/catalogo.ts
+      - apps/web/src/components/catalogo
+    source: entrega de T-180, 2026-11-15
+    created_at: 2026-11-15T17:00:00.000Z
+    owner: backend
 

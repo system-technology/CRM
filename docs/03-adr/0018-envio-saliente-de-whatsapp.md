@@ -1,6 +1,6 @@
 # ADR-0018 — Envío saliente de WhatsApp: cola, idempotencia y origen de la credencial
 
-- **Estado:** Propuesto
+- **Estado:** Aceptado (2026-11-15). Estaba «Propuesto» aunque ya está implementado en `main`: puerto `PuertoEnvioWhatsapp`, adaptador `envio-whatsapp.graph.ts`, cola y reserva de envío (`cola-de-envios.*.ts`, `reserva-de-envio.postgres.ts`). El cierre de `auditor-seguridad` sobre credenciales sigue pendiente y no cambia la decisión.
 - **Fecha:** 2026-10-26
 - **Decide:** Propietario del producto
 - **Consultados:** `whatsapp` (redacta). Pendientes: `arquitecto`, `auditor-seguridad` (toca

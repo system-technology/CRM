@@ -10,107 +10,130 @@
 
 | Campo | Valor |
 |---|---|
-| Última actualización | 2026-11-04 |
-| Actualizado por | `documentador` (auditoría de veracidad) |
-| Fase | **Fase 1 del backlog: «Un CRM mostrable y endurecido»** (M1 del [roadmap v2](docs/08-roadmap/01-roadmap.md)). Sin agencia real todavía |
-| Avance | 86 tareas `done` en `roadmap/tasks.yaml`. «Done» significa integrada en `main`, **no** probada de punta a punta con la web: ver §1 y la [matriz](docs/_bitacora/2026-11-04-auditoria-de-veracidad.md) |
-| Próximo hito | Correr la jornada completa **en local** (Redis, trabajador, túnel, web contra API real) antes de pagar hosting |
+| Última actualización | 2026-11-15 |
+| Actualizado por | `documentador` (T-215: hilo al día con `main` y con el PR #256) |
+| Fase | **Fase 1 del backlog: «Un CRM mostrable y endurecido»** (M1 del [roadmap v2](docs/08-roadmap/01-roadmap.md)). Sin agencia real todavía. Prioridad vigente: cerrar H1–H6 y la demo a JD Tours ([`MARCO.md`](docs/_contexto/MARCO.md) §6) |
+| Avance | 93 tareas `done` en `roadmap/tasks.yaml` (`main` tenía 94; se reabrió T-079, cuyo runbook no es un despliegue vivo). El PR #256 no cierra ninguna: las deja `in_progress`. «Done» significa integrada en `main`, **no** probada de punta a punta con la web |
+| Próximo hito | Integrar el PR #256 y correr el flujo H1–H6 en navegador contra la API real (T-126, en curso) |
 
 ---
 
 ## 1. Dónde estamos
 
-Auditado el 2026-11-04 sobre `origin/main` (`98c2a08`). Detalle y evidencia por capacidad:
-[`docs/_bitacora/2026-11-04-auditoria-de-veracidad.md`](docs/_bitacora/2026-11-04-auditoria-de-veracidad.md).
+Verificado el 2026-11-15 sobre `origin/main` (`762fb42`) y la rama `claude/repository-status-d4ug6p`
+(23 commits por delante). Fuente: [auditoría integral 2026-11-15](docs/_auditorias/2026-11-15-auditoria-integral.md)
+y [plan de corrección](docs/08-roadmap/02-plan-correccion-auditoria-2026-11-15.md). La matriz anterior
+(2026-11-04) describía otro repositorio: presentaba como diseño lo que ya estaba integrado.
 
-**Veredicto: no hay hoy un flujo completo usable por una agencia. Seguimos en local.** Cada pieza del
-backend tiene pruebas e2e en CI, pero la web nunca se prueba contra la API, WhatsApp no se ha probado
-entrando y saliendo contra Meta real, y con `.env.example` la web arranca en maqueta.
+**Veredicto: sigue sin haber un flujo completo verificado en navegador por una agencia. Seguimos en
+local.** El backend tiene pruebas e2e en CI; la web nunca se prueba contra la API (sin Playwright);
+WhatsApp no se ha probado entrando y saliendo contra Meta real.
 
-### Es real (backend en `main`, probado en CI contra Postgres 16 y Redis 7)
+### Es real (en `main`)
 
-El job `test` ejecuta 121 archivos y 965 pruebas; `aislamiento-tenants` prueba RLS. Última corrida de `main`
-(run 41942116518): 9 jobs en verde. Ninguna prueba abre un navegador.
+`main` tiene 309 archivos de prueba (147 API, 138 web, 9 contracts, 8 database, 7 domain) y 32
+migraciones. La rama los sube a 325. **No se ejecutaron en esta sesión**; la última cifra de pruebas
+medida es la de la auditoría (1325 en la API) y no se repite como actual. Ninguna prueba abre un
+navegador.
 
 | Qué | Evidencia |
 |---|---|
 | Aislamiento entre agencias (RLS, cuatro roles, arranque que aborta con rol equivocado) | Job `aislamiento-tenants`, `arranque-seguro.e2e-spec.ts` |
-| `main` protegida: PR, 8 checks, rama al día, administradores incluidos | `.github/proteccion-main.json` |
-| Identidad: sesión, OTP, invitaciones, baja de miembros | `identity.e2e-spec.ts`, `invitaciones.e2e-spec.ts` |
-| Catálogo: listar, crear, editar, tarifas, vigencias, historial, importar, ajuste de promoción | `apps/api/src/modules/quoting/*.e2e-spec.ts` |
-| Cotizador: calcular, guardar, versiones, estados; el texto enviado no lleva neto ni margen | `cotizador-punta-a-punta`, `cotizaciones`, `enviar-cotizacion.e2e-spec.ts` |
-| Bandeja: listar, notas, estado, asignación, visibilidad por asesor, tiempo real (Socket.IO con Redis) | `inbox-visibilidad`, `inbox-tiempo-real(-redis)` |
-| Recepción: webhook firmado → Redis real → consumidor → mensaje (payload cifrado) | `inbox-webhook`, `inbox-bullmq.e2e-spec.ts` |
-| CRM: contactos, oportunidades, pipeline, seguimientos con fecha, consentimiento | `crm.e2e-spec.ts`, `contactos-y-seguimientos.e2e-spec.ts` |
-| Envío de texto y de cotización a WhatsApp: cola, idempotencia, ventana de 24 h | `enviar-cotizacion.e2e-spec.ts` (6); **contra Graph API falsa** |
+| `main` protegida: PR, 8 checks obligatorios, rama al día, administradores incluidos | `.github/proteccion-main.json` |
+| Permisos de mutación exigidos en los controladores (PR #191, integrado) | `apps/api/src/shared/autorizacion/mutaciones-con-permiso.spec.ts`; la única excepción documentada es marcar una conversación como leída |
+| Modo de un solo proceso sin Redis (PR #211) y envíos sobre Postgres (PR #220); ADR-0019 | `apps/api/src/proceso-unico/`, `cola-de-envios.postgres.ts`, `reserva-de-envio.postgres.ts`; [runbook](docs/07-ingenieria/runbook-modo-unico.md) |
+| Envío saliente a WhatsApp: cola, idempotencia, ventana de 24 h; ADR-0018 | `envio-whatsapp.graph.ts`, `enviar-cotizacion.e2e-spec.ts`; **contra Graph API falsa** |
+| Identidad: sesión, OTP, invitaciones, baja de miembros; `GET /identidad/miembros` | `identity.e2e-spec.ts`, `invitaciones.e2e-spec.ts`, `miembros.controller.ts` |
+| Ajustes de la agencia y estado del canal de WhatsApp | `agencia-ajustes.e2e-spec.ts`, `estado-del-canal.e2e-spec.ts` |
+| CRM: contactos, oportunidades, pipeline, etapas configurables (`/crm/etapas`), seguimientos, consentimiento | `crm.e2e-spec.ts`, `etapas.e2e-spec.ts`, `contactos-y-seguimientos.e2e-spec.ts` |
+| Catálogo y cotizador: el texto enviado no lleva neto ni margen | `apps/api/src/modules/quoting/*.e2e-spec.ts`, `enviar-cotizacion.e2e-spec.ts` |
+| Bandeja: listar, notas, estado, asignación, visibilidad por asesor, tiempo real | `inbox-visibilidad`, `inbox-tiempo-real(-redis)` |
+| Recepción: webhook firmado → cola → consumidor → mensaje (payload cifrado) | `inbox-webhook`, `inbox-bullmq.e2e-spec.ts` |
+| Reportes con margen real: sale de la base y lo protege `cotizacion.ver_neto_y_margen` | `analytics/interface`, `reportes.e2e-spec.ts` (ya no son constantes del 20 % y 80 %) |
+| Web contra la API en equipo y etapas | `equipo-api.ts` llama `/identidad/miembros`; `crm-api.ts` llama `/crm/etapas` y propaga el error en vez de simular |
 | Una recepción manual real: botón «Probar» de Meta por túnel, 2026-10-26 | Sin registro en el repo; ver [bitácora](docs/_bitacora/2026-10-26-sincronia-del-hilo.md) |
 
-**No probado:** web contra API (ni en CI ni documentado en navegador desde el 2026-10-27); envío contra
-`graph.facebook.com`; un mensaje desde un celular real; correo con Postmark real; trabajador y Redis en una
-máquina del propietario.
+**No probado:** web contra API (ni en CI ni en navegador documentado); envío contra `graph.facebook.com`;
+un mensaje desde un celular real; correo con Postmark real.
+
+### En el PR #256, sin integrar (rama `claude/repository-status-d4ug6p`)
+
+Estas correcciones de la auditoría están en la rama, **no en `main`**. Su estado en `tasks.yaml` es
+`in_progress` hasta que el PR entre.
+
+| Tarea | Qué corrige | Hallazgo |
+|---|---|---|
+| T-173, T-174 | Error de hidratación en `/ingresar`; `/login` daba 404; redirección abierta en `redirigir` | H-3, H-4 |
+| T-175 | El atajo `x-dev-tenant-id` solo atiende peticiones desde loopback | A1 |
+| T-177, T-178 | Dinero en unidad mínima en la bandeja; sin datos inventados en modo real | A3, A4 |
+| T-179, T-188, T-189, T-216 | Cotizar familias con edad por pasajero; filtrar por acomodación; no sumar monedas distintas; error tipado si un pasajero no tiene tarifa | C1, C2, M8 |
+| T-181 | Totales del pipeline por moneda | A5 |
+| T-182 | El SLA de primera respuesta se activa con mensajes reales | A6 |
+| T-183, T-184, T-187 | Ventas por fecha de aceptación; métricas con n mínimo; primera respuesta sobre un mismo grupo, con p90 | A7, A8, M12 |
+| T-185 | La bandeja muestra los errores de envío y no manda texto libre como plantilla | M1 |
+| T-193 | `pnpm dev` construye `contracts` y `domain` antes de arrancar | A11 |
+| T-195, T-197, T-200 | Pruebas: contratos en e2e, aislamiento HTTP del CRM, bordes de dinero | A14, M4, M7 |
+
+T-176 quedó `dropped` (el permiso de «leída» es una excepción de diseño probada).
 
 ### Es maqueta (la pantalla no habla con la API, o finge)
 
 | Qué | Cómo |
 |---|---|
-| Con `.env.example` tal cual, **toda la web** | Trae `NEXT_PUBLIC_USE_REAL_CRM=false` y `USE_REAL_INBOX=false`; `USE_REAL_AUTH` no está y sin él la sesión es mock |
-| `/configuracion` (SLA, agencia, estado de WhatsApp, plantillas oficiales), `/viajes` | `mock-configuracion.ts`, `mock-viajes.ts`, `mock-plantillas.ts` |
-| Equipo (lista de miembros) | Pide `GET /api/v1/identidad/usuarios`, que no existe; cae a `localStorage` o mock |
-| Etapas del pipeline configurables (T-025) | La web llama `/api/v1/crm/etapas`, que no existe; ante 404 simula el guardado |
+| `/configuracion`: SLA y plantillas oficiales; `/viajes` | `mock-configuracion.ts`, `mock-plantillas.ts`, `mock-viajes.ts`; no hay endpoint de plantillas |
 | Campos personalizados, respuestas rápidas, filtros guardados, onboarding, preferencias de notificación | Solo `localStorage` |
-| Margen y costo neto de `/reportes` | Constantes del 20 % y 80 % de las ventas, no datos |
-| `/catalogo`, `/cotizador`, `/cotizaciones`, `/contactos` | Reales por defecto en código, pero conservan ramas y estado inicial mock (nombres de contacto; teléfono `+573001234567` en el modal de `/cotizaciones`) |
+| `/catalogo`, `/cotizador`, `/cotizaciones`, `/contactos` | Reales por defecto, pero conservan ramas y estado inicial mock |
+| Con `.env.example` | Trae `NEXT_PUBLIC_USE_REAL_CRM`, `USE_REAL_INBOX` y `USE_REAL_AUTH` en `true`; el valor `false` vuelve a la maqueta |
 
-### Es diseño (documentado, no construido o no integrado)
+### Es diseño o está a medias
 
 | Qué | Dónde |
 |---|---|
-| Permisos de mutación en la API: la migración está en `main`; **los controladores no los exigen** | PR #191 abierto. T-089 figura `done` solo por la migración |
-| Despliegue mínimo de un proceso sin Redis (**Propuesto**) | PR #200, ADR-0019 |
-| Cifrado de campos sensibles: ADR aceptado, sin implementar; `mensajes.texto` está en claro | [ADR-0015](docs/03-adr/0015-cifrado-de-campos-sensibles.md), PR #29 abierto |
-| Envío saliente de WhatsApp (**Propuesto**, ya implementado) | [ADR-0018](docs/03-adr/0018-envio-saliente-de-whatsapp.md) |
-| Despliegue en Render: `render.yaml` y [runbook](docs/07-ingenieria/runbook-redis-staging.md) | `Deploy staging` termina en verde con el aviso «Faltan los secretos del Environment staging» |
+| Cifrado de campos sensibles: ADR-0015 aceptado, **sin implementar**; `mensajes.texto` está en claro. El PR #29 abierto es solo de documentación | [ADR-0015](docs/03-adr/0015-cifrado-de-campos-sensibles.md), T-212 |
+| Despliegue en Render: `render.yaml` sigue con la topología de ADR-0013 (web, API, trabajador, Redis); el [runbook](docs/07-ingenieria/runbook-redis-staging.md) no despliega nada. `Deploy staging` termina en verde con el aviso «Faltan los secretos del Environment staging» (A10) | T-079 reabierta |
+| Despliegue de ADR-0019 en Fly: sin ejecutar (pasos 8 a 10 del plan) | [ADR-0019](docs/03-adr/0019-despliegue-minimo-un-proceso-sin-redis.md) §7 |
+| Operación antes del piloto: respaldo, costo y rotación de claves, **escritos como propuesta y sin ensayar** | [`docs/06-operacion/`](docs/06-operacion/): `respaldo-y-restauracion.md`, `costo-por-tenant.md`, `rotacion-de-claves.md` |
 | Políticas de seguridad: borrador sin aprobar | [`docs/05-seguridad/00-indice-de-politicas.md`](docs/05-seguridad/00-indice-de-politicas.md) |
 
 ### Lo que NO existe
 
-- **Ninguna prueba que ejercite la web contra la API** (sin Playwright ni equivalente).
-- **Un servicio desplegado:** no hay URL viva verificable. T-079 está `done` por el runbook.
-- **Redis y trabajador corriendo en la máquina de desarrollo.** El trabajador es `apps/api/src/worker.ts`; `pnpm dev` no lo arranca; `apps/worker` es un README.
+- **Ninguna prueba que ejercite la web contra la API** (sin Playwright ni equivalente; T-196 y vecinas siguen en la cola).
+- **Un servicio desplegado:** no hay URL viva verificable.
+- **Redis y trabajador corriendo en la máquina del propietario.** El trabajador es `apps/api/src/worker.ts`; `apps/worker` es un README. Con `MODO_DESPLIEGUE=unico` no hacen falta.
 - **Un mensaje de celular real visto en la bandeja, ni una respuesta recibida en el celular.**
 - **Plantilla de reapertura** fuera de la ventana de 24 h (T-078), **verificación del negocio en Meta** (T-080), Tech Provider.
-- **Derechos del titular** (exportar y suprimir datos, T-097), aviso de privacidad aprobado (T-093), RNBD (T-098).
-- **API pública por claves e ingesta con IA** del catálogo (T-053 a T-058); **pagos**, **automatizaciones**, archivos de viaje reales.
+- **Derechos del titular** (T-097), aviso de privacidad aprobado (T-093), RNBD (T-098).
+- **API pública por claves e ingesta con IA** del catálogo (T-053 a T-058); **pagos**, **automatizaciones**, archivos de viaje reales; continuación tras `ACEPTADA` (A17).
 - Una agencia real con datos reales (criterio C1–C5 del roadmap v2).
 
-## 2. Cómo se trabaja desde el 2026-10-26
+## 2. Cómo se trabaja
 
-- **El ciclo autónomo de OpenCode (ADR-0016) se montó, entregó 3 PRs de backend (#21, #23, #25) y se detuvo por decisión del propietario:** la cuota de OpenCode Go se agotó y los ciclos eran lentos. La infraestructura (`scripts/ciclo*.mjs`, GitHub Apps, `roadmap/tasks.yaml`, cierre automático de tareas) sigue en el repo; **nadie la ejecuta hoy**. Para reanudarla: [`docs/09-ia/07-ciclo-autonomo.md`](docs/09-ia/07-ciclo-autonomo.md).
-- **Quién escribe código ahora:** los agentes de este repositorio (Claude) en backend, datos, infraestructura y documentación; **Antigravity** en frontend.
-- **Cómo entra algo en `main`:** solo por PR con los 8 checks en verde y la rama al día, por auto-merge o por el `integrador`. Las rutas protegidas (migraciones, RLS, cifrado, `render.yaml`, `infra/`, `.github/`, `scripts/`, dependencias, `CLAUDE.md`, `AGENTS.md`, ADR) esperan la aprobación del propietario vía CODEOWNERS. Ver [`docs/07-ingenieria/03-git.md`](docs/07-ingenieria/03-git.md).
+- **El ciclo autónomo de OpenCode (ADR-0016) está detenido** por decisión del propietario desde 2026-10-26 (cuota agotada, ciclos lentos). La infraestructura (`scripts/ciclo*.mjs`, GitHub Apps, `roadmap/tasks.yaml`, cierre automático de tareas) sigue en el repo; **nadie la ejecuta hoy**. Para reanudarla: [`docs/09-ia/07-ciclo-autonomo.md`](docs/09-ia/07-ciclo-autonomo.md).
+- **Quién escribe código ahora:** los agentes de este repositorio (Claude), en todos los carriles. **Antigravity no está habilitado** (decisión del propietario, 2026-11-05): un agente `frontend` de Claude hace el carril `b/`.
+- **Cómo entra algo en `main`:** solo por PR con los 8 checks obligatorios en verde y la rama al día, por auto-merge o por el `integrador`. Las rutas protegidas (migraciones, RLS, cifrado, `render.yaml`, `infra/`, `.github/`, `scripts/`, dependencias, `CLAUDE.md`, `AGENTS.md`, ADR) esperan la aprobación del propietario vía CODEOWNERS. Ver [`docs/07-ingenieria/03-git.md`](docs/07-ingenieria/03-git.md).
+- **Carriles:** `a/` backend y datos, `b/` frontend, `i/` documentación e integración; un PR no los mezcla ([`MARCO.md`](docs/_contexto/MARCO.md) §5).
 
 ### Quién trabaja en qué
 
 | Carril | Quién | En qué |
 |---|---|---|
-| Frontend (`apps/web`, `packages/ui`, `packages/sdk`) | Antigravity | Cola de `roadmap/tasks.yaml` (ramas `b/`; pendientes T-118 y T-119). Prompt: [`docs/09-ia/08-prompt-antigravity.md`](docs/09-ia/08-prompt-antigravity.md). Skill: `.agent/skills/ux-crm-turismo`. Ramas `b/T-0NN-…` |
-| Backend (`apps/api`) | Agentes de Claude (`backend`, `whatsapp`) | Permisos en controladores (PR #191, abierto) |
-| Datos | Agentes de Claude (`datos`) | Migraciones al día en `main` (30) |
-| Integración y documentación | `integrador`, `documentador` | Hilo, ADR, bitácora |
-| Producto y estrategia | `jefe-de-producto`, `dueno-de-producto` | Roadmap v3 integrado; ADR-0019 propuesto (PR #200) |
+| Frontend (`apps/web`, `packages/ui`, `packages/sdk`) | Agente `frontend` (Claude) | Campaña funcional H1–H6 (T-126), lotes del PR #256 |
+| Backend (`apps/api`) | Agentes `backend`, `whatsapp` | Cotizador, reportes, SLA (PR #256); cifrado de PII (T-212) en cola |
+| Datos | Agente `datos` | 32 migraciones en `main`; función de zona horaria (PR #234, abierto) |
+| Integración y documentación | `integrador`, `documentador` | Hilo, ADR, bitácora, `docs/06-operacion/` |
+| Producto y estrategia | `jefe-de-producto`, `dueno-de-producto` | Roadmap v3; demo a JD Tours |
 | Ciclo OpenCode | **Detenido** | Ver arriba |
 
 ## 3. Bloqueos reales
 
 | Bloqueo | Qué impide | Dueño |
 |---|---|---|
-| Sin Redis ni trabajador en la máquina del propietario (no hay Docker) | No se puede ver un mensaje convertirse en conversación ni enviar una respuesta | Propietario, `devops` |
+| PR #256 sin integrar | Las correcciones de la auditoría (seguridad del atajo de desarrollo, dinero, cotizador de familias) no están en `main` | `integrador`, propietario (rutas protegidas) |
 | Sin prueba web↔API | Nada permite afirmar que una pantalla funciona con la API real | `qa`, `frontend` |
-| Endpoints que la web llama y no existen: `identidad/usuarios`, `crm/etapas`, estado del canal, plantillas | Equipo, etapas y Configuración siguen en maqueta | `backend` |
-| PR #191 (permisos en controladores) abierto | Cualquier miembro puede escribir en bandeja, CRM y cotizaciones | `backend` |
-| Sin secretos del entorno `staging` ni servicio en Render | No hay nada que enseñar fuera de local | Propietario |
+| Sin Redis ni trabajador en la máquina del propietario (no hay Docker) | Con `unico` no hace falta Redis; falta el recorrido real en Codespaces | Propietario, `devops` |
+| Sin secretos del entorno `staging` ni servicio en Render o Fly | No hay nada que enseñar fuera de local | Propietario |
 | Verificación del negocio en Meta / Tech Provider sin iniciar (T-080) | Solo número de prueba; no hay lanzamiento | Propietario |
-| PR #29 (cifrado) abierto; ADR-0018 sin cierre de `auditor-seguridad` | Texto de mensajes en claro | `backend`, `datos`, `auditor-seguridad` |
+| Cifrado de PII sin implementar (T-212, A2) | Texto de mensajes en claro; bloquea datos reales | `backend`, `datos`, `auditor-seguridad` |
 | Tarifario real de la agencia piloto | El catálogo sigue con datos verosímiles | Propietario / agencia |
 
 ## 4. Decisiones vigentes
@@ -124,6 +147,8 @@ máquina del propietario.
 | Cifrado de campos sensibles (sustituye al 0014) | ADR-0015 |
 | Ciclo con protección de servidor (R11 reformulada) | ADR-0016 |
 | Catálogo gestionable por la agencia | ADR-0017 (Aceptado) |
+| Envío saliente de WhatsApp: puerto, cola, idempotencia, credencial | [ADR-0018](docs/03-adr/0018-envio-saliente-de-whatsapp.md) (Aceptado 2026-11-15) |
+| Despliegue mínimo: un proceso y la cola sobre Postgres, sin Redis | [ADR-0019](docs/03-adr/0019-despliegue-minimo-un-proceso-sin-redis.md) (Aceptado 2026-11-15) |
 | Mercado base Colombia; el número de prueba de Meta basta para construir | [`docs/_bitacora/archivo/ESTADO-hasta-2026-10-20.md`](docs/_bitacora/archivo/ESTADO-hasta-2026-10-20.md) §2 |
 | **Sin decidir:** nombre comercial, precios y planes | Mismo archivo, §2 |
 
@@ -133,12 +158,13 @@ El índice completo de ADR y su estado está en [`docs/README.md`](docs/README.m
 
 | Qué | Dónde |
 |---|---|
-| La cola de trabajo | [`roadmap/tasks.yaml`](roadmap/tasks.yaml): 86 `done`. Ojo: `done` = integrada, no probada con la web (T-089 solo cubre la migración; T-117 sigue en `backlog` aunque el PR #198 está integrado) |
-| Roadmap técnico v2 | [`docs/08-roadmap/01-roadmap.md`](docs/08-roadmap/01-roadmap.md) |
+| La cola de trabajo | [`roadmap/tasks.yaml`](roadmap/tasks.yaml): 93 `done`, 20 `in_progress`, 28 `ready`, 10 `blocked`, 65 `backlog`, 3 `dropped`. Ojo: `done` = integrada, no probada con la web (T-079 se reabrió: el runbook no es un despliegue vivo) |
+| Roadmap técnico v2 | [`docs/08-roadmap/01-roadmap.md`](docs/08-roadmap/01-roadmap.md); plan de la auditoría: [`02-plan-correccion-auditoria-2026-11-15.md`](docs/08-roadmap/02-plan-correccion-auditoria-2026-11-15.md) |
 | Roadmap de producto v3 | [`docs/08-roadmap/02-roadmap-producto-v3.md`](docs/08-roadmap/02-roadmap-producto-v3.md); ruta a la Fase 1: [`04-ruta-al-entregable-fase-1.md`](docs/08-roadmap/04-ruta-al-entregable-fase-1.md) |
-| Qué ocurrió cada día | [`docs/_bitacora/`](docs/_bitacora/) (hoy: [2026-11-04, auditoría de veracidad con la matriz por capacidad](docs/_bitacora/2026-11-04-auditoria-de-veracidad.md)) |
+| Qué ocurrió cada día | [`docs/_bitacora/`](docs/_bitacora/) y [`docs/_contexto/DIARIO.md`](docs/_contexto/DIARIO.md); última auditoría: [2026-11-15 integral](docs/_auditorias/2026-11-15-auditoria-integral.md) |
+| Operación (respaldo, costo, claves) | [`docs/06-operacion/`](docs/06-operacion/) |
 | Historial completo anterior de este archivo | [`docs/_bitacora/archivo/ESTADO-hasta-2026-10-20.md`](docs/_bitacora/archivo/ESTADO-hasta-2026-10-20.md) |
-| Auditorías externas e integral (AUD-001…017) | Mismo archivo; informes en `roadmap/audits/` |
+| Auditorías | AUD-001…017 en el archivo de arriba; integrales en [`docs/_auditorias/`](docs/_auditorias/) |
 | Qué árboles de trabajo están atrasados | `node scripts/estado-de-arboles.mjs` (en un PR en curso; ver [`docs/07-ingenieria/03-git.md`](docs/07-ingenieria/03-git.md#sincronía-cómo-no-trabajar-con-cosas-atrasadas)) |
 
 ## 6. Cómo actualizar este archivo

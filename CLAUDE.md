@@ -13,11 +13,12 @@ mueve a `docs/` y aquí queda solo el enlace.
 WhatsApp: el dominio del turismo (pasajeros, tarifas netas, itinerarios, archivos de viaje,
 proveedores) está en el núcleo del modelo.
 
-Estado actual: **en construcción, sin agencia real todavía.** Hay cotizador, catálogo, autenticación,
-bandeja web, esquema del inbox y recepción de WhatsApp (probada con el número de prueba de Meta) con
-el CI de 10 jobs funcionando. Faltan el trabajador con Redis, el despliegue, el catálogo gestionable,
-pagos y automatizaciones. El repositorio es **público** (`system-technology/CRM`) y `main` tiene
-protección de servidor. Este párrafo caduca: el punto exacto está en `ESTADO.md`.
+Estado actual: **en construcción, sin agencia real todavía y sin servicio desplegado.** Hay catálogo,
+cotizador, autenticación, CRM, bandeja, reportes, recepción y envío de WhatsApp (probados con el número
+de prueba de Meta y con una Graph API falsa) y un modo de un solo proceso sin Redis, con el CI de
+10 checks (8 obligatorios: `.github/proteccion-main.json`). Faltan el despliegue, el cifrado de PII (ADR-0015), la prueba de la web
+contra la API, pagos y automatizaciones. El repositorio es **público** (`system-technology/CRM`) y
+`main` tiene protección de servidor. Este párrafo caduca: el punto exacto está en `ESTADO.md`.
 
 ## 2. Antes de hacer cualquier cosa
 
@@ -85,7 +86,9 @@ mensajes reales enseña más que un diseño perfecto que no existe.
 - **Datos:** PostgreSQL 16 + Prisma. RLS activo. Migraciones versionadas.
 - **Colas y tiempo real:** Redis + BullMQ. Socket.IO para la bandeja en vivo.
 - **Objetos:** S3 (MinIO en local) para media de WhatsApp, PDFs y documentos de viajeros.
-- **IA:** Claude API (`claude-sonnet-5` por defecto, `claude-haiku-4-5-20251001` para alto volumen).
+- **IA:** Claude API (`claude-sonnet-5-5` por defecto, `claude-haiku-5-5` para alto volumen). Los
+  modelos `claude-sonnet-5` y `claude-haiku-4-5-20251001` son legados. Aún no hay código que llame a
+  la API; ver `docs/09-ia/09-ingesta-de-catalogo-con-ia.md` §IA1.
 - **Monorepo:** pnpm workspaces + Turborepo.
 
 Detalle y alternativas descartadas: `docs/03-adr/0001-stack-tecnologico.md`.
@@ -93,18 +96,21 @@ Detalle y alternativas descartadas: `docs/03-adr/0001-stack-tecnologico.md`.
 ## 5. Mapa del código
 
 ```
-apps/api        NestJS. src/modules/<contexto>/ — cada uno con domain/ application/ infrastructure/ interface/
-apps/web        Next.js. src/app/(dashboard)/<contexto>/
-apps/worker     BullMQ. src/jobs/<contexto>/ — vacío: el único consumidor (inbox) vive en apps/api, ADR-0010
+apps/api        NestJS. src/modules/<contexto>/ — cada uno con domain/ application/ infrastructure/ interface/.
+                También el trabajador (src/worker.ts) y el modo de un solo proceso (src/main-unico.ts, src/proceso-unico/)
+apps/web        Next.js (App Router). src/app/<ruta>/ plano (bandeja, cotizador, catalogo, pipeline, reportes…), sin (dashboard)/
+apps/worker     Solo un README: el único consumidor (inbox) vive en apps/api, ADR-0010
 packages/contracts   Zod + tipos compartidos. FUENTE DE VERDAD de los contratos.
-packages/database    schema.prisma, migrations/, policies/ (RLS), seed/
-packages/domain      Value objects puros: Money, PhoneNumber, DateRange, PassengerCount
-packages/ui          Sistema de diseño
-packages/sdk         Cliente tipado generado
+packages/database    prisma/schema.prisma, prisma/migrations/, prisma/policies/ (RLS), prisma/seed*.ts
+packages/domain      Value objects puros: Money, PhoneNumber, Desde, Ocupacion, precio de venta, resolución de tarifa
+packages/config      Solo un README: presets de eslint/tsconfig aún sin código
+packages/ui          Solo un README (sistema de diseño sin construir)
+packages/sdk         Solo un README (cliente tipado sin generar)
 ```
 
-Contextos delimitados (módulos): `identity`, `inbox`, `crm`, `quoting`, `booking`, `payments`,
-`automation`, `analytics`, `notifications`, `audit`.
+Contextos delimitados **que existen como módulo** en `apps/api/src/modules/`: `identity`, `inbox`,
+`crm`, `quoting`, `analytics`, `notifications`. **Diseñados, sin código:** `booking`, `payments`,
+`automation`, `audit`.
 
 ## 6. Convenciones rápidas
 
@@ -160,14 +166,14 @@ corresponde, definido en `.claude/agents/`.
 | `investigador` | Información externa verificable: precios de Meta, normativa, competencia |
 | **`integrador`** | **Guardián de `main`.** Integra por PR con los 8 checks; el auto-merge es la otra vía. Ver R11 |
 
-**Quién escribe código hoy (2026-10-26):** los agentes de arriba (Claude) y **Antigravity** en
-frontend (cola T-016 a T-031 de `roadmap/tasks.yaml`). El ciclo autónomo de **OpenCode (ADR-0016)
-está detenido** por decisión del propietario: se agotó la cuota y los ciclos eran lentos. Su
-infraestructura sigue en el repositorio. La cola de trabajo vive en `roadmap/tasks.yaml`, no en
-`ESTADO.md`.
+**Quién escribe código hoy (2026-11-15):** los agentes de arriba (Claude), también en frontend:
+**Antigravity no está habilitado** (decisión del propietario, 2026-11-05) y un agente `frontend`
+hace su carril. El ciclo autónomo de **OpenCode (ADR-0016) está detenido** por decisión del
+propietario: se agotó la cuota y los ciclos eran lentos. Su infraestructura sigue en el repositorio.
+La cola de trabajo vive en `roadmap/tasks.yaml`, no en `ESTADO.md`.
 
 Modelo operativo completo, loops y protocolo de traspaso: `docs/09-ia/01-modelo-operativo.md`.
-Trabajo en paralelo con Antigravity: `docs/09-ia/06-flujo-con-antigravity.md`.
+Flujo con Antigravity (hoy sin uso): `docs/09-ia/06-flujo-con-antigravity.md`.
 
 ### 8.1 Quién decide qué
 
@@ -207,6 +213,6 @@ la conversación ni en la de ningún modelo.
 
 - **Nunca commitear en `main`.** Si la sesión arranca ahí, lo primero es crear la rama de trabajo.
 - No agregar dependencias sin justificarlas; cada una es deuda. Preferir la biblioteca estándar.
-- No tocar migraciones ya aplicadas en `packages/database/migrations/`: se corrigen con una nueva.
+- No tocar migraciones ya aplicadas en `packages/database/prisma/migrations/`: se corrigen con una nueva.
 - No integrar servicios externos sin un ADR y sin un adaptador detrás de un puerto.
 - No usar librerías no oficiales de WhatsApp (Baileys, WPPConnect): violan los ToS de Meta. ADR-0002.
