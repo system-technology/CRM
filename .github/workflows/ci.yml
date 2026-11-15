@@ -330,12 +330,11 @@ jobs:
   # T-206. Auditoria de dependencias de produccion. Hoy `pnpm audit --prod --audit-level=high`
   # encuentra 16 altas y 4 criticas (next, multer/body-parser via @nestjs/platform-express,
   # tinypool/vitest/happy-dom via better-auth, zod, postcss), asi que NO es obligatorio todavia:
-  # `continue-on-error` lo deja en amarillo y visible sin romper `main`. Cuando se resuelvan las
-  # actualizaciones (PRs de Dependabot), quitar `continue-on-error` y ponerlo como check requerido.
+  # el paso deja el resultado en el resumen y como aviso, sin poner el check en rojo. Cuando se
+  # resuelvan las actualizaciones (T-220), hacerlo fallar y ponerlo como check requerido.
   auditoria:
     name: auditoria-dependencias
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
@@ -347,9 +346,18 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
 
-      # No hace falta instalar: audit lee pnpm-lock.yaml.
+      # No hace falta instalar: audit lee pnpm-lock.yaml. Informativo hasta T-220: el resultado va
+      # al resumen y como aviso, y el check no se pone en rojo (un rojo permanente enseña a
+      # ignorar el CI). Al cerrar T-220, quitar `|| ...` y hacerlo requerido.
       - name: pnpm audit (produccion, umbral alto)
-        run: pnpm audit --prod --audit-level=high
+        run: |
+          if pnpm audit --prod --audit-level=high > audit.txt 2>&1; then
+            echo "Auditoria de dependencias: sin vulnerabilidades altas ni criticas." >> "$GITHUB_STEP_SUMMARY"
+          else
+            resumen="$(tail -n 2 audit.txt | tr '\n' ' ')"
+            echo "::warning::Dependencias vulnerables (T-220): ${resumen}"
+            { echo "## Auditoria de dependencias (informativa hasta T-220)"; echo; echo '```'; tail -n 40 audit.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          fi
 
   # ---------------------------------------------------------------------------
   # Regla R4: los módulos no se importan entre sí. Es lo que permite extraer
