@@ -54,18 +54,25 @@ export function ModalGuardarCotizacion({
     elementoInicialRef: inputTituloRef,
   });
 
-  // Sincronizar título sugerido y contacto inicial al abrir
+  // Inicializar SOLO al pasar de cerrado a abierto. Antes el efecto dependía de `contactoId` y de
+  // `contactosDisponibles`: cada cambio del usuario lo volvía a disparar y restablecía el título
+  // sugerido, y la cotización se guardaba con otro título (lo encontró la suite de navegador, T-196).
+  const estabaAbierto = useRef(false);
   useEffect(() => {
-    if (abierto) {
+    if (abierto && !estabaAbierto.current) {
       setTitulo(tituloSugerido);
-      if (contactoIdInicial) {
-        setContactoId(contactoIdInicial);
-      } else if (contactosDisponibles.length > 0 && !contactoId) {
-        setContactoId(contactosDisponibles[0]!.id);
-      }
+      setContactoId(contactoIdInicial ?? '');
       setErrorLocal(null);
     }
-  }, [abierto, tituloSugerido, contactoIdInicial, contactosDisponibles, contactoId]);
+    estabaAbierto.current = abierto;
+  }, [abierto, tituloSugerido, contactoIdInicial]);
+
+  // Contacto por omisión cuando la lista llega con el modal abierto, sin pisar una elección.
+  useEffect(() => {
+    if (abierto && !contactoId && !contactoIdInicial && contactosDisponibles.length > 0) {
+      setContactoId(contactosDisponibles[0]!.id);
+    }
+  }, [abierto, contactoId, contactoIdInicial, contactosDisponibles]);
 
   if (!abierto) return null;
 
