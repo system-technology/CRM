@@ -4912,7 +4912,7 @@ tasks:
     phase: 2
     priority: P0
     effort: L
-    status: ready
+    status: in_progress
     depends_on: []
     acceptance:
       - "mensajes.texto y contactos.preferencias cifrados en reposo"
@@ -5145,4 +5145,54 @@ tasks:
     source: entrega de T-222, 2026-11-15
     created_at: 2026-11-15T17:30:00.000Z
     owner: frontend
+  - id: T-225
+    title: "Demo: sembrar mensajes y notas cifrados para la agencia demo (tras T-212)"
+    type: feature
+    phase: 1
+    priority: P0
+    effort: S
+    status: ready
+    depends_on: [T-212]
+    acceptance:
+      - "Un script del lado de la API (con CAMPOS_SENSIBLES_KEY) siembra conversaciones, mensajes y notas de la agencia demo ya cifrados"
+      - "pnpm dev:nube y el job navegador lo ejecutan; la bandeja de la demo muestra texto"
+    files:
+      - apps/api/src/modules/inbox/scripts
+      - scripts/dev-nube.mjs
+    source: entrega de T-212, 2026-11-15 (la semilla SQL ya no puede escribir texto en claro)
+    created_at: 2026-11-15T17:30:00.000Z
+    owner: backend
+  - id: T-226
+    title: "Cifrado: rotacion robusta de CAMPOS_SENSIBLES_KEY (C5 de la auditoria de T-212)"
+    type: security
+    phase: 2
+    priority: P1
+    effort: M
+    status: ready
+    depends_on: [T-212]
+    acceptance:
+      - "Al arrancar, abortar si hay filas con clave_version sin clave que las abra"
+      - "Rechazar una maestra igual a WEBHOOK_PAYLOAD_KEY u otra clave"
+      - "Trabajo de recifrado por lotes y contador del tope de cifrados por clave derivada"
+    files:
+      - apps/api/src/shared/cifrado
+    source: auditoria de seguridad de T-212, 2026-11-15
+    created_at: 2026-11-15T17:30:00.000Z
+    owner: backend
+  - id: T-227
+    title: "CRM: el listado de contactos no devuelve preferencias (minimizacion, C6 de T-212)"
+    type: security
+    phase: 1
+    priority: P2
+    effort: S
+    status: ready
+    depends_on: [T-212]
+    acceptance:
+      - "El contrato del listado de contactos no incluye preferencias; solo la ficha las descifra (auditado)"
+    files:
+      - packages/contracts/src/crm.ts
+      - apps/api/src/modules/crm
+    source: auditoria de seguridad de T-212, 2026-11-15
+    created_at: 2026-11-15T17:30:00.000Z
+    owner: backend
 

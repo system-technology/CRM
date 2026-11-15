@@ -570,7 +570,9 @@ async function main() {
       // Hace 20 horas: quedan 4 de ventana. Es el estado interesante de la interfaz,
       // el que obliga a decidir entre responder ya o gastar una plantilla.
       ultimoMensajeClienteEn: haceHoras(20),
-      ultimoMensajeTexto: 'Perfecto, cuando me manda la cotizacion?',
+      // Sin vista previa ni texto en los mensajes: desde ADR-0015 esas columnas solo existen
+      // cifradas, y la clave vive en la API y el trabajador, no aqui. El hilo se ve con su
+      // estructura (direccion, estado, instantes) y sin contenido.
       ultimoMensajeEn: haceHoras(20),
       ultimoMensajeDireccion: 'ENTRANTE',
       mensajesSinLeer: 1,
@@ -590,7 +592,6 @@ async function main() {
         direccion: 'ENTRANTE',
         tipo: 'TEXTO',
         estado: 'ENTREGADO',
-        texto: 'Hola! Quiero ir a San Andres en diciembre, somos 2 adultos y un nino.',
         wamid: 'wamid.DEMO.0001',
         ocurridoEn: haceHoras(22),
       },
@@ -600,7 +601,6 @@ async function main() {
         direccion: 'SALIENTE',
         tipo: 'TEXTO',
         estado: 'LEIDO',
-        texto: 'Hola Laura! Con mucho gusto. Que fechas tiene en mente?',
         wamid: 'wamid.DEMO.0002',
         claveIdempotencia: '01932000-0000-7000-8000-00000000e001',
         ocurridoEn: haceHoras(21),
@@ -611,7 +611,6 @@ async function main() {
         direccion: 'ENTRANTE',
         tipo: 'TEXTO',
         estado: 'ENTREGADO',
-        texto: 'Perfecto, cuando me manda la cotizacion?',
         wamid: 'wamid.DEMO.0003',
         ocurridoEn: haceHoras(20),
       },

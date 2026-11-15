@@ -182,14 +182,15 @@ async function main(): Promise<void> {
   for (const c of CONTACTOS) {
     const contacto = await prisma.contacto.upsert({
       where: { tenantId_telefonoE164: { tenantId: tenant.id, telefonoE164: c.telefono } },
-      update: { nombre: c.nombre, etiquetas: c.etiquetas, preferencias: c.preferencias },
+      // `preferencias` no se siembra: desde ADR-0015 solo existe cifrada, y la clave vive en la
+      // API y el trabajador, no aquí. Se conservan en CONTACTOS como texto de referencia.
+      update: { nombre: c.nombre, etiquetas: c.etiquetas },
       create: {
         tenantId: tenant.id,
         telefonoE164: c.telefono,
         nombre: c.nombre,
         correo: c.correo,
         etiquetas: c.etiquetas,
-        preferencias: c.preferencias,
         ultimoContactoEn: new Date(Date.now() - Math.floor(Math.random() * 72) * 3_600_000),
       },
     });
@@ -271,24 +272,8 @@ async function main(): Promise<void> {
   }
 
   // --- Notas internas -----------------------------------------------------
-  const NOTAS = [
-    'Cliente pregunta por salida de puente festivo. Confirmar cupo con el mayorista.',
-    'Pidió el PDF en formato imagen porque no abre adjuntos en el celular.',
-    'Negocia precio. Margen mínimo autorizado por la dirección: 15 %.',
-    'Viaja con su madre, que camina con bastón. Reservar asientos delanteros.',
-  ];
-  for (const [i, nota] of NOTAS.entries()) {
-    const contacto = contactos[i];
-    if (!contacto) continue;
-    const ya = await prisma.notaInterna.findFirst({
-      where: { tenantId: tenant.id, contactoId: contacto.id, texto: nota },
-    });
-    if (!ya) {
-      await prisma.notaInterna.create({
-        data: { tenantId: tenant.id, contactoId: contacto.id, texto: nota },
-      });
-    }
-  }
+  // No se siembran: desde ADR-0015 `notas_internas.texto` solo existe cifrado (y es obligatorio),
+  // y la clave vive en la API y el trabajador, no aquí. Una nota se crea por la API.
 
   const resumen = {
     etapas: etapas.length,

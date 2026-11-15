@@ -10,6 +10,12 @@
  *
  * Todo lo que escribe lo hace en UNA transacción junto con su evento de outbox (R5): el relay lo
  * publica después; aquí no se publica nada.
+ *
+ * **ADR-0015:** el texto de los mensajes, la vista previa y el nombre de los adjuntos se guardan
+ * cifrados; aquí se cifra lo que se escribe y se descifra lo que se lee. Toda respuesta que le
+ * devuelve a una persona un valor descifrado deja una fila `LECTURA_DATOS_SENSIBLES` en la misma
+ * transacción (R10, `shared/cifrado/lectura-auditada.ts`). Sin búsqueda por contenido: `buscar`
+ * mira el nombre y el teléfono del contacto (concreción 5).
  */
 import { Inject, Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
@@ -26,6 +32,18 @@ import type {
   PaginaBandeja,
   PaginaMensajes,
 } from '@viajapro/contracts';
+import {
+  campoDeNombreDeArchivo,
+  columnasDeTexto,
+  columnasDeUltimoMensaje,
+  SELECCION_DE_NOMBRE_DE_ARCHIVO,
+} from '../../../shared/cifrado/columnas-de-prisma.js';
+import { RegistroDeLectura } from '../../../shared/cifrado/lectura-auditada.js';
+import {
+  COLUMNAS_CIFRADAS,
+  PuertoCifradoDeCampos,
+} from '../../../shared/cifrado/puerto-de-cifrado.js';
+import { uuidV7 } from '../../../shared/cifrado/uuid-v7.js';
 import {
   filtroDeVisibilidad,
   type Visibilidad,
@@ -106,6 +124,7 @@ export class ConversacionesPrisma extends PuertoConversaciones {
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(PuertoNotasDeConversacion) private readonly notasDeCrm: PuertoNotasDeConversacion,
+    @Inject(PuertoCifradoDeCampos) private readonly cifrado: PuertoCifradoDeCampos,
   ) {
     super();
   }
@@ -138,16 +157,13 @@ export class ConversacionesPrisma extends PuertoConversaciones {
       }
     })();
 
+    // Por el nombre y el teléfono del contacto. El texto de los mensajes va cifrado y no se busca
+    // en SQL (ADR-0015, concreción 5); en el hilo abierto se busca en el cliente.
     const busqueda: Prisma.ConversacionWhereInput = termino
       ? {
           OR: [
             { contacto: { nombre: { contains: termino, mode: 'insensitive' } } },
             { contacto: { telefonoE164: { contains: termino } } },
-            {
-              mensajes: {
-                some: { eliminadoEn: null, texto: { contains: termino, mode: 'insensitive' } },
-              },
-            },
           ],
         }
       : {};
@@ -165,8 +181,8 @@ export class ConversacionesPrisma extends PuertoConversaciones {
               ],
             };
 
-    const filas = await this.prisma.conTenant((tx) =>
-      tx.conversacion.findMany({
+    const { filas, datos } = await this.prisma.conTenant(async (tx) => {
+      const encontradas = await tx.conversacion.findMany({
         where: {
           AND: [
             ambito(tenantId, v),
@@ -179,14 +195,20 @@ export class ConversacionesPrisma extends PuertoConversaciones {
         orderBy: [{ ultimoMensajeEn: { sort: 'desc', nulls: 'last' } }, { id: 'desc' }],
         take: c.limite + 1,
         select: PARA_EL_RESUMEN,
-      }),
-    );
+      });
+      const registro = new RegistroDeLectura();
+      const resumenes = encontradas
+        .slice(0, c.limite)
+        .map((f) => aResumen(f, ahora, this.cifrado, tenantId, registro));
+      await registro.registrar(tx, 'Conversacion', null);
+      return { filas: encontradas, datos: resumenes };
+    });
 
     const hayMas = filas.length > c.limite;
     const pagina = filas.slice(0, c.limite);
     const ultima = pagina[pagina.length - 1];
     return {
-      datos: pagina.map((f) => aResumen(f, ahora)),
+      datos,
       pageInfo: {
         hasMore: hayMas,
         nextCursor:
@@ -242,11 +264,14 @@ export class ConversacionesPrisma extends PuertoConversaciones {
       });
       const notas = await this.notasDeCrm.deLaConversacion(tx, tenantId, id);
 
-      return {
-        ...aResumen(fila, ahora),
-        mensajes: recientes.reverse().map(aMensaje),
-        notas: notas.map(aNota),
+      const registro = new RegistroDeLectura();
+      const detalle = {
+        ...aResumen(fila, ahora, this.cifrado, tenantId, registro),
+        mensajes: recientes.reverse().map((m) => aMensaje(m, this.cifrado, tenantId, registro)),
+        notas: notas.map((n) => aNota(n, registro)),
       };
+      await registro.registrar(tx, 'Conversacion', id);
+      return detalle;
     });
   }
 
@@ -281,8 +306,11 @@ export class ConversacionesPrisma extends PuertoConversaciones {
       const hayMas = filas.length > c.limite;
       const pagina = filas.slice(0, c.limite);
       const masAntiguo = pagina[pagina.length - 1];
+      const registro = new RegistroDeLectura();
+      const datos = [...pagina].reverse().map((m) => aMensaje(m, this.cifrado, tenantId, registro));
+      await registro.registrar(tx, 'Conversacion', id);
       return {
-        datos: pagina.reverse().map(aMensaje),
+        datos,
         pageInfo: {
           hasMore: hayMas,
           nextCursor:
@@ -302,7 +330,12 @@ export class ConversacionesPrisma extends PuertoConversaciones {
         select: { id: true },
       });
       if (!visible) return null;
-      return (await this.notasDeCrm.deLaConversacion(tx, tenantId, id)).map(aNota);
+      const registro = new RegistroDeLectura();
+      const notas = (await this.notasDeCrm.deLaConversacion(tx, tenantId, id)).map((n) =>
+        aNota(n, registro),
+      );
+      await registro.registrar(tx, 'Conversacion', id);
+      return notas;
     });
   }
 
@@ -329,23 +362,31 @@ export class ConversacionesPrisma extends PuertoConversaciones {
         select: {
           id: true,
           tipo: true,
-          nombreArchivo: true,
+          ...SELECCION_DE_NOMBRE_DE_ARCHIVO,
           tamanoBytes: true,
           mimeType: true,
           descargadoEn: true,
         },
       });
+      if (!a) return { adjunto: null };
+
+      const registro = new RegistroDeLectura();
+      const columna = COLUMNAS_CIFRADAS.ADJUNTOS_NOMBRE_ARCHIVO;
+      const nombreArchivo = registro.anotar(
+        columna,
+        a.id,
+        this.cifrado.descifrar(columna, tenantId, a.id, campoDeNombreDeArchivo(a)),
+      );
+      await registro.registrar(tx, 'Adjunto', a.id);
       return {
-        adjunto: a
-          ? {
-              id: a.id,
-              tipo: a.tipo,
-              nombreArchivo: a.nombreArchivo,
-              tamanoBytes: a.tamanoBytes === null ? null : Number(a.tamanoBytes),
-              mimeType: a.mimeType,
-              descargado: a.descargadoEn !== null,
-            }
-          : null,
+        adjunto: {
+          id: a.id,
+          tipo: a.tipo,
+          nombreArchivo,
+          tamanoBytes: a.tamanoBytes === null ? null : Number(a.tamanoBytes),
+          mimeType: a.mimeType,
+          descargado: a.descargadoEn !== null,
+        },
       };
     });
   }
@@ -402,22 +443,37 @@ export class ConversacionesPrisma extends PuertoConversaciones {
         select: PARA_EL_MENSAJE,
       });
       if (previo) {
-        if (previo.conversacionId !== id) throw new ClaveDeIdempotenciaEnUsoError();
-        return aMensaje(previo);
+        // Solo el MISMO autor reproduce su envío. Otro miembro que presente la clave (que viaja
+        // en el cliente) no obtiene el texto descifrado: sería una lectura de PII sin auditar.
+        if (previo.conversacionId !== id || previo.autorId !== autorId) {
+          throw new ClaveDeIdempotenciaEnUsoError();
+        }
+        // Es el texto que este mismo autor escribió con esta clave: no es una lectura de PII ajena.
+        return aMensaje(previo, this.cifrado, tenantId);
       }
 
       // Fuera de la ventana, `VentanaCerradaError` (409): solo plantillas. ADR-0018 §3.
       exigirVentanaAbierta(conv.ultimoMensajeClienteEn, ahora);
 
+      // El id va en el AAD del texto cifrado: se genera antes del INSERT (ADR-0015, concreción 3).
+      const mensajeId = uuidV7();
       const creado = await tx.mensaje.create({
         data: {
+          id: mensajeId,
           tenantId,
           conversacionId: id,
           direccion: 'SALIENTE',
           tipo: 'TEXTO',
           // Pendiente hasta que el envío por la Cloud API lo confirme; ese envío es de `whatsapp`.
           estado: 'PENDIENTE',
-          texto: entrada.texto,
+          ...columnasDeTexto(
+            this.cifrado.cifrar(
+              COLUMNAS_CIFRADAS.MENSAJES_TEXTO,
+              tenantId,
+              mensajeId,
+              entrada.texto,
+            ),
+          ),
           autorId,
           claveIdempotencia: entrada.claveIdempotencia,
           ...(entrada.cotizacion ? { cotizacionId: entrada.cotizacion.id } : {}),
@@ -431,7 +487,14 @@ export class ConversacionesPrisma extends PuertoConversaciones {
         data: {
           ultimoMensajeEn: ahora,
           ultimoMensajeDireccion: 'SALIENTE',
-          ultimoMensajeTexto: entrada.texto.slice(0, 200),
+          ...columnasDeUltimoMensaje(
+            this.cifrado.cifrar(
+              COLUMNAS_CIFRADAS.CONVERSACIONES_ULTIMO_MENSAJE_TEXTO,
+              tenantId,
+              id,
+              entrada.texto.slice(0, 200),
+            ),
+          ),
           primeraRespuestaEn: conv.primeraRespuestaEn ?? ahora,
           actualizadoPorId: autorId,
         },
@@ -465,7 +528,7 @@ export class ConversacionesPrisma extends PuertoConversaciones {
           payload: { anteriorAsignadoAId: null },
         });
       }
-      return aMensaje(creado);
+      return aMensaje(creado, this.cifrado, tenantId);
     });
   }
 
@@ -625,17 +688,25 @@ export class ConversacionesPrisma extends PuertoConversaciones {
       where: { id, tenantId },
       select: PARA_EL_RESUMEN,
     });
-    return aResumen(fila, ahora);
+    const registro = new RegistroDeLectura();
+    const resumen = aResumen(fila, ahora, this.cifrado, tenantId, registro);
+    await registro.registrar(tx, 'Conversacion', id);
+    return resumen;
   }
 }
 
-function aNota(n: {
-  id: string;
-  texto: string;
-  autorId: string;
-  autorNombre: string;
-  creadaEn: Date;
-}): NotaDeConversacion {
+/** La nota ya llega descifrada del puerto de `crm`; aquí solo se anota la lectura (R10). */
+function aNota(
+  n: {
+    id: string;
+    texto: string;
+    autorId: string;
+    autorNombre: string;
+    creadaEn: Date;
+  },
+  registro: RegistroDeLectura,
+): NotaDeConversacion {
+  registro.anotar(COLUMNAS_CIFRADAS.NOTAS_INTERNAS_TEXTO, n.id, n.texto);
   return {
     id: n.id,
     texto: n.texto,

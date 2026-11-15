@@ -41,6 +41,7 @@ import {
   TIPO_MENSAJE_RECIBIDO,
 } from './domain/evento-de-dominio.js';
 import { BandejaEnVivoGateway } from './interface/bandeja-en-vivo.gateway.js';
+import { mensajeConTexto } from '../../shared/cifrado/cifrado-de-prueba.js';
 
 const idDeTenant = (): string => `01932000-0000-7000-8000-${randomBytes(6).toString('hex')}`;
 const TENANT_A = idDeTenant();
@@ -131,7 +132,7 @@ async function mensajeEnAgencia(tenantId: string, texto: string): Promise<string
       direccion: 'ENTRANTE',
       tipo: 'TEXTO',
       estado: 'ENTREGADO',
-      texto,
+      ...mensajeConTexto(tenantId, texto),
       wamid: `wamid.vivo.${randomBytes(6).toString('hex')}`,
       ocurridoEn: new Date(),
     },

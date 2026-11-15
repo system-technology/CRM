@@ -227,7 +227,9 @@ forma de uno publicado rompe a sus consumidores igual que cambiar una API.
 `TravelerDocument` guarda pasaportes, cédulas, visas y fechas de nacimiento, a veces de menores.
 
 - Los números de documento se cifran a nivel de aplicación (AES-256-GCM) antes de persistirse.
-- Todo acceso queda en la bitácora de auditoría: quién, cuándo, a qué.
+  Hoy ya se cifran así las cinco columnas de la tabla de alcance del ADR-0015 (ver «R10 — el texto
+  de un mensaje es PII» más abajo); `Viajero` nacerá cifrado con la misma primitiva.
+- Todo acceso queda en la bitácora de auditoría: quién, cuándo, a qué (`LECTURA_DATOS_SENSIBLES`).
 - Política de retención definida: no se guardan para siempre "por si acaso".
 
 Ver [protección de datos](../05-seguridad/02-proteccion-de-datos.md).
@@ -527,7 +529,7 @@ erDiagram
 | **Próxima tarea: tres columnas, no tabla `tareas`** | El contrato expone UNA próxima tarea. Una tabla para una fila por oportunidad añade un join a la consulta más caliente a cambio de nada que hoy se use. `CHECK`: las tres o ninguna. El día que haga falta historial, es una tabla nueva |
 | **Notas internas colgando del contacto** | `conversaciones` todavía no existe como tabla y el panel lateral las pide por contacto. Cuando el inbox la cree, `conversacion_id UUID NULL` con clave foránea compuesta es una migración aditiva de un minuto. Al revés habría forzado al inbox a existir antes que el pipeline |
 | **Todas las claves foráneas, COMPUESTAS con el tenant** | Estaban escritas simples: la oportunidad de una agencia podía colgar del contacto, la etapa o el asesor de otra. RLS no lo impide —la integridad referencial se comprueba por encima de las políticas—. Mismo defecto que ADR-0008 cerró en el directorio. Aserciones 29 y 30 |
-| **Búsqueda con `pg_trgm` + `unaccent` + `btree_gin`** | El filtro de tenant y el texto entran en el **mismo** índice. `preferencias` queda fuera a propósito (R10): indexar por trigramas un campo que puede contener una alergia convierte el buscador en una herramienta para minar datos de salud |
+| **Búsqueda con `pg_trgm` + `unaccent` + `btree_gin`** | El filtro de tenant y el texto entran en el **mismo** índice. `preferencias` queda fuera a propósito (R10): indexar por trigramas un campo que puede contener una alergia convierte el buscador en una herramienta para minar datos de salud. Desde ADR-0015 además va cifrada |
 
 ### Enlace con el inbox
 
@@ -609,17 +611,53 @@ Disparadores para revisarlo: más de ~50 M de filas, un vacuum que no termina en
 política de retención por fecha —único caso donde partir por tiempo gana, y entonces la
 deduplicación de `wamid` se saca a una tabla aparte.
 
-### R10 — el texto de un mensaje es PII
+### R10 — el texto de un mensaje es PII: cifrado en reposo (ADR-0015, T-212, 2026-11-15)
 
-`mensajes.texto` es la mayor superficie de datos sensibles del producto: ahí escribe el viajero, y
-en una agencia eso incluye número de pasaporte y fecha de nacimiento de un menor. **No se cifra por
-columna**, y la decisión tiene coste: el hilo se lee entero en cada apertura y `ConsultarBandeja.buscar`
-busca dentro del texto; cifrado queda ilegible para cualquier índice. Lo que sí se aplica: RLS
-forzada (aserción 38), el texto **nunca** viaja a `registros_auditoria.detalle` ni a `outbox.payload`,
-el índice de trigramas vive en la misma tabla y bajo la misma política, y el cifrado en reposo lo da
-el almacenamiento. **Esto no cierra el asunto:** si el cifrado por columna se considera exigible
-para la Ley 1581, es un ADR con `auditor-seguridad` y un rediseño de la búsqueda. Queda en la cola
-de `ESTADO.md`.
+> **Superado.** Hasta la migración `20261115130000_cifrar_columnas_con_pii_sensible` el texto vivía
+> en claro bajo RLS, con búsqueda por trigramas. ADR-0015 (aceptado) lo cambió; esto es lo vigente.
+
+Cinco columnas que pueden llevar PII sensible de viajeros dejan de existir en claro. Cada una pasa
+a cuatro columnas que van juntas o no van (`CHECK num_nonnulls(...) IN (0, 4)` y un CHECK de
+formato: nonce de 12 bytes, etiqueta de 16, versión >= 1):
+
+```
+mensajes.texto                       ─┐
+conversaciones.ultimo_mensaje_texto  ─┤      <col>_cifrado        BYTEA     AES-256-GCM
+contactos.preferencias               ─┼──▶   <col>_nonce          BYTEA     12 bytes, aleatorio
+notas_internas.texto (NOT NULL)      ─┤      <col>_tag            BYTEA     16 bytes
+adjuntos.nombre_archivo              ─┘      <col>_clave_version  SMALLINT  v<n> de CAMPOS_SENSIBLES_KEY
+
+clave = HKDF-SHA256(CAMPOS_SENSIBLES_KEY v<n>, sal fija, "viajapro/<tabla>.<col>/v<n>/" ‖ tenant_id)
+AAD   = "viajapro/<tabla>.<col>/v<n>/" ‖ tenant_id (16) ‖ id de la fila (16) ‖ código de columna (1)
+```
+
+**Por qué así.** RLS separa agencias, pero no protege de quien lee la base sin pasar por la API: una
+`DATABASE_URL` filtrada, una rama de Neon o un volcado, o el rol propietario. Con la clave fuera de
+la base (API y trabajador; la web nunca), ninguno de esos lectores ve el texto, y el AAD impide
+trasplantar un criptograma a otra agencia, otra fila u otra columna. Por eso **todo id de una fila
+cifrada lo genera la aplicación antes del INSERT** (UUID v7, `shared/cifrado/uuid-v7.ts`).
+
+**Lo que se pierde.** La búsqueda por contenido: `mensajes_texto_trgm_idx` se retiró y
+`ConsultarBandeja.buscar` busca por el nombre y el teléfono del contacto. No hay analítica SQL sobre
+esas columnas.
+
+**Lectura auditada (R10).** Toda respuesta de la API que le devuelve a una persona un valor
+descifrado deja, en la misma transacción, una fila `LECTURA_DATOS_SENSIBLES` en
+`registros_auditoria` (tabla existente, con `tenant_id` y RLS): quién (`usuario_id`), cuándo, a qué
+entidad, y en `detalle` los nombres de las columnas y los ids de las filas, **nunca el valor**. Las
+emisiones por socket que llevan texto (`MENSAJE_NUEVO`, `CONVERSACION_ACTUALIZADA`) dejan una fila
+por emisión, antes de emitir, con la audiencia en `detalle.destinatarios`. No se audita el envío a
+Meta del trabajador. Clave y AAD se derivan siempre con el tenant de la sesión (o del evento), nunca
+con el `tenant_id` de la fila: una fila de otra agencia que llegue a un mapeador no se descifra.
+
+**Filas existentes.** No había datos de producción: la migración elimina las columnas en claro y
+borra las notas internas (una nota sin texto no es representable). Las semillas ya no siembran
+estas columnas: la clave no vive en `packages/database`.
+
+**Pruebas.** `aislamiento.spec.ts` 82–85 (columnas, CHECK validados, lista declarada de columnas de
+texto con tenant —concreción 7— y bytes crudos con el rol de aplicación) y
+`apps/api/src/modules/inbox/cifrado-en-reposo.e2e-spec.ts` (criterio C2: `$queryRaw` sobre lo que
+escriben los adaptadores reales).
 
 ### El punto ciego que se cerró
 

@@ -60,7 +60,7 @@ export class ClaveDeIdempotenciaEnUsoError extends EstadoInvalidoError {
   readonly code = 'CLAVE_DE_IDEMPOTENCIA_EN_USO';
 
   constructor() {
-    super('Esa clave de idempotencia ya se usó en otra conversación.');
+    super('Esa clave de idempotencia ya se usó para otro envío (otra conversación u otro autor).');
   }
 }
 

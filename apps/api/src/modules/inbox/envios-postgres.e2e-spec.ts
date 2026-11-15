@@ -36,6 +36,7 @@ import { ColaDeEnviosPostgres } from './infrastructure/cola-de-envios.postgres.j
 import { EnvioWhatsappGraph } from './infrastructure/envio-whatsapp.graph.js';
 import { MensajesSalientesPrisma } from './infrastructure/mensajes-salientes.prisma.js';
 import { ReservaDeEnvioPostgres } from './infrastructure/reserva-de-envio.postgres.js';
+import { cifradoDePrueba } from '../../shared/cifrado/cifrado-de-prueba.js';
 
 const CORRE = Boolean(process.env['DATABASE_URL']);
 
@@ -136,22 +137,28 @@ describe.skipIf(!CORRE)('envíos sobre Postgres: dos agencias, dos consumidores,
     a: Agencia,
     estadoDeEnvio: { reservadoHaceS?: number; siguienteEnS?: number; intentos?: number } = {},
   ): Promise<string> {
+    // El id va en el AAD del texto cifrado (ADR-0015): se genera antes del INSERT, como en la API.
     const id = randomUUID();
+    const t = cifradoDePrueba().cifrar('mensajes.texto', a.tenant, id, `Cotizacion ${MARCA}`);
     await admin.query('BEGIN');
     try {
       await admin.query("SELECT set_config('app.current_tenant', $1, true)", [a.tenant]);
       await admin.query(
-        `INSERT INTO mensajes (id, tenant_id, conversacion_id, direccion, tipo, texto, ocurrido_en,
+        `INSERT INTO mensajes (id, tenant_id, conversacion_id, direccion, tipo,
+                               texto_cifrado, texto_nonce, texto_tag, texto_clave_version, ocurrido_en,
                                envio_reservado_en, envio_siguiente_en, envio_intentos, actualizado_en)
-         VALUES ($1, $2, $3, 'SALIENTE', 'TEXTO', $4, now(),
-                 CASE WHEN $5::int IS NULL THEN NULL ELSE now() - ($5::int * interval '1 second') END,
-                 CASE WHEN $6::int IS NULL THEN NULL ELSE now() + ($6::int * interval '1 second') END,
-                 $7::int, now())`,
+         VALUES ($1, $2, $3, 'SALIENTE', 'TEXTO', $4, $5, $6, $7, now(),
+                 CASE WHEN $8::int IS NULL THEN NULL ELSE now() - ($8::int * interval '1 second') END,
+                 CASE WHEN $9::int IS NULL THEN NULL ELSE now() + ($9::int * interval '1 second') END,
+                 $10::int, now())`,
         [
           id,
           a.tenant,
           a.conversacion,
-          `Cotizacion ${MARCA}`,
+          t.cifrado,
+          t.nonce,
+          t.tag,
+          t.claveVersion,
           estadoDeEnvio.reservadoHaceS ?? null,
           estadoDeEnvio.siguienteEnS ?? null,
           estadoDeEnvio.intentos ?? 0,
@@ -205,7 +212,7 @@ describe.skipIf(!CORRE)('envíos sobre Postgres: dos agencias, dos consumidores,
   async function nuevaInstancia(): Promise<Instancia> {
     const prisma = new PrismaWebhookService();
     await prisma.onModuleInit();
-    const mensajes = new MensajesSalientesPrisma(prisma);
+    const mensajes = new MensajesSalientesPrisma(prisma, cifradoDePrueba());
     const reservas = new ReservaDeEnvioPostgres(prisma);
     const cola = new ColaDeEnviosPostgres(
       prisma,

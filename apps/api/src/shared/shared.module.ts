@@ -1,6 +1,7 @@
 import { Global, Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { PermisoGuard } from './autorizacion/permiso.guard.js';
+import { CifradoModule } from './cifrado/cifrado.module.js';
 import { PrismaService } from './prisma/prisma.service.js';
 import {
   crearAlmacenDeLimiteDeTasa,
@@ -17,6 +18,8 @@ import {
  */
 @Global()
 @Module({
+  // ADR-0015: la API cifra y descifra las columnas con PII sensible. Sin la clave, no arranca.
+  imports: [CifradoModule],
   providers: [
     PrismaService,
     { provide: APP_GUARD, useClass: PermisoGuard },

@@ -52,6 +52,7 @@ import {
 import { PendientesPrisma } from './infrastructure/pendientes.prisma.js';
 import { StagingPrisma } from './infrastructure/staging.prisma.js';
 import { ConsumidorDeChanges } from './interface/consumidor-de-changes.js';
+import { cifradoDePrueba } from '../../shared/cifrado/cifrado-de-prueba.js';
 
 const HAY_REDIS_REAL = process.env['CI'] === 'true' || process.env['PRUEBA_BULLMQ'] === '1';
 const URL_REDIS = process.env['REDIS_URL'] ?? '';
@@ -254,7 +255,7 @@ describe.skipIf(!CORRE)('Barrido: un POST guardado cuyo encolado falló llega a 
     consumidor = new ConsumidorDeChanges(
       new ProcesarChange(
         new StagingPrisma(prismaWebhook),
-        new BandejaPrisma(prismaWebhook, new ContactosDeCrm()),
+        new BandejaPrisma(prismaWebhook, new ContactosDeCrm(), cifradoDePrueba()),
       ),
     );
     consumidor.nombreDeCola = COLA;

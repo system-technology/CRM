@@ -23,6 +23,7 @@ import { AppModule } from '../../app.module.js';
 import { PrismaService } from '../../shared/prisma/prisma.service.js';
 import { ContextoTenant } from '../../shared/tenant/contexto-tenant.js';
 import { RespuestaParaReportesPrisma } from '../inbox/infrastructure/respuesta-para-reportes.prisma.js';
+import { mensajeConTexto } from '../../shared/cifrado/cifrado-de-prueba.js';
 
 const idDeTenant = (): string => `01932000-0000-7000-8000-${randomBytes(6).toString('hex')}`;
 const TENANT_A = idDeTenant();
@@ -95,7 +96,7 @@ async function conversacion(
         direccion: 'ENTRANTE',
         tipo: 'TEXTO',
         estado: 'ENTREGADO',
-        texto: 'Hola',
+        ...mensajeConTexto(tenant, 'Hola'),
         wamid: `wamid.resp.${randomBytes(6).toString('hex')}`,
         ocurridoEn: opciones.entranteEn,
       },

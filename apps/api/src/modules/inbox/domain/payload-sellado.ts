@@ -18,12 +18,14 @@
  * reutilizar «para que la prueba sea determinista».
  */
 
-import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
-
-const ALGORITMO = 'aes-256-gcm';
-const LARGO_CLAVE = 32; // 256 bits
-const LARGO_NONCE = 12; // 96 bits, el tamaño que GCM espera sin re-derivar
-const LARGO_TAG = 16;
+import {
+  abrirAesGcm,
+  decodificarClave,
+  LARGO_CLAVE,
+  LARGO_NONCE,
+  LARGO_TAG,
+  sellarAesGcm,
+} from '../../../shared/cifrado/aes-256-gcm.js';
 
 export interface PayloadSellado {
   cifrado: Buffer;
@@ -38,13 +40,8 @@ export interface PayloadSellado {
  */
 export function sellarPayload(cuerpo: Buffer, clave: Buffer, recepcionId: Buffer): PayloadSellado {
   verificarClave(clave);
-
-  const nonce = randomBytes(LARGO_NONCE);
-  const cifrador = createCipheriv(ALGORITMO, clave, nonce);
-  cifrador.setAAD(recepcionId);
-
-  const cifrado = Buffer.concat([cifrador.update(cuerpo), cifrador.final()]);
-  return { cifrado, nonce, tag: cifrador.getAuthTag() };
+  // La primitiva compartida (ADR-0015, concreción 5) genera el nonce dentro.
+  return sellarAesGcm(cuerpo, clave, recepcionId);
 }
 
 /**
@@ -63,10 +60,7 @@ export function abrirPayload(sellado: PayloadSellado, clave: Buffer, recepcionId
     throw new Error(`La etiqueta debe medir ${LARGO_TAG} bytes y mide ${sellado.tag.length}.`);
   }
 
-  const descifrador = createDecipheriv(ALGORITMO, clave, sellado.nonce);
-  descifrador.setAAD(recepcionId);
-  descifrador.setAuthTag(sellado.tag);
-  return Buffer.concat([descifrador.update(sellado.cifrado), descifrador.final()]);
+  return abrirAesGcm(sellado, clave, recepcionId);
 }
 
 /**
@@ -93,22 +87,9 @@ export function resolverClavePayload(
   return clave;
 }
 
-/**
- * Acepta la clave en hexadecimal o en base64, decidiéndolo por la forma del texto.
- *
- * No es un respaldo cómodo —de esos ya llevamos cuatro—: es una regla determinista. 64
- * caracteres de `[0-9a-f]` son hexadecimal y no pueden ser otra cosa; cualquier otra cosa se
- * intenta como base64. Y si el resultado no mide 32 bytes, se lanza igual.
- *
- * Existe porque el generador de secretos escribe hexadecimal y esto leía base64: la clave de
- * 32 bytes llegaba como 48 y el webhook respondía 500 a todo. Lo encontré mandando un POST de
- * verdad, no compilando.
- */
-function decodificarClave(valor: string): Buffer {
-  const limpio = valor.trim();
-  if (/^[0-9a-fA-F]{64}$/.test(limpio)) return Buffer.from(limpio, 'hex');
-  return Buffer.from(limpio, 'base64');
-}
+// `decodificarClave` (hexadecimal o base64, por la forma del texto) vive en la primitiva
+// compartida. Existe porque el generador de secretos escribía hexadecimal y esto leía base64: la
+// clave de 32 bytes llegaba como 48 y el webhook respondía 500 a todo.
 
 function verificarClave(clave: Buffer): void {
   if (clave.length !== LARGO_CLAVE) {

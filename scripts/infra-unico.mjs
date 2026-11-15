@@ -25,9 +25,9 @@ const archivoEnv = join(raiz, '.env.unico');
 const hex = (bytes) => randomBytes(bytes).toString('hex');
 const b64 = (bytes) => randomBytes(bytes).toString('base64');
 
-/** Genera las variables que el compose exige con `${VAR:?}`. Ninguna sale de un valor fijo. */
-function generarEnv() {
-  const valores = {
+/** Las variables que el compose exige con `${VAR:?}`, con valores al azar. Ninguna es fija. */
+function valoresNuevos() {
+  return {
     // 12+ caracteres de [A-Za-z0-9_-]: va dentro de DDL y de una URL (roles-de-desarrollo.mjs).
     DB_DEV_PASSWORD: `dev${hex(12)}`,
     IDENTIDAD_DEV_PASSWORD: `dev${hex(12)}`,
@@ -35,10 +35,16 @@ function generarEnv() {
     ENCRYPTION_MASTER_KEY: b64(32),
     CORREO_PAYLOAD_KEY: b64(32),
     WEBHOOK_PAYLOAD_KEY: b64(32),
+    CAMPOS_SENSIBLES_KEY: b64(32),
     WHATSAPP_DIRECTORY_PEPPER: b64(32),
     WHATSAPP_WEBHOOK_VERIFY_TOKEN: hex(16),
     META_APP_SECRET: hex(16),
   };
+}
+
+/** Genera el `.env.unico` entero. */
+function generarEnv() {
+  const valores = valoresNuevos();
   const cuerpo =
     '# Generado por scripts/infra-unico.mjs. Valores de DESARROLLO al azar. NO commitear (R6).\n' +
     Object.entries(valores)
@@ -47,6 +53,22 @@ function generarEnv() {
     '\n';
   writeFileSync(archivoEnv, cuerpo, { mode: 0o600 });
   console.log('.env.unico creado (secretos de desarrollo al azar, fuera de git).');
+}
+
+/**
+ * Un `.env.unico` de antes de que existiera una variable (p. ej. `CAMPOS_SENSIBLES_KEY`, ADR-0015)
+ * haría fallar el compose. Se AÑADEN las que falten; las que ya están no se tocan nunca: cambiar
+ * una clave de cifrado existente dejaría ilegible lo ya cifrado.
+ */
+function completarEnv() {
+  const actual = readFileSync(archivoEnv, 'utf8');
+  const faltan = Object.entries(valoresNuevos()).filter(
+    ([k]) => !new RegExp(`^${k}=.+$`, 'm').test(actual),
+  );
+  if (faltan.length === 0) return;
+  const cola = faltan.map(([k, v]) => `${k}=${v}`).join('\n') + '\n';
+  writeFileSync(archivoEnv, `${actual.replace(/\n*$/, '\n')}${cola}`, { mode: 0o600 });
+  console.log(`.env.unico completado con: ${faltan.map(([k]) => k).join(', ')}.`);
 }
 
 function docker(args) {
@@ -90,6 +112,8 @@ if (!existsSync(archivoEnv)) {
     process.exit(1);
   }
   generarEnv();
+} else {
+  completarEnv();
 }
 
 if (orden === 'up' || orden === 'reset') {

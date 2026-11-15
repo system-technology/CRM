@@ -91,8 +91,9 @@ async function sembrar(): Promise<{ tenant: string; mensaje: string; conversacio
     [conversacion, tenant, contacto, canal],
   );
   await admin.query(
-    `INSERT INTO mensajes (id, tenant_id, conversacion_id, direccion, tipo, texto, ocurrido_en, actualizado_en)
-     VALUES ($1, $2, $3, 'SALIENTE', 'TEXTO', 'Su cotizacion', now(), now())`,
+    // Sin texto: desde ADR-0015 solo existe cifrado, y esta prueba mira el estado del envío.
+    `INSERT INTO mensajes (id, tenant_id, conversacion_id, direccion, tipo, ocurrido_en, actualizado_en)
+     VALUES ($1, $2, $3, 'SALIENTE', 'TEXTO', now(), now())`,
     [mensaje, tenant, conversacion],
   );
   return { tenant, mensaje, conversacion };

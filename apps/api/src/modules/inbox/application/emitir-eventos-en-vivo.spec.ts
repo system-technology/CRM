@@ -6,6 +6,7 @@
 import type { ConversacionResumen, EventoBandeja, Mensaje } from '@viajapro/contracts';
 import { describe, expect, it } from 'vitest';
 import type { MiembroParaAudiencia } from '../../../shared/autorizacion/visibilidad-de-conversaciones.js';
+import type { LecturaSensible } from '../../../shared/cifrado/lectura-auditada.js';
 import {
   type EventoDeDominio,
   TIPO_ACCESO_REVOCADO,
@@ -94,6 +95,16 @@ class Conversaciones extends PuertoLecturaDeConversaciones {
   }
   miembrosActivos(): Promise<MiembroParaAudiencia[]> {
     return Promise.resolve(this.miembros);
+  }
+  auditadas: Array<{ tenantId: string } & LecturaSensible> = [];
+  fallarAuditoria = false;
+  registrarEmisionSensible(
+    tenantId: string,
+    e: LecturaSensible & { destinatarios: readonly string[] },
+  ): Promise<void> {
+    if (this.fallarAuditoria) return Promise.reject(new Error('base caída'));
+    this.auditadas.push({ tenantId, ...e, destinatarios: [...e.destinatarios].sort() });
+    return Promise.resolve();
   }
 }
 
@@ -339,5 +350,68 @@ describe('EmitirEventosEnVivo: otros eventos', () => {
     await emisor(lectura, new Conversaciones(null), emision).atender(evento('otro.contexto.cosa'));
     expect(lectura.consultas).toHaveLength(0);
     expect(emision.emitidos).toHaveLength(0);
+  });
+});
+
+describe('EmitirEventosEnVivo: auditoría de lo que el socket entrega descifrado (R10)', () => {
+  it('MENSAJE_NUEVO con texto deja una fila con la audiencia, bajo el tenant del evento, sin el texto', async () => {
+    const conv = new Conversaciones(ANA);
+    const emision = new Emision();
+    await emisor(new Lectura(mensaje), conv, emision).atender(evento(TIPO_MENSAJE_RECIBIDO));
+    expect(conv.auditadas).toEqual([
+      {
+        tenantId: TENANT,
+        entidad: 'Conversacion',
+        entidadId: CONVERSACION,
+        columnas: ['mensajes.texto'],
+        filas: [MENSAJE],
+        destinatarios: [ANA, DUENO].sort(),
+      },
+    ]);
+    expect(JSON.stringify(conv.auditadas)).not.toContain('Hola');
+    expect(emision.emitidos).toHaveLength(1);
+  });
+
+  it('un mensaje sin texto (solo adjunto) no lleva PII: no se audita', async () => {
+    const conv = new Conversaciones(ANA);
+    await emisor(new Lectura({ ...mensaje, texto: null }), conv, new Emision()).atender(
+      evento(TIPO_MENSAJE_RECIBIDO),
+    );
+    expect(conv.auditadas).toEqual([]);
+  });
+
+  it('CONVERSACION_ACTUALIZADA con vista previa se audita con quien la recibe', async () => {
+    const conv = new Conversaciones(BETO);
+    await emisor(new Lectura(mensaje), conv, new Emision()).atender(
+      evento(TIPO_CONVERSACION_ACTUALIZADA, {}, CONVERSACION),
+    );
+    expect(conv.auditadas).toEqual([
+      {
+        tenantId: TENANT,
+        entidad: 'Conversacion',
+        entidadId: CONVERSACION,
+        columnas: ['conversaciones.ultimo_mensaje_texto'],
+        filas: [CONVERSACION],
+        destinatarios: [BETO, DUENO].sort(),
+      },
+    ]);
+  });
+
+  it('MENSAJE_ACTUALIZADO no lleva texto: no se audita', async () => {
+    const conv = new Conversaciones(ANA);
+    await emisor(new Lectura(mensaje), conv, new Emision()).atender(
+      evento(TIPO_MENSAJE_ACTUALIZADO),
+    );
+    expect(conv.auditadas).toEqual([]);
+  });
+
+  it('si la fila de auditoría no se puede escribir, no se emite', async () => {
+    const conv = new Conversaciones(ANA);
+    conv.fallarAuditoria = true;
+    const emision = new Emision();
+    await expect(
+      emisor(new Lectura(mensaje), conv, emision).atender(evento(TIPO_MENSAJE_RECIBIDO)),
+    ).rejects.toThrow('base caída');
+    expect(emision.emitidos).toEqual([]);
   });
 });

@@ -11,6 +11,11 @@ import {
   type MiembroParaAudiencia,
   PERMISO_VER_TODAS,
 } from '../../../shared/autorizacion/visibilidad-de-conversaciones.js';
+import {
+  type LecturaSensible,
+  registrarLecturaSensible,
+} from '../../../shared/cifrado/lectura-auditada.js';
+import { PuertoCifradoDeCampos } from '../../../shared/cifrado/puerto-de-cifrado.js';
 import { PrismaService, type ClienteTenant } from '../../../shared/prisma/prisma.service.js';
 import { ContextoTenant } from '../../../shared/tenant/contexto-tenant.js';
 import { PuertoLecturaDeConversaciones } from '../application/puertos-de-eventos.js';
@@ -18,7 +23,10 @@ import { aResumen, PARA_EL_RESUMEN } from './mapeo.js';
 
 @Injectable()
 export class LecturaDeConversacionesPrisma extends PuertoLecturaDeConversaciones {
-  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {
+  constructor(
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(PuertoCifradoDeCampos) private readonly cifrado: PuertoCifradoDeCampos,
+  ) {
     super();
   }
 
@@ -51,7 +59,15 @@ export class LecturaDeConversacionesPrisma extends PuertoLecturaDeConversaciones
         select: PARA_EL_RESUMEN,
       }),
     );
-    return fila ? aResumen(fila, new Date()) : null;
+    return fila ? aResumen(fila, new Date(), this.cifrado, tenantId) : null;
+  }
+
+  async registrarEmisionSensible(
+    tenantId: string,
+    emision: LecturaSensible & { destinatarios: readonly string[] },
+  ): Promise<void> {
+    if (emision.destinatarios.length === 0) return;
+    await this.enTenant(tenantId, (tx) => registrarLecturaSensible(tx, emision));
   }
 
   async miembrosActivos(tenantId: string): Promise<MiembroParaAudiencia[]> {

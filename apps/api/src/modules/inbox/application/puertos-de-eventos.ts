@@ -8,6 +8,7 @@
  */
 import type { ConversacionResumen, EventoBandeja, Mensaje } from '@viajapro/contracts';
 import type { MiembroParaAudiencia } from '../../../shared/autorizacion/visibilidad-de-conversaciones.js';
+import type { LecturaSensible } from '../../../shared/cifrado/lectura-auditada.js';
 import type { EventoDeDominio } from '../domain/evento-de-dominio.js';
 
 export abstract class PuertoPublicadorDeEventos {
@@ -77,6 +78,15 @@ export abstract class PuertoLecturaDeConversaciones {
   ): Promise<ConversacionResumen | null>;
   /** Los miembros activos de la agencia y si su rol tiene `conversaciones.ver_todas` AHORA. */
   abstract miembrosActivos(tenantId: string): Promise<MiembroParaAudiencia[]>;
+  /**
+   * R10: deja la fila `LECTURA_DATOS_SENSIBLES` de una emisión por socket que lleva texto descifrado,
+   * en su propia transacción bajo el tenant del evento. Se llama ANTES de emitir: si falla, no se
+   * emite.
+   */
+  abstract registrarEmisionSensible(
+    tenantId: string,
+    emision: LecturaSensible & { destinatarios: readonly string[] },
+  ): Promise<void>;
 }
 
 /**

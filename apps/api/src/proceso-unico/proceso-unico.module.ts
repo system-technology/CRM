@@ -12,6 +12,7 @@
 import { type DynamicModule, Global, Module } from '@nestjs/common';
 import { AppModule } from '../app.module.js';
 import { CrmPuertosModule } from '../modules/crm/crm-puertos.module.js';
+import { CifradoModule } from '../shared/cifrado/cifrado.module.js';
 import { InboxWorkerUnicoModule } from '../modules/inbox/inbox-worker-unico.module.js';
 import {
   COMPARTIDO_DEL_INBOX,
@@ -46,7 +47,8 @@ export class TrabajadorUnicoModule {
     return {
       module: TrabajadorUnicoModule,
       // Sin `NotificationsWorkerModule`: el correo sale por su cola en proceso, en el contexto HTTP.
-      imports: [CrmPuertosModule, InboxWorkerUnicoModule.forRoot(compartido)],
+      // CifradoModule: este contenedor no carga SharedModule y también cifra (ADR-0015).
+      imports: [CifradoModule, CrmPuertosModule, InboxWorkerUnicoModule.forRoot(compartido)],
     };
   }
 }

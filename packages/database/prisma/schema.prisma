@@ -1166,15 +1166,17 @@ model Contacto {
   /// un enum porque cada agencia inventa las suyas y ninguna migración debería hacer falta.
   etiquetas String[] @default([])
 
-  /// Lo que conviene recordar para atender y para recomprar.
+  /// Lo que conviene recordar para atender y para recomprar: «alergias, asiento, aerolínea».
   ///
-  /// **R10 — campo de riesgo.** El contrato lo describe como «alergias, asiento, aerolínea»:
-  /// una alergia es dato de salud, y el dato de salud es sensible en la Ley 1581 de 2012.
-  /// No se cifra por columna —el panel lateral lo lee en cada apertura de conversación y
-  /// cifrarlo lo volvería ilegible para el filtro y lento de pintar—, pero sí se le niegan
-  /// las dos cosas que convierten un campo así en una fuga: NO entra en el índice de
-  /// búsqueda (no se puede minar preguntando) y NO viaja a `registros_auditoria.detalle`.
-  preferencias String? @db.VarChar(2000)
+  /// **R10 — cifrada en reposo (ADR-0015).** Una alergia es dato de salud (Ley 1581 de 2012).
+  /// Cuatro columnas que van juntas o no van (CHECK `contactos_preferencias_cifrado_completo`):
+  /// AES-256-GCM con clave derivada por agencia y columna, AAD con el id del contacto. El tope
+  /// de 2.000 caracteres lo impone el contrato antes de cifrar. Toda lectura que la descifra
+  /// deja una fila `LECTURA_DATOS_SENSIBLES` en `registros_auditoria`.
+  preferenciasCifrado      Bytes? @map("preferencias_cifrado")
+  preferenciasNonce        Bytes? @map("preferencias_nonce")
+  preferenciasTag          Bytes? @map("preferencias_tag")
+  preferenciasClaveVersion Int?   @map("preferencias_clave_version") @db.SmallInt
 
   /// Valores de los campos personalizados. Las definiciones están en
   /// DefinicionCampoPersonalizado; aquí van los datos, con índice GIN.
@@ -1442,7 +1444,13 @@ model NotaInterna {
   conversacionId String?       @map("conversacion_id") @db.Uuid
   conversacion   Conversacion? @relation(fields: [conversacionId, tenantId], references: [id, tenantId], onDelete: SetNull, onUpdate: Restrict)
 
-  texto String @db.VarChar(2000)
+  /// Lo que el asesor anota del viajero: documento, salud, menores. **Cifrada (ADR-0015)** y
+  /// obligatoria: una nota sin texto no es representable. AAD con el id de la nota. El tope de
+  /// 2.000 caracteres lo impone el contrato antes de cifrar.
+  textoCifrado      Bytes @map("texto_cifrado")
+  textoNonce        Bytes @map("texto_nonce")
+  textoTag          Bytes @map("texto_tag")
+  textoClaveVersion Int   @map("texto_clave_version") @db.SmallInt
 
   escritaEn   DateTime  @default(now()) @map("escrita_en") @db.Timestamptz(3)
   eliminadaEn DateTime? @map("eliminada_en") @db.Timestamptz(3)
@@ -1626,12 +1634,17 @@ model Conversacion {
   /// Nulo mientras el cliente nunca haya escrito, que es el expiraEn nulo del contrato.
   ultimoMensajeClienteEn DateTime? @map("ultimo_mensaje_cliente_en") @db.Timestamptz(3)
 
-  /// Vista previa de la lista. Recortada por el servidor a 200 —lo que declara el
-  /// contrato—, no por la web. Denormalizada a propósito: pintar 30 filas de bandeja no
-  /// puede costar 30 búsquedas del último mensaje.
-  ultimoMensajeTexto     String?           @map("ultimo_mensaje_texto") @db.VarChar(200)
-  ultimoMensajeEn        DateTime?         @map("ultimo_mensaje_en") @db.Timestamptz(3)
-  ultimoMensajeDireccion DireccionMensaje? @map("ultimo_mensaje_direccion")
+  /// Vista previa de la lista. Recortada por el servidor a 200 caracteres ANTES de cifrar —lo
+  /// que declara el contrato—, no por la web. Denormalizada a propósito: pintar 30 filas de
+  /// bandeja no puede costar 30 búsquedas del último mensaje.
+  ///
+  /// **Cifrada (ADR-0015):** es una copia del texto del mensaje. AAD con el id de la conversación.
+  ultimoMensajeTextoCifrado      Bytes?            @map("ultimo_mensaje_texto_cifrado")
+  ultimoMensajeTextoNonce        Bytes?            @map("ultimo_mensaje_texto_nonce")
+  ultimoMensajeTextoTag          Bytes?            @map("ultimo_mensaje_texto_tag")
+  ultimoMensajeTextoClaveVersion Int?              @map("ultimo_mensaje_texto_clave_version") @db.SmallInt
+  ultimoMensajeEn                DateTime?         @map("ultimo_mensaje_en") @db.Timestamptz(3)
+  ultimoMensajeDireccion         DireccionMensaje? @map("ultimo_mensaje_direccion")
 
   /// Contador denormalizado. CHECK >= 0 en la migración: un contador negativo es un bug de
   /// la aplicación, y se vuelve visible en la base en vez de en la interfaz.
@@ -1744,16 +1757,18 @@ model Mensaje {
   tipo      TipoContenido
   estado    EstadoMensaje    @default(PENDIENTE)
 
-  /// Texto plano. Nulo en los que son solo adjunto o reacción.
+  /// El texto del mensaje, **cifrado en reposo (ADR-0015)**. Las cuatro nulas en los que son
+  /// solo adjunto o reacción.
   ///
-  /// **R10 — campo de riesgo, y el de mayor superficie del producto.** Aquí escribe el
-  /// viajero: número de pasaporte, fecha de nacimiento de un menor, a veces una alergia.
-  /// No se cifra por columna, y la razón es la misma que en contactos.preferencias
-  /// multiplicada: el hilo se lee entero en cada apertura de conversación y el contrato
-  /// ConsultarBandeja.buscar busca dentro de él. Los controles que sí se aplican están en
-  /// la migración; la decisión de cifrarlo pide un ADR con auditor-seguridad, no una
-  /// columna puesta en silencio.
-  texto String? @db.Text
+  /// **R10 — el campo de mayor superficie del producto.** Aquí escribe el viajero: número de
+  /// pasaporte, fecha de nacimiento de un menor, a veces una alergia. AES-256-GCM con clave
+  /// derivada por agencia y columna (HKDF) y AAD con el id del mensaje, que por eso se genera
+  /// en la aplicación antes del INSERT. Sin búsqueda por contenido: la bandeja busca por el
+  /// nombre y el teléfono del contacto (`mensajes_texto_trgm_idx` se retiró).
+  textoCifrado      Bytes? @map("texto_cifrado")
+  textoNonce        Bytes? @map("texto_nonce")
+  textoTag          Bytes? @map("texto_tag")
+  textoClaveVersion Int?   @map("texto_clave_version") @db.SmallInt
 
   /// El identificador de Meta: wamid.HBg... **Nulo hasta que Meta lo devuelve** en los
   /// salientes, y presente desde el primer instante en los entrantes.
@@ -1859,11 +1874,19 @@ model Adjunto {
   mediaIdMeta String? @map("media_id_meta") @db.VarChar(64)
   /// Ruta en S3/MinIO, SIEMPRE con prefijo de tenant: ADR-0003 deja claro que S3 no está
   /// cubierto por RLS y que su aislamiento es responsabilidad de la aplicación.
+  ///
+  /// **Opaca (ADR-0015):** `<tenant_id>/<uuid>`, nunca derivada de `nombre_archivo`, que si no
+  /// quedaría en claro lo que se cifró. La impone el CHECK `adjuntos_clave_objeto_opaca`.
   claveObjeto String? @map("clave_objeto") @db.VarChar(500)
 
-  nombreArchivo String? @map("nombre_archivo") @db.VarChar(255)
-  tamanoBytes   BigInt? @map("tamano_bytes")
-  mimeType      String? @map("mime_type") @db.VarChar(100)
+  /// El nombre que eligió el viajero («pasaporte_AB123456.jpg»). **Cifrado (ADR-0015)**, AAD
+  /// con el id del adjunto. Tope de 255 caracteres antes de cifrar.
+  nombreArchivoCifrado      Bytes?  @map("nombre_archivo_cifrado")
+  nombreArchivoNonce        Bytes?  @map("nombre_archivo_nonce")
+  nombreArchivoTag          Bytes?  @map("nombre_archivo_tag")
+  nombreArchivoClaveVersion Int?    @map("nombre_archivo_clave_version") @db.SmallInt
+  tamanoBytes               BigInt? @map("tamano_bytes")
+  mimeType                  String? @map("mime_type") @db.VarChar(100)
 
   /// Nulo mientras la descarga no haya terminado. El contrato no lo expone: la API solo
   /// emite adjuntos ya descargados.

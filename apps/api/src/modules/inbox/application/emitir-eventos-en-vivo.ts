@@ -14,11 +14,16 @@
  *     quien la veía antes y ya no, un `CONVERSACION_RETIRADA` para que su bandeja quite la fila.
  * El gateway no decide nada: recibe el conjunto de usuarios y emite a sus salas.
  *
+ * **R10:** `MENSAJE_NUEVO` y `CONVERSACION_ACTUALIZADA` llevan texto descifrado (el del mensaje y
+ * la vista previa). Antes de emitirlos se deja una fila `LECTURA_DATOS_SENSIBLES` con la audiencia;
+ * si no se puede escribir, no se emite.
+ *
  * Un tipo de evento que no se conoce se ignora: otros contextos publican por el mismo canal.
  */
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { EventoBandeja } from '@viajapro/contracts';
 import { quienesVen } from '../../../shared/autorizacion/visibilidad-de-conversaciones.js';
+import { COLUMNAS_CIFRADAS } from '../../../shared/cifrado/puerto-de-cifrado.js';
 import {
   CargaDeAccesoRevocado,
   CargaDeConversacionActualizada,
@@ -89,6 +94,15 @@ export class EmitirEventosEnVivo {
       conversacionId: mensaje.conversacionId,
       mensaje,
     });
+    if (mensaje.texto !== null && audiencia.size > 0) {
+      await this.conversaciones.registrarEmisionSensible(evento.tenantId, {
+        entidad: 'Conversacion',
+        entidadId: mensaje.conversacionId,
+        columnas: [COLUMNAS_CIFRADAS.MENSAJES_TEXTO],
+        filas: [mensaje.id],
+        destinatarios: [...audiencia],
+      });
+    }
     this.emision.emitirAUsuarios(evento.tenantId, audiencia, salida);
   }
 
@@ -132,6 +146,15 @@ export class EmitirEventosEnVivo {
 
     const miembros = await this.conversaciones.miembrosActivos(evento.tenantId);
     const ahora = quienesVen(miembros, resumen.asignadoAId);
+    if (resumen.ultimoMensajeTexto !== null && ahora.size > 0) {
+      await this.conversaciones.registrarEmisionSensible(evento.tenantId, {
+        entidad: 'Conversacion',
+        entidadId: resumen.id,
+        columnas: [COLUMNAS_CIFRADAS.CONVERSACIONES_ULTIMO_MENSAJE_TEXTO],
+        filas: [resumen.id],
+        destinatarios: [...ahora],
+      });
+    }
     this.emision.emitirAUsuarios(
       evento.tenantId,
       ahora,

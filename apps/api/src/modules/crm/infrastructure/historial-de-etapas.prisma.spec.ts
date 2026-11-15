@@ -13,6 +13,7 @@ import { PuertoExistenciaDePaquete } from '../../../shared/puertos/puertos-hacia
 import { ContextoTenant } from '../../../shared/tenant/contexto-tenant.js';
 import { CrmPrisma } from './crm.prisma.js';
 import { EscrituraCrmPrisma } from './escritura-crm.prisma.js';
+import { cifradoDePrueba } from '../../../shared/cifrado/cifrado-de-prueba.js';
 
 const TENANT = '11111111-1111-4111-8111-111111111111';
 const ACTOR = '22222222-2222-4222-8222-222222222222';
@@ -111,7 +112,7 @@ function enTenant<T>(fn: () => T): T {
 
 const mover = (prisma: PrismaService, etapaId: string, motivo: 'PRECIO' | null = null) =>
   enTenant(() =>
-    new CrmPrisma(prisma).moverOportunidad({
+    new CrmPrisma(prisma, cifradoDePrueba()).moverOportunidad({
       oportunidadId: 'o-1',
       etapaId,
       motivoPerdida: motivo,
@@ -197,7 +198,7 @@ describe('EscrituraCrmPrisma.crearOportunidad — fila de ALTA (T-131)', () => {
 
   const crear = (prisma: PrismaService) =>
     enTenant(() =>
-      new EscrituraCrmPrisma(prisma, new SinPaquetes()).crearOportunidad({
+      new EscrituraCrmPrisma(prisma, new SinPaquetes(), cifradoDePrueba()).crearOportunidad({
         contactoId: 'c-1',
         etapaId: 'e-lead',
         titulo: 'San Andrés',

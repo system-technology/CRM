@@ -25,6 +25,7 @@ import type { EventoDeDominio } from './domain/evento-de-dominio.js';
 import { TIPO_MENSAJE_RECIBIDO } from './domain/evento-de-dominio.js';
 import { BandejaPrisma } from './infrastructure/bandeja.prisma.js';
 import { OutboxPrisma } from './infrastructure/outbox.prisma.js';
+import { cifradoDePrueba } from '../../shared/cifrado/cifrado-de-prueba.js';
 
 const idDeTenant = (): string => `01932000-0000-7000-8000-${randomBytes(6).toString('hex')}`;
 const TENANT_A = idDeTenant();
@@ -117,7 +118,7 @@ beforeAll(async () => {
 
   prismaWebhook = new PrismaWebhookService();
   await prismaWebhook.onModuleInit();
-  bandeja = new BandejaPrisma(prismaWebhook, new ContactosDeCrm());
+  bandeja = new BandejaPrisma(prismaWebhook, new ContactosDeCrm(), cifradoDePrueba());
   outbox = new OutboxAcotado(prismaWebhook);
 });
 

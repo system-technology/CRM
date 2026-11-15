@@ -47,6 +47,7 @@ import { PublicadorRedis } from './infrastructure/bus-de-eventos.redis.js';
 import { OutboxPrisma } from './infrastructure/outbox.prisma.js';
 import { StagingPrisma } from './infrastructure/staging.prisma.js';
 import { PlanificadorDeRelay } from './interface/planificador-de-relay.js';
+import { cifradoDePrueba } from '../../shared/cifrado/cifrado-de-prueba.js';
 
 const HAY_REDIS_REAL = process.env['CI'] === 'true' || process.env['PRUEBA_BULLMQ'] === '1';
 const URL_REDIS = process.env['REDIS_URL'] ?? '';
@@ -320,7 +321,7 @@ describe.skipIf(!CORRE)('POST firmado -> trabajador -> Redis -> socket', () => {
     const avisos = new AvisosDeOutboxEnMemoria();
     caso = new ProcesarChange(
       new StagingPrisma(prismaWebhook),
-      new BandejaPrisma(prismaWebhook, new ContactosDeCrm()),
+      new BandejaPrisma(prismaWebhook, new ContactosDeCrm(), cifradoDePrueba()),
       avisos,
     );
     publicador = new PublicadorRedis(URL_REDIS);

@@ -4,15 +4,27 @@
  */
 import { ConversacionResumen, Id, Mensaje } from '@viajapro/contracts';
 import type { Prisma } from '@prisma/client';
+import {
+  campoDeTexto,
+  campoDeUltimoMensaje,
+  SELECCION_DE_TEXTO,
+  SELECCION_DE_ULTIMO_MENSAJE,
+} from '../../../shared/cifrado/columnas-de-prisma.js';
+import type { RegistroDeLectura } from '../../../shared/cifrado/lectura-auditada.js';
+import {
+  COLUMNAS_CIFRADAS,
+  type PuertoCifradoDeCampos,
+} from '../../../shared/cifrado/puerto-de-cifrado.js';
 import { calcularVentana, nuevaExpiracion } from '../domain/ventana-de-servicio.js';
 import { CursorInvalidoError } from '../domain/errores-de-conversacion.js';
 
 export const PARA_EL_MENSAJE = {
   id: true,
+  tenantId: true,
   conversacionId: true,
   direccion: true,
   tipo: true,
-  texto: true,
+  ...SELECCION_DE_TEXTO,
   estado: true,
   motivoFallo: true,
   autorId: true,
@@ -23,13 +35,28 @@ export const PARA_EL_MENSAJE = {
 
 export type FilaDeMensaje = Prisma.MensajeGetPayload<{ select: typeof PARA_EL_MENSAJE }>;
 
-export function aMensaje(fila: FilaDeMensaje): Mensaje {
+/**
+ * Descifra el texto aquí, con la agencia y el id de LA FILA (el AAD, ADR-0015): es el único sitio
+ * por el que un mensaje sale de la base, para la API y para el evento del socket. Nunca viaja
+ * descifrado por Redis ni por el outbox: quien emite lee de la base bajo RLS y llama a esto.
+ * Con `registro`, lo descifrado queda anotado para la lectura auditada (R10).
+ */
+export function aMensaje(
+  fila: FilaDeMensaje,
+  cifrado: PuertoCifradoDeCampos,
+  /** El de la sesión o el del evento, NUNCA el de la fila: si no coinciden, se lanza. */
+  tenantId: string,
+  registro?: RegistroDeLectura,
+): Mensaje {
+  const columna = COLUMNAS_CIFRADAS.MENSAJES_TEXTO;
+  const texto = cifrado.descifrarDeFila(columna, tenantId, fila, campoDeTexto(fila));
+  registro?.anotar(columna, fila.id, texto);
   return Mensaje.parse({
     id: fila.id,
     conversacionId: fila.conversacionId,
     direccion: fila.direccion,
     tipo: fila.tipo,
-    texto: fila.texto,
+    texto,
     // El contrato exige la URL propia y firmada de un adjunto YA descargado. Hasta que exista la
     // descarga a S3, el mensaje no lleva adjuntos: el detalle de cada uno está en su propia ruta.
     adjuntos: [],
@@ -44,11 +71,12 @@ export function aMensaje(fila: FilaDeMensaje): Mensaje {
 
 export const PARA_EL_RESUMEN = {
   id: true,
+  tenantId: true,
   contactoId: true,
   estado: true,
   asignadoAId: true,
   ultimoMensajeClienteEn: true,
-  ultimoMensajeTexto: true,
+  ...SELECCION_DE_ULTIMO_MENSAJE,
   ultimoMensajeEn: true,
   ultimoMensajeDireccion: true,
   mensajesSinLeer: true,
@@ -61,7 +89,22 @@ export const PARA_EL_RESUMEN = {
 
 export type FilaDeResumen = Prisma.ConversacionGetPayload<{ select: typeof PARA_EL_RESUMEN }>;
 
-export function aResumen(fila: FilaDeResumen, ahora: Date): ConversacionResumen {
+export function aResumen(
+  fila: FilaDeResumen,
+  ahora: Date,
+  cifrado: PuertoCifradoDeCampos,
+  /** El de la sesión o el del evento, NUNCA el de la fila: si no coinciden, se lanza. */
+  tenantId: string,
+  registro?: RegistroDeLectura,
+): ConversacionResumen {
+  const columna = COLUMNAS_CIFRADAS.CONVERSACIONES_ULTIMO_MENSAJE_TEXTO;
+  const ultimoMensajeTexto = cifrado.descifrarDeFila(
+    columna,
+    tenantId,
+    fila,
+    campoDeUltimoMensaje(fila),
+  );
+  registro?.anotar(columna, fila.id, ultimoMensajeTexto);
   // La ventana se deriva del último mensaje DEL CLIENTE; no se guarda (ver el esquema).
   const expira = fila.ultimoMensajeClienteEn
     ? nuevaExpiracion(null, fila.ultimoMensajeClienteEn)
@@ -75,7 +118,7 @@ export function aResumen(fila: FilaDeResumen, ahora: Date): ConversacionResumen 
     ventana: calcularVentana(expira, ahora),
     asignadoAId: fila.asignadoAId,
     asignadoANombre: fila.asignadoA?.nombre ?? null,
-    ultimoMensajeTexto: fila.ultimoMensajeTexto,
+    ultimoMensajeTexto,
     ultimoMensajeEn: fila.ultimoMensajeEn?.toISOString() ?? null,
     ultimoMensajeDireccion: fila.ultimoMensajeDireccion,
     mensajesSinLeer: fila.mensajesSinLeer,

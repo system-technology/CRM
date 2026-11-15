@@ -8,6 +8,11 @@
  * respuesta del envío no se pise.
  */
 import { Inject, Injectable } from '@nestjs/common';
+import { campoDeTexto, SELECCION_DE_TEXTO } from '../../../shared/cifrado/columnas-de-prisma.js';
+import {
+  COLUMNAS_CIFRADAS,
+  PuertoCifradoDeCampos,
+} from '../../../shared/cifrado/puerto-de-cifrado.js';
 import { PrismaWebhookService } from '../../../shared/prisma/prisma-webhook.service.js';
 import { type MensajePorEnviar, PuertoMensajesSalientes } from '../application/puertos-de-envio.js';
 import type { ErrorDeEnvioWhatsapp } from '../domain/errores-de-envio.js';
@@ -20,7 +25,10 @@ function estaRevocado(filas: { revocadoEn: Date | null }[]): boolean {
 
 @Injectable()
 export class MensajesSalientesPrisma extends PuertoMensajesSalientes {
-  constructor(@Inject(PrismaWebhookService) private readonly prisma: PrismaWebhookService) {
+  constructor(
+    @Inject(PrismaWebhookService) private readonly prisma: PrismaWebhookService,
+    @Inject(PuertoCifradoDeCampos) private readonly cifrado: PuertoCifradoDeCampos,
+  ) {
     super();
   }
 
@@ -34,7 +42,8 @@ export class MensajesSalientesPrisma extends PuertoMensajesSalientes {
           estado: true,
           wamid: true,
           tipo: true,
-          texto: true,
+          // ADR-0015: el texto se descifra aquí, en el trabajador, para mandarlo a Meta.
+          ...SELECCION_DE_TEXTO,
           conversacion: {
             select: {
               ultimoMensajeClienteEn: true,
@@ -65,7 +74,12 @@ export class MensajesSalientesPrisma extends PuertoMensajesSalientes {
       estado: fila.estado,
       aceptadoPorMeta: fila.wamid !== null,
       tipo: fila.tipo,
-      texto: fila.texto,
+      texto: this.cifrado.descifrar(
+        COLUMNAS_CIFRADAS.MENSAJES_TEXTO,
+        tenantId,
+        fila.id,
+        campoDeTexto(fila),
+      ),
       destinoE164: fila.conversacion.contacto.telefonoE164,
       canalId: canal.id,
       phoneNumberId: canal.phoneNumberId,
