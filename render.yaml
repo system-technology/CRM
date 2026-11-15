@@ -85,6 +85,10 @@ services:
           property: connectionString
 
   # ---- Trabajador (BullMQ, outbox, barrido de 30 s; sin HTTP) -----------------------------
+  # Sin HTTP no hay sonda de Render. Su vigilancia es el LATIDO: el trabajador escribe en Redis
+  # (viajapro:trabajador:latido, cada 15 s) y GET /salud/listo de la API lo informa como
+  # `trabajador` (estado 'degradado' en el cuerpo si esta viejo; sigue en 200 para no tumbar la
+  # API). Lo lee la sonda de staging. Runbook: docs/06-operacion/04-runbooks.md.
   - type: worker
     name: viajapro-worker-staging
     runtime: docker

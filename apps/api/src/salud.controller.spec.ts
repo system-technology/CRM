@@ -3,6 +3,7 @@ import type { Response } from 'express';
 import { HttpStatus } from '@nestjs/common';
 import { PrismaService } from './shared/prisma/prisma.service.js';
 import { SaludController } from './salud.controller.js';
+import type { EstadoDelTrabajador } from './shared/salud/latido-del-trabajador.js';
 
 describe('SaludController', () => {
   let controller: SaludController;
@@ -23,6 +24,35 @@ describe('SaludController', () => {
 
   afterEach(() => {
     vi.clearAllMocks();
+  });
+
+  describe('latido del trabajador (T-194)', () => {
+    const conLector = (estado: EstadoDelTrabajador): SaludController =>
+      new SaludController(mockPrisma as unknown as PrismaService, {
+        leer: () => Promise.resolve(estado),
+      });
+
+    beforeEach(() => {
+      mockPrisma.$queryRaw.mockResolvedValue([{ usuario: 'viajapro_app', bypassa: false }]);
+    });
+
+    it('con latido fresco informa ok', async () => {
+      const r = await conLector({ estado: 'ok', edadSegundos: 4 }).listo(mockRes as Response);
+      expect(r).toMatchObject({ estado: 'ok', trabajador: { estado: 'ok', edadSegundos: 4 } });
+    });
+
+    it.each([
+      { estado: 'viejo', edadSegundos: 120 },
+      { estado: 'sin_latido' },
+      { estado: 'sin_verificar' },
+    ] as EstadoDelTrabajador[])(
+      'con trabajador %o queda degradado pero sigue en 200',
+      async (e) => {
+        const r = await conLector(e).listo(mockRes as Response);
+        expect(r).toMatchObject({ estado: 'degradado', trabajador: e });
+        expect(mockRes.status).toHaveBeenCalledWith(HttpStatus.OK);
+      },
+    );
   });
 
   describe('GET /salud/listo', () => {

@@ -10,12 +10,22 @@ import 'reflect-metadata';
 
 import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import { LatidoDelTrabajador } from './shared/salud/latido-del-trabajador.js';
 import { WorkerModule } from './worker.module.js';
 
 async function arrancar(): Promise<void> {
   const app = await NestFactory.createApplicationContext(WorkerModule, { bufferLogs: true });
   app.enableShutdownHooks();
-  new Logger('Worker').log('Trabajador del inbox en marcha.');
+  const log = new Logger('Worker');
+  // T-194: latido en Redis que lee `/salud/listo` de la API (el trabajador no sirve HTTP).
+  const url = process.env['REDIS_URL'];
+  if (url) {
+    const latido = new LatidoDelTrabajador(url, (m) => log.warn(m));
+    await latido.iniciar();
+    process.once('SIGTERM', () => void latido.detener());
+    process.once('SIGINT', () => void latido.detener());
+  }
+  log.log('Trabajador del inbox en marcha.');
 }
 
 arrancar().catch((error: unknown) => {

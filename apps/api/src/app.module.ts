@@ -8,6 +8,11 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
 import { QuotingPuertosModule } from './modules/quoting/quoting-puertos.module.js';
 import { QuotingModule } from './modules/quoting/quoting.module.js';
 import { SaludController } from './salud.controller.js';
+import {
+  LectorDelLatido,
+  LectorDelLatidoRedis,
+  seExigeElLatido,
+} from './shared/salud/latido-del-trabajador.js';
 import { SharedModule } from './shared/shared.module.js';
 import { TenantMiddleware } from './shared/tenant/tenant.middleware.js';
 import {
@@ -29,6 +34,14 @@ import { OriginCheckMiddleware } from './shared/red/origin-check.middleware.js';
     AnalyticsModule,
   ],
   controllers: [SaludController],
+  providers: [
+    {
+      // T-194: la API lee el latido del trabajador. `null` donde no hay trabajador aparte.
+      provide: LectorDelLatido,
+      useFactory: (): LectorDelLatido | null =>
+        seExigeElLatido() ? new LectorDelLatidoRedis(process.env['REDIS_URL'] ?? '') : null,
+    },
+  ],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {
