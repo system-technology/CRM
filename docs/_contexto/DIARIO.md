@@ -50,11 +50,32 @@ Verificado (gh/git):
 Supuesto (no verificado): nada está desplegado; WhatsApp solo se probó contra una Graph falsa; las
 fuentes de la DIAN del ADR-0023 no se verificaron.
 
+**Segundo cierre (añadido; `main` en `e46ee11`)**
+
+Verificado (gh/git; todos con el CI en verde, 13-14 checks):
+- #270 (`73d8f80`): ESTADO, bitácora y diario del primer cierre.
+- #271 (`2252fd0`): T-229 motivos de pérdida por agencia: contrato, API, pantalla y migración
+  `20261115190000` (el disparador respeta el `motivo_perdida_id` escrito). Regla: todo lo guardado
+  como OTRO, también un motivo propio, exige nota (el contrato `Oportunidad` lo rechaza sin ella).
+- #272 (`e52e78b`): T-230/T-232 (migración `20261115200000`: VP001 al asignar un motivo
+  desactivado, CHECK de que OTRO exige nota, pruebas de superficie y restauración de contexto) y
+  T-231 (ADR-0026 + R2).
+- #273 (`26aa5d1`): T-226 (b) abortar al arrancar si hay `*_clave_version` sin clave; T-233
+  (migración `20261115210000`, solo comprobaciones).
+- #274 (`e46ee11`): T-234, la comprobación corre en `onModuleInit` de la raíz y todo lo que toma
+  trabajo arranca en `onApplicationBootstrap`.
+- Cada lote que tocó aislamiento o cifrado pasó por `auditor-seguridad` (integrable en todos);
+  lo que no se corrigió en la vuelta fue a la cola (T-232..T-235).
+- Cola de código restante: T-235 (P3), T-226 (c) (solo con una clave real que rotar).
+
 **Pendiente (no darlo por hecho)**
 - Del propietario: `CAMPOS_SENSIBLES_KEY` en Render y copia de la clave; `STAGING_DESPLIEGUE`;
   Meta real (T-080); decidir zod 4; ADR-0023/0024.
 
 **Trampas nuevas**
+- Tras un squash-merge, la rama remota diverge de `main`: el force-push lo deniega el
+  clasificador. Se hace `git merge origin/<rama>` (contenido idéntico) y push normal.
+- Commitlint: el alcance `datos` no existe; para la base es `db`.
 - Un commit que falla en lint-staged restaura el árbol: con agentes trabajando en paralelo puede
   borrar su trabajo. Pasar lint antes de commitear y nunca usar `git stash` con agentes activos.
 - Desde el cifrado, la búsqueda de la bandeja solo mira nombre y teléfono, y la semilla SQL no
