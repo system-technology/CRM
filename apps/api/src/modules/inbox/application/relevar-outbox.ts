@@ -42,6 +42,7 @@ export class RelevarOutbox {
           for (const e of eventos) {
             if (this.envios && e.tipo === TIPO_MENSAJE_SALIENTE_CREADO) {
               await this.envios.encolar(e.tenantId, e.agregadoId);
+              this.log.log(`Saliente ${e.agregadoId.slice(0, 8)} encolado para envío.`);
             }
             await this.publicador.publicar(e);
           }

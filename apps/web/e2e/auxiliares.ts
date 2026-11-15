@@ -84,3 +84,71 @@ export async function enviarWebhookWhatsapp(
   });
   return { estado: respuesta.status, wamid };
 }
+
+/**
+ * Webhook de ESTADO firmado, como el que Meta manda tras aceptar un saliente: `sent`, `delivered`,
+ * `read` o `failed`. Es lo que pasa un mensaje de PENDIENTE a ENVIADO; la respuesta de la Graph
+ * solo deja el wamid. En el CI la Graph es falsa y no lo manda: lo hace la prueba.
+ */
+export async function enviarEstadoWhatsapp(
+  wamid: string,
+  estado: 'sent' | 'delivered' | 'read',
+  destinatario: string,
+): Promise<number> {
+  const cuerpo = Buffer.from(
+    JSON.stringify({
+      object: 'whatsapp_business_account',
+      entry: [
+        {
+          id: ID_WABA_PRUEBA,
+          changes: [
+            {
+              field: 'messages',
+              value: {
+                messaging_product: 'whatsapp',
+                metadata: {
+                  display_phone_number: '15550000000',
+                  phone_number_id: ID_NUMERO_PRUEBA,
+                },
+                statuses: [
+                  {
+                    id: wamid,
+                    status: estado,
+                    timestamp: String(Math.floor(Date.now() / 1000)),
+                    recipient_id: destinatario,
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      ],
+    }),
+    'utf8',
+  );
+  const firma =
+    'sha256=' + createHmac('sha256', exigirEnv('META_APP_SECRET')).update(cuerpo).digest('hex');
+  const respuesta = await fetch(new URL('/webhooks/whatsapp', URL_API), {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-hub-signature-256': firma },
+    body: cuerpo,
+  });
+  return respuesta.status;
+}
+
+/** URL de la Graph API falsa (e2e/graph-falsa.mjs), la misma que la API recibe en META_GRAPH_BASE_URL. */
+const URL_GRAPH_FALSA = process.env['GRAPH_FALSA_URL'] ?? 'http://127.0.0.1:4010';
+
+export interface EnvioRegistradoPorGraph {
+  para: string | null;
+  tipo: string | null;
+  texto: string | null;
+  wamid: string;
+}
+
+/** Lo que la Graph falsa ha recibido hasta ahora. Si no responde, falla ruidosamente. */
+export async function enviosRecibidosPorGraph(): Promise<EnvioRegistradoPorGraph[]> {
+  const respuesta = await fetch(new URL('/_enviados', URL_GRAPH_FALSA));
+  if (!respuesta.ok) throw new Error(`La Graph falsa respondio ${respuesta.status}`);
+  return (await respuesta.json()) as EnvioRegistradoPorGraph[];
+}

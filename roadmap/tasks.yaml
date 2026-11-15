@@ -4528,7 +4528,9 @@ tasks:
     phase: 1
     priority: P2
     effort: S
-    status: in_progress
+    status: done
+    done_at: 2026-11-15T17:45:00.000Z
+    evidence: "Integrado en main por el PR #263 (748b915)"
     depends_on: []
     acceptance:
       - "Una tarifa sin tipo cubre adultos y ninos; el infante solo con tarifa INF explicita o politica del tenant (R12)"
@@ -4753,7 +4755,9 @@ tasks:
     phase: 2
     priority: P1
     effort: M
-    status: in_progress
+    status: done
+    done_at: 2026-11-15T17:45:00.000Z
+    evidence: "Integrado en main por el PR #263 (748b915)"
     depends_on: []
     acceptance:
       - "Logs estructurados con tenant_id y trace_id"
@@ -4863,7 +4867,9 @@ tasks:
     phase: 2
     priority: P3
     effort: M
-    status: in_progress
+    status: done
+    done_at: 2026-11-15T17:45:00.000Z
+    evidence: "Integrado en main por el PR #263 (748b915)"
     depends_on: []
     acceptance:
       - "Lista de comprobacion en PRs de migracion y prueba de suite vieja sobre esquema nuevo"
@@ -4912,7 +4918,9 @@ tasks:
     phase: 2
     priority: P0
     effort: L
-    status: in_progress
+    status: done
+    done_at: 2026-11-15T17:45:00.000Z
+    evidence: "Integrado en main por el PR #264 (2628aa3)"
     depends_on: []
     acceptance:
       - "mensajes.texto y contactos.preferencias cifrados en reposo"
@@ -5085,7 +5093,9 @@ tasks:
     phase: 1
     priority: P1
     effort: S
-    status: in_progress
+    status: done
+    done_at: 2026-11-15T17:45:00.000Z
+    evidence: "Integrado en main por el PR #263 (748b915)"
     depends_on: [T-217]
     acceptance:
       - "duplicarVersionComoComposicion en apps/web/src/lib/cotizaciones-logica.ts usa composicionDesdeVersion; re-cotizar una version con nino no da 422"
@@ -5100,7 +5110,9 @@ tasks:
     phase: 1
     priority: P2
     effort: M
-    status: in_progress
+    status: done
+    done_at: 2026-11-15T17:45:00.000Z
+    evidence: "Integrado en main por el PR #263 (748b915)"
     depends_on: [T-180]
     acceptance:
       - "El detalle de paquete y la ficha web muestran vigencias y tarifas, no temporadas"
@@ -5151,7 +5163,7 @@ tasks:
     phase: 1
     priority: P0
     effort: S
-    status: ready
+    status: in_progress
     depends_on: [T-212]
     acceptance:
       - "Un script del lado de la API (con CAMPOS_SENSIBLES_KEY) siembra conversaciones, mensajes y notas de la agencia demo ya cifrados"

@@ -1,4 +1,4 @@
-import { enviarWebhookWhatsapp } from './auxiliares';
+import { enviarEstadoWhatsapp, enviarWebhookWhatsapp, enviosRecibidosPorGraph } from './auxiliares';
 import { expect, test } from './fixtures';
 
 /**
@@ -12,8 +12,8 @@ import { expect, test } from './fixtures';
  *   H5  crear la oportunidad desde la conversacion y verla en el pipeline
  *   H6  cotizar un producto de la semilla, guardar la cotizacion, verla, y reportes
  *
- * PENDIENTE (marcado con test.fixme abajo): responder desde la bandeja y enviar la cotizacion por
- * WhatsApp. Ambos necesitan una Graph API falsa o Meta real; sin ella el saliente queda FALLIDO.
+ * Al final: responder desde la bandeja y enviar la cotizacion por WhatsApp, contra la Graph API
+ * falsa (e2e/graph-falsa.mjs) que la API recibe en META_GRAPH_BASE_URL.
  */
 test.describe.configure({ mode: 'serial' });
 
@@ -197,6 +197,86 @@ test('H6: los reportes cargan con datos reales', async ({ page }) => {
   await expect(page.getByTestId('reportes-sin-permiso')).toHaveCount(0);
 });
 
-// PENDIENTE: necesitan una Graph API falsa (o Meta real) detras de META_GRAPH_BASE_URL.
-test.fixme('H4: responder desde la bandeja deja el mensaje saliente enviado', async () => {});
-test.fixme('H6: enviar la cotizacion por WhatsApp desde la conversacion', async () => {});
+// El envio sale por la API real hacia la Graph FALSA (e2e/graph-falsa.mjs, META_GRAPH_BASE_URL).
+// La ventana de 24 h esta abierta: el viajero acaba de escribir por el webhook en esta misma suite.
+test('H4: responder desde la bandeja deja el mensaje saliente enviado', async ({ page }) => {
+  expect(urlConversacion, 'H4 debe haber abierto la conversacion').not.toBe('');
+  const respuesta = `Con gusto te ayudo ${marca}`;
+  await page.goto(urlConversacion);
+  await page.getByPlaceholder(/Escribe tu respuesta a cliente/).fill(respuesta);
+  await page.getByRole('button', { name: 'Enviar mensaje', exact: true }).click();
+
+  // Primero lo esencial: el trabajador entrego el mensaje a la Graph de Meta (falsa en el CI).
+  let wamidAceptado = '';
+  await expect(async () => {
+    const envios = await enviosRecibidosPorGraph();
+    const recibido = envios.find((e) => e.texto === respuesta);
+    expect(
+      recibido,
+      `la Graph falsa debe haber recibido el texto; recibio: ${JSON.stringify(envios.map((e) => e.texto))}`,
+    ).toBeDefined();
+    expect(recibido?.tipo).toBe('text');
+    expect(recibido?.para).toBe(telefono);
+    wamidAceptado = recibido?.wamid ?? '';
+  }).toPass({ timeout: 40_000, intervals: [1_000, 2_000] });
+
+  // Meta confirma con un webhook de estado `sent`; es lo que pasa el mensaje a ENVIADO. La Graph
+  // falsa no lo manda: lo manda la prueba, firmado como el de Meta.
+  expect(await enviarEstadoWhatsapp(wamidAceptado, 'sent', telefono)).toBe(200);
+
+  // Despues, la bandeja lo refleja: la marca de enviado (Check) y nunca «Falló». Dentro del hilo
+  // (role="log"): el mismo texto sale tambien en la vista previa de la lista.
+  const burbuja = page.getByRole('log').getByText(respuesta, { exact: true }).locator('xpath=..');
+  let textoDeLaBurbuja = '';
+  await expect(async () => {
+    await page.reload();
+    await expect(burbuja).toBeVisible({ timeout: 4_000 });
+    textoDeLaBurbuja = await burbuja.innerText();
+    await expect(burbuja).not.toContainText('Falló');
+    await expect(
+      burbuja.locator('svg[class*="lucide-check"]:not([class*="lucide-check-check"])'),
+      `la burbuja debe mostrar la marca de enviado; muestra: ${textoDeLaBurbuja}`,
+    ).toBeVisible({ timeout: 2_000 });
+  }).toPass({ timeout: 30_000, intervals: [1_000, 2_000, 3_000] });
+});
+
+test('H6: enviar la cotizacion por WhatsApp desde la conversacion', async ({ page }) => {
+  expect(urlConversacion, 'H4 debe haber abierto la conversacion').not.toBe('');
+  await page.goto(urlConversacion);
+  await page.getByTestId('boton-abrir-enviar-cotizacion').click();
+
+  const dialogo = page.getByRole('dialog', { name: 'Enviar cotización por WhatsApp' });
+  await expect(dialogo).toBeVisible();
+  await expect(dialogo.getByTestId('alerta-ventana-cerrada-cotizacion')).toHaveCount(0);
+  const selector = dialogo.getByTestId('selector-cotizacion-conversacion');
+  await expect(
+    selector,
+    'la cotizacion guardada para este contacto debe poder elegirse',
+  ).toBeVisible({ timeout: 20_000 });
+  const opcion = selector.locator('option', { hasText: tituloCotizacion });
+  expect(await opcion.count()).toBeGreaterThan(0);
+  await selector.selectOption((await opcion.first().getAttribute('value')) ?? '');
+
+  await dialogo.getByTestId('boton-confirmar-enviar-cotizacion').click();
+  await expect(
+    dialogo.getByTestId('alerta-error-envio-cotizacion'),
+    'el envio de la cotizacion no debe fallar',
+  ).toHaveCount(0);
+  await expect(dialogo.getByTestId('alerta-exito-envio-cotizacion')).toBeVisible({
+    timeout: 20_000,
+  });
+
+  let texto = '';
+  await expect(async () => {
+    const envio = (await enviosRecibidosPorGraph()).find(
+      (e) => e.para === telefono && (e.texto ?? '').startsWith('*Cotización:'),
+    );
+    expect(envio, 'la Graph falsa debe haber recibido el texto de la cotizacion').toBeDefined();
+    texto = envio?.texto ?? '';
+  }).toPass({ timeout: 30_000, intervals: [500, 1_000, 2_000] });
+
+  expect(texto).toContain('*Total:');
+  expect(texto).toContain('Fecha de salida:');
+  // El viajero nunca ve el neto ni el margen (R8, T-073).
+  expect(texto).not.toMatch(/\b(neto|margen|markup|comisi[oó]n)\b/i);
+});
