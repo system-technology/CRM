@@ -4429,7 +4429,7 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: ready
+    status: in_progress
     depends_on: []
     acceptance:
       - "Lectura de asignables con permiso de bandeja (decision del arquitecto)"

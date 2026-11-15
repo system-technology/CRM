@@ -11,6 +11,7 @@ import {
 } from './domain/puertos-de-miembros.js';
 import { AceptarInvitacionUseCase } from './application/aceptar-invitacion.use-case.js';
 import { DarDeBajaMiembroUseCase } from './application/dar-de-baja-miembro.use-case.js';
+import { ListarMiembrosAsignablesUseCase } from './application/listar-miembros-asignables.use-case.js';
 import { ListarMiembrosUseCase } from './application/listar-miembros.use-case.js';
 import { InvitarMiembroUseCase } from './application/invitar-miembro.use-case.js';
 import { IdentidadesPrisma } from './infrastructure/identidades.prisma.js';
@@ -63,6 +64,7 @@ import { AgenciaAjustesController } from './interface/agencia-ajustes.controller
     AceptarInvitacionUseCase,
     DarDeBajaMiembroUseCase,
     ListarMiembrosUseCase,
+    ListarMiembrosAsignablesUseCase,
     AjustesDeAgenciaUseCase,
     { provide: ResolutorDeAcceso, useExisting: ResolverAcceso },
     { provide: PuertoSesiones, useClass: SesionesBetterAuth },

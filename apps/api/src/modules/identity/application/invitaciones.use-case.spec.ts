@@ -51,6 +51,9 @@ class Miembros extends PuertoMiembros {
   ) {
     super();
   }
+  async listarAsignables(): Promise<never[]> {
+    return [];
+  }
   async describirInvitacion(): Promise<DescripcionDeInvitacion | null> {
     return this.rol;
   }
