@@ -1,8 +1,8 @@
 import { createHmac, randomBytes } from 'node:crypto';
 
 export const URL_API = process.env['E2E_API_URL'] ?? 'http://localhost:3333';
-const ID_NUMERO_PRUEBA = process.env['META_PHONE_NUMBER_ID_PRUEBA'] ?? '100000000000001';
-const ID_WABA_PRUEBA = process.env['META_WABA_ID_PRUEBA'] ?? '100000000000002';
+const ID_NUMERO_PRUEBA = process.env['META_PHONE_NUMBER_ID_PRUEBA'] ?? '100000000000077';
+const ID_WABA_PRUEBA = process.env['META_WABA_ID_PRUEBA'] ?? '100000000000078';
 
 /** Una variable obligatoria que falta es un fallo ruidoso, nunca una prueba omitida en silencio. */
 export function exigirEnv(...nombres: string[]): string {

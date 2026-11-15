@@ -298,8 +298,10 @@ jobs:
       DIRECT_URL: ${{ format('postgres{0}://{1}:{2}@localhost:5432/{3}', 'ql', 'viajapro', 'viajapro', 'neondb') }}
       APP_ENV: local
       # Ids ficticios del numero de prueba: los usan canal:registrar-prueba y el webhook de la suite.
-      META_PHONE_NUMBER_ID_PRUEBA: '100000000000001'
-      META_WABA_ID_PRUEBA: '100000000000002'
+      # Distintos del canal demo de la semilla (100000000000001, SUSPENDIDO a proposito): con el mismo
+      # numero, canal:registrar-prueba se niega a reactivarlo y el job cae antes de las pruebas.
+      META_PHONE_NUMBER_ID_PRUEBA: '100000000000077'
+      META_WABA_ID_PRUEBA: '100000000000078'
 
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
