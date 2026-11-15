@@ -206,26 +206,32 @@ test('H4: responder desde la bandeja deja el mensaje saliente enviado', async ({
   await page.getByPlaceholder(/Escribe tu respuesta a cliente/).fill(respuesta);
   await page.getByRole('button', { name: 'Enviar mensaje', exact: true }).click();
 
-  // El mensaje saliente pasa de pendiente a ENVIADO cuando el trabajador lo entrega a Graph:
-  // se recarga hasta ver la marca de enviado (y nunca «Falló»).
-  // Dentro del hilo (role="log"): el mismo texto sale tambien en la vista previa de la lista.
-  const burbuja = page.getByRole('log').getByText(respuesta, { exact: true }).locator('xpath=..');
-  await expect(async () => {
-    await page.reload();
-    await expect(burbuja).toBeVisible({ timeout: 4_000 });
-    await expect(burbuja).not.toContainText('Falló');
-    await expect(
-      burbuja.locator('svg[class*="lucide-check"]:not([class*="lucide-check-check"])'),
-    ).toBeVisible({ timeout: 2_000 });
-  }).toPass({ timeout: 40_000, intervals: [1_000, 2_000, 3_000] });
-
+  // Primero lo esencial: el trabajador entrego el mensaje a la Graph de Meta (falsa en el CI).
   await expect(async () => {
     const envios = await enviosRecibidosPorGraph();
     const recibido = envios.find((e) => e.texto === respuesta);
-    expect(recibido, 'la Graph falsa debe haber recibido el texto').toBeDefined();
+    expect(
+      recibido,
+      `la Graph falsa debe haber recibido el texto; recibio: ${JSON.stringify(envios.map((e) => e.texto))}`,
+    ).toBeDefined();
     expect(recibido?.tipo).toBe('text');
     expect(recibido?.para).toBe(telefono);
-  }).toPass({ timeout: 20_000, intervals: [500, 1_000] });
+  }).toPass({ timeout: 40_000, intervals: [1_000, 2_000] });
+
+  // Despues, la bandeja lo refleja: la marca de enviado (Check) y nunca «Falló». Dentro del hilo
+  // (role="log"): el mismo texto sale tambien en la vista previa de la lista.
+  const burbuja = page.getByRole('log').getByText(respuesta, { exact: true }).locator('xpath=..');
+  let textoDeLaBurbuja = '';
+  await expect(async () => {
+    await page.reload();
+    await expect(burbuja).toBeVisible({ timeout: 4_000 });
+    textoDeLaBurbuja = await burbuja.innerText();
+    await expect(burbuja).not.toContainText('Falló');
+    await expect(
+      burbuja.locator('svg[class*="lucide-check"]:not([class*="lucide-check-check"])'),
+      `la burbuja debe mostrar la marca de enviado; muestra: ${textoDeLaBurbuja}`,
+    ).toBeVisible({ timeout: 2_000 });
+  }).toPass({ timeout: 30_000, intervals: [1_000, 2_000, 3_000] });
 });
 
 test('H6: enviar la cotizacion por WhatsApp desde la conversacion', async ({ page }) => {

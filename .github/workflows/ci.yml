@@ -435,6 +435,15 @@ jobs:
           E2E_API_URL: http://localhost:3333
           E2E_TRACE: retain-on-failure
 
+      # Los artefactos no se leen desde todas partes: lo minimo para diagnosticar va al log del job.
+      # api.log es JSON redactado (T-203): sin texto de mensajes, telefonos ni tokens.
+      - name: Diagnostico de envios (solo si falla)
+        if: failure()
+        run: |
+          echo "--- graph-falsa.log (ultimas 40 lineas)"; tail -n 40 graph-falsa.log || true
+          echo "--- api.log: envios, trabajador y errores (ultimas 80)"
+          grep -iE 'envi|graph|whatsapp|worker|trabajador|cola|error|warn' api.log | tail -n 80 || true
+
       # Solo si falla: el reporte HTML, los trazos y los registros de ambos procesos.
       - name: Subir reporte y registros (solo si falla)
         if: failure()
