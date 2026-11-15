@@ -180,7 +180,11 @@ test('H6: cotiza un producto de la semilla y guarda la cotizacion', async ({ pag
 test('H6: la cotizacion guardada aparece en el directorio', async ({ page }) => {
   await page.goto('/cotizaciones');
   await expect(page.getByRole('heading', { name: 'Directorio de Cotizaciones' })).toBeVisible();
-  await expect(page.getByText(tituloCotizacion).first()).toBeVisible({ timeout: 20_000 });
+  // El directorio pinta cada cotizacion dos veces: tarjeta en movil (md:hidden) y fila en
+  // escritorio. `.first()` cogia la tarjeta movil, oculta por diseno: se busca la visible.
+  await expect(page.getByText(tituloCotizacion).filter({ visible: true }).first()).toBeVisible({
+    timeout: 20_000,
+  });
 });
 
 test('H6: los reportes cargan con datos reales', async ({ page }) => {
