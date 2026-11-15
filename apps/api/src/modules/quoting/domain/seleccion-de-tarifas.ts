@@ -133,6 +133,39 @@ export function pasajerosQueCubre(t: CondicionDeCobro, c: Composicion): number {
   return delTipo(t, c).filter((p) => lePasaDato(t, p) || cumple(t, p)).length;
 }
 
+const ORDEN_ACOMODACION = ['SENCILLA', 'DOBLE', 'TRIPLE', 'CUADRUPLE'];
+
+/** Las acomodaciones que traen las tarifas, en orden de ocupación y sin repetir. */
+export function acomodacionesDisponibles(tarifas: readonly CondicionDeCobro[]): string[] {
+  const set = new Set<string>();
+  for (const t of tarifas) if (t.acomodacion !== null) set.add(t.acomodacion);
+  return [...set].sort((a, b) => ORDEN_ACOMODACION.indexOf(a) - ORDEN_ACOMODACION.indexOf(b));
+}
+
+/**
+ * Pasajeros a los que NINGUNA de las tarifas por persona dadas cubre (T-216), descritos para el
+ * asesor. Quien llama pasa solo las tarifas ya cobradas (aplicables, no suplementos).
+ */
+export function pasajerosSinTarifa(
+  cobradas: readonly CondicionDeCobro[],
+  c: Composicion,
+): string[] {
+  const porPersona = cobradas.filter((t) => t.unidad === 'POR_PERSONA');
+  const sin: string[] = [];
+  const contador = { ADT: 0, CHD: 0, INF: 0 };
+  const nombre = { ADT: 'adulto', CHD: 'niño', INF: 'infante' };
+  for (const p of pasajeros(c)) {
+    contador[p.tipo] += 1;
+    const cubierto = porPersona.some(
+      (t) => (t.tipoPasajero === null || t.tipoPasajero === p.tipo) && cumple(t, p),
+    );
+    if (cubierto) continue;
+    const edad = p.edad === null ? '' : ` (${p.edad} años)`;
+    sin.push(`${nombre[p.tipo]} ${contador[p.tipo]}${edad}`);
+  }
+  return sin;
+}
+
 /** ¿Cabe este grupo en el rango de pasajeros que la tarifa admite? */
 export function aplicaAlGrupo(t: CondicionDeCobro, c: Composicion): boolean {
   const total = totalDePasajeros(c);

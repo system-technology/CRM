@@ -4465,7 +4465,7 @@ tasks:
     phase: 1
     priority: P0
     effort: M
-    status: ready
+    status: in_progress
     depends_on: [T-179]
     acceptance:
       - "La peticion lleva acomodacion y se exige cuando las tarifas la traen"
@@ -4483,7 +4483,7 @@ tasks:
     phase: 1
     priority: P1
     effort: S
-    status: ready
+    status: in_progress
     depends_on: []
     acceptance:
       - "El calculo agrupa por moneda o rechaza con error de dominio, igual que al guardar"
@@ -4582,7 +4582,7 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: ready
+    status: in_progress
     depends_on: []
     acceptance:
       - "Bandeja, detalle, mensajes, reportes y cotizacion guardada hacen Esquema.parse en sus e2e"
@@ -4614,7 +4614,7 @@ tasks:
     phase: 1
     priority: P1
     effort: S
-    status: ready
+    status: in_progress
     depends_on: []
     acceptance:
       - "Contactos, consentimientos, seguimientos y oportunidades ajenos dan 404 y no cambian la fila"
@@ -4659,7 +4659,7 @@ tasks:
     phase: 1
     priority: P2
     effort: S
-    status: ready
+    status: in_progress
     depends_on: []
     acceptance:
       - "Venta menor que neto, markup negativo, infante sin adulto, cantidad cero, mezcla COP/USD"
@@ -4923,7 +4923,7 @@ tasks:
     phase: 1
     priority: P1
     effort: S
-    status: ready
+    status: in_progress
     depends_on: [T-179]
     acceptance:
       - "Un nino de 14 con solo tarifa de menor 2-11 no deja el total corto en silencio: error tipado con el pasajero sin tarifa"
@@ -4969,4 +4969,21 @@ tasks:
     source: pruebas de T-200, 2026-11-15
     created_at: 2026-11-15T16:30:00.000Z
     owner: backend
+  - id: T-219
+    title: "Cotizador web: selector de acomodacion desde el inicio, solo con las acomodaciones del producto (seguimiento de T-188)"
+    type: feature
+    phase: 1
+    priority: P2
+    effort: S
+    status: ready
+    depends_on: [T-188]
+    acceptance:
+      - "El contrato de la cotizacion de salida (o un endpoint de tarifas) expone acomodacionesDisponibles"
+      - "El cotizador muestra el selector antes del primer calculo y solo con las acomodaciones que existen"
+    files:
+      - packages/contracts/src/vigencias.ts
+      - apps/web/src/app/cotizador/page.tsx
+    source: entrega de T-188, 2026-11-15
+    created_at: 2026-11-15T16:45:00.000Z
+    owner: frontend
 

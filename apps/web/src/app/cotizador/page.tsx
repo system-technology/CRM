@@ -107,6 +107,14 @@ function ContenidoCotizador() {
 
   // Parámetros modo mock / v1
   const [acomodacionMock, setAcomodacionMock] = useState<Acomodacion | ''>('');
+  // T-188: acomodación para la API real. El selector solo aparece cuando la API dijo que el
+  // tarifario del producto la exige (ACOMODACION_*), y se reinicia al cambiar de paquete.
+  const [acomodacionReal, setAcomodacionReal] = useState<Acomodacion | ''>('');
+  const [pideAcomodacion, setPideAcomodacion] = useState(false);
+  useEffect(() => {
+    setAcomodacionReal('');
+    setPideAcomodacion(false);
+  }, [paqueteId]);
   const [markupExtraMock] = useState(0);
 
   // Respuestas y Estados
@@ -302,6 +310,7 @@ function ContenidoCotizador() {
         ninos: pideComposicion ? ninos : undefined,
         infantes: pideComposicion ? infantes : undefined,
         ...(pideComposicion ? edades : {}),
+        ...(acomodacionReal ? { acomodacion: acomodacionReal } : {}),
       })
         .then((res) => {
           setCotizacionReal(res);
@@ -309,7 +318,14 @@ function ContenidoCotizador() {
         })
         .catch((err: unknown) => {
           setCotizacionReal(null);
-          setErrorMensaje(interpretarErrorCotizacion(err));
+          const interpretado = interpretarErrorCotizacion(err);
+          if (
+            interpretado.codigo === 'ACOMODACION_REQUERIDA' ||
+            interpretado.codigo === 'ACOMODACION_NO_DISPONIBLE'
+          ) {
+            setPideAcomodacion(true);
+          }
+          setErrorMensaje(interpretado);
         })
         .finally(() => {
           setCalculando(false);
@@ -346,6 +362,7 @@ function ContenidoCotizador() {
     infantes,
     edades,
     pideComposicion,
+    acomodacionReal,
     acomodacionMock,
     markupExtraMock,
     cargandoOpciones,
@@ -781,6 +798,31 @@ function ContenidoCotizador() {
                           className="mt-1.5 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white p-2.5 text-xs text-neutral-900 shadow-2xs focus:border-purple-600 focus-visible:ring-2 focus-visible:ring-purple-600 focus-visible:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                         >
                           <option value="">Sugerida automáticamente</option>
+                          <option value="SENCILLA">Sencilla (1 persona)</option>
+                          <option value="DOBLE">Doble (2 personas)</option>
+                          <option value="TRIPLE">Triple (3 personas)</option>
+                          <option value="CUADRUPLE">Cuádruple (4 personas)</option>
+                        </select>
+                      </div>
+                    )}
+
+                    {/* Selector de Acomodación con la API real (T-188): solo si el tarifario la exige */}
+                    {usarReal && pideAcomodacion && (
+                      <div className="border-t border-neutral-100 pt-4 dark:border-neutral-800">
+                        <label
+                          htmlFor="select-acomodacion"
+                          className="block text-xs font-semibold text-neutral-700 dark:text-neutral-300"
+                        >
+                          Acomodación
+                        </label>
+                        <select
+                          id="select-acomodacion"
+                          aria-label="Acomodación"
+                          value={acomodacionReal}
+                          onChange={(e) => setAcomodacionReal(e.target.value as Acomodacion | '')}
+                          className="mt-1.5 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white p-2.5 text-xs text-neutral-900 shadow-2xs focus:border-purple-600 focus-visible:ring-2 focus-visible:ring-purple-600 focus-visible:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                        >
+                          <option value="">Elige una acomodación</option>
                           <option value="SENCILLA">Sencilla (1 persona)</option>
                           <option value="DOBLE">Doble (2 personas)</option>
                           <option value="TRIPLE">Triple (3 personas)</option>

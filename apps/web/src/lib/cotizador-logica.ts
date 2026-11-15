@@ -205,6 +205,41 @@ export function interpretarErrorCotizacion(error: unknown): {
         esErrorAgencia: false,
       };
     }
+    if (code === 'ACOMODACION_REQUERIDA') {
+      return {
+        codigo: 'ACOMODACION_REQUERIDA',
+        mensaje:
+          'Este producto tiene precio por acomodación: elige sencilla, doble, triple o cuádruple para cotizar.',
+        esErrorAgencia: false,
+      };
+    }
+    if (code === 'ACOMODACION_NO_DISPONIBLE') {
+      return {
+        codigo: 'ACOMODACION_NO_DISPONIBLE',
+        mensaje:
+          'Esa acomodación no tiene precio para esta fecha: elige otra o consúltalo con la agencia.',
+        esErrorAgencia: false,
+      };
+    }
+    if (code === 'LINEAS_EN_MONEDAS_DISTINTAS') {
+      return {
+        codigo: 'LINEAS_EN_MONEDAS_DISTINTAS',
+        mensaje:
+          'El tarifario mezcla monedas (por ejemplo COP y USD) en esta fecha y no se pueden sumar. Avisa a la agencia para corregirlo.',
+        esErrorAgencia: true,
+      };
+    }
+    if (code === 'PASAJEROS_SIN_TARIFA') {
+      const texto = 'message' in error ? String(error.message) : '';
+      const quienes = /cubre a: (.+?)\.(?:\s|$)/.exec(texto)?.[1];
+      return {
+        codigo: 'PASAJEROS_SIN_TARIFA',
+        mensaje:
+          `Ninguna tarifa cubre a ${quienes ?? 'algún pasajero'}, y el total quedaría corto. ` +
+          'Revisa las edades o cotiza a mano.',
+        esErrorAgencia: false,
+      };
+    }
     if (code === 'PAQUETE_NO_ENCONTRADO') {
       return {
         codigo: 'PAQUETE_NO_ENCONTRADO',

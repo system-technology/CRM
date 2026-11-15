@@ -135,6 +135,55 @@ export class TarifasConCondicionNoEvaluableError extends InvariantError {
   }
 }
 
+/**
+ * Las tarifas de la vigencia se distinguen por acomodación y la petición no dijo cuál (T-188).
+ * Sin esto se sumaban las de todas las acomodaciones: una pareja en DOBLE pagaba la suma de las cuatro.
+ */
+export class AcomodacionRequeridaError extends InvariantError {
+  readonly code = 'ACOMODACION_REQUERIDA';
+  constructor(readonly disponibles: readonly string[]) {
+    super(
+      `Este producto se cotiza por acomodación (${disponibles.join(', ')}): ` +
+        'elige una con `acomodacion`',
+    );
+  }
+}
+
+/** La acomodación pedida no tiene tarifas en esta vigencia (T-188). */
+export class AcomodacionNoDisponibleError extends InvariantError {
+  readonly code = 'ACOMODACION_NO_DISPONIBLE';
+  constructor(
+    readonly pedida: string,
+    readonly disponibles: readonly string[],
+  ) {
+    super(
+      `No hay tarifas en acomodación ${pedida} para esta fecha. Disponibles: ${disponibles.join(', ')}`,
+    );
+  }
+}
+
+/** Las líneas cobradas están en monedas distintas: no se pueden sumar (T-189). */
+export class LineasEnMonedasDistintasError extends InvariantError {
+  readonly code = 'LINEAS_EN_MONEDAS_DISTINTAS';
+  constructor(readonly monedas: readonly string[]) {
+    super(
+      `Las tarifas que se cobrarían están en monedas distintas (${monedas.join(', ')}) y no se suman: ` +
+        'revisa el tarifario de esta vigencia.',
+    );
+  }
+}
+
+/** Ninguna tarifa cubre a algún pasajero y no hay alternativa de grupo que lo resuelva (T-216). */
+export class PasajerosSinTarifaError extends InvariantError {
+  readonly code = 'PASAJEROS_SIN_TARIFA';
+  constructor(readonly pasajeros: readonly string[]) {
+    super(
+      `Ninguna tarifa cubre a: ${pasajeros.join('; ')}. ` +
+        'El total quedaría corto: cotiza a mano o revisa las edades.',
+    );
+  }
+}
+
 // =============================================================================
 // Catálogo gestionable (ADR-0017)
 // =============================================================================

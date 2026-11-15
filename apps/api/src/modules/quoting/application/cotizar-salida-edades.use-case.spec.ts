@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { CotizarSalida } from '@viajapro/contracts';
 import type { ClienteTenant, PrismaService } from '../../../shared/prisma/prisma.service.js';
 import { ContextoTenant } from '../../../shared/tenant/contexto-tenant.js';
-import { TarifasConCondicionNoEvaluableError } from '../domain/errors.js';
+import { PasajerosSinTarifaError, TarifasConCondicionNoEvaluableError } from '../domain/errors.js';
 import { CotizarSalidaUseCase } from './cotizar-salida.use-case.js';
 
 /** T-179: una familia cotiza con la tarifa de menor cuando se dan las edades. */
@@ -92,10 +92,13 @@ describe('CotizarSalidaUseCase: edades de los pasajeros (T-179)', () => {
     expect(r.total.unidades).toBe('1070000');
   });
 
-  it('un niño de 14 no cae en la tarifa de menor y queda explicado', async () => {
-    const r = await calcular({ ...base, adultos: 2, ninos: 1, edadesNinos: [14] });
-    expect(r.lineas.map((l) => l.nombre)).toEqual(['Adulto']);
-    expect(r.noAplicables[0]?.motivo).toMatch(/de 2 a 11 años/);
+  it('T-216: un niño de 14 que ninguna tarifa cubre es error tipado, no un total corto', async () => {
+    const promesa = calcular({ ...base, adultos: 2, ninos: 1, edadesNinos: [14] });
+    await expect(promesa).rejects.toBeInstanceOf(PasajerosSinTarifaError);
+    await expect(promesa).rejects.toMatchObject({
+      code: 'PASAJEROS_SIN_TARIFA',
+      pasajeros: ['niño 1 (14 años)'],
+    });
   });
 
   it('sin edades, error tipado y no un total corto', async () => {

@@ -29,6 +29,10 @@ import {
 import { type ClienteTenant, PrismaService } from '../../../shared/prisma/prisma.service.js';
 import { ContextoTenant } from '../../../shared/tenant/contexto-tenant.js';
 import {
+  AcomodacionNoDisponibleError,
+  AcomodacionRequeridaError,
+  LineasEnMonedasDistintasError,
+  PasajerosSinTarifaError,
   OpcionDeSalidaNoEncontradaError,
   OpcionDeSalidaRequeridaError,
   PaqueteNoEncontradoError,
@@ -39,10 +43,12 @@ import { hoyEnZona } from './desde-de-tarifas.js';
 import { leerPromoVencida } from './presentacion-de-precios.js';
 import {
   type Composicion,
+  acomodacionesDisponibles,
   condicionNoEvaluable,
   esSuplemento,
   exigeComposicion,
   motivoNoAplica,
+  pasajerosSinTarifa,
   vecesQueSeCobra,
 } from '../domain/seleccion-de-tarifas.js';
 
@@ -166,7 +172,7 @@ export class CotizarSalidaUseCase {
     // mayorista: no debe llegar a la capa de respuesta por inercia, sino porque alguien lo
     // escribio. Y cuando no se pide el margen, ni siquiera sale de la base: defensa en
     // profundidad, no una sola barrera en el mapeador.
-    const filas = (await tx.tarifa.findMany({
+    const todas = (await tx.tarifa.findMany({
       where: {
         vigenciaId: elegida.id,
         ...(opcionElegida === null
@@ -194,6 +200,21 @@ export class CotizarSalidaUseCase {
         promoHasta: true,
       },
     })) as unknown as FilaTarifa[];
+
+    // Acomodación (T-188): si alguna tarifa la trae, hay que saber cuál se cotiza, y solo se cobran
+    // las de esa acomodación más las que no la tienen (traslados, seguros). Sin esto se sumaban
+    // las de todas las acomodaciones. Las de otra acomodación no se listan en `noAplicables`: son
+    // la misma tarifa en otra habitación, no una promo escondida.
+    const disponibles = acomodacionesDisponibles(todas);
+    if (disponibles.length > 0) {
+      if (peticion.acomodacion === undefined) throw new AcomodacionRequeridaError(disponibles);
+      if (!disponibles.includes(peticion.acomodacion)) {
+        throw new AcomodacionNoDisponibleError(peticion.acomodacion, disponibles);
+      }
+    }
+    const filas = todas.filter(
+      (t) => t.acomodacion === null || t.acomodacion === peticion.acomodacion,
+    );
 
     const aOpcion = (t: FilaTarifa, veces: number): OpcionDePrecio => {
       const moneda = monedaDeLaBase(t.monedaIso);
@@ -258,6 +279,8 @@ export class CotizarSalidaUseCase {
     const suplementos: OpcionDePrecio[] = [];
     const noAplicables: { tarifaId: string; nombre: string; motivo: string }[] = [];
     const sinEvaluar: string[] = [];
+    // Las tarifas por persona que sí se cobran: base para saber a quién no cubre ninguna.
+    const cobradas: FilaTarifa[] = [];
 
     for (const t of filas) {
       const veces = vecesQueSeCobra(t, composicion);
@@ -286,6 +309,7 @@ export class CotizarSalidaUseCase {
         alternativas.push(aOpcion(t, veces));
       } else {
         lineas.push(aOpcion(t, veces));
+        cobradas.push(t);
       }
     }
 
@@ -296,7 +320,18 @@ export class CotizarSalidaUseCase {
       throw new TarifasConCondicionNoEvaluableError([...new Set(sinEvaluar)]);
     }
 
-    const moneda = monedaDeLaBase(filas[0]?.monedaIso ?? 'COP');
+    // T-216: un pasajero que ninguna tarifa cubre dejaría el total corto en silencio. Una
+    // alternativa de grupo sí puede resolverlo (se enseña, no se aplica sola), así que ahí no se
+    // bloquea: mismo criterio que `sinEvaluar`.
+    if (alternativas.length === 0) {
+      const sinTarifa = pasajerosSinTarifa(cobradas, composicion);
+      if (sinTarifa.length > 0) throw new PasajerosSinTarifaError(sinTarifa);
+    }
+
+    // T-189: sumar monedas distintas con la de la primera fila daría un total falso.
+    const monedas = [...new Set(lineas.map((l) => l.total.moneda))];
+    if (monedas.length > 1) throw new LineasEnMonedasDistintasError(monedas);
+    const moneda = monedaDeLaBase(monedas[0] ?? filas[0]?.monedaIso ?? 'COP');
     let total = Money.cero(moneda);
     for (const l of lineas)
       total = total.sumar(Money.desdeUnidades(BigInt(l.total.unidades), moneda));

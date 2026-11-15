@@ -222,6 +222,26 @@ describe('Pruebas del Módulo de Cotización y Generación de Propuestas', () =>
     expect(errEmpatadas.esErrorAgencia).toBe(true);
   });
 
+  it('9b. traduce los errores de acomodación, monedas y pasajeros sin tarifa (T-188, T-189, T-216)', () => {
+    expect(interpretarErrorCotizacion({ code: 'ACOMODACION_REQUERIDA' }).mensaje).toMatch(
+      /elige sencilla, doble/,
+    );
+    expect(interpretarErrorCotizacion({ code: 'ACOMODACION_NO_DISPONIBLE' }).mensaje).toMatch(
+      /no tiene precio/,
+    );
+    const monedas = interpretarErrorCotizacion({ code: 'LINEAS_EN_MONEDAS_DISTINTAS' });
+    expect(monedas.mensaje).toMatch(/mezcla monedas/);
+    expect(monedas.esErrorAgencia).toBe(true);
+    const sin = interpretarErrorCotizacion({
+      code: 'PASAJEROS_SIN_TARIFA',
+      message: 'Ninguna tarifa cubre a: niño 1 (14 años). El total quedaría corto: cotiza a mano.',
+    });
+    expect(sin.mensaje).toContain('niño 1 (14 años)');
+    expect(interpretarErrorCotizacion({ code: 'PASAJEROS_SIN_TARIFA' }).mensaje).toMatch(
+      /algún pasajero/,
+    );
+  });
+
   it('10. generarTextoPropuestaWhatsAppSalida incluye nota explícita de condición cuando hay tarifas de grupo (0c.17)', () => {
     const cotizacionConGrupo: CotizacionDeSalida = {
       ...cotizacionArmadaEjemplo,

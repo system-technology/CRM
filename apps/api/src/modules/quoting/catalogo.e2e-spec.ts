@@ -354,6 +354,21 @@ describe('Una cotización es la SUMA de varias tarifas, no una sola', () => {
     expect(error?.code).toBe('TARIFAS_CON_CONDICION_NO_EVALUABLE');
   });
 
+  it('T-216: un niño de 14 que la tarifa de menor no cubre da 422 y se nombra, no un total corto', async () => {
+    const r = await cotizar({
+      paqueteId: paquetePasanoche,
+      fecha: '2026-10-03',
+      adultos: 2,
+      ninos: 1,
+      edadesNinos: [14],
+    });
+
+    expect(r.status).toBe(422);
+    const error = r.cuerpo['error'] as { code?: string; message?: string } | undefined;
+    expect(error?.code).toBe('PASAJEROS_SIN_TARIFA');
+    expect(error?.message).toMatch(/niño 1 \(14 años\)/);
+  });
+
   it('edades que no cuadran con la cantidad de niños son 400 en el borde', async () => {
     const r = await cotizar({
       paqueteId: paquetePasanoche,
