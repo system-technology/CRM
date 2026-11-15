@@ -4361,7 +4361,7 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: ready
+    status: in_progress
     depends_on: []
     acceptance:
       - "Al recibir el primer entrante sin respuesta se fija sla_vence_en segun el plazo de la agencia"
@@ -4378,7 +4378,7 @@ tasks:
     phase: 1
     priority: P1
     effort: S
-    status: ready
+    status: in_progress
     depends_on: []
     acceptance:
       - "Ventas del periodo agrupa por el cambio a ACEPTADA en cotizacion_cambios_estado"
@@ -4396,7 +4396,7 @@ tasks:
     phase: 1
     priority: P1
     effort: S
-    status: ready
+    status: in_progress
     depends_on: []
     acceptance:
       - "Las tasas muestran 'n insuficiente' por debajo de un minimo y enseñan n"
@@ -4414,7 +4414,7 @@ tasks:
     phase: 1
     priority: P1
     effort: S
-    status: ready
+    status: in_progress
     depends_on: []
     acceptance:
       - "Con la API real, 'Enviar plantilla' queda deshabilitado hasta que exista el endpoint de plantillas"
