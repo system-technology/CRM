@@ -335,6 +335,10 @@ export class CotizacionesUseCase {
       adultos: c.adultos,
       ninos: c.ninos,
       infantes: c.infantes,
+      // Las edades solo sirven para evaluar tarifas; la versión guardada no las conserva.
+      ...(c.edadesNinos ? { edadesNinos: c.edadesNinos } : {}),
+      ...(c.edadesInfantes ? { edadesInfantes: c.edadesInfantes } : {}),
+      ...(c.infantesConSilla !== undefined ? { infantesConSilla: c.infantesConSilla } : {}),
       acomodacion: c.acomodacion,
       ...(c.opcionDeSalidaId ? { opcionDeSalidaId: c.opcionDeSalidaId } : {}),
       incluirMargen: true,

@@ -197,6 +197,14 @@ export function interpretarErrorCotizacion(error: unknown): {
         esErrorAgencia: false,
       };
     }
+    if (code === 'TARIFAS_CON_CONDICION_NO_EVALUABLE') {
+      return {
+        codigo: 'TARIFAS_CON_CONDICION_NO_EVALUABLE',
+        mensaje:
+          'Este producto tiene tarifa por edad: indica la edad de cada niño (y si el infante ocupa silla) para cotizar.',
+        esErrorAgencia: false,
+      };
+    }
     if (code === 'PAQUETE_NO_ENCONTRADO') {
       return {
         codigo: 'PAQUETE_NO_ENCONTRADO',

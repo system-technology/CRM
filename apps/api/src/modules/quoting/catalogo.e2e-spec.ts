@@ -319,7 +319,29 @@ describe('Una cotización es la SUMA de varias tarifas, no una sola', () => {
     paquetePasanoche = p.paqueteId;
   }, ARRANQUE_MS);
 
-  it('un niño con tarifa de menor por rango de edad no se cobra a ciegas: error tipado, no total corto', async () => {
+  it('2 adultos + niño de 7 cotiza con la tarifa de menor (T-179)', async () => {
+    const r = await cotizar({
+      paqueteId: paquetePasanoche,
+      fecha: '2026-10-03',
+      adultos: 2,
+      ninos: 1,
+      edadesNinos: [7],
+    });
+
+    // «Menor de 2 a 11 años» exige la edad: con ella se evalúa. Adulto x 2 (389.000) y Menor x 1
+    // (292.000), total 1.070.000.
+    expect(r.status).toBe(200);
+    const lineas = r.cuerpo['lineas'] as Opcion[];
+    expect(lineas.map((l) => [l.nombre, l.veces])).toEqual(
+      expect.arrayContaining([
+        ['Adulto', 2],
+        ['Menor de 2 a 11 años', 1],
+      ]),
+    );
+    expect((r.cuerpo['total'] as { unidades: string }).unidades).toBe('1070000');
+  });
+
+  it('sin la edad del niño sigue siendo error tipado, no un total corto', async () => {
     const r = await cotizar({
       paqueteId: paquetePasanoche,
       fecha: '2026-10-03',
@@ -327,13 +349,20 @@ describe('Una cotización es la SUMA de varias tarifas, no una sola', () => {
       ninos: 1,
     });
 
-    // La tarifa «Menor de 2 a 11 años» exige la edad de cada pasajero y la cotización solo recibe
-    // conteos. Se corta en vez de devolver un total que podría estar mal (T-007). Cuando se
-    // modele la edad por pasajero, este caso vuelve a ser 200: Adulto x 2 (389.000) y Menor x 1
-    // (292.000), total 1.070.000.
     expect(r.status).toBe(422);
     const error = r.cuerpo['error'] as { code?: string } | undefined;
     expect(error?.code).toBe('TARIFAS_CON_CONDICION_NO_EVALUABLE');
+  });
+
+  it('edades que no cuadran con la cantidad de niños son 400 en el borde', async () => {
+    const r = await cotizar({
+      paqueteId: paquetePasanoche,
+      fecha: '2026-10-03',
+      adultos: 2,
+      ninos: 1,
+      edadesNinos: [7, 9],
+    });
+    expect(r.status).toBe(400);
   });
 
   it('el cotizador pide la composición porque el TARIFARIO lo pide, no por un interruptor', async () => {

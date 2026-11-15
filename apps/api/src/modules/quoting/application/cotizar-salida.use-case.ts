@@ -92,7 +92,14 @@ export class CotizarSalidaUseCase {
     const infantes = peticion.infantes ?? 0;
     // Por defecto NO sale el margen: revela el neto por resta (`neto = venta − margen`).
     const incluirMargen = peticion.incluirMargen ?? false;
-    const composicion: Composicion = { adultos, ninos, infantes };
+    const composicion: Composicion = {
+      adultos,
+      ninos,
+      infantes,
+      edadesNinos: peticion.edadesNinos,
+      edadesInfantes: peticion.edadesInfantes,
+      infantesConSilla: peticion.infantesConSilla,
+    };
     const pasajeros = adultos + ninos + infantes;
 
     const paquete = await tx.paquete.findFirst({

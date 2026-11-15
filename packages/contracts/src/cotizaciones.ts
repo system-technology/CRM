@@ -17,7 +17,7 @@
 import { z } from 'zod';
 import { Acomodacion, Dinero, FechaViaje, Id, Instante } from './comunes.js';
 import { BaseDelMargen, OrigenDeLaVenta } from './politica-de-precio.js';
-import { OpcionDePrecio } from './vigencias.js';
+import { EdadesDePasajeros, OpcionDePrecio, coherenciaDeEdades } from './vigencias.js';
 
 export const EstadoCotizacion = z.enum(['BORRADOR', 'ENVIADA', 'ACEPTADA', 'RECHAZADA', 'VENCIDA']);
 export type EstadoCotizacion = z.infer<typeof EstadoCotizacion>;
@@ -34,13 +34,16 @@ export const ComposicionDeVersion = z
     adultos: z.number().int().min(1).max(200).optional(),
     ninos: z.number().int().min(0).max(200).optional(),
     infantes: z.number().int().min(0).max(200).optional(),
+    /** Edades por pasajero (T-179): ver `EdadesDePasajeros`. No se guardan en la versión. */
+    ...EdadesDePasajeros,
     acomodacion: Acomodacion.optional(),
     /** Obligatoria si el producto tiene opciones de salida (ADR-0017 §3.1). */
     opcionDeSalidaId: Id.optional(),
     /** Hasta cuándo se honra el precio al cliente. Opcional: no todas las ofertas vencen. */
     vigenteHasta: FechaViaje.optional(),
   })
-  .strict();
+  .strict()
+  .superRefine(coherenciaDeEdades);
 export type ComposicionDeVersion = z.infer<typeof ComposicionDeVersion>;
 
 /** `POST /api/v1/cotizaciones` — crea la cabecera y la versión 1. */

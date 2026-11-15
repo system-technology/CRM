@@ -32,6 +32,8 @@ import { formatearErrorAmigable } from '../../lib/estados-ui-logica';
 import { DesgloseCotizacionSalida } from '../../components/cotizador/desglose-cotizacion-salida';
 import { usePermisos, explicacionFaltaPermiso } from '../../lib/permisos';
 import { EstadoSinCatalogo } from '../../components/catalogo/estado-sin-catalogo';
+import { EdadesDePasajeros } from '../../components/cotizador/edades-de-pasajeros';
+import { edadesParaEnviar } from '../../lib/cotizador-edades';
 
 const ModalGuardarCotizacion = dynamic(() =>
   import('../../components/cotizador/modal-guardar-cotizacion').then(
@@ -98,6 +100,10 @@ function ContenidoCotizador() {
   const [adultos, setAdultos] = useState(2);
   const [ninos, setNinos] = useState(0);
   const [infantes, setInfantes] = useState(0);
+  // Edades por pasajero (T-179): la tarifa de menor tiene rango de edad.
+  const [edadesNinos, setEdadesNinos] = useState<(number | null)[]>([]);
+  const [edadesInfantes, setEdadesInfantes] = useState<(number | null)[]>([]);
+  const [infantesConSilla, setInfantesConSilla] = useState<boolean[]>([]);
 
   // Parámetros modo mock / v1
   const [acomodacionMock, setAcomodacionMock] = useState<Acomodacion | ''>('');
@@ -168,6 +174,11 @@ function ContenidoCotizador() {
       vigente = false;
     };
   }, [usarReal, paqueteId]);
+
+  const edades = useMemo(
+    () => edadesParaEnviar({ ninos, infantes, edadesNinos, edadesInfantes, infantesConSilla }),
+    [ninos, infantes, edadesNinos, edadesInfantes, infantesConSilla],
+  );
 
   // Eje 3 de ADR-0009: pideComposicion gobernado por el tarifario
   const pideComposicion = useMemo(() => {
@@ -290,6 +301,7 @@ function ContenidoCotizador() {
         adultos: pideComposicion ? adultos : undefined,
         ninos: pideComposicion ? ninos : undefined,
         infantes: pideComposicion ? infantes : undefined,
+        ...(pideComposicion ? edades : {}),
       })
         .then((res) => {
           setCotizacionReal(res);
@@ -332,6 +344,7 @@ function ContenidoCotizador() {
     adultos,
     ninos,
     infantes,
+    edades,
     pideComposicion,
     acomodacionMock,
     markupExtraMock,
@@ -376,6 +389,7 @@ function ContenidoCotizador() {
           adultos: pideComposicion ? adultos : 2,
           ninos: pideComposicion ? ninos : 0,
           infantes: pideComposicion ? infantes : 0,
+          ...(pideComposicion ? edades : {}),
           acomodacion: acomodacionMock || undefined,
           opcionDeSalidaId: opcionAEnviar,
           vigenteHasta: datos.vigenteHasta,
@@ -733,6 +747,19 @@ function ContenidoCotizador() {
                               </button>
                             </div>
                           </div>
+
+                          {usarReal && (
+                            <EdadesDePasajeros
+                              ninos={ninos}
+                              infantes={infantes}
+                              edadesNinos={edadesNinos}
+                              edadesInfantes={edadesInfantes}
+                              infantesConSilla={infantesConSilla}
+                              onEdadesNinos={setEdadesNinos}
+                              onEdadesInfantes={setEdadesInfantes}
+                              onInfantesConSilla={setInfantesConSilla}
+                            />
+                          )}
                         </div>
                       )}
                     </div>

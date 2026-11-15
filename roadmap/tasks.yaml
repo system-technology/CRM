@@ -4304,7 +4304,7 @@ tasks:
     phase: 1
     priority: P0
     effort: L
-    status: ready
+    status: in_progress
     depends_on: []
     acceptance:
       - "CotizarSalida en packages/contracts recibe la edad de cada nino e infante y si el infante ocupa silla"
@@ -4917,3 +4917,38 @@ tasks:
     source: auditoria integral 2026-11-15 (docs/_auditorias/2026-11-15-auditoria-integral.md)
     created_at: 2026-11-15T16:00:00.000Z
     owner: documentador
+  - id: T-216
+    title: "Cotizador: error tipado cuando un pasajero no queda cubierto por ninguna tarifa (seguimiento de T-179)"
+    type: bug
+    phase: 1
+    priority: P1
+    effort: S
+    status: ready
+    depends_on: [T-179]
+    acceptance:
+      - "Un nino de 14 con solo tarifa de menor 2-11 no deja el total corto en silencio: error tipado con el pasajero sin tarifa"
+      - "Prueba de dominio y e2e"
+    files:
+      - apps/api/src/modules/quoting/domain/seleccion-de-tarifas.ts
+      - apps/api/src/modules/quoting/application/cotizar-salida.use-case.ts
+    source: entrega de T-179, 2026-11-15
+    created_at: 2026-11-15T16:00:00.000Z
+    owner: backend
+  - id: T-217
+    title: "Datos: la version de cotizacion guarda las edades de ninos e infantes (seguimiento de T-179)"
+    type: feature
+    phase: 1
+    priority: P2
+    effort: S
+    status: ready
+    depends_on: [T-179]
+    acceptance:
+      - "versiones_cotizacion conserva edades y silla de infantes (migracion nueva)"
+      - "Re-cotizar desde una version de un producto con tarifa de menor no da 422"
+    files:
+      - packages/database/prisma/schema.prisma
+      - apps/api/src/modules/quoting
+    source: entrega de T-179, 2026-11-15
+    created_at: 2026-11-15T16:00:00.000Z
+    owner: datos
+
