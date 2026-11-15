@@ -165,6 +165,21 @@ export class NotaDePerdidaObligatoriaError extends InvariantError {
   }
 }
 
+/**
+ * Quitarle la nota obligatoria al motivo de clave `OTRO` (T-232). «Otro» sin explicación es una
+ * pérdida que el informe no puede atribuir a nada. La base lo impide también
+ * (`motivos_de_perdida_otro_exige_nota`, 20261115200000); esto le da a la API su 422 tipado.
+ */
+export class MotivoOtroExigeNotaError extends InvariantError {
+  readonly code = 'MOTIVO_OTRO_EXIGE_NOTA';
+  constructor(readonly motivoId: string) {
+    super(
+      `El motivo «Otro» (${motivoId}) siempre exige explicar qué pasó: no se le puede quitar ` +
+        'exigeNota. Para un motivo sin nota, crea uno propio de la agencia.',
+    );
+  }
+}
+
 /** Llegaron el enum y el id y no hablan del mismo motivo. */
 export class MotivoDePerdidaContradictorioError extends InvariantError {
   readonly code = 'MOTIVO_DE_PERDIDA_CONTRADICTORIO';

@@ -4959,7 +4959,9 @@ tasks:
     phase: 2
     priority: P3
     effort: S
-    status: in_progress
+    status: done
+    done_at: 2026-11-15T19:40:00.000Z
+    evidence: "Tabla en #268 (46e88a6); contrato, API y UI en #271 (2252fd0)"
     notes: "Tabla, RLS y siembra integradas en el PR #268 (46e88a6); faltan contrato, API y UI de motivos (T-229)"
     depends_on: []
     acceptance:
@@ -5245,7 +5247,9 @@ tasks:
     phase: 1
     priority: P2
     effort: M
-    status: in_progress
+    status: done
+    done_at: 2026-11-15T19:40:00.000Z
+    evidence: "Integrado en main por el PR #271 (2252fd0)"
     depends_on: []
     acceptance:
       - "La agencia ve y edita sus motivos; cerrar como perdida pide un motivo activo de su agencia"
@@ -5263,7 +5267,7 @@ tasks:
     phase: 1
     priority: P2
     effort: S
-    status: ready
+    status: in_progress
     depends_on: []
     acceptance:
       - "Prueba que fija la superficie exacta de columnas de viajapro_metricas"
@@ -5281,7 +5285,7 @@ tasks:
     phase: 1
     priority: P3
     effort: S
-    status: ready
+    status: in_progress
     depends_on: []
     acceptance:
       - "ADR-0008 (por supersesion o addendum) lista la funcion y el rol NOLOGIN"
@@ -5298,7 +5302,7 @@ tasks:
     phase: 1
     priority: P3
     effort: S
-    status: ready
+    status: in_progress
     depends_on: [T-229]
     acceptance:
       - "Asignar un motivo desactivado falla tambien por SQL directo (hoy solo lo frena la API; carrera buscar/escribir en dos transacciones)"
@@ -5308,4 +5312,21 @@ tasks:
       - apps/api/src/modules/crm
     source: auditoria de seguridad de T-229, 2026-11-15 (cola R13, sin cruce entre agencias)
     created_at: 2026-11-15T19:40:00.000Z
+    owner: datos
+  - id: T-233
+    title: "Datos: superficie de viajapro_metricas tambien en funciones y CHECK comparado por definicion"
+    type: security
+    phase: 1
+    priority: P3
+    effort: S
+    status: ready
+    depends_on: [T-230]
+    acceptance:
+      - "Cinturon y prueba: pg_proc con proowner = viajapro_metricas es exactamente {medir_cola_de_salida} y ninguna funcion concede EXECUTE a viajapro_metricas"
+      - "El cinturon de 20261115200000 compara pg_get_constraintdef del CHECK motivos_de_perdida_otro_exige_nota, no solo su nombre"
+    files:
+      - packages/database/prisma/migrations
+      - packages/database/tests/aislamiento.spec.ts
+    source: auditoria de seguridad de T-230/T-232, 2026-11-15 (cola R13)
+    created_at: 2026-11-15T20:05:00.000Z
     owner: datos

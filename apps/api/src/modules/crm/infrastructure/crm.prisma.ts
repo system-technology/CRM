@@ -43,7 +43,12 @@ import {
   type MovimientoDeOportunidad,
   type TotalesDeEtapa,
 } from '../application/puerto-crm.js';
-import { EtapaNoEncontradaError, OportunidadNoEncontradaError } from '../domain/errors.js';
+import {
+  EtapaNoEncontradaError,
+  MotivoDePerdidaInactivoError,
+  OportunidadNoEncontradaError,
+} from '../domain/errors.js';
+import { esMotivoDePerdidaInactivoEnBase } from './errores-de-base.js';
 import { registrarCambioDeEtapa } from './historial-de-etapas.prisma.js';
 
 /** Lo que se trae de la oportunidad para pintar una tarjeta. Ni un campo más. */
@@ -202,21 +207,30 @@ export class CrmPrisma extends PuertoCrm {
         usuarioId: m.actorId,
       });
 
-      const actualizada = await tx.oportunidad.update({
-        where: { id_tenantId: { id: m.oportunidadId, tenantId } },
-        data: {
-          etapaId: m.etapaId,
-          motivoPerdida: m.motivoPerdida,
-          // Solo si llega: un `null` explícito no aporta nada (el disparador resuelve el id desde
-          // el enum, y al reabrir lo vacía con él). Con id, el disparador lo respeta (20261115190000).
-          ...(m.motivoPerdidaId !== null ? { motivoPerdidaId: m.motivoPerdidaId } : {}),
-          notaPerdida: m.notaPerdida,
-          cerradaEn: destino.esGanada || destino.esPerdida ? ocurridoEn : null,
-          actualizadoPorId: m.actorId,
-        },
-        select: PARA_LA_TARJETA,
-      });
-      return aOportunidad(actualizada);
+      try {
+        const actualizada = await tx.oportunidad.update({
+          where: { id_tenantId: { id: m.oportunidadId, tenantId } },
+          data: {
+            etapaId: m.etapaId,
+            motivoPerdida: m.motivoPerdida,
+            // Solo si llega: un `null` explícito no aporta nada (el disparador resuelve el id desde
+            // el enum, y al reabrir lo vacía con él). Con id, el disparador lo respeta (20261115190000).
+            ...(m.motivoPerdidaId !== null ? { motivoPerdidaId: m.motivoPerdidaId } : {}),
+            notaPerdida: m.notaPerdida,
+            cerradaEn: destino.esGanada || destino.esPerdida ? ocurridoEn : null,
+            actualizadoPorId: m.actorId,
+          },
+          select: PARA_LA_TARJETA,
+        });
+        return aOportunidad(actualizada);
+      } catch (error) {
+        // T-232: el disparador rechaza asignar un motivo desactivado (VP001). Por id ya lo miró el
+        // caso de uso (en otra transacción); por enum solo lo ve la base. Mismo 409 en los dos.
+        if (esMotivoDePerdidaInactivoEnBase(error)) {
+          throw new MotivoDePerdidaInactivoError(m.motivoPerdidaId ?? m.motivoPerdida ?? '');
+        }
+        throw error;
+      }
     });
   }
 

@@ -1044,3 +1044,24 @@ etapas sigue guardando el enum (`OTRO` para los propios). La creación del motiv
 `ON CONFLICT (tenant_id, clave)` (T-230): una etiqueta repetida falla con su índice en vez de
 tragarse. La API (`mover-oportunidad.ts`) escribe el id cuando llega `motivoPerdidaId`.
 
+### Motivo retirado y «Otro» con nota, en la base (T-230/T-232, migración `20261115200000_endurecer_metricas_y_motivos`)
+
+```
+  motivo_de_perdida_desde_enum (CREATE OR REPLACE, mismo dueño, INVOKER, search_path '')
+    si el id CAMBIA (INSERT, camino a o b) y el motivo tiene activo = false → SQLSTATE VP001
+       («MOTIVO_DE_PERDIDA_INACTIVO: …»; la API → 409 MOTIVO_DE_PERDIDA_INACTIVO)
+    camino c (nota, mismo id, mismo enum): un motivo ya puesto y luego retirado se conserva
+  CHECK motivos_de_perdida_otro_exige_nota: clave IS DISTINCT FROM 'OTRO' OR exige_nota
+       (antes, reparación agencia por agencia; NOT VALID + VALIDATE; la API → 422 MOTIVO_OTRO_EXIGE_NOTA)
+```
+
+**Por qué.** La API comprobaba `activo` en una transacción y escribía en otra, y en el camino del
+enum no lo miraba: un motivo retirado se podía asignar por SQL directo o por un cliente antiguo.
+`VP001` es de una clase (`VP`) que PostgreSQL no usa. Sin `FOR SHARE` sobre el motivo: una
+desactivación simultánea equivale a una que llega justo después, que también se permitiría.
+«Otro» sin explicación es una pérdida que no se puede atribuir; por eso es CHECK y no solo regla
+de la API. `medir_cola_de_salida` no se reescribe: un error a mitad aborta la (sub)transacción y
+el motor deshace su `set_config` local; lo fija una prueba de comportamiento (T-230 en
+`aislamiento.spec.ts`), junto con la superficie EXACTA de columnas de `viajapro_metricas`, que
+también comprueba el cinturón de la migración.
+
