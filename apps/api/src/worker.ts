@@ -10,7 +10,6 @@ import 'reflect-metadata';
 
 import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
-import { comprobarClavesDeCamposAlArrancar } from './shared/cifrado/versiones-de-clave.prisma.js';
 import { MedidorDeCola } from './shared/observabilidad/antiguedad-de-cola.js';
 import { LoggerJson } from './shared/observabilidad/logger-json.js';
 import { PrismaWebhookService } from './shared/prisma/prisma-webhook.service.js';
@@ -22,11 +21,8 @@ async function arrancar(): Promise<void> {
   app.useLogger(new LoggerJson());
   app.enableShutdownHooks();
   const log = new Logger('Worker');
-  // T-226 (b): sin clave para los datos cifrados existentes, el trabajador aborta. OJO: la
-  // comprobación corre DESPUÉS de crear el contexto, y `onModuleInit` ya puso a los consumidores a
-  // tomar trabajos: en esa ventana un envío puede fallar al descifrar y gastar un intento.
-  // Comprobar antes de levantar el contexto es T-234.
-  await comprobarClavesDeCamposAlArrancar(app.get(PrismaWebhookService, { strict: false }));
+  // T-226 (b) / T-234: la comprobación de claves vive en `WorkerModule` y corre dentro de
+  // `createApplicationContext`, antes de que los consumidores se conecten (onApplicationBootstrap).
   // T-194: latido en Redis que lee `/salud/listo` de la API (el trabajador no sirve HTTP).
   const url = process.env['REDIS_URL'];
   if (url) {

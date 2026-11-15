@@ -8,6 +8,8 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
 import { QuotingPuertosModule } from './modules/quoting/quoting-puertos.module.js';
 import { QuotingModule } from './modules/quoting/quoting.module.js';
 import { SaludController } from './salud.controller.js';
+import { comprobacionDeClavesDeLaApi } from './shared/cifrado/comprobacion-al-arrancar.js';
+import { PrismaService } from './shared/prisma/prisma.service.js';
 import { LectorDeCola, LectorDeColaRedis } from './shared/observabilidad/antiguedad-de-cola.js';
 import {
   LectorDelLatido,
@@ -36,6 +38,9 @@ import { OriginCheckMiddleware } from './shared/red/origin-check.middleware.js';
   ],
   controllers: [SaludController],
   providers: [
+    // T-234: en la raíz, su `onModuleInit` corre tras el de los servicios Prisma (rol verificado) y
+    // antes de cualquier `onApplicationBootstrap` (consumidores y planificadores).
+    comprobacionDeClavesDeLaApi(PrismaService),
     {
       // T-203: antigüedad de la cola, medida por el trabajador y publicada en Redis.
       provide: LectorDeCola,

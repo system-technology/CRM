@@ -13,6 +13,8 @@ import { type DynamicModule, Global, Module } from '@nestjs/common';
 import { AppModule } from '../app.module.js';
 import { CrmPuertosModule } from '../modules/crm/crm-puertos.module.js';
 import { CifradoModule } from '../shared/cifrado/cifrado.module.js';
+import { comprobacionDeClavesDelTrabajador } from '../shared/cifrado/comprobacion-al-arrancar.js';
+import { PrismaWebhookService } from '../shared/prisma/prisma-webhook.service.js';
 import { InboxWorkerUnicoModule } from '../modules/inbox/inbox-worker-unico.module.js';
 import {
   COMPARTIDO_DEL_INBOX,
@@ -49,6 +51,8 @@ export class TrabajadorUnicoModule {
       // Sin `NotificationsWorkerModule`: el correo sale por su cola en proceso, en el contexto HTTP.
       // CifradoModule: este contenedor no carga SharedModule y también cifra (ADR-0015).
       imports: [CifradoModule, CrmPuertosModule, InboxWorkerUnicoModule.forRoot(compartido)],
+      // T-234: comprobación de claves en la raíz, antes de que los consumidores en proceso conecten.
+      providers: [comprobacionDeClavesDelTrabajador(PrismaWebhookService)],
     };
   }
 }

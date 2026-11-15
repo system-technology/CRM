@@ -80,7 +80,7 @@ describe.skipIf(!CORRE)('cola de correo con Redis real', () => {
     // En Redis va CIFRADO: ni el código ni el destinatario aparecen.
     expect(JSON.stringify(guardado?.data)).not.toContain('654321');
     expect(JSON.stringify(guardado?.data)).not.toContain('cola@fixture.test');
-    consumidor.onModuleInit();
+    consumidor.onApplicationBootstrap();
 
     for (let i = 0; i < 50 && correo.enviados.length === 0; i += 1) await dormir(100);
     await dormir(300);

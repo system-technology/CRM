@@ -11,8 +11,6 @@ import { NestFactory } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module.js';
 import { configurarApi } from './configurar-api.js';
-import { comprobarClavesDeCamposAlArrancar } from './shared/cifrado/versiones-de-clave.prisma.js';
-import { PrismaService } from './shared/prisma/prisma.service.js';
 import { LoggerJson } from './shared/observabilidad/logger-json.js';
 
 async function arrancar(): Promise<void> {
@@ -22,10 +20,10 @@ async function arrancar(): Promise<void> {
   app.useLogger(new LoggerJson());
   configurarApi(app);
 
-  // T-226 (b): tras verificar el rol (onModuleInit) y antes de escuchar, abortar si hay datos
-  // cifrados con una versión de clave que este proceso no tiene.
+  // T-226 (b) / T-234: `init()` verifica el rol (onModuleInit) y comprueba las claves de los datos
+  // cifrados (raíz, `AppModule`) ANTES de los planificadores (onApplicationBootstrap): si hay una
+  // versión sin clave, rechaza y nada llega a escuchar.
   await app.init();
-  await comprobarClavesDeCamposAlArrancar(app.get(PrismaService));
 
   const puerto = Number(process.env['API_PORT'] ?? 3333);
   await app.listen(puerto);
