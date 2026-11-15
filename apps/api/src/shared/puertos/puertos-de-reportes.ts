@@ -39,6 +39,8 @@ export interface CotizacionesAgregadas {
   enviadas: number;
   /** De las enviadas en el rango, las que hoy están aceptadas. */
   aceptadas: number;
+  /** Aceptadas enviadas en el rango sin fila de cambio a ACEPTADA (previas a T-132): sin fecha de venta. */
+  aceptadasSinFecha: number;
   ventasPorMoneda: VentaAgregada[];
 }
 

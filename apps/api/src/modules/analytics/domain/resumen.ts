@@ -82,6 +82,7 @@ export function armarResumen(entrada: {
       creadas: c.creadas,
       enviadas: c.enviadas,
       aceptadas: c.aceptadas,
+      ...(c.aceptadasSinFecha > 0 ? { aceptadasSinFecha: c.aceptadasSinFecha } : {}),
       tasaAceptacion: porcentaje(c.aceptadas, c.enviadas),
     },
     ventasPorMoneda: c.ventasPorMoneda.map(ventasDeUnaMoneda),

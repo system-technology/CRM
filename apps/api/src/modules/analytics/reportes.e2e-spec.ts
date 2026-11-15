@@ -407,6 +407,21 @@ describe('GET /api/v1/reportes/resumen', () => {
     expect(sin.json.respuesta).toEqual(con.json.respuesta);
   });
 
+  it('las ventas se agrupan por el instante de la ACEPTACION, no por el envio (T-183)', async () => {
+    // Un rango que termina ANTES de que existiera la aceptacion no trae ventas, aunque ya haya
+    // cotizaciones aceptadas: el envio y la aceptacion de este fixture son de hoy.
+    const antes = await reporte('duenoA', {
+      desde: new Date(Date.now() - 300 * 24 * 3600_000).toISOString(),
+      hasta: new Date(Date.now() - 24 * 3600_000).toISOString(),
+    });
+    expect(antes.estado).toBe(200);
+    expect(antes.json.ventasPorMoneda).toEqual([]);
+    // Y con el rango de hoy, la venta esta (la aceptada de A tiene su fila de cambio).
+    const hoy = await reporte('duenoA');
+    expect(hoy.json.ventasPorMoneda[0]?.cotizacionesAceptadas).toBe(1);
+    expect(hoy.json.cotizaciones.aceptadasSinFecha).toBeUndefined();
+  });
+
   it('otra agencia ve solo lo suyo: no mezcla cifras ni etapas de A', async () => {
     // B no ve nada de A: sus propias cifras, con su propia venta por adulto.
     const r = await reporte('duenoB');

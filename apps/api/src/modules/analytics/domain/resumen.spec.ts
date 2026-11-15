@@ -33,6 +33,7 @@ const sinCotizaciones: CotizacionesAgregadas = {
   creadas: 0,
   enviadas: 0,
   aceptadas: 0,
+  aceptadasSinFecha: 0,
   ventasPorMoneda: [],
 };
 
@@ -142,6 +143,7 @@ describe('armarResumen', () => {
         creadas: 4,
         enviadas: 3,
         aceptadas: 2,
+        aceptadasSinFecha: 0,
         ventasPorMoneda: [
           { moneda: 'COP', cotizacionesAceptadas: 1, ventaUnidades: 1_200_000n },
           { moneda: 'USD', cotizacionesAceptadas: 1, ventaUnidades: 90_000n },
@@ -155,6 +157,23 @@ describe('armarResumen', () => {
       ['COP', '1200000'],
       ['USD', '90000'],
     ]);
+  });
+
+  it('aceptadasSinFecha: solo aparece cuando hay alguna (contrato opcional)', () => {
+    const con = armarResumen({
+      rango,
+      cotizaciones: { ...sinCotizaciones, aceptadas: 2, enviadas: 2, aceptadasSinFecha: 2 },
+      etapas: [],
+      respuesta: vacia,
+    });
+    expect(con.cotizaciones.aceptadasSinFecha).toBe(2);
+    const sin = armarResumen({
+      rango,
+      cotizaciones: sinCotizaciones,
+      etapas: [],
+      respuesta: vacia,
+    });
+    expect('aceptadasSinFecha' in sin.cotizaciones).toBe(false);
   });
 
   it('oportunidades: ordena por etapa, cuenta ganadas/perdidas/abiertas y calcula la conversión', () => {

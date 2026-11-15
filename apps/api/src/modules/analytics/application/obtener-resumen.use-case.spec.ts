@@ -24,6 +24,7 @@ class CotizacionesFalsas extends PuertoCotizacionesParaReportes {
       creadas: 1,
       enviadas: 1,
       aceptadas: 1,
+      aceptadasSinFecha: 0,
       ventasPorMoneda: [
         {
           moneda: 'COP',
