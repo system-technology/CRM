@@ -99,7 +99,7 @@ describe('ModalCrearOportunidad (T-076)', () => {
         destino: 'Punta Cana',
         fechaSalida: '2026-11-15',
         valorEstimado: {
-          unidades: '850000000',
+          unidades: '8500000',
           moneda: 'COP',
         },
       });
@@ -107,6 +107,34 @@ describe('ModalCrearOportunidad (T-076)', () => {
       expect(onCerrar).toHaveBeenCalled();
     });
   });
+
+  it.each(['5000000', '5.000.000', '$ 5.000.000'])(
+    'guarda %s como 5000000 COP (la unidad del COP es el peso, sin x100)',
+    async (escrito) => {
+      const spyCrear = vi
+        .spyOn(crmApi, 'crearOportunidadDeConversacionApi')
+        .mockResolvedValue({} as Oportunidad);
+      render(
+        <ModalCrearOportunidad
+          conversacionId="conv-123"
+          contactoNombre="Valentina Ríos"
+          onCerrar={vi.fn()}
+          onOportunidadCreada={vi.fn()}
+        />,
+      );
+      // El input es de texto para admitir separadores; se fuerza el valor tal cual se escribe.
+      fireEvent.change(screen.getByTestId('input-valor-oportunidad'), {
+        target: { value: escrito },
+      });
+      fireEvent.click(screen.getByTestId('boton-guardar-oportunidad'));
+      await waitFor(() => {
+        expect(spyCrear).toHaveBeenCalledWith(
+          'conv-123',
+          expect.objectContaining({ valorEstimado: { unidades: '5000000', moneda: 'COP' } }),
+        );
+      });
+    },
+  );
 
   it('cumple con área táctil accesible para 375 px móvil', () => {
     render(

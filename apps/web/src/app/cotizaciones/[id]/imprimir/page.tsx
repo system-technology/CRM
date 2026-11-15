@@ -34,7 +34,7 @@ import type {
   VersionDeCotizacion,
 } from '@viajapro/contracts';
 import { formatearDinero, formatearFecha, formatearTelefono } from '../../../../lib/formato';
-import { obtenerCotizacionGuardadaApi } from '../../../../lib/cotizaciones-api';
+import { obtenerCotizacionGuardadaApi, estaUsandoApiReal } from '../../../../lib/cotizaciones-api';
 import {
   interpretarErrorCotizaciones,
   obtenerUltimaVersion,
@@ -42,6 +42,29 @@ import {
 } from '../../../../lib/cotizaciones-logica';
 import { listarContactos } from '../../../../lib/crm-api';
 import { MOCK_CONFIGURACION_AGENCIA } from '../../../../lib/mock-configuracion';
+import { obtenerAjustesAgenciaApi } from '../../../../lib/agencia-api';
+
+/** Datos de la agencia que se imprimen. Lo opcional se omite si no existe: nunca se inventa. */
+interface DatosAgenciaImpresion {
+  nombre: string;
+  razonSocial?: string;
+  nit?: string;
+  direccion?: string;
+  ciudad?: string;
+  telefono?: string;
+}
+
+/** El mock de maqueta solo se usa con la API simulada; con la API real, solo el nombre de ajustes. */
+function datosAgenciaMaqueta(): DatosAgenciaImpresion {
+  return {
+    nombre: MOCK_CONFIGURACION_AGENCIA.nombreComercial,
+    razonSocial: MOCK_CONFIGURACION_AGENCIA.razonSocial,
+    nit: MOCK_CONFIGURACION_AGENCIA.nit,
+    direccion: MOCK_CONFIGURACION_AGENCIA.direccion,
+    ciudad: MOCK_CONFIGURACION_AGENCIA.ciudad,
+    telefono: MOCK_CONFIGURACION_AGENCIA.telefonoSoporte,
+  };
+}
 
 export interface LineaVistaCliente {
   tarifaId: string;
@@ -148,10 +171,22 @@ export default function PaginaImprimirCotizacion({
   const [contacto, setContacto] = useState<Contacto | null>(contactoInicial ?? null);
   const [cargando, setCargando] = useState<boolean>(!cotizacionInicial);
   const [errorCarga, setErrorCarga] = useState<string | null>(null);
+  const [agencia, setAgencia] = useState<DatosAgenciaImpresion | null>(() =>
+    estaUsandoApiReal() ? null : datosAgenciaMaqueta(),
+  );
   const [versionNumero, setVersionNumero] = useState<number>(() => {
     const ultima = cotizacionInicial ? obtenerUltimaVersion(cotizacionInicial.versiones) : null;
     return ultima?.numero ?? 1;
   });
+
+  useEffect(() => {
+    if (!estaUsandoApiReal()) return;
+    const control = new AbortController();
+    void obtenerAjustesAgenciaApi(control.signal).then((ajustes) => {
+      if (ajustes) setAgencia({ nombre: ajustes.nombre });
+    });
+    return () => control.abort();
+  }, []);
 
   useEffect(() => {
     if (cotizacionInicial) {
@@ -186,6 +221,17 @@ export default function PaginaImprimirCotizacion({
         setCargando(false);
       });
   }, [id, cotizacionInicial]);
+
+  const lineaLegalAgencia = [agencia?.razonSocial, agencia?.nit ? `NIT ${agencia.nit}` : null]
+    .filter(Boolean)
+    .join(' · ');
+  const lineaContactoAgencia = [
+    agencia?.direccion,
+    agencia?.ciudad,
+    agencia?.telefono ? `Atención: ${formatearTelefono(agencia.telefono)}` : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
 
   const versionesOrdenadas = useMemo(() => {
     if (!cotizacion) return [];
@@ -359,15 +405,14 @@ export default function PaginaImprimirCotizacion({
                 </div>
                 <div>
                   <h1 className="text-lg font-black tracking-tight text-neutral-900">
-                    {MOCK_CONFIGURACION_AGENCIA.nombreComercial}
+                    {agencia?.nombre ?? ''}
                   </h1>
-                  <p className="text-xs font-semibold text-neutral-600">
-                    {MOCK_CONFIGURACION_AGENCIA.razonSocial} · NIT {MOCK_CONFIGURACION_AGENCIA.nit}
-                  </p>
-                  <p className="mt-0.5 text-[11px] text-neutral-500">
-                    {MOCK_CONFIGURACION_AGENCIA.direccion} · {MOCK_CONFIGURACION_AGENCIA.ciudad} ·
-                    Atención: {formatearTelefono(MOCK_CONFIGURACION_AGENCIA.telefonoSoporte)}
-                  </p>
+                  {lineaLegalAgencia && (
+                    <p className="text-xs font-semibold text-neutral-600">{lineaLegalAgencia}</p>
+                  )}
+                  {lineaContactoAgencia && (
+                    <p className="mt-0.5 text-[11px] text-neutral-500">{lineaContactoAgencia}</p>
+                  )}
                 </div>
               </div>
 
@@ -539,8 +584,8 @@ export default function PaginaImprimirCotizacion({
                 </p>
                 <p>
                   • En cumplimiento de la Ley 679 de 2001 y la Ley 1336 de 2009,{' '}
-                  {MOCK_CONFIGURACION_AGENCIA.nombreComercial} rechaza la explotación y el abuso
-                  sexual de menores de edad en el turismo.
+                  {agencia?.nombre ?? 'La agencia'} rechaza la explotación y el abuso sexual de
+                  menores de edad en el turismo.
                 </p>
               </div>
             </section>

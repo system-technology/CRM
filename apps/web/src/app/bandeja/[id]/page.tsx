@@ -56,7 +56,7 @@ import {
 import { calcularCuentaRegresivaVentana24h } from '../../../lib/ventana-24h';
 import { obtenerMockPlantillasDisponibles } from '../../../lib/mock-plantillas';
 import { EnviarPlantilla } from '@viajapro/contracts';
-import { TarjetaCotizacion } from '../../../components/bandeja/tarjeta-cotizacion';
+import { TarjetaCotizacionEnviada } from '../../../components/bandeja/tarjeta-cotizacion-enviada';
 import { PanelSugerencias } from '../../../components/bandeja/panel-sugerencias';
 import { MenuRespuestasRapidas } from '../../../components/bandeja/menu-respuestas-rapidas';
 import { useBandejaAtajos, debeProcesarAtajo } from '../../../lib/atajos-teclado-bandeja';
@@ -1015,15 +1015,7 @@ export default function BandejaConversacionPage() {
               >
                 {/* Renderizado de tarjeta de cotización si tiene referencia */}
                 {m.cotizacionId ? (
-                  <TarjetaCotizacion
-                    id={m.cotizacionId}
-                    titulo="Paquete Turístico Cancún Todo Incluido"
-                    destino="Cancún, México"
-                    unidades="1250000000"
-                    moneda="COP"
-                    vigenteHasta="2026-10-20"
-                    version={1}
-                  />
+                  <TarjetaCotizacionEnviada cotizacionId={m.cotizacionId} texto={m.texto} />
                 ) : (
                   <div
                     className={`max-w-[85%] rounded-2xl p-3 text-xs shadow-2xs sm:max-w-[70%] ${

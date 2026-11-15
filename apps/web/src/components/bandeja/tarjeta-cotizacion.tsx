@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
+import { formatearDinero } from '../../lib/formato';
 import { Plane, Calendar, FileText, ArrowRight } from 'lucide-react';
 
 interface TarjetaCotizacionProps {
@@ -12,6 +13,8 @@ interface TarjetaCotizacionProps {
   moneda: string;
   vigenteHasta?: string | null;
   version?: number;
+  /** Destino del enlace; por defecto `/cotizaciones/<id>` si hay id real. */
+  href?: string;
 }
 
 export function TarjetaCotizacion({
@@ -22,8 +25,9 @@ export function TarjetaCotizacion({
   moneda,
   vigenteHasta,
   version = 1,
+  href,
 }: TarjetaCotizacionProps) {
-  const precioFormateado = (parseInt(unidades, 10) / 100).toLocaleString('es-CO');
+  const precioFormateado = formatearDinero({ unidades, moneda });
 
   return (
     <div className="w-full max-w-[400px] overflow-hidden rounded-xl border border-neutral-200 bg-white text-neutral-900 shadow-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100">
@@ -65,7 +69,7 @@ export function TarjetaCotizacion({
         <div className="rounded-lg border border-neutral-100 bg-neutral-50 p-2.5 dark:border-neutral-700/40 dark:bg-neutral-900/40">
           <span className="text-[10px] font-medium text-neutral-400">Total cotizado:</span>
           <p className="cifra text-acento-700 dark:text-acento-400 text-base font-extrabold">
-            $ {precioFormateado} <span className="text-xs font-semibold">{moneda}</span>
+            {precioFormateado} <span className="text-xs font-semibold">{moneda}</span>
           </p>
         </div>
       </div>
@@ -73,11 +77,11 @@ export function TarjetaCotizacion({
       {/* Acción */}
       <div className="border-t border-neutral-100 bg-neutral-50/50 p-2.5 dark:border-neutral-700/60 dark:bg-neutral-800/40">
         <Link
-          href="/cotizador"
+          href={href ?? '/cotizador'}
           className="bg-acento-700 hover:bg-acento-800 flex w-full items-center justify-center gap-1.5 rounded-lg py-1.5 text-xs font-semibold text-white shadow-2xs transition-colors"
         >
           <FileText className="h-3.5 w-3.5" />
-          <span>Ver propuesta en Cotizador</span>
+          <span>Ver cotización</span>
           <ArrowRight className="h-3.5 w-3.5" />
         </Link>
       </div>
