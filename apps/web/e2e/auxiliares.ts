@@ -84,3 +84,20 @@ export async function enviarWebhookWhatsapp(
   });
   return { estado: respuesta.status, wamid };
 }
+
+/** URL de la Graph API falsa (e2e/graph-falsa.mjs), la misma que la API recibe en META_GRAPH_BASE_URL. */
+const URL_GRAPH_FALSA = process.env['GRAPH_FALSA_URL'] ?? 'http://127.0.0.1:4010';
+
+export interface EnvioRegistradoPorGraph {
+  para: string | null;
+  tipo: string | null;
+  texto: string | null;
+  wamid: string;
+}
+
+/** Lo que la Graph falsa ha recibido hasta ahora. Si no responde, falla ruidosamente. */
+export async function enviosRecibidosPorGraph(): Promise<EnvioRegistradoPorGraph[]> {
+  const respuesta = await fetch(new URL('/_enviados', URL_GRAPH_FALSA));
+  if (!respuesta.ok) throw new Error(`La Graph falsa respondio ${respuesta.status}`);
+  return (await respuesta.json()) as EnvioRegistradoPorGraph[];
+}

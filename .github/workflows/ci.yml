@@ -278,7 +278,8 @@ jobs:
   # recorriendo el flujo H1-H6. NO es obligatorio todavia (no esta en proteccion-main.json): se
   # mide primero cuanto tarda y cuanto flaquea; cuando lleve una semana verde, se anade a los checks
   # requeridos. Secretos de prueba efimeros: nacen y mueren con el job. El envio por WhatsApp
-  # (Graph API falsa) queda como `test.fixme` en la suite.
+  # (Graph API falsa: apps/web/e2e/graph-falsa.mjs, paso «Graph API falsa de Meta») lo cubren las
+  # ultimas pruebas de la suite.
   navegador:
     name: navegador
     runs-on: ubuntu-latest
@@ -305,6 +306,11 @@ jobs:
       # numero, canal:registrar-prueba se niega a reactivarlo y el job cae antes de las pruebas.
       META_PHONE_NUMBER_ID_PRUEBA: '100000000000077'
       META_WABA_ID_PRUEBA: '100000000000078'
+      # Graph falsa (127.0.0.1 a proposito: `localhost` puede resolver a ::1). Agencia demo de la
+      # semilla (UUID publico, no es secreto): la unica que puede enviar con el token de prueba.
+      META_GRAPH_BASE_URL: http://127.0.0.1:4010
+      META_TENANT_ID_PRUEBA: 01932000-0000-7000-8000-0000000000d0
+      GRAPH_FALSA_URL: http://127.0.0.1:4010
 
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -357,6 +363,7 @@ jobs:
           pnpm db:seed
           pnpm --filter @viajapro/api identidad:sembrar-dev
           pnpm --filter @viajapro/api canal:registrar-prueba
+          pnpm --filter @viajapro/api demo:sembrar-cifrada
 
       # La web incrusta NEXT_PUBLIC_* al construir. La API se construye aparte: `start:unico` corre dist/.
       - name: Construir API y web
@@ -369,6 +376,20 @@ jobs:
           NEXT_PUBLIC_USE_REAL_CRM: 'true'
           NEXT_PUBLIC_USE_REAL_INBOX: 'true'
           NEXT_TELEMETRY_DISABLED: '1'
+
+      # La API envia por META_GRAPH_BASE_URL: aqui responde una Graph falsa que registra lo recibido
+      # (las pruebas lo consultan). Debe estar arriba ANTES que la API. El token es efimero y falso.
+      - name: Graph API falsa de Meta
+        run: |
+          token="$(openssl rand -hex 24)"
+          echo "::add-mask::$token"
+          echo "META_SYSTEM_USER_TOKEN=$token" >> "$GITHUB_ENV"
+          GRAPH_FALSA_PORT=4010 nohup node apps/web/e2e/graph-falsa.mjs > graph-falsa.log 2>&1 &
+          for _ in $(seq 1 20); do
+            curl -fsS http://127.0.0.1:4010/_salud > /dev/null 2>&1 && exit 0
+            sleep 0.5
+          done
+          echo "::error::La Graph falsa no arranco"; cat graph-falsa.log; exit 1
 
       # Un solo proceso, sin REDIS_URL a proposito. connection_limit>=2 en el rol del trabajador
       # (runbook-modo-unico §3). Los cuatro DATABASE_*_URL llegaron por GITHUB_ENV.
@@ -425,6 +446,7 @@ jobs:
             apps/web/test-results
             api.log
             web.log
+            graph-falsa.log
           retention-days: 7
           if-no-files-found: ignore
 
