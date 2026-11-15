@@ -38,6 +38,8 @@ import type {
 import { CotizacionCalculada as EsquemaCotizacion } from '@viajapro/contracts';
 import type { PaqueteConDetalle } from './mock-catalogo';
 import { formatearDinero } from './api';
+import { fechaLocalEnZona } from './reportes-periodo';
+import { ZONA_HORARIA_COLOMBIA } from './formato';
 
 const CAPACIDAD_ACOMODACION: Record<Acomodacion, number> = {
   SENCILLA: 1,
@@ -477,4 +479,27 @@ export function acomodacionesParaElSelector(f: FuenteDeAcomodaciones): Acomodaci
     return ACOMODACIONES_EN_ORDEN.filter((a) => lista.includes(a));
   }
   return f.pedidaPorLaApi ? [...ACOMODACIONES_EN_ORDEN] : [];
+}
+
+/** Hoy como AAAA-MM-DD en la zona del tenant (R9): sin desfase por UTC. */
+export function fechaDeHoy(ahora: Date = new Date(), zona: string = ZONA_HORARIA_COLOMBIA): string {
+  const { anio, mes, dia } = fechaLocalEnZona(ahora, zona);
+  const dos = (n: number) => String(n).padStart(2, '0');
+  return `${String(anio).padStart(4, '0')}-${dos(mes)}-${dos(dia)}`;
+}
+
+/**
+ * Fecha por omisión del cotizador: la primera salida disponible del paquete (en o después de
+ * `hoy`); si no hay salidas, `hoy`.
+ */
+export function fechaPorOmision(
+  salidas: readonly { paqueteId: string; fecha: string }[],
+  paqueteId: string,
+  hoy: string,
+): string {
+  const fechas = salidas
+    .filter((s) => s.paqueteId === paqueteId && s.fecha >= hoy)
+    .map((s) => s.fecha)
+    .sort();
+  return fechas[0] ?? hoy;
 }

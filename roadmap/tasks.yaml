@@ -4960,6 +4960,7 @@ tasks:
     priority: P3
     effort: S
     status: in_progress
+    notes: "Tabla, RLS y siembra integradas en el PR #268 (46e88a6); faltan contrato, API y UI de motivos (T-229)"
     depends_on: []
     acceptance:
       - "MotivoPerdida pasa a tabla por tenant (R12)"
@@ -5134,7 +5135,9 @@ tasks:
     phase: 2
     priority: P2
     effort: S
-    status: in_progress
+    status: done
+    done_at: 2026-11-15T19:00:00.000Z
+    evidence: "Integrado en main por el PR #268 (46e88a6)"
     depends_on: [T-203]
     acceptance:
       - "Funcion SECURITY DEFINER que devuelve solo la antiguedad y el conteo de envios pendientes (sin ids de tenant ni texto)"
@@ -5218,4 +5221,72 @@ tasks:
     source: auditoria de seguridad de T-212, 2026-11-15
     created_at: 2026-11-15T17:30:00.000Z
     owner: backend
-
+  - id: T-228
+    title: "Salud: /salud/listo publico solo informa el estado de cada cola"
+    type: security
+    phase: 1
+    priority: P2
+    effort: S
+    status: in_progress
+    depends_on: []
+    acceptance:
+      - "Sin masViejaS, pendientes ni umbralMin en la respuesta publica"
+      - "La sonda de despliegue sigue viendo estado ok"
+    files:
+      - apps/api/src/salud.controller.ts
+    source: auditoria de seguridad de T-223/T-214, 2026-11-15
+    created_at: 2026-11-15T19:00:00.000Z
+    owner: backend
+  - id: T-229
+    title: "CRM: contrato, API y UI de motivos de perdida por agencia (resto de T-214)"
+    type: feature
+    phase: 1
+    priority: P2
+    effort: M
+    status: ready
+    depends_on: []
+    acceptance:
+      - "La agencia ve y edita sus motivos; cerrar como perdida pide un motivo activo de su agencia"
+      - "Prueba HTTP de aislamiento: un motivo de otra agencia se rechaza"
+    files:
+      - packages/contracts/src/crm.ts
+      - apps/api/src/modules/crm
+      - apps/web
+    source: auditoria de seguridad de T-223/T-214, 2026-11-15
+    created_at: 2026-11-15T19:00:00.000Z
+    owner: backend
+  - id: T-230
+    title: "Datos: endurecer medir_cola_de_salida y el disparador de motivos"
+    type: security
+    phase: 1
+    priority: P2
+    effort: S
+    status: ready
+    depends_on: []
+    acceptance:
+      - "Prueba que fija la superficie exacta de columnas de viajapro_metricas"
+      - "Prueba de que un error dentro de la funcion restaura app.current_tenant del llamador"
+      - "ON CONFLICT en el disparador que siembra motivos"
+    files:
+      - packages/database/prisma/migrations
+      - packages/database/tests/aislamiento.spec.ts
+    source: auditoria de seguridad de T-223/T-214, 2026-11-15
+    created_at: 2026-11-15T19:00:00.000Z
+    owner: datos
+  - id: T-231
+    title: "ADR: registrar medir_cola_de_salida y el rol viajapro_metricas en ADR-0008 y R2"
+    type: docs
+    phase: 1
+    priority: P3
+    effort: S
+    status: ready
+    depends_on: []
+    acceptance:
+      - "ADR-0008 (por supersesion o addendum) lista la funcion y el rol NOLOGIN"
+      - "CLAUDE.md R2 menciona viajapro_metricas junto a viajapro_accesos"
+    files:
+      - docs/03-adr
+      - CLAUDE.md
+    source: auditoria de seguridad de T-223/T-214, 2026-11-15
+    created_at: 2026-11-15T19:00:00.000Z
+    owner: arquitecto
