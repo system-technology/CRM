@@ -17,8 +17,10 @@
  * - **Rotación robusta (T-226).** Hecho: la maestra (y la previa) no puede coincidir con otra clase
  *   de secreto (`separadaDeOtrasClases`, al arrancar). Hecho también (b): al arrancar, la API,
  *   el trabajador y el modo único abortan si hay datos con una `*_clave_version` que ninguna clave
- *   cargada abre (`comprobacion-de-claves.ts`). Aborta DESPUÉS de crear el contexto: en el
- *   trabajador los consumidores ya pueden haber tomado algún trabajo (antes del contexto, T-234). Lee las versiones agencia por agencia bajo RLS;
+ *   cargada abre (`comprobacion-de-claves.ts`). Aborta DENTRO del arranque de Nest (T-234): la
+ *   comprobación es el `onModuleInit` de la raíz (`comprobacion-al-arrancar.ts`), tras el rol y
+ *   antes de cualquier `onApplicationBootstrap`, donde se conectan consumidores y planificadores.
+ *   Lee las versiones agencia por agencia bajo RLS (con el `conTenant` de cada proceso);
  *   a volumen, una función SECURITY DEFINER `contar_versiones_de_clave()` (rol sin login, sin ids
  *   ni contenido) solo cambiaría el adaptador. PENDIENTE:
  *   (c) recifrado por lotes: trabajo en cola que, por agencia (`conTenant`), lee un lote de filas

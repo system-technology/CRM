@@ -5325,7 +5325,9 @@ tasks:
     phase: 1
     priority: P3
     effort: S
-    status: in_progress
+    status: done
+    done_at: 2026-11-15T20:40:00.000Z
+    evidence: "Integrado en main por el PR #273 (26aa5d1)"
     depends_on: [T-230]
     acceptance:
       - "Cinturon y prueba: pg_proc con proowner = viajapro_metricas es exactamente {medir_cola_de_salida} y ninguna funcion concede EXECUTE a viajapro_metricas"
@@ -5342,7 +5344,7 @@ tasks:
     phase: 1
     priority: P2
     effort: S
-    status: ready
+    status: in_progress
     depends_on: [T-226]
     acceptance:
       - "Con una clave_version huerfana, ningun consumidor (BullMQ o en proceso) llega a tomar un trabajo: la comprobacion corre antes de createApplicationContext, o los consumidores se conectan en onApplicationBootstrap tras un proveedor que comprueba"
@@ -5354,4 +5356,22 @@ tasks:
       - apps/api/src/shared/cifrado
     source: auditoria de seguridad de T-226 (b), 2026-11-15
     created_at: 2026-11-15T20:30:00.000Z
+    owner: backend
+  - id: T-235
+    title: "Arranque: prueba de arquitectura de que nada de interface/ arranca en onModuleInit"
+    type: test
+    phase: 1
+    priority: P3
+    effort: S
+    status: ready
+    depends_on: [T-234]
+    acceptance:
+      - "EscuchaDeAvisosDelRelay se suscribe en onApplicationBootstrap, como el resto de lo que toma trabajo"
+      - "Una prueba falla si una clase de interface/ (consumidores, planificadores) declara onModuleInit"
+      - "comprobacion-al-arrancar.spec.ts documenta por que usa abortOnError false"
+    files:
+      - apps/api/src/modules/inbox/infrastructure/aviso-al-relay.redis.ts
+      - apps/api/src/shared/cifrado/comprobacion-al-arrancar.spec.ts
+    source: auditoria de seguridad de T-234, 2026-11-15 (cola R13)
+    created_at: 2026-11-15T20:55:00.000Z
     owner: backend

@@ -11,7 +11,7 @@ import {
   Injectable,
   Logger,
   type OnModuleDestroy,
-  type OnModuleInit,
+  type OnApplicationBootstrap,
 } from '@nestjs/common';
 import { Worker } from 'bullmq';
 import type { Redis } from 'ioredis';
@@ -43,14 +43,14 @@ export function esUltimoIntento(
 }
 
 @Injectable()
-export class ConsumidorDeEnvios implements OnModuleInit, OnModuleDestroy {
+export class ConsumidorDeEnvios implements OnApplicationBootstrap, OnModuleDestroy {
   private readonly log = new Logger(ConsumidorDeEnvios.name);
   private worker: Worker<DatosDelEnvio> | null = null;
   private conexion: Redis | null = null;
 
   constructor(@Inject(EnviarMensajeSaliente) private readonly enviar: EnviarMensajeSaliente) {}
 
-  onModuleInit(): void {
+  onApplicationBootstrap(): void {
     const url = process.env['REDIS_URL'];
     if (!url) throw new Error('Falta REDIS_URL: el trabajador no tiene de dónde recoger envíos.');
     this.conexion = crearConexionDeRedis(url);

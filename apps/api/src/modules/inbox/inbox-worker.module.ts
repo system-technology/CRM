@@ -4,6 +4,7 @@
  * trabajador `PrismaService`. El modo `unico` tiene el suyo: `inbox-worker-unico.module.ts`.
  */
 import { Module } from '@nestjs/common';
+import { PrismaWebhookService } from '../../shared/prisma/prisma-webhook.service.js';
 import {
   PuertoCoordinacionDelBarrido,
   PuertoReencolador,
@@ -67,5 +68,7 @@ import { PlanificadorDeRelay } from './interface/planificador-de-relay.js';
       useFactory: (): PuertoReservaDeEnvio => new ReservaDeEnvioRedis(urlDeRedisParaEnvios()),
     },
   ],
+  // Lo ve la raíz (`WorkerModule`), que declara tras él la comprobación de claves (T-234).
+  exports: [PrismaWebhookService],
 })
 export class InboxWorkerModule {}
