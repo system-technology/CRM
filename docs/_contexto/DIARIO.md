@@ -30,9 +30,27 @@
   real usaba la acomodación de la maqueta. Corregidos.
 - ADR-0018, 0019, 0022 y 0025 aceptados; 0023 y 0024 propuestos.
 
+**Cierre del lote (añadido; `main` en `5c6e247`)**
+
+Verificado (gh/git):
+- Integrados #266 (`02d1e07`: demo cifrada T-225; la suite de navegador T-196 responde desde la
+  bandeja y envía cotización contra Graph falsa), #267 (`8b4c070`: deps T-220, audit de producción
+  3 críticas/15 altas a 0/1, T-224, T-226a, T-227, ADR-0022 y 0025, hooks del cerebro), #268
+  (`46e88a6`: `medir_cola_de_salida` con dueño NOLOGIN `viajapro_metricas` y `motivos_de_perdida`;
+  auditoría de seguridad: integrable; migraciones en verde en el CI) y #269 (`5c6e247`: vista previa
+  honesta, consultas desde hoy, T-228).
+- Defecto real hallado por la suite: la bandeja nunca ofrecía cotizaciones con la API real (la ficha
+  de CRM las trae vacías por R4); ahora las pide a `quoting`.
+- Vitest 4 rompió 40 e2e: `import(variable)` relativo se resuelve contra la raíz de Vite; usar
+  `new URL(ruta, import.meta.url).href`.
+- Cola nueva: T-229 (API/UI de motivos), T-230 (endurecer función y disparador), T-231 (ADR-0008/R2
+  con el rol nuevo). T-228 `done`. T-214 y T-226 (b, c) siguen `in_progress`.
+- Entrada: `docs/_bitacora/2026-11-15-mvp-en-navegador-y-cierre-de-auditoria.md`.
+
+Supuesto (no verificado): nada está desplegado; WhatsApp solo se probó contra una Graph falsa; las
+fuentes de la DIAN del ADR-0023 no se verificaron.
+
 **Pendiente (no darlo por hecho)**
-- #266 (demo cifrada T-225 y responder/enviar por WhatsApp en la suite) y los dos PR de la tanda
-  de pendientes (general; y T-223/T-214, de aislamiento). Ver `CHECKPOINT.local.md`.
 - Del propietario: `CAMPOS_SENSIBLES_KEY` en Render y copia de la clave; `STAGING_DESPLIEGUE`;
   Meta real (T-080); decidir zod 4; ADR-0023/0024.
 
