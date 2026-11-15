@@ -30,7 +30,15 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang="es-CO" className={inter.variable} suppressHydrationWarning>
       <head>
-        <script nonce={nonce} dangerouslySetInnerHTML={{ __html: SCRIPT_ANTI_FOUC }} />
+        {/*
+          El navegador oculta el atributo nonce tras aplicar la CSP (lo deja en ""), así que el
+          cliente nunca coincide con el valor del servidor. Es el único desajuste esperado (H-3).
+        */}
+        <script
+          nonce={nonce}
+          suppressHydrationWarning
+          dangerouslySetInnerHTML={{ __html: SCRIPT_ANTI_FOUC }}
+        />
       </head>
       <body className="flex min-h-screen flex-col">
         <AvisoSinConexion />

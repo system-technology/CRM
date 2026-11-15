@@ -142,7 +142,12 @@ export function construirUrlRedireccionIngreso(
   const esRutaRelativaSegura =
     rutaActual.startsWith('/') && !rutaActual.startsWith('//') && !rutaActual.includes('://');
 
-  if (!esRutaRelativaSegura || rutaActual === '/ingresar' || rutaActual === '/iniciar-sesion') {
+  if (
+    !esRutaRelativaSegura ||
+    rutaActual === '/ingresar' ||
+    rutaActual === '/iniciar-sesion' ||
+    rutaActual === '/login'
+  ) {
     return `${base}?motivo=${encodeURIComponent(motivo)}`;
   }
 
@@ -164,7 +169,8 @@ export function sanitizarRutaRedireccion(
     !ruta.startsWith('//') &&
     !ruta.includes('://') &&
     ruta !== '/ingresar' &&
-    ruta !== '/iniciar-sesion';
+    ruta !== '/iniciar-sesion' &&
+    ruta !== '/login';
 
   return esSegura ? ruta : fallback;
 }

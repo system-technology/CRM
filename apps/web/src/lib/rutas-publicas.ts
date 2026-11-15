@@ -5,6 +5,7 @@
 const PREFIJOS_PUBLICOS = [
   '/ingresar',
   '/iniciar-sesion',
+  '/login',
   '/aceptar-invitacion',
   '/terminos',
   '/privacidad',
