@@ -208,7 +208,8 @@ test('H4: responder desde la bandeja deja el mensaje saliente enviado', async ({
 
   // El mensaje saliente pasa de pendiente a ENVIADO cuando el trabajador lo entrega a Graph:
   // se recarga hasta ver la marca de enviado (y nunca «Falló»).
-  const burbuja = page.getByText(respuesta, { exact: true }).locator('xpath=..');
+  // Dentro del hilo (role="log"): el mismo texto sale tambien en la vista previa de la lista.
+  const burbuja = page.getByRole('log').getByText(respuesta, { exact: true }).locator('xpath=..');
   await expect(async () => {
     await page.reload();
     await expect(burbuja).toBeVisible({ timeout: 4_000 });
