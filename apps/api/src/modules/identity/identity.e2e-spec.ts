@@ -222,19 +222,20 @@ beforeAll(async () => {
     },
   });
   paqueteA = paquete.id;
-  const temporada = await admin.temporada.create({
+  // ADR-0025: el precio vive en vigencia + tarifa, que es lo que lee el detalle y el cotizador.
+  const vigencia = await admin.vigencia.create({
     data: {
       tenantId: TENANT_A,
       paqueteId: paqueteA,
-      nombre: 'Temporada fixture',
       desde: new Date('2027-03-01'),
       hasta: new Date('2027-03-31'),
     },
   });
-  await admin.precio.create({
+  await admin.tarifa.create({
     data: {
       tenantId: TENANT_A,
-      temporadaId: temporada.id,
+      vigenciaId: vigencia.id,
+      nombre: 'Adulto doble fixture',
       acomodacion: 'DOBLE',
       tipoPasajero: 'ADT',
       netoUnidades: 1_000_000n,

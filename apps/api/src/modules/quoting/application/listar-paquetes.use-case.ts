@@ -11,6 +11,11 @@ import type { ParametrosPagina } from '@viajapro/contracts';
 import { PrismaService } from '../../../shared/prisma/prisma.service.js';
 import { PaqueteNoEncontradoError } from '../domain/errors.js';
 
+const dinero = (unidades: bigint, moneda: string) => ({
+  unidades: unidades.toString(),
+  moneda,
+});
+
 /** `time` sin zona: se devuelve como HH:MM, la hora local del punto de encuentro (R9). */
 const aHHMM = (hora: Date | null): string | null =>
   hora === null ? null : hora.toISOString().slice(11, 16);
@@ -91,15 +96,21 @@ export class ListarPaquetesUseCase {
     });
   }
 
-  /** El neto de cada precio solo viaja con `incluirMargen`: R10. */
+  /** El neto de cada tarifa solo viaja con `incluirMargen`: R10. */
   async detalle(id: string, incluirMargen = false) {
     return this.prisma.conTenant(async (tx) => {
       const paquete = await tx.paquete.findFirst({
         where: { id, eliminadoEn: null },
         include: {
-          temporadas: {
-            orderBy: { desde: 'asc' },
-            include: { precios: { orderBy: [{ acomodacion: 'asc' }, { tipoPasajero: 'asc' }] } },
+          // Lo que lee el cotizador (`activa: true`, como en `CotizarSalidaUseCase`): ADR-0025.
+          vigencias: {
+            where: { activa: true },
+            orderBy: [{ desde: 'asc' }, { hasta: 'asc' }],
+            include: {
+              tarifas: {
+                orderBy: [{ aditiva: 'asc' }, { ventaUnidades: 'asc' }, { id: 'asc' }],
+              },
+            },
           },
           mayorista: { select: { id: true, nombre: true, diasTimeLimit: true } },
           formato: { select: { id: true, nombre: true } },
@@ -117,21 +128,32 @@ export class ListarPaquetesUseCase {
         creadoEn: paquete.creadoEn.toISOString(),
         actualizadoEn: paquete.actualizadoEn.toISOString(),
         opcionesDeSalida: paquete.opcionesDeSalida.map(vistaDeOpcion),
-        temporadas: paquete.temporadas.map((t) => ({
-          id: t.id,
-          nombre: t.nombre,
-          desde: t.desde.toISOString().slice(0, 10),
-          hasta: t.hasta.toISOString().slice(0, 10),
-          precios: t.precios.map((pr) => ({
-            id: pr.id,
-            acomodacion: pr.acomodacion,
-            tipoPasajero: pr.tipoPasajero,
+        vigencias: paquete.vigencias.map((v) => ({
+          id: v.id,
+          desde: v.desde.toISOString().slice(0, 10),
+          hasta: v.hasta.toISOString().slice(0, 10),
+          publicada: v.publicada,
+          cupoTotal: v.cupoTotal,
+          tarifas: v.tarifas.map((t) => ({
+            id: t.id,
+            nombre: t.nombre,
+            unidad: t.unidad,
+            cubrePasajeros: t.cubrePasajeros,
+            aditiva: t.aditiva,
+            // `mayoristaId` tampoco sale: es dato de compra, no de venta.
             ...(incluirMargen
-              ? { neto: { unidades: pr.netoUnidades.toString(), moneda: pr.monedaIso } }
+              ? { neto: t.netoUnidades === null ? null : dinero(t.netoUnidades, t.monedaIso) }
               : {}),
-            venta: { unidades: pr.ventaUnidades.toString(), moneda: pr.monedaIso },
-            edadMinima: pr.edadMinima,
-            edadMaxima: pr.edadMaxima,
+            venta: dinero(t.ventaUnidades, t.monedaIso),
+            condicion: {
+              acomodacion: t.acomodacion,
+              tipoPasajero: t.tipoPasajero,
+              edadMinima: t.edadMinima,
+              edadMaxima: t.edadMaxima,
+              pasajerosMinimo: t.pasajerosMinimo,
+              pasajerosMaximo: t.pasajerosMaximo,
+              ocupaSilla: t.ocupaSilla,
+            },
           })),
         })),
       };

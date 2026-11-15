@@ -1,8 +1,79 @@
-import type { Mayorista, Paquete, Temporada } from '@viajapro/contracts';
+import type {
+  Acomodacion,
+  Dinero,
+  Mayorista,
+  Paquete,
+  TipoPasajero,
+  VigenciaDeDetalle,
+} from '@viajapro/contracts';
 
+/**
+ * Un paquete tal como lo pinta la ficha: el contrato `Paquete` más el mayorista y las
+ * **vigencias con sus tarifas**, que es lo que lee el cotizador (ADR-0025 paso 2).
+ */
 export interface PaqueteConDetalle extends Paquete {
   mayorista: Mayorista | null;
-  temporadas: Temporada[];
+  vigencias: VigenciaDeDetalle[];
+  /**
+   * SOLO para el simulador sin API (`calcularCotizacionMock`). Es la matriz acomodación × tipo de
+   * pasajero con que se escribieron los datos de muestra; `vigencias` se deriva de ella y es lo
+   * único que la interfaz lee. No es un contrato ni viene de la API.
+   */
+  tarifarioDemo: TemporadaDemo[];
+}
+
+/** Forma interna de los datos de muestra. No se exporta a la API ni a `contracts`. */
+export interface PrecioDemo {
+  id: string;
+  acomodacion: Acomodacion;
+  tipoPasajero: TipoPasajero;
+  neto?: Dinero;
+  venta: Dinero;
+  edadMinima: number | null;
+  edadMaxima: number | null;
+}
+
+export interface TemporadaDemo {
+  id: string;
+  nombre: string;
+  desde: string;
+  hasta: string;
+  precios: PrecioDemo[];
+}
+
+type PaqueteDemo = Omit<PaqueteConDetalle, 'vigencias' | 'tarifarioDemo'> & {
+  temporadas: TemporadaDemo[];
+};
+
+const ETIQUETA_TIPO: Record<TipoPasajero, string> = { ADT: 'Adulto', CHD: 'Niño', INF: 'Infante' };
+
+/** Una temporada de muestra es una vigencia de rango sin publicar; cada precio, una tarifa. */
+export function vigenciaDesdeTemporadaDemo(t: TemporadaDemo): VigenciaDeDetalle {
+  return {
+    id: t.id,
+    desde: t.desde,
+    hasta: t.hasta,
+    publicada: false,
+    cupoTotal: null,
+    tarifas: t.precios.map((pr) => ({
+      id: pr.id,
+      nombre: `${ETIQUETA_TIPO[pr.tipoPasajero]} en ${pr.acomodacion.toLowerCase()}`,
+      unidad: 'POR_PERSONA',
+      cubrePasajeros: 1,
+      aditiva: false,
+      ...(pr.neto ? { neto: pr.neto } : {}),
+      venta: pr.venta,
+      condicion: {
+        acomodacion: pr.acomodacion,
+        tipoPasajero: pr.tipoPasajero,
+        edadMinima: pr.edadMinima,
+        edadMaxima: pr.edadMaxima,
+        pasajerosMinimo: null,
+        pasajerosMaximo: null,
+        ocupaSilla: null,
+      },
+    })),
+  };
 }
 
 export const MAYORISTA_CARIBE: Mayorista = {
@@ -29,7 +100,7 @@ export const OPERADORA_ANDINA: Mayorista = {
 
 export const MOCK_MAYORISTAS: Mayorista[] = [MAYORISTA_CARIBE, OPERADORA_ANDINA];
 
-export const MOCK_PAQUETES_CATALOGO: PaqueteConDetalle[] = [
+const PAQUETES_DEMO: PaqueteDemo[] = [
   {
     id: '01932000-0000-7000-8000-000000000001',
     nombre: 'San Andrés — 4 días / 3 noches, todo incluido',
@@ -716,3 +787,11 @@ export const MOCK_PAQUETES_CATALOGO: PaqueteConDetalle[] = [
     ],
   },
 ];
+
+export const MOCK_PAQUETES_CATALOGO: PaqueteConDetalle[] = PAQUETES_DEMO.map(
+  ({ temporadas, ...resto }) => ({
+    ...resto,
+    vigencias: temporadas.map(vigenciaDesdeTemporadaDemo),
+    tarifarioDemo: temporadas,
+  }),
+);

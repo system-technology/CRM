@@ -318,10 +318,45 @@ describe('cotizaciones-logica (0c.22)', () => {
         ninos: 0,
         infantes: 0,
         acomodacion: 'TRIPLE',
-        vigenteHasta: '2026-11-20',
       });
       expect('venta' in composicion).toBe(false);
       expect('neto' in composicion).toBe(false);
+      // La vigencia de la oferta es una decisión nueva en cada versión: no se arrastra.
+      expect('vigenteHasta' in composicion).toBe(false);
+    });
+
+    it('T-221: reenvía las edades y la silla, que `ComposicionDeVersion` exige con niños (si no, 422)', () => {
+      const version: VersionDeCotizacion = {
+        id: '01932000-0000-7000-8000-000000000012',
+        numero: 1,
+        creadaEn: '2026-10-25T10:00:00.000Z',
+        paqueteId: PAQUETE_ID,
+        paqueteNombre: 'San Andrés',
+        destino: 'San Andrés',
+        noches: 3,
+        fechaSalida: '2026-12-05',
+        vigenciaId: '01932000-0000-7000-8000-000000000001',
+        vigenciaDesde: '2026-12-01',
+        vigenciaHasta: '2026-12-20',
+        deSalidaProgramada: false,
+        adultos: 2,
+        ninos: 2,
+        infantes: 1,
+        edadesNinos: [4, 9],
+        edadesInfantes: [1],
+        infantesConSilla: 0,
+        acomodacion: 'DOBLE',
+        lineas: [],
+        venta: { unidades: '4500000', moneda: 'COP' },
+        vigenteHasta: null,
+      };
+
+      const composicion = duplicarVersionComoComposicion(version);
+
+      expect(composicion.edadesNinos).toEqual([4, 9]);
+      expect(composicion.edadesInfantes).toEqual([1]);
+      expect(composicion.infantesConSilla).toBe(0);
+      expect(composicion.ninos).toBe(2);
     });
   });
 

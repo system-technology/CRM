@@ -4528,7 +4528,7 @@ tasks:
     phase: 1
     priority: P2
     effort: S
-    status: ready
+    status: in_progress
     depends_on: []
     acceptance:
       - "Una tarifa sin tipo cubre adultos y ninos; el infante solo con tarifa INF explicita o politica del tenant (R12)"
@@ -5085,7 +5085,7 @@ tasks:
     phase: 1
     priority: P1
     effort: S
-    status: ready
+    status: in_progress
     depends_on: [T-217]
     acceptance:
       - "duplicarVersionComoComposicion en apps/web/src/lib/cotizaciones-logica.ts usa composicionDesdeVersion; re-cotizar una version con nino no da 422"
@@ -5100,7 +5100,7 @@ tasks:
     phase: 1
     priority: P2
     effort: M
-    status: ready
+    status: in_progress
     depends_on: [T-180]
     acceptance:
       - "El detalle de paquete y la ficha web muestran vigencias y tarifas, no temporadas"
@@ -5129,4 +5129,20 @@ tasks:
     source: entrega de T-203, 2026-11-15
     created_at: 2026-11-15T17:00:00.000Z
     owner: datos
+  - id: T-224
+    title: "Web: el simulador sin conexion del cotizador usa vigencias y tarifas, no la matriz de temporadas"
+    type: refactor
+    phase: 1
+    priority: P3
+    effort: S
+    status: ready
+    depends_on: [T-222]
+    acceptance:
+      - "calcularCotizacionMock y temporadaNombre dejan de leer tarifarioDemo (temporadas); mock-catalogo sin TemporadaDemo/PrecioDemo"
+    files:
+      - apps/web/src/lib/cotizador-logica.ts
+      - apps/web/src/lib/mock-catalogo.ts
+    source: entrega de T-222, 2026-11-15
+    created_at: 2026-11-15T17:30:00.000Z
+    owner: frontend
 

@@ -13,14 +13,14 @@ import {
   Info,
   Compass,
 } from 'lucide-react';
-import type { Acomodacion, TipoPasajero } from '@viajapro/contracts';
 import { formatearDinero } from '../../lib/api';
 import { usePermisos } from '../../lib/permisos';
 import { useFocoModal } from '../../lib/use-foco-modal';
 import { MOCK_SESION_DUENO } from '../../lib/auth-api';
 import type { PaqueteConDetalle } from '../../lib/mock-catalogo';
 import {
-  agruparPreciosPorAcomodacion,
+  describirCondicionDeTarifa,
+  describirUnidadDeTarifa,
   verificarVigenciaTarifario,
 } from '../../lib/catalogo-logica';
 import { ChipTipoProducto } from '../comun/chip-tipo-producto';
@@ -31,13 +31,6 @@ interface FichaDetallePaqueteProps {
   puedeVerNetoYMargen?: boolean;
 }
 
-const ACOMODACIONES: Acomodacion[] = ['SENCILLA', 'DOBLE', 'TRIPLE', 'CUADRUPLE'];
-const TIPOS_PASAJERO: { tipo: TipoPasajero; etiqueta: string }[] = [
-  { tipo: 'ADT', etiqueta: 'Adulto (ADT)' },
-  { tipo: 'CHD', etiqueta: 'Niño (CHD)' },
-  { tipo: 'INF', etiqueta: 'Infante (INF)' },
-];
-
 export function FichaDetallePaquete({
   paquete,
   alCerrar,
@@ -47,7 +40,7 @@ export function FichaDetallePaquete({
     puedeVerNetoProp !== undefined ? (puedeVerNetoProp ? MOCK_SESION_DUENO : null) : undefined,
   );
   const tienePermisoNeto = puedeVerNetoProp !== undefined ? puedeVerNetoProp : puedeVerNetoHook;
-  const [temporadaSeleccionadaId, setTemporadaSeleccionadaId] = useState<string>('');
+  const [vigenciaSeleccionadaId, setVigenciaSeleccionadaId] = useState<string>('');
 
   const botonCerrarRef = useRef<HTMLButtonElement>(null);
   const contenedorRef = useFocoModal<HTMLDivElement>({
@@ -58,13 +51,10 @@ export function FichaDetallePaquete({
 
   if (!paquete) return null;
 
-  const temporadaActiva =
-    paquete.temporadas.find((t) => t.id === temporadaSeleccionadaId) ?? paquete.temporadas[0];
+  const vigenciaActiva =
+    paquete.vigencias.find((v) => v.id === vigenciaSeleccionadaId) ?? paquete.vigencias[0];
 
-  const vigencia = verificarVigenciaTarifario(paquete.temporadas);
-  const matrizPrecios = temporadaActiva
-    ? agruparPreciosPorAcomodacion(temporadaActiva.precios)
-    : null;
+  const vigencia = verificarVigenciaTarifario(paquete.vigencias);
 
   return (
     <div
@@ -119,7 +109,7 @@ export function FichaDetallePaquete({
             <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50/50 p-3 text-xs text-emerald-800 dark:border-emerald-900/50 dark:bg-emerald-950/20 dark:text-emerald-300">
               <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
               <span>
-                <strong>Tarifario vigente.</strong> Próximo corte de temporada:{' '}
+                <strong>Tarifario vigente.</strong> Próximo corte de vigencia:{' '}
                 {vigencia.proximoVencimiento} (UTC). Precios validados para cotización.
               </span>
             </div>
@@ -127,7 +117,7 @@ export function FichaDetallePaquete({
             <div className="flex items-center gap-2 rounded-lg border border-rose-200 bg-rose-50/50 p-3 text-xs text-rose-800 dark:border-rose-900/50 dark:bg-rose-950/20 dark:text-rose-300">
               <AlertTriangle className="h-4 w-4 shrink-0 text-rose-600 dark:text-rose-400" />
               <span>
-                <strong>Tarifario vencido.</strong> Las temporadas de este paquete ya caducaron.
+                <strong>Tarifario vencido.</strong> Las vigencias de este paquete ya caducaron.
                 Requiere actualización del mayorista antes de emitir cotizaciones válidas.
               </span>
             </div>
@@ -172,113 +162,88 @@ export function FichaDetallePaquete({
             </div>
           )}
 
-          {/* Selector de Temporadas */}
+          {/* Vigencias y tarifas: lo mismo que lee el cotizador (ADR-0025) */}
           <div>
             <div className="flex items-center justify-between">
-              <label
-                htmlFor="selector-temporada"
-                className="text-xs font-bold text-neutral-700 uppercase dark:text-neutral-300"
-              >
-                Temporadas y Tarifarios ({paquete.temporadas.length})
-              </label>
-              {temporadaActiva && (
+              <h3 className="text-xs font-bold text-neutral-700 uppercase dark:text-neutral-300">
+                Vigencias y tarifas ({paquete.vigencias.length})
+              </h3>
+              {vigenciaActiva && (
                 <span className="flex items-center gap-1 text-xs text-neutral-500 dark:text-neutral-400">
                   <Calendar className="h-3.5 w-3.5" />
-                  Vigencia: {temporadaActiva.desde} a {temporadaActiva.hasta}
+                  Vigencia: {vigenciaActiva.desde} a {vigenciaActiva.hasta}
                 </span>
               )}
             </div>
 
-            {paquete.temporadas.length > 1 && (
+            {paquete.vigencias.length > 1 && (
               <div className="mt-2 flex gap-2 overflow-x-auto pb-1">
-                {paquete.temporadas.map((temp) => (
+                {paquete.vigencias.map((v) => (
                   <button
-                    key={temp.id}
+                    key={v.id}
                     type="button"
-                    onClick={() => setTemporadaSeleccionadaId(temp.id)}
+                    onClick={() => setVigenciaSeleccionadaId(v.id)}
                     className={`rounded-lg px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-colors ${
-                      temporadaActiva?.id === temp.id
+                      vigenciaActiva?.id === v.id
                         ? 'bg-acento-600 text-white shadow-xs'
                         : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700'
                     }`}
                   >
-                    {temp.nombre}
+                    {v.desde === v.hasta ? v.desde : `${v.desde} a ${v.hasta}`}
                   </button>
                 ))}
               </div>
             )}
 
-            {/* Matriz de Tarifas por Acomodación */}
-            {temporadaActiva && matrizPrecios && (
+            {vigenciaActiva && (
               <div className="mt-3 overflow-hidden rounded-xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
                 <div className="border-b border-neutral-200 bg-neutral-50/70 px-4 py-2.5 dark:border-neutral-800 dark:bg-neutral-800/50">
                   <span className="text-xs font-bold text-neutral-800 dark:text-neutral-200">
-                    Matriz de Tarifas — {temporadaActiva.nombre}
+                    Tarifas de la vigencia — {vigenciaActiva.desde} a {vigenciaActiva.hasta}
                   </span>
                   <p className="text-[11px] text-neutral-500 dark:text-neutral-400">
-                    Precios expresados por persona en pesos colombianos (COP).
+                    {vigenciaActiva.publicada ? 'Salida publicada. ' : ''}
+                    {vigenciaActiva.cupoTotal !== null
+                      ? `Cupo informativo: ${vigenciaActiva.cupoTotal}.`
+                      : 'Sin cupo declarado: la disponibilidad se consulta al mayorista.'}
                   </p>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs">
                     <thead>
                       <tr className="border-b border-neutral-200 bg-neutral-50/40 text-neutral-500 dark:border-neutral-800 dark:bg-neutral-800/20 dark:text-neutral-400">
-                        <th className="px-3 py-2 font-medium">Acomodación</th>
-                        {TIPOS_PASAJERO.map((t) => (
-                          <th key={t.tipo} className="px-3 py-2 text-right font-medium">
-                            {t.etiqueta}
-                          </th>
-                        ))}
+                        <th className="px-3 py-2 font-medium">Tarifa</th>
+                        <th className="px-3 py-2 font-medium">Aplica a</th>
+                        <th className="px-3 py-2 text-right font-medium">Venta</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800/60">
-                      {ACOMODACIONES.map((acom) => {
-                        const fila = matrizPrecios[acom];
-                        const tienePrecios = Object.keys(fila).length > 0;
-                        if (!tienePrecios) return null;
-
-                        return (
-                          <tr
-                            key={acom}
-                            className="hover:bg-neutral-50/50 dark:hover:bg-neutral-800/30"
-                          >
-                            <td className="px-3 py-2 font-semibold text-neutral-800 capitalize dark:text-neutral-200">
-                              {acom.toLowerCase()}
-                            </td>
-                            {TIPOS_PASAJERO.map((t) => {
-                              const precio = fila[t.tipo];
-                              if (!precio) {
-                                return (
-                                  <td
-                                    key={t.tipo}
-                                    className="px-3 py-2 text-right text-neutral-300 dark:text-neutral-600"
-                                  >
-                                    —
-                                  </td>
-                                );
-                              }
-
-                              return (
-                                <td key={t.tipo} className="px-3 py-2 text-right">
-                                  <div className="cifra font-bold text-neutral-900 dark:text-white">
-                                    {formatearDinero(precio.venta)}
-                                  </div>
-                                  {tienePermisoNeto && precio.neto && (
-                                    <div className="cifra text-[10px] text-neutral-400 dark:text-neutral-500">
-                                      Neto: {formatearDinero(precio.neto)}
-                                    </div>
-                                  )}
-                                  {precio.edadMinima !== null && precio.edadMaxima !== null && (
-                                    <div className="text-[10px] text-neutral-500 dark:text-neutral-400">
-                                      {precio.edadMinima} a {precio.edadMaxima} años
-                                    </div>
-                                  )}
-                                </td>
-                              );
-                            })}
-                          </tr>
-                        );
-                      })}
+                      {vigenciaActiva.tarifas.map((t) => (
+                        <tr
+                          key={t.id}
+                          className="hover:bg-neutral-50/50 dark:hover:bg-neutral-800/30"
+                        >
+                          <td className="px-3 py-2 font-semibold text-neutral-800 dark:text-neutral-200">
+                            {t.nombre}
+                          </td>
+                          <td className="px-3 py-2 text-neutral-600 dark:text-neutral-400">
+                            <div>{describirCondicionDeTarifa(t.condicion)}</div>
+                            <div className="text-[10px] text-neutral-500">
+                              {describirUnidadDeTarifa(t)}
+                            </div>
+                          </td>
+                          <td className="px-3 py-2 text-right">
+                            <div className="cifra font-bold text-neutral-900 dark:text-white">
+                              {formatearDinero(t.venta)}
+                            </div>
+                            {tienePermisoNeto && t.neto && (
+                              <div className="cifra text-[10px] text-neutral-400 dark:text-neutral-500">
+                                Neto: {formatearDinero(t.neto)}
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
                     </tbody>
                   </table>
                 </div>

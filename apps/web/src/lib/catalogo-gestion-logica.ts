@@ -6,6 +6,7 @@ import {
   CrearPaquete as EsquemaCrearPaquete,
   EditarPaquete as EsquemaEditarPaquete,
 } from '@viajapro/contracts';
+import { obtenerPrecioDesde } from './catalogo-logica';
 import type { PaqueteConDetalle } from './mock-catalogo';
 
 export interface FormularioPaqueteValores {
@@ -239,19 +240,9 @@ export function construirResumenMockGestion(
   return paquetesMock
     .filter((p) => incluirInactivos || p.activo)
     .map((p) => {
-      // Buscar menor precio en COP de las temporadas mock
-      let menorCop = Infinity;
-      for (const temp of p.temporadas) {
-        for (const pr of temp.precios) {
-          if (pr.tipoPasajero === 'ADT' && pr.venta.moneda === 'COP') {
-            const val = Number(pr.venta.unidades);
-            if (val < menorCop) menorCop = val;
-          }
-        }
-      }
-
-      const desde =
-        menorCop !== Infinity ? [{ unidades: menorCop.toString(), moneda: 'COP' as const }] : [];
+      // Menor precio base de adulto en COP de las vigencias mock
+      const menor = obtenerPrecioDesde(p);
+      const desde = menor ? [{ unidades: menor.unidades, moneda: 'COP' as const }] : [];
 
       return {
         id: p.id,
@@ -272,7 +263,7 @@ export function construirResumenMockGestion(
         exclusiones: p.exclusiones,
         desde,
         desdeEsDeGrupo: false,
-        vigenciasActivas: p.temporadas.length,
+        vigenciasActivas: p.vigencias.length,
       };
     });
 }
