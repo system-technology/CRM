@@ -350,9 +350,41 @@ export async function sembrarCatalogoReal(
     }
   }
 
+  // --- Una salida publicada FUTURA por pasadía (demostración) ----------------
+  //
+  // **Tampoco sale de la hoja.** Sus fechas son de octubre de 2026 y el cotizador solo ofrece
+  // salidas de hoy en adelante: sin esto, en cuanto pasa la campaña la agencia demo y la suite de
+  // navegador se quedan sin nada que cotizar. Es el primer sábado a partir de dentro de una
+  // semana, contado el día de la siembra; volver a sembrar otro día añade otra fecha, no la mueve.
+  // Las fechas de octubre no se tocan: las fija `catalogo.e2e-spec.ts` de la API.
+  const salidaDeDemostracion = primerSabadoDesde(new Date(Date.now() + 7 * 86_400_000));
+  for (const grupo of grupos) {
+    if (grupo.tipo !== 'PASADIA') continue;
+    for (const producto of grupo.productos) {
+      const paqueteId = await asegurarPaquete(producto.nombre, 0);
+      const vigenciaId = await crearVigencia(
+        paqueteId,
+        salidaDeDemostracion,
+        salidaDeDemostracion,
+        true,
+      );
+      const yaTiene = await prisma.tarifa.count({ where: { tenantId, vigenciaId } });
+      if (yaTiene === 0) {
+        await crearTarifa(vigenciaId, 'Adulto', producto.precio_cop, 'POR_PERSONA', 1);
+      }
+    }
+  }
+
   return {
     paquetes: paquetesPorNombre.size,
     vigencias: await prisma.vigencia.count({ where: { tenantId } }),
     tarifas: await prisma.tarifa.count({ where: { tenantId } }),
   };
+}
+
+/** AAAA-MM-DD del primer sábado en o después de `desde`, en UTC (la base guarda fechas en UTC, R9). */
+export function primerSabadoDesde(desde: Date): string {
+  const d = new Date(Date.UTC(desde.getUTCFullYear(), desde.getUTCMonth(), desde.getUTCDate()));
+  d.setUTCDate(d.getUTCDate() + ((6 - d.getUTCDay() + 7) % 7));
+  return d.toISOString().slice(0, 10);
 }
