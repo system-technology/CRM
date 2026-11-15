@@ -1,4 +1,4 @@
-import { enviarWebhookWhatsapp, enviosRecibidosPorGraph } from './auxiliares';
+import { enviarEstadoWhatsapp, enviarWebhookWhatsapp, enviosRecibidosPorGraph } from './auxiliares';
 import { expect, test } from './fixtures';
 
 /**
@@ -207,6 +207,7 @@ test('H4: responder desde la bandeja deja el mensaje saliente enviado', async ({
   await page.getByRole('button', { name: 'Enviar mensaje', exact: true }).click();
 
   // Primero lo esencial: el trabajador entrego el mensaje a la Graph de Meta (falsa en el CI).
+  let wamidAceptado = '';
   await expect(async () => {
     const envios = await enviosRecibidosPorGraph();
     const recibido = envios.find((e) => e.texto === respuesta);
@@ -216,7 +217,12 @@ test('H4: responder desde la bandeja deja el mensaje saliente enviado', async ({
     ).toBeDefined();
     expect(recibido?.tipo).toBe('text');
     expect(recibido?.para).toBe(telefono);
+    wamidAceptado = recibido?.wamid ?? '';
   }).toPass({ timeout: 40_000, intervals: [1_000, 2_000] });
+
+  // Meta confirma con un webhook de estado `sent`; es lo que pasa el mensaje a ENVIADO. La Graph
+  // falsa no lo manda: lo manda la prueba, firmado como el de Meta.
+  expect(await enviarEstadoWhatsapp(wamidAceptado, 'sent', telefono)).toBe(200);
 
   // Despues, la bandeja lo refleja: la marca de enviado (Check) y nunca «Falló». Dentro del hilo
   // (role="log"): el mismo texto sale tambien en la vista previa de la lista.
