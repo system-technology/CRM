@@ -393,9 +393,12 @@ export default function BandejaConversacionPage() {
   }>({ minutos: 0, horas: 0, cerrada: false, texto: '' });
 
   const estadoVentana24h = useMemo(() => {
-    const ultimoEntrante = detalle?.mensajes
-      ?.filter((m) => m.direccion === 'ENTRANTE')
-      .slice(-1)[0]?.ocurridoEn;
+    // La fuente de verdad es `detalle.ventana` (VentanaServicio de la API, T-198). Con la API real
+    // NO se recalcula desde los mensajes: `expiraEn` nulo significa que el cliente nunca escribió.
+    // El respaldo desde el último mensaje entrante (24 h propias) solo vale en modo maqueta.
+    const ultimoEntrante = inboxApi.isModoReal()
+      ? undefined
+      : detalle?.mensajes?.filter((m) => m.direccion === 'ENTRANTE').slice(-1)[0]?.ocurridoEn;
     return calcularCuentaRegresivaVentana24h({
       expiraEn: detalle?.ventana?.expiraEn ?? null,
       ultimoMensajeClienteEn: ultimoEntrante ?? null,

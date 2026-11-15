@@ -364,9 +364,39 @@ export async function listarEtapasPipelineApi(): Promise<EtapaDefinida[]> {
 }
 
 /**
+ * Fallo a mitad de un guardado de etapas (varios PATCH + reordenar, sin transacción): dice qué
+ * etapas quedaron guardadas y cuáles no (T-202).
+ */
+export class GuardadoEtapasParcialError extends Error {
+  constructor(
+    readonly guardadas: string[],
+    readonly noGuardadas: string[],
+    readonly reordenPendiente: boolean,
+    readonly causa: unknown,
+    /** `originales` con lo ya guardado aplicado, para que un reintento solo envíe lo pendiente. */
+    readonly originalesActualizados: EtapaDefinida[],
+  ) {
+    const motivo = causa instanceof Error ? causa.message : 'error desconocido';
+    const partes: string[] = [];
+    partes.push(
+      guardadas.length > 0
+        ? `Se guardaron: ${guardadas.join(', ')}.`
+        : 'No se guardó ninguna etapa.',
+    );
+    if (noGuardadas.length > 0) partes.push(`No se guardaron: ${noGuardadas.join(', ')}.`);
+    if (reordenPendiente) partes.push('El nuevo orden de las etapas no se guardó.');
+    super(
+      `${partes.join(' ')} Motivo: ${motivo} Pulsa Guardar etapas para reintentar lo pendiente.`,
+    );
+    this.name = 'GuardadoEtapasParcialError';
+  }
+}
+
+/**
  * Guarda los cambios de etapas contra la API real: un PATCH /crm/etapas/:id por cada etapa cuyo
  * nombre o probabilidad cambió, y un POST /crm/etapas/reordenar si cambió el orden. Requiere
- * `crm.escribir`. Un fallo se propaga (no hay simulación). Devuelve la lista ya guardada.
+ * `crm.escribir`. Un fallo no se simula: lanza `GuardadoEtapasParcialError` indicando qué etapas
+ * quedaron guardadas y cuáles no. Devuelve la lista ya guardada.
  */
 export async function actualizarEtapasPipelineApi(
   originales: EtapaDefinida[],
@@ -376,6 +406,7 @@ export async function actualizarEtapasPipelineApi(
     return editadas.map((e, i) => ({ ...e, orden: i }));
   }
 
+  const pendientes: { nueva: EtapaDefinida; cambios: EditarEtapa }[] = [];
   for (const nueva of editadas) {
     const previa = originales.find((o) => o.id === nueva.id);
     if (!previa) continue;
@@ -383,20 +414,61 @@ export async function actualizarEtapasPipelineApi(
     if (nueva.nombre.trim() !== previa.nombre) cambios.nombre = nueva.nombre.trim();
     if (nueva.probabilidad !== previa.probabilidad) cambios.probabilidad = nueva.probabilidad;
     if (Object.keys(cambios).length === 0) continue;
-    await pedirCrm(`/api/v1/crm/etapas/${nueva.id}`, {
-      method: 'PATCH',
-      body: JSON.stringify(EditarEtapa.parse(cambios)),
-    });
+    pendientes.push({ nueva, cambios });
   }
 
   const idsPrevios = originales.map((o) => o.id);
   const idsNuevos = editadas.map((e) => e.id);
-  if (idsPrevios.join() !== idsNuevos.join()) {
-    const { data } = await pedirCrm('/api/v1/crm/etapas/reordenar', {
-      method: 'POST',
-      body: JSON.stringify(ReordenarEtapas.parse({ ids: idsNuevos })),
+  const hayReorden = idsPrevios.join() !== idsNuevos.join();
+  const nombreDe = (e: EtapaDefinida) => e.nombre.trim() || (e.clave ?? 'Etapa sin nombre');
+
+  const guardadas: EtapaDefinida[] = [];
+  const aplicadas = new Map<string, EditarEtapa>();
+  const originalesConGuardado = (): EtapaDefinida[] =>
+    originales.map((o) => {
+      const c = aplicadas.get(o.id);
+      return {
+        ...o,
+        nombre: c?.nombre ?? o.nombre,
+        probabilidad: c?.probabilidad ?? o.probabilidad,
+      };
     });
-    return z.array(EtapaDefinida).parse(data);
+
+  for (const [i, { nueva, cambios }] of pendientes.entries()) {
+    try {
+      await pedirCrm(`/api/v1/crm/etapas/${nueva.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(EditarEtapa.parse(cambios)),
+      });
+    } catch (causa) {
+      throw new GuardadoEtapasParcialError(
+        guardadas.map(nombreDe),
+        pendientes.slice(i).map((p) => nombreDe(p.nueva)),
+        hayReorden,
+        causa,
+        originalesConGuardado(),
+      );
+    }
+    guardadas.push(nueva);
+    aplicadas.set(nueva.id, cambios);
+  }
+
+  if (hayReorden) {
+    try {
+      const { data } = await pedirCrm('/api/v1/crm/etapas/reordenar', {
+        method: 'POST',
+        body: JSON.stringify(ReordenarEtapas.parse({ ids: idsNuevos })),
+      });
+      return z.array(EtapaDefinida).parse(data);
+    } catch (causa) {
+      throw new GuardadoEtapasParcialError(
+        guardadas.map(nombreDe),
+        [],
+        true,
+        causa,
+        originalesConGuardado(),
+      );
+    }
   }
 
   return listarEtapasPipelineApi();

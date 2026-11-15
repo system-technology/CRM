@@ -13,7 +13,11 @@ import {
   Percent,
   ShieldAlert,
 } from 'lucide-react';
-import { listarEtapasPipelineApi, actualizarEtapasPipelineApi } from '../../lib/crm-api';
+import {
+  listarEtapasPipelineApi,
+  actualizarEtapasPipelineApi,
+  GuardadoEtapasParcialError,
+} from '../../lib/crm-api';
 import { usePermisos, explicacionFaltaPermiso } from '../../lib/permisos';
 import { formatearErrorAmigable } from '../../lib/estados-ui-logica';
 
@@ -89,7 +93,13 @@ export function BloqueEtapasPipeline() {
       setMensajeExito('Etapas del pipeline guardadas correctamente.');
       setTimeout(() => setMensajeExito(null), 4000);
     } catch (err) {
-      setError(formatearErrorAmigable(err, 'Error al guardar los cambios en las etapas.'));
+      if (err instanceof GuardadoEtapasParcialError) {
+        // Lo ya guardado pasa a ser la base: un reintento solo envía lo pendiente.
+        setOriginales(err.originalesActualizados);
+        setError(err.message);
+      } else {
+        setError(formatearErrorAmigable(err, 'Error al guardar los cambios en las etapas.'));
+      }
     } finally {
       setGuardando(false);
     }
