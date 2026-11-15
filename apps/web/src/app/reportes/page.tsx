@@ -23,6 +23,7 @@ import { diasDelRango, rangoAnterior } from '../../lib/reportes-periodo';
 import {
   convertirPeriodoAInstantesUtc,
   formatearPorcentajeReporte,
+  N_MINIMO_TASA,
   obtenerEtiquetaPeriodo,
   TEXTO_SIN_DATOS,
   transformarResumenReporte,
@@ -359,6 +360,15 @@ function ReportesListo({
               ))}
             </ul>
           )}
+          {vista.cotizaciones.aceptadasSinFecha > 0 && (
+            <div data-testid="aviso-aceptadas-sin-fecha" className={pieClase}>
+              {vista.cotizaciones.aceptadasSinFecha}{' '}
+              {vista.cotizaciones.aceptadasSinFecha === 1
+                ? 'cotización aceptada sin fecha de aceptación registrada no se incluye'
+                : 'cotizaciones aceptadas sin fecha de aceptación registrada no se incluyen'}
+              .
+            </div>
+          )}
           {diasAnteriores !== null && (
             <div className={pieClase}>Variación contra los {diasAnteriores} días anteriores.</div>
           )}
@@ -368,13 +378,20 @@ function ReportesListo({
         <div className={tarjetaClase} data-testid="kpi-cotizaciones">
           <span className={etiquetaClase}>Tasa de aceptación</span>
           <div className={cifraGrandeClase}>{vista.cotizaciones.tasaAceptacionTexto}</div>
+          <div className={pieClase}>
+            Aceptadas / enviadas. Con menos de {N_MINIMO_TASA} enviadas no se muestra el porcentaje.
+          </div>
           <div className={pieClase}>{vista.cotizaciones.cohorteTexto}</div>
         </div>
 
         {/* KPI 3: Oportunidades (Tasa de conversión con cohorte explícita) */}
         <div className={tarjetaClase} data-testid="kpi-oportunidades">
-          <span className={etiquetaClase}>Tasa de conversión</span>
+          <span className={etiquetaClase}>Tasa de victoria (cerradas)</span>
           <div className={cifraGrandeClase}>{vista.oportunidades.tasaConversionTexto}</div>
+          <div className={pieClase}>
+            Ganadas / (ganadas + perdidas) de las oportunidades creadas en el periodo. Con menos de{' '}
+            {N_MINIMO_TASA} cerradas no se muestra el porcentaje.
+          </div>
           <div className={pieClase}>{vista.oportunidades.cohorteTexto}</div>
         </div>
 
@@ -396,10 +413,10 @@ function ReportesListo({
         >
           <div className="flex flex-col gap-0.5">
             <span className="text-xs font-bold text-emerald-800 uppercase dark:text-emerald-300">
-              Utilidad Bruta y Margen Real (venta − costo neto)
+              Margen cotizado (venta − costo neto)
             </span>
             <span className="text-[11px] font-medium text-emerald-700/80 dark:text-emerald-400">
-              Margen Comercial
+              Sobre cotizaciones aceptadas, con el neto del tarifario; no son ventas cobradas.
             </span>
           </div>
 
@@ -439,12 +456,17 @@ function ReportesListo({
                       )}
                     </span>
                     {f.confidencial.cotizacionesSinNeto > 0 && (
-                      <span className="text-[11px] text-amber-700 dark:text-amber-400">
-                        ({f.confidencial.cotizacionesSinNeto}{' '}
-                        {f.confidencial.cotizacionesSinNeto === 1
-                          ? 'cotización sin costo neto'
-                          : 'cotizaciones sin costo neto'}
-                        )
+                      <span
+                        data-testid={`neto-base-${f.moneda}`}
+                        className="text-[11px] text-amber-700 dark:text-amber-400"
+                      >
+                        Neto y margen calculados sobre {f.confidencial.cotizacionesConNeto} de{' '}
+                        {f.cotizacionesAceptadas}{' '}
+                        {f.cotizacionesAceptadas === 1
+                          ? 'cotización aceptada'
+                          : 'cotizaciones aceptadas'}{' '}
+                        con neto ({f.confidencial.cotizacionesSinNeto} sin costo neto, no
+                        incluidas).
                       </span>
                     )}
                   </li>
@@ -460,7 +482,7 @@ function ReportesListo({
         <section data-testid="embudo-periodo" className={`${tarjetaClase} space-y-3`}>
           <div className="flex items-center justify-between">
             <h2 className="text-xs font-semibold text-neutral-700 uppercase dark:text-neutral-300">
-              Oportunidades por Etapa
+              Estado actual de las oportunidades creadas en el periodo
             </h2>
             <span className="text-[11px] text-neutral-400">
               {vista.oportunidades.creadas} oportunidades en el periodo

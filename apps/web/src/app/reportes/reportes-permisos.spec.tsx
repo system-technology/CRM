@@ -172,7 +172,7 @@ describe('ReportesPage - Permisos, dos monedas y GET /api/v1/reportes/resumen (T
     expect(screen.getByTestId('margen-COP')).toBeDefined();
     expect(screen.getByTestId('margen-USD')).toBeDefined();
 
-    expect(screen.getByText(/Utilidad Bruta y Margen Real/i)).toBeDefined();
+    expect(screen.getByText(/Margen cotizado/i)).toBeDefined();
     expect(screen.getAllByText(/Costo Neto Mayoristas:/i).length).toBe(2);
     expect(screen.getAllByText(/Margen Comercial:/i).length).toBe(2);
   });

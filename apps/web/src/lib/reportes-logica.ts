@@ -71,6 +71,20 @@ export interface ReporteComercial {
 
 export const TEXTO_SIN_DATOS = 'Aún sin datos';
 
+/**
+ * Denominador mínimo para mostrar una tasa como porcentaje (T-184). Con menos casos
+ * cerrados/enviados el porcentaje engaña (1 ganada y 0 perdidas = 100 %), así que se
+ * muestra «n insuficiente (n = X)». Es política de presentación, no de dominio.
+ */
+export const N_MINIMO_TASA = 20;
+
+/** Texto de una tasa junto a su denominador: porcentaje solo si n alcanza el mínimo. */
+export function formatearTasaConN(valor: number | null, n: number): string {
+  if (valor === null || n <= 0) return TEXTO_SIN_DATOS;
+  if (n < N_MINIMO_TASA) return `n insuficiente (n = ${n})`;
+  return `${formatearPorcentajeReporte(valor)} (n = ${n})`;
+}
+
 export function obtenerEtiquetaPeriodo(periodo: RangoPeriodo): string {
   switch (periodo) {
     case 'ultimos_30_dias':
@@ -168,6 +182,8 @@ export interface FilaVentaMoneda {
     margen: Dinero | null;
     margenPorcentaje: number | null;
     cotizacionesSinNeto: number;
+    /** Aceptadas con neto conocido: base sobre la que se calculan neto y margen. */
+    cotizacionesConNeto: number;
   };
 }
 
@@ -179,8 +195,12 @@ export interface VistaReporteResumen {
     creadas: number;
     enviadas: number;
     aceptadas: number;
+    /** Aceptadas sin fecha de aceptación: quedan fuera de «Ventas del período». */
+    aceptadasSinFecha: number;
     tasaAceptacionTexto: string;
     tasaAceptacionValor: number | null;
+    /** Denominador de la tasa de aceptación: cotizaciones enviadas. */
+    tasaAceptacionN: number;
     cohorteTexto: string;
   };
   oportunidades: {
@@ -190,6 +210,8 @@ export interface VistaReporteResumen {
     abiertas: number;
     tasaConversionTexto: string;
     tasaConversionValor: number | null;
+    /** Denominador de la tasa de victoria: ganadas + perdidas (cerradas). */
+    tasaConversionN: number;
     cohorteTexto: string;
     porEtapa: Array<{
       etapaId: string;
@@ -235,6 +257,7 @@ export function transformarResumenReporte(
         margen: f.margen ?? null,
         margenPorcentaje: f.margenPorcentaje ?? null,
         cotizacionesSinNeto: f.cotizacionesSinNeto ?? 0,
+        cotizacionesConNeto: Math.max(0, f.cotizacionesAceptadas - (f.cotizacionesSinNeto ?? 0)),
       };
     }
 
@@ -258,8 +281,13 @@ export function transformarResumenReporte(
       creadas: resumen.cotizaciones.creadas,
       enviadas: resumen.cotizaciones.enviadas,
       aceptadas: resumen.cotizaciones.aceptadas,
-      tasaAceptacionTexto: formatearPorcentajeReporte(resumen.cotizaciones.tasaAceptacion),
+      aceptadasSinFecha: resumen.cotizaciones.aceptadasSinFecha ?? 0,
+      tasaAceptacionTexto: formatearTasaConN(
+        resumen.cotizaciones.tasaAceptacion,
+        resumen.cotizaciones.enviadas,
+      ),
       tasaAceptacionValor: resumen.cotizaciones.tasaAceptacion,
+      tasaAceptacionN: resumen.cotizaciones.enviadas,
       cohorteTexto: `${cotizacionesAceptadasTexto} de ${cotizacionesEnviadasTexto} en el periodo (${resumen.cotizaciones.creadas} creadas)`,
     },
     oportunidades: {
@@ -267,8 +295,12 @@ export function transformarResumenReporte(
       ganadas: resumen.oportunidades.ganadas,
       perdidas: resumen.oportunidades.perdidas,
       abiertas: resumen.oportunidades.abiertas,
-      tasaConversionTexto: formatearPorcentajeReporte(resumen.oportunidades.tasaConversion),
+      tasaConversionTexto: formatearTasaConN(
+        resumen.oportunidades.tasaConversion,
+        resumen.oportunidades.ganadas + resumen.oportunidades.perdidas,
+      ),
       tasaConversionValor: resumen.oportunidades.tasaConversion,
+      tasaConversionN: resumen.oportunidades.ganadas + resumen.oportunidades.perdidas,
       cohorteTexto: `${resumen.oportunidades.creadas} creadas en el periodo (${resumen.oportunidades.ganadas} ganadas · ${resumen.oportunidades.perdidas} perdidas · ${resumen.oportunidades.abiertas} abiertas)`,
       porEtapa: resumen.oportunidades.porEtapa.map((e) => ({
         etapaId: e.etapaId,
