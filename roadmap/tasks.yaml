@@ -4195,7 +4195,7 @@ tasks:
     phase: 1
     priority: P1
     effort: S
-    status: ready
+    status: in_progress
     depends_on: []
     acceptance:
       - /ingresar carga sin errores de hidratacion en la consola del navegador
@@ -4211,7 +4211,7 @@ tasks:
     phase: 1
     priority: P1
     effort: S
-    status: ready
+    status: in_progress
     depends_on: []
     acceptance:
       - /login lleva a /ingresar o se documenta que no existe; hoy responde 404
@@ -4222,3 +4222,697 @@ tasks:
     source: campana funcional T-126 2026-11-05 (docs/_bitacora/hallazgos-funcionales-2026-11-05.md)
     created_at: 2026-11-05T23:30:00.000Z
     owner: frontend
+  - id: T-175
+    title: "Seguridad: el atajo x-dev-tenant-id no puede atender peticiones de internet en Codespaces (A1)"
+    type: security
+    phase: 1
+    priority: P0
+    effort: S
+    status: ready
+    depends_on: []
+    acceptance:
+      - "El atajo exige conexion de loopback sin X-Forwarded-For ademas de APP_ENV=local"
+      - "dev-nube fija APP_ENV=dev cuando detecta Codespaces"
+      - "Prueba: con APP_ENV=local, una peticion con X-Forwarded-For y la cabecera da 401"
+      - "La guia de desarrollo en la nube ya no da por hecho que la sesion protege la API"
+    files:
+      - apps/api/src/shared/tenant/tenant.middleware.ts
+      - scripts/dev-nube.mjs
+      - docs/07-ingenieria/desarrollo-en-la-nube.md
+    source: auditoria integral 2026-11-15 (docs/_auditorias/2026-11-15-auditoria-integral.md)
+    created_at: 2026-11-15T16:00:00.000Z
+    owner: backend
+  - id: T-176
+    title: "API: POST /conversaciones/:id/leida exige permiso de bandeja (bajo)"
+    type: security
+    phase: 1
+    priority: P2
+    effort: S
+    status: ready
+    depends_on: []
+    acceptance:
+      - "El endpoint lleva @RequierePermiso('bandeja.operar') o el permiso equivalente"
+      - "Prueba: un rol de solo lectura recibe 403"
+    files:
+      - apps/api/src/modules/inbox/interface/conversaciones.controller.ts
+    source: auditoria integral 2026-11-15 (docs/_auditorias/2026-11-15-auditoria-integral.md)
+    created_at: 2026-11-15T16:00:00.000Z
+    owner: backend
+  - id: T-177
+    title: "Web: dinero en unidad minima en la bandeja (sin x100 ni /100 en COP) (A3)"
+    type: bug
+    phase: 1
+    priority: P0
+    effort: S
+    status: ready
+    depends_on: []
+    acceptance:
+      - "Crear oportunidad desde la bandeja guarda 5000000 como 5000000 COP; '5.000.000' tambien"
+      - "Tarjeta de cotizacion, modal de envio y ficha usan formatearDinero de lib/formato.ts"
+      - "No queda ningun /100 ni *100 aplicado a unidades en apps/web/src"
+      - "Pruebas con COP y USD"
+    files:
+      - apps/web/src/components/bandeja/modal-crear-oportunidad.tsx
+      - apps/web/src/components/bandeja/tarjeta-cotizacion.tsx
+      - apps/web/src/components/bandeja/modal-enviar-cotizacion.tsx
+      - apps/web/src/components/contactos/ficha-cliente.tsx
+    source: auditoria integral 2026-11-15 (docs/_auditorias/2026-11-15-auditoria-integral.md)
+    created_at: 2026-11-15T16:00:00.000Z
+    owner: frontend
+  - id: T-178
+    title: "Web: sin datos inventados en modo real (tarjeta de cotizacion en la bandeja e impresion) (A4)"
+    type: bug
+    phase: 1
+    priority: P0
+    effort: M
+    status: ready
+    depends_on: []
+    acceptance:
+      - "La tarjeta de la bandeja muestra la cotizacion real por su id, o solo el texto enviado"
+      - "La cotizacion imprimible toma el nombre de la agencia de GET /agencia/ajustes; NIT, razon social y direccion se omiten si no existen"
+      - "Ningun import de mock-configuracion en rutas que corren con la API real"
+    files:
+      - apps/web/src/app/bandeja/[id]/page.tsx
+      - apps/web/src/app/cotizaciones/[id]/imprimir/page.tsx
+    source: auditoria integral 2026-11-15 (docs/_auditorias/2026-11-15-auditoria-integral.md)
+    created_at: 2026-11-15T16:00:00.000Z
+    owner: frontend
+  - id: T-179
+    title: "Cotizador: edad por pasajero para cotizar familias en productos con noche (C1)"
+    type: feature
+    phase: 1
+    priority: P0
+    effort: L
+    status: ready
+    depends_on: []
+    acceptance:
+      - "CotizarSalida en packages/contracts recibe la edad de cada nino e infante y si el infante ocupa silla"
+      - "seleccion-de-tarifas evalua edadMinima/edadMaxima y ocupaSilla; desaparece el 422 por condicion no evaluable cuando se dan las edades"
+      - "El formulario del cotizador pide las edades"
+      - "Prueba e2e: 2 adultos + nino de 7 en un producto con noche cotiza con la tarifa de menor"
+    files:
+      - packages/contracts/src
+      - apps/api/src/modules/quoting/domain/seleccion-de-tarifas.ts
+      - apps/api/src/modules/quoting/application/cotizar-salida.use-case.ts
+      - apps/web/src/app/cotizador
+    source: auditoria integral 2026-11-15 (docs/_auditorias/2026-11-15-auditoria-integral.md)
+    created_at: 2026-11-15T16:00:00.000Z
+    owner: backend
+  - id: T-180
+    title: "Datos: semilla de paquetes con hotel en vigencias y tarifas; retirar Temporada/Precio (A9)"
+    type: refactor
+    phase: 1
+    priority: P1
+    effort: M
+    status: ready
+    depends_on: [T-179]
+    acceptance:
+      - "Los paquetes de la semilla (San Andres, Cartagena, Punta Cana) se cotizan con el cotizador actual"
+      - "ADR que retira Temporada y Precio, y migracion que los elimina"
+    files:
+      - packages/database/prisma/seed.ts
+      - packages/database/prisma/schema.prisma
+    source: auditoria integral 2026-11-15 (docs/_auditorias/2026-11-15-auditoria-integral.md)
+    created_at: 2026-11-15T16:00:00.000Z
+    owner: datos
+  - id: T-181
+    title: "CRM: totales del pipeline por moneda (A5)"
+    type: bug
+    phase: 1
+    priority: P1
+    effort: S
+    status: ready
+    depends_on: []
+    acceptance:
+      - "El tablero agrupa por etapa y moneda, o la creacion rechaza monedas distintas de la del tenant"
+      - "Una columna vacia muestra '-' y no '$0'"
+      - "Prueba con una oportunidad USD y otra COP en la misma etapa"
+    files:
+      - apps/api/src/modules/crm/infrastructure/crm.prisma.ts
+      - apps/api/src/modules/crm/application/ver-tablero.ts
+      - apps/web/src/lib/pipeline-logica.ts
+    source: auditoria integral 2026-11-15 (docs/_auditorias/2026-11-15-auditoria-integral.md)
+    created_at: 2026-11-15T16:00:00.000Z
+    owner: backend
+  - id: T-182
+    title: "Bandeja: el SLA se activa con mensajes reales (A6)"
+    type: bug
+    phase: 1
+    priority: P1
+    effort: M
+    status: ready
+    depends_on: []
+    acceptance:
+      - "Al recibir el primer entrante sin respuesta se fija sla_vence_en segun el plazo de la agencia"
+      - "La primera respuesta lo limpia"
+      - "Prueba e2e del filtro SLA_VENCIDO con un mensaje recibido por webhook"
+    files:
+      - apps/api/src/modules/inbox
+    source: auditoria integral 2026-11-15 (docs/_auditorias/2026-11-15-auditoria-integral.md)
+    created_at: 2026-11-15T16:00:00.000Z
+    owner: backend
+  - id: T-183
+    title: "Reportes: ventas por fecha de aceptacion (A7)"
+    type: bug
+    phase: 1
+    priority: P1
+    effort: S
+    status: ready
+    depends_on: []
+    acceptance:
+      - "Ventas del periodo agrupa por el cambio a ACEPTADA en cotizacion_cambios_estado"
+      - "Las cotizaciones sin fila de cambio se informan aparte"
+      - "Costo neto y ventas se muestran sobre la misma base"
+    files:
+      - apps/api/src/modules/quoting/infrastructure/cotizaciones-para-reportes.prisma.ts
+      - apps/web/src/app/reportes/page.tsx
+    source: auditoria integral 2026-11-15 (docs/_auditorias/2026-11-15-auditoria-integral.md)
+    created_at: 2026-11-15T16:00:00.000Z
+    owner: backend
+  - id: T-184
+    title: "Reportes: metricas honestas para el dueno (n minimo y nombres) (A8 M13 M14)"
+    type: bug
+    phase: 1
+    priority: P1
+    effort: S
+    status: ready
+    depends_on: []
+    acceptance:
+      - "Las tasas muestran 'n insuficiente' por debajo de un minimo y enseñan n"
+      - "'Tasa de conversion' pasa a 'Tasa de victoria (cerradas)'; 'Margen Real' a 'Margen cotizado'"
+      - "'Oportunidades por etapa' se rotula como estado actual"
+    files:
+      - apps/api/src/modules/analytics/domain/resumen.ts
+      - apps/web/src/app/reportes/page.tsx
+    source: auditoria integral 2026-11-15 (docs/_auditorias/2026-11-15-auditoria-integral.md)
+    created_at: 2026-11-15T16:00:00.000Z
+    owner: frontend
+  - id: T-185
+    title: "Bandeja: plantilla y errores de envio visibles (M1)"
+    type: bug
+    phase: 1
+    priority: P1
+    effort: S
+    status: ready
+    depends_on: []
+    acceptance:
+      - "Con la API real, 'Enviar plantilla' queda deshabilitado hasta que exista el endpoint de plantillas"
+      - "Los errores de enviar, tomar y soltar se muestran al asesor"
+      - "El cliente no abre la ventana de 24 h por su cuenta"
+    files:
+      - apps/web/src/app/bandeja/[id]/page.tsx
+    source: auditoria integral 2026-11-15 (docs/_auditorias/2026-11-15-auditoria-integral.md)
+    created_at: 2026-11-15T16:00:00.000Z
+    owner: frontend
+  - id: T-186
+    title: "Bandeja: reasignar con los miembros reales de la agencia (M2)"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: ready
+    depends_on: []
+    acceptance:
+      - "Lectura de asignables con permiso de bandeja (decision del arquitecto)"
+      - "El modal de reasignar deja de usar mock-inbox"
+    files:
+      - apps/web/src/components/bandeja/modal-reasignar.tsx
+      - apps/api/src/modules/identity
+    source: auditoria integral 2026-11-15 (docs/_auditorias/2026-11-15-auditoria-integral.md)
+    created_at: 2026-11-15T16:00:00.000Z
+    owner: backend
+  - id: T-187
+    title: "Reportes: primera respuesta con grupo coherente y p90 (M12)"
+    type: bug
+    phase: 1
+    priority: P2
+    effort: M
+    status: ready
+    depends_on: []
+    acceptance:
+      - "Numerador y denominador salen del mismo grupo de conversaciones"
+      - "Se informan mediana, p90 y tasa de respuesta"
+    files:
+      - apps/api/src/modules/inbox/infrastructure/respuesta-para-reportes.prisma.ts
+      - apps/web/src/lib/reportes-logica.ts
+    source: auditoria integral 2026-11-15 (docs/_auditorias/2026-11-15-auditoria-integral.md)
+    created_at: 2026-11-15T16:00:00.000Z
+    owner: backend
+  - id: T-188
+    title: "Cotizador: filtrar tarifas por acomodacion (C2)"
+    type: bug
+    phase: 1
+    priority: P0
+    effort: M
+    status: ready
+    depends_on: [T-179]
+    acceptance:
+      - "La peticion lleva acomodacion y se exige cuando las tarifas la traen"
+      - "Solo se cobran las tarifas de esa acomodacion"
+      - "Prueba: pareja en DOBLE de San Andres totaliza 2 x tarifa DOBLE"
+    files:
+      - apps/api/src/modules/quoting/application/cotizar-salida.use-case.ts
+      - packages/contracts/src/vigencias.ts
+    source: auditoria integral 2026-11-15 (docs/_auditorias/2026-11-15-auditoria-integral.md)
+    created_at: 2026-11-15T16:00:00.000Z
+    owner: backend
+  - id: T-189
+    title: "Cotizador: no sumar tarifas de distinta moneda en el calculo (M8)"
+    type: bug
+    phase: 1
+    priority: P1
+    effort: S
+    status: ready
+    depends_on: []
+    acceptance:
+      - "El calculo agrupa por moneda o rechaza con error de dominio, igual que al guardar"
+    files:
+      - apps/api/src/modules/quoting/application/cotizar-salida.use-case.ts
+    source: auditoria integral 2026-11-15 (docs/_auditorias/2026-11-15-auditoria-integral.md)
+    created_at: 2026-11-15T16:00:00.000Z
+    owner: backend
+  - id: T-190
+    title: "Cotizador: el infante no se cobra con una tarifa sin tipo de pasajero (M9)"
+    type: bug
+    phase: 1
+    priority: P2
+    effort: S
+    status: ready
+    depends_on: []
+    acceptance:
+      - "Una tarifa sin tipo cubre adultos y ninos; el infante solo con tarifa INF explicita o politica del tenant (R12)"
+    files:
+      - apps/api/src/modules/quoting/domain/seleccion-de-tarifas.ts
+    source: auditoria integral 2026-11-15 (docs/_auditorias/2026-11-15-auditoria-integral.md)
+    created_at: 2026-11-15T16:00:00.000Z
+    owner: backend
+  - id: T-191
+    title: "Cotizaciones: vencimiento por fecha, revalidacion y evento de aceptacion hacia CRM (M11)"
+    type: feature
+    phase: 1
+    priority: P2
+    effort: M
+    status: ready
+    depends_on: []
+    acceptance:
+      - "Trabajo programado vence por vigenteHasta"
+      - "Desde VENCIDA se puede revalidar con una version nueva"
+      - "ACEPTADA emite un evento que mueve la oportunidad"
+    files:
+      - apps/api/src/modules/quoting/domain/estado-de-cotizacion.ts
+    source: auditoria integral 2026-11-15 (docs/_auditorias/2026-11-15-auditoria-integral.md)
+    created_at: 2026-11-15T16:00:00.000Z
+    owner: backend
+  - id: T-192
+    title: "Dominio: la comision de la agencia como concepto propio (M10)"
+    type: feature
+    phase: 2
+    priority: P2
+    effort: M
+    status: ready
+    depends_on: []
+    acceptance:
+      - "ADR sobre comision frente a margen"
+      - "El comentario de schema.prisma deja de decir que la comision es una base de margen"
+    files:
+      - packages/database/prisma/schema.prisma
+      - docs/01-producto/02-lenguaje-ubicuo.md
+    source: auditoria integral 2026-11-15 (docs/_auditorias/2026-11-15-auditoria-integral.md)
+    created_at: 2026-11-15T16:00:00.000Z
+    owner: arquitecto
+  - id: T-193
+    title: "Dev: pnpm dev construye contracts y domain antes de arrancar (A11)"
+    type: infra
+    phase: 1
+    priority: P1
+    effort: S
+    status: ready
+    depends_on: []
+    acceptance:
+      - "En un clon nuevo, pnpm install && pnpm dev deja la web en 200"
+      - "turbo dev con dependsOn ^build o paso de preparacion"
+    files:
+      - turbo.json
+      - scripts/dev-nube.mjs
+    source: auditoria integral 2026-11-15 (docs/_auditorias/2026-11-15-auditoria-integral.md)
+    created_at: 2026-11-15T16:00:00.000Z
+    owner: devops
+  - id: T-194
+    title: "Dev y staging: el trabajador arranca y se vigila (A12)"
+    type: infra
+    phase: 1
+    priority: P1
+    effort: M
+    status: ready
+    depends_on: []
+    acceptance:
+      - "dev:nube arranca el trabajador"
+      - "Heartbeat del trabajador visible en /salud/listo o vigilado externamente"
+    files:
+      - scripts/dev-nube.mjs
+      - apps/api/src/worker.ts
+      - render.yaml
+    source: auditoria integral 2026-11-15 (docs/_auditorias/2026-11-15-auditoria-integral.md)
+    created_at: 2026-11-15T16:00:00.000Z
+    owner: devops
+  - id: T-195
+    title: "Pruebas: las e2e validan cada respuesta que consume la web contra su esquema Zod (A14)"
+    type: test
+    phase: 1
+    priority: P1
+    effort: M
+    status: ready
+    depends_on: []
+    acceptance:
+      - "Bandeja, detalle, mensajes, reportes y cotizacion guardada hacen Esquema.parse en sus e2e"
+    files:
+      - apps/api/src/modules
+    source: auditoria integral 2026-11-15 (docs/_auditorias/2026-11-15-auditoria-integral.md)
+    created_at: 2026-11-15T16:00:00.000Z
+    owner: qa
+  - id: T-196
+    title: "Pruebas: e2e de navegador minima del flujo H1-H6 (A15)"
+    type: test
+    phase: 1
+    priority: P1
+    effort: L
+    status: ready
+    depends_on: [T-193]
+    acceptance:
+      - "Playwright en CI: ingreso, bandeja, webhook firmado, mensaje visible, cotizar, enviar"
+      - "Consola sin errores de hidratacion"
+    files:
+      - apps/web
+      - .github/workflows/ci.yml
+    source: auditoria integral 2026-11-15 (docs/_auditorias/2026-11-15-auditoria-integral.md)
+    created_at: 2026-11-15T16:00:00.000Z
+    owner: qa
+  - id: T-197
+    title: "Pruebas: aislamiento HTTP entre agencias en las mutaciones del CRM (M4)"
+    type: test
+    phase: 1
+    priority: P1
+    effort: S
+    status: ready
+    depends_on: []
+    acceptance:
+      - "Contactos, consentimientos, seguimientos y oportunidades ajenos dan 404 y no cambian la fila"
+    files:
+      - apps/api/src/modules/crm
+    source: auditoria integral 2026-11-15 (docs/_auditorias/2026-11-15-auditoria-integral.md)
+    created_at: 2026-11-15T16:00:00.000Z
+    owner: qa
+  - id: T-198
+    title: "Bandeja: una sola regla de ventana de 24 h (M5)"
+    type: refactor
+    phase: 1
+    priority: P2
+    effort: S
+    status: ready
+    depends_on: []
+    acceptance:
+      - "La web consume VentanaServicio de la API en vez de recalcularla"
+    files:
+      - apps/web/src/lib/ventana-24h.ts
+    source: auditoria integral 2026-11-15 (docs/_auditorias/2026-11-15-auditoria-integral.md)
+    created_at: 2026-11-15T16:00:00.000Z
+    owner: frontend
+  - id: T-199
+    title: "CI: las pruebas de Redis y Postgres no se omiten en silencio (M6)"
+    type: test
+    phase: 1
+    priority: P2
+    effort: S
+    status: ready
+    depends_on: []
+    acceptance:
+      - "Variable EXIGIR en el paso de pruebas: si falta REDIS_URL o DATABASE_URL, fallan"
+    files:
+      - .github/workflows/ci.yml
+    source: auditoria integral 2026-11-15 (docs/_auditorias/2026-11-15-auditoria-integral.md)
+    created_at: 2026-11-15T16:00:00.000Z
+    owner: qa
+  - id: T-200
+    title: "Pruebas: casos borde de dinero del cotizador (M7)"
+    type: test
+    phase: 1
+    priority: P2
+    effort: S
+    status: ready
+    depends_on: []
+    acceptance:
+      - "Venta menor que neto, markup negativo, infante sin adulto, cantidad cero, mezcla COP/USD"
+    files:
+      - packages/domain
+    source: auditoria integral 2026-11-15 (docs/_auditorias/2026-11-15-auditoria-integral.md)
+    created_at: 2026-11-15T16:00:00.000Z
+    owner: qa
+  - id: T-201
+    title: "Pruebas web: aserciones con contenido exacto (bajo)"
+    type: test
+    phase: 1
+    priority: P3
+    effort: S
+    status: ready
+    depends_on: []
+    acceptance:
+      - "Las aserciones toBeDefined/toBeTruthy que no fallan ante una mutacion se sustituyen"
+    files:
+      - apps/web/src
+    source: auditoria integral 2026-11-15 (docs/_auditorias/2026-11-15-auditoria-integral.md)
+    created_at: 2026-11-15T16:00:00.000Z
+    owner: frontend
+  - id: T-202
+    title: "Pipeline: guardar etapas sin estados a medias (M24)"
+    type: bug
+    phase: 1
+    priority: P3
+    effort: S
+    status: ready
+    depends_on: []
+    acceptance:
+      - "Si un PATCH falla, el mensaje dice que etapas se guardaron"
+    files:
+      - apps/web/src/lib/crm-api.ts
+    source: auditoria integral 2026-11-15 (docs/_auditorias/2026-11-15-auditoria-integral.md)
+    created_at: 2026-11-15T16:00:00.000Z
+    owner: frontend
+  - id: T-203
+    title: "Operacion: observabilidad minima (logs, monitor, alerta de cola, runbooks) (C3)"
+    type: infra
+    phase: 2
+    priority: P1
+    effort: M
+    status: ready
+    depends_on: []
+    acceptance:
+      - "Logs estructurados con tenant_id y trace_id"
+      - "Monitor externo sobre /salud/listo"
+      - "Alerta por antiguedad de cola"
+      - "Un runbook por alerta"
+    files:
+      - apps/api
+      - docs/06-operacion/04-runbooks.md
+    source: auditoria integral 2026-11-15 (docs/_auditorias/2026-11-15-auditoria-integral.md)
+    created_at: 2026-11-15T16:00:00.000Z
+    owner: devops
+  - id: T-204
+    title: "CI: Deploy staging no termina en verde sin desplegar (A10)"
+    type: infra
+    phase: 1
+    priority: P1
+    effort: S
+    status: ready
+    depends_on: []
+    acceptance:
+      - "Sin secretos el job falla o publica un estado 'omitido' visible"
+    files:
+      - .github/workflows/deploy-staging.yml
+    source: auditoria integral 2026-11-15 (docs/_auditorias/2026-11-15-auditoria-integral.md)
+    created_at: 2026-11-15T16:00:00.000Z
+    owner: devops
+  - id: T-205
+    title: "Operacion: respaldo y restauracion probada (A13)"
+    type: infra
+    phase: 2
+    priority: P1
+    effort: M
+    status: ready
+    depends_on: []
+    acceptance:
+      - "RPO y RTO escritos"
+      - "Retencion fijada en el proveedor"
+      - "Restauracion ensayada y documentada"
+    files:
+      - docs/06-operacion
+    source: auditoria integral 2026-11-15 (docs/_auditorias/2026-11-15-auditoria-integral.md)
+    created_at: 2026-11-15T16:00:00.000Z
+    owner: devops
+  - id: T-206
+    title: "CI: auditoria de dependencias y escaneo de imagenes (M15)"
+    type: security
+    phase: 1
+    priority: P2
+    effort: S
+    status: ready
+    depends_on: []
+    acceptance:
+      - "pnpm audit --prod con umbral alto y Trivy sobre la imagen construida"
+    files:
+      - .github/workflows/ci.yml
+    source: auditoria integral 2026-11-15 (docs/_auditorias/2026-11-15-auditoria-integral.md)
+    created_at: 2026-11-15T16:00:00.000Z
+    owner: devops
+  - id: T-207
+    title: "CI: acciones fijadas por SHA y Dependabot revisado (M16)"
+    type: security
+    phase: 1
+    priority: P2
+    effort: S
+    status: ready
+    depends_on: []
+    acceptance:
+      - "ownership, cerrar-tarea y mantener-ramas con SHA"
+      - "PRs #11, #13 y #255 resueltos"
+      - "Dependabot cubre npm"
+    files:
+      - .github/workflows
+      - .github/dependabot.yml
+    source: auditoria integral 2026-11-15 (docs/_auditorias/2026-11-15-auditoria-integral.md)
+    created_at: 2026-11-15T16:00:00.000Z
+    owner: devops
+  - id: T-208
+    title: "Dev: fijar Node 22.20 e imagenes de infra (M17)"
+    type: infra
+    phase: 1
+    priority: P2
+    effort: S
+    status: ready
+    depends_on: []
+    acceptance:
+      - "Devcontainer y docker-compose con version fijada igual que el Dockerfile"
+    files:
+      - .devcontainer
+      - infra/docker
+    source: auditoria integral 2026-11-15 (docs/_auditorias/2026-11-15-auditoria-integral.md)
+    created_at: 2026-11-15T16:00:00.000Z
+    owner: devops
+  - id: T-209
+    title: "Migraciones: comprobar compatibilidad con la version anterior (M18)"
+    type: infra
+    phase: 2
+    priority: P3
+    effort: M
+    status: ready
+    depends_on: []
+    acceptance:
+      - "Lista de comprobacion en PRs de migracion y prueba de suite vieja sobre esquema nuevo"
+    files:
+      - .github/workflows
+    source: auditoria integral 2026-11-15 (docs/_auditorias/2026-11-15-auditoria-integral.md)
+    created_at: 2026-11-15T16:00:00.000Z
+    owner: devops
+  - id: T-210
+    title: "Negocio: costo base y costo por tenant (M19)"
+    type: feature
+    phase: 2
+    priority: P2
+    effort: S
+    status: ready
+    depends_on: []
+    acceptance:
+      - "Tabla de costo fijo por servicio y formula por tenant activo, con costo de IA"
+    files:
+      - docs/06-operacion
+    source: auditoria integral 2026-11-15 (docs/_auditorias/2026-11-15-auditoria-integral.md)
+    created_at: 2026-11-15T16:00:00.000Z
+    owner: analista-datos
+  - id: T-211
+    title: "Operacion: runbook de rotacion de claves (bajo)"
+    type: docs
+    phase: 2
+    priority: P3
+    effort: S
+    status: ready
+    depends_on: []
+    acceptance:
+      - "Procedimiento para BETTER_AUTH_SECRET, META_APP_SECRET y ENCRYPTION_MASTER_KEY"
+    files:
+      - docs/06-operacion
+    source: auditoria integral 2026-11-15 (docs/_auditorias/2026-11-15-auditoria-integral.md)
+    created_at: 2026-11-15T16:00:00.000Z
+    owner: devops
+  - id: T-212
+    title: "Seguridad: implementar ADR-0015 (cifrado de mensajes y preferencias, lectura auditada) (A2)"
+    type: security
+    phase: 2
+    priority: P0
+    effort: L
+    status: ready
+    depends_on: []
+    acceptance:
+      - "mensajes.texto y contactos.preferencias cifrados en reposo"
+      - "Lectura de PII registrada (R10)"
+      - "Reincidente desde la auditoria 2026-10-20"
+    files:
+      - packages/database/prisma/schema.prisma
+      - apps/api/src/modules/inbox
+      - apps/api/src/modules/crm
+    source: auditoria integral 2026-11-15 (docs/_auditorias/2026-11-15-auditoria-integral.md)
+    created_at: 2026-11-15T16:00:00.000Z
+    owner: datos
+  - id: T-213
+    title: "Producto: de cotizacion aceptada a reserva con time limit y TRM congelada (A17)"
+    type: feature
+    phase: 2
+    priority: P2
+    effort: L
+    status: ready
+    depends_on: []
+    acceptance:
+      - "Historia y ADR del contexto booking"
+      - "diasTimeLimit vigilado"
+      - "TRM congelada en la version"
+    files:
+      - docs/01-producto
+    source: auditoria integral 2026-11-15 (docs/_auditorias/2026-11-15-auditoria-integral.md)
+    created_at: 2026-11-15T16:00:00.000Z
+    owner: dueno-de-producto
+  - id: T-214
+    title: "CRM: motivos de perdida por agencia y vocabulario 'Oportunidad nueva' (bajo)"
+    type: refactor
+    phase: 2
+    priority: P3
+    effort: S
+    status: ready
+    depends_on: []
+    acceptance:
+      - "MotivoPerdida pasa a tabla por tenant (R12)"
+      - "La web dice 'Oportunidad nueva' y no 'Nuevo Lead'"
+    files:
+      - packages/database/prisma/schema.prisma
+      - apps/web/src
+    source: auditoria integral 2026-11-15 (docs/_auditorias/2026-11-15-auditoria-integral.md)
+    created_at: 2026-11-15T16:00:00.000Z
+    owner: datos
+  - id: T-215
+    title: "Hilo: ESTADO.md, CLAUDE.md y ADR al dia con main (A16 M20-M23)"
+    type: docs
+    phase: 1
+    priority: P1
+    effort: S
+    status: ready
+    depends_on: []
+    acceptance:
+      - "ESTADO.md refleja #191, #200, #211, #220, margen real y rutas existentes"
+      - "ADR-0018 y ADR-0019 aceptados"
+      - "T-079 reabierta o renombrada"
+      - "CLAUDE.md: Antigravity, modelos, mapa del codigo y ruta de migraciones"
+    files:
+      - ESTADO.md
+      - CLAUDE.md
+      - docs/03-adr
+      - roadmap/tasks.yaml
+    source: auditoria integral 2026-11-15 (docs/_auditorias/2026-11-15-auditoria-integral.md)
+    created_at: 2026-11-15T16:00:00.000Z
+    owner: documentador
