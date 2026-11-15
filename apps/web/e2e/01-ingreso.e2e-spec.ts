@@ -42,6 +42,13 @@ test('ingresa con el usuario sembrado y ve la bandeja', async ({ page }) => {
   await expect(page).toHaveURL(/\/bandeja/, { timeout: 20_000 });
   await expect(page.getByRole('region', { name: 'Lista de conversaciones' })).toBeVisible();
 
+  // Como la asesora la primera vez: el banner de cookies queda fijo abajo y tapa el compositor de la
+  // bandeja hasta que se acepta. El consentimiento se guarda en el navegador y viaja en la sesion.
+  const banner = page.getByTestId('banner-consentimiento-cookies');
+  await expect(banner).toBeVisible();
+  await banner.getByRole('button', { name: 'Aceptar todas' }).click();
+  await expect(banner).toHaveCount(0);
+
   mkdirSync(path.dirname(RUTA_SESION), { recursive: true });
   await page.context().storageState({ path: RUTA_SESION });
 });
