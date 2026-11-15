@@ -5344,7 +5344,9 @@ tasks:
     phase: 1
     priority: P2
     effort: S
-    status: in_progress
+    status: done
+    done_at: 2026-11-15T21:00:00.000Z
+    evidence: "Integrado en main por el PR #274 (e46ee11)"
     depends_on: [T-226]
     acceptance:
       - "Con una clave_version huerfana, ningun consumidor (BullMQ o en proceso) llega a tomar un trabajo: la comprobacion corre antes de createApplicationContext, o los consumidores se conectan en onApplicationBootstrap tras un proveedor que comprueba"

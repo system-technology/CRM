@@ -10,17 +10,17 @@
 
 | Campo | Valor |
 |---|---|
-| Última actualización | 2026-11-15 (cierre del lote; `main` en `5c6e247`) |
-| Actualizado por | `documentador` (hilo al día con los PR #256 a #269) |
+| Última actualización | 2026-11-15 (segundo cierre del día; `main` en `e46ee11`) |
+| Actualizado por | Claude (hilo al día con los PR #256 a #274) |
 | Fase | **Fase 1 del backlog: «Un CRM mostrable y endurecido»** (M1 del [roadmap v2](docs/08-roadmap/01-roadmap.md)). Sin agencia real todavía. Prioridad vigente: la demo a JD Tours ([`MARCO.md`](docs/_contexto/MARCO.md) §6) |
-| Avance | 143 tareas `done` en `roadmap/tasks.yaml`. «Done» significa integrada en `main`, **no** desplegada ni probada con Meta real |
-| Próximo hito | Que el propietario cargue la clave de cifrado y decida el despliegue; después, prueba con Meta real (T-080). Del lado del código: T-229 (API y UI de motivos de pérdida) |
+| Avance | 150 tareas `done` en `roadmap/tasks.yaml`. «Done» significa integrada en `main`, **no** desplegada ni probada con Meta real |
+| Próximo hito | Que el propietario cargue la clave de cifrado y decida el despliegue; después, prueba con Meta real (T-080). Del lado del código solo queda cola menor: T-235 y T-226 (c), recifrado por lotes, que solo hace falta cuando haya una clave real que rotar |
 
 ---
 
 ## 1. Dónde estamos
 
-Verificado el 2026-11-15 sobre `origin/main` (`5c6e247`, PR #269) con `git log` y `roadmap/tasks.yaml`.
+Verificado el 2026-11-15 sobre `origin/main` (`e46ee11`, PR #274) con `git log` y `roadmap/tasks.yaml`.
 Fuente de la corrección de rumbo: [auditoría integral 2026-11-15](docs/_auditorias/2026-11-15-auditoria-integral.md)
 y su [plan](docs/08-roadmap/02-plan-correccion-auditoria-2026-11-15.md). Entrada del día:
 [bitácora](docs/_bitacora/2026-11-15-mvp-en-navegador-y-cierre-de-auditoria.md).
@@ -35,7 +35,7 @@ entrado. Seguimos en local.
 |---|---|
 | Suite de navegador (Playwright, job `navegador` del CI): ingreso, páginas, H2–H6 y, contra una Graph API falsa, responder desde la bandeja (queda ENVIADO por el webhook de estado `sent`) y enviar una cotización por WhatsApp sin neto ni margen | `apps/web/e2e/`; PR #263 y #266 |
 | Aislamiento entre agencias (RLS, cuatro roles de aplicación, arranque que aborta con rol equivocado) | Job `aislamiento-tenants`, `arranque-seguro.e2e-spec.ts` |
-| Función `SECURITY DEFINER` `medir_cola_de_salida` con dueño `NOLOGIN` `viajapro_metricas`; motivos de pérdida por agencia (RLS forzada, FK compuesta) | PR #268; auditoría de seguridad: integrable. Falta reflejar el rol nuevo en ADR-0008 y R2 (T-231) |
+| Función `SECURITY DEFINER` `medir_cola_de_salida` con dueño `NOLOGIN` `viajapro_metricas`; motivos de pérdida por agencia (RLS forzada, FK compuesta) | PR #268 y #272–#273; ADR-0026 y R2. La superficie del rol la fijan pruebas y migraciones de comprobación |
 | Cifrado de PII en reposo (ADR-0015): `mensajes.texto` y campos sensibles cifrados; la demo se siembra con `demo:sembrar-cifrada` | PR #264 y #266. **La clave de producción no está cargada en ningún entorno** |
 | `main` protegida: PR, 8 checks obligatorios (10 en total), rama al día, administradores incluidos | `.github/proteccion-main.json` |
 | Permisos de mutación exigidos en los controladores | `mutaciones-con-permiso.spec.ts` |
@@ -46,9 +46,11 @@ entrado. Seguimos en local.
 | Reportes con margen real, protegido por `cotizacion.ver_neto_y_margen` | `reportes.e2e-spec.ts` |
 | Cotizador y catálogo consultan desde hoy en la zona del tenant y eligen la primera salida; el simulador trabaja sobre vigencias | PR #267 y #269 |
 | `/salud/listo` público solo informa el estado de cada cola (T-228) | PR #269 |
+| Motivos de pérdida por agencia: la agencia los gestiona en Configuración, el pipeline los ofrece al cerrar como perdida, un motivo de otra agencia da 404; motivos propios con nota; motivo desactivado rechazado también en la base | PR #271 y #272; `motivos-de-perdida.e2e-spec.ts`, `aislamiento.spec.ts` |
+| Arranque seguro del cifrado: la API, el trabajador y el modo único abortan si hay datos con una versión de clave que no tienen, **antes** de que ningún consumidor o planificador tome trabajo | PR #273 y #274; `comprobacion-al-arrancar.spec.ts` |
 | Dependencias: `pnpm audit` de producción pasó de 3 críticas y 15 altas a 0 y 1 (queda zod v3; zod 4 lo decide el propietario) | PR #267 |
 
-El repositorio tiene 37 migraciones. Cifras de pruebas: no se midieron en esta sesión y no se repiten.
+El repositorio tiene 39 migraciones. Cifras de pruebas: no se midieron en esta sesión y no se repiten.
 
 **Defecto real que halló la suite:** la bandeja nunca ofrecía cotizaciones para enviar con la API real,
 porque la ficha de CRM las trae vacías (R4). Ahora la bandeja las pide a `quoting`. Antes, la suite
@@ -63,7 +65,6 @@ Postmark real; las migraciones contra una base de producción (solo corren en el
 |---|---|
 | `/configuracion`: SLA y plantillas oficiales; `/viajes` | `mock-configuracion.ts`, `mock-plantillas.ts`, `mock-viajes.ts`; no hay endpoint de plantillas |
 | Campos personalizados, respuestas rápidas, filtros guardados, onboarding, preferencias de notificación | Solo `localStorage` |
-| Motivos de pérdida | Existe la tabla; no hay API ni pantalla (T-229) |
 | Con `.env.example` | Trae `NEXT_PUBLIC_USE_REAL_CRM`, `USE_REAL_INBOX` y `USE_REAL_AUTH` en `true`; el valor `false` vuelve a la maqueta |
 
 ### Es diseño o está a medias
@@ -71,7 +72,6 @@ Postmark real; las migraciones contra una base de producción (solo corren en el
 | Qué | Dónde |
 |---|---|
 | Despliegue: `render.yaml` sigue con la topología de ADR-0013; `Deploy staging` termina en verde con el aviso «Faltan los secretos del Environment staging». Fly (ADR-0019 §7) sin ejecutar | T-079 reabierta |
-| Endurecer la función y el disparador de métricas | T-230 |
 | Operación antes del piloto: respaldo, costo y rotación de claves, **propuestas sin ensayar** | [`docs/06-operacion/`](docs/06-operacion/) |
 | Políticas de seguridad: borrador sin aprobar | [`docs/05-seguridad/00-indice-de-politicas.md`](docs/05-seguridad/00-indice-de-politicas.md) |
 | ADR-0023 (fiscal) y ADR-0024: propuestos. Las fuentes de la DIAN del 0023 **no están verificadas** | [`docs/03-adr/`](docs/03-adr/) |
@@ -96,9 +96,9 @@ Postmark real; las migraciones contra una base de producción (solo corren en el
 
 | Carril | Quién | En qué |
 |---|---|---|
-| Frontend (`apps/web`, `packages/ui`, `packages/sdk`) | Agente `frontend` (Claude) | Suite de navegador, vista previa del envío, UI de motivos de pérdida (T-229) |
-| Backend (`apps/api`) | Agentes `backend`, `whatsapp` | API de motivos de pérdida (T-229) y endurecimiento de la función de métricas (T-230) en cola |
-| Datos | Agente `datos` | 37 migraciones en `main` |
+| Frontend (`apps/web`, `packages/ui`, `packages/sdk`) | Agente `frontend` (Claude) | Suite de navegador, vista previa del envío, UI de motivos de pérdida |
+| Backend (`apps/api`) | Agentes `backend`, `whatsapp` | Cola menor: T-235 (prueba de arquitectura del arranque), T-226 (c) |
+| Datos | Agente `datos` | 39 migraciones en `main` |
 | Integración y documentación | `integrador`, `documentador` | Hilo, ADR, bitácora, `docs/06-operacion/` |
 | Producto y estrategia | `jefe-de-producto`, `dueno-de-producto` | Roadmap v3; demo a JD Tours |
 | Ciclo OpenCode | **Detenido** | Ver arriba |
