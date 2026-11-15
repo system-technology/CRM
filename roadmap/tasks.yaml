@@ -4248,7 +4248,7 @@ tasks:
     phase: 1
     priority: P2
     effort: S
-    status: ready
+    status: dropped
     depends_on: []
     acceptance:
       - "El endpoint lleva @RequierePermiso('bandeja.operar') o el permiso equivalente"
@@ -4258,6 +4258,7 @@ tasks:
     source: auditoria integral 2026-11-15 (docs/_auditorias/2026-11-15-auditoria-integral.md)
     created_at: 2026-11-15T16:00:00.000Z
     owner: backend
+    notes: "Descartada: excepcion de diseno documentada y probada en apps/api/src/shared/autorizacion/mutaciones-con-permiso.spec.ts (un usuario de solo lectura debe poder abrir una conversacion sin 403). Falso positivo de la auditoria."
   - id: T-177
     title: "Web: dinero en unidad minima en la bandeja (sin x100 ni /100 en COP) (A3)"
     type: bug

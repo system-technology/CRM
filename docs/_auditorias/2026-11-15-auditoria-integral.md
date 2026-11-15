@@ -4,7 +4,7 @@
 **Dimensiones:** seguridad y cumplimiento, calidad y arquitectura, dominio del turismo, pruebas,
 operación, veracidad documental, inteligencia de negocio (7 agentes en paralelo).
 **Comparada con:** `2026-10-20-auditoria-integral.md`.
-**Hallazgos vigentes:** 3 críticos, 17 altos, 24 medios, 7 bajos. Cerrados en esta sesión: 3.
+**Hallazgos vigentes:** 3 críticos, 16 altos, 24 medios, 6 bajos. Cerrados en esta sesión: 4. Descartados: 1.
 
 ## Veredicto
 
@@ -85,10 +85,16 @@ reprodujeron.
 
 ### Bajos
 
-`POST /conversaciones/:id/leida` sin permiso (`conversaciones.controller.ts:133`) · `MotivoPerdida` como
+`MotivoPerdida` como
 enum (R12) · «Nuevo Lead» frente al lenguaje ubicuo · columna vacía del pipeline pintada como «$0» ·
 costo neto y ventas con bases distintas en reportes · sin runbook de rotación de `BETTER_AUTH_SECRET`,
 `META_APP_SECRET` y `ENCRYPTION_MASTER_KEY` · aserciones débiles (`toBeDefined`) en specs de la web.
+
+## Descartados tras verificar
+
+| Hallazgo | Por qué se descarta |
+|---|---|
+| `POST /conversaciones/:id/leida` sin permiso | Excepción de diseño documentada y probada (`mutaciones-con-permiso.spec.ts`): un usuario de solo lectura debe poder abrir una conversación sin 403. T-176 queda `dropped` |
 
 ## Cerrados en esta sesión (PR #256)
 
@@ -96,6 +102,7 @@ costo neto y ventas con bases distintas en reportes · sin runbook de rotación 
 |---|---|---|
 | H-3: error de hidratación en todas las páginas (nonce) | `suppressHydrationWarning` en el script anti-FOUC | Chromium: consola limpia |
 | H-4: `/login` daba 404 | Alias hacia `/ingresar` que conserva la consulta | Chromium y pruebas |
+| A1: atajo `x-dev-tenant-id` atendiendo internet en Codespaces | `peticionDesdeLoopback`: socket y toda la cadena reenviada deben ser loopback (T-175) | 13 casos nuevos en `tenant.middleware.spec.ts` |
 | Redirección abierta en `redirigir` (`/\evil.com`, `/<TAB>/evil.com`, `/.//evil.com`, `/a/..//evil.com`) | `rutaInternaSegura`: rechaza `\` y caracteres de control, exige mismo origen, rechaza el pathname `//` | 13 vectores en `errores-sistema.spec.ts` |
 
 ## Qué se revisó y salió limpio
