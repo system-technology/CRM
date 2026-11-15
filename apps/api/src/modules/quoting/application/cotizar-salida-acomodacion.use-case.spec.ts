@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 
 import { describe, expect, it, vi } from 'vitest';
-import type { CotizarSalida } from '@viajapro/contracts';
+import { CotizacionDeSalida, type CotizarSalida } from '@viajapro/contracts';
 import type { ClienteTenant, PrismaService } from '../../../shared/prisma/prisma.service.js';
 import { ContextoTenant } from '../../../shared/tenant/contexto-tenant.js';
 import {
@@ -106,6 +106,34 @@ describe('CotizarSalidaUseCase: acomodación, monedas y pasajeros sin tarifa', (
       code: 'ACOMODACION_REQUERIDA',
       disponibles: ['SENCILLA', 'DOBLE', 'TRIPLE', 'CUADRUPLE'],
     });
+  });
+
+  it('T-219: la respuesta lista las acomodaciones disponibles, en orden de ocupación', async () => {
+    const r = await calcularCon([...hotel].reverse(), {
+      ...base,
+      adultos: 2,
+      acomodacion: 'DOBLE',
+    });
+    expect(r.acomodacionesDisponibles).toEqual(['SENCILLA', 'DOBLE', 'TRIPLE', 'CUADRUPLE']);
+    // El campo cumple el contrato (los ids del fixture no son UUID, así que no se valida todo).
+    expect(
+      CotizacionDeSalida.shape.acomodacionesDisponibles.safeParse(r.acomodacionesDisponibles)
+        .success,
+    ).toBe(true);
+  });
+
+  it('T-219: solo las acomodaciones que existen', async () => {
+    const r = await calcularCon([adultoEn('TRIPLE', 1430000n), adultoEn('DOBLE', 1590000n)], {
+      ...base,
+      adultos: 2,
+      acomodacion: 'DOBLE',
+    });
+    expect(r.acomodacionesDisponibles).toEqual(['DOBLE', 'TRIPLE']);
+  });
+
+  it('T-219: sin tarifas por acomodación el campo se omite', async () => {
+    const r = await calcularCon([tarifa('t-a', 'Adulto', 389000n, {})], { ...base, adultos: 2 });
+    expect('acomodacionesDisponibles' in r).toBe(false);
   });
 
   it('T-188: una acomodación sin tarifas es error tipado, no un total de solo traslados', async () => {

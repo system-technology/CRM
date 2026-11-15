@@ -39,7 +39,7 @@ import {
   TarifasConCondicionNoEvaluableError,
 } from '../domain/errors.js';
 import { monedaDeLaBase } from '../domain/moneda-de-la-base.js';
-import { hoyEnZona } from './desde-de-tarifas.js';
+import { acomodacionesParaContrato, hoyEnZona } from './desde-de-tarifas.js';
 import { leerPromoVencida } from './presentacion-de-precios.js';
 import {
   type Composicion,
@@ -206,6 +206,7 @@ export class CotizarSalidaUseCase {
     // las de todas las acomodaciones. Las de otra acomodación no se listan en `noAplicables`: son
     // la misma tarifa en otra habitación, no una promo escondida.
     const disponibles = acomodacionesDisponibles(todas);
+    const paraContrato = acomodacionesParaContrato(disponibles);
     if (disponibles.length > 0) {
       if (peticion.acomodacion === undefined) throw new AcomodacionRequeridaError(disponibles);
       if (!disponibles.includes(peticion.acomodacion)) {
@@ -362,6 +363,7 @@ export class CotizarSalidaUseCase {
       noAplicables,
       suplementos,
       pideComposicion: filas.some(exigeComposicion),
+      ...(paraContrato ? { acomodacionesDisponibles: paraContrato } : {}),
       opcionDeSalida: opcionElegida,
       // Aparte y NUNCA sumados a `total`: se pagan en destino.
       cargosEnDestino: cargosDe(paquete.cargosEnDestino),

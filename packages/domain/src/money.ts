@@ -47,6 +47,25 @@ export function esCodigoMoneda(valor: string): valor is CodigoMoneda {
 }
 
 /**
+ * Un porcentaje en milésimas de punto porcentual (12,5 → 12500n).
+ *
+ * Rechaza lo no finito y lo que, siendo distinto de cero, no cabe en la precisión de 0,001 %:
+ * redondearlo a cero lo haría desaparecer sin avisar.
+ */
+export function milesimasDePorcentaje(porcentaje: number): bigint {
+  if (!Number.isFinite(porcentaje)) {
+    throw new ImporteInvalidoError(`'${porcentaje}' no es un porcentaje finito`);
+  }
+  const milesimas = Math.round(porcentaje * 1000);
+  if (porcentaje !== 0 && milesimas === 0) {
+    throw new ImporteInvalidoError(
+      `el porcentaje ${porcentaje} es menor que la precisión admitida (0,001 %) y se perdería en silencio`,
+    );
+  }
+  return BigInt(milesimas);
+}
+
+/**
  * Un importe monetario. Inmutable.
  *
  * `unidades` es siempre un entero en la unidad mínima de la moneda:
@@ -142,14 +161,14 @@ export class Money {
    *
    * El redondeo es **medio hacia arriba**, que es lo que espera un comercial: 0.5 sube.
    * Se hace con enteros para no introducir error de coma flotante en el propio redondeo.
+   *
+   * **La precisión del porcentaje es de milésimas de punto (0,001 %).** Un porcentaje distinto de
+   * cero que redondearía a cero (|p| < 0,0005) se rechaza con `ImporteInvalidoError`: antes
+   * desaparecía en silencio y el usuario creía haber aplicado un markup que no existía.
    */
   aplicarPorcentaje(porcentaje: number): Money {
-    if (!Number.isFinite(porcentaje)) {
-      throw new ImporteInvalidoError(`'${porcentaje}' no es un porcentaje finito`);
-    }
-
     // Se trabaja en milésimas de punto porcentual para admitir 12,5% sin perder precisión.
-    const milesimas = BigInt(Math.round(porcentaje * 1000));
+    const milesimas = milesimasDePorcentaje(porcentaje);
     const producto = this.unidades * milesimas;
     const divisor = 100_000n;
 

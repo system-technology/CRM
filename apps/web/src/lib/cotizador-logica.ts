@@ -33,6 +33,7 @@ import type {
   CotizarPaquete,
   Habitacion,
   LineaCotizacion,
+  SalidaPublicada,
 } from '@viajapro/contracts';
 import { CotizacionCalculada as EsquemaCotizacion } from '@viajapro/contracts';
 import type { PaqueteConDetalle } from './mock-catalogo';
@@ -426,4 +427,51 @@ export function calcularCotizacionMock(
   };
 
   return EsquemaCotizacion.parse(cotizacionResultado);
+}
+
+// ─── Selector de acomodación (T-188 / T-219) ───────────────────────────────
+
+/** Orden de ocupación; el mismo que devuelve la API. */
+export const ACOMODACIONES_EN_ORDEN: readonly Acomodacion[] = [
+  'SENCILLA',
+  'DOBLE',
+  'TRIPLE',
+  'CUADRUPLE',
+];
+
+export const ETIQUETA_ACOMODACION: Record<Acomodacion, string> = {
+  SENCILLA: 'Sencilla (1 persona)',
+  DOBLE: 'Doble (2 personas)',
+  TRIPLE: 'Triple (3 personas)',
+  CUADRUPLE: 'Cuádruple (4 personas)',
+};
+
+interface FuenteDeAcomodaciones {
+  /** Salidas publicadas que ya trajo el catálogo (cada una puede traer su lista). */
+  salidas: readonly Pick<SalidaPublicada, 'paqueteId' | 'fecha' | 'acomodacionesDisponibles'>[];
+  paqueteId: string;
+  fecha: string;
+  /** La última cotización real recibida, si la hay. */
+  cotizacion: Pick<CotizacionDeSalida, 'acomodacionesDisponibles'> | null;
+  /** `true` si la API ya respondió ACOMODACION_REQUERIDA/NO_DISPONIBLE sin traer la lista. */
+  pedidaPorLaApi: boolean;
+}
+
+/**
+ * Las acomodaciones que ofrece el selector. Vacío = no se muestra.
+ *
+ * Prioridad: la lista de la cotización (la más precisa: ya filtra por opción de salida), la de la
+ * salida publicada elegida (se conoce ANTES del primer cálculo) y, como último recurso para
+ * vigencias abiertas sin lista, las cuatro una vez que la API dijo que hace falta (comportamiento
+ * de T-188). Siempre en orden de ocupación y sin repetir.
+ */
+export function acomodacionesParaElSelector(f: FuenteDeAcomodaciones): Acomodacion[] {
+  const delaSalida = f.salidas.find(
+    (s) => s.paqueteId === f.paqueteId && s.fecha === f.fecha,
+  )?.acomodacionesDisponibles;
+  const lista = f.cotizacion?.acomodacionesDisponibles ?? delaSalida;
+  if (lista && lista.length > 0) {
+    return ACOMODACIONES_EN_ORDEN.filter((a) => lista.includes(a));
+  }
+  return f.pedidaPorLaApi ? [...ACOMODACIONES_EN_ORDEN] : [];
 }

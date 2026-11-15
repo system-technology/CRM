@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { ImporteInvalidoError, Money, MonedasIncompatiblesError } from './money.js';
 import {
   POLITICA_POR_DEFECTO,
+  politicaPorDefecto,
   type PoliticaDePrecio,
   calcularMargen,
   calcularVenta,
@@ -58,15 +59,38 @@ describe('Venta menor que el neto (margen negativo)', () => {
     );
   });
 
-  it('el redondeo de la venta puede dejarla BAJO el neto con márgenes pequeños (documenta el comportamiento actual)', () => {
-    // Neto 1.000.499, 0,01 % -> 1.000.599 -> redondeo a 1.000 -> 1.001.000 (sube). Con neto que
-    // cae por debajo del medio paso el redondeo baja: 1.000.400 * 1,0001 = 1.000.500 -> 1.001.000.
-    // Para encontrar la caída buscamos: neto 1.000.100, 0,01 % = 100 -> 1.000.200 -> 1.000.000.
+  it('el redondeo de la venta nunca la deja bajo el neto: sube al siguiente paso (T-218)', () => {
+    // Neto 1.000.100, 0,01 % = 100 -> 1.000.200 -> medio-arriba daría 1.000.000 (bajo el neto).
     const neto = cop('1000100');
     const venta = calcularVenta(neto, con({ porcentaje: 0.01, redondeoVenta: 1000 }));
+    expect(venta.aDecimal()).toBe('1001000');
+    expect(calcularMargen(neto, venta, 'SOBRE_EL_NETO')?.importe.esNegativo()).toBe(false);
+  });
+
+  it('lo mismo con base SOBRE_LA_VENTA', () => {
+    const neto = cop('1000100');
+    const venta = calcularVenta(
+      neto,
+      con({ base: 'SOBRE_LA_VENTA', porcentaje: 0.01, redondeoVenta: 1000 }),
+    );
+    expect(venta.mayorQue(neto)).toBe(true);
+  });
+
+  it('si el neto ya es múltiplo del paso y el margen es 0, la venta es el neto', () => {
+    const venta = calcularVenta(cop('1000000'), con({ porcentaje: 0, redondeoVenta: 1000 }));
     expect(venta.aDecimal()).toBe('1000000');
-    // La venta quedó por debajo del neto y el dominio no lo impide: lo ve calcularMargen.
-    expect(calcularMargen(neto, venta, 'SOBRE_EL_NETO')?.importe.esNegativo()).toBe(true);
+  });
+
+  it('barrido: con cualquier neto y paso la venta >= neto', () => {
+    for (const neto of [1, 499, 500, 999, 1_000_100, 1_234_567]) {
+      for (const porcentaje of [0, 0.001, 0.01, 0.4, 20]) {
+        for (const base of ['SOBRE_EL_NETO', 'SOBRE_LA_VENTA'] as const) {
+          const n = Money.desdeUnidades(neto, 'COP');
+          const v = calcularVenta(n, con({ base, porcentaje, redondeoVenta: 1000 }));
+          expect(v.mayorQue(n) || v.igualA(n)).toBe(true);
+        }
+      }
+    }
   });
 });
 
@@ -253,9 +277,14 @@ describe('Redondeo en COP (0 decimales) y USD (2)', () => {
     expect(cop('5').aplicarPorcentaje(-10).aDecimal()).toBe('-1');
   });
 
-  it('un porcentaje con más de 3 decimales se redondea a milésimas SIN avisar (documenta)', () => {
-    // 0,0004 % -> round(0,4) = 0 milésimas: el markup desaparece sin error.
-    expect(cop('1000000').aplicarPorcentaje(0.0004).esCero()).toBe(true);
+  it('un porcentaje distinto de 0 que redondearía a 0 milésimas se rechaza (T-218)', () => {
+    expect(() => cop('1000000').aplicarPorcentaje(0.0004)).toThrow(ImporteInvalidoError);
+    expect(() => cop('1000000').aplicarPorcentaje(-0.0004)).toThrow(ImporteInvalidoError);
+    expect(() => cop('1000000').aplicarMarkup(0.0004)).toThrow(ImporteInvalidoError);
+    expect(() => calcularVenta(cop('1000000'), con({ porcentaje: 0.0004 }))).toThrow(
+      ImporteInvalidoError,
+    );
+    expect(cop('1000000').aplicarPorcentaje(0).esCero()).toBe(true); // el cero sí es válido
     expect(cop('1000000').aplicarPorcentaje(0.0005).aDecimal()).toBe('10'); // 0,0005 sube a 0,001 %
   });
 
@@ -264,13 +293,12 @@ describe('Redondeo en COP (0 decimales) y USD (2)', () => {
     expect(venta.aDecimal()).toBe('100.00'); // 99,996 -> 9999,6 centavos -> 10000
   });
 
-  it('la política por defecto (paso 1.000) aplicada a USD redondea a 10 dólares: la unidad mínima no es la misma (documenta)', () => {
-    // redondeoVenta se expresa en unidades mínimas: 1.000 centavos = USD 10. Quien reutilice la
-    // política por defecto en una agencia USD obtiene precios múltiplos de 10 dólares.
-    const venta = calcularVenta(usd('100.00'), POLITICA_POR_DEFECTO);
-    expect(venta.aDecimal()).toBe('120.00');
-    const otra = calcularVenta(usd('103.00'), POLITICA_POR_DEFECTO);
-    expect(otra.aDecimal()).toBe('120.00'); // 123,60 -> 120
+  it('el redondeo por defecto depende de la moneda: USD/EUR paso 100 = una unidad (T-218)', () => {
+    expect(politicaPorDefecto('COP').redondeoVenta).toBe(1000);
+    expect(politicaPorDefecto('USD').redondeoVenta).toBe(100);
+    expect(politicaPorDefecto('EUR').redondeoVenta).toBe(100);
+    const venta = calcularVenta(usd('103.00'), politicaPorDefecto('USD'));
+    expect(venta.aDecimal()).toBe('124.00'); // 123,60 -> 124, no 120
   });
 
   it('redondearA rechaza pasos negativos o no enteros', () => {

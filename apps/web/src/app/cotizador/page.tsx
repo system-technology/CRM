@@ -16,7 +16,12 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useModoDemo } from '../../lib/modo-demo';
 import { Calculator, Compass, Copy, Check, AlertCircle, Bookmark, Ship, Users } from 'lucide-react';
-import { requiereAvisoImpuestoMuelle } from '../../lib/cotizador-logica';
+import {
+  ACOMODACIONES_EN_ORDEN,
+  ETIQUETA_ACOMODACION,
+  acomodacionesParaElSelector,
+  requiereAvisoImpuestoMuelle,
+} from '../../lib/cotizador-logica';
 import type {
   Acomodacion,
   CotizacionCalculada,
@@ -107,8 +112,9 @@ function ContenidoCotizador() {
 
   // Parámetros modo mock / v1
   const [acomodacionMock, setAcomodacionMock] = useState<Acomodacion | ''>('');
-  // T-188: acomodación para la API real. El selector solo aparece cuando la API dijo que el
-  // tarifario del producto la exige (ACOMODACION_*), y se reinicia al cambiar de paquete.
+  // T-188/T-219: acomodación para la API real. El selector aparece desde el inicio cuando la
+  // salida (o la cotización) trae sus acomodaciones, y como último recurso cuando la API dijo que
+  // el tarifario la exige (ACOMODACION_*). Se reinicia al cambiar de paquete.
   const [acomodacionReal, setAcomodacionReal] = useState<Acomodacion | ''>('');
   const [pideAcomodacion, setPideAcomodacion] = useState(false);
   useEffect(() => {
@@ -280,6 +286,28 @@ function ContenidoCotizador() {
     if (!usarReal || !paqueteId) return [];
     return salidasDisponibles.filter((s) => s.paqueteId === paqueteId).map((s) => s.fecha);
   }, [usarReal, paqueteId, salidasDisponibles]);
+
+  // Acomodaciones que ofrece el selector (T-219); se declara antes del efecto de cotización.
+  const acomodacionesOfrecidas = useMemo(
+    () =>
+      usarReal
+        ? acomodacionesParaElSelector({
+            salidas: salidasDisponibles,
+            paqueteId,
+            fecha,
+            cotizacion: cotizacionReal,
+            pedidaPorLaApi: pideAcomodacion,
+          })
+        : [],
+    [usarReal, salidasDisponibles, paqueteId, fecha, cotizacionReal, pideAcomodacion],
+  );
+
+  // Una acomodación elegida que ya no existe para esta salida se descarta.
+  useEffect(() => {
+    if (acomodacionReal && acomodacionesOfrecidas.length > 0) {
+      if (!acomodacionesOfrecidas.includes(acomodacionReal)) setAcomodacionReal('');
+    }
+  }, [acomodacionReal, acomodacionesOfrecidas]);
 
   // Paquete actualmente seleccionado
   const paqueteSeleccionado = useMemo(() => {
@@ -798,16 +826,18 @@ function ContenidoCotizador() {
                           className="mt-1.5 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white p-2.5 text-xs text-neutral-900 shadow-2xs focus:border-purple-600 focus-visible:ring-2 focus-visible:ring-purple-600 focus-visible:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                         >
                           <option value="">Sugerida automáticamente</option>
-                          <option value="SENCILLA">Sencilla (1 persona)</option>
-                          <option value="DOBLE">Doble (2 personas)</option>
-                          <option value="TRIPLE">Triple (3 personas)</option>
-                          <option value="CUADRUPLE">Cuádruple (4 personas)</option>
+                          {/* Modo maqueta: las cuatro, porque el catálogo simulado no las declara. */}
+                          {ACOMODACIONES_EN_ORDEN.map((a) => (
+                            <option key={a} value={a}>
+                              {ETIQUETA_ACOMODACION[a]}
+                            </option>
+                          ))}
                         </select>
                       </div>
                     )}
 
-                    {/* Selector de Acomodación con la API real (T-188): solo si el tarifario la exige */}
-                    {usarReal && pideAcomodacion && (
+                    {/* Selector de Acomodación con la API real (T-188/T-219): solo con las acomodaciones del producto */}
+                    {usarReal && acomodacionesOfrecidas.length > 0 && (
                       <div className="border-t border-neutral-100 pt-4 dark:border-neutral-800">
                         <label
                           htmlFor="select-acomodacion"
@@ -823,10 +853,11 @@ function ContenidoCotizador() {
                           className="mt-1.5 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white p-2.5 text-xs text-neutral-900 shadow-2xs focus:border-purple-600 focus-visible:ring-2 focus-visible:ring-purple-600 focus-visible:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                         >
                           <option value="">Elige una acomodación</option>
-                          <option value="SENCILLA">Sencilla (1 persona)</option>
-                          <option value="DOBLE">Doble (2 personas)</option>
-                          <option value="TRIPLE">Triple (3 personas)</option>
-                          <option value="CUADRUPLE">Cuádruple (4 personas)</option>
+                          {acomodacionesOfrecidas.map((a) => (
+                            <option key={a} value={a}>
+                              {ETIQUETA_ACOMODACION[a]}
+                            </option>
+                          ))}
                         </select>
                       </div>
                     )}

@@ -9,6 +9,7 @@ import {
   calcularCotizacionMock,
   generarTextoPropuestaWhatsApp,
   generarTextoPropuestaWhatsAppSalida,
+  acomodacionesParaElSelector,
   interpretarErrorCotizacion,
   requiereAvisoImpuestoMuelle,
 } from './cotizador-logica';
@@ -368,5 +369,50 @@ describe('Pruebas del Módulo de Cotización y Generación de Propuestas', () =>
     // Propuesta WhatsApp avisa honestamente de la plaza no ocupada
     const textoWhatsApp = generarTextoPropuestaWhatsApp(cotizacion);
     expect(textoWhatsApp).toContain('Incluye 1 plaza(s) no ocupada(s)');
+  });
+});
+
+describe('Selector de acomodación (T-219)', () => {
+  const salidas = [
+    {
+      paqueteId: 'p1',
+      fecha: '2027-03-10',
+      acomodacionesDisponibles: ['DOBLE', 'TRIPLE'] as const,
+    },
+    { paqueteId: 'p2', fecha: '2027-03-10' },
+  ].map((s) => ({ ...s, acomodacionesDisponibles: s.acomodacionesDisponibles?.slice() }));
+  const f = {
+    salidas,
+    paqueteId: 'p1',
+    fecha: '2027-03-10',
+    cotizacion: null,
+    pedidaPorLaApi: false,
+  };
+
+  it('aparece desde el inicio con las acomodaciones de la salida', () => {
+    expect(acomodacionesParaElSelector(f)).toEqual(['DOBLE', 'TRIPLE']);
+  });
+
+  it('sin acomodaciones en la salida no se muestra', () => {
+    expect(acomodacionesParaElSelector({ ...f, paqueteId: 'p2' })).toEqual([]);
+    expect(acomodacionesParaElSelector({ ...f, fecha: '2030-01-01' })).toEqual([]);
+  });
+
+  it('la lista de la cotización manda sobre la de la salida y se ordena', () => {
+    expect(
+      acomodacionesParaElSelector({
+        ...f,
+        cotizacion: { acomodacionesDisponibles: ['TRIPLE', 'SENCILLA'] },
+      }),
+    ).toEqual(['SENCILLA', 'TRIPLE']);
+  });
+
+  it('último recurso: si la API la pidió y no hay lista, las cuatro', () => {
+    expect(acomodacionesParaElSelector({ ...f, paqueteId: 'p2', pedidaPorLaApi: true })).toEqual([
+      'SENCILLA',
+      'DOBLE',
+      'TRIPLE',
+      'CUADRUPLE',
+    ]);
   });
 });

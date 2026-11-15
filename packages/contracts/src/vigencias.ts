@@ -333,6 +333,14 @@ export const SalidaPublicada = z.object({
   desdeEsDeGrupo: z.boolean(),
   /** Cuántas tarifas distintas tiene. Más de una significa que hay promoción o condición. */
   tarifas: z.number().int().min(1),
+  /**
+   * Las acomodaciones con precio en esta salida, en orden de ocupación (SENCILLA, DOBLE, TRIPLE,
+   * CUADRUPLE). **Se omite cuando el tarifario no distingue acomodación.** Permite que el
+   * cotizador muestre el selector antes del primer cálculo (T-219). Es la unión de las tarifas de
+   * la salida: con opciones de salida, una acomodación atada a otra opción puede figurar aquí y
+   * sigue validándola la cotización (`ACOMODACION_NO_DISPONIBLE`).
+   */
+  acomodacionesDisponibles: z.array(Acomodacion).min(1).optional(),
 });
 export type SalidaPublicada = z.infer<typeof SalidaPublicada>;
 
@@ -447,6 +455,12 @@ export const CotizacionDeSalida = z.object({
    * no de un interruptor que pueda contradecir al tarifario.
    */
   pideComposicion: z.boolean(),
+
+  /**
+   * Las acomodaciones con precio para esta salida y opción, en orden de ocupación. **Se omite
+   * cuando el tarifario no distingue acomodación** (entonces no hay nada que elegir).
+   */
+  acomodacionesDisponibles: z.array(Acomodacion).min(1).optional(),
 
   /** La opción de salida con la que se cotizó; `null` si el producto no tiene opciones. */
   opcionDeSalida: z.object({ id: Id, etiqueta: z.string() }).nullable().optional(),

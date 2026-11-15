@@ -19,7 +19,13 @@ import type { SalidaPublicada } from '@viajapro/contracts';
 import { calcularDesde, esTarifaBase } from '@viajapro/domain';
 import { PrismaService } from '../../../shared/prisma/prisma.service.js';
 import { ContextoTenant } from '../../../shared/tenant/contexto-tenant.js';
-import { aTarifaParaDesde, hoyEnZona, SELECCION_PARA_DESDE } from './desde-de-tarifas.js';
+import {
+  acomodacionesParaContrato,
+  aTarifaParaDesde,
+  hoyEnZona,
+  SELECCION_PARA_DESDE,
+} from './desde-de-tarifas.js';
+import { acomodacionesDisponibles } from '../domain/seleccion-de-tarifas.js';
 import { leerPromoVencida, presentarDesde } from './presentacion-de-precios.js';
 
 const aFecha = (d: Date): string => d.toISOString().slice(0, 10);
@@ -82,6 +88,9 @@ export class ListarSalidasUseCase {
         const porMoneda = calcularDesde([{ activa: true, hasta: aFecha(v.desde), tarifas }], null);
         const [desde] = porMoneda;
         if (!desde) continue;
+        const acomodaciones = acomodacionesParaContrato(
+          acomodacionesDisponibles(v.tarifas.map((t) => ({ acomodacion: t.acomodacion ?? null }))),
+        );
         const presentaciones = porMoneda.map((d) => presentarDesde(d, hoy, politicaPromo));
         salidas.push({
           vigenciaId: v.id,
@@ -100,6 +109,7 @@ export class ListarSalidasUseCase {
           presentacionPorMoneda: presentaciones,
           desdeEsDeGrupo: porMoneda.some((d) => d.esDeGrupo),
           tarifas: tarifas.filter(esTarifaBase).length,
+          ...(acomodaciones ? { acomodacionesDisponibles: acomodaciones } : {}),
         });
       }
       return salidas;

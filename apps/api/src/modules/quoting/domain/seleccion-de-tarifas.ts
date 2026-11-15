@@ -136,7 +136,9 @@ export function pasajerosQueCubre(t: CondicionDeCobro, c: Composicion): number {
 const ORDEN_ACOMODACION = ['SENCILLA', 'DOBLE', 'TRIPLE', 'CUADRUPLE'];
 
 /** Las acomodaciones que traen las tarifas, en orden de ocupación y sin repetir. */
-export function acomodacionesDisponibles(tarifas: readonly CondicionDeCobro[]): string[] {
+export function acomodacionesDisponibles(
+  tarifas: readonly { acomodacion: string | null }[],
+): string[] {
   const set = new Set<string>();
   for (const t of tarifas) if (t.acomodacion !== null) set.add(t.acomodacion);
   return [...set].sort((a, b) => ORDEN_ACOMODACION.indexOf(a) - ORDEN_ACOMODACION.indexOf(b));
