@@ -1016,3 +1016,70 @@ describe('responder', () => {
     expect(JSON.stringify(mensajes.rows)).not.toContain(texto);
   });
 });
+
+// ============================================================================================
+// SLA de primera respuesta (T-182): el webhook lo arma, la primera respuesta lo cierra
+// ============================================================================================
+
+describe('SLA de primera respuesta', () => {
+  it('un entrante lo arma, el filtro SLA_VENCIDO lo lista, el duplicado no lo mueve y responder lo saca', async () => {
+    const marca = `sla-${randomBytes(4).toString('hex')}`;
+    const wamid = `wamid.sla.${randomUUID()}`;
+    const hace2h = new Date(Date.now() - 2 * 3600_000);
+    const mensaje = (id: string, instante: Date) => ({
+      wamid: id,
+      deTelefono: `+57302${Math.floor(Math.random() * 9e6 + 1e6)}`,
+      nombrePerfil: 'Viajera con SLA',
+      instante,
+      tipo: 'TEXTO' as const,
+      texto: `Consulta ${marca}`,
+      medioId: null,
+      nombreArchivo: null,
+      mimeType: null,
+      respondeA: null,
+      reaccionaA: null,
+    });
+    const primero = mensaje(wamid, hace2h);
+    expect(await bandeja.registrarEntrante(TENANT_A, canal.A, primero)).toBe('CREADO');
+
+    const buscar = encodeURIComponent(marca);
+    const vencidas = await api(
+      'dueno',
+      'GET',
+      `/api/v1/conversaciones?filtro=SLA_VENCIDO&buscar=${buscar}`,
+    );
+    const filas = vencidas.json['datos'] as Array<{ id: string; slaVenceEn: string | null }>;
+    expect(filas).toHaveLength(1);
+    const id = filas[0]!.id;
+    // El plazo cuenta desde el instante del mensaje (hace 2 h) + 15 min, no desde que se procesó.
+    expect(filas[0]?.slaVenceEn).toBe(new Date(hace2h.getTime() + 15 * 60_000).toISOString());
+
+    // El mismo wamid otra vez (reintento de Meta): DUPLICADO, y el plazo no se mueve.
+    expect(await bandeja.registrarEntrante(TENANT_A, canal.A, primero)).toBe('DUPLICADO');
+    // Otro entrante del mismo hilo, más tarde: tampoco lo mueve.
+    const otro = { ...primero, wamid: `wamid.sla.${randomUUID()}`, instante: new Date() };
+    expect(await bandeja.registrarEntrante(TENANT_A, canal.A, otro)).toBe('CREADO');
+    const fila = await adminPg.query<{ sla: Date }>(
+      'SELECT sla_vence_en AS sla FROM conversaciones WHERE id = $1',
+      [id],
+    );
+    expect(fila.rows[0]?.sla.toISOString()).toBe(
+      new Date(hace2h.getTime() + 15 * 60_000).toISOString(),
+    );
+
+    // La primera respuesta lo cierra: deja de salir en SLA_VENCIDO y la proyección lo anula.
+    const r = await api('dueno', 'POST', `/api/v1/conversaciones/${id}/mensajes`, {
+      texto: 'Hola, con gusto',
+      claveIdempotencia: randomUUID(),
+    });
+    expect(r.status).toBe(201);
+    const despues = await api(
+      'dueno',
+      'GET',
+      `/api/v1/conversaciones?filtro=SLA_VENCIDO&buscar=${buscar}`,
+    );
+    expect(despues.json['datos']).toEqual([]);
+    const detalle = await api('dueno', 'GET', `/api/v1/conversaciones/${id}`);
+    expect(detalle.json['slaVenceEn']).toBeNull();
+  });
+});
