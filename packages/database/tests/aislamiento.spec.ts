@@ -5932,7 +5932,7 @@ describe('ADR-0015 — cifrado de las columnas con PII sensible', () => {
           AND format_type(a.atttypid, NULL) IN (
                 'text', 'text[]', 'character varying', 'character varying[]',
                 'character', 'character[]', 'citext', 'citext[]')
-        ORDER BY columna COLLATE "C"`,
+        ORDER BY (c.relname || '.' || a.attname) COLLATE "C"`,
     );
     const encontradas = rows.map((r) => r.columna);
     const nuevas = encontradas.filter((c) => !COLUMNAS_DE_TEXTO_DECLARADAS.includes(c));
