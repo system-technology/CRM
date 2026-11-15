@@ -2265,13 +2265,15 @@ describe('CRM — contactos, oportunidades y la ficha del panel lateral', () => 
   });
 
   it('31 — «OTRO» sin explicación no es un motivo, y lo rechaza la base', async () => {
+    // Desde 20261115190000 la regla es el dato `motivos_de_perdida.exige_nota` (el OTRO
+    // sembrado lo lleva), aplicada por el disparador del motivo, y no un CHECK sobre el enum.
     await expect(
       comoTenant(TENANT_A, (c) =>
         c.query("UPDATE oportunidades SET motivo_perdida = 'OTRO' WHERE id = $1", [
           oportunidadDe[TENANT_A],
         ]),
       ),
-    ).rejects.toThrow(/oportunidades_motivo_otro_exige_nota/);
+    ).rejects.toThrow(/motivos_de_perdida\.exige_nota/);
 
     // Con explicación, pasa.
     await expect(
@@ -2459,22 +2461,17 @@ describe('CRM — contactos, oportunidades y la ficha del panel lateral', () => 
       ),
     ).rejects.toThrow(/row-level security/i);
 
-    // Colgar la oportunidad de B del motivo de A: el id lo recalcula el disparador desde el enum,
-    // y queda un motivo DE B. Sin disparador, lo pararía la foránea compuesta (comprobada arriba).
-    const deB = await comoTenant(TENANT_B, async (c) => {
-      await c.query(
-        "UPDATE oportunidades SET motivo_perdida = 'PRECIO', motivo_perdida_id = $2 WHERE id = $1",
-        [oportunidadDe[TENANT_B], deA.propio],
-      );
-      const { rows: r } = await c.query(
-        `SELECT o.motivo_perdida_id <> $2 AS distinto, m.tenant_id, m.clave
-           FROM oportunidades o JOIN motivos_de_perdida m ON m.id = o.motivo_perdida_id
-          WHERE o.id = $1`,
-        [oportunidadDe[TENANT_B], deA.propio],
-      );
-      return r as unknown[];
-    });
-    expect(deB).toEqual([{ distinto: true, tenant_id: TENANT_B, clave: 'PRECIO' }]);
+    // Colgar la oportunidad de B del motivo de A: desde 20261115190000 el id escrito MANDA, así
+    // que no se recalcula desde el enum; el motivo de A no existe para B y la escritura falla
+    // (23503). Sin disparador, lo pararía la foránea compuesta (comprobada arriba).
+    await expect(
+      comoTenant(TENANT_B, (c) =>
+        c.query(
+          "UPDATE oportunidades SET motivo_perdida = 'PRECIO', motivo_perdida_id = $2 WHERE id = $1",
+          [oportunidadDe[TENANT_B], deA.propio],
+        ),
+      ),
+    ).rejects.toMatchObject({ code: '23503' });
 
     // Quitar el motivo quita el id: la pareja enum/id va junta.
     const sinMotivo = await comoTenant(TENANT_A, async (c) => {
@@ -2491,6 +2488,94 @@ describe('CRM — contactos, oportunidades y la ficha del panel lateral', () => 
     await comoTenant(TENANT_B, (c) =>
       c.query('UPDATE oportunidades SET motivo_perdida = NULL WHERE id = $1', [
         oportunidadDe[TENANT_B],
+      ]),
+    );
+  });
+
+  it('T-229 — el id escrito manda: un motivo propio se guarda con enum OTRO, el enum solo sigue resolviendo el de sistema y un id ajeno no entra', async () => {
+    type Fila = { motivo_perdida: string | null; motivo_perdida_id: string | null };
+    const leer = async (c: Client, id: string): Promise<Fila[]> =>
+      (
+        await c.query('SELECT motivo_perdida, motivo_perdida_id FROM oportunidades WHERE id = $1', [
+          id,
+        ])
+      ).rows as Fila[];
+
+    const deA = await comoTenant(TENANT_A, async (c) => {
+      // Propio y sin exige_nota: con el CHECK viejo («OTRO exige nota») no se podría guardar.
+      const propio = (
+        (
+          await c.query(
+            `INSERT INTO motivos_de_perdida (id, tenant_id, etiqueta, orden, actualizado_en)
+             VALUES (gen_random_uuid(), $1, 'El hotel no acepta mascotas', 60, now()) RETURNING id`,
+            [TENANT_A],
+          )
+        ).rows[0] as { id: string }
+      ).id;
+
+      // (1) Escribir el id de un motivo propio deja ese id, con enum OTRO.
+      await c.query(
+        'UPDATE oportunidades SET motivo_perdida_id = $2, nota_perdida = NULL WHERE id = $1',
+        [oportunidadDe[TENANT_A], propio],
+      );
+      const conPropio = await leer(c, oportunidadDe[TENANT_A]!);
+
+      // Tocar solo la nota, o reescribir el mismo enum, no lo mueve a «Otro».
+      await c.query(
+        "UPDATE oportunidades SET motivo_perdida = 'OTRO', nota_perdida = 'Viaja con su perro' WHERE id = $1",
+        [oportunidadDe[TENANT_A]],
+      );
+      const trasNota = await leer(c, oportunidadDe[TENANT_A]!);
+
+      // (2) Escribir solo el enum sigue resolviendo el motivo de sistema de la agencia.
+      await c.query(
+        "UPDATE oportunidades SET motivo_perdida = 'PRECIO', nota_perdida = NULL WHERE id = $1",
+        [oportunidadDe[TENANT_A]],
+      );
+      const { rows: precio } = await c.query(
+        `SELECT o.motivo_perdida, m.clave, m.tenant_id FROM oportunidades o
+           JOIN motivos_de_perdida m ON m.id = o.motivo_perdida_id
+          WHERE o.id = $1`,
+        [oportunidadDe[TENANT_A]],
+      );
+      return { propio, conPropio, trasNota, precio: precio as unknown[] };
+    });
+    expect(deA.conPropio).toEqual([{ motivo_perdida: 'OTRO', motivo_perdida_id: deA.propio }]);
+    expect(deA.trasNota).toEqual([{ motivo_perdida: 'OTRO', motivo_perdida_id: deA.propio }]);
+    expect(deA.precio).toEqual([
+      { motivo_perdida: 'PRECIO', clave: 'PRECIO', tenant_id: TENANT_A },
+    ]);
+
+    // Un motivo que exige nota, elegido por id y sin nota: lo rechaza la base.
+    await expect(
+      comoTenant(TENANT_A, async (c) => {
+        const { rows } = await c.query(
+          "SELECT id FROM motivos_de_perdida WHERE tenant_id = $1 AND clave = 'OTRO'",
+          [TENANT_A],
+        );
+        await c.query(
+          'UPDATE oportunidades SET motivo_perdida_id = $2, nota_perdida = NULL WHERE id = $1',
+          [oportunidadDe[TENANT_A], (rows[0] as { id: string }).id],
+        );
+      }),
+    ).rejects.toMatchObject({ code: '23514' });
+
+    // (3) El id de un motivo de OTRA agencia: no existe para B y la escritura falla (23503).
+    // La oportunidad de B queda como estaba.
+    await expect(
+      comoTenant(TENANT_B, (c) =>
+        c.query('UPDATE oportunidades SET motivo_perdida_id = $2 WHERE id = $1', [
+          oportunidadDe[TENANT_B],
+          deA.propio,
+        ]),
+      ),
+    ).rejects.toMatchObject({ code: '23503' });
+    const deB = await comoTenant(TENANT_B, (c) => leer(c, oportunidadDe[TENANT_B]!));
+    expect(deB).toEqual([{ motivo_perdida: null, motivo_perdida_id: null }]);
+
+    await comoTenant(TENANT_A, (c) =>
+      c.query('UPDATE oportunidades SET motivo_perdida = NULL, nota_perdida = NULL WHERE id = $1', [
+        oportunidadDe[TENANT_A],
       ]),
     );
   });
