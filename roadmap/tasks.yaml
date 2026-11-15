@@ -4228,7 +4228,7 @@ tasks:
     phase: 1
     priority: P0
     effort: S
-    status: ready
+    status: in_progress
     depends_on: []
     acceptance:
       - "El atajo exige conexion de loopback sin X-Forwarded-For ademas de APP_ENV=local"
@@ -4265,7 +4265,7 @@ tasks:
     phase: 1
     priority: P0
     effort: S
-    status: ready
+    status: in_progress
     depends_on: []
     acceptance:
       - "Crear oportunidad desde la bandeja guarda 5000000 como 5000000 COP; '5.000.000' tambien"
@@ -4286,7 +4286,7 @@ tasks:
     phase: 1
     priority: P0
     effort: M
-    status: ready
+    status: in_progress
     depends_on: []
     acceptance:
       - "La tarjeta de la bandeja muestra la cotizacion real por su id, o solo el texto enviado"
@@ -4342,7 +4342,7 @@ tasks:
     phase: 1
     priority: P1
     effort: S
-    status: ready
+    status: in_progress
     depends_on: []
     acceptance:
       - "El tablero agrupa por etapa y moneda, o la creacion rechaza monedas distintas de la del tenant"
@@ -4547,7 +4547,7 @@ tasks:
     phase: 1
     priority: P1
     effort: S
-    status: ready
+    status: in_progress
     depends_on: []
     acceptance:
       - "En un clon nuevo, pnpm install && pnpm dev deja la web en 200"
