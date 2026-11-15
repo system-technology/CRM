@@ -160,7 +160,21 @@ test('H6: cotiza un producto de la semilla y guarda la cotizacion', async ({ pag
     'guardar no debe fallar (ver el texto del error en la salida)',
   ).toHaveCount(0, { timeout: 15_000 });
   await expect(page).toHaveURL(/\/cotizaciones\/[0-9a-f-]{36}/, { timeout: 20_000 });
-  await expect(page.getByRole('heading', { name: tituloCotizacion })).toBeVisible();
+  // El detalle tiene tres estados (cargando, error, contenido): si el titulo no aparece, el fallo
+  // dice en cual quedo la pagina, con su texto visible.
+  try {
+    await expect(page.getByRole('heading', { name: tituloCotizacion })).toBeVisible({
+      timeout: 15_000,
+    });
+  } catch {
+    const texto = (
+      await page
+        .locator('main')
+        .innerText()
+        .catch(() => '')
+    ).slice(0, 800);
+    throw new Error(`El detalle de la cotizacion no mostro su titulo. Texto visible: ${texto}`);
+  }
 });
 
 test('H6: la cotizacion guardada aparece en el directorio', async ({ page }) => {
