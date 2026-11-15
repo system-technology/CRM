@@ -68,8 +68,16 @@ export class EnviarMensajeSaliente {
     ahora: Date = new Date(),
   ): Promise<ResultadoDeEnvio> {
     const m = await this.mensajes.leerParaEnviar(tenantId, mensajeId);
-    if (!m) return { estado: 'NO_ENCONTRADO' };
-    if (m.aceptadoPorMeta || m.estado !== 'PENDIENTE') return { estado: 'YA_RESUELTO' };
+    if (!m) {
+      this.log.warn(
+        `Envío ${mensajeId.slice(0, 8)} descartado: el mensaje no existe en su agencia.`,
+      );
+      return { estado: 'NO_ENCONTRADO' };
+    }
+    if (m.aceptadoPorMeta || m.estado !== 'PENDIENTE') {
+      this.log.log(`Envío ${mensajeId.slice(0, 8)} omitido: ya estaba resuelto.`);
+      return { estado: 'YA_RESUELTO' };
+    }
 
     // Mínimo vertical: solo texto. Plantillas, medios e interactivos no salen por aquí todavía.
     // T-061: el texto se limpia también aquí (el contrato ya lo hace al entrar), por si el mensaje
@@ -115,6 +123,8 @@ export class EnviarMensajeSaliente {
         referencia: mensajeId,
       });
       await this.mensajes.registrarAceptado(tenantId, mensajeId, wamid);
+      // Sin texto, destinatario ni wamid completo: solo que Meta lo aceptó.
+      this.log.log(`Envío ${mensajeId.slice(0, 8)} entregado a Meta.`);
       return { estado: 'ACEPTADO', wamid };
     } catch (error) {
       if (!(error instanceof ErrorDeEnvioWhatsapp)) throw error;

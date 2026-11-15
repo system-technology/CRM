@@ -114,7 +114,16 @@ export class ColaDeEnviosPostgres extends PuertoColaDeEnvios implements PuertoEn
     if (!procesar) return;
     const { tenantId, mensajeId } = trabajo;
     const intento = await this.reclamar(tenantId, mensajeId);
-    if (intento === null) return;
+    if (intento === null) {
+      // No es un error (otro consumidor lo tomó, ya salió, o espera su reintento), pero tampoco
+      // puede ser invisible: un saliente PENDIENTE que nadie reclama solo lo recoge el barrido.
+      this.log.log(
+        `Envío ${mensajeId.slice(0, 8)} no reclamable (ya resuelto, reservado, arrendado o en espera): ` +
+          'lo recoge el barrido si sigue pendiente.',
+      );
+      return;
+    }
+    this.log.log(`Envío ${mensajeId.slice(0, 8)} tomado (intento ${intento}).`);
     try {
       await procesar(tenantId, mensajeId, {
         intento,
