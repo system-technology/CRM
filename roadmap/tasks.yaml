@@ -4753,7 +4753,7 @@ tasks:
     phase: 2
     priority: P1
     effort: M
-    status: ready
+    status: in_progress
     depends_on: []
     acceptance:
       - "Logs estructurados con tenant_id y trace_id"
@@ -4863,7 +4863,7 @@ tasks:
     phase: 2
     priority: P3
     effort: M
-    status: ready
+    status: in_progress
     depends_on: []
     acceptance:
       - "Lista de comprobacion en PRs de migracion y prueba de suite vieja sobre esquema nuevo"
@@ -5112,4 +5112,21 @@ tasks:
     source: entrega de T-180, 2026-11-15
     created_at: 2026-11-15T17:00:00.000Z
     owner: backend
+  - id: T-223
+    title: "Operacion: medir la antiguedad de la cola de salida (envios pendientes) entre agencias"
+    type: infra
+    phase: 2
+    priority: P2
+    effort: S
+    status: ready
+    depends_on: [T-203]
+    acceptance:
+      - "Funcion SECURITY DEFINER que devuelve solo la antiguedad y el conteo de envios pendientes (sin ids de tenant ni texto)"
+      - "El trabajador la publica junto a la de entrada y /salud/listo la informa"
+    files:
+      - packages/database/prisma/migrations
+      - apps/api/src/shared/observabilidad/antiguedad-de-cola.ts
+    source: entrega de T-203, 2026-11-15
+    created_at: 2026-11-15T17:00:00.000Z
+    owner: datos
 

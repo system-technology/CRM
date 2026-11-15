@@ -55,6 +55,21 @@ describe('SaludController', () => {
     );
   });
 
+  describe('antigüedad de la cola (T-203)', () => {
+    it('informa la cola atascada pero no degrada estado ni cambia el HTTP', async () => {
+      mockPrisma.$queryRaw.mockResolvedValue([{ usuario: 'viajapro_app', bypassa: false }]);
+      const cola = { estado: 'atascada', masViejaS: 900, pendientes: 3, umbralMin: 5 } as const;
+      const c = new SaludController(
+        mockPrisma as unknown as PrismaService,
+        { leer: () => Promise.resolve({ estado: 'ok', edadSegundos: 2 } as EstadoDelTrabajador) },
+        { leer: () => Promise.resolve(cola) },
+      );
+      const r = await c.listo(mockRes as Response);
+      expect(r).toMatchObject({ estado: 'ok', cola });
+      expect(mockRes.status).toHaveBeenCalledWith(HttpStatus.OK);
+    });
+  });
+
   describe('GET /salud/listo', () => {
     it('debe responder 200 cuando la BD responde y el rol NO puede saltarse RLS', async () => {
       mockPrisma.$queryRaw.mockResolvedValue([{ usuario: 'viajapro_app', bypassa: false }]);

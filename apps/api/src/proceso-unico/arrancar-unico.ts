@@ -12,6 +12,7 @@
 import 'reflect-metadata';
 
 import { Logger } from '@nestjs/common';
+import { LoggerJson } from '../shared/observabilidad/logger-json.js';
 import { NestFactory } from '@nestjs/core';
 import type { INestApplication, INestApplicationContext } from '@nestjs/common';
 import type { NestExpressApplication } from '@nestjs/platform-express';
@@ -55,6 +56,8 @@ export async function arrancarUnico(entorno: Entorno = process.env): Promise<Pro
     api = await NestFactory.create<NestExpressApplication>(ApiUnicoModule.forRoot(compartido), {
       bufferLogs: true,
     });
+    // T-203: logs JSON con tenant_id/trace_id y sin PII (el logger de Nest es global al proceso).
+    api.useLogger(new LoggerJson());
     configurarApi(api);
     await api.listen(puerto);
   } catch (error) {
