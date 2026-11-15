@@ -10,7 +10,7 @@
  *                                 reescribe para apuntar a localhost (si no, se niega a correr)
  *
  * Secuencia (la misma de README y de la bitacora de veracidad):
- *   db:migrate:deploy -> roles:dev -> db:seed -> identidad:sembrar-dev -> api + worker + web
+ *   db:migrate:deploy -> roles:dev -> db:seed -> identidad:sembrar-dev -> demo:sembrar-cifrada -> api + worker + web
  *
  * R6: no hay secretos en el repositorio. Lo sensible llega por variables de entorno (en
  * Codespaces, "secrets" del usuario) y lo que falta se GENERA al azar y vive solo en `.env`,
@@ -157,6 +157,12 @@ if (args.has('--resembrar') || !existsSync(marca)) {
     '--filter',
     '@viajapro/api',
     'identidad:sembrar-dev',
+  ]);
+  // T-225: el texto de la bandeja solo existe cifrado y lo escribe la API (ADR-0015).
+  paso('Bandeja demo cifrada (mensajes y notas)', [
+    '--filter',
+    '@viajapro/api',
+    'demo:sembrar-cifrada',
   ]);
   mkdirSync('node_modules/.cache', { recursive: true });
   writeFileSync(marca, new Date().toISOString());
