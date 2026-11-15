@@ -13,18 +13,32 @@
  * Modos (primer argumento):
  *   inicio      SessionStart: inyecta checkpoint + últimas entradas del diario.
  *   compactar   PreCompact: ordena que el resumen apunte a estos archivos y no los sustituya.
- *   parada      Stop: avisa si el checkpoint está viejo respecto al trabajo reciente. No bloquea.
+ *   parada      Stop: si el checkpoint es más viejo que el último commit (o que 2 h con el árbol
+ *               sucio), BLOQUEA la parada una vez y ordena escribirlo. El aviso por stderr con
+ *               salida 0 no lo ve el modelo: por eso es `decision: block`. `stop_hook_active`
+ *               evita el bucle (la segunda parada seguida siempre pasa).
+ *   hito        PostToolUse de merge/PR/push: recuerda en el acto actualizar el checkpoint.
  *
  * Nunca lanza: un hook roto no puede impedir trabajar.
  */
 
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync, statSync } from 'node:fs';
+
+function leerEntrada() {
+  try {
+    return JSON.parse(readFileSync(0, 'utf8') || '{}');
+  } catch {
+    return {};
+  }
+}
 import { dirname, join, resolve } from 'node:path';
 
 const MAX_LINEAS_CHECKPOINT = 220;
 const MAX_LINEAS_DIARIO = 70;
-const HORAS_CHECKPOINT_VIEJO = 3;
+const HORAS_CHECKPOINT_VIEJO = 2;
+/** Holgura entre el último commit y el checkpoint antes de exigir reescribirlo. */
+const MINUTOS_HOLGURA = 10;
 
 function git(args, cwd) {
   try {
@@ -75,7 +89,8 @@ try {
     const checkpoint = leer(rutaCheckpoint, MAX_LINEAS_CHECKPOINT);
     const diario = leer(rutaDiario, MAX_LINEAS_DIARIO);
     const marco = leer(rutaMarco, 120);
-    if (marco) partes.push(`## MARCO DE TRABAJO
+    if (marco)
+      partes.push(`## MARCO DE TRABAJO
 
 ${marco}`);
     if (checkpoint) {
@@ -116,15 +131,48 @@ ${marco}`);
         'verificado y qué es supuesto.\n',
     );
   } else if (modo === 'parada') {
+    const entrada = leerEntrada();
+    if (entrada.stop_hook_active) process.exit(0);
     const h = horasDesde(rutaCheckpoint);
-    const hayTrabajo =
-      (git(['status', '--porcelain']) ?? '') !== '' ||
-      (git(['log', '-1', '--since=3.hours', '--format=%h']) ?? '') !== '';
-    if (hayTrabajo && (h === null || h > HORAS_CHECKPOINT_VIEJO)) {
-      process.stderr.write(
-        `Hubo trabajo reciente pero \`docs/_contexto/CHECKPOINT.local.md\` ${h === null ? 'no existe' : `lleva ${Math.round(h)} h sin tocarse`}. ` +
-          'Antes de que la sesión se compacte, escribe ahí el estado vivo (PRs en cola, lo prometido y pendiente, ' +
-          'trampas del momento). Es local y no necesita PR.\n',
+    const segCommit = Number(git(['log', '-1', '--format=%ct']) ?? 0);
+    const horasCommit = segCommit ? (Date.now() / 1000 - segCommit) / 3600 : null;
+    const sucio = (git(['status', '--porcelain']) ?? '') !== '';
+    let motivo = null;
+    if (h === null) {
+      if (sucio || (horasCommit !== null && horasCommit < 3)) motivo = 'no existe';
+    } else if (horasCommit !== null && horasCommit + MINUTOS_HOLGURA / 60 < h) {
+      motivo = `es anterior al último commit (${Math.round(h * 60)} min frente a ${Math.round(horasCommit * 60)} min)`;
+    } else if (sucio && h > HORAS_CHECKPOINT_VIEJO) {
+      motivo = `lleva ${Math.round(h)} h sin tocarse con cambios en el árbol`;
+    }
+    if (motivo) {
+      process.stdout.write(
+        JSON.stringify({
+          decision: 'block',
+          reason:
+            `El cerebro está desactualizado: \`docs/_contexto/CHECKPOINT.local.md\` ${motivo}. ` +
+            'Antes de terminar, actualízalo: PRs y su estado verificado, lo prometido y pendiente, lo que hay ' +
+            'sin commit, trampas nuevas. Es local, sin PR. Si cerraste un lote, añade también la entrada en DIARIO.md.',
+        }),
+      );
+    }
+  } else if (modo === 'hito') {
+    const entrada = leerEntrada();
+    const herramienta = String(entrada.tool_name ?? '');
+    const comando = String(entrada.tool_input?.command ?? '');
+    const esHito =
+      /merge_pull_request|create_pull_request/.test(herramienta) ||
+      (herramienta === 'Bash' && /\bgit (push|merge)\b|\bgh pr (create|merge)\b/.test(comando));
+    if (esHito) {
+      process.stdout.write(
+        JSON.stringify({
+          hookSpecificOutput: {
+            hookEventName: 'PostToolUse',
+            additionalContext:
+              'Hito (PR, merge o push): actualiza ahora `docs/_contexto/CHECKPOINT.local.md` con el estado ' +
+              'verificado, antes de seguir con lo siguiente.',
+          },
+        }),
       );
     }
   }

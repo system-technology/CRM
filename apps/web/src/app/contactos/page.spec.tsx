@@ -40,7 +40,6 @@ describe('ContactosPage — Estados de Carga, Error y Vacío (T-005)', () => {
         telefono: '+573000012345',
         correo: 'juan.perez@ejemplo.com',
         etiquetas: ['VIP', 'Familia'],
-        preferencias: 'Prefiere hoteles 5 estrellas',
         consentimientos: ['TRANSACCIONAL', 'PROMOCIONAL'],
         creadoEn: '2026-01-15T10:00:00.000Z',
         ultimoContactoEn: '2026-10-10T16:00:00.000Z',

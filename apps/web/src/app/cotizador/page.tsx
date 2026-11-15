@@ -27,7 +27,7 @@ import type {
   CotizacionCalculada,
   CotizacionDeSalida,
   SalidaPublicada,
-  Contacto,
+  ContactoDeLista,
 } from '@viajapro/contracts';
 import { formatearDinero } from '../../lib/api';
 import { BarraModulos } from '../../components/bandeja/barra-modulos';
@@ -135,7 +135,7 @@ function ContenidoCotizador() {
   const [copiado, setCopiado] = useState(false);
 
   // Contactos y Guardado (0c.22)
-  const [contactosDisponibles, setContactosDisponibles] = useState<Contacto[]>([]);
+  const [contactosDisponibles, setContactosDisponibles] = useState<ContactoDeLista[]>([]);
   const [contactoIdInicial, setContactoIdInicial] = useState<string>('');
   const [modalGuardarAbierto, setModalGuardarAbierto] = useState(false);
   const [guardandoCotizacion, setGuardandoCotizacion] = useState(false);

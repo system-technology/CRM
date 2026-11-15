@@ -66,7 +66,7 @@ export default function BandejaLayout({ children }: { children: React.ReactNode 
 
   return (
     <BandejaAtajosContext.Provider value={contextValue}>
-      <div className="flex h-dvh w-full overflow-hidden bg-neutral-100 font-sans dark:bg-neutral-950">
+      <div className="flex h-[calc(100dvh-var(--altura-banner-cookies,0px))] w-full overflow-hidden bg-neutral-100 font-sans dark:bg-neutral-950">
         {/* Columna 1: Barra lateral de módulos (56px) */}
         <div className={`shrink-0 ${esDetalleMovil ? 'hidden md:flex' : 'flex'}`}>
           <BarraModulos />

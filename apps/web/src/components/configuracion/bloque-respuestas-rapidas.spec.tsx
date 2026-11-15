@@ -111,7 +111,7 @@ describe('BloqueRespuestasRapidas — Administración por Agencia (T-104)', () =
   });
 
   it('8. Elimina una respuesta rápida con confirmación', () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    window.confirm = vi.fn(() => true);
 
     render(<BloqueRespuestasRapidas tenantId="agencia-test" />);
 
@@ -122,7 +122,7 @@ describe('BloqueRespuestasRapidas — Administración por Agencia (T-104)', () =
   });
 
   it('9. Restablece respuestas por defecto al confirmar', () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    window.confirm = vi.fn(() => true);
 
     render(<BloqueRespuestasRapidas tenantId="agencia-test" />);
 

@@ -42,7 +42,7 @@ describe('ModalCrearOportunidad (T-076)', () => {
       etapa: {
         id: '01a114b2-5314-75b1-91ad-3be0518a6a01',
         clave: 'NUEVO_LEAD',
-        nombre: 'Nuevo Lead',
+        nombre: 'Oportunidad nueva',
         orden: 1,
         probabilidad: 10,
         esGanada: false,

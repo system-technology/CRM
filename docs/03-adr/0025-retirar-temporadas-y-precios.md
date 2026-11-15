@@ -1,6 +1,6 @@
 # ADR-0025 — Retirar `Temporada` y `Precio`: el precio vive solo en vigencias y tarifas
 
-- **Estado:** Propuesto
+- **Estado:** Aceptado (2026-11-15, por delegación expresa del propietario). Pasos 1 y 2 hechos (T-180 en #256, T-222 en #263); el paso 3 (DROP) sigue pendiente.
 - **Fecha:** 2026-11-15
 - **Decide:** propietario, a propuesta de `datos`
 - **Consultados:** `datos`. Pendientes: `arquitecto` (forma), `frontend` (ficha del paquete),

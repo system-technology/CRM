@@ -252,6 +252,39 @@ describe('clavesDeCamposDesdeEntorno — sin respaldo (concreción 4)', () => {
     expect(() => new CifradoDeCampos(corta)).toThrow(/32 bytes/);
   });
 
+  it('T-226: rechaza una maestra (o previa) igual a otra clase de secreto, en hex o base64', () => {
+    const base = { CAMPOS_SENSIBLES_KEY: hex, CAMPOS_SENSIBLES_KEY_VERSION: '1' };
+    const b64 = Buffer.from(hex, 'hex').toString('base64');
+    for (const otra of ['WEBHOOK_PAYLOAD_KEY', 'CORREO_PAYLOAD_KEY', 'ENCRYPTION_MASTER_KEY']) {
+      for (const valor of [hex, b64, ` ${hex}\n`]) {
+        expect(() => clavesDeCamposDesdeEntorno({ ...base, [otra]: valor })).toThrow(
+          new RegExp(`CAMPOS_SENSIBLES_KEY no puede ser igual a ${otra}`),
+        );
+      }
+    }
+    expect(() =>
+      clavesDeCamposDesdeEntorno({
+        CAMPOS_SENSIBLES_KEY: randomBytes(32).toString('hex'),
+        CAMPOS_SENSIBLES_KEY_VERSION: '2',
+        CAMPOS_SENSIBLES_KEY_PREVIOUS: hex,
+        WEBHOOK_PAYLOAD_KEY: hex,
+      }),
+    ).toThrow(/CAMPOS_SENSIBLES_KEY_PREVIOUS no puede ser igual a WEBHOOK_PAYLOAD_KEY/);
+    // Distintas, o ausentes: pasa. El mensaje nunca lleva el valor.
+    expect(
+      clavesDeCamposDesdeEntorno({
+        ...base,
+        WEBHOOK_PAYLOAD_KEY: randomBytes(32).toString('hex'),
+        CORREO_PAYLOAD_KEY: '',
+      }).version,
+    ).toBe(1);
+    try {
+      clavesDeCamposDesdeEntorno({ ...base, ENCRYPTION_MASTER_KEY: hex });
+    } catch (e) {
+      expect(String(e)).not.toContain(hex);
+    }
+  });
+
   it('el mensaje de error nunca lleva la clave', () => {
     const corta = randomBytes(16).toString('base64');
     try {

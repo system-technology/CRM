@@ -72,7 +72,7 @@ export const MOCK_REPORTES_POR_PERIODO: Record<RangoPeriodo, ReporteComercial> =
     conversionPorEtapa: [
       {
         etapaId: '01932000-0000-7000-8000-0000000000e1',
-        nombre: 'Nuevo Lead',
+        nombre: 'Oportunidad nueva',
         cantidad: 34,
         porcentajeEmbudo: 100,
       },
@@ -167,7 +167,7 @@ export const MOCK_REPORTES_POR_PERIODO: Record<RangoPeriodo, ReporteComercial> =
     conversionPorEtapa: [
       {
         etapaId: '01932000-0000-7000-8000-0000000000e1',
-        nombre: 'Nuevo Lead',
+        nombre: 'Oportunidad nueva',
         cantidad: 26,
         porcentajeEmbudo: 100,
       },
@@ -268,7 +268,7 @@ export const MOCK_REPORTES_POR_PERIODO: Record<RangoPeriodo, ReporteComercial> =
     conversionPorEtapa: [
       {
         etapaId: '01932000-0000-7000-8000-0000000000e1',
-        nombre: 'Nuevo Lead',
+        nombre: 'Oportunidad nueva',
         cantidad: 104,
         porcentajeEmbudo: 100,
       },
@@ -369,7 +369,7 @@ export const MOCK_REPORTES_POR_PERIODO: Record<RangoPeriodo, ReporteComercial> =
     conversionPorEtapa: [
       {
         etapaId: '01932000-0000-7000-8000-0000000000e1',
-        nombre: 'Nuevo Lead',
+        nombre: 'Oportunidad nueva',
         cantidad: 380,
         porcentajeEmbudo: 100,
       },

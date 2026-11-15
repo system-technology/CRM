@@ -4636,7 +4636,9 @@ tasks:
     phase: 1
     priority: P1
     effort: L
-    status: in_progress
+    status: done
+    done_at: 2026-11-15T18:40:00.000Z
+    evidence: "Integrado en main por el PR #266 (02d1e07)"
     depends_on: [T-193]
     acceptance:
       - "Playwright en CI: ingreso, bandeja, webhook firmado, mensaje visible, cotizar, enviar"
@@ -5074,7 +5076,7 @@ tasks:
     phase: 1
     priority: P0
     effort: S
-    status: ready
+    status: in_progress
     depends_on: []
     acceptance:
       - "pnpm audit --prod --audit-level=high sin criticas: next >= 15.5.28, multer >= 2.5.0, body-parser >= 1.20.9, postcss parcheado"
@@ -5147,7 +5149,7 @@ tasks:
     phase: 1
     priority: P3
     effort: S
-    status: ready
+    status: in_progress
     depends_on: [T-222]
     acceptance:
       - "calcularCotizacionMock y temporadaNombre dejan de leer tarifarioDemo (temporadas); mock-catalogo sin TemporadaDemo/PrecioDemo"
@@ -5163,7 +5165,9 @@ tasks:
     phase: 1
     priority: P0
     effort: S
-    status: in_progress
+    status: done
+    done_at: 2026-11-15T18:40:00.000Z
+    evidence: "Integrado en main por el PR #266 (02d1e07)"
     depends_on: [T-212]
     acceptance:
       - "Un script del lado de la API (con CAMPOS_SENSIBLES_KEY) siembra conversaciones, mensajes y notas de la agencia demo ya cifrados"
@@ -5180,7 +5184,8 @@ tasks:
     phase: 2
     priority: P1
     effort: M
-    status: ready
+    status: in_progress
+    notes: "(a) en el PR general del 2026-11-15; (b) y (c) siguen solo diseño, piden migracion del agente datos"
     depends_on: [T-212]
     acceptance:
       - "Al arrancar, abortar si hay filas con clave_version sin clave que las abra"
@@ -5197,7 +5202,7 @@ tasks:
     phase: 1
     priority: P2
     effort: S
-    status: ready
+    status: in_progress
     depends_on: [T-212]
     acceptance:
       - "El contrato del listado de contactos no incluye preferencias; solo la ficha las descifra (auditado)"

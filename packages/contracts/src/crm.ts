@@ -50,6 +50,14 @@ export const Contacto = z.object({
 });
 export type Contacto = z.infer<typeof Contacto>;
 
+/**
+ * El contacto tal como sale en el LISTADO. Sin `preferencias` (T-227, minimización, R10): puede
+ * ser dato de salud y un listado lo descifraría de muchos contactos a la vez. Solo la ficha y las
+ * respuestas de escritura la devuelven, y la ficha deja la lectura auditada.
+ */
+export const ContactoDeLista = Contacto.omit({ preferencias: true });
+export type ContactoDeLista = z.infer<typeof ContactoDeLista>;
+
 // =============================================================================
 // Oportunidad
 // =============================================================================
@@ -300,7 +308,7 @@ export type TableroPipeline = z.infer<typeof TableroPipeline>;
 export const PaginaOportunidades = pagina(Oportunidad);
 export type PaginaOportunidades = z.infer<typeof PaginaOportunidades>;
 
-export const PaginaContactos = pagina(Contacto);
+export const PaginaContactos = pagina(ContactoDeLista);
 export type PaginaContactos = z.infer<typeof PaginaContactos>;
 
 // =============================================================================

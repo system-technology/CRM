@@ -1,15 +1,15 @@
 import { formatearTelefonoSegunRol } from './formato';
-import { type Contacto, Consentimiento } from '@viajapro/contracts';
+import { type ContactoDeLista, Consentimiento } from '@viajapro/contracts';
 
 /**
  * Filtra la lista de contactos en base a término de búsqueda, etiqueta y tipo de consentimiento.
  */
 export function filtrarContactos(
-  contactos: Contacto[],
+  contactos: ContactoDeLista[],
   busqueda: string,
   etiquetaFiltro: string = 'todas',
   consentimientoFiltro: string = 'todos',
-): Contacto[] {
+): ContactoDeLista[] {
   const termino = busqueda.toLowerCase().trim();
 
   return contactos.filter((contacto) => {
@@ -42,7 +42,7 @@ export function filtrarContactos(
 /**
  * Extrae la lista ordenada y única de todas las etiquetas de negocio presentes en los contactos.
  */
-export function obtenerEtiquetasDisponibles(contactos: Contacto[]): string[] {
+export function obtenerEtiquetasDisponibles(contactos: ContactoDeLista[]): string[] {
   const setEtiquetas = new Set<string>();
   contactos.forEach((c) => {
     c.etiquetas.forEach((e) => setEtiquetas.add(e));

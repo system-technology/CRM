@@ -1,7 +1,10 @@
 import React from 'react';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
-import { BannerConsentimientoCookies } from './banner-consentimiento-cookies';
+import {
+  BannerConsentimientoCookies,
+  VARIABLE_ALTURA_BANNER_COOKIES,
+} from './banner-consentimiento-cookies';
 import {
   CLAVE_LOCALSTORAGE_CONSENTIMIENTO,
   obtenerConsentimientoGuardado,
@@ -111,5 +114,22 @@ describe('BannerConsentimientoCookies (T-095) - Consentimiento de cookies y priv
     });
 
     expect(screen.getByTestId('modal-preferencias-cookies')).toBeDefined();
+  });
+
+  it('Reserva su altura en una variable CSS mientras está visible y la libera al decidir (no tapa el compositor de la bandeja)', () => {
+    vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockReturnValue(132);
+    render(<BannerConsentimientoCookies />);
+
+    expect(document.documentElement.style.getPropertyValue(VARIABLE_ALTURA_BANNER_COOKIES)).toBe(
+      '132px',
+    );
+
+    act(() => {
+      fireEvent.click(screen.getByTestId('btn-cookies-solo-necesarias'));
+    });
+
+    expect(document.documentElement.style.getPropertyValue(VARIABLE_ALTURA_BANNER_COOKIES)).toBe(
+      '',
+    );
   });
 });

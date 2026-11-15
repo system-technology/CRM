@@ -308,10 +308,11 @@ export function calcularCotizacionMock(
   entrada: CotizarPaquete,
   paquete: PaqueteConDetalle,
 ): CotizacionCalculada {
-  const temporada =
-    paquete.tarifarioDemo.find(
-      (t) => entrada.fechaSalida >= t.desde && entrada.fechaSalida <= t.hasta,
-    ) ?? paquete.tarifarioDemo[0]!;
+  const vigencia =
+    paquete.vigencias.find(
+      (v) => entrada.fechaSalida >= v.desde && entrada.fechaSalida <= v.hasta,
+    ) ?? paquete.vigencias[0];
+  if (!vigencia) throw new Error('El simulador necesita al menos una vigencia con tarifas');
 
   const totalPasajeros =
     entrada.pasajeros.adultos + entrada.pasajeros.ninos + entrada.pasajeros.infantes;
@@ -358,11 +359,13 @@ export function calcularCotizacionMock(
   for (const g of grupos) {
     if (g.cant <= 0) continue;
     const precioBase =
-      temporada.precios.find(
-        (p) => p.acomodacion === acomodacionElegida && p.tipoPasajero === g.tipo,
+      vigencia.tarifas.find(
+        (t) =>
+          t.condicion?.acomodacion === acomodacionElegida && t.condicion?.tipoPasajero === g.tipo,
       ) ??
-      temporada.precios.find((p) => p.tipoPasajero === g.tipo) ??
-      temporada.precios[0]!;
+      vigencia.tarifas.find((t) => t.condicion?.tipoPasajero === g.tipo) ??
+      vigencia.tarifas[0];
+    if (!precioBase) throw new Error('La vigencia del simulador no tiene tarifas');
 
     const ventaUnit = Math.round(Number(precioBase.venta.unidades) * markupFactor);
     const subtotalVenta = ventaUnit * g.cant;
@@ -406,7 +409,7 @@ export function calcularCotizacionMock(
     destino: paquete.destino,
     fechaSalida: entrada.fechaSalida,
     fechaRegreso,
-    temporadaNombre: temporada.nombre,
+    temporadaNombre: `Vigencia del ${vigencia.desde} al ${vigencia.hasta}`,
     acomodacion: acomodacionElegida,
     habitaciones,
     plazasSinUsar,

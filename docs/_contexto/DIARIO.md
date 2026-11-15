@@ -12,6 +12,42 @@
 
 ---
 
+## 2026-11-15 — Auditoría integral, MVP en navegador y cifrado de PII
+
+**Decisiones del propietario**
+- Corregir toda la auditoría integral y después seguir el roadmap hasta un MVP demostrable.
+- Modo de trabajo: «intégralo cuando esté en verde y sigue» (merge de PR propios con CI en verde).
+- Autorizó resolver los pendientes, incluida la aceptación de ADR que no dependan de decisiones suyas.
+
+**Verificado (gh/git)**
+- Auditoría integral 2026-11-15 (`docs/_auditorias/2026-11-15-auditoria-integral.md`) y plan
+  (`docs/08-roadmap/02-plan-correccion-auditoria-2026-11-15.md`); cola T-175..T-227.
+- Integrados en `main`: #256 (37 correcciones), #263 (suite de navegador T-196, observabilidad
+  T-203, T-190/T-221/T-222), #264 (cifrado de PII en reposo, ADR-0015, T-212, con auditoría de
+  seguridad). El job `navegador` del CI ejecuta el flujo H1–H6 contra la API real.
+- La suite de navegador encontró defectos reales que ninguna prueba unitaria veía: el modal de
+  guardado ignoraba título y contacto (cotización a nombre de otro cliente) y guardar con la API
+  real usaba la acomodación de la maqueta. Corregidos.
+- ADR-0018, 0019, 0022 y 0025 aceptados; 0023 y 0024 propuestos.
+
+**Pendiente (no darlo por hecho)**
+- #266 (demo cifrada T-225 y responder/enviar por WhatsApp en la suite) y los dos PR de la tanda
+  de pendientes (general; y T-223/T-214, de aislamiento). Ver `CHECKPOINT.local.md`.
+- Del propietario: `CAMPOS_SENSIBLES_KEY` en Render y copia de la clave; `STAGING_DESPLIEGUE`;
+  Meta real (T-080); decidir zod 4; ADR-0023/0024.
+
+**Trampas nuevas**
+- Un commit que falla en lint-staged restaura el árbol: con agentes trabajando en paralelo puede
+  borrar su trabajo. Pasar lint antes de commitear y nunca usar `git stash` con agentes activos.
+- Desde el cifrado, la búsqueda de la bandeja solo mira nombre y teléfono, y la semilla SQL no
+  puede escribir texto: la demo se siembra con `demo:sembrar-cifrada`.
+- Un saliente pasa a ENVIADO con el webhook de estado `sent` de Meta, no con la respuesta de la
+  Graph: las pruebas con Graph falsa deben simularlo.
+- Postgres no arranca en las sesiones en la nube: migraciones, e2e y aislamiento solo se
+  verifican en el CI.
+
+---
+
 ## 2026-11-05 — Campaña funcional en Codespaces y cerebro persistente
 
 **Decisiones del propietario**

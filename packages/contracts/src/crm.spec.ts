@@ -14,6 +14,9 @@
 
 import { describe, expect, it } from 'vitest';
 import {
+  ContactoDeLista,
+  Contacto,
+  PaginaContactos,
   CrearContacto,
   CrearEtapa,
   EditarEtapa,
@@ -298,5 +301,29 @@ describe('etapas del pipeline: alta, edición y reordenamiento (T-120)', () => {
     expect(ReordenarEtapas.safeParse({ ids: [ID_A, ID_A] }).success).toBe(false);
     expect(ReordenarEtapas.safeParse({ ids: ['no-uuid'] }).success).toBe(false);
     expect(ReordenarEtapas.safeParse({ ids: [] }).success).toBe(false);
+  });
+});
+
+describe('Contacto en el listado (T-227: minimización de preferencias)', () => {
+  const ficha = {
+    id: '11111111-1111-4111-8111-111111111111',
+    nombre: 'Ana',
+    telefono: '+573001234567',
+    correo: null,
+    etiquetas: [],
+    preferencias: 'Alergia a la penicilina',
+    consentimientos: [],
+    creadoEn: '2026-12-01T16:24:00.000Z',
+    ultimoContactoEn: null,
+  };
+
+  it('la ficha conserva preferencias; el listado no las lleva ni las deja pasar', () => {
+    expect(Contacto.parse(ficha).preferencias).toBe('Alergia a la penicilina');
+    expect(ContactoDeLista.parse(ficha)).not.toHaveProperty('preferencias');
+    const pagina = PaginaContactos.parse({
+      datos: [ficha],
+      pageInfo: { nextCursor: null, hasMore: false },
+    });
+    expect(pagina.datos[0]).not.toHaveProperty('preferencias');
   });
 });
