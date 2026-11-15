@@ -76,6 +76,9 @@ generar('BETTER_AUTH_SECRET', () => b64(48));
 generar('ENCRYPTION_MASTER_KEY', () => b64(32));
 generar('WHATSAPP_DIRECTORY_PEPPER', () => b64(32));
 generar('WEBHOOK_PAYLOAD_KEY', () => b64(32));
+// ADR-0015: sin ella la API y el trabajador no arrancan. Perderla deja ilegible lo cifrado.
+generar('CAMPOS_SENSIBLES_KEY', () => b64(32));
+generar('CAMPOS_SENSIBLES_KEY_VERSION', () => '1');
 generar('CORREO_PAYLOAD_KEY', () => b64(32));
 generar('IDENTIDAD_DEV_PASSWORD', () => hex(12)); // 24 caracteres
 generar('DB_DEV_PASSWORD', () => hex(12));

@@ -41,6 +41,7 @@ import { FalloTransitorioDeMetaError } from './domain/errores-de-envio.js';
 import { ColaDeEnviosPostgres } from './infrastructure/cola-de-envios.postgres.js';
 import { MensajesSalientesPrisma } from './infrastructure/mensajes-salientes.prisma.js';
 import { ReservaDeEnvioPostgres } from './infrastructure/reserva-de-envio.postgres.js';
+import { cifradoDePrueba } from '../../shared/cifrado/cifrado-de-prueba.js';
 
 const CORRE =
   process.env['CI'] === 'true' ||
@@ -220,7 +221,7 @@ describe.skipIf(!CORRE)('envíos en modo unico: garantías sobre Postgres, sin R
   ): Promise<Instancia> {
     const prisma = new PrismaWebhookService();
     await prisma.onModuleInit();
-    const mensajes = new MensajesSalientesPrisma(prisma);
+    const mensajes = new MensajesSalientesPrisma(prisma, cifradoDePrueba());
     const reservas = new ReservaDeEnvioPostgres(prisma);
     const cola = new ColaDeEnviosPostgres(prisma, undefined, {
       esperaBaseMs: opciones.esperaBaseMs ?? 50,

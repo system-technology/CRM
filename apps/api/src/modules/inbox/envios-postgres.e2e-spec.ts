@@ -36,6 +36,7 @@ import { ColaDeEnviosPostgres } from './infrastructure/cola-de-envios.postgres.j
 import { EnvioWhatsappGraph } from './infrastructure/envio-whatsapp.graph.js';
 import { MensajesSalientesPrisma } from './infrastructure/mensajes-salientes.prisma.js';
 import { ReservaDeEnvioPostgres } from './infrastructure/reserva-de-envio.postgres.js';
+import { cifradoDePrueba } from '../../shared/cifrado/cifrado-de-prueba.js';
 
 const CORRE = Boolean(process.env['DATABASE_URL']);
 
@@ -205,7 +206,7 @@ describe.skipIf(!CORRE)('envíos sobre Postgres: dos agencias, dos consumidores,
   async function nuevaInstancia(): Promise<Instancia> {
     const prisma = new PrismaWebhookService();
     await prisma.onModuleInit();
-    const mensajes = new MensajesSalientesPrisma(prisma);
+    const mensajes = new MensajesSalientesPrisma(prisma, cifradoDePrueba());
     const reservas = new ReservaDeEnvioPostgres(prisma);
     const cola = new ColaDeEnviosPostgres(
       prisma,

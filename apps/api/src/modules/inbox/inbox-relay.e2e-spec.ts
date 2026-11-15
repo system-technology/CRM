@@ -34,6 +34,7 @@ import { claveDeEnrutamiento } from './domain/clave-de-enrutamiento.js';
 import { ContactosDeCrm } from '../crm/infrastructure/puertos-de-crm.prisma.js';
 import { BandejaPrisma } from './infrastructure/bandeja.prisma.js';
 import { StagingPrisma } from './infrastructure/staging.prisma.js';
+import { cifradoDePrueba } from '../../shared/cifrado/cifrado-de-prueba.js';
 
 const SECRETO = randomBytes(24).toString('hex');
 const MARCA = randomUUID();
@@ -211,7 +212,7 @@ beforeAll(async () => {
   await prismaWebhook.onModuleInit();
   caso = new ProcesarChange(
     new StagingPrisma(prismaWebhook),
-    new BandejaPrisma(prismaWebhook, new ContactosDeCrm()),
+    new BandejaPrisma(prismaWebhook, new ContactosDeCrm(), cifradoDePrueba()),
   );
 });
 

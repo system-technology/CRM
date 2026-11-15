@@ -76,6 +76,11 @@ services:
         sync: false
       - key: WEBHOOK_PAYLOAD_KEY_VERSION
         sync: false
+      # ADR-0015: la API y el trabajador abortan sin ella. Copia fuera de Render (S6).
+      - key: CAMPOS_SENSIBLES_KEY
+        sync: false
+      - key: CAMPOS_SENSIBLES_KEY_VERSION
+        sync: false
       - key: CORREO_PAYLOAD_KEY
         sync: false
       - key: REDIS_URL
@@ -115,6 +120,11 @@ services:
       - key: WEBHOOK_PAYLOAD_KEY
         sync: false
       - key: WEBHOOK_PAYLOAD_KEY_VERSION
+        sync: false
+      # ADR-0015: la API y el trabajador abortan sin ella. Copia fuera de Render (S6).
+      - key: CAMPOS_SENSIBLES_KEY
+        sync: false
+      - key: CAMPOS_SENSIBLES_KEY_VERSION
         sync: false
       - key: CORREO_PAYLOAD_KEY
         sync: false

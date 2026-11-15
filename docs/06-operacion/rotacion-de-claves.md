@@ -23,7 +23,8 @@
 |---|---|---|---|
 | `BETTER_AUTH_SECRET` | API (`crear-auth.ts`) | **No** | Todos los usuarios pierden la sesión y deben volver a entrar |
 | `META_APP_SECRET` | API (`registrar-recepcion.ts`) | **No** | Todo webhook de Meta se rechaza con 403 hasta que el despliegue y Meta coinciden |
-| `ENCRYPTION_MASTER_KEY` | **Ningún código hoy** | No aplica | Nada se rompe hoy; sí romperá cuando se implemente ADR-0015 |
+| `ENCRYPTION_MASTER_KEY` | **Ningún código hoy** | No aplica | Nada se rompe: no es la clave de ADR-0015 (ver §5) |
+| `CAMPOS_SENSIBLES_KEY` + `_VERSION` + `_PREVIOUS` | API y trabajador (`shared/cifrado/cifrado-de-campos.ts`) | **Sí para leer**, una versión anterior; **no hay recifrado** | Sin ella no arrancan; con otra clave y la misma versión, todo lo cifrado queda **ilegible** |
 | `WEBHOOK_PAYLOAD_KEY` + `_VERSION` + `_PREVIOUS` | API (sella) y trabajador (abre) | **Sí**, una versión anterior | El trabajador no puede abrir las recepciones aún sin procesar |
 | `WHATSAPP_DIRECTORY_PEPPER` + `_VERSION` + `_PREVIOUS` | Trabajador (resuelve el tenant); script de canal de prueba (escribe) | **Sí** para leer; **no hay herramienta** para reconstruir | Los mensajes entrantes quedan «desconocidos» y se **borran** |
 | `CORREO_PAYLOAD_KEY` | API (encola) y trabajador (envía) | **No** | Los correos encolados con Redis y aún sin enviar quedan ilegibles |
@@ -88,15 +89,32 @@ fase de prueba salen del entorno (`credenciales-whatsapp.entorno.ts`), no de la 
 **Qué rompe hoy.** Nada: rotarla no cambia el comportamiento. Mantener el valor igual en todos lados
 sí importa porque el compose no arranca sin él.
 
-**Qué romperá mañana.** ADR-0015 diseña el cifrado de campos sensibles y llama a su clave
-`CAMPOS_SENSIBLES_KEY`, con versión por fila y un trabajo de recifrado por lotes. **Ese trabajo no
-existe** (T-212, A2): hasta que se implemente, **perder o cambiar esa clave dejaría ilegible todo lo
-que se cifre con ella**. El nombre de la variable está sin fijar (doc 07 §6: ADR-0013 dice
-`ENCRYPTION_MASTER_KEY`, ADR-0015 dice `CAMPOS_SENSIBLES_KEY`).
+**Nombre fijado (T-212).** El cifrado de campos sensibles usa **`CAMPOS_SENSIBLES_KEY`**, el nombre
+que fija ADR-0015, y no esta variable. `ENCRYPTION_MASTER_KEY` sigue sin lector: queda para las
+credenciales de tenant en reposo (R6), cuando existan. Ver §5 bis.
 
-**Qué hacer hoy.** No rotarla por rutina. Cuando T-212 llegue, **este documento se reescribe** con
-el procedimiento de versión por fila y recifrado, y esa implementación debe incluir la copia de la
-clave fuera del proveedor (S6) y un ensayo de recuperación antes del primer dato real.
+## 5 bis. `CAMPOS_SENSIBLES_KEY` (ADR-0015, T-212)
+
+**Qué es.** La maestra de AES-256-GCM de las cinco columnas con PII sensible (`mensajes.texto`,
+`conversaciones.ultimo_mensaje_texto`, `contactos.preferencias`, `notas_internas.texto`,
+`adjuntos.nombre_archivo`). De ella se deriva una clave por agencia y por columna con HKDF-SHA256.
+La leen la API y el trabajador (`CifradoModule`); **ninguno arranca sin ella ni sin
+`CAMPOS_SENSIBLES_KEY_VERSION`**. La web nunca la recibe.
+
+**Qué rompe.** Cada fila guarda la versión con la que se cifró. El código abre la versión vigente y,
+si está `CAMPOS_SENSIBLES_KEY_PREVIOUS`, la anterior (`VERSION - 1`). **Cambiar la clave sin subir
+la versión deja ilegible todo lo ya cifrado** (la lectura responde 500 `CAMPO_CIFRADO_ILEGIBLE`).
+**Perderla es perder todo lo cifrado**: no hay forma de recuperarlo desde la base.
+
+**Cómo se rota hoy (sin recifrado).** 1) Guardar la actual fuera del proveedor (S6). 2) Poner la
+actual en `CAMPOS_SENSIBLES_KEY_PREVIOUS`, la nueva en `CAMPOS_SENSIBLES_KEY` y subir
+`CAMPOS_SENSIBLES_KEY_VERSION` en uno, a la vez en API y trabajador. Lo nuevo se cifra con la nueva y
+lo viejo se sigue leyendo con la anterior. **No se puede retirar la anterior** hasta que exista el
+trabajo de recifrado por lotes (ADR-0015, en cola): una segunda rotación sin él deja ilegible lo de
+dos versiones atrás.
+
+**Tope de uso.** ADR-0015 fija rotar antes de 2^31 cifrados por clave derivada (agencia, columna y
+versión), con la cuenta sacada de la base. La cuenta y su alarma tampoco existen todavía (cola).
 
 ## 6. `WEBHOOK_PAYLOAD_KEY` y su versión
 

@@ -2,12 +2,20 @@
  * Adaptador de escritura de contactos y oportunidades (T-075). Todo pasa por `conTenant()` y
  * lleva `tenantId` explícito además de RLS (defensa en profundidad, R1).
  *
- * R10: `preferencias` se escribe como columna, pero NO viaja a `registros_auditoria.detalle`; ver
- * el comentario del esquema.
+ * R10: `preferencias` se escribe CIFRADA (ADR-0015, con el id del contacto generado aquí antes del
+ * INSERT) y NO viaja a `registros_auditoria.detalle`. Una respuesta que devuelve unas preferencias
+ * que esta misma operación no escribió es una lectura, y queda auditada.
  */
 import { Inject, Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import type { Consentimiento, Contacto, Oportunidad } from '@viajapro/contracts';
+import { columnasDePreferencias } from '../../../shared/cifrado/columnas-de-prisma.js';
+import { RegistroDeLectura } from '../../../shared/cifrado/lectura-auditada.js';
+import {
+  COLUMNAS_CIFRADAS,
+  PuertoCifradoDeCampos,
+} from '../../../shared/cifrado/puerto-de-cifrado.js';
+import { uuidV7 } from '../../../shared/cifrado/uuid-v7.js';
 import { PrismaService } from '../../../shared/prisma/prisma.service.js';
 import { PuertoExistenciaDePaquete } from '../../../shared/puertos/puertos-hacia-quoting.js';
 import { ContextoTenant } from '../../../shared/tenant/contexto-tenant.js';
@@ -19,7 +27,7 @@ import {
   type NuevoContacto,
   PuertoEscrituraCrm,
 } from '../application/puerto-escritura-crm.js';
-import { PARA_LA_TARJETA, aContacto, aOportunidad } from './crm.prisma.js';
+import { PARA_LA_TARJETA, aContactoDescifrado, aOportunidad } from './crm.prisma.js';
 import { registrarCambioDeEtapa } from './historial-de-etapas.prisma.js';
 
 function esViolacionDeUnicidad(error: unknown): boolean {
@@ -31,28 +39,46 @@ export class EscrituraCrmPrisma extends PuertoEscrituraCrm {
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(PuertoExistenciaDePaquete) private readonly paquetes: PuertoExistenciaDePaquete,
+    @Inject(PuertoCifradoDeCampos) private readonly cifrado: PuertoCifradoDeCampos,
   ) {
     super();
+  }
+
+  /** Las cuatro columnas de `preferencias`: cifradas, o nulas si se vacían. */
+  private preferencias(tenantId: string, contactoId: string, valor: string | null) {
+    return columnasDePreferencias(
+      valor === null
+        ? null
+        : this.cifrado.cifrar(
+            COLUMNAS_CIFRADAS.CONTACTOS_PREFERENCIAS,
+            tenantId,
+            contactoId,
+            valor,
+          ),
+    );
   }
 
   async crearContacto(d: NuevoContacto): Promise<Contacto> {
     const { tenantId } = ContextoTenant.obtener();
     try {
       return await this.prisma.conTenant(async (tx) => {
+        const id = uuidV7();
         const c = await tx.contacto.create({
           data: {
+            id,
             tenantId,
             telefonoE164: d.telefonoE164,
             nombre: d.nombre,
             correo: d.correo,
             etiquetas: d.etiquetas,
-            preferencias: d.preferencias,
+            ...this.preferencias(tenantId, id, d.preferencias),
             creadoPorId: d.creadoPorId,
             actualizadoPorId: d.creadoPorId,
           },
           include: { consentimientos: true },
         });
-        return aContacto(c);
+        // Lo que se devuelve es lo que se acaba de escribir: no es una lectura.
+        return aContactoDescifrado(c, this.cifrado, tenantId);
       });
     } catch (error) {
       if (esViolacionDeUnicidad(error)) throw new TelefonoYaRegistradoError(d.telefonoE164);
@@ -80,12 +106,20 @@ export class EscrituraCrmPrisma extends PuertoEscrituraCrm {
             ...(cambios.nombre !== undefined ? { nombre: cambios.nombre } : {}),
             ...(cambios.correo !== undefined ? { correo: cambios.correo } : {}),
             ...(cambios.etiquetas !== undefined ? { etiquetas: cambios.etiquetas } : {}),
-            ...(cambios.preferencias !== undefined ? { preferencias: cambios.preferencias } : {}),
+            ...(cambios.preferencias !== undefined
+              ? this.preferencias(tenantId, contactoId, cambios.preferencias)
+              : {}),
             actualizadoPorId: actorId,
           },
           include: { consentimientos: true },
         });
-        return aContacto(c);
+        // Si esta edición no tocó las preferencias, devolverlas es leerlas: se audita.
+        if (cambios.preferencias !== undefined)
+          return aContactoDescifrado(c, this.cifrado, tenantId);
+        const registro = new RegistroDeLectura();
+        const contacto = aContactoDescifrado(c, this.cifrado, tenantId, registro);
+        await registro.registrar(tx, 'Contacto', contactoId);
+        return contacto;
       });
     } catch (error) {
       if (esViolacionDeUnicidad(error) && cambios.telefonoE164 !== undefined) {
@@ -158,7 +192,10 @@ export class EscrituraCrmPrisma extends PuertoEscrituraCrm {
       where: { id: contactoId, tenantId },
       include: { consentimientos: true },
     });
-    return aContacto(c);
+    const registro = new RegistroDeLectura();
+    const contacto = aContactoDescifrado(c, this.cifrado, tenantId, registro);
+    await registro.registrar(tx, 'Contacto', contactoId);
+    return contacto;
   }
 
   async existeContacto(contactoId: string): Promise<boolean> {

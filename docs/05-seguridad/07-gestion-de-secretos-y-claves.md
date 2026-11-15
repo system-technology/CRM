@@ -41,7 +41,7 @@ de las GitHub Apps y *deploy hooks*.
 | Secreto | Cuándo se rota | Cómo, sin cortar servicio | ¿Soporte en el código hoy? |
 |---|---|---|---|
 | `WEBHOOK_PAYLOAD_KEY`, pimienta del directorio | Anual, o de inmediato ante sospecha | Variables `_VERSION` y `_PREVIOUS`: se sella con la nueva y se abre con ambas | **Sí** (variables declaradas en ADR-0013 §4) |
-| `CAMPOS_SENSIBLES_KEY` (ADR-0015) | Al acercarse a 2^31 cifrados por clave derivada, o ante sospecha | Versión por fila + trabajo de recifrado por lotes | **No:** la implementación está en el PR #29, sin integrar, y el trabajo de recifrado no existe |
+| `CAMPOS_SENSIBLES_KEY` (ADR-0015) | Al acercarse a 2^31 cifrados por clave derivada, o ante sospecha | Versión por fila + trabajo de recifrado por lotes | **A medias (T-212):** versión por fila y lectura con la anterior (`_VERSION`, `_PREVIOUS`); el trabajo de recifrado no existe, así que la anterior no se puede retirar |
 | `BETTER_AUTH_SECRET` | Anual, o ante sospecha | Cambiarlo invalida las cookies firmadas: todos vuelven a iniciar sesión. Se acepta | Sí (es una variable) |
 | `META_APP_SECRET`, `POSTMARK_SERVER_TOKEN`, tokens de WhatsApp | Ante sospecha o salida de una persona con acceso | Regenerar en el panel del proveedor y pegar | Sí |
 | Contraseñas de los roles de base | Anual, o ante sospecha | `rol:crear` por rama de Neon (ADR-0013 §5) | Sí |
@@ -66,9 +66,8 @@ de las GitHub Apps y *deploy hooks*.
 - **S1, S2 (CI), S4 y S8: se cumplen** y tienen comprobación automática.
 - **S3, S5, S6: no verificables todavía**, porque no hay un servicio desplegado verificado en
   Render (ESTADO.md §3).
-- **Inconsistencia de nombres por resolver:** ADR-0013 llama `ENCRYPTION_MASTER_KEY` a la clave
-  maestra y ADR-0015 la llama `CAMPOS_SENSIBLES_KEY`. Hay que fijar un solo nombre antes de
-  desplegar (`backend`, al integrar el PR #29).
+- **Nombre fijado (T-212):** el cifrado de campos sensibles lee `CAMPOS_SENSIBLES_KEY` (+
+  `_VERSION`, `_PREVIOUS`), como fija ADR-0015. `ENCRYPTION_MASTER_KEY` (ADR-0013) sigue sin lector.
 - **No hay gestor de secretos dedicado:** los secretos viven en los paneles de Render y GitHub. La
   copia de S6 **no existe** porque la clave tampoco existe todavía en producción.
 - **La rotación de `CAMPOS_SENSIBLES_KEY` no es posible** hasta que exista el trabajo de recifrado.

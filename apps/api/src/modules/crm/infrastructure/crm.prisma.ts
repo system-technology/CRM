@@ -7,6 +7,10 @@
  *
  * Lo borrado lógicamente sí se filtra aquí, porque eso no es aislamiento entre agencias sino
  * estado del dato: una oportunidad borrada sigue siendo de esta agencia.
+ *
+ * ADR-0015: `contactos.preferencias` y `notas_internas.texto` se guardan cifrados y se descifran
+ * aquí. Toda respuesta que le devuelve a una persona uno de esos valores deja una fila
+ * `LECTURA_DATOS_SENSIBLES` en la misma transacción (R10).
  */
 
 import { Inject, Injectable } from '@nestjs/common';
@@ -16,6 +20,15 @@ import {
   filtroDeNotasPorVisibilidad,
   visibilidadDe,
 } from '../../../shared/autorizacion/visibilidad-de-conversaciones.js';
+import {
+  campoDePreferencias,
+  campoDeTextoObligatorio,
+} from '../../../shared/cifrado/columnas-de-prisma.js';
+import { RegistroDeLectura } from '../../../shared/cifrado/lectura-auditada.js';
+import {
+  COLUMNAS_CIFRADAS,
+  PuertoCifradoDeCampos,
+} from '../../../shared/cifrado/puerto-de-cifrado.js';
 import { PrismaService } from '../../../shared/prisma/prisma.service.js';
 import { ContextoTenant } from '../../../shared/tenant/contexto-tenant.js';
 import {
@@ -63,7 +76,10 @@ export const PARA_LA_TARJETA = {
 
 @Injectable()
 export class CrmPrisma extends PuertoCrm {
-  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {
+  constructor(
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(PuertoCifradoDeCampos) private readonly cifrado: PuertoCifradoDeCampos,
+  ) {
     super();
   }
 
@@ -229,25 +245,32 @@ export class CrmPrisma extends PuertoCrm {
       });
       if (!c) return null;
 
-      // Auditoría R10: solo hay lectura sensible si la ficha trae `preferencias` (puede ser dato
-      // de salud). Se registra el NOMBRE del campo, jamás su valor.
-      if (c.preferencias !== null && c.preferencias.trim() !== '') {
-        const { tenantId, usuarioId } = ContextoTenant.obtener();
-        await tx.registroAuditoria.create({
-          data: {
+      // Auditoría R10: hay lectura sensible si la ficha trae `preferencias` (puede ser dato de
+      // salud) o notas internas. Se registran los NOMBRES de las columnas y los ids, jamás el valor.
+      // Clave y AAD con el tenant de la SESIÓN; una fila que diga ser de otro no se descifra.
+      const { tenantId } = ContextoTenant.obtener();
+      const registro = new RegistroDeLectura();
+      const contacto = aContactoDescifrado(c, this.cifrado, tenantId, registro);
+      const notasInternas = c.notasInternas.map((n) => ({
+        id: n.id,
+        autorNombre: n.autor?.nombre ?? null,
+        texto: registro.anotar(
+          COLUMNAS_CIFRADAS.NOTAS_INTERNAS_TEXTO,
+          n.id,
+          this.cifrado.descifrarDeFila(
+            COLUMNAS_CIFRADAS.NOTAS_INTERNAS_TEXTO,
             tenantId,
-            usuarioId,
-            accion: 'LECTURA_DATOS_SENSIBLES',
-            entidad: 'Contacto',
-            entidadId: contactoId,
-            detalle: { camposSensibles: ['preferencias'] },
-          },
-        });
-      }
+            n,
+            campoDeTextoObligatorio(n),
+          ) ?? '',
+        ),
+        escritaEn: n.escritaEn.toISOString(),
+      }));
+      await registro.registrar(tx, 'Contacto', contactoId);
 
       const viva = c.oportunidades[0];
       return {
-        contacto: aContacto(c),
+        contacto,
         // La más reciente que no esté cerrada. Si hay varias vivas, el asesor ve la última que
         // tocó, que es la que tiene en la cabeza.
         oportunidadActual: viva ? aOportunidad(viva) : null,
@@ -255,12 +278,7 @@ export class CrmPrisma extends PuertoCrm {
         // arreglo vacío es honesto. Consultar sus tablas desde aquí rompería R4.
         cotizaciones: [],
         archivosDeViajeIds: [],
-        notasInternas: c.notasInternas.map((n) => ({
-          id: n.id,
-          autorNombre: n.autor?.nombre ?? null,
-          texto: n.texto,
-          escritaEn: n.escritaEn.toISOString(),
-        })),
+        notasInternas,
       };
     });
   }
@@ -283,7 +301,11 @@ export class CrmPrisma extends PuertoCrm {
         orderBy: { ultimoContactoEn: 'desc' },
         take: p.limite,
       });
-      return filas.map(aContacto);
+      const { tenantId } = ContextoTenant.obtener();
+      const registro = new RegistroDeLectura();
+      const contactos = filas.map((c) => aContactoDescifrado(c, this.cifrado, tenantId, registro));
+      await registro.registrar(tx, 'Contacto', null);
+      return contactos;
     });
   }
 }
@@ -395,6 +417,33 @@ interface FilaContacto {
   creadoEn: Date;
   ultimoContactoEn: Date | null;
   consentimientos: { finalidad: string; revocadoEn: Date | null }[];
+}
+
+/** La fila tal como sale de la base: `preferencias` en sus cuatro columnas cifradas. */
+type FilaContactoCifrada = Omit<FilaContacto, 'preferencias'> & {
+  tenantId: string;
+  preferenciasCifrado: Uint8Array | null;
+  preferenciasNonce: Uint8Array | null;
+  preferenciasTag: Uint8Array | null;
+  preferenciasClaveVersion: number | null;
+};
+
+/**
+ * Descifra `preferencias` con la agencia y el id del contacto (el AAD) y traduce al contrato. Con
+ * `registro`, lo descifrado queda anotado para la lectura auditada; sin él, es la respuesta a una
+ * escritura que acaba de poner ese mismo valor.
+ */
+export function aContactoDescifrado(
+  c: FilaContactoCifrada,
+  cifrado: PuertoCifradoDeCampos,
+  /** El de la sesión, NUNCA el de la fila: si no coinciden, se lanza sin descifrar. */
+  tenantId: string,
+  registro?: RegistroDeLectura,
+): Contacto {
+  const columna = COLUMNAS_CIFRADAS.CONTACTOS_PREFERENCIAS;
+  const preferencias = cifrado.descifrarDeFila(columna, tenantId, c, campoDePreferencias(c));
+  registro?.anotar(columna, c.id, preferencias);
+  return aContacto({ ...c, preferencias });
 }
 
 export function aContacto(c: FilaContacto): Contacto {

@@ -20,7 +20,7 @@
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Client } from 'pg';
-import { randomBytes, randomUUID } from 'node:crypto';
+import { createCipheriv, randomBytes, randomUUID } from 'node:crypto';
 import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 // @ts-expect-error — módulo JS sin tipos, compartido con `scripts/limpiar-fixtures.mjs`.
@@ -90,6 +90,24 @@ async function comoTenant<T>(tenantId: string, fn: (c: Client) => Promise<T>): P
     await app.query('ROLLBACK');
     throw error;
   }
+}
+
+/**
+ * ADR-0015: las cinco columnas con PII sensible solo existen cifradas, en cuatro columnas
+ * (criptograma, nonce de 12 bytes, etiqueta de 16 y versión de clave).
+ *
+ * Los fixtures cifran de verdad, con AES-256-GCM y una clave aleatoria de ESTA corrida: lo que
+ * se prueba aquí es el aislamiento y la forma que impone la base, no la derivación de claves
+ * (HKDF por agencia y columna, AAD), que es de la primitiva de la API y la prueba su suite
+ * (`apps/api/src/shared/cifrado/cifrado-de-campos.spec.ts` y `cifrado-en-reposo.e2e-spec.ts`).
+ * Devuelve los cuatro valores en el orden de las columnas.
+ */
+const CLAVE_DE_CORRIDA = randomBytes(32);
+function sellarDePrueba(claro: string): [Buffer, Buffer, Buffer, number] {
+  const nonce = randomBytes(12);
+  const cifrador = createCipheriv('aes-256-gcm', CLAVE_DE_CORRIDA, nonce);
+  const cifrado = Buffer.concat([cifrador.update(claro, 'utf8'), cifrador.final()]);
+  return [cifrado, nonce, cifrador.getAuthTag(), 1];
 }
 
 beforeAll(async () => {
@@ -2163,23 +2181,25 @@ describe('CRM — contactos, oportunidades y la ficha del panel lateral', () => 
   it('27 — las notas internas de una agencia no existen para la otra', async () => {
     await comoTenant(TENANT_A, (c) =>
       c.query(
-        `INSERT INTO notas_internas (id, tenant_id, contacto_id, texto, escrita_en)
-         VALUES (gen_random_uuid(), $1, $2, 'Margen del 22%, no bajar de ahi', now())`,
-        [TENANT_A, contactoDe[TENANT_A]],
+        `INSERT INTO notas_internas
+           (id, tenant_id, contacto_id, texto_cifrado, texto_nonce, texto_tag, texto_clave_version, escrita_en)
+         VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, now())`,
+        [TENANT_A, contactoDe[TENANT_A], ...sellarDePrueba('Margen del 22%, no bajar de ahi')],
       ),
     );
 
     const leidas = await comoTenant(TENANT_B, (c) =>
-      c.query('SELECT texto FROM notas_internas WHERE tenant_id = $1', [TENANT_A]),
+      c.query('SELECT texto_cifrado FROM notas_internas WHERE tenant_id = $1', [TENANT_A]),
     );
     expect(leidas.rowCount).toBe(0);
 
     await expect(
       comoTenant(TENANT_B, (c) =>
         c.query(
-          `INSERT INTO notas_internas (id, tenant_id, contacto_id, texto, escrita_en)
-           VALUES (gen_random_uuid(), $1, $2, 'Nota plantada', now())`,
-          [TENANT_A, contactoDe[TENANT_A]],
+          `INSERT INTO notas_internas
+             (id, tenant_id, contacto_id, texto_cifrado, texto_nonce, texto_tag, texto_clave_version, escrita_en)
+           VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, now())`,
+          [TENANT_A, contactoDe[TENANT_A], ...sellarDePrueba('Nota plantada')],
         ),
       ),
     ).rejects.toThrow(/row-level security|violates foreign key/i);
@@ -2382,28 +2402,35 @@ describe('Inbox — conversaciones, mensajes y el espejo de plantillas de Meta',
         const conversacion = await c.query(
           `INSERT INTO conversaciones
              (id, tenant_id, contacto_id, canal_id, ultimo_mensaje_cliente_en,
-              ultimo_mensaje_texto, ultimo_mensaje_en, ultimo_mensaje_direccion,
+              ultimo_mensaje_texto_cifrado, ultimo_mensaje_texto_nonce, ultimo_mensaje_texto_tag,
+              ultimo_mensaje_texto_clave_version, ultimo_mensaje_en, ultimo_mensaje_direccion,
               creado_en, actualizado_en)
-           VALUES (gen_random_uuid(), $1, $2, $3, now(), 'Hola, quiero San Andres',
+           VALUES (gen_random_uuid(), $1, $2, $3, now(), $4, $5, $6, $7,
                    now(), 'ENTRANTE', now(), now())
            RETURNING id`,
-          [tenant, contactoDe[tenant], canalDe[tenant]],
+          [
+            tenant,
+            contactoDe[tenant],
+            canalDe[tenant],
+            ...sellarDePrueba('Hola, quiero San Andres'),
+          ],
         );
         conversacionDe[tenant] = (conversacion.rows[0] as { id: string }).id;
 
         const mensaje = await c.query(
           `INSERT INTO mensajes
-             (id, tenant_id, conversacion_id, direccion, tipo, estado, texto, wamid,
+             (id, tenant_id, conversacion_id, direccion, tipo, estado,
+              texto_cifrado, texto_nonce, texto_tag, texto_clave_version, wamid,
               ocurrido_en, creado_en, actualizado_en)
            VALUES (gen_random_uuid(), $1, $2, 'ENTRANTE', 'TEXTO', 'ENTREGADO',
-                   $4, $3,
+                   $4, $5, $6, $7, $3,
                    now(), now(), now())
            RETURNING id`,
           [
             tenant,
             conversacionDe[tenant],
             `wamid.COMPARTIDO.${i}`,
-            `Mi pasaporte es AQ12345${i} y nazco el 1990-03-04`,
+            ...sellarDePrueba(`Mi pasaporte es AQ12345${i} y nazco el 1990-03-04`),
           ],
         );
         mensajeDe[tenant] = (mensaje.rows[0] as { id: string }).id;
@@ -2545,31 +2572,34 @@ describe('Inbox — conversaciones, mensajes y el espejo de plantillas de Meta',
 
   it('38 — el texto de un mensaje de otra agencia no existe, ni se puede plantar uno', async () => {
     // Aquí es donde el viajero escribe su pasaporte (R10). Es la fila más sensible.
+    // Desde ADR-0015 la columna es un criptograma: lo que se aísla son sus bytes.
     const leidos = await comoTenant(TENANT_B, (c) =>
-      c.query('SELECT texto FROM mensajes WHERE tenant_id = $1', [TENANT_A]),
+      c.query('SELECT texto_cifrado FROM mensajes WHERE tenant_id = $1', [TENANT_A]),
     );
     expect(leidos.rowCount).toBe(0);
 
-    // Ni siquiera por la búsqueda de la bandeja, que es la otra puerta a esa columna:
-    // el número de pasaporte de un viajero de A no aparece buscándolo desde B. Se busca
-    // el de A en concreto, no la palabra «pasaporte», porque B tiene el suyo y
-    // encontrarlo sería el comportamiento correcto.
-    const buscados = await comoTenant(TENANT_B, (c) =>
-      c.query('SELECT id FROM mensajes WHERE texto ILIKE $1', ['%AQ123450%']),
-    );
-    expect(buscados.rowCount).toBe(0);
-    // Y desde A sí se encuentra: si no, la aserción anterior sería verde por vacío.
+    // Y desde A sí se ve el suyo: si no, la aserción anterior sería verde por vacío. Lo que
+    // A ve tampoco es el pasaporte: el número no aparece en los bytes guardados. (Ya no hay
+    // búsqueda por contenido en SQL: `mensajes_texto_trgm_idx` se retiró, aserción ADR-0015.)
     const propios = await comoTenant(TENANT_A, (c) =>
-      c.query('SELECT id FROM mensajes WHERE texto ILIKE $1', ['%AQ123450%']),
+      c.query(
+        `SELECT position(convert_to('AQ123450', 'UTF8') IN texto_cifrado) AS en_claro
+           FROM mensajes WHERE id = $1 AND texto_cifrado IS NOT NULL`,
+        [mensajeDe[TENANT_A]],
+      ),
     );
     expect(propios.rowCount).toBe(1);
+    expect((propios.rows[0] as { en_claro: number }).en_claro).toBe(0);
 
     await expect(
       comoTenant(TENANT_B, (c) =>
         c.query(
-          `INSERT INTO mensajes (id, tenant_id, conversacion_id, direccion, tipo, texto, wamid, ocurrido_en, creado_en, actualizado_en)
-           VALUES (gen_random_uuid(), $1, $2, 'ENTRANTE', 'TEXTO', 'Mensaje plantado', 'wamid.PLANTADO', now(), now(), now())`,
-          [TENANT_A, conversacionDe[TENANT_A]],
+          `INSERT INTO mensajes (id, tenant_id, conversacion_id, direccion, tipo,
+                                 texto_cifrado, texto_nonce, texto_tag, texto_clave_version,
+                                 wamid, ocurrido_en, creado_en, actualizado_en)
+           VALUES (gen_random_uuid(), $1, $2, 'ENTRANTE', 'TEXTO', $3, $4, $5, $6,
+                   'wamid.PLANTADO', now(), now(), now())`,
+          [TENANT_A, conversacionDe[TENANT_A], ...sellarDePrueba('Mensaje plantado')],
         ),
       ),
     ).rejects.toThrow(/row-level security|violates foreign key/i);
@@ -2580,13 +2610,36 @@ describe('Inbox — conversaciones, mensajes y el espejo de plantillas de Meta',
       c.query(
         `INSERT INTO adjuntos (id, tenant_id, mensaje_id, tipo, clave_objeto, descargado_en, creado_en)
          VALUES (gen_random_uuid(), $1, $2, 'DOCUMENTO', $3, now(), now())`,
-        [TENANT_A, mensajeDe[TENANT_A], `${TENANT_A}/media/pasaporte.pdf`],
+        // ADR-0015: la clave del objeto es opaca, `<tenant_id>/<uuid>`. La de antes
+        // (`<tenant>/media/pasaporte.pdf`) era justo lo que el ADR prohíbe.
+        [TENANT_A, mensajeDe[TENANT_A], `${TENANT_A}/${randomUUID()}`],
       ),
     );
     const adjuntosAjenos = await comoTenant(TENANT_B, (c) =>
       c.query('SELECT clave_objeto FROM adjuntos WHERE tenant_id = $1', [TENANT_A]),
     );
     expect(adjuntosAjenos.rowCount).toBe(0);
+
+    // ADR-0015: `clave_objeto` es `<tenant_id>/<uuid>` y nada más. Ni derivada del nombre del
+    // archivo (dejaría en claro lo que se cifró), ni con el prefijo de OTRA agencia (S3 no tiene
+    // RLS: el prefijo es todo su aislamiento). Lo rechaza la base, no la API.
+    for (const clave of [
+      `${TENANT_A}/media/pasaporte_AB123456.pdf`,
+      `${TENANT_A}/${randomUUID()}.jpg`,
+      `${TENANT_B}/${randomUUID()}`,
+      `${TENANT_A.toUpperCase()}/${randomUUID()}`,
+    ]) {
+      await expect(
+        comoTenant(TENANT_A, (c) =>
+          c.query(
+            `INSERT INTO adjuntos (id, tenant_id, mensaje_id, tipo, clave_objeto, creado_en)
+             VALUES (gen_random_uuid(), $1, $2, 'DOCUMENTO', $3, now())`,
+            [TENANT_A, mensajeDe[TENANT_A], clave],
+          ),
+        ),
+        `clave_objeto ${clave}`,
+      ).rejects.toThrow(/adjuntos_clave_objeto_opaca/);
+    }
   });
 
   it('39 — el motor rechaza colgar una conversación del CONTACTO o del CANAL de otra agencia', async () => {
@@ -2630,8 +2683,8 @@ describe('Inbox — conversaciones, mensajes y el espejo de plantillas de Meta',
     await expect(
       comoTenant(TENANT_A, (c) =>
         c.query(
-          `INSERT INTO mensajes (id, tenant_id, conversacion_id, direccion, tipo, texto, wamid, ocurrido_en, creado_en, actualizado_en)
-           VALUES (gen_random_uuid(), $1, $2, 'ENTRANTE', 'TEXTO', 'Reintento de Meta', 'wamid.COMPARTIDO.0', now(), now(), now())`,
+          `INSERT INTO mensajes (id, tenant_id, conversacion_id, direccion, tipo, wamid, ocurrido_en, creado_en, actualizado_en)
+           VALUES (gen_random_uuid(), $1, $2, 'ENTRANTE', 'TEXTO', 'wamid.COMPARTIDO.0', now(), now(), now())`,
           [TENANT_A, conversacionDe[TENANT_A]],
         ),
       ),
@@ -2640,8 +2693,8 @@ describe('Inbox — conversaciones, mensajes y el espejo de plantillas de Meta',
     // El `ON CONFLICT DO NOTHING` del trabajador se apoya exactamente en ese índice.
     const reintento = await comoTenant(TENANT_A, (c) =>
       c.query(
-        `INSERT INTO mensajes (id, tenant_id, conversacion_id, direccion, tipo, texto, wamid, ocurrido_en, creado_en, actualizado_en)
-         VALUES (gen_random_uuid(), $1, $2, 'ENTRANTE', 'TEXTO', 'Reintento de Meta', 'wamid.COMPARTIDO.0', now(), now(), now())
+        `INSERT INTO mensajes (id, tenant_id, conversacion_id, direccion, tipo, wamid, ocurrido_en, creado_en, actualizado_en)
+         VALUES (gen_random_uuid(), $1, $2, 'ENTRANTE', 'TEXTO', 'wamid.COMPARTIDO.0', now(), now(), now())
          ON CONFLICT (tenant_id, wamid) WHERE wamid IS NOT NULL DO NOTHING`,
         [TENANT_A, conversacionDe[TENANT_A]],
       ),
@@ -2653,8 +2706,8 @@ describe('Inbox — conversaciones, mensajes y el espejo de plantillas de Meta',
     // A pueda tener el suyo con el mismo sufijo lo demuestra sin cruzar ninguna fila.
     const enOtraAgencia = await comoTenant(TENANT_A, (c) =>
       c.query(
-        `INSERT INTO mensajes (id, tenant_id, conversacion_id, direccion, tipo, texto, wamid, ocurrido_en, creado_en, actualizado_en)
-         VALUES (gen_random_uuid(), $1, $2, 'ENTRANTE', 'TEXTO', 'Mismo wamid, otra agencia', 'wamid.COMPARTIDO.1', now(), now(), now())
+        `INSERT INTO mensajes (id, tenant_id, conversacion_id, direccion, tipo, wamid, ocurrido_en, creado_en, actualizado_en)
+         VALUES (gen_random_uuid(), $1, $2, 'ENTRANTE', 'TEXTO', 'wamid.COMPARTIDO.1', now(), now(), now())
          RETURNING id`,
         [TENANT_A, conversacionDe[TENANT_A]],
       ),
@@ -2667,9 +2720,11 @@ describe('Inbox — conversaciones, mensajes y el espejo de plantillas de Meta',
     const enviar = (texto: string) =>
       comoTenant(TENANT_A, (c) =>
         c.query(
-          `INSERT INTO mensajes (id, tenant_id, conversacion_id, direccion, tipo, estado, texto, clave_idempotencia, ocurrido_en, creado_en, actualizado_en)
-           VALUES (gen_random_uuid(), $1, $2, 'SALIENTE', 'TEXTO', 'PENDIENTE', $3, $4, now(), now(), now())`,
-          [TENANT_A, conversacionDe[TENANT_A], texto, clave],
+          `INSERT INTO mensajes (id, tenant_id, conversacion_id, direccion, tipo, estado,
+                                 texto_cifrado, texto_nonce, texto_tag, texto_clave_version,
+                                 clave_idempotencia, ocurrido_en, creado_en, actualizado_en)
+           VALUES (gen_random_uuid(), $1, $2, 'SALIENTE', 'TEXTO', 'PENDIENTE', $3, $4, $5, $6, $7, now(), now(), now())`,
+          [TENANT_A, conversacionDe[TENANT_A], ...sellarDePrueba(texto), clave],
         ),
       );
 
@@ -2840,8 +2895,8 @@ describe('Inbox — conversaciones, mensajes y el espejo de plantillas de Meta',
     const viejo = `wamid.${randomUUID()}`;
     await comoTenant(TENANT_A, (c) =>
       c.query(
-        `INSERT INTO mensajes (id, tenant_id, conversacion_id, direccion, tipo, texto, wamid, ocurrido_en, creado_en, actualizado_en)
-         VALUES (gen_random_uuid(), $1, $2, 'ENTRANTE', 'TEXTO', 'Llego tarde pero es de ayer', $3,
+        `INSERT INTO mensajes (id, tenant_id, conversacion_id, direccion, tipo, wamid, ocurrido_en, creado_en, actualizado_en)
+         VALUES (gen_random_uuid(), $1, $2, 'ENTRANTE', 'TEXTO', $3,
                  now() - interval '1 day', now(), now())`,
         [TENANT_A, conversacionDe[TENANT_A], viejo],
       ),
@@ -3029,10 +3084,10 @@ describe('Cotizaciones — cabecera mutable y versiones inmutables', () => {
           [tenant, contactoDe[tenant], (canal.rows[0] as { id: string }).id],
         );
         const mensaje = await c.query(
-          `INSERT INTO mensajes (id, tenant_id, conversacion_id, direccion, tipo, estado, texto,
+          `INSERT INTO mensajes (id, tenant_id, conversacion_id, direccion, tipo, estado,
                                  ocurrido_en, creado_en, actualizado_en)
            VALUES (gen_random_uuid(), $1, $2, 'SALIENTE', 'TEXTO', 'PENDIENTE',
-                   'Le comparto la cotización', now(), now(), now())
+                   now(), now(), now())
            RETURNING id`,
           [tenant, (conversacion.rows[0] as { id: string }).id],
         );
@@ -5734,5 +5789,255 @@ describe('T-131 — oportunidad_cambios_etapa: aislamiento, foráneas compuestas
     for (const [caso, fn] of casos) {
       await expect(fn(), caso).rejects.toMatchObject({ code: '23514' });
     }
+  });
+});
+
+// =============================================================================
+// ADR-0015 — las columnas con PII sensible de viajeros solo existen cifradas
+// =============================================================================
+
+/** Las cinco columnas de la tabla de alcance marcadas «Cifrar», y la tabla donde viven. */
+const COLUMNAS_CIFRADAS = [
+  ['mensajes', 'texto'],
+  ['conversaciones', 'ultimo_mensaje_texto'],
+  ['contactos', 'preferencias'],
+  ['notas_internas', 'texto'],
+  ['adjuntos', 'nombre_archivo'],
+] as const;
+
+/**
+ * Concreción 7, segunda mitad: **toda** columna de texto de una tabla con `tenant_id`, una por
+ * una. Si aparece una nueva, la aserción 83 se pone en rojo hasta que alguien decida, contra la
+ * tabla de alcance del ADR-0015, si lleva PII sensible de viajeros. Si la lleva, nace cifrada; si
+ * no, se añade aquí, y ese cambio es el que se revisa. Así la tabla de alcance no envejece en
+ * silencio. Las cinco cifradas NO están: que reaparecieran en claro también la pone en rojo.
+ *
+ * Tipos vigilados: text, varchar, char, citext y sus arreglos (no inet, uuid, enums ni jsonb).
+ */
+const COLUMNAS_DE_TEXTO_DECLARADAS: readonly string[] = [
+  'adjuntos.clave_objeto',
+  'adjuntos.media_id_meta',
+  'adjuntos.mime_type',
+  'canales.nombre_visible',
+  'canales.numero_e164',
+  'canales.phone_number_id',
+  'consentimientos_contacto.canal',
+  'consentimientos_contacto.prueba',
+  'consentimientos_contacto.texto_mostrado',
+  'consentimientos_contacto.version_aviso',
+  'contactos.correo',
+  'contactos.etiquetas',
+  'contactos.nombre',
+  'contactos.telefono_e164',
+  'conversaciones.etiquetas',
+  'cotizaciones.titulo',
+  'cuentas_whatsapp.nombre',
+  'cuentas_whatsapp.waba_id',
+  'definiciones_campo_personalizado.clave',
+  'definiciones_campo_personalizado.etiqueta',
+  'etapas_pipeline.clave',
+  'etapas_pipeline.nombre',
+  'formatos_de_viaje.nombre',
+  'mayoristas.contacto_correo',
+  'mayoristas.contacto_nombre',
+  'mayoristas.contacto_telefono',
+  'mayoristas.nombre',
+  'mayoristas.notas',
+  'mensajes.motivo_fallo',
+  'mensajes.wamid',
+  'opciones_de_salida.etiqueta',
+  'opciones_de_salida.punto_de_encuentro',
+  'oportunidades.destino',
+  'oportunidades.moneda_iso',
+  'oportunidades.nota_perdida',
+  'oportunidades.proxima_tarea_descripcion',
+  'oportunidades.titulo',
+  'outbox.agregado',
+  'outbox.tipo_evento',
+  'paquetes.codigo',
+  'paquetes.descripcion',
+  'paquetes.destino',
+  'paquetes.nombre',
+  'paquetes.pais_iso',
+  'plantillas_whatsapp.cuerpo',
+  'plantillas_whatsapp.encabezado',
+  'plantillas_whatsapp.idioma',
+  'plantillas_whatsapp.meta_template_id',
+  'plantillas_whatsapp.motivo_estado',
+  'plantillas_whatsapp.nombre',
+  'plantillas_whatsapp.pie',
+  'precios.moneda_iso',
+  'registros_auditoria.accion',
+  'registros_auditoria.entidad',
+  'roles.clave',
+  'roles.nombre',
+  'roles.permisos',
+  'seguimientos.descripcion',
+  'tarifas.moneda_iso',
+  'tarifas.nombre',
+  'temporadas.nombre',
+  'usuarios.correo',
+  'usuarios.nombre',
+  'versiones_cotizacion.destino',
+  'versiones_cotizacion.moneda_iso',
+  'versiones_cotizacion.paquete_nombre',
+];
+
+describe('ADR-0015 — cifrado de las columnas con PII sensible', () => {
+  it('82 — las cinco columnas en claro no existen, y cada una es ahora cuatro columnas cifradas', async () => {
+    const enClaro = await admin.query(
+      `SELECT table_name, column_name
+         FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name || '.' || column_name = ANY($1)`,
+      [COLUMNAS_CIFRADAS.map(([tabla, columna]) => `${tabla}.${columna}`)],
+    );
+    expect(enClaro.rows, 'columnas en claro que el ADR-0015 retiró').toEqual([]);
+
+    for (const [tabla, columna] of COLUMNAS_CIFRADAS) {
+      const cuatro = await admin.query(
+        `SELECT column_name, data_type, is_nullable
+           FROM information_schema.columns
+          WHERE table_schema = 'public' AND table_name = $1 AND column_name = ANY($2)
+          ORDER BY column_name COLLATE "C"`,
+        [tabla, ['cifrado', 'nonce', 'tag', 'clave_version'].map((s) => `${columna}_${s}`)],
+      );
+      const nulable = tabla === 'notas_internas' ? 'NO' : 'YES';
+      expect(cuatro.rows, `${tabla}.${columna}`).toEqual([
+        { column_name: `${columna}_cifrado`, data_type: 'bytea', is_nullable: nulable },
+        { column_name: `${columna}_clave_version`, data_type: 'smallint', is_nullable: nulable },
+        { column_name: `${columna}_nonce`, data_type: 'bytea', is_nullable: nulable },
+        { column_name: `${columna}_tag`, data_type: 'bytea', is_nullable: nulable },
+      ]);
+    }
+
+    // Y el índice de trigramas sobre el texto, que ya no tiene sobre qué buscar.
+    const indice = await admin.query("SELECT to_regclass('public.mensajes_texto_trgm_idx') AS i");
+    expect((indice.rows[0] as { i: string | null }).i).toBeNull();
+  });
+
+  it('83 — ninguna columna de texto NUEVA en una tabla con tenant fuera de la lista declarada', async () => {
+    const { rows } = await admin.query<{ columna: string }>(
+      `SELECT c.relname || '.' || a.attname AS columna
+         FROM pg_attribute a
+         JOIN pg_class c ON c.oid = a.attrelid
+         JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public'
+          AND c.relkind IN ('r', 'p')
+          AND NOT c.relispartition
+          AND a.attnum > 0
+          AND NOT a.attisdropped
+          AND EXISTS (SELECT 1 FROM pg_attribute t
+                       WHERE t.attrelid = c.oid AND t.attname = 'tenant_id' AND NOT t.attisdropped)
+          AND format_type(a.atttypid, NULL) IN (
+                'text', 'text[]', 'character varying', 'character varying[]',
+                'character', 'character[]', 'citext', 'citext[]')
+        ORDER BY 1 COLLATE "C"`,
+    );
+    const encontradas = rows.map((r) => r.columna);
+    const nuevas = encontradas.filter((c) => !COLUMNAS_DE_TEXTO_DECLARADAS.includes(c));
+    expect(
+      nuevas,
+      'columnas de texto sin decidir contra la tabla de alcance del ADR-0015 (¿llevan PII sensible?)',
+    ).toEqual([]);
+    // La consulta no es vacua: encuentra las de siempre.
+    expect(encontradas).toContain('contactos.nombre');
+    expect(encontradas).toContain('mensajes.wamid');
+  });
+
+  it('84 — toda fila cumple el formato cifrado o es nula: los CHECK existen, VALIDADOS, y el motor los aplica', async () => {
+    const esperadas: [string, string][] = [
+      ['adjuntos', 'adjuntos_clave_objeto_opaca'],
+      ['adjuntos', 'adjuntos_nombre_archivo_cifrado_completo'],
+      ['adjuntos', 'adjuntos_nombre_archivo_formato'],
+      ['contactos', 'contactos_preferencias_cifrado_completo'],
+      ['contactos', 'contactos_preferencias_formato'],
+      ['conversaciones', 'conversaciones_ultimo_mensaje_completo'],
+      ['conversaciones', 'conversaciones_ultimo_mensaje_texto_cifrado_completo'],
+      ['conversaciones', 'conversaciones_ultimo_mensaje_texto_formato'],
+      ['mensajes', 'mensajes_texto_cifrado_completo'],
+      ['mensajes', 'mensajes_texto_formato'],
+      ['notas_internas', 'notas_internas_texto_formato'],
+    ];
+    const { rows } = await admin.query(
+      `SELECT c.relname AS tabla, k.conname AS nombre, k.convalidated AS validada
+         FROM pg_constraint k
+         JOIN pg_class c ON c.oid = k.conrelid
+         JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' AND k.contype = 'c' AND k.conname = ANY($1)
+        ORDER BY c.relname COLLATE "C", k.conname COLLATE "C"`,
+      [esperadas.map(([, nombre]) => nombre)],
+    );
+    expect(rows).toEqual(esperadas.map(([tabla, nombre]) => ({ tabla, nombre, validada: true })));
+
+    // Y el motor los aplica, no solo los declara. Sobre contactos porque solo pide el tenant.
+    const [cifrado, nonce, tag] = sellarDePrueba('Alérgica a los mariscos');
+    const insertar = (valores: unknown[]) =>
+      comoTenant(TENANT_A, (c) =>
+        c.query(
+          `INSERT INTO contactos (id, tenant_id, telefono_e164, preferencias_cifrado,
+                                  preferencias_nonce, preferencias_tag, preferencias_clave_version,
+                                  creado_en, actualizado_en)
+           VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, now(), now())`,
+          [
+            TENANT_A,
+            `+57367${String(randomBytes(3).readUIntBE(0, 3)).padStart(8, '0')}`,
+            ...valores,
+          ],
+        ),
+      );
+    // Un criptograma sin versión: no se podría rotar ni saber con qué clave se escribió.
+    await expect(insertar([cifrado, nonce, tag, null])).rejects.toThrow(
+      /contactos_preferencias_cifrado_completo/,
+    );
+    // Bytes sueltos sin nonce ni etiqueta: indistinguibles de un texto en claro.
+    await expect(
+      insertar([Buffer.from('Alérgica a los mariscos', 'utf8'), null, null, null]),
+    ).rejects.toThrow(/contactos_preferencias_cifrado_completo/);
+    await expect(insertar([cifrado, randomBytes(11), tag, 1])).rejects.toThrow(
+      /contactos_preferencias_formato/,
+    );
+    await expect(insertar([cifrado, nonce, tag, 0])).rejects.toThrow(
+      /contactos_preferencias_formato/,
+    );
+    // La columna en claro no existe: no hay por dónde escribirla.
+    await expect(
+      comoTenant(TENANT_A, (c) =>
+        c.query(
+          `INSERT INTO contactos (id, tenant_id, telefono_e164, preferencias, creado_en, actualizado_en)
+           VALUES (gen_random_uuid(), $1, '+573670000000', 'en claro', now(), now())`,
+          [TENANT_A],
+        ),
+      ),
+    ).rejects.toMatchObject({ code: '42703' });
+    // La fila bien formada entra: si no, las anteriores serían rojas por otra causa.
+    await expect(insertar([cifrado, nonce, tag, 1])).resolves.toMatchObject({ rowCount: 1 });
+  });
+
+  it('85 — con el rol de aplicación y SQL directo, ninguna columna cifrada contiene el texto sembrado', async () => {
+    // Las filas sembradas en esta suite llevan «Mi pasaporte es AQ12345<i>…», «Margen del 22%» y
+    // «Alérgica a los mariscos» (la 84). Leídas tal cual con el rol de la API, ninguna contiene
+    // el claro. Las de la 84 siguen vivas: la prueba no es verde por vacío.
+    const sembrados = ['AQ12345', 'pasaporte', 'Margen del 22', 'San Andres', 'mariscos'];
+    let leidas = 0;
+    for (const [tabla, columna] of COLUMNAS_CIFRADAS) {
+      const { rows } = await comoTenant(TENANT_A, (c) =>
+        c.query<{ bytes: Buffer }>(
+          `SELECT ${columna}_cifrado AS bytes FROM ${tabla}
+            WHERE tenant_id = $1 AND ${columna}_cifrado IS NOT NULL`,
+          [TENANT_A],
+        ),
+      );
+      leidas += rows.length;
+      for (const { bytes } of rows) {
+        for (const s of sembrados) {
+          expect(
+            bytes.includes(Buffer.from(s, 'utf8')),
+            `${tabla}.${columna} contiene «${s}»`,
+          ).toBe(false);
+        }
+      }
+    }
+    expect(leidas).toBeGreaterThan(0);
   });
 });

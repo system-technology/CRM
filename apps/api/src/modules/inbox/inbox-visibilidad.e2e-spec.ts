@@ -40,6 +40,13 @@ import { RelevarOutbox } from './application/relevar-outbox.js';
 import { TIPO_MENSAJE_RECIBIDO } from './domain/evento-de-dominio.js';
 import { BandejaPrisma } from './infrastructure/bandeja.prisma.js';
 import { OutboxPrisma } from './infrastructure/outbox.prisma.js';
+import {
+  adjuntoConNombre,
+  cifradoDePrueba,
+  conversacionConVistaPrevia,
+  mensajeConTexto,
+  notaConTexto,
+} from '../../shared/cifrado/cifrado-de-prueba.js';
 
 const idDeTenant = (): string => `01932000-0000-7000-8000-${randomBytes(6).toString('hex')}`;
 const TENANT_A = idDeTenant();
@@ -153,7 +160,9 @@ async function conversacion(
     data: {
       tenantId,
       telefonoE164: `+57301${Math.floor(Math.random() * 9e6 + 1e6)}`,
-      nombre: `Viajero ${randomBytes(2).toString('hex')}`,
+      // El texto va también en el nombre: desde ADR-0015 la bandeja busca por el contacto, no por
+      // el contenido cifrado de los mensajes, y las pruebas de búsqueda buscan esta marca.
+      nombre: `Viajero ${o.texto}`,
     },
   });
   const cuando = new Date(Date.now() - (o.clienteHaceMs ?? 0));
@@ -165,7 +174,7 @@ async function conversacion(
       asignadoAId: o.asignadaA,
       ultimoMensajeClienteEn: cuando,
       ultimoMensajeEn: cuando,
-      ultimoMensajeTexto: o.texto,
+      ...conversacionConVistaPrevia(tenantId, o.texto),
       ultimoMensajeDireccion: 'ENTRANTE',
       mensajesSinLeer: o.sinLeer ?? 0,
     },
@@ -187,7 +196,7 @@ async function mensajeEntrante(
       direccion: 'ENTRANTE',
       tipo: 'TEXTO',
       estado: 'ENTREGADO',
-      texto,
+      ...mensajeConTexto(tenantId, texto),
       wamid: `wamid.vis.${randomBytes(6).toString('hex')}`,
       ocurridoEn: cuando,
     },
@@ -423,7 +432,7 @@ beforeAll(async () => {
 
   prismaWebhook = new PrismaWebhookService();
   await prismaWebhook.onModuleInit();
-  bandeja = new BandejaPrisma(prismaWebhook, new ContactosDeCrm());
+  bandeja = new BandejaPrisma(prismaWebhook, new ContactosDeCrm(), cifradoDePrueba());
   relevo = new RelevarOutbox(new OutboxAcotado(prismaWebhook), publicador);
 
   for (const p of ['dueno', 'ana', 'beto', 'bruno', 'gina', 'dora'] as const) {
@@ -516,7 +525,7 @@ describe('lectura', () => {
         mensajeId: mensaje.id,
         tipo: 'DOCUMENTO',
         mediaIdMeta: 'media-1',
-        nombreArchivo: 'itinerario.pdf',
+        ...adjuntoConNombre(TENANT_A, 'itinerario.pdf'),
         mimeType: 'application/pdf',
       },
     });
@@ -538,7 +547,9 @@ describe('lectura', () => {
     expect(codigo(otro)).toBe('ADJUNTO_NO_ENCONTRADO');
   });
 
-  it('CA4: Ana busca un texto que solo aparece en un mensaje de C2 y no obtiene resultados', async () => {
+  // Desde ADR-0015 la búsqueda es por el nombre y el teléfono del contacto (el texto de los mensajes
+  // va cifrado); la marca de cada conversación está en el nombre de su contacto.
+  it('CA4: Ana busca un término que solo aparece en el contacto de C2 y no obtiene resultados', async () => {
     const buscar = encodeURIComponent(e.textos.c2);
     const ana = await api('ana', 'GET', `/api/v1/conversaciones?filtro=TODAS&buscar=${buscar}`);
     expect(ana.status).toBe(200);
@@ -596,7 +607,12 @@ describe('lectura', () => {
     // una conversación de la cola común.
     const delPanel = `nota-del-panel-${randomBytes(3).toString('hex')}`;
     await admin.notaInterna.create({
-      data: { tenantId: TENANT_A, contactoId: e.contactoC2, autorId: U.dueno, texto: delPanel },
+      data: {
+        tenantId: TENANT_A,
+        contactoId: e.contactoC2,
+        autorId: U.dueno,
+        ...notaConTexto(TENANT_A, delPanel),
+      },
     });
     const conPanel = await api('ana', 'GET', `/api/v1/crm/contactos/${e.contactoC2}/ficha`);
     expect(JSON.stringify(conPanel.json)).toContain(delPanel);
@@ -994,6 +1010,13 @@ describe('responder', () => {
     const otra = await api('ana', 'POST', `/api/v1/conversaciones/${e.c3}/mensajes`, cuerpo);
     expect(otra.status).toBe(409);
     expect(codigo(otra)).toBe('CLAVE_DE_IDEMPOTENCIA_EN_USO');
+
+    // Otro miembro que ve C1 y presenta la clave de Ana no obtiene el texto descifrado: la
+    // reproducción idempotente es solo del mismo autor (ADR-0015, R10).
+    const ajeno = await api('dueno', 'POST', `/api/v1/conversaciones/${e.c1}/mensajes`, cuerpo);
+    expect(ajeno.status).toBe(409);
+    expect(codigo(ajeno)).toBe('CLAVE_DE_IDEMPOTENCIA_EN_USO');
+    expect(JSON.stringify(ajeno.json)).not.toContain('Una sola vez');
   });
 
   it('fuera de la ventana de 24 h no sale texto libre: 409 VENTANA_CERRADA y nada se guarda', async () => {

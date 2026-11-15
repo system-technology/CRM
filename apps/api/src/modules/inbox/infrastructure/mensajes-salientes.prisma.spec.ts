@@ -12,6 +12,7 @@ import type { PrismaWebhookService } from '../../../shared/prisma/prisma-webhook
 import { EnvioSinConfirmarError, FueraDeVentanaError } from '../domain/errores-de-envio.js';
 import { estadoTrasReporte } from '../domain/estado-de-entrega.js';
 import { MensajesSalientesPrisma } from './mensajes-salientes.prisma.js';
+import { cifradoDePrueba } from '../../../shared/cifrado/cifrado-de-prueba.js';
 
 const TENANT = '01932000-0000-7000-8000-00000000000a';
 const MENSAJE = '01932000-0000-7000-8000-0000000000aa';
@@ -52,7 +53,7 @@ function baseEnMemoria(inicial: Fila = {}) {
   const prisma = {
     conTenantResuelto: <T>(_t: string, fn: (t: typeof tx) => Promise<T>) => fn(tx),
   } as unknown as PrismaWebhookService;
-  return { fila, outbox, adaptador: new MensajesSalientesPrisma(prisma) };
+  return { fila, outbox, adaptador: new MensajesSalientesPrisma(prisma, cifradoDePrueba()) };
 }
 
 describe('MensajesSalientesPrisma.registrarAceptado — carrera tras un trabajo estancado (T-059)', () => {

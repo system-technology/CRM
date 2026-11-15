@@ -44,6 +44,15 @@ $secretos = @{
     # Firma las cookies de sesion (Better Auth). Cadena libre de 32+ caracteres: el hex de 32 bytes
     # (64 caracteres) cumple.
     'BETTER_AUTH_SECRET'        = 32
+    # ADR-0015: maestra del cifrado de columnas con PII sensible. Sin ella la API y el trabajador
+    # no arrancan; perderla deja ilegible lo cifrado (se copia entre arboles, nunca se regenera).
+    'CAMPOS_SENSIBLES_KEY'      = 32
+}
+
+# Valores que no son secretos pero sin los que un secreto no sirve. Solo se anaden si FALTAN: nunca
+# se sobrescribe uno existente (cambiar la version sin cambiar la clave deja ilegible lo cifrado).
+$fijos = @{
+    'CAMPOS_SENSIBLES_KEY_VERSION' = '1'
 }
 
 if ($Carpetas) {
@@ -148,6 +157,21 @@ foreach ($arbol in $arboles) {
     $escritos++
 }
 if ($escritos -eq 0) { Write-Host 'No habia nada que escribir.' -ForegroundColor Green }
+
+foreach ($arbol in $arboles) {
+    $ruta = Join-Path $arbol '.env'
+    $texto = Get-Content -LiteralPath $ruta -Raw
+    foreach ($nombre in $fijos.Keys) {
+        if (-not (Leer-Valor $texto $nombre)) {
+            $lineas = [System.Collections.Generic.List[string]](Get-Content -LiteralPath $ruta)
+            $lineas.RemoveAll([Predicate[string]]{ param($l) $l.TrimStart().StartsWith("$nombre=") }) | Out-Null
+            $lineas.Add("$nombre=$($fijos[$nombre])")
+            Set-Content -LiteralPath $ruta -Value $lineas -Encoding utf8
+            Write-Host "  $ruta  ->  $nombre=$($fijos[$nombre]) (faltaba)" -ForegroundColor Green
+            $texto = Get-Content -LiteralPath $ruta -Raw
+        }
+    }
+}
 
 # ---------------------------------------------------------------------------
 # Comprobar, no afirmar

@@ -7,8 +7,21 @@
  * La idempotencia es `UNIQUE (tenant_id, wamid)` con `ON CONFLICT DO NOTHING`
  * (`createMany({ skipDuplicates })`): insertar y capturar el error de unicidad abortaría la
  * transacción entera en PostgreSQL.
+ *
+ * ADR-0015: el texto, el nombre del adjunto y la vista previa se cifran AQUÍ, antes del INSERT,
+ * con el id de la fila generado en la aplicación (va en el AAD). El claro no toca la base.
  */
 import { Inject, Injectable } from '@nestjs/common';
+import {
+  columnasDeNombreDeArchivo,
+  columnasDeTexto,
+  columnasDeUltimoMensaje,
+} from '../../../shared/cifrado/columnas-de-prisma.js';
+import {
+  COLUMNAS_CIFRADAS,
+  PuertoCifradoDeCampos,
+} from '../../../shared/cifrado/puerto-de-cifrado.js';
+import { uuidV7 } from '../../../shared/cifrado/uuid-v7.js';
 import { PuertoContactos } from '../../../shared/puertos/puertos-hacia-crm.js';
 import { PrismaWebhookService } from '../../../shared/prisma/prisma-webhook.service.js';
 import {
@@ -34,6 +47,7 @@ export class BandejaPrisma extends PuertoBandeja {
   constructor(
     @Inject(PrismaWebhookService) private readonly prisma: PrismaWebhookService,
     @Inject(PuertoContactos) private readonly contactos: PuertoContactos,
+    @Inject(PuertoCifradoDeCampos) private readonly cifrado: PuertoCifradoDeCampos,
   ) {
     super();
   }
@@ -65,7 +79,8 @@ export class BandejaPrisma extends PuertoBandeja {
           tenantId_canalId_contactoId: { tenantId, canalId, contactoId: contacto.id },
         },
         update: {},
-        create: { tenantId, canalId, contactoId: contacto.id },
+        // El id lo pone la aplicación: la vista previa cifrada lleva el de la conversación en su AAD.
+        create: { id: uuidV7(), tenantId, canalId, contactoId: contacto.id },
         select: {
           id: true,
           ultimoMensajeClienteEn: true,
@@ -75,15 +90,27 @@ export class BandejaPrisma extends PuertoBandeja {
         },
       });
 
+      // El id se genera ANTES del INSERT: va en el AAD del texto cifrado (ADR-0015, concreción 3).
+      const mensajeId = uuidV7();
       const insertados = await tx.mensaje.createMany({
         data: [
           {
+            id: mensajeId,
             tenantId,
             conversacionId: conversacion.id,
             direccion: 'ENTRANTE',
             tipo: m.tipo,
             estado: 'ENTREGADO',
-            texto: m.texto,
+            ...(m.texto === null
+              ? {}
+              : columnasDeTexto(
+                  this.cifrado.cifrar(
+                    COLUMNAS_CIFRADAS.MENSAJES_TEXTO,
+                    tenantId,
+                    mensajeId,
+                    m.texto,
+                  ),
+                )),
             wamid: m.wamid,
             ocurridoEn: m.instante,
           },
@@ -91,20 +118,29 @@ export class BandejaPrisma extends PuertoBandeja {
         skipDuplicates: true,
       });
       if (insertados.count === 0) return 'DUPLICADO';
-
-      const mensaje = await tx.mensaje.findFirstOrThrow({
-        where: { wamid: m.wamid },
-        select: { id: true },
-      });
+      // Insertado = la fila es la nuestra, con el id que generamos.
+      const mensaje = { id: mensajeId };
 
       if (m.medioId) {
+        const adjuntoId = uuidV7();
         await tx.adjunto.create({
           data: {
+            id: adjuntoId,
             tenantId,
             mensajeId: mensaje.id,
             tipo: m.tipo,
             mediaIdMeta: m.medioId,
-            nombreArchivo: m.nombreArchivo,
+            ...(m.nombreArchivo === null
+              ? {}
+              : columnasDeNombreDeArchivo(
+                  this.cifrado.cifrar(
+                    COLUMNAS_CIFRADAS.ADJUNTOS_NOMBRE_ARCHIVO,
+                    tenantId,
+                    adjuntoId,
+                    // El tope que imponía el VARCHAR(255), antes de cifrar: lo elige el viajero.
+                    m.nombreArchivo.slice(0, 255),
+                  ),
+                )),
             mimeType: m.mimeType,
           },
         });
@@ -128,7 +164,15 @@ export class BandejaPrisma extends PuertoBandeja {
             ? {
                 ultimoMensajeEn: m.instante,
                 ultimoMensajeDireccion: 'ENTRANTE' as const,
-                ultimoMensajeTexto: (m.texto ?? `[${m.tipo}]`).slice(0, 200),
+                ...columnasDeUltimoMensaje(
+                  this.cifrado.cifrar(
+                    COLUMNAS_CIFRADAS.CONVERSACIONES_ULTIMO_MENSAJE_TEXTO,
+                    tenantId,
+                    conversacion.id,
+                    // Se recorta ANTES de cifrar: 200 caracteres es lo que declara el contrato.
+                    (m.texto ?? `[${m.tipo}]`).slice(0, 200),
+                  ),
+                ),
               }
             : {}),
         },

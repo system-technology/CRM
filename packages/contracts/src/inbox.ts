@@ -187,7 +187,10 @@ export type FiltroBandeja = z.infer<typeof FiltroBandeja>;
 
 export const ConsultarBandeja = z.object({
   filtro: FiltroBandeja.default('TODAS'),
-  /** Busca en nombre, teléfono y texto de los mensajes. */
+  /**
+   * Busca en el nombre y el teléfono del contacto. No en el texto de los mensajes: va cifrado en
+   * reposo (ADR-0015, concreción 5); en el hilo abierto se busca en el cliente.
+   */
   buscar: z.string().max(100).optional(),
   estado: EstadoConversacion.optional(),
   cursor: z.string().optional(),

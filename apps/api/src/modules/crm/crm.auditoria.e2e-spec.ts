@@ -19,6 +19,7 @@ import { PrismaService } from '../../shared/prisma/prisma.service.js';
 import { CrmPrisma } from './infrastructure/crm.prisma.js';
 import { ContextoTenant } from '../../shared/tenant/contexto-tenant.js';
 import type { ClienteTenant } from '../../shared/prisma/prisma.service.js';
+import { cifradoDePrueba } from '../../shared/cifrado/cifrado-de-prueba.js';
 
 const idDeTenant = (): string => `01932000-0000-7000-8000-${randomBytes(6).toString('hex')}`;
 const TENANT_A = idDeTenant();
@@ -43,7 +44,7 @@ function crearCrmConTenant(fijoTenantId: string): CrmPrisma {
     conTenant: <T>(fn: (tx: ClienteTenant) => Promise<T>) =>
       prisma.conTenantResuelto(fijoTenantId, fn),
   };
-  return new CrmPrisma(adapter as unknown as PrismaService);
+  return new CrmPrisma(adapter as unknown as PrismaService, cifradoDePrueba());
 }
 
 beforeAll(async () => {
@@ -67,10 +68,19 @@ beforeAll(async () => {
 
   // Crear contacto en tenant A CON preferencias (dato sensible R10)
   contactoA = randomUUID();
+  // ADR-0015: `preferencias` existe solo cifrada, con el id del contacto en el AAD.
+  const p = cifradoDePrueba().cifrar(
+    'contactos.preferencias',
+    TENANT_A,
+    contactoA,
+    'Alergia a penicilina, asiento ventana',
+  );
   await admin.query(
-    `INSERT INTO contactos (id, tenant_id, telefono_e164, nombre, preferencias, creado_en, actualizado_en)
-     VALUES ($1, $2, $3, 'Contacto Con Preferencias', 'Alergia a penicilina, asiento ventana', now(), now())`,
-    [contactoA, TENANT_A, TELEFONO],
+    `INSERT INTO contactos (id, tenant_id, telefono_e164, nombre, preferencias_cifrado,
+                            preferencias_nonce, preferencias_tag, preferencias_clave_version,
+                            creado_en, actualizado_en)
+     VALUES ($1, $2, $3, 'Contacto Con Preferencias', $4, $5, $6, $7, now(), now())`,
+    [contactoA, TENANT_A, TELEFONO, p.cifrado, p.nonce, p.tag, p.claveVersion],
   );
 
   // Inicializar Prisma con el rol del trabajador (RLS activa)
@@ -136,7 +146,10 @@ describe('Auditoría R10: lectura de datos sensibles de contacto', () => {
     expect(audit.accion).toBe('LECTURA_DATOS_SENSIBLES');
     expect(audit.entidad).toBe('Contacto');
     expect(audit.entidadId).toBe(contactoA);
-    expect(audit.detalle).toEqual({ camposSensibles: ['preferencias'] });
+    expect(audit.detalle).toEqual({
+      camposSensibles: ['contactos.preferencias'],
+      filas: [contactoA],
+    });
     // IMPORTANTE: el detalle NO debe contener el valor sensible
     expect(JSON.stringify(audit.detalle)).not.toContain('penicilina');
     expect(JSON.stringify(audit.detalle)).not.toContain('ventana');
@@ -164,8 +177,8 @@ describe('Auditoría R10: lectura de datos sensibles de contacto', () => {
     // Crear contacto SIN preferencias
     const contactoSinPreferencias = randomUUID();
     await admin.query(
-      `INSERT INTO contactos (id, tenant_id, telefono_e164, nombre, preferencias, creado_en, actualizado_en)
-       VALUES ($1, $2, $3, 'Contacto Sin Preferencias', NULL, now(), now())`,
+      `INSERT INTO contactos (id, tenant_id, telefono_e164, nombre, creado_en, actualizado_en)
+       VALUES ($1, $2, $3, 'Contacto Sin Preferencias', now(), now())`,
       [contactoSinPreferencias, TENANT_A, `+57300${Math.floor(Math.random() * 9e6 + 1e6)}`],
     );
 

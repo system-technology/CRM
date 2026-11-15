@@ -41,6 +41,7 @@ import { BarridoEnProceso } from './infrastructure/barrido.en-proceso.js';
 import { ColaDeChangesEnProceso } from './infrastructure/cola-de-changes.en-proceso.js';
 import { PendientesPrisma } from './infrastructure/pendientes.prisma.js';
 import { StagingPrisma } from './infrastructure/staging.prisma.js';
+import { cifradoDePrueba } from '../../shared/cifrado/cifrado-de-prueba.js';
 
 const CORRE =
   process.env['CI'] === 'true' ||
@@ -96,7 +97,7 @@ describe.skipIf(!CORRE)('changes en modo unico: concurrencia y recuperación, si
     await prisma.onModuleInit();
     const procesar = new ProcesarChange(
       new StagingPrisma(prisma),
-      new BandejaPrisma(prisma, new ContactosDeCrm()),
+      new BandejaPrisma(prisma, new ContactosDeCrm(), cifradoDePrueba()),
     );
     const cola = new ColaDeChangesEnProceso({}, { esperaBaseMs: 50, intentos: 1 });
     const m: Maquina = {

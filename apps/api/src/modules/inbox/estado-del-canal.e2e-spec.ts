@@ -20,6 +20,7 @@ import { Client } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { AppModule } from '../../app.module.js';
 import { DominioExcepcionFilter } from '../../shared/filtros/dominio-excepcion.filter.js';
+import { mensajeConTexto } from '../../shared/cifrado/cifrado-de-prueba.js';
 
 const idDeTenant = (): string => `01932000-0000-7000-8000-${randomBytes(6).toString('hex')}`;
 const TENANT_A = idDeTenant();
@@ -102,7 +103,7 @@ async function mensaje(
       direccion: datos.direccion,
       tipo: 'TEXTO',
       estado: datos.estado,
-      texto: TEXTO_PRIVADO,
+      ...mensajeConTexto(tenantId, TEXTO_PRIVADO),
       wamid: `wamid.ec.${randomBytes(6).toString('hex')}`,
       ocurridoEn: datos.ocurridoEn,
       motivoFallo: datos.motivo ?? null,
