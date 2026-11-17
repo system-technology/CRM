@@ -18,6 +18,7 @@ import {
   ArchivoNoEncontradoError,
   ReservaNoEncontradaError,
 } from '../domain/errors-de-operacion.js';
+import { marcasALimpiar } from '../domain/plazos.js';
 import type { Reserva } from '../domain/reserva.js';
 
 const CON_RESERVAS = { reservas: { orderBy: { id: 'asc' } } } satisfies Prisma.TravelFileInclude;
@@ -129,7 +130,13 @@ class OperacionesPrisma implements OperacionesDelArchivo {
     return t?.zonaHoraria ?? 'America/Bogota';
   }
 
-  async guardarReserva(archivoId: string, r: Reserva, actorId: string | null): Promise<void> {
+  async guardarReserva(
+    archivoId: string,
+    r: Reserva,
+    actorId: string | null,
+    anterior: Reserva,
+  ): Promise<void> {
+    const limpiar = marcasALimpiar(anterior, r);
     const { count } = await this.tx.booking.updateMany({
       where: { id: r.id, travelFileId: archivoId, tenantId: this.tenantId },
       data: {
@@ -143,10 +150,13 @@ class OperacionesPrisma implements OperacionesDelArchivo {
         timeLimit: r.timeLimit,
         pagoTotalVenceEn: r.pagoTotalVenceEn,
         motivoCaida: r.motivoCaida,
-        avisoTimeLimitProximoEn: r.avisoTimeLimitProximoEn,
-        avisoTimeLimitVencidoEn: r.avisoTimeLimitVencidoEn,
-        avisoPagoTotalProximoEn: r.avisoPagoTotalProximoEn,
-        avisoPagoTotalVencidoEn: r.avisoPagoTotalVencidoEn,
+        // Las marcas de aviso solo se tocan si cambió el plazo (ver `marcasALimpiar`).
+        ...(limpiar.timeLimit
+          ? { avisoTimeLimitProximoEn: null, avisoTimeLimitVencidoEn: null }
+          : {}),
+        ...(limpiar.pagoTotal
+          ? { avisoPagoTotalProximoEn: null, avisoPagoTotalVencidoEn: null }
+          : {}),
         actualizadoPorId: actorId,
       },
     });

@@ -20,6 +20,7 @@
  * `reservas_con_plazo_por_avisar()` del ADR-0024 §5.3 (migración + rol; T-253) devuelve solo
  * los pares (agencia, reserva) y este adaptador sería lo único que cambia.
  */
+import { randomUUID } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { type ClienteTenant, PrismaService } from '../../../shared/prisma/prisma.service.js';
@@ -37,7 +38,7 @@ import {
 import type { EstadoReserva } from '../domain/reserva.js';
 
 /** Cuántas candidatas se toman por agencia y pasada: el resto, en la siguiente. */
-const LOTE_POR_AGENCIA = 500;
+const LOTE_POR_AGENCIA = 50;
 
 /** Las columnas de marca de cada plazo. Cerrado: nada que venga de fuera llega a `Prisma.raw`. */
 const MARCAS = {
@@ -68,7 +69,7 @@ const contextoDeSistema = (tenantId: string) => ({
   usuarioId: null,
   identidadId: null,
   permisos: new Set<never>(),
-  trazaId: `plazos-${tenantId.slice(0, 8)}`,
+  trazaId: `plazos-${randomUUID()}`,
 });
 
 @Injectable()
@@ -106,10 +107,12 @@ export class RepositorioDeAvisosDePlazoPrisma extends RepositorioDeAvisosDePlazo
              AND (
                   (estado = 'CONFIRMADA'
                    AND time_limit IS NOT NULL AND time_limit <= ${limite}::timestamptz
-                   AND (aviso_time_limit_proximo_en IS NULL OR aviso_time_limit_vencido_en IS NULL))
+                   AND ((aviso_time_limit_proximo_en IS NULL AND time_limit > ${ahora}::timestamptz)
+                     OR (aviso_time_limit_vencido_en IS NULL AND time_limit <= ${ahora}::timestamptz)))
                OR (estado = 'ABONADA_AL_PROVEEDOR'
                    AND pago_total_vence_en IS NOT NULL AND pago_total_vence_en <= ${limite}::timestamptz
-                   AND (aviso_pago_total_proximo_en IS NULL OR aviso_pago_total_vencido_en IS NULL))
+                   AND ((aviso_pago_total_proximo_en IS NULL AND pago_total_vence_en > ${ahora}::timestamptz)
+                     OR (aviso_pago_total_vencido_en IS NULL AND pago_total_vence_en <= ${ahora}::timestamptz)))
              )
            ORDER BY id
            LIMIT ${LOTE_POR_AGENCIA}

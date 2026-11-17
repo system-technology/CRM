@@ -98,6 +98,23 @@ export function avisosDePlazo(
   return avisos;
 }
 
+/**
+ * Qué pares de marcas `aviso_*` debe escribir (a nulo) quien guarda una reserva: solo el de un plazo
+ * que cambió. Escribir los cuatro con lo leído borraría una marca ganada por la vigilancia entre la
+ * lectura y la escritura, y el aviso se repetiría (R5).
+ */
+export function marcasALimpiar(
+  anterior: Pick<Reserva, 'timeLimit' | 'pagoTotalVenceEn'>,
+  siguiente: Pick<Reserva, 'timeLimit' | 'pagoTotalVenceEn'>,
+): { timeLimit: boolean; pagoTotal: boolean } {
+  const distinto = (a: Date | null, c: Date | null): boolean =>
+    (a?.getTime() ?? null) !== (c?.getTime() ?? null);
+  return {
+    timeLimit: distinto(anterior.timeLimit, siguiente.timeLimit),
+    pagoTotal: distinto(anterior.pagoTotalVenceEn, siguiente.pagoTotalVenceEn),
+  };
+}
+
 export const tipoDeEventoDelAviso = (aviso: Pick<AvisoDePlazo, 'plazo' | 'momento'>): string => {
   if (aviso.plazo === 'TIME_LIMIT') {
     return aviso.momento === 'PROXIMO' ? TIPO_TIME_LIMIT_PROXIMO : TIPO_TIME_LIMIT_VENCIDO;

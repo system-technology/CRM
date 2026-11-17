@@ -341,6 +341,8 @@ describe('vigilancia de los plazos del mayorista (T-244)', () => {
 
   it('AISLAMIENTO: la pasada de A no marcó ni alertó la reserva de B', async () => {
     expect(await avisosDe(TENANT_B, reservaB)).toEqual([]);
+    // Y ninguna de las dos reservas aparece en el outbox de la otra agencia.
+    expect(await avisosDe(TENANT_A, reservaB)).toEqual([]);
     const [fila] = await reservaEnBase(TENANT_B, reservaB);
     expect(fila).toMatchObject({
       estado: 'CONFIRMADA',
@@ -355,6 +357,7 @@ describe('vigilancia de los plazos del mayorista (T-244)', () => {
     expect(avisos.map((a) => a.tipo_evento)).toEqual(['booking.time_limit_proximo']);
     // Y A no ganó nada por la pasada de B.
     expect(await avisosDe(TENANT_A, reservaA)).toHaveLength(1);
+    expect(await avisosDe(TENANT_B, reservaA)).toEqual([]);
   });
 
   it('segunda pasada: ninguna alerta nueva', async () => {
@@ -362,6 +365,18 @@ describe('vigilancia de los plazos del mayorista (T-244)', () => {
     expect(await repo.avisarAgencia(TENANT_B, AHORA)).toBe(0);
     expect(await avisosDe(TENANT_A, reservaA)).toHaveLength(1);
     expect(await avisosDe(TENANT_B, reservaB)).toHaveLength(1);
+  });
+
+  it('editar la nota de una reserva ya avisada no borra su marca (no se repite el aviso)', async () => {
+    const r = await http(agencias.A, 'PUT', rutaA(), {
+      estado: 'CONFIRMADA',
+      nota: 'Llamar al mayorista',
+    });
+    expect(r.estado).toBe(200);
+    const [fila] = await reservaEnBase(TENANT_A, reservaA);
+    expect(fila?.aviso_time_limit_proximo_en?.toISOString()).toBe(AHORA.toISOString());
+    expect(await repo.avisarAgencia(TENANT_A, AHORA)).toBe(0);
+    expect(await avisosDe(TENANT_A, reservaA)).toHaveLength(1);
   });
 
   it('cambiar el plazo borra las marcas y vuelve a avisar (y B no se entera)', async () => {
