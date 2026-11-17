@@ -12,6 +12,33 @@
 
 ---
 
+## 2026-11-17 (noche) — Permisos del archivo, avisos de plazo y campana
+
+**Verificado (gh/git, CI en verde en cada PR)**
+- #295 (1c71e0f): `archivo.ver` / `archivo.operar` (migración 20261118100000); la auditoría pidió
+  `archivo.ver` también en las mutaciones (devuelven el detalle con menores): corregido en el PR.
+- #296 (64ad344): vigilancia de los dos plazos (T-244). Corregido en el PR: la edición del asesor ya
+  no pisa una marca de aviso recién ganada (R5), lote 50, filtro afinado, prueba de outbox cruzado.
+- #297 (15a2587): permisos en la web de Reservas (T-252) + `DESPACHO_BARRIDO=inerte` en las e2e:
+  el barrido de arranque de otro archivo e2e entregaba eventos de fixtures ajenos.
+- #298 (79e5536): notificaciones en la aplicación (T-254, migración 20261118110000, tabla sin
+  columnas de texto, RLS y FK compuestas). Sin `archivo.ver` no se listan.
+- #299 (51f59d4): campana con los avisos (T-255). El CI cazó un EXPLAIN inestable en
+  `historial-de-estados-cotizacion.spec.ts` (estadísticas viejas): ANALYZE antes del EXPLAIN.
+- Cola nueva: T-253 (función de descubrimiento de plazos), T-256 (FK reserva-archivo en
+  notificaciones), parte externa de T-254 (WhatsApp/correo con plantilla y opt-in).
+
+**Decisiones por delegación**
+- Aprobé las migraciones 20261118100000 y 20261118110000 (ruta protegida) tras auditoría sin
+  bloqueantes y CI en verde.
+- Destinatario del aviso: el asesor de la oportunidad si puede operar archivos; si no, todos los que
+  tienen `archivo.operar`.
+
+**Supuesto / sin probar**
+- Nada desplegado. Ni Reservas ni la campana se han visto contra la API real en un navegador.
+
+---
+
 ## 2026-11-17 (tarde) — Archivo de viaje de punta a punta y demo sin dominio
 
 **Verificado (gh/git, CI en verde en cada PR)**
