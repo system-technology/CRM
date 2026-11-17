@@ -23,14 +23,18 @@
   Neon/Vercel/Render, claves, mensaje real desde un celular, demos de la competencia.
 
 **Decisiones tomadas por delegación (2026-11-17)**
-- D1: el receptivo con cupo propio (S3) entra en el foco junto a la agencia minorista (S1).
-  Evidencia: el catálogo real de JD Tours tiene pasadías, pasanoches y excursiones con fechas
-  propias. Pide un ADR que modifique ADR-0009 (cupo informativo).
+- D1: **el foco sigue siendo la agencia minorista que revende (S1)**. Se tomó primero «S3 entra»
+  leyendo las pasadías con fecha del catálogo como salidas propias; era un error: el propietario
+  ya había dicho que la agencia piloto «revende, no opera» (`docs/01-producto/11-dictamen-del-
+  catalogo-real.md`) y esas fechas son del tarifario del mayorista. El cupo sigue informativo
+  (ADR-0009). El cupo propio queda diseñado como ADR-0029 **Propuesto**, para cuando llegue una
+  agencia que opere salidas propias.
 - D2: ViajaPro exporta al ERP y no emite factura electrónica. ADR-0023 sigue Propuesto: juicio
   fiscal pendiente del contador del propietario; fuentes DIAN sin verificar.
 - D3: la pasarela de pagos local se elige en la Fase 2, tras investigar costos.
 - D5: Neon + Vercel + Render (ADR-0028).
-- ADR-0024 (archivo de viaje, time limit, TRM congelada) se adopta como dirección de la Fase 1.
+- ADR-0024 (archivo de viaje, time limit, TRM congelada) se adopta como dirección de la Fase 1:
+  es justo lo que necesita quien revende (el time limit del mayorista es su riesgo diario).
 
 **Verificado (gh/git)**
 - Auditoría competitiva en `docs/_auditorias/2026-11-16-*` (#281); página publicada para el
