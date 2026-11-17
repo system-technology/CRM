@@ -11,6 +11,7 @@ const RUTAS: Array<{ ruta: string; titulo: RegExp }> = [
   { ruta: '/cotizador', titulo: /Cotizador Comercial/ },
   { ruta: '/cotizaciones', titulo: /Directorio de Cotizaciones/ },
   { ruta: '/reportes', titulo: /Reportes y Rendimiento Comercial/ },
+  { ruta: '/viajes', titulo: /Reservas/ },
 ];
 
 for (const { ruta, titulo } of RUTAS) {
