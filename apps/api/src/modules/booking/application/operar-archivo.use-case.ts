@@ -100,7 +100,7 @@ export class OperarArchivoUseCase {
         },
         { ahora, fechaSalida: archivo.fechaSalida, zonaHoraria: await ops.zonaHoraria() },
       );
-      await ops.guardarReserva(archivoId, siguiente, usuarioId);
+      await ops.guardarReserva(archivoId, siguiente, usuarioId, actual);
       return {
         ...archivo,
         reservas: archivo.reservas.map((r) => (r.id === reservaId ? siguiente : r)),

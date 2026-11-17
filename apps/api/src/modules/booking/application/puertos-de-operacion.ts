@@ -19,8 +19,17 @@ export interface OperacionesDelArchivo {
   leerBloqueado(archivoId: string): Promise<Archivo | null>;
   /** Zona IANA de la agencia (R9: solo para comparar un plazo con la fecha de salida). */
   zonaHoraria(): Promise<string>;
-  /** Escribe la reserva. El filtro es `id AND travel_file_id` además de RLS. */
-  guardarReserva(archivoId: string, reserva: Reserva, actorId: string | null): Promise<void>;
+  /**
+   * Escribe la reserva. El filtro es `id AND travel_file_id` además de RLS. `anterior` es la que se
+   * leyó: las marcas `aviso_*` solo se escriben cuando el dominio las limpió (cambió un plazo); en
+   * lo demás se omiten, para no pisar una marca que la vigilancia ganó entre la lectura y la escritura.
+   */
+  guardarReserva(
+    archivoId: string,
+    reserva: Reserva,
+    actorId: string | null,
+    anterior: Reserva,
+  ): Promise<void>;
   /** Reemplaza la lista completa: borra y vuelve a crear, en el orden recibido. */
   reemplazarPasajeros(
     archivoId: string,

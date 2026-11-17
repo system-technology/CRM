@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   avisosDePlazo,
   eventoDeAvisoDePlazo,
+  marcasALimpiar,
   type ReservaVigilable,
   UMBRAL_DE_AVISO_MS,
 } from './plazos.js';
@@ -171,5 +172,33 @@ describe('eventoDeAvisoDePlazo', () => {
       'v',
       'venceEn',
     ]);
+  });
+});
+
+describe('marcasALimpiar', () => {
+  const plazos = (t: Date | null, p: Date | null) => ({ timeLimit: t, pagoTotalVenceEn: p });
+
+  it('editar la nota (plazos iguales) no limpia ninguna marca', () => {
+    expect(marcasALimpiar(plazos(enHoras(5), null), plazos(enHoras(5), null))).toEqual({
+      timeLimit: false,
+      pagoTotal: false,
+    });
+  });
+
+  it('un instante igual en otro objeto Date tampoco cuenta como cambio', () => {
+    expect(
+      marcasALimpiar(plazos(new Date(enHoras(5)), null), plazos(new Date(enHoras(5)), null)),
+    ).toEqual({ timeLimit: false, pagoTotal: false });
+  });
+
+  it('cada plazo limpia solo su par', () => {
+    expect(marcasALimpiar(plazos(enHoras(5), null), plazos(enHoras(6), null))).toEqual({
+      timeLimit: true,
+      pagoTotal: false,
+    });
+    expect(marcasALimpiar(plazos(enHoras(5), enHoras(9)), plazos(enHoras(5), null))).toEqual({
+      timeLimit: false,
+      pagoTotal: true,
+    });
   });
 });
