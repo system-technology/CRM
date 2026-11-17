@@ -5481,7 +5481,7 @@ tasks:
     priority: P1
     effort: M
     status: in_progress
-    notes: "Parte datos en este PR (migraciones 20261118090000 y 20261118090100); falta la parte backend (evento, despachador, apertura del archivo)"
+    notes: "Datos en main (migraciones 20261118090000 y 20261118090100). Backend: evento CotizacionAceptada, despachador por consumidor y apertura del archivo (rama feat/booking-apertura-del-archivo). Falta que quoting congele mayoristaId por linea y la TRM en la version (ADR-0024 §2)"
     depends_on: [T-240]
     acceptance:
       - "Al aceptar una cotizacion se abre su archivo de viaje con numero de file, una sola vez (idempotente por consumidor)"
