@@ -1,5 +1,7 @@
 import { Global, Module } from '@nestjs/common';
 import { ResolutorDeAcceso } from '../../shared/puertos/puerto-de-acceso.js';
+import { PuertoUsuariosConPermiso } from '../../shared/puertos/puertos-para-avisos.js';
+import { UsuariosConPermisoPrisma } from './infrastructure/usuarios-con-permiso.prisma.js';
 import { CambiarAgenciaActiva } from './application/cambiar-agencia-activa.use-case.js';
 import { ResolverAcceso } from './application/resolver-acceso.use-case.js';
 import { ObtenerSesionActual } from './application/sesion-actual.use-case.js';
@@ -80,7 +82,9 @@ import { AgenciaAjustesController } from './interface/agencia-ajustes.controller
     { provide: PuertoInvitaciones, useClass: InvitacionesPrisma },
     { provide: PuertoIdentidades, useClass: IdentidadesPrisma },
     { provide: PuertoMiembros, useClass: MiembrosPrisma },
+    // T-254: lo que `notifications` pide a `identity` (quién está activo y con qué permiso).
+    { provide: PuertoUsuariosConPermiso, useClass: UsuariosConPermisoPrisma },
   ],
-  exports: [ResolutorDeAcceso],
+  exports: [ResolutorDeAcceso, PuertoUsuariosConPermiso],
 })
 export class IdentityModule {}

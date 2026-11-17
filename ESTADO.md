@@ -86,7 +86,7 @@ Postmark real; las migraciones contra una base de producción (solo corren en el
 - **Un mensaje de celular real visto en la bandeja, ni una respuesta recibida en el celular.**
 - **Plantilla de reapertura** fuera de la ventana de 24 h (T-078), **verificación del negocio en Meta** (T-080), Tech Provider.
 - **Derechos del titular** (T-097), aviso de privacidad aprobado (T-093), RNBD (T-098).
-- **API pública por claves e ingesta con IA** del catálogo (T-053 a T-058); **pagos**, **automatizaciones**; plazos y avisos del archivo de viaje (T-244), historial de transiciones de reserva (T-250).
+- **API pública por claves e ingesta con IA** del catálogo (T-053 a T-058); **pagos**, **automatizaciones**; aviso de plazos por WhatsApp o correo (T-254, parte externa; el aviso en la aplicación está en T-254 y su campana en T-255), historial de transiciones de reserva (T-250).
 - Una agencia real con datos reales (criterio C1–C5 del roadmap v2).
 
 ## 2. Cómo se trabaja

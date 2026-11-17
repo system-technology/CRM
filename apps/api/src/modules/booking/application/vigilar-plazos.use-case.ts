@@ -8,6 +8,7 @@
  * `WHERE aviso_… IS NULL` y solo quien la gana escribe el evento.
  */
 import { Inject, Injectable, Logger } from '@nestjs/common';
+import { PuertoAvisoDeEventosDeDominio } from '../../../shared/puertos/puertos-de-eventos-de-dominio.js';
 import { PuertoDeAgenciasVigilables, RepositorioDeAvisosDePlazo } from './puertos-de-vigilancia.js';
 
 export interface ResultadoDeVigilancia {
@@ -27,6 +28,8 @@ export class VigilarPlazosUseCase {
   constructor(
     @Inject(PuertoDeAgenciasVigilables) private readonly agencias: PuertoDeAgenciasVigilables,
     @Inject(RepositorioDeAvisosDePlazo) private readonly avisos: RepositorioDeAvisosDePlazo,
+    // T-254: despierta a los consumidores (notifications) justo después de confirmar los avisos.
+    @Inject(PuertoAvisoDeEventosDeDominio) private readonly despacho: PuertoAvisoDeEventosDeDominio,
   ) {}
 
   /** `ahora` llega por parámetro: el dominio no lee el reloj, y las pruebas lo fijan. */
@@ -36,7 +39,10 @@ export class VigilarPlazosUseCase {
     for (const tenantId of ids) {
       resultado.agencias += 1;
       try {
-        resultado.avisos += await this.avisos.avisarAgencia(tenantId, ahora);
+        const escritos = await this.avisos.avisarAgencia(tenantId, ahora);
+        resultado.avisos += escritos;
+        // Ya confirmado (la transacción de la agencia terminó): es solo una pista, el barrido la respalda.
+        if (escritos > 0) this.despacho.avisar(tenantId);
       } catch (error) {
         resultado.agenciasConFallo += 1;
         this.log.error(`Falló la vigilancia de plazos de una agencia (${clase(error)}).`);

@@ -23,3 +23,4 @@ export * from './formatos.js';
 export * from './reportes.js';
 export * from './eventos.js';
 export * from './archivos.js';
+export * from './notificaciones.js';
