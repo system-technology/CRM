@@ -5744,7 +5744,7 @@ tasks:
     phase: 1
     priority: P2
     effort: S
-    status: ready
+    status: in_progress
     depends_on: [T-254]
     acceptance:
       - "Campana en la cabecera con el contador noLeidas de GET /api/v1/notificaciones y lista desplegable: no leidas primero, cada una con el texto compuesto en la pantalla (tipo, numero de file, plazo en la zona horaria de la agencia, R9) y enlace a Reservas por archivoId"
@@ -5756,6 +5756,7 @@ tasks:
     source: T-254; la API de notificaciones en la aplicacion ya esta en la rama feat/notifications-avisos-de-plazo
     created_at: 2026-11-17T20:00:00.000Z
     owner: frontend
+    notes: "Rama feat/web-campana-de-avisos. Se reutiliza la campana existente (BarraModulos + PanelNotificaciones): los avisos del servidor se mezclan con los locales, filtro Plazos, contador numerico, esqueleto/error con reintento. lib/avisos-plazo-api.ts (GET lista y POST lectura, demo con datos de ejemplo y lectura local), avisos-plazo-logica.ts (texto compuesto en la zona de la agencia, R9), use-avisos-de-plazo.ts (refresco cada 3 min con pestana visible y al abrir solo si el dato tiene mas de 15 s; lectura optimista). Falta: verlo contra la API real en un navegador (no corrido) y integrar en main."
   - id: T-256
     title: "Notificaciones: foránea (reserva_id, archivo_id, tenant_id) que ate la reserva a su archivo"
     type: refactor

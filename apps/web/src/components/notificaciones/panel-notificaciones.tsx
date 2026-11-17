@@ -38,6 +38,9 @@ export interface PanelNotificacionesProps {
   alCerrar: () => void;
   notificaciones?: NotificacionWeb[];
   alertas?: AlertaOperativa[];
+  /** Estado de carga de los avisos de plazo del servidor (T-255). Sin él no se muestra banner. */
+  estadoAvisos?: 'cargando' | 'error' | 'listo';
+  alReintentarAvisos?: () => void;
   alMarcarLeida: (id: string) => void;
   alMarcarTodasLeidas: () => void;
   alDescartar?: (id: string) => void;
@@ -50,6 +53,8 @@ export function PanelNotificaciones({
   alCerrar,
   notificaciones,
   alertas = [],
+  estadoAvisos,
+  alReintentarAvisos,
   alMarcarLeida,
   alMarcarTodasLeidas,
   alDescartar,
@@ -351,6 +356,20 @@ export function PanelNotificaciones({
           <button
             type="button"
             role="tab"
+            aria-selected={filtro === 'aviso_plazo'}
+            onClick={() => setFiltro('aviso_plazo')}
+            data-testid="filtro-plazos"
+            className={`shrink-0 rounded-lg px-2.5 py-1 text-xs font-semibold transition-colors ${
+              filtro === 'aviso_plazo'
+                ? 'bg-purple-600 text-white'
+                : 'text-neutral-600 hover:bg-neutral-200/60 dark:text-neutral-400 dark:hover:bg-neutral-800'
+            }`}
+          >
+            Plazos ({listaUnificada.filter((n) => n.tipo === 'aviso_plazo').length})
+          </button>
+          <button
+            type="button"
+            role="tab"
             aria-selected={filtro === 'mensaje_nuevo'}
             onClick={() => setFiltro('mensaje_nuevo')}
             data-testid="filtro-mensajes"
@@ -408,7 +427,41 @@ export function PanelNotificaciones({
 
         {/* Lista de Notificaciones */}
         <div className="flex-1 scrollbar-thin space-y-2.5 overflow-y-auto p-4">
-          {notificacionesFiltradas.length === 0 ? (
+          {estadoAvisos === 'cargando' && (
+            <div
+              className="space-y-2"
+              data-testid="avisos-cargando"
+              role="status"
+              aria-label="Cargando avisos de plazo"
+            >
+              {[0, 1].map((i) => (
+                <div
+                  key={i}
+                  className="h-20 animate-pulse rounded-xl bg-neutral-100 dark:bg-neutral-800"
+                />
+              ))}
+            </div>
+          )}
+          {estadoAvisos === 'error' && (
+            <div
+              className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-700 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-300"
+              role="alert"
+              data-testid="avisos-error"
+            >
+              <p>No pudimos cargar los avisos de plazo. Revisa tu conexión y reintenta.</p>
+              {alReintentarAvisos && (
+                <button
+                  type="button"
+                  onClick={alReintentarAvisos}
+                  data-testid="boton-reintentar-avisos"
+                  className="mt-2 min-h-[36px] rounded-lg bg-red-600 px-3 py-1 font-bold text-white hover:bg-red-700"
+                >
+                  Reintentar
+                </button>
+              )}
+            </div>
+          )}
+          {notificacionesFiltradas.length === 0 && estadoAvisos !== 'cargando' ? (
             <div
               className="flex h-56 flex-col items-center justify-center text-center text-sm text-neutral-400"
               data-testid="estado-sin-notificaciones"
@@ -418,6 +471,7 @@ export function PanelNotificaciones({
             </div>
           ) : (
             notificacionesFiltradas.map((item) => {
+              const esAviso = item.tipo === 'aviso_plazo';
               const esCritica = item.severidad === 'critica';
               const esAdvertencia = item.severidad === 'advertencia';
 
@@ -487,20 +541,24 @@ export function PanelNotificaciones({
                           <ExternalLink className="h-3 w-3" />
                         </button>
 
-                        <button
-                          type="button"
-                          data-testid={`boton-descartar-${item.id}`}
-                          onClick={() => {
-                            if (alDescartar) {
-                              alDescartar(item.id);
-                            } else {
-                              alMarcarLeida(item.id);
-                            }
-                          }}
-                          className="flex min-h-[36px] items-center px-2 text-[11px] font-medium text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200"
-                        >
-                          {!item.leida ? 'Descartar' : 'Eliminar'}
-                        </button>
+                        {esAviso && item.leida ? (
+                          <span className="px-2 text-[11px] text-neutral-400">Leída</span>
+                        ) : (
+                          <button
+                            type="button"
+                            data-testid={`boton-descartar-${item.id}`}
+                            onClick={() => {
+                              if (alDescartar) {
+                                alDescartar(item.id);
+                              } else {
+                                alMarcarLeida(item.id);
+                              }
+                            }}
+                            className="flex min-h-[36px] items-center px-2 text-[11px] font-medium text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200"
+                          >
+                            {esAviso ? 'Marcar leída' : !item.leida ? 'Descartar' : 'Eliminar'}
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
