@@ -42,6 +42,9 @@ import { OperarArchivoUseCase } from '../application/operar-archivo.use-case.js'
 export const PERMISO_PARA_VER_ARCHIVOS: Permiso = 'archivo.ver';
 export const PERMISO_PARA_OPERAR_ARCHIVOS: Permiso = 'archivo.operar';
 
+// Toda ruta exige archivo.ver (también las mutaciones, que devuelven el detalle con pasajeros y
+// menores: con archivo.operar solo no se lee). El guard combina el de la clase y el del método.
+@RequierePermiso(PERMISO_PARA_VER_ARCHIVOS)
 @Controller('api/v1/archivos')
 export class ArchivosController {
   constructor(@Inject(OperarArchivoUseCase) private readonly archivos: OperarArchivoUseCase) {}

@@ -69,11 +69,26 @@ describe('mutaciones con permiso (T-089)', () => {
 
   it('las lecturas del archivo de viaje exigen archivo.ver (T-249: hay datos de menores)', () => {
     const proto = ArchivosController.prototype as unknown as Record<string, unknown>;
-    for (const nombre of ['listar', 'leer']) {
+    // Todos los GET del controlador, no una lista fija: un GET nuevo sin permiso rompe esta prueba.
+    const lecturas = Object.getOwnPropertyNames(proto).filter(
+      (n) =>
+        n !== 'constructor' &&
+        typeof proto[n] === 'function' &&
+        Reflect.getMetadata('method', proto[n] as object) === RequestMethod.GET,
+    );
+    expect(lecturas.length).toBeGreaterThan(0);
+    for (const nombre of lecturas) {
       expect(
         Reflect.getMetadata(CLAVE_PERMISOS_REQUERIDOS, proto[nombre] as object),
         nombre,
       ).toEqual(['archivo.ver']);
     }
+  });
+
+  it('el controlador del archivo de viaje exige archivo.ver en toda ruta, mutaciones incluidas', () => {
+    // Las mutaciones devuelven el detalle con pasajeros: archivo.operar sin archivo.ver no lee.
+    expect(Reflect.getMetadata(CLAVE_PERMISOS_REQUERIDOS, ArchivosController)).toEqual([
+      'archivo.ver',
+    ]);
   });
 });
