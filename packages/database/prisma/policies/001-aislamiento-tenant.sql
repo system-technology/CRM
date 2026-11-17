@@ -27,7 +27,8 @@
 -- y ya habían divergido. La que manda es esta; el documento la refleja.
 --
 -- Una fila por par (tabla, rol), no una lista única: hay tres roles de login con
--- privilegios idénticos sobre las tablas de negocio, y una sola columna llamada
+-- privilegios idénticos sobre las tablas de negocio (salvo las de privilegios_declarados,
+-- ADR-0024), y una sola columna llamada
 -- `privilegios_app` inducía a revocar para `viajapro_app` y olvidar los otros dos —
 -- y el olvidado habría sido `viajapro_webhook`, el proceso que más código ejecuta
 -- contra el directorio.
@@ -64,6 +65,45 @@ INSERT INTO excepciones_rls (tabla, rol, privilegios, motivo) VALUES
   ('excepciones_rls', 'viajapro_app',     '{}', 'La declaración que gobierna este mecanismo. Escribible desde la aplicación, el remedio se convierte en el vehículo: una fila manipulada se concede sola en el siguiente despliegue.'),
   ('excepciones_rls', 'viajapro_altas',   '{}', 'La declaración que gobierna este mecanismo. Escribible desde la aplicación, el remedio se convierte en el vehículo: una fila manipulada se concede sola en el siguiente despliegue.'),
   ('excepciones_rls', 'viajapro_webhook', '{}', 'La declaración que gobierna este mecanismo. Escribible desde la aplicación, el remedio se convierte en el vehículo: una fila manipulada se concede sola en el siguiente despliegue.')
+ON CONFLICT (tabla, rol) DO UPDATE
+  SET privilegios = EXCLUDED.privilegios,
+      motivo      = EXCLUDED.motivo;
+
+-- -----------------------------------------------------------------------------
+-- 0 bis. La declaración de privilegios ESTRECHOS sobre tablas con RLS (ADR-0024 §5.2)
+--
+-- Hermana de `excepciones_rls`, para el caso contrario: tablas DE NEGOCIO, con RLS forzada, cuyos
+-- privilegios son más estrechos que la concesión general de §5.1 (hoy, las cuatro del archivo de
+-- viaje: solo `viajapro_app`, y sin DELETE en las que se cancelan). Meter una tabla de negocio en
+-- `excepciones_rls` la sacaría de `tablas_sin_aislamiento`; un `REVOKE` suelto en una migración
+-- duraría hasta la siguiente llamada a `aplicar_privilegios_declarados()`. Esto lo hace dato.
+--
+-- **Amplía ADR-0008 §1.3**: los roles de login dejan de tener privilegios SIEMPRE idénticos sobre
+-- las tablas de negocio; se distinguen, además de en qué funciones ejecutan, en qué tablas tocan,
+-- y solo por excepción declarada aquí. Un par (tabla, rol) sin declarar se revoca entero.
+--
+-- Igual que `excepciones_rls`, es superficie de confianza: se declara a sí misma en
+-- `excepciones_rls` sin privilegio para ningún rol de login, y la prueba de aislamiento fija sus
+-- filas contra un literal del repositorio.
+-- -----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS "privilegios_declarados" (
+    "tabla" TEXT NOT NULL,
+    "rol" TEXT NOT NULL,
+    "privilegios" TEXT[] NOT NULL,
+    "motivo" TEXT NOT NULL,
+
+    CONSTRAINT "privilegios_declarados_pkey" PRIMARY KEY ("tabla","rol"),
+    CONSTRAINT "privilegios_declarados_sin_nulos" CHECK (array_position("privilegios", NULL) IS NULL),
+    CONSTRAINT "privilegios_declarados_motivo_no_vacio" CHECK (length(btrim("motivo")) > 0)
+);
+
+COMMENT ON TABLE privilegios_declarados IS
+  'Privilegios exactos por (tabla, rol) sobre tablas CON RLS forzada, más estrechos que la concesión general. ADR-0024 §5.2. Lo que declara se aplica; un par sin declarar se revoca.';
+
+INSERT INTO excepciones_rls (tabla, rol, privilegios, motivo) VALUES
+  ('privilegios_declarados', 'viajapro_app',     '{}', 'Declaración de control hermana de excepciones_rls (ADR-0024 §5.2). Escribible desde la aplicación, una fila manipulada se concedería sola en el siguiente despliegue.'),
+  ('privilegios_declarados', 'viajapro_altas',   '{}', 'Declaración de control hermana de excepciones_rls (ADR-0024 §5.2). Escribible desde la aplicación, una fila manipulada se concedería sola en el siguiente despliegue.'),
+  ('privilegios_declarados', 'viajapro_webhook', '{}', 'Declaración de control hermana de excepciones_rls (ADR-0024 §5.2). Escribible desde la aplicación, una fila manipulada se concedería sola en el siguiente despliegue.')
 ON CONFLICT (tabla, rol) DO UPDATE
   SET privilegios = EXCLUDED.privilegios,
       motivo      = EXCLUDED.motivo;
@@ -290,13 +330,15 @@ RETURNS void
 LANGUAGE plpgsql
 AS $$
 DECLARE
-  -- Los tres roles de login de la aplicación (ADR-0008 §1.3). Tienen privilegios
-  -- IDÉNTICOS sobre las tablas de negocio y se diferencian solo en qué funciones
-  -- pueden ejecutar: el rol de conexión es lo único que una inyección SQL no falsea.
+  -- Los tres roles de login de la aplicación (ADR-0008 §1.3). Reciben la MISMA concesión
+  -- general sobre las tablas de negocio y se diferencian en qué funciones pueden ejecutar: el
+  -- rol de conexión es lo único que una inyección SQL no falsea. Desde ADR-0024 §5.2, además,
+  -- en las tablas declaradas en `privilegios_declarados` (§5.3), y solo en esas.
   roles_de_aplicacion CONSTANT text[] := ARRAY['viajapro_app', 'viajapro_altas', 'viajapro_webhook'];
   privilegios_validos CONSTANT text[] := ARRAY['SELECT','INSERT','UPDATE','DELETE','TRUNCATE','REFERENCES','TRIGGER'];
   rol_app   text;
   fila      record;
+  declarada record;
   objetivo  record;
   privilegio text;
   lista     text;
@@ -406,11 +448,98 @@ BEGIN
       EXECUTE 'RESET ROLE';
     END LOOP;
   END LOOP;
+
+  -- 5.3 Privilegios estrechos declarados sobre tablas CON RLS (ADR-0024 §5.2), en el mismo
+  -- bloque y con las mismas salvaguardas que 5.2: validación del dato, rol del dueño y descenso
+  -- por particiones. Va DESPUÉS de 5.1, que acaba de concederlo todo: es lo que lo estrecha.
+  --
+  -- Las dos declaraciones son disjuntas. Una tabla en las dos sería a la vez «fuera de RLS» y
+  -- «con RLS y privilegios estrechos»: el orden de los bucles decidiría cuál gana, en silencio.
+  SELECT string_agg(DISTINCT d.tabla, ', ')
+    INTO lista
+    FROM privilegios_declarados d
+    JOIN excepciones_rls e ON e.tabla = d.tabla;
+  IF lista IS NOT NULL THEN
+    RAISE EXCEPTION 'Tablas declaradas a la vez en excepciones_rls y en privilegios_declarados: %', lista;
+  END IF;
+
+  FOR declarada IN SELECT DISTINCT tabla FROM privilegios_declarados ORDER BY 1 LOOP
+    -- Esta declaración es para tablas aisladas. Una que no exista, o sin RLS habilitada y
+    -- forzada, es una declaración que no protege lo que dice: se detiene la migración.
+    IF NOT EXISTS (
+      SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+       WHERE n.nspname = 'public' AND c.relname = declarada.tabla
+         AND c.relkind IN ('r', 'p') AND NOT c.relispartition
+         AND c.relrowsecurity AND c.relforcerowsecurity
+    ) THEN
+      RAISE EXCEPTION 'privilegios_declarados nombra "%", que no existe en public o no tiene RLS habilitada y forzada.',
+        declarada.tabla;
+    END IF;
+  END LOOP;
+
+  -- Un rol declarado que existe pero no está vigilado sería una fila que el bucle ignora: la
+  -- declaración diría algo que nadie aplica.
+  FOR declarada IN
+    SELECT DISTINCT d.rol FROM privilegios_declarados d
+     WHERE EXISTS (SELECT 1 FROM pg_roles r WHERE r.rolname = d.rol)
+       AND NOT EXISTS (SELECT 1 FROM roles_de_login_vigilados v WHERE v.rolname = d.rol)
+  LOOP
+    RAISE EXCEPTION 'privilegios_declarados declara el rol "%", que existe pero no es un rol de login vigilado.',
+      declarada.rol;
+  END LOOP;
+
+  -- Toda tabla declarada contra TODO rol de login vigilado: un par sin declarar se revoca
+  -- entero (también `viajapro_identidad`, que no recibe la concesión general, y el rol de login
+  -- que se cree mañana).
+  FOR fila IN
+    SELECT tablas.tabla AS tabla,
+           v.rolname    AS rol,
+           COALESCE(d.privilegios, '{}'::text[]) AS privilegios
+    FROM (SELECT DISTINCT tabla FROM privilegios_declarados) tablas
+    CROSS JOIN roles_de_login_vigilados v
+    LEFT JOIN privilegios_declarados d
+           ON d.tabla = tablas.tabla AND d.rol = v.rolname
+  LOOP
+    FOREACH privilegio IN ARRAY fila.privilegios LOOP
+      IF NOT (privilegio = ANY (privilegios_validos)) THEN
+        RAISE EXCEPTION 'privilegios_declarados declara el privilegio inválido "%" para (%, %)',
+          privilegio, fila.tabla, fila.rol;
+      END IF;
+    END LOOP;
+    lista := array_to_string(fila.privilegios, ', ');
+
+    FOR objetivo IN
+      WITH RECURSIVE arbol AS (
+        SELECT c.oid
+        FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' AND c.relname = fila.tabla AND c.relkind IN ('r', 'p')
+        UNION ALL
+        SELECT h.inhrelid
+        FROM pg_inherits h
+        JOIN arbol a ON a.oid = h.inhparent
+      )
+      SELECT a.oid::regclass::text AS nombre, pg_get_userbyid(c.relowner) AS dueno
+      FROM arbol a
+      JOIN pg_class c ON c.oid = a.oid
+    LOOP
+      IF objetivo.dueno <> rol_sesion THEN
+        EXECUTE format('SET LOCAL ROLE %I', objetivo.dueno);
+      END IF;
+
+      EXECUTE format('REVOKE ALL ON TABLE %s FROM %I', objetivo.nombre, fila.rol);
+      IF lista <> '' THEN
+        EXECUTE format('GRANT %s ON TABLE %s TO %I', lista, objetivo.nombre, fila.rol);
+      END IF;
+
+      EXECUTE 'RESET ROLE';
+    END LOOP;
+  END LOOP;
 END;
 $$;
 
 COMMENT ON FUNCTION aplicar_privilegios_declarados() IS
-  'Concede a los roles de aplicación y revoca lo declarado en excepciones_rls, en el mismo bloque. ADR-0008 §1.2.';
+  'Concede a los roles de aplicación, revoca lo declarado en excepciones_rls y estrecha lo declarado en privilegios_declarados, en el mismo bloque. ADR-0008 §1.2 y ADR-0024 §5.2.';
 
 REVOKE ALL ON FUNCTION aplicar_privilegios_declarados() FROM PUBLIC;
 REVOKE ALL ON FUNCTION aplicar_aislamiento_tenant(text) FROM PUBLIC;

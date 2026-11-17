@@ -59,8 +59,9 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
   async onModuleInit(): Promise<void> {
     await this.$connect();
 
-    // Se comprueba la IDENTIDAD, no solo los atributos. Los tres roles de login tienen los
-    // mismos privilegios sobre las tablas y se distinguen únicamente en qué funciones
+    // Se comprueba la IDENTIDAD, no solo los atributos. Sobre casi todas las tablas los tres roles
+    // de login tienen los mismos privilegios (las de booking son solo de viajapro_app,
+    // ADR-0024) y se distinguen en qué funciones
     // `SECURITY DEFINER` ejecutan, así que conectarse con el equivocado no rompe nada visible
     // — solo amplía lo que la API puede hacer. Ninguna aserción de base de datos lo detecta.
     const [rol] = await this.$queryRaw<

@@ -5460,7 +5460,7 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: ready
+    status: in_progress
     depends_on: []
     acceptance:
       - "Las cuatro tablas con tenant_id, RLS forzada, UNIQUE (id, tenant_id) y FK compuestas (ADR-0024 §3.2)"
@@ -5538,4 +5538,26 @@ tasks:
       - apps/api/src/modules/booking
     source: ADR-0024 aceptado el 2026-11-17 (Fase 1, archivo de viaje)
     created_at: 2026-11-17T17:45:00.000Z
+    owner: backend
+  - id: T-245
+    title: "Booking F1 (resto): permisos archivo.*, guardia de webhook sobre booking, mutaciones de aislamiento y semilla"
+    type: security
+    phase: 1
+    priority: P1
+    effort: S
+    status: ready
+    depends_on: [T-240]
+    acceptance:
+      - "Permisos archivo.* en PERMISOS de contracts y en el CHECK de roles (ADR-0024 F1)"
+      - "Guardia de arranque: viajapro_webhook sin privilegio sobre travel_files, bookings, pasajeros y entregas_de_eventos"
+      - "mutaciones-aislamiento.mjs: conceder SELECT en travel_files a viajapro_webhook pone F1-3 en rojo; FK simple en bookings.travel_file_id pone F1-2 y F1-5 en rojo"
+      - "Una fila de privilegios_declarados con un rol inexistente lanza error (hoy se ignora)"
+      - "Semilla de la agencia demo con un archivo de viaje de ejemplo"
+    files:
+      - packages/contracts
+      - apps/api/src/shared/prisma/guardia-de-rol.ts
+      - packages/database/scripts/mutaciones-aislamiento.mjs
+      - packages/database/prisma/policies/001-aislamiento-tenant.sql
+    source: auditoria de seguridad de T-240, 2026-11-17 (cola R13)
+    created_at: 2026-11-17T18:40:00.000Z
     owner: backend

@@ -1065,3 +1065,47 @@ el motor deshace su `set_config` local; lo fija una prueba de comportamiento (T-
 `aislamiento.spec.ts`), junto con la superficie EXACTA de columnas de `viajapro_metricas`, que
 también comprueba el cinturón de la migración.
 
+
+## Archivo de viaje, reservas y pasajeros (ADR-0024 F1, T-240, migración `20261117120000_archivo_de_viaje_reservas_y_entregas`)
+
+```
+  tenants ─┬─< travel_files (numero único por agencia; UNIQUE (tenant_id, cotizacion_id))
+           │     ├─ (contacto_id, tenant_id)                    → contactos
+           │     ├─ (oportunidad_id, contacto_id, tenant_id)    → oportunidades   (nula)
+           │     ├─ (cotizacion_id, tenant_id)                  → cotizaciones
+           │     ├─ (tenant_id, cotizacion_id, version_cotizacion) → versiones_cotizacion (numero)
+           │     ├─< bookings   (travel_file_id, tenant_id); (mayorista_id, tenant_id) → mayoristas
+           │     │               ON DELETE SET NULL ("mayorista_id"): el nombre queda copiado
+           │     └─< pasajeros  (travel_file_id, tenant_id); un solo titular (índice parcial)
+           └─< entregas_de_eventos  PK (tenant_id, outbox_id, consumidor)
+                 └─ (outbox_id, tenant_id) → outbox (id, tenant_id)  ON DELETE CASCADE
+```
+
+- **Estados como CHECK por paso.** `estado_reserva`: `SOLICITADA`+ exige `solicitada_en`;
+  `CONFIRMADA`+ exige `confirmada_en` y `time_limit`; `ABONADA_AL_PROVEEDOR`+ exige `abonada_en` y
+  `pago_total_vence_en`; `PAGADA_AL_PROVEEDOR` exige `pagada_en`; `CAIDA` y solo `CAIDA` lleva
+  `motivo_caida`; `time_limit ≤ pago_total_vence_en`. El archivo guarda solo `ABIERTO`/`CANCELADO`
+  (cancelado exige motivo, instante y autor, y nota si el motivo es `OTRO`); el avance lo deriva el
+  dominio. La máquina de transiciones es del dominio (F3); los CHECK son la red.
+- **Copia de lo vendido** (paquete, destino, `fecha_salida` `date`, noches, conteos, `venta_unidades`
+  + `moneda_iso`, TRM completa o nula) desde una versión inmutable: no diverge.
+- **Pasajero mínimo, sin PII sensible**: nombre, `tipo_pasajero` (ADT/CHD/INF), edad al viaje
+  (obligatoria para CHD e INF), titular. Documento y fecha de nacimiento no existen (ADR de PII del
+  pasajero, ADR-0015).
+- **Sin DELETE ni `eliminado_en` en archivos, reservas y entregas**: se cancelan, se caen o se
+  marcan. `pasajeros` sí admite DELETE: la lista se reemplaza entera.
+
+**`privilegios_declarados`: amplía ADR-0008 §1.3.** Tabla global hermana de `excepciones_rls` (y
+declarada en ella sin privilegios), para tablas CON RLS forzada cuyos privilegios son más estrechos
+que la concesión general. `aplicar_privilegios_declarados()` gana un tercer paso (§5.3 de
+`policies/001`): por cada tabla declarada × cada rol de login vigilado, `REVOKE ALL` y `GRANT` de lo
+declarado; un par sin declarar se revoca entero. Lanza si una tabla está en las dos declaraciones,
+si la declarada no tiene RLS forzada o si nombra un rol que existe y no está vigilado. Las cuatro
+tablas son **solo de `viajapro_app`**; `viajapro_webhook`, `viajapro_altas` e `viajapro_identidad`
+reciben 42501. Lo fijan el cinturón de la migración y `aislamiento.spec.ts` (literal
+`PRIVILEGIOS_DECLARADOS`, reaplicado en las aserciones 22 y 23, y el bloque «T-240»).
+
+**Por qué.** La agencia piloto pierde ventas cuando se le pasa el *time limit* o la fecha de pago
+total del mayorista (ADR-0024, Contexto); el modelo los hace obligatorios en el paso en que existen.
+Quedan para F2–F5: el despachador y el consumidor, el rol `viajapro_planificador` con sus dos
+funciones, los permisos `archivo.*` y la guardia de arranque del trabajador.

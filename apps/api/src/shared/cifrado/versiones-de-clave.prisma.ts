@@ -35,7 +35,7 @@ export function enTenantDelTrabajador(prisma: PrismaWebhookService): EnTenant {
  * ni contenido.
  *
  * Sirve con cualquiera de los roles de login de negocio (`viajapro_app`, `viajapro_webhook`): los
- * dos tienen los mismos privilegios sobre las tablas.
+ * dos leen las cinco tablas cifradas (las de booking, solo de `viajapro_app`, no llevan cifrado).
  *
  * TODO(datos): coste O(agencias) transacciones y un recorrido de `mensajes` por agencia. Cuando
  * haya volumen, sustituir por una función SECURITY DEFINER (propiedad de un rol sin login, EXECUTE

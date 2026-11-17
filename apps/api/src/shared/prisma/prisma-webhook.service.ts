@@ -2,8 +2,9 @@
  * Conexión del trabajador del webhook: rol `viajapro_webhook`, y solo ése.
  *
  * Mismo criterio que `PrismaService` para la API: **cada proceso aborta al arrancar si no es el
- * rol que esperaba ser**. Los tres roles de login tienen los mismos privilegios sobre las tablas
- * y se distinguen en qué funciones `SECURITY DEFINER` ejecutan; conectar el trabajador con otro
+ * rol que esperaba ser**. Sobre casi todas las tablas los tres roles de login tienen los mismos
+ * privilegios (las de booking son solo de `viajapro_app`, ADR-0024) y se distinguen en qué
+ * funciones `SECURITY DEFINER` ejecutan; conectar el trabajador con otro
  * no rompería nada visible. R2, ADR-0008 §1.3.
  *
  * No hay respaldo a otra cadena, ni a `DATABASE_URL`: ver `resolverCadena`.

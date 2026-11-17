@@ -88,6 +88,11 @@ model Tenant {
   versionesCotizacion VersionCotizacion[]
   cambiosDeCotizacion CotizacionCambioEstado[]
 
+  archivosDeViaje   TravelFile[]
+  reservas          Booking[]
+  pasajeros         Passenger[]
+  entregasDeEventos EventDelivery[]
+
   roles            Rol[]
   formatosDeViaje  FormatoDeViaje[]
   opcionesDeSalida OpcionDeSalida[]
@@ -147,6 +152,22 @@ model ExcepcionRls {
 
   @@id([tabla, rol])
   @@map("excepciones_rls")
+}
+
+/// Hermana de `ExcepcionRls` para el caso contrario (ADR-0024 §5.2): tablas DE NEGOCIO, con RLS
+/// forzada, cuyos privilegios por (tabla, rol) son más estrechos que la concesión general. Hoy, las
+/// cuatro del archivo de viaje, solo para `viajapro_app`. Un par sin declarar se revoca entero.
+/// Amplía ADR-0008 §1.3. Es dato de control: global, declarada a sí misma en `excepciones_rls` sin
+/// privilegio para ningún rol de login, y fijada contra un literal en `aislamiento.spec.ts`.
+model PrivilegioDeclarado {
+  tabla       String   @db.Text
+  rol         String   @db.Text
+  /// Privilegios exactos que ese rol debe tener sobre esa tabla. `{}` = ninguno.
+  privilegios String[] @db.Text
+  motivo      String   @db.Text
+
+  @@id([tabla, rol])
+  @@map("privilegios_declarados")
 }
 
 /// Directorio de enrutamiento: el mapa `identificador de Meta` → tenant.
@@ -483,6 +504,13 @@ model Usuario {
   seguimientosActualizados     Seguimiento[]            @relation("SeguimientoActualizadoPor")
   cambiosDeEtapaComoAsesor     OportunidadCambioEtapa[] @relation("CambioEtapaAsesor")
   cambiosDeEtapaHechos         OportunidadCambioEtapa[] @relation("CambioEtapaUsuario")
+  archivosCreados              TravelFile[]             @relation("TravelFileCreadoPor")
+  archivosActualizados         TravelFile[]             @relation("TravelFileActualizadoPor")
+  archivosCancelados           TravelFile[]             @relation("TravelFileCanceladoPor")
+  reservasCreadas              Booking[]                @relation("BookingCreadoPor")
+  reservasActualizadas         Booking[]                @relation("BookingActualizadoPor")
+  pasajerosCreados             Passenger[]              @relation("PassengerCreadoPor")
+  pasajerosActualizados        Passenger[]              @relation("PassengerActualizadoPor")
 
   @@unique([tenantId, correo])
   @@unique([tenantId, identidadId])
@@ -621,6 +649,7 @@ model Mayorista {
 
   paquetes Paquete[]
   tarifas  Tarifa[]
+  reservas Booking[]
 
   @@unique([id, tenantId])
   @@index([tenantId, eliminadoEn])
@@ -1205,6 +1234,7 @@ model Contacto {
   conversaciones  Conversacion[]
   cotizaciones    Cotizacion[]
   seguimientos    Seguimiento[]
+  archivosDeViaje TravelFile[]
 
   /// Dos agencias distintas pueden tener el mismo teléfono de cliente: la unicidad
   /// es POR TENANT, nunca global.
@@ -1344,9 +1374,10 @@ model Oportunidad {
   creadoPor        Usuario? @relation("OportunidadCreadoPor", fields: [creadoPorId, tenantId], references: [id, tenantId], onDelete: Restrict, onUpdate: Restrict)
   actualizadoPor   Usuario? @relation("OportunidadActualizadoPor", fields: [actualizadoPorId, tenantId], references: [id, tenantId], onDelete: Restrict, onUpdate: Restrict)
 
-  cotizaciones   Cotizacion[]
-  seguimientos   Seguimiento[]
-  cambiosDeEtapa OportunidadCambioEtapa[]
+  cotizaciones    Cotizacion[]
+  seguimientos    Seguimiento[]
+  cambiosDeEtapa  OportunidadCambioEtapa[]
+  archivosDeViaje TravelFile[]
 
   @@unique([id, tenantId])
   /// Destino de la foránea de tres columnas de `cotizaciones` y de `seguimientos`: la oportunidad de una cotización
@@ -1624,8 +1655,15 @@ model Outbox {
 
   /// Índice parcial: el relay solo busca lo no publicado, que es una fracción diminuta
   /// de la tabla. Sin `where`, el índice crecería con todo el histórico.
+  /// El registro de entrega por consumidor de dominio (ADR-0024 §1).
+  entregas EventDelivery[]
+
+  /// Destino de la foránea COMPUESTA de `entregas_de_eventos` (ADR-0024 §1).
+  @@unique([id, tenantId])
   @@index([ocurridoEn], map: "idx_outbox_pendientes")
   @@index([tenantId, agregado, agregadoId])
+  /// Cada consumidor encuentra los eventos de su tipo.
+  @@index([tenantId, tipoEvento, id])
   @@map("outbox")
 }
 
@@ -2107,9 +2145,11 @@ model Cotizacion {
   enviadaEn              DateTime?          @map("enviada_en") @db.Timestamptz(3)
   versionVistaPorCliente VersionCotizacion? @relation("VersionEnviada", fields: [tenantId, id, versionEnviada], references: [tenantId, cotizacionId, numero], onDelete: NoAction, onUpdate: NoAction, map: "cotizaciones_version_enviada_fkey")
 
-  versiones VersionCotizacion[]      @relation("VersionesDeLaCotizacion")
-  mensajes  Mensaje[]
-  cambios   CotizacionCambioEstado[]
+  versiones      VersionCotizacion[]      @relation("VersionesDeLaCotizacion")
+  mensajes       Mensaje[]
+  cambios        CotizacionCambioEstado[]
+  /// A lo sumo uno: `UNIQUE (tenant_id, cotizacion_id)` en `travel_files` (ADR-0024 §3.1).
+  archivoDeViaje TravelFile[]
 
   creadoEn      DateTime  @default(now()) @map("creado_en") @db.Timestamptz(3)
   actualizadoEn DateTime  @updatedAt @map("actualizado_en") @db.Timestamptz(3)
@@ -2202,6 +2242,7 @@ model VersionCotizacion {
   creadoPor   Usuario? @relation("VersionCotizacionCreadoPor", fields: [creadoPorId, tenantId], references: [id, tenantId], onDelete: Restrict, onUpdate: Restrict)
 
   enviadaEnCotizaciones Cotizacion[] @relation("VersionEnviada")
+  archivosDeViaje       TravelFile[]
 
   @@unique([id, tenantId])
   @@unique([tenantId, cotizacionId, numero])
@@ -2241,4 +2282,260 @@ model CotizacionCambioEstado {
   @@index([tenantId, cotizacionId, ocurridoEn, id], map: "idx_cotizacion_cambios_estado_por_cotizacion")
   @@index([tenantId, estadoHasta, ocurridoEn], map: "idx_cotizacion_cambios_estado_por_estado")
   @@map("cotizacion_cambios_estado")
+}
+
+// =============================================================================
+// BOOKING — archivo de viaje, reservas y pasajeros (ADR-0024 F1, T-240)
+//
+// Solo `viajapro_app` las toca (`privilegios_declarados`, ADR-0024 §5.2): `viajapro_webhook`,
+// `viajapro_altas` y `viajapro_identidad` no tienen ningún privilegio sobre ellas. Toda foránea
+// entre tablas de agencia es COMPUESTA con el tenant. Sin PII sensible (R10).
+// =============================================================================
+
+/// Fuente de la TRM: certificada por la Superfinanciera, o la propia de la agencia (ADR-0024 §2).
+enum FuenteTrm {
+  OFICIAL
+  AGENCIA
+
+  @@map("fuente_trm")
+}
+
+/// Lo único del archivo que alguien fija con un botón. El AVANCE (`POR_CONFIRMAR`, `CONFIRMADO`,
+/// `PAGADO_A_PROVEEDORES`, `SIN_RESERVAS_VIVAS`) no se guarda: lo deriva el dominio de las reservas.
+enum EstadoArchivoDeViaje {
+  ABIERTO
+  CANCELADO
+
+  @@map("estado_archivo_de_viaje")
+}
+
+enum MotivoCancelacionArchivo {
+  CLIENTE_DESISTIO
+  SIN_DISPONIBILIDAD
+  CAMBIO_DE_FECHA
+  OTRO
+
+  @@map("motivo_cancelacion_archivo")
+}
+
+/// `BookingStatus`. PENDIENTE → SOLICITADA → [EN_ESPERA] → CONFIRMADA → ABONADA_AL_PROVEEDOR →
+/// PAGADA_AL_PROVEEDOR; CANCELADA y CAIDA como salidas. Cada paso exige sus datos por CHECK.
+enum EstadoReserva {
+  PENDIENTE
+  SOLICITADA
+  EN_ESPERA
+  CONFIRMADA
+  ABONADA_AL_PROVEEDOR
+  PAGADA_AL_PROVEEDOR
+  CAIDA
+  CANCELADA
+
+  @@map("estado_reserva")
+}
+
+/// Por qué el mayorista no sostuvo la reserva. No se dice «liberada»: se libera el cupo.
+enum MotivoCaidaReserva {
+  TIME_LIMIT_VENCIDO
+  PAGO_TOTAL_VENCIDO
+  SIN_CUPO
+  NEGADA_EN_ESPERA
+  OTRO
+
+  @@map("motivo_caida_reserva")
+}
+
+/// Archivo de viaje (`TravelFile`, «Reservas» en la interfaz): el agregado central. Lo abre el
+/// consumidor `booking.abrir_archivo` desde la cotización aceptada (F2). Se cancela, no se borra.
+///
+/// Lo vendido va COPIADO de la versión (inmutable, no diverge). CHECK en la migración: CANCELADO
+/// exige motivo, instante y autor (y nota si el motivo es OTRO); la TRM va completa o no va.
+model TravelFile {
+  id       String @id @default(uuid(7)) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  /// Número de file legible («file 1043»), consecutivo por agencia: `max + 1` en la apertura.
+  numero Int @db.Integer
+
+  contactoId    String       @map("contacto_id") @db.Uuid
+  contacto      Contacto     @relation(fields: [contactoId, tenantId], references: [id, tenantId], onDelete: NoAction, onUpdate: Restrict)
+  /// Foránea de TRES columnas: la oportunidad es de esta agencia y del mismo contacto.
+  oportunidadId String?      @map("oportunidad_id") @db.Uuid
+  oportunidad   Oportunidad? @relation(fields: [oportunidadId, contactoId, tenantId], references: [id, contactoId, tenantId], onDelete: NoAction, onUpdate: Restrict)
+  cotizacionId  String       @map("cotizacion_id") @db.Uuid
+  cotizacion    Cotizacion   @relation(fields: [cotizacionId, tenantId], references: [id, tenantId], onDelete: NoAction, onUpdate: Restrict)
+
+  /// La versión aceptada, por la terna `(tenant, cotización, número)` que ya existe.
+  versionCotizacion Int               @map("version_cotizacion") @db.SmallInt
+  version           VersionCotizacion @relation(fields: [tenantId, cotizacionId, versionCotizacion], references: [tenantId, cotizacionId, numero], onDelete: NoAction, onUpdate: Restrict, map: "travel_files_version_cotizacion_fkey")
+
+  paqueteNombre String   @map("paquete_nombre") @db.VarChar(200)
+  destino       String   @db.VarChar(120)
+  /// R9: fecha de viaje, `date`.
+  fechaSalida   DateTime @map("fecha_salida") @db.Date
+  noches        Int      @db.SmallInt
+  adultos       Int      @db.SmallInt
+  ninos         Int      @db.SmallInt
+  infantes      Int      @db.SmallInt
+
+  /// R8: unidad mínima de la moneda.
+  ventaUnidades BigInt @map("venta_unidades")
+  monedaIso     String @map("moneda_iso") @db.Char(3)
+
+  /// `ExchangeRate` referencial de la cotización: las cinco o ninguna (CHECK).
+  trmMonedaOrigen  String?    @map("trm_moneda_origen") @db.Char(3)
+  trmMonedaDestino String?    @map("trm_moneda_destino") @db.Char(3)
+  trmValor         Decimal?   @map("trm_valor") @db.Decimal(18, 6)
+  trmFecha         DateTime?  @map("trm_fecha") @db.Date
+  trmFuente        FuenteTrm? @map("trm_fuente")
+
+  estado            EstadoArchivoDeViaje      @default(ABIERTO)
+  motivoCancelacion MotivoCancelacionArchivo? @map("motivo_cancelacion")
+  notaCancelacion   String?                   @map("nota_cancelacion") @db.VarChar(500)
+  canceladoEn       DateTime?                 @map("cancelado_en") @db.Timestamptz(3)
+  canceladoPorId    String?                   @map("cancelado_por") @db.Uuid
+  canceladoPor      Usuario?                  @relation("TravelFileCanceladoPor", fields: [canceladoPorId, tenantId], references: [id, tenantId], onDelete: NoAction, onUpdate: Restrict)
+
+  creadoEn         DateTime @default(now()) @map("creado_en") @db.Timestamptz(3)
+  actualizadoEn    DateTime @updatedAt @map("actualizado_en") @db.Timestamptz(3)
+  /// Nulos: el archivo lo abre el consumidor del evento, no un usuario.
+  creadoPorId      String?  @map("creado_por") @db.Uuid
+  actualizadoPorId String?  @map("actualizado_por") @db.Uuid
+  creadoPor        Usuario? @relation("TravelFileCreadoPor", fields: [creadoPorId, tenantId], references: [id, tenantId], onDelete: NoAction, onUpdate: Restrict)
+  actualizadoPor   Usuario? @relation("TravelFileActualizadoPor", fields: [actualizadoPorId, tenantId], references: [id, tenantId], onDelete: NoAction, onUpdate: Restrict)
+
+  reservas  Booking[]
+  pasajeros Passenger[]
+
+  @@unique([id, tenantId])
+  @@unique([tenantId, numero])
+  /// Idempotencia de la apertura: una cotización abre un solo archivo.
+  @@unique([tenantId, cotizacionId])
+  @@index([tenantId, contactoId])
+  @@index([tenantId, oportunidadId])
+  @@index([tenantId, estado, fechaSalida])
+  @@map("travel_files")
+}
+
+/// Reserva con un mayorista dentro de un archivo (`Booking`). Una por mayorista distinto; la que
+/// no tiene mayorista es la «por definir». Se cancela o se cae, no se borra.
+///
+/// CHECK por estado en la migración: SOLICITADA en adelante exige `solicitadaEn`; CONFIRMADA en
+/// adelante, `confirmadaEn` y `timeLimit`; ABONADA en adelante, `abonadaEn` y `pagoTotalVenceEn`;
+/// PAGADA, `pagadaEn`; CAIDA y solo CAIDA, `motivoCaida`; y `timeLimit ≤ pagoTotalVenceEn`.
+model Booking {
+  id       String @id @default(uuid(7)) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  travelFileId String     @map("travel_file_id") @db.Uuid
+  travelFile   TravelFile @relation(fields: [travelFileId, tenantId], references: [id, tenantId], onDelete: NoAction, onUpdate: Restrict)
+
+  /// Foránea COMPUESTA; en SQL es `SET NULL ("mayorista_id")`, que Prisma no modela: el nombre queda
+  /// copiado en `mayoristaNombre`.
+  mayoristaId     String?    @map("mayorista_id") @db.Uuid
+  mayorista       Mayorista? @relation(fields: [mayoristaId, tenantId], references: [id, tenantId], onDelete: SetNull, onUpdate: Restrict)
+  mayoristaNombre String?    @map("mayorista_nombre") @db.VarChar(200)
+
+  /// R8. Nulo = desconocido, no cero.
+  netoUnidades BigInt? @map("neto_unidades")
+  monedaIso    String  @map("moneda_iso") @db.Char(3)
+
+  /// `recordLocator`.
+  localizador String? @db.VarChar(64)
+
+  estado       EstadoReserva @default(PENDIENTE)
+  solicitadaEn DateTime?     @map("solicitada_en") @db.Timestamptz(3)
+  confirmadaEn DateTime?     @map("confirmada_en") @db.Timestamptz(3)
+  abonadaEn    DateTime?     @map("abonada_en") @db.Timestamptz(3)
+  pagadaEn     DateTime?     @map("pagada_en") @db.Timestamptz(3)
+
+  /// `timeLimit`: hasta cuándo el mayorista sostiene la reserva sin abono (UTC).
+  timeLimit        DateTime? @map("time_limit") @db.Timestamptz(3)
+  /// `finalPaymentDue`: hasta cuándo hay que pagarle el total (UTC).
+  pagoTotalVenceEn DateTime? @map("pago_total_vence_en") @db.Timestamptz(3)
+
+  motivoCaida MotivoCaidaReserva? @map("motivo_caida")
+  nota        String?             @db.VarChar(500)
+
+  /// Marcas de aviso (ADR-0024 §3.6). Cambiar un plazo borra su par en la misma escritura.
+  avisoTimeLimitProximoEn DateTime? @map("aviso_time_limit_proximo_en") @db.Timestamptz(3)
+  avisoTimeLimitVencidoEn DateTime? @map("aviso_time_limit_vencido_en") @db.Timestamptz(3)
+  avisoPagoTotalProximoEn DateTime? @map("aviso_pago_total_proximo_en") @db.Timestamptz(3)
+  avisoPagoTotalVencidoEn DateTime? @map("aviso_pago_total_vencido_en") @db.Timestamptz(3)
+
+  creadoEn         DateTime @default(now()) @map("creado_en") @db.Timestamptz(3)
+  actualizadoEn    DateTime @updatedAt @map("actualizado_en") @db.Timestamptz(3)
+  creadoPorId      String?  @map("creado_por") @db.Uuid
+  actualizadoPorId String?  @map("actualizado_por") @db.Uuid
+  creadoPor        Usuario? @relation("BookingCreadoPor", fields: [creadoPorId, tenantId], references: [id, tenantId], onDelete: NoAction, onUpdate: Restrict)
+  actualizadoPor   Usuario? @relation("BookingActualizadoPor", fields: [actualizadoPorId, tenantId], references: [id, tenantId], onDelete: NoAction, onUpdate: Restrict)
+
+  @@unique([id, tenantId])
+  @@index([tenantId, travelFileId])
+  @@index([tenantId, mayoristaId])
+  /// Parciales en la migración: el plazo vigente de CONFIRMADA y de ABONADA_AL_PROVEEDOR.
+  @@index([tenantId, timeLimit], map: "bookings_time_limit_vigente_idx")
+  @@index([tenantId, pagoTotalVenceEn], map: "bookings_pago_total_vigente_idx")
+  @@map("bookings")
+}
+
+/// Pasajero dentro de un archivo (`Passenger`). Mínimo y SIN PII sensible (ADR-0024 §3.5): nombre,
+/// tipo, edad al viaje y titular. Documento y fecha de nacimiento esperan al ADR de PII del
+/// pasajero (ADR-0015). Nombre y edad son datos personales: fuera del outbox, la auditoría y logs.
+model Passenger {
+  id       String @id @default(uuid(7)) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  travelFileId String     @map("travel_file_id") @db.Uuid
+  travelFile   TravelFile @relation(fields: [travelFileId, tenantId], references: [id, tenantId], onDelete: NoAction, onUpdate: Restrict)
+
+  nombre      String       @db.VarChar(200)
+  tipo        TipoPasajero
+  /// 0..120 (CHECK); obligatoria para CHD e INF. Sin rangos por tipo: la edad de corte es del
+  /// mayorista (R12).
+  edadAlViaje Int?         @map("edad_al_viaje") @db.SmallInt
+  /// `leadPassenger`. A lo sumo uno por archivo: índice único PARCIAL
+  /// `pasajeros_un_titular_por_archivo`, que Prisma no modela.
+  esTitular   Boolean      @default(false) @map("es_titular")
+  orden       Int          @db.SmallInt
+
+  creadoEn         DateTime @default(now()) @map("creado_en") @db.Timestamptz(3)
+  actualizadoEn    DateTime @updatedAt @map("actualizado_en") @db.Timestamptz(3)
+  creadoPorId      String?  @map("creado_por") @db.Uuid
+  actualizadoPorId String?  @map("actualizado_por") @db.Uuid
+  creadoPor        Usuario? @relation("PassengerCreadoPor", fields: [creadoPorId, tenantId], references: [id, tenantId], onDelete: NoAction, onUpdate: Restrict)
+  actualizadoPor   Usuario? @relation("PassengerActualizadoPor", fields: [actualizadoPorId, tenantId], references: [id, tenantId], onDelete: NoAction, onUpdate: Restrict)
+
+  @@unique([id, tenantId])
+  @@index([tenantId, travelFileId, orden])
+  @@map("pasajeros")
+}
+
+/// Entrega de un evento del outbox a UN consumidor de dominio (ADR-0024 §1). Una fila por par
+/// `(evento, consumidor)`, escrita en la misma transacción que el efecto. `outbox.publicadoEn`
+/// sigue significando solo «el relay de inbox lo publicó a tiempo real».
+model EventDelivery {
+  tenantId String @map("tenant_id") @db.Uuid
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  outboxId BigInt @map("outbox_id")
+  /// COMPUESTA con el tenant; borrar el evento se lleva sus entregas.
+  outbox   Outbox @relation(fields: [outboxId, tenantId], references: [id, tenantId], onDelete: Cascade, onUpdate: Restrict)
+
+  /// `^[a-z]+\.[a-z_]+$` (CHECK): `booking.abrir_archivo`, `crm.ganar_oportunidad`.
+  consumidor   String    @db.VarChar(80)
+  entregadoEn  DateTime? @map("entregado_en") @db.Timestamptz(3)
+  intentos     Int       @default(0) @db.SmallInt
+  /// Solo la clase o el código del error (CHECK de formato), nunca texto libre ni dato personal.
+  ultimoError  String?   @map("ultimo_error") @db.VarChar(200)
+  /// Tras 10 intentos. Entregada y abandonada a la vez no es representable (CHECK).
+  abandonadoEn DateTime? @map("abandonado_en") @db.Timestamptz(3)
+
+  creadoEn      DateTime @default(now()) @map("creado_en") @db.Timestamptz(3)
+  actualizadoEn DateTime @updatedAt @map("actualizado_en") @db.Timestamptz(3)
+
+  @@id([tenantId, outboxId, consumidor])
+  @@map("entregas_de_eventos")
 }
