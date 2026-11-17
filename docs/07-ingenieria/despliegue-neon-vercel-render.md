@@ -26,15 +26,19 @@ compartir dominio registrable para que la cookie de sesión (`SameSite=Lax`) via
 
 *Comprobación:* el dominio resuelve en el panel de su registrador.
 
-## 2. Neon: rama de staging solo con el esquema
+## 2. Neon: un proyecto nuevo, vacío, solo para staging
 
-1. En el proyecto de Neon, **Branches > Create branch**, nombre `staging`.
-2. Elegir **Schema-only** (sin datos del padre). Staging nunca es copia de producción.
-3. Copiar la cadena **directa** (sin `-pooler`) del rol propietario de esa rama. `rol:crear` se
-   niega a correr contra el pooler.
+Una rama *schema-only* del proyecto existente **no sirve**: Neon la rechaza («project with a legacy
+web access role do not support schema-only branches»), porque nuestras migraciones crean roles por
+SQL (`viajapro_enrutador` y los demás). Copiar datos de otro proyecto o rama está prohibido.
 
-*Comprobación:* en la consola SQL de la rama, `select count(*) from tenants;` devuelve 0 o
-`relation does not exist`. Nunca debe devolver agencias reales.
+1. **New Project**: nombre `viajapro-staging`, Postgres **16**, región **AWS US East 2 (Ohio)**,
+   plan **Free** (basta para la demo).
+2. **Connect**: con *Connection pooling* desactivado, copiar la cadena **directa** (sin `-pooler`)
+   del rol propietario que crea Neon (`neondb_owner`). `rol:crear` se niega a correr contra el pooler.
+
+*Comprobación:* en la consola SQL del proyecto, `select count(*) from tenants;` devuelve
+`relation does not exist` (aún sin migraciones). Nunca debe devolver agencias reales.
 
 ## 3. Migrar, crear los roles y sembrar (una vez, desde su máquina)
 
@@ -61,7 +65,9 @@ A partir de aquí las migraciones las aplica GitHub Actions, no usted.
 
 ## 4. Render: una sola pieza
 
-1. Crear la cuenta y el espacio **Pro**; registrar la tarjeta.
+1. Crear la cuenta. Para la demo basta el espacio **Hobby** (gratis): `render.yaml` pide la
+   instancia **Free**. Se duerme tras 15 min sin tráfico y tarda ~1 min en despertar: antes de una
+   demo, abra `https://api.staging.<dominio>/salud` uno o dos minutos antes.
 2. **New > Blueprint**, conectar el repositorio, rama `main`, archivo `render.yaml`. Debe proponer
    **un solo servicio**, `viajapro-api-staging` (sin web, sin worker, sin Key Value).
 3. Pegar los valores de las variables `sync: false`:
@@ -99,7 +105,7 @@ no se recupera (ADR-0015).
 
 4. Esperar el primer despliegue. Después, **Settings > Deploy Hook**: copiar la URL (va al paso 6).
 
-*Comprobación:* **Settings** muestra región **Ohio**, plan Starter, **Auto-Deploy: Off**. En los
+*Comprobación:* **Settings** muestra región **Ohio**, instancia Free, **Auto-Deploy: Off**. En los
 logs del primer arranque aparece `API y trabajador en un solo proceso (modo unico)`. Si el log
 muestra `Nest application successfully started` sin esa frase, Render ignoró `dockerCommand`: el
 servicio arrancó `main.js` y falló por falta de `REDIS_URL`; fije el **Docker Command** a mano en
@@ -107,7 +113,8 @@ servicio arrancó `main.js` y falló por falta de `REDIS_URL`; fije el **Docker 
 
 ## 5. Vercel: la web
 
-1. Plan **Pro** (Hobby no admite uso comercial).
+1. Plan **Hobby** (gratis) para la demo. Sus condiciones lo limitan a uso personal y no comercial:
+   cuando una agencia pague, se pasa a **Pro** (decisión del propietario, 2026-11-18; T-239).
 2. **Add New > Project**, importar el repositorio. **Root Directory: `apps/web`** y dejar activada
    *Include source files outside of the Root Directory* (la opción por omisión; la necesitan los
    paquetes del workspace). Framework: Next.js (lo fija `apps/web/vercel.json`, que también define
