@@ -46,7 +46,11 @@ export interface FiltroDeArchivos {
 }
 
 export abstract class RepositorioDeOperacionDeArchivos {
-  /** Archivos con sus reservas, SIN pasajeros (la lista no los necesita). */
+  /**
+   * Archivos con sus reservas, SIN pasajeros (la lista no los necesita). Vienen YA ordenados por el
+   * plazo vigente más próximo (sin plazo, al final, por número) y el límite se aplica DESPUÉS de
+   * ordenar (T-251).
+   */
   abstract listar(filtro: FiltroDeArchivos): Promise<Archivo[]>;
   /** Un archivo con reservas y pasajeros; `null` si no existe en esta agencia. */
   abstract leer(archivoId: string): Promise<Archivo | null>;

@@ -5683,7 +5683,7 @@ tasks:
     phase: 1
     priority: P2
     effort: S
-    status: ready
+    status: in_progress
     depends_on: [T-242]
     acceptance:
       - "Un e2e con un rol sin cotizacion.ver_neto_y_margen comprueba que lista, detalle y mutaciones de /archivos no traen netoUnidades"
@@ -5694,6 +5694,7 @@ tasks:
     source: auditoría de seguridad de T-242 (2026-11-17), hallazgos BAJO y funcional
     created_at: 2026-11-17T18:20:00.000Z
     owner: backend
+    notes: "En rama feat/booking-historial-y-pruebas, sin integrar: e2e del neto con sesiones reales, fechas relativas a hoy y orden de la lista por plazo en la base antes del LIMIT. Sin Postgres local: lo valida el CI."
   - id: T-252
     title: "Reservas: e2e de Playwright que abre /viajes tras aceptar una cotizacion, y lista virtualizada"
     type: refactor
