@@ -29,6 +29,8 @@ import { SemaforoPlazo } from './semaforo-plazo';
 interface DetalleArchivoProps {
   archivo: DetalleDeArchivo;
   zona: string;
+  /** `archivo.operar`: sin él el detalle es de solo lectura (la API igual lo exige). */
+  puedeOperar: boolean;
   /** Solo móvil: vuelve a la lista. */
   onVolver: () => void;
   onActualizarReserva: (reservaId: string, cambio: ActualizarReserva) => Promise<void>;
@@ -54,11 +56,13 @@ function FilaReserva({
   reserva,
   cancelado,
   zona,
+  puedeOperar,
   onActualizar,
 }: {
   reserva: ReservaDelArchivo;
   cancelado: boolean;
   zona: string;
+  puedeOperar: boolean;
   onActualizar: (reservaId: string, cambio: ActualizarReserva) => Promise<void>;
 }) {
   const [destino, setDestino] = useState<EstadoDeReserva | null>(null);
@@ -78,7 +82,7 @@ function FilaReserva({
     }
   };
 
-  const siguientes = cancelado ? [] : SIGUIENTES_ESTADOS[reserva.estado];
+  const siguientes = cancelado || !puedeOperar ? [] : SIGUIENTES_ESTADOS[reserva.estado];
 
   return (
     <li
@@ -129,7 +133,7 @@ function FilaReserva({
         <p className="mt-2 text-xs text-neutral-700 dark:text-neutral-300">Nota: {reserva.nota}</p>
       )}
 
-      {destino ? (
+      {destino && puedeOperar ? (
         <FormularioReserva
           reserva={reserva}
           estadoDestino={destino}
@@ -143,7 +147,8 @@ function FilaReserva({
           }}
         />
       ) : (
-        !cancelado && (
+        !cancelado &&
+        puedeOperar && (
           <div className="mt-3 flex flex-wrap gap-2">
             {siguientes.map((s) => (
               <button key={s} type="button" className={BOTON} onClick={() => setDestino(s)}>
@@ -169,6 +174,7 @@ function FilaReserva({
 export function DetalleArchivo({
   archivo,
   zona,
+  puedeOperar,
   onVolver,
   onActualizarReserva,
   onReemplazarPasajeros,
@@ -244,6 +250,18 @@ export function DetalleArchivo({
         )}
       </header>
 
+      {!puedeOperar && !cancelado && (
+        <p
+          role="note"
+          data-testid="aviso-solo-lectura"
+          className="rounded-lg border border-neutral-300 bg-neutral-50 px-3 py-2 text-xs text-neutral-800 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200"
+        >
+          Puedes consultar este archivo, pero tu rol no puede modificarlo. Para avanzar reservas,
+          editar pasajeros o cancelar, pide a quien administra la agencia el permiso «Operar
+          archivos de viaje».
+        </p>
+      )}
+
       {error && !editandoPasajeros && !cancelando && (
         <p
           role="alert"
@@ -269,6 +287,7 @@ export function DetalleArchivo({
                 reserva={r}
                 cancelado={cancelado}
                 zona={zona}
+                puedeOperar={puedeOperar}
                 onActualizar={onActualizarReserva}
               />
             ))}
@@ -282,7 +301,7 @@ export function DetalleArchivo({
             <Users className="h-4 w-4" aria-hidden="true" />
             Pasajeros
           </h3>
-          {!cancelado && !editandoPasajeros && (
+          {!cancelado && puedeOperar && !editandoPasajeros && (
             <button type="button" className={BOTON} onClick={() => setEditandoPasajeros(true)}>
               Editar pasajeros
             </button>
@@ -297,7 +316,7 @@ export function DetalleArchivo({
             niños, {archivo.infantes} infantes). Puedes guardar igual, pero revisa la lista.
           </p>
         )}
-        {editandoPasajeros ? (
+        {editandoPasajeros && puedeOperar ? (
           <EditorPasajeros
             pasajeros={archivo.pasajeros}
             enviando={enviando}
@@ -342,7 +361,7 @@ export function DetalleArchivo({
         )}
       </section>
 
-      {!cancelado && (
+      {!cancelado && puedeOperar && (
         <section className="border-t border-neutral-200 pt-4 dark:border-neutral-800">
           <button
             type="button"
@@ -357,7 +376,7 @@ export function DetalleArchivo({
         </section>
       )}
 
-      {cancelando && (
+      {cancelando && puedeOperar && (
         <DialogoCancelarArchivo
           numero={archivo.numero}
           enviando={enviando}
