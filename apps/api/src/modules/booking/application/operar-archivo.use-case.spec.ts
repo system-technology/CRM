@@ -107,7 +107,12 @@ class RepositorioEnMemoria extends RepositorioDeOperacionDeArchivos {
     return fn({
       leerBloqueado: (id) => this.leer(id),
       zonaHoraria: () => Promise.resolve('America/Bogota'),
-      guardarReserva: (archivoId: string, r: Reserva): Promise<void> => {
+      guardarReserva: (
+        archivoId: string,
+        r: Reserva,
+        _actor: string | null,
+        _anterior: Reserva,
+      ): Promise<void> => {
         const a = buscar(archivoId);
         const i = a?.reservas.findIndex((x) => x.id === r.id) ?? -1;
         if (!a || i < 0) return Promise.reject(new ReservaNoEncontradaError(archivoId, r.id));

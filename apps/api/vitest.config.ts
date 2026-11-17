@@ -21,6 +21,9 @@ export default defineConfig({
       MAIL_PROVIDER: 'memoria',
       BUS_DE_EVENTOS: 'memoria',
       LIMITADOR_OTP: 'memoria',
+      // La vigilancia de plazos no corre sola contra la base compartida de las e2e (marcaría reservas
+      // de fixtures ajenos); su e2e llama al caso de uso a mano.
+      PLAZOS_VIGILANCIA: 'inerte',
       // Las e2e piden muchos códigos para un mismo buzón; la prueba del límite lo baja a propósito.
       OTP_ENVIOS_POR_CORREO: '1000',
       OTP_ENVIOS_POR_IP: '1000',
