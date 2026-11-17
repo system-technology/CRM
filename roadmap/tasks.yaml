@@ -5631,7 +5631,8 @@ tasks:
     phase: 1
     priority: P1
     effort: S
-    status: ready
+    status: in_progress
+    started_at: 2026-11-17T18:40:00.000Z
     depends_on: [T-242]
     acceptance:
       - "roles_permisos_del_catalogo admite archivo.ver y archivo.operar; PERMISOS de packages/contracts/src/identidad.ts los lista (se editan los dos)"
@@ -5646,6 +5647,7 @@ tasks:
     source: ADR-0024 §3.7; hallazgo de T-242 (los permisos no existian en el catalogo; migracion de datos, ruta protegida)
     created_at: 2026-11-17T18:10:00.000Z
     owner: datos
+    notes: "Rama feat/db-permisos-de-archivos: migracion 20261118100000, siembra, PERMISOS, controlador y e2e con sesiones reales. Pendiente: CI (Postgres no se pudo levantar en la sesion), aprobacion del propietario (ruta protegida) e integracion. La parte web (ocultar mutaciones) sigue en T-252"
   - id: T-250
     title: "Historial de transiciones de reserva (quién pasó a ABONADA/PAGADA y cuándo)"
     type: feature

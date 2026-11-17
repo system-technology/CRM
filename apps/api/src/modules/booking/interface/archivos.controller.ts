@@ -10,10 +10,10 @@
  * El `tenantId` no aparece en ninguna firma: lo pone el middleware desde la sesión. La lectura
  * omite `netoUnidades` sin `cotizacion.ver_neto_y_margen` (T-248).
  *
- * **Permiso de las mutaciones.** ADR-0024 §3.7 pide `archivo.ver` y `archivo.operar`, que aún no
- * existen en el catálogo (exigen ampliar el `CHECK roles_permisos_del_catalogo`: migración de
- * `datos`). Mientras tanto se exige `cotizacion.escribir`, que tienen DUENO y ASESOR; es el único
- * sitio donde cambiarlo cuando exista `archivo.operar`. La lectura queda abierta a todo miembro.
+ * **Permisos** (ADR-0024 §3.7, T-249, migración `20261118100000`): las dos lecturas exigen
+ * `archivo.ver` —el detalle trae nombres y edades de pasajeros, menores incluidos— y las tres
+ * mutaciones `archivo.operar`. Los tres roles sembrados (DUENO, ASESOR, OPERACIONES) tienen los
+ * dos; un rol que la agencia componga sin ellos recibe 403.
  */
 import {
   Body,
@@ -39,13 +39,14 @@ import { RequierePermiso } from '../../../shared/autorizacion/permiso.decorator.
 import { ZodValidationPipe } from '../../../shared/validacion/zod-validation.pipe.js';
 import { OperarArchivoUseCase } from '../application/operar-archivo.use-case.js';
 
-/** Provisional: ver el comentario del archivo. */
-export const PERMISO_PARA_OPERAR_ARCHIVOS: Permiso = 'cotizacion.escribir';
+export const PERMISO_PARA_VER_ARCHIVOS: Permiso = 'archivo.ver';
+export const PERMISO_PARA_OPERAR_ARCHIVOS: Permiso = 'archivo.operar';
 
 @Controller('api/v1/archivos')
 export class ArchivosController {
   constructor(@Inject(OperarArchivoUseCase) private readonly archivos: OperarArchivoUseCase) {}
 
+  @RequierePermiso(PERMISO_PARA_VER_ARCHIVOS)
   @Get()
   async listar(
     @Query(new ZodValidationPipe(ListarArchivos)) params: ListarArchivos,
@@ -53,6 +54,7 @@ export class ArchivosController {
     return this.archivos.listar(params);
   }
 
+  @RequierePermiso(PERMISO_PARA_VER_ARCHIVOS)
   @Get(':id')
   async leer(@Param('id', new ParseUUIDPipe()) id: string): Promise<DetalleDeArchivo> {
     return this.archivos.leer(id);

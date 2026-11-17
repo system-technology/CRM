@@ -131,6 +131,12 @@ describe('semilla de agencia desde JSON', () => {
       }
       const operaciones = roles.find((x) => x.clave === 'OPERACIONES')?.permisos ?? [];
       expect(operaciones.filter((p) => escritura.includes(p))).toEqual([]);
+      // T-249 (ADR-0024 §3.7): los tres sembrados ven y operan los archivos de viaje.
+      for (const clave of ['DUENO', 'ASESOR', 'OPERACIONES']) {
+        expect(roles.find((x) => x.clave === clave)?.permisos, clave).toEqual(
+          expect.arrayContaining(['archivo.ver', 'archivo.operar']),
+        );
+      }
       expect(await tx.politicaDePrecio.count({ where: { tenantId: tenantA } })).toBe(1);
       expect(await tx.usuario.count({ where: { tenantId: tenantA, correo: CORREO_A } })).toBe(1);
 

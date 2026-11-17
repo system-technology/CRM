@@ -18,6 +18,11 @@
  * omisión del neto sin `cotizacion.ver_neto_y_margen` (T-248) la cubre `operar-archivo.use-case.spec.ts`
  * con y sin el permiso, y aquí se comprueba que CON el permiso la clave viaja.
  *
+ * Los permisos `archivo.ver`/`archivo.operar` (T-249) se prueban con SESIONES REALES de tres
+ * miembros de A (inicio de sesión por HTTP, como `miembros-asignables.e2e-spec.ts`): OPERACIONES
+ * con los dos, un rol propio solo con `archivo.ver` y otro sin ninguno. 403 `PERMISO_DENEGADO`, y
+ * el archivo intacto en la base.
+ *
  * **Fixtures propios**, agencias `fixture-aislamiento-` purgadas al terminar. Las lecturas directas van
  * con el ROL de la API (`SET LOCAL ROLE viajapro_app`): el propietario no queda sujeto a RLS en CI.
  */
@@ -26,6 +31,7 @@ import 'reflect-metadata';
 import { randomBytes } from 'node:crypto';
 import { type INestApplication, Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import { PrismaClient } from '@prisma/client';
 import {
   type CotizacionGuardada,
@@ -33,6 +39,7 @@ import {
   ListaDeArchivos,
   type ResumenDeArchivo,
 } from '@viajapro/contracts';
+import { hashPassword } from 'better-auth/crypto';
 import { Client } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { AppModule } from '../../app.module.js';
@@ -56,6 +63,95 @@ let base: string;
 let admin: PrismaClient;
 let adminPg: Client;
 const agencias = {} as Record<'A' | 'B', Agencia>;
+
+/** Miembros de A con sesión real (T-249). */
+type Miembro = 'operaciones' | 'soloVer' | 'sinArchivo';
+const ORIGEN_WEB = 'http://localhost:3000';
+const CLAVE = 'una-clave-larga-de-prueba-1';
+const PERMISOS_DE: Record<Miembro, string[]> = {
+  operaciones: [
+    'conversaciones.ver_todas',
+    'catalogo.administrar',
+    'archivo.ver',
+    'archivo.operar',
+  ],
+  soloVer: ['archivo.ver'],
+  sinArchivo: ['crm.escribir', 'cotizacion.escribir'],
+};
+const correos = {} as Record<Miembro, string>;
+const cookies = {} as Record<Miembro, string>;
+const identidadesDeMiembros: string[] = [];
+const rnd = (): number => Math.floor(Math.random() * 250) + 1;
+
+async function crearMiembro(quien: Miembro, tenant: string): Promise<void> {
+  const rol = await admin.rol.create({
+    data: {
+      tenantId: tenant,
+      nombre: `Rol ${quien}`,
+      clave: quien === 'operaciones' ? 'OPERACIONES' : null,
+      permisos: PERMISOS_DE[quien],
+    },
+  });
+  correos[quien] =
+    `fixture-aislamiento-arch-${quien.toLowerCase()}-${randomBytes(3).toString('hex')}@fixture-identidad.test`;
+  const identidad = await admin.identidad.create({
+    data: { correo: correos[quien], nombre: `Miembro ${quien}`, correoVerificado: true },
+  });
+  identidadesDeMiembros.push(identidad.id);
+  await admin.credencial.create({
+    data: {
+      identidadId: identidad.id,
+      proveedor: 'credential',
+      hashContrasena: await hashPassword(CLAVE),
+    },
+  });
+  await admin.usuario.create({
+    data: {
+      tenantId: tenant,
+      identidadId: identidad.id,
+      rolId: rol.id,
+      correo: identidad.correo,
+      nombre: identidad.nombre,
+    },
+  });
+}
+
+async function iniciarSesion(quien: Miembro): Promise<string> {
+  const r = await fetch(new URL('/api/v1/auth/sign-in/email', base), {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      origin: ORIGEN_WEB,
+      'x-forwarded-for': `10.${rnd()}.${rnd()}.${rnd()}`,
+    },
+    body: JSON.stringify({ correo: correos[quien], contrasena: CLAVE }),
+  });
+  expect(r.status).toBe(200);
+  return r.headers
+    .getSetCookie()
+    .map((c) => c.split(';')[0])
+    .join('; ');
+}
+
+/** Como `http`, pero con la sesión real del miembro: sus permisos son los de su rol. */
+async function comoMiembro(
+  quien: Miembro,
+  metodo: 'GET' | 'POST' | 'PUT',
+  ruta: string,
+  cuerpo?: unknown,
+): Promise<{ estado: number; json: unknown }> {
+  const r = await fetch(new URL(ruta, base), {
+    method: metodo,
+    headers: {
+      'content-type': 'application/json',
+      cookie: cookies[quien],
+      'x-forwarded-for': `10.${rnd()}.${rnd()}.${rnd()}`,
+    },
+    ...(cuerpo === undefined ? {} : { body: JSON.stringify(cuerpo) }),
+  });
+  const texto = await r.text();
+  return { estado: r.status, json: texto ? (JSON.parse(texto) as unknown) : {} };
+}
 
 /** Lee como la agencia `tenant`, con el rol de la API y su contexto. */
 async function comoAgencia<T>(tenant: string, sql: string, params: unknown[]): Promise<T[]> {
@@ -209,12 +305,19 @@ beforeAll(async () => {
 
   agencias.A = await crearAgencia(TENANT_A, 'A');
   agencias.B = await crearAgencia(TENANT_B, 'B');
+  for (const m of ['operaciones', 'soloVer', 'sinArchivo'] as const)
+    await crearMiembro(m, TENANT_A);
 
   Logger.overrideLogger(false);
   app = await NestFactory.create(AppModule, { logger: false });
   app.useGlobalFilters(new DominioExcepcionFilter());
+  (app as NestExpressApplication).set('trust proxy', 1);
   await app.listen(0);
   base = await app.getUrl();
+
+  for (const m of ['operaciones', 'soloVer', 'sinArchivo'] as const) {
+    cookies[m] = await iniciarSesion(m);
+  }
 }, 90_000);
 
 afterAll(async () => {
@@ -230,7 +333,7 @@ afterAll(async () => {
       await modulo.borrarTenants(adminPg, [TENANT_A, TENANT_B]);
       await adminPg.query('COMMIT');
       await adminPg.query('DELETE FROM identidades WHERE id = ANY($1::uuid[])', [
-        Object.values(agencias).map((a) => a.identidad),
+        [...Object.values(agencias).map((a) => a.identidad), ...identidadesDeMiembros],
       ]);
     } finally {
       await adminPg.end();
@@ -577,5 +680,71 @@ describe('operación del archivo de A (T-242) y neto con permiso (T-248)', () =>
     expect(abiertos.every((a) => a.estado === 'ABIERTO')).toBe(true);
     expect(cancelados.length).toBeGreaterThan(0);
     expect(cancelados.every((a) => a.estado === 'CANCELADO')).toBe(true);
+  });
+});
+
+describe('permisos archivo.ver y archivo.operar con sesiones reales (T-249)', () => {
+  let archivo: ResumenDeArchivo;
+  let reserva = '';
+
+  beforeAll(async () => {
+    archivo = await archivoNuevo(agencias.A);
+    reserva = archivo.reservas[0]?.id ?? '';
+    expect(reserva).not.toBe('');
+  }, 60_000);
+
+  it('sin archivo.ver: la lista y el detalle dan 403 PERMISO_DENEGADO, sin datos del archivo', async () => {
+    for (const ruta of ['/api/v1/archivos', `/api/v1/archivos/${archivo.id}`]) {
+      const r = await comoMiembro('sinArchivo', 'GET', ruta);
+      expect(r.estado, ruta).toBe(403);
+      expect(codigo(r.json)).toBe('PERMISO_DENEGADO');
+      expect(JSON.stringify(r.json)).not.toContain(archivo.paqueteNombre);
+    }
+  });
+
+  it('con archivo.ver y sin archivo.operar: lee (200) pero cada mutación da 403 y la base no cambia', async () => {
+    const lectura = await comoMiembro('soloVer', 'GET', `/api/v1/archivos/${archivo.id}`);
+    expect(lectura.estado).toBe(200);
+    expect(DetalleDeArchivo.parse(lectura.json).id).toBe(archivo.id);
+
+    const intentos = [
+      [
+        'PUT',
+        `/api/v1/archivos/${archivo.id}/reservas/${reserva}`,
+        { estado: 'SOLICITADA', localizador: 'SIN-PERMISO' },
+      ],
+      [
+        'PUT',
+        `/api/v1/archivos/${archivo.id}/pasajeros`,
+        { pasajeros: [{ nombre: 'Sin permiso', tipo: 'ADT', esTitular: true }] },
+      ],
+      ['POST', `/api/v1/archivos/${archivo.id}/cancelacion`, { motivo: 'CLIENTE_DESISTIO' }],
+    ] as const;
+    for (const [metodo, ruta, cuerpo] of intentos) {
+      for (const quien of ['soloVer', 'sinArchivo'] as const) {
+        const r = await comoMiembro(quien, metodo, ruta, cuerpo);
+        expect(r.estado, `${quien} ${metodo} ${ruta}`).toBe(403);
+        expect(codigo(r.json)).toBe('PERMISO_DENEGADO');
+      }
+    }
+
+    const [fila] = await reservaEnBase(agencias.A.tenant, reserva);
+    expect(fila).toMatchObject({ estado: 'PENDIENTE', localizador: null });
+    expect((await archivoEnBase(agencias.A.tenant, archivo.id))[0]).toMatchObject({
+      estado: 'ABIERTO',
+      pasajeros: '0',
+    });
+  });
+
+  it('OPERACIONES (archivo.operar, sin cotizacion.escribir) opera la reserva', async () => {
+    const r = await comoMiembro(
+      'operaciones',
+      'PUT',
+      `/api/v1/archivos/${archivo.id}/reservas/${reserva}`,
+      { estado: 'SOLICITADA', localizador: 'OPS-1' },
+    );
+    expect(r.estado).toBe(200);
+    const [fila] = await reservaEnBase(agencias.A.tenant, reserva);
+    expect(fila).toMatchObject({ estado: 'SOLICITADA', localizador: 'OPS-1' });
   });
 });

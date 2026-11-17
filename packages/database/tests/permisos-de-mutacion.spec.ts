@@ -6,10 +6,12 @@
  * alguno ya puesto a mano), se vuelve a ejecutar el relleno y se comprueba qué recibió cada rol.
  * Todo dentro de una transacción que se deshace: no queda nada en la base compartida.
  *
- * Se ejecuta solo la parte de la migración anterior a la reaplicación del aislamiento
+ * Se ejecuta solo el relleno: desde el primer `DO $$` hasta la reaplicación del aislamiento
  * (`aplicar_aislamiento_tenant`/`aplicar_privilegios_declarados` bloquean todas las tablas, y esa
- * parte ya la cubre la cadena desde cero de `aislamiento.spec.ts`). El relleno es idempotente, así
- * que reejecutarlo sobre las agencias reales de la base no cambia nada en ellas.
+ * parte ya la cubre la cadena desde cero de `aislamiento.spec.ts`). El CHECK de ocho permisos que
+ * la migración pone antes NO se reejecuta: 20261118100000 lo amplió con `archivo.ver` y
+ * `archivo.operar`, y validarlo de nuevo fallaría con los roles reales que ya los tienen. El
+ * relleno es idempotente, así que reejecutarlo sobre las agencias reales no cambia nada en ellas.
  */
 
 import { readFileSync } from 'node:fs';
@@ -27,6 +29,7 @@ const MIGRACION = fileURLToPath(
     import.meta.url,
   ),
 );
+const INICIO = 'DO $$';
 const CORTE = 'SELECT aplicar_aislamiento_tenant(';
 
 const ESCRITURA = ['bandeja.operar', 'crm.escribir', 'cotizacion.escribir'];
@@ -84,11 +87,13 @@ async function permisosPorNombre(tenant: string): Promise<Record<string, string[
 describe('migración 20261104130000 — permisos de mutación', () => {
   it('DUENO y ASESOR reciben los tres sin duplicar ni perder nada; OPERACIONES y los propios no cambian', async () => {
     const sql = readFileSync(MIGRACION, 'utf8');
+    const inicio = sql.indexOf(INICIO);
     const corte = sql.indexOf(CORTE);
+    expect(inicio, 'la migración ya no tiene el bloque de relleno').toBeGreaterThan(0);
     expect(
       corte,
       'la migración ya no reaplica el aislamiento donde esta prueba corta',
-    ).toBeGreaterThan(0);
+    ).toBeGreaterThan(inicio);
 
     await admin.query('BEGIN');
     try {
@@ -105,7 +110,7 @@ describe('migración 20261104130000 — permisos de mutación', () => {
         { clave: 'OPERACIONES', nombre: 'Operaciones', permisos: [] },
       ]);
 
-      await admin.query(sql.slice(0, corte));
+      await admin.query(sql.slice(inicio, corte));
 
       // El contexto no queda colgado al terminar la migración. Se lee ANTES de cualquier otro
       // set_config de esta prueba: la siembra lo dejó en `parcial` y el bucle de la migración en
