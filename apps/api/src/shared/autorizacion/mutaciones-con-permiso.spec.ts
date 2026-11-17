@@ -8,6 +8,10 @@ import 'reflect-metadata';
 import { RequestMethod } from '@nestjs/common';
 import type { Permiso } from '@viajapro/contracts';
 import { describe, expect, it } from 'vitest';
+import {
+  ArchivosController,
+  PERMISO_PARA_OPERAR_ARCHIVOS,
+} from '../../modules/booking/interface/archivos.controller.js';
 import { AgenciaAjustesController } from '../../modules/identity/interface/agencia-ajustes.controller.js';
 import { CrmController } from '../../modules/crm/interface/crm.controller.js';
 import { ConversacionesController } from '../../modules/inbox/interface/conversaciones.controller.js';
@@ -28,6 +32,8 @@ const CONTROLADORES: ReadonlyArray<readonly [abstract new (...args: never[]) => 
     [CrmController, 'crm.escribir'],
     [CotizacionesController, 'cotizacion.escribir'],
     [AgenciaAjustesController, 'usuarios.administrar'],
+    // Provisional: ADR-0024 pide `archivo.operar`, que aún no está en el catálogo (ver el controlador).
+    [ArchivosController, PERMISO_PARA_OPERAR_ARCHIVOS],
   ];
 
 describe('mutaciones con permiso (T-089)', () => {
