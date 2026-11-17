@@ -617,3 +617,190 @@ describe('referencia cruzada entre agencias', () => {
     expect(respuesta).toBeNull();
   });
 });
+
+describe('mayorista por línea y TRM congelados por el cotizador (T-241, ADR-0024 §2)', () => {
+  /**
+   * Un paquete en USD con dos tarifas por persona de MAYORISTAS DISTINTOS (adulto y niño), para
+   * que una cotización de 1 adulto + 1 niño tenga dos líneas con dos mayoristas.
+   */
+  async function paqueteConDosMayoristas(
+    quien: Agencia,
+    moneda: 'USD' | 'COP',
+  ): Promise<{ paquete: string; m1: string; m2: string }> {
+    const m1 = await admin.mayorista.create({
+      data: { tenantId: quien.tenant, nombre: 'Mayorista Uno' },
+    });
+    const m2 = await admin.mayorista.create({
+      data: { tenantId: quien.tenant, nombre: 'Mayorista Dos' },
+    });
+    const paquete = await admin.paquete.create({
+      data: {
+        tenantId: quien.tenant,
+        nombre: `Paquete ${moneda} dos mayoristas`,
+        destino: 'Miami',
+        dias: 4,
+        noches: 3,
+        planAlimentacion: 'TODO_INCLUIDO',
+      },
+    });
+    const vigencia = await admin.vigencia.create({
+      data: {
+        tenantId: quien.tenant,
+        paqueteId: paquete.id,
+        desde: new Date('2027-03-01'),
+        hasta: new Date('2027-03-31'),
+      },
+    });
+    await admin.tarifa.create({
+      data: {
+        tenantId: quien.tenant,
+        vigenciaId: vigencia.id,
+        nombre: 'Adulto',
+        tipoPasajero: 'ADT',
+        mayoristaId: m1.id,
+        netoUnidades: 120_000n,
+        ventaUnidades: 150_000n,
+        monedaIso: moneda,
+      },
+    });
+    await admin.tarifa.create({
+      data: {
+        tenantId: quien.tenant,
+        vigenciaId: vigencia.id,
+        nombre: 'Niño',
+        tipoPasajero: 'CHD',
+        mayoristaId: m2.id,
+        netoUnidades: 80_000n,
+        ventaUnidades: 100_000n,
+        monedaIso: moneda,
+      },
+    });
+    return { paquete: paquete.id, m1: m1.id, m2: m2.id };
+  }
+
+  const composicion = (paquete: string) => ({
+    paqueteId: paquete,
+    fecha: FECHA,
+    adultos: 1,
+    ninos: 1,
+    edadesNinos: [8],
+  });
+
+  it('dos mayoristas y TRM: el archivo abre con DOS reservas y la TRM de la versión, y la API no expone el mayorista', async () => {
+    const A = agencias.A;
+    const { paquete, m1, m2 } = await paqueteConDosMayoristas(A, 'USD');
+
+    const alta = await pedir(A, '/api/v1/cotizaciones', {
+      contactoId: A.contacto,
+      titulo: 'Dos mayoristas',
+      version: {
+        ...composicion(paquete),
+        trm: { valor: '4150.5', fecha: '2027-03-01', fuente: 'OFICIAL' },
+      },
+    });
+    expect(alta.estado).toBe(201);
+    const guardada = alta.json as CotizacionGuardada;
+    // La TRM sale en la lectura; el mayorista, no.
+    expect(guardada.versiones[0]?.trm).toEqual({
+      monedaOrigen: 'USD',
+      monedaDestino: 'COP',
+      valor: '4150.500000',
+      fecha: '2027-03-01',
+      fuente: 'OFICIAL',
+    });
+    expect(JSON.stringify(alta.json)).not.toContain(m1);
+    expect(JSON.stringify(alta.json)).not.toContain(m2);
+
+    // Congelado en la base, por línea.
+    const lineas = await comoAgencia<{ mayoristas: string[] }>(
+      A.tenant,
+      `SELECT array_agg(l ->> 'mayoristaId' ORDER BY l ->> 'mayoristaId') AS mayoristas
+         FROM versiones_cotizacion v, jsonb_array_elements(v.lineas) AS l
+        WHERE v.tenant_id = $1 AND v.cotizacion_id = $2`,
+      [A.tenant, guardada.id],
+    );
+    expect(lineas[0]?.mayoristas).toEqual([m1, m2].sort());
+
+    for (const estado of ['ENVIADA', 'ACEPTADA']) {
+      expect(
+        (await pedir(A, `/api/v1/cotizaciones/${guardada.id}/estado`, { estado })).estado,
+      ).toBe(201);
+    }
+    await despachador.despacharTenant(A.tenant);
+
+    const archivos = await archivosDe(A.tenant, guardada.id);
+    expect(archivos).toHaveLength(1);
+    expect(archivos[0]).toMatchObject({
+      moneda_iso: 'USD',
+      venta_unidades: '250000',
+      trm_valor: '4150.500000',
+    });
+    const trm = await comoAgencia<{ o: string; d: string; f: string; fuente: string }>(
+      A.tenant,
+      `SELECT trm_moneda_origen AS o, trm_moneda_destino AS d,
+              to_char(trm_fecha, 'YYYY-MM-DD') AS f, trm_fuente::text AS fuente
+         FROM travel_files WHERE tenant_id = $1 AND id = $2`,
+      [A.tenant, archivos[0]?.id ?? ''],
+    );
+    expect(trm[0]).toEqual({ o: 'USD', d: 'COP', f: '2027-03-01', fuente: 'OFICIAL' });
+
+    const reservas = (await reservasDe(A.tenant, archivos[0]?.id ?? '')).sort((a, b) =>
+      (a.mayorista_nombre ?? '').localeCompare(b.mayorista_nombre ?? ''),
+    );
+    // Orden alfabético por nombre: «Dos» antes que «Uno».
+    expect(reservas).toEqual([
+      {
+        estado: 'PENDIENTE',
+        mayorista_id: m2,
+        mayorista_nombre: 'Mayorista Dos',
+        neto_unidades: '80000',
+        moneda_iso: 'USD',
+        time_limit: null,
+      },
+      {
+        estado: 'PENDIENTE',
+        mayorista_id: m1,
+        mayorista_nombre: 'Mayorista Uno',
+        neto_unidades: '120000',
+        moneda_iso: 'USD',
+        time_limit: null,
+      },
+    ]);
+  });
+
+  it('sin TRM declarada la versión queda sin TRM (no se inventa) y el archivo igual abre', async () => {
+    const A = agencias.A;
+    const { paquete } = await paqueteConDosMayoristas(A, 'USD');
+    const alta = await pedir(A, '/api/v1/cotizaciones', {
+      contactoId: A.contacto,
+      titulo: 'Sin TRM',
+      version: composicion(paquete),
+    });
+    expect(alta.estado).toBe(201);
+    const id = (alta.json as CotizacionGuardada).id;
+    expect((alta.json as CotizacionGuardada).versiones[0]?.trm).toBeNull();
+    for (const estado of ['ENVIADA', 'ACEPTADA']) {
+      await pedir(A, `/api/v1/cotizaciones/${id}/estado`, { estado });
+    }
+    await despachador.despacharTenant(A.tenant);
+    const archivos = await archivosDe(A.tenant, id);
+    expect(archivos).toHaveLength(1);
+    expect(archivos[0]?.trm_valor).toBeNull();
+    expect(await reservasDe(A.tenant, archivos[0]?.id ?? '')).toHaveLength(2);
+  });
+
+  it('una TRM en una versión ya en la moneda de la agencia se rechaza con un error tipado (422)', async () => {
+    const A = agencias.A;
+    const { paquete } = await paqueteConDosMayoristas(A, 'COP');
+    const r = await pedir(A, '/api/v1/cotizaciones', {
+      contactoId: A.contacto,
+      titulo: 'TRM sobrante',
+      version: {
+        ...composicion(paquete),
+        trm: { valor: '1', fecha: '2027-03-01', fuente: 'AGENCIA' },
+      },
+    });
+    expect(r.estado).toBe(422);
+    expect((r.json as { error: { code: string } }).error.code).toBe('TRM_INNECESARIA');
+  });
+});

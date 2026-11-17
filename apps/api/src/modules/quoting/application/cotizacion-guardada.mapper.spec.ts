@@ -83,3 +83,39 @@ describe('versión guardada → composición (T-217)', () => {
     expect(ComposicionDeVersion.safeParse(c).success).toBe(true);
   });
 });
+
+describe('lo que se congela en la versión (ADR-0024 §2)', () => {
+  const MAYORISTA = '01932000-0000-7000-8000-0000000000b1';
+
+  it('el mayorista de cada línea no sale por la API, ni con margen', () => {
+    const f = fila({
+      lineas: [{ total: { unidades: '1070000', moneda: 'COP' }, mayoristaId: MAYORISTA }],
+    });
+    for (const conMargen of [false, true]) {
+      const v = aVersionDeCotizacion(f, conMargen);
+      expect(JSON.stringify(v)).not.toContain(MAYORISTA);
+      expect(v.lineas[0]).not.toHaveProperty('mayoristaId');
+    }
+  });
+
+  it('una versión sin TRM la devuelve en null; con TRM, decimal exacto en texto', () => {
+    expect(aVersionDeCotizacion(fila(), false).trm).toBeNull();
+    const v = aVersionDeCotizacion(
+      fila({
+        trmMonedaOrigen: 'USD',
+        trmMonedaDestino: 'COP',
+        trmValor: new Prisma.Decimal('4150.5'),
+        trmFecha: new Date('2026-10-01T00:00:00Z'),
+        trmFuente: 'AGENCIA',
+      }),
+      false,
+    );
+    expect(v.trm).toEqual({
+      monedaOrigen: 'USD',
+      monedaDestino: 'COP',
+      valor: '4150.500000',
+      fecha: '2026-10-01',
+      fuente: 'AGENCIA',
+    });
+  });
+});
