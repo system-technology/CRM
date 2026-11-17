@@ -54,7 +54,11 @@ BEGIN
       -- Migración 20261116090000. Dueño de la función que cambia la zona horaria de LA agencia
       -- del contexto: `tenants` es global y la API no tiene UPDATE sobre ella. Su superficie
       -- (columnas de `tenants`) la concede la migración, no este archivo.
-      ('viajapro_ajustes',    false, 'Propietario de actualizar_zona_horaria_de_la_agencia. NOLOGIN: no es una credencial. Solo lee tenants.id y actualiza tenants.zona_horaria y tenants.actualizado_en.')
+      ('viajapro_ajustes',    false, 'Propietario de actualizar_zona_horaria_de_la_agencia. NOLOGIN: no es una credencial. Solo lee tenants.id y actualiza tenants.zona_horaria y tenants.actualizado_en.'),
+      -- Migración 20261118090100 (ADR-0024 §5.3). Dueño de la función que dice qué agencias
+      -- tienen eventos de outbox por entregar a un consumidor; devuelve solo ids. Su superficie
+      -- (columnas de `tenants`, `outbox` y `entregas_de_eventos`) la concede la migración.
+      ('viajapro_planificador', false, 'Propietario de tenants_con_eventos_por_entregar (ADR-0024 §5.3). NOLOGIN: no es una credencial. Solo lee columnas de tenants, outbox y entregas_de_eventos; devuelve ids de agencia.')
     ) AS t(nombre, con_login, proposito)
   LOOP
     IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = rol.nombre) THEN
@@ -89,7 +93,7 @@ DO $$
 DECLARE
   nombre text;
 BEGIN
-  FOREACH nombre IN ARRAY ARRAY['viajapro_app','viajapro_altas','viajapro_webhook','viajapro_enrutador','viajapro_staging','viajapro_identidad','viajapro_accesos','viajapro_ajustes'] LOOP
+  FOREACH nombre IN ARRAY ARRAY['viajapro_app','viajapro_altas','viajapro_webhook','viajapro_enrutador','viajapro_staging','viajapro_identidad','viajapro_accesos','viajapro_ajustes','viajapro_planificador'] LOOP
     BEGIN
       EXECUTE format('ALTER ROLE %I NOBYPASSRLS NOSUPERUSER NOCREATEDB NOCREATEROLE', nombre);
     EXCEPTION WHEN insufficient_privilege THEN
@@ -111,7 +115,7 @@ DECLARE
   nombre text;
 BEGIN
   IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'neon_superuser') THEN
-    FOREACH nombre IN ARRAY ARRAY['viajapro_app','viajapro_altas','viajapro_webhook','viajapro_enrutador','viajapro_staging','viajapro_identidad','viajapro_accesos','viajapro_ajustes'] LOOP
+    FOREACH nombre IN ARRAY ARRAY['viajapro_app','viajapro_altas','viajapro_webhook','viajapro_enrutador','viajapro_staging','viajapro_identidad','viajapro_accesos','viajapro_ajustes','viajapro_planificador'] LOOP
       IF pg_has_role(nombre, 'neon_superuser', 'MEMBER') THEN
         EXECUTE format('REVOKE neon_superuser FROM %I', nombre);
         RAISE NOTICE 'Revocada la membresía de neon_superuser en %.', nombre;
@@ -144,7 +148,7 @@ BEGIN
     EXECUTE format('REVOKE CREATE ON SCHEMA public FROM %I', nombre);
   END LOOP;
 
-  FOREACH nombre IN ARRAY ARRAY['viajapro_enrutador','viajapro_staging','viajapro_accesos','viajapro_ajustes'] LOOP
+  FOREACH nombre IN ARRAY ARRAY['viajapro_enrutador','viajapro_staging','viajapro_accesos','viajapro_ajustes','viajapro_planificador'] LOOP
     EXECUTE format('GRANT USAGE ON SCHEMA public TO %I', nombre);
     EXECUTE format('REVOKE CREATE ON SCHEMA public FROM %I', nombre);
   END LOOP;
@@ -159,7 +163,7 @@ BEGIN
   -- Esto no amplía nada: el rol de migraciones ya es dueño del esquema y, en Neon, además
   -- hereda BYPASSRLS. Quien lo tenga, lo tiene todo; esa es la razón de que la aplicación
   -- nunca se conecte con él.
-  FOREACH nombre IN ARRAY ARRAY['viajapro_app','viajapro_altas','viajapro_webhook','viajapro_enrutador','viajapro_staging','viajapro_identidad','viajapro_accesos','viajapro_ajustes'] LOOP
+  FOREACH nombre IN ARRAY ARRAY['viajapro_app','viajapro_altas','viajapro_webhook','viajapro_enrutador','viajapro_staging','viajapro_identidad','viajapro_accesos','viajapro_ajustes','viajapro_planificador'] LOOP
     EXECUTE format('GRANT %I TO %I WITH SET TRUE, INHERIT FALSE', nombre, current_user);
   END LOOP;
 
@@ -183,7 +187,7 @@ BEGIN
   FOR r IN
     SELECT rolname, rolsuper, rolbypassrls, rolcanlogin
     FROM pg_roles
-    WHERE rolname IN ('viajapro_app','viajapro_altas','viajapro_webhook','viajapro_enrutador','viajapro_staging','viajapro_identidad','viajapro_accesos','viajapro_ajustes')
+    WHERE rolname IN ('viajapro_app','viajapro_altas','viajapro_webhook','viajapro_enrutador','viajapro_staging','viajapro_identidad','viajapro_accesos','viajapro_ajustes','viajapro_planificador')
   LOOP
     IF r.rolbypassrls THEN
       RAISE EXCEPTION '% tiene BYPASSRLS: el aislamiento entre tenants sería ficticio.', r.rolname;
@@ -191,7 +195,7 @@ BEGIN
     IF r.rolsuper THEN
       RAISE EXCEPTION '% es superusuario: el aislamiento entre tenants sería ficticio.', r.rolname;
     END IF;
-    IF r.rolcanlogin AND r.rolname IN ('viajapro_enrutador','viajapro_staging','viajapro_accesos','viajapro_ajustes') THEN
+    IF r.rolcanlogin AND r.rolname IN ('viajapro_enrutador','viajapro_staging','viajapro_accesos','viajapro_ajustes','viajapro_planificador') THEN
       RAISE EXCEPTION '% puede iniciar sesión: un propietario con LOGIN es una contraseña cuya posesión concede el secuestro de cualquier conversación.', r.rolname;
     END IF;
     IF NOT r.rolcanlogin AND r.rolname IN ('viajapro_app','viajapro_altas','viajapro_webhook','viajapro_identidad') THEN

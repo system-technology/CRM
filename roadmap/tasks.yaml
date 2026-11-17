@@ -5460,7 +5460,9 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: in_progress
+    status: done
+    done_at: 2026-11-17T19:10:00.000Z
+    evidence: "Integrado en main por el PR #286 (465c0db)"
     depends_on: []
     acceptance:
       - "Las cuatro tablas con tenant_id, RLS forzada, UNIQUE (id, tenant_id) y FK compuestas (ADR-0024 §3.2)"
@@ -5478,7 +5480,8 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: ready
+    status: in_progress
+    notes: "Parte datos en este PR (migraciones 20261118090000 y 20261118090100); falta la parte backend (evento, despachador, apertura del archivo)"
     depends_on: [T-240]
     acceptance:
       - "Al aceptar una cotizacion se abre su archivo de viaje con numero de file, una sola vez (idempotente por consumidor)"
@@ -5561,3 +5564,21 @@ tasks:
     source: auditoria de seguridad de T-240, 2026-11-17 (cola R13)
     created_at: 2026-11-17T18:40:00.000Z
     owner: backend
+  - id: T-246
+    title: "Datos: pruebas y ajustes que dejó la auditoría de la F2 de booking"
+    type: test
+    phase: 1
+    priority: P3
+    effort: S
+    status: ready
+    depends_on: [T-241]
+    acceptance:
+      - "INSERT con trm_moneda_origen NULL en travel_files demuestra que el CHECK corregido cierra el hueco de F1"
+      - "Prueba del tope de 500 de tenants_con_eventos_por_entregar y recorrido sin inanicion de las agencias de id alto"
+      - "Documentar que el contexto vacio del llamador vuelve como '' (equivale a NULL con NULLIF)"
+    files:
+      - packages/database/tests/aislamiento.spec.ts
+      - packages/database/prisma/migrations
+    source: auditoria de seguridad de la parte datos de T-241, 2026-11-18 (cola R13)
+    created_at: 2026-11-18T12:00:00.000Z
+    owner: datos

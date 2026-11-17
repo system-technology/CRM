@@ -1109,3 +1109,44 @@ reciben 42501. Lo fijan el cinturón de la migración y `aislamiento.spec.ts` (l
 total del mayorista (ADR-0024, Contexto); el modelo los hace obligatorios en el paso en que existen.
 Quedan para F2–F5: el despachador y el consumidor, el rol `viajapro_planificador` con sus dos
 funciones, los permisos `archivo.*` y la guardia de arranque del trabajador.
+
+
+## TRM y mayorista en la versión; eventos por entregar (ADR-0024 F2, T-241, migraciones `20261118090000_trm_y_mayorista_en_la_version` y `20261118090100_rol_planificador_y_eventos_por_entregar`)
+
+```
+  versiones_cotizacion  + trm_moneda_origen char(3), trm_moneda_destino char(3),
+                          trm_valor numeric(18,6), trm_fecha date, trm_fuente fuente_trm   (nulables)
+                          CHECK versiones_cotizacion_trm_valida: las cinco o ninguna, ISO en
+                          mayúsculas, origen ≠ destino, trm_valor > 0
+                          alta: trm_moneda_destino = tenants.moneda_iso
+                          alta: lineas[].mayoristaId ausente, null o un mayorista de ESTA agencia
+  travel_files          + CHECK travel_files_trm_valida (la misma regla)
+
+  viajapro_planificador (NOLOGIN, NOBYPASSRLS, NOINHERIT)
+    └─ dueño de tenants_con_eventos_por_entregar(p_consumidor text, p_tipo_evento text) → SETOF uuid
+         SELECT de columnas: tenants (id, estado) · outbox (id, tenant_id, tipo_evento, ocurrido_en)
+                             entregas_de_eventos (tenant_id, outbox_id, consumidor, entregado_en,
+                             abandonado_en)
+         EXECUTE: solo viajapro_app
+```
+
+- **La TRM es de lo ofrecido** y queda congelada con la versión (el disparador de inmutabilidad no
+  cambia: rechaza todo UPDATE). Nulas = versión en la moneda de la agencia (todo el piloto, COP).
+  No se exige TRM ni `mayoristaId` todavía: la API anterior a F2 escribe versiones sin ellas.
+- **`mayoristaId` por línea** vive en el JSON `lineas`, que no admite foránea: el disparador de alta
+  hace de foránea compuesta con el tenant. Sin él, una versión podría congelar el mayorista de otra
+  agencia y el consumidor `booking.abrir_archivo` chocaría en bucle con la foránea de `bookings`.
+- **`travel_files_trm_valida` corrige un hueco de F1**: en `travel_files_trm_completa`, con
+  `trm_moneda_origen` NULL y las otras cuatro presentes, el CHECK evaluaba a NULL y pasaba. Se añade
+  el correcto al lado; la migración aplicada no se edita.
+- **`tenants_con_eventos_por_entregar`** (decimoquinta `SECURITY DEFINER`): agencias `ACTIVO` o
+  `EN_PRUEBA` con algún evento de ese tipo de los últimos 7 días sin entrega hecha ni abandonada
+  para ese consumidor; `LIMIT 500`, en orden de id. Recorre las agencias fijando
+  `app.current_tenant` (RLS intacta) y devuelve el del llamador al terminar. Argumentos validados
+  contra el formato `contexto.nombre` (22023). Las columnas de `bookings` que ADR-0024 §5.3 da al
+  rol llegan con `reservas_con_plazo_por_avisar` en F5.
+
+**Por qué.** El consumidor de F2 crea una reserva por mayorista sin leer el catálogo, y el
+despachador necesita saber qué agencias tienen trabajo sin una vía de plataforma. Lo fijan los
+cinturones de las dos migraciones y el bloque «T-241» de `aislamiento.spec.ts` (más las aserciones
+12, 13, 14 y 20, que pasan de 14 a 15 funciones y de 5 a 6 propietarios).

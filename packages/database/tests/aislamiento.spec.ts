@@ -479,6 +479,10 @@ const MATRIZ_FUNCIONES: Readonly<Record<string, readonly string[]>> = {
   // agencia. `tenants` es global y `viajapro_app` la tiene `{SELECT}`; la zona horaria se escribe
   // solo por aquí, y solo la fila de `app.current_tenant`.
   actualizar_zona_horaria_de_la_agencia: ['viajapro_app'],
+  // Decimoquinta (ADR-0024 §1/§5.3, migración 20261118090100): qué agencias tienen eventos de
+  // outbox por entregar a un consumidor de dominio. Solo ids de agencia; la ejecuta el
+  // despachador, que vive en el proceso de la API, nunca en el trabajador.
+  tenants_con_eventos_por_entregar: ['viajapro_app'],
 };
 
 const PROPIETARIO_ESPERADO: Readonly<Record<string, string>> = {
@@ -496,6 +500,7 @@ const PROPIETARIO_ESPERADO: Readonly<Record<string, string>> = {
   sincronizar_acceso_identidad: 'viajapro_accesos',
   medir_cola_de_salida: 'viajapro_metricas',
   actualizar_zona_horaria_de_la_agencia: 'viajapro_ajustes',
+  tenants_con_eventos_por_entregar: 'viajapro_planificador',
 };
 
 /**
@@ -1006,8 +1011,8 @@ describe('ADR-0008 — directorio de enrutamiento, staging y separación de role
     );
     expect(
       rows.length,
-      'faltan funciones de ADR-0008: eran seis, la auditoría de implementación añadió purgar_payloads, la tarea 4f propagar_estado_canal, el relay de barrido listar_changes_pendientes, y los huecos del disparador propagar_estado_cuenta y contar_reencolado_barrido, ADR-0011 sincronizar_acceso_identidad, T-223 medir_cola_de_salida, y los ajustes de la agencia actualizar_zona_horaria_de_la_agencia',
-    ).toBe(14);
+      'faltan funciones de ADR-0008: eran seis, la auditoría de implementación añadió purgar_payloads, la tarea 4f propagar_estado_canal, el relay de barrido listar_changes_pendientes, y los huecos del disparador propagar_estado_cuenta y contar_reencolado_barrido, ADR-0011 sincronizar_acceso_identidad, T-223 medir_cola_de_salida, los ajustes de la agencia actualizar_zona_horaria_de_la_agencia, y el despachador de ADR-0024 tenants_con_eventos_por_entregar',
+    ).toBe(15);
     expect(rows.filter((r) => r.publico)).toEqual([]);
   });
 
@@ -1020,7 +1025,7 @@ describe('ADR-0008 — directorio de enrutamiento, staging y separación de role
        WHERE n.nspname = 'public' AND p.proname = ANY($1) ORDER BY 1`,
       [Object.keys(MATRIZ_FUNCIONES)],
     );
-    expect(rows.length).toBe(14);
+    expect(rows.length).toBe(15);
 
     for (const fila of rows) {
       const config = (fila.proconfig as string[] | null) ?? [];
@@ -1041,12 +1046,13 @@ describe('ADR-0008 — directorio de enrutamiento, staging y separación de role
       `SELECT rolname, rolcanlogin, rolbypassrls, rolsuper,
               EXISTS (SELECT 1 FROM pg_roles s WHERE s.rolname = 'neon_superuser')
                 AND pg_has_role(rolname, 'neon_superuser', 'MEMBER') AS hereda_neon
-       FROM pg_roles WHERE rolname IN ('viajapro_enrutador','viajapro_staging','viajapro_accesos','viajapro_metricas','viajapro_ajustes') ORDER BY 1`,
+       FROM pg_roles WHERE rolname IN ('viajapro_enrutador','viajapro_staging','viajapro_accesos','viajapro_metricas','viajapro_ajustes','viajapro_planificador') ORDER BY 1`,
     );
     // El tercero es de ADR-0011: dueño del disparador que escribe `accesos_identidad`. El cuarto,
     // de T-223: dueño de `medir_cola_de_salida`. El quinto, de la migración 20261116090000: dueño
-    // de `actualizar_zona_horaria_de_la_agencia`.
-    expect(rows.length).toBe(5);
+    // de `actualizar_zona_horaria_de_la_agencia`. El sexto, de ADR-0024 §5.3 (migración
+    // 20261118090100): dueño de `tenants_con_eventos_por_entregar`.
+    expect(rows.length).toBe(6);
     for (const r of rows) {
       expect(r.rolcanlogin, `${r.rolname} puede iniciar sesión`).toBe(false);
       expect(r.rolbypassrls, `${r.rolname} tiene BYPASSRLS`).toBe(false);
@@ -6574,6 +6580,9 @@ const COLUMNAS_DE_TEXTO_DECLARADAS: readonly string[] = [
   'versiones_cotizacion.destino',
   'versiones_cotizacion.moneda_iso',
   'versiones_cotizacion.paquete_nombre',
+  // T-241: códigos ISO-4217 de la TRM de la versión, sin PII.
+  'versiones_cotizacion.trm_moneda_destino',
+  'versiones_cotizacion.trm_moneda_origen',
 ];
 
 describe('ADR-0015 — cifrado de las columnas con PII sensible', () => {
@@ -7680,5 +7689,441 @@ describe('T-240 — ADR-0024 F1: archivo de viaje, reservas, pasajeros y entrega
       );
     expect((await comoTenant(TENANT_A, reclamar)).rowCount).toBe(1);
     expect((await comoTenant(TENANT_A, reclamar)).rowCount).toBe(0);
+  });
+});
+
+// =========================================================================================
+// T-241 — ADR-0024 F2 (base de datos): TRM y mayorista por línea en la versión, y
+// `tenants_con_eventos_por_entregar` con su dueño `viajapro_planificador`
+//
+// Lo que no puede pasar: que la función devuelva algo más que ids de agencia, que la ejecute
+// otro rol que la API, que su dueño lea el payload del outbox o escriba algo, que el despachador
+// salga de la llamada con el contexto de otra agencia, o que una versión congele el mayorista de
+// OTRA agencia en sus líneas.
+// =========================================================================================
+
+describe('T-241 — ADR-0024 F2: TRM y mayorista en la versión, y tenants_con_eventos_por_entregar', () => {
+  const FUNCION = 'public.tenants_con_eventos_por_entregar';
+  // Tipos de evento de ESTA corrida: la base es compartida y otras corridas escriben outbox. Solo
+  // letras (los dígitos de la marca, a letras) para casar con el formato que valida la función.
+  const SUFIJO = MARCA.replace(/[0-9]/g, (d) => 'ghijklmnop'[Number(d)] ?? 'g');
+  const TIPO = `prueba.f_${SUFIJO}`;
+  const TIPO_VIEJO = `prueba.viejo_${SUFIJO}`;
+  const TIPO_REINTENTO = `prueba.reintento_${SUFIJO}`;
+  const TIPO_SIN_EVENTOS = `prueba.vacio_${SUFIJO}`;
+  const ABRIR = 'booking.abrir_archivo';
+  const GANAR = 'crm.ganar_oportunidad';
+  const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
+  const paqueteDe: Record<string, string> = {};
+  const cotizacionDe: Record<string, string> = {};
+  const mayoristaDe: Record<string, string> = {};
+  let numeroDeVersion = 0;
+
+  const insertarEvento = async (
+    c: Client,
+    tenant: string,
+    tipo: string,
+    haceDias = 0,
+  ): Promise<string> => {
+    const { rows } = await c.query(
+      `INSERT INTO outbox (tenant_id, agregado, agregado_id, tipo_evento, payload, ocurrido_en)
+       VALUES ($1, 'cotizacion', gen_random_uuid(), $2, '{"v":1}'::jsonb,
+               now() - make_interval(days => $3::int))
+       RETURNING id::text AS id`,
+      [tenant, tipo, haceDias],
+    );
+    return (rows[0] as { id: string }).id;
+  };
+
+  const marcarEntrega = (
+    c: Client,
+    tenant: string,
+    outbox: string,
+    consumidor: string,
+    { entregada = false, abandonada = false, intentos = 0 } = {},
+  ) =>
+    c.query(
+      `INSERT INTO entregas_de_eventos
+         (tenant_id, outbox_id, consumidor, entregado_en, abandonado_en, intentos, actualizado_en)
+       VALUES ($1, $2, $3, CASE WHEN $4::boolean THEN now() END,
+               CASE WHEN $5::boolean THEN now() END, $6, now())`,
+      [tenant, outbox, consumidor, entregada, abandonada, intentos],
+    );
+
+  /** Como la API: `viajapro_app`, en una transacción que se deshace, con un contexto puesto. */
+  async function porEntregar(
+    consumidor: string | null,
+    tipo: string | null,
+    contexto: string = TENANT_B,
+  ) {
+    await app.query('BEGIN');
+    try {
+      await app.query("SELECT set_config('app.current_tenant', $1, true)", [contexto]);
+      const r = await app.query(`SELECT * FROM ${FUNCION}($1, $2)`, [consumidor, tipo]);
+      const despues = await app.query(
+        "SELECT current_setting('app.current_tenant', true) AS contexto",
+      );
+      return {
+        ids: r.rows.map((f) => Object.values(f as object)[0] as string),
+        campos: r.fields.map((f) => ({ nombre: f.name, tipo: f.dataTypeID })),
+        contextoDespues: (despues.rows[0] as { contexto: string }).contexto,
+      };
+    } finally {
+      await app.query('ROLLBACK');
+    }
+  }
+
+  /** El SQLSTATE de una sentencia como `viajapro_app`, en una transacción que se deshace. */
+  async function codigoComoApp(sql: string, params: unknown[]): Promise<string | undefined> {
+    await app.query('BEGIN');
+    try {
+      await app.query("SELECT set_config('app.current_tenant', $1, true)", [TENANT_A]);
+      await app.query(sql, params as never[]);
+      return undefined;
+    } catch (error) {
+      return (error as { code?: string }).code;
+    } finally {
+      await app.query('ROLLBACK');
+    }
+  }
+
+  interface Trm {
+    origen: string | null;
+    destino: string | null;
+    valor: string | null;
+    fecha: string | null;
+    fuente: string | null;
+  }
+  const SIN_TRM: Trm = { origen: null, destino: null, valor: null, fecha: null, fuente: null };
+  const TRM_USD: Trm = {
+    origen: 'USD',
+    destino: 'COP',
+    valor: '4012.345678',
+    fecha: '2026-11-17',
+    fuente: 'AGENCIA',
+  };
+
+  /** Una versión de 2 adultos a 350 en `moneda`, con sus líneas y su TRM. Devuelve el SQLSTATE. */
+  const altaDeVersion = (
+    tenant: string,
+    { lineas, moneda = 'COP', trm = SIN_TRM }: { lineas: unknown[]; moneda?: string; trm?: Trm },
+  ) => {
+    numeroDeVersion += 1;
+    return codigoComoApp(
+      `INSERT INTO versiones_cotizacion
+         (id, tenant_id, cotizacion_id, numero, paquete_id, paquete_nombre, destino, noches,
+          fecha_salida, vigencia_id, vigencia_desde, vigencia_hasta, de_salida_programada,
+          adultos, ninos, infantes, politica_porcentaje, politica_base, politica_origen,
+          politica_redondeo, lineas, venta_unidades, neto_unidades, margen_unidades, moneda_iso,
+          trm_moneda_origen, trm_moneda_destino, trm_valor, trm_fecha, trm_fuente)
+       VALUES (gen_random_uuid(), $1, $2, $3, $4, 'Parque del Café', 'Quindío', 1,
+               '2026-12-05', gen_random_uuid(), '2026-12-01', '2026-12-15', false,
+               2, 0, 0, 20, 'SOBRE_EL_NETO', 'DERIVADA_DEL_NETO',
+               1, $5::jsonb, 700, NULL, NULL, $6,
+               $7, $8, $9::numeric, $10::date, $11::fuente_trm)`,
+      [
+        tenant,
+        cotizacionDe[tenant],
+        numeroDeVersion,
+        paqueteDe[tenant],
+        JSON.stringify(lineas),
+        moneda,
+        trm.origen,
+        trm.destino,
+        trm.valor,
+        trm.fecha,
+        trm.fuente,
+      ],
+    );
+  };
+  const lineaCon = (extra: Record<string, unknown>, moneda = 'COP') => ({
+    ...linea('Adulto', 2, 350, moneda),
+    ...extra,
+  });
+
+  beforeAll(async () => {
+    for (const tenant of [TENANT_A, TENANT_B]) {
+      await comoTenant(tenant, async (c) => {
+        const paquete = await c.query(
+          `INSERT INTO paquetes (id, tenant_id, nombre, destino, dias, noches, creado_en, actualizado_en)
+           VALUES (gen_random_uuid(), $1, 'Parque del Café', 'Quindío', 2, 1, now(), now())
+           RETURNING id`,
+          [tenant],
+        );
+        paqueteDe[tenant] = (paquete.rows[0] as { id: string }).id;
+        const contacto = await c.query(
+          `INSERT INTO contactos (id, tenant_id, telefono_e164, creado_en, actualizado_en)
+           VALUES (gen_random_uuid(), $1, $2, now(), now()) RETURNING id`,
+          [tenant, `+57324100000${tenant === TENANT_A ? 0 : 1}`],
+        );
+        const cotizacion = await c.query(
+          `INSERT INTO cotizaciones (id, tenant_id, contacto_id, titulo, creado_en, actualizado_en)
+           VALUES (gen_random_uuid(), $1, $2, 'TRM T-241', now(), now()) RETURNING id`,
+          [tenant, (contacto.rows[0] as { id: string }).id],
+        );
+        cotizacionDe[tenant] = (cotizacion.rows[0] as { id: string }).id;
+        const mayorista = await c.query(
+          `INSERT INTO mayoristas (id, tenant_id, nombre, creado_en, actualizado_en)
+           VALUES (gen_random_uuid(), $1, 'Mayorista T-241', now(), now()) RETURNING id`,
+          [tenant],
+        );
+        mayoristaDe[tenant] = (mayorista.rows[0] as { id: string }).id;
+      });
+    }
+
+    // A: un evento reciente de TIPO sin ninguna entrega; uno de TIPO_VIEJO de hace 8 días; uno de
+    //    TIPO_REINTENTO con 3 fallos sin marca (sigue pendiente).
+    await comoTenant(TENANT_A, async (c) => {
+      await insertarEvento(c, TENANT_A, TIPO);
+      await insertarEvento(c, TENANT_A, TIPO_VIEJO, 8);
+      const reintento = await insertarEvento(c, TENANT_A, TIPO_REINTENTO);
+      await marcarEntrega(c, TENANT_A, reintento, ABRIR, { intentos: 3 });
+    });
+    // B: un evento de TIPO YA entregado a `booking.abrir_archivo` (pero no a `crm.…`), y uno de
+    //    TIPO_REINTENTO abandonado para `booking.abrir_archivo`.
+    await comoTenant(TENANT_B, async (c) => {
+      const entregado = await insertarEvento(c, TENANT_B, TIPO);
+      await marcarEntrega(c, TENANT_B, entregado, ABRIR, { entregada: true });
+      const abandonado = await insertarEvento(c, TENANT_B, TIPO_REINTENTO);
+      await marcarEntrega(c, TENANT_B, abandonado, ABRIR, { abandonada: true, intentos: 10 });
+    });
+    // C: ningún evento de estos tipos.
+  }, 60_000);
+
+  it('F2-1 — viajapro_planificador es solo propietario: superficie exacta de columnas, sin miembros de login, dueño solo de su función', async () => {
+    const { rows: atributos } = await admin.query(
+      `SELECT rolcanlogin, rolbypassrls, rolsuper, rolinherit,
+              has_schema_privilege(rolname, 'public', 'CREATE') AS crea
+         FROM pg_roles WHERE rolname = 'viajapro_planificador'`,
+    );
+    expect(atributos).toEqual([
+      { rolcanlogin: false, rolbypassrls: false, rolsuper: false, rolinherit: false, crea: false },
+    ]);
+
+    const { rows: superficie } = await admin.query(
+      `SELECT format('%s.%s.%s:%s', n.nspname, c.relname, a.attname, p.priv) AS privilegio
+         FROM pg_class c
+         JOIN pg_namespace n ON n.oid = c.relnamespace
+         JOIN pg_attribute a ON a.attrelid = c.oid AND a.attnum > 0 AND NOT a.attisdropped
+        CROSS JOIN unnest(ARRAY['SELECT', 'INSERT', 'UPDATE', 'REFERENCES']) AS p(priv)
+        WHERE n.nspname NOT IN ('pg_catalog', 'information_schema')
+          AND n.nspname NOT LIKE 'pg\\_toast%'
+          AND n.nspname NOT LIKE 'pg\\_temp%'
+          AND c.relkind IN ('r', 'p', 'v', 'm', 'f')
+          AND has_column_privilege('viajapro_planificador', c.oid, a.attnum, p.priv)
+          AND NOT has_column_privilege('public', c.oid, a.attnum, p.priv)
+        ORDER BY n.nspname, c.relname, a.attname, p.priv`,
+    );
+    // Nada de `outbox.payload`, nada de `entregas_de_eventos.ultimo_error`, ninguna escritura. Las
+    // columnas de `bookings` de ADR-0024 §5.3 llegan con `reservas_con_plazo_por_avisar` (F5).
+    expect(
+      (superficie as Array<{ privilegio: string }>).map((r) => r.privilegio),
+      'superficie de columnas de viajapro_planificador',
+    ).toEqual([
+      'public.entregas_de_eventos.abandonado_en:SELECT',
+      'public.entregas_de_eventos.consumidor:SELECT',
+      'public.entregas_de_eventos.entregado_en:SELECT',
+      'public.entregas_de_eventos.outbox_id:SELECT',
+      'public.entregas_de_eventos.tenant_id:SELECT',
+      'public.outbox.id:SELECT',
+      'public.outbox.ocurrido_en:SELECT',
+      'public.outbox.tenant_id:SELECT',
+      'public.outbox.tipo_evento:SELECT',
+      'public.tenants.estado:SELECT',
+      'public.tenants.id:SELECT',
+    ]);
+
+    const { rows: deTabla } = await admin.query(
+      `SELECT c.oid::regclass::text AS tabla, x.privilege_type AS privilegio
+         FROM pg_class c, aclexplode(c.relacl) x
+        WHERE x.grantee = 'viajapro_planificador'::regrole`,
+    );
+    expect(deTabla, 'privilegios de TABLA de viajapro_planificador').toEqual([]);
+
+    const { rows: miembroDe } = await admin.query(
+      `SELECT roleid::regrole::text AS rol FROM pg_auth_members
+        WHERE member = 'viajapro_planificador'::regrole`,
+    );
+    expect(miembroDe, 'roles de los que viajapro_planificador es miembro').toEqual([]);
+
+    const { rows: comoDueno } = await admin.query(
+      `SELECT rolname FROM unnest($1::text[]) AS rolname
+        WHERE pg_has_role(rolname, 'viajapro_planificador', 'MEMBER')`,
+      [await rolesAVigilar(admin)],
+    );
+    expect(comoDueno, 'roles de login que pueden actuar como viajapro_planificador').toEqual([]);
+
+    const { rows: propias } = await admin.query(
+      `SELECT format('%s.%s', n.nspname, p.proname) AS funcion
+         FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+        WHERE p.proowner = 'viajapro_planificador'::regrole
+        ORDER BY 1`,
+    );
+    expect(
+      (propias as Array<{ funcion: string }>).map((r) => r.funcion),
+      'funciones de las que viajapro_planificador es dueño',
+    ).toEqual(['public.tenants_con_eventos_por_entregar']);
+
+    const { rows: concedidas } = await admin.query(
+      `SELECT p.oid::regprocedure::text AS funcion
+         FROM pg_proc p, aclexplode(p.proacl) x
+        WHERE x.grantee = 'viajapro_planificador'::regrole
+          AND p.proowner <> x.grantee`,
+    );
+    expect(concedidas, 'funciones que conceden EXECUTE a viajapro_planificador').toEqual([]);
+
+    // La forma de la salida es la frontera: dos argumentos de texto y SOLO uuid.
+    const { rows: firma } = await admin.query(
+      `SELECT pg_get_function_identity_arguments(p.oid) AS argumentos,
+              pg_get_function_result(p.oid) AS resultado, p.provolatile AS volatilidad
+         FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+        WHERE n.nspname = 'public' AND p.proname = 'tenants_con_eventos_por_entregar'`,
+    );
+    expect(firma).toEqual([
+      {
+        argumentos: 'p_consumidor text, p_tipo_evento text',
+        resultado: 'SETOF uuid',
+        volatilidad: 'v',
+      },
+    ]);
+  });
+
+  it('F2-2 — devuelve SOLO ids de agencia con eventos sin entregar a ESE consumidor, y devuelve el contexto del llamador', async () => {
+    const abrir = await porEntregar(ABRIR, TIPO);
+    // Una columna, de tipo uuid (OID 2950), y nada más: ni ids de evento, ni payload, ni conteos.
+    expect(abrir.campos).toEqual([{ nombre: 'tenants_con_eventos_por_entregar', tipo: 2950 }]);
+    for (const id of abrir.ids) expect(id).toMatch(UUID);
+    expect(new Set(abrir.ids).size, 'una agencia aparece una sola vez').toBe(abrir.ids.length);
+
+    // A tiene un evento sin entrega: sale. B ya lo entregó a este consumidor: no sale. C no tiene
+    // eventos de este tipo: no sale.
+    expect(abrir.ids).toContain(TENANT_A);
+    expect(abrir.ids, 'evento ya entregado a ese consumidor').not.toContain(TENANT_B);
+    expect(abrir.ids, 'agencia sin eventos pendientes').not.toContain(TENANT_C);
+
+    // El llamador estaba en la transacción de B y sale en la de B, no en la última que recorrió.
+    expect(abrir.contextoDespues).toBe(TENANT_B);
+    expect((await porEntregar(ABRIR, TIPO, '')).contextoDespues).toBe('');
+
+    // Otro consumidor sí ve el evento de B: la entrega es por par (evento, consumidor).
+    const ganar = await porEntregar(GANAR, TIPO);
+    expect(ganar.ids).toEqual(expect.arrayContaining([TENANT_A, TENANT_B]));
+    expect(ganar.ids).not.toContain(TENANT_C);
+  });
+
+  it('F2-3 — ni eventos de más de 7 días, ni abandonados, ni de otro tipo; un reintento sin marca sigue pendiente; una agencia suspendida no sale', async () => {
+    expect((await porEntregar(ABRIR, TIPO_VIEJO)).ids, 'evento de hace 8 días').not.toContain(
+      TENANT_A,
+    );
+    const reintento = await porEntregar(ABRIR, TIPO_REINTENTO);
+    expect(reintento.ids, 'tres fallos sin abandonar').toContain(TENANT_A);
+    expect(reintento.ids, 'abandonado').not.toContain(TENANT_B);
+
+    const vacio = await porEntregar(ABRIR, TIPO_SIN_EVENTOS);
+    for (const t of [TENANT_A, TENANT_B, TENANT_C]) expect(vacio.ids).not.toContain(t);
+
+    // Una agencia SUSPENDIDA no se despacha. Dentro de una transacción que se deshace.
+    await admin.query('BEGIN');
+    try {
+      await admin.query("UPDATE tenants SET estado = 'SUSPENDIDO' WHERE id = $1", [TENANT_A]);
+      await admin.query('SET LOCAL ROLE viajapro_app');
+      const { rows } = await admin.query(`SELECT * FROM ${FUNCION}($1, $2)`, [ABRIR, TIPO]);
+      expect(rows.map((f) => Object.values(f as object)[0] as string)).not.toContain(TENANT_A);
+    } finally {
+      await admin.query('ROLLBACK');
+    }
+  });
+
+  it('F2-4 — argumentos con otra forma fallan con 22023, y solo viajapro_app la ejecuta', async () => {
+    for (const [consumidor, tipo] of [
+      [null, TIPO],
+      [ABRIR, null],
+      ['Booking abrir', TIPO],
+      ['booking', TIPO],
+      [ABRIR, "prueba.x' OR true --"],
+      [ABRIR, `prueba.${'x'.repeat(130)}`],
+      [`booking.${'x'.repeat(80)}`, TIPO],
+    ] as const) {
+      expect(
+        await codigoComoApp(`SELECT * FROM ${FUNCION}($1, $2)`, [consumidor, tipo]),
+        `${String(consumidor)} / ${String(tipo)}`,
+      ).toBe('22023');
+    }
+
+    for (const rol of ['viajapro_altas', 'viajapro_webhook', 'viajapro_identidad']) {
+      await expect(
+        conRol(rol, `SELECT * FROM ${FUNCION}($1, $2)`, [ABRIR, TIPO]),
+        `${rol} pudo ejecutar tenants_con_eventos_por_entregar`,
+      ).rejects.toMatchObject({ code: '42501' });
+    }
+  });
+
+  it('F2-5 — la TRM de la versión: las cinco o ninguna, valor > 0, origen ≠ destino y destino = moneda de la agencia', async () => {
+    // Sin TRM (la agencia trabaja en COP, todo el piloto) y con una TRM completa: pasan.
+    expect(await altaDeVersion(TENANT_A, { lineas: [lineaCon({})] })).toBeUndefined();
+    expect(
+      await altaDeVersion(TENANT_A, {
+        lineas: [lineaCon({}, 'USD')],
+        moneda: 'USD',
+        trm: TRM_USD,
+      }),
+    ).toBeUndefined();
+
+    for (const [motivo, trm] of [
+      ['falta el origen (el hueco de lógica de tres valores)', { ...TRM_USD, origen: null }],
+      ['falta la fecha', { ...TRM_USD, fecha: null }],
+      ['valor cero', { ...TRM_USD, valor: '0' }],
+      ['valor negativo', { ...TRM_USD, valor: '-1' }],
+      ['origen = destino', { ...TRM_USD, origen: 'COP' }],
+      ['código en minúsculas', { ...TRM_USD, origen: 'usd' }],
+    ] as const) {
+      expect(
+        await altaDeVersion(TENANT_A, { lineas: [lineaCon({}, 'USD')], moneda: 'USD', trm }),
+        motivo,
+      ).toBe('23514');
+    }
+
+    // Destino distinto de la moneda de la agencia (COP): lo rechaza el disparador de alta.
+    expect(
+      await altaDeVersion(TENANT_A, {
+        lineas: [lineaCon({}, 'USD')],
+        moneda: 'USD',
+        trm: { ...TRM_USD, origen: 'EUR', destino: 'USD' },
+      }),
+    ).toBe('23514');
+
+    // Y `travel_files` tiene la misma regla corregida.
+    const { rows } = await admin.query(
+      `SELECT conname FROM pg_constraint
+        WHERE conrelid = 'public.travel_files'::regclass AND contype = 'c' AND convalidated
+          AND conname = 'travel_files_trm_valida'`,
+    );
+    expect(rows).toHaveLength(1);
+  });
+
+  it('F2-6 — el mayorista de cada línea es null o uno de ESTA agencia: el de otra agencia no se congela', async () => {
+    // Sin la clave (API anterior a F2), con null y con un mayorista propio: pasan.
+    expect(await altaDeVersion(TENANT_A, { lineas: [lineaCon({})] })).toBeUndefined();
+    expect(
+      await altaDeVersion(TENANT_A, { lineas: [lineaCon({ mayoristaId: null })] }),
+    ).toBeUndefined();
+    expect(
+      await altaDeVersion(TENANT_A, {
+        lineas: [lineaCon({ mayoristaId: mayoristaDe[TENANT_A] })],
+      }),
+    ).toBeUndefined();
+
+    // El mayorista de B, uno que no existe, un texto que no es uuid o un tipo JSON equivocado: 23503.
+    for (const [motivo, mayoristaId] of [
+      ['mayorista de otra agencia', mayoristaDe[TENANT_B]],
+      ['mayorista inexistente', randomUUID()],
+      ['no es un uuid', 'mayorista-b'],
+      ['no es un texto', 42],
+    ] as const) {
+      expect(await altaDeVersion(TENANT_A, { lineas: [lineaCon({ mayoristaId })] }), motivo).toBe(
+        '23503',
+      );
+    }
   });
 });
