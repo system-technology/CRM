@@ -68,11 +68,26 @@ Verificado (gh/git; todos con el CI en verde, 13-14 checks):
   lo que no se corrigió en la vuelta fue a la cola (T-232..T-235).
 - Cola de código restante: T-235 (P3), T-226 (c) (solo con una clave real que rotar).
 
+**Revisión de PR abiertos (añadido 2026-11-16; `main` en `a7fb3d5`)**
+
+Verificado (gh/git):
+- #276 (`8e12896`) rescata del #29 `CAMPOS_SENSIBLES_KEY_PREVIOUS` en `render.yaml` y la guía de
+  staging; #29 y #107 cerrados con comentario (obsoletos).
+- #234 rehecho sobre main en #277 (`e4eb9b3`): rol `viajapro_ajustes` con permisos de columna,
+  función `actualizar_zona_horaria_de_la_agencia`, ADR-0027 y R2; #234 cerrado. Endpoint en #278
+  (`db8c875`, `usuarios.administrar`) y pantalla en #279 (`a7fb3d5`).
+- Dependabot en verde (#265, #257, #255, #13): no se pueden integrar sin la revisión del
+  propietario (CODEOWNERS: «Waiting on code owner review»). Los saltos mayores (#259 Prisma 7,
+  #261 Nest 12, #262 pnpm 12, #260 @types/node 26) están en rojo y esperan su decisión.
+- Cola: T-237 (Z5 con NULL, comentarios de `policies/002`, 403 por HTTP).
+
 **Pendiente (no darlo por hecho)**
-- Del propietario: `CAMPOS_SENSIBLES_KEY` en Render y copia de la clave; `STAGING_DESPLIEGUE`;
+- Del propietario: aprobar los cuatro Dependabot en verde y decidir los saltos mayores; `CAMPOS_SENSIBLES_KEY` en Render y copia de la clave; `STAGING_DESPLIEGUE`;
   Meta real (T-080); decidir zod 4; ADR-0023/0024.
 
 **Trampas nuevas**
+- Los PR de Dependabot exigen la revisión del propietario del código; los del propio dueño no.
+- `expectedHeadSha` del merge exige el SHA completo y real: no reconstruirlo a partir de un prefijo.
 - Tras un squash-merge, la rama remota diverge de `main`: el force-push lo deniega el
   clasificador. Se hace `git merge origin/<rama>` (contenido idéntico) y push normal.
 - Commitlint: el alcance `datos` no existe; para la base es `db`.

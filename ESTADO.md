@@ -10,17 +10,17 @@
 
 | Campo | Valor |
 |---|---|
-| Última actualización | 2026-11-15 (segundo cierre del día; `main` en `e46ee11`) |
-| Actualizado por | Claude (hilo al día con los PR #256 a #274) |
+| Última actualización | 2026-11-16 (revisión de PR; `main` en `a7fb3d5`) |
+| Actualizado por | Claude (hilo al día con los PR #256 a #279) |
 | Fase | **Fase 1 del backlog: «Un CRM mostrable y endurecido»** (M1 del [roadmap v2](docs/08-roadmap/01-roadmap.md)). Sin agencia real todavía. Prioridad vigente: la demo a JD Tours ([`MARCO.md`](docs/_contexto/MARCO.md) §6) |
-| Avance | 150 tareas `done` en `roadmap/tasks.yaml`. «Done» significa integrada en `main`, **no** desplegada ni probada con Meta real |
+| Avance | 151 tareas `done` en `roadmap/tasks.yaml`. «Done» significa integrada en `main`, **no** desplegada ni probada con Meta real |
 | Próximo hito | Que el propietario cargue la clave de cifrado y decida el despliegue; después, prueba con Meta real (T-080). Del lado del código solo queda cola menor: T-235 y T-226 (c), recifrado por lotes, que solo hace falta cuando haya una clave real que rotar |
 
 ---
 
 ## 1. Dónde estamos
 
-Verificado el 2026-11-15 sobre `origin/main` (`e46ee11`, PR #274) con `git log` y `roadmap/tasks.yaml`.
+Verificado el 2026-11-16 sobre `origin/main` (`a7fb3d5`, PR #279) con `git log` y `roadmap/tasks.yaml`.
 Fuente de la corrección de rumbo: [auditoría integral 2026-11-15](docs/_auditorias/2026-11-15-auditoria-integral.md)
 y su [plan](docs/08-roadmap/02-plan-correccion-auditoria-2026-11-15.md). Entrada del día:
 [bitácora](docs/_bitacora/2026-11-15-mvp-en-navegador-y-cierre-de-auditoria.md).
@@ -48,9 +48,10 @@ entrado. Seguimos en local.
 | `/salud/listo` público solo informa el estado de cada cola (T-228) | PR #269 |
 | Motivos de pérdida por agencia: la agencia los gestiona en Configuración, el pipeline los ofrece al cerrar como perdida, un motivo de otra agencia da 404; motivos propios con nota; motivo desactivado rechazado también en la base | PR #271 y #272; `motivos-de-perdida.e2e-spec.ts`, `aislamiento.spec.ts` |
 | Arranque seguro del cifrado: la API, el trabajador y el modo único abortan si hay datos con una versión de clave que no tienen, **antes** de que ningún consumidor o planificador tome trabajo | PR #273 y #274; `comprobacion-al-arrancar.spec.ts` |
+| La agencia ve y cambia su zona horaria en Configuración, con permiso de dueño o administrador; la base lo hace con una función de permisos mínimos que solo toca la agencia propia | PR #277 (ADR-0027), #278 y #279; `agencia-ajustes.e2e-spec.ts`, Z1–Z5 de `aislamiento.spec.ts` |
 | Dependencias: `pnpm audit` de producción pasó de 3 críticas y 15 altas a 0 y 1 (queda zod v3; zod 4 lo decide el propietario) | PR #267 |
 
-El repositorio tiene 39 migraciones. Cifras de pruebas: no se midieron en esta sesión y no se repiten.
+El repositorio tiene 40 migraciones. Cifras de pruebas: no se midieron en esta sesión y no se repiten.
 
 **Defecto real que halló la suite:** la bandeja nunca ofrecía cotizaciones para enviar con la API real,
 porque la ficha de CRM las trae vacías (R4). Ahora la bandeja las pide a `quoting`. Antes, la suite
@@ -98,7 +99,7 @@ Postmark real; las migraciones contra una base de producción (solo corren en el
 |---|---|---|
 | Frontend (`apps/web`, `packages/ui`, `packages/sdk`) | Agente `frontend` (Claude) | Suite de navegador, vista previa del envío, UI de motivos de pérdida |
 | Backend (`apps/api`) | Agentes `backend`, `whatsapp` | Cola menor: T-235 (prueba de arquitectura del arranque), T-226 (c) |
-| Datos | Agente `datos` | 39 migraciones en `main` |
+| Datos | Agente `datos` | 40 migraciones en `main` |
 | Integración y documentación | `integrador`, `documentador` | Hilo, ADR, bitácora, `docs/06-operacion/` |
 | Producto y estrategia | `jefe-de-producto`, `dueno-de-producto` | Roadmap v3; demo a JD Tours |
 | Ciclo OpenCode | **Detenido** | Ver arriba |

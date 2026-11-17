@@ -91,6 +91,12 @@ const BloqueConexionWhatsapp = dynamic(
   { ssr: false },
 );
 
+const BloqueZonaHoraria = dynamic(
+  () =>
+    import('../../components/configuracion/bloque-zona-horaria').then((m) => m.BloqueZonaHoraria),
+  { ssr: false },
+);
+
 type TabConfig =
   | 'equipo'
   | 'whatsapp'
@@ -492,6 +498,7 @@ export default function ConfiguracionPage() {
           {/* TAB 5: MARCA Y DATOS FISCALES */}
           {tabActiva === 'agencia' && (
             <div className="max-w-2xl space-y-6">
+              <BloqueZonaHoraria />
               <form
                 onSubmit={guardarCambiosAgencia}
                 className="space-y-4 rounded-xl border border-neutral-200 bg-white p-5 shadow-sm dark:border-neutral-800 dark:bg-neutral-900"

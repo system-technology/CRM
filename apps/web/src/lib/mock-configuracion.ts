@@ -133,7 +133,7 @@ export const MOCK_CONFIGURACION_AGENCIA: ConfiguracionAgencia = {
   nombreComercial: 'ViajaPro Aventura',
   nit: '901.482.910-3',
   monedaBase: 'COP',
-  zonaHoraria: 'America/Bogota (UTC-5)',
+  zonaHoraria: 'America/Bogota',
   direccion: 'Calle 93 # 12-45, Of. 401',
   ciudad: 'Bogotá D.C., Colombia',
   telefonoSoporte: '+573009123456',

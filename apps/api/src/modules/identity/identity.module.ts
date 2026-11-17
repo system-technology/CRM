@@ -3,7 +3,12 @@ import { ResolutorDeAcceso } from '../../shared/puertos/puerto-de-acceso.js';
 import { CambiarAgenciaActiva } from './application/cambiar-agencia-activa.use-case.js';
 import { ResolverAcceso } from './application/resolver-acceso.use-case.js';
 import { ObtenerSesionActual } from './application/sesion-actual.use-case.js';
-import { PuertoAgencias, PuertoMembresias, PuertoSesiones } from './domain/puertos.js';
+import {
+  PuertoAgencias,
+  PuertoMembresias,
+  PuertoSesiones,
+  PuertoZonaHoraria,
+} from './domain/puertos.js';
 import {
   PuertoIdentidades,
   PuertoInvitaciones,
@@ -21,6 +26,7 @@ import {
   AceptarInvitacionController,
   InvitacionesController,
 } from './interface/invitaciones.controller.js';
+import { ZonaHorariaPrisma } from './infrastructure/zona-horaria.prisma.js';
 import { AgenciasPrisma } from './infrastructure/agencias.prisma.js';
 import { proveedorDeAuth } from './infrastructure/auth.provider.js';
 import { LimitadorDeEnvios } from './application/limitador-de-envios.js';
@@ -70,6 +76,7 @@ import { AgenciaAjustesController } from './interface/agencia-ajustes.controller
     { provide: PuertoSesiones, useClass: SesionesBetterAuth },
     { provide: PuertoMembresias, useClass: MembresiasPrisma },
     { provide: PuertoAgencias, useClass: AgenciasPrisma },
+    { provide: PuertoZonaHoraria, useClass: ZonaHorariaPrisma },
     { provide: PuertoInvitaciones, useClass: InvitacionesPrisma },
     { provide: PuertoIdentidades, useClass: IdentidadesPrisma },
     { provide: PuertoMiembros, useClass: MiembrosPrisma },
