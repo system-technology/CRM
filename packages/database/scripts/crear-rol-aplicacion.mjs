@@ -10,7 +10,8 @@
  * se imprimen **una sola vez** y no se guardan en ningún sitio.
  *
  * Por qué hay tres y no uno (ADR-0008 §1.3): los tres tienen privilegios idénticos sobre
- * las tablas de negocio y se diferencian ÚNICAMENTE en qué funciones pueden ejecutar.
+ * las tablas de negocio (salvo las de `privilegios_declarados`, hoy las de booking, solo de
+ * `viajapro_app`: ADR-0024) y se diferencian en qué funciones pueden ejecutar.
  * `viajapro_altas` es el único que puede repuntar un número en el directorio, y por eso no
  * es el rol con el que corre toda la API. El rol de conexión es lo único que una inyección
  * SQL no puede falsear: ahí está la frontera.

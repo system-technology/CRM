@@ -340,6 +340,10 @@ const EXCEPCIONES_DECLARADAS: ReadonlyArray<readonly [string, string, readonly s
   ['monedas', 'viajapro_altas', ['SELECT']],
   ['monedas', 'viajapro_app', ['SELECT']],
   ['monedas', 'viajapro_webhook', ['SELECT']],
+  // ADR-0024 §5.2: la declaración hermana, igual que excepciones_rls, sin privilegio para nadie.
+  ['privilegios_declarados', 'viajapro_altas', []],
+  ['privilegios_declarados', 'viajapro_app', []],
+  ['privilegios_declarados', 'viajapro_webhook', []],
   ['recepciones_webhook', 'viajapro_altas', []],
   ['recepciones_webhook', 'viajapro_app', []],
   ['recepciones_webhook', 'viajapro_webhook', []],
@@ -358,6 +362,27 @@ const EXCEPCIONES_DECLARADAS: ReadonlyArray<readonly [string, string, readonly s
   ['verificaciones', 'viajapro_identidad', ['SELECT', 'INSERT', 'UPDATE', 'DELETE']],
   ['verificaciones', 'viajapro_webhook', []],
 ];
+
+/**
+ * El literal de `privilegios_declarados` (ADR-0024 §5.2), por la misma razón que el de la 11:
+ * esa tabla se aplica sola en el siguiente despliegue, así que lo que diga tiene que ser un cambio
+ * visible en un diff. Tablas DE NEGOCIO, con RLS forzada, cuyos privilegios son más estrechos que
+ * la concesión general. Un par (tabla, rol de login) que no esté aquí no tiene NINGÚN privilegio.
+ */
+const PRIVILEGIOS_DECLARADOS: ReadonlyArray<readonly [string, string, readonly string[]]> = [
+  ['bookings', 'viajapro_app', ['SELECT', 'INSERT', 'UPDATE']],
+  ['entregas_de_eventos', 'viajapro_app', ['SELECT', 'INSERT', 'UPDATE']],
+  ['pasajeros', 'viajapro_app', ['SELECT', 'INSERT', 'UPDATE', 'DELETE']],
+  ['travel_files', 'viajapro_app', ['SELECT', 'INSERT', 'UPDATE']],
+];
+
+/** Las cuatro tablas de ADR-0024 F1. Solo `viajapro_app` las toca. */
+const TABLAS_DEL_ARCHIVO_DE_VIAJE = [
+  'travel_files',
+  'bookings',
+  'pasajeros',
+  'entregas_de_eventos',
+] as const;
 
 /**
  * El detector de la aserción 17: tablas con datos de agencia que nadie aísla.
@@ -704,6 +729,69 @@ async function comprobarPrivilegiosDeclarados(cliente: Client) {
   expect(
     desviaciones,
     `Privilegios que no coinciden con lo declarado: ${JSON.stringify(desviaciones)}`,
+  ).toEqual([]);
+}
+
+/**
+ * PD — la declaración de privilegios estrechos es la del repositorio, y los privilegios reales de
+ * TODO rol de login (vigilado o declarado) sobre esas tablas y sus particiones coinciden con ella.
+ * Un par sin declarar se espera vacío. La reaplican la 22 y la 23.
+ */
+async function comprobarPrivilegiosEstrechos(cliente: Client) {
+  const declarados = await cliente.query(
+    'SELECT tabla, rol, privilegios FROM privilegios_declarados ORDER BY tabla, rol',
+  );
+  expect(
+    declarados.rows.map((r) => [
+      r.tabla as string,
+      r.rol as string,
+      [...(r.privilegios as string[])].sort(),
+    ]),
+    'privilegios_declarados no coincide con el literal PRIVILEGIOS_DECLARADOS del archivo de prueba',
+  ).toEqual(PRIVILEGIOS_DECLARADOS.map(([t, r, p]) => [t, r, [...p].sort()]));
+
+  const roles = await rolesAVigilar(cliente);
+  const { rows } = await cliente.query(
+    `WITH RECURSIVE arbol AS (
+       SELECT c.oid, c.relname AS raiz
+         FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' AND c.relkind IN ('r','p')
+          AND c.relname IN (SELECT DISTINCT tabla FROM privilegios_declarados)
+       UNION ALL
+       SELECT h.inhrelid, a.raiz FROM pg_inherits h JOIN arbol a ON a.oid = h.inhparent
+     )
+     SELECT a.raiz, a.oid::regclass::text AS objetivo, v.rolname AS rol,
+            COALESCE(d.privilegios, '{}'::text[]) AS declarados,
+            (SELECT array_agg(p ORDER BY p)
+               FROM unnest(ARRAY['SELECT','INSERT','UPDATE','DELETE','TRUNCATE','REFERENCES','TRIGGER']) p
+              WHERE has_table_privilege(v.rolname, a.oid, p)) AS reales,
+            has_any_column_privilege(v.rolname, a.oid, 'SELECT')
+              OR has_any_column_privilege(v.rolname, a.oid, 'INSERT')
+              OR has_any_column_privilege(v.rolname, a.oid, 'UPDATE') AS alguna_columna
+       FROM arbol a
+      CROSS JOIN unnest($1::name[]) AS v(rolname)
+       LEFT JOIN privilegios_declarados d ON d.tabla = a.raiz AND d.rol = v.rolname
+      ORDER BY 2, 3`,
+    [roles],
+  );
+  expect(rows.length, 'no se comprobó ningún par (tabla declarada, rol)').toBeGreaterThan(0);
+
+  const desviaciones = rows
+    .map((r) => ({
+      objetivo: r.objetivo as string,
+      rol: r.rol as string,
+      declarados: [...((r.declarados as string[]) ?? [])].sort(),
+      reales: [...((r.reales as string[] | null) ?? [])].sort(),
+      alguna_columna: r.alguna_columna as boolean,
+    }))
+    .filter(
+      (r) =>
+        JSON.stringify(r.declarados) !== JSON.stringify(r.reales) ||
+        (r.declarados.length === 0 && r.alguna_columna),
+    );
+  expect(
+    desviaciones,
+    `Privilegios sobre tablas de privilegios_declarados que no coinciden: ${JSON.stringify(desviaciones)}`,
   ).toEqual([]);
 }
 
@@ -1266,6 +1354,7 @@ describe('ADR-0008 — directorio de enrutamiento, staging y separación de role
     await comprobarLecturaDenegada(admin);
     await comprobarEscrituraDenegada(admin);
     await comprobarPrivilegiosDeclarados(admin);
+    await comprobarPrivilegiosEstrechos(admin);
     await comprobarMatrizDeFunciones(admin);
   }, 180_000);
 
@@ -1306,6 +1395,7 @@ describe('ADR-0008 — directorio de enrutamiento, staging y separación de role
       await comprobarLecturaDenegada(nueva);
       await comprobarEscrituraDenegada(nueva);
       await comprobarPrivilegiosDeclarados(nueva);
+      await comprobarPrivilegiosEstrechos(nueva);
       await comprobarMatrizDeFunciones(nueva);
     } finally {
       await nueva.end().catch(() => undefined);
@@ -5852,7 +5942,14 @@ describe('AUD-008 y AUD-013 — comprobaciones dinámicas de privilegios y de RL
     );
     const conRls = rows.map((r) => r.relname as string);
     expect(conRls).toEqual(
-      expect.arrayContaining(['contactos', 'mensajes', 'cotizaciones', 'usuarios']),
+      expect.arrayContaining([
+        'contactos',
+        'mensajes',
+        'cotizaciones',
+        'usuarios',
+        // ADR-0024 F1 (T-240): tablas de agencia, nunca excepción global.
+        ...TABLAS_DEL_ARCHIVO_DE_VIAJE,
+      ]),
     );
   });
 
@@ -6423,6 +6520,21 @@ const COLUMNAS_DE_TEXTO_DECLARADAS: readonly string[] = [
   'mayoristas.notas',
   'mensajes.motivo_fallo',
   'mensajes.wamid',
+  // ADR-0024 F1 (T-240). Sin PII sensible por decisión del ADR §3.5: del pasajero solo el nombre
+  // (dato personal, no sensible según R10); documento y fecha de nacimiento NO existen.
+  'bookings.localizador',
+  'bookings.mayorista_nombre',
+  'bookings.moneda_iso',
+  'bookings.nota',
+  'entregas_de_eventos.consumidor',
+  'entregas_de_eventos.ultimo_error',
+  'pasajeros.nombre',
+  'travel_files.destino',
+  'travel_files.moneda_iso',
+  'travel_files.nota_cancelacion',
+  'travel_files.paquete_nombre',
+  'travel_files.trm_moneda_destino',
+  'travel_files.trm_moneda_origen',
   // T-214: catálogo de la agencia, sin PII de viajeros.
   'motivos_de_perdida.clave',
   'motivos_de_perdida.etiqueta',
@@ -6857,5 +6969,716 @@ describe('Ajustes de la agencia — zona horaria por función, nunca por GRANT s
 
     expect(await zonaDe(TENANT_A)).toBe(antesA);
     expect(await zonaDe(TENANT_B)).toBe(antesB);
+  });
+});
+
+// =========================================================================================
+// T-240 — ADR-0024 F1: archivo de viaje, reservas, pasajeros y entregas de eventos
+//
+// Cuatro tablas de agencia que SOLO `viajapro_app` toca, por declaración (`privilegios_declarados`)
+// y no por disciplina. Lo que no puede pasar: que una agencia vea o escriba el archivo de otra, que
+// una reserva cuelgue del archivo de otra agencia, que el trabajador (`viajapro_webhook`) lea un
+// archivo, o que exista una reserva confirmada sin time limit.
+// =========================================================================================
+
+describe('T-240 — ADR-0024 F1: archivo de viaje, reservas, pasajeros y entregas de eventos', () => {
+  const correo = (sufijo: string) => `fixture-aislamiento-${MARCA}-file-${sufijo}@prueba.invalid`;
+  const identidadDe: Record<string, string> = {
+    [TENANT_A]: randomUUID(),
+    [TENANT_B]: randomUUID(),
+  };
+  const usuarioDe: Record<string, string> = {};
+  const contactoDe: Record<string, string> = {};
+  const cotizacionDe: Record<string, string> = {};
+  const archivoDe: Record<string, string> = {};
+  const reservaDe: Record<string, string> = {};
+  const pasajeroDe: Record<string, string> = {};
+  const outboxDe: Record<string, string> = {};
+
+  const insertarArchivo = (
+    c: Client,
+    tenant: string,
+    { numero, cotizacion, version = 1 }: { numero: number; cotizacion: string; version?: number },
+  ) =>
+    c.query(
+      `INSERT INTO travel_files
+         (id, tenant_id, numero, contacto_id, cotizacion_id, version_cotizacion, paquete_nombre,
+          destino, fecha_salida, noches, adultos, ninos, infantes, venta_unidades, moneda_iso,
+          actualizado_en)
+       VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, 'Parque del Café', 'Quindío', '2026-12-05',
+               1, 2, 1, 0, 980000, 'COP', now())
+       RETURNING id`,
+      [tenant, numero, contactoDe[tenant], cotizacion, version],
+    );
+
+  const insertarReserva = (c: Client, tenant: string, archivo: string, mayorista: string | null) =>
+    c.query(
+      `INSERT INTO bookings (id, tenant_id, travel_file_id, mayorista_id, mayorista_nombre,
+                             neto_unidades, moneda_iso, actualizado_en)
+       VALUES (gen_random_uuid(), $1, $2, $3, 'Mayorista de prueba', 800000, 'COP', now())
+       RETURNING id`,
+      [tenant, archivo, mayorista],
+    );
+
+  const insertarPasajero = (
+    c: Client,
+    tenant: string,
+    archivo: string,
+    {
+      tipo = 'ADT',
+      edad = null,
+      titular = false,
+      orden = 0,
+    }: { tipo?: string; edad?: number | null; titular?: boolean; orden?: number } = {},
+  ) =>
+    c.query(
+      `INSERT INTO pasajeros (id, tenant_id, travel_file_id, nombre, tipo, edad_al_viaje,
+                              es_titular, orden, actualizado_en)
+       VALUES (gen_random_uuid(), $1, $2, 'Pasajera de prueba', $3::tipo_pasajero, $4, $5, $6, now())
+       RETURNING id`,
+      [tenant, archivo, tipo, edad, titular, orden],
+    );
+
+  const insertarEntrega = (
+    c: Client,
+    tenant: string,
+    outbox: string,
+    consumidor = 'booking.abrir_archivo',
+  ) =>
+    c.query(
+      `INSERT INTO entregas_de_eventos (tenant_id, outbox_id, consumidor, actualizado_en)
+       VALUES ($1, $2, $3, now())`,
+      [tenant, outbox, consumidor],
+    );
+
+  beforeAll(async () => {
+    for (const [i, tenant] of [TENANT_A, TENANT_B].entries()) {
+      await admin.query(
+        `INSERT INTO identidades (id, correo, nombre, actualizado_en) VALUES ($1, $2, 'Fixture', now())`,
+        [identidadDe[tenant], correo(String(i))],
+      );
+      await comoTenant(tenant, async (c) => {
+        const rol = await c.query(
+          `INSERT INTO roles (id, tenant_id, nombre, permisos, actualizado_en)
+           VALUES (gen_random_uuid(), $1, $2, ARRAY[]::text[], now()) RETURNING id`,
+          [tenant, `Asesor T-240 ${MARCA}`],
+        );
+        const usuario = await c.query(
+          `INSERT INTO usuarios (id, tenant_id, identidad_id, rol_id, correo, nombre, actualizado_en)
+           VALUES (gen_random_uuid(), $1, $2, $3, $4, 'Asesora de reservas', now()) RETURNING id`,
+          [tenant, identidadDe[tenant], (rol.rows[0] as { id: string }).id, correo(`u${i}`)],
+        );
+        usuarioDe[tenant] = (usuario.rows[0] as { id: string }).id;
+
+        const contacto = await c.query(
+          `INSERT INTO contactos (id, tenant_id, telefono_e164, creado_en, actualizado_en)
+           VALUES (gen_random_uuid(), $1, $2, now(), now()) RETURNING id`,
+          [tenant, `+57324000000${i}`],
+        );
+        contactoDe[tenant] = (contacto.rows[0] as { id: string }).id;
+        const paquete = await c.query(
+          `INSERT INTO paquetes (id, tenant_id, nombre, destino, dias, noches, creado_en, actualizado_en)
+           VALUES (gen_random_uuid(), $1, 'Parque del Café', 'Quindío', 2, 1, now(), now())
+           RETURNING id`,
+          [tenant],
+        );
+        const cotizacion = await c.query(
+          `INSERT INTO cotizaciones (id, tenant_id, contacto_id, titulo, creado_en, actualizado_en)
+           VALUES (gen_random_uuid(), $1, $2, 'Archivo T-240', now(), now()) RETURNING id`,
+          [tenant, contactoDe[tenant]],
+        );
+        cotizacionDe[tenant] = (cotizacion.rows[0] as { id: string }).id;
+        await insertarVersion(
+          c,
+          tenant,
+          cotizacionDe[tenant] ?? '',
+          (paquete.rows[0] as { id: string }).id,
+          1,
+        );
+
+        // Las dos agencias tienen su file número 1: el número es POR agencia.
+        const archivo = await insertarArchivo(c, tenant, {
+          numero: 1,
+          cotizacion: cotizacionDe[tenant] ?? '',
+        });
+        archivoDe[tenant] = (archivo.rows[0] as { id: string }).id;
+        const reserva = await insertarReserva(c, tenant, archivoDe[tenant] ?? '', null);
+        reservaDe[tenant] = (reserva.rows[0] as { id: string }).id;
+        const pasajero = await insertarPasajero(c, tenant, archivoDe[tenant] ?? '', {
+          titular: true,
+        });
+        pasajeroDe[tenant] = (pasajero.rows[0] as { id: string }).id;
+
+        const evento = await c.query(
+          `INSERT INTO outbox (tenant_id, agregado, agregado_id, tipo_evento, payload)
+           VALUES ($1, 'cotizacion', $2, 'quoting.cotizacion_aceptada', '{"v":1}'::jsonb)
+           RETURNING id::text AS id`,
+          [tenant, cotizacionDe[tenant]],
+        );
+        outboxDe[tenant] = (evento.rows[0] as { id: string }).id;
+        await insertarEntrega(c, tenant, outboxDe[tenant] ?? '');
+      });
+    }
+  }, 60_000);
+
+  afterAll(async () => {
+    // Los archivos retienen a `usuarios` (NO ACTION), que retienen a las identidades globales: se
+    // borran primero, agencia por agencia y con su contexto. Lo demás, el `borrarTenants` final.
+    for (const tenant of [TENANT_A, TENANT_B]) {
+      await admin.query('BEGIN');
+      try {
+        await admin.query("SELECT set_config('app.current_tenant', $1, true)", [tenant]);
+        for (const tabla of ['pasajeros', 'bookings', 'travel_files']) {
+          await admin.query(`DELETE FROM ${tabla} WHERE tenant_id = $1`, [tenant]);
+        }
+        await admin.query('DELETE FROM usuarios WHERE identidad_id = $1', [identidadDe[tenant]]);
+        await admin.query('COMMIT');
+      } catch (error) {
+        await admin.query('ROLLBACK');
+        throw error;
+      }
+    }
+    await admin.query('DELETE FROM identidades WHERE id = ANY($1)', [Object.values(identidadDe)]);
+  }, 60_000);
+
+  it('F1-1 — las cuatro tablas: tenant_id NOT NULL, RLS forzada con USING y WITH CHECK, UNIQUE (id, tenant_id) y ninguna es excepción', async () => {
+    const { rows } = await admin.query(
+      `SELECT c.relname, c.relrowsecurity, c.relforcerowsecurity,
+              (SELECT a.attnotnull FROM pg_attribute a
+                WHERE a.attrelid = c.oid AND a.attname = 'tenant_id'
+                  AND a.attnum > 0 AND NOT a.attisdropped) AS tenant_no_nulo,
+              (SELECT count(*)::int FROM pg_policy p
+                WHERE p.polrelid = c.oid AND p.polname = 'tenant_isolation'
+                  AND p.polqual IS NOT NULL AND p.polwithcheck IS NOT NULL) AS con_using_y_check,
+              EXISTS (SELECT 1 FROM excepciones_rls e WHERE e.tabla = c.relname) AS excepcion
+         FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' AND c.relname = ANY($1)
+        ORDER BY 1`,
+      [[...TABLAS_DEL_ARCHIVO_DE_VIAJE]],
+    );
+    expect(rows).toEqual(
+      [...TABLAS_DEL_ARCHIVO_DE_VIAJE].sort().map((relname) => ({
+        relname,
+        relrowsecurity: true,
+        relforcerowsecurity: true,
+        tenant_no_nulo: true,
+        con_using_y_check: 1,
+        excepcion: false,
+      })),
+    );
+
+    const defectos = await admin.query(
+      'SELECT tabla, problema FROM tablas_sin_aislamiento WHERE problema IS NOT NULL AND tabla = ANY($1)',
+      [[...TABLAS_DEL_ARCHIVO_DE_VIAJE]],
+    );
+    expect(defectos.rows).toEqual([]);
+
+    // Destino de las foráneas compuestas: (id, tenant_id) único en las tres primeras y en outbox.
+    for (const tabla of ['travel_files', 'bookings', 'pasajeros', 'outbox']) {
+      const unica = await admin.query(
+        `SELECT 1 FROM pg_index i
+          WHERE i.indrelid = $1::regclass AND i.indisunique AND i.indnatts = 2
+            AND (SELECT array_agg(a.attname::text ORDER BY k.n)
+                   FROM unnest(i.indkey) WITH ORDINALITY AS k(attnum, n)
+                   JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = k.attnum)
+                = ARRAY['id', 'tenant_id']`,
+        [`public.${tabla}`],
+      );
+      expect(unica.rowCount, `${tabla} sin UNIQUE (id, tenant_id)`).toBe(1);
+    }
+  });
+
+  it('F1-2 — toda foránea de las cuatro incluye el tenant, y la del mayorista anula SOLO mayorista_id', async () => {
+    const simples = await admin.query(FORANEAS_SIN_TENANT_SQL);
+    expect(
+      (simples.rows as Array<{ hija: string; padre: string }>).filter(
+        (r) =>
+          (TABLAS_DEL_ARCHIVO_DE_VIAJE as readonly string[]).includes(r.hija) ||
+          (TABLAS_DEL_ARCHIVO_DE_VIAJE as readonly string[]).includes(r.padre),
+      ),
+    ).toEqual([]);
+
+    // Inventario de foráneas entre tablas de agencia (las de `tenants` aparte), con su acción.
+    const { rows } = await admin.query(
+      `SELECT t.relname AS hija, p.relname AS padre, c.confdeltype AS al_borrar, c.convalidated,
+              (SELECT array_agg(a.attname::text ORDER BY i)
+                 FROM generate_subscripts(c.conkey, 1) AS i
+                 JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = c.conkey[i]) AS columnas,
+              (SELECT array_agg(a.attname::text ORDER BY a.attname)
+                 FROM pg_attribute a
+                WHERE a.attrelid = c.conrelid AND a.attnum = ANY (c.confdelsetcols)) AS anula
+         FROM pg_constraint c
+         JOIN pg_class t ON t.oid = c.conrelid
+         JOIN pg_class p ON p.oid = c.confrelid
+        WHERE c.contype = 'f' AND t.relname = ANY($1) AND p.relname <> 'tenants'
+        ORDER BY 1, 2, 5`,
+      [[...TABLAS_DEL_ARCHIVO_DE_VIAJE]],
+    );
+    const resumen = rows.map(
+      (r) =>
+        `${r.hija}(${(r.columnas as string[]).join(',')})->${r.padre}:${r.al_borrar}` +
+        `${r.anula ? `[${(r.anula as string[]).join(',')}]` : ''}:${r.convalidated}`,
+    );
+    expect(resumen).toEqual([
+      'bookings(mayorista_id,tenant_id)->mayoristas:n[mayorista_id]:true',
+      'bookings(travel_file_id,tenant_id)->travel_files:a:true',
+      'bookings(actualizado_por,tenant_id)->usuarios:a:true',
+      'bookings(creado_por,tenant_id)->usuarios:a:true',
+      'entregas_de_eventos(outbox_id,tenant_id)->outbox:c:true',
+      'pasajeros(travel_file_id,tenant_id)->travel_files:a:true',
+      'pasajeros(actualizado_por,tenant_id)->usuarios:a:true',
+      'pasajeros(creado_por,tenant_id)->usuarios:a:true',
+      'travel_files(contacto_id,tenant_id)->contactos:a:true',
+      'travel_files(cotizacion_id,tenant_id)->cotizaciones:a:true',
+      'travel_files(oportunidad_id,contacto_id,tenant_id)->oportunidades:a:true',
+      'travel_files(actualizado_por,tenant_id)->usuarios:a:true',
+      'travel_files(cancelado_por,tenant_id)->usuarios:a:true',
+      'travel_files(creado_por,tenant_id)->usuarios:a:true',
+      'travel_files(tenant_id,cotizacion_id,version_cotizacion)->versiones_cotizacion:a:true',
+    ]);
+  });
+
+  it('F1-3 — solo viajapro_app toca las cuatro: matriz exacta por rol, y el resto recibe 42501', async () => {
+    await comprobarPrivilegiosEstrechos(admin);
+
+    const roles = await rolesAVigilar(admin);
+    expect(roles).toEqual(expect.arrayContaining([...ROLES_DE_LOGIN_DECLARADOS]));
+    for (const rol of roles) {
+      for (const tabla of TABLAS_DEL_ARCHIVO_DE_VIAJE) {
+        const { rows } = await admin.query(
+          `SELECT p FROM unnest(ARRAY['SELECT','INSERT','UPDATE','DELETE','TRUNCATE','REFERENCES','TRIGGER']) AS p
+            WHERE has_table_privilege($1, $2, p) ORDER BY 1`,
+          [rol, `public.${tabla}`],
+        );
+        const esperado =
+          rol !== 'viajapro_app'
+            ? []
+            : tabla === 'pasajeros'
+              ? ['DELETE', 'INSERT', 'SELECT', 'UPDATE']
+              : ['INSERT', 'SELECT', 'UPDATE'];
+        expect(
+          rows.map((r) => r.p as string),
+          `${rol} sobre ${tabla}`,
+        ).toEqual(esperado);
+      }
+    }
+
+    // De COMPORTAMIENTO: el trabajador, el alta y la identidad no leen ni una fila, ni con el
+    // contexto de la agencia puesto.
+    for (const rol of ['viajapro_webhook', 'viajapro_altas', 'viajapro_identidad']) {
+      await comoRol(admin, rol, async () => {
+        await admin.query("SELECT set_config('app.current_tenant', $1, true)", [TENANT_A]);
+        for (const tabla of TABLAS_DEL_ARCHIVO_DE_VIAJE) {
+          await esperarPermisoDenegado(
+            admin,
+            () => admin.query(`SELECT * FROM ${tabla}`),
+            `SELECT sobre ${tabla} como ${rol}`,
+          );
+        }
+        await esperarPermisoDenegado(
+          admin,
+          () => admin.query("UPDATE bookings SET nota = 'x' WHERE tenant_id = $1", [TENANT_A]),
+          `UPDATE sobre bookings como ${rol}`,
+        );
+      });
+    }
+
+    // Y la API no borra archivos, reservas ni entregas: se cancelan o se marcan.
+    for (const tabla of ['travel_files', 'bookings', 'entregas_de_eventos']) {
+      await expect(
+        comoTenant(TENANT_A, (c) =>
+          c.query(`DELETE FROM ${tabla} WHERE tenant_id = $1`, [TENANT_A]),
+        ),
+        `DELETE sobre ${tabla} como viajapro_app`,
+      ).rejects.toMatchObject({ code: '42501' });
+    }
+  }, 60_000);
+
+  it('F1-4 — un tenant no ve, no edita, no borra ni planta archivos, reservas, pasajeros ni entregas de otro', async () => {
+    const ajenos = await comoTenant(TENANT_B, async (c) => [
+      (await c.query('SELECT id FROM travel_files WHERE id = $1', [archivoDe[TENANT_A]])).rowCount,
+      (await c.query('SELECT id FROM bookings WHERE id = $1', [reservaDe[TENANT_A]])).rowCount,
+      (await c.query('SELECT id FROM pasajeros WHERE id = $1', [pasajeroDe[TENANT_A]])).rowCount,
+      (await c.query('SELECT 1 FROM entregas_de_eventos WHERE tenant_id = $1', [TENANT_A]))
+        .rowCount,
+      (
+        await c.query("UPDATE travel_files SET destino = 'Plantado' WHERE id = $1", [
+          archivoDe[TENANT_A],
+        ])
+      ).rowCount,
+      (
+        await c.query("UPDATE bookings SET localizador = 'PLANTADO' WHERE id = $1", [
+          reservaDe[TENANT_A],
+        ])
+      ).rowCount,
+      (
+        await c.query('UPDATE entregas_de_eventos SET entregado_en = now() WHERE tenant_id = $1', [
+          TENANT_A,
+        ])
+      ).rowCount,
+      (await c.query('DELETE FROM pasajeros WHERE id = $1', [pasajeroDe[TENANT_A]])).rowCount,
+    ]);
+    expect(ajenos).toEqual([0, 0, 0, 0, 0, 0, 0, 0]);
+
+    // Cada agencia ve exactamente lo suyo.
+    for (const tenant of [TENANT_A, TENANT_B]) {
+      const propios = await comoTenant(tenant, async (c) => [
+        (await c.query('SELECT tenant_id FROM travel_files')).rows,
+        (await c.query('SELECT tenant_id FROM bookings')).rows,
+        (await c.query('SELECT tenant_id FROM pasajeros')).rows,
+        (await c.query('SELECT tenant_id FROM entregas_de_eventos')).rows,
+      ]);
+      for (const filas of propios) {
+        expect(filas.length).toBeGreaterThan(0);
+        expect(filas.every((f) => (f as { tenant_id: string }).tenant_id === tenant)).toBe(true);
+      }
+    }
+
+    // Plantar filas con el tenant de A desde B: lo rechaza el WITH CHECK.
+    const plantar: Array<[string, (c: Client) => Promise<unknown>]> = [
+      [
+        'travel_files',
+        (c) =>
+          insertarArchivo(c, TENANT_A, { numero: 99, cotizacion: cotizacionDe[TENANT_A] ?? '' }),
+      ],
+      ['bookings', (c) => insertarReserva(c, TENANT_A, archivoDe[TENANT_A] ?? '', null)],
+      ['pasajeros', (c) => insertarPasajero(c, TENANT_A, archivoDe[TENANT_A] ?? '', { orden: 9 })],
+      [
+        'entregas_de_eventos',
+        (c) => insertarEntrega(c, TENANT_A, outboxDe[TENANT_A] ?? '', 'crm.ganar_oportunidad'),
+      ],
+    ];
+    for (const [tabla, accion] of plantar) {
+      await expect(comoTenant(TENANT_B, accion), `plantar en ${tabla}`).rejects.toThrow(
+        /row-level security/i,
+      );
+    }
+
+    // Mover una fila propia a la otra agencia: también lo rechaza el WITH CHECK.
+    await expect(
+      comoTenant(TENANT_B, (c) =>
+        c.query('UPDATE pasajeros SET tenant_id = $2 WHERE id = $1', [
+          pasajeroDe[TENANT_B],
+          TENANT_A,
+        ]),
+      ),
+    ).rejects.toThrow(/row-level security/i);
+  });
+
+  it('F1-5 — las foráneas compuestas impiden colgar algo de la agencia B desde la A', async () => {
+    const cruces: Array<[string, (c: Client) => Promise<unknown>, string]> = [
+      [
+        'reserva de A en el archivo de B',
+        (c) => insertarReserva(c, TENANT_A, archivoDe[TENANT_B] ?? '', null),
+        'bookings_travel_file_id_tenant_id_fkey',
+      ],
+      [
+        'pasajero de A en el archivo de B',
+        (c) => insertarPasajero(c, TENANT_A, archivoDe[TENANT_B] ?? '', { orden: 5 }),
+        'pasajeros_travel_file_id_tenant_id_fkey',
+      ],
+      [
+        'archivo de A con la cotización de B',
+        (c) =>
+          insertarArchivo(c, TENANT_A, { numero: 50, cotizacion: cotizacionDe[TENANT_B] ?? '' }),
+        // La de la versión o la de la cotización: las dos incluyen el tenant y las dos fallan.
+        '',
+      ],
+      [
+        'entrega de A del evento de B',
+        (c) => insertarEntrega(c, TENANT_A, outboxDe[TENANT_B] ?? '', 'crm.ganar_oportunidad'),
+        'entregas_de_eventos_outbox_id_tenant_id_fkey',
+      ],
+      [
+        'archivo de A cancelado por el usuario de B',
+        (c) =>
+          c.query(
+            `UPDATE travel_files SET estado = 'CANCELADO', motivo_cancelacion = 'CLIENTE_DESISTIO',
+                    cancelado_en = now(), cancelado_por = $2 WHERE id = $1`,
+            [archivoDe[TENANT_A], usuarioDe[TENANT_B]],
+          ),
+        'travel_files_cancelado_por_tenant_id_fkey',
+      ],
+    ];
+    for (const [caso, accion, restriccion] of cruces) {
+      const esperado = restriccion ? { code: '23503', constraint: restriccion } : { code: '23503' };
+      await expect(comoTenant(TENANT_A, accion), caso).rejects.toMatchObject(esperado);
+    }
+
+    // La versión es de ESTA cotización: una cotización de A sin la versión nombrada no se
+    // referencia (por la terna, con el tenant dentro).
+    await expect(
+      comoTenant(TENANT_A, async (c) => {
+        const otra = await c.query(
+          `INSERT INTO cotizaciones (id, tenant_id, contacto_id, titulo, creado_en, actualizado_en)
+           VALUES (gen_random_uuid(), $1, $2, 'Sin versiones', now(), now()) RETURNING id`,
+          [TENANT_A, contactoDe[TENANT_A]],
+        );
+        return insertarArchivo(c, TENANT_A, {
+          numero: 51,
+          cotizacion: (otra.rows[0] as { id: string }).id,
+          version: 1,
+        });
+      }),
+    ).rejects.toMatchObject({ code: '23503', constraint: 'travel_files_version_cotizacion_fkey' });
+  });
+
+  it('F1-6 — borrar el mayorista anula solo mayorista_id: la reserva sigue en su agencia y conserva el nombre', async () => {
+    const resultado = await comoTenant(TENANT_A, async (c) => {
+      const mayorista = await c.query(
+        `INSERT INTO mayoristas (id, tenant_id, nombre, creado_en, actualizado_en)
+         VALUES (gen_random_uuid(), $1, 'Mayorista que se va', now(), now()) RETURNING id`,
+        [TENANT_A],
+      );
+      const mayoristaId = (mayorista.rows[0] as { id: string }).id;
+      const reserva = await insertarReserva(c, TENANT_A, archivoDe[TENANT_A] ?? '', mayoristaId);
+      await c.query('DELETE FROM mayoristas WHERE id = $1', [mayoristaId]);
+      const { rows } = await c.query(
+        'SELECT tenant_id, mayorista_id, mayorista_nombre FROM bookings WHERE id = $1',
+        [(reserva.rows[0] as { id: string }).id],
+      );
+      return rows as unknown[];
+    });
+    expect(resultado).toEqual([
+      { tenant_id: TENANT_A, mayorista_id: null, mayorista_nombre: 'Mayorista de prueba' },
+    ]);
+  });
+
+  it('F1-7 — los estados de la reserva exigen sus datos: confirmada sin time limit o abonada sin pago total no existen', async () => {
+    const reserva = reservaDe[TENANT_A] ?? '';
+    const casos: Array<[string, string, string]> = [
+      [
+        'SOLICITADA sin fecha de solicitud',
+        "UPDATE bookings SET estado = 'SOLICITADA' WHERE id = $1",
+        'bookings_solicitada_exige_fecha',
+      ],
+      [
+        'CONFIRMADA sin time limit',
+        `UPDATE bookings SET estado = 'CONFIRMADA', solicitada_en = now(), confirmada_en = now()
+          WHERE id = $1`,
+        'bookings_confirmada_exige_time_limit',
+      ],
+      [
+        'ABONADA sin fecha de pago total',
+        `UPDATE bookings SET estado = 'ABONADA_AL_PROVEEDOR', solicitada_en = now(),
+                confirmada_en = now(), time_limit = now() + interval '2 days', abonada_en = now()
+          WHERE id = $1`,
+        'bookings_abonada_exige_pago_total',
+      ],
+      [
+        'PAGADA sin fecha de pago',
+        `UPDATE bookings SET estado = 'PAGADA_AL_PROVEEDOR', solicitada_en = now(),
+                confirmada_en = now(), time_limit = now() + interval '2 days', abonada_en = now(),
+                pago_total_vence_en = now() + interval '20 days'
+          WHERE id = $1`,
+        'bookings_pagada_exige_fecha',
+      ],
+      [
+        'CAIDA sin motivo',
+        "UPDATE bookings SET estado = 'CAIDA', solicitada_en = now() WHERE id = $1",
+        'bookings_caida_exige_motivo',
+      ],
+      [
+        'motivo de caída en una reserva que no está caída',
+        "UPDATE bookings SET motivo_caida = 'SIN_CUPO' WHERE id = $1",
+        'bookings_caida_exige_motivo',
+      ],
+      [
+        'time limit después del pago total',
+        `UPDATE bookings SET time_limit = now() + interval '30 days',
+                pago_total_vence_en = now() + interval '20 days' WHERE id = $1`,
+        'bookings_time_limit_antes_del_pago_total',
+      ],
+    ];
+    for (const [caso, sql, restriccion] of casos) {
+      await expect(
+        comoTenant(TENANT_A, (c) => c.query(sql, [reserva])),
+        caso,
+      ).rejects.toMatchObject({ code: '23514', constraint: restriccion });
+    }
+
+    // El camino bueno entra: confirmada con su time limit, y caída con su motivo.
+    const estados = await comoTenant(TENANT_A, async (c) => {
+      await c.query(
+        `UPDATE bookings SET estado = 'CONFIRMADA', solicitada_en = now(), confirmada_en = now(),
+                time_limit = now() + interval '2 days', localizador = 'ABC123' WHERE id = $1`,
+        [reserva],
+      );
+      await c.query(
+        "UPDATE bookings SET estado = 'CAIDA', motivo_caida = 'TIME_LIMIT_VENCIDO' WHERE id = $1",
+        [reserva],
+      );
+      const { rows } = await c.query('SELECT estado::text FROM bookings WHERE id = $1', [reserva]);
+      return rows as unknown[];
+    });
+    expect(estados).toEqual([{ estado: 'CAIDA' }]);
+  });
+
+  it('F1-8 — el archivo: CANCELADO exige motivo (y nota si es OTRO), número y cotización únicos por agencia', async () => {
+    const archivo = archivoDe[TENANT_A] ?? '';
+    const usuario = usuarioDe[TENANT_A] ?? '';
+    await expect(
+      comoTenant(TENANT_A, (c) =>
+        c.query("UPDATE travel_files SET estado = 'CANCELADO' WHERE id = $1", [archivo]),
+      ),
+    ).rejects.toMatchObject({ code: '23514', constraint: 'travel_files_cancelado_exige_motivo' });
+    await expect(
+      comoTenant(TENANT_A, (c) =>
+        c.query(
+          `UPDATE travel_files SET estado = 'CANCELADO', motivo_cancelacion = 'OTRO',
+                  cancelado_en = now(), cancelado_por = $2 WHERE id = $1`,
+          [archivo, usuario],
+        ),
+      ),
+    ).rejects.toMatchObject({ code: '23514', constraint: 'travel_files_otro_exige_nota' });
+
+    // Cancelado con todo, y de vuelta a abierto (para las demás aserciones).
+    const cancelado = await comoTenant(TENANT_A, async (c) => {
+      await c.query(
+        `UPDATE travel_files SET estado = 'CANCELADO', motivo_cancelacion = 'OTRO',
+                nota_cancelacion = 'El cliente cambió de destino', cancelado_en = now(),
+                cancelado_por = $2 WHERE id = $1`,
+        [archivo, usuario],
+      );
+      const { rows } = await c.query('SELECT estado::text FROM travel_files WHERE id = $1', [
+        archivo,
+      ]);
+      await c.query(
+        `UPDATE travel_files SET estado = 'ABIERTO', motivo_cancelacion = NULL,
+                nota_cancelacion = NULL, cancelado_en = NULL, cancelado_por = NULL WHERE id = $1`,
+        [archivo],
+      );
+      return rows as unknown[];
+    });
+    expect(cancelado).toEqual([{ estado: 'CANCELADO' }]);
+
+    // TRM a medias no es TRM.
+    await expect(
+      comoTenant(TENANT_A, (c) =>
+        c.query("UPDATE travel_files SET trm_moneda_origen = 'USD' WHERE id = $1", [archivo]),
+      ),
+    ).rejects.toMatchObject({ code: '23514', constraint: 'travel_files_trm_completa' });
+
+    // El mismo número de file dos veces en la agencia, o dos archivos de la misma cotización: no.
+    await expect(
+      comoTenant(TENANT_A, (c) =>
+        insertarArchivo(c, TENANT_A, { numero: 1, cotizacion: cotizacionDe[TENANT_A] ?? '' }),
+      ),
+    ).rejects.toMatchObject({ code: '23505' });
+    await expect(
+      comoTenant(TENANT_A, (c) =>
+        insertarArchivo(c, TENANT_A, { numero: 2, cotizacion: cotizacionDe[TENANT_A] ?? '' }),
+      ),
+    ).rejects.toMatchObject({
+      code: '23505',
+      constraint: 'travel_files_tenant_id_cotizacion_id_key',
+    });
+  });
+
+  it('F1-9 — pasajeros: menores con edad, edad en rango y un solo titular por archivo', async () => {
+    const archivo = archivoDe[TENANT_A] ?? '';
+    await expect(
+      comoTenant(TENANT_A, (c) =>
+        insertarPasajero(c, TENANT_A, archivo, { tipo: 'CHD', orden: 1 }),
+      ),
+    ).rejects.toMatchObject({ code: '23514', constraint: 'pasajeros_menor_exige_edad' });
+    await expect(
+      comoTenant(TENANT_A, (c) =>
+        insertarPasajero(c, TENANT_A, archivo, { tipo: 'ADT', edad: 121, orden: 1 }),
+      ),
+    ).rejects.toMatchObject({ code: '23514', constraint: 'pasajeros_edad_en_rango' });
+    // El titular del beforeAll ya existe: un segundo no entra.
+    await expect(
+      comoTenant(TENANT_A, (c) =>
+        insertarPasajero(c, TENANT_A, archivo, { titular: true, orden: 3 }),
+      ),
+    ).rejects.toMatchObject({ code: '23505', constraint: 'pasajeros_un_titular_por_archivo' });
+
+    // Un niño con su edad y un infante con la suya entran.
+    const filas = await comoTenant(TENANT_A, async (c) => {
+      await insertarPasajero(c, TENANT_A, archivo, { tipo: 'CHD', edad: 8, orden: 4 });
+      await insertarPasajero(c, TENANT_A, archivo, { tipo: 'INF', edad: 1, orden: 5 });
+      const { rows } = await c.query(
+        "SELECT tipo::text FROM pasajeros WHERE travel_file_id = $1 AND tipo <> 'ADT' ORDER BY orden",
+        [archivo],
+      );
+      return rows as unknown[];
+    });
+    expect(filas).toEqual([{ tipo: 'CHD' }, { tipo: 'INF' }]);
+
+    // Y del pasajero no existe ningún dato sensible (ADR-0024 §3.5): ni documento ni nacimiento.
+    const { rows: columnas } = await admin.query(
+      `SELECT column_name FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'pasajeros' ORDER BY 1`,
+    );
+    expect(columnas.map((r) => r.column_name as string)).toEqual(
+      [
+        'actualizado_en',
+        'actualizado_por',
+        'creado_en',
+        'creado_por',
+        'edad_al_viaje',
+        'es_titular',
+        'id',
+        'nombre',
+        'orden',
+        'tenant_id',
+        'tipo',
+        'travel_file_id',
+      ].sort(),
+    );
+  });
+
+  it('F1-10 — entregas de eventos: consumidor con formato, error como código, nunca entregada y abandonada a la vez, una por par', async () => {
+    const outbox = outboxDe[TENANT_A] ?? '';
+    await expect(
+      comoTenant(TENANT_A, (c) => insertarEntrega(c, TENANT_A, outbox, 'Booking abrir')),
+    ).rejects.toMatchObject({
+      code: '23514',
+      constraint: 'entregas_de_eventos_consumidor_formato',
+    });
+    await expect(
+      comoTenant(TENANT_A, (c) =>
+        c.query(
+          `UPDATE entregas_de_eventos SET entregado_en = now(), abandonado_en = now()
+            WHERE tenant_id = $1 AND outbox_id = $2`,
+          [TENANT_A, outbox],
+        ),
+      ),
+    ).rejects.toMatchObject({
+      code: '23514',
+      constraint: 'entregas_de_eventos_entregada_o_abandonada',
+    });
+    await expect(
+      comoTenant(TENANT_A, (c) =>
+        c.query(
+          `UPDATE entregas_de_eventos SET ultimo_error = 'Falló con el pasajero Juan Pérez'
+            WHERE tenant_id = $1 AND outbox_id = $2`,
+          [TENANT_A, outbox],
+        ),
+      ),
+    ).rejects.toMatchObject({
+      code: '23514',
+      constraint: 'entregas_de_eventos_ultimo_error_es_codigo',
+    });
+    await expect(
+      comoTenant(TENANT_A, (c) => insertarEntrega(c, TENANT_A, outbox)),
+    ).rejects.toMatchObject({ code: '23505', constraint: 'entregas_de_eventos_pkey' });
+
+    // El reclamo del despachador (ADR-0024 §1, paso 3): la primera vez devuelve la fila, la
+    // segunda —ya entregada— no devuelve nada.
+    const reclamar = (c: Client) =>
+      c.query(
+        `INSERT INTO entregas_de_eventos (tenant_id, outbox_id, consumidor, actualizado_en)
+         VALUES ($1, $2, 'booking.abrir_archivo', now())
+         ON CONFLICT (tenant_id, outbox_id, consumidor) DO UPDATE
+           SET entregado_en = now(), actualizado_en = now()
+         WHERE entregas_de_eventos.entregado_en IS NULL
+           AND entregas_de_eventos.abandonado_en IS NULL
+         RETURNING outbox_id`,
+        [TENANT_A, outbox],
+      );
+    expect((await comoTenant(TENANT_A, reclamar)).rowCount).toBe(1);
+    expect((await comoTenant(TENANT_A, reclamar)).rowCount).toBe(0);
   });
 });

@@ -2,8 +2,10 @@
  * Guardia de identidad del rol de conexión.
  *
  * **Por qué existe.** Desde el ADR-0008 hay tres roles de login —`viajapro_app`,
- * `viajapro_altas`, `viajapro_webhook`— con **privilegios idénticos sobre las tablas de
- * negocio**. Se diferencian únicamente en qué funciones `SECURITY DEFINER` pueden ejecutar, y
+ * `viajapro_altas`, `viajapro_webhook`— con **los mismos privilegios sobre las tablas de
+ * negocio de siempre** (las de `booking`, desde ADR-0024, solo las tiene `viajapro_app`: ver
+ * `privilegios_declarados`). Sobre lo común se diferencian en qué funciones `SECURITY DEFINER`
+ * pueden ejecutar, y
  * una de ellas, `registrar_enrutamiento`, puede repuntar el número de cualquier agencia hacia
  * otro tenant.
  *
@@ -57,8 +59,8 @@ export function verificarIdentidad(
   if (observada.usuario !== esperado) {
     return (
       `Este proceso debe conectarse como '${esperado}' y se conectó como '${observada.usuario}'. ` +
-      'Los tres roles tienen los mismos privilegios sobre las tablas y se distinguen solo en qué ' +
-      'funciones ejecutan, así que ninguna prueba de aislamiento detecta esta confusión: la ' +
+      'Sobre casi todas las tablas los tres roles tienen los mismos privilegios y se distinguen ' +
+      'en qué funciones ejecutan, así que ninguna prueba de aislamiento detecta esta confusión: la ' +
       'detecta este guardia o no la detecta nadie. Revisa la variable de entorno del proceso.'
     );
   }
@@ -117,6 +119,10 @@ export const TABLAS_DE_NEGOCIO_VEDADAS_A_IDENTIDAD = [
   'contactos',
   'mensajes',
   'cotizaciones',
+  // ADR-0024 (booking): concedidas solo a viajapro_app por privilegios_declarados.
+  'travel_files',
+  'bookings',
+  'pasajeros',
 ] as const;
 
 /** Devuelve el motivo para no arrancar si el rol de identidad lee alguna tabla de negocio. */

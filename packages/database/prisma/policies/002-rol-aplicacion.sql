@@ -11,8 +11,9 @@
 -- ADR-0008 convierte el rol de conexión en la frontera de seguridad real, y por eso aquí
 -- hay cinco roles y no uno:
 --
---   · Los tres de login tienen privilegios IDÉNTICOS sobre las tablas de negocio y se
---     diferencian ÚNICAMENTE en qué funciones pueden ejecutar. Esa es toda la idea:
+--   · Los tres de login tienen privilegios IDÉNTICOS sobre las tablas de negocio (salvo las de
+--     `privilegios_declarados`, hoy las de booking, solo de viajapro_app: ADR-0024) y se
+--     diferencian en qué funciones pueden ejecutar. Esa es toda la idea:
 --     **el rol de conexión es lo único que una inyección SQL no puede falsear.** La
 --     comprobación de tenant dentro de una función `SECURITY DEFINER` no sirve de
 --     frontera, porque `app.current_tenant` lo fija el propio rol con `set_config`.
