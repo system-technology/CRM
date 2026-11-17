@@ -8,10 +8,7 @@ import 'reflect-metadata';
 import { RequestMethod } from '@nestjs/common';
 import type { Permiso } from '@viajapro/contracts';
 import { describe, expect, it } from 'vitest';
-import {
-  ArchivosController,
-  PERMISO_PARA_OPERAR_ARCHIVOS,
-} from '../../modules/booking/interface/archivos.controller.js';
+import { ArchivosController } from '../../modules/booking/interface/archivos.controller.js';
 import { AgenciaAjustesController } from '../../modules/identity/interface/agencia-ajustes.controller.js';
 import { CrmController } from '../../modules/crm/interface/crm.controller.js';
 import { ConversacionesController } from '../../modules/inbox/interface/conversaciones.controller.js';
@@ -32,8 +29,8 @@ const CONTROLADORES: ReadonlyArray<readonly [abstract new (...args: never[]) => 
     [CrmController, 'crm.escribir'],
     [CotizacionesController, 'cotizacion.escribir'],
     [AgenciaAjustesController, 'usuarios.administrar'],
-    // Provisional: ADR-0024 pide `archivo.operar`, que aún no está en el catálogo (ver el controlador).
-    [ArchivosController, PERMISO_PARA_OPERAR_ARCHIVOS],
+    // ADR-0024 §3.7, T-249. El literal, no la constante: cambiarla debe romper esta prueba.
+    [ArchivosController, 'archivo.operar'],
   ];
 
 describe('mutaciones con permiso (T-089)', () => {
@@ -68,5 +65,30 @@ describe('mutaciones con permiso (T-089)', () => {
   it('las lecturas y la excepción documentada no exigen permiso de escritura', () => {
     const proto = ConversacionesController.prototype as unknown as Record<string, unknown>;
     expect(Reflect.getMetadata(CLAVE_PERMISOS_REQUERIDOS, proto.leida as object)).toBeUndefined();
+  });
+
+  it('las lecturas del archivo de viaje exigen archivo.ver (T-249: hay datos de menores)', () => {
+    const proto = ArchivosController.prototype as unknown as Record<string, unknown>;
+    // Todos los GET del controlador, no una lista fija: un GET nuevo sin permiso rompe esta prueba.
+    const lecturas = Object.getOwnPropertyNames(proto).filter(
+      (n) =>
+        n !== 'constructor' &&
+        typeof proto[n] === 'function' &&
+        Reflect.getMetadata('method', proto[n] as object) === RequestMethod.GET,
+    );
+    expect(lecturas.length).toBeGreaterThan(0);
+    for (const nombre of lecturas) {
+      expect(
+        Reflect.getMetadata(CLAVE_PERMISOS_REQUERIDOS, proto[nombre] as object),
+        nombre,
+      ).toEqual(['archivo.ver']);
+    }
+  });
+
+  it('el controlador del archivo de viaje exige archivo.ver en toda ruta, mutaciones incluidas', () => {
+    // Las mutaciones devuelven el detalle con pasajeros: archivo.operar sin archivo.ver no lee.
+    expect(Reflect.getMetadata(CLAVE_PERMISOS_REQUERIDOS, ArchivosController)).toEqual([
+      'archivo.ver',
+    ]);
   });
 });

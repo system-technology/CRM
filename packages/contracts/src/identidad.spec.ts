@@ -8,9 +8,11 @@ describe('catálogo de permisos', () => {
     );
   });
 
-  it('es el reflejo exacto del CHECK de la migración 20261104130000 (ocho, sin repetidos)', () => {
+  it('es el reflejo exacto del CHECK de la migración 20261118100000 (diez, sin repetidos)', () => {
     expect([...PERMISOS].sort()).toEqual(
       [
+        'archivo.operar',
+        'archivo.ver',
         'bandeja.operar',
         'catalogo.administrar',
         'conversaciones.ver_todas',
