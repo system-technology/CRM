@@ -70,7 +70,7 @@ export class OperarArchivoUseCase {
     const verNeto = puedeVerNeto();
     const archivo = await this.archivos.leer(archivoId);
     if (!archivo) throw new ArchivoNoEncontradoError(archivoId);
-    return aDetalle(archivo, new Date(), verNeto);
+    return aDetalle(archivo, new Date(), verNeto, await this.archivos.historialDe(archivoId));
   }
 
   async actualizarReserva(
@@ -106,7 +106,7 @@ export class OperarArchivoUseCase {
         reservas: archivo.reservas.map((r) => (r.id === reservaId ? siguiente : r)),
       };
     });
-    return aDetalle(resultado, ahora, verNeto);
+    return aDetalle(resultado, ahora, verNeto, await this.archivos.historialDe(archivoId));
   }
 
   async reemplazarPasajeros(
@@ -155,7 +155,7 @@ export class OperarArchivoUseCase {
   private async leerGuardado(archivoId: string, verNeto: boolean): Promise<DetalleDeArchivo> {
     const archivo = await this.archivos.leer(archivoId);
     if (!archivo) throw new ArchivoNoEncontradoError(archivoId);
-    return aDetalle(archivo, new Date(), verNeto);
+    return aDetalle(archivo, new Date(), verNeto, await this.archivos.historialDe(archivoId));
   }
 }
 

@@ -180,9 +180,15 @@ describe('migración 20261104160000 — historial de estados de la cotización',
     await admin.query('BEGIN');
     try {
       const a = await sembrar();
-      // Estadísticas al día: las e2e escriben en esta tabla en paralelo y, con estadísticas viejas,
-      // el planificador empataba este índice con el UNIQUE (id, tenant_id) y elegía ese (CI de #299).
-      await admin.query('ANALYZE cotizacion_cambios_estado');
+      // Lo que se prueba es que el índice existe y sirve a la consulta, no qué índice elige el
+      // planificador con las estadísticas del momento: con la tabla casi vacía y las e2e escribiendo
+      // en paralelo, empataba con otros índices que también empiezan por tenant_id y elegía
+      // cualquiera (CI de #299 y #302, aun con ANALYZE y con 5000 filas sembradas). Dentro de esta
+      // transacción, que termina en ROLLBACK, se retiran los otros índices: si este no sirviera, el
+      // plan caería en un recorrido secuencial y la aserción fallaría.
+      await admin.query("SET LOCAL lock_timeout = '10s'");
+      await admin.query('DROP INDEX cotizacion_cambios_estado_id_tenant_id_key');
+      await admin.query('DROP INDEX idx_cotizacion_cambios_estado_por_cotizacion');
       await admin.query('SET LOCAL enable_seqscan = off');
       const plan = await comoApi(a.tenant, async () => {
         // Literales: EXPLAIN con parámetros enlazados depende del protocolo.

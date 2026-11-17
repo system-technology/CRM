@@ -5,7 +5,7 @@
  * travel_file_id`: una reserva no se opera desde la URL de otro archivo de la misma agencia.
  */
 import { Inject, Injectable } from '@nestjs/common';
-import type { Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import { PrismaService, type ClienteTenant } from '../../../shared/prisma/prisma.service.js';
 import { ContextoTenant } from '../../../shared/tenant/contexto-tenant.js';
 import {
@@ -19,7 +19,11 @@ import {
   ReservaNoEncontradaError,
 } from '../domain/errors-de-operacion.js';
 import { marcasALimpiar } from '../domain/plazos.js';
-import type { Reserva } from '../domain/reserva.js';
+import type { CambioDeEstadoDeReserva, Reserva } from '../domain/reserva.js';
+import {
+  leerHistorialDelArchivo,
+  registrarCambiosDeEstado,
+} from './historial-de-reservas.prisma.js';
 
 const CON_RESERVAS = { reservas: { orderBy: { id: 'asc' } } } satisfies Prisma.TravelFileInclude;
 const CON_TODO = {
@@ -161,6 +165,17 @@ class OperacionesPrisma implements OperacionesDelArchivo {
       },
     });
     if (count !== 1) throw new ReservaNoEncontradaError(archivoId, r.id);
+    // T-250: en la misma transacción. Solo si el estado cambió (corregir nota o localizador, no).
+    await registrarCambiosDeEstado(this.tx, [
+      {
+        tenantId: this.tenantId,
+        archivoId,
+        reservaId: r.id,
+        estadoAnterior: anterior.estado,
+        estadoNuevo: r.estado,
+        usuarioId: actorId,
+      },
+    ]);
   }
 
   async reemplazarPasajeros(
@@ -190,6 +205,16 @@ class OperacionesPrisma implements OperacionesDelArchivo {
 
   async guardarCancelacion(archivoId: string, c: CancelacionDelArchivo): Promise<void> {
     if (c.reservasACancelar.length > 0) {
+      // El estado de origen se lee aquí, con el archivo ya bloqueado: el historial dice de dónde
+      // venía cada reserva (T-250).
+      const previas = await this.tx.booking.findMany({
+        where: {
+          tenantId: this.tenantId,
+          travelFileId: archivoId,
+          id: { in: c.reservasACancelar },
+        },
+        select: { id: true, estado: true },
+      });
       await this.tx.booking.updateMany({
         where: {
           tenantId: this.tenantId,
@@ -198,6 +223,17 @@ class OperacionesPrisma implements OperacionesDelArchivo {
         },
         data: { estado: 'CANCELADA', actualizadoPorId: c.canceladoPor },
       });
+      await registrarCambiosDeEstado(
+        this.tx,
+        previas.map((p) => ({
+          tenantId: this.tenantId,
+          archivoId,
+          reservaId: p.id,
+          estadoAnterior: p.estado,
+          estadoNuevo: 'CANCELADA' as const,
+          usuarioId: c.canceladoPor,
+        })),
+      );
     }
     const { count } = await this.tx.travelFile.updateMany({
       where: { id: archivoId, tenantId: this.tenantId },
@@ -223,16 +259,43 @@ export class RepositorioDeOperacionDeArchivosPrisma extends RepositorioDeOperaci
   listar(filtro: FiltroDeArchivos): Promise<Archivo[]> {
     const { tenantId } = ContextoTenant.obtener();
     return this.prisma.conTenant(async (tx) => {
+      // T-251: el orden de «Reservas» se decide AQUÍ, antes del LIMIT. Ordenar en memoria después
+      // de recortar dejaba fuera a un archivo antiguo con el plazo vencido, justo el más urgente.
+      // El plazo vigente es el de `plazoVigente` del dominio: `time_limit` si CONFIRMADA y
+      // `pago_total_vence_en` si ABONADA_AL_PROVEEDOR; el más próximo de las reservas (las
+      // CAIDA/CANCELADA no aportan nada). Solo cuenta en un archivo ABIERTO. Sin plazo, al final y
+      // por número ascendente, como `compararPorPlazo`.
+      const porEstado =
+        filtro.estado === 'TODOS'
+          ? Prisma.empty
+          : Prisma.sql`AND t.estado = ${filtro.estado}::estado_archivo_de_viaje`;
+      const ordenados = await tx.$queryRaw<Array<{ id: string }>>`
+        SELECT t.id
+          FROM travel_files t
+          LEFT JOIN (
+            SELECT b.travel_file_id,
+                   MIN(CASE b.estado
+                         WHEN 'CONFIRMADA' THEN b.time_limit
+                         WHEN 'ABONADA_AL_PROVEEDOR' THEN b.pago_total_vence_en
+                       END) AS proximo_plazo
+              FROM bookings b
+             WHERE b.tenant_id = ${tenantId}::uuid
+             GROUP BY b.travel_file_id
+          ) p ON p.travel_file_id = t.id
+         WHERE t.tenant_id = ${tenantId}::uuid ${porEstado}
+         ORDER BY (CASE WHEN t.estado = 'ABIERTO' THEN p.proximo_plazo END) ASC NULLS LAST,
+                  t.numero ASC
+         LIMIT ${filtro.limite}`;
+      const ids = ordenados.map((o) => o.id);
+      if (ids.length === 0) return [];
       const filas = await tx.travelFile.findMany({
-        where: {
-          tenantId,
-          ...(filtro.estado === 'TODOS' ? {} : { estado: filtro.estado }),
-        },
+        where: { tenantId, id: { in: ids } },
         include: CON_RESERVAS,
-        orderBy: { numero: 'desc' },
-        take: filtro.limite,
       });
-      return filas.map(aArchivo);
+      const posicion = new Map(ids.map((id, i) => [id, i]));
+      return filas
+        .sort((a, b) => (posicion.get(a.id) ?? 0) - (posicion.get(b.id) ?? 0))
+        .map(aArchivo);
     });
   }
 
@@ -245,6 +308,11 @@ export class RepositorioDeOperacionDeArchivosPrisma extends RepositorioDeOperaci
       });
       return f ? aArchivo(f) : null;
     });
+  }
+
+  historialDe(archivoId: string): Promise<CambioDeEstadoDeReserva[]> {
+    const { tenantId } = ContextoTenant.obtener();
+    return this.prisma.conTenant((tx) => leerHistorialDelArchivo(tx, tenantId, archivoId));
   }
 
   enTransaccion<T>(fn: (ops: OperacionesDelArchivo) => Promise<T>): Promise<T> {

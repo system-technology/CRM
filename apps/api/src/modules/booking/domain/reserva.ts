@@ -34,6 +34,16 @@ export type EstadoReserva =
   | 'CAIDA'
   | 'CANCELADA';
 
+/** Una fila del historial de estados de una reserva (T-250): quién y cuándo. Sin neto. */
+export interface CambioDeEstadoDeReserva {
+  id: string;
+  reservaId: string;
+  estadoAnterior: EstadoReserva;
+  estadoNuevo: EstadoReserva;
+  usuarioId: string | null;
+  ocurridoEn: Date;
+}
+
 export type MotivoCaida =
   'TIME_LIMIT_VENCIDO' | 'PAGO_TOTAL_VENCIDO' | 'SIN_CUPO' | 'NEGADA_EN_ESPERA' | 'OTRO';
 
