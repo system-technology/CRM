@@ -5756,3 +5756,18 @@ tasks:
     source: T-254; la API de notificaciones en la aplicacion ya esta en la rama feat/notifications-avisos-de-plazo
     created_at: 2026-11-17T20:00:00.000Z
     owner: frontend
+  - id: T-256
+    title: "Notificaciones: foránea (reserva_id, archivo_id, tenant_id) que ate la reserva a su archivo"
+    type: refactor
+    phase: 1
+    priority: P3
+    effort: S
+    status: ready
+    depends_on: [T-254]
+    acceptance:
+      - "UNIQUE bookings(id, travel_file_id, tenant_id) y una sola FK compuesta desde notificaciones en lugar de las dos separadas; hoy solo lo impide el puerto de booking (sin cruce entre agencias)"
+    files:
+      - packages/database/prisma/migrations
+    source: auditoría de seguridad de T-254 (2026-11-17), hallazgo BAJO
+    created_at: 2026-11-17T19:45:00.000Z
+    owner: datos

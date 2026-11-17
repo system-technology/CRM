@@ -12,6 +12,7 @@ import { ArchivosController } from '../../modules/booking/interface/archivos.con
 import { AgenciaAjustesController } from '../../modules/identity/interface/agencia-ajustes.controller.js';
 import { CrmController } from '../../modules/crm/interface/crm.controller.js';
 import { ConversacionesController } from '../../modules/inbox/interface/conversaciones.controller.js';
+import { NotificacionesController } from '../../modules/notifications/interface/notificaciones.controller.js';
 import { CotizacionesController } from '../../modules/quoting/interface/cotizaciones.controller.js';
 import { CLAVE_PERMISOS_REQUERIDOS } from './permiso.decorator.js';
 
@@ -61,6 +62,22 @@ describe('mutaciones con permiso (T-089)', () => {
       }
     });
   }
+
+  it('notificaciones: su única mutación es marcarLeida y no exige permiso (T-254)', () => {
+    // Cada usuario marca solo las suyas (404 en lo ajeno) y a quién avisar se decide al crearla.
+    // Una mutación nueva en este controlador rompe esta prueba y obliga a decidir su permiso.
+    const proto = NotificacionesController.prototype as unknown as Record<string, unknown>;
+    const mutaciones = Object.getOwnPropertyNames(proto).filter(
+      (n) =>
+        n !== 'constructor' &&
+        typeof proto[n] === 'function' &&
+        MUTACIONES.has(Reflect.getMetadata('method', proto[n] as object) as number),
+    );
+    expect(mutaciones).toEqual(['marcarLeida']);
+    expect(
+      Reflect.getMetadata(CLAVE_PERMISOS_REQUERIDOS, proto.marcarLeida as object),
+    ).toBeUndefined();
+  });
 
   it('las lecturas y la excepción documentada no exigen permiso de escritura', () => {
     const proto = ConversacionesController.prototype as unknown as Record<string, unknown>;

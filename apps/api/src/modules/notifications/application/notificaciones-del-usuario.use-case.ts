@@ -24,6 +24,9 @@ export class NotificacionesDelUsuarioUseCase {
     const { usuarioId } = ContextoTenant.obtener();
     // Sin usuario (atajo de desarrollo): nadie tiene notificaciones.
     if (!usuarioId) return { datos: [], noLeidas: 0 };
+    // Hoy todas las notificaciones son avisos de plazo de un archivo de viaje: quien perdió
+    // `archivo.ver` (cambio de rol) deja de verlas, aunque se crearon cuando lo tenía.
+    if (!ContextoTenant.tienePermiso('archivo.ver')) return { datos: [], noLeidas: 0 };
     return this.notificaciones.listar(usuarioId, filtro.limite);
   }
 
