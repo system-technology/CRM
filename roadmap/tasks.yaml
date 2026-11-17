@@ -5538,7 +5538,7 @@ tasks:
     phase: 1
     priority: P1
     effort: S
-    status: ready
+    status: in_progress
     depends_on: [T-242]
     acceptance:
       - "Alerta antes de cada plazo, por agencia con ejecutarCon + conTenant, sin conPlataforma"
@@ -5547,7 +5547,9 @@ tasks:
       - apps/api/src/modules/booking
     source: ADR-0024 aceptado el 2026-11-17 (Fase 1, archivo de viaje)
     created_at: 2026-11-17T17:45:00.000Z
+    started_at: 2026-11-17T19:00:00.000Z
     owner: backend
+    notes: "Rama feat/booking-avisos-de-plazos. Los cuatro eventos del ADR-0024 §3.6 (booking.time_limit_proximo/vencido, booking.pago_total_proximo/vencido) por outbox, solo ids + instante del plazo; umbral 24 h constante (ADR §3.6.6). Sin funcion SECURITY DEFINER: recorre prisma.tenant (ACTIVO/EN_PRUEBA) con ejecutarCon + conTenant, O(agencias) por pasada (60 min, PLAZOS_INTERVALO_MS; PLAZOS_VIGILANCIA=inerte la apaga y las e2e la apagan). Marca con UPDATE ... WHERE aviso_ IS NULL RETURNING. Pendiente: e2e booking-plazos.e2e-spec.ts NO corrida (sin Postgres en la sesion; la valida el CI), auditor-seguridad (el ADR la pide), integracion. Pasa a done al integrarse en main"
   - id: T-245
     title: "Booking F1 (resto): permisos archivo.*, guardia de webhook sobre booking, mutaciones de aislamiento y semilla"
     type: security
@@ -5699,3 +5701,38 @@ tasks:
     source: T-243; el flujo de aceptar cotizacion no tiene hoy un paso de UI en la suite e2e y no se pudo correr Playwright en esta sesion
     created_at: 2026-11-17T19:00:00.000Z
     owner: frontend
+  - id: T-253
+    title: "Datos: reservas_con_plazo_por_avisar() para que la vigilancia no recorra todas las agencias"
+    type: refactor
+    phase: 1
+    priority: P3
+    effort: S
+    status: ready
+    depends_on: [T-244]
+    acceptance:
+      - "Cuando haya volumen de agencias (hoy la vigilancia de T-244 abre una transaccion por agencia y pasada), funcion SECURITY DEFINER de ADR-0024 §5.3 con rol viajapro_planificador y columnas de bookings, EXECUTE solo para viajapro_app, en aislamiento.spec.ts"
+      - "VigilarPlazos solo cambia el adaptador AgenciasVigilablesPrisma / RepositorioDeAvisosDePlazoPrisma"
+    files:
+      - packages/database/prisma/migrations
+      - apps/api/src/modules/booking/infrastructure/vigilancia-de-plazos.prisma.ts
+    source: T-244, decision de no crear funciones SECURITY DEFINER en esa tarea
+    created_at: 2026-11-17T19:30:00.000Z
+    owner: datos
+  - id: T-254
+    title: "Notifications: consumir booking.time_limit_proximo/vencido y booking.pago_total_proximo/vencido (aviso activo al asesor)"
+    type: feature
+    phase: 1
+    priority: P2
+    effort: M
+    status: ready
+    depends_on: [T-244]
+    acceptance:
+      - "Un consumidor de dominio (despachador de ADR-0024 §1, con entregas_de_eventos) por tipo, con el esquema AvisoDePlazoV1 de contracts; sin importar el modulo booking (R4)"
+      - "El asesor ve el aviso en la aplicacion; el aviso por WhatsApp o correo es plantilla utility con opt-in y por cola (R5), con whatsapp"
+      - "Hasta entonces los cuatro eventos quedan en el outbox sin consumidor: la pantalla Reservas (semaforo) es la vigilancia visible"
+    files:
+      - apps/api/src/modules/notifications
+      - packages/contracts/src/eventos.ts
+    source: T-244; ADR-0024 §3.6 y «Cola»
+    created_at: 2026-11-17T19:30:00.000Z
+    owner: backend
