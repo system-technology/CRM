@@ -24,6 +24,10 @@ export default defineConfig({
       // La vigilancia de plazos no corre sola contra la base compartida de las e2e (marcaría reservas
       // de fixtures ajenos); su e2e llama al caso de uso a mano.
       PLAZOS_VIGILANCIA: 'inerte',
+      // El barrido del despacho de eventos tampoco: cada archivo e2e levanta su app sobre la misma base,
+      // y su barrido entregaría eventos de fixtures de otro archivo (contaba intentos ajenos). El aviso
+      // en memoria sigue activo y solo toca la agencia de quien hizo la petición.
+      DESPACHO_BARRIDO: 'inerte',
       // Las e2e piden muchos códigos para un mismo buzón; la prueba del límite lo baja a propósito.
       OTP_ENVIOS_POR_CORREO: '1000',
       OTP_ENVIOS_POR_IP: '1000',
