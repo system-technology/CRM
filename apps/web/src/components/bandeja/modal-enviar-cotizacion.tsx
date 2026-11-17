@@ -19,31 +19,6 @@ export interface ModalEnviarCotizacionProps {
 
 export type EstadoEnvioCotizacion = 'inactivo' | 'enviando' | 'enviado' | 'fallido';
 
-export function generarTextoWhatsAppCotizacion(
-  cotizacion: CotizacionResumen,
-  contactoNombre: string | null,
-  contactoTelefono: string,
-): string {
-  const nombreDestinatario = contactoNombre?.trim() || contactoTelefono;
-  const precioFormateado = formatearDinero(cotizacion.precioVenta);
-
-  const validezTexto = cotizacion.vigenteHasta
-    ? `Hasta ${cotizacion.vigenteHasta}`
-    : 'Tarifa sujeta a disponibilidad y cambios sin previo aviso';
-
-  return `✈️ *Propuesta de Viaje: ${cotizacion.titulo} (v${cotizacion.version})*
-👤 Para: ${nombreDestinatario}
-💵 Inversión total: ${precioFormateado} ${cotizacion.precioVenta.moneda}
-📅 Vigencia de tarifa: ${validezTexto}
-
-📋 *Detalles de tu cotización:*
-• Asesoría turística personalizada
-• Itinerario coordinado según tus fechas
-• Soporte y acompañamiento ViajaPro
-
-_Responde a este mensaje para resolver cualquier duda o proceder con tu reserva._`;
-}
-
 export function ModalEnviarCotizacion({
   conversacionId,
   contactoNombre,
@@ -61,10 +36,6 @@ export function ModalEnviarCotizacion({
 
   const cotizacionActual =
     cotizaciones.find((c) => c.id === cotizacionSeleccionadaId) ?? cotizaciones[0] ?? null;
-
-  const textoVistaPrevia = cotizacionActual
-    ? generarTextoWhatsAppCotizacion(cotizacionActual, contactoNombre, contactoTelefono)
-    : '';
 
   const manejarEnvio = async () => {
     if (!cotizacionActual) return;
@@ -177,23 +148,32 @@ export function ModalEnviarCotizacion({
             )}
           </div>
 
-          {/* Vista previa del mensaje formateado para WhatsApp */}
+          {/* Resumen de lo que se enviará. El texto exacto lo arma el servidor (sin neto ni margen). */}
           {cotizacionActual && (
             <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <span className="flex items-center gap-1.5 text-xs font-semibold text-neutral-700 dark:text-neutral-300">
-                  <Sparkles className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-                  Vista previa del formato en WhatsApp
-                </span>
-                <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
-                  Texto estructurado
-                </span>
-              </div>
+              <span className="flex items-center gap-1.5 text-xs font-semibold text-neutral-700 dark:text-neutral-300">
+                <Sparkles className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                Resumen de lo que se enviará
+              </span>
               <div
                 data-testid="vista-previa-texto-cotizacion"
-                className="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-3.5 font-mono text-xs whitespace-pre-wrap text-neutral-800 shadow-2xs dark:border-emerald-900/40 dark:bg-emerald-950/20 dark:text-neutral-200"
+                className="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-3.5 text-xs text-neutral-800 shadow-2xs dark:border-emerald-900/40 dark:bg-emerald-950/20 dark:text-neutral-200"
               >
-                {textoVistaPrevia}
+                <p className="font-semibold">
+                  {cotizacionActual.titulo} (v{cotizacionActual.version})
+                </p>
+                <p className="mt-1">
+                  Total: {formatearDinero(cotizacionActual.precioVenta)}{' '}
+                  {cotizacionActual.precioVenta.moneda}
+                </p>
+                {cotizacionActual.vigenteHasta && (
+                  <p data-testid="vigencia-cotizacion" className="mt-0.5">
+                    Vigente hasta: {cotizacionActual.vigenteHasta}
+                  </p>
+                )}
+                <p className="mt-2 text-[11px] text-neutral-600 dark:text-neutral-400">
+                  El viajero recibirá el texto de la cotización sin neto ni margen.
+                </p>
               </div>
             </div>
           )}

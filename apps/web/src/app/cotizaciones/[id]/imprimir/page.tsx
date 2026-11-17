@@ -28,7 +28,7 @@ import {
   Users,
 } from 'lucide-react';
 import type {
-  Contacto,
+  ContactoDeLista,
   CotizacionGuardada,
   Dinero,
   VersionDeCotizacion,
@@ -141,7 +141,7 @@ export interface PaginaImprimirCotizacionProps {
   params?: Promise<{ id: string }>;
   /** Permite inyectar una cotización en pruebas unitarias sin depender de carga asíncrona. */
   cotizacionInicial?: CotizacionGuardada;
-  contactoInicial?: Contacto | null;
+  contactoInicial?: ContactoDeLista | null;
 }
 
 export default function PaginaImprimirCotizacion({
@@ -168,7 +168,7 @@ export default function PaginaImprimirCotizacion({
   const [cotizacion, setCotizacion] = useState<CotizacionGuardada | null>(
     cotizacionInicial ?? null,
   );
-  const [contacto, setContacto] = useState<Contacto | null>(contactoInicial ?? null);
+  const [contacto, setContacto] = useState<ContactoDeLista | null>(contactoInicial ?? null);
   const [cargando, setCargando] = useState<boolean>(!cotizacionInicial);
   const [errorCarga, setErrorCarga] = useState<string | null>(null);
   const [agencia, setAgencia] = useState<DatosAgenciaImpresion | null>(() =>

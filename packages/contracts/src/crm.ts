@@ -50,6 +50,14 @@ export const Contacto = z.object({
 });
 export type Contacto = z.infer<typeof Contacto>;
 
+/**
+ * El contacto tal como sale en el LISTADO. Sin `preferencias` (T-227, minimización, R10): puede
+ * ser dato de salud y un listado lo descifraría de muchos contactos a la vez. Solo la ficha y las
+ * respuestas de escritura la devuelven, y la ficha deja la lectura auditada.
+ */
+export const ContactoDeLista = Contacto.omit({ preferencias: true });
+export type ContactoDeLista = z.infer<typeof ContactoDeLista>;
+
 // =============================================================================
 // Oportunidad
 // =============================================================================
@@ -165,6 +173,49 @@ export const MotivoPerdida = z.enum([
 ]);
 export type MotivoPerdida = z.infer<typeof MotivoPerdida>;
 
+/**
+ * Un motivo de pérdida tal como lo tiene configurado ESTA agencia (T-229, R12). Tabla por agencia,
+ * no enum: cada una pierde por motivos propios («visa negada»).
+ *
+ * `clave` es la taxonomía común: en los siete sembrados es el valor de `MotivoPerdida` y no
+ * cambia aunque la agencia renombre la etiqueta; es `null` en los que crea la agencia.
+ * Retirar un motivo es `activo = false` (no hay borrado: las oportunidades que lo usaron lo
+ * siguen apuntando).
+ */
+export const MotivoDePerdida = z.object({
+  id: Id,
+  clave: z.string().max(32).nullable(),
+  etiqueta: z.string().min(1).max(80),
+  orden: z.number().int().min(0),
+  activo: z.boolean(),
+  /** Elegirlo exige explicar en `notaPerdida`. */
+  exigeNota: z.boolean(),
+});
+export type MotivoDePerdida = z.infer<typeof MotivoDePerdida>;
+
+/** Alta de un motivo propio: nace activo, al final de la lista y sin clave. */
+export const CrearMotivoDePerdida = z
+  .object({
+    etiqueta: z.string().trim().min(1).max(80),
+    exigeNota: z.boolean().default(false),
+  })
+  .strict();
+export type CrearMotivoDePerdida = z.infer<typeof CrearMotivoDePerdida>;
+
+/** Edición parcial. La `clave` de sistema no se edita por aquí. */
+export const ActualizarMotivoDePerdida = z
+  .object({
+    etiqueta: z.string().trim().min(1).max(80).optional(),
+    orden: z.number().int().min(0).max(32767).optional(),
+    activo: z.boolean().optional(),
+    exigeNota: z.boolean().optional(),
+  })
+  .strict()
+  .refine((e) => Object.values(e).some((v) => v !== undefined), {
+    message: 'Indica al menos un campo a cambiar.',
+  });
+export type ActualizarMotivoDePerdida = z.infer<typeof ActualizarMotivoDePerdida>;
+
 /** Lo siguiente que hay que hacer, y cuándo. Lo que impide que una oportunidad se enfríe sola. */
 export const ProximaTarea = z.object({
   descripcion: z.string().min(1).max(200),
@@ -263,6 +314,12 @@ export const MoverOportunidad = z
   .object({
     etapaId: Id,
     motivoPerdida: MotivoPerdida.nullable().default(null),
+    /**
+     * T-229: el motivo de la agencia (`GET /crm/motivos-de-perdida`). Convive con el enum
+     * `motivoPerdida` durante la compatibilidad; si llega, manda: el enum se deriva de su `clave`.
+     * Si el motivo `exigeNota`, `notaPerdida` es obligatoria (lo comprueba el caso de uso).
+     */
+    motivoPerdidaId: Id.nullable().optional(),
     notaPerdida: z.string().max(500).nullable().default(null),
   })
   .superRefine(exigirExplicacionDeOtro);
@@ -300,7 +357,7 @@ export type TableroPipeline = z.infer<typeof TableroPipeline>;
 export const PaginaOportunidades = pagina(Oportunidad);
 export type PaginaOportunidades = z.infer<typeof PaginaOportunidades>;
 
-export const PaginaContactos = pagina(Contacto);
+export const PaginaContactos = pagina(ContactoDeLista);
 export type PaginaContactos = z.infer<typeof PaginaContactos>;
 
 // =============================================================================

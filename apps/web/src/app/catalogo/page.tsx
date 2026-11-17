@@ -104,6 +104,7 @@ import {
   validarFormularioEditarPaquete,
 } from '../../lib/catalogo-gestion-logica';
 import { formatearDinero } from '../../lib/api';
+import { fechaDeHoy } from '../../lib/cotizador-logica';
 
 export default function CatalogoPage() {
   const { esDemo } = useModoDemo();
@@ -191,8 +192,8 @@ export default function CatalogoPage() {
     setCargando(true);
     setErrorTenant(null);
 
-    // Salidas a partir de octubre de 2026 (campaña del tarifario)
-    listarSalidasApi({ desde: '2026-10-01' })
+    // Salidas a partir de hoy (zona del tenant)
+    listarSalidasApi({ desde: fechaDeHoy() })
       .then((salidas) => {
         setSalidasReales(salidas);
         setErrorTenant(null);
@@ -469,7 +470,7 @@ export default function CatalogoPage() {
                       error={construirMensajeErrorAccionable(errorTenant, 'CATALOGO_SALIDAS')}
                       onReintentar={() => {
                         setCargando(true);
-                        listarSalidasApi({ desde: '2026-10-01' })
+                        listarSalidasApi({ desde: fechaDeHoy() })
                           .then((salidas) => {
                             setSalidasReales(salidas);
                             setErrorTenant(null);
@@ -557,7 +558,6 @@ export default function CatalogoPage() {
                             mayorista: null,
                             creadoEn: new Date().toISOString(),
                             vigencias: [],
-                            tarifarioDemo: [],
                           };
                           setPaqueteSeleccionado(paqGenerado);
                         }}

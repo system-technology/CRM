@@ -1,7 +1,9 @@
 # Imagen de la API y del trabajador (ADR-0013). Es UNA imagen: comparten codigo y solo difiere
-# el comando de arranque, que fija render.yaml:
-#   API:         node apps/api/dist/main.js      (CMD por omision)
-#   Trabajador:  node dist/worker.js
+# el comando de arranque. El CMD por omision es el modo `escalado`; render.yaml (staging, ADR-0028)
+# lo sustituye con `dockerCommand`:
+#   Escalado, API:         node dist/main.js           (CMD por omision)
+#   Escalado, trabajador:  node dist/worker.js
+#   Modo unico (ADR-0019): node dist/main-unico.js     con MODO_DESPLIEGUE=unico
 # Contexto de build: la RAIZ del monorepo.
 #   docker build -f apps/api/Dockerfile -t viajapro-api .
 

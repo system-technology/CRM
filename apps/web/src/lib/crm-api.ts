@@ -14,7 +14,10 @@ export { obtenerBaseApi };
 
 import { z } from 'zod';
 import {
+  ActualizarMotivoDePerdida,
   Contacto,
+  CrearMotivoDePerdida,
+  MotivoDePerdida,
   CrearContacto,
   CrearOportunidad,
   CrearOportunidadDeConversacion,
@@ -390,6 +393,41 @@ export class GuardadoEtapasParcialError extends Error {
     );
     this.name = 'GuardadoEtapasParcialError';
   }
+}
+
+/**
+ * Motivos de pérdida de la agencia (GET /api/v1/crm/motivos-de-perdida, T-229). Solo API real, sin
+ * respaldo simulado: la lista es de cada agencia. Activos por defecto.
+ */
+export async function listarMotivosDePerdidaApi(
+  incluirInactivos = false,
+): Promise<MotivoDePerdida[]> {
+  const q = incluirInactivos ? '?incluirInactivos=true' : '';
+  const { data } = await pedirCrm(`/api/v1/crm/motivos-de-perdida${q}`);
+  return z.array(MotivoDePerdida).parse(data);
+}
+
+/** Crea un motivo propio de la agencia. Requiere `crm.escribir`. */
+export async function crearMotivoDePerdidaApi(
+  datos: z.input<typeof CrearMotivoDePerdida>,
+): Promise<MotivoDePerdida> {
+  const { data } = await pedirCrm('/api/v1/crm/motivos-de-perdida', {
+    method: 'POST',
+    body: JSON.stringify(CrearMotivoDePerdida.parse(datos)),
+  });
+  return MotivoDePerdida.parse(data);
+}
+
+/** Edita (o desactiva: `activo: false`) un motivo. Requiere `crm.escribir`. */
+export async function actualizarMotivoDePerdidaApi(
+  id: string,
+  cambios: ActualizarMotivoDePerdida,
+): Promise<MotivoDePerdida> {
+  const { data } = await pedirCrm(`/api/v1/crm/motivos-de-perdida/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(ActualizarMotivoDePerdida.parse(cambios)),
+  });
+  return MotivoDePerdida.parse(data);
 }
 
 /**

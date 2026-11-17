@@ -100,10 +100,7 @@
       "Bash(node .claude/hooks/autorizar-integracion.mjs:*)",
       "Bash(docker compose:*)"
     ],
-    "ask": [
-      "Bash(terraform:*)",
-      "Bash(npm install:*)"
-    ],
+    "ask": ["Bash(terraform:*)", "Bash(npm install:*)"],
     "deny": [
       "Read(./.env)",
       "Read(./.env.local)",
@@ -185,6 +182,15 @@
           {
             "type": "command",
             "command": "node .claude/hooks/post-edit.mjs"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash|mcp__github__merge_pull_request|mcp__github__create_pull_request",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/contexto-persistente.mjs hito"
           }
         ]
       }

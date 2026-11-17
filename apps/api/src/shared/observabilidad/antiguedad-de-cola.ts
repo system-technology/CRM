@@ -8,13 +8,17 @@
  * y antigüedad (nunca payload ni tenant). El trabajador publica el resultado en Redis con caducidad
  * y la API lo lee, igual que el latido (T-194). Sin migración, sin tabla, sin rol nuevo.
  *
- * Alcance: la cola de ENTRADA (webhooks de Meta recibidos y sin procesar). Los envíos salientes
- * pendientes viven en `mensajes` bajo RLS; medirlos entre agencias exige una función
- * `SECURITY DEFINER` nueva (migración): ver la cola de `roadmap/tasks.yaml`.
+ * Dos colas, medidas por separado (una no tumba la medida de la otra):
+ *   - ENTRADA: webhooks de Meta recibidos y sin procesar (`listar_changes_pendientes`).
+ *   - SALIDA (T-223): envíos salientes pendientes, sin wamid. Viven en `mensajes` bajo RLS; los
+ *     mide `medir_cola_de_salida()` (migración 20261115140000), `SECURITY DEFINER` que suma todas
+ *     las agencias y devuelve solo dos enteros (antigüedad y conteo), ni ids ni tenant ni texto.
  */
 import { Redis } from 'ioredis';
 
 export const CLAVE_DE_COLA = 'viajapro:cola:antiguedad';
+/** T-223: la de salida, aparte, con la misma forma y la misma caducidad. */
+export const CLAVE_DE_COLA_DE_SALIDA = 'viajapro:cola-salida:antiguedad';
 export const INTERVALO_DE_MEDICION_S = 30;
 const CADUCIDAD_S = 120;
 /** Por encima de esto, la cola se considera atascada. Configurable con `COLA_ALERTA_MIN`. */
@@ -28,7 +32,10 @@ export type EstadoDeCola =
   | { estado: 'sin_verificar' };
 
 export abstract class LectorDeCola {
+  /** La cola de entrada (webhooks sin procesar). */
   abstract leer(): Promise<EstadoDeCola>;
+  /** T-223: la cola de salida (envíos pendientes sin wamid). */
+  abstract leerSalida(): Promise<EstadoDeCola>;
 }
 
 /** Lo único que el medidor necesita de la base: el pool del trabajador. */
@@ -71,7 +78,12 @@ export class MedidorDeCola {
     this.temporizador.unref();
   }
 
+  /** Las dos colas, cada una por su lado: si falla una, la otra se publica igual. */
   async medir(): Promise<void> {
+    await Promise.all([this.medirEntrada(), this.medirSalida()]);
+  }
+
+  private async medirEntrada(): Promise<void> {
     try {
       // Antigüedad mínima 0 y tope de intentos máximo: queremos TODO lo pendiente, también lo que
       // el barrido ya abandonó (eso es justo lo que más importa ver).
@@ -79,16 +91,38 @@ export class MedidorDeCola {
         SELECT antiguedad_s
           FROM public.listar_changes_pendientes(0::integer, ${LIMITE_DE_LECTURA}::integer, 32767::integer)`;
       const masViejaS = filas.reduce((m, f) => Math.max(m, f.antiguedad_s), 0);
-      await this.conexion.set(
-        CLAVE_DE_COLA,
-        JSON.stringify({ en: new Date().toISOString(), masViejaS, pendientes: filas.length }),
-        'EX',
-        CADUCIDAD_S,
-      );
+      await this.publicar(CLAVE_DE_COLA, masViejaS, filas.length);
     } catch {
       // Solo el hecho: el mensaje de un error de Redis puede traer la URL con su clave.
       this.registrar('No se pudo medir la antigüedad de la cola; se reintenta.');
     }
+  }
+
+  private async medirSalida(): Promise<void> {
+    try {
+      const [fila] = await this.prisma.$queryRaw<
+        Array<{ mas_vieja_s: number; pendientes: number }>
+      >`
+        SELECT mas_vieja_s, pendientes FROM public.medir_cola_de_salida()`;
+      if (!fila) throw new Error('medir_cola_de_salida no devolvió fila');
+      await this.publicar(
+        CLAVE_DE_COLA_DE_SALIDA,
+        Number(fila.mas_vieja_s),
+        Number(fila.pendientes),
+      );
+    } catch {
+      // Sin la migración 20261115140000 la función no existe: la API lo verá `sin_verificar`.
+      this.registrar('No se pudo medir la antigüedad de la cola de salida; se reintenta.');
+    }
+  }
+
+  private async publicar(clave: string, masViejaS: number, pendientes: number): Promise<void> {
+    await this.conexion.set(
+      clave,
+      JSON.stringify({ en: new Date().toISOString(), masViejaS, pendientes }),
+      'EX',
+      CADUCIDAD_S,
+    );
   }
 
   detener(): Promise<void> {
@@ -109,10 +143,18 @@ export class LectorDeColaRedis extends LectorDeCola {
     super();
   }
 
-  async leer(): Promise<EstadoDeCola> {
+  leer(): Promise<EstadoDeCola> {
+    return this.leerClave(CLAVE_DE_COLA);
+  }
+
+  leerSalida(): Promise<EstadoDeCola> {
+    return this.leerClave(CLAVE_DE_COLA_DE_SALIDA);
+  }
+
+  private async leerClave(clave: string): Promise<EstadoDeCola> {
     try {
       this.conexion ??= this.abrir();
-      const crudo = await this.conexion.get(CLAVE_DE_COLA);
+      const crudo = await this.conexion.get(clave);
       // Sin clave: el trabajador no midió en 2 min (o nunca). El latido ya avisa de ese caso.
       if (crudo === null) return { estado: 'sin_verificar' };
       const v = JSON.parse(crudo) as { masViejaS?: unknown; pendientes?: unknown };

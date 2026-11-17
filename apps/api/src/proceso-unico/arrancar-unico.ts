@@ -50,6 +50,10 @@ export async function arrancarUnico(entorno: Entorno = process.env): Promise<Pro
     { bufferLogs: true },
   );
 
+  // T-226 (b) / T-234: la comprobación de claves ya corrió dentro de la creación del contexto
+  // (`TrabajadorUnicoModule`, raíz) y antes de que los consumidores en proceso se conectaran: con
+  // una versión huérfana el contexto no se crea y la API ni se construye.
+
   const puerto = Number(entorno['API_PORT'] ?? 3333);
   let api: NestExpressApplication;
   try {

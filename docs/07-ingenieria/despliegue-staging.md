@@ -1,3 +1,8 @@
+> **Superada (2026-11-17).** La topología de cuatro piezas en Render (web, API, trabajador y Key
+> Value) quedó sustituida por Neon + web en Vercel + API en un solo proceso en Render (ADR-0028). Los
+> pasos vigentes están en [despliegue-neon-vercel-render.md](despliegue-neon-vercel-render.md). Este
+> documento se conserva como historial; `render.yaml` y el workflow ya no coinciden con él.
+
 # Despliegue de staging en Render — pasos del propietario
 
 Implementa el ADR-0013 solo para **staging**. Todo se hace en los paneles; ningún secreto pasa por
@@ -53,12 +58,14 @@ A partir de aquí las migraciones las aplica GitHub Actions, no usted.
 | Servicio | Variables a pegar |
 |---|---|
 | `viajapro-web-staging` | `NEXT_PUBLIC_API_URL` (`https://api.staging.<dominio>`) |
-| `viajapro-api-staging` | `API_PUBLIC_URL`, `WEB_PUBLIC_URL` (`https://staging.<dominio>`), `API_TRUST_PROXY`, `MAIL_FROM`, `POSTMARK_MESSAGE_STREAM`, `DATABASE_APP_URL`, `DATABASE_ALTAS_URL`, `DATABASE_IDENTIDAD_URL`, `BETTER_AUTH_SECRET`, `META_APP_SECRET`, `WHATSAPP_WEBHOOK_VERIFY_TOKEN`, `WEBHOOK_PAYLOAD_KEY`, `WEBHOOK_PAYLOAD_KEY_VERSION`, `CORREO_PAYLOAD_KEY` |
-| `viajapro-worker-staging` | `MAIL_FROM`, `POSTMARK_MESSAGE_STREAM`, `DATABASE_WEBHOOK_URL`, `WEBHOOK_PAYLOAD_KEY`, `WEBHOOK_PAYLOAD_KEY_VERSION`, `CORREO_PAYLOAD_KEY`, `WHATSAPP_DIRECTORY_PEPPER`, `WHATSAPP_DIRECTORY_PEPPER_VERSION`, `POSTMARK_SERVER_TOKEN` |
+| `viajapro-api-staging` | `API_PUBLIC_URL`, `WEB_PUBLIC_URL` (`https://staging.<dominio>`), `API_TRUST_PROXY`, `MAIL_FROM`, `POSTMARK_MESSAGE_STREAM`, `DATABASE_APP_URL`, `DATABASE_ALTAS_URL`, `DATABASE_IDENTIDAD_URL`, `BETTER_AUTH_SECRET`, `META_APP_SECRET`, `WHATSAPP_WEBHOOK_VERIFY_TOKEN`, `WEBHOOK_PAYLOAD_KEY`, `WEBHOOK_PAYLOAD_KEY_VERSION`, `CAMPOS_SENSIBLES_KEY`, `CAMPOS_SENSIBLES_KEY_VERSION`, `CORREO_PAYLOAD_KEY` |
+| `viajapro-worker-staging` | `MAIL_FROM`, `POSTMARK_MESSAGE_STREAM`, `DATABASE_WEBHOOK_URL`, `WEBHOOK_PAYLOAD_KEY`, `WEBHOOK_PAYLOAD_KEY_VERSION`, `CAMPOS_SENSIBLES_KEY`, `CAMPOS_SENSIBLES_KEY_VERSION`, `CORREO_PAYLOAD_KEY`, `WHATSAPP_DIRECTORY_PEPPER`, `WHATSAPP_DIRECTORY_PEPPER_VERSION`, `POSTMARK_SERVER_TOKEN` |
 
 `REDIS_URL` se enlaza sola desde el Key Value por la red privada. Generar los secretos propios con
 `openssl rand -base64 32` (claves) y `openssl rand -hex 32` (pimienta), **distintos de producción**.
-Las `*_VERSION` valen `1`. `API_TRUST_PROXY`: empezar en `1` y comprobar en el paso 7.
+Las `*_VERSION` valen `1`. `CAMPOS_SENSIBLES_KEY` (API y trabajador, **la misma** en los dos) se
+guarda además fuera de Render: sin ella lo cifrado no se recupera. `CAMPOS_SENSIBLES_KEY_PREVIOUS`
+se deja vacía; solo se rellena durante una rotación ([runbook](../06-operacion/rotacion-de-claves.md)). `API_TRUST_PROXY`: empezar en `1` y comprobar en el paso 7.
 
 *Comprobación:* en cada servicio, **Settings** muestra región **Ohio** y **Auto-Deploy: Off**; en el
 Key Value, **Maxmemory policy: noeviction** y la lista de IP externas vacía.

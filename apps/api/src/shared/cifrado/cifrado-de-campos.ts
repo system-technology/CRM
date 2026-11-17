@@ -14,6 +14,21 @@
  * - **Tope de 2^32 cifrados por clave derivada (concreción 2):** lo vigila el trabajo de
  *   recifrado con la cuenta sacada de la base (se rota antes de 2^31). Este servicio no puede
  *   contar entre procesos; el trabajo no existe todavía (cola, T-212).
+ * - **Rotación robusta (T-226).** Hecho: la maestra (y la previa) no puede coincidir con otra clase
+ *   de secreto (`separadaDeOtrasClases`, al arrancar). Hecho también (b): al arrancar, la API,
+ *   el trabajador y el modo único abortan si hay datos con una `*_clave_version` que ninguna clave
+ *   cargada abre (`comprobacion-de-claves.ts`). Aborta DENTRO del arranque de Nest (T-234): la
+ *   comprobación es el `onModuleInit` de la raíz (`comprobacion-al-arrancar.ts`), tras el rol y
+ *   antes de cualquier `onApplicationBootstrap`, donde se conectan consumidores y planificadores.
+ *   Lee las versiones agencia por agencia bajo RLS (con el `conTenant` de cada proceso);
+ *   a volumen, una función SECURITY DEFINER `contar_versiones_de_clave()` (rol sin login, sin ids
+ *   ni contenido) solo cambiaría el adaptador. PENDIENTE:
+ *   (c) recifrado por lotes: trabajo en cola que, por agencia (`conTenant`), lee un lote de filas
+ *       con versión vieja, descifra con la previa y reescribe con la vigente en la misma
+ *       transacción (`UPDATE ... WHERE id = $ AND *_clave_version = $vieja`, idempotente), hasta
+ *       que el recuento de (b) sea cero; solo entonces se retira `CAMPOS_SENSIBLES_KEY_PREVIOUS`.
+ *       El contador del tope 2^32 sale de la misma función (filas escritas por clave derivada =
+ *       filas por (tabla, tenant, versión) más reescrituras); alerta al llegar a 2^31.
  * - **Sin respaldo (concreción 4):** sin `CAMPOS_SENSIBLES_KEY` o sin su versión, la configuración
  *   lanza y el proceso (API o trabajador) no arranca. La clave no se registra ni entra en ningún
  *   mensaje de error.
@@ -209,9 +224,43 @@ export function clavesDeCamposDesdeEntorno(
     );
   }
   const previa = entorno['CAMPOS_SENSIBLES_KEY_PREVIOUS'];
+  separadaDeOtrasClases(entorno, 'CAMPOS_SENSIBLES_KEY', valor);
+  if (previa) separadaDeOtrasClases(entorno, 'CAMPOS_SENSIBLES_KEY_PREVIOUS', previa);
   return {
     version,
     actual: decodificarClave(valor),
     anterior: previa ? decodificarClave(previa) : null,
   };
+}
+
+/** Las otras clases de secreto con las que la maestra de campos no puede compartir valor. */
+const OTRAS_CLASES_DE_SECRETO = [
+  'WEBHOOK_PAYLOAD_KEY',
+  'CORREO_PAYLOAD_KEY',
+  'ENCRYPTION_MASTER_KEY',
+] as const;
+
+/**
+ * T-226 (a): una clave por clase de secreto. Si la maestra de campos fuera igual a otra, filtrar o
+ * rotar aquella comprometería esta (y la rotación de una arrastraría a la otra). Se compara el
+ * valor tal cual y, cuando ambos decodifican, los bytes (la misma clave en hex y en base64 es la
+ * misma clave). El mensaje nombra las variables, nunca el valor.
+ */
+function separadaDeOtrasClases(
+  entorno: Record<string, string | undefined>,
+  nombre: string,
+  valor: string,
+): void {
+  const limpio = valor.trim();
+  const bytes = decodificarClave(limpio);
+  for (const otra of OTRAS_CLASES_DE_SECRETO) {
+    const otroValor = entorno[otra]?.trim();
+    if (!otroValor) continue;
+    if (otroValor === limpio || decodificarClave(otroValor).equals(bytes)) {
+      throw new Error(
+        `${nombre} no puede ser igual a ${otra} (ADR-0015): cada clase de secreto lleva su propia ` +
+          'clave. Genera una distinta con `openssl rand -base64 32`.',
+      );
+    }
+  }
 }

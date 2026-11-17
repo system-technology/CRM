@@ -1,5 +1,6 @@
 /**
- * Lo que recibe TODA agencia sembrada: roles, formatos de viaje de sistema y embudo por defecto.
+ * Lo que recibe TODA agencia sembrada: roles, formatos de viaje de sistema, embudo por defecto y
+ * motivos de pérdida.
  *
  * Salió de `seed.ts` sin cambiar de comportamiento para que la agencia demo y las agencias de
  * prospecto (`semilla-agencia-desde-json.ts`) usen exactamente el mismo camino: un solo sitio
@@ -168,6 +169,48 @@ export async function sembrarEtapas(tx: ClienteDeSiembra, tenantId: string): Pro
         probabilidad: e.probabilidad,
         esGanada,
         esPerdida,
+      },
+    });
+  }
+}
+
+// --- Motivos de pérdida (T-214) -----------------------------------------------
+// Tabla por agencia, no enum (R12). Las siete CLAVES son los valores del enum `MotivoPerdida`
+// (la taxonomía común con la que se comparan agencias); las etiquetas, las que muestra la web.
+// Mismo contenido que siembra la migración 20261115150000 para las agencias que ya existían.
+export const MOTIVOS_DE_PERDIDA_SEMBRADOS = [
+  { clave: 'PRECIO', etiqueta: 'Precio alto frente a presupuesto', orden: 0 },
+  { clave: 'TIEMPO_DE_RESPUESTA', etiqueta: 'Tiempo de respuesta tardío (SLA)', orden: 1 },
+  { clave: 'SIN_DISPONIBILIDAD', etiqueta: 'Sin disponibilidad en fechas / cupos', orden: 2 },
+  { clave: 'COMPRO_EN_OTRA_AGENCIA', etiqueta: 'Compró con otra agencia', orden: 3 },
+  { clave: 'VIAJE_APLAZADO', etiqueta: 'Viaje aplazado o cancelado por el cliente', orden: 4 },
+  { clave: 'NO_RESPONDE', etiqueta: 'Cliente dejó de responder', orden: 5 },
+  { clave: 'OTRO', etiqueta: 'Otro motivo (especificar)', orden: 6, exigeNota: true },
+] as const satisfies ReadonlyArray<{
+  clave: string;
+  etiqueta: string;
+  orden: number;
+  exigeNota?: boolean;
+}>;
+
+/**
+ * Por CLAVE y sin pisar nada: la agencia puede haber cambiado la etiqueta, el orden o
+ * desactivado un motivo, y la siembra no se lo deshace.
+ */
+export async function sembrarMotivosDePerdida(
+  tx: ClienteDeSiembra,
+  tenantId: string,
+): Promise<void> {
+  for (const m of MOTIVOS_DE_PERDIDA_SEMBRADOS) {
+    await tx.motivoDePerdida.upsert({
+      where: { tenantId_clave: { tenantId, clave: m.clave } },
+      update: {},
+      create: {
+        tenantId,
+        clave: m.clave,
+        etiqueta: m.etiqueta,
+        orden: m.orden,
+        exigeNota: 'exigeNota' in m ? m.exigeNota : false,
       },
     });
   }

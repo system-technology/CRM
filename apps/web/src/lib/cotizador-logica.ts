@@ -38,6 +38,8 @@ import type {
 import { CotizacionCalculada as EsquemaCotizacion } from '@viajapro/contracts';
 import type { PaqueteConDetalle } from './mock-catalogo';
 import { formatearDinero } from './api';
+import { fechaLocalEnZona } from './reportes-periodo';
+import { ZONA_HORARIA_COLOMBIA } from './formato';
 
 const CAPACIDAD_ACOMODACION: Record<Acomodacion, number> = {
   SENCILLA: 1,
@@ -308,10 +310,11 @@ export function calcularCotizacionMock(
   entrada: CotizarPaquete,
   paquete: PaqueteConDetalle,
 ): CotizacionCalculada {
-  const temporada =
-    paquete.tarifarioDemo.find(
-      (t) => entrada.fechaSalida >= t.desde && entrada.fechaSalida <= t.hasta,
-    ) ?? paquete.tarifarioDemo[0]!;
+  const vigencia =
+    paquete.vigencias.find(
+      (v) => entrada.fechaSalida >= v.desde && entrada.fechaSalida <= v.hasta,
+    ) ?? paquete.vigencias[0];
+  if (!vigencia) throw new Error('El simulador necesita al menos una vigencia con tarifas');
 
   const totalPasajeros =
     entrada.pasajeros.adultos + entrada.pasajeros.ninos + entrada.pasajeros.infantes;
@@ -358,11 +361,13 @@ export function calcularCotizacionMock(
   for (const g of grupos) {
     if (g.cant <= 0) continue;
     const precioBase =
-      temporada.precios.find(
-        (p) => p.acomodacion === acomodacionElegida && p.tipoPasajero === g.tipo,
+      vigencia.tarifas.find(
+        (t) =>
+          t.condicion?.acomodacion === acomodacionElegida && t.condicion?.tipoPasajero === g.tipo,
       ) ??
-      temporada.precios.find((p) => p.tipoPasajero === g.tipo) ??
-      temporada.precios[0]!;
+      vigencia.tarifas.find((t) => t.condicion?.tipoPasajero === g.tipo) ??
+      vigencia.tarifas[0];
+    if (!precioBase) throw new Error('La vigencia del simulador no tiene tarifas');
 
     const ventaUnit = Math.round(Number(precioBase.venta.unidades) * markupFactor);
     const subtotalVenta = ventaUnit * g.cant;
@@ -406,7 +411,7 @@ export function calcularCotizacionMock(
     destino: paquete.destino,
     fechaSalida: entrada.fechaSalida,
     fechaRegreso,
-    temporadaNombre: temporada.nombre,
+    temporadaNombre: `Vigencia del ${vigencia.desde} al ${vigencia.hasta}`,
     acomodacion: acomodacionElegida,
     habitaciones,
     plazasSinUsar,
@@ -474,4 +479,27 @@ export function acomodacionesParaElSelector(f: FuenteDeAcomodaciones): Acomodaci
     return ACOMODACIONES_EN_ORDEN.filter((a) => lista.includes(a));
   }
   return f.pedidaPorLaApi ? [...ACOMODACIONES_EN_ORDEN] : [];
+}
+
+/** Hoy como AAAA-MM-DD en la zona del tenant (R9): sin desfase por UTC. */
+export function fechaDeHoy(ahora: Date = new Date(), zona: string = ZONA_HORARIA_COLOMBIA): string {
+  const { anio, mes, dia } = fechaLocalEnZona(ahora, zona);
+  const dos = (n: number) => String(n).padStart(2, '0');
+  return `${String(anio).padStart(4, '0')}-${dos(mes)}-${dos(dia)}`;
+}
+
+/**
+ * Fecha por omisión del cotizador: la primera salida disponible del paquete (en o después de
+ * `hoy`); si no hay salidas, `hoy`.
+ */
+export function fechaPorOmision(
+  salidas: readonly { paqueteId: string; fecha: string }[],
+  paqueteId: string,
+  hoy: string,
+): string {
+  const fechas = salidas
+    .filter((s) => s.paqueteId === paqueteId && s.fecha >= hoy)
+    .map((s) => s.fecha)
+    .sort();
+  return fechas[0] ?? hoy;
 }

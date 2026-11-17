@@ -94,7 +94,7 @@ export function ModalCrearOportunidad({
                 Abrir Oportunidad en Pipeline
               </h2>
               <p className="text-[11px] text-neutral-500 sm:text-xs dark:text-neutral-400">
-                Se creará en la etapa inicial «Nuevo Lead»
+                Se creará en la etapa inicial «Oportunidad nueva»
               </p>
             </div>
           </div>

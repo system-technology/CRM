@@ -186,7 +186,9 @@ afterAll(async () => {
     try {
       type Limpiador = (c: Client, ids: string[]) => Promise<unknown>;
       const ruta = '../../../../../packages/database/scripts/borrar-tenants.mjs';
-      const modulo = (await import(ruta)) as { borrarTenants: Limpiador };
+      const modulo = (await import(new URL(ruta, import.meta.url).href)) as {
+        borrarTenants: Limpiador;
+      };
       await adminPg.query('BEGIN');
       await modulo.borrarTenants(adminPg, [TENANT_A, TENANT_B]);
       await adminPg.query('COMMIT');

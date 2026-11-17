@@ -53,3 +53,12 @@ export abstract class PuertoAgencias {
    */
   abstract listarDe(identidadId: string): Promise<AgenciaDeAcceso[]>;
 }
+
+export abstract class PuertoZonaHoraria {
+  /**
+   * Fija la zona horaria de la agencia activa (la del contexto de tenant, nunca un parámetro).
+   * Lanza `ZonaHorariaInvalidaError` si la base la rechaza y `AgenciaNoEncontradaError` si la
+   * agencia no existe. Devuelve la zona guardada.
+   */
+  abstract actualizar(zona: string): Promise<string>;
+}

@@ -54,6 +54,14 @@ const BloqueEtapasPipeline = dynamic(
   { ssr: false },
 );
 
+const BloqueMotivosPerdida = dynamic(
+  () =>
+    import('../../components/configuracion/bloque-motivos-perdida').then(
+      (m) => m.BloqueMotivosPerdida,
+    ),
+  { ssr: false },
+);
+
 const BloqueCamposPersonalizados = dynamic(
   () =>
     import('../../components/configuracion/bloque-campos-personalizados').then(
@@ -80,6 +88,12 @@ const BloqueConexionWhatsapp = dynamic(
     import('../../components/configuracion/bloque-conexion-whatsapp').then(
       (m) => m.BloqueConexionWhatsapp,
     ),
+  { ssr: false },
+);
+
+const BloqueZonaHoraria = dynamic(
+  () =>
+    import('../../components/configuracion/bloque-zona-horaria').then((m) => m.BloqueZonaHoraria),
   { ssr: false },
 );
 
@@ -477,12 +491,14 @@ export default function ConfiguracionPage() {
               className="max-w-4xl space-y-6"
             >
               <BloqueEtapasPipeline />
+              <BloqueMotivosPerdida />
             </div>
           )}
 
           {/* TAB 5: MARCA Y DATOS FISCALES */}
           {tabActiva === 'agencia' && (
             <div className="max-w-2xl space-y-6">
+              <BloqueZonaHoraria />
               <form
                 onSubmit={guardarCambiosAgencia}
                 className="space-y-4 rounded-xl border border-neutral-200 bg-white p-5 shadow-sm dark:border-neutral-800 dark:bg-neutral-900"

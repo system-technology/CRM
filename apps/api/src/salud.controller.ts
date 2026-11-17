@@ -17,7 +17,8 @@ export class SaludController {
     @Inject(PrismaService) private readonly prisma: PrismaService,
     // Opcional: sin lector (pruebas, modo unico, sin Redis) el latido no se informa ni se exige.
     @Optional() @Inject(LectorDelLatido) private readonly latido?: LectorDelLatido,
-    // Opcional por lo mismo. Informa la antigüedad de la cola; NO cambia `estado` ni el HTTP.
+    // Opcional por lo mismo. Informa la antigüedad de las colas de entrada y de salida (T-223);
+    // NO cambia `estado` ni el HTTP.
     @Optional() @Inject(LectorDeCola) private readonly cola?: LectorDeCola,
   ) {}
 
@@ -61,7 +62,9 @@ export class SaludController {
       const trabajador = this.latido ? await this.latido.leer() : null;
       // T-203: cola atascada se informa aparte (`cola.estado`) y NO degrada `estado`: la sonda de
       // despliegue exige `"estado":"ok"` y un atraso no debe impedir desplegar su arreglo.
-      const cola = this.cola ? await this.cola.leer() : null;
+      const [cola, colaDeSalida] = this.cola
+        ? await Promise.all([this.cola.leer(), this.cola.leerSalida()])
+        : [null, null];
       res.status(HttpStatus.OK);
       return {
         estado: trabajador && trabajador.estado !== 'ok' ? 'degradado' : 'ok',
@@ -69,7 +72,10 @@ export class SaludController {
         rol: rol?.usuario ?? null,
         aislamiento: 'forzado',
         ...(trabajador ? { trabajador } : {}),
-        ...(cola ? { cola } : {}),
+        // Ruta pública y sin sesión: solo el estado de cada cola. Antigüedad y recuento quedan en
+        // Redis para la vigilancia interna; aquí revelarían el volumen de la operación.
+        ...(cola ? { cola: { estado: cola.estado } } : {}),
+        ...(colaDeSalida ? { colaDeSalida: { estado: colaDeSalida.estado } } : {}),
       };
     } catch (error) {
       this.logger.error('Health check falló', error);

@@ -10,7 +10,7 @@
  * Cumple con R3 (@viajapro/contracts: CotizarSalida, CotizacionDeSalida, SalidaPublicada, GuardarCotizacion).
  */
 
-import React, { Suspense, useEffect, useState, useMemo } from 'react';
+import React, { Suspense, useEffect, useState, useMemo, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -27,7 +27,7 @@ import type {
   CotizacionCalculada,
   CotizacionDeSalida,
   SalidaPublicada,
-  Contacto,
+  ContactoDeLista,
 } from '@viajapro/contracts';
 import { formatearDinero } from '../../lib/api';
 import { BarraModulos } from '../../components/bandeja/barra-modulos';
@@ -54,6 +54,8 @@ import {
   opcionesActivasDeSalida,
   opcionDeSalidaAEnviar,
   faltaElegirOpcionDeSalida,
+  fechaDeHoy,
+  fechaPorOmision,
 } from '../../lib/cotizador-logica';
 import {
   estaUsandoCatalogoReal,
@@ -101,7 +103,10 @@ function ContenidoCotizador() {
 
   // Parámetros de cotización
   const [paqueteId, setPaqueteId] = useState(paqueteParam ?? '');
-  const [fecha, setFecha] = useState(fechaParam ?? '2026-10-03');
+  // Mock: el catálogo de demostración vive en octubre de 2026. Real: hoy; al llegar las salidas
+  // se salta a la primera disponible (salvo que la URL o el usuario ya hayan elegido fecha).
+  const [fecha, setFecha] = useState(fechaParam ?? (modoRealActivo ? fechaDeHoy() : '2026-10-03'));
+  const fechaElegida = useRef(Boolean(fechaParam));
   const [adultos, setAdultos] = useState(2);
   const [ninos, setNinos] = useState(0);
   const [infantes, setInfantes] = useState(0);
@@ -135,7 +140,7 @@ function ContenidoCotizador() {
   const [copiado, setCopiado] = useState(false);
 
   // Contactos y Guardado (0c.22)
-  const [contactosDisponibles, setContactosDisponibles] = useState<Contacto[]>([]);
+  const [contactosDisponibles, setContactosDisponibles] = useState<ContactoDeLista[]>([]);
   const [contactoIdInicial, setContactoIdInicial] = useState<string>('');
   const [modalGuardarAbierto, setModalGuardarAbierto] = useState(false);
   const [guardandoCotizacion, setGuardandoCotizacion] = useState(false);
@@ -228,7 +233,7 @@ function ContenidoCotizador() {
 
   const cargarSalidasReales = () => {
     setCargandoSalidas(true);
-    listarSalidasApi({ desde: '2026-10-01' })
+    listarSalidasApi({ desde: fechaDeHoy() })
       .then((salidas) => {
         setSalidasDisponibles(salidas);
         setErrorTenant(null);
@@ -247,8 +252,12 @@ function ContenidoCotizador() {
         const listaPaquetes = Array.from(mapPaquetes.values());
         setPaquetesDisponibles(listaPaquetes);
 
-        if (!paqueteId && listaPaquetes.length > 0) {
-          setPaqueteId(listaPaquetes[0]!.id);
+        const paqueteInicial = paqueteId || listaPaquetes[0]?.id || '';
+        if (!paqueteId && paqueteInicial) {
+          setPaqueteId(paqueteInicial);
+        }
+        if (!fechaElegida.current) {
+          setFecha(fechaPorOmision(salidas, paqueteInicial, fechaDeHoy()));
         }
       })
       .catch((err: unknown) => {
@@ -628,7 +637,10 @@ function ContenidoCotizador() {
                         id="input-fecha-cotizador"
                         type="date"
                         value={fecha}
-                        onChange={(e) => setFecha(e.target.value)}
+                        onChange={(e) => {
+                          fechaElegida.current = true;
+                          setFecha(e.target.value);
+                        }}
                         className="mt-1.5 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white p-2.5 text-xs text-neutral-900 shadow-2xs focus:border-purple-600 focus-visible:ring-2 focus-visible:ring-purple-600 focus-visible:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                       />
                       {fechasDelPaquete.length > 0 && (

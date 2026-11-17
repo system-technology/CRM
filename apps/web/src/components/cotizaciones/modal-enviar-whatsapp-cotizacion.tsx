@@ -12,7 +12,7 @@ import {
   User,
   Phone,
 } from 'lucide-react';
-import type { CotizacionGuardada, Contacto } from '@viajapro/contracts';
+import type { CotizacionGuardada, ContactoDeLista } from '@viajapro/contracts';
 import {
   generarMensajeWhatsAppCotizacion,
   generarEnlaceWhatsApp,
@@ -23,7 +23,7 @@ import { formatearDinero } from '../../lib/formato';
 
 export interface ModalEnviarWhatsAppCotizacionProps {
   cotizacion: CotizacionGuardada;
-  contacto?: Contacto | null | undefined;
+  contacto?: ContactoDeLista | null | undefined;
   versionInicial?: number | undefined;
   abierto: boolean;
   alCerrar: () => void;

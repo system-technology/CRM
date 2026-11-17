@@ -1,5 +1,6 @@
 import {
   Contacto,
+  ContactoDeLista,
   CrearContacto,
   CrearOportunidad,
   CrearOportunidadDeConversacion,
@@ -15,7 +16,7 @@ import {
   RevocarConsentimiento,
 } from '@viajapro/contracts';
 import { MOCK_CONVERSACIONES } from './mock-inbox';
-import { obtenerMockPaginaContactos } from './mock-contactos';
+import { obtenerMockPaginaContactos, PREFERENCIAS_MOCK_POR_CONTACTO } from './mock-contactos';
 
 function hashCadena(str: string): number {
   let hash = 0;
@@ -40,7 +41,8 @@ const mockNotasContacto = new Map<
  */
 export function obtenerMockFichaDeContacto(identificador: string): FichaDeContacto {
   // 1. Buscar en contactos modificados en memoria
-  let contacto: Contacto | undefined = mockContactosModificados.get(identificador);
+  let contacto: (ContactoDeLista & { preferencias?: string | null }) | undefined =
+    mockContactosModificados.get(identificador);
 
   // 2. Buscar en la lista oficial de contactos mock
   if (!contacto) {
@@ -69,6 +71,7 @@ export function obtenerMockFichaDeContacto(identificador: string): FichaDeContac
     (conv?.etiquetas && conv.etiquetas.length > 0 ? conv.etiquetas : ['Lead Nuevo']);
   const preferencias =
     contacto?.preferencias ??
+    PREFERENCIAS_MOCK_POR_CONTACTO[contactoId] ??
     'Prefiere hoteles 4+ estrellas frente al mar. Asientos de pasillo en vuelos matutinos.';
   const consentimientos = contacto?.consentimientos ?? [
     'TRANSACCIONAL' as const,
@@ -184,7 +187,7 @@ export function crearOportunidadDeConversacionMock(
     etapa: {
       id: '01a114b2-5314-75b1-91ad-3be0518a6a01',
       clave: 'NUEVO_LEAD',
-      nombre: 'Nuevo Lead',
+      nombre: 'Oportunidad nueva',
       orden: 1,
       probabilidad: 10,
       esGanada: false,

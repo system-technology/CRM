@@ -139,11 +139,10 @@ describe('PlanificadorDeSeguridad (modo unico)', () => {
   it('no apila pasadas: si hay una en curso, devuelve la misma', async () => {
     const { p, changes } = armar();
     let soltar: () => void = () => undefined;
-    changes.mockImplementation(
-      () =>
-        new Promise((r) => {
-          soltar = () => r({});
-        }),
+    changes.mockReturnValue(
+      new Promise((r) => {
+        soltar = () => r({});
+      }),
     );
     const a = p.pasada('periodica');
     const b = p.pasada('periodica');
@@ -180,7 +179,7 @@ describe('PlanificadorDeRelay en modo unico', () => {
     const relay = new PlanificadorDeRelay({ barrer, vaciar } as unknown as RelevarOutbox, avisos, {
       barridoMs: 0,
     });
-    relay.onModuleInit();
+    relay.onApplicationBootstrap();
     await vi.advanceTimersByTimeAsync(10 * 60_000);
     expect(barrer).not.toHaveBeenCalled();
     expect(vaciar).not.toHaveBeenCalled();
@@ -197,7 +196,7 @@ describe('PlanificadorDeRelay en modo unico', () => {
       { barrer } as unknown as RelevarOutbox,
       new AvisosDeOutboxEnMemoria(),
     );
-    relay.onModuleInit();
+    relay.onApplicationBootstrap();
     await vi.advanceTimersByTimeAsync(15_000);
     expect(barrer).toHaveBeenCalledTimes(1);
     relay.onModuleDestroy();

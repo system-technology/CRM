@@ -22,7 +22,7 @@ import {
  * llamar a sus etapas como quiera, que es lo que R12 protege.
  */
 export const NOMBRES_ETAPAS: Record<ClaveEtapa, string> = {
-  NUEVO_LEAD: 'Nuevo Lead',
+  NUEVO_LEAD: 'Oportunidad nueva',
   EN_COTIZACION: 'En Cotización',
   EN_NEGOCIACION: 'En Negociación',
   GANADA: 'Ganada',

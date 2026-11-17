@@ -133,3 +133,64 @@ export class OrdenDeEtapaOcupadoError extends EstadoInvalidoError {
     super('Otra persona modificó el embudo al mismo tiempo. Recarga e inténtalo de nuevo.');
   }
 }
+
+// -----------------------------------------------------------------------------
+// Motivos de pérdida por agencia (T-229)
+// -----------------------------------------------------------------------------
+
+/** No existe en ESTA agencia: un id de otra agencia cae aquí, porque RLS hace que no exista. */
+export class MotivoDePerdidaNoEncontradoError extends DomainError {
+  readonly code = 'MOTIVO_DE_PERDIDA_NO_ENCONTRADO';
+  constructor(readonly motivoId: string) {
+    super(
+      `No existe el motivo de pérdida ${motivoId} en esta agencia. Los motivos son por agencia: ` +
+        'un id de otra no sirve aquí.',
+    );
+  }
+}
+
+/** Cerrar con un motivo que la agencia retiró: sigue apuntado por lo viejo, pero no se elige. */
+export class MotivoDePerdidaInactivoError extends EstadoInvalidoError {
+  readonly code = 'MOTIVO_DE_PERDIDA_INACTIVO';
+  constructor(readonly motivoId: string) {
+    super(`El motivo de pérdida ${motivoId} está desactivado: elige uno activo.`);
+  }
+}
+
+/** El motivo exige explicación y no llegó (`exigeNota`). */
+export class NotaDePerdidaObligatoriaError extends InvariantError {
+  readonly code = 'NOTA_DE_PERDIDA_OBLIGATORIA';
+  constructor(readonly etiqueta: string) {
+    super(`El motivo «${etiqueta}» exige explicar qué pasó en la nota de pérdida.`);
+  }
+}
+
+/**
+ * Quitarle la nota obligatoria al motivo de clave `OTRO` (T-232). «Otro» sin explicación es una
+ * pérdida que el informe no puede atribuir a nada. La base lo impide también
+ * (`motivos_de_perdida_otro_exige_nota`, 20261115200000); esto le da a la API su 422 tipado.
+ */
+export class MotivoOtroExigeNotaError extends InvariantError {
+  readonly code = 'MOTIVO_OTRO_EXIGE_NOTA';
+  constructor(readonly motivoId: string) {
+    super(
+      `El motivo «Otro» (${motivoId}) siempre exige explicar qué pasó: no se le puede quitar ` +
+        'exigeNota. Para un motivo sin nota, crea uno propio de la agencia.',
+    );
+  }
+}
+
+/** Llegaron el enum y el id y no hablan del mismo motivo. */
+export class MotivoDePerdidaContradictorioError extends InvariantError {
+  readonly code = 'MOTIVO_DE_PERDIDA_CONTRADICTORIO';
+  constructor() {
+    super('`motivoPerdida` y `motivoPerdidaId` no corresponden al mismo motivo: manda solo uno.');
+  }
+}
+
+export class EtiquetaDeMotivoRepetidaError extends EstadoInvalidoError {
+  readonly code = 'ETIQUETA_DE_MOTIVO_REPETIDA';
+  constructor(readonly etiqueta: string) {
+    super(`Ya existe un motivo de pérdida llamado «${etiqueta}» en esta agencia.`);
+  }
+}

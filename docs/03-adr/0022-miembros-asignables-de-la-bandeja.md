@@ -1,6 +1,6 @@
 # ADR-0022 — Miembros asignables: lectura mínima de la agencia para reasignar en la bandeja
 
-- **Estado:** Propuesto
+- **Estado:** Aceptado (2026-11-15, por delegación expresa del propietario). Implementado en el PR #256 (T-186).
 - **Fecha:** 2026-11-15
 - **Decide:** propietario, a propuesta de `arquitecto`
 - **Consultados:** `arquitecto`. Pendiente: `auditor-seguridad` (toca datos de usuarios del tenant)

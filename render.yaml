@@ -1,34 +1,24 @@
-# Blueprint de Render, SOLO STAGING (ADR-0013). Produccion se anade despues, con su propio entorno.
+# Blueprint de Render, SOLO STAGING. Produccion se anade despues, con su propio entorno.
 #
-# Verificado contra la documentacion oficial de Render (2026-10-20). Lo no confirmado lleva la marca
-# VERIFICAR-AL-SINCRONIZAR. Ver docs/07-ingenieria/despliegue-staging.md.
+# Topologia vigente (ADR-0028, decision del propietario 2026-11-17): Neon + web en Vercel + API
+# en UN solo proceso en Render (modo `unico`, ADR-0019: API, Socket.IO, webhook y trabajo
+# asincrono juntos, SIN Redis). Sustituye a la topologia de cuatro piezas del ADR-0013 §3
+# (web, API, trabajador y Key Value en Render). La web ya no vive aqui: ver apps/web/vercel.json.
+# Guia de pasos: docs/07-ingenieria/despliegue-neon-vercel-render.md.
 #
-# Reglas del ADR-0013 que este archivo cumple:
+# Marca VERIFICAR-AL-SINCRONIZAR: lo que Render confirmara al crear el Blueprint.
+#
+# Reglas que este archivo cumple:
 #   - Region ohio, junto a Neon us-east-2.
 #   - Despliegue automatico APAGADO: se despliega con el deploy hook del servicio desde
 #     GitHub Actions (.github/workflows/deploy-staging.yml), tras migrar.
-#   - Cada servicio declara SOLO las variables que lee (matriz de §4). Los secretos son
-#     `sync: false`: el valor se pega en el panel, nunca aqui (R6).
-#   - Ningun servicio recibe el rol propietario: DATABASE_URL / DIRECT_URL viven en GitHub.
+#   - Los secretos son `sync: false`: el valor se pega en el panel, nunca aqui (R6).
+#   - Ningun rol propietario: DATABASE_URL / DIRECT_URL viven solo en GitHub (R2).
+#   - NO existe REDIS_URL ni ningun servicio keyvalue: en modo `unico` el proceso aborta si algo lo pide.
 #   - No existen NEXT_PUBLIC_DEV_TENANT_ID, NEXT_PUBLIC_AUTH_MAQUETA ni IDENTIDAD_DEV_PASSWORD.
 
 services:
-  # ---- Web (Next.js) --------------------------------------------------------------------
-  - type: web
-    name: viajapro-web-staging
-    runtime: docker
-    region: ohio
-    plan: starter
-    dockerfilePath: ./apps/web/Dockerfile
-    dockerContext: .
-    healthCheckPath: /salud
-    autoDeployTrigger: 'off' # solo despliega el deploy hook (GitHub Actions)
-    envVars:
-      # Se incrusta al CONSTRUIR: Render pasa las variables como build-arg y el Dockerfile declara ARG.
-      - key: NEXT_PUBLIC_API_URL
-        sync: false # https://api.staging.<dominio>
-
-  # ---- API (NestJS, HTTP y Socket.IO) -----------------------------------------------------
+  # ---- API + trabajador en un solo proceso (NestJS: HTTP, Socket.IO, webhook, colas en proceso) ----
   - type: web
     name: viajapro-api-staging
     runtime: docker
@@ -36,36 +26,48 @@ services:
     plan: starter
     dockerfilePath: ./apps/api/Dockerfile
     dockerContext: .
-    healthCheckPath: /salud/listo # comprueba base de datos y que el rol no salte RLS
-    maxShutdownDelaySeconds: 120 # drena Socket.IO al redesplegar
+    # La imagen es la misma del modo `escalado` (CMD `node dist/main.js`); aqui se sustituye el
+    # arranque por el del modo unico. VERIFICAR-AL-SINCRONIZAR: que Render aplique `dockerCommand`
+    # a un web service Docker (la guia lo comprueba en los logs: «modo unico»).
+    dockerCommand: node dist/main-unico.js
+    # ADR-0028: la sonda continua de Render no toca la base (si no, Neon nunca se suspende y un
+    # corte de Neon reiniciaria la API). /salud/listo lo comprueba el workflow tras desplegar.
+    healthCheckPath: /salud
+    maxShutdownDelaySeconds: 120 # drena Socket.IO al redesplegar (main-unico cierra en <=25 s)
     autoDeployTrigger: 'off' # solo despliega el deploy hook (GitHub Actions)
-    # dockerCommand omitido: la imagen arranca `node dist/main.js`.
     envVars:
       - key: NODE_ENV
         value: production
       - key: APP_ENV
         value: staging
+      - key: MODO_DESPLIEGUE
+        value: unico # sin valor por omision: main-unico.js aborta si falta o es otro
       - key: API_PORT
-        value: '10000' # el puerto por omision de Render; main.ts lee API_PORT, no PORT
+        value: '10000' # el puerto por omision de Render; la API lee API_PORT, no PORT
       - key: MAIL_PROVIDER
         value: postmark
       - key: API_PUBLIC_URL
         sync: false # https://api.staging.<dominio>
       - key: WEB_PUBLIC_URL
-        sync: false # https://staging.<dominio>; es el `cors.origin` exacto de Socket.IO
+        sync: false # https://staging.<dominio>; origen exacto de CORS, Socket.IO y comprobacion de Origin
       - key: API_TRUST_PROXY
         sync: false # saltos de proxy; ver la guia: mal puesto limita a la web y no al atacante
       - key: MAIL_FROM
         sync: false
       - key: POSTMARK_MESSAGE_STREAM
         sync: false
-      # Secretos (matriz §4, columna API)
+      # Los cuatro roles de aplicacion (R2), nunca el propietario. Cadena DIRECTA de Neon (sin -pooler).
       - key: DATABASE_APP_URL
         sync: false
       - key: DATABASE_ALTAS_URL
         sync: false
       - key: DATABASE_IDENTIDAD_URL
         sync: false
+      # Debe llevar `connection_limit=3` (>=2): el candado del barrido retiene una conexion y la tarea
+      # necesita otra (runbook-modo-unico.md §3, hallazgo C8).
+      - key: DATABASE_WEBHOOK_URL
+        sync: false
+      # Secretos
       - key: BETTER_AUTH_SECRET
         sync: false
       - key: META_APP_SECRET
@@ -76,55 +78,13 @@ services:
         sync: false
       - key: WEBHOOK_PAYLOAD_KEY_VERSION
         sync: false
-      # ADR-0015: la API y el trabajador abortan sin ella. Copia fuera de Render (S6).
+      # ADR-0015: el proceso aborta sin ella. Copia fuera de Render (S6).
       - key: CAMPOS_SENSIBLES_KEY
         sync: false
       - key: CAMPOS_SENSIBLES_KEY_VERSION
         sync: false
-      - key: CORREO_PAYLOAD_KEY
-        sync: false
-      - key: REDIS_URL
-        fromService:
-          type: keyvalue
-          name: viajapro-redis-staging
-          property: connectionString
-
-  # ---- Trabajador (BullMQ, outbox, barrido de 30 s; sin HTTP) -----------------------------
-  # Sin HTTP no hay sonda de Render. Su vigilancia es el LATIDO: el trabajador escribe en Redis
-  # (viajapro:trabajador:latido, cada 15 s) y GET /salud/listo de la API lo informa como
-  # `trabajador` (estado 'degradado' en el cuerpo si esta viejo; sigue en 200 para no tumbar la
-  # API). Lo lee la sonda de staging. Runbook: docs/06-operacion/04-runbooks.md.
-  - type: worker
-    name: viajapro-worker-staging
-    runtime: docker
-    region: ohio
-    plan: starter
-    dockerfilePath: ./apps/api/Dockerfile # la misma imagen que la API
-    dockerContext: .
-    dockerCommand: node dist/worker.js # VERIFICAR-AL-SINCRONIZAR: inferido como admitido en workers
-    autoDeployTrigger: 'off' # solo despliega el deploy hook (GitHub Actions)
-    envVars:
-      - key: NODE_ENV
-        value: production
-      - key: APP_ENV
-        value: staging
-      - key: MAIL_PROVIDER
-        value: postmark
-      - key: MAIL_FROM
-        sync: false
-      - key: POSTMARK_MESSAGE_STREAM
-        sync: false
-      # Secretos (matriz §4, columna Trabajador)
-      - key: DATABASE_WEBHOOK_URL
-        sync: false
-      - key: WEBHOOK_PAYLOAD_KEY
-        sync: false
-      - key: WEBHOOK_PAYLOAD_KEY_VERSION
-        sync: false
-      # ADR-0015: la API y el trabajador abortan sin ella. Copia fuera de Render (S6).
-      - key: CAMPOS_SENSIBLES_KEY
-        sync: false
-      - key: CAMPOS_SENSIBLES_KEY_VERSION
+      # Solo durante una rotación (docs/06-operacion/rotacion-de-claves.md): la clave anterior.
+      - key: CAMPOS_SENSIBLES_KEY_PREVIOUS
         sync: false
       - key: CORREO_PAYLOAD_KEY
         sync: false
@@ -134,16 +94,3 @@ services:
         sync: false
       - key: POSTMARK_SERVER_TOKEN
         sync: false
-      - key: REDIS_URL
-        fromService:
-          type: keyvalue
-          name: viajapro-redis-staging
-          property: connectionString
-
-  # ---- Redis gestionado (Valkey) para BullMQ --------------------------------------------
-  - type: keyvalue
-    name: viajapro-redis-staging
-    region: ohio
-    plan: starter # de pago: el gratuito no persiste en disco
-    maxmemoryPolicy: noeviction # BullMQ lo exige; con desalojo se pierden trabajos en silencio
-    ipAllowList: [] # vacia: solo red privada. VERIFICAR-AL-SINCRONIZAR

@@ -4636,7 +4636,9 @@ tasks:
     phase: 1
     priority: P1
     effort: L
-    status: in_progress
+    status: done
+    done_at: 2026-11-15T18:40:00.000Z
+    evidence: "Integrado en main por el PR #266 (02d1e07)"
     depends_on: [T-193]
     acceptance:
       - "Playwright en CI: ingreso, bandeja, webhook firmado, mensaje visible, cotizar, enviar"
@@ -4957,7 +4959,10 @@ tasks:
     phase: 2
     priority: P3
     effort: S
-    status: ready
+    status: done
+    done_at: 2026-11-15T19:40:00.000Z
+    evidence: "Tabla en #268 (46e88a6); contrato, API y UI en #271 (2252fd0)"
+    notes: "Tabla, RLS y siembra integradas en el PR #268 (46e88a6); faltan contrato, API y UI de motivos (T-229)"
     depends_on: []
     acceptance:
       - "MotivoPerdida pasa a tabla por tenant (R12)"
@@ -5074,7 +5079,9 @@ tasks:
     phase: 1
     priority: P0
     effort: S
-    status: ready
+    status: done
+    done_at: 2026-11-15T18:55:00.000Z
+    evidence: "Integrado en main por el PR #267 (8b4c070)"
     depends_on: []
     acceptance:
       - "pnpm audit --prod --audit-level=high sin criticas: next >= 15.5.28, multer >= 2.5.0, body-parser >= 1.20.9, postcss parcheado"
@@ -5130,7 +5137,9 @@ tasks:
     phase: 2
     priority: P2
     effort: S
-    status: ready
+    status: done
+    done_at: 2026-11-15T19:00:00.000Z
+    evidence: "Integrado en main por el PR #268 (46e88a6)"
     depends_on: [T-203]
     acceptance:
       - "Funcion SECURITY DEFINER que devuelve solo la antiguedad y el conteo de envios pendientes (sin ids de tenant ni texto)"
@@ -5147,7 +5156,9 @@ tasks:
     phase: 1
     priority: P3
     effort: S
-    status: ready
+    status: done
+    done_at: 2026-11-15T18:55:00.000Z
+    evidence: "Integrado en main por el PR #267 (8b4c070)"
     depends_on: [T-222]
     acceptance:
       - "calcularCotizacionMock y temporadaNombre dejan de leer tarifarioDemo (temporadas); mock-catalogo sin TemporadaDemo/PrecioDemo"
@@ -5163,7 +5174,9 @@ tasks:
     phase: 1
     priority: P0
     effort: S
-    status: in_progress
+    status: done
+    done_at: 2026-11-15T18:40:00.000Z
+    evidence: "Integrado en main por el PR #266 (02d1e07)"
     depends_on: [T-212]
     acceptance:
       - "Un script del lado de la API (con CAMPOS_SENSIBLES_KEY) siembra conversaciones, mensajes y notas de la agencia demo ya cifrados"
@@ -5180,7 +5193,8 @@ tasks:
     phase: 2
     priority: P1
     effort: M
-    status: ready
+    status: in_progress
+    notes: "(a) en #267; (b) arranque que aborta con clave_version sin clave, en este PR; (c) recifrado por lotes en cola"
     depends_on: [T-212]
     acceptance:
       - "Al arrancar, abortar si hay filas con clave_version sin clave que las abra"
@@ -5197,7 +5211,9 @@ tasks:
     phase: 1
     priority: P2
     effort: S
-    status: ready
+    status: done
+    done_at: 2026-11-15T18:55:00.000Z
+    evidence: "Integrado en main por el PR #267 (8b4c070)"
     depends_on: [T-212]
     acceptance:
       - "El contrato del listado de contactos no incluye preferencias; solo la ficha las descifra (auditado)"
@@ -5207,4 +5223,234 @@ tasks:
     source: auditoria de seguridad de T-212, 2026-11-15
     created_at: 2026-11-15T17:30:00.000Z
     owner: backend
-
+  - id: T-228
+    title: "Salud: /salud/listo publico solo informa el estado de cada cola"
+    type: security
+    phase: 1
+    priority: P2
+    effort: S
+    status: done
+    depends_on: []
+    acceptance:
+      - "Sin masViejaS, pendientes ni umbralMin en la respuesta publica"
+      - "La sonda de despliegue sigue viendo estado ok"
+    files:
+      - apps/api/src/salud.controller.ts
+    source: auditoria de seguridad de T-223/T-214, 2026-11-15
+    created_at: 2026-11-15T19:00:00.000Z
+    done_at: 2026-11-15T19:10:00.000Z
+    evidence: "Integrado en main por el PR #269 (5c6e247)"
+    owner: backend
+  - id: T-229
+    title: "CRM: contrato, API y UI de motivos de perdida por agencia (resto de T-214)"
+    type: feature
+    phase: 1
+    priority: P2
+    effort: M
+    status: done
+    done_at: 2026-11-15T19:40:00.000Z
+    evidence: "Integrado en main por el PR #271 (2252fd0)"
+    depends_on: []
+    acceptance:
+      - "La agencia ve y edita sus motivos; cerrar como perdida pide un motivo activo de su agencia"
+      - "Prueba HTTP de aislamiento: un motivo de otra agencia se rechaza"
+    files:
+      - packages/contracts/src/crm.ts
+      - apps/api/src/modules/crm
+      - apps/web
+    source: auditoria de seguridad de T-223/T-214, 2026-11-15
+    created_at: 2026-11-15T19:00:00.000Z
+    owner: backend
+  - id: T-230
+    title: "Datos: endurecer medir_cola_de_salida y el disparador de motivos"
+    type: security
+    phase: 1
+    priority: P2
+    effort: S
+    status: done
+    done_at: 2026-11-15T20:00:00.000Z
+    evidence: "Integrado en main por el PR #272 (e52e78b)"
+    depends_on: []
+    acceptance:
+      - "Prueba que fija la superficie exacta de columnas de viajapro_metricas"
+      - "Prueba de que un error dentro de la funcion restaura app.current_tenant del llamador"
+      - "ON CONFLICT en el disparador que siembra motivos"
+    files:
+      - packages/database/prisma/migrations
+      - packages/database/tests/aislamiento.spec.ts
+    source: auditoria de seguridad de T-223/T-214, 2026-11-15
+    created_at: 2026-11-15T19:00:00.000Z
+    owner: datos
+  - id: T-231
+    title: "ADR: registrar medir_cola_de_salida y el rol viajapro_metricas en ADR-0008 y R2"
+    type: docs
+    phase: 1
+    priority: P3
+    effort: S
+    status: done
+    done_at: 2026-11-15T20:00:00.000Z
+    evidence: "Integrado en main por el PR #272 (e52e78b)"
+    depends_on: []
+    acceptance:
+      - "ADR-0008 (por supersesion o addendum) lista la funcion y el rol NOLOGIN"
+      - "CLAUDE.md R2 menciona viajapro_metricas junto a viajapro_accesos"
+    files:
+      - docs/03-adr
+      - CLAUDE.md
+    source: auditoria de seguridad de T-223/T-214, 2026-11-15
+    created_at: 2026-11-15T19:00:00.000Z
+    owner: arquitecto
+  - id: T-232
+    title: "Datos: el disparador de motivos comprueba activo y el OTRO de sistema fija exige_nota"
+    type: security
+    phase: 1
+    priority: P3
+    effort: S
+    status: done
+    done_at: 2026-11-15T20:00:00.000Z
+    evidence: "Integrado en main por el PR #272 (e52e78b)"
+    depends_on: [T-229]
+    acceptance:
+      - "Asignar un motivo desactivado falla tambien por SQL directo (hoy solo lo frena la API; carrera buscar/escribir en dos transacciones)"
+      - "El motivo de clave OTRO no puede quedar con exige_nota = false"
+    files:
+      - packages/database/prisma/migrations
+      - apps/api/src/modules/crm
+    source: auditoria de seguridad de T-229, 2026-11-15 (cola R13, sin cruce entre agencias)
+    created_at: 2026-11-15T19:40:00.000Z
+    owner: datos
+  - id: T-233
+    title: "Datos: superficie de viajapro_metricas tambien en funciones y CHECK comparado por definicion"
+    type: security
+    phase: 1
+    priority: P3
+    effort: S
+    status: done
+    done_at: 2026-11-15T20:40:00.000Z
+    evidence: "Integrado en main por el PR #273 (26aa5d1)"
+    depends_on: [T-230]
+    acceptance:
+      - "Cinturon y prueba: pg_proc con proowner = viajapro_metricas es exactamente {medir_cola_de_salida} y ninguna funcion concede EXECUTE a viajapro_metricas"
+      - "El cinturon de 20261115200000 compara pg_get_constraintdef del CHECK motivos_de_perdida_otro_exige_nota, no solo su nombre"
+    files:
+      - packages/database/prisma/migrations
+      - packages/database/tests/aislamiento.spec.ts
+    source: auditoria de seguridad de T-230/T-232, 2026-11-15 (cola R13)
+    created_at: 2026-11-15T20:05:00.000Z
+    owner: datos
+  - id: T-234
+    title: "Cifrado: comprobar las claves ANTES de levantar el contexto del trabajador y de la API"
+    type: security
+    phase: 1
+    priority: P2
+    effort: S
+    status: done
+    done_at: 2026-11-15T21:00:00.000Z
+    evidence: "Integrado en main por el PR #274 (e46ee11)"
+    depends_on: [T-226]
+    acceptance:
+      - "Con una clave_version huerfana, ningun consumidor (BullMQ o en proceso) llega a tomar un trabajo: la comprobacion corre antes de createApplicationContext, o los consumidores se conectan en onApplicationBootstrap tras un proveedor que comprueba"
+      - "En la API, los planificadores de onApplicationBootstrap no arrancan antes de la comprobacion"
+      - "El adaptador de versiones reutiliza conTenant en vez de reimplementar set_config"
+    files:
+      - apps/api/src/worker.ts
+      - apps/api/src/proceso-unico
+      - apps/api/src/shared/cifrado
+    source: auditoria de seguridad de T-226 (b), 2026-11-15
+    created_at: 2026-11-15T20:30:00.000Z
+    owner: backend
+  - id: T-235
+    title: "Arranque: prueba de arquitectura de que nada de interface/ arranca en onModuleInit"
+    type: test
+    phase: 1
+    priority: P3
+    effort: S
+    status: ready
+    depends_on: [T-234]
+    acceptance:
+      - "EscuchaDeAvisosDelRelay se suscribe en onApplicationBootstrap, como el resto de lo que toma trabajo"
+      - "Una prueba falla si una clase de interface/ (consumidores, planificadores) declara onModuleInit"
+      - "comprobacion-al-arrancar.spec.ts documenta por que usa abortOnError false"
+    files:
+      - apps/api/src/modules/inbox/infrastructure/aviso-al-relay.redis.ts
+      - apps/api/src/shared/cifrado/comprobacion-al-arrancar.spec.ts
+    source: auditoria de seguridad de T-234, 2026-11-15 (cola R13)
+    created_at: 2026-11-15T20:55:00.000Z
+    owner: backend
+  - id: T-236
+    title: "Ajustes: PATCH /api/v1/agencia/ajustes con la zona horaria (usa actualizar_zona_horaria_de_la_agencia)"
+    type: feature
+    phase: 1
+    priority: P2
+    effort: S
+    status: done
+    done_at: 2026-11-16T00:30:00.000Z
+    evidence: "API en #278 (db8c875) y pantalla en #279 (a7fb3d5); lo pendiente de pruebas y comentarios pasa a T-237"
+    depends_on: []
+    acceptance:
+      - "El endpoint exige permiso de dueno o administrador (la funcion no comprueba RBAC; solo viajapro_app la ejecuta)"
+      - "El esquema Zod acota la zona (p. ej. <= 64 caracteres) y 22023 se traduce a 422, P0002 a 404"
+      - "Z5 de aislamiento.spec.ts ejercita de verdad app.current_tenant NULL (hoy probablemente prueba '')"
+      - "policies/002: comentarios al dia (roles y propietarios) y viajapro_metricas en las mismas listas que viajapro_ajustes"
+    files:
+      - apps/api/src/modules/identity
+      - packages/contracts
+      - packages/database/prisma/policies/002-rol-aplicacion.sql
+    source: rehecho del PR #234 y su auditoria de seguridad, 2026-11-15
+    created_at: 2026-11-15T23:45:00.000Z
+    owner: backend
+  - id: T-237
+    title: "Datos: Z5 ejercita app.current_tenant NULL y policies/002 al dia con viajapro_metricas"
+    type: test
+    phase: 1
+    priority: P3
+    effort: S
+    status: ready
+    depends_on: [T-236]
+    acceptance:
+      - "Z5 de aislamiento.spec.ts prueba el contexto NULL en una conexion nueva, ademas de ''"
+      - "policies/002: comentarios de roles y propietarios al dia; viajapro_metricas en las mismas listas que viajapro_ajustes"
+      - "e2e de 403 sin usuarios.administrar por HTTP (sin el atajo x-dev-tenant-id)"
+    files:
+      - packages/database/tests/aislamiento.spec.ts
+      - packages/database/prisma/policies/002-rol-aplicacion.sql
+    source: auditorias de seguridad del rehecho de #234 y de T-236, 2026-11-15
+    created_at: 2026-11-16T00:30:00.000Z
+    owner: datos
+  - id: T-238
+    title: "Deps: saltos mayores aplazados (Prisma 7, NestJS 12, pnpm 12, zod 4)"
+    type: chore
+    phase: 2
+    priority: P3
+    effort: L
+    status: backlog
+    depends_on: []
+    acceptance:
+      - "Cada salto en su propio PR con el CI en verde: Prisma 5->7, NestJS 10->12 completo, pnpm 9->12 (lockfile, CI y Dockerfile), zod 3->4 (cierra la ultima alta de pnpm audit prod)"
+      - "Despues de la primera agencia en produccion; ninguno aporta a la demo"
+    files:
+      - package.json
+      - pnpm-lock.yaml
+    source: revision de PR de Dependabot (#259, #261, #262 cerrados) y decision delegada del propietario, 2026-11-17
+    created_at: 2026-11-17T12:00:00.000Z
+    owner: devops
+  - id: T-239
+    title: "Despliegue: cerrar lo que ADR-0028 deja abierto antes de produccion (proxy, encargado de datos, memoria)"
+    type: security
+    phase: 1
+    priority: P1
+    effort: M
+    status: ready
+    depends_on: []
+    acceptance:
+      - "API_TRUST_PROXY: con dos caminos (via Vercel y directo para Socket.IO y webhook) un unico valor no debe permitir falsificar X-Forwarded-For; medir en staging y fijar la solucion (ADR-0028 §7.4)"
+      - "auditor-seguridad revisa a Vercel como nuevo encargado de datos personales (ADR-0028 §7.3) y la proteccion de las URL *.vercel.app"
+      - "Confirmar que 512 MB de Render starter bastan para el modo unico (ADR-0019 calculo 1 GB) o subir de plan"
+      - "Cerrar la carrera conocida: el deploy hook despliega la punta de la rama, no el SHA migrado"
+    files:
+      - render.yaml
+      - apps/web/vercel.json
+      - .github/workflows/deploy-staging.yml
+    source: ADR-0028, 2026-11-17
+    created_at: 2026-11-17T15:30:00.000Z
+    owner: devops

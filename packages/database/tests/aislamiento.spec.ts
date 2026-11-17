@@ -447,6 +447,13 @@ const MATRIZ_FUNCIONES: Readonly<Record<string, readonly string[]>> = {
   // Duodécima (ADR-0011), también SIN ningún EXECUTE: la función del disparador de `usuarios`
   // que mantiene `accesos_identidad`. Un GRANT sobre ella dejaría apuntar pertenencias a mano.
   sincronizar_acceso_identidad: [],
+  // Decimotercera (T-223): la antigüedad y el conteo de la cola de SALIDA entre agencias. Solo
+  // dos enteros; la ejecuta el trabajador, que publica la medida para `/salud/listo`.
+  medir_cola_de_salida: ['viajapro_webhook'],
+  // Decimocuarta (migración 20261116090000, rehace el PR #234): el PATCH de ajustes de la
+  // agencia. `tenants` es global y `viajapro_app` la tiene `{SELECT}`; la zona horaria se escribe
+  // solo por aquí, y solo la fila de `app.current_tenant`.
+  actualizar_zona_horaria_de_la_agencia: ['viajapro_app'],
 };
 
 const PROPIETARIO_ESPERADO: Readonly<Record<string, string>> = {
@@ -462,6 +469,8 @@ const PROPIETARIO_ESPERADO: Readonly<Record<string, string>> = {
   propagar_estado_cuenta: 'viajapro_enrutador',
   contar_reencolado_barrido: 'viajapro_staging',
   sincronizar_acceso_identidad: 'viajapro_accesos',
+  medir_cola_de_salida: 'viajapro_metricas',
+  actualizar_zona_horaria_de_la_agencia: 'viajapro_ajustes',
 };
 
 /**
@@ -909,8 +918,8 @@ describe('ADR-0008 — directorio de enrutamiento, staging y separación de role
     );
     expect(
       rows.length,
-      'faltan funciones de ADR-0008: eran seis, la auditoría de implementación añadió purgar_payloads, la tarea 4f propagar_estado_canal, el relay de barrido listar_changes_pendientes, y los huecos del disparador propagar_estado_cuenta y contar_reencolado_barrido, y ADR-0011 sincronizar_acceso_identidad',
-    ).toBe(12);
+      'faltan funciones de ADR-0008: eran seis, la auditoría de implementación añadió purgar_payloads, la tarea 4f propagar_estado_canal, el relay de barrido listar_changes_pendientes, y los huecos del disparador propagar_estado_cuenta y contar_reencolado_barrido, ADR-0011 sincronizar_acceso_identidad, T-223 medir_cola_de_salida, y los ajustes de la agencia actualizar_zona_horaria_de_la_agencia',
+    ).toBe(14);
     expect(rows.filter((r) => r.publico)).toEqual([]);
   });
 
@@ -923,7 +932,7 @@ describe('ADR-0008 — directorio de enrutamiento, staging y separación de role
        WHERE n.nspname = 'public' AND p.proname = ANY($1) ORDER BY 1`,
       [Object.keys(MATRIZ_FUNCIONES)],
     );
-    expect(rows.length).toBe(12);
+    expect(rows.length).toBe(14);
 
     for (const fila of rows) {
       const config = (fila.proconfig as string[] | null) ?? [];
@@ -939,15 +948,17 @@ describe('ADR-0008 — directorio de enrutamiento, staging y separación de role
     }
   });
 
-  it('14 — los tres propietarios no son credenciales ni se saltan RLS', async () => {
+  it('14 — los propietarios no son credenciales ni se saltan RLS', async () => {
     const { rows } = await admin.query(
       `SELECT rolname, rolcanlogin, rolbypassrls, rolsuper,
               EXISTS (SELECT 1 FROM pg_roles s WHERE s.rolname = 'neon_superuser')
                 AND pg_has_role(rolname, 'neon_superuser', 'MEMBER') AS hereda_neon
-       FROM pg_roles WHERE rolname IN ('viajapro_enrutador','viajapro_staging','viajapro_accesos') ORDER BY 1`,
+       FROM pg_roles WHERE rolname IN ('viajapro_enrutador','viajapro_staging','viajapro_accesos','viajapro_metricas','viajapro_ajustes') ORDER BY 1`,
     );
-    // El tercero es de ADR-0011: dueño del disparador que escribe `accesos_identidad`.
-    expect(rows.length).toBe(3);
+    // El tercero es de ADR-0011: dueño del disparador que escribe `accesos_identidad`. El cuarto,
+    // de T-223: dueño de `medir_cola_de_salida`. El quinto, de la migración 20261116090000: dueño
+    // de `actualizar_zona_horaria_de_la_agencia`.
+    expect(rows.length).toBe(5);
     for (const r of rows) {
       expect(r.rolcanlogin, `${r.rolname} puede iniciar sesión`).toBe(false);
       expect(r.rolbypassrls, `${r.rolname} tiene BYPASSRLS`).toBe(false);
@@ -2260,13 +2271,15 @@ describe('CRM — contactos, oportunidades y la ficha del panel lateral', () => 
   });
 
   it('31 — «OTRO» sin explicación no es un motivo, y lo rechaza la base', async () => {
+    // Desde 20261115190000 la regla es el dato `motivos_de_perdida.exige_nota` (el OTRO
+    // sembrado lo lleva), aplicada por el disparador del motivo, y no un CHECK sobre el enum.
     await expect(
       comoTenant(TENANT_A, (c) =>
         c.query("UPDATE oportunidades SET motivo_perdida = 'OTRO' WHERE id = $1", [
           oportunidadDe[TENANT_A],
         ]),
       ),
-    ).rejects.toThrow(/oportunidades_motivo_otro_exige_nota/);
+    ).rejects.toThrow(/motivos_de_perdida\.exige_nota/);
 
     // Con explicación, pasa.
     await expect(
@@ -2331,6 +2344,366 @@ describe('CRM — contactos, oportunidades y la ficha del panel lateral', () => 
       expect(`${fila.relname}:${fila.relforcerowsecurity}`).toBe(`${fila.relname}:true`);
       expect(`${fila.relname}:${fila.con_check}`).toBe(`${fila.relname}:1`);
     }
+  });
+
+  it('T-214 — motivos_de_perdida: tabla por agencia con RLS forzada, foránea compuesta desde oportunidades y no es excepción', async () => {
+    const { rows } = await admin.query(
+      `SELECT c.relrowsecurity, c.relforcerowsecurity,
+              (SELECT a.attnotnull FROM pg_attribute a
+                WHERE a.attrelid = c.oid AND a.attname = 'tenant_id'
+                  AND a.attnum > 0 AND NOT a.attisdropped) AS tenant_no_nulo,
+              (SELECT count(*)::int FROM pg_policy p
+                WHERE p.polrelid = c.oid AND p.polname = 'tenant_isolation'
+                  AND p.polqual IS NOT NULL AND p.polwithcheck IS NOT NULL) AS con_using_y_check,
+              EXISTS (SELECT 1 FROM excepciones_rls e WHERE e.tabla = c.relname) AS declarada
+         FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' AND c.relname = 'motivos_de_perdida'`,
+    );
+    expect(rows).toEqual([
+      {
+        relrowsecurity: true,
+        relforcerowsecurity: true,
+        tenant_no_nulo: true,
+        con_using_y_check: 1,
+        declarada: false,
+      },
+    ]);
+
+    for (const rol of ['viajapro_app', 'viajapro_altas', 'viajapro_webhook']) {
+      const p = await admin.query(
+        `SELECT p FROM unnest(ARRAY['SELECT','INSERT','UPDATE','DELETE']) AS p
+          WHERE has_table_privilege($1, 'public.motivos_de_perdida', p) ORDER BY 1`,
+        [rol],
+      );
+      expect(
+        p.rows.map((r) => r.p as string),
+        rol,
+      ).toEqual(['DELETE', 'INSERT', 'SELECT', 'UPDATE']);
+    }
+    const deIdentidad = await admin.query(
+      `SELECT p FROM unnest(ARRAY['SELECT','INSERT','UPDATE','DELETE']) AS p
+        WHERE has_table_privilege('viajapro_identidad', 'public.motivos_de_perdida', p)`,
+    );
+    expect(deIdentidad.rows).toEqual([]);
+
+    // La oportunidad apunta al motivo con la foránea COMPUESTA con el tenant, validada.
+    const foranea = await admin.query(
+      `SELECT (SELECT array_agg(a.attname::text ORDER BY i)
+                 FROM generate_subscripts(c.conkey, 1) AS i
+                 JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = c.conkey[i]) AS columnas,
+              (SELECT array_agg(a.attname::text ORDER BY i)
+                 FROM generate_subscripts(c.confkey, 1) AS i
+                 JOIN pg_attribute a ON a.attrelid = c.confrelid AND a.attnum = c.confkey[i]) AS referidas,
+              c.convalidated
+         FROM pg_constraint c
+        WHERE c.contype = 'f' AND c.conrelid = 'public.oportunidades'::regclass
+          AND c.confrelid = 'public.motivos_de_perdida'::regclass`,
+    );
+    expect(foranea.rows).toEqual([
+      {
+        columnas: ['motivo_perdida_id', 'tenant_id'],
+        referidas: ['id', 'tenant_id'],
+        convalidated: true,
+      },
+    ]);
+    const simples = await admin.query(FORANEAS_SIN_TENANT_SQL);
+    expect(
+      (simples.rows as Array<{ hija: string; padre: string }>).filter(
+        (r) => r.hija === 'motivos_de_perdida' || r.padre === 'motivos_de_perdida',
+      ),
+    ).toEqual([]);
+
+    const defectos = await admin.query(
+      "SELECT problema FROM tablas_sin_aislamiento WHERE problema IS NOT NULL AND tabla = 'motivos_de_perdida'",
+    );
+    expect(defectos.rows).toEqual([]);
+  });
+
+  it('T-214 — un tenant no ve, no escribe y no se cuelga de los motivos de pérdida de otro', async () => {
+    // El motivo enum de la oportunidad de A se traslada a un motivo DE A (el disparador de
+    // compatibilidad lo crea si la agencia no lo tenía sembrado, como estas de prueba).
+    const deA = await comoTenant(TENANT_A, async (c) => {
+      await c.query(
+        "UPDATE oportunidades SET motivo_perdida = 'PRECIO', nota_perdida = NULL WHERE id = $1",
+        [oportunidadDe[TENANT_A]],
+      );
+      const { rows: r } = await c.query(
+        `SELECT m.tenant_id, m.clave FROM oportunidades o
+           JOIN motivos_de_perdida m ON m.id = o.motivo_perdida_id
+          WHERE o.id = $1`,
+        [oportunidadDe[TENANT_A]],
+      );
+      const propio = await c.query(
+        `INSERT INTO motivos_de_perdida (id, tenant_id, etiqueta, orden, actualizado_en)
+         VALUES (gen_random_uuid(), $1, 'Visa negada', 50, now()) RETURNING id`,
+        [TENANT_A],
+      );
+      return { traslado: r, propio: (propio.rows[0] as { id: string }).id };
+    });
+    expect(deA.traslado).toEqual([{ tenant_id: TENANT_A, clave: 'PRECIO' }]);
+
+    // Lectura, edición y borrado cruzados: cero filas.
+    const cruzado = await comoTenant(TENANT_B, async (c) => [
+      (await c.query('SELECT id FROM motivos_de_perdida WHERE id = $1', [deA.propio])).rowCount,
+      (await c.query('SELECT id FROM motivos_de_perdida WHERE tenant_id = $1', [TENANT_A]))
+        .rowCount,
+      (
+        await c.query("UPDATE motivos_de_perdida SET etiqueta = 'Plantado' WHERE id = $1", [
+          deA.propio,
+        ])
+      ).rowCount,
+      (await c.query('DELETE FROM motivos_de_perdida WHERE id = $1', [deA.propio])).rowCount,
+    ]);
+    expect(cruzado).toEqual([0, 0, 0, 0]);
+
+    // Plantar un motivo en A desde B: lo rechaza WITH CHECK.
+    await expect(
+      comoTenant(TENANT_B, (c) =>
+        c.query(
+          `INSERT INTO motivos_de_perdida (id, tenant_id, etiqueta, orden, actualizado_en)
+           VALUES (gen_random_uuid(), $1, 'Plantado por B', 1, now())`,
+          [TENANT_A],
+        ),
+      ),
+    ).rejects.toThrow(/row-level security/i);
+
+    // Colgar la oportunidad de B del motivo de A: desde 20261115190000 el id escrito MANDA, así
+    // que no se recalcula desde el enum; el motivo de A no existe para B y la escritura falla
+    // (23503). Sin disparador, lo pararía la foránea compuesta (comprobada arriba).
+    await expect(
+      comoTenant(TENANT_B, (c) =>
+        c.query(
+          "UPDATE oportunidades SET motivo_perdida = 'PRECIO', motivo_perdida_id = $2 WHERE id = $1",
+          [oportunidadDe[TENANT_B], deA.propio],
+        ),
+      ),
+    ).rejects.toMatchObject({ code: '23503' });
+
+    // Quitar el motivo quita el id: la pareja enum/id va junta.
+    const sinMotivo = await comoTenant(TENANT_A, async (c) => {
+      await c.query('UPDATE oportunidades SET motivo_perdida = NULL WHERE id = $1', [
+        oportunidadDe[TENANT_A],
+      ]);
+      const { rows: r } = await c.query(
+        'SELECT motivo_perdida_id FROM oportunidades WHERE id = $1',
+        [oportunidadDe[TENANT_A]],
+      );
+      return r as unknown[];
+    });
+    expect(sinMotivo).toEqual([{ motivo_perdida_id: null }]);
+    await comoTenant(TENANT_B, (c) =>
+      c.query('UPDATE oportunidades SET motivo_perdida = NULL WHERE id = $1', [
+        oportunidadDe[TENANT_B],
+      ]),
+    );
+  });
+
+  it('T-229 — el id escrito manda: un motivo propio se guarda con enum OTRO, el enum solo sigue resolviendo el de sistema y un id ajeno no entra', async () => {
+    type Fila = { motivo_perdida: string | null; motivo_perdida_id: string | null };
+    const leer = async (c: Client, id: string): Promise<Fila[]> =>
+      (
+        await c.query('SELECT motivo_perdida, motivo_perdida_id FROM oportunidades WHERE id = $1', [
+          id,
+        ])
+      ).rows as Fila[];
+
+    const deA = await comoTenant(TENANT_A, async (c) => {
+      // Propio y sin exige_nota: con el CHECK viejo («OTRO exige nota») no se podría guardar.
+      const propio = (
+        (
+          await c.query(
+            `INSERT INTO motivos_de_perdida (id, tenant_id, etiqueta, orden, actualizado_en)
+             VALUES (gen_random_uuid(), $1, 'El hotel no acepta mascotas', 60, now()) RETURNING id`,
+            [TENANT_A],
+          )
+        ).rows[0] as { id: string }
+      ).id;
+
+      // (1) Escribir el id de un motivo propio deja ese id, con enum OTRO.
+      await c.query(
+        'UPDATE oportunidades SET motivo_perdida_id = $2, nota_perdida = NULL WHERE id = $1',
+        [oportunidadDe[TENANT_A], propio],
+      );
+      const conPropio = await leer(c, oportunidadDe[TENANT_A]!);
+
+      // Tocar solo la nota, o reescribir el mismo enum, no lo mueve a «Otro».
+      await c.query(
+        "UPDATE oportunidades SET motivo_perdida = 'OTRO', nota_perdida = 'Viaja con su perro' WHERE id = $1",
+        [oportunidadDe[TENANT_A]],
+      );
+      const trasNota = await leer(c, oportunidadDe[TENANT_A]!);
+
+      // (2) Escribir solo el enum sigue resolviendo el motivo de sistema de la agencia.
+      await c.query(
+        "UPDATE oportunidades SET motivo_perdida = 'PRECIO', nota_perdida = NULL WHERE id = $1",
+        [oportunidadDe[TENANT_A]],
+      );
+      const { rows: precio } = await c.query(
+        `SELECT o.motivo_perdida, m.clave, m.tenant_id FROM oportunidades o
+           JOIN motivos_de_perdida m ON m.id = o.motivo_perdida_id
+          WHERE o.id = $1`,
+        [oportunidadDe[TENANT_A]],
+      );
+      return { propio, conPropio, trasNota, precio: precio as unknown[] };
+    });
+    expect(deA.conPropio).toEqual([{ motivo_perdida: 'OTRO', motivo_perdida_id: deA.propio }]);
+    expect(deA.trasNota).toEqual([{ motivo_perdida: 'OTRO', motivo_perdida_id: deA.propio }]);
+    expect(deA.precio).toEqual([
+      { motivo_perdida: 'PRECIO', clave: 'PRECIO', tenant_id: TENANT_A },
+    ]);
+
+    // Un motivo que exige nota, elegido por id y sin nota: lo rechaza la base.
+    await expect(
+      comoTenant(TENANT_A, async (c) => {
+        const { rows } = await c.query(
+          "SELECT id FROM motivos_de_perdida WHERE tenant_id = $1 AND clave = 'OTRO'",
+          [TENANT_A],
+        );
+        await c.query(
+          'UPDATE oportunidades SET motivo_perdida_id = $2, nota_perdida = NULL WHERE id = $1',
+          [oportunidadDe[TENANT_A], (rows[0] as { id: string }).id],
+        );
+      }),
+    ).rejects.toMatchObject({ code: '23514' });
+
+    // (3) El id de un motivo de OTRA agencia: no existe para B y la escritura falla (23503).
+    // La oportunidad de B queda como estaba.
+    await expect(
+      comoTenant(TENANT_B, (c) =>
+        c.query('UPDATE oportunidades SET motivo_perdida_id = $2 WHERE id = $1', [
+          oportunidadDe[TENANT_B],
+          deA.propio,
+        ]),
+      ),
+    ).rejects.toMatchObject({ code: '23503' });
+    const deB = await comoTenant(TENANT_B, (c) => leer(c, oportunidadDe[TENANT_B]!));
+    expect(deB).toEqual([{ motivo_perdida: null, motivo_perdida_id: null }]);
+
+    await comoTenant(TENANT_A, (c) =>
+      c.query('UPDATE oportunidades SET motivo_perdida = NULL, nota_perdida = NULL WHERE id = $1', [
+        oportunidadDe[TENANT_A],
+      ]),
+    );
+  });
+
+  it('T-232 — asignar un motivo DESACTIVADO falla en la base (VP001); conservarlo al editar, no', async () => {
+    const oportunidad = oportunidadDe[TENANT_A]!;
+    const nuevoMotivo = async (c: Client, etiqueta: string, activo: boolean): Promise<string> =>
+      (
+        (
+          await c.query(
+            `INSERT INTO motivos_de_perdida (id, tenant_id, etiqueta, orden, activo, actualizado_en)
+             VALUES (gen_random_uuid(), $1, $2, 70, $3, now()) RETURNING id`,
+            [TENANT_A, etiqueta, activo],
+          )
+        ).rows[0] as { id: string }
+      ).id;
+
+    // (a) Por id escrito a mano: un motivo propio ya desactivado.
+    const retirado = await comoTenant(TENANT_A, (c) => nuevoMotivo(c, 'Retirado (T-232)', false));
+    await expect(
+      comoTenant(TENANT_A, (c) =>
+        c.query(
+          'UPDATE oportunidades SET motivo_perdida_id = $2, nota_perdida = NULL WHERE id = $1',
+          [oportunidad, retirado],
+        ),
+      ),
+    ).rejects.toMatchObject({
+      code: 'VP001',
+      message: expect.stringMatching(/^MOTIVO_DE_PERDIDA_INACTIVO/),
+    });
+
+    // (b) Por el enum: el motivo de sistema PRECIO, desactivado dentro de la misma transacción
+    // (que la falla deshace: el fixture no cambia para las demás pruebas).
+    await expect(
+      comoTenant(TENANT_A, async (c) => {
+        await c.query("UPDATE oportunidades SET motivo_perdida = 'PRECIO' WHERE id = $1", [
+          oportunidad,
+        ]);
+        await c.query('UPDATE oportunidades SET motivo_perdida = NULL WHERE id = $1', [
+          oportunidad,
+        ]);
+        await c.query(
+          "UPDATE motivos_de_perdida SET activo = false WHERE tenant_id = $1 AND clave = 'PRECIO'",
+          [TENANT_A],
+        );
+        await c.query("UPDATE oportunidades SET motivo_perdida = 'PRECIO' WHERE id = $1", [
+          oportunidad,
+        ]);
+      }),
+    ).rejects.toMatchObject({ code: 'VP001' });
+
+    // (c) Una oportunidad que YA lo tenía se sigue editando: la nota, el mismo id reescrito o el
+    // mismo enum no lo «asignan» otra vez.
+    const conservado = await comoTenant(TENANT_A, async (c) => {
+      const motivo = await nuevoMotivo(c, 'Vigente y luego retirado (T-232)', true);
+      await c.query(
+        'UPDATE oportunidades SET motivo_perdida_id = $2, nota_perdida = NULL WHERE id = $1',
+        [oportunidad, motivo],
+      );
+      await c.query('UPDATE motivos_de_perdida SET activo = false WHERE id = $1', [motivo]);
+      await c.query(
+        "UPDATE oportunidades SET nota_perdida = 'Lo retiraron después' WHERE id = $1",
+        [oportunidad],
+      );
+      await c.query('UPDATE oportunidades SET motivo_perdida_id = $2 WHERE id = $1', [
+        oportunidad,
+        motivo,
+      ]);
+      await c.query("UPDATE oportunidades SET motivo_perdida = 'OTRO' WHERE id = $1", [
+        oportunidad,
+      ]);
+      const { rows } = await c.query(
+        'SELECT motivo_perdida_id, nota_perdida FROM oportunidades WHERE id = $1',
+        [oportunidad],
+      );
+      return { motivo, fila: rows[0] as unknown };
+    });
+    expect(conservado.fila).toEqual({
+      motivo_perdida_id: conservado.motivo,
+      nota_perdida: 'Lo retiraron después',
+    });
+
+    await comoTenant(TENANT_A, (c) =>
+      c.query('UPDATE oportunidades SET motivo_perdida = NULL, nota_perdida = NULL WHERE id = $1', [
+        oportunidad,
+      ]),
+    );
+  });
+
+  it('T-232 — el motivo OTRO no puede quedar sin exige_nota (CHECK en motivos_de_perdida)', async () => {
+    // En una sola transacción que termina en error (y se deshace): cerrar con OTRO garantiza que
+    // la agencia lo tiene (el disparador lo crea si no), y luego se intenta quitarle la nota.
+    await expect(
+      comoTenant(TENANT_A, async (c) => {
+        await c.query(
+          "UPDATE oportunidades SET motivo_perdida = 'OTRO', nota_perdida = 'Asegura que OTRO exista' WHERE id = $1",
+          [oportunidadDe[TENANT_A]],
+        );
+        await c.query(
+          "UPDATE motivos_de_perdida SET exige_nota = false WHERE tenant_id = $1 AND clave = 'OTRO'",
+          [TENANT_A],
+        );
+      }),
+    ).rejects.toMatchObject({ code: '23514', constraint: 'motivos_de_perdida_otro_exige_nota' });
+
+    // Validado, no solo NOT VALID: también las filas que había antes de la migración lo cumplen.
+    // (Un motivo propio sin exige_nota sigue siendo válido: lo prueba T-229 más arriba.)
+    const { rows } = await admin.query(
+      `SELECT pg_get_constraintdef(oid) AS def, convalidated FROM pg_constraint
+        WHERE conrelid = 'public.motivos_de_perdida'::regclass
+          AND conname = 'motivos_de_perdida_otro_exige_nota'`,
+    );
+    expect(rows).toHaveLength(1);
+    expect((rows[0] as { convalidated: boolean }).convalidated).toBe(true);
+    // T-233: por definición, no solo por nombre (un CHECK `true` con ese nombre pasaba). Misma
+    // normalización que el cinturón de 20261115210000: sin espacios, paréntesis, comillas dobles
+    // ni los casts que el motor añade a `clave` (VARCHAR).
+    const def = (rows[0] as { def: string }).def;
+    expect(
+      def.replace(/::character varying|::text|[\s()"]/g, ''),
+      `definición de motivos_de_perdida_otro_exige_nota: ${def}`,
+    ).toBe("CHECKclaveISDISTINCTFROM'OTRO'ORexige_nota");
   });
 });
 // =============================================================================
@@ -2926,6 +3299,211 @@ describe('Inbox — conversaciones, mensajes y el espejo de plantillas de Meta',
     for (const f of tipos.rows as Array<{ attname: string; tipo: string }>) {
       expect(`${f.attname}:${f.tipo}`).toBe(`${f.attname}:timestamp(3) with time zone`);
     }
+  });
+
+  it('T-223 — medir_cola_de_salida suma las agencias y devuelve solo dos enteros, sin dejar el contexto cambiado', async () => {
+    // La forma del resultado es la frontera: la función ve `mensajes` de TODAS las agencias.
+    const firma = await admin.query(
+      `SELECT pg_get_function_result(p.oid) AS resultado,
+              pg_get_function_identity_arguments(p.oid) AS argumentos
+         FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+        WHERE n.nspname = 'public' AND p.proname = 'medir_cola_de_salida'`,
+    );
+    expect(firma.rows).toEqual([
+      { resultado: 'TABLE(mas_vieja_s integer, pendientes integer)', argumentos: '' },
+    ]);
+
+    // Solo el trabajador. La 20 lo mira en el catálogo; esto, en el comportamiento.
+    for (const rol of ['viajapro_app', 'viajapro_altas']) {
+      await expect(
+        conRol(rol, 'SELECT * FROM medir_cola_de_salida()'),
+        `${rol} pudo medir la cola de salida`,
+      ).rejects.toThrow(/permission denied/i);
+    }
+
+    // El dueño no lee más que las columnas del recuento: ni el texto cifrado de un mensaje.
+    expect(
+      (
+        await admin.query(
+          `SELECT has_column_privilege('viajapro_metricas', 'public.mensajes', 'texto_cifrado', 'SELECT') AS texto,
+                  has_table_privilege('viajapro_metricas', 'public.mensajes', 'SELECT') AS tabla`,
+        )
+      ).rows,
+    ).toEqual([{ texto: false, tabla: false }]);
+
+    // Ningún rol de login puede actuar como el dueño, ni por un camino indirecto.
+    const comoDueno = await admin.query(
+      `SELECT rolname FROM unnest($1::text[]) AS rolname
+        WHERE pg_has_role(rolname, 'viajapro_metricas', 'MEMBER')`,
+      [await rolesAVigilar(admin)],
+    );
+    expect(comoDueno.rows, 'roles de login que pueden actuar como viajapro_metricas').toEqual([]);
+
+    type Medida = { mas_vieja_s: number; pendientes: number };
+    const medir = async (): Promise<Medida> => {
+      const { rows } = await conRol('viajapro_webhook', 'SELECT * FROM medir_cola_de_salida()');
+      expect(rows).toHaveLength(1);
+      expect(Object.keys(rows[0] as object).sort(), 'devuelve algo más que dos enteros').toEqual([
+        'mas_vieja_s',
+        'pendientes',
+      ]);
+      return rows[0] as Medida;
+    };
+
+    // Otras corridas pueden tener pendientes a la vez: se mide la DIFERENCIA, nunca el total.
+    const antes = await medir();
+
+    // Un pendiente en A (20 min), otro en B (40 min) y, en B, uno ya aceptado por Meta (con wamid)
+    // de hace 100 días, que NO es cola de salida.
+    const pendiente = (tenant: string, minutos: number, wamid: string | null) =>
+      comoTenant(tenant, (c) =>
+        c.query(
+          `INSERT INTO mensajes (id, tenant_id, conversacion_id, direccion, tipo, estado, wamid,
+                                 ocurrido_en, creado_en, actualizado_en)
+           VALUES (gen_random_uuid(), $1, $2, 'SALIENTE', 'TEXTO', 'PENDIENTE', $3,
+                   now(), now() - make_interval(mins => $4::int), now())`,
+          [tenant, conversacionDe[tenant], wamid, minutos],
+        ),
+      );
+    await pendiente(TENANT_A, 20, null);
+    await pendiente(TENANT_B, 40, null);
+    await pendiente(TENANT_B, 100 * 24 * 60, `wamid.${randomUUID()}`);
+
+    const despues = await medir();
+    expect(despues.pendientes, 'no suma los pendientes de las dos agencias').toBeGreaterThanOrEqual(
+      antes.pendientes + 2,
+    );
+    expect(despues.mas_vieja_s, 'no ve el pendiente de 40 min de B').toBeGreaterThanOrEqual(
+      40 * 60,
+    );
+    if (antes.mas_vieja_s < 50 * 86_400) {
+      expect(
+        despues.mas_vieja_s,
+        'cuenta como pendiente un mensaje que ya tiene wamid',
+      ).toBeLessThan(50 * 86_400);
+    }
+
+    // El llamador sale con SU agencia en el contexto, no con la última que recorrió la función.
+    await admin.query('BEGIN');
+    try {
+      await admin.query('SET LOCAL ROLE viajapro_webhook');
+      await admin.query("SELECT set_config('app.current_tenant', $1, true)", [TENANT_B]);
+      await admin.query('SELECT * FROM medir_cola_de_salida()');
+      const { rows } = await admin.query(
+        "SELECT current_setting('app.current_tenant', true) AS tenant",
+      );
+      expect(rows[0]?.tenant).toBe(TENANT_B);
+    } finally {
+      await admin.query('ROLLBACK');
+    }
+  });
+
+  it('T-230 — la superficie de viajapro_metricas son EXACTAMENTE cinco columnas, ni una más', async () => {
+    // Privilegios efectivos de columna (incluyen los de tabla) que no le vienen de PUBLIC, en todo
+    // esquema que no sea del sistema. Lista cerrada: una columna, una tabla o un privilegio de
+    // más (INSERT, UPDATE, REFERENCES) la pone en rojo. La misma lista la exige el cinturón de
+    // 20261115200000.
+    const { rows } = await admin.query(
+      `SELECT format('%s.%s.%s:%s', n.nspname, c.relname, a.attname, p.priv) AS privilegio
+         FROM pg_class c
+         JOIN pg_namespace n ON n.oid = c.relnamespace
+         JOIN pg_attribute a ON a.attrelid = c.oid AND a.attnum > 0 AND NOT a.attisdropped
+        CROSS JOIN unnest(ARRAY['SELECT', 'INSERT', 'UPDATE', 'REFERENCES']) AS p(priv)
+        WHERE n.nspname NOT IN ('pg_catalog', 'information_schema')
+          AND n.nspname NOT LIKE 'pg\\_toast%'
+          AND n.nspname NOT LIKE 'pg\\_temp%'
+          AND c.relkind IN ('r', 'p', 'v', 'm', 'f')
+          AND has_column_privilege('viajapro_metricas', c.oid, a.attnum, p.priv)
+          AND NOT has_column_privilege('public', c.oid, a.attnum, p.priv)
+        ORDER BY 1`,
+    );
+    expect(
+      (rows as Array<{ privilegio: string }>).map((r) => r.privilegio),
+      'superficie de columnas de viajapro_metricas',
+    ).toEqual([
+      'public.mensajes.creado_en:SELECT',
+      'public.mensajes.estado:SELECT',
+      'public.mensajes.tenant_id:SELECT',
+      'public.mensajes.wamid:SELECT',
+      'public.tenants.id:SELECT',
+    ]);
+
+    // Ni un privilegio de tabla directo (has_column_privilege los contaría arriba como columnas,
+    // pero un GRANT de tabla daría también las columnas que se añadan mañana), ni pertenencia a
+    // otro rol del que pudiera heredar o al que pudiera cambiar.
+    const { rows: deTabla } = await admin.query(
+      `SELECT c.oid::regclass::text AS tabla, x.privilege_type AS privilegio
+         FROM pg_class c, aclexplode(c.relacl) x
+        WHERE x.grantee = 'viajapro_metricas'::regrole`,
+    );
+    expect(deTabla, 'privilegios de TABLA de viajapro_metricas').toEqual([]);
+    const { rows: miembroDe } = await admin.query(
+      `SELECT roleid::regrole::text AS rol FROM pg_auth_members
+        WHERE member = 'viajapro_metricas'::regrole`,
+    );
+    expect(miembroDe, 'roles de los que viajapro_metricas es miembro').toEqual([]);
+  });
+
+  it('T-233 — viajapro_metricas es dueño SOLO de medir_cola_de_salida y nadie le concede EXECUTE', async () => {
+    // La superficie en funciones (la de columnas la fija la prueba anterior). Una función
+    // SECURITY DEFINER más de su propiedad correría con sus privilegios; un EXECUTE concedido le
+    // daría una puerta que no es la suya. El mismo par lo exige el cinturón de 20261115210000.
+    const { rows: propias } = await admin.query(
+      `SELECT format('%s.%s', n.nspname, p.proname) AS funcion
+         FROM pg_proc p
+         JOIN pg_namespace n ON n.oid = p.pronamespace
+        WHERE p.proowner = 'viajapro_metricas'::regrole
+        ORDER BY 1`,
+    );
+    expect(
+      (propias as Array<{ funcion: string }>).map((r) => r.funcion),
+      'funciones de las que viajapro_metricas es dueño',
+    ).toEqual(['public.medir_cola_de_salida']);
+
+    // Se excluye la entrada del propio dueño, que el motor materializa en el ACL de
+    // medir_cola_de_salida al revocar a PUBLIC.
+    const { rows: concedidas } = await admin.query(
+      `SELECT p.oid::regprocedure::text AS funcion, x.privilege_type AS privilegio
+         FROM pg_proc p, aclexplode(p.proacl) x
+        WHERE x.grantee = 'viajapro_metricas'::regrole
+          AND p.proowner <> x.grantee`,
+    );
+    expect(concedidas, 'funciones que conceden EXECUTE a viajapro_metricas').toEqual([]);
+  });
+
+  it('T-230 — si medir_cola_de_salida falla a mitad, el llamador conserva SU app.current_tenant', async () => {
+    // Se fuerza el fallo DESPUÉS del primer `set_config` de la función: dentro de esta transacción
+    // (y solo en ella, se deshace al final) el dueño pierde las columnas de `mensajes`, así que la
+    // función recorre `tenants`, fija la primera agencia y revienta en la consulta de `mensajes`.
+    // El llamador lo atrapa con un punto de guardado, como haría un `catch` sobre una
+    // subtransacción, y su agencia tiene que seguir ahí: no la última que fijó la función.
+    await admin.query('BEGIN');
+    try {
+      await admin.query(
+        'REVOKE SELECT ("tenant_id", "estado", "wamid", "creado_en") ON TABLE public.mensajes FROM viajapro_metricas',
+      );
+      await admin.query('SET LOCAL ROLE viajapro_webhook');
+      // Una agencia que NO está en `tenants`: si el llamador fuera una de las que la función
+      // recorre (y saliera primera), la prueba pasaría aunque el motor no restaurara nada.
+      const delLlamador = randomUUID();
+      await admin.query("SELECT set_config('app.current_tenant', $1, true)", [delLlamador]);
+      await admin.query('SAVEPOINT antes_de_medir');
+      await expect(
+        admin.query('SELECT * FROM medir_cola_de_salida()'),
+        'la función no falló en la consulta de mensajes: el fallo no ocurrió a mitad',
+      ).rejects.toThrow(/permission denied for (table|relation) mensajes/i);
+      await admin.query('ROLLBACK TO SAVEPOINT antes_de_medir');
+      const { rows } = await admin.query(
+        "SELECT current_setting('app.current_tenant', true) AS tenant, current_user AS rol",
+      );
+      expect(rows[0]).toEqual({ tenant: delLlamador, rol: 'viajapro_webhook' });
+    } finally {
+      await admin.query('ROLLBACK');
+    }
+
+    // Y el REVOKE no sobrevivió: la medida vuelve a funcionar para el trabajador.
+    const { rows } = await conRol('viajapro_webhook', 'SELECT * FROM medir_cola_de_salida()');
+    expect(rows).toHaveLength(1);
   });
 });
 // =============================================================================
@@ -5845,6 +6423,9 @@ const COLUMNAS_DE_TEXTO_DECLARADAS: readonly string[] = [
   'mayoristas.notas',
   'mensajes.motivo_fallo',
   'mensajes.wamid',
+  // T-214: catálogo de la agencia, sin PII de viajeros.
+  'motivos_de_perdida.clave',
+  'motivos_de_perdida.etiqueta',
   'opciones_de_salida.etiqueta',
   'opciones_de_salida.punto_de_encuentro',
   'oportunidades.destino',
@@ -6039,5 +6620,242 @@ describe('ADR-0015 — cifrado de las columnas con PII sensible', () => {
       }
     }
     expect(leidas).toBeGreaterThan(0);
+  });
+});
+
+/**
+ * Migración 20261116090000 (rehace el PR #234) — la zona horaria de la agencia se escribe por una
+ * función, nunca por un GRANT sobre `tenants`.
+ *
+ * `tenants` es global (excepción de RLS) y `viajapro_app` la tiene declarada `{SELECT}`. Un GRANT
+ * UPDATE de columna habría dejado que un `WHERE` equivocado en la API reescribiera la fila de otra
+ * agencia. La función toma la agencia de `app.current_tenant` y nunca de un parámetro. Todo se
+ * prueba con la conexión de la API de verdad (`app`, que es `viajapro_app`) y dentro de
+ * transacciones que se deshacen: la zona de los fixtures no cambia. El contrato fino (alias de
+ * zona, formas del uuid) vive en `zona-horaria-de-la-agencia.spec.ts`.
+ */
+describe('Ajustes de la agencia — zona horaria por función, nunca por GRANT sobre tenants', () => {
+  const FUNCION = 'public.actualizar_zona_horaria_de_la_agencia';
+
+  /** En una transacción de `app` que se deshace siempre. `contexto === undefined` no fija el GUC. */
+  async function enTransaccionDeApp<T>(
+    contexto: string | undefined,
+    fn: () => Promise<T>,
+  ): Promise<T> {
+    await app.query('BEGIN');
+    try {
+      if (contexto !== undefined) {
+        await app.query("SELECT set_config('app.current_tenant', $1, true)", [contexto]);
+      }
+      return await fn();
+    } finally {
+      await app.query('ROLLBACK');
+    }
+  }
+
+  /** El SQLSTATE de una sentencia, con punto de guardado para no abortar la transacción. */
+  async function codigoDe(accion: () => Promise<unknown>): Promise<string | undefined> {
+    await app.query('SAVEPOINT intento_zona');
+    try {
+      await accion();
+      await app.query('RELEASE SAVEPOINT intento_zona');
+      return undefined;
+    } catch (error) {
+      await app.query('ROLLBACK TO SAVEPOINT intento_zona');
+      return (error as { code?: string }).code;
+    }
+  }
+
+  const cambiar = (zona: string | null) =>
+    app.query<{ zona: string }>(`SELECT ${FUNCION}($1) AS zona`, [zona]);
+
+  const zonaDe = async (tenant: string): Promise<string> => {
+    const { rows } = await admin.query('SELECT zona_horaria FROM tenants WHERE id = $1', [tenant]);
+    return rows[0]?.zona_horaria as string;
+  };
+
+  it('Z1 — viajapro_ajustes es solo propietario: superficie exacta, sin miembros de login, dueño solo de su función', async () => {
+    const { rows: superficie } = await admin.query(
+      `SELECT format('%s.%s.%s:%s', n.nspname, c.relname, a.attname, p.priv) AS privilegio
+         FROM pg_class c
+         JOIN pg_namespace n ON n.oid = c.relnamespace
+         JOIN pg_attribute a ON a.attrelid = c.oid AND a.attnum > 0 AND NOT a.attisdropped
+        CROSS JOIN unnest(ARRAY['SELECT', 'INSERT', 'UPDATE', 'REFERENCES']) AS p(priv)
+        WHERE n.nspname NOT IN ('pg_catalog', 'information_schema')
+          AND n.nspname NOT LIKE 'pg\\_toast%'
+          AND n.nspname NOT LIKE 'pg\\_temp%'
+          AND c.relkind IN ('r', 'p', 'v', 'm', 'f')
+          AND has_column_privilege('viajapro_ajustes', c.oid, a.attnum, p.priv)
+          AND NOT has_column_privilege('public', c.oid, a.attnum, p.priv)
+        ORDER BY 1`,
+    );
+    expect(
+      (superficie as Array<{ privilegio: string }>).map((r) => r.privilegio),
+      'superficie de columnas de viajapro_ajustes',
+    ).toEqual([
+      'public.tenants.actualizado_en:UPDATE',
+      'public.tenants.id:SELECT',
+      'public.tenants.zona_horaria:UPDATE',
+    ]);
+
+    const { rows: deTabla } = await admin.query(
+      `SELECT c.oid::regclass::text AS tabla, x.privilege_type AS privilegio
+         FROM pg_class c, aclexplode(c.relacl) x
+        WHERE x.grantee = 'viajapro_ajustes'::regrole`,
+    );
+    expect(deTabla, 'privilegios de TABLA de viajapro_ajustes').toEqual([]);
+
+    const { rows: miembroDe } = await admin.query(
+      `SELECT roleid::regrole::text AS rol FROM pg_auth_members
+        WHERE member = 'viajapro_ajustes'::regrole`,
+    );
+    expect(miembroDe, 'roles de los que viajapro_ajustes es miembro').toEqual([]);
+
+    const { rows: comoDueno } = await admin.query(
+      `SELECT rolname FROM unnest($1::text[]) AS rolname
+        WHERE pg_has_role(rolname, 'viajapro_ajustes', 'MEMBER')`,
+      [await rolesAVigilar(admin)],
+    );
+    expect(comoDueno, 'roles de login que pueden actuar como viajapro_ajustes').toEqual([]);
+
+    const { rows: propias } = await admin.query(
+      `SELECT format('%s.%s', n.nspname, p.proname) AS funcion
+         FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+        WHERE p.proowner = 'viajapro_ajustes'::regrole
+        ORDER BY 1`,
+    );
+    expect(
+      (propias as Array<{ funcion: string }>).map((r) => r.funcion),
+      'funciones de las que viajapro_ajustes es dueño',
+    ).toEqual(['public.actualizar_zona_horaria_de_la_agencia']);
+
+    const { rows: concedidas } = await admin.query(
+      `SELECT p.oid::regprocedure::text AS funcion
+         FROM pg_proc p, aclexplode(p.proacl) x
+        WHERE x.grantee = 'viajapro_ajustes'::regrole
+          AND p.proowner <> x.grantee`,
+    );
+    expect(concedidas, 'funciones que conceden EXECUTE a viajapro_ajustes').toEqual([]);
+
+    // La firma no tiene por dónde nombrar otra agencia: un solo argumento, la zona.
+    const { rows: firma } = await admin.query(
+      `SELECT pg_get_function_identity_arguments(p.oid) AS argumentos,
+              pg_get_function_result(p.oid) AS resultado
+         FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+        WHERE n.nspname = 'public' AND p.proname = 'actualizar_zona_horaria_de_la_agencia'`,
+    );
+    expect(firma).toEqual([{ argumentos: 'zona text', resultado: 'text' }]);
+
+    // La API sigue sin escribir `tenants` por ningún camino directo, ni de tabla ni de columna.
+    const { rows: directo } = await admin.query(
+      `SELECT has_table_privilege('viajapro_app', 'public.tenants', 'UPDATE') AS tabla,
+              has_any_column_privilege('viajapro_app', 'public.tenants', 'UPDATE') AS columna,
+              has_any_column_privilege('viajapro_app', 'public.tenants', 'INSERT') AS insercion`,
+    );
+    expect(directo[0]).toEqual({ tabla: false, columna: false, insercion: false });
+  });
+
+  it('Z2 (a) — viajapro_app cambia la zona de SU agencia y actualizado_en avanza', async () => {
+    const antesA = await zonaDe(TENANT_A);
+    expect(antesA, 'el fixture ya tiene la zona que se va a escribir').not.toBe(
+      'America/Mexico_City',
+    );
+    await enTransaccionDeApp(TENANT_A, async () => {
+      const { rows: antes } = await app.query<{ actualizado_en: Date }>(
+        'SELECT actualizado_en FROM tenants WHERE id = $1',
+        [TENANT_A],
+      );
+      const { rows } = await cambiar('America/Mexico_City');
+      expect(rows).toEqual([{ zona: 'America/Mexico_City' }]);
+      const { rows: despues } = await app.query<{ zona_horaria: string; actualizado_en: Date }>(
+        'SELECT zona_horaria, actualizado_en FROM tenants WHERE id = $1',
+        [TENANT_A],
+      );
+      expect(despues[0]?.zona_horaria).toBe('America/Mexico_City');
+      expect(despues[0]?.actualizado_en.getTime()).toBeGreaterThanOrEqual(
+        antes[0]?.actualizado_en.getTime() ?? Number.POSITIVE_INFINITY,
+      );
+    });
+    // Se deshizo: la fila confirmada no cambió.
+    expect(await zonaDe(TENANT_A)).toBe(antesA);
+  });
+
+  it('Z3 (b) — con el contexto de A no hay forma de cambiar la zona de B', async () => {
+    const antesB = await zonaDe(TENANT_B);
+
+    await enTransaccionDeApp(TENANT_A, async () => {
+      await cambiar('Europe/Madrid');
+      const { rows } = await app.query<{ id: string; zona_horaria: string }>(
+        'SELECT id, zona_horaria FROM tenants WHERE id = ANY($1)',
+        [[TENANT_A, TENANT_B]],
+      );
+      const porId = Object.fromEntries(rows.map((r) => [r.id, r.zona_horaria]));
+      expect(porId[TENANT_A]).toBe('Europe/Madrid');
+      expect(porId[TENANT_B], 'la función escribió la fila de otra agencia').toBe(antesB);
+
+      // El atajo que la migración evita: UPDATE directo de tenants con el rol de la API.
+      for (const sql of [
+        `UPDATE tenants SET zona_horaria = 'Europe/Madrid' WHERE id = '${TENANT_B}'`,
+        `UPDATE tenants SET zona_horaria = 'Europe/Madrid'`,
+        `UPDATE tenants SET actualizado_en = now() WHERE id = '${TENANT_A}'`,
+      ]) {
+        await esperarPermisoDenegado(app, () => app.query(sql), sql);
+      }
+    });
+
+    // Ni los otros roles de login: solo la API ejecuta la función.
+    for (const rol of ['viajapro_altas', 'viajapro_webhook', 'viajapro_identidad']) {
+      await admin.query('BEGIN');
+      try {
+        await admin.query(`SET LOCAL ROLE ${ident(rol)}`);
+        await admin.query("SELECT set_config('app.current_tenant', $1, true)", [TENANT_B]);
+        await expect(
+          admin.query(`SELECT ${FUNCION}($1)`, ['Europe/Madrid']),
+          `${rol} pudo cambiar la zona horaria`,
+        ).rejects.toMatchObject({ code: '42501' });
+      } finally {
+        await admin.query('ROLLBACK');
+      }
+    }
+
+    expect(await zonaDe(TENANT_B)).toBe(antesB);
+  });
+
+  it('Z4 (c) — una zona inválida falla con 22023 y no escribe nada', async () => {
+    const antesA = await zonaDe(TENANT_A);
+    await enTransaccionDeApp(TENANT_A, async () => {
+      for (const zona of [
+        null,
+        '',
+        'Marte/Olympus_Mons',
+        'america/bogota',
+        'posix/America/Bogota',
+      ]) {
+        expect(await codigoDe(() => cambiar(zona)), String(zona)).toBe('22023');
+      }
+      const { rows } = await app.query('SELECT zona_horaria FROM tenants WHERE id = $1', [
+        TENANT_A,
+      ]);
+      expect(rows[0]?.zona_horaria).toBe(antesA);
+    });
+  });
+
+  it('Z5 (d) — sin app.current_tenant (o con uno que no es una agencia) falla y no escribe nada', async () => {
+    const antesA = await zonaDe(TENANT_A);
+    const antesB = await zonaDe(TENANT_B);
+
+    // GUC sin fijar en esta transacción, vacío, o que no es un uuid canónico: 42501.
+    for (const contexto of [undefined, '', 'agencia-a', `{${TENANT_A}}`]) {
+      await enTransaccionDeApp(contexto, async () => {
+        expect(await codigoDe(() => cambiar('Europe/Madrid')), String(contexto)).toBe('42501');
+      });
+    }
+    // Un uuid bien formado que no es ninguna agencia: P0002, y ninguna fila se toca.
+    await enTransaccionDeApp(randomUUID(), async () => {
+      expect(await codigoDe(() => cambiar('Europe/Madrid'))).toBe('P0002');
+    });
+
+    expect(await zonaDe(TENANT_A)).toBe(antesA);
+    expect(await zonaDe(TENANT_B)).toBe(antesB);
   });
 });
