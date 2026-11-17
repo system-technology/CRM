@@ -5596,7 +5596,7 @@ tasks:
     phase: 1
     priority: P2
     effort: S
-    status: ready
+    status: in_progress
     depends_on: [T-241]
     acceptance:
       - "SET LOCAL lock_timeout antes del advisory lock de numero de file"
@@ -5609,6 +5609,16 @@ tasks:
     source: auditoria de seguridad T-241, 2026-11-18 (cola R13)
     created_at: 2026-11-18T13:00:00.000Z
     owner: backend
+    notes: |
+      Hecho en la rama fix/eventos-robustez-del-despachador: (1) set_config('lock_timeout','5s',true)
+      antes del advisory lock del numero de file; (2) esErrorTransitorio (P1001, P1002, P1008, P1017,
+      P2024, P2028, P2034; SQLSTATE 40001, 40P01, 55P03 via meta.code de P2010 o texto) no suma intento,
+      solo log con el codigo; (3) log de error JSON al abandonar (consumidor, tenantId, outboxId,
+      intentos, codigo); (4) barrer() rota el punto de inicio en cada pasada.
+      COLA (necesita migracion/SECURITY DEFINER, no hecha): metrica de entregas abandonadas por
+      consumidor (como medir_cola_de_salida) y quitar el LIMIT 500 fijo de
+      tenants_con_eventos_por_entregar: la rotacion cubre la lista devuelta, no las agencias que
+      la funcion deje fuera. Duenos: datos (funcion) y backend (exposicion en /salud).
   - id: T-248
     title: "Booking: el primer endpoint de lectura omite netoUnidades sin cotizacion.ver_neto_y_margen"
     type: feature
