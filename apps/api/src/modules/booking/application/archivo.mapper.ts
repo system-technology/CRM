@@ -13,7 +13,7 @@ import {
   plazoVigente,
   semaforoDe,
 } from '../domain/archivo.js';
-import type { Reserva } from '../domain/reserva.js';
+import type { CambioDeEstadoDeReserva, Reserva } from '../domain/reserva.js';
 
 const iso = (d: Date | null): string | null => (d ? d.toISOString() : null);
 
@@ -73,7 +73,12 @@ export function aResumen(a: Archivo, ahora: Date, verNeto: boolean): ResumenDeAr
   };
 }
 
-export function aDetalle(a: Archivo, ahora: Date, verNeto: boolean): DetalleDeArchivo {
+export function aDetalle(
+  a: Archivo,
+  ahora: Date,
+  verNeto: boolean,
+  historial: readonly CambioDeEstadoDeReserva[],
+): DetalleDeArchivo {
   return {
     ...aResumen(a, ahora, verNeto),
     pasajeros: a.pasajeros.map((p) => ({
@@ -85,5 +90,13 @@ export function aDetalle(a: Archivo, ahora: Date, verNeto: boolean): DetalleDeAr
       orden: p.orden,
     })),
     avisos: pasajerosNoCuadran(a, a.pasajeros) ? ['PASAJEROS_NO_CUADRAN_CON_LA_VENTA'] : [],
+    historial: historial.map((h) => ({
+      id: h.id,
+      reservaId: h.reservaId,
+      estadoAnterior: h.estadoAnterior,
+      estadoNuevo: h.estadoNuevo,
+      usuarioId: h.usuarioId,
+      ocurridoEn: h.ocurridoEn.toISOString(),
+    })),
   };
 }

@@ -151,9 +151,26 @@ export type PasajeroDelArchivo = z.infer<typeof PasajeroDelArchivo>;
 export const AvisoDelArchivo = z.enum(['PASAJEROS_NO_CUADRAN_CON_LA_VENTA']);
 export type AvisoDelArchivo = z.infer<typeof AvisoDelArchivo>;
 
+/**
+ * Un cambio de estado de una reserva (T-250): quién y cuándo. Solo identificadores, estados e
+ * instante: sin neto, sin nombres.
+ */
+export const CambioDeEstadoDeReserva = z.object({
+  id: Id,
+  reservaId: Id,
+  estadoAnterior: EstadoDeReserva,
+  estadoNuevo: EstadoDeReserva,
+  /** `null` si el cambio no tuvo usuario. */
+  usuarioId: Id.nullable(),
+  ocurridoEn: Instante,
+});
+export type CambioDeEstadoDeReserva = z.infer<typeof CambioDeEstadoDeReserva>;
+
 export const DetalleDeArchivo = ResumenDeArchivo.extend({
   pasajeros: z.array(PasajeroDelArchivo),
   avisos: z.array(AvisoDelArchivo),
+  /** Cambios de estado de las reservas del archivo, del más antiguo al más reciente. */
+  historial: z.array(CambioDeEstadoDeReserva),
 });
 export type DetalleDeArchivo = z.infer<typeof DetalleDeArchivo>;
 

@@ -115,6 +115,7 @@ export const MOCK_DETALLES_ARCHIVOS: DetalleDeArchivo[] = [
       },
     ],
     avisos: [],
+    historial: [],
   },
   {
     id: '00000000-0030-4000-8000-000000000002',
@@ -160,5 +161,6 @@ export const MOCK_DETALLES_ARCHIVOS: DetalleDeArchivo[] = [
       },
     ],
     avisos: [],
+    historial: [],
   },
 ];

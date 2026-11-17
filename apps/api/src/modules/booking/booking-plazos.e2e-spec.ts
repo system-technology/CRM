@@ -45,9 +45,14 @@ const idDeTenant = (): string => `01932000-0000-7000-8000-${randomBytes(6).toStr
 const TENANT_A = idDeTenant();
 const TENANT_B = idDeTenant();
 /** La salida del archivo; todos los plazos de la prueba caen antes. */
-const FECHA = '2027-03-15';
+// Fechas RELATIVAS A HOY (T-251): una vigencia fija caduca el día que el calendario la alcanza.
+const DIA_MS = 86_400_000;
+const hoyUtc = new Date(`${new Date().toISOString().slice(0, 10)}T00:00:00.000Z`);
+const enDias = (d: Date, n: number): Date => new Date(d.getTime() + n * DIA_MS);
+const SALIDA = enDias(hoyUtc, 120);
+const FECHA = SALIDA.toISOString().slice(0, 10);
 /** El «ahora» de la vigilancia, fijo y anterior a la salida. */
-const AHORA = new Date('2027-03-10T12:00:00.000Z');
+const AHORA = new Date(enDias(SALIDA, -5).getTime() + 12 * 3_600_000);
 const enHoras = (h: number): Date => new Date(AHORA.getTime() + h * 3_600_000);
 
 interface Agencia {
@@ -175,8 +180,8 @@ async function crearAgencia(tenant: string, letra: string): Promise<Agencia> {
     data: {
       tenantId: tenant,
       paqueteId: paquete.id,
-      desde: new Date('2027-03-01'),
-      hasta: new Date('2027-03-31'),
+      desde: enDias(SALIDA, -14),
+      hasta: enDias(SALIDA, 14),
     },
   });
   await admin.tarifa.create({

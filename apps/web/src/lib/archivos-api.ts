@@ -66,7 +66,7 @@ async function pedirArchivos(ruta: string, opciones: RequestInit = {}): Promise<
 }
 
 function resumenDe(detalle: DetalleDeArchivo): ResumenDeArchivo {
-  const { pasajeros: _pasajeros, avisos: _avisos, ...resumen } = detalle;
+  const { pasajeros: _pasajeros, avisos: _avisos, historial: _historial, ...resumen } = detalle;
   return resumen;
 }
 

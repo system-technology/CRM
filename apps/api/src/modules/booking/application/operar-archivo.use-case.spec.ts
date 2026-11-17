@@ -18,7 +18,7 @@ import {
   TitularInvalidoError,
   TransicionDeReservaInvalidaError,
 } from '../domain/errors-de-operacion.js';
-import type { Reserva } from '../domain/reserva.js';
+import type { CambioDeEstadoDeReserva, Reserva } from '../domain/reserva.js';
 import { OperarArchivoUseCase } from './operar-archivo.use-case.js';
 import {
   type FiltroDeArchivos,
@@ -99,6 +99,12 @@ class RepositorioEnMemoria extends RepositorioDeOperacionDeArchivos {
 
   leer(id: string): Promise<Archivo | null> {
     return Promise.resolve(this.lista().find((a) => a.id === id) ?? null);
+  }
+
+  historial: CambioDeEstadoDeReserva[] = [];
+
+  historialDe(): Promise<CambioDeEstadoDeReserva[]> {
+    return Promise.resolve(this.historial);
   }
 
   enTransaccion<T>(fn: (ops: OperacionesDelArchivo) => Promise<T>): Promise<T> {
@@ -213,6 +219,42 @@ describe('T-248: el neto solo sale con cotizacion.ver_neto_y_margen', () => {
       casoDeUso.actualizarReserva('a1', 'r1', ActualizarReserva.parse({ estado: 'SOLICITADA' })),
     );
     expect(con.reservas[0]).toHaveProperty('netoUnidades', '900000');
+  });
+});
+
+describe('historial de estados de las reservas (T-250)', () => {
+  it('el detalle lo trae mapeado al contrato (instante ISO, sin neto), también tras una mutación', async () => {
+    repo.historial = [
+      {
+        id: 'h1',
+        reservaId: 'r1',
+        estadoAnterior: 'PENDIENTE',
+        estadoNuevo: 'SOLICITADA',
+        usuarioId: USUARIO,
+        ocurridoEn: new Date('2027-01-05T15:00:00.000Z'),
+      },
+    ];
+    const esperado = [
+      {
+        id: 'h1',
+        reservaId: 'r1',
+        estadoAnterior: 'PENDIENTE',
+        estadoNuevo: 'SOLICITADA',
+        usuarioId: USUARIO,
+        ocurridoEn: '2027-01-05T15:00:00.000Z',
+      },
+    ];
+    const d = await como(A, SIN_NETO, () => casoDeUso.leer('a1'));
+    expect(d.historial).toEqual(esperado);
+    expect(JSON.stringify(d.historial)).not.toMatch(/neto/i);
+    const tras = await como(A, SIN_NETO, () =>
+      casoDeUso.actualizarReserva('a1', 'r1', ActualizarReserva.parse({ estado: 'SOLICITADA' })),
+    );
+    expect(tras.historial).toEqual(esperado);
+  });
+
+  it('un archivo sin cambios devuelve el historial vacío', async () => {
+    expect((await como(A, TODOS, () => casoDeUso.leer('a1'))).historial).toEqual([]);
   });
 });
 
