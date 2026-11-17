@@ -23,7 +23,10 @@ services:
     name: viajapro-api-staging
     runtime: docker
     region: ohio
-    plan: starter
+    # Fase de demo (decisión del propietario, 2026-11-18: «lo más gratis posible»): instancia
+    # Free. Se duerme tras 15 min sin tráfico (~1 min en despertar) y tiene 512 MB y CPU
+    # compartida. Para la primera agencia que paga: `starter` o superior (T-239).
+    plan: free
     dockerfilePath: ./apps/api/Dockerfile
     dockerContext: .
     # La imagen es la misma del modo `escalado` (CMD `node dist/main.js`); aqui se sustituye el
