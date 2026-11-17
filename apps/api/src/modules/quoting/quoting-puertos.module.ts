@@ -7,23 +7,27 @@ import { Global, Module } from '@nestjs/common';
 import {
   PuertoCotizacionParaWhatsapp,
   PuertoExistenciaDePaquete,
+  PuertoVersionAceptada,
 } from '../../shared/puertos/puertos-hacia-quoting.js';
 import { PuertoCotizacionesParaReportes } from '../../shared/puertos/puertos-de-reportes.js';
 import { CotizacionesParaReportesPrisma } from './infrastructure/cotizaciones-para-reportes.prisma.js';
 import { CotizacionParaWhatsappPrisma } from './infrastructure/cotizacion-para-whatsapp.prisma.js';
 import { ExistenciaDePaqueteDeQuoting } from './infrastructure/puertos-de-quoting.prisma.js';
+import { VersionAceptadaDeQuoting } from './infrastructure/version-aceptada.prisma.js';
 
 @Global()
 @Module({
   providers: [
     { provide: PuertoExistenciaDePaquete, useClass: ExistenciaDePaqueteDeQuoting },
     { provide: PuertoCotizacionParaWhatsapp, useClass: CotizacionParaWhatsappPrisma },
+    { provide: PuertoVersionAceptada, useClass: VersionAceptadaDeQuoting },
     { provide: PuertoCotizacionesParaReportes, useClass: CotizacionesParaReportesPrisma },
   ],
   exports: [
     PuertoExistenciaDePaquete,
     PuertoCotizacionParaWhatsapp,
     PuertoCotizacionesParaReportes,
+    PuertoVersionAceptada,
   ],
 })
 export class QuotingPuertosModule {}

@@ -1,5 +1,6 @@
 import { type MiddlewareConsumer, Module, type NestModule } from '@nestjs/common';
 import { AnalyticsModule } from './modules/analytics/analytics.module.js';
+import { BookingModule } from './modules/booking/booking.module.js';
 import { CrmReportesModule } from './modules/crm/crm-reportes.module.js';
 import { CrmModule } from './modules/crm/crm.module.js';
 import { IdentityModule } from './modules/identity/identity.module.js';
@@ -16,6 +17,7 @@ import {
   LectorDelLatidoRedis,
   seExigeElLatido,
 } from './shared/salud/latido-del-trabajador.js';
+import { EventosDeDominioModule } from './shared/eventos/eventos-de-dominio.module.js';
 import { SharedModule } from './shared/shared.module.js';
 import { TenantMiddleware } from './shared/tenant/tenant.middleware.js';
 import {
@@ -27,6 +29,8 @@ import { OriginCheckMiddleware } from './shared/red/origin-check.middleware.js';
 @Module({
   imports: [
     SharedModule,
+    // ADR-0024 §1: el despacho de eventos de dominio vive en el contenedor de la API (unico y escalado).
+    EventosDeDominioModule,
     NotificationsModule,
     IdentityModule,
     QuotingModule,
@@ -35,6 +39,7 @@ import { OriginCheckMiddleware } from './shared/red/origin-check.middleware.js';
     CrmModule,
     CrmReportesModule,
     AnalyticsModule,
+    BookingModule,
   ],
   controllers: [SaludController],
   providers: [
