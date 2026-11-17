@@ -5480,8 +5480,8 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: in_progress
-    notes: "Datos en main (migraciones 20261118090000 y 20261118090100). Backend en main: evento CotizacionAceptada, despachador por consumidor y apertura del archivo. Rama feat/quoting-congela-mayorista-y-trm: quoting congela mayoristaId por linea (de la tarifa; null si no hay) y la TRM de la version (la declara el asesor; origen = moneda de la version, destino = la de la agencia) al guardar o anadir version (ADR-0024 §2). Pasa a done al integrarse en main con el e2e booking-apertura en verde en CI"
+    status: done
+    notes: "Datos en main (migraciones 20261118090000 y 20261118090100). Backend integrado en #290 (evento CotizacionAceptada, despachador por consumidor y apertura del archivo) y #291 (quoting congela mayoristaId por linea y la TRM de la version, ADR-0024 §2), con el e2e booking-apertura en verde en CI"
     depends_on: [T-240]
     acceptance:
       - "Al aceptar una cotizacion se abre su archivo de viaje con numero de file, una sola vez (idempotente por consumidor)"
@@ -5492,6 +5492,8 @@ tasks:
       - packages/database/prisma/migrations
     source: ADR-0024 aceptado el 2026-11-17 (Fase 1, archivo de viaje)
     created_at: 2026-11-17T17:45:00.000Z
+    done_at: 2026-11-17T18:00:00.000Z
+    commit: 31b8eb16491ae3c501ff0108dde402ce77fe264d
     owner: backend
   - id: T-242
     title: "Booking F3: dominio y API del archivo de viaje (estados de reserva, pasajeros, cancelacion)"
@@ -5499,7 +5501,8 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: ready
+    status: in_progress
+    notes: "Rama feat/booking-api-del-archivo: maquina de estados de la reserva en el dominio, las cinco rutas de ADR-0024 §3.7, contratos en packages/contracts/src/archivos.ts, pruebas unitarias y e2e de aislamiento. Pasa a done al integrarse en main con el e2e booking-archivos en verde en CI (no se pudo correr contra Postgres local). PENDIENTE de datos: los permisos archivo.ver y archivo.operar de ADR-0024 §3.7 no existen en el catalogo (hace falta ampliar el CHECK roles_permisos_del_catalogo y sembrarlos en DUENO, ASESOR y OPERACIONES); mientras tanto las mutaciones exigen cotizacion.escribir y la lectura queda abierta a todo miembro, en una sola constante (PERMISO_PARA_OPERAR_ARCHIVOS)"
     depends_on: [T-241]
     acceptance:
       - "Estados PENDIENTE, SOLICITADA, EN_ESPERA, CONFIRMADA (exige time limit), ABONADA_AL_PROVEEDOR (exige fecha de pago total), PAGADA_AL_PROVEEDOR, CAIDA, CANCELADA"
@@ -5607,7 +5610,8 @@ tasks:
     phase: 1
     priority: P1
     effort: S
-    status: ready
+    status: in_progress
+    notes: "Rama feat/booking-api-del-archivo: la lectura (lista, detalle y la respuesta de cada mutacion) omite la clave netoUnidades sin cotizacion.ver_neto_y_margen; prueba con y sin el permiso en operar-archivo.use-case.spec.ts. Pasa a done al integrarse en main"
     depends_on: [T-241]
     acceptance:
       - "La respuesta omite netoUnidades de las reservas salvo con cotizacion.ver_neto_y_margen"
@@ -5618,3 +5622,23 @@ tasks:
     source: auditoria de seguridad T-241, 2026-11-18 (cola R13)
     created_at: 2026-11-18T13:00:00.000Z
     owner: backend
+  - id: T-249
+    title: "Permisos archivo.ver y archivo.operar: ampliar el CHECK del catalogo y sembrarlos"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: S
+    status: ready
+    depends_on: [T-242]
+    acceptance:
+      - "roles_permisos_del_catalogo admite archivo.ver y archivo.operar; PERMISOS de packages/contracts/src/identidad.ts los lista (se editan los dos)"
+      - "DUENO, ASESOR y OPERACIONES de toda agencia existente los reciben (relleno agencia por agencia, como 20261104130000) y la siembra de agencias nuevas tambien"
+      - "ArchivosController exige archivo.ver en las lecturas y archivo.operar en las mutaciones (cambiar PERMISO_PARA_OPERAR_ARCHIVOS y mutaciones-con-permiso.spec.ts)"
+    files:
+      - packages/database/prisma/migrations
+      - packages/database/prisma/siembra-de-tenant.ts
+      - packages/contracts/src/identidad.ts
+      - apps/api/src/modules/booking/interface/archivos.controller.ts
+    source: ADR-0024 §3.7; hallazgo de T-242 (los permisos no existian en el catalogo; migracion de datos, ruta protegida)
+    created_at: 2026-11-17T18:10:00.000Z
+    owner: datos
