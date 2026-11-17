@@ -180,8 +180,18 @@ describe('migración 20261104160000 — historial de estados de la cotización',
     await admin.query('BEGIN');
     try {
       const a = await sembrar();
-      // Estadísticas al día: las e2e escriben en esta tabla en paralelo y, con estadísticas viejas,
-      // el planificador empataba este índice con el UNIQUE (id, tenant_id) y elegía ese (CI de #299).
+      // Con la tabla casi vacía el planificador empata este índice con el UNIQUE (id, tenant_id) y
+      // elige cualquiera (CI de #299 y #302). Se siembra un volumen realista de la agencia, casi todo
+      // en estados que no son ACEPTADA, y se analiza: así el índice por estado es claramente el barato.
+      await fijarTenant(a.tenant);
+      await admin.query(
+        `INSERT INTO cotizacion_cambios_estado
+           (id, tenant_id, cotizacion_id, estado_desde, estado_hasta, usuario_id, ocurrido_en)
+         SELECT gen_random_uuid(), $1, $2, 'BORRADOR'::estado_cotizacion,
+                'ENVIADA'::estado_cotizacion, $3, now() - make_interval(mins => g)
+           FROM generate_series(1, 5000) AS g`,
+        [a.tenant, a.cotizacion, a.usuario],
+      );
       await admin.query('ANALYZE cotizacion_cambios_estado');
       await admin.query('SET LOCAL enable_seqscan = off');
       const plan = await comoApi(a.tenant, async () => {

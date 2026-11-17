@@ -5784,3 +5784,22 @@ tasks:
     source: auditoría de seguridad de T-254 (2026-11-17), hallazgo BAJO
     created_at: 2026-11-17T19:45:00.000Z
     owner: datos
+  - id: T-257
+    title: "Booking: endurecer el historial de reservas y la paginación de la lista de archivos"
+    type: refactor
+    phase: 1
+    priority: P3
+    effort: S
+    status: ready
+    depends_on: [T-250, T-251]
+    acceptance:
+      - "reserva_cambios_estado: INSERT por columnas sin ocurrido_en (o BEFORE INSERT que fuerce now()), como el resto de historiales de solo añadir"
+      - "FK (reserva_id, archivo_id, tenant_id) hacia bookings(id, travel_file_id, tenant_id), junto con T-256"
+      - "La lista de /archivos no deja invisibles los archivos nuevos sin plazo cuando hay más que el límite: paginación por cursor o desempate por número descendente"
+    files:
+      - packages/database/prisma/migrations
+      - apps/api/src/modules/booking
+    source: auditoría de seguridad de T-250/T-251 (2026-11-17), hallazgos BAJO
+    created_at: 2026-11-17T20:50:00.000Z
+    owner: datos
+

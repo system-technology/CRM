@@ -792,7 +792,7 @@ describe('el neto no sale sin cotizacion.ver_neto_y_margen, con sesiones reales 
 
     const reservaPut = await comoMiembro('operaciones', 'PUT', ruta(), {
       estado: 'SOLICITADA',
-      localizador: 'SIN-NETO',
+      localizador: 'LOC-OPERA', // sin «neto» en el texto: la comprobación busca esa palabra
     });
     expect(reservaPut.estado).toBe(200);
     sinNeto(reservaPut.json, 'PUT reserva');
