@@ -180,6 +180,9 @@ describe('migración 20261104160000 — historial de estados de la cotización',
     await admin.query('BEGIN');
     try {
       const a = await sembrar();
+      // Estadísticas al día: las e2e escriben en esta tabla en paralelo y, con estadísticas viejas,
+      // el planificador empataba este índice con el UNIQUE (id, tenant_id) y elegía ese (CI de #299).
+      await admin.query('ANALYZE cotizacion_cambios_estado');
       await admin.query('SET LOCAL enable_seqscan = off');
       const plan = await comoApi(a.tenant, async () => {
         // Literales: EXPLAIN con parámetros enlazados depende del protocolo.
