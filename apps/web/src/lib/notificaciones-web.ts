@@ -18,7 +18,11 @@ import type { PendientesDelDia } from '@viajapro/contracts';
 import type { AlertaOperativa } from './notificaciones-logica';
 
 export type TipoNotificacionWeb =
-  'mensaje_nuevo' | 'seguimiento_vencido' | 'cotizacion_por_vencer' | 'alerta_operativa';
+  | 'mensaje_nuevo'
+  | 'seguimiento_vencido'
+  | 'cotizacion_por_vencer'
+  | 'alerta_operativa'
+  | 'aviso_plazo';
 
 export type SeveridadNotificacion = 'critica' | 'advertencia' | 'informativa';
 
