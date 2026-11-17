@@ -5634,6 +5634,7 @@ tasks:
       - "roles_permisos_del_catalogo admite archivo.ver y archivo.operar; PERMISOS de packages/contracts/src/identidad.ts los lista (se editan los dos)"
       - "DUENO, ASESOR y OPERACIONES de toda agencia existente los reciben (relleno agencia por agencia, como 20261104130000) y la siembra de agencias nuevas tambien"
       - "ArchivosController exige archivo.ver en las lecturas y archivo.operar en las mutaciones (cambiar PERMISO_PARA_OPERAR_ARCHIVOS y mutaciones-con-permiso.spec.ts)"
+      - "Auditoría T-242: hoy cualquier miembro (incluido solo-lectura) lee nombres y edades de menores, y cualquier asesor marca reservas como pagadas; archivo.ver/archivo.operar lo cierran"
     files:
       - packages/database/prisma/migrations
       - packages/database/prisma/siembra-de-tenant.ts
@@ -5642,3 +5643,36 @@ tasks:
     source: ADR-0024 §3.7; hallazgo de T-242 (los permisos no existian en el catalogo; migracion de datos, ruta protegida)
     created_at: 2026-11-17T18:10:00.000Z
     owner: datos
+  - id: T-250
+    title: "Historial de transiciones de reserva (quién pasó a ABONADA/PAGADA y cuándo)"
+    type: feature
+    phase: 1
+    priority: P2
+    effort: S
+    status: ready
+    depends_on: [T-242]
+    acceptance:
+      - "Cada cambio de estado de una reserva deja fila inmutable con estado anterior, nuevo, usuario y fecha, con tenant_id y RLS, como el historial de etapas del CRM"
+    files:
+      - packages/database/prisma/migrations
+      - apps/api/src/modules/booking
+    source: auditoría de seguridad de T-242 (2026-11-17), hallazgo BAJO
+    created_at: 2026-11-17T18:20:00.000Z
+    owner: datos
+  - id: T-251
+    title: "Pruebas de booking: e2e del neto sin permiso por HTTP y fechas relativas a hoy"
+    type: refactor
+    phase: 1
+    priority: P2
+    effort: S
+    status: ready
+    depends_on: [T-242]
+    acceptance:
+      - "Un e2e con un rol sin cotizacion.ver_neto_y_margen comprueba que lista, detalle y mutaciones de /archivos no traen netoUnidades"
+      - "booking-archivos.e2e-spec.ts calcula TIME_LIMIT y tarifas a partir de la fecha actual (hoy caducan en 2027-01/2027-04)"
+      - "La lista de archivos ordena por plazo en la base antes del límite, para que un archivo antiguo con plazo vencido no quede fuera"
+    files:
+      - apps/api/src/modules/booking
+    source: auditoría de seguridad de T-242 (2026-11-17), hallazgos BAJO y funcional
+    created_at: 2026-11-17T18:20:00.000Z
+    owner: backend
