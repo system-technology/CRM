@@ -34,6 +34,7 @@ import {
   OportunidadDeCotizacionNoEncontradaError,
 } from '../domain/errors.js';
 import { exigirAdmiteVersiones, transitar } from '../domain/estado-de-cotizacion.js';
+import { congelarMayoristaPorLinea, congelarTrm } from '../domain/congelar-en-la-version.js';
 import { cotizacionAceptada } from '../domain/eventos.js';
 import { monedaDeLaBase } from '../domain/moneda-de-la-base.js';
 import { armarVersion } from '../domain/version-de-cotizacion.js';
@@ -408,6 +409,26 @@ export class CotizacionesUseCase {
       ...(c.infantesConSilla !== undefined ? { infantesConSilla: c.infantesConSilla } : {}),
     });
 
+    // ADR-0024 §2: el mayorista de cada línea sale de su tarifa y se congela AHORA (la versión es
+    // inmutable; el de la tarifa puede cambiar después). Se lee aquí, con el id de la tarifa, y no
+    // en el cálculo: el mayorista no forma parte de lo que ve quien cotiza.
+    const tarifaIds = [...new Set(v.lineas.map((l) => l.tarifaId))];
+    const tarifas = await tx.tarifa.findMany({
+      where: { tenantId, id: { in: tarifaIds } },
+      select: { id: true, mayoristaId: true },
+    });
+    const lineas = congelarMayoristaPorLinea(
+      v.lineas,
+      new Map(tarifas.map((t) => [t.id, t.mayoristaId])),
+    );
+
+    // ADR-0024 §2: la TRM convierte a la moneda de la agencia; el origen es la de la versión.
+    const agencia = await tx.tenant.findUnique({
+      where: { id: tenantId },
+      select: { monedaIso: true },
+    });
+    const trm = congelarTrm(v.monedaIso, agencia?.monedaIso ?? 'COP', c.trm);
+
     return {
       paqueteId: v.paqueteId,
       paqueteNombre: v.paqueteNombre,
@@ -430,12 +451,17 @@ export class CotizacionesUseCase {
       politicaBase: v.politica.base,
       politicaOrigen: v.politica.origenDeLaVenta,
       politicaRedondeo: v.politica.redondeoVenta,
-      lineas: v.lineas as unknown as object[],
+      lineas: lineas as unknown as object[],
       ventaUnidades: v.ventaUnidades,
       netoUnidades: v.netoUnidades,
       margenUnidades: v.margenUnidades,
       monedaIso: v.monedaIso,
       vigenteHasta: v.vigenteHasta ? new Date(v.vigenteHasta) : null,
+      trmMonedaOrigen: trm?.monedaOrigen ?? null,
+      trmMonedaDestino: trm?.monedaDestino ?? null,
+      trmValor: trm?.valor ?? null,
+      trmFecha: trm ? new Date(trm.fecha) : null,
+      trmFuente: trm?.fuente ?? null,
     };
   }
 }

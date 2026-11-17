@@ -5481,7 +5481,7 @@ tasks:
     priority: P1
     effort: M
     status: in_progress
-    notes: "Datos en main (migraciones 20261118090000 y 20261118090100). Backend: evento CotizacionAceptada, despachador por consumidor y apertura del archivo (rama feat/booking-apertura-del-archivo). Falta que quoting congele mayoristaId por linea y la TRM en la version (ADR-0024 §2)"
+    notes: "Datos en main (migraciones 20261118090000 y 20261118090100). Backend en main: evento CotizacionAceptada, despachador por consumidor y apertura del archivo. Rama feat/quoting-congela-mayorista-y-trm: quoting congela mayoristaId por linea (de la tarifa; null si no hay) y la TRM de la version (la declara el asesor; origen = moneda de la version, destino = la de la agencia) al guardar o anadir version (ADR-0024 §2). Pasa a done al integrarse en main con el e2e booking-apertura en verde en CI"
     depends_on: [T-240]
     acceptance:
       - "Al aceptar una cotizacion se abre su archivo de viaje con numero de file, una sola vez (idempotente por consumidor)"

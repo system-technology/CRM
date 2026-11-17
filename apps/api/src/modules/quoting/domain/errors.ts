@@ -288,3 +288,14 @@ export class NetoSinPermisoError extends ProhibidoError {
     super('Importar precios netos exige el permiso cotizacion.ver_neto_y_margen');
   }
 }
+
+/**
+ * Llegó una TRM en una versión que ya está en la moneda de la agencia (ADR-0024 §2): no hay nada
+ * que convertir, y la base lo rechazaría (origen ≠ destino). Es error de la petición.
+ */
+export class TrmInnecesariaError extends InvariantError {
+  readonly code = 'TRM_INNECESARIA';
+  constructor(readonly moneda: string) {
+    super(`La versión ya está en ${moneda}, la moneda de la agencia: no lleva TRM`);
+  }
+}
