@@ -10,6 +10,9 @@ import {
 } from '../application/puertos-de-archivos.js';
 import type { ArchivoPorAbrir } from '../domain/archivo-de-viaje.js';
 
+/** Cuánto espera una apertura el candado del número de file antes de rendirse (55P03). */
+const ESPERA_MAXIMA_DEL_BLOQUEO = '5s';
+
 /** `AAAA-MM-DD` a la medianoche UTC: las columnas `date` no tienen zona (R9). */
 const aDia = (iso: string): Date => new Date(`${iso}T00:00:00.000Z`);
 
@@ -26,6 +29,10 @@ export class RepositorioDeArchivosPrisma extends RepositorioDeArchivos {
     // de UNA agencia (otras agencias no se esperan): sin él, dos aperturas a la vez calcularían el
     // mismo número, una chocaría con el UNIQUE y gastaría un intento de entrega. `$executeRaw` y
     // no `$queryRaw`: la función devuelve `void`, que Prisma no sabe deserializar.
+    // `lock_timeout` local a la transacción: si otra apertura retiene el candado demasiado, la nuestra
+    // falla con 55P03 (transitorio para el despachador: no gasta intento) en vez de agotar la
+    // transacción interactiva de Prisma (P2028).
+    await tx.$executeRaw`SELECT set_config('lock_timeout', ${ESPERA_MAXIMA_DEL_BLOQUEO}, true)`;
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`travel_files:${tenantId}`}, 0))`;
 
     // Idempotencia por cotización (segunda red; la primera es la fila de `entregas_de_eventos`).

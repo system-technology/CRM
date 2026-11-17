@@ -15,7 +15,9 @@
  *      abandonado: no hace nada. Dos réplicas a la vez no duplican: el reclamo es atómico.
  *   3. Con fila, corre el consumidor con el MISMO `tx`: efecto y `entregado_en` se confirman juntos.
  *   4. Si el consumidor lanza, todo revierte y otra transacción corta suma `intentos` y guarda solo
- *      el CÓDIGO del error (nunca el mensaje: puede traer datos). A los 10, se abandona.
+ *      el CÓDIGO del error (nunca el mensaje: puede traer datos). A los 10, se abandona. Un error
+ *      TRANSITORIO de infraestructura (conexión caída, bloqueo vencido, interbloqueo…) no suma
+ *      intento: se registra el código en el log y se reintenta en la siguiente pasada.
  *   5. El fallo de un evento no impide los siguientes ni toca la fila de otro consumidor.
  */
 import { Logger } from '@nestjs/common';
@@ -52,6 +54,53 @@ export function codigoDeError(error: unknown): string {
   return 'ERROR_DESCONOCIDO';
 }
 
+/** Códigos de Prisma que indican un fallo pasajero de la infraestructura, no del evento. */
+const PRISMA_TRANSITORIOS = new Set([
+  'P1001',
+  'P1002',
+  'P1008',
+  'P1017',
+  'P2024',
+  'P2028',
+  'P2034',
+]);
+/** SQLSTATE de Postgres: fallo de serialización, interbloqueo y bloqueo no disponible. */
+const POSTGRES_TRANSITORIOS = new Set(['40001', '40P01', '55P03']);
+
+/**
+ * El código EFECTIVO de un error: en una consulta cruda Prisma lo envuelve en `P2010` y deja el
+ * SQLSTATE en `meta.code`; ese es el que importa. Solo códigos, nunca el mensaje.
+ */
+export function codigoEfectivo(error: unknown): string {
+  if (typeof error === 'object' && error !== null) {
+    const meta = (error as { meta?: unknown }).meta;
+    if (typeof meta === 'object' && meta !== null) {
+      const c = (meta as { code?: unknown }).code;
+      if (typeof c === 'string' && POSTGRES_TRANSITORIOS.has(c)) return c;
+    }
+  }
+  return codigoDeError(error);
+}
+
+/**
+ * ¿Es un fallo pasajero de la infraestructura (no del evento)? Estos NO cuentan como intento hacia
+ * el abandono: reintentarlos en la siguiente pasada es lo correcto.
+ */
+export function esErrorTransitorio(error: unknown): boolean {
+  const c = codigoEfectivo(error);
+  if (PRISMA_TRANSITORIOS.has(c) || POSTGRES_TRANSITORIOS.has(c)) return true;
+  // Un SQLSTATE puede llegar solo en el texto (p. ej. el de `lock_timeout` vencido).
+  const texto = error instanceof Error ? error.message : '';
+  return /\b(40001|40P01|55P03)\b|lock timeout|deadlock detected/i.test(texto);
+}
+
+/** La lista empezando en `desde` (módulo su longitud), sin perder ni repetir ningún elemento. */
+export function rotar<T>(lista: readonly T[], desde: number): T[] {
+  if (lista.length === 0) return [];
+  const n = ((desde % lista.length) + lista.length) % lista.length;
+  return [...lista.slice(n), ...lista.slice(0, n)];
+}
+
 const contextoDeSistema = (tenantId: string) => ({
   tenantId,
   usuarioId: null,
@@ -62,6 +111,8 @@ const contextoDeSistema = (tenantId: string) => ({
 
 export class DespachadorDeConsumidor {
   private readonly log: Logger;
+  /** Desde qué agencia empieza la próxima pasada: avanza para que ninguna se quede al final. */
+  private desplazamiento = 0;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -86,7 +137,10 @@ export class DespachadorDeConsumidor {
         FROM public.tenants_con_eventos_por_entregar(
                ${this.consumidor.nombre}::text, ${this.consumidor.tipoEvento}::text) AS f`;
     let entregados = 0;
-    for (const { tenant_id } of filas) {
+    const ids = filas.map((f) => f.tenant_id);
+    const orden = rotar(ids, this.desplazamiento);
+    this.desplazamiento = ids.length === 0 ? 0 : (this.desplazamiento + 1) % ids.length;
+    for (const tenant_id of orden) {
       try {
         entregados += await this.despacharTenant(tenant_id);
       } catch (error) {
@@ -165,7 +219,14 @@ export class DespachadorDeConsumidor {
 
   /** En una transacción corta aparte: la del intento ya revirtió. No lanza. */
   private async registrarFallo(tenantId: string, outboxId: bigint, error: unknown): Promise<void> {
-    const codigo = codigoDeError(error);
+    const codigo = codigoEfectivo(error);
+    if (esErrorTransitorio(error)) {
+      this.log.warn(
+        `Fallo transitorio, no cuenta como intento; se reintenta en la siguiente pasada ` +
+          `(evento ${outboxId}, ${codigo}).`,
+      );
+      return;
+    }
     try {
       const filas = await this.prisma.conTenant(
         (tx) =>
@@ -186,8 +247,17 @@ export class DespachadorDeConsumidor {
       );
       const r = filas[0];
       if (r?.abandonada) {
+        // Una línea estructurada y sin PII: solo códigos e ids. Es la alerta de abandono mientras no
+        // haya métrica (exigiría una función SECURITY DEFINER: queda en la cola, T-247).
         this.log.error(
-          `Entrega ABANDONADA tras ${r.intentos} intentos (evento ${outboxId}, ${codigo}).`,
+          JSON.stringify({
+            evento: 'entrega_abandonada',
+            consumidor: this.consumidor.nombre,
+            tenantId,
+            outboxId: String(outboxId),
+            intentos: r.intentos,
+            codigo,
+          }),
         );
       } else {
         this.log.warn(`Entrega fallida, se reintentará (evento ${outboxId}, ${codigo}).`);
