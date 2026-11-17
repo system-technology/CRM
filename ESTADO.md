@@ -20,7 +20,7 @@
 
 ## 1. Dónde estamos
 
-Verificado el 2026-11-16 sobre `origin/main` (`a7fb3d5`, PR #279) con `git log` y `roadmap/tasks.yaml`.
+Verificado el 2026-11-17 sobre `origin/main` (`68c3c38`, PR #293) con `git log`, `gh` y `roadmap/tasks.yaml`.
 Fuente de la corrección de rumbo: [auditoría integral 2026-11-15](docs/_auditorias/2026-11-15-auditoria-integral.md)
 y su [plan](docs/08-roadmap/02-plan-correccion-auditoria-2026-11-15.md). Entrada del día:
 [bitácora](docs/_bitacora/2026-11-15-mvp-en-navegador-y-cierre-de-auditoria.md).
@@ -49,9 +49,11 @@ entrado. Seguimos en local.
 | Motivos de pérdida por agencia: la agencia los gestiona en Configuración, el pipeline los ofrece al cerrar como perdida, un motivo de otra agencia da 404; motivos propios con nota; motivo desactivado rechazado también en la base | PR #271 y #272; `motivos-de-perdida.e2e-spec.ts`, `aislamiento.spec.ts` |
 | Arranque seguro del cifrado: la API, el trabajador y el modo único abortan si hay datos con una versión de clave que no tienen, **antes** de que ningún consumidor o planificador tome trabajo | PR #273 y #274; `comprobacion-al-arrancar.spec.ts` |
 | La agencia ve y cambia su zona horaria en Configuración, con permiso de dueño o administrador; la base lo hace con una función de permisos mínimos que solo toca la agencia propia | PR #277 (ADR-0027), #278 y #279; `agencia-ajustes.e2e-spec.ts`, Z1–Z5 de `aislamiento.spec.ts` |
+| **Archivo de viaje (Booking, ADR-0024 Fase 1):** al aceptar una cotización, un evento `CotizacionAceptada` por outbox y un despachador por consumidor (modo único y escalado) abren el archivo con número de file por agencia y una reserva por mayorista con la TRM congelada; API `/api/v1/archivos` con estados de reserva, pasajeros y cancelación; el neto solo con `cotizacion.ver_neto_y_margen`; pantalla Reservas en `/viajes` con datos reales | PR #290–#293; `booking-apertura.e2e-spec.ts`, `booking-archivos.e2e-spec.ts` (aislamiento entre agencias en lectura y en cada mutación). Dos auditorías de seguridad sin bloqueantes. **La pantalla no se ha visto contra la API real en un navegador** |
+| Modo demo sin dominio (opción C): la web en `*.vercel.app` reescribe `/api/v1` y el tiempo real (long-polling) a la API en Render | PR #289; [guía](docs/07-ingenieria/despliegue-neon-vercel-render.md). **Sin probar contra Vercel real** |
 | Dependencias: `pnpm audit` de producción pasó de 3 críticas y 15 altas a 0 y 1 (queda zod v3; zod 4 lo decide el propietario) | PR #267 |
 
-El repositorio tiene 40 migraciones. Cifras de pruebas: no se midieron en esta sesión y no se repiten.
+El repositorio tiene 43 migraciones. Cifras de pruebas: no se midieron en esta sesión y no se repiten.
 
 **Defecto real que halló la suite:** la bandeja nunca ofrecía cotizaciones para enviar con la API real,
 porque la ficha de CRM las trae vacías (R4). Ahora la bandeja las pide a `quoting`. Antes, la suite
@@ -64,7 +66,7 @@ Postmark real; las migraciones contra una base de producción (solo corren en el
 
 | Qué | Cómo |
 |---|---|
-| `/configuracion`: SLA y plantillas oficiales; `/viajes` | `mock-configuracion.ts`, `mock-plantillas.ts`, `mock-viajes.ts`; no hay endpoint de plantillas |
+| `/configuracion`: SLA y plantillas oficiales | `mock-configuracion.ts`, `mock-plantillas.ts`; no hay endpoint de plantillas. `mock-viajes.ts` solo lo usan aún el buscador global y las notificaciones de demo |
 | Campos personalizados, respuestas rápidas, filtros guardados, onboarding, preferencias de notificación | Solo `localStorage` |
 | Con `.env.example` | Trae `NEXT_PUBLIC_USE_REAL_CRM`, `USE_REAL_INBOX` y `USE_REAL_AUTH` en `true`; el valor `false` vuelve a la maqueta |
 
@@ -75,7 +77,8 @@ Postmark real; las migraciones contra una base de producción (solo corren en el
 | Despliegue de staging **configurado y sin ejecutar**: Neon + web en Vercel + API en un solo proceso en Render (ADR-0028). Falta que el propietario siga la guía de paneles; hasta entonces `Deploy staging` falla en voz alta por falta de secretos | [guía](docs/07-ingenieria/despliegue-neon-vercel-render.md), T-079, T-239 |
 | Operación antes del piloto: respaldo, costo y rotación de claves, **propuestas sin ensayar** | [`docs/06-operacion/`](docs/06-operacion/) |
 | Políticas de seguridad: borrador sin aprobar | [`docs/05-seguridad/00-indice-de-politicas.md`](docs/05-seguridad/00-indice-de-politicas.md) |
-| ADR-0023 (fiscal) y ADR-0024: propuestos. Las fuentes de la DIAN del 0023 **no están verificadas** | [`docs/03-adr/`](docs/03-adr/) |
+| Permisos `archivo.ver` / `archivo.operar` (ADR-0024 §3.7): hoy las mutaciones de reservas exigen `cotizacion.escribir` y la lectura cualquier miembro | T-249 (datos) |
+| ADR-0023 (fiscal): propuesto. Las fuentes de la DIAN del 0023 **no están verificadas** | [`docs/03-adr/`](docs/03-adr/) |
 
 ### Lo que NO existe
 
@@ -83,7 +86,7 @@ Postmark real; las migraciones contra una base de producción (solo corren en el
 - **Un mensaje de celular real visto en la bandeja, ni una respuesta recibida en el celular.**
 - **Plantilla de reapertura** fuera de la ventana de 24 h (T-078), **verificación del negocio en Meta** (T-080), Tech Provider.
 - **Derechos del titular** (T-097), aviso de privacidad aprobado (T-093), RNBD (T-098).
-- **API pública por claves e ingesta con IA** del catálogo (T-053 a T-058); **pagos**, **automatizaciones**, archivos de viaje reales; continuación tras `ACEPTADA` (A17).
+- **API pública por claves e ingesta con IA** del catálogo (T-053 a T-058); **pagos**, **automatizaciones**; plazos y avisos del archivo de viaje (T-244), historial de transiciones de reserva (T-250).
 - Una agencia real con datos reales (criterio C1–C5 del roadmap v2).
 
 ## 2. Cómo se trabaja
