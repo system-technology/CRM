@@ -27,6 +27,18 @@ const POR_DEFECTO_MS = 60 * 60 * 1000;
 const MINIMO_MS = 1_000;
 
 /** `DESPACHO_INTERVALO_MS`: entero ≥ 1000. Ausente = 60 min; presente e inválido = no arranca. */
+/**
+ * `DESPACHO_BARRIDO`: `inerte` apaga el barrido al arrancar y el periódico; el aviso en memoria
+ * sigue. Ausente = activo; otro valor = no arranca. Lo usan las e2e, que comparten base: el
+ * barrido de un proceso de pruebas entregaría eventos de los fixtures de otro archivo.
+ */
+export function barridoDeDespachoActivo(entorno: Record<string, string | undefined>): boolean {
+  const crudo = entorno['DESPACHO_BARRIDO'];
+  if (crudo === undefined || crudo === '') return true;
+  if (crudo === 'inerte') return false;
+  throw new Error(`DESPACHO_BARRIDO='${crudo}' no es válido: solo 'inerte' o ausente.`);
+}
+
 export function intervaloDeDespacho(entorno: Record<string, string | undefined>): number {
   const crudo = entorno['DESPACHO_INTERVALO_MS'];
   if (crudo === undefined || crudo === '') return POR_DEFECTO_MS;
@@ -62,6 +74,12 @@ export class PlanificadorDeDespacho
       .todos()
       .map((c) => new DespachadorDeConsumidor(this.prisma, c));
     if (this.despachadores.length === 0) return;
+    if (!barridoDeDespachoActivo(process.env)) {
+      this.log.log(
+        'Barrido de eventos de dominio inerte (DESPACHO_BARRIDO=inerte): solo el aviso.',
+      );
+      return;
+    }
     const intervalo = intervaloDeDespacho(process.env);
     this.temporizador = setInterval(() => void this.pasada(), intervalo);
     // El proceso lo retiene el servidor HTTP, no este temporizador.

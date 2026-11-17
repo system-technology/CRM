@@ -8,7 +8,11 @@ import { DomainError } from '@viajapro/domain';
 import type { PrismaService } from '../prisma/prisma.service.js';
 import type { ConsumidorDeEventos } from './consumidor-de-eventos.js';
 import { codigoDeError } from './despachador-de-consumidor.js';
-import { intervaloDeDespacho, PlanificadorDeDespacho } from './planificador-de-despacho.js';
+import {
+  barridoDeDespachoActivo,
+  intervaloDeDespacho,
+  PlanificadorDeDespacho,
+} from './planificador-de-despacho.js';
 import { RegistroDeConsumidores } from './registro-de-consumidores.js';
 
 const consumidor = (nombre: string, tipoEvento = 'quoting.cotizacion_aceptada') =>
@@ -83,6 +87,19 @@ describe('intervaloDeDespacho', () => {
   });
   it.each(['abc', '10', '1.5', '-5'])('«%s» no es válido: no arranca', (v) => {
     expect(() => intervaloDeDespacho({ DESPACHO_INTERVALO_MS: v })).toThrow(/no es válido/);
+  });
+});
+
+describe('barridoDeDespachoActivo', () => {
+  it('sin variable: activo', () => {
+    expect(barridoDeDespachoActivo({})).toBe(true);
+    expect(barridoDeDespachoActivo({ DESPACHO_BARRIDO: '' })).toBe(true);
+  });
+  it('«inerte» lo apaga', () => {
+    expect(barridoDeDespachoActivo({ DESPACHO_BARRIDO: 'inerte' })).toBe(false);
+  });
+  it('otro valor no arranca', () => {
+    expect(() => barridoDeDespachoActivo({ DESPACHO_BARRIDO: 'apagado' })).toThrow(/no es válido/);
   });
 });
 

@@ -109,7 +109,14 @@ export const MOCK_SESION_UNICA_AGENCIA: SesionActualTipo = {
   acceso: {
     usuarioId: '01932000-0000-7000-8000-000000000011',
     rol: 'Asesor Comercial',
-    permisos: ['conversaciones.ver_todas', 'bandeja.operar', 'crm.escribir', 'cotizacion.escribir'],
+    permisos: [
+      'conversaciones.ver_todas',
+      'bandeja.operar',
+      'crm.escribir',
+      'cotizacion.escribir',
+      'archivo.ver',
+      'archivo.operar',
+    ],
   },
 };
 
@@ -144,7 +151,25 @@ export const MOCK_SESION_DUENO: SesionActualTipo = {
       'bandeja.operar',
       'crm.escribir',
       'cotizacion.escribir',
+      'archivo.ver',
+      'archivo.operar',
     ],
+  },
+};
+
+/** Operaciones: solo lectura salvo el archivo de viaje (misma concesión que la API, T-249). */
+export const MOCK_SESION_OPERACIONES: SesionActualTipo = {
+  identidad: {
+    id: '01932000-0000-7000-8000-000000000004',
+    correo: 'operaciones@viajapro.com',
+    nombre: 'Operaciones ViajaPro',
+  },
+  agencias: [MOCK_AGENCIA_PRINCIPAL],
+  tenantActivoId: MOCK_AGENCIA_PRINCIPAL.id,
+  acceso: {
+    usuarioId: '01932000-0000-7000-8000-000000000044',
+    rol: 'Operaciones',
+    permisos: ['conversaciones.ver_todas', 'archivo.ver', 'archivo.operar'],
   },
 };
 
@@ -319,6 +344,8 @@ export async function cambiarAgenciaActivaApi(tenantId: string): Promise<SesionA
           'bandeja.operar',
           'crm.escribir',
           'cotizacion.escribir',
+          'archivo.ver',
+          'archivo.operar',
         ],
       },
     };
