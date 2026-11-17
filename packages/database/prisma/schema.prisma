@@ -92,6 +92,7 @@ model Tenant {
   reservas          Booking[]
   pasajeros         Passenger[]
   entregasDeEventos EventDelivery[]
+  notificaciones    Notification[]
 
   roles            Rol[]
   formatosDeViaje  FormatoDeViaje[]
@@ -511,6 +512,7 @@ model Usuario {
   reservasActualizadas         Booking[]                @relation("BookingActualizadoPor")
   pasajerosCreados             Passenger[]              @relation("PassengerCreadoPor")
   pasajerosActualizados        Passenger[]              @relation("PassengerActualizadoPor")
+  notificaciones               Notification[]
 
   @@unique([tenantId, correo])
   @@unique([tenantId, identidadId])
@@ -1656,7 +1658,8 @@ model Outbox {
   /// Índice parcial: el relay solo busca lo no publicado, que es una fracción diminuta
   /// de la tabla. Sin `where`, el índice crecería con todo el histórico.
   /// El registro de entrega por consumidor de dominio (ADR-0024 §1).
-  entregas EventDelivery[]
+  entregas       EventDelivery[]
+  notificaciones Notification[]
 
   /// Destino de la foránea COMPUESTA de `entregas_de_eventos` (ADR-0024 §1).
   @@unique([id, tenantId])
@@ -2415,8 +2418,9 @@ model TravelFile {
   creadoPor        Usuario? @relation("TravelFileCreadoPor", fields: [creadoPorId, tenantId], references: [id, tenantId], onDelete: NoAction, onUpdate: Restrict)
   actualizadoPor   Usuario? @relation("TravelFileActualizadoPor", fields: [actualizadoPorId, tenantId], references: [id, tenantId], onDelete: NoAction, onUpdate: Restrict)
 
-  reservas  Booking[]
-  pasajeros Passenger[]
+  reservas       Booking[]
+  pasajeros      Passenger[]
+  notificaciones Notification[]
 
   @@unique([id, tenantId])
   @@unique([tenantId, numero])
@@ -2481,6 +2485,8 @@ model Booking {
   actualizadoPorId String?  @map("actualizado_por") @db.Uuid
   creadoPor        Usuario? @relation("BookingCreadoPor", fields: [creadoPorId, tenantId], references: [id, tenantId], onDelete: NoAction, onUpdate: Restrict)
   actualizadoPor   Usuario? @relation("BookingActualizadoPor", fields: [actualizadoPorId, tenantId], references: [id, tenantId], onDelete: NoAction, onUpdate: Restrict)
+
+  notificaciones Notification[]
 
   @@unique([id, tenantId])
   @@index([tenantId, travelFileId])
@@ -2549,4 +2555,55 @@ model EventDelivery {
 
   @@id([tenantId, outboxId, consumidor])
   @@map("entregas_de_eventos")
+}
+
+/// Los avisos de plazo del archivo de viaje (T-254, ADR-0024 §3.6), uno por evento del outbox.
+/// `booking.time_limit_proximo|vencido` y `booking.pago_total_proximo|vencido`.
+enum NotificationType {
+  TIME_LIMIT_PROXIMO
+  TIME_LIMIT_VENCIDO
+  PAGO_TOTAL_PROXIMO
+  PAGO_TOTAL_VENCIDO
+
+  @@map("tipo_notificacion")
+}
+
+/// Notificación en la aplicación para un usuario de la agencia (contexto `notifications`, T-254).
+/// Una por `(evento, destinatario)`: `UNIQUE (tenant_id, outbox_id, usuario_id)`. Sin columnas de
+/// texto: ids, el número de file (entero), el tipo y el plazo. Solo la lista y la marca su
+/// destinatario. Sin DELETE para la aplicación: se marca leída.
+///
+/// En SQL la foránea del evento es `SET NULL ("outbox_id")` (la notificación sobrevive a una purga
+/// del outbox), que Prisma no modela. El índice parcial `notificaciones_no_leidas_idx`
+/// (`WHERE leida_en IS NULL`) tampoco.
+model Notification {
+  id       String @id @default(uuid(7)) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  usuarioId String  @map("usuario_id") @db.Uuid
+  usuario   Usuario @relation(fields: [usuarioId, tenantId], references: [id, tenantId], onDelete: NoAction, onUpdate: Restrict)
+
+  tipo     NotificationType
+  outboxId BigInt?          @map("outbox_id")
+  outbox   Outbox?          @relation(fields: [outboxId, tenantId], references: [id, tenantId], onDelete: SetNull, onUpdate: Restrict)
+
+  archivoId String     @map("archivo_id") @db.Uuid
+  archivo   TravelFile @relation(fields: [archivoId, tenantId], references: [id, tenantId], onDelete: NoAction, onUpdate: Restrict)
+  reservaId String     @map("reserva_id") @db.Uuid
+  reserva   Booking    @relation(fields: [reservaId, tenantId], references: [id, tenantId], onDelete: NoAction, onUpdate: Restrict)
+
+  /// Copia del número legible del file (> 0).
+  archivoNumero Int       @map("archivo_numero")
+  /// R9: el plazo vigilado, UTC.
+  venceEn       DateTime  @map("vence_en") @db.Timestamptz(3)
+  leidaEn       DateTime? @map("leida_en") @db.Timestamptz(3)
+  creadoEn      DateTime  @default(now()) @map("creado_en") @db.Timestamptz(3)
+
+  @@unique([id, tenantId])
+  @@unique([tenantId, outboxId, usuarioId])
+  @@index([tenantId, usuarioId, creadoEn(sort: Desc)])
+  @@index([tenantId, archivoId])
+  @@index([tenantId, reservaId])
+  @@map("notificaciones")
 }
