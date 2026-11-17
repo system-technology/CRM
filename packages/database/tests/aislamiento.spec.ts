@@ -6580,6 +6580,9 @@ const COLUMNAS_DE_TEXTO_DECLARADAS: readonly string[] = [
   'versiones_cotizacion.destino',
   'versiones_cotizacion.moneda_iso',
   'versiones_cotizacion.paquete_nombre',
+  // T-241: códigos ISO-4217 de la TRM de la versión, sin PII.
+  'versiones_cotizacion.trm_moneda_destino',
+  'versiones_cotizacion.trm_moneda_origen',
 ];
 
 describe('ADR-0015 — cifrado de las columnas con PII sensible', () => {
