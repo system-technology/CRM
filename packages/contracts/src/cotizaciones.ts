@@ -23,6 +23,39 @@ export const EstadoCotizacion = z.enum(['BORRADOR', 'ENVIADA', 'ACEPTADA', 'RECH
 export type EstadoCotizacion = z.infer<typeof EstadoCotizacion>;
 
 /**
+ * La TRM de una versión (ADR-0024 §2): unidades de la moneda de la agencia por 1 de la moneda de
+ * las tarifas. **Referencial**: la tasa que se paga se congela en cada abono, no aquí.
+ *
+ * Quien guarda manda solo `valor`, `fecha` y `fuente`: el origen es la moneda de la versión y el
+ * destino la de la agencia, y los pone el servidor. `valor` es un decimal exacto en texto (hasta 6
+ * decimales, como `numeric(18,6)`): nunca un `number`.
+ */
+export const FuenteDeTrm = z.enum(['OFICIAL', 'AGENCIA']);
+export type FuenteDeTrm = z.infer<typeof FuenteDeTrm>;
+
+export const TrmDeEntrada = z
+  .object({
+    valor: z
+      .string()
+      .regex(/^\d{1,12}(\.\d{1,6})?$/, 'debe ser un decimal en texto, hasta 6 decimales')
+      .refine((v) => Number(v) > 0, 'debe ser mayor que cero'),
+    fecha: FechaViaje,
+    fuente: FuenteDeTrm.default('AGENCIA'),
+  })
+  .strict();
+export type TrmDeEntrada = z.infer<typeof TrmDeEntrada>;
+
+/** La TRM congelada, tal como se lee de la versión. */
+export const TrmDeVersion = z.object({
+  monedaOrigen: z.string().regex(/^[A-Z]{3}$/),
+  monedaDestino: z.string().regex(/^[A-Z]{3}$/),
+  valor: z.string(),
+  fecha: FechaViaje,
+  fuente: FuenteDeTrm,
+});
+export type TrmDeVersion = z.infer<typeof TrmDeVersion>;
+
+/**
  * Lo que define una versión: QUÉ se cotiza. Es la misma composición que acepta
  * `POST /api/v1/catalogo/cotizar`, sin `incluirMargen` (guardar siempre calcula el margen, para
  * poder conservarlo; leerlo es otra decisión) y con la vigencia de la oferta al cliente.
@@ -44,6 +77,11 @@ export const ComposicionDeVersion = z
     opcionDeSalidaId: Id.optional(),
     /** Hasta cuándo se honra el precio al cliente. Opcional: no todas las ofertas vencen. */
     vigenteHasta: FechaViaje.optional(),
+    /**
+     * Solo si la versión está en una moneda distinta de la de la agencia (ADR-0024 §2). Si falta,
+     * la versión queda sin TRM: el sistema no inventa una tasa.
+     */
+    trm: TrmDeEntrada.optional(),
   })
   .strict()
   .superRefine(coherenciaDeEdades);
@@ -131,6 +169,9 @@ export const VersionDeCotizacion = z.object({
   margen: Dinero.nullable().optional(),
 
   vigenteHasta: FechaViaje.nullable(),
+
+  /** La TRM congelada con la versión (ADR-0024 §2). `null` = sin TRM. Opcional por compatibilidad. */
+  trm: TrmDeVersion.nullable().optional(),
 });
 export type VersionDeCotizacion = z.infer<typeof VersionDeCotizacion>;
 

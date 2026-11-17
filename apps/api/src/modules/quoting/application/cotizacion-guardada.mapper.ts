@@ -15,6 +15,17 @@ import { monedaDeLaBase } from '../domain/moneda-de-la-base.js';
 
 const aFecha = (d: Date): string => d.toISOString().slice(0, 10);
 
+/**
+ * El mayorista de cada línea se congela para `booking` (ADR-0024 §2) y NO sale por la API: quién
+ * le vende a la agencia es información interna, y sale en la misma bolsa que el neto.
+ */
+function sinMayorista(lineas: CotizacionDeSalida['lineas']): CotizacionDeSalida['lineas'] {
+  return lineas.map((l) => {
+    const { mayoristaId: _m, ...resto } = l as typeof l & { mayoristaId?: unknown };
+    return resto;
+  });
+}
+
 function sinMargen(lineas: CotizacionDeSalida['lineas']): CotizacionDeSalida['lineas'] {
   return lineas.map((l) => {
     const { margen: _m, margenPorcentaje: _p, ...resto } = l;
@@ -27,7 +38,7 @@ export function aVersionDeCotizacion(
   incluirMargen: boolean,
 ): VersionDeCotizacion {
   const moneda = monedaDeLaBase(v.monedaIso);
-  const lineas = v.lineas as unknown as CotizacionDeSalida['lineas'];
+  const lineas = sinMayorista(v.lineas as unknown as CotizacionDeSalida['lineas']);
   const dinero = (u: bigint | null) => (u === null ? null : { unidades: u.toString(), moneda });
 
   return {
@@ -65,6 +76,16 @@ export function aVersionDeCotizacion(
     venta: { unidades: v.ventaUnidades.toString(), moneda },
     ...(incluirMargen ? { neto: dinero(v.netoUnidades), margen: dinero(v.margenUnidades) } : {}),
     vigenteHasta: v.vigenteHasta ? aFecha(v.vigenteHasta) : null,
+    trm:
+      v.trmMonedaOrigen && v.trmMonedaDestino && v.trmValor && v.trmFecha && v.trmFuente
+        ? {
+            monedaOrigen: v.trmMonedaOrigen,
+            monedaDestino: v.trmMonedaDestino,
+            valor: v.trmValor.toFixed(6),
+            fecha: aFecha(v.trmFecha),
+            fuente: v.trmFuente,
+          }
+        : null,
   };
 }
 
