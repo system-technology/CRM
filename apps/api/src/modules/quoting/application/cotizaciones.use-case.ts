@@ -24,6 +24,7 @@ import type {
 } from '@viajapro/contracts';
 import { POLITICA_POR_DEFECTO } from '@viajapro/domain';
 import { PrismaService, type ClienteTenant } from '../../../shared/prisma/prisma.service.js';
+import { PuertoAvisoDeEventosDeDominio } from '../../../shared/puertos/puertos-de-eventos-de-dominio.js';
 import { PuertoReferenciasDeCrm } from '../../../shared/puertos/puertos-hacia-crm.js';
 import { ContextoTenant } from '../../../shared/tenant/contexto-tenant.js';
 import {
@@ -33,6 +34,7 @@ import {
   OportunidadDeCotizacionNoEncontradaError,
 } from '../domain/errors.js';
 import { exigirAdmiteVersiones, transitar } from '../domain/estado-de-cotizacion.js';
+import { cotizacionAceptada } from '../domain/eventos.js';
 import { monedaDeLaBase } from '../domain/moneda-de-la-base.js';
 import { armarVersion } from '../domain/version-de-cotizacion.js';
 import { aCotizacionGuardada } from './cotizacion-guardada.mapper.js';
@@ -117,6 +119,8 @@ export class CotizacionesUseCase {
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(CotizarSalidaUseCase) private readonly cotizar: CotizarSalidaUseCase,
     @Inject(PuertoReferenciasDeCrm) private readonly crm: PuertoReferenciasDeCrm,
+    @Inject(PuertoAvisoDeEventosDeDominio)
+    private readonly avisoDeEventos: PuertoAvisoDeEventosDeDominio,
   ) {}
 
   async guardar(entrada: GuardarCotizacion, incluirMargen: boolean): Promise<CotizacionGuardada> {
@@ -217,9 +221,16 @@ export class CotizacionesUseCase {
   async cambiarEstado(cotizacionId: string, nuevo: EstadoCotizacion): Promise<CotizacionGuardada> {
     const { tenantId } = ContextoTenant.obtener();
 
-    return this.prisma.conTenant(async (tx) => {
-      const bloqueada = await tx.$queryRaw<Array<{ estado: EstadoCotizacion }>>`
-        SELECT estado FROM cotizaciones
+    const guardada = await this.prisma.conTenant(async (tx) => {
+      const bloqueada = await tx.$queryRaw<
+        Array<{
+          estado: EstadoCotizacion;
+          contacto_id: string;
+          oportunidad_id: string | null;
+          version_enviada: number | null;
+        }>
+      >`
+        SELECT estado, contacto_id, oportunidad_id, version_enviada FROM cotizaciones
          WHERE id = ${cotizacionId}::uuid AND tenant_id = ${tenantId}::uuid
            AND eliminado_en IS NULL
            FOR UPDATE`;
@@ -246,8 +257,38 @@ export class CotizacionesUseCase {
         data: { estado: nuevo, ...envio },
       });
 
+      // ADR-0024 §1: el evento de aceptación va al outbox en ESTA transacción, con el cambio de
+      // estado y su fila de historial. Si algo falla, ni la aceptación ni el evento existen. Nada
+      // se publica desde aquí: el despachador lo entrega después, por consumidor.
+      if (nuevo === 'ACEPTADA') {
+        const evento = cotizacionAceptada({
+          cotizacionId,
+          versionEnviada: fila.version_enviada,
+          contactoId: fila.contacto_id,
+          oportunidadId: fila.oportunidad_id,
+          aceptadaPorUsuarioId: ContextoTenant.obtener().usuarioId,
+          aceptadaEn: new Date(),
+        });
+        await tx.outbox.create({
+          data: {
+            tenantId,
+            agregado: evento.agregado,
+            agregadoId: evento.agregadoId,
+            tipoEvento: evento.tipoEvento,
+            versionEvento: evento.versionEvento,
+            payload: evento.payload,
+          },
+          select: { id: true },
+        });
+      }
+
       return this.leerEn(tx, tenantId, cotizacionId, false);
     });
+
+    // Ya confirmado: la pista en memoria para despachar esta agencia enseguida. Si se pierde, el
+    // barrido del despachador lo recoge.
+    if (nuevo === 'ACEPTADA') this.avisoDeEventos.avisar(tenantId);
+    return guardada;
   }
 
   /**

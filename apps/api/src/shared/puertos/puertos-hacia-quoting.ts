@@ -40,3 +40,68 @@ export abstract class PuertoCotizacionParaWhatsapp {
     version: number | undefined,
   ): Promise<CotizacionParaWhatsapp | null>;
 }
+
+/** Una línea de la versión aceptada, con lo único que `booking` necesita de ella. */
+export interface LineaDeVersionAceptada {
+  /** El mayorista congelado en la línea. `null` = la línea no lo trae (cae en «por definir»). */
+  mayoristaId: string | null;
+  mayoristaNombre: string | null;
+  /** R8: unidad mínima de la moneda de la versión. `null` = neto desconocido, que no es cero. */
+  netoUnidades: bigint | null;
+}
+
+/** La TRM referencial congelada en la versión (ADR-0024 §2). */
+export interface TrmDeVersionAceptada {
+  monedaOrigen: string;
+  monedaDestino: string;
+  /** Decimal exacto como texto (`numeric(18,6)`): nunca `number`. */
+  valor: string;
+  /** `AAAA-MM-DD`. */
+  fecha: string;
+  fuente: 'OFICIAL' | 'AGENCIA';
+}
+
+/**
+ * Lo que `booking` necesita de la versión de una cotización ACEPTADA para abrir el archivo de viaje:
+ * una copia de lo vendido, sin tocar las tablas de `quoting`.
+ */
+export interface VersionAceptada {
+  cotizacionId: string;
+  version: number;
+  /** De la cotización misma, no del evento. */
+  contactoId: string;
+  oportunidadId: string | null;
+  paqueteNombre: string;
+  destino: string;
+  /** `AAAA-MM-DD` (R9: `date`). */
+  fechaSalida: string;
+  noches: number;
+  adultos: number;
+  ninos: number;
+  infantes: number;
+  ventaUnidades: bigint;
+  /** `null` = desconocido (alguna línea sin neto cargado). */
+  netoUnidades: bigint | null;
+  monedaIso: string;
+  trm: TrmDeVersionAceptada | null;
+  lineas: LineaDeVersionAceptada[];
+}
+
+/**
+ * Lo que `booking` pide a `quoting` (ADR-0024 §3.1). Como `PuertoExistenciaDePaquete`: recibe la
+ * TRANSACCIÓN del despachador, ya con `app.current_tenant` fijado a `outbox.tenant_id`, y el
+ * `tenantId` de esa fila como defensa en profundidad. Nunca abre otra transacción ni toma el tenant
+ * de un payload.
+ */
+export abstract class PuertoVersionAceptada {
+  /**
+   * `null` si la cotización no es de ese tenant, no está ACEPTADA o `version` no es la que vio el
+   * cliente (`version_enviada`): lo aceptado es exactamente eso.
+   */
+  abstract leer(
+    tx: ClienteTenant,
+    tenantId: string,
+    cotizacionId: string,
+    version: number,
+  ): Promise<VersionAceptada | null>;
+}

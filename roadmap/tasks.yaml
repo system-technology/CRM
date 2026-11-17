@@ -5481,7 +5481,7 @@ tasks:
     priority: P1
     effort: M
     status: in_progress
-    notes: "Parte datos en este PR (migraciones 20261118090000 y 20261118090100); falta la parte backend (evento, despachador, apertura del archivo)"
+    notes: "Datos en main (migraciones 20261118090000 y 20261118090100). Backend: evento CotizacionAceptada, despachador por consumidor y apertura del archivo (rama feat/booking-apertura-del-archivo). Falta que quoting congele mayoristaId por linea y la TRM en la version (ADR-0024 §2)"
     depends_on: [T-240]
     acceptance:
       - "Al aceptar una cotizacion se abre su archivo de viaje con numero de file, una sola vez (idempotente por consumidor)"
@@ -5582,3 +5582,39 @@ tasks:
     source: auditoria de seguridad de la parte datos de T-241, 2026-11-18 (cola R13)
     created_at: 2026-11-18T12:00:00.000Z
     owner: datos
+  - id: T-247
+    title: "Booking: robustez del despachador de eventos (lock_timeout, errores transitorios, abandonadas, rotacion)"
+    type: refactor
+    phase: 1
+    priority: P2
+    effort: S
+    status: ready
+    depends_on: [T-241]
+    acceptance:
+      - "SET LOCAL lock_timeout antes del advisory lock de numero de file"
+      - "Los errores transitorios (P1001, P1017, P2028, 40001, 55P03) no cuentan como intento"
+      - "Metrica o alerta de entregas abandonadas"
+      - "El recorrido de agencias rota su punto de inicio para que las de id alto no sufran inanicion"
+    files:
+      - apps/api/src/shared/eventos
+      - apps/api/src/modules/booking
+    source: auditoria de seguridad T-241, 2026-11-18 (cola R13)
+    created_at: 2026-11-18T13:00:00.000Z
+    owner: backend
+  - id: T-248
+    title: "Booking: el primer endpoint de lectura omite netoUnidades sin cotizacion.ver_neto_y_margen"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: S
+    status: ready
+    depends_on: [T-241]
+    acceptance:
+      - "La respuesta omite netoUnidades de las reservas salvo con cotizacion.ver_neto_y_margen"
+      - "Prueba con y sin el permiso"
+    files:
+      - apps/api/src/modules/booking
+      - packages/contracts
+    source: auditoria de seguridad T-241, 2026-11-18 (cola R13)
+    created_at: 2026-11-18T13:00:00.000Z
+    owner: backend

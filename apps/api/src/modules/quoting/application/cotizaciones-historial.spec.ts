@@ -10,6 +10,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { EstadoCotizacion } from '@viajapro/contracts';
 import type { ClienteTenant, PrismaService } from '../../../shared/prisma/prisma.service.js';
+import type { PuertoAvisoDeEventosDeDominio } from '../../../shared/puertos/puertos-de-eventos-de-dominio.js';
 import { PuertoReferenciasDeCrm } from '../../../shared/puertos/puertos-hacia-crm.js';
 import { ContextoTenant } from '../../../shared/tenant/contexto-tenant.js';
 import { CotizacionesUseCase } from './cotizaciones.use-case.js';
@@ -18,15 +19,32 @@ import type { CotizarSalidaUseCase } from './cotizar-salida.use-case.js';
 const TENANT = '11111111-1111-4111-8111-111111111111';
 const ACTOR = '22222222-2222-4222-8222-222222222222';
 const COTIZACION = '33333333-3333-4333-8333-333333333333';
+const CONTACTO = '44444444-4444-4444-8444-444444444444';
+const OPORTUNIDAD = '55555555-5555-4555-8555-555555555555';
 
 type Paso = { op: string; datos?: unknown };
 
-function transaccionDoble(estadoActual: EstadoCotizacion | null, historialFalla = false) {
+function transaccionDoble(
+  estadoActual: EstadoCotizacion | null,
+  historialFalla = false,
+  outboxFalla = false,
+) {
   const pasos: Paso[] = [];
   const tx = {
     $queryRaw: (partes: TemplateStringsArray, ...valores: unknown[]) => {
       pasos.push({ op: 'bloqueo', datos: { sql: partes.join('?'), valores } });
-      return Promise.resolve(estadoActual === null ? [] : [{ estado: estadoActual }]);
+      return Promise.resolve(
+        estadoActual === null
+          ? []
+          : [
+              {
+                estado: estadoActual,
+                contacto_id: CONTACTO,
+                oportunidad_id: OPORTUNIDAD,
+                version_enviada: estadoActual === 'BORRADOR' ? null : 2,
+              },
+            ],
+      );
     },
     cotizacionCambioEstado: {
       create: (a: { data: unknown }) => {
@@ -45,7 +63,17 @@ function transaccionDoble(estadoActual: EstadoCotizacion | null, historialFalla 
         return Promise.resolve({});
       },
     },
+    outbox: {
+      create: (a: { data: unknown }) => {
+        pasos.push({ op: 'outbox', datos: a.data });
+        return outboxFalla
+          ? Promise.reject(new Error('outbox caído'))
+          : Promise.resolve({ id: 1n });
+      },
+    },
   };
+  const avisos: string[] = [];
+  const aviso: PuertoAvisoDeEventosDeDominio = { avisar: (t) => void avisos.push(t) };
   const prisma = {
     conTenant: <T>(fn: (t: ClienteTenant) => Promise<T>) => fn(tx as unknown as ClienteTenant),
   } as unknown as PrismaService;
@@ -53,10 +81,11 @@ function transaccionDoble(estadoActual: EstadoCotizacion | null, historialFalla 
     prisma,
     {} as CotizarSalidaUseCase,
     {} as PuertoReferenciasDeCrm,
+    aviso,
   );
   // La relectura final no es lo que se prueba aquí.
   vi.spyOn(caso as unknown as { leerEn: () => Promise<unknown> }, 'leerEn').mockResolvedValue({});
-  return { caso, pasos };
+  return { caso, pasos, avisos };
 }
 
 function enTenant<T>(usuarioId: string | null, fn: () => T): T {
@@ -76,7 +105,12 @@ describe('CotizacionesUseCase.cambiarEstado — historial de estados (T-132)', (
     const { caso, pasos } = transaccionDoble(desde);
     await enTenant(ACTOR, () => caso.cambiarEstado(COTIZACION, hasta));
 
-    expect(pasos.map((p) => p.op)).toEqual(['bloqueo', 'historial', 'update']);
+    // Solo la aceptación escribe además un evento en el outbox, después del UPDATE y en la misma transacción.
+    expect(pasos.map((p) => p.op)).toEqual(
+      hasta === 'ACEPTADA'
+        ? ['bloqueo', 'historial', 'update', 'outbox']
+        : ['bloqueo', 'historial', 'update'],
+    );
     const bloqueo = pasos[0]?.datos as { sql: string; valores: unknown[] };
     expect(bloqueo.sql).toMatch(/tenant_id = \?::uuid/);
     expect(bloqueo.sql).toMatch(/FOR UPDATE/);
@@ -88,6 +122,62 @@ describe('CotizacionesUseCase.cambiarEstado — historial de estados (T-132)', (
       estadoHasta: hasta,
       usuarioId: ACTOR,
     });
+  });
+
+  it('aceptar escribe CotizacionAceptada en el outbox (solo ids) y avisa DESPUÉS de confirmar', async () => {
+    const { caso, pasos, avisos } = transaccionDoble('ENVIADA');
+    await enTenant(ACTOR, () => caso.cambiarEstado(COTIZACION, 'ACEPTADA'));
+
+    const outbox = pasos.find((p) => p.op === 'outbox')?.datos as {
+      tenantId: string;
+      agregado: string;
+      agregadoId: string;
+      tipoEvento: string;
+      versionEvento: number;
+      payload: Record<string, unknown>;
+    };
+    expect(outbox).toMatchObject({
+      tenantId: TENANT,
+      agregado: 'cotizacion',
+      agregadoId: COTIZACION,
+      tipoEvento: 'quoting.cotizacion_aceptada',
+      versionEvento: 1,
+    });
+    expect(outbox.payload).toMatchObject({
+      v: 1,
+      cotizacionId: COTIZACION,
+      version: 2,
+      contactoId: CONTACTO,
+      oportunidadId: OPORTUNIDAD,
+      aceptadaPorUsuarioId: ACTOR,
+    });
+    expect(Object.keys(outbox.payload).sort()).toEqual(
+      [
+        'aceptadaEn',
+        'aceptadaPorUsuarioId',
+        'contactoId',
+        'cotizacionId',
+        'oportunidadId',
+        'v',
+        'version',
+      ].sort(),
+    );
+    expect(avisos).toEqual([TENANT]);
+  });
+
+  it.each(['RECHAZADA', 'VENCIDA'] as const)('%s no escribe evento ni avisa', async (hasta) => {
+    const { caso, pasos, avisos } = transaccionDoble('ENVIADA');
+    await enTenant(ACTOR, () => caso.cambiarEstado(COTIZACION, hasta));
+    expect(pasos.map((p) => p.op)).not.toContain('outbox');
+    expect(avisos).toEqual([]);
+  });
+
+  it('si el outbox falla, la aceptación entera falla y no se avisa a nadie', async () => {
+    const { caso, avisos } = transaccionDoble('ENVIADA', false, true);
+    await expect(enTenant(ACTOR, () => caso.cambiarEstado(COTIZACION, 'ACEPTADA'))).rejects.toThrow(
+      'outbox caído',
+    );
+    expect(avisos).toEqual([]);
   });
 
   it('sin usuario en la petición, la fila lleva usuario nulo', async () => {
@@ -149,7 +239,9 @@ describe('CotizacionesUseCase.guardar — fila de alta en BORRADOR (T-132)', () 
     const crm = {
       existeContacto: () => Promise.resolve(true),
     } as unknown as PuertoReferenciasDeCrm;
-    const caso = new CotizacionesUseCase(prisma, {} as CotizarSalidaUseCase, crm);
+    const caso = new CotizacionesUseCase(prisma, {} as CotizarSalidaUseCase, crm, {
+      avisar: () => undefined,
+    });
     vi.spyOn(
       caso as unknown as { recalcular: () => Promise<unknown> },
       'recalcular',
