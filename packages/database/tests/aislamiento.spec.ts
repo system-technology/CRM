@@ -372,6 +372,8 @@ const EXCEPCIONES_DECLARADAS: ReadonlyArray<readonly [string, string, readonly s
 const PRIVILEGIOS_DECLARADOS: ReadonlyArray<readonly [string, string, readonly string[]]> = [
   ['bookings', 'viajapro_app', ['SELECT', 'INSERT', 'UPDATE']],
   ['entregas_de_eventos', 'viajapro_app', ['SELECT', 'INSERT', 'UPDATE']],
+  // T-254: la bandeja de avisos de cada usuario. Sin DELETE: se marca leída.
+  ['notificaciones', 'viajapro_app', ['SELECT', 'INSERT', 'UPDATE']],
   ['pasajeros', 'viajapro_app', ['SELECT', 'INSERT', 'UPDATE', 'DELETE']],
   ['travel_files', 'viajapro_app', ['SELECT', 'INSERT', 'UPDATE']],
 ];
@@ -8124,6 +8126,396 @@ describe('T-241 — ADR-0024 F2: TRM y mayorista en la versión, y tenants_con_e
       expect(await altaDeVersion(TENANT_A, { lineas: [lineaCon({ mayoristaId })] }), motivo).toBe(
         '23503',
       );
+    }
+  });
+});
+// =========================================================================================
+// T-254 — notificaciones en la aplicación (contexto `notifications`, ADR-0024 §3.6)
+//
+// Una tabla de agencia que SOLO `viajapro_app` toca. Lo que no puede pasar: que una agencia vea,
+// marque o plante notificaciones de otra, que una notificación apunte al usuario, al archivo o a la
+// reserva de otra agencia, que un mismo evento notifique dos veces al mismo usuario, o que
+// aparezca una columna de texto libre (la tabla se declara sin ninguna).
+// =========================================================================================
+
+describe('T-254 — notificaciones: aislamiento, foráneas compuestas, una por evento y usuario', () => {
+  const correo = (sufijo: string) => `fixture-aislamiento-${MARCA}-notif-${sufijo}@prueba.invalid`;
+  const identidadDe: Record<string, string> = {
+    [TENANT_A]: randomUUID(),
+    [TENANT_B]: randomUUID(),
+  };
+  const usuarioDe: Record<string, string> = {};
+  const archivoDe: Record<string, string> = {};
+  const reservaDe: Record<string, string> = {};
+  const outboxDe: Record<string, string> = {};
+  const notificacionDe: Record<string, string> = {};
+
+  const insertarNotificacion = (
+    c: Client,
+    tenant: string,
+    {
+      usuario,
+      archivo,
+      reserva,
+      outbox,
+      numero = 2540,
+    }: {
+      usuario: string;
+      archivo: string;
+      reserva: string;
+      outbox: string | null;
+      numero?: number;
+    },
+  ) =>
+    c.query(
+      `INSERT INTO notificaciones
+         (id, tenant_id, usuario_id, tipo, outbox_id, archivo_id, reserva_id, archivo_numero, vence_en)
+       VALUES (gen_random_uuid(), $1, $2, 'TIME_LIMIT_PROXIMO', $3, $4, $5, $6, now())
+       RETURNING id`,
+      [tenant, usuario, outbox, archivo, reserva, numero],
+    );
+
+  beforeAll(async () => {
+    for (const [i, tenant] of [TENANT_A, TENANT_B].entries()) {
+      await admin.query(
+        `INSERT INTO identidades (id, correo, nombre, actualizado_en) VALUES ($1, $2, 'Fixture', now())`,
+        [identidadDe[tenant], correo(String(i))],
+      );
+      await comoTenant(tenant, async (c) => {
+        const rol = await c.query(
+          `INSERT INTO roles (id, tenant_id, nombre, permisos, actualizado_en)
+           VALUES (gen_random_uuid(), $1, $2, ARRAY[]::text[], now()) RETURNING id`,
+          [tenant, `Asesor T-254 ${MARCA}`],
+        );
+        const usuario = await c.query(
+          `INSERT INTO usuarios (id, tenant_id, identidad_id, rol_id, correo, nombre, actualizado_en)
+           VALUES (gen_random_uuid(), $1, $2, $3, $4, 'Asesora de avisos', now()) RETURNING id`,
+          [tenant, identidadDe[tenant], (rol.rows[0] as { id: string }).id, correo(`u${i}`)],
+        );
+        usuarioDe[tenant] = (usuario.rows[0] as { id: string }).id;
+        const contacto = await c.query(
+          `INSERT INTO contactos (id, tenant_id, telefono_e164, creado_en, actualizado_en)
+           VALUES (gen_random_uuid(), $1, $2, now(), now()) RETURNING id`,
+          [tenant, `+57325000000${i}`],
+        );
+        const contactoId = (contacto.rows[0] as { id: string }).id;
+        const paquete = await c.query(
+          `INSERT INTO paquetes (id, tenant_id, nombre, destino, dias, noches, creado_en, actualizado_en)
+           VALUES (gen_random_uuid(), $1, 'Parque del Café', 'Quindío', 2, 1, now(), now())
+           RETURNING id`,
+          [tenant],
+        );
+        const cotizacion = await c.query(
+          `INSERT INTO cotizaciones (id, tenant_id, contacto_id, titulo, creado_en, actualizado_en)
+           VALUES (gen_random_uuid(), $1, $2, 'Aviso T-254', now(), now()) RETURNING id`,
+          [tenant, contactoId],
+        );
+        const cotizacionId = (cotizacion.rows[0] as { id: string }).id;
+        await insertarVersion(c, tenant, cotizacionId, (paquete.rows[0] as { id: string }).id, 1);
+        const archivo = await c.query(
+          `INSERT INTO travel_files
+             (id, tenant_id, numero, contacto_id, cotizacion_id, version_cotizacion, paquete_nombre,
+              destino, fecha_salida, noches, adultos, ninos, infantes, venta_unidades, moneda_iso,
+              actualizado_en)
+           VALUES (gen_random_uuid(), $1, 2540, $2, $3, 1, 'Parque del Café', 'Quindío',
+                   '2026-12-05', 1, 2, 1, 0, 980000, 'COP', now())
+           RETURNING id`,
+          [tenant, contactoId, cotizacionId],
+        );
+        archivoDe[tenant] = (archivo.rows[0] as { id: string }).id;
+        const reserva = await c.query(
+          `INSERT INTO bookings (id, tenant_id, travel_file_id, moneda_iso, actualizado_en)
+           VALUES (gen_random_uuid(), $1, $2, 'COP', now()) RETURNING id`,
+          [tenant, archivoDe[tenant]],
+        );
+        reservaDe[tenant] = (reserva.rows[0] as { id: string }).id;
+        const evento = await c.query(
+          `INSERT INTO outbox (tenant_id, agregado, agregado_id, tipo_evento, payload)
+           VALUES ($1, 'reserva', $2, 'booking.time_limit_proximo', '{"v":1}'::jsonb)
+           RETURNING id::text AS id`,
+          [tenant, reservaDe[tenant]],
+        );
+        outboxDe[tenant] = (evento.rows[0] as { id: string }).id;
+        const n = await insertarNotificacion(c, tenant, {
+          usuario: usuarioDe[tenant] ?? '',
+          archivo: archivoDe[tenant] ?? '',
+          reserva: reservaDe[tenant] ?? '',
+          outbox: outboxDe[tenant] ?? null,
+        });
+        notificacionDe[tenant] = (n.rows[0] as { id: string }).id;
+      });
+    }
+  }, 60_000);
+
+  afterAll(async () => {
+    // Las notificaciones retienen archivos, reservas y usuarios (NO ACTION): primero ellas.
+    for (const tenant of [TENANT_A, TENANT_B]) {
+      await admin.query('BEGIN');
+      try {
+        await admin.query("SELECT set_config('app.current_tenant', $1, true)", [tenant]);
+        for (const tabla of ['notificaciones', 'bookings', 'travel_files']) {
+          await admin.query(`DELETE FROM ${tabla} WHERE tenant_id = $1`, [tenant]);
+        }
+        await admin.query('DELETE FROM usuarios WHERE identidad_id = $1', [identidadDe[tenant]]);
+        await admin.query('COMMIT');
+      } catch (error) {
+        await admin.query('ROLLBACK');
+        throw error;
+      }
+    }
+    await admin.query('DELETE FROM identidades WHERE id = ANY($1)', [Object.values(identidadDe)]);
+  }, 60_000);
+
+  it('N-1 — tenant_id NOT NULL, RLS forzada con USING y WITH CHECK, UNIQUE (id, tenant_id), ninguna excepción y NINGUNA columna de texto', async () => {
+    const { rows } = await admin.query(
+      `SELECT c.relrowsecurity, c.relforcerowsecurity,
+              (SELECT a.attnotnull FROM pg_attribute a
+                WHERE a.attrelid = c.oid AND a.attname = 'tenant_id'
+                  AND a.attnum > 0 AND NOT a.attisdropped) AS tenant_no_nulo,
+              (SELECT count(*)::int FROM pg_policy p
+                WHERE p.polrelid = c.oid AND p.polname = 'tenant_isolation'
+                  AND p.polqual IS NOT NULL AND p.polwithcheck IS NOT NULL) AS con_using_y_check,
+              EXISTS (SELECT 1 FROM excepciones_rls e WHERE e.tabla = c.relname) AS excepcion
+         FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' AND c.relname = 'notificaciones'`,
+    );
+    expect(rows).toEqual([
+      {
+        relrowsecurity: true,
+        relforcerowsecurity: true,
+        tenant_no_nulo: true,
+        con_using_y_check: 1,
+        excepcion: false,
+      },
+    ]);
+    const defectos = await admin.query(
+      "SELECT tabla, problema FROM tablas_sin_aislamiento WHERE problema IS NOT NULL AND tabla = 'notificaciones'",
+    );
+    expect(defectos.rows).toEqual([]);
+
+    const unica = await admin.query(
+      `SELECT 1 FROM pg_index i
+        WHERE i.indrelid = 'public.notificaciones'::regclass AND i.indisunique AND i.indnatts = 2
+          AND (SELECT array_agg(a.attname::text ORDER BY k.n)
+                 FROM unnest(i.indkey) WITH ORDINALITY AS k(attnum, n)
+                 JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = k.attnum)
+              = ARRAY['id', 'tenant_id']`,
+    );
+    expect(unica.rowCount).toBe(1);
+
+    // Sin texto libre: la aserción 83 no tiene nada que decidir para esta tabla.
+    const texto = await admin.query(
+      `SELECT a.attname FROM pg_attribute a
+        WHERE a.attrelid = 'public.notificaciones'::regclass AND a.attnum > 0 AND NOT a.attisdropped
+          AND format_type(a.atttypid, NULL) IN ('text', 'text[]', 'character varying',
+                'character varying[]', 'character', 'character[]', 'citext', 'citext[]')`,
+    );
+    expect(texto.rows).toEqual([]);
+  });
+
+  it('N-2 — toda foránea incluye el tenant; la del evento anula SOLO outbox_id', async () => {
+    const simples = await admin.query(FORANEAS_SIN_TENANT_SQL);
+    expect(
+      (simples.rows as Array<{ hija: string; padre: string }>).filter(
+        (r) => r.hija === 'notificaciones' || r.padre === 'notificaciones',
+      ),
+    ).toEqual([]);
+
+    const { rows } = await admin.query(
+      `SELECT p.relname AS padre, c.confdeltype AS al_borrar, c.convalidated,
+              (SELECT array_agg(a.attname::text ORDER BY i)
+                 FROM generate_subscripts(c.conkey, 1) AS i
+                 JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = c.conkey[i]) AS columnas,
+              (SELECT array_agg(a.attname::text ORDER BY a.attname)
+                 FROM pg_attribute a
+                WHERE a.attrelid = c.conrelid AND a.attnum = ANY (c.confdelsetcols)) AS anula
+         FROM pg_constraint c
+         JOIN pg_class p ON p.oid = c.confrelid
+        WHERE c.contype = 'f' AND c.conrelid = 'public.notificaciones'::regclass
+          AND p.relname <> 'tenants'
+        ORDER BY 1`,
+    );
+    const resumen = rows.map(
+      (r) =>
+        `${(r.columnas as string[]).join(',')}->${r.padre}:${r.al_borrar}` +
+        `${r.anula ? `[${(r.anula as string[]).join(',')}]` : ''}:${r.convalidated}`,
+    );
+    expect(resumen).toEqual([
+      'reserva_id,tenant_id->bookings:a:true',
+      'outbox_id,tenant_id->outbox:n[outbox_id]:true',
+      'archivo_id,tenant_id->travel_files:a:true',
+      'usuario_id,tenant_id->usuarios:a:true',
+    ]);
+  });
+
+  it('N-3 — solo viajapro_app la toca (SELECT, INSERT, UPDATE; sin DELETE); PUBLIC y los demás roles, nada', async () => {
+    const roles = ['viajapro_app', 'viajapro_altas', 'viajapro_webhook', 'viajapro_identidad'];
+    for (const rol of roles) {
+      const { rows } = await admin.query(
+        `SELECT p FROM unnest(ARRAY['SELECT','INSERT','UPDATE','DELETE','TRUNCATE','REFERENCES','TRIGGER']) AS p
+          WHERE has_table_privilege($1, 'public.notificaciones', p) ORDER BY 1`,
+        [rol],
+      );
+      expect(
+        rows.map((r) => r.p as string),
+        `${rol} sobre notificaciones`,
+      ).toEqual(rol === 'viajapro_app' ? ['INSERT', 'SELECT', 'UPDATE'] : []);
+    }
+    expect(
+      (
+        await admin.query(
+          "SELECT has_table_privilege('public', 'public.notificaciones', 'SELECT') AS v",
+        )
+      ).rows[0],
+    ).toEqual({ v: false });
+
+    // De COMPORTAMIENTO: el trabajador no lee ni una fila, ni con el contexto de la agencia puesto.
+    await comoRol(admin, 'viajapro_webhook', async () => {
+      await admin.query("SELECT set_config('app.current_tenant', $1, true)", [TENANT_A]);
+      await esperarPermisoDenegado(
+        admin,
+        () => admin.query('SELECT * FROM notificaciones'),
+        'SELECT sobre notificaciones como viajapro_webhook',
+      );
+    });
+    // Y la API no las borra: se marcan leídas.
+    await expect(
+      comoTenant(TENANT_A, (c) =>
+        c.query('DELETE FROM notificaciones WHERE tenant_id = $1', [TENANT_A]),
+      ),
+    ).rejects.toMatchObject({ code: '42501' });
+  });
+
+  it('N-4 — un tenant no ve, no marca ni planta notificaciones de otro', async () => {
+    const ajenos = await comoTenant(TENANT_B, async (c) => [
+      (await c.query('SELECT id FROM notificaciones WHERE id = $1', [notificacionDe[TENANT_A]]))
+        .rowCount,
+      (
+        await c.query('UPDATE notificaciones SET leida_en = now() WHERE id = $1', [
+          notificacionDe[TENANT_A],
+        ])
+      ).rowCount,
+    ]);
+    expect(ajenos).toEqual([0, 0]);
+
+    // La de A sigue sin leer; cada agencia ve exactamente lo suyo (control positivo).
+    const propia = (
+      await comoTenant(TENANT_A, (c) =>
+        c.query('SELECT leida_en FROM notificaciones WHERE id = $1', [notificacionDe[TENANT_A]]),
+      )
+    ).rows;
+    expect(propia).toEqual([{ leida_en: null }]);
+    for (const tenant of [TENANT_A, TENANT_B]) {
+      const filas = (
+        await comoTenant(tenant, (c) => c.query('SELECT tenant_id FROM notificaciones'))
+      ).rows;
+      expect(filas.length).toBeGreaterThan(0);
+      expect(filas.every((f) => (f as { tenant_id: string }).tenant_id === tenant)).toBe(true);
+    }
+
+    // Plantar una con el tenant de A desde B: lo rechaza el WITH CHECK. Mover la propia a A, también.
+    await expect(
+      comoTenant(TENANT_B, (c) =>
+        insertarNotificacion(c, TENANT_A, {
+          usuario: usuarioDe[TENANT_A] ?? '',
+          archivo: archivoDe[TENANT_A] ?? '',
+          reserva: reservaDe[TENANT_A] ?? '',
+          outbox: null,
+        }),
+      ),
+    ).rejects.toThrow(/row-level security/i);
+    await expect(
+      comoTenant(TENANT_B, (c) =>
+        c.query('UPDATE notificaciones SET tenant_id = $2 WHERE id = $1', [
+          notificacionDe[TENANT_B],
+          TENANT_A,
+        ]),
+      ),
+    ).rejects.toThrow(/row-level security/i);
+  });
+
+  it('N-5 — no apunta al usuario, archivo ni reserva de otra agencia (23503)', async () => {
+    const propia = {
+      usuario: usuarioDe[TENANT_A] ?? '',
+      archivo: archivoDe[TENANT_A] ?? '',
+      reserva: reservaDe[TENANT_A] ?? '',
+      outbox: null as string | null,
+    };
+    const casos: Array<[string, Partial<typeof propia>, string]> = [
+      [
+        'usuario de B',
+        { usuario: usuarioDe[TENANT_B] ?? '' },
+        'notificaciones_usuario_id_tenant_id_fkey',
+      ],
+      [
+        'archivo de B',
+        { archivo: archivoDe[TENANT_B] ?? '' },
+        'notificaciones_archivo_id_tenant_id_fkey',
+      ],
+      [
+        'reserva de B',
+        { reserva: reservaDe[TENANT_B] ?? '' },
+        'notificaciones_reserva_id_tenant_id_fkey',
+      ],
+      [
+        'evento de B',
+        { outbox: outboxDe[TENANT_B] ?? null },
+        'notificaciones_outbox_id_tenant_id_fkey',
+      ],
+    ];
+    for (const [motivo, cambio, restriccion] of casos) {
+      await expect(
+        comoTenant(TENANT_A, (c) => insertarNotificacion(c, TENANT_A, { ...propia, ...cambio })),
+        motivo,
+      ).rejects.toMatchObject({ code: '23503', constraint: restriccion });
+    }
+  });
+
+  it('N-6 — un evento notifica UNA vez a cada usuario: el duplicado choca con el UNIQUE; el número de file es positivo', async () => {
+    await expect(
+      comoTenant(TENANT_A, (c) =>
+        insertarNotificacion(c, TENANT_A, {
+          usuario: usuarioDe[TENANT_A] ?? '',
+          archivo: archivoDe[TENANT_A] ?? '',
+          reserva: reservaDe[TENANT_A] ?? '',
+          outbox: outboxDe[TENANT_A] ?? null,
+        }),
+      ),
+    ).rejects.toMatchObject({
+      code: '23505',
+      constraint: 'notificaciones_tenant_id_outbox_id_usuario_id_key',
+    });
+    await expect(
+      comoTenant(TENANT_A, (c) =>
+        insertarNotificacion(c, TENANT_A, {
+          usuario: usuarioDe[TENANT_A] ?? '',
+          archivo: archivoDe[TENANT_A] ?? '',
+          reserva: reservaDe[TENANT_A] ?? '',
+          outbox: null,
+          numero: 0,
+        }),
+      ),
+    ).rejects.toMatchObject({
+      code: '23514',
+      constraint: 'notificaciones_archivo_numero_positivo',
+    });
+  });
+
+  it('N-7 — purgar el evento del outbox no borra la notificación: anula solo outbox_id y conserva el tenant', async () => {
+    await admin.query('BEGIN');
+    try {
+      await admin.query("SELECT set_config('app.current_tenant', $1, true)", [TENANT_B]);
+      await admin.query('DELETE FROM outbox WHERE tenant_id = $1 AND id = $2', [
+        TENANT_B,
+        outboxDe[TENANT_B],
+      ]);
+      const { rows } = await admin.query(
+        'SELECT tenant_id, outbox_id FROM notificaciones WHERE id = $1',
+        [notificacionDe[TENANT_B]],
+      );
+      expect(rows).toEqual([{ tenant_id: TENANT_B, outbox_id: null }]);
+    } finally {
+      await admin.query('ROLLBACK');
     }
   });
 });
