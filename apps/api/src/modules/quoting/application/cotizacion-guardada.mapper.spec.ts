@@ -42,6 +42,11 @@ const fila = (extra: Partial<VersionCotizacion> = {}): VersionCotizacion => ({
   vigenteHasta: null,
   creadoEn: new Date('2026-10-01T12:00:00Z'),
   creadoPorId: null,
+  trmMonedaOrigen: null,
+  trmMonedaDestino: null,
+  trmValor: null,
+  trmFecha: null,
+  trmFuente: null,
   ...extra,
 });
 
