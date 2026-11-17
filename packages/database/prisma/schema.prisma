@@ -2233,6 +2233,17 @@ model VersionCotizacion {
   margenUnidades BigInt? @map("margen_unidades")
   monedaIso      String  @map("moneda_iso") @db.Char(3)
 
+  /// TRM aplicada (`exchangeRate`, ADR-0024 §2), referencial. Las cinco o ninguna, `trmValor > 0`
+  /// y origen ≠ destino (CHECK `versiones_cotizacion_trm_valida`); el disparador de alta exige
+  /// destino = moneda del tenant. Nulas = la versión está en la moneda de la agencia. Cada línea
+  /// de `lineas` congela además su `mayoristaId` (null o un mayorista de ESTA agencia, por el
+  /// mismo disparador). Migración 20261118090000.
+  trmMonedaOrigen  String?    @map("trm_moneda_origen") @db.Char(3)
+  trmMonedaDestino String?    @map("trm_moneda_destino") @db.Char(3)
+  trmValor         Decimal?   @map("trm_valor") @db.Decimal(18, 6)
+  trmFecha         DateTime?  @map("trm_fecha") @db.Date
+  trmFuente        FuenteTrm? @map("trm_fuente")
+
   /// Hasta cuándo se sostiene el precio ofrecido.
   vigenteHasta DateTime? @map("vigente_hasta") @db.Date
 
