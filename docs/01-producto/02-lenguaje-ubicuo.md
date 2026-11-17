@@ -54,7 +54,7 @@ Término nuevo del dominio → entrada nueva aquí, antes de escribir la primera
 | **Markup** | `markup` | Lo que la agencia agrega sobre la neta. Lo paga el cliente. |
 | **Comisión** | `commission` | Lo que el proveedor devuelve a la agencia. **Lo paga el proveedor, no el cliente.** No es lo mismo que markup y no se contabiliza igual. |
 | **Margen** | `margin` | Venta − costo neto. La métrica que de verdad importa. |
-| **TRM aplicada** | `exchangeRate` | Tasa de cambio congelada en la cotización, con su fecha. No se recalcula después. |
+| **TRM aplicada** | `exchangeRate` | Tasa de cambio congelada en la cotización, con su fecha. No se recalcula después. En el código es `exchangeRate` (value object `ExchangeRate`), nunca `trm`; solo las columnas de la base se llaman `trm_*`. ADR-0024 §2. |
 | **Itinerario** | `Itinerary` | Secuencia de días y servicios del viaje. |
 | **Segmento** | `Segment` | Tramo dentro de un itinerario: un vuelo, una noche, un traslado. |
 
@@ -117,6 +117,12 @@ Dos precisiones que ahorran un error caro:
 | **Reserva** | `Booking` | Confirmación con un proveedor específico dentro de un archivo. Un archivo tiene varias. |
 | **Localizador** | `recordLocator` | Código de la reserva ante el proveedor (PNR en aéreo). |
 | **Time limit** | `timeLimit` | Fecha y hora límite para emitir o pagar antes de que se libere el cupo. **Si se vence, se pierde la reserva.** Es el dato que más dinero cuesta cuando se olvida. |
+| **Solicitada** | `BookingStatus` `SOLICITADA` | La agencia **pidió** el cupo al mayorista, con su fecha de solicitud. Todavía no hay nada confirmado. ADR-0024 §3.4 |
+| **En espera** | `BookingStatus` `EN_ESPERA` | Opcional: el mayorista dejó la reserva «en solicitud» (típico de hotel) y aún no la confirma |
+| **Confirmada** (por el mayorista) | `BookingStatus` `CONFIRMADA` | **El mayorista confirmó** la reserva. En la agencia «confirmado» significa esto, no «pagado». Exige el *time limit* que dio el mayorista |
+| **Fecha de pago total** | `finalPaymentDue` | Segundo plazo del mayorista: hasta cuándo hay que pagarle el total tras el abono. Se vigila igual que el *time limit*. En la base, `pago_total_vence_en` |
+| **Reserva caída** | `BookingStatus` `CAIDA` | El mayorista no sostuvo la reserva: venció un plazo, no hubo cupo o negó la espera. **No se dice «liberada»**: lo que el mayorista libera es su cupo (`release`), no la reserva |
+| **Titular** | `leadPassenger` | El pasajero a cuyo nombre va la reserva ante el mayorista. Uno por archivo |
 | **Proveedor** | `Supplier` | Quien presta el servicio: aerolínea, hotel, operador, mayorista. |
 | **Documento de viajero** | `TravelerDocument` | Pasaporte, cédula, visa, certificado de vacunación. **Dato personal sensible.** |
 | **Voucher** | `Voucher` | Comprobante que el pasajero presenta al proveedor. |
@@ -128,7 +134,7 @@ Dos precisiones que ahorran un error caro:
 |---|---|---|
 | **Unidad mínima de la moneda** | `unidades` (en `Money`) | Cómo se guarda todo monto (R8): entero en la unidad más pequeña **que esa moneda usa**, no en «centavos». En USD son centavos; **en COP es el peso** (`decimales: 0`). Confundirlas produce un error de dos órdenes de magnitud, y ya llegó una vez a la pantalla. Va siempre con el código ISO-4217 |
 | **Pago** | `Payment` | Dinero recibido del cliente. |
-| **Anticipo** | `deposit` | Primer pago que confirma la reserva. |
+| **Anticipo** | `deposit` | Primer pago del cliente a la agencia. **No confirma la reserva: la confirma el mayorista** (ver *Confirmada*). Suele ser lo que permite a la agencia hacer el abono al mayorista antes del *time limit*. |
 | **Cuota** | `Installment` | Pago parcial programado. |
 | **Plan de pagos** | `PaymentPlan` | Cronograma de cuotas de un archivo. |
 | **Conciliación** | `Reconciliation` | Cruce entre lo que dice la pasarela y lo que dice el sistema. |
