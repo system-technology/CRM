@@ -1,5 +1,5 @@
-# Despliegue de STAGING (ADR-0013 §6 y §7). Publica lo que ya entro en `main` y paso el CI:
-#   migrate deploy (rama de staging, rol propietario) -> deploy hook de cada servicio -> /salud
+# Despliegue de STAGING (ADR-0013 §6 y §7, topologia de ADR-0028). Publica lo que ya entro en `main` y paso el CI:
+#   migrate deploy (rama de staging, rol propietario) -> deploy hook de la API (Render) -> sonda /salud/listo -> deploy hook de la web (Vercel)
 #
 # Sin secretos del Environment `staging` el workflow FALLA (T-204): un despliegue que no
 # desplego no puede verse verde, porque nadie lo mira y parece que staging esta al dia. No es un
@@ -8,9 +8,10 @@
 # entonces termina en verde pero con un resumen «OMITIDO» inequivoco, y se puede quitar al conectar.
 #
 # Lo que usa y lo que NO usa:
-#   - Secretos del Environment `staging` (limitado a `main`): DIRECT_URL y los deploy hooks.
-#   - Nunca la clave de API de Render: vale para toda la cuenta.
-#   - Variable (no secreto) opcional del repositorio: STAGING_API_URL, para la sonda final.
+#   - Secretos del Environment `staging` (limitado a `main`): DIRECT_URL, RENDER_DEPLOY_HOOK_API y
+#     VERCEL_DEPLOY_HOOK_WEB. Topologia: ADR-0028 (Neon + Vercel + un solo proceso en Render).
+#   - Nunca la clave de API de Render ni el token de Vercel: valen para toda la cuenta.
+#   - Variable (no secreto) del repositorio: STAGING_API_URL, obligatoria: es la sonda que separa API y web.
 
 name: Deploy staging
 
@@ -60,7 +61,7 @@ jobs:
               echo "::warning::Staging OMITIDO: sin secretos y STAGING_DESPLIEGUE=desactivado. No se desplego nada."
             else
               echo "## Staging: NO DESPLEGADO" >> "$GITHUB_STEP_SUMMARY"
-              echo "Faltan los secretos del Environment \`staging\` (DIRECT_URL). Ver docs/07-ingenieria/despliegue-staging.md. Para omitirlo a proposito: variable STAGING_DESPLIEGUE=desactivado." >> "$GITHUB_STEP_SUMMARY"
+              echo "Faltan los secretos del Environment \`staging\` (DIRECT_URL). Ver docs/07-ingenieria/despliegue-neon-vercel-render.md. Para omitirlo a proposito: variable STAGING_DESPLIEGUE=desactivado." >> "$GITHUB_STEP_SUMMARY"
               echo "::error::Faltan los secretos del Environment 'staging' (DIRECT_URL): NO se migro ni se desplego. Definir los secretos o STAGING_DESPLIEGUE=desactivado."
               exit 1
             fi
@@ -118,50 +119,58 @@ jobs:
     environment: staging
     env:
       HOOK_API: ${{ secrets.RENDER_DEPLOY_HOOK_API }}
-      HOOK_WORKER: ${{ secrets.RENDER_DEPLOY_HOOK_WORKER }}
-      HOOK_WEB: ${{ secrets.RENDER_DEPLOY_HOOK_WEB }}
+      HOOK_WEB: ${{ secrets.VERCEL_DEPLOY_HOOK_WEB }}
       STAGING_API_URL: ${{ vars.STAGING_API_URL }}
       SHA: ${{ github.event.workflow_run.head_sha }}
     steps:
       # Un hook es una URL con un token: se llama sin imprimirla y sin `-v`.
-      # Primero API y trabajador (que pueden tener migraciones nuevas esperando), luego la web.
-      - name: Llamar a los deploy hooks
+      # Orden (ADR-0028): primero la API en Render (que puede traer migraciones esperando), se
+      # espera a que conteste, y solo entonces la web en Vercel. Asi la web nueva nunca habla con
+      # una API vieja que no entiende sus contratos.
+      - name: Comprobar que estan los dos hooks
         run: |
-          for par in "API:$HOOK_API" "WORKER:$HOOK_WORKER" "WEB:$HOOK_WEB"; do
-            nombre="${par%%:*}"
-            url="${par#*:}"
-            if [ -z "$url" ]; then
-              echo "::error::Falta RENDER_DEPLOY_HOOK_${nombre}: ese servicio NO se despliega."
-              faltan="${faltan:-} ${nombre}"
-              continue
-            fi
-            curl --fail --silent --show-error --max-time 30 -X POST "$url" > /dev/null
-            echo "Despliegue de ${nombre} solicitado."
-          done
-          # Los demas servicios ya se pidieron; pero un despliegue parcial no es un exito.
-          if [ -n "${faltan:-}" ]; then
+          faltan=""
+          [ -z "$HOOK_API" ] && faltan="${faltan} RENDER_DEPLOY_HOOK_API"
+          [ -z "$HOOK_WEB" ] && faltan="${faltan} VERCEL_DEPLOY_HOOK_WEB"
+          if [ -n "$faltan" ]; then
+            echo "::error::Falta el secreto del Environment staging:${faltan}. NO se despliega nada."
             echo "## Staging: despliegue INCOMPLETO, sin hook:${faltan}" >> "$GITHUB_STEP_SUMMARY"
             exit 1
           fi
-
-      # Limite conocido: el hook responde al instante y el servicio anterior sigue sano unos
-      # minutos, asi que esto confirma que la API contesta y que el rol no salta RLS, no que
-      # el SHA nuevo ya este arriba. La reversion automatica la hace Render si falla su health check.
-      - name: Sonda de salud
-        run: |
           if [ -z "$STAGING_API_URL" ]; then
-            echo "::error::Sin la variable STAGING_API_URL no hay sonda final: no se puede afirmar que staging quedo arriba."
-            echo "## Staging: desplegado SIN verificar (falta STAGING_API_URL)" >> "$GITHUB_STEP_SUMMARY"
+            echo "::error::Sin la variable STAGING_API_URL no hay sonda: no se puede esperar a la API antes de la web."
+            echo "## Staging: NO desplegado (falta STAGING_API_URL)" >> "$GITHUB_STEP_SUMMARY"
             exit 1
           fi
+
+      - name: Desplegar la API (Render)
+        run: |
+          curl --fail --silent --show-error --max-time 30 -X POST "$HOOK_API" > /dev/null
+          echo "Despliegue de la API solicitado."
+
+      # Limite conocido: el hook responde al instante y la API anterior sigue sana hasta que la
+      # nueva pasa su health check; esto confirma que la API contesta y que el rol no salta RLS.
+      # La reversion automatica la hace Render si la nueva no pasa `/salud/listo`.
+      - name: Esperar la sonda de la API
+        run: |
           sleep 60
           for i in $(seq 1 20); do
             if curl --fail --silent --max-time 10 "$STAGING_API_URL/salud/listo" | grep -q '"estado":"ok"'; then
               echo "La API de staging esta lista."
-              echo "## Staging: desplegado y verificado (${SHA})" >> "$GITHUB_STEP_SUMMARY"
               exit 0
             fi
             sleep 15
           done
-          echo "::error::La API de staging no quedo lista en 6 minutos."
+          echo "::error::La API de staging no quedo lista en 6 minutos. NO se despliega la web."
+          echo "## Staging: API sin sonda; la web NO se desplego (${SHA})" >> "$GITHUB_STEP_SUMMARY"
           exit 1
+
+      - name: Desplegar la web (Vercel)
+        run: |
+          curl --fail --silent --show-error --max-time 30 -X POST "$HOOK_WEB" > /dev/null
+          echo "Despliegue de la web solicitado."
+
+      - name: Sonda final
+        run: |
+          curl --fail --silent --max-time 10 "$STAGING_API_URL/salud/listo" | grep -q '"estado":"ok"'
+          echo "## Staging: desplegado y verificado (${SHA})" >> "$GITHUB_STEP_SUMMARY"
