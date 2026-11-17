@@ -747,20 +747,21 @@ describe('mayorista por línea y TRM congelados por el cotizador (T-241, ADR-002
     const reservas = (await reservasDe(A.tenant, archivos[0]?.id ?? '')).sort((a, b) =>
       (a.mayorista_nombre ?? '').localeCompare(b.mayorista_nombre ?? ''),
     );
+    // Orden alfabético por nombre: «Dos» antes que «Uno».
     expect(reservas).toEqual([
-      {
-        estado: 'PENDIENTE',
-        mayorista_id: m1,
-        mayorista_nombre: 'Mayorista Uno',
-        neto_unidades: '120000',
-        moneda_iso: 'USD',
-        time_limit: null,
-      },
       {
         estado: 'PENDIENTE',
         mayorista_id: m2,
         mayorista_nombre: 'Mayorista Dos',
         neto_unidades: '80000',
+        moneda_iso: 'USD',
+        time_limit: null,
+      },
+      {
+        estado: 'PENDIENTE',
+        mayorista_id: m1,
+        mayorista_nombre: 'Mayorista Uno',
+        neto_unidades: '120000',
         moneda_iso: 'USD',
         time_limit: null,
       },
