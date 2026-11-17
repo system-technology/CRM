@@ -1,3 +1,8 @@
+> **Superada (2026-11-17).** La topología de cuatro piezas en Render (web, API, trabajador y Key
+> Value) quedó sustituida por Neon + web en Vercel + API en un solo proceso en Render (ADR-0028). Los
+> pasos vigentes están en [despliegue-neon-vercel-render.md](despliegue-neon-vercel-render.md). Este
+> documento se conserva como historial; `render.yaml` y el workflow ya no coinciden con él.
+
 # Despliegue de staging en Render — pasos del propietario
 
 Implementa el ADR-0013 solo para **staging**. Todo se hace en los paneles; ningún secreto pasa por

@@ -5417,3 +5417,40 @@ tasks:
     source: auditorias de seguridad del rehecho de #234 y de T-236, 2026-11-15
     created_at: 2026-11-16T00:30:00.000Z
     owner: datos
+  - id: T-238
+    title: "Deps: saltos mayores aplazados (Prisma 7, NestJS 12, pnpm 12, zod 4)"
+    type: chore
+    phase: 2
+    priority: P3
+    effort: L
+    status: backlog
+    depends_on: []
+    acceptance:
+      - "Cada salto en su propio PR con el CI en verde: Prisma 5->7, NestJS 10->12 completo, pnpm 9->12 (lockfile, CI y Dockerfile), zod 3->4 (cierra la ultima alta de pnpm audit prod)"
+      - "Despues de la primera agencia en produccion; ninguno aporta a la demo"
+    files:
+      - package.json
+      - pnpm-lock.yaml
+    source: revision de PR de Dependabot (#259, #261, #262 cerrados) y decision delegada del propietario, 2026-11-17
+    created_at: 2026-11-17T12:00:00.000Z
+    owner: devops
+  - id: T-239
+    title: "Despliegue: cerrar lo que ADR-0028 deja abierto antes de produccion (proxy, encargado de datos, memoria)"
+    type: security
+    phase: 1
+    priority: P1
+    effort: M
+    status: ready
+    depends_on: []
+    acceptance:
+      - "API_TRUST_PROXY: con dos caminos (via Vercel y directo para Socket.IO y webhook) un unico valor no debe permitir falsificar X-Forwarded-For; medir en staging y fijar la solucion (ADR-0028 §7.4)"
+      - "auditor-seguridad revisa a Vercel como nuevo encargado de datos personales (ADR-0028 §7.3) y la proteccion de las URL *.vercel.app"
+      - "Confirmar que 512 MB de Render starter bastan para el modo unico (ADR-0019 calculo 1 GB) o subir de plan"
+      - "Cerrar la carrera conocida: el deploy hook despliega la punta de la rama, no el SHA migrado"
+    files:
+      - render.yaml
+      - apps/web/vercel.json
+      - .github/workflows/deploy-staging.yml
+    source: ADR-0028, 2026-11-17
+    created_at: 2026-11-17T15:30:00.000Z
+    owner: devops
