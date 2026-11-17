@@ -72,7 +72,7 @@ Postmark real; las migraciones contra una base de producción (solo corren en el
 
 | Qué | Dónde |
 |---|---|
-| Despliegue: `render.yaml` sigue con la topología de ADR-0013; `Deploy staging` termina en verde con el aviso «Faltan los secretos del Environment staging». Fly (ADR-0019 §7) sin ejecutar | T-079 reabierta |
+| Despliegue de staging **configurado y sin ejecutar**: Neon + web en Vercel + API en un solo proceso en Render (ADR-0028). Falta que el propietario siga la guía de paneles; hasta entonces `Deploy staging` falla en voz alta por falta de secretos | [guía](docs/07-ingenieria/despliegue-neon-vercel-render.md), T-079, T-239 |
 | Operación antes del piloto: respaldo, costo y rotación de claves, **propuestas sin ensayar** | [`docs/06-operacion/`](docs/06-operacion/) |
 | Políticas de seguridad: borrador sin aprobar | [`docs/05-seguridad/00-indice-de-politicas.md`](docs/05-seguridad/00-indice-de-politicas.md) |
 | ADR-0023 (fiscal) y ADR-0024: propuestos. Las fuentes de la DIAN del 0023 **no están verificadas** | [`docs/03-adr/`](docs/03-adr/) |

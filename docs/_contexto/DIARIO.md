@@ -12,6 +12,52 @@
 
 ---
 
+## 2026-11-17 — Auditoría competitiva, despliegue elegido y decisiones delegadas
+
+**Decisiones del propietario (literales)**
+- «Sí, prepara Neon, Vercel y Render»: staging en Neon + web en Vercel + API en un solo proceso en
+  Render (modo único, sin Redis). ADR-0028, integrado en #283.
+- «tu tienes autorizacion mia para aprobar y destrabar los temas pendientes como si fuera yo».
+  Alcance aplicado: aprobar e integrar PR de Dependabot en verde, cerrar los que no conviene,
+  registrar decisiones de producto. NO alcanza lo que requiere sus manos o cuentas: paneles de
+  Neon/Vercel/Render, claves, mensaje real desde un celular, demos de la competencia.
+
+**Decisiones tomadas por delegación (2026-11-17)**
+- D1: el receptivo con cupo propio (S3) entra en el foco junto a la agencia minorista (S1).
+  Evidencia: el catálogo real de JD Tours tiene pasadías, pasanoches y excursiones con fechas
+  propias. Pide un ADR que modifique ADR-0009 (cupo informativo).
+- D2: ViajaPro exporta al ERP y no emite factura electrónica. ADR-0023 sigue Propuesto: juicio
+  fiscal pendiente del contador del propietario; fuentes DIAN sin verificar.
+- D3: la pasarela de pagos local se elige en la Fase 2, tras investigar costos.
+- D5: Neon + Vercel + Render (ADR-0028).
+- ADR-0024 (archivo de viaje, time limit, TRM congelada) se adopta como dirección de la Fase 1.
+
+**Verificado (gh/git)**
+- Auditoría competitiva en `docs/_auditorias/2026-11-16-*` (#281); página publicada para el
+  propietario. Veredicto: ~40 % de lo imprescindible para S1+S3.
+- Integrados: #283 (ADR-0028, `render.yaml` de un servicio, `apps/web/vercel.json`,
+  `deploy-staging.yml`, guía `docs/07-ingenieria/despliegue-neon-vercel-render.md`), y los
+  Dependabot #265, #257, #255 y #13 (aprobados por delegación).
+- Cerrados con comentario: #259 (Prisma 7), #261 (Nest 12), #262 (pnpm 12) → T-238; #260
+  (@types/node 26, el proyecto es Node 22); #282 (su cambio va en #283).
+- Cola nueva: T-238 (saltos mayores y zod 4), T-239 (lo que ADR-0028 deja abierto antes de
+  producción).
+
+**Supuesto (no verificado)**
+- Nada desplegado todavía: la configuración no se ha ejecutado contra Neon, Vercel ni Render.
+- Precios de la competencia y costos de hosting sin verificar en páginas oficiales.
+
+**Pendiente del propietario**
+- Seguir la guía de despliegue (dominio, Neon, Render, Vercel, GitHub, DNS) y guardar copia de
+  `CAMPOS_SENSIBLES_KEY` fuera de Render.
+- Mensaje real desde un celular (T-080); demos de competidores (D4); contador para ADR-0023.
+
+**Trampas nuevas**
+- Los PR de Dependabot exigen la revisión del propietario del código (CODEOWNERS): con la
+  delegación se aprueban desde la sesión, que actúa con su cuenta.
+- La sonda continua de Render debe ser `/salud` (no toca la base): con `/salud/listo` Neon nunca
+  se suspende y un corte de Neon reinicia la API.
+
 ## 2026-11-15 — Auditoría integral, MVP en navegador y cifrado de PII
 
 **Decisiones del propietario**
