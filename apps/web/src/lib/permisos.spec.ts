@@ -186,7 +186,9 @@ describe('Lógica y evaluación de permisos (T-118 / T-089 / 0c.27)', () => {
         expect(info.clave).toBe(permiso);
         expect(info.nombre.length).toBeGreaterThan(3);
         expect(info.descripcion.length).toBeGreaterThan(10);
-        expect(info.categoria).toMatch(/^(bandeja|crm|cotizacion|catalogo|administracion)$/);
+        expect(info.categoria).toMatch(
+          /^(bandeja|crm|cotizacion|catalogo|archivo|administracion)$/,
+        );
       }
     });
 

@@ -28,20 +28,30 @@ export const ROLES_SEMBRADOS = [
       'bandeja.operar',
       'crm.escribir',
       'cotizacion.escribir',
+      'archivo.ver',
+      'archivo.operar',
     ],
   },
   {
     clave: 'ASESOR',
     nombre: 'Asesor',
-    // T-089: el Asesor atiende la bandeja, escribe en el CRM y cotiza.
-    permisos: ['bandeja.operar', 'crm.escribir', 'cotizacion.escribir'],
+    // T-089: el Asesor atiende la bandeja, escribe en el CRM y cotiza. T-249: y opera los
+    // archivos de viaje que nacen de sus cotizaciones (ADR-0024 §3.7).
+    permisos: [
+      'bandeja.operar',
+      'crm.escribir',
+      'cotizacion.escribir',
+      'archivo.ver',
+      'archivo.operar',
+    ],
   },
   {
     clave: 'OPERACIONES',
     nombre: 'Operaciones',
-    // ADR-0017 D2: Operaciones mantiene el catálogo; el Asesor no. T-089: fuera del catálogo es
-    // de solo lectura, sin `bandeja.operar`, `crm.escribir` ni `cotizacion.escribir`.
-    permisos: ['conversaciones.ver_todas', 'catalogo.administrar'],
+    // ADR-0017 D2: Operaciones mantiene el catálogo; el Asesor no. T-089: sin `bandeja.operar`,
+    // `crm.escribir` ni `cotizacion.escribir`. T-249 (ADR-0024 §3.7): sí opera los archivos de
+    // viaje, que es confirmar con el proveedor y pagarle.
+    permisos: ['conversaciones.ver_todas', 'catalogo.administrar', 'archivo.ver', 'archivo.operar'],
   },
 ] as const;
 

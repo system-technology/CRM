@@ -4,8 +4,8 @@
  * **El catálogo de permisos es código, no tabla.** Lo que el sistema sabe hacer es un
  * invariante del dominio; cómo lo agrupa cada agencia en roles es política (tabla `roles`,
  * R12). Este enum es la fuente de verdad, y la base lo refleja en el `CHECK
- * roles_permisos_del_catalogo` (migración `20261019230000`, ampliado en `20261026120000` y
- * `20261104130000`). Añadir un permiso es editar los dos: un permiso que la base no admite no
+ * roles_permisos_del_catalogo` (migración `20261019230000`, ampliado en `20261026120000`,
+ * `20261104130000` y `20261118100000`). Añadir un permiso es editar los dos: un permiso que la base no admite no
  * se puede asignar, y uno que el código no conoce no autoriza nada.
  */
 
@@ -38,6 +38,17 @@ export const PERMISOS = [
    * `cotizacion.ver_neto_y_margen`.
    */
   'cotizacion.escribir',
+  /**
+   * Leer los archivos de viaje: lista, detalle, reservas y pasajeros (nombres y edades, menores
+   * incluidos). El neto sigue exigiendo `cotizacion.ver_neto_y_margen`. ADR-0024 §3.7, T-249,
+   * migración `20261118100000`.
+   */
+  'archivo.ver',
+  /**
+   * Operar los archivos de viaje: avanzar reservas (confirmar, abonar, pagar al proveedor), editar
+   * pasajeros y cancelar el archivo. ADR-0024 §3.7, T-249.
+   */
+  'archivo.operar',
 ] as const;
 
 export const Permiso = z.enum(PERMISOS);

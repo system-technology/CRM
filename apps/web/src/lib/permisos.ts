@@ -20,6 +20,10 @@ export const PERMISO_BANDEJA_OPERAR: Permiso = 'bandeja.operar';
 export const PERMISO_CRM_ESCRIBIR: Permiso = 'crm.escribir';
 export const PERMISO_COTIZACION_ESCRIBIR: Permiso = 'cotizacion.escribir';
 
+/** Permisos del archivo de viaje (ADR-0024 §3.7, T-249) */
+export const PERMISO_ARCHIVO_VER: Permiso = 'archivo.ver';
+export const PERMISO_ARCHIVO_OPERAR: Permiso = 'archivo.operar';
+
 /** Permisos de mutación introducidos en T-089 */
 export const PERMISOS_MUTACION_T089: readonly Permiso[] = [
   PERMISO_BANDEJA_OPERAR,
@@ -35,7 +39,7 @@ export interface EtiquetaPermiso {
   clave: Permiso;
   nombre: string;
   descripcion: string;
-  categoria: 'bandeja' | 'crm' | 'cotizacion' | 'catalogo' | 'administracion';
+  categoria: 'bandeja' | 'crm' | 'cotizacion' | 'catalogo' | 'archivo' | 'administracion';
 }
 
 export const MAPA_ETIQUETAS_PERMISOS: Record<Permiso, EtiquetaPermiso> = {
@@ -81,6 +85,20 @@ export const MAPA_ETIQUETAS_PERMISOS: Record<Permiso, EtiquetaPermiso> = {
       'Permite crear, editar, desactivar e importar paquetes y salidas turísticas del catálogo.',
     categoria: 'catalogo',
   },
+  'archivo.ver': {
+    clave: 'archivo.ver',
+    nombre: 'Ver archivos de viaje',
+    descripcion:
+      'Permite consultar los archivos de viaje con sus reservas, plazos y pasajeros (nombres y edades).',
+    categoria: 'archivo',
+  },
+  'archivo.operar': {
+    clave: 'archivo.operar',
+    nombre: 'Operar archivos de viaje',
+    descripcion:
+      'Permite confirmar, abonar y pagar reservas al proveedor, editar los pasajeros y cancelar el archivo.',
+    categoria: 'archivo',
+  },
   'usuarios.administrar': {
     clave: 'usuarios.administrar',
     nombre: 'Administrar equipo',
@@ -117,6 +135,10 @@ export function explicacionFaltaPermiso(permiso: Permiso): string {
       return 'Acceso restringido: se requiere el permiso «Ver neto y margen» (cotizacion.ver_neto_y_margen).';
     case 'catalogo.administrar':
       return 'Acción deshabilitada: se requiere el permiso «Administrar catálogo» (catalogo.administrar).';
+    case 'archivo.ver':
+      return 'Acceso restringido: se requiere el permiso «Ver archivos de viaje» (archivo.ver).';
+    case 'archivo.operar':
+      return 'Acción deshabilitada: se requiere el permiso «Operar archivos de viaje» (archivo.operar) para avanzar reservas, editar pasajeros o cancelar el archivo.';
     case 'usuarios.administrar':
       return 'Acceso restringido: se requiere el permiso «Administrar equipo» (usuarios.administrar).';
     case 'roles.administrar':

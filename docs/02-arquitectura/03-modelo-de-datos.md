@@ -952,6 +952,37 @@ Migración `20261104130000_permisos_de_mutacion_rbac`. Sin tabla nueva ni cambio
 - Prueba: `packages/database/tests/permisos-de-mutacion.spec.ts` reejecuta el relleno sobre
   agencias sembradas como antes, dentro de una transacción que se deshace.
 
+## Permisos del archivo de viaje (T-249, 2026-11-17)
+
+Migración `20261118100000_permisos_del_archivo_de_viaje`. Sin tabla nueva ni cambio de forma.
+
+```
+  roles_permisos_del_catalogo   + 'archivo.ver', 'archivo.operar'      (diez en total)
+
+  rol sembrado    archivo.ver   archivo.operar
+  DUENO               sí             sí
+  ASESOR              sí             sí
+  OPERACIONES         sí             sí      (sigue sin bandeja.operar, crm.escribir, cotizacion.escribir)
+  propios (sin clave) sin cambio: sin ellos, 403 en /api/v1/archivos
+```
+
+**Por qué así.**
+
+- **ADR-0024 §3.7.** Antes de esto la lectura de archivos estaba abierta a todo miembro (nombres y
+  edades de pasajeros, menores incluidos) y las mutaciones exigían `cotizacion.escribir`, así que
+  OPERACIONES no podía operar reservas y cualquier asesor podía marcarlas pagadas. Era el hallazgo
+  de la auditoría de T-242.
+- **OPERACIONES recibe `archivo.operar`.** Deja de ser «solo lectura fuera del catálogo»: confirmar
+  con el proveedor y pagarle es su oficio. Los tres permisos de escritura de T-089 siguen sin llegarle.
+- **Mismo relleno que T-089:** agencia por agencia con `app.current_tenant`, solo lo que falta, sin
+  duplicar, y la migración aborta si un rol sembrado queda sin los dos o con repetidos. CHECK en dos
+  pasos (`NOT VALID` + `VALIDATE`), y al final se comprueba que quedó validado con los dos.
+- Pruebas: `packages/database/tests/permisos-de-archivo.spec.ts` (relleno sobre roles «como eran»,
+  rol propio con `archivo.ver` admitido, permiso inventado rechazado, siembra) y
+  `booking-archivos.e2e-spec.ts` con sesiones reales (403 sin `archivo.ver` o sin `archivo.operar`,
+  archivo intacto; OPERACIONES opera). `permisos-de-mutacion.spec.ts` ya no reejecuta el CHECK de ocho
+  de T-089: con roles reales que tienen `archivo.*`, validarlo fallaría.
+
 ## Cola de salida medida entre agencias (T-223, 2026-11-15)
 
 Migración `20261115140000_medir_cola_de_salida`. Sin tabla nueva: un rol propietario y una función.
