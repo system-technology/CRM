@@ -12,6 +12,34 @@
 
 ---
 
+## 2026-11-17 (tarde) — Archivo de viaje de punta a punta y demo sin dominio
+
+**Verificado (gh/git, CI en verde en cada PR)**
+- #289 (5ec0b37): opción C, la demo sin dominio. La web en `*.vercel.app` reescribe `/api/v1` y el
+  socket (long-polling) a Render. Variables: Vercel sin `NEXT_PUBLIC_API_URL`, `API_INTERNAL_URL` =
+  Render; Render `WEB_PUBLIC_URL` = vercel, `API_PUBLIC_URL` = Render, `API_TRUST_PROXY=1`.
+- #290 (75f396a): `CotizacionAceptada` por outbox + despachador por consumidor en `AppModule`
+  (descubre agencias con `tenants_con_eventos_por_entregar`, entrega bajo `conTenant`, idempotente por
+  `entregas_de_eventos`, abandona a los 10 intentos) → abre el TravelFile con número de file.
+- #291 (31b8eb1): el cotizador congela el mayorista por línea y la TRM declarada en la versión.
+  El CI cazó un orden esperado mal escrito en el e2e, no un defecto.
+- #292 (2167a2a): API `/api/v1/archivos` (estados de reserva, pasajeros, cancelación) y neto solo con
+  permiso (T-242, T-248). T-241 done.
+- #293 (68c3c38): pantalla Reservas en `/viajes` con datos reales (T-243).
+- Auditorías de seguridad de #290 y #292: **sin bloqueantes**; los huecos de prueba de aislamiento
+  de #290 se cerraron en el mismo PR. Cola: T-247, T-249, T-250, T-251, T-252.
+
+**Decisión por delegación**
+- Mutaciones de reservas con `cotizacion.escribir` mientras no existan `archivo.ver` /
+  `archivo.operar` (T-249, migración de `datos`). Efecto: OPERACIONES aún no opera reservas.
+
+**Supuesto / sin probar**
+- Nada desplegado todavía (el propietario configura los paneles). La pantalla Reservas no se ha visto
+  contra la API real en navegador. La opción C no se ha probado contra Vercel real.
+- Los agentes en worktree no pueden levantar Postgres local (permiso denegado); el e2e lo valida el CI.
+
+---
+
 ## 2026-11-17 — Auditoría competitiva, despliegue elegido y decisiones delegadas
 
 **Decisiones del propietario (literales)**
