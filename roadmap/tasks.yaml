@@ -5519,13 +5519,16 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: ready
+    status: in_progress
+    notes: "Rama feat/web-reservas: /viajes lee y opera la API real (lista con semaforo y mayorista, detalle con reservas y pasajeros, avance de estado con los campos de cada paso, edicion de pasajeros, cancelacion, errores 409/422 en lenguaje claro). Sin neto si la API lo omite. Demo: lectura de maqueta en forma de contrato, mutaciones rechazadas. Pasa a done al integrarse en main. Cola: T-252"
     depends_on: [T-242]
     acceptance:
       - "Reemplaza la maqueta /viajes por datos reales del archivo de viaje"
       - "La asesora ve que reserva esta por vencer y con que mayorista"
     files:
       - apps/web/src/app/viajes
+      - apps/web/src/components/reservas
+      - apps/web/src/lib/archivos-api.ts
     source: ADR-0024 aceptado el 2026-11-17 (Fase 1, archivo de viaje)
     created_at: 2026-11-17T17:45:00.000Z
     owner: frontend
@@ -5676,3 +5679,21 @@ tasks:
     source: auditoría de seguridad de T-242 (2026-11-17), hallazgos BAJO y funcional
     created_at: 2026-11-17T18:20:00.000Z
     owner: backend
+  - id: T-252
+    title: "Reservas: e2e de Playwright que abre /viajes tras aceptar una cotizacion, y lista virtualizada"
+    type: refactor
+    phase: 1
+    priority: P2
+    effort: S
+    status: ready
+    depends_on: [T-243]
+    acceptance:
+      - "Un caso en apps/web/e2e acepta una cotizacion (la API ya crea el archivo al aceptar) y comprueba que /viajes la lista con su mayorista y que se puede confirmar una reserva con time limit"
+      - "La lista de /viajes (hasta 500 archivos, sin cursor en la API) se virtualiza si la medicion con 500 filas supera 100 ms al cambiar de archivo; hoy usa content-visibility"
+      - "Tras T-249, ocultar en la UI los botones de mutacion a quien no tenga archivo.operar (hoy el servidor responde 403 y la pantalla lo explica)"
+    files:
+      - apps/web/e2e
+      - apps/web/src/components/reservas
+    source: T-243; el flujo de aceptar cotizacion no tiene hoy un paso de UI en la suite e2e y no se pudo correr Playwright en esta sesion
+    created_at: 2026-11-17T19:00:00.000Z
+    owner: frontend
