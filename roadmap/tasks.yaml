@@ -5694,7 +5694,7 @@ tasks:
     acceptance:
       - "Un caso en apps/web/e2e acepta una cotizacion (la API ya crea el archivo al aceptar) y comprueba que /viajes la lista con su mayorista y que se puede confirmar una reserva con time limit"
       - "La lista de /viajes (hasta 500 archivos, sin cursor en la API) se virtualiza si la medicion con 500 filas supera 100 ms al cambiar de archivo; hoy usa content-visibility"
-      - "Tras T-249, ocultar en la UI los botones de mutacion a quien no tenga archivo.operar (hoy el servidor responde 403 y la pantalla lo explica)"
+      - "Tras T-249, ocultar en la UI los botones de mutacion a quien no tenga archivo.operar (HECHO en feat/web-permisos-de-reservas: sin archivo.ver /viajes muestra «sin acceso» sin pedir nada a la API; sin archivo.operar el detalle queda de solo lectura con aviso; sesiones simuladas del modo demo con los permisos de DUENO, ASESOR y OPERACIONES; pruebas con y sin cada permiso. Pendiente de esta tarea: el e2e de Playwright y la virtualizacion)"
     files:
       - apps/web/e2e
       - apps/web/src/components/reservas

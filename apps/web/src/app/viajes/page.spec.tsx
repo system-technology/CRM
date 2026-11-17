@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import ReservasPage from './page';
 import * as api from '../../lib/archivos-api';
+import * as auth from '../../lib/auth-api';
+import type { Permiso, SesionActual } from '@viajapro/contracts';
 import { MOCK_DETALLES_ARCHIVOS } from '../../lib/mock-archivos';
 
 let busqueda = '';
@@ -26,6 +28,20 @@ vi.mock('../../lib/archivos-api', async (importOriginal) => {
   };
 });
 
+vi.mock('../../lib/auth-api', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../lib/auth-api')>();
+  return { ...actual, obtenerSesionActualApi: vi.fn() };
+});
+
+function sesionCon(permisos: Permiso[]): SesionActual {
+  return {
+    ...auth.MOCK_SESION_UNICA_AGENCIA,
+    acceso: { ...auth.MOCK_SESION_UNICA_AGENCIA.acceso!, permisos },
+  };
+}
+const conSesion = (permisos: Permiso[]) =>
+  vi.mocked(auth.obtenerSesionActualApi).mockResolvedValue(sesionCon(permisos));
+
 const archivo = () => structuredClone(MOCK_DETALLES_ARCHIVOS[0]!);
 
 describe('Reservas (T-243)', () => {
@@ -33,6 +49,7 @@ describe('Reservas (T-243)', () => {
     cleanup();
     vi.clearAllMocks();
     busqueda = '';
+    conSesion(['archivo.ver', 'archivo.operar']);
     vi.mocked(api.listarArchivos).mockResolvedValue(MOCK_DETALLES_ARCHIVOS);
     vi.mocked(api.obtenerArchivo).mockImplementation((id) => {
       const a = MOCK_DETALLES_ARCHIVOS.find((x) => x.id === id);
@@ -52,10 +69,12 @@ describe('Reservas (T-243)', () => {
     expect(within(primero).getByText(/vence en \d+ horas?/)).toBeDefined();
   });
 
-  it('cargando: esqueleto, no un spinner', () => {
+  it('cargando: esqueleto, no un spinner', async () => {
     vi.mocked(api.listarArchivos).mockReturnValue(new Promise(() => {}));
     render(<ReservasPage />);
-    expect(screen.getByLabelText('Cargando registros').getAttribute('aria-busy')).toBe('true');
+    expect((await screen.findByLabelText('Cargando registros')).getAttribute('aria-busy')).toBe(
+      'true',
+    );
   });
 
   it('vacío: explica de dónde nacen los archivos y ofrece ir a cotizaciones', async () => {
@@ -245,6 +264,68 @@ describe('Reservas (T-243)', () => {
       expect(alertas.some((a) => /ya no existe/.test(a.textContent ?? ''))).toBe(true);
       fireEvent.click(screen.getByRole('button', { name: 'Volver a la lista' }));
       expect(replace).toHaveBeenCalledWith('/viajes', { scroll: false });
+    });
+  });
+
+  describe('permisos (T-252, ADR-0024 §3.7)', () => {
+    it('sin archivo.ver: estado de sin acceso y no pide nada a la API', async () => {
+      conSesion(['archivo.operar']);
+      render(<ReservasPage />);
+      const aviso = await screen.findByTestId('reservas-sin-acceso');
+      expect(aviso.textContent).toMatch(/No tienes acceso a las reservas/);
+      expect(aviso.textContent).toMatch(/Ver archivos de viaje/);
+      expect(screen.getByRole('link', { name: 'Ir a la bandeja' }).getAttribute('href')).toBe(
+        '/bandeja',
+      );
+      expect(api.listarArchivos).not.toHaveBeenCalled();
+      expect(api.obtenerArchivo).not.toHaveBeenCalled();
+    });
+
+    it('sin sesión (falla la consulta): sin acceso, no un error crudo', async () => {
+      vi.mocked(auth.obtenerSesionActualApi).mockRejectedValue(new Error('x'));
+      render(<ReservasPage />);
+      expect(await screen.findByTestId('reservas-sin-acceso')).toBeDefined();
+      expect(api.listarArchivos).not.toHaveBeenCalled();
+    });
+
+    it('mientras se conocen los permisos no parpadea el sin acceso ni llama a la API', () => {
+      vi.mocked(auth.obtenerSesionActualApi).mockReturnValue(new Promise(() => {}));
+      render(<ReservasPage />);
+      expect(screen.queryByTestId('reservas-sin-acceso')).toBeNull();
+      expect(api.listarArchivos).not.toHaveBeenCalled();
+    });
+
+    it('con archivo.ver sin archivo.operar: lista y detalle legibles, sin botones de mutación', async () => {
+      conSesion(['archivo.ver']);
+      busqueda = `id=${MOCK_DETALLES_ARCHIVOS[0]!.id}`;
+      render(<ReservasPage />);
+      expect(await screen.findByRole('heading', { name: /File 1043/ })).toBeDefined();
+      expect(screen.getAllByTestId('reserva')).toHaveLength(2);
+      expect(screen.getByText('Felipe Morales')).toBeDefined();
+      expect(screen.getByTestId('aviso-solo-lectura').textContent).toMatch(
+        /Operar archivos de viaje/,
+      );
+      for (const nombre of [
+        'Confirmar',
+        'Registrar abono',
+        'Marcar como caída',
+        'Editar pasajeros',
+        /Corregir localizador/,
+        /Cancelar archivo…/,
+      ]) {
+        expect(screen.queryByRole('button', { name: nombre })).toBeNull();
+      }
+    });
+
+    it('con archivo.ver y archivo.operar: ofrece las mutaciones y no el aviso de solo lectura', async () => {
+      busqueda = `id=${MOCK_DETALLES_ARCHIVOS[0]!.id}`;
+      render(<ReservasPage />);
+      expect(await screen.findByRole('button', { name: 'Editar pasajeros' })).toBeDefined();
+      expect(screen.getByRole('button', { name: /Cancelar archivo…/ })).toBeDefined();
+      expect(
+        screen.getAllByRole('button', { name: /Corregir localizador/ }).length,
+      ).toBeGreaterThan(0);
+      expect(screen.queryByTestId('aviso-solo-lectura')).toBeNull();
     });
   });
 });

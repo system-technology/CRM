@@ -15,7 +15,7 @@
 import React, { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { Briefcase, RefreshCw, Search } from 'lucide-react';
+import { Briefcase, Lock, RefreshCw, Search } from 'lucide-react';
 import type {
   ActualizarReserva,
   CancelarArchivo,
@@ -43,6 +43,7 @@ import {
 import { obtenerAjustesAgenciaApi } from '../../lib/agencia-api';
 import { estaUsandoApiReal } from '../../lib/crm-api';
 import { useModoDemo } from '../../lib/modo-demo';
+import { PERMISO_ARCHIVO_OPERAR, PERMISO_ARCHIVO_VER, usePermisos } from '../../lib/permisos';
 import type { MensajeErrorDetallado } from '../../lib/estados-ui-logica';
 
 type FiltroEstado = 'ABIERTO' | 'CANCELADO' | 'TODOS';
@@ -61,7 +62,7 @@ function errorAccionable(e: unknown, titulo: string): MensajeErrorDetallado {
   };
 }
 
-function ReservasContenido() {
+function ReservasContenido({ puedeOperar }: { puedeOperar: boolean }) {
   const { esDemo } = useModoDemo();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -299,6 +300,7 @@ function ReservasContenido() {
               key={detalle.datos.id}
               archivo={detalle.datos}
               zona={zona}
+              puedeOperar={puedeOperar}
               onVolver={() => seleccionar(null)}
               {...mutaciones(detalle.datos.id)}
             />
@@ -309,10 +311,49 @@ function ReservasContenido() {
   );
 }
 
+/** Estado «sin acceso»: la API respondería 403 a todo /archivos sin `archivo.ver` (T-249). */
+function SinAcceso() {
+  return (
+    <div className="flex min-h-screen bg-neutral-50 text-neutral-900 antialiased dark:bg-neutral-950 dark:text-neutral-100">
+      <BarraModulos />
+      <main className="flex min-w-0 flex-1 items-center justify-center p-6 pb-28 md:pb-6">
+        <div
+          role="status"
+          data-testid="reservas-sin-acceso"
+          className="max-w-md space-y-3 text-center"
+        >
+          <Lock className="mx-auto h-8 w-8 text-neutral-500" aria-hidden="true" />
+          <h1 className="text-base font-bold">No tienes acceso a las reservas</h1>
+          <p className="text-sm text-neutral-700 dark:text-neutral-300">
+            Tu rol no incluye el permiso «Ver archivos de viaje». Pide a quien administra la agencia
+            que te lo asigne desde Configuración, o vuelve a la bandeja.
+          </p>
+          <Link
+            href="/bandeja"
+            className="focus-visible:ring-acento-600 inline-flex min-h-[44px] items-center rounded-xl border border-neutral-300 px-4 text-sm font-medium focus-visible:ring-2 focus-visible:outline-none dark:border-neutral-700"
+          >
+            Ir a la bandeja
+          </Link>
+        </div>
+      </main>
+    </div>
+  );
+}
+
+/** Compuerta de permisos: sin `archivo.ver` no se pide nada a la API. */
+function ReservasConPermisos() {
+  const { cargando, tienePermiso } = usePermisos();
+  if (cargando) {
+    return <div aria-busy="true" aria-label="Cargando permisos" className="min-h-screen" />;
+  }
+  if (!tienePermiso(PERMISO_ARCHIVO_VER)) return <SinAcceso />;
+  return <ReservasContenido puedeOperar={tienePermiso(PERMISO_ARCHIVO_OPERAR)} />;
+}
+
 export default function ReservasPage() {
   return (
     <Suspense fallback={<div aria-busy="true" className="min-h-screen" />}>
-      <ReservasContenido />
+      <ReservasConPermisos />
     </Suspense>
   );
 }
