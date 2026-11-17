@@ -7,7 +7,7 @@
  * puerto responde `null` igual que si no existiera.
  */
 import type { Archivo, CancelacionDelArchivo, PasajeroNuevo } from '../domain/archivo.js';
-import type { Reserva } from '../domain/reserva.js';
+import type { CambioDeEstadoDeReserva, Reserva } from '../domain/reserva.js';
 
 /** Lo que se puede hacer dentro de UNA transacción, con el archivo bloqueado. */
 export interface OperacionesDelArchivo {
@@ -50,5 +50,7 @@ export abstract class RepositorioDeOperacionDeArchivos {
   abstract listar(filtro: FiltroDeArchivos): Promise<Archivo[]>;
   /** Un archivo con reservas y pasajeros; `null` si no existe en esta agencia. */
   abstract leer(archivoId: string): Promise<Archivo | null>;
+  /** Cambios de estado de las reservas del archivo, del más antiguo al más reciente (T-250). */
+  abstract historialDe(archivoId: string): Promise<CambioDeEstadoDeReserva[]>;
   abstract enTransaccion<T>(fn: (ops: OperacionesDelArchivo) => Promise<T>): Promise<T>;
 }

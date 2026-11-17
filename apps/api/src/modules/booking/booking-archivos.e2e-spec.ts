@@ -748,3 +748,194 @@ describe('permisos archivo.ver y archivo.operar con sesiones reales (T-249)', ()
     expect(fila).toMatchObject({ estado: 'SOLICITADA', localizador: 'OPS-1' });
   });
 });
+
+describe('historial de estados de la reserva (T-250)', () => {
+  interface FilaHistorial {
+    reserva_id: string;
+    archivo_id: string;
+    estado_anterior: string;
+    estado_nuevo: string;
+    usuario_id: string | null;
+  }
+  const historialEnBase = (tenant: string, archivoId: string) =>
+    comoAgencia<FilaHistorial>(
+      tenant,
+      `SELECT reserva_id, archivo_id, estado_anterior::text AS estado_anterior,
+              estado_nuevo::text AS estado_nuevo, usuario_id
+         FROM reserva_cambios_estado
+        WHERE tenant_id = $1 AND archivo_id = $2
+        ORDER BY ocurrido_en, id`,
+      [tenant, archivoId],
+    );
+
+  let archivo: ResumenDeArchivo;
+  let reserva = '';
+  let deB: ResumenDeArchivo;
+  const ruta = (): string => `/api/v1/archivos/${archivo.id}/reservas/${reserva}`;
+  const TIME_LIMIT = '2027-02-01T23:00:00.000Z';
+
+  beforeAll(async () => {
+    archivo = await archivoNuevo(agencias.A);
+    reserva = archivo.reservas[0]?.id ?? '';
+    deB = await archivoNuevo(agencias.B);
+  }, 60_000);
+
+  it('un archivo recién abierto no tiene historial (el alta no es un cambio)', async () => {
+    expect(await historialEnBase(agencias.A.tenant, archivo.id)).toEqual([]);
+    const d = DetalleDeArchivo.parse(
+      (await http(agencias.A, 'GET', `/api/v1/archivos/${archivo.id}`)).json,
+    );
+    expect(d.historial).toEqual([]);
+  });
+
+  it('un cambio de estado deja UNA fila con el estado anterior, el nuevo y el usuario', async () => {
+    const r = await http(agencias.A, 'PUT', ruta(), { estado: 'SOLICITADA', localizador: 'H-1' });
+    expect(r.estado).toBe(200);
+    expect(await historialEnBase(agencias.A.tenant, archivo.id)).toEqual([
+      {
+        reserva_id: reserva,
+        archivo_id: archivo.id,
+        estado_anterior: 'PENDIENTE',
+        estado_nuevo: 'SOLICITADA',
+        usuario_id: agencias.A.usuario,
+      },
+    ]);
+  });
+
+  it('corregir la nota o el localizador, o repetir el PUT, NO deja fila', async () => {
+    for (const cuerpo of [
+      { estado: 'SOLICITADA', localizador: 'H-1' },
+      { estado: 'SOLICITADA', localizador: 'H-1-CORREGIDO' },
+      { estado: 'SOLICITADA', nota: 'Pidió ventana' },
+    ]) {
+      expect((await http(agencias.A, 'PUT', ruta(), cuerpo)).estado).toBe(200);
+    }
+    expect(await historialEnBase(agencias.A.tenant, archivo.id)).toHaveLength(1);
+  });
+
+  it('una transición rechazada (409) no deja fila', async () => {
+    const r = await http(agencias.A, 'PUT', ruta(), {
+      estado: 'PAGADA_AL_PROVEEDOR',
+    });
+    expect(r.estado).toBe(409);
+    expect(await historialEnBase(agencias.A.tenant, archivo.id)).toHaveLength(1);
+  });
+
+  it('el detalle trae el historial en orden, sin neto, y lo lee un miembro con archivo.ver', async () => {
+    const confirmar = await http(agencias.A, 'PUT', ruta(), {
+      estado: 'CONFIRMADA',
+      timeLimit: TIME_LIMIT,
+    });
+    expect(confirmar.estado).toBe(200);
+
+    const d = DetalleDeArchivo.parse(
+      (await comoMiembro('soloVer', 'GET', `/api/v1/archivos/${archivo.id}`)).json,
+    );
+    expect(d.historial.map((h) => [h.estadoAnterior, h.estadoNuevo])).toEqual([
+      ['PENDIENTE', 'SOLICITADA'],
+      ['SOLICITADA', 'CONFIRMADA'],
+    ]);
+    expect(d.historial.every((h) => h.reservaId === reserva)).toBe(true);
+    expect(d.historial.every((h) => h.usuarioId === agencias.A.usuario)).toBe(true);
+    expect(JSON.stringify(d.historial)).not.toMatch(/neto/i);
+  });
+
+  it('cancelar el archivo deja una fila por cada reserva viva, con su estado de origen y quien canceló', async () => {
+    const otro = await archivoNuevo(agencias.A);
+    const reservaOtro = otro.reservas[0]?.id ?? '';
+    expect(
+      (
+        await http(agencias.A, 'PUT', `/api/v1/archivos/${otro.id}/reservas/${reservaOtro}`, {
+          estado: 'SOLICITADA',
+        })
+      ).estado,
+    ).toBe(200);
+    const c = await http(agencias.A, 'POST', `/api/v1/archivos/${otro.id}/cancelacion`, {
+      motivo: 'CLIENTE_DESISTIO',
+    });
+    expect(c.estado).toBe(201);
+    expect(
+      (await historialEnBase(agencias.A.tenant, otro.id)).map((f) => [
+        f.estado_anterior,
+        f.estado_nuevo,
+        f.usuario_id,
+      ]),
+    ).toEqual([
+      ['PENDIENTE', 'SOLICITADA', agencias.A.usuario],
+      ['SOLICITADA', 'CANCELADA', agencias.A.usuario],
+    ]);
+  }, 30_000);
+
+  it('aislamiento: B no ve ni por la API ni por la base el historial de A (control: A sí ve el suyo)', async () => {
+    // Control positivo: sin él, «B ve cero» sería verde también con la tabla vacía.
+    expect((await historialEnBase(agencias.A.tenant, archivo.id)).length).toBeGreaterThan(0);
+
+    // B opera lo suyo: su historial es suyo y solo suyo.
+    const reservaB = deB.reservas[0]?.id ?? '';
+    expect(
+      (
+        await http(agencias.B, 'PUT', `/api/v1/archivos/${deB.id}/reservas/${reservaB}`, {
+          estado: 'SOLICITADA',
+        })
+      ).estado,
+    ).toBe(200);
+    const propioB = DetalleDeArchivo.parse(
+      (await http(agencias.B, 'GET', `/api/v1/archivos/${deB.id}`)).json,
+    );
+    expect(propioB.historial).toHaveLength(1);
+    expect(propioB.historial.some((h) => h.reservaId === reserva)).toBe(false);
+
+    // Con el rol de la API y el contexto de B, las filas de A no existen.
+    expect(
+      await comoAgencia(
+        agencias.B.tenant,
+        'SELECT 1 FROM reserva_cambios_estado WHERE archivo_id = $1 OR reserva_id = $2',
+        [archivo.id, reserva],
+      ),
+    ).toEqual([]);
+    expect(
+      (
+        await comoAgencia<{ n: string }>(
+          agencias.B.tenant,
+          'SELECT count(*)::text AS n FROM reserva_cambios_estado WHERE tenant_id = $1',
+          [agencias.A.tenant],
+        )
+      )[0]?.n,
+    ).toBe('0');
+
+    // Y por la API, el archivo de A da 404 a B (no hay detalle ni historial que leer).
+    const ajeno = await http(agencias.B, 'GET', `/api/v1/archivos/${archivo.id}`);
+    expect(ajeno.estado).toBe(404);
+    expect(JSON.stringify(ajeno.json)).not.toContain(reserva);
+  }, 30_000);
+
+  it('la fila no se actualiza ni se borra con el rol de la API (viajapro_app: solo SELECT e INSERT)', async () => {
+    const [fila] = await comoAgencia<{ id: string }>(
+      agencias.A.tenant,
+      'SELECT id FROM reserva_cambios_estado WHERE tenant_id = $1 AND archivo_id = $2 LIMIT 1',
+      [agencias.A.tenant, archivo.id],
+    );
+    expect(fila?.id).toBeDefined();
+    await expect(
+      comoAgencia(
+        agencias.A.tenant,
+        "UPDATE reserva_cambios_estado SET estado_nuevo = 'PENDIENTE' WHERE id = $1",
+        [fila?.id],
+      ),
+    ).rejects.toMatchObject({ code: '42501' });
+    await expect(
+      comoAgencia(agencias.A.tenant, 'DELETE FROM reserva_cambios_estado WHERE id = $1', [
+        fila?.id,
+      ]),
+    ).rejects.toMatchObject({ code: '42501' });
+    await expect(
+      comoAgencia(agencias.A.tenant, 'TRUNCATE reserva_cambios_estado', []),
+    ).rejects.toMatchObject({ code: '42501' });
+    // Sigue ahí.
+    expect(
+      await comoAgencia(agencias.A.tenant, 'SELECT 1 FROM reserva_cambios_estado WHERE id = $1', [
+        fila?.id,
+      ]),
+    ).toHaveLength(1);
+  });
+});

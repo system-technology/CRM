@@ -93,6 +93,7 @@ model Tenant {
   pasajeros         Passenger[]
   entregasDeEventos EventDelivery[]
   notificaciones    Notification[]
+  cambiosDeReserva  ReservaCambioEstado[]
 
   roles            Rol[]
   formatosDeViaje  FormatoDeViaje[]
@@ -513,6 +514,7 @@ model Usuario {
   pasajerosCreados             Passenger[]              @relation("PassengerCreadoPor")
   pasajerosActualizados        Passenger[]              @relation("PassengerActualizadoPor")
   notificaciones               Notification[]
+  cambiosDeReservaHechos       ReservaCambioEstado[]
 
   @@unique([tenantId, correo])
   @@unique([tenantId, identidadId])
@@ -2418,9 +2420,10 @@ model TravelFile {
   creadoPor        Usuario? @relation("TravelFileCreadoPor", fields: [creadoPorId, tenantId], references: [id, tenantId], onDelete: NoAction, onUpdate: Restrict)
   actualizadoPor   Usuario? @relation("TravelFileActualizadoPor", fields: [actualizadoPorId, tenantId], references: [id, tenantId], onDelete: NoAction, onUpdate: Restrict)
 
-  reservas       Booking[]
-  pasajeros      Passenger[]
-  notificaciones Notification[]
+  reservas         Booking[]
+  pasajeros        Passenger[]
+  notificaciones   Notification[]
+  cambiosDeReserva ReservaCambioEstado[]
 
   @@unique([id, tenantId])
   @@unique([tenantId, numero])
@@ -2487,6 +2490,7 @@ model Booking {
   actualizadoPor   Usuario? @relation("BookingActualizadoPor", fields: [actualizadoPorId, tenantId], references: [id, tenantId], onDelete: NoAction, onUpdate: Restrict)
 
   notificaciones Notification[]
+  cambios        ReservaCambioEstado[]
 
   @@unique([id, tenantId])
   @@index([tenantId, travelFileId])
@@ -2606,4 +2610,35 @@ model Notification {
   @@index([tenantId, archivoId])
   @@index([tenantId, reservaId])
   @@map("notificaciones")
+}
+
+/// Historial de estados de la reserva (T-250). Solo añadir: la API solo tiene SELECT e INSERT.
+/// Una fila por cambio de estado (no por el alta, no por corregir nota o localizador). Sin texto
+/// libre ni PII, y sin neto.
+model ReservaCambioEstado {
+  id       String @id @default(uuid(7)) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  reservaId String  @map("reserva_id") @db.Uuid
+  reserva   Booking @relation(fields: [reservaId, tenantId], references: [id, tenantId], onDelete: NoAction, onUpdate: Restrict)
+
+  /// El archivo de la reserva, copiado para la línea de vida del archivo.
+  archivoId String     @map("archivo_id") @db.Uuid
+  archivo   TravelFile @relation(fields: [archivoId, tenantId], references: [id, tenantId], onDelete: NoAction, onUpdate: Restrict)
+
+  estadoAnterior EstadoReserva @map("estado_anterior")
+  estadoNuevo    EstadoReserva @map("estado_nuevo")
+
+  /// Quién lo hizo; nulo sin usuario.
+  usuarioId String?  @map("usuario_id") @db.Uuid
+  usuario   Usuario? @relation(fields: [usuarioId, tenantId], references: [id, tenantId], onDelete: NoAction, onUpdate: Restrict)
+
+  /// UTC, en la misma transacción que el UPDATE de la reserva.
+  ocurridoEn DateTime @default(now()) @map("ocurrido_en") @db.Timestamptz(3)
+
+  @@unique([id, tenantId])
+  @@index([tenantId, reservaId, ocurridoEn, id], map: "idx_reserva_cambios_estado_por_reserva")
+  @@index([tenantId, archivoId, ocurridoEn, id], map: "idx_reserva_cambios_estado_por_archivo")
+  @@map("reserva_cambios_estado")
 }
