@@ -469,6 +469,7 @@ describe('vigilancia de los plazos del mayorista (T-244)', () => {
         agenciasActivas: () => Promise.resolve(['01932000-0000-7000-8000-000000000bad', TENANT_B]),
       },
       repo,
+      { avisar: () => undefined },
     );
     // La primera agencia no existe: bajo su RLS no hay nada que avisar; B ya avisó todo.
     const r = await sembradas.ejecutar(AHORA);

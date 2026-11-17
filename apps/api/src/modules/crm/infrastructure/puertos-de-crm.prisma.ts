@@ -26,6 +26,7 @@ import {
   PuertoNotasDeConversacion,
   PuertoReferenciasDeCrm,
 } from '../../../shared/puertos/puertos-hacia-crm.js';
+import { PuertoAsesorDeOportunidad } from '../../../shared/puertos/puertos-para-avisos.js';
 
 @Injectable()
 export class ContactosDeCrm extends PuertoContactos {
@@ -91,6 +92,22 @@ export class ReferenciasDeCrm extends PuertoReferenciasDeCrm {
       select: { id: true },
     });
     return o !== null;
+  }
+}
+
+/** T-254: quién es el asesor de una oportunidad, para que `notifications` sepa a quién avisar. */
+@Injectable()
+export class AsesorDeOportunidadDeCrm extends PuertoAsesorDeOportunidad {
+  async asesorDe(
+    tx: ClienteTenant,
+    tenantId: string,
+    oportunidadId: string,
+  ): Promise<string | null> {
+    const o = await tx.oportunidad.findFirst({
+      where: { id: oportunidadId, tenantId },
+      select: { asesorId: true },
+    });
+    return o?.asesorId ?? null;
   }
 }
 

@@ -1,15 +1,18 @@
 import 'reflect-metadata';
 
 import { describe, expect, it, vi } from 'vitest';
+import { PuertoAvisoDeEventosDeDominio } from '../../../shared/puertos/puertos-de-eventos-de-dominio.js';
 import { PuertoDeAgenciasVigilables, RepositorioDeAvisosDePlazo } from './puertos-de-vigilancia.js';
 import { VigilarPlazosUseCase } from './vigilar-plazos.use-case.js';
 
 const AHORA = new Date('2027-01-10T15:00:00.000Z');
 
+const despacho: PuertoAvisoDeEventosDeDominio = { avisar: vi.fn() };
+
 function armar(ids: string[], avisarAgencia: RepositorioDeAvisosDePlazo['avisarAgencia']) {
   const agencias: PuertoDeAgenciasVigilables = { agenciasActivas: () => Promise.resolve(ids) };
   const repo: RepositorioDeAvisosDePlazo = { avisarAgencia };
-  return new VigilarPlazosUseCase(agencias, repo);
+  return new VigilarPlazosUseCase(agencias, repo, despacho);
 }
 
 describe('VigilarPlazosUseCase', () => {
@@ -32,6 +35,18 @@ describe('VigilarPlazosUseCase', () => {
     const r = await armar(['a', 'b'], avisarAgencia).ejecutar(AHORA);
     expect(r).toEqual({ agencias: 2, avisos: 1, agenciasConFallo: 1 });
     expect(avisarAgencia).toHaveBeenCalledTimes(2);
+  });
+
+  it('despierta al despachador solo de las agencias que escribieron avisos', async () => {
+    const avisar = vi.fn();
+    const agencias: PuertoDeAgenciasVigilables = {
+      agenciasActivas: () => Promise.resolve(['a', 'b']),
+    };
+    const repo: RepositorioDeAvisosDePlazo = {
+      avisarAgencia: (t: string) => Promise.resolve(t === 'a' ? 2 : 0),
+    };
+    await new VigilarPlazosUseCase(agencias, repo, { avisar }).ejecutar(AHORA);
+    expect(avisar.mock.calls).toEqual([['a']]);
   });
 
   it('sin agencias no hace nada', async () => {

@@ -1,6 +1,8 @@
 import { type MiddlewareConsumer, Module, type NestModule } from '@nestjs/common';
 import { AnalyticsModule } from './modules/analytics/analytics.module.js';
+import { BookingPuertosModule } from './modules/booking/booking-puertos.module.js';
 import { BookingModule } from './modules/booking/booking.module.js';
+import { NotificationsAvisosModule } from './modules/notifications/notifications-avisos.module.js';
 import { CrmReportesModule } from './modules/crm/crm-reportes.module.js';
 import { CrmModule } from './modules/crm/crm.module.js';
 import { IdentityModule } from './modules/identity/identity.module.js';
@@ -32,6 +34,8 @@ import { OriginCheckMiddleware } from './shared/red/origin-check.middleware.js';
     // ADR-0024 §1: el despacho de eventos de dominio vive en el contenedor de la API (unico y escalado).
     EventosDeDominioModule,
     NotificationsModule,
+    // T-254: notificaciones en la aplicación (consumidores de avisos de plazo y rutas del usuario).
+    NotificationsAvisosModule,
     IdentityModule,
     QuotingModule,
     QuotingPuertosModule,
@@ -40,6 +44,7 @@ import { OriginCheckMiddleware } from './shared/red/origin-check.middleware.js';
     CrmReportesModule,
     AnalyticsModule,
     BookingModule,
+    BookingPuertosModule,
   ],
   controllers: [SaludController],
   providers: [

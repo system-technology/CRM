@@ -15,7 +15,9 @@ import {
   PuertoNotasDeConversacion,
   PuertoReferenciasDeCrm,
 } from '../../shared/puertos/puertos-hacia-crm.js';
+import { PuertoAsesorDeOportunidad } from '../../shared/puertos/puertos-para-avisos.js';
 import {
+  AsesorDeOportunidadDeCrm,
   ContactosDeCrm,
   DefinicionesDeCampoDeCrm,
   NotasDeConversacionDeCrm,
@@ -29,8 +31,10 @@ import {
     { provide: PuertoDefinicionesDeCampo, useClass: DefinicionesDeCampoDeCrm },
     { provide: PuertoReferenciasDeCrm, useClass: ReferenciasDeCrm },
     { provide: PuertoNotasDeConversacion, useClass: NotasDeConversacionDeCrm },
+    { provide: PuertoAsesorDeOportunidad, useClass: AsesorDeOportunidadDeCrm },
   ],
   exports: [
+    PuertoAsesorDeOportunidad,
     PuertoContactos,
     PuertoDefinicionesDeCampo,
     PuertoReferenciasDeCrm,

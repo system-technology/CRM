@@ -5724,7 +5724,7 @@ tasks:
     phase: 1
     priority: P2
     effort: M
-    status: ready
+    status: in_progress
     depends_on: [T-244]
     acceptance:
       - "Un consumidor de dominio (despachador de ADR-0024 §1, con entregas_de_eventos) por tipo, con el esquema AvisoDePlazoV1 de contracts; sin importar el modulo booking (R4)"
@@ -5736,3 +5736,38 @@ tasks:
     source: T-244; ADR-0024 §3.6 y «Cola»
     created_at: 2026-11-17T19:30:00.000Z
     owner: backend
+    started_at: 2026-11-17T20:00:00.000Z
+    notes: "Hecha la parte en la aplicacion (rama feat/notifications-avisos-de-plazo): cuatro consumidores en el despachador, tabla notificaciones (migracion 20261118110000), GET /api/v1/notificaciones y POST /api/v1/notificaciones/:id/lectura, puertos en shared/puertos/puertos-para-avisos.ts. Destinatario: el asesor de la oportunidad del archivo si esta activo y tiene archivo.operar; si no, todos los activos con archivo.operar. Falta el aviso por WhatsApp o correo (plantilla utility, opt-in, por cola, con whatsapp): sigue en esta tarea. La campana y la lista en la web: T-255."
+  - id: T-255
+    title: "Web: campana y lista de notificaciones (avisos de plazo de las reservas)"
+    type: feature
+    phase: 1
+    priority: P2
+    effort: S
+    status: ready
+    depends_on: [T-254]
+    acceptance:
+      - "Campana en la cabecera con el contador noLeidas de GET /api/v1/notificaciones y lista desplegable: no leidas primero, cada una con el texto compuesto en la pantalla (tipo, numero de file, plazo en la zona horaria de la agencia, R9) y enlace a Reservas por archivoId"
+      - "Marcar leida con POST /api/v1/notificaciones/:id/lectura (idempotente); contratos importados de @viajapro/contracts (ListaDeNotificaciones, Notificacion), sin redefinir tipos (R3)"
+      - "Estados vacio, cargando y error; sin datos de pasajeros ni importes en la notificacion (el contrato no los trae)"
+    files:
+      - apps/web/src/components
+      - apps/web/src/app
+    source: T-254; la API de notificaciones en la aplicacion ya esta en la rama feat/notifications-avisos-de-plazo
+    created_at: 2026-11-17T20:00:00.000Z
+    owner: frontend
+  - id: T-256
+    title: "Notificaciones: foránea (reserva_id, archivo_id, tenant_id) que ate la reserva a su archivo"
+    type: refactor
+    phase: 1
+    priority: P3
+    effort: S
+    status: ready
+    depends_on: [T-254]
+    acceptance:
+      - "UNIQUE bookings(id, travel_file_id, tenant_id) y una sola FK compuesta desde notificaciones en lugar de las dos separadas; hoy solo lo impide el puerto de booking (sin cruce entre agencias)"
+    files:
+      - packages/database/prisma/migrations
+    source: auditoría de seguridad de T-254 (2026-11-17), hallazgo BAJO
+    created_at: 2026-11-17T19:45:00.000Z
+    owner: datos
