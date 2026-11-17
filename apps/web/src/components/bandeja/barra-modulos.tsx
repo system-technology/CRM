@@ -50,6 +50,15 @@ import {
   descartarNotificacion,
 } from '../../lib/notificaciones-web';
 import { generarAlertasOperativas } from '../../lib/notificaciones-logica';
+import { useAvisosDePlazo } from '../../lib/use-avisos-de-plazo';
+import {
+  adaptarAvisoANotificacionWeb,
+  esAvisoDePlazo,
+  idDeAviso,
+} from '../../lib/avisos-plazo-logica';
+import { obtenerAjustesAgenciaApi } from '../../lib/agencia-api';
+import { estaUsandoApiReal } from '../../lib/crm-api';
+import { zonaOPorDefecto } from '../../lib/archivos-logica';
 import { obtenerPendientesDelDiaApi } from '../../lib/crm-api';
 import { usePermisos } from '../../lib/permisos';
 import { useModoDemo, esModoDemo } from '../../lib/modo-demo';
@@ -110,6 +119,9 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
   const [notificaciones, setNotificaciones] = useState<NotificacionWeb[]>(() =>
     esModoDemo() ? generarNotificacionesIniciales(null, undefined, generarAlertasOperativas()) : [],
   );
+  const avisos = useAvisosDePlazo(esDemo);
+  // Zona horaria de la agencia (R9) para componer el plazo de cada aviso.
+  const [zonaAgencia, setZonaAgencia] = useState<string>(zonaOPorDefecto(null));
   const [menuSesionAbierto, setMenuSesionAbierto] = useState(false);
   const [cambiandoAgencia, setCambiandoAgencia] = useState<string | null>(null);
   const [cerrandoSesion, setCerrandoSesion] = useState(false);
@@ -183,6 +195,22 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
     };
   }, []);
 
+  useEffect(() => {
+    if (esDemo || !estaUsandoApiReal()) return;
+    let activo = true;
+    void obtenerAjustesAgenciaApi().then((a) => {
+      if (activo) setZonaAgencia(zonaOPorDefecto(a?.zonaHoraria));
+    });
+    return () => {
+      activo = false;
+    };
+  }, [esDemo]);
+
+  const abrirPanelNotificaciones = () => {
+    setPanelNotifAbierto(true);
+    avisos.refrescarSiEstaViejo();
+  };
+
   const alternarSidebar = () => {
     setBarraExpandida((prev) => {
       const nuevo = !prev;
@@ -219,14 +247,24 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
   };
 
   const manejarMarcarLeida = (id: string) => {
+    if (esAvisoDePlazo(id)) {
+      avisos.marcarLeido(idDeAviso(id));
+      return;
+    }
     setNotificaciones((prev) => marcarNotificacionLeida(prev, id));
   };
 
   const manejarMarcarTodasLeidas = () => {
     setNotificaciones((prev) => marcarTodasNotificacionesLeidas(prev));
+    for (const a of avisosWeb) if (!a.leida) avisos.marcarLeido(idDeAviso(a.id));
   };
 
   const manejarDescartar = (id: string) => {
+    // Un aviso del servidor no se borra: descartarlo es marcarlo leído.
+    if (esAvisoDePlazo(id)) {
+      avisos.marcarLeido(idDeAviso(id));
+      return;
+    }
     setNotificaciones((prev) => descartarNotificacion(prev, id));
   };
 
@@ -260,7 +298,14 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
     }
   };
 
-  const conteoNoLeidas = contarNotificacionesNoLeidas(notificaciones);
+  const avisosWeb: NotificacionWeb[] =
+    avisos.estado.tipo === 'listo'
+      ? avisos.estado.lista.datos.map((n) => adaptarAvisoANotificacionWeb(n, zonaAgencia))
+      : [];
+  const notificacionesConAvisos = [...avisosWeb, ...notificaciones];
+  // `noLeidas` del servidor cuenta todas las del usuario, no solo las de la página.
+  const noLeidasDeAvisos = avisos.estado.tipo === 'listo' ? avisos.estado.lista.noLeidas : 0;
+  const conteoNoLeidas = contarNotificacionesNoLeidas(notificaciones) + noLeidasDeAvisos;
 
   const nombreUsuario = sesion?.identidad?.nombre ?? (esDemo ? 'Asesor ViajaPro' : 'Tu cuenta');
   const correoUsuario = sesion?.identidad?.correo ?? (esDemo ? 'asesor@viajapro.com' : '');
@@ -559,16 +604,18 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
               <div className="flex items-center justify-between px-1">
                 <button
                   type="button"
-                  onClick={() => setPanelNotifAbierto(true)}
+                  onClick={abrirPanelNotificaciones}
                   title={'Alertas operativas (' + conteoNoLeidas + ' pendientes)'}
                   aria-label={'Alertas operativas (' + conteoNoLeidas + ' pendientes)'}
                   className="focus-visible:ring-acento-600 relative flex h-8 w-8 items-center justify-center rounded-lg text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 focus-visible:ring-2 focus-visible:outline-none dark:text-neutral-400 dark:hover:bg-neutral-800"
                 >
                   <Bell className="h-4 w-4" />
                   {conteoNoLeidas > 0 && (
-                    <span className="absolute top-1 right-1 flex h-2 w-2">
-                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
-                      <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500" />
+                    <span
+                      data-testid="contador-campana"
+                      className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[9px] leading-none font-bold text-white"
+                    >
+                      {conteoNoLeidas > 99 ? '99+' : conteoNoLeidas}
                     </span>
                   )}
                 </button>
@@ -633,16 +680,18 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
               {/* Botón Campana Notificaciones */}
               <button
                 type="button"
-                onClick={() => setPanelNotifAbierto(true)}
+                onClick={abrirPanelNotificaciones}
                 title={'Alertas operativas (' + conteoNoLeidas + ' pendientes)'}
                 aria-label={'Alertas operativas (' + conteoNoLeidas + ' pendientes)'}
                 className="focus-visible:ring-acento-600 relative flex h-11 min-h-[44px] w-11 min-w-[44px] items-center justify-center rounded-lg text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 focus-visible:ring-2 focus-visible:outline-none dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
               >
                 <Bell className="h-4 w-4" />
                 {conteoNoLeidas > 0 && (
-                  <span className="absolute top-1.5 right-1.5 flex h-2 w-2">
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
-                    <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500" />
+                  <span
+                    data-testid="contador-campana"
+                    className="absolute top-0 right-0 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[9px] leading-none font-bold text-white"
+                  >
+                    {conteoNoLeidas > 99 ? '99+' : conteoNoLeidas}
                   </span>
                 )}
               </button>
@@ -925,7 +974,7 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
                 type="button"
                 onClick={() => {
                   setMenuSesionAbierto(false);
-                  setPanelNotifAbierto(true);
+                  abrirPanelNotificaciones();
                 }}
                 data-testid="boton-abrir-notificaciones-perfil"
                 className="flex min-h-[44px] w-full items-center justify-between rounded-xl px-2.5 py-2 text-xs font-semibold text-neutral-700 transition hover:bg-neutral-100 dark:text-neutral-200 dark:hover:bg-neutral-800"
@@ -1026,7 +1075,9 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
       <PanelNotificaciones
         abierto={panelNotifAbierto}
         alCerrar={() => setPanelNotifAbierto(false)}
-        notificaciones={notificaciones}
+        notificaciones={notificacionesConAvisos}
+        estadoAvisos={avisos.estado.tipo}
+        alReintentarAvisos={() => void avisos.refrescar()}
         alMarcarLeida={manejarMarcarLeida}
         alMarcarTodasLeidas={manejarMarcarTodasLeidas}
         alDescartar={manejarDescartar}
