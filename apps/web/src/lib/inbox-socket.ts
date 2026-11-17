@@ -88,10 +88,14 @@ export class InboxSocketManager {
           reconnectionDelay: 1000,
           reconnectionDelayMax: 5000,
         })
-      : io({
+      : // Mismo origen (variable vacia, opcion C del despliegue): el rewrite externo de Vercel no
+        // proxea WebSocket, asi que solo long-polling, y sin barra final para no provocar el 308
+        // de Next (next.config.mjs repone la barra en el destino).
+        io({
           path: RUTA_SOCKET_BANDEJA,
+          addTrailingSlash: false,
           withCredentials: true,
-          transports: ['websocket', 'polling'],
+          transports: ['polling'],
           reconnection: true,
           reconnectionAttempts: Infinity,
           reconnectionDelay: 1000,

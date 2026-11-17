@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import type { EventoBandeja } from '@viajapro/contracts';
+import { RUTA_SOCKET_BANDEJA, type EventoBandeja } from '@viajapro/contracts';
 import { InboxSocketManager } from './inbox-socket';
 import { realtimeMockBus } from './realtime-mock';
 
@@ -172,5 +172,39 @@ describe('InboxSocketManager — Canal de tiempo real (0c.35, 0c.38, 0c.40)', ()
     expect(mockSocketInstance.disconnect).toHaveBeenCalledTimes(1);
     expect(manager.getConsumidoresActivos()).toBe(0);
     expect(manager.getEstado()).toBe('desconectado');
+  });
+
+  it('9. Sin NEXT_PUBLIC_API_URL y fuera de localhost: mismo origen, solo long-polling y sin barra final (opcion C)', () => {
+    process.env['NEXT_PUBLIC_USE_REAL_INBOX'] = 'true';
+    delete process.env['NEXT_PUBLIC_API_URL'];
+    vi.stubGlobal('location', { ...window.location, hostname: 'demo.vercel.app' });
+    try {
+      new InboxSocketManager().inicializar();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+    const [primero, segundo] = mockIo.mock.calls[0] ?? [];
+    // io(opciones): un solo argumento, sin URL absoluta.
+    expect(segundo).toBeUndefined();
+    expect(primero).toMatchObject({
+      path: RUTA_SOCKET_BANDEJA,
+      transports: ['polling'],
+      addTrailingSlash: false,
+      withCredentials: true,
+    });
+  });
+
+  it('10. Con NEXT_PUBLIC_API_URL (opcion A): conecta directo con websocket y la ruta con barra', () => {
+    process.env['NEXT_PUBLIC_USE_REAL_INBOX'] = 'true';
+    process.env['NEXT_PUBLIC_API_URL'] = 'https://api.staging.ejemplo.test';
+    try {
+      new InboxSocketManager().inicializar();
+    } finally {
+      delete process.env['NEXT_PUBLIC_API_URL'];
+    }
+    const [url, opciones] = mockIo.mock.calls[0] ?? [];
+    expect(url).toBe('https://api.staging.ejemplo.test');
+    expect(opciones).toMatchObject({ transports: ['websocket', 'polling'] });
+    expect(opciones).not.toHaveProperty('addTrailingSlash');
   });
 });
