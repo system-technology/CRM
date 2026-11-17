@@ -35,6 +35,8 @@ import { DespachadorDeConsumidor } from '../../shared/eventos/despachador-de-con
 import { PlanificadorDeDespacho } from '../../shared/eventos/planificador-de-despacho.js';
 import { DominioExcepcionFilter } from '../../shared/filtros/dominio-excepcion.filter.js';
 import { PrismaService } from '../../shared/prisma/prisma.service.js';
+import { ContextoTenant } from '../../shared/tenant/contexto-tenant.js';
+import { VersionAceptadaDeQuoting } from '../quoting/infrastructure/version-aceptada.prisma.js';
 import { ConsumidorAbrirArchivo } from './interface/consumidor-abrir-archivo.js';
 
 const idDeTenant = (): string => `01932000-0000-7000-8000-${randomBytes(6).toString('hex')}`;
@@ -461,6 +463,52 @@ describe('aislamiento entre agencias del despachador', () => {
   });
 });
 
+describe('aislamiento: barrido con dos agencias y RLS del outbox', () => {
+  it('un solo barrer() con eventos de A y de B deja cada archivo solo en su agencia, con numeración propia', async () => {
+    const A = agencias.A;
+    const B = agencias.B;
+    const cotA = await aceptarCotizacion(A);
+    const cotB = await aceptarCotizacion(B);
+
+    await despachador.barrer();
+
+    const deA = await archivosDe(A.tenant, cotA);
+    const deB = await archivosDe(B.tenant, cotB);
+    expect(deA).toHaveLength(1);
+    expect(deB).toHaveLength(1);
+    expect(deA[0]?.contacto_id).toBe(A.contacto);
+    expect(deB[0]?.contacto_id).toBe(B.contacto);
+    // Cada una sigue su propia numeración (A ya tenía 2 archivos; B, 1).
+    expect(deA[0]?.numero).toBe(3);
+    expect(deB[0]?.numero).toBe(2);
+    // Ninguna ve el archivo de la otra.
+    expect(await archivosDe(A.tenant, cotB)).toEqual([]);
+    expect(await archivosDe(B.tenant, cotA)).toEqual([]);
+  });
+
+  it('RLS del outbox: A no lee eventos de B (lectura directa, sin depender del predicado del despachador)', async () => {
+    const A = agencias.A;
+    const B = agencias.B;
+    expect(
+      await comoAgencia(
+        A.tenant,
+        'SELECT 1 FROM outbox WHERE tenant_id = $1 AND tipo_evento = $2',
+        [B.tenant, TIPO],
+      ),
+    ).toEqual([]);
+  });
+
+  it('control positivo: B sí tiene filas en travel_files, bookings, entregas_de_eventos y outbox', async () => {
+    const B = agencias.B;
+    for (const tabla of ['travel_files', 'bookings', 'entregas_de_eventos', 'outbox']) {
+      const filas = await comoAgencia(B.tenant, `SELECT 1 FROM ${tabla} WHERE tenant_id = $1`, [
+        B.tenant,
+      ]);
+      expect(filas.length, tabla).toBeGreaterThan(0);
+    }
+  });
+});
+
 describe('un evento envenenado', () => {
   it('guarda solo el código del error, se abandona a los 10 intentos y no frena a los buenos', async () => {
     const A = agencias.A;
@@ -510,4 +558,62 @@ describe('un evento envenenado', () => {
     expect((await entregasDe(A.tenant, veneno))[0]?.intentos).toBe(10);
     expect(await agenciasConTrabajo()).not.toContain(A.tenant);
   }, 60_000);
+});
+
+describe('referencia cruzada entre agencias', () => {
+  it('un evento en el outbox de A que apunta a la cotización de B no entrega nada ni toca archivos (prueba el predicado del despachador y RLS del puerto)', async () => {
+    const A = agencias.A;
+    const B = agencias.B;
+    const cotB = await aceptarCotizacion(B);
+    await despachador.despacharTenant(B.tenant);
+    const antesB = await archivosDe(B.tenant, cotB);
+    expect(antesB).toHaveLength(1);
+
+    await adminPg.query(
+      `INSERT INTO outbox (tenant_id, agregado, agregado_id, tipo_evento, version_evento, payload)
+       VALUES ($1, 'cotizacion', $2, $3, 1, $4::jsonb)`,
+      [
+        A.tenant,
+        cotB,
+        TIPO,
+        JSON.stringify({
+          v: 1,
+          cotizacionId: cotB,
+          version: 1,
+          contactoId: B.contacto,
+          oportunidadId: null,
+          aceptadaPorUsuarioId: null,
+          aceptadaEn: '2026-11-17T10:00:00.000Z',
+        }),
+      ],
+    );
+
+    expect(await despachador.despacharTenant(A.tenant)).toBe(0);
+
+    // Nada nuevo en A para esa cotización, y el archivo de B no cambió.
+    expect(await archivosDe(A.tenant, cotB)).toEqual([]);
+    expect(await archivosDe(B.tenant, cotB)).toEqual(antesB);
+    const entregas = await entregasDe(A.tenant, cotB);
+    expect(entregas).toHaveLength(1);
+    expect(entregas[0]).toMatchObject({
+      ultimo_error: 'VERSION_ACEPTADA_NO_ENCONTRADA',
+      entregado_en: null,
+    });
+  });
+
+  it('el puerto, dentro de la transacción de A y pidiendo con el tenant de B, responde null (RLS sola)', async () => {
+    const A = agencias.A;
+    const B = agencias.B;
+    const cotB = await aceptarCotizacion(B);
+    await despachador.despacharTenant(B.tenant);
+
+    const respuesta = await ContextoTenant.ejecutarCon(
+      { tenantId: A.tenant, usuarioId: null, identidadId: null, permisos: new Set(), trazaId: 't' },
+      () =>
+        app
+          .get(PrismaService)
+          .conTenant((tx) => new VersionAceptadaDeQuoting().leer(tx, B.tenant, cotB, 1)),
+    );
+    expect(respuesta).toBeNull();
+  });
 });
