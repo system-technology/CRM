@@ -9,8 +9,7 @@
       "test",
       "aislamiento-tenants",
       "fronteras-entre-modulos",
-      "convencion-de-commits",
-      "navegador"
+      "convencion-de-commits"
     ]
   },
   "enforce_admins": true,

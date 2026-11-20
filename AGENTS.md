@@ -49,7 +49,7 @@ monorepo pnpm + Turborepo.
 | R8 | Dinero en **enteros, en la unidad mínima de la moneda** (en COP es el peso, no el centavo) + código ISO-4217. Nunca coma flotante |
 | R9 | Fechas en **UTC** en la base; la zona del tenant solo en presentación |
 | R10 | PII de viajeros (pasaporte, fecha de nacimiento) es **dato sensible**: cifrado y auditado |
-| R11 | **En `main` solo entra lo que supera un PR con los 9 checks del CI y la rama al día** (auto-merge o `integrador`); nadie empuja directo. Las rutas protegidas esperan al propietario. Todo el trabajo va en ramas |
+| R11 | **En `main` solo entra lo que supera un PR con los 8 checks del CI y la rama al día** (auto-merge o `integrador`); nadie empuja directo. Las rutas protegidas esperan al propietario. Todo el trabajo va en ramas |
 | R12 | **Se parametriza la política de negocio; nunca los invariantes del dominio.** Lo que cada agencia define distinto es tabla por tenant, no `enum` |
 | R13 | **Una sola vuelta de revisión, salvo en aislamiento entre tenants.** Lo que no se corrige en esa vuelta va a la cola (`roadmap/tasks.yaml`) con dueño, no bloquea |
 
@@ -65,7 +65,7 @@ git checkout -b feat/<contexto>-<descripcion>
 - Ramas de 1 a 3 días. Si el trabajo es más largo, **pártelo**.
 - Commits en [Conventional Commits](https://www.conventionalcommits.org/) con scope de contexto:
   `feat(quoting): calcula markup por tipo de pasajero`. Scopes válidos en `commitlint.config.js`.
-- La integración a `main` es **solo por pull request**: 9 checks en verde y rama al día, por
+- La integración a `main` es **solo por pull request**: 8 checks en verde y rama al día, por
   auto-merge o por el agente `integrador`. El servidor rechaza el resto. Antes de cada bloque:
   `git fetch origin` y rama nueva desde `origin/main`. Ver `docs/07-ingenieria/03-git.md`.
 

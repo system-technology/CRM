@@ -275,9 +275,9 @@ jobs:
   # ---------------------------------------------------------------------------
   # T-196. La PRIMERA prueba que ejercita la web contra la API real: Postgres 16 + semilla, API en
   # modo `unico` (sin Redis), web construida y servida con `next start`, y Playwright (Chromium)
-  # recorriendo el flujo H1-H6. ES OBLIGATORIO desde 2026-11-20 (decision del propietario, tras
-  # integrar un cambio con dos e2e rotos: esta en proteccion-main.json). Si flaquea por el limite de
-  # tasa de la API del CI (300/min por IP), se arregla la prueba, no se quita el check. Secretos de prueba efimeros: nacen y mueren con el job. El envio por WhatsApp
+  # recorriendo el flujo H1-H6. NO es obligatorio todavia (no esta en proteccion-main.json): se
+  # mide primero cuanto tarda y cuanto flaquea; cuando lleve una semana verde, se anade a los checks
+  # requeridos. Secretos de prueba efimeros: nacen y mueren con el job. El envio por WhatsApp
   # (Graph API falsa: apps/web/e2e/graph-falsa.mjs, paso «Graph API falsa de Meta») lo cubren las
   # ultimas pruebas de la suite.
   navegador:

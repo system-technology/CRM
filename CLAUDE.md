@@ -16,7 +16,7 @@ proveedores) está en el núcleo del modelo.
 Estado actual: **en construcción, sin agencia real todavía y sin servicio desplegado.** Hay catálogo,
 cotizador, autenticación, CRM, bandeja, reportes, recepción y envío de WhatsApp (probados con el número
 de prueba de Meta y con una Graph API falsa) y un modo de un solo proceso sin Redis, con el CI de
-10 checks (9 obligatorios: `.github/proteccion-main.json`). Faltan el despliegue, el cifrado de PII (ADR-0015), la prueba de la web
+10 checks (8 obligatorios: `.github/proteccion-main.json`). Faltan el despliegue, el cifrado de PII (ADR-0015), la prueba de la web
 contra la API, pagos y automatizaciones. El repositorio es **público** (`system-technology/CRM`) y
 `main` tiene protección de servidor. Este párrafo caduca: el punto exacto está en `ESTADO.md`.
 
@@ -44,7 +44,7 @@ contra la API, pagos y automatizaciones. El repositorio es **público** (`system
 | R8 | **Dinero en enteros, en la unidad mínima de la moneda, + código ISO-4217.** Nunca `float`. «Unidad mínima» no es «centavos»: en USD son centavos, **en COP es el peso**. | Multi-moneda con TRM; los redondeos se cobran caro. Confundirlas ya produjo un error de dos órdenes de magnitud que llegó a la pantalla. |
 | R9 | **Fechas en UTC en la base; la zona horaria del tenant solo en presentación.** | Agencias en varios husos; los vuelos cruzan fechas. |
 | R10 | **PII de viajeros (pasaporte, fecha de nacimiento) se trata como dato sensible**: cifrado y acceso auditado. | Ley 1581 de 2012. Ver `docs/05-seguridad/02-proteccion-de-datos.md`. |
-| R11 | **En `main` solo entra lo que supera un PR con los 9 checks del CI en verde y la rama al día**, por auto-merge o por el agente `integrador`. Nadie empuja directo, administradores incluidos: lo impide la protección del servidor. Las rutas protegidas (migraciones, RLS, cifrado, `render.yaml`, `infra/`, `.github/`, `scripts/`, dependencias, `CLAUDE.md`, `AGENTS.md`, ADR) esperan la aprobación del propietario. Todo el trabajo va en ramas. | Los agentes producen más rápido de lo que nadie revisa. La compuerta ya no es la disciplina de un solo escritor sino la protección de servidor. Ver ADR-0005 y ADR-0016 §6. |
+| R11 | **En `main` solo entra lo que supera un PR con los 8 checks del CI en verde y la rama al día**, por auto-merge o por el agente `integrador`. Nadie empuja directo, administradores incluidos: lo impide la protección del servidor. Las rutas protegidas (migraciones, RLS, cifrado, `render.yaml`, `infra/`, `.github/`, `scripts/`, dependencias, `CLAUDE.md`, `AGENTS.md`, ADR) esperan la aprobación del propietario. Todo el trabajo va en ramas. | Los agentes producen más rápido de lo que nadie revisa. La compuerta ya no es la disciplina de un solo escritor sino la protección de servidor. Ver ADR-0005 y ADR-0016 §6. |
 | R12 | **Se parametriza la política de negocio; nunca los invariantes del dominio.** Lo que cada agencia define distinto es tabla por tenant, no `enum`. | Sin configurabilidad perdemos clientes; con configurabilidad infinita nos volvemos un CRM genérico y perdemos la ventaja. Ver ADR-0006. |
 | R13 | **Una sola vuelta de revisión, salvo en aislamiento entre tenants.** Lo que no se corrige en esa vuelta va a la cola (`roadmap/tasks.yaml`, ADR-0016) con dueño, no bloquea. | Un revisor siempre encuentra algo: ese es su encargo. Revisar revisiones tiene rendimientos decrecientes y consume el tiempo que el producto necesita. Ver §3.1. |
 
@@ -164,7 +164,7 @@ corresponde, definido en `.claude/agents/`.
 | `analista-datos` | Métricas, embudos, unit economics |
 | `ingeniero-ia` | Las capacidades de IA **del producto** (no esta capa de agentes) |
 | `investigador` | Información externa verificable: precios de Meta, normativa, competencia |
-| **`integrador`** | **Guardián de `main`.** Integra por PR con los 9 checks; el auto-merge es la otra vía. Ver R11 |
+| **`integrador`** | **Guardián de `main`.** Integra por PR con los 8 checks; el auto-merge es la otra vía. Ver R11 |
 
 **Quién escribe código hoy (2026-11-15):** los agentes de arriba (Claude), también en frontend:
 **Antigravity no está habilitado** (decisión del propietario, 2026-11-05) y un agente `frontend`

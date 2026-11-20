@@ -37,7 +37,7 @@ entrado. Seguimos en local.
 | Aislamiento entre agencias (RLS, cuatro roles de aplicación, arranque que aborta con rol equivocado) | Job `aislamiento-tenants`, `arranque-seguro.e2e-spec.ts` |
 | Función `SECURITY DEFINER` `medir_cola_de_salida` con dueño `NOLOGIN` `viajapro_metricas`; motivos de pérdida por agencia (RLS forzada, FK compuesta) | PR #268 y #272–#273; ADR-0026 y R2. La superficie del rol la fijan pruebas y migraciones de comprobación |
 | Cifrado de PII en reposo (ADR-0015): `mensajes.texto` y campos sensibles cifrados; la demo se siembra con `demo:sembrar-cifrada` | PR #264 y #266. **La clave de producción no está cargada en ningún entorno** |
-| `main` protegida: PR, 9 checks obligatorios (`navegador` desde 2026-11-20; 10 en total), rama al día, administradores incluidos | `.github/proteccion-main.json` |
+| `main` protegida: PR, 8 checks obligatorios (10 en total), rama al día, administradores incluidos | `.github/proteccion-main.json` |
 | Permisos de mutación exigidos en los controladores | `mutaciones-con-permiso.spec.ts` |
 | Modo de un solo proceso sin Redis y envíos sobre Postgres (ADR-0019) | `apps/api/src/proceso-unico/`; [runbook](docs/07-ingenieria/runbook-modo-unico.md) |
 | Envío saliente a WhatsApp: cola, idempotencia, ventana de 24 h (ADR-0018) | `enviar-cotizacion.e2e-spec.ts`; **contra Graph API falsa** |
@@ -61,7 +61,7 @@ entrado. Seguimos en local.
 | Propuesta al viajero, en sesión aparte | PR #309; `docs/_bitacora/2026-11-20-propuesta-al-viajero.md` |
 | **El RNT de la agencia** (T-261, ADR-0030 §3.3): tabla `perfiles_de_agencia` con RLS y un disparador que niega por defecto la verificación; la agencia lo escribe en Configuración y la propuesta al viajero lo imprime **solo si está verificado**. **Hoy nadie lo verifica sin SQL a mano** (T-280); con la API real la propuesta sale sin RNT hasta que el propietario marque la agencia piloto | PR #321 (migración, aprobada por el propietario), #322 y #324; P-1…P-6 de `aislamiento.spec.ts`, `agencia-ajustes.e2e-spec.ts`, `page.rnt.spec.tsx`; [bitácora](docs/_bitacora/2026-11-20-rnt-de-la-agencia.md). Supuesto sin verificar: el RNT son solo dígitos, de 1 a 10 |
 | Servidores MCP del proyecto (`.mcp.json`): 21st.dev, Neon, Render y Vercel, con la clave leída del entorno | PR #305 y #310; la sesión de despliegue confirmó que los cuatro conectan |
-| `docs/` reorganizada sin romper nada: comprobador de enlaces con línea base (job `enlaces-de-documentacion`, en modo aviso, fuera de los 9 obligatorios), `_auditoria` fusionada en `_auditorias`, la carpeta de traspaso movida a `docs/_traspasos/`, índice con los huérfanos | PR #316 a #319 (T-302) |
+| `docs/` reorganizada sin romper nada: comprobador de enlaces con línea base (job `enlaces-de-documentacion`, en modo aviso, fuera de los 8 obligatorios), `_auditoria` fusionada en `_auditorias`, la carpeta de traspaso movida a `docs/_traspasos/`, índice con los huérfanos | PR #316 a #319 (T-302) |
 
 El repositorio tiene 48 migraciones. Cifras de pruebas: no se midieron en esta sesión y no se repiten.
 
@@ -102,7 +102,7 @@ Postmark real; las migraciones contra una base de producción (solo corren en el
 
 - **El ciclo autónomo de OpenCode (ADR-0016) está detenido** por decisión del propietario desde 2026-10-26 (cuota agotada, ciclos lentos). La infraestructura (`scripts/ciclo*.mjs`, GitHub Apps, `roadmap/tasks.yaml`, cierre automático de tareas) sigue en el repo; **nadie la ejecuta hoy**. Para reanudarla: [`docs/09-ia/07-ciclo-autonomo.md`](docs/09-ia/07-ciclo-autonomo.md).
 - **Quién escribe código ahora:** los agentes de este repositorio (Claude), en todos los carriles. **Antigravity no está habilitado** (decisión del propietario, 2026-11-05): un agente `frontend` de Claude hace el carril `b/`.
-- **Cómo entra algo en `main`:** solo por PR con los 9 checks obligatorios en verde y la rama al día, por auto-merge o por el `integrador`. Las rutas protegidas (migraciones, RLS, cifrado, `render.yaml`, `infra/`, `.github/`, `scripts/`, dependencias, `CLAUDE.md`, `AGENTS.md`, ADR) esperan la aprobación del propietario vía CODEOWNERS. Ver [`docs/07-ingenieria/03-git.md`](docs/07-ingenieria/03-git.md).
+- **Cómo entra algo en `main`:** solo por PR con los 8 checks obligatorios en verde y la rama al día, por auto-merge o por el `integrador`. Las rutas protegidas (migraciones, RLS, cifrado, `render.yaml`, `infra/`, `.github/`, `scripts/`, dependencias, `CLAUDE.md`, `AGENTS.md`, ADR) esperan la aprobación del propietario vía CODEOWNERS. Ver [`docs/07-ingenieria/03-git.md`](docs/07-ingenieria/03-git.md).
 - **Carriles:** `a/` backend y datos, `b/` frontend, `i/` documentación e integración; un PR no los mezcla ([`MARCO.md`](docs/_contexto/MARCO.md) §5).
 
 ### Quién trabaja en qué

@@ -1,7 +1,7 @@
 # Git — modelo de ramas y gobierno de la integración
 
 > **La regla de la que cuelga todo lo demás:**
-> **En `main` solo entra lo que supera un pull request con los 9 checks en verde y la rama al día**,
+> **En `main` solo entra lo que supera un pull request con los 8 checks en verde y la rama al día**,
 > por auto-merge o por el agente `integrador`. Nadie empuja directo —ni personas, ni agentes, ni
 > administradores—, y el servidor lo impide. Las rutas protegidas esperan al propietario.
 > Reformulación de la regla original por el [ADR-0016](../03-adr/0016-ciclo-autonomo-con-sesiones-de-opencode.md) §6.

@@ -57,7 +57,7 @@
 
 ## 3. Estado técnico (verificado hoy)
 
-- **Repo público:** `system-technology/CRM`, rama `main` con **protección de servidor** (PR + 9 checks + rama al día +
+- **Repo público:** `system-technology/CRM`, rama `main` con **protección de servidor** (PR + 8 checks + rama al día +
   administradores incluidos + conversaciones resueltas; `require_code_owner_reviews` con CODEOWNERS en rutas
   sensibles, hoy sin efecto cuando autor y propietario son la misma cuenta). Auto-merge y borrado de rama al
   integrar activos. Escaneo de secretos con push protection.
@@ -189,7 +189,7 @@
 ## 12. Trabajo desatendido (2026-10-27) y estado de la tanda
 
 **Límites con los que se trabaja mientras el propietario está ausente:** no se toca Meta, pagos ni nada con costo o que salga a internet; no se integra el
-PR #29 (cifrado, migración irreversible); no hay decisiones de negocio; todo va en PRs con los 9 checks en verde; si algo falla dos veces se anota y no se insiste;
+PR #29 (cifrado, migración irreversible); no hay decisiones de negocio; todo va en PRs con los 8 checks en verde; si algo falla dos veces se anota y no se insiste;
 el túnel de Meta está **cerrado** (reabrir solo con el propietario presente).
 
 **Datos de la agencia prospecto JD Tours** (`jdtourscartagena.com`): viven FUERA del repo público, en `D:\Projects\_datos\jd-tours-cartagena.json`
