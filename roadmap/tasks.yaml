@@ -6739,3 +6739,96 @@ tasks:
     source: paso 4 de la reorganización de docs (2026-11-20)
     created_at: 2026-11-20T15:30:00.000Z
     owner: documentador
+  - id: T-306
+    title: "Calificar los tipos de las otras funciones SECURITY DEFINER y de los disparadores contra pg_temp, y revocar TEMPORARY a quien no lo necesite"
+    type: security
+    phase: 1
+    priority: P2
+    effort: M
+    status: ready
+    depends_on: []
+    acceptance:
+      - "Todas las funciones SECURITY DEFINER y los disparadores con search_path vacío califican sus tipos (pg_catalog.text, pg_catalog.uuid…)"
+      - "Una aserción de migración o de prueba rechaza tipos sin calificar en prosrc"
+      - "Se evalúa REVOKE TEMPORARY ON DATABASE FROM PUBLIC (las migraciones y la aserción 23 usan pg_temp.uuid_v7())"
+      - "ADR-0008 §1.4 recoge el patrón"
+    source: auditoría de seguridad de T-268 (2026-11-20)
+    created_at: 2026-11-20T16:40:00.000Z
+    owner: datos
+    notes: "Auditoría de T-268 (2026-11-20), hallazgo B3 corregido solo en crear_agencia y codigo_de_acceso_vigente; el mismo patrón vive en las otras 15 funciones. Impacto menor: sus dueños no ganan nada que viajapro_app no tenga ya."
+  - id: T-307
+    title: "Tope por hora de altas atómico en crear_agencia"
+    type: security
+    phase: 1
+    priority: P3
+    effort: S
+    status: ready
+    depends_on: []
+    acceptance:
+      - "crear_agencia toma pg_advisory_xact_lock(7410102, 0) o SELECT ... FOR UPDATE sobre parametros_del_registro antes de contar"
+      - "Una prueba con N altas simultáneas de identidades distintas no supera el tope"
+    source: auditoría de seguridad de T-268 (2026-11-20)
+    created_at: 2026-11-20T16:40:00.000Z
+    owner: datos
+    notes: "Auditoría de T-268, cola 1. Hoy el exceso no puede pasar del número de códigos de acceso válidos en circulación; es obligatorio antes de abrir el registro sin código (depende de T-281)."
+  - id: T-308
+    title: "Verificar createrole_self_grant en una rama de Neon antes del primer despliegue de la migración del registro"
+    type: infra
+    phase: 1
+    priority: P2
+    effort: S
+    status: ready
+    depends_on: []
+    acceptance:
+      - "SHOW createrole_self_grant en una rama de Neon staging, resultado en la bitácora"
+      - "Si incluye inherit, la comprobación de inherit_option del rol de migraciones en 20261120140000 se ajusta con una migración nueva, no editando la aplicada"
+    source: auditoría de seguridad de T-268 (2026-11-20)
+    created_at: 2026-11-20T16:40:00.000Z
+    owner: devops
+    notes: "Auditoría de T-268, cola 2. En CI migra un superusuario y pasa; en Neon el rol de migraciones no lo es."
+  - id: T-309
+    title: "Decidir el cifrado del NIT de perfiles_de_agencia y ampliar el alcance de ADR-0015"
+    type: security
+    phase: 1
+    priority: P2
+    effort: S
+    status: ready
+    depends_on: []
+    acceptance:
+      - "Decisión escrita: NIT en claro bajo RLS o cifrado (R10), con quién lo lee"
+      - "Si se cifra, columna y migración nuevas; si no, la tabla de alcance de ADR-0015 lo declara"
+      - "Decidido antes de que T-271 salga a producción"
+    source: auditoría de seguridad de T-268 (2026-11-20)
+    created_at: 2026-11-20T16:40:00.000Z
+    owner: arquitecto
+    notes: "Auditoría de T-268, cola 3, y tensión con la cabecera de la migración 20261120130000, que dice que el NIT pide decidir primero su cifrado. Es el NIT de una persona natural cuando la agencia lo es."
+  - id: T-310
+    title: "Reservar el prefijo fixture- para slugs y robustecer la limpieza de las pruebas del registro"
+    type: bug
+    phase: 1
+    priority: P3
+    effort: S
+    status: ready
+    depends_on: []
+    acceptance:
+      - "crear_agencia rechaza slugs que empiezan por fixture-"
+      - "limpiar-fixtures.mjs barre también las agencias, identidades y códigos de las pruebas del registro si el afterAll murió"
+    source: auditoría de seguridad de T-268 (2026-11-20)
+    created_at: 2026-11-20T16:40:00.000Z
+    owner: qa
+    notes: "Auditoría de T-268, cola 4 (junto con T-291)."
+  - id: T-311
+    title: "Alinear ADR-0030 §3.3 con el disparador de verificado_en que quedó implementado"
+    type: docs
+    phase: 1
+    priority: P3
+    effort: S
+    status: ready
+    depends_on: []
+    acceptance:
+      - "El ADR dice que la verificación se conserva si la aplicación no cambia NIT, dígito de verificación ni RNT, y se anula si cambia alguno (semántica de T-261)"
+      - "Se registra que razon_social no anula la verificación y la decisión sobre si debería"
+    source: auditoría de seguridad de T-268 (2026-11-20)
+    created_at: 2026-11-20T16:40:00.000Z
+    owner: documentador
+    notes: "Auditoría de T-268, cola 6. Un ADR no se edita, se supersede o se anota: seguir lo que el propio ADR-0030 diga sobre sus enmiendas."
