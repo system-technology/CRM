@@ -6680,3 +6680,24 @@ tasks:
     created_at: 2026-11-20T15:10:00.000Z
     owner: backend
 
+
+  - id: T-302
+    title: "Reorganizar la documentación sin romper nada (comprobador de enlaces, fusiones, índice)"
+    type: docs
+    phase: 1
+    priority: P2
+    effort: M
+    status: in_progress
+    depends_on: []
+    acceptance:
+      - "Paso 1: scripts/comprobar-enlaces.mjs con línea base versionada (scripts/enlaces-rotos.base.json), prueba unitaria y job de CI en modo aviso (no obligatorio)"
+      - "Cada movimiento posterior deja el comprobador sin roturas nuevas respecto de la línea base"
+      - "Ningún ADR se edita; lo que un ADR cita por ruta no se mueve o se deja redirección"
+    files:
+      - scripts/comprobar-enlaces.mjs
+      - docs
+    source: inventario de referencias de la reorganización de docs (2026-11-20)
+    created_at: 2026-11-20T23:55:00.000Z
+    owner: documentador
+    started_at: 2026-11-20T23:55:00.000Z
+    notes: "Cuatro pasos aprobados por el propietario, principio: no dañar lo que hay. 1) Comprobador de enlaces antes de mover nada (scripts/ y .github/ piden aprobación del propietario, R11). 2) Mover y fusionar lo de riesgo bajo (_auditoria a _auditorias, _investigacion, traspaso), actualizando quienes lo citan. 3) El hook .claude/hooks/session-start.mjs lee docs/_bitacora sin recursión y CLAUDE.md, AGENTS.md y ESTADO.md fijan la ruta plana: agrupar la bitácora exige tocar el hook y la aprobación del propietario. 4) Índice de docs/README.md al día y subir el comprobador a obligatorio cuando la línea base esté estable. No mover _auditorias ni _backlog sin resolver antes los ADR 0008, 0015, 0017 y 0029 que los citan por ruta."

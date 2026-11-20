@@ -614,6 +614,25 @@ jobs:
         run: pnpm test:hooks
 
   # ---------------------------------------------------------------------------
+  # Enlaces y rutas rotos en la documentación (T-302). En MODO AVISO: no es una de las compuertas
+  # obligatorias (.github/proteccion-main.json) y `continue-on-error` evita que un fallo ponga el
+  # PR en rojo. Compara con scripts/enlaces-rotos.base.json y solo avisa de roturas nuevas.
+  enlaces-docs:
+    name: enlaces-de-documentacion
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      # Node puro, sin dependencias: no hace falta pnpm install.
+      - name: Comprobar enlaces y rutas de la documentación
+        run: node scripts/comprobar-enlaces.mjs
+
+  # ---------------------------------------------------------------------------
   commits:
     name: convencion-de-commits
     runs-on: ubuntu-latest
