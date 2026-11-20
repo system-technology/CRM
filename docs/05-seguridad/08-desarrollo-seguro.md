@@ -20,7 +20,7 @@ persona, un agente de Claude, Antigravity u OpenCode.
 | # | Regla | Cómo se comprueba | Hoy |
 |---|---|---|---|
 | D1 | Nada entra en `main` sin PR; administradores incluidos; sin *force-push* ni borrado | Protección de rama del servidor (`gh api repos/system-technology/CRM/branches/main/protection`) | **Cumple** según ESTADO.md (verificado el 2026-10-26) |
-| D2 | Los 8 checks obligatorios en verde y la rama al día (`strict`) | Ídem; lista en `.github/proteccion-main.json` | **Cumple** |
+| D2 | Los 9 checks obligatorios en verde y la rama al día (`strict`) | Ídem; lista en `.github/proteccion-main.json` | **Cumple** |
 | D3 | Las rutas protegidas (migraciones, RLS, esquema, pruebas de aislamiento, cifrado, ADR, `.github/`, `scripts/`, `infra/`, `render.yaml`, dependencias, `CLAUDE.md`, `AGENTS.md`, `.claude/`) esperan la aprobación del propietario | `.github/CODEOWNERS` + `require_code_owner_reviews` | **Discrepancia sin resolver:** ESTADO.md dice que la revisión de CODEOWNERS está activa; la copia `.github/proteccion-main.json` tiene `require_code_owner_reviews: false`. Hay que comprobarlo con `gh api` y corregir la copia o la protección |
 | D4 | Todo cambio que toque datos de agencias pasa por `auditor-seguridad` antes de integrarse; el resto, una sola vuelta de revisión (R13) | Comentario de revisión en el PR | Proceso, no mecanismo |
 | D5 | Decisión estructural = ADR **antes** de implementar (R7) | Revisión del PR | **Incumplido una vez:** ADR-0018 sigue «Propuesto» y su implementación (PR #44) ya está integrada (ESTADO.md §3) |
