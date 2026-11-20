@@ -65,7 +65,7 @@ opción que elimina la copia en vez de moverla, y su coste es de una sola vez.
 ### 1. Árbol de rutas
 
 ```
-app/layout.tsx                  raíz: <html>, GuardaSesion (sin cambios), pie, banner de cookies
+app/layout.tsx                  raíz: <html>, GuardaSesion (misma política, ciclo corregido §2), pie, banner de cookies
 app/(app)/layout.tsx            MarcoDeTrabajo: barra lateral + barra inferior + <main id="contenido">
 app/(app)/page.tsx              Hoy (/)
 app/(app)/{bandeja,pipeline,cotizaciones,cotizador,viajes,seguimientos,contactos,catalogo,
@@ -80,13 +80,27 @@ app/{ingresar,login,iniciar-sesion,aceptar-invitacion,terminos,privacidad,cookie
 - La altura y el `overflow` de la región de trabajo los fija `MarcoDeTrabajo`, no cada página.
 - `/ensayo` es privada y queda dentro de `(app)`, con marco, pero no aparece en el menú.
 
-### 2. La compuerta de sesión no se mueve
+### 2. La compuerta de sesión no se mueve de sitio, pero su ciclo cambia
 
 `GuardaSesion` **ya se monta una sola vez, en el layout raíz, y deniega por defecto**: todo lo que
 no esté en `rutas-publicas.ts` exige sesión. Llevarla a `(app)/layout.tsx` la volvería permisiva por
 defecto: una página creada fuera del grupo quedaría abierta sin que nada lo señale. Por eso se queda
-donde está, y su lógica y `rutas-publicas.ts` no se tocan (auditoría §6). Lo que sí se añade es una
-prueba que obliga a que el árbol y la lista coincidan («Cómo se prueba»).
+donde está, y la política (qué exige sesión) y `rutas-publicas.ts` no se tocan (auditoría §6). Lo que sí
+se añade es una prueba que obliga a que el árbol y la lista coincidan («Cómo se prueba»).
+
+**Corrección tras la auditoría de seguridad (una pasada):** hoy `GuardaSesion` vuelve a `verificando` en
+**cada** cambio de ruta y desmonta sus hijos, y eso remonta el marco aunque el layout sea compartido.
+Para que «el marco se monta una vez» sea verdad, su **ciclo** cambia, sin relajar la política: verifica al
+montar y al pasar de ruta pública a privada; **no** desmonta `children` al navegar entre privadas;
+vuelve a `verificando` al cerrar sesión o al entrar en una ruta pública; un 401 de la API en cualquier
+llamada redirige a `/ingresar`. Ese cambio va en su propio PR (N1), con prueba en `guarda-sesion.spec.tsx`
+(privada → pública → privada exige nueva verificación) y revisión del `auditor-seguridad`.
+
+**Cola (no bloquea):** la prueba de inventario debe cubrir también `route.ts` (hoy solo `salud`), rechazar
+slots `@x` e interceptadas `(.)` salvo lista, y convertir bien ruta de archivo en URL; prohibir
+`cookies()`/`headers()` o datos de servidor bajo `(app)` sin ADR; fijar con prueba que el cambio de agencia
+siga recargando la página completa; y que el despliegue falle si `NEXT_PUBLIC_USE_REAL_AUTH` falta fuera
+de local.
 
 ### 3. La tabla: `lib/navegacion.ts`
 
@@ -134,7 +148,7 @@ detalle llega de la API. Exportar `metadata` por página obligaría a la opción
 - Una pantalla nueva tiene marco por estar en `(app)/`. No hay que acordarse de nada.
 - Cambiar un nombre es cambiar una línea, y las pruebas impiden que menú, paleta, H1 y título
   vuelvan a divergir.
-- La barra deja de remontarse: menos llamadas, el socket no se resuscribe y el estado se conserva.
+- La barra deja de remontarse (siempre que la guarda adopte el ciclo de §2): menos llamadas, el socket no se resuscribe y el estado se conserva.
 
 ### Negativas
 - **El PR de N1 mueve ~14 directorios.** Cualquier rama abierta que toque páginas va a chocar. Hay
