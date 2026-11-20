@@ -62,3 +62,27 @@ for (const { ruta, activoEscritorio, activoMovil } of RUTAS_CON_MARCO) {
     await expect(inferior.locator('[aria-current="page"]')).toHaveCount(activoMovil ? 1 : 0);
   });
 }
+
+/**
+ * Un solo desplazamiento a 390×844 (T-315): el documento no se desplaza ni a lo alto (el pie legal
+ * vive dentro de `main#contenido`) ni a lo ancho (un `sr-only` absoluto de la tabla de equipo
+ * ensanchaba el viewport de diseño). Solo rutas ligeras, por el límite de la API del CI.
+ */
+for (const ruta of ['/seguimientos', '/viajes', '/configuracion']) {
+  test(`${ruta} a 390×844 no desplaza el documento`, async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto(ruta);
+    await expect(page.locator('main#contenido')).toBeVisible({ timeout: 20_000 });
+    await page.waitForTimeout(1_500);
+    const medidas = await page.evaluate(() => {
+      const d = document.documentElement;
+      return { alto: d.scrollHeight - d.clientHeight, ancho: d.scrollWidth - d.clientWidth };
+    });
+    expect(medidas.alto).toBeLessThanOrEqual(1);
+    expect(medidas.ancho).toBeLessThanOrEqual(0);
+    // El pie sigue existiendo (dentro de la región de trabajo); el del layout raíz queda oculto.
+    await expect(
+      page.locator('main#contenido [data-testid="pie-de-pagina-privacidad"]'),
+    ).toHaveCount(1);
+  });
+}
