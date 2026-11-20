@@ -235,10 +235,29 @@ describe('ContadorDeFallosPostgres', () => {
     expect(await memoria.estaBloqueado('a@b.co')).toBe(false);
   });
 
-  it('barre vencidas con LIMIT y falla cerrado si la base falla', async () => {
+  it('inserta primero, barre vencidas con LIMIT y la limpieza fallida no impide contar', async () => {
     const { prisma, sqls } = baseFalsa();
     await new ContadorDeFallosPostgres(prisma).consumir('k', 10, 60);
-    expect(sqls[0]).toMatch(/DELETE FROM verificaciones[\s\S]*LIMIT/);
+    expect(sqls[0]).toMatch(/INSERT INTO verificaciones/);
+    expect(sqls[1]).toMatch(/DELETE FROM verificaciones[\s\S]*LIMIT/);
+
+    // El barrido falla (DELETE) pero el fallo se contó y consumir no lanza.
+    const sqlsConBarridoRoto: string[] = [];
+    const sinBarrido = {
+      $executeRaw: (strings: TemplateStringsArray) => {
+        const sql = strings.join('?');
+        sqlsConBarridoRoto.push(sql);
+        if (/DELETE/.test(sql)) return Promise.reject(new Error('barrido roto'));
+        return Promise.resolve(1);
+      },
+      $queryRaw: () => Promise.resolve([{ n: 1 }]),
+    } as unknown as PrismaIdentidadService;
+    await expect(new ContadorDeFallosPostgres(sinBarrido).consumir('k', 10, 60)).resolves.toBe(
+      true,
+    );
+    expect(sqlsConBarridoRoto[0]).toMatch(/INSERT/);
+
+    // Consultar el cupo, en cambio, falla cerrado si la base falla; y registrar sin base lanza.
     const rota = {
       $executeRaw: () => Promise.reject(new Error('base caída')),
       $queryRaw: () => Promise.reject(new Error('base caída')),

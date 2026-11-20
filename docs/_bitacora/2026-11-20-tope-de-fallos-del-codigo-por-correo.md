@@ -11,7 +11,7 @@ Hallazgo ALTO previo al despliegue. Rama `fix/identity-tope-de-fallos-otp`.
 - **El contador vive en Postgres** (`ContadorDeFallosPostgres`): una fila de `verificaciones` por fallo
   (tabla global del rol de identidad, sin migración), con barrido oportunista de vencidas (LIMIT 100) al
   insertar. La primera versión usaba memoria y la auditoría lo bloqueó: en el plan gratuito el proceso
-  duerme a los 15 min y el atacante provoca los reinicios. Si la base falla, falla cerrado.
+  duerme a los 15 min y el atacante provoca los reinicios. Consultar el cupo (`quedaCupo`) falla cerrado si la base falla; registrar un fallo se hace antes de la limpieza de vencidas y esta no lo impide.
 - Lo que NO sobrevive a un reinicio en modo único: el límite de envíos de código (memoria) y el límite
   por IP de Better Auth (memoria). Va a la cola como T-301; el tope de fallos ya no depende de ellos.
 - El limitador en memoria ahora está acotado (barre vencidas al insertar, máximo 10 000 claves).

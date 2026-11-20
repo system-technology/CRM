@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ContadorDeFallosDeCodigo } from '../application/limitador-de-envios.js';
 import { PrismaIdentidadService } from './prisma-identidad.service.js';
 
@@ -13,24 +13,35 @@ const VENCIDAS_POR_BARRIDO = 100;
  * identificador es `sign-in-otp-<correo>`.
  *
  * Sobrevive a reinicios y a varias réplicas; el INSERT precede al conteo, así que peticiones
- * simultáneas se cuentan todas. Un fallo de la base se propaga: falla cerrado.
+ * simultáneas se cuentan todas. Consultar (`quedaCupo`) falla cerrado si la base falla; registrar
+ * un fallo no depende de la limpieza de vencidas.
  */
 @Injectable()
 export class ContadorDeFallosPostgres extends ContadorDeFallosDeCodigo {
+  private readonly log = new Logger(ContadorDeFallosPostgres.name);
+
   constructor(@Inject(PrismaIdentidadService) private readonly prisma: PrismaIdentidadService) {
     super();
   }
 
   async consumir(clave: string, maximo: number, ventanaSegundos: number): Promise<boolean> {
-    // Barrido oportunista de filas vencidas de este prefijo (con LIMIT).
-    await this.prisma.$executeRaw`
-      DELETE FROM verificaciones
-       WHERE id IN (SELECT id FROM verificaciones
-                     WHERE identificador LIKE 'viajapro:otp-fallos:%' AND expira_en <= now()
-                     LIMIT ${VENCIDAS_POR_BARRIDO})`;
+    // Primero contar: el fallo ya ocurrió (Better Auth comparó el código) y no puede quedar sin
+    // registrar porque falle la limpieza.
     await this.prisma.$executeRaw`
       INSERT INTO verificaciones (id, identificador, valor, expira_en, creado_en, actualizado_en)
       VALUES (gen_random_uuid(), ${clave}, '1', now() + make_interval(secs => ${ventanaSegundos}), now(), now())`;
+    // Barrido oportunista de filas vencidas de este prefijo (con LIMIT). Si falla, no impide contar.
+    try {
+      await this.prisma.$executeRaw`
+        DELETE FROM verificaciones
+         WHERE id IN (SELECT id FROM verificaciones
+                       WHERE identificador LIKE 'viajapro:otp-fallos:%' AND expira_en <= now()
+                       LIMIT ${VENCIDAS_POR_BARRIDO})`;
+    } catch (error) {
+      this.log.warn(
+        `No se pudo barrer los fallos vencidos del código (${error instanceof Error ? error.name : 'error'}).`,
+      );
+    }
     return (await this.contar(clave)) <= maximo;
   }
 
