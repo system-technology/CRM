@@ -7,11 +7,11 @@ import { expect, test } from './fixtures';
 const RUTAS: Array<{ ruta: string; titulo: RegExp }> = [
   { ruta: '/bandeja', titulo: /Elige una conversación|Lista de conversaciones/ },
   { ruta: '/contactos', titulo: /Contactos/ },
-  { ruta: '/pipeline', titulo: /Pipeline de Oportunidades/ },
+  { ruta: '/pipeline', titulo: /Oportunidades/ },
   { ruta: '/cotizador', titulo: /Cotizador Comercial/ },
-  { ruta: '/cotizaciones', titulo: /Directorio de Cotizaciones/ },
-  { ruta: '/reportes', titulo: /Reportes y Rendimiento Comercial/ },
-  { ruta: '/viajes', titulo: /Reservas/ },
+  { ruta: '/cotizaciones', titulo: /Cotizaciones/ },
+  { ruta: '/reportes', titulo: /Reportes/ },
+  { ruta: '/viajes', titulo: /Archivos de viaje/ },
 ];
 
 for (const { ruta, titulo } of RUTAS) {
@@ -28,18 +28,18 @@ for (const { ruta, titulo } of RUTAS) {
 /**
  * Marco compartido (ADR-0032, N1): toda ruta privada con marco muestra la barra lateral en
  * escritorio y la barra inferior en móvil, con a lo sumo un `aria-current="page"` en la barra
- * visible. «Hoy», «Seguimientos» y «Cotizaciones» aún no son ítems del menú (T-317), así que en
- * esas rutas no hay ninguno activo; la barra móvil solo tiene los 4 módulos principales.
+ * visible. «Hoy» y «Seguimientos» aún no son ítems del menú (T-317), así que en esas rutas no hay
+ * ninguno activo; la barra móvil solo tiene 4 módulos (su composición es T-320).
  */
 // Solo rutas ligeras y representativas: el marco es una única implementación (el layout `(app)`) y
 // `inventario-de-rutas.spec.ts` garantiza que toda página privada vive dentro de él; el módulo activo
-// de las demás lo cubre `modulo-activo.spec.ts`. Recorrer también catálogo, reportes o contactos
+// de las demás lo cubre `navegacion.spec.ts`. Recorrer también catálogo, reportes o contactos
 // agotaba el límite de 300 peticiones por minuto por IP de la API del CI («Demasiadas peticiones»).
 const RUTAS_CON_MARCO: Array<{ ruta: string; activoEscritorio: boolean; activoMovil: boolean }> = [
   { ruta: '/', activoEscritorio: false, activoMovil: false },
   { ruta: '/bandeja', activoEscritorio: true, activoMovil: true },
   { ruta: '/pipeline', activoEscritorio: true, activoMovil: true },
-  { ruta: '/cotizaciones', activoEscritorio: false, activoMovil: false },
+  { ruta: '/cotizaciones', activoEscritorio: true, activoMovil: true },
   { ruta: '/viajes', activoEscritorio: true, activoMovil: true },
   { ruta: '/seguimientos', activoEscritorio: false, activoMovil: false },
   { ruta: '/configuracion', activoEscritorio: true, activoMovil: false },

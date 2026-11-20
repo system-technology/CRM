@@ -45,6 +45,7 @@ import { useModoDemo } from '../../../lib/modo-demo';
 import { PERMISO_ARCHIVO_OPERAR, PERMISO_ARCHIVO_VER, usePermisos } from '../../../lib/permisos';
 import type { MensajeErrorDetallado } from '../../../lib/estados-ui-logica';
 
+import { TituloDePantalla } from '../../../components/comun/titulo-de-pantalla';
 type FiltroEstado = 'ABIERTO' | 'CANCELADO' | 'TODOS';
 type EstadoCarga<T> =
   | { tipo: 'cargando' }
@@ -160,9 +161,11 @@ function ReservasContenido({ puedeOperar }: { puedeOperar: boolean }) {
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <Briefcase className="h-5 w-5" aria-hidden="true" />
-                <h1 id="reservas-lista-titulo" className="text-base font-bold">
-                  Reservas
-                </h1>
+                <TituloDePantalla
+                  modulo="archivos"
+                  id="reservas-lista-titulo"
+                  className="text-base font-bold"
+                />
                 <DistintivoDatosDemo />
               </div>
               <button

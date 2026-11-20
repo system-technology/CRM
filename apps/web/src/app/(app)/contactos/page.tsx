@@ -44,6 +44,7 @@ import {
   FILTROS_CONTACTOS_DEFECTO,
 } from '../../../lib/filtros-guardados-logica';
 
+import { TituloDePantalla } from '../../../components/comun/titulo-de-pantalla';
 export default function ContactosPage() {
   const { esDemo } = useModoDemo();
   const { sesion } = usePermisos();
@@ -128,9 +129,10 @@ export default function ContactosPage() {
                 <div className="bg-acento-50 text-acento-700 dark:bg-acento-950/60 dark:text-acento-400 flex h-8 w-8 items-center justify-center rounded-xl">
                   <Users className="h-4 w-4" />
                 </div>
-                <h1 className="text-base font-bold tracking-tight text-neutral-900 dark:text-neutral-100">
-                  Contactos y Viajeros
-                </h1>
+                <TituloDePantalla
+                  modulo="contactos"
+                  className="text-base font-bold tracking-tight text-neutral-900 dark:text-neutral-100"
+                />
                 <DistintivoDatosDemo />
                 <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-[10px] font-semibold text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300">
                   {pagina.datos.length} contactos

@@ -97,10 +97,10 @@ describe('BarraModulos y Selector de Sesión (ADR-0011)', () => {
 
       const sidebar = screen.getByRole('complementary', { name: /Barra de módulos lateral/i });
       expect(sidebar).toBeDefined();
-      expect(within(sidebar).getByRole('link', { name: /Bandeja de WhatsApp/i })).toBeDefined();
-      expect(within(sidebar).getByRole('link', { name: /Pipeline/i })).toBeDefined();
-      expect(within(sidebar).getByRole('link', { name: /Cotizador de Paquetes/i })).toBeDefined();
-      expect(within(sidebar).getByRole('link', { name: /Archivos de Viaje/i })).toBeDefined();
+      expect(within(sidebar).getByRole('link', { name: 'Conversaciones' })).toBeDefined();
+      expect(within(sidebar).getByRole('link', { name: 'Oportunidades' })).toBeDefined();
+      expect(within(sidebar).getByRole('link', { name: 'Cotizaciones' })).toBeDefined();
+      expect(within(sidebar).getByRole('link', { name: 'Archivos de viaje' })).toBeDefined();
     });
 
     it('renderiza la barra de navegación inferior móvil con touch targets >= 44px', () => {
@@ -143,7 +143,7 @@ describe('BarraModulos y Selector de Sesión (ADR-0011)', () => {
 
       const sidebar = screen.getByTestId('sidebar-escritorio');
       expect(sidebar.getAttribute('data-expandida')).toBe('true');
-      expect(within(sidebar).getByText('Bandeja de WhatsApp')).toBeDefined();
+      expect(within(sidebar).getByText('Conversaciones')).toBeDefined();
       expect(within(sidebar).getByText('Carlos Asesor')).toBeDefined();
       expect(within(sidebar).getByText('Viajes El Sol')).toBeDefined();
 

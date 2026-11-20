@@ -33,6 +33,7 @@ import {
   type FiltrosPipelinePersistidos,
 } from '../../../lib/filtros-guardados-logica';
 
+import { TituloDePantalla } from '../../../components/comun/titulo-de-pantalla';
 const CAMPOS_IGNORADOS_PIPELINE: (keyof FiltrosPipelinePersistidos)[] = ['vista'];
 
 export default function PipelinePage() {
@@ -246,9 +247,10 @@ export default function PipelinePage() {
               <div>
                 <div className="flex items-center space-x-2">
                   <Kanban className="text-acento-600 dark:text-acento-400 h-5 w-5" />
-                  <h1 className="text-base font-bold text-neutral-900 dark:text-neutral-100">
-                    Pipeline de Oportunidades
-                  </h1>
+                  <TituloDePantalla
+                    modulo="oportunidades"
+                    className="text-base font-bold text-neutral-900 dark:text-neutral-100"
+                  />
                   {(esModoSimulado || mostrarDemoForzado) && <DistintivoDatosDemo />}
                 </div>
                 <p className="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400">

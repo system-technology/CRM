@@ -4,7 +4,8 @@ import React from 'react';
 import { usePathname } from 'next/navigation';
 import { BarraModulos } from '../bandeja/barra-modulos';
 import { PieDePaginaPrivacidad } from '../privacidad/pie-de-pagina-privacidad';
-import { esDetalleMovilDeBandeja, moduloActivo } from '../../lib/modulo-activo';
+import { esDetalleMovilDeBandeja, moduloActivo } from '../../lib/navegacion';
+import { useTituloDeDocumento } from '../../lib/use-titulo-de-documento';
 
 /**
  * Marco de las pantallas privadas (ADR-0032): barra lateral en escritorio, barra inferior en móvil
@@ -19,15 +20,18 @@ import { esDetalleMovilDeBandeja, moduloActivo } from '../../lib/modulo-activo';
  */
 export function MarcoDeTrabajo({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const titulo = useTituloDeDocumento();
   // En la conversación a pantalla completa no hay barra inferior que reservar.
   const reservaBarraInferior = !esDetalleMovilDeBandeja(pathname);
-  const conPie = moduloActivo(pathname) !== 'bandeja';
+  const conPie = moduloActivo(pathname)?.id !== 'conversaciones';
 
   return (
     <div
       data-marco
       className="flex h-[calc(100dvh-var(--altura-banner-cookies,0px))] w-full overflow-hidden bg-neutral-50 text-neutral-900 dark:bg-neutral-950 dark:text-neutral-100"
     >
+      {/* React 19 eleva <title> al <head> y gana al de `metadata` del layout raíz. */}
+      <title>{titulo}</title>
       <BarraModulos />
       <main
         id="contenido"

@@ -1,7 +1,15 @@
 import { describe, expect, it } from 'vitest';
+import { render, screen, cleanup } from '@testing-library/react';
+import React from 'react';
+import { TituloDePantalla } from '../components/comun/titulo-de-pantalla';
+import { ACCIONES_RAPIDAS } from './buscador-global-logica';
 import {
   ACCIONES,
   NAVEGACION,
+  entradaDe,
+  entradasDelMenu,
+  esDetalleMovilDeBandeja,
+  esVisiblePara,
   moduloActivo,
   tituloDeDocumento,
   tituloDeDocumentoParaRuta,
@@ -41,9 +49,35 @@ describe('NAVEGACION', () => {
     }
   });
 
-  it('Hoy, Cotizaciones y Seguimientos quedan fuera del menú hasta T-317', () => {
+  it('Hoy y Seguimientos quedan fuera del menú hasta T-317; Cotizaciones entra (D2)', () => {
     const fuera = NAVEGACION.filter((e) => !e.enMenu).map((e) => e.etiqueta);
-    expect(fuera).toEqual(['Hoy', 'Cotizaciones', 'Seguimientos']);
+    expect(fuera).toEqual(['Hoy', 'Seguimientos']);
+    expect(entradasDelMenu().map((e) => e.etiqueta)).toEqual([
+      'Conversaciones',
+      'Oportunidades',
+      'Cotizaciones',
+      'Archivos de viaje',
+      'Contactos',
+      'Catálogo',
+      'Reportes',
+      'Configuración',
+    ]);
+  });
+
+  it('etiqueta del menú = comando de la paleta = H1 (una sola fuente)', () => {
+    const titulosPaleta = new Map(ACCIONES_RAPIDAS.map((a) => [a.id, a.titulo]));
+    for (const e of NAVEGACION) {
+      expect(titulosPaleta.get(`nav-${e.id}`)).toBe(e.etiqueta);
+      cleanup();
+      render(React.createElement(TituloDePantalla, { modulo: e.id }));
+      expect(screen.getByRole('heading', { level: 1 }).textContent).toBe(e.etiqueta);
+    }
+    cleanup();
+  });
+
+  it('el cotizador no es módulo: es la acción «Cotizar» y activa Cotizaciones', () => {
+    expect(NAVEGACION.some((e) => e.etiqueta.toLowerCase().includes('cotizador'))).toBe(false);
+    expect(moduloActivo('/cotizador')?.id).toBe('cotizaciones');
   });
 
   it('expone la acción Cotizar hacia /cotizador', () => {
@@ -77,10 +111,51 @@ describe('moduloActivo', () => {
   });
 });
 
+describe('permiso', () => {
+  const tiene =
+    (...concedidos: string[]) =>
+    (p: string) =>
+      concedidos.includes(p);
+
+  it('Reportes no lleva permiso: lo ven todos los roles (D3)', () => {
+    const reportes = entradaDe('reportes');
+    expect(reportes.permiso).toBeUndefined();
+    expect(esVisiblePara(reportes, tiene())).toBe(true);
+  });
+
+  it('Configuración se muestra con cualquiera de sus tres permisos y se oculta sin ellos', () => {
+    const config = entradaDe('configuracion');
+    expect(esVisiblePara(config, tiene())).toBe(false);
+    expect(esVisiblePara(config, tiene('conversaciones.responder'))).toBe(false);
+    for (const p of ['usuarios.administrar', 'roles.administrar', 'catalogo.administrar']) {
+      expect(esVisiblePara(config, tiene(p))).toBe(true);
+    }
+  });
+
+  it('un permiso suelto exige ese permiso', () => {
+    const e = { ...entradaDe('catalogo'), permiso: 'catalogo.administrar' as const };
+    expect(esVisiblePara(e, tiene())).toBe(false);
+    expect(esVisiblePara(e, tiene('catalogo.administrar'))).toBe(true);
+  });
+});
+
+describe('esDetalleMovilDeBandeja', () => {
+  it('solo /bandeja/[id]', () => {
+    expect(esDetalleMovilDeBandeja('/bandeja/abc')).toBe(true);
+    expect(esDetalleMovilDeBandeja('/bandeja')).toBe(false);
+    expect(esDetalleMovilDeBandeja('/pipeline')).toBe(false);
+    expect(esDetalleMovilDeBandeja(null)).toBe(false);
+  });
+});
+
 describe('tituloDeDocumento', () => {
   it('compone «{pantalla} · ViajaPro»', () => {
     expect(tituloDeDocumento('Conversaciones')).toBe('Conversaciones · ViajaPro');
     expect(tituloDeDocumentoParaRuta('/cotizador')).toBe('Cotizaciones · ViajaPro');
+  });
+  it('moduloActivo tolera null y undefined', () => {
+    expect(moduloActivo(null)).toBeNull();
+    expect(moduloActivo(undefined)).toBeNull();
   });
   it('sin pantalla devuelve solo la marca', () => {
     expect(tituloDeDocumento()).toBe('ViajaPro');
