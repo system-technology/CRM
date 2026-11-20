@@ -1181,3 +1181,29 @@ funciones, los permisos `archivo.*` y la guardia de arranque del trabajador.
 despachador necesita saber qué agencias tienen trabajo sin una vía de plataforma. Lo fijan los
 cinturones de las dos migraciones y el bloque «T-241» de `aislamiento.spec.ts` (más las aserciones
 12, 13, 14 y 20, que pasan de 14 a 15 funciones y de 5 a 6 propietarios).
+
+
+## La reserva atada a su archivo; `ocurrido_en` lo pone la base (T-256, T-257, migración `20261120090000_reserva_atada_a_su_archivo_y_ocurrido_en_de_la_base`)
+
+```
+  bookings  + UNIQUE bookings_id_travel_file_id_tenant_id_key (id, travel_file_id, tenant_id)
+     ▲
+     ├── notificaciones          (reserva_id, archivo_id, tenant_id)  NO ACTION / ON UPDATE RESTRICT
+     └── reserva_cambios_estado  (reserva_id, archivo_id, tenant_id)  NO ACTION / ON UPDATE RESTRICT
+                                 BEFORE INSERT: ocurrido_en := now()  (fijar_ocurrido_en_de_la_base)
+```
+
+- **Una foránea de tres columnas en lugar de dos separadas.** Antes, `(reserva_id, tenant_id)` y
+  `(archivo_id, tenant_id)` impedían apuntar a otra agencia, pero no que una fila nombrara la reserva
+  de OTRO archivo de la misma agencia; solo lo impedía el puerto de `booking`. La foránea directa al
+  archivo desaparece: la nueva exige que el archivo sea el de la reserva, y la de `bookings` a
+  `travel_files` que exista. Como efecto, una reserva referenciada no puede cambiar de archivo.
+  La migración aborta, con agencia, tabla y ejemplo, si alguna fila existente no casa.
+- **`ocurrido_en` del historial de reservas no lo elige quien escribe.** Un disparador BEFORE INSERT
+  lo fija al instante de la transacción. No se hizo con INSERT por columnas porque
+  `privilegios_declarados` declara privilegios de tabla y `aplicar_privilegios_declarados()` revoca y
+  vuelve a conceder en cada migración: un GRANT por columnas se perdería en la siguiente sin aviso.
+  La inmutabilidad no cambia: `viajapro_app` sigue con SELECT e INSERT.
+
+**Por qué.** Hallazgos BAJOS de las auditorías de T-254 y T-250/T-251. Lo fijan el cinturón de la
+migración y `aislamiento.spec.ts` (N-2, N-5, H-2, H-6 y H-8).

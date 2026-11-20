@@ -2420,10 +2420,8 @@ model TravelFile {
   creadoPor        Usuario? @relation("TravelFileCreadoPor", fields: [creadoPorId, tenantId], references: [id, tenantId], onDelete: NoAction, onUpdate: Restrict)
   actualizadoPor   Usuario? @relation("TravelFileActualizadoPor", fields: [actualizadoPorId, tenantId], references: [id, tenantId], onDelete: NoAction, onUpdate: Restrict)
 
-  reservas         Booking[]
-  pasajeros        Passenger[]
-  notificaciones   Notification[]
-  cambiosDeReserva ReservaCambioEstado[]
+  reservas  Booking[]
+  pasajeros Passenger[]
 
   @@unique([id, tenantId])
   @@unique([tenantId, numero])
@@ -2493,6 +2491,9 @@ model Booking {
   cambios        ReservaCambioEstado[]
 
   @@unique([id, tenantId])
+  /// Destino de las foráneas de tres columnas de `notificaciones` y `reserva_cambios_estado`
+  /// (T-256, T-257): la reserva que nombran es de ESE archivo.
+  @@unique([id, travelFileId, tenantId], map: "bookings_id_travel_file_id_tenant_id_key")
   @@index([tenantId, travelFileId])
   @@index([tenantId, mayoristaId])
   /// Parciales en la migración: el plazo vigente de CONFIRMADA y de ABONADA_AL_PROVEEDOR.
@@ -2592,10 +2593,11 @@ model Notification {
   outboxId BigInt?          @map("outbox_id")
   outbox   Outbox?          @relation(fields: [outboxId, tenantId], references: [id, tenantId], onDelete: SetNull, onUpdate: Restrict)
 
-  archivoId String     @map("archivo_id") @db.Uuid
-  archivo   TravelFile @relation(fields: [archivoId, tenantId], references: [id, tenantId], onDelete: NoAction, onUpdate: Restrict)
-  reservaId String     @map("reserva_id") @db.Uuid
-  reserva   Booking    @relation(fields: [reservaId, tenantId], references: [id, tenantId], onDelete: NoAction, onUpdate: Restrict)
+  /// Una sola foránea de TRES columnas (T-256): la reserva es de este archivo y de esta agencia.
+  /// La existencia del archivo la garantiza la de la reserva.
+  archivoId String  @map("archivo_id") @db.Uuid
+  reservaId String  @map("reserva_id") @db.Uuid
+  reserva   Booking @relation(fields: [reservaId, archivoId, tenantId], references: [id, travelFileId, tenantId], onDelete: NoAction, onUpdate: Restrict, map: "notificaciones_reserva_id_archivo_id_tenant_id_fkey")
 
   /// Copia del número legible del file (> 0).
   archivoNumero Int       @map("archivo_numero")
@@ -2620,12 +2622,11 @@ model ReservaCambioEstado {
   tenantId String @map("tenant_id") @db.Uuid
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
+  /// El archivo de la reserva, copiado para la línea de vida del archivo. Una sola foránea de TRES
+  /// columnas (T-257): la reserva es de este archivo y de esta agencia.
   reservaId String  @map("reserva_id") @db.Uuid
-  reserva   Booking @relation(fields: [reservaId, tenantId], references: [id, tenantId], onDelete: NoAction, onUpdate: Restrict)
-
-  /// El archivo de la reserva, copiado para la línea de vida del archivo.
-  archivoId String     @map("archivo_id") @db.Uuid
-  archivo   TravelFile @relation(fields: [archivoId, tenantId], references: [id, tenantId], onDelete: NoAction, onUpdate: Restrict)
+  archivoId String  @map("archivo_id") @db.Uuid
+  reserva   Booking @relation(fields: [reservaId, archivoId, tenantId], references: [id, travelFileId, tenantId], onDelete: NoAction, onUpdate: Restrict, map: "reserva_cambios_estado_reserva_id_archivo_id_tenant_id_fkey")
 
   estadoAnterior EstadoReserva @map("estado_anterior")
   estadoNuevo    EstadoReserva @map("estado_nuevo")
@@ -2634,7 +2635,8 @@ model ReservaCambioEstado {
   usuarioId String?  @map("usuario_id") @db.Uuid
   usuario   Usuario? @relation(fields: [usuarioId, tenantId], references: [id, tenantId], onDelete: NoAction, onUpdate: Restrict)
 
-  /// UTC, en la misma transacción que el UPDATE de la reserva.
+  /// UTC, en la misma transacción que el UPDATE de la reserva. Lo fija un disparador BEFORE INSERT
+  /// (T-257), que Prisma no modela: el valor que mande el cliente se ignora.
   ocurridoEn DateTime @default(now()) @map("ocurrido_en") @db.Timestamptz(3)
 
   @@unique([id, tenantId])

@@ -263,8 +263,10 @@ export class RepositorioDeOperacionDeArchivosPrisma extends RepositorioDeOperaci
       // de recortar dejaba fuera a un archivo antiguo con el plazo vencido, justo el más urgente.
       // El plazo vigente es el de `plazoVigente` del dominio: `time_limit` si CONFIRMADA y
       // `pago_total_vence_en` si ABONADA_AL_PROVEEDOR; el más próximo de las reservas (las
-      // CAIDA/CANCELADA no aportan nada). Solo cuenta en un archivo ABIERTO. Sin plazo, al final y
-      // por número ascendente, como `compararPorPlazo`.
+      // CAIDA/CANCELADA no aportan nada). Solo cuenta en un archivo ABIERTO. A igual plazo, número
+      // ascendente; sin plazo, al final y por número DESCENDENTE (T-257): los recién abiertos nacen
+      // sin plazo, y con número ascendente quedaban fuera del límite en cuanto los archivos sin
+      // plazo lo superaban. Igual que `compararPorPlazo`.
       const porEstado =
         filtro.estado === 'TODOS'
           ? Prisma.empty
@@ -284,7 +286,9 @@ export class RepositorioDeOperacionDeArchivosPrisma extends RepositorioDeOperaci
           ) p ON p.travel_file_id = t.id
          WHERE t.tenant_id = ${tenantId}::uuid ${porEstado}
          ORDER BY (CASE WHEN t.estado = 'ABIERTO' THEN p.proximo_plazo END) ASC NULLS LAST,
-                  t.numero ASC
+                  (CASE WHEN t.estado = 'ABIERTO' AND p.proximo_plazo IS NOT NULL
+                        THEN t.numero END) ASC,
+                  t.numero DESC
          LIMIT ${filtro.limite}`;
       const ids = ordenados.map((o) => o.id);
       if (ids.length === 0) return [];

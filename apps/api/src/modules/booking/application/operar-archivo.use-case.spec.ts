@@ -270,6 +270,26 @@ describe('lista', () => {
     });
   });
 
+  it('sin plazo, los recién abiertos primero (número descendente, T-257); un cancelado cuenta como sin plazo', async () => {
+    repo.porAgencia.get(A)?.push(
+      archivo('a3', 3, [reserva('r4')]),
+      {
+        ...archivo('a4', 4, [
+          reserva('r5', {
+            estado: 'CONFIRMADA',
+            solicitadaEn: AHORA,
+            confirmadaEn: AHORA,
+            timeLimit: new Date('2027-01-10T18:00:00.000Z'),
+          }),
+        ]),
+        estado: 'CANCELADO',
+      },
+      archivo('a5', 5, []),
+    );
+    const l = await como(A, TODOS, () => casoDeUso.listar({ estado: 'TODOS', limite: 200 }));
+    expect(l.datos.map((a) => a.numero)).toEqual([2, 5, 4, 3, 1]);
+  });
+
   it('solo ve los de su agencia', async () => {
     const l = await como(B, TODOS, () => casoDeUso.listar({ estado: 'TODOS', limite: 200 }));
     expect(l.datos.map((a) => a.id)).toEqual(['b1']);
