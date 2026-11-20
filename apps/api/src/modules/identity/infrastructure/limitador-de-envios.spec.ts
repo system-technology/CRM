@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   claveDeLimite,
   politicaDeEnvioDeCodigos,
@@ -10,6 +10,8 @@ import {
   LimitadorDeEnviosRedis,
 } from './limitador-de-envios.redis.js';
 import { LimitadorDeEnviosEnMemoria } from './limitador-de-envios.en-memoria.js';
+import { ContadorDeFallosPostgres } from './contador-de-fallos.postgres.js';
+import type { PrismaIdentidadService } from './prisma-identidad.service.js';
 
 describe('claveDeLimite', () => {
   it('no contiene el correo ni la IP, y normaliza el correo', () => {
@@ -162,5 +164,90 @@ describe('LimitadorDeEnviosRedis', () => {
       }),
     });
     await expect(l.consumir('k', 3, 60)).rejects.toThrow('Redis caído');
+  });
+});
+
+describe('LimitadorDeEnviosEnMemoria acotado', () => {
+  it('descarta lo vencido y respeta el máximo de claves', async () => {
+    const l = new LimitadorDeEnviosEnMemoria(3);
+    for (let i = 0; i < 10; i++) await l.consumir(`k${i}`, 5, 60);
+    expect(l.tamano).toBeLessThanOrEqual(3);
+  });
+
+  it('barre las vencidas al insertar', async () => {
+    vi.useFakeTimers();
+    try {
+      const l = new LimitadorDeEnviosEnMemoria(100);
+      await l.consumir('a', 5, 1);
+      await l.consumir('b', 5, 1);
+      vi.advanceTimersByTime(2000);
+      await l.consumir('c', 5, 60);
+      expect(l.tamano).toBe(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
+describe('ContadorDeFallosPostgres', () => {
+  /** Una «base» mínima: filas { identificador, vence } compartidas entre instancias. */
+  function baseFalsa(filas: Array<{ id: string; vence: number }> = []) {
+    const sqls: string[] = [];
+    const prisma = {
+      $executeRaw: (t: TemplateStringsArray, ...v: unknown[]) => {
+        const sql = t.join('?');
+        sqls.push(sql);
+        if (sql.includes('INSERT')) {
+          filas.push({ id: String(v[0]), vence: Date.now() + Number(v[1]) * 1000 });
+        }
+        return Promise.resolve(1);
+      },
+      $queryRaw: (_t: TemplateStringsArray, ...v: unknown[]) =>
+        Promise.resolve([{ n: filas.filter((f) => f.id === v[0] && f.vence > Date.now()).length }]),
+    } as unknown as PrismaIdentidadService;
+    return { prisma, filas, sqls };
+  }
+
+  it('el 10.º fallo bloquea y quedaCupo no consume', async () => {
+    const { prisma, filas } = baseFalsa();
+    const c = new ContadorDeFallosPostgres(prisma);
+    for (let i = 0; i < 5; i++) expect(await c.quedaCupo('k', 10)).toBe(true);
+    expect(filas).toHaveLength(0);
+    for (let i = 0; i < 9; i++) await c.consumir('k', 10, 86400);
+    expect(await c.quedaCupo('k', 10)).toBe(true);
+    expect(await c.consumir('k', 10, 86400)).toBe(true);
+    expect(await c.quedaCupo('k', 10)).toBe(false);
+    expect(await c.consumir('k', 10, 86400)).toBe(false);
+  });
+
+  it('sobrevive a «reiniciar»: una instancia nueva sobre la misma base ve el bloqueo', async () => {
+    const { prisma, filas } = baseFalsa();
+    const antes = new TopeDeFallosDeCodigo(new ContadorDeFallosPostgres(prisma), 's');
+    for (let i = 0; i < 10; i++) await antes.registrarFallo('a@b.co');
+    const despues = new TopeDeFallosDeCodigo(
+      new ContadorDeFallosPostgres(baseFalsa(filas).prisma),
+      's',
+    );
+    expect(await despues.estaBloqueado('a@b.co')).toBe(true);
+    expect(await despues.estaBloqueado('otro@b.co')).toBe(false);
+    // En cambio, un limitador en memoria nuevo parte de cero: por eso no se usa para el tope.
+    const memoria = new TopeDeFallosDeCodigo(new LimitadorDeEnviosEnMemoria(), 's');
+    expect(await memoria.estaBloqueado('a@b.co')).toBe(false);
+  });
+
+  it('barre vencidas con LIMIT y falla cerrado si la base falla', async () => {
+    const { prisma, sqls } = baseFalsa();
+    await new ContadorDeFallosPostgres(prisma).consumir('k', 10, 60);
+    expect(sqls[0]).toMatch(/DELETE FROM verificaciones[\s\S]*LIMIT/);
+    const rota = {
+      $executeRaw: () => Promise.reject(new Error('base caída')),
+      $queryRaw: () => Promise.reject(new Error('base caída')),
+    } as unknown as PrismaIdentidadService;
+    await expect(new ContadorDeFallosPostgres(rota).quedaCupo('k', 10)).rejects.toThrow(
+      'base caída',
+    );
+    await expect(new ContadorDeFallosPostgres(rota).consumir('k', 10, 60)).rejects.toThrow(
+      'base caída',
+    );
   });
 });
