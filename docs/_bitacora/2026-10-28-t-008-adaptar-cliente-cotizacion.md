@@ -19,7 +19,7 @@ Tarea T-008 del roadmap (Fase 1: Un CRM mostrable y endurecido):
      - Lanza `ErrorApi` tipado cuando la respuesta coincide con el sobre de error contractual (`EsquemaError`).
      - Lanza `RESPUESTA_NO_RECONOCIDA` si el error no es contractual (ej. 502 Bad Gateway).
      - `api.cotizarSalida` delega a `/api/v1/catalogo/cotizar` y no a `/api/v1/paquetes/cotizar`.
-   - Pruebas del cotizador (`apps/web/src/app/cotizador/page.spec.tsx`): 6 pruebas pasando.
+   - Pruebas del cotizador (`apps/web/src/app/(app)/cotizador/page.spec.tsx`): 6 pruebas pasando.
    - Total `@viajapro/web`: 73 suites, 606 pruebas unitarias en verde.
    - Typecheck (9/9), Linter (7/7) y Compilación Next.js (18 rutas) en verde.
    - Ganchos y fronteras (`pnpm test:hooks`): 59/59, 19/19, 6/6 en verde.

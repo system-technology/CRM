@@ -5,7 +5,7 @@
 - **Autor:** Antigravity (`frontend`)
 
 ## Contexto y Motivación
-La pantalla de reportes comerciales (`apps/web/src/app/reportes/page.tsx`) importaba estructuras y datasets de muestra directamente desde `mock-reportes.ts`. El objetivo de T-021 es desacoplar la vista de datos inventados:
+La pantalla de reportes comerciales (`apps/web/src/app/(app)/reportes/page.tsx`) importaba estructuras y datasets de muestra directamente desde `mock-reportes.ts`. El objetivo de T-021 es desacoplar la vista de datos inventados:
 1. Eliminar cualquier import de `mock-reportes` en `page.tsx`.
 2. Extraer los tipos canónicos a `reportes-logica.ts`.
 3. Calcular las métricas comerciales agregadas en tiempo real a partir del `TableroPipeline` provisto por la API del CRM.
@@ -21,7 +21,7 @@ La pantalla de reportes comerciales (`apps/web/src/app/reportes/page.tsx`) impor
 2. `apps/web/src/lib/mock-reportes.ts`:
    - Se refactorizó para importar los tipos desde `reportes-logica.ts` (R3: sin redefinición de tipos).
    - Se añadió `tieneDatosReales: true` a las entradas de muestra para modo demo.
-3. `apps/web/src/app/reportes/page.tsx`:
+3. `apps/web/src/app/(app)/reportes/page.tsx`:
    - Cero imports de `mock-reportes`.
    - Consulta asíncrona de `obtenerTableroPipeline()` en `useEffect` con soporte para modo demo dinámico (`esModoDemo()`).
    - Renderizado condicional de métricas ausentes con distintivos y textos «Aún sin datos».

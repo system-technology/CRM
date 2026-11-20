@@ -16,7 +16,7 @@ Tarea T-027 del roadmap (Fase 1: Un CRM mostrable y endurecido):
 
 2. **Componente `BloqueEquipo` en Configuración**:
    - Ubicación: `apps/web/src/components/configuracion/bloque-equipo.tsx`.
-   - Montado en `apps/web/src/app/configuracion/page.tsx` en la pestaña `equipo`.
+   - Montado en `apps/web/src/app/(app)/configuracion/page.tsx` en la pestaña `equipo`.
    - Tarjetas métricas: Total Usuarios, Dueños Activos, Asesores Comerciales e Invitaciones Pendientes.
    - Tabla responsiva de miembros con estados visuales (`ACTIVO`, `INVITADO`, `SUSPENDIDO`), teléfonos y fecha formateada para Colombia (`es-CO`).
    - Modal accesible de invitación (`useFocoModal`, WCAG 2.1) con selección de rol (`DUENO`, `ASESOR`, `OPERACIONES`), validación de correo y visualización de errores con recomendación «Qué hacer».

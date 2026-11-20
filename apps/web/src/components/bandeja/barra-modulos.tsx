@@ -66,13 +66,13 @@ import { cambiarAgenciaActivaApi, cerrarSesionApi } from '../../lib/auth-api';
 import { inboxSocketManager } from '../../lib/inbox-socket';
 import { useFocoModal } from '../../lib/use-foco-modal';
 import { fijarZonaAgencia } from '../../lib/formato';
+import { esDetalleMovilDeBandeja, moduloActivo } from '../../lib/modulo-activo';
 
 interface ModuloItem {
   id: string;
   label: string;
   href: string;
   icon: React.ComponentType<{ className?: string }>;
-  activo: boolean;
   disponible: boolean;
 }
 
@@ -133,9 +133,8 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
     alCerrar: () => setMenuSesionAbierto(false),
   });
 
-  const esDetalleMovil = Boolean(
-    pathname && pathname !== '/bandeja' && pathname.startsWith('/bandeja/'),
-  );
+  const esDetalleMovil = esDetalleMovilDeBandeja(pathname);
+  const idActivo = moduloActivo(pathname);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -325,7 +324,6 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
       label: 'Bandeja de WhatsApp',
       href: '/bandeja',
       icon: MessageSquare,
-      activo: pathname.startsWith('/bandeja'),
       disponible: true,
     },
     {
@@ -333,7 +331,6 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
       label: 'Pipeline / Oportunidades',
       href: '/pipeline',
       icon: Kanban,
-      activo: pathname === '/pipeline',
       disponible: true,
     },
     {
@@ -341,7 +338,6 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
       label: 'Cotizador de Paquetes',
       href: '/cotizador',
       icon: FileText,
-      activo: pathname === '/cotizador',
       disponible: true,
     },
     {
@@ -349,7 +345,6 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
       label: 'Archivos de viaje',
       href: '/viajes',
       icon: Briefcase,
-      activo: pathname.startsWith('/viajes'),
       disponible: true,
     },
     {
@@ -357,7 +352,6 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
       label: 'Contactos y Viajeros',
       href: '/contactos',
       icon: Users,
-      activo: pathname.startsWith('/contactos'),
       disponible: true,
     },
     {
@@ -365,7 +359,6 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
       label: 'Catálogo de Mayoristas',
       href: '/catalogo',
       icon: Package,
-      activo: pathname.startsWith('/catalogo'),
       disponible: true,
     },
     {
@@ -373,7 +366,6 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
       label: 'Reportes y Cierres',
       href: '/reportes',
       icon: BarChart3,
-      activo: pathname.startsWith('/reportes'),
       disponible: true,
     },
     {
@@ -381,7 +373,6 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
       label: 'Configuración de Agencia',
       href: '/configuracion',
       icon: Settings,
-      activo: pathname.startsWith('/configuracion'),
       disponible: true,
     },
   ];
@@ -570,15 +561,16 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
                   href={m.href}
                   title={m.label}
                   aria-label={m.label}
+                  aria-current={m.id === idActivo ? 'page' : undefined}
                   className={`focus-visible:ring-acento-600 flex items-center rounded-xl transition-all duration-200 focus-visible:ring-2 focus-visible:outline-none ${
                     barraExpandida
                       ? `h-10 w-full gap-2.5 px-2.5 ${
-                          m.activo
+                          m.id === idActivo
                             ? 'border-l-4 border-[#c9a24b] bg-sky-50 font-semibold text-sky-950 shadow-2xs dark:bg-sky-950/60 dark:text-sky-100'
                             : 'text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200'
                         }`
                       : `h-11 min-h-[44px] w-11 min-w-[44px] justify-center ${
-                          m.activo
+                          m.id === idActivo
                             ? 'bg-sky-50 font-semibold text-sky-700 shadow-xs ring-2 ring-[#c9a24b] dark:bg-sky-950/60 dark:text-sky-300'
                             : 'text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200'
                         }`
@@ -767,9 +759,10 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
             href="/bandeja"
             title="Bandeja de WhatsApp"
             aria-label="Bandeja de WhatsApp"
+            aria-current={idActivo === 'bandeja' ? 'page' : undefined}
             className={
               'focus-visible:ring-acento-600 flex min-h-[44px] min-w-[44px] flex-col items-center justify-center rounded-xl transition-colors focus-visible:ring-2 focus-visible:outline-none ' +
-              (pathname.startsWith('/bandeja')
+              (idActivo === 'bandeja'
                 ? 'bg-acento-50 text-acento-700 dark:bg-acento-950/60 dark:text-acento-400 font-semibold'
                 : 'text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800')
             }
@@ -783,9 +776,10 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
             href="/pipeline"
             title="Pipeline de Oportunidades"
             aria-label="Pipeline de Oportunidades"
+            aria-current={idActivo === 'pipeline' ? 'page' : undefined}
             className={
               'focus-visible:ring-acento-600 flex min-h-[44px] min-w-[44px] flex-col items-center justify-center rounded-xl transition-colors focus-visible:ring-2 focus-visible:outline-none ' +
-              (pathname === '/pipeline'
+              (idActivo === 'pipeline'
                 ? 'bg-acento-50 text-acento-700 dark:bg-acento-950/60 dark:text-acento-400 font-semibold'
                 : 'text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800')
             }
@@ -799,9 +793,10 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
             href="/cotizador"
             title="Cotizador de Paquetes"
             aria-label="Cotizador de Paquetes"
+            aria-current={idActivo === 'cotizador' ? 'page' : undefined}
             className={
               'focus-visible:ring-acento-600 flex min-h-[44px] min-w-[44px] flex-col items-center justify-center rounded-xl transition-colors focus-visible:ring-2 focus-visible:outline-none ' +
-              (pathname === '/cotizador'
+              (idActivo === 'cotizador'
                 ? 'bg-acento-50 text-acento-700 dark:bg-acento-950/60 dark:text-acento-400 font-semibold'
                 : 'text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800')
             }
@@ -815,9 +810,10 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
             href="/viajes"
             title="Archivos de Viaje"
             aria-label="Archivos de Viaje"
+            aria-current={idActivo === 'viajes' ? 'page' : undefined}
             className={
               'focus-visible:ring-acento-600 flex min-h-[44px] min-w-[44px] flex-col items-center justify-center rounded-xl transition-colors focus-visible:ring-2 focus-visible:outline-none ' +
-              (pathname.startsWith('/viajes')
+              (idActivo === 'viajes'
                 ? 'bg-acento-50 text-acento-700 dark:bg-acento-950/60 dark:text-acento-400 font-semibold'
                 : 'text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800')
             }

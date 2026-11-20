@@ -108,4 +108,24 @@ export default tseslint.config(
     files: ['apps/web/**/*.{ts,tsx}'],
     languageOptions: { globals: { ...globals.browser } },
   },
+
+  // ADR-0032: el marco (barra lateral, barra inferior, <main>) lo monta una sola vez
+  // `app/(app)/layout.tsx`. Una página pinta solo su contenido y no importa `BarraModulos`.
+  {
+    files: ['apps/web/src/app/**/page.tsx'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['**/barra-modulos', '**/barra-modulos.tsx'],
+              message:
+                'Las páginas no montan la barra de módulos: la monta app/(app)/layout.tsx (ADR-0032).',
+            },
+          ],
+        },
+      ],
+    },
+  },
 );
