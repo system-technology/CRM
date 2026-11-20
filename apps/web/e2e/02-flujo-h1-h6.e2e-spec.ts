@@ -112,7 +112,7 @@ test('H6: cotiza un producto de la semilla y guarda la cotizacion', async ({ pag
   await expect(page.getByRole('heading', { name: 'Cotizador Comercial' })).toBeVisible();
   await expect(page.locator('#select-paquete-cotizador')).toBeVisible({ timeout: 30_000 });
   // Si cayera a la maqueta, esta prueba pasaria contra datos inventados: se exige la API real.
-  await expect(page.getByRole('button', { name: /Conectado a API real/ })).toBeVisible();
+  await expect(page.locator('#select-paquete-cotizador')).toHaveAttribute('data-origen', 'api');
 
   // La salida programada de la semilla: la fecha por omision del cotizador no tiene por que existir.
   const salidas = page.getByRole('button', { name: /^Seleccionar salida programada/ });
