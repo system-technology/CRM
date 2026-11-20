@@ -10,10 +10,10 @@ import { obtenerMockTableroPipeline } from './mock-pipeline';
 import { MOCK_ARCHIVOS_VIAJE } from './mock-viajes';
 import { MOCK_PAQUETES_CATALOGO } from './mock-catalogo';
 import { MOCK_COTIZACIONES_INICIALES } from './mock-cotizaciones';
-import type { SesionActual } from '@viajapro/contracts';
-import { puedeVerTodasConversaciones, puedeVerNetoYMargen, tienePermiso } from './permisos';
+import type { Permiso, SesionActual } from '@viajapro/contracts';
+import { puedeVerTodasConversaciones, tienePermiso } from './permisos';
 import { formatearFecha } from './formato';
-import { ACCIONES, NAVEGACION, type GrupoDeNavegacion } from './navegacion';
+import { ACCIONES, NAVEGACION, esVisiblePara, type GrupoDeNavegacion } from './navegacion';
 
 export type CategoriaBusqueda =
   | 'acciones'
@@ -85,20 +85,14 @@ export function normalizarTexto(texto: string): string {
 export function construirIndiceGlobal(sesion?: SesionActual | null): ResultadoBusqueda[] {
   const items: ResultadoBusqueda[] = [];
 
-  // 1. Acciones rápidas (filtradas según permisos)
-  const puedeAdministrar =
-    !sesion ||
-    tienePermiso(sesion, 'usuarios.administrar') ||
-    tienePermiso(sesion, 'roles.administrar') ||
-    tienePermiso(sesion, 'catalogo.administrar');
-
-  const puedeReportes = !sesion || puedeVerNetoYMargen(sesion);
+  // 1. Acciones rápidas (filtradas según permisos de la tabla de navegación)
+  const tiene = (permiso: Permiso) => tienePermiso(sesion, permiso);
+  const visiblePorId = new Map<string, boolean>(
+    NAVEGACION.map((m) => [`nav-${m.id}`, !sesion || esVisiblePara(m, tiene)] as const),
+  );
 
   for (const accion of ACCIONES_RAPIDAS) {
-    if (accion.id === 'nav-configuracion' && !puedeAdministrar) {
-      continue;
-    }
-    if (accion.id === 'nav-reportes' && !puedeReportes) {
+    if (visiblePorId.get(accion.id) === false) {
       continue;
     }
     items.push(accion);

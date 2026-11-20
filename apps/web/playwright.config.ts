@@ -54,7 +54,11 @@ export default defineConfig({
     {
       // Depende de `ingreso`: si no se puede ingresar, el resto no corre (y se ve por que).
       name: 'flujo',
-      testMatch: ['**/02-flujo-h1-h6.e2e-spec.ts', '**/03-paginas.e2e-spec.ts'],
+      testMatch: [
+        '**/02-flujo-h1-h6.e2e-spec.ts',
+        '**/03-paginas.e2e-spec.ts',
+        '**/04-nombres.e2e-spec.ts',
+      ],
       dependencies: ['ingreso'],
       use: {
         ...devices['Desktop Chrome'],

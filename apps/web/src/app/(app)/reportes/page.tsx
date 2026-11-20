@@ -31,6 +31,7 @@ import {
   type VistaReporteResumen,
 } from '../../../lib/reportes-logica';
 
+import { TituloDePantalla } from '../../../components/comun/titulo-de-pantalla';
 const PERIODOS: RangoPeriodo[] = ['ultimos_30_dias', 'este_mes', 'trimestre', 'ano'];
 
 const tarjetaClase =
@@ -144,9 +145,10 @@ export default function ReportesPage({ ahora }: ReportesPageProps) {
                 <span className="rounded-lg bg-emerald-100 p-1.5 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
                   <BarChart3 className="h-5 w-5" />
                 </span>
-                <h1 className="text-xl font-bold text-neutral-900 dark:text-white">
-                  Reportes y Rendimiento Comercial
-                </h1>
+                <TituloDePantalla
+                  modulo="reportes"
+                  className="text-xl font-bold text-neutral-900 dark:text-white"
+                />
               </div>
               <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
                 {vista

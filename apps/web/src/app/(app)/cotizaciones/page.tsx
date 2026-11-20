@@ -58,6 +58,7 @@ import { ModalEnviarWhatsAppCotizacion } from '../../../components/cotizaciones/
 import { usePermisos } from '../../../lib/permisos';
 import { herramientasDevActivas } from '../../../lib/herramientas-dev';
 
+import { TituloDePantalla } from '../../../components/comun/titulo-de-pantalla';
 export default function CotizacionesPage() {
   const { esDemo } = useModoDemo();
   const usandoApiReal = !esDemo && estaUsandoApiReal();
@@ -264,9 +265,10 @@ export default function CotizacionesPage() {
                   <FileText className="h-5 w-5" />
                 </div>
                 <div>
-                  <h1 className="text-base font-bold text-neutral-900 sm:text-lg dark:text-white">
-                    Directorio de Cotizaciones
-                  </h1>
+                  <TituloDePantalla
+                    modulo="cotizaciones"
+                    className="text-base font-bold text-neutral-900 sm:text-lg dark:text-white"
+                  />
                   <p className="text-[11px] text-neutral-500 dark:text-neutral-400">
                     Historial de cotizaciones emitidas, versiones inmutables y reenvío comercial
                   </p>

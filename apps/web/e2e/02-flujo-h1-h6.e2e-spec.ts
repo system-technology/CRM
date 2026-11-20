@@ -103,7 +103,7 @@ test('H5: crea una oportunidad desde la conversacion y aparece en el pipeline', 
   await expect(page.getByTestId('input-titulo-oportunidad')).toHaveCount(0);
 
   await page.goto('/pipeline');
-  await expect(page.getByRole('heading', { name: 'Pipeline de Oportunidades' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Oportunidades' })).toBeVisible();
   await expect(page.getByText(tituloOportunidad).first()).toBeVisible({ timeout: 20_000 });
 });
 
@@ -189,9 +189,7 @@ test('H6: la cotizacion guardada aparece en el directorio', async ({ page }) => 
 
 test('H6: los reportes cargan con datos reales', async ({ page }) => {
   await page.goto('/reportes');
-  await expect(
-    page.getByRole('heading', { name: 'Reportes y Rendimiento Comercial' }),
-  ).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Reportes' })).toBeVisible();
   await expect(page.getByTestId('reportes-reales')).toBeVisible({ timeout: 30_000 });
   await expect(page.getByTestId('reportes-error')).toHaveCount(0);
   await expect(page.getByTestId('reportes-sin-permiso')).toHaveCount(0);
