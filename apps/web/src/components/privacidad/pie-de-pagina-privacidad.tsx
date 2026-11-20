@@ -9,7 +9,7 @@ export function PieDePaginaPrivacidad() {
   return (
     <footer
       data-testid="pie-de-pagina-privacidad"
-      className="border-t border-neutral-200/80 bg-neutral-50/70 py-6 text-xs text-neutral-500 dark:border-neutral-800/80 dark:bg-neutral-900/60 dark:text-neutral-400"
+      className="border-t border-neutral-200/80 bg-neutral-50/70 py-6 text-xs text-neutral-500 dark:border-neutral-800/80 dark:bg-neutral-900/60 dark:text-neutral-400 print:hidden"
     >
       <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-4 sm:flex-row sm:px-6 lg:px-8">
         <div className="flex flex-col items-center gap-1 text-center sm:items-start sm:text-left">

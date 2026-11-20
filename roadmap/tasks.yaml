@@ -5862,6 +5862,110 @@ tasks:
     source: T-259 (la bandeja no puede mostrar «2+2» en filas sin archivo sin una petición por fila)
     created_at: 2026-11-20T21:00:00.000Z
     owner: backend
+  - id: T-261
+    title: "RNT de la agencia en ajustes y en la propuesta al viajero"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: S
+    status: ready
+    depends_on: []
+    acceptance:
+      - "AjustesDeAgencia con rnt (opcional) en packages/contracts, columna en tenants (migración de datos) y edición en Configuración por dueño o administrador"
+      - "La propuesta al viajero (/cotizaciones/[id]/imprimir) lo muestra con la API real; hoy solo sale en modo demo"
+    files:
+      - packages/contracts/src/identidad.ts
+      - packages/database/prisma
+      - apps/api/src/modules/identity
+    source: propuesta al viajero (auditoría UX 2026-11-20 I3; Ley 300 de 1996 exige el RNT en la publicidad)
+    created_at: 2026-11-20T22:00:00.000Z
+    owner: backend
+  - id: T-262
+    title: "Datos legales de la agencia en la API (razón social, NIT, dirección, teléfono) para la propuesta"
+    type: feature
+    phase: 1
+    priority: P2
+    effort: S
+    status: ready
+    depends_on: [T-261]
+    acceptance:
+      - "GET /api/v1/agencia/ajustes trae razón social, NIT, dirección y teléfono de atención"
+      - "El pie legal de la propuesta deja de depender de mock-configuracion"
+    files:
+      - packages/contracts/src/identidad.ts
+      - apps/api/src/modules/identity
+    source: propuesta al viajero (con la API real el pie solo lleva el nombre)
+    created_at: 2026-11-20T22:00:00.000Z
+    owner: backend
+  - id: T-263
+    title: "Imagen de portada por producto para la propuesta al viajero"
+    type: feature
+    phase: 2
+    priority: P2
+    effort: M
+    status: ready
+    depends_on: []
+    acceptance:
+      - "El producto del catálogo admite una imagen (S3/MinIO, URL firmada, tipo y tamaño validados)"
+      - "La portada de la propuesta la usa si existe; si no, sigue tipográfica. Sin fotos de terceros sin licencia"
+    files:
+      - packages/contracts/src/catalogo.ts
+      - apps/api/src/modules/quoting
+      - apps/web/src/app/cotizaciones/[id]/imprimir
+    source: propuesta al viajero (auditoría UX 2026-11-20 I3)
+    created_at: 2026-11-20T22:00:00.000Z
+    owner: backend
+  - id: T-264
+    title: "Itinerario estructurado por día en el producto"
+    type: feature
+    phase: 2
+    priority: P2
+    effort: M
+    status: ready
+    depends_on: []
+    acceptance:
+      - "El producto guarda días (número, título, detalle) y la plantilla de importación los admite"
+      - "La propuesta deja de leer líneas «Día N» de la descripción y usa el itinerario estructurado"
+    files:
+      - packages/contracts/src/catalogo.ts
+      - packages/database/prisma
+      - apps/web/src/lib/propuesta-viajero-logica.ts
+    source: propuesta al viajero (hoy el itinerario sale de fechas, opción de salida y la descripción)
+    created_at: 2026-11-20T22:00:00.000Z
+    owner: backend
+  - id: T-265
+    title: "Hotel con nombre y categoría, y vuelos con horario, en la versión o la reserva"
+    type: feature
+    phase: 2
+    priority: P3
+    effort: L
+    status: ready
+    depends_on: []
+    acceptance:
+      - "Decisión en ADR (o en ADR-0024) de dónde viven hotel y vuelos: producto, versión o reserva"
+      - "La propuesta los muestra en Incluye y en el itinerario cuando existan"
+    files:
+      - docs/03-adr
+    source: propuesta al viajero (auditoría UX 2026-11-20 I3)
+    created_at: 2026-11-20T22:00:00.000Z
+    owner: arquitecto
+  - id: T-266
+    title: "Enlace web de la propuesta al viajero (además del PDF)"
+    type: feature
+    phase: 2
+    priority: P3
+    effort: M
+    status: ready
+    depends_on: [T-261]
+    acceptance:
+      - "Enlace de solo lectura con token no adivinable y caducidad, sin neto ni margen (R10), con la misma pieza"
+      - "Se puede enviar por WhatsApp desde la cotización"
+    files:
+      - apps/api/src/modules/quoting
+      - apps/web/src/app
+    source: auditoría UX 2026-11-20 I3 («y un enlace web después»)
+    created_at: 2026-11-20T22:00:00.000Z
+    owner: arquitecto
   - id: T-267
     title: "Textos legales versionados del registro: términos, aviso de privacidad de ViajaPro y contrato de encargo
       del tratamiento (ADR-0030 F0)"

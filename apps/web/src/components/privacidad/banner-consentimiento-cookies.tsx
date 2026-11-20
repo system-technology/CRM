@@ -95,7 +95,7 @@ export function BannerConsentimientoCookies() {
           role="region"
           aria-label="Consentimiento de cookies y privacidad"
           data-testid="banner-consentimiento-cookies"
-          className="animate-in slide-in-from-bottom pointer-events-none fixed inset-x-0 bottom-0 z-40 p-3 duration-300 sm:p-5"
+          className="animate-in slide-in-from-bottom pointer-events-none fixed inset-x-0 bottom-0 z-40 p-3 duration-300 sm:p-5 print:hidden"
         >
           <div className="pointer-events-auto mx-auto max-w-4xl rounded-2xl border border-neutral-200/90 bg-white/95 p-4 shadow-2xl backdrop-blur-md sm:p-5 dark:border-neutral-800/90 dark:bg-neutral-900/95">
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
