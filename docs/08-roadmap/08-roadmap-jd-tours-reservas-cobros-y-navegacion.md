@@ -44,8 +44,8 @@ o tienen algún pago pendiente»**. Hoy lo resuelve con tres cosas:
 7. **El asesor trabaja desde el celular.** Dato del cliente (2026-11-20): hoy hacen **todo** desde WhatsApp
    Business en el teléfono, también cotizar. Todo lo que hace una asesora debe poder hacerse en 390 px sin
    desplazarse de lado: responder, cotizar y enviar, poner una etiqueta, registrar un pago y ver quién debe.
-   La barra móvil (D4, con su contingencia ya confirmada) es **Hoy · Conversaciones · Cotizar · Buscar ·
-   Más**.
+   La barra móvil (D4, variante B elegida por el propietario el 2026-11-20) es **Hoy · Conversaciones ·
+   Cotizar · Archivos de viaje · Más**, con una **lupa fija en la cabecera** de cada pantalla para buscar.
 8. **Una decisión estructural, un ADR antes del código (R7):** el layout compartido (T-314), el contexto
    de pagos (T-328) y la coexistencia con WhatsApp Business (T-338).
 
