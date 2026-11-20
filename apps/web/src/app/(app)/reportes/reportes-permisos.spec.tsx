@@ -132,7 +132,7 @@ describe('ReportesPage - Permisos, dos monedas y GET /api/v1/reportes/resumen (T
 
     render(<ReportesPage />);
 
-    expect(await screen.findByText(/Reportes y Rendimiento Comercial/i)).toBeDefined();
+    expect(await screen.findByRole('heading', { level: 1, name: 'Reportes' })).toBeDefined();
 
     // Solo vista asesor, sin selector de rol de dueño
     expect(await screen.findByText(/Vista Asesor \(Operativa\)/i)).toBeDefined();
