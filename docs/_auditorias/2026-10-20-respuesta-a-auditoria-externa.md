@@ -4,7 +4,7 @@
 |---|---|
 | Fecha | 2026-10-20 |
 | Estado auditado | `main` en `3a1369a` (v0.38.0) |
-| Informe de partida | `docs/_auditoria/2026-10-20-informe-para-auditoria-externa.md` (rama `docs/informe-auditoria-externa`) |
+| Informe de partida | `docs/_auditorias/2026-10-20-informe-para-auditoria-externa.md` (rama `docs/informe-auditoria-externa`) |
 | Documentos recibidos | Hallazgos AUD-001 a AUD-017 (CSV), roadmap técnico v2 y dictamen de conciliación v3 |
 
 ## 1. Resumen

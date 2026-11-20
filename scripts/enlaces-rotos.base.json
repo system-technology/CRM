@@ -13,7 +13,7 @@
     "docs/08-roadmap/07-roadmap-multiidioma.md -> packages/i18n": 1,
     "docs/09-ia/09-ingesta-de-catalogo-con-ia.md -> apps/obtenedor": 1,
     "docs/09-ia/09-ingesta-de-catalogo-con-ia.md -> docs/03-adr/0009-capa-de-ia.md": 1,
-    "docs/_auditoria/2026-10-20-informe-para-auditoria-externa.md -> docs/_integraciones/registro-de-autorizaciones.log": 1,
+    "docs/_auditorias/2026-10-20-informe-para-auditoria-externa.md -> docs/_integraciones/registro-de-autorizaciones.log": 1,
     "docs/_auditorias/2026-10-20-auditoria-integral.md -> apps/api/src/modules/quoting/application/cotizar-paquete.use-case.ts:57": 1,
     "docs/_bitacora/2026-10-07-gobierno-de-la-integracion.md -> docs/_integraciones/registro-de-autorizaciones.log": 1,
     "docs/_bitacora/2026-10-28-t-108-paginas-legales-publicas.md -> docs/05-seguridad/02-politica-privacidad-datos.md": 1,
