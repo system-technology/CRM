@@ -31,17 +31,17 @@ for (const { ruta, titulo } of RUTAS) {
  * visible. «Hoy», «Seguimientos» y «Cotizaciones» aún no son ítems del menú (T-317), así que en
  * esas rutas no hay ninguno activo; la barra móvil solo tiene los 4 módulos principales.
  */
+// Solo rutas ligeras y representativas: el marco es una única implementación (el layout `(app)`) y
+// `inventario-de-rutas.spec.ts` garantiza que toda página privada vive dentro de él; el módulo activo
+// de las demás lo cubre `modulo-activo.spec.ts`. Recorrer también catálogo, reportes o contactos
+// agotaba el límite de 300 peticiones por minuto por IP de la API del CI («Demasiadas peticiones»).
 const RUTAS_CON_MARCO: Array<{ ruta: string; activoEscritorio: boolean; activoMovil: boolean }> = [
   { ruta: '/', activoEscritorio: false, activoMovil: false },
   { ruta: '/bandeja', activoEscritorio: true, activoMovil: true },
   { ruta: '/pipeline', activoEscritorio: true, activoMovil: true },
   { ruta: '/cotizaciones', activoEscritorio: false, activoMovil: false },
-  { ruta: '/cotizador', activoEscritorio: true, activoMovil: true },
   { ruta: '/viajes', activoEscritorio: true, activoMovil: true },
   { ruta: '/seguimientos', activoEscritorio: false, activoMovil: false },
-  { ruta: '/contactos', activoEscritorio: true, activoMovil: false },
-  { ruta: '/catalogo', activoEscritorio: true, activoMovil: false },
-  { ruta: '/reportes', activoEscritorio: true, activoMovil: false },
   { ruta: '/configuracion', activoEscritorio: true, activoMovil: false },
 ];
 
