@@ -11,6 +11,8 @@ import {
   sanitizarPiiEnTexto,
   formatearCupo,
   pluralizar,
+  fechaIsoADiaMesAnio,
+  diaMesAnioAFechaIso,
 } from './formato';
 
 describe('Módulo único de formato es-CO (T-022)', () => {
@@ -189,5 +191,19 @@ describe('pluralizar', () => {
     expect(pluralizar(1, 'niño', 'niños')).toBe('1 niño');
     expect(pluralizar(0, 'niño', 'niños')).toBe('0 niños');
     expect(pluralizar(2, 'niño', 'niños')).toBe('2 niños');
+  });
+});
+
+describe('fecha día/mes/año', () => {
+  it('convierte entre ISO y dd/mm/aaaa', () => {
+    expect(fechaIsoADiaMesAnio('2026-12-15')).toBe('15/12/2026');
+    expect(fechaIsoADiaMesAnio('')).toBe('');
+    expect(diaMesAnioAFechaIso('15/12/2026')).toBe('2026-12-15');
+  });
+
+  it('rechaza fechas que no existen y formatos incompletos', () => {
+    expect(diaMesAnioAFechaIso('31/02/2026')).toBeNull();
+    expect(diaMesAnioAFechaIso('12/15/2026')).toBeNull();
+    expect(diaMesAnioAFechaIso('15/12')).toBeNull();
   });
 });

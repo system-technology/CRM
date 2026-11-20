@@ -17,6 +17,7 @@ import {
 import { obtenerBaseApi } from './api-base';
 import { cabecerasDeTenantDev } from './cabeceras-tenant';
 import { estaUsandoApiReal } from './crm-api';
+import { HORAS_HASTA_TIME_LIMIT_FILE_1043 } from './mock-archivos';
 
 export class AvisosApiError extends Error {
   constructor(
@@ -65,7 +66,7 @@ export function crearAvisosDemo(ahoraMs: number = Date.now()): Notificacion[] {
       archivoId: '01932000-0000-7000-8000-0000000b0001',
       reservaId: '01932000-0000-7000-8000-0000000c0001',
       archivoNumero: 1043,
-      venceEn: iso(ahoraMs + 3 * h),
+      venceEn: iso(ahoraMs + HORAS_HASTA_TIME_LIMIT_FILE_1043 * h),
       leidaEn: null,
       creadaEn: iso(ahoraMs - h),
     },

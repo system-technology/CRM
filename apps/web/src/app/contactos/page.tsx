@@ -32,6 +32,7 @@ import { construirMensajeErrorAccionable } from '../../lib/estados-ui-logica';
 import { FichaDetalleContacto } from '../../components/contactos/ficha-detalle-contacto';
 import { obtenerMockPaginaContactos } from '../../lib/mock-contactos';
 import { listarContactos } from '../../lib/crm-api';
+import { formatearFecha } from '../../lib/formato';
 import {
   filtrarContactos,
   formatearTelefonoVisual,
@@ -318,7 +319,7 @@ export default function ContactosPage() {
                                   {c.nombre || 'Sin nombre registrado'}
                                 </p>
                                 <p className="truncate text-[10px] text-neutral-400">
-                                  ID: {c.id.slice(0, 8)}
+                                  Cliente desde {formatearFecha(c.creadoEn, { estilo: 'corta' })}
                                 </p>
                               </div>
                             </div>

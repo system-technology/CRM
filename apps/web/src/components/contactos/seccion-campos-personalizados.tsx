@@ -7,6 +7,7 @@ import {
   type DefinicionCampoPersonalizado,
   validarValorCampoPersonalizado,
 } from '../../lib/campos-personalizados-logica';
+import { CampoFecha } from '../comun/campo-fecha';
 
 interface SeccionCamposPersonalizadosProps {
   entidad: 'contacto' | 'oportunidad';
@@ -152,11 +153,10 @@ export function SeccionCamposPersonalizados({
                   className="cifra focus:border-acento-600 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-xs text-neutral-900 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                 />
               ) : def.tipo === 'fecha' ? (
-                <input
+                <CampoFecha
                   id={`campo-${def.clave}`}
-                  type="date"
-                  value={val}
-                  onChange={(e) => handleChange(def.clave, e.target.value)}
+                  valor={val}
+                  onChange={(iso) => handleChange(def.clave, iso)}
                   className="focus:border-acento-600 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-xs text-neutral-900 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                 />
               ) : (
