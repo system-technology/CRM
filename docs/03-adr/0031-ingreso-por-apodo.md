@@ -37,7 +37,7 @@ un asesor entre con un identificador corto (`ialvear`) en lugar de su correo. En
   `sincronizar_acceso_identidad()` (dueño `viajapro_accesos`, `NOLOGIN`), con el par de una fila que
   ya pasó el `WITH CHECK`.
 - `auth.controller.ts` no monta Better Auth como ruta abierta: `sign-in/email` lo invoca por dentro
-  con `{ email, password }` y mapea todo fallo a `CREDENCIALES_INVALIDAS`.
+  con `{ email, password }` y mapea el fallo de credenciales a `CREDENCIALES_INVALIDAS` (un `429` sale como `DEMASIADOS_INTENTOS` y un `403` como `ORIGEN_NO_CONFIABLE`; ver §4).
 - El inicio con contraseña **solo** tiene el límite de Better Auth por IP (5 por minuto, en memoria,
   T-301). El tope por correo que ya existe (`TopeDeFallosDeCodigo`) es **del código de un solo uso**,
   no de la contraseña.
@@ -103,7 +103,7 @@ la columna en la fase 2.
 |---|---|
 | `usuarios.apodo` | `text NULL` con `CHECK (apodo ~ '^[a-z][a-z0-9]*([._-][a-z0-9]+)*$' AND length(apodo) BETWEEN 3 AND 30)`. **`UNIQUE (tenant_id, apodo)`**: es ya la restricción de la fase 2 |
 | `accesos_identidad.apodo` | `text NULL`, mismo `CHECK`. **`UNIQUE (apodo)` global en la fase 1** |
-| `sincronizar_acceso_identidad()` | Pasa a `AFTER INSERT OR UPDATE OF identidad_id, tenant_id, activo, eliminado_en, **apodo**` (hoy `apodo` no está en la lista y un cambio de apodo no dispararía nada). Al insertar copia `NEW.apodo`. **Si en un `UPDATE` cambia el apodo, borra el par y lo inserta de nuevo** con el apodo nuevo, así no hace falta `UPDATE` y se conserva «un par se pone o se quita». Al desactivar o eliminar borra el par, como ya hace. El `INSERT` lleva **`ON CONFLICT (identidad_id, tenant_acceso_id) DO NOTHING` con sus columnas**: el `ON CONFLICT` sin columnas de hoy también absorbería la violación de `UNIQUE (apodo)` y la colisión no daría `23505`. Se conserva `SECURITY DEFINER`, `search_path = ''`, `REVOKE ... FROM PUBLIC`, el dueño `viajapro_accesos` y las marcas `[par-old]` del arnés M17 |
+| `sincronizar_acceso_identidad()` | Pasa a `AFTER INSERT OR DELETE OR UPDATE OF identidad_id, tenant_id, activo, eliminado_en, **apodo**` (hoy `apodo` no está en la lista y un cambio de apodo no dispararía nada; **el `DELETE` se conserva**: sin él, borrar un `usuarios` dejaría el par y el apodo en el índice). Al insertar copia `NEW.apodo`. **Si en un `UPDATE` cambia el apodo, borra el par y lo inserta de nuevo** con el apodo nuevo, así no hace falta `UPDATE` y se conserva «un par se pone o se quita». Al desactivar o eliminar borra el par, como ya hace. El `INSERT` lleva **`ON CONFLICT (identidad_id, tenant_acceso_id) DO NOTHING` con sus columnas**: el `ON CONFLICT` sin columnas de hoy también absorbería la violación de `UNIQUE (apodo)` y la colisión no daría `23505`. Se conserva `SECURITY DEFINER`, `search_path = ''`, `REVOKE ... FROM PUBLIC`, el dueño `viajapro_accesos` y las marcas `[par-old]` del arnés M17 |
 | `viajapro_accesos` | **Sin privilegios nuevos de tabla.** Conserva `SELECT, INSERT, DELETE` sobre `accesos_identidad` («ni UPDATE»); la columna nueva queda cubierta por ellos. El `CREATE OR REPLACE` corre con `SET ROLE viajapro_accesos`, conserva dueño y `REVOKE`, y comprueba `PROPIETARIO_ESPERADO` |
 
 El `CHECK` admite solo minúsculas ASCII. Así la unicidad sin distinguir mayúsculas sale **por
@@ -133,7 +133,7 @@ Postgres (`Key (apodo)=(...)`) no llegue al log.
   **No hay autoasignación** ni registro libre de apodos. En la fase 1 el apodo **no se fija al
   invitar**: la fila de `usuarios` no existe hasta aceptar la invitación (dos transacciones en dos
   pools), y una colisión en la aceptación fallaría después de crear la identidad. Quien
-  crea una agencia por autoservicio (ADR-0030) se lo fija a sí mismo como dueño desde la misma
+  crea una agencia por autoservicio (ADR-0030) se lo fija a sí mismo como dueño (**la única excepción** a «no hay autoasignación») desde la misma
   pantalla. Cambiar o quitar un apodo deja un `registros_auditoria` con el `usuario_id` y sin el apodo
   en `detalle`.
 - **Es opcional.** Sin apodo se entra por correo, como hoy.
@@ -173,7 +173,17 @@ Postgres (`Key (apodo)=(...)`) no llegue al log.
   clave es el identificador normalizado. Propuesta: 10 fallos en 15 minutos. **Agotado el tope, el
   ingreso recorre exactamente el mismo camino que cualquier otro**: llama a `/sign-in/email` con el
   **correo centinela** (mismo hash, mismo cupo por IP) y **descarta el resultado**, respondiendo
-  `CREDENCIALES_INVALIDAS` también con la clave correcta. Si Better Auth responde `429` por la IP, se
+  `CREDENCIALES_INVALIDAS` también con la clave correcta. **Todo intento fallido, también el
+  bloqueado, hace exactamente las mismas escrituras en el contador** (mismo `INSERT`, mismo barrido,
+  mismo recuento): si el camino bloqueado se ahorrara esas escrituras, una diferencia sistemática de
+  milisegundos, con suficientes muestras, volvería a revelar «esta identidad está bloqueada». La
+  ventana pasa a ser deslizante mientras dure el ataque, coherente con el precio que ya se acepta
+  (C1). El estado del contador no se ve desde fuera. **El centinela tiene que ser realmente
+  inexistente:** nada impide hoy una identidad con correo `...@viajapro.invalid` (la columna solo
+  exige que no esté vacía); si existiera con una contraseña conocida, todo apodo inexistente más esa
+  contraseña abriría sesión, y el resultado sería un oráculo perfecto. Por eso el PR 1 lleva un
+  `CHECK` en `identidades.correo` que rechaza el dominio `.invalid`, el contrato rechaza `.invalid`
+  en invitaciones y registro, y una aserción de aislamiento lo prueba. Si Better Auth responde `429` por la IP, se
   devuelve ese mismo `429`. **No hay atajo que se salte el hash ni el cupo por IP**: un atajo
   distinguiría, por estado, cuerpo o tiempo, el correo de una identidad bloqueada (el atacante
   agotaría su cupo por IP con correos ajenos y vería que el de la identidad bloqueada responde otra
@@ -205,9 +215,24 @@ Postgres (`Key (apodo)=(...)`) no llegue al log.
   (`nombre.apellido`) de personal de otras agencias. Por eso **T-309 (fase 2) debe estar terminada
   antes de encender `REGISTRO_AUTOSERVICIO_HABILITADO` y antes de dar de alta cualquier segunda
   agencia, también por script.** ADR-0030 está Aceptado y no se edita: esta condición se registra aquí
-  y en la cola (T-312 lo anota en la tabla de precondiciones de ADR-0030 al tocarlo). Como cinturón,
-  el PR de backend hace que la API **se niegue a arrancar** con `REGISTRO_AUTOSERVICIO_HABILITADO`
-  activo mientras el índice de apodos siga siendo global.
+  y en la cola (T-312 lo anota en la tabla de precondiciones de ADR-0030 al tocarlo). **No basta con
+  un freno solo en el autoservicio:** la segunda agencia también puede nacer **por script**
+  (`semilla-agencia-desde-json.ts`, la semilla de la piloto). Por eso la precondición se hace cumplir
+  **por construcción, en cualquier camino de alta**, con una comprobación que falla cerrado:
+  - **Cómo se detecta que el índice es global:** por el **catálogo** (`pg_index`, `pg_class`,
+    `pg_attribute`, legibles por cualquier rol, sin privilegios de tabla). Es global si existe un
+    índice único válido sobre `public.accesos_identidad` cuyas columnas clave incluyen `apodo` y **no**
+    incluyen `tenant_acceso_id`. Se compara por `indkey`, no por el nombre del índice. Si hay un
+    índice de expresión o parcial sobre `apodo`, o la consulta falla, **se trata como global**.
+  - **Dónde se aplica:** **(a)** al arrancar la API con `REGISTRO_AUTOSERVICIO_HABILITADO` activo, que
+    se niega a arrancar; **(b)** en `PATCH /miembros/:id/apodo` y en la resolución del apodo al
+    ingresar: si el índice es global y `tenants` (global, en `excepciones_rls`, no es una tabla de
+    negocio con RLS) tiene **más de una fila**, la función queda apagada: el `PATCH` responde con un
+    error genérico, no con el `409`, y el apodo se trata como inexistente; **(c)** en
+    `guardia-de-semilla-agencia.ts` y en `crear_agencia` cuando exista: rechazar una segunda agencia
+    mientras el índice sea global.
+  Con (b) la precondición se cumple en cualquier camino de alta, y T-312 queda como lo que es:
+  documentación.
 
 ### 5. Fase 2, sectorización por agencia (descrita, no se construye)
 
@@ -254,7 +279,7 @@ Ningún dato de negocio depende del apodo.
 
 | # | PR | Dueño | Exige para integrar |
 |---|---|---|---|
-| 1 | **Datos** (ruta protegida): columnas, `CHECK`, índices, cuerpo del disparador, privilegio de columna de `viajapro_accesos` y apodos en la semilla | `datos` + `auditor-seguridad` | Suite de aislamiento en verde con aserciones nuevas. **(a)** el disparador escribe `(identidad, tenant, apodo)` solo de la fila que pasó RLS; **(b)** `viajapro_app` y `viajapro_identidad` siguen sin poder escribir `accesos_identidad`; **(c)** desactivar o eliminar al usuario retira su apodo del índice; **(d)** el mismo apodo en dos agencias da `23505`; **(e)** el `CHECK` rechaza mayúsculas, `@` y lo que no es ASCII; **(f)** la matriz de funciones no cambia para ningún rol de login; **(g)** cambiar el apodo actualiza el índice y el apodo viejo deja de resolver; **(h)** poner `null` lo retira; **(i)** la colisión entre agencias revierte el cambio en `usuarios` y no deja una pertenencia sin su fila en el índice; **(j)** `viajapro_identidad` no tiene `has_column_privilege` sobre `usuarios.apodo` (la prueba 63 usa `has_table_privilege`, que no detecta un `GRANT` de columna) y `viajapro_accesos` sigue sin `UPDATE` |
+| 1 | **Datos** (ruta protegida): columnas, `CHECK`, índices, cuerpo del disparador, **un `CHECK` en `identidades.correo` que rechaza el dominio `.invalid`** (el centinela del ingreso no puede existir como identidad) y apodos en la semilla. Sin privilegios nuevos de tabla ni de columna para `viajapro_accesos` | `datos` + `auditor-seguridad` | Suite de aislamiento en verde con aserciones nuevas. **(a)** el disparador escribe `(identidad, tenant, apodo)` solo de la fila que pasó RLS; **(b)** `viajapro_app` y `viajapro_identidad` siguen sin poder escribir `accesos_identidad`; **(c)** desactivar o eliminar al usuario retira su apodo del índice; **(d)** el mismo apodo en dos agencias da `23505`; **(e)** el `CHECK` rechaza mayúsculas, `@` y lo que no es ASCII; **(f)** la matriz de funciones no cambia para ningún rol de login; **(g)** cambiar el apodo actualiza el índice y el apodo viejo deja de resolver; **(h)** poner `null` lo retira; **(i)** la colisión entre agencias revierte el cambio en `usuarios` y no deja una pertenencia sin su fila en el índice; **(j)** `viajapro_identidad` no tiene `has_column_privilege` sobre `usuarios.apodo`, y `viajapro_accesos` sigue sin `UPDATE`, comprobado con `has_any_column_privilege('viajapro_accesos','public.accesos_identidad','UPDATE') = false` (la prueba 63 usa `has_table_privilege`, que no detecta un `GRANT` de columna); **(k)** el `CHECK` de `identidades.correo` rechaza `...@viajapro.invalid` y cualquier subdominio de `.invalid`; **(l)** `DELETE FROM usuarios` retira el par y su apodo del índice. **Condiciones del cuerpo del disparador:** la rama del apodo va **fuera** de las marcas `[par-old]` (la expresión del arnés M17 es codiciosa y borraría todo lo que haya entre la primera y la última marca), se condiciona con `OLD.apodo IS DISTINCT FROM NEW.apodo`, borra por el par de `NEW` y **todos los `DELETE` van antes del `INSERT`**. Se añade una mutación nueva al arnés («sin la rama del apodo») que la aserción (g) debe detectar, y M17 debe seguir detectándose con la prueba 64 |
 | 2 | **Backend**: normalización y reservados en contratos, `identificador`, la resolución con centinela, el tope por identificador, `PATCH /miembros/:id/apodo` con `usuarios.administrar` y auditoría | `backend` | e2e: se entra con el apodo; apodo inexistente, mal formado o desactivado y clave errónea dan la misma respuesta; el tope se comparte entre correo y apodo; el dueño de A recibe 404 al fijar el apodo de un miembro de B; un apodo de A no da sesión en B (paso 4); el apodo no aparece en el log capturado, **tampoco en la ruta del `409`**; el OTP rechaza el apodo; **con la identidad bloqueada y la IP agotada, la respuesta es idéntica a la de un identificador no bloqueado (B2)**; un rol personalizado con `usuarios.administrar` no puede editar el apodo de quien tiene más permisos (B4); el hook de sesión no usa el apodo para fijar la agencia; la API no arranca con el autoservicio activo y el índice global (B3). **Orden obligatorio PR 1 → PR 2 → PR 3**: si la web sale antes que la API, la API responde 400 a `identificador` |
 | 3 | **Frontend**: «Correo o usuario» en `/ingresar` y el campo de apodo al editar un miembro existente (no al invitar: ver §2) | `frontend` | Probado en un navegador real, también en el móvil. Ningún mensaje distingue «usuario no existe». El 409 se muestra solo en la edición de miembros |
 
@@ -271,7 +296,9 @@ Ningún dato de negocio depende del apodo.
 | T-314 | Normalización y reservados (C4): unicidad sobre el apodo sin separadores (`isabel.alvear`, `isabel_alvear` e `isabel-alvear` son hoy tres apodos); ampliar reservados (`support`, `help`, `security`, `seguridad`, `staff`, `equipo`, `contacto`, `facturacion`, prefijo `admin`) | `backend` |
 | T-315 | Apodo en invitaciones (C5): fijarlo al aceptar sin bloquear la aceptación | `backend` |
 | T-316 | `GRANT SELECT` por columnas de `accesos_identidad` para `viajapro_identidad` (C6); contrato de transición: rechazar por forma si llegan `correo` e `identificador` a la vez (C7) | `datos`, `backend` |
-| T-317 | Semilla: apodos sintéticos solo en la local, no en staging (C8) | propietario |
+| T-317 | Semilla: apodos sintéticos solo en la local, no en staging (C8) | `datos` |
+| T-318 | `ContadorDeFallosPostgres` barre solo `LIKE 'viajapro:otp-fallos:%'`: pasar el prefijo como parámetro en el PR 2, o las filas `viajapro:ingreso-fallos:` no se purgan y `verificaciones` crece sin límite | `backend` |
+| T-319 | La baja de un miembro debe limpiar `usuarios.apodo` (si no, al reactivarlo vuelve sin que nadie lo decida y el apodo queda ocupado para siempre; también minimización, Ley 1581) | `backend` |
 | — | El límite por IP de Better Auth, a Redis: ya es **T-301**, no se duplica | `backend` |
 
 ## Auditoría de seguridad (primera vuelta, 2026-11-20)
@@ -281,10 +308,14 @@ disparador no incluía `apodo` en `UPDATE OF` y su `ON CONFLICT` sin columnas ab
 (§1); **B2** el atajo del tope por identidad permitía saber si un apodo existe y a qué correo
 corresponde (§4); **B3** la unicidad global choca con el autoservicio de ADR-0030, que ya está
 Aceptado (§4, precondición dura); **B4** `usuarios.administrar` no basta para fijar el apodo de otro
-(§2). Cola: C1 a C9 repartidos en T-313 a T-317 y en el PR 2. Verificado contra la etiqueta v1.7.22
+(§2). Cola: C1 a C9 repartidos en T-313 a T-319 y en el PR 2. Verificado contra la etiqueta v1.7.22
 de Better Auth en GitHub (no contra el paquete instalado): con correo inexistente hace un hash
-ficticio. **Pendiente: segunda vuelta de `auditor-seguridad` sobre estos cambios** (aislamiento: no
-aplica la regla de una sola vuelta).
+ficticio. **Segunda vuelta (2026-11-20): aceptable con cambios menores**, ya incorporados: N1 el disparador
+conserva `DELETE`; N2 el plan del PR 1 no pide privilegios nuevos; N3 la precondición de B3 se hace
+cumplir por construcción en cualquier camino de alta (detección por catálogo, §4); N4 todo intento
+fallido hace las mismas escrituras en el contador y el centinela no puede existir como identidad
+(`CHECK` en `identidades.correo`). Las condiciones del cuerpo del disparador y las aserciones de
+aislamiento nuevas van en el PR 1, que lleva su propia auditoría antes de integrar.
 
 ## Cuándo revisar esta decisión
 
