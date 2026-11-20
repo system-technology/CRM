@@ -6000,9 +6000,7 @@ tasks:
     phase: 2
     priority: P1
     effort: M
-    status: blocked
-    blocked_reason: "ADR-0030 en estado Propuesto: espera auditor-seguridad y la aceptación del propietario.
-      human_required: migración del Owner (ruta protegida) y cambio de R2 en CLAUDE.md"
+    status: ready
     human_required: true
     depends_on: []
     acceptance:
@@ -6079,7 +6077,7 @@ tasks:
     priority: P1
     effort: M
     status: blocked
-    blocked_reason: "Espera la aceptación de ADR-0030 y T-268 (aceptaciones_de_identidad)"
+    blocked_reason: "Espera T-268 (ADR-0030 ya aceptado) (aceptaciones_de_identidad)"
     depends_on:
       - T-268
     acceptance:
@@ -6127,7 +6125,7 @@ tasks:
     priority: P1
     effort: M
     status: blocked
-    blocked_reason: "Espera la aceptación de ADR-0030, T-268, T-269 y T-270"
+    blocked_reason: "Espera T-268, T-269 y T-270"
     depends_on:
       - T-268
       - T-269
@@ -6394,8 +6392,8 @@ tasks:
     created_at: 2026-11-20T23:30:00.000Z
     owner: backend
   - id: T-281
-    title: "Aceptar una invitación sobre una identidad ya existente exige su ingreso por código; una identidad de
-      autoservicio sin pertenencias se restablece (precondición para abrir el registro sin código)"
+    title: "Aceptar una invitación sobre una identidad ya existente exige su ingreso por código; toda identidad de
+      autoservicio se restablece (precondición para abrir el registro sin código)"
     type: security
     phase: 2
     priority: P2
@@ -6408,7 +6406,7 @@ tasks:
     acceptance:
       - Si la identidad del correo invitado ya existe, aceptar exige el ingreso por código de un solo uso de esa
         identidad (OTP de ingreso existente, auth.controller.ts /otp/iniciar-sesion), no su contraseña
-      - Si esa identidad nació por autoservicio y no tiene ninguna pertenencia, al aceptar se restablece su
+      - Si esa identidad nació por autoservicio (tenga o no pertenencias), al aceptar se restablece su
         credencial (contraseña nueva de quien acepta) y se revocan todas sus sesiones
       - La respuesta antes del código no revela si la identidad existía
       - e2e del ataque de ADR-0030 §3.7 (identidad creada con el correo de otra persona antes de la invitación)

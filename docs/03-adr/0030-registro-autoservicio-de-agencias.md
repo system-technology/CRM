@@ -1,6 +1,7 @@
 # ADR-0030 — Registro autoservicio de agencias: cuenta verificada, alta atómica por `crear_agencia` y prueba gratis
 
-- **Estado:** Propuesto
+- **Estado:** Aceptado (2026-11-20, por el propietario por delegación, tras tres vueltas de
+  `auditor-seguridad`; la tercera cerró B1 sin bloqueantes pendientes)
 - **Fecha:** 2026-11-20
 - **Decide:** Propietario del producto
 - **Consultados:** `arquitecto` (redacta). **Pendientes antes de aceptar:** `auditor-seguridad`
@@ -16,7 +17,9 @@
   **El resto de ADR-0011 sigue vigente**, incluido `disableSignUp: true` en Better Auth (ver §2).
 
 > **Revisión de seguridad:** la segunda vuelta cerró los bloqueantes 2 y 3 de la primera. **Tercera
-> vuelta: B1 abordado** (§1.2, §3.7, §3.8, §6). Queda pendiente que el auditor lo verifique.
+> vuelta: B1 abordado** (§1.2, §3.7, §3.8, §6) y **verificado** por el auditor el 2026-11-20: sin
+> bloqueantes. Se aplicó además su corrección recomendada en T-281 (restablecer la credencial de toda
+> identidad de autoservicio, no solo la que no tiene pertenencias).
 
 ---
 
@@ -449,8 +452,9 @@ UNIQUE`** (HMAC-SHA256 del correo normalizado con el secreto de la aplicación),
   - **La barrera (T-281), precondición para abrir el registro sin código:** atar una invitación a
     una identidad existente exige **el ingreso por código de un solo uso de esa identidad**. El OTP
     de ingreso ya existe (`auth.controller.ts`, `/otp/iniciar-sesion`), así que no espera a la
-    recuperación de contraseña. Si la identidad nació por autoservicio y no tiene **ninguna
-    pertenencia**, además se **restablece su credencial**: se fija la contraseña nueva y se revocan
+    recuperación de contraseña. Si la identidad nació por autoservicio (tenga o no pertenencias:
+    quien la creó con un correo ajeno puede haber creado ya su propia agencia), además se
+    **restablece su credencial**: se fija la contraseña nueva y se revocan
     todas sus sesiones. Así, quien la creó con el correo de otra persona pierde el acceso en ese
     momento.
 - **Prueba obligatoria:** e2e con 20 peticiones `completar` concurrentes y códigos distintos sobre
@@ -641,7 +645,7 @@ Las tareas están en `roadmap/tasks.yaml`. **Migración** = ruta protegida, la a
 | F6 | `PoliticaDeUso` y días de prueba visibles | T-275 | `backend` | No | No |
 | — | ¿Permite Meta operar WABAs de terceros sin ser Tech Provider? | T-279 | `investigador` | No | No |
 | — | Conexión de WhatsApp por la plataforma antes de Tech Provider (§5.1) | T-276 | `whatsapp` | **Sí** (`solicitudes_de_conexion_whatsapp`, token cifrado) | **Sí** |
-| Precondición para abrir | Aceptar una invitación sobre una identidad existente exige su ingreso por código; se restablece la credencial de una identidad de autoservicio sin pertenencias | T-281 | `backend` | No | Sí |
+| Precondición para abrir | Aceptar una invitación sobre una identidad existente exige su ingreso por código; se restablece la credencial de toda identidad nacida por autoservicio | T-281 | `backend` | No | Sí |
 | Cola | Endurecimientos de la segunda auditoría (C3-C13) | T-284 a T-291 | varios | Algunos | Algunos |
 | — | Embedded Signup en el asistente | T-277 | `whatsapp` | Probable | **Sí** |
 | Cola | Purga de agencias de prueba abandonadas | T-278 | `datos` | Sí | Sí |
