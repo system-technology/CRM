@@ -15,10 +15,8 @@
   por un script de plataforma». Con este ADR hay una tercera vía, el registro con correo verificado.
   **El resto de ADR-0011 sigue vigente**, incluido `disableSignUp: true` en Better Auth (ver §2).
 
-> **Revisión de seguridad:** la primera vuelta (2026-11-20) dejó tres bloqueantes. Esta versión los
-> aborda en §1.1-1.2 y §3.7 (código de registro), §3.8 (código de acceso del piloto) y §5.1
-> (conexión manual de WhatsApp), e incorpora los hallazgos de cola. **Queda pendiente la segunda
-> auditoría**: en aislamiento no aplica R13.
+> **Revisión de seguridad:** la segunda vuelta cerró los bloqueantes 2 y 3 de la primera. **Tercera
+> vuelta: B1 abordado** (§1.2, §3.7, §3.8, §6). Queda pendiente que el auditor lo verifique.
 
 ---
 
@@ -201,9 +199,13 @@ puertos. Ninguna otra combinación deja a la base, y no a la aplicación, eligie
 2. **Completar.** El intento se consume de forma atómica (§3.7). Si el código es correcto, se
    comprueba que **no existe identidad con ese correo**. Si existe (por ejemplo, la crearon entre los
    dos pasos al aceptar una invitación), la respuesta es el mismo error genérico que un código
-   inválido: **`completar` nunca reutiliza ni ata una identidad existente.** Si no existe,
-   `crearVerificada` y, **en la misma transacción del pool de identidad**, una fila por documento
-   aceptado en `aceptaciones_de_identidad` (§4). Por último se inicia la sesión por el camino normal
+   inválido: **`completar` nunca reutiliza ni ata una identidad existente.** Ojo: el
+   `crearVerificada` de hoy **sí** reutiliza la identidad cuando el alta choca con `P2002`
+   (`identidades.prisma.ts:42-47`), y eso es correcto para invitaciones pero no aquí. `completar`
+   usa una variante, `crearVerificadaNueva(tx, …)`, que ante `P2002` lanza el error genérico. Con
+   ella crea la identidad y, **en la misma transacción `tx` del pool de identidad**, una fila por
+   documento aceptado en `aceptaciones_de_identidad` (§4). La carrera (dos `completar`, o
+   `completar` contra una invitación aceptada a la vez) tiene su e2e. Por último se inicia la sesión por el camino normal
    de Better Auth, sin crear filas de `sesiones` a mano. Una contraseña de menos de 12 caracteres da
    422 antes de consumir el intento.
 3. **Crear la agencia.** La ruta exige sesión viva e identidad con `correo_verificado`, y **no exige
@@ -283,11 +285,12 @@ crear_agencia(p_nombre text, p_slug_base text, p_pais_iso text, p_moneda_iso tex
     p_identidad_id`, aborta con `VPR01` (`agencia_en_prueba_existente`).
   - **Código de acceso** (§3.8): `UPDATE codigos_de_acceso_al_registro SET usado_en = now(),
     usado_por_identidad_id = p_identidad_id WHERE hash = p_hash_codigo_de_acceso AND usado_en IS
-    NULL AND expira_en > now() AND (correo_hmac IS NULL OR correo_hmac = p_correo_hmac)`. Si afecta
+    NULL AND expira_en > now() AND correo_hmac = p_correo_hmac`. Si afecta
     0 filas, aborta con `VPR04`, con el mismo error para un código inexistente, usado, caducado o de
     otro correo. Como va en la misma transacción, un `ROLLBACK` posterior devuelve el código.
     **La función siempre lo exige**: abrir el registro sin código es otro ADR y otra migración, no
-    una variable de entorno.
+    una variable de entorno. Ese ADR tiene una **precondición**: T-281 integrado (§3.7, defensa en
+    la invitación).
   - **Tope global:** si en la última hora se crearon más agencias de autoservicio que
     `parametros_del_registro.tope_por_hora` (una fila, 30 al crearla), aborta con `VPR02`
     (`registro_saturado`). Es un cortocircuito ante un bucle o un ataque, no un límite de negocio.
@@ -300,7 +303,8 @@ crear_agencia(p_nombre text, p_slug_base text, p_pais_iso text, p_moneda_iso tex
 - **Escritura:** `id = gen_random_uuid()` (v4; PostgreSQL 16 no trae uuid v7, y en `tenants` el
   orden del índice no importa). El slug es `p_slug_base`. Si es un **slug reservado** (`admin`,
   `api`, `app`, `www`, `soporte`, `ayuda`, `viajapro`, `plataforma`, `demo`, `agencia-demo`,
-  `registro`, `ingresar`; la lista vive en la función), o si choca con uno existente, se le añade
+  `registro`, `ingresar`; la lista vive en la función, y los prefijos `viajapro-*` y `soporte-*`
+  se añaden en T-291), o si choca con uno existente, se le añade
   `-` y 4 caracteres aleatorios, hasta 5 intentos (después, `VPR03`). Cada intento es un `INSERT
   … ON CONFLICT (slug) DO NOTHING RETURNING id`: **sin bloques `EXCEPTION`**, y nunca `DO UPDATE`.
   **Nunca se reutiliza una fila existente.** `estado = 'EN_PRUEBA'`, `origen_del_alta =
@@ -392,7 +396,8 @@ por hora. No puede entrar en una existente.
   correo, así que un tercero no puede usar el registro para bombardear buzones ni agotar el tope
   global.
 - **Antes de abrir el registro sin código**, cosa que exige otro ADR (§3.2), son **obligatorios**:
-  un captcha real detrás de `VerificadorDeHumano` (proveedor y precio los verifica `investigador`,
+  **T-281 integrado** (la barrera de §3.7: sin ella, cualquiera podría crear la identidad del
+  correo de una asesora antes de que la inviten), un captcha real detrás de `VerificadorDeHumano` (proveedor y precio los verifica `investigador`,
   y lleva su propio ADR por CLAUDE.md §10), límites por IP y por dominio de correo en `solicitar` y
   en `agencias`, y una revisión del tope global. Lo caro de una agencia falsa no es la fila: es
   WhatsApp y la IA, y esos dos tienen su propia compuerta (§5).
@@ -432,16 +437,22 @@ UNIQUE`** (HMAC-SHA256 del correo normalizado con el secreto de la aplicación),
      las aceptaciones.
 - **Cota:** como mucho 10 intentos por correo y día. Con 10⁶ códigos posibles, la probabilidad de
   acertar en un día es de 10⁻⁵.
-- **Correo encolado sin el código en claro.** El trabajo que encola `solicitar` lleva la plantilla y
-  sus datos **cifrados** con la clave de ADR-0015, o se resuelve con el mismo mecanismo que ya usa
-  el OTP de ingreso si `backend` comprueba que no deja el código en claro en Redis ni en Postgres.
-  Las dos ramas de `solicitar` producen trabajos con la misma forma y el mismo tamaño aproximado.
-  **Supuesto a verificar en T-270:** cómo encola hoy `enviarCodigo` el OTP de ingreso.
-- **Defensa en la invitación** (amplía el comportamiento de `AceptarInvitacionUseCase`): cuando una
-  invitación se ata a una identidad **ya existente**, se encola un correo a esa identidad: «se te
-  añadió a la agencia X; si no fuiste tú, avisa a quien te invitó». Es un aviso, no una barrera.
-  Exigir la sesión de esa identidad para aceptar sería la barrera, y va a la cola (T-281) porque hoy
-  la recuperación de contraseña no es autoservicio.
+- **Correo encolado sin el código en claro (verificado).** La cola de correo de BullMQ ya sella cada
+  trabajo con AES-256-GCM, con el id del trabajo como dato asociado
+  (`notifications/domain/sellado-de-correo.ts:33-52`). El registro usa esa misma cola. Las dos ramas
+  de `solicitar` producen trabajos sellados con la misma forma.
+- **Defensa en la invitación** (amplía el comportamiento de `AceptarInvitacionUseCase`):
+  - **Ya, con el registro detrás del código de acceso (T-270):** cuando una invitación se ata a una
+    identidad **ya existente**, se encola un correo a esa identidad: «Tu correo ya tenía una cuenta
+    de ViajaPro, creada el <fecha>. La contraseña que escribiste no se aplicó. Si no creaste esa
+    cuenta, avisa ya». Es un aviso, no una barrera.
+  - **La barrera (T-281), precondición para abrir el registro sin código:** atar una invitación a
+    una identidad existente exige **el ingreso por código de un solo uso de esa identidad**. El OTP
+    de ingreso ya existe (`auth.controller.ts`, `/otp/iniciar-sesion`), así que no espera a la
+    recuperación de contraseña. Si la identidad nació por autoservicio y no tiene **ninguna
+    pertenencia**, además se **restablece su credencial**: se fija la contraseña nueva y se revocan
+    todas sus sesiones. Así, quien la creó con el correo de otra persona pierde el acceso en ese
+    momento.
 - **Prueba obligatoria:** e2e con 20 peticiones `completar` concurrentes y códigos distintos sobre
   el mismo correo: como mucho 3 comparaciones, ninguna identidad creada si ninguna acierta, y el
   error es idéntico en todas.
@@ -460,7 +471,7 @@ declara así en `excepciones_rls` con `{}` para `viajapro_app`, `viajapro_altas`
 | `hash bytea PRIMARY KEY` | SHA-256 del secreto. El secreto tiene **al menos 128 bits** de `crypto.randomBytes`, codificado en base32. Con esa entropía no hace falta sal |
 | `expira_en timestamptz NOT NULL` | Días, no horas: 14 por defecto al generarlo |
 | `usado_en timestamptz NULL`, `usado_por_identidad_id uuid NULL` | Uso único |
-| `correo_hmac bytea NULL` | Opcional: ata el código a un correo (el mismo HMAC de §3.7) |
+| `correo_hmac bytea NOT NULL` | **Obligatorio mientras dure el piloto**: ata el código al correo que eligió la plataforma (el mismo HMAC de §3.7). Así `solicitar` solo emite códigos de registro a ese buzón, y un código filtrado no sirve con otro correo |
 | `creado_en`, `nota text NULL` | La nota es para la plataforma (para qué agencia piloto es), **sin datos personales** |
 
 - **Lo genera la plataforma** con un comando de plataforma (T-280), con el rol de plataforma, no con
@@ -471,14 +482,15 @@ declara así en `excepciones_rls` con `{}` para `viajapro_app`, `viajapro_altas`
   p_correo_hmac bytea) RETURNS boolean`. Es una función `SECURITY DEFINER` con el mismo dueño
   (`viajapro_registro`), `STABLE`, `search_path` vacío, que solo lee, y cuyo `EXECUTE` es solo de
   `viajapro_app`. Se llama con `sinTenantDeclarado('identity/comprobar-codigo-de-acceso', …)`.
-  Responde un booleano, sin decir por qué falló.
+  Exige `correo_hmac = p_correo_hmac`: no hay rama para un código sin correo. Responde un
+  booleano, sin decir por qué falló.
 - **Se consume dentro de `crear_agencia`** (§3.2). Un `ROLLBACK` del alta lo devuelve.
 - **Límite de intentos por IP:** 10 códigos inválidos por IP en una hora, entre `solicitar` y
   `agencias`, con prefijo `viajapro:registro-acceso:`. Al pasarlo, 429. Con 128 bits no hay fuerza
   bruta posible: el límite es para que un escaneo no cueste nada a la base.
 - **Qué pasa si se filtra:** sirve para crear una sola agencia en prueba, que la plataforma ve
   (`origen_del_alta`, la `nota` del código, el evento `identity.agencia_creada`) y puede suspender.
-  Con `correo_hmac`, ni eso.
+  Y solo con el buzón del correo al que está atado.
 
 ### 4. Datos personales (R10, Ley 1581)
 
@@ -592,7 +604,7 @@ por eso su tarea (T-273) puede empezar antes de que se acepte este ADR.
 - Pasarela, cobro, facturación, planes y vencimiento automático de la prueba.
 - Embedded Signup y la conexión de WhatsApp por plataforma (solo su relación con el asistente).
 - Captcha y límites por dominio (obligatorios antes de abrir el registro sin código, §3.6).
-- Abrir el registro sin código de acceso: otro ADR.
+- Abrir el registro sin código de acceso: otro ADR, con T-281 integrado como precondición.
 - Inicio de sesión social, SSO y MFA (ADR-0011).
 - Borrar agencias, y la purga de agencias de prueba abandonadas (va a la cola: T-278).
 - Recuperación de contraseña por autoservicio: sigue siendo de ADR-0011.
@@ -629,7 +641,8 @@ Las tareas están en `roadmap/tasks.yaml`. **Migración** = ruta protegida, la a
 | F6 | `PoliticaDeUso` y días de prueba visibles | T-275 | `backend` | No | No |
 | — | ¿Permite Meta operar WABAs de terceros sin ser Tech Provider? | T-279 | `investigador` | No | No |
 | — | Conexión de WhatsApp por la plataforma antes de Tech Provider (§5.1) | T-276 | `whatsapp` | **Sí** (`solicitudes_de_conexion_whatsapp`, token cifrado) | **Sí** |
-| Cola | Aceptar una invitación sobre una identidad existente exige la sesión de esa identidad | T-281 | `backend` | No | Sí |
+| Precondición para abrir | Aceptar una invitación sobre una identidad existente exige su ingreso por código; se restablece la credencial de una identidad de autoservicio sin pertenencias | T-281 | `backend` | No | Sí |
+| Cola | Endurecimientos de la segunda auditoría (C3-C13) | T-284 a T-291 | varios | Algunos | Algunos |
 | — | Embedded Signup en el asistente | T-277 | `whatsapp` | Probable | **Sí** |
 | Cola | Purga de agencias de prueba abandonadas | T-278 | `datos` | Sí | Sí |
 
@@ -666,8 +679,9 @@ en paralelo. **El interruptor no se enciende en producción sin F0.**
 - **La pantalla de WhatsApp promete una conexión que hoy depende de trabajo que no existe** (T-276)
   y de una respuesta de Meta que no tenemos (T-279). Hasta entonces, el paso solo puede decir
   «solicitud recibida».
-- **El aviso al atar una invitación a una identidad existente es un aviso, no una barrera.** La
-  barrera (T-281) espera a que la recuperación de contraseña sea autoservicio.
+- **Mientras dure el piloto, el aviso al atar una invitación a una identidad existente es solo un
+  aviso.** Lo que cierra el ataque es que el código de acceso esté atado a un correo. La barrera
+  (T-281) es obligatoria antes de abrir el registro sin código.
 
 ### Qué habría que cambiar para revertir esto
 Apagar `REGISTRO_AUTOSERVICIO_HABILITADO` y, en una migración nueva: `DROP FUNCTION
