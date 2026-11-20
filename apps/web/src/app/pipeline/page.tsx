@@ -294,7 +294,7 @@ export default function PipelinePage() {
                 <button
                   type="button"
                   onClick={() => mostrarAviso('Creación de oportunidad disponible en cotizador.')}
-                  className="bg-acento-600 hover:bg-acento-700 flex min-h-[44px] items-center space-x-1.5 rounded-xl px-4 py-2.5 text-xs font-medium text-white shadow-xs transition-colors"
+                  className="boton-primario flex min-h-[44px] items-center space-x-1.5 rounded-xl px-4 py-2.5 text-xs font-medium shadow-xs transition-colors"
                 >
                   <Plus className="h-4 w-4" />
                   <span>Nueva Oportunidad</span>

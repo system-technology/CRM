@@ -68,10 +68,10 @@ export function TarjetaSeguimiento({
               }}
               title="Marcar como completado"
               aria-label={`Completar tarea: ${seguimiento.descripcion}`}
-              className="flex h-11 w-11 items-center justify-center rounded-xl border border-neutral-300 bg-white text-neutral-400 transition hover:border-teal-500 hover:bg-teal-50 hover:text-teal-700 focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:outline-none disabled:opacity-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-500 dark:hover:border-teal-400 dark:hover:bg-teal-950/40 dark:hover:text-teal-300"
+              className="hover:border-acento-500 hover:bg-acento-50 hover:text-acento-700 focus-visible:ring-acento-600 dark:hover:border-acento-400 dark:hover:bg-acento-950/40 dark:hover:text-acento-300 flex h-11 w-11 items-center justify-center rounded-xl border border-neutral-300 bg-white text-neutral-400 transition focus-visible:ring-2 focus-visible:outline-none disabled:opacity-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-500"
             >
               {completando ? (
-                <Loader2 className="h-5 w-5 animate-spin text-teal-600 dark:text-teal-400" />
+                <Loader2 className="text-acento-600 dark:text-acento-400 h-5 w-5 animate-spin" />
               ) : (
                 <Check className="h-5 w-5 transition group-hover:scale-110" />
               )}
@@ -117,7 +117,7 @@ export function TarjetaSeguimiento({
             <Link
               href={`/contactos/${seguimiento.contactoId}`}
               title="Ver ficha 360 del contacto"
-              className="inline-flex min-h-[32px] items-center gap-1 font-medium text-teal-700 hover:text-teal-800 hover:underline dark:text-teal-400 dark:hover:text-teal-300"
+              className="text-acento-700 hover:text-acento-800 dark:text-acento-400 dark:hover:text-acento-300 inline-flex min-h-[32px] items-center gap-1 font-medium hover:underline"
             >
               <User className="h-3.5 w-3.5" />
               <span>{seguimiento.contactoNombre ?? 'Contacto'}</span>
@@ -128,7 +128,7 @@ export function TarjetaSeguimiento({
               <Link
                 href="/pipeline"
                 title="Ver oportunidad en Pipeline"
-                className="inline-flex min-h-[32px] items-center gap-1 font-medium text-blue-700 hover:text-blue-800 hover:underline dark:text-blue-400 dark:hover:text-blue-300"
+                className="text-acento-700 hover:text-acento-800 dark:text-acento-400 dark:hover:text-acento-300 inline-flex min-h-[32px] items-center gap-1 font-medium hover:underline"
               >
                 <Kanban className="h-3.5 w-3.5" />
                 <span>{seguimiento.oportunidadTitulo ?? 'Oportunidad'}</span>
@@ -169,7 +169,7 @@ export function TarjetaSeguimiento({
                 void alCompletar(seguimiento.id);
               }
             }}
-            className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl border border-teal-200 bg-teal-50 px-3.5 py-2 text-xs font-bold text-teal-700 shadow-2xs transition hover:bg-teal-100 focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:outline-none dark:border-teal-900/50 dark:bg-teal-950/40 dark:text-teal-300 dark:hover:bg-teal-900/50"
+            className="border-acento-200 bg-acento-50 text-acento-700 hover:bg-acento-100 focus-visible:ring-acento-600 dark:border-acento-900/50 dark:bg-acento-950/40 dark:text-acento-300 dark:hover:bg-acento-900/50 inline-flex min-h-[44px] items-center gap-1.5 rounded-xl border px-3.5 py-2 text-xs font-bold shadow-2xs transition focus-visible:ring-2 focus-visible:outline-none"
           >
             {completando ? (
               <Loader2 className="h-4 w-4 animate-spin" />

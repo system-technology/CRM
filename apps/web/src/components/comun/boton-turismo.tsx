@@ -19,7 +19,8 @@ export interface BotonTurismoProps extends React.ButtonHTMLAttributes<HTMLButton
 }
 
 const ESTILOS_VARIANTES: Record<VarianteBotonTurismo, string> = {
-  mar: 'degradado-mar text-white shadow-sm hover:brightness-105 active:brightness-95 focus-visible:ring-cyan-500 border border-blue-400/30',
+  // La acción primaria de toda la app: un solo color (acento), definido en globals.css.
+  mar: 'boton-primario shadow-sm',
   atardecer:
     'degradado-atardecer text-white shadow-sm hover:brightness-105 active:brightness-95 focus-visible:ring-rose-500 border border-orange-400/30',
   dorado:
@@ -27,9 +28,9 @@ const ESTILOS_VARIANTES: Record<VarianteBotonTurismo, string> = {
   oceano:
     'bg-[#0B1F3A] text-white hover:bg-[#0F2B4C] active:bg-[#061122] focus-visible:ring-cyan-500 border border-cyan-800/40 shadow-sm dark:bg-[#0F2B4C] dark:hover:bg-[#163860]',
   contorno:
-    'border border-neutral-300 bg-white text-neutral-800 hover:bg-neutral-50 active:bg-neutral-100 focus-visible:ring-blue-600 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 dark:hover:bg-neutral-800',
+    'border border-neutral-300 bg-white text-neutral-800 hover:bg-neutral-50 active:bg-neutral-100 focus-visible:ring-acento-600 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 dark:hover:bg-neutral-800',
   fantasma:
-    'bg-transparent text-neutral-700 hover:bg-neutral-100 active:bg-neutral-200 focus-visible:ring-blue-600 dark:text-neutral-300 dark:hover:bg-neutral-800',
+    'bg-transparent text-neutral-700 hover:bg-neutral-100 active:bg-neutral-200 focus-visible:ring-acento-600 dark:text-neutral-300 dark:hover:bg-neutral-800',
 };
 
 const ESTILOS_TAMANOS: Record<TamanoBotonTurismo, string> = {

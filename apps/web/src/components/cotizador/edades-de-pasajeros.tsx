@@ -30,7 +30,7 @@ interface Props {
 }
 
 const CLASE_INPUT =
-  'min-h-[44px] w-20 rounded-lg border border-neutral-300 bg-white p-2 text-center text-xs text-neutral-900 focus-visible:ring-2 focus-visible:ring-purple-600 focus-visible:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white';
+  'min-h-[44px] w-20 rounded-lg border border-neutral-300 bg-white p-2 text-center text-xs text-neutral-900 focus-visible:ring-2 focus-visible:ring-acento-600 focus-visible:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white';
 
 export function EdadesDePasajeros(props: Props) {
   const { ninos, infantes } = props;
@@ -44,7 +44,7 @@ export function EdadesDePasajeros(props: Props) {
     <div
       role="group"
       aria-label="Edades de los pasajeros menores"
-      className="mt-3 space-y-3 rounded-xl border border-purple-100 bg-purple-50/50 p-3 dark:border-purple-900 dark:bg-purple-950/30"
+      className="border-acento-100 bg-acento-50/50 dark:border-acento-900 dark:bg-acento-950/30 mt-3 space-y-3 rounded-xl border p-3"
     >
       <p className="text-[11px] text-neutral-600 dark:text-neutral-400">
         La tarifa de menor depende de la edad: indica la de cada uno.

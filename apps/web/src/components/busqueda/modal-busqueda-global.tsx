@@ -41,7 +41,7 @@ const CATEGORIA_INFO: Record<
   contactos: {
     label: 'Contactos y Viajeros',
     icon: Users,
-    color: 'text-blue-600 dark:text-blue-400',
+    color: 'text-acento-600 dark:text-acento-400',
   },
   cotizaciones: {
     label: 'Cotizaciones',
@@ -51,7 +51,7 @@ const CATEGORIA_INFO: Record<
   oportunidades: {
     label: 'Pipeline / Oportunidades',
     icon: Kanban,
-    color: 'text-purple-600 dark:text-purple-400',
+    color: 'text-acento-600 dark:text-acento-400',
   },
   viajes: {
     label: 'Archivos de viaje',
@@ -61,7 +61,7 @@ const CATEGORIA_INFO: Record<
   catalogo: {
     label: 'Catálogo de Mayoristas',
     icon: Package,
-    color: 'text-teal-600 dark:text-teal-400',
+    color: 'text-acento-600 dark:text-acento-400',
   },
 };
 
@@ -242,7 +242,7 @@ export function ModalBusquedaGlobal({ abierto, alCerrar }: ModalBusquedaGlobalPr
 
               return (
                 <div key={cat} className="mb-3 last:mb-0">
-                  <div className="flex items-center gap-2 px-3 py-1.5 text-[11px] font-bold tracking-wider text-neutral-400 uppercase dark:text-neutral-500">
+                  <div className="flex items-center gap-2 px-3 py-1.5 text-[11px] font-bold text-neutral-400 dark:text-neutral-500">
                     <Icon className={`h-3.5 w-3.5 ${info.color}`} />
                     <span>{info.label}</span>
                   </div>

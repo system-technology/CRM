@@ -231,7 +231,7 @@ export function ModalEditarContacto({
               type="submit"
               data-testid="boton-guardar-contacto"
               disabled={guardando || !telefono.trim()}
-              className="bg-acento-600 hover:bg-acento-700 flex min-h-[44px] min-w-[44px] items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-xs font-bold text-white shadow-sm transition-all active:scale-98 disabled:cursor-not-allowed disabled:opacity-50"
+              className="boton-primario flex min-h-[44px] min-w-[44px] items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-xs font-bold shadow-sm transition-all active:scale-98"
             >
               {guardando ? (
                 <>

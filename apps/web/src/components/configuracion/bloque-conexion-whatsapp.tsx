@@ -19,9 +19,7 @@ type Vista =
 function Dato({ titulo, children }: { titulo: string; children: React.ReactNode }) {
   return (
     <div className="rounded-2xl border border-neutral-100 bg-neutral-50/60 p-4 dark:border-neutral-800 dark:bg-neutral-800/40">
-      <dt className="text-[11px] font-semibold text-neutral-500 uppercase dark:text-neutral-400">
-        {titulo}
-      </dt>
+      <dt className="text-[11px] font-semibold text-neutral-500 dark:text-neutral-400">{titulo}</dt>
       <dd className="mt-1 text-sm font-semibold break-words text-neutral-900 dark:text-white">
         {children}
       </dd>

@@ -114,7 +114,7 @@ export function ModalAyudaAtajos({ abierto, onCerrar }: ModalAyudaAtajosProps) {
             onClick={alternarAtajos}
             className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition-colors ${
               atajosHabilitados
-                ? 'bg-acento-600 hover:bg-acento-700 text-white'
+                ? 'boton-primario'
                 : 'bg-neutral-200 text-neutral-700 hover:bg-neutral-300 dark:bg-neutral-700 dark:text-neutral-200'
             }`}
           >
@@ -136,7 +136,7 @@ export function ModalAyudaAtajos({ abierto, onCerrar }: ModalAyudaAtajosProps) {
         <div className="mt-4 max-h-[50vh] space-y-4 overflow-y-auto pr-1">
           {/* Navegación */}
           <div>
-            <div className="flex items-center gap-1.5 text-[11px] font-bold tracking-wider text-neutral-500 uppercase dark:text-neutral-400">
+            <div className="flex items-center gap-1.5 text-[11px] font-bold text-neutral-500 dark:text-neutral-400">
               <Navigation className="h-3 w-3" />
               <span>Navegación</span>
             </div>
@@ -154,7 +154,7 @@ export function ModalAyudaAtajos({ abierto, onCerrar }: ModalAyudaAtajosProps) {
 
           {/* Acciones */}
           <div>
-            <div className="flex items-center gap-1.5 text-[11px] font-bold tracking-wider text-neutral-500 uppercase dark:text-neutral-400">
+            <div className="flex items-center gap-1.5 text-[11px] font-bold text-neutral-500 dark:text-neutral-400">
               <Send className="h-3 w-3" />
               <span>Acciones rápidas</span>
             </div>
@@ -172,7 +172,7 @@ export function ModalAyudaAtajos({ abierto, onCerrar }: ModalAyudaAtajosProps) {
 
           {/* Ayuda y sistema */}
           <div>
-            <div className="flex items-center gap-1.5 text-[11px] font-bold tracking-wider text-neutral-500 uppercase dark:text-neutral-400">
+            <div className="flex items-center gap-1.5 text-[11px] font-bold text-neutral-500 dark:text-neutral-400">
               <Sparkles className="h-3 w-3" />
               <span>General</span>
             </div>

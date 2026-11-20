@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { BarraModulos } from '../../components/bandeja/barra-modulos';
 import { EsqueletoReportes } from '../../components/comun/esqueletos';
-import { formatearDinero, ZONA_HORARIA_COLOMBIA } from '../../lib/formato';
+import { formatearDinero, ZONA_HORARIA_COLOMBIA, formatearFecha } from '../../lib/formato';
 import { usePermisos } from '../../lib/permisos';
 import {
   ErrorReportesApi,
@@ -43,10 +43,7 @@ const pieClase = 'mt-1 text-[11px] text-neutral-400 dark:text-neutral-500';
 function formatearFechaCorta(instanteIso: string, zona: string): string {
   const ts = Date.parse(instanteIso);
   if (Number.isNaN(ts)) return instanteIso;
-  return new Intl.DateTimeFormat('es-CO', {
-    dateStyle: 'medium',
-    timeZone: zona,
-  }).format(new Date(ts));
+  return formatearFecha(ts, { zona });
 }
 
 type EstadoReportes =
@@ -416,7 +413,7 @@ function ReportesListo({
           className="rounded-xl border border-emerald-200 bg-emerald-50/40 p-4 dark:border-emerald-900/40 dark:bg-emerald-950/20"
         >
           <div className="flex flex-col gap-0.5">
-            <span className="text-xs font-bold text-emerald-800 uppercase dark:text-emerald-300">
+            <span className="text-xs font-bold text-emerald-800 dark:text-emerald-300">
               Margen cotizado (venta − costo neto)
             </span>
             <span className="text-[11px] font-medium text-emerald-700/80 dark:text-emerald-400">
@@ -485,7 +482,7 @@ function ReportesListo({
       {vista.oportunidades.porEtapa.length > 0 && (
         <section data-testid="embudo-periodo" className={`${tarjetaClase} space-y-3`}>
           <div className="flex items-center justify-between">
-            <h2 className="text-xs font-semibold text-neutral-700 uppercase dark:text-neutral-300">
+            <h2 className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">
               Estado actual de las oportunidades creadas en el periodo
             </h2>
             <span className="text-[11px] text-neutral-400">

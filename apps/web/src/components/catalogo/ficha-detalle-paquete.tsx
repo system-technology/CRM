@@ -129,8 +129,8 @@ export function FichaDetallePaquete({
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Building2 className="text-acento-600 dark:text-acento-400 h-4 w-4" />
-                  <span className="text-xs font-semibold text-neutral-500 uppercase dark:text-neutral-400">
-                    Mayorista Proveedor
+                  <span className="text-xs font-semibold text-neutral-500 dark:text-neutral-400">
+                    Mayorista
                   </span>
                 </div>
                 {paquete.mayorista.diasTimeLimit !== null && (
@@ -165,7 +165,7 @@ export function FichaDetallePaquete({
           {/* Vigencias y tarifas: lo mismo que lee el cotizador (ADR-0025) */}
           <div>
             <div className="flex items-center justify-between">
-              <h3 className="text-xs font-bold text-neutral-700 uppercase dark:text-neutral-300">
+              <h3 className="text-xs font-bold text-neutral-700 dark:text-neutral-300">
                 Vigencias y tarifas ({paquete.vigencias.length})
               </h3>
               {vigenciaActiva && (
@@ -254,7 +254,7 @@ export function FichaDetallePaquete({
           {/* Inclusiones y Exclusiones */}
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="rounded-xl border border-emerald-200 bg-emerald-50/30 p-4 dark:border-emerald-900/40 dark:bg-emerald-950/20">
-              <h4 className="flex items-center gap-1.5 text-xs font-bold text-emerald-800 uppercase dark:text-emerald-300">
+              <h4 className="flex items-center gap-1.5 text-xs font-bold text-emerald-800 dark:text-emerald-300">
                 <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                 Inclusiones del Plan
               </h4>
@@ -269,7 +269,7 @@ export function FichaDetallePaquete({
             </div>
 
             <div className="rounded-xl border border-rose-200 bg-rose-50/30 p-4 dark:border-rose-900/40 dark:bg-rose-950/20">
-              <h4 className="flex items-center gap-1.5 text-xs font-bold text-rose-800 uppercase dark:text-rose-300">
+              <h4 className="flex items-center gap-1.5 text-xs font-bold text-rose-800 dark:text-rose-300">
                 <XCircle className="h-4 w-4 text-rose-600 dark:text-rose-400" />
                 Exclusiones
               </h4>
@@ -288,7 +288,7 @@ export function FichaDetallePaquete({
           {paquete.cargosEnDestino && paquete.cargosEnDestino.length > 0 && (
             <div className="rounded-xl border border-amber-200 bg-amber-50/40 p-4 dark:border-amber-900/40 dark:bg-amber-950/20">
               <div className="flex items-center justify-between">
-                <h4 className="flex items-center gap-1.5 text-xs font-bold text-amber-800 uppercase dark:text-amber-300">
+                <h4 className="flex items-center gap-1.5 text-xs font-bold text-amber-800 dark:text-amber-300">
                   <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
                   Cargos a Pagar en Destino (No Incluidos)
                 </h4>
@@ -320,7 +320,7 @@ export function FichaDetallePaquete({
           {/* Descripción general */}
           {paquete.descripcion && (
             <div className="rounded-xl border border-neutral-200 bg-neutral-50/50 p-4 dark:border-neutral-800 dark:bg-neutral-800/30">
-              <h4 className="flex items-center gap-1.5 text-xs font-bold text-neutral-700 uppercase dark:text-neutral-300">
+              <h4 className="flex items-center gap-1.5 text-xs font-bold text-neutral-700 dark:text-neutral-300">
                 <Info className="h-4 w-4 text-neutral-500" />
                 Descripción del Paquete
               </h4>
@@ -343,7 +343,7 @@ export function FichaDetallePaquete({
 
           <Link
             href="/cotizador"
-            className="bg-acento-600 hover:bg-acento-700 flex min-h-[44px] items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-xs font-bold text-white shadow-xs transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-hidden"
+            className="boton-primario flex min-h-[44px] items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-xs font-bold shadow-xs transition-colors focus-visible:outline-hidden"
           >
             <Compass className="h-4 w-4" />
             Cotizar este paquete ahora

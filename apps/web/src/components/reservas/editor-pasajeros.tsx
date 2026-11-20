@@ -164,7 +164,7 @@ export function EditorPasajeros({
         <button
           type="submit"
           disabled={enviando}
-          className="bg-acento-700 hover:bg-acento-800 focus-visible:ring-acento-600 min-h-[44px] rounded-xl px-4 text-xs font-semibold text-white focus-visible:ring-2 focus-visible:outline-none disabled:opacity-60"
+          className="boton-primario min-h-[44px] rounded-xl px-4 text-xs font-semibold disabled:opacity-60"
         >
           {enviando ? 'Guardando…' : 'Guardar pasajeros'}
         </button>

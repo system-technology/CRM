@@ -216,9 +216,7 @@ export function FichaCliente({
         {/* Sección 5: Notas Internas */}
         {notasInternas.length > 0 && (
           <section className="space-y-1.5">
-            <h4 className="text-[11px] font-bold tracking-wider text-neutral-400 uppercase">
-              Notas de CRM
-            </h4>
+            <h4 className="text-[11px] font-bold text-neutral-400">Notas del contacto</h4>
             {notasInternas.map((n) => (
               <div
                 key={n.id}

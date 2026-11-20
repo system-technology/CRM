@@ -62,7 +62,7 @@ export function DescargaPlantillas({ alElegirParaImportar }: DescargaPlantillasP
         data-testid="cargando-plantillas"
         className="flex min-h-[220px] flex-col items-center justify-center rounded-2xl border border-neutral-200 bg-white p-8 dark:border-neutral-800 dark:bg-neutral-900"
       >
-        <Loader2 className="h-8 w-8 animate-spin text-teal-600 dark:text-teal-400" />
+        <Loader2 className="text-acento-600 dark:text-acento-400 h-8 w-8 animate-spin" />
         <p className="mt-3 text-xs text-neutral-500 dark:text-neutral-400">
           Consultando plantillas y formatos oficiales...
         </p>
@@ -96,12 +96,12 @@ export function DescargaPlantillas({ alElegirParaImportar }: DescargaPlantillasP
             <div
               key={fmt.formato}
               data-testid={`tarjeta-plantilla-${fmt.formato}`}
-              className="flex flex-col justify-between rounded-2xl border border-neutral-200 bg-white p-5 shadow-2xs transition-all hover:border-teal-300 hover:shadow-md dark:border-neutral-800 dark:bg-neutral-900 dark:hover:border-teal-700"
+              className="hover:border-acento-300 dark:hover:border-acento-700 flex flex-col justify-between rounded-2xl border border-neutral-200 bg-white p-5 shadow-2xs transition-all hover:shadow-md dark:border-neutral-800 dark:bg-neutral-900"
             >
               <div>
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-2.5">
-                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-teal-700 dark:bg-teal-950/60 dark:text-teal-300">
+                    <span className="bg-acento-50 text-acento-700 dark:bg-acento-950/60 dark:text-acento-300 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl">
                       <FileSpreadsheet className="h-5 w-5" />
                     </span>
                     <div>

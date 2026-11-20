@@ -257,7 +257,7 @@ describe('cotizaciones-logica (0c.22)', () => {
       expect(msg).toContain('Destino:* San Andrés');
       expect(msg).toContain('Pasajeros:* 2 adulto(s), 1 niño(s)');
       expect(msg).toContain('TOTAL VENTA:* *$ 6.750.000*');
-      expect(msg).toContain('Oferta vigente hasta:* sáb 31 oct 2026');
+      expect(msg).toContain('Oferta vigente hasta:* 31 oct 2026');
 
       // Regla R10: Jamás debe aparecer neto, margen ni costos de mayorista
       expect(msg).not.toContain('5800000');

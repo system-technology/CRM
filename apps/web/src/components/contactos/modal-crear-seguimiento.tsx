@@ -5,6 +5,7 @@ import { type CrearSeguimiento, type Seguimiento } from '@viajapro/contracts';
 import { useFocoModal } from '../../lib/use-foco-modal';
 import { X, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import { formatearErrorAmigable } from '../../lib/estados-ui-logica';
+import { CampoFecha } from '../comun/campo-fecha';
 
 interface ModalCrearSeguimientoProps {
   contactoId: string;
@@ -88,7 +89,7 @@ export function ModalCrearSeguimiento({
       >
         <div className="flex items-center justify-between border-b border-neutral-200 pb-4 dark:border-neutral-800">
           <div className="flex items-center gap-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-teal-50 text-teal-600 dark:bg-teal-950/50 dark:text-teal-400">
+            <div className="bg-acento-50 text-acento-600 dark:bg-acento-950/50 dark:text-acento-400 flex h-9 w-9 items-center justify-center rounded-xl">
               <CheckCircle2 className="h-5 w-5" />
             </div>
             <div>
@@ -144,7 +145,7 @@ export function ModalCrearSeguimiento({
                 value={descripcion}
                 onChange={(e) => setDescripcion(e.target.value)}
                 placeholder="Ej: Llamar para confirmar itinerario y anticipo"
-                className="w-full rounded-xl border border-neutral-300 bg-white px-3.5 py-2.5 text-sm text-neutral-900 placeholder:text-neutral-400 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+                className="focus:border-acento-500 focus:ring-acento-500/20 w-full rounded-xl border border-neutral-300 bg-white px-3.5 py-2.5 text-sm text-neutral-900 placeholder:text-neutral-400 focus:ring-2 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
               />
             </div>
           </div>
@@ -158,13 +159,12 @@ export function ModalCrearSeguimiento({
                 Fecha programada
               </label>
               <div className="relative mt-1">
-                <input
+                <CampoFecha
                   id="crear-seguimiento-fecha"
-                  type="date"
+                  valor={fecha}
+                  onChange={setFecha}
                   required
-                  value={fecha}
-                  onChange={(e) => setFecha(e.target.value)}
-                  className="w-full rounded-xl border border-neutral-300 bg-white px-3.5 py-2.5 text-sm text-neutral-900 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+                  className="focus:border-acento-500 focus:ring-acento-500/20 w-full rounded-xl border border-neutral-300 bg-white px-3.5 py-2.5 text-sm text-neutral-900 focus:ring-2 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
                 />
               </div>
             </div>
@@ -183,7 +183,7 @@ export function ModalCrearSeguimiento({
                   required
                   value={hora}
                   onChange={(e) => setHora(e.target.value)}
-                  className="w-full rounded-xl border border-neutral-300 bg-white px-3.5 py-2.5 text-sm text-neutral-900 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+                  className="focus:border-acento-500 focus:ring-acento-500/20 w-full rounded-xl border border-neutral-300 bg-white px-3.5 py-2.5 text-sm text-neutral-900 focus:ring-2 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
                 />
               </div>
             </div>
@@ -201,7 +201,7 @@ export function ModalCrearSeguimiento({
             <button
               type="submit"
               disabled={guardando}
-              className="flex min-h-[44px] items-center justify-center gap-2 rounded-xl bg-teal-600 px-5 py-2 text-xs font-bold text-white shadow-xs hover:bg-teal-700 focus:ring-2 focus:ring-teal-500/20 focus:outline-hidden disabled:opacity-50 dark:bg-teal-500 dark:hover:bg-teal-600"
+              className="boton-primario focus:ring-acento-500/20 flex min-h-[44px] items-center justify-center gap-2 rounded-xl px-5 py-2 text-xs font-bold shadow-xs"
             >
               {guardando ? (
                 <>

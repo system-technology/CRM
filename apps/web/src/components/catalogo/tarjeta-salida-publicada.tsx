@@ -185,7 +185,7 @@ export function TarjetaSalidaPublicada({
             )}
           </div>
 
-          <h3 className="line-clamp-2 text-base font-bold text-neutral-900 transition-colors group-hover:text-teal-700 dark:text-white dark:group-hover:text-teal-400">
+          <h3 className="group-hover:text-acento-700 dark:group-hover:text-acento-400 line-clamp-2 text-base font-bold text-neutral-900 transition-colors dark:text-white">
             {salida.paqueteNombre}
           </h3>
 
@@ -212,7 +212,7 @@ export function TarjetaSalidaPublicada({
             {salida.desdeEsDeGrupo && (
               <span
                 data-testid="insignia-promo-grupal"
-                className="flex items-center gap-1 rounded-md bg-purple-50 px-2 py-0.5 text-[11px] font-semibold text-purple-700 dark:bg-purple-950/50 dark:text-purple-300"
+                className="bg-acento-50 text-acento-700 dark:bg-acento-950/50 dark:text-acento-300 flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold"
               >
                 <Users className="h-3 w-3" />
                 Promo grupal
@@ -244,7 +244,7 @@ export function TarjetaSalidaPublicada({
         {/* Chips de lo que incluye (si vienen en la salida) */}
         {salida.inclusiones && salida.inclusiones.length > 0 && (
           <div className="border-t border-neutral-100 px-4 py-2.5 dark:border-neutral-800/80">
-            <span className="mb-1.5 block text-[10px] font-bold tracking-wider text-neutral-400 uppercase">
+            <span className="mb-1.5 block text-[10px] font-bold text-neutral-400">
               ¿Qué incluye la excursión?
             </span>
             <div className="flex flex-wrap gap-1.5">
@@ -253,7 +253,7 @@ export function TarjetaSalidaPublicada({
                   key={i}
                   className="flex items-center gap-1 rounded-md bg-neutral-50 px-2 py-0.5 text-[10px] text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300"
                 >
-                  <CheckCircle className="h-2.5 w-2.5 shrink-0 text-teal-600 dark:text-teal-400" />
+                  <CheckCircle className="text-acento-600 dark:text-acento-400 h-2.5 w-2.5 shrink-0" />
                   <span className="max-w-[130px] truncate">{inc}</span>
                 </span>
               ))}
@@ -319,7 +319,7 @@ export function TarjetaSalidaPublicada({
             <span
               className={`block text-[10px] ${
                 condicionDesde.esGrupo
-                  ? 'font-medium text-purple-700 dark:text-purple-300'
+                  ? 'text-acento-700 dark:text-acento-300 font-medium'
                   : 'text-neutral-400'
               }`}
             >
@@ -345,7 +345,7 @@ export function TarjetaSalidaPublicada({
             href={`/cotizador?paqueteId=${encodeURIComponent(salida.paqueteId)}&fecha=${encodeURIComponent(salida.fecha)}`}
             data-testid="btn-cotizar-salida"
             onClick={() => onCotizar?.(salida)}
-            className="flex min-h-[44px] w-full items-center justify-center gap-1.5 rounded-xl bg-teal-600 px-3 py-2.5 text-xs font-bold text-white shadow-xs transition-all hover:bg-teal-700 active:scale-98 dark:bg-teal-500 dark:hover:bg-teal-600"
+            className="boton-primario flex min-h-[44px] w-full items-center justify-center gap-1.5 rounded-xl px-3 py-2.5 text-xs font-bold shadow-xs transition-all active:scale-98"
           >
             <Compass className="h-4 w-4 shrink-0" />
             <span className="truncate sm:hidden">Cotizar</span>

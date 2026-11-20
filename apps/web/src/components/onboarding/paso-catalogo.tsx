@@ -81,15 +81,15 @@ export function PasoCatalogo({ datos, alGuardar, alOmitir }: PasoCatalogoProps) 
           data-testid="opcion-catalogo-semilla"
           className={`flex min-h-[44px] flex-col items-start rounded-2xl border p-4 text-left transition-all ${
             estrategia === 'semilla_demo'
-              ? 'border-teal-600 bg-teal-50/50 ring-2 ring-teal-600 dark:border-teal-400 dark:bg-teal-950/30 dark:ring-teal-400'
+              ? 'border-acento-600 bg-acento-50/50 ring-acento-600 dark:border-acento-400 dark:bg-acento-950/30 dark:ring-acento-400 ring-2'
               : 'border-neutral-200 bg-white hover:border-neutral-300 dark:border-neutral-800 dark:bg-neutral-900'
           }`}
         >
           <div className="flex w-full items-center justify-between">
-            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-300">
+            <span className="bg-acento-100 text-acento-800 dark:bg-acento-900 dark:text-acento-300 flex h-8 w-8 items-center justify-center rounded-xl">
               <Sparkles className="h-4 w-4" />
             </span>
-            <span className="rounded-full bg-teal-100 px-2 py-0.5 text-[10px] font-bold text-teal-800 dark:bg-teal-900 dark:text-teal-300">
+            <span className="bg-acento-100 text-acento-800 dark:bg-acento-900 dark:text-acento-300 rounded-full px-2 py-0.5 text-[10px] font-bold">
               Recomendado
             </span>
           </div>
@@ -107,7 +107,7 @@ export function PasoCatalogo({ datos, alGuardar, alOmitir }: PasoCatalogoProps) 
           data-testid="opcion-catalogo-manual"
           className={`flex min-h-[44px] flex-col items-start rounded-2xl border p-4 text-left transition-all ${
             estrategia === 'manual'
-              ? 'border-teal-600 bg-teal-50/50 ring-2 ring-teal-600 dark:border-teal-400 dark:bg-teal-950/30 dark:ring-teal-400'
+              ? 'border-acento-600 bg-acento-50/50 ring-acento-600 dark:border-acento-400 dark:bg-acento-950/30 dark:ring-acento-400 ring-2'
               : 'border-neutral-200 bg-white hover:border-neutral-300 dark:border-neutral-800 dark:bg-neutral-900'
           }`}
         >
@@ -128,7 +128,7 @@ export function PasoCatalogo({ datos, alGuardar, alOmitir }: PasoCatalogoProps) 
           data-testid="opcion-catalogo-csv"
           className={`flex min-h-[44px] flex-col items-start rounded-2xl border p-4 text-left transition-all ${
             estrategia === 'importar_csv'
-              ? 'border-teal-600 bg-teal-50/50 ring-2 ring-teal-600 dark:border-teal-400 dark:bg-teal-950/30 dark:ring-teal-400'
+              ? 'border-acento-600 bg-acento-50/50 ring-acento-600 dark:border-acento-400 dark:bg-acento-950/30 dark:ring-acento-400 ring-2'
               : 'border-neutral-200 bg-white hover:border-neutral-300 dark:border-neutral-800 dark:bg-neutral-900'
           }`}
         >
@@ -157,7 +157,7 @@ export function PasoCatalogo({ datos, alGuardar, alOmitir }: PasoCatalogoProps) 
                 Catálogo.
               </p>
             </div>
-            <span className="rounded-full bg-teal-100 px-3 py-1 text-xs font-bold text-teal-800 dark:bg-teal-950 dark:text-teal-300">
+            <span className="bg-acento-100 text-acento-800 dark:bg-acento-950 dark:text-acento-300 rounded-full px-3 py-1 text-xs font-bold">
               {seleccionadas.length} seleccionadas
             </span>
           </div>
@@ -171,7 +171,7 @@ export function PasoCatalogo({ datos, alGuardar, alOmitir }: PasoCatalogoProps) 
                   onClick={() => toggleSeleccion(exc.id)}
                   className={`flex cursor-pointer flex-col justify-between rounded-xl border p-3.5 transition-all ${
                     activa
-                      ? 'border-teal-500 bg-teal-50/40 dark:border-teal-500/60 dark:bg-teal-950/20'
+                      ? 'border-acento-500 bg-acento-50/40 dark:border-acento-500/60 dark:bg-acento-950/20'
                       : 'border-neutral-200 bg-white opacity-75 hover:border-neutral-300 dark:border-neutral-800 dark:bg-neutral-900'
                   }`}
                 >
@@ -184,7 +184,7 @@ export function PasoCatalogo({ datos, alGuardar, alOmitir }: PasoCatalogoProps) 
                       <div
                         className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border ${
                           activa
-                            ? 'border-teal-600 bg-teal-600 text-white'
+                            ? 'border-acento-600 bg-acento-600 text-white'
                             : 'border-neutral-300 dark:border-neutral-700'
                         }`}
                       >
@@ -203,7 +203,7 @@ export function PasoCatalogo({ datos, alGuardar, alOmitir }: PasoCatalogoProps) 
 
                   <div className="mt-3 flex items-center justify-between border-t border-neutral-100 pt-2 dark:border-neutral-800">
                     <span className="text-[10px] text-neutral-400">Precio base:</span>
-                    <span className="cifra text-xs font-black text-teal-700 dark:text-teal-400">
+                    <span className="cifra text-acento-700 dark:text-acento-400 text-xs font-black">
                       {formatearCOP(exc.precioBaseCop)}
                     </span>
                   </div>
@@ -277,7 +277,7 @@ export function PasoCatalogo({ datos, alGuardar, alOmitir }: PasoCatalogoProps) 
           <button
             type="button"
             onClick={handleAgregarManual}
-            className="flex min-h-[44px] items-center gap-2 rounded-xl bg-teal-600 px-4 py-2.5 text-xs font-bold text-white hover:bg-teal-700 dark:bg-teal-500"
+            className="boton-primario flex min-h-[44px] items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold"
           >
             <Plus className="h-4 w-4" />
             <span>Agregar Excursión a la Lista</span>
@@ -294,7 +294,7 @@ export function PasoCatalogo({ datos, alGuardar, alOmitir }: PasoCatalogoProps) 
                   className="flex items-center justify-between rounded-lg bg-neutral-50 p-2.5 text-xs dark:bg-neutral-800/60"
                 >
                   <span className="font-semibold text-neutral-900 dark:text-white">{m.titulo}</span>
-                  <span className="font-mono text-teal-600 dark:text-teal-400">
+                  <span className="text-acento-600 dark:text-acento-400 font-mono">
                     {formatearCOP(m.precio)}
                   </span>
                 </div>
@@ -307,7 +307,7 @@ export function PasoCatalogo({ datos, alGuardar, alOmitir }: PasoCatalogoProps) 
       {estrategia === 'importar_csv' && (
         <div className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-xs dark:border-neutral-800 dark:bg-neutral-900">
           <div className="flex items-start gap-3">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-teal-700 dark:bg-teal-950/60 dark:text-teal-400">
+            <span className="bg-acento-50 text-acento-700 dark:bg-acento-950/60 dark:text-acento-400 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl">
               <FileSpreadsheet className="h-5 w-5" />
             </span>
             <div>

@@ -4,6 +4,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import type { ContactoDeLista } from '@viajapro/contracts';
 import { Bookmark, X, AlertCircle, Calendar, User, FileText, CheckCircle2 } from 'lucide-react';
 import { useFocoModal } from '../../lib/use-foco-modal';
+import { CampoFecha } from '../comun/campo-fecha';
+import { formatearFecha } from '../../lib/formato';
 
 export interface ModalGuardarCotizacionProps {
   abierto: boolean;
@@ -111,7 +113,7 @@ export function ModalGuardarCotizacion({
         {/* Cabecera */}
         <div className="flex items-center justify-between border-b border-neutral-100 px-6 py-4 dark:border-neutral-800">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300">
+            <div className="bg-acento-100 text-acento-700 dark:bg-acento-950/60 dark:text-acento-300 flex h-9 w-9 items-center justify-center rounded-xl">
               <Bookmark className="h-5 w-5" />
             </div>
             <div>
@@ -183,7 +185,7 @@ export function ModalGuardarCotizacion({
               onChange={(e) => setTitulo(e.target.value)}
               disabled={guardando}
               placeholder="Ej: Cotización San Andrés — Pareja"
-              className="mt-1.5 w-full rounded-xl border border-neutral-300 bg-white px-3.5 py-2.5 text-xs text-neutral-900 shadow-2xs focus:border-purple-600 focus:ring-1 focus:ring-purple-600 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+              className="focus:border-acento-600 focus:ring-acento-600 mt-1.5 w-full rounded-xl border border-neutral-300 bg-white px-3.5 py-2.5 text-xs text-neutral-900 shadow-2xs focus:ring-1 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
               required
             />
           </div>
@@ -203,7 +205,7 @@ export function ModalGuardarCotizacion({
                 value={contactoId}
                 onChange={(e) => setContactoId(e.target.value)}
                 disabled={guardando}
-                className="mt-1.5 w-full rounded-xl border border-neutral-300 bg-white px-3.5 py-2.5 text-xs text-neutral-900 shadow-2xs focus:border-purple-600 focus:ring-1 focus:ring-purple-600 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                className="focus:border-acento-600 focus:ring-acento-600 mt-1.5 w-full rounded-xl border border-neutral-300 bg-white px-3.5 py-2.5 text-xs text-neutral-900 shadow-2xs focus:ring-1 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                 required
               >
                 <option value="">-- Seleccionar contacto registrado --</option>
@@ -221,7 +223,7 @@ export function ModalGuardarCotizacion({
                 onChange={(e) => setContactoId(e.target.value)}
                 disabled={guardando}
                 placeholder="ID UUID del contacto (ej: 00000000-0002-4000-8000-000000000001)"
-                className="mt-1.5 w-full rounded-xl border border-neutral-300 bg-white px-3.5 py-2.5 font-mono text-xs text-neutral-900 shadow-2xs focus:border-purple-600 focus:ring-1 focus:ring-purple-600 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                className="focus:border-acento-600 focus:ring-acento-600 mt-1.5 w-full rounded-xl border border-neutral-300 bg-white px-3.5 py-2.5 font-mono text-xs text-neutral-900 shadow-2xs focus:ring-1 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                 required
               />
             )}
@@ -236,13 +238,12 @@ export function ModalGuardarCotizacion({
               <Calendar className="h-3.5 w-3.5 text-neutral-400" />
               Vigente hasta (opcional)
             </label>
-            <input
+            <CampoFecha
               id="input-vigencia-cotizacion"
-              type="date"
-              value={vigenteHasta}
-              onChange={(e) => setVigenteHasta(e.target.value)}
+              valor={vigenteHasta}
+              onChange={setVigenteHasta}
               disabled={guardando}
-              className="mt-1.5 w-full rounded-xl border border-neutral-300 bg-white px-3.5 py-2.5 text-xs text-neutral-900 shadow-2xs focus:border-purple-600 focus:ring-1 focus:ring-purple-600 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+              className="focus:border-acento-600 focus:ring-acento-600 mt-1.5 w-full rounded-xl border border-neutral-300 bg-white px-3.5 py-2.5 text-xs text-neutral-900 shadow-2xs focus:ring-1 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
             />
             <span className="mt-1 block text-[11px] text-neutral-500">
               Fecha límite hasta la cual se honra este precio al cliente.
@@ -251,7 +252,7 @@ export function ModalGuardarCotizacion({
 
           {/* Resumen Comercial de la Versión 1 */}
           <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-3.5 dark:border-neutral-800 dark:bg-neutral-800/40">
-            <span className="text-[11px] font-bold text-neutral-500 uppercase">
+            <span className="text-[11px] font-bold text-neutral-500">
               Composición registrada en Versión 1
             </span>
             <div className="mt-2 space-y-1 text-xs">
@@ -264,7 +265,7 @@ export function ModalGuardarCotizacion({
               <div className="flex justify-between">
                 <span className="text-neutral-600 dark:text-neutral-400">Fecha de salida:</span>
                 <span className="font-semibold text-neutral-900 dark:text-white">
-                  {fechaSalida}
+                  {formatearFecha(fechaSalida)}
                 </span>
               </div>
               <div className="flex justify-between">
@@ -301,7 +302,7 @@ export function ModalGuardarCotizacion({
             <button
               type="submit"
               disabled={guardando}
-              className="flex min-h-[44px] items-center justify-center gap-2 rounded-xl bg-purple-700 px-5 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-purple-800 disabled:opacity-50"
+              className="boton-primario flex min-h-[44px] items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-xs font-bold shadow-xs"
             >
               {guardando ? (
                 <>

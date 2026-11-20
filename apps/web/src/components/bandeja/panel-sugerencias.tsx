@@ -67,17 +67,17 @@ export function PanelSugerencias({
 
   return (
     <div
-      className="mb-3 overflow-hidden rounded-xl border border-purple-200 bg-purple-50/40 p-3.5 shadow-xs transition-all dark:border-purple-900/50 dark:bg-purple-950/20"
+      className="border-acento-200 bg-acento-50/40 dark:border-acento-900/50 dark:bg-acento-950/20 mb-3 overflow-hidden rounded-xl border p-3.5 shadow-xs transition-all"
       role="region"
       aria-label="Asistente de Sugerencias Heurísticas"
     >
       {/* Cabecera */}
-      <div className="flex items-center justify-between border-b border-purple-200/60 pb-2.5 dark:border-purple-900/40">
+      <div className="border-acento-200/60 dark:border-acento-900/40 flex items-center justify-between border-b pb-2.5">
         <div className="flex items-center gap-2">
-          <div className="flex h-6 w-6 items-center justify-center rounded-md bg-purple-600 text-white shadow-xs">
+          <div className="bg-acento-600 flex h-6 w-6 items-center justify-center rounded-md text-white shadow-xs">
             <Sparkles className="h-3.5 w-3.5" />
           </div>
-          <span className="text-xs font-bold text-purple-950 dark:text-purple-200">
+          <span className="text-acento-950 dark:text-acento-200 text-xs font-bold">
             Sugerencias Automáticas — Reglas Heurísticas
           </span>
           <span
@@ -96,7 +96,7 @@ export function PanelSugerencias({
         <button
           type="button"
           onClick={onCerrar}
-          className="rounded-md p-1 text-neutral-400 hover:bg-purple-100 hover:text-neutral-600 dark:hover:bg-purple-900/40 dark:hover:text-neutral-200"
+          className="hover:bg-acento-100 dark:hover:bg-acento-900/40 rounded-md p-1 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200"
           title="Cerrar sugerencias"
           aria-label="Cerrar sugerencias"
         >
@@ -108,13 +108,13 @@ export function PanelSugerencias({
         {/* Columna Izquierda: Variables Extraídas y Resumen */}
         <div className="space-y-2.5">
           {/* Variables de Viaje */}
-          <div className="rounded-lg border border-purple-100 bg-white/80 p-2.5 text-[11px] dark:border-neutral-800 dark:bg-neutral-900/80">
+          <div className="border-acento-100 rounded-lg border bg-white/80 p-2.5 text-[11px] dark:border-neutral-800 dark:bg-neutral-900/80">
             <span className="font-bold text-neutral-700 dark:text-neutral-300">
               Datos Detectados en el Chat:
             </span>
             <div className="mt-2 grid grid-cols-2 gap-2 text-neutral-600 dark:text-neutral-400">
               <div className="flex items-center gap-1.5 truncate">
-                <MapPin className="h-3.5 w-3.5 shrink-0 text-purple-600" />
+                <MapPin className="text-acento-600 h-3.5 w-3.5 shrink-0" />
                 <span className="truncate">
                   {datosViaje.destino ? (
                     <strong className="text-neutral-800 dark:text-neutral-200">
@@ -126,17 +126,17 @@ export function PanelSugerencias({
                 </span>
               </div>
               <div className="flex items-center gap-1.5 truncate">
-                <Users className="h-3.5 w-3.5 shrink-0 text-purple-600" />
+                <Users className="text-acento-600 h-3.5 w-3.5 shrink-0" />
                 <span>
                   {datosViaje.adultos} adt{datosViaje.ninos > 0 ? `, ${datosViaje.ninos} chd` : ''}
                 </span>
               </div>
               <div className="flex items-center gap-1.5 truncate">
-                <Calendar className="h-3.5 w-3.5 shrink-0 text-purple-600" />
+                <Calendar className="text-acento-600 h-3.5 w-3.5 shrink-0" />
                 <span className="truncate">{datosViaje.fechasTentativas || 'Flexible'}</span>
               </div>
               <div className="flex items-center gap-1.5 truncate">
-                <DollarSign className="h-3.5 w-3.5 shrink-0 text-purple-600" />
+                <DollarSign className="text-acento-600 h-3.5 w-3.5 shrink-0" />
                 <span className="truncate">
                   {datosViaje.presupuestoEstimadoCop ? (
                     <strong className="text-emerald-600 dark:text-emerald-400">
@@ -155,7 +155,7 @@ export function PanelSugerencias({
               </span>
               <Link
                 href={cotizadorHref}
-                className="flex items-center gap-1 rounded bg-purple-50 px-2 py-0.5 text-[10px] font-bold text-purple-700 hover:bg-purple-100 dark:bg-purple-950/60 dark:text-purple-300"
+                className="bg-acento-50 text-acento-700 hover:bg-acento-100 dark:bg-acento-950/60 dark:text-acento-300 flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-bold"
               >
                 <FileText className="h-3 w-3" />
                 <span>Precargar Cotizador</span>
@@ -164,7 +164,7 @@ export function PanelSugerencias({
           </div>
 
           {/* Resumen del Hilo */}
-          <div className="rounded-lg border border-purple-100 bg-white/80 p-2.5 text-[11px] dark:border-neutral-800 dark:bg-neutral-900/80">
+          <div className="border-acento-100 rounded-lg border bg-white/80 p-2.5 text-[11px] dark:border-neutral-800 dark:bg-neutral-900/80">
             <span className="font-bold text-neutral-700 dark:text-neutral-300">
               Resumen Ejecutivo de la Consulta:
             </span>
@@ -179,7 +179,7 @@ export function PanelSugerencias({
         </div>
 
         {/* Columna Derecha: Respuesta Sugerida con Aprobación Humana */}
-        <div className="flex flex-col justify-between rounded-lg border border-purple-100 bg-white/80 p-3 dark:border-neutral-800 dark:bg-neutral-900/80">
+        <div className="border-acento-100 flex flex-col justify-between rounded-lg border bg-white/80 p-3 dark:border-neutral-800 dark:bg-neutral-900/80">
           <div>
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-bold text-neutral-700 dark:text-neutral-300">
@@ -210,7 +210,7 @@ export function PanelSugerencias({
               type="button"
               onClick={manejarInsertar}
               className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold text-white shadow-2xs transition-all ${
-                copiado ? 'bg-emerald-600' : 'bg-purple-600 hover:bg-purple-700 active:scale-95'
+                copiado ? 'bg-emerald-600' : 'bg-acento-600 hover:bg-acento-700 active:scale-95'
               }`}
             >
               {copiado ? <Check className="h-3.5 w-3.5" /> : <Send className="h-3.5 w-3.5" />}

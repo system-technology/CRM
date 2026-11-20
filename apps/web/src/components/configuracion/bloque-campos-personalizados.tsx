@@ -132,7 +132,7 @@ export function BloqueCamposPersonalizados() {
       <div className="rounded-xl border border-neutral-200 bg-white p-5 shadow-xs dark:border-neutral-800 dark:bg-neutral-900">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300">
+            <div className="bg-acento-100 text-acento-700 dark:bg-acento-950/60 dark:text-acento-300 flex h-10 w-10 items-center justify-center rounded-xl">
               <FormInput className="h-5 w-5" />
             </div>
             <div>
@@ -150,7 +150,7 @@ export function BloqueCamposPersonalizados() {
             type="button"
             onClick={() => setModalNuevo(true)}
             data-testid="btn-crear-campo-personalizado"
-            className="flex min-h-[44px] items-center justify-center gap-1.5 rounded-xl bg-purple-700 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-purple-800 focus:outline-hidden"
+            className="boton-primario flex min-h-[44px] items-center justify-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold shadow-xs"
           >
             <Plus className="h-4 w-4" />
             <span>Crear Campo</span>
@@ -174,13 +174,13 @@ export function BloqueCamposPersonalizados() {
             onClick={() => setEntidadActiva('contacto')}
             className={`flex min-h-[44px] items-center gap-2 border-b-2 px-4 py-2 text-xs font-bold transition-colors ${
               entidadActiva === 'contacto'
-                ? 'border-purple-600 text-purple-700 dark:border-purple-400 dark:text-purple-300'
+                ? 'border-acento-600 text-acento-700 dark:border-acento-400 dark:text-acento-300'
                 : 'border-transparent text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200'
             }`}
           >
             <Users className="h-4 w-4" />
             <span>Viajeros / Contactos</span>
-            <span className="rounded-full bg-purple-100 px-2 py-0.5 text-[10px] text-purple-800 dark:bg-purple-950 dark:text-purple-300">
+            <span className="bg-acento-100 text-acento-800 dark:bg-acento-950 dark:text-acento-300 rounded-full px-2 py-0.5 text-[10px]">
               {campos.filter((c) => c.entidad === 'contacto').length}
             </span>
           </button>
@@ -190,13 +190,13 @@ export function BloqueCamposPersonalizados() {
             onClick={() => setEntidadActiva('oportunidad')}
             className={`flex min-h-[44px] items-center gap-2 border-b-2 px-4 py-2 text-xs font-bold transition-colors ${
               entidadActiva === 'oportunidad'
-                ? 'border-purple-600 text-purple-700 dark:border-purple-400 dark:text-purple-300'
+                ? 'border-acento-600 text-acento-700 dark:border-acento-400 dark:text-acento-300'
                 : 'border-transparent text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200'
             }`}
           >
             <Kanban className="h-4 w-4" />
             <span>Oportunidades Comerciales</span>
-            <span className="rounded-full bg-purple-100 px-2 py-0.5 text-[10px] text-purple-800 dark:bg-purple-950 dark:text-purple-300">
+            <span className="bg-acento-100 text-acento-800 dark:bg-acento-950 dark:text-acento-300 rounded-full px-2 py-0.5 text-[10px]">
               {campos.filter((c) => c.entidad === 'oportunidad').length}
             </span>
           </button>
@@ -306,7 +306,7 @@ export function BloqueCamposPersonalizados() {
                   value={nuevoNombre}
                   onChange={(e) => setNuevoNombre(e.target.value)}
                   placeholder="Ej: Número de Pasaporte"
-                  className="mt-1 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-xs text-neutral-900 focus:border-purple-600 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                  className="focus:border-acento-600 mt-1 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-xs text-neutral-900 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                 />
               </div>
 
@@ -317,7 +317,7 @@ export function BloqueCamposPersonalizados() {
                 <select
                   value={nuevoTipo}
                   onChange={(e) => setNuevoTipo(e.target.value as TipoCampoPersonalizado)}
-                  className="mt-1 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-xs text-neutral-900 focus:border-purple-600 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                  className="focus:border-acento-600 mt-1 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-xs text-neutral-900 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                 >
                   <option value="texto">Texto (letras o alfanumérico)</option>
                   <option value="numero">Número (cifras o importes)</option>
@@ -336,7 +336,7 @@ export function BloqueCamposPersonalizados() {
                     value={nuevasOpciones}
                     onChange={(e) => setNuevasOpciones(e.target.value)}
                     placeholder="Opción 1, Opción 2, Opción 3"
-                    className="mt-1 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-xs text-neutral-900 focus:border-purple-600 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                    className="focus:border-acento-600 mt-1 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-xs text-neutral-900 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                   />
                 </div>
               )}
@@ -350,7 +350,7 @@ export function BloqueCamposPersonalizados() {
                   value={nuevaDescripcion}
                   onChange={(e) => setNuevaDescripcion(e.target.value)}
                   placeholder="Guía breve para el asesor que llena el dato"
-                  className="mt-1 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-xs text-neutral-900 focus:border-purple-600 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                  className="focus:border-acento-600 mt-1 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-xs text-neutral-900 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                 />
               </div>
 
@@ -360,7 +360,7 @@ export function BloqueCamposPersonalizados() {
                   id="chk-requerido"
                   checked={nuevoRequerido}
                   onChange={(e) => setNuevoRequerido(e.target.checked)}
-                  className="h-4 w-4 rounded border-neutral-300 text-purple-600 focus:ring-purple-500"
+                  className="text-acento-600 focus:ring-acento-500 h-4 w-4 rounded border-neutral-300"
                 />
                 <label
                   htmlFor="chk-requerido"
@@ -380,7 +380,7 @@ export function BloqueCamposPersonalizados() {
                 </button>
                 <button
                   type="submit"
-                  className="min-h-[44px] rounded-xl bg-purple-700 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-purple-800"
+                  className="boton-primario min-h-[44px] rounded-xl px-4 py-2 text-xs font-bold shadow-xs"
                 >
                   Guardar Campo
                 </button>

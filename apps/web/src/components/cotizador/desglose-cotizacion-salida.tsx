@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { requiereAvisoImpuestoMuelle } from '../../lib/cotizador-logica';
 import { formatearDinero } from '../../lib/api';
+import { formatearFecha } from '../../lib/formato';
 
 export interface DesgloseCotizacionSalidaProps {
   cotizacion: CotizacionDeSalida;
@@ -49,16 +50,17 @@ export function DesgloseCotizacionSalida({
           <div>
             <div className="flex items-center gap-2">
               {cotizacion.noches === 0 ? (
-                <span className="rounded-md bg-sky-100 px-2 py-0.5 text-[10px] font-bold text-sky-800 uppercase dark:bg-sky-950 dark:text-sky-300">
+                <span className="rounded-md bg-sky-100 px-2 py-0.5 text-[10px] font-bold text-sky-800 dark:bg-sky-950 dark:text-sky-300">
                   Excursión de 1 día (Pasadía)
                 </span>
               ) : (
-                <span className="rounded-md bg-purple-100 px-2 py-0.5 text-[10px] font-bold text-purple-700 uppercase dark:bg-purple-950 dark:text-purple-300">
+                <span className="bg-acento-100 text-acento-700 dark:bg-acento-950 dark:text-acento-300 rounded-md px-2 py-0.5 text-[10px] font-bold uppercase">
                   {cotizacion.deSalidaProgramada ? 'Salida Confirmada' : 'Vigencia Abierta'}
                 </span>
               )}
               <span className="text-xs text-neutral-400">
-                Vigencia: {cotizacion.vigenciaDesde} al {cotizacion.vigenciaHasta}
+                Vigencia: {formatearFecha(cotizacion.vigenciaDesde)} al{' '}
+                {formatearFecha(cotizacion.vigenciaHasta)}
               </span>
             </div>
 
@@ -73,7 +75,7 @@ export function DesgloseCotizacionSalida({
               </span>
               <span className="flex items-center gap-1">
                 <Calendar className="h-3.5 w-3.5 text-neutral-400" />
-                Fecha: <strong>{cotizacion.fecha}</strong>
+                Fecha: <strong>{formatearFecha(cotizacion.fecha)}</strong>
               </span>
               <span className="flex items-center gap-1">
                 <Users className="h-3.5 w-3.5 text-neutral-400" />
@@ -86,9 +88,7 @@ export function DesgloseCotizacionSalida({
 
           {/* Gran Total Protagonista (0c.16.2) */}
           <div className="flex flex-col items-start sm:items-end">
-            <span className="text-xs font-bold text-neutral-500 uppercase">
-              Total Venta Sugerido
-            </span>
+            <span className="text-xs font-bold text-neutral-500">Total de venta sugerido</span>
             {cotizacion.alternativas.some((a) => a.masBarata || a.unidad === 'POR_GRUPO') && (
               <div
                 data-testid="badge-promo-vigente"
@@ -130,9 +130,9 @@ export function DesgloseCotizacionSalida({
             <Info className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
             <div>
               <strong>Bajo consulta de cupo:</strong> Esta cotización proviene de una vigencia
-              abierta ({cotizacion.vigenciaDesde} al {cotizacion.vigenciaHasta}) sin salida grupal
-              fija publicada en esa fecha. Valide disponibilidad con el mayorista u operador antes
-              de comprometer el cupo.
+              abierta ({formatearFecha(cotizacion.vigenciaDesde)} al{' '}
+              {formatearFecha(cotizacion.vigenciaHasta)}) sin salida grupal fija publicada en esa
+              fecha. Valide disponibilidad con el mayorista u operador antes de comprometer el cupo.
             </div>
           </div>
         )}
@@ -233,7 +233,7 @@ export function DesgloseCotizacionSalida({
               <h3 className="text-xs font-bold text-neutral-800 dark:text-neutral-200">
                 Cargos en destino
               </h3>
-              <span className="rounded-md bg-neutral-200 px-2 py-0.5 text-[10px] font-bold text-neutral-800 uppercase dark:bg-neutral-700 dark:text-neutral-100">
+              <span className="rounded-md bg-neutral-200 px-2 py-0.5 text-[10px] font-bold text-neutral-800 dark:bg-neutral-700 dark:text-neutral-100">
                 No incluido
               </span>
             </div>
@@ -266,12 +266,12 @@ export function DesgloseCotizacionSalida({
 
         {/* Acción Destacada: Guardar Cotización debajo del Total (0c.22) */}
         {alGuardarCotizacion && (
-          <div className="mt-4 flex flex-col items-center justify-between gap-3 rounded-xl border border-purple-200 bg-purple-50/60 p-4 sm:flex-row dark:border-purple-900/40 dark:bg-purple-950/20">
+          <div className="border-acento-200 bg-acento-50/60 dark:border-acento-900/40 dark:bg-acento-950/20 mt-4 flex flex-col items-center justify-between gap-3 rounded-xl border p-4 sm:flex-row">
             <div>
-              <h3 className="text-xs font-bold text-purple-950 dark:text-purple-200">
+              <h3 className="text-acento-950 dark:text-acento-200 text-xs font-bold">
                 ¿Deseas registrar esta cotización para el cliente?
               </h3>
-              <p className="mt-0.5 text-[11px] text-purple-700 dark:text-purple-400">
+              <p className="text-acento-700 dark:text-acento-400 mt-0.5 text-[11px]">
                 Guarda la Versión 1 oficial e inmutable. Podrás modificarla después generando nuevas
                 versiones sin alterar el histórico.
               </p>
@@ -280,7 +280,7 @@ export function DesgloseCotizacionSalida({
               type="button"
               onClick={alGuardarCotizacion}
               disabled={guardando}
-              className="flex min-h-[44px] w-full shrink-0 items-center justify-center gap-2 rounded-xl bg-purple-700 px-5 py-2.5 text-xs font-bold text-white shadow-xs transition-colors hover:bg-purple-800 disabled:opacity-50 sm:w-auto"
+              className="boton-primario flex min-h-[44px] w-full shrink-0 items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-xs font-bold shadow-xs transition-colors sm:w-auto"
             >
               <Bookmark className="h-4 w-4" />
               <span>Guardar cotización</span>
@@ -384,7 +384,7 @@ export function DesgloseCotizacionSalida({
               type="button"
               onClick={alGuardarCotizacion}
               disabled={guardando}
-              className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl border border-purple-300 bg-purple-50 px-4 py-2.5 text-xs font-bold text-purple-800 shadow-2xs transition-colors hover:bg-purple-100 focus-visible:ring-2 focus-visible:ring-purple-600 focus-visible:outline-hidden sm:w-auto dark:border-purple-800 dark:bg-purple-950/40 dark:text-purple-300"
+              className="border-acento-300 bg-acento-50 text-acento-800 hover:bg-acento-100 focus-visible:ring-acento-600 dark:border-acento-800 dark:bg-acento-950/40 dark:text-acento-300 flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-xs font-bold shadow-2xs transition-colors focus-visible:ring-2 focus-visible:outline-hidden sm:w-auto"
             >
               <Bookmark className="h-4 w-4" />
               <span>Guardar Oficial</span>
@@ -394,7 +394,7 @@ export function DesgloseCotizacionSalida({
           <button
             type="button"
             onClick={alCopiarWhatsApp}
-            className="bg-ok-600 hover:bg-ok-700 flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl px-5 py-3 text-xs font-bold text-white shadow-xs transition-colors focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:outline-hidden sm:w-auto"
+            className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 py-3 text-xs font-bold text-white shadow-xs transition-colors hover:bg-emerald-700 focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:outline-hidden sm:w-auto"
           >
             {copiado ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
             {copiado ? '¡Copiado al Portapapeles!' : 'Copiar Propuesta para WhatsApp'}

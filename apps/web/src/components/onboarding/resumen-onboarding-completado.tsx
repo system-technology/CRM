@@ -33,7 +33,7 @@ export function ResumenOnboardingCompletado({
       className="space-y-8 rounded-3xl border border-neutral-200 bg-white p-6 shadow-sm sm:p-10 dark:border-neutral-800 dark:bg-neutral-900"
     >
       {/* Banner de Celebración */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-teal-600 via-emerald-600 to-cyan-700 p-8 text-white shadow-xl">
+      <div className="from-acento-600 relative overflow-hidden rounded-3xl bg-gradient-to-r via-emerald-600 to-cyan-700 p-8 text-white shadow-xl">
         <div className="pointer-events-none absolute -top-12 -right-12 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
         <div className="relative flex flex-col items-center text-center sm:items-start sm:text-left">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-1 text-xs font-bold text-white backdrop-blur-xs">
@@ -104,7 +104,7 @@ export function ResumenOnboardingCompletado({
         {/* Pilar 2: Catálogo */}
         <div className="rounded-2xl border border-neutral-200 bg-neutral-50/60 p-4 dark:border-neutral-800 dark:bg-neutral-800/40">
           <div className="flex items-center justify-between">
-            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300">
+            <span className="bg-acento-100 text-acento-800 dark:bg-acento-950 dark:text-acento-300 flex h-8 w-8 items-center justify-center rounded-xl">
               <Compass className="h-4 w-4" />
             </span>
             <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
@@ -115,7 +115,7 @@ export function ResumenOnboardingCompletado({
           <p className="mt-1 text-[11px] text-neutral-600 dark:text-neutral-400">
             {catalogo.totalExcursiones} excursiones listas para cotizar
           </p>
-          <span className="mt-2.5 inline-block rounded-md bg-teal-100 px-2 py-0.5 text-[10px] font-bold text-teal-800 dark:bg-teal-950 dark:text-teal-300">
+          <span className="bg-acento-100 text-acento-800 dark:bg-acento-950 dark:text-acento-300 mt-2.5 inline-block rounded-md px-2 py-0.5 text-[10px] font-bold">
             Moneda: COP (Pesos)
           </span>
         </div>
@@ -123,7 +123,7 @@ export function ResumenOnboardingCompletado({
         {/* Pilar 3: Equipo */}
         <div className="rounded-2xl border border-neutral-200 bg-neutral-50/60 p-4 dark:border-neutral-800 dark:bg-neutral-800/40">
           <div className="flex items-center justify-between">
-            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300">
+            <span className="bg-acento-100 text-acento-800 dark:bg-acento-950 dark:text-acento-300 flex h-8 w-8 items-center justify-center rounded-xl">
               <Users className="h-4 w-4" />
             </span>
             <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
@@ -136,7 +136,7 @@ export function ResumenOnboardingCompletado({
               ? `${equipo.miembrosInvitados.length} miembros invitados`
               : 'Administrador principal activo'}
           </p>
-          <span className="mt-2.5 inline-block rounded-md bg-purple-100 px-2 py-0.5 text-[10px] font-bold text-purple-800 dark:bg-purple-950 dark:text-purple-300">
+          <span className="bg-acento-100 text-acento-800 dark:bg-acento-950 dark:text-acento-300 mt-2.5 inline-block rounded-md px-2 py-0.5 text-[10px] font-bold">
             Roles asignados
           </span>
         </div>

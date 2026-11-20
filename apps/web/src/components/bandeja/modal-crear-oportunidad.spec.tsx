@@ -88,7 +88,7 @@ describe('ModalCrearOportunidad (T-076)', () => {
       target: { value: '8500000' },
     });
     fireEvent.change(screen.getByTestId('input-fecha-salida'), {
-      target: { value: '2026-11-15' },
+      target: { value: '15/11/2026' },
     });
 
     fireEvent.click(screen.getByTestId('boton-guardar-oportunidad'));

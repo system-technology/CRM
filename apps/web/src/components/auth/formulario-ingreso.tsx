@@ -520,7 +520,7 @@ export function FormularioIngreso() {
               <Link
                 href="/privacidad"
                 data-testid="enlace-login-privacidad"
-                className="inline-flex min-h-[44px] items-center text-neutral-600 hover:text-teal-700 hover:underline dark:text-neutral-400 dark:hover:text-teal-300"
+                className="hover:text-acento-700 dark:hover:text-acento-300 inline-flex min-h-[44px] items-center text-neutral-600 hover:underline dark:text-neutral-400"
               >
                 Privacidad
               </Link>
@@ -528,7 +528,7 @@ export function FormularioIngreso() {
               <Link
                 href="/terminos"
                 data-testid="enlace-login-terminos"
-                className="inline-flex min-h-[44px] items-center text-neutral-600 hover:text-teal-700 hover:underline dark:text-neutral-400 dark:hover:text-teal-300"
+                className="hover:text-acento-700 dark:hover:text-acento-300 inline-flex min-h-[44px] items-center text-neutral-600 hover:underline dark:text-neutral-400"
               >
                 Términos
               </Link>
@@ -536,7 +536,7 @@ export function FormularioIngreso() {
               <Link
                 href="/cookies"
                 data-testid="enlace-login-cookies"
-                className="inline-flex min-h-[44px] items-center text-neutral-600 hover:text-teal-700 hover:underline dark:text-neutral-400 dark:hover:text-teal-300"
+                className="hover:text-acento-700 dark:hover:text-acento-300 inline-flex min-h-[44px] items-center text-neutral-600 hover:underline dark:text-neutral-400"
               >
                 Cookies
               </Link>
