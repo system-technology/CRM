@@ -3492,6 +3492,8 @@ tasks:
     source: roadmap de reportes 2026-11-04 (docs/08-roadmap/06-roadmap-de-reportes.md)
     created_at: 2026-11-05T01:14:46.634Z
     owner: datos
+    notes: "Absorbida por T-341 (roadmap JD Tours, Eje F: reportes por niveles de acceso): el permiso y su sembrado se hacen allí tras el ADR T-340."
+
   - id: T-142
     title: "Web /reportes sobre GET /api/v1/reportes/resumen: instantes UTC, ventasPorMoneda por moneda y fuera el
       calculo desde el tablero"
@@ -7253,3 +7255,115 @@ tasks:
     source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md (2026-11-20)
     created_at: 2026-11-20T19:00:00.000Z
     owner: arquitecto
+  - id: T-339
+    title: "F0: qué ve cada nivel (catálogo de reportes por rol), qué va en «Hoy» y qué en Reportes, móvil primero"
+    type: docs
+    phase: 1
+    priority: P1
+    effort: M
+    status: ready
+    depends_on: []
+    acceptance:
+      - "Catálogo de reportes por nivel: asesor (lo suyo) y administrador (toda la agencia y su equipo), apoyado en 06-roadmap-de-reportes.md y T-137 a T-148"
+      - "Qué va en «Hoy» y qué en Reportes; qué consultas, filtros y exportaciones tiene el administrador"
+      - "Móvil primero: qué se ve en 390 px sin desplazamiento lateral y qué se resume; preguntas al dueño de JD Tours en el roadmap §4"
+    source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md, Eje F (decisión del propietario 2026-11-20)
+    created_at: 2026-11-20T21:30:00.000Z
+    owner: analista-datos
+  - id: T-340
+    title: "F1: ADR de los niveles de acceso a reportes (propio, equipo, agencia)"
+    type: docs
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on: [T-339]
+    acceptance:
+      - "Define los niveles y sus permisos, absorbe T-141 y deja claro cómo se impone el alcance en el servidor con la sesión (nunca desde el cliente ni por el menú)"
+      - "Relación con visibilidad de conversaciones por asesor, con cotizacion.ver_neto_y_margen y con las agencias; revisión de auditor-seguridad"
+    source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md, Eje F (decisión del propietario 2026-11-20)
+    created_at: 2026-11-20T21:30:00.000Z
+    owner: arquitecto
+  - id: T-341
+    title: "F2: permisos de reportes en el catálogo de roles y su sembrado (absorbe T-141)"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on: [T-340]
+    acceptance:
+      - "Permisos nuevos en el CHECK del catálogo y sembrados por rol (administrador: todos; asesor: solo lo propio)"
+      - "aislamiento.spec.ts y auditoría de seguridad sin recortar vueltas (R13)"
+    source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md, Eje F (decisión del propietario 2026-11-20)
+    created_at: 2026-11-20T21:30:00.000Z
+    owner: datos
+  - id: T-342
+    title: "F3: alcance propio o de toda la agencia en los endpoints de reportes, impuesto por el servidor"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: L
+    status: backlog
+    depends_on: [T-341]
+    acceptance:
+      - "Para quien solo tiene alcance propio, el servidor fuerza el asesor de la sesión; el parámetro del cliente no lo amplía"
+      - "e2e con dos asesores y dos agencias: un asesor no ve lo del otro ni lo de otra agencia; el margen sigue protegido"
+    source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md, Eje F (decisión del propietario 2026-11-20)
+    created_at: 2026-11-20T21:30:00.000Z
+    owner: backend
+  - id: T-343
+    title: "F4: dashboard del asesor, móvil primero"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: L
+    status: backlog
+    depends_on: [T-342, T-317]
+    acceptance:
+      - "Sus pendientes de atención, cotizaciones abiertas por antigüedad, seguimientos vencidos, cierres del mes y cobros por cobrar, en «Hoy» y en Reportes"
+      - "A 390 px sin desplazamiento lateral; tarjetas en lugar de tablas anchas; estados vacío, cargando y error"
+    source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md, Eje F (decisión del propietario 2026-11-20)
+    created_at: 2026-11-20T21:30:00.000Z
+    owner: frontend
+  - id: T-344
+    title: "F5: dashboard de administración robusto"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: L
+    status: backlog
+    depends_on: [T-342]
+    acceptance:
+      - "Embudo, ventas por moneda, destino y asesor, tiempos de respuesta, cobros y salidas próximas, con comparación entre asesores y periodos"
+      - "Se ve completo en escritorio y degrada con sentido en móvil; el margen solo con su permiso"
+    source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md, Eje F (decisión del propietario 2026-11-20)
+    created_at: 2026-11-20T21:30:00.000Z
+    owner: frontend
+  - id: T-345
+    title: "F6: consultas del administrador (filtros, filtros guardados y exportar)"
+    type: feature
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    depends_on: [T-344]
+    acceptance:
+      - "Filtros por periodo, asesor, moneda y origen; filtros guardados por usuario; exportar a CSV con el escapado contra inyección de fórmulas y sin margen sin permiso"
+    source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md, Eje F (decisión del propietario 2026-11-20)
+    created_at: 2026-11-20T21:30:00.000Z
+    owner: frontend
+  - id: T-346
+    title: "F7: revisión móvil de los dos dashboards y pruebas de permisos entre asesores"
+    type: test
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on: [T-343, T-344]
+    acceptance:
+      - "Capturas a 390 px de ambos dashboards sin desplazamiento lateral y con contraste suficiente"
+      - "e2e: el asesor no ve reportes de la agencia ni de otro asesor; el administrador sí"
+    source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md, Eje F (decisión del propietario 2026-11-20)
+    created_at: 2026-11-20T21:30:00.000Z
+    owner: qa
