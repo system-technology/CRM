@@ -15,6 +15,27 @@
   por un script de plataforma». Con este ADR hay una tercera vía, el registro con correo verificado.
   **El resto de ADR-0011 sigue vigente**, incluido `disableSignUp: true` en Better Auth (ver §2).
 
+> **Revisión de seguridad, primera vuelta (2026-11-20): NO ACEPTABLE todavía.** Tres bloqueantes
+> que el ADR debe resolver antes de aceptarse, y antes de empezar T-262, T-264, T-265 y T-270:
+>
+> 1. **Código de registro por fuerza bruta (§1.1-1.2).** Una sola fila viva por correo, intento
+>    consumido de forma atómica (`UPDATE … WHERE intentos>0 RETURNING` o `FOR UPDATE`), mismos
+>    parámetros que el OTP de ingreso, tope de fallos por correo en 24 h, aviso al atar una invitación
+>    a una identidad ya existente, y e2e con intentos concurrentes. Sin esto, crear la identidad del
+>    correo de una asesora antes de que la inviten da acceso a su agencia.
+> 2. **Código de acceso del piloto (P2) sin diseño.** Tabla global con hash de un secreto de 128 bits,
+>    caducidad, uso único, sin tenant ni rol (solo autoriza crear una agencia nueva); consumido dentro
+>    de `crear_agencia` (un `ROLLBACK` lo devuelve); nunca logueado; exigido también en `solicitar`.
+> 3. **Conexión manual de WhatsApp (§5.1, P6, T-270).** Sobre el `tenantId` de una solicitud creada
+>    dentro de la agencia (nunca por nombre o slug, que elige el registrante), con confirmación del
+>    DUENO y token entregado por un formulario del tenant que lo cifra (R6). Verificar con
+>    `investigador` si Meta permite operar WABAs de terceros sin ser Tech Provider.
+>
+> Los hallazgos de cola (tope global y DoS, `completar` sobre identidad existente, cola sin agencia,
+> NIT/RNT ajenos, orden de `set_config` para S1, vía de la transacción, slugs reservados, contador
+> del limitador, aceptaciones) se incorporan en la segunda vuelta. La auditoría completa vuelve a
+> correr tras corregirlos: en aislamiento no aplica R13.
+
 ---
 
 ## Contexto
