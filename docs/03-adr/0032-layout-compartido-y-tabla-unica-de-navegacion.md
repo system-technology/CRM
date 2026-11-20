@@ -1,6 +1,6 @@
 # ADR-0032 — Layout compartido `(app)` y tabla única de navegación
 
-- **Estado:** Propuesto
+- **Estado:** Aceptado (2026-11-20, por el propietario: «acepto el ADR-0032»). La compuerta de sesión pasó por una pasada de `auditor-seguridad` antes de integrar el ADR como propuesta.
 - **Fecha:** 2026-11-20
 - **Decide:** Propietario del producto
 - **Consultados:** `arquitecto` (redacta). **Pendientes:** `auditor-seguridad` (dónde queda la
