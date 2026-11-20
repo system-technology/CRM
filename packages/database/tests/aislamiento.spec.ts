@@ -290,6 +290,22 @@ const TABLAS_DE_IDENTIDAD = [
   'verificaciones',
 ] as const;
 
+/**
+ * Las dos tablas globales que ADR-0030 (T-268) añade al pool de identidad. Van aparte de las cinco de
+ * ADR-0011 porque la aserción 61 les aplica escrituras genéricas (`creado_en`) que estas no tienen;
+ * su comportamiento lo prueba el bloque «T-268 — Registro de agencias».
+ */
+const TABLAS_DE_IDENTIDAD_DEL_REGISTRO = [
+  'aceptaciones_de_identidad',
+  'codigos_de_registro',
+] as const;
+
+/** Todas las tablas sobre las que `viajapro_identidad` tiene algún privilegio declarado. */
+const TABLAS_PROPIAS_DE_IDENTIDAD = [
+  ...TABLAS_DE_IDENTIDAD,
+  ...TABLAS_DE_IDENTIDAD_DEL_REGISTRO,
+] as const;
+
 /** Las cuatro tablas globales del ADR. `recepciones_webhook_changes` es la tabla hija. */
 const TABLAS_GLOBALES_ADR_0008 = [
   'enrutamiento_canales',
@@ -320,6 +336,23 @@ const EXCEPCIONES_DECLARADAS: ReadonlyArray<readonly [string, string, readonly s
   ['accesos_identidad', 'viajapro_app', []],
   ['accesos_identidad', 'viajapro_identidad', ['SELECT']],
   ['accesos_identidad', 'viajapro_webhook', []],
+  // ADR-0030 §4 (T-268): evidencia de consentimiento de la persona. Solo viajapro_identidad, y sin
+  // UPDATE ni DELETE.
+  ['aceptaciones_de_identidad', 'viajapro_altas', []],
+  ['aceptaciones_de_identidad', 'viajapro_app', []],
+  ['aceptaciones_de_identidad', 'viajapro_identidad', ['SELECT', 'INSERT']],
+  ['aceptaciones_de_identidad', 'viajapro_webhook', []],
+  // ADR-0030 §3.8 (T-268): el código de acceso del piloto. NINGÚN rol de login; lo consume
+  // crear_agencia (dueño viajapro_registro, NOLOGIN) y lo crea la plataforma.
+  ['codigos_de_acceso_al_registro', 'viajapro_altas', []],
+  ['codigos_de_acceso_al_registro', 'viajapro_app', []],
+  ['codigos_de_acceso_al_registro', 'viajapro_identidad', []],
+  ['codigos_de_acceso_al_registro', 'viajapro_webhook', []],
+  // ADR-0030 §3.7 (T-268): el código de registro por correo. Solo viajapro_identidad.
+  ['codigos_de_registro', 'viajapro_altas', []],
+  ['codigos_de_registro', 'viajapro_app', []],
+  ['codigos_de_registro', 'viajapro_identidad', ['SELECT', 'INSERT', 'UPDATE', 'DELETE']],
+  ['codigos_de_registro', 'viajapro_webhook', []],
   ['credenciales', 'viajapro_altas', []],
   ['credenciales', 'viajapro_app', []],
   ['credenciales', 'viajapro_identidad', ['SELECT', 'INSERT', 'UPDATE', 'DELETE']],
@@ -340,6 +373,12 @@ const EXCEPCIONES_DECLARADAS: ReadonlyArray<readonly [string, string, readonly s
   ['monedas', 'viajapro_altas', ['SELECT']],
   ['monedas', 'viajapro_app', ['SELECT']],
   ['monedas', 'viajapro_webhook', ['SELECT']],
+  // ADR-0030 §3.2 (T-268): el tope global de altas por hora. Ningún rol de login; lo lee
+  // crear_agencia y lo escribe la plataforma.
+  ['parametros_del_registro', 'viajapro_altas', []],
+  ['parametros_del_registro', 'viajapro_app', []],
+  ['parametros_del_registro', 'viajapro_identidad', []],
+  ['parametros_del_registro', 'viajapro_webhook', []],
   // ADR-0024 §5.2: la declaración hermana, igual que excepciones_rls, sin privilegio para nadie.
   ['privilegios_declarados', 'viajapro_altas', []],
   ['privilegios_declarados', 'viajapro_app', []],
@@ -489,6 +528,10 @@ const MATRIZ_FUNCIONES: Readonly<Record<string, readonly string[]>> = {
   // outbox por entregar a un consumidor de dominio. Solo ids de agencia; la ejecuta el
   // despachador, que vive en el proceso de la API, nunca en el trabajador.
   tenants_con_eventos_por_entregar: ['viajapro_app'],
+  // Decimosexta y decimoséptima (ADR-0030 §3.2 y §3.8, migración 20261120140000): el alta de una
+  // agencia nueva por autoservicio y la comprobación del código de acceso del piloto. Solo la API.
+  crear_agencia: ['viajapro_app'],
+  codigo_de_acceso_vigente: ['viajapro_app'],
 };
 
 const PROPIETARIO_ESPERADO: Readonly<Record<string, string>> = {
@@ -507,6 +550,8 @@ const PROPIETARIO_ESPERADO: Readonly<Record<string, string>> = {
   medir_cola_de_salida: 'viajapro_metricas',
   actualizar_zona_horaria_de_la_agencia: 'viajapro_ajustes',
   tenants_con_eventos_por_entregar: 'viajapro_planificador',
+  crear_agencia: 'viajapro_registro',
+  codigo_de_acceso_vigente: 'viajapro_registro',
 };
 
 /**
@@ -1017,8 +1062,8 @@ describe('ADR-0008 — directorio de enrutamiento, staging y separación de role
     );
     expect(
       rows.length,
-      'faltan funciones de ADR-0008: eran seis, la auditoría de implementación añadió purgar_payloads, la tarea 4f propagar_estado_canal, el relay de barrido listar_changes_pendientes, y los huecos del disparador propagar_estado_cuenta y contar_reencolado_barrido, ADR-0011 sincronizar_acceso_identidad, T-223 medir_cola_de_salida, los ajustes de la agencia actualizar_zona_horaria_de_la_agencia, y el despachador de ADR-0024 tenants_con_eventos_por_entregar',
-    ).toBe(15);
+      'faltan funciones de ADR-0008: eran seis, la auditoría de implementación añadió purgar_payloads, la tarea 4f propagar_estado_canal, el relay de barrido listar_changes_pendientes, y los huecos del disparador propagar_estado_cuenta y contar_reencolado_barrido, ADR-0011 sincronizar_acceso_identidad, T-223 medir_cola_de_salida, los ajustes de la agencia actualizar_zona_horaria_de_la_agencia, el despachador de ADR-0024 tenants_con_eventos_por_entregar, y el registro de ADR-0030 crear_agencia y codigo_de_acceso_vigente',
+    ).toBe(17);
     expect(rows.filter((r) => r.publico)).toEqual([]);
   });
 
@@ -1031,7 +1076,7 @@ describe('ADR-0008 — directorio de enrutamiento, staging y separación de role
        WHERE n.nspname = 'public' AND p.proname = ANY($1) ORDER BY 1`,
       [Object.keys(MATRIZ_FUNCIONES)],
     );
-    expect(rows.length).toBe(15);
+    expect(rows.length).toBe(17);
 
     for (const fila of rows) {
       const config = (fila.proconfig as string[] | null) ?? [];
@@ -1052,13 +1097,14 @@ describe('ADR-0008 — directorio de enrutamiento, staging y separación de role
       `SELECT rolname, rolcanlogin, rolbypassrls, rolsuper,
               EXISTS (SELECT 1 FROM pg_roles s WHERE s.rolname = 'neon_superuser')
                 AND pg_has_role(rolname, 'neon_superuser', 'MEMBER') AS hereda_neon
-       FROM pg_roles WHERE rolname IN ('viajapro_enrutador','viajapro_staging','viajapro_accesos','viajapro_metricas','viajapro_ajustes','viajapro_planificador') ORDER BY 1`,
+       FROM pg_roles WHERE rolname IN ('viajapro_enrutador','viajapro_staging','viajapro_accesos','viajapro_metricas','viajapro_ajustes','viajapro_planificador','viajapro_registro') ORDER BY 1`,
     );
     // El tercero es de ADR-0011: dueño del disparador que escribe `accesos_identidad`. El cuarto,
     // de T-223: dueño de `medir_cola_de_salida`. El quinto, de la migración 20261116090000: dueño
     // de `actualizar_zona_horaria_de_la_agencia`. El sexto, de ADR-0024 §5.3 (migración
-    // 20261118090100): dueño de `tenants_con_eventos_por_entregar`.
-    expect(rows.length).toBe(6);
+    // 20261118090100): dueño de `tenants_con_eventos_por_entregar`. El séptimo, de ADR-0030 §3.1
+    // (migración 20261120140000): dueño de `crear_agencia` y `codigo_de_acceso_vigente`.
+    expect(rows.length).toBe(7);
     for (const r of rows) {
       expect(r.rolcanlogin, `${r.rolname} puede iniciar sesión`).toBe(false);
       expect(r.rolbypassrls, `${r.rolname} tiene BYPASSRLS`).toBe(false);
@@ -4698,7 +4744,7 @@ describe('ADR-0011 — identidad global, pertenencias y roles por agencia', () =
        FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
        WHERE n.nspname = 'public' AND c.relkind IN ('r', 'p') AND c.relname <> ALL($1)
        ORDER BY 2`,
-      [[...TABLAS_DE_IDENTIDAD]],
+      [[...TABLAS_PROPIAS_DE_IDENTIDAD]],
     );
     const tablas = rows.map((r) => r.tabla as string);
     // La muestra que nombra el ADR tiene que estar dentro, o la enumeración está rota.
@@ -4730,7 +4776,7 @@ describe('ADR-0011 — identidad global, pertenencias y roles por agencia', () =
        CROSS JOIN unnest(ARRAY['SELECT','INSERT','UPDATE','DELETE','TRUNCATE','REFERENCES','TRIGGER']) p
        WHERE n.nspname = 'public' AND c.relkind IN ('r', 'p') AND c.relname <> ALL($1)
          AND has_table_privilege($2, c.oid, p)`,
-      [[...TABLAS_DE_IDENTIDAD], ROL_IDENTIDAD],
+      [[...TABLAS_PROPIAS_DE_IDENTIDAD], ROL_IDENTIDAD],
     );
     expect(privilegios, `${ROL_IDENTIDAD} tiene privilegios sobre tablas de negocio`).toEqual([]);
   }, 120_000);
@@ -5871,9 +5917,12 @@ async function privilegiosDeFila(
   return rows as Array<{ tabla: string; privilegio: string }>;
 }
 
-/** Los privilegios que `viajapro_identidad` tiene FUERA de sus cinco tablas declaradas. */
+/**
+ * Los privilegios que `viajapro_identidad` tiene FUERA de sus siete tablas declaradas (las cinco de
+ * ADR-0011 y las dos de ADR-0030).
+ */
 async function privilegiosDeIdentidadFueraDeSusTablas(cliente: Client) {
-  const permitidas = new Set<string>(TABLAS_DE_IDENTIDAD);
+  const permitidas = new Set<string>(TABLAS_PROPIAS_DE_IDENTIDAD);
   return (await privilegiosDeFila(cliente, ROL_IDENTIDAD)).filter((f) => !permitidas.has(f.tabla));
 }
 
@@ -5890,22 +5939,22 @@ async function tablasConRlsSinForzar(cliente: Client): Promise<string[]> {
 }
 
 describe('AUD-008 y AUD-013 — comprobaciones dinámicas de privilegios y de RLS forzada', () => {
-  it('AUD-008 — viajapro_identidad solo tiene privilegios de fila sobre sus cinco tablas, y exactamente los declarados', async () => {
+  it('AUD-008 — viajapro_identidad solo tiene privilegios de fila sobre sus siete tablas, y exactamente los declarados', async () => {
     // Sobre TODAS las tablas del esquema, no sobre una lista de negocio. Una tabla nueva con un
     // GRANT por error (directo, por PUBLIC o por un rol heredado) aparece aquí sin tocar la prueba.
     const fuera = await privilegiosDeIdentidadFueraDeSusTablas(admin);
     expect(
       fuera,
-      `${ROL_IDENTIDAD} tiene privilegios fuera de las cinco tablas de identidad: ` +
+      `${ROL_IDENTIDAD} tiene privilegios fuera de las siete tablas de identidad: ` +
         JSON.stringify(fuera),
     ).toEqual([]);
 
-    // Dentro de las cinco, ni uno más ni uno menos de lo que declara el repositorio.
+    // Dentro de las siete, ni uno más ni uno menos de lo que declara el repositorio.
     const reales = new Map<string, string[]>();
     for (const f of await privilegiosDeFila(admin, ROL_IDENTIDAD)) {
       reales.set(f.tabla, [...(reales.get(f.tabla) ?? []), f.privilegio]);
     }
-    for (const tabla of TABLAS_DE_IDENTIDAD) {
+    for (const tabla of TABLAS_PROPIAS_DE_IDENTIDAD) {
       const declarados = EXCEPCIONES_DECLARADAS.filter(
         ([t, rol]) => t === tabla && rol === ROL_IDENTIDAD,
       ).flatMap(([, , privilegios]) =>
@@ -6564,6 +6613,11 @@ const COLUMNAS_DE_TEXTO_DECLARADAS: readonly string[] = [
   'paquetes.destino',
   'paquetes.nombre',
   'paquetes.pais_iso',
+  // ADR-0030 §3.3 (T-268): datos fiscales declarados de la agencia, en claro bajo RLS por decisión
+  // del ADR («Negativas»: el NIT de una persona natural es su cédula; si auditor-seguridad lo
+  // considera PII sensible, entra en ADR-0015).
+  'perfiles_de_agencia.nit',
+  'perfiles_de_agencia.razon_social',
   // T-261: el RNT que declara la agencia. Dato público del registro de turismo, no PII de viajeros.
   'perfiles_de_agencia.rnt',
   'plantillas_whatsapp.cuerpo',
@@ -9109,6 +9163,988 @@ describe('T-250 — reserva_cambios_estado: aislamiento, foráneas compuestas e 
 });
 
 // =========================================================================================
+// T-268 — ADR-0030 F1: registro de agencias
+//
+// `crear_agencia` es la única vía por la que un rol de aplicación crea una fila de `tenants`. Lo que
+// no puede pasar: que un alta toque una agencia existente (por slug repetido o por contexto previo),
+// que la API escriba `tenants` directamente, que un código de acceso sirva dos veces (también en
+// carrera) o con otro correo, que un ROLLBACK lo deje gastado, o que un rol de login lea o escriba
+// las tablas globales del registro. Y el supuesto S1: el contexto que fija la función sigue vigente
+// al volver, comprobado por el camino del slug que choca, que es el que reintenta.
+// =========================================================================================
+
+/** Sentencias por tabla global del registro, con las columnas reales de cada una. */
+const SENTENCIAS_DEL_REGISTRO: Readonly<Record<string, readonly string[]>> = {
+  aceptaciones_de_identidad: [
+    'SELECT * FROM aceptaciones_de_identidad LIMIT 1',
+    "INSERT INTO aceptaciones_de_identidad (id, identidad_id, documento, version, canal) VALUES (gen_random_uuid(), gen_random_uuid(), 'TERMINOS', 'v1', 'WEB_REGISTRO')",
+    "UPDATE aceptaciones_de_identidad SET version = 'alterada'",
+    'DELETE FROM aceptaciones_de_identidad',
+  ],
+  codigos_de_registro: [
+    'SELECT * FROM codigos_de_registro LIMIT 1',
+    "INSERT INTO codigos_de_registro (id, correo_hmac, hash_codigo, intentos_restantes, expira_en) VALUES (gen_random_uuid(), '\\x00'::bytea, '\\x00'::bytea, 3, now())",
+    'UPDATE codigos_de_registro SET intentos_restantes = 3',
+    'DELETE FROM codigos_de_registro',
+  ],
+  codigos_de_acceso_al_registro: [
+    'SELECT * FROM codigos_de_acceso_al_registro LIMIT 1',
+    "INSERT INTO codigos_de_acceso_al_registro (hash, correo_hmac, expira_en) VALUES ('\\x00'::bytea, '\\x00'::bytea, now())",
+    'UPDATE codigos_de_acceso_al_registro SET usado_en = NULL, usado_por_identidad_id = NULL',
+    'DELETE FROM codigos_de_acceso_al_registro',
+  ],
+  parametros_del_registro: [
+    'SELECT * FROM parametros_del_registro',
+    'INSERT INTO parametros_del_registro (id, tope_por_hora) VALUES (1, 1000)',
+    'UPDATE parametros_del_registro SET tope_por_hora = 1000',
+    'DELETE FROM parametros_del_registro',
+  ],
+};
+
+const SQL_CREAR_AGENCIA =
+  'SELECT public.crear_agencia($1, $2, $3, $4, $5, $6::uuid, $7::int, $8, $9::bytea, $10::bytea) AS id';
+const SQL_CODIGO_VIGENTE =
+  'SELECT public.codigo_de_acceso_vigente($1::bytea, $2::bytea) AS vigente';
+
+describe('T-268 — Registro de agencias (ADR-0030 F1): crear_agencia, código de acceso y viajapro_registro', () => {
+  const identidades: string[] = [];
+  const codigos: Buffer[] = [];
+  let app2: Client;
+
+  /** Lo que recibe `crear_agencia`. `undefined` = el valor válido por defecto; `null` = NULL. */
+  interface Alta {
+    slugBase: string;
+    identidad: string | null;
+    hash: Buffer;
+    correoHmac: Buffer;
+    nombre?: string | null;
+    pais?: string | null;
+    moneda?: string | null;
+    zona?: string | null;
+    dias?: number | null;
+    version?: string | null;
+  }
+
+  const o = <T>(valor: T | null | undefined, porDefecto: T): T | null =>
+    valor === undefined ? porDefecto : valor;
+
+  const argumentos = (a: Alta): unknown[] => [
+    o(a.nombre, `Agencia ${a.slugBase}`),
+    a.slugBase,
+    o(a.pais, 'CO'),
+    o(a.moneda, 'COP'),
+    o(a.zona, 'America/Bogota'),
+    a.identidad,
+    o(a.dias, 14),
+    o(a.version, 'encargo-de-prueba-1'),
+    a.hash,
+    a.correoHmac,
+  ];
+
+  async function nuevaIdentidad(sufijo: string): Promise<string> {
+    const id = randomUUID();
+    await admin.query(
+      `INSERT INTO identidades (id, correo, nombre, correo_verificado, actualizado_en)
+       VALUES ($1, $2, 'Fixture registro', true, now())`,
+      [id, `fixture-aislamiento-${MARCA}-registro-${sufijo}@prueba.invalid`],
+    );
+    identidades.push(id);
+    return id;
+  }
+
+  /** Un código de acceso de la corrida, creado como lo hará la plataforma (rol propietario). */
+  async function nuevoCodigo(
+    correoHmac: Buffer,
+    estado: 'vigente' | 'usado' | 'caducado' = 'vigente',
+  ): Promise<Buffer> {
+    const hash = randomBytes(32);
+    codigos.push(hash);
+    await admin.query(
+      `INSERT INTO codigos_de_acceso_al_registro
+         (hash, correo_hmac, expira_en, usado_en, usado_por_identidad_id, nota)
+       VALUES ($1, $2, now() + $3::interval, $4::timestamptz, $5::uuid, 'fixture-aislamiento')`,
+      [
+        hash,
+        correoHmac,
+        estado === 'caducado' ? '-1 minute' : '14 days',
+        estado === 'usado' ? new Date() : null,
+        estado === 'usado' ? randomUUID() : null,
+      ],
+    );
+    return hash;
+  }
+
+  async function usoDe(
+    hash: Buffer,
+  ): Promise<{ usado_en: Date | null; usado_por_identidad_id: string | null } | undefined> {
+    const { rows } = await admin.query(
+      'SELECT usado_en, usado_por_identidad_id FROM codigos_de_acceso_al_registro WHERE hash = $1',
+      [hash],
+    );
+    return rows[0] as { usado_en: Date | null; usado_por_identidad_id: string | null } | undefined;
+  }
+
+  async function agenciasDe(identidad: string): Promise<string[]> {
+    const { rows } = await admin.query(
+      'SELECT id FROM tenants WHERE creado_por_identidad_id = $1 ORDER BY id',
+      [identidad],
+    );
+    return rows.map((r) => r.id as string);
+  }
+
+  async function vigente(hash: Buffer, correoHmac: Buffer): Promise<boolean> {
+    const { rows } = await app.query(SQL_CODIGO_VIGENTE, [hash, correoHmac]);
+    return rows[0]?.vigente as boolean;
+  }
+
+  /** Un alta completa en su propia transacción del cliente dado: COMMIT si sale bien. */
+  async function alta(cliente: Client, a: Alta): Promise<{ id: string; contexto: string }> {
+    await cliente.query('BEGIN');
+    try {
+      const { rows } = await cliente.query(SQL_CREAR_AGENCIA, argumentos(a));
+      const { rows: ctx } = await cliente.query(
+        "SELECT current_setting('app.current_tenant', true) AS contexto",
+      );
+      await cliente.query('COMMIT');
+      return { id: rows[0]?.id as string, contexto: ctx[0]?.contexto as string };
+    } catch (error) {
+      await cliente.query('ROLLBACK');
+      throw error;
+    }
+  }
+
+  beforeAll(async () => {
+    app2 = new Client({ connectionString: URL_APP });
+    await app2.connect();
+    const { rows } = await app2.query('SELECT current_user AS usuario');
+    expect(rows[0]?.usuario, 'la segunda conexión de aplicación').toBe('viajapro_app');
+    // La prueba de aislamiento corre sin semilla: la moneda del alta tiene que existir.
+    await admin.query(
+      `INSERT INTO monedas (codigo_iso, nombre, decimales) VALUES ('COP', 'Peso colombiano', 0)
+       ON CONFLICT (codigo_iso) DO NOTHING`,
+    );
+  });
+
+  afterAll(async () => {
+    // Las agencias de la corrida se reconocen por quién las creó, no por el slug: la del slug
+    // reservado no lleva el prefijo de fixture.
+    const { rows } = await admin.query(
+      'SELECT id FROM tenants WHERE creado_por_identidad_id = ANY($1::uuid[])',
+      [identidades],
+    );
+    await admin.query('BEGIN');
+    try {
+      await borrarTenants(
+        admin,
+        rows.map((r) => r.id as string),
+      );
+      await admin.query('COMMIT');
+    } catch (error) {
+      await admin.query('ROLLBACK');
+      throw error;
+    }
+    await admin.query('DELETE FROM codigos_de_acceso_al_registro WHERE hash = ANY($1::bytea[])', [
+      codigos,
+    ]);
+    await admin.query('DELETE FROM identidades WHERE id = ANY($1::uuid[])', [identidades]);
+    await app2.end();
+  }, 60_000);
+
+  it('R-1 — viajapro_registro es solo propietario: superficie exacta de columnas, sin miembros de login, dueño solo de sus dos funciones', async () => {
+    const { rows: rol } = await admin.query(
+      `SELECT rolcanlogin, rolbypassrls, rolsuper, rolinherit
+         FROM pg_roles WHERE rolname = 'viajapro_registro'`,
+    );
+    expect(rol).toEqual([
+      { rolcanlogin: false, rolbypassrls: false, rolsuper: false, rolinherit: false },
+    ]);
+
+    const { rows: superficie } = await admin.query(
+      `SELECT format('%s.%s.%s:%s', n.nspname, c.relname, a.attname, p.priv) AS privilegio
+         FROM pg_class c
+         JOIN pg_namespace n ON n.oid = c.relnamespace
+         JOIN pg_attribute a ON a.attrelid = c.oid AND a.attnum > 0 AND NOT a.attisdropped
+        CROSS JOIN unnest(ARRAY['SELECT', 'INSERT', 'UPDATE', 'REFERENCES']) AS p(priv)
+        WHERE n.nspname NOT IN ('pg_catalog', 'information_schema')
+          AND n.nspname NOT LIKE 'pg\\_toast%'
+          AND n.nspname NOT LIKE 'pg\\_temp%'
+          AND c.relkind IN ('r', 'p', 'v', 'm', 'f')
+          AND has_column_privilege('viajapro_registro', c.oid, a.attnum, p.priv)
+          AND NOT has_column_privilege('public', c.oid, a.attnum, p.priv)`,
+    );
+    // Ordenado aquí, no por la intercalación de la base.
+    expect(
+      (superficie as Array<{ privilegio: string }>).map((r) => r.privilegio).sort(),
+      'superficie de columnas de viajapro_registro (ADR-0030 §3.1)',
+    ).toEqual([
+      'public.codigos_de_acceso_al_registro.correo_hmac:SELECT',
+      'public.codigos_de_acceso_al_registro.expira_en:SELECT',
+      'public.codigos_de_acceso_al_registro.hash:SELECT',
+      'public.codigos_de_acceso_al_registro.usado_en:SELECT',
+      'public.codigos_de_acceso_al_registro.usado_en:UPDATE',
+      'public.codigos_de_acceso_al_registro.usado_por_identidad_id:UPDATE',
+      'public.monedas.codigo_iso:SELECT',
+      'public.parametros_del_registro.tope_por_hora:SELECT',
+      'public.tenants.actualizado_en:INSERT',
+      'public.tenants.creado_en:SELECT',
+      'public.tenants.creado_por_identidad_id:INSERT',
+      'public.tenants.creado_por_identidad_id:SELECT',
+      'public.tenants.encargo_aceptado_en:INSERT',
+      'public.tenants.encargo_version:INSERT',
+      'public.tenants.estado:INSERT',
+      'public.tenants.estado:SELECT',
+      'public.tenants.id:INSERT',
+      'public.tenants.id:SELECT',
+      'public.tenants.moneda_iso:INSERT',
+      'public.tenants.nombre:INSERT',
+      'public.tenants.origen_del_alta:INSERT',
+      'public.tenants.origen_del_alta:SELECT',
+      'public.tenants.pais_iso:INSERT',
+      'public.tenants.prueba_termina_en:INSERT',
+      'public.tenants.slug:INSERT',
+      'public.tenants.slug:SELECT',
+      'public.tenants.zona_horaria:INSERT',
+    ]);
+
+    // Ni un privilegio de TABLA: ningún UPDATE, DELETE ni TRUNCATE sobre `tenants`.
+    const { rows: deTabla } = await admin.query(
+      `SELECT c.oid::regclass::text AS tabla, x.privilege_type AS privilegio
+         FROM pg_class c, aclexplode(c.relacl) x
+        WHERE x.grantee = 'viajapro_registro'::regrole`,
+    );
+    expect(deTabla, 'privilegios de TABLA de viajapro_registro').toEqual([]);
+
+    const { rows: miembroDe } = await admin.query(
+      `SELECT roleid::regrole::text AS rol FROM pg_auth_members
+        WHERE member = 'viajapro_registro'::regrole`,
+    );
+    expect(miembroDe, 'roles de los que viajapro_registro es miembro').toEqual([]);
+
+    const { rows: comoDueno } = await admin.query(
+      `SELECT rolname FROM unnest($1::text[]) AS rolname
+        WHERE pg_has_role(rolname, 'viajapro_registro', 'MEMBER')`,
+      [await rolesAVigilar(admin)],
+    );
+    expect(comoDueno, 'roles de login que pueden actuar como viajapro_registro').toEqual([]);
+
+    const { rows: propias } = await admin.query(
+      `SELECT format('%s.%s', n.nspname, p.proname) AS funcion
+         FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+        WHERE p.proowner = 'viajapro_registro'::regrole`,
+    );
+    expect(
+      (propias as Array<{ funcion: string }>).map((r) => r.funcion).sort(),
+      'funciones de las que viajapro_registro es dueño',
+    ).toEqual(['public.codigo_de_acceso_vigente', 'public.crear_agencia']);
+
+    const { rows: concedidas } = await admin.query(
+      `SELECT p.oid::regprocedure::text AS funcion
+         FROM pg_proc p, aclexplode(p.proacl) x
+        WHERE x.grantee = 'viajapro_registro'::regrole
+          AND p.proowner <> x.grantee`,
+    );
+    expect(concedidas, 'funciones que conceden EXECUTE a viajapro_registro').toEqual([]);
+
+    // Las dos funciones: firma, SECURITY DEFINER, proconfig EXACTO (S1), volatilidad y no STRICT.
+    const { rows: funciones } = await admin.query(
+      `SELECT p.proname, pg_get_function_identity_arguments(p.oid) AS argumentos,
+              pg_get_function_result(p.oid) AS resultado, p.prosecdef, p.proconfig,
+              p.provolatile, p.proisstrict
+         FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+        WHERE n.nspname = 'public' AND p.proname IN ('crear_agencia', 'codigo_de_acceso_vigente')
+        ORDER BY 1`,
+    );
+    expect(funciones).toEqual([
+      {
+        proname: 'codigo_de_acceso_vigente',
+        argumentos: 'p_hash bytea, p_correo_hmac bytea',
+        resultado: 'boolean',
+        prosecdef: true,
+        proconfig: ['search_path=""'],
+        provolatile: 's',
+        proisstrict: false,
+      },
+      {
+        proname: 'crear_agencia',
+        argumentos:
+          'p_nombre text, p_slug_base text, p_pais_iso text, p_moneda_iso text, p_zona_horaria text, p_identidad_id uuid, p_dias_de_prueba integer, p_version_encargo text, p_hash_codigo_de_acceso bytea, p_correo_hmac bytea',
+        resultado: 'uuid',
+        prosecdef: true,
+        proconfig: ['search_path=""'],
+        provolatile: 'v',
+        proisstrict: false,
+      },
+    ]);
+
+    // La declaración de `tenants` para la API no cambió.
+    const { rows: declaracion } = await admin.query(
+      `SELECT privilegios FROM excepciones_rls WHERE tabla = 'tenants' AND rol = 'viajapro_app'`,
+    );
+    expect(declaracion).toEqual([{ privilegios: ['SELECT'] }]);
+  });
+
+  it('R-2 — con app.current_tenant ya fijado, crear_agencia da 42501 y no consume el código', async () => {
+    const identidad = await nuevaIdentidad('contexto');
+    const hmac = randomBytes(32);
+    const hash = await nuevoCodigo(hmac);
+    for (const contexto of [TENANT_A, 'cualquier-cosa']) {
+      await expect(
+        comoTenant(contexto, (c) =>
+          c.query(
+            SQL_CREAR_AGENCIA,
+            argumentos({
+              slugBase: `fixture-aislamiento-${MARCA}-contexto`,
+              identidad,
+              hash,
+              correoHmac: hmac,
+            }),
+          ),
+        ),
+        `contexto ${contexto}`,
+      ).rejects.toMatchObject({ code: '42501' });
+    }
+    expect(await usoDe(hash)).toEqual({ usado_en: null, usado_por_identidad_id: null });
+    expect(await agenciasDe(identidad)).toEqual([]);
+  });
+
+  it('R-3 — un slug igual al de una agencia existente crea OTRA agencia, la existente queda intacta, y el contexto fijado por la función sigue vigente al volver (S1)', async () => {
+    const slugA = `fixture-aislamiento-${MARCA}-a`;
+    const fotoDeA = async () =>
+      (await admin.query('SELECT to_jsonb(t) AS fila FROM tenants t WHERE id = $1', [TENANT_A]))
+        .rows[0]?.fila as Record<string, unknown> | undefined;
+    const usuariosDeA = async (): Promise<unknown[]> =>
+      (
+        await comoTenant(TENANT_A, (c) =>
+          c.query('SELECT id, actualizado_en FROM usuarios ORDER BY id'),
+        )
+      ).rows as unknown[];
+
+    const antes = await fotoDeA();
+    expect(antes?.['slug'], 'el fixture A existe con su slug').toBe(slugA);
+    const usuariosAntes = await usuariosDeA();
+
+    const identidad = await nuevaIdentidad('slug');
+    const hmac = randomBytes(32);
+    const hash = await nuevoCodigo(hmac);
+
+    let nueva = '';
+    await app.query('BEGIN');
+    try {
+      const { rows } = await app.query(
+        SQL_CREAR_AGENCIA,
+        argumentos({ slugBase: slugA, identidad, hash, correoHmac: hmac }),
+      );
+      nueva = rows[0]?.id as string;
+      expect(nueva).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
+      expect(nueva, 'el alta reutilizó la agencia existente').not.toBe(TENANT_A);
+
+      // S1, por el camino del slug que choca: el GUC sigue fijado al volver de la función…
+      const { rows: ctx } = await app.query(
+        "SELECT current_setting('app.current_tenant', true) AS contexto",
+      );
+      expect(ctx[0]?.contexto, 'S1: el contexto no sobrevivió al volver de crear_agencia').toBe(
+        nueva,
+      );
+      // …y RLS lo usa: la API escribe bajo él sin fijar nada (WITH CHECK pasa solo si es la nueva).
+      const { rows: perfil } = await app.query(
+        `INSERT INTO perfiles_de_agencia
+           (tenant_id, rnt, nit, digito_verificacion, razon_social, verificado_en, actualizado_en)
+         VALUES ($1, '48213', '900123456', 7, 'Razón social de prueba', now(), now())
+         RETURNING verificado_en`,
+        [nueva],
+      );
+      expect(perfil[0]?.verificado_en, 'viajapro_app pudo fijar verificado_en').toBeNull();
+      // Con ese contexto, nada de A: ni un perfil con su tenant_id, ni su fila de `tenants`.
+      await esperarPermisoDenegado(
+        app,
+        () =>
+          app.query(
+            'INSERT INTO perfiles_de_agencia (tenant_id, actualizado_en) VALUES ($1, now())',
+            [TENANT_A],
+          ),
+        'perfil de A con el contexto de la agencia nueva',
+      );
+      await esperarPermisoDenegado(
+        app,
+        () => app.query("UPDATE tenants SET nombre = 'secuestrada' WHERE id = $1", [TENANT_A]),
+        'UPDATE de la agencia existente',
+      );
+      await app.query('COMMIT');
+    } catch (error) {
+      await app.query('ROLLBACK');
+      throw error;
+    }
+
+    // La existente, intacta: misma fila (incluido actualizado_en) y mismos usuarios.
+    expect(await fotoDeA()).toEqual(antes);
+    expect(await usuariosDeA()).toEqual(usuariosAntes);
+
+    // La nueva: otro slug (base + 4 hex), EN_PRUEBA, AUTOSERVICIO, con su encargo y 14 días.
+    const { rows: fila } = await admin.query(
+      `SELECT slug, estado::text AS estado, origen_del_alta::text AS origen,
+              creado_por_identidad_id, encargo_version,
+              encargo_aceptado_en IS NOT NULL AS con_encargo,
+              round(extract(epoch FROM prueba_termina_en - creado_en) / 86400) AS dias
+         FROM tenants WHERE id = $1`,
+      [nueva],
+    );
+    expect(fila).toHaveLength(1);
+    expect(fila[0]?.slug).toMatch(new RegExp(`^${slugA}-[0-9a-f]{4}$`));
+    expect(fila[0]).toMatchObject({
+      estado: 'EN_PRUEBA',
+      origen: 'AUTOSERVICIO',
+      creado_por_identidad_id: identidad,
+      encargo_version: 'encargo-de-prueba-1',
+      con_encargo: true,
+    });
+    expect(Number(fila[0]?.dias)).toBe(14);
+    expect((await usoDe(hash))?.usado_por_identidad_id).toBe(identidad);
+
+    // verificado_en (el disparador de T-261, ampliado por T-268 al NIT y su DV): solo la plataforma
+    // (el dueño de la tabla) lo fija; la API no lo fija ni lo borra; cambiar el NIT, el DV o el RNT
+    // lo anula, salvo que la plataforma lo vuelva a fijar en el mismo UPDATE. P-6 cubre el RNT.
+    const comoPlataforma = async (sql: string) => {
+      await admin.query('BEGIN');
+      try {
+        await admin.query("SELECT set_config('app.current_tenant', $1, true)", [nueva]);
+        const r = await admin.query(sql, [nueva]);
+        await admin.query('COMMIT');
+        return r.rows[0]?.verificado_en as Date | null;
+      } catch (error) {
+        await admin.query('ROLLBACK');
+        throw error;
+      }
+    };
+    const comoLaApi = async (sql: string) =>
+      (await comoTenant(nueva, (c) => c.query(sql, [nueva]))).rows[0]?.verificado_en as Date | null;
+    const verificar =
+      'UPDATE perfiles_de_agencia SET verificado_en = now() WHERE tenant_id = $1 RETURNING verificado_en';
+
+    expect(await comoPlataforma(verificar), 'la plataforma no pudo verificar').not.toBeNull();
+    // La razón social no es un dato verificado: cambiarla no anula, ni a la API ni a la plataforma…
+    expect(
+      await comoLaApi(
+        "UPDATE perfiles_de_agencia SET razon_social = 'Cambio de la agencia' WHERE tenant_id = $1 RETURNING verificado_en",
+      ),
+      'cambiar la razón social anuló la verificación',
+    ).not.toBeNull();
+    // …y la API no puede borrar la verificación por su cuenta.
+    expect(
+      await comoLaApi(
+        'UPDATE perfiles_de_agencia SET verificado_en = NULL WHERE tenant_id = $1 RETURNING verificado_en',
+      ),
+      'viajapro_app borró la verificación',
+    ).not.toBeNull();
+    // La API cambia el NIT, aunque mande verificado_en en el mismo UPDATE: vuelve a NULL.
+    expect(
+      await comoLaApi(
+        "UPDATE perfiles_de_agencia SET nit = '800111222', verificado_en = now() WHERE tenant_id = $1 RETURNING verificado_en",
+      ),
+      'viajapro_app cambió el NIT y conservó la verificación',
+    ).toBeNull();
+    // Y si no la tenía, tampoco la consigue la API sin tocar nada.
+    expect(
+      await comoLaApi(
+        'UPDATE perfiles_de_agencia SET verificado_en = now() WHERE tenant_id = $1 RETURNING verificado_en',
+      ),
+      'viajapro_app fijó verificado_en',
+    ).toBeNull();
+    // El DV también es un dato verificado.
+    expect(await comoPlataforma(verificar)).not.toBeNull();
+    expect(
+      await comoLaApi(
+        'UPDATE perfiles_de_agencia SET digito_verificacion = 3 WHERE tenant_id = $1 RETURNING verificado_en',
+      ),
+      'cambiar el DV conservó la verificación',
+    ).toBeNull();
+    // La plataforma cambia el NIT sin tocar verificado_en: el dato nuevo no hereda la verificación…
+    expect(await comoPlataforma(verificar)).not.toBeNull();
+    expect(
+      await comoPlataforma(
+        "UPDATE perfiles_de_agencia SET nit = '900999999' WHERE tenant_id = $1 RETURNING verificado_en",
+      ),
+      'la plataforma cambió el NIT y conservó la verificación',
+    ).toBeNull();
+    // …y si lo cambia y lo verifica en el mismo UPDATE, se conserva.
+    expect(
+      await comoPlataforma(
+        "UPDATE perfiles_de_agencia SET nit = '900888777', verificado_en = now() WHERE tenant_id = $1 RETURNING verificado_en",
+      ),
+    ).not.toBeNull();
+
+    // Los CHECK de las columnas nuevas los aplica el motor.
+    for (const [sql, restriccion] of [
+      [
+        "UPDATE perfiles_de_agencia SET nit = '90012-3' WHERE tenant_id = $1",
+        'perfiles_de_agencia_nit_formato',
+      ],
+      [
+        'UPDATE perfiles_de_agencia SET digito_verificacion = 10 WHERE tenant_id = $1',
+        'perfiles_de_agencia_digito_verificacion',
+      ],
+      [
+        'UPDATE perfiles_de_agencia SET nit = NULL WHERE tenant_id = $1',
+        'perfiles_de_agencia_digito_verificacion',
+      ],
+      [
+        "UPDATE perfiles_de_agencia SET razon_social = '   ' WHERE tenant_id = $1",
+        'perfiles_de_agencia_razon_social_longitud',
+      ],
+    ] as const) {
+      await expect(
+        comoTenant(nueva, (c) => c.query(sql, [nueva])),
+        sql,
+      ).rejects.toMatchObject({ code: '23514', constraint: restriccion });
+    }
+  });
+
+  it('R-4 — un slug reservado nunca se asigna tal cual', async () => {
+    const identidad = await nuevaIdentidad('reservado');
+    const hmac = randomBytes(32);
+    const hash = await nuevoCodigo(hmac);
+    const { id, contexto } = await alta(app, {
+      slugBase: 'ingresar',
+      identidad,
+      hash,
+      correoHmac: hmac,
+    });
+    expect(contexto).toBe(id);
+    const { rows } = await admin.query('SELECT slug FROM tenants WHERE id = $1', [id]);
+    expect(rows[0]?.slug).toMatch(/^ingresar-[0-9a-f]{4}$/);
+    // No es que chocara con una existente: el slug tal cual sigue libre.
+    const { rows: tal } = await admin.query("SELECT id FROM tenants WHERE slug = 'ingresar'");
+    expect(tal).toEqual([]);
+  });
+
+  it('R-5 — viajapro_app no escribe tenants directamente, y las tablas globales del registro dan 42501 a quien no le toca', async () => {
+    for (const contexto of [undefined, TENANT_A]) {
+      await app.query('BEGIN');
+      try {
+        if (contexto !== undefined) {
+          await app.query("SELECT set_config('app.current_tenant', $1, true)", [contexto]);
+        }
+        for (const sql of [
+          `INSERT INTO tenants (id, slug, nombre, actualizado_en) VALUES (gen_random_uuid(), 'fixture-aislamiento-${MARCA}-directa', 'Directa', now())`,
+          `INSERT INTO tenants (id, slug, nombre, origen_del_alta, actualizado_en) VALUES (gen_random_uuid(), 'fixture-aislamiento-${MARCA}-directa', 'Directa', 'AUTOSERVICIO', now())`,
+          `UPDATE tenants SET nombre = nombre WHERE id = '${TENANT_A}'`,
+          `UPDATE tenants SET origen_del_alta = 'AUTOSERVICIO', creado_por_identidad_id = NULL`,
+          `UPDATE tenants SET estado = 'ACTIVO' WHERE id = '${TENANT_B}'`,
+          `DELETE FROM tenants WHERE id = '${TENANT_B}'`,
+        ]) {
+          await esperarPermisoDenegado(app, () => app.query(sql), `${sql} (contexto ${contexto})`);
+        }
+      } finally {
+        await app.query('ROLLBACK');
+      }
+    }
+
+    // Tablas globales del registro, por COMPORTAMIENTO y con todo rol de login.
+    const roles = await rolesAVigilar(admin);
+    expect(roles).toEqual(expect.arrayContaining([...ROLES_DE_LOGIN_DECLARADOS]));
+    for (const rol of roles) {
+      await comoRol(admin, rol, async () => {
+        for (const [tabla, sentencias] of Object.entries(SENTENCIAS_DEL_REGISTRO)) {
+          const deIdentidad = (TABLAS_DE_IDENTIDAD_DEL_REGISTRO as readonly string[]).includes(
+            tabla,
+          );
+          for (const sentencia of sentencias) {
+            const verbo = sentencia.split(' ')[0] ?? '';
+            // Lo que SÍ puede viajapro_identidad lo cubre la aserción 10; aquí, lo que no.
+            const permitida =
+              rol === ROL_IDENTIDAD &&
+              deIdentidad &&
+              (tabla === 'codigos_de_registro' || verbo === 'SELECT' || verbo === 'INSERT');
+            if (permitida) continue;
+            await esperarPermisoDenegado(
+              admin,
+              () => admin.query(sentencia),
+              `${verbo} sobre ${tabla} como ${rol}`,
+            );
+          }
+        }
+        // Y las dos funciones: solo viajapro_app.
+        if (rol !== 'viajapro_app') {
+          await esperarPermisoDenegado(
+            admin,
+            () =>
+              admin.query(
+                SQL_CREAR_AGENCIA,
+                argumentos({
+                  slugBase: `fixture-aislamiento-${MARCA}-rol`,
+                  identidad: randomUUID(),
+                  hash: randomBytes(32),
+                  correoHmac: randomBytes(32),
+                }),
+              ),
+            `crear_agencia como ${rol}`,
+          );
+          await esperarPermisoDenegado(
+            admin,
+            () => admin.query(SQL_CODIGO_VIGENTE, [randomBytes(32), randomBytes(32)]),
+            `codigo_de_acceso_vigente como ${rol}`,
+          );
+        }
+      });
+    }
+
+    // viajapro_identidad lee sus aceptaciones (no es un 42501 por error de la prueba).
+    await comoRol(admin, ROL_IDENTIDAD, async () => {
+      await admin.query('SELECT * FROM aceptaciones_de_identidad LIMIT 1');
+      await admin.query('SELECT * FROM codigos_de_registro LIMIT 1');
+    });
+  }, 120_000);
+
+  it('R-6 — código de acceso usado, caducado, de otro correo o inexistente: VPR04; un ROLLBACK lo deja sin usar; sirve una sola vez; y una identidad no abre dos pruebas (VPR01)', async () => {
+    const identidad = await nuevaIdentidad('acceso');
+    const hmac = randomBytes(32);
+    const otroHmac = randomBytes(32);
+    const usado = await nuevoCodigo(hmac, 'usado');
+    const caducado = await nuevoCodigo(hmac, 'caducado');
+    const deOtroCorreo = await nuevoCodigo(otroHmac);
+    const inexistente = randomBytes(32);
+    const slugBase = `fixture-aislamiento-${MARCA}-acceso`;
+
+    for (const [caso, hash] of [
+      ['usado', usado],
+      ['caducado', caducado],
+      ['de otro correo', deOtroCorreo],
+      ['inexistente', inexistente],
+    ] as const) {
+      await expect(
+        alta(app, { slugBase, identidad, hash, correoHmac: hmac }),
+        caso,
+      ).rejects.toMatchObject({ code: 'VPR04' });
+      // La comprobación sin consumir dice lo mismo, sin decir por qué.
+      expect(await vigente(hash, hmac), caso).toBe(false);
+    }
+    expect(await agenciasDe(identidad)).toEqual([]);
+    expect(await usoDe(deOtroCorreo)).toEqual({ usado_en: null, usado_por_identidad_id: null });
+
+    // Un alta que falla DESPUÉS de consumir el código (aquí, un ROLLBACK explícito) lo devuelve.
+    const valido = await nuevoCodigo(hmac);
+    expect(await vigente(valido, hmac)).toBe(true);
+    expect(await vigente(valido, otroHmac), 'el código está atado a su correo').toBe(false);
+    expect(await vigente(valido, hmac), 'comprobar no lo consume').toBe(true);
+    await app.query('BEGIN');
+    try {
+      const { rows } = await app.query(
+        SQL_CREAR_AGENCIA,
+        argumentos({ slugBase, identidad, hash: valido, correoHmac: hmac }),
+      );
+      expect(rows[0]?.id).toBeTruthy();
+      expect(await vigente(valido, hmac), 'dentro de la transacción ya está consumido').toBe(false);
+    } finally {
+      await app.query('ROLLBACK');
+    }
+    expect(await usoDe(valido)).toEqual({ usado_en: null, usado_por_identidad_id: null });
+    expect(await agenciasDe(identidad)).toEqual([]);
+    expect(await vigente(valido, hmac)).toBe(true);
+
+    // Sigue sirviendo, una vez.
+    const { id } = await alta(app, { slugBase, identidad, hash: valido, correoHmac: hmac });
+    expect(await agenciasDe(identidad)).toEqual([id]);
+    expect((await usoDe(valido))?.usado_por_identidad_id).toBe(identidad);
+    const otra = await nuevaIdentidad('acceso-2');
+    await expect(
+      alta(app, { slugBase, identidad: otra, hash: valido, correoHmac: hmac }),
+    ).rejects.toMatchObject({ code: 'VPR04' });
+    expect(await agenciasDe(otra)).toEqual([]);
+
+    // VPR01: la misma identidad no abre una segunda agencia en prueba, y el código no se gasta.
+    const segundo = await nuevoCodigo(hmac);
+    await expect(
+      alta(app, { slugBase, identidad, hash: segundo, correoHmac: hmac }),
+    ).rejects.toMatchObject({ code: 'VPR01' });
+    expect(await usoDe(segundo)).toEqual({ usado_en: null, usado_por_identidad_id: null });
+    expect(await agenciasDe(identidad)).toEqual([id]);
+  });
+
+  it('R-7 — dos altas simultáneas con el mismo código crean UNA sola agencia', async () => {
+    const hmac = randomBytes(32);
+    const hash = await nuevoCodigo(hmac);
+    const primera = await nuevaIdentidad('carrera-1');
+    const segunda = await nuevaIdentidad('carrera-2');
+    const { rows: pid } = await app2.query('SELECT pg_backend_pid() AS pid');
+
+    // La primera consume el código y deja la fila bloqueada; la segunda, en otra conexión, llega
+    // mientras la primera sigue abierta. Al confirmar la primera, la segunda reevalúa y no lo
+    // encuentra sin usar.
+    let resultadoDeLaSegunda: Promise<unknown> | undefined;
+    await app.query('BEGIN');
+    try {
+      await app.query(
+        SQL_CREAR_AGENCIA,
+        argumentos({
+          slugBase: `fixture-aislamiento-${MARCA}-carrera-1`,
+          identidad: primera,
+          hash,
+          correoHmac: hmac,
+        }),
+      );
+      await app2.query('BEGIN');
+      resultadoDeLaSegunda = app2
+        .query(
+          SQL_CREAR_AGENCIA,
+          argumentos({
+            slugBase: `fixture-aislamiento-${MARCA}-carrera-2`,
+            identidad: segunda,
+            hash,
+            correoHmac: hmac,
+          }),
+        )
+        .then(
+          () => 'creada',
+          (error: unknown) => error,
+        );
+      // Espera (acotada) a verla bloqueada. Si no se llega a observar, el resultado sigue
+      // siendo el mismo: la segunda corre después y encuentra el código usado.
+      for (let i = 0; i < 50; i += 1) {
+        const { rows } = await admin.query(
+          'SELECT cardinality(pg_blocking_pids($1)) > 0 AS bloqueada',
+          [pid[0]?.pid],
+        );
+        if (rows[0]?.bloqueada) break;
+        await new Promise((resolver) => setTimeout(resolver, 50));
+      }
+      await app.query('COMMIT');
+    } catch (error) {
+      await app.query('ROLLBACK');
+      throw error;
+    }
+    const resultado = await resultadoDeLaSegunda;
+    await app2.query('ROLLBACK');
+    expect(resultado, 'la segunda alta con el mismo código').toMatchObject({ code: 'VPR04' });
+
+    const { rows } = await admin.query(
+      'SELECT creado_por_identidad_id FROM tenants WHERE creado_por_identidad_id = ANY($1::uuid[])',
+      [[primera, segunda]],
+    );
+    expect(rows).toEqual([{ creado_por_identidad_id: primera }]);
+    expect((await usoDe(hash))?.usado_por_identidad_id).toBe(primera);
+  }, 60_000);
+
+  it('R-8 — datos inválidos dan 22023 (un NULL nunca es un éxito silencioso) y no consumen el código', async () => {
+    const identidad = await nuevaIdentidad('invalidos');
+    const hmac = randomBytes(32);
+    const hash = await nuevoCodigo(hmac);
+    const base = {
+      slugBase: `fixture-aislamiento-${MARCA}-invalido`,
+      identidad,
+      hash,
+      correoHmac: hmac,
+    };
+    const casos: Array<[string, Partial<Alta>]> = [
+      ['nombre nulo', { nombre: null }],
+      ['nombre de un carácter', { nombre: ' a ' }],
+      ['nombre de 201', { nombre: 'x'.repeat(201) }],
+      ['slug corto', { slugBase: 'ab' }],
+      ['slug con mayúsculas', { slugBase: 'Con-Mayus' }],
+      ['slug con doble guion', { slugBase: 'doble--guion' }],
+      ['slug que empieza por guion', { slugBase: '-inicio' }],
+      ['slug de 51', { slugBase: 'a'.repeat(51) }],
+      ['país en minúsculas', { pais: 'co' }],
+      ['país de tres letras', { pais: 'COL' }],
+      ['país nulo', { pais: null }],
+      ['moneda no habilitada', { moneda: 'XXX' }],
+      ['moneda en minúsculas', { moneda: 'cop' }],
+      ['moneda nula', { moneda: null }],
+      ['zona posix', { zona: 'posix/America/Bogota' }],
+      ['zona inexistente', { zona: 'Marte/Olympus_Mons' }],
+      ['zona nula', { zona: null }],
+      ['cero días', { dias: 0 }],
+      ['61 días', { dias: 61 }],
+      ['días nulos', { dias: null }],
+      ['versión vacía', { version: '   ' }],
+      ['versión nula', { version: null }],
+      ['identidad nula', { identidad: null }],
+    ];
+    for (const [caso, cambio] of casos) {
+      await expect(alta(app, { ...base, ...cambio }), caso).rejects.toMatchObject({
+        code: '22023',
+      });
+    }
+    expect(await usoDe(hash)).toEqual({ usado_en: null, usado_por_identidad_id: null });
+    expect(await agenciasDe(identidad)).toEqual([]);
+  }, 60_000);
+
+  it('R-9 — el tope global por hora (parametros_del_registro) corta con VPR02', async () => {
+    // Todo en UNA transacción del propietario que se deshace: el tope bajado no lo ve ninguna otra
+    // corrida, y las dos altas no quedan.
+    const hmac = randomBytes(32);
+    const primera = await nuevaIdentidad('tope-1');
+    const segunda = await nuevaIdentidad('tope-2');
+    const codigoUno = await nuevoCodigo(hmac);
+    const codigoDos = await nuevoCodigo(hmac);
+    const topeDe = async (): Promise<unknown[]> =>
+      (await admin.query('SELECT tope_por_hora FROM parametros_del_registro')).rows as unknown[];
+    const topeAntes = await topeDe();
+    expect(topeAntes, 'parametros_del_registro tiene su fila').toHaveLength(1);
+    await admin.query('BEGIN');
+    try {
+      // El tope justo por encima de las altas de autoservicio de la última hora (las de esta y de
+      // otras corridas): la primera alta cabe y la segunda no.
+      await admin.query(
+        `UPDATE parametros_del_registro
+            SET tope_por_hora = LEAST(1000, 1 + (
+              SELECT count(*) FROM tenants
+               WHERE origen_del_alta = 'AUTOSERVICIO' AND creado_en > now() - interval '1 hour'))`,
+      );
+      await admin.query('SET LOCAL ROLE "viajapro_app"');
+      await admin.query(
+        SQL_CREAR_AGENCIA,
+        argumentos({
+          slugBase: `fixture-aislamiento-${MARCA}-tope-1`,
+          identidad: primera,
+          hash: codigoUno,
+          correoHmac: hmac,
+        }),
+      );
+      // La precondición de contexto exige vaciarlo antes de la segunda llamada.
+      await admin.query("SELECT set_config('app.current_tenant', '', true)");
+      await expect(
+        admin.query(
+          SQL_CREAR_AGENCIA,
+          argumentos({
+            slugBase: `fixture-aislamiento-${MARCA}-tope-2`,
+            identidad: segunda,
+            hash: codigoDos,
+            correoHmac: hmac,
+          }),
+        ),
+      ).rejects.toMatchObject({ code: 'VPR02' });
+    } finally {
+      await admin.query('ROLLBACK');
+    }
+    expect(await usoDe(codigoUno)).toEqual({ usado_en: null, usado_por_identidad_id: null });
+    expect(await usoDe(codigoDos)).toEqual({ usado_en: null, usado_por_identidad_id: null });
+    expect(await topeDe(), 'el tope bajado se deshizo con la transacción').toEqual(topeAntes);
+  });
+
+  it('R-10 — B3: un DOMINIO pg_temp.text con un CHECK trampa no se ejecuta dentro de crear_agencia ni de codigo_de_acceso_vigente', async () => {
+    // Con search_path vacío PostgreSQL busca los nombres de TIPO primero en pg_temp. Si las funciones
+    // nombraran `text` sin calificar, el CHECK del dominio correría como viajapro_registro: alta sin
+    // código ni tope, lectura de los códigos. La trampa marca una bandera con quién la ejecutó, qué
+    // pudo leer de los códigos y si pudo insertar en `tenants`.
+    //
+    // Conexión NUEVA de viajapro_app: plpgsql y los planes se compilan por sesión, y en una sesión que
+    // ya hubiera llamado a crear_agencia los tipos estarían resueltos de antes y la prueba sería vacua.
+    const identidad = await nuevaIdentidad('pg-temp');
+    const hmac = randomBytes(32);
+    const hash = await nuevoCodigo(hmac);
+    const marca = `fixture-aislamiento-${MARCA}-trampa`;
+    const atacante = new Client({ connectionString: URL_APP });
+    await atacante.connect();
+    try {
+      const { rows: quien } = await atacante.query('SELECT current_user AS usuario');
+      expect(quien[0]?.usuario).toBe('viajapro_app');
+      const bandera = async (): Promise<string> =>
+        (await atacante.query("SELECT current_setting('viajapro.trampa', true) AS b")).rows[0]
+          ?.b as string;
+
+      await atacante.query('BEGIN');
+      try {
+        // 1. Sembrar la trampa. Todo calificado DENTRO de ella, o se llamaría a sí misma.
+        await atacante.query('SAVEPOINT sembrar');
+        let sembrada = true;
+        try {
+          await atacante.query(`
+            CREATE FUNCTION pg_temp.trampa(v pg_catalog.text) RETURNS pg_catalog.bool
+            LANGUAGE plpgsql AS $$
+            DECLARE
+              n pg_catalog.int8 := -1;
+              inserto pg_catalog.text := 'no';
+            BEGIN
+              BEGIN
+                SELECT pg_catalog.count(*) INTO n FROM public.codigos_de_acceso_al_registro;
+              EXCEPTION WHEN OTHERS THEN n := -1;
+              END;
+              BEGIN
+                INSERT INTO public.tenants (id, slug, nombre, actualizado_en)
+                VALUES (pg_catalog.gen_random_uuid(), '${marca}', 'Trampa', pg_catalog.now());
+                inserto := 'si';
+              EXCEPTION WHEN OTHERS THEN NULL;
+              END;
+              PERFORM pg_catalog.set_config('viajapro.trampa',
+                current_user::pg_catalog.text || ':' || n || ':' || inserto, true);
+              RETURN true;
+            END
+            $$`);
+          await atacante.query(
+            'CREATE DOMAIN pg_temp.text AS pg_catalog.text CHECK (pg_temp.trampa(VALUE))',
+          );
+          await atacante.query('RELEASE SAVEPOINT sembrar');
+        } catch (error) {
+          // Sin TEMPORARY sobre la base no hay trampa posible: el ataque no existe en ese entorno.
+          await atacante.query('ROLLBACK TO SAVEPOINT sembrar');
+          expect((error as { code?: string }).code, 'error inesperado al sembrar la trampa').toBe(
+            '42501',
+          );
+          sembrada = false;
+        }
+
+        if (sembrada) {
+          // 2. Contraprueba: la trampa funciona. Un `text` sin calificar en ESTA sesión la dispara
+          //    (como viajapro_app, que no lee los códigos ni inserta en tenants).
+          await atacante.query("SELECT 'x'::text AS v");
+          expect(await bandera(), 'la trampa no se disparó: la prueba sería vacua').toBe(
+            'viajapro_app:-1:no',
+          );
+          await atacante.query("SELECT set_config('viajapro.trampa', '', true)");
+
+          // 3. Las dos funciones del registro, con argumentos válidos: la trampa NO se ejecuta.
+          const { rows: vigenteAntes } = await atacante.query(SQL_CODIGO_VIGENTE, [hash, hmac]);
+          expect(vigenteAntes[0]?.vigente).toBe(true);
+          expect(await bandera(), 'codigo_de_acceso_vigente ejecutó la trampa').toBe('');
+
+          const { rows } = await atacante.query(
+            SQL_CREAR_AGENCIA,
+            argumentos({
+              slugBase: `fixture-aislamiento-${MARCA}-pg-temp`,
+              identidad,
+              hash,
+              correoHmac: hmac,
+            }),
+          );
+          expect(rows[0]?.id, 'crear_agencia con argumentos válidos').toBeTruthy();
+          expect(await bandera(), 'crear_agencia ejecutó la trampa').toBe('');
+          const { rows: plantadas } = await atacante.query(
+            'SELECT count(*)::int AS n FROM tenants WHERE slug = $1',
+            [marca],
+          );
+          expect(plantadas, 'la trampa insertó en tenants').toEqual([{ n: 0 }]);
+
+          // Y una validación que falla tampoco la ejecuta.
+          await atacante.query("SELECT set_config('app.current_tenant', '', true)");
+          await atacante.query('SAVEPOINT invalida');
+          await expect(
+            atacante.query(
+              SQL_CREAR_AGENCIA,
+              argumentos({
+                slugBase: 'Con-Mayus',
+                identidad,
+                hash,
+                correoHmac: hmac,
+              }),
+            ),
+          ).rejects.toMatchObject({ code: '22023' });
+          await atacante.query('ROLLBACK TO SAVEPOINT invalida');
+          expect(await bandera(), 'la validación de crear_agencia ejecutó la trampa').toBe('');
+        }
+      } finally {
+        // Se lleva la trampa, el dominio, el alta y el uso del código.
+        await atacante.query('ROLLBACK');
+      }
+    } finally {
+      await atacante.end();
+    }
+    expect(await usoDe(hash)).toEqual({ usado_en: null, usado_por_identidad_id: null });
+    expect(await agenciasDe(identidad)).toEqual([]);
+    const { rows: residuo } = await admin.query('SELECT id FROM tenants WHERE slug = $1', [marca]);
+    expect(residuo).toEqual([]);
+  });
+});
+
+// =========================================================================================
 // T-261 — perfiles_de_agencia (ADR-0030 §3.3): el RNT de la agencia y su verificación
 //
 // Lo que no puede pasar: que una agencia vea, cambie o plante el perfil de otra; que `viajapro_app`
@@ -9151,7 +10187,7 @@ describe('T-261 — perfiles_de_agencia: aislamiento y verificación solo de la 
     return r.rows;
   };
 
-  it('P-1 — tenant_id es la PK, RLS forzada con USING y WITH CHECK, ninguna excepción, y la única columna de texto es rnt', async () => {
+  it('P-1 — tenant_id es la PK, RLS forzada con USING y WITH CHECK, ninguna excepción, y las columnas de texto son nit, razon_social y rnt', async () => {
     const { rows } = await admin.query(
       `SELECT c.relrowsecurity, c.relforcerowsecurity,
               (SELECT a.attnotnull FROM pg_attribute a
@@ -9191,7 +10227,12 @@ describe('T-261 — perfiles_de_agencia: aislamiento y verificación solo de la 
           AND format_type(a.atttypid, NULL) IN ('text', 'character varying', 'character', 'citext')
         ORDER BY 1`,
     );
-    expect(texto.rows).toEqual([{ columna: 'rnt' }]);
+    // T-268 añade nit y razon_social (ADR-0030 §3.3). Ordenado aquí, no por la intercalación.
+    expect(texto.rows.map((r) => r.columna as string).sort()).toEqual([
+      'nit',
+      'razon_social',
+      'rnt',
+    ]);
   });
 
   it('P-2 — solo viajapro_app la toca (SELECT, INSERT, UPDATE; sin DELETE); PUBLIC y los demás roles, nada', async () => {

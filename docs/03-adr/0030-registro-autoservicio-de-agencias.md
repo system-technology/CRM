@@ -275,6 +275,9 @@ crear_agencia(p_nombre text, p_slug_base text, p_pais_iso text, p_moneda_iso tex
   dinámico. No es `STRICT`, por la razón de ADR-0027: un `NULL` tiene que dar error, no un `NULL`
   silencioso. Se crea bajo `SET ROLE viajapro_registro`. `EXECUTE` revocado a `PUBLIC` y concedido
   **solo a `viajapro_app`**.
+  «Todo cualificado» incluye los **tipos** (`pg_catalog.text`, `pg_catalog.uuid`…): con el
+  `search_path` vacío los nombres de tipo se buscan primero en `pg_temp` (hallazgo B3 de la
+  auditoría de T-268, 2026-11-20).
 - **Precondición de contexto:** si `app.current_tenant` no está vacío, aborta (`42501`). Así no
   puede ejecutarse dentro de una transacción que ya trabaja para una agencia y cambiarle el
   contexto a mitad de camino.

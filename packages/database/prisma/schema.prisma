@@ -61,6 +61,17 @@ model Tenant {
 
   estado EstadoTenant @default(EN_PRUEBA)
 
+  /// ADR-0030: PLATAFORMA (scripts) o AUTOSERVICIO (`crear_agencia`). Invariante, no política (R12).
+  origenDelAlta        OrigenDelAlta @default(PLATAFORMA) @map("origen_del_alta")
+  /// Quién la creó por autoservicio y aceptó el contrato de encargo en su nombre. Solo un id.
+  creadoPorIdentidadId String?       @map("creado_por_identidad_id") @db.Uuid
+  creadoPorIdentidad   Identidad?    @relation("AgenciasCreadas", fields: [creadoPorIdentidadId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  /// Fin de la prueba gratis (UTC). Sin corte automático (ADR-0030 §2).
+  pruebaTerminaEn      DateTime?     @map("prueba_termina_en") @db.Timestamptz(3)
+  /// Versión del contrato de encargo del tratamiento aceptada en el alta (ADR-0030 §4.2).
+  encargoVersion       String?       @map("encargo_version") @db.VarChar(40)
+  encargoAceptadoEn    DateTime?     @map("encargo_aceptado_en") @db.Timestamptz(3)
+
   creadoEn      DateTime @default(now()) @map("creado_en") @db.Timestamptz(3)
   actualizadoEn DateTime @updatedAt @map("actualizado_en") @db.Timestamptz(3)
 
@@ -105,6 +116,8 @@ model Tenant {
   accesosIdentidad AccesoIdentidad[]
   sesionesActivas  Sesion[]
 
+  @@index([creadoPorIdentidadId])
+  @@index([origenDelAlta, creadoEn])
   @@map("tenants")
 }
 
@@ -115,6 +128,14 @@ enum EstadoTenant {
   CANCELADO
 
   @@map("estado_tenant")
+}
+
+/// Cómo nació una agencia (ADR-0030 §2).
+enum OrigenDelAlta {
+  PLATAFORMA
+  AUTOSERVICIO
+
+  @@map("origen_del_alta")
 }
 
 /// Monedas habilitadas. Dato de referencia universal, igual para todos.
@@ -363,12 +384,93 @@ model Identidad {
   actualizadoEn    DateTime  @updatedAt @map("actualizado_en") @db.Timestamptz(3)
   eliminadoEn      DateTime? @map("eliminado_en") @db.Timestamptz(3)
 
-  credenciales Credencial[]
-  sesiones     Sesion[]
-  accesos      AccesoIdentidad[]
-  pertenencias Usuario[]
+  credenciales    Credencial[]
+  sesiones        Sesion[]
+  accesos         AccesoIdentidad[]
+  pertenencias    Usuario[]
+  aceptaciones    AceptacionDeIdentidad[]
+  agenciasCreadas Tenant[]                @relation("AgenciasCreadas")
 
   @@map("identidades")
+}
+
+// =============================================================================
+// Registro autoservicio de agencias (ADR-0030, T-268)
+//
+// Cuatro tablas GLOBALES, declaradas en `excepciones_rls` y sin columna `tenant_id`:
+// `aceptaciones_de_identidad` y `codigos_de_registro` solo para `viajapro_identidad`;
+// `codigos_de_acceso_al_registro` y `parametros_del_registro` para ningún rol de login (las
+// leen y consumen `crear_agencia` y `codigo_de_acceso_vigente`, dueño `viajapro_registro`, y
+// las escribe la plataforma).
+// =============================================================================
+
+/// Documento legal de ViajaPro que acepta una persona (ADR-0030 §4.1).
+enum DocumentoLegal {
+  TERMINOS
+  AVISO_DE_PRIVACIDAD
+
+  @@map("documento_legal")
+}
+
+/// Por dónde llegó la aceptación.
+enum CanalDeAceptacion {
+  WEB_REGISTRO
+  INVITACION
+
+  @@map("canal_de_aceptacion")
+}
+
+/// Evidencia de consentimiento de la persona. Solo SELECT e INSERT para `viajapro_identidad`.
+model AceptacionDeIdentidad {
+  id          String            @id @default(uuid(7)) @db.Uuid
+  identidadId String            @map("identidad_id") @db.Uuid
+  identidad   Identidad         @relation(fields: [identidadId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  documento   DocumentoLegal
+  version     String            @db.VarChar(40)
+  canal       CanalDeAceptacion
+  aceptadoEn  DateTime          @default(now()) @map("aceptado_en") @db.Timestamptz(3)
+
+  @@index([identidadId])
+  @@map("aceptaciones_de_identidad")
+}
+
+/// Código de registro por correo (ADR-0030 §3.7): una fila viva por correo, garantizada por la
+/// base. HMAC del correo y SHA-256 del código, nunca en claro. Solo `viajapro_identidad`.
+model CodigoDeRegistro {
+  id                String   @id @default(uuid(7)) @db.Uuid
+  correoHmac        Bytes    @unique @map("correo_hmac")
+  hashCodigo        Bytes    @map("hash_codigo")
+  intentosRestantes Int      @map("intentos_restantes") @db.SmallInt
+  expiraEn          DateTime @map("expira_en") @db.Timestamptz(3)
+  creadoEn          DateTime @default(now()) @map("creado_en") @db.Timestamptz(3)
+
+  @@map("codigos_de_registro")
+}
+
+/// Código de acceso del piloto (ADR-0030 §3.8). Ningún rol de login lo toca: lo crea la
+/// plataforma y lo consume `crear_agencia`.
+model CodigoDeAccesoAlRegistro {
+  /// SHA-256 del secreto.
+  hash                Bytes     @id
+  expiraEn            DateTime  @map("expira_en") @db.Timestamptz(3)
+  usadoEn             DateTime? @map("usado_en") @db.Timestamptz(3)
+  usadoPorIdentidadId String?   @map("usado_por_identidad_id") @db.Uuid
+  /// HMAC del correo al que está atado. Obligatorio: no hay códigos sin correo.
+  correoHmac          Bytes     @map("correo_hmac")
+  creadoEn            DateTime  @default(now()) @map("creado_en") @db.Timestamptz(3)
+  /// Para la plataforma. Sin datos personales.
+  nota                String?   @db.VarChar(200)
+
+  @@map("codigos_de_acceso_al_registro")
+}
+
+/// Una sola fila: el tope global de altas de autoservicio por hora (ADR-0030 §3.2).
+model ParametrosDelRegistro {
+  id            Int      @id @default(1) @db.SmallInt
+  topePorHora   Int      @map("tope_por_hora")
+  actualizadoEn DateTime @default(now()) @map("actualizado_en") @db.Timestamptz(3)
+
+  @@map("parametros_del_registro")
 }
 
 /// Contraseña (scrypt) u otro proveedor de una identidad. Solo `viajapro_identidad`.
@@ -2617,23 +2719,30 @@ model Notification {
   @@map("notificaciones")
 }
 
-/// Datos legales de la agencia (T-261, ADR-0030 §3.3). Una fila por agencia: la PK es el tenant.
-/// Hoy solo el RNT; `nit`, `digito_verificacion` y `razon_social` llegan con T-268, que además tiene
-/// que reemplazar el disparador para que cambiar el `nit` también anule `verificado_en`.
+/// Datos legales de la agencia (T-261 y T-268, ADR-0030 §3.3). Una fila por agencia: la PK es el
+/// tenant. RNT (T-261); NIT, dígito de verificación y razón social (T-268).
 ///
-/// Lo que declara la agencia NO está verificado. `verificado_en` solo lo conserva la plataforma
-/// (el dueño de la tabla): el disparador `proteger_verificacion_del_perfil` lo deja en NULL para
-/// `viajapro_app`, y también cuando cambia el RNT. Ni el disparador ni los dos CHECK
-/// (`perfiles_de_agencia_rnt_formato`, `perfiles_de_agencia_verificado_exige_rnt`) los modela
-/// Prisma. Sin DELETE para la aplicación.
+/// Lo que declara la agencia NO está verificado. `verificado_en` solo lo fija y lo conserva la
+/// plataforma (el dueño de la tabla): el disparador `proteger_verificacion_del_perfil` impide a
+/// `viajapro_app` fijarlo o borrarlo, y lo anula cuando cambia un dato verificado (`nit`,
+/// `digito_verificacion`, `razon_social` o `rnt`) salvo que la plataforma lo vuelva a fijar en el
+/// mismo UPDATE. Ni el disparador ni los CHECK (formato del RNT y del NIT, DV 0-9 con NIT, razón
+/// social no vacía, verificado exige RNT) los modela Prisma. Sin DELETE para la aplicación.
 model PerfilDeAgencia {
   tenantId String @id @map("tenant_id") @db.Uuid
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   /// Solo dígitos (1 a 10). Ningún documento al viajero lo imprime sin `verificadoEn`.
-  rnt          String?
+  rnt                String?
+  /// Solo dígitos (1 a 15), sin el dígito de verificación. Puede ser la cédula de una persona
+  /// natural: en claro bajo RLS por ADR-0030 («Negativas»); si se decide cifrarlo, ADR-0015.
+  nit                String?
+  /// 0 a 9, y solo con `nit`.
+  digitoVerificacion Int?      @map("digito_verificacion") @db.SmallInt
+  /// 1 a 200 caracteres sin contar espacios de los extremos.
+  razonSocial        String?   @map("razon_social")
   /// R9: UTC. NULL = sin verificar.
-  verificadoEn DateTime? @map("verificado_en") @db.Timestamptz(3)
+  verificadoEn       DateTime? @map("verificado_en") @db.Timestamptz(3)
 
   creadoEn      DateTime @default(now()) @map("creado_en") @db.Timestamptz(3)
   actualizadoEn DateTime @default(now()) @updatedAt @map("actualizado_en") @db.Timestamptz(3)
