@@ -10529,6 +10529,58 @@ describe('T-261 — perfiles_de_agencia: aislamiento y verificación solo de la 
     );
     expect(otro.rows).toEqual([{ rnt: '54321', sin_verificar: true }]);
   });
+
+  it('P-7 — creado_en y actualizado_en los fija el disparador (T-307): viajapro_app no los falsea; la plataforma sí puede', async () => {
+    const reciente = (columna: string) =>
+      `${columna} BETWEEN now() - interval '1 minute' AND now() + interval '1 minute'`;
+    await comoPlataforma(TENANT_C, (c) =>
+      c.query('DELETE FROM perfiles_de_agencia WHERE tenant_id = $1', [TENANT_C]),
+    );
+
+    // 1. La API inserta con fechas de otro siglo: quedan en «ahora».
+    const insertada = await comoTenant(TENANT_C, (c) =>
+      c.query(
+        `INSERT INTO perfiles_de_agencia (tenant_id, rnt, creado_en, actualizado_en)
+         VALUES ($1, '48213', '2000-01-01T00:00:00Z', '2000-01-01T00:00:00Z')
+         RETURNING (${reciente('creado_en')}) AS creado_reciente,
+                   (${reciente('actualizado_en')}) AS actualizado_reciente`,
+        [TENANT_C],
+      ),
+    );
+    expect(insertada.rows).toEqual([{ creado_reciente: true, actualizado_reciente: true }]);
+
+    // 2. La API intenta reescribir ambas en un UPDATE: creado_en no se mueve y actualizado_en es «ahora».
+    const antes = await comoPlataforma(TENANT_C, (c) =>
+      c.query<{ creado_en: Date }>(
+        'SELECT creado_en FROM perfiles_de_agencia WHERE tenant_id = $1',
+        [TENANT_C],
+      ),
+    );
+    const actualizada = await comoTenant(TENANT_C, (c) =>
+      c.query<{ creado_en: Date; actualizado_reciente: boolean }>(
+        `UPDATE perfiles_de_agencia
+            SET creado_en = '2000-01-01T00:00:00Z', actualizado_en = '2000-01-01T00:00:00Z'
+          WHERE tenant_id = $1
+          RETURNING creado_en, (${reciente('actualizado_en')}) AS actualizado_reciente`,
+        [TENANT_C],
+      ),
+    );
+    expect(actualizada.rows[0]?.creado_en).toEqual(antes.rows[0]?.creado_en);
+    expect(actualizada.rows[0]?.actualizado_reciente).toBe(true);
+
+    // 3. La plataforma sí puede fijarlas (una migración de datos las necesita).
+    const fijadas = await comoPlataforma(TENANT_C, (c) =>
+      c.query(
+        `UPDATE perfiles_de_agencia
+            SET creado_en = '2026-01-01T00:00:00Z', actualizado_en = '2026-01-02T00:00:00Z'
+          WHERE tenant_id = $1
+          RETURNING creado_en = '2026-01-01T00:00:00Z' AS creado_fijado,
+                    actualizado_en = '2026-01-02T00:00:00Z' AS actualizado_fijado`,
+        [TENANT_C],
+      ),
+    );
+    expect(fijadas.rows).toEqual([{ creado_fijado: true, actualizado_fijado: true }]);
+  });
 });
 
 // =========================================================================================
