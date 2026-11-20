@@ -43,4 +43,19 @@ describe('esColisionDeApodo', () => {
     expect(esColisionDeApodo(new Error('Key (apodo)=(ialvear)'))).toBe(false);
     expect(esColisionDeApodo(undefined)).toBe(false);
   });
+  it('reconoce el error de unicidad que Prisma no clasificó, solo si nombra la restricción', () => {
+    const desconocido = (m: string) =>
+      new Prisma.PrismaClientUnknownRequestError(m, { clientVersion: 'prueba' });
+    expect(
+      esColisionDeApodo(
+        desconocido('duplicate key value violates unique constraint "accesos_identidad_apodo_key"'),
+      ),
+    ).toBe(true);
+    expect(
+      esColisionDeApodo(
+        desconocido('duplicate key value violates unique constraint "contactos_telefono_key"'),
+      ),
+    ).toBe(false);
+    expect(esColisionDeApodo(new Error('accesos_identidad_apodo_key'))).toBe(false);
+  });
 });

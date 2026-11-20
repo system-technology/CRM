@@ -24,8 +24,22 @@ function textos(valor: unknown): string[] {
   return [];
 }
 
+/**
+ * Respaldo: un error que Prisma NO clasificó como `P2002`/`P2010` (p. ej. el que levanta el
+ * disparador y llega como error desconocido de la consulta) pero cuyo mensaje nombra la restricción
+ * de apodo Y dice que es una violación de unicidad. El mensaje solo se mira, nunca se registra.
+ */
+function esUnicidadDeApodoPorMensaje(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  const m = error.message;
+  const esUnicidad = m.includes('23505') || /duplicate key|unique constraint/i.test(m);
+  return esUnicidad && RESTRICCIONES_DE_APODO.some((r) => m.includes(r));
+}
+
 export function esColisionDeApodo(error: unknown): boolean {
-  if (!(error instanceof Prisma.PrismaClientKnownRequestError)) return false;
+  if (!(error instanceof Prisma.PrismaClientKnownRequestError)) {
+    return esUnicidadDeApodoPorMensaje(error);
+  }
   const meta: Record<string, unknown> = error.meta ?? {};
 
   if (error.code === 'P2002') {
