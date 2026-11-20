@@ -516,6 +516,22 @@ aceptaciones son datos y evidencia legal, no un adorno de esta decisión.
 | P6 | Antes de Tech Provider, ¿conecta la plataforma a mano el número de una agencia real (T-270)? | Sí, para el piloto: es el único camino al primer WhatsApp real |
 | P7 | ¿A qué buzón llegan los avisos de nueva agencia y de solicitud de conexión? | Un buzón de operaciones, por variable de entorno |
 
+### Respuestas del propietario (2026-11-20)
+
+El propietario aceptó las propuestas que se le presentaron en la sesión:
+
+| # | Decisión |
+|---|---|
+| P1 | 14 días de prueba |
+| P2 | Durante el piloto, registro **con código de acceso** de la plataforma (además del interruptor apagado por defecto); abierto después |
+| P3 | Términos, aviso de privacidad y contrato de encargo: los redacta un abogado y los aprueba el propietario (T-093, T-098). Sin ellos el interruptor no se enciende |
+| P4 | Solo Colombia y COP al principio |
+| P5 | Prueba: 5 miembros activos, 1 canal de WhatsApp, sin IA |
+| P6 | Sí: antes de Tech Provider, la plataforma conecta a mano el número de cada agencia piloto (T-270) |
+| P7 | Los avisos llegan al correo del propietario, configurado por variable de entorno (nunca escrito en el repositorio) |
+
+El ADR sigue **Propuesto** hasta cerrar la auditoría de seguridad; estas respuestas no lo aceptan por sí solas.
+
 ---
 
 > Un ADR aceptado **no se edita jamás.** Si la decisión cambia, se escribe uno nuevo que lo supersede.
