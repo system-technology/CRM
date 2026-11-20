@@ -54,7 +54,7 @@ const CATEGORIA_INFO: Record<
     color: 'text-purple-600 dark:text-purple-400',
   },
   viajes: {
-    label: 'Archivos de Viaje (TravelFiles)',
+    label: 'Archivos de viaje',
     icon: Briefcase,
     color: 'text-indigo-600 dark:text-indigo-400',
   },

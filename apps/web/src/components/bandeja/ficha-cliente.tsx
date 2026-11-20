@@ -104,7 +104,7 @@ export function FichaCliente({
             </div>
           )}
 
-          {/* Campos Personalizados Viajero (T-026) */}
+          {/* Campos Personalizados Viajero */}
           <SeccionCamposPersonalizados entidad="contacto" entidadId={contacto.id} />
 
           <div className="flex flex-wrap gap-1 pt-1 text-[10px]">
@@ -167,7 +167,7 @@ export function FichaCliente({
               </div>
             )}
 
-            {/* Campos Personalizados Oportunidad (T-026) */}
+            {/* Campos Personalizados Oportunidad */}
             <SeccionCamposPersonalizados entidad="oportunidad" entidadId={oportunidadActual.id} />
           </section>
         ) : (
@@ -190,10 +190,10 @@ export function FichaCliente({
         {/* Sección 3: Archivos de Viaje Confirmados (TravelFile - Lenguaje Ubicuo) */}
         <section className="space-y-1.5">
           <h4 className="text-[11px] font-bold tracking-wider text-neutral-400 uppercase">
-            Archivos de Viaje (TravelFile)
+            Archivos de viaje
           </h4>
           {archivosDeViajeIds.length === 0 ? (
-            <p className="text-neutral-500 italic">No hay TravelFiles asociados.</p>
+            <p className="text-neutral-500 italic">No hay archivos de viaje asociados.</p>
           ) : (
             <div className="space-y-1.5">
               {archivosDeViajeIds.map((tfId) => (
@@ -204,7 +204,7 @@ export function FichaCliente({
                   <div className="flex items-center gap-2">
                     <Plane className="text-acento-600 h-4 w-4" />
                     <span className="font-bold text-neutral-900 dark:text-neutral-100">
-                      TravelFile #{tfId}
+                      Archivo de viaje #{tfId}
                     </span>
                   </div>
                   <span className="bg-ok-50 text-ok-700 dark:bg-ok-950/60 dark:text-ok-400 rounded px-1.5 py-0.5 font-sans text-[10px] font-bold">

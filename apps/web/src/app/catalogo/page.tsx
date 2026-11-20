@@ -105,6 +105,7 @@ import {
 } from '../../lib/catalogo-gestion-logica';
 import { formatearDinero } from '../../lib/api';
 import { fechaDeHoy } from '../../lib/cotizador-logica';
+import { herramientasDevActivas } from '../../lib/herramientas-dev';
 
 export default function CatalogoPage() {
   const { esDemo } = useModoDemo();
@@ -328,7 +329,7 @@ export default function CatalogoPage() {
               }`}
             >
               <FileSpreadsheet className="h-4 w-4" />
-              <span>Plantillas CSV (T-030)</span>
+              <span>Plantillas CSV</span>
             </button>
 
             <button
@@ -406,18 +407,20 @@ export default function CatalogoPage() {
               )}
 
               {/* Interruptor modo Real / Demo para depuración o contingencia */}
-              <div className="flex items-center justify-between rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2 sm:col-span-1 dark:border-neutral-800 dark:bg-neutral-900">
-                <span className="text-xs font-medium text-neutral-700 dark:text-neutral-300">
-                  {usarReal ? 'Conectado a API real' : 'Datos simulados'}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setUsarReal(!usarReal)}
-                  className="text-acento-600 hover:text-acento-700 dark:text-acento-400 flex min-h-[44px] items-center px-2 py-2 text-xs font-semibold focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:outline-hidden"
-                >
-                  {usarReal ? 'Cambiar a Demo' : 'Probar API Real'}
-                </button>
-              </div>
+              {herramientasDevActivas() && (
+                <div className="flex items-center justify-between rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2 sm:col-span-1 dark:border-neutral-800 dark:bg-neutral-900">
+                  <span className="text-xs font-medium text-neutral-700 dark:text-neutral-300">
+                    {usarReal ? 'Conectado a API real' : 'Datos simulados'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setUsarReal(!usarReal)}
+                    className="text-acento-600 hover:text-acento-700 dark:text-acento-400 flex min-h-[44px] items-center px-2 py-2 text-xs font-semibold focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:outline-hidden"
+                  >
+                    {usarReal ? 'Cambiar a Demo' : 'Probar API Real'}
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </header>
@@ -734,7 +737,7 @@ export default function CatalogoPage() {
         alCerrar={() => setPaqueteSeleccionado(null)}
       />
 
-      {/* 4. Asistente de Importación de Catálogo (T-029) */}
+      {/* 4. Asistente de Importación de Catálogo */}
       <AsistenteImportacion
         abierto={asistenteImportacionAbierto}
         formatoInicial={formatoParaImportar}

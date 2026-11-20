@@ -29,7 +29,7 @@ export default function PoliticaCookiesPage() {
               data-testid="badge-borrador"
               className="rounded-full bg-amber-100 px-2.5 py-0.5 text-[11px] font-bold text-amber-900 dark:bg-amber-950/80 dark:text-amber-300"
             >
-              Borrador en revisión jurídica (T-093 / T-108)
+              Borrador en revisión jurídica
             </span>
             <span className="hidden rounded-full bg-teal-100 px-2.5 py-0.5 text-[11px] font-bold text-teal-800 sm:inline dark:bg-teal-950 dark:text-teal-300">
               Ley 1581 / SIC
@@ -46,7 +46,7 @@ export default function PoliticaCookiesPage() {
           <div>
             <div className="inline-flex items-center gap-2 rounded-lg bg-teal-50 px-3 py-1 text-xs font-bold text-teal-800 ring-1 ring-teal-200 dark:bg-teal-950 dark:text-teal-300 dark:ring-teal-800">
               <Cookie className="h-4 w-4 text-teal-600 dark:text-teal-400" />
-              <span>Transparencia de Datos y Cookies (T-094 & T-095)</span>
+              <span>Transparencia de Datos y Cookies</span>
             </div>
             <h1 className="mt-3 text-2xl font-extrabold tracking-tight text-neutral-900 sm:text-3xl dark:text-neutral-50">
               Política de Cookies y Almacenamiento del Navegador
@@ -92,7 +92,7 @@ export default function PoliticaCookiesPage() {
           <section className="space-y-4">
             <div>
               <h2 className="text-lg font-bold text-neutral-900 dark:text-neutral-100">
-                2. Inventario Técnico Completo de Cookies y Storage (T-094)
+                2. Inventario Técnico Completo de Cookies y Storage
               </h2>
               <p className="text-xs text-neutral-600 dark:text-neutral-400">
                 A continuación se desglosan todos los identificadores utilizados tanto en el backend

@@ -23,8 +23,15 @@ function responder(cuerpo: unknown, status = 200) {
 }
 
 describe('BloqueConexionWhatsapp (estado real del canal)', () => {
-  beforeEach(() => vi.unstubAllGlobals());
-  afterEach(() => cleanup());
+  beforeEach(() => {
+    vi.unstubAllGlobals();
+    // Con la API real el cliente hace fetch; sin ella (demo) devuelve la maqueta del contrato.
+    vi.stubEnv('NEXT_PUBLIC_USE_REAL_CRM', 'true');
+  });
+  afterEach(() => {
+    cleanup();
+    vi.unstubAllEnvs();
+  });
 
   it('muestra esqueleto mientras carga', () => {
     vi.stubGlobal(

@@ -172,7 +172,7 @@ export default function ConfiguracionPage() {
                 className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl border border-neutral-300 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-800 shadow-xs hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200"
               >
                 <Sparkles className="h-4 w-4 text-amber-500" />
-                <span>Asistente de Inicio (T-105)</span>
+                <span>Asistente de Inicio</span>
               </Link>
               <span className="flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400">
                 <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
@@ -205,9 +205,6 @@ export default function ConfiguracionPage() {
             >
               <Users className="h-4 w-4" />
               <span>Miembros y Roles</span>
-              <span className="rounded-full bg-purple-100 px-1.5 py-0.5 text-[10px] font-bold text-purple-800 dark:bg-purple-950 dark:text-purple-300">
-                T-027
-              </span>
             </button>
 
             <button
@@ -222,9 +219,6 @@ export default function ConfiguracionPage() {
             >
               <MessageSquare className="h-4 w-4" />
               <span>Canal WhatsApp (WABA)</span>
-              <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-                T-106
-              </span>
             </button>
 
             <button
@@ -293,9 +287,6 @@ export default function ConfiguracionPage() {
             >
               <Tag className="h-4 w-4 text-teal-600 dark:text-teal-400" />
               <span>Catálogo</span>
-              <span className="rounded-full bg-teal-100 px-1.5 py-0.5 text-[10px] font-bold text-teal-800 dark:bg-teal-950 dark:text-teal-300">
-                T-028
-              </span>
             </button>
 
             <button
@@ -310,9 +301,6 @@ export default function ConfiguracionPage() {
             >
               <FormInput className="h-4 w-4 text-purple-600 dark:text-purple-400" />
               <span>Campos Personalizados</span>
-              <span className="rounded-full bg-purple-100 px-1.5 py-0.5 text-[10px] font-bold text-purple-800 dark:bg-purple-950 dark:text-purple-300">
-                T-026
-              </span>
             </button>
 
             <button
@@ -327,16 +315,13 @@ export default function ConfiguracionPage() {
             >
               <Zap className="h-4 w-4 text-amber-600 dark:text-amber-400" />
               <span>Respuestas Rápidas</span>
-              <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-800 dark:bg-amber-950 dark:text-amber-300">
-                T-104
-              </span>
             </button>
           </nav>
         </header>
 
         {/* Contenido según Pestaña */}
         <div className="flex-1 p-6">
-          {/* TAB 1: EQUIPO Y ROLES (T-027) */}
+          {/* TAB 1: EQUIPO Y ROLES */}
           {tabActiva === 'equipo' && (
             <div id="tab-contenido-equipo" data-testid="tab-contenido-equipo">
               <BloqueEquipo />
@@ -472,7 +457,7 @@ export default function ConfiguracionPage() {
             </div>
           )}
 
-          {/* TAB 8: CAMPOS PERSONALIZADOS (T-026) */}
+          {/* TAB 8: CAMPOS PERSONALIZADOS */}
           {tabActiva === 'campos' && (
             <div
               id="tab-contenido-campos"

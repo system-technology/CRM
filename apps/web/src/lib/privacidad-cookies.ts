@@ -1,5 +1,5 @@
 /**
- * Sistema de Gestión de Privacidad, Consentimiento y Cookies (T-094 & T-095).
+ * Sistema de Gestión de Privacidad, Consentimiento y Cookies.
  * Conforme a la Ley 1581 de 2012 (Habeas Data Colombia), Decreto 1074 de 2015
  * y directrices de la Superintendencia de Industria y Comercio (SIC).
  */
@@ -36,7 +36,7 @@ export const EVENTO_ABRIR_MODAL_COOKIES = 'viajapro:abrir-modal-cookies';
 export const DIAS_VALIDEZ_CONSENTIMIENTO = 365;
 
 /**
- * Inventario completo oficial de cookies y almacenamiento de ViajaPro (T-094).
+ * Inventario completo oficial de cookies y almacenamiento de ViajaPro.
  */
 export const INVENTARIO_COOKIES: readonly ItemInventarioCookie[] = [
   {

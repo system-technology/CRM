@@ -8,7 +8,7 @@ import type { CotizacionGuardada } from '@viajapro/contracts';
 
 export const MOCK_COTIZACION_DEMO_ID = '01932000-0000-7000-8000-000000000077';
 
-export const MOCK_COTIZACIONES_INICIALES: CotizacionGuardada[] = [
+const COTIZACIONES_BASE: CotizacionGuardada[] = [
   {
     id: MOCK_COTIZACION_DEMO_ID,
     contactoId: '00000000-0002-4000-8000-000000000001', // Juan Pérez
@@ -111,6 +111,40 @@ export const MOCK_COTIZACIONES_INICIALES: CotizacionGuardada[] = [
 ];
 
 // Almacén en memoria de sesión
+/**
+ * Las fechas de arriba están escritas respecto al 2026-10-20 y se desplazan a «hoy», para que la
+ * demostración no muestre una cotización ENVIADA con la vigencia y la salida ya vencidas.
+ */
+const FECHA_REFERENCIA_MS = Date.parse('2026-10-20T00:00:00.000Z');
+const DIA_MS = 86_400_000;
+
+function desplazarFechas<T>(valor: T, delta: number): T {
+  if (typeof valor === 'string') {
+    if (/^\d{4}-\d{2}-\d{2}(T[\d:.]+Z)?$/.test(valor)) {
+      const movida = new Date(Date.parse(valor) + delta);
+      return (valor.length === 10 ? movida.toISOString().slice(0, 10) : movida.toISOString()) as T;
+    }
+    return valor;
+  }
+  if (Array.isArray(valor)) {
+    return (valor as unknown[]).map((v) => desplazarFechas(v, delta)) as T;
+  }
+  if (valor && typeof valor === 'object') {
+    return Object.fromEntries(
+      Object.entries(valor as Record<string, unknown>).map(([k, v]) => [
+        k,
+        desplazarFechas(v, delta),
+      ]),
+    ) as T;
+  }
+  return valor;
+}
+
+export const MOCK_COTIZACIONES_INICIALES: CotizacionGuardada[] = desplazarFechas(
+  COTIZACIONES_BASE,
+  Math.floor((Date.now() - FECHA_REFERENCIA_MS) / DIA_MS) * DIA_MS,
+);
+
 const storeCotizaciones = new Map<string, CotizacionGuardada>();
 
 for (const c of MOCK_COTIZACIONES_INICIALES) {

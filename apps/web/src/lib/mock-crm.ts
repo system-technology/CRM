@@ -27,6 +27,103 @@ function hashCadena(str: string): number {
   return Math.abs(hash);
 }
 
+const DIA_MS = 86_400_000;
+const diaIso = (offsetDias: number): string =>
+  new Date(Date.now() + offsetDias * DIA_MS).toISOString().slice(0, 10);
+const instanteIso = (offsetDias: number): string =>
+  new Date(Date.now() + offsetDias * DIA_MS).toISOString();
+
+/**
+ * Escenarios de demostración de la ficha. Cada contacto toma uno según su identificador, para que
+ * dos contactos no muestren la misma oportunidad, las mismas cotizaciones ni el mismo historial.
+ * R8: COP en pesos enteros (en COP la unidad mínima es el peso, no el centavo).
+ */
+interface EscenarioFicha {
+  destino: string;
+  titulo: string;
+  valorCop: string;
+  probabilidad: number;
+  tarea: string;
+  cotizaciones: Array<{
+    version: number;
+    titulo: string;
+    valorCop: string;
+    vigenteEnDias: number;
+    enviadaHaceDias: number;
+  }>;
+  archivos: number;
+}
+
+const ESCENARIOS_FICHA: readonly EscenarioFicha[] = [
+  {
+    destino: 'Cancún, México',
+    titulo: 'Hotel Hard Rock + Vuelos Avianca (4 pax)',
+    valorCop: '12500000',
+    probabilidad: 80,
+    tarea: 'Confirmar si requiere vuelos desde Medellín o Bogotá',
+    cotizaciones: [
+      {
+        version: 2,
+        titulo: 'Hotel Hard Rock + Vuelos Avianca (4 pax)',
+        valorCop: '12500000',
+        vigenteEnDias: 5,
+        enviadaHaceDias: 1,
+      },
+      {
+        version: 1,
+        titulo: 'Hotel Riu Palace (4 pax)',
+        valorCop: '11000000',
+        vigenteEnDias: -3,
+        enviadaHaceDias: 6,
+      },
+    ],
+    archivos: 1,
+  },
+  {
+    destino: 'Curazao',
+    titulo: 'Luna de miel en Curazao (2 pax)',
+    valorCop: '8900000',
+    probabilidad: 60,
+    tarea: 'Enviar opciones de hotel frente al mar',
+    cotizaciones: [
+      {
+        version: 1,
+        titulo: 'Curazao 5 noches con desayuno (2 pax)',
+        valorCop: '8900000',
+        vigenteEnDias: 7,
+        enviadaHaceDias: 2,
+      },
+    ],
+    archivos: 0,
+  },
+  {
+    destino: 'San Andrés Islas, Colombia',
+    titulo: 'San Andrés todo incluido familiar (3 pax)',
+    valorCop: '6200000',
+    probabilidad: 90,
+    tarea: 'Pedir copia de los documentos de los pasajeros',
+    cotizaciones: [
+      {
+        version: 1,
+        titulo: 'San Andrés todo incluido (2 adultos y 1 niño)',
+        valorCop: '6200000',
+        vigenteEnDias: 2,
+        enviadaHaceDias: 4,
+      },
+    ],
+    archivos: 2,
+  },
+  {
+    destino: 'Cartagena, Colombia',
+    titulo: 'Cartagena histórica 4 días (2 pax)',
+    valorCop: '3400000',
+    probabilidad: 40,
+    tarea: 'Llamar para resolver dudas sobre el itinerario',
+    cotizaciones: [],
+    archivos: 0,
+  },
+];
+
 // Almacén mutable en memoria para mutaciones en modo demo/desconectado
 const mockContactosModificados = new Map<string, Contacto>();
 const mockOportunidadesContacto = new Map<string, Oportunidad>();
@@ -56,6 +153,11 @@ export function obtenerMockFichaDeContacto(identificador: string): FichaDeContac
   );
 
   const hash = hashCadena(identificador);
+  const idBase = contacto?.id ?? conv?.contactoId ?? identificador;
+  const sufijo = Number.parseInt(idBase.slice(-4), 16);
+  const escenario =
+    ESCENARIOS_FICHA[(Number.isFinite(sufijo) ? sufijo : hash) % ESCENARIOS_FICHA.length] ??
+    ESCENARIOS_FICHA[0]!;
   const contactoId =
     contacto?.id ??
     conv?.contactoId ??
@@ -83,8 +185,8 @@ export function obtenerMockFichaDeContacto(identificador: string): FichaDeContac
     {
       id: `00000000-0006-4000-8000-${hash.toString(16).padStart(12, '0').slice(0, 12)}`,
       autorNombre: conv?.asignadoANombre ?? 'Carlos Asesor',
-      texto: 'Cliente muy interesado en viajar antes del 20 de diciembre. Viaja con 2 niños.',
-      escritaEn: '2026-10-08T09:30:00.000Z',
+      texto: `Cliente muy interesado en ${escenario.destino}. Pide opciones antes de decidir.`,
+      escritaEn: instanteIso(-5),
     },
   ];
 
@@ -107,10 +209,10 @@ export function obtenerMockFichaDeContacto(identificador: string): FichaDeContac
       id: `00000000-0003-4000-8000-${hash.toString(16).padStart(12, '0').slice(0, 12)}`,
       contactoId,
       contactoNombre: nombre,
-      titulo: nombre ? `Paquete Vacacional para ${nombre}` : 'Paquete Vacacional Caribe',
-      destino: 'Cancún, México',
+      titulo: escenario.titulo,
+      destino: escenario.destino,
       paqueteId: null,
-      fechaSalida: '2026-12-15',
+      fechaSalida: diaIso(25),
       etapa: {
         id: '01a114b2-5314-75b1-91ad-3be0518a6a02',
         clave: 'EN_COTIZACION' as const,
@@ -121,50 +223,35 @@ export function obtenerMockFichaDeContacto(identificador: string): FichaDeContac
         esPerdida: false,
       },
       valorEstimado: {
-        unidades: '1250000000', // 12.500.000 COP en centavos
+        unidades: escenario.valorCop, // R8: COP en pesos enteros
         moneda: 'COP' as const,
       },
-      probabilidad: 80,
+      probabilidad: escenario.probabilidad,
       asesorId: conv?.asignadoAId ?? '00000000-0000-4000-a000-000000000001',
       asesorNombre: conv?.asignadoANombre ?? 'Carlos Asesor',
       proximaTarea: {
-        descripcion: 'Confirmar si requiere vuelos desde Medellín o Bogotá',
-        venceEn: '2026-10-12T18:00:00.000Z',
+        descripcion: escenario.tarea,
+        venceEn: instanteIso(1),
         completada: false,
       },
       motivoPerdida: null,
       notaPerdida: null,
-      creadaEn: '2026-10-01T15:00:00.000Z',
-      ultimoContactoEn: conv?.ultimoMensajeEn ?? '2026-10-10T14:30:00.000Z',
+      creadaEn: instanteIso(-18),
+      ultimoContactoEn: conv?.ultimoMensajeEn ?? instanteIso(-1),
     },
-    cotizaciones: [
-      {
-        id: `00000000-0004-4000-8000-${(hash + 1).toString(16).padStart(12, '0').slice(0, 12)}`,
-        version: 2,
-        titulo: 'Hotel Hard Rock + Vuelos Avianca (4 pax)',
-        precioVenta: {
-          unidades: '1250000000',
-          moneda: 'COP' as const,
-        },
-        vigenteHasta: '2026-10-20',
-        enviadaEn: '2026-10-09T16:00:00.000Z',
-      },
-      {
-        id: `00000000-0004-4000-8000-${(hash + 2).toString(16).padStart(12, '0').slice(0, 12)}`,
-        version: 1,
-        titulo: 'Hotel Riu Palace (4 pax)',
-        precioVenta: {
-          unidades: '1100000000',
-          moneda: 'COP' as const,
-        },
-        vigenteHasta: '2026-10-15',
-        enviadaEn: '2026-10-05T11:00:00.000Z',
-      },
-    ],
-    archivosDeViajeIds: [
-      `00000000-0005-4000-8000-${(hash + 1).toString(16).padStart(12, '0').slice(0, 12)}`,
-      `00000000-0005-4000-8000-${(hash + 2).toString(16).padStart(12, '0').slice(0, 12)}`,
-    ],
+    cotizaciones: escenario.cotizaciones.map((c, i) => ({
+      id: `00000000-0004-4000-8000-${(hash + i + 1).toString(16).padStart(12, '0').slice(0, 12)}`,
+      version: c.version,
+      titulo: c.titulo,
+      precioVenta: { unidades: c.valorCop, moneda: 'COP' as const },
+      vigenteHasta: diaIso(c.vigenteEnDias),
+      enviadaEn: instanteIso(-c.enviadaHaceDias),
+    })),
+    archivosDeViajeIds: Array.from(
+      { length: escenario.archivos },
+      (_, i) =>
+        `00000000-0005-4000-8000-${(hash + i + 1).toString(16).padStart(12, '0').slice(0, 12)}`,
+    ),
     notasInternas: notasExistentes,
   };
 
@@ -223,11 +310,21 @@ export function crearContactoMock(datos: CrearContacto): Contacto {
   });
 }
 
+/**
+ * Las fechas de los seguimientos de demostración se escriben respecto a una fecha de referencia
+ * y se desplazan a «ahora», para que haya vencidos, de hoy y próximos sin envejecer.
+ */
+const REFERENCIA_SEGUIMIENTOS_MS = Date.parse('2026-10-26T12:00:00.000Z');
+const ARRANQUE_MS = Date.now();
+function relativoAhora(iso: string): string {
+  return new Date(ARRANQUE_MS + (Date.parse(iso) - REFERENCIA_SEGUIMIENTOS_MS)).toISOString();
+}
+
 const MOCK_PENDIENTES_INICIALES: Seguimiento[] = [
   {
     id: '01932000-0000-7000-8000-000000000071',
     descripcion: 'Confirmar pago de anticipo $2.500.000 San Andrés Decameron',
-    venceEn: '2026-10-26T15:00:00.000Z',
+    venceEn: relativoAhora('2026-10-26T15:00:00.000Z'),
     completadoEn: null,
     asesorId: '01932000-0000-7000-8000-000000000011',
     asesorNombre: 'Laura Gómez',
@@ -240,7 +337,7 @@ const MOCK_PENDIENTES_INICIALES: Seguimiento[] = [
   {
     id: '01932000-0000-7000-8000-000000000072',
     descripcion: 'Enviar itinerario corregido con lancha privada Barú',
-    venceEn: '2026-10-27T08:30:00.000Z',
+    venceEn: relativoAhora('2026-10-27T08:30:00.000Z'),
     completadoEn: null,
     asesorId: '01932000-0000-7000-8000-000000000011',
     asesorNombre: 'Laura Gómez',
@@ -253,7 +350,7 @@ const MOCK_PENDIENTES_INICIALES: Seguimiento[] = [
   {
     id: '01932000-0000-7000-8000-000000000073',
     descripcion: 'Confirmar pasaportes y asistencia médica internacional',
-    venceEn: '2026-10-27T14:30:00.000Z',
+    venceEn: relativoAhora('2026-10-27T14:30:00.000Z'),
     completadoEn: null,
     asesorId: '01932000-0000-7000-8000-000000000011',
     asesorNombre: 'Laura Gómez',
@@ -266,7 +363,7 @@ const MOCK_PENDIENTES_INICIALES: Seguimiento[] = [
   {
     id: '01932000-0000-7000-8000-000000000074',
     descripcion: 'Enviar cotización formal Pasadía Bora Bora VIP (4 pax)',
-    venceEn: '2026-10-27T16:00:00.000Z',
+    venceEn: relativoAhora('2026-10-27T16:00:00.000Z'),
     completadoEn: null,
     asesorId: '01932000-0000-7000-8000-000000000011',
     asesorNombre: 'Laura Gómez',
@@ -279,7 +376,7 @@ const MOCK_PENDIENTES_INICIALES: Seguimiento[] = [
   {
     id: '01932000-0000-7000-8000-000000000075',
     descripcion: 'Seguimiento a objeción de hotel en Cartagena Centro Histórico',
-    venceEn: '2026-10-27T17:15:00.000Z',
+    venceEn: relativoAhora('2026-10-27T17:15:00.000Z'),
     completadoEn: null,
     asesorId: '01932000-0000-7000-8000-000000000011',
     asesorNombre: 'Laura Gómez',
@@ -292,7 +389,7 @@ const MOCK_PENDIENTES_INICIALES: Seguimiento[] = [
   {
     id: '01932000-0000-7000-8000-000000000076',
     descripcion: 'Agendar llamada de cierre con comité de viajes corporativo',
-    venceEn: '2026-10-29T10:00:00.000Z',
+    venceEn: relativoAhora('2026-10-29T10:00:00.000Z'),
     completadoEn: null,
     asesorId: '01932000-0000-7000-8000-000000000011',
     asesorNombre: 'Laura Gómez',
@@ -305,7 +402,7 @@ const MOCK_PENDIENTES_INICIALES: Seguimiento[] = [
   {
     id: '01932000-0000-7000-8000-000000000077',
     descripcion: 'Enviar encuesta de satisfacción y solicitud de recomendación',
-    venceEn: '2026-10-31T15:00:00.000Z',
+    venceEn: relativoAhora('2026-10-31T15:00:00.000Z'),
     completadoEn: null,
     asesorId: '01932000-0000-7000-8000-000000000011',
     asesorNombre: 'Laura Gómez',
@@ -318,8 +415,8 @@ const MOCK_PENDIENTES_INICIALES: Seguimiento[] = [
   {
     id: '01932000-0000-7000-8000-000000000078',
     descripcion: 'Verificar emisión de tiquetes aéreos Avianca Bogotá - Cancún',
-    venceEn: '2026-10-25T11:00:00.000Z',
-    completadoEn: '2026-10-25T11:45:00.000Z',
+    venceEn: relativoAhora('2026-10-25T11:00:00.000Z'),
+    completadoEn: relativoAhora('2026-10-25T11:45:00.000Z'),
     asesorId: '01932000-0000-7000-8000-000000000011',
     asesorNombre: 'Laura Gómez',
     contactoId: '01932000-0000-7000-8000-000000000023',
@@ -424,7 +521,7 @@ export function crearMockOportunidad(cuerpo: CrearOportunidad): Oportunidad {
       esPerdida: false,
     },
     valorEstimado: cuerpo.valorEstimado ?? {
-      unidades: '500000000',
+      unidades: '5000000',
       moneda: 'COP' as const,
     },
     probabilidad: 20,

@@ -5804,4 +5804,21 @@ tasks:
     created_at: 2026-11-17T20:50:00.000Z
     owner: datos
     notes: "Rama fix/booking-endurecer-historial-y-lista. ocurrido_en por disparador BEFORE INSERT (privilegios_declarados no admite columnas y un GRANT por columnas lo revocaría la siguiente migración); FK de tres columnas con T-256; lista de /archivos sin plazo por número descendente en el SQL y en compararPorPlazo; booking-apertura.e2e con fechas relativas. Pendiente: CI con Postgres (H-2/H-6/H-8 y e2e de booking)."
-
+  - id: T-258
+    title: "Web: credibilidad de la demo (sin restos de desarrollo ni datos de maqueta que mienten)"
+    type: fix
+    phase: 1
+    priority: P2
+    effort: M
+    status: in_progress
+    depends_on: []
+    acceptance:
+      - "Sin IDs de tarea, jerga técnica ni nombres de código a la vista; herramientas de desarrollo tras NEXT_PUBLIC_HERRAMIENTAS_DEV"
+      - "Montos de la demo en pesos (R8), mensajes con la dirección correcta, fichas distintas por contacto, un solo nombre de agencia y plazos coherentes entre pantallas"
+      - "Reportes y estado de WhatsApp muestran maqueta con la forma de packages/contracts en demo"
+    files:
+      - apps/web/src
+    source: auditoría UX de la web (2026-11-20), puntos 1 y 2 aprobados por el propietario
+    created_at: 2026-11-20T18:00:00.000Z
+    owner: frontend
+    started_at: 2026-11-20T18:00:00.000Z

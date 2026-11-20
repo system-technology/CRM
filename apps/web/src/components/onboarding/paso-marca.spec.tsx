@@ -12,7 +12,7 @@ describe('PasoMarca — Configuración de Marca e Identidad (T-105)', () => {
 
     expect(screen.getByText('Datos Principales de la Agencia')).toBeDefined();
     expect(screen.getByDisplayValue('Caribe Tour')).toBeDefined();
-    expect(screen.getByText('Color de Acento de la Agencia (T-039)')).toBeDefined();
+    expect(screen.getByText('Color de Acento de la Agencia')).toBeDefined();
     expect(screen.getByText('Dorado Cartagena')).toBeDefined();
   });
 

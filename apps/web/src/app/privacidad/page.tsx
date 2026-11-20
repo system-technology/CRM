@@ -28,7 +28,7 @@ export default function PoliticaPrivacidadPage() {
               data-testid="badge-borrador"
               className="rounded-full bg-amber-100 px-2.5 py-0.5 text-[11px] font-bold text-amber-900 dark:bg-amber-950/80 dark:text-amber-300"
             >
-              Borrador en revisión jurídica (T-093 / T-108)
+              Borrador en revisión jurídica
             </span>
             <span className="hidden rounded-full bg-blue-100 px-2.5 py-0.5 text-[11px] font-bold text-blue-900 sm:inline dark:bg-blue-950 dark:text-blue-300">
               Ley 1581 / SIC
@@ -66,7 +66,7 @@ export default function PoliticaPrivacidadPage() {
               <p className="mt-1 leading-relaxed">
                 Este texto corresponde al borrador operativo de privacidad de ViajaPro CRM. Antes
                 del despliegue en producción con agencias reales, debe ser refrendado por asesoría
-                jurídica especializada en derecho de protección de datos en Colombia (Tarea T-093).
+                jurídica especializada en derecho de protección de datos en Colombia.
               </p>
             </div>
           </div>

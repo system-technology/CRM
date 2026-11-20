@@ -147,9 +147,6 @@ export function AsistenteOnboarding({
             <span className="rounded-full bg-teal-100 px-2.5 py-0.5 text-xs font-bold text-teal-800 dark:bg-teal-950 dark:text-teal-300">
               Paso a Paso
             </span>
-            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800 dark:bg-amber-950 dark:text-amber-300">
-              T-105
-            </span>
           </div>
           <h1 className="mt-1 text-2xl font-black tracking-tight text-neutral-900 sm:text-3xl dark:text-white">
             Bienvenido a ViajaPro: Configura tu Agencia

@@ -6,6 +6,8 @@ import type { DetalleDeArchivo, ReservaDelArchivo } from '@viajapro/contracts';
  * semáforo se vea. Sin netoUnidades: la demo se comporta como un rol sin permiso de neto.
  */
 const HORA = 3_600_000;
+/** Horas hasta el time limit del file 1043; la campana de avisos usa la misma cifra. */
+export const HORAS_HASTA_TIME_LIMIT_FILE_1043 = 9;
 const en = (horas: number): string => new Date(Date.now() + horas * HORA).toISOString();
 
 function reserva(
@@ -38,8 +40,8 @@ const R1 = reserva({
   localizador: 'CT-48213',
   estado: 'CONFIRMADA',
   confirmadaEn: en(-30),
-  timeLimit: en(9),
-  plazoVigente: en(9),
+  timeLimit: en(HORAS_HASTA_TIME_LIMIT_FILE_1043),
+  plazoVigente: en(HORAS_HASTA_TIME_LIMIT_FILE_1043),
   semaforo: 'MENOS_DE_24_H',
 });
 const R2 = reserva({

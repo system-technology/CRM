@@ -112,7 +112,7 @@ export const MOCK_CONFIGURACION_WABA: ConfiguracionWaba = {
   phoneNumberId: '109847291827462',
   wabaId: '384918273948572',
   numeroE164: '+573009123456',
-  nombreVisible: 'Viajes Aventura Colombia SAS',
+  nombreVisible: 'Viajes El Sol',
   calidad: 'GREEN',
   estado: 'CONECTADO',
   webhookActivo: true,
@@ -129,8 +129,8 @@ export const MOCK_CONFIGURACION_SLA: ConfiguracionSla = {
 };
 
 export const MOCK_CONFIGURACION_AGENCIA: ConfiguracionAgencia = {
-  razonSocial: 'Viajes Aventura Colombia S.A.S.',
-  nombreComercial: 'ViajaPro Aventura',
+  razonSocial: 'Viajes El Sol S.A.S.',
+  nombreComercial: 'Viajes El Sol',
   nit: '901.482.910-3',
   monedaBase: 'COP',
   zonaHoraria: 'America/Bogota',

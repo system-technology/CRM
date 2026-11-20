@@ -12,6 +12,8 @@ import {
 } from '@viajapro/contracts';
 import { obtenerBaseApi } from './api-base';
 import { cabecerasDeTenantDev } from './cabeceras-tenant';
+import { estaUsandoApiReal } from './crm-api';
+import { crearResumenDeReportesDemo } from './mock-reportes-resumen';
 import type { RangoDeInstantes } from './reportes-periodo';
 
 export class ErrorReportesApi extends Error {
@@ -37,6 +39,9 @@ export async function obtenerResumenDeReportesApi(
       consulta.error.issues[0]?.message ?? 'El rango del reporte no es válido.',
     );
   }
+
+  // Demostración: datos de maqueta con la forma del contrato; con la API real nunca se simula.
+  if (!estaUsandoApiReal()) return crearResumenDeReportesDemo(consulta.data);
 
   const params = new URLSearchParams({ desde: consulta.data.desde, hasta: consulta.data.hasta });
   let res: Response;
@@ -87,6 +92,7 @@ export async function obtenerResumenDeReportesApi(
  * formato) devuelve `null` y quien llama usa el respaldo; nunca rompe el reporte.
  */
 export async function obtenerZonaHorariaAgenciaApi(senal?: AbortSignal): Promise<string | null> {
+  if (!estaUsandoApiReal()) return 'America/Bogota';
   try {
     const res = await fetch(`${obtenerBaseApi()}/api/v1/agencia/ajustes`, {
       method: 'GET',

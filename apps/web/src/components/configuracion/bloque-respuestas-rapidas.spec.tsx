@@ -11,11 +11,11 @@ describe('BloqueRespuestasRapidas — Administración por Agencia (T-104)', () =
     vi.restoreAllMocks();
   });
 
-  it('1. Renderiza el título, distintivo T-104 y listado inicial por defecto', () => {
+  it('1. Renderiza el título, sin ID de tarea y listado inicial por defecto', () => {
     render(<BloqueRespuestasRapidas tenantId="agencia-test" nombreAgencia="Viajes El Sol" />);
 
     expect(screen.getByText('Respuestas Rápidas para la Bandeja')).toBeDefined();
-    expect(screen.getByText('T-104')).toBeDefined();
+    expect(screen.queryByText('T-104')).toBeNull();
     expect(screen.getByText(/6 disponibles/i)).toBeDefined();
 
     // Debe mostrar los atajos predeterminados
@@ -29,7 +29,7 @@ describe('BloqueRespuestasRapidas — Administración por Agencia (T-104)', () =
     expect(
       screen.getByText(/Estado de Persistencia: Almacenamiento Local de Agencia Activo/i),
     ).toBeDefined();
-    expect(screen.getByText(/endpoint de API de Respuestas Rápidas \(T-078\)/i)).toBeDefined();
+    expect(screen.getByText(/endpoint de API de Respuestas Rápidas/i)).toBeDefined();
   });
 
   it('3. Filtra respuestas al seleccionar una categoría específica', () => {

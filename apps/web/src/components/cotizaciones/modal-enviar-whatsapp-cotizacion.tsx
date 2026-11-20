@@ -116,9 +116,6 @@ export function ModalEnviarWhatsAppCotizacion({
                 >
                   Enviar Cotización por WhatsApp
                 </h2>
-                <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-                  T-107
-                </span>
               </div>
               <p className="text-xs text-neutral-500 dark:text-neutral-400">
                 Canal oficial de turismo Meta Cloud API — Propuesta comercial sin filtración de

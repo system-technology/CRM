@@ -187,14 +187,6 @@ export function FormularioIngreso() {
 
           {/* Insignias de confianza con aro dorado */}
           <div className="mt-8 flex flex-wrap items-center gap-3">
-            <div className="inline-flex items-center gap-2 rounded-xl border border-[#C9A24B]/50 bg-white/10 px-3.5 py-2 text-xs font-medium text-white shadow-xs backdrop-blur-md">
-              <span className="relative flex h-2 w-2">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75 motion-reduce:animate-none" />
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
-              </span>
-              <span>Uptime 99.9% en vivo</span>
-            </div>
-
             <div className="inline-flex items-center gap-2 rounded-xl border border-cyan-400/30 bg-white/10 px-3.5 py-2 text-xs font-medium text-white shadow-xs backdrop-blur-md">
               <MessageSquare className="h-3.5 w-3.5 text-cyan-300" aria-hidden="true" />
               <span>WhatsApp Cloud API</span>
@@ -202,14 +194,14 @@ export function FormularioIngreso() {
 
             <div className="inline-flex items-center gap-2 rounded-xl border border-cyan-400/30 bg-white/10 px-3.5 py-2 text-xs font-medium text-white shadow-xs backdrop-blur-md">
               <ShieldCheck className="h-3.5 w-3.5 text-[#FDE68A]" aria-hidden="true" />
-              <span>Aislamiento RLS Multi-tenant</span>
+              <span>Datos de tu agencia, separados de las demás</span>
             </div>
           </div>
         </div>
 
         {/* Bottom: Cita / Garantía */}
         <div className="relative z-10 flex items-center justify-between border-t border-white/15 pt-4 text-xs text-cyan-200/80">
-          <span>Diseñado para agencias mayoristas y receptivas en Colombia</span>
+          <span>Diseñado para la agencia minorista que revende paquetes en Colombia</span>
           <span className="font-semibold text-white/90">San Andrés · Cartagena · Santa Marta</span>
         </div>
       </section>

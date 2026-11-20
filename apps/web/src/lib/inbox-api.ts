@@ -52,6 +52,7 @@ import {
   enviarCotizacionMock,
   enviarTextoMock,
   obtenerConversacionDetalleMock,
+  obtenerContadoresMock,
 } from './mock-inbox';
 
 // BASE_API sustituido por obtenerBaseApi() (ADR-0011 §2)
@@ -174,13 +175,7 @@ export const inboxApi = {
    */
   obtenerContadores: async (): Promise<ContadoresBandeja> => {
     if (!estaUsandoApiRealInbox()) {
-      return {
-        todas: 0,
-        mias: 0,
-        sinAsignar: 0,
-        conversacionesSinLeer: 0,
-        mensajesSinLeer: 0,
-      };
+      return obtenerContadoresMock();
     }
     const bruto = await pedirInbox<unknown>('/api/v1/conversaciones/contadores');
     return EsquemaContadoresBandeja.parse(bruto);

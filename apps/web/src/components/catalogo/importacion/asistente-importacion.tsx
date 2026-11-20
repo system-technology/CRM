@@ -302,7 +302,7 @@ export function AsistenteImportacion({
                 id="titulo-asistente-importacion"
                 className="text-base font-bold text-neutral-900 dark:text-white"
               >
-                Asistente de Importación de Catálogo (T-029)
+                Asistente de Importación de Catálogo
               </h2>
               <p className="text-xs text-neutral-500 dark:text-neutral-400">
                 Paso {paso} de 4 —{' '}
