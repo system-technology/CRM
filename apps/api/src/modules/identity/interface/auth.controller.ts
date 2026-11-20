@@ -32,6 +32,7 @@ import { CambiarAgenciaActiva } from '../application/cambiar-agencia-activa.use-
 import { ObtenerSesionActual } from '../application/sesion-actual.use-case.js';
 import {
   claveDeLimite,
+  ContadorDeFallosDeCodigo,
   LimitadorDeEnvios,
   politicaDeEnvioDeCodigos,
   TopeDeFallosDeCodigo,
@@ -54,6 +55,7 @@ export class AuthController {
     @Inject(ObtenerSesionActual) private readonly sesionActual: ObtenerSesionActual,
     @Inject(CambiarAgenciaActiva) private readonly cambiarAgencia: CambiarAgenciaActiva,
     @Inject(LimitadorDeEnvios) private readonly limitador: LimitadorDeEnvios,
+    @Inject(ContadorDeFallosDeCodigo) private readonly fallos: ContadorDeFallosDeCodigo,
   ) {}
 
   @Post('sign-in/email')
@@ -107,7 +109,7 @@ export class AuthController {
     // Tope diario de fallos por correo (no por IP: rotar direcciones no lo esquiva). Agotado,
     // se rechaza incluso el código correcto, con el mismo error que un código erróneo y sin
     // llegar a Better Auth: no revela si el correo existe.
-    const tope = new TopeDeFallosDeCodigo(this.limitador, leerSecretoDeAutenticacion(process.env));
+    const tope = new TopeDeFallosDeCodigo(this.fallos, leerSecretoDeAutenticacion(process.env));
     if (await tope.estaBloqueado(body.correo)) throw errorDeAcceso('CODIGO_INVALIDO');
     const respuesta = await this.llamarABetterAuth(req, '/sign-in/email-otp', {
       email: body.correo,

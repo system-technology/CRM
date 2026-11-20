@@ -69,18 +69,32 @@ export function claveDeLimite(
 export const TOPE_DE_FALLOS_DE_CODIGO = { maximo: 10, ventanaSegundos: 24 * 60 * 60 } as const;
 
 /**
+ * Lo que `TopeDeFallosDeCodigo` necesita de un contador: el mismo par de operaciones que
+ * `LimitadorDeEnvios`, que por tanto también lo cumple (se usa en las pruebas). En producción el
+ * contador de fallos vive en Postgres (`ContadorDeFallosPostgres`), no en Redis ni en memoria.
+ */
+export abstract class ContadorDeFallosDeCodigo {
+  /** Cuenta un fallo bajo `clave`. `true` si todavía cabe en `maximo`. */
+  abstract consumir(clave: string, maximo: number, ventanaSegundos: number): Promise<boolean>;
+  /** `true` si la cuenta vigente de `clave` es menor que `maximo`. No consume. */
+  abstract quedaCupo(clave: string, maximo: number): Promise<boolean>;
+}
+
+/**
  * Cuenta los fallos de verificación por correo y, agotado el tope, hace que la ruta rechace
- * también el código correcto hasta que venza la ventana (ventana fija: abre con el primer fallo).
+ * también el código correcto hasta que venza la ventana (24 h desde cada fallo).
  *
- * **Modo único (ADR-0019, sin Redis):** el limitador es en memoria, así que un reinicio del
- * proceso pone a cero la ventana. Es aceptable con un solo proceso y reinicios poco frecuentes;
- * en `escalado` el contador vive en Redis y sobrevive.
+ * **Sobrevive a reinicios.** En producción el contador es `ContadorDeFallosPostgres` (tabla
+ * `verificaciones`), también en modo único: el plan gratuito duerme el proceso a los 15 minutos y
+ * un contador en memoria se pondría a cero justo cuando el atacante lo provoca. Si la base falla,
+ * falla cerrado (la petición da error; nunca se concede). Lo que NO sobrevive a un reinicio en
+ * modo único es el límite de envíos de código y el límite por IP de Better Auth (T-301).
  *
  * El contador sube exista o no la cuenta, para que el bloqueo no revele si el correo existe.
  */
 export class TopeDeFallosDeCodigo {
   constructor(
-    private readonly limitador: LimitadorDeEnvios,
+    private readonly contador: ContadorDeFallosDeCodigo,
     private readonly secreto: string,
   ) {}
 
@@ -90,12 +104,12 @@ export class TopeDeFallosDeCodigo {
 
   /** `true` si el correo agotó su tope: no se debe ni consultar a Better Auth. */
   async estaBloqueado(correo: string): Promise<boolean> {
-    return !(await this.limitador.quedaCupo(this.clave(correo), TOPE_DE_FALLOS_DE_CODIGO.maximo));
+    return !(await this.contador.quedaCupo(this.clave(correo), TOPE_DE_FALLOS_DE_CODIGO.maximo));
   }
 
   /** Cuenta un fallo de verificación (código erróneo, caducado o sin identidad). */
   async registrarFallo(correo: string): Promise<void> {
-    await this.limitador.consumir(
+    await this.contador.consumir(
       this.clave(correo),
       TOPE_DE_FALLOS_DE_CODIGO.maximo,
       TOPE_DE_FALLOS_DE_CODIGO.ventanaSegundos,

@@ -47,7 +47,9 @@ export interface OpcionesDeAuth {
 /**
  * Longitud, vigencia e intentos del código por correo. Corto y de pocos intentos a propósito.
  * Los `intentos` son por código; el tope por correo y día (10 fallos en 24 h) vive aparte, en
- * `TopeDeFallosDeCodigo` (`application/limitador-de-envios.ts`).
+ * `TopeDeFallosDeCodigo` (`application/limitador-de-envios.ts`), con el contador en Postgres:
+ * sobrevive a reinicios, también en modo único. El límite por IP de abajo (`rateLimit`) es de
+ * Better Auth, en memoria, y un reinicio lo pone a cero (T-301).
  */
 export const CODIGO_DE_CORREO = { longitud: 6, vigenciaSegundos: 5 * 60, intentos: 3 } as const;
 
