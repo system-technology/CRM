@@ -17,6 +17,15 @@ import {
   PuertoMiembros,
 } from './domain/puertos-de-miembros.js';
 import { AceptarInvitacionUseCase } from './application/aceptar-invitacion.use-case.js';
+import { CambiarApodoDeMiembroUseCase } from './application/cambiar-apodo-de-miembro.use-case.js';
+import { GuardiaDeApodos } from './application/guardia-de-apodos.js';
+import { IngresoPorIdentificador } from './application/ingreso-por-identificador.js';
+import { TopeDeFallosDeIngreso } from './application/tope-de-fallos-de-ingreso.js';
+import { PuertoApodos, PuertoCatalogoDeApodos } from './domain/puertos-de-apodos.js';
+import { ApodosPrisma } from './infrastructure/apodos.prisma.js';
+import { CatalogoDeApodosPrisma } from './infrastructure/catalogo-de-apodos.prisma.js';
+import { ComprobarApodosAlArrancar } from './infrastructure/comprobar-apodos-al-arrancar.js';
+import { leerSecretoDeAutenticacion } from './infrastructure/crear-auth.js';
 import { DarDeBajaMiembroUseCase } from './application/dar-de-baja-miembro.use-case.js';
 import { ListarMiembrosAsignablesUseCase } from './application/listar-miembros-asignables.use-case.js';
 import { ListarMiembrosUseCase } from './application/listar-miembros.use-case.js';
@@ -73,6 +82,18 @@ import { AgenciaAjustesController } from './interface/agencia-ajustes.controller
     InvitarMiembroUseCase,
     AceptarInvitacionUseCase,
     DarDeBajaMiembroUseCase,
+    CambiarApodoDeMiembroUseCase,
+    GuardiaDeApodos,
+    IngresoPorIdentificador,
+    ComprobarApodosAlArrancar,
+    {
+      provide: TopeDeFallosDeIngreso,
+      useFactory: (contador: ContadorDeFallosDeCodigo) =>
+        new TopeDeFallosDeIngreso(contador, leerSecretoDeAutenticacion(process.env)),
+      inject: [ContadorDeFallosDeCodigo],
+    },
+    { provide: PuertoApodos, useClass: ApodosPrisma },
+    { provide: PuertoCatalogoDeApodos, useClass: CatalogoDeApodosPrisma },
     ListarMiembrosUseCase,
     ListarMiembrosAsignablesUseCase,
     AjustesDeAgenciaUseCase,

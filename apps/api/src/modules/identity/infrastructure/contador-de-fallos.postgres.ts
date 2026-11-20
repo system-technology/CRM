@@ -8,7 +8,7 @@ const VENCIDAS_POR_BARRIDO = 100;
 /**
  * Contador de fallos del código en Postgres, sin migración: una fila de `verificaciones` (tabla
  * global del rol `viajapro_identidad`, R2) por cada fallo, con `identificador` = la clave HMAC
- * (`viajapro:otp-fallos:...`, nunca el correo en claro), `valor` = '1' y `expira_en` = ahora + la
+ * (`viajapro:otp-fallos:...` o `viajapro:ingreso-fallos:...`, nunca el correo ni el apodo en claro), `valor` = '1' y `expira_en` = ahora + la
  * ventana. Bloqueado = filas vigentes >= máximo. No choca con las filas de Better Auth, cuyo
  * identificador es `sign-in-otp-<correo>`.
  *
@@ -24,18 +24,25 @@ export class ContadorDeFallosPostgres extends ContadorDeFallosDeCodigo {
     super();
   }
 
-  async consumir(clave: string, maximo: number, ventanaSegundos: number): Promise<boolean> {
+  async consumir(
+    clave: string,
+    maximo: number,
+    ventanaSegundos: number,
+    prefijoDelBarrido: string,
+  ): Promise<boolean> {
     // Primero contar: el fallo ya ocurrió (Better Auth comparó el código) y no puede quedar sin
     // registrar porque falle la limpieza.
     await this.prisma.$executeRaw`
       INSERT INTO verificaciones (id, identificador, valor, expira_en, creado_en, actualizado_en)
       VALUES (gen_random_uuid(), ${clave}, '1', now() + make_interval(secs => ${ventanaSegundos}), now(), now())`;
     // Barrido oportunista de filas vencidas de este prefijo (con LIMIT). Si falla, no impide contar.
+    // El prefijo lo pone cada tope (constantes sin `%` ni `_`), nunca una entrada externa.
+    const patron = `${prefijoDelBarrido}%`;
     try {
       await this.prisma.$executeRaw`
         DELETE FROM verificaciones
          WHERE id IN (SELECT id FROM verificaciones
-                       WHERE identificador LIKE 'viajapro:otp-fallos:%' AND expira_en <= now()
+                       WHERE identificador LIKE ${patron} AND expira_en <= now()
                        LIMIT ${VENCIDAS_POR_BARRIDO})`;
     } catch (error) {
       this.log.warn(

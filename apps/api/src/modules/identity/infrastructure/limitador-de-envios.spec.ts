@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   claveDeLimite,
   politicaDeEnvioDeCodigos,
+  PREFIJO_DE_FALLOS,
+  PREFIJO_DE_FALLOS_DE_INGRESO,
   TOPE_DE_FALLOS_DE_CODIGO,
   TopeDeFallosDeCodigo,
 } from '../application/limitador-de-envios.js';
@@ -213,11 +215,27 @@ describe('ContadorDeFallosPostgres', () => {
     const c = new ContadorDeFallosPostgres(prisma);
     for (let i = 0; i < 5; i++) expect(await c.quedaCupo('k', 10)).toBe(true);
     expect(filas).toHaveLength(0);
-    for (let i = 0; i < 9; i++) await c.consumir('k', 10, 86400);
+    for (let i = 0; i < 9; i++) await c.consumir('k', 10, 86400, PREFIJO_DE_FALLOS);
     expect(await c.quedaCupo('k', 10)).toBe(true);
-    expect(await c.consumir('k', 10, 86400)).toBe(true);
+    expect(await c.consumir('k', 10, 86400, PREFIJO_DE_FALLOS)).toBe(true);
     expect(await c.quedaCupo('k', 10)).toBe(false);
-    expect(await c.consumir('k', 10, 86400)).toBe(false);
+    expect(await c.consumir('k', 10, 86400, PREFIJO_DE_FALLOS)).toBe(false);
+  });
+
+  it('T-370: el barrido purga el prefijo que recibe (también el del ingreso) y solo ese', async () => {
+    const barridos: Array<{ sql: string; valores: unknown[] }> = [];
+    const prisma = {
+      $executeRaw: (t: TemplateStringsArray, ...v: unknown[]) => {
+        barridos.push({ sql: t.join('?'), valores: v });
+        return Promise.resolve(1);
+      },
+      $queryRaw: () => Promise.resolve([{ n: 1 }]),
+    } as unknown as PrismaIdentidadService;
+    const c = new ContadorDeFallosPostgres(prisma);
+    await c.consumir('k', 10, 60, PREFIJO_DE_FALLOS);
+    await c.consumir('k', 10, 60, PREFIJO_DE_FALLOS_DE_INGRESO);
+    const patrones = barridos.filter((b) => /DELETE/.test(b.sql)).map((b) => b.valores[0]);
+    expect(patrones).toEqual(['viajapro:otp-fallos:%', 'viajapro:ingreso-fallos:%']);
   });
 
   it('sobrevive a «reiniciar»: una instancia nueva sobre la misma base ve el bloqueo', async () => {
@@ -237,7 +255,7 @@ describe('ContadorDeFallosPostgres', () => {
 
   it('inserta primero, barre vencidas con LIMIT y la limpieza fallida no impide contar', async () => {
     const { prisma, sqls } = baseFalsa();
-    await new ContadorDeFallosPostgres(prisma).consumir('k', 10, 60);
+    await new ContadorDeFallosPostgres(prisma).consumir('k', 10, 60, PREFIJO_DE_FALLOS);
     expect(sqls[0]).toMatch(/INSERT INTO verificaciones/);
     expect(sqls[1]).toMatch(/DELETE FROM verificaciones[\s\S]*LIMIT/);
 
@@ -252,9 +270,9 @@ describe('ContadorDeFallosPostgres', () => {
       },
       $queryRaw: () => Promise.resolve([{ n: 1 }]),
     } as unknown as PrismaIdentidadService;
-    await expect(new ContadorDeFallosPostgres(sinBarrido).consumir('k', 10, 60)).resolves.toBe(
-      true,
-    );
+    await expect(
+      new ContadorDeFallosPostgres(sinBarrido).consumir('k', 10, 60, PREFIJO_DE_FALLOS),
+    ).resolves.toBe(true);
     expect(sqlsConBarridoRoto[0]).toMatch(/INSERT/);
 
     // Consultar el cupo, en cambio, falla cerrado si la base falla; y registrar sin base lanza.
@@ -265,8 +283,8 @@ describe('ContadorDeFallosPostgres', () => {
     await expect(new ContadorDeFallosPostgres(rota).quedaCupo('k', 10)).rejects.toThrow(
       'base caída',
     );
-    await expect(new ContadorDeFallosPostgres(rota).consumir('k', 10, 60)).rejects.toThrow(
-      'base caída',
-    );
+    await expect(
+      new ContadorDeFallosPostgres(rota).consumir('k', 10, 60, PREFIJO_DE_FALLOS),
+    ).rejects.toThrow('base caída');
   });
 });

@@ -26,6 +26,9 @@ export type ResultadoDeAlta = 'creado' | 'reactivado' | 'ya_era_miembro';
 export type ResultadoDeBaja =
   'baja' | 'ya_de_baja' | 'no_encontrado' | 'ultimo_dueno' | { faltaPermiso: string };
 
+export type ResultadoDeCambioDeApodo =
+  'cambiado' | 'no_encontrado' | 'apodo_ocupado' | { faltaPermiso: string };
+
 export abstract class PuertoMiembros {
   /** Con el tenant de la PETICIÓN y bajo RLS: los miembros de esta agencia, activos primero. */
   abstract listar(): Promise<MiembroDeAgencia[]>;
@@ -59,6 +62,19 @@ export abstract class PuertoMiembros {
     usuarioId: string,
     permisosDeQuienLaDa: ReadonlySet<string>,
   ): Promise<ResultadoDeBaja>;
+  /**
+   * Con el tenant de la PETICIÓN y bajo RLS (ADR-0031 §2): fija o quita (`null`) el apodo de un
+   * miembro ACTIVO de esta agencia y deja el registro de auditoría, todo en una transacción.
+   * **Misma guarda que la baja**: nadie edita el apodo de quien tiene más permisos que él
+   * (`faltaPermiso`). `no_encontrado` si no existe aquí (uno de otra agencia no existe por RLS) o
+   * está de baja. `apodo_ocupado` si ya lo tiene otra persona (la restricción única, por nombre).
+   * El apodo no va al registro de auditoría.
+   */
+  abstract cambiarApodo(
+    usuarioId: string,
+    apodo: string | null,
+    permisosDeQuienLoCambia: ReadonlySet<string>,
+  ): Promise<ResultadoDeCambioDeApodo>;
 }
 
 export abstract class PuertoIdentidades {

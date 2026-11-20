@@ -20,6 +20,8 @@ export abstract class LimitadorDeEnvios {
 export const PREFIJO_DE_ENVIOS = 'viajapro:otp-envio:';
 /** Prefijo de los fallos de verificación: contador distinto del de envíos, nunca se mezclan. */
 export const PREFIJO_DE_FALLOS = 'viajapro:otp-fallos:';
+/** Prefijo de los fallos de ingreso con contraseña (ADR-0031 §4): un tercer contador, aparte. */
+export const PREFIJO_DE_FALLOS_DE_INGRESO = 'viajapro:ingreso-fallos:';
 
 export interface PoliticaDeEnvioDeCodigos {
   porCorreo: { maximo: number; ventanaSegundos: number };
@@ -52,7 +54,7 @@ export function politicaDeEnvioDeCodigos(
  */
 export function claveDeLimite(
   secreto: string,
-  tipo: 'correo' | 'ip',
+  tipo: 'correo' | 'ip' | 'identidad' | 'identificador',
   valor: string,
   prefijo: string = PREFIJO_DE_ENVIOS,
 ): string {
@@ -74,8 +76,17 @@ export const TOPE_DE_FALLOS_DE_CODIGO = { maximo: 10, ventanaSegundos: 24 * 60 *
  * contador de fallos vive en Postgres (`ContadorDeFallosPostgres`), no en Redis ni en memoria.
  */
 export abstract class ContadorDeFallosDeCodigo {
-  /** Cuenta un fallo bajo `clave`. `true` si todavía cabe en `maximo`. */
-  abstract consumir(clave: string, maximo: number, ventanaSegundos: number): Promise<boolean>;
+  /**
+   * Cuenta un fallo bajo `clave`. `true` si todavía cabe en `maximo`. `prefijoDelBarrido` es el
+   * prefijo de las claves de este contador: el barrido oportunista de filas vencidas solo purga
+   * las que lo llevan (T-370: sin él, las de un contador nuevo no se purgarían nunca).
+   */
+  abstract consumir(
+    clave: string,
+    maximo: number,
+    ventanaSegundos: number,
+    prefijoDelBarrido: string,
+  ): Promise<boolean>;
   /** `true` si la cuenta vigente de `clave` es menor que `maximo`. No consume. */
   abstract quedaCupo(clave: string, maximo: number): Promise<boolean>;
 }
@@ -113,6 +124,7 @@ export class TopeDeFallosDeCodigo {
       this.clave(correo),
       TOPE_DE_FALLOS_DE_CODIGO.maximo,
       TOPE_DE_FALLOS_DE_CODIGO.ventanaSegundos,
+      PREFIJO_DE_FALLOS,
     );
   }
 }
