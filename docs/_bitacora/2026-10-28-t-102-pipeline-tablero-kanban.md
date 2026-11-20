@@ -10,7 +10,7 @@ El asesor y líder comercial de la agencia de viajes requiere visualizar el embu
    - Recálculo dinámico de `valorTotal` y `total` en `moverOportunidadEnTablero` tanto para la columna de origen como para la columna de destino al mover oportunidades comerciales.
 
 2. **Tablero Kanban con Drag & Drop, Menú por Teclado y Reversión Optimista:**
-   - En `apps/web/src/app/pipeline/page.tsx`, `ejecutarMovimiento` aplica una actualización optimista inmediata en la UI y persiste el cambio en `moverOportunidadDeEtapa`. Si la API rechaza o falla la petición, se revierte automáticamente el estado del tablero (`setTablero(tableroPrevio)`) y se notifica al usuario con un aviso descriptivo accesible.
+   - En `apps/web/src/app/(app)/pipeline/page.tsx`, `ejecutarMovimiento` aplica una actualización optimista inmediata en la UI y persiste el cambio en `moverOportunidadDeEtapa`. Si la API rechaza o falla la petición, se revierte automáticamente el estado del tablero (`setTablero(tableroPrevio)`) y se notifica al usuario con un aviso descriptivo accesible.
    - Soporte para drag & drop nativo HTML5 en `ColumnaKanban` con realce visual de zona activa y captura de drop.
    - Soporte para movimiento por teclado en `TarjetaOportunidad` mediante botón y menú desplegable accesible con todas las etapas configuradas por la agencia.
    - Activación obligatoria de `ModalMotivoPerdida` al mover hacia etapas marcadas con `esPerdida: true`, exigiendo motivo tipado del contrato y detalle para el caso `OTRO`.

@@ -28,7 +28,7 @@
    - Estados de carga (skeleton animado), error con botón de reintento y estado vacío ilustrado cuando no hay tareas pendientes.
    - 6/6 pruebas unitarias pasando en `bloque-seguimientos-dia.spec.tsx`.
 
-4. **Integración en la Página Principal (`apps/web/src/app/page.tsx` y `page.spec.tsx`):**
+4. **Integración en la Página Principal (`apps/web/src/app/(app)/page.tsx` y `page.spec.tsx`):**
    - Integrado `obtenerPendientesDelDiaApi` junto a `obtenerConversacionesBandeja`, `obtenerOportunidadesPipeline` y `obtenerCotizacionesApi` usando el tenant de sesión.
    - Las tres tarjetas principales enlazan a sus pantallas filtradas (`/bandeja`, `/pipeline`, `/cotizaciones`) y reflejan datos reales con estados cargando, error y vacío.
    - Manejo del estado local para actualizar instantáneamente la lista de pendientes cuando un asesor completa un seguimiento desde el dashboard sin requerir recargar la página.

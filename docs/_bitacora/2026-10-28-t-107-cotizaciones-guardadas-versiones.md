@@ -38,10 +38,10 @@ La tarea T-107 del roadmap v2 («Fase 1: Un CRM mostrable y endurecido») requer
   - Botón de copiado al portapapeles.
   - Aviso de ventana de 24 horas de Meta.
   - Botón para abrir y enviar por WhatsApp (`window.open` con `wa.me`) y marcar la cotización como `ENVIADA`.
-- `apps/web/src/app/cotizaciones/page.tsx`:
+- `apps/web/src/app/(app)/cotizaciones/page.tsx`:
   - Botones de acción rápida en tarjetas móviles y tabla de escritorio para enviar por WhatsApp y duplicar cotización.
   - Feedback visual con banners de notificación accesibles.
-- `apps/web/src/app/cotizaciones/[id]/page.tsx`:
+- `apps/web/src/app/(app)/cotizaciones/[id]/page.tsx`:
   - Integración del hook `usePermisos` y evaluación de `puedeVerNetoYMargen`.
   - Panel «Auditoría Interna de Margen Comercial (ADR-0011)» renderizado condicionalmente y omitido al 100% del DOM para usuarios sin permiso.
   - Columnas de «Neto Unit.» y «Margen Unit.» restringidas exclusivamente a usuarios autorizados.

@@ -51,19 +51,19 @@
 
 ## Qué se construyó y optimizó
 1. **Carga diferida (`next/dynamic`) de componentes pesados y modales:**
-   - **Reportes (`apps/web/src/app/reportes/page.tsx`):**
+   - **Reportes (`apps/web/src/app/(app)/reportes/page.tsx`):**
      - Carga diferida de `ReportesReales` con esqueleto de carga accesible (`EsqueletoReportes`).
-   - **Cotizador (`apps/web/src/app/cotizador/page.tsx`):**
+   - **Cotizador (`apps/web/src/app/(app)/cotizador/page.tsx`):**
      - Carga diferida de `ModalGuardarCotizacion`.
-   - **Catálogo (`apps/web/src/app/catalogo/page.tsx`):**
+   - **Catálogo (`apps/web/src/app/(app)/catalogo/page.tsx`):**
      - Carga diferida de modales pesados, asistentes y tablas secundarias: `DescargaPlantillas`, `AsistenteImportacion`, `FichaDetallePaquete`, `ModalFormularioPaquete`, `DialogoDesactivarPaquete` y `TablaGestionCatalogo`.
-   - **Configuración (`apps/web/src/app/configuracion/page.tsx`):**
+   - **Configuración (`apps/web/src/app/(app)/configuracion/page.tsx`):**
      - Carga diferida de los 7 bloques de configuración por pestaña: `BloquePoliticaPrecio`, `BloqueAjustesCatalogo`, `BloqueEtapasPipeline`, `BloqueCamposPersonalizados`, `BloqueEquipo`, `BloqueRespuestasRapidas` y `BloqueConexionWhatsapp`.
-   - **Detalle de Cotización (`apps/web/src/app/cotizaciones/[id]/page.tsx`):**
+   - **Detalle de Cotización (`apps/web/src/app/(app)/cotizaciones/[id]/page.tsx`):**
      - Carga diferida de `ModalEnviarWhatsAppCotizacion` y `ModalCompararVersiones`.
-   - **Ficha 360 del Contacto (`apps/web/src/app/contactos/[id]/page.tsx`):**
+   - **Ficha 360 del Contacto (`apps/web/src/app/(app)/contactos/[id]/page.tsx`):**
      - Carga diferida de modales y paneles secundarios: `ModalEditarContacto`, `ModalCrearOportunidad`, `ModalCrearSeguimiento` y `PanelConsentimientosContacto`.
-   - **Bandeja de Conversación (`apps/web/src/app/bandeja/[id]/page.tsx`):**
+   - **Bandeja de Conversación (`apps/web/src/app/(app)/bandeja/[id]/page.tsx`):**
      - Carga diferida de modales de acción: `ModalReasignar`, `ModalPlantillas`, `ModalEnviarCotizacion`, `ModalCrearOportunidad` y `ModalEditarContacto`.
 
 2. **Medición del tamaño de JS por ruta (`next build`) y comparativa de rendimiento:**
@@ -130,11 +130,11 @@
    - Garantizado: trampa de foco (focus trap con Tab / Shift+Tab), cierre inmediato con `Escape`, y devolución automática de foco al elemento disparador (trigger).
 
 2. **Etiquetas y asociación de errores (`aria-describedby`, `aria-invalid`, `role="alert"`):**
-   - Cotizador (`apps/web/src/app/cotizador/page.tsx`):
+   - Cotizador (`apps/web/src/app/(app)/cotizador/page.tsx`):
      - Selector de opciones de salida con `aria-invalid`, `aria-describedby="aviso-elegir-opcion"` y anuncio dinámico con `role="alert"`.
      - Steppers de pasajeros agrupados bajo `role="group" aria-label="Composición del grupo de pasajeros"`, botones con `aria-label="Aumentar adultos"`, `aria-label="Disminuir adultos"` (y niños / infantes), y contadores con `aria-live="polite"` y `aria-atomic="true"`.
      - Mensajes de error de cotización con `role="alert"` y `aria-live="assertive"`.
-   - Catálogo (`apps/web/src/app/catalogo/page.tsx` y componentes de gestión):
+   - Catálogo (`apps/web/src/app/(app)/catalogo/page.tsx` y componentes de gestión):
      - Navegación de secciones con `role="tablist"`, `role="tab"`, `aria-selected` y `role="tabpanel"`.
      - Campos de búsqueda y filtrado con `aria-label` explícito y visible.
      - `ModalFormularioPaquete`: errores de validación asociados a cada input mediante `aria-invalid="true"` y `aria-describedby="error-campo-..."` apuntando a mensajes con `role="alert"`.
@@ -262,9 +262,9 @@
      - `descargarArchivoCSV(contenido, nombreArchivo)`: genera Blob de tipo `text/csv;charset=utf-8` y dispara la descarga nativa en el navegador.
 
 2. **Botón accesible «Exportar CSV» en cada listado:**
-   - **Contactos (`apps/web/src/app/contactos/page.tsx`):** botón «Exportar CSV» junto a la barra de filtros, descargando los contactos visibles respetando filtros aplicados.
-   - **Pipeline de Oportunidades (`apps/web/src/app/pipeline/page.tsx`):** botón «Exportar CSV» junto a los filtros de búsqueda y asesor, exportando todas las oportunidades del embudo.
-   - **Listado de Cotizaciones (`apps/web/src/app/cotizaciones/page.tsx`):** botón «Exportar CSV» junto a los filtros de estado, respetando el permiso `cotizacion.ver_neto_y_margen` del usuario activo.
+   - **Contactos (`apps/web/src/app/(app)/contactos/page.tsx`):** botón «Exportar CSV» junto a la barra de filtros, descargando los contactos visibles respetando filtros aplicados.
+   - **Pipeline de Oportunidades (`apps/web/src/app/(app)/pipeline/page.tsx`):** botón «Exportar CSV» junto a los filtros de búsqueda y asesor, exportando todas las oportunidades del embudo.
+   - **Listado de Cotizaciones (`apps/web/src/app/(app)/cotizaciones/page.tsx`):** botón «Exportar CSV» junto a los filtros de estado, respetando el permiso `cotizacion.ver_neto_y_margen` del usuario activo.
 
 3. **Pruebas y verificación:**
    - 13 pruebas unitarias exhaustivas en `apps/web/src/lib/exportar-csv.spec.ts`:
@@ -300,12 +300,12 @@
    - Soporte para exploración en modo demo (`esModoDemo()`) concediendo permisos de mutación si no hay sesión.
 
 2. **Deshabilitación con explicación en la interfaz:**
-   - **Bandeja de WhatsApp (`apps/web/src/app/bandeja/[id]/page.tsx`):**
+   - **Bandeja de WhatsApp (`apps/web/src/app/(app)/bandeja/[id]/page.tsx`):**
      - Botones `Tomar`, `Soltar`, `Reasignar`, `Enviar cotización`, compositor textarea y botón de envío deshabilitados con mensaje explicativo si falta `bandeja.operar`.
      - Aviso visible accesible de sólo lectura en el compositor indicando que el rol actual no cuenta con el permiso `bandeja.operar`.
-   - **Ficha y Contactos (`apps/web/src/app/contactos/[id]/page.tsx`, `apps/web/src/components/crm/consentimientos.tsx`):**
+   - **Ficha y Contactos (`apps/web/src/app/(app)/contactos/[id]/page.tsx`, `apps/web/src/components/crm/consentimientos.tsx`):**
      - Botones `Editar Datos`, `Nueva Oportunidad`, `Agendar Seguimiento`, `Otorgar consentimiento` y `Revocar consentimiento` deshabilitados con título explicativo si falta `crm.escribir`.
-   - **Cotizador (`apps/web/src/app/cotizador/page.tsx`):**
+   - **Cotizador (`apps/web/src/app/(app)/cotizador/page.tsx`):**
      - Botón `Guardar Cotización Oficial` deshabilitado con título explicativo si falta `cotizacion.escribir`.
 
 3. **Pruebas y verificación:**
@@ -342,14 +342,14 @@
    - Cumple accesibilidad con área táctil mínima (>= 44px).
 
 3. **Integración en Bandeja y Modal Enviar Cotización:**
-   - En el compositor de `apps/web/src/app/bandeja/[id]/page.tsx`: integra `AlertaErrorEnvio` y sanitiza los motivos de fallo en los mensajes salientes para que el asesor nunca vea códigos crudos.
+   - En el compositor de `apps/web/src/app/(app)/bandeja/[id]/page.tsx`: integra `AlertaErrorEnvio` y sanitiza los motivos de fallo en los mensajes salientes para que el asesor nunca vea códigos crudos.
    - En `apps/web/src/components/bandeja/modal-enviar-cotizacion.tsx`: reemplaza el manejo crudo de errores con `interpretarErrorDeEnvio`, mostrando título, mensaje y acción sugerida ante cualquier fallo de la API.
 
 4. **Pruebas y verificación:**
    - `apps/web/src/lib/errores-de-envio.spec.ts` (24 pruebas): validación de cada código de error, extracción desde distintas estructuras, manejo de códigos desconocidos y verificación estricta de que ningún código crudo aparece en los textos visibles.
    - `apps/web/src/components/bandeja/alerta-error-envio.spec.tsx` (6 pruebas): renderizado accesible, acciones contextuales y descarte.
    - `apps/web/src/components/bandeja/modal-enviar-cotizacion.spec.tsx` (10 pruebas): validación de `VENTANA_CERRADA`, `CONSENTIMIENTO_REVOCADO`, `COTIZACION_DE_OTRO_CONTACTO` y códigos desconocidos en el modal.
-   - `apps/web/src/app/bandeja/bandeja-errores-envio.spec.tsx` (3 pruebas): integración en la página de conversación de bandeja.
+   - `apps/web/src/app/(app)/bandeja/bandeja-errores-envio.spec.tsx` (3 pruebas): integración en la página de conversación de bandeja.
    - Total de la suite web: 124 archivos y 1001 pruebas pasando en verde.
    - `pnpm typecheck` y `pnpm lint` en verde.
 
@@ -377,11 +377,11 @@
    - `PanelConsentimientosContacto`: tarjeta accesible por cada finalidad con badge de estado («Vigente» en verde esmeralda, «Revocado / No otorgado» en neutro), metadatos de trazabilidad (canal, fecha de otorgamiento/revocación, versión del aviso).
    - Botón accesible «Ver texto mostrado» con modal interactivo que despliega el texto exacto presentado al titular y la versión legal con el badge `[VERSIÓN: PENDIENTE_REVISION_LEGAL]`.
    - Botones «Otorgar consentimiento» y «Revocar consentimiento» con diálogo de confirmación preventiva, estados de carga y feedback accesible de errores.
-   - Integración en la Ficha 360 del Contacto (`apps/web/src/app/contactos/[id]/page.tsx`) mediante la pestaña dedicada `Consentimientos Ley 1581`.
+   - Integración en la Ficha 360 del Contacto (`apps/web/src/app/(app)/contactos/[id]/page.tsx`) mediante la pestaña dedicada `Consentimientos Ley 1581`.
 
 3. **Pruebas y verificación:**
    - 12/12 pruebas unitarias e interactivas en `apps/web/src/lib/consentimientos-logica.spec.ts`.
-   - 7/7 pruebas de la Ficha 360 en `apps/web/src/app/contactos/[id]/page.spec.tsx`.
+   - 7/7 pruebas de la Ficha 360 en `apps/web/src/app/(app)/contactos/[id]/page.spec.tsx`.
    - 121 suites y 965 pruebas de `@viajapro/web` pasando en verde.
    - `pnpm typecheck` y `pnpm lint` en verde.
 
@@ -403,11 +403,11 @@
    - `formatearTelefonoSegunRol`: muestra el teléfono completo a roles comerciales/administrativos (`DUENO`, `ASESOR`) y lo enmascara automáticamente para roles que no requieren ver el número completo (`OPERACIONES`, `SOLO_LECTURA`, `CONTABILIDAD`, `AUDITOR`).
    - `sanitizarPiiEnTexto`: redacta números telefónicos E.164 y números de pasaporte que pudieran filtrarse en textos de error o diagnóstico en el navegador (R10).
 
-2. **Integración en el directorio de contactos (`apps/web/src/lib/contactos-logica.ts`, `apps/web/src/app/contactos/page.tsx`):**
+2. **Integración en el directorio de contactos (`apps/web/src/lib/contactos-logica.ts`, `apps/web/src/app/(app)/contactos/page.tsx`):**
    - `formatearTelefonoVisual` recibe el rol activo de la sesión (`usePermisos`) y aplica `formatearTelefonoSegunRol`.
 
 3. **Pruebas y verificación:**
-   - Nuevas pruebas unitarias en `apps/web/src/lib/formato.spec.ts` y verificación de `apps/web/src/app/contactos/page.spec.tsx`.
+   - Nuevas pruebas unitarias en `apps/web/src/lib/formato.spec.ts` y verificación de `apps/web/src/app/(app)/contactos/page.spec.tsx`.
    - `pnpm typecheck` y `pnpm lint` en verde.
 
 ## Qué quedó pendiente
@@ -428,7 +428,7 @@
    - `calcularCuentaRegresivaVentana24h`: calcula horas y minutos restantes con reloj inyectable (`RelojInyectable`), clasificando el estado en `'abierta'` (> 2 h), `'ambar'` (<= 2 h y > 0 ms) y `'cerrada'` (vencida o cerrada por el servidor) con explicación detallada.
    - `evaluarReaperturaConPlantilla`: determina si el botón de plantilla de reapertura está habilitado (al menos una plantilla `APROBADA`) o deshabilitado con explicación clara si no hay ninguna plantilla aprobada.
 
-2. **Componentes de bandeja (`apps/web/src/components/bandeja/cuenta-regresiva-ventana-24h.tsx`) e integración en conversación (`apps/web/src/app/bandeja/[id]/page.tsx`):**
+2. **Componentes de bandeja (`apps/web/src/components/bandeja/cuenta-regresiva-ventana-24h.tsx`) e integración en conversación (`apps/web/src/app/(app)/bandeja/[id]/page.tsx`):**
    - `InsigniaCuentaRegresiva24h`: insignia de cabecera con horas y minutos restantes, transición a ámbar bajo 2 h y estado «Cerrada».
    - `BannerAvisoVentana24h`: franja preventiva en ámbar bajo 2 h con acceso directo a plantillas.
    - `CompositorVentanaCerrada24h`: bloque de compositor cerrado con explicación de la regla de 24 h de Meta, preservación de borrador y botón de plantilla de reapertura (deshabilitado cuando no hay plantilla aprobada).
@@ -457,13 +457,13 @@
    - **Garantía de cero datos de demostración en modo real:** si `modoDemo` es `false` y `origenDatosEsDemo` es `true`, todos los contadores se fuerzan a `0` (`datosDemoDescartadosEnModoReal: true`). Asimismo, `criterioFase1Cumplido` solo otorga la marca verde cuando las 3 metas se alcanzan en modo real (`!modoDemo`).
    - Funciones auxiliares `contarCotizacionesEnviadas` y `contarSeguimientosFechados` compatibles con los esquemas `PaginaDeCotizaciones` y `PaginaSeguimientos` de `@viajapro/contracts`.
 
-2. **Pantalla `/ensayo` (`apps/web/src/app/ensayo/page.tsx`):**
+2. **Pantalla `/ensayo` (`apps/web/src/app/(app)/ensayo/page.tsx`):**
    - Consulta directamente los endpoints reales (`/api/v1/conversaciones/contadores`, `/api/v1/cotizaciones`, `/api/v1/crm/seguimientos`) sin recurrir jamás a mocks cuando opera en modo real.
    - Muestra insignia de modo real (`insignia-modo-real-ensayo`), banner de marca verde al cumplir el criterio de Fase 1 (`marca-verde-fase-1`), tarjetas de progreso de los 3 contadores reales con barras y marcas individuales (`check-conversaciones`, `check-cotizaciones`, `check-seguimientos`) y accesos operativos al flujo del piloto.
 
 3. **Pruebas y verificación:**
    - 6/6 pruebas unitarias en `apps/web/src/lib/ensayo-logica.spec.ts`.
-   - 2/2 pruebas de interfaz en `apps/web/src/app/ensayo/page.spec.tsx`.
+   - 2/2 pruebas de interfaz en `apps/web/src/app/(app)/ensayo/page.spec.tsx`.
    - `pnpm typecheck` y `pnpm lint` en verde.
 
 ## Qué quedó pendiente
@@ -508,16 +508,16 @@
 
 ## Qué se construyó
 
-1. **Proyección de confidencialidad de cara al cliente (`proyectarVersionParaVistaCliente` en `apps/web/src/app/cotizaciones/[id]/imprimir/page.tsx`):**
+1. **Proyección de confidencialidad de cara al cliente (`proyectarVersionParaVistaCliente` en `apps/web/src/app/(impresion)/cotizaciones/[id]/imprimir/page.tsx`):**
    - Elimina de forma determinista cualquier campo de costo interno (`neto`), utilidad (`margen`) o reglas de marcaje (`politica`) del objeto `VersionDeCotizacion`, garantizando cumplimiento estricto de R10 / ADR-0011 incluso si quien abre la vista tiene rol Dueño.
 
-2. **Ruta de solo lectura e impresión A4 (`apps/web/src/app/cotizaciones/[id]/imprimir/page.tsx`):**
+2. **Ruta de solo lectura e impresión A4 (`apps/web/src/app/(impresion)/cotizaciones/[id]/imprimir/page.tsx`):**
    - Hoja editorial con reglas `@page { size: A4 portrait }`, marca e identificación fiscal de la agencia, código de referencia y vigencia (`vigenteHasta`), datos del viajero, resumen de salida y acomodación, tabla de desglose de tarifas en COP (`formatearDinero`), total de venta y condiciones comerciales/legales (Ley 679 de 2001 y aviso de impuestos en destino no incluidos).
    - Barra de herramientas superior (`print:hidden`) con selector de versión, botón «Imprimir o guardar PDF» (`window.print()`) y enlace de retorno a `/cotizaciones/[id]`.
    - Enlace directo «Imprimir / PDF» añadido en la cabecera de `/cotizaciones/[id]`.
 
 3. **Pruebas y verificación:**
-   - 3/3 pruebas en `apps/web/src/app/cotizaciones/[id]/imprimir/page.spec.tsx`, incluyendo la prueba explícita de que una versión con `neto`, `margen` y `politica` jamás expone esos valores en el DOM renderizado.
+   - 3/3 pruebas en `apps/web/src/app/(impresion)/cotizaciones/[id]/imprimir/page.spec.tsx`, incluyendo la prueba explícita de que una versión con `neto`, `margen` y `politica` jamás expone esos valores en el DOM renderizado.
    - `pnpm typecheck` y `pnpm lint` en verde.
 
 ## Qué quedó pendiente
@@ -578,7 +578,7 @@
    - `FichaCliente` (`apps/web/src/components/bandeja/ficha-cliente.tsx`):
      - Botón `data-testid="btn-editar-contacto"` y botón `data-testid="btn-crear-oportunidad"`.
      - Estado visual explícito cuando no hay oportunidad activa.
-   - Conexión completa en `apps/web/src/app/bandeja/[id]/page.tsx` para escritorio y drawer táctil.
+   - Conexión completa en `apps/web/src/app/(app)/bandeja/[id]/page.tsx` para escritorio y drawer táctil.
 4. **Pruebas y verificación:**
    - 53 suites de prueba en `@viajapro/web`, 433/433 tests pasando en verde.
    - Typecheck, lint y pruebas en verde.
@@ -671,7 +671,7 @@
 
 ## Qué se construyó y auditó
 
-1. **Eliminación Total de Dependencias de Mock en la Vista (`apps/web/src/app/reportes/page.tsx`):**
+1. **Eliminación Total de Dependencias de Mock en la Vista (`apps/web/src/app/(app)/reportes/page.tsx`):**
    - Se eliminaron todos los imports de `mock-reportes`. La página ahora solo importa los tipos y funciones puras de `reportes-logica.ts`.
    - Se conecta de forma reactiva con `obtenerTableroPipeline()` del cliente de CRM (`crm-api.ts`), consumiendo los datos reales del pipeline comercial del tenant.
 
@@ -898,8 +898,8 @@
    - Cumplimiento de accesibilidad y dimensiones táctiles mínimas `>= 44 px`.
 
 3. **Integración en Rutas Web:**
-   - Integrado en la pestaña `Canal WhatsApp (WABA)` de `apps/web/src/app/configuracion/page.tsx` con insignia identificadora `T-106`.
-   - Creada la ruta dedicada `apps/web/src/app/configuracion/whatsapp/page.tsx` con navegación mediante `BarraModulos`, migas de pan y enlaces rápidos a `/bienvenida` (onboarding) y `/inbox` (bandeja de WhatsApp).
+   - Integrado en la pestaña `Canal WhatsApp (WABA)` de `apps/web/src/app/(app)/configuracion/page.tsx` con insignia identificadora `T-106`.
+   - Creada la ruta dedicada `apps/web/src/app/(app)/configuracion/whatsapp/page.tsx` con navegación mediante `BarraModulos`, migas de pan y enlaces rápidos a `/bienvenida` (onboarding) y `/inbox` (bandeja de WhatsApp).
 
 4. **Verificación y Calidad Monorepo:**
    - 3 suites de prueba dedicadas (`whatsapp-conexion-logica.spec.ts`, `bloque-conexion-whatsapp.spec.tsx`, `page.spec.tsx`) con 18 pruebas unitarias pasando al 100%.
@@ -929,7 +929,7 @@
    - `resumen-onboarding-completado.tsx`: Pantalla de celebración con el botón principal «Crear y enviar mi primera cotización» (`/cotizador`) y accesos directos a bandeja, pipeline y configuración.
    - `asistente-onboarding.tsx`: Orquestador con barra de progreso, tiempos estimados, navegación por pestañas y diseño responsive.
 
-3. **Página de Onboarding (`apps/web/src/app/bienvenida/page.tsx`):**
+3. **Página de Onboarding (`apps/web/src/app/(app)/bienvenida/page.tsx`):**
    - Ruta `/bienvenida` accesible con cabecera de agencia, navegación unificada `BarraModulos` y targets táctiles `>= 44 px`.
    - Enlace desde el banner de inicio de cuenta vacía (`/`) y desde el menú de sesión de usuario en `BarraModulos` y cabecera de `Configuración`.
 
@@ -966,7 +966,7 @@
    - Navegación completa por teclado: flecha abajo / arriba para alternar opciones, Enter / Tab para insertar y Escape para cancelar.
    - Objetivos táctiles `>= 44 px` en todas las opciones y botones para garantizar accesibilidad móvil.
 
-3. **Integración en el Compositor de la Bandeja (`apps/web/src/app/bandeja/[id]/page.tsx`):**
+3. **Integración en el Compositor de la Bandeja (`apps/web/src/app/(app)/bandeja/[id]/page.tsx`):**
    - Escucha de escritura en el textarea para desplegar automáticamente el menú flotante al tipear «/».
    - Inserción limpia con posicionamiento del cursor al final del texto insertado.
    - Botón accesible `btn-respuestas-rapidas` en la barra de herramientas del chat (al lado de Sugerencias y Nota Interna) para permitir la apertura táctil del selector de respuestas rápidas sin requerir teclado físico.
@@ -984,7 +984,7 @@
    - `apps/web/src/lib/respuestas-rapidas-logica.spec.ts` (22 pruebas unitarias en verde).
    - `apps/web/src/components/bandeja/menu-respuestas-rapidas.spec.tsx` (7 pruebas unitarias en verde).
    - `apps/web/src/components/configuracion/bloque-respuestas-rapidas.spec.tsx` (10 pruebas unitarias en verde).
-   - `apps/web/src/app/bandeja/bandeja-respuestas-rapidas.spec.tsx` (7 pruebas unitarias de integración en verde).
+   - `apps/web/src/app/(app)/bandeja/bandeja-respuestas-rapidas.spec.tsx` (7 pruebas unitarias de integración en verde).
    - Verificación global `@viajapro/web`: 87 suites de prueba, 723 pruebas unitarias 100% en verde.
    - Verificación de tipos `pnpm typecheck`: 9/9 paquetes en verde.
    - Verificación de estilos `pnpm lint`: 7/7 paquetes en verde.
@@ -1039,8 +1039,8 @@
    - `apps/web/src/lib/filtros-guardados-logica.spec.ts` (8 pruebas unitarias): lectura, rescate ante JSON corrupto, guardado, limpieza y omisión de campos de visualización.
    - `apps/web/src/lib/buscador-global-logica.spec.ts` (12 pruebas unitarias): normalización, búsqueda por teléfono con o sin indicativo, búsqueda por destino en oportunidades y restricción de visibilidad según rol de asesor o administrador.
    - `apps/web/src/components/busqueda/modal-busqueda-global.spec.tsx` (7 pruebas unitarias): renderizado del diálogo, navegación por teclado, filtrado por destino y búsqueda por teléfono omnicanal.
-   - `apps/web/src/app/pipeline/page.spec.tsx` (9 pruebas unitarias): renderizado kanban con dinero entero R8, movimientos optimistas, modal de pérdida, cambio a tabla y botón "Limpiar filtros".
-   - `apps/web/src/app/contactos/page.spec.tsx` (6 pruebas unitarias): estados de carga, error accionable, aviso vacío y restablecimiento de filtros.
+   - `apps/web/src/app/(app)/pipeline/page.spec.tsx` (9 pruebas unitarias): renderizado kanban con dinero entero R8, movimientos optimistas, modal de pérdida, cambio a tabla y botón "Limpiar filtros".
+   - `apps/web/src/app/(app)/contactos/page.spec.tsx` (6 pruebas unitarias): estados de carga, error accionable, aviso vacío y restablecimiento de filtros.
    - Verificación global `@viajapro/web`: 83 suites de prueba, 677 pruebas unitarias en verde.
    - Typecheck y linter del monorepo en verde (9/9 y 7/7 tareas).
    - `pnpm test:hooks`: 59/59 política de rama, 19/19 secretos, 6/6 fronteras.
@@ -1082,7 +1082,7 @@
 4. **Pruebas y Verificación:**
    - Creada suite de pruebas de lógica y componentes:
      - `apps/web/src/lib/pipeline-logica.spec.ts` (19 pruebas en verde): validación de contratos, recálculo de `valorTotal` al mover oportunidades, aritmética entera de `Dinero`, sumas de columna y formateo de fechas.
-     - `apps/web/src/app/pipeline/page.spec.tsx` (8 pruebas en verde): renderizado de tablero con totales R8, movimiento por teclado con recálculo optimista, reversión ante fallo de API, drag & drop, modal de pérdida, cambio a vista tabla, filtros combinados y verificación de touch targets `>= 44 px`.
+     - `apps/web/src/app/(app)/pipeline/page.spec.tsx` (8 pruebas en verde): renderizado de tablero con totales R8, movimiento por teclado con recálculo optimista, reversión ante fallo de API, drag & drop, modal de pérdida, cambio a vista tabla, filtros combinados y verificación de touch targets `>= 44 px`.
    - Verificación global `@viajapro/web`: 82 suites de prueba, 665 pruebas unitarias 100% en verde.
    - Typecheck (9/9) y Linter (7/7) del monorepo en verde.
    - Compilación exitosa en Next.js (23 rutas).
@@ -1107,7 +1107,7 @@
 ## Qué se construyó y auditó
 
 1. **Pantalla Principal de Seguimientos (`/seguimientos`):**
-   - Creada página `apps/web/src/app/seguimientos/page.tsx` consumiendo `GET /api/v1/crm/seguimientos` (con fallback de demostración en `mock-crm.ts`) y `POST /api/v1/crm/seguimientos/:id/completar`.
+   - Creada página `apps/web/src/app/(app)/seguimientos/page.tsx` consumiendo `GET /api/v1/crm/seguimientos` (con fallback de demostración en `mock-crm.ts`) y `POST /api/v1/crm/seguimientos/:id/completar`.
    - Cabecera con migas de pan accesibles, título de nivel `H1`, resumen descriptivo, botón de recarga con spinner visual y botón de acción principal `+ Agendar Seguimiento` (touch targets `>= 44 px`).
    - 4 tarjetas KPI con métricas en tiempo real: Vencidos (resaltado en alerta `rose-700`), Para Hoy (`amber-700`), Próximos (`teal-700`) y Completados (`emerald-700`). Cada tarjeta permite alternar el filtro con un clic.
    - Pestañas de filtrado rápido (`Pendientes`, `Vencidos`, `Hoy`, `Próximos`, `Completados`), cuadro de búsqueda omnicanal (por descripción, cliente u oportunidad) y selector de asesor asignado.
@@ -1125,7 +1125,7 @@
 4. **Pruebas y Verificación:**
    - Creadas 2 suites de pruebas unitarias:
      - `apps/web/src/lib/seguimientos-logica.spec.ts` (14 pruebas): clasificación, métricas, ordenación y formateo de vencimientos.
-     - `apps/web/src/app/seguimientos/page.spec.tsx` (9 pruebas): renderizado de cabecera y KPIs, filtrado por pestaña, búsqueda por texto, acción de completar, estados vacío y de error con reintento, y modal de creación de tareas.
+     - `apps/web/src/app/(app)/seguimientos/page.spec.tsx` (9 pruebas): renderizado de cabecera y KPIs, filtrado por pestaña, búsqueda por texto, acción de completar, estados vacío y de error con reintento, y modal de creación de tareas.
    - Suite total `@viajapro/web`: 81 suites, 653 pruebas en verde.
    - Typecheck (9/9), Linter (7/7) y Next.js build (23 rutas compiladas) 100% en verde.
    - Ganchos y fronteras (`pnpm test:hooks`): 59/59, 19/19, 6/6 en verde.
@@ -1149,7 +1149,7 @@
 ## Qué se construyó y auditó
 
 1. **Pantalla Dinámica `/contactos/[id]`:**
-   - Creada ruta dinámica `apps/web/src/app/contactos/[id]/page.tsx` con soporte para datos en vivo (`crm-api.ts`) y datos simulados enriquecidos (`mock-crm.ts`).
+   - Creada ruta dinámica `apps/web/src/app/(app)/contactos/[id]/page.tsx` con soporte para datos en vivo (`crm-api.ts`) y datos simulados enriquecidos (`mock-crm.ts`).
    - Cabecera con datos de identidad del viajero, consentimientos legales, insignias de etiquetas, canal preferido y métricas consolidadas (Total Cotizado, Seguimientos Pendientes, Conversaciones Vinculadas).
    - Sistema de 4 pestañas interactivas:
      - **Línea de Tiempo 360**: cronología unificada de hitos comerciales (creación, cotizaciones, oportunidades, notas internas, seguimientos y viajes confirmados).
@@ -1172,7 +1172,7 @@
 4. **Pruebas y Verificación:**
    - Creadas 2 suites de pruebas unitarias:
      - `apps/web/src/lib/contacto-360-logica.spec.ts` (3 tests): cálculo de métricas y construcción de línea de tiempo cronológica.
-     - `apps/web/src/app/contactos/[id]/page.spec.tsx` (7 tests): renderizado de datos del contacto, estados cargando/error, cambio de pestañas, apertura y guardado en modales de edición, oportunidad y seguimiento.
+     - `apps/web/src/app/(app)/contactos/[id]/page.spec.tsx` (7 tests): renderizado de datos del contacto, estados cargando/error, cambio de pestañas, apertura y guardado en modales de edición, oportunidad y seguimiento.
    - Suite total `@viajapro/web`: 79 suites, 630 pruebas en verde.
    - Typecheck (9/9), Linter (7/7) y Next.js build (22 rutas) 100% en verde.
    - Ganchos y fronteras (`pnpm test:hooks`): 59/59, 19/19, 6/6 en verde.
@@ -1233,7 +1233,7 @@
 1. **Retirada de la ruta antigua en `apps/web/src/lib/api.ts`:**
    - Eliminada la referencia y llamada a `/api/v1/paquetes/cotizar` que fue retirada del backend en T-007.
    - Alineado el cliente con la ruta vigente `POST /api/v1/catalogo/cotizar` mediante delegación y re-exportación de `cotizarSalidaApi` (`CotizarSalida`).
-   - El cotizador oficial (`apps/web/src/app/cotizador/page.tsx`) sigue cotizando contra `/api/v1/catalogo/cotizar`.
+   - El cotizador oficial (`apps/web/src/app/(app)/cotizador/page.tsx`) sigue cotizando contra `/api/v1/catalogo/cotizar`.
 
 2. **Pruebas y Verificación:**
    - Creada suite unitaria `apps/web/src/lib/api.spec.ts` (4 pruebas) que comprueba que `api.listarPaquetes` no llama a la ruta antigua, que `api.cotizarSalida` delega a la ruta vigente `/api/v1/catalogo/cotizar`, y que la gestión contractual de `ErrorApi` (`EsquemaError`, R3) opera correctamente.
@@ -1265,7 +1265,7 @@
    - Traductor y mapeador de errores `interpretarErrorInvitacion` que convierte códigos (`CODIGO_INVALIDO`, `DEMASIADOS_INTENTOS`, `INVITACION_INVALIDA`, `PERMISO_DENEGADO`, `SIN_SESION`, `CORREO_INVALIDO`, `ROL_INVALIDO`) a explicaciones claras en español con orientación explícita de «Qué hacer».
 
 2. **Componente de Gestión de Equipo (`BloqueEquipo`):**
-   - Creado en `apps/web/src/components/configuracion/bloque-equipo.tsx` e integrado en `apps/web/src/app/configuracion/page.tsx` en la pestaña `equipo`.
+   - Creado en `apps/web/src/components/configuracion/bloque-equipo.tsx` e integrado en `apps/web/src/app/(app)/configuracion/page.tsx` en la pestaña `equipo`.
    - Tarjetas de resumen métrico: Total Usuarios, Dueños Activos, Asesores Comerciales, Invitaciones Pendientes.
    - Tabla responsiva de miembros y estados (`ACTIVO`, `INVITADO`, `SUSPENDIDO`) con insignias visuales y fecha de ingreso con formato Colombia (`es-CO`).
    - Modal accesible de invitación (`useFocoModal`, WCAG 2.1) con selección de rol (`DUENO`, `ASESOR`, `OPERACIONES`), validación de correo electrónico y gestión de estados de carga y error en español con banner «Qué hacer».
@@ -1302,7 +1302,7 @@
    - Ningún tipo redefinido en frontend: la web importa directamente desde `@viajapro/contracts`.
 
 2. **Bloque «Campos Personalizados» en Configuración (`BloqueCamposPersonalizados`):**
-   - Creado en `apps/web/src/components/configuracion/bloque-campos-personalizados.tsx` y montado en `apps/web/src/app/configuracion/page.tsx` (pestaña `campos`).
+   - Creado en `apps/web/src/components/configuracion/bloque-campos-personalizados.tsx` y montado en `apps/web/src/app/(app)/configuracion/page.tsx` (pestaña `campos`).
    - Pestañas interactivas para alternar entre campos de «Viajeros / Contactos» y «Oportunidades Comerciales».
    - Modal accesible para creación de nuevos campos con gestión de foco (`useFocoModal`, WCAG 2.1.2 / 2.4.3), validación de nombres y claves normalizadas (`normalizarClaveCampo`).
    - Soporte de los 4 tipos de datos: texto, número, fecha y lista con opciones delimitadas por coma.
@@ -1346,7 +1346,7 @@
 ## Qué se construyó y auditó
 
 1. **Bloque «Etapas del pipeline» en Configuración (`BloqueEtapasPipeline`):**
-   - Creado en `apps/web/src/components/configuracion/bloque-etapas-pipeline.tsx` e integrado en `apps/web/src/app/configuracion/page.tsx` (pestaña `pipeline`).
+   - Creado en `apps/web/src/components/configuracion/bloque-etapas-pipeline.tsx` e integrado en `apps/web/src/app/(app)/configuracion/page.tsx` (pestaña `pipeline`).
    - Carga las etapas de la agencia en el montaje vía `listarEtapasPipelineApi()`.
    - Permite **reordenar etapas** interactivamente con botones accesibles Subir/Bajar con touch targets mínimos de 44 px (`min-h-[44px] min-w-[44px]`).
    - Permite **renombrar etapas** editando el nombre en vivo.
@@ -1355,7 +1355,7 @@
    - Acciones de «Guardar cambios» con estado de guardado, mensaje de confirmación accesible (`role="status"`) y botón de «Restablecer».
 
 2. **Pintado dinámico en el Tablero de Pipeline:**
-   - Verificado `apps/web/src/app/pipeline/page.tsx`: consume `tablero.columnas` directamente de `obtenerTableroPipeline()` o la API CRM, pintando exactamente las etapas configuradas en orden, sin listados estáticos cableados en el render.
+   - Verificado `apps/web/src/app/(app)/pipeline/page.tsx`: consume `tablero.columnas` directamente de `obtenerTableroPipeline()` o la API CRM, pintando exactamente las etapas configuradas en orden, sin listados estáticos cableados en el render.
 
 3. **Contrato de API y Fallback Resiliente:**
    - Métodos tipados `listarEtapasPipelineApi()` y `actualizarEtapasPipelineApi(etapas)` añadidos a `apps/web/src/lib/crm-api.ts`.
@@ -1502,8 +1502,8 @@
    - `apps/web/src/lib/api.ts`: reexporta los helpers únicos hacia toda la aplicación.
    - `apps/web/src/lib/pipeline-logica.ts`: delega el formato de cifras en `formato.ts`.
    - `apps/web/src/lib/contactos-logica.ts`: delega `formatearTelefonoVisual` en `formato.ts`.
-   - `apps/web/src/app/cotizaciones/page.tsx`: salidas con fecha formateada en vistas móvil y tabla.
-   - `apps/web/src/app/cotizaciones/[id]/page.tsx`: propuesta de WhatsApp con fecha formateada y teléfono del contacto formateado.
+   - `apps/web/src/app/(app)/cotizaciones/page.tsx`: salidas con fecha formateada en vistas móvil y tabla.
+   - `apps/web/src/app/(app)/cotizaciones/[id]/page.tsx`: propuesta de WhatsApp con fecha formateada y teléfono del contacto formateado.
    - `apps/web/src/components/catalogo/tarjeta-salida-publicada.tsx`: fecha de salida formateada legiblemente.
 
 3. **Pruebas y Cobertura:**
@@ -1544,7 +1544,7 @@
    - Tarifa «Desde $X por persona» con soporte de `desdePorMoneda` y tachado cuando la política `promo_vencida` es TACHAR.
    - Botón opcional «Ver ficha» conectado a la apertura del panel lateral `FichaDetallePaquete`.
 3. **Integración en la Experiencia de Catálogo:**
-   - `apps/web/src/app/catalogo/page.tsx`: Tarjetas reales y simuladas muestran su chip temático por tipo de excursión y conectan con la ficha de detalle.
+   - `apps/web/src/app/(app)/catalogo/page.tsx`: Tarjetas reales y simuladas muestran su chip temático por tipo de excursión y conectan con la ficha de detalle.
    - `apps/web/src/components/catalogo/ficha-detalle-paquete.tsx`: Cabecera de la ficha incluye el chip temático del tipo de producto.
 4. **Suites de Pruebas Unitarias:**
    - `tarjeta-salida-publicada.spec.tsx`: 15 pruebas unitarias verificando los 6 tipos de turismo, degradados sustitutos, fotografías reales, aro dorado, cupos en vivo y políticas de promo vencida.
@@ -1573,7 +1573,7 @@
      - `TablaGestionCatalogo` (`tabla-gestion-catalogo.tsx`): Tarjetas KPI en cabecera (Total productos, Activos para venta, Pausados/Inactivos), botón de acción rápida `+ Nuevo producto`, buscador por texto, filtro por destino, pestañas de estado segmentadas y tabla responsiva (con visualización de código, destino, duración, tarifa «desde», total de vigencias, badge de estado y botones de acción accesibles con touch target >= 44 px).
      - `ModalFormularioPaquete` (`modal-formulario-paquete.tsx`): Modal accesible con foco atrapado para dar de alta y editar productos turísticos. Valida en tiempo real y muestra errores en español por campo.
      - `DialogoDesactivarPaquete` (`dialogo-desactivar-paquete.tsx`): Diálogo de confirmación accesible que advierte que la desactivación retira el producto del cotizador pero preserva de forma inmutable el historial de cotizaciones y viajes confirmados.
-  4. **Integración en la página de catálogo (`apps/web/src/app/catalogo/page.tsx`):**
+  4. **Integración en la página de catálogo (`apps/web/src/app/(app)/catalogo/page.tsx`):**
      - Selector de vista segmentado que permite conmutar entre «Explorar salidas y tarifas» y «Gestión del catálogo», manteniendo el estado y sincronizándose con la API.
   5. **Pruebas automatizadas (22 tests nuevos):**
      - `catalogo-gestion-logica.spec.ts`: 8 tests unitarios de validación, coherencia de noches, edición parcial y filtrado.
@@ -1613,10 +1613,10 @@
 3. **Esqueletos de Carga con Brillo (`apps/web/src/components/comun/esqueletos.tsx`):**
    - Actualizados todos los esqueletos (`EsqueletoConversacion`, `EsqueletoKanban`, `EsqueletoGridTarjetas`, `EsqueletoTabla`, `EsqueletoExpediente`, `EsqueletoReportes`) para utilizar la clase `.esqueleto-brillo`.
 4. **Integración en Listas y Cuadrículas Clave:**
-   - **Catálogo (`apps/web/src/app/catalogo/page.tsx` y `tarjeta-salida-publicada.tsx`):** Entrada escalonada por índice y elevación interactiva con borde turquesa al pasar el cursor.
-   - **Pipeline Kanban (`apps/web/src/app/pipeline/page.tsx`, `columna-kanban.tsx`, `tarjeta-oportunidad.tsx`):** Tarjetas de oportunidad con elevación elástica y entrada secuencial por columna.
+   - **Catálogo (`apps/web/src/app/(app)/catalogo/page.tsx` y `tarjeta-salida-publicada.tsx`):** Entrada escalonada por índice y elevación interactiva con borde turquesa al pasar el cursor.
+   - **Pipeline Kanban (`apps/web/src/app/(app)/pipeline/page.tsx`, `columna-kanban.tsx`, `tarjeta-oportunidad.tsx`):** Tarjetas de oportunidad con elevación elástica y entrada secuencial por columna.
    - **Bandeja de WhatsApp (`apps/web/src/components/bandeja/lista-conversaciones.tsx`):** Esqueletos de conversación con shimmer y animación escalonada al renderizar la lista.
-   - **Directorio de Contactos (`apps/web/src/app/contactos/page.tsx`):** Filas de tabla con entrada escalonada y resalte hover turquesa.
+   - **Directorio de Contactos (`apps/web/src/app/(app)/contactos/page.tsx`):** Filas de tabla con entrada escalonada y resalte hover turquesa.
    - **Seguimientos Diarios del Asesor (`apps/web/src/components/inicio/bloque-seguimientos-dia.tsx`):** Elevación hover y entrada escalonada de tareas.
    - **Paleta de Comandos y Fichas Laterales (`modal-busqueda-global.tsx`, `ficha-detalle-paquete.tsx`):** Transiciones suaves de apertura y desplazamiento.
 5. **Suites de Pruebas Unitarias:**
@@ -1751,7 +1751,7 @@
    - Acción directa de completar seguimiento en un clic con microanimación y feedback táctil accesible (touch targets >= 44 px).
    - Estados de carga (skeleton animado), error con botón de reintento y estado vacío ilustrado cuando no hay tareas pendientes.
    - 6/6 pruebas unitarias pasando en `bloque-seguimientos-dia.spec.tsx`.
-4. **Integración en la Página Principal (`apps/web/src/app/page.tsx` y `page.spec.tsx`):**
+4. **Integración en la Página Principal (`apps/web/src/app/(app)/page.tsx` y `page.spec.tsx`):**
    - Integrado `obtenerPendientesDelDiaApi` junto a `obtenerConversacionesBandeja`, `obtenerOportunidadesPipeline` y `obtenerCotizacionesApi` usando el tenant de sesión.
    - Las tres tarjetas principales enlazan a sus pantallas filtradas (`/bandeja`, `/pipeline`, `/cotizaciones`) y reflejan datos reales con estados cargando, error y vacío.
    - Manejo del estado local para actualizar instantáneamente la lista de pendientes cuando un asesor completa un seguimiento desde el dashboard sin requerir recargar la página.
@@ -1778,7 +1778,7 @@
    - Panel de 2 columnas con selector interactivo de radio (`OCULTAR` vs `TACHAR`).
    - Advertencia de que el precio cobrado al cliente no cambia (invariante de dominio R12 / ADR-0017 §9).
    - Previsualización reactiva en vivo sobre tarjeta de excursión caribeña con precio tachado y badge condicionales.
-   - Pestaña `Catálogo` integrada en `apps/web/src/app/configuracion/page.tsx`.
+   - Pestaña `Catálogo` integrada en `apps/web/src/app/(app)/configuracion/page.tsx`.
 3. **Aplicación en Tarjeta de Catálogo (`apps/web/src/components/catalogo/tarjeta-salida-publicada.tsx` y `.spec.tsx`):**
    - Respeta `salida.presentacion.listaTachada` y `salida.presentacion.leyenda === 'PROMO_VENCIDA'` calculados por la API.
 4. **Aplicación en Cotizador (`apps/web/src/components/cotizador/desglose-cotizacion-salida.tsx` y `.spec.tsx`):**
@@ -1823,8 +1823,8 @@
    - Zero state de alta conversión turística con dos botones de acción obligatorios:
      - `data-testid="btn-sin-catalogo-importar"`: «Importar catálogo (CSV)»
      - `data-testid="btn-sin-catalogo-crear"`: «Crear excursión»
-   - Integrado en `apps/web/src/app/catalogo/page.tsx` (cuando la agencia no tiene salidas publicadas en la API).
-   - Integrado en `apps/web/src/app/cotizador/page.tsx` (cuando la agencia no tiene productos activos en catálogo).
+   - Integrado en `apps/web/src/app/(app)/catalogo/page.tsx` (cuando la agencia no tiene salidas publicadas en la API).
+   - Integrado en `apps/web/src/app/(app)/cotizador/page.tsx` (cuando la agencia no tiene productos activos en catálogo).
    - Re-exportado en `apps/web/src/components/comun/estado-sin-catalogo.tsx`.
 6. **Verificación y Calidad:**
    - 52 archivos de prueba y 432 tests pasando en `@viajapro/web`.
@@ -1873,7 +1873,7 @@
 
 ## Qué construí
 
-1. **Saludo dinámico con identidad de turismo y contexto de agencia (`apps/web/src/app/page.tsx`):**
+1. **Saludo dinámico con identidad de turismo y contexto de agencia (`apps/web/src/app/(app)/page.tsx`):**
    - Saludo contextual según la hora del día en español colombiano (`¡Buenos días!`, `¡Buenas tardes!`, `¡Buenas noches!`) implementado en `apps/web/src/lib/inicio-logica.ts` (`obtenerSaludoSegunHora`, `obtenerMensajeBienvenida`).
    - Personalización con el nombre del asesor comercial activo (`sesion.identidad.nombre`), avatar con iniciales e insignia de aro dorado (`ring-2 ring-amber-400`).
    - Identificación de la agencia activa (ej. *JD Tours Cartagena*), indicador de «Turno activo» con pulsación visual y fecha/hora en vivo.
@@ -1983,7 +1983,7 @@
 6. **Lógica desacoplada y suites de pruebas completas:**
    - `apps/web/src/lib/inicio-logica.ts`: Funciones puras de saludo, bienvenida y agregación `calcularResumenTrabajo`.
    - `apps/web/src/lib/inicio-logica.spec.ts`: 4 pruebas unitarias cubriendo rangos horarios, personalización y detección de estado vacío.
-   - `apps/web/src/app/page.spec.tsx`: 5 pruebas de componente con React Testing Library verificando saludo, accesos rápidos, tarjetas caribeñas, estado vacío y recuperación ante errores de red.
+   - `apps/web/src/app/(app)/page.spec.tsx`: 5 pruebas de componente con React Testing Library verificando saludo, accesos rápidos, tarjetas caribeñas, estado vacío y recuperación ante errores de red.
 
 ## Qué verifiqué ejecutando
 
@@ -2154,7 +2154,7 @@ De acuerdo con las reglas de carril (el carril frontend no toca `apps/api`, `pac
 ## Qué construí
 
 1. **Ruta y Pantalla de Listado (`/cotizaciones`):**
-   - Construida en `apps/web/src/app/cotizaciones/page.tsx`.
+   - Construida en `apps/web/src/app/(app)/cotizaciones/page.tsx`.
    - Conectada mediante `listarCotizacionesApi()` en `apps/web/src/lib/cotizaciones-api.ts`, respetando el interruptor de API real (`NEXT_PUBLIC_USAR_API_REAL`) con fallback a almacén simulado (`obtenerMockCotizaciones()`) tipado con contratos `CotizacionGuardada`.
    - Columnas / campos de la cotización: Cliente (asociado vía `contactoId` a contactos del tenant o nombre fallback), Salida / Destino del paquete, Última versión (`v{numero}` con fecha y hora en formato legible), Total de venta (Regla R8: entero en pesos colombianos formateado sin decimales; **NUNCA** se expone costo neto ni margen comercial), Estado con distintivo cromático accesible (`BORRADOR`, `ENVIADA`, `ACEPTADA`, `RECHAZADA`, `VENCIDA`).
    - Enlace directo a la vista de detalle `/cotizaciones/[id]` para cada cotización.
@@ -2549,8 +2549,8 @@ Se verificó el comportamiento del cliente de Inbox con interruptor (`NEXT_PUBLI
    - Con interruptor encendido: despacha a `POST /api/v1/inbox/conversaciones/:id/notas`. Si falla, propaga error. **Nunca cae al mock**.
 
 ### 1.4 Correcciones en Vistas (`pipeline` y `contactos`)
-- **`apps/web/src/app/pipeline/page.tsx`**: Cuando `obtenerTableroPipeline()` falla en modo API real, ya no recurre silenciosamente a datos simulados (`setEsModoSimulado(true)`). Ahora captura el fallo en `errorCarga` y despliega `AvisoErrorAccionable` con botón de reintento, evitando pintar columnas mock como si fueran reales.
-- **`apps/web/src/app/contactos/page.tsx`**: Cuando ocurre un error al consultar el directorio de contactos, la tabla con filas simuladas queda oculta y solo se presenta el `AvisoErrorAccionable`.
+- **`apps/web/src/app/(app)/pipeline/page.tsx`**: Cuando `obtenerTableroPipeline()` falla en modo API real, ya no recurre silenciosamente a datos simulados (`setEsModoSimulado(true)`). Ahora captura el fallo en `errorCarga` y despliega `AvisoErrorAccionable` con botón de reintento, evitando pintar columnas mock como si fueran reales.
+- **`apps/web/src/app/(app)/contactos/page.tsx`**: Cuando ocurre un error al consultar el directorio de contactos, la tabla con filas simuladas queda oculta y solo se presenta el `AvisoErrorAccionable`.
 
 ---
 
@@ -2681,7 +2681,7 @@ Se creó el archivo de pruebas de componentes `apps/web/src/components/comun/esq
      - Atajo `/` para enfocar la barra de búsqueda rápidamente.
      - Tecla `Escape` en búsqueda limpia el texto y retorna el foco a la lista.
      - Indicadores visuales de foco accesible con `focus-visible:ring-2`.
-   - En `apps/web/src/app/bandeja/[id]/page.tsx`:
+   - En `apps/web/src/app/(app)/bandeja/[id]/page.tsx`:
      - Enviar mensaje con `Enter` (sin Shift), salto de línea con `Shift+Enter`.
      - Anuncio de mensajes entrantes con `aria-live="polite"`.
      - Alerta de fallos de envío con `role="alert"` y `aria-live="assertive"`.
@@ -2766,13 +2766,13 @@ Se creó el archivo de pruebas de componentes `apps/web/src/components/comun/esq
   - `apps/web/src/lib/permisos.spec.ts`: 11 pruebas unitarias sobre funciones puras y ciclo de vida del hook con sesiones de asesor, dueño y sin tenant.
   - `apps/web/src/components/catalogo/ficha-detalle-paquete.spec.tsx`: 4 pruebas de componente verificando ausencia total de "Neto:" sin permiso y presencia con permiso.
   - `apps/web/src/components/configuracion/bloque-politica-precio.spec.tsx`: 4 pruebas de componente verificando estado restringido sin cifras en el DOM.
-  - `apps/web/src/app/reportes/reportes-permisos.spec.tsx`: 3 pruebas verificando que "Costo Neto Mayoristas" y "Margen Comercial" no existen en el DOM sin permiso.
+  - `apps/web/src/app/(app)/reportes/reportes-permisos.spec.tsx`: 3 pruebas verificando que "Costo Neto Mayoristas" y "Margen Comercial" no existen en el DOM sin permiso.
 - **Archivos modificados:**
   - `apps/web/src/lib/auth-api.ts`: añadida `MOCK_SESION_DUENO` con permiso `cotizacion.ver_neto_y_margen` y `fijarSesionMock` para tests.
   - `apps/web/src/components/catalogo/ficha-detalle-paquete.tsx`: prop opcional `puedeVerNetoYMargen` y llamada a `usePermisos`; `Neto:` solo en DOM si tiene permiso.
   - `apps/web/src/components/configuracion/bloque-politica-precio.tsx`: prop `puedeVerNetoYMargen` y `usePermisos`; sin permiso devuelve tarjeta de acceso restringido con cero cifras o porcentajes en el DOM.
-  - `apps/web/src/app/configuracion/page.tsx`: pestaña "Formación del Precio" solo visible en barra si `puedeVerNetoYMargen` es verdadero.
-  - `apps/web/src/app/reportes/page.tsx`: bloque confidencial `seccion-margen-confidencial` (Costo Neto Mayoristas y Margen Comercial) condicionado a `puedeVerNetoYMargen && esDueño`. Conmutador fuerza "Vista Asesor (Operativa)" si no hay permiso.
+  - `apps/web/src/app/(app)/configuracion/page.tsx`: pestaña "Formación del Precio" solo visible en barra si `puedeVerNetoYMargen` es verdadero.
+  - `apps/web/src/app/(app)/reportes/page.tsx`: bloque confidencial `seccion-margen-confidencial` (Costo Neto Mayoristas y Margen Comercial) condicionado a `puedeVerNetoYMargen && esDueño`. Conmutador fuerza "Vista Asesor (Operativa)" si no hay permiso.
   - `apps/web/src/components/bandeja/barra-modulos.tsx`: comprobación nula segura en `pathname.startsWith`.
 - **Verificación:**
   - `pnpm --filter web test`: 30 archivos de prueba, 275 tests pasando.
@@ -2792,7 +2792,7 @@ Se creó el archivo de pruebas de componentes `apps/web/src/components/comun/esq
   - `apps/web/src/components/bandeja/modal-reasignar.tsx`: Diálogo accesible con `useFocoModal` (cierre con Esc, trampa de foco y touch targets $\ge 44$ px) para reasignar conversación a asesores o devolver a la cola común.
   - `apps/web/src/lib/inbox-socket.spec.ts`: 5 pruebas unitarias verificando despacho de eventos, descarte silencioso de desconocidos, evento `CONVERSACION_RETIRADA`, reconexión y transiciones de estado.
   - `apps/web/src/components/bandeja/lista-conversaciones-realtime.spec.tsx`: 2 pruebas de componente validando el indicador de «reconectando...» (`[data-testid="indicador-reconectando"]`) y el retiro dinámico de filas ante `CONVERSACION_RETIRADA`.
-  - `apps/web/src/app/bandeja/bandeja-asignacion.spec.tsx`: 3 pruebas de componente validando botones «Tomar», «Soltar», «Reasignar» y el aviso accesible de conversación retirada (`[data-testid="aviso-conversacion-retirada"]`) con preservación íntegra del borrador redactado.
+  - `apps/web/src/app/(app)/bandeja/bandeja-asignacion.spec.tsx`: 3 pruebas de componente validando botones «Tomar», «Soltar», «Reasignar» y el aviso accesible de conversación retirada (`[data-testid="aviso-conversacion-retirada"]`) con preservación íntegra del borrador redactado.
 - **Archivos modificados:**
   - `apps/web/src/lib/inbox-api.ts`: Rutas alineadas a la REST real (`/api/v1/conversaciones`, `/contadores`, `/:id`, `/:id/mensajes`, `/asignacion`, `/estado`, `/notas`, `/leida`) con validación Zod estricta y clave de idempotencia UUID v4 (R5).
   - `apps/web/src/lib/inbox-api.spec.ts`: 8 pruebas unitarias actualizadas y verificadas con los nuevos endpoints y esquemas.
@@ -2801,7 +2801,7 @@ Se creó el archivo de pruebas de componentes `apps/web/src/components/comun/esq
   - `apps/web/src/lib/permisos.ts`: Agregado permiso `PERMISO_VER_TODAS_CONVERSACIONES` (`conversaciones.ver_todas`) y helper `puedeVerTodasConversaciones`.
   - `apps/web/src/lib/realtime-mock.ts`: Método `emitirConversacionRetirada` para simulación offline.
   - `apps/web/src/components/bandeja/lista-conversaciones.tsx`: Conectado a `useInboxSocket`, badge de reconexión y re-fetch por REST en reconexión.
-  - `apps/web/src/app/bandeja/[id]/page.tsx`: Conectado a `useInboxSocket`, botones de asignación («Tomar», «Soltar», «Reasignar»), aviso accesible de retirada (`[data-testid="aviso-conversacion-retirada"]`), bloqueo de envío y preservación del borrador redactado.
+  - `apps/web/src/app/(app)/bandeja/[id]/page.tsx`: Conectado a `useInboxSocket`, botones de asignación («Tomar», «Soltar», «Reasignar»), aviso accesible de retirada (`[data-testid="aviso-conversacion-retirada"]`), bloqueo de envío y preservación del borrador redactado.
   - `apps/web/package.json` y `pnpm-lock.yaml`: Añadida dependencia `socket.io-client@^4.8.4`.
   - `docs/_traspasos/COLA.md`: Marcada la tarea `0c.35` como `[x]`.
 - **Compuertas:**
@@ -2829,7 +2829,7 @@ Se creó el archivo de pruebas de componentes `apps/web/src/components/comun/esq
   - `apps/web/src/components/comun/foco-modal.spec.tsx`: añadida prueba 6 demostrando que el re-renderizado del componente padre con `alCerrar` en línea NO mueve el foco ni reinicia el temporizador, y al presionar Escape devuelve el foco limpiamente al botón disparador original (10/10 pruebas pasando).
   - `apps/web/src/lib/estados-ui-logica.ts`: incorporada tabla `TABLA_ERRORES_DOMINIO` (`SIN_VIGENCIA`, `VIGENCIAS_EMPATADAS`, `VENTANA_CERRADA`, `CONFLICTO_VERSION`, `PLAZAS_INSUFICIENTES`, etc.) priorizada por código de dominio antes de la búsqueda por palabras clave. En conflictos HTTP 409 y errores con redacción humana no técnica, se preserva íntegramente la explicación para el asesor en lugar de convertirla en un genérico «Datos inconsistentes».
   - `apps/web/src/lib/estados-ui-logica.spec.ts`: agregadas pruebas unitarias verificando que un error 409 de dominio conserva su texto descriptivo y que los códigos de la tabla prioritaria preceden al filtrado por palabras clave (20/20 pruebas pasando).
-  - `apps/web/src/app/bandeja/bandeja-asignacion.spec.tsx` y `apps/web/src/components/bandeja/lista-conversaciones-realtime.spec.tsx`: renderizado asíncrono determinista en pruebas con carga inicial.
+  - `apps/web/src/app/(app)/bandeja/bandeja-asignacion.spec.tsx` y `apps/web/src/components/bandeja/lista-conversaciones-realtime.spec.tsx`: renderizado asíncrono determinista en pruebas con carga inicial.
 - **Compuertas:**
   - `lint`: **VERDE** (0 errores, 0 advertencias).
   - `typecheck`: **VERDE** (TypeScript estricto en los 5 paquetes).
@@ -2890,7 +2890,7 @@ Se creó el archivo de pruebas de componentes `apps/web/src/components/comun/esq
   - `apps/web/src/lib/cotizaciones-api.ts`: Conectado a `cabecerasDeTenantDev()` y mensaje de 401 honesto.
   - `apps/web/src/lib/crm-api.ts`: Conectado a `cabecerasDeTenantDev()`, `obtenerTableroPipeline()` condicionado a exigir `NEXT_PUBLIC_DEV_TENANT_ID` únicamente cuando `!usaAuthReal()`.
   - `apps/web/src/lib/inbox-api.ts`: Conectado a `cabecerasDeTenantDev()`.
-  - `apps/web/src/app/pipeline/page.tsx`: Carga inicial condicionada a exigir `NEXT_PUBLIC_DEV_TENANT_ID` únicamente cuando `!usaAuthReal()`.
+  - `apps/web/src/app/(app)/pipeline/page.tsx`: Carga inicial condicionada a exigir `NEXT_PUBLIC_DEV_TENANT_ID` únicamente cuando `!usaAuthReal()`.
   - `apps/web/src/lib/cotizaciones-logica.ts`, `apps/web/src/lib/cotizaciones-logica.spec.ts`, `apps/web/src/lib/cotizador-logica.ts`: Mensajes de error amigables sin exponer el literal `x-dev-tenant-id`.
 - **Criterio «Hecho cuando» verificado:**
   - `git grep "x-dev-tenant-id" apps/web/src` arroja **únicamente** la función `cabecerasDeTenantDev()` en `cabeceras-tenant.ts` (y sus pruebas unitarias).
@@ -2938,7 +2938,7 @@ Se creó el archivo de pruebas de componentes `apps/web/src/components/comun/esq
     - Prueba 3: Al reconectar el socket (`notificarReconexion`), la lista re-consulta por REST vía `inboxApi.consultarBandeja`, cerrando cualquier hueco de mensajes o conversaciones perdidas durante el corte.
     - Prueba 4: En estado desconectado (`notificarCambioEstado('desconectado')`), muestra aviso visible y la lista conserva los elementos en memoria sin sustituirlos por datos simulados (0c.34).
     - Prueba 5: Un evento que no valida el contrato Zod no altera la lista de conversaciones y se registra con `console.warn`.
-  - `apps/web/src/app/bandeja/bandeja-asignacion.spec.tsx`:
+  - `apps/web/src/app/(app)/bandeja/bandeja-asignacion.spec.tsx`:
     - Prueba 4: Al recibir `CONVERSACION_RETIRADA` con un ID perteneciente a otra conversación, no altera la conversación abierta ni muestra el aviso de retiro, preservando el borrador y manteniendo habilitado el campo de redacción.
 - **Criterio «Hecho cuando» verificado:**
   - Las 4 pruebas existen, cubren los estados reales por roles y texto visible, y fallan si se remueve la lógica correspondiente.
