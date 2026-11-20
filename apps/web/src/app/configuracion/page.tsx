@@ -97,6 +97,11 @@ const BloqueZonaHoraria = dynamic(
   { ssr: false },
 );
 
+const BloqueRnt = dynamic(
+  () => import('../../components/configuracion/bloque-rnt').then((m) => m.BloqueRnt),
+  { ssr: false },
+);
+
 type TabConfig =
   | 'equipo'
   | 'whatsapp'
@@ -484,6 +489,7 @@ export default function ConfiguracionPage() {
           {tabActiva === 'agencia' && (
             <div className="max-w-2xl space-y-6">
               <BloqueZonaHoraria />
+              <BloqueRnt />
               <form
                 onSubmit={guardarCambiosAgencia}
                 className="space-y-4 rounded-xl border border-neutral-200 bg-white p-5 shadow-sm dark:border-neutral-800 dark:bg-neutral-900"
