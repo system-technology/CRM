@@ -54,6 +54,8 @@ export interface ConfiguracionAgencia {
   direccion: string;
   ciudad: string;
   telefonoSoporte: string;
+  /** Registro Nacional de Turismo. Va en toda pieza al viajero (Ley 300 de 1996). */
+  rnt?: string;
 }
 
 export interface EtapaConfigurada {
@@ -137,6 +139,7 @@ export const MOCK_CONFIGURACION_AGENCIA: ConfiguracionAgencia = {
   direccion: 'Calle 93 # 12-45, Of. 401',
   ciudad: 'Bogotá D.C., Colombia',
   telefonoSoporte: '+573009123456',
+  rnt: '48213',
 };
 
 export const MOCK_ETAPAS_CONFIGURADAS: EtapaConfigurada[] = [

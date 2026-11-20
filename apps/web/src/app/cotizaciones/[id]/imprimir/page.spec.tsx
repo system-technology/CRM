@@ -93,11 +93,11 @@ describe('PaginaImprimirCotizacion (/cotizaciones/[id]/imprimir) — T-114', () 
       configurable: true,
     });
 
-    render(<PaginaImprimirCotizacion cotizacionInicial={cotizacionMock} />);
+    render(<PaginaImprimirCotizacion cotizacionInicial={cotizacionMock} productoInicial={null} />);
 
     expect(screen.getByTestId('hoja-imprimible-a4')).toBeDefined();
     expect(screen.getByTestId('marca-agencia-cotizacion').textContent).toContain('Viajes El Sol');
-    expect(screen.getByTestId('vigencia-cotizacion').textContent).toContain('Vigente hasta:');
+    expect(screen.getByTestId('vigencia-cotizacion').textContent).toContain('Precio vigente hasta');
     expect(screen.getByTestId('desglose-tarifas-cliente').textContent).toContain(
       'Adulto en acomodación triple',
     );
@@ -108,8 +108,83 @@ describe('PaginaImprimirCotizacion (/cotizaciones/[id]/imprimir) — T-114', () 
     expect(printSpy).toHaveBeenCalledTimes(1);
   });
 
+  const productoSanAndres = {
+    dias: 4,
+    planAlimentacion: 'TODO_INCLUIDO' as const,
+    descripcion: 'El destino más vendido del Caribe colombiano.',
+    inclusiones: [
+      'Tiquetes aéreos Bogotá — San Andrés — Bogotá',
+      'Alojamiento 3 noches con todo incluido',
+      'Traslados aeropuerto — hotel — aeropuerto',
+    ],
+    exclusiones: ['Deportes náuticos motorizados'],
+    cargosEnDestino: [
+      {
+        concepto: 'Tarjeta de turismo',
+        monto: { unidades: '177000', moneda: 'COP' as const },
+        unidad: 'POR_PERSONA' as const,
+      },
+    ],
+  };
+
+  it('con el producto, pinta itinerario con fechas, incluye agrupado, no incluye y cargos en destino', () => {
+    render(
+      <PaginaImprimirCotizacion
+        cotizacionInicial={cotizacionMock}
+        productoInicial={productoSanAndres}
+      />,
+    );
+
+    const itinerario = screen.getByTestId('itinerario-propuesta').textContent ?? '';
+    expect(itinerario).toContain('Día 1');
+    expect(itinerario).toContain('Vuelo y llegada a San Andrés Islas, Colombia');
+    expect(itinerario).toContain('Días 2 a 3');
+    expect(itinerario).toContain('Vuelo de regreso');
+
+    const incluye = screen.getByTestId('incluye-propuesta').textContent ?? '';
+    expect(incluye).toContain('Vuelos');
+    expect(incluye).toContain('Alojamiento y alimentación');
+    expect(incluye).toContain('Traslados');
+
+    const noIncluye = screen.getByTestId('no-incluye-propuesta').textContent ?? '';
+    expect(noIncluye).toContain('Deportes náuticos motorizados');
+    expect(noIncluye).toContain('Tarjeta de turismo');
+    expect(noIncluye).toContain('177.000');
+    expect(noIncluye).toContain('No está sumado al valor de esta propuesta');
+
+    // El total no suma el cargo en destino
+    expect(screen.getByTestId('total-venta-cliente').textContent).toContain('6.550.000');
+    // Regreso = salida + 3 días (4 días)
+    expect(screen.getByTestId('marca-agencia-cotizacion').textContent).toContain('27 dic 2026');
+    expect(screen.getByTestId('marca-agencia-cotizacion').textContent).toContain(
+      '2 adultos y 1 niño',
+    );
+  });
+
+  it('muestra NIT y RNT de la agencia en el pie', () => {
+    render(<PaginaImprimirCotizacion cotizacionInicial={cotizacionMock} productoInicial={null} />);
+    const legal = screen.getByTestId('datos-legales-agencia').textContent ?? '';
+    expect(legal).toContain('NIT 901.482.910-3');
+    expect(legal).toContain('RNT 48213');
+  });
+
+  it('sin el detalle del producto no inventa secciones: ni incluye ni no incluye', () => {
+    render(<PaginaImprimirCotizacion cotizacionInicial={cotizacionMock} productoInicial={null} />);
+    expect(screen.queryByTestId('incluye-propuesta')).toBeNull();
+    expect(screen.queryByTestId('no-incluye-propuesta')).toBeNull();
+    // El itinerario sale solo de las fechas: salida, estadía y regreso, sin prometer vuelo
+    const itinerario = screen.getByTestId('itinerario-propuesta').textContent ?? '';
+    expect(itinerario).toContain('Llegada a San Andrés Islas, Colombia');
+    expect(itinerario).not.toContain('Vuelo');
+  });
+
   it('GARANTÍA DE CONFIDENCIALIDAD (R10): la vista del cliente NUNCA expone costo neto, margen ni política comercial', () => {
-    const { container } = render(<PaginaImprimirCotizacion cotizacionInicial={cotizacionMock} />);
+    const { container } = render(
+      <PaginaImprimirCotizacion
+        cotizacionInicial={cotizacionMock}
+        productoInicial={productoSanAndres}
+      />,
+    );
 
     const html = container.innerHTML;
     const texto = container.textContent ?? '';

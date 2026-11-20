@@ -265,3 +265,36 @@ export async function desactivarPaqueteApi(id: string): Promise<{ id: string; ac
     },
   );
 }
+
+/** Solo lo que la propuesta al viajero lee del producto. Nada de tarifas ni netos (R10). */
+const EsquemaProductoDePropuesta = EsquemaPaquete.pick({
+  dias: true,
+  planAlimentacion: true,
+  inclusiones: true,
+  exclusiones: true,
+  descripcion: true,
+  cargosEnDestino: true,
+  opcionesDeSalida: true,
+});
+export type ProductoDePropuestaApi = z.infer<typeof EsquemaProductoDePropuesta>;
+
+/**
+ * Lo que la propuesta al viajero necesita del producto cotizado.
+ * GET /api/v1/paquetes/:id. Devuelve `null` si falla: la propuesta sale sin esas secciones en vez
+ * de inventarlas.
+ */
+export async function obtenerProductoParaPropuestaApi(
+  paqueteId: string,
+): Promise<ProductoDePropuestaApi | null> {
+  if (!estaUsandoCatalogoReal()) {
+    const mock = MOCK_PAQUETES_CATALOGO.find((p) => p.id === paqueteId);
+    return mock ? EsquemaProductoDePropuesta.parse(mock) : null;
+  }
+  try {
+    const bruto = await pedirCatalogo<unknown>(`/api/v1/paquetes/${encodeURIComponent(paqueteId)}`);
+    const parseo = EsquemaProductoDePropuesta.safeParse(bruto);
+    return parseo.success ? parseo.data : null;
+  } catch {
+    return null;
+  }
+}
