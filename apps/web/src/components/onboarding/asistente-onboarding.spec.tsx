@@ -10,10 +10,10 @@ describe('AsistenteOnboarding — Orquestador de 4 Pasos (T-105)', () => {
     }
   });
 
-  it('1. Renderiza los 4 pasos en el stepper con distintivo T-105', () => {
+  it('1. Renderiza los 4 pasos en el stepper con sin ID de tarea', () => {
     render(<AsistenteOnboarding tenantId="tenant-test" nombreAgencia="Caribe Tours" />);
 
-    expect(screen.getByText('T-105')).toBeDefined();
+    expect(screen.queryByText('T-105')).toBeNull();
     expect(screen.getByText('Bienvenido a ViajaPro: Configura tu Agencia')).toBeDefined();
     expect(screen.getByTestId('btn-paso-marca')).toBeDefined();
     expect(screen.getByTestId('btn-paso-catalogo')).toBeDefined();

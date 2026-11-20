@@ -36,7 +36,7 @@ export default function TerminosServicioPage() {
               data-testid="badge-borrador"
               className="rounded-full bg-amber-100 px-2.5 py-0.5 text-[11px] font-bold text-amber-900 dark:bg-amber-950/80 dark:text-amber-300"
             >
-              Borrador en revisión jurídica (T-093 / T-108)
+              Borrador en revisión jurídica
             </span>
             <span className="hidden rounded-full bg-teal-100 px-2.5 py-0.5 text-[11px] font-bold text-teal-800 sm:inline dark:bg-teal-950 dark:text-teal-300">
               SaaS B2B Turismo
@@ -74,7 +74,7 @@ export default function TerminosServicioPage() {
               <p className="mt-1 leading-relaxed">
                 El presente clausulado define las bases operativas de ViajaPro. El documento
                 definitivo será firmado por cada agencia asociada en su proceso de vinculación
-                comercial formal una vez completada la revisión jurídica (Tarea T-093).
+                comercial formal una vez completada la revisión jurídica.
               </p>
             </div>
           </div>

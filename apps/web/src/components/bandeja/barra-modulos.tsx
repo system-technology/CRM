@@ -342,7 +342,7 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
     },
     {
       id: 'viajes',
-      label: 'Archivos de Viaje (TravelFiles)',
+      label: 'Archivos de viaje',
       href: '/viajes',
       icon: Briefcase,
       activo: pathname.startsWith('/viajes'),
@@ -999,9 +999,6 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
                 <span className="flex items-center gap-2">
                   <Sparkles className="h-4 w-4 text-amber-500" />
                   <span>Asistente de Inicio</span>
-                </span>
-                <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold text-amber-800 dark:bg-amber-950 dark:text-amber-300">
-                  T-105
                 </span>
               </Link>
 

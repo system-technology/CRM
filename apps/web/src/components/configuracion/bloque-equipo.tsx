@@ -199,7 +199,7 @@ export function BloqueEquipo() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-base font-bold text-neutral-900 dark:text-white">
-            Equipo y Permisos de la Agencia (T-027)
+            Equipo y Permisos de la Agencia
           </h2>
           <DistintivoDatosDemo visible={esDemo} />
           <p className="text-xs text-neutral-500 dark:text-neutral-400">
@@ -401,7 +401,7 @@ export function BloqueEquipo() {
         <ShieldCheck className="h-5 w-5 shrink-0 text-purple-600 dark:text-purple-400" />
         <div className="text-xs text-neutral-600 dark:text-neutral-400">
           <p className="font-semibold text-neutral-900 dark:text-white">
-            Aislamiento de Datos por Agencia (RLS R1 y Permiso «usuarios.administrar»):
+            Datos separados por agencia y permiso de administración:
           </p>
           <p className="mt-0.5">
             Las invitaciones solo pueden ser emitidas por usuarios con rol de administración. Cada

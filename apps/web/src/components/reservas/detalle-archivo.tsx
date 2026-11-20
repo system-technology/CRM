@@ -20,7 +20,7 @@ import {
   describirPlazo,
   mensajeDeErrorDelArchivo,
 } from '../../lib/archivos-logica';
-import { formatearDinero, formatearFecha, formatearFechaHora } from '../../lib/formato';
+import { formatearDinero, formatearFecha, formatearFechaHora, pluralizar } from '../../lib/formato';
 import { DialogoCancelarArchivo } from './dialogo-cancelar-archivo';
 import { EditorPasajeros } from './editor-pasajeros';
 import { FormularioReserva } from './formulario-reserva';
@@ -238,7 +238,7 @@ export function DetalleArchivo({
           />
           <Dato
             etiqueta="Pasajeros"
-            valor={`${archivo.adultos} adt, ${archivo.ninos} niños, ${archivo.infantes} inf.`}
+            valor={`${pluralizar(archivo.adultos, 'adulto', 'adultos')}, ${pluralizar(archivo.ninos, 'niño', 'niños')}, ${pluralizar(archivo.infantes, 'infante', 'infantes')}`}
           />
           <Dato etiqueta="Venta" valor={formatearDinero(archivo.venta)} />
         </dl>
@@ -312,8 +312,11 @@ export function DetalleArchivo({
             role="note"
             className="mb-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-700 dark:bg-amber-950/50 dark:text-amber-200"
           >
-            Los pasajeros no cuadran con lo vendido ({archivo.adultos} adultos, {archivo.ninos}{' '}
-            niños, {archivo.infantes} infantes). Puedes guardar igual, pero revisa la lista.
+            Los pasajeros no cuadran con lo vendido (
+            {pluralizar(archivo.adultos, 'adulto', 'adultos')},{' '}
+            {pluralizar(archivo.ninos, 'niño', 'niños')},{' '}
+            {pluralizar(archivo.infantes, 'infante', 'infantes')}). Puedes guardar igual, pero
+            revisa la lista.
           </p>
         )}
         {editandoPasajeros && puedeOperar ? (

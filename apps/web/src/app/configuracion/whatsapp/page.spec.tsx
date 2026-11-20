@@ -10,6 +10,7 @@ vi.mock('next/navigation', () => ({
 
 describe('ConfiguracionWhatsappPage (/configuracion/whatsapp)', () => {
   beforeEach(() => {
+    vi.stubEnv('NEXT_PUBLIC_USE_REAL_CRM', 'true');
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue({

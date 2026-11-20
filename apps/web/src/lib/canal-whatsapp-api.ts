@@ -5,10 +5,14 @@
 import { EstadoCanalWhatsapp, type CanalWhatsappEstado } from '@viajapro/contracts';
 import { obtenerBaseApi } from './api-base';
 import { cabecerasDeTenantDev } from './cabeceras-tenant';
+import { estaUsandoApiReal } from './crm-api';
+import { crearEstadoCanalWhatsappDemo } from './mock-canal-whatsapp';
 
 export type { CanalWhatsappEstado, EstadoCanalWhatsapp };
 
 export async function obtenerEstadoCanalWhatsapp(): Promise<EstadoCanalWhatsapp> {
+  // Demostración: maqueta con la forma del contrato; con la API real nunca se simula.
+  if (!estaUsandoApiReal()) return crearEstadoCanalWhatsappDemo();
   let res: Response;
   try {
     res = await fetch(`${obtenerBaseApi()}/api/v1/canales/whatsapp/estado`, {

@@ -96,9 +96,7 @@ describe('PaginaImprimirCotizacion (/cotizaciones/[id]/imprimir) — T-114', () 
     render(<PaginaImprimirCotizacion cotizacionInicial={cotizacionMock} />);
 
     expect(screen.getByTestId('hoja-imprimible-a4')).toBeDefined();
-    expect(screen.getByTestId('marca-agencia-cotizacion').textContent).toContain(
-      'ViajaPro Aventura',
-    );
+    expect(screen.getByTestId('marca-agencia-cotizacion').textContent).toContain('Viajes El Sol');
     expect(screen.getByTestId('vigencia-cotizacion').textContent).toContain('Vigente hasta:');
     expect(screen.getByTestId('desglose-tarifas-cliente').textContent).toContain(
       'Adulto en acomodación triple',

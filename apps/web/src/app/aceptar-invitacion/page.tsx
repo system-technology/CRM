@@ -200,7 +200,7 @@ export default function AceptarInvitacionPage() {
         </div>
 
         <div className="relative z-10 flex items-center justify-between border-t border-white/15 pt-4 text-xs text-cyan-200/80">
-          <span>Aislamiento multi-tenant por agencia (RLS)</span>
+          <span>Los datos de tu agencia no se mezclan con los de otras</span>
           <span className="font-semibold text-white/90">Colombia · Caribe · Internacional</span>
         </div>
       </section>

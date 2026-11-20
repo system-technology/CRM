@@ -1249,7 +1249,7 @@ export default function BandejaConversacionPage() {
                       title={
                         !puedeOperarBandeja
                           ? explicacionFaltaPermiso('bandeja.operar')
-                          : 'Enviar cotización por WhatsApp (T-074)'
+                          : 'Enviar cotización por WhatsApp'
                       }
                       aria-label="Enviar cotización por WhatsApp"
                     >
@@ -1424,7 +1424,7 @@ export default function BandejaConversacionPage() {
         }}
       />
 
-      {/* Modal Enviar Cotización por WhatsApp (T-074) */}
+      {/* Modal Enviar Cotización por WhatsApp */}
       {modalEnviarCotizacionAbierto && detalle && (
         <ModalEnviarCotizacion
           conversacionId={detalle.id}

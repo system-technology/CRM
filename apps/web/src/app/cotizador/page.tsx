@@ -72,6 +72,7 @@ import {
   interpretarErrorCotizaciones,
   sugerirTituloCotizacion,
 } from '../../lib/cotizaciones-logica';
+import { herramientasDevActivas } from '../../lib/herramientas-dev';
 
 interface PaqueteOpcion {
   id: string;
@@ -877,16 +878,18 @@ function ContenidoCotizador() {
                     )}
 
                     {/* Alternador modo Real / Mock */}
-                    <div className="pt-2">
-                      <button
-                        type="button"
-                        onClick={() => alternarDemo()}
-                        className="flex min-h-[44px] w-full items-center justify-center rounded-xl p-2.5 text-center text-xs font-semibold text-neutral-600 hover:text-neutral-900 focus-visible:ring-2 focus-visible:ring-purple-600 focus-visible:outline-hidden dark:text-neutral-400 dark:hover:text-neutral-200"
-                      >
-                        Modo: {usarReal ? 'Conectado a API real' : 'Modo demostración (simulado)'}{' '}
-                        (Alternar)
-                      </button>
-                    </div>
+                    {herramientasDevActivas() && (
+                      <div className="pt-2">
+                        <button
+                          type="button"
+                          onClick={() => alternarDemo()}
+                          className="flex min-h-[44px] w-full items-center justify-center rounded-xl p-2.5 text-center text-xs font-semibold text-neutral-600 hover:text-neutral-900 focus-visible:ring-2 focus-visible:ring-purple-600 focus-visible:outline-hidden dark:text-neutral-400 dark:hover:text-neutral-200"
+                        >
+                          Modo: {usarReal ? 'Conectado a API real' : 'Modo demostración (simulado)'}{' '}
+                          (Alternar)
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </aside>
 

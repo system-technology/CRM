@@ -134,7 +134,7 @@ export function construirLineaTiempo360(
       id: `archivo-${archivoId}`,
       tipo: 'VIAJE_CONFIRMADO',
       titulo: 'Reserva confirmada y archivo de viaje creado',
-      descripcion: `Expediente operativo #${archivoId.slice(0, 8)}. Documentación y vouchers de servicios listos.`,
+      descripcion: 'Archivo de viaje abierto. Documentación y vouchers de servicios en Reservas.',
       fechaIso: ficha.contacto.ultimoContactoEn ?? ficha.contacto.creadoEn,
       autor: 'Operaciones',
       etiquetaBadge: 'Confirmado',

@@ -13,6 +13,7 @@ import {
   Mensaje,
   type AsignarConversacion,
   type CambiarEstadoConversacion,
+  type ContadoresBandeja,
   type ConsultarBandeja,
   type CrearNota,
   type EnviarCotizacionCuerpo,
@@ -51,6 +52,15 @@ const NOMBRES_CONTACTOS = [
   'Mateo Salazar',
   'Isabella Restrepo',
   'Nicolás Medina',
+];
+
+/** Respuestas del asesor: el texto de un mensaje SALIENTE nunca es el de un cliente. */
+const MENSAJES_ASESOR = [
+  'Con gusto. Te envío la cotización con dos opciones de hotel en un momento.',
+  'Hay disponibilidad. ¿Para cuántas personas y qué fechas tienes pensadas?',
+  'El paquete incluye tiquetes, traslados y alojamiento. Te comparto el detalle por aquí.',
+  'Recibido el comprobante, gracias. Ya lo registramos y te confirmo el abono.',
+  'El vuelo de regreso sale a las 3:40 p. m. Te dejo el itinerario completo.',
 ];
 
 const MENSAJES_EJEMPLO = [
@@ -173,7 +183,8 @@ function generar500Conversaciones(): ConversacionResumen[] {
 
     const asignado = i % 3 === 0 ? null : ASESORES[(i - 1) % ASESORES.length];
     const sinLeer = i % 5 === 0 ? (i % 3) + 1 : 0;
-    const direccion = i % 2 === 0 ? ('ENTRANTE' as const) : ('SALIENTE' as const);
+    const direccion =
+      i % 2 === 0 || i % 5 === 0 || i === 1 ? ('ENTRANTE' as const) : ('SALIENTE' as const);
 
     const slaVencido = i % 9 === 0;
     const slaVenceEn = slaVencido
@@ -210,7 +221,10 @@ function generar500Conversaciones(): ConversacionResumen[] {
     };
 
     const textoMsg =
-      MENSAJES_EJEMPLO[(i - 1) % MENSAJES_EJEMPLO.length] || 'Consulta sobre paquete turístico';
+      (direccion === 'SALIENTE'
+        ? MENSAJES_ASESOR[(i - 1) % MENSAJES_ASESOR.length]
+        : MENSAJES_EJEMPLO[(i - 1) % MENSAJES_EJEMPLO.length]) ||
+      'Consulta sobre paquete turístico';
     const etiquetas = ETIQUETAS_OPCIONES[i % ETIQUETAS_OPCIONES.length] || [];
 
     const resumen = {
@@ -238,6 +252,18 @@ function generar500Conversaciones(): ConversacionResumen[] {
 
 export const MOCK_CONVERSACIONES: ConversacionResumen[] = generar500Conversaciones();
 
+/** Contadores de la bandeja de demostración, calculados sobre las mismas conversaciones que se listan. */
+export function obtenerContadoresMock(): ContadoresBandeja {
+  const abiertas = MOCK_CONVERSACIONES.filter((c) => c.estado === 'ABIERTA');
+  return {
+    todas: abiertas.length,
+    mias: abiertas.filter((c) => c.asignadoAId === ID_ASESOR_ACTUAL).length,
+    sinAsignar: abiertas.filter((c) => c.asignadoAId === null).length,
+    conversacionesSinLeer: abiertas.filter((c) => c.mensajesSinLeer > 0).length,
+    mensajesSinLeer: abiertas.reduce((suma, c) => suma + c.mensajesSinLeer, 0),
+  };
+}
+
 const MOCK_DETALLES = new Map<string, ConversacionDetalle>();
 
 function generarDetalleConversacion(resumen: ConversacionResumen): ConversacionDetalle {
@@ -247,7 +273,7 @@ function generarDetalleConversacion(resumen: ConversacionResumen): ConversacionD
   // Si es el caso 502 de 4000 caracteres
   if (resumen.id === '00000000-0001-4000-8000-000000000992') {
     mensajesBrutos.push({
-      id: 'msg-4000-char',
+      id: '00000000-0001-4000-8000-000000009920',
       conversacionId: resumen.id,
       direccion: 'ENTRANTE' as const,
       tipo: 'TEXTO' as const,
@@ -283,8 +309,14 @@ function generarDetalleConversacion(resumen: ConversacionResumen): ConversacionD
       adjuntos: [],
       estado: 'ENTREGADO' as const,
       motivoFallo: null,
-      autorId: resumen.asignadoAId ?? ID_ASESOR_ACTUAL,
-      autorNombre: resumen.asignadoANombre ?? NOMBRE_ASESOR_ACTUAL,
+      autorId:
+        resumen.ultimoMensajeDireccion === 'ENTRANTE'
+          ? null
+          : (resumen.asignadoAId ?? ID_ASESOR_ACTUAL),
+      autorNombre:
+        resumen.ultimoMensajeDireccion === 'ENTRANTE'
+          ? null
+          : (resumen.asignadoANombre ?? NOMBRE_ASESOR_ACTUAL),
       ocurridoEn: resumen.ultimoMensajeEn,
     });
   }

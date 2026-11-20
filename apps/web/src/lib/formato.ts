@@ -395,3 +395,28 @@ export function formatearCupo(
 
   return `${disponibles} cupos disponibles`;
 }
+
+/** `2026-12-15` -> `15/12/2026`. Cadena vacía si no es una fecha ISO. */
+export function fechaIsoADiaMesAnio(iso: string | null | undefined): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso ?? '');
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : '';
+}
+
+/** `15/12/2026` -> `2026-12-15`. `null` si no es una fecha real (rechaza 31/02/2026). */
+export function diaMesAnioAFechaIso(texto: string): string | null {
+  const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(texto.trim());
+  if (!m) return null;
+  const [dia, mes, anio] = [Number(m[1]), Number(m[2]), Number(m[3])];
+  const f = new Date(Date.UTC(anio, mes - 1, dia));
+  if (f.getUTCFullYear() !== anio || f.getUTCMonth() !== mes - 1 || f.getUTCDate() !== dia) {
+    return null;
+  }
+  return `${m[3]}-${m[2]}-${m[1]}`;
+}
+
+/**
+ * Concordancia de número: pluralizar(1, 'niño', 'niños') -> «1 niño»; con 2 -> «2 niños».
+ */
+export function pluralizar(cantidad: number, singular: string, plural: string): string {
+  return `${cantidad} ${cantidad === 1 ? singular : plural}`;
+}
