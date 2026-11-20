@@ -41,7 +41,12 @@ o tienen algún pago pendiente»**. Hoy lo resuelve con tres cosas:
 5. **Que pueda dejar su hoja.** Sin importar sus reservas actuales, tendría que volver a teclearlas y no
    adoptaría el CRM.
 6. **Sin pasarela de pagos en este roadmap.** Registro manual de pagos. Cobrar en línea es otro ADR.
-7. **Una decisión estructural, un ADR antes del código (R7):** el layout compartido (T-314), el contexto
+7. **El asesor trabaja desde el celular.** Dato del cliente (2026-11-20): hoy hacen **todo** desde WhatsApp
+   Business en el teléfono, también cotizar. Todo lo que hace una asesora debe poder hacerse en 390 px sin
+   desplazarse de lado: responder, cotizar y enviar, poner una etiqueta, registrar un pago y ver quién debe.
+   La barra móvil (D4, con su contingencia ya confirmada) es **Hoy · Conversaciones · Cotizar · Buscar ·
+   Más**.
+8. **Una decisión estructural, un ADR antes del código (R7):** el layout compartido (T-314), el contexto
    de pagos (T-328) y la coexistencia con WhatsApp Business (T-338).
 
 ## 2. Los cinco ejes y su orden
@@ -176,6 +181,9 @@ navegador**:
 7. El aislamiento entre agencias pasó auditoría en cada pieza que toca dinero o datos de varias agencias.
 8. Un asesor abre el celular y ve **su** dashboard sin desplazarse de lado; no ve lo de otro asesor; el
    administrador ve toda la agencia y puede filtrar por asesor, periodo y moneda.
+9. **Móvil de verdad (390 px, sin desplazamiento lateral):** una cotización completa (paquete, fecha, ocupación,
+   total, guardar, enviar por WhatsApp y volver al chat), poner o quitar una etiqueta, registrar un pago y
+   consultar el saldo de un archivo.
 
 ## 4. Preguntas abiertas para el dueño (antes de T-327, T-323 y T-334)
 
@@ -185,7 +193,7 @@ navegador**:
 - ¿Quién registra los pagos, el asesor o una persona de administración?
 - ¿Quiere que el sistema recuerde su saldo al cliente por WhatsApp? (si sí, es otra tarea de cola, no está aquí)
 - ¿Qué **etiquetas** usa exactamente, y de qué color?
-- Reportes: ¿qué mira cada asesor para saber cómo va?, ¿qué quiere ver él como administrador?, ¿cuántos asesores tiene y cuántos trabajan desde el celular?
+- Reportes: ¿qué mira cada asesor para saber cómo va?, ¿qué quiere ver él como administrador?, ¿cuántos asesores tiene? (Respondido: todos trabajan desde el celular; hoy lo hacen todo desde WhatsApp Business.)
 - Su hoja: **cuántas reservas** y **qué columnas**. Pedir una **muestra sin nombres ni teléfonos** (R10).
 
 ## 5. Riesgos y qué no se hace

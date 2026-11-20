@@ -7000,6 +7000,7 @@ tasks:
     acceptance:
       - "Hoy · Conversaciones · Archivos · Buscar · Más; todo módulo a dos toques como máximo; flecha de volver también en el error de la conversación"
       - "e2e a 390 px: cada módulo en dos toques o menos; /bandeja/inexistente tiene salida"
+      - "CRÍTICA para el piloto (el asesor trabaja desde el celular): barra inferior Hoy · Conversaciones · Cotizar · Buscar · Más; «Archivos de viaje» en «Más» y desde la conversación; si diseno-ux propone conservar Archivos (lupa fija en la cabecera), se lleva al propietario antes de implementarlo"
     source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md (2026-11-20)
     created_at: 2026-11-20T19:00:00.000Z
     owner: frontend
@@ -7014,6 +7015,7 @@ tasks:
     acceptance:
       - "«Cotizando para …· desde la conversación» con volver al chat; tras guardar, la acción principal es «Enviar por WhatsApp»"
       - "El total del cotizador es el de la versión guardada (la auditoría vio 10.800.000 frente a 8.330.000; investigar si es un error de precio, R8)"
+      - "CRÍTICA para el piloto: una cotización COMPLETA se hace a 390 px sin desplazamiento lateral (paquete, fecha, ocupación, total, guardar, enviar por WhatsApp y volver al chat); capturas del cotizador actual a 390 px con lo que se rompa"
     source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md (2026-11-20)
     created_at: 2026-11-20T19:00:00.000Z
     owner: frontend
@@ -7084,6 +7086,7 @@ tasks:
     acceptance:
       - "Se ve, se pone y se quita desde el chat; se filtra la bandeja; colores con contraste suficiente y texto además de color"
       - "e2e: etiquetar una conversación y filtrar"
+      - "Móvil: poner, quitar y filtrar etiquetas a 390 px con el pulgar (zonas táctiles de al menos 44 px), sin desplazamiento lateral"
     source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md (2026-11-20)
     created_at: 2026-11-20T19:00:00.000Z
     owner: frontend
@@ -7154,6 +7157,7 @@ tasks:
     acceptance:
       - "En el archivo: total, pagado, saldo e historial de pagos; registrar un pago con moneda, fecha y medio"
       - "El verbo del botón y el de su confirmación coinciden; estados vacío, error y sin permiso cubiertos"
+      - "Móvil: registrar un pago y ver el saldo del archivo a 390 px, sin desplazamiento lateral"
     source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md (2026-11-20)
     created_at: 2026-11-20T19:00:00.000Z
     owner: frontend
@@ -7323,6 +7327,7 @@ tasks:
     acceptance:
       - "Sus pendientes de atención, cotizaciones abiertas por antigüedad, seguimientos vencidos, cierres del mes y cobros por cobrar, en «Hoy» y en Reportes"
       - "A 390 px sin desplazamiento lateral; tarjetas en lugar de tablas anchas; estados vacío, cargando y error"
+      - "Móvil primero: el dashboard del asesor se verifica a 390 px y a 1440 px; el celular es el caso principal"
     source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md, Eje F (decisión del propietario 2026-11-20)
     created_at: 2026-11-20T21:30:00.000Z
     owner: frontend
