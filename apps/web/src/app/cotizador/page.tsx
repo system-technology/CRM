@@ -570,6 +570,9 @@ function ContenidoCotizador() {
                       </label>
                       <select
                         id="select-paquete-cotizador"
+                        // Origen de los datos, para las pruebas de navegador: el alternador que lo
+                        // mostraba es ahora una herramienta de desarrollo oculta.
+                        data-origen={usarReal ? 'api' : 'maqueta'}
                         value={paqueteId}
                         onChange={(e) => setPaqueteId(e.target.value)}
                         className="mt-1.5 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white p-2.5 text-xs text-neutral-900 shadow-2xs focus:border-purple-600 focus-visible:ring-2 focus-visible:ring-purple-600 focus-visible:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
