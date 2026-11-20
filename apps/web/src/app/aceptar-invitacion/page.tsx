@@ -342,7 +342,7 @@ export default function AceptarInvitacionPage() {
                   <Link
                     href="/ingresar"
                     data-testid="enlace-ir-a-ingresar"
-                    className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-bold text-white shadow-xs transition hover:bg-blue-700 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none"
+                    className="boton-primario inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold shadow-xs transition"
                   >
                     <span>Iniciar sesión ahora</span>
                     <ArrowRight className="h-4 w-4" aria-hidden="true" />
@@ -433,7 +433,7 @@ export default function AceptarInvitacionPage() {
                       onChange={(e) => setNombre(e.target.value)}
                       placeholder="Ej. Camila Restrepo"
                       disabled={estado === 'enviando'}
-                      className="min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white py-2.5 pr-3.5 pl-10 text-sm text-neutral-900 placeholder:text-neutral-400 focus:border-blue-600 focus:ring-2 focus:ring-blue-500/20 focus:outline-none disabled:opacity-60 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100"
+                      className="focus:border-acento-600 focus:ring-acento-500/20 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white py-2.5 pr-3.5 pl-10 text-sm text-neutral-900 placeholder:text-neutral-400 focus:ring-2 focus:outline-none disabled:opacity-60 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100"
                     />
                   </div>
                 </div>
@@ -462,7 +462,7 @@ export default function AceptarInvitacionPage() {
                       onChange={(e) => setContrasena(e.target.value)}
                       placeholder="Mínimo 12 caracteres"
                       disabled={estado === 'enviando'}
-                      className="min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white py-2.5 pr-12 pl-10 text-sm text-neutral-900 placeholder:text-neutral-400 focus:border-blue-600 focus:ring-2 focus:ring-blue-500/20 focus:outline-none disabled:opacity-60 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100"
+                      className="focus:border-acento-600 focus:ring-acento-500/20 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white py-2.5 pr-12 pl-10 text-sm text-neutral-900 placeholder:text-neutral-400 focus:ring-2 focus:outline-none disabled:opacity-60 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100"
                     />
                     <button
                       type="button"
@@ -514,7 +514,7 @@ export default function AceptarInvitacionPage() {
                   type="submit"
                   data-testid="btn-aceptar-invitacion"
                   disabled={estado === 'enviando'}
-                  className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-xs font-bold text-white shadow-xs transition hover:bg-blue-700 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+                  className="boton-primario inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-xs font-bold shadow-xs transition disabled:opacity-60"
                 >
                   <span>
                     {estado === 'enviando'

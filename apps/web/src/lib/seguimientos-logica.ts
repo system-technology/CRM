@@ -223,7 +223,7 @@ export function formatearDetalleVencimiento(
       esUrgente,
       badgeClase: esUrgente
         ? 'bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900/50'
-        : 'bg-teal-50 text-teal-700 border-teal-200 dark:bg-teal-950/40 dark:text-teal-300 dark:border-teal-900/50',
+        : 'bg-acento-50 text-acento-700 border-acento-200 dark:bg-acento-950/40 dark:text-acento-300 dark:border-acento-900/50',
     };
   }
 

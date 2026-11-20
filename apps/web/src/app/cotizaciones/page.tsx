@@ -286,7 +286,7 @@ export default function CotizacionesPage() {
                   onClick={() => setModoEstres500((prev) => !prev)}
                   className={`flex min-h-[44px] items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-semibold transition-colors ${
                     modoEstres500
-                      ? 'border-purple-300 bg-purple-50 text-purple-700 dark:border-purple-800 dark:bg-purple-950/60 dark:text-purple-300'
+                      ? 'border-acento-300 bg-acento-50 text-acento-700 dark:border-acento-800 dark:bg-acento-950/60 dark:text-acento-300'
                       : 'border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300'
                   }`}
                   title="Probar comportamiento con 500 cotizaciones de nombres largos"
@@ -298,7 +298,7 @@ export default function CotizacionesPage() {
 
               <Link
                 href="/cotizador"
-                className="bg-acento-600 hover:bg-acento-700 flex min-h-[44px] items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold text-white shadow-xs transition-colors"
+                className="boton-primario flex min-h-[44px] items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold shadow-xs transition-colors"
               >
                 <Plus className="h-4 w-4" />
                 <span>Nueva Cotización</span>
@@ -464,7 +464,7 @@ export default function CotizacionesPage() {
                 )}
                 <Link
                   href="/cotizador"
-                  className="bg-acento-600 hover:bg-acento-700 inline-flex min-h-[44px] items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold text-white shadow-xs"
+                  className="boton-primario inline-flex min-h-[44px] items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold shadow-xs"
                 >
                   <Plus className="h-4 w-4" />
                   <span>Crear primera cotización</span>
@@ -500,7 +500,7 @@ export default function CotizacionesPage() {
                                 resumen.estado === 'ACEPTADA'
                                   ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
                                   : resumen.estado === 'ENVIADA'
-                                    ? 'bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300'
+                                    ? 'bg-acento-50 text-acento-700 dark:bg-acento-950 dark:text-acento-300'
                                     : resumen.estado === 'RECHAZADA'
                                       ? 'bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300'
                                       : resumen.estado === 'VENCIDA'
@@ -581,7 +581,7 @@ export default function CotizacionesPage() {
               {/* VISTA ESCRITORIO (>= 768 px) */}
               <div className="hidden overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-xs md:block dark:border-neutral-800 dark:bg-neutral-900">
                 <table className="w-full text-left text-xs text-neutral-600 dark:text-neutral-300">
-                  <thead className="border-b border-neutral-200 bg-neutral-50/80 text-[11px] font-bold text-neutral-500 uppercase dark:border-neutral-800 dark:bg-neutral-800/40">
+                  <thead className="border-b border-neutral-200 bg-neutral-50/80 text-[11px] font-bold text-neutral-500 dark:border-neutral-800 dark:bg-neutral-800/40">
                     <tr>
                       <th className="px-5 py-3.5">Título / Cliente</th>
                       <th className="px-4 py-3.5">Paquete y Salida</th>
@@ -632,7 +632,7 @@ export default function CotizacionesPage() {
                                 resumen.estado === 'ACEPTADA'
                                   ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
                                   : resumen.estado === 'ENVIADA'
-                                    ? 'bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300'
+                                    ? 'bg-acento-50 text-acento-700 dark:bg-acento-950 dark:text-acento-300'
                                     : resumen.estado === 'RECHAZADA'
                                       ? 'bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300'
                                       : resumen.estado === 'VENCIDA'

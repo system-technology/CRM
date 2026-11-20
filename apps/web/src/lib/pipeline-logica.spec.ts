@@ -185,8 +185,8 @@ describe('Formateo determinista de fechas de tareas (0c.14.3 — Hidratación)',
   it('formatea la fecha en zona horaria America/Bogota (R9) con hora y minutos', () => {
     // 2026-10-14T02:09:00Z en UTC equivale a las 21:09 (09:09 p. m.) del 13 de oct en Bogotá
     const resultado = formatearFechaTarea('2026-10-14T02:09:00Z');
-    expect(resultado).toContain('13 de oct');
-    expect(resultado).toContain('09:09');
+    expect(resultado).toContain('13 oct 2026');
+    expect(resultado).toContain('9:09');
     expect(resultado).toContain('p. m.');
   });
 

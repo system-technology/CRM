@@ -30,7 +30,7 @@ export default function NotFound() {
 
         {/* Títulos y Explicación en Español Claro */}
         <div className="space-y-2">
-          <p className="text-xs font-bold tracking-widest text-sky-700 uppercase dark:text-sky-400">
+          <p className="text-xs font-bold text-sky-700 dark:text-sky-400">
             Coordenadas extraviadas
           </p>
           <h1 className="text-2xl font-black text-neutral-900 sm:text-3xl dark:text-white">
@@ -47,7 +47,7 @@ export default function NotFound() {
           <Link
             href="/bandeja"
             data-testid="enlace-volver-bandeja"
-            className="inline-flex min-h-[44px] w-full min-w-[44px] items-center justify-center gap-2 rounded-xl bg-sky-600 px-6 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-sky-700 focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:outline-none sm:w-auto"
+            className="boton-primario inline-flex min-h-[44px] w-full min-w-[44px] items-center justify-center gap-2 rounded-xl px-6 py-3 text-sm font-bold shadow-sm transition sm:w-auto"
           >
             <ArrowLeft className="h-4 w-4" aria-hidden="true" />
             <span>Volver a la Bandeja de WhatsApp</span>
@@ -81,9 +81,9 @@ export default function NotFound() {
             <Link
               href="/pipeline"
               data-testid="enlace-rapido-pipeline"
-              className="flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-neutral-200 bg-white px-3 py-2 text-xs font-semibold text-neutral-700 transition hover:border-purple-300 hover:bg-purple-50/50 hover:text-purple-800 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800"
+              className="hover:border-acento-300 hover:bg-acento-50/50 hover:text-acento-800 flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-neutral-200 bg-white px-3 py-2 text-xs font-semibold text-neutral-700 transition dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800"
             >
-              <GitFork className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
+              <GitFork className="text-acento-600 dark:text-acento-400 h-3.5 w-3.5" />
               <span>Pipeline</span>
             </Link>
           </div>

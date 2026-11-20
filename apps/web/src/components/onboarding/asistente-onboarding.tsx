@@ -144,7 +144,7 @@ export function AsistenteOnboarding({
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="flex items-center gap-2">
-            <span className="rounded-full bg-teal-100 px-2.5 py-0.5 text-xs font-bold text-teal-800 dark:bg-teal-950 dark:text-teal-300">
+            <span className="bg-acento-100 text-acento-800 dark:bg-acento-950 dark:text-acento-300 rounded-full px-2.5 py-0.5 text-xs font-bold">
               Paso a Paso
             </span>
           </div>
@@ -159,8 +159,8 @@ export function AsistenteOnboarding({
 
         <div className="flex items-center gap-3">
           <div className="text-right">
-            <span className="text-[11px] font-semibold text-neutral-500 uppercase dark:text-neutral-400">
-              Progreso General
+            <span className="text-[11px] font-semibold text-neutral-500 dark:text-neutral-400">
+              Progreso general
             </span>
             <p className="cifra text-xl font-black text-neutral-900 dark:text-white">
               {porcentaje}%
@@ -181,7 +181,7 @@ export function AsistenteOnboarding({
       <div className="space-y-2">
         <div className="h-2 w-full overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-800">
           <div
-            className="h-full bg-gradient-to-r from-teal-500 to-emerald-500 transition-all duration-500"
+            className="from-acento-500 h-full bg-gradient-to-r to-emerald-500 transition-all duration-500"
             style={{ width: `${porcentaje}%` }}
           />
         </div>

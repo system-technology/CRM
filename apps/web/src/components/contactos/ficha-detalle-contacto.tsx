@@ -21,6 +21,7 @@ import {
 import { generarColorAvatar, obtenerIniciales } from '../../lib/bandeja-logica';
 import { formatearTelefonoVisual } from '../../lib/contactos-logica';
 import { obtenerFichaDeContacto } from '../../lib/crm-api';
+import { formatearFecha } from '../../lib/formato';
 
 interface FichaDetalleContactoProps {
   /** El listado no trae `preferencias` (dato sensible): solo la ficha completa las incluye. */
@@ -112,7 +113,7 @@ export function FichaDetalleContacto({ contacto, onCerrar }: FichaDetalleContact
         {/* Acceso a Ficha 360 */}
         <Link
           href={`/contactos/${id}`}
-          className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-teal-600 px-4 py-2.5 text-xs font-bold text-white shadow-xs transition-colors hover:bg-teal-700 dark:bg-teal-500 dark:hover:bg-teal-600"
+          className="boton-primario flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold shadow-xs transition-colors"
         >
           <span>Abrir Ficha 360 Completa</span>
         </Link>
@@ -264,12 +265,12 @@ export function FichaDetalleContacto({ contacto, onCerrar }: FichaDetalleContact
         <div className="space-y-1 border-t border-neutral-100 pt-4 text-[11px] text-neutral-400 dark:border-neutral-800">
           <div className="flex items-center space-x-1.5">
             <Calendar className="h-3 w-3" />
-            <span>Registrado el: {new Date(creadoEn).toLocaleDateString('es-CO')}</span>
+            <span>Registrado el: {formatearFecha(creadoEn)}</span>
           </div>
           {ultimoContactoEn && (
             <div className="flex items-center space-x-1.5">
               <Phone className="h-3 w-3" />
-              <span>Último contacto: {new Date(ultimoContactoEn).toLocaleDateString('es-CO')}</span>
+              <span>Último contacto: {formatearFecha(ultimoContactoEn)}</span>
             </div>
           )}
         </div>

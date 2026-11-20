@@ -146,7 +146,8 @@ export const MOCK_ETAPAS_CONFIGURADAS: EtapaConfigurada[] = [
     orden: 1,
     probabilidad: 10,
     descripcion: 'Contacto recibido vía WhatsApp sin cotizar aún',
-    color: 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300',
+    color:
+      'border-acento-500 bg-acento-50 text-acento-700 dark:bg-acento-950/40 dark:text-acento-300',
   },
   {
     codigo: 'EN_COTIZACION',
@@ -163,7 +164,7 @@ export const MOCK_ETAPAS_CONFIGURADAS: EtapaConfigurada[] = [
     probabilidad: 60,
     descripcion: 'Ajustando fechas, acomodación o tarifas de mayorista',
     color:
-      'border-purple-500 bg-purple-50 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300',
+      'border-acento-500 bg-acento-50 text-acento-700 dark:bg-acento-950/40 dark:text-acento-300',
   },
   {
     codigo: 'GANADA',

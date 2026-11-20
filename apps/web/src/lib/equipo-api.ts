@@ -20,6 +20,7 @@ import {
   type MiembroEquipo as MiembroMock,
   type RolMiembro,
 } from './mock-configuracion';
+import { formatearFecha } from './formato';
 
 export type { RolMiembro };
 
@@ -57,13 +58,7 @@ export function inicialesDeNombre(nombre: string, correo = ''): string {
 
 /** Fecha de alta legible (es-CO). `creadoEn` (instante UTC) se muestra en la zona del navegador. */
 export function formatearFechaIngreso(iso: string): string {
-  const soloFecha = iso.length === 10;
-  const d = new Date(soloFecha ? `${iso}T00:00:00Z` : iso);
-  if (Number.isNaN(d.getTime())) return '—';
-  return new Intl.DateTimeFormat('es-CO', {
-    dateStyle: 'medium',
-    ...(soloFecha ? { timeZone: 'UTC' } : {}),
-  }).format(d);
+  return formatearFecha(iso) || '—';
 }
 
 /** Adapta el contrato de la API a lo que pinta la pantalla. */

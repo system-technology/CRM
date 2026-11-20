@@ -64,9 +64,7 @@ export function TablaGestionCatalogo({
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <div className="flex items-center justify-between rounded-2xl border border-neutral-200 bg-white p-4 shadow-2xs dark:border-neutral-800 dark:bg-neutral-900">
           <div>
-            <p className="text-[11px] font-bold tracking-wider text-neutral-400 uppercase">
-              Total Productos
-            </p>
+            <p className="text-[11px] font-bold text-neutral-400">Total de productos</p>
             <p
               data-testid="kpi-total-paquetes"
               className="cifra mt-1 text-2xl font-black text-neutral-900 dark:text-white"
@@ -81,8 +79,8 @@ export function TablaGestionCatalogo({
 
         <div className="flex items-center justify-between rounded-2xl border border-emerald-200 bg-emerald-50/50 p-4 shadow-2xs dark:border-emerald-950 dark:bg-emerald-950/20">
           <div>
-            <p className="text-[11px] font-bold tracking-wider text-emerald-700 uppercase dark:text-emerald-400">
-              Activos para Venta
+            <p className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400">
+              Activos para la venta
             </p>
             <p
               data-testid="kpi-activos-paquetes"
@@ -98,9 +96,7 @@ export function TablaGestionCatalogo({
 
         <div className="flex items-center justify-between rounded-2xl border border-neutral-200 bg-white p-4 shadow-2xs dark:border-neutral-800 dark:bg-neutral-900">
           <div>
-            <p className="text-[11px] font-bold tracking-wider text-neutral-400 uppercase">
-              Pausados / Inactivos
-            </p>
+            <p className="text-[11px] font-bold text-neutral-400">Pausados o inactivos</p>
             <p
               data-testid="kpi-inactivos-paquetes"
               className="cifra mt-1 text-2xl font-black text-neutral-500 dark:text-neutral-400"
@@ -113,12 +109,12 @@ export function TablaGestionCatalogo({
           </span>
         </div>
 
-        <div className="flex items-center justify-end rounded-2xl border border-teal-200 bg-teal-50/40 p-4 dark:border-teal-950 dark:bg-teal-950/20">
+        <div className="border-acento-200 bg-acento-50/40 dark:border-acento-950 dark:bg-acento-950/20 flex items-center justify-end rounded-2xl border p-4">
           <button
             type="button"
             onClick={alCrear}
             data-testid="boton-abrir-nuevo-paquete"
-            className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-teal-600 px-4 py-2.5 text-xs font-bold text-white shadow-xs transition-colors hover:bg-teal-700"
+            className="boton-primario flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold shadow-xs transition-colors"
           >
             <Plus className="h-4 w-4" />
             <span>+ Nuevo producto</span>
@@ -139,7 +135,7 @@ export function TablaGestionCatalogo({
               placeholder="Buscar por código, nombre o destino..."
               aria-label="Buscar productos por código, nombre o destino"
               data-testid="buscador-gestion-catalogo"
-              className="min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white pr-3 pl-9 text-xs text-neutral-900 placeholder-neutral-400 focus:border-teal-500 focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+              className="focus:border-acento-500 focus-visible:ring-acento-600 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white pr-3 pl-9 text-xs text-neutral-900 placeholder-neutral-400 focus-visible:ring-2 focus-visible:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
             />
           </div>
 
@@ -150,7 +146,7 @@ export function TablaGestionCatalogo({
               onChange={(e) => setFiltroDestino(e.target.value)}
               aria-label="Filtrar productos por destino"
               data-testid="filtro-destino-gestion"
-              className="min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-xs text-neutral-700 focus:border-teal-500 focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200"
+              className="focus:border-acento-500 focus-visible:ring-acento-600 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-xs text-neutral-700 focus-visible:ring-2 focus-visible:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200"
             >
               <option value="TODOS">Todos los destinos</option>
               {destinos.map((dest) => (
@@ -174,7 +170,7 @@ export function TablaGestionCatalogo({
             aria-selected={filtroEstado === 'TODOS'}
             onClick={() => setFiltroEstado('TODOS')}
             data-testid="tab-estado-todos"
-            className={`min-h-[44px] rounded-lg px-3 py-2 text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:outline-hidden ${
+            className={`focus-visible:ring-acento-600 min-h-[44px] rounded-lg px-3 py-2 text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:outline-hidden ${
               filtroEstado === 'TODOS'
                 ? 'bg-white text-neutral-900 shadow-2xs dark:bg-neutral-700 dark:text-white'
                 : 'text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white'
@@ -188,7 +184,7 @@ export function TablaGestionCatalogo({
             aria-selected={filtroEstado === 'ACTIVOS'}
             onClick={() => setFiltroEstado('ACTIVOS')}
             data-testid="tab-estado-activos"
-            className={`min-h-[44px] rounded-lg px-3 py-2 text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:outline-hidden ${
+            className={`focus-visible:ring-acento-600 min-h-[44px] rounded-lg px-3 py-2 text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:outline-hidden ${
               filtroEstado === 'ACTIVOS'
                 ? 'bg-white text-emerald-800 shadow-2xs dark:bg-neutral-700 dark:text-emerald-300'
                 : 'text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white'
@@ -202,7 +198,7 @@ export function TablaGestionCatalogo({
             aria-selected={filtroEstado === 'INACTIVOS'}
             onClick={() => setFiltroEstado('INACTIVOS')}
             data-testid="tab-estado-inactivos"
-            className={`min-h-[44px] rounded-lg px-3 py-2 text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:outline-hidden ${
+            className={`focus-visible:ring-acento-600 min-h-[44px] rounded-lg px-3 py-2 text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:outline-hidden ${
               filtroEstado === 'INACTIVOS'
                 ? 'bg-white text-neutral-700 shadow-2xs dark:bg-neutral-700 dark:text-neutral-300'
                 : 'text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white'
@@ -220,7 +216,7 @@ export function TablaGestionCatalogo({
             data-testid="gestion-catalogo-cargando"
             className="flex flex-col items-center justify-center p-12 text-center"
           >
-            <Loader2 className="h-8 w-8 animate-spin text-teal-600 dark:text-teal-400" />
+            <Loader2 className="text-acento-600 dark:text-acento-400 h-8 w-8 animate-spin" />
             <p className="mt-3 text-sm font-medium text-neutral-600 dark:text-neutral-400">
               Cargando catálogo de productos...
             </p>
@@ -243,7 +239,7 @@ export function TablaGestionCatalogo({
             <button
               type="button"
               onClick={alCrear}
-              className="mt-4 flex min-h-[44px] items-center gap-1.5 rounded-xl bg-teal-600 px-4 py-2 text-xs font-bold text-white hover:bg-teal-700"
+              className="boton-primario mt-4 flex min-h-[44px] items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold"
             >
               <Plus className="h-4 w-4" />
               <span>Registrar producto</span>
@@ -252,7 +248,7 @@ export function TablaGestionCatalogo({
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="border-b border-neutral-200 bg-neutral-50 font-bold text-neutral-500 uppercase dark:border-neutral-800 dark:bg-neutral-800/50 dark:text-neutral-400">
+              <thead className="border-b border-neutral-200 bg-neutral-50 font-bold text-neutral-500 dark:border-neutral-800 dark:bg-neutral-800/50 dark:text-neutral-400">
                 <tr>
                   <th className="px-4 py-3">Código</th>
                   <th className="px-4 py-3">Producto / Destino</th>
@@ -341,7 +337,7 @@ export function TablaGestionCatalogo({
                             type="button"
                             onClick={() => alEditar(p)}
                             data-testid={`boton-editar-paquete-${p.id}`}
-                            className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50 focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
+                            className="focus-visible:ring-acento-600 flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50 focus-visible:ring-2 focus-visible:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
                             title="Editar producto"
                             aria-label={`Editar ${p.nombre}`}
                           >

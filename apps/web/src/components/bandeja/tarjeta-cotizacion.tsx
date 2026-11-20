@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { formatearDinero } from '../../lib/formato';
+import { formatearDinero, formatearFecha } from '../../lib/formato';
 import { Plane, Calendar, FileText, ArrowRight } from 'lucide-react';
 
 interface TarjetaCotizacionProps {
@@ -61,7 +61,7 @@ export function TarjetaCotizacion({
         {vigenteHasta && (
           <div className="flex items-center gap-1.5 text-[11px] text-neutral-500 dark:text-neutral-400">
             <Calendar className="h-3.5 w-3.5 text-neutral-400" />
-            <span>Válido hasta: {vigenteHasta}</span>
+            <span>Válido hasta: {formatearFecha(vigenteHasta)}</span>
           </div>
         )}
 
@@ -78,7 +78,7 @@ export function TarjetaCotizacion({
       <div className="border-t border-neutral-100 bg-neutral-50/50 p-2.5 dark:border-neutral-700/60 dark:bg-neutral-800/40">
         <Link
           href={href ?? '/cotizador'}
-          className="bg-acento-700 hover:bg-acento-800 flex w-full items-center justify-center gap-1.5 rounded-lg py-1.5 text-xs font-semibold text-white shadow-2xs transition-colors"
+          className="boton-primario flex w-full items-center justify-center gap-1.5 rounded-lg py-1.5 text-xs font-semibold shadow-2xs transition-colors"
         >
           <FileText className="h-3.5 w-3.5" />
           <span>Ver cotización</span>

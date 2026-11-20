@@ -289,7 +289,7 @@ export default function PaginaImprimirCotizacion({
           </p>
           <Link
             href={`/cotizaciones/${id}`}
-            className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-bold text-white hover:bg-blue-700"
+            className="boton-primario inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold"
           >
             <ArrowLeft className="h-4 w-4" aria-hidden="true" />
             <span>Volver a la cotización</span>
@@ -351,7 +351,7 @@ export default function PaginaImprimirCotizacion({
                     onClick={() => setVersionNumero(v.numero)}
                     className={`min-h-[44px] rounded-xl px-3 py-1.5 text-xs font-bold transition ${
                       v.numero === vistaCliente.numero
-                        ? 'bg-blue-600 text-white'
+                        ? 'bg-acento-600 text-white'
                         : 'border border-neutral-200 bg-neutral-50 text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300'
                     }`}
                   >
@@ -372,7 +372,7 @@ export default function PaginaImprimirCotizacion({
               type="button"
               data-testid="btn-imprimir-cotizacion"
               onClick={manejarImprimir}
-              className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-bold text-white shadow-xs transition hover:bg-blue-700 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none"
+              className="boton-primario inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold shadow-xs transition"
             >
               <Printer className="h-4 w-4" aria-hidden="true" />
               <span>Imprimir o guardar PDF</span>
@@ -420,7 +420,7 @@ export default function PaginaImprimirCotizacion({
                 data-testid="vigencia-cotizacion"
                 className="rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-left sm:text-right"
               >
-                <span className="text-[10px] font-bold tracking-wider text-blue-700 uppercase">
+                <span className="text-acento-700 text-[10px] font-bold">
                   Propuesta de Viaje · Versión {vistaCliente.numero}
                 </span>
                 <p className="mt-0.5 font-mono text-xs font-bold text-neutral-900">
@@ -450,7 +450,7 @@ export default function PaginaImprimirCotizacion({
 
               <div className="grid grid-cols-1 gap-3 rounded-xl border border-neutral-200 bg-neutral-50/70 p-4 text-xs sm:grid-cols-3">
                 <div>
-                  <span className="block text-[10px] font-bold tracking-wider text-neutral-500 uppercase">
+                  <span className="block text-[10px] font-bold text-neutral-500">
                     Viajero titular
                   </span>
                   <p className="mt-0.5 font-bold text-neutral-900">
@@ -464,7 +464,7 @@ export default function PaginaImprimirCotizacion({
                 </div>
 
                 <div>
-                  <span className="flex items-center gap-1 text-[10px] font-bold tracking-wider text-neutral-500 uppercase">
+                  <span className="flex items-center gap-1 text-[10px] font-bold text-neutral-500">
                     <Calendar className="h-3 w-3" aria-hidden="true" />
                     Salida y duración
                   </span>
@@ -478,7 +478,7 @@ export default function PaginaImprimirCotizacion({
                 </div>
 
                 <div>
-                  <span className="flex items-center gap-1 text-[10px] font-bold tracking-wider text-neutral-500 uppercase">
+                  <span className="flex items-center gap-1 text-[10px] font-bold text-neutral-500">
                     <Users className="h-3 w-3" aria-hidden="true" />
                     Grupo y acomodación
                   </span>
@@ -497,8 +497,8 @@ export default function PaginaImprimirCotizacion({
             {/* 3. Desglose de tarifas al cliente (100% PVP, cero neto y cero margen) */}
             <section data-testid="desglose-tarifas-cliente" className="space-y-3">
               <div className="flex items-center justify-between">
-                <h3 className="flex items-center gap-1.5 text-xs font-extrabold tracking-wider text-neutral-800 uppercase">
-                  <FileText className="h-4 w-4 text-blue-600" aria-hidden="true" />
+                <h3 className="flex items-center gap-1.5 text-xs font-extrabold text-neutral-800">
+                  <FileText className="text-acento-600 h-4 w-4" aria-hidden="true" />
                   <span>Desglose de tarifas por servicio</span>
                 </h3>
                 <span className="text-[11px] text-neutral-500">
@@ -533,7 +533,7 @@ export default function PaginaImprimirCotizacion({
                     ))}
                   </tbody>
                   <tfoot>
-                    <tr className="border-t-2 border-neutral-300 bg-blue-50/70">
+                    <tr className="bg-acento-50/70 border-t-2 border-neutral-300">
                       <td
                         colSpan={3}
                         className="px-4 py-3.5 text-right text-sm font-black text-neutral-900"
@@ -542,7 +542,7 @@ export default function PaginaImprimirCotizacion({
                       </td>
                       <td
                         data-testid="total-venta-cliente"
-                        className="cifra px-4 py-3.5 text-right text-base font-black text-blue-700"
+                        className="cifra text-acento-700 px-4 py-3.5 text-right text-base font-black"
                       >
                         {formatearDinero(vistaCliente.venta)}
                       </td>

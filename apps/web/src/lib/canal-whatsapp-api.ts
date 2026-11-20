@@ -7,6 +7,7 @@ import { obtenerBaseApi } from './api-base';
 import { cabecerasDeTenantDev } from './cabeceras-tenant';
 import { estaUsandoApiReal } from './crm-api';
 import { crearEstadoCanalWhatsappDemo } from './mock-canal-whatsapp';
+import { formatearFechaHora } from './formato';
 
 export type { CanalWhatsappEstado, EstadoCanalWhatsapp };
 
@@ -78,5 +79,5 @@ export function etiquetaEstado(e: CanalWhatsappEstado['estado']): string {
 }
 
 export function formatearInstante(iso: string): string {
-  return new Date(iso).toLocaleString('es-CO', { dateStyle: 'medium', timeStyle: 'short' });
+  return formatearFechaHora(iso);
 }

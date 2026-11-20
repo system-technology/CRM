@@ -155,7 +155,7 @@ describe('TarjetaSalidaPublicada — Identidad visual por tipo de excursión (T-
     expect(tarjeta.getAttribute('data-tipo-producto')).toBe('aventura_nautica');
 
     const cabecera = screen.getByTestId('cabecera-sin-foto');
-    expect(cabecera.className).toContain('from-blue-500');
+    expect(cabecera.className).toContain('from-acento-500');
     expect(screen.getByTestId('chip-tipo-producto-cabecera').textContent).toContain(
       'Aventura & Náutica',
     );

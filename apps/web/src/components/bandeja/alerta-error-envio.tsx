@@ -60,7 +60,7 @@ export function AlertaErrorEnvio({
             <button
               type="button"
               onClick={onAbrirPlantillas}
-              className="inline-flex min-h-[32px] items-center gap-1.5 rounded-lg bg-amber-600 px-3 py-1 text-xs font-semibold text-white shadow-xs transition-colors hover:bg-amber-700 focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
+              className="boton-primario inline-flex min-h-[32px] items-center gap-1.5 rounded-lg px-3 py-1 text-xs font-semibold shadow-xs transition-colors"
             >
               <FileText className="h-3.5 w-3.5" />
               <span>Abrir plantillas</span>

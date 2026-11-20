@@ -5,6 +5,7 @@
  */
 
 import type { PasajeroViaje, ReservaProveedor } from './mock-viajes';
+import { formatearFecha } from './formato';
 
 /**
  * Calcula el balance financiero del expediente operativo.
@@ -74,7 +75,7 @@ export function evaluarAlertaTimeLimit(
   return {
     estado: 'SEGURO',
     horasRestantes,
-    mensaje: `Vigente hasta ${new Date(timeLimitUtc).toLocaleDateString('es-CO')}.`,
+    mensaje: `Vigente hasta ${formatearFecha(timeLimitUtc)}.`,
   };
 }
 

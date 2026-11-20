@@ -146,7 +146,7 @@ export function ModalCompararVersiones({
             <div>
               <label
                 htmlFor="select-version-a"
-                className="block text-[10px] font-bold tracking-wider text-neutral-500 uppercase dark:text-neutral-400"
+                className="block text-[10px] font-bold text-neutral-500 dark:text-neutral-400"
               >
                 Versión Base (A)
               </label>
@@ -177,7 +177,7 @@ export function ModalCompararVersiones({
             <div>
               <label
                 htmlFor="select-version-b"
-                className="block text-[10px] font-bold tracking-wider text-neutral-500 uppercase dark:text-neutral-400"
+                className="block text-[10px] font-bold text-neutral-500 dark:text-neutral-400"
               >
                 Versión Comparada (B)
               </label>
@@ -246,7 +246,7 @@ export function ModalCompararVersiones({
 
           {/* Tabla 1: Composición y Parámetros */}
           <div>
-            <h3 className="mb-2 text-xs font-bold tracking-wider text-neutral-500 uppercase dark:text-neutral-400">
+            <h3 className="mb-2 text-xs font-bold text-neutral-500 dark:text-neutral-400">
               1. Parámetros de Viaje y Pasajeros
             </h3>
             <div className="overflow-hidden rounded-xl border border-neutral-200 dark:border-neutral-800">
@@ -451,7 +451,7 @@ export function ModalCompararVersiones({
 
           {/* Tabla 2: Líneas de Precio y Cargos */}
           <div>
-            <h3 className="mb-2 text-xs font-bold tracking-wider text-neutral-500 uppercase dark:text-neutral-400">
+            <h3 className="mb-2 text-xs font-bold text-neutral-500 dark:text-neutral-400">
               2. Comparativa Línea por Línea (Tarifas y Cargos)
             </h3>
             <div className="overflow-hidden rounded-xl border border-neutral-200 dark:border-neutral-800">
@@ -560,7 +560,7 @@ export function ModalCompararVersiones({
 
           {/* Tabla 3: Totales Finales Consolidados */}
           <div>
-            <h3 className="mb-2 text-xs font-bold tracking-wider text-neutral-500 uppercase dark:text-neutral-400">
+            <h3 className="mb-2 text-xs font-bold text-neutral-500 dark:text-neutral-400">
               3. Totales y Variación Monetaria
             </h3>
             <div className="overflow-hidden rounded-xl border border-neutral-200 dark:border-neutral-800">

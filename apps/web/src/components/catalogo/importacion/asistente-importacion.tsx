@@ -294,7 +294,7 @@ export function AsistenteImportacion({
         {/* Cabecera del Asistente */}
         <div className="flex items-center justify-between border-b border-neutral-100 bg-neutral-50 px-6 py-4 dark:border-neutral-800 dark:bg-neutral-800/50">
           <div className="flex items-center gap-3">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300">
+            <span className="bg-acento-100 text-acento-800 dark:bg-acento-950 dark:text-acento-300 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl">
               <FileSpreadsheet className="h-5 w-5" />
             </span>
             <div>
@@ -322,7 +322,7 @@ export function AsistenteImportacion({
             type="button"
             onClick={alCerrar}
             data-testid="boton-cerrar-asistente"
-            className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700 focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:outline-hidden dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
+            className="focus-visible:ring-acento-600 flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700 focus-visible:ring-2 focus-visible:outline-hidden dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
             aria-label="Cerrar asistente"
           >
             <X className="h-5 w-5" />
@@ -346,7 +346,7 @@ export function AsistenteImportacion({
                   key={p.num}
                   className={`flex items-center gap-2 ${
                     activo
-                      ? 'text-teal-700 dark:text-teal-400'
+                      ? 'text-acento-700 dark:text-acento-400'
                       : completado
                         ? 'text-emerald-700 dark:text-emerald-400'
                         : 'text-neutral-400 dark:text-neutral-500'
@@ -355,7 +355,7 @@ export function AsistenteImportacion({
                   <span
                     className={`flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-bold ${
                       activo
-                        ? 'bg-teal-600 text-white'
+                        ? 'bg-acento-600 text-white'
                         : completado
                           ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
                           : 'bg-neutral-100 text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400'
@@ -400,7 +400,7 @@ export function AsistenteImportacion({
                     data-testid="select-formato-importacion"
                     value={formatoSeleccionado}
                     onChange={(e) => setFormatoSeleccionado(e.target.value)}
-                    className="mt-1.5 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white px-3.5 py-2 text-xs text-neutral-900 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                    className="focus:border-acento-500 focus:ring-acento-500 mt-1.5 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white px-3.5 py-2 text-xs text-neutral-900 focus:ring-1 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                   >
                     {PLANTILLAS_DE_SISTEMA.map((p) => (
                       <option key={p.formato} value={p.formato}>
@@ -423,7 +423,7 @@ export function AsistenteImportacion({
                     data-testid="select-moneda-importacion"
                     value={moneda}
                     onChange={(e) => setMoneda(e.target.value as 'COP' | 'USD' | 'EUR' | 'MXN')}
-                    className="mt-1.5 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white px-3.5 py-2 text-xs text-neutral-900 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                    className="focus:border-acento-500 focus:ring-acento-500 mt-1.5 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white px-3.5 py-2 text-xs text-neutral-900 focus:ring-1 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                   >
                     <option value="COP">COP ($) — Pesos colombianos</option>
                     <option value="USD">USD ($) — Dólares estadounidenses</option>
@@ -434,8 +434,8 @@ export function AsistenteImportacion({
               </div>
 
               {/* Zona Drag & Drop / Input File */}
-              <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-teal-300 bg-teal-50/30 p-8 text-center dark:border-teal-800 dark:bg-teal-950/10">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-teal-100 text-teal-700 dark:bg-teal-900/60 dark:text-teal-300">
+              <div className="border-acento-300 bg-acento-50/30 dark:border-acento-800 dark:bg-acento-950/10 flex flex-col items-center justify-center rounded-2xl border-2 border-dashed p-8 text-center">
+                <div className="bg-acento-100 text-acento-700 dark:bg-acento-900/60 dark:text-acento-300 flex h-12 w-12 items-center justify-center rounded-2xl">
                   <Upload className="h-6 w-6" />
                 </div>
                 <h4 className="mt-3 text-sm font-bold text-neutral-900 dark:text-white">
@@ -452,7 +452,7 @@ export function AsistenteImportacion({
                   type="file"
                   accept=".csv,text/csv,text/plain"
                   onChange={handleArchivoSeleccionado}
-                  className="mt-4 block text-xs text-neutral-600 file:mr-4 file:rounded-xl file:border-0 file:bg-teal-600 file:px-4 file:py-2.5 file:text-xs file:font-bold file:text-white hover:file:bg-teal-700"
+                  className="file:bg-acento-600 hover:file:bg-acento-700 mt-4 block text-xs text-neutral-600 file:mr-4 file:rounded-xl file:border-0 file:px-4 file:py-2.5 file:text-xs file:font-bold file:text-white"
                 />
 
                 {marcadorDetectado && (
@@ -483,7 +483,7 @@ export function AsistenteImportacion({
                   value={textoCsv}
                   onChange={(e) => procesarTextoCsv(e.target.value)}
                   placeholder={`#viajapro;plantilla=excursion-un-dia;version=1\nCódigo,Nombre del producto,Destino,Valor base COP\nSMR-001,Pasadía Tayrona,Santa Marta,220000`}
-                  className="mt-1.5 w-full rounded-xl border border-neutral-300 font-mono text-xs text-neutral-900 placeholder-neutral-400 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                  className="focus:border-acento-500 focus:ring-acento-500 mt-1.5 w-full rounded-xl border border-neutral-300 font-mono text-xs text-neutral-900 placeholder-neutral-400 focus:ring-1 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                 />
               </div>
             </div>
@@ -525,7 +525,7 @@ export function AsistenteImportacion({
 
               <div className="overflow-x-auto rounded-2xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
                 <table className="w-full text-left text-xs">
-                  <thead className="border-b border-neutral-200 bg-neutral-50 font-bold text-neutral-600 uppercase dark:border-neutral-800 dark:bg-neutral-800/50 dark:text-neutral-300">
+                  <thead className="border-b border-neutral-200 bg-neutral-50 font-bold text-neutral-600 dark:border-neutral-800 dark:bg-neutral-800/50 dark:text-neutral-300">
                     <tr>
                       <th className="px-4 py-3">Campo requerido</th>
                       <th className="px-4 py-3">Tipo</th>
@@ -619,7 +619,7 @@ export function AsistenteImportacion({
               {/* Resumen KPIs de impacto */}
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                 <div className="rounded-xl border border-neutral-200 bg-white p-3.5 shadow-2xs dark:border-neutral-800 dark:bg-neutral-900">
-                  <p className="text-[10px] font-bold text-neutral-400 uppercase">Total filas</p>
+                  <p className="text-[10px] font-bold text-neutral-400">Total filas</p>
                   <p
                     className="cifra mt-1 text-xl font-bold text-neutral-900 dark:text-white"
                     data-testid="kpi-previs-total"
@@ -628,7 +628,7 @@ export function AsistenteImportacion({
                   </p>
                 </div>
                 <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-3.5 shadow-2xs dark:border-emerald-950 dark:bg-emerald-950/20">
-                  <p className="text-[10px] font-bold text-emerald-700 uppercase dark:text-emerald-400">
+                  <p className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400">
                     A crear
                   </p>
                   <p
@@ -639,7 +639,7 @@ export function AsistenteImportacion({
                   </p>
                 </div>
                 <div className="rounded-xl border border-sky-200 bg-sky-50/50 p-3.5 shadow-2xs dark:border-sky-950 dark:bg-sky-950/20">
-                  <p className="text-[10px] font-bold text-sky-700 uppercase dark:text-sky-400">
+                  <p className="text-[10px] font-bold text-sky-700 dark:text-sky-400">
                     A actualizar
                   </p>
                   <p
@@ -690,7 +690,7 @@ export function AsistenteImportacion({
                       Huella digital de la propuesta (SHA-256):
                     </span>
                   </div>
-                  <code className="font-mono text-[11px] text-teal-700 dark:text-teal-400">
+                  <code className="text-acento-700 dark:text-acento-400 font-mono text-[11px]">
                     {previsualizacion.huella.slice(0, 16)}...{previsualizacion.huella.slice(-16)}
                   </code>
                 </div>
@@ -744,7 +744,7 @@ export function AsistenteImportacion({
               {/* Tabla de filas */}
               <div className="overflow-x-auto rounded-2xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
                 <table className="w-full text-left text-xs">
-                  <thead className="border-b border-neutral-200 bg-neutral-50 font-bold text-neutral-600 uppercase dark:border-neutral-800 dark:bg-neutral-800/50 dark:text-neutral-300">
+                  <thead className="border-b border-neutral-200 bg-neutral-50 font-bold text-neutral-600 dark:border-neutral-800 dark:bg-neutral-800/50 dark:text-neutral-300">
                     <tr>
                       <th className="px-4 py-2.5">Fila</th>
                       <th className="px-4 py-2.5">Severidad</th>
@@ -829,7 +829,7 @@ export function AsistenteImportacion({
                 </div>
                 <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-800 dark:bg-neutral-800/40">
                   <p className="text-xs text-neutral-500">Nuevos creados</p>
-                  <p className="cifra mt-1 text-2xl font-black text-teal-700 dark:text-teal-400">
+                  <p className="cifra text-acento-700 dark:text-acento-400 mt-1 text-2xl font-black">
                     {resultado.informe.resumen['creados'] ?? resultado.paquetes.length}
                   </p>
                 </div>
@@ -864,7 +864,7 @@ export function AsistenteImportacion({
                 }}
                 disabled={cargando || (!textoCsv && !tablaParseada)}
                 data-testid="boton-avanzar-a-mapeo"
-                className="flex min-h-[44px] items-center gap-1.5 rounded-xl bg-teal-600 px-5 py-2.5 text-xs font-bold text-white shadow-xs transition-colors hover:bg-teal-700 disabled:opacity-50"
+                className="boton-primario flex min-h-[44px] items-center gap-1.5 rounded-xl px-5 py-2.5 text-xs font-bold shadow-xs transition-colors"
               >
                 {cargando ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -885,7 +885,7 @@ export function AsistenteImportacion({
                 }}
                 disabled={cargando}
                 data-testid="boton-avanzar-a-previsualizar"
-                className="flex min-h-[44px] items-center gap-1.5 rounded-xl bg-teal-600 px-5 py-2.5 text-xs font-bold text-white shadow-xs transition-colors hover:bg-teal-700 disabled:opacity-50"
+                className="boton-primario flex min-h-[44px] items-center gap-1.5 rounded-xl px-5 py-2.5 text-xs font-bold shadow-xs transition-colors"
               >
                 {cargando ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -906,7 +906,7 @@ export function AsistenteImportacion({
                 }}
                 disabled={cargando || (clasificacion?.tieneErroresBloqueantes ?? false)}
                 data-testid="boton-confirmar-importacion"
-                className="flex min-h-[44px] items-center gap-1.5 rounded-xl bg-emerald-600 px-5 py-2.5 text-xs font-bold text-white shadow-xs transition-colors hover:bg-emerald-700 disabled:opacity-50"
+                className="boton-primario flex min-h-[44px] items-center gap-1.5 rounded-xl px-5 py-2.5 text-xs font-bold shadow-xs transition-colors disabled:opacity-50"
               >
                 {cargando ? (
                   <Loader2 className="h-4 w-4 animate-spin" />

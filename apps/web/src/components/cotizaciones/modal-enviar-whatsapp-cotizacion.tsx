@@ -186,7 +186,7 @@ export function ModalEnviarWhatsAppCotizacion({
           {/* 2. Destinatario y Teléfono */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="rounded-2xl border border-neutral-200 bg-neutral-50/60 p-3.5 dark:border-neutral-800 dark:bg-neutral-800/40">
-              <span className="flex items-center gap-1.5 text-[11px] font-semibold text-neutral-500 uppercase">
+              <span className="flex items-center gap-1.5 text-[11px] font-semibold text-neutral-500">
                 <User className="h-3.5 w-3.5 text-neutral-400" />
                 Viajero Destinatario
               </span>
@@ -201,7 +201,7 @@ export function ModalEnviarWhatsAppCotizacion({
             <div className="rounded-2xl border border-neutral-200 bg-neutral-50/60 p-3.5 dark:border-neutral-800 dark:bg-neutral-800/40">
               <label
                 htmlFor="input-telefono-whatsapp"
-                className="flex items-center gap-1.5 text-[11px] font-semibold text-neutral-500 uppercase"
+                className="flex items-center gap-1.5 text-[11px] font-semibold text-neutral-500"
               >
                 <Phone className="h-3.5 w-3.5 text-neutral-400" />
                 Número de WhatsApp (E.164)

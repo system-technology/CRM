@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { crearOportunidadDeConversacionApi } from '../../lib/crm-api';
 import { parsearMontoAUnidades } from '../../lib/dinero-entrada';
+import { CampoFecha } from '../comun/campo-fecha';
 
 const MONEDA_OPORTUNIDAD = 'COP' as const;
 
@@ -200,12 +201,11 @@ export function ModalCrearOportunidad({
                 </label>
                 <div className="relative mt-1.5">
                   <Calendar className="pointer-events-none absolute top-3 left-3 h-4 w-4 text-neutral-400" />
-                  <input
+                  <CampoFecha
                     id="input-fecha-salida"
+                    valor={fechaSalida}
+                    onChange={setFechaSalida}
                     data-testid="input-fecha-salida"
-                    type="date"
-                    value={fechaSalida}
-                    onChange={(e) => setFechaSalida(e.target.value)}
                     className="focus:border-acento-600 flex min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white py-2 pr-3 pl-9 text-xs font-medium text-neutral-900 shadow-2xs focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
                   />
                 </div>
@@ -227,7 +227,7 @@ export function ModalCrearOportunidad({
               type="submit"
               data-testid="boton-guardar-oportunidad"
               disabled={guardando || !titulo.trim()}
-              className="bg-acento-600 hover:bg-acento-700 flex min-h-[44px] min-w-[44px] items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-xs font-bold text-white shadow-sm transition-all active:scale-98 disabled:cursor-not-allowed disabled:opacity-50"
+              className="boton-primario flex min-h-[44px] min-w-[44px] items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-xs font-bold shadow-sm transition-all active:scale-98"
             >
               {guardando ? (
                 <>
