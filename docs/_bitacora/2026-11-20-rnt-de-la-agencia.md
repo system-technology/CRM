@@ -50,8 +50,10 @@ columnas, y es falso (debe reemplazar el disparador para el NIT). Quedó en la c
 ## Cómo se verificó
 
 - **CI en verde:** #321 (15 de 15, dos veces: antes y después de incorporar `main`) y #322 (14 de 14,
-  con `test` corriendo la e2e y `aislamiento-tenants` aplicando la migración). El CI de #324 se
-  comprueba al integrarse.
+  con `test` corriendo la e2e y `aislamiento-tenants` aplicando la migración). #324 se integró con los 12 checks
+  obligatorios que habían terminado en verde (incluidos `test`, `aislamiento-tenants`, `build`,
+  `typecheck` y `lint`); en el job `navegador` el flujo H1-H6 terminó en verde, y el escaneo de
+  imágenes (`imagenes-de-despliegue`) seguía en curso al integrarse.
 - **Localmente:** `tsc`, `eslint` y las pruebas unitarias del API (145 archivos), de contratos y de
   la web (171 archivos); capturas de Configuración en 1440 y 390 px, sin errores de consola ni
   desborde.
