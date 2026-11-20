@@ -6,6 +6,7 @@ import { useFocoModal } from '../../lib/use-foco-modal';
 import { X, Kanban, Loader2, AlertCircle } from 'lucide-react';
 import { parsearMontoAUnidades } from '../../lib/dinero-entrada';
 import { formatearErrorAmigable } from '../../lib/estados-ui-logica';
+import { CampoFecha } from '../comun/campo-fecha';
 
 interface ModalCrearOportunidadProps {
   contactoId: string;
@@ -85,7 +86,7 @@ export function ModalCrearOportunidad({
       >
         <div className="flex items-center justify-between border-b border-neutral-200 pb-4 dark:border-neutral-800">
           <div className="flex items-center gap-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-teal-50 text-teal-600 dark:bg-teal-950/50 dark:text-teal-400">
+            <div className="bg-acento-50 text-acento-600 dark:bg-acento-950/50 dark:text-acento-400 flex h-9 w-9 items-center justify-center rounded-xl">
               <Kanban className="h-5 w-5" />
             </div>
             <div>
@@ -141,7 +142,7 @@ export function ModalCrearOportunidad({
                 value={titulo}
                 onChange={(e) => setTitulo(e.target.value)}
                 placeholder="Ej: Paquete San Andrés Dic 2026"
-                className="w-full rounded-xl border border-neutral-300 bg-white px-3.5 py-2.5 text-sm text-neutral-900 placeholder:text-neutral-400 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+                className="focus:border-acento-500 focus:ring-acento-500/20 w-full rounded-xl border border-neutral-300 bg-white px-3.5 py-2.5 text-sm text-neutral-900 placeholder:text-neutral-400 focus:ring-2 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
               />
             </div>
           </div>
@@ -161,7 +162,7 @@ export function ModalCrearOportunidad({
                   value={destino}
                   onChange={(e) => setDestino(e.target.value)}
                   placeholder="Cancún, San Andrés, Punta Cana..."
-                  className="w-full rounded-xl border border-neutral-300 bg-white px-3.5 py-2.5 text-sm text-neutral-900 placeholder:text-neutral-400 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+                  className="focus:border-acento-500 focus:ring-acento-500/20 w-full rounded-xl border border-neutral-300 bg-white px-3.5 py-2.5 text-sm text-neutral-900 placeholder:text-neutral-400 focus:ring-2 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
                 />
               </div>
             </div>
@@ -174,12 +175,11 @@ export function ModalCrearOportunidad({
                 Fecha estimada de viaje
               </label>
               <div className="relative mt-1">
-                <input
+                <CampoFecha
                   id="crear-oportunidad-fecha"
-                  type="date"
-                  value={fechaSalida}
-                  onChange={(e) => setFechaSalida(e.target.value)}
-                  className="w-full rounded-xl border border-neutral-300 bg-white px-3.5 py-2.5 text-sm text-neutral-900 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+                  valor={fechaSalida}
+                  onChange={setFechaSalida}
+                  className="focus:border-acento-500 focus:ring-acento-500/20 w-full rounded-xl border border-neutral-300 bg-white px-3.5 py-2.5 text-sm text-neutral-900 focus:ring-2 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
                 />
               </div>
             </div>
@@ -199,7 +199,7 @@ export function ModalCrearOportunidad({
                 value={valorEstimadoCop}
                 onChange={(e) => setValorEstimadoCop(e.target.value)}
                 placeholder="Ej: 6500000"
-                className="w-full rounded-xl border border-neutral-300 bg-white px-3.5 py-2.5 font-mono text-sm text-neutral-900 placeholder:text-neutral-400 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+                className="focus:border-acento-500 focus:ring-acento-500/20 w-full rounded-xl border border-neutral-300 bg-white px-3.5 py-2.5 font-mono text-sm text-neutral-900 placeholder:text-neutral-400 focus:ring-2 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
               />
             </div>
             <p className="mt-1 text-[11px] text-neutral-500 dark:text-neutral-400">
@@ -219,7 +219,7 @@ export function ModalCrearOportunidad({
             <button
               type="submit"
               disabled={guardando}
-              className="flex min-h-[44px] items-center justify-center gap-2 rounded-xl bg-teal-600 px-5 py-2 text-xs font-bold text-white shadow-xs hover:bg-teal-700 focus:ring-2 focus:ring-teal-500/20 focus:outline-hidden disabled:opacity-50 dark:bg-teal-500 dark:hover:bg-teal-600"
+              className="boton-primario focus:ring-acento-500/20 flex min-h-[44px] items-center justify-center gap-2 rounded-xl px-5 py-2 text-xs font-bold shadow-xs"
             >
               {guardando ? (
                 <>

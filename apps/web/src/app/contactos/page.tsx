@@ -372,9 +372,7 @@ export default function ContactosPage() {
 
                           {/* Último contacto */}
                           <td className="px-4 py-3 text-[11px] text-neutral-500 dark:text-neutral-400">
-                            {c.ultimoContactoEn
-                              ? new Date(c.ultimoContactoEn).toLocaleDateString('es-CO')
-                              : '—'}
+                            {c.ultimoContactoEn ? formatearFecha(c.ultimoContactoEn) : '—'}
                           </td>
 
                           {/* Acciones */}
@@ -392,7 +390,7 @@ export default function ContactosPage() {
                                 href={`/contactos/${c.id}`}
                                 onClick={(e) => e.stopPropagation()}
                                 title="Abrir Ficha 360"
-                                className="flex min-h-[36px] min-w-[36px] items-center justify-center rounded-lg text-neutral-400 hover:bg-neutral-100 hover:text-teal-600 dark:hover:bg-neutral-800 dark:hover:text-teal-400"
+                                className="hover:text-acento-600 dark:hover:text-acento-400 flex min-h-[36px] min-w-[36px] items-center justify-center rounded-lg text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800"
                               >
                                 <ChevronRight className="h-4 w-4" />
                               </Link>

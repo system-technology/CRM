@@ -12,6 +12,7 @@ import { MOCK_PAQUETES_CATALOGO } from './mock-catalogo';
 import { MOCK_COTIZACIONES_INICIALES } from './mock-cotizaciones';
 import type { SesionActual } from '@viajapro/contracts';
 import { puedeVerTodasConversaciones, puedeVerNetoYMargen, tienePermiso } from './permisos';
+import { formatearFecha } from './formato';
 
 export type CategoriaBusqueda =
   | 'acciones'
@@ -208,7 +209,7 @@ export function construirIndiceGlobal(sesion?: SesionActual | null): ResultadoBu
       id: `viaje-${v.id}`,
       categoria: 'viajes',
       titulo: `${v.codigoExpediente} — ${v.destino}`,
-      subtitulo: `Titular: ${v.titularNombre} · Salida: ${new Date(v.fechaSalida).toLocaleDateString('es-CO')}`,
+      subtitulo: `Titular: ${v.titularNombre} · Salida: ${formatearFecha(v.fechaSalida)}`,
       href: `/viajes?id=${v.id}`,
       etiquetaExtra: v.estado,
     });

@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import type { CotizacionResumen, Mensaje } from '@viajapro/contracts';
 import { FileText, X, Send, AlertTriangle, CheckCircle2, Loader2, Sparkles } from 'lucide-react';
-import { formatearDinero } from '../../lib/formato';
+import { formatearDinero, formatearFecha } from '../../lib/formato';
 import { inboxApi } from '../../lib/inbox-api';
 import { interpretarErrorDeEnvio, type DetalleErrorEnvio } from '../../lib/errores-de-envio';
 
@@ -168,7 +168,7 @@ export function ModalEnviarCotizacion({
                 </p>
                 {cotizacionActual.vigenteHasta && (
                   <p data-testid="vigencia-cotizacion" className="mt-0.5">
-                    Vigente hasta: {cotizacionActual.vigenteHasta}
+                    Vigente hasta: {formatearFecha(cotizacionActual.vigenteHasta)}
                   </p>
                 )}
                 <p className="mt-2 text-[11px] text-neutral-600 dark:text-neutral-400">

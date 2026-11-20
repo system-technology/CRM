@@ -77,6 +77,7 @@ import {
   type ContextoInterpolacion,
   type RespuestaRapida,
 } from '../../../lib/respuestas-rapidas-logica';
+import { formatearFecha } from '../../../lib/formato';
 
 // Carga diferida de modales secundarios de la bandeja (T-130)
 const ModalReasignar = dynamic(
@@ -1152,12 +1153,7 @@ export default function BandejaConversacionPage() {
                             : 'text-acento-100'
                       }`}
                     >
-                      <span>
-                        {new Date(m.ocurridoEn).toLocaleTimeString('es-CO', {
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
-                      </span>
+                      <span>{formatearFecha(m.ocurridoEn, { estilo: 'hora' })}</span>
 
                       {!esEntrante && (
                         <span>
@@ -1283,8 +1279,8 @@ export default function BandejaConversacionPage() {
                       onClick={() => setSugerenciasAbierto((p) => !p)}
                       className={`flex min-h-[40px] items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-semibold transition-colors sm:min-h-[32px] ${
                         sugerenciasAbierto
-                          ? 'border-purple-300 bg-purple-100 text-purple-900 dark:border-purple-800 dark:bg-purple-950 dark:text-purple-200'
-                          : 'border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-100 dark:border-purple-900/60 dark:bg-purple-950/40 dark:text-purple-300'
+                          ? 'border-acento-300 bg-acento-100 text-acento-900 dark:border-acento-800 dark:bg-acento-950 dark:text-acento-200'
+                          : 'border-acento-200 bg-acento-50 text-acento-700 hover:bg-acento-100 dark:border-acento-900/60 dark:bg-acento-950/40 dark:text-acento-300'
                       }`}
                       title="Abrir Asistente de Cotización (reglas)"
                       aria-label="Abrir Asistente de Cotización (reglas)"

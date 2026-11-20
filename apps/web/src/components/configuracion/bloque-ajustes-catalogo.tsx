@@ -80,7 +80,7 @@ export function BloqueAjustesCatalogo({ valorInicial }: BloqueAjustesCatalogoPro
         data-testid="cargando-ajustes-catalogo"
         className="flex min-h-[200px] flex-col items-center justify-center rounded-2xl border border-neutral-200 bg-white p-8 dark:border-neutral-800 dark:bg-neutral-900"
       >
-        <Loader2 className="h-8 w-8 animate-spin text-teal-600 dark:text-teal-400" />
+        <Loader2 className="text-acento-600 dark:text-acento-400 h-8 w-8 animate-spin" />
         <p className="mt-3 text-xs text-neutral-500 dark:text-neutral-400">
           Cargando configuración del catálogo...
         </p>
@@ -94,7 +94,7 @@ export function BloqueAjustesCatalogo({ valorInicial }: BloqueAjustesCatalogoPro
       <div className="flex flex-col gap-2 rounded-2xl border border-neutral-200 bg-white p-5 shadow-2xs sm:flex-row sm:items-center sm:justify-between dark:border-neutral-800 dark:bg-neutral-900">
         <div>
           <div className="flex flex-wrap items-center gap-2.5">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300">
+            <span className="bg-acento-100 text-acento-800 dark:bg-acento-950 dark:text-acento-300 flex h-9 w-9 items-center justify-center rounded-xl">
               <Tag className="h-5 w-5" />
             </span>
             <h2 className="text-base font-bold text-neutral-900 dark:text-white">
@@ -150,7 +150,7 @@ export function BloqueAjustesCatalogo({ valorInicial }: BloqueAjustesCatalogoPro
               htmlFor="radio-ocultar"
               className={`flex cursor-pointer items-start gap-3.5 rounded-2xl border p-4.5 transition-all ${
                 promoVencida === 'OCULTAR'
-                  ? 'border-teal-500 bg-teal-50/40 shadow-xs ring-1 ring-teal-500 dark:border-teal-400 dark:bg-teal-950/20'
+                  ? 'border-acento-500 bg-acento-50/40 ring-acento-500 dark:border-acento-400 dark:bg-acento-950/20 shadow-xs ring-1'
                   : 'border-neutral-200 bg-white hover:border-neutral-300 dark:border-neutral-800 dark:bg-neutral-900 dark:hover:border-neutral-700'
               }`}
             >
@@ -162,7 +162,7 @@ export function BloqueAjustesCatalogo({ valorInicial }: BloqueAjustesCatalogoPro
                 checked={promoVencida === 'OCULTAR'}
                 onChange={() => setPromoVencida('OCULTAR')}
                 data-testid="radio-promo-ocultar"
-                className="mt-1 h-4 w-4 text-teal-600 focus:ring-teal-500"
+                className="text-acento-600 focus:ring-acento-500 mt-1 h-4 w-4"
               />
               <div className="flex-1">
                 <div className="flex flex-wrap items-center justify-between gap-2">
@@ -170,7 +170,7 @@ export function BloqueAjustesCatalogo({ valorInicial }: BloqueAjustesCatalogoPro
                     <EyeOff className="h-4 w-4 text-neutral-500" />
                     Ocultar precio de lista anterior (Valor por defecto)
                   </span>
-                  <span className="rounded-full bg-teal-100 px-2 py-0.5 text-[10px] font-bold text-teal-800 dark:bg-teal-950 dark:text-teal-300">
+                  <span className="bg-acento-100 text-acento-800 dark:bg-acento-950 dark:text-acento-300 rounded-full px-2 py-0.5 text-[10px] font-bold">
                     Recomendado para cotizaciones limpias
                   </span>
                 </div>
@@ -187,7 +187,7 @@ export function BloqueAjustesCatalogo({ valorInicial }: BloqueAjustesCatalogoPro
               htmlFor="radio-tachar"
               className={`flex cursor-pointer items-start gap-3.5 rounded-2xl border p-4.5 transition-all ${
                 promoVencida === 'TACHAR'
-                  ? 'border-teal-500 bg-teal-50/40 shadow-xs ring-1 ring-teal-500 dark:border-teal-400 dark:bg-teal-950/20'
+                  ? 'border-acento-500 bg-acento-50/40 ring-acento-500 dark:border-acento-400 dark:bg-acento-950/20 shadow-xs ring-1'
                   : 'border-neutral-200 bg-white hover:border-neutral-300 dark:border-neutral-800 dark:bg-neutral-900 dark:hover:border-neutral-700'
               }`}
             >
@@ -199,7 +199,7 @@ export function BloqueAjustesCatalogo({ valorInicial }: BloqueAjustesCatalogoPro
                 checked={promoVencida === 'TACHAR'}
                 onChange={() => setPromoVencida('TACHAR')}
                 data-testid="radio-promo-tachar"
-                className="mt-1 h-4 w-4 text-teal-600 focus:ring-teal-500"
+                className="text-acento-600 focus:ring-acento-500 mt-1 h-4 w-4"
               />
               <div className="flex-1">
                 <div className="flex flex-wrap items-center justify-between gap-2">
@@ -246,7 +246,7 @@ export function BloqueAjustesCatalogo({ valorInicial }: BloqueAjustesCatalogoPro
             type="submit"
             disabled={guardando}
             data-testid="boton-guardar-ajustes-catalogo"
-            className="flex min-h-[44px] items-center justify-center gap-2 rounded-xl bg-teal-600 px-6 py-2.5 text-xs font-bold text-white shadow-xs transition-colors hover:bg-teal-700 disabled:opacity-50"
+            className="boton-primario flex min-h-[44px] items-center justify-center gap-2 rounded-xl px-6 py-2.5 text-xs font-bold shadow-xs transition-colors"
           >
             {guardando ? (
               <>
@@ -265,7 +265,7 @@ export function BloqueAjustesCatalogo({ valorInicial }: BloqueAjustesCatalogoPro
         {/* Columna Derecha: Previsualización en Vivo de la Tarjeta */}
         <div className="space-y-2 lg:col-span-5">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-neutral-500 uppercase">
+            <span className="text-xs font-bold text-neutral-500">
               Vista previa en vivo (Catálogo y Cotizador)
             </span>
             <span className="rounded-md bg-neutral-100 px-2 py-0.5 font-mono text-[10px] text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400">
@@ -279,7 +279,7 @@ export function BloqueAjustesCatalogo({ valorInicial }: BloqueAjustesCatalogoPro
           >
             <div className="border-b border-neutral-100 bg-neutral-50/70 p-4 dark:border-neutral-800 dark:bg-neutral-800/40">
               <div className="flex items-center justify-between">
-                <span className="inline-flex items-center gap-1 rounded-full bg-teal-50 px-2.5 py-0.5 text-xs font-semibold text-teal-700 dark:bg-teal-950/60 dark:text-teal-300">
+                <span className="bg-acento-50 text-acento-700 dark:bg-acento-950/60 dark:text-acento-300 inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold">
                   <Calendar className="h-3 w-3" />
                   Sáb, 14 nov 2026
                 </span>
@@ -325,7 +325,7 @@ export function BloqueAjustesCatalogo({ valorInicial }: BloqueAjustesCatalogoPro
               </div>
 
               <div className="mt-3 flex items-center gap-1.5 rounded-lg bg-neutral-50 p-2 text-[11px] text-neutral-500 dark:bg-neutral-800/40 dark:text-neutral-400">
-                <Sparkles className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400" />
+                <Sparkles className="text-acento-600 dark:text-acento-400 h-3.5 w-3.5" />
                 <span>
                   {promoVencida === 'OCULTAR'
                     ? 'La tarifa se presenta limpia y sin tachón en cotizaciones y WhatsApp.'

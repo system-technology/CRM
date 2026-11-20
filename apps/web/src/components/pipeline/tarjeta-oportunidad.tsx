@@ -237,7 +237,7 @@ export function TarjetaOportunidad({
                 role="menu"
                 className="absolute right-0 bottom-full z-20 mb-1 w-48 rounded-xl border border-neutral-200 bg-white py-1 shadow-lg dark:border-neutral-700 dark:bg-neutral-800"
               >
-                <div className="border-b border-neutral-100 px-3 py-1.5 text-[9px] font-semibold text-neutral-400 uppercase dark:border-neutral-700">
+                <div className="border-b border-neutral-100 px-3 py-1.5 text-[9px] font-semibold text-neutral-400 dark:border-neutral-700">
                   Mover a etapa:
                 </div>
                 {etapasDisponibles.map((etapaDestino) => (

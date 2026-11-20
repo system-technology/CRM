@@ -65,6 +65,7 @@ import { useModoDemo, esModoDemo } from '../../lib/modo-demo';
 import { cambiarAgenciaActivaApi, cerrarSesionApi } from '../../lib/auth-api';
 import { inboxSocketManager } from '../../lib/inbox-socket';
 import { useFocoModal } from '../../lib/use-foco-modal';
+import { fijarZonaAgencia } from '../../lib/formato';
 
 interface ModuloItem {
   id: string;
@@ -199,7 +200,10 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
     if (esDemo || !estaUsandoApiReal()) return;
     let activo = true;
     void obtenerAjustesAgenciaApi().then((a) => {
-      if (activo) setZonaAgencia(zonaOPorDefecto(a?.zonaHoraria));
+      if (!activo) return;
+      const zona = zonaOPorDefecto(a?.zonaHoraria);
+      setZonaAgencia(zona);
+      fijarZonaAgencia(zona);
     });
     return () => {
       activo = false;

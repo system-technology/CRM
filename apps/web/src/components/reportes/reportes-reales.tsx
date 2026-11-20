@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { AlertTriangle, Lock, TrendingDown, TrendingUp } from 'lucide-react';
 import type { ResumenDeReportes, TableroPipeline } from '@viajapro/contracts';
 import { EsqueletoReportes } from '../comun/esqueletos';
-import { formatearDinero, ZONA_HORARIA_COLOMBIA } from '../../lib/formato';
+import { formatearDinero, formatearFecha } from '../../lib/formato';
 import { obtenerTableroPipeline } from '../../lib/crm-api';
 import { ErrorReportesApi, obtenerResumenDeReportesApi } from '../../lib/reportes-api';
 import {
@@ -42,10 +42,7 @@ const cifraGrande = 'cifra mt-2 text-2xl font-extrabold text-neutral-900 dark:te
 const pie = 'mt-1 text-[11px] text-neutral-400 dark:text-neutral-500';
 
 function fechaCorta(instante: number): string {
-  return new Intl.DateTimeFormat('es-CO', {
-    dateStyle: 'medium',
-    timeZone: ZONA_HORARIA_COLOMBIA,
-  }).format(new Date(instante));
+  return formatearFecha(instante);
 }
 
 export function ReportesReales({ periodo, esDueno, puedeVerNetoYMargen, ahora }: Props) {
@@ -259,7 +256,7 @@ export function ReportesReales({ periodo, esDueno, puedeVerNetoYMargen, ahora }:
           data-testid="seccion-margen-confidencial"
           className="rounded-xl border border-emerald-200 bg-emerald-50/40 p-4 dark:border-emerald-900/40 dark:bg-emerald-950/20"
         >
-          <div className="text-xs font-bold text-emerald-800 uppercase dark:text-emerald-300">
+          <div className="text-xs font-bold text-emerald-800 dark:text-emerald-300">
             Utilidad bruta y margen real (venta − costo neto)
           </div>
           {!vista.hayConfidencial ? (

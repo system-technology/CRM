@@ -33,6 +33,7 @@ import {
   FILTROS_BANDEJA_DEFECTO,
 } from '../../lib/filtros-guardados-logica';
 import { useBandejaAtajos } from '../../lib/atajos-teclado-bandeja';
+import { formatearFecha } from '../../lib/formato';
 
 export type DensidadBandeja = 'compacta' | 'comoda';
 
@@ -445,10 +446,7 @@ export function ListaConversaciones() {
                         </span>
                         <span className="cifra shrink-0 text-[10px] text-neutral-400">
                           {conv.ultimoMensajeEn
-                            ? new Date(conv.ultimoMensajeEn).toLocaleTimeString('es-CO', {
-                                hour: '2-digit',
-                                minute: '2-digit',
-                              })
+                            ? formatearFecha(conv.ultimoMensajeEn, { estilo: 'hora' })
                             : ''}
                         </span>
                       </div>

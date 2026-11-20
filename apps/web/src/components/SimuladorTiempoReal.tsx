@@ -105,15 +105,16 @@ export function SimuladorTiempoReal({
         {desplegado && (
           <div className="flex flex-col gap-2 border-t border-slate-800 p-3 text-slate-300">
             <p className="text-[11px] text-slate-400">
-              Dispara eventos simulados contra <code className="text-blue-300">EventoBandeja</code>{' '}
-              con Zod <code className="text-blue-300">safeParse</code>.
+              Dispara eventos simulados contra{' '}
+              <code className="text-acento-300">EventoBandeja</code> con Zod{' '}
+              <code className="text-acento-300">safeParse</code>.
             </p>
 
             <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
               <button
                 type="button"
                 onClick={handleEmitirMensajeNuevo}
-                className="rounded border border-blue-800/60 bg-blue-950/60 px-2.5 py-1.5 text-left font-medium text-blue-200 hover:bg-blue-900/80 focus:ring-1 focus:ring-blue-500"
+                className="border-acento-800/60 bg-acento-950/60 text-acento-200 hover:bg-acento-900/80 focus:ring-acento-500 rounded border px-2.5 py-1.5 text-left font-medium focus:ring-1"
               >
                 📩 Mensaje Nuevo (Entrante)
               </button>
@@ -129,7 +130,7 @@ export function SimuladorTiempoReal({
               <button
                 type="button"
                 onClick={handleEmitirConversacionActualizada}
-                className="rounded border border-purple-800/60 bg-purple-950/60 px-2.5 py-1.5 text-left font-medium text-purple-200 hover:bg-purple-900/80 focus:ring-1 focus:ring-purple-500"
+                className="border-acento-800/60 bg-acento-950/60 text-acento-200 hover:bg-acento-900/80 focus:ring-acento-500 rounded border px-2.5 py-1.5 text-left font-medium focus:ring-1"
               >
                 📌 Actualizar Conversación
               </button>

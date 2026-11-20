@@ -156,7 +156,7 @@ export default function ConfiguracionPage() {
                   Equipo y Configuración de Agencia
                 </h1>
                 <DistintivoDatosDemo visible={true} />
-                <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-semibold text-blue-800 dark:bg-blue-900/60 dark:text-blue-300">
+                <span className="bg-acento-100 text-acento-800 dark:bg-acento-900/60 dark:text-acento-300 inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold">
                   {agencia.nombreComercial}
                 </span>
               </div>
@@ -281,11 +281,11 @@ export default function ConfiguracionPage() {
               onClick={() => setTabActiva('catalogo')}
               className={`flex items-center gap-2 border-b-2 px-4 py-2 text-xs font-medium transition-colors ${
                 tabActiva === 'catalogo'
-                  ? 'border-teal-600 text-teal-700 dark:border-teal-400 dark:text-teal-300'
+                  ? 'border-acento-600 text-acento-700 dark:border-acento-400 dark:text-acento-300'
                   : 'border-transparent text-neutral-500 hover:border-neutral-300 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200'
               }`}
             >
-              <Tag className="h-4 w-4 text-teal-600 dark:text-teal-400" />
+              <Tag className="text-acento-600 dark:text-acento-400 h-4 w-4" />
               <span>Catálogo</span>
             </button>
 
@@ -295,11 +295,11 @@ export default function ConfiguracionPage() {
               onClick={() => setTabActiva('campos')}
               className={`flex items-center gap-2 border-b-2 px-4 py-2 text-xs font-medium transition-colors ${
                 tabActiva === 'campos'
-                  ? 'border-purple-600 text-purple-700 dark:border-purple-400 dark:text-purple-300'
+                  ? 'border-acento-600 text-acento-700 dark:border-acento-400 dark:text-acento-300'
                   : 'border-transparent text-neutral-500 hover:border-neutral-300 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200'
               }`}
             >
-              <FormInput className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+              <FormInput className="text-acento-600 dark:text-acento-400 h-4 w-4" />
               <span>Campos Personalizados</span>
             </button>
 
@@ -374,7 +374,7 @@ export default function ConfiguracionPage() {
                           tiempoMaximoPrimeraRespuestaMin: parseInt(e.target.value) || 0,
                         })
                       }
-                      className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2 text-xs text-neutral-900 focus:border-blue-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                      className="focus:border-acento-500 mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2 text-xs text-neutral-900 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                     />
                     <span className="mt-1 block text-[11px] text-neutral-500">
                       Recomendado: 15 minutos para agencias de viajes.
@@ -396,7 +396,7 @@ export default function ConfiguracionPage() {
                           alertaPreventivaMin: parseInt(e.target.value) || 0,
                         })
                       }
-                      className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2 text-xs text-neutral-900 focus:border-blue-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                      className="focus:border-acento-500 mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2 text-xs text-neutral-900 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                     />
                     <span className="mt-1 block text-[11px] text-neutral-500">
                       Avisa al asesor antes de que se marque como vencido.
@@ -413,7 +413,7 @@ export default function ConfiguracionPage() {
                       type="time"
                       value={sla.horarioInicio}
                       onChange={(e) => setSla({ ...sla, horarioInicio: e.target.value })}
-                      className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2 text-xs text-neutral-900 focus:border-blue-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                      className="focus:border-acento-500 mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2 text-xs text-neutral-900 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                     />
                   </div>
 
@@ -425,7 +425,7 @@ export default function ConfiguracionPage() {
                       type="time"
                       value={sla.horarioFin}
                       onChange={(e) => setSla({ ...sla, horarioFin: e.target.value })}
-                      className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2 text-xs text-neutral-900 focus:border-blue-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                      className="focus:border-acento-500 mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2 text-xs text-neutral-900 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                     />
                   </div>
                 </div>
@@ -506,7 +506,7 @@ export default function ConfiguracionPage() {
                       type="text"
                       value={agencia.razonSocial}
                       onChange={(e) => setAgencia({ ...agencia, razonSocial: e.target.value })}
-                      className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2 text-xs text-neutral-900 focus:border-blue-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                      className="focus:border-acento-500 mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2 text-xs text-neutral-900 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                     />
                   </div>
 
@@ -518,7 +518,7 @@ export default function ConfiguracionPage() {
                       type="text"
                       value={agencia.nombreComercial}
                       onChange={(e) => setAgencia({ ...agencia, nombreComercial: e.target.value })}
-                      className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2 text-xs text-neutral-900 focus:border-blue-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                      className="focus:border-acento-500 mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2 text-xs text-neutral-900 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                     />
                   </div>
                 </div>
@@ -532,7 +532,7 @@ export default function ConfiguracionPage() {
                       type="text"
                       value={agencia.nit}
                       onChange={(e) => setAgencia({ ...agencia, nit: e.target.value })}
-                      className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2 text-xs text-neutral-900 focus:border-blue-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                      className="focus:border-acento-500 mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2 text-xs text-neutral-900 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                     />
                   </div>
 
@@ -558,7 +558,7 @@ export default function ConfiguracionPage() {
                       type="text"
                       value={agencia.direccion}
                       onChange={(e) => setAgencia({ ...agencia, direccion: e.target.value })}
-                      className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2 text-xs text-neutral-900 focus:border-blue-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                      className="focus:border-acento-500 mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2 text-xs text-neutral-900 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                     />
                   </div>
 
@@ -570,7 +570,7 @@ export default function ConfiguracionPage() {
                       type="text"
                       value={agencia.ciudad}
                       onChange={(e) => setAgencia({ ...agencia, ciudad: e.target.value })}
-                      className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2 text-xs text-neutral-900 focus:border-blue-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                      className="focus:border-acento-500 mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2 text-xs text-neutral-900 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                     />
                   </div>
                 </div>

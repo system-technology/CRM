@@ -124,11 +124,11 @@ export default function SeguimientosPage() {
       <header className="flex flex-col gap-4 border-b border-neutral-200 pb-5 sm:flex-row sm:items-center sm:justify-between dark:border-neutral-800">
         <div>
           <nav className="flex items-center gap-1.5 text-xs text-neutral-500 dark:text-neutral-400">
-            <Link href="/" className="hover:text-teal-600 hover:underline">
+            <Link href="/" className="hover:text-acento-600 hover:underline">
               Inicio
             </Link>
             <span>/</span>
-            <Link href="/contactos" className="hover:text-teal-600 hover:underline">
+            <Link href="/contactos" className="hover:text-acento-600 hover:underline">
               CRM
             </Link>
             <span>/</span>
@@ -165,10 +165,10 @@ export default function SeguimientosPage() {
             disabled={recargando || cargando}
             title="Recargar seguimientos"
             aria-label="Recargar lista de seguimientos"
-            className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl border border-neutral-300 bg-white p-2.5 text-neutral-700 shadow-2xs hover:bg-neutral-50 focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:outline-none disabled:opacity-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
+            className="focus-visible:ring-acento-600 inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl border border-neutral-300 bg-white p-2.5 text-neutral-700 shadow-2xs hover:bg-neutral-50 focus-visible:ring-2 focus-visible:outline-none disabled:opacity-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
           >
             <RefreshCw
-              className={`h-4 w-4 ${recargando || cargando ? 'animate-spin text-teal-600' : ''}`}
+              className={`h-4 w-4 ${recargando || cargando ? 'text-acento-600 animate-spin' : ''}`}
             />
           </button>
 
@@ -176,7 +176,7 @@ export default function SeguimientosPage() {
             type="button"
             data-testid="boton-agendar-seguimiento"
             onClick={() => setModalCrearAbierto(true)}
-            className="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-teal-600 px-4 py-2.5 text-xs font-bold text-white shadow-xs transition hover:bg-teal-700 focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:outline-none sm:text-sm"
+            className="boton-primario inline-flex min-h-[44px] items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold shadow-xs transition sm:text-sm"
           >
             <Plus className="h-4 w-4 stroke-[2.5]" />
             <span>Agendar Seguimiento</span>
@@ -248,9 +248,9 @@ export default function SeguimientosPage() {
           type="button"
           data-testid="kpi-proximos"
           onClick={() => setCategoriaActiva('PROXIMOS')}
-          className={`flex min-h-[44px] flex-col rounded-2xl border p-4 text-left transition hover:shadow-xs focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:outline-none ${
+          className={`focus-visible:ring-acento-500 flex min-h-[44px] flex-col rounded-2xl border p-4 text-left transition hover:shadow-xs focus-visible:ring-2 focus-visible:outline-none ${
             categoriaActiva === 'PROXIMOS'
-              ? 'border-teal-400 bg-teal-50/70 ring-2 ring-teal-500/30 dark:border-teal-800 dark:bg-teal-950/40'
+              ? 'border-acento-400 bg-acento-50/70 ring-acento-500/30 dark:border-acento-800 dark:bg-acento-950/40 ring-2'
               : 'border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900'
           }`}
         >
@@ -258,11 +258,11 @@ export default function SeguimientosPage() {
             <span className="text-xs font-bold text-neutral-500 dark:text-neutral-400">
               Próximos
             </span>
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-teal-100 text-teal-700 dark:bg-teal-950/60 dark:text-teal-400">
+            <div className="bg-acento-100 text-acento-700 dark:bg-acento-950/60 dark:text-acento-400 flex h-7 w-7 items-center justify-center rounded-lg">
               <Calendar className="h-4 w-4" />
             </div>
           </div>
-          <span className="mt-2 text-2xl font-black text-teal-700 dark:text-teal-400">
+          <span className="text-acento-700 dark:text-acento-400 mt-2 text-2xl font-black">
             {metricas.proximos}
           </span>
           <span className="mt-0.5 text-[11px] text-neutral-500 dark:text-neutral-400">
@@ -353,8 +353,8 @@ export default function SeguimientosPage() {
               onClick={() => setCategoriaActiva('PROXIMOS')}
               className={`min-h-[44px] rounded-lg px-3.5 text-xs font-bold transition sm:text-sm ${
                 categoriaActiva === 'PROXIMOS'
-                  ? 'bg-white text-teal-700 shadow-xs dark:bg-neutral-700 dark:text-teal-400'
-                  : 'text-neutral-600 hover:text-teal-700 dark:text-neutral-400 dark:hover:text-teal-400'
+                  ? 'text-acento-700 dark:text-acento-400 bg-white shadow-xs dark:bg-neutral-700'
+                  : 'hover:text-acento-700 dark:hover:text-acento-400 text-neutral-600 dark:text-neutral-400'
               }`}
             >
               Próximos ({metricas.proximos})
@@ -385,7 +385,7 @@ export default function SeguimientosPage() {
                 value={busqueda}
                 onChange={(e) => setBusqueda(e.target.value)}
                 placeholder="Buscar por cliente o tarea..."
-                className="w-full rounded-xl border border-neutral-300 bg-neutral-50/50 py-2.5 pr-8 pl-9 text-xs text-neutral-900 placeholder:text-neutral-400 focus:border-teal-500 focus:bg-white focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-white dark:focus:border-teal-400"
+                className="focus:border-acento-500 dark:focus:border-acento-400 w-full rounded-xl border border-neutral-300 bg-neutral-50/50 py-2.5 pr-8 pl-9 text-xs text-neutral-900 placeholder:text-neutral-400 focus:bg-white focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
               />
               {busqueda && (
                 <button
@@ -408,7 +408,7 @@ export default function SeguimientosPage() {
                   value={asesorSeleccionado}
                   onChange={(e) => setAsesorSeleccionado(e.target.value)}
                   aria-label="Filtrar por asesor asignado"
-                  className="min-h-[44px] w-full rounded-xl border border-neutral-300 bg-neutral-50/50 px-3 py-2 text-xs font-semibold text-neutral-800 focus:border-teal-500 focus:bg-white focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200 dark:focus:border-teal-400"
+                  className="focus:border-acento-500 dark:focus:border-acento-400 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-neutral-50/50 px-3 py-2 text-xs font-semibold text-neutral-800 focus:bg-white focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200"
                 >
                   <option value="todos">Todos los asesores</option>
                   {asesoresDisponibles.map((a) => (

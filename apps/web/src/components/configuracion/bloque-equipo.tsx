@@ -161,7 +161,7 @@ export function BloqueEquipo() {
           <span className="text-xs font-medium text-neutral-500 dark:text-neutral-400">
             Dueños Activos
           </span>
-          <p className="mt-1 text-2xl font-bold text-purple-600 dark:text-purple-400">
+          <p className="text-acento-600 dark:text-acento-400 mt-1 text-2xl font-bold">
             {totalDuenos}
           </p>
         </div>
@@ -170,7 +170,7 @@ export function BloqueEquipo() {
           <span className="text-xs font-medium text-neutral-500 dark:text-neutral-400">
             Asesores Activos
           </span>
-          <p className="mt-1 text-2xl font-bold text-blue-600 dark:text-blue-400">
+          <p className="text-acento-600 dark:text-acento-400 mt-1 text-2xl font-bold">
             {totalAsesores}
           </p>
         </div>
@@ -210,7 +210,7 @@ export function BloqueEquipo() {
           type="button"
           onClick={() => setModalInvitar(true)}
           data-testid="btn-abrir-modal-invitar"
-          className="flex min-h-[44px] items-center justify-center gap-1.5 rounded-xl bg-purple-700 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-purple-800 focus:outline-hidden"
+          className="boton-primario flex min-h-[44px] items-center justify-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold shadow-xs"
         >
           <Plus className="h-4 w-4" />
           <span>Invitar Asesor</span>
@@ -300,7 +300,7 @@ export function BloqueEquipo() {
                 <tr key={m.id} className="hover:bg-neutral-50/50 dark:hover:bg-neutral-800/40">
                   <td className="px-4 py-3.5">
                     <div className="flex items-center gap-3">
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-purple-100 font-bold text-purple-700 dark:bg-purple-950 dark:text-purple-300">
+                      <div className="bg-acento-100 text-acento-700 dark:bg-acento-950 dark:text-acento-300 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl font-bold">
                         {m.avatarIniciales}
                       </div>
                       <div className="min-w-0">
@@ -319,8 +319,8 @@ export function BloqueEquipo() {
                     <span
                       className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-semibold ${
                         m.rolClave === 'DUENO'
-                          ? 'bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300'
-                          : 'bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300'
+                          ? 'bg-acento-100 text-acento-800 dark:bg-acento-950/60 dark:text-acento-300'
+                          : 'bg-acento-100 text-acento-800 dark:bg-acento-950/60 dark:text-acento-300'
                       }`}
                     >
                       {m.rolNombre}
@@ -398,7 +398,7 @@ export function BloqueEquipo() {
 
       {/* Banner de Gobierno de Identidad */}
       <div className="flex items-start gap-3 rounded-xl border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-800 dark:bg-neutral-900/50">
-        <ShieldCheck className="h-5 w-5 shrink-0 text-purple-600 dark:text-purple-400" />
+        <ShieldCheck className="text-acento-600 dark:text-acento-400 h-5 w-5 shrink-0" />
         <div className="text-xs text-neutral-600 dark:text-neutral-400">
           <p className="font-semibold text-neutral-900 dark:text-white">
             Datos separados por agencia y permiso de administración:
@@ -425,7 +425,7 @@ export function BloqueEquipo() {
           >
             <div className="flex items-center justify-between border-b border-neutral-100 pb-3 dark:border-neutral-800">
               <div className="flex items-center gap-2">
-                <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300">
+                <span className="bg-acento-100 text-acento-700 dark:bg-acento-950 dark:text-acento-300 flex h-8 w-8 items-center justify-center rounded-xl">
                   <Mail className="h-4 w-4" />
                 </span>
                 <h3
@@ -488,7 +488,7 @@ export function BloqueEquipo() {
                   placeholder="asesor@turismocartagena.com"
                   value={correo}
                   onChange={(e) => setCorreo(e.target.value)}
-                  className="mt-1 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-xs text-neutral-900 focus:border-purple-600 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                  className="focus:border-acento-600 mt-1 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-xs text-neutral-900 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                 />
               </div>
 
@@ -503,7 +503,7 @@ export function BloqueEquipo() {
                   id="select-invitar-rol"
                   value={rolId}
                   onChange={(e) => setRolId(e.target.value)}
-                  className="mt-1 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-xs text-neutral-900 focus:border-purple-600 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                  className="focus:border-acento-600 mt-1 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-xs text-neutral-900 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                 >
                   {roles.map((r) => (
                     <option key={r.id} value={r.id}>
@@ -532,7 +532,7 @@ export function BloqueEquipo() {
                     placeholder="Ej: Laura Restrepo"
                     value={nombre}
                     onChange={(e) => setNombre(e.target.value)}
-                    className="mt-1 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-xs text-neutral-900 focus:border-purple-600 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                    className="focus:border-acento-600 mt-1 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-xs text-neutral-900 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                   />
                 </div>
               )}
@@ -551,7 +551,7 @@ export function BloqueEquipo() {
                     placeholder="+573001234567"
                     value={telefono}
                     onChange={(e) => setTelefono(e.target.value)}
-                    className="mt-1 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-xs text-neutral-900 focus:border-purple-600 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                    className="focus:border-acento-600 mt-1 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-xs text-neutral-900 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                   />
                 </div>
               )}
@@ -567,7 +567,7 @@ export function BloqueEquipo() {
                 <button
                   type="submit"
                   disabled={enviando}
-                  className="flex min-h-[44px] items-center gap-1.5 rounded-xl bg-purple-700 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-purple-800 disabled:opacity-50"
+                  className="boton-primario flex min-h-[44px] items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold shadow-xs"
                 >
                   <Send className="h-3.5 w-3.5" />
                   <span>{enviando ? 'Enviando...' : 'Enviar Invitación'}</span>

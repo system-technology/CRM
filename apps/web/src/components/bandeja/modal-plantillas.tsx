@@ -196,8 +196,8 @@ export function ModalPlantillas({
                         <span
                           className={`rounded-full px-2 py-0.5 text-[9px] font-bold ${
                             p.categoria === 'UTILIDAD'
-                              ? 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300'
-                              : 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300'
+                              ? 'bg-acento-100 text-acento-800 dark:bg-acento-950 dark:text-acento-300'
+                              : 'bg-acento-100 text-acento-800 dark:bg-acento-950 dark:text-acento-300'
                           }`}
                         >
                           {p.categoria}
@@ -339,7 +339,7 @@ export function ModalPlantillas({
                 type="submit"
                 disabled={Boolean(envioDeshabilitadoMotivo)}
                 title={envioDeshabilitadoMotivo}
-                className="bg-acento-600 hover:bg-acento-700 flex items-center space-x-1.5 rounded-xl px-4 py-2 text-xs font-semibold text-white shadow-xs transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                className="boton-primario flex items-center space-x-1.5 rounded-xl px-4 py-2 text-xs font-semibold shadow-xs transition-colors"
               >
                 <Send className="h-3.5 w-3.5" />
                 <span>Enviar plantilla</span>

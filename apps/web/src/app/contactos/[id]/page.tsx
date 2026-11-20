@@ -33,6 +33,16 @@ import {
 } from '../../../lib/contacto-360-logica';
 import { formatearTelefonoVisual } from '../../../lib/contactos-logica';
 import { formatearDinero, formatearFecha } from '../../../lib/formato';
+import { EnlacesDelViaje } from '../../../components/comun/enlaces-del-viaje';
+import {
+  archivoVigenteDelContacto,
+  cotizacionVigenteDelContacto,
+  enlaceDeArchivo,
+  enlaceDeConversacion,
+  enlaceDeCotizacion,
+  hrefConversacion,
+} from '../../../lib/enlaces-viaje-logica';
+import { useEnlacesDelViaje } from '../../../lib/use-enlaces-del-viaje';
 import { generarColorAvatar, obtenerIniciales } from '../../../lib/bandeja-logica';
 import {
   formatearErrorAmigable,
@@ -119,6 +129,9 @@ export default function Contacto360Page({ params: paramsPromise }: Contacto360Pa
   const [modalEditarAbierto, setModalEditarAbierto] = useState(false);
   const [modalOportunidadAbierto, setModalOportunidadAbierto] = useState(false);
   const [modalSeguimientoAbierto, setModalSeguimientoAbierto] = useState(false);
+
+  // Conversación y file del contacto: una petición cada uno, no una por tarjeta.
+  const enlaces = useEnlacesDelViaje(contactoId, ficha?.contacto ?? null);
 
   const cargarDatos = async () => {
     setCargando(true);
@@ -255,6 +268,17 @@ export default function Contacto360Page({ params: paramsPromise }: Contacto360Pa
   const { contacto, oportunidadActual, cotizaciones, archivosDeViajeIds } = ficha;
   const avatarColores = generarColorAvatar(contacto.id);
   const iniciales = obtenerIniciales(contacto.nombre, contacto.telefono);
+  const cotizacionVigente = cotizacionVigenteDelContacto(cotizaciones);
+  const archivoVigente =
+    enlaces.archivos.tipo === 'listo'
+      ? archivoVigenteDelContacto(enlaces.archivos.valor, contacto.id)
+      : null;
+  // Si la lista de files no lo trae pero la ficha sabe que existe, se enlaza por su id.
+  const archivoPorId = archivosDeViajeIds[0];
+  const hrefConversacionDelContacto =
+    enlaces.conversacionId.tipo === 'listo' && enlaces.conversacionId.valor
+      ? hrefConversacion(enlaces.conversacionId.valor)
+      : '/bandeja';
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-neutral-100 text-neutral-900 select-none dark:bg-neutral-950 dark:text-neutral-100">
@@ -274,8 +298,8 @@ export default function Contacto360Page({ params: paramsPromise }: Contacto360Pa
           </Link>
           <div className="flex items-center gap-2">
             <Link
-              href="/bandeja"
-              className="flex min-h-[44px] items-center gap-1.5 rounded-xl border border-teal-200 bg-teal-50 px-3.5 py-2 text-xs font-bold text-teal-700 hover:bg-teal-100 dark:border-teal-900/50 dark:bg-teal-950/40 dark:text-teal-300 dark:hover:bg-teal-900/50"
+              href={hrefConversacionDelContacto}
+              className="border-acento-200 bg-acento-50 text-acento-700 hover:bg-acento-100 dark:border-acento-900/50 dark:bg-acento-950/40 dark:text-acento-300 dark:hover:bg-acento-900/50 flex min-h-[44px] items-center gap-1.5 rounded-xl border px-3.5 py-2 text-xs font-bold"
             >
               <MessageSquare className="h-4 w-4" />
               <span>Abrir WhatsApp</span>
@@ -356,7 +380,7 @@ export default function Contacto360Page({ params: paramsPromise }: Contacto360Pa
                   disabled={!puedeEscribirCrm}
                   title={!puedeEscribirCrm ? explicacionFaltaPermiso('crm.escribir') : undefined}
                   onClick={() => setModalOportunidadAbierto(true)}
-                  className="flex min-h-[44px] items-center gap-1.5 rounded-xl bg-teal-600 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-teal-500 dark:hover:bg-teal-600"
+                  className="boton-primario flex min-h-[44px] items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold shadow-xs"
                 >
                   <Kanban className="h-4 w-4" />
                   <span>Nueva Oportunidad</span>
@@ -379,9 +403,7 @@ export default function Contacto360Page({ params: paramsPromise }: Contacto360Pa
           {metricas && (
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
               <div className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-xs dark:border-neutral-800 dark:bg-neutral-900">
-                <p className="text-[11px] font-semibold tracking-wider text-neutral-400 uppercase">
-                  Oportunidad Activa
-                </p>
+                <p className="text-[11px] font-semibold text-neutral-400">Oportunidad activa</p>
                 <p className="cifra mt-1 text-base font-bold text-neutral-900 dark:text-white">
                   {metricas.tieneOportunidadActiva
                     ? formatearDinero({
@@ -390,15 +412,13 @@ export default function Contacto360Page({ params: paramsPromise }: Contacto360Pa
                       })
                     : 'Sin oportunidad'}
                 </p>
-                <p className="mt-0.5 text-[11px] text-teal-600 dark:text-teal-400">
+                <p className="text-acento-600 dark:text-acento-400 mt-0.5 text-[11px]">
                   {metricas.etapaOportunidad ?? 'Lead en exploración'}
                 </p>
               </div>
 
               <div className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-xs dark:border-neutral-800 dark:bg-neutral-900">
-                <p className="text-[11px] font-semibold tracking-wider text-neutral-400 uppercase">
-                  Cotizaciones Emitidas
-                </p>
+                <p className="text-[11px] font-semibold text-neutral-400">Cotizaciones emitidas</p>
                 <p className="cifra mt-1 text-base font-bold text-neutral-900 dark:text-white">
                   {metricas.totalCotizaciones}
                 </p>
@@ -412,21 +432,19 @@ export default function Contacto360Page({ params: paramsPromise }: Contacto360Pa
               </div>
 
               <div className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-xs dark:border-neutral-800 dark:bg-neutral-900">
-                <p className="text-[11px] font-semibold tracking-wider text-neutral-400 uppercase">
-                  Seguimientos Pendientes
+                <p className="text-[11px] font-semibold text-neutral-400">
+                  Seguimientos pendientes
                 </p>
                 <p className="cifra mt-1 text-base font-bold text-neutral-900 dark:text-white">
                   {metricas.seguimientosPendientes}
                 </p>
-                <p className="mt-0.5 text-[11px] text-purple-600 dark:text-purple-400">
+                <p className="text-acento-600 dark:text-acento-400 mt-0.5 text-[11px]">
                   {metricas.seguimientosPendientes > 0 ? 'Compromisos activos' : 'Al día'}
                 </p>
               </div>
 
               <div className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-xs dark:border-neutral-800 dark:bg-neutral-900">
-                <p className="text-[11px] font-semibold tracking-wider text-neutral-400 uppercase">
-                  Archivos de Viaje
-                </p>
+                <p className="text-[11px] font-semibold text-neutral-400">Archivos de viaje</p>
                 <p className="cifra mt-1 text-base font-bold text-neutral-900 dark:text-white">
                   {archivosDeViajeIds.length}
                 </p>
@@ -437,6 +455,57 @@ export default function Contacto360Page({ params: paramsPromise }: Contacto360Pa
             </div>
           )}
 
+          {/* Viaje vigente: el destino y las piezas que lo componen, enlazadas */}
+          <section
+            aria-labelledby="viaje-vigente-titulo"
+            data-testid="viaje-vigente"
+            className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-xs dark:border-neutral-800 dark:bg-neutral-900"
+          >
+            <h2 id="viaje-vigente-titulo" className="text-sm font-bold">
+              Viaje vigente
+            </h2>
+            <p className="mt-1 text-sm text-neutral-800 dark:text-neutral-200">
+              {oportunidadActual
+                ? `${oportunidadActual.destino ?? oportunidadActual.titulo} · ${
+                    oportunidadActual.fechaSalida
+                      ? `sale ${formatearFecha(oportunidadActual.fechaSalida)}`
+                      : 'fecha de salida por definir'
+                  }`
+                : archivoVigente
+                  ? `${archivoVigente.destino} · sale ${formatearFecha(archivoVigente.fechaSalida)}`
+                  : 'Sin viaje abierto por ahora.'}
+            </p>
+            {cotizacionVigente && (
+              <p className="mt-0.5 text-xs text-neutral-600 dark:text-neutral-400">
+                {cotizacionVigente.titulo} · {formatearDinero(cotizacionVigente.precioVenta)}
+                {cotizacionVigente.vigenteHasta
+                  ? ` · vigente hasta ${formatearFecha(cotizacionVigente.vigenteHasta)}`
+                  : ''}
+              </p>
+            )}
+            <EnlacesDelViaje
+              className="mt-3"
+              enlaces={[
+                enlaceDeConversacion(enlaces.conversacionId),
+                ...(cotizacionVigente
+                  ? [enlaceDeCotizacion(cotizacionVigente.id, cotizacionVigente.version)]
+                  : []),
+                enlaceDeArchivo(
+                  enlaces.archivos.tipo === 'cargando'
+                    ? archivoPorId
+                      ? { tipo: 'listo', valor: { id: archivoPorId, numero: null } }
+                      : enlaces.archivos
+                    : {
+                        tipo: 'listo',
+                        valor:
+                          archivoVigente ??
+                          (archivoPorId ? { id: archivoPorId, numero: null } : null),
+                      },
+                ),
+              ]}
+            />
+          </section>
+
           {/* Navegación por Pestañas */}
           <div className="flex border-b border-neutral-200 text-xs font-bold dark:border-neutral-800">
             <button
@@ -444,7 +513,7 @@ export default function Contacto360Page({ params: paramsPromise }: Contacto360Pa
               onClick={() => setPestanaActiva('cronologia')}
               className={`flex min-h-[44px] items-center gap-2 border-b-2 px-4 py-2 transition-colors ${
                 pestanaActiva === 'cronologia'
-                  ? 'border-teal-600 text-teal-600 dark:border-teal-400 dark:text-teal-400'
+                  ? 'border-acento-600 text-acento-600 dark:border-acento-400 dark:text-acento-400'
                   : 'border-transparent text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200'
               }`}
             >
@@ -459,7 +528,7 @@ export default function Contacto360Page({ params: paramsPromise }: Contacto360Pa
               onClick={() => setPestanaActiva('oportunidades')}
               className={`flex min-h-[44px] items-center gap-2 border-b-2 px-4 py-2 transition-colors ${
                 pestanaActiva === 'oportunidades'
-                  ? 'border-teal-600 text-teal-600 dark:border-teal-400 dark:text-teal-400'
+                  ? 'border-acento-600 text-acento-600 dark:border-acento-400 dark:text-acento-400'
                   : 'border-transparent text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200'
               }`}
             >
@@ -474,7 +543,7 @@ export default function Contacto360Page({ params: paramsPromise }: Contacto360Pa
               onClick={() => setPestanaActiva('seguimientos')}
               className={`flex min-h-[44px] items-center gap-2 border-b-2 px-4 py-2 transition-colors ${
                 pestanaActiva === 'seguimientos'
-                  ? 'border-teal-600 text-teal-600 dark:border-teal-400 dark:text-teal-400'
+                  ? 'border-acento-600 text-acento-600 dark:border-acento-400 dark:text-acento-400'
                   : 'border-transparent text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200'
               }`}
             >
@@ -489,7 +558,7 @@ export default function Contacto360Page({ params: paramsPromise }: Contacto360Pa
               onClick={() => setPestanaActiva('campos')}
               className={`flex min-h-[44px] items-center gap-2 border-b-2 px-4 py-2 transition-colors ${
                 pestanaActiva === 'campos'
-                  ? 'border-teal-600 text-teal-600 dark:border-teal-400 dark:text-teal-400'
+                  ? 'border-acento-600 text-acento-600 dark:border-acento-400 dark:text-acento-400'
                   : 'border-transparent text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200'
               }`}
             >
@@ -502,7 +571,7 @@ export default function Contacto360Page({ params: paramsPromise }: Contacto360Pa
               onClick={() => setPestanaActiva('consentimientos')}
               className={`flex min-h-[44px] items-center gap-2 border-b-2 px-4 py-2 transition-colors ${
                 pestanaActiva === 'consentimientos'
-                  ? 'border-teal-600 text-teal-600 dark:border-teal-400 dark:text-teal-400'
+                  ? 'border-acento-600 text-acento-600 dark:border-acento-400 dark:text-acento-400'
                   : 'border-transparent text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200'
               }`}
             >
@@ -543,7 +612,7 @@ export default function Contacto360Page({ params: paramsPromise }: Contacto360Pa
                     <button
                       type="button"
                       onClick={() => setModalOportunidadAbierto(true)}
-                      className="inline-flex min-h-[44px] items-center gap-1.5 text-xs font-bold text-teal-600 hover:text-teal-700 dark:text-teal-400"
+                      className="text-acento-600 hover:text-acento-700 dark:text-acento-400 inline-flex min-h-[44px] items-center gap-1.5 text-xs font-bold"
                     >
                       <Plus className="h-4 w-4" />
                       <span>Crear Oportunidad</span>
@@ -555,7 +624,7 @@ export default function Contacto360Page({ params: paramsPromise }: Contacto360Pa
                   <div className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-xs dark:border-neutral-800 dark:bg-neutral-900">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div>
-                        <span className="inline-flex items-center rounded-md bg-teal-50 px-2 py-0.5 text-[11px] font-bold text-teal-700 dark:bg-teal-950/40 dark:text-teal-300">
+                        <span className="bg-acento-50 text-acento-700 dark:bg-acento-950/40 dark:text-acento-300 inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-bold">
                           {oportunidadActual.etapa.nombre} ({oportunidadActual.etapa.probabilidad}%)
                         </span>
                         <h3 className="mt-1.5 text-base font-bold text-neutral-900 dark:text-neutral-100">
@@ -596,7 +665,7 @@ export default function Contacto360Page({ params: paramsPromise }: Contacto360Pa
                     </div>
 
                     {oportunidadActual.proximaTarea && (
-                      <div className="mt-4 rounded-xl border border-purple-200 bg-purple-50 p-3 text-xs text-purple-900 dark:border-purple-900/40 dark:bg-purple-950/30 dark:text-purple-300">
+                      <div className="border-acento-200 bg-acento-50 text-acento-900 dark:border-acento-900/40 dark:bg-acento-950/30 dark:text-acento-300 mt-4 rounded-xl border p-3 text-xs">
                         <p className="flex items-center gap-1.5 font-bold">
                           <Clock className="h-3.5 w-3.5" />
                           Próxima Tarea: {oportunidadActual.proximaTarea.descripcion}
@@ -626,7 +695,7 @@ export default function Contacto360Page({ params: paramsPromise }: Contacto360Pa
                   </h2>
                   <Link
                     href="/cotizador"
-                    className="inline-flex min-h-[44px] items-center gap-1.5 text-xs font-bold text-teal-600 hover:text-teal-700 dark:text-teal-400"
+                    className="text-acento-600 hover:text-acento-700 dark:text-acento-400 inline-flex min-h-[44px] items-center gap-1.5 text-xs font-bold"
                   >
                     <Plus className="h-4 w-4" />
                     <span>Nueva Cotización</span>
@@ -659,7 +728,7 @@ export default function Contacto360Page({ params: paramsPromise }: Contacto360Pa
                           </span>
                           <Link
                             href={`/cotizaciones/${cot.id}`}
-                            className="inline-flex items-center gap-1 font-semibold text-teal-600 hover:text-teal-700 dark:text-teal-400"
+                            className="text-acento-600 hover:text-acento-700 dark:text-acento-400 inline-flex items-center gap-1 font-semibold"
                           >
                             <span>Ver cotización</span>
                             <ExternalLink className="h-3 w-3" />
@@ -687,7 +756,7 @@ export default function Contacto360Page({ params: paramsPromise }: Contacto360Pa
                 <button
                   type="button"
                   onClick={() => setModalSeguimientoAbierto(true)}
-                  className="inline-flex min-h-[44px] items-center gap-1.5 text-xs font-bold text-teal-600 hover:text-teal-700 dark:text-teal-400"
+                  className="text-acento-600 hover:text-acento-700 dark:text-acento-400 inline-flex min-h-[44px] items-center gap-1.5 text-xs font-bold"
                 >
                   <Plus className="h-4 w-4" />
                   <span>Nuevo Seguimiento</span>
@@ -713,7 +782,7 @@ export default function Contacto360Page({ params: paramsPromise }: Contacto360Pa
                             className={`mt-0.5 flex h-7 w-7 items-center justify-center rounded-lg border transition-colors ${
                               completado
                                 ? 'cursor-default border-emerald-500 bg-emerald-500 text-white'
-                                : 'border-neutral-300 hover:border-teal-500 hover:bg-teal-50 dark:border-neutral-700 dark:hover:bg-teal-950/40'
+                                : 'hover:border-acento-500 hover:bg-acento-50 dark:hover:bg-acento-950/40 border-neutral-300 dark:border-neutral-700'
                             }`}
                             aria-label={
                               completado
@@ -755,7 +824,7 @@ export default function Contacto360Page({ params: paramsPromise }: Contacto360Pa
                             onClick={() => {
                               void handleCompletarSeguimiento(seg.id);
                             }}
-                            className="flex min-h-[44px] items-center gap-1.5 rounded-xl border border-teal-200 bg-teal-50 px-3 py-1.5 text-xs font-bold text-teal-700 hover:bg-teal-100 dark:border-teal-900/50 dark:bg-teal-950/40 dark:text-teal-300"
+                            className="border-acento-200 bg-acento-50 text-acento-700 hover:bg-acento-100 dark:border-acento-900/50 dark:bg-acento-950/40 dark:text-acento-300 flex min-h-[44px] items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-bold"
                           >
                             <span>Completar</span>
                           </button>

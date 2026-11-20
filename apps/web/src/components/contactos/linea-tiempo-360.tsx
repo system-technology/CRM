@@ -33,7 +33,7 @@ export function LineaTiempo360({ eventos }: LineaTiempo360Props) {
   const renderIcono = (icono: EventoLineaTiempo360['icono'], estado?: string) => {
     switch (icono) {
       case 'contacto':
-        return <UserCheck className="h-4 w-4 text-teal-600 dark:text-teal-400" />;
+        return <UserCheck className="text-acento-600 dark:text-acento-400 h-4 w-4" />;
       case 'oportunidad':
         return <Kanban className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />;
       case 'cotizacion':
@@ -42,10 +42,10 @@ export function LineaTiempo360({ eventos }: LineaTiempo360Props) {
         return estado === 'completado' ? (
           <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
         ) : (
-          <Clock className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+          <Clock className="text-acento-600 dark:text-acento-400 h-4 w-4" />
         );
       case 'nota':
-        return <MessageSquare className="h-4 w-4 text-blue-600 dark:text-blue-400" />;
+        return <MessageSquare className="text-acento-600 dark:text-acento-400 h-4 w-4" />;
       case 'viaje':
         return <Plane className="h-4 w-4 text-cyan-600 dark:text-cyan-400" />;
       default:
@@ -59,13 +59,13 @@ export function LineaTiempo360({ eventos }: LineaTiempo360Props) {
     }
     switch (tipo) {
       case 'CREACION_CONTACTO':
-        return 'bg-teal-50 text-teal-700 border-teal-200 dark:bg-teal-950/40 dark:text-teal-300 dark:border-teal-800';
+        return 'bg-acento-50 text-acento-700 border-acento-200 dark:bg-acento-950/40 dark:text-acento-300 dark:border-acento-800';
       case 'OPORTUNIDAD':
-        return 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800';
+        return 'bg-acento-50 text-acento-700 border-acento-200 dark:bg-acento-950/40 dark:text-acento-300 dark:border-acento-800';
       case 'COTIZACION':
         return 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800';
       case 'SEGUIMIENTO':
-        return 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800';
+        return 'bg-acento-50 text-acento-700 border-acento-200 dark:bg-acento-950/40 dark:text-acento-300 dark:border-acento-800';
       case 'NOTA_INTERNA':
         return 'bg-neutral-100 text-neutral-700 border-neutral-200 dark:bg-neutral-800 dark:text-neutral-300 dark:border-neutral-700';
       case 'VIAJE_CONFIRMADO':
@@ -119,7 +119,7 @@ export function LineaTiempo360({ eventos }: LineaTiempo360Props) {
               {evento.enlace && (
                 <Link
                   href={evento.enlace}
-                  className="inline-flex items-center gap-1 font-semibold text-teal-600 hover:text-teal-700 dark:text-teal-400 dark:hover:text-teal-300"
+                  className="text-acento-600 hover:text-acento-700 dark:text-acento-400 dark:hover:text-acento-300 inline-flex items-center gap-1 font-semibold"
                 >
                   <span>Ver detalle</span>
                   <ChevronRight className="h-3 w-3" />

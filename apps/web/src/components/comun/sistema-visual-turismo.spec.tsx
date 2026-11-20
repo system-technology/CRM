@@ -16,11 +16,11 @@ import {
 
 describe('Sistema Visual de Turismo (T-032)', () => {
   describe('BotonTurismo', () => {
-    it('renderiza con variante degradado mar y tamaño accesible >= 44px', () => {
+    it('renderiza la variante primaria (acento) y tamaño accesible >= 44px', () => {
       render(<BotonTurismo variante="mar">Cotizar Excursión</BotonTurismo>);
       const boton = screen.getByRole('button', { name: /Cotizar Excursión/i });
       expect(boton).toBeDefined();
-      expect(boton.className).toContain('degradado-mar');
+      expect(boton.className).toContain('boton-primario');
       expect(boton.className).toContain('min-h-[44px]');
     });
 

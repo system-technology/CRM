@@ -1,4 +1,4 @@
-import { formatearDinero, formatearFecha } from './formato';
+import { formatearDinero, formatearFecha, formatearFechaHora } from './formato';
 import {
   ClaveEtapa,
   type ColumnaPipeline,
@@ -117,15 +117,7 @@ export function formatearFechaTarea(fechaIso: string | null): string {
   const d = new Date(fechaIso);
   if (isNaN(d.getTime())) return '—';
 
-  const formateador = new Intl.DateTimeFormat('es-CO', {
-    timeZone: 'America/Bogota',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-
-  return formateador.format(d).replace(/[\u202f\u00a0]/g, ' ');
+  return formatearFechaHora(d);
 }
 
 export function formatearTiempoRelativo(instante: string | null): string {

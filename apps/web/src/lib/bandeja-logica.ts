@@ -188,10 +188,10 @@ export function calcularTiempoRestanteVentana(expiraEn: string | Date | null): {
 }
 
 const PALETAS_AVATAR = [
-  { bg: 'bg-blue-100 dark:bg-blue-950', text: 'text-blue-700 dark:text-blue-300' },
+  { bg: 'bg-acento-100 dark:bg-acento-950', text: 'text-acento-700 dark:text-acento-300' },
   { bg: 'bg-emerald-100 dark:bg-emerald-950', text: 'text-emerald-700 dark:text-emerald-300' },
   { bg: 'bg-amber-100 dark:bg-amber-950', text: 'text-amber-700 dark:text-amber-300' },
-  { bg: 'bg-purple-100 dark:bg-purple-950', text: 'text-purple-700 dark:text-purple-300' },
+  { bg: 'bg-acento-100 dark:bg-acento-950', text: 'text-acento-700 dark:text-acento-300' },
   { bg: 'bg-rose-100 dark:bg-rose-950', text: 'text-rose-700 dark:text-rose-300' },
   { bg: 'bg-cyan-100 dark:bg-cyan-950', text: 'text-cyan-700 dark:text-cyan-300' },
   { bg: 'bg-indigo-100 dark:bg-indigo-950', text: 'text-indigo-700 dark:text-indigo-300' },
