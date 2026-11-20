@@ -55,6 +55,14 @@
 -- puede crear agencias, una por código de acceso válido que tenga y hasta el tope por hora; no puede
 -- entrar en una existente. `p_identidad_id` no es frontera de aislamiento: es la llave del límite.
 --
+-- **Tipos calificados por pg_temp (hallazgo B3 de la auditoría).** Con `search_path = ''` PostgreSQL
+-- sigue buscando los nombres de TIPO primero en `pg_temp`, y `viajapro_app` puede crear objetos
+-- temporales. Un DOMINIO `pg_temp.text` con un CHECK que llame a una función suya se evaluaría con los
+-- privilegios de `viajapro_registro`. Por eso las dos funciones nombran todo tipo como `pg_catalog.*`
+-- (firma, DECLARE y conversiones; nada de `interval '...'`, CAST ni %TYPE), y el cinturón lo comprueba
+-- sobre el cuerpo. El mismo patrón en las otras quince SECURITY DEFINER y retirar TEMPORARY van a la
+-- cola: no son de esta migración.
+--
 -- Toda modificación del cuerpo de las dos funciones vuelve a pasar por `auditor-seguridad`.
 --
 -- **Datos personales (R10).** `perfiles_de_agencia.nit` puede ser la cédula de una persona natural:
@@ -404,42 +412,46 @@ GRANT CREATE ON SCHEMA public TO viajapro_registro;
 SET ROLE viajapro_registro;
 
 CREATE FUNCTION public.crear_agencia(
-  p_nombre text,
-  p_slug_base text,
-  p_pais_iso text,
-  p_moneda_iso text,
-  p_zona_horaria text,
-  p_identidad_id uuid,
-  p_dias_de_prueba integer,
-  p_version_encargo text,
-  p_hash_codigo_de_acceso bytea,
-  p_correo_hmac bytea)
-RETURNS uuid
+  p_nombre pg_catalog.text,
+  p_slug_base pg_catalog.text,
+  p_pais_iso pg_catalog.text,
+  p_moneda_iso pg_catalog.text,
+  p_zona_horaria pg_catalog.text,
+  p_identidad_id pg_catalog.uuid,
+  p_dias_de_prueba pg_catalog.int4,
+  p_version_encargo pg_catalog.text,
+  p_hash_codigo_de_acceso pg_catalog.bytea,
+  p_correo_hmac pg_catalog.bytea)
+RETURNS pg_catalog.uuid
 LANGUAGE plpgsql
 VOLATILE
 SECURITY DEFINER
 SET search_path = ''
 AS $func$
 DECLARE
+  -- TODOS los tipos van calificados (pg_catalog.*), en DECLARE, firma y conversiones: con
+  -- search_path vacío PostgreSQL busca los nombres de TIPO primero en pg_temp, y quien llama puede
+  -- sembrar ahí un DOMINIO con un CHECK que ejecutaría su código con los privilegios del dueño
+  -- (hallazgo B3 de la auditoría de T-268). La migración lo comprueba sobre el cuerpo.
   -- La lista vive en la función (ADR-0030 §3.2). Los prefijos viajapro-* y soporte-* llegan con T-291.
-  c_slugs_reservados constant text[] := ARRAY[
+  c_slugs_reservados constant pg_catalog.text[] := ARRAY[
     'admin', 'api', 'app', 'www', 'soporte', 'ayuda', 'viajapro', 'plataforma', 'demo',
     'agencia-demo', 'registro', 'ingresar'];
   -- Candado de DOS claves: espacio propio del registro + hash de la identidad. Los espacios 7410100
   -- y 7410101 son de los disparadores del directorio (20261020010000); los candados de una sola
   -- clave bigint de la API y de las pruebas viven en otro espacio de PostgreSQL.
-  c_espacio_del_registro constant integer := 7410102;
-  c_intentos_con_sufijo  constant integer := 5;
-  v_contexto   text := pg_catalog.current_setting('app.current_tenant', true);
-  v_nombre     text := pg_catalog.btrim(p_nombre);
-  v_version    text := pg_catalog.btrim(p_version_encargo);
-  v_tope       integer;
-  v_recientes  bigint;
-  v_filas      bigint;
-  v_id         uuid;
-  v_slug       text;
-  v_creada     uuid;
-  v_intento    integer;
+  c_espacio_del_registro constant pg_catalog.int4 := 7410102;
+  c_intentos_con_sufijo  constant pg_catalog.int4 := 5;
+  v_contexto   pg_catalog.text := pg_catalog.current_setting('app.current_tenant', true);
+  v_nombre     pg_catalog.text := pg_catalog.btrim(p_nombre);
+  v_version    pg_catalog.text := pg_catalog.btrim(p_version_encargo);
+  v_tope       pg_catalog.int4;
+  v_recientes  pg_catalog.int8;
+  v_filas      pg_catalog.int8;
+  v_id         pg_catalog.uuid;
+  v_slug       pg_catalog.text;
+  v_creada     pg_catalog.uuid;
+  v_intento    pg_catalog.int4;
 BEGIN
   -- 1. Precondición de contexto: no se ejecuta dentro de una transacción que ya trabaja para una
   --    agencia (no le cambia el contexto a mitad de camino). NULL = el GUC no existe; '' = vacío.
@@ -493,7 +505,7 @@ BEGIN
   -- 3. Una agencia en prueba de autoservicio por identidad (VPR01), bajo candado: dos altas
   --    simultáneas de la misma identidad se serializan aquí.
   PERFORM pg_catalog.pg_advisory_xact_lock(c_espacio_del_registro,
-                                           pg_catalog.hashtext(p_identidad_id::text));
+                                           pg_catalog.hashtext(p_identidad_id::pg_catalog.text));
   IF EXISTS (
     SELECT 1
       FROM public.tenants t
@@ -531,7 +543,7 @@ BEGIN
   SELECT pg_catalog.count(*) INTO v_recientes
     FROM public.tenants t
    WHERE t.origen_del_alta = 'AUTOSERVICIO'::public.origen_del_alta
-     AND t.creado_en > pg_catalog.now() - interval '1 hour';
+     AND t.creado_en > pg_catalog.now() - '1 hour'::pg_catalog.interval;
   IF v_recientes >= v_tope THEN
     RAISE EXCEPTION 'registro_saturado: se alcanzó el tope de altas por hora'
       USING ERRCODE = 'VPR02';
@@ -548,7 +560,7 @@ BEGIN
       v_slug := p_slug_base;
     ELSE
       v_slug := p_slug_base || '-'
-                || pg_catalog.substr(pg_catalog.gen_random_uuid()::text, 1, 4);
+                || pg_catalog.substr(pg_catalog.gen_random_uuid()::pg_catalog.text, 1, 4);
     END IF;
 
     INSERT INTO public.tenants (
@@ -574,7 +586,7 @@ BEGIN
 
   -- 7. El contexto de la agencia nueva. ÚLTIMA sentencia antes del RETURN y fuera de todo bloque
   --    EXCEPTION (S1): la transacción del llamador queda atada a ESTA agencia.
-  PERFORM pg_catalog.set_config('app.current_tenant', v_creada::text, true);
+  PERFORM pg_catalog.set_config('app.current_tenant', v_creada::pg_catalog.text, true);
   RETURN v_creada;
 END;
 $func$;
@@ -584,8 +596,8 @@ GRANT EXECUTE ON FUNCTION public.crear_agencia(text, text, text, text, text, uui
 COMMENT ON FUNCTION public.crear_agencia(text, text, text, text, text, uuid, integer, text, bytea, bytea) IS
   'ADR-0030 §3.2: crea UNA agencia nueva (EN_PRUEBA, AUTOSERVICIO), consume el código de acceso y deja app.current_tenant fijado a ella. Solo inserta; el id lo elige la base. Errores: 22023, 42501 contexto_de_tenant_no_vacio, VPR01, VPR02, VPR03, VPR04. Decimosexta función SECURITY DEFINER; EXECUTE solo para viajapro_app.';
 
-CREATE FUNCTION public.codigo_de_acceso_vigente(p_hash bytea, p_correo_hmac bytea)
-RETURNS boolean
+CREATE FUNCTION public.codigo_de_acceso_vigente(p_hash pg_catalog.bytea, p_correo_hmac pg_catalog.bytea)
+RETURNS pg_catalog.bool
 LANGUAGE sql
 STABLE
 SECURITY DEFINER
@@ -633,6 +645,10 @@ DECLARE
   miembro_de text[];
   reales text[];
   esperados text[];
+  v_fuente text;
+  v_inicio integer;
+  v_fin integer;
+  v_declaracion text;
 BEGIN
   -- ---- El rol -------------------------------------------------------------------------------
   SELECT rolcanlogin, rolbypassrls, rolsuper, rolinherit, rolcreatedb, rolcreaterole INTO r
@@ -782,6 +798,50 @@ BEGIN
     -- Sin SQL dinámico.
     IF f.prosrc ~* '\mEXECUTE\M' OR f.prosrc ~* '\mformat\s*\(' THEN
       RAISE EXCEPTION '% contiene SQL dinámico.', f.proname;
+    END IF;
+
+    -- B3: ningún nombre de TIPO sin calificar. Con search_path vacío los tipos se buscan PRIMERO en
+    -- pg_temp, donde quien llama puede sembrar un DOMINIO con CHECK que correría como el dueño. Se
+    -- evalúa el cuerpo sin comentarios y con los literales vaciados (sin falsos positivos por texto).
+    v_fuente := regexp_replace(f.prosrc, '--[^' || chr(10) || ']*', '', 'g');
+    v_fuente := regexp_replace(v_fuente, '''[^'']*''', '''''', 'g');
+    --   · conversiones `::tipo`: solo `::pg_catalog.` o `::public.` (los enums propios);
+    IF v_fuente ~* '::\s*(?!pg_catalog\.|public\.)[a-z_"]' THEN
+      RAISE EXCEPTION '% convierte a un tipo sin calificar (::tipo): B3, pg_temp.', f.proname;
+    END IF;
+    --   · ni CAST(... AS tipo), ni %TYPE/%ROWTYPE, ni literales con tipo delante (`interval '...'`);
+    IF v_fuente ~* '\mCAST\s*\(' OR v_fuente ~* '%\s*(ROW)?TYPE\M'
+       OR v_fuente ~* '\m(text|uuid|bytea|interval|date|time|timetz|timestamp|timestamptz|json|jsonb|numeric|bool|boolean|int2|int4|int8|integer|bigint|smallint|varchar|char|name|oid)\s+''' THEN
+      RAISE EXCEPTION '% usa CAST, %%TYPE o un literal con tipo sin calificar: B3, pg_temp.', f.proname;
+    END IF;
+    --   · cada declaración del DECLARE (plpgsql): `nombre [CONSTANT] pg_catalog.tipo` o `public.tipo`.
+    IF f.lenguaje = 'plpgsql' THEN
+      v_inicio := strpos(upper(v_fuente), 'DECLARE');
+      v_fin := strpos(upper(v_fuente), 'BEGIN');
+      IF v_inicio = 0 OR v_fin <= v_inicio THEN
+        RAISE EXCEPTION '% no tiene un DECLARE ... BEGIN reconocible para comprobar sus tipos.', f.proname;
+      END IF;
+      FOR v_declaracion IN
+        SELECT btrim(d, E' \t\r\n')
+          FROM regexp_split_to_table(substr(v_fuente, v_inicio + 7, v_fin - v_inicio - 7), ';') AS d
+      LOOP
+        CONTINUE WHEN v_declaracion = '';
+        IF v_declaracion !~* '^[a-z_][a-z0-9_]*\s+(constant\s+)?(pg_catalog|public)\.' THEN
+          RAISE EXCEPTION '% declara una variable con un tipo sin calificar: «%» (B3, pg_temp).',
+            f.proname, v_declaracion;
+        END IF;
+      END LOOP;
+    END IF;
+    --   · y la firma: argumentos y resultado solo de pg_catalog o public (se guardan por OID).
+    IF EXISTS (
+      SELECT 1
+        FROM (SELECT unnest(p.proargtypes) AS tipo FROM pg_proc p WHERE p.oid = f.oid
+              UNION ALL
+              SELECT p.prorettype FROM pg_proc p WHERE p.oid = f.oid) t
+        JOIN pg_type ty ON ty.oid = t.tipo
+       WHERE ty.typnamespace NOT IN ('pg_catalog'::regnamespace, 'public'::regnamespace)
+    ) THEN
+      RAISE EXCEPTION 'La firma de % usa un tipo fuera de pg_catalog y public.', f.proname;
     END IF;
 
     IF f.proname = 'crear_agencia' THEN

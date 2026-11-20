@@ -1256,6 +1256,10 @@ migración y `aislamiento.spec.ts` (N-2, N-5, H-2, H-6 y H-8).
   NULL AND expira_en > now() AND correo_hmac = …`, que un `ROLLBACK` deshace); `VPR02` con el tope por
   hora; `VPR03` sin slug libre. Su última sentencia fija `app.current_tenant` a la agencia nueva, y
   ese valor sobrevive al volver (supuesto S1): la API no fija el tenant, lo hereda.
+- **Tipos calificados por `pg_temp`.** Con `search_path = ''` los nombres de TIPO se siguen buscando
+  primero en `pg_temp`: un dominio `pg_temp.text` con un CHECK trampa correría como
+  `viajapro_registro`. Las dos funciones nombran todos sus tipos como `pg_catalog.*` y el cinturón de la
+  migración aborta si aparece uno sin calificar (hallazgo B3; R-10 lo prueba con la trampa real).
 - **El NIT no va en `tenants`** (la leen enteros tres roles de login, y el de una persona natural es
   su cédula): va en `perfiles_de_agencia`, bajo RLS y en claro (ADR-0030 «Negativas»). Lo declarado
   por el registrante no está verificado; el disparador de T-261, ampliado aquí al NIT y su DV, y no un

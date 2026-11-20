@@ -10019,6 +10019,129 @@ describe('T-268 — Registro de agencias (ADR-0030 F1): crear_agencia, código d
     expect(await usoDe(codigoDos)).toEqual({ usado_en: null, usado_por_identidad_id: null });
     expect(await topeDe(), 'el tope bajado se deshizo con la transacción').toEqual(topeAntes);
   });
+
+  it('R-10 — B3: un DOMINIO pg_temp.text con un CHECK trampa no se ejecuta dentro de crear_agencia ni de codigo_de_acceso_vigente', async () => {
+    // Con search_path vacío PostgreSQL busca los nombres de TIPO primero en pg_temp. Si las funciones
+    // nombraran `text` sin calificar, el CHECK del dominio correría como viajapro_registro: alta sin
+    // código ni tope, lectura de los códigos. La trampa marca una bandera con quién la ejecutó, qué
+    // pudo leer de los códigos y si pudo insertar en `tenants`.
+    //
+    // Conexión NUEVA de viajapro_app: plpgsql y los planes se compilan por sesión, y en una sesión que
+    // ya hubiera llamado a crear_agencia los tipos estarían resueltos de antes y la prueba sería vacua.
+    const identidad = await nuevaIdentidad('pg-temp');
+    const hmac = randomBytes(32);
+    const hash = await nuevoCodigo(hmac);
+    const marca = `fixture-aislamiento-${MARCA}-trampa`;
+    const atacante = new Client({ connectionString: URL_APP });
+    await atacante.connect();
+    try {
+      const { rows: quien } = await atacante.query('SELECT current_user AS usuario');
+      expect(quien[0]?.usuario).toBe('viajapro_app');
+      const bandera = async (): Promise<string> =>
+        (await atacante.query("SELECT current_setting('viajapro.trampa', true) AS b")).rows[0]
+          ?.b as string;
+
+      await atacante.query('BEGIN');
+      try {
+        // 1. Sembrar la trampa. Todo calificado DENTRO de ella, o se llamaría a sí misma.
+        await atacante.query('SAVEPOINT sembrar');
+        let sembrada = true;
+        try {
+          await atacante.query(`
+            CREATE FUNCTION pg_temp.trampa(v pg_catalog.text) RETURNS pg_catalog.bool
+            LANGUAGE plpgsql AS $$
+            DECLARE
+              n pg_catalog.int8 := -1;
+              inserto pg_catalog.text := 'no';
+            BEGIN
+              BEGIN
+                SELECT pg_catalog.count(*) INTO n FROM public.codigos_de_acceso_al_registro;
+              EXCEPTION WHEN OTHERS THEN n := -1;
+              END;
+              BEGIN
+                INSERT INTO public.tenants (id, slug, nombre, actualizado_en)
+                VALUES (pg_catalog.gen_random_uuid(), '${marca}', 'Trampa', pg_catalog.now());
+                inserto := 'si';
+              EXCEPTION WHEN OTHERS THEN NULL;
+              END;
+              PERFORM pg_catalog.set_config('viajapro.trampa',
+                current_user::pg_catalog.text || ':' || n || ':' || inserto, true);
+              RETURN true;
+            END
+            $$`);
+          await atacante.query(
+            'CREATE DOMAIN pg_temp.text AS pg_catalog.text CHECK (pg_temp.trampa(VALUE))',
+          );
+          await atacante.query('RELEASE SAVEPOINT sembrar');
+        } catch (error) {
+          // Sin TEMPORARY sobre la base no hay trampa posible: el ataque no existe en ese entorno.
+          await atacante.query('ROLLBACK TO SAVEPOINT sembrar');
+          expect((error as { code?: string }).code, 'error inesperado al sembrar la trampa').toBe(
+            '42501',
+          );
+          sembrada = false;
+        }
+
+        if (sembrada) {
+          // 2. Contraprueba: la trampa funciona. Un `text` sin calificar en ESTA sesión la dispara
+          //    (como viajapro_app, que no lee los códigos ni inserta en tenants).
+          await atacante.query("SELECT 'x'::text AS v");
+          expect(await bandera(), 'la trampa no se disparó: la prueba sería vacua').toBe(
+            'viajapro_app:-1:no',
+          );
+          await atacante.query("SELECT set_config('viajapro.trampa', '', true)");
+
+          // 3. Las dos funciones del registro, con argumentos válidos: la trampa NO se ejecuta.
+          const { rows: vigenteAntes } = await atacante.query(SQL_CODIGO_VIGENTE, [hash, hmac]);
+          expect(vigenteAntes[0]?.vigente).toBe(true);
+          expect(await bandera(), 'codigo_de_acceso_vigente ejecutó la trampa').toBe('');
+
+          const { rows } = await atacante.query(
+            SQL_CREAR_AGENCIA,
+            argumentos({
+              slugBase: `fixture-aislamiento-${MARCA}-pg-temp`,
+              identidad,
+              hash,
+              correoHmac: hmac,
+            }),
+          );
+          expect(rows[0]?.id, 'crear_agencia con argumentos válidos').toBeTruthy();
+          expect(await bandera(), 'crear_agencia ejecutó la trampa').toBe('');
+          const { rows: plantadas } = await atacante.query(
+            'SELECT count(*)::int AS n FROM tenants WHERE slug = $1',
+            [marca],
+          );
+          expect(plantadas, 'la trampa insertó en tenants').toEqual([{ n: 0 }]);
+
+          // Y una validación que falla tampoco la ejecuta.
+          await atacante.query("SELECT set_config('app.current_tenant', '', true)");
+          await atacante.query('SAVEPOINT invalida');
+          await expect(
+            atacante.query(
+              SQL_CREAR_AGENCIA,
+              argumentos({
+                slugBase: 'Con-Mayus',
+                identidad,
+                hash,
+                correoHmac: hmac,
+              }),
+            ),
+          ).rejects.toMatchObject({ code: '22023' });
+          await atacante.query('ROLLBACK TO SAVEPOINT invalida');
+          expect(await bandera(), 'la validación de crear_agencia ejecutó la trampa').toBe('');
+        }
+      } finally {
+        // Se lleva la trampa, el dominio, el alta y el uso del código.
+        await atacante.query('ROLLBACK');
+      }
+    } finally {
+      await atacante.end();
+    }
+    expect(await usoDe(hash)).toEqual({ usado_en: null, usado_por_identidad_id: null });
+    expect(await agenciasDe(identidad)).toEqual([]);
+    const { rows: residuo } = await admin.query('SELECT id FROM tenants WHERE slug = $1', [marca]);
+    expect(residuo).toEqual([]);
+  });
 });
 
 // =========================================================================================
