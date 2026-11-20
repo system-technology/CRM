@@ -78,6 +78,15 @@ const MENSAJES_EJEMPLO = [
   'Confirmado. Por favor enviar los vouchers del hotel y los pases de abordar.',
 ];
 
+/**
+ * Mensajes del cliente que hablan del mismo viaje que su oportunidad en el pipeline: Juan (1)
+ * pide Cancún en diciembre y Ana (2) pregunta por Curazao. Antes el chat de Ana hablaba de Punta
+ * Cana mientras su tarjeta decía Curazao.
+ */
+const MENSAJES_DEL_VIAJE: Record<number, string> = {
+  2: 'Buenas tardes, ¿el paquete a Curazao incluye desayuno? Viajamos dos adultos a comienzos de diciembre.',
+};
+
 const ETIQUETAS_OPCIONES = [
   ['Cotización', 'Cancún'],
   ['Punta Cana', 'VIP'],
@@ -223,7 +232,7 @@ function generar500Conversaciones(): ConversacionResumen[] {
     const textoMsg =
       (direccion === 'SALIENTE'
         ? MENSAJES_ASESOR[(i - 1) % MENSAJES_ASESOR.length]
-        : MENSAJES_EJEMPLO[(i - 1) % MENSAJES_EJEMPLO.length]) ||
+        : (MENSAJES_DEL_VIAJE[i] ?? MENSAJES_EJEMPLO[(i - 1) % MENSAJES_EJEMPLO.length])) ||
       'Consulta sobre paquete turístico';
     const etiquetas = ETIQUETAS_OPCIONES[i % ETIQUETAS_OPCIONES.length] || [];
 

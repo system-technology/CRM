@@ -15,6 +15,8 @@ import { MOCK_DETALLES_ARCHIVOS } from './mock-archivos';
 import { MOCK_CONFIGURACION_AGENCIA } from './mock-configuracion';
 import { MOCK_SESION_UNICA_AGENCIA } from './auth-api';
 import { formatearDinero } from './formato';
+import { obtenerMockTableroPipeline } from './mock-pipeline';
+import { nombreCortoDeDestino } from './viaje-solicitado-logica';
 
 describe('Datos de demostración coherentes entre pantallas', () => {
   it('R8: COP en pesos. Una oportunidad de pocos pasajeros no pasa de cientos de millones', () => {
@@ -95,5 +97,68 @@ describe('Datos de demostración coherentes entre pantallas', () => {
     const canal = crearEstadoCanalWhatsappDemo();
     expect(EstadoCanalWhatsapp.safeParse(canal).success).toBe(true);
     expect(canal.conectado).toBe(true);
+  });
+
+  describe('el viaje cuenta lo mismo en el chat, la ficha, el tablero, las cotizaciones y Reservas', () => {
+    const JUAN = '00000000-0002-4000-8000-000000000001';
+    const ANA = '00000000-0002-4000-8000-000000000002';
+    const FELIPE = '00000000-0002-4000-8000-000000000004';
+
+    it('la ficha toma la oportunidad abierta del tablero: Juan es Cancún y Ana es Curazao', () => {
+      const juan = obtenerMockFichaDeContacto(JUAN).oportunidadActual!;
+      const ana = obtenerMockFichaDeContacto(ANA).oportunidadActual!;
+      expect(nombreCortoDeDestino(juan.destino)).toBe('Cancún');
+      expect(nombreCortoDeDestino(ana.destino)).toBe('Curazao');
+      // Y la etiqueta del contacto dice lo mismo que su viaje.
+      const etiquetasAna = obtenerMockFichaDeContacto(ANA).contacto.etiquetas;
+      expect(etiquetasAna).toContain('Curazao');
+    });
+
+    it('el chat de Juan habla de Cancún en diciembre para 2+2, igual que su cotización y su oportunidad', () => {
+      const chatJuan = MOCK_CONVERSACIONES.find((c) => c.contactoId === JUAN)!;
+      expect(chatJuan.ultimoMensajeTexto).toMatch(/Cancún.*2 adultos y 2 niños.*diciembre/);
+      const cot = MOCK_COTIZACIONES_INICIALES.find((c) => c.contactoId === JUAN)!;
+      const v = cot.versiones.at(-1)!;
+      expect(nombreCortoDeDestino(v.destino)).toBe('Cancún');
+      expect([v.adultos, v.ninos]).toEqual([2, 2]);
+      expect(v.fechaSalida.slice(5, 7)).toBe('12');
+      const op = obtenerMockFichaDeContacto(JUAN).oportunidadActual!;
+      expect(op.fechaSalida!.slice(5, 7)).toBe('12');
+      expect(op.valorEstimado?.unidades).toBe(v.venta.unidades);
+    });
+
+    it('el chat de Ana habla de Curazao y su cotización también', () => {
+      const chatAna = MOCK_CONVERSACIONES.find((c) => c.contactoId === ANA)!;
+      expect(chatAna.ultimoMensajeTexto).toMatch(/Curazao/);
+      const cot = MOCK_COTIZACIONES_INICIALES.find((c) => c.contactoId === ANA)!;
+      expect(nombreCortoDeDestino(cot.versiones.at(-1)!.destino)).toBe('Curazao');
+    });
+
+    it('la oportunidad de Felipe y su archivo 1043 salen el mismo día, con la misma cotización de 2+1', () => {
+      const archivo = MOCK_DETALLES_ARCHIVOS.find((a) => a.numero === 1043)!;
+      const op = obtenerMockFichaDeContacto(FELIPE).oportunidadActual!;
+      expect(archivo.contactoId).toBe(FELIPE);
+      expect(op.fechaSalida).toBe(archivo.fechaSalida);
+      const cot = MOCK_COTIZACIONES_INICIALES.find((c) => c.contactoId === FELIPE)!;
+      const v = cot.versiones.at(-1)!;
+      expect([v.adultos, v.ninos]).toEqual([archivo.adultos, archivo.ninos]);
+      expect(v.fechaSalida).toBe(archivo.fechaSalida);
+    });
+
+    it('ninguna salida de las oportunidades abiertas del tablero está en el pasado', () => {
+      const hoy = new Date().toISOString().slice(0, 10);
+      for (const col of obtenerMockTableroPipeline().columnas) {
+        for (const o of col.oportunidades) expect(o.fechaSalida! >= hoy).toBe(true);
+      }
+    });
+
+    it('la ficha solo lista archivos que existen en Reservas', () => {
+      const ids = new Set(MOCK_DETALLES_ARCHIVOS.map((a) => a.id));
+      for (const c of obtenerMockPaginaContactos().datos) {
+        for (const id of obtenerMockFichaDeContacto(c.id).archivosDeViajeIds) {
+          expect(ids.has(id)).toBe(true);
+        }
+      }
+    });
   });
 });
