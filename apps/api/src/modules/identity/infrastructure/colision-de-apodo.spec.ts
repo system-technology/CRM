@@ -58,4 +58,7 @@ describe('esColisionDeApodo', () => {
     ).toBe(false);
     expect(esColisionDeApodo(new Error('accesos_identidad_apodo_key'))).toBe(false);
   });
+  it('un P2002 sin restricción informada (23505 de un disparador) cuenta como colisión', () => {
+    expect(esColisionDeApodo(error('P2002', { modelName: 'Usuario' }))).toBe(true);
+  });
 });

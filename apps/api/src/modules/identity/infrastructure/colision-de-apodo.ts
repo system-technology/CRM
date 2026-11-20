@@ -44,6 +44,11 @@ export function esColisionDeApodo(error: unknown): boolean {
 
   if (error.code === 'P2002') {
     const objetivos = [...textos(meta['target']), ...textos(meta['constraint'])];
+    // Cuando el `23505` lo levanta un disparador sobre OTRA tabla (aquí `accesos_identidad`), Prisma
+    // no sabe de qué restricción se trata ("Unique constraint failed on the (not available)") y no
+    // trae ni `target` ni `constraint`. El único llamador envuelve solo el UPDATE de
+    // `usuarios.apodo`, cuyo disparador solo puede chocar con las dos unicidades del apodo.
+    if (objetivos.length === 0) return true;
     return objetivos.some((o) => RESTRICCIONES_DE_APODO.includes(o) || o === 'apodo');
   }
 
