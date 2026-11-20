@@ -34,6 +34,6 @@
    - Paso 3: Previsualización con KPIs de impacto (total, a crear, a actualizar, errores), tarjeta con huella SHA-256 e informe de incidencias por fila. Botón de confirmación deshabilitado si existen errores bloqueantes.
    - Paso 4: Confirmación atómica y resumen de creación.
 
-5. **Integración en la Vista de Catálogo (`apps/web/src/app/catalogo/page.tsx`):**
+5. **Integración en la Vista de Catálogo (`apps/web/src/app/(app)/catalogo/page.tsx`):**
    - Botón directo «Importar archivo (CSV)» en la cabecera.
    - Pestaña de navegación para explorar el catálogo de salidas o consultar y descargar plantillas masivas.

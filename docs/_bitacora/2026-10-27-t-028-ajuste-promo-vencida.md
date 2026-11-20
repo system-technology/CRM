@@ -20,7 +20,7 @@
      - Previsualización reactiva en vivo sobre una tarjeta de excursión caribeña (*Pasadía Islas del Rosario*), mostrando o escondiendo el precio de lista tachado y la insignia ámbar.
      - Botón de guardado con feedback accesible y banner de confirmación.
 
-3. **Pestaña en Configuración (`apps/web/src/app/configuracion/page.tsx`):**
+3. **Pestaña en Configuración (`apps/web/src/app/(app)/configuracion/page.tsx`):**
    - Nueva pestaña `Catálogo` (`data-testid="tab-btn-catalogo"`) renderizando `BloqueAjustesCatalogo`.
 
 4. **Aplicación en Tarjeta de Catálogo (`apps/web/src/components/catalogo/tarjeta-salida-publicada.tsx` y `.spec.tsx`):**

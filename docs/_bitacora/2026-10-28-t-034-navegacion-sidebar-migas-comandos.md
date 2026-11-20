@@ -38,8 +38,8 @@ La tarea **T-034** del roadmap aborda la experiencia de navegación de los aseso
 - `apps/web/src/components/busqueda/modal-busqueda-global.spec.tsx` (Nuevo): 5 pruebas unitarias verificando renderizado, filtrado por pestaña, búsqueda y navegación con teclado.
 - `apps/web/src/components/bandeja/barra-modulos.tsx`: Barra lateral interactiva expandible (`w-60`) y contraíble (`w-14`), con toggle accesible, iconos de color, aro dorado de sección activa, perfil del asesor expandido y atajo `Alt+S`.
 - `apps/web/src/components/bandeja/barra-modulos.spec.tsx`: 17 pruebas unitarias verificando navegación, toggle expandible/contraíble y persistencia en `localStorage`.
-- `apps/web/src/app/bandeja/[id]/page.tsx`: Integración de `MigasDePan` en la cabecera de la conversación.
-- `apps/web/src/app/cotizaciones/[id]/page.tsx`: Integración de `MigasDePan` en la cabecera de la cotización guardada.
+- `apps/web/src/app/(app)/bandeja/[id]/page.tsx`: Integración de `MigasDePan` en la cabecera de la conversación.
+- `apps/web/src/app/(app)/cotizaciones/[id]/page.tsx`: Integración de `MigasDePan` en la cabecera de la cotización guardada.
 
 ---
 

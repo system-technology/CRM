@@ -51,13 +51,13 @@ Al finalizar o resolver los 4 pasos, se presenta la pantalla de celebración con
   - Contenedor orquestador de 4 pasos con stepper, tiempos estimados, barra de progreso y persistencia.
 - `apps/web/src/components/onboarding/asistente-onboarding.spec.tsx`:
   - 5 pruebas de integración del orquestador.
-- `apps/web/src/app/bienvenida/page.tsx`:
+- `apps/web/src/app/(app)/bienvenida/page.tsx`:
   - Ruta de la aplicación `/bienvenida` accesible para nuevas agencias con cabecera y barra de navegación unificada.
-- `apps/web/src/app/bienvenida/bienvenida.spec.tsx`:
+- `apps/web/src/app/(app)/bienvenida/bienvenida.spec.tsx`:
   - 3 pruebas de integración de la página y área táctil accesible (`min-h-[44px]`).
-- `apps/web/src/app/page.tsx`:
+- `apps/web/src/app/(app)/page.tsx`:
   - Enlace al asistente de inicio desde el banner de cuenta vacía en el dashboard.
-- `apps/web/src/app/configuracion/page.tsx`:
+- `apps/web/src/app/(app)/configuracion/page.tsx`:
   - Botón de acceso al Asistente de Inicio en la cabecera de configuración.
 - `apps/web/src/components/bandeja/barra-modulos.tsx`:
   - Enlace accesible en el menú de sesión del usuario.

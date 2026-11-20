@@ -6,7 +6,7 @@
 
 ## 1. Estructura de rutas
 
-Decisión: [ADR-0032](../03-adr/0032-layout-compartido-y-tabla-unica-de-navegacion.md) (Propuesto).
+Decisión: [ADR-0032](../03-adr/0032-layout-compartido-y-tabla-unica-de-navegacion.md) (Aceptado, 2026-11-20).
 Mientras no se implemente N1 de la auditoría de navegación, el árbol sigue plano
 (`app/<ruta>/`).
 

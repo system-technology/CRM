@@ -28,7 +28,7 @@ Tarea T-036 del roadmap (Fase 1: Identidad Visual y Experiencia de Usuario):
    - **Horarios e Inclusiones**: Bloque desplegable de horario (`formatearHorarioExcursion`) y lista de inclusiones destacadas con icono `CheckCircle`.
    - **Tarifas y Precios**: Presentación «Desde $X por persona» con soporte de `desdePorMoneda`, tachado de lista ante política `promo_vencida` y botones accesibles de cotización y ficha.
 
-3. **Integración en Pantalla Catálogo (`apps/web/src/app/catalogo/page.tsx` y `ficha-detalle-paquete.tsx`)**:
+3. **Integración en Pantalla Catálogo (`apps/web/src/app/(app)/catalogo/page.tsx` y `ficha-detalle-paquete.tsx`)**:
    - Conexión de `onVerFicha` en `TarjetaSalidaPublicada` para abrir la ficha de detalle sin fricción.
    - Inclusión de `ChipTipoProducto` en las tarjetas del catálogo simulado y en la cabecera de `FichaDetallePaquete`.
 

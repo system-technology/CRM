@@ -153,7 +153,7 @@ después de terminar la 0c.22.
 
 ## [x] 0c.22c. Quitar el porcentaje de margen de `/cotizaciones/[id]` (añadida el 2026-10-19, PRIORITARIA)
 
-`apps/web/src/app/cotizaciones/[id]/page.tsx` (~l. 435-455) muestra «Política de Margen Aplicada» con
+`apps/web/src/app/(app)/cotizaciones/[id]/page.tsx` (~l. 435-455) muestra «Política de Margen Aplicada» con
 `politica.porcentaje` y la base. El margen es interno (R10) y hoy no hay control de rol; tu propia
 cabecera del archivo y `ENTREGA.md` dicen «cero filtración de margen», y eso hoy es falso. Quita el
 bloque (o déjalo detrás de un control de rol cuando exista; no lo inventes). Revisa de paso que ni el
@@ -722,7 +722,7 @@ Origen: Instrucción directa de arquitectura en `COLA.md` por Claude · Endpoint
    - Headers: Inyecta `x-dev-tenant-id` en desarrollo local cuando esté configurado.
    - Resiliencia: Fallback transparente a mocks si el backend NestJS no está disponible, para mantener la UI operativa en pruebas estáticas y demostraciones desconectadas.
 2. **Integración en UI:**
-   - `apps/web/src/app/pipeline/page.tsx`: Carga el tablero real vía `obtenerTableroPipeline` y persiste cambios de etapa vía `moverOportunidadDeEtapa`.
+   - `apps/web/src/app/(app)/pipeline/page.tsx`: Carga el tablero real vía `obtenerTableroPipeline` y persiste cambios de etapa vía `moverOportunidadDeEtapa`.
    - `apps/web/src/components/bandeja/ficha-cliente.tsx`: Consume `obtenerFichaContacto` cuando se abre una conversación.
 3. **Pruebas Unitarias:**
    - `apps/web/src/lib/crm-api.spec.ts` con cobertura para llamadas exitosas, errores de red y validación de esquemas Zod.
