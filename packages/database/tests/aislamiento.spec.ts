@@ -8131,6 +8131,44 @@ describe('T-241 — ADR-0024 F2: TRM y mayorista en la versión, y tenants_con_e
     }
   });
 });
+/**
+ * T-256/T-257: abre un archivo más de la agencia (con su cotización y su versión, porque
+ * `travel_files` exige una cotización propia) y una reserva dentro. Sirve para probar que una fila
+ * no puede nombrar la reserva de OTRO archivo de la MISMA agencia.
+ */
+async function abrirOtroArchivo(
+  c: Client,
+  tenant: string,
+  contactoId: string,
+  paqueteId: string,
+  numero: number,
+): Promise<{ archivo: string; reserva: string }> {
+  const cotizacion = await c.query(
+    `INSERT INTO cotizaciones (id, tenant_id, contacto_id, titulo, creado_en, actualizado_en)
+     VALUES (gen_random_uuid(), $1, $2, $3, now(), now()) RETURNING id`,
+    [tenant, contactoId, `Otro archivo ${numero}`],
+  );
+  const cotizacionId = (cotizacion.rows[0] as { id: string }).id;
+  await insertarVersion(c, tenant, cotizacionId, paqueteId, 1);
+  const archivo = await c.query(
+    `INSERT INTO travel_files
+       (id, tenant_id, numero, contacto_id, cotizacion_id, version_cotizacion, paquete_nombre,
+        destino, fecha_salida, noches, adultos, ninos, infantes, venta_unidades, moneda_iso,
+        actualizado_en)
+     VALUES (gen_random_uuid(), $1, $2, $3, $4, 1, 'Parque del Café', 'Quindío',
+             '2026-12-05', 1, 2, 1, 0, 980000, 'COP', now())
+     RETURNING id`,
+    [tenant, numero, contactoId, cotizacionId],
+  );
+  const archivoId = (archivo.rows[0] as { id: string }).id;
+  const reserva = await c.query(
+    `INSERT INTO bookings (id, tenant_id, travel_file_id, moneda_iso, actualizado_en)
+     VALUES (gen_random_uuid(), $1, $2, 'COP', now()) RETURNING id`,
+    [tenant, archivoId],
+  );
+  return { archivo: archivoId, reserva: (reserva.rows[0] as { id: string }).id };
+}
+
 // =========================================================================================
 // T-254 — notificaciones en la aplicación (contexto `notifications`, ADR-0024 §3.6)
 //
@@ -8149,6 +8187,9 @@ describe('T-254 — notificaciones: aislamiento, foráneas compuestas, una por e
   const usuarioDe: Record<string, string> = {};
   const archivoDe: Record<string, string> = {};
   const reservaDe: Record<string, string> = {};
+  // T-256: un SEGUNDO archivo de la misma agencia, con su reserva, para el cruce dentro de la agencia.
+  const otroArchivoDe: Record<string, string> = {};
+  const otraReservaDe: Record<string, string> = {};
   const outboxDe: Record<string, string> = {};
   const notificacionDe: Record<string, string> = {};
 
@@ -8231,6 +8272,15 @@ describe('T-254 — notificaciones: aislamiento, foráneas compuestas, una por e
           [tenant, archivoDe[tenant]],
         );
         reservaDe[tenant] = (reserva.rows[0] as { id: string }).id;
+        const otro = await abrirOtroArchivo(
+          c,
+          tenant,
+          contactoId,
+          (paquete.rows[0] as { id: string }).id,
+          2541,
+        );
+        otroArchivoDe[tenant] = otro.archivo;
+        otraReservaDe[tenant] = otro.reserva;
         const evento = await c.query(
           `INSERT INTO outbox (tenant_id, agregado, agregado_id, tipo_evento, payload)
            VALUES ($1, 'reserva', $2, 'booking.time_limit_proximo', '{"v":1}'::jsonb)
@@ -8315,7 +8365,7 @@ describe('T-254 — notificaciones: aislamiento, foráneas compuestas, una por e
     expect(texto.rows).toEqual([]);
   });
 
-  it('N-2 — toda foránea incluye el tenant; la del evento anula SOLO outbox_id', async () => {
+  it('N-2 — toda foránea incluye el tenant; la reserva va atada a su archivo; la del evento anula SOLO outbox_id', async () => {
     const simples = await admin.query(FORANEAS_SIN_TENANT_SQL);
     expect(
       (simples.rows as Array<{ hija: string; padre: string }>).filter(
@@ -8343,11 +8393,40 @@ describe('T-254 — notificaciones: aislamiento, foráneas compuestas, una por e
         `${r.anula ? `[${(r.anula as string[]).join(',')}]` : ''}:${r.convalidated}`,
     );
     expect(resumen).toEqual([
-      'reserva_id,tenant_id->bookings:a:true',
+      'reserva_id,archivo_id,tenant_id->bookings:a:true',
       'outbox_id,tenant_id->outbox:n[outbox_id]:true',
-      'archivo_id,tenant_id->travel_files:a:true',
       'usuario_id,tenant_id->usuarios:a:true',
     ]);
+
+    // T-256: la de la reserva es UNA foránea de tres columnas hacia el único
+    // `bookings (id, travel_file_id, tenant_id)`: la reserva es de ESE archivo. Sin foránea directa
+    // al archivo (la cubre la de la reserva), y sin dejar mudar la reserva de archivo (RESTRICT).
+    const tres = await admin.query(
+      `SELECT c.conname, c.confupdtype,
+              (SELECT array_agg(a.attname::text ORDER BY i)
+                 FROM generate_subscripts(c.confkey, 1) AS i
+                 JOIN pg_attribute a ON a.attrelid = c.confrelid AND a.attnum = c.confkey[i]) AS destino
+         FROM pg_constraint c
+        WHERE c.contype = 'f' AND c.conrelid = 'public.notificaciones'::regclass
+          AND c.confrelid = 'public.bookings'::regclass`,
+    );
+    expect(tres.rows).toEqual([
+      {
+        conname: 'notificaciones_reserva_id_archivo_id_tenant_id_fkey',
+        confupdtype: 'r',
+        destino: ['id', 'travel_file_id', 'tenant_id'],
+      },
+    ]);
+    const destino = await admin.query(
+      `SELECT 1 FROM pg_index i JOIN pg_class x ON x.oid = i.indexrelid
+        WHERE i.indrelid = 'public.bookings'::regclass AND i.indisunique AND i.indisvalid
+          AND x.relname = 'bookings_id_travel_file_id_tenant_id_key'
+          AND (SELECT array_agg(a.attname::text ORDER BY k.n)
+                 FROM unnest(i.indkey) WITH ORDINALITY AS k(attnum, n)
+                 JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = k.attnum)
+              = ARRAY['id', 'travel_file_id', 'tenant_id']`,
+    );
+    expect(destino.rowCount).toBe(1);
   });
 
   it('N-3 — solo viajapro_app la toca (SELECT, INSERT, UPDATE; sin DELETE); PUBLIC y los demás roles, nada', async () => {
@@ -8436,7 +8515,7 @@ describe('T-254 — notificaciones: aislamiento, foráneas compuestas, una por e
     ).rejects.toThrow(/row-level security/i);
   });
 
-  it('N-5 — no apunta al usuario, archivo ni reserva de otra agencia (23503)', async () => {
+  it('N-5 — no apunta al usuario, archivo ni reserva de otra agencia, ni a una reserva de otro archivo de la suya (23503)', async () => {
     const propia = {
       usuario: usuarioDe[TENANT_A] ?? '',
       archivo: archivoDe[TENANT_A] ?? '',
@@ -8452,12 +8531,23 @@ describe('T-254 — notificaciones: aislamiento, foráneas compuestas, una por e
       [
         'archivo de B',
         { archivo: archivoDe[TENANT_B] ?? '' },
-        'notificaciones_archivo_id_tenant_id_fkey',
+        'notificaciones_reserva_id_archivo_id_tenant_id_fkey',
       ],
       [
         'reserva de B',
         { reserva: reservaDe[TENANT_B] ?? '' },
-        'notificaciones_reserva_id_tenant_id_fkey',
+        'notificaciones_reserva_id_archivo_id_tenant_id_fkey',
+      ],
+      // T-256: misma agencia, pero la reserva es de OTRO archivo. Antes solo lo impedía el puerto.
+      [
+        'reserva de otro archivo de A',
+        { reserva: otraReservaDe[TENANT_A] ?? '' },
+        'notificaciones_reserva_id_archivo_id_tenant_id_fkey',
+      ],
+      [
+        'otro archivo de A con la reserva del primero',
+        { archivo: otroArchivoDe[TENANT_A] ?? '' },
+        'notificaciones_reserva_id_archivo_id_tenant_id_fkey',
       ],
       [
         'evento de B',
@@ -8471,6 +8561,32 @@ describe('T-254 — notificaciones: aislamiento, foráneas compuestas, una por e
         motivo,
       ).rejects.toMatchObject({ code: '23503', constraint: restriccion });
     }
+
+    // Control positivo: el otro archivo con SU reserva sí entra (se deshace con la transacción).
+    await comoTenant(TENANT_A, async (c) => {
+      const r = await insertarNotificacion(c, TENANT_A, {
+        ...propia,
+        archivo: otroArchivoDe[TENANT_A] ?? '',
+        reserva: otraReservaDe[TENANT_A] ?? '',
+      });
+      expect(r.rowCount).toBe(1);
+      throw new Error('revertir');
+    }).catch((e: unknown) => {
+      if (!(e instanceof Error) || e.message !== 'revertir') throw e;
+    });
+
+    // Y la API, que tiene UPDATE, tampoco puede mover una notificación a otro archivo sin su reserva.
+    await expect(
+      comoTenant(TENANT_A, (c) =>
+        c.query('UPDATE notificaciones SET archivo_id = $2 WHERE id = $1', [
+          notificacionDe[TENANT_A],
+          otroArchivoDe[TENANT_A],
+        ]),
+      ),
+    ).rejects.toMatchObject({
+      code: '23503',
+      constraint: 'notificaciones_reserva_id_archivo_id_tenant_id_fkey',
+    });
   });
 
   it('N-6 — un evento notifica UNA vez a cada usuario: el duplicado choca con el UNIQUE; el número de file es positivo', async () => {
@@ -8540,6 +8656,9 @@ describe('T-250 — reserva_cambios_estado: aislamiento, foráneas compuestas e 
   const usuarioDe: Record<string, string> = {};
   const archivoDe: Record<string, string> = {};
   const reservaDe: Record<string, string> = {};
+  // T-257: un SEGUNDO archivo de la misma agencia, con su reserva, para el cruce dentro de la agencia.
+  const otroArchivoDe: Record<string, string> = {};
+  const otraReservaDe: Record<string, string> = {};
   const filaDe: Record<string, string> = {};
 
   interface FilaNueva {
@@ -8612,6 +8731,15 @@ describe('T-250 — reserva_cambios_estado: aislamiento, foráneas compuestas e 
           [tenant, archivoDe[tenant]],
         );
         reservaDe[tenant] = (reserva.rows[0] as { id: string }).id;
+        const otro = await abrirOtroArchivo(
+          c,
+          tenant,
+          contactoId,
+          (paquete.rows[0] as { id: string }).id,
+          2501,
+        );
+        otroArchivoDe[tenant] = otro.archivo;
+        otraReservaDe[tenant] = otro.reserva;
         const fila = await insertarCambio(c, tenant, {
           usuario: usuarioDe[tenant] ?? null,
           archivo: archivoDe[tenant] ?? '',
@@ -8691,7 +8819,7 @@ describe('T-250 — reserva_cambios_estado: aislamiento, foráneas compuestas e 
     expect(texto.rows).toEqual([]);
   });
 
-  it('H-2 — toda foránea incluye el tenant: reserva, archivo y usuario, compuestas y validadas', async () => {
+  it('H-2 — toda foránea incluye el tenant: la reserva atada a su archivo y el usuario, compuestas y validadas', async () => {
     const simples = await admin.query(FORANEAS_SIN_TENANT_SQL);
     expect(
       (simples.rows as Array<{ hija: string; padre: string }>).filter(
@@ -8713,10 +8841,39 @@ describe('T-250 — reserva_cambios_estado: aislamiento, foráneas compuestas e 
     expect(
       rows.map((r) => `${(r.columnas as string[]).join(',')}->${r.padre}:${r.convalidated}`),
     ).toEqual([
-      'reserva_id,tenant_id->bookings:true',
-      'archivo_id,tenant_id->travel_files:true',
+      'reserva_id,archivo_id,tenant_id->bookings:true',
       'usuario_id,tenant_id->usuarios:true',
     ]);
+
+    // T-257: la de la reserva es UNA foránea de tres columnas hacia el único
+    // `bookings (id, travel_file_id, tenant_id)`: la reserva es de ESE archivo. Sin foránea directa
+    // al archivo (la cubre la de la reserva), y sin dejar mudar la reserva de archivo (RESTRICT).
+    const tres = await admin.query(
+      `SELECT c.conname, c.confupdtype,
+              (SELECT array_agg(a.attname::text ORDER BY i)
+                 FROM generate_subscripts(c.confkey, 1) AS i
+                 JOIN pg_attribute a ON a.attrelid = c.confrelid AND a.attnum = c.confkey[i]) AS destino
+         FROM pg_constraint c
+        WHERE c.contype = 'f' AND c.conrelid = 'public.reserva_cambios_estado'::regclass
+          AND c.confrelid = 'public.bookings'::regclass`,
+    );
+    expect(tres.rows).toEqual([
+      {
+        conname: 'reserva_cambios_estado_reserva_id_archivo_id_tenant_id_fkey',
+        confupdtype: 'r',
+        destino: ['id', 'travel_file_id', 'tenant_id'],
+      },
+    ]);
+    const destino = await admin.query(
+      `SELECT 1 FROM pg_index i JOIN pg_class x ON x.oid = i.indexrelid
+        WHERE i.indrelid = 'public.bookings'::regclass AND i.indisunique AND i.indisvalid
+          AND x.relname = 'bookings_id_travel_file_id_tenant_id_key'
+          AND (SELECT array_agg(a.attname::text ORDER BY k.n)
+                 FROM unnest(i.indkey) WITH ORDINALITY AS k(attnum, n)
+                 JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = k.attnum)
+              = ARRAY['id', 'travel_file_id', 'tenant_id']`,
+    );
+    expect(destino.rowCount).toBe(1);
   });
 
   it('H-3 — solo viajapro_app la toca (SELECT, INSERT; sin UPDATE, DELETE ni TRUNCATE); PUBLIC y los demás roles, nada', async () => {
@@ -8812,7 +8969,7 @@ describe('T-250 — reserva_cambios_estado: aislamiento, foráneas compuestas e 
     ).rejects.toThrow(/row-level security/i);
   });
 
-  it('H-6 — no apunta a la reserva, el archivo ni el usuario de otra agencia (23503)', async () => {
+  it('H-6 — no apunta a la reserva, el archivo ni el usuario de otra agencia, ni a una reserva de otro archivo de la suya (23503)', async () => {
     const propia = {
       usuario: usuarioDe[TENANT_A] ?? null,
       archivo: archivoDe[TENANT_A] ?? '',
@@ -8822,12 +8979,23 @@ describe('T-250 — reserva_cambios_estado: aislamiento, foráneas compuestas e 
       [
         'reserva de B',
         { reserva: reservaDe[TENANT_B] ?? '' },
-        'reserva_cambios_estado_reserva_id_tenant_id_fkey',
+        'reserva_cambios_estado_reserva_id_archivo_id_tenant_id_fkey',
       ],
       [
         'archivo de B',
         { archivo: archivoDe[TENANT_B] ?? '' },
-        'reserva_cambios_estado_archivo_id_tenant_id_fkey',
+        'reserva_cambios_estado_reserva_id_archivo_id_tenant_id_fkey',
+      ],
+      // T-257: misma agencia, pero la reserva es de OTRO archivo. Antes solo lo impedía el puerto.
+      [
+        'reserva de otro archivo de A',
+        { reserva: otraReservaDe[TENANT_A] ?? '' },
+        'reserva_cambios_estado_reserva_id_archivo_id_tenant_id_fkey',
+      ],
+      [
+        'otro archivo de A con la reserva del primero',
+        { archivo: otroArchivoDe[TENANT_A] ?? '' },
+        'reserva_cambios_estado_reserva_id_archivo_id_tenant_id_fkey',
       ],
       [
         'usuario de B',
@@ -8872,5 +9040,54 @@ describe('T-250 — reserva_cambios_estado: aislamiento, foráneas compuestas e 
     }).catch((e: unknown) => {
       if (!(e instanceof Error) || e.message !== 'revertir') throw e;
     });
+  });
+
+  it('H-8 — ocurrido_en lo pone la base: el valor del INSERT se ignora y queda el instante de la transacción', async () => {
+    // El disparador, en el catálogo: BEFORE INSERT, por fila, habilitado, función sin SECURITY
+    // DEFINER, con search_path vacío y sin EXECUTE para PUBLIC.
+    const { rows: disparador } = await admin.query(
+      `SELECT pg_get_triggerdef(t.oid) AS definicion, t.tgenabled AS habilitado,
+              p.prosecdef AS definer, p.proconfig AS config,
+              has_function_privilege('public', p.oid, 'EXECUTE') AS publico
+         FROM pg_trigger t JOIN pg_proc p ON p.oid = t.tgfoid
+        WHERE t.tgrelid = 'public.reserva_cambios_estado'::regclass AND NOT t.tgisinternal`,
+    );
+    expect(disparador).toHaveLength(1);
+    expect(disparador[0]?.definicion).toMatch(
+      /BEFORE INSERT ON (public\.)?reserva_cambios_estado FOR EACH ROW EXECUTE FUNCTION (public\.)?fijar_ocurrido_en_de_la_base\(\)/,
+    );
+    expect(disparador[0]).toMatchObject({ habilitado: 'O', definer: false, publico: false });
+    expect(disparador[0]?.config).toEqual(
+      expect.arrayContaining([expect.stringMatching(/^search_path=("")?$/)]),
+    );
+
+    // De COMPORTAMIENTO, con viajapro_app: un instante inventado (en el pasado y en el futuro) no
+    // se guarda; se guarda el de la transacción. Se deshace con la transacción.
+    await comoTenant(TENANT_A, async (c) => {
+      for (const inventado of ['2000-01-01T00:00:00Z', '2099-12-31T23:59:59Z']) {
+        const r = await c.query(
+          `INSERT INTO reserva_cambios_estado
+             (id, tenant_id, reserva_id, archivo_id, estado_anterior, estado_nuevo, usuario_id,
+              ocurrido_en)
+           VALUES (gen_random_uuid(), $1, $2, $3, 'SOLICITADA', 'EN_ESPERA', NULL, $4::timestamptz)
+           RETURNING ocurrido_en = now()::timestamptz(3) AS es_ahora,
+                     ocurrido_en = $4::timestamptz AS es_inventado`,
+          [TENANT_A, reservaDe[TENANT_A], archivoDe[TENANT_A], inventado],
+        );
+        expect(r.rows, inventado).toEqual([{ es_ahora: true, es_inventado: false }]);
+      }
+      throw new Error('revertir');
+    }).catch((e: unknown) => {
+      if (!(e instanceof Error) || e.message !== 'revertir') throw e;
+    });
+
+    // Y corregirlo después tampoco: sin UPDATE (42501).
+    await expect(
+      comoTenant(TENANT_A, (c) =>
+        c.query("UPDATE reserva_cambios_estado SET ocurrido_en = '2000-01-01' WHERE id = $1", [
+          filaDe[TENANT_A],
+        ]),
+      ),
+    ).rejects.toMatchObject({ code: '42501' });
   });
 });
