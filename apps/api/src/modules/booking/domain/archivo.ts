@@ -143,7 +143,13 @@ export function avanceDelArchivo(
   return 'POR_CONFIRMAR';
 }
 
-/** El orden de «Reservas»: el plazo vigente más próximo primero; sin plazo, al final. */
+/**
+ * El orden de «Reservas»: el plazo vigente más próximo primero (a igual plazo, número ascendente);
+ * sin plazo, al final y por número DESCENDENTE, los recién abiertos primero (T-257). Con número
+ * ascendente, cuando los archivos sin plazo pasaban del límite de la lista, los nuevos (que nacen
+ * sin plazo) quedaban siempre fuera. El SQL de `RepositorioDeOperacionDeArchivosPrisma.listar`
+ * ordena igual antes del LIMIT.
+ */
 export function compararPorPlazo(
   a: { proximoPlazo: Date | null; numero: number },
   b: { proximoPlazo: Date | null; numero: number },
@@ -153,7 +159,7 @@ export function compararPorPlazo(
   }
   if (a.proximoPlazo) return -1;
   if (b.proximoPlazo) return 1;
-  return a.numero - b.numero;
+  return b.numero - a.numero;
 }
 
 export function exigirAbierto(archivo: Pick<Archivo, 'id' | 'estado'>): void {

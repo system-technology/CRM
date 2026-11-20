@@ -42,7 +42,19 @@ import { ConsumidorAbrirArchivo } from './interface/consumidor-abrir-archivo.js'
 const idDeTenant = (): string => `01932000-0000-7000-8000-${randomBytes(6).toString('hex')}`;
 const TENANT_A = idDeTenant();
 const TENANT_B = idDeTenant();
-const FECHA = '2027-03-15';
+// Fechas RELATIVAS A HOY (T-257), como en booking-archivos y booking-plazos: con fechas fijas, la
+// vigencia de la tarifa caduca el día que el calendario la alcanza y la prueba se pone en rojo sin
+// que nada haya cambiado. Misma forma que antes: salida a mitad de una vigencia de un mes.
+const DIA_MS = 86_400_000;
+const hoyUtc = new Date(`${new Date().toISOString().slice(0, 10)}T00:00:00.000Z`);
+const enDias = (d: Date, n: number): Date => new Date(d.getTime() + n * DIA_MS);
+const fechaIso = (d: Date): string => d.toISOString().slice(0, 10);
+const SALIDA = enDias(hoyUtc, 120);
+const FECHA = fechaIso(SALIDA);
+const VIGENCIA_DESDE = enDias(SALIDA, -14);
+const VIGENCIA_HASTA = enDias(SALIDA, 16);
+/** La fecha de la TRM de las versiones: el inicio de la vigencia, como antes. */
+const FECHA_TRM = fechaIso(VIGENCIA_DESDE);
 const CONSUMIDOR = 'booking.abrir_archivo';
 const TIPO = 'quoting.cotizacion_aceptada';
 
@@ -221,8 +233,8 @@ async function crearAgencia(tenant: string, letra: string): Promise<Agencia> {
     data: {
       tenantId: tenant,
       paqueteId: paquete.id,
-      desde: new Date('2027-03-01'),
-      hasta: new Date('2027-03-31'),
+      desde: VIGENCIA_DESDE,
+      hasta: VIGENCIA_HASTA,
     },
   });
   await admin.tarifa.create({
@@ -647,8 +659,8 @@ describe('mayorista por línea y TRM congelados por el cotizador (T-241, ADR-002
       data: {
         tenantId: quien.tenant,
         paqueteId: paquete.id,
-        desde: new Date('2027-03-01'),
-        hasta: new Date('2027-03-31'),
+        desde: VIGENCIA_DESDE,
+        hasta: VIGENCIA_HASTA,
       },
     });
     await admin.tarifa.create({
@@ -695,7 +707,7 @@ describe('mayorista por línea y TRM congelados por el cotizador (T-241, ADR-002
       titulo: 'Dos mayoristas',
       version: {
         ...composicion(paquete),
-        trm: { valor: '4150.5', fecha: '2027-03-01', fuente: 'OFICIAL' },
+        trm: { valor: '4150.5', fecha: FECHA_TRM, fuente: 'OFICIAL' },
       },
     });
     expect(alta.estado).toBe(201);
@@ -705,7 +717,7 @@ describe('mayorista por línea y TRM congelados por el cotizador (T-241, ADR-002
       monedaOrigen: 'USD',
       monedaDestino: 'COP',
       valor: '4150.500000',
-      fecha: '2027-03-01',
+      fecha: FECHA_TRM,
       fuente: 'OFICIAL',
     });
     expect(JSON.stringify(alta.json)).not.toContain(m1);
@@ -742,7 +754,7 @@ describe('mayorista por línea y TRM congelados por el cotizador (T-241, ADR-002
          FROM travel_files WHERE tenant_id = $1 AND id = $2`,
       [A.tenant, archivos[0]?.id ?? ''],
     );
-    expect(trm[0]).toEqual({ o: 'USD', d: 'COP', f: '2027-03-01', fuente: 'OFICIAL' });
+    expect(trm[0]).toEqual({ o: 'USD', d: 'COP', f: FECHA_TRM, fuente: 'OFICIAL' });
 
     const reservas = (await reservasDe(A.tenant, archivos[0]?.id ?? '')).sort((a, b) =>
       (a.mayorista_nombre ?? '').localeCompare(b.mayorista_nombre ?? ''),
@@ -797,7 +809,7 @@ describe('mayorista por línea y TRM congelados por el cotizador (T-241, ADR-002
       titulo: 'TRM sobrante',
       version: {
         ...composicion(paquete),
-        trm: { valor: '1', fecha: '2027-03-01', fuente: 'AGENCIA' },
+        trm: { valor: '1', fecha: FECHA_TRM, fuente: 'AGENCIA' },
       },
     });
     expect(r.estado).toBe(422);
