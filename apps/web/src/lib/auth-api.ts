@@ -192,11 +192,13 @@ let sesionEnMemoriaMock: SesionActualTipo | null = null;
  */
 export async function iniciarSesionApi(credenciales: IniciarSesionTipo): Promise<SesionActualTipo> {
   const datosValidados = EsquemaIniciarSesion.parse(credenciales);
+  // Durante la transicion del contrato (ADR-0031) el cuerpo puede traer `correo` o `identificador`.
+  const identificador = datosValidados.identificador ?? datosValidados.correo ?? '';
 
   if (!usaAuthReal()) {
     // Modo mock offline (solo si el interruptor real está apagado)
     if (
-      datosValidados.correo.toLowerCase().includes('error@') ||
+      identificador.toLowerCase().includes('error@') ||
       datosValidados.contrasena === 'incorrecta' ||
       datosValidados.contrasena === 'error123'
     ) {
@@ -207,13 +209,13 @@ export async function iniciarSesionApi(credenciales: IniciarSesionTipo): Promise
       );
     }
     if (
-      datosValidados.correo.toLowerCase().includes('dueno@') ||
-      datosValidados.correo.toLowerCase().includes('admin@')
+      identificador.toLowerCase().includes('dueno@') ||
+      identificador.toLowerCase().includes('admin@')
     ) {
       sesionEnMemoriaMock = { ...MOCK_SESION_DUENO };
       return sesionEnMemoriaMock;
     }
-    if (datosValidados.correo.toLowerCase().includes('multi@')) {
+    if (identificador.toLowerCase().includes('multi@')) {
       sesionEnMemoriaMock = { ...MOCK_SESION_MULTI_AGENCIA };
       return sesionEnMemoriaMock;
     }
