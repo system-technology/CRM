@@ -6687,7 +6687,7 @@ tasks:
     phase: 1
     priority: P2
     effort: M
-    status: in_progress
+    status: done
     depends_on: []
     acceptance:
       - "Paso 1: scripts/comprobar-enlaces.mjs con línea base versionada (scripts/enlaces-rotos.base.json), prueba unitaria y job de CI en modo aviso (no obligatorio)"
@@ -6701,3 +6701,41 @@ tasks:
     owner: documentador
     started_at: 2026-11-20T23:55:00.000Z
     notes: "Cuatro pasos aprobados por el propietario, principio: no dañar lo que hay. 1) Comprobador de enlaces antes de mover nada (scripts/ y .github/ piden aprobación del propietario, R11). 2) Mover y fusionar lo de riesgo bajo (_auditoria a _auditorias, _investigacion, traspaso), actualizando quienes lo citan. 3) El hook .claude/hooks/session-start.mjs lee docs/_bitacora sin recursión y CLAUDE.md, AGENTS.md y ESTADO.md fijan la ruta plana: agrupar la bitácora exige tocar el hook y la aprobación del propietario. 4) Índice de docs/README.md al día y subir el comprobador a obligatorio cuando la línea base esté estable. No mover _auditorias ni _backlog sin resolver antes los ADR 0008, 0015, 0017 y 0029 que los citan por ruta."
+    done_at: 2026-11-20T15:30:00.000Z
+    evidence: "Pasos 1 a 4 integrados en main con el CI en verde: #316 (comprobador), #317 (_auditoria en _auditorias), #318 (traspaso/ a docs/_traspasos/), #319 (índice). Queda aparte subir el comprobador a obligatorio (T-305)."
+  - id: T-304
+    title: "Corregir las referencias muertas a docs/FLUJO.md y docs/CICLO.md en comentarios de .github/ y scripts/"
+    type: docs
+    phase: 1
+    priority: P3
+    effort: S
+    status: ready
+    depends_on: []
+    acceptance:
+      - "ownership.yml:5, scripts/gh-app.mjs:9 y scripts/ciclo.mjs:2 apuntan a un documento que existe (docs/07-ingenieria/03-git.md o docs/09-ia/07-ciclo-autonomo.md) o dejan de citar uno"
+      - "Solo comentarios: ninguna línea de lógica cambia"
+    files:
+      - .github/workflows/ownership.yml
+      - scripts/gh-app.mjs
+      - scripts/ciclo.mjs
+    source: paso 4 de la reorganización de docs (2026-11-20); rutas protegidas, el comprobador solo lee .md
+    created_at: 2026-11-20T15:30:00.000Z
+    owner: documentador
+  - id: T-305
+    title: "Subir el comprobador de enlaces a obligatorio y reducir su línea base"
+    type: infra
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: [T-302]
+    acceptance:
+      - "Las 70 roturas conocidas de scripts/enlaces-rotos.base.json se corrigen o se justifican hasta que la base quede estable"
+      - "El job enlaces-de-documentacion deja de ser continue-on-error y entra en .github/proteccion-main.json (ruta protegida: aprobación del propietario)"
+    files:
+      - scripts/enlaces-rotos.base.json
+      - .github/workflows/ci.yml
+      - .github/proteccion-main.json
+    source: paso 4 de la reorganización de docs (2026-11-20)
+    created_at: 2026-11-20T15:30:00.000Z
+    owner: documentador
