@@ -58,10 +58,11 @@ entrado. Seguimos en local.
 | **Tope de 10 fallos diarios por correo** en el código de un solo uso, guardado en Postgres (sobrevive a reinicios y réplicas) | PR #315 (T-300); dos auditorías de seguridad. Las pruebas de base corren solo en el CI |
 | **ADR-0030, registro autoservicio de agencias: Aceptado, sin código.** Alta atómica por `crear_agencia`, código de acceso del piloto, 14 días de prueba, solo Colombia y COP | PR #310 y #312; tres vueltas de seguridad. La migración es T-268 |
 | Propuesta al viajero, en sesión aparte | PR #309; `docs/_bitacora/2026-11-20-propuesta-al-viajero.md` |
+| **El RNT de la agencia** (T-261, ADR-0030 §3.3): tabla `perfiles_de_agencia` con RLS y un disparador que niega por defecto la verificación; la agencia lo escribe en Configuración y la propuesta al viajero lo imprime **solo si está verificado**. **Hoy nadie lo verifica sin SQL a mano** (T-280); con la API real la propuesta sale sin RNT hasta que el propietario marque la agencia piloto | PR #321 (migración, aprobada por el propietario), #322 y #324; P-1…P-6 de `aislamiento.spec.ts`, `agencia-ajustes.e2e-spec.ts`, `page.rnt.spec.tsx`; [bitácora](docs/_bitacora/2026-11-20-rnt-de-la-agencia.md). Supuesto sin verificar: el RNT son solo dígitos, de 1 a 10 |
 | Servidores MCP del proyecto (`.mcp.json`): 21st.dev, Neon, Render y Vercel, con la clave leída del entorno | PR #305 y #310; la sesión de despliegue confirmó que los cuatro conectan |
 | `docs/` reorganizada sin romper nada: comprobador de enlaces con línea base (job `enlaces-de-documentacion`, en modo aviso, fuera de los 8 obligatorios), `_auditoria` fusionada en `_auditorias`, la carpeta de traspaso movida a `docs/_traspasos/`, índice con los huérfanos | PR #316 a #319 (T-302) |
 
-El repositorio tiene 47 migraciones. Cifras de pruebas: no se midieron en esta sesión y no se repiten.
+El repositorio tiene 48 migraciones. Cifras de pruebas: no se midieron en esta sesión y no se repiten.
 
 **Defecto real que halló la suite:** la bandeja nunca ofrecía cotizaciones para enviar con la API real,
 porque la ficha de CRM las trae vacías (R4). Ahora la bandeja las pide a `quoting`. Antes, la suite
