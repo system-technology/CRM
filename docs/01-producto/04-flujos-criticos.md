@@ -140,7 +140,7 @@ pantalla, ve lo de toda la agencia.
 
 ## Decisiones de menú para validar
 
-> **Decisiones propuestas por el `dueno-de-producto` y confirmadas por el propietario el 2026-11-20** (confirmó D1 a D4 tal como estaban). Siguen como supuestos [S], a preguntar al dueño de JD Tours: que sus asesoras no ven los reportes (D3) y que no cotizan desde el celular (D4); si responde otra cosa se ajusta por permiso o por la barra, sin cambiar el diseño.
+> **Decisiones propuestas por el `dueno-de-producto` y confirmadas por el propietario el 2026-11-20** (confirmó D1 a D4 tal como estaban). D3 fue **reemplazada** después por los niveles de acceso (Eje F). Sigue como supuesto [S], a preguntar al dueño de JD Tours: que no cotizan desde el celular (D4); si responde otra cosa se ajusta por permiso o por la barra, sin cambiar el diseño.
 > T-317 queda desbloqueada por esta confirmación. Criterio de prioridad declarado:
 > impacto en la conversión de la agencia × frecuencia de uso ÷ costo.
 
@@ -164,17 +164,21 @@ pantalla, ve lo de toda la agencia.
   paleta. `/cotizador` sigue existiendo como ruta y marca activo «Cotizaciones».
 - **Fuera:** meter el cotizador dentro del chat (auditoría §6).
 
-### D3. ¿La asesora ve Reportes y Configuración? — **Confirmada por el propietario (2026-11-20): no, por permiso** (regla provisional de presentación; la API sigue autorizando)
+### D3. Reportes y Configuración — **Reemplazada por el propietario (2026-11-20): Reportes por niveles de acceso (Eje F)**
 
-- **Por qué:** son de otro usuario y otro ritmo (`06-diseno-y-ux.md` §1); ocupan sitio fijo en una
-  herramienta de 40 chats al día.
-- **Cómo, en este lote (T-317):** se muestran solo a quien tenga `usuarios.administrar` (el rol `DUENO`
-  sembrado). Es una **regla provisional de presentación**: ocultar un ítem no es control de acceso, y la
-  API sigue siendo la que autoriza.
-- **A la cola:** un permiso propio `reportes.ver` (toca el `CHECK` de la base: ruta protegida) y, si
-  el piloto lo pide, «Mis números» para la asesora. Ninguno bloquea T-317.
-- **Supuesto [S]:** las asesoras de JD Tours no ven hoy los números de la agencia. Si el dueño dice
-  que sí, se le da el permiso a su rol; no cambia el diseño.
+> La versión anterior de D3 («la asesora no ve Reportes») quedó **reemplazada**. Decisión vigente:
+> los reportes se manejan por **niveles de acceso**. Los asesores ven los reportes pertinentes a su
+> operación y tienen su propio dashboard; el administrador tiene todo el abanico, más robusto. Se diseñan
+> **móvil primero** (verificados a 390 px). Ver el Eje F del roadmap de JD Tours (T-339 a T-346).
+
+- **Menú:** «Reportes» aparece para **todos los roles**; su contenido depende del nivel. El alcance lo
+  impone **el servidor**, no el menú: que un asesor no vea lo de otro es un requisito de seguridad, no de
+  presentación (ocultar un ítem no es control de acceso).
+- **Configuración:** sigue solo para quien tenga `usuarios.administrar` (regla de presentación; la API
+  autoriza).
+- **En la tabla de navegación:** el permiso de «Reportes» queda como dato ajustable (T-340/T-341), sin
+  ocultarlo por `usuarios.administrar`.
+- **Supuesto [S]:** qué reportes concretos ve cada nivel lo define T-339 con el dueño de JD Tours.
 
 ### D4. Barra inferior en móvil — **Confirmada por el propietario (2026-11-20): Hoy · Conversaciones · Archivos · Buscar · Más**
 
@@ -197,7 +201,7 @@ Se cierran con las preguntas del roadmap §4; ninguno bloquea la navegación (Fa
 - [S] Cobra por **archivo**, no por pasajero, y con pagos libres, no con cuotas fechadas.
 - [S] Registra los pagos la asesora que lleva el archivo.
 - [S] Moneda principal COP; algunos archivos en USD. Cada pago, con su moneda (R8).
-- [S] Sus asesoras no ven los reportes de la agencia (D3) y desde el móvil no cotizan (D4).
+- [S] Desde el móvil no cotizan (D4). (El supuesto sobre reportes de D3 ya no aplica: los reportes van por niveles de acceso.)
 
 ## Pendiente fuera de este documento
 
