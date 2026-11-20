@@ -4,7 +4,7 @@ import { RUTA_SESION } from '../playwright.config';
 import { credenciales } from './auxiliares';
 import { expect, test } from './fixtures';
 
-/** H1: ingresar con un usuario sembrado y ver la bandeja. Deja la sesion para el resto. */
+/** H1: ingresar con un usuario sembrado y caer en «Hoy» (T-317). Deja la sesion para el resto. */
 
 test.describe('sin sesion', () => {
   test.use({ storageState: { cookies: [], origins: [] } });
@@ -32,15 +32,18 @@ test.describe('sin sesion', () => {
   });
 });
 
-test('ingresa con el usuario sembrado y ve la bandeja', async ({ page }) => {
+test('ingresa con el usuario sembrado y cae en Hoy', async ({ page }) => {
   const { correo, clave } = credenciales();
   await page.goto('/ingresar');
   await page.locator('#campo-correo').fill(correo);
   await page.locator('#campo-contrasena').fill(clave);
   await page.getByRole('button', { name: /Ingresar a ViajaPro/ }).click();
 
-  await expect(page).toHaveURL(/\/bandeja/, { timeout: 20_000 });
-  await expect(page.getByRole('region', { name: 'Lista de conversaciones' })).toBeVisible();
+  // Destino por defecto tras ingresar (D1): Hoy, en `/`, no la bandeja.
+  await expect(page).toHaveURL(/^[^?#]*\/$/, { timeout: 20_000 });
+  await expect(
+    page.getByTestId('sidebar-escritorio').or(page.locator('main#contenido')),
+  ).toBeVisible();
 
   // Como la asesora la primera vez: el banner de cookies queda fijo abajo y tapa el compositor de la
   // bandeja hasta que se acepta. El consentimiento se guarda en el navegador y viaja en la sesion.
