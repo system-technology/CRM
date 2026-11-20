@@ -188,9 +188,6 @@ export function BloqueRespuestasRapidas({
             <span className="bg-acento-100 text-acento-800 dark:bg-acento-950 dark:text-acento-300 rounded-full px-2.5 py-0.5 text-xs font-semibold">
               {respuestas.length} disponibles
             </span>
-            <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-800 dark:bg-blue-950 dark:text-blue-300">
-              T-104
-            </span>
           </div>
           <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
             Los asesores pueden insertar estas plantillas en el compositor de WhatsApp escribiendo
@@ -231,7 +228,7 @@ export function BloqueRespuestasRapidas({
             Las respuestas rápidas que agregues o edites se almacenan de manera aislada para tu
             agencia en este navegador. La sincronización centralizada en base de datos
             multi-dispositivo entrará en producción cuando se active el endpoint de API de
-            Respuestas Rápidas (T-078).
+            Respuestas Rápidas.
           </p>
         </div>
       </div>

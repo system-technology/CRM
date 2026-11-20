@@ -330,7 +330,7 @@ export function obtenerMockTableroPipeline(): TableroPipeline {
           asesorId: '00000000-0000-4000-a000-000000000001',
           asesorNombre: 'Carlos Asesor',
           proximaTarea: {
-            descripcion: 'Emitir TravelFile y enviar confirmación de vouchers',
+            descripcion: 'Emitir el archivo de viaje y enviar confirmación de vouchers',
             venceEn: new Date(ahora + 24 * 3600000).toISOString(),
             completada: true,
           },

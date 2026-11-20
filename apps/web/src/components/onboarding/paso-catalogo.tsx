@@ -139,7 +139,7 @@ export function PasoCatalogo({ datos, alGuardar, alOmitir }: PasoCatalogoProps) 
             Importar con CSV/Excel
           </h4>
           <p className="mt-1 text-[11px] text-neutral-500 dark:text-neutral-400">
-            Usa el importador masivo en 4 pasos con validación estricta (T-029).
+            Usa el importador masivo en 4 pasos con validación estricta.
           </p>
         </button>
       </div>
@@ -312,7 +312,7 @@ export function PasoCatalogo({ datos, alGuardar, alOmitir }: PasoCatalogoProps) 
             </span>
             <div>
               <h3 className="text-xs font-bold text-neutral-900 dark:text-white">
-                Importación con Plantilla CSV oficial de ViajaPro (T-029)
+                Importación con Plantilla CSV oficial de ViajaPro
               </h3>
               <p className="mt-1 text-xs text-neutral-600 dark:text-neutral-400">
                 Puedes continuar ahora con el asistente y completar la carga de tu tarifario masivo

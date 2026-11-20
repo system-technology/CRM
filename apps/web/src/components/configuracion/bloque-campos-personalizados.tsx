@@ -137,7 +137,7 @@ export function BloqueCamposPersonalizados() {
             </div>
             <div>
               <h2 className="text-base font-bold text-neutral-900 dark:text-white">
-                Campos Personalizados del CRM (T-026)
+                Campos Personalizados del CRM
               </h2>
               <p className="text-xs text-neutral-500 dark:text-neutral-400">
                 Extiende los atributos de viajeros (contactos) y cotizaciones (oportunidades) según

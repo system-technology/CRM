@@ -155,7 +155,7 @@ export function PasoMarca({ datos, alGuardar, alOmitir }: PasoMarcaProps) {
           <div className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-xs dark:border-neutral-800 dark:bg-neutral-900">
             <h3 className="flex items-center gap-2 text-sm font-bold text-neutral-900 dark:text-white">
               <Palette className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-              <span>Color de Acento de la Agencia (T-039)</span>
+              <span>Color de Acento de la Agencia</span>
             </h3>
             <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
               Selecciona una paleta colombiana representativa o define tu color institucional.

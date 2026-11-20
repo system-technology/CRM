@@ -59,7 +59,7 @@ export const ACCIONES_RAPIDAS: ResultadoBusqueda[] = [
   {
     id: 'act-viajes',
     categoria: 'acciones',
-    titulo: 'Ir a Archivos de Viaje (TravelFiles)',
+    titulo: 'Ir a Archivos de viaje',
     subtitulo: 'Expedientes operativos, bookings y time limits',
     href: '/viajes',
     etiquetaExtra: 'Operaciones',
@@ -202,7 +202,7 @@ export function construirIndiceGlobal(sesion?: SesionActual | null): ResultadoBu
     });
   }
 
-  // 6. Archivos de Viaje (TravelFiles)
+  // 6. Archivos de viaje
   for (const v of MOCK_ARCHIVOS_VIAJE) {
     items.push({
       id: `viaje-${v.id}`,

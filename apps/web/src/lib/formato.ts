@@ -395,3 +395,10 @@ export function formatearCupo(
 
   return `${disponibles} cupos disponibles`;
 }
+
+/**
+ * Concordancia de número: pluralizar(1, 'niño', 'niños') -> «1 niño»; con 2 -> «2 niños».
+ */
+export function pluralizar(cantidad: number, singular: string, plural: string): string {
+  return `${cantidad} ${cantidad === 1 ? singular : plural}`;
+}

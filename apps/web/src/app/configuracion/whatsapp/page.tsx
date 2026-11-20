@@ -35,9 +35,6 @@ export default function ConfiguracionWhatsappPage() {
                 <h1 className="text-xl font-bold tracking-tight text-neutral-900 dark:text-white">
                   Conexión Oficial de WhatsApp
                 </h1>
-                <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-                  T-106
-                </span>
               </div>
               <p className="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400">
                 Estado de tu número de WhatsApp Business y la regla de la ventana de 24 horas
@@ -51,7 +48,7 @@ export default function ConfiguracionWhatsappPage() {
                 className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl border border-neutral-300 bg-white px-3.5 py-2 text-xs font-semibold text-neutral-800 shadow-xs hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200"
               >
                 <Sparkles className="h-4 w-4 text-amber-500" />
-                <span>Asistente de Inicio (T-105)</span>
+                <span>Asistente de Inicio</span>
               </Link>
               <Link
                 href="/inbox"

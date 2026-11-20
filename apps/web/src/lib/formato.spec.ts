@@ -10,6 +10,7 @@ import {
   formatearTelefonoSegunRol,
   sanitizarPiiEnTexto,
   formatearCupo,
+  pluralizar,
 } from './formato';
 
 describe('Módulo único de formato es-CO (T-022)', () => {
@@ -180,5 +181,13 @@ describe('Módulo único de formato es-CO (T-022)', () => {
       expect(limpio).toContain('+***4567');
       expect(limpio).toContain('PA***43');
     });
+  });
+});
+
+describe('pluralizar', () => {
+  it('concuerda el número: 1 niño, 0 y 2 niños', () => {
+    expect(pluralizar(1, 'niño', 'niños')).toBe('1 niño');
+    expect(pluralizar(0, 'niño', 'niños')).toBe('0 niños');
+    expect(pluralizar(2, 'niño', 'niños')).toBe('2 niños');
   });
 });

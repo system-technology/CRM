@@ -68,7 +68,7 @@ describe('BienvenidaPage — Pantalla de Onboarding de Nueva Agencia (T-105)', (
     render(<BienvenidaPage />);
 
     expect(screen.getByTestId('asistente-onboarding')).toBeDefined();
-    expect(screen.getByText('T-105')).toBeDefined();
+    expect(screen.queryByText('T-105')).toBeNull();
     expect(screen.getByTestId('btn-paso-marca')).toBeDefined();
     expect(screen.getByTestId('btn-paso-catalogo')).toBeDefined();
     expect(screen.getByTestId('btn-paso-equipo')).toBeDefined();

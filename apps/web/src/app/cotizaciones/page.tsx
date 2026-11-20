@@ -57,6 +57,7 @@ import {
 import { obtenerMockPaginaContactos } from '../../lib/mock-contactos';
 import { ModalEnviarWhatsAppCotizacion } from '../../components/cotizaciones/modal-enviar-whatsapp-cotizacion';
 import { usePermisos } from '../../lib/permisos';
+import { herramientasDevActivas } from '../../lib/herramientas-dev';
 
 export default function CotizacionesPage() {
   const { esDemo } = useModoDemo();
@@ -279,19 +280,21 @@ export default function CotizacionesPage() {
 
             {/* Acciones principales y toggle de estrés */}
             <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setModoEstres500((prev) => !prev)}
-                className={`flex min-h-[44px] items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-semibold transition-colors ${
-                  modoEstres500
-                    ? 'border-purple-300 bg-purple-50 text-purple-700 dark:border-purple-800 dark:bg-purple-950/60 dark:text-purple-300'
-                    : 'border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300'
-                }`}
-                title="Probar comportamiento con 500 cotizaciones de nombres largos"
-              >
-                <Database className="h-3.5 w-3.5" />
-                <span>{modoEstres500 ? 'Modo normal' : 'Estrés (500 cot.)'}</span>
-              </button>
+              {herramientasDevActivas() && (
+                <button
+                  type="button"
+                  onClick={() => setModoEstres500((prev) => !prev)}
+                  className={`flex min-h-[44px] items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-semibold transition-colors ${
+                    modoEstres500
+                      ? 'border-purple-300 bg-purple-50 text-purple-700 dark:border-purple-800 dark:bg-purple-950/60 dark:text-purple-300'
+                      : 'border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300'
+                  }`}
+                  title="Probar comportamiento con 500 cotizaciones de nombres largos"
+                >
+                  <Database className="h-3.5 w-3.5" />
+                  <span>{modoEstres500 ? 'Modo normal' : 'Estrés (500 cot.)'}</span>
+                </button>
+              )}
 
               <Link
                 href="/cotizador"

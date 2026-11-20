@@ -68,7 +68,7 @@ export function PasoEquipo({ datos, alGuardar, alOmitir }: PasoEquipoProps) {
 
   return (
     <form onSubmit={handleSubmit} data-testid="paso-equipo-form" className="space-y-6">
-      {/* Explicación de Roles (T-027) */}
+      {/* Explicación de Roles */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-xs dark:border-neutral-800 dark:bg-neutral-900">
           <div className="flex items-center gap-2 text-xs font-bold text-neutral-900 dark:text-white">
