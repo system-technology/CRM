@@ -180,22 +180,26 @@ pantalla, ve lo de toda la agencia.
   ocultarlo por `usuarios.administrar`.
 - **Supuesto [S]:** qué reportes concretos ve cada nivel lo define T-339 con el dueño de JD Tours.
 
-### D4. Barra inferior en móvil — **Resuelta por el propietario (2026-11-20): Hoy · Conversaciones · Cotizar · Buscar · Más**
+### D4. Barra inferior en móvil — **Confirmada con la variante B por el propietario (2026-11-20): Hoy · Conversaciones · Cotizar · Archivos de viaje · Más, con una lupa fija en la cabecera**
 
 > La primera versión de D4 (Hoy · Conversaciones · Archivos · Buscar · Más) suponía que en el celular
 > no se cotiza. El propietario lo **descartó**: «sí, se cotiza desde el teléfono; incluso hoy por hoy todo
 > lo hacen desde WhatsApp Business». La asesora y el dueño de JD Tours trabajan **todo el flujo desde el
-> celular** (responder, cotizar, enviar, etiquetar, ver quién pagó). Se aplica la contingencia que D4 ya
-> traía: «Cotizar» sustituye a «Archivos».
+> celular** (responder, cotizar, enviar, etiquetar, ver quién pagó): el supuesto [S] quedó **resuelto**.
+> Entre la opción A (Hoy · Conversaciones · Cotizar · Buscar · Más, con «Archivos de viaje» en «Más») y
+> la B propuesta por `diseno-ux`, el propietario eligió **la B** («B»).
 
-- **Barra inferior (móvil):** Hoy · Conversaciones · **Cotizar** · Buscar · Más.
-- **«Archivos de viaje»** pasa a «Más» y a la conversación; se llega a lo que vence desde «Hoy».
-- **Criterio nuevo (T-320, T-321: críticas para el piloto):** una cotización **completa** se hace a
-  **390 px sin desplazamiento lateral**: elegir paquete, fecha y ocupación, ver el total, guardar y
-  «Enviar por WhatsApp» y volver al chat.
-- **Opción por proponer (no implementada):** si `diseno-ux` ve una alternativa que no pierda Archivos
-  (p. ej. la lupa fija en la cabecera y «Buscar» fuera de la barra), se propone en el PR de T-320 y el
-  propietario decide.
+- **Barra inferior (móvil):** Hoy · Conversaciones · **Cotizar** · **Archivos de viaje** · Más.
+- **Lupa fija en la cabecera de cada pantalla**, montada **una sola vez en el marco compartido**, que
+  abre la misma búsqueda (paleta) que ya existe; «Buscar» no ocupa pestaña. Así los vencimientos y «quién
+  pagó» siguen a un toque (principio 3).
+- **«Más»** abre una hoja con el resto de los módulos y la campana (a ≤ 2 toques).
+- **Calidad táctil:** objetivos de al menos 44 px en la barra, la lupa y la hoja «Más»; etiquetas
+  legibles (no de 9 px); contraste AA; foco visible. Contadores en «Hoy» (vencimientos) y
+  «Conversaciones» (no leídos).
+- **Criterio (T-320, T-321: críticas para el piloto):** una cotización **completa** se hace a **390 px
+  sin desplazamiento lateral**: elegir paquete, fecha y ocupación, ver el total, guardar y «Enviar en
+  esta conversación» por el canal y volver al chat. T-320 se verifica con capturas a 390 y 1440 px.
 
 ### Menú resultante (escritorio)
 
