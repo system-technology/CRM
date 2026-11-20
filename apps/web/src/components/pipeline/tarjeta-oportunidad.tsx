@@ -21,6 +21,9 @@ import {
 } from '../../lib/pipeline-logica';
 import { generarColorAvatar, obtenerIniciales } from '../../lib/bandeja-logica';
 import { obtenerClaseEscalonada } from '../comun/animaciones';
+import { InsigniaDePlazo, CLASES_POR_NIVEL } from '../comun/viaje-insignias';
+import { useViajesBandeja } from '../../lib/viajes-bandeja';
+import { describirSalida, lineaDeViaje, plazoMasProximo } from '../../lib/viaje-solicitado-logica';
 
 interface TarjetaOportunidadProps {
   oportunidad: Oportunidad;
@@ -51,7 +54,7 @@ export function TarjetaOportunidad({
     contactoNombre,
     contactoId,
     valorEstimado,
-    probabilidad,
+    fechaSalida,
     ultimoContactoEn,
     proximaTarea,
     asesorNombre,
@@ -59,6 +62,24 @@ export function TarjetaOportunidad({
     motivoPerdida,
     notaPerdida,
   } = oportunidad;
+
+  // Pasajeros y plazo salen del archivo de viaje del contacto (si es de esta oportunidad o aún no
+  // se ató a ninguna); el destino y la salida son siempre los de la oportunidad.
+  const archivoDelContacto = useViajesBandeja().archivos.get(contactoId) ?? null;
+  const archivo =
+    archivoDelContacto &&
+    (archivoDelContacto.oportunidadId === null || archivoDelContacto.oportunidadId === id)
+      ? archivoDelContacto
+      : null;
+  const lineaViaje = lineaDeViaje({
+    destino,
+    fechaSalida,
+    pasajeros: archivo
+      ? { adultos: archivo.adultos, ninos: archivo.ninos, infantes: archivo.infantes }
+      : null,
+  });
+  const plazo = plazoMasProximo([{ etiqueta: 'Time limit', cuando: archivo?.proximoPlazo }]);
+  const salida = describirSalida(fechaSalida, !etapa.esGanada && !etapa.esPerdida);
 
   const atrasada = proximaTarea ? esTareaAtrasada(proximaTarea.venceEn) : false;
   const avatarColores = generarColorAvatar(contactoId);
@@ -82,30 +103,34 @@ export function TarjetaOportunidad({
       aria-label={`Oportunidad: ${titulo}, cliente ${contactoNombre || 'anónimo'}, etapa ${etapa.nombre}`}
       className={`group tarjeta-elevacion relative cursor-grab rounded-2xl border border-neutral-200 bg-white p-4 shadow-2xs hover:border-cyan-500/40 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-cyan-500 active:cursor-grabbing dark:border-neutral-800 dark:bg-neutral-900/90 dark:hover:border-cyan-500/40 ${claseAnimacion}`.trim()}
     >
-      {/* Fila superior: Destino + Probabilidad */}
-      <div className="mb-2 flex items-center justify-between text-[11px]">
-        {destino ? (
-          <span className="flex items-center space-x-1 font-medium text-neutral-600 dark:text-neutral-400">
-            <MapPin className="h-3 w-3 text-neutral-400 dark:text-neutral-500" />
-            <span className="max-w-[140px] truncate">{destino}</span>
+      {/* Fila superior: «Destino · mes · pasajeros» + fecha de salida */}
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-x-2 gap-y-1 text-[11px]">
+        {lineaViaje ? (
+          <span
+            data-testid="linea-de-viaje"
+            className="flex max-w-full shrink-0 items-center space-x-1 font-semibold text-neutral-800 dark:text-neutral-200"
+          >
+            <MapPin
+              className="h-3 w-3 shrink-0 text-neutral-500 dark:text-neutral-400"
+              aria-hidden="true"
+            />
+            <span className="truncate">{lineaViaje}</span>
           </span>
         ) : (
-          <span className="text-neutral-400">Destino por definir</span>
+          <span className="text-neutral-600 dark:text-neutral-400">Destino por definir</span>
         )}
 
-        {probabilidad !== null && (
-          <span
-            className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-              probabilidad >= 75
-                ? 'bg-ok-100 text-ok-800 dark:bg-ok-950 dark:text-ok-300'
-                : probabilidad >= 40
-                  ? 'bg-acento-100 text-acento-800 dark:bg-acento-950 dark:text-acento-300'
-                  : 'bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400'
-            }`}
-          >
-            {probabilidad}%
+        <span
+          data-testid="fecha-de-salida"
+          title={salida.ayuda}
+          className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${CLASES_POR_NIVEL[salida.nivel]}`}
+        >
+          <Calendar className="h-2.5 w-2.5" aria-hidden="true" />
+          <span>
+            <span className="sr-only">Salida: </span>
+            {salida.texto}
           </span>
-        )}
+        </span>
       </div>
 
       {/* Título de la oportunidad */}
@@ -125,6 +150,12 @@ export function TarjetaOportunidad({
           {contactoNombre || 'Viajero no identificado'}
         </span>
       </div>
+
+      {plazo && (
+        <div className="mt-2">
+          <InsigniaDePlazo plazo={plazo} />
+        </div>
+      )}
 
       {/* Valor monetario .cifra */}
       <div className="mt-3 flex items-baseline justify-between border-t border-neutral-100 pt-2.5 dark:border-neutral-800/80">

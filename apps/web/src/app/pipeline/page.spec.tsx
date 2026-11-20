@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import PipelinePage from './page';
 import * as crmApi from '../../lib/crm-api';
 import { obtenerMockTableroPipeline } from '../../lib/mock-pipeline';
@@ -50,7 +50,7 @@ describe('PipelinePage (T-102) — Tablero Kanban y Lista de Oportunidades', () 
       contactoId: '00000000-0002-4000-8000-000000000004',
       contactoNombre: 'Felipe Morales',
       titulo: 'Paquete San Andrés Todo Incluido Familiar',
-      destino: 'San Andrés Islas, Colombia',
+      destino: 'San Andrés, Colombia',
       paqueteId: null,
       fechaSalida: '2026-11-20',
       etapa: {
@@ -277,5 +277,43 @@ describe('PipelinePage (T-102) — Tablero Kanban y Lista de Oportunidades', () 
 
     expect(inputBusqueda).toHaveProperty('value', '');
     expect(screen.queryByRole('button', { name: /Limpiar filtros del pipeline/i })).toBeNull();
+  });
+});
+
+describe('PipelinePage — datos del viaje en las tarjetas (auditoría UX, I2)', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    window.localStorage.clear();
+  });
+
+  it('cada tarjeta lleva la fecha de salida en lugar del porcentaje de probabilidad', () => {
+    render(<PipelinePage />);
+
+    const fechas = screen.getAllByTestId('fecha-de-salida');
+    // Una por oportunidad del tablero de demostración (3 + 2 + 2 + 1 + 1).
+    expect(fechas).toHaveLength(9);
+    for (const f of fechas) expect(f.textContent).toMatch(/\d{1,2} [a-z]{3} \d{4}/);
+    // Ya no hay insignias «80 %» en las tarjetas.
+    expect(screen.queryByText(/^\d{1,3}%$/)).toBeNull();
+  });
+
+  it('con archivo de viaje la tarjeta suma los pasajeros y el time limit a la línea del viaje', async () => {
+    render(<PipelinePage />);
+    // Felipe Morales tiene el archivo 1043 (2 adultos y 1 niño) con time limit hoy.
+    await waitFor(() => {
+      const tarjeta = screen.getByRole('article', { name: /Felipe Morales/ });
+      expect(within(tarjeta).getByTestId('linea-de-viaje').textContent).toMatch(
+        /^San Andrés · dic( \d{4})? · 2\+1$/,
+      );
+      expect(within(tarjeta).getByTestId('insignia-plazo').textContent).toMatch(
+        /^Time limit (hoy|mañana)$/,
+      );
+    });
+    // Juan Pérez no tiene archivo: solo destino y mes, sin pasajeros inventados.
+    const juan = screen.getByRole('article', { name: /Juan Pérez/ });
+    expect(within(juan).getByTestId('linea-de-viaje').textContent).toMatch(
+      /^Cancún · dic( \d{4})?$/,
+    );
   });
 });

@@ -9,7 +9,7 @@ import {
   type FiltroBandeja,
   type PaginaBandeja,
 } from '@viajapro/contracts';
-import { Search, Rows3, AlertTriangle, RefreshCw } from 'lucide-react';
+import { Search, Rows3, AlertTriangle, RefreshCw, MapPin } from 'lucide-react';
 import { DistintivoDatosDemo } from '../comun/distintivo-datos-demo';
 import { useModoDemo } from '../../lib/modo-demo';
 import { inboxApi } from '../../lib/inbox-api';
@@ -22,6 +22,10 @@ import {
   calcularTiempoRestanteVentana,
 } from '../../lib/bandeja-logica';
 import { obtenerClaseEscalonada } from '../comun/animaciones';
+import { InsigniaDePlazo } from '../comun/viaje-insignias';
+import { useViajesBandeja } from '../../lib/viajes-bandeja';
+import { viajeDeContacto } from '../../lib/viajes-de-contactos-logica';
+import { lineaDeViaje } from '../../lib/viaje-solicitado-logica';
 
 import {
   useFiltrosPersistidos,
@@ -44,6 +48,7 @@ export function ListaConversaciones() {
   const { esDemo } = useModoDemo();
   const pathname = usePathname();
   const { setConversaciones: setConversacionesContexto, setModalAyudaAbierto } = useBandejaAtajos();
+  const indiceDeViajes = useViajesBandeja();
 
   // Filtros persistidos en localStorage con opción de limpiar (T-103)
   const {
@@ -409,6 +414,8 @@ export function ListaConversaciones() {
               const avatarColores = generarColorAvatar(conv.contactoId);
               const iniciales = obtenerIniciales(conv.contactoNombre, conv.contactoTelefono);
               const ventanaInfo = calcularTiempoRestanteVentana(conv.ventana.expiraEn);
+              const viaje = viajeDeContacto(indiceDeViajes, conv.contactoId);
+              const textoViaje = viaje ? lineaDeViaje(viaje) : null;
 
               return (
                 <Link
@@ -446,6 +453,22 @@ export function ListaConversaciones() {
                         </span>
                       </div>
 
+                      {textoViaje && (
+                        <p
+                          data-testid="linea-de-viaje"
+                          className="mt-0.5 flex items-center gap-1 text-[11px] font-semibold text-neutral-800 dark:text-neutral-200"
+                        >
+                          <MapPin
+                            className="h-3 w-3 shrink-0 text-neutral-500 dark:text-neutral-400"
+                            aria-hidden="true"
+                          />
+                          <span className="truncate">
+                            <span className="sr-only">Viaje: </span>
+                            {textoViaje}
+                          </span>
+                        </p>
+                      )}
+
                       <p className="mt-0.5 truncate text-[11px] text-neutral-500 dark:text-neutral-400">
                         {conv.ultimoMensajeTexto || 'Sin mensajes'}
                       </p>
@@ -456,6 +479,8 @@ export function ListaConversaciones() {
                             {conv.mensajesSinLeer}
                           </span>
                         )}
+
+                        {viaje?.plazo && <InsigniaDePlazo plazo={viaje.plazo} />}
 
                         {conv.slaVenceEn && (
                           <span className="bg-alerta-50 py-0.2 text-alerta-700 dark:bg-alerta-950/40 dark:text-alerta-400 rounded px-1.5 font-semibold">
