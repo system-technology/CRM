@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { NAVEGACION, ACCIONES } from './navegacion';
 import {
   normalizarTexto,
   construirIndiceGlobal,
@@ -26,6 +27,29 @@ describe('Pruebas Unitarias del Buscador Global Omnicanal (buscador-global-logic
       expect(categorias.has('oportunidades')).toBe(true);
       expect(categorias.has('viajes')).toBe(true);
       expect(categorias.has('catalogo')).toBe(true);
+    });
+  });
+
+  describe('comandos derivados de NAVEGACION', () => {
+    it('hay un comando por entrada de la tabla, con su etiqueta, más las acciones', () => {
+      const comandos = construirIndiceGlobal().filter((i) => i.categoria === 'acciones');
+      for (const m of NAVEGACION) {
+        expect(comandos.some((c) => c.titulo === m.etiqueta && c.href === m.ruta)).toBe(true);
+      }
+      for (const a of ACCIONES) {
+        expect(comandos.some((c) => c.titulo === a.etiqueta && c.href === a.ruta)).toBe(true);
+      }
+    });
+
+    it('«cotizaciones» y «seguimientos» devuelven su módulo', () => {
+      const cot = buscarEnIndiceGlobal('cotizaciones');
+      expect(
+        cot.acciones.some((i) => i.titulo === 'Cotizaciones' && i.href === '/cotizaciones'),
+      ).toBe(true);
+      const seg = buscarEnIndiceGlobal('seguimientos');
+      expect(
+        seg.acciones.some((i) => i.titulo === 'Seguimientos' && i.href === '/seguimientos'),
+      ).toBe(true);
     });
   });
 
@@ -109,9 +133,9 @@ describe('Pruebas Unitarias del Buscador Global Omnicanal (buscador-global-logic
         sesionAsesor as unknown as import('@viajapro/contracts').SesionActual,
       );
       // No debe exponer configuración de agencia al asesor
-      expect(indiceAsesor.some((i) => i.id === 'act-config')).toBe(false);
+      expect(indiceAsesor.some((i) => i.id === 'nav-configuracion')).toBe(false);
       // No debe exponer reportes restringidos al asesor sin permiso de margen
-      expect(indiceAsesor.some((i) => i.id === 'act-reportes')).toBe(false);
+      expect(indiceAsesor.some((i) => i.id === 'nav-reportes')).toBe(false);
 
       const sesionAdmin = {
         identidad: {
@@ -137,8 +161,8 @@ describe('Pruebas Unitarias del Buscador Global Omnicanal (buscador-global-logic
       const indiceAdmin = construirIndiceGlobal(
         sesionAdmin as unknown as import('@viajapro/contracts').SesionActual,
       );
-      expect(indiceAdmin.some((i) => i.id === 'act-config')).toBe(true);
-      expect(indiceAdmin.some((i) => i.id === 'act-reportes')).toBe(true);
+      expect(indiceAdmin.some((i) => i.id === 'nav-configuracion')).toBe(true);
+      expect(indiceAdmin.some((i) => i.id === 'nav-reportes')).toBe(true);
     });
 
     it('respeta el límite por categoría', () => {
