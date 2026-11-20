@@ -314,6 +314,8 @@ para siempre.**
 | `recepciones_webhook` y `recepciones_webhook_changes` | Sí — **ADR-0008** | El staging del webhook: contenido de varios tenants durante segundos, **antes** de saber de quién es. Cifrado con AAD, borrado al clasificar y purgado. Se cuentan como una: la hija existe porque el grano real del procesamiento es el `change` |
 | `identidades`, `credenciales`, `sesiones`, `verificaciones` | Sí — **ADR-0011** | La persona y su autenticación (Better Auth). Existen antes de elegir agencia y el inicio de sesión corre sin `app.current_tenant`. **Solo `viajapro_identidad`** tiene privilegios (DML); los tres roles de siempre, cero, declarados fila por fila |
 | `accesos_identidad` | Sí — **ADR-0011** | Índice `(identidad, agencia)` para el selector de agencia. `viajapro_identidad` solo la lee; la escribe únicamente el disparador `SECURITY DEFINER` de `usuarios` (dueño `viajapro_accesos`, NOLOGIN). No decide nada: lo que cuenta es leer `usuarios` bajo RLS |
+| `aceptaciones_de_identidad`, `codigos_de_registro` | Sí — **ADR-0030** | Del registro de la persona, antes de que exista agencia: la evidencia de que aceptó términos y aviso de privacidad (solo `SELECT, INSERT` para `viajapro_identidad`) y el código de registro por correo (DML para `viajapro_identidad`). Los tres roles de siempre, cero |
+| `codigos_de_acceso_al_registro`, `parametros_del_registro` | Sí — **ADR-0030** | El código de acceso del piloto y el tope global de altas por hora. **Ningún rol de login** tiene privilegios: las crea la plataforma y solo las leen o consumen `crear_agencia` y `codigo_de_acceso_vigente` (dueño `viajapro_registro`, `NOLOGIN`), por columnas |
 | `plans` | Todavía no | Catálogo de planes del SaaS, igual para todos |
 | `countries`, `timezones` | Todavía no | Datos de referencia universales |
 | `system_message_templates` | Todavía no | Plantillas base sugeridas, que cada tenant copia y adapta |
@@ -1207,3 +1209,58 @@ cinturones de las dos migraciones y el bloque «T-241» de `aislamiento.spec.ts`
 
 **Por qué.** Hallazgos BAJOS de las auditorías de T-254 y T-250/T-251. Lo fijan el cinturón de la
 migración y `aislamiento.spec.ts` (N-2, N-5, H-2, H-6 y H-8).
+
+
+## Registro autoservicio de agencias (ADR-0030 F1, T-268, migración `20261120100000_registro_de_agencias_rol_y_crear_agencia`)
+
+```
+  tenants  + origen_del_alta origen_del_alta NOT NULL DEFAULT 'PLATAFORMA'  (PLATAFORMA | AUTOSERVICIO)
+           + creado_por_identidad_id uuid → identidades  RESTRICT
+           + prueba_termina_en timestamptz · encargo_version varchar(40) · encargo_aceptado_en timestamptz
+           CHECK tenants_encargo_completo (versión y fecha juntas) · tenants_autoservicio_completo
+           excepciones_rls para viajapro_app: SIGUE {SELECT}
+
+  perfiles_de_agencia (DE AGENCIA, RLS forzada USING + WITH CHECK)
+     tenant_id PK → tenants CASCADE · nit · digito_verificacion · razon_social · rnt · verificado_en
+     BEFORE INSERT OR UPDATE: verificado_en := NULL si no escribe el dueño de la tabla (la plataforma)
+                              o si cambia nit o rnt          (perfil_de_agencia_sin_verificar)
+
+  GLOBALES (excepciones_rls, sin tenant_id)
+     aceptaciones_de_identidad      → identidades RESTRICT   viajapro_identidad {SELECT, INSERT}
+     codigos_de_registro            correo_hmac UNIQUE, intentos_restantes >= 0   viajapro_identidad DML
+     codigos_de_acceso_al_registro  hash PK, correo_hmac NOT NULL   ningún rol de login
+     parametros_del_registro        una fila, tope_por_hora 1..1000 (30)   ningún rol de login
+
+  viajapro_registro (NOLOGIN, NOBYPASSRLS, NOINHERIT; el de migraciones: SET TRUE, INHERIT FALSE)
+    ├─ dueño de crear_agencia(p_nombre, p_slug_base, p_pais_iso, p_moneda_iso, p_zona_horaria,
+    │                         p_identidad_id, p_dias_de_prueba, p_version_encargo,
+    │                         p_hash_codigo_de_acceso, p_correo_hmac) → uuid          VOLATILE
+    └─ dueño de codigo_de_acceso_vigente(p_hash, p_correo_hmac) → boolean            STABLE
+         columnas: tenants SELECT (id, slug, estado, origen_del_alta, creado_por_identidad_id, creado_en)
+                   tenants INSERT (13 columnas de la fila nueva; ni UPDATE ni DELETE ni TRUNCATE)
+                   monedas SELECT (codigo_iso) · parametros_del_registro SELECT (tope_por_hora)
+                   codigos_de_acceso_al_registro SELECT (hash, usado_en, expira_en, correo_hmac),
+                                                 UPDATE (usado_en, usado_por_identidad_id)
+         EXECUTE: solo viajapro_app · proconfig exactamente {search_path=""}
+```
+
+- **`crear_agencia` es la única vía por la que un rol de aplicación crea una fila de `tenants`**, y
+  solo inserta: el id lo elige la base (`gen_random_uuid()`), el slug choca con `ON CONFLICT (slug)
+  DO NOTHING` (sin bloques `EXCEPTION`) y se reintenta con base + 4 hex hasta 5 veces, y los slugs
+  reservados nunca se asignan tal cual. Aborta con `42501` si `app.current_tenant` no estaba vacío;
+  `22023` si un dato no vale; `VPR01` si la identidad ya tiene una agencia de autoservicio en prueba
+  (bajo `pg_advisory_xact_lock(7410102, hashtext(identidad))`); `VPR04` si el código de acceso no
+  existe, está usado o caducado o es de otro correo (lo consume con un `UPDATE … WHERE usado_en IS
+  NULL AND expira_en > now() AND correo_hmac = …`, que un `ROLLBACK` deshace); `VPR02` con el tope por
+  hora; `VPR03` sin slug libre. Su última sentencia fija `app.current_tenant` a la agencia nueva, y
+  ese valor sobrevive al volver (supuesto S1): la API no fija el tenant, lo hereda.
+- **El NIT no va en `tenants`** (la leen enteros tres roles de login, y el de una persona natural es
+  su cédula): va en `perfiles_de_agencia`, bajo RLS y en claro (ADR-0030 «Negativas»). Lo declarado
+  por el registrante no está verificado; el disparador, y no un `GRANT` por columnas, lo garantiza,
+  porque `privilegios_declarados` no admite columnas.
+
+**Por qué.** ADR-0030: una agencia puede darse de alta sola sin que la API pueda escribir `tenants`
+ni tocar una agencia existente. Lo fijan el cinturón de la migración (aborta si la superficie de
+`viajapro_registro` difiere de la declarada) y el bloque «T-268» de `aislamiento.spec.ts` (R-1 a R-9),
+más las aserciones 10, 11, 12, 13, 14, 20, 62, 83 y AUD-008, que pasan a 17 funciones, 7 propietarios
+y 7 tablas de identidad.
