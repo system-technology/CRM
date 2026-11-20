@@ -1270,3 +1270,33 @@ ni tocar una agencia existente. Lo fijan el cinturón de la migración (aborta s
 `viajapro_registro` difiere de la declarada) y el bloque «T-268» de `aislamiento.spec.ts` (R-1 a R-9),
 más las aserciones 10, 11, 12, 13, 14, 20, 62, 83, AUD-008 y P-1, que pasan a 17 funciones, 7
 propietarios, 7 tablas de identidad y tres columnas de texto en `perfiles_de_agencia`.
+
+## El RNT de la agencia: `perfiles_de_agencia` (T-261, ADR-0030 §3.3, migración `20261120130000_perfiles_de_agencia_con_rnt`)
+
+```
+  tenants
+     ▲
+     └── perfiles_de_agencia   (tenant_id PK = FK)   ON DELETE CASCADE
+           rnt            text NULL      CHECK solo dígitos, 1 a 10
+           verificado_en  timestamptz NULL   CHECK: verificado exige rnt
+           BEFORE INSERT OR UPDATE: proteger_verificacion_del_perfil
+```
+
+- **Una fila por agencia, o ninguna.** La API la crea al guardar (upsert, bajo RLS). El RNT no va en
+  `tenants`: esa tabla la leen enteros tres roles de login (ADR-0030).
+- **Lo que declara la agencia no está verificado.** `verificado_en` solo lo conserva la plataforma,
+  que aquí es el DUEÑO de la tabla (el rol de las migraciones). El disparador es SECURITY INVOKER y
+  niega por defecto: para cualquier otro rol, al insertar queda en NULL; al actualizar, si cambia el
+  RNT queda en NULL y si no cambia conserva el valor anterior. La plataforma sí puede fijarlo, pero
+  si cambia el RNT sin tocar `verificado_en`, también queda en NULL.
+- **Solo `viajapro_app`**, con SELECT, INSERT y UPDATE (sin DELETE), declarado en
+  `privilegios_declarados`. Ningún rol de aplicación es miembro del dueño.
+- **Ningún documento hacia el viajero imprime el RNT sin `verificado_en`.** La API lo expone como
+  `rntVerificado` y la propuesta (`/cotizaciones/[id]/imprimir`) lo imprime solo si es `true`.
+- **Lo que viene.** `nit`, `digito_verificacion` y `razon_social` llegan con T-268 como columnas
+  añadidas, **pero T-268 también tiene que reemplazar el disparador** para que cambiar el `nit`
+  anule la verificación. Quién marca `verificado_en` sin SQL a mano lo decide T-280.
+
+**Por qué.** La propuesta al viajero debe llevar el RNT (Ley 300 de 1996) y un documento con peso
+legal no puede imprimir el que cualquiera pudo escribir. Lo fijan el cinturón de la migración y
+`aislamiento.spec.ts` (P-1 a P-6).

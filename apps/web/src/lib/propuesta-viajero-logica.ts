@@ -281,3 +281,17 @@ export function etiquetaDeTramo(d: Pick<DiaDeItinerario, 'desde' | 'hasta'>): st
 export function referenciaDePropuesta(cotizacionId: string, version: number): string {
   return `${cotizacionId.replace(/-/g, '').slice(-6).toUpperCase()}-v${version}`;
 }
+
+/**
+ * El RNT que puede imprimirse en un documento hacia el viajero: solo el que la plataforma verificó
+ * (ADR-0030 §3.3). Lo que declara la agencia sin verificar no se imprime, aunque exista; y si el
+ * dato falta o es de una API anterior, tampoco: nunca se inventa.
+ */
+export function rntImprimible(ajustes: {
+  rnt?: string | null | undefined;
+  rntVerificado?: boolean | undefined;
+}): string | null {
+  if (ajustes.rntVerificado !== true) return null;
+  const rnt = ajustes.rnt?.trim();
+  return rnt ? rnt : null;
+}

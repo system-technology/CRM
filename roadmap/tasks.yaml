@@ -5868,18 +5868,23 @@ tasks:
     phase: 1
     priority: P1
     effort: S
-    status: ready
+    status: done
     depends_on: []
     acceptance:
-      - "AjustesDeAgencia con rnt (opcional) en packages/contracts, columna en tenants (migración de datos) y edición en Configuración por dueño o administrador"
-      - "La propuesta al viajero (/cotizaciones/[id]/imprimir) lo muestra con la API real; hoy solo sale en modo demo"
+      - "perfiles_de_agencia (tenant_id PK, rnt, verificado_en) con RLS y un disparador SECURITY INVOKER que niega por defecto la verificación, con las pruebas P-1 a P-6 de aislamiento.spec.ts (#321, ADR-0030 §3.3: el RNT NO va en tenants)"
+      - "AjustesDeAgencia con rnt y rntVerificado; el PATCH acepta rnt (CambiarAjustesDeAgencia, estricto: ningún cuerpo puede fijar la verificación) con usuarios.administrar, y la e2e prueba aislamiento entre agencias (#322)"
+      - "Configuración con el bloque del RNT en sus tres estados, y la propuesta al viajero (/cotizaciones/[id]/imprimir) lo imprime solo si está verificado (#324)"
     files:
-      - packages/contracts/src/identidad.ts
       - packages/database/prisma
+      - packages/contracts/src/identidad.ts
       - apps/api/src/modules/identity
+      - apps/web/src/components/configuracion/bloque-rnt.tsx
+      - apps/web/src/app/cotizaciones/[id]/imprimir
     source: propuesta al viajero (auditoría UX 2026-11-20 I3; Ley 300 de 1996 exige el RNT en la publicidad)
     created_at: 2026-11-20T22:00:00.000Z
     owner: backend
+    started_at: 2026-11-20T22:00:00.000Z
+    notes: "Hecho en tres PR: #321 (migración, aprobada por el propietario), #322 (API) y #324 (web). Con la API real NADIE tiene el RNT verificado hasta que exista T-280: el propietario marca la agencia piloto a mano con UPDATE perfiles_de_agencia SET verificado_en = now() WHERE tenant_id = $1 AND rnt = <el RNT comprobado>, exigiendo una sola fila, con el rol dueño. Supuesto sin verificar contra la fuente oficial: el RNT son solo dígitos, de 1 a 10. Desviaciones de ADR-0030: la tabla solo trae rnt y verificado_en (nit, digito_verificacion y razon_social llegan con T-268), y el disparador CONSERVA verificado_en si el RNT no cambia, en vez de ponerlo en NULL siempre que escribe viajapro_app (si no, cualquier UPDATE de la API lo borraría). La tarea original decía «columna en tenants»: era un error, contradecía el ADR aceptado."
   - id: T-262
     title: "Datos legales de la agencia en la API (razón social, NIT, dirección, teléfono) para la propuesta"
     type: feature
@@ -5995,7 +6000,7 @@ tasks:
     owner: documentador
   - id: T-268
     title: "Migración del registro: rol viajapro_registro, función crear_agencia, columnas de tenants,
-      perfiles_de_agencia y aceptaciones_de_identidad (ADR-0030 F1)"
+      columnas nuevas de perfiles_de_agencia y aceptaciones_de_identidad (ADR-0030 F1)"
     type: security
     phase: 2
     priority: P1
@@ -6027,8 +6032,13 @@ tasks:
         misma migración, para que ninguna reconcesión intermedia les dé privilegios
       - tenants con origen_del_alta (enum, NOT NULL DEFAULT PLATAFORMA), creado_por_identidad_id, prueba_termina_en,
         encargo_version y encargo_aceptado_en; la declaración de tenants para viajapro_app sigue en {SELECT}
-      - perfiles_de_agencia con tenant_id PK, RLS USING + WITH CHECK y verificado_en; un disparador lo pone en
-        NULL cuando escribe viajapro_app o cambia nit o rnt
+      - "perfiles_de_agencia YA EXISTE (T-261, #321: tenant_id PK, rnt, verificado_en, RLS y el disparador
+        proteger_verificacion_del_perfil). Esta migración NO la crea: añade nit, digito_verificacion y razon_social
+        con ADD COLUMN, decide antes su cifrado (el NIT de una persona natural es su cédula, ADR-0015, R10) y
+        REEMPLAZA el disparador (CREATE OR REPLACE) para que cambiar el nit también anule verificado_en; revisa si
+        el CHECK perfiles_de_agencia_verificado_exige_rnt sigue siendo la regla cuando se pueda verificar un NIT
+        sin RNT; y actualiza P-1 y P-6 de aislamiento.spec.ts. Solo con ADD COLUMN, una agencia con NIT verificado
+        podría cambiarlo por el de otra y conservar la verificación"
       - "Tablas globales con su fila en excepciones_rls y el literal de aislamiento.spec.ts ampliado (R1):
         aceptaciones_de_identidad (con canal; SELECT e INSERT solo para viajapro_identidad), codigos_de_registro
         (correo_hmac UNIQUE, intentos_restantes CHECK >= 0; solo viajapro_identidad),
@@ -6380,8 +6390,17 @@ tasks:
         codigos_de_acceso_al_registro, expira_en en días (14 por defecto), correo OBLIGATORIO (se pide al
         generar y se guarda solo como HMAC) y nota sin datos personales; el secreto se muestra una vez en la terminal y nunca se escribe en un
         registro"
-      - Marcar verificado_en de perfiles_de_agencia por tenant_id, tras comprobar NIT y RNT; registra la acción
-        en registros_auditoria sin el NIT
+      - "Marcar verificado_en de perfiles_de_agencia por tenant_id, tras comprobar NIT y RNT; registra la acción
+        en registros_auditoria sin el NIT. El UPDATE lleva WHERE tenant_id = $1 AND rnt = <el RNT comprobado> (y nit
+        = <el NIT comprobado> cuando exista) y el comando exige exactamente una fila, o falla: si no, verificaría un
+        RNT que la agencia cambió entre la comprobación y el UPDATE, o no haría nada sin avisar (con RLS forzada, un
+        rol dueño que no es superusuario afecta 0 filas si no fija app.current_tenant en la misma transacción)"
+      - "Decide con qué rol corre. «La plataforma» del disparador de perfiles_de_agencia es el DUEÑO de la tabla, que
+        es el rol de las migraciones; usarlo para una operación rutinaria agranda el radio de esa credencial. Una
+        función SECURITY DEFINER a secas no sirve (su current_user no es el dueño y el disparador anularía la
+        verificación). Opción: un rol NOLOGIN viajapro_verificador, dueño de verificar_perfil(tenant, rnt_esperado),
+        con el disparador ampliado para reconocerlo; eso es migración, cláusula en R2 y aprobación del propietario"
+      - "Mientras este comando no exista, el propietario marca a mano la agencia piloto (ver las notas de T-261)"
       - Cambiar parametros_del_registro.tope_por_hora dentro de su CHECK, con registro de quién y cuándo
       - Los comandos corren con el rol de plataforma, se niegan con un rol de aplicación y no imprimen cadenas de
         conexión ni secretos; spec de cada guardia
@@ -6438,24 +6457,20 @@ tasks:
     created_at: 2026-11-20T23:45:00.000Z
     owner: backend
   - id: T-285
-    title: "perfiles_de_agencia: disparador de verificado_en SECURITY INVOKER que niega por defecto, y prueba de que
-      no se imprime NIT ni RNT sin verificar"
+    title: "perfiles_de_agencia: que cambiar el NIT también anule la verificación, y prueba de que no se imprime NIT sin verificar"
     type: security
     phase: 2
     priority: P2
     effort: S
     status: blocked
-    blocked_reason: "Cola de la segunda auditoría de ADR-0030 (C4). Espera T-268; human_required: migración del
-      Owner"
+    blocked_reason: "Lo del RNT ya está hecho (T-261). Lo del NIT espera T-268; human_required: migración del Owner"
     human_required: true
     depends_on:
       - T-268
     acceptance:
-      - El disparador es SECURITY INVOKER y niega por defecto (solo el rol de plataforma conserva un verificado_en
-        no nulo); cualquier otro rol que escriba nit o rnt lo deja en NULL
-      - aislamiento.spec.ts cubre viajapro_app intentando fijar verificado_en
-      - Un spec de la pieza de cotización (y de cualquier documento hacia el viajero) comprueba que sin
-        verificado_en no aparecen NIT ni RNT
+      - "HECHO para el RNT (T-261): el disparador es SECURITY INVOKER y niega por defecto (solo el dueño de la tabla conserva un verificado_en no nulo); P-6 de aislamiento.spec.ts cubre a viajapro_app intentando fijar verificado_en, también por upsert; page.rnt.spec.tsx comprueba que la propuesta con la API real no imprime un RNT sin verificar"
+      - "Con T-268: el disparador compara también nit (CREATE OR REPLACE), y P-6 cubre el cambio de nit, que deja verificado_en en NULL"
+      - "La propuesta y cualquier documento hacia el viajero comprueban que sin verificado_en no aparece el NIT, con un spec análogo a page.rnt.spec.tsx"
     files:
       - packages/database/prisma/migrations
       - packages/database/tests/aislamiento.spec.ts
@@ -6755,8 +6770,8 @@ tasks:
     source: auditoría de seguridad de T-268 (2026-11-20)
     created_at: 2026-11-20T16:40:00.000Z
     owner: datos
-    notes: "Auditoría de T-268 (2026-11-20), hallazgo B3 corregido solo en crear_agencia y codigo_de_acceso_vigente; el mismo patrón vive en las otras 15 funciones. Impacto menor: sus dueños no ganan nada que viajapro_app no tenga ya."
-  - id: T-307
+    notes: "Auditoría de T-268 (2026-11-20), hallazgo B3 corregido solo en crear_agencia y codigo_de_acceso_vigente; el mismo patrón vive en las otras 15 funciones. Impacto menor: sus dueños no ganan nada que viajapro_app no tenga ya. Segunda pasada: la aserción de prosrc de T-268 solo revisa el primer DECLARE (un subbloque anidado escaparía) y su lista de literales con tipo delante no cubre float8, real, regclass ni timestamp with time zone; R-10 solo suplanta text. Hoy ninguno existe en el código; ampliar al generalizar el patrón."
+  - id: T-312
     title: "Tope por hora de altas atómico en crear_agencia"
     type: security
     phase: 1
@@ -6832,3 +6847,39 @@ tasks:
     created_at: 2026-11-20T16:40:00.000Z
     owner: documentador
     notes: "Auditoría de T-268, cola 6. Un ADR no se edita, se supersede o se anota: seguir lo que el propio ADR-0030 diga sobre sus enmiendas."
+
+    title: "Retirar ActualizarAjustesDeAgencia del contrato (la web y la API ya usan CambiarAjustesDeAgencia)"
+    type: refactor
+    phase: 1
+    priority: P3
+    effort: S
+    status: ready
+    depends_on: [T-261]
+    acceptance:
+      - "Se borra ActualizarAjustesDeAgencia (y su tipo) de packages/contracts/src/identidad.ts y su bloque en agencia-ajustes.controller.spec.ts"
+      - "pnpm typecheck y las pruebas de contratos, API y web en verde: nadie lo importaba ya"
+    files:
+      - packages/contracts/src/identidad.ts
+      - apps/api/src/modules/identity/interface/agencia-ajustes.controller.spec.ts
+    source: T-261 (el esquema legado quedó solo la zona horaria mientras la web migraba)
+    created_at: 2026-11-21T00:10:00.000Z
+    owner: backend
+  - id: T-307
+    title: "perfiles_de_agencia: endurecimiento menor que dejó la auditoría de T-261"
+    type: security
+    phase: 2
+    priority: P3
+    effort: S
+    status: ready
+    human_required: true
+    depends_on: [T-261]
+    acceptance:
+      - "creado_en y actualizado_en los fija el disparador (hoy viajapro_app puede escribirlos a su antojo; es cosmético, pero sirve de auditoría si alguien llega a depender de ellos)"
+      - "scripts/mutaciones-aislamiento.mjs gana dos mutaciones: GRANT <dueño de la tabla> TO viajapro_app y DISABLE TRIGGER sobre perfiles_de_agencia; la prueba debe ponerse en rojo con cada una"
+    files:
+      - packages/database/prisma/migrations
+      - packages/database/tests/aislamiento.spec.ts
+      - scripts/mutaciones-aislamiento.mjs
+    source: auditoría de seguridad de T-261 (cola, 2026-11-20); scripts/ y migraciones piden al propietario (R11)
+    created_at: 2026-11-21T00:10:00.000Z
+    owner: datos
