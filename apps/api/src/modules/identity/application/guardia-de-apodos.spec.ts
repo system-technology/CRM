@@ -96,19 +96,32 @@ describe('GuardiaDeApodos.estaApagada', () => {
     expect(await new GuardiaDeApodos(c).estaApagada()).toBe(false);
   });
 
-  it('índice por agencia (fase 2): encendida con las agencias que sean, sin contarlas', async () => {
+  it('índice por agencia y más de una agencia: SIGUE apagada (el ingreso de la fase 1 resuelve sin agencia)', async () => {
     const c = new Catalogo();
     c.global = false;
+    c.agencias = 2;
+    expect(await new GuardiaDeApodos(c).estaApagada()).toBe(true);
     c.agencias = 50;
-    expect(await new GuardiaDeApodos(c).estaApagada()).toBe(false);
-    expect(c.consultasDeAgencias).toBe(0);
+    expect(await new GuardiaDeApodos(c).estaApagada()).toBe(true);
   });
 
-  it('falla cerrado: si no se puede comprobar, está apagada', async () => {
+  it('índice por agencia y una sola agencia: encendida', async () => {
+    const c = new Catalogo();
+    c.global = false;
+    c.agencias = 1;
+    expect(await new GuardiaDeApodos(c).estaApagada()).toBe(false);
+  });
+
+  it('no depende de la forma del índice: ni siquiera lo consulta', async () => {
+    const c = new Catalogo();
+    c.global = new Error('no debía consultarse');
+    c.agencias = 1;
+    expect(await new GuardiaDeApodos(c).estaApagada()).toBe(false);
+  });
+
+  it('falla cerrado: si no se puede contar las agencias, está apagada', async () => {
     const c = new Catalogo();
     c.agencias = new Error('base caída');
-    expect(await new GuardiaDeApodos(c).estaApagada()).toBe(true);
-    c.global = new Error('base caída');
     expect(await new GuardiaDeApodos(c).estaApagada()).toBe(true);
   });
 });

@@ -24,7 +24,7 @@ export class AutoservicioConApodosGlobalesError extends DomainError {
     super(
       'REGISTRO_AUTOSERVICIO_HABILITADO está activo y el índice de apodos es global ' +
         '(accesos_identidad_apodo_key): con varias agencias, un dueño podría enumerar y acaparar ' +
-        'apodos ajenos (ADR-0031 §4). Termina la fase 2 (T-309) o apaga el autoservicio.',
+        'apodos ajenos (ADR-0031 §4). Termina la fase 2 (T-361) o apaga el autoservicio.',
     );
   }
 }
@@ -36,12 +36,16 @@ export class GuardiaDeApodos {
   constructor(@Inject(PuertoCatalogoDeApodos) private readonly catalogo: PuertoCatalogoDeApodos) {}
 
   /**
-   * (b) `true` si la función de apodos está apagada: el índice es global y `tenants` tiene MÁS de
-   * una fila. Falla cerrado: si no se puede comprobar, está apagada.
+   * (b) `true` si la función de apodos está apagada: `tenants` tiene MÁS de una fila, **sea cual
+   * sea la forma del índice**. El código de la fase 1 resuelve el apodo SIN agencia: si el índice
+   * pasara a ser por agencia antes que el ingreso (T-361), un asesor de B que escribe `ana` se
+   * autenticaría contra la `ana` de A y gastaría su tope. Sin agencia en el enlace solo se entra
+   * por correo (ADR-0031 §5.3). El índice pesa solo en el freno al arrancar (`exigirAlArrancar`);
+   * T-361 reescribe esta guardia cuando la resolución lleve agencia. Falla cerrado: si no se
+   * puede comprobar, está apagada.
    */
   async estaApagada(): Promise<boolean> {
     try {
-      if (!(await this.catalogo.indiceDeApodosEsGlobal())) return false;
       return (await this.catalogo.cuentaDeAgencias()) > 1;
     } catch (error) {
       this.log.warn(
