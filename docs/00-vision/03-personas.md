@@ -104,5 +104,5 @@ Se confirman en las preguntas del roadmap §4, no aquí:
 - [S] Quien registra los pagos es la asesora que lleva el archivo, no una persona de administración.
 - [S] Cobra por **archivo** (grupo familiar), no por pasajero.
 - [S] Las asesoras de JD Tours no ven los reportes de la agencia hoy (la hoja sí la ven).
-- [S] El trabajo móvil es por las tardes y fuera de horario, y desde el celular se responde y se
-  consulta, no se cotiza un paquete completo.
+- [S] El trabajo móvil es por las tardes y fuera de horario. **Resuelto por el propietario
+  (2026-11-20):** desde el celular se hace **todo el flujo**, también cotizar y enviar.

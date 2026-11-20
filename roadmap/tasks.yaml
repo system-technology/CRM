@@ -7410,3 +7410,257 @@ tasks:
     source: revisión a 390 px del cotizador (diseno-ux, 2026-11-20); la sesión coordinadora lo pide como bug de cola P1
     created_at: 2026-11-20T22:00:00.000Z
     owner: frontend
+
+  - id: T-360
+    title: "Codigo de un solo uso pedido por apodo (decidir si vale el riesgo)"
+    type: security
+    phase: 2
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: [T-374]
+    acceptance:
+      - "Decision documentada: pedir el codigo por apodo permitiria disparar correos a alguien conociendo solo un identificador corto"
+      - "Si se acepta, el contador del codigo y el limite de envios cuentan por identidad y no distinguen apodo de correo"
+    files:
+      - apps/api/src/modules/identity/interface/auth.controller.ts
+      - docs/03-adr/0031-ingreso-por-apodo.md
+    source: ADR-0031 (cola, 2026-11-20)
+    created_at: 2026-11-20T20:30:00.000Z
+    owner: backend
+  - id: T-361
+    title: "Fase 2 del ingreso: agencia en la URL e indice de apodos por agencia"
+    type: feature
+    phase: 2
+    priority: P1
+    effort: L
+    status: backlog
+    human_required: true
+    depends_on: [T-374]
+    acceptance:
+      - "La ruta /<agencia>/ingreso resuelve la agencia y el apodo es unico por agencia (UNIQUE (tenant_acceso_id, apodo))"
+      - "Se ejecuta ANTES de encender REGISTRO_AUTOSERVICIO_HABILITADO y antes de dar de alta una segunda agencia, tambien por script (ADR-0031 §4)"
+      - "No se mueve ningun dato: es una migracion de indices"
+    files:
+      - docs/03-adr/0031-ingreso-por-apodo.md
+      - packages/contracts/src/identidad.ts
+    source: ADR-0031 (cola, 2026-11-20)
+    created_at: 2026-11-20T20:30:00.000Z
+    owner: arquitecto
+  - id: T-362
+    title: "Fase 2b: subdominio por agencia cuando haya dominio propio"
+    type: infra
+    phase: 2
+    priority: P2
+    effort: M
+    status: backlog
+    human_required: true
+    depends_on: [T-361]
+    acceptance:
+      - "<agencia>.viajapro.com resuelve la agencia con el middleware de Next y la cookie queda solo en su anfitrion (sin Domain=.viajapro.com)"
+      - "Origenes confiables de la API aceptan el patron de subdominios sin abrir otros"
+    files:
+      - docs/03-adr/0031-ingreso-por-apodo.md
+    source: ADR-0031 (cola, 2026-11-20)
+    created_at: 2026-11-20T20:30:00.000Z
+    owner: devops
+  - id: T-363
+    title: "Retirar la clave correo de IniciarSesion una version despues del PR 2"
+    type: refactor
+    phase: 2
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: [T-374]
+    acceptance:
+      - "IniciarSesion solo acepta identificador; web y API desplegadas con la version nueva"
+      - "Un cuerpo con correo se rechaza por forma"
+    files:
+      - packages/contracts/src/identidad.ts
+      - apps/api/src/modules/identity/interface/auth.controller.ts
+    source: ADR-0031 (cola, 2026-11-20)
+    created_at: 2026-11-20T20:30:00.000Z
+    owner: backend
+  - id: T-364
+    title: "Nota de seguimiento en ADR-0030: T-361 va antes del autoservicio"
+    type: docs
+    phase: 2
+    priority: P2
+    effort: S
+    status: backlog
+    acceptance:
+      - "La tabla de precondiciones de ADR-0030 cita T-361 como requisito previo para encender el autoservicio (nota de seguimiento: ADR-0030 esta Aceptado, no se edita)"
+    files:
+      - docs/03-adr/0030-registro-autoservicio-de-agencias.md
+    source: ADR-0031 (cola, 2026-11-20)
+    created_at: 2026-11-20T20:30:00.000Z
+    owner: documentador
+  - id: T-365
+    title: "Bloqueo por denegacion del ingreso con clave: tope por identidad e IP"
+    type: security
+    phase: 2
+    priority: P2
+    effort: M
+    status: backlog
+    depends_on: [T-373]
+    acceptance:
+      - "La clave del tope es (identidad, IP o su /24): 10 fallos en 15 minutos, mas un techo por identidad mas alto (p. ej. 50 en 24 h) con alerta"
+      - "La demo, cuyo correo no recibe nada, no queda bloqueable sin recuperacion"
+    files:
+      - apps/api/src/modules/identity/infrastructure/contador-de-fallos.postgres.ts
+    source: ADR-0031 (cola, 2026-11-20)
+    created_at: 2026-11-20T20:30:00.000Z
+    owner: backend
+  - id: T-366
+    title: "Apodo: unicidad sobre el apodo sin separadores y mas reservados"
+    type: security
+    phase: 2
+    priority: P2
+    effort: S
+    status: backlog
+    depends_on: [T-373]
+    acceptance:
+      - "isabel.alvear, isabel_alvear e isabel-alvear cuentan como el mismo apodo"
+      - "Reservados ampliados: support, help, security, seguridad, staff, equipo, contacto, facturacion y el prefijo admin"
+    files:
+      - packages/contracts/src/identidad.ts
+      - apps/api/src/modules/identity/infrastructure/miembros.prisma.ts
+    source: ADR-0031 (cola, 2026-11-20)
+    created_at: 2026-11-20T20:30:00.000Z
+    owner: backend
+  - id: T-367
+    title: "Apodo en invitaciones: fijarlo al aceptar sin bloquear la aceptacion"
+    type: feature
+    phase: 2
+    priority: P3
+    effort: M
+    status: backlog
+    depends_on: [T-373]
+    acceptance:
+      - "Una colision de apodo al aceptar la invitacion no deja una identidad creada a medias"
+      - "El apodo se aplica despues de aceptar"
+    files:
+      - apps/api/src/modules/identity/infrastructure/miembros.prisma.ts
+    source: ADR-0031 (cola, 2026-11-20)
+    created_at: 2026-11-20T20:30:00.000Z
+    owner: backend
+  - id: T-368
+    title: "GRANT SELECT por columnas de accesos_identidad y rechazo de correo e identificador a la vez"
+    type: security
+    phase: 2
+    priority: P3
+    effort: S
+    status: backlog
+    human_required: true
+    depends_on: [T-372]
+    acceptance:
+      - "viajapro_identidad lee solo las columnas de accesos_identidad que necesita (hoy tiene SELECT de tabla)"
+      - "Un cuerpo con correo e identificador a la vez se rechaza por forma"
+    files:
+      - packages/database/tests/aislamiento.spec.ts
+      - apps/api/src/modules/identity/interface/auth.controller.ts
+    source: ADR-0031 (cola, 2026-11-20)
+    created_at: 2026-11-20T20:30:00.000Z
+    owner: datos
+  - id: T-369
+    title: "Semilla: apodos sinteticos solo en la local, no en staging"
+    type: docs
+    phase: 2
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: [T-372]
+    acceptance:
+      - "seed.ts da apodos sinteticos solo con APP_ENV=local; la semilla de staging no los lleva"
+    files:
+      - packages/database/prisma/seed.ts
+    source: ADR-0031 (cola, 2026-11-20)
+    created_at: 2026-11-20T20:30:00.000Z
+    owner: datos
+  - id: T-370
+    title: "ContadorDeFallosPostgres: purgar tambien las filas del tope de ingreso"
+    type: bug
+    phase: 2
+    priority: P2
+    effort: S
+    status: backlog
+    depends_on: [T-373]
+    acceptance:
+      - "El barrido recibe el prefijo como parametro y purga viajapro:ingreso-fallos: ademas de viajapro:otp-fallos:"
+      - "Sin esto la tabla verificaciones crece sin limite"
+    files:
+      - apps/api/src/modules/identity/infrastructure/contador-de-fallos.postgres.ts
+    source: ADR-0031 (cola, 2026-11-20)
+    created_at: 2026-11-20T20:30:00.000Z
+    owner: backend
+  - id: T-371
+    title: "La baja de un miembro limpia usuarios.apodo"
+    type: security
+    phase: 2
+    priority: P2
+    effort: S
+    status: backlog
+    depends_on: [T-373]
+    acceptance:
+      - "Dar de baja a un miembro pone su apodo en NULL y lo libera en el indice"
+      - "Reactivarlo con una invitacion no le devuelve el apodo (minimizacion de datos, Ley 1581)"
+    files:
+      - apps/api/src/modules/identity/infrastructure/miembros.prisma.ts
+    source: ADR-0031 (cola, 2026-11-20)
+    created_at: 2026-11-20T20:30:00.000Z
+    owner: backend
+  - id: T-372
+    title: "ADR-0031 PR 1 datos: usuarios.apodo, disparador y CHECK del correo centinela"
+    type: security
+    phase: 1
+    priority: P1
+    effort: M
+    status: in_progress
+    human_required: true
+    acceptance:
+      - "Migracion con usuarios.apodo, accesos_identidad.apodo y el cuerpo nuevo de sincronizar_acceso_identidad segun el ADR"
+      - "Aserciones (a)-(l) de aislamiento y mutacion nueva del arnes; M17 sigue detectada por la prueba 64"
+      - "CHECK en identidades.correo que rechaza el dominio .invalid"
+    files:
+      - packages/database/tests/aislamiento.spec.ts
+      - packages/database/prisma/seed.ts
+    source: ADR-0031 (cola, 2026-11-20)
+    created_at: 2026-11-20T20:30:00.000Z
+    owner: datos
+  - id: T-373
+    title: "ADR-0031 PR 2 API: identificador, centinela, tope por identidad y PATCH del apodo"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: L
+    status: backlog
+    human_required: true
+    depends_on: [T-372]
+    acceptance:
+      - "IniciarSesion acepta identificador; apodo inexistente, mal formado, bloqueado o clave erronea dan la misma respuesta"
+      - "PATCH /api/v1/miembros/:id/apodo con la guarda de la baja; la API no arranca con el autoservicio activo y el indice global"
+      - "e2e de aislamiento, sin apodo en logs ni en el 409"
+    files:
+      - apps/api/src/modules/identity/interface/auth.controller.ts
+      - apps/api/src/modules/identity/interface/miembros.controller.ts
+      - packages/contracts/src/identidad.ts
+    source: ADR-0031 (cola, 2026-11-20)
+    created_at: 2026-11-20T20:30:00.000Z
+    owner: backend
+  - id: T-374
+    title: "ADR-0031 PR 3 web: Correo o usuario en el ingreso y apodo al editar un miembro"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on: [T-373]
+    acceptance:
+      - "El campo de ingreso dice Correo o usuario y ningun mensaje distingue que el usuario no existe"
+      - "El apodo se edita en un miembro existente; el 409 solo se muestra ahi"
+      - "Probado en un navegador real, tambien en el movil"
+    files:
+      - apps/web/src/app/ingresar
+    source: ADR-0031 (cola, 2026-11-20)
+    created_at: 2026-11-20T20:30:00.000Z
+    owner: frontend

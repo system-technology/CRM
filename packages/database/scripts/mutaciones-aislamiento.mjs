@@ -97,6 +97,9 @@ async function definicionSana(cliente) {
     if (!/\[par-old\][\s\S]*\[\/par-old\]/.test(definicionSincronizar)) {
       throw new Error('La función no tiene las marcas [par-old]: M17 no sabría qué quitar.');
     }
+    if (!/\[rama-apodo\][\s\S]*\[\/rama-apodo\]/.test(definicionSincronizar)) {
+      throw new Error('La función no tiene las marcas [rama-apodo]: M21 no sabría qué quitar.');
+    }
   }
   return definicionSincronizar;
 }
@@ -298,12 +301,29 @@ const MUTACIONES = [
                   FOREIGN KEY (rol_id, tenant_id) REFERENCES roles (id, tenant_id)
                   ON DELETE NO ACTION ON UPDATE RESTRICT`,
   },
+  // --- Apodo de ingreso (20261120150000, ADR-0031) ---
+  {
+    // Sin la rama, cambiar el apodo no toca el par (el INSERT choca con él y no hace nada): el
+    // índice se queda con el apodo VIEJO, que sigue resolviendo hacia la identidad. Las marcas
+    // [rama-apodo] van fuera de [par-old] a propósito: la expresión de M17 es codiciosa.
+    nombre: 'M21 — el disparador sin la rama del apodo: un cambio de apodo no llega al índice',
+    sql: async (cliente) => {
+      const sana = await definicionSana(cliente);
+      const mutada = sana.replace(/\[rama-apodo\][\s\S]*\[\/rama-apodo\]/, '[sin rama-apodo]');
+      if (!/\[par-old\][\s\S]*\[\/par-old\]/.test(mutada)) {
+        throw new Error('M21 se llevó también las marcas [par-old]: las ramas se solapan.');
+      }
+      await reescribirComoAccesos(cliente, mutada);
+    },
+    prueba: 'AP7',
+    restaurar: async (cliente) => reescribirComoAccesos(cliente, await definicionSana(cliente)),
+  },
   // --- perfiles_de_agencia (T-261, T-307): la «plataforma» es el dueño de la tabla ---
   {
     // Si un rol de aplicación fuera miembro del dueño, el disparador lo trataría como la
     // plataforma y `viajapro_app` podría fijar verificado_en.
     nombre:
-      'M21 — viajapro_app es miembro del dueño de perfiles_de_agencia (pasaría por «la plataforma»)',
+      'M22 — viajapro_app es miembro del dueño de perfiles_de_agencia (pasaría por «la plataforma»)',
     sql: async (cliente) => {
       const dueno = await duenoDePerfiles(cliente);
       await cliente.query(`GRANT ${cliente.escapeIdentifier(dueno)} TO viajapro_app`);
@@ -316,7 +336,7 @@ const MUTACIONES = [
   },
   {
     nombre:
-      'M22 — el disparador de perfiles_de_agencia está deshabilitado: la API fija verificado_en',
+      'M23 — el disparador de perfiles_de_agencia está deshabilitado: la API fija verificado_en',
     sql: `ALTER TABLE perfiles_de_agencia DISABLE TRIGGER perfiles_de_agencia_proteger_verificacion`,
     prueba: 'T-261',
     restaurar: `ALTER TABLE perfiles_de_agencia ENABLE TRIGGER perfiles_de_agencia_proteger_verificacion`,

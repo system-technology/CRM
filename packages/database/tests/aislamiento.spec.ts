@@ -4267,7 +4267,7 @@ const FORANEAS_COMPUESTAS_HISTORIAL_DE_COTIZACION = [
 ] as const;
 
 describe('T-132 — cotizacion_cambios_estado: aislamiento, foráneas compuestas y solo añadir', () => {
-  const correo = (sufijo: string) => `fixture-aislamiento-${MARCA}-hcot-${sufijo}@prueba.invalid`;
+  const correo = (sufijo: string) => `fixture-aislamiento-${MARCA}-hcot-${sufijo}@prueba.test`;
   const identidadDe: Record<string, string> = {
     [TENANT_A]: randomUUID(),
     [TENANT_B]: randomUUID(),
@@ -4610,7 +4610,7 @@ const escriturasGenericas = (tabla: string) => [
 ];
 
 describe('ADR-0011 — identidad global, pertenencias y roles por agencia', () => {
-  const correo = (sufijo: string) => `fixture-aislamiento-${MARCA}-${sufijo}@prueba.invalid`;
+  const correo = (sufijo: string) => `fixture-aislamiento-${MARCA}-${sufijo}@prueba.test`;
   const identidadA = randomUUID();
   const identidadB = randomUUID();
   /** La que se repunta y se mueve de agencia en la 56. */
@@ -5465,7 +5465,7 @@ const FORANEAS_COMPUESTAS_SEGUIMIENTOS = [
 ] as const;
 
 describe('T-082 — seguimientos: aislamiento, foráneas compuestas y un solo destino', () => {
-  const correo = (sufijo: string) => `fixture-aislamiento-${MARCA}-seg-${sufijo}@prueba.invalid`;
+  const correo = (sufijo: string) => `fixture-aislamiento-${MARCA}-seg-${sufijo}@prueba.test`;
   const identidadDe: Record<string, string> = {
     [TENANT_A]: randomUUID(),
     [TENANT_B]: randomUUID(),
@@ -6168,7 +6168,7 @@ const FORANEAS_COMPUESTAS_HISTORIAL_DE_ETAPAS = [
 ] as const;
 
 describe('T-131 — oportunidad_cambios_etapa: aislamiento, foráneas compuestas y solo añadir', () => {
-  const correo = (sufijo: string) => `fixture-aislamiento-${MARCA}-hist-${sufijo}@prueba.invalid`;
+  const correo = (sufijo: string) => `fixture-aislamiento-${MARCA}-hist-${sufijo}@prueba.test`;
   const identidadDe: Record<string, string> = {
     [TENANT_A]: randomUUID(),
     [TENANT_B]: randomUUID(),
@@ -6637,6 +6637,9 @@ const COLUMNAS_DE_TEXTO_DECLARADAS: readonly string[] = [
   'tarifas.moneda_iso',
   'tarifas.nombre',
   'temporadas.nombre',
+  // ADR-0031: el apodo de ingreso. Dato personal (se deriva del nombre), no PII sensible de
+  // viajeros: es del personal de la agencia. Va en claro porque el ingreso lo busca por igualdad.
+  'usuarios.apodo',
   'usuarios.correo',
   'usuarios.nombre',
   'versiones_cotizacion.destino',
@@ -7053,7 +7056,7 @@ describe('Ajustes de la agencia — zona horaria por función, nunca por GRANT s
 // =========================================================================================
 
 describe('T-240 — ADR-0024 F1: archivo de viaje, reservas, pasajeros y entregas de eventos', () => {
-  const correo = (sufijo: string) => `fixture-aislamiento-${MARCA}-file-${sufijo}@prueba.invalid`;
+  const correo = (sufijo: string) => `fixture-aislamiento-${MARCA}-file-${sufijo}@prueba.test`;
   const identidadDe: Record<string, string> = {
     [TENANT_A]: randomUUID(),
     [TENANT_B]: randomUUID(),
@@ -8237,7 +8240,7 @@ async function abrirOtroArchivo(
 // =========================================================================================
 
 describe('T-254 — notificaciones: aislamiento, foráneas compuestas, una por evento y usuario', () => {
-  const correo = (sufijo: string) => `fixture-aislamiento-${MARCA}-notif-${sufijo}@prueba.invalid`;
+  const correo = (sufijo: string) => `fixture-aislamiento-${MARCA}-notif-${sufijo}@prueba.test`;
   const identidadDe: Record<string, string> = {
     [TENANT_A]: randomUUID(),
     [TENANT_B]: randomUUID(),
@@ -8712,7 +8715,7 @@ describe('T-254 — notificaciones: aislamiento, foráneas compuestas, una por e
 // =========================================================================================
 
 describe('T-250 — reserva_cambios_estado: aislamiento, foráneas compuestas e inmutabilidad', () => {
-  const correo = (sufijo: string) => `fixture-aislamiento-${MARCA}-hres-${sufijo}@prueba.invalid`;
+  const correo = (sufijo: string) => `fixture-aislamiento-${MARCA}-hres-${sufijo}@prueba.test`;
   const identidadDe: Record<string, string> = {
     [TENANT_A]: randomUUID(),
     [TENANT_B]: randomUUID(),
@@ -9246,7 +9249,7 @@ describe('T-268 — Registro de agencias (ADR-0030 F1): crear_agencia, código d
     await admin.query(
       `INSERT INTO identidades (id, correo, nombre, correo_verificado, actualizado_en)
        VALUES ($1, $2, 'Fixture registro', true, now())`,
-      [id, `fixture-aislamiento-${MARCA}-registro-${sufijo}@prueba.invalid`],
+      [id, `fixture-aislamiento-${MARCA}-registro-${sufijo}@prueba.test`],
     );
     identidades.push(id);
     return id;
@@ -10577,5 +10580,492 @@ describe('T-261 — perfiles_de_agencia: aislamiento y verificación solo de la 
       ),
     );
     expect(fijadas.rows).toEqual([{ creado_fijado: true, actualizado_fijado: true }]);
+  });
+});
+
+// =========================================================================================
+// ADR-0031 (T-372) — el apodo de ingreso: `usuarios.apodo` y su reflejo en `accesos_identidad`
+//
+// El apodo es dato de la PERTENENCIA (bajo RLS) y el disparador `sincronizar_acceso_identidad`
+// lo copia al índice global, que el ingreso lee sin tenant. Las aserciones (a)-(l) de la fila 1
+// del «Plan por PR» del ADR, en orden: AP1 = (a) … AP12 = (l). La AP7 (g) es la que pone en rojo
+// la mutación M21 («sin la rama del apodo») de `scripts/mutaciones-aislamiento.mjs`.
+//
+// Los apodos llevan la MARCA de la corrida: el índice es único en todo el sistema y varias
+// corridas comparten base. El apodo es dato personal: aquí todos son sintéticos.
+// =========================================================================================
+
+describe('ADR-0031 (T-372) — apodo de ingreso: usuarios.apodo y su reflejo en accesos_identidad', () => {
+  const correo = (sufijo: string) => `fixture-aislamiento-${MARCA}-apodo-${sufijo}@prueba.test`;
+  /** Apodo sintético de esta corrida: empieza por letra y cumple el CHECK. */
+  const ap = (sufijo: string) => `f${MARCA}.${sufijo}`;
+  const rolA = randomUUID();
+  const rolB = randomUUID();
+  const identidades: string[] = [];
+
+  async function nuevaIdentidad(sufijo: string): Promise<string> {
+    const id = randomUUID();
+    await admin.query(
+      `INSERT INTO identidades (id, correo, nombre, actualizado_en) VALUES ($1, $2, 'Fixture', now())`,
+      [id, correo(sufijo)],
+    );
+    identidades.push(id);
+    return id;
+  }
+
+  /** Alta por el camino de la API: viajapro_app, bajo RLS. */
+  async function crearUsuario(
+    tenant: string,
+    identidad: string,
+    sufijo: string,
+    apodo: string | null,
+  ): Promise<string> {
+    const id = randomUUID();
+    await comoTenant(tenant, (c) =>
+      c.query(
+        `INSERT INTO usuarios (id, tenant_id, identidad_id, rol_id, correo, nombre, apodo, actualizado_en)
+         VALUES ($1, $2, $3, $4, $5, 'Asesora de prueba', $6, now())`,
+        [id, tenant, identidad, tenant === TENANT_A ? rolA : rolB, correo(sufijo), apodo],
+      ),
+    );
+    return id;
+  }
+
+  const cambiarApodo = (tenant: string, usuario: string, apodo: string | null) =>
+    comoTenant(tenant, (c) =>
+      c.query('UPDATE usuarios SET apodo = $1 WHERE id = $2', [apodo, usuario]),
+    );
+
+  /** Lo que el índice dice de una identidad: sus pares y el apodo de cada uno. */
+  async function indiceDe(
+    identidad: string,
+  ): Promise<Array<{ tenant: string; apodo: string | null }>> {
+    const { rows } = await admin.query(
+      `SELECT tenant_acceso_id AS tenant, apodo FROM accesos_identidad
+        WHERE identidad_id = $1 ORDER BY 1`,
+      [identidad],
+    );
+    return rows as Array<{ tenant: string; apodo: string | null }>;
+  }
+
+  /** Lo que el ingreso encontraría con un apodo: a quién y en qué agencia. */
+  async function resuelve(apodo: string): Promise<Array<{ identidad: string; tenant: string }>> {
+    const { rows } = await admin.query(
+      `SELECT identidad_id AS identidad, tenant_acceso_id AS tenant FROM accesos_identidad
+        WHERE apodo = $1 ORDER BY 2`,
+      [apodo],
+    );
+    return rows as Array<{ identidad: string; tenant: string }>;
+  }
+
+  async function apodoEnUsuarios(tenant: string, usuario: string): Promise<Array<string | null>> {
+    const { rows } = await comoTenant(tenant, (c) =>
+      c.query('SELECT apodo FROM usuarios WHERE id = $1', [usuario]),
+    );
+    return rows.map((r) => r.apodo as string | null);
+  }
+
+  beforeAll(async () => {
+    for (const [tenant, rol] of [
+      [TENANT_A, rolA],
+      [TENANT_B, rolB],
+    ] as const) {
+      await comoTenant(tenant, (c) =>
+        c.query(
+          `INSERT INTO roles (id, tenant_id, nombre, permisos, actualizado_en)
+           VALUES ($1, $2, $3, ARRAY[]::text[], now())`,
+          [rol, tenant, `Apodo ${MARCA}`],
+        ),
+      );
+    }
+  }, 60_000);
+
+  afterAll(async () => {
+    // Las pertenencias primero (`usuarios → identidades` es RESTRICT); el disparador se lleva los
+    // pares y sus apodos. Los roles se van con los tenants de la corrida.
+    await admin.query('DELETE FROM usuarios WHERE identidad_id = ANY($1)', [identidades]);
+    await admin.query('DELETE FROM identidades WHERE id = ANY($1)', [identidades]);
+  }, 60_000);
+
+  it('AP1 (a) — el disparador escribe (identidad, tenant, apodo) solo de la fila que pasó RLS', async () => {
+    const identidad = await nuevaIdentidad('ap1');
+    const usuario = await crearUsuario(TENANT_A, identidad, 'ap1', ap('ap1'));
+    expect(await indiceDe(identidad)).toEqual([{ tenant: TENANT_A, apodo: ap('ap1') }]);
+    expect(await resuelve(ap('ap1'))).toEqual([{ identidad, tenant: TENANT_A }]);
+
+    // Plantar desde B una pertenencia CON APODO en A: el WITH CHECK la rechaza y el índice no
+    // guarda ni el par ni el apodo.
+    const plantada = await nuevaIdentidad('ap1-plantada');
+    await expect(
+      comoTenant(TENANT_B, (c) =>
+        c.query(
+          `INSERT INTO usuarios (id, tenant_id, identidad_id, rol_id, correo, nombre, apodo, actualizado_en)
+           VALUES (gen_random_uuid(), $1, $2, $3, $4, 'Infiltrada', $5, now())`,
+          [TENANT_A, plantada, rolA, correo('ap1-plantada'), ap('ap1-plantada')],
+        ),
+      ),
+    ).rejects.toMatchObject({ code: '42501' });
+    expect(await indiceDe(plantada)).toEqual([]);
+    expect(await resuelve(ap('ap1-plantada'))).toEqual([]);
+
+    // Cambiar desde B el apodo de la pertenencia de A: cero filas y el índice intacto.
+    const robo = await cambiarApodo(TENANT_B, usuario, ap('ap1-robado'));
+    expect(robo.rowCount).toBe(0);
+    expect(await indiceDe(identidad)).toEqual([{ tenant: TENANT_A, apodo: ap('ap1') }]);
+    expect(await resuelve(ap('ap1-robado'))).toEqual([]);
+  });
+
+  it('AP2 (b) — viajapro_app y viajapro_identidad siguen sin poder escribir accesos_identidad (42501)', async () => {
+    const identidad = await nuevaIdentidad('ap2');
+    await crearUsuario(TENANT_A, identidad, 'ap2', ap('ap2'));
+    const roles = await rolesAVigilar(admin);
+    expect(roles).toEqual(expect.arrayContaining(['viajapro_app', ROL_IDENTIDAD]));
+
+    const escrituras: Array<[string, unknown[]]> = [
+      [
+        'INSERT INTO accesos_identidad (identidad_id, tenant_acceso_id, apodo) VALUES ($1, $2, $3)',
+        [identidad, TENANT_B, ap('ap2-plantado')],
+      ],
+      [
+        'UPDATE accesos_identidad SET apodo = $1 WHERE identidad_id = $2',
+        [ap('ap2-otro'), identidad],
+      ],
+      ['UPDATE accesos_identidad SET apodo = NULL WHERE identidad_id = $1', [identidad]],
+      ['DELETE FROM accesos_identidad WHERE apodo = $1', [ap('ap2')]],
+    ];
+    // Todo rol de login vigilado o declarado, no solo los dos que nombra el ADR.
+    for (const rol of roles) {
+      await comoRol(admin, rol, async () => {
+        for (const [sentencia, parametros] of escrituras) {
+          await esperarPermisoDenegado(
+            admin,
+            () => admin.query(sentencia, parametros as never[]),
+            `${sentencia.split(' ')[0]} sobre accesos_identidad como ${rol}`,
+          );
+        }
+      });
+    }
+    // Y por la conexión real de la API, con el contexto de tenant puesto.
+    await expect(
+      comoTenant(TENANT_A, (c) =>
+        c.query(
+          'INSERT INTO accesos_identidad (identidad_id, tenant_acceso_id, apodo) VALUES ($1, $2, $3)',
+          [identidad, TENANT_B, ap('ap2-plantado')],
+        ),
+      ),
+    ).rejects.toMatchObject({ code: '42501' });
+
+    expect(await indiceDe(identidad)).toEqual([{ tenant: TENANT_A, apodo: ap('ap2') }]);
+    expect(await resuelve(ap('ap2-plantado'))).toEqual([]);
+  }, 60_000);
+
+  it('AP3 (c) — desactivar o eliminar al usuario retira su apodo del índice; reactivarlo lo devuelve', async () => {
+    const identidad = await nuevaIdentidad('ap3');
+    const usuario = await crearUsuario(TENANT_A, identidad, 'ap3', ap('ap3'));
+    const presente = [{ tenant: TENANT_A, apodo: ap('ap3') }];
+
+    await comoTenant(TENANT_A, (c) =>
+      c.query('UPDATE usuarios SET activo = false WHERE id = $1', [usuario]),
+    );
+    expect(await indiceDe(identidad), 'un usuario desactivado conserva el par').toEqual([]);
+    expect(await resuelve(ap('ap3')), 'un usuario desactivado conserva el apodo').toEqual([]);
+
+    await comoTenant(TENANT_A, (c) =>
+      c.query('UPDATE usuarios SET activo = true WHERE id = $1', [usuario]),
+    );
+    expect(await indiceDe(identidad)).toEqual(presente);
+
+    await comoTenant(TENANT_A, (c) =>
+      c.query('UPDATE usuarios SET eliminado_en = now() WHERE id = $1', [usuario]),
+    );
+    expect(await indiceDe(identidad), 'un usuario borrado conserva el par').toEqual([]);
+    expect(await resuelve(ap('ap3')), 'un usuario borrado conserva el apodo').toEqual([]);
+
+    await comoTenant(TENANT_A, (c) =>
+      c.query('UPDATE usuarios SET eliminado_en = NULL WHERE id = $1', [usuario]),
+    );
+    expect(await indiceDe(identidad)).toEqual(presente);
+  });
+
+  it('AP4 (d) — el mismo apodo en dos agencias da 23505 por el índice global; en la misma, por el de la agencia', async () => {
+    const enA = await nuevaIdentidad('ap4-a');
+    await crearUsuario(TENANT_A, enA, 'ap4-a', ap('ap4'));
+
+    const enB = await nuevaIdentidad('ap4-b');
+    await expect(crearUsuario(TENANT_B, enB, 'ap4-b', ap('ap4'))).rejects.toMatchObject({
+      code: '23505',
+      constraint: 'accesos_identidad_apodo_key',
+    });
+
+    const otraEnA = await nuevaIdentidad('ap4-a2');
+    await expect(crearUsuario(TENANT_A, otraEnA, 'ap4-a2', ap('ap4'))).rejects.toMatchObject({
+      code: '23505',
+      constraint: 'usuarios_tenant_id_apodo_key',
+    });
+
+    expect(await resuelve(ap('ap4'))).toEqual([{ identidad: enA, tenant: TENANT_A }]);
+  });
+
+  it('AP5 (e) — el CHECK rechaza mayúsculas, @, lo que no es ASCII y lo que no tiene la forma, en las dos tablas', async () => {
+    const identidad = await nuevaIdentidad('ap5');
+    const usuario = await crearUsuario(TENANT_A, identidad, 'ap5', ap('ap5'));
+
+    const invalidos = [
+      `F${MARCA}`, // mayúscula
+      `f${MARCA}X`,
+      `f${MARCA}@agencia.co`, // un correo no es un apodo
+      `f${MARCA}@`,
+      `peña${MARCA}`, // no ASCII: se rechaza, no se translitera
+      `josé${MARCA}`,
+      `алекс${MARCA}`, // cirílico (homógrafos)
+      `ﬁ${MARCA}`, // ligadura que NFKC volvería «fi»: la base no normaliza, rechaza
+      'ab', // menos de 3
+      `f${MARCA}${'a'.repeat(20)}`, // 31
+      `1${MARCA}`, // empieza por dígito
+      `.${MARCA}`,
+      `f${MARCA}.`, // separador al final
+      `f${MARCA}..a`, // dos separadores seguidos
+      `f${MARCA}-_a`,
+      `f${MARCA} a`, // espacio
+      `f${MARCA}\n`, // salto de línea al final
+      '',
+    ];
+    for (const apodo of invalidos) {
+      await expect(
+        cambiarApodo(TENANT_A, usuario, apodo),
+        `usuarios acepta ${JSON.stringify(apodo)}`,
+      ).rejects.toMatchObject({ code: '23514', constraint: 'usuarios_apodo_formato' });
+
+      // El índice tiene su propio CHECK: ni el dueño de la tabla escribe ahí un apodo sin forma.
+      await admin.query('BEGIN');
+      try {
+        await expect(
+          admin.query('UPDATE accesos_identidad SET apodo = $1 WHERE identidad_id = $2', [
+            apodo,
+            identidad,
+          ]),
+          `accesos_identidad acepta ${JSON.stringify(apodo)}`,
+        ).rejects.toMatchObject({ code: '23514', constraint: 'accesos_identidad_apodo_formato' });
+      } finally {
+        await admin.query('ROLLBACK');
+      }
+    }
+    expect(await apodoEnUsuarios(TENANT_A, usuario)).toEqual([ap('ap5')]);
+
+    // Y lo que sí tiene la forma entra, hasta los 30 caracteres justos.
+    for (const apodo of [
+      `f${MARCA}`,
+      `f${MARCA}.x_y-z9`,
+      `f${MARCA}${'a'.repeat(19)}`,
+      ap('ap5'),
+    ]) {
+      await cambiarApodo(TENANT_A, usuario, apodo);
+      expect(await indiceDe(identidad)).toEqual([{ tenant: TENANT_A, apodo }]);
+    }
+  });
+
+  it('AP6 (f) — la matriz de funciones no cambia para ningún rol de login, y el disparador escucha apodo', async () => {
+    await comprobarMatrizDeFunciones(admin);
+
+    const { rows } = await admin.query(
+      `SELECT pg_get_userbyid(p.proowner) AS dueno, p.prosecdef AS definidor,
+              p.proacl IS NULL AS acl_por_defecto,
+              (SELECT array_agg(x.grantee::regrole::text ORDER BY x.grantee)
+                 FROM aclexplode(p.proacl) x) AS concedidos
+         FROM pg_proc p
+        WHERE p.oid = 'public.sincronizar_acceso_identidad()'::regprocedure`,
+    );
+    expect(rows).toEqual([
+      {
+        dueno: 'viajapro_accesos',
+        definidor: true,
+        acl_por_defecto: false,
+        concedidos: ['viajapro_accesos'],
+      },
+    ]);
+    const roles = await rolesAVigilar(admin);
+    const { rows: ejecutan } = await admin.query(
+      `SELECT rolname FROM unnest($1::text[]) AS rolname
+        WHERE has_function_privilege(rolname, 'public.sincronizar_acceso_identidad()', 'EXECUTE')`,
+      [roles],
+    );
+    expect(ejecutan, 'roles de login que ejecutan la función del disparador').toEqual([]);
+
+    // AFTER INSERT OR DELETE OR UPDATE OF las cinco columnas, por fila, habilitado y sin WHEN.
+    const { rows: disparador } = await admin.query(
+      `SELECT t.tgname::text AS nombre, t.tgtype::int AS tipo, t.tgenabled::text AS estado,
+              t.tgqual IS NULL AS sin_when,
+              (SELECT array_agg(a.attname::text ORDER BY a.attname::text)
+                 FROM pg_attribute a
+                WHERE a.attrelid = t.tgrelid AND a.attnum = ANY (t.tgattr::int2[])) AS escucha
+         FROM pg_trigger t
+        WHERE t.tgrelid = 'public.usuarios'::regclass AND NOT t.tgisinternal
+          AND t.tgfoid = 'public.sincronizar_acceso_identidad()'::regprocedure`,
+    );
+    expect(disparador).toEqual([
+      {
+        nombre: 'usuarios_sincronizar_acceso_identidad',
+        tipo: 29, // ROW | INSERT | DELETE | UPDATE, sin BEFORE ni INSTEAD
+        estado: 'O',
+        sin_when: true,
+        escucha: ['activo', 'apodo', 'eliminado_en', 'identidad_id', 'tenant_id'],
+      },
+    ]);
+  });
+
+  it('AP7 (g) — cambiar el apodo actualiza el índice y el apodo viejo deja de resolver', async () => {
+    const identidad = await nuevaIdentidad('ap7');
+    const usuario = await crearUsuario(TENANT_A, identidad, 'ap7', ap('ap7-viejo'));
+    expect(await resuelve(ap('ap7-viejo'))).toEqual([{ identidad, tenant: TENANT_A }]);
+
+    await cambiarApodo(TENANT_A, usuario, ap('ap7-nuevo'));
+    expect(await indiceDe(identidad)).toEqual([{ tenant: TENANT_A, apodo: ap('ap7-nuevo') }]);
+    expect(await resuelve(ap('ap7-viejo')), 'el apodo viejo sigue resolviendo').toEqual([]);
+    expect(await resuelve(ap('ap7-nuevo'))).toEqual([{ identidad, tenant: TENANT_A }]);
+
+    // De sin apodo a con apodo: la misma rama (NULL → valor también es un cambio).
+    const sinApodo = await nuevaIdentidad('ap7-sin');
+    const otro = await crearUsuario(TENANT_A, sinApodo, 'ap7-sin', null);
+    expect(await indiceDe(sinApodo)).toEqual([{ tenant: TENANT_A, apodo: null }]);
+    await cambiarApodo(TENANT_A, otro, ap('ap7-puesto'));
+    expect(await indiceDe(sinApodo)).toEqual([{ tenant: TENANT_A, apodo: ap('ap7-puesto') }]);
+  });
+
+  it('AP8 (h) — poner null retira el apodo del índice y conserva el par', async () => {
+    const identidad = await nuevaIdentidad('ap8');
+    const usuario = await crearUsuario(TENANT_A, identidad, 'ap8', ap('ap8'));
+    await cambiarApodo(TENANT_A, usuario, null);
+    expect(await indiceDe(identidad), 'el selector de agencia perdió el par').toEqual([
+      { tenant: TENANT_A, apodo: null },
+    ]);
+    expect(await resuelve(ap('ap8'))).toEqual([]);
+  });
+
+  it('AP9 (i) — la colisión entre agencias revierte el cambio en usuarios y no deja la pertenencia sin su fila', async () => {
+    const enA = await nuevaIdentidad('ap9-a');
+    await crearUsuario(TENANT_A, enA, 'ap9-a', ap('ap9'));
+    const enB = await nuevaIdentidad('ap9-b');
+    const usuarioB = await crearUsuario(TENANT_B, enB, 'ap9-b', ap('ap9-propio'));
+
+    // Un UPDATE: el disparador borra el par de B y, al reinsertarlo, choca. Todo se revierte.
+    await expect(cambiarApodo(TENANT_B, usuarioB, ap('ap9'))).rejects.toMatchObject({
+      code: '23505',
+      constraint: 'accesos_identidad_apodo_key',
+    });
+    expect(await apodoEnUsuarios(TENANT_B, usuarioB)).toEqual([ap('ap9-propio')]);
+    expect(await indiceDe(enB), 'la pertenencia de B se quedó sin su fila').toEqual([
+      { tenant: TENANT_B, apodo: ap('ap9-propio') },
+    ]);
+
+    // Un INSERT: ni la pertenencia ni el par existen después.
+    const nueva = await nuevaIdentidad('ap9-b2');
+    await expect(crearUsuario(TENANT_B, nueva, 'ap9-b2', ap('ap9'))).rejects.toMatchObject({
+      code: '23505',
+      constraint: 'accesos_identidad_apodo_key',
+    });
+    const { rows } = await comoTenant(TENANT_B, (c) =>
+      c.query('SELECT id FROM usuarios WHERE identidad_id = $1', [nueva]),
+    );
+    expect(rows).toEqual([]);
+    expect(await indiceDe(nueva)).toEqual([]);
+    expect(await resuelve(ap('ap9'))).toEqual([{ identidad: enA, tenant: TENANT_A }]);
+  });
+
+  it('AP10 (j) — viajapro_identidad no alcanza usuarios.apodo y viajapro_accesos sigue sin UPDATE, ni de columna', async () => {
+    const { rows } = await admin.query(
+      `SELECT p FROM unnest(ARRAY['SELECT','INSERT','UPDATE','REFERENCES']) AS p
+        WHERE has_column_privilege($1, 'public.usuarios', 'apodo', p)`,
+      [ROL_IDENTIDAD],
+    );
+    expect(rows, `${ROL_IDENTIDAD} tiene privilegios sobre usuarios.apodo`).toEqual([]);
+    await comoRol(admin, ROL_IDENTIDAD, async () => {
+      await esperarPermisoDenegado(
+        admin,
+        () => admin.query('SELECT apodo FROM usuarios LIMIT 1'),
+        `SELECT de usuarios.apodo como ${ROL_IDENTIDAD}`,
+      );
+    });
+
+    // La 63 usa has_table_privilege, que no ve un GRANT de COLUMNA: esto sí.
+    const { rows: accesos } = await admin.query(
+      `SELECT has_any_column_privilege('viajapro_accesos', 'public.accesos_identidad', 'UPDATE') AS actualiza,
+              has_column_privilege('viajapro_accesos', 'public.accesos_identidad', 'apodo', 'UPDATE') AS actualiza_apodo`,
+    );
+    expect(accesos).toEqual([{ actualiza: false, actualiza_apodo: false }]);
+  });
+
+  it('AP11 (k) — identidades.correo rechaza el dominio .invalid y cualquier subdominio suyo', async () => {
+    const rechazados = [
+      `ap11-${MARCA}@viajapro.invalid`, // el centinela del ingreso
+      `ap11-${MARCA}@VIAJAPRO.INVALID`,
+      `ap11-${MARCA}@invalid`,
+      `ap11-${MARCA}@a.b.invalid`,
+      `ap11-${MARCA}@viajapro.invalid.`, // con punto final
+      `ap11-${MARCA}@viajapro.invalid `, // con espacio final
+    ];
+    for (const valor of rechazados) {
+      await expect(
+        admin.query(
+          `INSERT INTO identidades (id, correo, nombre, actualizado_en)
+           VALUES (gen_random_uuid(), $1, 'Centinela', now())`,
+          [valor],
+        ),
+        `se aceptó ${JSON.stringify(valor)}`,
+      ).rejects.toMatchObject({
+        code: '23514',
+        constraint: 'identidades_correo_sin_dominio_invalid',
+      });
+    }
+    // Tampoco se llega por UPDATE.
+    const identidad = await nuevaIdentidad('ap11');
+    await expect(
+      admin.query('UPDATE identidades SET correo = $1 WHERE id = $2', [
+        `ap11-${MARCA}@viajapro.invalid`,
+        identidad,
+      ]),
+    ).rejects.toMatchObject({
+      code: '23514',
+      constraint: 'identidades_correo_sin_dominio_invalid',
+    });
+
+    // Lo que solo se le parece entra (y se revierte).
+    for (const valor of [
+      `ap11-${MARCA}@invalid.com.co`,
+      `ap11-${MARCA}@noinvalid.test`,
+      `ap11.invalid-${MARCA}@prueba.test`,
+    ]) {
+      await admin.query('BEGIN');
+      try {
+        await admin.query(
+          `INSERT INTO identidades (id, correo, nombre, actualizado_en)
+           VALUES (gen_random_uuid(), $1, 'Parecida', now())`,
+          [valor],
+        );
+      } finally {
+        await admin.query('ROLLBACK');
+      }
+    }
+
+    const { rows } = await admin.query(
+      `SELECT convalidated FROM pg_constraint
+        WHERE conrelid = 'public.identidades'::regclass
+          AND conname = 'identidades_correo_sin_dominio_invalid' AND contype = 'c'`,
+    );
+    expect(rows).toEqual([{ convalidated: true }]);
+  });
+
+  it('AP12 (l) — DELETE FROM usuarios retira el par y su apodo del índice', async () => {
+    const identidad = await nuevaIdentidad('ap12');
+    const usuario = await crearUsuario(TENANT_A, identidad, 'ap12', ap('ap12'));
+    expect(await resuelve(ap('ap12'))).toEqual([{ identidad, tenant: TENANT_A }]);
+
+    await comoTenant(TENANT_A, (c) => c.query('DELETE FROM usuarios WHERE id = $1', [usuario]));
+    expect(await indiceDe(identidad)).toEqual([]);
+    expect(await resuelve(ap('ap12'))).toEqual([]);
+
+    // Liberado de verdad: otra agencia puede tomarlo.
+    const enB = await nuevaIdentidad('ap12-b');
+    await crearUsuario(TENANT_B, enB, 'ap12-b', ap('ap12'));
+    expect(await resuelve(ap('ap12'))).toEqual([{ identidad: enB, tenant: TENANT_B }]);
   });
 });
