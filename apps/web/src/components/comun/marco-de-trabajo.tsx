@@ -3,7 +3,8 @@
 import React from 'react';
 import { usePathname } from 'next/navigation';
 import { BarraModulos } from '../bandeja/barra-modulos';
-import { esDetalleMovilDeBandeja } from '../../lib/navegacion';
+import { PieDePaginaPrivacidad } from '../privacidad/pie-de-pagina-privacidad';
+import { esDetalleMovilDeBandeja, moduloActivo } from '../../lib/navegacion';
 import { useTituloDeDocumento } from '../../lib/use-titulo-de-documento';
 
 /**
@@ -11,15 +12,24 @@ import { useTituloDeDocumento } from '../../lib/use-titulo-de-documento';
  * y `<main id="contenido">`. Lo monta una sola vez `app/(app)/layout.tsx`; las páginas pintan solo
  * su contenido. La altura y el desplazamiento de la región de trabajo los fija este componente:
  * una página que gestiona su propio scroll interno usa `min-h-0 flex-1 overflow-hidden`.
+ *
+ * Aquí hay UN solo desplazamiento: el de `main`. El pie legal vive dentro de `main`, tras el
+ * contenido (`basis-full` mantiene la página a la altura de la región), y el layout raíz oculta el
+ * suyo cuando el marco está presente (`data-marco`). En la bandeja no se monta: es de pantalla
+ * completa, con su propio scroll, y un pie bajo el compositor la haría desplazable.
  */
 export function MarcoDeTrabajo({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const titulo = useTituloDeDocumento();
   // En la conversación a pantalla completa no hay barra inferior que reservar.
   const reservaBarraInferior = !esDetalleMovilDeBandeja(pathname);
+  const conPie = moduloActivo(pathname)?.id !== 'conversaciones';
 
   return (
-    <div className="flex h-[calc(100dvh-var(--altura-banner-cookies,0px))] w-full overflow-hidden bg-neutral-50 text-neutral-900 dark:bg-neutral-950 dark:text-neutral-100">
+    <div
+      data-marco
+      className="flex h-[calc(100dvh-var(--altura-banner-cookies,0px))] w-full overflow-hidden bg-neutral-50 text-neutral-900 dark:bg-neutral-950 dark:text-neutral-100"
+    >
       {/* React 19 eleva <title> al <head> y gana al de `metadata` del layout raíz. */}
       <title>{titulo}</title>
       <BarraModulos />
@@ -29,7 +39,14 @@ export function MarcoDeTrabajo({ children }: { children: React.ReactNode }) {
           reservaBarraInferior ? 'pb-14 md:pb-0' : ''
         }`}
       >
-        {children}
+        {conPie ? (
+          <>
+            <div className="flex shrink-0 grow basis-full flex-col">{children}</div>
+            <PieDePaginaPrivacidad />
+          </>
+        ) : (
+          children
+        )}
       </main>
     </div>
   );
