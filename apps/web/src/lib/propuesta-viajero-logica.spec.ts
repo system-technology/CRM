@@ -8,6 +8,7 @@ import {
   grupoDeInclusion,
   leerDiasDeLaDescripcion,
   referenciaDePropuesta,
+  rntImprimible,
   sumarDias,
   textoDuracion,
   textoViajeros,
@@ -125,5 +126,18 @@ describe('propuesta al viajero — lógica de presentación', () => {
 
   it('la referencia es corta y lleva la versión', () => {
     expect(referenciaDePropuesta('01932000-0000-7000-8000-000000000077', 2)).toBe('000077-v2');
+  });
+
+  it('el RNT solo se imprime si la plataforma lo verificó (ADR-0030 §3.3)', () => {
+    expect(rntImprimible({ rnt: '48213', rntVerificado: true })).toBe('48213');
+    expect(rntImprimible({ rnt: ' 48213 ', rntVerificado: true })).toBe('48213');
+    // Declarado pero sin verificar, o sin dato de verificación (API anterior): no sale.
+    expect(rntImprimible({ rnt: '48213', rntVerificado: false })).toBeNull();
+    expect(rntImprimible({ rnt: '48213' })).toBeNull();
+    expect(rntImprimible({ rnt: '48213', rntVerificado: undefined })).toBeNull();
+    // Verificado pero sin número: tampoco se inventa.
+    expect(rntImprimible({ rnt: null, rntVerificado: true })).toBeNull();
+    expect(rntImprimible({ rnt: '  ', rntVerificado: true })).toBeNull();
+    expect(rntImprimible({})).toBeNull();
   });
 });
