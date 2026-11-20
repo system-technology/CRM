@@ -153,6 +153,7 @@ Toda la documentación del proyecto. Si una decisión no está aquí (o en `ESTA
 | [Ruta de seguridad y privacidad](08-roadmap/05-ruta-de-seguridad-y-privacidad.md) | Ruta de seguridad y privacidad |
 | [Roadmap de reportes](08-roadmap/06-roadmap-de-reportes.md) | Roadmap de reportes |
 | [Roadmap multiidioma](08-roadmap/07-roadmap-multiidioma.md) | Ver ADR-0020 |
+| [Roadmap JD Tours: reservas, cobros y navegación](08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md) | Lo que pidió el cliente piloto, en cinco ejes; la navegación va primero |
 
 ## 09 · Ingeniería asistida por IA
 
