@@ -3,16 +3,25 @@
 import React from 'react';
 import Link from 'next/link';
 import { FichaDeContacto } from '@viajapro/contracts';
-import { Plane, PlusCircle, ExternalLink, StickyNote, X, Clock, Edit3 } from 'lucide-react';
+import { StickyNote, X, Clock, Edit3, ChevronRight } from 'lucide-react';
 import { formatearDinero } from '../../lib/formato';
 import { generarColorAvatar, obtenerIniciales } from '../../lib/bandeja-logica';
 import { SeccionCamposPersonalizados } from '../contactos/seccion-campos-personalizados';
+import { SolicitudDeViaje } from './solicitud-de-viaje';
+import { componerViaje, type ViajeDeContacto } from '../../lib/viaje-solicitado-logica';
 
 interface FichaClienteProps {
   ficha: FichaDeContacto;
   onCerrar?: () => void;
   onEditarContacto?: () => void;
   onCrearOportunidad?: () => void;
+  /**
+   * El viaje ya compuesto con todas las fuentes que tiene la página (oportunidad, archivo,
+   * cotización vigente con sus pasajeros). Sin él, la ficha compone lo que ella misma trae.
+   */
+  viaje?: ViajeDeContacto;
+  /** Para que el cotizador sepa de qué conversación viene. */
+  conversacionId?: string;
 }
 
 export function FichaCliente({
@@ -20,8 +29,26 @@ export function FichaCliente({
   onCerrar,
   onEditarContacto,
   onCrearOportunidad,
+  viaje: viajeExterno,
+  conversacionId,
 }: FichaClienteProps) {
-  const { contacto, oportunidadActual, cotizaciones, archivosDeViajeIds, notasInternas } = ficha;
+  const { contacto, oportunidadActual, cotizaciones, notasInternas } = ficha;
+  const cotizacionReciente = cotizaciones[0];
+  const viaje =
+    viajeExterno ??
+    componerViaje({
+      oportunidad: oportunidadActual,
+      cotizacion: cotizacionReciente
+        ? {
+            id: cotizacionReciente.id,
+            titulo: cotizacionReciente.titulo,
+            version: cotizacionReciente.version,
+            venta: cotizacionReciente.precioVenta,
+            vigenteHasta: cotizacionReciente.vigenteHasta,
+            estado: null,
+          }
+        : null,
+    });
   const avatarColores = generarColorAvatar(contacto.id);
   const iniciales = obtenerIniciales(contacto.nombre, contacto.telefono);
 
@@ -31,14 +58,9 @@ export function FichaCliente({
       <div className="flex-1 space-y-4 overflow-y-auto p-4">
         {/* Cabecera del panel */}
         <div className="flex items-center justify-between border-b border-neutral-200 pb-3 dark:border-neutral-800">
-          <div>
-            <h2 className="text-sm font-bold text-neutral-900 dark:text-neutral-100">
-              Ficha del Viajero
-            </h2>
-            <p className="text-[11px] text-neutral-500 dark:text-neutral-400">
-              Contexto CRM y Archivos de Viaje
-            </p>
-          </div>
+          <h2 className="text-sm font-bold text-neutral-900 dark:text-neutral-100">
+            Ficha del Viajero
+          </h2>
           {onCerrar && (
             <button
               onClick={onCerrar}
@@ -50,6 +72,29 @@ export function FichaCliente({
             </button>
           )}
         </div>
+
+        {/* Solicitud de viaje: lo primero, visible sin desplazarse, con el único botón «Cotizar» */}
+        <SolicitudDeViaje
+          viaje={viaje}
+          contactoId={contacto.id}
+          conversacionId={conversacionId}
+          oportunidad={oportunidadActual}
+          onCrearOportunidad={onCrearOportunidad}
+        />
+
+        {oportunidadActual?.proximaTarea && (
+          <div className="flex items-start gap-2 rounded-lg border border-neutral-200 bg-neutral-50 p-2.5 dark:border-neutral-700 dark:bg-neutral-900">
+            <Clock className="text-aviso-700 mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            <div>
+              <p className="text-[11px] font-semibold text-neutral-600 dark:text-neutral-400">
+                Próximo paso
+              </p>
+              <p className="font-medium text-neutral-800 dark:text-neutral-200">
+                {oportunidadActual.proximaTarea.descripcion}
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Sección 1: Identidad del Contacto */}
         <section className="space-y-2.5 rounded-xl border border-neutral-200 bg-neutral-50/50 p-3.5 dark:border-neutral-800 dark:bg-neutral-800/30">
@@ -104,9 +149,6 @@ export function FichaCliente({
             </div>
           )}
 
-          {/* Campos Personalizados Viajero */}
-          <SeccionCamposPersonalizados entidad="contacto" entidadId={contacto.id} />
-
           <div className="flex flex-wrap gap-1 pt-1 text-[10px]">
             {contacto.consentimientos.map((c) => (
               <span
@@ -119,138 +161,57 @@ export function FichaCliente({
           </div>
         </section>
 
-        {/* Sección 2: Oportunidad Viva */}
-        {oportunidadActual ? (
-          <section className="space-y-2 rounded-xl border border-neutral-200 bg-white p-3.5 shadow-2xs dark:border-neutral-800 dark:bg-neutral-800/40">
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold tracking-wider text-neutral-400 uppercase">
-                Oportunidad Viva
-              </span>
-              <div className="flex items-center gap-2">
-                <span className="py-0.2 rounded-xs border border-neutral-300 bg-neutral-100 px-1.5 text-[10px] font-bold text-neutral-800 dark:border-neutral-700 dark:bg-neutral-700 dark:text-neutral-200">
-                  {oportunidadActual.etapa.nombre}
-                </span>
-                {onCrearOportunidad && (
-                  <button
-                    type="button"
-                    data-testid="btn-crear-oportunidad"
-                    onClick={onCrearOportunidad}
-                    className="text-acento-600 dark:text-acento-400 text-[10px] font-semibold hover:underline"
-                    title="Crear nueva oportunidad"
-                  >
-                    + Nueva
-                  </button>
-                )}
-              </div>
-            </div>
-
-            <h4 className="font-bold text-neutral-900 dark:text-neutral-100">
-              {oportunidadActual.titulo}
-            </h4>
-            <p className="text-neutral-500">
-              Destino: {oportunidadActual.destino || 'Sin especificar'}
-            </p>
-
-            {oportunidadActual.valorEstimado && (
-              <p className="cifra text-acento-700 dark:text-acento-400 font-bold">
-                Valor estimado: {formatearDinero(oportunidadActual.valorEstimado)}{' '}
-                {oportunidadActual.valorEstimado.moneda}
-              </p>
+        {/* Campos personalizados: bajan y van plegados (la solicitud de viaje manda arriba) */}
+        <details className="group rounded-xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-800/30">
+          <summary className="focus-visible:ring-acento-600 flex min-h-[44px] cursor-pointer list-none items-center gap-1.5 rounded-xl px-3.5 py-2 text-[11px] font-bold text-neutral-700 select-none focus-visible:ring-2 focus-visible:outline-none md:min-h-[32px] dark:text-neutral-300">
+            <ChevronRight
+              className="h-3.5 w-3.5 transition-transform group-open:rotate-90"
+              aria-hidden="true"
+            />
+            <span>Datos del viajero y del viaje</span>
+          </summary>
+          <div className="space-y-3 px-3.5 pb-3.5">
+            <SeccionCamposPersonalizados entidad="contacto" entidadId={contacto.id} />
+            {oportunidadActual && (
+              <SeccionCamposPersonalizados entidad="oportunidad" entidadId={oportunidadActual.id} />
             )}
+          </div>
+        </details>
 
-            {oportunidadActual.proximaTarea && (
-              <div className="mt-2 flex items-start gap-2 rounded-lg border border-neutral-200 bg-neutral-50 p-2.5 dark:border-neutral-700 dark:bg-neutral-900">
-                <Clock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-600" />
-                <p className="font-medium text-neutral-800 dark:text-neutral-200">
-                  {oportunidadActual.proximaTarea.descripcion}
-                </p>
-              </div>
-            )}
-
-            {/* Campos Personalizados Oportunidad */}
-            <SeccionCamposPersonalizados entidad="oportunidad" entidadId={oportunidadActual.id} />
-          </section>
-        ) : (
-          <section className="space-y-2 rounded-xl border border-dashed border-neutral-300 bg-neutral-50/60 p-3.5 text-center dark:border-neutral-700 dark:bg-neutral-800/30">
-            <p className="text-xs text-neutral-500 dark:text-neutral-400">Sin oportunidad activa</p>
-            {onCrearOportunidad && (
-              <button
-                type="button"
-                data-testid="btn-crear-oportunidad"
-                onClick={onCrearOportunidad}
-                className="bg-acento-600 hover:bg-acento-700 inline-flex min-h-[36px] items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold text-white shadow-2xs transition-colors"
-              >
-                <PlusCircle className="h-3.5 w-3.5" />
-                <span>Crear oportunidad</span>
-              </button>
-            )}
-          </section>
-        )}
-
-        {/* Sección 3: Archivos de Viaje Confirmados (TravelFile - Lenguaje Ubicuo) */}
-        <section className="space-y-1.5">
-          <h4 className="text-[11px] font-bold tracking-wider text-neutral-400 uppercase">
-            Archivos de viaje
-          </h4>
-          {archivosDeViajeIds.length === 0 ? (
-            <p className="text-neutral-500 italic">No hay archivos de viaje asociados.</p>
-          ) : (
-            <div className="space-y-1.5">
-              {archivosDeViajeIds.map((tfId) => (
-                <div
-                  key={tfId}
-                  className="flex items-center justify-between rounded-lg border border-neutral-200 bg-white p-2.5 font-mono shadow-2xs dark:border-neutral-800 dark:bg-neutral-800"
-                >
-                  <div className="flex items-center gap-2">
-                    <Plane className="text-acento-600 h-4 w-4" />
-                    <span className="font-bold text-neutral-900 dark:text-neutral-100">
-                      Archivo de viaje #{tfId}
-                    </span>
-                  </div>
-                  <span className="bg-ok-50 text-ok-700 dark:bg-ok-950/60 dark:text-ok-400 rounded px-1.5 py-0.5 font-sans text-[10px] font-bold">
-                    Confirmado
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
-
-        {/* Sección 4: Cotizaciones Recientes */}
-        <section className="space-y-1.5">
-          <h4 className="text-[11px] font-bold tracking-wider text-neutral-400 uppercase">
-            Cotizaciones Recientes
-          </h4>
-          {cotizaciones.length === 0 ? (
-            <p className="text-neutral-500 italic">Sin cotizaciones enviadas.</p>
-          ) : (
-            <div className="space-y-2">
+        {/* Cotizaciones anteriores: la vigente ya está arriba */}
+        {cotizaciones.length > 1 && (
+          <details className="group rounded-xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-800/30">
+            <summary className="focus-visible:ring-acento-600 flex min-h-[44px] cursor-pointer list-none items-center gap-1.5 rounded-xl px-3.5 py-2 text-[11px] font-bold text-neutral-700 select-none focus-visible:ring-2 focus-visible:outline-none md:min-h-[32px] dark:text-neutral-300">
+              <ChevronRight
+                className="h-3.5 w-3.5 transition-transform group-open:rotate-90"
+                aria-hidden="true"
+              />
+              <span>Todas las cotizaciones ({cotizaciones.length})</span>
+            </summary>
+            <ul className="space-y-1.5 px-3.5 pb-3.5">
               {cotizaciones.map((cot) => (
-                <div
-                  key={cot.id}
-                  className="rounded-xl border border-neutral-200 bg-white p-3 shadow-2xs dark:border-neutral-800 dark:bg-neutral-800/40"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-neutral-900 dark:text-neutral-100">
-                      {cot.titulo}
+                <li key={cot.id}>
+                  <Link
+                    href={`/cotizaciones/${cot.id}`}
+                    className="hover:border-acento-600 block rounded-lg border border-neutral-200 p-2.5 dark:border-neutral-700"
+                  >
+                    <span className="flex items-center justify-between gap-2">
+                      <span className="font-semibold text-neutral-900 dark:text-neutral-100">
+                        {cot.titulo}
+                      </span>
+                      <span className="rounded bg-neutral-100 px-1.5 py-0.5 text-[10px] font-semibold text-neutral-700 dark:bg-neutral-700 dark:text-neutral-300">
+                        v{cot.version}
+                      </span>
                     </span>
-                    <span className="py-0.2 rounded bg-neutral-100 px-1.5 text-[10px] font-semibold text-neutral-600 dark:bg-neutral-700 dark:text-neutral-300">
-                      v{cot.version}
+                    <span className="cifra mt-1 block font-bold text-neutral-900 dark:text-neutral-100">
+                      {formatearDinero(cot.precioVenta)} {cot.precioVenta.moneda}
                     </span>
-                  </div>
-                  <p className="cifra mt-1.5 font-bold text-neutral-900 dark:text-neutral-100">
-                    {formatearDinero(cot.precioVenta)} {cot.precioVenta.moneda}
-                  </p>
-                  {cot.vigenteHasta && (
-                    <p className="mt-0.5 text-[10px] text-neutral-400">
-                      Vigente hasta: {cot.vigenteHasta}
-                    </p>
-                  )}
-                </div>
+                  </Link>
+                </li>
               ))}
-            </div>
-          )}
-        </section>
+            </ul>
+          </details>
+        )}
 
         {/* Sección 5: Notas Internas */}
         {notasInternas.length > 0 && (
@@ -272,26 +233,6 @@ export function FichaCliente({
             ))}
           </section>
         )}
-      </div>
-
-      {/* Acciones de Cierre fijas al pie (Tarea 0b.8) */}
-      <div className="sticky bottom-0 space-y-2 border-t border-neutral-200 bg-white p-3 dark:border-neutral-800 dark:bg-neutral-900">
-        <Link
-          href={`/cotizador?contactoId=${contacto.id}`}
-          className="bg-acento-700 hover:bg-acento-800 flex w-full items-center justify-center gap-1.5 rounded-lg py-2.5 text-xs font-bold text-white shadow-sm transition-colors"
-        >
-          <PlusCircle className="h-4 w-4" />
-          <span>Crear cotización</span>
-        </Link>
-        <button
-          type="button"
-          disabled
-          title="Ver archivo completo del viaje"
-          className="flex w-full cursor-not-allowed items-center justify-center gap-1.5 rounded-lg border border-neutral-300 py-2 text-xs font-semibold text-neutral-500 opacity-70 dark:border-neutral-700 dark:text-neutral-400"
-        >
-          <ExternalLink className="h-3.5 w-3.5" />
-          <span>Ver archivo completo</span>
-        </button>
       </div>
     </div>
   );

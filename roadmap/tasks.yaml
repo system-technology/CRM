@@ -5822,3 +5822,43 @@ tasks:
     created_at: 2026-11-20T18:00:00.000Z
     owner: frontend
     started_at: 2026-11-20T18:00:00.000Z
+  - id: T-259
+    title: "Web: la solicitud de viaje como cabecera de la conversación y datos del viaje en bandeja y pipeline"
+    type: feat
+    phase: 1
+    priority: P2
+    effort: M
+    status: in_progress
+    depends_on: [T-258]
+    acceptance:
+      - "Panel derecho de la conversación con la solicitud de viaje arriba (destino, salida, pasajeros, plazo, cotización vigente y file) y un solo botón «Cotizar» que abre el cotizador con lo conocido"
+      - "Filas de la bandeja y tarjetas del pipeline con la línea «destino · mes · pasajeros» y el plazo más próximo; el pipeline muestra la fecha de salida («sin fecha» si no hay) en lugar de la probabilidad"
+      - "Sin una petición por fila: la bandeja pide el tablero y los archivos una sola vez"
+      - "Pendiente de API (tarea de backend): los pasajeros de la solicitud no existen en la oportunidad ni en la lista de cotizaciones"
+    files:
+      - apps/web/src/components/bandeja
+      - apps/web/src/components/pipeline
+      - apps/web/src/lib
+    source: auditoría UX de la web (2026-11-20), puntos 4 y 5 (I1 e I2)
+    created_at: 2026-11-20T21:00:00.000Z
+    owner: frontend
+    started_at: 2026-11-20T21:00:00.000Z
+    notes: "Rama feat/web-solicitud-de-viaje. Hoy los pasajeros salen solo del archivo de viaje (lista) o del detalle de la cotización vigente (una petición, solo la conversación abierta); las filas sin archivo muestran «destino · mes». Falta en API (owner backend): pasajeros (adultos, niños, infantes) en la oportunidad y en la fila de cotización, y vigenteHasta en FilaDeCotizacion; o un resumen de viaje en ConversacionResumen. Con eso la bandeja deja de componer en el cliente."
+  - id: T-260
+    title: "API: pasajeros y vigencia en la oportunidad y en la fila de cotización (resumen de viaje de la conversación)"
+    type: feat
+    phase: 1
+    priority: P2
+    effort: M
+    status: todo
+    depends_on: [T-259]
+    acceptance:
+      - "Oportunidad con pasajeros (adultos, niños, infantes) en packages/contracts y la base"
+      - "FilaDeCotizacion con vigenteHasta y pasajeros de la última versión"
+      - "La web quita la composición por índices y lee el resumen de viaje directamente"
+    files:
+      - packages/contracts/src
+      - apps/api/src/modules
+    source: T-259 (la bandeja no puede mostrar «2+2» en filas sin archivo sin una petición por fila)
+    created_at: 2026-11-20T21:00:00.000Z
+    owner: backend

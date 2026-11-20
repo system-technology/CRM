@@ -17,6 +17,8 @@ import {
 } from '@viajapro/contracts';
 import { MOCK_CONVERSACIONES } from './mock-inbox';
 import { obtenerMockPaginaContactos, PREFERENCIAS_MOCK_POR_CONTACTO } from './mock-contactos';
+import { obtenerMockTableroPipeline } from './mock-pipeline';
+import { MOCK_DETALLES_ARCHIVOS } from './mock-archivos';
 
 function hashCadena(str: string): number {
   let hash = 0;
@@ -97,7 +99,7 @@ const ESCENARIOS_FICHA: readonly EscenarioFicha[] = [
     archivos: 0,
   },
   {
-    destino: 'San Andrés Islas, Colombia',
+    destino: 'San Andrés, Colombia',
     titulo: 'San Andrés todo incluido familiar (3 pax)',
     valorCop: '6200000',
     probabilidad: 90,
@@ -123,6 +125,40 @@ const ESCENARIOS_FICHA: readonly EscenarioFicha[] = [
     archivos: 0,
   },
 ];
+
+/** Sin cotizaciones ni archivos de escenario: lo que haya lo ponen el tablero y los archivos reales. */
+const ESCENARIO_SOLO_TABLERO: EscenarioFicha = {
+  destino: '',
+  titulo: '',
+  valorCop: '0',
+  probabilidad: 0,
+  tarea: '',
+  cotizaciones: [],
+  archivos: 0,
+};
+
+/** Primera palabra sin tildes: «Cancún, México» y «Cancún» son el mismo destino. */
+function claveDeDestino(destino: string | null): string {
+  return (destino ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .split(/[\s,]+/)[0] as string;
+}
+
+/**
+ * La oportunidad abierta que el tablero del pipeline ya tiene de este contacto. La ficha la toma de
+ * ahí para que el chat, la ficha y el tablero cuenten el mismo viaje (antes la ficha de Juan decía
+ * Curazao mientras su chat y su tarjeta decían Cancún).
+ */
+function oportunidadAbiertaDelTablero(contactoId: string): Oportunidad | undefined {
+  for (const columna of obtenerMockTableroPipeline().columnas) {
+    if (columna.etapa.esGanada || columna.etapa.esPerdida) continue;
+    const o = columna.oportunidades.find((x) => x.contactoId === contactoId);
+    if (o) return o;
+  }
+  return undefined;
+}
 
 // Almacén mutable en memoria para mutaciones en modo demo/desconectado
 const mockContactosModificados = new Map<string, Contacto>();
@@ -155,13 +191,18 @@ export function obtenerMockFichaDeContacto(identificador: string): FichaDeContac
   const hash = hashCadena(identificador);
   const idBase = contacto?.id ?? conv?.contactoId ?? identificador;
   const sufijo = Number.parseInt(idBase.slice(-4), 16);
-  const escenario =
-    ESCENARIOS_FICHA[(Number.isFinite(sufijo) ? sufijo : hash) % ESCENARIOS_FICHA.length] ??
-    ESCENARIOS_FICHA[0]!;
   const contactoId =
     contacto?.id ??
     conv?.contactoId ??
     `00000000-0002-4000-8000-${hash.toString(16).padStart(12, '0').slice(0, 12)}`;
+  const oportunidadDelTablero = oportunidadAbiertaDelTablero(contactoId);
+  const escenario = oportunidadDelTablero
+    ? (ESCENARIOS_FICHA.find(
+        (e) => claveDeDestino(e.destino) === claveDeDestino(oportunidadDelTablero.destino),
+      ) ?? ESCENARIO_SOLO_TABLERO)
+    : (ESCENARIOS_FICHA[(Number.isFinite(sufijo) ? sufijo : hash) % ESCENARIOS_FICHA.length] ??
+      ESCENARIOS_FICHA[0]!);
+  const destinoDelViaje = oportunidadDelTablero?.destino ?? escenario.destino;
 
   const nombre = contacto?.nombre ?? conv?.contactoNombre ?? (conv ? null : 'Viajero Simulado');
   const telefono =
@@ -185,7 +226,7 @@ export function obtenerMockFichaDeContacto(identificador: string): FichaDeContac
     {
       id: `00000000-0006-4000-8000-${hash.toString(16).padStart(12, '0').slice(0, 12)}`,
       autorNombre: conv?.asignadoANombre ?? 'Carlos Asesor',
-      texto: `Cliente muy interesado en ${escenario.destino}. Pide opciones antes de decidir.`,
+      texto: `Cliente muy interesado en ${destinoDelViaje}. Pide opciones antes de decidir.`,
       escritaEn: instanteIso(-5),
     },
   ];
@@ -205,40 +246,41 @@ export function obtenerMockFichaDeContacto(identificador: string): FichaDeContac
       ultimoContactoEn:
         contacto?.ultimoContactoEn ?? conv?.ultimoMensajeEn ?? '2026-10-10T14:30:00.000Z',
     },
-    oportunidadActual: oportunidadExistente ?? {
-      id: `00000000-0003-4000-8000-${hash.toString(16).padStart(12, '0').slice(0, 12)}`,
-      contactoId,
-      contactoNombre: nombre,
-      titulo: escenario.titulo,
-      destino: escenario.destino,
-      paqueteId: null,
-      fechaSalida: diaIso(25),
-      etapa: {
-        id: '01a114b2-5314-75b1-91ad-3be0518a6a02',
-        clave: 'EN_COTIZACION' as const,
-        nombre: 'En cotización',
-        orden: 2,
-        probabilidad: 40,
-        esGanada: false,
-        esPerdida: false,
+    oportunidadActual: oportunidadExistente ??
+      oportunidadDelTablero ?? {
+        id: `00000000-0003-4000-8000-${hash.toString(16).padStart(12, '0').slice(0, 12)}`,
+        contactoId,
+        contactoNombre: nombre,
+        titulo: escenario.titulo,
+        destino: escenario.destino,
+        paqueteId: null,
+        fechaSalida: diaIso(25),
+        etapa: {
+          id: '01a114b2-5314-75b1-91ad-3be0518a6a02',
+          clave: 'EN_COTIZACION' as const,
+          nombre: 'En cotización',
+          orden: 2,
+          probabilidad: 40,
+          esGanada: false,
+          esPerdida: false,
+        },
+        valorEstimado: {
+          unidades: escenario.valorCop, // R8: COP en pesos enteros
+          moneda: 'COP' as const,
+        },
+        probabilidad: escenario.probabilidad,
+        asesorId: conv?.asignadoAId ?? '00000000-0000-4000-a000-000000000001',
+        asesorNombre: conv?.asignadoANombre ?? 'Carlos Asesor',
+        proximaTarea: {
+          descripcion: escenario.tarea,
+          venceEn: instanteIso(1),
+          completada: false,
+        },
+        motivoPerdida: null,
+        notaPerdida: null,
+        creadaEn: instanteIso(-18),
+        ultimoContactoEn: conv?.ultimoMensajeEn ?? instanteIso(-1),
       },
-      valorEstimado: {
-        unidades: escenario.valorCop, // R8: COP en pesos enteros
-        moneda: 'COP' as const,
-      },
-      probabilidad: escenario.probabilidad,
-      asesorId: conv?.asignadoAId ?? '00000000-0000-4000-a000-000000000001',
-      asesorNombre: conv?.asignadoANombre ?? 'Carlos Asesor',
-      proximaTarea: {
-        descripcion: escenario.tarea,
-        venceEn: instanteIso(1),
-        completada: false,
-      },
-      motivoPerdida: null,
-      notaPerdida: null,
-      creadaEn: instanteIso(-18),
-      ultimoContactoEn: conv?.ultimoMensajeEn ?? instanteIso(-1),
-    },
     cotizaciones: escenario.cotizaciones.map((c, i) => ({
       id: `00000000-0004-4000-8000-${(hash + i + 1).toString(16).padStart(12, '0').slice(0, 12)}`,
       version: c.version,
@@ -247,11 +289,10 @@ export function obtenerMockFichaDeContacto(identificador: string): FichaDeContac
       vigenteHasta: diaIso(c.vigenteEnDias),
       enviadaEn: instanteIso(-c.enviadaHaceDias),
     })),
-    archivosDeViajeIds: Array.from(
-      { length: escenario.archivos },
-      (_, i) =>
-        `00000000-0005-4000-8000-${(hash + i + 1).toString(16).padStart(12, '0').slice(0, 12)}`,
-    ),
+    // Solo archivos que existen en Reservas: un id inventado no tendría a dónde enlazar.
+    archivosDeViajeIds: MOCK_DETALLES_ARCHIVOS.filter(
+      (a) => a.contactoId === contactoId && a.estado === 'ABIERTO',
+    ).map((a) => a.id),
     notasInternas: notasExistentes,
   };
 

@@ -1,4 +1,5 @@
 import { TableroPipeline, type ColumnaPipeline } from '@viajapro/contracts';
+import { proximaOcurrencia } from './mock-fechas';
 
 /**
  * Fuente de datos simulada para el Tablero Kanban de Pipeline (/pipeline).
@@ -33,9 +34,9 @@ export function obtenerMockTableroPipeline(): TableroPipeline {
           contactoId: '00000000-0002-4000-8000-000000000004',
           contactoNombre: 'Felipe Morales',
           titulo: 'Paquete San Andrés Todo Incluido Familiar',
-          destino: 'San Andrés Islas, Colombia',
+          destino: 'San Andrés, Colombia',
           paqueteId: null,
-          fechaSalida: '2026-11-20',
+          fechaSalida: proximaOcurrencia(12, 20),
           etapa: {
             id: '01a114b2-5314-75b1-91ad-3be0518a6a01',
             clave: 'NUEVO_LEAD',
@@ -66,7 +67,7 @@ export function obtenerMockTableroPipeline(): TableroPipeline {
           titulo: 'Escapada Romántica Cartagena 4D/3N',
           destino: 'Cartagena de Indias',
           paqueteId: null,
-          fechaSalida: '2026-12-05',
+          fechaSalida: proximaOcurrencia(1, 15),
           etapa: {
             id: '01a114b2-5314-75b1-91ad-3be0518a6a01',
             clave: 'NUEVO_LEAD',
@@ -97,7 +98,7 @@ export function obtenerMockTableroPipeline(): TableroPipeline {
           titulo: 'Punta Cana Resort 5 Estrellas (2 Adultos)',
           destino: 'Punta Cana, Rep. Dominicana',
           paqueteId: null,
-          fechaSalida: '2027-01-10',
+          fechaSalida: proximaOcurrencia(1, 10),
           etapa: {
             id: '01a114b2-5314-75b1-91ad-3be0518a6a01',
             clave: 'NUEVO_LEAD',
@@ -149,7 +150,7 @@ export function obtenerMockTableroPipeline(): TableroPipeline {
           titulo: 'Cancún Todo Incluido Diciembre (2 ad + 2 niñ)',
           destino: 'Cancún, México',
           paqueteId: null,
-          fechaSalida: '2026-12-15',
+          fechaSalida: proximaOcurrencia(12, 15),
           etapa: {
             id: '01a114b2-5314-75b1-91ad-3be0518a6a02',
             clave: 'EN_COTIZACION',
@@ -180,7 +181,7 @@ export function obtenerMockTableroPipeline(): TableroPipeline {
           titulo: 'Circuito Europa Clásica 15 Días',
           destino: 'Madrid, París, Roma',
           paqueteId: null,
-          fechaSalida: '2027-04-12',
+          fechaSalida: proximaOcurrencia(4, 12),
           etapa: {
             id: '01a114b2-5314-75b1-91ad-3be0518a6a02',
             clave: 'EN_COTIZACION',
@@ -230,9 +231,9 @@ export function obtenerMockTableroPipeline(): TableroPipeline {
           contactoId: '00000000-0002-4000-8000-000000000002',
           contactoNombre: 'Ana Martínez',
           titulo: 'Curazao All Inclusive Beach Resort',
-          destino: 'Willemstad, Curazao',
+          destino: 'Curazao',
           paqueteId: null,
-          fechaSalida: '2026-11-28',
+          fechaSalida: proximaOcurrencia(12, 5),
           etapa: {
             id: '01a114b2-5314-75b1-91ad-3be0518a6a03',
             clave: 'EN_NEGOCIACION',
@@ -263,7 +264,7 @@ export function obtenerMockTableroPipeline(): TableroPipeline {
           titulo: 'Orlando Parques + Miami Beach (Familia 5)',
           destino: 'Orlando & Miami, USA',
           paqueteId: null,
-          fechaSalida: '2027-02-15',
+          fechaSalida: proximaOcurrencia(2, 15),
           etapa: {
             id: '01a114b2-5314-75b1-91ad-3be0518a6a03',
             clave: 'EN_NEGOCIACION',
@@ -315,7 +316,7 @@ export function obtenerMockTableroPipeline(): TableroPipeline {
           titulo: 'Luna de Miel Riviera Maya 7D/6N',
           destino: 'Riviera Maya, México',
           paqueteId: null,
-          fechaSalida: '2026-11-10',
+          fechaSalida: proximaOcurrencia(12, 28),
           etapa: {
             id: '01a114b2-5314-75b1-91ad-3be0518a6a04',
             clave: 'GANADA',
@@ -367,7 +368,7 @@ export function obtenerMockTableroPipeline(): TableroPipeline {
           titulo: 'Punta Cana fin de año',
           destino: 'Punta Cana',
           paqueteId: null,
-          fechaSalida: '2026-12-28',
+          fechaSalida: proximaOcurrencia(12, 30),
           etapa: {
             id: '01a114b2-5314-75b1-91ad-3be0518a6a05',
             clave: 'PERDIDA',

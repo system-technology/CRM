@@ -20,7 +20,6 @@ import {
   RotateCcw,
   Check,
   CheckCheck,
-  PlusCircle,
   PanelRight,
   Sparkles,
   FileText,
@@ -56,7 +55,13 @@ import {
 import { calcularCuentaRegresivaVentana24h } from '../../../lib/ventana-24h';
 import { obtenerMockPlantillasDisponibles } from '../../../lib/mock-plantillas';
 import { EnviarPlantilla, type CotizacionResumen } from '@viajapro/contracts';
-import { listarCotizacionesApi } from '../../../lib/cotizaciones-api';
+import { listarCotizacionesApi, obtenerCotizacionGuardadaApi } from '../../../lib/cotizaciones-api';
+import { useViajesBandeja } from '../../../lib/viajes-bandeja';
+import {
+  componerViaje,
+  cotizacionVigente,
+  type CotizacionParaViaje,
+} from '../../../lib/viaje-solicitado-logica';
 import { TarjetaCotizacionEnviada } from '../../../components/bandeja/tarjeta-cotizacion-enviada';
 import { PanelSugerencias } from '../../../components/bandeja/panel-sugerencias';
 import { MenuRespuestasRapidas } from '../../../components/bandeja/menu-respuestas-rapidas';
@@ -157,6 +162,13 @@ export default function BandejaConversacionPage() {
    * (R4: `crm` no lee de `quoting`), así que el modal de envío no tendría nada que elegir.
    */
   const [cotizacionesContacto, setCotizacionesContacto] = useState<CotizacionResumen[]>([]);
+  /**
+   * La cotización vigente con lo que solo trae su detalle (pasajeros, vigencia, destino). Es UNA
+   * petición para la conversación abierta, no una por fila de la lista.
+   */
+  const [cotizacionDelViaje, setCotizacionDelViaje] = useState<CotizacionParaViaje | null>(null);
+  const contactoDeCotizacionesRef = useRef<string>('');
+  const indiceDeViajes = useViajesBandeja();
   const [modalCrearOportunidadAbierto, setModalCrearOportunidadAbierto] = useState(false);
   const [modalEditarContactoAbierto, setModalEditarContactoAbierto] = useState(false);
 
@@ -416,6 +428,26 @@ export default function BandejaConversacionPage() {
   const plantillasNoDisponibles = inboxApi.isModoReal();
   const plantillasDisponibles = useMemo(() => obtenerMockPlantillasDisponibles().plantillas, []);
 
+  /**
+   * La ficha de `crm` trae las cotizaciones vacías a propósito (R4: no lee de `quoting`); aquí se
+   * le ponen las que la bandeja ya pidió a `quoting`.
+   */
+  const fichaDelPanel = useMemo(
+    () => (fichaContacto ? { ...fichaContacto, cotizaciones: cotizacionesContacto } : null),
+    [fichaContacto, cotizacionesContacto],
+  );
+  const viajeDelPanel = useMemo(
+    () =>
+      fichaContacto
+        ? componerViaje({
+            oportunidad: fichaContacto.oportunidadActual,
+            archivo: indiceDeViajes.archivos.get(fichaContacto.contacto.id) ?? null,
+            cotizacion: cotizacionDelViaje,
+          })
+        : null,
+    [fichaContacto, indiceDeViajes, cotizacionDelViaje],
+  );
+
   // Evaluar cierre de ventana con borrador (0c.19)
   useEffect(() => {
     if (!detalle) return;
@@ -456,8 +488,36 @@ export default function BandejaConversacionPage() {
 
   // Cargar historial de conversación
   const cargarCotizacionesDelContacto = useCallback(async (contactoId: string) => {
+    contactoDeCotizacionesRef.current = contactoId;
+    // Lo del contacto anterior no se queda a la vista mientras llega lo de este.
+    setCotizacionDelViaje(null);
     try {
       const pagina = await listarCotizacionesApi({ contactoId, limite: 50 });
+      if (contactoDeCotizacionesRef.current !== contactoId) return;
+      const vigente = cotizacionVigente(pagina.datos);
+      if (vigente) {
+        let ultima = null;
+        try {
+          ultima = (await obtenerCotizacionGuardadaApi(vigente.id)).versiones.at(-1) ?? null;
+        } catch (e) {
+          // Sin el detalle se muestra la cotización sin pasajeros ni vigencia; no tumba el panel.
+          console.warn('[bandeja] No se pudo leer el detalle de la cotización vigente:', e);
+        }
+        if (contactoDeCotizacionesRef.current !== contactoId) return;
+        setCotizacionDelViaje({
+          id: vigente.id,
+          titulo: vigente.titulo,
+          version: ultima?.numero ?? vigente.numeroDeVersiones,
+          venta: ultima?.venta ?? vigente.venta,
+          vigenteHasta: ultima?.vigenteHasta ?? null,
+          estado: vigente.estado,
+          destino: ultima?.destino ?? null,
+          fechaSalida: ultima?.fechaSalida ?? vigente.fechaSalida,
+          pasajeros: ultima
+            ? { adultos: ultima.adultos, ninos: ultima.ninos, infantes: ultima.infantes }
+            : null,
+        });
+      }
       setCotizacionesContacto(
         pagina.datos.map((fila) => ({
           id: fila.id,
@@ -472,6 +532,7 @@ export default function BandejaConversacionPage() {
       // No tumba la conversación: el modal mostrará «No hay cotizaciones guardadas».
       console.error('[bandeja] No se pudieron cargar las cotizaciones del contacto:', e);
       setCotizacionesContacto([]);
+      setCotizacionDelViaje(null);
     }
   }, []);
 
@@ -967,7 +1028,7 @@ export default function BandejaConversacionPage() {
             </div>
           </div>
 
-          {/* Estado de 24h + SLA + Acción Primaria «Nueva Cotización» */}
+          {/* Estado de 24h + SLA. Cotizar vive en la solicitud de viaje del panel derecho */}
           <div className="flex shrink-0 items-center gap-1.5">
             {/* Cuenta atrás viva de 24h (T-113) */}
             <InsigniaCuentaRegresiva24h estado={estadoVentana24h} />
@@ -979,24 +1040,16 @@ export default function BandejaConversacionPage() {
               </span>
             )}
 
-            {/* Acción Primaria Prominente: Nueva Cotización */}
-            <Link
-              href={`/cotizador?conversacion=${id}&contactoId=${detalle.contactoId}`}
-              className="bg-acento-700 hover:bg-acento-800 flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center gap-1.5 rounded-xl px-2.5 py-2 text-xs font-semibold text-white shadow-2xs sm:px-3.5"
-            >
-              <PlusCircle className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Nueva cotización</span>
-            </Link>
-
             {/* Alternar Ficha del Viajero (< xl) */}
             <button
               type="button"
               onClick={() => setMostrarFichaLateral((p) => !p)}
-              className="flex h-11 min-h-[44px] w-11 min-w-[44px] shrink-0 items-center justify-center rounded-xl border border-neutral-200 text-neutral-600 hover:bg-neutral-100 xl:hidden dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
-              title="Ver ficha del viajero"
+              className="flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center gap-1.5 rounded-xl border border-neutral-200 px-2.5 text-xs font-semibold text-neutral-700 hover:bg-neutral-100 xl:hidden dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+              title="Ver la solicitud de viaje y la ficha del viajero"
               aria-label="Alternar ficha de cliente"
             >
-              <PanelRight className="h-4 w-4" />
+              <PanelRight className="h-4 w-4" aria-hidden="true" />
+              <span>Viaje</span>
             </button>
           </div>
         </header>
@@ -1371,10 +1424,12 @@ export default function BandejaConversacionPage() {
       </div>
 
       {/* Columna Derecha: Ficha del Viajero permanente en pantallas xl */}
-      {fichaContacto && (
+      {fichaContacto && fichaDelPanel && viajeDelPanel && (
         <aside className="hidden w-[340px] shrink-0 border-l border-neutral-200 xl:block dark:border-neutral-800">
           <FichaCliente
-            ficha={fichaContacto}
+            ficha={fichaDelPanel}
+            viaje={viajeDelPanel}
+            conversacionId={id}
             onEditarContacto={() => setModalEditarContactoAbierto(true)}
             onCrearOportunidad={() => setModalCrearOportunidadAbierto(true)}
           />
@@ -1382,7 +1437,7 @@ export default function BandejaConversacionPage() {
       )}
 
       {/* Ficha lateral como Drawer en pantallas medianas (< xl) */}
-      {mostrarFichaLateral && fichaContacto && (
+      {mostrarFichaLateral && fichaContacto && fichaDelPanel && viajeDelPanel && (
         <div
           className="fixed inset-0 z-40 flex justify-end bg-black/40 xl:hidden"
           onClick={() => setMostrarFichaLateral(false)}
@@ -1392,7 +1447,9 @@ export default function BandejaConversacionPage() {
             onClick={(e) => e.stopPropagation()}
           >
             <FichaCliente
-              ficha={fichaContacto}
+              ficha={fichaDelPanel}
+              viaje={viajeDelPanel}
+              conversacionId={id}
               onCerrar={() => setMostrarFichaLateral(false)}
               onEditarContacto={() => setModalEditarContactoAbierto(true)}
               onCrearOportunidad={() => setModalCrearOportunidadAbierto(true)}

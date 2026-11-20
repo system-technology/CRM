@@ -1,4 +1,5 @@
 import type { DetalleDeArchivo, ReservaDelArchivo } from '@viajapro/contracts';
+import { proximaOcurrencia } from './mock-fechas';
 
 /**
  * Archivos de viaje de demostración, en la forma del contrato (`DetalleDeArchivo`). Solo se leen en
@@ -73,8 +74,8 @@ export const MOCK_DETALLES_ARCHIVOS: DetalleDeArchivo[] = [
     cotizacionId: '00000000-0032-4000-8000-000000000001',
     versionCotizacion: 1,
     paqueteNombre: 'San Andrés Todo Incluido Familiar',
-    destino: 'San Andrés Islas, Colombia',
-    fechaSalida: '2026-12-20',
+    destino: 'San Andrés, Colombia',
+    fechaSalida: proximaOcurrencia(12, 20),
     noches: 5,
     adultos: 2,
     ninos: 1,
@@ -128,7 +129,7 @@ export const MOCK_DETALLES_ARCHIVOS: DetalleDeArchivo[] = [
     versionCotizacion: 2,
     paqueteNombre: 'Cartagena Histórica 4 días',
     destino: 'Cartagena, Colombia',
-    fechaSalida: '2027-01-15',
+    fechaSalida: proximaOcurrencia(1, 15),
     noches: 3,
     adultos: 2,
     ninos: 0,
