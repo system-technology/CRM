@@ -6617,8 +6617,9 @@ tasks:
     files:
       - packages/contracts/src
       - apps/api/src/modules
-    source: T-261 (la cotización y el file no traen la conversación y el archivo no expone lo pagado)
+    source: T-282 (la cotización y el file no traen la conversación y el archivo no expone lo pagado)
     created_at: 2026-11-20T22:00:00.000Z
+    owner: backend
   - id: T-300
     title: Tope diario de fallos de verificación del código de un solo uso (OTP) por correo
     type: security
