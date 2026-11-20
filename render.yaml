@@ -36,7 +36,9 @@ services:
     # ADR-0028: la sonda continua de Render no toca la base (si no, Neon nunca se suspende y un
     # corte de Neon reiniciaria la API). /salud/listo lo comprueba el workflow tras desplegar.
     healthCheckPath: /salud
-    maxShutdownDelaySeconds: 120 # drena Socket.IO al redesplegar (main-unico cierra en <=25 s)
+    # Sin maxShutdownDelaySeconds: Render lo rechaza en el plan free (error al planificar el Blueprint,
+    # 2026-11-20). Con el valor por omision main-unico debe cerrar en <=25 s; al pasar a `starter`
+    # (T-239) se repone `maxShutdownDelaySeconds: 120` para drenar Socket.IO.
     autoDeployTrigger: 'off' # solo despliega el deploy hook (GitHub Actions)
     envVars:
       - key: NODE_ENV
