@@ -98,7 +98,7 @@ Detalle y alternativas descartadas: `docs/03-adr/0001-stack-tecnologico.md`.
 ```
 apps/api        NestJS. src/modules/<contexto>/ — cada uno con domain/ application/ infrastructure/ interface/.
                 También el trabajador (src/worker.ts) y el modo de un solo proceso (src/main-unico.ts, src/proceso-unico/)
-apps/web        Next.js (App Router). src/app/<ruta>/ plano (bandeja, cotizador, catalogo, pipeline, reportes…), sin (dashboard)/
+apps/web        Next.js (App Router). Hoy src/app/<ruta>/ plano; destino (ADR-0032): privadas en src/app/(app)/ con marco común, públicas fuera, menú en lib/navegacion.ts
 apps/worker     Solo un README: el único consumidor (inbox) vive en apps/api, ADR-0010
 packages/contracts   Zod + tipos compartidos. FUENTE DE VERDAD de los contratos.
 packages/database    prisma/schema.prisma, prisma/migrations/, prisma/policies/ (RLS), prisma/seed*.ts
