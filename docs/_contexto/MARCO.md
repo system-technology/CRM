@@ -59,7 +59,7 @@ más viejo que el último commit (o lleva más de 2 h con el árbol sucio). Bloq
   `T-000`. Commitlint: alcance `hilo` para docs de hilo, no `bitacora`.
 - **Flujo:** worktree por rama; `cd <wt> && git …` en una sola llamada (hook `guard-rama`); push con
   `node scripts/gh-app.mjs <carril> push`; PR con `… gh pr create`; auto-merge `--auto --merge`;
-  ramas rezagadas con `gh pr update-branch`. 8 checks, protección de servidor, R11.
+  ramas rezagadas con `gh pr update-branch`. 9 checks, protección de servidor, R11.
 - **Autorización:** el propietario delegó aprobar rutas protegidas y merges, pero el hook de
   integración impide autoautorizarse: si lo bloquea, se pide al propietario, no se rodea.
 - **Agentes:** reanudar con `SendMessage` en vez de crear nuevos; encargo con alcance, rutas y
