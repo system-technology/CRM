@@ -352,7 +352,7 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
           {barraExpandida ? (
             <div className="flex w-full items-center justify-between px-1">
               <Link
-                href="/bandeja"
+                href="/"
                 title="ViajaPro — CRM Turístico"
                 className="focus-visible:ring-acento-600 flex items-center gap-2.5 overflow-hidden rounded-xl focus-visible:ring-2 focus-visible:outline-none"
               >
@@ -383,7 +383,7 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
           ) : (
             <div className="flex w-full flex-col items-center space-y-2">
               <Link
-                href="/bandeja"
+                href="/"
                 title="ViajaPro — CRM Turístico"
                 className="bg-acento-700 focus-visible:ring-acento-600 flex h-11 min-h-[44px] w-11 min-w-[44px] items-center justify-center rounded-xl text-white shadow-sm transition-transform hover:scale-105 focus-visible:ring-2 focus-visible:outline-none"
               >
