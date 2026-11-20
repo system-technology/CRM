@@ -248,7 +248,7 @@ export type RespuestaOk = z.infer<typeof RespuestaOk>;
  * Respuesta de `GET /api/v1/agencia/ajustes`: lo que la web necesita de la agencia activa para
  * presentar (zona horaria para formatear fechas, moneda y país por defecto). Lee de `tenants`.
  *
- * La zona y el nombre se leen de `tenants`; la zona se cambia con `PATCH` (`ActualizarAjustesDeAgencia`),
+ * La zona y el nombre se leen de `tenants`; la zona se cambia con `PATCH` (`CambiarAjustesDeAgencia`),
  * que pasa por la función `actualizar_zona_horaria_de_la_agencia` y no por un UPDATE (ADR-0027). El RNT
  * se lee y se escribe en `perfiles_de_agencia` (T-261).
  * Las fechas siguen en UTC en la base (R9); esto solo gobierna la presentación.
@@ -298,15 +298,3 @@ export const CambiarAjustesDeAgencia = z
     message: 'No hay nada que cambiar',
   });
 export type CambiarAjustesDeAgencia = z.infer<typeof CambiarAjustesDeAgencia>;
-
-/**
- * LEGADO: solo la zona horaria. El cuerpo vigente del `PATCH` es `CambiarAjustesDeAgencia` (zona
- * y/o RNT). Este esquema sigue aquí, sin cambios, mientras la web migra (T-261, PR de
- * Configuración); después se retira. La API ya no lo usa.
- */
-export const ActualizarAjustesDeAgencia = z
-  .object({
-    zonaHoraria: z.string().min(1).max(64).regex(/^\S+$/, 'Sin espacios'),
-  })
-  .strict();
-export type ActualizarAjustesDeAgencia = z.infer<typeof ActualizarAjustesDeAgencia>;
