@@ -6000,9 +6000,7 @@ tasks:
     phase: 2
     priority: P1
     effort: M
-    status: blocked
-    blocked_reason: "ADR-0030 en estado Propuesto: espera auditor-seguridad y la aceptación del propietario.
-      human_required: migración del Owner (ruta protegida) y cambio de R2 en CLAUDE.md"
+    status: ready
     human_required: true
     depends_on: []
     acceptance:
@@ -6020,7 +6018,13 @@ tasks:
       - set_config('app.current_tenant') es la última sentencia, fuera de bloques EXCEPTION; aserción de que el
         proconfig de crear_agencia y de codigo_de_acceso_vigente es exactamente {search_path=""}
       - codigo_de_acceso_vigente(p_hash, p_correo_hmac) STABLE, solo lectura, mismo dueño, EXECUTE solo para
-        viajapro_app
+        viajapro_app; aserción provolatile = 's'
+      - codigos_de_acceso_al_registro.correo_hmac NOT NULL; crear_agencia y codigo_de_acceso_vigente exigen
+        correo_hmac = p_correo_hmac, sin rama para códigos sin correo
+      - "El candado de crear_agencia es pg_advisory_xact_lock de dos claves (espacio propio del registro +
+        hash de la identidad), no de una sola, para no chocar con otros candados del sistema"
+      - Las filas de excepciones_rls de las tablas globales nuevas se insertan ANTES de crear las tablas, en la
+        misma migración, para que ninguna reconcesión intermedia les dé privilegios
       - tenants con origen_del_alta (enum, NOT NULL DEFAULT PLATAFORMA), creado_por_identidad_id, prueba_termina_en,
         encargo_version y encargo_aceptado_en; la declaración de tenants para viajapro_app sigue en {SELECT}
       - perfiles_de_agencia con tenant_id PK, RLS USING + WITH CHECK y verificado_en; un disparador lo pone en
@@ -6073,7 +6077,7 @@ tasks:
     priority: P1
     effort: M
     status: blocked
-    blocked_reason: "Espera la aceptación de ADR-0030 y T-268 (aceptaciones_de_identidad)"
+    blocked_reason: "Espera T-268 (ADR-0030 ya aceptado) (aceptaciones_de_identidad)"
     depends_on:
       - T-268
     acceptance:
@@ -6088,16 +6092,18 @@ tasks:
         intentos_restantes - 1 WHERE correo_hmac = $1 AND intentos_restantes > 0 AND expira_en > now()
         RETURNING; compara en tiempo constante; al acertar, DELETE por id y solo sigue si borró 1 fila; 10 fallos
         por correo en 24 h bloquean incluso el código correcto"
-      - completar nunca reutiliza ni ata una identidad existente (error genérico); crea la identidad con
-        crearVerificada y las aceptaciones de TERMINOS y AVISO_DE_PRIVACIDAD con versión vigente y canal
+      - completar nunca reutiliza ni ata una identidad existente (error genérico); usa una variante
+        crearVerificadaNueva(tx, …) que ante P2002 lanza el error genérico (la crearVerificada actual reutiliza la
+        identidad, identidades.prisma.ts:42-47); e2e de la carrera completar contra completar y contra aceptar
+        invitación; crea la identidad y las aceptaciones de TERMINOS y AVISO_DE_PRIVACIDAD con versión vigente y canal
         WEB_REGISTRO en la misma transacción del pool de identidad; sin ambas = 422; inicia sesión por Better
         Auth sin crear sesiones a mano
-      - "Las dos ramas de solicitar encolan un trabajo con la misma forma en el mismo punto, y el código no queda
-        en claro en la cola (cifrado con ADR-0015 o el mecanismo del OTP de ingreso si se comprueba que no lo
-        deja en claro); verificar cómo encola hoy enviarCodigo"
+      - "Las dos ramas de solicitar encolan un trabajo con la misma forma en el mismo punto, por la cola de correo
+        que ya sella con AES-256-GCM (notifications/domain/sellado-de-correo.ts)"
       - "LimitadorDeEnvios con prefijo como parámetro de claveDeLimite; el registro usa viajapro:registro:, viajapro:registro-fallos: y viajapro:registro-acceso:, sin compartir contador con el OTP de ingreso"
-      - AceptarInvitacionUseCase, al atar una invitación a una identidad preexistente, encola un aviso a esa
-        identidad (sin revelar nada en la respuesta)
+      - "AceptarInvitacionUseCase, al atar una invitación a una identidad preexistente, encola a esa identidad el
+        aviso «Tu correo ya tenía una cuenta de ViajaPro, creada el <fecha>. La contraseña que escribiste no se
+        aplicó. Si no creaste esa cuenta, avisa ya» (sin revelar nada en la respuesta)"
       - Better Auth sigue con disableSignUp true (spec de crear-auth); puerto VerificadorDeHumano con adaptador
         que aprueba
       - "e2e: 20 completar concurrentes sobre el mismo correo hacen como mucho 3 comparaciones y no crean
@@ -6119,7 +6125,7 @@ tasks:
     priority: P1
     effort: M
     status: blocked
-    blocked_reason: "Espera la aceptación de ADR-0030, T-268, T-269 y T-270"
+    blocked_reason: "Espera T-268, T-269 y T-270"
     depends_on:
       - T-268
       - T-269
@@ -6278,6 +6284,12 @@ tasks:
         buzón de la plataforma (P7), sin datos personales
       - "e2e: una solicitud solo la ve su agencia; sin confirmación de DUENO no avanza; un phone_number_id en el
         cuerpo se ignora"
+      - La función SECURITY DEFINER que lista las solicitudes pendientes entra en el inventario de ADR-0008 (dueño
+        NOLOGIN, search_path vacío, EXECUTE mínimo) y en las aserciones de aislamiento.spec.ts
+      - El comando de plataforma recibe un solicitud_id y solo actúa si está en estado CONFIRMADA; el tenant sale
+        de la fila
+      - El token cifrado se borra al cerrar la solicitud (CONECTADA o CANCELADA) una vez registrado el canal
+      - El token se valida con debug_token (app, caducidad, permisos y WABA del alcance) antes de usarlo
       - Revisión de auditor-seguridad sin bloqueantes
     files:
       - apps/api/src/modules/inbox
@@ -6365,8 +6377,8 @@ tasks:
       - T-268
     acceptance:
       - "Generar código: secreto de al menos 128 bits de crypto.randomBytes en base32, solo el SHA-256 en
-        codigos_de_acceso_al_registro, expira_en en días (14 por defecto), correo opcional guardado como HMAC y
-        nota sin datos personales; el secreto se muestra una vez en la terminal y nunca se escribe en un
+        codigos_de_acceso_al_registro, expira_en en días (14 por defecto), correo OBLIGATORIO (se pide al
+        generar y se guarda solo como HMAC) y nota sin datos personales; el secreto se muestra una vez en la terminal y nunca se escribe en un
         registro"
       - Marcar verificado_en de perfiles_de_agencia por tenant_id, tras comprobar NIT y RNT; registra la acción
         en registros_auditoria sin el NIT
@@ -6380,24 +6392,192 @@ tasks:
     created_at: 2026-11-20T23:30:00.000Z
     owner: backend
   - id: T-281
-    title: "Aceptar una invitación sobre una identidad ya existente exige la sesión de esa identidad"
+    title: "Aceptar una invitación sobre una identidad ya existente exige su ingreso por código; toda identidad de
+      autoservicio se restablece (precondición para abrir el registro sin código)"
     type: security
     phase: 2
-    priority: P3
+    priority: P2
     effort: M
     status: blocked
-    blocked_reason: "Va a la cola (R13): espera la recuperación de contraseña por autoservicio (ADR-0011), sin la cual
-      la persona invitada no podría recuperar una identidad creada por otro. Mientras tanto rige el aviso por
-      correo de T-270"
+    blocked_reason: "Espera T-270. No bloquea el piloto (el código de acceso está atado a un correo), pero es
+      PRECONDICIÓN de cualquier ADR que abra el registro sin código (ADR-0030 §3.2, §3.6 y §6)"
     depends_on:
       - T-270
     acceptance:
-      - Si la identidad del correo invitado ya existe, aceptar exige iniciar sesión como esa identidad; sin sesión
-        se ofrece recuperar la contraseña, que revoca las sesiones abiertas
-      - La respuesta sin sesión no revela si la identidad existía
-      - e2e del ataque de ADR-0030 §3.7 (identidad creada antes de la invitación) sin acceso a la agencia
+      - Si la identidad del correo invitado ya existe, aceptar exige el ingreso por código de un solo uso de esa
+        identidad (OTP de ingreso existente, auth.controller.ts /otp/iniciar-sesion), no su contraseña
+      - Si esa identidad nació por autoservicio (tenga o no pertenencias), al aceptar se restablece su
+        credencial (contraseña nueva de quien acepta) y se revocan todas sus sesiones
+      - La respuesta antes del código no revela si la identidad existía
+      - e2e del ataque de ADR-0030 §3.7 (identidad creada con el correo de otra persona antes de la invitación)
+        sin acceso a la agencia y con las sesiones del atacante revocadas
     files:
       - apps/api/src/modules/identity
     source: auditoría de seguridad de ADR-0030, primera vuelta, bloqueante 1 (2026-11-20)
     created_at: 2026-11-20T23:30:00.000Z
     owner: backend
+  - id: T-284
+    title: "Registro: clave propia para el HMAC de correo, derivada con la etiqueta «registro-correo:», no
+      BETTER_AUTH_SECRET"
+    type: security
+    phase: 2
+    priority: P2
+    effort: S
+    status: blocked
+    blocked_reason: "Cola de la segunda auditoría de ADR-0030 (C3). Espera T-270"
+    depends_on:
+      - T-270
+    acceptance:
+      - correo_hmac de codigos_de_registro y codigos_de_acceso_al_registro usa una clave propia (secreto en el
+        gestor de secretos o derivada con HKDF y la etiqueta registro-correo:), distinta de BETTER_AUTH_SECRET
+      - El comando de T-280 y la API calculan el mismo HMAC; spec que lo comprueba
+      - La API aborta al arrancar con el registro habilitado si falta la clave
+    files:
+      - apps/api/src/modules/identity
+    source: auditoría de seguridad de ADR-0030, segunda vuelta, C3 (2026-11-20)
+    created_at: 2026-11-20T23:45:00.000Z
+    owner: backend
+  - id: T-285
+    title: "perfiles_de_agencia: disparador de verificado_en SECURITY INVOKER que niega por defecto, y prueba de que
+      no se imprime NIT ni RNT sin verificar"
+    type: security
+    phase: 2
+    priority: P2
+    effort: S
+    status: blocked
+    blocked_reason: "Cola de la segunda auditoría de ADR-0030 (C4). Espera T-268; human_required: migración del
+      Owner"
+    human_required: true
+    depends_on:
+      - T-268
+    acceptance:
+      - El disparador es SECURITY INVOKER y niega por defecto (solo el rol de plataforma conserva un verificado_en
+        no nulo); cualquier otro rol que escriba nit o rnt lo deja en NULL
+      - aislamiento.spec.ts cubre viajapro_app intentando fijar verificado_en
+      - Un spec de la pieza de cotización (y de cualquier documento hacia el viajero) comprueba que sin
+        verificado_en no aparecen NIT ni RNT
+    files:
+      - packages/database/prisma/migrations
+      - packages/database/tests/aislamiento.spec.ts
+      - apps/api/src/modules/quoting
+    source: auditoría de seguridad de ADR-0030, segunda vuelta, C4 (2026-11-20)
+    created_at: 2026-11-20T23:45:00.000Z
+    owner: datos
+  - id: T-286
+    title: "LimitadorDeEnvios: consultar sin consumir (para el tope de fallos de 24 h del registro)"
+    type: security
+    phase: 2
+    priority: P2
+    effort: S
+    status: blocked
+    blocked_reason: "Cola de la segunda auditoría de ADR-0030 (C5). Espera T-270"
+    depends_on:
+      - T-270
+    acceptance:
+      - El puerto ofrece agotado(clave, maximo) que no incrementa; adaptadores de Redis y de memoria
+      - completar consulta el tope de 24 h sin consumirlo y solo suma al fallar; spec de los dos adaptadores
+    files:
+      - apps/api/src/modules/identity/application/limitador-de-envios.ts
+      - apps/api/src/modules/identity/infrastructure
+    source: auditoría de seguridad de ADR-0030, segunda vuelta, C5 (2026-11-20)
+    created_at: 2026-11-20T23:45:00.000Z
+    owner: backend
+  - id: T-287
+    title: "Limitador en memoria en el modo de un solo proceso: documentar su alcance o persistirlo en Postgres"
+    type: security
+    phase: 2
+    priority: P2
+    effort: S
+    status: blocked
+    blocked_reason: "Cola de la segunda auditoría de ADR-0030 (C6). Espera T-270"
+    depends_on:
+      - T-270
+    acceptance:
+      - "Decisión escrita: en modo único (ADR-0019) un reinicio vacía los contadores del registro; se acepta
+        y se documenta, o se persisten en Postgres"
+      - Si se persisten, spec de que sobreviven a un reinicio
+    files:
+      - apps/api/src/modules/identity/infrastructure
+      - docs/07-ingenieria/runbook-modo-unico.md
+    source: auditoría de seguridad de ADR-0030, segunda vuelta, C6 (2026-11-20)
+    created_at: 2026-11-20T23:45:00.000Z
+    owner: backend
+  - id: T-288
+    title: "Purga periódica de codigos_de_registro caducados"
+    type: security
+    phase: 2
+    priority: P3
+    effort: S
+    status: blocked
+    blocked_reason: "Cola de la segunda auditoría de ADR-0030 (C7). Espera T-268"
+    depends_on:
+      - T-268
+    acceptance:
+      - Un barrido borra las filas con expira_en vencido hace más de 24 h, por lotes y con el pool de identidad
+      - Spec del barrido; no toca filas vigentes
+    files:
+      - apps/api/src/modules/identity
+    source: auditoría de seguridad de ADR-0030, segunda vuelta, C7 (2026-11-20)
+    created_at: 2026-11-20T23:45:00.000Z
+    owner: backend
+  - id: T-289
+    title: "Origin estricto en las rutas del registro (solicitar, completar, agencias)"
+    type: security
+    phase: 2
+    priority: P2
+    effort: S
+    status: blocked
+    blocked_reason: "Cola de la segunda auditoría de ADR-0030 (C8). Espera T-270 y T-271"
+    depends_on:
+      - T-270
+      - T-271
+    acceptance:
+      - Las tres rutas rechazan con 403 una petición sin Origin o con Origin fuera de la lista, aunque el resto
+        de la API admita peticiones sin Origin (T-001)
+      - Spec en apps/api/src/shared/red/ para las tres
+    files:
+      - apps/api/src/shared/red/
+    source: auditoría de seguridad de ADR-0030, segunda vuelta, C8 (2026-11-20)
+    created_at: 2026-11-20T23:45:00.000Z
+    owner: backend
+  - id: T-290
+    title: "Web: el fragmento #acceso del enlace de registro no se filtra (replaceState, sin scripts de terceros,
+      Referrer-Policy no-referrer)"
+    type: security
+    phase: 2
+    priority: P2
+    effort: S
+    status: blocked
+    blocked_reason: "Cola de la segunda auditoría de ADR-0030 (C10). Espera T-272"
+    depends_on:
+      - T-272
+    acceptance:
+      - "Al cargar /registro, la web lee #acceso, lo guarda solo en memoria y limpia la URL con history.replaceState"
+      - /registro no carga scripts de terceros y responde con Referrer-Policy no-referrer
+      - Spec de que tras cargar la página la URL ya no contiene el secreto
+    files:
+      - apps/web/src/app
+    source: auditoría de seguridad de ADR-0030, segunda vuelta, C10 (2026-11-20)
+    created_at: 2026-11-20T23:45:00.000Z
+    owner: frontend
+  - id: T-291
+    title: "crear_agencia: prefijos de slug reservados (viajapro-*, soporte-*), además de la lista exacta"
+    type: security
+    phase: 2
+    priority: P3
+    effort: S
+    status: blocked
+    blocked_reason: "Cola de la segunda auditoría de ADR-0030 (C13). Entra con T-268 si llega a tiempo; si no, en
+      una migración posterior del Owner"
+    human_required: true
+    depends_on:
+      - T-268
+    acceptance:
+      - Un slug que empiece por viajapro- o soporte- nunca se asigna tal cual; recibe el sufijo aleatorio
+      - Aserción en aislamiento.spec.ts
+    files:
+      - packages/database/prisma/migrations
+      - packages/database/tests/aislamiento.spec.ts
+    source: auditoría de seguridad de ADR-0030, segunda vuelta, C13 (2026-11-20)
+    created_at: 2026-11-20T23:45:00.000Z
+    owner: datos
