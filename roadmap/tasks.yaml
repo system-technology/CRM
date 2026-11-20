@@ -6854,13 +6854,13 @@ tasks:
     created_at: 2026-11-20T16:40:00.000Z
     owner: documentador
     notes: "Auditoría de T-268, cola 6. Un ADR no se edita, se supersede o se anota: seguir lo que el propio ADR-0030 diga sobre sus enmiendas."
-
+  - id: T-348
     title: "Retirar ActualizarAjustesDeAgencia del contrato (la web y la API ya usan CambiarAjustesDeAgencia)"
     type: refactor
     phase: 1
     priority: P3
     effort: S
-    status: ready
+    status: done
     depends_on: [T-261]
     acceptance:
       - "Se borra ActualizarAjustesDeAgencia (y su tipo) de packages/contracts/src/identidad.ts y su bloque en agencia-ajustes.controller.spec.ts"
@@ -6871,6 +6871,7 @@ tasks:
     source: T-261 (el esquema legado quedó solo la zona horaria mientras la web migraba)
     created_at: 2026-11-21T00:10:00.000Z
     owner: backend
+    notes: "Integrada en #347. Nació como T-306, número que otra sesión ya usaba para la tarea de funciones SECURITY DEFINER; al integrarse perdió su línea id y se renumeró aquí."
   - id: T-307
     title: "perfiles_de_agencia: endurecimiento menor que dejó la auditoría de T-261"
     type: security
