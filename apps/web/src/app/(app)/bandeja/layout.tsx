@@ -10,7 +10,7 @@ import {
   calcularSiguienteConversacionId,
   usePreferenciaAtajosTeclado,
 } from '../../../lib/atajos-teclado-bandeja';
-import { esDetalleMovilDeBandeja } from '../../../lib/modulo-activo';
+import { esDetalleMovilDeBandeja } from '../../../lib/navegacion';
 import { useCargarIndiceDeViajes, ViajesBandejaProvider } from '../../../lib/viajes-bandeja';
 
 export default function BandejaLayout({ children }: { children: React.ReactNode }) {
