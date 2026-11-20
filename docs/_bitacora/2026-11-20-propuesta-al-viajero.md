@@ -53,19 +53,18 @@ e incluye en la primera; valor y condiciones en la segunda). Sin errores en cons
 ## Lo que NO se hizo, y por qué
 
 El catálogo **no guarda** estos datos. Mostrarlos exige backend (migración, ruta protegida y PR
-aparte del carril `a/`). Quedan para dar de alta en `roadmap/tasks.yaml` cuando se integre el
-#308, que también edita ese archivo:
+aparte del carril `a/`). Quedan en la cola (`roadmap/tasks.yaml`, T-261 a T-266):
 
-1. **RNT de la agencia en los ajustes** (`AjustesDeAgencia.rnt`, columna en `tenants`). Hoy el RNT
-   sale solo en modo demo (`MOCK_CONFIGURACION_AGENCIA.rnt`). Con la API real, el pie lleva solo el
-   nombre. La Ley 300 de 1996 exige el RNT en la publicidad: es lo más urgente de la lista.
-2. **Imagen de portada por producto o destino** (subida a S3/MinIO, URL firmada). Mientras no
-   exista, la portada es tipográfica. No se usan fotos de stock ni de terceros.
-3. **Itinerario estructurado por día** en el producto, en lugar de leer «Día N» de la descripción.
-4. **Hotel con nombre y categoría, y vuelos con horario** por versión o por reserva (ADR-0024).
-5. **Datos legales de la agencia en la API**: razón social, NIT, dirección y teléfono. Hoy solo
-   llega el nombre.
-6. **Enlace web de la propuesta**, además del PDF (auditoría I3, «un enlace web después»).
+- **T-261 — RNT de la agencia en los ajustes** (`AjustesDeAgencia.rnt`, columna en `tenants`). Hoy el RNT
+  sale solo en modo demo (`MOCK_CONFIGURACION_AGENCIA.rnt`). Con la API real, el pie lleva solo el
+  nombre. La Ley 300 de 1996 exige el RNT en la publicidad: es lo más urgente de la lista.
+- **T-263 — Imagen de portada por producto o destino** (subida a S3/MinIO, URL firmada). Mientras no
+  exista, la portada es tipográfica. No se usan fotos de stock ni de terceros.
+- **T-264 — Itinerario estructurado por día** en el producto, en lugar de leer «Día N» de la descripción.
+- **T-265 — Hotel con nombre y categoría, y vuelos con horario** por versión o por reserva (ADR-0024).
+- **T-262 — Datos legales de la agencia en la API**: razón social, NIT, dirección y teléfono. Hoy solo
+  llega el nombre.
+- **T-266 — Enlace web de la propuesta**, además del PDF (auditoría I3, «un enlace web después»).
 
 ## Supuesto / sin probar
 
