@@ -41,9 +41,7 @@ test('ingresa con el usuario sembrado y cae en Hoy', async ({ page }) => {
 
   // Destino por defecto tras ingresar (D1): Hoy, en `/`, no la bandeja.
   await expect(page).toHaveURL(/^[^?#]*\/$/, { timeout: 20_000 });
-  await expect(
-    page.getByTestId('sidebar-escritorio').or(page.locator('main#contenido')),
-  ).toBeVisible();
+  await expect(page.locator('main#contenido')).toBeVisible();
 
   // Como la asesora la primera vez: el banner de cookies queda fijo abajo y tapa el compositor de la
   // bandeja hasta que se acepta. El consentimiento se guarda en el navegador y viaja en la sesion.
