@@ -1,4 +1,5 @@
-import type { CotizacionGuardada } from '@viajapro/contracts';
+import type { CotizacionGuardada, VersionDeCotizacion } from '@viajapro/contracts';
+import { proximaOcurrencia } from './mock-fechas';
 
 /**
  * Almacén simulado en memoria para cotizaciones guardadas (0c.22).
@@ -11,7 +12,7 @@ export const MOCK_COTIZACION_DEMO_ID = '01932000-0000-7000-8000-000000000077';
 const COTIZACIONES_BASE: CotizacionGuardada[] = [
   {
     id: MOCK_COTIZACION_DEMO_ID,
-    contactoId: '00000000-0002-4000-8000-000000000001', // Juan Pérez
+    contactoId: '00000000-0002-4000-8000-000000000004', // Felipe Morales (file 1043: San Andrés 2+1)
     oportunidadId: '01932000-0000-7000-8000-000000000001',
     titulo: 'Cotización San Andrés — Plan Familiar',
     estado: 'ENVIADA',
@@ -26,7 +27,7 @@ const COTIZACIONES_BASE: CotizacionGuardada[] = [
         creadaEn: '2026-10-18T14:20:00.000Z',
         paqueteId: '01932000-0000-7000-8000-000000000001',
         paqueteNombre: 'San Andrés — 4 días / 3 noches, todo incluido',
-        destino: 'San Andrés Islas, Colombia',
+        destino: 'San Andrés, Colombia',
         noches: 3,
         fechaSalida: '2026-10-25',
         vigenciaId: '01932000-0000-7000-8000-000000000001',
@@ -64,7 +65,7 @@ const COTIZACIONES_BASE: CotizacionGuardada[] = [
         creadaEn: '2026-10-19T09:15:00.000Z',
         paqueteId: '01932000-0000-7000-8000-000000000001',
         paqueteNombre: 'San Andrés — 4 días / 3 noches, todo incluido',
-        destino: 'San Andrés Islas, Colombia',
+        destino: 'San Andrés, Colombia',
         noches: 3,
         fechaSalida: '2026-10-25',
         vigenciaId: '01932000-0000-7000-8000-000000000001',
@@ -140,10 +141,137 @@ function desplazarFechas<T>(valor: T, delta: number): T {
   return valor;
 }
 
-export const MOCK_COTIZACIONES_INICIALES: CotizacionGuardada[] = desplazarFechas(
+const DIAS_DESDE_REFERENCIA = Math.floor((Date.now() - FECHA_REFERENCIA_MS) / DIA_MS) * DIA_MS;
+
+/** La de San Andrés es la del file 1043 de Felipe: su salida es la misma que la del archivo. */
+const COTIZACIONES_DESPLAZADAS: CotizacionGuardada[] = desplazarFechas(
   COTIZACIONES_BASE,
-  Math.floor((Date.now() - FECHA_REFERENCIA_MS) / DIA_MS) * DIA_MS,
-);
+  DIAS_DESDE_REFERENCIA,
+).map((c) => ({
+  ...c,
+  versiones: c.versiones.map((v) => ({ ...v, fechaSalida: proximaOcurrencia(12, 20) })),
+}));
+
+const diaRelativo = (dias: number): string =>
+  new Date(Date.now() + dias * DIA_MS).toISOString().slice(0, 10);
+const instanteRelativo = (dias: number): string =>
+  new Date(Date.now() + dias * DIA_MS).toISOString();
+
+function versionDemo(
+  parcial: Pick<
+    VersionDeCotizacion,
+    | 'id'
+    | 'paqueteNombre'
+    | 'destino'
+    | 'noches'
+    | 'fechaSalida'
+    | 'adultos'
+    | 'ninos'
+    | 'vigenteHasta'
+  > & { venta: string; linea: string; edadesNinos?: number[] },
+): VersionDeCotizacion {
+  const venta = { unidades: parcial.venta, moneda: 'COP' as const };
+  return {
+    id: parcial.id,
+    numero: 1,
+    creadaEn: instanteRelativo(-2),
+    paqueteId: '01932000-0000-7000-8000-000000000001',
+    paqueteNombre: parcial.paqueteNombre,
+    destino: parcial.destino,
+    noches: parcial.noches,
+    fechaSalida: parcial.fechaSalida,
+    vigenciaId: '01932000-0000-7000-8000-000000000001',
+    vigenciaDesde: diaRelativo(-30),
+    vigenciaHasta: diaRelativo(200),
+    deSalidaProgramada: true,
+    adultos: parcial.adultos,
+    ninos: parcial.ninos,
+    infantes: 0,
+    acomodacion: 'DOBLE',
+    ...(parcial.edadesNinos ? { edadesNinos: parcial.edadesNinos } : {}),
+    lineas: [
+      {
+        tarifaId: '01932000-0000-7000-8000-000000000011',
+        nombre: parcial.linea,
+        unidad: 'POR_PERSONA',
+        cubrePasajeros: parcial.adultos + parcial.ninos,
+        veces: 1,
+        precioUnitario: venta,
+        total: venta,
+        masBarata: false,
+      },
+    ],
+    venta,
+    vigenteHasta: parcial.vigenteHasta,
+  };
+}
+
+/**
+ * Las cotizaciones de los chats de la demostración: lo que el cliente pidió es lo que se cotizó
+ * (Juan: Cancún en diciembre para 2 adultos y 2 niños; Ana: Curazao para dos), con su vigencia.
+ */
+function cotizacionesDeLosChats(): CotizacionGuardada[] {
+  const cancun = proximaOcurrencia(12, 15);
+  const curazao = proximaOcurrencia(12, 5);
+  return [
+    {
+      id: '01932000-0000-7000-8000-000000000078',
+      contactoId: '00000000-0002-4000-8000-000000000001', // Juan Pérez
+      oportunidadId: '00000000-0010-4000-8000-000000000004',
+      titulo: 'Cancún todo incluido — familia (2 adultos y 2 niños)',
+      estado: 'ENVIADA',
+      versionEnviada: 1,
+      enviadaEn: instanteRelativo(-1),
+      creadaEn: instanteRelativo(-2),
+      actualizadaEn: instanteRelativo(-1),
+      versiones: [
+        versionDemo({
+          id: '01932000-0000-7000-8000-000000000111',
+          paqueteNombre: 'Cancún — 5 días / 4 noches, todo incluido',
+          destino: 'Cancún, México',
+          noches: 4,
+          fechaSalida: cancun,
+          adultos: 2,
+          ninos: 2,
+          edadesNinos: [7, 10],
+          venta: '12500000',
+          linea: 'Adulto y niño en acomodación doble',
+          vigenteHasta: diaRelativo(3),
+        }),
+      ],
+    },
+    {
+      id: '01932000-0000-7000-8000-000000000079',
+      contactoId: '00000000-0002-4000-8000-000000000002', // Ana Martínez
+      oportunidadId: '00000000-0010-4000-8000-000000000006',
+      titulo: 'Curazao 5 noches con desayuno (2 adultos)',
+      estado: 'ENVIADA',
+      versionEnviada: 1,
+      enviadaEn: instanteRelativo(-3),
+      creadaEn: instanteRelativo(-4),
+      actualizadaEn: instanteRelativo(-3),
+      versiones: [
+        versionDemo({
+          id: '01932000-0000-7000-8000-000000000112',
+          paqueteNombre: 'Curazao — 6 días / 5 noches, con desayuno',
+          destino: 'Curazao',
+          noches: 5,
+          fechaSalida: curazao,
+          adultos: 2,
+          ninos: 0,
+          venta: '9500000',
+          linea: 'Adulto en acomodación doble',
+          vigenteHasta: diaRelativo(1),
+        }),
+      ],
+    },
+  ];
+}
+
+export const MOCK_COTIZACIONES_INICIALES: CotizacionGuardada[] = [
+  ...COTIZACIONES_DESPLAZADAS,
+  ...cotizacionesDeLosChats(),
+];
 
 const storeCotizaciones = new Map<string, CotizacionGuardada>();
 

@@ -39,6 +39,7 @@ import { usePermisos, explicacionFaltaPermiso } from '../../lib/permisos';
 import { EstadoSinCatalogo } from '../../components/catalogo/estado-sin-catalogo';
 import { EdadesDePasajeros } from '../../components/cotizador/edades-de-pasajeros';
 import { edadesParaEnviar } from '../../lib/cotizador-edades';
+import { enteroDeUrl, paquetePorDestino } from '../../lib/viaje-solicitado-logica';
 
 const ModalGuardarCotizacion = dynamic(() =>
   import('../../components/cotizador/modal-guardar-cotizacion').then(
@@ -88,6 +89,12 @@ function ContenidoCotizador() {
   const fechaParam = searchParams.get('fecha');
   const conversacionParam = searchParams.get('conversacion');
   const contactoParam = searchParams.get('contactoId');
+  // Lo que ya se sabe del viaje cuando se llega desde la solicitud de una conversación.
+  const destinoParam = searchParams.get('destino');
+  const oportunidadParam = searchParams.get('oportunidadId');
+  const adultosParam = enteroDeUrl(searchParams.get('adultos'), 1, 200);
+  const ninosParam = enteroDeUrl(searchParams.get('ninos'), 0, 200);
+  const infantesParam = enteroDeUrl(searchParams.get('infantes'), 0, 200);
 
   // Modo de operación: API real (ADR-0009) vs mock
   const { esDemo, alternarDemo } = useModoDemo();
@@ -108,9 +115,9 @@ function ContenidoCotizador() {
   // se salta a la primera disponible (salvo que la URL o el usuario ya hayan elegido fecha).
   const [fecha, setFecha] = useState(fechaParam ?? (modoRealActivo ? fechaDeHoy() : '2026-10-03'));
   const fechaElegida = useRef(Boolean(fechaParam));
-  const [adultos, setAdultos] = useState(2);
-  const [ninos, setNinos] = useState(0);
-  const [infantes, setInfantes] = useState(0);
+  const [adultos, setAdultos] = useState(adultosParam ?? 2);
+  const [ninos, setNinos] = useState(ninosParam ?? 0);
+  const [infantes, setInfantes] = useState(infantesParam ?? 0);
   // Edades por pasajero (T-179): la tarifa de menor tiene rango de edad.
   const [edadesNinos, setEdadesNinos] = useState<(number | null)[]>([]);
   const [edadesInfantes, setEdadesInfantes] = useState<(number | null)[]>([]);
@@ -253,7 +260,11 @@ function ContenidoCotizador() {
         const listaPaquetes = Array.from(mapPaquetes.values());
         setPaquetesDisponibles(listaPaquetes);
 
-        const paqueteInicial = paqueteId || listaPaquetes[0]?.id || '';
+        const paqueteInicial =
+          paqueteId ||
+          paquetePorDestino(listaPaquetes, destinoParam)?.id ||
+          listaPaquetes[0]?.id ||
+          '';
         if (!paqueteId && paqueteInicial) {
           setPaqueteId(paqueteInicial);
         }
@@ -286,7 +297,7 @@ function ContenidoCotizador() {
       }));
       setPaquetesDisponibles(lista);
       if (!paqueteId && lista.length > 0) {
-        setPaqueteId(lista[0]!.id);
+        setPaqueteId((paquetePorDestino(lista, destinoParam) ?? lista[0]!).id);
       }
     }
   }, [usarReal]);
@@ -438,6 +449,9 @@ function ContenidoCotizador() {
       const cuerpo = armarCuerpoGuardarCotizacion({
         contactoId: datos.contactoId,
         titulo: datos.titulo,
+        // La oportunidad es de ese contacto: si la asesora elige otro en el modal, no se manda.
+        oportunidadId:
+          oportunidadParam && datos.contactoId === contactoParam ? oportunidadParam : undefined,
         composicion: {
           paqueteId,
           fecha,
