@@ -45,7 +45,7 @@ entre los dos lados.
 | Diseño generado de la bandeja | `docs/_assets/diseno/01-bandeja.png` |
 | Principios de diseño y tokens | `docs/01-producto/06-diseno-y-ux.md` |
 | Tokens ya implementados | `apps/web/src/app/globals.css` |
-| Pantalla de referencia ya hecha | `apps/web/src/app/cotizador/page.tsx` |
+| Pantalla de referencia ya hecha | `apps/web/src/app/(app)/cotizador/page.tsx` |
 | Vocabulario del dominio | `docs/01-producto/02-lenguaje-ubicuo.md` |
 
 ## 4. Criterios de aceptación

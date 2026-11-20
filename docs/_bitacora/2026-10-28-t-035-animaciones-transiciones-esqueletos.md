@@ -32,10 +32,10 @@ Tarea T-035 del roadmap v2 (Fase 1: Identidad Visual y Experiencia de Usuario):
 
 3. **Integración en Componentes y Pantallas**:
    - `apps/web/src/components/comun/esqueletos.tsx`: `EsqueletoConversacion`, `EsqueletoKanban`, `EsqueletoGridTarjetas`, `EsqueletoTabla`, `EsqueletoExpediente` y `EsqueletoReportes` actualizados con `.esqueleto-brillo`.
-   - `apps/web/src/app/catalogo/page.tsx` y `tarjeta-salida-publicada.tsx`: Entrada escalonada y elevación de tarjetas.
-   - `apps/web/src/app/pipeline/page.tsx`, `columna-kanban.tsx` y `tarjeta-oportunidad.tsx`: Animación de entrada y elevación en tarjetas kanban.
+   - `apps/web/src/app/(app)/catalogo/page.tsx` y `tarjeta-salida-publicada.tsx`: Entrada escalonada y elevación de tarjetas.
+   - `apps/web/src/app/(app)/pipeline/page.tsx`, `columna-kanban.tsx` y `tarjeta-oportunidad.tsx`: Animación de entrada y elevación en tarjetas kanban.
    - `apps/web/src/components/bandeja/lista-conversaciones.tsx`: Esqueletos con brillo y entrada escalonada en items.
-   - `apps/web/src/app/contactos/page.tsx`: Entrada escalonada en filas de la tabla de directorio.
+   - `apps/web/src/app/(app)/contactos/page.tsx`: Entrada escalonada en filas de la tabla de directorio.
    - `apps/web/src/components/inicio/bloque-seguimientos-dia.tsx`: Elevación y entrada escalonada en seguimientos diarios.
    - `apps/web/src/components/busqueda/modal-busqueda-global.tsx`: Transición `.anim-modal`.
    - `apps/web/src/components/catalogo/ficha-detalle-paquete.tsx`: Transición lateral `.anim-panel-lateral`.

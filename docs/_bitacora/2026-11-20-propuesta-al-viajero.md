@@ -29,7 +29,7 @@ WhatsApp, y es donde Travefy y Tern ganan (auditoría UX 2026-11-20 §3 e I3).
 
 | Pieza | Dónde |
 |---|---|
-| Portada de pase de abordar, intro (la descripción del producto), «Tu viaje, día a día», «Incluye» agrupado (vuelos, alojamiento y alimentación, traslados, asistencia, además), «No incluye», «Se paga en destino» (no sumado al total), «Valor del viaje» con total grande, «Para reservar» con la ley ESCNNA, y pie legal con razón social, NIT y **RNT** | `apps/web/src/app/cotizaciones/[id]/imprimir/page.tsx` |
+| Portada de pase de abordar, intro (la descripción del producto), «Tu viaje, día a día», «Incluye» agrupado (vuelos, alojamiento y alimentación, traslados, asistencia, además), «No incluye», «Se paga en destino» (no sumado al total), «Valor del viaje» con total grande, «Para reservar» con la ley ESCNNA, y pie legal con razón social, NIT y **RNT** | `apps/web/src/app/(impresion)/cotizaciones/[id]/imprimir/page.tsx` |
 | Lógica pura: fechas sin zona horaria (R9), plurales, agrupación de inclusiones, itinerario | `apps/web/src/lib/propuesta-viajero-logica.ts` (+ spec, 9 casos) |
 | Línea de tiempo del itinerario. **Punto de partida en 21st.dev**: «Timeline» de slide-cn (id 28298, sin dependencias), reducido a la variante vertical, sin `cloneElement` y con los tokens del proyecto | `apps/web/src/components/propuesta/linea-de-tiempo.tsx` |
 | Lectura del producto con solo los campos públicos (`dias`, plan, inclusiones, exclusiones, descripción, cargos en destino, opciones de salida). Si falla, la pieza sale sin esas secciones | `obtenerProductoParaPropuestaApi` en `apps/web/src/lib/catalogo-api.ts` |

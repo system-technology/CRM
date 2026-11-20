@@ -23,7 +23,7 @@
    - Navegación por teclado (flechas arriba/abajo, Enter/Tab para insertar, Esc para cerrar).
    - Objetivos táctiles `>= 44 px` en opciones y botones para usabilidad móvil.
 
-3. **Integración en la Bandeja (`apps/web/src/app/bandeja/[id]/page.tsx`):**
+3. **Integración en la Bandeja (`apps/web/src/app/(app)/bandeja/[id]/page.tsx`):**
    - Detección reactiva en el textarea al escribir «/».
    - Botón de acceso rápido en la barra de herramientas del chat (`btn-respuestas-rapidas`) para abrir el selector táctilmente sin necesidad de tipear.
    - Cierre automático al enviar mensaje o pulsar Escape.

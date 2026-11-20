@@ -24,7 +24,7 @@ Tarea T-022 del roadmap (Fase 1: Un CRM mostrable y endurecido):
    - `apps/web/src/lib/politica-precio-logica.ts`: `formatearPesosCop` delega directamente en `formatearDinero`.
    - `apps/web/src/lib/inicio-logica.ts`: `formatearHoraSeguimiento` delega en `formatearFecha({ estilo: 'hora' })`.
    - `apps/web/src/lib/pipeline-logica.ts`: `formatearTiempoRelativo` delega en `formatearFecha`.
-   - `apps/web/src/app/cotizaciones/[id]/page.tsx` y `cotizaciones/page.tsx`: Migrados a `formato.ts`.
+   - `apps/web/src/app/(app)/cotizaciones/[id]/page.tsx` y `cotizaciones/page.tsx`: Migrados a `formato.ts`.
 
 3. **Pruebas y Verificación**:
    - `apps/web/src/lib/formato.spec.ts`: 23 pruebas exhaustivas cubriendo ceros, millones, miles de millones, medianoche UTC vs Bogotá, números de teléfono colombianos con/sin indicativo y cupos.

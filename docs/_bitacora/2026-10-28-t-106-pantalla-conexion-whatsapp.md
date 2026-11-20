@@ -44,11 +44,11 @@ El objetivo de la tarea `T-106` es proporcionar a las agencias turísticas una p
   - Componente integral con tarjeta de salud, webhook con botón de copia, alternancia a modo desconectado con guía de 3 pasos, comparativa didáctica de ventana de 24 horas, simulador interactivo y catálogo de plantillas oficiales.
 - `apps/web/src/components/configuracion/bloque-conexion-whatsapp.spec.tsx`:
   - 9 pruebas unitarias cubriendo renderizado de canal conectado, llamada R6, copiado al portapapeles, alternancia a modo desconectado, explicación de ventana 24h, simulador interactivo de tiempo transcurrido, catálogo de plantillas y tamaños táctiles mínimos `>= 44 px`.
-- `apps/web/src/app/configuracion/page.tsx`:
+- `apps/web/src/app/(app)/configuracion/page.tsx`:
   - Integración del componente `BloqueConexionWhatsapp` en la pestaña `Canal WhatsApp (WABA)` con la insignia `T-106`. Limpieza de variables y estados no utilizados.
-- `apps/web/src/app/configuracion/whatsapp/page.tsx`:
+- `apps/web/src/app/(app)/configuracion/whatsapp/page.tsx`:
   - Ruta dedicada `/configuracion/whatsapp` con navegación unificada mediante `BarraModulos`, migas de pan a `/configuracion` y enlaces directos a `/bienvenida` y `/inbox`.
-- `apps/web/src/app/configuracion/whatsapp/page.spec.tsx`:
+- `apps/web/src/app/(app)/configuracion/whatsapp/page.spec.tsx`:
   - 2 pruebas de integración para la página dedicada.
 - `roadmap/tasks.yaml`:
   - Actualización de `T-106` a `status: done` con evidencia detallada.
