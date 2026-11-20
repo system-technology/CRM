@@ -2352,7 +2352,7 @@ De acuerdo con las reglas de carril (el carril frontend no toca `apps/api`, `pac
 
 ## Qué se construyó y corrigió (0c.33)
 
-Tras la revisión en `traspaso/REVISION.md` donde se identificaron desbordes visuales en las capturas a 375 px, se realizó una re-ingeniería exhaustiva del diseño responsivo en las cuatro pantallas:
+Tras la revisión en `docs/_traspasos/REVISION.md` donde se identificaron desbordes visuales en las capturas a 375 px, se realizó una re-ingeniería exhaustiva del diseño responsivo en las cuatro pantallas:
 
 1. **Catálogo (`/catalogo` y `TarjetaSalidaPublicada`):**
    - **Cabecera flexible:** Se aplicó `flex-wrap` al contenedor del título y del badge `DistintivoDatosDemo`, y tipografía responsiva (`text-base sm:text-xl`), impidiendo que el badge o el enlace de acción queden empujados fuera del viewport.
@@ -2803,7 +2803,7 @@ Se creó el archivo de pruebas de componentes `apps/web/src/components/comun/esq
   - `apps/web/src/components/bandeja/lista-conversaciones.tsx`: Conectado a `useInboxSocket`, badge de reconexión y re-fetch por REST en reconexión.
   - `apps/web/src/app/bandeja/[id]/page.tsx`: Conectado a `useInboxSocket`, botones de asignación («Tomar», «Soltar», «Reasignar»), aviso accesible de retirada (`[data-testid="aviso-conversacion-retirada"]`), bloqueo de envío y preservación del borrador redactado.
   - `apps/web/package.json` y `pnpm-lock.yaml`: Añadida dependencia `socket.io-client@^4.8.4`.
-  - `traspaso/COLA.md`: Marcada la tarea `0c.35` como `[x]`.
+  - `docs/_traspasos/COLA.md`: Marcada la tarea `0c.35` como `[x]`.
 - **Compuertas:**
   - `build`: **VERDE** (Next.js 15.5.27 compiló 16 páginas sin errores).
   - `lint`: **VERDE** (cero errores, cero warnings).

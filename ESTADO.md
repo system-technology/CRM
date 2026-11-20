@@ -10,17 +10,17 @@
 
 | Campo | Valor |
 |---|---|
-| Última actualización | 2026-11-16 (revisión de PR; `main` en `a7fb3d5`) |
-| Actualizado por | Claude (hilo al día con los PR #256 a #279) |
+| Última actualización | 2026-11-20 (cierre de lote; `main` en `9662e04`, PR #319) |
+| Actualizado por | Claude (hilo al día con los PR #289 a #319) |
 | Fase | **Fase 1 del backlog: «Un CRM mostrable y endurecido»** (M1 del [roadmap v2](docs/08-roadmap/01-roadmap.md)). Sin agencia real todavía. Prioridad vigente: la demo a JD Tours ([`MARCO.md`](docs/_contexto/MARCO.md) §6) |
-| Avance | 151 tareas `done` en `roadmap/tasks.yaml`. «Done» significa integrada en `main`, **no** desplegada ni probada con Meta real |
+| Avance | 155 tareas `done` en `roadmap/tasks.yaml`. «Done» significa integrada en `main`, **no** desplegada ni probada con Meta real |
 | Próximo hito | Que el propietario cargue la clave de cifrado y decida el despliegue; después, prueba con Meta real (T-080). Del lado del código solo queda cola menor: T-235 y T-226 (c), recifrado por lotes, que solo hace falta cuando haya una clave real que rotar |
 
 ---
 
 ## 1. Dónde estamos
 
-Verificado el 2026-11-17 sobre `origin/main` (`51f59d4`, PR #299) con `git log`, `gh` y `roadmap/tasks.yaml`.
+Verificado el 2026-11-20 sobre `origin/main` (`9662e04`, PR #319) con `git log`, `gh` y `roadmap/tasks.yaml`.
 Fuente de la corrección de rumbo: [auditoría integral 2026-11-15](docs/_auditorias/2026-11-15-auditoria-integral.md)
 y su [plan](docs/08-roadmap/02-plan-correccion-auditoria-2026-11-15.md). Entrada del día:
 [bitácora](docs/_bitacora/2026-11-15-mvp-en-navegador-y-cierre-de-auditoria.md).
@@ -54,8 +54,14 @@ entrado. Seguimos en local.
 | **Avisos de plazo** (ADR-0024 §3.6): un planificador por agencia emite `booking.time_limit_*` y `booking.pago_total_*` una sola vez por plazo; `notifications` los convierte en notificación en la aplicación para el asesor (o quien tenga `archivo.operar`) y la campana de la web los muestra | PR #296, #298 y #299; `booking-plazos.e2e-spec.ts`, `notificaciones-avisos.e2e-spec.ts`, N-1…N-7 de `aislamiento.spec.ts`. Tres auditorías sin bloqueantes. **La campana no se ha visto contra la API real** |
 | Modo demo sin dominio (opción C): la web en `*.vercel.app` reescribe `/api/v1` y el tiempo real (long-polling) a la API en Render | PR #289; [guía](docs/07-ingenieria/despliegue-neon-vercel-render.md). **Sin probar contra Vercel real** |
 | Dependencias: `pnpm audit` de producción pasó de 3 críticas y 15 altas a 0 y 1 (queda zod v3; zod 4 lo decide el propietario) | PR #267 |
+| **Web más creíble y un solo sistema visual** (auditoría UX): sin restos de desarrollo ni datos que mienten, solicitud de viaje en la conversación, resumen del viaje en bandeja y pipeline, una sola acción, color y fecha, y chat, cotización y file enlazados | PR #304, #306, #308, #314 (T-258, T-259, T-282); skills `diseno-web` y `frontend-design` (PR #304, #307). **Visto solo en capturas con datos de demo, no contra la API real** |
+| **Tope de 10 fallos diarios por correo** en el código de un solo uso, guardado en Postgres (sobrevive a reinicios y réplicas) | PR #315 (T-300); dos auditorías de seguridad. Las pruebas de base corren solo en el CI |
+| **ADR-0030, registro autoservicio de agencias: Aceptado, sin código.** Alta atómica por `crear_agencia`, código de acceso del piloto, 14 días de prueba, solo Colombia y COP | PR #310 y #312; tres vueltas de seguridad. La migración es T-268 |
+| Propuesta al viajero, en sesión aparte | PR #309; `docs/_bitacora/2026-11-20-propuesta-al-viajero.md` |
+| Servidores MCP del proyecto (`.mcp.json`): 21st.dev, Neon, Render y Vercel, con la clave leída del entorno | PR #305 y #310; la sesión de despliegue confirmó que los cuatro conectan |
+| `docs/` reorganizada sin romper nada: comprobador de enlaces con línea base (job `enlaces-de-documentacion`, en modo aviso, fuera de los 8 obligatorios), `_auditoria` fusionada en `_auditorias`, la carpeta de traspaso movida a `docs/_traspasos/`, índice con los huérfanos | PR #316 a #319 (T-302) |
 
-El repositorio tiene 45 migraciones. Cifras de pruebas: no se midieron en esta sesión y no se repiten.
+El repositorio tiene 47 migraciones. Cifras de pruebas: no se midieron en esta sesión y no se repiten.
 
 **Defecto real que halló la suite:** la bandeja nunca ofrecía cotizaciones para enviar con la API real,
 porque la ficha de CRM las trae vacías (R4). Ahora la bandeja las pide a `quoting`. Antes, la suite
@@ -113,7 +119,7 @@ Postmark real; las migraciones contra una base de producción (solo corren en el
 | Bloqueo | Qué impide | Dueño |
 |---|---|---|
 | `CAMPOS_SENSIBLES_KEY` y `_VERSION=1` sin cargar en Render, y sin copia guardada de la clave | Sin ella el cifrado no puede usarse desplegado; perder la clave pierde los datos | Propietario |
-| `STAGING_DESPLIEGUE=desactivado` y sin secretos del entorno `staging` ni servicio en Render o Fly | No hay nada que enseñar fuera de local | Propietario |
+| `STAGING_DESPLIEGUE=desactivado`. Neon `viajapro-staging` existe con 32 de 47 migraciones aplicadas y faltan 3 roles; **no existe** servicio en Render ni proyecto en Vercel. La sesión de despliegue espera tus decisiones: qué contraseñas de rol carga quién, `API_TRUST_PROXY` y los secretos que solo cargas tú | No hay nada que enseñar fuera de local | Propietario |
 | Verificación del negocio en Meta / Tech Provider sin iniciar (T-080); falta un mensaje desde un celular | Solo número de prueba y Graph falsa; no hay lanzamiento | Propietario |
 | Decidir zod 4 y los ADR-0023 y 0024 | Queda 1 vulnerabilidad alta en producción; el trabajo fiscal no avanza | Propietario |
 | Sin Redis ni trabajador en la máquina del propietario (no hay Docker) | Con `unico` no hace falta Redis; falta el recorrido real en Codespaces | Propietario, `devops` |

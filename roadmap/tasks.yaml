@@ -423,7 +423,7 @@ tasks:
         últimos cupos, agotado; un producto sin precio muestra «Consultar»
       - "Ningún dato de producto está escrito en el código: todo viene de la API; tests de
         catalogo-logica.spec.ts"
-      - Se cumple .agent/skills/ux-crm-turismo/SKILL.md y se declara en traspaso/ENTREGA.md el id de la
+      - Se cumple .agent/skills/ux-crm-turismo/SKILL.md y se declara en docs/_traspasos/ENTREGA.md el id de la
         pantalla de Stitch usada
     files:
       - apps/web/src/app/catalogo/page.tsx
@@ -533,13 +533,13 @@ tasks:
     done_at: 2026-10-28T07:05:00.000Z
     evidence: Cero scroll horizontal y touch targets >= 44px en bandeja, pipeline, cotizador y catálogo. Tabla
       pipeline con wrapper overflow-x-auto, botones con clases min-h-[44px] min-w-[44px], pruebas en
-      revision-375px.spec.tsx y reporte en traspaso/ENTREGA.md. 66/66 suites y 566 pruebas en verde.
+      revision-375px.spec.tsx y reporte en docs/_traspasos/ENTREGA.md. 66/66 suites y 566 pruebas en verde.
     depends_on:
       - T-017
       - T-018
     acceptance:
       - Las cuatro pantallas no tienen scroll horizontal a 375 px, con objetivos táctiles de al menos 44 px
-      - Se adjuntan en traspaso/ENTREGA.md las capturas tomadas con el MCP playwright a 375 y 1280 px
+      - Se adjuntan en docs/_traspasos/ENTREGA.md las capturas tomadas con el MCP playwright a 375 y 1280 px
       - Los cambios se limitan a apps/web y pnpm compuertas está en verde
     files:
       - apps/web/src/app/bandeja/
@@ -592,7 +592,7 @@ tasks:
       - En Configuración hay un bloque «Etapas del pipeline» que lista las etapas de la agencia desde la API y
         permite reordenarlas y renombrarlas
       - El pipeline pinta las etapas que devuelve la API, no una lista fija en el código
-      - Si la API no expone las etapas, se registra la petición en traspaso/ENTREGA.md y la tarea queda
+      - Si la API no expone las etapas, se registra la petición en docs/_traspasos/ENTREGA.md y la tarea queda
         parcial con un test del contrato esperado
     files:
       - apps/web/src/app/configuracion/page.tsx
@@ -620,7 +620,7 @@ tasks:
       - Configuración permite definir campos (texto, número, fecha, lista) para contactos y oportunidades, y
         la ficha los muestra y edita
       - Los tipos de campo salen del contrato de packages/contracts, sin redefinirlos
-      - Si la API aún no lo soporta, se pide en traspaso/ENTREGA.md y se deja el componente con pruebas
+      - Si la API aún no lo soporta, se pide en docs/_traspasos/ENTREGA.md y se deja el componente con pruebas
     files:
       - apps/web/src/app/configuracion/page.tsx
       - apps/web/src/components/contactos/
@@ -742,7 +742,7 @@ tasks:
       - Existen componentes base reutilizables con la nueva identidad (botón primario con degradado, tarjeta
         con elevación al pasar el cursor, chip de tipo de producto, insignia de estado)
       - Se mantiene el contraste AA y la pantalla sigue siendo limpia y ordenada; pnpm compuertas en verde y
-        capturas a 375 y 1280 px en traspaso/ENTREGA.md con el id de la pantalla de Stitch usada
+        capturas a 375 y 1280 px en docs/_traspasos/ENTREGA.md con el id de la pantalla de Stitch usada
     files:
       - apps/web/src/app/globals.css
       - apps/web/src/components/comun/
@@ -3062,7 +3062,7 @@ tasks:
         muestran la cifra; se eliminan las constantes del 20 % y del 80 %
       - "Campos personalizados, respuestas rapidas, filtros guardados, onboarding y preferencias: en modo
         real, o persisten en la API o muestran un aviso visible de que son solo locales; lista de cuales
-        quedan locales en traspaso/ENTREGA.md"
+        quedan locales en docs/_traspasos/ENTREGA.md"
       - "Plantillas y nombres de contacto en /cotizaciones y el modal Enviar cotizacion: sin telefono de
         relleno en modo real"
     files:
@@ -3167,7 +3167,7 @@ tasks:
       - Recorrido completo con teclado y lector de pantalla del cotizador y del catalogo; foco visible y
         gestionado en modales
       - Etiquetas y errores asociados a cada campo; contraste AA; objetivos tactiles de 44 px
-      - Pruebas de testing-library por roles; lista de lo corregido en traspaso/ENTREGA.md
+      - Pruebas de testing-library por roles; lista de lo corregido en docs/_traspasos/ENTREGA.md
     files:
       - apps/web/src/app/cotizador/
       - apps/web/src/app/catalogo/
@@ -3189,7 +3189,7 @@ tasks:
     depends_on: []
     acceptance:
       - Carga diferida (next/dynamic) de modales pesados, editor de cotizacion y graficos de reportes
-      - Medicion del tamano de JS por ruta con next build documentada en traspaso/ENTREGA.md; ninguna ruta de
+      - Medicion del tamano de JS por ruta con next build documentada en docs/_traspasos/ENTREGA.md; ninguna ruta de
         uso diario supera su presupuesto acordado
       - Sin dependencias nuevas
     files:
@@ -6687,7 +6687,7 @@ tasks:
     phase: 1
     priority: P2
     effort: M
-    status: in_progress
+    status: done
     depends_on: []
     acceptance:
       - "Paso 1: scripts/comprobar-enlaces.mjs con línea base versionada (scripts/enlaces-rotos.base.json), prueba unitaria y job de CI en modo aviso (no obligatorio)"
@@ -6701,3 +6701,41 @@ tasks:
     owner: documentador
     started_at: 2026-11-20T23:55:00.000Z
     notes: "Cuatro pasos aprobados por el propietario, principio: no dañar lo que hay. 1) Comprobador de enlaces antes de mover nada (scripts/ y .github/ piden aprobación del propietario, R11). 2) Mover y fusionar lo de riesgo bajo (_auditoria a _auditorias, _investigacion, traspaso), actualizando quienes lo citan. 3) El hook .claude/hooks/session-start.mjs lee docs/_bitacora sin recursión y CLAUDE.md, AGENTS.md y ESTADO.md fijan la ruta plana: agrupar la bitácora exige tocar el hook y la aprobación del propietario. 4) Índice de docs/README.md al día y subir el comprobador a obligatorio cuando la línea base esté estable. No mover _auditorias ni _backlog sin resolver antes los ADR 0008, 0015, 0017 y 0029 que los citan por ruta."
+    done_at: 2026-11-20T15:30:00.000Z
+    evidence: "Pasos 1 a 4 integrados en main con el CI en verde: #316 (comprobador), #317 (_auditoria en _auditorias), #318 (traspaso/ a docs/_traspasos/), #319 (índice). Queda aparte subir el comprobador a obligatorio (T-305)."
+  - id: T-304
+    title: "Corregir las referencias muertas a docs/FLUJO.md y docs/CICLO.md en comentarios de .github/ y scripts/"
+    type: docs
+    phase: 1
+    priority: P3
+    effort: S
+    status: ready
+    depends_on: []
+    acceptance:
+      - "ownership.yml:5, scripts/gh-app.mjs:9 y scripts/ciclo.mjs:2 apuntan a un documento que existe (docs/07-ingenieria/03-git.md o docs/09-ia/07-ciclo-autonomo.md) o dejan de citar uno"
+      - "Solo comentarios: ninguna línea de lógica cambia"
+    files:
+      - .github/workflows/ownership.yml
+      - scripts/gh-app.mjs
+      - scripts/ciclo.mjs
+    source: paso 4 de la reorganización de docs (2026-11-20); rutas protegidas, el comprobador solo lee .md
+    created_at: 2026-11-20T15:30:00.000Z
+    owner: documentador
+  - id: T-305
+    title: "Subir el comprobador de enlaces a obligatorio y reducir su línea base"
+    type: infra
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: [T-302]
+    acceptance:
+      - "Las 70 roturas conocidas de scripts/enlaces-rotos.base.json se corrigen o se justifican hasta que la base quede estable"
+      - "El job enlaces-de-documentacion deja de ser continue-on-error y entra en .github/proteccion-main.json (ruta protegida: aprobación del propietario)"
+    files:
+      - scripts/enlaces-rotos.base.json
+      - .github/workflows/ci.yml
+      - .github/proteccion-main.json
+    source: paso 4 de la reorganización de docs (2026-11-20)
+    created_at: 2026-11-20T15:30:00.000Z
+    owner: documentador

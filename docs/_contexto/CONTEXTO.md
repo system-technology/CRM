@@ -148,7 +148,7 @@
 - Revisión (una sola vuelta, R13): `auditor-seguridad` y `experto-turismo` ya revisaron el ADR-0017 (aceptar con cambios, aplicados).
   Pendiente de revisión: ADR-0018 y la ingesta con IA (`docs/09-ia/09-ingesta-de-catalogo-con-ia.md`, PR #37, que debe alinearse con el ADR-0017).
 - **Protocolo con Antigravity** (`docs/09-ia/06-flujo-con-antigravity.md`): empuja su rama = señal; Claude abre el PR, verifica
-  (compuertas + navegador) y escribe `traspaso/REVISION.md`. Sus ramas deben salir de `origin/main` (una salió de la rama vieja y hubo que
+  (compuertas + navegador) y escribe `docs/_traspasos/REVISION.md`. Sus ramas deben salir de `origin/main` (una salió de la rama vieja y hubo que
   portar solo sus commits nuevos con `cherry-pick`). **No debe detenerse** si una tarea está bloqueada: salta a la siguiente.
 - **Stitch:** proyecto «ViajaPro — CRM para agencias de turismo», id `8333038101997719867`. Desde aquí las generaciones agotan el tiempo; las hace Antigravity.
 
