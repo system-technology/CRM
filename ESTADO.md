@@ -10,7 +10,7 @@
 
 | Campo | Valor |
 |---|---|
-| Última actualización | 2026-11-20 (cierre de lote; `main` en `9662e04`, PR #319) |
+| Última actualización | 2026-11-20 (T-268 integrada; `main` en `0f3a707`, PR #323) |
 | Actualizado por | Claude (hilo al día con los PR #289 a #319) |
 | Fase | **Fase 1 del backlog: «Un CRM mostrable y endurecido»** (M1 del [roadmap v2](docs/08-roadmap/01-roadmap.md)). Sin agencia real todavía. Prioridad vigente: la demo a JD Tours ([`MARCO.md`](docs/_contexto/MARCO.md) §6) |
 | Avance | 155 tareas `done` en `roadmap/tasks.yaml`. «Done» significa integrada en `main`, **no** desplegada ni probada con Meta real |
@@ -57,6 +57,7 @@ entrado. Seguimos en local.
 | **Web más creíble y un solo sistema visual** (auditoría UX): sin restos de desarrollo ni datos que mienten, solicitud de viaje en la conversación, resumen del viaje en bandeja y pipeline, una sola acción, color y fecha, y chat, cotización y file enlazados | PR #304, #306, #308, #314 (T-258, T-259, T-282); skills `diseno-web` y `frontend-design` (PR #304, #307). **Visto solo en capturas con datos de demo, no contra la API real** |
 | **Tope de 10 fallos diarios por correo** en el código de un solo uso, guardado en Postgres (sobrevive a reinicios y réplicas) | PR #315 (T-300); dos auditorías de seguridad. Las pruebas de base corren solo en el CI |
 | **ADR-0030, registro autoservicio de agencias: Aceptado, sin código.** Alta atómica por `crear_agencia`, código de acceso del piloto, 14 días de prueba, solo Colombia y COP | PR #310 y #312; tres vueltas de seguridad. La migración es T-268 |
+| **Base del registro de agencias (T-268, ADR-0030 F1):** rol `viajapro_registro`, `crear_agencia` y `codigo_de_acceso_vigente` (`SECURITY DEFINER`), tablas globales del registro y `perfiles_de_agencia` ampliada con NIT. Sin API ni web todavía: nadie puede registrarse aún | PR #323; la migración aplicó en Postgres 16 y `aislamiento.spec.ts` pasó 158/158 (R-1 a R-10); dos pasadas de auditoría sin fugas entre agencias. **El NIT está en claro bajo RLS: decisión de cifrado en T-309** |
 | Propuesta al viajero, en sesión aparte | PR #309; `docs/_bitacora/2026-11-20-propuesta-al-viajero.md` |
 | **El RNT de la agencia** (T-261, ADR-0030 §3.3): tabla `perfiles_de_agencia` con RLS y un disparador que niega por defecto la verificación; la agencia lo escribe en Configuración y la propuesta al viajero lo imprime **solo si está verificado**. **Hoy nadie lo verifica sin SQL a mano** (T-280); con la API real la propuesta sale sin RNT hasta que el propietario marque la agencia piloto | PR #321 (migración, aprobada por el propietario), #322 y #324; P-1…P-6 de `aislamiento.spec.ts`, `agencia-ajustes.e2e-spec.ts`, `page.rnt.spec.tsx`; [bitácora](docs/_bitacora/2026-11-20-rnt-de-la-agencia.md). Supuesto sin verificar: el RNT son solo dígitos, de 1 a 10 |
 | Servidores MCP del proyecto (`.mcp.json`): 21st.dev, Neon, Render y Vercel, con la clave leída del entorno | PR #305 y #310; la sesión de despliegue confirmó que los cuatro conectan |

@@ -6005,7 +6005,7 @@ tasks:
     phase: 2
     priority: P1
     effort: M
-    status: ready
+    status: done
     human_required: true
     depends_on: []
     acceptance:
@@ -6058,6 +6058,9 @@ tasks:
     source: arquitecto:ADR-0030 §3 (2026-11-20)
     created_at: 2026-11-20T23:00:00.000Z
     owner: datos
+    done_at: 2026-11-20T17:00:00.000Z
+    evidence: "Integrada en main por el PR #323 (0f3a707) con los 15 checks en verde: la migración 20261120140000 aplicó en Postgres 16 y aislamiento.spec.ts pasó 158/158 (bloque R-1 a R-10). Dos pasadas de auditoría de seguridad sin fugas entre agencias; bloqueantes B1 (orden del literal), B2 (perfiles_de_agencia ya creada por T-261) y B3 (tipos sin calificar contra pg_temp) corregidos. Cola: T-306, T-308 a T-312."
+
   - id: T-269
     title: "Siembra: la política de precio por defecto entra en siembra-de-tenant.ts (un solo sitio decide qué
       trae una agencia nueva)"
