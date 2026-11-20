@@ -2,7 +2,7 @@
 
 **Qué se hizo.** Cuatro PR, uno por paso, cada uno integrado con el CI en verde antes del siguiente:
 1. #316: `scripts/comprobar-enlaces.mjs` con línea base (`scripts/enlaces-rotos.base.json`, 70 roturas conocidas) y job `enlaces-de-documentacion` en modo aviso, fuera de los 8 checks obligatorios.
-2. #317: `docs/_auditoria/` fusionada en `docs/_auditorias/` con `git mv`. `_investigacion` se deja.
+2. #317: la carpeta `_auditoria` fusionada en `docs/_auditorias/` con `git mv`. `_investigacion` se deja.
 3. #318: la carpeta de traspaso movida a `docs/_traspasos/` (que ya existía; la primera vez `git mv` anidó la carpeta y hubo que subirla un nivel). Actualizadas las citas vivas y las históricas.
 4. #319: `docs/README.md` con los ADR 0019 a 0030 y 31 documentos que no estaban en el índice.
 
