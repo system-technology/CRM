@@ -3,11 +3,11 @@
 ## Qué pasó
 
 1. Se escribió el informe completo para la auditoría externa:
-   `docs/_auditoria/2026-10-20-informe-para-auditoria-externa.md`, en la rama
+   `docs/_auditorias/2026-10-20-informe-para-auditoria-externa.md`, en la rama
    `docs/informe-auditoria-externa`, sobre `main` en `3a1369a` (v0.38.0).
 2. La herramienta externa devolvió **17 hallazgos** (AUD-001 a AUD-017) y un **roadmap v2**.
 3. El equipo contrastó cada hallazgo con el código y respondió con evidencia:
-   `docs/_auditoria/2026-10-20-respuesta-a-auditoria-externa.md`. Varios puntos del roadmap
+   `docs/_auditorias/2026-10-20-respuesta-a-auditoria-externa.md`. Varios puntos del roadmap
    describían como «problema actual» cosas que el código ya resuelve: el contexto de tenant, la RLS
    sin contexto, las salas del socket, la guardia de rol, las colas y las cotizaciones.
 4. La auditoría emitió un **dictamen v3 de conciliación** que rectifica esos puntos y da por resuelto
@@ -23,7 +23,7 @@ guardar la respuesta en el repositorio): «si avanza con lo que propones».
 |---|---|
 | **ADR-0014, opción (a)** | Se cifran `mensajes.texto` y `conversaciones.ultimo_mensaje_texto` con AES-256-GCM, versión de clave, una clave por agencia derivada con HKDF y AAD tenant ‖ mensaje ‖ columna. **La búsqueda por el cuerpo de los mensajes desaparece**: se busca por contacto, teléfono, fecha, estado y cotización. Pendiente de `auditor-seguridad` |
 | **Roadmap v2, con las correcciones** | Se integra en `docs/08-roadmap/` con lo ya hecho marcado y su evidencia. Se conserva la visibilidad por usuario (`usuario:<id>`) en lugar de las salas `tenant:` |
-| **Respuesta a la auditoría** | Guardada en `docs/_auditoria/` |
+| **Respuesta a la auditoría** | Guardada en `docs/_auditorias/` |
 
 ## Hallazgos propios, posteriores a la auditoría (modelo de amenazas)
 

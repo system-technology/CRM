@@ -6,7 +6,7 @@
 | Origen | Roadmap técnico v2 de la auditoría externa, **con las correcciones del equipo** |
 | Aprobación | Propietario, 2026-10-20: «si avanza con lo que propones» |
 | Estado auditado | `main` en `3a1369a` (v0.38.0) |
-| Evidencia | `docs/_auditoria/2026-10-20-respuesta-a-auditoria-externa.md` |
+| Evidencia | `docs/_auditorias/2026-10-20-respuesta-a-auditoria-externa.md` |
 | Sustituye a | El roadmap por fases del 2026-10-07. Sus fases de producto siguen aquí, en la §5 |
 
 > **Cómo se lee.** Las semanas son relativas a la adopción (la semana 1 es la que empieza el
