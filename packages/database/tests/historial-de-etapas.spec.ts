@@ -88,7 +88,7 @@ async function sembrar(): Promise<Agencia> {
   await admin.query(
     `INSERT INTO identidades (id, correo, nombre, actualizado_en)
      VALUES ($1, $2, 'Fixture', now())`,
-    [identidad, `fixture-aislamiento-${MARCA}-${identidad.slice(0, 8)}@prueba.invalid`],
+    [identidad, `fixture-aislamiento-${MARCA}-${identidad.slice(0, 8)}@prueba.test`],
   );
   await fijarTenant(a.tenant);
   await admin.query(
@@ -99,7 +99,7 @@ async function sembrar(): Promise<Agencia> {
   await admin.query(
     `INSERT INTO usuarios (id, tenant_id, identidad_id, rol_id, correo, nombre, actualizado_en)
      VALUES ($1, $2, $3, $4, $5, 'Asesora', now())`,
-    [a.usuario, a.tenant, identidad, rol, `u-${identidad.slice(0, 8)}@prueba.invalid`],
+    [a.usuario, a.tenant, identidad, rol, `u-${identidad.slice(0, 8)}@prueba.test`],
   );
   await admin.query(
     `INSERT INTO etapas_pipeline (id, tenant_id, nombre, orden, es_perdida, creado_en)
