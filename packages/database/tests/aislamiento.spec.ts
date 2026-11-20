@@ -8538,6 +8538,12 @@ describe('T-254 — notificaciones: aislamiento, foráneas compuestas, una por e
         { reserva: reservaDe[TENANT_B] ?? '' },
         'notificaciones_reserva_id_archivo_id_tenant_id_fkey',
       ],
+      // Pareja coherente de B con tenant_id = A: solo la columna del tenant de la FK la bloquea.
+      [
+        'pareja coherente de B (archivo y reserva de B)',
+        { archivo: archivoDe[TENANT_B] ?? '', reserva: reservaDe[TENANT_B] ?? '' },
+        'notificaciones_reserva_id_archivo_id_tenant_id_fkey',
+      ],
       // T-256: misma agencia, pero la reserva es de OTRO archivo. Antes solo lo impedía el puerto.
       [
         'reserva de otro archivo de A',
@@ -8979,6 +8985,12 @@ describe('T-250 — reserva_cambios_estado: aislamiento, foráneas compuestas e 
       [
         'reserva de B',
         { reserva: reservaDe[TENANT_B] ?? '' },
+        'reserva_cambios_estado_reserva_id_archivo_id_tenant_id_fkey',
+      ],
+      // Pareja coherente de B con tenant_id = A: solo la columna del tenant de la FK la bloquea.
+      [
+        'pareja coherente de B (archivo y reserva de B)',
+        { archivo: archivoDe[TENANT_B] ?? '', reserva: reservaDe[TENANT_B] ?? '' },
         'reserva_cambios_estado_reserva_id_archivo_id_tenant_id_fkey',
       ],
       [
