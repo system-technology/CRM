@@ -68,7 +68,7 @@ async function sembrar(): Promise<{ tenant: string; usuario: string; cotizacion:
   );
   await admin.query(
     `INSERT INTO identidades (id, correo, nombre, actualizado_en) VALUES ($1, $2, 'Fixture', now())`,
-    [identidad, `fixture-aislamiento-${MARCA}-${identidad.slice(0, 8)}@prueba.invalid`],
+    [identidad, `fixture-aislamiento-${MARCA}-${identidad.slice(0, 8)}@prueba.test`],
   );
   await fijarTenant(tenant);
   await admin.query(
@@ -79,7 +79,7 @@ async function sembrar(): Promise<{ tenant: string; usuario: string; cotizacion:
   await admin.query(
     `INSERT INTO usuarios (id, tenant_id, identidad_id, rol_id, correo, nombre, actualizado_en)
      VALUES ($1, $2, $3, $4, $5, 'Asesora', now())`,
-    [usuario, tenant, identidad, rol, `u-${identidad.slice(0, 8)}@prueba.invalid`],
+    [usuario, tenant, identidad, rol, `u-${identidad.slice(0, 8)}@prueba.test`],
   );
   await admin.query(
     `INSERT INTO contactos (id, tenant_id, telefono_e164, creado_en, actualizado_en)

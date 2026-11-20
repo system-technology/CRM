@@ -27,6 +27,19 @@ const prisma = new PrismaClient();
 
 const TENANT_DEMO = '01932000-0000-7000-8000-0000000000d0';
 
+/**
+ * ¿La base es local? Solo un host de loopback (Docker en la máquina o el contenedor de CI) cuenta.
+ * Una URL ilegible o ausente cuenta como NO local: lo que depende de esto se omite.
+ */
+function esBaseLocal(url: string | undefined): boolean {
+  if (!url) return false;
+  try {
+    return ['localhost', '127.0.0.1', '::1', '[::1]'].includes(new URL(url).hostname.toLowerCase());
+  } catch {
+    return false;
+  }
+}
+
 /** Pesos colombianos: cero decimales, así que la unidad mínima es el peso. R8. */
 const cop = (pesos: number) => BigInt(pesos);
 
@@ -70,12 +83,33 @@ async function main() {
   // La persona es una identidad GLOBAL; su pertenencia a la agencia es `usuarios`.
   // Sin credencial: la contraseña de desarrollo la pone la rebanada 2 (Better Auth), con el
   // hash que genere su biblioteca, no uno escrito aquí.
+  //
+  // Apodos de ingreso (ADR-0031): sintéticos y SOLO en una base local. `dueno` y `demo` solos
+  // están reservados, por eso `dueno.demo`. Fuera de loopback (staging, una rama de Neon) la
+  // semilla no pone ni quita apodos: la cola de ADR-0031 (C8) los deja fuera de staging.
+  const conApodos = esBaseLocal(process.env['DATABASE_URL']);
   const equipo = [
-    { correo: 'dueno@agenciademo.test', nombre: 'Marcela Duarte', clave: 'DUENO' },
-    { correo: 'ana@agenciademo.test', nombre: 'Ana Lucía Pérez', clave: 'ASESOR' },
-    { correo: 'carlos@agenciademo.test', nombre: 'Carlos Mejía', clave: 'ASESOR' },
+    {
+      correo: 'dueno@agenciademo.test',
+      nombre: 'Marcela Duarte',
+      clave: 'DUENO',
+      apodo: 'dueno.demo',
+    },
+    {
+      correo: 'ana@agenciademo.test',
+      nombre: 'Ana Lucía Pérez',
+      clave: 'ASESOR',
+      apodo: 'ana.demo',
+    },
+    {
+      correo: 'carlos@agenciademo.test',
+      nombre: 'Carlos Mejía',
+      clave: 'ASESOR',
+      apodo: 'carlos.demo',
+    },
   ];
   for (const persona of equipo) {
+    const apodo = conApodos ? { apodo: persona.apodo } : {};
     const identidad = await prisma.identidad.upsert({
       where: { correo: persona.correo },
       update: {},
@@ -85,13 +119,14 @@ async function main() {
     if (!rolId) throw new Error(`Falta el rol sembrado ${persona.clave}`);
     await prisma.usuario.upsert({
       where: { tenantId_correo: { tenantId: tenant.id, correo: persona.correo } },
-      update: {},
+      update: { ...apodo },
       create: {
         tenantId: tenant.id,
         identidadId: identidad.id,
         rolId,
         correo: persona.correo,
         nombre: persona.nombre,
+        ...apodo,
       },
     });
   }
