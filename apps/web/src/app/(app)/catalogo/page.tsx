@@ -108,6 +108,7 @@ import { formatearDinero } from '../../../lib/api';
 import { fechaDeHoy } from '../../../lib/cotizador-logica';
 import { herramientasDevActivas } from '../../../lib/herramientas-dev';
 
+import { TituloDePantalla } from '../../../components/comun/titulo-de-pantalla';
 export default function CatalogoPage() {
   const { esDemo } = useModoDemo();
   const modoRealActivo = !esDemo && estaUsandoCatalogoReal();
@@ -251,11 +252,10 @@ export default function CatalogoPage() {
                 <span className="bg-acento-100 text-acento-800 dark:bg-acento-950 dark:text-acento-300 rounded-lg p-1.5">
                   <Package className="h-5 w-5" />
                 </span>
-                <h1 className="text-base font-bold break-words text-neutral-900 sm:text-xl dark:text-white">
-                  {usarReal && !errorTenant
-                    ? 'Salidas y Catálogo de Tarifas'
-                    : 'Catálogo de Paquetes y Tarifarios'}
-                </h1>
+                <TituloDePantalla
+                  modulo="catalogo"
+                  className="text-base font-bold break-words text-neutral-900 sm:text-xl dark:text-white"
+                />
                 {/* 0c.14 y 0c.16: solo visible si usamos datos simulados o hay error de tenant */}
                 <DistintivoDatosDemo visible={!usarReal || !!errorTenant} />
               </div>

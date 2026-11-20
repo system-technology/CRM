@@ -28,6 +28,7 @@ import {
 } from '../../../lib/mock-configuracion';
 import { validarSla, validarFormatoNit } from '../../../lib/configuracion-logica';
 
+import { TituloDePantalla } from '../../../components/comun/titulo-de-pantalla';
 // Carga diferida de los bloques de pestañas de configuración (T-130)
 const BloquePoliticaPrecio = dynamic(
   () =>
@@ -156,9 +157,10 @@ export default function ConfiguracionPage() {
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-xl font-bold tracking-tight text-neutral-900 dark:text-white">
-                  Equipo y Configuración de Agencia
-                </h1>
+                <TituloDePantalla
+                  modulo="configuracion"
+                  className="text-xl font-bold tracking-tight text-neutral-900 dark:text-white"
+                />
                 <DistintivoDatosDemo visible={true} />
                 <span className="bg-acento-100 text-acento-800 dark:bg-acento-900/60 dark:text-acento-300 inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold">
                   {agencia.nombreComercial}

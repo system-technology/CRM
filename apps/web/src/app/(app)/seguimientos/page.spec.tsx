@@ -97,9 +97,7 @@ describe('SeguimientosPage (T-101)', () => {
   it('1. Renderiza la cabecera, métricas KPI y lista inicial de seguimientos', async () => {
     render(<SeguimientosPage />);
 
-    expect(
-      await screen.findByRole('heading', { level: 1, name: /Seguimientos del Asesor/i }),
-    ).toBeDefined();
+    expect(await screen.findByRole('heading', { level: 1, name: 'Seguimientos' })).toBeDefined();
 
     // Comprobar tarjetas KPI
     expect(screen.getByTestId('kpi-vencidos')).toBeDefined();

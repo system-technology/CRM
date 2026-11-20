@@ -31,6 +31,7 @@ import {
   type TipoCategoriaSeguimiento,
 } from '../../../lib/seguimientos-logica';
 
+import { TituloDePantalla } from '../../../components/comun/titulo-de-pantalla';
 export default function SeguimientosPage() {
   const [seguimientos, setSeguimientos] = useState<Seguimiento[]>([]);
   const [cargando, setCargando] = useState(true);
@@ -137,9 +138,10 @@ export default function SeguimientosPage() {
             </span>
           </nav>
           <div className="mt-1 flex items-center gap-2.5">
-            <h1 className="text-xl font-bold tracking-tight text-neutral-900 sm:text-2xl dark:text-white">
-              Seguimientos del Asesor
-            </h1>
+            <TituloDePantalla
+              modulo="seguimientos"
+              className="text-xl font-bold tracking-tight text-neutral-900 sm:text-2xl dark:text-white"
+            />
             {metricas.vencidos > 0 && (
               <span
                 data-testid="badge-alerta-vencidos"

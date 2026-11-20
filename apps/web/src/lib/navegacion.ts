@@ -1,8 +1,7 @@
 /**
  * Tabla única de navegación (ADR-0032 §3). Fuente del menú, la paleta, los títulos y el módulo activo.
  *
- * Parte A de T-316: solo la tabla y su lógica pura. Hoy solo la paleta la lee; el menú y la barra
- * móvil migran en la parte B.
+ * La leen el menú lateral, la barra móvil, la paleta, el H1 de cada pantalla y el título del documento.
  */
 
 import type { ComponentType } from 'react';
@@ -38,14 +37,17 @@ export interface EntradaDeNavegacion {
   ruta: `/${string}`;
   icono: Icono;
   grupo: GrupoDeNavegacion;
-  /** Solo oculta; autoriza la API. */
-  permiso?: Permiso;
+  /**
+   * Solo oculta; autoriza la API. Un permiso, o una lista «cualquiera de». Sin `permiso`, la
+   * entrada es visible para todos los roles.
+   */
+  permiso?: Permiso | readonly Permiso[];
   /** Coincide si pathname === prefijo o empieza por `prefijo/`. «/» solo coincide exacto. */
   prefijosActivos: readonly string[];
   movil: 'barra' | 'mas';
   /**
-   * Si aparece en el menú lateral. Hoy, Cotizaciones y Seguimientos van en `false` hasta T-317
-   * (decisiones D1–D4 de docs/01-producto/04-flujos-criticos.md, pendientes del propietario).
+   * Si aparece en el menú lateral. Hoy y Seguimientos van en `false` hasta T-317
+   * (decisiones D1–D4 de docs/01-producto/04-flujos-criticos.md).
    */
   enMenu: boolean;
   detalleAPantallaCompletaEnMovil?: boolean;
@@ -96,7 +98,7 @@ export const NAVEGACION: readonly EntradaDeNavegacion[] = [
     grupo: 'vender',
     prefijosActivos: ['/cotizaciones', '/cotizador'],
     movil: 'mas',
-    enMenu: false,
+    enMenu: true,
   },
   {
     id: 'archivos',
@@ -151,7 +153,6 @@ export const NAVEGACION: readonly EntradaDeNavegacion[] = [
     ruta: '/reportes',
     icono: CONFIGURACION_MODULOS.reportes.icono,
     grupo: 'agencia',
-    permiso: 'cotizacion.ver_neto_y_margen',
     prefijosActivos: ['/reportes'],
     movil: 'mas',
     enMenu: true,
@@ -163,8 +164,7 @@ export const NAVEGACION: readonly EntradaDeNavegacion[] = [
     ruta: '/configuracion',
     icono: CONFIGURACION_MODULOS.configuracion.icono,
     grupo: 'agencia',
-    // Sin `permiso`: hoy se muestra con cualquiera de tres permisos (usuarios, roles o catálogo) y
-    // `permiso` admite uno solo. La paleta conserva ese «cualquiera de»; la parte B lo resuelve.
+    permiso: ['usuarios.administrar', 'roles.administrar', 'catalogo.administrar'],
     prefijosActivos: ['/configuracion', '/bienvenida'],
     movil: 'mas',
     enMenu: true,
@@ -195,7 +195,8 @@ function coincide(ruta: string, prefijo: string): boolean {
 }
 
 /** Módulo activo de una ruta: gana el prefijo más largo. `null` si ninguno coincide. */
-export function moduloActivo(pathname: string): EntradaDeNavegacion | null {
+export function moduloActivo(pathname: string | null | undefined): EntradaDeNavegacion | null {
+  if (!pathname) return null;
   const ruta = rutaSinConsulta(pathname);
   let mejor: EntradaDeNavegacion | null = null;
   let largo = -1;
@@ -208,6 +209,37 @@ export function moduloActivo(pathname: string): EntradaDeNavegacion | null {
     }
   }
   return mejor;
+}
+
+/** Entrada de la tabla por id; falla si el id no existe (error de programación). */
+export function entradaDe(id: IdDeModulo): EntradaDeNavegacion {
+  const entrada = NAVEGACION.find((e) => e.id === id);
+  if (!entrada) throw new Error(`Módulo de navegación desconocido: ${id}`);
+  return entrada;
+}
+
+/** Entradas del menú lateral. */
+export function entradasDelMenu(): readonly EntradaDeNavegacion[] {
+  return NAVEGACION.filter((e) => e.enMenu);
+}
+
+/**
+ * ¿Se muestra la entrada? Sin `permiso`, siempre. Con lista, basta cualquiera. Solo oculta: la
+ * autorización real es del servidor.
+ */
+export function esVisiblePara(
+  entrada: EntradaDeNavegacion,
+  tiene: (permiso: Permiso) => boolean,
+): boolean {
+  const { permiso } = entrada;
+  if (permiso === undefined) return true;
+  const lista: readonly Permiso[] = typeof permiso === 'string' ? [permiso] : permiso;
+  return lista.some(tiene);
+}
+
+/** `/bandeja/[id]`: en móvil la conversación va a pantalla completa y se oculta la barra inferior. */
+export function esDetalleMovilDeBandeja(pathname: string | null | undefined): boolean {
+  return Boolean(pathname && pathname !== '/bandeja' && pathname.startsWith('/bandeja/'));
 }
 
 /** «{pantalla} · ViajaPro»; sin pantalla, solo «ViajaPro». */

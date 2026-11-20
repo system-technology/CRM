@@ -134,8 +134,8 @@ describe('Pruebas Unitarias del Buscador Global Omnicanal (buscador-global-logic
       );
       // No debe exponer configuración de agencia al asesor
       expect(indiceAsesor.some((i) => i.id === 'nav-configuracion')).toBe(false);
-      // No debe exponer reportes restringidos al asesor sin permiso de margen
-      expect(indiceAsesor.some((i) => i.id === 'nav-reportes')).toBe(false);
+      // Reportes es visible para todos los roles (D3): el alcance lo impone el servidor
+      expect(indiceAsesor.some((i) => i.id === 'nav-reportes')).toBe(true);
 
       const sesionAdmin = {
         identidad: {

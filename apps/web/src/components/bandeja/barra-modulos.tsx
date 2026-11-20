@@ -8,10 +8,6 @@ import {
   Kanban,
   FileText,
   Briefcase,
-  Users,
-  Package,
-  BarChart3,
-  Settings,
   Sun,
   Moon,
   Laptop,
@@ -60,21 +56,33 @@ import { obtenerAjustesAgenciaApi } from '../../lib/agencia-api';
 import { estaUsandoApiReal } from '../../lib/crm-api';
 import { zonaOPorDefecto } from '../../lib/archivos-logica';
 import { obtenerPendientesDelDiaApi } from '../../lib/crm-api';
-import { usePermisos } from '../../lib/permisos';
+import { tienePermiso, usePermisos } from '../../lib/permisos';
 import { useModoDemo, esModoDemo } from '../../lib/modo-demo';
 import { cambiarAgenciaActivaApi, cerrarSesionApi } from '../../lib/auth-api';
 import { inboxSocketManager } from '../../lib/inbox-socket';
 import { useFocoModal } from '../../lib/use-foco-modal';
 import { fijarZonaAgencia } from '../../lib/formato';
-import { esDetalleMovilDeBandeja, moduloActivo } from '../../lib/modulo-activo';
+import {
+  ACCIONES,
+  entradaDe,
+  entradasDelMenu,
+  esDetalleMovilDeBandeja,
+  esVisiblePara,
+  moduloActivo,
+  type IdDeModulo,
+} from '../../lib/navegacion';
 
-interface ModuloItem {
-  id: string;
-  label: string;
-  href: string;
-  icon: React.ComponentType<{ className?: string }>;
-  disponible: boolean;
-}
+/** Color e icono suave por módulo (iconos-modulos); «Hoy» y «Seguimientos» aún no están en el menú. */
+const CLAVE_DE_COLOR: Partial<Record<IdDeModulo, ModuloViajaPro>> = {
+  conversaciones: 'bandeja',
+  oportunidades: 'pipeline',
+  cotizaciones: 'cotizaciones',
+  archivos: 'viajes',
+  contactos: 'contactos',
+  catalogo: 'catalogo',
+  reportes: 'reportes',
+  configuracion: 'configuracion',
+};
 
 /**
  * Calcula iniciales legibles del usuario activo.
@@ -134,7 +142,7 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
   });
 
   const esDetalleMovil = esDetalleMovilDeBandeja(pathname);
-  const idActivo = moduloActivo(pathname);
+  const idActivo = moduloActivo(pathname)?.id ?? null;
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -318,64 +326,11 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
     sesion?.agencias?.find((a) => a.id === sesion.tenantActivoId) ?? sesion?.agencias?.[0];
   const nombreAgenciaActiva = agenciaActiva?.nombre ?? 'ViajaPro';
 
-  const modulos: ModuloItem[] = [
-    {
-      id: 'bandeja',
-      label: 'Bandeja de WhatsApp',
-      href: '/bandeja',
-      icon: MessageSquare,
-      disponible: true,
-    },
-    {
-      id: 'pipeline',
-      label: 'Pipeline / Oportunidades',
-      href: '/pipeline',
-      icon: Kanban,
-      disponible: true,
-    },
-    {
-      id: 'cotizador',
-      label: 'Cotizador de Paquetes',
-      href: '/cotizador',
-      icon: FileText,
-      disponible: true,
-    },
-    {
-      id: 'viajes',
-      label: 'Archivos de viaje',
-      href: '/viajes',
-      icon: Briefcase,
-      disponible: true,
-    },
-    {
-      id: 'contactos',
-      label: 'Contactos y Viajeros',
-      href: '/contactos',
-      icon: Users,
-      disponible: true,
-    },
-    {
-      id: 'catalogo',
-      label: 'Catálogo de Mayoristas',
-      href: '/catalogo',
-      icon: Package,
-      disponible: true,
-    },
-    {
-      id: 'reportes',
-      label: 'Reportes y Cierres',
-      href: '/reportes',
-      icon: BarChart3,
-      disponible: true,
-    },
-    {
-      id: 'configuracion',
-      label: 'Configuración de Agencia',
-      href: '/configuracion',
-      icon: Settings,
-      disponible: true,
-    },
-  ];
+  // Solo oculta: la autorización real es de la API. Sin sesión (carga o demostración) se muestra todo.
+  const modulos = entradasDelMenu().filter(
+    (m) => !sesion || esVisiblePara(m, (permiso) => tienePermiso(sesion, permiso)),
+  );
+  const accionCotizar = ACCIONES.find((a) => a.id === 'cotizar');
 
   return (
     <>
@@ -536,31 +491,16 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
           {/* Lista de Módulos */}
           <nav className="flex w-full flex-col space-y-1">
             {modulos.map((m) => {
-              const Icon = m.icon;
-              const moduloClave = m.id === 'cotizador' ? 'cotizaciones' : (m.id as ModuloViajaPro);
-              const config = CONFIGURACION_MODULOS[moduloClave];
-
-              if (!m.disponible) {
-                return (
-                  <div
-                    key={m.id}
-                    title={m.label + ' (Próximamente)'}
-                    className={`group relative flex cursor-not-allowed items-center rounded-xl text-neutral-400 opacity-60 hover:bg-neutral-100 dark:text-neutral-500 dark:hover:bg-neutral-800 ${
-                      barraExpandida ? 'h-10 w-full gap-2.5 px-2.5' : 'h-10 w-10 justify-center'
-                    }`}
-                  >
-                    <Icon className="h-5 w-5 shrink-0" />
-                    {barraExpandida && <span className="truncate text-xs">{m.label}</span>}
-                  </div>
-                );
-              }
+              const Icon = m.icono;
+              const claveColor = CLAVE_DE_COLOR[m.id];
+              const config = claveColor ? CONFIGURACION_MODULOS[claveColor] : undefined;
 
               return (
                 <Link
                   key={m.id}
-                  href={m.href}
-                  title={m.label}
-                  aria-label={m.label}
+                  href={m.ruta}
+                  title={m.etiqueta}
+                  aria-label={m.etiqueta}
                   aria-current={m.id === idActivo ? 'page' : undefined}
                   className={`focus-visible:ring-acento-600 flex items-center rounded-xl transition-all duration-200 focus-visible:ring-2 focus-visible:outline-none ${
                     barraExpandida
@@ -585,7 +525,7 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
                   >
                     <Icon className="h-4.5 w-4.5" />
                   </div>
-                  {barraExpandida && <span className="truncate text-xs">{m.label}</span>}
+                  {barraExpandida && <span className="truncate text-xs">{m.etiqueta}</span>}
                 </Link>
               );
             })}
@@ -754,72 +694,77 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
           aria-label="Navegación móvil inferior"
           className="fixed right-0 bottom-0 left-0 z-40 flex h-14 items-center justify-around border-t border-neutral-200 bg-white/95 px-2 shadow-lg backdrop-blur-md md:hidden dark:border-neutral-800 dark:bg-neutral-900/95"
         >
-          {/* P0: Bandeja */}
+          {/* Composición de la barra: T-320 (N4). Aquí solo las etiquetas salen de la tabla. */}
           <Link
             href="/bandeja"
-            title="Bandeja de WhatsApp"
-            aria-label="Bandeja de WhatsApp"
-            aria-current={idActivo === 'bandeja' ? 'page' : undefined}
+            title={entradaDe('conversaciones').etiqueta}
+            aria-label={entradaDe('conversaciones').etiqueta}
+            aria-current={idActivo === 'conversaciones' ? 'page' : undefined}
             className={
               'focus-visible:ring-acento-600 flex min-h-[44px] min-w-[44px] flex-col items-center justify-center rounded-xl transition-colors focus-visible:ring-2 focus-visible:outline-none ' +
-              (idActivo === 'bandeja'
+              (idActivo === 'conversaciones'
                 ? 'bg-acento-50 text-acento-700 dark:bg-acento-950/60 dark:text-acento-400 font-semibold'
                 : 'text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800')
             }
           >
             <MessageSquare className="h-5 w-5" />
-            <span className="text-[9px] leading-tight font-medium">Bandeja</span>
+            <span className="text-[9px] leading-tight font-medium">
+              {entradaDe('conversaciones').etiqueta}
+            </span>
           </Link>
 
-          {/* P0: Pipeline */}
           <Link
             href="/pipeline"
-            title="Pipeline de Oportunidades"
-            aria-label="Pipeline de Oportunidades"
-            aria-current={idActivo === 'pipeline' ? 'page' : undefined}
+            title={entradaDe('oportunidades').etiqueta}
+            aria-label={entradaDe('oportunidades').etiqueta}
+            aria-current={idActivo === 'oportunidades' ? 'page' : undefined}
             className={
               'focus-visible:ring-acento-600 flex min-h-[44px] min-w-[44px] flex-col items-center justify-center rounded-xl transition-colors focus-visible:ring-2 focus-visible:outline-none ' +
-              (idActivo === 'pipeline'
+              (idActivo === 'oportunidades'
                 ? 'bg-acento-50 text-acento-700 dark:bg-acento-950/60 dark:text-acento-400 font-semibold'
                 : 'text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800')
             }
           >
             <Kanban className="h-5 w-5" />
-            <span className="text-[9px] leading-tight font-medium">Pipeline</span>
+            <span className="text-[9px] leading-tight font-medium">
+              {entradaDe('oportunidades').etiqueta}
+            </span>
           </Link>
 
-          {/* P0: Cotizador */}
           <Link
             href="/cotizador"
-            title="Cotizador de Paquetes"
-            aria-label="Cotizador de Paquetes"
-            aria-current={idActivo === 'cotizador' ? 'page' : undefined}
+            title={accionCotizar?.etiqueta ?? 'Cotizar'}
+            aria-label={accionCotizar?.etiqueta ?? 'Cotizar'}
+            aria-current={idActivo === 'cotizaciones' ? 'page' : undefined}
             className={
               'focus-visible:ring-acento-600 flex min-h-[44px] min-w-[44px] flex-col items-center justify-center rounded-xl transition-colors focus-visible:ring-2 focus-visible:outline-none ' +
-              (idActivo === 'cotizador'
+              (idActivo === 'cotizaciones'
                 ? 'bg-acento-50 text-acento-700 dark:bg-acento-950/60 dark:text-acento-400 font-semibold'
                 : 'text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800')
             }
           >
             <FileText className="h-5 w-5" />
-            <span className="text-[9px] leading-tight font-medium">Cotizar</span>
+            <span className="text-[9px] leading-tight font-medium">
+              {accionCotizar?.etiqueta ?? 'Cotizar'}
+            </span>
           </Link>
 
-          {/* P1: Viajes */}
           <Link
             href="/viajes"
-            title="Archivos de Viaje"
-            aria-label="Archivos de Viaje"
-            aria-current={idActivo === 'viajes' ? 'page' : undefined}
+            title={entradaDe('archivos').etiquetaCorta ?? entradaDe('archivos').etiqueta}
+            aria-label={entradaDe('archivos').etiquetaCorta ?? entradaDe('archivos').etiqueta}
+            aria-current={idActivo === 'archivos' ? 'page' : undefined}
             className={
               'focus-visible:ring-acento-600 flex min-h-[44px] min-w-[44px] flex-col items-center justify-center rounded-xl transition-colors focus-visible:ring-2 focus-visible:outline-none ' +
-              (idActivo === 'viajes'
+              (idActivo === 'archivos'
                 ? 'bg-acento-50 text-acento-700 dark:bg-acento-950/60 dark:text-acento-400 font-semibold'
                 : 'text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800')
             }
           >
             <Briefcase className="h-5 w-5" />
-            <span className="text-[9px] leading-tight font-medium">Viajes</span>
+            <span className="text-[9px] leading-tight font-medium">
+              {entradaDe('archivos').etiquetaCorta ?? entradaDe('archivos').etiqueta}
+            </span>
           </Link>
 
           {/* Buscador / Más */}
