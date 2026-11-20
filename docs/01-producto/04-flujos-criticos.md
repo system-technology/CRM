@@ -180,12 +180,22 @@ pantalla, ve lo de toda la agencia.
   ocultarlo por `usuarios.administrar`.
 - **Supuesto [S]:** qué reportes concretos ve cada nivel lo define T-339 con el dueño de JD Tours.
 
-### D4. Barra inferior en móvil — **Confirmada por el propietario (2026-11-20): Hoy · Conversaciones · Archivos · Buscar · Más**
+### D4. Barra inferior en móvil — **Resuelta por el propietario (2026-11-20): Hoy · Conversaciones · Cotizar · Buscar · Más**
 
-- **Por qué:** en el celular se responde y se consulta (quién pagó, cuándo vence), no se arma un paquete
-  completo [S]. Oportunidades, Cotizaciones y Cotizar quedan en «Más» y en la conversación, a ≤ 2 toques.
-- **Supuesto [S]:** se confirma con el uso móvil real de JD Tours; si cotizan desde el teléfono,
-  «Cotizar» sustituye a «Archivos».
+> La primera versión de D4 (Hoy · Conversaciones · Archivos · Buscar · Más) suponía que en el celular
+> no se cotiza. El propietario lo **descartó**: «sí, se cotiza desde el teléfono; incluso hoy por hoy todo
+> lo hacen desde WhatsApp Business». La asesora y el dueño de JD Tours trabajan **todo el flujo desde el
+> celular** (responder, cotizar, enviar, etiquetar, ver quién pagó). Se aplica la contingencia que D4 ya
+> traía: «Cotizar» sustituye a «Archivos».
+
+- **Barra inferior (móvil):** Hoy · Conversaciones · **Cotizar** · Buscar · Más.
+- **«Archivos de viaje»** pasa a «Más» y a la conversación; se llega a lo que vence desde «Hoy».
+- **Criterio nuevo (T-320, T-321: críticas para el piloto):** una cotización **completa** se hace a
+  **390 px sin desplazamiento lateral**: elegir paquete, fecha y ocupación, ver el total, guardar y
+  «Enviar por WhatsApp» y volver al chat.
+- **Opción por proponer (no implementada):** si `diseno-ux` ve una alternativa que no pierda Archivos
+  (p. ej. la lupa fija en la cabecera y «Buscar» fuera de la barra), se propone en el PR de T-320 y el
+  propietario decide.
 
 ### Menú resultante (escritorio)
 
@@ -201,7 +211,7 @@ Se cierran con las preguntas del roadmap §4; ninguno bloquea la navegación (Fa
 - [S] Cobra por **archivo**, no por pasajero, y con pagos libres, no con cuotas fechadas.
 - [S] Registra los pagos la asesora que lleva el archivo.
 - [S] Moneda principal COP; algunos archivos en USD. Cada pago, con su moneda (R8).
-- [S] Desde el móvil no cotizan (D4). (El supuesto sobre reportes de D3 ya no aplica: los reportes van por niveles de acceso.)
+- (D3 y D4 dejaron de ser supuestos: los reportes van por niveles de acceso y, según el propietario, se cotiza desde el móvil.)
 
 ## Pendiente fuera de este documento
 
