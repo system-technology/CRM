@@ -45,7 +45,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <div className="flex-1">
           <GuardaSesion>{children}</GuardaSesion>
         </div>
-        <PieDePaginaPrivacidad />
+        {/* Con el marco (`data-marco`) el pie va dentro de su región desplazable: aquí se oculta. */}
+        <div className="[body:has([data-marco])_&]:hidden">
+          <PieDePaginaPrivacidad />
+        </div>
         <BannerConsentimientoCookies />
       </body>
     </html>

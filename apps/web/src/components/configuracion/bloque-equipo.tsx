@@ -227,7 +227,7 @@ export function BloqueEquipo() {
       )}
 
       {/* Tabla de Miembros Responsive (sin scroll forzado a 375 px) */}
-      <div className="overflow-x-auto rounded-xl border border-neutral-200 bg-white shadow-xs dark:border-neutral-800 dark:bg-neutral-900">
+      <div className="relative overflow-x-auto rounded-xl border border-neutral-200 bg-white shadow-xs dark:border-neutral-800 dark:bg-neutral-900">
         <table className="w-full text-left text-xs">
           <thead className="border-b border-neutral-200 bg-neutral-50 text-[11px] font-semibold text-neutral-500 dark:border-neutral-800 dark:bg-neutral-800/50 dark:text-neutral-400">
             <tr>
