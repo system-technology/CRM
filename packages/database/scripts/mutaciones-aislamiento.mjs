@@ -89,6 +89,9 @@ async function definicionSana(cliente) {
     if (!/\[par-old\][\s\S]*\[\/par-old\]/.test(definicionSincronizar)) {
       throw new Error('La función no tiene las marcas [par-old]: M17 no sabría qué quitar.');
     }
+    if (!/\[rama-apodo\][\s\S]*\[\/rama-apodo\]/.test(definicionSincronizar)) {
+      throw new Error('La función no tiene las marcas [rama-apodo]: M21 no sabría qué quitar.');
+    }
   }
   return definicionSincronizar;
 }
@@ -289,6 +292,23 @@ const MUTACIONES = [
                 ALTER TABLE usuarios ADD CONSTRAINT usuarios_rol_id_tenant_id_fkey
                   FOREIGN KEY (rol_id, tenant_id) REFERENCES roles (id, tenant_id)
                   ON DELETE NO ACTION ON UPDATE RESTRICT`,
+  },
+  // --- Apodo de ingreso (20261120150000, ADR-0031) ---
+  {
+    // Sin la rama, cambiar el apodo no toca el par (el INSERT choca con él y no hace nada): el
+    // índice se queda con el apodo VIEJO, que sigue resolviendo hacia la identidad. Las marcas
+    // [rama-apodo] van fuera de [par-old] a propósito: la expresión de M17 es codiciosa.
+    nombre: 'M21 — el disparador sin la rama del apodo: un cambio de apodo no llega al índice',
+    sql: async (cliente) => {
+      const sana = await definicionSana(cliente);
+      const mutada = sana.replace(/\[rama-apodo\][\s\S]*\[\/rama-apodo\]/, '[sin rama-apodo]');
+      if (!/\[par-old\][\s\S]*\[\/par-old\]/.test(mutada)) {
+        throw new Error('M21 se llevó también las marcas [par-old]: las ramas se solapan.');
+      }
+      await reescribirComoAccesos(cliente, mutada);
+    },
+    prueba: 'AP7',
+    restaurar: async (cliente) => reescribirComoAccesos(cliente, await definicionSana(cliente)),
   },
 ];
 
