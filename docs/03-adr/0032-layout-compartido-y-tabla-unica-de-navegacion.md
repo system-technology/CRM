@@ -59,7 +59,7 @@ este ADR.
 
 ## Decisión
 
-**Opción D, y una tabla única de navegación en `apps/web/src/lib/navegacion.ts`.** Es la única
+**Opción D, y una tabla única de navegación en `lib/navegacion.ts (en apps/web)`.** Es la única
 opción que elimina la copia en vez de moverla, y su coste es de una sola vez.
 
 ### 1. Árbol de rutas

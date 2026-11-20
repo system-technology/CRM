@@ -27,7 +27,7 @@ Mientras no se implemente N1 de la auditoría de navegación, el árbol sigue pl
 
 ## 2. Navegación
 
-**Fuente única:** `apps/web/src/lib/navegacion.ts` (`NAVEGACION`, `ACCIONES`, `moduloActivo`,
+**Fuente única:** `lib/navegacion.ts (en apps/web)` (`NAVEGACION`, `ACCIONES`, `moduloActivo`,
 `tituloDeDocumento`). Cada entrada tiene: id, etiqueta, ruta, icono, grupo, permiso, prefijos
 activos y su lugar en móvil.
 
