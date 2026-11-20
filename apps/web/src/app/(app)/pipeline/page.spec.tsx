@@ -31,7 +31,7 @@ describe('PipelinePage (T-102) — Tablero Kanban y Lista de Oportunidades', () 
   it('1. Renderiza el tablero Kanban con sus columnas, tarjetas y totales por etapa en dinero entero (R8)', () => {
     render(<PipelinePage />);
 
-    expect(screen.getByText('Pipeline de Oportunidades')).toBeDefined();
+    expect(screen.getByRole('heading', { level: 1, name: 'Oportunidades' })).toBeDefined();
     expect(screen.getByText('Consulta nueva')).toBeDefined();
     expect(screen.getByText('En cotización')).toBeDefined();
 
@@ -200,7 +200,7 @@ describe('PipelinePage (T-102) — Tablero Kanban y Lista de Oportunidades', () 
     render(<PipelinePage />);
 
     // Inicialmente está en vista Kanban
-    expect(screen.getByText('Pipeline de Oportunidades')).toBeDefined();
+    expect(screen.getByRole('heading', { level: 1, name: 'Oportunidades' })).toBeDefined();
 
     // Cambiar a vista Tabla
     const botonTabla = screen.getByRole('button', { name: /Tabla/i });

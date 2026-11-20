@@ -35,6 +35,7 @@ import {
 import { useBandejaAtajos } from '../../lib/atajos-teclado-bandeja';
 import { formatearFecha } from '../../lib/formato';
 
+import { TituloDePantalla } from '../comun/titulo-de-pantalla';
 export type DensidadBandeja = 'compacta' | 'comoda';
 
 const FILTROS: { id: FiltroBandeja; etiqueta: string }[] = [
@@ -281,9 +282,10 @@ export function ListaConversaciones() {
       <div className="shrink-0 space-y-2.5 border-b border-neutral-200 p-3 dark:border-neutral-800">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <h1 className="text-sm font-bold text-neutral-900 dark:text-neutral-100">
-              Conversaciones
-            </h1>
+            <TituloDePantalla
+              modulo="conversaciones"
+              className="text-sm font-bold text-neutral-900 dark:text-neutral-100"
+            />
             <DistintivoDatosDemo />
           </div>
           <button
