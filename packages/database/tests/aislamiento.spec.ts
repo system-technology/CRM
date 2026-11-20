@@ -331,17 +331,17 @@ const EXCEPCIONES_DECLARADAS: ReadonlyArray<readonly [string, string, readonly s
   ['_prisma_migrations', 'viajapro_altas', []],
   ['_prisma_migrations', 'viajapro_app', []],
   ['_prisma_migrations', 'viajapro_webhook', []],
+  // ADR-0011: solo viajapro_identidad, y sobre accesos_identidad solo lee.
+  ['accesos_identidad', 'viajapro_altas', []],
+  ['accesos_identidad', 'viajapro_app', []],
+  ['accesos_identidad', 'viajapro_identidad', ['SELECT']],
+  ['accesos_identidad', 'viajapro_webhook', []],
   // ADR-0030 §4 (T-268): evidencia de consentimiento de la persona. Solo viajapro_identidad, y sin
   // UPDATE ni DELETE.
   ['aceptaciones_de_identidad', 'viajapro_altas', []],
   ['aceptaciones_de_identidad', 'viajapro_app', []],
   ['aceptaciones_de_identidad', 'viajapro_identidad', ['SELECT', 'INSERT']],
   ['aceptaciones_de_identidad', 'viajapro_webhook', []],
-  // ADR-0011: solo viajapro_identidad, y sobre accesos_identidad solo lee.
-  ['accesos_identidad', 'viajapro_altas', []],
-  ['accesos_identidad', 'viajapro_app', []],
-  ['accesos_identidad', 'viajapro_identidad', ['SELECT']],
-  ['accesos_identidad', 'viajapro_webhook', []],
   // ADR-0030 §3.8 (T-268): el código de acceso del piloto. NINGÚN rol de login; lo consume
   // crear_agencia (dueño viajapro_registro, NOLOGIN) y lo crea la plataforma.
   ['codigos_de_acceso_al_registro', 'viajapro_altas', []],
