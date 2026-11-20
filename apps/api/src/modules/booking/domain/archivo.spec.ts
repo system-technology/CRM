@@ -141,7 +141,18 @@ describe('semáforo y orden por plazo', () => {
       { proximoPlazo: h(-5), numero: 3 },
       { proximoPlazo: null, numero: 0 },
     ];
-    expect(lista.sort(compararPorPlazo).map((x) => x.numero)).toEqual([3, 2, 0, 1]);
+    expect(lista.sort(compararPorPlazo).map((x) => x.numero)).toEqual([3, 2, 1, 0]);
+  });
+
+  it('a igual plazo, número ascendente; sin plazo, número DESCENDENTE: los nuevos primero (T-257)', () => {
+    const lista = [
+      { proximoPlazo: null, numero: 7 },
+      { proximoPlazo: h(10), numero: 9 },
+      { proximoPlazo: null, numero: 12 },
+      { proximoPlazo: h(10), numero: 4 },
+      { proximoPlazo: null, numero: 10 },
+    ];
+    expect(lista.sort(compararPorPlazo).map((x) => x.numero)).toEqual([4, 9, 12, 10, 7]);
   });
 });
 

@@ -1072,4 +1072,32 @@ describe('la lista ordena por plazo en la base ANTES del límite (T-251)', () =>
     ).datos;
     expect(tres.map((a) => a.id)).toEqual(completa.slice(0, 3).map((a) => a.id));
   }, 60_000);
+
+  it('sin plazo, los recién abiertos primero: con más archivos sin plazo que el límite, el nuevo no queda invisible (T-257)', async () => {
+    const A = agencias.A;
+    const anterior = await archivoNuevo(A);
+    const reciente = await archivoNuevo(A);
+
+    const completa = ListaDeArchivos.parse(
+      (await http(A, 'GET', '/api/v1/archivos?limite=500')).json,
+    ).datos;
+    // Primero todos los que tienen plazo, después los que no; y entre estos, número descendente.
+    const primeroSinPlazo = completa.findIndex((a) => a.proximoPlazo === null);
+    expect(primeroSinPlazo).toBeGreaterThanOrEqual(0);
+    expect(completa.slice(primeroSinPlazo).every((a) => a.proximoPlazo === null)).toBe(true);
+    const sinPlazo = completa.slice(primeroSinPlazo).map((a) => a.numero);
+    expect(sinPlazo).toEqual([...sinPlazo].sort((x, y) => y - x));
+    expect(completa[primeroSinPlazo]?.id).toBe(reciente.id);
+    expect(completa.findIndex((a) => a.id === reciente.id)).toBeLessThan(
+      completa.findIndex((a) => a.id === anterior.id),
+    );
+
+    // Con el límite justo en «los que tienen plazo + 1», entra el más reciente, no el más antiguo
+    // sin plazo. Y sigue siendo un prefijo de la lista completa (el orden se decide en la base).
+    const corta = ListaDeArchivos.parse(
+      (await http(A, 'GET', `/api/v1/archivos?limite=${primeroSinPlazo + 1}`)).json,
+    ).datos;
+    expect(corta.map((a) => a.id)).toEqual(completa.slice(0, primeroSinPlazo + 1).map((a) => a.id));
+    expect(corta.at(-1)?.id).toBe(reciente.id);
+  }, 60_000);
 });

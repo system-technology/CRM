@@ -5775,7 +5775,7 @@ tasks:
     phase: 1
     priority: P3
     effort: S
-    status: ready
+    status: in_progress
     depends_on: [T-254]
     acceptance:
       - "UNIQUE bookings(id, travel_file_id, tenant_id) y una sola FK compuesta desde notificaciones en lugar de las dos separadas; hoy solo lo impide el puerto de booking (sin cruce entre agencias)"
@@ -5784,13 +5784,14 @@ tasks:
     source: auditoría de seguridad de T-254 (2026-11-17), hallazgo BAJO
     created_at: 2026-11-17T19:45:00.000Z
     owner: datos
+    notes: "Rama fix/booking-endurecer-historial-y-lista, migración 20261120090000 (junto con T-257): UNIQUE bookings_id_travel_file_id_tenant_id_key y una sola FK (reserva_id, archivo_id, tenant_id) en notificaciones y reserva_cambios_estado; la FK directa al archivo se retira (la cubre la de la reserva). Pendiente: CI con Postgres (migración desde cero y aislamiento N-2/N-5)."
   - id: T-257
     title: "Booking: endurecer el historial de reservas y la paginación de la lista de archivos"
     type: refactor
     phase: 1
     priority: P3
     effort: S
-    status: ready
+    status: in_progress
     depends_on: [T-250, T-251]
     acceptance:
       - "reserva_cambios_estado: INSERT por columnas sin ocurrido_en (o BEFORE INSERT que fuerce now()), como el resto de historiales de solo añadir"
@@ -5802,4 +5803,5 @@ tasks:
     source: auditoría de seguridad de T-250/T-251 (2026-11-17), hallazgos BAJO
     created_at: 2026-11-17T20:50:00.000Z
     owner: datos
+    notes: "Rama fix/booking-endurecer-historial-y-lista. ocurrido_en por disparador BEFORE INSERT (privilegios_declarados no admite columnas y un GRANT por columnas lo revocaría la siguiente migración); FK de tres columnas con T-256; lista de /archivos sin plazo por número descendente en el SQL y en compararPorPlazo; booking-apertura.e2e con fechas relativas. Pendiente: CI con Postgres (H-2/H-6/H-8 y e2e de booking)."
 
