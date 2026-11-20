@@ -6617,6 +6617,66 @@ tasks:
     files:
       - packages/contracts/src
       - apps/api/src/modules
-    source: T-261 (la cotización y el file no traen la conversación y el archivo no expone lo pagado)
+    source: T-282 (la cotización y el file no traen la conversación y el archivo no expone lo pagado)
     created_at: 2026-11-20T22:00:00.000Z
     owner: backend
+  - id: T-300
+    title: Tope diario de fallos de verificación del código de un solo uso (OTP) por correo
+    type: security
+    phase: 1
+    priority: P0
+    effort: S
+    status: in_progress
+    acceptance:
+      - El 10.º fallo de verificación del código por correo en 24 h bloquea el correo hasta que venza la ventana,
+        incluso con el código correcto, con el mismo error CODIGO_INVALIDO (no revela si el correo existe)
+      - El contador usa el prefijo propio viajapro:otp-fallos: y no comparte contador con el de envíos
+      - El contador vive en Postgres (filas de `verificaciones`, sin migración) y sobrevive a reinicios, también en
+        modo único; si la base falla al consultar el cupo, falla cerrado
+      - El acierto no cuenta; otro correo no se ve afectado; un correo inexistente también cuenta
+      - Pruebas unitarias del limitador y del tope; e2e en invitaciones.e2e-spec.ts
+    files:
+      - apps/api/src/modules/identity/application/limitador-de-envios.ts
+      - apps/api/src/modules/identity/interface/auth.controller.ts
+      - apps/api/src/modules/identity/infrastructure/contador-de-fallos.postgres.ts
+      - apps/api/src/modules/identity/infrastructure/limitador-de-envios.redis.ts
+      - apps/api/src/modules/identity/infrastructure/limitador-de-envios.en-memoria.ts
+    source: hallazgo ALTO de seguridad previo al despliegue (2026-11-20)
+    created_at: 2026-11-20T23:59:00.000Z
+    owner: backend
+  - id: T-301
+    title: En modo único, el límite de envíos de código y el límite por IP de Better Auth se pierden al reiniciar
+    type: security
+    phase: 2
+    priority: P2
+    effort: M
+    status: backlog
+    acceptance:
+      - "Riesgo de crecimiento: cada fallo con un correo distinto es una fila viva 24 h en verificaciones (~300 B); con ~12 peticiones/s rotando IP son ~1 millón de filas por día (~300 MB, cerca del límite del plan gratuito de Neon). El límite por IP debe sobrevivir a reinicios y puede haber un tope global de filas vivas del prefijo viajapro:otp-fallos: (si se supera, fallar cerrado y alertar)"
+      - El límite de envíos de código por correo y por IP sobrevive a reinicios en modo único (por ejemplo, en
+        Postgres como el tope de fallos), o se decide por escrito que no hace falta
+      - El límite de intentos por IP de Better Auth (`rateLimit` en crear-auth.ts) deja de ser en memoria, o se
+        documenta su alcance real con el plan que duerme el proceso a los 15 minutos
+    files:
+      - apps/api/src/modules/identity/infrastructure/crear-limitador-de-envios.ts
+      - apps/api/src/modules/identity/infrastructure/crear-auth.ts
+    source: auditoría de seguridad de T-300 (2026-11-20); el tope de fallos ya no depende de esto
+    created_at: 2026-11-20T23:59:00.000Z
+    owner: backend
+  - id: T-303
+    title: "OTP de ingreso: contar el fallo antes de comparar y no dejar el ingreso por código bloqueable por terceros"
+    type: security
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    depends_on: [T-300]
+    acceptance:
+      - "La fila de fallo se inserta antes de llamar a Better Auth y se borra por id solo si responde 200, así ningún fallo intermedio queda sin contar (ADR-0030 §3.7)"
+      - "Con el tope agotado, /otp/enviar manda un enlace de alta entropía (128 bits o más) que sí pasa el bloqueo, y se avisa por correo al titular de que su tope se agotó (hoy diez peticiones con cualquier código bloquean 24 h el ingreso por código de cualquier correo; la contraseña no se ve afectada)"
+    files:
+      - apps/api/src/modules/identity
+    source: auditoría de seguridad de T-300 (2026-11-20), hallazgos MEDIO
+    created_at: 2026-11-20T15:10:00.000Z
+    owner: backend
+

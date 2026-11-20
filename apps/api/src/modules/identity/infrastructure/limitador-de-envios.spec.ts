@@ -1,10 +1,17 @@
-import { describe, expect, it } from 'vitest';
-import { claveDeLimite, politicaDeEnvioDeCodigos } from '../application/limitador-de-envios.js';
+import { describe, expect, it, vi } from 'vitest';
+import {
+  claveDeLimite,
+  politicaDeEnvioDeCodigos,
+  TOPE_DE_FALLOS_DE_CODIGO,
+  TopeDeFallosDeCodigo,
+} from '../application/limitador-de-envios.js';
 import {
   type ClienteRedisDeContadores,
   LimitadorDeEnviosRedis,
 } from './limitador-de-envios.redis.js';
 import { LimitadorDeEnviosEnMemoria } from './limitador-de-envios.en-memoria.js';
+import { ContadorDeFallosPostgres } from './contador-de-fallos.postgres.js';
+import type { PrismaIdentidadService } from './prisma-identidad.service.js';
 
 describe('claveDeLimite', () => {
   it('no contiene el correo ni la IP, y normaliza el correo', () => {
@@ -13,6 +20,14 @@ describe('claveDeLimite', () => {
     expect(k).not.toContain('ejemplo');
     expect(k).toBe(claveDeLimite('secreto', 'correo', 'ana@ejemplo.com'));
     expect(claveDeLimite('secreto', 'ip', '10.1.2.3')).not.toContain('10.1.2.3');
+  });
+
+  it('el prefijo propio separa el contador de fallos del de envíos', () => {
+    const envio = claveDeLimite('s', 'correo', 'a@b.co');
+    const fallos = claveDeLimite('s', 'correo', 'a@b.co', 'viajapro:otp-fallos:');
+    expect(envio.startsWith('viajapro:otp-envio:correo:')).toBe(true);
+    expect(fallos.startsWith('viajapro:otp-fallos:correo:')).toBe(true);
+    expect(fallos).not.toBe(envio);
   });
 
   it('depende del secreto y separa correo de IP', () => {
@@ -45,11 +60,59 @@ describe('LimitadorDeEnviosEnMemoria', () => {
   });
 });
 
+describe('quedaCupo (en memoria)', () => {
+  it('no consume y se agota con la cuenta', async () => {
+    const l = new LimitadorDeEnviosEnMemoria();
+    for (let i = 0; i < 5; i++) expect(await l.quedaCupo('k', 2)).toBe(true);
+    await l.consumir('k', 2, 60);
+    expect(await l.quedaCupo('k', 2)).toBe(true);
+    await l.consumir('k', 2, 60);
+    expect(await l.quedaCupo('k', 2)).toBe(false);
+  });
+});
+
+describe('TopeDeFallosDeCodigo', () => {
+  const nuevo = (l = new LimitadorDeEnviosEnMemoria()) => ({
+    l,
+    tope: new TopeDeFallosDeCodigo(l, 'secreto'),
+  });
+
+  it('el tope son 10 fallos en 24 horas', () => {
+    expect(TOPE_DE_FALLOS_DE_CODIGO).toEqual({ maximo: 10, ventanaSegundos: 86400 });
+  });
+
+  it('consultar no cuenta; cada fallo sí; al décimo se bloquea', async () => {
+    const { tope } = nuevo();
+    for (let i = 0; i < 5; i++) expect(await tope.estaBloqueado('a@b.co')).toBe(false);
+    for (let i = 0; i < 9; i++) await tope.registrarFallo('a@b.co');
+    expect(await tope.estaBloqueado('a@b.co')).toBe(false);
+    await tope.registrarFallo('a@b.co');
+    expect(await tope.estaBloqueado('a@b.co')).toBe(true);
+  });
+
+  it('otro correo no se ve afectado, y mayúsculas no cambian el buzón', async () => {
+    const { tope } = nuevo();
+    for (let i = 0; i < 10; i++) await tope.registrarFallo(' A@B.co ');
+    expect(await tope.estaBloqueado('a@b.co')).toBe(true);
+    expect(await tope.estaBloqueado('otra@b.co')).toBe(false);
+  });
+
+  it('no comparte contador con el de envíos', async () => {
+    const { l, tope } = nuevo();
+    for (let i = 0; i < 20; i++)
+      await l.consumir(claveDeLimite('secreto', 'correo', 'a@b.co'), 3, 900);
+    expect(await tope.estaBloqueado('a@b.co')).toBe(false);
+    for (let i = 0; i < 10; i++) await tope.registrarFallo('a@b.co');
+    expect(await l.consumir(claveDeLimite('secreto', 'correo', 'z@b.co'), 3, 900)).toBe(true);
+  });
+});
+
 describe('LimitadorDeEnviosRedis', () => {
   function falso() {
     const cuentas = new Map<string, number>();
     const ttls = new Map<string, number>();
     const cliente: ClienteRedisDeContadores = {
+      get: (c: string) => Promise.resolve(cuentas.has(c) ? String(cuentas.get(c)) : null),
       multi() {
         let clave = '';
         const m = {
@@ -80,8 +143,20 @@ describe('LimitadorDeEnviosRedis', () => {
     expect(ttls.get('k')).toBe(900);
   });
 
+  it('quedaCupo lee sin incrementar', async () => {
+    const { cliente } = falso();
+    const l = new LimitadorDeEnviosRedis(cliente);
+    expect(await l.quedaCupo('k', 2)).toBe(true);
+    await l.consumir('k', 2, 60);
+    expect(await l.quedaCupo('k', 2)).toBe(true);
+    await l.consumir('k', 2, 60);
+    expect(await l.quedaCupo('k', 2)).toBe(false);
+    expect(await l.quedaCupo('k', 2)).toBe(false);
+  });
+
   it('un fallo de Redis se propaga', async () => {
     const l = new LimitadorDeEnviosRedis({
+      get: () => Promise.resolve(null),
       multi: () => ({
         incr: () => undefined,
         expire: () => undefined,
@@ -89,5 +164,109 @@ describe('LimitadorDeEnviosRedis', () => {
       }),
     });
     await expect(l.consumir('k', 3, 60)).rejects.toThrow('Redis caído');
+  });
+});
+
+describe('LimitadorDeEnviosEnMemoria acotado', () => {
+  it('descarta lo vencido y respeta el máximo de claves', async () => {
+    const l = new LimitadorDeEnviosEnMemoria(3);
+    for (let i = 0; i < 10; i++) await l.consumir(`k${i}`, 5, 60);
+    expect(l.tamano).toBeLessThanOrEqual(3);
+  });
+
+  it('barre las vencidas al insertar', async () => {
+    vi.useFakeTimers();
+    try {
+      const l = new LimitadorDeEnviosEnMemoria(100);
+      await l.consumir('a', 5, 1);
+      await l.consumir('b', 5, 1);
+      vi.advanceTimersByTime(2000);
+      await l.consumir('c', 5, 60);
+      expect(l.tamano).toBe(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
+describe('ContadorDeFallosPostgres', () => {
+  /** Una «base» mínima: filas { identificador, vence } compartidas entre instancias. */
+  function baseFalsa(filas: Array<{ id: string; vence: number }> = []) {
+    const sqls: string[] = [];
+    const prisma = {
+      $executeRaw: (t: TemplateStringsArray, ...v: unknown[]) => {
+        const sql = t.join('?');
+        sqls.push(sql);
+        if (sql.includes('INSERT')) {
+          filas.push({ id: String(v[0]), vence: Date.now() + Number(v[1]) * 1000 });
+        }
+        return Promise.resolve(1);
+      },
+      $queryRaw: (_t: TemplateStringsArray, ...v: unknown[]) =>
+        Promise.resolve([{ n: filas.filter((f) => f.id === v[0] && f.vence > Date.now()).length }]),
+    } as unknown as PrismaIdentidadService;
+    return { prisma, filas, sqls };
+  }
+
+  it('el 10.º fallo bloquea y quedaCupo no consume', async () => {
+    const { prisma, filas } = baseFalsa();
+    const c = new ContadorDeFallosPostgres(prisma);
+    for (let i = 0; i < 5; i++) expect(await c.quedaCupo('k', 10)).toBe(true);
+    expect(filas).toHaveLength(0);
+    for (let i = 0; i < 9; i++) await c.consumir('k', 10, 86400);
+    expect(await c.quedaCupo('k', 10)).toBe(true);
+    expect(await c.consumir('k', 10, 86400)).toBe(true);
+    expect(await c.quedaCupo('k', 10)).toBe(false);
+    expect(await c.consumir('k', 10, 86400)).toBe(false);
+  });
+
+  it('sobrevive a «reiniciar»: una instancia nueva sobre la misma base ve el bloqueo', async () => {
+    const { prisma, filas } = baseFalsa();
+    const antes = new TopeDeFallosDeCodigo(new ContadorDeFallosPostgres(prisma), 's');
+    for (let i = 0; i < 10; i++) await antes.registrarFallo('a@b.co');
+    const despues = new TopeDeFallosDeCodigo(
+      new ContadorDeFallosPostgres(baseFalsa(filas).prisma),
+      's',
+    );
+    expect(await despues.estaBloqueado('a@b.co')).toBe(true);
+    expect(await despues.estaBloqueado('otro@b.co')).toBe(false);
+    // En cambio, un limitador en memoria nuevo parte de cero: por eso no se usa para el tope.
+    const memoria = new TopeDeFallosDeCodigo(new LimitadorDeEnviosEnMemoria(), 's');
+    expect(await memoria.estaBloqueado('a@b.co')).toBe(false);
+  });
+
+  it('inserta primero, barre vencidas con LIMIT y la limpieza fallida no impide contar', async () => {
+    const { prisma, sqls } = baseFalsa();
+    await new ContadorDeFallosPostgres(prisma).consumir('k', 10, 60);
+    expect(sqls[0]).toMatch(/INSERT INTO verificaciones/);
+    expect(sqls[1]).toMatch(/DELETE FROM verificaciones[\s\S]*LIMIT/);
+
+    // El barrido falla (DELETE) pero el fallo se contó y consumir no lanza.
+    const sqlsConBarridoRoto: string[] = [];
+    const sinBarrido = {
+      $executeRaw: (strings: TemplateStringsArray) => {
+        const sql = strings.join('?');
+        sqlsConBarridoRoto.push(sql);
+        if (/DELETE/.test(sql)) return Promise.reject(new Error('barrido roto'));
+        return Promise.resolve(1);
+      },
+      $queryRaw: () => Promise.resolve([{ n: 1 }]),
+    } as unknown as PrismaIdentidadService;
+    await expect(new ContadorDeFallosPostgres(sinBarrido).consumir('k', 10, 60)).resolves.toBe(
+      true,
+    );
+    expect(sqlsConBarridoRoto[0]).toMatch(/INSERT/);
+
+    // Consultar el cupo, en cambio, falla cerrado si la base falla; y registrar sin base lanza.
+    const rota = {
+      $executeRaw: () => Promise.reject(new Error('base caída')),
+      $queryRaw: () => Promise.reject(new Error('base caída')),
+    } as unknown as PrismaIdentidadService;
+    await expect(new ContadorDeFallosPostgres(rota).quedaCupo('k', 10)).rejects.toThrow(
+      'base caída',
+    );
+    await expect(new ContadorDeFallosPostgres(rota).consumir('k', 10, 60)).rejects.toThrow(
+      'base caída',
+    );
   });
 });

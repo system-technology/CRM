@@ -32,8 +32,10 @@ import { CambiarAgenciaActiva } from '../application/cambiar-agencia-activa.use-
 import { ObtenerSesionActual } from '../application/sesion-actual.use-case.js';
 import {
   claveDeLimite,
+  ContadorDeFallosDeCodigo,
   LimitadorDeEnvios,
   politicaDeEnvioDeCodigos,
+  TopeDeFallosDeCodigo,
 } from '../application/limitador-de-envios.js';
 import { AUTH, origenesDeConfianza } from '../infrastructure/auth.provider.js';
 import {
@@ -53,6 +55,7 @@ export class AuthController {
     @Inject(ObtenerSesionActual) private readonly sesionActual: ObtenerSesionActual,
     @Inject(CambiarAgenciaActiva) private readonly cambiarAgencia: CambiarAgenciaActiva,
     @Inject(LimitadorDeEnvios) private readonly limitador: LimitadorDeEnvios,
+    @Inject(ContadorDeFallosDeCodigo) private readonly fallos: ContadorDeFallosDeCodigo,
   ) {}
 
   @Post('sign-in/email')
@@ -103,16 +106,23 @@ export class AuthController {
     @Res({ passthrough: true }) res: RespuestaExpress,
   ): Promise<SesionActual> {
     this.exigirOrigenSiVino(req);
+    // Tope diario de fallos por correo (no por IP: rotar direcciones no lo esquiva). Agotado,
+    // se rechaza incluso el código correcto, con el mismo error que un código erróneo y sin
+    // llegar a Better Auth: no revela si el correo existe.
+    const tope = new TopeDeFallosDeCodigo(this.fallos, leerSecretoDeAutenticacion(process.env));
+    if (await tope.estaBloqueado(body.correo)) throw errorDeAcceso('CODIGO_INVALIDO');
     const respuesta = await this.llamarABetterAuth(req, '/sign-in/email-otp', {
       email: body.correo,
       otp: body.codigo,
     });
     if (!respuesta.ok) {
       if (respuesta.status === 429) throw errorDeAcceso('DEMASIADOS_INTENTOS');
-      // Código erróneo, caducado, sin intentos, o sin identidad: el mismo error para todo.
       if (respuesta.status >= 500) {
         throw new Error(`Better Auth respondió ${respuesta.status} al validar un código.`);
       }
+      // Código erróneo, caducado, sin intentos, o sin identidad: el mismo error para todo, y
+      // todos cuentan como fallo (exista o no la cuenta).
+      await tope.registrarFallo(body.correo);
       throw errorDeAcceso('CODIGO_INVALIDO');
     }
     return this.abrirSesion(respuesta, res);

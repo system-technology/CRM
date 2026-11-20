@@ -27,7 +27,14 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { AppModule } from '../../app.module.js';
 import { DominioExcepcionFilter } from '../../shared/filtros/dominio-excepcion.filter.js';
 import { CorreoEnMemoria } from '../notifications/infrastructure/correo.en-memoria.js';
+import {
+  claveDeLimite,
+  PREFIJO_DE_FALLOS,
+  TopeDeFallosDeCodigo,
+} from './application/limitador-de-envios.js';
 import { hashearTokenDeInvitacion } from './domain/invitacion.js';
+import { ContadorDeFallosPostgres } from './infrastructure/contador-de-fallos.postgres.js';
+import { PrismaIdentidadService } from './infrastructure/prisma-identidad.service.js';
 
 const idDeTenant = (): string => `01932000-0000-7000-8000-${randomBytes(6).toString('hex')}`;
 const TENANT_A = idDeTenant();
@@ -52,6 +59,17 @@ let correoDePrueba: CorreoEnMemoria;
 let rolesA: { dueno: string; asesor: string; superior: string };
 let rolesB: { dueno: string; asesor: string; superior: string };
 const hashesDeTokens: string[] = [];
+/** Correos cuyo contador de fallos hay que borrar al final (el identificador es un HMAC). */
+const conFallos: string[] = [];
+const secretoDeAuth = (): string => process.env['BETTER_AUTH_SECRET'] ?? '';
+const identificadorDeFallos = (c: string): string =>
+  claveDeLimite(secretoDeAuth(), 'correo', c, PREFIJO_DE_FALLOS);
+const filasDeFallos = async (c: string): Promise<number> =>
+  (
+    await adminPg.query('SELECT 1 FROM verificaciones WHERE identificador = $1', [
+      identificadorDeFallos(c),
+    ])
+  ).rowCount ?? 0;
 
 interface Respuesta {
   estado: number;
@@ -221,8 +239,12 @@ afterAll(async () => {
       // Por correo exacto: la base es compartida y otra corrida tiene sus propias identidades.
       await adminPg.query('DELETE FROM identidades WHERE correo = ANY($1::citext[])', [creados]);
       await adminPg.query(
-        'DELETE FROM verificaciones WHERE identificador = ANY($1) OR identificador = ANY($2)',
-        [hashesDeTokens.map((h) => `invitacion:${h}`), creados.map((c) => `sign-in-otp-${c}`)],
+        'DELETE FROM verificaciones WHERE identificador = ANY($1) OR identificador = ANY($2) OR identificador = ANY($3)',
+        [
+          hashesDeTokens.map((h) => `invitacion:${h}`),
+          creados.map((c) => `sign-in-otp-${c}`),
+          conFallos.map(identificadorDeFallos),
+        ],
       );
     } finally {
       await adminPg.end();
@@ -618,6 +640,102 @@ describe('código por correo', () => {
     );
     expect(rows[0]?.segundos).toBeGreaterThan(0);
     expect(rows[0]?.segundos).toBeLessThanOrEqual(300);
+  });
+
+  it('al 10º fallo del día el correo se bloquea, incluso con el código correcto; el contador vive en la base', async () => {
+    const anterior = process.env['OTP_ENVIOS_POR_CORREO'];
+    process.env['OTP_ENVIOS_POR_CORREO'] = '50';
+    try {
+      const atacado = correo('tope-fallos');
+      const fantasma = correo('tope-fantasma'); // sin identidad: también cuenta
+      creados.push(atacado);
+      conFallos.push(atacado, fantasma);
+      await admin.identidad.create({
+        data: { correo: atacado, nombre: 'Tope', correoVerificado: true },
+      });
+      const pedirYFallar = async (c: string): Promise<number> => {
+        await new Navegador().llamar('POST', '/api/v1/auth/otp/enviar', { cuerpo: { correo: c } });
+        // Un fallo por código: el código sigue vivo (3 intentos), así que lo que bloquea es el
+        // tope diario y no el de intentos por código. IP distinta cada vez.
+        const bueno = correoDePrueba.para(c).length > 0 ? codigoDelUltimoCorreo(c) : '123456';
+        const malo = bueno === '000000' ? '111111' : '000000';
+        const r = await new Navegador().llamar('POST', '/api/v1/auth/otp/iniciar-sesion', {
+          cuerpo: { correo: c, codigo: malo },
+        });
+        return r.estado;
+      };
+      for (let i = 0; i < 9; i += 1)
+        expect(await pedirYFallar(atacado), `fallo ${i + 1}`).toBe(401);
+      expect(await filasDeFallos(atacado)).toBe(9);
+      // El 10.º fallo SÍ llega a Better Auth: consume un intento del código en `verificaciones`.
+      await new Navegador().llamar('POST', '/api/v1/auth/otp/enviar', {
+        cuerpo: { correo: atacado },
+      });
+      const vivo = codigoDelUltimoCorreo(atacado);
+      const malo10 = vivo === '000000' ? '111111' : '000000';
+      const decimo = await new Navegador().llamar('POST', '/api/v1/auth/otp/iniciar-sesion', {
+        cuerpo: { correo: atacado, codigo: malo10 },
+      });
+      expect(decimo.estado).toBe(401);
+      const { rows } = await adminPg.query<{ valor: string }>(
+        'SELECT valor FROM verificaciones WHERE identificador = $1 ORDER BY creado_en DESC LIMIT 1',
+        [`sign-in-otp-${atacado}`],
+      );
+      expect(rows[0]?.valor.endsWith(':1')).toBe(true); // un intento gastado: llegó a Better Auth
+      expect(await filasDeFallos(atacado)).toBe(10);
+
+      // 11.º: el código correcto ya no entra, y NO llega a Better Auth (el intento no sube).
+      const correcto = await new Navegador().llamar('POST', '/api/v1/auth/otp/iniciar-sesion', {
+        cuerpo: { correo: atacado, codigo: vivo },
+      });
+      expect(correcto.estado).toBe(401);
+      expect(correcto.json.error?.code).toBe('CODIGO_INVALIDO');
+      expect(correcto.setCookie).toHaveLength(0);
+      const { rows: despues } = await adminPg.query<{ valor: string }>(
+        'SELECT valor FROM verificaciones WHERE identificador = $1 ORDER BY creado_en DESC LIMIT 1',
+        [`sign-in-otp-${atacado}`],
+      );
+      expect(despues[0]?.valor).toBe(rows[0]?.valor);
+
+      // «Reinicio»: una instancia nueva, sin estado en memoria, ve el bloqueo porque está en la base.
+      const nueva = new TopeDeFallosDeCodigo(
+        new ContadorDeFallosPostgres(app.get(PrismaIdentidadService)),
+        secretoDeAuth(),
+      );
+      expect(await nueva.estaBloqueado(atacado)).toBe(true);
+
+      // Un correo inexistente también cuenta, y responde igual que uno existente.
+      for (let i = 0; i < 10; i += 1) {
+        const r = await new Navegador().llamar('POST', '/api/v1/auth/otp/iniciar-sesion', {
+          cuerpo: { correo: fantasma, codigo: '123456' },
+        });
+        expect(r.estado).toBe(401);
+        expect(r.json.error?.code).toBe('CODIGO_INVALIDO');
+      }
+      expect(await filasDeFallos(fantasma)).toBe(10);
+      expect(await nueva.estaBloqueado(fantasma)).toBe(true);
+
+      // Otro correo (nuevo, sin fallos) no se ve afectado.
+      const otro = correo('tope-otro');
+      creados.push(otro);
+      conFallos.push(otro);
+      await admin.identidad.create({
+        data: { correo: otro, nombre: 'Otro', correoVerificado: true },
+      });
+      expect(await nueva.estaBloqueado(otro)).toBe(false);
+      await new Navegador().llamar('POST', '/api/v1/auth/otp/enviar', { cuerpo: { correo: otro } });
+      const mal = await new Navegador().llamar('POST', '/api/v1/auth/otp/iniciar-sesion', {
+        cuerpo: {
+          correo: otro,
+          codigo: '000000' === codigoDelUltimoCorreo(otro) ? '111111' : '000000',
+        },
+      });
+      expect(mal.estado).toBe(401);
+      expect(await filasDeFallos(otro)).toBe(1);
+    } finally {
+      if (anterior === undefined) delete process.env['OTP_ENVIOS_POR_CORREO'];
+      else process.env['OTP_ENVIOS_POR_CORREO'] = anterior;
+    }
   });
 
   it('el límite por correo no se nota: el cuarto pedido responde igual que un correo inexistente y no envía', async () => {

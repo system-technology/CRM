@@ -31,9 +31,10 @@ import {
 import { ZonaHorariaPrisma } from './infrastructure/zona-horaria.prisma.js';
 import { AgenciasPrisma } from './infrastructure/agencias.prisma.js';
 import { proveedorDeAuth } from './infrastructure/auth.provider.js';
-import { LimitadorDeEnvios } from './application/limitador-de-envios.js';
+import { ContadorDeFallosDeCodigo, LimitadorDeEnvios } from './application/limitador-de-envios.js';
 import { crearLimitadorDeEnvios } from './infrastructure/crear-limitador-de-envios.js';
 import { MembresiasPrisma } from './infrastructure/membresias.prisma.js';
+import { ContadorDeFallosPostgres } from './infrastructure/contador-de-fallos.postgres.js';
 import { PrismaIdentidadService } from './infrastructure/prisma-identidad.service.js';
 import { SesionesBetterAuth } from './infrastructure/sesiones.better-auth.js';
 import { MiembrosController } from './interface/miembros.controller.js';
@@ -65,6 +66,7 @@ import { AgenciaAjustesController } from './interface/agencia-ajustes.controller
     PrismaIdentidadService,
     proveedorDeAuth,
     { provide: LimitadorDeEnvios, useFactory: crearLimitadorDeEnvios },
+    { provide: ContadorDeFallosDeCodigo, useClass: ContadorDeFallosPostgres },
     ResolverAcceso,
     ObtenerSesionActual,
     CambiarAgenciaActiva,
