@@ -12,6 +12,35 @@
 
 ---
 
+## 2026-11-20 — Web creíble, registro de agencias decidido, MCP y despliegue en espera, y `docs/` ordenada
+
+**Decisiones del propietario**
+- ADR-0030 (registro autoservicio) aceptado con P1–P7: 14 días de prueba; durante el piloto, registro con código de acceso; textos legales por abogado y el propietario; solo Colombia y COP; 5 miembros, 1 canal, sin IA; la plataforma conecta a mano el WhatsApp de las agencias piloto; avisos a su correo por variable de entorno.
+- Skills `diseno-web` (propia) y `frontend-design` (Anthropic, Apache 2.0, base de la anterior) más el MCP de 21st.dev. MCP de Neon, Render y Vercel para que la sesión de despliegue termine la demo; las claves viven en el entorno, nunca en el repo.
+- Reorganizar `docs/` sin dañar lo que hay: primero un comprobador de enlaces, luego mover solo lo de riesgo bajo. Sin agrupar la bitácora por año (rompería el hook de arranque).
+- Autorización vigente (2026-11-17): aprobar e integrar PR, incluidas rutas protegidas, tras auditoría y CI en verde. No alcanza paneles de Neon, Render, Vercel y 21st.dev, claves, WhatsApp real desde celular, ni borrar ramas ajenas.
+
+**Verificado** (con `gh`/`git`)
+- Integrados con CI en verde: #301–#303 (despachador, historial de estados, reserva atada a su archivo), #304–#308 (skills, credibilidad de la demo, solicitud de viaje, MCP), #309 (propuesta al viajero, sesión aparte), #310 y #312 (ADR-0030 y arreglo de H6), #314 (sistema visual y enlaces), #315 (tope de 10 fallos del código por correo, en Postgres), #316–#319 (reorganización de `docs/`).
+- `main` en `9662e04`; 155 tareas `done`; 47 migraciones.
+- La sesión de despliegue confirmó que los MCP de Neon, Render, Vercel y 21st conectan; en Neon existe `viajapro-staging` con 32 de 47 migraciones y faltan 3 roles; **no existe** servicio en Render ni proyecto en Vercel.
+
+**Supuesto, sin verificar**
+- Nada de ViajaPro está desplegado. La opción C (long-polling a Render a través de Vercel) está sin probar.
+- Reservas, campana y las pantallas nuevas no se han visto contra la API real en un navegador.
+- Las pruebas de base de T-300 corren solo en el CI.
+
+**Pendiente**
+- Propietario: decisiones a la sesión de despliegue (contraseñas de rol, `API_TRUST_PROXY`), secretos del entorno y de GitHub Actions, `CAMPOS_SENSIBLES_KEY` con copia fuera de Render, rotar la clave de 21st.dev pegada en el chat, mensaje real de WhatsApp desde celular, T-080, textos legales con abogado.
+- Cola: T-268 (migración del registro, ruta protegida), T-269/T-273, T-281 (precondición para abrir el registro sin código), T-283, T-301 y T-303; salidas en el cotizador (punto 6 de la auditoría UX); encabezado de conversación en móvil; referencias muertas a los documentos FLUJO y CICLO (que ya no existen) en comentarios de `.github/` y `scripts/` (T-304).
+
+**Trampas nuevas**
+- mover la carpeta de traspaso a `docs/_traspasos` anida la carpeta si el destino ya existe: comprobar con `ls`.
+- Alcance de commit `datos` no existe (usar `db`); `ia` tampoco (usar `mcp`); el asunto no puede empezar en mayúscula.
+- Tras un squash, la rama de trabajo se rehace desde `origin/main`; no hay force-push.
+
+---
+
 ## 2026-11-17 (noche) — Permisos del archivo, avisos de plazo y campana
 
 **Verificado (gh/git, CI en verde en cada PR)**
