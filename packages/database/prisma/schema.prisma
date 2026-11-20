@@ -95,6 +95,9 @@ model Tenant {
   notificaciones    Notification[]
   cambiosDeReserva  ReservaCambioEstado[]
 
+  /// T-261: los datos legales de la agencia (hoy solo el RNT). Una fila, o ninguna si no los ha escrito.
+  perfil PerfilDeAgencia?
+
   roles            Rol[]
   formatosDeViaje  FormatoDeViaje[]
   opcionesDeSalida OpcionDeSalida[]
@@ -2612,6 +2615,30 @@ model Notification {
   @@index([tenantId, archivoId])
   @@index([tenantId, reservaId])
   @@map("notificaciones")
+}
+
+/// Datos legales de la agencia (T-261, ADR-0030 §3.3). Una fila por agencia: la PK es el tenant.
+/// Hoy solo el RNT; `nit`, `digito_verificacion` y `razon_social` llegan con T-268, que además tiene
+/// que reemplazar el disparador para que cambiar el `nit` también anule `verificado_en`.
+///
+/// Lo que declara la agencia NO está verificado. `verificado_en` solo lo conserva la plataforma
+/// (el dueño de la tabla): el disparador `proteger_verificacion_del_perfil` lo deja en NULL para
+/// `viajapro_app`, y también cuando cambia el RNT. Ni el disparador ni los dos CHECK
+/// (`perfiles_de_agencia_rnt_formato`, `perfiles_de_agencia_verificado_exige_rnt`) los modela
+/// Prisma. Sin DELETE para la aplicación.
+model PerfilDeAgencia {
+  tenantId String @id @map("tenant_id") @db.Uuid
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  /// Solo dígitos (1 a 10). Ningún documento al viajero lo imprime sin `verificadoEn`.
+  rnt          String?
+  /// R9: UTC. NULL = sin verificar.
+  verificadoEn DateTime? @map("verificado_en") @db.Timestamptz(3)
+
+  creadoEn      DateTime @default(now()) @map("creado_en") @db.Timestamptz(3)
+  actualizadoEn DateTime @default(now()) @updatedAt @map("actualizado_en") @db.Timestamptz(3)
+
+  @@map("perfiles_de_agencia")
 }
 
 /// Historial de estados de la reserva (T-250). Solo añadir: la API solo tiene SELECT e INSERT.
