@@ -15,10 +15,10 @@ Tarea T-025 del roadmap (Fase 1: Un CRM mostrable y endurecido):
    - Permite renombrado en línea y ajuste numérico del porcentaje de probabilidad de cierre (0–100%).
    - Identifica etapas especiales con insignias de color: Ganada (verde esmeralda), Perdida (rosa) y Etapa clave (ámbar).
    - Botón de guardar cambios con respuesta visual y mensaje accesible (`role="status"`).
-   - Montado e integrado en `apps/web/src/app/configuracion/page.tsx` dentro de la pestaña `pipeline`.
+   - Montado e integrado en `apps/web/src/app/(app)/configuracion/page.tsx` dentro de la pestaña `pipeline`.
 
 2. **Consumo Dinámico en Tablero de Pipeline**:
-   - `apps/web/src/app/pipeline/page.tsx` ya consume dinámicamente las etapas (`tablero.columnas.map(col => col.etapa)`) proporcionadas por `obtenerTableroPipeline()` o el endpoint correspondiente, respetando orden y atributos.
+   - `apps/web/src/app/(app)/pipeline/page.tsx` ya consume dinámicamente las etapas (`tablero.columnas.map(col => col.etapa)`) proporcionadas por `obtenerTableroPipeline()` o el endpoint correspondiente, respetando orden y atributos.
 
 3. **API y Fallback Resiliente**:
    - Añadidas funciones `listarEtapasPipelineApi` y `actualizarEtapasPipelineApi` en `apps/web/src/lib/crm-api.ts`.

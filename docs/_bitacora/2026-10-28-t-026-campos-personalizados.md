@@ -18,7 +18,7 @@ Tarea T-026 del roadmap (Fase 1: Un CRM mostrable y endurecido):
 
 2. **Componente de Configuración `BloqueCamposPersonalizados`**:
    - Ubicación: `apps/web/src/components/configuracion/bloque-campos-personalizados.tsx`.
-   - Montado en `apps/web/src/app/configuracion/page.tsx` (pestaña `campos`).
+   - Montado en `apps/web/src/app/(app)/configuracion/page.tsx` (pestaña `campos`).
    - Permite alternar entre campos de viajeros y de oportunidades.
    - Creación de campos con modal accesible (`useFocoModal`, WCAG AA).
    - Eliminación interactiva y persistencia resiliente en storage local.
