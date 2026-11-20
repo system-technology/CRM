@@ -5,8 +5,12 @@ description: Diseño de interfaz para la web de ViajaPro (apps/web) — que cada
 
 # Diseño web de ViajaPro
 
-> Inspirada en los principios de la skill pública `frontend-design` de Anthropic (Apache 2.0,
-> github.com/anthropics/skills). Texto propio, adaptado al producto; no es una copia.
+> Base: la skill `frontend-design` de Anthropic, versionada en `.claude/skills/frontend-design/`
+> (Apache 2.0). Léela también: su proceso (plan en dos pasadas, revisión contra el pedido,
+> autocrítica con capturas) y su escritura de interfaz aplican tal cual. Esta skill **prevalece**
+> donde ViajaPro ya decidió: tokens de `globals.css`, lenguaje ubicuo, densidad de herramienta de
+> trabajo y la línea de resumen del viaje (`Cancún · dic · 2+2` es dato, no adorno de plantilla).
+> La libertad estética de `frontend-design` se gasta sobre todo en lo que ve el viajero.
 
 La regla de fondo: **la identidad de turismo sale de la información, no de la decoración.** Una
 asesora que atiende 40 chats al día no necesita palmeras; necesita ver «Cancún · dic · 2+2 ·
