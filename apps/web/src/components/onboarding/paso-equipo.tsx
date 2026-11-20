@@ -72,7 +72,7 @@ export function PasoEquipo({ datos, alGuardar, alOmitir }: PasoEquipoProps) {
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-xs dark:border-neutral-800 dark:bg-neutral-900">
           <div className="flex items-center gap-2 text-xs font-bold text-neutral-900 dark:text-white">
-            <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300">
+            <span className="bg-acento-100 text-acento-800 dark:bg-acento-950 dark:text-acento-300 flex h-6 w-6 items-center justify-center rounded-lg">
               <Users className="h-3.5 w-3.5" />
             </span>
             <span>Asesor de Viajes</span>
@@ -85,7 +85,7 @@ export function PasoEquipo({ datos, alGuardar, alOmitir }: PasoEquipoProps) {
 
         <div className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-xs dark:border-neutral-800 dark:bg-neutral-900">
           <div className="flex items-center gap-2 text-xs font-bold text-neutral-900 dark:text-white">
-            <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300">
+            <span className="bg-acento-100 text-acento-800 dark:bg-acento-950 dark:text-acento-300 flex h-6 w-6 items-center justify-center rounded-lg">
               <ShieldCheck className="h-3.5 w-3.5" />
             </span>
             <span>Admin de Agencia</span>
@@ -112,7 +112,7 @@ export function PasoEquipo({ datos, alGuardar, alOmitir }: PasoEquipoProps) {
       {/* Formulario de Adición de Miembro */}
       <div className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-xs dark:border-neutral-800 dark:bg-neutral-900">
         <h3 className="flex items-center gap-2 text-sm font-bold text-neutral-900 dark:text-white">
-          <UserPlus className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+          <UserPlus className="text-acento-600 dark:text-acento-400 h-4 w-4" />
           <span>Invitar un Compañero de Equipo</span>
         </h3>
         <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
@@ -137,7 +137,7 @@ export function PasoEquipo({ datos, alGuardar, alOmitir }: PasoEquipoProps) {
                 value={nuevoCorreo}
                 onChange={(e) => setNuevoCorreo(e.target.value)}
                 placeholder="asesor@miagencia.com"
-                className="min-h-[44px] w-full rounded-xl border border-neutral-300 px-3.5 py-2.5 pl-9 text-xs text-neutral-900 placeholder:text-neutral-400 focus:border-purple-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                className="focus:border-acento-500 min-h-[44px] w-full rounded-xl border border-neutral-300 px-3.5 py-2.5 pl-9 text-xs text-neutral-900 placeholder:text-neutral-400 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
               />
               <Mail className="pointer-events-none absolute top-3 left-3 h-4 w-4 text-neutral-400" />
             </div>
@@ -152,7 +152,7 @@ export function PasoEquipo({ datos, alGuardar, alOmitir }: PasoEquipoProps) {
               value={nuevoNombre}
               onChange={(e) => setNuevoNombre(e.target.value)}
               placeholder="Ej. Juan Pérez"
-              className="mt-1 min-h-[44px] w-full rounded-xl border border-neutral-300 px-3.5 py-2.5 text-xs text-neutral-900 placeholder:text-neutral-400 focus:border-purple-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+              className="focus:border-acento-500 mt-1 min-h-[44px] w-full rounded-xl border border-neutral-300 px-3.5 py-2.5 text-xs text-neutral-900 placeholder:text-neutral-400 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
             />
           </div>
 
@@ -165,7 +165,7 @@ export function PasoEquipo({ datos, alGuardar, alOmitir }: PasoEquipoProps) {
               onChange={(e) =>
                 setNuevoRol(e.target.value as 'ASESOR' | 'ADMIN_AGENCIA' | 'OPERATIVO')
               }
-              className="mt-1 min-h-[44px] w-full rounded-xl border border-neutral-300 px-3 py-2.5 text-xs text-neutral-900 focus:border-purple-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+              className="focus:border-acento-500 mt-1 min-h-[44px] w-full rounded-xl border border-neutral-300 px-3 py-2.5 text-xs text-neutral-900 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
             >
               <option value="ASESOR">Asesor de Viajes</option>
               <option value="ADMIN_AGENCIA">Admin Agencia</option>
@@ -179,7 +179,7 @@ export function PasoEquipo({ datos, alGuardar, alOmitir }: PasoEquipoProps) {
             type="button"
             onClick={handleAgregarMiembro}
             data-testid="btn-agregar-miembro-onboarding"
-            className="flex min-h-[44px] items-center gap-2 rounded-xl bg-purple-700 px-5 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-purple-800 dark:bg-purple-600 dark:hover:bg-purple-700"
+            className="boton-primario flex min-h-[44px] items-center gap-2 rounded-xl px-5 py-2.5 text-xs font-bold shadow-xs"
           >
             <UserPlus className="h-4 w-4" />
             <span>Agregar a la Invitación</span>
@@ -224,7 +224,7 @@ export function PasoEquipo({ datos, alGuardar, alOmitir }: PasoEquipoProps) {
               className="flex items-center justify-between rounded-xl border border-neutral-100 bg-white p-3 shadow-xs dark:border-neutral-800 dark:bg-neutral-900"
             >
               <div className="flex items-center gap-2.5">
-                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-100 text-xs font-bold text-purple-800 dark:bg-purple-950 dark:text-purple-300">
+                <span className="bg-acento-100 text-acento-800 dark:bg-acento-950 dark:text-acento-300 flex h-8 w-8 items-center justify-center rounded-lg text-xs font-bold">
                   {m.nombre ? m.nombre.slice(0, 2).toUpperCase() : 'AS'}
                 </span>
                 <div>
@@ -236,7 +236,7 @@ export function PasoEquipo({ datos, alGuardar, alOmitir }: PasoEquipoProps) {
               </div>
 
               <div className="flex items-center gap-2">
-                <span className="rounded-full bg-blue-100 px-2.5 py-0.5 text-[10px] font-bold text-blue-800 dark:bg-blue-950 dark:text-blue-300">
+                <span className="bg-acento-100 text-acento-800 dark:bg-acento-950 dark:text-acento-300 rounded-full px-2.5 py-0.5 text-[10px] font-bold">
                   {m.rol}
                 </span>
                 <button

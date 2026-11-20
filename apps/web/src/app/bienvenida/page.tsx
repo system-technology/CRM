@@ -46,7 +46,7 @@ export default function BienvenidaPage() {
             </div>
 
             <div className="flex items-center gap-2">
-              <span className="flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-800 dark:bg-blue-950/60 dark:text-blue-300">
+              <span className="bg-acento-50 text-acento-800 dark:bg-acento-950/60 dark:text-acento-300 flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold">
                 <Building2 className="h-3.5 w-3.5" />
                 <span>{agenciaActiva}</span>
               </span>

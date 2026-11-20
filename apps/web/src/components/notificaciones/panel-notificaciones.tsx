@@ -323,7 +323,7 @@ export function PanelNotificaciones({
 
               {mensajePermiso && (
                 <div
-                  className="rounded-lg bg-blue-50 px-3 py-1.5 text-[11px] text-blue-700 dark:bg-blue-950/40 dark:text-blue-300"
+                  className="bg-acento-50 text-acento-700 dark:bg-acento-950/40 dark:text-acento-300 rounded-lg px-3 py-1.5 text-[11px]"
                   data-testid="mensaje-estado-permiso"
                 >
                   {mensajePermiso}
@@ -361,7 +361,7 @@ export function PanelNotificaciones({
             data-testid="filtro-plazos"
             className={`shrink-0 rounded-lg px-2.5 py-1 text-xs font-semibold transition-colors ${
               filtro === 'aviso_plazo'
-                ? 'bg-purple-600 text-white'
+                ? 'bg-acento-600 text-white'
                 : 'text-neutral-600 hover:bg-neutral-200/60 dark:text-neutral-400 dark:hover:bg-neutral-800'
             }`}
           >
@@ -417,7 +417,7 @@ export function PanelNotificaciones({
             data-testid="filtro-operativas"
             className={`shrink-0 rounded-lg px-2.5 py-1 text-xs font-semibold transition-colors ${
               filtro === 'alerta_operativa'
-                ? 'bg-blue-600 text-white'
+                ? 'bg-acento-600 text-white'
                 : 'text-neutral-600 hover:bg-neutral-200/60 dark:text-neutral-400 dark:hover:bg-neutral-800'
             }`}
           >
@@ -485,7 +485,7 @@ export function PanelNotificaciones({
                         ? 'border-red-200 bg-red-50/50 dark:border-red-900/60 dark:bg-red-950/20'
                         : esAdvertencia
                           ? 'border-amber-200 bg-amber-50/50 dark:border-amber-900/60 dark:bg-amber-950/20'
-                          : 'border-blue-200 bg-blue-50/50 dark:border-blue-900/60 dark:bg-blue-950/20'
+                          : 'border-acento-200 bg-acento-50/50 dark:border-acento-900/60 dark:bg-acento-950/20'
                       : 'border-neutral-200 bg-white opacity-75 dark:border-neutral-800 dark:bg-neutral-900'
                   }`}
                 >
@@ -529,13 +529,7 @@ export function PanelNotificaciones({
                             alCerrar();
                             router.push(item.href);
                           }}
-                          className={`flex min-h-[36px] items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-bold transition-colors ${
-                            esCritica
-                              ? 'bg-red-600 text-white hover:bg-red-700'
-                              : esAdvertencia
-                                ? 'bg-amber-600 text-white hover:bg-amber-700'
-                                : 'bg-emerald-600 text-white hover:bg-emerald-700'
-                          }`}
+                          className="boton-primario flex min-h-[36px] items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-bold transition-colors"
                         >
                           <span>{item.accionTexto}</span>
                           <ExternalLink className="h-3 w-3" />

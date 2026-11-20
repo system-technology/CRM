@@ -206,7 +206,7 @@ export function PasoMarca({ datos, alGuardar, alOmitir }: PasoMarcaProps) {
                   value={marca.colorAcento}
                   onChange={(e) => setMarca({ ...marca, colorAcento: e.target.value })}
                   placeholder="#C9A24B"
-                  className="min-h-[44px] w-28 rounded-xl border border-neutral-300 px-3 py-2 font-mono text-xs text-neutral-900 uppercase focus:border-amber-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                  className="min-h-[44px] w-28 rounded-xl border border-neutral-300 px-3 py-2 font-mono text-xs text-neutral-900 focus:border-amber-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                 />
               </div>
             </div>
@@ -217,8 +217,8 @@ export function PasoMarca({ datos, alGuardar, alOmitir }: PasoMarcaProps) {
         <div className="space-y-4 lg:col-span-5">
           <div className="sticky top-4 rounded-2xl border border-neutral-200 bg-neutral-50/50 p-5 backdrop-blur-xs dark:border-neutral-800 dark:bg-neutral-900/40">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold tracking-wider text-neutral-500 uppercase dark:text-neutral-400">
-                Vista Previa en Vivo
+              <span className="text-xs font-bold text-neutral-500 dark:text-neutral-400">
+                Vista previa en vivo
               </span>
               <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-[10px] font-bold text-amber-800 dark:bg-amber-950 dark:text-amber-300">
                 <Sparkles className="h-3 w-3" />
@@ -265,7 +265,7 @@ export function PasoMarca({ datos, alGuardar, alOmitir }: PasoMarcaProps) {
                 </div>
 
                 <div className="rounded-xl bg-neutral-50 p-3 dark:bg-neutral-800/50">
-                  <span className="text-[10px] font-bold text-amber-700 uppercase dark:text-amber-400">
+                  <span className="text-[10px] font-bold text-amber-700 dark:text-amber-400">
                     Pasadía Recomendado
                   </span>
                   <p className="text-xs font-bold text-neutral-900 dark:text-white">

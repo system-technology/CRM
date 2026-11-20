@@ -17,7 +17,7 @@ export default function PoliticaPrivacidadPage() {
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3 sm:px-6">
           <Link
             href="/"
-            className="inline-flex min-h-[44px] items-center gap-2 rounded-xl text-xs font-semibold text-neutral-600 transition hover:text-teal-700 dark:text-neutral-300 dark:hover:text-teal-400"
+            className="hover:text-acento-700 dark:hover:text-acento-400 inline-flex min-h-[44px] items-center gap-2 rounded-xl text-xs font-semibold text-neutral-600 transition dark:text-neutral-300"
           >
             <ArrowLeft className="h-4 w-4" />
             <span>Volver al inicio</span>
@@ -30,7 +30,7 @@ export default function PoliticaPrivacidadPage() {
             >
               Borrador en revisión jurídica
             </span>
-            <span className="hidden rounded-full bg-blue-100 px-2.5 py-0.5 text-[11px] font-bold text-blue-900 sm:inline dark:bg-blue-950 dark:text-blue-300">
+            <span className="bg-acento-100 text-acento-900 dark:bg-acento-950 dark:text-acento-300 hidden rounded-full px-2.5 py-0.5 text-[11px] font-bold sm:inline">
               Ley 1581 / SIC
             </span>
           </div>
@@ -42,8 +42,8 @@ export default function PoliticaPrivacidadPage() {
         <article className="space-y-8 text-left">
           {/* Encabezado */}
           <div>
-            <div className="inline-flex items-center gap-2 rounded-lg bg-teal-50 px-3 py-1 text-xs font-bold text-teal-800 ring-1 ring-teal-200 dark:bg-teal-950 dark:text-teal-300 dark:ring-teal-800">
-              <Shield className="h-4 w-4 text-teal-600 dark:text-teal-400" />
+            <div className="bg-acento-50 text-acento-800 ring-acento-200 dark:bg-acento-950 dark:text-acento-300 dark:ring-acento-800 inline-flex items-center gap-2 rounded-lg px-3 py-1 text-xs font-bold ring-1">
+              <Shield className="text-acento-600 dark:text-acento-400 h-4 w-4" />
               <span>Transparencia y Protección de Datos Personales</span>
             </div>
             <h1 className="mt-3 text-2xl font-extrabold tracking-tight text-neutral-900 sm:text-3xl dark:text-neutral-50">
@@ -74,7 +74,7 @@ export default function PoliticaPrivacidadPage() {
           {/* 1. Roles en el Tratamiento de Datos */}
           <section className="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
             <h2 className="flex items-center gap-2 text-base font-bold text-neutral-900 dark:text-white">
-              <Building2 className="h-4 w-4 text-teal-600 dark:text-teal-400" />
+              <Building2 className="text-acento-600 dark:text-acento-400 h-4 w-4" />
               <span>1. Roles en el Tratamiento de Datos Personales</span>
             </h2>
             <div className="mt-4 space-y-3 text-xs leading-relaxed text-neutral-600 dark:text-neutral-300">
@@ -107,7 +107,7 @@ export default function PoliticaPrivacidadPage() {
           {/* 2. Categorías de Datos Tratados */}
           <section className="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
             <h2 className="flex items-center gap-2 text-base font-bold text-neutral-900 dark:text-white">
-              <Eye className="h-4 w-4 text-teal-600 dark:text-teal-400" />
+              <Eye className="text-acento-600 dark:text-acento-400 h-4 w-4" />
               <span>2. Datos que se Custodian en la Plataforma</span>
             </h2>
             <div className="mt-4 overflow-x-auto">
@@ -169,7 +169,7 @@ export default function PoliticaPrivacidadPage() {
           {/* 3. Derechos del Titular (Habeas Data) */}
           <section className="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
             <h2 className="flex items-center gap-2 text-base font-bold text-neutral-900 dark:text-white">
-              <FileText className="h-4 w-4 text-teal-600 dark:text-teal-400" />
+              <FileText className="text-acento-600 dark:text-acento-400 h-4 w-4" />
               <span>3. Derechos de los Titulares (Artículo 8, Ley 1581 de 2012)</span>
             </h2>
             <div className="mt-4 space-y-3 text-xs leading-relaxed text-neutral-600 dark:text-neutral-300">
@@ -201,7 +201,7 @@ export default function PoliticaPrivacidadPage() {
           {/* 4. Seguridad de la Información (Reglas R1, R2, R6, R10) */}
           <section className="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
             <h2 className="flex items-center gap-2 text-base font-bold text-neutral-900 dark:text-white">
-              <Lock className="h-4 w-4 text-teal-600 dark:text-teal-400" />
+              <Lock className="text-acento-600 dark:text-acento-400 h-4 w-4" />
               <span>4. Garantías Técnicas y Seguridad de la Infraestructura</span>
             </h2>
             <div className="mt-4 grid grid-cols-1 gap-4 text-xs text-neutral-600 sm:grid-cols-2 dark:text-neutral-300">

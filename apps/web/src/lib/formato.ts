@@ -4,8 +4,8 @@
  * Centraliza las reglas de presentación para el mercado colombiano (ViajaPro):
  * 1. Dinero: COP en enteros, sin decimales, con punto de miles (R8).
  *    Monedas extranjeras (USD, EUR) con 2 decimales y coma decimal.
- * 2. Fechas: Zona horaria oficial del tenant ('America/Bogota', R9).
- *    Formato estándar legible «sáb 3 oct 2026».
+ * 2. Fechas: zona de la agencia (R9; por defecto 'America/Bogota'). Un solo formato en toda la
+ *    interfaz: «20 nov 2026» y «20 nov 2026, 10:30 a. m.».
  *    Manejo preciso de la medianoche UTC frente a la zona de la agencia.
  * 3. Teléfonos: Formato colombiano «+57 300 123 4567» para móviles (10 dígitos)
  *    y «+57 (601) 234 5678» para fijos nacionales.
@@ -130,90 +130,88 @@ export function formatearDineroCifra(dinero: EntradaDinero): string {
 }
 
 /**
- * Normaliza la representación de fecha corta eliminando puntos de abreviación y comas.
- * Convierte "sáb, 3 oct 2026" o "sáb. 3 de oct. de 2026" en "sáb 3 oct 2026".
+ * Zona horaria de la agencia (R9). La fija el shell cuando carga los ajustes de la agencia
+ * (`fijarZonaAgencia`); mientras tanto rige la oficial de Colombia. Una llamada puede imponer
+ * otra con `{ zona }`.
  */
-function normalizarFechaCorta(texto: string): string {
+let zonaAgenciaVigente = ZONA_HORARIA_COLOMBIA;
+
+export function fijarZonaAgencia(zona: string | null | undefined): void {
+  if (!zona) {
+    zonaAgenciaVigente = ZONA_HORARIA_COLOMBIA;
+    return;
+  }
+  try {
+    new Intl.DateTimeFormat(LOCALE_COLOMBIA, { timeZone: zona });
+    zonaAgenciaVigente = zona;
+  } catch {
+    zonaAgenciaVigente = ZONA_HORARIA_COLOMBIA;
+  }
+}
+
+export function zonaAgencia(): string {
+  return zonaAgenciaVigente;
+}
+
+/** Espacios especiales de Intl (\u202f, \u00a0) a espacio normal: igual en servidor y cliente. */
+function espaciosNormales(texto: string): string {
   return texto
-    .replace(/,/g, '')
-    .replace(/\./g, '')
-    .replace(/\s+de\s+/g, ' ')
+    .replace(/[\u202f\u00a0]/g, ' ')
+    .replace(/\s+/g, ' ')
     .trim();
 }
 
+/** Fecha sin puntos de abreviación, comas ni «de»: «20 nov 2026». */
+function normalizarFechaCorta(texto: string): string {
+  return espaciosNormales(texto.replace(/[,.]/g, '').replace(/\s+de\s+/g, ' '));
+}
+
+function aInstante(fecha: string | Date | number): Date | null {
+  const d = typeof fecha === 'string' || typeof fecha === 'number' ? new Date(fecha) : fecha;
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
 /**
- * Formatea una fecha en es-CO con la zona horaria del tenant ('America/Bogota' por defecto).
- * Estilo por defecto 'corta': «sáb 3 oct 2026».
+ * Único formato de fecha de la interfaz: «20 nov 2026». Con `conHora` (o `formatearFechaHora`):
+ * «20 nov 2026, 10:30 a. m.» en la zona de la agencia (R9).
  *
- * Tratamiento de casos límite:
- * - String de fecha pura 'YYYY-MM-DD': no sufre desplazamiento horario a la víspera.
- * - Timestamp UTC 'YYYY-MM-DDTHH:mm:ssZ': se traslada exactamente a la hora local en Bogotá (UTC-5).
+ * - `AAAA-MM-DD` (fecha sin hora: salida, vigencia) no se desplaza de día por la zona.
+ * - Un instante UTC se traslada a la zona de la agencia.
+ * - Estilos: `corta` (por defecto), `dia-mes` («20 nov», solo donde el año sobra), `hora`
+ *   («10:30 a. m.») y `completa` («viernes, 20 de noviembre de 2026», solo para textos al viajero).
  */
 export function formatearFecha(
   fecha: string | Date | number | null | undefined,
   opciones?: OpcionesFormatoFecha,
 ): string {
-  if (!fecha) return '';
+  if (!fecha && fecha !== 0) return '';
 
-  const zona = opciones?.zona ?? ZONA_HORARIA_COLOMBIA;
+  const zona = opciones?.zona ?? zonaAgenciaVigente;
   const estilo = opciones?.estilo ?? 'corta';
 
-  // Si es string de solo fecha (ej: '2026-10-03')
-  if (typeof fecha === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
+  const soloFecha = typeof fecha === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(fecha);
+  let instante: Date | null;
+  let zonaUsada = zona;
+  if (soloFecha) {
     const [y, m, d] = fecha.split('-').map(Number);
-    // Asignar mediodía UTC para que ninguna zona horaria cambie de día
-    const fechaSegura = new Date(Date.UTC(y ?? 0, (m ?? 1) - 1, d ?? 1, 12, 0, 0));
-
-    if (estilo === 'dia-mes') {
-      const fmt = new Intl.DateTimeFormat(LOCALE_COLOMBIA, {
-        day: 'numeric',
-        month: 'short',
-        timeZone: 'UTC',
-      });
-      return normalizarFechaCorta(fmt.format(fechaSegura));
-    }
-
-    if (estilo === 'completa') {
-      const fmt = new Intl.DateTimeFormat(LOCALE_COLOMBIA, {
-        weekday: 'long',
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric',
-        timeZone: 'UTC',
-      });
-      return fmt.format(fechaSegura);
-    }
-
-    // Estilo por defecto 'corta': «sáb 3 oct 2026»
-    const fmt = new Intl.DateTimeFormat(LOCALE_COLOMBIA, {
-      weekday: 'short',
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-      timeZone: 'UTC',
-    });
-    return normalizarFechaCorta(fmt.format(fechaSegura));
+    // Mediodía UTC: ninguna zona horaria cambia el día.
+    instante = new Date(Date.UTC(y ?? 0, (m ?? 1) - 1, d ?? 1, 12, 0, 0));
+    zonaUsada = 'UTC';
+  } else {
+    instante = aInstante(fecha);
   }
-
-  const dateObj = typeof fecha === 'string' || typeof fecha === 'number' ? new Date(fecha) : fecha;
-  if (Number.isNaN(dateObj.getTime())) return '';
+  if (!instante) return '';
 
   if (estilo === 'hora') {
-    return new Intl.DateTimeFormat(LOCALE_COLOMBIA, {
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true,
-      timeZone: zona,
-    }).format(dateObj);
-  }
-
-  if (estilo === 'dia-mes') {
-    const fmt = new Intl.DateTimeFormat(LOCALE_COLOMBIA, {
-      day: 'numeric',
-      month: 'short',
-      timeZone: zona,
-    });
-    return normalizarFechaCorta(fmt.format(dateObj));
+    if (soloFecha) return '';
+    return espaciosNormales(
+      new Intl.DateTimeFormat(LOCALE_COLOMBIA, {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true,
+        timeZone: zonaUsada,
+      }).format(instante),
+    );
   }
 
   if (estilo === 'completa') {
@@ -222,34 +220,32 @@ export function formatearFecha(
       day: 'numeric',
       month: 'long',
       year: 'numeric',
-      timeZone: zona,
-    }).format(dateObj);
+      timeZone: zonaUsada,
+    }).format(instante);
   }
 
-  // Estilo por defecto 'corta'
-  const fmt = new Intl.DateTimeFormat(LOCALE_COLOMBIA, {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-    timeZone: zona,
-  });
+  const texto = normalizarFechaCorta(
+    new Intl.DateTimeFormat(LOCALE_COLOMBIA, {
+      day: 'numeric',
+      month: 'short',
+      ...(estilo === 'dia-mes' ? {} : { year: 'numeric' }),
+      timeZone: zonaUsada,
+    }).format(instante),
+  );
 
-  return normalizarFechaCorta(fmt.format(dateObj));
+  if (opciones?.conHora && !soloFecha) {
+    const hora = formatearFecha(instante, { zona: zonaUsada, estilo: 'hora' });
+    return hora ? `${texto}, ${hora}` : texto;
+  }
+  return texto;
 }
 
-/**
- * Formatea fecha y hora combinadas (ej: "sáb 3 oct 2026, 9:30 a. m.").
- */
+/** «20 nov 2026, 10:30 a. m.» en la zona de la agencia. */
 export function formatearFechaHora(
   fecha: string | Date | number | null | undefined,
   opciones?: OpcionesFormatoFecha,
 ): string {
-  if (!fecha) return '';
-  const fechaTexto = formatearFecha(fecha, opciones);
-  const horaTexto = formatearFecha(fecha, { ...opciones, estilo: 'hora' });
-  if (!fechaTexto) return '';
-  return horaTexto ? `${fechaTexto}, ${horaTexto}` : fechaTexto;
+  return formatearFecha(fecha, { ...opciones, conHora: true });
 }
 
 /**

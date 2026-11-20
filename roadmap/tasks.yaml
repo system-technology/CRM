@@ -6581,3 +6581,42 @@ tasks:
     source: auditoría de seguridad de ADR-0030, segunda vuelta, C13 (2026-11-20)
     created_at: 2026-11-20T23:45:00.000Z
     owner: datos
+  - id: T-282
+    title: "Web: un solo sistema de acción, color y fecha, y chat, cotización y file enlazados en las dos direcciones"
+    type: feature
+    phase: 1
+    priority: P2
+    effort: M
+    status: in_progress
+    depends_on: [T-259]
+    acceptance:
+      - "Una sola acción primaria (token acento, clase boton-primario); verde solo para WhatsApp, rojo para lo vencido o destructivo, ámbar para lo que está por vencer"
+      - "Un solo formato de fecha (20 nov 2026; con hora, 10:30 a. m.) en la zona de la agencia, y dd/mm/aaaa en todos los campos de fecha salvo el de fecha y hora de Reservas"
+      - "Etiquetas en frase normal; las insignias de estado conservan las mayúsculas"
+      - "La cotización enlaza a la conversación, al contacto y al file; el file, a la conversación, al contacto y a la cotización de origen; la ficha del contacto muestra su viaje vigente con sus enlaces"
+      - "Sin una petición por fila ni endpoints nuevos: la conversación se busca por el teléfono del contacto en la bandeja y los files salen de la lista de archivos"
+    files:
+      - apps/web/src
+    source: auditoría UX de la web (2026-11-20), puntos 3 y 7 (R3 e I5)
+    created_at: 2026-11-20T22:00:00.000Z
+    owner: frontend
+    started_at: 2026-11-20T22:00:00.000Z
+    notes: "Rama feat/web-sistema-visual-y-enlaces, sobre la rama de T-259. Pendiente de API (T-262): la web resuelve la conversación por la búsqueda de la bandeja (teléfono) y no ve las conversaciones de otros asesores; y no hay abonos ni saldo del archivo, así que Reservas no muestra lo pagado. El campo de fecha y hora de Reservas (time limit, pago total) sigue siendo el del navegador."
+  - id: T-283
+    title: "API: id de la conversación en la cotización y el file, y abonos y saldo del archivo de viaje"
+    type: feature
+    phase: 1
+    priority: P2
+    effort: M
+    status: ready
+    depends_on: [T-282]
+    acceptance:
+      - "conversacionId (nullable) en CotizacionGuardada, FilaDeCotizacion y ResumenDeArchivo, sin saltarse la visibilidad de la bandeja"
+      - "El detalle del archivo trae lo pagado y el saldo en la unidad mínima de la moneda (R8), calculados en el servidor"
+      - "La web enlaza por conversacionId y muestra pagado y saldo junto a «Registrar abono»; se quita la búsqueda por teléfono"
+    files:
+      - packages/contracts/src
+      - apps/api/src/modules
+    source: T-261 (la cotización y el file no traen la conversación y el archivo no expone lo pagado)
+    created_at: 2026-11-20T22:00:00.000Z
+    owner: backend

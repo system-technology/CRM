@@ -19,7 +19,7 @@ export default function CookiesPage() {
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3 sm:px-6">
           <Link
             href="/"
-            className="inline-flex min-h-[44px] items-center gap-2 rounded-xl text-xs font-semibold text-neutral-600 transition hover:text-teal-700 dark:text-neutral-300 dark:hover:text-teal-400"
+            className="hover:text-acento-700 dark:hover:text-acento-400 inline-flex min-h-[44px] items-center gap-2 rounded-xl text-xs font-semibold text-neutral-600 transition dark:text-neutral-300"
           >
             <ArrowLeft className="h-4 w-4" />
             <span>Volver al inicio</span>
@@ -31,7 +31,7 @@ export default function CookiesPage() {
             >
               Borrador en revisión jurídica
             </span>
-            <span className="hidden rounded-full bg-teal-100 px-2.5 py-0.5 text-[11px] font-bold text-teal-800 sm:inline dark:bg-teal-950 dark:text-teal-300">
+            <span className="bg-acento-100 text-acento-800 dark:bg-acento-950 dark:text-acento-300 hidden rounded-full px-2.5 py-0.5 text-[11px] font-bold sm:inline">
               Ley 1581 / SIC
             </span>
             <BotonAbrirPreferencias />
@@ -44,8 +44,8 @@ export default function CookiesPage() {
         <article className="space-y-8 text-left">
           {/* Encabezado */}
           <div>
-            <div className="inline-flex items-center gap-2 rounded-lg bg-teal-50 px-3 py-1 text-xs font-bold text-teal-800 ring-1 ring-teal-200 dark:bg-teal-950 dark:text-teal-300 dark:ring-teal-800">
-              <Cookie className="h-4 w-4 text-teal-600 dark:text-teal-400" />
+            <div className="bg-acento-50 text-acento-800 ring-acento-200 dark:bg-acento-950 dark:text-acento-300 dark:ring-acento-800 inline-flex items-center gap-2 rounded-lg px-3 py-1 text-xs font-bold ring-1">
+              <Cookie className="text-acento-600 dark:text-acento-400 h-4 w-4" />
               <span>Transparencia de Datos y Cookies</span>
             </div>
             <h1 className="mt-3 text-2xl font-extrabold tracking-tight text-neutral-900 sm:text-3xl dark:text-neutral-50">
@@ -58,12 +58,12 @@ export default function CookiesPage() {
           </div>
 
           {/* Resumen ejecutivo */}
-          <div className="rounded-2xl border border-teal-200 bg-teal-50/50 p-5 dark:border-teal-900/60 dark:bg-teal-950/20">
-            <h2 className="flex items-center gap-2 text-sm font-bold text-teal-900 dark:text-teal-200">
-              <ShieldCheck className="h-4 w-4 text-teal-600 dark:text-teal-400" />
+          <div className="border-acento-200 bg-acento-50/50 dark:border-acento-900/60 dark:bg-acento-950/20 rounded-2xl border p-5">
+            <h2 className="text-acento-900 dark:text-acento-200 flex items-center gap-2 text-sm font-bold">
+              <ShieldCheck className="text-acento-600 dark:text-acento-400 h-4 w-4" />
               Compromiso de Privacidad en ViajaPro
             </h2>
-            <p className="mt-2 text-xs leading-relaxed text-teal-800/90 dark:text-teal-300/90">
+            <p className="text-acento-800/90 dark:text-acento-300/90 mt-2 text-xs leading-relaxed">
               ViajaPro no utiliza cookies para crear perfiles de publicidad comportamental ni vende
               información a corredores de datos. Las tecnologías de almacenamiento se emplean
               únicamente para mantener su sesión segura, recordar la configuración de la agencia y,
@@ -100,9 +100,9 @@ export default function CookiesPage() {
                         <span
                           className={`inline-flex items-center rounded px-2 py-0.5 text-[10px] font-bold ${
                             cookie.categoria === 'NECESARIAS'
-                              ? 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300'
+                              ? 'bg-acento-100 text-acento-800 dark:bg-acento-950 dark:text-acento-300'
                               : cookie.categoria === 'PREFERENCIAS'
-                                ? 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300'
+                                ? 'bg-acento-100 text-acento-800 dark:bg-acento-950 dark:text-acento-300'
                                 : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
                           }`}
                         >
@@ -132,7 +132,7 @@ export default function CookiesPage() {
           {/* Cómo gestionar cookies */}
           <section className="space-y-4 rounded-2xl border border-neutral-200 bg-white p-6 shadow-xs dark:border-neutral-800 dark:bg-neutral-900">
             <h2 className="flex items-center gap-2 text-base font-bold text-neutral-900 dark:text-white">
-              <Lock className="h-4 w-4 text-teal-600 dark:text-teal-400" />
+              <Lock className="text-acento-600 dark:text-acento-400 h-4 w-4" />
               Gestión de sus Preferencias
             </h2>
             <p className="text-xs leading-relaxed text-neutral-600 dark:text-neutral-300">

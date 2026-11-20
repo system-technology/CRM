@@ -181,7 +181,7 @@ export function BloqueSeguimientosDia({
             </Link>
             <Link
               href="/cotizador"
-              className="inline-flex min-h-[44px] items-center gap-1.5 rounded-lg bg-teal-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-teal-700 dark:bg-teal-500 dark:hover:bg-teal-600"
+              className="boton-primario inline-flex min-h-[44px] items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-semibold shadow-xs"
             >
               <Sparkles className="h-4 w-4" />
               <span>Nueva cotización</span>
@@ -205,7 +205,7 @@ export function BloqueSeguimientosDia({
                 className={`group tarjeta-turismo-hover flex flex-col justify-between gap-3 rounded-xl border p-4 sm:flex-row sm:items-center ${obtenerClaseEscalonada(idx)} ${
                   esVencido
                     ? 'border-rose-200 bg-rose-50/40 hover:border-rose-300 dark:border-rose-900/50 dark:bg-rose-950/20'
-                    : 'dark:bg-neutral-850 border-neutral-200 bg-white hover:border-teal-500/40 dark:border-neutral-800 dark:hover:border-teal-500/30'
+                    : 'dark:bg-neutral-850 hover:border-acento-500/40 dark:hover:border-acento-500/30 border-neutral-200 bg-white dark:border-neutral-800'
                 }`}
               >
                 <div className="flex flex-1 items-start gap-3">
@@ -221,7 +221,7 @@ export function BloqueSeguimientosDia({
                         ? 'border-neutral-300 bg-neutral-100 text-neutral-400'
                         : esVencido
                           ? 'border-rose-300 bg-white text-rose-700 hover:border-rose-500 hover:bg-rose-100 dark:border-rose-800 dark:bg-rose-950 dark:text-rose-300'
-                          : 'border-neutral-300 bg-white text-neutral-600 hover:border-teal-500 hover:bg-teal-50 hover:text-teal-700 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300'
+                          : 'hover:border-acento-500 hover:bg-acento-50 hover:text-acento-700 border-neutral-300 bg-white text-neutral-600 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300'
                     }`}
                   >
                     {estaCompletando ? (
@@ -309,7 +309,7 @@ export function BloqueSeguimientosDia({
         </span>
         <Link
           href="/seguimientos"
-          className="inline-flex min-h-[44px] items-center gap-1.5 text-xs font-bold text-teal-600 hover:text-teal-700 hover:underline dark:text-teal-400"
+          className="text-acento-600 hover:text-acento-700 dark:text-acento-400 inline-flex min-h-[44px] items-center gap-1.5 text-xs font-bold hover:underline"
         >
           <span>Ver todos los seguimientos</span>
           <ExternalLink className="h-3.5 w-3.5" />

@@ -21,6 +21,13 @@ import {
   mensajeDeErrorDelArchivo,
 } from '../../lib/archivos-logica';
 import { formatearDinero, formatearFecha, formatearFechaHora, pluralizar } from '../../lib/formato';
+import {
+  enlaceDeContacto,
+  enlaceDeConversacion,
+  enlaceDeCotizacion,
+} from '../../lib/enlaces-viaje-logica';
+import { useEnlacesDelViaje } from '../../lib/use-enlaces-del-viaje';
+import { EnlacesDelViaje } from '../comun/enlaces-del-viaje';
 import { DialogoCancelarArchivo } from './dialogo-cancelar-archivo';
 import { EditorPasajeros } from './editor-pasajeros';
 import { FormularioReserva } from './formulario-reserva';
@@ -185,6 +192,9 @@ export function DetalleArchivo({
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const cancelado = archivo.estado === 'CANCELADO';
+  // El file ya trae la cotización de origen; falta el contacto y su conversación (dos peticiones).
+  const enlaces = useEnlacesDelViaje(archivo.contactoId, null, { conArchivos: false });
+  const nombreContacto = enlaces.contacto.tipo === 'listo' ? enlaces.contacto.valor?.nombre : null;
 
   const ejecutar = async (operacion: () => Promise<void>, alTerminar: () => void) => {
     setEnviando(true);
@@ -230,6 +240,13 @@ export function DetalleArchivo({
             </>
           )}
         </div>
+        <EnlacesDelViaje
+          enlaces={[
+            enlaceDeConversacion(enlaces.conversacionId),
+            enlaceDeContacto(archivo.contactoId, nombreContacto),
+            enlaceDeCotizacion(archivo.cotizacionId, archivo.versionCotizacion),
+          ]}
+        />
         <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <Dato etiqueta="Paquete" valor={archivo.paqueteNombre} />
           <Dato

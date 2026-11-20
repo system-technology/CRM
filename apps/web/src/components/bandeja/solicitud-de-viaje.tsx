@@ -206,7 +206,7 @@ export function SolicitudDeViaje({
       <Link
         href={hrefCotizar}
         data-testid="boton-cotizar"
-        className="bg-acento-700 hover:bg-acento-800 flex min-h-[44px] w-full items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold text-white shadow-sm transition-colors"
+        className="boton-primario flex min-h-[44px] w-full items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold shadow-sm transition-colors"
       >
         <PlusCircle className="h-4 w-4" aria-hidden="true" />
         <span>Cotizar</span>

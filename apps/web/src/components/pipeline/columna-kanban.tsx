@@ -21,16 +21,16 @@ const COLOR_ETAPA_PROPIA = {
 
 const COLORES_CABECERA_ETAPA: Record<ClaveEtapa, { punto: string; badge: string }> = {
   NUEVO_LEAD: {
-    punto: 'bg-blue-500',
-    badge: 'bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300',
+    punto: 'bg-acento-500',
+    badge: 'bg-acento-50 text-acento-700 dark:bg-acento-950/60 dark:text-acento-300',
   },
   EN_COTIZACION: {
     punto: 'bg-indigo-500',
     badge: 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300',
   },
   EN_NEGOCIACION: {
-    punto: 'bg-purple-500',
-    badge: 'bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300',
+    punto: 'bg-acento-500',
+    badge: 'bg-acento-50 text-acento-700 dark:bg-acento-950/60 dark:text-acento-300',
   },
   GANADA: {
     punto: 'bg-ok-500',

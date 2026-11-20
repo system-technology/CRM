@@ -207,7 +207,7 @@ export function CompositorVentanaCerrada24h({
               onAbrirPlantillas();
             }
           }}
-          className="bg-acento-700 hover:bg-acento-800 flex min-h-[44px] min-w-[44px] items-center justify-center gap-2 rounded-lg px-4 py-2 font-semibold text-white shadow-sm transition-colors disabled:cursor-not-allowed disabled:bg-neutral-300 disabled:text-neutral-600 dark:disabled:bg-neutral-800 dark:disabled:text-neutral-500"
+          className="boton-primario flex min-h-[44px] min-w-[44px] items-center justify-center gap-2 rounded-lg px-4 py-2 font-semibold shadow-sm transition-colors disabled:bg-neutral-300 disabled:text-neutral-600 dark:disabled:bg-neutral-800 dark:disabled:text-neutral-500"
         >
           <ShieldCheck className="h-4 w-4" aria-hidden="true" />
           <span>

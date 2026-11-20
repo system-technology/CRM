@@ -71,8 +71,8 @@ export const MOCK_DETALLES_ARCHIVOS: DetalleDeArchivo[] = [
     numero: 1043,
     contactoId: '00000000-0002-4000-8000-000000000004',
     oportunidadId: null,
-    cotizacionId: '00000000-0032-4000-8000-000000000001',
-    versionCotizacion: 1,
+    cotizacionId: '01932000-0000-7000-8000-000000000077', // la de Felipe en mock-cotizaciones
+    versionCotizacion: 2,
     paqueteNombre: 'San Andrés Todo Incluido Familiar',
     destino: 'San Andrés, Colombia',
     fechaSalida: proximaOcurrencia(12, 20),
@@ -125,8 +125,8 @@ export const MOCK_DETALLES_ARCHIVOS: DetalleDeArchivo[] = [
     numero: 1044,
     contactoId: '00000000-0002-4000-8000-000000000005',
     oportunidadId: null,
-    cotizacionId: '00000000-0032-4000-8000-000000000002',
-    versionCotizacion: 2,
+    cotizacionId: '01932000-0000-7000-8000-00000000007a', // la de Diana en mock-cotizaciones
+    versionCotizacion: 1,
     paqueteNombre: 'Cartagena Histórica 4 días',
     destino: 'Cartagena, Colombia',
     fechaSalida: proximaOcurrencia(1, 15),

@@ -50,7 +50,7 @@ describe('ModalEnviarCotizacion (T-074)', () => {
     const vista = screen.getByTestId('vista-previa-texto-cotizacion');
     expect(vista.textContent).not.toContain('Propuesta de Viaje');
     expect(vista.textContent).toContain('v1');
-    expect(vista.textContent).toContain('Vigente hasta: 2026-11-30');
+    expect(vista.textContent).toContain('Vigente hasta: 30 nov 2026');
     expect(vista.textContent).toContain('sin neto ni margen');
   });
 

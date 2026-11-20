@@ -213,6 +213,7 @@ function versionDemo(
 function cotizacionesDeLosChats(): CotizacionGuardada[] {
   const cancun = proximaOcurrencia(12, 15);
   const curazao = proximaOcurrencia(12, 5);
+  const cartagena = proximaOcurrencia(1, 15);
   return [
     {
       id: '01932000-0000-7000-8000-000000000078',
@@ -262,6 +263,31 @@ function cotizacionesDeLosChats(): CotizacionGuardada[] {
           venta: '9500000',
           linea: 'Adulto en acomodación doble',
           vigenteHasta: diaRelativo(1),
+        }),
+      ],
+    },
+    {
+      id: '01932000-0000-7000-8000-00000000007a',
+      contactoId: '00000000-0002-4000-8000-000000000005', // Diana Ramírez (file 1044: Cartagena)
+      oportunidadId: null,
+      titulo: 'Cartagena Histórica 4 días (2 adultos)',
+      estado: 'ACEPTADA',
+      versionEnviada: 1,
+      enviadaEn: instanteRelativo(-12),
+      creadaEn: instanteRelativo(-13),
+      actualizadaEn: instanteRelativo(-10),
+      versiones: [
+        versionDemo({
+          id: '01932000-0000-7000-8000-000000000113',
+          paqueteNombre: 'Cartagena Histórica 4 días',
+          destino: 'Cartagena, Colombia',
+          noches: 3,
+          fechaSalida: cartagena,
+          adultos: 2,
+          ninos: 0,
+          venta: '4800000',
+          linea: 'Adulto en acomodación doble',
+          vigenteHasta: diaRelativo(-8),
         }),
       ],
     },

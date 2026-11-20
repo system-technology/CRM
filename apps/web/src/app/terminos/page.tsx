@@ -25,7 +25,7 @@ export default function TerminosServicioPage() {
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3 sm:px-6">
           <Link
             href="/"
-            className="inline-flex min-h-[44px] items-center gap-2 rounded-xl text-xs font-semibold text-neutral-600 transition hover:text-teal-700 dark:text-neutral-300 dark:hover:text-teal-400"
+            className="hover:text-acento-700 dark:hover:text-acento-400 inline-flex min-h-[44px] items-center gap-2 rounded-xl text-xs font-semibold text-neutral-600 transition dark:text-neutral-300"
           >
             <ArrowLeft className="h-4 w-4" />
             <span>Volver al inicio</span>
@@ -38,7 +38,7 @@ export default function TerminosServicioPage() {
             >
               Borrador en revisión jurídica
             </span>
-            <span className="hidden rounded-full bg-teal-100 px-2.5 py-0.5 text-[11px] font-bold text-teal-800 sm:inline dark:bg-teal-950 dark:text-teal-300">
+            <span className="bg-acento-100 text-acento-800 dark:bg-acento-950 dark:text-acento-300 hidden rounded-full px-2.5 py-0.5 text-[11px] font-bold sm:inline">
               SaaS B2B Turismo
             </span>
           </div>
@@ -50,8 +50,8 @@ export default function TerminosServicioPage() {
         <article className="space-y-8 text-left">
           {/* Encabezado */}
           <div>
-            <div className="inline-flex items-center gap-2 rounded-lg bg-teal-50 px-3 py-1 text-xs font-bold text-teal-800 ring-1 ring-teal-200 dark:bg-teal-950 dark:text-teal-300 dark:ring-teal-800">
-              <FileCheck className="h-4 w-4 text-teal-600 dark:text-teal-400" />
+            <div className="bg-acento-50 text-acento-800 ring-acento-200 dark:bg-acento-950 dark:text-acento-300 dark:ring-acento-800 inline-flex items-center gap-2 rounded-lg px-3 py-1 text-xs font-bold ring-1">
+              <FileCheck className="text-acento-600 dark:text-acento-400 h-4 w-4" />
               <span>Contrato de Términos y Condiciones del Servicio</span>
             </div>
             <h1 className="mt-3 text-2xl font-extrabold tracking-tight text-neutral-900 sm:text-3xl dark:text-neutral-50">
@@ -82,7 +82,7 @@ export default function TerminosServicioPage() {
           {/* 1. Descripción del Servicio */}
           <section className="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
             <h2 className="flex items-center gap-2 text-base font-bold text-neutral-900 dark:text-white">
-              <Handshake className="h-4 w-4 text-teal-600 dark:text-teal-400" />
+              <Handshake className="text-acento-600 dark:text-acento-400 h-4 w-4" />
               <span>1. Objeto y Alcance de la Plataforma</span>
             </h2>
             <div className="mt-4 space-y-3 text-xs leading-relaxed text-neutral-600 dark:text-neutral-300">
@@ -112,7 +112,7 @@ export default function TerminosServicioPage() {
           {/* 2. Normas de Uso de WhatsApp y Prevención de Abuso */}
           <section className="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
             <h2 className="flex items-center gap-2 text-base font-bold text-neutral-900 dark:text-white">
-              <CheckCircle2 className="h-4 w-4 text-teal-600 dark:text-teal-400" />
+              <CheckCircle2 className="text-acento-600 dark:text-acento-400 h-4 w-4" />
               <span>2. Uso de Canales de Mensajería y Políticas de Meta</span>
             </h2>
             <div className="mt-4 space-y-3 text-xs leading-relaxed text-neutral-600 dark:text-neutral-300">
@@ -164,7 +164,7 @@ export default function TerminosServicioPage() {
           {/* 4. Propiedad de la Información y Seguridad */}
           <section className="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
             <h2 className="flex items-center gap-2 text-base font-bold text-neutral-900 dark:text-white">
-              <Scale className="h-4 w-4 text-teal-600 dark:text-teal-400" />
+              <Scale className="text-acento-600 dark:text-acento-400 h-4 w-4" />
               <span>4. Custodia y Titularidad de los Datos</span>
             </h2>
             <div className="mt-4 space-y-3 text-xs leading-relaxed text-neutral-600 dark:text-neutral-300">

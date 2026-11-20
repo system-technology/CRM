@@ -108,7 +108,7 @@ export function BloqueZonaHoraria() {
   };
 
   const claseCampo =
-    'mt-1 min-h-[44px] w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus-visible:outline-2 focus-visible:outline-blue-600 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white';
+    'mt-1 min-h-[44px] w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus-visible:outline-2 focus-visible:outline-acento-600 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white';
 
   return (
     <form
@@ -235,7 +235,7 @@ export function BloqueZonaHoraria() {
             type="submit"
             data-testid="guardar-zona-horaria"
             disabled={guardando || seleccion === actual}
-            className="flex min-h-[44px] items-center gap-2 rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-neutral-800 focus-visible:outline-2 focus-visible:outline-blue-600 disabled:opacity-50 dark:bg-white dark:text-neutral-900"
+            className="focus-visible:outline-acento-600 flex min-h-[44px] items-center gap-2 rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-neutral-800 focus-visible:outline-2 disabled:opacity-50 dark:bg-white dark:text-neutral-900"
           >
             {guardando ? (
               <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />

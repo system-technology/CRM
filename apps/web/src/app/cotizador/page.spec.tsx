@@ -83,7 +83,7 @@ describe('CotizadorPage — Excursiones de un Día y Estados de UI (Bloque 2)', 
     // Ahora se despliega el formulario y cotización mock con excursión de muestra
     await waitFor(() => {
       expect(screen.queryByTestId('cotizador-estado-vacio')).toBeNull();
-      expect(screen.getByText(/Parámetros de Cotización/i)).toBeDefined();
+      expect(screen.getByText(/Parámetros de la cotización/i)).toBeDefined();
     });
   });
 
@@ -153,7 +153,7 @@ describe('CotizadorPage — Excursiones de un Día y Estados de UI (Bloque 2)', 
       fireEvent.change(selectPaquete, {
         target: { value: '01932000-0000-7000-8000-000000000001' },
       });
-      fireEvent.change(inputFecha, { target: { value: '2027-12-24' } });
+      fireEvent.change(inputFecha, { target: { value: '24/12/2027' } });
       fireEvent.change(selectAcomodacion, { target: { value: 'DOBLE' } });
     });
 
@@ -196,7 +196,7 @@ describe('CotizadorPage — Excursiones de un Día y Estados de UI (Bloque 2)', 
       fireEvent.change(selectPaquete, {
         target: { value: '01932000-0000-7000-8000-000000000001' },
       });
-      fireEvent.change(inputFecha, { target: { value: '2027-12-24' } });
+      fireEvent.change(inputFecha, { target: { value: '24/12/2027' } });
       fireEvent.change(selectAcomodacion, { target: { value: 'DOBLE' } });
     });
 

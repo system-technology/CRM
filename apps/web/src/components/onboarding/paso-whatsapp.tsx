@@ -122,7 +122,7 @@ export function PasoWhatsApp({ datos, alGuardar, alOmitir }: PasoWhatsAppProps) 
               <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-neutral-100 text-neutral-800 dark:bg-neutral-800 dark:text-neutral-300">
                 <MessageSquare className="h-4 w-4" />
               </span>
-              <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-800 dark:bg-blue-950 dark:text-blue-300">
+              <span className="bg-acento-100 text-acento-800 dark:bg-acento-950 dark:text-acento-300 rounded-full px-2 py-0.5 text-[10px] font-bold">
                 Oficial Meta
               </span>
             </div>
@@ -252,7 +252,7 @@ export function PasoWhatsApp({ datos, alGuardar, alOmitir }: PasoWhatsAppProps) 
         <button
           type="submit"
           data-testid="btn-guardar-paso-whatsapp"
-          className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-6 py-2.5 text-xs font-bold text-white shadow-md hover:bg-emerald-700 active:scale-98 sm:w-auto dark:bg-emerald-500 dark:hover:bg-emerald-600"
+          className="boton-primario flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl px-6 py-2.5 text-xs font-bold shadow-md active:scale-98 sm:w-auto"
         >
           <CheckCircle2 className="h-4 w-4" />
           <span>Finalizar y Comenzar a Vender</span>

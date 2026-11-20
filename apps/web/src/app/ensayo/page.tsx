@@ -153,7 +153,7 @@ export default function EnsayoJornadaPage(): React.JSX.Element {
           <div className="mx-auto flex max-w-5xl flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <div className="flex flex-wrap items-center gap-2.5">
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-teal-50 px-3 py-1 text-xs font-semibold text-teal-800 ring-1 ring-teal-600/20 dark:bg-teal-950/60 dark:text-teal-300">
+                <span className="bg-acento-50 text-acento-800 ring-acento-600/20 dark:bg-acento-950/60 dark:text-acento-300 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ring-1">
                   <ClipboardCheck className="h-3.5 w-3.5" aria-hidden="true" />
                   Piloto de Agencia — Fase 1
                 </span>
@@ -228,7 +228,7 @@ export default function EnsayoJornadaPage(): React.JSX.Element {
                   <CheckCircle2 className="h-7 w-7" aria-hidden="true" />
                 </div>
                 <div>
-                  <span className="inline-block rounded-md bg-emerald-600 px-2.5 py-0.5 text-[11px] font-bold tracking-wider text-white uppercase">
+                  <span className="inline-block rounded-md bg-emerald-600 px-2.5 py-0.5 text-[11px] font-bold tracking-wider text-white">
                     Criterio Fase 1 Cumplido
                   </span>
                   <h2 className="mt-1 text-lg font-bold text-emerald-950 dark:text-emerald-100">
@@ -247,11 +247,11 @@ export default function EnsayoJornadaPage(): React.JSX.Element {
               className="flex flex-col justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-xs sm:flex-row sm:items-center dark:border-slate-800 dark:bg-slate-900"
             >
               <div className="flex items-start gap-4">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-teal-700 dark:bg-teal-950/60 dark:text-teal-300">
+                <div className="bg-acento-50 text-acento-700 dark:bg-acento-950/60 dark:text-acento-300 flex h-12 w-12 shrink-0 items-center justify-center rounded-xl">
                   <CircleDashed className="h-6 w-6" aria-hidden="true" />
                 </div>
                 <div>
-                  <span className="text-xs font-semibold tracking-wider text-teal-700 uppercase dark:text-teal-400">
+                  <span className="text-acento-700 dark:text-acento-400 text-xs font-semibold tracking-wider">
                     Progreso del ensayo ({metasCumplidasCount} de 3 metas cumplidas)
                   </span>
                   <h2 className="mt-0.5 text-lg font-bold text-slate-900 dark:text-white">
@@ -334,7 +334,7 @@ export default function EnsayoJornadaPage(): React.JSX.Element {
                     <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
                       <div
                         className={`h-full rounded-full transition-all ${
-                          indicador.cumplido ? 'bg-emerald-600' : 'bg-teal-600'
+                          indicador.cumplido ? 'bg-emerald-600' : 'bg-acento-600'
                         }`}
                         style={{ width: `${indicador.porcentaje}%` }}
                       />
@@ -358,26 +358,26 @@ export default function EnsayoJornadaPage(): React.JSX.Element {
             <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
               <Link
                 href="/bandeja"
-                className="flex items-center justify-between rounded-xl border border-slate-200 p-3.5 text-sm font-semibold text-slate-800 transition hover:border-teal-600 hover:bg-teal-50/30 dark:border-slate-800 dark:text-slate-200"
+                className="hover:border-acento-600 hover:bg-acento-50/30 flex items-center justify-between rounded-xl border border-slate-200 p-3.5 text-sm font-semibold text-slate-800 transition dark:border-slate-800 dark:text-slate-200"
               >
                 <span>1. Atender bandeja WhatsApp</span>
-                <ArrowRight className="h-4 w-4 text-teal-700" aria-hidden="true" />
+                <ArrowRight className="text-acento-700 h-4 w-4" aria-hidden="true" />
               </Link>
 
               <Link
                 href="/cotizador"
-                className="flex items-center justify-between rounded-xl border border-slate-200 p-3.5 text-sm font-semibold text-slate-800 transition hover:border-teal-600 hover:bg-teal-50/30 dark:border-slate-800 dark:text-slate-200"
+                className="hover:border-acento-600 hover:bg-acento-50/30 flex items-center justify-between rounded-xl border border-slate-200 p-3.5 text-sm font-semibold text-slate-800 transition dark:border-slate-800 dark:text-slate-200"
               >
                 <span>2. Armar y enviar cotización</span>
-                <ArrowRight className="h-4 w-4 text-teal-700" aria-hidden="true" />
+                <ArrowRight className="text-acento-700 h-4 w-4" aria-hidden="true" />
               </Link>
 
               <Link
                 href="/pipeline"
-                className="flex items-center justify-between rounded-xl border border-slate-200 p-3.5 text-sm font-semibold text-slate-800 transition hover:border-teal-600 hover:bg-teal-50/30 dark:border-slate-800 dark:text-slate-200"
+                className="hover:border-acento-600 hover:bg-acento-50/30 flex items-center justify-between rounded-xl border border-slate-200 p-3.5 text-sm font-semibold text-slate-800 transition dark:border-slate-800 dark:text-slate-200"
               >
                 <span>3. Programar seguimientos</span>
-                <ArrowRight className="h-4 w-4 text-teal-700" aria-hidden="true" />
+                <ArrowRight className="text-acento-700 h-4 w-4" aria-hidden="true" />
               </Link>
             </div>
           </section>

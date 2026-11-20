@@ -74,6 +74,8 @@ import {
   sugerirTituloCotizacion,
 } from '../../lib/cotizaciones-logica';
 import { herramientasDevActivas } from '../../lib/herramientas-dev';
+import { CampoFecha } from '../../components/comun/campo-fecha';
+import { formatearFecha } from '../../lib/formato';
 
 interface PaqueteOpcion {
   id: string;
@@ -499,7 +501,7 @@ function ContenidoCotizador() {
           {/* Cabecera de Página */}
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300">
+              <div className="bg-acento-100 text-acento-700 dark:bg-acento-950 dark:text-acento-300 flex h-10 w-10 items-center justify-center rounded-xl">
                 <Calculator className="h-5 w-5" />
               </div>
               <div>
@@ -556,8 +558,8 @@ function ContenidoCotizador() {
                 {/* Sidebar de Parámetros (4 col) */}
                 <aside className="lg:col-span-4">
                   <div className="min-w-0 space-y-4 rounded-2xl border border-neutral-200 bg-white p-3.5 shadow-xs sm:p-5 dark:border-neutral-800 dark:bg-neutral-900">
-                    <h2 className="text-xs font-bold tracking-wider text-neutral-500 uppercase">
-                      Parámetros de Cotización
+                    <h2 className="text-xs font-bold text-neutral-500">
+                      Parámetros de la cotización
                     </h2>
 
                     {/* Selector de Paquete */}
@@ -575,7 +577,7 @@ function ContenidoCotizador() {
                         data-origen={usarReal ? 'api' : 'maqueta'}
                         value={paqueteId}
                         onChange={(e) => setPaqueteId(e.target.value)}
-                        className="mt-1.5 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white p-2.5 text-xs text-neutral-900 shadow-2xs focus:border-purple-600 focus-visible:ring-2 focus-visible:ring-purple-600 focus-visible:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                        className="focus:border-acento-600 focus-visible:ring-acento-600 mt-1.5 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white p-2.5 text-xs text-neutral-900 shadow-2xs focus-visible:ring-2 focus-visible:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                       >
                         {paquetesDisponibles.map((p) => (
                           <option key={p.id} value={p.id}>
@@ -611,7 +613,7 @@ function ContenidoCotizador() {
                           required
                           aria-invalid={faltaOpcion}
                           aria-describedby={faltaOpcion ? 'aviso-elegir-opcion' : undefined}
-                          className="mt-1.5 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white p-2.5 text-xs text-neutral-900 shadow-2xs focus:border-purple-600 focus-visible:ring-2 focus-visible:ring-purple-600 focus-visible:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                          className="focus:border-acento-600 focus-visible:ring-acento-600 mt-1.5 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white p-2.5 text-xs text-neutral-900 shadow-2xs focus-visible:ring-2 focus-visible:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                         >
                           <option value="">Elige una opción…</option>
                           {opcionesActivas.map((o) => (
@@ -651,15 +653,14 @@ function ContenidoCotizador() {
                           </span>
                         )}
                       </div>
-                      <input
+                      <CampoFecha
                         id="input-fecha-cotizador"
-                        type="date"
-                        value={fecha}
-                        onChange={(e) => {
+                        valor={fecha}
+                        onChange={(iso) => {
                           fechaElegida.current = true;
-                          setFecha(e.target.value);
+                          setFecha(iso);
                         }}
-                        className="mt-1.5 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white p-2.5 text-xs text-neutral-900 shadow-2xs focus:border-purple-600 focus-visible:ring-2 focus-visible:ring-purple-600 focus-visible:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                        className="focus:border-acento-600 focus-visible:ring-acento-600 mt-1.5 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white p-2.5 text-xs text-neutral-900 shadow-2xs focus-visible:ring-2 focus-visible:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                       />
                       {fechasDelPaquete.length > 0 && (
                         <div className="mt-2">
@@ -673,9 +674,9 @@ function ContenidoCotizador() {
                                 type="button"
                                 onClick={() => setFecha(f)}
                                 aria-label={`Seleccionar salida programada ${f}`}
-                                className={`flex min-h-[44px] items-center rounded-lg px-3 py-2 text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-purple-600 focus-visible:outline-hidden ${
+                                className={`focus-visible:ring-acento-600 flex min-h-[44px] items-center rounded-lg px-3 py-2 text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:outline-hidden ${
                                   fecha === f
-                                    ? 'bg-purple-700 text-white'
+                                    ? 'bg-acento-700 text-white'
                                     : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-300'
                                 }`}
                               >
@@ -726,7 +727,7 @@ function ContenidoCotizador() {
                                 type="button"
                                 onClick={() => setAdultos(Math.max(1, adultos - 1))}
                                 aria-label="Disminuir adultos"
-                                className="flex h-11 min-h-[44px] w-11 min-w-[44px] items-center justify-center rounded-lg border border-neutral-300 bg-white text-sm font-bold text-neutral-700 hover:bg-neutral-100 focus-visible:ring-2 focus-visible:ring-purple-600 focus-visible:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                                className="focus-visible:ring-acento-600 flex h-11 min-h-[44px] w-11 min-w-[44px] items-center justify-center rounded-lg border border-neutral-300 bg-white text-sm font-bold text-neutral-700 hover:bg-neutral-100 focus-visible:ring-2 focus-visible:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                               >
                                 -
                               </button>
@@ -742,7 +743,7 @@ function ContenidoCotizador() {
                                 type="button"
                                 onClick={() => setAdultos(adultos + 1)}
                                 aria-label="Aumentar adultos"
-                                className="flex h-11 min-h-[44px] w-11 min-w-[44px] items-center justify-center rounded-lg border border-neutral-300 bg-white text-sm font-bold text-neutral-700 hover:bg-neutral-100 focus-visible:ring-2 focus-visible:ring-purple-600 focus-visible:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                                className="focus-visible:ring-acento-600 flex h-11 min-h-[44px] w-11 min-w-[44px] items-center justify-center rounded-lg border border-neutral-300 bg-white text-sm font-bold text-neutral-700 hover:bg-neutral-100 focus-visible:ring-2 focus-visible:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                               >
                                 +
                               </button>
@@ -764,7 +765,7 @@ function ContenidoCotizador() {
                                 type="button"
                                 onClick={() => setNinos(Math.max(0, ninos - 1))}
                                 aria-label="Disminuir niños"
-                                className="flex h-11 min-h-[44px] w-11 min-w-[44px] items-center justify-center rounded-lg border border-neutral-300 bg-white text-sm font-bold text-neutral-700 hover:bg-neutral-100 focus-visible:ring-2 focus-visible:ring-purple-600 focus-visible:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                                className="focus-visible:ring-acento-600 flex h-11 min-h-[44px] w-11 min-w-[44px] items-center justify-center rounded-lg border border-neutral-300 bg-white text-sm font-bold text-neutral-700 hover:bg-neutral-100 focus-visible:ring-2 focus-visible:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                               >
                                 -
                               </button>
@@ -780,7 +781,7 @@ function ContenidoCotizador() {
                                 type="button"
                                 onClick={() => setNinos(ninos + 1)}
                                 aria-label="Aumentar niños"
-                                className="flex h-11 min-h-[44px] w-11 min-w-[44px] items-center justify-center rounded-lg border border-neutral-300 bg-white text-sm font-bold text-neutral-700 hover:bg-neutral-100 focus-visible:ring-2 focus-visible:ring-purple-600 focus-visible:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                                className="focus-visible:ring-acento-600 flex h-11 min-h-[44px] w-11 min-w-[44px] items-center justify-center rounded-lg border border-neutral-300 bg-white text-sm font-bold text-neutral-700 hover:bg-neutral-100 focus-visible:ring-2 focus-visible:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                               >
                                 +
                               </button>
@@ -802,7 +803,7 @@ function ContenidoCotizador() {
                                 type="button"
                                 onClick={() => setInfantes(Math.max(0, infantes - 1))}
                                 aria-label="Disminuir infantes"
-                                className="flex h-11 min-h-[44px] w-11 min-w-[44px] items-center justify-center rounded-lg border border-neutral-300 bg-white text-sm font-bold text-neutral-700 hover:bg-neutral-100 focus-visible:ring-2 focus-visible:ring-purple-600 focus-visible:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                                className="focus-visible:ring-acento-600 flex h-11 min-h-[44px] w-11 min-w-[44px] items-center justify-center rounded-lg border border-neutral-300 bg-white text-sm font-bold text-neutral-700 hover:bg-neutral-100 focus-visible:ring-2 focus-visible:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                               >
                                 -
                               </button>
@@ -818,7 +819,7 @@ function ContenidoCotizador() {
                                 type="button"
                                 onClick={() => setInfantes(infantes + 1)}
                                 aria-label="Aumentar infantes"
-                                className="flex h-11 min-h-[44px] w-11 min-w-[44px] items-center justify-center rounded-lg border border-neutral-300 bg-white text-sm font-bold text-neutral-700 hover:bg-neutral-100 focus-visible:ring-2 focus-visible:ring-purple-600 focus-visible:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                                className="focus-visible:ring-acento-600 flex h-11 min-h-[44px] w-11 min-w-[44px] items-center justify-center rounded-lg border border-neutral-300 bg-white text-sm font-bold text-neutral-700 hover:bg-neutral-100 focus-visible:ring-2 focus-visible:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                               >
                                 +
                               </button>
@@ -855,7 +856,7 @@ function ContenidoCotizador() {
                           aria-label="Acomodación"
                           value={acomodacionMock}
                           onChange={(e) => setAcomodacionMock(e.target.value as Acomodacion | '')}
-                          className="mt-1.5 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white p-2.5 text-xs text-neutral-900 shadow-2xs focus:border-purple-600 focus-visible:ring-2 focus-visible:ring-purple-600 focus-visible:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                          className="focus:border-acento-600 focus-visible:ring-acento-600 mt-1.5 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white p-2.5 text-xs text-neutral-900 shadow-2xs focus-visible:ring-2 focus-visible:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                         >
                           <option value="">Sugerida automáticamente</option>
                           {/* Modo maqueta: las cuatro, porque el catálogo simulado no las declara. */}
@@ -882,7 +883,7 @@ function ContenidoCotizador() {
                           aria-label="Acomodación"
                           value={acomodacionReal}
                           onChange={(e) => setAcomodacionReal(e.target.value as Acomodacion | '')}
-                          className="mt-1.5 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white p-2.5 text-xs text-neutral-900 shadow-2xs focus:border-purple-600 focus-visible:ring-2 focus-visible:ring-purple-600 focus-visible:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                          className="focus:border-acento-600 focus-visible:ring-acento-600 mt-1.5 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white p-2.5 text-xs text-neutral-900 shadow-2xs focus-visible:ring-2 focus-visible:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                         >
                           <option value="">Elige una acomodación</option>
                           {acomodacionesOfrecidas.map((a) => (
@@ -900,7 +901,7 @@ function ContenidoCotizador() {
                         <button
                           type="button"
                           onClick={() => alternarDemo()}
-                          className="flex min-h-[44px] w-full items-center justify-center rounded-xl p-2.5 text-center text-xs font-semibold text-neutral-600 hover:text-neutral-900 focus-visible:ring-2 focus-visible:ring-purple-600 focus-visible:outline-hidden dark:text-neutral-400 dark:hover:text-neutral-200"
+                          className="focus-visible:ring-acento-600 flex min-h-[44px] w-full items-center justify-center rounded-xl p-2.5 text-center text-xs font-semibold text-neutral-600 hover:text-neutral-900 focus-visible:ring-2 focus-visible:outline-hidden dark:text-neutral-400 dark:hover:text-neutral-200"
                         >
                           Modo: {usarReal ? 'Conectado a API real' : 'Modo demostración (simulado)'}{' '}
                           (Alternar)
@@ -929,7 +930,7 @@ function ContenidoCotizador() {
                       </div>
                       <div className="flex items-center justify-between border-t border-neutral-100 pt-4 dark:border-neutral-800">
                         <div className="h-3 w-24 rounded bg-neutral-100 dark:bg-neutral-800" />
-                        <div className="h-6 w-36 rounded bg-purple-200 dark:bg-purple-900" />
+                        <div className="bg-acento-200 dark:bg-acento-900 h-6 w-36 rounded" />
                       </div>
                     </div>
                   )}
@@ -999,15 +1000,17 @@ function ContenidoCotizador() {
                           <div>
                             <div className="flex items-center gap-2">
                               {paqueteSeleccionado?.noches === 0 ? (
-                                <span className="rounded-md bg-sky-100 px-2 py-0.5 text-[10px] font-bold text-sky-800 uppercase dark:bg-sky-950 dark:text-sky-300">
+                                <span className="rounded-md bg-sky-100 px-2 py-0.5 text-[10px] font-bold text-sky-800 dark:bg-sky-950 dark:text-sky-300">
                                   Excursión de 1 día (Pasadía)
                                 </span>
                               ) : (
-                                <span className="rounded-md bg-purple-100 px-2 py-0.5 text-[10px] font-bold text-purple-700 uppercase dark:bg-purple-950 dark:text-purple-300">
+                                <span className="bg-acento-100 text-acento-700 dark:bg-acento-950 dark:text-acento-300 rounded-md px-2 py-0.5 text-[10px] font-bold">
                                   Cotización de demostración
                                 </span>
                               )}
-                              <span className="text-xs text-neutral-400">Fecha: {fecha}</span>
+                              <span className="text-xs text-neutral-400">
+                                Fecha: {formatearFecha(fecha)}
+                              </span>
                             </div>
 
                             <h2 className="mt-2 text-xl font-black text-neutral-900 dark:text-white">
@@ -1025,8 +1028,8 @@ function ContenidoCotizador() {
                           </div>
 
                           <div className="flex flex-col items-start sm:items-end">
-                            <span className="text-xs font-bold text-neutral-500 uppercase">
-                              Total Venta Sugerido
+                            <span className="text-xs font-bold text-neutral-500">
+                              Total de venta sugerido
                             </span>
                             <div className="cifra mt-1 text-3xl font-black text-neutral-900 dark:text-white">
                               {formatearDinero(cotizacionMock.totalVenta)}
@@ -1138,7 +1141,7 @@ function ContenidoCotizador() {
                                 ? explicacionFaltaPermiso('cotizacion.escribir')
                                 : undefined
                             }
-                            className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-purple-700 px-4 py-2.5 text-xs font-bold text-white shadow-xs transition-colors hover:bg-purple-800 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+                            className="boton-primario flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold shadow-xs transition-colors sm:w-auto"
                           >
                             <Bookmark className="h-4 w-4" />
                             <span>Guardar Cotización Oficial</span>
@@ -1146,7 +1149,7 @@ function ContenidoCotizador() {
                           <button
                             type="button"
                             onClick={copiarPropuestaWhatsApp}
-                            className="bg-ok-600 hover:bg-ok-700 flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold text-white shadow-xs transition-colors sm:w-auto"
+                            className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white shadow-xs transition-colors hover:bg-emerald-700 sm:w-auto"
                           >
                             {copiado ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                             <span>

@@ -9,6 +9,9 @@ interface CampoFechaProps {
   valor: string;
   onChange: (iso: string) => void;
   className?: string;
+  disabled?: boolean;
+  required?: boolean;
+  'data-testid'?: string;
 }
 
 /**
@@ -16,7 +19,15 @@ interface CampoFechaProps {
  * navegador (mm/dd/aaaa en inglés de EE. UU.), ambiguo para una agencia colombiana; aquí se
  * escribe y se lee siempre día/mes/año y se guarda ISO.
  */
-export function CampoFecha({ id, valor, onChange, className = '' }: CampoFechaProps) {
+export function CampoFecha({
+  id,
+  valor,
+  onChange,
+  className = '',
+  disabled,
+  required,
+  'data-testid': testId,
+}: CampoFechaProps) {
   const [borrador, setBorrador] = useState<string | null>(null);
   const texto = borrador ?? fechaIsoADiaMesAnio(valor);
   const incompleto = borrador !== null && borrador !== '' && diaMesAnioAFechaIso(borrador) === null;
@@ -31,6 +42,9 @@ export function CampoFecha({ id, valor, onChange, className = '' }: CampoFechaPr
         placeholder="dd/mm/aaaa"
         maxLength={10}
         value={texto}
+        data-testid={testId}
+        disabled={disabled}
+        required={required}
         aria-invalid={incompleto}
         onChange={(e) => {
           const nuevo = e.target.value;

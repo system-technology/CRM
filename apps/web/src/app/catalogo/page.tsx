@@ -276,13 +276,13 @@ export default function CatalogoPage() {
                 data-testid="btn-abrir-asistente-importacion"
                 className="flex min-h-[44px] w-full items-center justify-center gap-1.5 rounded-xl border border-neutral-300 bg-white px-3.5 py-2.5 text-xs font-semibold text-neutral-800 shadow-2xs hover:bg-neutral-50 sm:w-auto dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
               >
-                <Upload className="h-4 w-4 text-teal-600 dark:text-teal-400" />
+                <Upload className="text-acento-600 dark:text-acento-400 h-4 w-4" />
                 <span>Importar archivo (CSV)</span>
               </button>
 
               <Link
                 href="/cotizador"
-                className="bg-acento-600 hover:bg-acento-700 flex min-h-[44px] w-full items-center justify-center gap-1.5 rounded-xl px-4 py-2.5 text-xs font-semibold text-white shadow-xs transition-colors sm:w-auto"
+                className="boton-primario flex min-h-[44px] w-full items-center justify-center gap-1.5 rounded-xl px-4 py-2.5 text-xs font-semibold shadow-xs transition-colors sm:w-auto"
               >
                 <Compass className="h-4 w-4" />
                 Ir al Cotizador
@@ -304,9 +304,9 @@ export default function CatalogoPage() {
               aria-controls="panel-catalogo-explorar"
               onClick={() => setPestañaActiva('EXPLORAR')}
               data-testid="tab-catalogo-explorar"
-              className={`flex min-h-[44px] shrink-0 items-center gap-2 border-b-2 px-4 py-2.5 text-xs font-bold transition-colors focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:outline-hidden ${
+              className={`focus-visible:ring-acento-600 flex min-h-[44px] shrink-0 items-center gap-2 border-b-2 px-4 py-2.5 text-xs font-bold transition-colors focus-visible:ring-2 focus-visible:outline-hidden ${
                 pestañaActiva === 'EXPLORAR'
-                  ? 'border-teal-600 text-teal-700 dark:border-teal-400 dark:text-teal-300'
+                  ? 'border-acento-600 text-acento-700 dark:border-acento-400 dark:text-acento-300'
                   : 'border-transparent text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-white'
               }`}
             >
@@ -322,9 +322,9 @@ export default function CatalogoPage() {
               aria-controls="panel-catalogo-plantillas"
               onClick={() => setPestañaActiva('PLANTILLAS')}
               data-testid="tab-catalogo-plantillas"
-              className={`flex min-h-[44px] shrink-0 items-center gap-2 border-b-2 px-4 py-2.5 text-xs font-bold transition-colors focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:outline-hidden ${
+              className={`focus-visible:ring-acento-600 flex min-h-[44px] shrink-0 items-center gap-2 border-b-2 px-4 py-2.5 text-xs font-bold transition-colors focus-visible:ring-2 focus-visible:outline-hidden ${
                 pestañaActiva === 'PLANTILLAS'
-                  ? 'border-teal-600 text-teal-700 dark:border-teal-400 dark:text-teal-300'
+                  ? 'border-acento-600 text-acento-700 dark:border-acento-400 dark:text-acento-300'
                   : 'border-transparent text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-white'
               }`}
             >
@@ -340,9 +340,9 @@ export default function CatalogoPage() {
               aria-controls="panel-catalogo-gestion"
               onClick={() => setPestañaActiva('GESTION')}
               data-testid="tab-gestion-catalogo"
-              className={`flex min-h-[44px] shrink-0 items-center gap-2 border-b-2 px-4 py-2.5 text-xs font-bold transition-colors focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:outline-hidden ${
+              className={`focus-visible:ring-acento-600 flex min-h-[44px] shrink-0 items-center gap-2 border-b-2 px-4 py-2.5 text-xs font-bold transition-colors focus-visible:ring-2 focus-visible:outline-hidden ${
                 pestañaActiva === 'GESTION'
-                  ? 'border-teal-600 text-teal-700 dark:border-teal-400 dark:text-teal-300'
+                  ? 'border-acento-600 text-acento-700 dark:border-acento-400 dark:text-acento-300'
                   : 'border-transparent text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-white'
               }`}
             >
@@ -364,7 +364,7 @@ export default function CatalogoPage() {
                   value={busqueda}
                   onChange={(e) => setBusqueda(e.target.value)}
                   placeholder="Buscar por destino o nombre..."
-                  className="focus:border-acento-500 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white py-2.5 pr-3 pl-9 text-xs text-neutral-900 placeholder-neutral-400 focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                  className="focus:border-acento-500 focus-visible:ring-acento-600 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white py-2.5 pr-3 pl-9 text-xs text-neutral-900 placeholder-neutral-400 focus-visible:ring-2 focus-visible:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                 />
               </div>
 
@@ -375,7 +375,7 @@ export default function CatalogoPage() {
                   aria-label="Filtrar por destino"
                   value={destinoFiltro}
                   onChange={(e) => setDestinoFiltro(e.target.value)}
-                  className="focus:border-acento-500 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white px-3.5 py-2.5 text-xs text-neutral-700 focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200"
+                  className="focus:border-acento-500 focus-visible:ring-acento-600 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white px-3.5 py-2.5 text-xs text-neutral-700 focus-visible:ring-2 focus-visible:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200"
                 >
                   <option value="TODOS">Todos los destinos ({destinosDisponibles.length})</option>
                   {destinosDisponibles.map((dest) => (
@@ -394,7 +394,7 @@ export default function CatalogoPage() {
                     aria-label="Filtrar por plan de alimentación"
                     value={planFiltro}
                     onChange={(e) => setPlanFiltro(e.target.value as PlanAlimentacion | 'TODOS')}
-                    className="focus:border-acento-500 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white px-3.5 py-2.5 text-xs text-neutral-700 focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200"
+                    className="focus:border-acento-500 focus-visible:ring-acento-600 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white px-3.5 py-2.5 text-xs text-neutral-700 focus-visible:ring-2 focus-visible:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200"
                   >
                     <option value="TODOS">Todo tipo de plan</option>
                     <option value="SOLO_DESAYUNO">Solo Desayuno</option>
@@ -415,7 +415,7 @@ export default function CatalogoPage() {
                   <button
                     type="button"
                     onClick={() => setUsarReal(!usarReal)}
-                    className="text-acento-600 hover:text-acento-700 dark:text-acento-400 flex min-h-[44px] items-center px-2 py-2 text-xs font-semibold focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:outline-hidden"
+                    className="text-acento-600 hover:text-acento-700 dark:text-acento-400 focus-visible:ring-acento-600 flex min-h-[44px] items-center px-2 py-2 text-xs font-semibold focus-visible:ring-2 focus-visible:outline-hidden"
                   >
                     {usarReal ? 'Cambiar a Demo' : 'Probar API Real'}
                   </button>
@@ -667,7 +667,7 @@ export default function CatalogoPage() {
                               )}
 
                             <div>
-                              <div className="text-[11px] font-semibold text-neutral-400 uppercase">
+                              <div className="text-[11px] font-semibold text-neutral-400">
                                 Inclusiones destacadas:
                               </div>
                               <ul className="mt-1 space-y-1 text-xs text-neutral-600 dark:text-neutral-300">
@@ -714,7 +714,7 @@ export default function CatalogoPage() {
 
                             <Link
                               href="/cotizador"
-                              className="bg-acento-600 hover:bg-acento-700 flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-semibold text-white shadow-xs transition-colors"
+                              className="boton-primario flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-semibold shadow-xs transition-colors"
                             >
                               <Compass className="h-3.5 w-3.5" />
                               Cotizar

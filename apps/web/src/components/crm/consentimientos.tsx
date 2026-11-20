@@ -87,7 +87,7 @@ export function PanelConsentimientosContacto({
       {/* Cabecera del Panel */}
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-neutral-100 pb-3 dark:border-neutral-800">
         <div className="flex items-center gap-2.5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-teal-50 text-teal-700 dark:bg-teal-950/60 dark:text-teal-300">
+          <div className="bg-acento-50 text-acento-700 dark:bg-acento-950/60 dark:text-acento-300 flex h-8 w-8 items-center justify-center rounded-lg">
             <ShieldCheck className="h-4 w-4" aria-hidden="true" />
           </div>
           <div>
@@ -150,7 +150,7 @@ export function PanelConsentimientosContacto({
                 {/* Encabezado de la finalidad */}
                 <div className="flex items-start justify-between gap-2">
                   <div className="space-y-0.5">
-                    <span className="text-[10px] font-bold tracking-wider text-neutral-400 uppercase">
+                    <span className="text-[10px] font-bold text-neutral-400">
                       Finalidad {item.finalidad}
                     </span>
                     <h4 className="text-sm font-bold text-neutral-900 dark:text-neutral-100">
@@ -222,7 +222,7 @@ export function PanelConsentimientosContacto({
                   type="button"
                   data-testid={`btn-ver-texto-${testIdSuffix}`}
                   onClick={() => setModalFinalidadTexto(item)}
-                  className="inline-flex min-h-[44px] items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-teal-700 hover:bg-teal-50 focus-visible:outline-2 focus-visible:outline-teal-600 dark:text-teal-300 dark:hover:bg-teal-950/60"
+                  className="text-acento-700 hover:bg-acento-50 focus-visible:outline-acento-600 dark:text-acento-300 dark:hover:bg-acento-950/60 inline-flex min-h-[44px] items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold focus-visible:outline-2"
                 >
                   <FileText className="h-4 w-4" />
                   <span>Ver texto mostrado</span>
@@ -282,7 +282,7 @@ export function PanelConsentimientosContacto({
                     title={
                       deshabilitadoPorPermiso ? explicacionFaltaPermiso('crm.escribir') : undefined
                     }
-                    className="inline-flex min-h-[44px] items-center gap-1.5 rounded-lg bg-teal-600 px-3 py-1.5 text-xs font-bold text-white shadow-2xs hover:bg-teal-700 focus-visible:outline-2 focus-visible:outline-teal-600 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="boton-primario focus-visible:outline-acento-600 inline-flex min-h-[44px] items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold shadow-2xs focus-visible:outline-2"
                   >
                     {enProceso ? (
                       <RefreshCw className="h-3.5 w-3.5 animate-spin" />
@@ -311,7 +311,7 @@ export function PanelConsentimientosContacto({
             {/* Cabecera del modal */}
             <div className="flex items-center justify-between border-b border-neutral-100 p-4 dark:border-neutral-800">
               <div className="flex items-center gap-2">
-                <FileText className="h-5 w-5 text-teal-600 dark:text-teal-400" />
+                <FileText className="text-acento-600 dark:text-acento-400 h-5 w-5" />
                 <h4
                   id="titulo-modal-texto-mostrado"
                   className="text-base font-bold text-neutral-900 dark:text-neutral-100"

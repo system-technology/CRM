@@ -67,7 +67,7 @@ export function BloquePoliticaPrecio({
               Cómo se forma el precio
             </h2>
             <DistintivoDatosDemo visible={true} />
-            <span className="rounded-full bg-blue-100 px-2.5 py-0.5 text-[11px] font-semibold text-blue-800 dark:bg-blue-900/60 dark:text-blue-300">
+            <span className="bg-acento-100 text-acento-800 dark:bg-acento-900/60 dark:text-acento-300 rounded-full px-2.5 py-0.5 text-[11px] font-semibold">
               ADR-0009
             </span>
           </div>
@@ -138,7 +138,7 @@ export function BloquePoliticaPrecio({
                     onClick={() => setPolitica({ ...politica, porcentaje: pct })}
                     className={`min-h-[44px] min-w-[44px] rounded-lg px-3 py-2 text-xs font-medium transition-colors ${
                       politica.porcentaje === pct
-                        ? 'bg-emerald-600 text-white shadow-sm'
+                        ? 'bg-acento-700 text-white shadow-sm'
                         : 'border border-neutral-300 bg-neutral-50 text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700'
                     }`}
                   >
@@ -165,7 +165,7 @@ export function BloquePoliticaPrecio({
           <div className="rounded-xl border border-neutral-200 bg-white p-5 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <TrendingUp className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                <TrendingUp className="text-acento-600 dark:text-acento-400 h-4 w-4" />
                 <h3 className="text-xs font-bold text-neutral-900 dark:text-white">
                   Base del Margen (Interpretación de la Agencia)
                 </h3>
@@ -185,7 +185,7 @@ export function BloquePoliticaPrecio({
                 onClick={() => setPolitica({ ...politica, base: 'SOBRE_EL_NETO' })}
                 className={`flex min-h-[56px] flex-col rounded-xl border-2 p-3.5 text-left transition-all ${
                   politica.base === 'SOBRE_EL_NETO'
-                    ? 'border-blue-600 bg-blue-50/60 shadow-sm dark:border-blue-500 dark:bg-blue-950/30'
+                    ? 'border-acento-600 bg-acento-50/60 dark:border-acento-500 dark:bg-acento-950/30 shadow-sm'
                     : 'border-neutral-200 bg-white hover:border-neutral-300 dark:border-neutral-800 dark:bg-neutral-900 dark:hover:border-neutral-700'
                 }`}
               >
@@ -196,14 +196,14 @@ export function BloquePoliticaPrecio({
                   <div
                     className={`flex h-4 w-4 items-center justify-center rounded-full border ${
                       politica.base === 'SOBRE_EL_NETO'
-                        ? 'border-blue-600 bg-blue-600 text-white'
+                        ? 'border-acento-600 bg-acento-600 text-white'
                         : 'border-neutral-300 dark:border-neutral-700'
                     }`}
                   >
                     {politica.base === 'SOBRE_EL_NETO' && <Check className="h-2.5 w-2.5" />}
                   </div>
                 </div>
-                <span className="mt-1 text-xs font-semibold text-blue-700 dark:text-blue-300">
+                <span className="text-acento-700 dark:text-acento-300 mt-1 text-xs font-semibold">
                   «Le subo el {politica.porcentaje} %»
                 </span>
                 <p className="mt-1 text-[11px] text-neutral-500 dark:text-neutral-400">
@@ -232,7 +232,7 @@ export function BloquePoliticaPrecio({
                   <div
                     className={`flex h-4 w-4 items-center justify-center rounded-full border ${
                       politica.base === 'SOBRE_LA_VENTA'
-                        ? 'border-emerald-600 bg-emerald-600 text-white'
+                        ? 'border-acento-700 bg-acento-700 text-white'
                         : 'border-neutral-300 dark:border-neutral-700'
                     }`}
                   >
@@ -271,7 +271,7 @@ export function BloquePoliticaPrecio({
                 onChange={(e) =>
                   setPolitica({ ...politica, origenDeLaVenta: e.target.value as OrigenDeLaVenta })
                 }
-                className="mt-3 min-h-[44px] w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-xs font-medium text-neutral-900 focus:border-blue-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                className="focus:border-acento-500 mt-3 min-h-[44px] w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-xs font-medium text-neutral-900 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
               >
                 <option value="DERIVADA_DEL_NETO">DERIVADA_DEL_NETO (Cálculo automático)</option>
                 <option value="FIJADA_EN_EL_TARIFARIO">
@@ -297,7 +297,7 @@ export function BloquePoliticaPrecio({
                 onChange={(e) =>
                   setPolitica({ ...politica, redondeoVenta: parseInt(e.target.value, 10) })
                 }
-                className="mt-3 min-h-[44px] w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-xs font-medium text-neutral-900 focus:border-blue-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                className="focus:border-acento-500 mt-3 min-h-[44px] w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-xs font-medium text-neutral-900 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
               >
                 <option value={0}>Sin redondeo (exacto al centavo)</option>
                 <option value={1000}>Múltiplo de $1.000 COP (Recomendado)</option>
@@ -369,7 +369,7 @@ export function BloquePoliticaPrecio({
 
         {/* COLUMNA 2: EJEMPLO VIVO INTERACTIVO (5 Cols) */}
         <div className="space-y-4 lg:col-span-5">
-          <div className="sticky top-6 rounded-2xl border-2 border-emerald-500/40 bg-gradient-to-br from-emerald-50/30 via-white to-blue-50/20 p-5 shadow-md dark:border-emerald-600/30 dark:from-neutral-900 dark:via-neutral-900 dark:to-neutral-950">
+          <div className="to-acento-50/20 sticky top-6 rounded-2xl border-2 border-emerald-500/40 bg-gradient-to-br from-emerald-50/30 via-white p-5 shadow-md dark:border-emerald-600/30 dark:from-neutral-900 dark:via-neutral-900 dark:to-neutral-950">
             {/* Cabecera del Ejemplo */}
             <div className="flex items-center justify-between border-b border-neutral-200/80 pb-3 dark:border-neutral-800">
               <div className="flex items-center gap-2">
@@ -405,7 +405,7 @@ export function BloquePoliticaPrecio({
                     onClick={() => setNetoPrueba(val)}
                     className={`min-h-[44px] flex-1 rounded-lg border px-2 py-1.5 text-xs font-medium transition-colors ${
                       netoPrueba === val
-                        ? 'border-emerald-600 bg-emerald-600 text-white'
+                        ? 'border-acento-700 bg-acento-700 text-white'
                         : 'border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300'
                     }`}
                   >
@@ -456,18 +456,18 @@ export function BloquePoliticaPrecio({
             </div>
 
             {/* Comparación Impacto en Sillas / Bus de 40 */}
-            <div className="mt-4 rounded-xl border border-blue-200 bg-blue-50/70 p-4 dark:border-blue-900/40 dark:bg-blue-950/20">
-              <div className="flex items-center gap-1.5 text-xs font-bold text-blue-900 dark:text-blue-300">
+            <div className="border-acento-200 bg-acento-50/70 dark:border-acento-900/40 dark:bg-acento-950/20 mt-4 rounded-xl border p-4">
+              <div className="text-acento-900 dark:text-acento-300 flex items-center gap-1.5 text-xs font-bold">
                 <Users2 className="h-4 w-4 shrink-0" />
                 <span>¿Por qué importa la base ({politica.base})?</span>
               </div>
 
-              <div className="mt-3 space-y-2 text-xs text-blue-800 dark:text-blue-200">
-                <div className="flex items-center justify-between border-b border-blue-200/60 pb-1.5 dark:border-blue-900/60">
+              <div className="text-acento-800 dark:text-acento-200 mt-3 space-y-2 text-xs">
+                <div className="border-acento-200/60 dark:border-acento-900/60 flex items-center justify-between border-b pb-1.5">
                   <span>Diferencia por cada pasajero (silla):</span>
                   <span
                     id="diferencia-por-silla"
-                    className="font-bold text-blue-950 dark:text-blue-100"
+                    className="text-acento-950 dark:text-acento-100 font-bold"
                   >
                     {ejemplo.diferenciaSillaFormateada}
                   </span>
@@ -478,14 +478,14 @@ export function BloquePoliticaPrecio({
                   </span>
                   <span
                     id="diferencia-bus-40"
-                    className="font-extrabold text-blue-950 dark:text-white"
+                    className="text-acento-950 font-extrabold dark:text-white"
                   >
                     {ejemplo.diferenciaBus40Formateada}
                   </span>
                 </div>
               </div>
 
-              <p className="mt-3 text-[11px] leading-relaxed text-blue-700 dark:text-blue-300">
+              <p className="text-acento-700 dark:text-acento-300 mt-3 text-[11px] leading-relaxed">
                 Cambiar de <strong>Sobre el Costo Neto</strong> a <strong>Sobre la Venta</strong>{' '}
                 representa <strong>{ejemplo.diferenciaBus40Formateada}</strong> adicionales de
                 utilidad bruta para la agencia en un solo bus de 40 cupos sobre tarifas netas de{' '}

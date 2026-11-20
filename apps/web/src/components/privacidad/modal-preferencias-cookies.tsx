@@ -91,7 +91,7 @@ export function ModalPreferenciasCookies({
         {/* Cabecera del Modal */}
         <div className="flex items-start justify-between border-b border-neutral-100 p-5 dark:border-neutral-800">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-teal-700 ring-1 ring-teal-200 dark:bg-teal-950 dark:text-teal-300 dark:ring-teal-800">
+            <div className="bg-acento-50 text-acento-700 ring-acento-200 dark:bg-acento-950 dark:text-acento-300 dark:ring-acento-800 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ring-1">
               <Sliders className="h-5 w-5" />
             </div>
             <div>
@@ -102,7 +102,7 @@ export function ModalPreferenciasCookies({
                 >
                   Preferencias de Privacidad y Cookies
                 </h2>
-                <span className="hidden rounded-full bg-teal-100 px-2 py-0.5 text-[10px] font-semibold text-teal-800 sm:inline-flex dark:bg-teal-950 dark:text-teal-300">
+                <span className="bg-acento-100 text-acento-800 dark:bg-acento-950 dark:text-acento-300 hidden rounded-full px-2 py-0.5 text-[10px] font-semibold sm:inline-flex">
                   Ley 1581 / SIC
                 </span>
               </div>
@@ -140,12 +140,12 @@ export function ModalPreferenciasCookies({
           <div className="rounded-xl border border-neutral-200 bg-neutral-50/70 p-4 dark:border-neutral-800 dark:bg-neutral-800/40">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Lock className="h-4 w-4 text-teal-600 dark:text-teal-400" />
+                <Lock className="text-acento-600 dark:text-acento-400 h-4 w-4" />
                 <h3 className="text-sm font-bold text-neutral-900 dark:text-neutral-100">
                   Cookies Estrictamente Necesarias
                 </h3>
               </div>
-              <span className="rounded-md bg-teal-100 px-2 py-0.5 text-[11px] font-semibold text-teal-800 dark:bg-teal-950 dark:text-teal-300">
+              <span className="bg-acento-100 text-acento-800 dark:bg-acento-950 dark:text-acento-300 rounded-md px-2 py-0.5 text-[11px] font-semibold">
                 Siempre activas
               </span>
             </div>
@@ -181,8 +181,8 @@ export function ModalPreferenciasCookies({
                 data-testid="switch-cookies-preferencias"
                 onClick={() => setPreferencias((prev) => !prev)}
                 className={
-                  'relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 ' +
-                  (preferencias ? 'bg-teal-600' : 'bg-neutral-300 dark:bg-neutral-700')
+                  'focus-visible:ring-acento-600 relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 ' +
+                  (preferencias ? 'bg-acento-600' : 'bg-neutral-300 dark:bg-neutral-700')
                 }
               >
                 <span
@@ -218,8 +218,8 @@ export function ModalPreferenciasCookies({
                 data-testid="switch-cookies-analitica"
                 onClick={() => setAnalitica((prev) => !prev)}
                 className={
-                  'relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 ' +
-                  (analitica ? 'bg-teal-600' : 'bg-neutral-300 dark:bg-neutral-700')
+                  'focus-visible:ring-acento-600 relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 ' +
+                  (analitica ? 'bg-acento-600' : 'bg-neutral-300 dark:bg-neutral-700')
                 }
               >
                 <span
@@ -241,7 +241,7 @@ export function ModalPreferenciasCookies({
             <Link
               href="/politica-cookies"
               onClick={alCerrar}
-              className="inline-flex items-center gap-1.5 text-xs font-semibold text-teal-700 hover:underline dark:text-teal-400"
+              className="text-acento-700 dark:text-acento-400 inline-flex items-center gap-1.5 text-xs font-semibold hover:underline"
             >
               <span>Consultar inventario técnico y política completa de cookies</span>
               <ExternalLink className="h-3 w-3" />
@@ -264,7 +264,7 @@ export function ModalPreferenciasCookies({
               type="button"
               onClick={manejarGuardarPersonalizado}
               data-testid="btn-guardar-preferencias-cookies"
-              className="flex min-h-[44px] items-center justify-center rounded-xl border border-teal-600 bg-teal-50 px-4 py-2 text-xs font-bold text-teal-800 transition hover:bg-teal-100 focus-visible:ring-2 focus-visible:ring-teal-600 dark:border-teal-700 dark:bg-teal-950/60 dark:text-teal-200 dark:hover:bg-teal-900/60"
+              className="border-acento-600 bg-acento-50 text-acento-800 hover:bg-acento-100 focus-visible:ring-acento-600 dark:border-acento-700 dark:bg-acento-950/60 dark:text-acento-200 dark:hover:bg-acento-900/60 flex min-h-[44px] items-center justify-center rounded-xl border px-4 py-2 text-xs font-bold transition focus-visible:ring-2"
             >
               Guardar preferencias
             </button>
@@ -272,7 +272,7 @@ export function ModalPreferenciasCookies({
               type="button"
               onClick={manejarAceptarTodas}
               data-testid="btn-modal-aceptar-todas"
-              className="flex min-h-[44px] items-center justify-center rounded-xl bg-teal-700 px-5 py-2 text-xs font-bold text-white shadow-xs transition hover:bg-teal-800 focus-visible:ring-2 focus-visible:ring-teal-600 dark:bg-teal-600 dark:hover:bg-teal-500"
+              className="boton-primario flex min-h-[44px] items-center justify-center rounded-xl px-5 py-2 text-xs font-bold shadow-xs transition"
             >
               Aceptar todas
             </button>

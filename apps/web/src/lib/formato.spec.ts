@@ -5,6 +5,7 @@ import {
   formatearDineroCifra,
   formatearFecha,
   formatearFechaHora,
+  fijarZonaAgencia,
   formatearTelefono,
   enmascararTelefono,
   formatearTelefonoSegunRol,
@@ -65,26 +66,26 @@ describe('Módulo único de formato es-CO (T-022)', () => {
   describe('2. Formato de Fechas (R9: medianoche UTC vs zona de la agencia America/Bogota)', () => {
     it('string de fecha pura YYYY-MM-DD no se atrasa a la víspera (ej: 2026-10-03)', () => {
       const res = formatearFecha('2026-10-03');
-      expect(res).toBe('sáb 3 oct 2026');
+      expect(res).toBe('3 oct 2026');
     });
 
     it('timestamp de madrugada UTC frente a la zona de la agencia (America/Bogota UTC-5)', () => {
       // 2026-10-04T02:00:00Z son las 21:00 (9:00 PM) del 3 de octubre en Bogotá
       const enBogota = formatearFecha('2026-10-04T02:00:00Z', { zona: 'America/Bogota' });
-      expect(enBogota).toBe('sáb 3 oct 2026');
+      expect(enBogota).toBe('3 oct 2026');
 
       // Si se formatea explícitamente en UTC, corresponde al 4 de octubre
       const enUtc = formatearFecha('2026-10-04T02:00:00Z', { zona: 'UTC' });
-      expect(enUtc).toBe('dom 4 oct 2026');
+      expect(enUtc).toBe('4 oct 2026');
     });
 
     it('timestamp de medianoche exacta UTC (00:00:00Z)', () => {
       // 2026-10-03T00:00:00Z son las 19:00 del 2 de octubre en Bogotá (UTC-5)
       const enBogota = formatearFecha('2026-10-03T00:00:00Z', { zona: 'America/Bogota' });
-      expect(enBogota).toBe('vie 2 oct 2026');
+      expect(enBogota).toBe('2 oct 2026');
 
       const enUtc = formatearFecha('2026-10-03T00:00:00Z', { zona: 'UTC' });
-      expect(enUtc).toBe('sáb 3 oct 2026');
+      expect(enUtc).toBe('3 oct 2026');
     });
 
     it('formatea fechas completas y día-mes', () => {
@@ -99,8 +100,23 @@ describe('Módulo único de formato es-CO (T-022)', () => {
     it('formatearFechaHora incluye hora local legible', () => {
       const res = formatearFechaHora('2026-10-03T19:30:00Z', { zona: 'America/Bogota' });
       // 19:30 UTC = 14:30 en Bogotá (2:30 p. m.)
-      expect(res).toContain('sáb 3 oct 2026');
+      expect(res).toContain('3 oct 2026');
       expect(res).toContain('2:30');
+    });
+
+    it('fecha con hora en el formato único de la interfaz', () => {
+      expect(formatearFecha('2026-11-20T15:30:00Z', { conHora: true })).toBe(
+        '20 nov 2026, 10:30 a. m.',
+      );
+      expect(formatearFecha('2026-11-20', { conHora: true })).toBe('20 nov 2026');
+    });
+
+    it('usa la zona de la agencia fijada y deja imponer otra por llamada', () => {
+      fijarZonaAgencia('America/Mexico_City');
+      expect(formatearFecha('2026-11-20T04:00:00Z')).toBe('19 nov 2026');
+      expect(formatearFecha('2026-11-20T04:00:00Z', { zona: 'UTC' })).toBe('20 nov 2026');
+      fijarZonaAgencia(null);
+      expect(formatearFecha('2026-11-20T04:00:00Z')).toBe('19 nov 2026');
     });
 
     it('devuelve cadena vacía ante valores nulos o inválidos', () => {
