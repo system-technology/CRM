@@ -4,8 +4,8 @@
 |---|---|
 | Fecha | 2026-11-20 |
 | Origen | Dos audios del dueño de JD Tours (la agencia piloto), transcritos por el propietario; auditoría de navegación del mismo día |
-| Decide | El propietario fijó el énfasis: **la navegación es lo más importante** |
-| Tareas | `roadmap/tasks.yaml`, T-313 a T-338 (campo `owner`) |
+| Decide | El propietario fijó el énfasis: **la navegación es lo más importante**. Y, el mismo día: **los reportes se manejan por niveles de acceso** (ver Eje F) |
+| Tareas | `roadmap/tasks.yaml`, T-313 a T-346 (campo `owner`) |
 | Estado vivo | `ESTADO.md` y `roadmap/tasks.yaml` mandan sobre este documento |
 | Fuentes | [`_auditorias/2026-11-20-auditoria-de-navegacion.md`](../_auditorias/2026-11-20-auditoria-de-navegacion.md), [`_investigacion/2026-11-20-coexistencia-whatsapp-business-app.md`](../_investigacion/2026-11-20-coexistencia-whatsapp-business-app.md) |
 
@@ -52,6 +52,7 @@ Fase 1  marco común    N1 layout compartido → N2 nombres y tabla de navegaci�
 Fase 2  lo que usa     B etiquetas en la bandeja  ‖  C cobros (ADR → base → API → pantalla)
 Fase 3  su hoja        D tabla de archivos → exportar CSV → importar su hoja
 Fase 4  pulido         N5 URL como estado · N6 paleta · N4 móvil · N7 contexto del cotizador · N8 campana
+Fase 3b reportes        F por niveles: asesor (móvil primero) y administración (robusto); F0 y F1 corren en paralelo desde la Fase 0
 Aparte  su número      E coexistencia (depende de T-080 y de verificar con Meta; ver §5)
 ```
 
@@ -115,6 +116,39 @@ quién debe». Antes de diseñar hay que cerrar las preguntas al dueño (ver §4
 | T-335 | D2: exportar a CSV (sin neto ni margen para quien no tenga el permiso) | `backend`, `frontend` | T-334 |
 | T-336 | D3: importar su hoja actual (CSV, vista previa, sin duplicar, sin registrar datos personales en logs) | `backend`, `frontend`, `auditor-seguridad` | T-334, T-327 |
 
+### Eje F — Reportes por niveles de acceso (asesor y administración)
+
+**Decisión del propietario (2026-11-20):** los asesores ven los reportes **pertinentes a su operación** y
+tienen su propio dashboard; el administrador tiene **todo el abanico** de reportes, consultas y dashboards
+y un tablero más robusto. **Es probable que trabajen mucho desde el celular**, así que ambos dashboards se
+diseñan **móvil primero** y se verifican a 390 px.
+
+Esto **reemplaza D3** de `04-flujos-criticos.md` («la asesora no ve Reportes»): ahora «Reportes» está en el
+menú de todos, y **lo que ve cada uno depende de su nivel**. Configuración sigue solo para quien tenga
+`usuarios.administrar`. Se apoya en el roadmap de reportes ya escrito
+([`06-roadmap-de-reportes.md`](06-roadmap-de-reportes.md), T-131 a T-151) y en T-141, que ya anticipaba el
+problema («hoy cualquier miembro lee el resumen de toda la agencia»).
+
+| Nivel | Ve | Cómo |
+|---|---|---|
+| **Asesor** | Lo suyo: sus conversaciones sin responder, sus cotizaciones abiertas por antigüedad, sus seguimientos vencidos, sus cierres del mes, sus cobros por cobrar | Dashboard corto, en «Hoy» y en Reportes, pensado para el celular |
+| **Administrador** | Toda la agencia y a su equipo: embudo, ventas por moneda, destino y asesor, tiempos de respuesta, cobros, salidas próximas con pasajeros, margen (con su permiso aparte) | Dashboard robusto, consultas con filtros (periodo, asesor, moneda, origen), filtros guardados y exportación |
+
+**Lo que no puede fallar:** el alcance (propio frente a toda la agencia) lo impone **el servidor** con la sesión,
+nunca el cliente ni el menú: ocultar un ítem no es control de acceso. Dos asesores de la misma agencia no ven
+lo del otro, y el margen sigue protegido por `cotizacion.ver_neto_y_margen`.
+
+| Tarea | Paso | Dueño | Depende de |
+|---|---|---|---|
+| T-339 | F0: qué ve cada nivel (catálogo de reportes por rol), qué va en «Hoy» y qué en Reportes, móvil primero | `analista-datos`, `analista-producto`, `experto-turismo`, `diseno-ux` | — |
+| T-340 | F1: ADR de los niveles de acceso a reportes (propio, equipo, agencia; permisos; cómo se impone en el servidor) | `arquitecto`, `auditor-seguridad` | T-339 |
+| T-341 | F2: permisos de reportes en el catálogo de roles y su sembrado. **Absorbe T-141** | `datos` | T-340 |
+| T-342 | F3: alcance propio o de toda la agencia en los endpoints de reportes, impuesto por el servidor | `backend` | T-341 |
+| T-343 | F4: dashboard del asesor, móvil primero | `diseno-ux`, `frontend` | T-342, T-317 |
+| T-344 | F5: dashboard de administración robusto | `diseno-ux`, `frontend` | T-342 |
+| T-345 | F6: consultas del administrador: filtros, filtros guardados y exportar | `frontend`, `backend` | T-344 |
+| T-346 | F7: revisión móvil de los dos dashboards (390 px) y pruebas de permisos entre asesores | `qa`, `frontend` | T-343, T-344 |
+
 ### Eje E — El número de JD Tours (aparte de los demás)
 
 Responde a «si conecto mi número, ¿pierdo WhatsApp Business?». Hay un modo oficial (**coexistencia**) que
@@ -140,6 +174,8 @@ navegador**:
 5. Se registra un pago y el saldo cambia; el pago queda en un historial que no se edita.
 6. Se importó una hoja de muestra de la agencia sin duplicar filas.
 7. El aislamiento entre agencias pasó auditoría en cada pieza que toca dinero o datos de varias agencias.
+8. Un asesor abre el celular y ve **su** dashboard sin desplazarse de lado; no ve lo de otro asesor; el
+   administrador ve toda la agencia y puede filtrar por asesor, periodo y moneda.
 
 ## 4. Preguntas abiertas para el dueño (antes de T-327, T-323 y T-334)
 
@@ -149,6 +185,7 @@ navegador**:
 - ¿Quién registra los pagos, el asesor o una persona de administración?
 - ¿Quiere que el sistema recuerde su saldo al cliente por WhatsApp? (si sí, es otra tarea de cola, no está aquí)
 - ¿Qué **etiquetas** usa exactamente, y de qué color?
+- Reportes: ¿qué mira cada asesor para saber cómo va?, ¿qué quiere ver él como administrador?, ¿cuántos asesores tiene y cuántos trabajan desde el celular?
 - Su hoja: **cuántas reservas** y **qué columnas**. Pedir una **muestra sin nombres ni teléfonos** (R10).
 
 ## 5. Riesgos y qué no se hace
@@ -163,6 +200,7 @@ navegador**:
   no se toca).
 - **Sin pasarela de pagos, sin IA y sin recordatorios por WhatsApp** en este roadmap.
 - **Aislamiento entre agencias:** en pagos, etiquetas e importación no se recorta la auditoría (R13).
+- **Visibilidad entre asesores:** en reportes, que un asesor no vea lo de otro es un requisito de seguridad, no de presentación; tiene auditoría y pruebas con dos asesores.
 
 ## 6. Cómo se trabaja este roadmap
 
