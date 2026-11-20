@@ -5806,11 +5806,11 @@ tasks:
     notes: "Rama fix/booking-endurecer-historial-y-lista. ocurrido_en por disparador BEFORE INSERT (privilegios_declarados no admite columnas y un GRANT por columnas lo revocaría la siguiente migración); FK de tres columnas con T-256; lista de /archivos sin plazo por número descendente en el SQL y en compararPorPlazo; booking-apertura.e2e con fechas relativas. Pendiente: CI con Postgres (H-2/H-6/H-8 y e2e de booking)."
   - id: T-258
     title: "Web: credibilidad de la demo (sin restos de desarrollo ni datos de maqueta que mienten)"
-    type: fix
+    type: bug
     phase: 1
     priority: P2
     effort: M
-    status: in_progress
+    status: done
     depends_on: []
     acceptance:
       - "Sin IDs de tarea, jerga técnica ni nombres de código a la vista; herramientas de desarrollo tras NEXT_PUBLIC_HERRAMIENTAS_DEV"
@@ -5824,11 +5824,11 @@ tasks:
     started_at: 2026-11-20T18:00:00.000Z
   - id: T-259
     title: "Web: la solicitud de viaje como cabecera de la conversación y datos del viaje en bandeja y pipeline"
-    type: feat
+    type: feature
     phase: 1
     priority: P2
     effort: M
-    status: in_progress
+    status: done
     depends_on: [T-258]
     acceptance:
       - "Panel derecho de la conversación con la solicitud de viaje arriba (destino, salida, pasajeros, plazo, cotización vigente y file) y un solo botón «Cotizar» que abre el cotizador con lo conocido"
@@ -5846,11 +5846,11 @@ tasks:
     notes: "Rama feat/web-solicitud-de-viaje. Hoy los pasajeros salen solo del archivo de viaje (lista) o del detalle de la cotización vigente (una petición, solo la conversación abierta); las filas sin archivo muestran «destino · mes». Falta en API (owner backend): pasajeros (adultos, niños, infantes) en la oportunidad y en la fila de cotización, y vigenteHasta en FilaDeCotizacion; o un resumen de viaje en ConversacionResumen. Con eso la bandeja deja de componer en el cliente."
   - id: T-260
     title: "API: pasajeros y vigencia en la oportunidad y en la fila de cotización (resumen de viaje de la conversación)"
-    type: feat
+    type: feature
     phase: 1
     priority: P2
     effort: M
-    status: todo
+    status: ready
     depends_on: [T-259]
     acceptance:
       - "Oportunidad con pasajeros (adultos, niños, infantes) en packages/contracts y la base"
@@ -5862,3 +5862,318 @@ tasks:
     source: T-259 (la bandeja no puede mostrar «2+2» en filas sin archivo sin una petición por fila)
     created_at: 2026-11-20T21:00:00.000Z
     owner: backend
+  - id: T-261
+    title: "Textos legales versionados del registro: términos, aviso de privacidad de ViajaPro y contrato de encargo
+      del tratamiento (ADR-0030 F0)"
+    type: docs
+    phase: 2
+    priority: P1
+    effort: M
+    status: blocked
+    blocked_reason: "human_required: redacción y aprobación del propietario con abogado; depende de T-093 y T-098.
+      Sin esto el interruptor REGISTRO_AUTOSERVICIO_HABILITADO no se enciende en producción"
+    human_required: true
+    depends_on:
+      - T-093
+      - T-098
+    acceptance:
+      - Tres documentos con versión (términos, aviso de privacidad de ViajaPro como responsable de los datos de
+        quien se registra, contrato de encargo con la agencia como responsable de sus viajeros), aprobados por
+        el propietario
+      - Las versiones vigentes son una constante en packages/contracts y los textos se publican en /terminos y
+        /privacidad de apps/web
+      - auditor-seguridad confirma que el contrato de encargo cubre plazos de incidente, devolución y supresión
+    files:
+      - docs/05-seguridad/
+      - packages/contracts/src
+    source: arquitecto:ADR-0030 §4 (2026-11-20)
+    created_at: 2026-11-20T23:00:00.000Z
+    owner: documentador
+  - id: T-262
+    title: "Migración del registro: rol viajapro_registro, función crear_agencia, columnas de tenants,
+      perfiles_de_agencia y aceptaciones_de_identidad (ADR-0030 F1)"
+    type: security
+    phase: 2
+    priority: P1
+    effort: M
+    status: blocked
+    blocked_reason: "ADR-0030 en estado Propuesto: espera auditor-seguridad y la aceptación del propietario.
+      human_required: migración del Owner (ruta protegida) y cambio de R2 en CLAUDE.md"
+    human_required: true
+    depends_on: []
+    acceptance:
+      - viajapro_registro NOLOGIN NOBYPASSRLS NOINHERIT, sin CREATE sobre public al terminar, sin miembros de
+        roles_de_login_vigilados; el rol de migraciones con SET TRUE INHERIT FALSE
+      - "Superficie exacta por columnas (ADR-0030 §3.1): SELECT e INSERT acotados sobre tenants, SELECT
+        (codigo_iso) sobre monedas; ningún UPDATE, DELETE ni TRUNCATE; la migración aborta si difiere"
+      - crear_agencia SECURITY DEFINER, search_path vacío, sin SQL dinámico, no STRICT, EXECUTE solo para
+        viajapro_app; aborta con 42501 si app.current_tenant no está vacío; 22023, VPR01, VPR02 y VPR03 según
+        ADR-0030 §3.2; INSERT sin ON CONFLICT; id gen_random_uuid(); fija app.current_tenant al id nuevo
+      - tenants con origen_del_alta (enum, NOT NULL DEFAULT PLATAFORMA), creado_por_identidad_id, prueba_termina_en,
+        encargo_version y encargo_aceptado_en; la declaración de tenants para viajapro_app sigue en {SELECT}
+      - perfiles_de_agencia con tenant_id PK y RLS USING + WITH CHECK; aceptaciones_de_identidad global, SELECT e
+        INSERT solo para viajapro_identidad, declarada en excepciones_rls con {} para los otros tres roles de
+        login, y el literal de aislamiento.spec.ts ampliado (R1)
+      - "aislamiento.spec.ts bloque «Registro de agencias»: contexto previo da 42501; slug repetido crea otra
+        agencia y deja intacta la existente; INSERT/UPDATE directo de viajapro_app sobre tenants da 42501; el
+        contexto fijado por la función sigue vigente tras volver (supuesto S1)"
+      - CLAUDE.md R2 con la cláusula de viajapro_registro, aprobada por el propietario
+    files:
+      - packages/database/prisma/migrations
+      - packages/database/prisma/schema.prisma
+      - packages/database/tests/aislamiento.spec.ts
+      - CLAUDE.md
+    source: arquitecto:ADR-0030 §3 (2026-11-20)
+    created_at: 2026-11-20T23:00:00.000Z
+    owner: datos
+  - id: T-263
+    title: "Siembra: la política de precio por defecto entra en siembra-de-tenant.ts (un solo sitio decide qué
+      trae una agencia nueva)"
+    type: refactor
+    phase: 1
+    priority: P2
+    effort: S
+    status: ready
+    depends_on: []
+    acceptance:
+      - siembra-de-tenant.ts exporta sembrarPoliticaDePrecio(tx, tenantId), idempotente y sin pisar una política
+        existente, con los valores de POLITICA_POR_DEFECTO y modo AMBOS
+      - semilla-agencia-nucleo.ts y seed.ts la usan en lugar de su upsert propio; sin cambio de comportamiento
+      - pnpm --filter @viajapro/database test verde; pnpm compuertas --rapido verde
+    files:
+      - packages/database/prisma/siembra-de-tenant.ts
+      - packages/database/prisma/semilla-agencia-nucleo.ts
+      - packages/database/prisma/seed.ts
+    source: arquitecto:ADR-0030 §3.4 (2026-11-20)
+    created_at: 2026-11-20T23:00:00.000Z
+    owner: datos
+  - id: T-264
+    title: "API: registro de identidad con correo verificado (registro/solicitar y registro/completar) tras el
+      interruptor REGISTRO_AUTOSERVICIO_HABILITADO (ADR-0030 F2)"
+    type: security
+    phase: 2
+    priority: P1
+    effort: M
+    status: blocked
+    blocked_reason: "Espera la aceptación de ADR-0030 y T-262 (aceptaciones_de_identidad)"
+    depends_on:
+      - T-262
+    acceptance:
+      - Las dos rutas en RUTAS_DE_AUTENTICACION_SIN_TENANT por coincidencia exacta; con el interruptor en false
+        responden 404
+      - solicitar responde 202 con el mismo cuerpo exista o no el correo; código de 6 dígitos hasheado en
+        verificaciones (registro:<HMAC(correo)>), 10 min, 5 intentos; correo encolado (R5), nunca logueado
+      - completar crea la identidad verificada con crearVerificada y las aceptaciones de TERMINOS y
+        AVISO_DE_PRIVACIDAD (versión vigente de contracts) en la misma transacción del pool de identidad; sin
+        ambas aceptaciones = 422; inicia sesión por Better Auth sin crear sesiones a mano
+      - Better Auth sigue con disableSignUp true (spec de crear-auth)
+      - Límites con LimitadorDeEnvios por correo, IP y tope global; puerto VerificadorDeHumano con adaptador que
+        aprueba
+      - e2e de no enumeración y de código caducado o agotado; pnpm compuertas --rapido verde
+    files:
+      - apps/api/src/modules/identity
+      - apps/api/src/shared/tenant/tenant.middleware.ts
+      - packages/contracts/src
+    source: arquitecto:ADR-0030 §1 y §3.6 (2026-11-20)
+    created_at: 2026-11-20T23:00:00.000Z
+    owner: backend
+  - id: T-265
+    title: "API: alta atómica de agencia (POST /api/v1/auth/agencias) con crear_agencia, siembra por puertos,
+      dueño, auditoría y outbox (ADR-0030 F3)"
+    type: security
+    phase: 2
+    priority: P1
+    effort: M
+    status: blocked
+    blocked_reason: "Espera la aceptación de ADR-0030, T-262, T-263 y T-264"
+    depends_on:
+      - T-262
+      - T-263
+      - T-264
+    acceptance:
+      - Una transacción de viajapro_app en el orden de ADR-0030 §3.4; el contexto lo fija crear_agencia y se
+        comprueba antes de sembrar
+      - Puerto SembradorDeAgenciaNueva declarado en identity; crm (etapas, motivos) y quoting (formatos, política)
+        lo implementan con siembra-de-tenant.ts; ningún import entre módulos (R4)
+      - Contrato Zod strict sin campo de tenant; un tenantId en el cuerpo = 400; exige sesión e identidad
+        verificada, no tenant activo
+      - Errores por SQLSTATE (22023→422, VPR01→409, VPR02→503 con Retry-After); quien crea queda DUENO y la
+        sesión queda con la agencia nueva como activa
+      - registros_auditoria agencia.creada sin nombre, correo ni NIT; outbox identity.agencia_creada v1 con
+        tenantId y origen
+      - "e2e: siembra que falla no deja fila en tenants; slug repetido no da acceso a la agencia existente;
+        segunda agencia en prueba = 409"
+      - Revisión de auditor-seguridad sin bloqueantes antes de integrar
+    files:
+      - apps/api/src/modules/identity
+      - apps/api/src/modules/crm
+      - apps/api/src/modules/quoting
+      - apps/api/src/shared/tenant/tenant.middleware.ts
+      - packages/contracts/src
+    source: arquitecto:ADR-0030 §1 y §3 (2026-11-20)
+    created_at: 2026-11-20T23:00:00.000Z
+    owner: backend
+  - id: T-266
+    title: "Web: /registro (correo, código, contraseña, casillas legales) y crear agencia, con salida a
+      /bienvenida (ADR-0030 F4)"
+    type: feature
+    phase: 2
+    priority: P1
+    effort: M
+    status: blocked
+    blocked_reason: "Espera T-264 y T-265"
+    depends_on:
+      - T-264
+      - T-265
+    acceptance:
+      - Rutas públicas /registro y /registro/agencia; el middleware de Next no las redirige a /ingresar
+      - Casillas de términos, aviso de privacidad y contrato de encargo sin marcar por defecto, con enlace al
+        texto y su versión
+      - País, moneda y zona horaria precargados (Colombia, COP, America/Bogota); NIT opcional
+      - Mensajes para 409 (ya tienes una agencia en prueba) y 503 (intenta más tarde) sin jerga técnica
+      - Verificado en navegador, también a 375 px; pnpm --filter @viajapro/web test verde
+    files:
+      - apps/web/src/app
+      - packages/contracts/src
+    source: arquitecto:ADR-0030 §1 (2026-11-20)
+    created_at: 2026-11-20T23:00:00.000Z
+    owner: frontend
+  - id: T-267
+    title: "API: primeros pasos calculados a partir de hechos (GET /api/v1/agencia/primeros-pasos) (ADR-0030
+      F5)"
+    type: feature
+    phase: 1
+    priority: P2
+    effort: S
+    status: ready
+    depends_on: []
+    acceptance:
+      - "Responde marca, catálogo, equipo y WhatsApp con hecho: boolean, calculados desde la base: nombre de la
+        agencia, al menos un producto activo, más de un miembro activo, un canal activo"
+      - Catálogo y canal llegan por puertos declarados en identity e implementados en quoting e inbox; ningún
+        import entre módulos (R4)
+      - No guarda estado del asistente; contrato en packages/contracts; e2e con dos agencias que no se ven entre
+        sí
+      - pnpm --filter @viajapro/api test verde; pnpm compuertas --rapido verde
+    files:
+      - apps/api/src/modules/identity
+      - packages/contracts/src
+    source: arquitecto:ADR-0030 §5.4 (2026-11-20)
+    created_at: 2026-11-20T23:00:00.000Z
+    owner: backend
+  - id: T-268
+    title: "Web: el asistente de bienvenida lee los primeros pasos de la API; solo las omisiones quedan en
+      localStorage (ADR-0030 F5)"
+    type: feature
+    phase: 1
+    priority: P2
+    effort: S
+    status: blocked
+    blocked_reason: "Espera T-267"
+    depends_on:
+      - T-267
+    acceptance:
+      - onboarding-logica.ts deja de guardar los pasos hechos; los toma de GET /api/v1/agencia/primeros-pasos
+      - Las omisiones siguen en localStorage con ámbito de tenant
+      - El paso de WhatsApp no pide secretos y dice quién hace la conexión mientras no haya Embedded Signup
+      - pnpm --filter @viajapro/web test verde; pnpm compuertas --rapido verde
+    files:
+      - apps/web/src/lib/onboarding-logica.ts
+      - apps/web/src/components/onboarding/
+    source: arquitecto:ADR-0030 §5.4 (2026-11-20)
+    created_at: 2026-11-20T23:00:00.000Z
+    owner: frontend
+  - id: T-269
+    title: "API: puerto PoliticaDeUso con límites de la prueba (solo impiden añadir) y días de prueba en la sesión
+      (ADR-0030 F6)"
+    type: feature
+    phase: 2
+    priority: P2
+    effort: S
+    status: blocked
+    blocked_reason: "Espera la aceptación de ADR-0030, T-262 (prueba_termina_en) y la respuesta del propietario a
+      P5 (límites)"
+    depends_on:
+      - T-262
+    acceptance:
+      - PoliticaDeUso en identity con un adaptador por estado; EN_PRUEBA con límites de configuración, ACTIVO
+        sin límite
+      - Invitar por encima de maxMiembrosActivos en prueba da 422 con código propio; los miembros existentes no
+        pierden acceso
+      - La sesión expone los días de prueba restantes (calculados en UTC, R9)
+      - pnpm --filter @viajapro/api test verde
+    files:
+      - apps/api/src/modules/identity
+      - packages/contracts/src
+    source: arquitecto:ADR-0030 §5.5 (2026-11-20)
+    created_at: 2026-11-20T23:00:00.000Z
+    owner: backend
+  - id: T-270
+    title: "WhatsApp: conexión del número real de una agencia por la plataforma antes de Tech Provider, y botón
+      Solicitar conexión en el asistente"
+    type: security
+    phase: 2
+    priority: P1
+    effort: M
+    status: blocked
+    blocked_reason: "human_required: decisión del propietario (ADR-0030 P6). Necesita ADR o adenda de whatsapp: hoy el
+      único registro de canal es un script solo local y solo para agencia-demo, con el token de la plataforma"
+    human_required: true
+    depends_on: []
+    acceptance:
+      - Un camino de plataforma, fuera de APP_ENV=local, que registra el canal de una agencia por el mismo caso de
+        uso de ADR-0008 (viajapro_altas), con el token de la agencia cifrado (R6) y sin phone_number_id del cliente
+      - El botón Solicitar conexión emite identity.conexion_whatsapp_solicitada por outbox y notifications avisa
+        al buzón de operaciones, sin datos personales en el payload
+      - Revisión de auditor-seguridad sin bloqueantes
+    files:
+      - apps/api/src/modules/inbox
+      - apps/api/src/modules/notifications
+      - docs/04-integraciones/
+    source: arquitecto:ADR-0030 §5.1 (2026-11-20)
+    created_at: 2026-11-20T23:00:00.000Z
+    owner: whatsapp
+  - id: T-271
+    title: "WhatsApp: Embedded Signup en el paso de conexión del asistente"
+    type: feature
+    phase: 2
+    priority: P2
+    effort: L
+    status: blocked
+    blocked_reason: "Espera T-080 (verificación del negocio en Meta y Tech Provider). Partir antes de empezar
+      (effort L)"
+    depends_on:
+      - T-080
+    acceptance:
+      - El paso de WhatsApp lanza Embedded Signup y canjea el code en el servidor (ADR-0008 §1.5); el
+        phone_number_id nunca viene del cliente
+      - Su ADR decide si una agencia EN_PRUEBA conecta sola o pasa por revisión
+      - Revisión de auditor-seguridad sin bloqueantes
+    files:
+      - apps/api/src/modules/inbox
+      - apps/web/src/components/onboarding/
+    source: arquitecto:ADR-0030 §5.1 (2026-11-20)
+    created_at: 2026-11-20T23:00:00.000Z
+    owner: whatsapp
+  - id: T-272
+    title: "Purga de agencias de prueba abandonadas, con aviso previo al dueño (Ley 1581)"
+    type: security
+    phase: 2
+    priority: P3
+    effort: M
+    status: blocked
+    blocked_reason: "human_required: el propietario fija el plazo de retención tras vencer la prueba. Va a la cola
+      (R13); no bloquea el registro"
+    human_required: true
+    depends_on:
+      - T-265
+    acceptance:
+      - Plazo de retención decidido y escrito; aviso por correo al dueño antes de purgar
+      - La purga recorre todas las tablas con tenant_id, colas y objetos, y deja un registro sin datos personales
+      - Prueba que verifica cero filas de la agencia tras la purga y otra agencia intacta
+    files:
+      - packages/database/prisma/migrations
+      - apps/api/src/modules/identity
+    source: arquitecto:ADR-0030 §6 (2026-11-20)
+    created_at: 2026-11-20T23:00:00.000Z
+    owner: datos
