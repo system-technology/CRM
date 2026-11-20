@@ -23,7 +23,6 @@ import type {
   ReemplazarPasajeros,
   ResumenDeArchivo,
 } from '@viajapro/contracts';
-import { BarraModulos } from '../../../components/bandeja/barra-modulos';
 import { DistintivoDatosDemo } from '../../../components/comun/distintivo-datos-demo';
 import { AvisoErrorAccionable, EsqueletoTabla } from '../../../components/comun/esqueletos';
 import { DetalleArchivo } from '../../../components/reservas/detalle-archivo';
@@ -150,10 +149,8 @@ function ReservasContenido({ puedeOperar }: { puedeOperar: boolean }) {
   const hayDetalle = seleccionadoId !== null;
 
   return (
-    <div className="flex min-h-screen bg-neutral-50 text-neutral-900 antialiased dark:bg-neutral-950 dark:text-neutral-100">
-      <BarraModulos />
-
-      <main className="flex min-w-0 flex-1 flex-col pb-28 md:pb-0 lg:h-screen lg:flex-row">
+    <>
+      <div className="flex min-w-0 flex-1 flex-col bg-neutral-50 text-neutral-900 antialiased lg:min-h-0 lg:flex-row lg:overflow-hidden dark:bg-neutral-950 dark:text-neutral-100">
         {/* Lista: en móvil se oculta cuando hay un archivo abierto */}
         <section
           aria-labelledby="reservas-lista-titulo"
@@ -306,17 +303,16 @@ function ReservasContenido({ puedeOperar }: { puedeOperar: boolean }) {
             />
           )}
         </section>
-      </main>
-    </div>
+      </div>
+    </>
   );
 }
 
 /** Estado «sin acceso»: la API respondería 403 a todo /archivos sin `archivo.ver` (T-249). */
 function SinAcceso() {
   return (
-    <div className="flex min-h-screen bg-neutral-50 text-neutral-900 antialiased dark:bg-neutral-950 dark:text-neutral-100">
-      <BarraModulos />
-      <main className="flex min-w-0 flex-1 items-center justify-center p-6 pb-28 md:pb-6">
+    <>
+      <div className="flex min-w-0 flex-1 items-center justify-center bg-neutral-50 p-6 text-neutral-900 antialiased md:pb-6 dark:bg-neutral-950 dark:text-neutral-100">
         <div
           role="status"
           data-testid="reservas-sin-acceso"
@@ -335,8 +331,8 @@ function SinAcceso() {
             Ir a la bandeja
           </Link>
         </div>
-      </main>
-    </div>
+      </div>
+    </>
   );
 }
 
@@ -344,7 +340,7 @@ function SinAcceso() {
 function ReservasConPermisos() {
   const { cargando, tienePermiso } = usePermisos();
   if (cargando) {
-    return <div aria-busy="true" aria-label="Cargando permisos" className="min-h-screen" />;
+    return <div aria-busy="true" aria-label="Cargando permisos" className="min-h-64 flex-1" />;
   }
   if (!tienePermiso(PERMISO_ARCHIVO_VER)) return <SinAcceso />;
   return <ReservasContenido puedeOperar={tienePermiso(PERMISO_ARCHIVO_OPERAR)} />;
@@ -352,7 +348,7 @@ function ReservasConPermisos() {
 
 export default function ReservasPage() {
   return (
-    <Suspense fallback={<div aria-busy="true" className="min-h-screen" />}>
+    <Suspense fallback={<div aria-busy="true" className="min-h-64 flex-1" />}>
       <ReservasConPermisos />
     </Suspense>
   );

@@ -8,7 +8,6 @@ import Link from 'next/link';
 import { EtapaDefinida, MotivoPerdida, Oportunidad, TableroPipeline } from '@viajapro/contracts';
 import { Kanban, Table as TableIcon, Search, Filter, Plus, Download } from 'lucide-react';
 import { exportarOportunidadesCSV, descargarArchivoCSV } from '../../../lib/exportar-csv';
-import { BarraModulos } from '../../../components/bandeja/barra-modulos';
 import { ColumnaKanban } from '../../../components/pipeline/columna-kanban';
 import { ModalMotivoPerdida } from '../../../components/pipeline/modal-motivo-perdida';
 import { DistintivoDatosDemo } from '../../../components/comun/distintivo-datos-demo';
@@ -238,12 +237,9 @@ export default function PipelinePage() {
 
   return (
     <ViajesBandejaProvider value={indiceDeViajes}>
-      <div className="flex h-screen w-screen overflow-hidden bg-neutral-100 text-neutral-900 select-none dark:bg-neutral-950 dark:text-neutral-100">
-        {/* Barra de Módulos (56px) */}
-        <BarraModulos />
-
+      <>
         {/* Contenedor Principal del Pipeline */}
-        <main className="flex flex-1 flex-col overflow-hidden pb-14 md:pb-0">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-neutral-100 text-neutral-900 select-none dark:bg-neutral-950 dark:text-neutral-100">
           {/* Cabecera del Pipeline */}
           <header className="min-w-0 border-b border-neutral-200 bg-white px-3.5 py-3 shadow-2xs sm:px-6 sm:py-4 dark:border-neutral-800 dark:bg-neutral-900">
             <div className="flex flex-wrap items-center justify-between gap-4">
@@ -479,7 +475,7 @@ export default function PipelinePage() {
               </div>
             </div>
           )}
-        </main>
+        </div>
 
         {/* Modal de Motivo de Pérdida */}
         {oportunidadPendientePerdida && (
@@ -498,7 +494,7 @@ export default function PipelinePage() {
             onCancelar={() => setOportunidadPendientePerdida(null)}
           />
         )}
-      </div>
+      </>
     </ViajesBandejaProvider>
   );
 }

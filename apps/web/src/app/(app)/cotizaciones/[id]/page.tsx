@@ -30,7 +30,6 @@ import {
   Scale,
 } from 'lucide-react';
 import type { Acomodacion, CotizacionGuardada, ContactoDeLista } from '@viajapro/contracts';
-import { BarraModulos } from '../../../../components/bandeja/barra-modulos';
 import { MigasDePan } from '../../../../components/comun/migas-de-pan';
 import {
   formatearDinero,
@@ -287,10 +286,8 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
   };
 
   return (
-    <div className="flex h-screen w-full bg-neutral-50 dark:bg-neutral-950">
-      <BarraModulos />
-
-      <main className="flex-1 overflow-y-auto">
+    <>
+      <div className="flex-1 bg-neutral-50 dark:bg-neutral-950">
         <div className="mx-auto max-w-6xl space-y-6 p-4 sm:p-6 lg:p-8">
           {/* Migas de pan de turismo y estado oficial (T-034) */}
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -1107,7 +1104,7 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
             />
           )}
         </div>
-      </main>
-    </div>
+      </div>
+    </>
   );
 }

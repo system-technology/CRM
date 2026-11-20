@@ -19,7 +19,6 @@ import {
   Download,
 } from 'lucide-react';
 import { exportarContactosCSV, descargarArchivoCSV } from '../../../lib/exportar-csv';
-import { BarraModulos } from '../../../components/bandeja/barra-modulos';
 import { DistintivoDatosDemo } from '../../../components/comun/distintivo-datos-demo';
 import {
   EsqueletoTabla,
@@ -118,12 +117,9 @@ export default function ContactosPage() {
   ).length;
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-neutral-100 text-neutral-900 select-none dark:bg-neutral-950 dark:text-neutral-100">
-      {/* Barra de Módulos (56px) */}
-      <BarraModulos />
-
+    <>
       {/* Contenido Principal */}
-      <main className="flex flex-1 flex-col overflow-hidden pb-14 md:pb-0">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-neutral-100 text-neutral-900 select-none dark:bg-neutral-950 dark:text-neutral-100">
         {/* Cabecera */}
         <header className="flex flex-col border-b border-neutral-200 bg-white px-6 py-4 dark:border-neutral-800 dark:bg-neutral-900">
           <div className="flex flex-wrap items-center justify-between gap-4">
@@ -405,7 +401,7 @@ export default function ContactosPage() {
             </div>
           )}
         </div>
-      </main>
+      </div>
 
       {/* Drawer de Detalle de Contacto */}
       {contactoSeleccionado && (
@@ -414,6 +410,6 @@ export default function ContactosPage() {
           onCerrar={() => setContactoSeleccionado(null)}
         />
       )}
-    </div>
+    </>
   );
 }

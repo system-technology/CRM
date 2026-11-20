@@ -18,7 +18,6 @@ import {
   BarChart3,
   Building2,
 } from 'lucide-react';
-import { BarraModulos } from '../../components/bandeja/barra-modulos';
 import { DistintivoDatosDemo } from '../../components/comun/distintivo-datos-demo';
 import { BloqueSeguimientosDia } from '../../components/inicio/bloque-seguimientos-dia';
 import { obtenerSesionActualApi } from '../../lib/auth-api';
@@ -112,12 +111,9 @@ export default function InicioPage() {
     : 'VP';
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-neutral-50 dark:bg-neutral-950">
-      {/* 1. Barra Lateral de Navegación y Módulos */}
-      <BarraModulos />
-
+    <>
       {/* 2. Cuerpo Principal */}
-      <main className="flex flex-1 flex-col overflow-y-auto pb-16 md:pb-6">
+      <div className="flex flex-1 flex-col bg-neutral-50 md:pb-6 dark:bg-neutral-950">
         {/* Encabezado Principal */}
         <header className="border-b border-neutral-200 bg-white px-5 py-6 md:px-8 dark:border-neutral-800 dark:bg-neutral-900">
           <div className="mx-auto flex max-w-6xl flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -570,7 +566,7 @@ export default function InicioPage() {
             </div>
           )}
         </div>
-      </main>
-    </div>
+      </div>
+    </>
   );
 }

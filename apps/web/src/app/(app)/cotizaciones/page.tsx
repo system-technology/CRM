@@ -38,7 +38,6 @@ import type {
   ContactoDeLista,
 } from '@viajapro/contracts';
 import { listarContactos } from '../../../lib/crm-api';
-import { BarraModulos } from '../../../components/bandeja/barra-modulos';
 import { DistintivoDatosDemo } from '../../../components/comun/distintivo-datos-demo';
 import { formatearDinero, formatearFecha } from '../../../lib/formato';
 import {
@@ -254,10 +253,8 @@ export default function CotizacionesPage() {
   }, [filas, busqueda, mapaContactos]);
 
   return (
-    <div className="flex min-h-screen bg-neutral-50 dark:bg-neutral-950">
-      <BarraModulos />
-
-      <main className="min-w-0 flex-1 overflow-x-hidden pb-28 md:pb-8">
+    <>
+      <div className="min-w-0 flex-1 overflow-x-hidden bg-neutral-50 md:pb-8 dark:bg-neutral-950">
         {/* Cabecera Principal */}
         <header className="sticky top-0 z-10 border-b border-neutral-200 bg-white/95 backdrop-blur-md dark:border-neutral-800 dark:bg-neutral-900/95">
           <div className="mx-auto flex max-w-7xl flex-col gap-4 px-3.5 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-4">
@@ -754,7 +751,7 @@ export default function CotizacionesPage() {
             />
           )}
         </div>
-      </main>
-    </div>
+      </div>
+    </>
   );
 }

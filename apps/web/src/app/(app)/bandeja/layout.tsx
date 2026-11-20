@@ -3,7 +3,6 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import type { ConversacionResumen } from '@viajapro/contracts';
-import { BarraModulos } from '../../../components/bandeja/barra-modulos';
 import { ListaConversaciones } from '../../../components/bandeja/lista-conversaciones';
 import { ModalAyudaAtajos } from '../../../components/bandeja/modal-ayuda-atajos';
 import {
@@ -11,12 +10,13 @@ import {
   calcularSiguienteConversacionId,
   usePreferenciaAtajosTeclado,
 } from '../../../lib/atajos-teclado-bandeja';
+import { esDetalleMovilDeBandeja } from '../../../lib/modulo-activo';
 import { useCargarIndiceDeViajes, ViajesBandejaProvider } from '../../../lib/viajes-bandeja';
 
 export default function BandejaLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const esDetalleMovil = pathname !== '/bandeja' && pathname.startsWith('/bandeja/');
+  const esDetalleMovil = esDetalleMovilDeBandeja(pathname);
 
   const [conversaciones, setConversaciones] = useState<ConversacionResumen[]>([]);
   const [modalAyudaAbierto, setModalAyudaAbierto] = useState(false);
@@ -69,12 +69,7 @@ export default function BandejaLayout({ children }: { children: React.ReactNode 
   return (
     <BandejaAtajosContext.Provider value={contextValue}>
       <ViajesBandejaProvider value={indiceDeViajes}>
-        <div className="flex h-[calc(100dvh-var(--altura-banner-cookies,0px))] w-full overflow-hidden bg-neutral-100 font-sans dark:bg-neutral-950">
-          {/* Columna 1: Barra lateral de módulos (56px) */}
-          <div className={`shrink-0 ${esDetalleMovil ? 'hidden md:flex' : 'flex'}`}>
-            <BarraModulos />
-          </div>
-
+        <div className="flex min-h-0 w-full flex-1 overflow-hidden bg-neutral-100 font-sans dark:bg-neutral-950">
           {/* Contenedor de lista + hilo central */}
           <div className="flex flex-1 overflow-hidden">
             {/* Columna 2: Lista de conversaciones (conserva su estado y scroll) */}
@@ -87,13 +82,13 @@ export default function BandejaLayout({ children }: { children: React.ReactNode 
             </div>
 
             {/* Columna 3: Hilo del chat o Estado vacío central */}
-            <main
+            <div
               className={`min-w-0 flex-1 flex-col overflow-hidden ${
                 !esDetalleMovil ? 'hidden md:flex' : 'flex'
               }`}
             >
               {children}
-            </main>
+            </div>
           </div>
         </div>
 

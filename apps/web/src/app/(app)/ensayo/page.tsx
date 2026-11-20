@@ -15,7 +15,6 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import { ContadoresBandeja, PaginaDeCotizaciones, PaginaSeguimientos } from '@viajapro/contracts';
-import { BarraModulos } from '../../../components/bandeja/barra-modulos';
 import { obtenerBaseApi } from '../../../lib/api-base';
 import { cabecerasDeTenantDev } from '../../../lib/cabeceras-tenant';
 import { esModoDemo } from '../../../lib/modo-demo';
@@ -144,10 +143,8 @@ export default function EnsayoJornadaPage(): React.JSX.Element {
   const metasCumplidasCount = resultado.indicadores.filter((i) => i.cumplido).length;
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-slate-50 dark:bg-slate-950">
-      <BarraModulos />
-
-      <main className="flex flex-1 flex-col overflow-y-auto pb-16 md:pb-8">
+    <>
+      <div className="flex flex-1 flex-col bg-slate-50 md:pb-8 dark:bg-slate-950">
         {/* Encabezado */}
         <header className="border-b border-slate-200 bg-white px-5 py-6 md:px-8 dark:border-slate-800 dark:bg-slate-900">
           <div className="mx-auto flex max-w-5xl flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -382,7 +379,7 @@ export default function EnsayoJornadaPage(): React.JSX.Element {
             </div>
           </section>
         </div>
-      </main>
-    </div>
+      </div>
+    </>
   );
 }

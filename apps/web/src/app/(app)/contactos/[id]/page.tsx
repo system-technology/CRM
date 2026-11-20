@@ -11,7 +11,6 @@ import {
   type CrearOportunidad,
   type CrearSeguimiento,
 } from '@viajapro/contracts';
-import { BarraModulos } from '../../../../components/bandeja/barra-modulos';
 import { LineaTiempo360 } from '../../../../components/contactos/linea-tiempo-360';
 import { SeccionCamposPersonalizados } from '../../../../components/contactos/seccion-campos-personalizados';
 import {
@@ -228,21 +227,19 @@ export default function Contacto360Page({ params: paramsPromise }: Contacto360Pa
 
   if (cargando) {
     return (
-      <div className="flex h-screen w-screen overflow-hidden bg-neutral-100 text-neutral-900 select-none dark:bg-neutral-950 dark:text-neutral-100">
-        <BarraModulos />
-        <main className="flex flex-1 flex-col space-y-6 overflow-y-auto p-6">
+      <>
+        <div className="flex flex-1 flex-col space-y-6 bg-neutral-100 p-6 text-neutral-900 select-none dark:bg-neutral-950 dark:text-neutral-100">
           <div className="h-8 w-48 animate-pulse rounded-lg bg-neutral-200 dark:bg-neutral-800" />
           <EsqueletoTabla filas={6} />
-        </main>
-      </div>
+        </div>
+      </>
     );
   }
 
   if (error || !ficha) {
     return (
-      <div className="flex h-screen w-screen overflow-hidden bg-neutral-100 text-neutral-900 select-none dark:bg-neutral-950 dark:text-neutral-100">
-        <BarraModulos />
-        <main className="flex flex-1 flex-col items-center justify-center p-6">
+      <>
+        <div className="flex flex-1 flex-col items-center justify-center bg-neutral-100 p-6 text-neutral-900 select-none dark:bg-neutral-950 dark:text-neutral-100">
           <div className="w-full max-w-lg">
             {errorAccionable && (
               <AvisoErrorAccionable
@@ -262,8 +259,8 @@ export default function Contacto360Page({ params: paramsPromise }: Contacto360Pa
               </Link>
             </div>
           </div>
-        </main>
-      </div>
+        </div>
+      </>
     );
   }
 
@@ -283,12 +280,9 @@ export default function Contacto360Page({ params: paramsPromise }: Contacto360Pa
       : '/bandeja';
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-neutral-100 text-neutral-900 select-none dark:bg-neutral-950 dark:text-neutral-100">
-      {/* Barra de Módulos (56px) */}
-      <BarraModulos />
-
+    <>
       {/* Contenido Principal con Scroll */}
-      <main className="flex flex-1 flex-col overflow-y-auto pb-16 md:pb-6">
+      <div className="flex flex-1 flex-col bg-neutral-100 text-neutral-900 select-none md:pb-6 dark:bg-neutral-950 dark:text-neutral-100">
         {/* Barra superior de navegación */}
         <div className="sticky top-0 z-20 flex items-center justify-between border-b border-neutral-200 bg-white/95 px-6 py-3.5 backdrop-blur-xs dark:border-neutral-800 dark:bg-neutral-900/95">
           <Link
@@ -850,7 +844,7 @@ export default function Contacto360Page({ params: paramsPromise }: Contacto360Pa
             </section>
           )}
         </div>
-      </main>
+      </div>
 
       {/* Modales */}
       {modalEditarAbierto && (
@@ -878,6 +872,6 @@ export default function Contacto360Page({ params: paramsPromise }: Contacto360Pa
           onCrear={handleCrearSeguimiento}
         />
       )}
-    </div>
+    </>
   );
 }

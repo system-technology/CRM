@@ -30,7 +30,6 @@ import type {
   ContactoDeLista,
 } from '@viajapro/contracts';
 import { formatearDinero } from '../../../lib/api';
-import { BarraModulos } from '../../../components/bandeja/barra-modulos';
 import { DistintivoDatosDemo } from '../../../components/comun/distintivo-datos-demo';
 import { AvisoConfiguracionTenant } from '../../../components/crm/aviso-configuracion-tenant';
 import { formatearErrorAmigable } from '../../../lib/estados-ui-logica';
@@ -493,10 +492,8 @@ function ContenidoCotizador() {
   }, [cotizacionReal, cotizacionMock]);
 
   return (
-    <div className="flex h-screen w-full bg-neutral-50 dark:bg-neutral-950">
-      <BarraModulos />
-
-      <main className="min-w-0 flex-1 overflow-y-auto pb-24 md:pb-0">
+    <>
+      <div className="min-w-0 flex-1 bg-neutral-50 dark:bg-neutral-950">
         <div className="mx-auto max-w-7xl min-w-0 space-y-6 p-3.5 pb-28 sm:p-6 md:pb-8 lg:p-8">
           {/* Cabecera de Página */}
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -1183,8 +1180,8 @@ function ContenidoCotizador() {
           infantes={infantes}
           totalEstimadoFormateado={totalEstimadoTexto}
         />
-      </main>
-    </div>
+      </div>
+    </>
   );
 }
 
@@ -1192,7 +1189,7 @@ export default function Cotizador() {
   return (
     <Suspense
       fallback={
-        <div className="flex h-screen w-full items-center justify-center bg-neutral-50 p-6 select-none dark:bg-neutral-950">
+        <div className="flex w-full flex-1 items-center justify-center bg-neutral-50 p-6 select-none dark:bg-neutral-950">
           <div className="h-full w-full max-w-5xl animate-pulse rounded-2xl border border-neutral-200 bg-white p-8 shadow-2xs dark:border-neutral-800 dark:bg-neutral-900">
             <div className="h-6 w-48 rounded bg-neutral-200 dark:bg-neutral-700" />
             <div className="mt-4 h-4 w-96 rounded bg-neutral-100 dark:bg-neutral-800" />

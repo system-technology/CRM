@@ -119,7 +119,7 @@ export default function SeguimientosPage() {
   }, [seguimientos, categoriaActiva, busqueda, asesorSeleccionado]);
 
   return (
-    <div className="mx-auto min-h-screen max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
+    <div className="mx-auto w-full max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
       {/* Cabecera / Hero */}
       <header className="flex flex-col gap-4 border-b border-neutral-200 pb-5 sm:flex-row sm:items-center sm:justify-between dark:border-neutral-800">
         <div>
@@ -424,7 +424,7 @@ export default function SeguimientosPage() {
       </section>
 
       {/* Lista de Seguimientos o Estados */}
-      <main aria-label="Lista de seguimientos" className="space-y-3">
+      <section aria-label="Lista de seguimientos" className="space-y-3">
         {cargando ? (
           <div data-testid="esqueleto-seguimientos" className="space-y-3">
             {[1, 2, 3, 4].map((i) => (
@@ -485,7 +485,7 @@ export default function SeguimientosPage() {
             ))}
           </div>
         )}
-      </main>
+      </section>
 
       {/* Modal para agendar nuevo seguimiento */}
       {modalCrearAbierto && (

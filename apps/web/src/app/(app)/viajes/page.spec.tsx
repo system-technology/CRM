@@ -15,7 +15,6 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn(), replace, prefetch: vi.fn() }),
   useSearchParams: () => new URLSearchParams(busqueda),
 }));
-vi.mock('../../../components/bandeja/barra-modulos', () => ({ BarraModulos: () => null }));
 vi.mock('../../../lib/archivos-api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../../lib/archivos-api')>();
   return {

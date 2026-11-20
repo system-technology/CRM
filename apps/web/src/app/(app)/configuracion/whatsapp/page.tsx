@@ -3,15 +3,12 @@
 import React from 'react';
 import Link from 'next/link';
 import { ChevronLeft, MessageSquare, Sparkles } from 'lucide-react';
-import { BarraModulos } from '../../../../components/bandeja/barra-modulos';
 import { BloqueConexionWhatsapp } from '../../../../components/configuracion/bloque-conexion-whatsapp';
 
 export default function ConfiguracionWhatsappPage() {
   return (
-    <div className="flex h-screen w-full bg-neutral-50 text-neutral-900 antialiased dark:bg-neutral-950 dark:text-neutral-100">
-      <BarraModulos />
-
-      <main className="flex flex-1 flex-col overflow-y-auto pb-14 md:pb-0">
+    <>
+      <div className="flex flex-1 flex-col bg-neutral-50 text-neutral-900 antialiased dark:bg-neutral-950 dark:text-neutral-100">
         {/* Cabecera Principal */}
         <header className="border-b border-neutral-200 bg-white px-6 py-4 dark:border-neutral-800 dark:bg-neutral-900">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -65,7 +62,7 @@ export default function ConfiguracionWhatsappPage() {
         <div className="flex-1 p-6">
           <BloqueConexionWhatsapp />
         </div>
-      </main>
-    </div>
+      </div>
+    </>
   );
 }
