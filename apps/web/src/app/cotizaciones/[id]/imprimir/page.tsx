@@ -63,6 +63,7 @@ import {
   ETIQUETA_PLAN,
   etiquetaDeTramo,
   referenciaDePropuesta,
+  rntImprimible,
   sumarDias,
   textoDuracion,
   textoViajeros,
@@ -82,7 +83,10 @@ interface DatosAgenciaImpresion {
   telefono?: string;
 }
 
-/** El mock de maqueta solo se usa con la API simulada; con la API real, solo el nombre de ajustes. */
+/**
+ * El mock de maqueta solo se usa con la API simulada (su RNT cuenta como verificado, igual que en
+ * `agencia-api`). Con la API real, solo el nombre de ajustes y el RNT si la plataforma lo verificó.
+ */
 function datosAgenciaMaqueta(): DatosAgenciaImpresion {
   return {
     nombre: MOCK_CONFIGURACION_AGENCIA.nombreComercial,
@@ -226,7 +230,10 @@ export default function PaginaImprimirCotizacion({
     if (!estaUsandoApiReal()) return;
     const control = new AbortController();
     void obtenerAjustesAgenciaApi(control.signal).then((ajustes) => {
-      if (ajustes) setAgencia({ nombre: ajustes.nombre });
+      if (ajustes) {
+        const rnt = rntImprimible(ajustes);
+        setAgencia({ nombre: ajustes.nombre, ...(rnt ? { rnt } : {}) });
+      }
     });
     return () => control.abort();
   }, []);

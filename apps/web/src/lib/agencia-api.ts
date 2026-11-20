@@ -1,6 +1,6 @@
 import {
   AjustesDeAgencia,
-  ActualizarAjustesDeAgencia,
+  CambiarAjustesDeAgencia,
   ErrorApi as EsquemaErrorApi,
 } from '@viajapro/contracts';
 import { obtenerBaseApi } from './api-base';
@@ -48,7 +48,22 @@ let ajustesMock: AjustesDeAgencia = {
   paisIso: 'CO',
   monedaIso: MOCK_CONFIGURACION_AGENCIA.monedaBase,
   zonaHoraria: MOCK_CONFIGURACION_AGENCIA.zonaHoraria,
+  // La agencia de la demo ya tiene su RNT verificado, como la propuesta de demostración.
+  rnt: MOCK_CONFIGURACION_AGENCIA.rnt ?? null,
+  rntVerificado: MOCK_CONFIGURACION_AGENCIA.rnt !== undefined,
 };
+
+/** Solo para pruebas: devuelve la maqueta a su estado inicial. */
+export function reiniciarAjustesMock(): void {
+  ajustesMock = {
+    nombre: MOCK_CONFIGURACION_AGENCIA.nombreComercial,
+    paisIso: 'CO',
+    monedaIso: MOCK_CONFIGURACION_AGENCIA.monedaBase,
+    zonaHoraria: MOCK_CONFIGURACION_AGENCIA.zonaHoraria,
+    rnt: MOCK_CONFIGURACION_AGENCIA.rnt ?? null,
+    rntVerificado: MOCK_CONFIGURACION_AGENCIA.rnt !== undefined,
+  };
+}
 
 async function pedirAjustes(init: RequestInit): Promise<AjustesDeAgencia> {
   let res: Response;
@@ -93,9 +108,30 @@ export async function obtenerAjustesDeAgencia(): Promise<AjustesDeAgencia> {
  * 422 `ZONA_HORARIA_INVALIDA` si la zona no existe; 403 sin permiso.
  */
 export async function actualizarZonaHorariaApi(zonaHoraria: string): Promise<AjustesDeAgencia> {
-  const cuerpo = ActualizarAjustesDeAgencia.parse({ zonaHoraria });
+  const cuerpo = CambiarAjustesDeAgencia.parse({ zonaHoraria });
   if (!estaUsandoApiReal()) {
-    ajustesMock = { ...ajustesMock, zonaHoraria: cuerpo.zonaHoraria };
+    ajustesMock = { ...ajustesMock, zonaHoraria };
+    return { ...ajustesMock };
+  }
+  return pedirAjustes({ method: 'PATCH', body: JSON.stringify(cuerpo) });
+}
+
+/**
+ * `PATCH /api/v1/agencia/ajustes` con `{ rnt }` (permiso `usuarios.administrar`). `null` borra el
+ * RNT. Cambiar el RNT lo deja sin verificar: la verificación nunca la fija quien escribe, solo la
+ * plataforma (ADR-0030), y la API rechaza cualquier cuerpo que lo intente. 400 si el RNT no son
+ * dígitos (1 a 10); 403 sin permiso.
+ */
+export async function actualizarRntApi(rnt: string | null): Promise<AjustesDeAgencia> {
+  const cuerpo = CambiarAjustesDeAgencia.parse({ rnt });
+  if (!estaUsandoApiReal()) {
+    // Igual que el disparador de la base: el mismo RNT conserva la verificación, otro la anula.
+    const conserva = rnt !== null && rnt === ajustesMock.rnt;
+    ajustesMock = {
+      ...ajustesMock,
+      rnt,
+      rntVerificado: conserva ? ajustesMock.rntVerificado === true : false,
+    };
     return { ...ajustesMock };
   }
   return pedirAjustes({ method: 'PATCH', body: JSON.stringify(cuerpo) });
