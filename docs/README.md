@@ -85,6 +85,7 @@ Toda la documentación del proyecto. Si una decisión no está aquí (o en `ESTA
 | [0028](03-adr/0028-despliegue-neon-vercel-y-render-proceso-unico.md) | Despliegue: Neon, web en Vercel y API en un solo proceso en Render | Aceptado |
 | [0029](03-adr/0029-cupo-propio-por-salida-receptivo.md) | Cupo propio por salida (receptivo) | Propuesto |
 | [0030](03-adr/0030-registro-autoservicio-de-agencias.md) | Registro autoservicio de agencias y prueba gratis | Aceptado |
+| [0032](03-adr/0032-layout-compartido-y-tabla-unica-de-navegacion.md) | Layout compartido `(app)` y tabla única de navegación | Aceptado |
 
 ## 04 · Integraciones
 
@@ -153,6 +154,7 @@ Toda la documentación del proyecto. Si una decisión no está aquí (o en `ESTA
 | [Ruta de seguridad y privacidad](08-roadmap/05-ruta-de-seguridad-y-privacidad.md) | Ruta de seguridad y privacidad |
 | [Roadmap de reportes](08-roadmap/06-roadmap-de-reportes.md) | Roadmap de reportes |
 | [Roadmap multiidioma](08-roadmap/07-roadmap-multiidioma.md) | Ver ADR-0020 |
+| [Roadmap JD Tours: reservas, cobros y navegación](08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md) | Lo que pidió el cliente piloto, en cinco ejes; la navegación va primero |
 
 ## 09 · Ingeniería asistida por IA
 

@@ -244,7 +244,7 @@ confiar en el navegador.
 |---|---|
 | El número ya está en otra WABA | Mensaje claro: debe migrarlo o usar otro. Es la causa más común de fricción |
 | El negocio de la agencia no está verificado en Meta | Explicar el trámite y sus tiempos. No podemos hacerlo por ellos |
-| El número está en uso en la app de WhatsApp Business | Debe desvincularlo primero. Advertirlo **antes** de empezar |
+| El número está en uso en la app de WhatsApp Business | Sin coexistencia, migrarlo a la API lo saca de la app y pierde su historial: advertirlo **antes** de empezar. Con el modo **coexistencia** conserva la app en el celular, pero exige ser Tech Provider y trae límites y un tema de privacidad (todo chat individual del número entra al CRM). **Sin verificar con fuentes primarias de Meta**: ver [`_investigacion/2026-11-20-coexistencia-whatsapp-business-app.md`](../_investigacion/2026-11-20-coexistencia-whatsapp-business-app.md) |
 | El `code` expira antes de llegar al backend | Reintentar el flujo completo. Un code caducado no se recupera |
 | El número que devuelve Meta ya está registrado para otro tenant | Rechazar el alta **y emitir evento de seguridad** (§2.3). Al usuario, un mensaje neutro: nunca confirmarle si ese número está o no en la plataforma |
 | Registro fallido por el PIN (`133005`) | Reintento con PIN nuevo, guiando paso a paso. Ojo con `133008`/`133009`: hay throttling de intentos |

@@ -3492,6 +3492,8 @@ tasks:
     source: roadmap de reportes 2026-11-04 (docs/08-roadmap/06-roadmap-de-reportes.md)
     created_at: 2026-11-05T01:14:46.634Z
     owner: datos
+    notes: "Absorbida por T-341 (roadmap JD Tours, Eje F: reportes por niveles de acceso): el permiso y su sembrado se hacen allí tras el ADR T-340."
+
   - id: T-142
     title: "Web /reportes sobre GET /api/v1/reportes/resumen: instantes UTC, ventasPorMoneda por moneda y fuera el
       calculo desde el tablero"
@@ -6005,7 +6007,7 @@ tasks:
     phase: 2
     priority: P1
     effort: M
-    status: ready
+    status: done
     human_required: true
     depends_on: []
     acceptance:
@@ -6058,6 +6060,9 @@ tasks:
     source: arquitecto:ADR-0030 §3 (2026-11-20)
     created_at: 2026-11-20T23:00:00.000Z
     owner: datos
+    done_at: 2026-11-20T17:00:00.000Z
+    evidence: "Integrada en main por el PR #323 (0f3a707) con los 15 checks en verde: la migración 20261120140000 aplicó en Postgres 16 y aislamiento.spec.ts pasó 158/158 (bloque R-1 a R-10). Dos pasadas de auditoría de seguridad sin fugas entre agencias; bloqueantes B1 (orden del literal), B2 (perfiles_de_agencia ya creada por T-261) y B3 (tipos sin calificar contra pg_temp) corregidos. Cola: T-306, T-308 a T-312."
+
   - id: T-269
     title: "Siembra: la política de precio por defecto entra en siembra-de-tenant.ts (un solo sitio decide qué
       trae una agencia nueva)"
@@ -6635,6 +6640,8 @@ tasks:
     source: T-282 (la cotización y el file no traen la conversación y el archivo no expone lo pagado)
     created_at: 2026-11-20T22:00:00.000Z
     owner: backend
+    notes: "La mitad de abonos y saldo del cliente pasa a T-330 (roadmap JD Tours); aquí queda conversacionId y lo que no cubra T-330."
+
   - id: T-300
     title: Tope diario de fallos de verificación del código de un solo uso (OTP) por correo
     type: security
@@ -6755,6 +6762,99 @@ tasks:
     created_at: 2026-11-20T15:30:00.000Z
     owner: documentador
   - id: T-306
+    title: "Calificar los tipos de las otras funciones SECURITY DEFINER y de los disparadores contra pg_temp, y revocar TEMPORARY a quien no lo necesite"
+    type: security
+    phase: 1
+    priority: P2
+    effort: M
+    status: ready
+    depends_on: []
+    acceptance:
+      - "Todas las funciones SECURITY DEFINER y los disparadores con search_path vacío califican sus tipos (pg_catalog.text, pg_catalog.uuid…)"
+      - "Una aserción de migración o de prueba rechaza tipos sin calificar en prosrc"
+      - "Se evalúa REVOKE TEMPORARY ON DATABASE FROM PUBLIC (las migraciones y la aserción 23 usan pg_temp.uuid_v7())"
+      - "ADR-0008 §1.4 recoge el patrón"
+    source: auditoría de seguridad de T-268 (2026-11-20)
+    created_at: 2026-11-20T16:40:00.000Z
+    owner: datos
+    notes: "Auditoría de T-268 (2026-11-20), hallazgo B3 corregido solo en crear_agencia y codigo_de_acceso_vigente; el mismo patrón vive en las otras 15 funciones. Impacto menor: sus dueños no ganan nada que viajapro_app no tenga ya. Segunda pasada: la aserción de prosrc de T-268 solo revisa el primer DECLARE (un subbloque anidado escaparía) y su lista de literales con tipo delante no cubre float8, real, regclass ni timestamp with time zone; R-10 solo suplanta text. Hoy ninguno existe en el código; ampliar al generalizar el patrón."
+  - id: T-312
+    title: "Tope por hora de altas atómico en crear_agencia"
+    type: security
+    phase: 1
+    priority: P3
+    effort: S
+    status: ready
+    depends_on: []
+    acceptance:
+      - "crear_agencia toma pg_advisory_xact_lock(7410102, 0) o SELECT ... FOR UPDATE sobre parametros_del_registro antes de contar"
+      - "Una prueba con N altas simultáneas de identidades distintas no supera el tope"
+    source: auditoría de seguridad de T-268 (2026-11-20)
+    created_at: 2026-11-20T16:40:00.000Z
+    owner: datos
+    notes: "Auditoría de T-268, cola 1. Hoy el exceso no puede pasar del número de códigos de acceso válidos en circulación; es obligatorio antes de abrir el registro sin código (depende de T-281)."
+  - id: T-308
+    title: "Verificar createrole_self_grant en una rama de Neon antes del primer despliegue de la migración del registro"
+    type: infra
+    phase: 1
+    priority: P2
+    effort: S
+    status: ready
+    depends_on: []
+    acceptance:
+      - "SHOW createrole_self_grant en una rama de Neon staging, resultado en la bitácora"
+      - "Si incluye inherit, la comprobación de inherit_option del rol de migraciones en 20261120140000 se ajusta con una migración nueva, no editando la aplicada"
+    source: auditoría de seguridad de T-268 (2026-11-20)
+    created_at: 2026-11-20T16:40:00.000Z
+    owner: devops
+    notes: "Auditoría de T-268, cola 2. En CI migra un superusuario y pasa; en Neon el rol de migraciones no lo es."
+  - id: T-309
+    title: "Decidir el cifrado del NIT de perfiles_de_agencia y ampliar el alcance de ADR-0015"
+    type: security
+    phase: 1
+    priority: P2
+    effort: S
+    status: ready
+    depends_on: []
+    acceptance:
+      - "Decisión escrita: NIT en claro bajo RLS o cifrado (R10), con quién lo lee"
+      - "Si se cifra, columna y migración nuevas; si no, la tabla de alcance de ADR-0015 lo declara"
+      - "Decidido antes de que T-271 salga a producción"
+    source: auditoría de seguridad de T-268 (2026-11-20)
+    created_at: 2026-11-20T16:40:00.000Z
+    owner: arquitecto
+    notes: "Auditoría de T-268, cola 3, y tensión con la cabecera de la migración 20261120130000, que dice que el NIT pide decidir primero su cifrado. Es el NIT de una persona natural cuando la agencia lo es."
+  - id: T-310
+    title: "Reservar el prefijo fixture- para slugs y robustecer la limpieza de las pruebas del registro"
+    type: bug
+    phase: 1
+    priority: P3
+    effort: S
+    status: ready
+    depends_on: []
+    acceptance:
+      - "crear_agencia rechaza slugs que empiezan por fixture-"
+      - "limpiar-fixtures.mjs barre también las agencias, identidades y códigos de las pruebas del registro si el afterAll murió"
+    source: auditoría de seguridad de T-268 (2026-11-20)
+    created_at: 2026-11-20T16:40:00.000Z
+    owner: qa
+    notes: "Auditoría de T-268, cola 4 (junto con T-291)."
+  - id: T-311
+    title: "Alinear ADR-0030 §3.3 con el disparador de verificado_en que quedó implementado"
+    type: docs
+    phase: 1
+    priority: P3
+    effort: S
+    status: ready
+    depends_on: []
+    acceptance:
+      - "El ADR dice que la verificación se conserva si la aplicación no cambia NIT, dígito de verificación ni RNT, y se anula si cambia alguno (semántica de T-261)"
+      - "Se registra que razon_social no anula la verificación y la decisión sobre si debería"
+    source: auditoría de seguridad de T-268 (2026-11-20)
+    created_at: 2026-11-20T16:40:00.000Z
+    owner: documentador
+    notes: "Auditoría de T-268, cola 6. Un ADR no se edita, se supersede o se anota: seguir lo que el propio ADR-0030 diga sobre sus enmiendas."
+
     title: "Retirar ActualizarAjustesDeAgencia del contrato (la web y la API ya usan CambiarAjustesDeAgencia)"
     type: refactor
     phase: 1
@@ -6790,3 +6890,522 @@ tasks:
     source: auditoría de seguridad de T-261 (cola, 2026-11-20); scripts/ y migraciones piden al propietario (R11)
     created_at: 2026-11-21T00:10:00.000Z
     owner: datos
+  - id: T-313
+    title: 'N0: flujos críticos y personas, y validar el menú por tarea del día'
+    type: docs
+    phase: 1
+    priority: P0
+    effort: M
+    status: done
+    depends_on: []
+    acceptance:
+      - "04-flujos-criticos.md y 03-personas.md escritos (hoy son marcadores vacíos): al menos primer contacto → cotización → archivo → cobro, la asesora y la dueña"
+      - "El dueno-de-producto valida el menú de la auditoría de navegación §4.1 y decide si «Hoy» es el destino tras ingresar y si el cotizador deja de ser módulo"
+    source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md (2026-11-20)
+    created_at: 2026-11-20T19:00:00.000Z
+    owner: analista-producto
+    done_at: 2026-11-20T19:20:00.000Z
+    evidence: "Integrada en main: #334 (2c9c4e8, flujos críticos y personas) con el CI en verde. Las decisiones D1 a D4 las confirmó el propietario; D3 fue reemplazada por los niveles de acceso a reportes (#339, b9afca2) y D4 resuelta con «Cotizar» en la barra móvil (#342). Cola: la tabla «Nombres en la interfaz» de 02-lenguaje-ubicuo.md aún llama «Reservas» al módulo de TravelFile."
+
+  - id: T-314
+    title: ADR del layout compartido (app) y de la tabla única de navegación
+
+    type: docs
+    phase: 1
+    priority: P0
+    effort: S
+    status: done
+    depends_on: []
+    acceptance:
+      - "Decide si el grupo de rutas (app) exige ADR o basta actualizar docs/02-arquitectura/08-frontend.md y CLAUDE.md §5 (hoy dice «plano, sin (dashboard)/»)"
+      - "Las URL no cambian; queda escrito qué lee cada pieza de la tabla de navegación (menú, barra móvil, paleta, migas, título)"
+    source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md (2026-11-20)
+    created_at: 2026-11-20T19:00:00.000Z
+    owner: arquitecto
+    done_at: 2026-11-20T19:20:00.000Z
+    evidence: "Integrada en main por el PR #333 (f43e041) con los 14 checks en verde, aprobada por el propietario; ADR-0032 aceptado en #341 (f5061ce). Auditoría de seguridad de una pasada: sin hueco de autenticación ni aislamiento; el bloqueante B1 (ciclo de GuardaSesion contradecía «el marco se monta una vez») se corrigió en el texto. Cola: prueba de inventario con route.ts y segmentos especiales, no usar cookies()/headers() bajo (app), recarga al cambiar de agencia, NEXT_PUBLIC_USE_REAL_AUTH en el despliegue."
+
+  - id: T-315
+    title: 'N1: layout compartido (app); fuera las 12 importaciones de BarraModulos'
+    type: feature
+    phase: 1
+    priority: P0
+    effort: M
+    status: done
+    depends_on: [T-314]
+    acceptance:
+      - "Ninguna ruta privada pinta su propia barra; /seguimientos gana barra lateral; altura uniforme; ítem activo por prefijo con aria-current"
+      - "e2e: en cada ruta privada hay barra lateral a 1440 y barra inferior a 390; spec unitaria de ruta → módulo activo"
+    source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md (2026-11-20)
+    created_at: 2026-11-20T19:00:00.000Z
+    owner: frontend
+    done_at: 2026-11-20T19:20:00.000Z
+    evidence: "Integrada en main por el PR #340 (6173f8f) con los 14 checks en verde (incluido el job navegador). Un primer e2e sobre rutas pesadas falló por el límite de 300 peticiones por minuto por IP de la API del CI y se acotó a rutas ligeras. Pendiente aparte: el cambio de ciclo de GuardaSesion (hoy el marco aún se remonta al navegar) con auditor-seguridad; verificación a mano de /bandeja/[id] y /viajes?id= en móvil y el desborde de /configuracion a 563 px."
+
+  - id: T-316
+    title: 'N2: tabla única de navegación y nombres del lenguaje ubicuo en menú, H1, barra móvil, paleta y título'
+    type: feature
+    phase: 1
+    priority: P0
+    effort: M
+    status: backlog
+    depends_on: [T-315]
+    acceptance:
+      - "lib/navegacion.ts con id, etiqueta, ruta, icono, grupo, permiso y prefijos activos; todo lo demás lee de ella"
+      - "«Archivos de viaje» en lugar de «Reservas»; spec: etiqueta del menú = comando de la paleta = H1; e2e: page.title() por ruta"
+    source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md (2026-11-20)
+    created_at: 2026-11-20T19:00:00.000Z
+    owner: frontend
+  - id: T-317
+    title: 'N3: «Hoy», Cotizaciones y Seguimientos en el menú y la paleta; destino tras ingresar'
+    type: feature
+    phase: 1
+    priority: P0
+    effort: M
+    status: backlog
+    depends_on: [T-316, T-313]
+    acceptance:
+      - "Desde / se llega a Seguimientos y a Cotizaciones en un clic; «Hoy» con contador visible desde cualquier pantalla"
+      - "Destino por defecto tras ingresar según T-313, con spec de formulario-ingreso"
+    source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md (2026-11-20)
+    created_at: 2026-11-20T19:00:00.000Z
+    owner: frontend
+  - id: T-318
+    title: 'N5: la URL como estado (Atrás vuelve; ?id en Catálogo, ?op en Pipeline, ?pestana= en Configuración y ficha)'
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on: [T-315]
+    acceptance:
+      - "e2e: elegir un archivo, luego otro, y Atrás vuelve al primero; /catalogo?id=X abre el paquete X"
+      - "Las pestañas de Configuración y de la ficha quedan en la URL"
+    source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md (2026-11-20)
+    created_at: 2026-11-20T19:00:00.000Z
+    owner: frontend
+  - id: T-319
+    title: 'N6: la paleta busca en la misma fuente que cada pantalla y tiene comando para todo módulo'
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on: [T-316]
+    acceptance:
+      - "Buscar un id devuelve algo que la pantalla resuelve; «cotizaciones» y «seguimientos» devuelven su módulo"
+      - "Spec de buscador-global-logica y e2e de la paleta"
+    source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md (2026-11-20)
+    created_at: 2026-11-20T19:00:00.000Z
+    owner: frontend
+  - id: T-320
+    title: 'N4: móvil con barra inferior de 5 y hoja «Más»'
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on: [T-316]
+    acceptance:
+      - "CRÍTICA para el piloto (el asesor y el dueño trabajan todo el flujo desde el celular). Decisión del propietario (2026-11-20, variante B de diseno-ux): barra inferior Hoy · Conversaciones · Cotizar · Archivos de viaje · Más, con una LUPA FIJA en la cabecera de cada pantalla que abre la búsqueda (Buscar no ocupa pestaña)"
+      - "La lupa va en el marco compartido, montada una sola vez, y abre la misma búsqueda o paleta que ya existe (N6 la alinea con cada pantalla); «Más» abre una hoja con el resto de módulos y la campana; todo módulo a dos toques como máximo"
+      - "Objetivos táctiles de al menos 44 px en la barra, la lupa y la hoja «Más»; etiquetas de 11–12 px como mínimo (hoy 9 px); contraste AA; foco visible; contadores en «Hoy» (vencimientos) y «Conversaciones» (no leídos)"
+      - "La conversación sigue a pantalla completa, con flecha de volver también en el error de la conversación; la tabla de navegación sabe qué ítems van en la barra (movil: 'barra')"
+      - "e2e a 390 px: cada módulo en dos toques o menos; /bandeja/inexistente tiene salida; capturas a 390 y 1440 px en el PR; si algo la hace inviable, se reporta"
+    source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md (2026-11-20)
+    created_at: 2026-11-20T19:00:00.000Z
+    owner: frontend
+  - id: T-321
+    title: 'N7: contexto en el cotizador (para quién y desde qué chat) y un solo total'
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on: [T-316]
+    acceptance:
+      - "«Cotizando para …· desde la conversación» con volver al chat; tras guardar, la acción principal es «Enviar por WhatsApp»"
+      - "El total del cotizador es el de la versión guardada (la auditoría vio 10.800.000 frente a 8.330.000; investigar si es un error de precio, R8)"
+      - "CRÍTICA para el piloto: una cotización COMPLETA se hace a 390 px sin desplazamiento lateral (paquete, fecha, ocupación, total, guardar, enviar por WhatsApp y volver al chat); capturas del cotizador actual a 390 px con lo que se rompa"
+      - "Revisión a 390 px del 2026-11-20 (diseno-ux, modo demo, capturas): a 390 px se cotiza completo sin scroll lateral de la página, pero el criterio falla por lo siguiente"
+      - "(a) El total de la cotización guardada es el del cotizador. El 10.800.000 frente a 8.330.000 viene del guardado SIMULADO de modo demo (apps/web/src/lib/cotizaciones-api.ts:154-155: precio unitario fijo 2.450.000 y niño al 70 %); no es un error de precio real, pero es una demo que miente: hacerla coherente. Un e2e en modo REAL cuando exista la API real. La ficha del chat muestra además una tercera cifra (12.500.000)"
+      - "(b) La acción principal tras guardar es «Enviar en esta conversación» por el canal (la misma vía del botón del compositor) con aterrizaje en el chat (unos 5 toques en vez de 7); «Enviar por WhatsApp» del detalle deja de abrir api.whatsapp.com/send y marcar ENVIADA sin rastro (ver T-347)"
+      - "(c) La tabla del desglose no corta el total («10.800.» a 390 px)"
+      - "(d) Objetivos táctiles de al menos 44 px, incluidos «Ver plantillas» (69×15), «Abrir conversación» (143×36) y los campos y cerrar de los modales"
+      - "(e) Las etiquetas de la barra de 9 px y los textos de 10–11 px pasan a un tamaño legible; el total y «Guardar» a la vista al ajustar la ocupación"
+    source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md (2026-11-20)
+    created_at: 2026-11-20T19:00:00.000Z
+    owner: frontend
+  - id: T-322
+    title: 'N8: la campana cuenta lo que suman sus pestañas; el error de sesión ofrece «Ir a ingresar»'
+    type: feature
+    phase: 1
+    priority: P1
+    effort: S
+    status: backlog
+    depends_on: [T-315]
+    acceptance:
+      - "La campana y la suma de sus pestañas coinciden y sus avisos apuntan a archivos que existen"
+      - "Con la API caída, cualquier ruta incluida la 404 ofrece una salida; revisión de auditor-seguridad sobre la guardia"
+    source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md (2026-11-20)
+    created_at: 2026-11-20T19:00:00.000Z
+    owner: frontend
+  - id: T-323
+    title: 'B0: diseño y alcance de las etiquetas de la agencia en la bandeja'
+    type: docs
+    phase: 1
+    priority: P1
+    effort: S
+    status: ready
+    depends_on: []
+    acceptance:
+      - "Decide a qué se asignan (conversación, archivo o ambos), colores, sembrado de «Pagado», «Pago pendiente» y «Seguimiento», y la relación con Contacto.etiquetas"
+      - "Qué pasa si la agencia conecta su número por coexistencia (las etiquetas de WhatsApp Business: ver T-337)"
+    source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md (2026-11-20)
+    created_at: 2026-11-20T19:00:00.000Z
+    owner: analista-producto
+  - id: T-324
+    title: 'B1: migración de etiquetas por agencia y su asignación (RLS, R1)'
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on: [T-323]
+    acceptance:
+      - "Tabla por agencia con color (R12, no enum), asignación a lo que decida T-323, RLS con USING y WITH CHECK, sembrado por defecto"
+      - "Casos nuevos en aislamiento.spec.ts: una agencia no ve ni asigna las etiquetas de otra"
+    source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md (2026-11-20)
+    created_at: 2026-11-20T19:00:00.000Z
+    owner: datos
+  - id: T-325
+    title: 'B2: API de etiquetas (gestionar, asignar, filtrar)'
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on: [T-324]
+    acceptance:
+      - "Gestión de etiquetas por la agencia y asignación con un clic; la bandeja filtra por etiqueta respetando la visibilidad por asesor"
+      - "e2e con sesiones reales, incluido el permiso y la otra agencia"
+    source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md (2026-11-20)
+    created_at: 2026-11-20T19:00:00.000Z
+    owner: backend
+  - id: T-326
+    title: 'B3: chips con color en la bandeja, un clic y filtro por etiqueta'
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on: [T-325, T-315]
+    acceptance:
+      - "Se ve, se pone y se quita desde el chat; se filtra la bandeja; colores con contraste suficiente y texto además de color"
+      - "e2e: etiquetar una conversación y filtrar"
+      - "Móvil: poner, quitar y filtrar etiquetas a 390 px con el pulgar (zonas táctiles de al menos 44 px), sin desplazamiento lateral"
+    source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md (2026-11-20)
+    created_at: 2026-11-20T19:00:00.000Z
+    owner: frontend
+  - id: T-327
+    title: 'C0: historia de usuario y alcance mínimo de los cobros del viajero; preguntas al dueño'
+    type: docs
+    phase: 1
+    priority: P0
+    effort: S
+    status: done
+    depends_on: []
+    acceptance:
+      - "Historia, criterios de aceptación y alcance mínimo (registro manual, saldo, vista «quién pagó y quién debe»), con experto-turismo"
+      - "Las preguntas del roadmap §4 respondidas por el dueño o dejadas como supuestos explícitos"
+    source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md (2026-11-20)
+    created_at: 2026-11-20T19:00:00.000Z
+    owner: analista-producto
+    done_at: 2026-11-20T19:20:00.000Z
+    evidence: "Integrada en main: #335 (546c59e, HU-payments-1 con supuestos explícitos por cada pregunta al dueño de JD Tours) con el CI en verde. Para T-328: leer «Registrar abono» de T-283 como «Registrar pago» y llevar Reverso, Devolución, Fecha límite de cobro y Estado de cobro al lenguaje ubicuo."
+
+  - id: T-328
+    title: 'C1: ADR del contexto de pagos del viajero (MVP de registro manual)'
+    type: docs
+    phase: 1
+    priority: P0
+    effort: M
+    status: backlog
+    depends_on: [T-327]
+    acceptance:
+      - "Define el contexto payments mínimo: pago, saldo, estados de cobro, R8 (unidad mínima), R5 (idempotencia), permiso propio, historial inmutable, relación con el archivo de viaje y con la TRM"
+      - "Deja fuera la pasarela de pagos y los recordatorios por WhatsApp, con el porqué"
+    source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md (2026-11-20)
+    created_at: 2026-11-20T19:00:00.000Z
+    owner: arquitecto
+  - id: T-329
+    title: 'C2: migración de pagos del viajero (insert-only, historial inmutable, RLS) y su permiso'
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on: [T-328]
+    acceptance:
+      - "Tabla con tenant_id y RLS; sin UPDATE ni DELETE para los roles de aplicación; permiso nuevo sembrado por rol"
+      - "aislamiento.spec.ts ampliado y auditoría de seguridad sin recortar vueltas (R13)"
+    source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md (2026-11-20)
+    created_at: 2026-11-20T19:00:00.000Z
+    owner: datos
+  - id: T-330
+    title: 'C3: API para registrar un pago y leer el saldo del archivo (idempotente)'
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on: [T-329]
+    acceptance:
+      - "Registrar un pago es idempotente; el saldo (total aceptado menos pagos) se calcula en el servidor en la unidad mínima; el neto sigue protegido por cotizacion.ver_neto_y_margen"
+      - "Absorbe la mitad «abonos y saldo» de T-283; la mitad de conversacionId de T-283 se queda allí"
+    source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md (2026-11-20)
+    created_at: 2026-11-20T19:00:00.000Z
+    owner: backend
+  - id: T-331
+    title: 'C4: registrar un pago y ver el saldo en el archivo de viaje'
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on: [T-330, T-316]
+    acceptance:
+      - "En el archivo: total, pagado, saldo e historial de pagos; registrar un pago con moneda, fecha y medio"
+      - "El verbo del botón y el de su confirmación coinciden; estados vacío, error y sin permiso cubiertos"
+      - "Móvil: registrar un pago y ver el saldo del archivo a 390 px, sin desplazamiento lateral"
+    source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md (2026-11-20)
+    created_at: 2026-11-20T19:00:00.000Z
+    owner: frontend
+  - id: T-332
+    title: 'C5: vista «quién pagó y quién debe» con filtros Al día, Saldo pendiente y Vencido'
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on: [T-331]
+    acceptance:
+      - "Lista de archivos con pasajeros, total, pagado y saldo; filtros por estado de cobro; se llega en dos clics desde cualquier pantalla"
+      - "e2e: registrar un pago cambia el saldo y el filtro"
+    source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md (2026-11-20)
+    created_at: 2026-11-20T19:00:00.000Z
+    owner: frontend
+  - id: T-333
+    title: 'C6: «Hoy» y la campana avisan cobros vencidos; estado de pago visible en la bandeja'
+    type: feature
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    depends_on: [T-332, T-317]
+    acceptance:
+      - "Un cobro vencido aparece en «Hoy» y en la campana una sola vez; la bandeja muestra el estado de pago del archivo de la conversación"
+      - "Aviso al viajero por WhatsApp queda fuera: otra tarea de cola"
+    source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md (2026-11-20)
+    created_at: 2026-11-20T19:00:00.000Z
+    owner: backend
+  - id: T-334
+    title: 'D1: tabla de archivos de viaje con las columnas de la hoja del piloto y filtros'
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on: [T-316, T-327]
+    acceptance:
+      - "Columnas y filtros salen de la hoja real del piloto (muestra sin datos personales); orden y búsqueda"
+      - "Se ve a 1440 y a 390 px; estados vacío y error"
+    source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md (2026-11-20)
+    created_at: 2026-11-20T19:00:00.000Z
+    owner: frontend
+  - id: T-335
+    title: 'D2: exportar los archivos de viaje a CSV'
+    type: feature
+    phase: 1
+    priority: P1
+    effort: S
+    status: backlog
+    depends_on: [T-334]
+    acceptance:
+      - "El CSV trae lo que el usuario ve; sin neto ni margen para quien no tenga cotizacion.ver_neto_y_margen"
+      - "Escapado de celdas contra inyección de fórmulas"
+    source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md (2026-11-20)
+    created_at: 2026-11-20T19:00:00.000Z
+    owner: backend
+  - id: T-336
+    title: 'D3: importar la hoja actual de la agencia piloto (CSV)'
+    type: feature
+    phase: 1
+    priority: P1
+    effort: L
+    status: backlog
+    depends_on: [T-334, T-327]
+    acceptance:
+      - "Vista previa antes de confirmar; no duplica filas al repetir; informa filas rechazadas y por qué; sin datos personales en los logs (R10)"
+      - "Auditoría de seguridad: importa datos de personas dentro de una sola agencia y no cruza agencias"
+    source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md (2026-11-20)
+    created_at: 2026-11-20T19:00:00.000Z
+    owner: backend
+  - id: T-337
+    title: 'E1: verificar la coexistencia de WhatsApp Business con fuentes de Meta y con el número real de JD Tours'
+    type: docs
+    phase: 1
+    priority: P2
+    effort: M
+    status: blocked
+    depends_on: [T-080]
+    acceptance:
+      - "Lectura de las páginas oficiales de Meta: Colombia, requisitos, plazo de apertura de la app, ecos de mensajes, si las etiquetas se sincronizan, exclusión de chats, tarifas"
+      - "Prueba de elegibilidad con el número real (requiere el trámite de Tech Provider)"
+    source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md (2026-11-20)
+    created_at: 2026-11-20T19:00:00.000Z
+    owner: investigador
+  - id: T-338
+    title: 'E2: ADR de coexistencia y del tratamiento de los chats de proveedores (Ley 1581)'
+    type: docs
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    depends_on: [T-337]
+    acceptance:
+      - "Decide coexistencia con aviso de privacidad o un número separado para el CRM; toca ADR-0002"
+      - "Revisión de auditor-seguridad sobre qué datos personales entran al CRM"
+    source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md (2026-11-20)
+    created_at: 2026-11-20T19:00:00.000Z
+    owner: arquitecto
+  - id: T-339
+    title: "F0: qué ve cada nivel (catálogo de reportes por rol), qué va en «Hoy» y qué en Reportes, móvil primero"
+    type: docs
+    phase: 1
+    priority: P1
+    effort: M
+    status: ready
+    depends_on: []
+    acceptance:
+      - "Catálogo de reportes por nivel: asesor (lo suyo) y administrador (toda la agencia y su equipo), apoyado en 06-roadmap-de-reportes.md y T-137 a T-148"
+      - "Qué va en «Hoy» y qué en Reportes; qué consultas, filtros y exportaciones tiene el administrador"
+      - "Móvil primero: qué se ve en 390 px sin desplazamiento lateral y qué se resume; preguntas al dueño de JD Tours en el roadmap §4"
+    source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md, Eje F (decisión del propietario 2026-11-20)
+    created_at: 2026-11-20T21:30:00.000Z
+    owner: analista-datos
+  - id: T-340
+    title: "F1: ADR de los niveles de acceso a reportes (propio, equipo, agencia)"
+    type: docs
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on: [T-339]
+    acceptance:
+      - "Define los niveles y sus permisos, absorbe T-141 y deja claro cómo se impone el alcance en el servidor con la sesión (nunca desde el cliente ni por el menú)"
+      - "Relación con visibilidad de conversaciones por asesor, con cotizacion.ver_neto_y_margen y con las agencias; revisión de auditor-seguridad"
+    source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md, Eje F (decisión del propietario 2026-11-20)
+    created_at: 2026-11-20T21:30:00.000Z
+    owner: arquitecto
+  - id: T-341
+    title: "F2: permisos de reportes en el catálogo de roles y su sembrado (absorbe T-141)"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on: [T-340]
+    acceptance:
+      - "Permisos nuevos en el CHECK del catálogo y sembrados por rol (administrador: todos; asesor: solo lo propio)"
+      - "aislamiento.spec.ts y auditoría de seguridad sin recortar vueltas (R13)"
+    source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md, Eje F (decisión del propietario 2026-11-20)
+    created_at: 2026-11-20T21:30:00.000Z
+    owner: datos
+  - id: T-342
+    title: "F3: alcance propio o de toda la agencia en los endpoints de reportes, impuesto por el servidor"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: L
+    status: backlog
+    depends_on: [T-341]
+    acceptance:
+      - "Para quien solo tiene alcance propio, el servidor fuerza el asesor de la sesión; el parámetro del cliente no lo amplía"
+      - "e2e con dos asesores y dos agencias: un asesor no ve lo del otro ni lo de otra agencia; el margen sigue protegido"
+    source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md, Eje F (decisión del propietario 2026-11-20)
+    created_at: 2026-11-20T21:30:00.000Z
+    owner: backend
+  - id: T-343
+    title: "F4: dashboard del asesor, móvil primero"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: L
+    status: backlog
+    depends_on: [T-342, T-317]
+    acceptance:
+      - "Sus pendientes de atención, cotizaciones abiertas por antigüedad, seguimientos vencidos, cierres del mes y cobros por cobrar, en «Hoy» y en Reportes"
+      - "A 390 px sin desplazamiento lateral; tarjetas en lugar de tablas anchas; estados vacío, cargando y error"
+      - "Móvil primero: el dashboard del asesor se verifica a 390 px y a 1440 px; el celular es el caso principal"
+    source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md, Eje F (decisión del propietario 2026-11-20)
+    created_at: 2026-11-20T21:30:00.000Z
+    owner: frontend
+  - id: T-344
+    title: "F5: dashboard de administración robusto"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: L
+    status: backlog
+    depends_on: [T-342]
+    acceptance:
+      - "Embudo, ventas por moneda, destino y asesor, tiempos de respuesta, cobros y salidas próximas, con comparación entre asesores y periodos"
+      - "Se ve completo en escritorio y degrada con sentido en móvil; el margen solo con su permiso"
+    source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md, Eje F (decisión del propietario 2026-11-20)
+    created_at: 2026-11-20T21:30:00.000Z
+    owner: frontend
+  - id: T-345
+    title: "F6: consultas del administrador (filtros, filtros guardados y exportar)"
+    type: feature
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    depends_on: [T-344]
+    acceptance:
+      - "Filtros por periodo, asesor, moneda y origen; filtros guardados por usuario; exportar a CSV con el escapado contra inyección de fórmulas y sin margen sin permiso"
+    source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md, Eje F (decisión del propietario 2026-11-20)
+    created_at: 2026-11-20T21:30:00.000Z
+    owner: frontend
+  - id: T-346
+    title: "F7: revisión móvil de los dos dashboards y pruebas de permisos entre asesores"
+    type: test
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on: [T-343, T-344]
+    acceptance:
+      - "Capturas a 390 px de ambos dashboards sin desplazamiento lateral y con contraste suficiente"
+      - "e2e: el asesor no ve reportes de la agencia ni de otro asesor; el administrador sí"
+    source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md, Eje F (decisión del propietario 2026-11-20)
+    created_at: 2026-11-20T21:30:00.000Z
+    owner: qa
+  - id: T-347
+    title: '«Enviar por WhatsApp» del detalle de la cotización marca ENVIADA sin enviar nada por el canal'
+    type: bug
+    phase: 1
+    priority: P1
+    effort: S
+    status: backlog
+    depends_on: []
+    acceptance:
+      - "Hoy la acción abre https://api.whatsapp.com/send (otra pestaña, número que no es el de la Cloud API de la agencia) y marca la cotización ENVIADA en el acto, se haya enviado o no; al volver al chat no hay rastro (components/cotizaciones/modal-enviar-whatsapp-cotizacion.tsx:89-94): estado falso"
+      - "La acción pasa por el canal de la agencia (cola idempotente, R5) y deja el mensaje en el hilo; la cotización solo pasa a ENVIADA cuando el envío salió; o se retira la salida a api.whatsapp.com"
+      - "Spec que falle si se marca ENVIADA sin envío por el canal; T-321 lo resuelve o lo retira"
+    files:
+      - apps/web/src/components/cotizaciones/modal-enviar-whatsapp-cotizacion.tsx
+    source: revisión a 390 px del cotizador (diseno-ux, 2026-11-20); la sesión coordinadora lo pide como bug de cola P1
+    created_at: 2026-11-20T22:00:00.000Z
+    owner: frontend

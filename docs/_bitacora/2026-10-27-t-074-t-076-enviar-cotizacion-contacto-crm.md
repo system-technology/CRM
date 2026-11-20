@@ -32,7 +32,7 @@
    - Creado `ModalEditarContacto`: formulario para nombre, teléfono (formato internacional E.164), correo, etiquetas y preferencias.
    - Creado `ModalCrearOportunidad`: formulario para abrir oportunidad en la etapa inicial `NUEVO_LEAD` asociada a la conversación y contacto.
    - Actualizado `FichaCliente`: botón `data-testid="btn-editar-contacto"` y botón `data-testid="btn-crear-oportunidad"` (tanto para abrir nueva oportunidad como para el estado vacío sin oportunidad activa).
-   - Integrado en `apps/web/src/app/bandeja/[id]/page.tsx` para vistas desktop y cajón móvil.
+   - Integrado en `apps/web/src/app/(app)/bandeja/[id]/page.tsx` para vistas desktop y cajón móvil.
 
 ---
 

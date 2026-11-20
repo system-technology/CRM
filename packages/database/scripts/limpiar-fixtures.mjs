@@ -103,12 +103,16 @@ try {
 
   // Las identidades de fixture (ADR-0011) son GLOBALES: no cuelgan de ningún tenant y
   // `borrarTenants` no las ve. Se reconocen por el mismo prefijo en el correo, con la misma
-  // gracia, y solo si ya no tienen ninguna pertenencia (usuarios → identidades es RESTRICT).
+  // gracia, y solo si ya no tienen ninguna pertenencia (usuarios → identidades es RESTRICT), ni
+  // agencias creadas por autoservicio ni aceptaciones (ADR-0030: también RESTRICT). Las que aún
+  // retienen una agencia de fixture se borran en la pasada siguiente, cuando la agencia ya no esté.
   const { rows: identidadesViejas } = await cliente.query(
     `SELECT id FROM identidades i
       WHERE i.correo::text LIKE $1 || '%'
         AND i.creado_en < now() - make_interval(mins => $2::int)
-        AND NOT EXISTS (SELECT 1 FROM usuarios u WHERE u.identidad_id = i.id)`,
+        AND NOT EXISTS (SELECT 1 FROM usuarios u WHERE u.identidad_id = i.id)
+        AND NOT EXISTS (SELECT 1 FROM tenants t WHERE t.creado_por_identidad_id = i.id)
+        AND NOT EXISTS (SELECT 1 FROM aceptaciones_de_identidad a WHERE a.identidad_id = i.id)`,
     [PREFIJO_FIXTURE, MINUTOS_DE_GRACIA],
   );
   if (identidadesViejas.length > 0) {

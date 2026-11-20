@@ -12,6 +12,24 @@
 
 ---
 
+## 2026-11-20 (tarde) — T-268 integrada: base del registro de agencias
+
+**Verificado** (con `gh`)
+- PR #323 integrado (`0f3a707`), 15 checks en verde. La migración `20261120140000` aplicó en Postgres 16 y `aislamiento.spec.ts` pasó 158/158 (bloque R-1 a R-10, incluidas S1 y las altas simultáneas).
+- Auditoría de seguridad en dos pasadas, sin fugas entre agencias. Bloqueantes corregidos: B1 (orden del literal de `excepciones_rls`), B2 (otra sesión había integrado `perfiles_de_agencia`; T-268 pasó a extenderla y reemplazar su disparador) y B3 (tipos sin calificar en `crear_agencia` frente a `pg_temp`, con aserción en la migración y prueba R-10).
+
+**Pendiente**
+- Cola: T-306 (mismo patrón de `pg_temp` en otras 15 funciones y `REVOKE TEMPORARY`), T-308 (`createrole_self_grant` en Neon antes del primer despliegue), T-309 (cifrado del NIT), T-310 (prefijo `fixture-`), T-311 (alinear ADR-0030 §3.3), T-312 (tope por hora atómico).
+- Siguen T-269 y T-273; el registro no abre hasta tener API (T-270) y web.
+- Propietario: pidió revisar la navegación de la web («no me cuadra»); auditoría de navegación en curso, su informe irá a la carpeta de auditorías.
+
+**Trampas nuevas**
+- Dos sesiones pueden crear la misma tabla en migraciones distintas: antes de empezar una migración, `git fetch` y leer las migraciones nuevas de `main`.
+- El orden del literal de `excepciones_rls` es el de `ORDER BY tabla, rol` (`acc` va antes que `ace`).
+- Los ids de tarea también chocan entre sesiones (T-307): comprobar el máximo en `main` antes de numerar.
+
+---
+
 ## 2026-11-20 — Web creíble, registro de agencias decidido, MCP y despliegue en espera, y `docs/` ordenada
 
 **Decisiones del propietario**

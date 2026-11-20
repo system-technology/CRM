@@ -1,7 +1,7 @@
 # Corrección de diseño — Bandeja
 
 Comparación entre `docs/_assets/diseno/01-bandeja.png` (el diseño acordado) y lo construido en
-`apps/web/src/app/bandeja/`. Ordenado por **cuánto cambia la percepción del producto por unidad de
+`apps/web/src/app/(app)/bandeja/`. Ordenado por **cuánto cambia la percepción del producto por unidad de
 trabajo**. Cada tarea es ejecutable sin volver a preguntar.
 
 Dos restricciones que no se negocian:
@@ -41,7 +41,7 @@ la pantalla **se ve como un banco de pruebas, no como un producto**. Un asesor q
 literalmente «Mock Simulador», «Guard R5/UI» y «Prueba R5»: cosas que no significan nada para él y
 que le dicen que el software no está terminado.
 
-En `apps/web/src/app/bandeja/page.tsx`:
+En `apps/web/src/app/(app)/bandeja/page.tsx`:
 
 - Quitar el subtítulo `Monitoreo multi-tenant · Modos: ⚡ Mock Simulador · 390px` (línea ~317).
 - Quitar `ViajaPro WhatsApp Inbox v0.1.0` del pie (línea ~560).
@@ -51,7 +51,7 @@ En `apps/web/src/app/bandeja/page.tsx`:
 - `<SimuladorTiempoReal>` (línea ~539) se monta solo bajo
   `process.env.NEXT_PUBLIC_VIAJAPRO_DEMO === '1'`, nunca por defecto.
 
-En `apps/web/src/app/bandeja/[id]/page.tsx`:
+En `apps/web/src/app/(app)/bandeja/[id]/page.tsx`:
 
 - Quitar la casilla «Simular fallo de envío (Prueba R5)» del redactor (línea ~765). La prueba de
   reintento optimista se cubre en el test, no en la interfaz del asesor.
@@ -71,7 +71,7 @@ contexto, y volver a la bandeja cuesta un clic en «← Volver» más recargar. 
 conversaciones abiertas salta entre ellas cada pocos minutos: ese salto tiene que costar **un clic
 y cero recargas**. Esta es la diferencia entre una herramienta de trabajo y un visor de mensajes.
 
-Crear `apps/web/src/app/bandeja/layout.tsx`:
+Crear `apps/web/src/app/(app)/bandeja/layout.tsx`:
 
 ```
 grid grid-cols-[56px_320px_1fr] xl:grid-cols-[56px_340px_1fr_340px] h-dvh overflow-hidden
@@ -85,11 +85,11 @@ grid grid-cols-[56px_320px_1fr] xl:grid-cols-[56px_340px_1fr_340px] h-dvh overfl
 
 Refactor que habilita lo anterior, sin cambiar comportamiento:
 
-- `apps/web/src/app/bandeja/page.tsx` queda como el **estado vacío de la columna central**: «Elige
+- `apps/web/src/app/(app)/bandeja/page.tsx` queda como el **estado vacío de la columna central**: «Elige
   una conversación para empezar» más los tres atajos de teclado. Toda la lógica de lista (carga por
   cursor, filtros, búsqueda, tiempo real, teclado) se mueve tal cual a
   `apps/web/src/components/bandeja/lista-conversaciones.tsx`.
-- `apps/web/src/app/bandeja/[id]/page.tsx` pierde su `h-screen`, su `max-w-4xl` centrado, su
+- `apps/web/src/app/(app)/bandeja/[id]/page.tsx` pierde su `h-screen`, su `max-w-4xl` centrado, su
   `<header>` de página y el enlace «← Volver»; conserva la cabecera de la conversación (tarea 6) y
   el redactor. El historial (`<main role="log">`) pasa a ser el único contenedor con scroll propio.
 - Cada columna scrollea por separado: `min-h-0 overflow-y-auto` en cada una. Sin esto la rejilla

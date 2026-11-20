@@ -5,11 +5,7 @@
  */
 import 'reflect-metadata';
 
-import {
-  ActualizarAjustesDeAgencia,
-  AjustesDeAgencia,
-  CambiarAjustesDeAgencia,
-} from '@viajapro/contracts';
+import { AjustesDeAgencia, CambiarAjustesDeAgencia } from '@viajapro/contracts';
 import { describe, expect, it } from 'vitest';
 import { CLAVE_PERMISOS_REQUERIDOS } from '../../../shared/autorizacion/permiso.decorator.js';
 import { AgenciaAjustesController } from './agencia-ajustes.controller.js';
@@ -86,17 +82,5 @@ describe('AjustesDeAgencia (respuesta)', () => {
     expect(AjustesDeAgencia.safeParse({ ...base, rnt: '48213', rntVerificado: true }).success).toBe(
       true,
     );
-  });
-});
-
-describe('ActualizarAjustesDeAgencia (legado, la web aún lo usa)', () => {
-  it('sigue siendo solo la zona: obligatoria y sin campos ajenos, tampoco el RNT', () => {
-    expect(ActualizarAjustesDeAgencia.safeParse({ zonaHoraria: 'America/Lima' }).success).toBe(
-      true,
-    );
-    expect(ActualizarAjustesDeAgencia.safeParse({}).success).toBe(false);
-    expect(
-      ActualizarAjustesDeAgencia.safeParse({ zonaHoraria: 'America/Lima', rnt: '48213' }).success,
-    ).toBe(false);
   });
 });

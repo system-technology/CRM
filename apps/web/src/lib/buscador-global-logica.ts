@@ -10,9 +10,10 @@ import { obtenerMockTableroPipeline } from './mock-pipeline';
 import { MOCK_ARCHIVOS_VIAJE } from './mock-viajes';
 import { MOCK_PAQUETES_CATALOGO } from './mock-catalogo';
 import { MOCK_COTIZACIONES_INICIALES } from './mock-cotizaciones';
-import type { SesionActual } from '@viajapro/contracts';
-import { puedeVerTodasConversaciones, puedeVerNetoYMargen, tienePermiso } from './permisos';
+import type { Permiso, SesionActual } from '@viajapro/contracts';
+import { puedeVerTodasConversaciones, tienePermiso } from './permisos';
 import { formatearFecha } from './formato';
+import { ACCIONES, NAVEGACION, esVisiblePara, type GrupoDeNavegacion } from './navegacion';
 
 export type CategoriaBusqueda =
   | 'acciones'
@@ -32,71 +33,37 @@ export interface ResultadoBusqueda {
   etiquetaExtra?: string | undefined;
 }
 
+const ETIQUETA_DE_GRUPO: Record<GrupoDeNavegacion, string> = {
+  hoy: 'Hoy',
+  atender: 'Atender',
+  vender: 'Vender',
+  operar: 'Operar',
+  clientes: 'Clientes',
+  agencia: 'Agencia',
+};
+
+/**
+ * Comandos de la paleta derivados de la tabla única de navegación (ADR-0032): un comando por
+ * módulo, con su etiqueta, más las acciones. La paleta no es el menú: incluye módulos que aún no
+ * están en `enMenu`.
+ */
 export const ACCIONES_RAPIDAS: ResultadoBusqueda[] = [
-  {
-    id: 'act-inbox',
+  ...NAVEGACION.map((m): ResultadoBusqueda => ({
+    id: `nav-${m.id}`,
     categoria: 'acciones',
-    titulo: 'Ir a Bandeja de WhatsApp',
-    subtitulo: 'Gestionar chats y atención omnicanal',
-    href: '/bandeja',
-    etiquetaExtra: 'Navegación',
-  },
-  {
-    id: 'act-pipeline',
+    titulo: m.etiqueta,
+    subtitulo: m.descripcion,
+    href: m.ruta,
+    etiquetaExtra: ETIQUETA_DE_GRUPO[m.grupo],
+  })),
+  ...ACCIONES.map((a): ResultadoBusqueda => ({
+    id: `accion-${a.id}`,
     categoria: 'acciones',
-    titulo: 'Ir al Pipeline Kanban',
-    subtitulo: 'Ver oportunidades y embudo de ventas',
-    href: '/pipeline',
-    etiquetaExtra: 'Ventas',
-  },
-  {
-    id: 'act-cotizador',
-    categoria: 'acciones',
-    titulo: 'Abrir Cotizador de Paquetes',
-    subtitulo: 'Calcular tarifas mayoristas con márgenes en COP',
-    href: '/cotizador',
-    etiquetaExtra: 'Operaciones',
-  },
-  {
-    id: 'act-viajes',
-    categoria: 'acciones',
-    titulo: 'Ir a Archivos de viaje',
-    subtitulo: 'Expedientes operativos, bookings y time limits',
-    href: '/viajes',
-    etiquetaExtra: 'Operaciones',
-  },
-  {
-    id: 'act-contactos',
-    categoria: 'acciones',
-    titulo: 'Directorio de Contactos y Viajeros',
-    subtitulo: 'Base de clientes con PII protegida',
-    href: '/contactos',
-    etiquetaExtra: 'Clientes',
-  },
-  {
-    id: 'act-catalogo',
-    categoria: 'acciones',
-    titulo: 'Catálogo de Mayoristas',
-    subtitulo: 'Inventario de paquetes y circuitos vigentes',
-    href: '/catalogo',
-    etiquetaExtra: 'Inventario',
-  },
-  {
-    id: 'act-reportes',
-    categoria: 'acciones',
-    titulo: 'Ver Reportes y Cierres',
-    subtitulo: 'Métricas comerciales y cumplimiento de meta',
-    href: '/reportes',
-    etiquetaExtra: 'Métricas',
-  },
-  {
-    id: 'act-config',
-    categoria: 'acciones',
-    titulo: 'Configuración de Agencia',
-    subtitulo: 'Equipo, roles, WABA y SLA comercial',
-    href: '/configuracion',
-    etiquetaExtra: 'Ajustes',
-  },
+    titulo: a.etiqueta,
+    subtitulo: 'Calcular una cotización nueva',
+    href: a.ruta,
+    etiquetaExtra: 'Acción',
+  })),
 ];
 
 /**
@@ -118,20 +85,14 @@ export function normalizarTexto(texto: string): string {
 export function construirIndiceGlobal(sesion?: SesionActual | null): ResultadoBusqueda[] {
   const items: ResultadoBusqueda[] = [];
 
-  // 1. Acciones rápidas (filtradas según permisos)
-  const puedeAdministrar =
-    !sesion ||
-    tienePermiso(sesion, 'usuarios.administrar') ||
-    tienePermiso(sesion, 'roles.administrar') ||
-    tienePermiso(sesion, 'catalogo.administrar');
-
-  const puedeReportes = !sesion || puedeVerNetoYMargen(sesion);
+  // 1. Acciones rápidas (filtradas según permisos de la tabla de navegación)
+  const tiene = (permiso: Permiso) => tienePermiso(sesion, permiso);
+  const visiblePorId = new Map<string, boolean>(
+    NAVEGACION.map((m) => [`nav-${m.id}`, !sesion || esVisiblePara(m, tiene)] as const),
+  );
 
   for (const accion of ACCIONES_RAPIDAS) {
-    if (accion.id === 'act-config' && !puedeAdministrar) {
-      continue;
-    }
-    if (accion.id === 'act-reportes' && !puedeReportes) {
+    if (visiblePorId.get(accion.id) === false) {
       continue;
     }
     items.push(accion);
