@@ -5,7 +5,7 @@
 
 ## Qué se hizo
 - `scripts/comprobar-enlaces.mjs`: recorre los `*.md` versionados, extrae enlaces markdown y menciones
-  en backticks de rutas del repo (`docs/`, `traspaso/`, `apps/`, `packages/`) y comprueba que existan.
+  en backticks de rutas del repo (`docs/`, `docs/_traspasos/`, `apps/`, `packages/`) y comprueba que existan.
   Solo biblioteca estándar. Falla solo por roturas nuevas respecto de la línea base.
 - `scripts/enlaces-rotos.base.json`: 70 roturas de hoy. 49 son los enlaces markdown ya conocidos
   (48 en `docs/_bitacora/archivo/ESTADO-hasta-2026-10-20.md`, 1 en `docs/03-adr/0000-plantilla.md`);

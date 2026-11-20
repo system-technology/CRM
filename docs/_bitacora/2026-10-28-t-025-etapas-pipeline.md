@@ -4,7 +4,7 @@
 Tarea T-025 del roadmap (Fase 1: Un CRM mostrable y endurecido):
 - En Configuración hay un bloque «Etapas del pipeline» que lista las etapas de la agencia desde la API y permite reordenarlas y renombrarlas.
 - El pipeline pinta las etapas que devuelve la API, no una lista fija en el código.
-- Si la API no expone las etapas, se registra la petición en `traspaso/ENTREGA.md` y la tarea queda parcial con un test del contrato esperado (manejado con fallback resiliente en `crm-api.ts`).
+- Si la API no expone las etapas, se registra la petición en `docs/_traspasos/ENTREGA.md` y la tarea queda parcial con un test del contrato esperado (manejado con fallback resiliente en `crm-api.ts`).
 
 ## Implementación
 
@@ -23,7 +23,7 @@ Tarea T-025 del roadmap (Fase 1: Un CRM mostrable y endurecido):
 3. **API y Fallback Resiliente**:
    - Añadidas funciones `listarEtapasPipelineApi` y `actualizarEtapasPipelineApi` en `apps/web/src/lib/crm-api.ts`.
    - Si `/api/v1/crm/etapas` no está activo aún en el servidor NestJS, se aplica un fallback transparente para evitar roturas en desarrollo o modo demo.
-   - Petición documentada en `traspaso/ENTREGA.md`.
+   - Petición documentada en `docs/_traspasos/ENTREGA.md`.
 
 4. **Pruebas y Verificación**:
    - Creado `apps/web/src/components/configuracion/bloque-etapas-pipeline.spec.tsx` con 4 tests unitarios pasando.

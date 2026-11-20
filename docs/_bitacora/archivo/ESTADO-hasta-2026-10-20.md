@@ -965,7 +965,7 @@ pantalla pasa.
 Compuerta: CI **8/8**, https://github.com/Alfavear/CRM/actions/runs/39339456755, sobre el árbol del merge ·
 estáticas en local en verde · web **160** pruebas en 20 archivos.
 
-**Lo que queda fuera de `main` de `feat/bandeja-web`: 7 archivos, a propósito.** Los 6 de `traspaso/`, que son el
+**Lo que queda fuera de `main` de `feat/bandeja-web`: 7 archivos, a propósito.** Los 6 de `docs/_traspasos/`, que son el
 canal de trabajo con Antigravity y no producto, y su edición de `ESTADO.md`, porque `ESTADO.md` en `main` lo
 lleva el integrador. **En `apps/web`, `main` y `6d790ff` no tienen ninguna diferencia.**
 Registro: [`docs/_integraciones/2026-10-19-v0.28.0.md`](docs/_integraciones/2026-10-19-v0.28.0.md).
@@ -1044,7 +1044,7 @@ migraciones, así que no hay nada que aplicar en Neon.
 
 `fix/web-0c26-0c33-movil` @ `afdc7d5` entra en `main` (`f8127b0`), etiquetada **v0.30.2**. Es una corrección visual: arregla los
 objetivos táctiles y los desbordes horizontales a 375 px en el catálogo, la ventana de 24 h, el cotizador y el pipeline. Son
-cinco archivos de `apps/web` y cuatro capturas de 36 a 41 KB, tomados byte a byte de `ec15d04`. `traspaso/` no entra.
+cinco archivos de `apps/web` y cuatro capturas de 36 a 41 KB, tomados byte a byte de `ec15d04`. `docs/_traspasos/` no entra.
 Compuerta: CI **8/8**, https://github.com/Alfavear/CRM/actions/runs/39343734213, sobre el árbol del merge. Estáticas en
 local en verde, y la web pasa sus 172 pruebas.
 

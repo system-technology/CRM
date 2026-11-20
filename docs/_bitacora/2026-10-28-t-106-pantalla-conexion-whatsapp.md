@@ -54,7 +54,7 @@ El objetivo de la tarea `T-106` es proporcionar a las agencias turísticas una p
   - Actualización de `T-106` a `status: done` con evidencia detallada.
 - `ESTADO.md`:
   - Actualización de `Avance` con `T-106` completado y avance del `Próximo hito` a `T-107`.
-- `traspaso/ENTREGA.md`:
+- `docs/_traspasos/ENTREGA.md`:
   - Entrada de entrega de la tarea `T-106` antepuesta al inicio del archivo.
 
 ---

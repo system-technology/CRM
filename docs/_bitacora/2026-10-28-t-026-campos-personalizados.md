@@ -4,7 +4,7 @@
 Tarea T-026 del roadmap (Fase 1: Un CRM mostrable y endurecido):
 - Configuración permite definir campos (texto, número, fecha, lista) para contactos y oportunidades, y la ficha los muestra y edita.
 - Los tipos de campo salen del contrato de `packages/contracts`, sin redefinirlos (R3).
-- Si la API aún no lo soporta, se pide en `traspaso/ENTREGA.md` y se deja el componente con pruebas.
+- Si la API aún no lo soporta, se pide en `docs/_traspasos/ENTREGA.md` y se deja el componente con pruebas.
 
 ## Implementación
 
