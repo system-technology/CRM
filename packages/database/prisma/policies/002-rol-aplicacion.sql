@@ -59,7 +59,7 @@ BEGIN
       -- tienen eventos de outbox por entregar a un consumidor; devuelve solo ids. Su superficie
       -- (columnas de `tenants`, `outbox` y `entregas_de_eventos`) la concede la migración.
       ('viajapro_planificador', false, 'Propietario de tenants_con_eventos_por_entregar (ADR-0024 §5.3). NOLOGIN: no es una credencial. Solo lee columnas de tenants, outbox y entregas_de_eventos; devuelve ids de agencia.'),
-      -- Migración 20261120100000 (ADR-0030 §3.1). Dueño de las funciones que crean una agencia
+      -- Migración 20261120140000 (ADR-0030 §3.1). Dueño de las funciones que crean una agencia
       -- nueva y comprueban el código de acceso del piloto. Su superficie (columnas de `tenants`,
       -- `monedas`, `codigos_de_acceso_al_registro` y `parametros_del_registro`) la concede la
       -- migración, no este archivo.

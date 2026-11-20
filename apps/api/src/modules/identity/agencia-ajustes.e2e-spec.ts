@@ -3,6 +3,10 @@
  * (zona horaria, moneda y país propios). El PATCH cambia la zona por la función SECURITY DEFINER
  * (ADR-0027) y no toca a la otra agencia. El 403 sin `usuarios.administrar` no se puede probar por
  * HTTP (el atajo de desarrollo concede todos los permisos): lo fija `agencia-ajustes.controller.spec.ts`.
+ *
+ * T-261: el RNT vive en `perfiles_de_agencia`. Aquí se prueba, por HTTP y contra la base: que cada
+ * agencia lee y escribe solo el suyo, que ningún cuerpo puede fijar la verificación, y que solo la
+ * plataforma (el dueño de la tabla, `adminPg`) la pone y el cambio de RNT la anula.
  */
 import 'reflect-metadata';
 
@@ -102,6 +106,8 @@ describe('GET /api/v1/agencia/ajustes', () => {
       paisIso: 'CO',
       monedaIso: 'COP',
       zonaHoraria: 'America/Bogota',
+      rnt: null,
+      rntVerificado: false,
     });
     const b = AjustesDeAgencia.parse(await (await leer(TENANT_B)).json());
     expect(b).toMatchObject({ nombre: 'Agencia B', zonaHoraria: 'America/Mexico_City' });
@@ -148,5 +154,125 @@ describe('PATCH /api/v1/agencia/ajustes', () => {
     expect(r.status).toBeLessThan(500);
     const b = AjustesDeAgencia.parse(await (await leer(TENANT_B)).json());
     expect(b.zonaHoraria).toBe('America/Mexico_City');
+  });
+});
+
+describe('RNT en /api/v1/agencia/ajustes (T-261)', () => {
+  const ajustes = async (tenantId: string) =>
+    AjustesDeAgencia.parse(await (await leer(tenantId)).json());
+
+  /**
+   * La plataforma verifica el RNT que COMPROBÓ: `AND rnt = $2` y exigir una fila, para no
+   * verificar un RNT que la agencia cambió entre la comprobación y el UPDATE. Como el dueño de la
+   * tabla no se salta RLS si no es superusuario, se fija el contexto de la agencia.
+   */
+  const verificarComoPlataforma = async (tenantId: string, rnt: string) => {
+    await adminPg.query('BEGIN');
+    try {
+      await adminPg.query("SELECT set_config('app.current_tenant', $1, true)", [tenantId]);
+      const r = await adminPg.query(
+        'UPDATE perfiles_de_agencia SET verificado_en = now() WHERE tenant_id = $1 AND rnt = $2',
+        [tenantId, rnt],
+      );
+      expect(r.rowCount).toBe(1);
+      await adminPg.query('COMMIT');
+    } catch (error) {
+      await adminPg.query('ROLLBACK');
+      throw error;
+    }
+  };
+
+  it('una agencia sin perfil: rnt nulo y sin verificar', async () => {
+    expect(await ajustes(TENANT_B)).toMatchObject({ rnt: null, rntVerificado: false });
+  });
+
+  it('guarda el RNT de la agencia A, sale sin verificar y no aparece en la B', async () => {
+    const r = await cambiar(TENANT_A, { rnt: '48213' });
+    expect(r.status).toBe(200);
+    expect(AjustesDeAgencia.parse(await r.json())).toMatchObject({
+      rnt: '48213',
+      rntVerificado: false,
+    });
+    expect(await ajustes(TENANT_A)).toMatchObject({ rnt: '48213', rntVerificado: false });
+    expect(await ajustes(TENANT_B)).toMatchObject({ rnt: null, rntVerificado: false });
+  });
+
+  it('la agencia B escribe el suyo y el de A queda intacto', async () => {
+    expect((await cambiar(TENANT_A, { rnt: '48213' })).status).toBe(200);
+    expect((await cambiar(TENANT_B, { rnt: '99999' })).status).toBe(200);
+    expect(await ajustes(TENANT_A)).toMatchObject({ rnt: '48213' });
+    expect(await ajustes(TENANT_B)).toMatchObject({ rnt: '99999' });
+  });
+
+  it.each(['ABC', '12 34', '48.213', '12345678901', ''])(
+    'RNT inválido %j: 4xx y el guardado no cambia',
+    async (malo) => {
+      expect((await cambiar(TENANT_A, { rnt: '48213' })).status).toBe(200);
+      const r = await cambiar(TENANT_A, { rnt: malo });
+      expect(r.status).toBeGreaterThanOrEqual(400);
+      expect(r.status).toBeLessThan(500);
+      expect(await ajustes(TENANT_A)).toMatchObject({ rnt: '48213' });
+    },
+  );
+
+  it('ningún cuerpo puede fijar la verificación: 4xx y sigue sin verificar', async () => {
+    expect((await cambiar(TENANT_A, { rnt: '48213' })).status).toBe(200);
+    for (const cuerpo of [
+      { rnt: '48213', rntVerificado: true },
+      { rnt: '48213', verificadoEn: '2026-11-20T12:00:00Z' },
+      { rnt: '48213', verificado_en: '2026-11-20T12:00:00Z' },
+      { rntVerificado: true },
+    ]) {
+      const r = await cambiar(TENANT_A, cuerpo);
+      expect(r.status, JSON.stringify(cuerpo)).toBeGreaterThanOrEqual(400);
+      expect(r.status, JSON.stringify(cuerpo)).toBeLessThan(500);
+    }
+    expect(await ajustes(TENANT_A)).toMatchObject({ rnt: '48213', rntVerificado: false });
+  });
+
+  it('la plataforma verifica; guardar lo mismo o tocar la zona conserva la verificación; cambiar el RNT la anula', async () => {
+    expect((await cambiar(TENANT_A, { rnt: '48213' })).status).toBe(200);
+    await verificarComoPlataforma(TENANT_A, '48213');
+    expect(await ajustes(TENANT_A)).toMatchObject({ rnt: '48213', rntVerificado: true });
+
+    // Guardar el MISMO RNT no la pierde (el upsert de la API escribe rnt y actualizado_en)...
+    expect((await cambiar(TENANT_A, { rnt: '48213' })).status).toBe(200);
+    expect(await ajustes(TENANT_A)).toMatchObject({ rnt: '48213', rntVerificado: true });
+    // ...ni cambiar solo la zona horaria...
+    expect((await cambiar(TENANT_A, { zonaHoraria: 'America/Lima' })).status).toBe(200);
+    expect(await ajustes(TENANT_A)).toMatchObject({ rnt: '48213', rntVerificado: true });
+    // ...y la verificación de A no se filtra a la agencia B.
+    expect(await ajustes(TENANT_B)).toMatchObject({ rntVerificado: false });
+
+    // Cambiar el RNT la deja sin verificar.
+    const r = await cambiar(TENANT_A, { rnt: '48214' });
+    expect(AjustesDeAgencia.parse(await r.json())).toMatchObject({
+      rnt: '48214',
+      rntVerificado: false,
+    });
+  });
+
+  it('rnt: null borra el RNT y la verificación', async () => {
+    expect((await cambiar(TENANT_A, { rnt: '48213' })).status).toBe(200);
+    await verificarComoPlataforma(TENANT_A, '48213');
+    const r = await cambiar(TENANT_A, { rnt: null });
+    expect(r.status).toBe(200);
+    expect(AjustesDeAgencia.parse(await r.json())).toMatchObject({
+      rnt: null,
+      rntVerificado: false,
+    });
+  });
+
+  it('con zona y RNT en el mismo cuerpo se guardan los dos; con zona inválida no se guarda ni el RNT', async () => {
+    expect((await cambiar(TENANT_A, { rnt: '11111' })).status).toBe(200);
+    const bien = await cambiar(TENANT_A, { zonaHoraria: 'America/Lima', rnt: '22222' });
+    expect(bien.status).toBe(200);
+    expect(AjustesDeAgencia.parse(await bien.json())).toMatchObject({
+      zonaHoraria: 'America/Lima',
+      rnt: '22222',
+    });
+    const mal = await cambiar(TENANT_A, { zonaHoraria: 'Marte/Olympus_Mons', rnt: '33333' });
+    expect(mal.status).toBe(422);
+    expect(await ajustes(TENANT_A)).toMatchObject({ zonaHoraria: 'America/Lima', rnt: '22222' });
   });
 });

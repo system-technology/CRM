@@ -414,6 +414,8 @@ const PRIVILEGIOS_DECLARADOS: ReadonlyArray<readonly [string, string, readonly s
   // T-254: la bandeja de avisos de cada usuario. Sin DELETE: se marca leída.
   ['notificaciones', 'viajapro_app', ['SELECT', 'INSERT', 'UPDATE']],
   ['pasajeros', 'viajapro_app', ['SELECT', 'INSERT', 'UPDATE', 'DELETE']],
+  // T-261: los datos legales de la agencia (hoy el RNT). Sin DELETE.
+  ['perfiles_de_agencia', 'viajapro_app', ['SELECT', 'INSERT', 'UPDATE']],
   // T-250: el historial de estados de la reserva. Inmutable: sin UPDATE ni DELETE.
   ['reserva_cambios_estado', 'viajapro_app', ['SELECT', 'INSERT']],
   ['travel_files', 'viajapro_app', ['SELECT', 'INSERT', 'UPDATE']],
@@ -526,7 +528,7 @@ const MATRIZ_FUNCIONES: Readonly<Record<string, readonly string[]>> = {
   // outbox por entregar a un consumidor de dominio. Solo ids de agencia; la ejecuta el
   // despachador, que vive en el proceso de la API, nunca en el trabajador.
   tenants_con_eventos_por_entregar: ['viajapro_app'],
-  // Decimosexta y decimoséptima (ADR-0030 §3.2 y §3.8, migración 20261120100000): el alta de una
+  // Decimosexta y decimoséptima (ADR-0030 §3.2 y §3.8, migración 20261120140000): el alta de una
   // agencia nueva por autoservicio y la comprobación del código de acceso del piloto. Solo la API.
   crear_agencia: ['viajapro_app'],
   codigo_de_acceso_vigente: ['viajapro_app'],
@@ -1101,7 +1103,7 @@ describe('ADR-0008 — directorio de enrutamiento, staging y separación de role
     // de T-223: dueño de `medir_cola_de_salida`. El quinto, de la migración 20261116090000: dueño
     // de `actualizar_zona_horaria_de_la_agencia`. El sexto, de ADR-0024 §5.3 (migración
     // 20261118090100): dueño de `tenants_con_eventos_por_entregar`. El séptimo, de ADR-0030 §3.1
-    // (migración 20261120100000): dueño de `crear_agencia` y `codigo_de_acceso_vigente`.
+    // (migración 20261120140000): dueño de `crear_agencia` y `codigo_de_acceso_vigente`.
     expect(rows.length).toBe(7);
     for (const r of rows) {
       expect(r.rolcanlogin, `${r.rolname} puede iniciar sesión`).toBe(false);
@@ -6616,6 +6618,7 @@ const COLUMNAS_DE_TEXTO_DECLARADAS: readonly string[] = [
   // considera PII sensible, entra en ADR-0015).
   'perfiles_de_agencia.nit',
   'perfiles_de_agencia.razon_social',
+  // T-261: el RNT que declara la agencia. Dato público del registro de turismo, no PII de viajeros.
   'perfiles_de_agencia.rnt',
   'plantillas_whatsapp.cuerpo',
   'plantillas_whatsapp.encabezado',
@@ -9544,8 +9547,9 @@ describe('T-268 — Registro de agencias (ADR-0030 F1): crear_agencia, código d
       );
       // …y RLS lo usa: la API escribe bajo él sin fijar nada (WITH CHECK pasa solo si es la nueva).
       const { rows: perfil } = await app.query(
-        `INSERT INTO perfiles_de_agencia (tenant_id, nit, razon_social, verificado_en, actualizado_en)
-         VALUES ($1, '900123456', 'Razón social de prueba', now(), now())
+        `INSERT INTO perfiles_de_agencia
+           (tenant_id, rnt, nit, digito_verificacion, razon_social, verificado_en, actualizado_en)
+         VALUES ($1, '48213', '900123456', 7, 'Razón social de prueba', now(), now())
          RETURNING verificado_en`,
         [nueva],
       );
@@ -9596,8 +9600,9 @@ describe('T-268 — Registro de agencias (ADR-0030 F1): crear_agencia, código d
     expect(Number(fila[0]?.dias)).toBe(14);
     expect((await usoDe(hash))?.usado_por_identidad_id).toBe(identidad);
 
-    // verificado_en: solo la plataforma (el dueño de la tabla) lo fija, y se pierde si escribe la
-    // API o si cambia el NIT o el RNT.
+    // verificado_en (el disparador de T-261, ampliado por T-268 al NIT y su DV): solo la plataforma
+    // (el dueño de la tabla) lo fija; la API no lo fija ni lo borra; cambiar el NIT, el DV o el RNT
+    // lo anula, salvo que la plataforma lo vuelva a fijar en el mismo UPDATE. P-6 cubre el RNT.
     const comoPlataforma = async (sql: string) => {
       await admin.query('BEGIN');
       try {
@@ -9610,32 +9615,87 @@ describe('T-268 — Registro de agencias (ADR-0030 F1): crear_agencia, código d
         throw error;
       }
     };
+    const comoLaApi = async (sql: string) =>
+      (await comoTenant(nueva, (c) => c.query(sql, [nueva]))).rows[0]?.verificado_en as Date | null;
     const verificar =
       'UPDATE perfiles_de_agencia SET verificado_en = now() WHERE tenant_id = $1 RETURNING verificado_en';
+
     expect(await comoPlataforma(verificar), 'la plataforma no pudo verificar').not.toBeNull();
+    // La razón social no es un dato verificado: cambiarla no anula, ni a la API ni a la plataforma…
     expect(
-      await comoPlataforma(
-        "UPDATE perfiles_de_agencia SET razon_social = 'Otra razón' WHERE tenant_id = $1 RETURNING verificado_en",
+      await comoLaApi(
+        "UPDATE perfiles_de_agencia SET razon_social = 'Cambio de la agencia' WHERE tenant_id = $1 RETURNING verificado_en",
       ),
-      'la plataforma cambió algo que no es NIT ni RNT: sigue verificado',
+      'cambiar la razón social anuló la verificación',
     ).not.toBeNull();
-    const { rows: deLaApi } = await comoTenant(nueva, (c) =>
-      c.query(
-        "UPDATE perfiles_de_agencia SET razon_social = 'Cambio de la agencia', verificado_en = now() WHERE tenant_id = $1 RETURNING verificado_en",
-        [nueva],
-      ),
-    );
+    // …y la API no puede borrar la verificación por su cuenta.
     expect(
-      deLaApi[0]?.verificado_en,
-      'una escritura de viajapro_app conservó la verificación',
+      await comoLaApi(
+        'UPDATE perfiles_de_agencia SET verificado_en = NULL WHERE tenant_id = $1 RETURNING verificado_en',
+      ),
+      'viajapro_app borró la verificación',
+    ).not.toBeNull();
+    // La API cambia el NIT, aunque mande verificado_en en el mismo UPDATE: vuelve a NULL.
+    expect(
+      await comoLaApi(
+        "UPDATE perfiles_de_agencia SET nit = '800111222', verificado_en = now() WHERE tenant_id = $1 RETURNING verificado_en",
+      ),
+      'viajapro_app cambió el NIT y conservó la verificación',
     ).toBeNull();
+    // Y si no la tenía, tampoco la consigue la API sin tocar nada.
+    expect(
+      await comoLaApi(
+        'UPDATE perfiles_de_agencia SET verificado_en = now() WHERE tenant_id = $1 RETURNING verificado_en',
+      ),
+      'viajapro_app fijó verificado_en',
+    ).toBeNull();
+    // El DV también es un dato verificado.
+    expect(await comoPlataforma(verificar)).not.toBeNull();
+    expect(
+      await comoLaApi(
+        'UPDATE perfiles_de_agencia SET digito_verificacion = 3 WHERE tenant_id = $1 RETURNING verificado_en',
+      ),
+      'cambiar el DV conservó la verificación',
+    ).toBeNull();
+    // La plataforma cambia el NIT sin tocar verificado_en: el dato nuevo no hereda la verificación…
     expect(await comoPlataforma(verificar)).not.toBeNull();
     expect(
       await comoPlataforma(
         "UPDATE perfiles_de_agencia SET nit = '900999999' WHERE tenant_id = $1 RETURNING verificado_en",
       ),
-      'cambiar el NIT conservó la verificación',
+      'la plataforma cambió el NIT y conservó la verificación',
     ).toBeNull();
+    // …y si lo cambia y lo verifica en el mismo UPDATE, se conserva.
+    expect(
+      await comoPlataforma(
+        "UPDATE perfiles_de_agencia SET nit = '900888777', verificado_en = now() WHERE tenant_id = $1 RETURNING verificado_en",
+      ),
+    ).not.toBeNull();
+
+    // Los CHECK de las columnas nuevas los aplica el motor.
+    for (const [sql, restriccion] of [
+      [
+        "UPDATE perfiles_de_agencia SET nit = '90012-3' WHERE tenant_id = $1",
+        'perfiles_de_agencia_nit_formato',
+      ],
+      [
+        'UPDATE perfiles_de_agencia SET digito_verificacion = 10 WHERE tenant_id = $1',
+        'perfiles_de_agencia_digito_verificacion',
+      ],
+      [
+        'UPDATE perfiles_de_agencia SET nit = NULL WHERE tenant_id = $1',
+        'perfiles_de_agencia_digito_verificacion',
+      ],
+      [
+        "UPDATE perfiles_de_agencia SET razon_social = '   ' WHERE tenant_id = $1",
+        'perfiles_de_agencia_razon_social_longitud',
+      ],
+    ] as const) {
+      await expect(
+        comoTenant(nueva, (c) => c.query(sql, [nueva])),
+        sql,
+      ).rejects.toMatchObject({ code: '23514', constraint: restriccion });
+    }
   });
 
   it('R-4 — un slug reservado nunca se asigna tal cual', async () => {
@@ -9958,5 +10018,389 @@ describe('T-268 — Registro de agencias (ADR-0030 F1): crear_agencia, código d
     expect(await usoDe(codigoUno)).toEqual({ usado_en: null, usado_por_identidad_id: null });
     expect(await usoDe(codigoDos)).toEqual({ usado_en: null, usado_por_identidad_id: null });
     expect(await topeDe(), 'el tope bajado se deshizo con la transacción').toEqual(topeAntes);
+  });
+});
+
+// =========================================================================================
+// T-261 — perfiles_de_agencia (ADR-0030 §3.3): el RNT de la agencia y su verificación
+//
+// Lo que no puede pasar: que una agencia vea, cambie o plante el perfil de otra; que `viajapro_app`
+// fije `verificado_en` (cualquiera podría declarar el RNT de otra agencia y que se imprimiera como
+// verificado); que un RNT nuevo herede la verificación del anterior; o que aparezca una columna de
+// texto que no se decidió. «La plataforma» es el DUEÑO de la tabla: aquí, `admin`.
+// =========================================================================================
+
+describe('T-261 — perfiles_de_agencia: aislamiento y verificación solo de la plataforma', () => {
+  const comoPlataforma = async <T>(tenantId: string, fn: (c: Client) => Promise<T>): Promise<T> => {
+    await admin.query('BEGIN');
+    try {
+      await admin.query("SELECT set_config('app.current_tenant', $1, true)", [tenantId]);
+      const resultado = await fn(admin);
+      await admin.query('COMMIT');
+      return resultado;
+    } catch (error) {
+      await admin.query('ROLLBACK');
+      throw error;
+    }
+  };
+
+  afterAll(async () => {
+    for (const tenant of [TENANT_A, TENANT_B, TENANT_C]) {
+      await comoPlataforma(tenant, (c) =>
+        c.query('DELETE FROM perfiles_de_agencia WHERE tenant_id = $1', [tenant]),
+      );
+    }
+  });
+
+  const verificadoDe = async (
+    tenant: string,
+  ): Promise<Array<{ rnt: string | null; verificado: boolean }>> => {
+    const r = await comoPlataforma(tenant, (c) =>
+      c.query<{ rnt: string | null; verificado: boolean }>(
+        'SELECT rnt, verificado_en IS NOT NULL AS verificado FROM perfiles_de_agencia WHERE tenant_id = $1',
+        [tenant],
+      ),
+    );
+    return r.rows;
+  };
+
+  it('P-1 — tenant_id es la PK, RLS forzada con USING y WITH CHECK, ninguna excepción, y las columnas de texto son nit, razon_social y rnt', async () => {
+    const { rows } = await admin.query(
+      `SELECT c.relrowsecurity, c.relforcerowsecurity,
+              (SELECT a.attnotnull FROM pg_attribute a
+                WHERE a.attrelid = c.oid AND a.attname = 'tenant_id'
+                  AND a.attnum > 0 AND NOT a.attisdropped) AS tenant_no_nulo,
+              (SELECT count(*)::int FROM pg_policy p
+                WHERE p.polrelid = c.oid AND p.polname = 'tenant_isolation'
+                  AND p.polqual IS NOT NULL AND p.polwithcheck IS NOT NULL) AS con_using_y_check,
+              EXISTS (SELECT 1 FROM excepciones_rls e WHERE e.tabla = c.relname) AS excepcion
+         FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' AND c.relname = 'perfiles_de_agencia'`,
+    );
+    expect(rows).toEqual([
+      {
+        relrowsecurity: true,
+        relforcerowsecurity: true,
+        tenant_no_nulo: true,
+        con_using_y_check: 1,
+        excepcion: false,
+      },
+    ]);
+
+    const pk = await admin.query(
+      `SELECT array_agg(a.attname::text ORDER BY k.ord) AS columnas
+         FROM pg_constraint c
+         CROSS JOIN LATERAL unnest(c.conkey) WITH ORDINALITY AS k(attnum, ord)
+         JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = k.attnum
+        WHERE c.conrelid = 'public.perfiles_de_agencia'::regclass AND c.contype = 'p'`,
+    );
+    expect(pk.rows).toEqual([{ columnas: ['tenant_id'] }]);
+
+    const texto = await admin.query(
+      `SELECT a.attname::text AS columna
+         FROM pg_attribute a
+        WHERE a.attrelid = 'public.perfiles_de_agencia'::regclass
+          AND a.attnum > 0 AND NOT a.attisdropped
+          AND format_type(a.atttypid, NULL) IN ('text', 'character varying', 'character', 'citext')
+        ORDER BY 1`,
+    );
+    // T-268 añade nit y razon_social (ADR-0030 §3.3). Ordenado aquí, no por la intercalación.
+    expect(texto.rows.map((r) => r.columna as string).sort()).toEqual([
+      'nit',
+      'razon_social',
+      'rnt',
+    ]);
+  });
+
+  it('P-2 — solo viajapro_app la toca (SELECT, INSERT, UPDATE; sin DELETE); PUBLIC y los demás roles, nada', async () => {
+    const roles = ['viajapro_app', 'viajapro_altas', 'viajapro_webhook', 'viajapro_identidad'];
+    for (const rol of roles) {
+      const { rows } = await admin.query(
+        `SELECT p FROM unnest(ARRAY['SELECT','INSERT','UPDATE','DELETE','TRUNCATE','REFERENCES','TRIGGER']) AS p
+          WHERE has_table_privilege($1, 'public.perfiles_de_agencia', p) ORDER BY 1`,
+        [rol],
+      );
+      expect(
+        rows.map((r) => r.p as string),
+        `${rol} sobre perfiles_de_agencia`,
+      ).toEqual(rol === 'viajapro_app' ? ['INSERT', 'SELECT', 'UPDATE'] : []);
+    }
+    expect(
+      (
+        await admin.query(
+          "SELECT has_table_privilege('public', 'public.perfiles_de_agencia', 'SELECT') AS v",
+        )
+      ).rows[0],
+    ).toEqual({ v: false });
+
+    // De COMPORTAMIENTO: el trabajador no lee ni una fila, ni con el contexto de la agencia puesto.
+    await comoRol(admin, 'viajapro_webhook', async () => {
+      await admin.query("SELECT set_config('app.current_tenant', $1, true)", [TENANT_A]);
+      await esperarPermisoDenegado(
+        admin,
+        () => admin.query('SELECT * FROM perfiles_de_agencia'),
+        'SELECT sobre perfiles_de_agencia como viajapro_webhook',
+      );
+    });
+    // Y la API no borra el perfil.
+    await expect(
+      comoTenant(TENANT_A, (c) =>
+        c.query('DELETE FROM perfiles_de_agencia WHERE tenant_id = $1', [TENANT_A]),
+      ),
+    ).rejects.toMatchObject({ code: '42501' });
+  });
+
+  it('P-3 — un tenant no ve, no cambia ni planta el perfil de otro; una agencia, una fila', async () => {
+    await comoTenant(TENANT_A, (c) =>
+      c.query('INSERT INTO perfiles_de_agencia (tenant_id, rnt) VALUES ($1, $2)', [
+        TENANT_A,
+        '11111',
+      ]),
+    );
+    await comoTenant(TENANT_B, (c) =>
+      c.query('INSERT INTO perfiles_de_agencia (tenant_id, rnt) VALUES ($1, $2)', [
+        TENANT_B,
+        '22222',
+      ]),
+    );
+
+    // B no ve el de A: ni por id ni por barrido.
+    const vistoPorB = await comoTenant(TENANT_B, (c) =>
+      c.query('SELECT tenant_id, rnt FROM perfiles_de_agencia'),
+    );
+    expect(vistoPorB.rows).toEqual([{ tenant_id: TENANT_B, rnt: '22222' }]);
+
+    // B no cambia el de A: la política lo filtra, no da error, y el de A queda intacto.
+    const intento = await comoTenant(TENANT_B, (c) =>
+      c.query("UPDATE perfiles_de_agencia SET rnt = '99999' WHERE tenant_id = $1", [TENANT_A]),
+    );
+    expect(intento.rowCount).toBe(0);
+    expect(await verificadoDe(TENANT_A)).toEqual([{ rnt: '11111', verificado: false }]);
+
+    // B no planta un perfil a nombre de A, ni mueve el suyo hacia A (WITH CHECK).
+    await expect(
+      comoTenant(TENANT_B, (c) =>
+        c.query('INSERT INTO perfiles_de_agencia (tenant_id, rnt) VALUES ($1, $2)', [
+          TENANT_A,
+          '33333',
+        ]),
+      ),
+    ).rejects.toMatchObject({ code: '42501' });
+    await expect(
+      comoTenant(TENANT_B, (c) =>
+        c.query('UPDATE perfiles_de_agencia SET tenant_id = $1 WHERE tenant_id = $2', [
+          TENANT_A,
+          TENANT_B,
+        ]),
+      ),
+    ).rejects.toMatchObject({ code: '42501' });
+
+    // El upsert de la API tampoco cruza agencias: B apuntando a A cae en el WITH CHECK del INSERT.
+    await expect(
+      comoTenant(TENANT_B, (c) =>
+        c.query(
+          `INSERT INTO perfiles_de_agencia (tenant_id, rnt) VALUES ($1, '66666')
+           ON CONFLICT (tenant_id) DO UPDATE SET rnt = EXCLUDED.rnt`,
+          [TENANT_A],
+        ),
+      ),
+    ).rejects.toMatchObject({ code: '42501' });
+    expect(await verificadoDe(TENANT_A)).toEqual([{ rnt: '11111', verificado: false }]);
+
+    // Una agencia, una fila.
+    await expect(
+      comoTenant(TENANT_A, (c) =>
+        c.query('INSERT INTO perfiles_de_agencia (tenant_id, rnt) VALUES ($1, $2)', [
+          TENANT_A,
+          '44444',
+        ]),
+      ),
+    ).rejects.toMatchObject({ code: '23505', constraint: 'perfiles_de_agencia_pkey' });
+  });
+
+  it('P-4 — el RNT son dígitos (1 a 10) y una fila verificada tiene RNT: los CHECK los aplica el motor', async () => {
+    for (const malo of ['ABC', '12 34', '12345678901', '', '48.213']) {
+      await expect(
+        comoPlataforma(TENANT_C, (c) =>
+          c.query('INSERT INTO perfiles_de_agencia (tenant_id, rnt) VALUES ($1, $2)', [
+            TENANT_C,
+            malo,
+          ]),
+        ),
+        `rnt ${JSON.stringify(malo)}`,
+      ).rejects.toMatchObject({ code: '23514', constraint: 'perfiles_de_agencia_rnt_formato' });
+    }
+    // Verificado sin RNT: lo rechaza el CHECK, aun siendo la plataforma quien escribe.
+    await expect(
+      comoPlataforma(TENANT_C, (c) =>
+        c.query('INSERT INTO perfiles_de_agencia (tenant_id, verificado_en) VALUES ($1, now())', [
+          TENANT_C,
+        ]),
+      ),
+    ).rejects.toMatchObject({
+      code: '23514',
+      constraint: 'perfiles_de_agencia_verificado_exige_rnt',
+    });
+    // Los extremos válidos entran (cada uno se borra a sí mismo en la misma transacción).
+    for (const bueno of ['1', '4821300000']) {
+      await comoPlataforma(TENANT_C, async (c) => {
+        const r = await c.query(
+          'INSERT INTO perfiles_de_agencia (tenant_id, rnt) VALUES ($1, $2) RETURNING rnt',
+          [TENANT_C, bueno],
+        );
+        expect(r.rows).toEqual([{ rnt: bueno }]);
+        await c.query('DELETE FROM perfiles_de_agencia WHERE tenant_id = $1', [TENANT_C]);
+      });
+    }
+  });
+
+  it('P-5 — el disparador, en el catálogo: BEFORE INSERT OR UPDATE por fila, SECURITY INVOKER, search_path vacío, sin EXECUTE para PUBLIC; y ningún rol de aplicación es la plataforma', async () => {
+    const { rows } = await admin.query(
+      `SELECT pg_get_triggerdef(t.oid) AS definicion, t.tgenabled AS habilitado,
+              p.prosecdef AS definer, p.proconfig AS config,
+              has_function_privilege('public', p.oid, 'EXECUTE') AS publico
+         FROM pg_trigger t JOIN pg_proc p ON p.oid = t.tgfoid
+        WHERE t.tgrelid = 'public.perfiles_de_agencia'::regclass AND NOT t.tgisinternal`,
+    );
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.definicion).toMatch(
+      /BEFORE INSERT OR UPDATE ON (public\.)?perfiles_de_agencia FOR EACH ROW EXECUTE FUNCTION (public\.)?proteger_verificacion_del_perfil\(\)/,
+    );
+    expect(rows[0]).toMatchObject({ habilitado: 'O', definer: false, publico: false });
+    expect(rows[0]?.config).toEqual(
+      expect.arrayContaining([expect.stringMatching(/^search_path=("")?$/)]),
+    );
+
+    // «La plataforma» es el dueño de la tabla: ningún rol de aplicación lo es, ni es miembro de él
+    // (MEMBER, no USAGE: un miembro con INHERIT FALSE podría hacer SET ROLE).
+    for (const rol of [
+      'viajapro_app',
+      'viajapro_altas',
+      'viajapro_webhook',
+      'viajapro_identidad',
+    ]) {
+      const r = await admin.query(
+        `SELECT pg_has_role($1, c.relowner, 'MEMBER') AS es_plataforma
+           FROM pg_class c WHERE c.oid = 'public.perfiles_de_agencia'::regclass`,
+        [rol],
+      );
+      expect(r.rows, `${rol} no puede ser la plataforma`).toEqual([{ es_plataforma: false }]);
+    }
+    const dueno = await admin.query(
+      `SELECT pg_has_role(current_user, c.relowner, 'USAGE') AS soy_plataforma
+         FROM pg_class c WHERE c.oid = 'public.perfiles_de_agencia'::regclass`,
+    );
+    expect(dueno.rows).toEqual([{ soy_plataforma: true }]);
+  });
+
+  it('P-6 — viajapro_app no fija verificado_en; cambiar el RNT lo anula; solo la plataforma lo conserva', async () => {
+    // 1. La API inserta intentando entrar ya verificada: queda sin verificar.
+    const insertada = await comoTenant(TENANT_C, (c) =>
+      c.query(
+        `INSERT INTO perfiles_de_agencia (tenant_id, rnt, verificado_en)
+         VALUES ($1, '48213', now()) RETURNING verificado_en IS NULL AS sin_verificar`,
+        [TENANT_C],
+      ),
+    );
+    expect(insertada.rows).toEqual([{ sin_verificar: true }]);
+
+    // 2. La API intenta fijarlo con un UPDATE: sigue sin verificar.
+    const fijado = await comoTenant(TENANT_C, (c) =>
+      c.query(
+        `UPDATE perfiles_de_agencia SET verificado_en = now() WHERE tenant_id = $1
+         RETURNING verificado_en IS NULL AS sin_verificar`,
+        [TENANT_C],
+      ),
+    );
+    expect(fijado.rows).toEqual([{ sin_verificar: true }]);
+
+    // 3. La plataforma lo verifica: se conserva.
+    await comoPlataforma(TENANT_C, (c) =>
+      c.query(
+        "UPDATE perfiles_de_agencia SET verificado_en = '2026-11-20T12:00:00Z' WHERE tenant_id = $1",
+        [TENANT_C],
+      ),
+    );
+    expect(await verificadoDe(TENANT_C)).toEqual([{ rnt: '48213', verificado: true }]);
+
+    // 4. La API toca otra cosa (sin cambiar el RNT): la verificación no se pierde...
+    await comoTenant(TENANT_C, (c) =>
+      c.query('UPDATE perfiles_de_agencia SET actualizado_en = now() WHERE tenant_id = $1', [
+        TENANT_C,
+      ]),
+    );
+    expect(await verificadoDe(TENANT_C)).toEqual([{ rnt: '48213', verificado: true }]);
+    // ...y tampoco puede borrarla por su cuenta.
+    await comoTenant(TENANT_C, (c) =>
+      c.query('UPDATE perfiles_de_agencia SET verificado_en = NULL WHERE tenant_id = $1', [
+        TENANT_C,
+      ]),
+    );
+    expect(await verificadoDe(TENANT_C)).toEqual([{ rnt: '48213', verificado: true }]);
+
+    // 5. La API cambia el RNT, aunque mande verificado_en en el mismo UPDATE: vuelve a NULL.
+    const cambiado = await comoTenant(TENANT_C, (c) =>
+      c.query(
+        `UPDATE perfiles_de_agencia SET rnt = '99999', verificado_en = now() WHERE tenant_id = $1
+         RETURNING rnt, verificado_en IS NULL AS sin_verificar`,
+        [TENANT_C],
+      ),
+    );
+    expect(cambiado.rows).toEqual([{ rnt: '99999', sin_verificar: true }]);
+
+    // 6. La plataforma cambia el RNT sin tocar verificado_en: el dato nuevo no hereda la verificación.
+    await comoPlataforma(TENANT_C, (c) =>
+      c.query(
+        "UPDATE perfiles_de_agencia SET verificado_en = '2026-11-20T12:00:00Z' WHERE tenant_id = $1",
+        [TENANT_C],
+      ),
+    );
+    await comoPlataforma(TENANT_C, (c) =>
+      c.query("UPDATE perfiles_de_agencia SET rnt = '77777' WHERE tenant_id = $1", [TENANT_C]),
+    );
+    expect(await verificadoDe(TENANT_C)).toEqual([{ rnt: '77777', verificado: false }]);
+
+    // 7. La plataforma cambia el RNT Y lo verifica en el mismo UPDATE: se conserva.
+    await comoPlataforma(TENANT_C, (c) =>
+      c.query(
+        "UPDATE perfiles_de_agencia SET rnt = '88888', verificado_en = '2026-11-20T13:00:00Z' WHERE tenant_id = $1",
+        [TENANT_C],
+      ),
+    );
+    expect(await verificadoDe(TENANT_C)).toEqual([{ rnt: '88888', verificado: true }]);
+
+    // 8. La plataforma también puede insertar un perfil ya verificado.
+    await comoPlataforma(TENANT_C, async (c) => {
+      await c.query('DELETE FROM perfiles_de_agencia WHERE tenant_id = $1', [TENANT_C]);
+      await c.query(
+        "INSERT INTO perfiles_de_agencia (tenant_id, rnt, verificado_en) VALUES ($1, '12345', '2026-11-20T13:00:00Z')",
+        [TENANT_C],
+      );
+    });
+    expect(await verificadoDe(TENANT_C)).toEqual([{ rnt: '12345', verificado: true }]);
+
+    // 9. La ruta real de la API es un upsert. Con el MISMO RNT, aunque mande verificado_en = now(),
+    //    la verificación se conserva (y no la fija quien no la tenía)...
+    const mismo = await comoTenant(TENANT_C, (c) =>
+      c.query(
+        `INSERT INTO perfiles_de_agencia (tenant_id, rnt) VALUES ($1, '12345')
+         ON CONFLICT (tenant_id) DO UPDATE
+           SET rnt = EXCLUDED.rnt, verificado_en = now(), actualizado_en = now()
+         RETURNING rnt, verificado_en IS NULL AS sin_verificar`,
+        [TENANT_C],
+      ),
+    );
+    expect(mismo.rows).toEqual([{ rnt: '12345', sin_verificar: false }]);
+    //    ...y con otro RNT vuelve a NULL.
+    const otro = await comoTenant(TENANT_C, (c) =>
+      c.query(
+        `INSERT INTO perfiles_de_agencia (tenant_id, rnt) VALUES ($1, '54321')
+         ON CONFLICT (tenant_id) DO UPDATE
+           SET rnt = EXCLUDED.rnt, verificado_en = now(), actualizado_en = now()
+         RETURNING rnt, verificado_en IS NULL AS sin_verificar`,
+        [TENANT_C],
+      ),
+    );
+    expect(otro.rows).toEqual([{ rnt: '54321', sin_verificar: true }]);
   });
 });

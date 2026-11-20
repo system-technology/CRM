@@ -1,6 +1,7 @@
 -- =============================================================================
 -- T-268, ADR-0030 F1 — registro autoservicio de agencias: `viajapro_registro`, `crear_agencia`,
--- `codigo_de_acceso_vigente`, columnas de `tenants`, `perfiles_de_agencia` y cuatro tablas globales
+-- `codigo_de_acceso_vigente`, columnas de `tenants` y de `perfiles_de_agencia`, y cuatro tablas
+-- globales
 --
 -- Hoy ningún rol de aplicación puede insertar en `tenants` (global, exceptuada de RLS, `{SELECT}` para
 -- `viajapro_app`). ADR-0030 elige la opción D: la agencia nace por una función SECURITY DEFINER cuyo
@@ -20,9 +21,11 @@
 --   4. Tablas globales: `aceptaciones_de_identidad` y `codigos_de_registro` (solo
 --      `viajapro_identidad`), `codigos_de_acceso_al_registro` y `parametros_del_registro` (ningún rol
 --      de login; solo la plataforma y `viajapro_registro` por columnas).
---   5. `perfiles_de_agencia`: tabla DE AGENCIA (tenant_id PK), RLS forzada con USING y WITH CHECK, y
---      un disparador que pone `verificado_en = NULL` cuando escribe alguien que no es la plataforma
---      (el dueño de la tabla) o cuando cambia `nit` o `rnt`.
+--   5. `perfiles_de_agencia` ya existe (20261120130000, T-261: `rnt`, `verificado_en`, RLS con USING
+--      y WITH CHECK, solo `viajapro_app` por `privilegios_declarados`). Aquí se le AÑADEN `nit`,
+--      `digito_verificacion` y `razon_social`, y se REEMPLAZA `proteger_verificacion_del_perfil`,
+--      como pide el aviso de aquella migración: cambiar el NIT (o su DV) anula `verificado_en`
+--      igual que cambiar el RNT.
 --   6. `aplicar_privilegios_declarados()`: revoca lo que la concesión por defecto dio a las tablas
 --      nuevas y aplica lo declarado en el paso 1.
 --   7. Superficie de `viajapro_registro`, SOLO por columnas (ADR-0030 §3.1).
@@ -59,10 +62,11 @@
 -- considera PII sensible, entra en ADR-0015. `tenants` solo gana un id de identidad, sin datos
 -- personales. Los códigos se guardan como SHA-256 / HMAC, nunca en claro.
 --
--- **Segura en caliente.** Columnas nulables o con DEFAULT constante (sin reescritura), dos CHECK que
--- validan `tenants` (decenas de filas: todas PLATAFORMA y sin encargo), dos índices y una foránea
--- sobre `tenants` construidos sin CONCURRENTLY (Prisma corre el archivo en una transacción); tablas
--- nuevas y GRANT. Con volumen en `tenants` (no lo habrá: una fila por agencia) seguiría siendo trivial.
+-- **Segura en caliente.** Columnas nulables o con DEFAULT constante (sin reescritura), CHECK que
+-- validan `tenants` (decenas de filas: todas PLATAFORMA y sin encargo) y `perfiles_de_agencia` (las
+-- columnas nuevas nacen NULL), dos índices y una foránea sobre `tenants` construidos sin CONCURRENTLY
+-- (Prisma corre el archivo en una transacción); tablas nuevas, GRANT y un CREATE OR REPLACE del
+-- disparador (la API desplegada solo escribe `rnt`, y el comportamiento sobre `rnt` no cambia). Con volumen en `tenants` (no lo habrá: una fila por agencia) seguiría siendo trivial.
 --
 -- **REVERSIBLE** con una migración posterior (ADR-0030 «Qué habría que cambiar para revertir esto»;
 -- la API tiene que dejar de llamarlas antes):
@@ -72,8 +76,10 @@
 --     public.parametros_del_registro FROM viajapro_registro;   -- también los de columna
 --   REVOKE viajapro_registro FROM <rol de migraciones>;  -- y DROP ROLE, que es global al clúster:
 --                                                         -- solo si ninguna otra base lo usa.
---   Las tablas de códigos se pueden vaciar. Las columnas de `tenants`, `perfiles_de_agencia` y
---   `aceptaciones_de_identidad` SE CONSERVAN: son datos y evidencia legal.
+--   Las tablas de códigos se pueden vaciar. Las columnas de `tenants`, las nuevas de
+--   `perfiles_de_agencia` y `aceptaciones_de_identidad` SE CONSERVAN: son datos y evidencia legal.
+--   (El disparador ampliado puede quedarse: sin columnas nuevas que cambien, se comporta como el de
+--   T-261.)
 -- =============================================================================
 
 -- -----------------------------------------------------------------------------
@@ -251,70 +257,100 @@ COMMENT ON TABLE "parametros_del_registro" IS
   'Global (excepciones_rls), una fila. tope_por_hora: cortocircuito de crear_agencia (VPR02), no un límite de negocio. Solo la escribe la plataforma. ADR-0030 §3.2.';
 
 -- -----------------------------------------------------------------------------
--- 5. `perfiles_de_agencia`: tabla DE AGENCIA, con RLS
+-- 5. `perfiles_de_agencia`: la EXTIENDE (la creó 20261120130000, T-261, con `rnt` y `verificado_en`)
 --
 -- El NIT no va en `tenants`: esa tabla la leen enteros tres roles de login, y el NIT de una persona
 -- natural es su cédula (ADR-0030 §3.3). Lo que declara el registrante NO está verificado.
--- -----------------------------------------------------------------------------
-CREATE TABLE "perfiles_de_agencia" (
-    "tenant_id"           UUID           NOT NULL,
-    "nit"                 VARCHAR(20),
-    "digito_verificacion" SMALLINT,
-    "razon_social"        VARCHAR(200),
-    "rnt"                 VARCHAR(20),
-    -- Solo la plataforma lo fija, tras comprobar NIT y RNT (T-280). Ver el disparador.
-    "verificado_en"       TIMESTAMPTZ(3),
-    "creado_en"           TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "actualizado_en"      TIMESTAMPTZ(3) NOT NULL,
-
-    CONSTRAINT "perfiles_de_agencia_pkey" PRIMARY KEY ("tenant_id"),
-    CONSTRAINT "perfiles_de_agencia_digito_verificacion" CHECK ("digito_verificacion" BETWEEN 0 AND 9)
-);
-ALTER TABLE "perfiles_de_agencia" ADD CONSTRAINT "perfiles_de_agencia_tenant_id_fkey"
-  FOREIGN KEY ("tenant_id") REFERENCES "tenants" ("id") ON DELETE CASCADE ON UPDATE CASCADE;
-COMMENT ON TABLE "perfiles_de_agencia" IS
-  'Datos fiscales y de registro de la agencia (NIT, DV, razón social, RNT), declarados y NO verificados mientras verificado_en sea NULL. Ningún documento hacia el viajero imprime NIT ni RNT sin verificado_en. ADR-0030 §3.3.';
-
--- El disparador y no un GRANT por columnas: `privilegios_declarados` no admite columnas, y
--- `aplicar_privilegios_declarados()` revoca y vuelve a conceder de tabla en cada migración.
 --
--- «La plataforma» es el DUEÑO de la tabla (el rol de migraciones, el de los comandos de plataforma).
--- Cualquier otro que escriba —`viajapro_app` en primer lugar, pero también cualquier otro rol de
--- login— deja `verificado_en` en NULL. Y aunque escriba la plataforma, cambiar `nit` o `rnt` también:
--- verificar es un paso aparte, sobre los valores ya guardados.
-CREATE OR REPLACE FUNCTION perfil_de_agencia_sin_verificar()
+-- La tabla, su RLS (USING + WITH CHECK), su declaración en `privilegios_declarados` (solo
+-- `viajapro_app`: SELECT, INSERT, UPDATE) y su disparador ya existen y no se recrean. Aquí:
+--   · tres columnas nulables (sin reescritura): `nit`, `digito_verificacion`, `razon_social`, en
+--     TEXT/SMALLINT con CHECK, como `rnt`;
+--   · el aviso de 20261120130000 a T-268: `proteger_verificacion_del_perfil` se REEMPLAZA (CREATE OR
+--     REPLACE, mismo nombre y mismo disparador) para que cambiar el NIT, o su dígito de verificación,
+--     anule `verificado_en` igual que cambiar el RNT. Si solo se añadiera la columna, una agencia con
+--     NIT verificado podría cambiarlo por el de otra y conservar la verificación.
+--   · `perfiles_de_agencia_verificado_exige_rnt` SIGUE siendo la regla: la plataforma verifica NIT y
+--     RNT a la vez (T-280), y toda agencia de turismo en Colombia tiene RNT. Un NIT verificado sin RNT
+--     no es un estado que T-280 vaya a producir; si llegara a serlo, es una migración nueva.
+-- -----------------------------------------------------------------------------
+ALTER TABLE "perfiles_de_agencia"
+  ADD COLUMN "nit"                 TEXT,
+  ADD COLUMN "digito_verificacion" SMALLINT,
+  ADD COLUMN "razon_social"        TEXT;
+
+-- Sin el DV, solo dígitos. El formato exacto de la DIAN no está verificado aquí: 1 a 15 dígitos.
+ALTER TABLE "perfiles_de_agencia" ADD CONSTRAINT "perfiles_de_agencia_nit_formato"
+  CHECK ("nit" IS NULL OR "nit" ~ '^[0-9]{1,15}$');
+-- El DV es un dígito, y solo existe junto a un NIT.
+ALTER TABLE "perfiles_de_agencia" ADD CONSTRAINT "perfiles_de_agencia_digito_verificacion"
+  CHECK ("digito_verificacion" IS NULL
+         OR ("digito_verificacion" BETWEEN 0 AND 9 AND "nit" IS NOT NULL));
+ALTER TABLE "perfiles_de_agencia" ADD CONSTRAINT "perfiles_de_agencia_razon_social_longitud"
+  CHECK ("razon_social" IS NULL OR length(btrim("razon_social")) BETWEEN 1 AND 200);
+
+COMMENT ON TABLE "perfiles_de_agencia" IS
+  'Datos legales de la agencia (T-261 y T-268, ADR-0030 §3.3): RNT, NIT, DV y razón social. Una fila por agencia. Lo que declara la agencia no está verificado: solo la plataforma fija verificado_en (disparador proteger_verificacion_del_perfil). Ningún documento al viajero imprime NIT ni RNT sin verificado_en.';
+COMMENT ON COLUMN "perfiles_de_agencia"."nit" IS
+  'NIT que declara la agencia, sin el dígito de verificación: solo dígitos. Puede ser la cédula de una persona natural: en claro bajo RLS por ADR-0030 («Negativas»). Cambiarlo anula verificado_en.';
+COMMENT ON COLUMN "perfiles_de_agencia"."verificado_en" IS
+  'UTC. Lo fija la plataforma tras comprobar NIT y RNT; NULL = sin verificar. Cambiar el NIT, el DV o el RNT lo devuelve a NULL.';
+
+-- El disparador, REEMPLAZADO. Mismas reglas que el de T-261, que prueban P-1 a P-6, ampliadas del
+-- RNT a los tres datos que la plataforma verifica (`nit`, `digito_verificacion`, `rnt`):
+--   - Quien NO es la plataforma (todo rol de aplicación): al insertar, `verificado_en` queda NULL; al
+--     actualizar, si cambia un dato verificado queda NULL, y si no queda como estaba (no puede fijarlo
+--     ni borrarlo por su cuenta).
+--   - La plataforma (el dueño de la tabla, o quien tenga su USAGE): puede fijarlo; pero si cambia un
+--     dato verificado sin tocar `verificado_en`, queda NULL (un dato nuevo no hereda la verificación).
+-- `razon_social` no anula la verificación: ADR-0030 §3.3 nombra solo NIT y RNT.
+CREATE OR REPLACE FUNCTION proteger_verificacion_del_perfil()
 RETURNS trigger
 LANGUAGE plpgsql
 SET search_path = ''
 AS $$
 DECLARE
-  v_dueno name;
+  v_plataforma boolean;
+  v_dato_cambiado boolean;
 BEGIN
-  SELECT pg_catalog.pg_get_userbyid(c.relowner) INTO v_dueno
-    FROM pg_catalog.pg_class c
-   WHERE c.oid = TG_RELID;
+  -- La plataforma es el dueño de la tabla (o un superusuario): ningún rol de aplicación lo es.
+  v_plataforma := pg_catalog.pg_has_role(
+    current_user,
+    (SELECT c.relowner FROM pg_catalog.pg_class c WHERE c.oid = TG_RELID),
+    'USAGE'
+  );
 
-  IF current_user IS DISTINCT FROM v_dueno THEN
-    NEW.verificado_en := NULL;
-  ELSIF TG_OP = 'UPDATE' THEN
-    IF NEW.nit IS DISTINCT FROM OLD.nit OR NEW.rnt IS DISTINCT FROM OLD.rnt THEN
+  IF TG_OP = 'INSERT' THEN
+    IF NOT v_plataforma THEN
       NEW.verificado_en := NULL;
     END IF;
+    RETURN NEW;
+  END IF;
+
+  -- UPDATE
+  v_dato_cambiado := NEW.rnt IS DISTINCT FROM OLD.rnt
+                  OR NEW.nit IS DISTINCT FROM OLD.nit
+                  OR NEW.digito_verificacion IS DISTINCT FROM OLD.digito_verificacion;
+
+  IF NOT v_plataforma THEN
+    IF v_dato_cambiado THEN
+      NEW.verificado_en := NULL;
+    ELSE
+      NEW.verificado_en := OLD.verificado_en;
+    END IF;
+  ELSIF v_dato_cambiado
+        AND NEW.verificado_en IS NOT DISTINCT FROM OLD.verificado_en THEN
+    NEW.verificado_en := NULL;
   END IF;
   RETURN NEW;
 END;
 $$;
 
-COMMENT ON FUNCTION perfil_de_agencia_sin_verificar() IS
-  'Disparador BEFORE INSERT OR UPDATE de perfiles_de_agencia (ADR-0030 §3.3): verificado_en = NULL si escribe alguien que no es el dueño de la tabla (la plataforma) o si cambia nit o rnt.';
+COMMENT ON FUNCTION proteger_verificacion_del_perfil() IS
+  'Disparador BEFORE INSERT OR UPDATE de perfiles_de_agencia (T-261, ampliado en T-268): solo la plataforma (el dueno de la tabla) fija o conserva un verificado_en no nulo; cambiar el rnt, el nit o el digito_verificacion lo anula. SECURITY INVOKER, search_path vacio.';
 
-REVOKE ALL ON FUNCTION perfil_de_agencia_sin_verificar() FROM PUBLIC;
-
-CREATE TRIGGER "perfiles_de_agencia_sin_verificar"
-  BEFORE INSERT OR UPDATE ON "perfiles_de_agencia"
-  FOR EACH ROW EXECUTE FUNCTION perfil_de_agencia_sin_verificar();
-
-SELECT aplicar_aislamiento_tenant('perfiles_de_agencia');
+-- CREATE OR REPLACE conserva el ACL, pero se repite: el cinturón lo comprueba.
+REVOKE ALL ON FUNCTION proteger_verificacion_del_perfil() FROM PUBLIC;
 
 -- -----------------------------------------------------------------------------
 -- 6. Privilegios de los roles de login: lo declarado en el paso 1, por el ÚNICO mecanismo
@@ -906,25 +942,74 @@ BEGIN
   IF EXISTS (SELECT 1 FROM excepciones_rls WHERE tabla = 'perfiles_de_agencia') THEN
     RAISE EXCEPTION 'perfiles_de_agencia no puede ser una excepción de RLS.';
   END IF;
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_trigger t
-     WHERE t.tgrelid = 'public.perfiles_de_agencia'::regclass
-       AND t.tgname = 'perfiles_de_agencia_sin_verificar'
-       AND NOT t.tgisinternal AND t.tgenabled = 'O'
-       AND t.tgfoid = 'public.perfil_de_agencia_sin_verificar()'::regprocedure
-       AND pg_get_triggerdef(t.oid) ~ 'BEFORE INSERT OR UPDATE ON (public\.)?perfiles_de_agencia FOR EACH ROW'
-  ) THEN
-    RAISE EXCEPTION 'Falta (o no es BEFORE INSERT OR UPDATE por fila y habilitado) perfiles_de_agencia_sin_verificar.';
+  -- UN solo disparador de usuario, el de T-261, con la función reemplazada.
+  IF (SELECT count(*) FROM pg_trigger t
+       WHERE t.tgrelid = 'public.perfiles_de_agencia'::regclass AND NOT t.tgisinternal) <> 1
+     OR NOT EXISTS (
+       SELECT 1 FROM pg_trigger t
+        WHERE t.tgrelid = 'public.perfiles_de_agencia'::regclass
+          AND t.tgname = 'perfiles_de_agencia_proteger_verificacion'
+          AND NOT t.tgisinternal AND t.tgenabled = 'O'
+          AND t.tgfoid = 'public.proteger_verificacion_del_perfil()'::regprocedure
+          AND pg_get_triggerdef(t.oid) ~ 'BEFORE INSERT OR UPDATE ON (public\.)?perfiles_de_agencia FOR EACH ROW'
+     ) THEN
+    RAISE EXCEPTION 'perfiles_de_agencia debe tener solo perfiles_de_agencia_proteger_verificacion, BEFORE INSERT OR UPDATE por fila y habilitado.';
   END IF;
   IF EXISTS (
     SELECT 1 FROM pg_proc p
-     WHERE p.oid = 'public.perfil_de_agencia_sin_verificar()'::regprocedure
+     WHERE p.oid = 'public.proteger_verificacion_del_perfil()'::regprocedure
        AND (p.prosecdef OR NOT (COALESCE(p.proconfig, '{}') && ARRAY['search_path=""', 'search_path=']))
   ) THEN
-    RAISE EXCEPTION 'perfil_de_agencia_sin_verificar debe ser SECURITY INVOKER con search_path vacío.';
+    RAISE EXCEPTION 'proteger_verificacion_del_perfil debe ser SECURITY INVOKER con search_path vacío.';
   END IF;
-  IF has_function_privilege('public', 'public.perfil_de_agencia_sin_verificar()', 'EXECUTE') THEN
-    RAISE EXCEPTION 'PUBLIC puede ejecutar perfil_de_agencia_sin_verificar.';
+  IF has_function_privilege('public', 'public.proteger_verificacion_del_perfil()', 'EXECUTE') THEN
+    RAISE EXCEPTION 'PUBLIC puede ejecutar proteger_verificacion_del_perfil.';
   END IF;
+  -- El aviso de T-261, cumplido: el cuerpo compara también el NIT y su DV.
+  IF (SELECT p.prosrc FROM pg_proc p
+       WHERE p.oid = 'public.proteger_verificacion_del_perfil()'::regprocedure)
+     !~ 'NEW\.nit IS DISTINCT FROM OLD\.nit'
+     OR (SELECT p.prosrc FROM pg_proc p
+          WHERE p.oid = 'public.proteger_verificacion_del_perfil()'::regprocedure)
+     !~ 'NEW\.digito_verificacion IS DISTINCT FROM OLD\.digito_verificacion' THEN
+    RAISE EXCEPTION 'proteger_verificacion_del_perfil no compara nit y digito_verificacion: el aviso de 20261120130000 sigue sin cumplirse.';
+  END IF;
+  -- Las tres columnas nuevas existen y son nulables; los CHECK de T-261 siguen.
+  IF (SELECT count(*) FROM pg_attribute a
+       WHERE a.attrelid = 'public.perfiles_de_agencia'::regclass
+         AND a.attname IN ('nit', 'digito_verificacion', 'razon_social')
+         AND NOT a.attnotnull AND NOT a.attisdropped) <> 3 THEN
+    RAISE EXCEPTION 'perfiles_de_agencia no tiene nit, digito_verificacion y razon_social nulables.';
+  END IF;
+  IF (SELECT count(*) FROM pg_constraint c
+       WHERE c.conrelid = 'public.perfiles_de_agencia'::regclass AND c.contype = 'c' AND c.convalidated
+         AND c.conname IN ('perfiles_de_agencia_rnt_formato', 'perfiles_de_agencia_verificado_exige_rnt',
+                           'perfiles_de_agencia_nit_formato', 'perfiles_de_agencia_digito_verificacion',
+                           'perfiles_de_agencia_razon_social_longitud')) <> 5 THEN
+    RAISE EXCEPTION 'Faltan (o no están validados) los CHECK de perfiles_de_agencia.';
+  END IF;
+  -- Los privilegios de la tabla no cambian: solo viajapro_app, SELECT, INSERT y UPDATE (T-261).
+  IF NOT EXISTS (SELECT 1 FROM privilegios_declarados d
+                  WHERE d.tabla = 'perfiles_de_agencia' AND d.rol = 'viajapro_app'
+                    AND d.privilegios = ARRAY['SELECT','INSERT','UPDATE']::text[])
+     OR (SELECT count(*) FROM privilegios_declarados d WHERE d.tabla = 'perfiles_de_agencia') <> 1 THEN
+    RAISE EXCEPTION 'La declaración de perfiles_de_agencia dejó de ser solo viajapro_app {SELECT,INSERT,UPDATE}.';
+  END IF;
+  FOR v_rol IN
+    SELECT rolname FROM roles_de_login_vigilados
+    UNION
+    SELECT rolname FROM pg_roles
+     WHERE rolname IN ('viajapro_app', 'viajapro_altas', 'viajapro_webhook', 'viajapro_identidad')
+  LOOP
+    SELECT COALESCE(array_agg(p ORDER BY p COLLATE "C"), '{}')
+      INTO reales
+      FROM unnest(ARRAY['SELECT','INSERT','UPDATE','DELETE','TRUNCATE','REFERENCES','TRIGGER']) AS p
+     WHERE has_table_privilege(v_rol, 'public.perfiles_de_agencia', p);
+    esperados := CASE WHEN v_rol = 'viajapro_app'
+                      THEN ARRAY['INSERT', 'SELECT', 'UPDATE'] ELSE '{}'::text[] END;
+    IF reales IS DISTINCT FROM esperados THEN
+      RAISE EXCEPTION 'Privilegios de % sobre perfiles_de_agencia: % (se esperaba %).', v_rol, reales, esperados;
+    END IF;
+  END LOOP;
 END;
 $$;

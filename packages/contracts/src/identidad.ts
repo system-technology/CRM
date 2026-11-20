@@ -248,8 +248,9 @@ export type RespuestaOk = z.infer<typeof RespuestaOk>;
  * Respuesta de `GET /api/v1/agencia/ajustes`: lo que la web necesita de la agencia activa para
  * presentar (zona horaria para formatear fechas, moneda y país por defecto). Lee de `tenants`.
  *
- * Solo se lee de `tenants`; la zona se cambia con `PATCH` (`ActualizarAjustesDeAgencia`), que pasa
- * por la función `actualizar_zona_horaria_de_la_agencia` y no por un UPDATE (ADR-0027).
+ * La zona y el nombre se leen de `tenants`; la zona se cambia con `PATCH` (`ActualizarAjustesDeAgencia`),
+ * que pasa por la función `actualizar_zona_horaria_de_la_agencia` y no por un UPDATE (ADR-0027). El RNT
+ * se lee y se escribe en `perfiles_de_agencia` (T-261).
  * Las fechas siguen en UTC en la base (R9); esto solo gobierna la presentación.
  */
 export const AjustesDeAgencia = z.object({
@@ -258,12 +259,50 @@ export const AjustesDeAgencia = z.object({
   monedaIso: z.string().length(3),
   /** Nombre IANA, p. ej. `America/Bogota`. */
   zonaHoraria: z.string(),
+  /**
+   * T-261. El RNT que declaró la agencia; `null` si no lo ha escrito. Lee de `perfiles_de_agencia`.
+   * La API lo envía siempre; es opcional en el esquema solo para que una respuesta anterior a T-261
+   * siga validando.
+   */
+  rnt: z.string().nullable().optional(),
+  /**
+   * T-261. `true` solo si la plataforma verificó ESE RNT. Lo que declara la agencia no está
+   * verificado, y ningún documento hacia el viajero imprime un RNT sin verificar (ADR-0030 §3.3).
+   * Ningún cuerpo de `PATCH` puede fijarlo: lo conserva o lo anula la base. Opcional por la misma
+   * razón que `rnt`.
+   */
+  rntVerificado: z.boolean().optional(),
 });
 export type AjustesDeAgencia = z.infer<typeof AjustesDeAgencia>;
 
 /**
- * Cuerpo de `PATCH /api/v1/agencia/ajustes` (permiso `usuarios.administrar`). Hoy solo la zona
- * horaria. La forma la valida aquí; que sea un nombre IANA real lo decide la base (422 si no).
+ * El RNT (Registro Nacional de Turismo): solo dígitos, de 1 a 10. Es la misma regla del CHECK
+ * `perfiles_de_agencia_rnt_formato`; el formato exacto del registro oficial no está verificado.
+ */
+export const RntDeAgencia = z.string().regex(/^[0-9]{1,10}$/, 'El RNT son solo dígitos, de 1 a 10');
+export type RntDeAgencia = z.infer<typeof RntDeAgencia>;
+
+/**
+ * Cuerpo de `PATCH /api/v1/agencia/ajustes` (permiso `usuarios.administrar`): la zona horaria y/o el
+ * RNT, al menos uno. `rnt: null` borra el RNT. Cambiar el RNT lo deja sin verificar. La forma la
+ * valida aquí; que la zona sea un nombre IANA real lo decide la base (422 si no).
+ * `.strict()`: ni `tenantId` ni `rntVerificado` ni `verificadoEn` se aceptan en el cuerpo.
+ */
+export const CambiarAjustesDeAgencia = z
+  .object({
+    zonaHoraria: z.string().min(1).max(64).regex(/^\S+$/, 'Sin espacios').optional(),
+    rnt: RntDeAgencia.nullable().optional(),
+  })
+  .strict()
+  .refine((c) => c.zonaHoraria !== undefined || c.rnt !== undefined, {
+    message: 'No hay nada que cambiar',
+  });
+export type CambiarAjustesDeAgencia = z.infer<typeof CambiarAjustesDeAgencia>;
+
+/**
+ * LEGADO: solo la zona horaria. El cuerpo vigente del `PATCH` es `CambiarAjustesDeAgencia` (zona
+ * y/o RNT). Este esquema sigue aquí, sin cambios, mientras la web migra (T-261, PR de
+ * Configuración); después se retira. La API ya no lo usa.
  */
 export const ActualizarAjustesDeAgencia = z
   .object({

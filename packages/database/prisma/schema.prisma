@@ -75,9 +75,6 @@ model Tenant {
   creadoEn      DateTime @default(now()) @map("creado_en") @db.Timestamptz(3)
   actualizadoEn DateTime @updatedAt @map("actualizado_en") @db.Timestamptz(3)
 
-  /// Datos fiscales declarados (NIT, RNT): tabla de agencia con RLS, no columnas de `tenants`.
-  perfil PerfilDeAgencia?
-
   usuarios          Usuario[]
   etapas            EtapaPipeline[]
   mayoristas        Mayorista[]
@@ -109,6 +106,9 @@ model Tenant {
   notificaciones    Notification[]
   cambiosDeReserva  ReservaCambioEstado[]
 
+  /// T-261: los datos legales de la agencia (hoy solo el RNT). Una fila, o ninguna si no los ha escrito.
+  perfil PerfilDeAgencia?
+
   roles            Rol[]
   formatosDeViaje  FormatoDeViaje[]
   opcionesDeSalida OpcionDeSalida[]
@@ -136,25 +136,6 @@ enum OrigenDelAlta {
   AUTOSERVICIO
 
   @@map("origen_del_alta")
-}
-
-/// Datos fiscales y de registro de la agencia (ADR-0030 §3.3). Tabla DE AGENCIA: RLS forzada.
-///
-/// Lo que declara el registrante NO está verificado. Un disparador pone `verificadoEn` en NULL
-/// cuando escribe cualquiera que no sea la plataforma (el dueño de la tabla) o cuando cambia
-/// `nit` o `rnt`. Ningún documento hacia el viajero imprime NIT ni RNT sin `verificadoEn`.
-model PerfilDeAgencia {
-  tenantId           String    @id @map("tenant_id") @db.Uuid
-  tenant             Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  nit                String?   @db.VarChar(20)
-  digitoVerificacion Int?      @map("digito_verificacion") @db.SmallInt
-  razonSocial        String?   @map("razon_social") @db.VarChar(200)
-  rnt                String?   @db.VarChar(20)
-  verificadoEn       DateTime? @map("verificado_en") @db.Timestamptz(3)
-  creadoEn           DateTime  @default(now()) @map("creado_en") @db.Timestamptz(3)
-  actualizadoEn      DateTime  @updatedAt @map("actualizado_en") @db.Timestamptz(3)
-
-  @@map("perfiles_de_agencia")
 }
 
 /// Monedas habilitadas. Dato de referencia universal, igual para todos.
@@ -2736,6 +2717,37 @@ model Notification {
   @@index([tenantId, archivoId])
   @@index([tenantId, reservaId])
   @@map("notificaciones")
+}
+
+/// Datos legales de la agencia (T-261 y T-268, ADR-0030 §3.3). Una fila por agencia: la PK es el
+/// tenant. RNT (T-261); NIT, dígito de verificación y razón social (T-268).
+///
+/// Lo que declara la agencia NO está verificado. `verificado_en` solo lo fija y lo conserva la
+/// plataforma (el dueño de la tabla): el disparador `proteger_verificacion_del_perfil` impide a
+/// `viajapro_app` fijarlo o borrarlo, y lo anula cuando cambia un dato verificado (`nit`,
+/// `digito_verificacion`, `razon_social` o `rnt`) salvo que la plataforma lo vuelva a fijar en el
+/// mismo UPDATE. Ni el disparador ni los CHECK (formato del RNT y del NIT, DV 0-9 con NIT, razón
+/// social no vacía, verificado exige RNT) los modela Prisma. Sin DELETE para la aplicación.
+model PerfilDeAgencia {
+  tenantId String @id @map("tenant_id") @db.Uuid
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  /// Solo dígitos (1 a 10). Ningún documento al viajero lo imprime sin `verificadoEn`.
+  rnt                String?
+  /// Solo dígitos (1 a 15), sin el dígito de verificación. Puede ser la cédula de una persona
+  /// natural: en claro bajo RLS por ADR-0030 («Negativas»); si se decide cifrarlo, ADR-0015.
+  nit                String?
+  /// 0 a 9, y solo con `nit`.
+  digitoVerificacion Int?      @map("digito_verificacion") @db.SmallInt
+  /// 1 a 200 caracteres sin contar espacios de los extremos.
+  razonSocial        String?   @map("razon_social")
+  /// R9: UTC. NULL = sin verificar.
+  verificadoEn       DateTime? @map("verificado_en") @db.Timestamptz(3)
+
+  creadoEn      DateTime @default(now()) @map("creado_en") @db.Timestamptz(3)
+  actualizadoEn DateTime @default(now()) @updatedAt @map("actualizado_en") @db.Timestamptz(3)
+
+  @@map("perfiles_de_agencia")
 }
 
 /// Historial de estados de la reserva (T-250). Solo añadir: la API solo tiene SELECT e INSERT.

@@ -1211,7 +1211,7 @@ cinturones de las dos migraciones y el bloque «T-241» de `aislamiento.spec.ts`
 migración y `aislamiento.spec.ts` (N-2, N-5, H-2, H-6 y H-8).
 
 
-## Registro autoservicio de agencias (ADR-0030 F1, T-268, migración `20261120100000_registro_de_agencias_rol_y_crear_agencia`)
+## Registro autoservicio de agencias (ADR-0030 F1, T-268, migración `20261120140000_registro_de_agencias_rol_y_crear_agencia`)
 
 ```
   tenants  + origen_del_alta origen_del_alta NOT NULL DEFAULT 'PLATAFORMA'  (PLATAFORMA | AUTOSERVICIO)
@@ -1220,10 +1220,12 @@ migración y `aislamiento.spec.ts` (N-2, N-5, H-2, H-6 y H-8).
            CHECK tenants_encargo_completo (versión y fecha juntas) · tenants_autoservicio_completo
            excepciones_rls para viajapro_app: SIGUE {SELECT}
 
-  perfiles_de_agencia (DE AGENCIA, RLS forzada USING + WITH CHECK)
-     tenant_id PK → tenants CASCADE · nit · digito_verificacion · razon_social · rnt · verificado_en
-     BEFORE INSERT OR UPDATE: verificado_en := NULL si no escribe el dueño de la tabla (la plataforma)
-                              o si cambia nit o rnt          (perfil_de_agencia_sin_verificar)
+  perfiles_de_agencia (la creó T-261, 20261120130000: tenant_id PK, rnt, verificado_en, RLS,
+                       solo viajapro_app {SELECT, INSERT, UPDATE})
+     + nit text (1-15 dígitos) · digito_verificacion smallint (0-9, solo con nit) · razon_social text
+     proteger_verificacion_del_perfil REEMPLAZADA: quien no es la plataforma no fija ni borra
+       verificado_en; cambiar rnt, nit o digito_verificacion lo anula (salvo que la plataforma lo
+       vuelva a fijar en el mismo UPDATE). razon_social no lo anula.
 
   GLOBALES (excepciones_rls, sin tenant_id)
      aceptaciones_de_identidad      → identidades RESTRICT   viajapro_identidad {SELECT, INSERT}
@@ -1256,11 +1258,11 @@ migración y `aislamiento.spec.ts` (N-2, N-5, H-2, H-6 y H-8).
   ese valor sobrevive al volver (supuesto S1): la API no fija el tenant, lo hereda.
 - **El NIT no va en `tenants`** (la leen enteros tres roles de login, y el de una persona natural es
   su cédula): va en `perfiles_de_agencia`, bajo RLS y en claro (ADR-0030 «Negativas»). Lo declarado
-  por el registrante no está verificado; el disparador, y no un `GRANT` por columnas, lo garantiza,
-  porque `privilegios_declarados` no admite columnas.
+  por el registrante no está verificado; el disparador de T-261, ampliado aquí al NIT y su DV, y no un
+  `GRANT` por columnas, lo garantiza, porque `privilegios_declarados` no admite columnas.
 
 **Por qué.** ADR-0030: una agencia puede darse de alta sola sin que la API pueda escribir `tenants`
 ni tocar una agencia existente. Lo fijan el cinturón de la migración (aborta si la superficie de
 `viajapro_registro` difiere de la declarada) y el bloque «T-268» de `aislamiento.spec.ts` (R-1 a R-9),
-más las aserciones 10, 11, 12, 13, 14, 20, 62, 83 y AUD-008, que pasan a 17 funciones, 7 propietarios
-y 7 tablas de identidad.
+más las aserciones 10, 11, 12, 13, 14, 20, 62, 83, AUD-008 y P-1, que pasan a 17 funciones, 7
+propietarios, 7 tablas de identidad y tres columnas de texto en `perfiles_de_agencia`.
