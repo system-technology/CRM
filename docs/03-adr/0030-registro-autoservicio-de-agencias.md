@@ -15,26 +15,10 @@
   por un script de plataforma». Con este ADR hay una tercera vía, el registro con correo verificado.
   **El resto de ADR-0011 sigue vigente**, incluido `disableSignUp: true` en Better Auth (ver §2).
 
-> **Revisión de seguridad, primera vuelta (2026-11-20): NO ACEPTABLE todavía.** Tres bloqueantes
-> que el ADR debe resolver antes de aceptarse, y antes de empezar T-262, T-264, T-265 y T-270:
->
-> 1. **Código de registro por fuerza bruta (§1.1-1.2).** Una sola fila viva por correo, intento
->    consumido de forma atómica (`UPDATE … WHERE intentos>0 RETURNING` o `FOR UPDATE`), mismos
->    parámetros que el OTP de ingreso, tope de fallos por correo en 24 h, aviso al atar una invitación
->    a una identidad ya existente, y e2e con intentos concurrentes. Sin esto, crear la identidad del
->    correo de una asesora antes de que la inviten da acceso a su agencia.
-> 2. **Código de acceso del piloto (P2) sin diseño.** Tabla global con hash de un secreto de 128 bits,
->    caducidad, uso único, sin tenant ni rol (solo autoriza crear una agencia nueva); consumido dentro
->    de `crear_agencia` (un `ROLLBACK` lo devuelve); nunca logueado; exigido también en `solicitar`.
-> 3. **Conexión manual de WhatsApp (§5.1, P6, T-270).** Sobre el `tenantId` de una solicitud creada
->    dentro de la agencia (nunca por nombre o slug, que elige el registrante), con confirmación del
->    DUENO y token entregado por un formulario del tenant que lo cifra (R6). Verificar con
->    `investigador` si Meta permite operar WABAs de terceros sin ser Tech Provider.
->
-> Los hallazgos de cola (tope global y DoS, `completar` sobre identidad existente, cola sin agencia,
-> NIT/RNT ajenos, orden de `set_config` para S1, vía de la transacción, slugs reservados, contador
-> del limitador, aceptaciones) se incorporan en la segunda vuelta. La auditoría completa vuelve a
-> correr tras corregirlos: en aislamiento no aplica R13.
+> **Revisión de seguridad:** la primera vuelta (2026-11-20) dejó tres bloqueantes. Esta versión los
+> aborda en §1.1-1.2 y §3.7 (código de registro), §3.8 (código de acceso del piloto) y §5.1
+> (conexión manual de WhatsApp), e incorpora los hallazgos de cola. **Queda pendiente la segunda
+> auditoría**: en aislamiento no aplica R13.
 
 ---
 
@@ -69,7 +53,11 @@ detrás del piloto y no delante.
 | Better Auth va con `emailAndPassword.disableSignUp: true` y `emailOTP({ disableSignUp: true })` | `identity/infrastructure/crear-auth.ts:153-175` |
 | Las rutas sin tenant son una **lista exacta**: lo que no está ahí da 401 | `shared/tenant/tenant.middleware.ts:44-52` |
 | Una invitación se guarda en `verificaciones` (`invitacion:<sha256(token)>`), se consume borrándola y crea la identidad ya verificada (`crearVerificada`). Después crea la membresía con `viajapro_app` y RLS, fijando el tenant de la invitación. **Son dos transacciones en dos pools**, no una | `invitaciones.prisma.ts`, `aceptar-invitacion.use-case.ts`, `identidades.prisma.ts`, `miembros.prisma.ts:94-150` |
-| Hay un limitador de envíos de código, con puerto, adaptadores Redis y memoria, y claves HMAC (no guarda ni el correo ni la IP en claro) | `identity/application/limitador-de-envios.ts` |
+| Hay un limitador de envíos de código, con puerto, adaptadores Redis y memoria, y claves HMAC (no guarda ni el correo ni la IP en claro). **El prefijo de la clave es fijo** (`viajapro:otp-envio:`): otro uso compartiría contador con el OTP de ingreso | `identity/application/limitador-de-envios.ts:43-47` |
+| **`verificaciones.identificador` no es único** (solo `@@index`), y `valor` es texto libre. Un contador de intentos guardado en `valor` sería leer, modificar y escribir: dos intentos concurrentes leerían el mismo contador | `schema.prisma:411-422` |
+| `AceptarInvitacionUseCase`, si la identidad del correo **ya existe**, la ata a la agencia sin tocar su contraseña ni avisar a nadie | `aceptar-invitacion.use-case.ts:39-55` |
+| El OTP de ingreso usa 6 dígitos, 5 minutos y 3 intentos (`CODIGO_DE_CORREO`) | `crear-auth.ts:48` |
+| Las transacciones sin tenant se declaran una a una en `OPERACIONES_DE_PLATAFORMA` y se abren con `sinTenantDeclarado` (lo que no está declarado no compila) | `shared/prisma/operaciones-de-plataforma.ts`; `prisma.service.ts:133-139` |
 | `siembra-de-tenant.ts` siembra roles (`DUENO`, `ASESOR`, `OPERACIONES`), formatos de viaje, etapas y motivos de pérdida, de forma idempotente y por clave. **La política de precio no está ahí**: la siembra `semilla-agencia-nucleo.ts`. El cotizador funciona sin ella, porque cae a `POLITICA_POR_DEFECTO` | `siembra-de-tenant.ts`; `quoting/application/cotizaciones.use-case.ts:389-401` |
 | Ya hay precedente de un módulo que llama a otro **por un puerto, dentro de su propia transacción**: `identity` suelta las conversaciones de un miembro dado de baja con `PuertoConversacionesDeMiembro.soltarLasDe(tx, …)` | `miembros.prisma.ts:196` |
 | Los módulos escriben `registros_auditoria` (con `tenant_id` y RLS) dentro de su transacción | `quoting/application/ajustes-de-catalogo.use-case.ts` |
@@ -82,8 +70,12 @@ detrás del piloto y no delante.
 - **S1.** Un `set_config('app.current_tenant', …, true)` ejecutado dentro del cuerpo de una función
   `SECURITY DEFINER` sigue vigente al volver de la función, hasta el final de la transacción. Solo se
   restauran los parámetros que la función declara con una cláusula `SET`. Es lo documentado en
-  PostgreSQL, pero `datos` lo fija con una aserción (fase F1). Si resultara falso, el alta sigue
-  funcionando: la API fijaría el contexto con el id que devuelve la función (variante de §3.4).
+  PostgreSQL, con dos condiciones que este ADR fija: la función solo declara `SET search_path = ''`
+  (aserción `proconfig = {search_path=""}`), y el `set_config` es **la última sentencia, fuera de
+  todo bloque `EXCEPTION`**, porque revertir una subtransacción revierte también el `set_config`
+  hecho dentro. `datos` lo prueba en F1 **por el camino del slug que choca**, que es el que
+  reintenta. Si resultara falso, el alta sigue funcionando: la API fijaría el contexto con el id que
+  devuelve la función (variante de §3.4).
 - **S2.** El modelo de cobro no está decidido (`docs/00-vision/04-modelo-de-negocio.md`: «Nada más está
   decidido»). Este ADR no supone ninguno.
 - **S3.** Ningún script de hoy conecta el número real de una agencia. Antes de Embedded Signup, una
@@ -137,11 +129,14 @@ límites contra el abuso y deja fijado el contexto de la agencia nueva.
 - **Cierra:** el control fino de lo que se expone de Better Auth, que hoy es una decisión explícita.
 
 #### F — Registro propio en dos pasos con código por correo, con el patrón de las invitaciones (elegida)
-`solicitar` guarda en `verificaciones` un código hasheado y lo envía. `completar` lo consume y crea
-la identidad **ya verificada**, con `crearVerificada`, el mismo camino que una invitación aceptada.
+`solicitar` guarda un código hasheado en una tabla propia, `codigos_de_registro` (§3.7), y lo
+envía. `completar` lo consume de forma atómica y crea la identidad **ya verificada**, con
+`crearVerificada`, el mismo camino que una invitación aceptada.
 - **Gana:** nunca existe una identidad sin verificar. Responde igual exista o no el correo. Reutiliza
-  `verificaciones`, el limitador y `crearVerificada`. Better Auth sigue cerrado.
-- **Cuesta:** dos rutas propias más que mantener.
+  el limitador y `crearVerificada`. Better Auth sigue cerrado.
+- **Cuesta:** dos rutas propias y una tabla global más. Se descartó reutilizar `verificaciones`: su
+  `identificador` no es único y `valor` es texto, así que el contador de intentos no se puede
+  decrementar de forma atómica sin cambiar una tabla que es de Better Auth.
 - **Cierra:** nada.
 
 #### G — Sin cuenta previa: un formulario único que crea identidad y agencia a la vez (rechazada)
@@ -181,26 +176,36 @@ puertos. Ninguna otra combinación deja a la base, y no a la aplicación, eligie
 ### 1. Flujo de alta
 
 ```
-/registro            POST /api/v1/auth/registro/solicitar   { correo }                         → 202 siempre
+/registro#acceso=…   POST /api/v1/auth/registro/solicitar   { correo, codigoDeAcceso }         → 202 siempre
                      POST /api/v1/auth/registro/completar   { correo, codigo, nombre,
                                                               contrasena, aceptaciones }         → 200 + cookie de sesión
 /registro/agencia    POST /api/v1/auth/agencias             { nombre, nit?, paisIso,
                                                               zonaHoraria, monedaIso,
-                                                              aceptaEncargo: version }           → 201 { slug }
+                                                              aceptaEncargo: version,
+                                                              codigoDeAcceso }                   → 201 { slug }
                      → la sesión queda con tenant_activo = la agencia nueva → /bienvenida
 ```
 
-1. **Solicitar.** Se responde `202` siempre. Si el correo no tiene identidad, se guarda en
-   `verificaciones` el identificador `registro:<HMAC(correo)>` con el valor
-   `{ hashDelCodigo, intentosRestantes: 5 }`, vigencia de 10 minutos, y se encola el correo con el
-   código de 6 dígitos (R5). Si **ya tiene** identidad, se encola otro correo: «ya tienes cuenta,
-   inicia sesión o recupera tu contraseña». La respuesta y el tiempo son los mismos en los dos
-   casos: no se revela quién tiene cuenta (la misma regla que en las invitaciones).
-2. **Completar.** Se consume el código (borrar al acertar; restar un intento al fallar; al llegar a
-   cero se borra). Luego `crearVerificada` y, **en la misma transacción del pool de identidad**, una
-   fila por documento aceptado en `aceptaciones_de_identidad` (§4). Por último se inicia la sesión
-   por el camino normal de Better Auth, sin crear filas de `sesiones` a mano. Una contraseña de menos
-   de 12 caracteres da 422 antes de consumir el código.
+0. **Código de acceso del piloto** (P2, decidido): la plataforma lo genera y lo entrega por otro
+   canal como enlace `/registro#acceso=<secreto>`. Va en el **fragmento**, que el navegador no
+   envía al servidor, así que no aparece en registros de acceso. La web lo lee y lo manda en el
+   cuerpo. Se **comprueba** en `solicitar`, sin consumirlo, y se **consume** dentro de
+   `crear_agencia`. Diseño en §3.8.
+1. **Solicitar.** Se responde `202` siempre, también con un código de acceso inválido (en ese caso
+   no se envía nada, y el intento cuenta para el límite por IP de §3.8). Si el correo no tiene
+   identidad, se **reemplaza** su fila de `codigos_de_registro` (§3.7) y se encola el correo con el
+   código. Si **ya tiene** identidad, se encola el correo «ya tienes cuenta, inicia sesión o
+   recupera tu contraseña». **Las dos ramas encolan un trabajo con la misma forma, en el mismo punto
+   del código**, y la respuesta sale antes de encolar. Así ni el estado, ni el cuerpo, ni el tiempo
+   revelan quién tiene cuenta. El código **no viaja en claro por la cola** (§3.7).
+2. **Completar.** El intento se consume de forma atómica (§3.7). Si el código es correcto, se
+   comprueba que **no existe identidad con ese correo**. Si existe (por ejemplo, la crearon entre los
+   dos pasos al aceptar una invitación), la respuesta es el mismo error genérico que un código
+   inválido: **`completar` nunca reutiliza ni ata una identidad existente.** Si no existe,
+   `crearVerificada` y, **en la misma transacción del pool de identidad**, una fila por documento
+   aceptado en `aceptaciones_de_identidad` (§4). Por último se inicia la sesión por el camino normal
+   de Better Auth, sin crear filas de `sesiones` a mano. Una contraseña de menos de 12 caracteres da
+   422 antes de consumir el intento.
 3. **Crear la agencia.** La ruta exige sesión viva e identidad con `correo_verificado`, y **no exige
    tenant activo**: va en `RUTAS_DE_AUTENTICACION_SIN_TENANT`, como `tenant-activo`, y lee la
    sesión por `identity`. El cuerpo es un Zod `.strict()` **sin ningún campo de tenant**. Ver §3.
@@ -240,8 +245,12 @@ es de una agencia en prueba a la vez (§3.2).
     origen_del_alta, creado_por_identidad_id, prueba_termina_en, encargo_version,
     encargo_aceptado_en, actualizado_en)`.
   - `monedas`: `SELECT (codigo_iso)`.
-  - **Ningún `UPDATE`, `DELETE` ni `TRUNCATE`**, ni privilegios sobre tablas de negocio o de
-    identidad.
+  - `codigos_de_acceso_al_registro` (§3.8): `SELECT (hash, usado_en, expira_en, correo_hmac)` y
+    `UPDATE (usado_en, usado_por_identidad_id)`. Nada más: ni `INSERT` ni `DELETE`. Los códigos
+    los crea la plataforma.
+  - `parametros_del_registro` (§3.2): `SELECT (tope_por_hora)`.
+  - **Ningún `UPDATE`, `DELETE` ni `TRUNCATE` sobre `tenants`**, ni privilegios sobre tablas de
+    negocio o de identidad.
 - `CREATE` sobre `public` se le presta para crear la función y se le retira en la misma migración.
 - **Miembros:** ningún rol de `roles_de_login_vigilados`. El rol de migraciones con `SET TRUE,
   INHERIT FALSE`, igual que `viajapro_ajustes`.
@@ -253,7 +262,8 @@ Firma:
 ```
 crear_agencia(p_nombre text, p_slug_base text, p_pais_iso text, p_moneda_iso text,
               p_zona_horaria text, p_identidad_id uuid, p_dias_de_prueba int,
-              p_version_encargo text) RETURNS uuid
+              p_version_encargo text, p_hash_codigo_de_acceso bytea,
+              p_correo_hmac bytea) RETURNS uuid
 ```
 
 - `SECURITY DEFINER`, `plpgsql`, `VOLATILE`, `SET search_path = ''`, todo cualificado, sin SQL
@@ -271,19 +281,36 @@ crear_agencia(p_nombre text, p_slug_base text, p_pais_iso text, p_moneda_iso tex
   - `pg_advisory_xact_lock` sobre la identidad. Con el candado, si ya hay una agencia de
     `origen_del_alta = 'AUTOSERVICIO'`, `estado = 'EN_PRUEBA'` y `creado_por_identidad_id =
     p_identidad_id`, aborta con `VPR01` (`agencia_en_prueba_existente`).
-  - **Tope global:** si en la última hora se crearon más de **30** agencias de autoservicio, aborta
-    con `VPR02` (`registro_saturado`). Es un cortocircuito ante un bucle o un ataque, no un límite de
-    negocio. Cambiarlo exige una migración, y es a propósito: así la API no lo puede subir.
+  - **Código de acceso** (§3.8): `UPDATE codigos_de_acceso_al_registro SET usado_en = now(),
+    usado_por_identidad_id = p_identidad_id WHERE hash = p_hash_codigo_de_acceso AND usado_en IS
+    NULL AND expira_en > now() AND (correo_hmac IS NULL OR correo_hmac = p_correo_hmac)`. Si afecta
+    0 filas, aborta con `VPR04`, con el mismo error para un código inexistente, usado, caducado o de
+    otro correo. Como va en la misma transacción, un `ROLLBACK` posterior devuelve el código.
+    **La función siempre lo exige**: abrir el registro sin código es otro ADR y otra migración, no
+    una variable de entorno.
+  - **Tope global:** si en la última hora se crearon más agencias de autoservicio que
+    `parametros_del_registro.tope_por_hora` (una fila, 30 al crearla), aborta con `VPR02`
+    (`registro_saturado`). Es un cortocircuito ante un bucle o un ataque, no un límite de negocio.
+    Vive en una tabla para que subirlo no exija una migración. **Solo la escribe la plataforma**:
+    ningún rol de login tiene `UPDATE`. Mientras se exija código de acceso, nadie sin código puede
+    agotarlo (DoS); antes de abrir el registro, §3.6 obliga a añadir límites por IP y por dominio.
   - `p_identidad_id` viene de la API, que lo lee de la sesión verificada. **No es una frontera de
     aislamiento**, solo la llave del límite. La función no puede leer `identidades` y no lo
     necesita.
 - **Escritura:** `id = gen_random_uuid()` (v4; PostgreSQL 16 no trae uuid v7, y en `tenants` el
-  orden del índice no importa). El slug es `p_slug_base`; si choca con uno existente se le añade
-  `-` y 4 caracteres aleatorios, hasta 5 intentos (después, `VPR03`). **Nunca se reutiliza una fila
-  existente.** `estado = 'EN_PRUEBA'`, `origen_del_alta = 'AUTOSERVICIO'`, `encargo_aceptado_en =
-  now()`, `actualizado_en = now()`. Es un `INSERT` simple: sin `ON CONFLICT DO UPDATE`.
-- **Contexto:** `set_config('app.current_tenant', id::text, true)`. La transacción queda atada a la
-  agencia nueva, y la API **no** fija el tenant: lo hereda de la función (S1). Devuelve el id.
+  orden del índice no importa). El slug es `p_slug_base`. Si es un **slug reservado** (`admin`,
+  `api`, `app`, `www`, `soporte`, `ayuda`, `viajapro`, `plataforma`, `demo`, `agencia-demo`,
+  `registro`, `ingresar`; la lista vive en la función), o si choca con uno existente, se le añade
+  `-` y 4 caracteres aleatorios, hasta 5 intentos (después, `VPR03`). Cada intento es un `INSERT
+  … ON CONFLICT (slug) DO NOTHING RETURNING id`: **sin bloques `EXCEPTION`**, y nunca `DO UPDATE`.
+  **Nunca se reutiliza una fila existente.** `estado = 'EN_PRUEBA'`, `origen_del_alta =
+  'AUTOSERVICIO'`, `encargo_aceptado_en = now()`, `actualizado_en = now()`.
+- **Contexto:** `set_config('app.current_tenant', id::text, true)` es **la última sentencia antes
+  del `RETURN`, fuera de todo bloque `EXCEPTION`** (S1). La transacción queda atada a la agencia
+  nueva, y la API **no** fija el tenant: lo hereda de la función. Devuelve el id.
+- La función solo declara `SET search_path = ''`. La migración afirma `proconfig =
+  '{search_path=""}'`: una cláusula `SET app.current_tenant` restauraría el valor al volver y
+  rompería S1 en silencio.
 
 | SQLSTATE | Caso | HTTP |
 |---|---|---|
@@ -292,6 +319,7 @@ crear_agencia(p_nombre text, p_slug_base text, p_pais_iso text, p_moneda_iso tex
 | `VPR01` | Esta identidad ya tiene una agencia en prueba de autoservicio | 409 |
 | `VPR02` | Tope global por hora | 503 con `Retry-After` |
 | `VPR03` | No se encontró un slug libre en 5 intentos | 500 |
+| `VPR04` | Código de acceso inexistente, usado, caducado o de otro correo (sin distinguir) | 422 |
 
 La API traduce por SQLSTATE, no por texto (como en ADR-0027 §3).
 
@@ -303,12 +331,18 @@ La API traduce por SQLSTATE, no por texto (como en ADR-0027 §3).
 | `tenants` + `creado_por_identidad_id` | global | `uuid NULL → identidades(id)`. Solo un id, sin datos personales |
 | `tenants` + `prueba_termina_en` | global | `timestamptz NULL` (UTC, R9) |
 | `tenants` + `encargo_version`, `encargo_aceptado_en` | global | La aceptación del contrato de encargo en nombre de la agencia, por `creado_por_identidad_id` |
-| `perfiles_de_agencia` | **tenant, RLS** (`USING` + `WITH CHECK` por `001`) | `tenant_id` PK y FK, `nit`, `digito_verificacion`, `razon_social`, `rnt`, todos `NULL`. **El NIT no va en `tenants`**: esa tabla la leen enteros tres roles de login, y el NIT de una persona natural es su cédula. La escribe `viajapro_app` bajo RLS. La marca y la pieza de cotización (RNT) la reutilizan después |
-| `aceptaciones_de_identidad` | **global**, solo `viajapro_identidad` | `id`, `identidad_id → identidades`, `documento` (`TERMINOS`, `AVISO_DE_PRIVACIDAD`), `version`, `aceptado_en`. Solo `SELECT, INSERT` para `viajapro_identidad`, sin `UPDATE` ni `DELETE`: es evidencia. Se declara en `excepciones_rls` con `{}` para los otros tres roles de login, y **se amplía el literal de `aislamiento.spec.ts`** (R1) |
+| `perfiles_de_agencia` | **tenant, RLS** (`USING` + `WITH CHECK` por `001`) | `tenant_id` PK y FK, `nit`, `digito_verificacion`, `razon_social`, `rnt`, todos `NULL`, y **`verificado_en timestamptz NULL`**. **El NIT no va en `tenants`**: esa tabla la leen enteros tres roles de login, y el NIT de una persona natural es su cédula. La escribe `viajapro_app` bajo RLS. **Lo que declara el registrante no está verificado**: cualquiera puede escribir el NIT o el RNT de otra agencia. Un disparador `BEFORE INSERT OR UPDATE` pone `verificado_en = NULL` cuando quien escribe es `viajapro_app`, y también cuando cambia `nit` o `rnt`. Solo la plataforma lo fija, tras comprobarlo (T-280). **Ningún documento hacia el viajero imprime NIT ni RNT sin `verificado_en`**. Se usa disparador y no `GRANT` por columnas porque `privilegios_declarados` no admite columnas (nota de T-257) |
+| `aceptaciones_de_identidad` | **global**, solo `viajapro_identidad` | `id`, `identidad_id → identidades`, `documento` (`TERMINOS`, `AVISO_DE_PRIVACIDAD`), `version`, **`canal`** (`WEB_REGISTRO`; `INVITACION` cuando lo adopte la aceptación de invitaciones), `aceptado_en`. Solo `SELECT, INSERT` para `viajapro_identidad`, sin `UPDATE` ni `DELETE`: es evidencia. Retención: mientras dure la relación más el plazo de prescripción que fije el abogado (T-267). Se declara en `excepciones_rls` con `{}` para los otros tres roles de login, y **se amplía el literal de `aislamiento.spec.ts`** (R1) |
+| `codigos_de_registro` | **global**, solo `viajapro_identidad` | §3.7. `SELECT, INSERT, UPDATE, DELETE` para `viajapro_identidad`; `{}` para los otros tres roles de login en `excepciones_rls`; literal ampliado |
+| `codigos_de_acceso_al_registro` | **global**, sin ningún rol de login | §3.8. `{}` para **los cuatro** roles de login en `excepciones_rls`; solo `viajapro_registro` (§3.1) y la plataforma la tocan; literal ampliado |
+| `parametros_del_registro` | **global**, una fila | `tope_por_hora int NOT NULL CHECK (tope_por_hora BETWEEN 1 AND 1000)`, con `CHECK` de fila única. `{}` para los cuatro roles de login; `SELECT (tope_por_hora)` para `viajapro_registro`; literal ampliado |
 
 #### 3.4 La transacción del alta, en orden
 
-Todo con `viajapro_app`, en **una** transacción:
+Todo con `viajapro_app`, en **una** transacción abierta con
+`prisma.sinTenantDeclarado('identity/crear-agencia', …)`. La operación se declara en
+`OPERACIONES_DE_PLATAFORMA` con su motivo, y no se usa `sinTenantPorqueEsPlataforma`. La transacción
+empieza sin tenant porque es lo que exige la precondición de la función:
 
 1. `SELECT crear_agencia(...)`. Devuelve `tenantId` y deja el contexto fijado.
 2. Comprobación de consistencia: `current_setting('app.current_tenant') = tenantId`, o `ROLLBACK`.
@@ -328,8 +362,8 @@ Todo con `viajapro_app`, en **una** transacción:
 
 #### 3.5 Por qué un registro no puede tocar otra agencia
 
-1. La función solo **inserta**: no tiene `UPDATE` ni `DELETE` sobre `tenants`, y no hay `ON
-   CONFLICT`.
+1. La función solo **inserta**: no tiene `UPDATE` ni `DELETE` sobre `tenants`, y el único `ON
+   CONFLICT` es `DO NOTHING` por slug, para reintentar con otro.
 2. El id lo genera la base. El contrato no tiene ningún campo de tenant, y un campo desconocido es
    un 400 (`.strict()`).
 3. El contexto lo fija la función, y solo si estaba vacío.
@@ -339,26 +373,112 @@ Todo con `viajapro_app`, en **una** transacción:
    semilla.** Lo fija una prueba (§7).
 
 **Qué no protege** (igual que ADR-0027 §4): quien pueda ejecutar SQL arbitrario como
-`viajapro_app` puede crear agencias, hasta el tope por hora. No puede entrar en una existente.
+`viajapro_app` puede crear agencias, una por cada código de acceso válido que tenga y hasta el tope
+por hora. No puede entrar en una existente.
 
 #### 3.6 Contra el abuso, fuera de la base
 
-- **El correo verificado es la barrera principal.** Sin código no hay identidad, y sin identidad no
-  hay agencia.
-- **Límites** con el `LimitadorDeEnvios` que ya existe: `solicitar`, 3 por correo y 10 por IP cada
-  15 minutos (los valores actuales del OTP, configurables), más un tope global de correos de
-  registro por hora para proteger la reputación del remitente. `completar` y `agencias` caen bajo
-  el límite general de T-002.
-- **Sin captcha en v1.** Se declara el puerto `VerificadorDeHumano` con un adaptador que siempre
-  aprueba. Se conecta un proveedor real si en una semana hay más de 50 solicitudes de registro sin
-  completar, o si llega una queja de bombardeo de correos. Para entonces `investigador` verifica
-  proveedor y precio, y hace falta ADR (CLAUDE.md §10). Un captcha hoy sería una dependencia
-  externa para un tráfico que no existe.
-- **Sin lista de dominios desechables.** Se evade fácil, hay que mantenerla y da falsos positivos.
-  Además, lo caro de una agencia falsa no es la fila: es WhatsApp y la IA, y esos dos tienen su
-  propia compuerta (§5).
+- **Durante el piloto, la barrera principal es el código de acceso** (§3.8). La segunda es el correo
+  verificado: sin código de correo no hay identidad, y sin identidad no hay agencia.
+- **Límites** con el `LimitadorDeEnvios` que ya existe, pero **con un prefijo propio**
+  (`viajapro:registro:`). `claveDeLimite` recibe el prefijo como parámetro, para que el registro no
+  comparta contador con el OTP de ingreso (si lo compartiera, quien se registra agotaría el ingreso
+  de otra persona, y al revés). `solicitar`: 3 por correo y 10 por IP cada 15 minutos, más un tope
+  global de correos de registro por hora para proteger la reputación del remitente. Fallos de
+  `completar`: §3.7. Códigos de acceso inválidos: §3.8. `agencias` cae bajo el límite general de
+  T-002.
+- **Mientras se exija código de acceso: sin captcha ni lista de dominios desechables.** Se declara el
+  puerto `VerificadorDeHumano` con un adaptador que siempre aprueba. Sin código no se envía ningún
+  correo, así que un tercero no puede usar el registro para bombardear buzones ni agotar el tope
+  global.
+- **Antes de abrir el registro sin código**, cosa que exige otro ADR (§3.2), son **obligatorios**:
+  un captcha real detrás de `VerificadorDeHumano` (proveedor y precio los verifica `investigador`,
+  y lleva su propio ADR por CLAUDE.md §10), límites por IP y por dominio de correo en `solicitar` y
+  en `agencias`, y una revisión del tope global. Lo caro de una agencia falsa no es la fila: es
+  WhatsApp y la IA, y esos dos tienen su propia compuerta (§5).
 - **Interruptor:** `REGISTRO_AUTOSERVICIO_HABILITADO`, `false` por defecto. Con `false`, las tres
   rutas responden 404. Se activa por entorno, solo cuando la fase F0 (textos legales) esté cerrada.
+
+#### 3.7 El código de registro (bloqueante 1 de la primera auditoría)
+
+**La amenaza.** Si alguien adivina el código de un correo ajeno, crea una identidad para ese correo
+con una contraseña suya. Cuando la agencia de la víctima la invite, `AceptarInvitacionUseCase`
+atará la invitación a esa identidad sin tocar la contraseña, y el atacante entrará en la agencia.
+Por eso el código no puede admitir fuerza bruta, tampoco concurrente.
+
+**Tabla `codigos_de_registro`** (global, solo `viajapro_identidad`): `id`, **`correo_hmac bytea
+UNIQUE`** (HMAC-SHA256 del correo normalizado con el secreto de la aplicación), `hash_codigo bytea`
+(SHA-256), `intentos_restantes smallint NOT NULL CHECK (intentos_restantes >= 0)`, `expira_en`,
+`creado_en`. **Una sola fila viva por correo, garantizada por la base.**
+
+- **Parámetros:** los mismos que `CODIGO_DE_CORREO`: 6 dígitos, **5 minutos, 3 intentos**. Se
+  importan de esa constante, no se copian.
+- **Emitir** (`solicitar`): `INSERT … ON CONFLICT (correo_hmac) DO UPDATE SET hash_codigo,
+  intentos_restantes = 3, expira_en`. Pedir un código nuevo invalida el anterior. Que eso reinicie
+  los intentos lo acotan el límite de envíos (3 cada 15 min) y el tope diario de fallos.
+- **Intentar** (`completar`), en este orden:
+  1. Si el tope de fallos de 24 h de ese correo está agotado, se responde el error genérico sin
+     tocar la base.
+  2. **El intento se consume antes de comparar, de forma atómica:** `UPDATE codigos_de_registro SET
+     intentos_restantes = intentos_restantes - 1 WHERE correo_hmac = $1 AND intentos_restantes > 0
+     AND expira_en > now() RETURNING id, hash_codigo`. Sin fila, error genérico. N peticiones
+     concurrentes obtienen como mucho 3 filas: la base serializa el `UPDATE` sobre la fila.
+  3. La comparación se hace en tiempo constante. Si falla, se suma uno al contador de fallos de 24 h
+     (`LimitadorDeEnvios` con prefijo `viajapro:registro-fallos:`, máximo 10 por correo en 24 h) y
+     se responde el error genérico.
+  4. Si acierta: `DELETE FROM codigos_de_registro WHERE id = $1`, y **solo si borró exactamente 1
+     fila** se sigue. De dos aciertos simultáneos gana uno.
+  5. Se exige que no exista identidad con ese correo (§1.2) y se crea en la misma transacción que
+     las aceptaciones.
+- **Cota:** como mucho 10 intentos por correo y día. Con 10⁶ códigos posibles, la probabilidad de
+  acertar en un día es de 10⁻⁵.
+- **Correo encolado sin el código en claro.** El trabajo que encola `solicitar` lleva la plantilla y
+  sus datos **cifrados** con la clave de ADR-0015, o se resuelve con el mismo mecanismo que ya usa
+  el OTP de ingreso si `backend` comprueba que no deja el código en claro en Redis ni en Postgres.
+  Las dos ramas de `solicitar` producen trabajos con la misma forma y el mismo tamaño aproximado.
+  **Supuesto a verificar en T-270:** cómo encola hoy `enviarCodigo` el OTP de ingreso.
+- **Defensa en la invitación** (amplía el comportamiento de `AceptarInvitacionUseCase`): cuando una
+  invitación se ata a una identidad **ya existente**, se encola un correo a esa identidad: «se te
+  añadió a la agencia X; si no fuiste tú, avisa a quien te invitó». Es un aviso, no una barrera.
+  Exigir la sesión de esa identidad para aceptar sería la barrera, y va a la cola (T-281) porque hoy
+  la recuperación de contraseña no es autoservicio.
+- **Prueba obligatoria:** e2e con 20 peticiones `completar` concurrentes y códigos distintos sobre
+  el mismo correo: como mucho 3 comparaciones, ninguna identidad creada si ninguna acierta, y el
+  error es idéntico en todas.
+
+#### 3.8 El código de acceso del piloto (bloqueante 2 de la primera auditoría)
+
+**Qué autoriza:** crear **una** agencia nueva. Nada más: no lleva tenant ni rol, y no da acceso a
+nada que exista.
+
+**Tabla `codigos_de_acceso_al_registro`** (global; **ningún rol de login** tiene privilegios, y se
+declara así en `excepciones_rls` con `{}` para `viajapro_app`, `viajapro_altas`, `viajapro_webhook` y
+`viajapro_identidad`):
+
+| Columna | Qué |
+|---|---|
+| `hash bytea PRIMARY KEY` | SHA-256 del secreto. El secreto tiene **al menos 128 bits** de `crypto.randomBytes`, codificado en base32. Con esa entropía no hace falta sal |
+| `expira_en timestamptz NOT NULL` | Días, no horas: 14 por defecto al generarlo |
+| `usado_en timestamptz NULL`, `usado_por_identidad_id uuid NULL` | Uso único |
+| `correo_hmac bytea NULL` | Opcional: ata el código a un correo (el mismo HMAC de §3.7) |
+| `creado_en`, `nota text NULL` | La nota es para la plataforma (para qué agencia piloto es), **sin datos personales** |
+
+- **Lo genera la plataforma** con un comando de plataforma (T-280), con el rol de plataforma, no con
+  un rol de aplicación. El secreto se muestra **una vez** en la terminal y se entrega por otro
+  canal (WhatsApp o llamada al dueño de la agencia piloto). **Nunca se escribe en un registro**, ni
+  en el comando, ni en la API, ni en la web.
+- **Se comprueba sin consumirlo en `solicitar`** con `codigo_de_acceso_vigente(p_hash bytea,
+  p_correo_hmac bytea) RETURNS boolean`. Es una función `SECURITY DEFINER` con el mismo dueño
+  (`viajapro_registro`), `STABLE`, `search_path` vacío, que solo lee, y cuyo `EXECUTE` es solo de
+  `viajapro_app`. Se llama con `sinTenantDeclarado('identity/comprobar-codigo-de-acceso', …)`.
+  Responde un booleano, sin decir por qué falló.
+- **Se consume dentro de `crear_agencia`** (§3.2). Un `ROLLBACK` del alta lo devuelve.
+- **Límite de intentos por IP:** 10 códigos inválidos por IP en una hora, entre `solicitar` y
+  `agencias`, con prefijo `viajapro:registro-acceso:`. Al pasarlo, 429. Con 128 bits no hay fuerza
+  bruta posible: el límite es para que un escaneo no cueste nada a la base.
+- **Qué pasa si se filtra:** sirve para crear una sola agencia en prueba, que la plataforma ve
+  (`origen_del_alta`, la `nota` del código, el evento `identity.agencia_creada`) y puede suspender.
+  Con `correo_hmac`, ni eso.
 
 ### 4. Datos personales (R10, Ley 1581)
 
@@ -366,8 +486,8 @@ Hay dos relaciones distintas, y el alta las registra por separado:
 
 1. **ViajaPro como responsable de los datos de quien se registra** (correo, nombre, IP de la
    sesión). En `completar`, la persona acepta los **Términos** y el **Aviso de privacidad de
-   ViajaPro**, cada uno con su versión. Se guarda en `aceptaciones_de_identidad`: fecha, documento
-   y versión, como pide `docs/05-seguridad/02-proteccion-de-datos.md` §4. Sin las dos casillas
+   ViajaPro**, cada uno con su versión. Se guarda en `aceptaciones_de_identidad`: fecha, documento,
+   versión y canal, como pide `docs/05-seguridad/02-proteccion-de-datos.md` §4. Sin las dos casillas
    marcadas, la respuesta es 422. **Las casillas no vienen marcadas por defecto.**
 2. **ViajaPro como encargado de la agencia** (los datos de sus viajeros). Al crear la agencia, quien
    la crea acepta el **contrato de encargo del tratamiento** en nombre de la agencia
@@ -390,13 +510,41 @@ Además:
 - **Con Embedded Signup** (bloqueado por T-080, Tech Provider): el paso de WhatsApp del asistente
   llama al caso de uso de alta de canal de ADR-0008. Corre con `viajapro_altas`, como siempre, y
   **no** es parte de este ADR.
-- **Mientras tanto:** el paso muestra «Conectar WhatsApp: lo hace el equipo de ViajaPro» y un botón
-  **Solicitar conexión**. El botón emite `identity.conexion_whatsapp_solicitada` por el outbox, y
-  `notifications` avisa a la plataforma por correo. El resto del CRM (catálogo, cotizador, contactos,
-  embudo) funciona sin canal. **Hoy la plataforma no tiene ninguna vía para conectar el número real
-  de una agencia** (S3): el script existente es solo de desarrollo y solo para `agencia-demo`. Esa
-  vía es trabajo del agente `whatsapp`, con su propia auditoría (T-270), y la decide el
-  propietario (P6).
+- **Mientras tanto (P6, decidido): conexión manual por la plataforma, sobre una solicitud creada
+  dentro de la agencia** (bloqueante 3 de la primera auditoría). **Hoy la plataforma no tiene
+  ninguna vía para conectar el número real de una agencia** (S3): el script existente es solo de
+  desarrollo y solo para `agencia-demo`. La vía nueva es trabajo del agente `whatsapp`, con su propia
+  auditoría (T-276), y se construye así:
+  1. **La solicitud nace dentro del tenant.** Tabla `solicitudes_de_conexion_whatsapp` (tenant,
+     RLS con `USING` + `WITH CHECK`): `id`, `tenant_id`, `estado` (`PENDIENTE`, `CONFIRMADA`,
+     `CONECTADA`, `CANCELADA`), `solicitada_por_usuario_id`, `confirmada_por_usuario_id`,
+     `business_id_declarado`, fechas. **Una sola pendiente por agencia**, con un índice único
+     parcial `(tenant_id) WHERE estado IN ('PENDIENTE','CONFIRMADA')`. La crea el botón
+     **Solicitar conexión**, que exige el permiso de dueño o administrador (`usuarios.administrar`
+     hoy; `canales.administrar` si T-276 lo crea). Emite
+     `identity.conexion_whatsapp_solicitada` por el outbox con solo `{ solicitudId }`.
+  2. **La plataforma trabaja sobre el `tenant_id` de esa fila, nunca sobre un nombre ni un slug**,
+     que elige el registrante y pueden parecerse a los de otra agencia. Las pendientes se listan con
+     una función de plataforma que devuelve solo `(solicitud_id, tenant_id, creada_en)`, como
+     `tenants_con_eventos_por_entregar`. El aviso al buzón de la plataforma (P7) lleva solo el id de
+     la solicitud.
+  3. **Confirma un DUENO por correo verificado.** Se envía un enlace de un solo uso (token hasheado,
+     24 h) a los correos verificados de los usuarios activos con rol `DUENO`, y se confirma **con la
+     sesión de un DUENO de esa agencia**. Sin confirmación, la plataforma no avanza. Así, quien solo
+     tiene permiso de administrador no conecta un número a espaldas del dueño.
+  4. **El token de Meta se entrega en un formulario del tenant**, que lo cifra al llegar (R6,
+     ADR-0015) y lo guarda atado a la solicitud. **Nunca por correo, chat ni llamada.** La
+     plataforma no lo ve en claro.
+  5. **Se comprueba que la WABA es del negocio de la agencia**: con ese token se lee de la Graph API
+     el negocio propietario de la WABA, y debe coincidir con `business_id_declarado`. El
+     `phone_number_id` sale de esa lectura y **nunca del cliente** (ADR-0008 §1.5). El registro corre
+     por el caso de uso de alta de canal de ADR-0008, con `viajapro_altas`.
+  6. **Antes de construirlo,** `investigador` verifica si las condiciones de Meta permiten que una app
+     que no es Tech Provider opere la WABA de un tercero con un token de usuario de sistema de ese
+     tercero, y con qué permisos (T-279). Si no lo permiten, el plan B es que cada agencia piloto
+     opere con su propia app de Meta, y eso cambia el punto 4.
+
+  El resto del CRM (catálogo, cotizador, contactos, embudo) funciona sin canal.
 - **Una agencia en prueba no conecta WhatsApp sin que nadie la mire.** Hoy lo garantiza la
   conexión manual. Cuando llegue Embedded Signup, decidir si `EN_PRUEBA` conecta sola es parte de su
   ADR. Un número de una agencia falsa haciendo spam a través de nuestra app de Tech Provider es un
@@ -425,7 +573,7 @@ responde cada paso con `hecho: boolean`:
 Cada dato llega por un puerto declarado en `identity` (R4). Los pasos **omitidos** siguen en
 `localStorage`: son una preferencia de pantalla, no un dato de negocio, y guardarlos en la base no
 justifica una migración. Esta parte no depende del registro y ya sirve a las agencias de script:
-por eso su tarea (T-267) puede empezar antes de que se acepte este ADR.
+por eso su tarea (T-273) puede empezar antes de que se acepte este ADR.
 
 #### 5.5 Planes y cobro: el gancho, no el sistema
 
@@ -443,9 +591,10 @@ por eso su tarea (T-267) puede empezar antes de que se acepte este ADR.
 
 - Pasarela, cobro, facturación, planes y vencimiento automático de la prueba.
 - Embedded Signup y la conexión de WhatsApp por plataforma (solo su relación con el asistente).
-- Captcha y lista de dominios desechables (con sus condiciones de entrada en §3.6).
+- Captcha y límites por dominio (obligatorios antes de abrir el registro sin código, §3.6).
+- Abrir el registro sin código de acceso: otro ADR.
 - Inicio de sesión social, SSO y MFA (ADR-0011).
-- Borrar agencias, y la purga de agencias de prueba abandonadas (va a la cola: T-272).
+- Borrar agencias, y la purga de agencias de prueba abandonadas (va a la cola: T-278).
 - Recuperación de contraseña por autoservicio: sigue siendo de ADR-0011.
 - Más países que el mercado base: el contrato acepta los que el propietario habilite (P4).
 
@@ -453,8 +602,11 @@ por eso su tarea (T-267) puede empezar antes de que se acepte este ADR.
 
 | Prueba | Qué sostiene |
 |---|---|
-| La migración aborta si `viajapro_registro` puede iniciar sesión, saltarse RLS o es superusuario; si conserva `CREATE`; si su superficie efectiva de columnas no es exactamente la de §3.1; si tiene algún privilegio de tabla; si es miembro de algún rol; si un rol vigilado puede actuar como él; si alguien distinto de `viajapro_app` puede ejecutar `crear_agencia`; o si la declaración de `tenants` para `viajapro_app` dejó de ser `{SELECT}` | La superficie, igual que en ADR-0027 §5 |
-| `aislamiento.spec.ts` («Registro de agencias»): `crear_agencia` con contexto ya fijado da `42501`; un slug igual al de una agencia existente crea **otra** agencia y la existente queda intacta (mismas filas en `usuarios`, mismo `actualizado_en`); `viajapro_app` sigue con `42501` al hacer `INSERT`/`UPDATE` directo sobre `tenants`; `aceptaciones_de_identidad` da `42501` a `viajapro_app`, `viajapro_altas` y `viajapro_webhook`; S1 se cumple | Que el registro no puede tocar otra agencia |
+| La migración aborta si `viajapro_registro` puede iniciar sesión, saltarse RLS o es superusuario; si conserva `CREATE`; si su superficie efectiva de columnas no es exactamente la de §3.1 (incluidas `codigos_de_acceso_al_registro` y `parametros_del_registro`); si tiene algún privilegio de tabla; si es miembro de algún rol; si un rol vigilado puede actuar como él; si alguien distinto de `viajapro_app` puede ejecutar `crear_agencia` o `codigo_de_acceso_vigente`; si el `proconfig` de alguna de las dos no es exactamente `{search_path=""}`; o si la declaración de `tenants` para `viajapro_app` dejó de ser `{SELECT}` | La superficie, igual que en ADR-0027 §5 |
+| `aislamiento.spec.ts` («Registro de agencias»): `crear_agencia` con contexto ya fijado da `42501`; un slug igual al de una agencia existente crea **otra** agencia y la existente queda intacta (mismas filas en `usuarios`, mismo `actualizado_en`); **S1 se cumple por ese mismo camino del slug que choca**; un slug reservado nunca se asigna tal cual; `viajapro_app` sigue con `42501` al hacer `INSERT`/`UPDATE` directo sobre `tenants`; `aceptaciones_de_identidad` y `codigos_de_registro` dan `42501` a los tres roles que no son de identidad; `codigos_de_acceso_al_registro` y `parametros_del_registro` dan `42501` a los cuatro roles de login; `viajapro_app` no puede fijar `perfiles_de_agencia.verificado_en` | Que el registro no puede tocar otra agencia |
+| Código de acceso: usado, caducado, de otro correo o inexistente dan `VPR04`; un alta que falla después de consumirlo lo deja sin usar; dos altas simultáneas con el mismo código crean una sola agencia | El uso único (§3.8) |
+| e2e: 20 `completar` concurrentes sobre el mismo correo hacen como mucho 3 comparaciones; con el tope de 24 h agotado, ni el código correcto pasa; `completar` con una identidad ya existente da el error genérico; aceptar una invitación sobre una identidad preexistente encola el aviso | El bloqueante 1 (§3.7) |
+| e2e (T-276): una solicitud de conexión solo la ve su agencia; sin confirmación de un DUENO no avanza; el `phone_number_id` del cuerpo se ignora | El bloqueante 3 (§5.1) |
 | e2e: un alta que falla en la siembra (puerto falso que lanza) no deja fila en `tenants` | La atomicidad |
 | e2e: el cuerpo con `tenantId` da 400; la segunda agencia en prueba de la misma identidad da 409; `solicitar` responde igual (estado, cuerpo y tiempo dentro de un margen) para un correo existente y para uno nuevo | El contrato y la no enumeración |
 | e2e: con `REGISTRO_AUTOSERVICIO_HABILITADO=false`, las tres rutas dan 404 | El interruptor |
@@ -466,19 +618,22 @@ Las tareas están en `roadmap/tasks.yaml`. **Migración** = ruta protegida, la a
 
 | Fase | Qué | Tarea | Dueño | Migración | Auditoría |
 |---|---|---|---|---|---|
-| F0 | Textos versionados: términos, aviso de privacidad de ViajaPro y contrato de encargo | T-261 | propietario + `documentador` | No | Sí (contenido legal) |
-| F1 | Rol `viajapro_registro`, `crear_agencia`, columnas de `tenants`, `perfiles_de_agencia`, `aceptaciones_de_identidad`, `excepciones_rls`, aserciones y cambio de R2 | T-262 | `datos` | **Sí** | **Sí, las vueltas que hagan falta** (aislamiento) |
-| F1b | Política de precio dentro de `siembra-de-tenant.ts` | T-263 | `datos` | No | No |
-| F2 | Rutas `registro/solicitar` y `registro/completar`, con límites, interruptor y aceptaciones | T-264 | `backend` | No | **Sí** |
-| F3 | `POST /api/v1/auth/agencias`: transacción de §3.4, puertos de siembra en `crm` y `quoting`, auditoría y outbox | T-265 | `backend` | No | **Sí, las vueltas que hagan falta** (aislamiento) |
-| F4 | Web: `/registro`, código, crear agencia, casillas legales | T-266 | `frontend` | No | No (revisión normal) |
-| F5 | Primeros pasos calculados en la API, y el asistente leyéndolos | T-267, T-268 | `backend`, `frontend` | No | No |
-| F6 | `PoliticaDeUso` y días de prueba visibles | T-269 | `backend` | No | No |
-| — | Conexión de WhatsApp por la plataforma antes de Tech Provider | T-270 | `whatsapp` | Probable (credenciales por tenant, R6) | **Sí** |
-| — | Embedded Signup en el asistente | T-271 | `whatsapp` | Probable | **Sí** |
-| Cola | Purga de agencias de prueba abandonadas | T-272 | `datos` | Sí | Sí |
+| F0 | Textos versionados: términos, aviso de privacidad de ViajaPro y contrato de encargo | T-267 | propietario + `documentador` | No | Sí (contenido legal) |
+| F1 | Rol `viajapro_registro`, `crear_agencia`, `codigo_de_acceso_vigente`, columnas de `tenants`, `perfiles_de_agencia`, `aceptaciones_de_identidad`, `codigos_de_registro`, `codigos_de_acceso_al_registro`, `parametros_del_registro`, `excepciones_rls`, aserciones y cambio de R2 | T-268 | `datos` | **Sí** | **Sí, las vueltas que hagan falta** (aislamiento) |
+| F1c | Comandos de plataforma: generar código de acceso, verificar NIT y RNT, cambiar el tope global | T-280 | `backend` | No | **Sí** |
+| F1b | Política de precio dentro de `siembra-de-tenant.ts` | T-269 | `datos` | No | No |
+| F2 | Rutas `registro/solicitar` y `registro/completar`, con límites, interruptor y aceptaciones | T-270 | `backend` | No | **Sí** |
+| F3 | `POST /api/v1/auth/agencias`: transacción de §3.4, puertos de siembra en `crm` y `quoting`, auditoría y outbox | T-271 | `backend` | No | **Sí, las vueltas que hagan falta** (aislamiento) |
+| F4 | Web: `/registro`, código, crear agencia, casillas legales | T-272 | `frontend` | No | No (revisión normal) |
+| F5 | Primeros pasos calculados en la API, y el asistente leyéndolos | T-273, T-274 | `backend`, `frontend` | No | No |
+| F6 | `PoliticaDeUso` y días de prueba visibles | T-275 | `backend` | No | No |
+| — | ¿Permite Meta operar WABAs de terceros sin ser Tech Provider? | T-279 | `investigador` | No | No |
+| — | Conexión de WhatsApp por la plataforma antes de Tech Provider (§5.1) | T-276 | `whatsapp` | **Sí** (`solicitudes_de_conexion_whatsapp`, token cifrado) | **Sí** |
+| Cola | Aceptar una invitación sobre una identidad existente exige la sesión de esa identidad | T-281 | `backend` | No | Sí |
+| — | Embedded Signup en el asistente | T-277 | `whatsapp` | Probable | **Sí** |
+| Cola | Purga de agencias de prueba abandonadas | T-278 | `datos` | Sí | Sí |
 
-El orden mínimo para que una agencia se registre sola es F0 → F1 → F2 → F3 → F4. F5 y F6 pueden ir
+El orden mínimo para que una agencia se registre sola es F0 → F1 → F1c → F2 → F3 → F4. F5 y F6 pueden ir
 en paralelo. **El interruptor no se enciende en producción sin F0.**
 
 ## Consecuencias
@@ -493,11 +648,13 @@ en paralelo. **El interruptor no se enciende en producción sin F0.**
 - `siembra-de-tenant.ts` sigue siendo la única definición de lo que trae una agencia nueva.
 
 ### Negativas
-- **Un rol y una función `SECURITY DEFINER` más**, y una tabla global más con su línea en el literal
-  de aislamiento. Cada cambio de cuerpo exige auditoría.
+- **Un rol y dos funciones `SECURITY DEFINER` más**, y **cuatro tablas globales** con su línea en el
+  literal de aislamiento. Cada cambio de cuerpo exige auditoría.
 - **R2 de `CLAUDE.md` cambia** (ruta protegida): una cláusula para `viajapro_registro`.
-- **El tope global de 30 por hora vive en SQL.** Subirlo es una migración. Es lo que se busca, pero
-  si un día de lanzamiento llegan 31 agencias en una hora, la 31 espera.
+- **Cada agencia piloto necesita que alguien de la plataforma genere y entregue un código.** Es
+  fricción deliberada mientras dure el piloto. Abrir el registro exige otro ADR.
+- **El tope global lo cambia solo la plataforma.** Si un día de lanzamiento se agota, las
+  siguientes esperan hasta que alguien lo suba.
 - **La identidad y la agencia van en dos transacciones.** Puede quedar una identidad verificada sin
   agencia. Es un estado válido (la web ofrece «crear agencia»), pero hay que contarlo en las
   métricas del embudo.
@@ -506,12 +663,16 @@ en paralelo. **El interruptor no se enciende en producción sin F0.**
   ADR-0015.
 - **No hay corte al vencer la prueba.** Una agencia de prueba puede seguir usando el producto hasta
   que alguien actúe a mano.
-- **La pantalla de WhatsApp promete una conexión que hoy depende de trabajo que no existe** (T-270).
-  Si el propietario no quiere conexión manual, el paso solo puede decir «próximamente».
+- **La pantalla de WhatsApp promete una conexión que hoy depende de trabajo que no existe** (T-276)
+  y de una respuesta de Meta que no tenemos (T-279). Hasta entonces, el paso solo puede decir
+  «solicitud recibida».
+- **El aviso al atar una invitación a una identidad existente es un aviso, no una barrera.** La
+  barrera (T-281) espera a que la recuperación de contraseña sea autoservicio.
 
 ### Qué habría que cambiar para revertir esto
 Apagar `REGISTRO_AUTOSERVICIO_HABILITADO` y, en una migración nueva: `DROP FUNCTION
-public.crear_agencia(...)`, revocar y `DROP ROLE viajapro_registro`. Las columnas de `tenants`,
+public.crear_agencia(...)` y `codigo_de_acceso_vigente(...)`, revocar y `DROP ROLE
+viajapro_registro`. Las tablas de códigos se pueden vaciar. Las columnas de `tenants`,
 `perfiles_de_agencia` y `aceptaciones_de_identidad` **se conservan**: las agencias ya creadas y sus
 aceptaciones son datos y evidencia legal, no un adorno de esta decisión.
 
@@ -530,11 +691,11 @@ aceptaciones son datos y evidencia legal, no un adorno de esta decisión.
 | # | Pregunta | Propuesta del arquitecto |
 |---|---|---|
 | P1 | ¿Cuántos días de prueba? | 14 |
-| P2 | ¿Registro abierto a cualquiera al activarlo, o con código de acceso de la plataforma durante el piloto? | Interruptor apagado hasta tener el despliegue y los textos legales. Después, abierto |
+| P2 | ¿Registro abierto a cualquiera al activarlo, o con código de acceso de la plataforma durante el piloto? | Interruptor apagado hasta tener el despliegue y los textos legales; después, con código de acceso (§3.8). Abrirlo sin código es otro ADR |
 | P3 | Términos, aviso de privacidad de ViajaPro y contrato de encargo: ¿quién los redacta y aprueba? | Abogado y propietario (T-093, T-098). Sin ellos, el interruptor no se enciende |
 | P4 | ¿Qué países y monedas se ofrecen en el alta? | Solo Colombia/COP al principio; el resto cuando haya normativa verificada |
 | P5 | Límites de la prueba | 5 miembros activos, 1 canal, sin IA hasta T-057 |
-| P6 | Antes de Tech Provider, ¿conecta la plataforma a mano el número de una agencia real (T-270)? | Sí, para el piloto: es el único camino al primer WhatsApp real |
+| P6 | Antes de Tech Provider, ¿conecta la plataforma a mano el número de una agencia real (T-276)? | Sí, para el piloto: es el único camino al primer WhatsApp real |
 | P7 | ¿A qué buzón llegan los avisos de nueva agencia y de solicitud de conexión? | Un buzón de operaciones, por variable de entorno |
 
 ### Respuestas del propietario (2026-11-20)
@@ -548,7 +709,7 @@ El propietario aceptó las propuestas que se le presentaron en la sesión:
 | P3 | Términos, aviso de privacidad y contrato de encargo: los redacta un abogado y los aprueba el propietario (T-093, T-098). Sin ellos el interruptor no se enciende |
 | P4 | Solo Colombia y COP al principio |
 | P5 | Prueba: 5 miembros activos, 1 canal de WhatsApp, sin IA |
-| P6 | Sí: antes de Tech Provider, la plataforma conecta a mano el número de cada agencia piloto (T-270) |
+| P6 | Sí: antes de Tech Provider, la plataforma conecta a mano el número de cada agencia piloto (T-276) |
 | P7 | Los avisos llegan al correo del propietario, configurado por variable de entorno (nunca escrito en el repositorio) |
 
 El ADR sigue **Propuesto** hasta cerrar la auditoría de seguridad; estas respuestas no lo aceptan por sí solas.
