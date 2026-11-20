@@ -6998,11 +6998,11 @@ tasks:
     status: backlog
     depends_on: [T-316]
     acceptance:
-      - "Hoy · Conversaciones · Archivos · Buscar · Más; todo módulo a dos toques como máximo; flecha de volver también en el error de la conversación"
-      - "e2e a 390 px: cada módulo en dos toques o menos; /bandeja/inexistente tiene salida"
-      - "CRÍTICA para el piloto (el asesor trabaja desde el celular): barra inferior Hoy · Conversaciones · Cotizar · Buscar · Más; «Archivos de viaje» en «Más» y desde la conversación; si diseno-ux propone conservar Archivos (lupa fija en la cabecera), se lleva al propietario antes de implementarlo"
-      - "Revisión a 390 px del 2026-11-20: la barra actual es Bandeja · Pipeline · Cotizar · Viajes · Buscar · Perfil (6 ítems, etiquetas de 9 px). Hasta que el propietario decida entre la opción A (Hoy · Conversaciones · Cotizar · Buscar · Más) y la B de diseno-ux (Hoy · Conversaciones · Cotizar · Archivos de viaje · Más, con lupa fija en la cabecera), la tabla de navegación solo necesita saber qué ítems van en la barra: dejarlo preparado para ambas"
-      - "Etiquetas de la barra de 11–12 px como mínimo; contadores en «Hoy» (vencimientos) y «Conversaciones» (no leídos); la conversación sigue a pantalla completa con flecha de volver"
+      - "CRÍTICA para el piloto (el asesor y el dueño trabajan todo el flujo desde el celular). Decisión del propietario (2026-11-20, variante B de diseno-ux): barra inferior Hoy · Conversaciones · Cotizar · Archivos de viaje · Más, con una LUPA FIJA en la cabecera de cada pantalla que abre la búsqueda (Buscar no ocupa pestaña)"
+      - "La lupa va en el marco compartido, montada una sola vez, y abre la misma búsqueda o paleta que ya existe (N6 la alinea con cada pantalla); «Más» abre una hoja con el resto de módulos y la campana; todo módulo a dos toques como máximo"
+      - "Objetivos táctiles de al menos 44 px en la barra, la lupa y la hoja «Más»; etiquetas de 11–12 px como mínimo (hoy 9 px); contraste AA; foco visible; contadores en «Hoy» (vencimientos) y «Conversaciones» (no leídos)"
+      - "La conversación sigue a pantalla completa, con flecha de volver también en el error de la conversación; la tabla de navegación sabe qué ítems van en la barra (movil: 'barra')"
+      - "e2e a 390 px: cada módulo en dos toques o menos; /bandeja/inexistente tiene salida; capturas a 390 y 1440 px en el PR; si algo la hace inviable, se reporta"
     source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md (2026-11-20)
     created_at: 2026-11-20T19:00:00.000Z
     owner: frontend
