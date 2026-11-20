@@ -5,7 +5,7 @@
 | Fecha | 2026-11-20 |
 | Tarea | T-313 (N0 del [roadmap JD Tours](../08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md)) |
 | Autor | `analista-producto`; las decisiones de menú, como `dueno-de-producto` |
-| Estado | **Propuesta.** Las decisiones D1 a D4 esperan la confirmación del propietario |
+| Estado | Las decisiones D1 a D4 están **confirmadas por el propietario (2026-11-20)**; los supuestos [S] sobre JD Tours siguen sin verificar con su dueño |
 | Personas | [`03-personas.md`](../00-vision/03-personas.md): Valentina (asesora) y Gloria (dueña) |
 | Fuentes | [Auditoría de navegación](../_auditorias/2026-11-20-auditoria-de-navegacion.md) §2 y §4.1, [`06-diseno-y-ux.md`](06-diseno-y-ux.md) §2 |
 
@@ -140,11 +140,11 @@ pantalla, ve lo de toda la agencia.
 
 ## Decisiones de menú para validar
 
-> **Decisiones propuestas por el `dueno-de-producto`, sujetas a confirmación del propietario.**
-> Hasta que el propietario las confirme, T-317 no se cierra. Criterio de prioridad declarado:
+> **Decisiones propuestas por el `dueno-de-producto` y confirmadas por el propietario el 2026-11-20** (confirmó D1 a D4 tal como estaban). Siguen como supuestos [S], a preguntar al dueño de JD Tours: que sus asesoras no ven los reportes (D3) y que no cotizan desde el celular (D4); si responde otra cosa se ajusta por permiso o por la barra, sin cambiar el diseño.
+> T-317 queda desbloqueada por esta confirmación. Criterio de prioridad declarado:
 > impacto en la conversión de la agencia × frecuencia de uso ÷ costo.
 
-### D1. «Hoy» es el destino tras ingresar — **Propuesta: sí, para todos los roles**
+### D1. «Hoy» es el destino tras ingresar — **Confirmada por el propietario (2026-11-20): sí, para todos los roles**
 
 - **Por qué:** lo que más dinero cuesta (*time limit*, pago al mayorista, cobro vencido) no está en la
   bandeja; hoy la asesora arranca en 270 chats sin su lista de compromisos (auditoría §3.1). Conversaciones
@@ -154,7 +154,7 @@ pantalla, ve lo de toda la agencia.
 - **Riesgo aceptado:** una asesora que solo atiende chats da un clic más al empezar. Si en el piloto lo
   pide, la preferencia «empezar en Conversaciones» va a la cola; no se construye antes.
 
-### D2. El cotizador deja de ser módulo y pasa a ser la acción «Cotizar» — **Propuesta: sí**
+### D2. El cotizador deja de ser módulo y pasa a ser la acción «Cotizar» — **Confirmada por el propietario (2026-11-20): sí**
 
 - **Por qué:** una cotización sin viajero no se puede enviar ni convertir en archivo; el módulo suelto
   invita a cotizar sin contexto (auditoría T1). Lo que la asesora busca después es la **cotización**,
@@ -164,7 +164,7 @@ pantalla, ve lo de toda la agencia.
   paleta. `/cotizador` sigue existiendo como ruta y marca activo «Cotizaciones».
 - **Fuera:** meter el cotizador dentro del chat (auditoría §6).
 
-### D3. ¿La asesora ve Reportes y Configuración? — **Propuesta: no, por permiso**
+### D3. ¿La asesora ve Reportes y Configuración? — **Confirmada por el propietario (2026-11-20): no, por permiso** (regla provisional de presentación; la API sigue autorizando)
 
 - **Por qué:** son de otro usuario y otro ritmo (`06-diseno-y-ux.md` §1); ocupan sitio fijo en una
   herramienta de 40 chats al día.
@@ -176,7 +176,7 @@ pantalla, ve lo de toda la agencia.
 - **Supuesto [S]:** las asesoras de JD Tours no ven hoy los números de la agencia. Si el dueño dice
   que sí, se le da el permiso a su rol; no cambia el diseño.
 
-### D4. Barra inferior en móvil — **Propuesta: Hoy · Conversaciones · Archivos · Buscar · Más**
+### D4. Barra inferior en móvil — **Confirmada por el propietario (2026-11-20): Hoy · Conversaciones · Archivos · Buscar · Más**
 
 - **Por qué:** en el celular se responde y se consulta (quién pagó, cuándo vence), no se arma un paquete
   completo [S]. Oportunidades, Cotizaciones y Cotizar quedan en «Más» y en la conversación, a ≤ 2 toques.
