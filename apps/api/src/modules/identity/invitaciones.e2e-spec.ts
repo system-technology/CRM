@@ -620,6 +620,51 @@ describe('código por correo', () => {
     expect(rows[0]?.segundos).toBeLessThanOrEqual(300);
   });
 
+  it('al 10º fallo del día el correo se bloquea, incluso con el código correcto; otro correo sigue entrando', async () => {
+    const anterior = process.env['OTP_ENVIOS_POR_CORREO'];
+    process.env['OTP_ENVIOS_POR_CORREO'] = '50';
+    try {
+      const atacado = correo('tope-fallos');
+      creados.push(atacado);
+      await admin.identidad.create({
+        data: { correo: atacado, nombre: 'Tope', correoVerificado: true },
+      });
+      // Un fallo por código: el código sigue vivo (3 intentos), así que lo que bloquea es el
+      // tope diario y no el de intentos por código. IP distinta cada vez (no es el límite por IP).
+      for (let i = 0; i < 10; i += 1) {
+        await new Navegador().llamar('POST', '/api/v1/auth/otp/enviar', {
+          cuerpo: { correo: atacado },
+        });
+        const bueno = codigoDelUltimoCorreo(atacado);
+        const malo = bueno === '000000' ? '111111' : '000000';
+        const r = await new Navegador().llamar('POST', '/api/v1/auth/otp/iniciar-sesion', {
+          cuerpo: { correo: atacado, codigo: malo },
+        });
+        expect(r.estado, `fallo ${i + 1}`).toBe(401);
+      }
+      await new Navegador().llamar('POST', '/api/v1/auth/otp/enviar', {
+        cuerpo: { correo: atacado },
+      });
+      const correcto = await new Navegador().llamar('POST', '/api/v1/auth/otp/iniciar-sesion', {
+        cuerpo: { correo: atacado, codigo: codigoDelUltimoCorreo(atacado) },
+      });
+      expect(correcto.estado).toBe(401);
+      expect(correcto.json.error?.code).toBe('CODIGO_INVALIDO');
+      expect(correcto.setCookie).toHaveLength(0);
+
+      // Otro correo no se ve afectado.
+      const otro = new Navegador();
+      await otro.llamar('POST', '/api/v1/auth/otp/enviar', { cuerpo: { correo: SOLO_CODIGO } });
+      const entrada = await otro.llamar('POST', '/api/v1/auth/otp/iniciar-sesion', {
+        cuerpo: { correo: SOLO_CODIGO, codigo: codigoDelUltimoCorreo(SOLO_CODIGO) },
+      });
+      expect(entrada.estado).toBe(200);
+    } finally {
+      if (anterior === undefined) delete process.env['OTP_ENVIOS_POR_CORREO'];
+      else process.env['OTP_ENVIOS_POR_CORREO'] = anterior;
+    }
+  });
+
   it('el límite por correo no se nota: el cuarto pedido responde igual que un correo inexistente y no envía', async () => {
     const anterior = process.env['OTP_ENVIOS_POR_CORREO'];
     process.env['OTP_ENVIOS_POR_CORREO'] = '3';

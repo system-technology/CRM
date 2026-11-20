@@ -3,6 +3,7 @@ import { LimitadorDeEnvios } from '../application/limitador-de-envios.js';
 
 /** Lo mínimo de ioredis que se usa; permite probar con un doble. */
 export interface ClienteRedisDeContadores {
+  get(clave: string): Promise<string | null>;
   multi(): {
     incr(clave: string): unknown;
     expire(clave: string, segundos: number, modo: 'NX'): unknown;
@@ -31,5 +32,12 @@ export class LimitadorDeEnviosRedis extends LimitadorDeEnvios {
     const [error, cuenta] = resultado?.[0] ?? [new Error('Redis no devolvió el contador.'), 0];
     if (error) throw error;
     return typeof cuenta === 'number' && cuenta <= maximo;
+  }
+
+  async quedaCupo(clave: string, maximo: number): Promise<boolean> {
+    const valor = await this.redis.get(clave);
+    if (valor === null) return true;
+    const cuenta = Number(valor);
+    return Number.isFinite(cuenta) && cuenta < maximo;
   }
 }

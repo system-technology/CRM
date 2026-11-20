@@ -6401,3 +6401,25 @@ tasks:
     source: auditoría de seguridad de ADR-0030, primera vuelta, bloqueante 1 (2026-11-20)
     created_at: 2026-11-20T23:30:00.000Z
     owner: backend
+  - id: T-300
+    title: Tope diario de fallos de verificación del código de un solo uso (OTP) por correo
+    type: security
+    phase: 1
+    priority: P0
+    effort: S
+    status: in_progress
+    acceptance:
+      - Más de 10 fallos de verificación del código por correo en 24 h bloquean el correo hasta que venza la ventana,
+        incluso con el código correcto, con el mismo error CODIGO_INVALIDO (no revela si el correo existe)
+      - El contador usa el prefijo propio viajapro:otp-fallos: y no comparte contador con el de envíos
+      - El acierto no cuenta; otro correo no se ve afectado; en modo único la ventana es en memoria y un reinicio la
+        pone a cero (documentado en el código)
+      - Pruebas unitarias del limitador y del tope; e2e en invitaciones.e2e-spec.ts
+    files:
+      - apps/api/src/modules/identity/application/limitador-de-envios.ts
+      - apps/api/src/modules/identity/interface/auth.controller.ts
+      - apps/api/src/modules/identity/infrastructure/limitador-de-envios.redis.ts
+      - apps/api/src/modules/identity/infrastructure/limitador-de-envios.en-memoria.ts
+    source: hallazgo ALTO de seguridad previo al despliegue (2026-11-20)
+    created_at: 2026-11-20T23:59:00.000Z
+    owner: backend
