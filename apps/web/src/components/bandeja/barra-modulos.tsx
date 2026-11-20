@@ -543,8 +543,12 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
                 >
                   <div
                     className={
-                      barraExpandida && config
-                        ? `flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${config.claseBgSuave} ${config.claseTexto}`
+                      barraExpandida
+                        ? `flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${
+                            config
+                              ? `${config.claseBgSuave} ${config.claseTexto}`
+                              : 'bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300'
+                          }`
                         : 'shrink-0'
                     }
                   >
