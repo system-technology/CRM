@@ -4,7 +4,7 @@
 Tarea T-023 del roadmap (Fase 1: Un CRM mostrable y endurecido):
 - Las cuatro pantallas clave (Bandeja, Pipeline, Cotizador y Catálogo) no deben presentar scroll horizontal parásito en un viewport angosto de 375 px (pantalla tipo iPhone SE / estándar móvil).
 - Todos los objetivos táctiles interactivos deben respetar el estándar de accesibilidad para pantallas táctiles de al menos 44 px (`min-h-[44px] min-w-[44px]`, WCAG 2.5.5 / 2.5.8).
-- Auditoría documentada en `traspaso/ENTREGA.md` a 375 px y 1280 px.
+- Auditoría documentada en `docs/_traspasos/ENTREGA.md` a 375 px y 1280 px.
 - Cambios restringidos a `apps/web` y compuertas en verde.
 
 ## Implementación

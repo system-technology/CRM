@@ -101,7 +101,7 @@ Cifrado de campos sensibles, derechos del titular (T-097), aviso de privacidad (
 | Problema | Ejemplo | Costo |
 |---|---|---|
 | **Cola de integración serial y lenta:** cada actualización de rama reinicia el CI | Ondas de conflictos de #208, #214, #228 | Horas por PR; el trabajo espera |
-| **Conflictos entre carriles sobre archivos compartidos** | `traspaso/ENTREGA.md`, `schema.prisma` con CRLF (#182 reescribió 4 100 líneas) | Rehacer fusiones |
+| **Conflictos entre carriles sobre archivos compartidos** | `docs/_traspasos/ENTREGA.md`, `schema.prisma` con CRLF (#182 reescribió 4 100 líneas) | Rehacer fusiones |
 | **Ids de tarea que colisionan** | PR #187 integró solo su primer commit y T-120..T-123 se perdieron; hubo que reasignar | Trabajo perdido y confusión |
 | **Fixtures de prueba que no llevan los permisos nuevos** | Pasó tres veces (RBAC, historiales, canal) | Fallos de CI evitables |
 | **Revisión humana-IA con puntos ciegos** | Dejé pasar un `CHECK` que aceptaba NULL (lógica trivaluada, #221); lo atrapó la prueba | Una vuelta extra |

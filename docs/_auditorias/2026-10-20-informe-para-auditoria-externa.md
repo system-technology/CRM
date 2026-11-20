@@ -329,7 +329,7 @@ búsqueda, los contadores y el socket.
 - **Hecho:** catálogo y cotizador contra la API real; guardado de cotizaciones con versiones; listado de
   cotizaciones con cursor; estados vacío, carga y error; errores sin mensajes técnicos; foco y teclado
   en los modales; 375 px con capturas en `docs/_assets/diseno/`.
-- **Pendiente** (cola de Antigravity en `traspaso/COLA.md`, rama `feat/bandeja-web`):
+- **Pendiente** (cola de Antigravity en `docs/_traspasos/COLA.md`, rama `feat/bandeja-web`):
   - **0c.29:** el ingreso con la API real;
   - **0c.27:** neto y margen según el permiso, porque `reportes/page.tsx` muestra «Costo Neto» y
     «Margen» **sin control de rol**, con datos simulados;
@@ -460,7 +460,7 @@ gratuito de GitHub no la permite en repos privados (`ESTADO.md`, tarea 10).
   el `integrador` escribe en `main`** (R11). Cada agente trabaja en su rama y en un worktree propio:
   `CRM-api` y `CRM-inbox` para la API y los datos, y `CRM-bandeja` para la web.
 - **Antigravity**, otra IA, construye `apps/web` en la rama `feat/bandeja-web` con el protocolo de
-  traspaso por archivos (`traspaso/ENTREGA.md`, `REVISION.md` y `COLA.md`, en
+  traspaso por archivos (`docs/_traspasos/ENTREGA.md`, `REVISION.md` y `COLA.md`, en
   `docs/09-ia/06-flujo-con-antigravity.md`). Un revisor `frontend` acepta o devuelve cada entrega.
 - **Modo desatendido:** del 2026-10-19 al 2026-10-20, un loop autónomo orquestó a los agentes. El
   propietario tomó las decisiones de producto y las de `CLAUDE.md`, y cada una quedó registrada
@@ -477,7 +477,7 @@ gratuito de GitHub no la permite en repos privados (`ESTADO.md`, tarea 10).
 | 2 | Una migración de una rama sin integrar (`20261019230000_identidad…`) se aplicó en Neon antes de entrar en `main` | La aserción 11 salió roja para todas las ramas | Se resolvió al integrarla (v0.33.0): Neon y `main` coinciden en 22 migraciones |
 | 3 | El `WHATSAPP_WEBHOOK_VERIFY_TOKEN` real estaba como literal en una prueba (`94bf78f`) y figuraba en la lista blanca de gitleaks como «falso positivo» | Quedó en el historial de un repo privado. Solo sirve para el apretón de manos `GET` | La prueba genera su token; el valor se rotó en los cuatro `.env`; Meta nunca lo tuvo, porque el webhook no está configurado; `.gitleaksignore` ignora solo esa huella |
 | 4 | El shell del propietario tenía un `DATABASE_URL` global de otro proyecto (`TrastornadoresApp`), y `dotenv-cli` no lo sobrescribe | `limpiar-fixtures --borrar` se ejecutó contra esa base ajena y **no borró nada**, porque no existía la tabla `tenants` | Toda orden de base va con `env -u DATABASE_URL -u DIRECT_URL`. **Pendiente del propietario: quitar la variable global** |
-| 5 | Un revisor sobrescribió `traspaso/COLA.md` con el contenido de `REVISION.md` (`0bededa`) | La cola de Antigravity quedó sin tareas | Restaurada en `04d269a` |
+| 5 | Un revisor sobrescribió `docs/_traspasos/COLA.md` con el contenido de `REVISION.md` (`0bededa`) | La cola de Antigravity quedó sin tareas | Restaurada en `04d269a` |
 | 6 | Un script de PowerShell de la sesión dejó vacíos los hosts del `.env` de `CRM-inbox`: `return` no detiene un pegado línea a línea | Sin conexión en ese árbol | Restaurado desde la copia `.env.antes-de-rama` |
 
 ## 13. ADR

@@ -1,6 +1,6 @@
 # ARRANQUE — empieza aquí, desde cero contexto
 
-> **Dónde estás:** `traspaso/`. Este archivo y los otros cinco del protocolo viven aquí desde el
+> **Dónde estás:** `docs/_traspasos/`. Este archivo y los otros cinco del protocolo viven aquí desde el
 > 2026-10-13; antes estaban sueltos en la raíz y eran seis de diez. Lo que se nombra sin carpeta
 > —`CLAUDE.md`, `ESTADO.md`, `AGENTS.md`— sigue en la raíz, un nivel por encima.
 
