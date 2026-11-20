@@ -38,6 +38,9 @@ for (const { ruta, titulo } of RUTAS) {
 // `inventario-de-rutas.spec.ts` garantiza que toda página privada vive dentro de él; el módulo activo
 // de las demás lo cubre `navegacion.spec.ts`. Recorrer también catálogo, reportes o contactos
 // agotaba el límite de 300 peticiones por minuto por IP de la API del CI («Demasiadas peticiones»).
+// Rutas medidas a mano a 390×844 al arreglar el doble desplazamiento; el resto del marco es el mismo.
+const MIDE_DESPLAZAMIENTO = new Set(['/bandeja', '/seguimientos', '/viajes', '/configuracion']);
+
 const RUTAS_CON_MARCO: Array<{ ruta: string; activoEscritorio: boolean; activoMovil: boolean }> = [
   { ruta: '/', activoEscritorio: false, activoMovil: false },
   { ruta: '/bandeja', activoEscritorio: true, activoMovil: true },
@@ -63,29 +66,23 @@ for (const { ruta, activoEscritorio, activoMovil } of RUTAS_CON_MARCO) {
     await expect(inferior).toBeVisible();
     await expect(lateral).toBeHidden();
     await expect(inferior.locator('[aria-current="page"]')).toHaveCount(activoMovil ? 1 : 0);
-  });
-}
 
-/**
- * Un solo desplazamiento a 390×844 (T-315): el documento no se desplaza ni a lo alto (el pie legal
- * vive dentro de `main#contenido`) ni a lo ancho (un `sr-only` absoluto de la tabla de equipo
- * ensanchaba el viewport de diseño). Solo rutas ligeras, por el límite de la API del CI.
- */
-for (const ruta of ['/seguimientos', '/viajes', '/configuracion']) {
-  test(`${ruta} a 390×844 no desplaza el documento`, async ({ page }) => {
-    await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto(ruta);
-    await expect(page.locator('main#contenido')).toBeVisible({ timeout: 20_000 });
-    await page.waitForTimeout(1_500);
-    const medidas = await page.evaluate(() => {
-      const d = document.documentElement;
-      return { alto: d.scrollHeight - d.clientHeight, ancho: d.scrollWidth - d.clientWidth };
-    });
-    expect(medidas.alto).toBeLessThanOrEqual(1);
-    expect(medidas.ancho).toBeLessThanOrEqual(0);
-    // El pie sigue existiendo (dentro de la región de trabajo); el del layout raíz queda oculto.
-    await expect(
-      page.locator('main#contenido [data-testid="pie-de-pagina-privacidad"]'),
-    ).toHaveCount(1);
+    if (MIDE_DESPLAZAMIENTO.has(ruta)) {
+      // Un solo desplazamiento a 390×844 (T-315): el documento no se desplaza ni a lo alto (el pie legal
+      // vive dentro de `main#contenido`) ni a lo ancho (un `sr-only` absoluto de la tabla de equipo
+      // ensanchaba el viewport de diseño). Se mide aquí, sobre la misma carga, y no en pruebas aparte:
+      // cada carga de página suma peticiones al límite de la API del CI (300 por minuto por IP).
+      await page.waitForTimeout(1_000);
+      const medidas = await page.evaluate(() => {
+        const d = document.documentElement;
+        return { alto: d.scrollHeight - d.clientHeight, ancho: d.scrollWidth - d.clientWidth };
+      });
+      expect(medidas.alto).toBeLessThanOrEqual(1);
+      expect(medidas.ancho).toBeLessThanOrEqual(0);
+      // En la bandeja (pantalla completa) no hay pie; en el resto vive dentro de la región de trabajo.
+      await expect(
+        page.locator('main#contenido [data-testid="pie-de-pagina-privacidad"]'),
+      ).toHaveCount(ruta === '/bandeja' ? 0 : 1);
+    }
   });
 }
