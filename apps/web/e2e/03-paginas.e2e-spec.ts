@@ -18,7 +18,10 @@ for (const { ruta, titulo } of RUTAS) {
   test(`${ruta} carga sin errores de consola ni 5xx`, async ({ page }) => {
     const respuesta = await page.goto(ruta);
     expect(respuesta?.status()).toBeLessThan(400);
-    await expect(page.getByText(titulo).first()).toBeVisible({ timeout: 20_000 });
+    // El título también aparece en la barra inferior móvil (oculta a 1440): se busca el visible.
+    await expect(page.getByText(titulo).filter({ visible: true }).first()).toBeVisible({
+      timeout: 20_000,
+    });
     // Deja correr la hidratacion y las primeras llamadas a la API antes de que el vigilante evalue.
     // No se usa `networkidle`: Socket.IO mantiene la red ocupada y nunca llegaria.
     await page.waitForTimeout(2_000);
