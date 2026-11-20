@@ -108,11 +108,19 @@ test('H5: crea una oportunidad desde la conversacion y aparece en el pipeline', 
 });
 
 test('H6: cotiza un producto de la semilla y guarda la cotizacion', async ({ page }) => {
+  // Si cayera a la maqueta, esta prueba pasaria contra datos inventados: se exige la API real.
+  // El alternador «Modo: Conectado a API real» ya solo existe con NEXT_PUBLIC_HERRAMIENTAS_DEV
+  // (T-258), asi que la prueba lo comprueba por lo que hace la pantalla: los productos llegan
+  // de la API y no se muestra el distintivo de datos de demostracion.
+  const salidasDeLaApi = page.waitForResponse(
+    (r) => r.url().includes('/api/v1/catalogo/salidas') && r.request().method() === 'GET',
+    { timeout: 30_000 },
+  );
   await page.goto('/cotizador');
+  expect((await salidasDeLaApi).status()).toBe(200);
   await expect(page.getByRole('heading', { name: 'Cotizador Comercial' })).toBeVisible();
   await expect(page.locator('#select-paquete-cotizador')).toBeVisible({ timeout: 30_000 });
-  // Si cayera a la maqueta, esta prueba pasaria contra datos inventados: se exige la API real.
-  await expect(page.getByRole('button', { name: /Conectado a API real/ })).toBeVisible();
+  await expect(page.getByTestId('distintivo-datos-demo')).toHaveCount(0);
 
   // La salida programada de la semilla: la fecha por omision del cotizador no tiene por que existir.
   const salidas = page.getByRole('button', { name: /^Seleccionar salida programada/ });
