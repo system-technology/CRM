@@ -9277,6 +9277,18 @@ describe('T-261 — perfiles_de_agencia: aislamiento y verificación solo de la 
       ),
     ).rejects.toMatchObject({ code: '42501' });
 
+    // El upsert de la API tampoco cruza agencias: B apuntando a A cae en el WITH CHECK del INSERT.
+    await expect(
+      comoTenant(TENANT_B, (c) =>
+        c.query(
+          `INSERT INTO perfiles_de_agencia (tenant_id, rnt) VALUES ($1, '66666')
+           ON CONFLICT (tenant_id) DO UPDATE SET rnt = EXCLUDED.rnt`,
+          [TENANT_A],
+        ),
+      ),
+    ).rejects.toMatchObject({ code: '42501' });
+    expect(await verificadoDe(TENANT_A)).toEqual([{ rnt: '11111', verificado: false }]);
+
     // Una agencia, una fila.
     await expect(
       comoTenant(TENANT_A, (c) =>
@@ -9311,7 +9323,7 @@ describe('T-261 — perfiles_de_agencia: aislamiento y verificación solo de la 
       code: '23514',
       constraint: 'perfiles_de_agencia_verificado_exige_rnt',
     });
-    // Los extremos válidos entran (se deshacen con la transacción).
+    // Los extremos válidos entran (cada uno se borra a sí mismo en la misma transacción).
     for (const bueno of ['1', '4821300000']) {
       await comoPlataforma(TENANT_C, async (c) => {
         const r = await c.query(
@@ -9341,7 +9353,8 @@ describe('T-261 — perfiles_de_agencia: aislamiento y verificación solo de la 
       expect.arrayContaining([expect.stringMatching(/^search_path=("")?$/)]),
     );
 
-    // «La plataforma» es el dueño de la tabla: ningún rol de aplicación lo es, ni hereda de él.
+    // «La plataforma» es el dueño de la tabla: ningún rol de aplicación lo es, ni es miembro de él
+    // (MEMBER, no USAGE: un miembro con INHERIT FALSE podría hacer SET ROLE).
     for (const rol of [
       'viajapro_app',
       'viajapro_altas',
@@ -9349,7 +9362,7 @@ describe('T-261 — perfiles_de_agencia: aislamiento y verificación solo de la 
       'viajapro_identidad',
     ]) {
       const r = await admin.query(
-        `SELECT pg_has_role($1, c.relowner, 'USAGE') AS es_plataforma
+        `SELECT pg_has_role($1, c.relowner, 'MEMBER') AS es_plataforma
            FROM pg_class c WHERE c.oid = 'public.perfiles_de_agencia'::regclass`,
         [rol],
       );
@@ -9447,5 +9460,29 @@ describe('T-261 — perfiles_de_agencia: aislamiento y verificación solo de la 
       );
     });
     expect(await verificadoDe(TENANT_C)).toEqual([{ rnt: '12345', verificado: true }]);
+
+    // 9. La ruta real de la API es un upsert. Con el MISMO RNT, aunque mande verificado_en = now(),
+    //    la verificación se conserva (y no la fija quien no la tenía)...
+    const mismo = await comoTenant(TENANT_C, (c) =>
+      c.query(
+        `INSERT INTO perfiles_de_agencia (tenant_id, rnt) VALUES ($1, '12345')
+         ON CONFLICT (tenant_id) DO UPDATE
+           SET rnt = EXCLUDED.rnt, verificado_en = now(), actualizado_en = now()
+         RETURNING rnt, verificado_en IS NULL AS sin_verificar`,
+        [TENANT_C],
+      ),
+    );
+    expect(mismo.rows).toEqual([{ rnt: '12345', sin_verificar: false }]);
+    //    ...y con otro RNT vuelve a NULL.
+    const otro = await comoTenant(TENANT_C, (c) =>
+      c.query(
+        `INSERT INTO perfiles_de_agencia (tenant_id, rnt) VALUES ($1, '54321')
+         ON CONFLICT (tenant_id) DO UPDATE
+           SET rnt = EXCLUDED.rnt, verificado_en = now(), actualizado_en = now()
+         RETURNING rnt, verificado_en IS NULL AS sin_verificar`,
+        [TENANT_C],
+      ),
+    );
+    expect(otro.rows).toEqual([{ rnt: '54321', sin_verificar: true }]);
   });
 });

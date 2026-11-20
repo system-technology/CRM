@@ -7,9 +7,16 @@
 -- propia, de agencia, con RLS: `perfiles_de_agencia`.
 --
 -- ESTA migración trae solo lo que T-261 necesita: `tenant_id`, `rnt` y `verificado_en`. Las columnas
--- `nit`, `digito_verificacion` y `razon_social` del ADR-0030 llegan con T-268 como `ADD COLUMN`
--- (aditivo, sin tocar nada de esta migración): el NIT de una persona natural es su cédula y pide
--- decidir primero su cifrado (ADR-0015, R10). T-268 deja de crear esta tabla.
+-- `nit`, `digito_verificacion` y `razon_social` del ADR-0030 llegan con T-268: el NIT de una persona
+-- natural es su cédula y pide decidir primero su cifrado (ADR-0015, R10). T-268 deja de crear esta
+-- tabla.
+--
+-- OJO, T-268: añadir esas columnas NO basta con `ADD COLUMN`. El ADR-0030 exige que cambiar el `nit`
+-- también anule `verificado_en`, así que T-268 tiene que reemplazar `proteger_verificacion_del_perfil`
+-- (CREATE OR REPLACE) para que compare también `nit`; y revisar si el CHECK
+-- `perfiles_de_agencia_verificado_exige_rnt` sigue siendo la regla cuando se pueda verificar un NIT
+-- sin RNT. Si solo añade la columna, una agencia con NIT verificado podría cambiarlo por el de otra y
+-- conservar la verificación. Las pruebas P-1 y P-6 de `aislamiento.spec.ts` también cambian.
 --
 -- Qué hace, en orden:
 --   1. `perfiles_de_agencia`: una fila por agencia (`tenant_id` es la PK), con dos CHECK: el RNT son

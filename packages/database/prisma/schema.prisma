@@ -2618,7 +2618,8 @@ model Notification {
 }
 
 /// Datos legales de la agencia (T-261, ADR-0030 §3.3). Una fila por agencia: la PK es el tenant.
-/// Hoy solo el RNT; `nit`, `digito_verificacion` y `razon_social` llegan con T-268.
+/// Hoy solo el RNT; `nit`, `digito_verificacion` y `razon_social` llegan con T-268, que además tiene
+/// que reemplazar el disparador para que cambiar el `nit` también anule `verificado_en`.
 ///
 /// Lo que declara la agencia NO está verificado. `verificado_en` solo lo conserva la plataforma
 /// (el dueño de la tabla): el disparador `proteger_verificacion_del_perfil` lo deja en NULL para
