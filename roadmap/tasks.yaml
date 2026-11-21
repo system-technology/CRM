@@ -11618,26 +11618,36 @@ tasks:
     created_at: 2026-11-21T15:20:00.000Z
     owner: frontend
   - id: T-560
-    title: "Web: el tema no se aplica al arrancar ni se puede cambiar fuera de la bandeja"
+    title: "Web: falta el conmutador de tema en las pantallas publicas, y el anti-FOUC no tiene pruebas de comportamiento"
     type: bug
     phase: 1
-    priority: P2
-    effort: M
+    priority: P3
+    effort: S
     status: backlog
     acceptance:
-      - "Los dos modos YA existen: globals.css redefine los tokens en .dark, 144 archivos usan variantes dark:
-        y selector-tema-densidad.tsx ofrece claro / oscuro / seguir al sistema con persistencia en
-        viajapro_tema"
-      - "Lo que falta (1): el tema no se aplica en el arranque. apps/web/src/app/layout.tsx no lee la
-        preferencia ni pone la clase en <html>, asi que la primera pintura siempre es clara y hay parpadeo si
-        el usuario prefiere oscuro. Se resuelve con un script en linea antes de la hidratacion"
-      - "Lo que falta (2): el conmutador solo esta montado en barra-modulos.tsx (la bandeja). Desde el ingreso
-        o cualquier otra pantalla no hay forma de cambiar el tema"
-      - "Lo que falta (3): se respeta prefers-color-scheme del sistema en la PRIMERA visita, sin preferencia
-        guardada"
-      - "Criterio de cierre: con el sistema en oscuro y sin preferencia guardada, la app abre en oscuro sin
-        parpadeo; el conmutador se alcanza desde cualquier pantalla privada; la eleccion sobrevive a recargar"
-    source: "revision visual del propietario, 2026-11-21: «podemos manejar ambos modos oscuro y claro?»"
+      - "CORRECCION 2026-11-21: el diagnostico original de esta tarea, escrito por la madre orquestadora, era
+        FALSO en dos de sus tres puntos. Lo desmintio la sesion de carril b, que PARO antes de escribir codigo y
+        lo midio en un navegador con la CSP real y la hidratacion abortada. Queda escrito para que nadie lo
+        vuelva a dar por cierto"
+      - "FALSO que el tema no se aplique al arrancar: layout.tsx importa SCRIPT_ANTI_FOUC de lib/tema-y-densidad.ts
+        y lo inyecta en <head> con el nonce de la CSP, antes de la hidratacion. No hay parpadeo"
+      - "FALSO que no se respete prefers-color-scheme en la primera visita: el tema por defecto es 'system' y el
+        script resuelve con matchMedia. Medido: sistema oscuro sin preferencia abre en oscuro; una preferencia
+        guardada gana sobre la del sistema, en los dos sentidos"
+      - "INEXACTO que el conmutador solo este en la bandeja: BarraModulos la monta MarcoDeTrabajo, que es el
+        layout de TODO el grupo (app), y se llega por el avatar en escritorio y por la hoja «Mas» en movil"
+      - "LO QUE SI FALTA (1): las pantallas PUBLICAS (ingreso, aceptar invitacion, politica de cookies) no tienen
+        conmutador. Quien entra de noche no puede cambiarlo sin haber iniciado sesion"
+      - "LO QUE SI FALTA (2): el SCRIPT_ANTI_FOUC no tiene pruebas de comportamiento; el spec solo comprueba que
+        el texto contenga las claves. Hacen falta pruebas que ejecuten el script y verifiquen la clase en las
+        cuatro combinaciones (sistema oscuro/claro x preferencia ausente/guardada), vistas en rojo mutando el script"
+      - "APRENDIZAJE DE METODO: la afirmacion falsa nacio de un grep estrecho (localStorage|classList dentro de
+        layout.tsx) que no encontro nada. El script vive en otro archivo y entra como constante importada. NO
+        ENCONTRAR ALGO CON UN GREP NO DEMUESTRA QUE NO EXISTA, y menos para escribirlo como un hecho en el roadmap"
+      - "Descubribilidad: el propietario preguntó si se podían manejar ambos modos SIN SABER que el conmutador ya
+        existe. Si no lo encuentra quien conoce el producto, una agencia tampoco. Eso es un problema real, pero es
+        de descubribilidad y no de funcionalidad: se trata aparte, no aqui"
+    source: "revision visual del propietario 2026-11-21; diagnostico corregido por la sesion de carril b el mismo dia"
     created_at: 2026-11-21T15:40:00.000Z
     owner: frontend
   - id: T-561

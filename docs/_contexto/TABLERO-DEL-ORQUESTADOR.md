@@ -80,10 +80,21 @@ No hace falta construir el modo oscuro: hace falta **aplicarlo bien y que se lea
   WCAG 2.1 AA) y lo que cierra la tarea es **una prueba que falle si un token baja del umbral**. Límite dado:
   **la identidad no se toca**; se ajusta la luminancia, no la familia de color, y si hiciera falta cambiar el
   azul de acento, la sesión para y pregunta, porque eso es decisión de marca del propietario.
-- **T-560 (P2, encolada)** — el tema **no se aplica en el arranque** (`layout.tsx` no lee la preferencia ni pone
-  la clase: primera pintura siempre clara, con parpadeo) y el conmutador **solo está montado en
-  `barra-modulos.tsx`**, así que desde el ingreso no se puede cambiar. Se reparte al liberarse el carril `b`:
-  no conviene una tercera sesión pisando `apps/web`.
+- **T-560 — OJO, su diagnóstico original era FALSO y lo escribió la madre.** Decía que el tema no se aplica al
+  arrancar y que no se respeta `prefers-color-scheme`: **las dos cosas son falsas**. `layout.tsx` ya inyecta
+  `SCRIPT_ANTI_FOUC` en `<head>` con el nonce de la CSP, y el tema por defecto es `system`. Lo desmintió la
+  sesión de carril `b`, que **paró antes de escribir código** y lo midió en un navegador con la CSP real y la
+  hidratación abortada. El conmutador tampoco está «solo en la bandeja»: `MarcoDeTrabajo` monta `BarraModulos`
+  en **todo** el grupo `(app)` (avatar en escritorio, hoja «Más» en móvil). **Lo único que falta de verdad** es
+  el conmutador en las pantallas **públicas** y unas pruebas de comportamiento del anti-FOUC.
+  - **Cómo nació el error, porque importa más que el error:** un `grep` de `localStorage|classList` **limitado a
+    `layout.tsx`** no encontró nada, y eso se escribió como un hecho. El script vive en otro archivo y entra como
+    constante importada. **No encontrar algo con un grep estrecho no demuestra que no exista.** Antes de afirmar
+    una ausencia en el roadmap, buscar por el nombre del símbolo en todo `apps/web`, no por la implementación
+    donde uno supone que está.
+  - **Descubribilidad, el hallazgo que sí vale:** el propietario preguntó si se podían manejar ambos modos **sin
+    saber que el conmutador ya existe**. Si no lo encuentra quien conoce el producto, una agencia tampoco.
+
 - **Inventariado, sin tocar:** la portada de ingreso usa colores **fijos fuera de los tokens**
   (`#FDE68A`, `#C9A24B`, `bg-black/25` en `formulario-ingreso.tsx`), así que se ve igual en los dos modos. Es
   estética de marca, no un defecto de contraste: lo decide el propietario.
