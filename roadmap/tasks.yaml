@@ -11095,7 +11095,14 @@ tasks:
       y lo dice"
     created_at: 2026-11-21T23:00:00.000Z
     owner: backend
-    notes: "Integrada como #441 (2149b9db), en el mismo PR que T-531. Tercera vez el mismo dia que una rama con DOS ids deja la segunda tarea sin cerrar: el cierre automatico abrio #444 solo para T-531. La cierra la madre a mano. AUDITORIA INDEPENDIENTE DE LA MADRE (R13, dinero): sin bloqueantes. GROUP BY v.destino, v.moneda_iso, asi que las monedas NUNCA se suman (R8); ventasPorDestino solo existe con alcance de agencia; sin cotizacion.ver_neto_y_margen las columnas de neto y margen NI ENTRAN en la consulta, no se filtran despues. Prueba vista en rojo: con el SQL sumando monedas (GROUP BY solo v.destino + MIN(moneda)) fallaron 3 e2e contra Postgres real, literal -'3000000' +'3050000' (el COP y el USD de San Andres sumados). La e2e del margen tambien se mutó y fallo. Cola: T-557, sin tope de filas."
+    notes: "Integrada como #441 (2149b9db), en el mismo PR que T-531. Tercera vez el mismo dia que una rama con
+      DOS ids deja la segunda tarea sin cerrar: el cierre automatico abrio #444 solo para T-531. La cierra la
+      madre a mano. AUDITORIA INDEPENDIENTE DE LA MADRE (R13, dinero): sin bloqueantes. GROUP BY v.destino,
+      v.moneda_iso, asi que las monedas NUNCA se suman (R8); ventasPorDestino solo existe con alcance de
+      agencia; sin cotizacion.ver_neto_y_margen las columnas de neto y margen NI ENTRAN en la consulta, no se
+      filtran despues. Prueba vista en rojo: con el SQL sumando monedas (GROUP BY solo v.destino +
+      MIN(moneda)) fallaron 3 e2e contra Postgres real, literal -'3000000' +'3050000' (el COP y el USD de San
+      Andres sumados). La e2e del margen tambien se mutó y fallo. Cola: T-557, sin tope de filas."
   - id: T-534
     title: "Reportes de agencia: ventas, embudo y respuesta están dos veces (ReportesListo y los bloques de
       DashboardAdmin)"
@@ -11200,7 +11207,12 @@ tasks:
     source: "auditoria independiente de #428 (T-528), 2026-11-21"
     created_at: 2026-11-21T12:40:00.000Z
     owner: frontend
-    notes: "Integrada como #440 (cfae145c), en el mismo PR que T-546. El cierre automatico NO la marco: la expresion de cerrar-tarea.mjs captura UN solo id del nombre de la rama, asi que de b/T-546-538-... cerro T-546 y dejo esta en backlog. Verificado en vivo sobre main 29ceeb04; la cierra la madre a mano. Prueba vista en rojo: con el aviso desactivado a mano fallaron 3, entre ellas 'Unable to find an element by: [data-testid=por-cobrar-minimo-COP]'. Limite que declaro la propia sesion: la mutacion cubre el marcado del minimo, no el texto exacto de la cifra."
+    notes: "Integrada como #440 (cfae145c), en el mismo PR que T-546. El cierre automatico NO la marco: la
+      expresion de cerrar-tarea.mjs captura UN solo id del nombre de la rama, asi que de b/T-546-538-... cerro
+      T-546 y dejo esta en backlog. Verificado en vivo sobre main 29ceeb04; la cierra la madre a mano. Prueba
+      vista en rojo: con el aviso desactivado a mano fallaron 3, entre ellas 'Unable to find an element by:
+      [data-testid=por-cobrar-minimo-COP]'. Limite que declaro la propia sesion: la mutacion cubre el marcado
+      del minimo, no el texto exacto de la cifra."
   - id: T-539
     title: "Reportes: una moneda desconocida en el libro tumba el resumen entero en vez de degradar esa moneda"
     type: bug
@@ -11502,7 +11514,7 @@ tasks:
     phase: 1
     priority: P2
     effort: M
-    status: backlog
+    status: done
     depends_on:
       - T-531
       - T-532
@@ -11518,6 +11530,12 @@ tasks:
       2026-11-21
     created_at: 2026-11-21T14:30:00.000Z
     owner: frontend
+    started_at: 2026-11-21T15:16:47.771Z
+    done_at: 2026-11-21T15:16:47.771Z
+    evidence: "Mergeado en main por el PR #446 (rama b/T-555-web-por-asesor-y-destinos) con el CI en verde:
+      format, analyze, tests y los demás checks obligatorios. Cierre automático
+      (.github/workflows/cerrar-tarea.yml)."
+    commit: 1e947f4b6308e7543480292acfcbaf1a25fc413c
   - id: T-556
     title: "Web: el modo demo no trae cotizaciones abiertas ni saldo por cobrar, y Hoy ensena un error"
     type: bug
@@ -11526,9 +11544,12 @@ tasks:
     effort: S
     status: backlog
     acceptance:
-      - "mock-reportes-resumen.ts no incluye cotizacionesAbiertas ni porCobrar, asi que en demo Hoy pinta 'No pudimos leer las cotizaciones abiertas' y no hay tarjeta de cobro"
-      - "En demo deberia verse un dato de muestra coherente, no un error: la demo es lo que ve quien evalua el producto"
-      - "Sembrar las dos claves en el mock, con varias monedas y un caso de truncado: true para que la demo ensene tambien ese estado"
+      - mock-reportes-resumen.ts no incluye cotizacionesAbiertas ni porCobrar, asi que en demo Hoy pinta 'No
+        pudimos leer las cotizaciones abiertas' y no hay tarjeta de cobro
+      - "En demo deberia verse un dato de muestra coherente, no un error: la demo es lo que ve quien evalua el
+        producto"
+      - "Sembrar las dos claves en el mock, con varias monedas y un caso de truncado: true para que la demo
+        ensene tambien ese estado"
     source: "aviso de la sesion de T-546/T-538 al entregar #440, 2026-11-21"
     created_at: 2026-11-21T14:50:00.000Z
     owner: frontend
@@ -11539,11 +11560,15 @@ tasks:
     priority: P3
     effort: S
     status: backlog
-    depends_on: [T-532]
+    depends_on:
+      - T-532
     acceptance:
-      - "ventasPorDestino devuelve una fila por destino Y moneda del periodo, sin limite: el destino es texto libre copiado del paquete"
-      - "Una agencia con cientos de destinos distintos, o con el destino mal normalizado, devolveria una respuesta enorme"
-      - "Acotarla (tope con marca de truncado, como porCobrar) o agrupar la cola en 'otros'. Hoy no se ha visto el problema: es cola, no bloqueante"
+      - "ventasPorDestino devuelve una fila por destino Y moneda del periodo, sin limite: el destino es texto
+        libre copiado del paquete"
+      - Una agencia con cientos de destinos distintos, o con el destino mal normalizado, devolveria una
+        respuesta enorme
+      - "Acotarla (tope con marca de truncado, como porCobrar) o agrupar la cola en 'otros'. Hoy no se ha
+        visto el problema: es cola, no bloqueante"
     source: "lo dejo dicho la sesion de T-531/T-532 al entregar #441, 2026-11-21"
     created_at: 2026-11-21T14:50:00.000Z
     owner: backend
@@ -11555,8 +11580,9 @@ tasks:
     effort: S
     status: backlog
     acceptance:
-      - "Hoy pide el resumen sin asesorId, asi que quien tiene reportes.ver_agencia ve las cifras de TODA la agencia; la tarjeta lo dice, no engana"
-      - "Falta decidir si el dueno quiere ver ahi 'lo mio' en vez de 'lo de todos', o poder alternar"
+      - Hoy pide el resumen sin asesorId, asi que quien tiene reportes.ver_agencia ve las cifras de TODA la
+        agencia; la tarjeta lo dice, no engana
+      - Falta decidir si el dueno quiere ver ahi 'lo mio' en vez de 'lo de todos', o poder alternar
       - "Es decision de producto, no defecto: por eso no bloquea"
     source: "pregunta que dejo abierta la sesion de T-546/T-538 al entregar #440, 2026-11-21"
     created_at: 2026-11-21T14:50:00.000Z
