@@ -61,6 +61,9 @@ const archivo = (id: string, parcial: Partial<ArchivoParaCobro> = {}): ArchivoPa
   monedaIso: 'COP',
   creadoEn: new Date('2027-01-01T12:00:00.000Z'),
   pagoTotalVenceEn: null,
+  adultos: 2,
+  ninos: 0,
+  infantes: 0,
   ...parcial,
 });
 

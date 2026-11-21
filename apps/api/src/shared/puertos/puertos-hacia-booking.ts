@@ -28,6 +28,13 @@ export interface ArchivoParaCobro {
    * `null` si ninguna lo tiene. Solo para avisar si la fecha límite de cobro lo pasa (ADR-0034 §3).
    */
   pagoTotalVenceEn: Date | null;
+  /**
+   * Composición vendida del archivo (columnas de `travel_files`, sin tocar `pasajeros`). Solo
+   * cifras: los nombres exigen `archivo.ver` y son dato personal (R10, T-582).
+   */
+  adultos: number;
+  ninos: number;
+  infantes: number;
 }
 
 export interface OpcionesDeLectura {
