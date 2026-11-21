@@ -181,6 +181,51 @@ demostración, no toca sesión ni API ni `tienePermiso`, solo decide qué se pin
 **solo quita** entradas del menú, nunca añade. T-343 prohibió fingir el alcance con datos reales; T-566
 enseña la forma de la pantalla con datos de ejemplo.
 
+## 1.8 El arnés de aislamiento corría a medias y nadie lo sabía (2026-11-21, 18:00 UTC)
+
+T-377 puso `mutaciones-aislamiento.mjs` en el CI por primera vez. **Su primera ejecución en la vida
+destapó que el arnés no llegaba al final:** 17 controles en verde, M1 a M21 todas en rojo (funciona),
+y **M22 reventaba el proceso entero, así que M23 y M24 nunca se ejecutaban**.
+
+`error: role "viajapro" is a member of role "viajapro_app"` (`0LP01`, `AddRoleMems`). M22 hace
+`GRANT <dueño de perfiles_de_agencia> TO viajapro_app`, y en el CI el dueño es `viajapro`, que **ya
+es miembro de `viajapro_app`**: pertenencia circular. M22 asumía una topología de roles que no es la
+del CI, justo donde la compuerta iba a vivir.
+
+**Lo que hay que llevarse de aquí, y vale para cualquier arnés:** una mutación rota **esconde a todas
+las posteriores**. El bucle dejaba que la excepción tumbara el proceso —a propósito, para no contar
+una mutación como VERDE— pero eso convierte un fallo en una venda. Ahora hay cuatro estados
+(ROJO / VERDE / **ERROR** / **N/A**), se sigue con la siguiente y se sale distinto de cero al final.
+
+**Decisión mía, por si alguien la revisa:** N/A **no** hace fallar la corrida. Una compuerta en rojo
+permanente acaba ignorada, y entonces vuelve a ser lo que T-377 existía para arreglar. Prefiero 23
+mutaciones que corren y **un hueco escrito** (T-579) a un rojo que nadie mira. El hueco debe verse en
+el resumen del job, no solo en el informe interno.
+
+**La medición desmintió al diseño, y eso fue lo más útil del día.** El workflow nació con filtro de
+rutas y sin ser obligatorio porque se suponía que el arnés tardaba «minutos». Al correrlo de verdad:
+**43 segundos**, 1m45 el job entero. La sesión lo midió y vino a desdecirse sola. Se le quitó el
+filtro, corre en **todo PR**, y con eso **ya puede ser check obligatorio** en cuanto el propietario lo
+añada a `proteccion-main.json` (T-577). Moraleja para la próxima compuerta: **un comentario que
+justifica una decisión con una medición que nadie tomó congela esa decisión durante meses.**
+
+**Resultado final del arnés:** 17 controles verdes, M1–M21 rojas, **M22 no aplicable**, M23 roja y
+**M24 roja — el entregable de T-377 está demostrado**: la fijación de fechas de `creado_en` y
+`actualizado_en` tiene quien la vigile.
+
+**Y la parte que no se recortó:** M24 se comparó **línea a línea** con la definición viva de
+`proteger_verificacion_del_perfil` (migración `20261120170000`, la de `statement_timestamp`) antes de
+aceptarla. Difiere **solo** en las cuatro asignaciones de fecha y deja intacta la lógica de
+verificación; captura la definición sana **antes** de mutar, así que la restauración es correcta. Una
+mutación mal acotada pondría la prueba en rojo por el motivo equivocado y daría cobertura falsa.
+
+## 1.9 Una afirmación falsa de la cola, corregida (2026-11-21)
+
+**`Carril y tarea` SÍ acepta una bitácora de `docs/` dentro de un PR de carril `a` o `b`.** Los tres
+PR de este lote (#471 carril `a`, #472 carril `i`, #473 carril `b`) la llevaban y el check pasó en
+verde en los tres. T-576 nació diciendo lo contrario y se ha corregido. Avisar a las hijas de que no
+pueden dejar su rastro documental **les hacía quitar trabajo bueno por una regla que no existe**.
+
 ## 2. Reglas operativas que no se olvidan
 
 - **R14:** todo cambio se documenta, lo hecho y lo que viene. Un plan que solo vive en una conversación no existe.
@@ -193,6 +238,26 @@ enseña la forma de la pantalla con datos de ejemplo.
 - **Subagentes:** nunca dos Opus a la vez (el límite de 5 h de la cuenta los mata con HTTP 429 y **no se reanudan**). Todo subagente que vaya a commitear trabaja en un `git worktree` aparte: el working tree es compartido.
 
 ## 3. Cola de integración (orden)
+
+### Lote del arnés y la cola (2026-11-21, madre `…64ppDELKxYC1Tkdsu`) — CERRADO
+
+Arranca con `main` en **`36bd12f2`** y cero PR abiertos. Tres sesiones en paralelo, una por carril.
+
+- **#472** (T-574, carril `i`) — **INTEGRADO** en `6760ce6a`. De 14 P0 abiertas quedan **4 reales**:
+  5 estaban hechas, 5 bajan de prioridad. Auditoría propia antes de integrar: comprobé tres de las
+  cinco citas de `done` contra el código y **las tres exactas**. La hipótesis de la madre (T-131 y
+  T-132) era correcta pero **parcial**: T-120, T-121 y T-123 también estaban hechas.
+- **#471** (T-377, carril `a` + rutas protegidas) — **INTEGRADO** en `010d77d5`. **Devuelto dos veces**: la primera por §1.8 (moría en M22), la segunda al medir 43 s y ver que su propia justificación era falsa. Las dos vueltas destaparon defectos reales; ninguna fue una pasada de auditoría sobre una auditoría.
+- **#473** (T-569, carril `b`) — 14 checks en verde, rama puesta al día tras entrar #472.
+  41 clases de la familia `primary`, que no existe en ninguna paleta, mapeadas a `acento-*` del mismo
+  tono. Trae una prueba nueva que exige que toda familia usada sea de Tailwind o de `@theme`.
+
+**El cierre automático no cerró nada en este lote.** Tras integrar #472 y #473 por squash, con ramas
+que nombraban `T-574` y `T-569`, las dos seguian en `ready` y `backlog` en `main` y **no apareció
+ningún PR de cierre**. Las marcó la madre a mano en #474, con la evidencia citada. El traspaso
+anterior avisaba de que ese cierre *compite* con el carril `i`; hoy, sin más, **no se ejecutó**.
+Conviene no dar por hecho ninguna de las dos cosas: **comprobar el `status` en `main` después de
+cada integración**, que es barato, en vez de confiar en que alguien lo cierra.
 
 ### Lote de cierre de la demostración (2026-11-21, madre `…4XshqoadVSoT7orGV`) — CERRADO
 
@@ -389,7 +454,8 @@ Bandeja completa en [`PENDIENTES-DEL-PROPIETARIO.md`](PENDIENTES-DEL-PROPIETARIO
 - **Un asunto de commit que empieza por el id de la tarea tumba `convencion-de-commits`.** La regla `subject-case` rechaza sentence-case, start-case, pascal-case y upper-case, y `docs(roadmap): T-548, la e2e…` cuenta como mayúsculas. **Costó el PR #431 entero** (sustituido por #434) el 2026-11-21: como `--force-with-lease` está denegado, un asunto malo **no se enmienda, se recrea la rama**. El id va **al final**, entre paréntesis: `docs(roadmap): cierra T-520 y T-521, y abre la fragilidad de la e2e (T-548)`.
 - **El job `navegador` tiene una prueba frágil conocida** (`08-ingreso-por-usuario.e2e-spec.ts`, **T-548**). Si un PR sale rojo **solo** ahí: relanzar el job sobre el **mismo sha**. Si pasa, es la fragilidad; si vuelve a fallar, es real. **No se integra con un check en rojo sin clasificarlo antes**, aunque `navegador` no esté entre los 8 obligatorios.
 - `gh pr checks` usa GraphQL y está bloqueado aquí: usar `gh api repos/system-technology/CRM/commits/<sha>/check-runs`.
-- Una sesión hija creada sin `source_url` nace sin el repositorio clonado y `add_repo` cae bajo el clasificador: crearla siempre con `source_url` y, si procede, `source_revision`.
+- **Una sesión hija creada sin `source_url` nace sin el repositorio clonado** y `add_repo` cae bajo el clasificador: la hija **se queda bloqueada pidiendo un permiso que, en modo desatendido, nadie concede**. Crearla siempre con `source_url` y, si procede, `source_revision`. **Señal inmediata:** la respuesta de `create_session` trae la etiqueta `config:no-git-repo`; si está, archivar y relanzar, no intentar rescatarla. **Esta trampa YA ESTABA ESCRITA AQUÍ y la madre del lote de las 17:50 cayó igual**, con las tres hijas a la vez (0,36 USD y una vuelta entera). Lo cual dice algo de esta lista: **ha crecido más de lo que nadie lee antes de actuar.** Si vuelve a pasar, el remedio no es otra viñeta.
+- **`Carril y tarea` NO rechaza una bitácora de `docs/` dentro de un PR de carril `a` o `b`.** Verificado en verde en #471, #472 y #473 el 2026-11-21. No hagas que las hijas quiten su rastro documental por esto (ver §1.9).
 - El clasificador deniega `git push --force-with-lease` (así nació #399): para corregir el asunto de un commit ya empujado, recrear la rama y abrir otro PR. No hay atajo.
 - Pide siempre el mensaje de error completo de `tsc` antes de dar por buena una causa.
 - Una sesión hija sin `source_url` nace sin repositorio.

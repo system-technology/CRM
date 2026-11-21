@@ -99,6 +99,30 @@ Integrados: #404 y #405 (ingreso con correo o usuario, apodo del miembro; sustit
 
 **No verificado:** el ingreso por apodo (#405) no se probó a 390 px contra la API real (T-511); nada de esto está desplegado; la clave de la demo se perdió al archivarse la sesión de despliegue (se regenera resembrando). **Ojo:** T-503 se cerró con la carrera entre la base y la api, pero queda T-510 (las e2e de la api aún comparten base; un PR puede salir rojo por azar).
 
+### Cierre del lote del arnés de aislamiento (2026-11-21)
+
+`main` en **`010d77d5`**. Integrados: **#472** (**T-574 `done`**), **#473** (**T-569 `done`**),
+**#471** (**T-377 `done`**) y #474 (tablero y cola).
+
+**Lo que cambia de verdad:** el arnés de mutaciones de aislamiento
+(`packages/database/scripts/mutaciones-aislamiento.mjs`) **ya se ejecuta**, en **todo PR** contra
+`main`, cada noche y a demanda. Existía desde hacía tiempo y no corría en ningún sitio. Su primera
+ejecución destapó que **tampoco corría entero**: moría en M22 y M23 y M24 nunca se ejecutaban.
+Resultado tras corregirlo: 17 controles verdes, M1–M21 rojas, M22 no aplicable, M23 y M24 rojas;
+**23 mutaciones detectadas, 1 no aplicable**. Coste medido: 43 s el arnés, 1 min 45 s el job.
+
+**La cola dejó de mentir en P0:** de 14 tareas P0 abiertas quedan **4 reales** (T-079, T-080, T-093,
+T-126 — las cuatro esperan despliegue, al propietario o un recorrido manual, **ninguna es código**).
+Cinco ya estaban hechas y cinco estaban mal priorizadas.
+
+**No verificado / sigue abierto:** el rojo del arnés **todavía no impide integrar** — falta que el
+propietario lo añada a la lista de checks obligatorios del servidor (**T-577**); un fallo del
+nocturno **no avisa a nadie** (**T-578**); y en el CI el dueño de `perfiles_de_agencia` ya pertenece
+al rol de la aplicación, así que M22 no se ejecuta allí — con la pregunta de fondo de **si la
+topología de roles del CI es la de producción**, que afecta a las 23 mutaciones (**T-579**).
+Sigue sin haber nada desplegado y ninguna agencia ha visto nada.
+Detalle: [bitácora](docs/_bitacora/2026-11-21-arnes-de-aislamiento-y-las-p0.md).
+
 ### Es real (en `main`)
 
 | Qué | Evidencia |
