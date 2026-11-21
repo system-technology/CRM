@@ -64,7 +64,9 @@ import {
   type Seguimiento,
   type TableroPipeline,
 } from '@viajapro/contracts';
+import { asesorDeConsulta } from '../../../shared/autorizacion/asesor-de-consulta.js';
 import { RequierePermiso } from '../../../shared/autorizacion/permiso.decorator.js';
+import { PERMISO_VER_TODAS } from '../../../shared/autorizacion/visibilidad-de-conversaciones.js';
 import { ContextoTenant } from '../../../shared/tenant/contexto-tenant.js';
 import { ZodValidationPipe } from '../../../shared/validacion/zod-validation.pipe.js';
 import { CrearOportunidadUseCase } from '../application/crear-oportunidad.js';
@@ -218,16 +220,21 @@ export class CrmController {
   // T-077: seguimientos
   // ---------------------------------------------------------------------------
 
-  /** Lo pendiente de HOY (zona de la agencia) y lo vencido, del asesor en sesión por defecto. */
+  /**
+   * Lo pendiente de HOY (zona de la agencia) y lo vencido, del asesor en sesión por defecto.
+   * `?asesorId=` solo se respeta con `conversaciones.ver_todas`; sin él el servidor impone al
+   * usuario de la sesión y lo ignora (D3, H2).
+   */
   @Get('seguimientos/pendientes-del-dia')
   async pendientesDelDia(@Query('asesorId') asesorId?: string): Promise<PendientesDelDia> {
-    const actor = ContextoTenant.obtener().usuarioId;
-    const quien = asesorId === undefined || asesorId === 'yo' ? actor : asesorId;
-    if (quien !== null && !UUID.test(quien)) {
+    const contexto = ContextoTenant.obtener();
+    const puedeElegir = contexto.permisos.has(PERMISO_VER_TODAS);
+    if (puedeElegir && asesorId !== undefined && asesorId !== 'yo' && !UUID.test(asesorId)) {
       throw new BadRequestException({
         error: { code: 'ENTRADA_INVALIDA', message: 'asesorId debe ser un UUID o «yo».' },
       });
     }
+    const quien = asesorDeConsulta(contexto, asesorId, 'YO');
     return this.seguimientos.pendientesDelDia(quien, new Date());
   }
 
@@ -235,7 +242,13 @@ export class CrmController {
   async listarSeguimientos(
     @Query(new ZodValidationPipe(FiltroSeguimientosContrato)) filtro: FiltroSeguimientos,
   ): Promise<PaginaSeguimientos> {
-    const datos = await this.seguimientos.listar(filtro, ContextoTenant.obtener().usuarioId);
+    const contexto = ContextoTenant.obtener();
+    // `asesorId: undefined` con permiso = toda la agencia; sin permiso = solo los de la sesión.
+    const asesor = asesorDeConsulta(contexto, filtro.asesorId, 'TODOS');
+    const datos = await this.seguimientos.listar(
+      { ...filtro, asesorId: asesor ?? undefined },
+      contexto.usuarioId,
+    );
     return { datos, pageInfo: { nextCursor: null, hasMore: false } };
   }
 
