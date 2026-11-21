@@ -63,6 +63,7 @@ import { useContadoresDeMenu } from '../../lib/use-contadores-de-menu';
 import { nombreAccesibleConContador } from '../../lib/inicio-logica';
 import { tienePermiso, usePermisos } from '../../lib/permisos';
 import { useModoDemo, esModoDemo } from '../../lib/modo-demo';
+import { PERMISOS_ASESOR_DEMO, useVistaDemo } from '../../lib/vista-demo';
 import { cambiarAgenciaActivaApi, cerrarSesionApi } from '../../lib/auth-api';
 import { inboxSocketManager } from '../../lib/inbox-socket';
 import { useFocoModal } from '../../lib/use-foco-modal';
@@ -123,6 +124,7 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
   const router = useRouter();
   const { sesion } = usePermisos(sesionInicial);
   const { esDemo, alternarDemo, desactivarDemo } = useModoDemo();
+  const { vista: vistaDemo, alternar: alternarVistaDemo } = useVistaDemo();
 
   const [modoTema, setModoTema] = useState<ModoTema>('system');
   const [_densidadVisual, setDensidadVisual] = useState<DensidadVisual>('comoda');
@@ -435,7 +437,14 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
   const nombreAgenciaActiva = agenciaActiva?.nombre ?? 'ViajaPro';
 
   // Solo oculta: la autorización real es de la API. Sin sesión (carga o demostración) se muestra todo.
-  const tieneElPermiso = sesion ? (permiso: Permiso) => tienePermiso(sesion, permiso) : null;
+  // En la demostración con la vista de asesor, el MENÚ se pinta con lo que tiene un asesor puro (T-566).
+  // No es autorización: `tienePermiso` y la API no lo ven.
+  const tieneElPermiso =
+    esDemo && vistaDemo === 'asesor'
+      ? (permiso: Permiso) => PERMISOS_ASESOR_DEMO.includes(permiso)
+      : sesion
+        ? (permiso: Permiso) => tienePermiso(sesion, permiso)
+        : null;
   const modulos = entradasDelMenu()
     .filter((m) => !tieneElPermiso || esVisiblePara(m, tieneElPermiso))
     .map((m) => entradaParaUsuario(m, tieneElPermiso));
@@ -542,6 +551,48 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
               <Search className="h-4 w-4" />
             </button>
           )}
+
+          {/* Vista de la demostración (T-566): dueño o asesor puro. Solo cambia lo que se pinta. */}
+          {esDemo &&
+            (barraExpandida ? (
+              <button
+                type="button"
+                onClick={() => alternarVistaDemo()}
+                title={
+                  vistaDemo === 'asesor'
+                    ? 'Estás viendo la demostración como un asesor. Haz clic para volver a la vista del dueño.'
+                    : 'Estás viendo la demostración como el dueño. Haz clic para verla como un asesor.'
+                }
+                data-testid="selector-vista-demo"
+                data-vista={vistaDemo}
+                className="flex w-full items-center justify-between rounded-lg border border-amber-300 bg-white px-2.5 py-1.5 text-xs text-amber-800 transition hover:bg-amber-50 dark:border-amber-700/60 dark:bg-neutral-900 dark:text-amber-300"
+              >
+                <span className="text-[11px] font-semibold">
+                  Vista: {vistaDemo === 'asesor' ? 'asesor' : 'dueño'}
+                </span>
+                <span className="text-[10px] underline">
+                  Ver como {vistaDemo === 'asesor' ? 'dueño' : 'asesor'}
+                </span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => alternarVistaDemo()}
+                title={
+                  vistaDemo === 'asesor'
+                    ? 'Vista de asesor. Haz clic para ver la demostración como el dueño.'
+                    : 'Vista de dueño. Haz clic para ver la demostración como un asesor.'
+                }
+                aria-label={
+                  'Vista de la demostración: ' + (vistaDemo === 'asesor' ? 'asesor' : 'dueño')
+                }
+                data-testid="selector-vista-demo"
+                data-vista={vistaDemo}
+                className="flex h-8 w-8 items-center justify-center rounded-lg border border-amber-300 bg-white text-[11px] font-bold text-amber-800 transition hover:bg-amber-50 dark:border-amber-700/60 dark:bg-neutral-900 dark:text-amber-300"
+              >
+                {vistaDemo === 'asesor' ? 'As' : 'Du'}
+              </button>
+            ))}
 
           {/* Indicador de Estado: Modo Real vs Modo Demo */}
           {esDemo ? (
@@ -1078,6 +1129,29 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
                   />
                 </button>
               </div>
+
+              {esDemo && (
+                <div className="flex items-center justify-between border-t border-neutral-100 py-3 dark:border-neutral-800">
+                  <div className="flex flex-col pr-2">
+                    <span className="text-xs font-semibold text-neutral-800 dark:text-neutral-200">
+                      Vista de la demostración
+                    </span>
+                    <span className="text-[10px] text-neutral-500 dark:text-neutral-400">
+                      {vistaDemo === 'asesor'
+                        ? 'Como un asesor: sin reportes de la agencia ni configuración'
+                        : 'Como el dueño: todo a la vista'}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => alternarVistaDemo()}
+                    data-testid="selector-vista-demo-perfil"
+                    className="min-h-[44px] rounded-lg border border-amber-300 px-3 text-xs font-semibold text-amber-800 hover:bg-amber-50 dark:border-amber-700/60 dark:text-amber-300"
+                  >
+                    Ver como {vistaDemo === 'asesor' ? 'dueño' : 'asesor'}
+                  </button>
+                </div>
+              )}
 
               <button
                 type="button"
