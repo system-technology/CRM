@@ -308,6 +308,34 @@ Pero: **no llevan las herramientas MCP de GitHub**, así que no abren PR —empu
 abre e integra—, **consumen contexto de la madre** en vez del suyo, y **mueren con la sesión**.
 Sirven para un lote; no sustituyen a la cadena.
 
+## 1.14 El check «Carril y tarea» SÍ rechaza la bitácora en un PR de código, y la nota que decía lo contrario era engañosa (2026-11-21, 20:05 UTC)
+
+**Costó dos rondas de CI en este lote**, así que queda escrito con el texto exacto del fallo:
+
+> `✗ El carril b toca rutas de otro carril:`
+> `  docs/_bitacora/2026-11-21-contraste-de-los-dashboards.md  (carril i)`
+> `Separa el cambio en un PR del carril dueño, o pide la etiqueta override-lane al integrador.`
+
+**La nota anterior, en los criterios de T-576, afirmaba lo contrario** y lo daba por «FALSO y
+verificado», citando que los PR #471, #472 y #473 llevaban bitácora en `docs/` y pasaron en verde.
+**Los tres datos eran ciertos y la conclusión era falsa.** Comprobado: aquellas ramas se llamaban
+`test/aislamiento-...`, `chore/roadmap-...` y `fix/web-...` — **sin prefijo de carril**. El check
+deduce el carril **del prefijo de la rama**: con `b/` aplica la regla, con `fix/` no la aplica.
+
+**La regla que sirve:** una rama con prefijo `a/`, `b/` o `i/` **solo toca su carril**. La bitácora de
+un PR de código va al **PR de cierre del lote**, que es lo que `CLAUDE.md` R14 ya admite
+expresamente («o, como tarde, en el PR de cierre del lote»). No hace falta `override-lane` —que
+además solo puede poner el propietario— ni renombrar la rama para esquivar el check.
+
+**La lección, que es la de §1.5 otra vez:** *una afirmación puede apoyarse en tres hechos verificados
+y seguir siendo falsa, si lo que no se verificó es la relación entre ellos.* Nadie miró por qué
+aquellos PR pasaban; se dio por hecho que era porque el check lo permitía.
+
+**Y una comprobación que se pagó sola el mismo día:** al encolar los hallazgos de este lote dejé
+T-590 en `ready` colgando de T-582, que todavía no estaba integrada. **Lo pilló la comprobación de
+diez líneas que recomendó el turno anterior** («ninguna `ready` depende de algo sin terminar»), no mi
+lectura. Correrla después de editar la cola, no solo antes.
+
 ## 2. Reglas operativas que no se olvidan
 
 - **R14:** todo cambio se documenta, lo hecho y lo que viene. Un plan que solo vive en una conversación no existe.

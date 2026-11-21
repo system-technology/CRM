@@ -12401,10 +12401,15 @@ tasks:
     acceptance:
       - "T-565 quito el cartel que afirmaba «Conectado a la API y PostgreSQL en vivo» y T-566 anadio la vista
         de asesor en la demostracion. Los dos entregaron en carril b y el rastro en docs/ quedo fuera"
-      - "CORRECCION (2026-11-21): esta tarea nacio diciendo que un PR que mezclara apps/web con docs/ lo
-        rechaza el check «Carril y tarea». Es FALSO y esta verificado: los PR #471 (carril a), #472
-        (carril i) y #473 (carril b) llevaban bitacora en docs/ y el check paso en verde en los tres.
-        La tarea sigue siendo necesaria por el contenido del manual, no por una regla de carriles"
+      - "CORRECCION DE LA CORRECCION (2026-11-21, 20:05 UTC): la nota anterior decia que el check
+        «Carril y tarea» NO rechaza mezclar apps/web con docs/, citando los PR #471, #472 y #473. Eso
+        es ENGANOSO y costo dos rondas de CI en este lote. El check SI lo rechaza, con este texto:
+        «El carril b toca rutas de otro carril: docs/_bitacora/... (carril i)». Lo que pasaba con
+        aquellos tres PR es que sus ramas se llamaban test/..., chore/... y fix/..., SIN prefijo de
+        carril, y el check deduce el carril DEL PREFIJO DE LA RAMA: con b/ lo aplica, con fix/ no"
+      - "La regla util: una rama con prefijo a/, b/ o i/ solo toca su carril. La bitacora de un PR de
+        codigo va al PR de cierre del lote, que R14 admite expresamente. La tarea sigue siendo
+        necesaria por el contenido del manual"
       - Quitar del paso 1 de docs/06-manual/01-recorrido-del-asesor.md la nota sobre el recuadro verde, y del
         paso 11 la advertencia de que «Mis numeros» hubo que capturarla con el filtro «Mios» del dueno
       - Volver a tomar asesor-01-ingreso y asesor-11-mis-numeros con docs/06-manual/capturas.mjs; regenera
@@ -12580,6 +12585,146 @@ tasks:
     notes: "Esta en blocked y no en ready a proposito: ninguna sesion de codigo puede resolverla.
       Ademas, create_trigger quedo denegado por el clasificador del modo automatico («Destructive or
       Unwanted Actions») antes incluso de toparse con el limite de linaje."
+  - id: T-585
+    title: "Reportes: el dashboard de administracion esta duplicado (ReportesListo repite reportes-reales)"
+    type: refactor
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    acceptance:
+      - "ENCONTRADO al arreglar T-583: app/(app)/reportes/page.tsx define ReportesListo, que es el que
+        sirve la demostracion (?demo=1), y repite components/reportes/reportes-reales.tsx, que es el que
+        sirve los datos reales. El arreglo de contraste hubo que hacerlo DOS VECES, una en cada copia"
+      - "El riesgo no es el contraste, es el siguiente cambio: cualquiera que toque uno de los dos y no
+        sepa del otro deja la demostracion y la pantalla real diciendo cosas distintas. Es justo lo que
+        el propietario ensena a una agencia"
+      - "Unificar en un solo componente que reciba los datos por parametro, con la demostracion y los
+        datos reales como dos llamadores"
+    source: "hallazgo de la sesion de T-583 (2026-11-21)"
+    owner: frontend
+
+  - id: T-586
+    title: "Web: la clase dark no llega a <html> en el servidor de desarrollo; si no es solo de desarrollo, el modo oscuro esta roto entero"
+    type: bug
+    phase: 1
+    priority: P1
+    effort: S
+    status: ready
+    acceptance:
+      - "SINTOMA medido por la sesion de T-583: en next dev la clase dark no aparece en <html>. Ni el
+        script anti-parpadeo con localStorage ni colorScheme dark la activaron, y el medidor de
+        contraste tuvo que anadirla a mano para poder medir el modo oscuro"
+      - "NO esta diagnosticado. La sesion que lo encontro apunto dos sospechas sin confirmar: el nonce
+        de la CSP en desarrollo, o una re-hidratacion que pisa el className. Quien lo tome que mida,
+        no que suponga"
+      - "LA PREGUNTA QUE DECIDE LA PRIORIDAD: ¿pasa tambien en una compilacion de produccion? Si pasa,
+        el modo oscuro no funciona en NINGUNA pantalla y todo el trabajo de T-583 en oscuro es
+        invisible. Si es solo de desarrollo, es molestia de herramienta y baja a P3"
+      - "Responder esa pregunta ANTES de arreglar nada. Es media hora y cambia el tamano de la tarea"
+    source: "limite declarado por la sesion de T-583, sin ampliarlo (2026-11-21)"
+    owner: frontend
+
+  - id: T-587
+    title: "Diseno: la familia de color aviso solo tiene tres tonos y obliga a usar amber crudo"
+    type: refactor
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    acceptance:
+      - "VERIFICADO a mano en globals.css: aviso declara 50, 600 y 700 y nada mas, mientras ok y alerta
+        llegan de 50 a 950. Un aviso-300 o aviso-400 no emite CSS"
+      - "Consecuencia real, no teorica: T-583 necesitaba un tono claro de aviso para el modo oscuro y
+        tuvo que escribir dark:text-amber-400, saliendose de la paleta semantica. El proximo que lo
+        necesite hara lo mismo y la paleta dejara de significar algo"
+      - "Completar la escala de aviso como la de ok y alerta, y sustituir el amber crudo de
+        bloques-de-cobros y mis-numeros por el token que corresponda"
+    source: "comprobacion de la madre al auditar T-583 (2026-11-21)"
+    owner: diseno-ux
+
+  - id: T-588
+    title: "Web: barrer el patron text-neutral-400 dark:text-neutral-500 en el resto de pantallas"
+    type: bug
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    depends_on:
+      - T-583
+    acceptance:
+      - "T-583 solo midio /reportes. El patron text-neutral-400 dark:text-neutral-500 da 2,58:1 en claro
+        y 3,78:1 en oscuro, las dos por debajo de AA, y es un patron copiado: lo mas probable es que
+        este en mas pantallas"
+      - "Correr el mismo medidor (canvas, entiende oklch) sobre el resto de pantallas de ?demo=1, en los
+        dos modos y a 390 px, y corregir lo que salga"
+      - "EXIGENCIA: ver el medidor fallar antes de creerle un 0 hallazgos. En T-346 dio 0 por un defecto
+        propio. Declarar cuantos textos leyo y cuantos colores no entendio"
+    source: "limite declarado por la sesion de T-583 (2026-11-21)"
+    owner: frontend
+
+  - id: T-589
+    title: "QA: no hay prueba de contraste en CI; contraste-de-tokens.spec.ts vigila tokens, no clases"
+    type: test
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    depends_on:
+      - T-583
+    acceptance:
+      - "Los defectos de T-583 eran PREEXISTENTES desde T-343 y T-344 y nadie se entero hasta que una
+        tarea pidio mirar. contraste-de-tokens.spec.ts existe pero solo comprueba los tokens de la
+        paleta, no las CLASES con las que se usan: un text-neutral-400 sobre fondo claro pasa su
+        vigilancia sin problema"
+      - "Prueba en CI que recorra las pantallas de ?demo=1 en los dos modos y falle si algun texto baja
+        de 4,5:1 (3:1 para texto grande)"
+      - "La prueba tiene que verse fallar: introducir a proposito un texto por debajo de AA y comprobar
+        que la deja en rojo, antes de darla por buena"
+    source: "limite declarado por la sesion de T-583 (2026-11-21)"
+    owner: qa
+
+  - id: T-590
+    title: "Cobros: columna de pasajeros en la pantalla y en el CSV (carril b de T-582)"
+    type: feature
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    depends_on:
+      - T-582
+    acceptance:
+      - "Pasa a ready en cuanto T-582 este integrada en main y marcada done; hoy no, porque una ready
+        que depende de algo sin terminar es la cola mintiendo"
+      - "El carril a (T-582) ya dejo FilaDeCobro.pasajeros con adultos, ninos, infantes y total. Falta
+        la columna en apps/web/src/app/(app)/cobros/page.tsx y en apps/web/src/lib/exportar-csv.ts"
+      - "SON CIFRAS, NO NOMBRES, y asi debe quedarse: la vista la lee quien tenga cobro.ver, tambien
+        OPERACIONES, y se exporta a un CSV que sale de la agencia. Los nombres exigen archivo.ver
+        (ADR-0024 section 3.7) y son dato personal (R10)"
+      - "Decidir si el campo pasa de opcional a obligatorio en el contrato, y actualizar los simulacros
+        y las pruebas de la web"
+      - "Escapado de formulas en el CSV: ya resuelto en T-335, no reinventarlo"
+    source: "limite declarado por la sesion de T-582, que no amplio la web desde un PR de API (2026-11-21)"
+    owner: frontend
+
+  - id: T-591
+    title: "Repositorio: .gitignore no excluye los arboles de trabajo de los subagentes"
+    type: infra
+    phase: 1
+    priority: P3
+    effort: S
+    status: ready
+    acceptance:
+      - "SINTOMA real: con subagentes lanzados con isolation worktree, git add -A desde el arbol
+        principal se traga .claude/worktrees/agent-* como repositorios embebidos. Paso en el lote del
+        2026-11-21 y hubo que deshacer el commit con git rm --cached y enmendar"
+      - "Ademas .claude/** es humanRequired, asi que un commit asi toca una ruta que nadie deberia tocar
+        sin aprobacion"
+      - "Anadir .claude/worktrees/ al .gitignore versionado. Hoy cada sesion lo repite a mano en
+        .git/info/exclude, que no se versiona"
+    source: "tropiezo real de la madre del lote (2026-11-21)"
+    owner: devops
+
   - id: T-583
     title: "Reportes: textos por debajo de WCAG AA en los dos dashboards, sobre todo en modo oscuro"
     type: bug
