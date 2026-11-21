@@ -21,6 +21,10 @@
  * permiso, `neto` y `margen` son `null` cuando ninguna cotización de esa moneda tiene neto
  * conocido (desconocido no es cero).
  *
+ * **Dos cifras NO son del periodo: son de hoy.** `cotizacionesAbiertas` y `porCobrar` (T-528)
+ * miran el trabajo vivo en el instante de la consulta, no lo que ocurrió entre `desde` y `hasta`.
+ * Ambas respetan el mismo `alcance`: con `PROPIO` solo traen lo del usuario de la sesión.
+ *
  * **Cohortes.** Cada cifra se ancla al hecho que la define, y la tasa usa la misma cohorte que su
  * numerador y su denominador:
  *   · cotizaciones `creadas`: `creadoEn` en el rango; `enviadas`: `enviadaEn` en el rango;
@@ -138,6 +142,62 @@ export const ResumenDeRespuesta = z.object({
 });
 export type ResumenDeRespuesta = z.infer<typeof ResumenDeRespuesta>;
 
+/**
+ * **Cotizaciones abiertas, HOY.** No es una cifra del periodo: es una foto del trabajo vivo en el
+ * instante de la consulta, repartida por lo que llevan esperando. Por eso no mira `desde`/`hasta`.
+ *
+ * «Abierta» = `BORRADOR` o `ENVIADA` y no eliminada. `ACEPTADA`, `RECHAZADA` y `VENCIDA` ya no
+ * esperan respuesta. Los tramos solo cuentan las ENVIADAS, por días COMPLETOS desde `enviadaEn`
+ * (los mismos cortes que ya pintaba la web: ≤3, 4–7, >7), y suman `enviadas` salvo que alguna
+ * `ENVIADA` no tenga `enviadaEn` (la columna lo permite, el flujo no lo produce).
+ *
+ * Qué filas la componen lo decide el `alcance` de la respuesta (ADR-0035 §1 y §2): con `PROPIO`
+ * son las que cotizó el usuario de la sesión (`cotizaciones.creado_por`), nunca las de otro.
+ */
+export const CotizacionesAbiertas = z.object({
+  /** Borradores + enviadas. */
+  total: z.number().int().min(0),
+  borradores: z.number().int().min(0),
+  enviadas: z.number().int().min(0),
+  porAntiguedad: z.object({
+    hastaTresDias: z.number().int().min(0),
+    deCuatroASiete: z.number().int().min(0),
+    masDeSiete: z.number().int().min(0),
+  }),
+});
+export type CotizacionesAbiertas = z.infer<typeof CotizacionesAbiertas>;
+
+/**
+ * Lo que falta por cobrar en UNA moneda. Enteros en la unidad mínima y sin total convertido con
+ * TRM: las monedas no se suman entre sí (R8).
+ */
+export const SaldoPorCobrarDeUnaMoneda = z.object({
+  moneda: Dinero.shape.moneda,
+  /** Archivos de esta moneda con saldo a favor de la agencia (saldo > 0). */
+  archivos: z.number().int().min(1),
+  /** Suma de esos saldos. Nunca negativa: un saldo a favor del viajero no resta a los demás. */
+  saldo: Dinero,
+});
+export type SaldoPorCobrarDeUnaMoneda = z.infer<typeof SaldoPorCobrarDeUnaMoneda>;
+
+/**
+ * **Por cobrar, HOY.** Como las cotizaciones abiertas, una foto y no una cifra del periodo.
+ *
+ * Son los archivos de viaje **ABIERTOS** —los mismos que lista la pantalla de cobros— cuyo saldo
+ * (`total − pagado`, ADR-0034 §3) es positivo. El archivo es «propio» del asesor ACTUAL de su
+ * oportunidad (ADR-0035 §2): un archivo sin oportunidad, o cuya oportunidad no tiene asesor, no
+ * es de nadie y solo aparece en el alcance de agencia.
+ *
+ * `truncado` dice que había más archivos abiertos que el tope que el servidor lee de una vez: la
+ * cifra es un mínimo y la pantalla no debe presentarla como el total.
+ */
+export const PorCobrar = z.object({
+  /** Una entrada por moneda con saldo; vacío si no hay nada que cobrar. */
+  porMoneda: z.array(SaldoPorCobrarDeUnaMoneda),
+  truncado: z.boolean(),
+});
+export type PorCobrar = z.infer<typeof PorCobrar>;
+
 /** Las cifras, iguales en los dos alcances. Lo que cambia es QUÉ FILAS las componen. */
 const CIFRAS_DEL_RESUMEN = {
   periodo: z.object({ desde: Instante, hasta: Instante }),
@@ -145,6 +205,13 @@ const CIFRAS_DEL_RESUMEN = {
   ventasPorMoneda: z.array(VentasDeUnaMoneda),
   oportunidades: ResumenDeOportunidades,
   respuesta: ResumenDeRespuesta,
+  /**
+   * T-528. Opcionales en el ESQUEMA para no romper a un cliente anterior, pero el servidor las
+   * envía SIEMPRE: que estén es lo que prueban `obtener-resumen.use-case.spec.ts` y el e2e, no
+   * la validación de salida.
+   */
+  cotizacionesAbiertas: CotizacionesAbiertas.optional(),
+  porCobrar: PorCobrar.optional(),
 } as const;
 
 export const AlcanceDelResumen = z.enum(['PROPIO', 'AGENCIA']);

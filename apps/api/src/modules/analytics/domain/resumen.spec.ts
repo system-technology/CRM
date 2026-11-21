@@ -1,11 +1,31 @@
 import { describe, expect, it } from 'vitest';
 import type { AlcanceDeReporte } from '../../../shared/autorizacion/alcance-de-reporte.js';
 import type {
+  ArchivoPorCobrar,
+  CobrosAgregados,
+  CotizacionesAbiertasAgregadas,
   CotizacionesAgregadas,
   EtapaConOportunidades,
   RespuestaAgregada,
 } from '../../../shared/puertos/puertos-de-reportes.js';
-import { armarResumen, porcentaje, porcentajeDeMargen, ventasDeUnaMoneda } from './resumen.js';
+import {
+  armarResumen,
+  cotizacionesAbiertas,
+  porcentaje,
+  porcentajeDeMargen,
+  porCobrarPorMoneda,
+  ventasDeUnaMoneda,
+} from './resumen.js';
+
+/** Lo que devuelven los puertos de T-528 cuando no hay nada vivo. */
+const sinAbiertas: CotizacionesAbiertasAgregadas = {
+  borradores: 0,
+  enviadas: 0,
+  hastaTresDias: 0,
+  deCuatroASiete: 0,
+  masDeSiete: 0,
+};
+const sinCobros: CobrosAgregados = { archivos: [], truncado: false };
 
 const rango = { desde: new Date('2026-10-01T05:00:00Z'), hasta: new Date('2026-11-01T05:00:00Z') };
 const DE_AGENCIA: AlcanceDeReporte = { nivel: 'AGENCIA', asesorId: null };
@@ -132,6 +152,8 @@ describe('armarResumen', () => {
       cotizaciones: sinCotizaciones,
       etapas: [],
       respuesta: vacia,
+      abiertas: sinAbiertas,
+      cobros: sinCobros,
     });
     expect(r.periodo).toEqual({
       desde: '2026-10-01T05:00:00.000Z',
@@ -167,6 +189,8 @@ describe('armarResumen', () => {
         p90Minutos: 30.2,
         sinResponder: 2,
       },
+      abiertas: sinAbiertas,
+      cobros: sinCobros,
     });
     expect(r.respuesta).toEqual({
       conversacionesNuevas: 8,
@@ -189,6 +213,8 @@ describe('armarResumen', () => {
       cotizaciones: sinCotizaciones,
       etapas: [],
       respuesta: { ...vacia, conversacionesNuevas: 3, sinResponder: 3 },
+      abiertas: sinAbiertas,
+      cobros: sinCobros,
     });
     expect(r.respuesta.tasaRespuesta).toBe(0);
     expect(r.respuesta.medianaMinutos).toBeNull();
@@ -210,6 +236,8 @@ describe('armarResumen', () => {
       },
       etapas: [],
       respuesta: vacia,
+      abiertas: sinAbiertas,
+      cobros: sinCobros,
     });
     expect(r.cotizaciones.tasaAceptacion).toBe(66.7);
     expect(r.ventasPorMoneda.map((v) => [v.moneda, v.ventas.unidades])).toEqual([
@@ -225,6 +253,8 @@ describe('armarResumen', () => {
       cotizaciones: { ...sinCotizaciones, aceptadas: 2, enviadas: 2, aceptadasSinFecha: 2 },
       etapas: [],
       respuesta: vacia,
+      abiertas: sinAbiertas,
+      cobros: sinCobros,
     });
     expect(con.cotizaciones.aceptadasSinFecha).toBe(2);
     const sin = armarResumen({
@@ -233,6 +263,8 @@ describe('armarResumen', () => {
       cotizaciones: sinCotizaciones,
       etapas: [],
       respuesta: vacia,
+      abiertas: sinAbiertas,
+      cobros: sinCobros,
     });
     expect('aceptadasSinFecha' in sin.cotizaciones).toBe(false);
   });
@@ -249,6 +281,8 @@ describe('armarResumen', () => {
         etapa(2, 0),
       ],
       respuesta: vacia,
+      abiertas: sinAbiertas,
+      cobros: sinCobros,
     });
     expect(r.oportunidades.porEtapa.map((e) => e.orden)).toEqual([1, 2, 3, 4]);
     expect(r.oportunidades).toMatchObject({
@@ -267,6 +301,8 @@ describe('armarResumen', () => {
       cotizaciones: sinCotizaciones,
       etapas: [etapa(1, 3)],
       respuesta: vacia,
+      abiertas: sinAbiertas,
+      cobros: sinCobros,
     });
     expect(r.oportunidades.tasaConversion).toBeNull();
   });
@@ -278,6 +314,8 @@ describe('armarResumen', () => {
       cotizaciones: sinCotizaciones,
       etapas: [],
       respuesta: vacia,
+      abiertas: sinAbiertas,
+      cobros: sinCobros,
     });
     expect(agencia.alcance).toBe('AGENCIA');
     expect(agencia.asesorId).toBeNull();
@@ -288,10 +326,115 @@ describe('armarResumen', () => {
       cotizaciones: sinCotizaciones,
       etapas: [],
       respuesta: vacia,
+      abiertas: sinAbiertas,
+      cobros: sinCobros,
     });
     expect(propio.alcance).toBe('PROPIO');
     expect(propio.asesorId).toBe(PROPIO.asesorId);
     // Las cifras son las mismas claves: lo que cambia es qué filas las componen.
     expect(Object.keys(propio).sort()).toEqual(Object.keys(agencia).sort());
+  });
+});
+
+describe('cotizacionesAbiertas (T-528)', () => {
+  it('el total son borradores + enviadas, y los tramos solo reparten las enviadas', () => {
+    const r = cotizacionesAbiertas({
+      borradores: 2,
+      enviadas: 6,
+      hastaTresDias: 1,
+      deCuatroASiete: 2,
+      masDeSiete: 3,
+    });
+    expect(r).toEqual({
+      total: 8,
+      borradores: 2,
+      enviadas: 6,
+      porAntiguedad: { hastaTresDias: 1, deCuatroASiete: 2, masDeSiete: 3 },
+    });
+    const t = r.porAntiguedad;
+    expect(t.hastaTresDias + t.deCuatroASiete + t.masDeSiete).toBe(r.enviadas);
+  });
+
+  it('sin nada vivo: ceros, no null', () => {
+    expect(cotizacionesAbiertas(sinAbiertas).total).toBe(0);
+  });
+});
+
+describe('porCobrarPorMoneda (T-528)', () => {
+  const archivo = (extra: Partial<ArchivoPorCobrar> = {}): ArchivoPorCobrar => ({
+    moneda: 'COP',
+    estado: 'ABIERTO',
+    ventaUnidades: 1_000_000n,
+    sumas: { pagos: 0n, devoluciones: 0n, ajustes: 0n, penalidades: 0n },
+    ...extra,
+  });
+
+  it('agrupa por moneda, sin sumar monedas distintas ni convertir con TRM (R8)', () => {
+    const r = porCobrarPorMoneda({
+      archivos: [
+        archivo(),
+        archivo({ ventaUnidades: 500_000n }),
+        archivo({ moneda: 'USD', ventaUnidades: 20_000n }),
+      ],
+      truncado: false,
+    });
+    expect(r.porMoneda).toEqual([
+      { moneda: 'COP', archivos: 2, saldo: { unidades: '1500000', moneda: 'COP' } },
+      { moneda: 'USD', archivos: 1, saldo: { unidades: '20000', moneda: 'USD' } },
+    ]);
+    expect(r.truncado).toBe(false);
+  });
+
+  it('descuenta lo pagado y los ajustes, y no cuenta el archivo ya pagado', () => {
+    const r = porCobrarPorMoneda({
+      archivos: [
+        // Venta 1.000.000, descuento de 100.000 y 400.000 pagados: debe 500.000.
+        archivo({
+          sumas: { pagos: 400_000n, devoluciones: 0n, ajustes: -100_000n, penalidades: 0n },
+        }),
+        // Pagado completo: no es «por cobrar».
+        archivo({
+          ventaUnidades: 700_000n,
+          sumas: { pagos: 700_000n, devoluciones: 0n, ajustes: 0n, penalidades: 0n },
+        }),
+      ],
+      truncado: false,
+    });
+    expect(r.porMoneda).toEqual([
+      { moneda: 'COP', archivos: 1, saldo: { unidades: '500000', moneda: 'COP' } },
+    ]);
+  });
+
+  it('un saldo a favor del viajero no resta a lo que deben los demás', () => {
+    const r = porCobrarPorMoneda({
+      archivos: [
+        archivo(),
+        // Pagó de más: saldo negativo. No entra ni en el conteo ni en la suma.
+        archivo({
+          ventaUnidades: 300_000n,
+          sumas: { pagos: 900_000n, devoluciones: 0n, ajustes: 0n, penalidades: 0n },
+        }),
+      ],
+      truncado: false,
+    });
+    expect(r.porMoneda).toEqual([
+      { moneda: 'COP', archivos: 1, saldo: { unidades: '1000000', moneda: 'COP' } },
+    ]);
+  });
+
+  it('sin archivos: lista vacía, y `truncado` se propaga tal cual', () => {
+    expect(porCobrarPorMoneda({ archivos: [], truncado: true })).toEqual({
+      porMoneda: [],
+      truncado: true,
+    });
+  });
+
+  it('las sumas son bigint de punta a punta: un saldo que desborda el entero seguro de JS', () => {
+    const enorme = 9_007_199_254_740_993n; // 2^53 + 1
+    const r = porCobrarPorMoneda({
+      archivos: [archivo({ ventaUnidades: enorme })],
+      truncado: false,
+    });
+    expect(r.porMoneda[0]?.saldo.unidades).toBe('9007199254740993');
   });
 });

@@ -23,6 +23,7 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../../shared/prisma/prisma.service.js';
 import type { AlcanceDeReporte } from '../../../shared/autorizacion/alcance-de-reporte.js';
 import {
+  type CotizacionesAbiertasAgregadas,
   type CotizacionesAgregadas,
   PuertoCotizacionesParaReportes,
   type RangoDeReporte,
@@ -38,6 +39,14 @@ interface FilaDeConteos {
 
 interface FilaDeSinFecha {
   n: number;
+}
+
+interface FilaDeAbiertas {
+  borradores: number;
+  enviadas: number;
+  hasta_tres: number;
+  de_cuatro_a_siete: number;
+  mas_de_siete: number;
 }
 
 interface FilaDeVentas {
@@ -135,6 +144,56 @@ export class CotizacionesParaReportesPrisma extends PuertoCotizacionesParaReport
         aceptadas: conteos?.aceptadas ?? 0,
         aceptadasSinFecha: sinFecha?.n ?? 0,
         ventasPorMoneda: ventas.map((f) => aVenta(f, incluirMargen)),
+      };
+    });
+  }
+
+  /**
+   * Cotizaciones vivas HOY (T-528): borradores y enviadas sin eliminar. No mira el rango —no es
+   * una cifra del periodo— y reparte las ENVIADAS por días COMPLETOS de espera desde `enviada_en`,
+   * con los mismos cortes que ya pintaba la web (≤3, 4–7, >7).
+   *
+   * El mismo predicado de asesor que `resumir`: «propio» es lo que YO cotizé (`creado_por`,
+   * ADR-0035 §2). `ahora` llega como parámetro y no como `now()`: la prueba fija el instante.
+   *
+   * Una ENVIADA sin `enviada_en` (la columna es nullable aunque el flujo no lo produzca) suma en
+   * `enviadas` y en ningún tramo: inventarle una antigüedad sería peor que no repartirla.
+   */
+  async abiertas(
+    tenantId: string,
+    alcance: AlcanceDeReporte,
+    ahora: Date,
+  ): Promise<CotizacionesAbiertasAgregadas> {
+    const delAsesor =
+      alcance.asesorId === null
+        ? Prisma.empty
+        : Prisma.sql`AND c.creado_por = ${alcance.asesorId}::uuid`;
+
+    return this.prisma.conTenant(async (tx) => {
+      const [fila] = await tx.$queryRaw<FilaDeAbiertas[]>`
+        WITH abiertas AS (
+          SELECT c.estado,
+                 FLOOR(EXTRACT(EPOCH FROM (${ahora}::timestamptz - c.enviada_en)) / 86400) AS dias
+            FROM cotizaciones c
+           WHERE c.tenant_id = ${tenantId}::uuid
+             AND c.eliminado_en IS NULL
+             ${delAsesor}
+             AND c.estado IN ('BORRADOR', 'ENVIADA'))
+        SELECT
+          (COUNT(*) FILTER (WHERE estado = 'BORRADOR'))::int AS borradores,
+          (COUNT(*) FILTER (WHERE estado = 'ENVIADA'))::int AS enviadas,
+          (COUNT(*) FILTER (WHERE estado = 'ENVIADA' AND dias <= 3))::int AS hasta_tres,
+          (COUNT(*) FILTER (WHERE estado = 'ENVIADA' AND dias > 3 AND dias <= 7))::int
+            AS de_cuatro_a_siete,
+          (COUNT(*) FILTER (WHERE estado = 'ENVIADA' AND dias > 7))::int AS mas_de_siete
+          FROM abiertas`;
+
+      return {
+        borradores: fila?.borradores ?? 0,
+        enviadas: fila?.enviadas ?? 0,
+        hastaTresDias: fila?.hasta_tres ?? 0,
+        deCuatroASiete: fila?.de_cuatro_a_siete ?? 0,
+        masDeSiete: fila?.mas_de_siete ?? 0,
       };
     });
   }
