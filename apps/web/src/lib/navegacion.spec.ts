@@ -25,6 +25,7 @@ const ORDEN_DEL_MENU = [
   'Oportunidades',
   'Cotizaciones',
   'Archivos de viaje',
+  'Cobros',
   'Seguimientos',
   'Contactos',
   'Catálogo',
@@ -61,6 +62,7 @@ describe('NAVEGACION', () => {
     expect(mas).toEqual([
       'Oportunidades',
       'Cotizaciones',
+      'Cobros',
       'Seguimientos',
       'Contactos',
       'Catálogo',
@@ -86,6 +88,7 @@ describe('NAVEGACION', () => {
       'Oportunidades',
       'Cotizaciones',
       'Archivos de viaje',
+      'Cobros',
       'Seguimientos',
       'Contactos',
       'Catálogo',

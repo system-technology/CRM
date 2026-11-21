@@ -18,7 +18,15 @@
  *      si el usuario cuenta explícitamente con el permiso 'cotizacion.ver_neto_y_margen'.
  */
 
-import type { ContactoDeLista, Oportunidad, FilaDeCotizacion, Dinero } from '@viajapro/contracts';
+import type {
+  ContactoDeLista,
+  Oportunidad,
+  FilaDeCotizacion,
+  FilaDeCobro,
+  Dinero,
+} from '@viajapro/contracts';
+import { Money } from '@viajapro/domain';
+import { ETIQUETA_ESTADO_DE_COBRO, ETIQUETA_SITUACION } from './cobros-logica';
 import { formatearFecha, ZONA_HORARIA_COLOMBIA } from './formato';
 
 export const BOM_UTF8 = '\uFEFF';
@@ -33,6 +41,9 @@ export const CARACTERES_DISPARADORES_FORMULA: readonly string[] = [
   '\t',
   '\r',
 ] as const;
+
+/** Solo dígitos tras el signo: ninguna fórmula cabe aquí. */
+const NUMERO_NEGATIVO_PURO = /^-\d+(,\d+)?$/;
 
 export interface OpcionesGeneracionCSV {
   separador?: string | undefined;
@@ -72,10 +83,16 @@ export function escaparCeldaCSV(valor: unknown, separador: string = SEPARADOR_CS
     return '';
   }
 
+  // Un número no es una fórmula: sus únicos caracteres son dígitos, signo, punto y exponente. Si
+  // pasara por la sanitización, un saldo a favor (-500000) saldría como texto («'-500000»).
+  if (typeof valor === 'number' || typeof valor === 'bigint') {
+    return String(valor);
+  }
+
   let texto: string;
   if (typeof valor === 'string') {
     texto = valor;
-  } else if (typeof valor === 'number' || typeof valor === 'bigint' || typeof valor === 'boolean') {
+  } else if (typeof valor === 'boolean') {
     texto = String(valor);
   } else if (valor instanceof Date) {
     texto = valor.toISOString();
@@ -89,7 +106,11 @@ export function escaparCeldaCSV(valor: unknown, separador: string = SEPARADOR_CS
   }
 
   // Sanitización de fórmulas
-  texto = sanitizarInyeccionFormula(texto);
+  // Un número ya formateado («-500000», «-12,50») tampoco ejecuta nada: se deja intacto para que la
+  // hoja lo lea como número. Cualquier otra cosa con prefijo peligroso sí se neutraliza.
+  if (!NUMERO_NEGATIVO_PURO.test(texto)) {
+    texto = sanitizarInyeccionFormula(texto);
+  }
 
   // Escapado RFC 4180 adaptado al separador configurado
   const requiereComillas =
@@ -296,6 +317,56 @@ export function exportarCotizacionesCSV(
 // =============================================================================
 // Descarga en navegador
 // =============================================================================
+
+// =============================================================================
+// Exportación de Cobros (T-335): lo que el usuario ve en «Cobros», ni más ni menos
+// =============================================================================
+
+export const ENCABEZADOS_COBROS = [
+  'File',
+  'Destino',
+  'Salida',
+  'Moneda',
+  'Total',
+  'Pagado',
+  'Saldo',
+  'Situación',
+  'Estado de cobro',
+  'Fecha límite',
+] as const;
+
+/**
+ * Importe en la unidad PRINCIPAL de la moneda, con coma decimal (es-CO), que es lo que lee una
+ * persona en la hoja: COP = pesos enteros, USD = dólares con dos decimales. `Money` conoce los
+ * decimales de cada moneda (R8); aquí nunca se divide a mano por 100.
+ */
+function importeParaCSV(dinero: Dinero): string {
+  return Money.desdeUnidades(BigInt(dinero.unidades), dinero.moneda).aDecimal().replace('.', ',');
+}
+
+/**
+ * El cobro solo conoce la VENTA al viajero: no lleva neto ni margen, de modo que no hay columna
+ * que ocultar según `cotizacion.ver_neto_y_margen`. Los datos los recorta el servidor por alcance
+ * (lo propio o toda la agencia); este archivo exporta exactamente las filas que recibe.
+ */
+export function exportarCobrosCSV(
+  filas: readonly FilaDeCobro[],
+  opciones?: OpcionesGeneracionCSV,
+): string {
+  const lineas = filas.map((f) => [
+    f.numero,
+    f.destino,
+    f.fechaSalida,
+    f.total.moneda,
+    importeParaCSV(f.total),
+    importeParaCSV(f.pagado),
+    importeParaCSV(f.saldo),
+    ETIQUETA_SITUACION[f.situacion],
+    ETIQUETA_ESTADO_DE_COBRO[f.estadoDeCobro],
+    f.fechaLimite,
+  ]);
+  return generarCSV(ENCABEZADOS_COBROS, lineas, opciones);
+}
 
 /**
  * Descarga en el navegador un archivo de texto/CSV con nombre especificado.

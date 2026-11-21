@@ -29,6 +29,12 @@ y su [plan](docs/08-roadmap/02-plan-correccion-auditoria-2026-11-15.md). Entrada
 API es falsa y no hay nada desplegado.** Ninguna agencia lo ha visto ni un mensaje de celular real ha
 entrado. Seguimos en local.
 
+### Pantalla «Cobros» y CSV (T-332, T-335) — en PR, carril `b`
+
+`/cobros`: total, pagado y saldo por archivo, filtro por los cuatro estados de cobro y exportación a CSV
+(`exportarCobrosCSV`; los números ya no pasan por el escapado de fórmulas). Los e2e los corre el CI.
+Falta en el contrato `FilaDeCobro`: pasajeros. Detalle: [bitácora](docs/_bitacora/2026-11-21-cobros-pantalla-y-csv.md).
+
 ### Cierre del lote de la madrugada (2026-11-21)
 
 Integrados en `main`, por orden: #388 (regla R14, tablero, skills), #358 (ingreso por apodo, tope por identificador, apodo de miembros), #397 (ADR-0035, niveles de acceso a reportes), #393 (T-330, dominio y API de cobros), #398 (T-440, marco responsivo), #401 (consolidación de la documentación; sustituyó a #384, #386, #389, #390, #392, #399 y #396), #400 (tablero al día, arreglo del hook) y #395 (el resumen y los seguimientos ajenos solo con `conversaciones.ver_todas`). Detalle y cola: [bitácora](docs/_bitacora/2026-11-21-lote-de-integracion-nocturno.md).

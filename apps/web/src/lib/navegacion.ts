@@ -5,7 +5,7 @@
  */
 
 import type { ComponentType } from 'react';
-import { CalendarCheck, FilePlus, ListChecks } from 'lucide-react';
+import { CalendarCheck, FilePlus, ListChecks, Wallet } from 'lucide-react';
 import type { Permiso } from '@viajapro/contracts';
 import { CONFIGURACION_MODULOS } from '../components/comun/iconos-modulos';
 
@@ -15,6 +15,7 @@ export type IdDeModulo =
   | 'oportunidades'
   | 'cotizaciones'
   | 'archivos'
+  | 'cobros'
   | 'seguimientos'
   | 'contactos'
   | 'catalogo'
@@ -116,6 +117,19 @@ export const NAVEGACION: readonly EntradaDeNavegacion[] = [
     movil: 'barra',
     enMenu: true,
     detalleAPantallaCompletaEnMovil: true,
+  },
+  {
+    id: 'cobros',
+    etiqueta: 'Cobros',
+    descripcion: 'Quién pagó y quién debe: total, pagado y saldo por archivo',
+    ruta: '/cobros',
+    icono: Wallet,
+    grupo: 'operar',
+    // Solo oculta; autoriza la API (`cobro.ver`).
+    permiso: 'cobro.ver',
+    prefijosActivos: ['/cobros'],
+    movil: 'mas',
+    enMenu: true,
   },
   {
     id: 'seguimientos',
