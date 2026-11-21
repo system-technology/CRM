@@ -24,6 +24,14 @@ dentro de ese paquete. Esos dos paquetes se estorban:
 - En una tanda con `database` (3 pasadas) y `api` (1 pasada) a la vez hubo un fallo en cada paquete (`AP14` en `aislamiento.spec.ts`, un 500
   en `etiquetas.e2e-spec.ts`); `api` sola pasó. No se pudo atribuir esos dos a una causa concreta (no hubo log de deadlock): son indicio, no prueba.
 
+- Con el arreglo (database y luego api, sin solaparse) sobre una base limpia: 3 pasadas completas seguidas, las
+  3 en verde (database 262 passed, api 2163 passed). Turbo no arranca en el entorno de la sesión, así que el
+  orden se emuló con `pnpm --filter`; el grafo se verificó con `turbo run test --dry=json`.
+- Hallazgo aparte: `historial-de-etapas.spec.ts` («la línea de vida usa el índice») falló 3 de 3 en una base
+  local ensuciada por varias corridas de `api` y por el proceso de churn: el plan elige entre dos índices según
+  las estadísticas. `ANALYZE` dentro de la prueba no lo arregló. Sobre base limpia pasa. No se pudo reproducir
+  en una base limpia; queda como riesgo para la cola (el CI arranca siempre limpio).
+
 ## Qué cambió
 
 `apps/api/turbo.json` (nuevo, extiende el de la raíz): `@viajapro/api#test` depende de
