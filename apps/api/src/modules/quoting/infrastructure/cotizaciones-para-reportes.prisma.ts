@@ -25,9 +25,11 @@ import type { AlcanceDeReporte } from '../../../shared/autorizacion/alcance-de-r
 import {
   type CotizacionesAbiertasAgregadas,
   type CotizacionesAgregadas,
+  type CotizacionesDeUnAsesor,
   PuertoCotizacionesParaReportes,
   type RangoDeReporte,
   type VentaAgregada,
+  type VentaDeUnDestino,
 } from '../../../shared/puertos/puertos-de-reportes.js';
 import { monedaDeLaBase } from '../domain/moneda-de-la-base.js';
 
@@ -39,6 +41,15 @@ interface FilaDeConteos {
 
 interface FilaDeSinFecha {
   n: number;
+}
+
+/** Las filas por asesor (T-531): la misma forma, más quién. `asesor` es nulo si no hay autor. */
+interface FilaDeConteosPorAsesor extends FilaDeConteos {
+  asesor: string | null;
+}
+
+interface FilaDeSinFechaPorAsesor extends FilaDeSinFecha {
+  asesor: string | null;
 }
 
 interface FilaDeAbiertas {
@@ -57,6 +68,14 @@ interface FilaDeVentas {
   margen?: string | null;
   venta_con_neto?: string | null;
   sin_neto?: number;
+}
+
+interface FilaDeVentasPorAsesor extends FilaDeVentas {
+  asesor: string | null;
+}
+
+interface FilaDeVentasPorDestino extends FilaDeVentas {
+  destino: string;
 }
 
 @Injectable()
@@ -81,13 +100,7 @@ export class CotizacionesParaReportesPrisma extends PuertoCotizacionesParaReport
 
     // Solo se suma lo que se va a mostrar. Fragmentos de `Prisma.sql`: los valores siguen
     // yendo parametrizados.
-    const columnasDeMargen = incluirMargen
-      ? Prisma.sql`,
-          SUM(v.neto_unidades)::text AS neto,
-          SUM(v.margen_unidades)::text AS margen,
-          (SUM(v.venta_unidades) FILTER (WHERE v.neto_unidades IS NOT NULL))::text AS venta_con_neto,
-          (COUNT(*) FILTER (WHERE v.neto_unidades IS NULL))::int AS sin_neto`
-      : Prisma.empty;
+    const columnasDeMargen = columnasDeMargenDe(incluirMargen);
 
     return this.prisma.conTenant(async (tx) => {
       const [conteos] = await tx.$queryRaw<FilaDeConteos[]>`
@@ -149,6 +162,156 @@ export class CotizacionesParaReportesPrisma extends PuertoCotizacionesParaReport
   }
 
   /**
+   * `resumir` partido por asesor (T-531): las MISMAS tres consultas, con `GROUP BY c.creado_por`.
+   * Una consulta por cifra, no una por asesor. La atribución es la de ADR-0035 §2 (lo que cada uno
+   * COTIZÓ), y el predicado de asesor del alcance sigue aplicándose: con un `asesorId` de filtro
+   * solo sale esa fila. `creado_por` nulo —cotización sin autor— sale como `asesorId: null`.
+   *
+   * Las sumas de neto y margen entran en la consulta SOLO con `incluirMargen`, igual que arriba.
+   */
+  async resumirPorAsesor(
+    tenantId: string,
+    rango: RangoDeReporte,
+    alcance: AlcanceDeReporte,
+    incluirMargen: boolean,
+  ): Promise<CotizacionesDeUnAsesor[]> {
+    const { desde, hasta } = rango;
+    const delAsesor =
+      alcance.asesorId === null
+        ? Prisma.empty
+        : Prisma.sql`AND c.creado_por = ${alcance.asesorId}::uuid`;
+    const columnasDeMargen = columnasDeMargenDe(incluirMargen);
+
+    return this.prisma.conTenant(async (tx) => {
+      const conteos = await tx.$queryRaw<FilaDeConteosPorAsesor[]>`
+        SELECT
+          c.creado_por::text AS asesor,
+          (COUNT(*) FILTER (WHERE c.creado_en >= ${desde} AND c.creado_en < ${hasta}))::int AS creadas,
+          (COUNT(*) FILTER (WHERE c.enviada_en >= ${desde} AND c.enviada_en < ${hasta}))::int AS enviadas,
+          (COUNT(*) FILTER (WHERE c.enviada_en >= ${desde} AND c.enviada_en < ${hasta}
+                              AND c.estado = 'ACEPTADA'))::int AS aceptadas
+          FROM cotizaciones c
+         WHERE c.tenant_id = ${tenantId}::uuid
+           AND c.eliminado_en IS NULL
+           ${delAsesor}
+           AND ((c.creado_en >= ${desde} AND c.creado_en < ${hasta})
+             OR (c.enviada_en >= ${desde} AND c.enviada_en < ${hasta}))
+         GROUP BY c.creado_por`;
+
+      const ventas = await tx.$queryRaw<FilaDeVentasPorAsesor[]>`
+        SELECT c.creado_por::text AS asesor,
+               v.moneda_iso,
+               COUNT(*)::int AS cantidad,
+               SUM(v.venta_unidades)::text AS venta
+               ${columnasDeMargen}
+          FROM cotizaciones c
+          JOIN versiones_cotizacion v
+            ON v.tenant_id = c.tenant_id AND v.cotizacion_id = c.id AND v.numero = c.version_enviada
+         WHERE c.tenant_id = ${tenantId}::uuid
+           AND c.eliminado_en IS NULL
+           ${delAsesor}
+           AND c.estado = 'ACEPTADA'
+           AND EXISTS (
+                 SELECT 1 FROM cotizacion_cambios_estado h
+                  WHERE h.tenant_id = ${tenantId}::uuid
+                    AND h.cotizacion_id = c.id
+                    AND h.estado_hasta = 'ACEPTADA'
+                    AND h.ocurrido_en >= ${desde} AND h.ocurrido_en < ${hasta})
+         GROUP BY c.creado_por, v.moneda_iso
+         ORDER BY v.moneda_iso`;
+
+      const sinFecha = await tx.$queryRaw<FilaDeSinFechaPorAsesor[]>`
+        SELECT c.creado_por::text AS asesor, COUNT(*)::int AS n
+          FROM cotizaciones c
+         WHERE c.tenant_id = ${tenantId}::uuid
+           AND c.eliminado_en IS NULL
+           ${delAsesor}
+           AND c.estado = 'ACEPTADA'
+           AND c.enviada_en >= ${desde} AND c.enviada_en < ${hasta}
+           AND NOT EXISTS (
+                 SELECT 1 FROM cotizacion_cambios_estado h
+                  WHERE h.tenant_id = ${tenantId}::uuid
+                    AND h.cotizacion_id = c.id
+                    AND h.estado_hasta = 'ACEPTADA')
+         GROUP BY c.creado_por`;
+
+      // Una venta puede ser de un asesor que no aparece en `conteos` (la cotizó antes del rango y
+      // la aceptaron dentro): por eso se unen las tres fuentes, y no se parte de una sola.
+      const porAsesor = new Map<string | null, CotizacionesDeUnAsesor>();
+      const de = (asesorId: string | null): CotizacionesDeUnAsesor => {
+        let fila = porAsesor.get(asesorId);
+        if (!fila) {
+          fila = {
+            asesorId,
+            creadas: 0,
+            enviadas: 0,
+            aceptadas: 0,
+            aceptadasSinFecha: 0,
+            ventasPorMoneda: [],
+          };
+          porAsesor.set(asesorId, fila);
+        }
+        return fila;
+      };
+      for (const c of conteos) {
+        const fila = de(c.asesor);
+        fila.creadas = c.creadas;
+        fila.enviadas = c.enviadas;
+        fila.aceptadas = c.aceptadas;
+      }
+      for (const f of sinFecha) de(f.asesor).aceptadasSinFecha = f.n;
+      for (const v of ventas) de(v.asesor).ventasPorMoneda.push(aVenta(v, incluirMargen));
+      return [...porAsesor.values()];
+    });
+  }
+
+  /**
+   * Las ventas del rango por destino y moneda (T-532): la consulta de ventas de `resumir`, agrupada
+   * por `versiones_cotizacion.destino` además de la moneda. La misma venta (la versión que vio el
+   * cliente, por el instante de la ACEPTACIÓN), el mismo predicado de alcance y el mismo permiso de
+   * margen: sin `incluirMargen`, neto y margen no entran en la consulta. Las monedas no se suman
+   * (R8): un destino vendido en dos monedas son dos filas.
+   */
+  async ventasPorDestino(
+    tenantId: string,
+    rango: RangoDeReporte,
+    alcance: AlcanceDeReporte,
+    incluirMargen: boolean,
+  ): Promise<VentaDeUnDestino[]> {
+    const { desde, hasta } = rango;
+    const delAsesor =
+      alcance.asesorId === null
+        ? Prisma.empty
+        : Prisma.sql`AND c.creado_por = ${alcance.asesorId}::uuid`;
+    const columnasDeMargen = columnasDeMargenDe(incluirMargen);
+
+    return this.prisma.conTenant(async (tx) => {
+      const filas = await tx.$queryRaw<FilaDeVentasPorDestino[]>`
+        SELECT v.destino,
+               v.moneda_iso,
+               COUNT(*)::int AS cantidad,
+               SUM(v.venta_unidades)::text AS venta
+               ${columnasDeMargen}
+          FROM cotizaciones c
+          JOIN versiones_cotizacion v
+            ON v.tenant_id = c.tenant_id AND v.cotizacion_id = c.id AND v.numero = c.version_enviada
+         WHERE c.tenant_id = ${tenantId}::uuid
+           AND c.eliminado_en IS NULL
+           ${delAsesor}
+           AND c.estado = 'ACEPTADA'
+           AND EXISTS (
+                 SELECT 1 FROM cotizacion_cambios_estado h
+                  WHERE h.tenant_id = ${tenantId}::uuid
+                    AND h.cotizacion_id = c.id
+                    AND h.estado_hasta = 'ACEPTADA'
+                    AND h.ocurrido_en >= ${desde} AND h.ocurrido_en < ${hasta})
+         GROUP BY v.destino, v.moneda_iso
+         ORDER BY v.destino, v.moneda_iso`;
+      return filas.map((f) => ({ destino: f.destino, ...aVenta(f, incluirMargen) }));
+    });
+  }
+
+  /**
    * Cotizaciones vivas HOY (T-528): borradores y enviadas sin eliminar. No mira el rango —no es
    * una cifra del periodo— y reparte las ENVIADAS por días COMPLETOS de espera desde `enviada_en`,
    * con los mismos cortes que ya pintaba la web (≤3, 4–7, >7).
@@ -197,6 +360,22 @@ export class CotizacionesParaReportesPrisma extends PuertoCotizacionesParaReport
       };
     });
   }
+}
+
+/**
+ * Las columnas de neto y margen, o NADA. Un solo sitio para las tres consultas de ventas
+ * (`resumir`, `resumirPorAsesor`, `ventasPorDestino`): la compuerta de `cotizacion.ver_neto_y_margen`
+ * no puede olvidarse en una de ellas. Solo se suma lo que se va a mostrar; los valores siguen
+ * yendo parametrizados.
+ */
+function columnasDeMargenDe(incluirMargen: boolean): Prisma.Sql {
+  return incluirMargen
+    ? Prisma.sql`,
+          SUM(v.neto_unidades)::text AS neto,
+          SUM(v.margen_unidades)::text AS margen,
+          (SUM(v.venta_unidades) FILTER (WHERE v.neto_unidades IS NOT NULL))::text AS venta_con_neto,
+          (COUNT(*) FILTER (WHERE v.neto_unidades IS NULL))::int AS sin_neto`
+    : Prisma.empty;
 }
 
 function aVenta(f: FilaDeVentas, incluirMargen: boolean): VentaAgregada {

@@ -945,3 +945,191 @@ describe('el saldo por cobrar exige `cobro.ver` (T-537)', () => {
     });
   });
 });
+
+// ---------------------------------------------------------------------------------------------
+// T-531 y T-532: cifras por asesor y ventas por destino, en una consulta cada una
+// ---------------------------------------------------------------------------------------------
+
+/** Estrecha a la rama de agencia: `porAsesor` y `ventasPorDestino` no existen en la propia. */
+function deAgencia(r: { json: ResumenDeReportesPorAlcance }) {
+  if (r.json.alcance !== 'AGENCIA') throw new Error('se esperaba el alcance AGENCIA');
+  return r.json;
+}
+
+const suma = (xs: Array<string | undefined>): bigint =>
+  xs.reduce<bigint>((s, x) => s + BigInt(x ?? '0'), 0n);
+
+describe('por asesor y por destino (T-531, T-532)', () => {
+  it('la agencia ve una fila por asesor, con la atribución de ADR-0035 §2', async () => {
+    const r = deAgencia(await reporte('duenoA'));
+    const filas = r.porAsesor ?? [];
+    const de = (quien: Quien) => filas.find((f) => f.asesorId === usuarioId[quien]);
+
+    // Solo quien tuvo actividad: Valentina y Beto. Nadie «sin asignar» en este fixture.
+    expect(filas.map((f) => f.asesorId).sort()).toEqual(
+      [usuarioId.valentinaA, usuarioId.betoA].sort(),
+    );
+
+    // La venta va a quien COTIZÓ; el trabajo vivo, al asignado.
+    expect(de('valentinaA')).toMatchObject({
+      cotizaciones: { creadas: 5, enviadas: 2, aceptadas: 1 },
+      ventasPorMoneda: [{ moneda: 'COP', ventas: { unidades: '2400000', moneda: 'COP' } }],
+      oportunidades: { creadas: 3, ganadas: 1, perdidas: 0, abiertas: 2, tasaConversion: 100 },
+      respuesta: { conversacionesNuevas: 2, conversacionesRespondidas: 1, sinResponder: 1 },
+    });
+    expect(de('betoA')).toMatchObject({
+      cotizaciones: { creadas: 2, enviadas: 1, aceptadas: 1 },
+      ventasPorMoneda: [{ moneda: 'COP', ventas: { unidades: '1200000', moneda: 'COP' } }],
+      oportunidades: { creadas: 1, ganadas: 0, perdidas: 1, abiertas: 0, tasaConversion: 0 },
+      respuesta: {
+        conversacionesNuevas: 1,
+        conversacionesRespondidas: 1,
+        sinResponder: 0,
+        medianaMinutos: 20,
+      },
+    });
+  });
+
+  it('las filas SUMAN el total de la agencia: ninguna cifra se pierde ni se duplica', async () => {
+    const r = deAgencia(await reporte('duenoA'));
+    const filas = r.porAsesor ?? [];
+    const n = (f: (x: (typeof filas)[number]) => number): number =>
+      filas.reduce((s, x) => s + f(x), 0);
+
+    expect(n((f) => f.cotizaciones.creadas)).toBe(r.cotizaciones.creadas);
+    expect(n((f) => f.cotizaciones.enviadas)).toBe(r.cotizaciones.enviadas);
+    expect(n((f) => f.cotizaciones.aceptadas)).toBe(r.cotizaciones.aceptadas);
+    expect(n((f) => f.oportunidades.creadas)).toBe(r.oportunidades.creadas);
+    expect(n((f) => f.oportunidades.ganadas)).toBe(r.oportunidades.ganadas);
+    expect(n((f) => f.oportunidades.perdidas)).toBe(r.oportunidades.perdidas);
+    expect(n((f) => f.respuesta.conversacionesNuevas)).toBe(r.respuesta.conversacionesNuevas);
+    expect(n((f) => f.respuesta.conversacionesRespondidas)).toBe(
+      r.respuesta.conversacionesRespondidas,
+    );
+    // El dinero, moneda por moneda: la venta y el margen (la dueña tiene el permiso).
+    const porAsesor = filas.flatMap((f) => f.ventasPorMoneda);
+    expect(suma(porAsesor.map((v) => v.ventas.unidades))).toBe(
+      suma(r.ventasPorMoneda.map((v) => v.ventas.unidades)),
+    );
+    expect(suma(porAsesor.map((v) => v.margen?.unidades))).toBe(
+      suma(r.ventasPorMoneda.map((v) => v.margen?.unidades)),
+    );
+  });
+
+  it('las ventas por destino: una fila por destino y moneda, que suma el total (R8: sin mezclar monedas)', async () => {
+    const r = deAgencia(await reporte('duenoA'));
+    expect(r.ventasPorDestino).toHaveLength(1);
+    expect(r.ventasPorDestino?.[0]).toMatchObject({
+      destino: 'San Andrés',
+      moneda: 'COP',
+      cotizacionesAceptadas: 2,
+      ventas: { unidades: '3600000', moneda: 'COP' },
+    });
+    expect(suma((r.ventasPorDestino ?? []).map((v) => v.ventas.unidades))).toBe(
+      suma(r.ventasPorMoneda.map((v) => v.ventas.unidades)),
+    );
+    // Con permiso de margen, el destino lo trae igual que el total.
+    expect(r.ventasPorDestino?.[0]?.margen?.unidades).toBe(r.ventasPorMoneda[0]?.margen?.unidades);
+  });
+
+  it('con filtro de asesor las dos particiones se acotan a ese asesor', async () => {
+    const r = deAgencia(await reporte('duenoA', { ...RANGO, asesorId: usuarioId.betoA }));
+    expect(r.porAsesor?.map((f) => f.asesorId)).toEqual([usuarioId.betoA]);
+    expect(r.ventasPorDestino).toEqual([
+      expect.objectContaining({
+        destino: 'San Andrés',
+        ventas: { unidades: '1200000', moneda: 'COP' },
+      }),
+    ]);
+  });
+
+  it('un periodo sin datos devuelve listas vacías, no filas inventadas', async () => {
+    const vacio = {
+      desde: new Date('2020-01-01T00:00:00Z').toISOString(),
+      hasta: new Date('2020-02-01T00:00:00Z').toISOString(),
+    };
+    const r = deAgencia(await reporte('duenoA', vacio));
+    expect(r.porAsesor).toEqual([]);
+    expect(r.ventasPorDestino).toEqual([]);
+  });
+
+  // LA COMPUERTA DE DINERO, contra la base y la API: la prueba se pone roja si las particiones
+  // dejan de recibir `incluirMargen`.
+  it('con reportes.ver_agencia SIN cotizacion.ver_neto_y_margen: ni neto ni margen, por asesor ni por destino', async () => {
+    const sin = await reporte('operacionesA');
+    expect(sin.estado).toBe(200);
+    const r = deAgencia(sin);
+    // Las particiones SÍ están (ver la agencia no es ver el margen)...
+    expect(r.porAsesor).toHaveLength(2);
+    expect(r.ventasPorDestino).toHaveLength(1);
+    // ...pero ni una clave de neto o margen en TODO el cuerpo, ni en cero ni en `null`.
+    expect(sin.texto).not.toMatch(/neto|margen/i);
+    for (const f of r.porAsesor ?? []) {
+      for (const v of f.ventasPorMoneda)
+        expect(Object.keys(v).sort()).toEqual(['cotizacionesAceptadas', 'moneda', 'ventas']);
+    }
+    expect(Object.keys(r.ventasPorDestino?.[0] ?? {}).sort()).toEqual([
+      'cotizacionesAceptadas',
+      'destino',
+      'moneda',
+      'ventas',
+    ]);
+  });
+
+  it('con AMBOS permisos el margen llega a las dos particiones', async () => {
+    const r = deAgencia(await reporte('duenoA'));
+    const v = r.porAsesor?.find((f) => f.asesorId === usuarioId.betoA)?.ventasPorMoneda[0];
+    expect(v?.margen).not.toBeUndefined();
+    expect(v?.neto).not.toBeUndefined();
+    expect(r.ventasPorDestino?.[0]?.margen).not.toBeUndefined();
+  });
+
+  it('no hay saldo por cobrar por asesor: sin `cobro.ver` el cuerpo no menciona cobros', async () => {
+    const sin = await reporte('sinCobrosA');
+    expect(sin.estado).toBe(200);
+    expect(deAgencia(sin).porAsesor).toHaveLength(2);
+    expect(sin.texto).not.toContain('porCobrar');
+
+    const con = deAgencia(await reporte('duenoA'));
+    expect(JSON.stringify(con.porAsesor)).not.toMatch(/cobrar|saldo/i);
+  });
+
+  it('el alcance PROPIO no recibe NINGUNA de las dos particiones, ni con permiso de margen', async () => {
+    for (const quien of ['valentinaA', 'betoA'] as const) {
+      const r = await reporte(quien);
+      expect(r.estado).toBe(200);
+      expect(r.json.alcance).toBe('PROPIO');
+      expect(r.json).not.toHaveProperty('porAsesor');
+      expect(r.json).not.toHaveProperty('ventasPorDestino');
+      expect(r.texto).not.toContain('San Andrés');
+    }
+    // Y lo del otro asesor no se cuela por ninguna vía.
+    const v = await reporte('valentinaA');
+    expect(v.texto).not.toContain(usuarioId.betoA);
+  });
+
+  it('otra agencia ve solo lo suyo: las filas y los destinos de A no entran en B, ni al revés', async () => {
+    const b = await reporte('duenoB');
+    const rb = deAgencia(b);
+    expect(rb.porAsesor?.map((f) => f.asesorId)).toEqual([usuarioId.duenoB]);
+    expect(rb.ventasPorDestino).toEqual([
+      expect.objectContaining({
+        destino: 'San Andrés',
+        cotizacionesAceptadas: 1,
+        ventas: { unidades: '2100000', moneda: 'COP' },
+      }),
+    ]);
+    for (const quien of ['valentinaA', 'betoA'] as const) {
+      expect(b.texto).not.toContain(usuarioId[quien]);
+    }
+
+    const a = await reporte('duenoA');
+    expect(a.texto).not.toContain(usuarioId.duenoB);
+    expect(a.texto).not.toContain('2100000');
+
+    // Un asesor de la otra agencia, pedido con el permiso, no trae nada de nadie.
+    const ajeno = deAgencia(await reporte('duenoA', { ...RANGO, asesorId: usuarioId.duenoB }));
+    expect(ajeno.porAsesor).toEqual([]);
+    expect(ajeno.ventasPorDestino).toEqual([]);
+  });
+});

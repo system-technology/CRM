@@ -5,12 +5,15 @@ import {
   type CobrosAgregados,
   type CotizacionesAbiertasAgregadas,
   type CotizacionesAgregadas,
+  type CotizacionesDeUnAsesor,
   PuertoCobrosParaReportes,
   PuertoCotizacionesParaReportes,
   PuertoOportunidadesParaReportes,
   PuertoRespuestaParaReportes,
   type RangoDeReporte,
   TOPE_DE_ARCHIVOS_PARA_COBRAR,
+  type VentaAgregada,
+  type VentaDeUnDestino,
 } from '../../../shared/puertos/puertos-de-reportes.js';
 import { ContextoTenant } from '../../../shared/tenant/contexto-tenant.js';
 import { ObtenerResumenDeReportes } from './obtener-resumen.use-case.js';
@@ -18,6 +21,24 @@ import { ObtenerResumenDeReportes } from './obtener-resumen.use-case.js';
 const TENANT = '01932000-0000-7000-8000-000000000001';
 const YO = '01932000-0000-7000-8000-00000000aaaa';
 const OTRO = '01932000-0000-7000-8000-00000000bbbb';
+
+function ventaDeCop(incluirMargen: boolean): VentaAgregada {
+  return {
+    moneda: 'COP',
+    cotizacionesAceptadas: 1,
+    ventaUnidades: 1_200_000n,
+    ...(incluirMargen
+      ? {
+          margen: {
+            netoUnidades: 1_000_000n,
+            margenUnidades: 200_000n,
+            ventaConNetoUnidades: 1_200_000n,
+            cotizacionesSinNeto: 0,
+          },
+        }
+      : {}),
+  };
+}
 
 class CotizacionesFalsas extends PuertoCotizacionesParaReportes {
   llamadas: Array<{
@@ -56,6 +77,39 @@ class CotizacionesFalsas extends PuertoCotizacionesParaReportes {
         },
       ],
     });
+  }
+
+  // T-531 y T-532: lo que cada puerto nuevo recibió. Las dos particiones traen margen SOLO si se
+  // les pidió, como el puerto real: lo que prueba la compuerta es que el flag baje hasta aquí.
+  porAsesorLlamadas: Array<{ alcance: AlcanceDeReporte; incluirMargen: boolean }> = [];
+  resumirPorAsesor(
+    _tenantId: string,
+    _rango: RangoDeReporte,
+    alcance: AlcanceDeReporte,
+    incluirMargen: boolean,
+  ): Promise<CotizacionesDeUnAsesor[]> {
+    this.porAsesorLlamadas.push({ alcance, incluirMargen });
+    return Promise.resolve([
+      {
+        asesorId: YO,
+        creadas: 4,
+        enviadas: 3,
+        aceptadas: 1,
+        aceptadasSinFecha: 0,
+        ventasPorMoneda: [ventaDeCop(incluirMargen)],
+      },
+    ]);
+  }
+
+  porDestinoLlamadas: Array<{ alcance: AlcanceDeReporte; incluirMargen: boolean }> = [];
+  ventasPorDestino(
+    _tenantId: string,
+    _rango: RangoDeReporte,
+    alcance: AlcanceDeReporte,
+    incluirMargen: boolean,
+  ): Promise<VentaDeUnDestino[]> {
+    this.porDestinoLlamadas.push({ alcance, incluirMargen });
+    return Promise.resolve([{ destino: 'Cartagena', ...ventaDeCop(incluirMargen) }]);
   }
 
   abiertasLlamadas: Array<{ tenantId: string; alcance: AlcanceDeReporte; ahora: Date }> = [];
@@ -101,6 +155,12 @@ class OportunidadesFalsas extends PuertoOportunidadesParaReportes {
     this.alcances.push(alcance);
     return Promise.resolve([]);
   }
+
+  porAsesorAlcances: AlcanceDeReporte[] = [];
+  porAsesor(_tenantId: string, _rango: RangoDeReporte, alcance: AlcanceDeReporte) {
+    this.porAsesorAlcances.push(alcance);
+    return Promise.resolve([{ asesorId: YO, creadas: 5, ganadas: 2, perdidas: 1 }]);
+  }
 }
 
 class RespuestaFalsa extends PuertoRespuestaParaReportes {
@@ -115,6 +175,22 @@ class RespuestaFalsa extends PuertoRespuestaParaReportes {
       p90Minutos: null,
       sinResponder: 0,
     });
+  }
+
+  porAsesorAlcances: AlcanceDeReporte[] = [];
+  porAsesor(_tenantId: string, _rango: RangoDeReporte, alcance: AlcanceDeReporte) {
+    this.porAsesorAlcances.push(alcance);
+    return Promise.resolve([
+      {
+        asesorId: OTRO,
+        conversacionesNuevas: 4,
+        conversacionesRespondidas: 3,
+        promedioMinutos: 10,
+        medianaMinutos: 8,
+        p90Minutos: 20,
+        sinResponder: 1,
+      },
+    ]);
   }
 }
 
@@ -314,5 +390,131 @@ describe('ObtenerResumenDeReportes', () => {
     expect(ahora).toBeInstanceOf(Date);
     expect(ahora!.getTime()).toBeGreaterThanOrEqual(antes);
     expect(ahora!.getTime()).toBeLessThanOrEqual(Date.now());
+  });
+
+  // --- por asesor y por destino (T-531, T-532) ---------------------------------------------------
+
+  it('con alcance de agencia trae las cifras por asesor y las ventas por destino, con el MISMO alcance', async () => {
+    const { resultado, cotizaciones, oportunidades, respuesta } = ejecutar([
+      'reportes.ver_agencia',
+    ]);
+    const r = await resultado;
+    const agencia = { nivel: 'AGENCIA', asesorId: null };
+
+    // Una consulta por fuente: cada puerto recibe UNA llamada, no una por asesor.
+    expect(cotizaciones.porAsesorLlamadas.map((l) => l.alcance)).toEqual([agencia]);
+    expect(cotizaciones.porDestinoLlamadas.map((l) => l.alcance)).toEqual([agencia]);
+    expect(oportunidades.porAsesorAlcances).toEqual([agencia]);
+    expect(respuesta.porAsesorAlcances).toEqual([agencia]);
+
+    if (r.alcance !== 'AGENCIA') throw new Error('se esperaba AGENCIA');
+    // Las tres fuentes se unen: YO viene de cotizaciones y oportunidades, OTRO solo de respuesta.
+    expect(r.porAsesor?.map((f) => f.asesorId)).toEqual([YO, OTRO]);
+    expect(r.porAsesor?.[0]).toMatchObject({
+      asesorId: YO,
+      cotizaciones: { creadas: 4, enviadas: 3, aceptadas: 1, tasaAceptacion: 33.3 },
+      oportunidades: { creadas: 5, ganadas: 2, perdidas: 1, abiertas: 2, tasaConversion: 66.7 },
+      respuesta: { conversacionesNuevas: 0, tasaRespuesta: null, medianaMinutos: null },
+    });
+    // Quien no tiene cotizaciones ni oportunidades: ceros y razones `null`, no cifras inventadas.
+    expect(r.porAsesor?.[1]).toMatchObject({
+      asesorId: OTRO,
+      cotizaciones: { creadas: 0, tasaAceptacion: null },
+      ventasPorMoneda: [],
+      oportunidades: { creadas: 0, tasaConversion: null },
+      respuesta: { conversacionesNuevas: 4, sinResponder: 1, tasaRespuesta: 75 },
+    });
+    expect(r.ventasPorDestino).toEqual([
+      {
+        destino: 'Cartagena',
+        moneda: 'COP',
+        cotizacionesAceptadas: 1,
+        ventas: { unidades: '1200000', moneda: 'COP' },
+      },
+    ]);
+  });
+
+  it('con filtro de asesor, las dos particiones reciben ese filtro y no una agencia entera', async () => {
+    const { resultado, cotizaciones, oportunidades, respuesta } = ejecutar(
+      ['reportes.ver_agencia'],
+      OTRO,
+    );
+    await resultado;
+    const filtrado = { nivel: 'AGENCIA', asesorId: OTRO };
+    expect(cotizaciones.porAsesorLlamadas[0]?.alcance).toEqual(filtrado);
+    expect(cotizaciones.porDestinoLlamadas[0]?.alcance).toEqual(filtrado);
+    expect(oportunidades.porAsesorAlcances).toEqual([filtrado]);
+    expect(respuesta.porAsesorAlcances).toEqual([filtrado]);
+  });
+
+  it('con alcance PROPIO no se consulta ninguna partición y las claves no existen', async () => {
+    // Ni siquiera con TODOS los permisos de dinero: el alcance manda, no el permiso.
+    const { resultado, cotizaciones, oportunidades, respuesta } = ejecutar([
+      'cotizacion.ver_neto_y_margen',
+      'cobro.ver',
+      'conversaciones.ver_todas',
+    ]);
+    const r = await resultado;
+    expect(r.alcance).toBe('PROPIO');
+    expect(cotizaciones.porAsesorLlamadas).toHaveLength(0);
+    expect(cotizaciones.porDestinoLlamadas).toHaveLength(0);
+    expect(oportunidades.porAsesorAlcances).toHaveLength(0);
+    expect(respuesta.porAsesorAlcances).toHaveLength(0);
+    expect(r).not.toHaveProperty('porAsesor');
+    expect(r).not.toHaveProperty('ventasPorDestino');
+  });
+
+  // LA COMPUERTA DE DINERO. Estas dos pruebas son las que se ponen en rojo si alguien deja de
+  // pasar `incluirMargen` a las particiones (verificado a mano: ver la entrega).
+
+  it('con reportes.ver_agencia SIN cotizacion.ver_neto_y_margen, el margen no se pide ni viaja en ninguna partición', async () => {
+    const { resultado, cotizaciones } = ejecutar(['reportes.ver_agencia', 'cobro.ver']);
+    const r = await resultado;
+
+    expect(cotizaciones.porAsesorLlamadas.map((l) => l.incluirMargen)).toEqual([false]);
+    expect(cotizaciones.porDestinoLlamadas.map((l) => l.incluirMargen)).toEqual([false]);
+
+    if (r.alcance !== 'AGENCIA') throw new Error('se esperaba AGENCIA');
+    expect(r.porAsesor?.[0]?.ventasPorMoneda).toHaveLength(1);
+    expect(r.ventasPorDestino).toHaveLength(1);
+    // Ni la clave, ni en cero ni en `null`: ni en el total, ni por asesor, ni por destino.
+    expect(JSON.stringify(r)).not.toMatch(/neto|margen/i);
+  });
+
+  it('con AMBOS permisos, el margen sí llega a las dos particiones (lo que cambia es el permiso)', async () => {
+    const { resultado, cotizaciones } = ejecutar([
+      'reportes.ver_agencia',
+      'cotizacion.ver_neto_y_margen',
+    ]);
+    const r = await resultado;
+
+    expect(cotizaciones.porAsesorLlamadas.map((l) => l.incluirMargen)).toEqual([true]);
+    expect(cotizaciones.porDestinoLlamadas.map((l) => l.incluirMargen)).toEqual([true]);
+
+    if (r.alcance !== 'AGENCIA') throw new Error('se esperaba AGENCIA');
+    expect(r.porAsesor?.[0]?.ventasPorMoneda[0]).toMatchObject({
+      neto: { unidades: '1000000', moneda: 'COP' },
+      margen: { unidades: '200000', moneda: 'COP' },
+      margenPorcentaje: 16.7,
+    });
+    expect(r.ventasPorDestino?.[0]).toMatchObject({
+      destino: 'Cartagena',
+      margen: { unidades: '200000', moneda: 'COP' },
+    });
+  });
+
+  it('no hay saldo por cobrar por asesor: `porCobrar` sigue siendo del total y de `cobro.ver`', async () => {
+    const sin = ejecutar(['reportes.ver_agencia']);
+    const r = await sin.resultado;
+    expect(JSON.stringify(r)).not.toContain('porCobrar');
+    expect(sin.cobros.llamadas).toHaveLength(0);
+
+    const con = ejecutar(['reportes.ver_agencia', 'cobro.ver']);
+    const c = await con.resultado;
+    if (c.alcance !== 'AGENCIA') throw new Error('se esperaba AGENCIA');
+    expect(c.porCobrar?.porMoneda).toHaveLength(1);
+    // Una sola consulta de cobros, y las filas por asesor no llevan ninguna cifra de cobro.
+    expect(con.cobros.llamadas).toHaveLength(1);
+    expect(JSON.stringify(c.porAsesor)).not.toMatch(/cobrar|saldo/i);
   });
 });

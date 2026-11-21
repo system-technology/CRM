@@ -29,6 +29,7 @@ import {
   PuertoRespuestaParaReportes,
   type RangoDeReporte,
   type RespuestaAgregada,
+  type RespuestaDeUnAsesor,
 } from '../../../shared/puertos/puertos-de-reportes.js';
 
 interface FilaDeTiempos {
@@ -37,6 +38,10 @@ interface FilaDeTiempos {
   promedio: string | null;
   mediana: string | null;
   p90: string | null;
+}
+
+interface FilaDeTiemposPorAsesor extends FilaDeTiempos {
+  asesor: string | null;
 }
 
 const UNA_DECIMA = (n: string | null): number | null =>
@@ -118,6 +123,84 @@ export class RespuestaParaReportesPrisma extends PuertoRespuestaParaReportes {
         medianaMinutos: UNA_DECIMA(t?.mediana ?? null),
         p90Minutos: UNA_DECIMA(t?.p90 ?? null),
       };
+    });
+  }
+
+  /**
+   * `resumir` partido por asesor (T-531), en UNA consulta. El mismo grupo —las conversaciones
+   * creadas en el rango, con respuesta medible o sin responder— repartido por la atribución de M9:
+   * las respondidas son de quien envió el primer saliente humano; las que siguen SIN responder, de
+   * quien las tiene asignadas. Es la misma regla del alcance propio de `resumir`, expresada como
+   * clave de agrupación en vez de predicado: lo que un asesor ve aquí es lo que vería con
+   * `PROPIO`. `asesorId` nulo = sin asignar y sin responder, o respondidas por automatización.
+   *
+   * Con un `asesorId` de filtro (alcance de agencia filtrado) solo sale esa fila.
+   */
+  async porAsesor(
+    tenantId: string,
+    rango: RangoDeReporte,
+    alcance: AlcanceDeReporte,
+  ): Promise<RespuestaDeUnAsesor[]> {
+    const { desde, hasta } = rango;
+    const delAsesor =
+      alcance.asesorId === null
+        ? Prisma.empty
+        : Prisma.sql`WHERE asesor = ${alcance.asesorId}::uuid`;
+    return this.prisma.conTenant(async (tx) => {
+      const filas = await tx.$queryRaw<FilaDeTiemposPorAsesor[]>`
+        WITH grupo AS (
+          SELECT c.primera_respuesta_en,
+                 CASE WHEN c.primera_respuesta_en IS NULL THEN c.asignado_a_id
+                      ELSE r.autor_id
+                 END AS asesor,
+                 CASE WHEN c.primera_respuesta_en IS NULL THEN NULL
+                      ELSE EXTRACT(EPOCH FROM (c.primera_respuesta_en - p.primero)) / 60.0
+                 END AS minutos
+            FROM conversaciones c
+            CROSS JOIN LATERAL (
+              SELECT MIN(m.ocurrido_en) AS primero
+                FROM mensajes m
+               WHERE m.tenant_id = ${tenantId}::uuid
+                 AND m.conversacion_id = c.id
+                 AND m.direccion = 'ENTRANTE'
+            ) p
+            LEFT JOIN LATERAL (
+              SELECT m.autor_id
+                FROM mensajes m
+               WHERE m.tenant_id = ${tenantId}::uuid
+                 AND m.conversacion_id = c.id
+                 AND m.direccion = 'SALIENTE'
+                 AND m.autor_id IS NOT NULL
+               ORDER BY m.ocurrido_en ASC
+               LIMIT 1
+            ) r ON true
+           WHERE c.tenant_id = ${tenantId}::uuid
+             AND c.eliminado_en IS NULL
+             AND c.creado_en >= ${desde} AND c.creado_en < ${hasta}
+             AND (
+               c.primera_respuesta_en IS NULL
+               OR (p.primero IS NOT NULL AND p.primero <= c.primera_respuesta_en)
+             )
+        )
+        SELECT asesor::text AS asesor,
+               COUNT(*)::int AS nuevas,
+               COUNT(primera_respuesta_en)::int AS respondidas,
+               AVG(minutos)::text AS promedio,
+               (percentile_cont(0.5) WITHIN GROUP (ORDER BY minutos))::text AS mediana,
+               (percentile_cont(0.9) WITHIN GROUP (ORDER BY minutos))::text AS p90
+          FROM grupo
+          ${delAsesor}
+         GROUP BY asesor`;
+
+      return filas.map((t) => ({
+        asesorId: t.asesor,
+        conversacionesNuevas: t.nuevas,
+        conversacionesRespondidas: t.respondidas,
+        sinResponder: t.nuevas - t.respondidas,
+        promedioMinutos: UNA_DECIMA(t.promedio),
+        medianaMinutos: UNA_DECIMA(t.mediana),
+        p90Minutos: UNA_DECIMA(t.p90),
+      }));
     });
   }
 }

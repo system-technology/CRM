@@ -9,8 +9,10 @@ import type {
   CotizacionesAbiertas,
   PorCobrar,
   ResumenDeReportesPorAlcance,
+  ResumenDeUnAsesor,
   SaldoPorCobrarDeUnaMoneda,
   VentasDeUnaMoneda,
+  VentasDeUnDestino,
 } from '@viajapro/contracts';
 import { type CodigoMoneda, pagadoNeto, saldoDelArchivo, totalDelArchivo } from '@viajapro/domain';
 import type { AlcanceDeReporte } from '../../../shared/autorizacion/alcance-de-reporte.js';
@@ -18,10 +20,14 @@ import type {
   CobrosAgregados,
   CotizacionesAbiertasAgregadas,
   CotizacionesAgregadas,
+  CotizacionesDeUnAsesor,
   EtapaConOportunidades,
+  OportunidadesDeUnAsesor,
   RangoDeReporte,
   RespuestaAgregada,
+  RespuestaDeUnAsesor,
   VentaAgregada,
+  VentaDeUnDestino,
 } from '../../../shared/puertos/puertos-de-reportes.js';
 
 /** Porcentaje con un decimal, redondeado al más cercano. `null` sin denominador. */
@@ -114,6 +120,89 @@ export function porCobrarPorMoneda(cobros: CobrosAgregados): PorCobrar {
   return { porMoneda: filas, truncado: cobros.truncado };
 }
 
+/** Lo que el alcance de agencia añade al resumen: las cifras partidas (T-531, T-532). */
+export interface DesgloseDeAgencia {
+  cotizacionesPorAsesor: CotizacionesDeUnAsesor[];
+  oportunidadesPorAsesor: OportunidadesDeUnAsesor[];
+  respuestaPorAsesor: RespuestaDeUnAsesor[];
+  ventasPorDestino: VentaDeUnDestino[];
+}
+
+/** Las ventas de un destino y una moneda: la fila de `ventasDeUnaMoneda`, con su destino. */
+export function ventasDeUnDestino(v: VentaDeUnDestino): VentasDeUnDestino {
+  return { destino: v.destino, ...ventasDeUnaMoneda(v) };
+}
+
+/**
+ * Una fila por asesor (T-531), uniendo las TRES fuentes: quien solo tiene oportunidades, o solo
+ * conversaciones, aparece igual. Lo que una fuente no trae son ceros con razones `null`, no cifras
+ * inventadas. Orden estable: por `asesorId`, y la fila «sin asignar» (`null`) al final.
+ *
+ * La misma aritmética que el total (`porcentaje`, `ventasDeUnaMoneda`): las filas suman lo que el
+ * total de la agencia, que es lo que prueba el e2e. Las claves de margen siguen viniendo —o no— de
+ * los agregados (que las trae el puerto solo con permiso); aquí no se rellenan nunca.
+ */
+export function armarPorAsesor(
+  entrada: Pick<
+    DesgloseDeAgencia,
+    'cotizacionesPorAsesor' | 'oportunidadesPorAsesor' | 'respuestaPorAsesor'
+  >,
+): ResumenDeUnAsesor[] {
+  const ids = new Set<string | null>();
+  for (const f of entrada.cotizacionesPorAsesor) ids.add(f.asesorId);
+  for (const f of entrada.oportunidadesPorAsesor) ids.add(f.asesorId);
+  for (const f of entrada.respuestaPorAsesor) ids.add(f.asesorId);
+
+  const cotizaciones = new Map(entrada.cotizacionesPorAsesor.map((f) => [f.asesorId, f]));
+  const oportunidades = new Map(entrada.oportunidadesPorAsesor.map((f) => [f.asesorId, f]));
+  const respuestas = new Map(entrada.respuestaPorAsesor.map((f) => [f.asesorId, f]));
+
+  const ordenados = [...ids].sort((a, b) => {
+    if (a === b) return 0;
+    if (a === null) return 1;
+    if (b === null) return -1;
+    return a.localeCompare(b);
+  });
+
+  return ordenados.map((asesorId) => {
+    const c = cotizaciones.get(asesorId);
+    const o = oportunidades.get(asesorId);
+    const r = respuestas.get(asesorId);
+    const ganadas = o?.ganadas ?? 0;
+    const perdidas = o?.perdidas ?? 0;
+    const creadas = o?.creadas ?? 0;
+    const nuevas = r?.conversacionesNuevas ?? 0;
+    const respondidas = r?.conversacionesRespondidas ?? 0;
+    return {
+      asesorId,
+      cotizaciones: {
+        creadas: c?.creadas ?? 0,
+        enviadas: c?.enviadas ?? 0,
+        aceptadas: c?.aceptadas ?? 0,
+        ...((c?.aceptadasSinFecha ?? 0) > 0 ? { aceptadasSinFecha: c?.aceptadasSinFecha } : {}),
+        tasaAceptacion: porcentaje(c?.aceptadas ?? 0, c?.enviadas ?? 0),
+      },
+      ventasPorMoneda: (c?.ventasPorMoneda ?? []).map(ventasDeUnaMoneda),
+      oportunidades: {
+        creadas,
+        ganadas,
+        perdidas,
+        abiertas: creadas - ganadas - perdidas,
+        tasaConversion: porcentaje(ganadas, ganadas + perdidas),
+      },
+      respuesta: {
+        conversacionesNuevas: nuevas,
+        conversacionesRespondidas: respondidas,
+        promedioMinutos: r?.promedioMinutos ?? null,
+        medianaMinutos: r?.medianaMinutos ?? null,
+        p90Minutos: r?.p90Minutos ?? null,
+        sinResponder: r?.sinResponder ?? 0,
+        tasaRespuesta: porcentaje(respondidas, nuevas),
+      },
+    };
+  });
+}
+
 export function armarResumen(entrada: {
   alcance: AlcanceDeReporte;
   rango: RangoDeReporte;
@@ -127,8 +216,22 @@ export function armarResumen(entrada: {
    * construye. No es cero ni `null`: lo que no se puede ver, no existe en la respuesta.
    */
   cobros: CobrosAgregados | undefined;
+  /**
+   * Solo con alcance de AGENCIA (T-531, T-532). Con `PROPIO` el caso de uso ni lo consulta, y aquí
+   * se ignora aunque llegara: la rama propia del contrato es `strict()` y no tiene esas claves.
+   */
+  desglose?: DesgloseDeAgencia | undefined;
 }): ResumenDeReportesPorAlcance {
-  const { alcance, rango, cotizaciones: c, etapas, respuesta, abiertas, cobros } = entrada;
+  const {
+    alcance,
+    rango,
+    cotizaciones: c,
+    etapas,
+    respuesta,
+    abiertas,
+    cobros,
+    desglose,
+  } = entrada;
 
   const porEtapa = etapas.slice().sort((a, b) => a.orden - b.orden);
   const suma = (f: (e: EtapaConOportunidades) => boolean): number =>
@@ -185,7 +288,18 @@ export function armarResumen(entrada: {
     ...(cobros === undefined ? {} : { porCobrar: porCobrarPorMoneda(cobros) }),
   };
 
-  return alcance.nivel === 'PROPIO'
-    ? { alcance: 'PROPIO', asesorId: alcance.asesorId, ...cifras }
-    : { alcance: 'AGENCIA', asesorId: alcance.asesorId, ...cifras };
+  if (alcance.nivel === 'PROPIO') {
+    return { alcance: 'PROPIO', asesorId: alcance.asesorId, ...cifras };
+  }
+  return {
+    alcance: 'AGENCIA',
+    asesorId: alcance.asesorId,
+    ...cifras,
+    ...(desglose === undefined
+      ? {}
+      : {
+          porAsesor: armarPorAsesor(desglose),
+          ventasPorDestino: desglose.ventasPorDestino.map(ventasDeUnDestino),
+        }),
+  };
 }

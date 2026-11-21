@@ -25,10 +25,19 @@
  * sembrados lo tienen, así que no cambia nada visible; se cierra antes de que exista el endpoint
  * para componer roles a medida (R12), con el que un rol sin `cobro.ver` más `reportes.ver_agencia`
  * vería el dinero de toda la agencia que su propia pantalla de cobros le niega.
+ *
+ * **T-531 y T-532:** con alcance de AGENCIA la respuesta trae además las cifras POR ASESOR y las
+ * ventas POR DESTINO, cada una en una consulta agrupada. Con `PROPIO` no se consultan. La atribución
+ * es la de ADR-0035 §2 y las compuertas de dinero son las mismas que las del total: el margen sigue
+ * a `cotizacion.ver_neto_y_margen` en las dos particiones. No se añade ninguna cifra de dinero
+ * nueva por asesor —ni saldo por cobrar—: `porCobrar` sigue siendo del total y exige `cobro.ver`.
  */
 import { Inject, Injectable } from '@nestjs/common';
 import { type ConsultarResumenDeReportes, ResumenDeReportesPorAlcance } from '@viajapro/contracts';
-import { alcanceDeReporte } from '../../../shared/autorizacion/alcance-de-reporte.js';
+import {
+  type AlcanceDeReporte,
+  alcanceDeReporte,
+} from '../../../shared/autorizacion/alcance-de-reporte.js';
 import {
   PuertoCobrosParaReportes,
   PuertoCotizacionesParaReportes,
@@ -37,7 +46,7 @@ import {
   TOPE_DE_ARCHIVOS_PARA_COBRAR,
 } from '../../../shared/puertos/puertos-de-reportes.js';
 import { ContextoTenant } from '../../../shared/tenant/contexto-tenant.js';
-import { armarResumen } from '../domain/resumen.js';
+import { armarResumen, type DesgloseDeAgencia } from '../domain/resumen.js';
 
 @Injectable()
 export class ObtenerResumenDeReportes {
@@ -63,8 +72,12 @@ export class ObtenerResumenDeReportes {
     // que los tramos de antigüedad no se midan contra instantes distintos dentro de la misma
     // respuesta.
     const ahora = new Date();
+    // T-531 y T-532: partir por asesor y por destino es de administración. Con `PROPIO` los puertos
+    // ni se consultan: no hay respuesta que «recortar» después y la rama propia del contrato no
+    // tiene esas claves.
+    const esAgencia = alcance.nivel === 'AGENCIA';
 
-    const [cotizaciones, etapas, respuesta, abiertas, cobros] = await Promise.all([
+    const [cotizaciones, etapas, respuesta, abiertas, cobros, desglose] = await Promise.all([
       this.cotizaciones.resumir(tenantId, rango, alcance, incluirMargen),
       this.oportunidades.porEtapa(tenantId, rango, alcance),
       this.respuesta.resumir(tenantId, rango, alcance),
@@ -72,10 +85,33 @@ export class ObtenerResumenDeReportes {
       incluirPorCobrar
         ? this.cobros.porCobrar(tenantId, alcance, TOPE_DE_ARCHIVOS_PARA_COBRAR)
         : undefined,
+      esAgencia ? this.desglosar(tenantId, rango, alcance, incluirMargen) : undefined,
     ]);
 
     return ResumenDeReportesPorAlcance.parse(
-      armarResumen({ alcance, rango, cotizaciones, etapas, respuesta, abiertas, cobros }),
+      armarResumen({ alcance, rango, cotizaciones, etapas, respuesta, abiertas, cobros, desglose }),
     );
+  }
+
+  /**
+   * T-531 y T-532: lo que SOLO el alcance de agencia recibe. Cada fuente responde en una consulta
+   * agrupada y no en una por asesor. `incluirMargen` baja hasta la consulta de ventas (por asesor y
+   * por destino) exactamente igual que en el total: sin `cotizacion.ver_neto_y_margen`, el neto y el
+   * margen no se calculan en ninguna de las dos particiones.
+   */
+  private async desglosar(
+    tenantId: string,
+    rango: { desde: Date; hasta: Date },
+    alcance: AlcanceDeReporte,
+    incluirMargen: boolean,
+  ): Promise<DesgloseDeAgencia> {
+    const [cotizacionesPorAsesor, oportunidadesPorAsesor, respuestaPorAsesor, ventasPorDestino] =
+      await Promise.all([
+        this.cotizaciones.resumirPorAsesor(tenantId, rango, alcance, incluirMargen),
+        this.oportunidades.porAsesor(tenantId, rango, alcance),
+        this.respuesta.porAsesor(tenantId, rango, alcance),
+        this.cotizaciones.ventasPorDestino(tenantId, rango, alcance, incluirMargen),
+      ]);
+    return { cotizacionesPorAsesor, oportunidadesPorAsesor, respuestaPorAsesor, ventasPorDestino };
   }
 }

@@ -9,6 +9,7 @@ import type {
   RespuestaAgregada,
 } from '../../../shared/puertos/puertos-de-reportes.js';
 import {
+  armarPorAsesor,
   armarResumen,
   cotizacionesAbiertas,
   porcentaje,
@@ -452,5 +453,43 @@ describe('porCobrarPorMoneda (T-528)', () => {
       truncado: false,
     });
     expect(r.porMoneda[0]?.saldo.unidades).toBe('9007199254740993');
+  });
+});
+
+describe('armarPorAsesor (T-531)', () => {
+  const A = '01932000-0000-7000-8000-00000000000a';
+  const B = '01932000-0000-7000-8000-00000000000b';
+  const sinCotizar = { creadas: 0, enviadas: 0, aceptadas: 0, aceptadasSinFecha: 0 };
+
+  it('une las tres fuentes, completa con ceros y deja «sin asignar» al final', () => {
+    const filas = armarPorAsesor({
+      cotizacionesPorAsesor: [{ asesorId: B, ...sinCotizar, creadas: 2, ventasPorMoneda: [] }],
+      oportunidadesPorAsesor: [
+        { asesorId: null, creadas: 1, ganadas: 0, perdidas: 0 },
+        { asesorId: A, creadas: 4, ganadas: 1, perdidas: 1 },
+      ],
+      respuestaPorAsesor: [],
+    });
+    expect(filas.map((f) => f.asesorId)).toEqual([A, B, null]);
+    expect(filas[0]?.oportunidades).toMatchObject({ abiertas: 2, tasaConversion: 50 });
+    // Sin fuente: ceros y razones `null`, nunca «0 %».
+    expect(filas[0]?.cotizaciones).toMatchObject({ creadas: 0, tasaAceptacion: null });
+    expect(filas[1]?.oportunidades).toMatchObject({ creadas: 0, tasaConversion: null });
+    expect(filas[0]?.respuesta).toMatchObject({ conversacionesNuevas: 0, tasaRespuesta: null });
+  });
+
+  it('no rellena claves de margen: solo vienen si el agregado las trae', () => {
+    const [f] = armarPorAsesor({
+      cotizacionesPorAsesor: [
+        {
+          asesorId: A,
+          ...sinCotizar,
+          ventasPorMoneda: [{ moneda: 'COP', cotizacionesAceptadas: 1, ventaUnidades: 100n }],
+        },
+      ],
+      oportunidadesPorAsesor: [],
+      respuestaPorAsesor: [],
+    });
+    expect(JSON.stringify(f)).not.toMatch(/neto|margen/i);
   });
 });

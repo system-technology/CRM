@@ -234,9 +234,65 @@ export const ResumenPropio = z
   .strict();
 export type ResumenPropio = z.infer<typeof ResumenPropio>;
 
-/** Lo que ve quien SÍ lo tiene. `asesorId` es el filtro aplicado, o `null` si es toda la agencia. */
+/**
+ * **Las cifras de UN asesor** dentro de un reporte de agencia (T-531). Mismas cifras y MISMA
+ * atribución que manda ADR-0035 §2, calculadas en el servidor en una sola consulta por fuente y no
+ * una petición por asesor:
+ *   · `cotizaciones` y `ventasPorMoneda`: lo que ese asesor COTIZÓ (`creado_por`). La venta va a
+ *     quien cotizó, no a quien tenga hoy la oportunidad;
+ *   · `oportunidades`: las CREADAS en el rango y asignadas hoy a ese asesor (trabajo vivo). Sin
+ *     `porEtapa`: el embudo por etapa es del resumen, no de cada fila;
+ *   · `respuesta`: las conversaciones que respondió ÉL (autor del primer saliente humano) y las
+ *     sin responder que tiene asignadas.
+ *
+ * **`asesorId: null` es la fila «sin asignar»** (oportunidades sin asesor, conversaciones sin
+ * asignar y sin responder o respondidas por automatización): así las filas suman lo mismo que el
+ * total de la agencia y nada se pierde en silencio.
+ *
+ * **Ausente = ceros.** Solo hay fila para quien tuvo alguna actividad en el rango; un asesor sin
+ * fila no hizo nada, y la web lo completa con su lista de miembros.
+ *
+ * El dinero sigue sus compuertas: `neto`, `margen`, `margenPorcentaje` y `cotizacionesSinNeto` de
+ * `ventasPorMoneda` EXISTEN solo con `cotizacion.ver_neto_y_margen`, igual que en el total.
+ * Ninguna cifra de dinero de esta fila es nueva respecto de las del total de la agencia: son las
+ * mismas, partidas por asesor.
+ */
+export const ResumenDeUnAsesor = z.object({
+  asesorId: Id.nullable(),
+  cotizaciones: ResumenDeCotizaciones,
+  ventasPorMoneda: z.array(VentasDeUnaMoneda),
+  oportunidades: ResumenDeOportunidades.omit({ porEtapa: true }),
+  respuesta: ResumenDeRespuesta,
+});
+export type ResumenDeUnAsesor = z.infer<typeof ResumenDeUnAsesor>;
+
+/**
+ * **Ventas del periodo de UN destino en UNA moneda** (T-532): la fila de `ventasPorMoneda`, con el
+ * destino de la versión que vio el cliente. Una fila por destino y moneda; **las monedas no se
+ * suman ni se convierten con TRM (R8)**, así que un destino vendido en COP y en USD tiene dos
+ * filas. El destino es el texto de la versión enviada (`versiones_cotizacion.destino`), tal cual
+ * lo copió del paquete. Las claves de margen siguen su compuerta.
+ */
+export const VentasDeUnDestino = VentasDeUnaMoneda.extend({ destino: z.string().min(1) });
+export type VentasDeUnDestino = z.infer<typeof VentasDeUnDestino>;
+
+/**
+ * Lo que ve quien SÍ lo tiene. `asesorId` es el filtro aplicado, o `null` si es toda la agencia.
+ *
+ * **`porAsesor` y `ventasPorDestino` son SOLO de este alcance** (T-531, T-532): comparar asesores
+ * y repartir las ventas por destino es administración, y por eso no existen en `ResumenPropio`
+ * —que es `strict()`—, donde una clave de más rompería la validación de salida. Opcionales en el
+ * ESQUEMA para no romper a un cliente anterior; el servidor las envía siempre con este alcance.
+ * Con un `asesorId` de filtro, las dos se acotan a ese asesor.
+ */
 export const ResumenDeAgencia = z
-  .object({ ...CIFRAS_DEL_RESUMEN, alcance: z.literal('AGENCIA'), asesorId: Id.nullable() })
+  .object({
+    ...CIFRAS_DEL_RESUMEN,
+    alcance: z.literal('AGENCIA'),
+    asesorId: Id.nullable(),
+    porAsesor: z.array(ResumenDeUnAsesor).optional(),
+    ventasPorDestino: z.array(VentasDeUnDestino).optional(),
+  })
   .strict();
 export type ResumenDeAgencia = z.infer<typeof ResumenDeAgencia>;
 

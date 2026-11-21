@@ -51,6 +51,19 @@ export interface CotizacionesAgregadas {
 }
 
 /**
+ * Lo cotizado por UN asesor en el rango (T-531): las mismas cifras que `CotizacionesAgregadas`,
+ * atribuidas por `cotizaciones.creado_por` (ADR-0035 §2). `asesorId` nulo = cotizaciones sin autor.
+ */
+export interface CotizacionesDeUnAsesor extends CotizacionesAgregadas {
+  asesorId: string | null;
+}
+
+/** Venta de un destino y una moneda (T-532). Nunca se suman monedas distintas (R8). */
+export interface VentaDeUnDestino extends VentaAgregada {
+  destino: string;
+}
+
+/**
  * Cotizaciones vivas HOY (T-528), no del rango: una foto del trabajo que espera respuesta. Los
  * tramos cuentan solo las ENVIADAS, por días completos desde `enviada_en`.
  */
@@ -75,6 +88,31 @@ export abstract class PuertoCotizacionesParaReportes {
   ): Promise<CotizacionesAgregadas>;
 
   /**
+   * Lo mismo que `resumir`, **partido por asesor** (T-531), en una sola consulta por cifra y no
+   * una por asesor. Solo hay entrada para quien cotizó algo en el rango. El alcance se respeta:
+   * con un `asesorId` de filtro devuelve a lo sumo a ese asesor. `incluirMargen` manda igual que
+   * en `resumir`: sin él, las sumas de neto y margen ni siquiera forman parte de la consulta.
+   */
+  abstract resumirPorAsesor(
+    tenantId: string,
+    rango: RangoDeReporte,
+    alcance: AlcanceDeReporte,
+    incluirMargen: boolean,
+  ): Promise<CotizacionesDeUnAsesor[]>;
+
+  /**
+   * Las ventas del rango agrupadas por destino y moneda (T-532): las mismas cotizaciones aceptadas
+   * que `resumir`, partidas por `versiones_cotizacion.destino`. Sin conversión de moneda (R8).
+   * `incluirMargen` manda como en `resumir`.
+   */
+  abstract ventasPorDestino(
+    tenantId: string,
+    rango: RangoDeReporte,
+    alcance: AlcanceDeReporte,
+    incluirMargen: boolean,
+  ): Promise<VentaDeUnDestino[]>;
+
+  /**
    * Sin rango a propósito: es el estado de HOY. `ahora` entra como argumento y no se lee el reloj
    * en la consulta, para que la prueba fije el instante (R9: el cálculo es en UTC).
    */
@@ -95,6 +133,17 @@ export interface EtapaConOportunidades {
   cantidad: number;
 }
 
+/**
+ * Las oportunidades CREADAS en el rango y asignadas HOY a un asesor (T-531, ADR-0035 §2: el
+ * trabajo vivo sigue al responsable actual). `asesorId` nulo = sin asignar.
+ */
+export interface OportunidadesDeUnAsesor {
+  asesorId: string | null;
+  creadas: number;
+  ganadas: number;
+  perdidas: number;
+}
+
 /** Lo que `analytics` le pide a `crm`. Una entrada por etapa de la agencia, también las vacías. */
 export abstract class PuertoOportunidadesParaReportes {
   abstract porEtapa(
@@ -102,6 +151,13 @@ export abstract class PuertoOportunidadesParaReportes {
     rango: RangoDeReporte,
     alcance: AlcanceDeReporte,
   ): Promise<EtapaConOportunidades[]>;
+
+  /** Lo mismo que `porEtapa`, partido por asesor (T-531), en una sola consulta. */
+  abstract porAsesor(
+    tenantId: string,
+    rango: RangoDeReporte,
+    alcance: AlcanceDeReporte,
+  ): Promise<OportunidadesDeUnAsesor[]>;
 }
 
 export interface RespuestaAgregada {
@@ -114,6 +170,15 @@ export interface RespuestaAgregada {
   sinResponder: number;
 }
 
+/**
+ * La respuesta de UN asesor (T-531), con la atribución de M9 (ADR-0035 §2): la conversación es de
+ * quien envió el primer saliente humano; las que siguen sin responder, de quien las tiene asignadas.
+ * `asesorId` nulo = sin asignar y sin responder, o respondidas por automatización.
+ */
+export interface RespuestaDeUnAsesor extends RespuestaAgregada {
+  asesorId: string | null;
+}
+
 /** Lo que `analytics` le pide a `inbox`. */
 export abstract class PuertoRespuestaParaReportes {
   abstract resumir(
@@ -121,6 +186,13 @@ export abstract class PuertoRespuestaParaReportes {
     rango: RangoDeReporte,
     alcance: AlcanceDeReporte,
   ): Promise<RespuestaAgregada>;
+
+  /** Lo mismo que `resumir`, partido por asesor (T-531), en una sola consulta. */
+  abstract porAsesor(
+    tenantId: string,
+    rango: RangoDeReporte,
+    alcance: AlcanceDeReporte,
+  ): Promise<RespuestaDeUnAsesor[]>;
 }
 
 /**
