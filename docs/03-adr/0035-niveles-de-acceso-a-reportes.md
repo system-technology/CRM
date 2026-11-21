@@ -4,7 +4,7 @@
 - **Fecha:** 2026-11-21
 - **Decide:** propietario, a propuesta de `arquitecto`
 - **Consultados:** el catálogo de `analista-datos`
-  (`docs/08-roadmap/11-reportes-por-nivel-catalogo.md`, T-339, PR #392,
+  (`11-reportes-por-nivel-catalogo.md` de `docs/08-roadmap/`, T-339, PR #392,
   sin integrar al escribir esto). Pendientes: `auditor-seguridad` (lista de §9) y `experto-turismo`
   (atribución cuando una persona cotiza y otra cierra, T-493)
 - **Tarea:** T-340 (Eje F del [roadmap JD Tours](../08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md)).
@@ -291,7 +291,7 @@ hay columnas ni tablas nuevas.
 
 ## Enlaces
 
-- Catálogo: `docs/08-roadmap/11-reportes-por-nivel-catalogo.md` (PR #392)
+- Catálogo: `11-reportes-por-nivel-catalogo.md` de `docs/08-roadmap/` (PR #392)
 - Roadmap de reportes: [`06-roadmap-de-reportes.md`](../08-roadmap/06-roadmap-de-reportes.md)
 - Cierre provisional H1/H2: PR #395
 - [ADR-0011](0011-autenticacion-y-tenant-de-sesion.md), [ADR-0024](0024-de-cotizacion-aceptada-a-archivo-de-viaje.md),
