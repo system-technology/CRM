@@ -1,15 +1,20 @@
 /**
- * `GET /api/v1/reportes/resumen?desde=&hasta=` — los agregados de un periodo.
+ * `GET /api/v1/reportes/resumen?desde=&hasta=&asesorId=` — los agregados de un periodo.
  *
- * Exige `conversaciones.ver_todas` (D3: «el asesor ve lo suyo, el administrador todo»; el resumen
- * es de toda la agencia). El neto y el margen salen además solo con
- * `cotizacion.ver_neto_y_margen`, y sin él las claves no existen. El tenant lo
- * pone el middleware desde la sesión, no aparece en ninguna firma.
+ * **No exige ningún permiso para entrar**: cualquier miembro ve LO SUYO. Lo que decide qué filas
+ * entran es `reportes.ver_agencia`, y lo resuelve el servidor sobre la sesión (`alcanceDeReporte`,
+ * ADR-0035 §1 y §4): sin el permiso la respuesta es de alcance `PROPIO` con el asesor de la
+ * sesión, y un `asesorId` ajeno responde 403 en vez de recortarse en silencio.
+ *
+ * Esto RETIRA el gate provisional de #395, que exigía `conversaciones.ver_todas` y dejaba al
+ * asesor sin reportes: ese permiso es «qué chats superviso», no «qué cifras de venta veo».
+ *
+ * El neto y el margen salen además solo con `cotizacion.ver_neto_y_margen`, y sin él las claves no
+ * existen: alcance y margen son dos ejes distintos (§6). El tenant lo pone el middleware desde la
+ * sesión, no aparece en ninguna firma.
  */
 import { Controller, Get, Inject, Query } from '@nestjs/common';
-import { ConsultarResumenDeReportes, type ResumenDeReportes } from '@viajapro/contracts';
-import { RequierePermiso } from '../../../shared/autorizacion/permiso.decorator.js';
-import { PERMISO_VER_TODAS } from '../../../shared/autorizacion/visibilidad-de-conversaciones.js';
+import { ConsultarResumenDeReportes, type ResumenDeReportesPorAlcance } from '@viajapro/contracts';
 import { ZodValidationPipe } from '../../../shared/validacion/zod-validation.pipe.js';
 import { ObtenerResumenDeReportes } from '../application/obtener-resumen.use-case.js';
 
@@ -19,13 +24,10 @@ export class ReportesController {
     @Inject(ObtenerResumenDeReportes) private readonly resumen: ObtenerResumenDeReportes,
   ) {}
 
-  // PROVISIONAL (D3, H1): hoy el resumen es de toda la agencia y no hay «propio»; sin
-  // `conversaciones.ver_todas` es 403. T-342 retira este gate (T-341 solo crea el permiso `reportes.ver_agencia`; ADR-0035 §7).
-  @RequierePermiso(PERMISO_VER_TODAS)
   @Get('resumen')
   async obtener(
     @Query(new ZodValidationPipe(ConsultarResumenDeReportes)) consulta: ConsultarResumenDeReportes,
-  ): Promise<ResumenDeReportes> {
+  ): Promise<ResumenDeReportesPorAlcance> {
     return this.resumen.ejecutar(consulta);
   }
 }

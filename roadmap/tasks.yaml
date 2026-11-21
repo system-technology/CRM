@@ -7202,7 +7202,9 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: backlog
+    status: done
+    done_at: 2026-11-21T09:10:00.000Z
+    notes: "Evidencia: #410 (e16f5499), 14 checks en verde. Auditoria de seguridad independiente por ser dinero en pantalla (R13): tres bloqueantes corregidos con prueba de regresion cada uno (saldo a favor pintado en negativo y confirmacion que decia siempre «Falta por cobrar»; clave de idempotencia en el dialogo, que permitia cobrar dos veces al cerrarlo y reabrirlo tras un fallo de red; y un aviso que decia que la nota no se guarda cuando si se guarda). Verificado en CI contra la API real: registrar un pago baja el saldo, queda en el historial y sobrevive a recargar; a 390 px sin desplazamiento lateral; monto mal escrito rechazado antes de llamar a la API. NO verificado contra Postgres local en ninguna sesion (el clasificador lo deniega); lo visual salio de modo demostracion. Cola abierta por la auditoria: T-515 a T-521."
     depends_on: [T-330, T-316]
     acceptance:
       - "En el archivo: total, pagado, saldo e historial de pagos; registrar un pago con moneda, fecha y medio"
@@ -7365,7 +7367,7 @@ tasks:
     phase: 1
     priority: P1
     effort: L
-    status: backlog
+    status: review
     depends_on: [T-341]
     acceptance:
       - "Para quien solo tiene alcance propio, el servidor fuerza el asesor de la sesión; el parámetro del cliente no lo amplía"
@@ -7374,6 +7376,7 @@ tasks:
     source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md, Eje F (decisión del propietario 2026-11-20)
     created_at: 2026-11-20T21:30:00.000Z
     owner: backend
+    notes: "Implementada en la rama a/T-342-alcance-de-reporte (PR #417): alcanceDeReporte en shared/autorizacion, los tres puertos de reportes reciben AlcanceDeReporte, contrato ResumenDeReportesPorAlcance (unión discriminada, ramas estrictas) validado en el servidor, 403 en reportes y en seguimientos con asesorId ajeno (retira el silencio de #395), retirada del gate de conversaciones.ver_todas del resumen, atribución de M9 por mensajes.autor_id y escritura de cotizaciones.creado_por (la columna existía y nadie la escribía: sin eso el resumen propio salía en cero para todos los asesores). e2e con dos asesores y dos agencias: no se corrieron en local (ninguna sesión levanta Postgres aquí), las corrió el CI y pasaron. La pantalla NO se probó: la web no lee alcance hasta T-343. Cola que deja: T-513 y T-514."
   - id: T-343
     title: "F4: dashboard del asesor, móvil primero"
     type: feature
@@ -9497,11 +9500,12 @@ tasks:
     phase: 1
     priority: P2
     effort: S
-    status: review
+    status: done
+    done_at: 2026-11-21T09:05:00.000Z
     acceptance:
       - "El catalogo de permisos vive en tres literales a mano (packages/contracts/src/identidad.ts, el CHECK roles_permisos_del_catalogo y packages/database/tests/permisos-de-reportes.spec.ts) y ninguna prueba compara los conjuntos"
       - "Una prueba lee pg_get_constraintdef del CHECK y lo contrasta con PERMISOS: falla si difieren en cualquier sentido"
-    notes: "Rama test/db-T-505-permisos-check-vs-contratos: packages/database/tests/catalogo-de-permisos.spec.ts lee pg_get_constraintdef de roles_permisos_del_catalogo y lo compara con PERMISOS en los dos sentidos (el mensaje dice que permiso falta y en cual lado). permisos-de-reportes.spec.ts deriva CATALOGO_ANTERIOR de PERMISOS. Anade @viajapro/contracts como devDependency de packages/database (ruta protegida: aprobacion del propietario). Sin verificar en local (sin Postgres): pendiente del CI. En cola: DUENO_ANTES/ASESOR_ANTES/OPERACIONES_ANTES siguen a mano (son fotos historicas) y los CHECK de otras columnas de permisos no se comparan."
+    notes: "Rama test/db-T-505-permisos-check-vs-contratos: packages/database/tests/catalogo-de-permisos.spec.ts lee pg_get_constraintdef de roles_permisos_del_catalogo y lo compara con PERMISOS en los dos sentidos (el mensaje dice que permiso falta y en cual lado). permisos-de-reportes.spec.ts deriva CATALOGO_ANTERIOR de PERMISOS. Anade @viajapro/contracts como devDependency de packages/database (ruta protegida: aprobacion del propietario). Integrado como #416 (d7ce0289) con los 14 checks en verde; verificado en el log del CI que catalogo-de-permisos.spec.ts corre de verdad contra Postgres (3 pruebas) y que NO es vacua: afirma que leyo al menos un permiso del CHECK y prueba el comparador en los dos sentidos. En cola: DUENO_ANTES/ASESOR_ANTES/OPERACIONES_ANTES siguen a mano (son fotos historicas) y los CHECK de otras columnas de permisos no se comparan."
     source: "auditoria de #407, 2026-11-21"
     created_at: 2026-11-21T20:00:00.000Z
     owner: datos
@@ -9568,7 +9572,7 @@ tasks:
       - "Cinco ejecuciones seguidas del CI sin rojo por esto"
     source: "resto de T-503, #408, 2026-11-21"
     created_at: 2026-11-21T20:00:00.000Z
-    notes: "Hecho en el PR de T-510: e2e de apps/api en serie y prueba del indice sobre la definicion del indice. Quedan: deadlocks 40P01 sin reproducir (hipotesis en la bitacora 2026-11-21-t510) y las cinco corridas limpias del CI."
+    notes: "Hecho en el PR de T-510: e2e de apps/api en serie y prueba del indice sobre la definicion del indice. Integrado como #415 (87981c6b). Medido por la madre, que nadie lo habia medido: la ejecucion en serie sube el job test de 3m11s a 4m26s, un 40% mas en cada PR. SIGUE ABIERTA: deadlocks 40P01 sin reproducir ni cerrar (hipotesis en la bitacora 2026-11-21-t510) y cero de cinco corridas limpias del CI. La prueba del indice ya no comprueba que el planificador lo elija, solo que el indice existe con la forma correcta."
     owner: qa
   - id: T-511
     title: "Probar el ingreso por apodo a 390 px contra la API real"
@@ -9598,6 +9602,179 @@ tasks:
     source: "registro tardio (R14): las ramas y PR del apodo usaron «T-362», que es otra tarea (subdominio por agencia) y sigue abierta; la rama original era a/T-000-apodo-ingreso-web"
     created_at: 2026-11-21T20:30:00.000Z
     owner: backend
+  - id: T-520
+    title: "Web: formato.ts mantiene su propia tabla de decimales por moneda, en paralelo al dominio"
+    type: refactor
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    acceptance:
+      - "apps/web/src/lib/formato.ts:79 decide los decimales con `moneda === 'COP' ? 0 : 2`, una segunda fuente de verdad frente a MONEDAS de packages/domain (R8). Hoy coinciden; se rompen el dia que entre una moneda de 3 decimales"
+      - "El formateo toma los decimales de MONEDAS, y una prueba falla si las dos tablas dejan de coincidir"
+    source: "auditoria independiente de #410 (T-331), 2026-11-21"
+    created_at: 2026-11-21T09:10:00.000Z
+    owner: frontend
+  - id: T-521
+    title: "Web: un monto tecleado en formato de EE. UU. se interpreta como es-CO y falla por mil"
+    type: feature
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    acceptance:
+      - "aUnidadesMinimas acepta `1.250` en USD como mil doscientos cincuenta: es coherente con la regla es-CO, pero quien teclee a la americana registra un pago 1000 veces mayor"
+      - "Mitigacion acordada: eco en vivo bajo el campo con el importe ya normalizado, para que la asesora vea lo que va a registrar antes de pulsar"
+    source: "auditoria independiente de #410 (T-331), 2026-11-21"
+    created_at: 2026-11-21T09:10:00.000Z
+    owner: frontend
+  - id: T-515
+    title: "Web: mock-cobros.ts entra al bundle de produccion por import estatico"
+    type: chore
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    acceptance:
+      - "Solo lo separa NEXT_PUBLIC_USE_REAL_CRM=false; registrar ya esta bloqueado con MODO_DEMO, pero el codigo viaja igual"
+      - "Una guarda de build deja fuera el simulador en produccion, y una prueba lo comprueba"
+    source: "auditoria independiente de #410 (T-331), 2026-11-21"
+    created_at: 2026-11-21T09:10:00.000Z
+    owner: frontend
+  - id: T-516
+    title: "Cobros: la idempotencia del servidor ignora referencia y nota, y el cambio se pierde en silencio"
+    type: fix
+    phase: 1
+    priority: P2
+    effort: S
+    status: done
+    done_at: 2026-11-21T10:20:00.000Z
+    acceptance:
+      - "Un reintento con la misma clave pero la nota editada devuelve 200 con la fila original: la asesora cree que corrigio la nota y no corrigio nada"
+      - "O el servidor rechaza el reintento con datos distintos, o lo dice en la respuesta; en silencio no"
+    source: "auditoria independiente de #410 (T-331), 2026-11-21"
+    created_at: 2026-11-21T09:10:00.000Z
+    owner: backend
+    notes: "Integrada como #420 (38c2ee47). Decision: RECHAZAR con 409, no aceptar-y-avisar. mismoContenido compara ahora todo el cuerpo (referencia, nota y motivo ademas del dinero); si algo difiere, 409 CLAVE_DE_IDEMPOTENCIA_REUTILIZADA y no se escribe nada. El reintento IDENTICO sigue devolviendo 200 con la misma fila y sin segunda fila: eso es lo que impide cobrar dos veces y no se toco. Razonado en ADR-0036, que enmienda solo el paso 2 del ADR-0034 4. Auditoria independiente hecha por la madre (es dinero, R13): SIN BLOQUEANTES; verifico que no hay ambiguedad null/undefined/vacio, que el monto sigue en bigint, que la carrera la cierra el indice unico (tenant_id, clave_idempotencia) con ON CONFLICT DO NOTHING mas relectura, y que la clave se compara dentro de la agencia. Las e2e las corrio el CI, no la sesion. Cola que deja: T-522 a T-525."
+  - id: T-517
+    title: "Web: cobro.avisos no se pinta en ningun sitio"
+    type: feature
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    acceptance:
+      - "FECHA_LIMITE_POSTERIOR_AL_PAGO_TOTAL_DEL_MAYORISTA no se ve en la pantalla aunque el servidor lo envie"
+      - "Los avisos del cobro se muestran en el panel, con su tono"
+    source: "auditoria independiente de #410 (T-331) y traspaso de la sesion, 2026-11-21"
+    created_at: 2026-11-21T09:10:00.000Z
+    owner: frontend
+  - id: T-518
+    title: "Web: un error de red en el panel de cobro se explica como falta de permiso"
+    type: fix
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    acceptance:
+      - "Si falla la sesion, el panel dice «tu rol no incluye…» cuando en realidad fue un error de red: el mensaje acusa a la asesora de algo que no pasa"
+      - "Se distingue el 401/403 real del fallo de transporte. Tambien: crypto.randomUUID exige contexto seguro, conviene fallar con un mensaje claro si no lo hay"
+    source: "auditoria independiente de #410 (T-331), 2026-11-21"
+    created_at: 2026-11-21T09:10:00.000Z
+    owner: frontend
+  - id: T-519
+    title: "Cobros: nota y referencia se guardan en claro y el historial es inmutable"
+    type: security
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    acceptance:
+      - "La nota la escribe una persona y puede acabar conteniendo datos de tarjeta pese al aviso; hoy queda en claro y no se puede borrar"
+      - "Entra en el alcance de ADR-0015 (cifrado de PII), que sigue pendiente; hasta entonces el aviso de la pantalla ya dice la verdad"
+    source: "auditoria independiente de #410 (T-331), 2026-11-21"
+    created_at: 2026-11-21T09:10:00.000Z
+    owner: datos
+  - id: T-513
+    title: "Retirar el alias transitorio ResumenDeReportes y dejar solo la unión discriminada"
+    type: chore
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    depends_on: [T-342, T-343]
+    acceptance:
+      - "La web lee `alcance` y `asesorId` de la respuesta; deja de construir resúmenes sin alcance"
+      - "En packages/contracts, `ResumenDeReportes` vuelve a ser el nombre de la unión discriminada y desaparece el objeto permisivo con las dos claves opcionales"
+    source: "T-342: el carril de API no toca apps/web, así que las dos claves nuevas entraron opcionales de forma transitoria para no romper la compilación de la web"
+    created_at: 2026-11-21T22:00:00.000Z
+    owner: frontend
+  - id: T-514
+    title: "cotizaciones.actualizado_por no se escribe nunca"
+    type: chore
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    acceptance:
+      - "Al añadir versión o cambiar estado, `cotizaciones.actualizado_por` guarda el usuario de la sesión, como ya hace `crm`"
+      - "Si se decide que la columna no hace falta, se retira con migración nueva en vez de quedar muerta"
+    source: "T-342: al escribir `creado_por` para la atribución de reportes se vio que la columna hermana sigue sin escribirse. No bloquea: ningún reporte la usa"
+    created_at: 2026-11-21T22:00:00.000Z
+    owner: backend
+  - id: T-522
+    title: "Cobros: en una fila tachada, un reintento con otro texto vuelve a descartar la edicion en silencio"
+    type: fix
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    acceptance:
+      - "Redaccion corregida por la auditoria independiente de #420: la version anterior pedia fijar que el tachado vacia nota y referencia a la vez, y eso YA esta fijado por el CHECK pagos_tachado_sin_texto (migracion 20261121140000, linea 237) y por aislamiento.spec.ts. Aquella tarea sobraba"
+      - "Lo que si queda: mismoContenido se salta nota y referencia cuando nota_tachada_en no es nulo, asi que sobre una fila tachada un reintento con texto distinto responde 200 y descarta la edicion sin avisar. Es exactamente la ceguera que T-516 prohibe, reducida a un caso de operacion manual"
+      - "O la fila tachada tambien responde 409 ante texto distinto, o se documenta por que ahi si es aceptable"
+    source: "auditoria independiente de #420 (T-516), 2026-11-21"
+    created_at: 2026-11-21T09:50:00.000Z
+    owner: backend
+  - id: T-523
+    title: "Cobros: falta e2e por HTTP del reintento con motivo distinto"
+    type: test
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    acceptance:
+      - "El reintento con la misma clave y distinto motivo (AJUSTE, PENALIDAD, REVERSO) solo tiene prueba unitaria; por HTTP, con Zod de por medio, no se prueba"
+      - "Una e2e cubre ese camino como ya se cubren referencia y nota"
+    source: "auditoria independiente de #420 (T-516), 2026-11-21"
+    created_at: 2026-11-21T09:50:00.000Z
+    owner: qa
+  - id: T-524
+    title: "Cobros: un cliente no-web puede recibir 409 por un texto semanticamente igual"
+    type: chore
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    acceptance:
+      - "La comparacion de referencia y nota es exacta tras trim. Un cliente que mande el mismo texto con otra normalizacion Unicode o distinta caja recibira 409 por algo que una persona leeria como identico"
+      - "Hoy no afecta: el unico cliente es la web, que manda el texto tal cual lo tecleo la asesora. Decidir al abrir la API a terceros (normalizar NFC, o documentar que la comparacion es byte a byte)"
+    source: "auditoria independiente de #420 (T-516), 2026-11-21"
+    created_at: 2026-11-21T09:50:00.000Z
+    owner: backend
+  - id: T-525
+    title: "Web: reutilizar una clave en otro archivo da un mensaje que no encaja con la pantalla"
+    type: fix
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    acceptance:
+      - "Si una clave se reutiliza contra un archivo distinto, el 409 llega a una pantalla donde no se registro nada y el mensaje dice «ya se habia registrado», que ahi no es cierto"
+      - "El mensaje distingue el choque de clave dentro del mismo archivo del de otro archivo"
+    source: "auditoria independiente de #420 (T-516), 2026-11-21"
+    created_at: 2026-11-21T09:50:00.000Z
+    owner: frontend
   - id: T-526
     title: "Subir LIMITE_TASA_POR_TENANT en el job navegador del CI (hoy 600/min)"
     type: chore
@@ -9610,3 +9787,18 @@ tasks:
     source: "T-511: la lista de miembros dio 429 en la corrida del CI; la prueba lo tolera pulsando «Reintentar»"
     created_at: 2026-11-21T22:00:00.000Z
     owner: devops
+  - id: T-527
+    title: "ADR-0035 §1 promete validar el asesorId de alcance AGENCIA y el codigo lo devuelve tal cual"
+    type: chore
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    acceptance:
+      - "ADR-0035 §1 dice que el asesorId pedido en alcance AGENCIA va «validado contra la agencia»; alcance-de-reporte.ts lo devuelve sin validar. Hoy es inocuo: RLS mas el filtro por tenant_id dan cero filas, y la e2e lo fija como comportamiento esperado"
+      - "O se valida que el asesor pertenece a la agencia, o se corrige la frase del ADR. Lo que no puede quedarse es un ADR que promete mas de lo que el codigo hace"
+      - "Relacionado, de la misma auditoria: los adaptadores ramifican por alcance.asesorId === null en vez de por alcance.nivel, asi que el unico guardian de que PROPIO nunca quede sin predicado es el tipo; y VentasDeUnaMoneda no es strict() con neto y margen opcionales, asi que la validacion de salida no atraparia una fuga de margen"
+    source: "auditoria independiente de #417 (T-342), 2026-11-21"
+    created_at: 2026-11-21T10:30:00.000Z
+    owner: backend
+

@@ -132,6 +132,13 @@ export const IdEnMinusculas = z
   .uuid()
   .transform((id) => id.toLowerCase());
 
+/**
+ * El cliente la genera al abrir el formulario y la repite en cada reintento (ADR-0034 §4). Un
+ * reintento con la misma clave debe traer **el cuerpo idéntico**, texto libre incluido: si algo
+ * difiere —aunque sea solo la `nota` o la `referencia`— el servidor responde `409`
+ * `CLAVE_DE_IDEMPOTENCIA_REUTILIZADA` y no guarda nada (ADR-0036). Para corregir lo que ya quedó
+ * escrito hay que reversar y volver a registrar, que es de `cobro.corregir`.
+ */
 const ClaveDeIdempotencia = IdEnMinusculas;
 
 /** Monto positivo: entero en texto, 1..10^15 − 1, con su moneda. */

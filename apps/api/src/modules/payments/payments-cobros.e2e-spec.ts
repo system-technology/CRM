@@ -13,7 +13,8 @@
  *   · PERMISOS con sesiones reales: ASESOR solo registra PAGO; DEVOLUCION, AJUSTE, PENALIDAD, REVERSO,
  *     plazo y parámetros exigen `cobro.corregir`; sin `cobro.ver` no se lee;
  *   · `registrado_por` sale de la sesión (el cuerpo con `registradoPor` es un 400);
- *   · IDEMPOTENCIA: mismo contenido 200, distinto 409, y concurrencia (una sola fila);
+ *   · IDEMPOTENCIA: mismo contenido 200, distinto 409 —incluido el texto libre: otra `nota`,
+ *     `referencia` o `motivo` es otro contenido (T-516)—, y concurrencia (una sola fila);
  *   · tipo según el estado del archivo, devolución y reverso sin lo pagado en negativo, penalidad
  *     acotada, `pagado_el` no futuro, moneda del archivo, Luhn sin repetir el valor, sobrepago;
  *   · la CARRERA registrar-pago vs cancelar-archivo, serializada por el `FOR SHARE` del puerto;
@@ -503,6 +504,35 @@ describe('idempotencia (R5)', () => {
     }
     const filas = await pagosEnBase(TENANT_A, a.id);
     expect(filas.filter((f) => f.monto === '50000')).toHaveLength(1);
+  });
+
+  // T-516: el texto libre cuenta. Antes, reintentar con la nota corregida respondía 200 con la
+  // fila vieja y la corrección se perdía en silencio — y deshacerla es de `cobro.corregir`.
+  it('la misma clave con otra nota o referencia: 409, y lo guardado no cambia', async () => {
+    const a = archivos.principal;
+    const cuerpo = pago(3_000n, { referencia: 'TRX-1', nota: 'abono de la señora' });
+    expect((await comoMiembro('asesor', 'POST', rutaPagos(a.id), cuerpo)).estado).toBe(201);
+
+    for (const cambio of [
+      { nota: 'abono del señor' },
+      { referencia: 'TRX-2' },
+      { nota: undefined },
+    ]) {
+      const otro = await comoMiembro('asesor', 'POST', rutaPagos(a.id), { ...cuerpo, ...cambio });
+      expect(otro.estado, otro.texto).toBe(409);
+      expect(codigo(otro.json)).toBe('CLAVE_DE_IDEMPOTENCIA_REUTILIZADA');
+    }
+
+    // El reintento IDÉNTICO sigue siendo el mismo movimiento: 200, sin cobrar dos veces.
+    const igual = await comoMiembro('asesor', 'POST', rutaPagos(a.id), cuerpo);
+    expect(igual.estado).toBe(200);
+
+    const filas = await comoAgencia<{ nota: string | null; referencia: string | null }>(
+      TENANT_A,
+      'SELECT nota, referencia FROM pagos WHERE tenant_id = $1 AND clave_idempotencia = $2',
+      [TENANT_A, cuerpo.claveIdempotencia],
+    );
+    expect(filas).toEqual([{ nota: 'abono de la señora', referencia: 'TRX-1' }]);
   });
 
   it('concurrencia: seis peticiones iguales a la vez crean UNA fila (una 201, cinco 200)', async () => {

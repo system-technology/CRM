@@ -4,7 +4,9 @@
  *
  * **Orden dentro de UNA transacción** (R5), el del ADR:
  *   1. candado consultivo por archivo, en su propia sentencia;
- *   2. buscar por `(tenant, clave)`: si existe, comparar → 200 con la fila o 409; no se crea nada;
+ *   2. buscar por `(tenant, clave)`: si existe, comparar **todo** lo que mandó el cliente —el
+ *      dinero y también `referencia`, `nota` y `motivo` (T-516, ADR-0036)— → 200 con la fila o
+ *      409; no se crea nada;
  *   3. si no existe: leer el archivo (bloqueado contra la cancelación), validar las reglas con la
  *      suma ya serializada por el candado e insertar con `ON CONFLICT DO NOTHING` como red.
  *
@@ -36,7 +38,12 @@ import {
 } from '../domain/errors.js';
 import { pagoRegistrado, pagoReversado } from '../domain/eventos.js';
 import { diaEnZona } from '../domain/fechas.js';
-import { type Movimiento, mismoContenido, type MovimientoNuevo } from '../domain/movimiento.js';
+import {
+  type ContenidoDeMovimiento,
+  type Movimiento,
+  mismoContenido,
+  type MovimientoNuevo,
+} from '../domain/movimiento.js';
 import { validarMovimiento, validarReverso } from '../domain/reglas-de-registro.js';
 import { LeerCobroUseCase } from './leer-cobro.use-case.js';
 import { aMovimiento } from './cobro.mapper.js';
@@ -73,7 +80,9 @@ export class RegistrarMovimientoUseCase {
     const ahora = new Date();
     const montoUnidades = BigInt(entrada.monto.unidades);
     const tieneFechaYMedio = entrada.tipo === 'PAGO' || entrada.tipo === 'DEVOLUCION';
-    const candidato = {
+    // Todo lo que el cliente mandó, en la forma en que queda guardado: es lo que se inserta y es
+    // lo que se compara contra un reintento con la misma clave (T-516, ADR-0036).
+    const candidato: ContenidoDeMovimiento = {
       tipo: entrada.tipo,
       travelFileId: archivoId,
       montoUnidades,
@@ -82,6 +91,9 @@ export class RegistrarMovimientoUseCase {
       medio: tieneFechaYMedio ? entrada.medio : null,
       pagadorId: entrada.tipo === 'PAGO' ? (entrada.pagadorId ?? null) : null,
       reversoDeId: null,
+      referencia: tieneFechaYMedio ? (entrada.referencia ?? null) : null,
+      nota: tieneFechaYMedio ? (entrada.nota ?? null) : null,
+      motivo: entrada.tipo === 'AJUSTE' || entrada.tipo === 'PENALIDAD' ? entrada.motivo : null,
     };
 
     const { fila, creado } = await this.cobros.enTransaccion(async (ops) => {
@@ -112,13 +124,6 @@ export class RegistrarMovimientoUseCase {
       const nuevo: MovimientoNuevo = {
         id: uuidV7(),
         ...candidato,
-        referencia:
-          entrada.tipo === 'PAGO' || entrada.tipo === 'DEVOLUCION'
-            ? (entrada.referencia ?? null)
-            : null,
-        nota:
-          entrada.tipo === 'PAGO' || entrada.tipo === 'DEVOLUCION' ? (entrada.nota ?? null) : null,
-        motivo: entrada.tipo === 'AJUSTE' || entrada.tipo === 'PENALIDAD' ? entrada.motivo : null,
         claveIdempotencia: entrada.claveIdempotencia,
         registradoPor: usuarioId,
       };
@@ -148,17 +153,20 @@ export class RegistrarMovimientoUseCase {
     entrada: ReversarMovimiento,
   ): Promise<ResultadoDeRegistro> {
     const usuarioId = autor(PERMISO_PARA_CORREGIR);
+    // El motivo es lo único que el cliente escribe en un reverso: un reintento que lo cambia NO es
+    // el mismo movimiento (T-516, ADR-0036). Aceptarlo y guardar el motivo viejo sería mentirle.
+    const esElMismoReverso = (fila: Movimiento): boolean =>
+      fila.tipo === 'REVERSO' &&
+      fila.travelFileId === archivoId &&
+      fila.reversoDeId === pagoId &&
+      fila.motivo === entrada.motivo;
 
     const { fila, creado } = await this.cobros.enTransaccion(async (ops) => {
       await ops.bloquearCobroDelArchivo(archivoId);
 
       const previo = await ops.buscarPorClave(entrada.claveIdempotencia);
       if (previo) {
-        const esElMismo =
-          previo.tipo === 'REVERSO' &&
-          previo.travelFileId === archivoId &&
-          previo.reversoDeId === pagoId;
-        if (!esElMismo) throw new ClaveDeIdempotenciaReutilizadaError();
+        if (!esElMismoReverso(previo)) throw new ClaveDeIdempotenciaReutilizadaError();
         return { fila: previo, creado: false };
       }
 
@@ -194,7 +202,7 @@ export class RegistrarMovimientoUseCase {
       });
       if (!insertada) {
         const otra = await ops.buscarPorClave(entrada.claveIdempotencia);
-        if (!otra || otra.reversoDeId !== pagoId) throw new ClaveDeIdempotenciaReutilizadaError();
+        if (!otra || !esElMismoReverso(otra)) throw new ClaveDeIdempotenciaReutilizadaError();
         return { fila: otra, creado: false };
       }
       await ops.escribirEvento(
@@ -217,10 +225,7 @@ export class RegistrarMovimientoUseCase {
 }
 
 /** Reintento: el mismo contenido devuelve la fila existente; otro, un 409 tipado. */
-function igualOConflicto(
-  existente: Movimiento,
-  candidato: Parameters<typeof mismoContenido>[0],
-): Movimiento {
+function igualOConflicto(existente: Movimiento, candidato: ContenidoDeMovimiento): Movimiento {
   if (!mismoContenido(existente, candidato)) throw new ClaveDeIdempotenciaReutilizadaError();
   return existente;
 }

@@ -3,6 +3,11 @@
  * agregados de cotizaciones calculados en la base, bajo RLS y con `tenant_id` explícito en cada
  * consulta. Una transacción corta, solo lectura.
  *
+ * **El alcance decide qué filas entran** (ADR-0035 §2): «propio» es lo que YO cotizé
+ * (`cotizaciones.creado_por`), y no cambia al reasignar la oportunidad. Con alcance de agencia y
+ * sin asesor pedido no se añade ningún predicado de asesor. El id del asesor viaja parametrizado
+ * como cualquier otro valor.
+ *
  * **El neto no sale de la base sin permiso.** Con `incluirMargen = false` las sumas de neto y
  * margen ni siquiera forman parte de la consulta: no hay valor que filtrar después.
  *
@@ -16,6 +21,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../../shared/prisma/prisma.service.js';
+import type { AlcanceDeReporte } from '../../../shared/autorizacion/alcance-de-reporte.js';
 import {
   type CotizacionesAgregadas,
   PuertoCotizacionesParaReportes,
@@ -53,9 +59,16 @@ export class CotizacionesParaReportesPrisma extends PuertoCotizacionesParaReport
   async resumir(
     tenantId: string,
     rango: RangoDeReporte,
+    alcance: AlcanceDeReporte,
     incluirMargen: boolean,
   ): Promise<CotizacionesAgregadas> {
     const { desde, hasta } = rango;
+    // Un solo fragmento para las tres consultas: si una se olvidara del asesor, el reporte propio
+    // mezclaría las cifras de otro.
+    const delAsesor =
+      alcance.asesorId === null
+        ? Prisma.empty
+        : Prisma.sql`AND c.creado_por = ${alcance.asesorId}::uuid`;
 
     // Solo se suma lo que se va a mostrar. Fragmentos de `Prisma.sql`: los valores siguen
     // yendo parametrizados.
@@ -77,6 +90,7 @@ export class CotizacionesParaReportesPrisma extends PuertoCotizacionesParaReport
           FROM cotizaciones c
          WHERE c.tenant_id = ${tenantId}::uuid
            AND c.eliminado_en IS NULL
+           ${delAsesor}
            AND ((c.creado_en >= ${desde} AND c.creado_en < ${hasta})
              OR (c.enviada_en >= ${desde} AND c.enviada_en < ${hasta}))`;
 
@@ -90,6 +104,7 @@ export class CotizacionesParaReportesPrisma extends PuertoCotizacionesParaReport
             ON v.tenant_id = c.tenant_id AND v.cotizacion_id = c.id AND v.numero = c.version_enviada
          WHERE c.tenant_id = ${tenantId}::uuid
            AND c.eliminado_en IS NULL
+           ${delAsesor}
            AND c.estado = 'ACEPTADA'
            AND EXISTS (
                  SELECT 1 FROM cotizacion_cambios_estado h
@@ -105,6 +120,7 @@ export class CotizacionesParaReportesPrisma extends PuertoCotizacionesParaReport
           FROM cotizaciones c
          WHERE c.tenant_id = ${tenantId}::uuid
            AND c.eliminado_en IS NULL
+           ${delAsesor}
            AND c.estado = 'ACEPTADA'
            AND c.enviada_en >= ${desde} AND c.enviada_en < ${hasta}
            AND NOT EXISTS (

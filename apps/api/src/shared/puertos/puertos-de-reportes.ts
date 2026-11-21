@@ -8,8 +8,14 @@
  * calculados en la base: nunca filas, para que pedir un reporte no cueste leer cada cotización.
  *
  * El rango es `[desde, hasta)` en UTC (R9).
+ *
+ * **Todos reciben un `AlcanceDeReporte`** (ADR-0035 §1) y no un `asesorId` suelto: el alcance lo
+ * decide `alcanceDeReporte` a partir de la SESIÓN, nunca del parámetro del cliente, y un puerto
+ * nuevo no compila sin él. Cada adaptador traduce el alcance a la columna con la que atribuye sus
+ * filas (§2): `cotizaciones.creado_por`, `oportunidades.asesor_id`, `mensajes.autor_id`.
  */
 import type { CodigoMoneda } from '@viajapro/domain';
+import type { AlcanceDeReporte } from '../autorizacion/alcance-de-reporte.js';
 
 export interface RangoDeReporte {
   /** Inclusivo. */
@@ -49,6 +55,7 @@ export abstract class PuertoCotizacionesParaReportes {
   abstract resumir(
     tenantId: string,
     rango: RangoDeReporte,
+    alcance: AlcanceDeReporte,
     incluirMargen: boolean,
   ): Promise<CotizacionesAgregadas>;
 }
@@ -65,7 +72,11 @@ export interface EtapaConOportunidades {
 
 /** Lo que `analytics` le pide a `crm`. Una entrada por etapa de la agencia, también las vacías. */
 export abstract class PuertoOportunidadesParaReportes {
-  abstract porEtapa(tenantId: string, rango: RangoDeReporte): Promise<EtapaConOportunidades[]>;
+  abstract porEtapa(
+    tenantId: string,
+    rango: RangoDeReporte,
+    alcance: AlcanceDeReporte,
+  ): Promise<EtapaConOportunidades[]>;
 }
 
 export interface RespuestaAgregada {
@@ -80,5 +91,9 @@ export interface RespuestaAgregada {
 
 /** Lo que `analytics` le pide a `inbox`. */
 export abstract class PuertoRespuestaParaReportes {
-  abstract resumir(tenantId: string, rango: RangoDeReporte): Promise<RespuestaAgregada>;
+  abstract resumir(
+    tenantId: string,
+    rango: RangoDeReporte,
+    alcance: AlcanceDeReporte,
+  ): Promise<RespuestaAgregada>;
 }
