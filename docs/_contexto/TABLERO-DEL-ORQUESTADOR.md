@@ -22,6 +22,7 @@
 - **Sobre el medidor de consumo propio.** La madre saliente avisó de que un `0` al arrancar significa «todavía no hay dato», no «el instrumento está roto». **Confirmado aquí, y matizado:** `external_metadata.context_usage.used_tokens` marcó **`0` en dos lecturas separadas** (15:08 y 15:12 UTC), con trabajo real en medio. Así que **tampoco es solo retraso de un instante**. Se anota como **«sin dato todavía»** y se sigue midiendo en cada vuelta; no se construye ninguna teoría sobre esa lectura ni se usa para decidir que queda margen. `rate_limit_info` sí traía dato (`seven_day`, `allowed_warning`): es otra cosa, no el consumo de contexto.
 - **Sesiones hijas (2):**
   - `session_01R81Xh4VsA5hAVxGfnhUVR7` — carril `b`. Entregó **#446 (T-555), ya integrado**. A las 15:25 se le reparte **T-556**.
+  - `session_01R81Xh2nwGXCyRsqwWGZ8sf` — carril `b`, **T-561** (contrastes medidos), repartida a las 15:44 UTC. **Segunda sesión viva en el carril `b`**: se le dijo expresamente que no toque `mock-reportes-resumen.ts`, que es de T-556. Tocan archivos distintos; el riesgo es que un PR quede `behind`, no un conflicto.
   - `session_01R81Xh4pS7W4NfJkngVJGg1` — carril `a`, **T-549**, repartida a las 15:10 UTC. Encargo acotado: el filtro de «sin responsable» **antes** del tope de filas, **por puerto y sin JOIN entre contextos (R4)**, con orden explícita de **parar y avisar** si exigiera ADR o migración.
   - `session_01R81Xh2DhFQmHXUmF7Mqedn` — carril `a`, ociosa desde que entregó #441. **No se reutilizó**: una sesión nueva con `source_url` sale más barata que una con el contexto viejo encima.
   - `session_01R81Xh6LKjb37fMwSBRg2YL` — **ARCHIVADA a las 15:19 UTC**. El traspaso la daba por «MUERTA»: **era falso y costó una hora de sesión**. Estaba **bloqueada en un permiso**, se desbloqueó sola, implementó T-531/T-532 y abrió **#447** para descubrir que #441 ya lo había entregado (cerrado sin integrar, `main` intacto). Se archiva para que no pueda revivir otra vez. Gastó **226.328 tokens y 1,22 USD** en duplicar trabajo ya hecho.
@@ -61,6 +62,30 @@ después de entregar #441. **La orden queda metida en el prompt de la tarea prog
 - **El consumo real de una madre es mayor que el que traspasa**, porque sigue trabajando después de escribir el
   relevo: la de las 14:20 traspasó «275.757 tokens y 18,11 USD» y acabó en **307.625 y 21,32**. Al leer un
   traspaso, **tratar su cifra como un suelo, no como el total**.
+
+## 1.3 Revisión visual del propietario (2026-11-21, 15:40 UTC)
+
+Miró la aplicación y dijo: le gusta, pero **«el toque de contraste negro hace que se pierdan un poco los
+textos»**, y preguntó si se pueden manejar los dos modos. Preguntado dónde lo ve, señaló **la barra lateral,
+las pantallas de trabajo y el conjunto**.
+
+**Lo verificado antes de responderle, que cambió la respuesta:** los dos modos **ya existen** — `globals.css`
+redefine los tokens bajo `.dark` (`@variant dark`), **144 archivos** usan variantes `dark:`, y
+`selector-tema-densidad.tsx` ofrece claro / oscuro / seguir al sistema con persistencia en `viajapro_tema`.
+No hace falta construir el modo oscuro: hace falta **aplicarlo bien y que se lea**.
+
+- **T-561 (P2, repartida)** — el contraste. Como es sistemático y no de una pantalla, se arregla **en los
+  tokens**. Condición del encargo: **se mide, no se opina** (ratio por par texto/fondo, claro y oscuro, umbral
+  WCAG 2.1 AA) y lo que cierra la tarea es **una prueba que falle si un token baja del umbral**. Límite dado:
+  **la identidad no se toca**; se ajusta la luminancia, no la familia de color, y si hiciera falta cambiar el
+  azul de acento, la sesión para y pregunta, porque eso es decisión de marca del propietario.
+- **T-560 (P2, encolada)** — el tema **no se aplica en el arranque** (`layout.tsx` no lee la preferencia ni pone
+  la clase: primera pintura siempre clara, con parpadeo) y el conmutador **solo está montado en
+  `barra-modulos.tsx`**, así que desde el ingreso no se puede cambiar. Se reparte al liberarse el carril `b`:
+  no conviene una tercera sesión pisando `apps/web`.
+- **Inventariado, sin tocar:** la portada de ingreso usa colores **fijos fuera de los tokens**
+  (`#FDE68A`, `#C9A24B`, `bg-black/25` en `formulario-ingreso.tsx`), así que se ve igual en los dos modos. Es
+  estética de marca, no un defecto de contraste: lo decide el propietario.
 
 ## 2. Reglas operativas que no se olvidan
 
