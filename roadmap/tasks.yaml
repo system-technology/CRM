@@ -11643,6 +11643,19 @@ tasks:
         guardada"
       - "Criterio de cierre: con el sistema en oscuro y sin preferencia guardada, la app abre en oscuro sin
         parpadeo; el conmutador se alcanza desde cualquier pantalla privada; la eleccion sobrevive a recargar"
+      - "CORRECCION 2026-11-21: el diagnostico original de esta tarea, escrito por la madre orquestadora, era
+        FALSO en dos de sus tres puntos, y lo desmintio la sesion de carril b midiendolo en un navegador con la
+        CSP real y la hidratacion abortada. Queda escrito para que nadie lo vuelva a dar por cierto"
+      - "FALSO que el tema no se aplique al arrancar: layout.tsx importa SCRIPT_ANTI_FOUC de lib/tema-y-densidad.ts
+        y lo inyecta en <head> con el nonce de la CSP, antes de la hidratacion. No hay parpadeo"
+      - "FALSO que no se respete prefers-color-scheme en la primera visita: el tema por defecto es system y el
+        script resuelve con matchMedia. Medido en las cuatro combinaciones"
+      - "INEXACTO que el conmutador solo estuviera en la bandeja: MarcoDeTrabajo monta BarraModulos en TODO el
+        grupo (app). Lo que si faltaba, y es lo que se hizo, era el conmutador en las pantallas PUBLICAS y unas
+        pruebas de comportamiento del anti-FOUC"
+      - "APRENDIZAJE DE METODO: la afirmacion falsa nacio de un grep estrecho (localStorage|classList dentro de
+        layout.tsx) que no encontro nada. El script vive en otro archivo y entra como constante importada. NO
+        ENCONTRAR ALGO CON UN GREP NO DEMUESTRA QUE NO EXISTA, y menos para escribirlo como un hecho en el roadmap"
     source: "revision visual del propietario, 2026-11-21: «podemos manejar ambos modos oscuro y claro?»"
     created_at: 2026-11-21T15:40:00.000Z
     owner: frontend
@@ -11674,6 +11687,15 @@ tasks:
         corregir"
       - "Ojo con los colores fijos que no pasan por tokens (formulario-ingreso.tsx usa #FDE68A y #C9A24B a
         mano): inventariarlos, aunque arreglarlos pueda ir en otra tarea"
+      - "CORRECCION 2026-11-21: la premisa de esta tarea era FALSA. Se midieron los 19 pares que la aplicacion
+        usa de verdad, en claro y en oscuro, y NINGUNO incumplia AA por luminancia (el mas justo, 4,75:1)"
+      - "LO QUE SI ESTABA ROTO, y explica el reporte del propietario: 14 tonos de las familias ok y alerta se
+        usaban en 77 sitios de 24 archivos SIN estar declarados en @theme. En Tailwind v4 un tono no declarado NO
+        emite CSS, asi que la clase era inerte y en oscuro sobrevivia el color de claro. El boton de borrar una
+        etiqueta quedaba a 2,34:1 siendo una accion destructiva, y once insignias se pintaban casi blancas dentro
+        del tema oscuro: eso es el «se pierden los textos» que se reporto"
+      - "La compuerta que lo evita en el futuro no mide solo contraste: comprueba que TODO tono usado en el
+        codigo este declarado, recorriendo lo versionado con git ls-files"
     source: revision visual del propietario, 2026-11-21
     created_at: 2026-11-21T15:42:00.000Z
     owner: frontend
@@ -11842,3 +11864,96 @@ tasks:
     source: advertencia de T-562 (manual de usuario), 2026-11-21
     created_at: 2026-11-21T16:00:00.000Z
     owner: arquitecto
+  - id: T-569
+    title: "Web: 41 clases primary-* que no existen en ninguna paleta, asi que no generan CSS"
+    type: bug
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    acceptance:
+      - "bloque-etapas-pipeline.tsx, modal-reasignar.tsx y bandeja/[id]/page.tsx usan 41 clases de una familia
+        `primary` que NO existe ni en @theme ni en Tailwind: no emiten una sola linea de CSS"
+      - "Es EXACTAMENTE el mismo defecto que T-561 arreglo para ok y alerta, pero en una familia que ni siquiera
+        es nuestra. Esos elementos se estan pintando con el color que herede el contenedor, no con el que el
+        codigo dice"
+      - "No se arreglo en T-561 a proposito: decidir que debe ser `primary` (acento? neutral?) es una decision de
+        diseno, no un cambio mecanico"
+      - "La compuerta de T-561 (todo tono usado debe estar declarado) deberia extenderse para cazar tambien
+        familias inexistentes, no solo tonos ausentes de una familia que si existe"
+    source: "inventariado por la sesion de T-561 al entregar #454, 2026-11-21"
+    created_at: 2026-11-21T16:05:00.000Z
+    owner: diseno-ux
+  - id: T-570
+    title: "Web: unos 2.400 usos de paletas de fabrica que duplican los colores semanticos"
+    type: refactor
+    phase: 2
+    priority: P3
+    effort: L
+    status: backlog
+    acceptance:
+      - "Conteo de la sesion de T-561: amber 801, emerald 651, rose 422, red 292, cyan 113, sky 77, slate 75,
+        indigo 29, orange 6"
+      - "Donde significan «por vencer», «correcto» o «vencido» deberian ser aviso / ok / alerta, que son los
+        semanticos del CRM y los unicos que tienen regla de tema oscuro"
+      - "No es cosmetico: un color de fabrica no cambia con el tema, asi que cada uno es un sitio que puede
+        quedarse con el aspecto de claro dentro del tema oscuro"
+      - "Es L y de fase 2: se hace por zonas y con la compuerta de T-561 puesta, no de una sentada"
+    source: "inventariado por la sesion de T-561 al entregar #454, 2026-11-21"
+    created_at: 2026-11-21T16:05:00.000Z
+    owner: frontend
+  - id: T-571
+    title: "Web: colores escritos a mano en 12 archivos, fuera de los tokens"
+    type: refactor
+    phase: 2
+    priority: P3
+    effort: M
+    status: backlog
+    acceptance:
+      - "#C9A24B x15, #0B1F3A x10, #FACC15 x7, #06B6D4 x5, #FDE68A x3 y una quincena mas sueltos"
+      - "Incluye la portada de ingreso (formulario-ingreso.tsx), que por eso se ve igual en claro y en oscuro"
+      - "Decidir antes que es identidad de marca (y entonces se declara como token de marca, no se dispersa) y
+        que es un color suelto que deberia ser semantico. Es decision del propietario, no del equipo"
+      - "--color-acento-marca ya existe declarado y sin uso fuera de globals.css. Aviso medido: con el dorado por
+        defecto, el texto blanco encima da 2,40:1 (no llega a AA) y el texto oscuro 7,47:1"
+    source: "inventariado por la sesion de T-561 al entregar #454, 2026-11-21"
+    created_at: 2026-11-21T16:05:00.000Z
+    owner: diseno-ux
+  - id: T-572
+    title: "Web: no se encuentra donde se cambia el tema, aunque el conmutador exista en tres sitios"
+    type: bug
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    acceptance:
+      - "ORIGEN: el propietario pregunto el 2026-11-21 si se podian manejar los modos claro y oscuro SIN SABER
+        que el conmutador ya existia. Hicieron falta un manual, una sesion midiendo y DOS correcciones de la
+        orquestadora para establecer donde esta. Si no lo encuentra quien conoce el producto, una agencia tampoco"
+      - "Lo verificado en pantalla: en las paginas publicas esta en el pie, abajo a la derecha, con tres botones
+        (sol, luna, pantalla). Dentro de la aplicacion es el boton de abajo del menu lateral, junto a la campana,
+        y NO es un selector de tres opciones sino uno que ROTA Sistema -> Claro -> Oscuro -> Sistema"
+      - "Un control que rota sin decir que hace ni en que estado esta es el problema: no se descubre, y quien lo
+        pulsa no sabe si acaba de elegir «oscuro» o «lo que diga el sistema»"
+      - "Existe ademas SelectorTemaDensidad, un selector completo montado en barra-modulos.tsx:1038, pero NADIE
+        ha confirmado en pantalla como se llega a el. Averiguarlo es parte de la tarea"
+      - "No se pide rediseno: se pide que se encuentre y que diga en que estado esta. Etiqueta visible, titulo al
+        pasar por encima, o el selector de tres opciones en vez del que rota"
+    source: "revision visual del propietario y hallazgos del manual (T-562), 2026-11-21"
+    created_at: 2026-11-21T16:25:00.000Z
+    owner: diseno-ux
+  - id: T-573
+    title: "Web: MarcoDeTrabajo fija sus colores a mano en vez de usar los tokens"
+    type: refactor
+    phase: 2
+    priority: P3
+    effort: S
+    status: backlog
+    acceptance:
+      - "marco-de-trabajo.tsx fija bg-neutral-50 y dark:bg-neutral-950 en lugar de los tokens de globals.css"
+      - "Es el mismo patron que T-571 (colores a mano) y T-570 (paletas de fabrica), pero en el marco que envuelve
+        TODAS las pantallas privadas, asi que es el sitio donde mas se nota"
+      - "Lo dejo dicho la sesion de T-560 al entregar #457; no lo toco porque se cruzaba con T-561"
+    source: "aviso de la sesion de T-560 al entregar #457, 2026-11-21"
+    created_at: 2026-11-21T16:25:00.000Z
+    owner: frontend
