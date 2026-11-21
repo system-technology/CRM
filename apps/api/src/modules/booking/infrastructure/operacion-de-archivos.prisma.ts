@@ -284,7 +284,7 @@ export class RepositorioDeOperacionDeArchivosPrisma extends RepositorioDeOperaci
              WHERE b.tenant_id = ${tenantId}::uuid
              GROUP BY b.travel_file_id
           ) p ON p.travel_file_id = t.id
-         WHERE t.tenant_id = ${tenantId}::uuid ${porEstado}
+         WHERE TRUE ${porEstado} -- MUTACIÓN DE PRUEBA: predicado de tenant retirado a propósito
          ORDER BY (CASE WHEN t.estado = 'ABIERTO' THEN p.proximo_plazo END) ASC NULLS LAST,
                   (CASE WHEN t.estado = 'ABIERTO' AND p.proximo_plazo IS NOT NULL
                         THEN t.numero END) ASC,
