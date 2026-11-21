@@ -24,6 +24,9 @@ const SELECCION = {
   ventaUnidades: true,
   monedaIso: true,
   creadoEn: true,
+  adultos: true,
+  ninos: true,
+  infantes: true,
 } as const;
 
 interface FilaDeArchivo {
@@ -36,6 +39,9 @@ interface FilaDeArchivo {
   ventaUnidades: bigint;
   monedaIso: string;
   creadoEn: Date;
+  adultos: number;
+  ninos: number;
+  infantes: number;
 }
 
 const dia = (d: Date): string => d.toISOString().slice(0, 10);
@@ -107,6 +113,9 @@ export class ArchivoParaCobroDeBooking extends PuertoArchivoParaCobro {
       ventaUnidades: f.ventaUnidades,
       monedaIso: f.monedaIso,
       creadoEn: f.creadoEn,
+      adultos: f.adultos,
+      ninos: f.ninos,
+      infantes: f.infantes,
     };
   }
 

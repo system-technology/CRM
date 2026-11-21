@@ -122,6 +122,13 @@ export function aFilaDeCobro(archivo: ArchivoParaCobro, c: CobroCalculado): Fila
     contactoId: archivo.contactoId,
     destino: archivo.destino,
     fechaSalida: archivo.fechaSalida,
+    // R10: solo el recuento. Nunca nombres en esta vista (se exporta a CSV).
+    pasajeros: {
+      adultos: archivo.adultos,
+      ninos: archivo.ninos,
+      infantes: archivo.infantes,
+      total: archivo.adultos + archivo.ninos + archivo.infantes,
+    },
     total: aDinero(c.total),
     pagado: aDinero(c.pagado),
     saldo: aDinero(c.saldo),
