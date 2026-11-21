@@ -56,6 +56,46 @@ describe('auth-api (ADR-0011 / Tarea 0c.29)', () => {
       expect(mapearErrorAcceso('ORIGEN_NO_CONFIABLE')).toContain('origen de navegación no seguro');
       expect(mapearErrorAcceso('CODIGO_DESCONOCIDO', 'Mensaje fallback')).toBe('Mensaje fallback');
     });
+
+    it('NUNCA echa a la pantalla un volcado del servidor en vez de una frase', () => {
+      // Esto se vio de verdad en el staging de noviembre de 2026: la pantalla de ingreso mostró
+      // los `issues` de Zod en crudo, con nombres de campo y códigos de validación dentro.
+      const volcado =
+        '[ { "validation": "email", "code": "invalid_string", "message": "Invalid email", "path": [ "correo" ] } ]';
+      const pintado = mapearErrorAcceso('CODIGO_DESCONOCIDO', volcado);
+      expect(pintado).not.toContain('validation');
+      expect(pintado).not.toContain('invalid_string');
+      expect(pintado).not.toContain('path');
+      expect(pintado).toContain('Ocurrió un error');
+
+      // Un objeto serializado tampoco pasa.
+      expect(mapearErrorAcceso('X', '{"code":"ALGO"}')).toContain('Ocurrió un error');
+      // Pero una frase de verdad del servidor sí se respeta.
+      expect(mapearErrorAcceso('X', 'La agencia ya no existe.')).toBe('La agencia ya no existe.');
+    });
+
+    it('ENTRADA_INVALIDA dice QUÉ campo revisar, no «datos inválidos» a secas', () => {
+      expect(
+        mapearErrorAcceso('ENTRADA_INVALIDA', 'Hay datos que no cumplen el formato esperado.', {
+          contrasena: 'String must contain at least 1 character(s)',
+        }),
+      ).toBe('Revisa la contraseña e intenta de nuevo.');
+
+      expect(
+        mapearErrorAcceso('ENTRADA_INVALIDA', 'da igual', {
+          identificador: 'x',
+          contrasena: 'y',
+        }),
+      ).toBe('Revisa el correo o usuario y la contraseña e intenta de nuevo.');
+
+      // Sin detalles utilizables, un mensaje honesto en vez de inventarse el campo.
+      expect(mapearErrorAcceso('ENTRADA_INVALIDA', 'da igual')).toBe(
+        'Revisa los datos del formulario e intenta de nuevo.',
+      );
+      expect(mapearErrorAcceso('ENTRADA_INVALIDA', 'da igual', { '(raíz)': 'x' })).toBe(
+        'Revisa los datos del formulario e intenta de nuevo.',
+      );
+    });
   });
 
   describe('Modo Simulado / Offline (usaAuthReal = false)', () => {

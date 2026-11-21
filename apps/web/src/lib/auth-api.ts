@@ -49,11 +49,47 @@ export class AuthApiError extends Error {
   }
 }
 
+/** Cómo se llama cada campo en la pantalla, no en el contrato. */
+const NOMBRE_DEL_CAMPO: Record<string, string> = {
+  identificador: 'el correo o usuario',
+  correo: 'el correo',
+  contrasena: 'la contraseña',
+  codigo: 'el código',
+  agenciaId: 'la agencia',
+};
+
+/** `true` si el texto es una frase para una persona y no un volcado del servidor. */
+function esFraseHumana(texto: string | undefined): texto is string {
+  if (!texto) return false;
+  const t = texto.trim();
+  // Un JSON serializado (`[{"code":...}]`) empieza por corchete o llave. Eso llegó a verse en
+  // pantalla en el staging de noviembre de 2026: el usuario leyó los `issues` de Zod en crudo.
+  if (t.startsWith('[') || t.startsWith('{')) return false;
+  if (t.includes('"code"') || t.includes('"path"') || t.includes('"validation"')) return false;
+  return true;
+}
+
+/** Los campos que el servidor marcó mal, dichos como los ve quien rellena el formulario. */
+function camposInvalidos(detalles: unknown): string[] {
+  if (!detalles || typeof detalles !== 'object' || Array.isArray(detalles)) return [];
+  return Object.keys(detalles as Record<string, unknown>)
+    .map((clave) => NOMBRE_DEL_CAMPO[clave] ?? (/^[A-Za-z_][A-Za-z0-9_.]{0,39}$/.test(clave) ? clave : ''))
+    .filter((nombre) => nombre !== '');
+}
+
 /**
  * Mapea códigos de dominio de error de acceso (CodigoDeErrorDeAcceso) a mensajes
  * claros y accionables en español para el asesor.
+ *
+ * **Nunca devuelve el `message` del servidor sin mirarlo.** Ese `default` permisivo fue el camino
+ * por el que un volcado de Zod acabó en la pantalla de ingreso: la web pintaba lo que llegara.
+ * Ahora el mensaje del servidor solo pasa si parece una frase; si no, se usa el genérico.
  */
-export function mapearErrorAcceso(codigo: string, mensajeFallback?: string): string {
+export function mapearErrorAcceso(
+  codigo: string,
+  mensajeFallback?: string,
+  detalles?: unknown,
+): string {
   switch (codigo) {
     case 'CREDENCIALES_INVALIDAS':
       return 'Los datos no coinciden. Revisa tu correo o usuario y tu contraseña, o pide ayuda al administrador de tu agencia.';
@@ -75,10 +111,23 @@ export function mapearErrorAcceso(codigo: string, mensajeFallback?: string): str
       return 'El código ingresado no es válido, ha caducado o agotó sus intentos.';
     case 'ORIGEN_NO_CONFIABLE':
       return 'Petición bloqueada por origen de navegación no seguro.';
+    case 'ENTRADA_INVALIDA': {
+      // La API manda `details` campo por campo justo para esto: un «datos inválidos» a secas
+      // obliga a adivinar cuál de los campos está mal.
+      const campos = camposInvalidos(detalles);
+      // `noUncheckedIndexedAccess`: el acceso por índice es `string | undefined`, así que se
+      // desestructura en vez de indexar.
+      const [primero, ...resto] = campos;
+      if (primero === undefined) return 'Revisa los datos del formulario e intenta de nuevo.';
+      if (resto.length === 0) return `Revisa ${primero} e intenta de nuevo.`;
+      const ultimo = resto[resto.length - 1] as string;
+      const previos = [primero, ...resto.slice(0, -1)];
+      return `Revisa ${previos.join(', ')} y ${ultimo} e intenta de nuevo.`;
+    }
     default:
-      return (
-        mensajeFallback || 'Ocurrió un error al verificar tus credenciales. Intenta nuevamente.'
-      );
+      return esFraseHumana(mensajeFallback)
+        ? mensajeFallback
+        : 'Ocurrió un error al verificar tus credenciales. Intenta nuevamente.';
   }
 }
 
@@ -244,7 +293,7 @@ export async function iniciarSesionApi(credenciales: IniciarSesionTipo): Promise
     const analizado = EsquemaErrorApi.safeParse(cuerpo);
     if (analizado.success) {
       const { code, message, details } = analizado.data.error;
-      throw new AuthApiError(code, mapearErrorAcceso(code, message), res.status, details);
+      throw new AuthApiError(code, mapearErrorAcceso(code, message, details), res.status, details);
     }
     if (res.status === 401) {
       throw new AuthApiError(
@@ -314,7 +363,7 @@ export async function obtenerSesionActualApi(): Promise<SesionActualTipo> {
     const analizado = EsquemaErrorApi.safeParse(cuerpo);
     if (analizado.success) {
       const { code, message, details } = analizado.data.error;
-      throw new AuthApiError(code, mapearErrorAcceso(code, message), res.status, details);
+      throw new AuthApiError(code, mapearErrorAcceso(code, message, details), res.status, details);
     }
     throw new AuthApiError('ERROR_SERVIDOR', 'Error al consultar la sesión actual', res.status);
   }
@@ -375,7 +424,7 @@ export async function cambiarAgenciaActivaApi(tenantId: string): Promise<SesionA
     const analizado = EsquemaErrorApi.safeParse(cuerpo);
     if (analizado.success) {
       const { code, message, details } = analizado.data.error;
-      throw new AuthApiError(code, mapearErrorAcceso(code, message), res.status, details);
+      throw new AuthApiError(code, mapearErrorAcceso(code, message, details), res.status, details);
     }
     throw new AuthApiError('ERROR_SERVIDOR', 'Error al cambiar de agencia activa', res.status);
   }

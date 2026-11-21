@@ -9865,4 +9865,19 @@ tasks:
     source: "ADR-0033 aceptado, decision del propietario 2026-11-21"
     created_at: 2026-11-21T11:30:00.000Z
     owner: whatsapp
+  - id: T-535
+    title: "Errores de acceso: la web ya no pinta el mensaje del servidor sin mirarlo"
+    type: fix
+    phase: 1
+    priority: P1
+    effort: S
+    status: done
+    done_at: 2026-11-21T12:00:00.000Z
+    acceptance:
+      - "El staging mostro en la pantalla de ingreso el volcado de Zod en crudo (issues con validation, code y path). El build desplegado era viejo, pero el mecanismo seguia en main: el default de mapearErrorAcceso devolvia el message del servidor tal cual"
+      - "mapearErrorAcceso solo acepta el mensaje del servidor si parece una frase; un JSON serializado cae al generico. Prueba con el volcado literal que se vio en pantalla"
+      - "ENTRADA_INVALIDA pasa a estar mapeado y usa los details campo por campo que la API ya enviaba: dice que campo revisar en vez de «datos invalidos» a secas"
+    source: "captura del propietario en staging, 2026-11-21"
+    created_at: 2026-11-21T12:00:00.000Z
+    owner: frontend
 
