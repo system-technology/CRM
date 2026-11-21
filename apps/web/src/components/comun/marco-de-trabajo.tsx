@@ -3,6 +3,7 @@
 import React from 'react';
 import { usePathname } from 'next/navigation';
 import { BarraModulos } from '../bandeja/barra-modulos';
+import { CabeceraMovil } from './cabecera-movil';
 import { PieDePaginaPrivacidad } from '../privacidad/pie-de-pagina-privacidad';
 import { esDetalleMovilDeBandeja, moduloActivo } from '../../lib/navegacion';
 import { useTituloDeDocumento } from '../../lib/use-titulo-de-documento';
@@ -33,21 +34,25 @@ export function MarcoDeTrabajo({ children }: { children: React.ReactNode }) {
       {/* React 19 eleva <title> al <head> y gana al de `metadata` del layout raíz. */}
       <title>{titulo}</title>
       <BarraModulos />
-      <main
-        id="contenido"
-        className={`flex min-w-0 flex-1 flex-col overflow-y-auto ${
-          reservaBarraInferior ? 'pb-14 md:pb-0' : ''
-        }`}
-      >
-        {conPie ? (
-          <>
-            <div className="flex shrink-0 grow basis-full flex-col">{children}</div>
-            <PieDePaginaPrivacidad />
-          </>
-        ) : (
-          children
-        )}
-      </main>
+      {/* Columna de trabajo: en móvil, cabecera de 44 px con la lupa y debajo la región `main`. */}
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <CabeceraMovil />
+        <main
+          id="contenido"
+          className={`flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto ${
+            reservaBarraInferior ? 'pb-14 md:pb-0' : ''
+          }`}
+        >
+          {conPie ? (
+            <>
+              <div className="flex shrink-0 grow basis-full flex-col">{children}</div>
+              <PieDePaginaPrivacidad />
+            </>
+          ) : (
+            children
+          )}
+        </main>
+      </div>
     </div>
   );
 }
