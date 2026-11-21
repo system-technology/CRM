@@ -87,10 +87,15 @@ web, porque es el camino de error que esa pantalla maneja desde #410.
   una funcionalidad de corrección, no un reintento.
 - **Lo que no cambia:** el orden de la transacción, el candado consultivo, el `ON CONFLICT DO
   NOTHING`, las reglas de dominio, el esquema y los permisos. Sin migración.
-- **Riesgo aceptado:** la excepción de la fila tachada se apoya en que el tachado vacía `nota` y
-  `referencia` **a la vez** (lo impone el disparador de la migración
-  `20261121140000_pagos_del_viajero_libro_de_cobro`). Si algún día se tachara solo uno de los dos,
-  la comparación se relajaría de más. Queda en la cola.
+- **La excepción de la fila tachada no es un riesgo abierto: ya está fijada en la base.** El
+  `CHECK pagos_tachado_sin_texto` de la migración `20261121140000_pagos_del_viajero_libro_de_cobro`
+  (línea 237) declara `nota_tachada_en IS NULL OR (nota IS NULL AND referencia IS NULL)`, así que
+  **no puede existir** una fila tachada que conserve texto, y `aislamiento.spec.ts` rechaza un
+  tachado que vacíe solo `referencia`. La suposición de la que depende la excepción está impuesta
+  por una restricción y cubierta por una prueba, no por una convención.
+
+  Corregido por la auditoría independiente de este PR: la primera redacción lo daba por no fijado y
+  abría T-522 para fijarlo. Esa tarea sobraba y no se abre.
 
 ## Alternativas descartadas
 
