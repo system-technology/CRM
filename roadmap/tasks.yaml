@@ -6878,19 +6878,20 @@ tasks:
     phase: 2
     priority: P3
     effort: S
-    status: ready
+    status: done
     human_required: true
     depends_on: [T-261]
     acceptance:
       - "creado_en y actualizado_en los fija el disparador (hoy viajapro_app puede escribirlos a su antojo; es cosmético, pero sirve de auditoría si alguien llega a depender de ellos)"
-      - "scripts/mutaciones-aislamiento.mjs gana dos mutaciones: GRANT <dueño de la tabla> TO viajapro_app y DISABLE TRIGGER sobre perfiles_de_agencia; la prueba debe ponerse en rojo con cada una"
+      - "packages/database/scripts/mutaciones-aislamiento.mjs gana dos mutaciones: GRANT <dueño de la tabla> TO viajapro_app y DISABLE TRIGGER sobre perfiles_de_agencia; la prueba debe ponerse en rojo con cada una"
     files:
       - packages/database/prisma/migrations
       - packages/database/tests/aislamiento.spec.ts
-      - scripts/mutaciones-aislamiento.mjs
+      - packages/database/scripts/mutaciones-aislamiento.mjs
     source: auditoría de seguridad de T-261 (cola, 2026-11-20); scripts/ y migraciones piden al propietario (R11)
     created_at: 2026-11-21T00:10:00.000Z
     owner: datos
+    notes: "Integrada en #354 (migración 20261120160000, prueba P-7, mutaciones M22 y M23, numeradas tras la M21 del apodo). Las mutaciones nunca se ejecutaron y no prueban T-307 sino T-261: ver T-377. La auditoría de seguridad la dio por integrable; su cola es T-375, T-376 y T-377."
   - id: T-313
     title: 'N0: flujos críticos y personas, y validar el menú por tarea del día'
     type: docs
@@ -7664,3 +7665,58 @@ tasks:
     source: ADR-0031 (cola, 2026-11-20)
     created_at: 2026-11-20T20:30:00.000Z
     owner: frontend
+  - id: T-375
+    title: "perfiles_de_agencia: el disparador usa statement_timestamp() para creado_en y actualizado_en"
+    type: security
+    phase: 2
+    priority: P3
+    effort: S
+    status: ready
+    human_required: true
+    depends_on: [T-307]
+    acceptance:
+      - "Una migración NUEVA reemplaza proteger_verificacion_del_perfil y usa pg_catalog.statement_timestamp() en lugar de pg_catalog.now() (la 20261120160000 ya está aplicada y no se edita)"
+      - "Una prueba en aislamiento.spec.ts abre una transacción con viajapro_app, espera y escribe: creado_en y actualizado_en reflejan el momento del INSERT, no el del inicio de la transacción"
+    files:
+      - packages/database/prisma/migrations
+      - packages/database/tests/aislamiento.spec.ts
+    source: "auditoría de seguridad de T-307 (cola, 2026-11-20). now() es la hora de inicio de la transacción: viajapro_app puede abrir una, esperar y escribir, y las fechas quedan antedatadas (migración 20261120160000, líneas 44-45 y 57)"
+    created_at: 2026-11-21T00:00:00.000Z
+    owner: datos
+  - id: T-376
+    title: "Endurecer el cinturón de la migración 20261120160000 sobre proteger_verificacion_del_perfil"
+    type: security
+    phase: 2
+    priority: P3
+    effort: S
+    status: ready
+    human_required: true
+    depends_on: [T-307]
+    acceptance:
+      - "La comprobación final verifica por expresión regular las tres asignaciones (creado_en en INSERT, creado_en y actualizado_en en UPDATE), no solo la línea del UPDATE"
+      - "Exige que proconfig sea exactamente {search_path=\"\"}, sin ajustes extra"
+      - "Va en la misma migración nueva de T-375, no en una aparte"
+    files:
+      - packages/database/prisma/migrations
+    source: "auditoría de seguridad de T-307 (cola, 2026-11-20): las comprobaciones finales solo miran la línea del UPDATE y aceptan un proconfig con ajustes de más"
+    created_at: 2026-11-21T00:00:00.000Z
+    owner: datos
+  - id: T-377
+    title: "Mutación que cubra T-307 (M24) y evaluar correr mutaciones-aislamiento.mjs en el CI"
+    type: test
+    phase: 2
+    priority: P3
+    effort: M
+    status: ready
+    human_required: true
+    depends_on: [T-307]
+    acceptance:
+      - "M24 restaura el cuerpo de proteger_verificacion_del_perfil de T-268 (sin la fijación de fechas) y la prueba P-7 debe ponerse en rojo"
+      - "Se ejecutan por primera vez M22 y M23 (hoy nunca corrieron) y se anota el resultado"
+      - "Decisión escrita: correr packages/database/scripts/mutaciones-aislamiento.mjs en el CI, o por qué no"
+    files:
+      - packages/database/scripts/mutaciones-aislamiento.mjs
+      - .github/workflows/ci.yml
+    source: "auditoría de seguridad de T-307 (cola, 2026-11-20): M22 y M23 prueban T-261, ninguna mutación cubre T-307, y el script no corre en el CI"
+    created_at: 2026-11-21T00:00:00.000Z
+    owner: qa
