@@ -108,6 +108,28 @@ export const MAPA_ETIQUETAS_PERMISOS: Record<Permiso, EtiquetaPermiso> = {
       'Permite crear, renombrar, cambiar el color, ordenar y borrar las etiquetas de conversación de la agencia.',
     categoria: 'bandeja',
   },
+  // T-329: solo el texto de los permisos, para que el mapa siga cubriendo el contrato. Las
+  // pantallas de cobro son de T-331 y T-332.
+  'cobro.ver': {
+    clave: 'cobro.ver',
+    nombre: 'Ver cobros',
+    descripcion:
+      'Permite consultar el saldo, el historial de pagos y la vista de quién pagó y quién debe de los archivos de viaje.',
+    categoria: 'archivo',
+  },
+  'cobro.registrar': {
+    clave: 'cobro.registrar',
+    nombre: 'Registrar pagos',
+    descripcion: 'Permite registrar los pagos que hace el viajero en un archivo de viaje.',
+    categoria: 'archivo',
+  },
+  'cobro.corregir': {
+    clave: 'cobro.corregir',
+    nombre: 'Corregir cobros',
+    descripcion:
+      'Permite registrar devoluciones, ajustes del total, penalidades y reversos, y cambiar la fecha límite de cobro.',
+    categoria: 'archivo',
+  },
   'usuarios.administrar': {
     clave: 'usuarios.administrar',
     nombre: 'Administrar equipo',

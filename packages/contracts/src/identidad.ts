@@ -5,7 +5,7 @@
  * invariante del dominio; cómo lo agrupa cada agencia en roles es política (tabla `roles`,
  * R12). Este enum es la fuente de verdad, y la base lo refleja en el `CHECK
  * roles_permisos_del_catalogo` (migración `20261019230000`, ampliado en `20261026120000`,
- * `20261104130000`, `20261118100000` y `20261121110000`). Añadir un permiso es editar los dos: un permiso que la base no admite no
+ * `20261104130000`, `20261118100000`, `20261121110000` y `20261121140000`). Añadir un permiso es editar los dos: un permiso que la base no admite no
  * se puede asignar, y uno que el código no conoce no autoriza nada.
  */
 
@@ -56,6 +56,20 @@ export const PERMISOS = [
    * rol `DUENO`. T-324, migración `20261121110000`.
    */
   'etiquetas.administrar',
+  /**
+   * Ver el cobro de los archivos de viaje: saldo, historial de movimientos y la vista «quién pagó y
+   * quién debe», de toda la agencia. Sembrado a `DUENO`, `ASESOR` y `OPERACIONES`. ADR-0034 §6,
+   * T-329, migración `20261121140000`.
+   */
+  'cobro.ver',
+  /** Registrar un PAGO del viajero (y solo PAGO). Sembrado a `DUENO` y `ASESOR`. ADR-0034 §6. */
+  'cobro.registrar',
+  /**
+   * Lo que cambia lo que el cliente debe por fuera de un pago normal: DEVOLUCION, AJUSTE, PENALIDAD,
+   * REVERSO, la fecha límite de cobro de un archivo y los días por defecto de la agencia. Sembrado
+   * SOLO a `DUENO` (separación de funciones: quien registra no compensa). ADR-0034 §6.
+   */
+  'cobro.corregir',
 ] as const;
 
 export const Permiso = z.enum(PERMISOS);
