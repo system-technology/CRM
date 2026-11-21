@@ -11363,9 +11363,41 @@ describe('ADR-0031 §4 (PR 1b) — crear_agencia no da de alta una segunda agenc
 
     // REPEATABLE READ: la instantánea sería la del principio de la transacción y dos altas
     // simultáneas podrían ver «cero agencias» las dos. Con la guarda activa, cerrada.
+    //
+    // Vaciar `tenants` aquí NO puede ir por `borrarTenants`: bajo REPEATABLE READ sus borrados en
+    // cascada dieron 40001 en CI (ExecDelete), mientras el mismo barrido en READ COMMITTED pasa.
+    // Causa probable, no confirmada en local: bajo este nivel las acciones RI en cascada se
+    // comprueban contra una instantánea cruzada, que no admite filas que el barrido ya modificó en
+    // sentencias anteriores (READ COMMITTED las reevalúa). Como superusuario (el contenedor de CI) se
+    // vacía `tenants` sin disparadores ni acciones RI (session_replication_role = replica): las
+    // filas hijas quedan huérfanas solo dentro de esta transacción, que se deshace. Sin superusuario
+    // se intenta el camino de siempre.
+    const vaciarTenantsBajoRepeatableRead = async (): Promise<void> => {
+      const { rows } = await admin.query(
+        'SELECT rolsuper FROM pg_roles WHERE rolname = current_user',
+      );
+      if (rows[0]?.rolsuper !== true) {
+        await borrarTodas();
+        return;
+      }
+      await admin.query("SET LOCAL session_replication_role = 'replica'");
+      await admin.query('DELETE FROM tenants');
+      await admin.query("SET LOCAL session_replication_role = 'origin'");
+      const { rows: quedan } = await admin.query('SELECT count(*)::int AS n FROM tenants');
+      expect(quedan[0]?.n, 'tenants vacía dentro de la transacción').toBe(0);
+    };
     await enTransaccionRevertida(async () => {
       await prepararTransaccion(admin);
-      await borrarTodas();
+      await vaciarTenantsBajoRepeatableRead();
+      // Las otras dos causas de VPR05 están descartadas: cero agencias, índice global y `tenants`
+      // sin RLS. Lo único que cierra es el nivel de aislamiento.
+      const { rows: estado } = await admin.query(
+        `SELECT current_setting('transaction_isolation') AS aislamiento,
+                (SELECT count(*)::int FROM tenants) AS agencias,
+                (SELECT relrowsecurity FROM pg_class WHERE oid = 'public.tenants'::regclass) AS rls`,
+      );
+      expect(estado).toEqual([{ aislamiento: 'repeatable read', agencias: 0, rls: false }]);
+      expect(await deteccionDeLaSemilla(admin), 'el índice sigue global').toBe(true);
       const intento = await intentarAlta(admin, await prepararAlta(admin, 'ap14-rr'));
       expect(intento).toEqual({ code: 'VPR05', message: MENSAJE_VPR05 });
     }, 'BEGIN ISOLATION LEVEL REPEATABLE READ');
