@@ -1,7 +1,6 @@
 'use client';
 
 import React, { Suspense, useCallback, useEffect, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
 import {
   AlertTriangle,
   BarChart3,
@@ -15,6 +14,7 @@ import { EsqueletoReportes } from '../../../components/comun/esqueletos';
 import { DashboardAdmin } from '../../../components/dashboard-admin/dashboard-admin';
 import { formatearDinero, ZONA_HORARIA_COLOMBIA, formatearFecha } from '../../../lib/formato';
 import { usePermisos } from '../../../lib/permisos';
+import { useVistaDemo } from '../../../lib/vista-demo';
 import { estaUsandoApiReal, obtenerPendientesDelDiaApi } from '../../../lib/crm-api';
 import { MisNumeros, type SeguimientosDelAsesor } from '../../../components/reportes/mis-numeros';
 import { tituloDeReportes, tituloDeReportesSinRespuesta } from '../../../lib/alcance-de-vista';
@@ -70,10 +70,9 @@ interface ReportesPageProps {
 
 function ReportesContenido({ ahora }: ReportesPageProps) {
   const { sesion } = usePermisos();
-  const searchParams = useSearchParams();
-  // Solo demostración: qué alcance simular. Con la API real lo decide el servidor.
-  const alcanceDemo: 'PROPIO' | 'AGENCIA' =
-    searchParams?.get('alcanceDemo') === 'propio' ? 'PROPIO' : 'AGENCIA';
+  // Solo demostración: qué alcance simular (la vista elegida en la insignia). Con la API real lo decide el servidor.
+  const { vista: vistaDeLaDemo } = useVistaDemo();
+  const alcanceDemo: 'PROPIO' | 'AGENCIA' = vistaDeLaDemo === 'asesor' ? 'PROPIO' : 'AGENCIA';
   // «Míos» filtra la vista de agencia; la API lo impone (un ajeno sin permiso responde 403).
   const [soloMios, setSoloMios] = useState(false);
   const [periodo, setPeriodo] = useState<RangoPeriodo>('este_mes');
