@@ -5,6 +5,7 @@ import type { CotizacionResumen, Mensaje } from '@viajapro/contracts';
 import { FileText, X, Send, AlertTriangle, CheckCircle2, Loader2, Sparkles } from 'lucide-react';
 import { formatearDinero, formatearFecha } from '../../lib/formato';
 import { inboxApi } from '../../lib/inbox-api';
+import { cambiarEstadoCotizacionApi } from '../../lib/cotizaciones-api';
 import { interpretarErrorDeEnvio, type DetalleErrorEnvio } from '../../lib/errores-de-envio';
 
 export interface ModalEnviarCotizacionProps {
@@ -13,6 +14,8 @@ export interface ModalEnviarCotizacionProps {
   contactoTelefono: string;
   ventanaAbierta: boolean;
   cotizaciones: CotizacionResumen[];
+  /** La cotización que llega elegida (p. ej. desde su detalle); por omisión, la primera. */
+  cotizacionInicialId?: string | undefined;
   onCerrar: () => void;
   onCotizacionEnviada: (mensaje: Mensaje) => void;
 }
@@ -25,12 +28,14 @@ export function ModalEnviarCotizacion({
   contactoTelefono,
   ventanaAbierta,
   cotizaciones,
+  cotizacionInicialId,
   onCerrar,
   onCotizacionEnviada,
 }: ModalEnviarCotizacionProps) {
   const [cotizacionSeleccionadaId, setCotizacionSeleccionadaId] = useState<string>(
-    cotizaciones[0]?.id ?? '',
+    cotizaciones.find((c) => c.id === cotizacionInicialId)?.id ?? cotizaciones[0]?.id ?? '',
   );
+  const [avisoEstado, setAvisoEstado] = useState<string | null>(null);
   const [estadoEnvio, setEstadoEnvio] = useState<EstadoEnvioCotizacion>('inactivo');
   const [errorDetalle, setErrorDetalle] = useState<DetalleErrorEnvio | null>(null);
 
@@ -50,9 +55,24 @@ export function ModalEnviarCotizacion({
 
       setEstadoEnvio('enviado');
       onCotizacionEnviada(mensaje);
+
+      // La cotización pasa a ENVIADA solo ahora, cuando el envío por el canal salió (T-347). Si ya
+      // había salido antes (`enviadaEn`), no se vuelve a pedir la transición.
+      let cierre = 1200;
+      if (cotizacionActual.enviadaEn === null) {
+        try {
+          await cambiarEstadoCotizacionApi(cotizacionActual.id, 'ENVIADA');
+        } catch (errEstado) {
+          console.warn('[bandeja] El mensaje salió, pero no se pudo marcar ENVIADA:', errEstado);
+          setAvisoEstado(
+            'El mensaje salió, pero la cotización sigue como Borrador. Márcala como Enviada desde su detalle.',
+          );
+          cierre = 4000;
+        }
+      }
       setTimeout(() => {
         onCerrar();
-      }, 1200);
+      }, cierre);
     } catch (err) {
       setEstadoEnvio('fallido');
       const detalle = interpretarErrorDeEnvio(err);
@@ -81,7 +101,7 @@ export function ModalEnviarCotizacion({
               >
                 Enviar cotización por WhatsApp
               </h2>
-              <p className="text-[11px] text-neutral-500 sm:text-xs dark:text-neutral-400">
+              <p className="text-xs text-neutral-500 sm:text-xs dark:text-neutral-400">
                 {contactoNombre ? `${contactoNombre} · ` : ''}
                 {contactoTelefono}
               </p>
@@ -92,7 +112,7 @@ export function ModalEnviarCotizacion({
             onClick={onCerrar}
             disabled={estadoEnvio === 'enviando'}
             aria-label="Cerrar modal de enviar cotización"
-            className="flex h-11 w-11 items-center justify-center rounded-lg text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-700 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
+            className="flex h-11 min-h-[44px] w-11 min-w-[44px] items-center justify-center rounded-lg text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-700 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
           >
             <X className="h-5 w-5" />
           </button>
@@ -109,7 +129,7 @@ export function ModalEnviarCotizacion({
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
               <div>
                 <p className="font-semibold">Ventana de 24 horas cerrada</p>
-                <p className="mt-0.5 text-[11px] leading-relaxed text-amber-800 dark:text-amber-300">
+                <p className="mt-0.5 text-xs leading-relaxed text-amber-800 dark:text-amber-300">
                   El cliente no ha escrito recientemente. WhatsApp requiere una plantilla aprobada
                   (HSM) para reabrir la ventana antes de enviar texto libre o cotizaciones.
                 </p>
@@ -171,7 +191,7 @@ export function ModalEnviarCotizacion({
                     Vigente hasta: {formatearFecha(cotizacionActual.vigenteHasta)}
                   </p>
                 )}
-                <p className="mt-2 text-[11px] text-neutral-600 dark:text-neutral-400">
+                <p className="mt-2 text-xs text-neutral-600 dark:text-neutral-400">
                   El viajero recibirá el texto de la cotización sin neto ni margen.
                 </p>
               </div>
@@ -188,8 +208,8 @@ export function ModalEnviarCotizacion({
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-600 dark:text-red-400" />
               <div className="min-w-0 flex-1">
                 <p className="font-semibold">{errorDetalle.titulo}</p>
-                <p className="mt-0.5 text-[11px] leading-relaxed">{errorDetalle.mensaje}</p>
-                <p className="mt-1 text-[11px] font-medium text-red-700 dark:text-red-300">
+                <p className="mt-0.5 text-xs leading-relaxed">{errorDetalle.mensaje}</p>
+                <p className="mt-1 text-xs font-medium text-red-700 dark:text-red-300">
                   💡 {errorDetalle.accionSugerida}
                 </p>
               </div>
@@ -206,6 +226,15 @@ export function ModalEnviarCotizacion({
               <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
               <span>¡Cotización enviada con éxito por WhatsApp!</span>
             </div>
+          )}
+          {avisoEstado && (
+            <p
+              role="status"
+              data-testid="aviso-estado-cotizacion"
+              className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900"
+            >
+              {avisoEstado}
+            </p>
           )}
         </div>
 

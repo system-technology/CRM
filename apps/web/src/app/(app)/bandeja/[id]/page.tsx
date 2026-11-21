@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import type {
   ConversacionDetalle,
   EventoBandeja,
@@ -23,6 +23,7 @@ import {
   PanelRight,
   Sparkles,
   FileText,
+  Calculator,
   Zap,
   Lock,
 } from 'lucide-react';
@@ -66,6 +67,7 @@ import { useViajesBandeja } from '../../../../lib/viajes-bandeja';
 import {
   componerViaje,
   cotizacionVigente,
+  enlaceParaCotizar,
   type CotizacionParaViaje,
 } from '../../../../lib/viaje-solicitado-logica';
 import { TarjetaCotizacionEnviada } from '../../../../components/bandeja/tarjeta-cotizacion-enviada';
@@ -456,6 +458,35 @@ export default function BandejaConversacionPage() {
         : null,
     [fichaContacto, indiceDeViajes, cotizacionDelViaje],
   );
+
+  // «Cotizar» desde el compositor: lleva el contacto, esta conversación y lo que ya se sabe del viaje.
+  const hrefCotizarDesdeElChat = useMemo(
+    () =>
+      enlaceParaCotizar({
+        contactoId: detalle?.contactoId ?? fichaContacto?.contacto.id ?? '',
+        conversacionId: id,
+        oportunidadId: viajeDelPanel?.oportunidadId ?? null,
+        paqueteId: viajeDelPanel?.paqueteId ?? null,
+        destino: viajeDelPanel?.destino ?? null,
+        fechaSalida: viajeDelPanel?.fechaSalida ?? null,
+        pasajeros: viajeDelPanel?.pasajeros ?? null,
+      }),
+    [detalle?.contactoId, fichaContacto, id, viajeDelPanel],
+  );
+
+  // Llegada desde «Enviar en esta conversación» (detalle de la cotización): abre el MISMO diálogo de
+  // envío por el canal con esa cotización elegida. Se consume una vez y se quita de la URL.
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const cotizacionParaEnviar = searchParams.get('enviarCotizacion');
+  const [cotizacionInicialId, setCotizacionInicialId] = useState<string | undefined>(undefined);
+  useEffect(() => {
+    if (!cotizacionParaEnviar || !detalle) return;
+    if (!cotizacionesContacto.some((c) => c.id === cotizacionParaEnviar)) return;
+    setCotizacionInicialId(cotizacionParaEnviar);
+    setModalEnviarCotizacionAbierto(true);
+    router.replace(`/bandeja/${id}`, { scroll: false });
+  }, [cotizacionParaEnviar, detalle, cotizacionesContacto, id, router]);
 
   // Evaluar cierre de ventana con borrador (0c.19)
   useEffect(() => {
@@ -1256,12 +1287,12 @@ export default function BandejaConversacionPage() {
 
               <form onSubmit={(e) => void manejarEnvio(e)} className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <div className="flex rounded-lg border border-neutral-200 bg-neutral-100 p-0.5 dark:border-neutral-700 dark:bg-neutral-800">
                       <button
                         type="button"
                         onClick={() => setModoNota(false)}
-                        className={`flex min-h-[40px] items-center rounded-md px-2.5 py-1 text-xs font-medium transition-colors sm:min-h-[32px] ${
+                        className={`flex min-h-[44px] items-center rounded-md px-2.5 py-1 text-xs font-medium transition-colors sm:min-h-[32px] ${
                           !modoNota
                             ? 'bg-white font-semibold text-neutral-900 shadow-2xs dark:bg-neutral-700 dark:text-neutral-100'
                             : 'text-neutral-600 hover:text-neutral-900 dark:text-neutral-400'
@@ -1272,7 +1303,7 @@ export default function BandejaConversacionPage() {
                       <button
                         type="button"
                         onClick={() => setModoNota(true)}
-                        className={`flex min-h-[40px] items-center rounded-md px-2.5 py-1 text-xs font-medium transition-colors sm:min-h-[32px] ${
+                        className={`flex min-h-[44px] items-center rounded-md px-2.5 py-1 text-xs font-medium transition-colors sm:min-h-[32px] ${
                           modoNota
                             ? 'bg-amber-400 font-bold text-amber-950 shadow-2xs'
                             : 'text-neutral-600 hover:text-neutral-900 dark:text-neutral-400'
@@ -1282,10 +1313,20 @@ export default function BandejaConversacionPage() {
                       </button>
                     </div>
 
+                    {/* «Cotizar» a un toque, con el contexto de este chat (para quién y desde dónde) */}
+                    <Link
+                      href={hrefCotizarDesdeElChat}
+                      data-testid="boton-cotizar-desde-chat"
+                      className="boton-primario flex min-h-[44px] items-center gap-1.5 rounded-lg px-3 py-1 text-xs font-bold shadow-2xs sm:min-h-[32px]"
+                    >
+                      <Calculator className="h-3.5 w-3.5" aria-hidden="true" />
+                      <span>Cotizar</span>
+                    </Link>
+
                     <button
                       type="button"
                       onClick={() => setSugerenciasAbierto((p) => !p)}
-                      className={`flex min-h-[40px] items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-semibold transition-colors sm:min-h-[32px] ${
+                      className={`flex min-h-[44px] items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-semibold transition-colors sm:min-h-[32px] ${
                         sugerenciasAbierto
                           ? 'border-acento-300 bg-acento-100 text-acento-900 dark:border-acento-800 dark:bg-acento-950 dark:text-acento-200'
                           : 'border-acento-200 bg-acento-50 text-acento-700 hover:bg-acento-100 dark:border-acento-900/60 dark:bg-acento-950/40 dark:text-acento-300'
@@ -1302,7 +1343,7 @@ export default function BandejaConversacionPage() {
                       data-testid="boton-abrir-enviar-cotizacion"
                       onClick={() => setModalEnviarCotizacionAbierto(true)}
                       disabled={conversacionRetirada || !puedeOperarBandeja}
-                      className="flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 transition-colors hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300"
+                      className="flex min-h-[44px] items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 transition-colors hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-[32px] dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300"
                       title={
                         !puedeOperarBandeja
                           ? explicacionFaltaPermiso('bandeja.operar')
@@ -1324,7 +1365,7 @@ export default function BandejaConversacionPage() {
                         setDisparadorSlashInfo(null);
                         setIndiceSeleccionadoRR(0);
                       }}
-                      className={`flex min-h-[40px] items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-semibold transition-colors sm:min-h-[32px] ${
+                      className={`flex min-h-[44px] items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-semibold transition-colors sm:min-h-[32px] ${
                         menuRespuestasAbierto
                           ? 'border-amber-300 bg-amber-100 text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200'
                           : 'border-neutral-200 bg-neutral-50 text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300'
@@ -1489,6 +1530,7 @@ export default function BandejaConversacionPage() {
       {modalEnviarCotizacionAbierto && detalle && (
         <ModalEnviarCotizacion
           conversacionId={detalle.id}
+          cotizacionInicialId={cotizacionInicialId}
           contactoNombre={detalle.contactoNombre}
           contactoTelefono={detalle.contactoTelefono}
           ventanaAbierta={detalle.ventana.abierta && !tiempoVentana.cerrada}
