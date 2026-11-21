@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import { MONEDAS, Money, type CodigoMoneda } from '@viajapro/domain';
 import {
+  decimalesDeMoneda,
   formatearDinero,
   formatearCOP,
   formatearDineroCifra,
@@ -60,6 +62,60 @@ describe('Módulo único de formato es-CO (T-022)', () => {
 
     it('formatearDineroCifra mantiene equivalencia compacta para tablas', () => {
       expect(formatearDineroCifra({ unidades: '500000', moneda: 'COP' })).toContain('$ 500.000');
+    });
+  });
+
+  /**
+   * T-520. Los decimales de cada moneda viven en `MONEDAS` (`@viajapro/domain`) y en ningún otro
+   * sitio: antes `formato.ts` tenía su propio `moneda === 'COP' ? 0 : 2`, una segunda tabla que
+   * coincidía hoy y se rompía el día que entrara una moneda de 3 decimales (KWD, JOD…).
+   *
+   * Recorre `MONEDAS` entera, así que añadir una moneda al dominio entra sola en la prueba. Y la
+   * compara contra una derivación independiente (`Money.aDecimal`, que el dominio calcula por su
+   * cuenta), no contra una lista copiada aquí.
+   */
+  describe('1b. Decimales de cada moneda: una sola tabla (T-520)', () => {
+    const codigos = Object.keys(MONEDAS) as CodigoMoneda[];
+    // 123456789 unidades mínimas: tiene dígitos de sobra para ver dónde cae la coma.
+    const UNIDADES = 123456789n;
+
+    it('MONEDAS no está vacía (si lo estuviera, las demás pruebas de esta sección no probarían nada)', () => {
+      expect(codigos.length).toBeGreaterThan(0);
+    });
+
+    it.each(codigos)('%s: decimalesDeMoneda dice lo que dice MONEDAS', (moneda) => {
+      expect(decimalesDeMoneda(moneda)).toBe(MONEDAS[moneda].decimales);
+      expect(decimalesDeMoneda(moneda.toLowerCase())).toBe(MONEDAS[moneda].decimales);
+    });
+
+    it.each(codigos)('%s: formatearDinero pinta lo mismo que el dominio calcula', (moneda) => {
+      const decimales = MONEDAS[moneda].decimales;
+      const texto = formatearDinero({ unidades: UNIDADES.toString(), moneda });
+      const esperado = Money.desdeUnidades(UNIDADES, moneda).aDecimal(); // «1234567.89» / «123456789»
+
+      const [enteros = '', fraccion = ''] = esperado.split('.');
+      // La parte entera, con punto de miles (es-CO), y exactamente `decimales` dígitos tras la coma.
+      const numero = /[\d.]+(?:,\d+)?/.exec(texto)?.[0] ?? '';
+      const [pintadoEnteros = '', pintadoFraccion = ''] = numero.split(',');
+      expect(pintadoEnteros.replace(/\./g, ''), `${moneda}: ${texto}`).toBe(enteros);
+      expect(pintadoFraccion, `${moneda}: ${texto}`).toBe(fraccion);
+      expect(pintadoFraccion).toHaveLength(decimales);
+    });
+
+    it('una moneda nueva en MONEDAS se formatea con sus decimales sin tocar formato.ts', () => {
+      // Es lo que protege el día de KWD: si `formato.ts` volviera a tener su propia tabla, esta
+      // moneda saldría con 2 decimales. Se añade a la tabla del dominio solo durante la prueba.
+      const tabla = MONEDAS as unknown as Record<string, { decimales: number }>;
+      tabla['KWD'] = { decimales: 3 };
+      try {
+        expect(decimalesDeMoneda('KWD')).toBe(3);
+        const texto = formatearDinero({ unidades: '1234567', moneda: 'KWD' });
+        expect(texto).toContain('1.234,567');
+      } finally {
+        delete tabla['KWD'];
+      }
+      // Y al retirarla, deja de ser una moneda conocida: vuelve al valor por defecto de `Intl`.
+      expect(decimalesDeMoneda('KWD')).toBe(2);
     });
   });
 

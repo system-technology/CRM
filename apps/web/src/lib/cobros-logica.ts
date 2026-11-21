@@ -11,7 +11,7 @@
  * la hace `Money.desdeDecimal` de `@viajapro/domain`, que conoce los decimales de cada moneda y se
  * niega a redondear por su cuenta.
  */
-import { MONEDAS, Money, type CodigoMoneda } from '@viajapro/domain';
+import { Money } from '@viajapro/domain';
 import {
   MONTO_MAXIMO_DE_COBRO,
   type CobroDelArchivo,
@@ -21,7 +21,7 @@ import {
   type SituacionDelSaldo,
   type TipoDeMovimientoDeCobro,
 } from '@viajapro/contracts';
-import { formatearDinero } from './formato';
+import { decimalesDeMoneda, formatearDinero } from './formato';
 
 /* ---------- Etiquetas (lenguaje ubicuo, §9 del ADR-0034) ---------- */
 
@@ -121,11 +121,12 @@ export function fraseDeSaldo(cobro: SaldoYSituacion): string {
 export type MontoEscrito = { ok: true; unidades: string } | { ok: false; motivo: string };
 
 /**
- * Decimales de la moneda, para el texto de ayuda del campo. La tabla es la de `@viajapro/domain`:
- * aquí no se repite, porque dos tablas de decimales que se separan son el error de R8 otra vez.
+ * Decimales de la moneda, para el texto de ayuda del campo. No hay tabla aquí: es la misma función
+ * que usa el formateo (`decimalesDeMoneda`, que lee `MONEDAS` de `@viajapro/domain`), porque dos
+ * tablas de decimales que se separan son el error de R8 otra vez (T-520).
  */
 export function decimalesDe(moneda: string): number {
-  return MONEDAS[moneda as CodigoMoneda]?.decimales ?? 0;
+  return decimalesDeMoneda(moneda);
 }
 
 export function admiteCentavos(moneda: string): boolean {
