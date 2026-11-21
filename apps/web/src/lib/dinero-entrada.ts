@@ -2,18 +2,15 @@
  * Parseo de montos escritos por una persona a unidades mínimas de la moneda (R8).
  *
  * «Unidad mínima» no es «centavos»: en COP es el peso (0 decimales); en USD/EUR, el centavo
- * (2 decimales). Solo aritmética de cadenas y enteros: nada de `float`.
+ * (2 decimales). Los decimales salen de `decimalesDeMoneda` (T-520/T-544), no de una tabla propia.
+ * Solo aritmética de cadenas y enteros: nada de `float`.
  *
  * Reglas de entrada: se ignoran `$`, espacios y el código de moneda. Un separador seguido de
  * 1 o 2 dígitos al final es la parte decimal; cualquier otro separador es de miles. Por eso
  * «5.000.000», «5,000,000» y «5000000» valen lo mismo, y «12,50» (USD) vale 1250 unidades.
  */
 
-const DECIMALES_POR_MONEDA: Record<string, number> = { COP: 0 };
-
-export function decimalesDeMoneda(moneda: string): number {
-  return DECIMALES_POR_MONEDA[moneda.toUpperCase()] ?? 2;
-}
+import { decimalesDeMoneda } from './formato';
 
 /** Devuelve las unidades mínimas como cadena entera, o `null` si no hay un monto válido > 0. */
 export function parsearMontoAUnidades(texto: string, moneda: string): string | null {

@@ -11,7 +11,7 @@
  * la hace `Money.desdeDecimal` de `@viajapro/domain`, que conoce los decimales de cada moneda y se
  * niega a redondear por su cuenta.
  */
-import { MONEDAS, Money, type CodigoMoneda } from '@viajapro/domain';
+import { Money } from '@viajapro/domain';
 import {
   MONTO_MAXIMO_DE_COBRO,
   type CobroDelArchivo,
@@ -21,7 +21,7 @@ import {
   type SituacionDelSaldo,
   type TipoDeMovimientoDeCobro,
 } from '@viajapro/contracts';
-import { formatearDinero } from './formato';
+import { decimalesDeMoneda, formatearDinero } from './formato';
 
 /* ---------- Etiquetas (lenguaje ubicuo, §9 del ADR-0034) ---------- */
 
@@ -121,11 +121,12 @@ export function fraseDeSaldo(cobro: SaldoYSituacion): string {
 export type MontoEscrito = { ok: true; unidades: string } | { ok: false; motivo: string };
 
 /**
- * Decimales de la moneda, para el texto de ayuda del campo. La tabla es la de `@viajapro/domain`:
- * aquí no se repite, porque dos tablas de decimales que se separan son el error de R8 otra vez.
+ * Decimales de la moneda, para el texto de ayuda del campo. No hay tabla aquí: es la misma función
+ * que usa el formateo (`decimalesDeMoneda`, que lee `MONEDAS` de `@viajapro/domain`), porque dos
+ * tablas de decimales que se separan son el error de R8 otra vez (T-520).
  */
 export function decimalesDe(moneda: string): number {
-  return MONEDAS[moneda as CodigoMoneda]?.decimales ?? 0;
+  return decimalesDeMoneda(moneda);
 }
 
 export function admiteCentavos(moneda: string): boolean {
@@ -181,6 +182,25 @@ export function aUnidadesMinimas(texto: string, moneda: string): MontoEscrito {
     return { ok: false, motivo: 'El monto es demasiado grande. Revisa la cifra.' };
   }
   return { ok: true, unidades: monto.unidades.toString() };
+}
+
+/**
+ * El eco bajo el campo «Cuánto pagó» (T-521): lo que **se va a registrar**, ya normalizado.
+ *
+ * Existe por una ambigüedad que la regla de interpretación no puede evitar: `1.250` en USD es mil
+ * doscientos cincuenta (es-CO: el punto separa miles), pero quien teclea a la americana quiso decir
+ * un dólar con veinticinco. Cambiar la regla estaría mal en un sentido u otro; lo que sí se puede es
+ * **hacerla visible** antes de pulsar «Registrar pago». Por eso no hay aquí una conversión propia:
+ * el eco es `aUnidadesMinimas` (lo mismo que se envía) pasado por `formatearDinero` (lo mismo que
+ * pinta el historial), así que lo que se lee es, por construcción, lo que se registra.
+ *
+ * Mientras lo escrito no sea una cifra válida (campo vacío, `1.25` a medio teclear) no hay eco: el
+ * motivo concreto lo da `aUnidadesMinimas` al registrar, y regañar tecla a tecla estorba.
+ */
+export function ecoDeMonto(texto: string, moneda: string): string | null {
+  const cifra = aUnidadesMinimas(texto, moneda);
+  if (!cifra.ok) return null;
+  return `Vas a registrar ${formatearDinero({ unidades: cifra.unidades, moneda }, { conCodigo: true })}`;
 }
 
 /* ---------- Fecha de pago ---------- */

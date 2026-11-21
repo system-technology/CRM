@@ -12,6 +12,28 @@
 
 ---
 
+## 2026-11-21 (cuarto lote) — Una apuesta medida en las pruebas, el alcance entre asesores y una compuerta que llevaba rota
+
+**Verificado** (con `gh`/`git`, mismo turno): `main` pasa de `a177ce83` a **`aa38bdf9`**. Integrados en serie y a mano con squash: **#427** (**T-510 `done`**) y **#428** (**T-528 `done`**). Abierto queda **#430**, el rastro documental de este lote.
+
+**T-510 — lo que se demostró y lo que no.** El 40P01 de `invitaciones` queda cerrado con log real del CI: un `TRUNCATE` lanzado desde el paquete `database` contra la limpieza de las e2e de la api; **dos paquetes**, y lo cerró #408. El de `historial-de-etapas` **no se demostró**: queda atribuido por mecanismo. El PR retira además la ejecución en serie que metió #415, que costaba ~65 s de mediana por PR sin evidencia detrás. **Matiz que añadió la madre al integrar, y que el PR no decía:** las 32 corridas limpias que cubren el criterio de «cinco seguidas» se midieron con la configuración **en serie**, justo la que el PR retira; en paralelo la evidencia es n=2 aquí más n=17 históricos. Es una apuesta medida, no una certeza, y la vuelta atrás es una línea (`fileParallelism: false`).
+
+**T-528 — auditoría independiente, sin bloqueantes.** Es alcance entre asesores, así que llevó auditoría propia (R13). El aislamiento está bien hecho: el `asesorId` que llega del cliente pasa siempre por `alcanceDeReporte()` y sin `reportes.ver_agencia` responde **403**, no un recorte en silencio. El acierto estructural del PR es que la firma del puerto **no tiene valor por defecto**: olvidar el filtro ya no compila, y olvidarlo era devolver toda la agencia.
+
+**El hallazgo que estuvo cerca de bloquear, y cómo se decidió.** El saldo por cobrar se sirve **sin exigir `cobro.ver`** mientras las pantallas de cobro sí lo exigen, lo que contradice el ADR-0035 §4 («nunca más amplio»). Se clasificó como cola —no bloqueante— **después de verificar** que no existe ningún endpoint para componer roles a medida, de modo que hoy ninguna agencia puede alcanzar ese estado. Queda como **T-537 (P1)** con la condición escrita: **el día que ese endpoint exista, deja de ser cola.** La lección de método es que la frontera entre «hoy roto» y «el día que…» (§3.1) se decide comprobando, no razonando.
+
+**Hallazgo nuevo, T-542 (P1): una compuerta que llevaba tiempo sin correr.** El job «Marcar la tarea como hecha» **falla tras cada merge** (corrida 44904456823). No lo veía nadie porque corre *después* del merge y no está entre los 14 checks obligatorios. Dos causas distintas: **18 tareas** con `type`/`effort` fuera del enum de `tools/roadmap-mcp/roadmap.mjs` (mecánico) y **20 tareas `in_progress`** cuando el validador exige una (no mecánico: es criterio de producto, tarea del `dueno-de-producto`). **Mientras siga roto, cerrar una tarea es un acto manual y `roadmap/tasks.yaml` miente en cuanto alguien se olvida.** La madre no lo arregló a propósito: triar 20 tareas es justo el trabajo que no le toca.
+
+**Operación.** Se corrigió una afirmación falsa del tablero: decía que la madre no puede crear su tarea programada porque el clasificador lo deniega. **Sí puede.** Ahora hay **una sola**, `trig_01Cq7TrGZ9uGFc9uAmqQEDtr`, apuntando directamente a la madre, en vez del relevo en dos saltos que despertaba a la sesión saliente de 688 mil tokens solo para reenviar un mensaje. La vieja ya no existía al ir a borrarla; **quién la borró no está verificado** y se anota como incógnita.
+
+**Supuesto** (no verificado): que la configuración en paralelo de las e2e aguante sin 40P01 a medio plazo. Es la apuesta de T-510 y se sabrá por el CI.
+
+**Coste.** Las dos sesiones hijas se archivaron tras entregar: T-510 en 164 mil tokens, **T-528 en 291 mil y 14,29 USD**. Ninguna de las dos avisa de su propio consumo: el tope de 150 mil **lo tiene que mirar la madre**, sesión por sesión.
+
+**Cola que deja el lote:** T-537 (P1), T-538, T-539, T-540, T-541 y T-542 (P1). **Siguiente id libre: T-543.**
+
+---
+
 ## 2026-11-21 (tercer lote) — Cobros en pantalla, catálogo de permisos y el coste de las pruebas en serie
 
 **Verificado** (con `gh`/`git`, mismo turno): `main` en **`e16f5499`**, cero PR abiertos. Integrados en serie y a mano con squash: **#414** (relevo de la orquestadora y aviso al despertar en el tablero), **#416** (**T-505 `done`**: una prueba compara el `CHECK` `roles_permisos_del_catalogo` con `PERMISOS` en los dos sentidos; comprobado en el log del CI que corre contra Postgres real y que no es vacua), **#415** (T-510) y **#410** (**T-331 `done`**: registrar un pago y ver el saldo en el archivo de viaje).

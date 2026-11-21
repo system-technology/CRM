@@ -256,6 +256,28 @@ describe('PanelDeCobro', () => {
       expect(screen.getByTestId('error-registrar-pago')).toBeTruthy();
     });
 
+    it('el eco bajo el campo enseña el importe ya normalizado mientras se escribe (T-521)', async () => {
+      pintar();
+      fireEvent.click(await screen.findByTestId('abrir-registrar-pago'));
+      const dialogo = within(screen.getByRole('dialog'));
+      const campo = dialogo.getByLabelText('Cuánto pagó *');
+      const eco = dialogo.getByTestId('eco-del-monto');
+
+      // Vacío: el eco existe (la región en vivo) pero no dice nada.
+      expect(eco.textContent).toBe('');
+
+      fireEvent.change(campo, { target: { value: '1.250.000' } });
+      expect(eco.textContent).toBe('Vas a registrar $ 1.250.000 COP');
+
+      // Cifra inválida a medio teclear: sin eco, sin regañar tecla a tecla.
+      fireEvent.change(campo, { target: { value: '1.25' } });
+      expect(eco.textContent).toBe('');
+
+      // El campo se describe con el eco para quien usa lector de pantalla.
+      expect(campo.getAttribute('aria-describedby')).toContain(eco.id);
+      expect(eco.getAttribute('aria-live')).toBe('polite');
+    });
+
     it('un monto mal escrito ni siquiera llega a la API', async () => {
       pintar();
       fireEvent.click(await abrirYLlenar('1.250,50')); // centavos en pesos

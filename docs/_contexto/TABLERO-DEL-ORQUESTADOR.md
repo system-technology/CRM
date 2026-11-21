@@ -9,7 +9,7 @@
 > carril `i/`. El hook `contexto-persistente.mjs` inyecta **el más reciente** entre el del checkout y el de la
 > rama `claude/repository-status-d4ug6p`. Si el tablero contradice a `gh`/`git`, manda la realidad.
 
-Última actualización: **2026-11-21, 12:20 UTC**, relevo de la madre por contexto (688 mil tokens, 122 USD). `main` en **`e7c80045`**. **Un PR abierto: #426** (este).
+Última actualización: **2026-11-21, 13:00 UTC**, por la madre `session_01R81Xh5b7wpteu5YpcDpw5p` (relevo de las 12:25). `main` en **`aa38bdf9`**. **#427 y #428 integrados; cero PR abiertos.**
 
 
 ## 1. Quién es quién
@@ -18,10 +18,11 @@
 - **No alcanza:** paneles de Neon, Render, Vercel o 21st.dev; claves y secretos; `override-lane` y la configuración de GitHub; WhatsApp real; trámites (Meta, abogado, contador, pasarela); redesplegar la demo sin su confirmación; borrar ramas ajenas.
 - **Sesión madre** (orquestadora): **`session_01R81Xh3ygCnt8wYfALeA6yY`** (Opus, esfuerzo alto), desde las 08:50 UTC del 2026-11-21. La anterior, `session_01R81Xh45hbFQHivoDJ8cbJQ`, se relevó por contexto (400 mil tokens, ~48 USD).
 - **El despertar de las 2 h ya apunta bien.** Tarea programada **`trig_01H8nNZUwV2DdTA2fnJzQkVh`** (`15 */2 * * *`), creada por la madre anterior el 2026-11-21 a las 09:53 UTC apuntando a la madre actual; la suya, `trig_016u2cLZTGLRrJvkZWgJpqpG`, quedó borrada. **Verificado con `list_triggers`**, no de palabra. Quedó así porque a la madre nueva el clasificador le deniega `create_trigger`: si vuelve a haber relevo, **la madre saliente crea la tarea de la entrante antes de retirarse**.
-- **Sesión madre:** se relevó a las 12:20 UTC. La saliente era `session_01R81Xh3ygCnt8wYfALeA6yY`.
-- **Sesiones vivas, repartidas a las 12:01 UTC:**
-  - `session_01R81Xh5CyC21JcvzAQYqDbP` — **T-528**, el resumen propio sirve las cifras del asesor (Opus alto). **Lleva auditoría independiente de la madre antes de integrar: es alcance entre asesores.**
-  - `session_01R81Xh2wqYiANqJPC5JnvyK` — **T-510**, cerrar los deadlocks 40P01 y las cinco corridas limpias (Sonnet alto).
+- **Sesión madre ACTUAL: `session_01R81Xh5b7wpteu5YpcDpw5p`** (Opus, esfuerzo alto), desde las 12:25 UTC del 2026-11-21. La saliente, `session_01R81Xh3ygCnt8wYfALeA6yY`, llegó a 688 mil tokens y 122 USD.
+- **Sesiones vivas (3), estado a las 12:50 UTC:**
+  - `session_01R81Xh5CyC21JcvzAQYqDbP` — **T-528**, entregó **#428, ya integrado**. Auditoría independiente: **sin bloqueantes**. **Archivar.**
+  - `session_01R81Xh2wqYiANqJPC5JnvyK` — **T-510**, entregó **#427, ya integrado**. A 160 mil tokens: **archivar**, no darle trabajo nuevo.
+  - `session_01R81Xh3RyUF6PwDynrytmJM` — **T-520 y T-521** (Sonnet alto, carril `b`), repartida a las 12:25. Los decimales por moneda duplicados frente a `MONEDAS` y el monto tecleado a la americana que registra mil veces de más. Las dos son R8.
   - Coexistencia WhatsApp `session_01R81Xh2TUy9RCrR6RV4oAze`: **la abrió el propietario, no se le dan órdenes**.
 - **Archivadas tras entregar:** arquitectura (T-340, ADR-0035 → #397), roadmap, cobros, diseño anterior, despliegue.
 
@@ -37,6 +38,33 @@
 - **Subagentes:** nunca dos Opus a la vez (el límite de 5 h de la cuenta los mata con HTTP 429 y **no se reanudan**). Todo subagente que vaya a commitear trabaja en un `git worktree` aparte: el working tree es compartido.
 
 ## 3. Cola de integración (orden)
+
+### Lote de mediodía (2026-11-21, madre `…DpwSp`) — CERRADO
+
+`main`: `a177ce83` → **`aa38bdf9`**. Dos PR, en serie y con squash a mano. **Cero PR abiertos.**
+
+- **#427** (`7fec8760`) — T-510 `done`. 40P01 de `invitaciones` cerrado con log del CI; el de `historial-de-etapas`
+  **atribuido por mecanismo, sin demostrar**. Retira la serie de #415 (~65 s por PR sin evidencia). **Matiz:** las 32
+  corridas limpias se midieron EN SERIE; en paralelo lleva n=2. Vuelta atrás: `fileParallelism: false`.
+- **#428** (`aa38bdf9`) — T-528 `done`. **Auditoría independiente hecha (R13, alcance entre asesores): sin bloqueantes.**
+  Lo que la sostiene: el `asesorId` del cliente pasa siempre por `alcanceDeReporte()` (403, no recorte silencioso) y la
+  firma del puerto no tiene valor por defecto, así que olvidar el filtro **no compila**. Cola: T-537 a T-541.
+
+**T-537 (P1) merece atención:** el saldo por cobrar se sirve sin exigir `cobro.ver` mientras las pantallas sí lo exigen
+(contradice ADR-0035 §4). Es cola y no bloqueante **porque se verificó que no existe endpoint para componer roles a medida**;
+el día que exista, deja de ser cola. No es una suposición: se comprobó.
+
+### T-542 (P1) — una compuerta que lleva tiempo sin correr
+
+El job «Marcar la tarea como hecha» **falla tras cada merge** (verificado en la corrida 44904456823). No bloquea el PR
+porque corre después del merge y no está entre los 14 checks: por eso llevaba tiempo roto sin que nadie lo viera.
+Dos causas distintas: **18 tareas** con `type`/`effort` fuera del enum (mecánico), y **20 tareas `in_progress`** cuando el
+validador exige una (no mecánico: hay que decidir una por una, y es del `dueno-de-producto`, no de la madre).
+**Mientras siga roto, cerrar una tarea es manual y `tasks.yaml` miente si alguien se olvida.**
+
+**Ids usados hoy por la madre:** T-537..T-541 (auditoría de #428), T-542 (compuerta rota), y T-543..T-547 (avisos de las sesiones de T-520/T-521 y T-528). **Siguiente libre: T-548.**
+
+**De lo nuevo, lo que no puede esperar: T-543 (P1).** `formatearDeltaDinero` pinta **cien veces de más** en toda moneda con decimales, porque formatea unidades mínimas sin dividir. En COP acierta por casualidad. Lo avisó la sesión de T-520/T-521 y **lo verificó la madre leyendo el fuente**. Es el error de R8 que ya llegó a pantalla una vez.
 
 **`main` en `e7c80045`: TRECE PR integrados el 2026-11-21**, todos en serie y a mano con squash: #414, #416 (T-505), #415 (T-510 sigue abierta), #410 (T-331), #417 (T-342), #418, #420 (T-516), #421 (ADR-0036), #419 (T-511), #422 (T-343), #424 (ADR-0033 aceptado), #423 (T-344 y su enganche) y #425 (T-535).
 
@@ -83,7 +111,9 @@ Lo último que entró: #404 a #409 (detalle en la [bitácora](../_bitacora/2026-
 Bandeja completa en [`PENDIENTES-DEL-PROPIETARIO.md`](PENDIENTES-DEL-PROPIETARIO.md). Lo que más bloquea hoy: secretos de Render y `DIRECT_URL` en Actions, espacio de trabajo de Render, `navegador` como check obligatorio, coexistencia (ADR-0033), pasarela, nombre comercial y marca.
 
 **Nuevo (2026-11-21):**
-- **El relevo de la madre dejó el despertar descolocado, y solo lo arregla él.** La tarea programada `trig_016u2cLZTGLRrJvkZWgJpqpG` apunta a la madre anterior. La madre nueva no puede repuntarla: `create_trigger` lo deniega el clasificador del modo automático («Destructive or Unwanted Actions») y `update_trigger` solo admite cambiar el prompt desde la conversación a la que la tarea escribe. **También se denegó (`Undermining Oversight`) pedírselo a la madre anterior por `send_message`** — y no se insistió. Mitigación provisional: el aviso al despertar de la cabecera de este tablero. Arreglo: que el propietario permita `create_trigger` a la madre, o cree él la tarea apuntando a `session_01R81Xh3ygCnt8wYfALeA6yY` y borre la vieja.
+- ~~El despertar solo lo arregla el propietario~~ — **FALSO, corregido el 2026-11-21**. La madre `session_01R81Xh5b7wpteu5YpcDpw5p` creó su propia tarea programada sin que el clasificador la denegara: **`trig_01Cq7TrGZ9uGFc9uAmqQEDtr`** (`15 */2 * * *`), que entra **directa** en ella. Lo que había antes era un relevo en dos saltos: `trig_01H8nNZUwV2DdTA2fnJzQkVh` despertaba a la madre **saliente** (688 mil tokens) solo para reenviar un mensaje — caro y con un punto de fallo de más.
+- **Estado verificado a las 13:05 UTC con `list_triggers`: existe UNA sola tarea programada, la de la madre actual.** `trig_01H8nNZUwV2DdTA2fnJzQkVh` **ya no existe**; la madre fue a borrarla por orden del propietario y la encontró borrada, pese a haberla leído entera a las 12:25. Quién la borró **no está verificado** (lo más probable: la madre saliente al despertar, siguiendo su propio texto). Se anota como incógnita, no como hecho.
+- **Para la próxima madre: `create_trigger` funciona.** Créate la tuya apuntándote a ti misma y **no heredes el relevo en dos saltos**. Comprueba con `list_triggers` que queda una sola y que su `persistent_session_id` es el tuyo.
 - **Las sesiones no pueden levantar Postgres en local** (el clasificador lo deniega): «probado en navegador» casi siempre es contra API simulada. Limita toda verificación de pantalla.
 - El **clasificador del modo automático deniega `git push --force-with-lease`**. Sin eso no se puede corregir el asunto de un commit ajeno: hay que recrear la rama y abrir otro PR (así nació #399). Si el propietario quiere evitarlo, tendría que permitirlo explícitamente.
 - La sesión de despliegue fue archivada, así que **la clave de la demo (`acceso-demo-VIAJAPRO.txt`) se da por perdida**; se regenera resembrando.
@@ -106,6 +136,8 @@ Bandeja completa en [`PENDIENTES-DEL-PROPIETARIO.md`](PENDIENTES-DEL-PROPIETARIO
 - `next dev` y `next build` no comparten `.next`. `AP14` se omite en `test` por `npm_lifecycle_event`.
 - commitlint rechaza `merge:` como tipo: en los mensajes de merge hay que usar `chore:`.
 - **El `scope` de commitlint es una lista cerrada y los nombres de los agentes NO están en ella.** Costó tres PR la mañana del 2026-11-21 (#411 con `test(datos)`, #412 con `test(qa)` y el primer intento de este tablero con `docs(contexto)`). La lista es: `identity, inbox, crm, quoting, booking, payments, automation, analytics, notifications, audit, api, web, worker, db, contracts, domain, ui, sdk, whatsapp, infra, deps, ci, dx, lint, test, docs, adr, hilo, estado, estructura, entregables, roadmap, agentes, skills, hooks, mcp, stitch, diseno, seguridad, rls`. Equivalencias que se piden solas: `datos` → **`db`**, `qa` → **`test`**, `backend` → **`api`**, `contexto`/cerebro → **`hilo`**, reportes → **`analytics`**. **Dilo en el prompt de cada sesión hija**, porque como `--force-with-lease` está denegado, un scope malo **obliga a recrear la rama y abrir otro PR**.
+- **Un asunto de commit que empieza por el id de la tarea tumba `convencion-de-commits`.** La regla `subject-case` rechaza sentence-case, start-case, pascal-case y upper-case, y `docs(roadmap): T-548, la e2e…` cuenta como mayúsculas. **Costó el PR #431 entero** (sustituido por #434) el 2026-11-21: como `--force-with-lease` está denegado, un asunto malo **no se enmienda, se recrea la rama**. El id va **al final**, entre paréntesis: `docs(roadmap): cierra T-520 y T-521, y abre la fragilidad de la e2e (T-548)`.
+- **El job `navegador` tiene una prueba frágil conocida** (`08-ingreso-por-usuario.e2e-spec.ts`, **T-548**). Si un PR sale rojo **solo** ahí: relanzar el job sobre el **mismo sha**. Si pasa, es la fragilidad; si vuelve a fallar, es real. **No se integra con un check en rojo sin clasificarlo antes**, aunque `navegador` no esté entre los 8 obligatorios.
 - `gh pr checks` usa GraphQL y está bloqueado aquí: usar `gh api repos/system-technology/CRM/commits/<sha>/check-runs`.
 - Una sesión hija creada sin `source_url` nace sin el repositorio clonado y `add_repo` cae bajo el clasificador: crearla siempre con `source_url` y, si procede, `source_revision`.
 - El clasificador deniega `git push --force-with-lease` (así nació #399): para corregir el asunto de un commit ya empujado, recrear la rama y abrir otro PR. No hay atajo.

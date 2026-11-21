@@ -9571,7 +9571,8 @@ tasks:
     phase: 1
     priority: P2
     effort: M
-    status: in_progress
+    status: done
+    done_at: 2026-11-21T12:45:00.000Z
     acceptance:
       - "Dentro de apps/api las e2e siguen compartiendo base: una base o esquema por archivo, o ejecucion serial donde toque"
       - "Los deadlocks 40P01 de historial-de-etapas e invitaciones.e2e-spec no se reprodujeron: reproducirlos o cerrar con evidencia"
@@ -9579,7 +9580,7 @@ tasks:
       - "Cinco ejecuciones seguidas del CI sin rojo por esto"
     source: "resto de T-503, #408, 2026-11-21"
     created_at: 2026-11-21T20:00:00.000Z
-    notes: "Segundo PR de T-510 (bitacora 2026-11-21-t510-cierre-de-deadlocks-y-peaje). 40P01 de invitaciones CERRADO CON EVIDENCIA: log del servidor del CI (corrida 44872868317) = TRUNCATE ... CASCADE de aislamiento.spec (database) contra borrarTenants (api), dos paquetes; lo cerro #408. El de historial-de-etapas no tiene log: atribuido por mecanismo, sin demostrar. Cinco corridas: 32 verdes y 0 rojas del job test desde #415. Peaje medido: mediana 210 s antes de #408, 262 s con #408, 328 s con #415; el de #408 esta justificado, el de #415 no tenia evidencia, y este PR retira fileParallelism false de la api como apuesta que valida repetir el job test (si algun rojo es 40P01/FK/colision entre archivos de la api, se vuelve a serie en el mismo PR). Sin verificar en local. Cola: comentario obsoleto en aislamiento.spec ~4435 y vitest.config de database (rutas protegidas); reportes.e2e unicidad sin investigar."
+    notes: "Cerrada con el segundo PR, #427 (7fec8760), integrado por la madre. QUE QUEDO DEMOSTRADO: el 40P01 de invitaciones.e2e-spec tiene log del servidor del CI (corrida 44872868317) con TRUNCATE versiones_cotizacion CASCADE de aislamiento.spec.ts (paquete database) contra SELECT count(*) de borrar-tenants.mjs (limpieza de las e2e de la api): dos paquetes, lo cerro #408. QUE NO: el 40P01 de historial-de-etapas no tiene log y queda atribuido por mecanismo, sin demostrar. La prueba del indice ya no depende del planificador (#415). DECISION: se retira la ejecucion en serie que introdujo #415, que no tenia evidencia y costaba ~65 s de mediana por PR (medianas del job test: 210 s antes de #408, 262 s con #408, 328 s con #415). MATIZ QUE IMPORTA, anotado por la madre: las 32 corridas limpias que cubren el criterio de las cinco se midieron con la configuracion EN SERIE; la configuracion en paralelo que deja este PR lleva n=2 aqui mas n=17 historicos (16 verdes, 1 rojo de fixture propio). Es una apuesta medida, no una certeza. VUELTA ATRAS si vuelve un 40P01: fileParallelism: false en apps/api. Si eso pasa, se abre tarea nueva; no se deja T-510 abierta para siempre."
     owner: qa
   - id: T-511
     title: "Probar el ingreso por apodo a 390 px contra la API real"
@@ -9615,26 +9616,32 @@ tasks:
     phase: 1
     priority: P2
     effort: S
-    status: backlog
+    status: done
+    done_at: 2026-11-21T13:50:00.000Z
     acceptance:
       - "apps/web/src/lib/formato.ts:79 decide los decimales con `moneda === 'COP' ? 0 : 2`, una segunda fuente de verdad frente a MONEDAS de packages/domain (R8). Hoy coinciden; se rompen el dia que entre una moneda de 3 decimales"
       - "El formateo toma los decimales de MONEDAS, y una prueba falla si las dos tablas dejan de coincidir"
     source: "auditoria independiente de #410 (T-331), 2026-11-21"
     created_at: 2026-11-21T09:10:00.000Z
     owner: frontend
+    notes: "Integrada como #429 (c9a581a4). decimalesDeMoneda en formato.ts lee MONEDAS de @viajapro/domain y sustituye los dos moneda === COP ? 0 : 2; decimalesDe y admiteCentavos de cobros-logica delegan en esa misma funcion. La prueba es de las que valen: recorre MONEDAS entera contra Money.aDecimal y ADEMAS anade KWD (3 decimales) durante su ejecucion, porque con la tabla actual (0/2/2/2) un recorrido a secas no distinguiria una tabla propia COP?0:2. La sesion verifico que esa prueba se pone ROJA si formato.ts recupera su tabla: se la ha visto fallar, que es lo que convierte una prueba en evidencia. Revisado por la madre por ser dinero en pantalla (R13). Dos notas que el PR no decia: con monedas DESCONOCIDAS el valor por defecto de decimalesDe pasa de 0 a 2 (sin efecto hoy: el dominio habilita cuatro y la UI no deja elegir otra), y de paso se corrige una incoherencia latente, que formato.ts comparaba moneda sin normalizar en un camino y con toUpperCase en otro. Quedan vivas otras dos tablas: T-543 y T-544."
+
   - id: T-521
     title: "Web: un monto tecleado en formato de EE. UU. se interpreta como es-CO y falla por mil"
     type: feature
     phase: 1
     priority: P2
     effort: S
-    status: backlog
+    status: done
+    done_at: 2026-11-21T13:50:00.000Z
     acceptance:
       - "aUnidadesMinimas acepta `1.250` en USD como mil doscientos cincuenta: es coherente con la regla es-CO, pero quien teclee a la americana registra un pago 1000 veces mayor"
       - "Mitigacion acordada: eco en vivo bajo el campo con el importe ya normalizado, para que la asesora vea lo que va a registrar antes de pulsar"
     source: "auditoria independiente de #410 (T-331), 2026-11-21"
     created_at: 2026-11-21T09:10:00.000Z
     owner: frontend
+    notes: "Integrada como #429 (c9a581a4). Eco en vivo bajo «Cuanto pago» con el importe ya normalizado, en region aria-live, y sin eco mientras la cifra no sea valida. NO cambia la regla de interpretacion (1.250 en es-CO sigue siendo mil doscientos cincuenta): la hace visible antes de pulsar, que era la mitigacion acordada por producto. El eco es aUnidadesMinimas pasado por formatearDinero, es decir exactamente lo que se envia formateado como lo pinta el historial: lo que la asesora lee es, por construccion, lo que se registra. No hay aqui una conversion propia, que habria sido repetir el pecado de R8 que arregla T-520."
+
   - id: T-515
     title: "Web: mock-cobros.ts entra al bundle de produccion por import estatico"
     type: chore
@@ -9815,7 +9822,8 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: backlog
+    status: done
+    done_at: 2026-11-21T12:55:00.000Z
     depends_on: [T-342, T-343]
     acceptance:
       - "La rama PROPIO del resumen (o un endpoint hermano con el mismo alcanceDeReporte) trae: cotizaciones abiertas del asesor repartidas por antigüedad, y saldo por cobrar por moneda de sus archivos (ADR-0035 §2: el archivo hereda el asesor de su oportunidad)"
@@ -9824,6 +9832,8 @@ tasks:
     source: "T-343: los criterios «cotizaciones abiertas por antigüedad» y «cobros por cobrar» del asesor no se pueden cumplir en la web sin un dato servido por asesor"
     created_at: 2026-11-21T23:00:00.000Z
     owner: backend
+    notes: "Integrada como #428 (aa38bdf9). El servidor sirve las cotizaciones abiertas y el saldo por cobrar DEL ASESOR; nacio porque T-343 se nego a filtrar listas de agencia en el cliente. AUDITORIA INDEPENDIENTE DE LA MADRE (alcance entre asesores, R13): SIN BLOQUEANTES. El asesorId que llega del cliente pasa siempre por alcanceDeReporte(): sin reportes.ver_agencia es 403, no un recorte en silencio. El acierto es que la firma del puerto no tiene valor por defecto, asi que olvidar el filtro no compila, y olvidarlo era devolver toda la agencia. Verificados R1/R2 (parametrizado dentro de la transaccion con tenant, tenant_id explicito ademas de RLS, sin rol postgres), R4 (la frontera analytics/payments la sostiene una prueba que lee las fuentes) y R8 (entero en unidad minima, monedas agrupadas sin TRM, saldos a favor descartados en vez de restados). El e2e cubre dos agencias y dos asesores con aserciones negativas sobre la respuesta cruda. HALLAZGO QUE CASI BLOQUEA, ahora T-537 (P1): porCobrar se sirve sin exigir cobro.ver mientras las pantallas de cobro si lo exigen, lo que contradice ADR-0035 4. No bloquea porque la madre verifico que NO existe endpoint para componer roles a medida, asi que hoy ninguna agencia puede llegar a ese estado. Resto de la cola: T-538 a T-541."
+
   - id: T-529
     title: "«Sin responsable» en «Hoy»: archivos de viaje sin asesor activo (ADR-0035 §2, H7)"
     type: feature
@@ -9944,3 +9954,175 @@ tasks:
     created_at: 2026-11-21T12:10:00.000Z
     owner: devops
 
+  - id: T-537
+    title: "Reportes: porCobrar se sirve sin exigir cobro.ver, y las pantallas de cobro si lo exigen"
+    type: bug
+    phase: 1
+    priority: P1
+    effort: S
+    status: backlog
+    acceptance:
+      - "reportes.controller.ts no lleva @RequierePermiso('cobro.ver') para porCobrar; payments/interface si lo exige. Hoy no hay diferencia porque DUENO, ASESOR y OPERACIONES tienen cobro.ver, y no existe endpoint para componer roles a medida: por eso es cola y no bloqueante"
+      - "Contradice ADR-0035 4: el alcance de un reporte puede ser mas estrecho que las pantallas, nunca mas amplio"
+      - "Omitir la clave porCobrar cuando falta cobro.ver, con el mismo patron que el PR ya usa para margen, y una prueba que lo fije"
+      - "Hacerlo ANTES de que exista el endpoint de roles a medida (R12): ese dia deja de ser cola"
+    source: "auditoria independiente de #428 (T-528), 2026-11-21"
+    created_at: 2026-11-21T12:40:00.000Z
+    owner: backend
+  - id: T-538
+    title: "Web: el resumen devuelve truncado: true a partir de 500 archivos abiertos y la web no lo presenta"
+    type: feature
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    acceptance:
+      - "Con mas de 500 archivos abiertos el servidor marca truncado: true; la web debe ensenar la cifra como minimo, no como total"
+      - "Complementa a T-492 (pasar el saldo a SQL), que ataca el coste; esto ataca la mentira en pantalla"
+    source: "auditoria independiente de #428 (T-528), 2026-11-21"
+    created_at: 2026-11-21T12:40:00.000Z
+    owner: frontend
+  - id: T-539
+    title: "Reportes: una moneda desconocida en el libro tumba el resumen entero en vez de degradar esa moneda"
+    type: bug
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    acceptance:
+      - "Si travel_files.moneda_iso guarda una moneda fuera de las cuatro habilitadas, MonedaDesconocidaEnElLibroError tumba todo el resumen, incluidas las cifras que no son dinero"
+      - "Degradar solo esa moneda y servir el resto. Hoy es imposible por el flujo de alta: por eso es cola"
+    source: "auditoria independiente de #428 (T-528), 2026-11-21"
+    created_at: 2026-11-21T12:40:00.000Z
+    owner: backend
+  - id: T-540
+    title: "Contratos: cotizacionesAbiertas y porCobrar son optional y la validacion de salida no detecta que falten"
+    type: refactor
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    acceptance:
+      - "Son .optional() por compatibilidad: si el servidor deja de enviarlas, lo cubren las pruebas, no el esquema"
+      - "Al retirar la opcionalidad, hacerlas obligatorias en packages/contracts y comprobar que la validacion de salida lo detecta"
+    source: "auditoria independiente de #428 (T-528), 2026-11-21"
+    created_at: 2026-11-21T12:40:00.000Z
+    owner: backend
+  - id: T-541
+    title: "Auditoria: el acceso a cifras de dinero agregadas no deja rastro"
+    type: audit
+    phase: 2
+    priority: P3
+    effort: M
+    status: backlog
+    acceptance:
+      - "R10 cubre PII de viajeros, no las cifras de dinero agregadas de la agencia"
+      - "Decidir si el acceso a reportes de agencia entra en la bitacora del modulo audit cuando ese modulo exista"
+    source: "auditoria independiente de #428 (T-528), 2026-11-21"
+    created_at: 2026-11-21T12:40:00.000Z
+    owner: arquitecto
+  - id: T-542
+    title: "La automatizacion que marca tareas como hechas lleva rota y nadie se entero"
+    type: infra
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    acceptance:
+      - "El job «Marcar la tarea como hecha» (cerrar-tarea.yml) sale con codigo 1 tras CADA merge: lo verifico la madre en la corrida 44904456823 al integrar #428. No bloquea el PR porque corre despues del merge y no esta entre los 14 checks, por eso llevaba tiempo fallando sin que nadie lo viera"
+      - "Causa 1, mecanica: 18 tareas tienen type o effort fuera del enum de tools/roadmap-mcp/roadmap.mjs (TYPES = security|bug|refactor|test|feature|docs|infra|audit; EFFORTS = S|M|L). Se colaron valores como fix, chore, feature-S. Corregir las 18 y validar el archivo entero"
+      - "Causa 2, de criterio: el validador exige UNA sola tarea in_progress y hay 20, muchas viejas (T-126, T-192, T-213, T-226, T-242..T-257, T-282, T-300, T-372, T-511). Hay que decidir una por una si estan done, dropped o backlog. Esto NO es mecanico y no lo debe hacer la madre: es el trabajo que le toca al dueno-de-producto"
+      - "Mientras esto siga roto, cerrar una tarea es un acto manual: si la madre se olvida, tasks.yaml miente sobre que esta hecho"
+      - "Al terminar, una corrida de cerrar-tarea.yml en verde como evidencia"
+    source: "hallazgo de la madre al integrar #428, 2026-11-21"
+    created_at: 2026-11-21T13:00:00.000Z
+    owner: dueno-de-producto
+  - id: T-543
+    title: "Web: formatearDeltaDinero pinta 100 veces de mas en toda moneda con decimales"
+    type: bug
+    phase: 1
+    priority: P1
+    effort: S
+    status: backlog
+    acceptance:
+      - "apps/web/src/lib/cotizaciones-diff.ts, formatearDeltaDinero: hace formateador.format(Number(absVal)) sobre unidades MINIMAS y nunca divide por 10**decimales"
+      - "En USD, 125050 unidades minimas (1250,50 USD) se pintan «125.050,00 USD»: dos ordenes de magnitud, y los «,00» le dan aire de exacto. En COP acierta por casualidad porque la unidad minima es el peso"
+      - "Es exactamente el error que R8 dice que ya llego a pantalla una vez. VERIFICADO por la madre leyendo el fuente, no reportado de oidas"
+      - "Dividir por los decimales de la moneda usando decimalesDeMoneda (T-520), no una tabla nueva, y una prueba con una moneda de 2 decimales que falle con el codigo actual"
+    source: "aviso de la sesion de T-520/T-521, verificado por la madre, 2026-11-21"
+    created_at: 2026-11-21T13:20:00.000Z
+    owner: frontend
+  - id: T-544
+    title: "Web: quedan dos copias mas de la tabla de decimales por moneda"
+    type: refactor
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    acceptance:
+      - "T-520 unifico formato.ts y cobros-logica.ts, pero siguen vivas: apps/web/src/lib/dinero-entrada.ts (DECIMALES_POR_MONEDA = { COP: 0 }, con 2 por defecto) y la tabla en linea de cotizaciones-diff.ts"
+      - "Las dos pasan a decimalesDeMoneda. Se hace junto con T-543, que toca el mismo archivo"
+      - "La prueba de T-520 que anade KWD a MONEDAS debe cubrir tambien estos caminos"
+    source: "aviso de la sesion de T-520/T-521, 2026-11-21"
+    created_at: 2026-11-21T13:20:00.000Z
+    owner: frontend
+  - id: T-545
+    title: "Cobros: los archivos CANCELADOS con penalidad pendiente no entran en porCobrar"
+    type: bug
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    acceptance:
+      - "El saldo por cobrar de T-528 no cuenta los archivos CANCELADOS que dejan penalidad pendiente: es dinero real que la agencia espera cobrar y que hoy no aparece en ningun reporte"
+      - "Decidir con experto-turismo si la penalidad de un archivo cancelado es «por cobrar» (lo normal en una agencia) o una categoria aparte, y reflejarlo con prueba"
+      - "Mientras no se decida, el resumen esta subestimando lo que la agencia tiene por cobrar, sin avisar"
+    source: "cola que dejo T-528, traspaso de la madre saliente, 2026-11-21"
+    created_at: 2026-11-21T13:20:00.000Z
+    owner: experto-turismo
+  - id: T-546
+    title: "Web: pintar cotizaciones abiertas y saldo por cobrar del asesor, y retirar el conteo de listas de agencia"
+    type: feature
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    acceptance:
+      - "El servidor ya las sirve desde T-528 (#428): cotizacionesAbiertas por tramos de antiguedad y porCobrar por moneda, con el alcance impuesto en el servidor"
+      - "Pintarlas en «Mis numeros» y en «Hoy»"
+      - "Retirar de apps/web/src/lib/inicio-logica.ts el conteo sobre listas de agencia: era el apano que T-343 se nego a hacer y que motivo T-528"
+      - "Respetar truncado: true (T-538) en vez de ensenar la cifra como total"
+    source: "cola que dejo T-528, traspaso de la madre saliente, 2026-11-21"
+    created_at: 2026-11-21T13:20:00.000Z
+    owner: frontend
+  - id: T-547
+    title: "La e2e de alcance entre asesores de T-528 no se verifico por mutacion"
+    type: test
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    acceptance:
+      - "La sesion de T-528 aviso con honestidad de que NO corrio la mutacion: no comprobo con un build sin el filtro que la prueba se pone roja. Su argumento es por construccion (igualdades exactas con cifras distintas entre asesor y agencia)"
+      - "La auditoria independiente de la madre leyo la prueba y la dio por correcta, pero tampoco la muto: queda un hueco de verificacion, no un defecto conocido"
+      - "Quitar el filtro deAsesor en local y comprobar que reportes.e2e-spec.ts se pone ROJA. Si pasa en verde, la prueba no discrimina y hay que rehacerla"
+      - "Vale para toda prueba de aislamiento: una prueba de aislamiento que no se ha visto fallar no es evidencia de aislamiento"
+    source: "aviso de la sesion de T-528 via la madre saliente, 2026-11-21"
+    created_at: 2026-11-21T13:20:00.000Z
+    owner: qa
+  - id: T-548
+    title: "La e2e «al quitar el usuario ya no entra con el» es fragil y rompe el job navegador al azar"
+    type: test
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    acceptance:
+      - "apps/web/e2e/08-ingreso-por-usuario.e2e-spec.ts:168 fallo en el job navegador de #429 (corrida 44905127361) y paso en VERDE al relanzar el mismo sha sin tocar nada: es fragil, no un fallo real"
+      - "Evidencia: esperaba «Sin usuario (entra con su correo)» y leyo «Usuario: e2e-ad984bf6» durante los 10 s de espera, con 24 resoluciones del locator sobre el MISMO valor viejo. No es que tardara: es que la fila nunca se revalido"
+      - "Hipotesis a comprobar antes de tocar la prueba: tras quitar el apodo, la tabla de miembros no revalida (cache de TanStack Query sin invalidar, o la respuesta llega antes de que el servidor confirme). Si es eso, el defecto esta en la WEB y la prueba tiene razon en fallar: arreglar la web, no la espera"
+      - "NO se arregla subiendo el timeout ni reintentando: eso esconde una revalidacion que puede estar rota tambien para una persona"
+      - "Mientras siga asi, cada PR tiene una probabilidad de salir rojo por azar, y un rojo que se lee como ruido es como se normaliza un fallo real"
+    source: "verificado por la madre al integrar #429, 2026-11-21"
+    created_at: 2026-11-21T13:40:00.000Z
+    owner: qa
