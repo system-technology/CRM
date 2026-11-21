@@ -8,6 +8,7 @@ import {
   estaAuthHabilitada,
   usaAuthReal,
   mapearErrorAcceso,
+  mensajeDeErrorDeAcceso,
   AuthApiError,
   MOCK_SESION_UNICA_AGENCIA,
 } from './auth-api';
@@ -95,6 +96,30 @@ describe('auth-api (ADR-0011 / Tarea 0c.29)', () => {
       expect(mapearErrorAcceso('ENTRADA_INVALIDA', 'da igual', { '(raíz)': 'x' })).toBe(
         'Revisa los datos del formulario e intenta de nuevo.',
       );
+    });
+  });
+
+  describe('el volcado de Zod del CLIENTE no llega a la pantalla', () => {
+    it('iniciarSesionApi con campos vacíos lanza AuthApiError, no ZodError', async () => {
+      // Es el caso exacto de la captura de staging: el formulario envía cadenas vacías, el
+      // esquema compartido falla en el navegador y ZodError.message es el JSON de los issues.
+      process.env['NEXT_PUBLIC_USE_REAL_AUTH'] = 'false';
+      await expect(iniciarSesionApi({ identificador: '', contrasena: '' })).rejects.toMatchObject({
+        name: 'AuthApiError',
+        code: 'ENTRADA_INVALIDA',
+      });
+      const error = await iniciarSesionApi({ identificador: '', contrasena: '' }).catch((e) => e);
+      expect(error.message).not.toContain('too_small');
+      expect(error.message).not.toContain('path');
+      expect(error.message).toContain('Revisa');
+    });
+
+    it('mensajeDeErrorDeAcceso nunca devuelve un volcado, venga de donde venga', () => {
+      const volcado = '[{"code":"too_small","path":["contrasena"]}]';
+      expect(mensajeDeErrorDeAcceso(new Error(volcado))).not.toContain('too_small');
+      expect(mensajeDeErrorDeAcceso(new Error(volcado))).toContain('Ocurrió un error');
+      expect(mensajeDeErrorDeAcceso('una cadena suelta')).toContain('Ocurrió un error');
+      expect(mensajeDeErrorDeAcceso(new Error('La red falló.'))).toBe('La red falló.');
     });
   });
 

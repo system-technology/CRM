@@ -49,6 +49,31 @@ export class AuthApiError extends Error {
   }
 }
 
+/**
+ * Valida la entrada **en el cliente** y convierte un `ZodError` en `AuthApiError`.
+ *
+ * Sin esto, el `ZodError` sale tal cual hacia quien llamó, y `ZodError.message` **es el JSON de
+ * los `issues`**. Eso fue justo lo que la pantalla de ingreso enseñó en staging: el formulario
+ * hacía `setError(err.message)` creyendo que recibía un `AuthApiError`, y pintaba el volcado.
+ */
+function validarEntrada<T>(esquema: { parse: (v: unknown) => T }, valor: unknown): T {
+  try {
+    return esquema.parse(valor);
+  } catch (error) {
+    const issues = (error as { issues?: Array<{ path?: unknown[]; message?: string }> }).issues;
+    if (!Array.isArray(issues)) throw error;
+    const detalles = Object.fromEntries(
+      issues.map((i) => [Array.isArray(i.path) ? i.path.join('.') : '(raíz)', i.message ?? '']),
+    );
+    throw new AuthApiError(
+      'ENTRADA_INVALIDA',
+      mapearErrorAcceso('ENTRADA_INVALIDA', undefined, detalles),
+      400,
+      detalles,
+    );
+  }
+}
+
 /** Cómo se llama cada campo en la pantalla, no en el contrato. */
 const NOMBRE_DEL_CAMPO: Record<string, string> = {
   identificador: 'el correo o usuario',
@@ -129,6 +154,22 @@ export function mapearErrorAcceso(
         ? mensajeFallback
         : 'Ocurrió un error al verificar tus credenciales. Intenta nuevamente.';
   }
+}
+
+/**
+ * El texto que una pantalla puede enseñar ante CUALQUIER error, venga de donde venga.
+ *
+ * Defensa en profundidad: `auth-api` ya solo lanza `AuthApiError` con frases, pero un fallo de red
+ * o un `TypeError` inesperado llegan igual al `catch` del formulario. Pintar `err.message` a ciegas
+ * es lo que puso un volcado de Zod delante del usuario.
+ */
+export function mensajeDeErrorDeAcceso(error: unknown, generico?: string): string {
+  const respaldo = generico ?? 'Ocurrió un error al verificar tus credenciales. Intenta nuevamente.';
+  if (error instanceof AuthApiError) {
+    return esFraseHumana(error.message) ? error.message : respaldo;
+  }
+  const mensaje = error instanceof Error ? error.message : undefined;
+  return esFraseHumana(mensaje) ? mensaje : respaldo;
 }
 
 // -----------------------------------------------------------------------------
@@ -243,7 +284,7 @@ let sesionEnMemoriaMock: SesionActualTipo | null = null;
  * POST /api/v1/auth/sign-in/email
  */
 export async function iniciarSesionApi(credenciales: IniciarSesionTipo): Promise<SesionActualTipo> {
-  const datosValidados = EsquemaIniciarSesion.parse(credenciales);
+  const datosValidados = validarEntrada(EsquemaIniciarSesion, credenciales);
   // Durante la transicion del contrato (ADR-0031) el cuerpo puede traer `correo` o `identificador`.
   const identificador = datosValidados.identificador ?? datosValidados.correo ?? '';
 
@@ -378,7 +419,7 @@ export async function obtenerSesionActualApi(): Promise<SesionActualTipo> {
  * POST /api/v1/auth/tenant-activo
  */
 export async function cambiarAgenciaActivaApi(tenantId: string): Promise<SesionActualTipo> {
-  const payload = EsquemaCambiarAgenciaActiva.parse({ tenantId });
+  const payload = validarEntrada(EsquemaCambiarAgenciaActiva, { tenantId });
 
   if (!usaAuthReal()) {
     const agenciaElegida = [MOCK_AGENCIA_PRINCIPAL, MOCK_AGENCIA_SECUNDARIA].find(

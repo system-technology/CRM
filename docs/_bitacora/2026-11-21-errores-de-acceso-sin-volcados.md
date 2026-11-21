@@ -28,6 +28,22 @@ Hoy no se nota, porque el `ZodValidationPipe` de la API devuelve una frase human
 campo por campo en `details`. Pero la web no lo sabía: pintaba lo que llegara. Bastaba un endpoint
 que devolviera cualquier otra cosa para repetir la escena.
 
+## La causa real: el volcado no venía de la API
+
+El primer diagnóstico fue incompleto y conviene dejarlo escrito, porque la corrección vino de una
+segunda captura. Tras desplegar staging con `main`, **el volcado seguía apareciendo** — pero ahora
+con `path: ["identificador"]`, un campo que **solo existe en el código de hoy**. Es decir: no era
+código viejo.
+
+El volcado **lo produce la web, no la API**. `iniciarSesionApi` valida la entrada en el navegador
+con el esquema compartido (`EsquemaIniciarSesion.parse`). Con los campos vacíos eso lanza un
+`ZodError`, y **`ZodError.message` es el JSON de los `issues`**. El formulario lo recogía con
+`catch (err) { setError((err as AuthApiError).message) }`, creyendo que siempre recibía un
+`AuthApiError`. Ese error **nunca pasaba por `mapearErrorAcceso`**.
+
+La API estaba bien desde el principio: su `ZodValidationPipe` devuelve `ENTRADA_INVALIDA` con los
+fallos campo por campo.
+
 ## Qué cambia
 
 - **El mensaje del servidor solo pasa si parece una frase.** Si empieza por `[` o `{`, o contiene
@@ -38,12 +54,21 @@ que devolviera cualquier otra cosa para repetir la escena.
   asesor a adivinar cuál de los ocho campos del formulario está mal». Ahora la web dice
   «Revisa la contraseña e intenta de nuevo», o «Revisa el correo o usuario y la contraseña».
 - Los nombres de campo se traducen a cómo se llaman **en la pantalla**, no en el contrato.
+- **`validarEntrada` convierte el `ZodError` del cliente en un `AuthApiError`** con mensaje humano
+  y `details` por campo. Es el arreglo de la causa real.
+- **`mensajeDeErrorDeAcceso`** es defensa en profundidad: la pantalla deja de leer `err.message` a
+  mano. Un fallo de red o un `TypeError` inesperado tampoco pueden pintarse en crudo.
 
 ## Lo que no se hizo
 
-No se tocó la API: su error ya era correcto. El problema estaba en que la web confiaba en él sin
-mirarlo. Tampoco se añadió validación en el cliente antes de enviar: el servidor sigue siendo la
-compuerta, y ahora su respuesta se cuenta bien.
+No se tocó la API: su error ya era correcto, y lo era desde antes. El problema estaba entero en la
+web, en dos capas: una validación de cliente cuyo error escapaba sin traducir, y un formulario que
+pintaba `err.message` sin mirar qué era.
+
+**Lección de método:** la primera hipótesis («es código viejo») explicaba la captura y era falsa en
+lo esencial. Lo que la tumbó fue un detalle de la segunda captura —`path: ["identificador"]`, un
+campo que solo existe hoy—, no un razonamiento. Conviene buscar en el error el dato que permita
+fechar el código antes de dar por buena la explicación cómoda.
 
 ## Sin verificar
 
