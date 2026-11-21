@@ -572,7 +572,8 @@ describe('con la función encendida (recuento de agencias = 1; lo demás es real
         // Solo las reservas que contaron <= 10 llegaron a probar la contraseña del correo real.
         const efectivas = correos.filter((c) => c === correo('rafb')).length;
         expect(efectivas).toBeLessThanOrEqual(10);
-        expect(efectivas).toBeGreaterThanOrEqual(1);
+        // Sin mínimo: cerrar es correcto. Si todas las reservas confirman antes de contar, ninguna
+        // prueba la clave real. La propiedad de seguridad es el tope (<= 10), no que alguna pase.
         // El resto fue por el mismo camino, con el centinela.
         expect(correos).toHaveLength(25);
         expect(correos.filter((c) => c === CORREO_CENTINELA)).toHaveLength(25 - efectivas);
