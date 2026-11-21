@@ -12,7 +12,7 @@
 |---|---|---|---|
 | 1 | **Cargar los secretos de la API en Render** | Son claves; nunca pasan por una sesión | `CAMPOS_SENSIBLES_KEY` (+`_VERSION`, con copia fuera de Render), `BETTER_AUTH_SECRET`, `META_APP_SECRET`, `WHATSAPP_WEBHOOK_VERIFY_TOKEN`, `WEBHOOK_PAYLOAD_KEY` (+`_VERSION`), `CORREO_PAYLOAD_KEY`, `WHATSAPP_DIRECTORY_PEPPER` (+`_VERSION`), `POSTMARK_SERVER_TOKEN`, `POSTMARK_MESSAGE_STREAM`, `MAIL_FROM` |
 | 2 | **Secreto `DIRECT_URL` en GitHub Actions** | Es una cadena de conexión de la base | Sin él no corren las migraciones contra Neon (hoy faltan decenas) |
-| 3 | **Proyecto de la web en Vercel** | El panel de Vercel es tuyo | Conectar la integración de GitHub y crear el proyecto; luego se fija `WEB_PUBLIC_URL` |
+| 3 | ~~Proyecto de la web en Vercel~~ **Existe** (`viajapro-staging`, 2026-11-21) | — | Falta que despliegue lo nuevo de `main` y fijar `WEB_PUBLIC_URL`; sin API en Render la web no tiene con qué hablar (Render, sin verificar) |
 | 4 | **Mover el servicio de Render a tu proyecto** y poner `healthCheckPath` en `/salud` | La herramienta no elige proyecto | Panel de Render |
 
 ## Bloquean el flujo de PR
@@ -33,6 +33,8 @@
 | 10 | **Coexistencia (recomendada para el piloto) o número separado** para el CRM: aceptar o cambiar el borrador del **ADR-0033** | Verificado en Meta el 2026-11-21 (PR #365). Con coexistencia el dueño **no pierde la app**, pero **todo chat individual del número entra al CRM** y **no hay forma documentada de excluir chats**; las etiquetas de WhatsApp Business **no se sincronizan** (nuestras etiquetas propias siguen siendo necesarias). La auditoría exige: vínculo número–agencia tomado de la sesión, filtro de exclusión en el trabajador, sin historial en el piloto, contrato de encargo y que el dueño saque sus chats personales del número |
 | 11 | **Pasarela de pagos en COP** (Wompi, PayU, ePayco o Mercado Pago) | Necesaria para la Ola 2 |
 | 12 | Respuestas del dueño de JD Tours: cobra por archivo o por pasajero, pagos libres o en cuotas, qué etiquetas usa, qué mira cada asesor, su hoja de reservas (muestra **sin datos personales**) | Roadmap de JD Tours §4 |
+| 12c | **14 preguntas de reportes por nivel** (una palabra cada una, con su valor por defecto entre corchetes) | Están en la sección 7 del documento de reportes por nivel (PR #392, `docs/08-roadmap/`). Mientras no contestes se construye lo de los corchetes. La 12 (cerrar ya `/reportes/resumen` a quien no tenga `conversaciones.ver_todas`) la dio por Sí el orquestador porque cierra una contradicción con tu decisión de reportes por niveles |
+| 12b | **Nombre comercial, logo y marca de ViajaPro** | La sesión de diseño los necesita para la portada de ingreso y para la propuesta al viajero (Ola 5 del rediseño). Sin ellos se usa un distintivo provisional |
 | 13 | **Cifrado del NIT** de la agencia (T-309) | Hoy está en claro bajo RLS |
 
 ## Trámites externos
