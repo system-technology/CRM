@@ -20,7 +20,7 @@
 | # | Qué | Cómo |
 |---|---|---|
 | 5 | **`navegador` como check obligatorio** en la protección de `main` | `gh api -X POST repos/system-technology/CRM/branches/main/protection/required_status_checks/contexts --input - <<< '["navegador"]'`, o Settings → Branches. Después se reabre el PR con la copia del archivo y el «8 → 9 checks» en los documentos (el contenido está en el commit `27412e7`; el #357 se cerró para liberar la rama) |
-| 6 | **Etiqueta `override-lane`** en los PR de ingreso por apodo (#358, #362) que mezclan carriles, o aceptar el rojo de «Carril y tarea» | Decisión tuya: salta una compuerta de proceso |
+| 6 | **Etiqueta `override-lane`** en los PR de ingreso por apodo (#358, #362) que mezclan carriles, o aceptar el rojo de «Carril y tarea» | La pones tú en GitHub (el PR → Labels → `override-lane`). El sistema de permisos de la sesión madre **me lo denegó dos veces, aun con tu autorización en el chat**: es una regla de la herramienta. Alternativa: añadir una regla de permiso de Bash para esa llamada en tu configuración |
 | 7 | **Contestar el permiso de Bash** pendiente en la sesión de despliegue (agente del PR 1b) | Solo se contesta en esa sesión |
 | 8 | **Poner las sesiones en modo Auto** (menú junto al cuadro de texto) | Sin eso se detienen en cada permiso y el trabajo desatendido no avanza |
 | 9 | **Red del entorno en la nube**: añadir `developers.facebook.com` (o ampliar el nivel de red) | Menú del entorno → Edit → Network access |
@@ -29,7 +29,7 @@
 
 | # | Qué | Contexto |
 |---|---|---|
-| 10 | **Coexistencia con WhatsApp Business o un número separado** para el CRM | Informe en `docs/_investigacion/2026-11-20-coexistencia-whatsapp-business-app.md`; la verificación con Meta está en curso |
+| 10 | **Coexistencia (recomendada para el piloto) o número separado** para el CRM: aceptar o cambiar el borrador del **ADR-0033** | Verificado en Meta el 2026-11-21 (PR #365). Con coexistencia el dueño **no pierde la app**, pero **todo chat individual del número entra al CRM** y **no hay forma documentada de excluir chats**; las etiquetas de WhatsApp Business **no se sincronizan** (nuestras etiquetas propias siguen siendo necesarias). La auditoría exige: vínculo número–agencia tomado de la sesión, filtro de exclusión en el trabajador, sin historial en el piloto, contrato de encargo y que el dueño saque sus chats personales del número |
 | 11 | **Pasarela de pagos en COP** (Wompi, PayU, ePayco o Mercado Pago) | Necesaria para la Ola 2 |
 | 12 | Respuestas del dueño de JD Tours: cobra por archivo o por pasajero, pagos libres o en cuotas, qué etiquetas usa, qué mira cada asesor, su hoja de reservas (muestra **sin datos personales**) | Roadmap de JD Tours §4 |
 | 13 | **Cifrado del NIT** de la agencia (T-309) | Hoy está en claro bajo RLS |
