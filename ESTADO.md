@@ -10,11 +10,11 @@
 
 | Campo | Valor |
 |---|---|
-| Última actualización | 2026-11-21, cierre del **cuarto** lote (`main` en `aa38bdf9`, PR #427 y #428; [bitácora](docs/_bitacora/2026-11-21-cuarto-lote-t510-y-t528.md)) |
-| Actualizado por | Claude, sesión madre `session_01R81Xh5b7wpteu5YpcDpw5p` (hilo al día con los PR #289 a #428) |
+| Última actualización | 2026-11-21, cierre del lote que **deja la demostración en condiciones de enseñarse** (`main` en `910c04f0`, PR #461, #460, #463, #466, #462, #464 y #465; [bitácora](docs/_bitacora/2026-11-21-lote-de-la-tarde-demo-ensenable.md)) |
+| Actualizado por | Claude, sesión madre `session_01R81Xh4XshqoadVSoT7orGV` (hilo al día con los PR #289 a #469) |
 | Fase | **Fase 1 del backlog: «Un CRM mostrable y endurecido»** (M1 del [roadmap v2](docs/08-roadmap/01-roadmap.md)). Sin agencia real todavía. Prioridad vigente: la demo a JD Tours ([`MARCO.md`](docs/_contexto/MARCO.md) §6) |
-| Avance | 196 tareas `done` en `roadmap/tasks.yaml` (515 en total). «Done» significa integrada en `main`, **no** desplegada ni probada con Meta real |
-| Próximo hito | Que el propietario cargue la clave de cifrado y decida el despliegue; después, prueba con Meta real (T-080). Del lado del código solo queda cola menor: T-235 y T-226 (c), recifrado por lotes, que solo hace falta cuando haya una clave real que rotar |
+| Avance | **235 tareas `done`** en `roadmap/tasks.yaml` (548 en total). «Done» significa integrada en `main`, **no** desplegada ni probada con Meta real. **Las P1 abiertas pasaron de 74 a 17** tras contrastarlas contra el código (PR #463): ocho ya estaban hechas y 49 estaban mal priorizadas. **Las 14 P0 abiertas siguen sin contrastar (T-574)** |
+| Próximo hito | **El despliegue y la lista de chats de JD Tours, las dos del propietario.** El código que impedía enseñar la demostración ya está en `main`: se puede aceptar una cotización desde la pantalla (T-563), verla con los ojos de un asesor (T-566) y el ingreso dejó de afirmar una conexión que no comprobaba (T-565). Después, la clave de cifrado y la prueba con Meta real (T-080) |
 
 ---
 

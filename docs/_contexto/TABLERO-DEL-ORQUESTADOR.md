@@ -9,15 +9,17 @@
 > carril `i/`. El hook `contexto-persistente.mjs` inyecta **el más reciente** entre el del checkout y el de la
 > rama `claude/repository-status-d4ug6p`. Si el tablero contradice a `gh`/`git`, manda la realidad.
 
-Última actualización: **2026-11-21, 16:45 UTC**, por la madre `session_01R81Xh5a2iFmSzSLVN6VcXy`, **que se releva aquí**. `main` en **`7a0ac374`**. **NUEVE PR integrados** en el turno (#446, #448, #450, #451, #453, #454, #455, #457 y los cierres automáticos). **Cero PR abiertos.** En `done` y verificadas una a una: **T-555, T-556, T-549, T-561, T-560** y **T-562** (su cierre, en vuelo).
+Última actualización: **2026-11-21, ~17:30 UTC**, por la madre `session_01R81Xh4XshqoadVSoT7orGV`, **que se releva aquí**. `main` en **`910c04f0`**. **SIETE PR integrados** en el turno (#461, #460, #463, #466, #462, #464, #465, más los cierres automáticos #467, #468 y #469). **Cero PR abiertos** salvo el cierre automático de T-563 en vuelo. En `done` y verificadas: **T-562, T-565, T-566** y **T-563** (su cierre, en vuelo).
+
+**Las tres piezas que impedían enseñar el producto están en `main`.** Lo que queda para que una agencia lo vea no está en este repositorio: **el despliegue y la lista de chats de JD Tours son del propietario**.
 
 
 ## 1. Quién es quién
 
 - **Propietario:** Alfavear (español). Autorización literal: «tú tienes autorización mía para aprobar y destrabar los temas pendientes como si fuera yo»; «tú como sesión principal tienes toda mi autorización para aprobar los PRs y destrabar todo lo que nos bloquea». El 2026-11-21 añadió: **modo desatendido, avanzar en todos los frentes**.
 - **No alcanza:** paneles de Neon, Render, Vercel o 21st.dev; claves y secretos; `override-lane` y la configuración de GitHub; WhatsApp real; trámites (Meta, abogado, contador, pasarela); redesplegar la demo sin su confirmación; borrar ramas ajenas.
-- **Sesión madre ACTUAL: `session_01R81Xh5a2iFmSzSLVN6VcXy`** (Opus, esfuerzo alto), desde las **15:08 UTC** del 2026-11-21. Es la **cuarta** madre del día. Las tres anteriores se pasaron del tope de 150 mil: `…3ygCnt8wYfALeA6yY` con 688 mil y 122 USD, `…45hbFQHivoDJ8cbJQ` con 400 mil, y `…5b7wpteu5YpcDpw5p` con **275.757 tokens y 18,11 USD**.
-- **El despertar apunta bien y es ÚNICO: `trig_01RSjZimU6jHEhMXXe6kApQu`** (`47 */2 * * *`), creado por la madre saliente apuntando **directo** a la entrante. **Verificado con `list_triggers` a las 15:09 UTC:** una sola tarea programada, y su `persistent_session_id` es el de la madre actual. Sin relevo en dos saltos.
+- **Sesión madre ACTUAL: `session_01R81Xh4XshqoadVSoT7orGV`** (Opus), desde las **16:51 UTC** del 2026-11-21. Es la **quinta** madre del día; archivó a la cuarta nada más arrancar, como manda el propietario. Las tres anteriores se pasaron del tope de 150 mil: `…3ygCnt8wYfALeA6yY` con 688 mil y 122 USD, `…45hbFQHivoDJ8cbJQ` con 400 mil, y `…5b7wpteu5YpcDpw5p` con **275.757 tokens y 18,11 USD**, y `…5a2iFmSzSLVN6VcXy` con **457.098 tokens y 52,26 USD**.
+- **El despertar apunta bien y es ÚNICO: `trig_01Eidr2fdjQtPooauAz6uPY1`** (`47 */2 * * *`). **Verificado con `list_triggers` a las 16:52 UTC:** una sola tarea programada, y su `persistent_session_id` es el de la madre actual. Sin relevo en dos saltos.
 - **El traspaso traía un id de tarea programada que NO existe** (`trig_01W27QjMm5BD8aFm1EJ6wa17`): la madre entrante iba a borrarlo. Es la **tercera vez** que el traspaso entre madres trae un id inventado. **No se borra ni se cita un id sin verlo antes en `list_triggers`.**
 - **EL MEDIDOR DE CONSUMO PROPIO NO ESTÁ ROTO: VA CON RETRASO. Demostrado el 2026-11-21 por el camino caro.**
   `external_metadata.context_usage.used_tokens` marcó **`0` durante CASI TODO el turno** —tres lecturas
@@ -30,15 +32,18 @@
     no haya cifra, se gobierna por calendario: **relevo al cerrar el lote**, pase lo que pase.
   - Y lo que hace daño de verdad: esa conclusión falsa **se escribió en el tablero y en el prompt del despertar**,
     es decir, se propagó a la siguiente madre. Al corregir algo así, **corregir también donde se propagó**.
-- **Sesiones hijas vivas (4), TODAS ociosas y esperando encargo.** Entregaron bien y declararon sus límites;
-  merece la pena reutilizarlas o archivarlas, no dejarlas colgando:
-  - `session_01R81Xh4VsA5hAVxGfnhUVR7` — carril `b`. Entregó **T-556** y **T-560**. Declaró sola un error suyo
-    (un `next start` viejo en otro puerto le hizo medir un build anterior) y lo repitió entero.
-  - `session_01R81Xh2nwGXCyRsqwWGZ8sf` — carril `b`. Entregó **T-561**. **Desmintió la premisa de su tarea** y
-    declaró **tres** pruebas suyas que habrían entregado algo falso. La mejor evidencia del turno.
-  - `session_01R81Xh6E99n8PmJd5Pso4ZS` — carril `i`, **en Sonnet**. Entregó **T-562**, el manual. Destapó
-    T-563..T-568 documentando. Tiene el script de capturas: **si cambia la interfaz, es la que regenera**.
-  - `session_01R81Xh4pS7W4NfJkngVJGg1` — carril `a`. Entregó **T-549** por puertos, sin romper R4.
+  - **Confirmado otra vez el 2026-11-21 a las 16:51 UTC:** la quinta madre leyó `0` en su primera lectura, con
+    la sesión recién creada. Se gobernó por calendario desde el primer minuto y cerró su lote sin pasarse.
+    **No hace falta entender el retraso: basta con no tratar el `0` como margen.**
+- **Sesiones hijas: NINGUNA viva al cerrar el turno.** Las cuatro del lote entregaron y están archivadas:
+  - `session_01R81Xh3AATp9guobTJ6DQPG` — carril `i`, Sonnet. **La reconciliación de las 74 P1** (#463). Resolvió
+    sola el conflicto de `tasks.yaml` tomando `origin/main` como base y reaplicando tarea por tarea, y **desmintió
+    a medias el diagnóstico de la madre** sobre T-137/T-139/T-140. **3,35 USD.**
+  - `session_01R81Xh6WKz2dd4x8mNK61JP` — carril `b`, Sonnet. **T-565** (#462). **0,66 USD.**
+  - `session_01R81Xh4AHfgGSxgn3RkmKyV` — carril `b`, Sonnet. **T-566** (#464). **1,05 USD.**
+  - `session_01R81Xh45A6sQNSXTgcMEkna` — carril `b`. **T-563** (#465), el botón de aceptar una cotización.
+  - **Lección de coste:** cuatro tareas reales por unos pocos dólares en Sonnet, frente a los **52,26 USD** de la
+    madre anterior. El trabajo de carril va en sesiones cortas; la madre orquesta y no escribe código.
 - **Archivadas tras entregar:** arquitectura (T-340, ADR-0035 → #397), roadmap, cobros, diseño anterior, despliegue.
 
 ## 1.1 Decisión de producto del turno (2026-11-21, 15:25 UTC)
@@ -151,6 +156,31 @@ si alguna pasó en verde con el fallo puesto**. Es lo que hizo que las dos parar
 premisa falsa, y lo que destapó el 2,34:1. Una de ellas declaró **tres** pruebas suyas que habrían entregado algo
 falso, incluida una que fallaba **por el motivo equivocado** y escondía justo el número que importaba.
 
+## 1.6 La cola mentía: reconciliación de las P1 (2026-11-21, 17:10 UTC)
+
+**De 74 tareas P1 abiertas quedan 17.** Ocho ya estaban hechas en el código —cada una con el símbolo,
+archivo o prueba que lo demuestra— y 49 estaban mal priorizadas. Lo hizo una sesión corta en Sonnet por
+**3,35 USD** (#463), y el detalle está en `docs/_bitacora/2026-11-21-reconciliacion-de-las-p1.md`.
+
+**Lo que falta por reconciliar, y es peor:** las **14 tareas P0 abiertas nunca se contrastaron contra el
+código**. T-131 y T-132, ambas P0 en backlog, parecen ya hechas. Es **T-574 (P1)**. P0 es la lista que
+todo el mundo mira primero: si miente ahí, se reparte trabajo ya hecho.
+
+**T-377 sube de P3 a P1:** el arnés de mutaciones de aislamiento **no corre en el CI**. §3.1 dice que el
+aislamiento entre agencias es el único sitio donde no se recorta. Una compuerta que no se ejecuta no es
+una compuerta, y llevaba dormida en P3.
+
+**T-575:** ADR-0035 sigue «Propuesto» con T-341 y T-342 ya integrados. Incumple R7.
+
+## 1.7 T-566 NO deshace T-343 (2026-11-21)
+
+T-343 retiró a propósito el conmutador Vista Dueño/Asesor, porque la vista la decide la respuesta de la
+API y **no se filtran listas de agencia en el cliente para fingir «lo tuyo»**. T-566 añade un conmutador
+con ese mismo nombre. **No es una marcha atrás, y conviene no leerlo como tal:** vive solo dentro del modo
+demostración, no toca sesión ni API ni `tienePermiso`, solo decide qué se pinta, y su predicado de permisos
+**solo quita** entradas del menú, nunca añade. T-343 prohibió fingir el alcance con datos reales; T-566
+enseña la forma de la pantalla con datos de ejemplo.
+
 ## 2. Reglas operativas que no se olvidan
 
 - **R14:** todo cambio se documenta, lo hecho y lo que viene. Un plan que solo vive en una conversación no existe.
@@ -164,7 +194,28 @@ falso, incluida una que fallaba **por el motivo equivocado** y escondía justo e
 
 ## 3. Cola de integración (orden)
 
-### Lote de la tarde (2026-11-21, madre `…5a2iFmSzSLVN6VcXy`) — ABIERTO
+### Lote de cierre de la demostración (2026-11-21, madre `…4XshqoadVSoT7orGV`) — CERRADO
+
+Arranca con `main` en **`7a0ac374`** y dos PR abiertos. Termina en **`910c04f0`**, **cero abiertos**.
+
+Integrados, por orden: **#461** (cierre del lote anterior), **#460** (cierre de T-562), **#463** (la
+reconciliación de las P1), **#466** (sus seguimientos: T-574, T-575, T-576 y T-377 a P1), **#462** (T-565),
+**#464** (T-566) y **#465** (T-563). Más los cierres automáticos #467, #468 y #469.
+
+**Auditorías propias del código, no del informe (R13):**
+- **T-563** — `POST /cotizaciones/:id/estado` exige `cotizacion.escribir` (`@RequierePermiso`, verificado en
+  `cotizaciones.controller.ts`) y el dominio solo admite `ENVIADA → ACEPTADA` (`estado-de-cotizacion.ts`).
+  La web **repite** el invariante en vez de inventarse el suyo y **deshabilita por comodidad, nunca por
+  seguridad** (ADR-0011). El archivo de viaje no viene en la respuesta —lo abre el consumidor de
+  `cotizacion.aceptada`, ADR-0024 §1—, así que la pantalla lo busca seis veces y distingue «sigo mirando»
+  de «ya miré bastante»; **nunca inventa el enlace**. Sin bloqueantes.
+- **T-566** — **doble compuerta**: `vistaDemo()` devuelve `dueno` fuera del modo demostración, y el menú solo
+  sustituye `tienePermiso` bajo `esDemo && vista === 'asesor'`. La sustitución **solo quita** entradas, nunca
+  añade, así que el peor fallo posible es enseñar de menos en una demo. Sin bloqueantes.
+- **#463** — el YAML se validó **aparte del informe de la sesión**: 545 tareas, ningún id duplicado, ninguna
+  sin título ni sin cuerpo. Coincidía con lo que declaraba.
+
+### Lote de la tarde (2026-11-21, madre `…5a2iFmSzSLVN6VcXy`) — CERRADO
 
 Arranca con `main` en **`ef44c75e`** y **un PR abierto, #446**.
 
@@ -371,6 +422,21 @@ Bandeja completa en [`PENDIENTES-DEL-PROPIETARIO.md`](PENDIENTES-DEL-PROPIETARIO
   trailers esté bien puesta. Escribir los colores por el nombre del token. Verificado por la sesión de T-561.
 - **`mergeable_state: unstable` NO significa rojo.** Puede ser simplemente que falte un check por terminar.
   Se clasifica mirando los `check-runs`, igual que un `cancelled`: ni se da por verde ni se da por rojo.
+
+- **El cierre automático de tareas compite con TODO el carril `i`.** En un solo lote: provocó el conflicto de
+  #463, tumbó un merge de #464 con «Base branch was modified» y dejó #465 detrás **dos veces**. **La ventana
+  segura para tocar `tasks.yaml` es cuando no hay ningún otro PR de carril `i` abierto.** Un integrador en serie
+  que ponga la rama al día y reintente lo absorbe solo; a mano cuesta una vuelta de checks cada vez.
+- **Un conflicto de `tasks.yaml` se DEVUELVE a quien hizo el trabajo**, con instrucciones de tomar `origin/main`
+  como base y reaplicar **tarea por tarea**. Nunca concatenar: ya entremezcló entradas una vez y el YAML parseaba
+  igual. Al recibirlo, validar aparte: parsea, sin ids duplicados, cada título con su cuerpo.
+- **Hay criterios de aceptación que cruzan carriles por su cuenta.** T-565 y T-566 pedían tocar `docs/06-manual/`
+  dentro de una tarea de `apps/web`; «Carril y tarea» lo habría rechazado. Avisarlo **al repartir** y encolar el
+  rastro de documentación aparte (así nació T-576).
+- **El sha truncado vuelve a morder, y ahora desde el propio monitor.** Un bucle que imprime `${sha:0:8}` y se
+  reutiliza en `update-branch` da **422**. Leerlo entero con `--jq '.head.sha'`.
+- **Un monitor que imprime el estado en cada vuelta inunda de notificaciones.** Guardar el estado anterior y
+  emitir **solo al cambiar**.
 
 ## 8. Sin verificar (heredado)
 
