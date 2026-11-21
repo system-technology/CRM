@@ -23,12 +23,15 @@ import { AppModule } from '../../app.module.js';
 import { PrismaService } from '../../shared/prisma/prisma.service.js';
 import { ContextoTenant } from '../../shared/tenant/contexto-tenant.js';
 import { RespuestaParaReportesPrisma } from '../inbox/infrastructure/respuesta-para-reportes.prisma.js';
+import type { AlcanceDeReporte } from '../../shared/autorizacion/alcance-de-reporte.js';
 import { mensajeConTexto } from '../../shared/cifrado/cifrado-de-prueba.js';
 
 const idDeTenant = (): string => `01932000-0000-7000-8000-${randomBytes(6).toString('hex')}`;
 const TENANT_A = idDeTenant();
 const TENANT_B = idDeTenant();
 const HORA = 3600_000;
+/** Esta prueba mide el grupo, no la atribución: alcance de agencia, sin filtro de asesor. */
+const DE_AGENCIA: AlcanceDeReporte = { nivel: 'AGENCIA', asesorId: null };
 const MIN = 60_000;
 
 let app: Awaited<ReturnType<typeof NestFactory.create>>;
@@ -180,7 +183,7 @@ const comoTenant = <T>(tenantId: string, fn: () => Promise<T>): Promise<T> =>
 
 describe('primera respuesta de reportes: un solo grupo (T-187)', () => {
   it('numerador y denominador salen de las conversaciones creadas en el rango', async () => {
-    const r = await comoTenant(TENANT_A, () => adaptador.resumir(TENANT_A, rango()));
+    const r = await comoTenant(TENANT_A, () => adaptador.resumir(TENANT_A, rango(), DE_AGENCIA));
     // c1, c2, c3: c4 (la abrió el asesor) y c5 (creada fuera del rango) no son del grupo.
     expect(r.conversacionesNuevas).toBe(3);
     expect(r.conversacionesRespondidas).toBe(2);
@@ -189,7 +192,7 @@ describe('primera respuesta de reportes: un solo grupo (T-187)', () => {
   });
 
   it('mediana, promedio y p90 son del grupo respondido (percentile_cont)', async () => {
-    const r = await comoTenant(TENANT_A, () => adaptador.resumir(TENANT_A, rango()));
+    const r = await comoTenant(TENANT_A, () => adaptador.resumir(TENANT_A, rango(), DE_AGENCIA));
     // Tiempos: 10 y 30 min. Mediana 20, promedio 20, p90 = 10 + 0.9 * 20 = 28.
     expect(r.medianaMinutos).toBe(20);
     expect(r.promedioMinutos).toBe(20);
@@ -197,7 +200,7 @@ describe('primera respuesta de reportes: un solo grupo (T-187)', () => {
   });
 
   it('no mezcla agencias: B no entra en las cifras de A, y a la inversa', async () => {
-    const b = await comoTenant(TENANT_B, () => adaptador.resumir(TENANT_B, rango()));
+    const b = await comoTenant(TENANT_B, () => adaptador.resumir(TENANT_B, rango(), DE_AGENCIA));
     expect(b).toMatchObject({
       conversacionesNuevas: 1,
       conversacionesRespondidas: 1,
@@ -206,16 +209,22 @@ describe('primera respuesta de reportes: un solo grupo (T-187)', () => {
       p90Minutos: 90,
     });
     // Con el contexto de B pero pidiendo el id de A, RLS no devuelve filas de A.
-    const cruzado = await comoTenant(TENANT_B, () => adaptador.resumir(TENANT_A, rango()));
+    const cruzado = await comoTenant(TENANT_B, () =>
+      adaptador.resumir(TENANT_A, rango(), DE_AGENCIA),
+    );
     expect(cruzado.conversacionesNuevas).toBe(0);
   });
 
   it('un rango sin conversaciones: ceros y tiempos null', async () => {
     const r = await comoTenant(TENANT_A, () =>
-      adaptador.resumir(TENANT_A, {
-        desde: new Date(Date.now() - 300 * 24 * HORA),
-        hasta: new Date(Date.now() - 200 * 24 * HORA),
-      }),
+      adaptador.resumir(
+        TENANT_A,
+        {
+          desde: new Date(Date.now() - 300 * 24 * HORA),
+          hasta: new Date(Date.now() - 200 * 24 * HORA),
+        },
+        DE_AGENCIA,
+      ),
     );
     expect(r).toEqual({
       conversacionesNuevas: 0,
