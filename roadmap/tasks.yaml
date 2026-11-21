@@ -2059,6 +2059,7 @@ tasks:
     files:
       - apps/api/src/modules/inbox/
     source: ruta a la fase 1 (roadmap v3) 2026-10-27
+    notes: "Confirmada P1: el piloto necesita reabrir conversaciones fuera de las 24 h. Solo existen el contrato (contracts/plantillas.ts) y la tabla PlantillaWhatsapp; no hay envío de plantilla ni tabla de respuestas rápidas (la web las guarda en localStorage con aviso)."
     created_at: 2026-10-28T01:47:57.807Z
     blocked_reason: La plantilla debe someterse a aprobación de Meta con la cuenta del propietario; el tiempo de
       aprobación no está verificado
@@ -2152,8 +2153,7 @@ tasks:
       analyze, tests y los demás checks obligatorios. Cierre automático (.github/workflows/cerrar-tarea.yml)."
     commit: b1351aa149c18d6a85e3dec843e232d9713ee9c5
   - id: T-083
-    title: "Corregir .github/proteccion-main.json: la copia dice require_code_owner_reviews false y el servidor lo
-      tiene en true"
+    title: "Corregir .github/proteccion-main.json: la copia difiere del servidor en tres campos (code owners, aprobaciones requeridas y aprobar el último push)"
     type: security
     phase: 1
     priority: P1
@@ -2161,19 +2161,21 @@ tasks:
     status: backlog
     depends_on: []
     acceptance:
-      - El JSON refleja la protección real del servidor (gh api .../branches/main/protection) y ESTADO.md deja
-        de contradecirlo
+      - "El JSON refleja la protección real (gh api repos/system-technology/CRM/branches/main/protection): hoy el servidor tiene require_code_owner_reviews true, required_approving_review_count 0 y require_last_push_approval false; la copia dice false, 1 y true"
+      - "ESTADO.md y .github/PROTECCION-DE-RAMA.md dejan de contradecirlo; si el propietario quiere los valores de la copia, se cambian en el servidor y no al revés"
+      - "Quien reaplique el JSON no debe apagar la revisión de code owners sin querer"
     files:
       - .github/proteccion-main.json
       - .github/PROTECCION-DE-RAMA.md
     source: auditoria de ciberseguridad 2026-10-28
+    notes: "Reconciliación 2026-11-21: sigue P1 porque reaplicar la copia APAGARÍA require_code_owner_reviews (el servidor lo tiene en true). Verificado con gh api el mismo día."
     created_at: 2026-10-28T02:09:17.390Z
   - id: T-084
     title: "MCP postgres de los agentes: rol de solo lectura sin BYPASSRLS y versión fija; quitar @latest de
       .mcp.json"
     type: security
     phase: 1
-    priority: P1
+    priority: P2
     effort: S
     status: backlog
     depends_on: []
@@ -2184,37 +2186,41 @@ tasks:
       - .mcp.json
       - packages/database/prisma/
     source: auditoria de ciberseguridad 2026-10-28
+    notes: "Reconciliación 2026-11-21: intacta (.mcp.json sigue con @playwright/mcp@latest y postgres sobre ${DATABASE_URL} sin rol de solo lectura). Bajada a P2 porque no hay base con datos reales todavía; vuelve a P1 el día que un agente apunte a la base de staging de T-239."
     created_at: 2026-10-28T02:09:17.390Z
   - id: T-085
-    title: "Workflows con la App Integradora: acciones fijadas por SHA, persist-credentials false y npm ci
-      --ignore-scripts"
+    title: "Workflows con la App Integradora: persist-credentials false y npm ci --ignore-scripts (las acciones ya están fijadas por SHA)"
     type: security
     phase: 1
-    priority: P1
+    priority: P2
     effort: S
     status: backlog
     depends_on: []
     acceptance:
-      - cerrar-tarea.yml, mantener-ramas.yml y ownership.yml fijan create-github-app-token, checkout y
-        setup-node por SHA, sin persistir credenciales
+      - "Ya existe: create-github-app-token, checkout y setup-node fijados por SHA en cerrar-tarea.yml, mantener-ramas.yml y ownership.yml"
+      - "Falta: persist-credentials: false en los checkout de cerrar-tarea.yml y ownership.yml (no hay ninguna aparición en .github/workflows)"
+      - "Falta: npm ci --ignore-scripts en cerrar-tarea.yml (hoy corre npm ci a secas con el token de la App en el entorno)"
     files:
       - .github/workflows/
     source: auditoria de ciberseguridad 2026-10-28
+    notes: "Reconciliación 2026-11-21: la mitad estaba hecha. Bajada a P2: endurecimiento sin explotación conocida."
     created_at: 2026-10-28T02:09:17.390Z
   - id: T-086
-    title: "Verificar los SHA de los PR de Dependabot #11 a #13 y probar pnpm/action-setup v6 antes de integrarlos"
+    title: "Comprobar contra las etiquetas oficiales los SHA que ya usan los workflows (los PR de Dependabot #11 a #13 ya se cerraron)"
     type: security
     phase: 1
-    priority: P1
+    priority: P2
     effort: S
     status: backlog
     depends_on: []
     acceptance:
-      - Cada SHA coincide con la etiqueta oficial (gh api repos/<org>/<action>/git/ref/tags/<tag>) y el CI
-        pasa con pnpm/action-setup v6
+      - "Los PR #11, #12 y #13 están cerrados (el #13 integrado; #11 y #12 sustituidos por las versiones fijadas hoy: checkout v7.0.1, pnpm/action-setup v6.1.1, setup-node v7.1.0)"
+      - "Cada SHA de .github/workflows/ coincide con su etiqueta oficial (gh api repos/<org>/<action>/git/ref/tags/<tag>); esta sesión no pudo comprobarlo (sin acceso a esos repositorios)"
+      - "compat-migraciones.yml usa actions/checkout@v7 sin fijar por SHA"
     files:
       - .github/workflows/
     source: auditoria de ciberseguridad 2026-10-28
+    notes: "Reconciliación 2026-11-21: la premisa («antes de integrarlos») ya no existe; queda la comprobación de los SHA. Bajada a P2."
     created_at: 2026-10-28T02:09:17.390Z
   - id: T-087
     title: Dependabot para npm (solo seguridad) y job no obligatorio pnpm audit --prod
@@ -2275,8 +2281,7 @@ tasks:
       analyze, tests y los demás checks obligatorios. Cierre automático (.github/workflows/cerrar-tarea.yml)."
     commit: 6a6fe517b5185babf11b039c3c21942a2d5f8265
   - id: T-090
-    title: ADR de PII en mensajes.texto y contactos.preferencias, con supresión, exportación por titular y
-      retención (antes de la agencia piloto)
+    title: "ADR de supresión, exportación por titular y retención para mensajes.texto y contactos.preferencias (el cifrado ya está decidido en ADR-0014 y ADR-0015)"
     type: security
     phase: 1
     priority: P1
@@ -2284,12 +2289,14 @@ tasks:
     status: blocked
     depends_on: []
     acceptance:
-      - ADR que decide cifrado o tokenización de documentos detectados en mensajes; caso de uso de supresión y
-        exportación por contacto, auditado; plazo de retención por agencia
+      - "Ya existe: ADR-0014 y ADR-0015 (Aceptados) deciden cifrar mensajes.texto, notas y preferencias, implementados por T-212"
+      - "Falta: ADR que decide el caso de uso de supresión y exportación por contacto, auditado, y el plazo de retención por agencia (docs/05-seguridad/10-retencion-supresion-y-respaldo.md sigue «pendiente de aprobación del propietario y de revisión legal»)"
+      - "Falta: decidir si los documentos detectados en mensajes se tokenizan además de cifrarse"
     files:
       - docs/03-adr/
       - apps/api/src/modules/crm/
     source: auditoria de ciberseguridad 2026-10-28
+    notes: "Reconciliación 2026-11-21: la mitad «cifrado» ya existe. Sigue P1: bloquea tocar datos reales de viajeros."
     created_at: 2026-10-28T02:09:17.390Z
     blocked_reason: "Es un ADR (ruta protegida) y decide cifrado y plazos legales: requiere al propietario y revisión legal"
   - id: T-091
@@ -2431,6 +2438,7 @@ tasks:
       - apps/api/src/modules/crm/
       - apps/web/src/app/contactos/
     source: ruta de seguridad y privacidad 2026-10-28
+    notes: "Confirmada P1: no existe ningún caso de uso de exportación ni de supresión por contacto."
     created_at: 2026-10-28T02:16:36.574Z
     blocked_reason: Depende del ADR de PII (T-090) y de la revisión legal de plazos de retención
   - id: T-098
@@ -2448,6 +2456,7 @@ tasks:
     files:
       - docs/05-seguridad/
     source: ruta de seguridad y privacidad 2026-10-28
+    notes: "Confirmada P1: es el contrato de encargo y el registro que exige tratar datos reales de viajeros; solo lo cierra el propietario con un abogado."
     created_at: 2026-10-28T02:16:36.574Z
     blocked_reason: Requiere revisión legal (Ley 1581 de 2012 y Decreto 1377 de 2013) y decisión del propietario
       sobre el texto y los plazos
@@ -3020,7 +3029,7 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: backlog
+    status: done
     depends_on: []
     acceptance:
       - "GET /api/v1/canales/whatsapp/estado (o ruta vigente) con lo que se sabe de
@@ -3028,11 +3037,14 @@ tasks:
         tokens"
       - La pantalla /configuracion deja de mostrar datos de relleno en modo real
       - Sin plantillas (T-078 depende de Meta)
+      - "Verificado el 2026-11-21 por la sesión hija i/reconciliar-las-p1-del-roadmap leyendo el código de main (7a0ac37). Dónde está: GET /api/v1/canales/whatsapp/estado en apps/api/src/modules/inbox/interface/canales.controller.ts (caso de uso consultar-estado-del-canal.ts), con estado-del-canal.e2e-spec.ts (dos agencias, sin tokens ni texto de mensajes); la pantalla lo consume en apps/web/src/components/configuracion/bloque-conexion-whatsapp.tsx por lib/canal-whatsapp-api.ts y lo monta configuracion/page.tsx. Sin verificar en navegador"
     files:
       - apps/api/src/modules/inbox/
       - packages/contracts/src/inbox.ts
     source: "auditoria de veracidad 2026-11-04 (PR #202)"
     created_at: 2026-11-05T00:44:42.917Z
+    done_at: 2026-11-21T16:55:00.000Z
+    evidence: "Verificado el 2026-11-21 por la sesión hija i/reconciliar-las-p1-del-roadmap leyendo el código de main (7a0ac37). GET /api/v1/canales/whatsapp/estado en apps/api/src/modules/inbox/interface/canales.controller.ts (caso de uso consultar-estado-del-canal.ts), con estado-del-canal.e2e-spec.ts (dos agencias, sin tokens ni texto de mensajes); la pantalla lo consume en apps/web/src/components/configuracion/bloque-conexion-whatsapp.tsx por lib/canal-whatsapp-api.ts y lo monta configuracion/page.tsx. Sin verificar en navegador."
   - id: T-123
     title: "Web en modo real por defecto: .env.example y README coherentes (USE_REAL_*, NEXT_PUBLIC_USE_REAL_AUTH)
       y arranque documentado"
@@ -3060,7 +3072,7 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: backlog
+    status: done
     depends_on: []
     acceptance:
       - Reportes calculan margen y costo desde cotizaciones reales (permiso cotizacion.ver_neto_y_margen) o no
@@ -3070,29 +3082,30 @@ tasks:
         quedan locales en docs/_traspasos/ENTREGA.md"
       - "Plantillas y nombres de contacto en /cotizaciones y el modal Enviar cotizacion: sin telefono de
         relleno en modo real"
+      - "Verificado el 2026-11-21 por la sesión hija i/reconciliar-las-p1-del-roadmap leyendo el código de main (7a0ac37). Dónde está: apps/web/src/app/(app)/reportes/page.tsx solo pinta margen si el servidor trae la clave (sin las constantes del 20 % y del 80 %); AvisoSoloLocal en campos personalizados, respuestas rápidas, onboarding, filtros recordados y preferencias de aviso; lista de lo que queda local en docs/_traspasos/ENTREGA.md («Pantallas que SOLO usan localStorage en modo real»); el teléfono de relleno de cotizaciones/page.tsx solo se usa si !usandoApiReal"
     files:
       - apps/web/src/app/reportes/
       - apps/web/src/app/cotizaciones/
     source: "auditoria de veracidad 2026-11-04 (PR #202)"
     created_at: 2026-11-05T00:44:42.917Z
+    done_at: 2026-11-21T16:55:00.000Z
+    evidence: "Verificado el 2026-11-21 por la sesión hija i/reconciliar-las-p1-del-roadmap leyendo el código de main (7a0ac37). apps/web/src/app/(app)/reportes/page.tsx solo pinta margen si el servidor trae la clave (sin las constantes del 20 % y del 80 %); AvisoSoloLocal en campos personalizados, respuestas rápidas, onboarding, filtros recordados y preferencias de aviso; lista de lo que queda local en docs/_traspasos/ENTREGA.md («Pantallas que SOLO usan localStorage en modo real»); el teléfono de relleno de cotizaciones/page.tsx solo se usa si !usandoApiReal."
   - id: T-125
-    title: "Suite e2e web a API con Playwright: ingreso, bandeja, enviar cotizacion y seguimiento"
+    title: "Suite e2e del navegador: falta el caso de crear un seguimiento"
     type: test
     phase: 1
-    priority: P1
-    effort: L
+    priority: P2
+    effort: S
     status: backlog
     depends_on: []
     acceptance:
-      - "Playwright como dependencia de desarrollo justificada en el PR (ruta protegida: dependencias); corre
-        contra la API real en el modo unico sin Redis (ADR-0019) con base de datos del CI"
-      - "Casos: ingreso con OTP de Mailpit o sesion de desarrollo, abrir una conversacion sembrada, responder,
-        enviar una cotizacion y crear un seguimiento; el envio sale contra Graph API falsa"
-      - Job de CI no obligatorio al inicio; informe de fallos como artefacto
+      - "Lo que YA existe y no se repite: job «navegador» del CI (ci.yml), apps/web/e2e/01 a 08 con ingreso, bandeja, responder, enviar cotización contra la Graph API falsa (graph-falsa.mjs) y artefacto de informe al fallar"
+      - "Un caso en apps/web/e2e/ que crea un seguimiento desde la pantalla contra la API real y comprueba que aparece en /seguimientos"
     files:
       - apps/web/e2e/
       - .github/workflows/
     source: "auditoria de veracidad 2026-11-04 (PR #202)"
+    notes: "Reconciliación 2026-11-21: de cinco casos pedidos, cuatro existen; en apps/web/e2e/ «seguimiento» solo sale como ruta del menú. Bajada a P2: no bloquea nada."
     created_at: 2026-11-05T00:44:42.917Z
   - id: T-126
     title: Campana de pruebas funcionales completas en local y bitacora de hallazgos
@@ -3377,32 +3390,26 @@ tasks:
     created_at: 2026-11-05T01:14:46.633Z
     owner: backend
   - id: T-137
-    title: "Reportes: primera respuesta por episodio con mediana, p90, episodios sin respuesta y % dentro del SLA
-      (amplia GET /reportes/resumen del PR #213)"
+    title: "Reportes: primera respuesta por episodio, % dentro del SLA y muestra insuficiente (la mediana, el p90 y los sin responder ya están en el resumen)"
     type: feature
     phase: 1
-    priority: P1
+    priority: P2
     effort: M
     status: backlog
     depends_on:
       - T-135
     acceptance:
-      - "Empieza despues de integrar el PR #213; modifica su puerto PuertoRespuestaParaReportes, no crea otro
-        endpoint"
-      - "Episodio y respuesta definidos como en docs/08-roadmap/06-roadmap-de-reportes.md R1: solo salientes
-        con autor humano y no FALLIDO cuentan como respuesta"
-      - Devuelve n de episodios, respondidos, sin respuesta, mediana y p90 en minutos y % en SLA; sin promedio
-        en la web; percentiles nulos si n < 5 (muestraInsuficiente)
-      - Desglose por asesor que respondio; SET LOCAL statement_timeout en la transaccion del reporte
-      - Indice mensajes (tenant_id, conversacion_id, direccion, ocurrido_en) solo si EXPLAIN con datos de
-        prueba de volumen lo justifica; si se agrega, migracion aparte con aprobacion del propietario
-      - "e2e: un cliente que vuelve tras 3 dias genera un segundo episodio; uno sin respuesta cuenta en el
-        denominador del % SLA"
+      - "Ya existe en packages/contracts/src/reportes.ts (ResumenDeRespuesta): medianaMinutos, p90Minutos, sinResponder y tasaRespuesta, por conversación creada en el periodo y atribuida a quien respondió. No se rehace"
+      - "Falta: medir por episodio (un cliente que vuelve tras 3 días abre un segundo episodio) con la definición de docs/08-roadmap/06-roadmap-de-reportes.md R1"
+      - "Falta: % dentro del SLA (necesita la política de atención de T-135, que sigue en backlog) y que cuente en el denominador el episodio sin respuesta"
+      - "Falta: percentiles nulos y muestraInsuficiente verdadero con n < 5, y SET LOCAL statement_timeout en la transacción del reporte (no hay ninguno en analytics)"
+      - "Falta: índice (tenant_id, conversacion_id, direccion, ocurrido_en) solo si EXPLAIN lo justifica; migración aparte con aprobación del propietario"
     files:
       - apps/api/src/modules/inbox/
       - apps/api/src/modules/analytics/
       - packages/contracts/src/reportes.ts
     source: roadmap de reportes 2026-11-04 (docs/08-roadmap/06-roadmap-de-reportes.md)
+    notes: "Reconciliación 2026-11-21: bajada a P2 porque su pieza nueva (SLA) espera a T-135 y nadie la usa hoy."
     created_at: 2026-11-05T01:14:46.633Z
     owner: backend
   - id: T-138
@@ -3410,7 +3417,7 @@ tasks:
       seguimientos vencidos y carga por asesor"
     type: feature
     phase: 1
-    priority: P1
+    priority: P2
     effort: M
     status: backlog
     depends_on: []
@@ -3428,59 +3435,54 @@ tasks:
       - apps/api/src/shared/puertos/
       - packages/contracts/src/reportes.ts
     source: roadmap de reportes 2026-11-04 (docs/08-roadmap/06-roadmap-de-reportes.md)
+    notes: "Reconciliación 2026-11-21: intacta (solo existe GET /reportes/resumen). Bajada a P2: el resumen ya trae sinResponder y la pantalla «Hoy» lista los seguimientos vencidos; esto es la vista agregada de gestión, no bloquea el piloto."
     created_at: 2026-11-05T01:14:46.633Z
     owner: backend
   - id: T-139
-    title: "Reportes: GET /reportes/cotizaciones-abiertas con antiguedad desde el envio y vencidas de hecho por
-      vigencia"
+    title: "Reportes: cotizaciones vencidas de hecho por vigencia y valor abierto por moneda (los tramos de antigüedad ya están en el resumen)"
     type: feature
     phase: 1
-    priority: P1
+    priority: P2
     effort: S
     status: backlog
     depends_on: []
     acceptance:
-      - Cotizaciones ENVIADA por tramos de 0-2, 3-7, 8-14 y mas de 14 dias desde enviada_en, en la zona del
-        tenant
-      - "Vencidas de hecho: ENVIADA con vigente_hasta de la version enviada anterior a hoy (no depende del
-        estado VENCIDA manual)"
-      - Por asesor (creado_por) y por moneda; valor de venta por moneda sin mezclar; sin neto ni margen salvo
-        con cotizacion.ver_neto_y_margen
-      - Puerto en quoting compuesto en analytics; tenant_id explicito en el SQL
+      - "Ya existe (T-528): CotizacionesAbiertas en el resumen con total, borradores, enviadas y tramos hastaTresDias / deCuatroASiete / masDeSiete, por alcance. No se rehace"
+      - "Falta: vencidas de hecho (ENVIADA con vigente_hasta de la versión enviada anterior a hoy), sin depender del estado VENCIDA manual"
+      - "Falta: valor de venta abierto por moneda sin mezclar, y por asesor en la vista de agencia; neto y margen solo con cotizacion.ver_neto_y_margen"
+      - "Decidir si los tramos pasan a 0-2, 3-7, 8-14 y más de 14 días o se queda con los de hoy (3, 7)"
     files:
       - apps/api/src/modules/quoting/
       - apps/api/src/modules/analytics/
       - packages/contracts/src/reportes.ts
     source: roadmap de reportes 2026-11-04 (docs/08-roadmap/06-roadmap-de-reportes.md)
+    notes: "Reconciliación 2026-11-21: casi todo lo pedido por el título original ya salió con T-528; bajada a P2."
     created_at: 2026-11-05T01:14:46.633Z
     owner: backend
   - id: T-140
-    title: "Reportes: ventas por destino, paquete y asesor, motivos de perdida, cohortes por instante de decision
-      y cierre, e indicadores de calidad del dato"
+    title: "Reportes: ventas por paquete, motivos de pérdida, cohortes de cierre, cobertura de margen e indicadores de calidad (ventas por destino y por asesor ya están)"
     type: feature
     phase: 1
-    priority: P1
+    priority: P2
     effort: M
     status: backlog
     depends_on:
       - T-131
       - T-132
     acceptance:
-      - "Empieza despues de integrar el PR #213 y amplia su resumen"
-      - Ventas y margen por moneda y por destino/paquete/asesor con cobertura de margen (cotizaciones con neto
-        conocido / total); margen % solo sobre las filas con neto
-      - Cuando T-132 existe, la venta se ancla al instante de aceptacion; las cotizaciones sin historial se
-        declaran aparte
-      - Motivos de perdida por mes de cerrada_en (T-131) y por asesor; nota visible para OTRO
-      - "Indicadores: ganadas sin cotizacion aceptada, ENVIADA con vigencia vencida, ventas sin margen
-        conocido"
-      - Agrupaciones por mes con date_trunc en la zona del tenant (tenants.zona_horaria), no en UTC
+      - "Ya existe (T-531, T-532): ventasPorDestino y porAsesor en ResumenDeAgencia, ventas ancladas al instante de aceptación por moneda, margen solo con cotizacion.ver_neto_y_margen. No se rehace"
+      - "Falta: ventas por paquete (hoy solo por destino)"
+      - "Falta: motivos de pérdida por mes de cerrada_en y por asesor, con nota visible para OTRO (las columnas de T-131 existen)"
+      - "Falta: cobertura de margen (cotizaciones con neto conocido / total) y margen % solo sobre filas con neto"
+      - "Falta: indicadores de calidad del dato (ganadas sin cotización aceptada, ENVIADA con vigencia vencida, ventas sin margen conocido)"
+      - "Falta: agrupaciones por mes con date_trunc en la zona del tenant"
     files:
       - apps/api/src/modules/analytics/
       - apps/api/src/modules/quoting/
       - apps/api/src/modules/crm/
       - packages/contracts/src/reportes.ts
     source: roadmap de reportes 2026-11-04 (docs/08-roadmap/06-roadmap-de-reportes.md)
+    notes: "Reconciliación 2026-11-21: la mitad de lo pedido ya existe; bajada a P2. Aviso: T-131 y T-132 siguen en backlog P0 pero sus migraciones (20261104150000 y 20261104160000) y su uso en reportes ya están en main."
     created_at: 2026-11-05T01:14:46.634Z
     owner: backend
   - id: T-141
@@ -3489,7 +3491,7 @@ tasks:
     phase: 1
     priority: P1
     effort: S
-    status: backlog
+    status: done
     depends_on: []
     acceptance:
       - Permiso nuevo en PERMISOS (packages/contracts/src/identidad.ts) y en el CHECK de permisos de roles,
@@ -3498,6 +3500,7 @@ tasks:
       - La decision de politica (si el asesor ve cifras del equipo) la confirma el dueno-de-producto antes de
         integrar
       - "e2e: un ASESOR no recibe cifras de otro asesor; un DUENO si"
+      - "Verificado el 2026-11-21 por la sesión hija i/reconciliar-las-p1-del-roadmap leyendo el código de main (7a0ac37). Dónde está: permiso reportes.ver_agencia en packages/contracts/src/identidad.ts y migración 20261121160000_permiso_reportes_ver_agencia (T-341, ADR-0035); sin él la respuesta es PROPIA y un asesor ajeno da 403 (reportes.e2e-spec.ts, «alcance propio: un asesor no ve lo del otro», T-342). Ojo: el permiso se llama ver_agencia, no ver_equipo, y se siembra solo al DUENO (ADR-0035 lo decidió así; no a OPERACIONES)"
     files:
       - packages/contracts/src/identidad.ts
       - packages/database/prisma/migrations/
@@ -3507,6 +3510,8 @@ tasks:
     owner: datos
     notes: "Absorbida por T-341 (roadmap JD Tours, Eje F: reportes por niveles de acceso): el permiso y su
       sembrado se hacen allí tras el ADR T-340."
+    done_at: 2026-11-21T16:55:00.000Z
+    evidence: "Verificado el 2026-11-21 por la sesión hija i/reconciliar-las-p1-del-roadmap leyendo el código de main (7a0ac37). permiso reportes.ver_agencia en packages/contracts/src/identidad.ts y migración 20261121160000_permiso_reportes_ver_agencia (T-341, ADR-0035); sin él la respuesta es PROPIA y un asesor ajeno da 403 (reportes.e2e-spec.ts, «alcance propio: un asesor no ve lo del otro», T-342). Ojo: el permiso se llama ver_agencia, no ver_equipo, y se siembra solo al DUENO (ADR-0035 lo decidió así; no a OPERACIONES)."
   - id: T-142
     title: "Web /reportes sobre GET /api/v1/reportes/resumen: instantes UTC, ventasPorMoneda por moneda y fuera el
       calculo desde el tablero"
@@ -3546,7 +3551,7 @@ tasks:
       (asesor y dueno)"
     type: feature
     phase: 1
-    priority: P1
+    priority: P2
     effort: M
     status: backlog
     depends_on:
@@ -3562,6 +3567,7 @@ tasks:
       - apps/web/src/app/reportes/
       - apps/web/src/lib/
     source: roadmap de reportes 2026-11-04 (docs/08-roadmap/06-roadmap-de-reportes.md)
+    notes: "Reconciliación 2026-11-21: intacta; depende de endpoints (T-138, T-139) que no existen. «Mis números» (T-343) ya cubre una parte para el asesor. Bajada a P2."
     created_at: 2026-11-05T01:14:46.635Z
     owner: frontend
   - id: T-144
@@ -3569,7 +3575,7 @@ tasks:
       en la zona del tenant"
     type: test
     phase: 1
-    priority: P1
+    priority: P2
     effort: M
     status: backlog
     depends_on:
@@ -3587,6 +3593,7 @@ tasks:
     files:
       - apps/api/src/modules/analytics/
     source: roadmap de reportes 2026-11-04 (docs/08-roadmap/06-roadmap-de-reportes.md)
+    notes: "Reconciliación 2026-11-21: intacta; sus endpoints (T-138, T-139) no existen. Los e2e de dos agencias, asesor propio y margen ausente del resumen YA existen en reportes.e2e-spec.ts. Bajada a P2."
     created_at: 2026-11-05T01:14:46.635Z
     owner: qa
   - id: T-145
@@ -3717,29 +3724,29 @@ tasks:
     created_at: 2026-11-05T01:14:46.636Z
     owner: frontend
   - id: T-151
-    title: "Tablero del pipeline: el valor por columna suma valor_estimado de monedas distintas"
+    title: "Tablero del pipeline: e2e con COP y USD en la misma etapa y conteo aparte de las oportunidades sin valor (la suma por moneda ya está)"
     type: bug
     phase: 1
-    priority: P1
+    priority: P2
     effort: S
     status: backlog
     depends_on: []
     acceptance:
-      - tableroPorEtapa agrupa la suma por (etapa, moneda_iso) y el contrato expone una lista de Dinero por
-        columna
-      - Oportunidades sin valor se cuentan aparte
-      - e2e con una oportunidad en COP y otra en USD en la misma etapa
+      - "Ya existe (T-181): tableroPorEtapa agrupa por (etapa, moneda) en apps/api/src/modules/crm/infrastructure/crm.prisma.ts y ColumnaPipeline expone valoresPorMoneda y valorTotal nulo si hay más de una moneda (packages/contracts/src/crm.ts); ver-tablero.spec.ts prueba COP + USD sin sumar"
+      - "Falta: un e2e que SIEMBRE una oportunidad en COP y otra en USD en la misma etapa (crm.e2e-spec.ts solo comprueba el invariante sobre la semilla)"
+      - "Falta: contar aparte las oportunidades sin valor (hoy cuentan en total pero el contrato no las separa)"
     files:
       - apps/api/src/modules/crm/infrastructure/crm.prisma.ts
       - packages/contracts/src/crm.ts
     source: roadmap de reportes 2026-11-04 (docs/08-roadmap/06-roadmap-de-reportes.md)
+    notes: "Reconciliación 2026-11-21: el bug ya no existe; queda una prueba y un conteo. Bajada a P2."
     created_at: 2026-11-05T01:14:46.636Z
     owner: backend
   - id: T-152
     title: Glosario por idioma (es-CO, en-US, pt-BR) en el lenguaje ubicuo
     type: docs
     phase: 2
-    priority: P1
+    priority: P2
     effort: S
     status: backlog
     depends_on: []
@@ -3753,13 +3760,14 @@ tasks:
     files:
       - docs/01-producto/02-lenguaje-ubicuo.md
     source: ADR-0020 multiidioma 2026-11-04 (docs/08-roadmap/07-roadmap-multiidioma.md)
+    notes: "Reconciliación 2026-11-21: intacta (no existe packages/i18n ni columnas de idioma en tenants, usuarios, contactos o mensajes). Bajada a P2: docs/08-roadmap/09-roadmap-maestro-y-operacion-desatendida.md la deja congelada hasta cerrar la Ola 1 y el piloto es en español."
     created_at: 2026-11-05T02:38:48.839Z
     owner: experto-turismo
   - id: T-153
     title: "Migración M-i1: idioma en tenants, usuarios, contactos y mensajes"
     type: feature
     phase: 2
-    priority: P1
+    priority: P2
     effort: S
     status: backlog
     depends_on: []
@@ -3774,13 +3782,14 @@ tasks:
       - packages/database/prisma/schema.prisma
       - packages/database/prisma/migrations/
     source: ADR-0020 multiidioma 2026-11-04 (docs/08-roadmap/07-roadmap-multiidioma.md)
+    notes: "Reconciliación 2026-11-21: intacta (no existe packages/i18n ni columnas de idioma en tenants, usuarios, contactos o mensajes). Bajada a P2: docs/08-roadmap/09-roadmap-maestro-y-operacion-desatendida.md la deja congelada hasta cerrar la Ola 1 y el piloto es en español."
     created_at: 2026-11-05T02:38:48.840Z
     owner: datos
   - id: T-154
     title: "Paquete packages/i18n: núcleo de traducción, formato por idioma y diccionario del viajero"
     type: feature
     phase: 2
-    priority: P1
+    priority: P2
     effort: M
     status: backlog
     depends_on:
@@ -3800,13 +3809,14 @@ tasks:
       - packages/domain/src/
       - apps/api/src/modules/quoting/domain/texto-de-cotizacion-whatsapp.ts
     source: ADR-0020 multiidioma 2026-11-04 (docs/08-roadmap/07-roadmap-multiidioma.md)
+    notes: "Reconciliación 2026-11-21: intacta (no existe packages/i18n ni columnas de idioma en tenants, usuarios, contactos o mensajes). Bajada a P2: docs/08-roadmap/09-roadmap-maestro-y-operacion-desatendida.md la deja congelada hasta cerrar la Ola 1 y el piloto es en español."
     created_at: 2026-11-05T02:38:48.840Z
     owner: backend
   - id: T-155
     title: "API: idioma del usuario, del contacto y de la agencia en contratos y rutas"
     type: feature
     phase: 2
-    priority: P1
+    priority: P2
     effort: M
     status: backlog
     depends_on:
@@ -3823,13 +3833,14 @@ tasks:
       - apps/api/src/modules/identity/
       - apps/api/src/modules/crm/
     source: ADR-0020 multiidioma 2026-11-04 (docs/08-roadmap/07-roadmap-multiidioma.md)
+    notes: "Reconciliación 2026-11-21: intacta (no existe packages/i18n ni columnas de idioma en tenants, usuarios, contactos o mensajes). Bajada a P2: docs/08-roadmap/09-roadmap-maestro-y-operacion-desatendida.md la deja congelada hasta cerrar la Ola 1 y el piloto es en español."
     created_at: 2026-11-05T02:38:48.840Z
     owner: backend
   - id: T-156
     title: Cotización por WhatsApp en el idioma pedido, con idioma congelado en el mensaje
     type: feature
     phase: 2
-    priority: P1
+    priority: P2
     effort: M
     status: backlog
     depends_on:
@@ -3851,13 +3862,14 @@ tasks:
       - apps/api/src/modules/inbox/application/enviar-cotizacion-por-whatsapp.ts
       - apps/api/src/modules/inbox/domain/clave-de-envio-de-cotizacion.ts
     source: ADR-0020 multiidioma 2026-11-04 (docs/08-roadmap/07-roadmap-multiidioma.md)
+    notes: "Reconciliación 2026-11-21: intacta (no existe packages/i18n ni columnas de idioma en tenants, usuarios, contactos o mensajes). Bajada a P2: docs/08-roadmap/09-roadmap-maestro-y-operacion-desatendida.md la deja congelada hasta cerrar la Ola 1 y el piloto es en español."
     created_at: 2026-11-05T02:38:48.841Z
     owner: backend
   - id: T-157
     title: "Web: infraestructura de i18n con diccionarios tipados, cookie de idioma y trinquete de literales"
     type: feature
     phase: 2
-    priority: P1
+    priority: P2
     effort: M
     status: backlog
     depends_on:
@@ -3880,6 +3892,7 @@ tasks:
       - apps/web/src/lib/formato.ts
       - apps/web/src/lib/
     source: ADR-0020 multiidioma 2026-11-04 (docs/08-roadmap/07-roadmap-multiidioma.md)
+    notes: "Reconciliación 2026-11-21: intacta (no existe packages/i18n ni columnas de idioma en tenants, usuarios, contactos o mensajes). Bajada a P2: docs/08-roadmap/09-roadmap-maestro-y-operacion-desatendida.md la deja congelada hasta cerrar la Ola 1 y el piloto es en español."
     created_at: 2026-11-05T02:38:48.841Z
     owner: frontend
   - id: T-158
@@ -3887,7 +3900,7 @@ tasks:
       onboarding, errores y componentes comunes"
     type: refactor
     phase: 2
-    priority: P1
+    priority: P2
     effort: M
     status: backlog
     depends_on:
@@ -3903,13 +3916,14 @@ tasks:
       - apps/web/src/components/onboarding/
       - apps/web/src/components/bandeja/barra-modulos.tsx
     source: ADR-0020 multiidioma 2026-11-04 (docs/08-roadmap/07-roadmap-multiidioma.md)
+    notes: "Reconciliación 2026-11-21: intacta (no existe packages/i18n ni columnas de idioma en tenants, usuarios, contactos o mensajes). Bajada a P2: docs/08-roadmap/09-roadmap-maestro-y-operacion-desatendida.md la deja congelada hasta cerrar la Ola 1 y el piloto es en español."
     created_at: 2026-11-05T02:38:48.841Z
     owner: frontend
   - id: T-159
     title: "Web: extraer a claves los textos de bandeja y sus componentes"
     type: refactor
     phase: 2
-    priority: P1
+    priority: P2
     effort: M
     status: backlog
     depends_on:
@@ -3923,13 +3937,14 @@ tasks:
       - apps/web/src/app/bandeja/
       - apps/web/src/components/bandeja/
     source: ADR-0020 multiidioma 2026-11-04 (docs/08-roadmap/07-roadmap-multiidioma.md)
+    notes: "Reconciliación 2026-11-21: intacta (no existe packages/i18n ni columnas de idioma en tenants, usuarios, contactos o mensajes). Bajada a P2: docs/08-roadmap/09-roadmap-maestro-y-operacion-desatendida.md la deja congelada hasta cerrar la Ola 1 y el piloto es en español."
     created_at: 2026-11-05T02:38:48.841Z
     owner: frontend
   - id: T-160
     title: "Web: extraer a claves los textos de cotizador, cotizaciones y comparador de versiones"
     type: refactor
     phase: 2
-    priority: P1
+    priority: P2
     effort: M
     status: backlog
     depends_on:
@@ -3945,13 +3960,14 @@ tasks:
       - apps/web/src/components/cotizador/
       - apps/web/src/components/cotizaciones/
     source: ADR-0020 multiidioma 2026-11-04 (docs/08-roadmap/07-roadmap-multiidioma.md)
+    notes: "Reconciliación 2026-11-21: intacta (no existe packages/i18n ni columnas de idioma en tenants, usuarios, contactos o mensajes). Bajada a P2: docs/08-roadmap/09-roadmap-maestro-y-operacion-desatendida.md la deja congelada hasta cerrar la Ola 1 y el piloto es en español."
     created_at: 2026-11-05T02:38:48.841Z
     owner: frontend
   - id: T-161
     title: "Web: extraer a claves los textos de catálogo e importación"
     type: refactor
     phase: 2
-    priority: P1
+    priority: P2
     effort: M
     status: backlog
     depends_on:
@@ -3965,6 +3981,7 @@ tasks:
       - apps/web/src/app/catalogo/
       - apps/web/src/components/catalogo/
     source: ADR-0020 multiidioma 2026-11-04 (docs/08-roadmap/07-roadmap-multiidioma.md)
+    notes: "Reconciliación 2026-11-21: intacta (no existe packages/i18n ni columnas de idioma en tenants, usuarios, contactos o mensajes). Bajada a P2: docs/08-roadmap/09-roadmap-maestro-y-operacion-desatendida.md la deja congelada hasta cerrar la Ola 1 y el piloto es en español."
     created_at: 2026-11-05T02:38:48.841Z
     owner: frontend
   - id: T-162
@@ -3972,7 +3989,7 @@ tasks:
       notificaciones, configuración y aviso de páginas legales"
     type: refactor
     phase: 2
-    priority: P1
+    priority: P2
     effort: M
     status: backlog
     depends_on:
@@ -3990,13 +4007,14 @@ tasks:
       - apps/web/src/app/reportes/
       - apps/web/src/components/configuracion/
     source: ADR-0020 multiidioma 2026-11-04 (docs/08-roadmap/07-roadmap-multiidioma.md)
+    notes: "Reconciliación 2026-11-21: intacta (no existe packages/i18n ni columnas de idioma en tenants, usuarios, contactos o mensajes). Bajada a P2: docs/08-roadmap/09-roadmap-maestro-y-operacion-desatendida.md la deja congelada hasta cerrar la Ola 1 y el piloto es en español."
     created_at: 2026-11-05T02:38:48.841Z
     owner: frontend
   - id: T-163
     title: Traducir los diccionarios de interfaz a en-US y pt-BR con el glosario
     type: feature
     phase: 2
-    priority: P1
+    priority: P2
     effort: M
     status: backlog
     depends_on:
@@ -4013,13 +4031,14 @@ tasks:
     files:
       - apps/web/src/lib/
     source: ADR-0020 multiidioma 2026-11-04 (docs/08-roadmap/07-roadmap-multiidioma.md)
+    notes: "Reconciliación 2026-11-21: intacta (no existe packages/i18n ni columnas de idioma en tenants, usuarios, contactos o mensajes). Bajada a P2: docs/08-roadmap/09-roadmap-maestro-y-operacion-desatendida.md la deja congelada hasta cerrar la Ola 1 y el piloto es en español."
     created_at: 2026-11-05T02:38:48.841Z
     owner: frontend
   - id: T-164
     title: "Modal de envío de cotización: selector de idioma y «recordar para este contacto»"
     type: feature
     phase: 2
-    priority: P1
+    priority: P2
     effort: S
     status: backlog
     depends_on:
@@ -4033,13 +4052,14 @@ tasks:
       - apps/web/src/components/bandeja/modal-enviar-cotizacion.tsx
       - apps/web/src/components/cotizaciones/modal-enviar-whatsapp-cotizacion.tsx
     source: ADR-0020 multiidioma 2026-11-04 (docs/08-roadmap/07-roadmap-multiidioma.md)
+    notes: "Reconciliación 2026-11-21: intacta (no existe packages/i18n ni columnas de idioma en tenants, usuarios, contactos o mensajes). Bajada a P2: docs/08-roadmap/09-roadmap-maestro-y-operacion-desatendida.md la deja congelada hasta cerrar la Ola 1 y el piloto es en español."
     created_at: 2026-11-05T02:38:48.841Z
     owner: frontend
   - id: T-165
     title: Vista imprimible de cotización en el idioma del contacto
     type: feature
     phase: 2
-    priority: P1
+    priority: P2
     effort: S
     status: backlog
     depends_on:
@@ -4053,13 +4073,14 @@ tasks:
     files:
       - apps/web/src/app/cotizaciones/[id]/imprimir/page.tsx
     source: ADR-0020 multiidioma 2026-11-04 (docs/08-roadmap/07-roadmap-multiidioma.md)
+    notes: "Reconciliación 2026-11-21: intacta (no existe packages/i18n ni columnas de idioma en tenants, usuarios, contactos o mensajes). Bajada a P2: docs/08-roadmap/09-roadmap-maestro-y-operacion-desatendida.md la deja congelada hasta cerrar la Ola 1 y el piloto es en español."
     created_at: 2026-11-05T02:38:48.841Z
     owner: frontend
   - id: T-166
     title: QA del primer entregable multiidioma
     type: test
     phase: 2
-    priority: P1
+    priority: P2
     effort: S
     status: backlog
     depends_on:
@@ -4073,6 +4094,7 @@ tasks:
     files:
       - apps/web/src/components/comun/revision-375px.spec.tsx
     source: ADR-0020 multiidioma 2026-11-04 (docs/08-roadmap/07-roadmap-multiidioma.md)
+    notes: "Reconciliación 2026-11-21: intacta (no existe packages/i18n ni columnas de idioma en tenants, usuarios, contactos o mensajes). Bajada a P2: docs/08-roadmap/09-roadmap-maestro-y-operacion-desatendida.md la deja congelada hasta cerrar la Ola 1 y el piloto es en español."
     created_at: 2026-11-05T02:38:48.841Z
     owner: qa
   - id: T-167
@@ -5233,20 +5255,18 @@ tasks:
     created_at: 2026-11-15T17:30:00.000Z
     owner: backend
   - id: T-226
-    title: "Cifrado: rotacion robusta de CAMPOS_SENSIBLES_KEY (C5 de la auditoria de T-212)"
+    title: "Cifrado: recifrado por lotes y contador del tope por clave derivada (C5c); lo demás de la rotación ya está"
     type: security
     phase: 2
-    priority: P1
+    priority: P2
     effort: M
     status: backlog
-    notes: "(a) en #267; (b) arranque que aborta con clave_version sin clave, en este PR; (c) recifrado por lotes
-      en cola"
+    notes: "(a) en #267; (b) arranque que aborta con clave_version sin clave, en este PR; (c) recifrado por lotes en cola || Reconciliación 2026-11-21: ESTADO.md ya decía que solo falta (c); bajada a P2: solo hace falta cuando haya una clave real que rotar."
     depends_on:
       - T-212
     acceptance:
-      - Al arrancar, abortar si hay filas con clave_version sin clave que las abra
-      - Rechazar una maestra igual a WEBHOOK_PAYLOAD_KEY u otra clave
-      - Trabajo de recifrado por lotes y contador del tope de cifrados por clave derivada
+      - "Ya existe: (a) rechazo de una maestra igual a otra clave (cifrado-de-campos.spec.ts) y (b) arranque que aborta si hay filas con clave_version sin clave (shared/cifrado/comprobacion-de-claves.ts)"
+      - "Falta: trabajo de recifrado por lotes, por agencia, en cola, y el contador del tope de cifrados por clave derivada"
     files:
       - apps/api/src/shared/cifrado
     source: auditoria de seguridad de T-212, 2026-11-15
@@ -5518,6 +5538,7 @@ tasks:
       - apps/web/vercel.json
       - .github/workflows/deploy-staging.yml
     source: ADR-0028, 2026-11-17
+    notes: "Confirmada P1: render.yaml sigue en plan free y API_TRUST_PROXY sin fijar; es de la Ola 0 (demo desplegada)."
     created_at: 2026-11-17T15:30:00.000Z
     owner: devops
   - id: T-240
@@ -5647,8 +5668,7 @@ tasks:
       RETURNING. Pendiente: e2e booking-plazos.e2e-spec.ts NO corrida (sin Postgres en la sesion; la valida el
       CI), auditor-seguridad (el ADR la pide), integracion. Pasa a done al integrarse en main"
   - id: T-245
-    title: "Booking F1 (resto): permisos archivo.*, guardia de webhook sobre booking, mutaciones de aislamiento y
-      semilla"
+    title: "Booking F1 (resto): guardia de webhook sobre booking, mutaciones de aislamiento y semilla (los permisos archivo.* ya están)"
     type: security
     phase: 1
     priority: P1
@@ -5657,19 +5677,18 @@ tasks:
     depends_on:
       - T-240
     acceptance:
-      - Permisos archivo.* en PERMISOS de contracts y en el CHECK de roles (ADR-0024 F1)
-      - "Guardia de arranque: viajapro_webhook sin privilegio sobre travel_files, bookings, pasajeros y
-        entregas_de_eventos"
-      - "mutaciones-aislamiento.mjs: conceder SELECT en travel_files a viajapro_webhook pone F1-3 en rojo; FK
-        simple en bookings.travel_file_id pone F1-2 y F1-5 en rojo"
-      - Una fila de privilegios_declarados con un rol inexistente lanza error (hoy se ignora)
-      - Semilla de la agencia demo con un archivo de viaje de ejemplo
+      - "Ya existen los permisos archivo.ver y archivo.operar (contracts/identidad.ts, migración 20261118100000, T-249). No se rehacen"
+      - "Guardia de arranque: viajapro_webhook sin privilegio sobre travel_files, bookings, pasajeros y entregas_de_eventos (hoy guardia-de-rol.ts solo veda esas tablas al rol de identidad)"
+      - "mutaciones-aislamiento.mjs: conceder SELECT en travel_files a viajapro_webhook pone F1-3 en rojo; FK simple en bookings.travel_file_id pone F1-2 y F1-5 en rojo (el script no menciona travel_files ni bookings)"
+      - "Una fila de privilegios_declarados con un rol inexistente lanza error (sin verificar si hoy se ignora)"
+      - "Semilla de la agencia demo con un archivo de viaje de ejemplo (el seed no tiene ninguno)"
     files:
       - packages/contracts
       - apps/api/src/shared/prisma/guardia-de-rol.ts
       - packages/database/scripts/mutaciones-aislamiento.mjs
       - packages/database/prisma/policies/001-aislamiento-tenant.sql
     source: auditoria de seguridad de T-240, 2026-11-17 (cola R13)
+    notes: "Reconciliación 2026-11-21: sigue P1 por ser aislamiento entre agencias. Ojo: el arnés de mutaciones no corre en el CI (ver T-372 y T-377)."
     created_at: 2026-11-17T18:40:00.000Z
     owner: backend
   - id: T-246
@@ -6183,7 +6202,7 @@ tasks:
       encargo del tratamiento (ADR-0030 F0)"
     type: docs
     phase: 2
-    priority: P1
+    priority: P2
     effort: M
     status: blocked
     blocked_reason: "human_required: redacción y aprobación del propietario con abogado; depende de T-093 y T-098.
@@ -6203,6 +6222,7 @@ tasks:
       - docs/05-seguridad/
       - packages/contracts/src
     source: arquitecto:ADR-0030 §4 (2026-11-20)
+    notes: "Reconciliación 2026-11-21: intacta. Bajada a P2: el registro autoservicio es de la Ola 4 (escala) en docs/08-roadmap/09-roadmap-maestro-y-operacion-desatendida.md; el piloto entra con código de acceso y la API se niega a arrancar con el autoservicio activo y el índice de apodos global."
     created_at: 2026-11-20T23:00:00.000Z
     owner: documentador
   - id: T-268
@@ -6298,10 +6318,9 @@ tasks:
       interruptor REGISTRO_AUTOSERVICIO_HABILITADO (ADR-0030 F2)"
     type: security
     phase: 2
-    priority: P1
+    priority: P2
     effort: M
-    status: blocked
-    blocked_reason: Espera T-268 (ADR-0030 ya aceptado) (aceptaciones_de_identidad)
+    status: backlog
     depends_on:
       - T-268
     acceptance:
@@ -6340,6 +6359,7 @@ tasks:
       - apps/api/src/shared/prisma/operaciones-de-plataforma.ts
       - packages/contracts/src
     source: arquitecto:ADR-0030 §1, §3.6, §3.7 y §3.8 (2026-11-20)
+    notes: "Reconciliación 2026-11-21: intacta. Bajada a P2: el registro autoservicio es de la Ola 4 (escala) en docs/08-roadmap/09-roadmap-maestro-y-operacion-desatendida.md; el piloto entra con código de acceso y la API se niega a arrancar con el autoservicio activo y el índice de apodos global. Su bloqueo («espera T-268») estaba obsoleto: T-268 está hecha; pasa a backlog."
     created_at: 2026-11-20T23:00:00.000Z
     owner: backend
   - id: T-271
@@ -6347,7 +6367,7 @@ tasks:
       dueño, auditoría y outbox (ADR-0030 F3)"
     type: security
     phase: 2
-    priority: P1
+    priority: P2
     effort: M
     status: blocked
     blocked_reason: Espera T-268, T-269 y T-270
@@ -6381,6 +6401,7 @@ tasks:
       - apps/api/src/shared/prisma/operaciones-de-plataforma.ts
       - packages/contracts/src
     source: arquitecto:ADR-0030 §1 y §3 (2026-11-20)
+    notes: "Reconciliación 2026-11-21: intacta. Bajada a P2: el registro autoservicio es de la Ola 4 (escala) en docs/08-roadmap/09-roadmap-maestro-y-operacion-desatendida.md; el piloto entra con código de acceso y la API se niega a arrancar con el autoservicio activo y el índice de apodos global."
     created_at: 2026-11-20T23:00:00.000Z
     owner: backend
   - id: T-272
@@ -6388,7 +6409,7 @@ tasks:
       /bienvenida (ADR-0030 F4)"
     type: feature
     phase: 2
-    priority: P1
+    priority: P2
     effort: M
     status: blocked
     blocked_reason: Espera T-270 y T-271
@@ -6406,6 +6427,7 @@ tasks:
       - apps/web/src/app
       - packages/contracts/src
     source: arquitecto:ADR-0030 §1 (2026-11-20)
+    notes: "Reconciliación 2026-11-21: intacta. Bajada a P2: el registro autoservicio es de la Ola 4 (escala) en docs/08-roadmap/09-roadmap-maestro-y-operacion-desatendida.md; el piloto entra con código de acceso y la API se niega a arrancar con el autoservicio activo y el índice de apodos global."
     created_at: 2026-11-20T23:00:00.000Z
     owner: frontend
   - id: T-273
@@ -6481,7 +6503,7 @@ tasks:
       Solicitar conexión en el asistente"
     type: security
     phase: 2
-    priority: P1
+    priority: P2
     effort: M
     status: blocked
     blocked_reason: "Espera la aceptación de ADR-0030 y T-279 (si Meta permite operar WABAs de terceros sin Tech
@@ -6521,6 +6543,7 @@ tasks:
       - packages/database/prisma/migrations
       - docs/04-integraciones/
     source: arquitecto:ADR-0030 §5.1 (2026-11-20)
+    notes: "Reconciliación 2026-11-21: intacta. Bajada a P2: su propio bloqueo dice que para el piloto se conecta a mano (P6 ya decidido)."
     created_at: 2026-11-20T23:00:00.000Z
     owner: whatsapp
   - id: T-277
@@ -6572,7 +6595,7 @@ tasks:
       token de usuario de sistema de esa agencia, y con qué permisos
     type: docs
     phase: 2
-    priority: P1
+    priority: P2
     effort: S
     status: ready
     depends_on: []
@@ -6588,22 +6611,15 @@ tasks:
     source: auditoría de seguridad de ADR-0030, primera vuelta, bloqueante 3 (2026-11-20)
     created_at: 2026-11-20T23:30:00.000Z
     owner: investigador
-    notes: "Avance 2026-11-21 (sin cerrar): en las páginas de Meta leídas NO está documentado operar la WABA de
-      otro negocio con su token de usuario de sistema sin ser Tech Provider. Lo documentado: Embedded Signup +
-      token de negocio (solo Tech Provider/Solution Partner) o compartir la WABA con un portafolio verificado
-      (Business Suite, sin API); el acceso avanzado exige verificación del negocio; App Review ~24 h de media;
-      plazo de la verificación no documentado. Ver §7 de
-      docs/_investigacion/2026-11-20-coexistencia-whatsapp-business-app.md. Falta la cita literal que pide el
-      criterio y el plan B."
+    notes: "Avance 2026-11-21 (sin cerrar): en las páginas de Meta leídas NO está documentado operar la WABA de otro negocio con su token de usuario de sistema sin ser Tech Provider. Lo documentado: Embedded Signup + token de negocio (solo Tech Provider/Solution Partner) o compartir la WABA con un portafolio verificado (Business Suite, sin API); el acceso avanzado exige verificación del negocio; App Review ~24 h de media; plazo de la verificación no documentado. Ver §7 de docs/_investigacion/2026-11-20-coexistencia-whatsapp-business-app.md. Falta la cita literal que pide el criterio y el plan B. || Reconciliación 2026-11-21: sigue abierta con el avance de las notas (falta la cita literal y el plan B). Bajada a P2: solo informa a T-276, que ya no es del piloto."
   - id: T-280
     title: "Comandos de plataforma del registro: generar código de acceso, marcar NIT/RNT verificado y cambiar el
       tope global (ADR-0030 §3.2, §3.3, §3.8)"
     type: security
     phase: 2
-    priority: P1
+    priority: P2
     effort: S
-    status: blocked
-    blocked_reason: Espera la aceptación de ADR-0030 y T-268
+    status: backlog
     depends_on:
       - T-268
     acceptance:
@@ -6631,6 +6647,7 @@ tasks:
       - apps/api/src/modules/identity/scripts
       - packages/database/prisma
     source: auditoría de seguridad de ADR-0030, primera vuelta, bloqueante 2 y cola (2026-11-20)
+    notes: "Reconciliación 2026-11-21: intacta. Bajada a P2: el registro autoservicio es de la Ola 4 (escala) en docs/08-roadmap/09-roadmap-maestro-y-operacion-desatendida.md; el piloto entra con código de acceso y la API se niega a arrancar con el autoservicio activo y el índice de apodos global. Su bloqueo («espera T-268») estaba obsoleto: T-268 está hecha; pasa a backlog."
     created_at: 2026-11-20T23:30:00.000Z
     owner: backend
   - id: T-281
@@ -7607,13 +7624,14 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: backlog
+    status: done
     depends_on:
       - T-329
     acceptance:
       - Registrar un pago es idempotente; el saldo (total aceptado menos pagos) se calcula en el servidor en
         la unidad mínima; el neto sigue protegido por cotizacion.ver_neto_y_margen
       - Absorbe la mitad «abonos y saldo» de T-283; la mitad de conversacionId de T-283 se queda allí
+      - "Verificado el 2026-11-21 por la sesión hija i/reconciliar-las-p1-del-roadmap leyendo el código de main (7a0ac37). Dónde está: POST /api/v1/archivos/:id/pagos, POST …/pagos/:pagoId/reverso, POST …/plazo-de-cobro y GET …/cobro y GET /api/v1/cobros en apps/api/src/modules/payments/interface/cobros.controller.ts; reglas en payments/domain/reglas-de-registro.ts; payments-cobros.e2e-spec.ts cubre idempotencia (mismo contenido 200, otro 409, seis a la vez crean una fila), permisos cobro.*, aislamiento entre agencias, Luhn, sobrepago, estados del archivo y reverso (PR #393 y #420)"
     source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md (2026-11-20)
     created_at: 2026-11-20T19:00:00.000Z
     owner: backend
@@ -7626,6 +7644,8 @@ tasks:
       (registrado_en, id); sumas leídas como bigint, nunca Number; permisos cobro.* (ASESOR solo registra
       PAGO; el resto es cobro.corregir, que solo siembra DUENO); filtro Luhn sobre nota y referencia;
       pagado_el no futuro; que la penalidad no supere lo pagado."
+    done_at: 2026-11-21T16:55:00.000Z
+    evidence: "Verificado el 2026-11-21 por la sesión hija i/reconciliar-las-p1-del-roadmap leyendo el código de main (7a0ac37). POST /api/v1/archivos/:id/pagos, POST …/pagos/:pagoId/reverso, POST …/plazo-de-cobro y GET …/cobro y GET /api/v1/cobros en apps/api/src/modules/payments/interface/cobros.controller.ts; reglas en payments/domain/reglas-de-registro.ts; payments-cobros.e2e-spec.ts cubre idempotencia (mismo contenido 200, otro 409, seis a la vez crean una fila), permisos cobro.*, aislamiento entre agencias, Luhn, sobrepago, estados del archivo y reverso (PR #393 y #420)."
   - id: T-331
     title: "C4: registrar un pago y ver el saldo en el archivo de viaje"
     type: feature
@@ -7654,19 +7674,20 @@ tasks:
     created_at: 2026-11-20T19:00:00.000Z
     owner: frontend
   - id: T-332
-    title: "C5: vista «quién pagó y quién debe» con filtros Al día, Saldo pendiente y Vencido"
+    title: "C5: pantalla «quién pagó y quién debe»: lista de archivos con pasajeros, total, pagado y saldo y filtros Al día, Saldo pendiente y Vencido (la API ya existe)"
     type: feature
     phase: 1
     priority: P1
     effort: M
-    status: backlog
+    status: ready
     depends_on:
       - T-331
     acceptance:
-      - Lista de archivos con pasajeros, total, pagado y saldo; filtros por estado de cobro; se llega en dos
-        clics desde cualquier pantalla
+      - "Ya existe: GET /api/v1/cobros?estadoDeCobro= (FilaDeCobro con total, pagado, saldo, estadoDeCobro; T-330) y un resumen de vencidos en el dashboard de administración"
+      - "Falta: la lista en la web con filtros por estado de cobro (AL_DIA, SALDO_PENDIENTE, POR_VENCER, VENCIDO) y los pasajeros; se llega en dos clics desde cualquier pantalla (/viajes solo filtra por ABIERTO/CANCELADO)"
       - "e2e: registrar un pago cambia el saldo y el filtro"
     source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md (2026-11-20)
+    notes: "Reconciliación 2026-11-21: T-331 está hecha; pasa a ready."
     created_at: 2026-11-20T19:00:00.000Z
     owner: frontend
   - id: T-333
@@ -7692,7 +7713,7 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: backlog
+    status: ready
     depends_on:
       - T-316
       - T-327
@@ -7700,6 +7721,7 @@ tasks:
       - Columnas y filtros salen de la hoja real del piloto (muestra sin datos personales); orden y búsqueda
       - Se ve a 1440 y a 390 px; estados vacío y error
     source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md (2026-11-20)
+    notes: "Reconciliación 2026-11-21: intacta (/viajes solo filtra por estado ABIERTO/CANCELADO y no tiene las columnas de la hoja); sus dependencias T-316 y T-327 están hechas, pasa a ready."
     created_at: 2026-11-20T19:00:00.000Z
     owner: frontend
   - id: T-335
@@ -7715,6 +7737,7 @@ tasks:
       - El CSV trae lo que el usuario ve; sin neto ni margen para quien no tenga cotizacion.ver_neto_y_margen
       - Escapado de celdas contra inyección de fórmulas
     source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md (2026-11-20)
+    notes: "Confirmada P1: no hay exportación CSV de archivos de viaje (apps/web/src/lib/exportar-csv.ts existe pero no lo usa /viajes); es del criterio de salida de JD Tours."
     created_at: 2026-11-20T19:00:00.000Z
     owner: backend
   - id: T-336
@@ -7732,6 +7755,7 @@ tasks:
         datos personales en los logs (R10)
       - "Auditoría de seguridad: importa datos de personas dentro de una sola agencia y no cruza agencias"
     source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md (2026-11-20)
+    notes: "Confirmada P1: no existe importación de la hoja; es del criterio de salida de JD Tours."
     created_at: 2026-11-20T19:00:00.000Z
     owner: backend
   - id: T-337
@@ -7810,7 +7834,7 @@ tasks:
       servidor."
     owner: analista-datos
   - id: T-340
-    title: "F1: ADR de los niveles de acceso a reportes (propio, equipo, agencia)"
+    title: "F1: ADR-0035 integrado en main como «Propuesto»; falta la auditoría de seguridad y su aceptación"
     type: docs
     phase: 1
     priority: P1
@@ -7819,15 +7843,13 @@ tasks:
     depends_on:
       - T-339
     acceptance:
-      - Define los niveles y sus permisos, absorbe T-141 y deja claro cómo se impone el alcance en el servidor
-        con la sesión (nunca desde el cliente ni por el menú)
-      - Relación con visibilidad de conversaciones por asesor, con cotizacion.ver_neto_y_margen y con las
-        agencias; revisión de auditor-seguridad
+      - "Ya existe: docs/03-adr/0035-niveles-de-acceso-a-reportes.md en main (PR #397) y T-341, T-342 y T-343 construidos sobre él"
+      - "Falta: revisión de auditor-seguridad sobre la lista de su §9 registrada, y pasar el ADR de Propuesto a Aceptado por el propietario (el ADR sigue diciendo «Pendientes: auditor-seguridad y experto-turismo»)"
     source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md, Eje F (decisión del propietario
       2026-11-20)
     created_at: 2026-11-20T21:30:00.000Z
     owner: arquitecto
-    notes: ADR-0035 (Propuesto) en la rama i/T-340-adr-niveles-reportes. Pasa a done cuando se integre en main
+    notes: "ADR-0035 (Propuesto) en la rama i/T-340-adr-niveles-reportes. Pasa a done cuando se integre en main || Reconciliación 2026-11-21: sigue en review. Un ADR que ya se implementó sin estar Aceptado es un agujero de proceso (R7)."
   - id: T-341
     title: "F2: permisos de reportes en el catálogo de roles y su sembrado (absorbe T-141)"
     type: feature
@@ -7860,7 +7882,7 @@ tasks:
     phase: 1
     priority: P1
     effort: L
-    status: review
+    status: done
     depends_on:
       - T-341
     acceptance:
@@ -7872,6 +7894,7 @@ tasks:
         reportes; contrato del resumen como unión discriminada por alcance; asesorId ajeno sin permiso = 403
         en reportes y en seguimientos (cambia el silencio provisional de #395); retira el gate provisional de
         #395; atribución de M9 por mensajes.autor_id"
+      - "Verificado el 2026-11-21 por la sesión hija i/reconciliar-las-p1-del-roadmap leyendo el código de main (7a0ac37). Dónde está: alcanceDeReporte en apps/api/src/shared/autorizacion/alcance-de-reporte.ts, usado por analytics/interface/reportes.controller.ts y los tres puertos de reportes (PR #417, 62b8824); reportes.e2e-spec.ts: asesor propio sin cifras ajenas, asesorId ajeno = 403 sin revelar existencia, margen por su permiso, otra agencia no aporta filas. Lo que NO prueba esta línea: la pantalla (la lee T-343, hecha)"
     source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md, Eje F (decisión del propietario
       2026-11-20)
     created_at: 2026-11-20T21:30:00.000Z
@@ -7884,6 +7907,8 @@ tasks:
       nadie la escribía: sin eso el resumen propio salía en cero para todos los asesores). e2e con dos
       asesores y dos agencias: no se corrieron en local (ninguna sesión levanta Postgres aquí), las corrió el
       CI y pasaron. La pantalla NO se probó: la web no lee alcance hasta T-343. Cola que deja: T-513 y T-514."
+    done_at: 2026-11-21T16:55:00.000Z
+    evidence: "Verificado el 2026-11-21 por la sesión hija i/reconciliar-las-p1-del-roadmap leyendo el código de main (7a0ac37). alcanceDeReporte en apps/api/src/shared/autorizacion/alcance-de-reporte.ts, usado por analytics/interface/reportes.controller.ts y los tres puertos de reportes (PR #417, 62b8824); reportes.e2e-spec.ts: asesor propio sin cifras ajenas, asesorId ajeno = 403 sin revelar existencia, margen por su permiso, otra agencia no aporta filas. Lo que NO prueba esta línea: la pantalla (la lee T-343, hecha)."
   - id: T-343
     title: "F4: dashboard del asesor, móvil primero"
     type: feature
@@ -7957,20 +7982,22 @@ tasks:
     created_at: 2026-11-20T21:30:00.000Z
     owner: frontend
   - id: T-346
-    title: "F7: revisión móvil de los dos dashboards y pruebas de permisos entre asesores"
+    title: "F7: revisión móvil de los dos dashboards y e2e de navegador de permisos entre asesores (el e2e de API y la medida de 390 px de /reportes ya existen)"
     type: test
     phase: 1
     priority: P1
     effort: M
-    status: backlog
+    status: ready
     depends_on:
       - T-343
       - T-344
     acceptance:
-      - Capturas a 390 px de ambos dashboards sin desplazamiento lateral y con contraste suficiente
-      - "e2e: el asesor no ve reportes de la agencia ni de otro asesor; el administrador sí"
+      - "Ya existe: reportes.e2e-spec.ts (API) con dos asesores y dos agencias, y /reportes en MIDE_DESPLAZAMIENTO de apps/web/e2e/03-paginas.e2e-spec.ts (390 px sin desplazamiento lateral)"
+      - "Falta: capturas a 390 px de «Mis números» y del dashboard de administración, con el contraste y los estados cargando y error mirados (T-343 lo dejó «sin verificar»)"
+      - "Falta: un e2e en el navegador donde un asesor entra a /reportes y no ve cifras de la agencia ni de otro asesor, y el administrador sí"
     source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md, Eje F (decisión del propietario
       2026-11-20)
+    notes: "Reconciliación 2026-11-21: sus dependencias T-343 y T-344 están hechas; pasa a ready."
     created_at: 2026-11-20T21:30:00.000Z
     owner: qa
   - id: T-347
@@ -8023,7 +8050,7 @@ tasks:
     title: "Fase 2 del ingreso: agencia en la URL e indice de apodos por agencia"
     type: feature
     phase: 2
-    priority: P1
+    priority: P2
     effort: L
     status: backlog
     human_required: true
@@ -8043,6 +8070,7 @@ tasks:
       - docs/03-adr/0031-ingreso-por-apodo.md
       - packages/contracts/src/identidad.ts
     source: ADR-0031 (cola, 2026-11-20)
+    notes: "Reconciliación 2026-11-21: intacta. Bajada a P2: el registro autoservicio es de la Ola 4 (escala) en docs/08-roadmap/09-roadmap-maestro-y-operacion-desatendida.md; el piloto entra con código de acceso y la API se niega a arrancar con el autoservicio activo y el índice de apodos global."
     created_at: 2026-11-20T20:30:00.000Z
     owner: arquitecto
   - id: T-362
@@ -8222,7 +8250,7 @@ tasks:
     created_at: 2026-11-20T20:30:00.000Z
     owner: backend
   - id: T-372
-    title: "ADR-0031 PR 1 datos: usuarios.apodo, disparador y CHECK del correo centinela"
+    title: "ADR-0031 PR 1: ejecutar el arnés de mutaciones de aislamiento (M17 y M21) y dejar el resultado; la migración y AP1-AP12 ya están"
     type: security
     phase: 1
     priority: P1
@@ -8230,30 +8258,22 @@ tasks:
     status: backlog
     human_required: true
     acceptance:
-      - Migracion con usuarios.apodo, accesos_identidad.apodo y el cuerpo nuevo de
-        sincronizar_acceso_identidad segun el ADR
-      - Aserciones (a)-(l) de aislamiento y mutacion nueva del arnes; M17 sigue detectada por la prueba 64
-      - CHECK en identidades.correo que rechaza el dominio .invalid
+      - "Ya existe: migración 20261120150000_apodo_de_ingreso (usuarios.apodo, accesos_identidad.apodo, disparador, CHECK del dominio .invalid) y AP1-AP12 en packages/database/tests/aislamiento.spec.ts"
+      - "Falta: correr packages/database/scripts/mutaciones-aislamiento.mjs contra una base y dejar en la bitácora que M17 y M21 salen en rojo (el script las define pero ningún job del CI lo ejecuta y no hay rastro de una corrida)"
     files:
       - packages/database/tests/aislamiento.spec.ts
       - packages/database/prisma/seed.ts
     source: ADR-0031 (cola, 2026-11-20)
     created_at: 2026-11-20T20:30:00.000Z
     owner: datos
-    notes: "TRIAJE 2026-11-21. Se ofrecio cerrarla como done moviendo su criterio pendiente a T-377. La madre
-      RECHAZA esa salida. El criterio pendiente es que el arnes de mutaciones de aislamiento (M17 y M21) NUNCA
-      SE HA EJECUTADO: no corre en el CI y no hay rastro de que se corriera tras el apodo. Mover un criterio
-      de aislamiento no ejecutado a otra tarea es aplazarlo con mejor aspecto. CLAUDE.md 3.1 dice que el
-      aislamiento es el unico sitio donde no se recorta, y el 2026-11-21 ya aparecieron dos huecos de
-      verificacion por confiar en lecturas (T-547 y el e2e de T-529). Se queda backlog hasta que el arnes
-      corra. Lo hecho si esta en main: migracion 20261120150000, AP1-AP12 en aislamiento.spec.ts."
+    notes: "TRIAJE 2026-11-21. Se ofrecio cerrarla como done moviendo su criterio pendiente a T-377. La madre RECHAZA esa salida. El criterio pendiente es que el arnes de mutaciones de aislamiento (M17 y M21) NUNCA SE HA EJECUTADO: no corre en el CI y no hay rastro de que se corriera tras el apodo. Mover un criterio de aislamiento no ejecutado a otra tarea es aplazarlo con mejor aspecto. CLAUDE.md 3.1 dice que el aislamiento es el unico sitio donde no se recorta, y el 2026-11-21 ya aparecieron dos huecos de verificacion por confiar en lecturas (T-547 y el e2e de T-529). Se queda backlog hasta que el arnes corra. Lo hecho si esta en main: migracion 20261120150000, AP1-AP12 en aislamiento.spec.ts. || Reconciliación 2026-11-21: se mantiene la decisión del triaje de la madre (no cerrarla moviendo el criterio a T-377). Solo se estrecha el texto a lo que falta."
   - id: T-373
     title: "ADR-0031 PR 2 API: identificador, centinela, tope por identidad y PATCH del apodo"
     type: feature
     phase: 1
     priority: P1
     effort: L
-    status: backlog
+    status: done
     human_required: true
     depends_on:
       - T-372
@@ -8263,6 +8283,7 @@ tasks:
       - PATCH /api/v1/miembros/:id/apodo con la guarda de la baja; la API no arranca con el autoservicio
         activo y el indice global
       - e2e de aislamiento, sin apodo en logs ni en el 409
+      - "Verificado el 2026-11-21 por la sesión hija i/reconciliar-las-p1-del-roadmap leyendo el código de main (7a0ac37). Dónde está: apps/api/src/modules/identity/application/ingreso-por-identificador.ts y auth.controller.ts (campo identificador), PATCH /api/v1/identidad/miembros/:id/apodo en miembros.controller.ts, y infrastructure/comprobar-apodos-al-arrancar.ts; apodo-ingreso.e2e-spec.ts cubre misma respuesta para inexistente/mal formado/desactivado/clave errónea, tope por identificador, ráfagas, 404 entre agencias, 409 sin imprimir el apodo y ningún apodo en el log"
     files:
       - apps/api/src/modules/identity/interface/auth.controller.ts
       - apps/api/src/modules/identity/interface/miembros.controller.ts
@@ -8270,24 +8291,29 @@ tasks:
     source: ADR-0031 (cola, 2026-11-20)
     created_at: 2026-11-20T20:30:00.000Z
     owner: backend
+    done_at: 2026-11-21T16:55:00.000Z
+    evidence: "Verificado el 2026-11-21 por la sesión hija i/reconciliar-las-p1-del-roadmap leyendo el código de main (7a0ac37). apps/api/src/modules/identity/application/ingreso-por-identificador.ts y auth.controller.ts (campo identificador), PATCH /api/v1/identidad/miembros/:id/apodo en miembros.controller.ts, y infrastructure/comprobar-apodos-al-arrancar.ts; apodo-ingreso.e2e-spec.ts cubre misma respuesta para inexistente/mal formado/desactivado/clave errónea, tope por identificador, ráfagas, 404 entre agencias, 409 sin imprimir el apodo y ningún apodo en el log."
   - id: T-374
     title: "ADR-0031 PR 3 web: Correo o usuario en el ingreso y apodo al editar un miembro"
     type: feature
     phase: 1
     priority: P1
     effort: M
-    status: backlog
+    status: done
     depends_on:
       - T-373
     acceptance:
       - El campo de ingreso dice Correo o usuario y ningun mensaje distingue que el usuario no existe
       - El apodo se edita en un miembro existente; el 409 solo se muestra ahi
       - Probado en un navegador real, tambien en el movil
+      - "Verificado el 2026-11-21 por la sesión hija i/reconciliar-las-p1-del-roadmap leyendo el código de main (7a0ac37). Dónde está: apps/web/src/components/auth/formulario-ingreso.tsx («Correo o usuario»), edición del usuario del miembro en components/configuracion/bloque-equipo.tsx, mensaje del 409 solo ahí (lib/equipo-api.ts), y apps/web/e2e/08-ingreso-por-usuario.e2e-spec.ts a 390 px en navegador real (PR #405)"
     files:
       - apps/web/src/app/ingresar
     source: ADR-0031 (cola, 2026-11-20)
     created_at: 2026-11-20T20:30:00.000Z
     owner: frontend
+    done_at: 2026-11-21T16:55:00.000Z
+    evidence: "Verificado el 2026-11-21 por la sesión hija i/reconciliar-las-p1-del-roadmap leyendo el código de main (7a0ac37). apps/web/src/components/auth/formulario-ingreso.tsx («Correo o usuario»), edición del usuario del miembro en components/configuracion/bloque-equipo.tsx, mensaje del 409 solo ahí (lib/equipo-api.ts), y apps/web/e2e/08-ingreso-por-usuario.e2e-spec.ts a 390 px en navegador real (PR #405)."
   - id: T-375
     title: "perfiles_de_agencia: el disparador usa statement_timestamp() para creado_en y actualizado_en"
     type: security
@@ -8363,8 +8389,7 @@ tasks:
       viajapro_app, GRANT UPDATE sobre la columna tenants.id, DISABLE TRIGGER) y comprobar que cada una pone
       en rojo su prueba."
   - id: T-378
-    title: Permitir en .claude/settings.json los comandos habituales de solo lectura para que las sesiones
-      desatendidas no se detengan
+    title: "Completar en .claude/settings.json la lista de solo lectura: gh api GET, gh pr view/checks/diff, rg y sed (git, grep, node, ls, cat ya están)"
     type: infra
     phase: 1
     priority: P1
@@ -8372,15 +8397,13 @@ tasks:
     status: ready
     depends_on: []
     acceptance:
-      - Se ejecuta la skill fewer-permission-prompts sobre las transcripciones y se propone una lista de
-        permisos de solo lectura (git, gh api GET, grep, ls, node de los scripts del repositorio)
-      - La lista no incluye escrituras, red hacia hosts nuevos ni comandos destructivos; la aprueba el
-        propietario (ruta protegida .claude/)
+      - "Ya existe una lista amplia en .claude/settings.json (git status/diff/log/show, grep, node, ls, cat, gh pr list, pnpm …)"
+      - "Falta: gh api (solo GET), gh pr view, gh pr checks, gh pr diff y rg, que son los que más piden las sesiones desatendidas"
+      - "La lista sigue sin escrituras, hosts nuevos ni comandos destructivos; la aprueba el propietario (ruta protegida .claude/). Las rutas Read(//d/Projects/CRM/**) son de Windows y no valen en la nube"
     source: docs/08-roadmap/09-roadmap-maestro-y-operacion-desatendida.md (2026-11-21)
     created_at: 2026-11-21T00:30:00.000Z
     owner: devops
-    notes: Hoy una sesión que pide un permiso y nadie contesta se queda detenida (la de despliegue lleva horas).
-      Las sesiones de trabajo además deben ir en modo Auto, que elige el propietario.
+    notes: "Hoy una sesión que pide un permiso y nadie contesta se queda detenida (la de despliegue lleva horas). Las sesiones de trabajo además deben ir en modo Auto, que elige el propietario. || Reconciliación 2026-11-21: la mayor parte ya existe."
   - id: T-379
     title: Auditoría integral al cerrar cada ola del roadmap maestro
     type: audit
@@ -9688,51 +9711,38 @@ tasks:
     created_at: 2026-11-21T04:00:00.000Z
     owner: arquitecto
   - id: T-440
-    title: "Diseño O1.0a: marco responsivo de tres modos (celular, tablet con riel con etiquetas, escritorio con
-      menú lateral expandido), regla de altura, zonas seguras y dvh"
+    title: "Diseño O1.0a: cerrar el marco responsivo (los tres modos, la zona segura y viewport-fit ya están): dvh en páginas públicas y bandeja en una columna a ≤ 480 px de alto"
     type: feature
     phase: 1
-    priority: P1
+    priority: P2
     effort: M
     status: backlog
     depends_on:
       - T-441
     acceptance:
-      - "Celular < 768 px: barra inferior; tablet 768–1279: riel con icono y etiqueta, sin barra inferior;
-        escritorio ≥ 1280: menú lateral expandido y colapsable por preferencia"
-      - Con altura ≤ 480 px (celular horizontal) todos los módulos son alcanzables y la bandeja usa una columna
-      - viewport-fit y env(safe-area-inset-*) en las barras fijas; 100dvh en las alturas de ventana (ingreso,
-        404, error, imprimible incluidos)
-      - "Espera a que entre el PR #385, que toca barra-modulos.tsx"
-      - Capturas antes y después en celular (390), tablet (768, 820, 1024, 1180; vertical y horizontal) y
-        escritorio (1280, 1440, 1920); lo no probado (WebKit, Firefox, teclado en pantalla) consta como «sin
-        verificar»
-      - PR sin auto-merge, job navegador verde, pnpm typecheck y pnpm lint; el mismo PR deja su entrada en la
-        bitácora y actualiza la documentación de diseño que toque (R14)
+      - "Ya existe (PR #398): celular con barra inferior, tablet con riel con etiquetas y escritorio con menú lateral expandido en components/bandeja/barra-modulos.tsx y comun/marco-de-trabajo.tsx; viewport-fit=cover y env(safe-area-inset-*) en layout.tsx y la barra inferior; documentado en docs/01-producto/13-sistema-de-diseno.md §3"
+      - "Falta: 100dvh en las alturas de ventana de ingreso, 404, error e imprimible (la bitácora lo deja para T-467)"
+      - "Falta: con altura ≤ 480 px la bandeja usa una columna (es parte de T-442)"
+      - "Falta: capturas antes y después y lo no probado (WebKit, Firefox, teclado en pantalla) marcado «sin verificar»"
     source: docs/_auditorias/2026-11-21-auditoria-visual-y-ux.md y docs/08-roadmap/10-roadmap-diseno-ui-ux.md
       (sesión de diseño, 2026-11-21)
+    notes: "Reconciliación 2026-11-21: casi hecha. Bajada a P2."
     created_at: 2026-11-21T04:30:00.000Z
     owner: frontend
   - id: T-441
-    title: "Diseño O1.0b: utilidades de puntero (objetivo ≥ 44 px con pointer-coarse, densidad con pointer-fine) y
-      revisión de los controles menores de 44 px"
+    title: "Diseño O1.0b: aplicar la utilidad «objetivo» a los controles de bandeja, conversación, Contactos, Hoy y Catálogo (la utilidad ya existe y nadie la usa)"
     type: feature
     phase: 1
-    priority: P1
+    priority: P2
     effort: S
     status: backlog
     acceptance:
-      - Una utilidad única de objetivo táctil basada en las variantes pointer-coarse y pointer-fine de
-        Tailwind v4, sin dependencias nuevas
-      - Con dedo, ningún control de la bandeja, la conversación, Contactos, Hoy ni Catálogo mide menos de 44
-        px (medición con script, antes y después)
-      - Capturas antes y después en celular (390), tablet (768, 820, 1024, 1180; vertical y horizontal) y
-        escritorio (1280, 1440, 1920); lo no probado (WebKit, Firefox, teclado en pantalla) consta como «sin
-        verificar»
-      - PR sin auto-merge, job navegador verde, pnpm typecheck y pnpm lint; el mismo PR deja su entrada en la
-        bitácora y actualiza la documentación de diseño que toque (R14)
+      - "Ya existe: @utility objetivo (44 px con pointer: coarse) en apps/web/src/app/globals.css, con prueba en tokens-de-estado.spec.ts"
+      - "Falta: usarla; hoy no hay ningún className=\"objetivo\" en apps/web/src"
+      - "Falta: medición con script antes y después de que ningún control de esas pantallas mida menos de 44 px con dedo, y capturas"
     source: docs/_auditorias/2026-11-21-auditoria-visual-y-ux.md y docs/08-roadmap/10-roadmap-diseno-ui-ux.md
       (sesión de diseño, 2026-11-21)
+    notes: "Reconciliación 2026-11-21: la utilidad está, la aplicación no. Bajada a P2."
     created_at: 2026-11-21T04:30:00.000Z
     owner: frontend
   - id: T-442
@@ -9740,7 +9750,7 @@ tasks:
       columna de mensajes de hasta 720 px, sin relleno inferior en el hilo móvil)"
     type: feature
     phase: 1
-    priority: P1
+    priority: P2
     effort: M
     status: backlog
     depends_on:
@@ -9758,48 +9768,42 @@ tasks:
         bitácora y actualiza la documentación de diseño que toque (R14)
     source: docs/_auditorias/2026-11-21-auditoria-visual-y-ux.md y docs/08-roadmap/10-roadmap-diseno-ui-ux.md
       (sesión de diseño, 2026-11-21)
+    notes: "Reconciliación 2026-11-21: intacta. Bajada a P2: ninguna tarea ni el piloto esperan por ella (no aparece en las olas 0 y 1 de docs/08-roadmap/09-roadmap-maestro-y-operacion-desatendida.md)."
     created_at: 2026-11-21T04:30:00.000Z
     owner: frontend
   - id: T-443
-    title: "Diseño O1.1: tokens semánticos de plazo, estado y canal, escala tipográfica con piso de 12 px, cifras
-      tabulares y anillo de foco único"
+    title: "Diseño O1.1: piso de 12 px, cifras tabulares aplicadas y lista de contrastes AA (los tokens de plazo, estado y canal y el anillo de foco ya existen)"
     type: feature
     phase: 1
-    priority: P1
+    priority: P2
     effort: M
     status: backlog
     acceptance:
-      - Tokens plazo-vencido, plazo-hoy, plazo-proximo, plazo-ok, canal-whatsapp y demo en @theme, con nombres
-        de dominio
-      - "Ningún texto informativo por debajo de 12 px (11 px solo para la insignia de contador);
-        font-variant-numeric: tabular-nums en importes, totales y contadores"
-      - Un anillo de foco único, visible con teclado
-      - Contraste AA medido con herramienta para los grises y las insignias permitidas, con la lista escrita
-        en la documentación de diseño
-      - PR sin auto-merge, job navegador verde, pnpm typecheck y pnpm lint; el mismo PR deja su entrada en la
-        bitácora y actualiza la documentación de diseño que toque (R14)
+      - "Ya existe: tokens plazo-vencido, plazo-hoy, plazo-proximo, plazo-ok, canal-whatsapp y demo (globals.css, tokens-de-estado.spec.ts con contraste ≥ 4,5:1 claro y oscuro), la utilidad cifra y un solo anillo de foco (*:focus-visible)"
+      - "Falta: subir el piso de texto informativo a 12 px (text-xs sigue en 11 px a propósito, pantalla por pantalla)"
+      - "Falta: aplicar «cifra» a importes, totales y contadores"
+      - "Falta: la lista de grises e insignias con contraste AA medido, escrita en docs/01-producto/13-sistema-de-diseno.md"
     source: docs/_auditorias/2026-11-21-auditoria-visual-y-ux.md y docs/08-roadmap/10-roadmap-diseno-ui-ux.md
       (sesión de diseño, 2026-11-21)
+    notes: "Reconciliación 2026-11-21: tokens y foco hechos. Bajada a P2."
     created_at: 2026-11-21T04:30:00.000Z
     owner: frontend
   - id: T-444
-    title: "Diseño O1.2: componentes LineaDeViaje e InsigniaDePlazo con una escala de plazos de cuatro estados"
+    title: "Diseño O1.2: componente LineaDeViaje y escala de plazos de cuatro estados en InsigniaDePlazo (InsigniaDePlazo ya existe en comun/viaje-insignias.tsx)"
     type: feature
     phase: 1
-    priority: P1
+    priority: P2
     effort: M
     status: backlog
     depends_on:
       - T-443
     acceptance:
-      - LineaDeViaje muestra destino · fechas · pasajeros y el plazo más próximo, igual en bandeja,
-        oportunidad, conversación, cotización, archivo de viaje y Hoy
-      - InsigniaDePlazo usa texto, icono y token (vencido, hoy, próximo, en plazo); nunca solo color
-      - Pruebas unitarias de ambos componentes en components/comun
-      - PR sin auto-merge, job navegador verde, pnpm typecheck y pnpm lint; el mismo PR deja su entrada en la
-        bitácora y actualiza la documentación de diseño que toque (R14)
+      - "Ya existe: InsigniaDePlazo con texto e icono y niveles vencido, hoy, próximo y normal en apps/web/src/components/comun/viaje-insignias.tsx, usada en la tarjeta de oportunidad"
+      - "Falta: LineaDeViaje (destino · fechas · pasajeros y el plazo más próximo) igual en bandeja, oportunidad, conversación, cotización, archivo de viaje y Hoy"
+      - "Falta: llevar InsigniaDePlazo a los tokens plazo-* y a la escala de cuatro estados, y pruebas unitarias de ambos componentes en components/comun"
     source: docs/_auditorias/2026-11-21-auditoria-visual-y-ux.md y docs/08-roadmap/10-roadmap-diseno-ui-ux.md
       (sesión de diseño, 2026-11-21)
+    notes: "Reconciliación 2026-11-21: la mitad existe. Bajada a P2."
     created_at: 2026-11-21T04:30:00.000Z
     owner: frontend
   - id: T-445
@@ -9807,7 +9811,7 @@ tasks:
       crudos nuevos"
     type: feature
     phase: 1
-    priority: P1
+    priority: P2
     effort: S
     status: backlog
     depends_on:
@@ -9820,13 +9824,14 @@ tasks:
         bitácora y actualiza la documentación de diseño que toque (R14)
     source: docs/_auditorias/2026-11-21-auditoria-visual-y-ux.md y docs/08-roadmap/10-roadmap-diseno-ui-ux.md
       (sesión de diseño, 2026-11-21)
+    notes: "Reconciliación 2026-11-21: intacta. Bajada a P2: ninguna tarea ni el piloto esperan por ella (no aparece en las olas 0 y 1 de docs/08-roadmap/09-roadmap-maestro-y-operacion-desatendida.md)."
     created_at: 2026-11-21T04:30:00.000Z
     owner: frontend
   - id: T-446
     title: "Diseño O1.4: aviso de cookies compacto y un solo distintivo «Demo» en el marco"
     type: feature
     phase: 1
-    priority: P1
+    priority: P2
     effort: S
     status: backlog
     acceptance:
@@ -9840,6 +9845,7 @@ tasks:
         bitácora y actualiza la documentación de diseño que toque (R14)
     source: docs/_auditorias/2026-11-21-auditoria-visual-y-ux.md y docs/08-roadmap/10-roadmap-diseno-ui-ux.md
       (sesión de diseño, 2026-11-21)
+    notes: "Reconciliación 2026-11-21: intacta. Bajada a P2: ninguna tarea ni el piloto esperan por ella (no aparece en las olas 0 y 1 de docs/08-roadmap/09-roadmap-maestro-y-operacion-desatendida.md)."
     created_at: 2026-11-21T04:30:00.000Z
     owner: frontend
   - id: T-447
@@ -9859,21 +9865,21 @@ tasks:
     created_at: 2026-11-21T04:30:00.000Z
     owner: frontend
   - id: T-448
-    title: "Diseño O1.6: documentación del sistema de diseño (tokens, componentes, escala tipográfica, puntos de
-      quiebre, reglas por familia de dispositivo)"
+    title: "Diseño O1.6: completar docs/01-producto/13-sistema-de-diseno.md (tokens, utilidades, escala y puntos de quiebre ya están)"
     type: docs
     phase: 1
-    priority: P1
+    priority: P2
     effort: S
     status: backlog
     depends_on:
       - T-443
     acceptance:
-      - Un documento de diseño en docs/01-producto/ con los tokens, los componentes de components/comun, la
-        escala tipográfica, los puntos de quiebre y las reglas de celular, tablet y escritorio
-      - Se actualiza en cada PR de las olas (R14) o en el PR de cierre de la ola
+      - "Ya existe: docs/01-producto/13-sistema-de-diseno.md con tokens de estado, utilidades, escala tipográfica y puntos de quiebre de los tres modos"
+      - "Falta: los componentes de components/comun, los formateadores de fecha y dinero y la bandeja adaptable (su §4 «Pendiente de documentar»)"
+      - "Se sigue actualizando en cada PR de las olas (R14)"
     source: docs/_auditorias/2026-11-21-auditoria-visual-y-ux.md y docs/08-roadmap/10-roadmap-diseno-ui-ux.md
       (sesión de diseño, 2026-11-21)
+    notes: "Reconciliación 2026-11-21: documento vivo ya creado. Bajada a P2."
     created_at: 2026-11-21T04:30:00.000Z
     owner: documentador
   - id: T-449
@@ -9881,7 +9887,7 @@ tasks:
       asignación, etiquetas en una fila, una sola acción principal)"
     type: feature
     phase: 1
-    priority: P1
+    priority: P2
     effort: M
     status: backlog
     depends_on:
@@ -9898,6 +9904,7 @@ tasks:
         bitácora y actualiza la documentación de diseño que toque (R14)
     source: docs/_auditorias/2026-11-21-auditoria-visual-y-ux.md y docs/08-roadmap/10-roadmap-diseno-ui-ux.md
       (sesión de diseño, 2026-11-21)
+    notes: "Reconciliación 2026-11-21: intacta. Bajada a P2: ninguna tarea ni el piloto esperan por ella (no aparece en las olas 0 y 1 de docs/08-roadmap/09-roadmap-maestro-y-operacion-desatendida.md)."
     created_at: 2026-11-21T04:30:00.000Z
     owner: frontend
   - id: T-450
@@ -9905,7 +9912,7 @@ tasks:
       texto)"
     type: feature
     phase: 1
-    priority: P1
+    priority: P2
     effort: M
     status: backlog
     depends_on:
@@ -9922,6 +9929,7 @@ tasks:
         bitácora y actualiza la documentación de diseño que toque (R14)
     source: docs/_auditorias/2026-11-21-auditoria-visual-y-ux.md y docs/08-roadmap/10-roadmap-diseno-ui-ux.md
       (sesión de diseño, 2026-11-21)
+    notes: "Reconciliación 2026-11-21: intacta. Bajada a P2: ninguna tarea ni el piloto esperan por ella (no aparece en las olas 0 y 1 de docs/08-roadmap/09-roadmap-maestro-y-operacion-desatendida.md)."
     created_at: 2026-11-21T04:30:00.000Z
     owner: frontend
   - id: T-451
@@ -9929,7 +9937,7 @@ tasks:
       con una sola acción principal)"
     type: feature
     phase: 1
-    priority: P1
+    priority: P2
     effort: M
     status: backlog
     depends_on:
@@ -9945,6 +9953,7 @@ tasks:
         bitácora y actualiza la documentación de diseño que toque (R14)
     source: docs/_auditorias/2026-11-21-auditoria-visual-y-ux.md y docs/08-roadmap/10-roadmap-diseno-ui-ux.md
       (sesión de diseño, 2026-11-21)
+    notes: "Reconciliación 2026-11-21: intacta. Bajada a P2: ninguna tarea ni el piloto esperan por ella (no aparece en las olas 0 y 1 de docs/08-roadmap/09-roadmap-maestro-y-operacion-desatendida.md)."
     created_at: 2026-11-21T04:30:00.000Z
     owner: frontend
   - id: T-452
@@ -9952,7 +9961,7 @@ tasks:
       sesión del roadmap (T-321)"
     type: feature
     phase: 1
-    priority: P1
+    priority: P2
     effort: M
     status: backlog
     depends_on:
@@ -9969,6 +9978,7 @@ tasks:
         bitácora y actualiza la documentación de diseño que toque (R14)
     source: docs/_auditorias/2026-11-21-auditoria-visual-y-ux.md y docs/08-roadmap/10-roadmap-diseno-ui-ux.md
       (sesión de diseño, 2026-11-21)
+    notes: "Reconciliación 2026-11-21: intacta. Bajada a P2: ninguna tarea ni el piloto esperan por ella (no aparece en las olas 0 y 1 de docs/08-roadmap/09-roadmap-maestro-y-operacion-desatendida.md)."
     created_at: 2026-11-21T04:30:00.000Z
     owner: frontend
   - id: T-453
@@ -9976,7 +9986,7 @@ tasks:
       enlaces a chat y cotización"
     type: feature
     phase: 1
-    priority: P1
+    priority: P2
     effort: M
     status: backlog
     depends_on:
@@ -9991,13 +10001,14 @@ tasks:
         bitácora y actualiza la documentación de diseño que toque (R14)
     source: docs/_auditorias/2026-11-21-auditoria-visual-y-ux.md y docs/08-roadmap/10-roadmap-diseno-ui-ux.md
       (sesión de diseño, 2026-11-21)
+    notes: "Reconciliación 2026-11-21: intacta. Bajada a P2: ninguna tarea ni el piloto esperan por ella (no aparece en las olas 0 y 1 de docs/08-roadmap/09-roadmap-maestro-y-operacion-desatendida.md)."
     created_at: 2026-11-21T04:30:00.000Z
     owner: frontend
   - id: T-454
     title: "Diseño O2.6: Hoy como lista de trabajo ordenada por vencimiento, con una tira de cifras"
     type: feature
     phase: 1
-    priority: P1
+    priority: P2
     effort: M
     status: backlog
     depends_on:
@@ -10012,6 +10023,7 @@ tasks:
         bitácora y actualiza la documentación de diseño que toque (R14)
     source: docs/_auditorias/2026-11-21-auditoria-visual-y-ux.md y docs/08-roadmap/10-roadmap-diseno-ui-ux.md
       (sesión de diseño, 2026-11-21)
+    notes: "Reconciliación 2026-11-21: intacta. Bajada a P2: ninguna tarea ni el piloto esperan por ella (no aparece en las olas 0 y 1 de docs/08-roadmap/09-roadmap-maestro-y-operacion-desatendida.md)."
     created_at: 2026-11-21T04:30:00.000Z
     owner: frontend
   - id: T-455
@@ -11050,6 +11062,7 @@ tasks:
         del cuerpo de la peticion (04-integraciones 2.3)
       - La lista inicial de chats a excluir la trae el propietario de su conversacion con el dueno de JD Tours
     source: ADR-0033 aceptado, decision del propietario 2026-11-21
+    notes: "Confirmada P1: no existe lista de exclusión; ADR-0033 la impone antes de conectar el número real."
     created_at: 2026-11-21T11:30:00.000Z
     owner: whatsapp
   - id: T-531
@@ -11294,7 +11307,7 @@ tasks:
     phase: 1
     priority: P1
     effort: S
-    status: backlog
+    status: done
     acceptance:
       - "apps/web/src/lib/cotizaciones-diff.ts, formatearDeltaDinero: hace formateador.format(Number(absVal))
         sobre unidades MINIMAS y nunca divide por 10**decimales"
@@ -11304,9 +11317,12 @@ tasks:
         el fuente, no reportado de oidas
       - Dividir por los decimales de la moneda usando decimalesDeMoneda (T-520), no una tabla nueva, y una
         prueba con una moneda de 2 decimales que falle con el codigo actual
+      - "Verificado el 2026-11-21 por la sesión hija i/reconciliar-las-p1-del-roadmap leyendo el código de main (7a0ac37). Dónde está: formatearDeltaDinero en apps/web/src/lib/cotizaciones-diff.ts parte por los decimales de la moneda con BigInt; cotizaciones-diff.spec.ts («USD: divide las unidades mínimas por los decimales de la moneda (T-543)»; 125050 USD sale + $ 1.250,50) (PR #433)"
     source: aviso de la sesion de T-520/T-521, verificado por la madre, 2026-11-21
     created_at: 2026-11-21T13:20:00.000Z
     owner: frontend
+    done_at: 2026-11-21T16:55:00.000Z
+    evidence: "Verificado el 2026-11-21 por la sesión hija i/reconciliar-las-p1-del-roadmap leyendo el código de main (7a0ac37). formatearDeltaDinero en apps/web/src/lib/cotizaciones-diff.ts parte por los decimales de la moneda con BigInt; cotizaciones-diff.spec.ts («USD: divide las unidades mínimas por los decimales de la moneda (T-543)»; 125050 USD sale + $ 1.250,50) (PR #433)."
   - id: T-544
     title: "Web: quedan dos copias mas de la tabla de decimales por moneda"
     type: refactor
@@ -11742,7 +11758,7 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: backlog
+    status: ready
     acceptance:
       - "Hoy, aceptar una cotizacion solo se puede por API: cambiarEstadoCotizacionApi se invoca unicamente
         con 'ENVIADA' desde modal-enviar-cotizacion.tsx; en cotizaciones/page.tsx ACEPTADA solo aparece como
@@ -11758,6 +11774,7 @@ tasks:
       - Al cerrarla, corregir el paso 7 de docs/01-producto/04-flujos-criticos.md y el paso 7 del manual
         (docs/06-manual/01-recorrido-del-asesor.md)
     source: hallazgo de T-562 (manual de usuario), 2026-11-21
+    notes: "Confirmada P1 y es un agujero real: cambiarEstadoCotizacionApi existe en apps/web/src/lib/cotizaciones-api.ts pero solo se llama con ENVIADA (modal-enviar-cotizacion.tsx); ninguna pantalla marca una cotización como ACEPTADA, así que desde la web no se abre el archivo de viaje."
     created_at: 2026-11-21T15:50:00.000Z
     owner: frontend
   - id: T-564
