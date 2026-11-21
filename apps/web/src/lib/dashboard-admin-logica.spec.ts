@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { FilaDeCobro, ResumenDeReportes, VentasDeUnaMoneda } from '@viajapro/contracts';
+import type { FilaDeCobro, ResumenDeAgencia, VentasDeUnaMoneda } from '@viajapro/contracts';
 import {
   barrasDelEmbudo,
   cobrosPorMoneda,
@@ -133,8 +133,12 @@ describe('filasDeAsesores', () => {
   const resumen = (
     aceptadas: number,
     enviadas: number,
-    extra: Partial<ResumenDeReportes> = {},
-  ): ResumenDeReportes => ({
+    extra: Partial<ResumenDeAgencia> = {},
+  ): ResumenDeAgencia => ({
+    // T-513 dejó el contrato como unión discriminada: hay que elegir rama. Cada resumen por
+    // asesor llega con alcance AGENCIA y `asesorId` = el filtro aplicado (ADR-0035 §4).
+    alcance: 'AGENCIA',
+    asesorId: null,
     periodo: { desde: '2026-11-01T05:00:00.000Z', hasta: '2026-11-21T05:00:00.000Z' },
     cotizaciones: {
       creadas: enviadas,
