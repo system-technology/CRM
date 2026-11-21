@@ -159,6 +159,7 @@ Toda la documentación del proyecto. Si una decisión no está aquí (o en `ESTA
 | [Roadmap multiidioma](08-roadmap/07-roadmap-multiidioma.md) | Ver ADR-0020 |
 | [Roadmap JD Tours: reservas, cobros y navegación](08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md) | Lo que pidió el cliente piloto, en cinco ejes; la navegación va primero |
 | [Roadmap maestro del CRM completo y operación desatendida](08-roadmap/09-roadmap-maestro-y-operacion-desatendida.md) | Las olas hasta terminar el CRM y las reglas con que las sesiones trabajan sin supervisión |
+| [Roadmap de diseño: interfaz y UX en celular, tablet y escritorio](08-roadmap/10-roadmap-diseno-ui-ux.md) | Olas de rediseño, criterio de salida por ola y una tarea por PR (T-440 a T-471) |
 
 ## 09 · Ingeniería asistida por IA
 
