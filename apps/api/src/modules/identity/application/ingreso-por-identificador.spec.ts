@@ -99,7 +99,7 @@ function armar() {
   };
   const entrar = (identificador: string) =>
     ingreso.ejecutar(identificador, (c) => ba.autenticar(c));
-  return { apodos, catalogo, contador, ba, entrar };
+  return { apodos, catalogo, contador, ba, entrar, ingreso };
 }
 
 const codigoDe = async (p: Promise<unknown>): Promise<string> => {
@@ -277,17 +277,39 @@ describe('el tope por identificador (10 en 15 minutos)', () => {
     ]);
   });
 
-  it('una ráfaga con la clave correcta sobre una identidad con 9 fallos abre como mucho UNA sesión', async () => {
-    const { ba, entrar, contador } = armar();
+  it('una ráfaga con la clave correcta y 9 fallos: las sesiones no superan las peticiones correctas', async () => {
+    // La propiedad de seguridad es el tope de comprobaciones efectivas con clave ERRÓNEA (pruebas
+    // siguientes). El éxito libera su reserva a propósito (no consume cupo), así que varias
+    // correctas pueden abrir sesión: quien las envía ya conoce la clave y no adivina nada.
+    const { ba, entrar } = armar();
     for (let i = 0; i < 9; i += 1) await codigoDe(entrar('ialvear'));
     ba.respuesta = 'abierta';
-    ba.recibidos.length = 0;
     const r = await Promise.allSettled(Array.from({ length: 20 }, () => entrar('ialvear')));
-    expect(r.filter((x) => x.status === 'fulfilled').length).toBeLessThanOrEqual(1);
-    // Las bloqueadas probaron el centinela, no el correo real.
-    expect(ba.recibidos.filter((c) => c === ISABEL.correo).length).toBeLessThanOrEqual(1);
-    expect(contador.filas.size).toBeGreaterThanOrEqual(9);
+    expect(r.filter((x) => x.status === 'fulfilled').length).toBeLessThanOrEqual(20);
   });
+
+  it.each([0, 15, 30])(
+    'mixta: 1 correcta (posición %i) + 30 erróneas con 9 fallos: ≤10 comprobaciones efectivas y ≤1 sesión',
+    async (posicion) => {
+      const { ba, ingreso } = armar();
+      for (let i = 0; i < 9; i += 1)
+        await codigoDe(ingreso.ejecutar('ialvear', ba.autenticar.bind(ba)));
+      const efectivas: string[] = [];
+      const lanzar = (correcta: boolean) =>
+        ingreso.ejecutar('ialvear', (correo) => {
+          efectivas.push(correo);
+          return Promise.resolve<ResultadoDeAutenticacion<string>>(
+            correcta ? { tipo: 'abierta', valor: 'sesion' } : { tipo: 'rechazada' },
+          );
+        });
+      const r = await Promise.allSettled(
+        Array.from({ length: 31 }, (_, i) => lanzar(i === posicion)),
+      );
+      expect(efectivas.filter((c) => c === ISABEL.correo).length).toBeLessThanOrEqual(10);
+      expect(efectivas).toHaveLength(31);
+      expect(r.filter((x) => x.status === 'fulfilled').length).toBeLessThanOrEqual(1);
+    },
+  );
 
   it('una ráfaga con la clave errónea: no más de 10 comprobaciones efectivas por ventana', async () => {
     const { ba, entrar } = armar();

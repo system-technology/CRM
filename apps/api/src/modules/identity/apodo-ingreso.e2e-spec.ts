@@ -44,7 +44,18 @@ const marca = randomBytes(3).toString('hex');
 const DOMINIO = '@fixture-identidad.test';
 
 type Quien =
-  'ana' | 'ana2' | 'gina' | 'beto' | 'baja' | 'tope' | 'eva' | 'bruno' | 'rafa' | 'rafb' | 'rafc';
+  | 'ana'
+  | 'ana2'
+  | 'gina'
+  | 'beto'
+  | 'baja'
+  | 'tope'
+  | 'eva'
+  | 'bruno'
+  | 'rafa'
+  | 'rafb'
+  | 'rafc'
+  | 'rafd';
 const correo = (q: Quien): string => `fixture-aislamiento-apodo-${q}-${marca}${DOMINIO}`;
 /** Apodos únicos por corrida: letra inicial, minúsculas y dígitos, sin prefijos reservados. */
 const apodoDe = (q: Quien): string => `fx${marca}${q}`;
@@ -60,6 +71,7 @@ const IDENTIDAD: Record<Quien, string> = {
   rafa: '',
   rafb: '',
   rafc: '',
+  rafd: '',
 };
 const USUARIO: Record<Quien, string> = {
   ana: '',
@@ -73,6 +85,7 @@ const USUARIO: Record<Quien, string> = {
   rafa: '',
   rafb: '',
   rafc: '',
+  rafd: '',
 };
 
 let app: INestApplication;
@@ -232,6 +245,7 @@ beforeAll(async () => {
   await persona('rafa', TENANT_A, a.asesor);
   await persona('rafb', TENANT_A, a.asesor);
   await persona('rafc', TENANT_A, a.asesor);
+  await persona('rafd', TENANT_A, a.asesor);
   await persona('eva', TENANT_B, b.asesor);
   await persona('bruno', TENANT_B, b.asesor);
 
@@ -480,20 +494,54 @@ describe('con la función encendida (recuento de agencias = 1; lo demás es real
       return clave;
     }
 
-    it('20 ingresos en paralelo con la clave CORRECTA sobre una identidad con 9 fallos: como mucho 1 abre sesión', async () => {
+    it('20 ingresos en paralelo con la clave CORRECTA y 9 fallos: las sesiones no superan las peticiones correctas', async () => {
+      // La propiedad de seguridad es el tope de comprobaciones efectivas con clave ERRÓNEA (pruebas
+      // siguientes). El éxito libera su reserva a propósito (no consume cupo): varias correctas
+      // pueden abrir sesión y no amplían la adivinación, porque quien las envía ya sabe la clave.
       const clave = await sembrarFallos('rafa', 9);
       const rs = await Promise.all(
         Array.from({ length: 20 }, () => new Navegador().entrar(correo('rafa'))),
       );
-      const abiertas = rs.filter((r) => r.estado === 200);
-      expect(abiertas.length).toBeLessThanOrEqual(1);
+      expect(rs.filter((r) => r.estado === 200).length).toBeLessThanOrEqual(20);
       for (const r of rs.filter((x) => x.estado !== 200)) {
         expect(r.estado).toBe(401);
         expect(r.json.error?.code).toBe('CREDENCIALES_INVALIDAS');
         expect(r.setCookie).toHaveLength(0);
       }
-      // 9 previos + 20 reservas, menos la que abrió sesión (si hubo) y la liberó.
-      expect(await fallosDe(clave)).toBeGreaterThanOrEqual(28);
+      expect(await fallosDe(clave)).toBeGreaterThanOrEqual(9);
+    });
+
+    it('mixta: 1 correcta + 30 erróneas en paralelo con 9 fallos: ≤10 comprobaciones efectivas y ≤1 sesión', async () => {
+      await sembrarFallos('rafd', 9);
+      const auth = app.get<AuthDeViajaPro>(AUTH);
+      const original = auth.handler.bind(auth);
+      const puente = auth as { handler: (req: Request) => Promise<Response> };
+      const correos: string[] = [];
+      puente.handler = (req) =>
+        req
+          .clone()
+          .json()
+          .then((json: unknown) => {
+            const cuerpo = json as { email?: string };
+            if (req.url.includes('/sign-in/email') && cuerpo.email) correos.push(cuerpo.email);
+            return original(req);
+          });
+      try {
+        const rs = await Promise.all(
+          Array.from({ length: 31 }, (_, i) =>
+            new Navegador().entrar(correo('rafd'), i === 15 ? CLAVE : 'mala-clave-123456'),
+          ),
+        );
+        expect(rs.filter((r) => r.estado === 200).length).toBeLessThanOrEqual(1);
+        for (const r of rs.filter((x) => x.estado !== 200)) {
+          expect(r.estado).toBe(401);
+          expect(r.json.error?.code).toBe('CREDENCIALES_INVALIDAS');
+        }
+        expect(correos.filter((c) => c === correo('rafd')).length).toBeLessThanOrEqual(10);
+        expect(correos).toHaveLength(31);
+      } finally {
+        puente.handler = original;
+      }
     });
 
     it('ráfaga en paralelo con la clave ERRÓNEA: no más de 10 comprobaciones efectivas en la ventana', async () => {
