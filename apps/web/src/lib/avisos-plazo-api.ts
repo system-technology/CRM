@@ -55,7 +55,9 @@ async function pedir(ruta: string, opciones: RequestInit = {}): Promise<unknown>
   return json;
 }
 
-/** Avisos de ejemplo del modo demostración, con la forma del contrato. Plazos relativos a «ahora». */
+/** Avisos de ejemplo del modo demostración, con la forma del contrato. Plazos relativos a «ahora».
+ * Apuntan a los archivos que existen en `mock-archivos` (1043 y 1044): un aviso a un file inexistente
+ * es justo lo que la campana no debe mostrar (T-322). */
 export function crearAvisosDemo(ahoraMs: number = Date.now()): Notificacion[] {
   const h = 3_600_000;
   const iso = (ms: number) => new Date(ms).toISOString();
@@ -63,7 +65,7 @@ export function crearAvisosDemo(ahoraMs: number = Date.now()): Notificacion[] {
     {
       id: '01932000-0000-7000-8000-0000000a0001',
       tipo: 'TIME_LIMIT_PROXIMO',
-      archivoId: '01932000-0000-7000-8000-0000000b0001',
+      archivoId: '00000000-0030-4000-8000-000000000001',
       reservaId: '01932000-0000-7000-8000-0000000c0001',
       archivoNumero: 1043,
       venceEn: iso(ahoraMs + HORAS_HASTA_TIME_LIMIT_FILE_1043 * h),
@@ -72,11 +74,11 @@ export function crearAvisosDemo(ahoraMs: number = Date.now()): Notificacion[] {
     },
     {
       id: '01932000-0000-7000-8000-0000000a0002',
-      tipo: 'PAGO_TOTAL_VENCIDO',
-      archivoId: '01932000-0000-7000-8000-0000000b0002',
+      tipo: 'PAGO_TOTAL_PROXIMO',
+      archivoId: '00000000-0030-4000-8000-000000000002',
       reservaId: '01932000-0000-7000-8000-0000000c0002',
-      archivoNumero: 1038,
-      venceEn: iso(ahoraMs - 5 * h),
+      archivoNumero: 1044,
+      venceEn: iso(ahoraMs + 6 * 24 * h),
       leidaEn: null,
       creadaEn: iso(ahoraMs - 4 * h),
     },
