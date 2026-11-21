@@ -12462,7 +12462,7 @@ tasks:
     phase: 1
     priority: P2
     effort: S
-    status: ready
+    status: done
     acceptance:
       - T-565 quito el cartel que afirmaba «Conectado a la API y PostgreSQL en vivo» y T-566 anadio la vista
         de asesor en la demostracion. Los dos entregaron en carril b y el rastro en docs/ quedo fuera
