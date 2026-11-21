@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { EstadoCanalWhatsapp, ResumenDeReportes } from '@viajapro/contracts';
 import { crearResumenDeReportesDemo } from './mock-reportes-resumen';
+import { crearVistaDeCobrosDemo } from './dashboard-admin-api';
+import { obtenerResumenTrabajoDelDia } from './crm-api';
+import { obtenerMockCotizaciones } from './mock-cotizaciones';
 import { crearEstadoCanalWhatsappDemo } from './mock-canal-whatsapp';
 import { obtenerMockFichaDeContacto } from './mock-crm';
 import { obtenerMockPaginaContactos } from './mock-contactos';
@@ -104,6 +107,75 @@ describe('Datos de demostración coherentes entre pantallas', () => {
     const canal = crearEstadoCanalWhatsappDemo();
     expect(EstadoCanalWhatsapp.safeParse(canal).success).toBe(true);
     expect(canal.conectado).toBe(true);
+  });
+
+  describe('el resumen de la demo trae las cifras de hoy: cotizaciones abiertas y por cobrar (T-556)', () => {
+    const rango = { desde: '2026-10-21T05:00:00.000Z', hasta: '2026-11-20T05:00:00.000Z' };
+
+    it('«Hoy» en demo recibe las dos cifras: ni un error ni la tarjeta de cobro ausente', async () => {
+      const hoy = await obtenerResumenTrabajoDelDia();
+      expect(hoy.cotizacionesAbiertas).not.toBeNull();
+      expect(hoy.porCobrar).not.toBeNull();
+      expect(hoy.alcanceDeCifras).toBe('AGENCIA');
+    });
+
+    it('las cotizaciones abiertas cuentan las mismas que lista Cotizaciones, y los tramos suman las enviadas', () => {
+      const r = crearResumenDeReportesDemo(rango);
+      const abiertas = obtenerMockCotizaciones().filter(
+        (c) => c.estado === 'BORRADOR' || c.estado === 'ENVIADA',
+      );
+      expect(r.cotizacionesAbiertas?.total).toBe(abiertas.length);
+      expect(r.cotizacionesAbiertas?.total).toBeGreaterThan(0);
+      const t = r.cotizacionesAbiertas!.porAntiguedad;
+      expect(t.hastaTresDias + t.deCuatroASiete + t.masDeSiete).toBe(
+        r.cotizacionesAbiertas!.enviadas,
+      );
+    });
+
+    it('por cobrar: una fila por moneda, COP en pesos y USD en centavos, sin sumarlas (R8)', () => {
+      const r = crearResumenDeReportesDemo(rango);
+      const filas = r.porCobrar!.porMoneda;
+      expect(filas.map((f) => f.moneda)).toEqual(['COP', 'USD']);
+      for (const f of filas) expect(f.saldo.unidades).toMatch(/^[1-9]\d*$/);
+      // El peso es la unidad mínima de COP: dos órdenes de magnitud por encima de «centavos» sería
+      // un saldo de cientos de millones, y por debajo, de unos pocos cientos de miles.
+      const cop = BigInt(filas.find((f) => f.moneda === 'COP')!.saldo.unidades);
+      expect(cop).toBeGreaterThan(1_000_000n);
+      expect(cop).toBeLessThan(500_000_000n);
+    });
+
+    it('el por cobrar de la agencia es el mismo que suman los archivos abiertos del dashboard de administración', () => {
+      const r = crearResumenDeReportesDemo(rango);
+      const porMoneda = new Map<string, { saldo: bigint; archivos: number }>();
+      for (const f of crearVistaDeCobrosDemo(new Date('2026-11-21T15:00:00Z')).datos) {
+        const saldo = BigInt(f.saldo.unidades);
+        if (saldo <= 0n) continue;
+        const acc = porMoneda.get(f.saldo.moneda) ?? { saldo: 0n, archivos: 0 };
+        porMoneda.set(f.saldo.moneda, { saldo: acc.saldo + saldo, archivos: acc.archivos + 1 });
+      }
+      for (const f of r.porCobrar!.porMoneda) {
+        expect(f.saldo.unidades).toBe(porMoneda.get(f.moneda)!.saldo.toString());
+        expect(f.archivos).toBe(porMoneda.get(f.moneda)!.archivos);
+      }
+      expect(r.porCobrar!.porMoneda).toHaveLength(porMoneda.size);
+    });
+
+    it('la demo enseña también truncado: la vista de un asesor lo trae en true y la de la agencia en false', () => {
+      expect(crearResumenDeReportesDemo(rango, 'PROPIO').porCobrar?.truncado).toBe(true);
+      expect(crearResumenDeReportesDemo(rango, 'AGENCIA').porCobrar?.truncado).toBe(false);
+    });
+
+    it('lo de un asesor es una parte de lo de la agencia, y ambas cumplen el contrato strict', () => {
+      const agencia = crearResumenDeReportesDemo(rango, 'AGENCIA');
+      const propio = crearResumenDeReportesDemo(rango, 'PROPIO');
+      expect(ResumenDeReportes.safeParse(propio).success).toBe(true);
+      expect(propio.cotizacionesAbiertas!.total).toBeLessThanOrEqual(
+        agencia.cotizacionesAbiertas!.total,
+      );
+      const cop = (r: typeof agencia) =>
+        BigInt(r.porCobrar!.porMoneda.find((f) => f.moneda === 'COP')!.saldo.unidades);
+      expect(cop(propio)).toBeLessThan(cop(agencia));
+    });
   });
 
   describe('el viaje cuenta lo mismo en el chat, la ficha, el tablero, las cotizaciones y Reservas', () => {
