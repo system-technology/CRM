@@ -7384,7 +7384,8 @@ tasks:
     phase: 1
     priority: P1
     effort: L
-    status: review
+    status: done
+    done_at: 2026-11-21T12:10:00.000Z
     depends_on: [T-342, T-317]
     acceptance:
       - "Sus pendientes de atención, cotizaciones abiertas por antigüedad, seguimientos vencidos, cierres del mes y cobros por cobrar, en «Hoy» y en Reportes"
@@ -7393,14 +7394,15 @@ tasks:
     source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md, Eje F (decisión del propietario 2026-11-20)
     created_at: 2026-11-20T21:30:00.000Z
     owner: frontend
-    notes: "Rama feat/web-dashboard-del-asesor. HECHO: se retira el conmutador Vista Dueño/Asesor; la vista la decide `alcance` de la respuesta (PROPIO pinta «Mis números», AGENCIA el reporte de agencia con «Toda la agencia / Míos»); una sola entrada de menú titulada «Mis números» o «Reportes de la agencia» según reportes.ver_agencia (solo titula); periodo por defecto mes calendario en la zona de la agencia con comparación; fracción «2 de 6» bajo n=20; dinero por moneda; «Mis números» a 390 px en tarjetas con estados vacío, cargando y error; seguimientos vencidos y de hoy con asesorId=yo; «Hoy»: la tarjeta «Cotizaciones por vencer» medía otra cosa (borrador+enviadas entre las 20 últimas) y ahora dice «Cotizaciones abiertas» con las enviadas por antigüedad. NO HECHO, por falta de dato servido: cotizaciones abiertas y cobros por cobrar DEL ASESOR (T-528), bloque «Sin responsable» de ADR-0035 §2 (T-529), filtro de asesor con nombre (T-344)."
+    notes: "Integrada como #422 (aaf0ced2). «Mis numeros» y la vista decidida por `alcance`: sin conmutador, una entrada de menu, titulo segun alcance, mes calendario con comparacion, fraccion bajo n=20, margen solo si la API trae la clave. T-513 cerrada con ella. NO CUMPLE el criterio de cotizaciones abiertas y cobros por cobrar DEL ASESOR: /cotizaciones y /cobros no traen asesor, y filtrarlo en el cliente seria que la web decida el alcance (ADR-0035 §5) y enseñar un total de agencia a un asesor (§6). Eso es T-528, en marcha. Verificado por la madre: /reportes entro en MIDE_DESPLAZAMIENTO y el navegador mide los 390 px sin desplazamiento lateral. SIN VERIFICAR: no hay capturas; el contraste y los estados cargando/error de «Mis numeros» no se miraron. Cola: T-528, T-529, T-530."
   - id: T-344
     title: "F5: dashboard de administración robusto"
     type: feature
     phase: 1
     priority: P1
     effort: L
-    status: review
+    status: done
+    done_at: 2026-11-21T12:10:00.000Z
     depends_on: [T-342]
     acceptance:
       - "Embudo, ventas por moneda, destino y asesor, tiempos de respuesta, cobros y salidas próximas, con comparación entre asesores y periodos"
@@ -7408,7 +7410,7 @@ tasks:
     source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md, Eje F (decisión del propietario 2026-11-20)
     created_at: 2026-11-20T21:30:00.000Z
     owner: frontend
-    notes: "Piezas autocontenidas en apps/web (components/dashboard-admin/, lib/dashboard-admin-*): ventas por moneda, embudo y cotizaciones, tiempos de respuesta, comparación entre asesores, cobros por cobrar, salidas próximas y destinos, con el periodo anterior del mismo largo y sin margen salvo que la API envíe la clave. Enganchado en /reportes (apps/web/src/app/(app)/reportes/page.tsx): con la respuesta alcance AGENCIA y sin el filtro «Míos» se monta <DashboardAdmin periodo zona bloques=asesores,cobros,salidas,destinos /> debajo de ReportesListo. Solo esos cuatro bloques: ventas, embudo y respuesta ya los pinta ReportesListo (T-343) y repetirlos duplicaba cifras y data-testid; el resto de la página de T-343 no se tocó. Probado contra API simulada (vitest; capturas a 390, 820 y 1440 px en modo demostración, la página integrada a 390 y 1440); contra la API real y Postgres no se corrió nada. Cola de la duplicación: T-534. Dos límites que dejan cola: comparar asesores son N consultas (T-531) y no hay ventas por destino del periodo (T-532): hoy se muestran los destinos de los archivos abiertos, rotulados como tales."
+    notes: "Integrada como #423 (3a91bda7), con el enganche a /reportes. Se monta solo con alcance AGENCIA: la vista la decide la respuesta, no un permiso del cliente. NO monta ventas, embudo ni respuesta porque ReportesListo ya los pinta: duplicaria cifras y data-testid, y eso queda como T-534 en vez de taparse. Movil: cobros y salidas primero, asesores en tarjetas, salidas acotadas a cinco. CI 15/15 en 037517f, pruebas corridas y no omitidas, navegador 55 passed con el dashboard montado. SIN VERIFICAR: nada contra Postgres ni API real fuera del e2e; la carga de /reportes (hasta 13 consultas + GET /cobros) no se midio contra el limite de 600/min (T-526); contraste y teclado revisados en codigo. Cola: T-531, T-532, T-534."
   - id: T-345
     title: "F6: consultas del administrador (filtros, filtros guardados y exportar)"
     type: feature
@@ -9909,3 +9911,34 @@ tasks:
     source: "T-344: al enganchar se vio que ReportesListo (T-343) y DashboardAdmin pintan lo mismo; se montó solo lo no repetido para no duplicar cifras ni data-testid"
     created_at: 2026-11-21T23:30:00.000Z
     owner: frontend
+  - id: T-535
+    title: "Errores de acceso: la web ya no pinta el mensaje del servidor sin mirarlo"
+    type: fix
+    phase: 1
+    priority: P1
+    effort: S
+    status: done
+    done_at: 2026-11-21T12:00:00.000Z
+    acceptance:
+      - "El staging mostro en la pantalla de ingreso el volcado de Zod en crudo (issues con validation, code y path). El build desplegado era viejo, pero el mecanismo seguia en main: el default de mapearErrorAcceso devolvia el message del servidor tal cual"
+      - "mapearErrorAcceso solo acepta el mensaje del servidor si parece una frase; un JSON serializado cae al generico. Prueba con el volcado literal que se vio en pantalla"
+      - "ENTRADA_INVALIDA pasa a estar mapeado y usa los details campo por campo que la API ya enviaba: dice que campo revisar en vez de «datos invalidos» a secas"
+    source: "captura del propietario en staging, 2026-11-21"
+    created_at: 2026-11-21T12:00:00.000Z
+    owner: frontend
+  - id: T-536
+    title: "CI: el job navegador imprime BETTER_AUTH_SECRET con valor en un log publico"
+    type: security
+    phase: 1
+    priority: P2
+    effort: XS
+    status: ready
+    acceptance:
+      - "NO es una fuga y conviene que quede dicho: el valor se genera dentro del job con openssl rand, firma cookies de prueba contra un Postgres efimero y muere con el job. No da acceso a nada. Verificado en el log de 3a91bda7"
+      - "Lo que si es un mal habito: se imprime porque Actions vuelca el bloque env: de cada paso, y como el valor NO es un secreto registrado de GitHub, Actions no lo enmascara. El dia que alguien enchufe un secreto real por esa via saldra impreso igual y nadie lo notara"
+      - "Tras generarlo, emitir ::add-mask:: para cada valor sensible del job (BETTER_AUTH_SECRET, CAMPOS_SENSIBLES_KEY, META_APP_SECRET, WHATSAPP_WEBHOOK_VERIFY_TOKEN, CORREO_PAYLOAD_KEY), de modo que el log los tape aunque se vuelquen"
+      - "Ruta protegida (.github/): entra con auditoria hecha y CI verde"
+    source: "aviso de la sesion de T-344, verificado por la madre, 2026-11-21"
+    created_at: 2026-11-21T12:10:00.000Z
+    owner: devops
+
