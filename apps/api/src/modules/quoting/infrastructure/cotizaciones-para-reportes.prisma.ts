@@ -198,7 +198,7 @@ export class CotizacionesParaReportesPrisma extends PuertoCotizacionesParaReport
           (COUNT(*) FILTER (WHERE c.creado_en >= ${desde} AND c.creado_en < ${hasta}))::int AS creadas,
           (COUNT(*) FILTER (WHERE c.enviada_en >= ${desde} AND c.enviada_en < ${hasta}))::int AS enviadas,
           (COUNT(*) FILTER (WHERE c.enviada_en >= ${desde} AND c.enviada_en < ${hasta}
-                              AND c.estado = 'ACEPTADA'))::int AS aceptadas
+                              AND TRUE))::int AS aceptadas
           FROM cotizaciones c
          WHERE c.tenant_id = ${tenantId}::uuid
            AND c.eliminado_en IS NULL
