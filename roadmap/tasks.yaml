@@ -7398,7 +7398,7 @@ tasks:
     phase: 1
     priority: P1
     effort: L
-    status: backlog
+    status: review
     depends_on: [T-342]
     acceptance:
       - "Embudo, ventas por moneda, destino y asesor, tiempos de respuesta, cobros y salidas próximas, con comparación entre asesores y periodos"
@@ -7406,6 +7406,7 @@ tasks:
     source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md, Eje F (decisión del propietario 2026-11-20)
     created_at: 2026-11-20T21:30:00.000Z
     owner: frontend
+    notes: "Piezas autocontenidas en apps/web (components/dashboard-admin/, lib/dashboard-admin-*): ventas por moneda, embudo y cotizaciones, tiempos de respuesta, comparación entre asesores, cobros por cobrar, salidas próximas y destinos, con el periodo anterior del mismo largo y sin margen salvo que la API envíe la clave. NO está enganchado: lo monta el marco de /reportes (T-343) cuando la respuesta trae alcance AGENCIA, con <DashboardAdmin periodo zona />. Probado contra API simulada (vitest y capturas a 390, 820 y 1440 px en modo demostración); contra la API real y Postgres no se corrió nada. Dos límites que dejan cola: comparar asesores son N consultas (T-531) y no hay ventas por destino del periodo (T-532): hoy se muestran los destinos de los archivos abiertos, rotulados como tales."
   - id: T-345
     title: "F6: consultas del administrador (filtros, filtros guardados y exportar)"
     type: feature
@@ -9801,4 +9802,31 @@ tasks:
     source: "auditoria independiente de #417 (T-342), 2026-11-21"
     created_at: 2026-11-21T10:30:00.000Z
     owner: backend
-
+  - id: T-531
+    title: "Reportes de agencia: agregado por asesor en una sola consulta (hoy son N)"
+    type: feature
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    depends_on: [T-342]
+    acceptance:
+      - "La respuesta de reportes con alcance AGENCIA trae las cifras por asesor (cotizaciones, ventas por moneda, oportunidades, respuesta), con la misma atribución de ADR-0035 §2 y sin margen salvo cotizacion.ver_neto_y_margen"
+      - "La web deja de pedir el resumen una vez por asesor (obtenerResumenesDeAsesoresApi) y de recortar a 12 asesores"
+    source: "T-344: la comparación entre asesores hace una consulta por asesor, en lotes de cuatro, con tope de 12"
+    created_at: 2026-11-21T23:00:00.000Z
+    owner: backend
+  - id: T-532
+    title: "Reportes de agencia: ventas del periodo por destino"
+    type: feature
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    depends_on: [T-342]
+    acceptance:
+      - "ventasPorMoneda (o un campo hermano) agrupa por destino, una fila por destino y moneda, sin sumar monedas (R8), solo con alcance AGENCIA"
+      - "El bloque «Destinos» del dashboard de administración pasa de «archivos abiertos» a «ventas del periodo» y cambia su rótulo"
+    source: "T-344: la API de reportes no trae el destino; hoy el bloque usa los archivos abiertos de GET /cobros y lo dice"
+    created_at: 2026-11-21T23:00:00.000Z
+    owner: backend
