@@ -90,6 +90,27 @@ async function persona(quien: Persona, tenantId: string, rolId: string): Promise
   U[quien] = u.id;
 }
 
+const canalDe = new Map<string, string>();
+
+/** Un seguimiento cuelga de una conversación o de una oportunidad (CHECK de la tabla): usamos la conversación. */
+async function canalDeLaAgencia(tenantId: string): Promise<string> {
+  const existente = canalDe.get(tenantId);
+  if (existente) return existente;
+  const cuenta = await admin.cuentaWhatsapp.create({
+    data: { tenantId, wabaId: `waba-seg-${randomBytes(4).toString('hex')}`, nombre: 'WABA' },
+  });
+  const canal = await admin.canal.create({
+    data: {
+      tenantId,
+      cuentaId: cuenta.id,
+      phoneNumberId: String(Math.floor(Math.random() * 9e14) + 1e14),
+      numeroE164: `+57300${Math.floor(Math.random() * 9e6 + 1e6)}`,
+    },
+  });
+  canalDe.set(tenantId, canal.id);
+  return canal.id;
+}
+
 async function seguimiento(tenantId: string, quien: Persona): Promise<string> {
   const contacto = await admin.contacto.create({
     data: {
@@ -98,6 +119,9 @@ async function seguimiento(tenantId: string, quien: Persona): Promise<string> {
       nombre: `Viajero ${quien}`,
     },
   });
+  const conversacion = await admin.conversacion.create({
+    data: { tenantId, contactoId: contacto.id, canalId: await canalDeLaAgencia(tenantId) },
+  });
   const s = await admin.seguimiento.create({
     data: {
       tenantId,
@@ -105,6 +129,7 @@ async function seguimiento(tenantId: string, quien: Persona): Promise<string> {
       venceEn: new Date(Date.now() - 3 * 24 * 3600_000),
       asesorId: U[quien],
       contactoId: contacto.id,
+      conversacionId: conversacion.id,
     },
   });
   return s.id;
