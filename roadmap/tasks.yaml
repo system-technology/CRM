@@ -11622,3 +11622,26 @@ tasks:
     source: "revision visual del propietario, 2026-11-21"
     created_at: 2026-11-21T15:42:00.000Z
     owner: frontend
+  - id: T-562
+    title: "Manual de usuario funcional de lo que ya existe, con capturas, para ensenarlo a una agencia"
+    type: docs
+    phase: 1
+    priority: P2
+    effort: L
+    status: backlog
+    acceptance:
+      - "Dos recorridos completos: el del asesor (entrar, atender la conversacion, cotizar, enviar, aceptar, abrir
+        el archivo de viaje, registrar un pago, ver sus numeros) y el del dueno (lo anterior mas configuracion de
+        equipo, etapas, catalogo y moneda, y los reportes de toda la agencia)"
+      - "El alcance sale de la seccion «Es real (en main)» de ESTADO.md. Lo que sea maqueta o no se haya probado
+        contra la API real, o no entra, o entra diciendolo: el propietario va a ensenar esto a una agencia y un
+        manual que explica una maqueta como si funcionara es peor que no tener manual"
+      - "Lenguaje de agencia de viajes, no de programador: manda el lenguaje ubicuo (docs/01-producto/02-lenguaje-ubicuo.md)"
+      - "Capturas en docs/06-manual/imagenes/, a deviceScaleFactor 2 porque las lee una persona"
+      - "LIMITE CONOCIDO Y DECLARADO: no se puede levantar Postgres en este entorno, asi que TODAS las capturas
+        son de modo demostracion, ninguna contra la API real desplegada. Tiene que decirlo el propio manual"
+      - "SECUENCIA: el texto primero y las capturas al final, porque T-556 (el modo demo ensena un error en «Hoy»)
+        y T-561 (ajuste de contrastes) cambian lo que saldria en las fotos. Capturar antes seria tirar el trabajo"
+    source: "lo pidio el propietario el 2026-11-21: «un manual de usuario funcional de lo que tenemos que tenga fotos»"
+    created_at: 2026-11-21T15:46:00.000Z
+    owner: documentador
