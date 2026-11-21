@@ -7103,7 +7103,7 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: backlog
+    status: done
     depends_on: [T-324]
     acceptance:
       - "Gestión de etiquetas por la agencia y asignación con un clic; la bandeja filtra por etiqueta respetando la visibilidad por asesor"
@@ -7111,6 +7111,8 @@ tasks:
     source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md (2026-11-20)
     created_at: 2026-11-20T19:00:00.000Z
     owner: backend
+    done_at: 2026-11-21T02:45:00.000Z
+    evidence: "Integrada en main por el PR #379 (cfe175c) con los 14 checks en verde, incluidos navegador, test y aislamiento-tenants; los e2e de etiquetas corrieron contra Postgres real en el CI (aquí no hay Postgres). GET/POST/PATCH/DELETE /etiquetas (escribir exige etiquetas.administrar), PUT/DELETE /conversaciones/:id/etiquetas/:etiquetaId (bandeja.operar, idempotentes, con evento sin datos en el outbox), filtro de la bandeja por etiqueta respetando la visibilidad por asesor, topes 50/10 con candado, 404 idéntico con ids ajenos. Cambia el contrato: ConversacionResumen.etiquetas pasa de string[] a {id,nombre,color}[]. Dos auditorías (auditor-seguridad y la sesión madre) sin bloqueantes; la primera pasada del CI falló por un e2e que no deshacía su relleno, no por la API. Cola: T-411 a T-418."
   - id: T-326
     title: 'B3: chips con color en la bandeja, un clic y filtro por etiqueta'
     type: feature
@@ -8070,7 +8072,7 @@ tasks:
     phase: 1
     priority: P2
     effort: S
-    status: backlog
+    status: done
     depends_on: [T-325]
     acceptance:
       - "La API normaliza a NFC y convierte los espacios Unicode en U+0020 antes de recortar; rechaza U+200B-200D, U+FEFF, U+202A-202E, U+2066-2069 y los controles C1"
@@ -8078,13 +8080,15 @@ tasks:
     source: "auditoría de T-324 (2026-11-21), BAJO"
     created_at: 2026-11-21T02:10:00.000Z
     owner: backend
+    done_at: 2026-11-21T02:45:00.000Z
+    evidence: "Hecha dentro de T-325 (#379, cfe175c): normalizarNombreDeEtiqueta en packages/contracts/src/etiquetas.ts normaliza a NFC, convierte espacios Unicode y rechaza ancho cero, controles bidireccionales y controles C0/C1. Quedan por rechazar otros invisibles (U+00AD, U+034F, U+180E…): T-413. Sin CHECK adicional en la base (se decide en T-413)."
   - id: T-400
     title: "Los errores de etiquetas duplicadas no registran el nombre (R10)"
     type: feature
     phase: 1
     priority: P2
     effort: S
-    status: backlog
+    status: done
     depends_on: [T-325]
     acceptance:
       - "Los errores 23505 y 23514 de Postgres se convierten en ETIQUETA_DUPLICADA y en un error de forma sin registrar message, meta ni detail, que traen el nombre de la etiqueta"
@@ -8092,6 +8096,8 @@ tasks:
     source: "auditoría de T-324 (2026-11-21), BAJO"
     created_at: 2026-11-21T02:10:00.000Z
     owner: backend
+    done_at: 2026-11-21T02:45:00.000Z
+    evidence: "Hecha dentro de T-325 (#379, cfe175c): 23505 y 23514 se traducen por su código a ETIQUETA_DUPLICADA o a un fallo sin texto, sin registrar message, meta ni detail; el outbox lleva payload vacío. Auditada sin bloqueantes. Queda sin probar con un error real de Prisma contra Postgres: T-416."
   - id: T-401
     title: "La sesión de demo del dueño incluye etiquetas.administrar antes de construir la pantalla de etiquetas"
     type: bug
@@ -8237,3 +8243,113 @@ tasks:
     source: "auditoría de seguridad de T-375 (cola, 2026-11-21): en un CI lento la prueba podría agotar el tiempo por defecto"
     created_at: 2026-11-21T02:30:00.000Z
     owner: qa
+  - id: T-411
+    title: "Los candados de etiquetas fijan lock_timeout y devuelven un error tipado al vencer"
+    type: bug
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    depends_on: [T-325]
+    acceptance:
+      - "serializar en etiquetas.prisma.ts hace set_config('lock_timeout', …, true) antes de pg_advisory_xact_lock, como archivos.prisma.ts y catalogo.prisma.ts; una ráfaga de PUT a la misma conversación no retiene conexiones del pool compartido"
+      - "El 55P03 se traduce a un error tipado 409 o 503, no a un 500; spec"
+    source: "auditoría de T-325 (2026-11-21), MEDIO"
+    created_at: 2026-11-21T02:45:00.000Z
+    owner: backend
+  - id: T-412
+    title: "Borrar una etiqueta mientras otro la pone da 404 y no 500"
+    type: bug
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    depends_on: [T-325]
+    acceptance:
+      - "poner y quitar (etiquetas.prisma.ts) traducen la violación de clave foránea (23503/P2003) y P2028 a ETIQUETA_NO_ENCONTRADA 404, sin registrar nombre ni detalle de la base"
+      - "Spec con la carrera borrar/poner"
+    source: "auditoría de T-325 (2026-11-21) y revisión de la sesión madre de #379 (2026-11-21), MEDIO"
+    created_at: 2026-11-21T02:45:00.000Z
+    owner: backend
+  - id: T-413
+    title: "Rechazar en el nombre de etiqueta todos los caracteres invisibles"
+    type: feature
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: [T-325]
+    acceptance:
+      - "etiquetas.ts rechaza \\p{Cf} y \\p{Default_Ignorable_Code_Point} (U+00AD, U+034F, U+180E, U+2061-2064, U+206A-206F, U+FE00-FE0F, etiquetas U+E0000-E007F) y los rellenos Hangul (U+115F, U+3164, U+FFA0); se decide por escrito si se admite el ZWJ de los emoji"
+      - "Casos nuevos en etiquetas.spec.ts; se evalúa un CHECK equivalente en la base en una migración nueva"
+    source: "auditoría de T-325 (2026-11-21) y revisión de la sesión madre de #379 (2026-11-21), BAJO"
+    created_at: 2026-11-21T02:45:00.000Z
+    owner: backend
+  - id: T-414
+    title: "Renombrar, recolorear o borrar una etiqueta avisa en vivo a las demás bandejas"
+    type: feature
+    phase: 1
+    priority: P3
+    effort: M
+    status: backlog
+    depends_on: [T-325]
+    acceptance:
+      - "Un evento de catálogo (por ejemplo inbox.etiquetas_cambiadas, con payload sin datos) o eventos por cada conversación afectada hace que las bandejas abiertas muestren el cambio sin recargar (HU-inbox-1 §4.5, «Etiqueta borrada por otro»)"
+      - "El evento no lleva el nombre (R10); spec de tiempo real"
+    source: "auditoría de T-325 (2026-11-21), BAJO; lo necesita T-326"
+    created_at: 2026-11-21T02:45:00.000Z
+    owner: backend
+  - id: T-415
+    title: "El borrado de una etiqueta deja rastro de quién la borró y cuántas asignaciones se llevó"
+    type: security
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: [T-325]
+    acceptance:
+      - "Al borrar se registra {actorId, etiquetaId, asignacionesBorradas} en la bitácora de auditoría cuando exista el contexto audit, sin el nombre"
+      - "Hasta que exista audit, se anota la decisión en el ADR o en la historia"
+    source: "auditoría de T-325 (2026-11-21), BAJO"
+    created_at: 2026-11-21T02:45:00.000Z
+    owner: backend
+  - id: T-416
+    title: "El error del CHECK 23514 de etiquetas se prueba con un error real de Prisma contra Postgres"
+    type: test
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: [T-325]
+    acceptance:
+      - "Un caso con base real fuerza el CHECK con $executeRaw y comprueba el código traducido y que el nombre no aparece en ningún log"
+    source: "auditoría de T-325 (2026-11-21), BAJO"
+    created_at: 2026-11-21T02:45:00.000Z
+    owner: qa
+  - id: T-417
+    title: "Migración que borra el campo legado conversaciones.etiquetas (ruta protegida)"
+    type: refactor
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: [T-325]
+    acceptance:
+      - "Nadie lee ni escribe conversaciones.etiquetas (siembra-de-demo-cifrada.ts y demo-cifrada.ts solo tocan el campo del contacto); se elimina en una migración nueva con la fase de contracción de compat-migraciones"
+      - "Ruta protegida: auditor-seguridad y aprobación de la sesión madre"
+    source: "cola de T-325 (2026-11-21), reportada por el agente de backend"
+    created_at: 2026-11-21T02:45:00.000Z
+    owner: datos
+  - id: T-418
+    title: "Conteo de conversaciones por etiqueta para la confirmación de borrado y Configuración"
+    type: feature
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: [T-325]
+    acceptance:
+      - "Un endpoint devuelve cuántas conversaciones tiene cada etiqueta, solo con las que el usuario puede ver, para «Está en 14 conversaciones» (HU-inbox-1 §3 y §4.6); sin datos de otra agencia, con spec de aislamiento"
+    source: "cola de T-325 (2026-11-21), reportada por el agente de backend"
+    created_at: 2026-11-21T02:45:00.000Z
+    owner: backend
