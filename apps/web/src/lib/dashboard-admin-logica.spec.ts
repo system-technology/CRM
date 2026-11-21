@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import type { FilaDeCobro, ResumenDeAgencia, VentasDeUnaMoneda } from '@viajapro/contracts';
+import type { FilaDeCobro, ResumenDeUnAsesor, VentasDeUnaMoneda } from '@viajapro/contracts';
 import {
   barrasDelEmbudo,
   cobrosPorMoneda,
   compararVentasPorMoneda,
-  destinosDeArchivosAbiertos,
+  destinosVendidos,
   filasDeAsesores,
   hoyEnZona,
   presentarP90,
@@ -129,17 +129,14 @@ describe('barrasDelEmbudo', () => {
   });
 });
 
-describe('filasDeAsesores', () => {
-  const resumen = (
+describe('filasDeAsesores (T-531, T-555: las cifras vienen en porAsesor)', () => {
+  const ASESOR = (
+    asesorId: string,
     aceptadas: number,
     enviadas: number,
-    extra: Partial<ResumenDeAgencia> = {},
-  ): ResumenDeAgencia => ({
-    // T-513 dejó el contrato como unión discriminada: hay que elegir rama. Cada resumen por
-    // asesor llega con alcance AGENCIA y `asesorId` = el filtro aplicado (ADR-0035 §4).
-    alcance: 'AGENCIA',
-    asesorId: null,
-    periodo: { desde: '2026-11-01T05:00:00.000Z', hasta: '2026-11-21T05:00:00.000Z' },
+    extra: Partial<ResumenDeUnAsesor> = {},
+  ): ResumenDeUnAsesor => ({
+    asesorId,
     cotizaciones: {
       creadas: enviadas,
       enviadas,
@@ -153,7 +150,6 @@ describe('filasDeAsesores', () => {
       perdidas: 0,
       abiertas: 0,
       tasaConversion: null,
-      porEtapa: [],
     },
     respuesta: {
       conversacionesNuevas: enviadas,
@@ -163,30 +159,67 @@ describe('filasDeAsesores', () => {
     },
     ...extra,
   });
+  const miembro = (id: string, nombre: string, activo = true) => ({ id, nombre, activo });
 
-  it('ordena por ventas cerradas (un número), deja al final al que no se pudo leer', () => {
-    const filas = filasDeAsesores([
-      { miembro: { id: '1', nombre: 'Beto' }, resumen: null },
-      { miembro: { id: '2', nombre: 'Ana' }, resumen: resumen(2, 8) },
-      { miembro: { id: '3', nombre: 'Valentina' }, resumen: resumen(5, 9) },
-    ]);
-    expect(filas.map((f) => f.nombre)).toEqual(['Valentina', 'Ana', 'Beto']);
-    expect(filas[2]?.noDisponible).toBe(true);
+  it('ordena por ventas cerradas (un número, no dinero)', () => {
+    const filas = filasDeAsesores(
+      [ASESOR('2', 2, 8), ASESOR('3', 5, 9)],
+      [miembro('2', 'Ana'), miembro('3', 'Valentina')],
+    );
+    expect(filas.map((f) => f.nombre)).toEqual(['Valentina', 'Ana']);
   });
 
-  it('distingue «sin actividad» de «No disponible»', () => {
-    const [fila] = filasDeAsesores([
-      { miembro: { id: '1', nombre: 'Luz' }, resumen: resumen(0, 0) },
-    ]);
-    expect(fila?.sinActividad).toBe(true);
-    expect(fila?.noDisponible).toBe(false);
+  it('completa con el equipo a quien porAsesor no trae: «sin actividad», no ausente', () => {
+    const filas = filasDeAsesores(
+      [ASESOR('2', 2, 8)],
+      [miembro('2', 'Ana'), miembro('9', 'Luz'), miembro('8', 'Inactivo', false)],
+    );
+    expect(filas.map((f) => f.nombre)).toEqual(['Ana', 'Luz']);
+    expect(filas.find((f) => f.id === '9')?.sinActividad).toBe(true);
+    // El que ya no está activo y no tuvo nada no se lista.
+    expect(filas.find((f) => f.id === '8')).toBeUndefined();
+  });
+
+  it('quien ya no está activo pero tuvo actividad sigue en la comparación', () => {
+    const filas = filasDeAsesores([ASESOR('8', 3, 4)], [miembro('8', 'Inactivo', false)]);
+    expect(filas).toHaveLength(1);
+    expect(filas[0]?.nombre).toBe('Inactivo');
+    expect(filas[0]?.ventasCerradas).toBe(3);
+  });
+
+  it('un asesor de porAsesor que el equipo no conoce no se pierde ni se queda sin nombre', () => {
+    const [f] = filasDeAsesores([ASESOR('77', 1, 1)], []);
+    expect(f?.nombre).toBe('Asesor que ya no está en el equipo');
+    expect(f?.ventasCerradas).toBe(1);
+  });
+
+  it('no recorta la lista: 15 asesores salen los 15 (ya no hay tope de 12)', () => {
+    const ids = Array.from({ length: 15 }, (_, i) => String(i + 1));
+    const filas = filasDeAsesores(
+      ids.map((id) => ASESOR(id, 1, 2)),
+      ids.map((id) => miembro(id, `Asesor ${id}`)),
+    );
+    expect(filas).toHaveLength(15);
   });
 
   it('la aceptación de un asesor con 8 enviadas es una fracción, no un porcentaje', () => {
-    const [fila] = filasDeAsesores([
-      { miembro: { id: '1', nombre: 'Ana' }, resumen: resumen(2, 8) },
-    ]);
+    const [fila] = filasDeAsesores([ASESOR('1', 2, 8)], [miembro('1', 'Ana')]);
     expect(fila?.aceptacion.texto).toBe('2 de 8');
+  });
+
+  it('el dinero queda por moneda: una entrada por moneda, sin sumar', () => {
+    const [fila] = filasDeAsesores(
+      [
+        ASESOR('1', 3, 4, {
+          ventasPorMoneda: [
+            { moneda: 'USD', cotizacionesAceptadas: 1, ventas: usd(250_000) },
+            { moneda: 'COP', cotizacionesAceptadas: 2, ventas: cop(9_000_000) },
+          ],
+        }),
+      ],
+      [miembro('1', 'Ana')],
+    );
+    expect(fila?.ventas).toEqual([cop(9_000_000), usd(250_000)]);
   });
 });
 
@@ -294,13 +327,18 @@ describe('cobros, salidas y destinos', () => {
     expect(textoDeDiasParaSalir(9)).toBe('Sale en 9 días');
   });
 
-  it('destinos: agrupa sin distinguir mayúsculas ni espacios y separa monedas', () => {
-    const d = destinosDeArchivosAbiertos(datos);
-    expect(d[0]?.destino).toBe('Cancún');
-    expect(d[0]?.archivos).toBe(2);
-    expect(d[0]?.vendido).toEqual([cop(18_000_000)]);
-    const madrid = d.find((x) => x.destino === 'Madrid');
-    expect(madrid?.vendido).toEqual([usd(600_000)]);
+  it('destinosVendidos: una fila por destino y moneda, agrupadas por destino y sin sumar monedas (R8)', () => {
+    const d = destinosVendidos([
+      { destino: 'Madrid', moneda: 'USD', cotizacionesAceptadas: 1, ventas: usd(600_000) },
+      { destino: 'Cancún', moneda: 'USD', cotizacionesAceptadas: 1, ventas: usd(400_000) },
+      { destino: 'Cancún', moneda: 'COP', cotizacionesAceptadas: 2, ventas: cop(18_000_000) },
+    ]);
+    // Ranking por cotizaciones aceptadas (un conteo): Cancún 3, Madrid 1.
+    expect(d.map((x) => x.destino)).toEqual(['Cancún', 'Madrid']);
+    expect(d[0]?.aceptadas).toBe(3);
+    // Cada moneda en su fila, sin mezclar COP con USD.
+    expect(d[0]?.monedas.map((m) => m.ventas)).toEqual([cop(18_000_000), usd(400_000)]);
+    expect(d[1]?.monedas.map((m) => m.ventas)).toEqual([usd(600_000)]);
   });
 
   it('hoyEnZona usa la zona de la agencia (R9): las 02:00 UTC siguen siendo «ayer» en Bogotá', () => {

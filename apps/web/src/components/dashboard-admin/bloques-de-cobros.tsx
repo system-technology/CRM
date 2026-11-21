@@ -15,7 +15,6 @@ import { formatearDinero, formatearFecha } from '../../lib/formato';
 import {
   cobrosPorMoneda,
   DIAS_DE_SALIDAS_PROXIMAS,
-  destinosDeArchivosAbiertos,
   salidasProximas,
   textoDeDiasParaSalir,
 } from '../../lib/dashboard-admin-logica';
@@ -153,41 +152,6 @@ export function SalidasProximas({ datos, hoy }: { datos: DatosDeCobros; hoy: str
           Ver las {salidas.length} salidas
         </button>
       ) : null}
-    </div>
-  );
-}
-
-export function DestinosAbiertos({ datos }: { datos: DatosDeCobros }) {
-  const destinos = destinosDeArchivosAbiertos(datos.datos);
-  if (destinos.length === 0) {
-    return (
-      <p className="text-sm text-neutral-700 dark:text-neutral-300">
-        No hay archivos abiertos: cuando confirmes una reserva, su destino aparece aquí.
-      </p>
-    );
-  }
-  return (
-    <div>
-      <ul className="grid gap-x-8 md:grid-cols-2 xl:grid-cols-3">
-        {destinos.map((d) => (
-          <li
-            key={d.destino}
-            className="flex flex-col gap-0.5 border-b border-neutral-100 py-2.5 dark:border-neutral-800"
-            data-testid="destino-abierto"
-          >
-            <p className="text-sm font-medium text-neutral-900 dark:text-white">
-              {d.destino}{' '}
-              <span className="font-normal text-neutral-600 dark:text-neutral-400">
-                · {d.archivos === 1 ? '1 archivo' : `${d.archivos} archivos`}
-              </span>
-            </p>
-            <p className="cifra text-xs text-neutral-700 dark:text-neutral-300">
-              Vendido: {d.vendido.map((v) => formatearDinero(v, { conCodigo: true })).join(' · ')}
-            </p>
-          </li>
-        ))}
-      </ul>
-      <AvisoTruncado truncado={datos.truncado} />
     </div>
   );
 }
