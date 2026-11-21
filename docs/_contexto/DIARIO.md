@@ -12,6 +12,16 @@
 
 ---
 
+## 2026-11-21 (madrugada) — Lote de integración nocturno
+
+**Verificado** (con `gh`/`git`): integrados #388, #358, #397, #393, #398, #401, #400 y #395; `main` en `c74b44d`. #401 sustituyó a #384, #386, #389, #390, #392, #399 y #396. Auditoría independiente de #358 y de #393 sin bloqueantes; la de #395 dejó un hallazgo en `completar` seguimiento.
+**Abierto:** #402 (sustituto de #362), a la espera de «Carril y tarea» y de `override-lane` (propietario). #362 se cierra al integrar #402.
+**Cola registrada:** T-494..T-504, más criterios nuevos en T-361 y T-490. Lo urgente es **T-503 (P1)**: tres pruebas de base comparten estado y fallan al azar (FK de etiquetas, deadlocks 40P01).
+**Supuesto / sin verificar:** #402 a 390 px contra la API real; nada desplegado; la clave de la demo se da por perdida.
+**Trampas nuevas:** en [el tablero, §7](TABLERO-DEL-ORQUESTADOR.md).
+
+---
+
 ## 2026-11-21 — Ola 0 en marcha: navegación móvil, etiquetas, base de pagos y operación desatendida
 
 **Decisiones del propietario**

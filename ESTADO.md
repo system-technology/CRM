@@ -10,8 +10,8 @@
 
 | Campo | Valor |
 |---|---|
-| Última actualización | 2026-11-21 (Ola 0: navegación móvil, etiquetas y base de pagos integradas; `main` en `5f0e295`, PR #377) |
-| Actualizado por | Claude, sesión madre (hilo al día con los PR #289 a #383) |
+| Última actualización | 2026-11-21, cierre del lote de la madrugada (`main` en `c74b44d`, PR #395; [bitácora](docs/_bitacora/2026-11-21-lote-de-integracion-nocturno.md)) |
+| Actualizado por | Claude, sesión madre (hilo al día con los PR #289 a #401) |
 | Fase | **Fase 1 del backlog: «Un CRM mostrable y endurecido»** (M1 del [roadmap v2](docs/08-roadmap/01-roadmap.md)). Sin agencia real todavía. Prioridad vigente: la demo a JD Tours ([`MARCO.md`](docs/_contexto/MARCO.md) §6) |
 | Avance | 178 tareas `done` en `roadmap/tasks.yaml` (405 en total). «Done» significa integrada en `main`, **no** desplegada ni probada con Meta real |
 | Próximo hito | Que el propietario cargue la clave de cifrado y decida el despliegue; después, prueba con Meta real (T-080). Del lado del código solo queda cola menor: T-235 y T-226 (c), recifrado por lotes, que solo hace falta cuando haya una clave real que rotar |
@@ -28,6 +28,13 @@ y su [plan](docs/08-roadmap/02-plan-correccion-auditoria-2026-11-15.md). Entrada
 **Veredicto: el flujo H1–H6 ya se recorre en un navegador, en CI, contra la API real. Pero la Graph
 API es falsa y no hay nada desplegado.** Ninguna agencia lo ha visto ni un mensaje de celular real ha
 entrado. Seguimos en local.
+
+### Cierre del lote de la madrugada (2026-11-21)
+
+Integrados en `main`, por orden: #388 (regla R14, tablero, skills), #358 (ingreso por apodo, tope por identificador, apodo de miembros), #397 (ADR-0035, niveles de acceso a reportes), #393 (T-330, dominio y API de cobros), #398 (T-440, marco responsivo), #401 (consolidación de la documentación; sustituyó a #384, #386, #389, #390, #392, #399 y #396), #400 (tablero al día, arreglo del hook) y #395 (el resumen y los seguimientos ajenos solo con `conversaciones.ver_todas`). Detalle y cola: [bitácora](docs/_bitacora/2026-11-21-lote-de-integracion-nocturno.md).
+
+**Abierto:** #402 (web del ingreso por apodo, sustituye a #362).
+**No verificado:** #402 no se probó a 390 px contra la API real; nada de esto está desplegado; la clave de la demo se perdió al archivarse la sesión de despliegue (se regenera resembrando). **Ojo:** T-503 (P1) es la inestabilidad de las pruebas de base; hasta que se arregle, un PR puede salir rojo por azar.
 
 ### Es real (en `main`)
 
@@ -131,7 +138,7 @@ Postmark real; las migraciones contra una base de producción (solo corren en el
 |---|---|---|
 | `CAMPOS_SENSIBLES_KEY` y `_VERSION=1` sin cargar en Render, y sin copia guardada de la clave | Sin ella el cifrado no puede usarse desplegado; perder la clave pierde los datos | Propietario |
 | `STAGING_DESPLIEGUE=desactivado`. Neon `viajapro-staging` existe con 32 de 47 migraciones aplicadas y faltan 3 roles; **el proyecto de Vercel `viajapro-staging` ya existe** (dominio `viajapro-staging.vercel.app`, un despliegue en producción `READY` hecho desde `main` en el PR #321, del 2026-11-20, es decir, sin nada de lo posterior; verificado el 2026-11-21 con la herramienta de Vercel: la página responde 200 y muestra «Verificando tu sesión»). **Render: sin verificar** (la herramienta pide elegir el espacio de trabajo y eso lo decide el propietario). La sesión de despliegue espera tus decisiones: qué contraseñas de rol carga quién, `API_TRUST_PROXY` y los secretos que solo cargas tú | No hay nada que enseñar fuera de local | Propietario |
-| Etiqueta `override-lane` en #358 y #362 (ingreso por apodo, mezclan carriles) | Ingreso por apodo no entra | Propietario |
+| Etiqueta `override-lane` y check «Carril y tarea» en #402 (sustituto de #362; se cierra #362 al integrarlo) | La web del ingreso por apodo no entra | Propietario |
 | `navegador` como check obligatorio en la protección de `main` (contenido en el commit `27412e7`) | Hoy un PR puede integrarse con `navegador` rojo si cumple los 8 obligatorios | Propietario |
 | Confirmación escrita para que la sesión de cobros trabaje sin supervisión | Hoy trabaja con un PR por tarea | Propietario |
 | Verificación del negocio en Meta / Tech Provider sin iniciar (T-080); falta un mensaje desde un celular | Solo número de prueba y Graph falsa; no hay lanzamiento | Propietario |
