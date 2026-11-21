@@ -51,6 +51,8 @@ Ventana web abierta a **diseño** hasta 05:00 UTC.
 
 **Ramas remotas sin uso que borra el propietario si quiere** (el proxy corta el borrado desde las sesiones): `b/T-000-auditoria-visual-y-ux`, `b/T-443-tokens-y-puntero`. **Numeración de docs:** el de reportes pasa a `11-reportes-por-nivel-catalogo.md` (el `10-` es el de diseño).
 
+**Duplicado resuelto (04:30 UTC):** T-339 lo hicieron dos sesiones (#392 roadmap y #394 cobros); canónico #392, #394 se cierra y su contenido extra se funde en #392; T-339..T-346 son de la sesión del roadmap. **#358:** el arreglo `64311d5` (reservar antes de comprobar) lo di por correcto leyendo el diff; pendiente de que relajen la aserción «≤1 sesión con clave correcta» y añadan el caso mixto, y de 15/15.
+
 **Ids de tarea reservados:** T-425..T-427 (#384), T-428..T-435 (roadmap, cierre de T-322), T-440..T-471 (diseño, #389), T-472..T-479 (cobros, #386).
 
 ## 4. Pendientes del orquestador (prometido y no hecho)
