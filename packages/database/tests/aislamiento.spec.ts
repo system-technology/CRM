@@ -9323,7 +9323,7 @@ describe('T-268 — Registro de agencias (ADR-0030 F1): crear_agencia, código d
   // ---- ADR-0031 §4: la fase 2 simulada ----------------------------------------------------------
   //
   // Con el índice de apodos GLOBAL y agencias existentes (los fixtures), `crear_agencia` falla
-  // cerrada con VPR05 (migración 20261120160000). Lo que aquí necesita un alta que salga (R-3, R-4,
+  // cerrada con VPR05 (migración 20261120180000). Lo que aquí necesita un alta que salga (R-3, R-4,
   // R-6, R-9, R-10) corre en UNA transacción del propietario que se deshace siempre, con el índice
   // por agencia simulado: el índice confirmado nunca cambia. Dentro, la API es `viajapro_app` por
   // SET LOCAL ROLE, como ya hacía R-9.
@@ -11161,7 +11161,7 @@ describe('ADR-0031 (T-372) — apodo de ingreso: usuarios.apodo y su reflejo en 
 //
 // Precondición dura (auditoría de seguridad, B3; compuerta del PR 2, C1): con `UNIQUE (apodo)`
 // global, una segunda agencia podría enumerar y acaparar los apodos de la primera. `crear_agencia`
-// (migración 20261120160000) falla cerrada con VPR05 si el índice es global y `tenants` ya tiene
+// (migración 20261120180000) falla cerrada con VPR05 si el índice es global y `tenants` ya tiene
 // una fila. El índice se lee del CATÁLOGO y se compara por columnas; la guarda se apaga sola con el
 // índice por agencia de la fase 2.
 //

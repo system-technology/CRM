@@ -10,7 +10,7 @@
  *
  * Y la guarda (c) de la precondición dura de ADR-0031 §4: mientras el índice de apodos de
  * `accesos_identidad` sea GLOBAL, no se siembra una SEGUNDA agencia (ver `elIndiceDeApodosEsGlobal`,
- * al final). `crear_agencia` aplica la misma regla en la base (migración 20261120160000).
+ * al final). `crear_agencia` aplica la misma regla en la base (migración 20261120180000).
  */
 
 import { isAbsolute, relative, resolve } from 'node:path';
@@ -129,7 +129,7 @@ export function decidirSiSePuedeSembrarLaAgencia(
 // =============================================================================================
 // ¿Es GLOBAL el índice de apodos? (ADR-0031 §4, «Cómo se detecta que el índice es global»)
 //
-// La misma regla que la guarda de `crear_agencia` (migración 20261120160000), leída del CATÁLOGO
+// La misma regla que la guarda de `crear_agencia` (migración 20261120180000), leída del CATÁLOGO
 // (`pg_index`, `pg_attribute`: legibles por cualquier rol) y decidida aquí, en una función pura que
 // se prueba sin base. Global si:
 //   · falta la columna `apodo` o la `tenant_acceso_id` de `accesos_identidad`;
