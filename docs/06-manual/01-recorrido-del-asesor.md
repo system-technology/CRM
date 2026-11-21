@@ -29,6 +29,12 @@ invitarte (ver [el recorrido del dueño](02-recorrido-del-dueno.md#2-invitar-al-
 **«Aceptar todas»**, o **«Configurar»** para decidir una por una. Después ya no vuelve a salir en ese
 navegador. Las demás capturas de este manual se tomaron con el aviso ya resuelto.
 
+**Claro u oscuro, antes de entrar.** En el pie de la pantalla de ingreso (abajo a la derecha) hay tres botones
+para elegir el tema visual: **sol (claro)**, **luna (oscuro)** y **pantalla (sistema)**, que sigue el modo de
+tu computador o celular. Dentro de la aplicación, el mismo ajuste está en el icono de abajo del menú
+lateral, junto a la campana: cada clic pasa de *Sistema* a *Claro*, de *Claro* a *Oscuro* y de *Oscuro* de
+vuelta a *Sistema*. Las capturas de este manual están en tema claro.
+
 - El recuadro verde de arriba del formulario («Modo de Producción… Conectado a la API») **solo
   refleja cómo está configurada la aplicación; no comprueba que el servidor esté respondiendo**. En
   la captura sale así aunque se tomó sin ninguna API (T-565).

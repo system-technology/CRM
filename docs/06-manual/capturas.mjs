@@ -107,7 +107,8 @@ async function capturarIngreso(navegador) {
   const contexto = await navegador.newContext({ viewport: VENTANA, deviceScaleFactor: 2 });
   const p = await contexto.newPage();
   await ir(p, '/ingresar');
-  await p.screenshot({ path: DESTINO + 'asesor-01-ingreso.png' });
+  // Página completa: el conmutador de tema vive en el pie y la ventana de 800 px lo deja fuera.
+  await p.screenshot({ path: DESTINO + 'asesor-01-ingreso.png', fullPage: true });
   console.log(`ok   asesor-01-ingreso (${p.url()})`);
   await contexto.close();
 }
