@@ -1049,6 +1049,7 @@ describe('la carrera registrar-pago vs cancelar-archivo', () => {
 
       await bloqueador.query(
         `UPDATE travel_files SET estado = 'CANCELADO', motivo_cancelacion = 'OTRO',
+                nota_cancelacion = 'Cancelación de la prueba de la carrera',
                 cancelado_en = now(), cancelado_por = $3
           WHERE id = $1 AND tenant_id = $2`,
         [a.id, TENANT_A, agencias.A.usuario],
