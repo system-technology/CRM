@@ -12,6 +12,34 @@
 
 ---
 
+## 2026-11-21 — Ola 0 en marcha: navegación móvil, etiquetas, base de pagos y operación desatendida
+
+**Decisiones del propietario**
+- Operación desatendida hasta terminar el CRM (no solo el MVP): [roadmap maestro](../08-roadmap/09-roadmap-maestro-y-operacion-desatendida.md) (olas 0 a 4) y una tarea programada que despierta a la sesión madre cada dos horas. El orquestador queda autorizado a aprobar e integrar (también rutas protegidas, con auditoría hecha y CI verde). No alcanza a paneles, claves, `override-lane`, ni a nada del propietario: está en [`PENDIENTES-DEL-PROPIETARIO.md`](PENDIENTES-DEL-PROPIETARIO.md).
+- Navegación: menú D1 a D4 (D3 reemplazada por reportes por niveles de acceso), barra móvil variante B (Hoy · Conversaciones · Cotizar · Archivos de viaje · Más, lupa fija), ADR-0032 aceptado, ADR-0031 (ingreso por apodo) aceptado.
+- **El CRM se usa desde celular, tablet y navegador de escritorio** (aclarado hoy): la auditoría responsiva cubre las tres familias de ancho. Pendiente ampliar el criterio de salida 9 del roadmap de JD Tours, que aún dice «móvil 390 px».
+- Sesión dedicada a analizar y rediseñar la interfaz y la experiencia de usuario (Fase 1 análisis sin código; Fase 2 con OK del orquestador).
+- ADR-0034 (pagos del viajero, registro manual): integrado como *Propuesto* y tratado como aceptado tras dos revisiones (seguridad y turismo). Decididos: solo el dueño devuelve, ajusta, penaliza y reversa (`cobro.corregir`); el asesor solo registra el pago; plazo de cobro por agencia (30 por defecto); medios de pago ampliados; orden de la idempotencia escrito.
+
+**Verificado** (con `gh`, CI en verde en cada PR)
+- Integrados en `main`: guarda de segunda agencia (#363), barra móvil (#368), cotizar completo desde el celular (#369), la URL como estado (#371), paleta con la misma fuente que cada pantalla (#374), etiquetas por agencia: migración con RLS (#372), API (#379) y chips en la bandeja (#381), ADR-0034 (#378), libro de cobro `pagos` con permisos `cobro.*` (#382) y las etiquetas de esos permisos en la web (#383), más los PR de docs de cada lote.
+- #382: `aislamiento-tenants` verde; fue la primera ejecución real de la migración `20261121140000`.
+- Auditorías de seguridad sin bloqueantes en #363, #372, #379 y #382 (una de la sesión de trabajo y una independiente del orquestador en cada una; las de #372 y #382 fueron por lectura de código, la confirmación la dio el CI).
+
+**Pendiente**
+- Abiertos al escribir esto: #358 y #362 (ingreso por apodo), esperando `override-lane` del propietario; #385 (T-322), #387 (quita una unión temporal de tipos) y PR de docs.
+- Cola nueva: T-330 (API de pagos, con las reglas por estado y la carrera registrar-pago contra cancelar-archivo), T-339 a T-346 (reportes por nivel), T-322 y los puntos menores de cada auditoría en `roadmap/tasks.yaml`.
+- Propietario: secretos de Render y `DIRECT_URL`, proyecto de Vercel, `override-lane`, `navegador` como check obligatorio (contenido en el commit `27412e7`), autonomía de la sesión de cobros, decisión de coexistencia (ADR-0033) y pasarela.
+- **Sin verificar:** que `AP14` salga omitida en `test` y corra en `aislamiento-tenants` (una pasada verde no descarta la intermitencia); la pantalla de etiquetas y de cotizar contra la API real fuera del CI; nada de esto está desplegado.
+
+**Trampas nuevas**
+- Con `strict` en la protección de `main`, cada integración deja `behind` a los demás PR: web y rutas protegidas se integran de una en una, con «ventana» pedida al orquestador, y los PR de docs con auto-merge los atrasan (se les quita el auto-merge mientras dura la ventana).
+- `AP14` vacía `tenants`: no puede correr junto a los e2e de la API; se omite cuando `npm_lifecycle_event` es `test` (si reaparece roja, la salida es sacar `aislamiento.spec` del job `test`, y toca `ci.yml`).
+- «Carril y tarea» rojo cuando un PR mezcla carriles; la etiqueta `override-lane` la pone solo el propietario. Se evita partiendo el cambio (caso de `permisos.ts`: unión temporal de tipos y luego limpieza).
+- Un auditor puede leer el SQL pero no ejecutarlo: «integrable» por lectura no sustituye al job `aislamiento-tenants`.
+
+---
+
 ## 2026-11-20 (tarde) — T-268 integrada: base del registro de agencias
 
 **Verificado** (con `gh`)

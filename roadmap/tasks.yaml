@@ -7325,7 +7325,7 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: backlog
+    status: review
     depends_on: [T-339]
     acceptance:
       - "Define los niveles y sus permisos, absorbe T-141 y deja claro cómo se impone el alcance en el servidor con la sesión (nunca desde el cliente ni por el menú)"
@@ -7333,6 +7333,7 @@ tasks:
     source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md, Eje F (decisión del propietario 2026-11-20)
     created_at: 2026-11-20T21:30:00.000Z
     owner: arquitecto
+    notes: "ADR-0035 (Propuesto) en la rama i/T-340-adr-niveles-reportes. Pasa a done cuando se integre en main"
   - id: T-341
     title: "F2: permisos de reportes en el catálogo de roles y su sembrado (absorbe T-141)"
     type: feature
@@ -7344,6 +7345,7 @@ tasks:
     acceptance:
       - "Permisos nuevos en el CHECK del catálogo y sembrados por rol (administrador: todos; asesor: solo lo propio)"
       - "aislamiento.spec.ts y auditoría de seguridad sin recortar vueltas (R13)"
+      - "Según ADR-0035 §3: un solo permiso, reportes.ver_agencia; el CHECK roles_permisos_del_catalogo pasa de 14 a 15 con migración nueva (NOT VALID + VALIDATE); siembra y relleno solo al rol DUENO de cada agencia, ni ASESOR ni OPERACIONES; PERMISOS en packages/contracts"
     source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md, Eje F (decisión del propietario 2026-11-20)
     created_at: 2026-11-20T21:30:00.000Z
     owner: datos
@@ -7358,6 +7360,7 @@ tasks:
     acceptance:
       - "Para quien solo tiene alcance propio, el servidor fuerza el asesor de la sesión; el parámetro del cliente no lo amplía"
       - "e2e con dos asesores y dos agencias: un asesor no ve lo del otro ni lo de otra agencia; el margen sigue protegido"
+      - "Según ADR-0035 §4: alcanceDeReporte en shared/autorizacion recibido por todos los puertos de reportes; contrato del resumen como unión discriminada por alcance; asesorId ajeno sin permiso = 403 en reportes y en seguimientos (cambia el silencio provisional de #395); retira el gate provisional de #395; atribución de M9 por mensajes.autor_id"
     source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md, Eje F (decisión del propietario 2026-11-20)
     created_at: 2026-11-20T21:30:00.000Z
     owner: backend
@@ -8432,3 +8435,55 @@ tasks:
     source: "ADR-0034 §7: los eventos se publican sin consumidor en el MVP (cola del ADR de pagos, 2026-11-21)"
     created_at: 2026-11-21T03:00:00.000Z
     owner: backend
+  - id: T-490
+    title: "Visibilidad por asesor en las pantallas operativas del CRM (tablero, contactos, ficha, archivos, cotizaciones) y asesorId ajeno en POST /crm/oportunidades"
+    type: docs
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    depends_on: [T-340]
+    acceptance:
+      - "Respuesta del propietario a la pregunta 10 del catálogo de reportes; si cambia lo de hoy, decisión escrita en un ADR que enmiende el 0035 y tareas de implementación con dueño"
+    source: "ADR-0035 §4 (fuera de alcance) y cola del PR #395"
+    created_at: 2026-11-21T12:00:00.000Z
+    owner: arquitecto
+  - id: T-491
+    title: "Nivel «equipo» en reportes (subconjunto de asesores): solo si una agencia lo pide"
+    type: docs
+    phase: 3
+    priority: P3
+    effort: M
+    status: backlog
+    depends_on: [T-340]
+    acceptance:
+      - "Solo con una agencia que lo pida (pregunta 1); ADR propio con tabla de equipos por agencia, tenant_id, RLS y permiso nuevo"
+    source: "ADR-0035 §1 y cola"
+    created_at: 2026-11-21T12:00:00.000Z
+    owner: arquitecto
+  - id: T-492
+    title: "Saldo agregado de cobros (M6) en SQL con prueba de contrato contra las funciones de packages/domain"
+    type: feature
+    phase: 3
+    priority: P3
+    effort: M
+    status: backlog
+    depends_on: [T-330, T-342]
+    acceptance:
+      - "Cuando una agencia pase de 500 archivos abiertos; la prueba compara SQL y dominio sobre los mismos datos, incluidos AJUSTE, PENALIDAD y DEVOLUCION"
+    source: "ADR-0035 §4 y cola"
+    created_at: 2026-11-21T12:00:00.000Z
+    owner: datos
+  - id: T-493
+    title: "experto-turismo valida la atribución de reportes del ADR-0035 (cotiza uno, cierra otro) y el bloque «Sin responsable»"
+    type: docs
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    depends_on: [T-340]
+    acceptance:
+      - "Veredicto escrito sobre ADR-0035 §2; si cambia la atribución, se enmienda el ADR antes de T-342"
+    source: "ADR-0035 (consultados pendientes) y catálogo de reportes §8.4"
+    created_at: 2026-11-21T12:00:00.000Z
+    owner: experto-turismo

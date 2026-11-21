@@ -29,6 +29,10 @@ import type { Request as PeticionExpress, Response as RespuestaExpress } from 'e
 import { ZodValidationPipe } from '../../../shared/validacion/zod-validation.pipe.js';
 import { errorDeAcceso } from '../application/errores.js';
 import { CambiarAgenciaActiva } from '../application/cambiar-agencia-activa.use-case.js';
+import {
+  IngresoPorIdentificador,
+  type ResultadoDeAutenticacion,
+} from '../application/ingreso-por-identificador.js';
 import { ObtenerSesionActual } from '../application/sesion-actual.use-case.js';
 import {
   claveDeLimite,
@@ -56,6 +60,7 @@ export class AuthController {
     @Inject(CambiarAgenciaActiva) private readonly cambiarAgencia: CambiarAgenciaActiva,
     @Inject(LimitadorDeEnvios) private readonly limitador: LimitadorDeEnvios,
     @Inject(ContadorDeFallosDeCodigo) private readonly fallos: ContadorDeFallosDeCodigo,
+    @Inject(IngresoPorIdentificador) private readonly ingreso: IngresoPorIdentificador,
   ) {}
 
   @Post('sign-in/email')
@@ -66,11 +71,18 @@ export class AuthController {
     @Res({ passthrough: true }) res: RespuestaExpress,
   ): Promise<SesionActual> {
     this.exigirOrigenSiVino(req);
-    const respuesta = await this.llamarABetterAuth(req, '/sign-in/email', {
-      email: body.correo,
-      password: body.contrasena,
-    });
-    this.rechazarSiFallo(respuesta);
+    // El contrato garantiza que viene exactamente una de las dos claves (`correo` es la de
+    // transición, T-363). El correo que se le da a Better Auth (el del apodo resuelto, o el
+    // centinela) NO sale de aquí: lo único que vuelve es la sesión o CREDENCIALES_INVALIDAS.
+    const identificador = body.identificador ?? body.correo ?? '';
+    const respuesta = await this.ingreso.ejecutar(identificador, async (correo) =>
+      this.clasificar(
+        await this.llamarABetterAuth(req, '/sign-in/email', {
+          email: correo,
+          password: body.contrasena,
+        }),
+      ),
+    );
     return this.abrirSesion(respuesta, res);
   }
 
@@ -250,15 +262,16 @@ export class AuthController {
     return SesionActual.parse(sesion);
   }
 
-  private rechazarSiFallo(respuesta: RespuestaWeb): void {
-    if (respuesta.ok) return;
-    if (respuesta.status === 429) throw errorDeAcceso('DEMASIADOS_INTENTOS');
-    if (respuesta.status === 403) throw errorDeAcceso('ORIGEN_NO_CONFIABLE');
-    // Contraseña errónea, correo inexistente, identidad dada de baja… Mismo código para todo:
-    // quien llama no debe poder distinguir si el correo existe.
-    if (respuesta.status === 401 || respuesta.status === 400) {
-      throw errorDeAcceso('CREDENCIALES_INVALIDAS');
-    }
+  /**
+   * Clasifica la respuesta de `/sign-in/email`. Contraseña errónea, correo inexistente, identidad
+   * dada de baja… es `rechazada` para todo: quien llama no debe poder distinguirlo. `429` y `403`
+   * dependen de la IP y del origen, nunca del identificador.
+   */
+  private clasificar(respuesta: RespuestaWeb): ResultadoDeAutenticacion<RespuestaWeb> {
+    if (respuesta.ok) return { tipo: 'abierta', valor: respuesta };
+    if (respuesta.status === 429) return { tipo: 'limite' };
+    if (respuesta.status === 403) return { tipo: 'origen' };
+    if (respuesta.status === 401 || respuesta.status === 400) return { tipo: 'rechazada' };
     throw new Error(`Better Auth respondió ${respuesta.status} al iniciar sesión.`);
   }
 }

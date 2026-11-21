@@ -114,6 +114,31 @@ export class NoPuedeDejarSinDuenoError extends EstadoInvalidoError {
   }
 }
 
+/**
+ * El apodo ya lo tiene otra persona (en la fase 1, en CUALQUIER agencia: el índice es global). 409,
+ * sin el apodo ni el mensaje de Postgres. Fuga conocida de la fase 1 (ADR-0031 §4): revela que el
+ * apodo existe en alguna agencia.
+ */
+export class ApodoNoDisponibleError extends EstadoInvalidoError {
+  readonly code = 'APODO_NO_DISPONIBLE';
+
+  constructor() {
+    super('Ese apodo no está disponible.');
+  }
+}
+
+/**
+ * La función de apodos está apagada (índice global y más de una agencia, ADR-0031 §4 B3). Error
+ * GENÉRICO (400), a propósito distinto del 409: con el 409 se enumerarían los apodos de otras agencias.
+ */
+export class CambioDeApodoNoAdmitidoError extends DomainError {
+  readonly code = 'CAMBIO_DE_APODO_NO_ADMITIDO';
+
+  constructor() {
+    super('No se pudo cambiar el apodo.');
+  }
+}
+
 /** La fila de la agencia activa no existe en `tenants` (no debería pasar con sesión vigente). 404. */
 export class AgenciaNoEncontradaError extends DomainError {
   readonly code = 'AGENCIA_NO_ENCONTRADA';

@@ -88,6 +88,7 @@ Toda la documentación del proyecto. Si una decisión no está aquí (o en `ESTA
 | [0032](03-adr/0032-layout-compartido-y-tabla-unica-de-navegacion.md) | Layout compartido `(app)` y tabla única de navegación | Aceptado |
 | [0033](03-adr/0033-coexistencia-y-chats-de-proveedores.md) | Número de la agencia en coexistencia o número separado, y chats de proveedores (Ley 1581) | Propuesto |
 | [0034](03-adr/0034-pagos-del-viajero-mvp-de-registro-manual.md) | Pagos del viajero: MVP de registro manual, libro de movimientos que solo se añade | Propuesto |
+| [0035](03-adr/0035-niveles-de-acceso-a-reportes.md) | Niveles de acceso a reportes: propio y agencia, impuestos por el servidor (`reportes.ver_agencia`) | Propuesto |
 
 ## 04 · Integraciones
 
