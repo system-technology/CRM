@@ -246,6 +246,42 @@ describe('tonos declarados: una clase que no genera CSS es un token roto', () =>
   });
 });
 
+describe('familias existentes: una familia que no es de nadie no emite CSS (T-569)', () => {
+  /** Las que trae Tailwind v4 de fábrica; las propias están en FAMILIAS_PROPIAS. */
+  const FAMILIAS_DE_TAILWIND = new Set([
+    'slate', 'gray', 'zinc', 'neutral', 'stone', 'red', 'orange', 'amber', 'yellow', 'lime',
+    'green', 'emerald', 'teal', 'cyan', 'sky', 'blue', 'indigo', 'violet', 'purple', 'fuchsia',
+    'pink', 'rose',
+  ]);
+
+  it('toda familia de color usada en las clases es de Tailwind o está en @theme', () => {
+    const raiz = path.resolve(RAIZ_WEB, '../../..');
+    const salida = execFileSync('git', ['ls-files', '-z', 'apps/web/src', 'packages/ui'], {
+      cwd: raiz,
+      encoding: 'utf8',
+      maxBuffer: 64 * 1024 * 1024,
+    });
+    const patron = new RegExp(
+      `\\b(?:[a-z-]+:)*(?:${UTILIDADES})-([a-z]+)-(\\d{2,3})(?:\\/\\d+)?\\b`,
+      'g',
+    );
+    const desconocidas = new Map<string, string>();
+    for (const archivo of salida.split('\0')) {
+      if (!/\.(ts|tsx)$/.test(archivo) || archivo.includes('.spec.')) continue;
+      for (const m of readFileSync(path.join(raiz, archivo), 'utf8').matchAll(patron)) {
+        const familia = m[1] as string;
+        if ((FAMILIAS_PROPIAS as readonly string[]).includes(familia)) continue;
+        if (FAMILIAS_DE_TAILWIND.has(familia)) continue;
+        desconocidas.set(familia, archivo);
+      }
+    }
+    expect(
+      [...desconocidas.entries()].map(([f, a]) => `  ${f} — p. ej. ${a}`),
+      'Estas familias no existen ni en @theme ni en Tailwind: sus clases no emiten CSS.',
+    ).toEqual([]);
+  });
+});
+
 // ---------------------------------------------------------------- guarda 2
 
 /**

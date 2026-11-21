@@ -87,7 +87,7 @@ export function ModalReasignar({
       >
         <div className="flex items-center justify-between border-b border-neutral-100 pb-3 dark:border-neutral-800">
           <div className="flex items-center gap-2">
-            <div className="bg-primary-50 text-primary-600 dark:bg-primary-950/50 dark:text-primary-400 flex h-9 w-9 items-center justify-center rounded-xl">
+            <div className="bg-acento-50 text-acento-600 dark:bg-acento-950/50 dark:text-acento-400 flex h-9 w-9 items-center justify-center rounded-xl">
               <UserCheck className="h-5 w-5" />
             </div>
             <div>
@@ -124,9 +124,9 @@ export function ModalReasignar({
           <button
             type="button"
             onClick={() => setSeleccionado(null)}
-            className={`focus-visible:ring-primary-500 flex min-h-[48px] w-full items-center justify-between rounded-xl border p-3 text-left transition-colors focus-visible:ring-2 focus-visible:outline-none ${
+            className={`focus-visible:ring-acento-500 flex min-h-[48px] w-full items-center justify-between rounded-xl border p-3 text-left transition-colors focus-visible:ring-2 focus-visible:outline-none ${
               seleccionado === null
-                ? 'border-primary-500 bg-primary-50/60 text-primary-900 dark:border-primary-500 dark:bg-primary-950/40 dark:text-primary-200 font-semibold'
+                ? 'border-acento-500 bg-acento-50/60 text-acento-900 dark:border-acento-500 dark:bg-acento-950/40 dark:text-acento-200 font-semibold'
                 : 'border-neutral-200 text-neutral-700 hover:bg-neutral-50 dark:border-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-800'
             }`}
           >
@@ -142,7 +142,7 @@ export function ModalReasignar({
               </div>
             </div>
             {seleccionado === null && (
-              <span className="bg-primary-600 dark:bg-primary-400 h-2 w-2 rounded-full" />
+              <span className="bg-acento-600 dark:bg-acento-400 h-2 w-2 rounded-full" />
             )}
           </button>
 
@@ -171,14 +171,14 @@ export function ModalReasignar({
                 key={asesor.id}
                 type="button"
                 onClick={() => setSeleccionado(asesor.id)}
-                className={`focus-visible:ring-primary-500 flex min-h-[48px] w-full items-center justify-between rounded-xl border p-3 text-left transition-colors focus-visible:ring-2 focus-visible:outline-none ${
+                className={`focus-visible:ring-acento-500 flex min-h-[48px] w-full items-center justify-between rounded-xl border p-3 text-left transition-colors focus-visible:ring-2 focus-visible:outline-none ${
                   esActivo
-                    ? 'border-primary-500 bg-primary-50/60 text-primary-900 dark:border-primary-500 dark:bg-primary-950/40 dark:text-primary-200 font-semibold'
+                    ? 'border-acento-500 bg-acento-50/60 text-acento-900 dark:border-acento-500 dark:bg-acento-950/40 dark:text-acento-200 font-semibold'
                     : 'border-neutral-200 text-neutral-700 hover:bg-neutral-50 dark:border-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-800'
                 }`}
               >
                 <div className="flex items-center gap-2.5">
-                  <div className="bg-primary-100 text-primary-700 dark:bg-primary-950 dark:text-primary-300 flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold">
+                  <div className="bg-acento-100 text-acento-700 dark:bg-acento-950 dark:text-acento-300 flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold">
                     {asesor.nombre.slice(0, 2).toUpperCase()}
                   </div>
                   <div>
@@ -188,7 +188,7 @@ export function ModalReasignar({
                   </div>
                 </div>
                 {esActivo && (
-                  <span className="bg-primary-600 dark:bg-primary-400 h-2 w-2 rounded-full" />
+                  <span className="bg-acento-600 dark:bg-acento-400 h-2 w-2 rounded-full" />
                 )}
               </button>
             );
@@ -209,7 +209,7 @@ export function ModalReasignar({
             onClick={() => void manejarConfirmar()}
             disabled={guardando}
             data-testid="boton-confirmar-reasignacion"
-            className="bg-primary-600 hover:bg-primary-700 dark:bg-primary-500 dark:hover:bg-primary-600 flex min-h-[44px] items-center justify-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold text-white shadow-xs disabled:opacity-50"
+            className="bg-acento-600 hover:bg-acento-700 dark:bg-acento-500 dark:hover:bg-acento-600 flex min-h-[44px] items-center justify-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold text-white shadow-xs disabled:opacity-50"
           >
             {guardando ? (
               <>
