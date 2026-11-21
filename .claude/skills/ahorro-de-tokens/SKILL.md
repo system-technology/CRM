@@ -9,7 +9,8 @@ El gasto real no son las tareas: es **el contexto que se relee en cada turno**. 
 500 mil tokens cuesta mucho más que diez sesiones cortas. Las reglas, de más a menos efecto:
 
 ## 1. Sesión corta, una tarea
-- Una sesión = una tarea (un PR). Al terminar, `relevo-de-sesion` y se archiva. No maratones.
+- Una sesión = una tarea (un PR). Al terminar, `relevo-de-sesion` y se archiva. No maratones. **Tope: 150 mil
+  tokens de contexto**; a partir de 100 mil no se acepta una tarea grande (ver `relevo-de-sesion`).
 - La memoria vive en `docs/_contexto/TABLERO-DEL-ORQUESTADOR.md`, `ESTADO.md`, `roadmap/tasks.yaml` y los docs
   del tema (R14), **no** en la conversación. Léelos, no los reconstruyas.
 

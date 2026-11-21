@@ -87,7 +87,7 @@ transversal. «Listo» es una tarea `ready` cuyas dependencias están `done`.
 ### 3.1 Los roles
 
 - **Orquestador:** la sesión madre. Una **tarea programada** la despierta cada dos horas. Integra, reparte, audita y no escribe código de producto salvo arreglos pequeños de proceso.
-- **Sesiones de trabajo:** como máximo **tres** a la vez, cada una con **un carril** (web, base de datos y API, o investigación) y **una tarea** a la vez.
+- **Sesiones de trabajo:** como máximo **tres** a la vez, cada una con **un carril** (web, base de datos y API, o investigación) y **una tarea puntual** (un PR). **Sesión corta:** al cerrar su tarea, o al llegar a **150 mil tokens de contexto**, se releva: traspaso corto, la madre la archiva y abre una nueva con modelo y esfuerzo según el skill `modelo-y-esfuerzo` (regla del propietario del 2026-11-21; skills `ahorro-de-tokens` y `relevo-de-sesion`).
 - **Agentes de apoyo** (`auditor-seguridad`, `arquitecto`, `datos`, `qa`…): los lanzan las sesiones o el orquestador para una pasada concreta.
 
 ### 3.2 El ciclo del orquestador (cada despertar)
@@ -95,7 +95,7 @@ transversal. «Listo» es una tarea `ready` cuyas dependencias están `done`.
 1. `git fetch`, estado de `main` y de cada PR abierto con `gh` (solo REST). **Verificar antes de afirmar.**
 2. **Integrar** lo que está listo (§3.4) y actualizar con `main` las ramas atrasadas.
 3. **Auditar** lo que lo exige y todavía no tiene veredicto.
-4. **Repartir:** a cada sesión sin tarea, la siguiente tarea `ready` de la ola actual (orden: ola, prioridad P0 a P3, carril libre). Mandar el encargo por mensaje, con el criterio de aceptación.
+4. **Medir y repartir:** mide el contexto de cada sesión activa (`get_session`, `context_usage`) y releva las que pasen de 150 mil o cerraron su tarea (skill `relevo-de-sesion`). **Repartir:** a cada sesión sin tarea, la siguiente tarea `ready` de la ola actual (orden: ola, prioridad P0 a P3, carril libre). Mandar el encargo por mensaje, con el criterio de aceptación.
 5. **Reconciliar** `roadmap/tasks.yaml` con los PR integrados (cerrar tareas con su evidencia, desbloquear las que dependían).
 6. **Registrar (R14):** `CHECKPOINT.local.md` tras cada hito, y `DIARIO.md`, `ESTADO.md` y la bitácora al cerrar cada lote, **sin acumular más de un lote sin documentar**. Antes de dar por cerrada una ola, todo plan, hoja de ruta y paso a paso nuevo está en `docs/08-roadmap/` y en `roadmap/tasks.yaml`.
 7. **Actualizar la bandeja del propietario** (`PENDIENTES-DEL-PROPIETARIO.md`) con lo nuevo que solo él puede resolver.
@@ -103,7 +103,7 @@ transversal. «Listo» es una tarea `ready` cuyas dependencias están `done`.
 
 ### 3.3 El ciclo de una sesión de trabajo
 
-Tomar una tarea → `git fetch` y leer `main` antes de numerar migraciones, tareas o ADR → rama propia → ADR antes del código si cambia la estructura (R7) → implementar con pruebas → PR **sin auto-merge** si es web o ruta protegida → pedir auditoría cuando toque → **documentar lo hecho y lo que sigue (R14)** → reportar al orquestador → siguiente tarea. Si una tarea falla dos veces, se anota con la causa y se pasa a la siguiente.
+Una tarea puntual → `git fetch` y leer `main` antes de numerar migraciones, tareas o ADR → rama propia → ADR antes del código si cambia la estructura (R7) → implementar con pruebas → PR **sin auto-merge** si es web o ruta protegida → pedir auditoría cuando toque → **documentar lo hecho y lo que sigue (R14)** → reportar al orquestador → siguiente tarea. Si una tarea falla dos veces, se anota con la causa y se pasa a la siguiente.
 
 ### 3.4 Las compuertas (nada entra sin ellas)
 

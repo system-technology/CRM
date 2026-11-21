@@ -34,5 +34,12 @@ Una sesión larga es cara y se degrada. El relevo la cierra con el estado en el 
 > `@parent`, `git fetch` y PR de docs abiertos antes de numerar ids, auditoría de seguridad donde toque dinero,
 > autenticación o aislamiento. Al terminar: traspaso a `@parent` y para.
 
-Una sesión por tarea; si la tarea siguiente es del mismo tema y el contexto es pequeño (< ~150 mil tokens),
-puede seguir, pero revisa el tamaño en `get_session` (`context_usage`) antes de aceptar otra.
+## Cuándo se relevan (regla del propietario, 2026-11-21)
+- **Una sesión = una tarea puntual** (un PR, o una auditoría, o un lote de docs). Al cerrarla, relevo y archivo.
+- **Tope de contexto: 150 mil tokens** (`external_metadata.context_usage.used_tokens` en `get_session`). Al
+  llegar, la sesión termina su unidad atómica y se relevan; no se acepta tarea nueva por encima del tope.
+- **Corte previo:** si una sesión pasa de **100 mil** y su tarea siguiente es grande, se releva antes de empezarla.
+- La madre mide el contexto de cada sesión activa en cada despertar de las dos horas (`get_session`, solo
+  esa cifra) y lo anota en el tablero. Una sesión que no cierra una tarea en ~3 horas también se releva.
+- Las sesiones de la misma tarea que siguen un hilo corto (p. ej. corregir lo que pidió la auditoría del PR que
+  acaban de abrir) pueden continuar si están bajo 100 mil.

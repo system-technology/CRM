@@ -81,6 +81,7 @@ La bandeja completa y al día está en [`PENDIENTES-DEL-PROPIETARIO.md`](PENDIEN
 - **Decisión del propietario:** el gasto en tokens es excesivo; archivar las sesiones de trabajo y relanzarlas con modelo y esfuerzo óptimos, y crear skills que eviten el desperdicio. **No** se toca la sesión de coexistencia (la abrió él).
 - **Diagnóstico (`get_session`, verificado):** el coste está en contextos de 300 a 700 mil tokens releídos en cada turno (270 a 550 millones de tokens de lectura de caché por sesión; coste acumulado ~99 USD roadmap, ~70 cobros, ~70 despliegue). Las cuatro corrían con Sonnet 5.5.
 - **Skills nuevos** (`.claude/skills/`): `ahorro-de-tokens`, `modelo-y-esfuerzo` (matriz por tipo de tarea) y `relevo-de-sesion` (traspaso, archivar y relanzar). Entran en `main` con el PR #388.
+- **Regla de sesiones cortas (propietario, 2026-11-21):** una sesión = una tarea puntual; **tope de 150 mil tokens de contexto** (`get_session` → `context_usage.used_tokens`; corte previo a 100 mil si la tarea siguiente es grande); al cerrar la tarea o llegar al tope, traspaso, archivo y sesión nueva. La madre mide el contexto en cada despertar de las dos horas y lo anota aquí. Detalle en `.claude/skills/relevo-de-sesion`.
 - **Relevo en curso:** cada sesión termina su unidad atómica, manda un traspaso de ≤25 líneas y responde «listo para archivar»; la madre verifica, archiva y relanza con contexto limpio.
 
 | Sesión | Unidad que termina antes | Relanzar como |
