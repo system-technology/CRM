@@ -939,7 +939,7 @@ export default function BandejaConversacionPage() {
         <div className="hidden border-b border-neutral-100 bg-neutral-50/50 px-4 py-1 sm:block dark:border-neutral-800/60 dark:bg-neutral-950/40">
           <MigasDePan
             elementos={[
-              { etiqueta: 'Inicio', href: '/' },
+              { etiqueta: 'Hoy', href: '/' },
               { etiqueta: 'Bandeja', href: '/bandeja' },
               { etiqueta: detalle.contactoNombre || detalle.contactoTelefono || 'Conversación' },
             ]}
