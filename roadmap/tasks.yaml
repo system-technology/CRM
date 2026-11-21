@@ -10114,7 +10114,7 @@ tasks:
     title: "La e2e «al quitar el usuario ya no entra con el» es fragil y rompe el job navegador al azar"
     type: test
     phase: 1
-    priority: P2
+    priority: P1
     effort: S
     status: backlog
     acceptance:
@@ -10123,6 +10123,63 @@ tasks:
       - "Hipotesis a comprobar antes de tocar la prueba: tras quitar el apodo, la tabla de miembros no revalida (cache de TanStack Query sin invalidar, o la respuesta llega antes de que el servidor confirme). Si es eso, el defecto esta en la WEB y la prueba tiene razon en fallar: arreglar la web, no la espera"
       - "NO se arregla subiendo el timeout ni reintentando: eso esconde una revalidacion que puede estar rota tambien para una persona"
       - "Mientras siga asi, cada PR tiene una probabilidad de salir rojo por azar, y un rojo que se lee como ruido es como se normaliza un fallo real"
+      - "SUBIDA A P1 el 2026-11-21: la sesion de T-537/T-529 la vio fallar en 2 de 3 pasadas del dia, y en una rama que no toca ese flujo. No es una prueba que falle de vez en cuando: falla casi la mitad de las veces"
     source: "verificado por la madre al integrar #429, 2026-11-21"
     created_at: 2026-11-21T13:40:00.000Z
+    owner: qa
+  - id: T-549
+    title: "Sin responsable: el filtro se aplica despues del LIMIT, asi que la cifra es un minimo y no un total"
+    type: bug
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    acceptance:
+      - "GET /api/v1/archivos/sin-responsable lee una ventana y filtra DESPUES: un archivo huerfano por debajo de la ventana no sale. La respuesta lleva truncado, pero la cifra es un minimo"
+      - "Llevarlo a SQL exigiria que booking hiciera JOIN con tablas de crm e identity, lo que rompe R4: hay que resolverlo por puerto o por vista, no por JOIN directo"
+      - "Hermana de T-492. Mientras tanto, la web NO puede presentar esa cifra como total (ver T-546 y T-538)"
+    source: "aviso de la sesion de T-537/T-529, 2026-11-21"
+    created_at: 2026-11-21T13:35:00.000Z
+    owner: backend
+  - id: T-550
+    title: "Web: parsearMontoAUnidades lee la fraccion con \\d{1,2}, asi que una moneda de 3 decimales se leeria como miles"
+    type: bug
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    acceptance:
+      - "apps/web/src/lib/dinero-entrada.ts: la fraccion se reconoce con \\d{1,2}$, asi que en una moneda de 3 decimales «12,505» se leeria como doce mil quinientos cinco, no como 12,505"
+      - "Hoy NO afecta: ninguna moneda habilitada tiene 3 decimales. Es el mismo «el dia que...» que motivo T-520"
+      - "El limite debe salir de decimalesDeMoneda, no de un literal, y la prueba de KWD debe cubrir tambien el parseo"
+    source: "aviso de la sesion de T-543/T-544, 2026-11-21"
+    created_at: 2026-11-21T13:35:00.000Z
+    owner: frontend
+  - id: T-551
+    title: "Sin responsable: la e2e solo ejerce SIN_OPORTUNIDAD y una asercion es casi tautologica"
+    type: test
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    acceptance:
+      - "El e2e solo cubre el motivo SIN_OPORTUNIDAD; SIN_ASESOR y ASESOR_NO_ELEGIBLE solo viven en unitarias con dobles"
+      - "La asercion lista.datos.every(d => d.archivo.oportunidadId === null) es casi tautologica hoy porque los archivos del fixture nacen sin oportunidad, y se volvera FALSA por contagio en cuanto alguien anada al fixture un archivo con oportunidad"
+      - "Cubrir los tres motivos y hacer la asercion independiente del resto del fichero"
+    source: "auditoria independiente de #432 (T-537/T-529), 2026-11-21"
+    created_at: 2026-11-21T13:35:00.000Z
+    owner: qa
+  - id: T-552
+    title: "Reportes: que cada cifra de dinero tenga su compuerta, comprobado por recorrido y no a mano"
+    type: test
+    phase: 2
+    priority: P3
+    effort: S
+    status: backlog
+    acceptance:
+      - "Hoy las compuertas de dinero del resumen son dos casos cableados a mano: margen (cotizacion.ver_neto_y_margen) y porCobrar (cobro.ver, T-537)"
+      - "Una prueba que recorra todas las cifras de dinero del resumen y afirme que cada una tiene su permiso, para que una cifra nueva sin compuerta rompa el CI en vez de pasar inadvertida"
+      - "Se vuelve urgente el dia que exista el endpoint de componer roles a medida (R12): ese dia T-537 deja de ser el unico caso posible"
+    source: "auditoria independiente de #432 (T-537/T-529), 2026-11-21"
+    created_at: 2026-11-21T13:35:00.000Z
     owner: qa
