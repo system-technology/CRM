@@ -24,6 +24,7 @@ import {
   type FiltroDeArchivos,
   type OperacionesDelArchivo,
   RepositorioDeOperacionDeArchivos,
+  type RestriccionDeOportunidades,
 } from './puertos-de-operacion.js';
 
 const A = '01932000-0000-7000-8000-00000000000a';
@@ -80,6 +81,9 @@ const archivo = (id: string, numero: number, reservas: Reserva[]): Archivo => ({
   pasajeros: [],
 });
 
+const admitidoPor = (r: RestriccionDeOportunidades, oportunidadId: string | null): boolean =>
+  oportunidadId === null ? r.incluirSinOportunidad : r.oportunidades.includes(oportunidadId);
+
 /** Repositorio en memoria con las mismas garantías observables: por agencia, y `null` si no es de ella. */
 class RepositorioEnMemoria extends RepositorioDeOperacionDeArchivos {
   readonly porAgencia = new Map<string, Archivo[]>();
@@ -89,12 +93,27 @@ class RepositorioEnMemoria extends RepositorioDeOperacionDeArchivos {
     return this.porAgencia.get(ContextoTenant.tenantId()) ?? [];
   }
 
-  listar(filtro: FiltroDeArchivos): Promise<Archivo[]> {
+  listar(filtro: FiltroDeArchivos, restriccion?: RestriccionDeOportunidades): Promise<Archivo[]> {
     return Promise.resolve(
       this.lista()
         .filter((a) => filtro.estado === 'TODOS' || a.estado === filtro.estado)
+        // T-549: la restricción por oportunidad se aplica ANTES del límite, como en el SQL.
+        .filter((a) => restriccion === undefined || admitidoPor(restriccion, a.oportunidadId))
+        .slice(0, filtro.limite)
         .map((a) => ({ ...a, pasajeros: [] })),
     );
+  }
+
+  /** T-549: los ids de oportunidad de los archivos abiertos, sin repetir. */
+  oportunidadesDeArchivosAbiertos(): Promise<string[]> {
+    return Promise.resolve([
+      ...new Set(
+        this.lista()
+          .filter((a) => a.estado === 'ABIERTO')
+          .map((a) => a.oportunidadId)
+          .filter((id): id is string => id !== null),
+      ),
+    ]);
   }
 
   leer(id: string): Promise<Archivo | null> {
