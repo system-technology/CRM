@@ -34,6 +34,8 @@
 
 | **11** | **T-553: nada valida `roadmap/tasks.yaml` en el CI antes del merge.** Es la raíz de que la compuerta de cierre de tareas (T-542) estuviera rota días sin que nadie lo viera: el validador solo corre **después** del merge, así que un `tasks.yaml` inválido no tumba ningún PR y el fallo aparece tarde. T-542 ya está cerrada y verificada, pero **la raíz sigue ahí**. Pide tocar `.github/`, que es ruta protegida. | Autoriza el cambio en `.github/` o apruébalo cuando la madre abra el PR |
 
+| **12** | **Cuatro ramas publicadas con bugs puestos A PROPOSITO.** Las creo la sesion de T-531/T-532 para *ver fallar* sus pruebas, que es justo lo que le pedi: a/T-531-532-mutacion-descartable, a/T-531-532-mut-mediana, a/T-531-532-mut-aceptadas y a/T-531-532-mut-ganadas. **Ninguna debe integrarse jamas.** No las puede borrar ni ella (`git push --delete` devuelve 403) ni yo (el clasificador me denego el borrado por REST, y no lo rodee). No hay PR abierto para ninguna y `main` esta protegido, asi que el riesgo real es bajo; pero el repositorio es **publico** y conviene que no se queden ahi. | Borralas tu desde GitHub |
+
 ## Decisiones de producto y de negocio
 
 | # | Qué | Contexto |
