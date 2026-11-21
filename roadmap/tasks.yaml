@@ -8244,6 +8244,7 @@ tasks:
       2026-11-20)
     created_at: 2026-11-20T21:30:00.000Z
     owner: frontend
+    notes: "CONDICION DEL ADR-0035 §9 (auditoria de T-340, 2026-11-21): al construir esta tarea hay que cumplir §9.4 el margen en el CSV solo con cotizacion.ver_neto_y_margen; §9.7 las filas de detalle respetan visibilidadDe; y §9.8 escapado de formulas, sin datos personales ni telefonos, solo con reportes.ver_agencia, y decidido EN EL SERVIDOR. La auditoria marco estos tres puntos como «no aplica hoy» precisamente porque la exportacion aun no existe: dejan de no aplicar en el momento en que esta tarea se construya."
   - id: T-346
     title: "F7: revisión móvil de los dos dashboards y e2e de navegador de permisos entre asesores (el e2e de API
       y la medida de 390 px de /reportes ya existen)"
@@ -9793,6 +9794,7 @@ tasks:
     source: aportes de la sesión de cobros a T-339 (2026-11-21)
     created_at: 2026-11-21T04:10:00.000Z
     owner: backend
+    notes: "CONDICION DEL ADR-0035 §9 (auditoria de T-340, 2026-11-21): al construir esta tarea hay que cumplir §9.4 el margen en el CSV solo con cotizacion.ver_neto_y_margen; §9.7 las filas de detalle respetan visibilidadDe; y §9.8 escapado de formulas, sin datos personales ni telefonos, solo con reportes.ver_agencia, y decidido EN EL SERVIDOR. La auditoria marco estos tres puntos como «no aplica hoy» precisamente porque la exportacion aun no existe: dejan de no aplicar en el momento en que esta tarea se construya."
   - id: T-484
     title: Cerrar por rol y con dueño los hallazgos H4 a H8 del catálogo de reportes por nivel
     type: security
@@ -12499,7 +12501,7 @@ tasks:
     source: "auditoria de seguridad del ADR-0035 (T-340), 2026-11-21"
     owner: backend
     notes: "Sale de la auditoria de T-340. Es cola, no bloqueante (CLAUDE.md 3.1): empieza por «el dia que
-      otro llamador aparezca». La madre comprobo la cadena completa linea a linea antes de clasificarla asi."
+      otro llamador aparezca». La madre comprobo la cadena completa linea a linea antes de clasificarla asi. || PRECISADO 2026-11-21 con la hija de T-340: los tres adaptadores reciben el parametro como _alcance (guion bajo = deliberadamente sin usar) y la consulta solo filtra por tenantId. Son oportunidades-para-reportes.prisma.ts:74 (crm), cotizaciones-para-reportes.prisma.ts:189 (quoting) y respuesta-para-reportes.prisma.ts:143 (inbox). Ahi es donde iria la asercion en ejecucion."
 
   - id: T-581
     title: "Reportes: ningun e2e cubre un rol con reportes.ver_agencia pero SIN conversaciones.ver_todas"
