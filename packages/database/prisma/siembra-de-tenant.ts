@@ -38,6 +38,10 @@ export const ROLES_SEMBRADOS = [
       'cobro.ver',
       'cobro.registrar',
       'cobro.corregir',
+      // T-341 (ADR-0035 §3): los reportes de toda la agencia. SOLO aquí: la ausencia del permiso
+      // es el nivel «propio», que es lo que ven ASESOR y OPERACIONES. La agencia puede dárselo a
+      // otro rol desde Ajustes.
+      'reportes.ver_agencia',
     ],
   },
   {
