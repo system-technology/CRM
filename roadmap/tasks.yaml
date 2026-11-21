@@ -11629,7 +11629,7 @@ tasks:
     phase: 1
     priority: P2
     effort: M
-    status: backlog
+    status: done
     acceptance:
       - "Los dos modos YA existen: globals.css redefine los tokens en .dark, 144 archivos usan variantes dark:
         y selector-tema-densidad.tsx ofrece claro / oscuro / seguir al sistema con persistencia en
@@ -11646,6 +11646,11 @@ tasks:
     source: "revision visual del propietario, 2026-11-21: «podemos manejar ambos modos oscuro y claro?»"
     created_at: 2026-11-21T15:40:00.000Z
     owner: frontend
+    started_at: 2026-11-21T16:17:52.037Z
+    done_at: 2026-11-21T16:17:52.038Z
+    evidence: "Mergeado en main por el PR #457 (rama b/T-560-tema-en-el-arranque) con el CI en verde: format,
+      analyze, tests y los demás checks obligatorios. Cierre automático (.github/workflows/cerrar-tarea.yml)."
+    commit: d8f9ee6ebb1037b1d8c238ed851a5bfa0debf2d9
   - id: T-561
     title: "Web: contrastes por debajo del umbral legible en la barra lateral y en las pantallas de trabajo"
     type: bug
