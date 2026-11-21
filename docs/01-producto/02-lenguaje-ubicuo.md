@@ -127,27 +127,19 @@ Dos precisiones que ahorran un error caro:
 | **Proveedor** | `Supplier` | Quien presta el servicio: aerolínea, hotel, operador, mayorista. |
 | **Documento de viajero** | `TravelerDocument` | Pasaporte, cédula, visa, certificado de vacunación. **Dato personal sensible.** |
 | **Voucher** | `Voucher` | Comprobante que el pasajero presenta al proveedor. |
-| **Penalidad** | `Penalty` | Costo por cambio o cancelación. Varía según cuánto falte para el viaje. En el libro de cobro es un movimiento `PENALIDAD`: lo que la agencia retiene al cancelar el archivo, con motivo y sin superar lo pagado neto. |
+| **Penalidad** | `Penalty` | Costo por cambio o cancelación. Varía según cuánto falte para el viaje. |
 
 ## Dinero
 
 | Término | Código | Qué es |
 |---|---|---|
 | **Unidad mínima de la moneda** | `unidades` (en `Money`) | Cómo se guarda todo monto (R8): entero en la unidad más pequeña **que esa moneda usa**, no en «centavos». En USD son centavos; **en COP es el peso** (`decimales: 0`). Confundirlas produce un error de dos órdenes de magnitud, y ya llegó una vez a la pantalla. Va siempre con el código ISO-4217 |
-| **Pago** | `Payment` | Dinero recibido del cliente. Es un movimiento del libro de cobro (tabla `pagos`, ADR-0034); el anticipo es el primer pago, no un tipo aparte. En pantalla, el verbo es **«Registrar pago»**, no «abonar» (ver *Abono*) |
+| **Pago** | `Payment` | Dinero recibido del cliente. |
 | **Anticipo** | `deposit` | Primer pago del cliente a la agencia. **No confirma la reserva: la confirma el mayorista** (ver *Confirmada*). Suele ser lo que permite a la agencia hacer el abono al mayorista antes del *time limit*. |
 | **Cuota** | `Installment` | Pago parcial programado. |
 | **Plan de pagos** | `PaymentPlan` | Cronograma de cuotas de un archivo. |
-| **Devolución** | `Refund` | Dinero que la agencia devolvió de verdad al viajero. Resta de lo pagado. ADR-0034 §2 |
-| **Reverso** | `Reversal` | Anula un movimiento del libro registrado por error: no mueve dinero y copia archivo, monto y moneda del original. **Un movimiento se reversa una sola vez y un reverso no se reversa.** El libro nunca se edita ni se borra: corregir es reversar y registrar el correcto |
-| **Ajuste del total** | `TotalAdjustment` | Cargo (`> 0`) o descuento (`< 0`) sobre el total vendido, con motivo. No edita la venta: el total del archivo no cambia nunca |
-| **Estado de cobro** | `CollectionStatus` | Si el archivo va a tiempo: `AL_DIA`, `SALDO_PENDIENTE`, `POR_VENCER` (vence en 7 días o menos), `VENCIDO` o `CANCELADO`. Lo calcula el servidor en cada lectura; es **del archivo**, no del contacto ni de la conversación. No es la *Etiqueta* del chat ni la *Situación del saldo*. «Al día» nunca se muestra como «Confirmada»: confirmar es del mayorista |
-| **Fecha límite de cobro** | `collectionDueDate` | Hasta cuándo debe estar cobrado el archivo. Por defecto, la salida menos N días (30 si la agencia no fijó otro número), sin nacer vencida; se puede fijar a mano por archivo. Tablas `parametros_de_cobro` y `plazos_de_cobro` |
-| **Saldo** | `balance` | Lo que el viajero aún debe: total menos lo pagado neto de devoluciones. **Se calcula, nunca se guarda ni se edita.** Su situación es `SIN_PAGOS`, `PARCIAL`, `PAGADO` o `SALDO_A_FAVOR` |
-| **Saldo a favor** | `creditBalance` | Saldo negativo: el viajero pagó más de lo que debe. Se muestra «Saldo a favor $ X»; no se devuelve solo |
 | **Conciliación** | `Reconciliation` | Cruce entre lo que dice la pasarela y lo que dice el sistema. |
 | **Cuenta por pagar** | `SupplierPayable` | Lo que la agencia le debe al proveedor. |
-| **Abono** | (sin término de código propio) | Lo que la **agencia** paga al mayorista (estados `ABONADA_AL_PROVEEDOR` y `PAGADA_AL_PROVEEDOR`). Para lo que paga el **viajero** se dice **«Registrar pago»**, aunque en la calle se diga «el cliente abonó». ADR-0034 §9 |
 | **Suscripción** | `Subscription` | Lo que la **agencia** nos paga a nosotros. No confundir con los pagos de sus clientes. |
 
 ## Automatización
