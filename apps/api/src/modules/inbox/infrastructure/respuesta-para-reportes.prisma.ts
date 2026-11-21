@@ -24,11 +24,15 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../../shared/prisma/prisma.service.js';
-import type { AlcanceDeReporte } from '../../../shared/autorizacion/alcance-de-reporte.js';
+import type {
+  AlcanceDeAgenciaEntera,
+  AlcanceDeReporte,
+} from '../../../shared/autorizacion/alcance-de-reporte.js';
 import {
   PuertoRespuestaParaReportes,
   type RangoDeReporte,
   type RespuestaAgregada,
+  type RespuestaDeUnAsesor,
 } from '../../../shared/puertos/puertos-de-reportes.js';
 
 interface FilaDeTiempos {
@@ -37,6 +41,10 @@ interface FilaDeTiempos {
   promedio: string | null;
   mediana: string | null;
   p90: string | null;
+}
+
+interface FilaDeTiemposPorAsesor extends FilaDeTiempos {
+  asesor_id: string;
 }
 
 const UNA_DECIMA = (n: string | null): number | null =>
@@ -118,6 +126,84 @@ export class RespuestaParaReportesPrisma extends PuertoRespuestaParaReportes {
         medianaMinutos: UNA_DECIMA(t?.mediana ?? null),
         p90Minutos: UNA_DECIMA(t?.p90 ?? null),
       };
+    });
+  }
+
+  /**
+   * T-531: lo mismo que `resumir` con filtro, para TODOS los asesores en una consulta. El grupo
+   * base y su filtro de «respuesta medible» son idénticos; lo que cambia es la atribución: cada
+   * conversación se cuenta para quien respondió (autor del primer saliente humano) y, si está sin
+   * responder, para su asignado. `UNION` (no `UNION ALL`) para que una conversación no cuente
+   * dos veces para el mismo asesor, igual que el `OR` del filtro individual. Sin autor ni
+   * asignado, no es de ningún asesor y solo cuenta en el total de la agencia.
+   */
+  async porAsesor(
+    tenantId: string,
+    rango: RangoDeReporte,
+    _alcance: AlcanceDeAgenciaEntera,
+  ): Promise<RespuestaDeUnAsesor[]> {
+    const { desde, hasta } = rango;
+    return this.prisma.conTenant(async (tx) => {
+      const filas = await tx.$queryRaw<FilaDeTiemposPorAsesor[]>`
+        WITH grupo AS (
+          SELECT c.id,
+                 c.primera_respuesta_en,
+                 c.asignado_a_id,
+                 r.autor_id,
+                 CASE WHEN c.primera_respuesta_en IS NULL THEN NULL
+                      ELSE EXTRACT(EPOCH FROM (c.primera_respuesta_en - p.primero)) / 60.0
+                 END AS minutos
+            FROM conversaciones c
+            CROSS JOIN LATERAL (
+              SELECT MIN(m.ocurrido_en) AS primero
+                FROM mensajes m
+               WHERE m.tenant_id = ${tenantId}::uuid
+                 AND m.conversacion_id = c.id
+                 AND m.direccion = 'ENTRANTE'
+            ) p
+            LEFT JOIN LATERAL (
+              SELECT m.autor_id
+                FROM mensajes m
+               WHERE m.tenant_id = ${tenantId}::uuid
+                 AND m.conversacion_id = c.id
+                 AND m.direccion = 'SALIENTE'
+                 AND m.autor_id IS NOT NULL
+               ORDER BY m.ocurrido_en ASC
+               LIMIT 1
+            ) r ON true
+           WHERE c.tenant_id = ${tenantId}::uuid
+             AND c.eliminado_en IS NULL
+             AND c.creado_en >= ${desde} AND c.creado_en < ${hasta}
+             AND (
+               c.primera_respuesta_en IS NULL
+               OR (p.primero IS NOT NULL AND p.primero <= c.primera_respuesta_en)
+             )
+        ),
+        atribuidas AS (
+          SELECT id, autor_id AS asesor_id, primera_respuesta_en, minutos
+            FROM grupo WHERE autor_id IS NOT NULL
+          UNION
+          SELECT id, asignado_a_id AS asesor_id, primera_respuesta_en, minutos
+            FROM grupo WHERE primera_respuesta_en IS NULL AND asignado_a_id IS NOT NULL
+        )
+        SELECT asesor_id::text AS asesor_id,
+               COUNT(*)::int AS nuevas,
+               COUNT(primera_respuesta_en)::int AS respondidas,
+               AVG(minutos)::text AS promedio,
+               (percentile_cont(0.5) WITHIN GROUP (ORDER BY minutos))::text AS mediana,
+               (percentile_cont(0.9) WITHIN GROUP (ORDER BY minutos))::text AS p90
+          FROM atribuidas
+         GROUP BY asesor_id`;
+
+      return filas.map((t) => ({
+        asesorId: t.asesor_id,
+        conversacionesNuevas: t.nuevas,
+        conversacionesRespondidas: t.respondidas,
+        sinResponder: t.nuevas - t.respondidas,
+        promedioMinutos: UNA_DECIMA(t.promedio),
+        medianaMinutos: UNA_DECIMA(t.mediana),
+        p90Minutos: UNA_DECIMA(t.p90),
+      }));
     });
   }
 }

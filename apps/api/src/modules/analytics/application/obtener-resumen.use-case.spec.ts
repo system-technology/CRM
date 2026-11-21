@@ -1,16 +1,24 @@
 import type { Permiso } from '@viajapro/contracts';
 import { describe, expect, it } from 'vitest';
-import type { AlcanceDeReporte } from '../../../shared/autorizacion/alcance-de-reporte.js';
+import type {
+  AlcanceDeAgenciaConFiltro,
+  AlcanceDeAgenciaEntera,
+  AlcanceDeReporte,
+} from '../../../shared/autorizacion/alcance-de-reporte.js';
 import {
   type CobrosAgregados,
   type CotizacionesAbiertasAgregadas,
   type CotizacionesAgregadas,
+  type CotizacionesDeUnAsesor,
+  type OportunidadesDeUnAsesor,
   PuertoCobrosParaReportes,
   PuertoCotizacionesParaReportes,
   PuertoOportunidadesParaReportes,
   PuertoRespuestaParaReportes,
   type RangoDeReporte,
+  type RespuestaDeUnAsesor,
   TOPE_DE_ARCHIVOS_PARA_COBRAR,
+  type VentaPorDestinoAgregada,
 } from '../../../shared/puertos/puertos-de-reportes.js';
 import { ContextoTenant } from '../../../shared/tenant/contexto-tenant.js';
 import { ObtenerResumenDeReportes } from './obtener-resumen.use-case.js';
@@ -58,6 +66,40 @@ class CotizacionesFalsas extends PuertoCotizacionesParaReportes {
     });
   }
 
+  porAsesorLlamadas: Array<{ alcance: AlcanceDeAgenciaEntera; incluirMargen: boolean }> = [];
+  resumirPorAsesor(
+    _tenantId: string,
+    _rango: RangoDeReporte,
+    alcance: AlcanceDeAgenciaEntera,
+    incluirMargen: boolean,
+  ): Promise<CotizacionesDeUnAsesor[]> {
+    this.porAsesorLlamadas.push({ alcance, incluirMargen });
+    return Promise.resolve([
+      {
+        asesorId: OTRO,
+        creadas: 4,
+        enviadas: 2,
+        aceptadas: 1,
+        aceptadasSinFecha: 0,
+        ventasPorMoneda: [{ moneda: 'USD', cotizacionesAceptadas: 1, ventaUnidades: 90_000n }],
+      },
+    ]);
+  }
+
+  destinosLlamadas: Array<{ alcance: AlcanceDeAgenciaConFiltro; incluirMargen: boolean }> = [];
+  ventasPorDestino(
+    _tenantId: string,
+    _rango: RangoDeReporte,
+    alcance: AlcanceDeAgenciaConFiltro,
+    incluirMargen: boolean,
+  ): Promise<VentaPorDestinoAgregada[]> {
+    this.destinosLlamadas.push({ alcance, incluirMargen });
+    return Promise.resolve([
+      { destino: 'Cartagena', moneda: 'COP', cotizacionesAceptadas: 2, ventaUnidades: 5_000_000n },
+      { destino: 'Cartagena', moneda: 'USD', cotizacionesAceptadas: 1, ventaUnidades: 90_000n },
+    ]);
+  }
+
   abiertasLlamadas: Array<{ tenantId: string; alcance: AlcanceDeReporte; ahora: Date }> = [];
   abiertas(
     tenantId: string,
@@ -101,6 +143,15 @@ class OportunidadesFalsas extends PuertoOportunidadesParaReportes {
     this.alcances.push(alcance);
     return Promise.resolve([]);
   }
+  porAsesorLlamadas = 0;
+  porAsesor(
+    _tenantId: string,
+    _rango: RangoDeReporte,
+    _alcance: AlcanceDeAgenciaEntera,
+  ): Promise<OportunidadesDeUnAsesor[]> {
+    this.porAsesorLlamadas += 1;
+    return Promise.resolve([{ asesorId: OTRO, creadas: 3, ganadas: 1, perdidas: 1 }]);
+  }
 }
 
 class RespuestaFalsa extends PuertoRespuestaParaReportes {
@@ -115,6 +166,15 @@ class RespuestaFalsa extends PuertoRespuestaParaReportes {
       p90Minutos: null,
       sinResponder: 0,
     });
+  }
+  porAsesorLlamadas = 0;
+  porAsesor(
+    _tenantId: string,
+    _rango: RangoDeReporte,
+    _alcance: AlcanceDeAgenciaEntera,
+  ): Promise<RespuestaDeUnAsesor[]> {
+    this.porAsesorLlamadas += 1;
+    return Promise.resolve([]);
   }
 }
 
@@ -314,5 +374,81 @@ describe('ObtenerResumenDeReportes', () => {
     expect(ahora).toBeInstanceOf(Date);
     expect(ahora!.getTime()).toBeGreaterThanOrEqual(antes);
     expect(ahora!.getTime()).toBeLessThanOrEqual(Date.now());
+  });
+
+  describe('por asesor y por destino (T-531, T-532): solo con alcance de agencia', () => {
+    it('la agencia entera trae las dos claves, con una sola ronda de puertos por asesor', async () => {
+      const { resultado, cotizaciones, oportunidades, respuesta } = ejecutar([
+        'reportes.ver_agencia',
+      ]);
+      const r = await resultado;
+      expect(cotizaciones.porAsesorLlamadas).toHaveLength(1);
+      expect(oportunidades.porAsesorLlamadas).toBe(1);
+      expect(respuesta.porAsesorLlamadas).toBe(1);
+      if (r.alcance !== 'AGENCIA') throw new Error('debía ser de agencia');
+      // El asesor sale de la unión de los tres puertos; lo que un puerto no trae es cero y `null`.
+      expect(r.porAsesor).toHaveLength(1);
+      expect(r.porAsesor?.[0]).toMatchObject({
+        asesorId: OTRO,
+        cotizaciones: { creadas: 4, enviadas: 2, aceptadas: 1, tasaAceptacion: 50 },
+        ventasPorMoneda: [{ moneda: 'USD', ventas: { unidades: '90000', moneda: 'USD' } }],
+        oportunidades: { creadas: 3, ganadas: 1, perdidas: 1, abiertas: 1, tasaConversion: 50 },
+        respuesta: { conversacionesNuevas: 0, tasaRespuesta: null, medianaMinutos: null },
+      });
+      // Una fila por destino y moneda; el COP y el USD de Cartagena NO se suman (R8).
+      expect(r.ventasPorDestino).toEqual([
+        {
+          destino: 'Cartagena',
+          moneda: 'COP',
+          cotizacionesAceptadas: 2,
+          ventas: { unidades: '5000000', moneda: 'COP' },
+        },
+        {
+          destino: 'Cartagena',
+          moneda: 'USD',
+          cotizacionesAceptadas: 1,
+          ventas: { unidades: '90000', moneda: 'USD' },
+        },
+      ]);
+    });
+
+    it('con filtro de asesor hay destinos de ese asesor pero no la lista por asesor', async () => {
+      const { resultado, cotizaciones, oportunidades, respuesta } = ejecutar(
+        ['reportes.ver_agencia'],
+        OTRO,
+      );
+      const r = await resultado;
+      if (r.alcance !== 'AGENCIA') throw new Error('debía ser de agencia');
+      expect(cotizaciones.porAsesorLlamadas).toHaveLength(0);
+      expect(oportunidades.porAsesorLlamadas).toBe(0);
+      expect(respuesta.porAsesorLlamadas).toBe(0);
+      expect(r.porAsesor).toBeUndefined();
+      expect(cotizaciones.destinosLlamadas[0]?.alcance).toEqual({
+        nivel: 'AGENCIA',
+        asesorId: OTRO,
+      });
+      expect(r.ventasPorDestino).toHaveLength(2);
+    });
+
+    it('con alcance PROPIO no se consulta nada de esto y las claves no existen', async () => {
+      const { resultado, cotizaciones, oportunidades, respuesta } = ejecutar([]);
+      const r = await resultado;
+      expect(cotizaciones.porAsesorLlamadas).toHaveLength(0);
+      expect(cotizaciones.destinosLlamadas).toHaveLength(0);
+      expect(oportunidades.porAsesorLlamadas).toBe(0);
+      expect(respuesta.porAsesorLlamadas).toBe(0);
+      expect(JSON.stringify(r)).not.toMatch(/porAsesor|ventasPorDestino/);
+    });
+
+    it('el margen por asesor y por destino sigue el permiso de margen, no el alcance', async () => {
+      const sin = ejecutar(['reportes.ver_agencia']);
+      await sin.resultado;
+      expect(sin.cotizaciones.porAsesorLlamadas[0]?.incluirMargen).toBe(false);
+      expect(sin.cotizaciones.destinosLlamadas[0]?.incluirMargen).toBe(false);
+      const con = ejecutar(['reportes.ver_agencia', 'cotizacion.ver_neto_y_margen']);
+      await con.resultado;
+      expect(con.cotizaciones.porAsesorLlamadas[0]?.incluirMargen).toBe(true);
+      expect(con.cotizaciones.destinosLlamadas[0]?.incluirMargen).toBe(true);
+    });
   });
 });

@@ -9,7 +9,9 @@ import type {
   CotizacionesAbiertas,
   PorCobrar,
   ResumenDeReportesPorAlcance,
+  ResumenDeUnAsesor,
   SaldoPorCobrarDeUnaMoneda,
+  VentasDeUnDestino,
   VentasDeUnaMoneda,
 } from '@viajapro/contracts';
 import { type CodigoMoneda, pagadoNeto, saldoDelArchivo, totalDelArchivo } from '@viajapro/domain';
@@ -18,10 +20,14 @@ import type {
   CobrosAgregados,
   CotizacionesAbiertasAgregadas,
   CotizacionesAgregadas,
+  CotizacionesDeUnAsesor,
   EtapaConOportunidades,
+  OportunidadesDeUnAsesor,
   RangoDeReporte,
   RespuestaAgregada,
+  RespuestaDeUnAsesor,
   VentaAgregada,
+  VentaPorDestinoAgregada,
 } from '../../../shared/puertos/puertos-de-reportes.js';
 
 /** Porcentaje con un decimal, redondeado al más cercano. `null` sin denominador. */
@@ -69,6 +75,80 @@ export function ventasDeUnaMoneda(v: VentaAgregada): VentasDeUnaMoneda {
     fila.cotizacionesSinNeto = v.margen.cotizacionesSinNeto;
   }
   return fila;
+}
+
+/** Una fila por destino y moneda (T-532): la de `ventasPorMoneda` más el destino. */
+export function ventasDeUnDestino(v: VentaPorDestinoAgregada): VentasDeUnDestino {
+  return { destino: v.destino, ...ventasDeUnaMoneda(v) };
+}
+
+const SIN_COTIZACIONES = { creadas: 0, enviadas: 0, aceptadas: 0, aceptadasSinFecha: 0 } as const;
+const SIN_RESPUESTA = {
+  conversacionesNuevas: 0,
+  conversacionesRespondidas: 0,
+  promedioMinutos: null,
+  medianaMinutos: null,
+  p90Minutos: null,
+  sinResponder: 0,
+} as const;
+
+/** Las cifras de cotizaciones y de respuesta de un grupo, en la forma del contrato. */
+function cotizacionesDelContrato(c: Omit<CotizacionesAgregadas, 'ventasPorMoneda'>) {
+  return {
+    creadas: c.creadas,
+    enviadas: c.enviadas,
+    aceptadas: c.aceptadas,
+    ...(c.aceptadasSinFecha > 0 ? { aceptadasSinFecha: c.aceptadasSinFecha } : {}),
+    tasaAceptacion: porcentaje(c.aceptadas, c.enviadas),
+  };
+}
+
+function respuestaDelContrato(r: RespuestaAgregada) {
+  return {
+    conversacionesNuevas: r.conversacionesNuevas,
+    conversacionesRespondidas: r.conversacionesRespondidas,
+    promedioMinutos: r.promedioMinutos,
+    medianaMinutos: r.medianaMinutos,
+    p90Minutos: r.p90Minutos,
+    sinResponder: r.sinResponder,
+    tasaRespuesta: porcentaje(r.conversacionesRespondidas, r.conversacionesNuevas),
+  };
+}
+
+/**
+ * T-531: une los tres agregados por asesor en una fila por asesor. Un asesor aparece si tiene algo
+ * atribuido en CUALQUIERA de los tres; lo que no tiene en uno es cero (y las razones, `null`), con
+ * las mismas fórmulas que el resumen entero: es lo que traería esa consulta filtrada por él.
+ * Orden por `asesorId`, para que la respuesta no dependa del plan de la base.
+ */
+export function resumenesPorAsesor(entrada: {
+  cotizaciones: CotizacionesDeUnAsesor[];
+  oportunidades: OportunidadesDeUnAsesor[];
+  respuestas: RespuestaDeUnAsesor[];
+}): ResumenDeUnAsesor[] {
+  const cot = new Map(entrada.cotizaciones.map((c) => [c.asesorId, c]));
+  const opo = new Map(entrada.oportunidades.map((o) => [o.asesorId, o]));
+  const res = new Map(entrada.respuestas.map((r) => [r.asesorId, r]));
+  const ids = [...new Set([...cot.keys(), ...opo.keys(), ...res.keys()])].sort();
+
+  return ids.map((asesorId) => {
+    const c = cot.get(asesorId);
+    const o = opo.get(asesorId) ?? { asesorId, creadas: 0, ganadas: 0, perdidas: 0 };
+    const r = res.get(asesorId);
+    return {
+      asesorId,
+      cotizaciones: cotizacionesDelContrato(c ?? SIN_COTIZACIONES),
+      ventasPorMoneda: (c?.ventasPorMoneda ?? []).map(ventasDeUnaMoneda),
+      oportunidades: {
+        creadas: o.creadas,
+        ganadas: o.ganadas,
+        perdidas: o.perdidas,
+        abiertas: o.creadas - o.ganadas - o.perdidas,
+        tasaConversion: porcentaje(o.ganadas, o.ganadas + o.perdidas),
+      },
+      respuesta: respuestaDelContrato(r ?? SIN_RESPUESTA),
+    };
+  });
 }
 
 /** Las cotizaciones vivas de hoy, tal cual las cuenta la base: aquí solo se suma el total. */
@@ -127,8 +207,17 @@ export function armarResumen(entrada: {
    * construye. No es cero ni `null`: lo que no se puede ver, no existe en la respuesta.
    */
   cobros: CobrosAgregados | undefined;
+  /**
+   * Solo del alcance de agencia (T-531, T-532). Con alcance propio se ignoran: la unión
+   * discriminada del contrato tampoco las admite, así que no hay forma de que lleguen a una
+   * respuesta propia.
+   */
+  agencia?: {
+    porAsesor?: ResumenDeUnAsesor[] | undefined;
+    ventasPorDestino?: VentaPorDestinoAgregada[] | undefined;
+  };
 }): ResumenDeReportesPorAlcance {
-  const { alcance, rango, cotizaciones: c, etapas, respuesta, abiertas, cobros } = entrada;
+  const { alcance, rango, cotizaciones: c, etapas, respuesta, abiertas, cobros, agencia } = entrada;
 
   const porEtapa = etapas.slice().sort((a, b) => a.orden - b.orden);
   const suma = (f: (e: EtapaConOportunidades) => boolean): number =>
@@ -142,13 +231,7 @@ export function armarResumen(entrada: {
   // unión discriminada del contrato es lo que impide que una clave de agencia caiga en la propia.
   const cifras = {
     periodo: { desde: rango.desde.toISOString(), hasta: rango.hasta.toISOString() },
-    cotizaciones: {
-      creadas: c.creadas,
-      enviadas: c.enviadas,
-      aceptadas: c.aceptadas,
-      ...(c.aceptadasSinFecha > 0 ? { aceptadasSinFecha: c.aceptadasSinFecha } : {}),
-      tasaAceptacion: porcentaje(c.aceptadas, c.enviadas),
-    },
+    cotizaciones: cotizacionesDelContrato(c),
     ventasPorMoneda: c.ventasPorMoneda.map(ventasDeUnaMoneda),
     oportunidades: {
       creadas,
@@ -165,18 +248,7 @@ export function armarResumen(entrada: {
         cantidad: e.cantidad,
       })),
     },
-    respuesta: {
-      conversacionesNuevas: respuesta.conversacionesNuevas,
-      conversacionesRespondidas: respuesta.conversacionesRespondidas,
-      promedioMinutos: respuesta.promedioMinutos,
-      medianaMinutos: respuesta.medianaMinutos,
-      p90Minutos: respuesta.p90Minutos,
-      sinResponder: respuesta.sinResponder,
-      tasaRespuesta: porcentaje(
-        respuesta.conversacionesRespondidas,
-        respuesta.conversacionesNuevas,
-      ),
-    },
+    respuesta: respuestaDelContrato(respuesta),
     // T-528. Las dos son de HOY, no del periodo, y las componen las mismas filas que el alcance
     // decide para el resto: con `PROPIO`, solo las del asesor de la sesión.
     cotizacionesAbiertas: cotizacionesAbiertas(abiertas),
@@ -187,5 +259,13 @@ export function armarResumen(entrada: {
 
   return alcance.nivel === 'PROPIO'
     ? { alcance: 'PROPIO', asesorId: alcance.asesorId, ...cifras }
-    : { alcance: 'AGENCIA', asesorId: alcance.asesorId, ...cifras };
+    : {
+        alcance: 'AGENCIA',
+        asesorId: alcance.asesorId,
+        ...cifras,
+        ...(agencia?.porAsesor === undefined ? {} : { porAsesor: agencia.porAsesor }),
+        ...(agencia?.ventasPorDestino === undefined
+          ? {}
+          : { ventasPorDestino: agencia.ventasPorDestino.map(ventasDeUnDestino) }),
+      };
 }
