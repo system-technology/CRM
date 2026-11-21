@@ -10,10 +10,10 @@
 
 | Campo | Valor |
 |---|---|
-| Última actualización | 2026-11-20 (T-268 integrada; `main` en `0f3a707`, PR #323) |
-| Actualizado por | Claude (hilo al día con los PR #289 a #319) |
+| Última actualización | 2026-11-21 (Ola 0: navegación móvil, etiquetas y base de pagos integradas; `main` en `5f0e295`, PR #377) |
+| Actualizado por | Claude, sesión madre (hilo al día con los PR #289 a #383) |
 | Fase | **Fase 1 del backlog: «Un CRM mostrable y endurecido»** (M1 del [roadmap v2](docs/08-roadmap/01-roadmap.md)). Sin agencia real todavía. Prioridad vigente: la demo a JD Tours ([`MARCO.md`](docs/_contexto/MARCO.md) §6) |
-| Avance | 155 tareas `done` en `roadmap/tasks.yaml`. «Done» significa integrada en `main`, **no** desplegada ni probada con Meta real |
+| Avance | 178 tareas `done` en `roadmap/tasks.yaml` (405 en total). «Done» significa integrada en `main`, **no** desplegada ni probada con Meta real |
 | Próximo hito | Que el propietario cargue la clave de cifrado y decida el despliegue; después, prueba con Meta real (T-080). Del lado del código solo queda cola menor: T-235 y T-226 (c), recifrado por lotes, que solo hace falta cuando haya una clave real que rotar |
 
 ---
@@ -55,6 +55,10 @@ entrado. Seguimos en local.
 | Modo demo sin dominio (opción C): la web en `*.vercel.app` reescribe `/api/v1` y el tiempo real (long-polling) a la API en Render | PR #289; [guía](docs/07-ingenieria/despliegue-neon-vercel-render.md). **Sin probar contra Vercel real** |
 | Dependencias: `pnpm audit` de producción pasó de 3 críticas y 15 altas a 0 y 1 (queda zod v3; zod 4 lo decide el propietario) | PR #267 |
 | **Web más creíble y un solo sistema visual** (auditoría UX): sin restos de desarrollo ni datos que mienten, solicitud de viaje en la conversación, resumen del viaje en bandeja y pipeline, una sola acción, color y fecha, y chat, cotización y file enlazados | PR #304, #306, #308, #314 (T-258, T-259, T-282); skills `diseno-web` y `frontend-design` (PR #304, #307). **Visto solo en capturas con datos de demo, no contra la API real** |
+| **Navegación y móvil (ADR-0032):** layout compartido `(app)` con tabla única de navegación, barra inferior de 5 y hoja «Más», lupa fija, la URL como estado (Atrás vuelve; `?id`, `?op`, `?pestana`), paleta que busca en la misma fuente que cada pantalla y cotizar completo a 390 px con envío por el canal sin estado falso | PR #359, #368, #369, #371, #374; job `navegador` en verde en cada uno. **Probado en celular solo emulado; tablet y escritorio, sin auditoría responsiva todavía** |
+| **Etiquetas por agencia:** tablas `etiquetas` y `conversacion_etiquetas` (RLS, FK compuestas), API (gestionar, asignar, filtrar; topes 50 y 10; 404 idéntico con ids ajenos) y chips con color en la bandeja | PR #372, #379, #381; `aislamiento-tenants` y e2e contra Postgres real en CI. Dos auditorías sin bloqueantes |
+| **Libro de cobro del viajero (T-329, ADR-0034):** tabla `pagos` que solo crece, `plazos_de_cobro` y `parametros_de_cobro` por agencia, disparador que fija el total y la moneda del archivo, permisos `cobro.ver`, `cobro.registrar` y `cobro.corregir` (este solo para el dueño). **Sin API ni pantalla todavía: nadie puede registrar un pago** | PR #378 y #382; `aislamiento-tenants` verde (primera ejecución real de la migración). Auditoría sin bloqueantes. API de pagos: T-330 |
+| **Guarda de segunda agencia (PR 1b, ADR-0031 §4):** `crear_agencia` no da de alta una segunda agencia mientras el índice de apodos sea global | PR #363; AP14 se omite en el job `test` (intermitencia) |
 | **Tope de 10 fallos diarios por correo** en el código de un solo uso, guardado en Postgres (sobrevive a reinicios y réplicas) | PR #315 (T-300); dos auditorías de seguridad. Las pruebas de base corren solo en el CI |
 | **ADR-0030, registro autoservicio de agencias: Aceptado, sin código.** Alta atómica por `crear_agencia`, código de acceso del piloto, 14 días de prueba, solo Colombia y COP | PR #310 y #312; tres vueltas de seguridad. La migración es T-268 |
 | **Base del registro de agencias (T-268, ADR-0030 F1):** rol `viajapro_registro`, `crear_agencia` y `codigo_de_acceso_vigente` (`SECURITY DEFINER`), tablas globales del registro y `perfiles_de_agencia` ampliada con NIT. Sin API ni web todavía: nadie puede registrarse aún | PR #323; la migración aplicó en Postgres 16 y `aislamiento.spec.ts` pasó 158/158 (R-1 a R-10); dos pasadas de auditoría sin fugas entre agencias. **El NIT está en claro bajo RLS: decisión de cifrado en T-309** |
@@ -95,7 +99,7 @@ Postmark real; las migraciones contra una base de producción (solo corren en el
 - **Un mensaje de celular real visto en la bandeja, ni una respuesta recibida en el celular.**
 - **Plantilla de reapertura** fuera de la ventana de 24 h (T-078), **verificación del negocio en Meta** (T-080), Tech Provider.
 - **Derechos del titular** (T-097), aviso de privacidad aprobado (T-093), RNBD (T-098).
-- **API pública por claves e ingesta con IA** del catálogo (T-053 a T-058); **pagos**, **automatizaciones**; aviso de plazos por WhatsApp o correo (T-254, parte externa; el aviso en la aplicación está en T-254 y su campana en T-255), historial de transiciones de reserva (T-250).
+- **API pública por claves e ingesta con IA** del catálogo (T-053 a T-058); **API y pantallas de pagos** (el libro existe, T-330 en curso), **automatizaciones**; aviso de plazos por WhatsApp o correo (T-254, parte externa; el aviso en la aplicación está en T-254 y su campana en T-255), historial de transiciones de reserva (T-250).
 - Una agencia real con datos reales (criterio C1–C5 del roadmap v2).
 
 ## 2. Cómo se trabaja
@@ -113,6 +117,9 @@ Postmark real; las migraciones contra una base de producción (solo corren en el
 | Backend (`apps/api`) | Agentes `backend`, `whatsapp` | Cola menor: T-235 (prueba de arquitectura del arranque), T-226 (c) |
 | Datos | Agente `datos` | 40 migraciones en `main` |
 | Integración y documentación | `integrador`, `documentador` | Hilo, ADR, bitácora, `docs/06-operacion/` |
+| Diseño y experiencia de usuario | Sesión de diseño (Claude) | Auditoría visual y responsiva (celular, tablet y escritorio) y plan de rediseño; Fase 2 con OK del orquestador |
+| Cobros del viajero | Sesión de cobros (Claude) | T-330, API de pagos, con auditoría de seguridad antes de integrar |
+| Orquestación | Sesión madre (Claude), despertada cada 2 h | Integra por ventanas, audita, reparte y registra; ver [roadmap maestro](docs/08-roadmap/09-roadmap-maestro-y-operacion-desatendida.md) |
 | Producto y estrategia | `jefe-de-producto`, `dueno-de-producto` | Roadmap v3; demo a JD Tours |
 | Ciclo OpenCode | **Detenido** | Ver arriba |
 
@@ -122,6 +129,9 @@ Postmark real; las migraciones contra una base de producción (solo corren en el
 |---|---|---|
 | `CAMPOS_SENSIBLES_KEY` y `_VERSION=1` sin cargar en Render, y sin copia guardada de la clave | Sin ella el cifrado no puede usarse desplegado; perder la clave pierde los datos | Propietario |
 | `STAGING_DESPLIEGUE=desactivado`. Neon `viajapro-staging` existe con 32 de 47 migraciones aplicadas y faltan 3 roles; **no existe** servicio en Render ni proyecto en Vercel. La sesión de despliegue espera tus decisiones: qué contraseñas de rol carga quién, `API_TRUST_PROXY` y los secretos que solo cargas tú | No hay nada que enseñar fuera de local | Propietario |
+| Etiqueta `override-lane` en #358 y #362 (ingreso por apodo, mezclan carriles) | Ingreso por apodo no entra | Propietario |
+| `navegador` como check obligatorio en la protección de `main` (contenido en el commit `27412e7`) | Hoy un PR puede integrarse con `navegador` rojo si cumple los 8 obligatorios | Propietario |
+| Confirmación escrita para que la sesión de cobros trabaje sin supervisión | Hoy trabaja con un PR por tarea | Propietario |
 | Verificación del negocio en Meta / Tech Provider sin iniciar (T-080); falta un mensaje desde un celular | Solo número de prueba y Graph falsa; no hay lanzamiento | Propietario |
 | Decidir ADR-0033 (número de JD Tours: coexistencia con lista de exclusión o número separado; chats de proveedores y Ley 1581). Coexistencia verificada en Meta el 2026-11-21: no pierde la app, Colombia no excluida, pero todo chat individual entra al CRM | Conectar el número real de la agencia piloto (además de T-080) | Propietario |
 | Decidir zod 4 y los ADR-0023 y 0024 | Queda 1 vulnerabilidad alta en producción; el trabajo fiscal no avanza | Propietario |
