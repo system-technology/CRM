@@ -9,7 +9,7 @@
 > carril `i/`. El hook `contexto-persistente.mjs` inyecta **el más reciente** entre el del checkout y el de la
 > rama `claude/repository-status-d4ug6p`. Si el tablero contradice a `gh`/`git`, manda la realidad.
 
-Última actualización: **2026-11-21, 08:55 UTC**, relevo de la orquestadora. `main` en `3a494cd`. **Un PR abierto: #410** (T-331), en rojo.
+Última actualización: **2026-11-21, 09:15 UTC**, cierre del tercer lote. `main` en **`e16f5499`**. **Cero PR abiertos.**
 
 > ## ⚠️ AVISO AL DESPERTAR — LEE ESTO ANTES QUE NADA
 >
@@ -28,11 +28,10 @@
 - **No alcanza:** paneles de Neon, Render, Vercel o 21st.dev; claves y secretos; `override-lane` y la configuración de GitHub; WhatsApp real; trámites (Meta, abogado, contador, pasarela); redesplegar la demo sin su confirmación; borrar ramas ajenas.
 - **Sesión madre** (orquestadora): **`session_01R81Xh3ygCnt8wYfALeA6yY`** (Opus, esfuerzo alto), desde las 08:50 UTC del 2026-11-21. La anterior, `session_01R81Xh45hbFQHivoDJ8cbJQ`, se relevó por contexto (400 mil tokens, ~48 USD).
 - **El despertar de las 2 h está descolocado.** La tarea programada **`trig_016u2cLZTGLRrJvkZWgJpqpG`** (`15 */2 * * *`) sigue apuntando a la madre **anterior**, y no se pudo repuntar: el clasificador deniega `create_trigger` a la madre nueva, y `update_trigger` solo deja cambiar el prompt desde la conversación a la que la tarea escribe. Mitigación: el **aviso al despertar** de arriba, que la madre anterior leerá en el paso 0 de su propio prompt. **Arreglo de verdad: lo tiene que hacer el propietario** (§5).
-- **Sesiones vivas (4), repartidas a las 08:45 UTC:**
-  - `session_01R81Xh45ka1iCdkTRwDfH1k` — **T-331**, pago y saldo en el archivo de viaje (Opus alto, **tiene la ventana web**). Entregó #410, le devolví el `navegador` en rojo para que lo arregle.
-  - `session_01R81Xh2Mp9wjvR7gCGBq6Hy` — **T-342**, alcance de reportes impuesto por el servidor (Opus alto; es autorización, no se recortan vueltas).
-  - `session_01R81Xh2b5dGTvt5ts5Xj12s` — **T-505**, prueba que compara el `CHECK` de permisos con `PERMISOS` (Sonnet).
-  - `session_01R81Xh3U8x4WLRoij6qTX6s` — **T-510**, resto de la estabilidad de las pruebas (Sonnet).
+- **Sesiones vivas tras el tercer lote:**
+  - `session_01R81Xh2Mp9wjvR7gCGBq6Hy` — **T-342**, alcance de reportes impuesto por el servidor (Opus alto; es autorización, no se recortan vueltas). Única en marcha.
+  - `session_01R81Xh45ka1iCdkTRwDfH1k` (T-331) entregó y **se archiva**: llegó a 318 mil tokens. `…2b5dGTvt5ts5Xj12s` (T-505) y `…3U8x4WLRoij6qTX6s` (T-510) también entregaron.
+  - **La ventana web queda libre.** Siguiente en pedirla: T-511, y después T-343 y T-344, que dependen de que entre T-342.
   - Coexistencia WhatsApp `session_01R81Xh2TUy9RCrR6RV4oAze`: **la abrió el propietario, no se le dan órdenes**.
 - **Archivadas tras entregar:** arquitectura (T-340, ADR-0035 → #397), roadmap, cobros, diseño anterior, despliegue.
 
@@ -49,11 +48,13 @@
 
 ## 3. Cola de integración (orden)
 
-**En la cola: #410, bloqueado.** `main` en `3a494cd`. #410 (T-331, pago y saldo en el archivo de viaje, rama `b/web-cobros-archivo`, cabeza `4809431`) tiene **13 checks en verde y `navegador` en rojo**, y es un fallo real de la funcionalidad, no del CI: en `e2e/07-cobros.e2e-spec.ts:120` el diálogo **no se cierra** tras pulsar «Registrar pago» (`getByRole('dialog')` sigue en 1 tras 20 s). Las pruebas 50 (390 px) y 51 (monto mal escrito) **quedaron omitidas**, así que no están verificadas. Devuelto a su sesión el 2026-11-21 a las 08:52 UTC. Es **dinero en pantalla**: no entra sin auditoría propia, que ya corrió en paralelo.
+**Cola de integración vacía.** `main` en `e16f5499`. En este turno entraron, en serie y a mano con squash: **#414** (relevo y aviso al despertar), **#416** (T-505 `done`), **#415** (T-510, sigue `in_progress`) y **#410** (T-331 `done`, con auditoría independiente y tres bloqueantes corregidos). Detalle en la [bitácora del tercer lote](../_bitacora/2026-11-21-tercer-lote-cobros-permisos-y-pruebas.md).
 
 Lo último que entró: #404 a #409 (detalle en la [bitácora](../_bitacora/2026-11-21-segundo-lote-reportes-cobros-y-pruebas.md)). #402 y #362 se cerraron por sustitución.
 
-**Ids de tarea ya usados:** T-425..T-435, T-440..T-479, T-480..T-485, T-490..T-493 T-494..T-504 y T-505..T-512 (T-512 registra el ingreso por apodo; cola de la auditoría de #407 y restos de T-503 y #405, este PR). **El siguiente libre es T-513**; `git fetch` antes de numerar.
+**Ids de tarea ya usados:** T-513..T-519 (cola de la auditoría de #410, en este PR).
+
+**Antes:** T-425..T-435, T-440..T-479, T-480..T-485, T-490..T-493 T-494..T-504 y T-505..T-512 (T-512 registra el ingreso por apodo; cola de la auditoría de #407 y restos de T-503 y #405, este PR). **El siguiente libre es T-520**; `git fetch` antes de numerar.
 
 ### Integrado en este turno (2026-11-21)
 
@@ -62,7 +63,8 @@ Lo último que entró: #404 a #409 (detalle en la [bitácora](../_bitacora/2026-
 
 ## 4. Pendientes del orquestador (prometido y no hecho)
 
-- **Repartido a las 08:45 UTC:** T-342, T-505 y T-510 tienen sesión propia (ids en §1). T-331 sigue viva arreglando #410.
+- **El tope de 150 mil tokens por sesión no se cumple solo.** Ninguna sesión recibe aviso de su propio consumo: la hija de T-331 terminó en **318 mil** y ~25 USD sin enterarse, y lo hizo notar ella. **La madre tiene que consultar `get_session` → `context_usage` en cada vuelta del ciclo** y archivar al pasarse. Es paso del ciclo, no buena intención.
+- **Siguiente trabajo:** T-511 (web, ventana libre), T-343 y T-344 tras T-342, y la cola nueva T-513..T-519 de la auditoría de cobros.
 - **Sin repartir, esperando la ventana web** (va de una en una, y hoy la tiene T-331): **T-343** y **T-344** (dashboards del asesor y de administración; dependen de que T-342 entre primero) y **T-511** (ingreso por apodo a 390 px contra la API real). T-506 a T-509 son P3.
 - **Ojo con T-511:** su criterio dice «contra la API real, no simulada», y en este entorno **ninguna sesión puede levantar Postgres en local**. En la práctica significa escribir la e2e para que **la corra el CI**, que sí tiene Postgres. Dilo así en el PR en vez de afirmar que se probó en local.
 

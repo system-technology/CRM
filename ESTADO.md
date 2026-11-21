@@ -33,6 +33,29 @@ entrado. Seguimos en local.
 
 Integrados en `main`, por orden: #388 (regla R14, tablero, skills), #358 (ingreso por apodo, tope por identificador, apodo de miembros), #397 (ADR-0035, niveles de acceso a reportes), #393 (T-330, dominio y API de cobros), #398 (T-440, marco responsivo), #401 (consolidación de la documentación; sustituyó a #384, #386, #389, #390, #392, #399 y #396), #400 (tablero al día, arreglo del hook) y #395 (el resumen y los seguimientos ajenos solo con `conversaciones.ver_todas`). Detalle y cola: [bitácora](docs/_bitacora/2026-11-21-lote-de-integracion-nocturno.md).
 
+### Cierre del tercer lote (2026-11-21)
+
+`main` en **`e16f5499`**, cero PR abiertos. Integrados en serie: #414 (relevo de la orquestadora y
+aviso al despertar en el tablero), #416 (**T-505 `done`**: una prueba compara el `CHECK`
+`roles_permisos_del_catalogo` con `PERMISOS` en los dos sentidos; el catálogo deja de vivir en tres
+literales a mano), #415 (T-510, e2e de `apps/api` en serie y la prueba del índice sin depender del
+planificador) y #410 (**T-331 `done`**: registrar un pago y ver el saldo en el archivo de viaje).
+Detalle: [bitácora](docs/_bitacora/2026-11-21-tercer-lote-cobros-permisos-y-pruebas.md).
+
+**#410 pasó por auditoría de seguridad independiente** por ser dinero en pantalla (R13), y volvió
+con tres bloqueantes, los tres corregidos con prueba de regresión: el saldo a favor se pintaba en
+negativo y la confirmación decía siempre «Falta por cobrar»; la clave de idempotencia vivía en el
+diálogo, así que cerrarlo y reabrirlo tras un fallo de red permitía **cobrar dos veces**; y el aviso
+decía que los números de tarjeta no se guardan cuando sí se guardan. Cola abierta por esa
+auditoría: **T-513 a T-519**.
+
+**No verificado:** **T-510 sigue abierta** — su criterio son cinco corridas de CI seguidas sin rojo
+y van **cero**, y los deadlocks 40P01 no se reprodujeron ni se cerraron; un PR todavía puede salir
+rojo por azar. **Ninguna sesión puede levantar Postgres en local** (lo deniega el clasificador), así
+que todo lo que se diga «contra la API real» lo validó el CI, y lo visual salió de modo
+demostración. Sigue sin desplegarse nada. El ingreso por apodo a 390 px contra la API real sigue
+pendiente (T-511).
+
 ### Cierre del segundo lote (2026-11-21)
 
 Integrados: #404 y #405 (ingreso con correo o usuario, apodo del miembro; sustituyen a #402 y #362), #406 (**T-485 `done`**: «Esta vista es de administración» y avisos de alcance en seguimientos y ficha; la llave vive en `apps/web/src/lib/alcance-de-vista.ts` y T-342 solo cambia esa función), #407 (**T-341 `done`**: permiso `reportes.ver_agencia`, catálogo de 14 a 15, migración `20261121160000`, solo al rol `DUENO`) y #408 (**T-503 `done`**: las pruebas de la api esperan a las de la base). Cero PR abiertos. Detalle y cola (T-505 a T-511): [bitácora](docs/_bitacora/2026-11-21-segundo-lote-reportes-cobros-y-pruebas.md).
