@@ -10104,3 +10104,19 @@ tasks:
     source: "aviso de la sesion de T-528 via la madre saliente, 2026-11-21"
     created_at: 2026-11-21T13:20:00.000Z
     owner: qa
+  - id: T-548
+    title: "La e2e «al quitar el usuario ya no entra con el» es fragil y rompe el job navegador al azar"
+    type: test
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    acceptance:
+      - "apps/web/e2e/08-ingreso-por-usuario.e2e-spec.ts:168 fallo en el job navegador de #429 (corrida 44905127361) y paso en VERDE al relanzar el mismo sha sin tocar nada: es fragil, no un fallo real"
+      - "Evidencia: esperaba «Sin usuario (entra con su correo)» y leyo «Usuario: e2e-ad984bf6» durante los 10 s de espera, con 24 resoluciones del locator sobre el MISMO valor viejo. No es que tardara: es que la fila nunca se revalido"
+      - "Hipotesis a comprobar antes de tocar la prueba: tras quitar el apodo, la tabla de miembros no revalida (cache de TanStack Query sin invalidar, o la respuesta llega antes de que el servidor confirme). Si es eso, el defecto esta en la WEB y la prueba tiene razon en fallar: arreglar la web, no la espera"
+      - "NO se arregla subiendo el timeout ni reintentando: eso esconde una revalidacion que puede estar rota tambien para una persona"
+      - "Mientras siga asi, cada PR tiene una probabilidad de salir rojo por azar, y un rojo que se lee como ruido es como se normaliza un fallo real"
+    source: "verificado por la madre al integrar #429, 2026-11-21"
+    created_at: 2026-11-21T13:40:00.000Z
+    owner: qa
