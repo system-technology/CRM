@@ -30,6 +30,7 @@ import { useEnlacesDelViaje } from '../../lib/use-enlaces-del-viaje';
 import { EnlacesDelViaje } from '../comun/enlaces-del-viaje';
 import { DialogoCancelarArchivo } from './dialogo-cancelar-archivo';
 import { EditorPasajeros } from './editor-pasajeros';
+import { PanelDeCobro } from './panel-de-cobro';
 import { FormularioReserva } from './formulario-reserva';
 import { SemaforoPlazo } from './semaforo-plazo';
 
@@ -287,6 +288,8 @@ export function DetalleArchivo({
           {error}
         </p>
       )}
+
+      <PanelDeCobro archivoId={archivo.id} numero={archivo.numero} zona={zona} />
 
       <section aria-labelledby="reservas-titulo">
         <h3 id="reservas-titulo" className="mb-2 text-sm font-bold">
