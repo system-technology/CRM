@@ -27,6 +27,7 @@ const tituloOportunidad = `Oportunidad E2E ${marca}`;
 const tituloCotizacion = `Cotizacion E2E ${marca}`;
 
 let urlConversacion = '';
+let rutaCotizacion = '';
 
 test('H2: un webhook con firma invalida se rechaza con 403', async () => {
   const { estado } = await enviarWebhookWhatsapp(
@@ -160,6 +161,7 @@ test('H6: cotiza un producto de la semilla y guarda la cotizacion', async ({ pag
     'guardar no debe fallar (ver el texto del error en la salida)',
   ).toHaveCount(0, { timeout: 15_000 });
   await expect(page).toHaveURL(/\/cotizaciones\/[0-9a-f-]{36}/, { timeout: 20_000 });
+  rutaCotizacion = new URL(page.url()).pathname;
   // El detalle tiene tres estados (cargando, error, contenido): si el titulo no aparece, el fallo
   // dice en cual quedo la pagina, con su texto visible.
   try {
@@ -277,4 +279,27 @@ test('H6: enviar la cotizacion por WhatsApp desde la conversacion', async ({ pag
   expect(texto).toContain('Fecha de salida:');
   // El viajero nunca ve el neto ni el margen (R8, T-073).
   expect(texto).not.toMatch(/\b(neto|margen|markup|comisi[oó]n)\b/i);
+});
+
+// T-321: la acción principal del detalle es «Enviar en esta conversación»: lleva al chat y abre el
+// MISMO diálogo de envío por el canal con esa cotización elegida (no se envía de nuevo aquí).
+test('H6: desde el detalle de la cotizacion se llega al envio por el canal en el chat', async ({
+  page,
+}) => {
+  expect(
+    rutaCotizacion,
+    'la prueba de guardar debe haber dejado la ruta de la cotizacion',
+  ).not.toBe('');
+  await page.goto(rutaCotizacion);
+  const enviar = page.getByTestId('btn-enviar-en-conversacion');
+  await expect(enviar).toBeVisible({ timeout: 20_000 });
+  await enviar.click();
+
+  await expect(page).toHaveURL(/\/bandeja\/[0-9a-f-]{36}/, { timeout: 20_000 });
+  const dialogo = page.getByRole('dialog', { name: 'Enviar cotización por WhatsApp' });
+  await expect(dialogo).toBeVisible({ timeout: 20_000 });
+  const idCotizacion = rutaCotizacion.split('/').pop() ?? '';
+  await expect(dialogo.getByTestId('selector-cotizacion-conversacion')).toHaveValue(idCotizacion, {
+    timeout: 20_000,
+  });
 });

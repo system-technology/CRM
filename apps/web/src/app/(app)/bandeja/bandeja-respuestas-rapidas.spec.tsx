@@ -98,7 +98,7 @@ describe('BandejaConversacionPage — Respuestas Rápidas en el Compositor (T-10
 
     const botonRR = screen.getByTestId('btn-respuestas-rapidas');
     expect(botonRR).toBeDefined();
-    expect(botonRR.className).toContain('min-h-[40px]');
+    expect(botonRR.className).toContain('min-h-[44px]');
   });
 
   it('2. Abre y cierra el menú flotante al hacer clic en el botón de Respuestas Rápidas', async () => {

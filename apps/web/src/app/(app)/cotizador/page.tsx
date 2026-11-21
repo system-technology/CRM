@@ -15,19 +15,20 @@ import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useModoDemo } from '../../../lib/modo-demo';
-import { Calculator, Compass, Copy, Check, AlertCircle, Bookmark, Ship, Users } from 'lucide-react';
+import { Calculator, Compass, Copy, Check, AlertCircle, Ship, Users } from 'lucide-react';
 import {
   ACOMODACIONES_EN_ORDEN,
   ETIQUETA_ACOMODACION,
   acomodacionesParaElSelector,
   requiereAvisoImpuestoMuelle,
 } from '../../../lib/cotizador-logica';
-import type {
-  Acomodacion,
+import {
+  ContactoDeLista as EsquemaContactoDeLista,
+  type ContactoDeLista,
+  type Acomodacion,
   CotizacionCalculada,
   CotizacionDeSalida,
   SalidaPublicada,
-  ContactoDeLista,
 } from '@viajapro/contracts';
 import { formatearDinero } from '../../../lib/api';
 import { DistintivoDatosDemo } from '../../../components/comun/distintivo-datos-demo';
@@ -37,6 +38,9 @@ import { DesgloseCotizacionSalida } from '../../../components/cotizador/desglose
 import { usePermisos, explicacionFaltaPermiso } from '../../../lib/permisos';
 import { EstadoSinCatalogo } from '../../../components/catalogo/estado-sin-catalogo';
 import { EdadesDePasajeros } from '../../../components/cotizador/edades-de-pasajeros';
+import { TablaDeLineas } from '../../../components/cotizador/tabla-de-lineas';
+import { BandaDeContexto } from '../../../components/cotizador/banda-de-contexto';
+import { BarraDeAccionCotizador } from '../../../components/cotizador/barra-de-accion';
 import { edadesParaEnviar } from '../../../lib/cotizador-edades';
 import { enteroDeUrl, paquetePorDestino } from '../../../lib/viaje-solicitado-logica';
 
@@ -65,7 +69,7 @@ import {
   type OpcionDeSalidaDePaquete,
   CatalogoApiError,
 } from '../../../lib/catalogo-api';
-import { listarContactos } from '../../../lib/crm-api';
+import { listarContactos, obtenerFichaDeContacto } from '../../../lib/crm-api';
 import { guardarCotizacionApi } from '../../../lib/cotizaciones-api';
 import {
   armarCuerpoGuardarCotizacion,
@@ -151,6 +155,11 @@ function ContenidoCotizador() {
   // Contactos y Guardado (0c.22)
   const [contactosDisponibles, setContactosDisponibles] = useState<ContactoDeLista[]>([]);
   const [contactoIdInicial, setContactoIdInicial] = useState<string>('');
+  const [contactosCargados, setContactosCargados] = useState(false);
+  // El contacto de la URL cuando no viene en la primera página del listado (con cientos de
+  // contactos casi nunca viene): se pide su ficha, solo entonces.
+  const [contactoFueraDeLista, setContactoFueraDeLista] = useState<ContactoDeLista | null>(null);
+  const [fichaResuelta, setFichaResuelta] = useState(false);
   const [modalGuardarAbierto, setModalGuardarAbierto] = useState(false);
   const [guardandoCotizacion, setGuardandoCotizacion] = useState(false);
   const [errorGuardar, setErrorGuardar] = useState<{
@@ -160,6 +169,48 @@ function ContenidoCotizador() {
   } | null>(null);
 
   const { puedeEscribirCotizacion } = usePermisos();
+
+  // Los contactos que se pueden elegir al guardar: el de la URL siempre está, venga o no en la lista.
+  const contactosParaElegir = useMemo(
+    () =>
+      contactoFueraDeLista && !contactosDisponibles.some((c) => c.id === contactoFueraDeLista.id)
+        ? [contactoFueraDeLista, ...contactosDisponibles]
+        : contactosDisponibles,
+    [contactoFueraDeLista, contactosDisponibles],
+  );
+
+  // Para quién se cotiza: solo si la URL trae el contacto (no se adivina por el primero de la lista).
+  const contactoDelContexto = contactoParam
+    ? (contactosParaElegir.find((c) => c.id === contactoParam) ?? null)
+    : null;
+  const nombreDelContexto = contactoDelContexto
+    ? (contactoDelContexto.nombre ?? contactoDelContexto.telefono)
+    : null;
+  const contactoEnLista = contactosDisponibles.some((c) => c.id === contactoParam);
+  const resolviendoContacto =
+    Boolean(contactoParam) && !nombreDelContexto && !(contactosCargados && fichaResuelta);
+
+  useEffect(() => {
+    if (!contactoParam || !contactosCargados) return;
+    if (contactoEnLista) {
+      setFichaResuelta(true);
+      return;
+    }
+    let vigente = true;
+    obtenerFichaDeContacto(contactoParam)
+      .then((ficha) => {
+        if (vigente) setContactoFueraDeLista(EsquemaContactoDeLista.parse(ficha.contacto));
+      })
+      .catch((err: unknown) => {
+        console.warn('No se pudo leer el contacto de la cotización:', err);
+      })
+      .finally(() => {
+        if (vigente) setFichaResuelta(true);
+      });
+    return () => {
+      vigente = false;
+    };
+  }, [contactoParam, contactosCargados, contactoEnLista]);
 
   // Opciones de salida del producto (turno, modalidad; ADR-0017 §3.1). Con opciones activas la
   // API exige `opcionDeSalidaId`: el asesor elige antes de cotizar y no se adivina por él.
@@ -220,6 +271,7 @@ function ContenidoCotizador() {
     listarContactos()
       .then((pag) => {
         setContactosDisponibles(pag.datos);
+        setContactosCargados(true);
 
         if (contactoParam) {
           setContactoIdInicial(contactoParam);
@@ -237,6 +289,7 @@ function ContenidoCotizador() {
       })
       .catch((err: unknown) => {
         console.warn('No se pudieron listar contactos:', err);
+        setContactosCargados(true);
       });
   }, [contactoParam, conversacionParam]);
 
@@ -470,7 +523,13 @@ function ContenidoCotizador() {
 
       const guardada = await guardarCotizacionApi(cuerpo);
       setModalGuardarAbierto(false);
-      router.push(`/cotizaciones/${guardada.id}`);
+      // Si se llegó desde un chat y se guardó para ese mismo contacto, el detalle conserva el chat:
+      // de ahí sale «Enviar en esta conversación» y «Volver al chat».
+      const desdeEsteChat =
+        conversacionParam && (!contactoParam || datos.contactoId === contactoParam)
+          ? `?conversacion=${encodeURIComponent(conversacionParam)}`
+          : '';
+      router.push(`/cotizaciones/${guardada.id}${desdeEsteChat}`);
     } catch (err) {
       const interpretado = interpretarErrorCotizaciones(err);
       setErrorGuardar(interpretado);
@@ -491,10 +550,14 @@ function ContenidoCotizador() {
     return '$ 0 COP';
   }, [cotizacionReal, cotizacionMock]);
 
+  const resumenDeComposicion = `${adultos} adt${ninos > 0 ? `, ${ninos} chd` : ''}${
+    infantes > 0 ? `, ${infantes} inf` : ''
+  }`;
+
   return (
     <>
       <div className="min-w-0 flex-1 bg-neutral-50 dark:bg-neutral-950">
-        <div className="mx-auto max-w-7xl min-w-0 space-y-6 p-3.5 pb-28 sm:p-6 md:pb-8 lg:p-8">
+        <div className="mx-auto max-w-7xl min-w-0 space-y-6 p-3.5 pb-24 sm:p-6 md:pb-8 lg:p-8">
           {/* Cabecera de Página */}
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-3">
@@ -505,7 +568,7 @@ function ContenidoCotizador() {
                 <h1 className="text-xl font-black text-neutral-900 dark:text-white">
                   Cotizador Comercial
                 </h1>
-                <p className="text-xs text-neutral-500">
+                <p className="text-sm text-neutral-500">
                   Cotización oficial por composición de grupo y tarifario vigente
                 </p>
               </div>
@@ -515,13 +578,20 @@ function ContenidoCotizador() {
               <DistintivoDatosDemo />
               <Link
                 href="/catalogo"
-                className="flex min-h-[44px] items-center gap-1.5 rounded-xl border border-neutral-200 bg-white px-3 py-2 text-xs font-semibold text-neutral-700 hover:bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300"
+                className="flex min-h-[44px] items-center gap-1.5 rounded-xl border border-neutral-200 bg-white px-3 py-2 text-sm font-semibold text-neutral-700 hover:bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300"
               >
                 <Compass className="h-4 w-4" />
                 <span>Ver Salidas en Catálogo</span>
               </Link>
             </div>
           </div>
+
+          {/* Para quién se cotiza y desde qué chat, con la salida de vuelta al chat */}
+          <BandaDeContexto
+            nombre={nombreDelContexto}
+            cargandoNombre={resolviendoContacto}
+            conversacionId={conversacionParam}
+          />
 
           {/* Aviso si falta tenant en desarrollo */}
           {errorTenant && <AvisoConfiguracionTenant mensajeError={errorTenant} />}
@@ -555,7 +625,7 @@ function ContenidoCotizador() {
                 {/* Sidebar de Parámetros (4 col) */}
                 <aside className="lg:col-span-4">
                   <div className="min-w-0 space-y-4 rounded-2xl border border-neutral-200 bg-white p-3.5 shadow-xs sm:p-5 dark:border-neutral-800 dark:bg-neutral-900">
-                    <h2 className="text-xs font-bold text-neutral-500">
+                    <h2 className="text-sm font-bold text-neutral-500">
                       Parámetros de la cotización
                     </h2>
 
@@ -563,7 +633,7 @@ function ContenidoCotizador() {
                     <div>
                       <label
                         htmlFor="select-paquete-cotizador"
-                        className="block text-xs font-semibold text-neutral-700 dark:text-neutral-300"
+                        className="block text-sm font-semibold text-neutral-700 dark:text-neutral-300"
                       >
                         Paquete Turístico
                       </label>
@@ -574,7 +644,7 @@ function ContenidoCotizador() {
                         data-origen={usarReal ? 'api' : 'maqueta'}
                         value={paqueteId}
                         onChange={(e) => setPaqueteId(e.target.value)}
-                        className="focus:border-acento-600 focus-visible:ring-acento-600 mt-1.5 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white p-2.5 text-xs text-neutral-900 shadow-2xs focus-visible:ring-2 focus-visible:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                        className="focus:border-acento-600 focus-visible:ring-acento-600 mt-1.5 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white p-2.5 text-sm text-neutral-900 shadow-2xs focus-visible:ring-2 focus-visible:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                       >
                         {paquetesDisponibles.map((p) => (
                           <option key={p.id} value={p.id}>
@@ -589,7 +659,7 @@ function ContenidoCotizador() {
                       <p
                         role="alert"
                         data-testid="error-opciones-salida"
-                        className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-800"
+                        className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800"
                       >
                         No se pudieron cargar las opciones de salida del producto: {errorOpciones}{' '}
                         Vuelve a elegir el paquete o recarga la página.
@@ -599,7 +669,7 @@ function ContenidoCotizador() {
                       <div data-testid="selector-opcion-salida">
                         <label
                           htmlFor="select-opcion-salida-cotizador"
-                          className="block text-xs font-semibold text-neutral-700 dark:text-neutral-300"
+                          className="block text-sm font-semibold text-neutral-700 dark:text-neutral-300"
                         >
                           Opción de salida
                         </label>
@@ -610,7 +680,7 @@ function ContenidoCotizador() {
                           required
                           aria-invalid={faltaOpcion}
                           aria-describedby={faltaOpcion ? 'aviso-elegir-opcion' : undefined}
-                          className="focus:border-acento-600 focus-visible:ring-acento-600 mt-1.5 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white p-2.5 text-xs text-neutral-900 shadow-2xs focus-visible:ring-2 focus-visible:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                          className="focus:border-acento-600 focus-visible:ring-acento-600 mt-1.5 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white p-2.5 text-sm text-neutral-900 shadow-2xs focus-visible:ring-2 focus-visible:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                         >
                           <option value="">Elige una opción…</option>
                           {opcionesActivas.map((o) => (
@@ -625,7 +695,7 @@ function ContenidoCotizador() {
                             id="aviso-elegir-opcion"
                             role="alert"
                             data-testid="aviso-elegir-opcion"
-                            className="mt-1.5 text-[11px] font-medium text-amber-700 dark:text-amber-400"
+                            className="mt-1.5 text-sm font-medium text-amber-700 dark:text-amber-400"
                           >
                             Elige una opción de salida para ver el precio.
                           </p>
@@ -638,14 +708,14 @@ function ContenidoCotizador() {
                       <div className="flex items-center justify-between">
                         <label
                           htmlFor="input-fecha-cotizador"
-                          className="block text-xs font-semibold text-neutral-700 dark:text-neutral-300"
+                          className="block text-sm font-semibold text-neutral-700 dark:text-neutral-300"
                         >
                           {paqueteSeleccionado?.noches === 0
                             ? 'Fecha de la Excursión'
                             : 'Fecha de Salida'}
                         </label>
                         {paqueteSeleccionado?.noches === 0 && (
-                          <span className="rounded-md bg-sky-100 px-1.5 py-0.5 text-[10px] font-bold text-sky-800 dark:bg-sky-950 dark:text-sky-300">
+                          <span className="rounded-md bg-sky-100 px-1.5 py-0.5 text-sm font-bold text-sky-800 dark:bg-sky-950 dark:text-sky-300">
                             Pasadía (1 día)
                           </span>
                         )}
@@ -657,11 +727,11 @@ function ContenidoCotizador() {
                           fechaElegida.current = true;
                           setFecha(iso);
                         }}
-                        className="focus:border-acento-600 focus-visible:ring-acento-600 mt-1.5 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white p-2.5 text-xs text-neutral-900 shadow-2xs focus-visible:ring-2 focus-visible:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                        className="focus:border-acento-600 focus-visible:ring-acento-600 mt-1.5 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white p-2.5 text-sm text-neutral-900 shadow-2xs focus-visible:ring-2 focus-visible:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                       />
                       {fechasDelPaquete.length > 0 && (
                         <div className="mt-2">
-                          <span className="text-[11px] font-medium text-neutral-600 dark:text-neutral-400">
+                          <span className="text-sm font-medium text-neutral-600 dark:text-neutral-400">
                             Salidas programadas:
                           </span>
                           <div className="mt-1 flex flex-wrap gap-1">
@@ -671,7 +741,7 @@ function ContenidoCotizador() {
                                 type="button"
                                 onClick={() => setFecha(f)}
                                 aria-label={`Seleccionar salida programada ${f}`}
-                                className={`focus-visible:ring-acento-600 flex min-h-[44px] items-center rounded-lg px-3 py-2 text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:outline-hidden ${
+                                className={`focus-visible:ring-acento-600 flex min-h-[44px] items-center rounded-lg px-3 py-2 text-sm font-semibold transition-colors focus-visible:ring-2 focus-visible:outline-hidden ${
                                   fecha === f
                                     ? 'bg-acento-700 text-white'
                                     : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-300'
@@ -688,18 +758,18 @@ function ContenidoCotizador() {
                     {/* Eje 3 de ADR-0009: Composicion de Pasajeros */}
                     <div className="border-t border-neutral-100 pt-4 dark:border-neutral-800">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">
+                        <span className="text-sm font-semibold text-neutral-700 dark:text-neutral-300">
                           Composición del Grupo
                         </span>
                         {!pideComposicion && (
-                          <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                          <span className="rounded bg-amber-100 px-1.5 py-0.5 text-sm font-bold text-amber-800 dark:bg-amber-950 dark:text-amber-300">
                             Tarifa fija por salida
                           </span>
                         )}
                       </div>
 
                       {!pideComposicion ? (
-                        <p className="mt-2 text-[11px] text-neutral-500">
+                        <p className="mt-2 text-sm text-neutral-500">
                           El tarifario vigente para este paquete no desglosa por persona; aplica
                           tarifa global de salida.
                         </p>
@@ -712,11 +782,11 @@ function ContenidoCotizador() {
                           {/* Adultos */}
                           <div className="flex items-center justify-between">
                             <div>
-                              <span className="text-xs font-medium text-neutral-700 dark:text-neutral-300">
+                              <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
                                 Adultos
                               </span>
-                              <span className="block text-[10px] text-neutral-500 dark:text-neutral-400">
-                                Mayor a 12 años
+                              <span className="block text-sm text-neutral-500 dark:text-neutral-400">
+                                12 años o más
                               </span>
                             </div>
                             <div className="flex items-center gap-2">
@@ -750,10 +820,10 @@ function ContenidoCotizador() {
                           {/* Niños */}
                           <div className="flex items-center justify-between">
                             <div>
-                              <span className="text-xs font-medium text-neutral-700 dark:text-neutral-300">
+                              <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
                                 Niños
                               </span>
-                              <span className="block text-[10px] text-neutral-500 dark:text-neutral-400">
+                              <span className="block text-sm text-neutral-500 dark:text-neutral-400">
                                 2 a 11 años
                               </span>
                             </div>
@@ -788,10 +858,10 @@ function ContenidoCotizador() {
                           {/* Infantes */}
                           <div className="flex items-center justify-between">
                             <div>
-                              <span className="text-xs font-medium text-neutral-700 dark:text-neutral-300">
+                              <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
                                 Infantes
                               </span>
-                              <span className="block text-[10px] text-neutral-500 dark:text-neutral-400">
+                              <span className="block text-sm text-neutral-500 dark:text-neutral-400">
                                 Menores de 2 años
                               </span>
                             </div>
@@ -844,7 +914,7 @@ function ContenidoCotizador() {
                       <div className="border-t border-neutral-100 pt-4 dark:border-neutral-800">
                         <label
                           htmlFor="select-acomodacion-mock"
-                          className="block text-xs font-semibold text-neutral-700 dark:text-neutral-300"
+                          className="block text-sm font-semibold text-neutral-700 dark:text-neutral-300"
                         >
                           Acomodación
                         </label>
@@ -853,7 +923,7 @@ function ContenidoCotizador() {
                           aria-label="Acomodación"
                           value={acomodacionMock}
                           onChange={(e) => setAcomodacionMock(e.target.value as Acomodacion | '')}
-                          className="focus:border-acento-600 focus-visible:ring-acento-600 mt-1.5 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white p-2.5 text-xs text-neutral-900 shadow-2xs focus-visible:ring-2 focus-visible:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                          className="focus:border-acento-600 focus-visible:ring-acento-600 mt-1.5 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white p-2.5 text-sm text-neutral-900 shadow-2xs focus-visible:ring-2 focus-visible:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                         >
                           <option value="">Sugerida automáticamente</option>
                           {/* Modo maqueta: las cuatro, porque el catálogo simulado no las declara. */}
@@ -871,7 +941,7 @@ function ContenidoCotizador() {
                       <div className="border-t border-neutral-100 pt-4 dark:border-neutral-800">
                         <label
                           htmlFor="select-acomodacion"
-                          className="block text-xs font-semibold text-neutral-700 dark:text-neutral-300"
+                          className="block text-sm font-semibold text-neutral-700 dark:text-neutral-300"
                         >
                           Acomodación
                         </label>
@@ -880,7 +950,7 @@ function ContenidoCotizador() {
                           aria-label="Acomodación"
                           value={acomodacionReal}
                           onChange={(e) => setAcomodacionReal(e.target.value as Acomodacion | '')}
-                          className="focus:border-acento-600 focus-visible:ring-acento-600 mt-1.5 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white p-2.5 text-xs text-neutral-900 shadow-2xs focus-visible:ring-2 focus-visible:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                          className="focus:border-acento-600 focus-visible:ring-acento-600 mt-1.5 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white p-2.5 text-sm text-neutral-900 shadow-2xs focus-visible:ring-2 focus-visible:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                         >
                           <option value="">Elige una acomodación</option>
                           {acomodacionesOfrecidas.map((a) => (
@@ -898,7 +968,7 @@ function ContenidoCotizador() {
                         <button
                           type="button"
                           onClick={() => alternarDemo()}
-                          className="focus-visible:ring-acento-600 flex min-h-[44px] w-full items-center justify-center rounded-xl p-2.5 text-center text-xs font-semibold text-neutral-600 hover:text-neutral-900 focus-visible:ring-2 focus-visible:outline-hidden dark:text-neutral-400 dark:hover:text-neutral-200"
+                          className="focus-visible:ring-acento-600 flex min-h-[44px] w-full items-center justify-center rounded-xl p-2.5 text-center text-sm font-semibold text-neutral-600 hover:text-neutral-900 focus-visible:ring-2 focus-visible:outline-hidden dark:text-neutral-400 dark:hover:text-neutral-200"
                         >
                           Modo: {usarReal ? 'Conectado a API real' : 'Modo demostración (simulado)'}{' '}
                           (Alternar)
@@ -953,10 +1023,10 @@ function ContenidoCotizador() {
                                 ? 'Error en datos de tarifario (Vigencias solapadas)'
                                 : 'No se pudo generar la cotización'}
                           </h3>
-                          <p className="mt-1 text-xs">{errorMensaje.mensaje}</p>
+                          <p className="mt-1 text-sm">{errorMensaje.mensaje}</p>
                           {fechasDelPaquete.length > 0 && (
                             <div className="mt-3">
-                              <span className="text-[11px] font-semibold">
+                              <span className="text-sm font-semibold">
                                 Fechas con salida confirmada para este paquete:
                               </span>
                               <div className="mt-1.5 flex flex-wrap gap-1.5">
@@ -965,7 +1035,7 @@ function ContenidoCotizador() {
                                     key={f}
                                     type="button"
                                     onClick={() => setFecha(f)}
-                                    className="rounded bg-white px-2.5 py-1 text-xs font-bold text-neutral-800 shadow-xs hover:bg-neutral-100 dark:bg-neutral-800 dark:text-white"
+                                    className="rounded bg-white px-2.5 py-1 text-sm font-bold text-neutral-800 shadow-xs hover:bg-neutral-100 dark:bg-neutral-800 dark:text-white"
                                   >
                                     {f}
                                   </button>
@@ -984,8 +1054,6 @@ function ContenidoCotizador() {
                       cotizacion={cotizacionReal}
                       copiado={copiado}
                       alCopiarWhatsApp={copiarPropuestaWhatsApp}
-                      alGuardarCotizacion={() => setModalGuardarAbierto(true)}
-                      guardando={guardandoCotizacion}
                     />
                   )}
 
@@ -997,15 +1065,15 @@ function ContenidoCotizador() {
                           <div>
                             <div className="flex items-center gap-2">
                               {paqueteSeleccionado?.noches === 0 ? (
-                                <span className="rounded-md bg-sky-100 px-2 py-0.5 text-[10px] font-bold text-sky-800 dark:bg-sky-950 dark:text-sky-300">
+                                <span className="rounded-md bg-sky-100 px-2 py-0.5 text-sm font-bold text-sky-800 dark:bg-sky-950 dark:text-sky-300">
                                   Excursión de 1 día (Pasadía)
                                 </span>
                               ) : (
-                                <span className="bg-acento-100 text-acento-700 dark:bg-acento-950 dark:text-acento-300 rounded-md px-2 py-0.5 text-[10px] font-bold">
+                                <span className="bg-acento-100 text-acento-700 dark:bg-acento-950 dark:text-acento-300 rounded-md px-2 py-0.5 text-sm font-bold">
                                   Cotización de demostración
                                 </span>
                               )}
-                              <span className="text-xs text-neutral-400">
+                              <span className="text-sm text-neutral-400">
                                 Fecha: {formatearFecha(fecha)}
                               </span>
                             </div>
@@ -1014,7 +1082,7 @@ function ContenidoCotizador() {
                               {cotizacionMock.paqueteNombre}
                             </h2>
 
-                            <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-neutral-600 dark:text-neutral-400">
+                            <div className="mt-1 flex flex-wrap items-center gap-3 text-sm text-neutral-600 dark:text-neutral-400">
                               <span>📍 {cotizacionMock.destino}</span>
                               <span>
                                 👥 {adultos + ninos + infantes} pasajero(s) ({adultos} adt
@@ -1025,13 +1093,13 @@ function ContenidoCotizador() {
                           </div>
 
                           <div className="flex flex-col items-start sm:items-end">
-                            <span className="text-xs font-bold text-neutral-500">
+                            <span className="text-sm font-bold text-neutral-500">
                               Total de venta sugerido
                             </span>
                             <div className="cifra mt-1 text-3xl font-black text-neutral-900 dark:text-white">
                               {formatearDinero(cotizacionMock.totalVenta)}
                             </div>
-                            <span className="mt-0.5 text-[10px] text-neutral-500">
+                            <span className="mt-0.5 text-sm text-neutral-500">
                               Tarifa calculada por persona en COP
                             </span>
                           </div>
@@ -1045,7 +1113,7 @@ function ContenidoCotizador() {
                           <div
                             data-testid="aviso-impuesto-muelle"
                             role="note"
-                            className="mt-4 flex items-start gap-3 rounded-xl border border-amber-300 bg-amber-50/90 p-3.5 text-xs text-amber-900 shadow-2xs dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-200"
+                            className="mt-4 flex items-start gap-3 rounded-xl border border-amber-300 bg-amber-50/90 p-3.5 text-sm text-amber-900 shadow-2xs dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-200"
                           >
                             <Ship className="mt-0.5 h-4 w-4 shrink-0 text-amber-700 dark:text-amber-400" />
                             <div>
@@ -1063,7 +1131,7 @@ function ContenidoCotizador() {
                           <div
                             data-testid="aviso-plazas-sin-usar"
                             role="note"
-                            className="mt-4 flex items-start gap-3 rounded-xl border border-amber-300 bg-amber-50/90 p-3.5 text-xs text-amber-900 shadow-2xs dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-200"
+                            className="mt-4 flex items-start gap-3 rounded-xl border border-amber-300 bg-amber-50/90 p-3.5 text-sm text-amber-900 shadow-2xs dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-200"
                           >
                             <Users className="mt-0.5 h-4 w-4 shrink-0 text-amber-700 dark:text-amber-400" />
                             <div>
@@ -1077,76 +1145,45 @@ function ContenidoCotizador() {
                           </div>
                         )}
 
-                        {/* Tabla de desglose de pasajeros */}
-                        <div className="mt-6 overflow-x-auto rounded-xl border border-neutral-100 dark:border-neutral-800">
-                          <table className="w-full text-xs">
-                            <thead>
-                              <tr className="border-b border-neutral-100 bg-neutral-50 text-neutral-500 dark:border-neutral-800 dark:bg-neutral-800/50 dark:text-neutral-400">
-                                <th className="px-4 py-2.5 text-left font-medium">Pasajero</th>
-                                <th className="px-4 py-2.5 text-right font-medium">Cantidad</th>
-                                <th className="px-4 py-2.5 text-right font-medium">
-                                  Precio Unitario
-                                </th>
-                                <th className="px-4 py-2.5 text-right font-medium">Subtotal</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800/60">
-                              {cotizacionMock.lineas.map((linea) => (
-                                <tr key={linea.tipoPasajero}>
-                                  <td className="px-4 py-3 font-bold text-neutral-800 dark:text-neutral-200">
-                                    {linea.tipoPasajero === 'ADT'
-                                      ? 'Adulto (Mayor de 12 años)'
-                                      : linea.tipoPasajero === 'CHD'
-                                        ? 'Niño (Menor)'
-                                        : 'Infante'}
-                                  </td>
-                                  <td className="cifra px-4 py-3 text-right font-semibold text-neutral-700 dark:text-neutral-300">
-                                    {linea.cantidad}x
-                                  </td>
-                                  <td className="cifra px-4 py-3 text-right text-neutral-600 dark:text-neutral-400">
-                                    {formatearDinero(linea.precioUnitarioVenta)}
-                                  </td>
-                                  <td className="cifra px-4 py-3 text-right font-bold text-neutral-900 dark:text-white">
-                                    {formatearDinero(linea.subtotalVenta)}
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                            <tfoot>
-                              <tr className="border-t-2 border-neutral-200 bg-neutral-50/80 font-bold dark:border-neutral-700 dark:bg-neutral-800/60">
-                                <td
-                                  colSpan={3}
-                                  className="px-4 py-3 text-right text-neutral-800 dark:text-neutral-200"
-                                >
-                                  Total Cotización:
-                                </td>
-                                <td className="cifra text-acento-600 dark:text-acento-400 px-4 py-3 text-right text-base">
-                                  {formatearDinero(cotizacionMock.totalVenta)}
-                                </td>
-                              </tr>
-                            </tfoot>
-                          </table>
+                        {/* Desglose de pasajeros: tarjetas en el celular, tabla desde md; el total no se corta */}
+                        <div className="mt-6">
+                          <TablaDeLineas
+                            testId="desglose-demo"
+                            columnas={[
+                              { id: 'pasajero', titulo: 'Pasajero', esConcepto: true },
+                              { id: 'cantidad', titulo: 'Cantidad', derecha: true },
+                              { id: 'unitario', titulo: 'Precio Unitario', derecha: true },
+                              {
+                                id: 'subtotal',
+                                titulo: 'Subtotal',
+                                derecha: true,
+                                esSubtotal: true,
+                              },
+                            ]}
+                            filas={cotizacionMock.lineas.map((linea) => ({
+                              clave: linea.tipoPasajero,
+                              celdas: {
+                                pasajero:
+                                  linea.tipoPasajero === 'ADT'
+                                    ? 'Adulto (12 años o más)'
+                                    : linea.tipoPasajero === 'CHD'
+                                      ? 'Niño (2 a 11 años)'
+                                      : 'Infante (menor de 2 años)',
+                                cantidad: `${linea.cantidad}x`,
+                                unitario: formatearDinero(linea.precioUnitarioVenta),
+                                subtotal: formatearDinero(linea.subtotalVenta),
+                              },
+                            }))}
+                            etiquetaTotal="Total Cotización:"
+                            total={formatearDinero(cotizacionMock.totalVenta)}
+                          />
                         </div>
 
                         <div className="mt-6 flex flex-col flex-wrap items-stretch justify-between gap-3 border-t border-neutral-100 pt-4 sm:flex-row sm:items-center dark:border-neutral-800">
                           <button
                             type="button"
-                            onClick={() => setModalGuardarAbierto(true)}
-                            disabled={guardandoCotizacion || !puedeEscribirCotizacion}
-                            title={
-                              !puedeEscribirCotizacion
-                                ? explicacionFaltaPermiso('cotizacion.escribir')
-                                : undefined
-                            }
-                            className="boton-primario flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold shadow-xs transition-colors sm:w-auto"
-                          >
-                            <Bookmark className="h-4 w-4" />
-                            <span>Guardar Cotización Oficial</span>
-                          </button>
-                          <button
-                            type="button"
                             onClick={copiarPropuestaWhatsApp}
-                            className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white shadow-xs transition-colors hover:bg-emerald-700 sm:w-auto"
+                            className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white shadow-xs transition-colors hover:bg-emerald-700 sm:w-auto"
                           >
                             {copiado ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                             <span>
@@ -1161,6 +1198,20 @@ function ContenidoCotizador() {
               </div>
             )
           )}
+
+          {/* Total y «Guardar» siempre a la vista, también al ajustar la ocupación en el celular */}
+          {!cargandoSalidas &&
+            !errorMensaje &&
+            (calculando || cotizacionReal !== null || cotizacionMock !== null) && (
+              <BarraDeAccionCotizador
+                total={calculando ? null : totalEstimadoTexto}
+                detalle={resumenDeComposicion}
+                onGuardar={() => setModalGuardarAbierto(true)}
+                guardando={guardandoCotizacion}
+                deshabilitado={!puedeEscribirCotizacion}
+                motivoDeshabilitado={explicacionFaltaPermiso('cotizacion.escribir')}
+              />
+            )}
         </div>
 
         {/* Modal Guardar Cotización (0c.22) */}
@@ -1172,7 +1223,7 @@ function ContenidoCotizador() {
           error={errorGuardar}
           tituloSugerido={tituloSugerido}
           contactoIdInicial={contactoIdInicial}
-          contactosDisponibles={contactosDisponibles}
+          contactosDisponibles={contactosParaElegir}
           paqueteNombre={paqueteSeleccionado?.nombre || 'Paquete Turístico'}
           fechaSalida={fecha}
           adultos={adultos}
