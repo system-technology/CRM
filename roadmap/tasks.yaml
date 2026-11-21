@@ -7314,7 +7314,7 @@ tasks:
     source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md (2026-11-20)
     created_at: 2026-11-20T19:00:00.000Z
     owner: arquitecto
-    notes: "ADR-0033 ACEPTADO por el propietario el 2026-11-21: opcion B (coexistencia con salvaguardas), SIN historial (no se suscriben history ni smb_app_state_sync) y la exclusion DESCARTA en vez de guardar aparte. C (numero separado) queda como salida si falla una condicion previa. NO autoriza por si sola conectar el numero real: antes hace falta T-533 (lista de exclusion y filtro en el trabajador con prueba de punta a punta), el aviso de privacidad y el contrato de encargo de JD Tours, que el dueno saque sus chats personales, y T-337 (elegibilidad real, que depende de T-080). Sigue sin decidir quien habla con el dueno de JD Tours: esta en la bandeja del propietario."
+    notes: "ADR-0033 ACEPTADO por el propietario el 2026-11-21: opcion B (coexistencia con salvaguardas), SIN historial (no se suscriben history ni smb_app_state_sync) y la exclusion DESCARTA en vez de guardar aparte. C (numero separado) queda como salida si falla una condicion previa. NO autoriza por si sola conectar el numero real: antes hace falta T-533 (lista de exclusion y filtro en el trabajador con prueba de punta a punta), el aviso de privacidad y el contrato de encargo de JD Tours, que el dueno saque sus chats personales, y T-337 (elegibilidad real, que depende de T-080). La conversacion con el dueno de JD Tours la lleva el propietario (decidido el 2026-11-21)."
   - id: T-339
     title: "F0: qué ve cada nivel (catálogo de reportes por rol), qué va en «Hoy» y qué en Reportes, móvil primero"
     type: docs
@@ -9806,8 +9806,6 @@ tasks:
     owner: backend
   - id: T-528
     title: "Resumen propio: cotizaciones abiertas por antigüedad y cobros por cobrar del asesor, servidos por la API"
-  - id: T-533
-    title: "Lista de exclusion de chats y filtro en el trabajador, antes de conectar el numero real"
     type: feature
     phase: 1
     priority: P1
@@ -9849,6 +9847,12 @@ tasks:
     source: "T-343: lo que no entró en el alcance de la entrega"
     created_at: 2026-11-21T23:00:00.000Z
     owner: frontend
+  - id: T-533
+    title: "Lista de exclusion de chats y filtro en el trabajador, antes de conectar el numero real"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
     status: ready
     depends_on: [T-338]
     acceptance:
@@ -9857,6 +9861,7 @@ tasks:
       - "Prueba de punta a punta: un mensaje entrante excluido y un eco smb_message_echoes excluido no dejan fila de negocio, ni media, ni outbox, ni log. Que la prueba falle si cualquiera de los cuatro aparece"
       - "No se suscriben history ni smb_app_state_sync (sin historial en el piloto, ADR-0033)"
       - "El vinculo numero-agencia sale de la sesion, del canje del code y de la comprobacion en Graph, nunca del cuerpo de la peticion (04-integraciones 2.3)"
+      - "La lista inicial de chats a excluir la trae el propietario de su conversacion con el dueno de JD Tours"
     source: "ADR-0033 aceptado, decision del propietario 2026-11-21"
     created_at: 2026-11-21T11:30:00.000Z
     owner: whatsapp
