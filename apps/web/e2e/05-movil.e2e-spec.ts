@@ -162,3 +162,23 @@ test('/bandeja/inexistente tiene salida: flecha de volver de 44 px, sin barra in
   await expect(page).toHaveURL(/\/bandeja$/);
   await expect(barraInferior(page)).toBeVisible();
 });
+
+test('la paleta lleva de la lupa a un módulo: «seguimientos» + Enter abre /seguimientos', async ({
+  page,
+}) => {
+  await page.goto('/');
+  const lupa = page.getByTestId('lupa-movil');
+  await expect(lupa).toBeVisible({ timeout: 20_000 });
+  await lupa.click();
+
+  const paleta = page.getByRole('dialog', { name: /Paleta de Comandos/ });
+  await expect(paleta).toBeVisible();
+  const entrada = paleta.getByRole('textbox');
+  await entrada.fill('seguimientos');
+  // El módulo sale por su nombre y primero; no depende de datos sembrados.
+  await expect(paleta.getByRole('option').first()).toContainText('Seguimientos');
+  await entrada.press('Enter');
+
+  await expect(paleta).toBeHidden();
+  await expect(page).toHaveURL(/\/seguimientos$/);
+});

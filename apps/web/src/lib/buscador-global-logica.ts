@@ -7,10 +7,13 @@
 import { MOCK_CONVERSACIONES, ID_ASESOR_ACTUAL } from './mock-inbox';
 import { obtenerMockPaginaContactos } from './mock-contactos';
 import { obtenerMockTableroPipeline } from './mock-pipeline';
-import { MOCK_ARCHIVOS_VIAJE } from './mock-viajes';
 import { MOCK_PAQUETES_CATALOGO } from './mock-catalogo';
 import { MOCK_COTIZACIONES_INICIALES } from './mock-cotizaciones';
-import type { Permiso, SesionActual } from '@viajapro/contracts';
+import type { Permiso, ResumenDeArchivo, SesionActual } from '@viajapro/contracts';
+import { estaUsandoApiReal } from './crm-api';
+import { estaUsandoApiRealInbox } from './inbox-api';
+import { estaUsandoCatalogoReal } from './catalogo-api';
+import { etiquetaDelArchivo } from './enlaces-viaje-logica';
 import { puedeVerTodasConversaciones, tienePermiso } from './permisos';
 import { formatearFecha } from './formato';
 import { ACCIONES, NAVEGACION, esVisiblePara, type GrupoDeNavegacion } from './navegacion';
@@ -78,12 +81,33 @@ export function normalizarTexto(texto: string): string {
 }
 
 /**
+ * Las categorías con datos de demostración solo se indexan mientras su pantalla también lee la
+ * demo: en modo real un contacto o una cotización inventados llevarían a una ficha que no existe.
+ * Los archivos de viaje no entran aquí: llegan siempre de `listarArchivos`, la misma fuente de
+ * `/viajes` (demo o API real).
+ */
+function fuentesDeDemo() {
+  const crm = !estaUsandoApiReal();
+  return {
+    conversaciones: !estaUsandoApiRealInbox(),
+    contactos: crm,
+    cotizaciones: crm,
+    oportunidades: crm,
+    catalogo: !estaUsandoCatalogoReal(),
+  };
+}
+
+/**
  * Genera el índice unificado en memoria para el buscador global y paleta de comandos.
  * Respeta permisos de sesión: asesores sin permiso no ven conversaciones de otros
  * ni acciones de configuración restringidas (T-103).
  */
-export function construirIndiceGlobal(sesion?: SesionActual | null): ResultadoBusqueda[] {
+export function construirIndiceGlobal(
+  sesion?: SesionActual | null,
+  archivos: readonly ResumenDeArchivo[] = [],
+): ResultadoBusqueda[] {
   const items: ResultadoBusqueda[] = [];
+  const demo = fuentesDeDemo();
 
   // 1. Acciones rápidas (filtradas según permisos de la tabla de navegación)
   const tiene = (permiso: Permiso) => tienePermiso(sesion, permiso);
@@ -102,7 +126,7 @@ export function construirIndiceGlobal(sesion?: SesionActual | null): ResultadoBu
   const verTodasConvs = !sesion || puedeVerTodasConversaciones(sesion);
   const miUsuarioId = sesion?.acceso?.usuarioId ?? sesion?.identidad?.id ?? ID_ASESOR_ACTUAL;
 
-  for (const c of MOCK_CONVERSACIONES) {
+  for (const c of demo.conversaciones ? MOCK_CONVERSACIONES : []) {
     if (!verTodasConvs && c.asignadoAId && c.asignadoAId !== miUsuarioId) {
       // Excluir conversaciones de otros asesores
       continue;
@@ -119,7 +143,7 @@ export function construirIndiceGlobal(sesion?: SesionActual | null): ResultadoBu
   }
 
   // 3. Contactos y Viajeros (PaginaContactos.datos)
-  const listaContactos = obtenerMockPaginaContactos().datos;
+  const listaContactos = demo.contactos ? obtenerMockPaginaContactos().datos : [];
   for (const ct of listaContactos) {
     items.push({
       id: `cont-${ct.id}`,
@@ -132,7 +156,7 @@ export function construirIndiceGlobal(sesion?: SesionActual | null): ResultadoBu
   }
 
   // 4. Cotizaciones
-  for (const cot of MOCK_COTIZACIONES_INICIALES) {
+  for (const cot of demo.cotizaciones ? MOCK_COTIZACIONES_INICIALES : []) {
     const ult = cot.versiones[cot.versiones.length - 1];
     const valor = ult?.venta ? Number(ult.venta.unidades).toLocaleString('es-CO') : '0';
     const moneda = ult?.venta?.moneda || 'COP';
@@ -147,8 +171,9 @@ export function construirIndiceGlobal(sesion?: SesionActual | null): ResultadoBu
   }
 
   // 5. Oportunidades del Pipeline (TableroPipeline.columnas) con Destino indexado
-  const tablero = obtenerMockTableroPipeline();
-  const oportunidades = tablero.columnas.flatMap((col) => col.oportunidades);
+  const oportunidades = demo.oportunidades
+    ? obtenerMockTableroPipeline().columnas.flatMap((col) => col.oportunidades)
+    : [];
   for (const op of oportunidades) {
     const valorCop = op.valorEstimado
       ? Number(op.valorEstimado.unidades).toLocaleString('es-CO')
@@ -164,20 +189,20 @@ export function construirIndiceGlobal(sesion?: SesionActual | null): ResultadoBu
     });
   }
 
-  // 6. Archivos de viaje
-  for (const v of MOCK_ARCHIVOS_VIAJE) {
+  // 6. Archivos de viaje: los mismos que lista `/viajes`, así que abrirlos nunca falla.
+  for (const a of archivos) {
     items.push({
-      id: `viaje-${v.id}`,
+      id: `viaje-${a.id}`,
       categoria: 'viajes',
-      titulo: `${v.codigoExpediente} — ${v.destino}`,
-      subtitulo: `Titular: ${v.titularNombre} · Salida: ${formatearFecha(v.fechaSalida)}`,
-      href: `/viajes?id=${v.id}`,
-      etiquetaExtra: v.estado,
+      titulo: `${etiquetaDelArchivo(a.numero)} — ${a.destino}`,
+      subtitulo: `${a.paqueteNombre} · Salida: ${formatearFecha(a.fechaSalida)}`,
+      href: `/viajes?id=${a.id}`,
+      etiquetaExtra: a.estado,
     });
   }
 
   // 7. Catálogo de Paquetes
-  for (const p of MOCK_PAQUETES_CATALOGO) {
+  for (const p of demo.catalogo ? MOCK_PAQUETES_CATALOGO : []) {
     items.push({
       id: `paq-${p.id}`,
       categoria: 'catalogo',
@@ -191,6 +216,14 @@ export function construirIndiceGlobal(sesion?: SesionActual | null): ResultadoBu
   return items;
 }
 
+/** 0 si el título empieza por la consulta, 1 si la contiene, 2 si solo coincide el resto. */
+function rangoDeTitulo(titulo: string, palabras: string[]): number {
+  const t = normalizarTexto(titulo);
+  if (palabras.every((p) => t.startsWith(p) || t.includes(` ${p}`))) return 0;
+  if (palabras.every((p) => t.includes(p))) return 1;
+  return 2;
+}
+
 /**
  * Ejecuta búsqueda omnicanal agrupada por categoría con límite configurable y filtro opcional.
  * Encuentra por nombre, teléfono y destino sin exponer más de lo que el rol puede ver (T-103).
@@ -201,8 +234,9 @@ export function buscarEnIndiceGlobal(
   limitePorCategoria = 4,
   filtroCategoria?: CategoriaBusqueda | 'todos',
   sesion?: SesionActual | null,
+  archivos: readonly ResumenDeArchivo[] = [],
 ): Record<CategoriaBusqueda, ResultadoBusqueda[]> {
-  const indice = indiceOpcional ?? construirIndiceGlobal(sesion);
+  const indice = indiceOpcional ?? construirIndiceGlobal(sesion, archivos);
 
   const vacio: Record<CategoriaBusqueda, ResultadoBusqueda[]> = {
     acciones: [],
@@ -229,6 +263,19 @@ export function buscarEnIndiceGlobal(
   const palabras = qLimpia.split(/\s+/).filter(Boolean);
   const digitosQuery = qLimpia.replace(/\D/g, '');
 
+  const coincidencias: Record<
+    CategoriaBusqueda,
+    Array<{ item: ResultadoBusqueda; rango: number }>
+  > = {
+    acciones: [],
+    conversaciones: [],
+    contactos: [],
+    cotizaciones: [],
+    oportunidades: [],
+    viajes: [],
+    catalogo: [],
+  };
+
   for (const item of indice) {
     if (filtroCategoria && filtroCategoria !== 'todos' && item.categoria !== filtroCategoria) {
       continue;
@@ -245,14 +292,19 @@ export function buscarEnIndiceGlobal(
     const coincideTelefono = digitosQuery.length >= 4 && digitosItem.includes(digitosQuery);
 
     if (coincideTexto || coincideTelefono) {
-      const limite =
-        filtroCategoria && filtroCategoria !== 'todos'
-          ? limitePorCategoria * 3
-          : limitePorCategoria;
-      if (vacio[item.categoria].length < limite) {
-        vacio[item.categoria].push(item);
-      }
+      coincidencias[item.categoria].push({ item, rango: rangoDeTitulo(item.titulo, palabras) });
     }
+  }
+
+  const hayFiltro = filtroCategoria && filtroCategoria !== 'todos';
+  const limite = hayFiltro ? limitePorCategoria * 3 : limitePorCategoria;
+  for (const cat of Object.keys(vacio) as CategoriaBusqueda[]) {
+    // Orden estable: primero lo que el título empieza o contiene, luego lo que solo coincide
+    // en el subtítulo («seguimientos» es el módulo Seguimientos antes que la descripción de Hoy).
+    vacio[cat] = coincidencias[cat]
+      .sort((a, b) => a.rango - b.rango)
+      .slice(0, limite)
+      .map((c) => c.item);
   }
 
   return vacio;

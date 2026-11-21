@@ -21,7 +21,9 @@ import {
   type CategoriaBusqueda,
 } from '../../lib/buscador-global-logica';
 import { useFocoModal } from '../../lib/use-foco-modal';
-import { usePermisos } from '../../lib/permisos';
+import { usePermisos, PERMISO_ARCHIVO_VER } from '../../lib/permisos';
+import { listarArchivos } from '../../lib/archivos-api';
+import type { ResumenDeArchivo } from '@viajapro/contracts';
 
 interface ModalBusquedaGlobalProps {
   abierto: boolean;
@@ -71,12 +73,13 @@ const PESTANAS_FILTRO: Array<{ id: CategoriaBusqueda | 'todos'; label: string }>
   { id: 'catalogo', label: 'Catálogo' },
   { id: 'cotizaciones', label: 'Cotizaciones' },
   { id: 'contactos', label: 'Contactos' },
+  { id: 'viajes', label: 'Archivos' },
   { id: 'acciones', label: 'Acciones' },
 ];
 
 export function ModalBusquedaGlobal({ abierto, alCerrar }: ModalBusquedaGlobalProps) {
   const router = useRouter();
-  const { sesion } = usePermisos();
+  const { sesion, tienePermiso } = usePermisos();
   const [consulta, setConsulta] = useState('');
   const [filtroCategoria, setFiltroCategoria] = useState<CategoriaBusqueda | 'todos'>('todos');
   const [indiceSeleccionado, setIndiceSeleccionado] = useState(0);
@@ -97,10 +100,55 @@ export function ModalBusquedaGlobal({ abierto, alCerrar }: ModalBusquedaGlobalPr
     }
   }, [abierto]);
 
+  // Archivos de viaje: la misma fuente que `/viajes` (demo o API real), pedida al abrir. Sin el
+  // permiso `archivo.ver` la API respondería 403, así que ni se pide.
+  const puedeVerArchivos = tienePermiso(PERMISO_ARCHIVO_VER);
+  const [archivos, setArchivos] = useState<ResumenDeArchivo[]>([]);
+  const [estadoArchivos, setEstadoArchivos] = useState<'cargando' | 'listo' | 'error'>('cargando');
+  const [reintentos, setReintentos] = useState(0);
+
+  useEffect(() => {
+    if (!abierto || !puedeVerArchivos) return;
+    let activo = true;
+    setEstadoArchivos('cargando');
+    listarArchivos('TODOS')
+      .then((datos) => {
+        if (!activo) return;
+        setArchivos(datos);
+        setEstadoArchivos('listo');
+      })
+      .catch(() => {
+        if (!activo) return;
+        setArchivos([]);
+        setEstadoArchivos('error');
+      });
+    return () => {
+      activo = false;
+    };
+  }, [abierto, puedeVerArchivos, reintentos]);
+
   // Resultados agrupados (restringidos por rol según sesion actual)
   const resultadosAgrupados = useMemo(() => {
-    return buscarEnIndiceGlobal(consulta, undefined, 4, filtroCategoria, sesion);
-  }, [consulta, filtroCategoria, sesion]);
+    return buscarEnIndiceGlobal(consulta, undefined, 4, filtroCategoria, sesion, archivos);
+  }, [consulta, filtroCategoria, sesion, archivos]);
+
+  const avisoArchivos =
+    puedeVerArchivos && estadoArchivos === 'error' ? (
+      <div
+        role="status"
+        data-testid="paleta-archivos-error"
+        className="mx-1 mt-2 flex flex-wrap items-center gap-2 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-200"
+      >
+        <span>No se pudieron cargar los archivos de viaje, por eso no aparecen aquí.</span>
+        <button
+          type="button"
+          onClick={() => setReintentos((n) => n + 1)}
+          className="focus-visible:ring-acento-600 min-h-[44px] rounded-lg px-3 font-semibold underline focus-visible:ring-2 focus-visible:outline-none"
+        >
+          Reintentar
+        </button>
+      </div>
+    ) : null;
 
   // Lista plana para navegación por teclado
   const itemsPlanos = useMemo(() => {
@@ -227,11 +275,20 @@ export function ModalBusquedaGlobal({ abierto, alCerrar }: ModalBusquedaGlobalPr
 
         {/* Lista de Resultados */}
         <div className="max-h-[55vh] scrollbar-thin overflow-y-auto p-2">
+          {avisoArchivos}
           {itemsPlanos.length === 0 ? (
             <div className="py-12 text-center text-sm text-neutral-500 dark:text-neutral-400">
-              No se encontraron resultados para &ldquo;
-              <span className="font-semibold">{consulta}</span>
-              &rdquo;.
+              {puedeVerArchivos && estadoArchivos === 'cargando' ? (
+                'Buscando…'
+              ) : consulta.trim() ? (
+                <>
+                  No se encontraron resultados para &ldquo;
+                  <span className="font-semibold">{consulta}</span>
+                  &rdquo;.
+                </>
+              ) : (
+                'Escribe para buscar o elige una categoría.'
+              )}
             </div>
           ) : (
             Object.entries(resultadosAgrupados).map(([catKey, items]) => {
