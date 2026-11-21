@@ -17,6 +17,8 @@ function resumen(p: {
   sinNeto?: number;
 }): ResumenDeReportes {
   return {
+    alcance: 'AGENCIA' as const,
+    asesorId: null,
     periodo: base,
     cotizaciones: {
       creadas: p.enviadas,
@@ -56,8 +58,8 @@ describe('tasas con n mínimo (T-184)', () => {
     const v = transformarResumenReporte(
       resumen({ enviadas: 1, aceptadas: 1, ganadas: 1, perdidas: 0 }),
     );
-    expect(v.oportunidades.tasaConversionTexto).toBe('n insuficiente (n = 1)');
-    expect(v.cotizaciones.tasaAceptacionTexto).toBe('n insuficiente (n = 1)');
+    expect(v.oportunidades.tasaConversionTexto).toBe('1 de 1');
+    expect(v.cotizaciones.tasaAceptacionTexto).toBe('1 de 1');
     expect(v.oportunidades.tasaConversionN).toBe(1);
   });
 

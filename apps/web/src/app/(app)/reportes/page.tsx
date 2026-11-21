@@ -1,7 +1,7 @@
 'use client';
 
 import React, { Suspense, useCallback, useEffect, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import {
   AlertTriangle,
   BarChart3,
@@ -14,7 +14,9 @@ import { AvisoReportesDeAdministracion } from '../../../components/comun/aviso-d
 import { EsqueletoReportes } from '../../../components/comun/esqueletos';
 import { formatearDinero, ZONA_HORARIA_COLOMBIA, formatearFecha } from '../../../lib/formato';
 import { usePermisos } from '../../../lib/permisos';
-import { hrefDePestana, leerPestanaDeUrl } from '../../../lib/parametros-url';
+import { estaUsandoApiReal, obtenerPendientesDelDiaApi } from '../../../lib/crm-api';
+import { MisNumeros, type SeguimientosDelAsesor } from '../../../components/reportes/mis-numeros';
+import { tituloDeReportes, tituloDeReportesSinRespuesta } from '../../../lib/alcance-de-vista';
 import {
   ErrorReportesApi,
   obtenerResumenDeReportesApi,
@@ -29,12 +31,11 @@ import {
   TEXTO_SIN_DATOS,
   transformarResumenReporte,
   type RangoPeriodo,
-  type RolVistaReporte,
   type VistaReporteResumen,
 } from '../../../lib/reportes-logica';
 
 import { TituloDePantalla } from '../../../components/comun/titulo-de-pantalla';
-const PERIODOS: RangoPeriodo[] = ['ultimos_30_dias', 'este_mes', 'trimestre', 'ano'];
+const PERIODOS: RangoPeriodo[] = ['este_mes', 'ultimos_30_dias', 'trimestre', 'ano'];
 
 const tarjetaClase =
   'rounded-xl border border-neutral-200 bg-white p-4 shadow-xs dark:border-neutral-800 dark:bg-neutral-900';
@@ -55,7 +56,10 @@ type EstadoReportes =
   | {
       tipo: 'listo';
       vista: VistaReporteResumen;
+      /** Lo decidió la respuesta de la API, no un permiso de la web (ADR-0035 §5). */
+      alcance: 'PROPIO' | 'AGENCIA';
       diasAnteriores: number | null;
+      seguimientos: SeguimientosDelAsesor | null;
     };
 
 interface ReportesPageProps {
@@ -63,34 +67,20 @@ interface ReportesPageProps {
   ahora?: () => Date;
 }
 
-/** Lista cerrada de `?pestana=` (la vista del reporte); la primera es la de por defecto (T-318). */
-const PESTANAS_REPORTES = ['dueno', 'asesor'] as const;
-const ROL_POR_PESTANA: Record<(typeof PESTANAS_REPORTES)[number], RolVistaReporte> = {
-  dueno: 'DUENO',
-  asesor: 'ASESOR',
-};
-
 function ReportesContenido({ ahora }: ReportesPageProps) {
-  const { puedeVerNetoYMargen } = usePermisos();
-  const router = useRouter();
+  const { sesion } = usePermisos();
   const searchParams = useSearchParams();
-  const parametros = searchParams ?? new URLSearchParams();
-  const rol = ROL_POR_PESTANA[leerPestanaDeUrl(parametros, PESTANAS_REPORTES)];
-  // `replace`: cambiar de vista no es navegar; Atrás sale de Reportes.
-  const setRol = (r: RolVistaReporte) =>
-    router.replace(
-      hrefDePestana('/reportes', r === 'DUENO' ? 'dueno' : 'asesor', PESTANAS_REPORTES, parametros),
-      { scroll: false },
-    );
-  const [periodo, setPeriodo] = useState<RangoPeriodo>('ultimos_30_dias');
+  // Solo demostración: qué alcance simular. Con la API real lo decide el servidor.
+  const alcanceDemo: 'PROPIO' | 'AGENCIA' =
+    searchParams?.get('alcanceDemo') === 'propio' ? 'PROPIO' : 'AGENCIA';
+  // «Míos» filtra la vista de agencia; la API lo impone (un ajeno sin permiso responde 403).
+  const [soloMios, setSoloMios] = useState(false);
+  const [periodo, setPeriodo] = useState<RangoPeriodo>('este_mes');
   const [estado, setEstado] = useState<EstadoReportes>({ tipo: 'cargando' });
   const [intento, setIntento] = useState(0);
   // Zona IANA de la agencia (R9). `null` mientras se lee; si falla, respaldo a Bogotá.
   const [zonaAgencia, setZonaAgencia] = useState<string | null>(null);
   const zona = zonaAgencia ?? ZONA_HORARIA_COLOMBIA;
-
-  const rolEfectivo: RolVistaReporte = puedeVerNetoYMargen ? rol : 'ASESOR';
-  const esDueño = rolEfectivo === 'DUENO';
 
   const recargar = useCallback(() => {
     setEstado({ tipo: 'cargando' });
@@ -114,22 +104,36 @@ function ReportesContenido({ ahora }: ReportesPageProps) {
     const reloj = ahora ? ahora() : new Date();
     const rango = convertirPeriodoAInstantesUtc(periodo, reloj, zonaAgencia);
     const previo = rangoAnterior(rango);
+    const opciones = {
+      ...(soloMios ? { asesorId: 'yo' } : {}),
+      ...(!estaUsandoApiReal() ? { alcanceDemo } : {}),
+    };
 
     void (async () => {
       try {
         const [resumen, anterior] = await Promise.all([
-          obtenerResumenDeReportesApi(rango, control.signal),
+          obtenerResumenDeReportesApi(rango, control.signal, opciones),
           previo
-            ? obtenerResumenDeReportesApi(previo, control.signal).catch(() => null)
+            ? obtenerResumenDeReportesApi(previo, control.signal, opciones).catch(() => null)
             : Promise.resolve(null),
         ]);
+
+        // Sus seguimientos: solo con la vista propia. Si falla, el bloque se omite (no se pintan ceros).
+        const seguimientos: SeguimientosDelAsesor | null =
+          resumen.alcance === 'PROPIO'
+            ? await obtenerPendientesDelDiaApi('yo')
+                .then((p) => ({ vencidos: p.vencidos.length, deHoy: p.deHoy.length }))
+                .catch(() => null)
+            : null;
 
         if (control.signal.aborted) return;
 
         setEstado({
           tipo: 'listo',
           vista: transformarResumenReporte(resumen, anterior),
+          alcance: resumen.alcance,
           diasAnteriores: anterior ? diasDelRango(rango) : null,
+          seguimientos,
         });
       } catch (err) {
         if (control.signal.aborted) return;
@@ -147,9 +151,13 @@ function ReportesContenido({ ahora }: ReportesPageProps) {
     return () => {
       control.abort();
     };
-  }, [periodo, intento, ahora, zonaAgencia]);
+  }, [periodo, intento, ahora, zonaAgencia, soloMios, alcanceDemo]);
 
   const vista = estado.tipo === 'listo' ? estado.vista : null;
+  // Titular: la respuesta manda; antes de que llegue (o si falla), el permiso solo rotula.
+  const alcance = estado.tipo === 'listo' ? estado.alcance : null;
+  const tituloPantalla = alcance ? tituloDeReportes(alcance) : tituloDeReportesSinRespuesta(sesion);
+  const puedeFiltrarAgencia = alcance === 'AGENCIA';
 
   return (
     <>
@@ -165,6 +173,7 @@ function ReportesContenido({ ahora }: ReportesPageProps) {
                 </span>
                 <TituloDePantalla
                   modulo="reportes"
+                  etiqueta={tituloPantalla}
                   className="text-xl font-bold text-neutral-900 dark:text-white"
                 />
               </div>
@@ -174,48 +183,41 @@ function ReportesContenido({ ahora }: ReportesPageProps) {
                       new Date(Date.parse(vista.periodo.hasta) - 1).toISOString(),
                       zona,
                     )} (zona horaria: ${zona}).`
-                  : 'Lectura ejecutiva de ventas, cuellos de botella en el embudo y tiempos de atención.'}
+                  : alcance === 'PROPIO' || (!alcance && tituloPantalla === 'Mis números')
+                    ? 'Tus cierres, cotizaciones, oportunidades y tiempos de respuesta.'
+                    : 'Lectura ejecutiva de ventas, cuellos de botella en el embudo y tiempos de atención.'}
               </p>
             </div>
 
             {/* Controles de Vista y Período */}
             <div className="flex flex-wrap items-center gap-3">
-              {/* Conmutador de Rol (Solo si tiene permiso cotizacion.ver_neto_y_margen) */}
-              {puedeVerNetoYMargen ? (
-                <div className="flex items-center rounded-lg border border-neutral-200 bg-neutral-100 p-0.5 text-xs dark:border-neutral-800 dark:bg-neutral-800">
-                  <button
-                    type="button"
-                    onClick={() => setRol('DUENO')}
-                    className={`min-h-[44px] rounded-md px-3.5 py-2 font-medium transition-colors ${
-                      esDueño
-                        ? 'bg-white text-neutral-900 shadow-xs dark:bg-neutral-700 dark:text-white'
-                        : 'text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white'
-                    }`}
+              {/* Ámbito: solo si la respuesta es de agencia (la API ya impone qué filas) */}
+              {puedeFiltrarAgencia && (
+                <div className="flex min-h-[44px] items-center rounded-lg border border-neutral-300 bg-white px-3 py-2 text-xs dark:border-neutral-700 dark:bg-neutral-800">
+                  <label htmlFor="reportes-ambito" className="sr-only">
+                    Qué cifras ver
+                  </label>
+                  <select
+                    id="reportes-ambito"
+                    data-testid="reportes-ambito"
+                    value={soloMios ? 'yo' : 'agencia'}
+                    onChange={(e) => setSoloMios(e.target.value === 'yo')}
+                    className="bg-transparent font-medium text-neutral-700 outline-hidden dark:text-neutral-200"
                   >
-                    Vista Dueño (Gerencial)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setRol('ASESOR')}
-                    className={`min-h-[44px] rounded-md px-3.5 py-2 font-medium transition-colors ${
-                      !esDueño
-                        ? 'bg-white text-neutral-900 shadow-xs dark:bg-neutral-700 dark:text-white'
-                        : 'text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white'
-                    }`}
-                  >
-                    Vista Asesor (Operativa)
-                  </button>
-                </div>
-              ) : (
-                <div className="flex min-h-[44px] items-center rounded-lg border border-neutral-200 bg-neutral-100 px-3.5 py-2 text-xs font-medium text-neutral-600 dark:border-neutral-800 dark:bg-neutral-800 dark:text-neutral-300">
-                  Vista Asesor (Operativa)
+                    <option value="agencia">Toda la agencia</option>
+                    <option value="yo">Míos</option>
+                  </select>
                 </div>
               )}
 
               {/* Selector de Período */}
               <div className="flex min-h-[44px] items-center gap-1.5 rounded-lg border border-neutral-300 bg-white px-3 py-2 text-xs dark:border-neutral-700 dark:bg-neutral-800">
                 <Calendar className="h-4 w-4 text-neutral-400" />
+                <label htmlFor="reportes-periodo" className="sr-only">
+                  Periodo
+                </label>
                 <select
+                  id="reportes-periodo"
                   value={periodo}
                   onChange={(e) => setPeriodo(e.target.value as RangoPeriodo)}
                   className="bg-transparent font-medium text-neutral-700 outline-hidden dark:text-neutral-200"
@@ -266,13 +268,14 @@ function ReportesContenido({ ahora }: ReportesPageProps) {
                 Reintentar
               </button>
             </div>
-          ) : (
-            <ReportesListo
+          ) : estado.alcance === 'PROPIO' ? (
+            <MisNumeros
               vista={estado.vista}
               diasAnteriores={estado.diasAnteriores}
-              puedeVerNetoYMargen={puedeVerNetoYMargen}
-              esDueño={esDueño}
+              seguimientos={estado.seguimientos}
             />
+          ) : (
+            <ReportesListo vista={estado.vista} diasAnteriores={estado.diasAnteriores} />
           )}
         </div>
       </div>
@@ -283,16 +286,9 @@ function ReportesContenido({ ahora }: ReportesPageProps) {
 interface ReportesListoProps {
   vista: VistaReporteResumen;
   diasAnteriores: number | null;
-  puedeVerNetoYMargen: boolean;
-  esDueño: boolean;
 }
 
-function ReportesListo({
-  vista,
-  diasAnteriores,
-  puedeVerNetoYMargen,
-  esDueño,
-}: ReportesListoProps) {
+function ReportesListo({ vista, diasAnteriores }: ReportesListoProps) {
   const sinActividad =
     vista.cotizaciones.creadas === 0 &&
     vista.cotizaciones.enviadas === 0 &&
@@ -410,8 +406,8 @@ function ReportesListo({
         </div>
       </section>
 
-      {/* Neto y margen: solo si el servidor los entregó (permiso) y se eligió vista dueño */}
-      {puedeVerNetoYMargen && esDueño && (
+      {/* Neto y margen: solo si el servidor los entregó (cotizacion.ver_neto_y_margen) */}
+      {vista.hayConfidencial && (
         <section
           data-testid="seccion-margen-confidencial"
           className="rounded-xl border border-emerald-200 bg-emerald-50/40 p-4 dark:border-emerald-900/40 dark:bg-emerald-950/20"

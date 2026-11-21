@@ -10,6 +10,8 @@ import {
 
 function resumenCon(respuesta: ResumenDeReportes['respuesta']): ResumenDeReportes {
   return {
+    alcance: 'AGENCIA' as const,
+    asesorId: null,
     periodo: { desde: '2026-10-01T05:00:00.000Z', hasta: '2026-11-01T05:00:00.000Z' },
     cotizaciones: { creadas: 0, enviadas: 0, aceptadas: 0, tasaAceptacion: null },
     ventasPorMoneda: [],

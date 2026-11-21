@@ -45,7 +45,9 @@ const RESUMEN_MOCK: crmApi.ResumenTrabajoDelDia = {
     enNegociacion: 1,
     ganadas: 4,
   },
-  cotizacionesPorVencer: 2,
+  cotizacionesAbiertas: 2,
+  cotizacionesAbiertasTruncado: false,
+  enviadasPorAntiguedad: { hastaTresDias: 1, deCuatroASiete: 0, masDeSiete: 1 },
   totalVentasEstimadasCop: '24000000',
   estaVacio: false,
 };
@@ -138,7 +140,7 @@ describe('InicioPage (T-020 & T-037) - Inicio del asesor con datos reales y pend
     expect(within(tarjetaPipeline).getByText('7')).toBeDefined();
     expect(within(tarjetaPipeline).getByText(/3 leads/i)).toBeDefined();
 
-    // Tarjeta 3: Cotizaciones por vencer
+    // Tarjeta 3: Cotizaciones abiertas
     const tarjetaCotiz = screen.getByTestId('tarjeta-cotizaciones-vencer');
     expect(tarjetaCotiz).toBeDefined();
     expect(tarjetaCotiz.getAttribute('href')).toBe('/cotizaciones');
@@ -157,7 +159,9 @@ describe('InicioPage (T-020 & T-037) - Inicio del asesor con datos reales y pend
       conversacionesPendientes: 0,
       conversacionesSinAsignar: 0,
       oportunidadesActivas: 0,
-      cotizacionesPorVencer: 0,
+      cotizacionesAbiertas: 0,
+      cotizacionesAbiertasTruncado: false,
+      enviadasPorAntiguedad: { hastaTresDias: 0, deCuatroASiete: 0, masDeSiete: 0 },
       oportunidadesPorEtapa: { nuevoLead: 0, enCotizacion: 0, enNegociacion: 0, ganadas: 0 },
       estaVacio: true,
     });

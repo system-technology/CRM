@@ -43,7 +43,7 @@ describe('Inicio Lógica (T-037) - Saludo temporal y agregación de métricas de
     expect(resumen.estaVacio).toBe(true);
     expect(resumen.conversacionesPendientes).toBe(0);
     expect(resumen.oportunidadesActivas).toBe(0);
-    expect(resumen.cotizacionesPorVencer).toBe(0);
+    expect(resumen.cotizacionesAbiertas).toBe(0);
     expect(resumen.totalVentasEstimadasCop).toBe('0');
   });
 
@@ -219,7 +219,7 @@ describe('Inicio Lógica (T-037) - Saludo temporal y agregación de métricas de
     expect(resumen.oportunidadesPorEtapa.ganadas).toBe(1);
 
     // Cotizaciones por vencer/enviadas: 1
-    expect(resumen.cotizacionesPorVencer).toBe(1);
+    expect(resumen.cotizacionesAbiertas).toBe(1);
 
     // Suma estimada: 3M + 5M + 8M = 16.000.000 COP
     expect(resumen.totalVentasEstimadasCop).toBe('16000000');
@@ -342,5 +342,33 @@ describe('Inicio Lógica (T-020) - Seguimientos pendientes del día', () => {
     const hora = formatearHoraSeguimiento('2026-10-27T19:30:00.000Z');
     expect(hora).toBeTruthy();
     expect(hora.length).toBeGreaterThan(3);
+  });
+});
+
+describe('cotizaciones abiertas por antigüedad (T-343)', () => {
+  const ahora = new Date('2026-11-21T15:00:00.000Z');
+  const fila = (estado: string, enviadaEn: string | null) =>
+    ({ id: `c-${estado}-${enviadaEn}`, estado, enviadaEn }) as never;
+
+  it('cuenta borradores y enviadas, y reparte las enviadas por días de espera', () => {
+    const r = calcularResumenTrabajo(
+      null,
+      null,
+      {
+        datos: [
+          fila('ENVIADA', '2026-11-20T10:00:00.000Z'), // 1 día
+          fila('ENVIADA', '2026-11-16T10:00:00.000Z'), // 5 días
+          fila('ENVIADA', '2026-11-01T10:00:00.000Z'), // 20 días
+          fila('BORRADOR', null),
+          fila('ACEPTADA', '2026-11-02T10:00:00.000Z'), // no es abierta
+        ],
+        pageInfo: { nextCursor: 'x', hasMore: true },
+      },
+      ahora,
+    );
+    expect(r.cotizacionesAbiertas).toBe(4);
+    expect(r.enviadasPorAntiguedad).toEqual({ hastaTresDias: 1, deCuatroASiete: 1, masDeSiete: 1 });
+    // Hay más páginas: la cifra es un mínimo y la pantalla dice «o más».
+    expect(r.cotizacionesAbiertasTruncado).toBe(true);
   });
 });

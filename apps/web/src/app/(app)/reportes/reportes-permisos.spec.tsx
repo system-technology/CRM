@@ -2,6 +2,7 @@ import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import ReportesPage from './page';
+import * as crmApi from '../../../lib/crm-api';
 import * as authApi from '../../../lib/auth-api';
 import * as reportesApi from '../../../lib/reportes-api';
 import type { ResumenDeReportes, SesionActual } from '@viajapro/contracts';
@@ -61,12 +62,26 @@ const SESION_DUENO: SesionActual = {
       'usuarios.administrar',
       'roles.administrar',
       'conversaciones.ver_todas',
+      'reportes.ver_agencia',
     ],
   },
 };
 
-function fixtureDosMonedas(conMargen: boolean): ResumenDeReportes {
+const ASESOR_ID = '01932000-0000-7000-8000-000000000011';
+
+/** Lo que la API devuelve según el alcance: la web pinta esto, no deduce nada del permiso. */
+function fixtureDosMonedas(
+  conMargen: boolean,
+  alcance: 'AGENCIA' | 'PROPIO' = 'AGENCIA',
+): ResumenDeReportes {
+  const f = fixtureAgencia(conMargen);
+  return alcance === 'PROPIO' ? { ...f, alcance: 'PROPIO', asesorId: ASESOR_ID } : f;
+}
+
+function fixtureAgencia(conMargen: boolean): Extract<ResumenDeReportes, { alcance: 'AGENCIA' }> {
   return {
+    alcance: 'AGENCIA' as const,
+    asesorId: null,
     periodo: { desde: '2026-10-05T05:00:00.000Z', hasta: '2026-11-04T05:00:00.000Z' },
     cotizaciones: { creadas: 4, enviadas: 3, aceptadas: 2, tasaAceptacion: 66.7 },
     ventasPorMoneda: [
@@ -123,191 +138,147 @@ function fixtureDosMonedas(conMargen: boolean): ResumenDeReportes {
   };
 }
 
-describe('ReportesPage - Permisos, dos monedas y GET /api/v1/reportes/resumen (T-142)', () => {
+describe('ReportesPage: la vista la decide la respuesta (T-343, ADR-0035 §5)', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     busqueda = '';
     replace.mockClear();
+    vi.spyOn(crmApi, 'obtenerPendientesDelDiaApi').mockResolvedValue({
+      vencidos: [{ id: 'a' }, { id: 'b' }],
+      deHoy: [{ id: 'c' }],
+    } as never);
   });
 
-  it('sin permiso cotizacion.ver_neto_y_margen: no muestra margen ni costo neto en dos monedas', async () => {
+  it('respuesta PROPIO: titula «Mis números», sin filtro de agencia ni vista de administración', async () => {
     vi.spyOn(authApi, 'obtenerSesionActualApi').mockResolvedValue(SESION_ASESOR);
     const espia = vi
       .spyOn(reportesApi, 'obtenerResumenDeReportesApi')
-      .mockResolvedValue(fixtureDosMonedas(false));
+      .mockResolvedValue(fixtureDosMonedas(false, 'PROPIO'));
 
     render(<ReportesPage />);
 
-    expect(await screen.findByRole('heading', { level: 1, name: 'Reportes' })).toBeDefined();
-
-    // Solo vista asesor, sin selector de rol de dueño
-    expect(await screen.findByText(/Vista Asesor \(Operativa\)/i)).toBeDefined();
-    expect(screen.queryByRole('button', { name: /Vista Dueño/i })).toBeNull();
-
-    // Las dos monedas se muestran de forma independiente
-    expect(await screen.findByTestId('ventas-COP')).toBeDefined();
-    expect(screen.getByTestId('ventas-USD')).toBeDefined();
-    expect(screen.getByTestId('ventas-COP').textContent).toContain('9.100.000');
-    expect(screen.getByTestId('ventas-USD').textContent).toContain('1.250,00');
-
-    // Confidencial no está en el DOM
+    expect(await screen.findByRole('heading', { level: 1, name: 'Mis números' })).toBeDefined();
+    expect(await screen.findByTestId('mis-numeros')).toBeDefined();
+    // Dinero por moneda, sin convertir ni sumar (R8).
+    expect(screen.getByTestId('mn-ventas-COP').textContent).toContain('9.100.000');
+    expect(screen.getByTestId('mn-ventas-USD').textContent).toContain('1.250,00');
+    // Nada de agencia: ni conmutador, ni filtro, ni los KPI de administración.
+    expect(screen.queryByRole('button', { name: /Vista (Dueño|Asesor)/i })).toBeNull();
+    expect(screen.queryByTestId('reportes-ambito')).toBeNull();
+    expect(screen.queryByTestId('kpi-ventas')).toBeNull();
     expect(screen.queryByTestId('seccion-margen-confidencial')).toBeNull();
-    expect(screen.queryByText(/Costo Neto Mayoristas:/i)).toBeNull();
-    expect(screen.queryByText(/Margen Comercial/i)).toBeNull();
-
+    expect(screen.queryByText(/Margen/i)).toBeNull();
+    // Sus seguimientos salen de la API (`yo`).
+    expect(screen.getByTestId('mn-seguimientos-vencidos').textContent).toContain('2');
+    expect(screen.getByTestId('mn-seguimientos-hoy').textContent).toContain('1');
     expect(espia).toHaveBeenCalled();
   });
 
-  it('con permiso cotizacion.ver_neto_y_margen y respuesta con margen: muestra sección confidencial con dos monedas', async () => {
+  it('n < 20: la fracción «2 de 3», nunca un porcentaje', async () => {
+    vi.spyOn(authApi, 'obtenerSesionActualApi').mockResolvedValue(SESION_ASESOR);
+    vi.spyOn(reportesApi, 'obtenerResumenDeReportesApi').mockResolvedValue(
+      fixtureDosMonedas(false, 'PROPIO'),
+    );
+    render(<ReportesPage />);
+    const tasa = await screen.findByTestId('mn-tasa-aceptacion');
+    expect(tasa.textContent).toBe('2 de 3');
+    expect(tasa.textContent).not.toContain('%');
+  });
+
+  it('respuesta AGENCIA con margen: «Reportes de la agencia», filtro y sección de margen sin conmutador', async () => {
     vi.spyOn(authApi, 'obtenerSesionActualApi').mockResolvedValue(SESION_DUENO);
     vi.spyOn(reportesApi, 'obtenerResumenDeReportesApi').mockResolvedValue(fixtureDosMonedas(true));
 
     render(<ReportesPage />);
 
-    // El botón del conmutador de dueño está disponible y activo
-    const btnDueno = await screen.findByRole('button', { name: /Vista Dueño/i });
-    expect(btnDueno).toBeDefined();
-
-    // Ambas monedas en ventas
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Reportes de la agencia' }),
+    ).toBeDefined();
+    expect(screen.queryByRole('button', { name: /Vista (Dueño|Asesor)/i })).toBeNull();
     expect(await screen.findByTestId('ventas-COP')).toBeDefined();
     expect(screen.getByTestId('ventas-USD')).toBeDefined();
-
-    // En la vista de dueño, el bloque confidencial existe con ambas monedas
-    const seccionConfidencial = await screen.findByTestId('seccion-margen-confidencial');
-    expect(seccionConfidencial).toBeDefined();
+    expect(await screen.findByTestId('seccion-margen-confidencial')).toBeDefined();
     expect(screen.getByTestId('margen-COP')).toBeDefined();
     expect(screen.getByTestId('margen-USD')).toBeDefined();
-
-    expect(screen.getByText(/Margen cotizado/i)).toBeDefined();
     expect(screen.getAllByText(/Costo Neto Mayoristas:/i).length).toBe(2);
-    expect(screen.getAllByText(/Margen Comercial:/i).length).toBe(2);
+    expect(screen.getByTestId('reportes-ambito')).toBeDefined();
   });
 
-  it('alternar a vista asesor escribe ?pestana=asesor con replace (no ensucia el historial)', async () => {
+  it('respuesta AGENCIA sin las claves de margen: la sección no existe (la API no las calculó)', async () => {
     vi.spyOn(authApi, 'obtenerSesionActualApi').mockResolvedValue(SESION_DUENO);
-    vi.spyOn(reportesApi, 'obtenerResumenDeReportesApi').mockResolvedValue(fixtureDosMonedas(true));
-
+    vi.spyOn(reportesApi, 'obtenerResumenDeReportesApi').mockResolvedValue(
+      fixtureDosMonedas(false),
+    );
     render(<ReportesPage />);
-
-    await screen.findByTestId('seccion-margen-confidencial');
-    fireEvent.click(screen.getByRole('button', { name: /Vista Asesor/i }));
-    expect(replace).toHaveBeenCalledWith('/reportes?pestana=asesor', { scroll: false });
-  });
-
-  it('?pestana=asesor abre la vista asesor oculta el margen aunque el dueño tenga permiso', async () => {
-    busqueda = 'pestana=asesor';
-    vi.spyOn(authApi, 'obtenerSesionActualApi').mockResolvedValue(SESION_DUENO);
-    vi.spyOn(reportesApi, 'obtenerResumenDeReportesApi').mockResolvedValue(fixtureDosMonedas(true));
-
-    render(<ReportesPage />);
-
     await screen.findByTestId('kpi-ventas');
     expect(screen.queryByTestId('seccion-margen-confidencial')).toBeNull();
     expect(screen.queryByText(/Costo Neto Mayoristas:/i)).toBeNull();
   });
 
-  it('?pestana inválida cae a la vista de dueño; volver a ella limpia el parámetro', async () => {
-    busqueda = 'pestana=hackeame';
+  it('«Míos» vuelve a pedir el resumen con asesorId=yo', async () => {
     vi.spyOn(authApi, 'obtenerSesionActualApi').mockResolvedValue(SESION_DUENO);
-    vi.spyOn(reportesApi, 'obtenerResumenDeReportesApi').mockResolvedValue(fixtureDosMonedas(true));
-
-    render(<ReportesPage />);
-
-    expect(await screen.findByTestId('seccion-margen-confidencial')).toBeDefined();
-    fireEvent.click(screen.getByRole('button', { name: /Vista Dueño/i }));
-    expect(replace).toHaveBeenCalledWith('/reportes', { scroll: false });
-  });
-
-  it('el selector de periodo convierte a instantes UTC con la zona horaria de la agencia y filtra', async () => {
-    vi.spyOn(authApi, 'obtenerSesionActualApi').mockResolvedValue(SESION_ASESOR);
     const espia = vi
       .spyOn(reportesApi, 'obtenerResumenDeReportesApi')
       .mockResolvedValue(fixtureDosMonedas(false));
-
-    // Reloj fijo: 2026-11-04T15:00:00Z (10:00 Bogotá)
-    const relojFijo = () => new Date('2026-11-04T15:00:00.000Z');
-    render(<ReportesPage ahora={relojFijo} />);
-
-    await screen.findByTestId('kpi-ventas');
-
-    // Primera llamada (ultimos_30_dias por defecto)
-    expect(espia).toHaveBeenCalledWith(
-      expect.objectContaining({
-        desde: expect.any(String),
-        hasta: expect.any(String),
-      }),
-      expect.any(AbortSignal),
-    );
-
-    // Cambiar periodo a 'este_mes'
-    const select = screen.getByRole('combobox');
-    fireEvent.change(select, { target: { value: 'este_mes' } });
-
+    render(<ReportesPage />);
+    const filtro = await screen.findByTestId('reportes-ambito');
+    fireEvent.change(filtro, { target: { value: 'yo' } });
     await waitFor(() => {
-      // Debe haber llamado a la API con el inicio del mes en Bogotá (2026-11-01T05:00:00.000Z)
-      const llamadaRango = espia.mock.calls.find((c) => c[0]?.desde === '2026-11-01T05:00:00.000Z');
-      expect(llamadaRango).toBeDefined();
+      expect(
+        espia.mock.calls.some(
+          (c) => (c[2] as { asesorId?: string } | undefined)?.asesorId === 'yo',
+        ),
+      ).toBe(true);
     });
   });
 
-  it('muestra la mediana como cifra principal de respuesta y la cohorte explícita', async () => {
+  it('el periodo por defecto es el mes calendario en la zona de la agencia, con comparación', async () => {
     vi.spyOn(authApi, 'obtenerSesionActualApi').mockResolvedValue(SESION_ASESOR);
-    vi.spyOn(reportesApi, 'obtenerResumenDeReportesApi').mockResolvedValue(
-      fixtureDosMonedas(false),
-    );
+    const espia = vi
+      .spyOn(reportesApi, 'obtenerResumenDeReportesApi')
+      .mockResolvedValue(fixtureDosMonedas(false, 'PROPIO'));
 
-    render(<ReportesPage />);
+    // Reloj fijo: 2026-11-04T15:00:00Z (10:00 Bogotá)
+    render(<ReportesPage ahora={() => new Date('2026-11-04T15:00:00.000Z')} />);
+    await screen.findByTestId('mis-numeros');
 
-    const kpiRespuesta = await screen.findByTestId('kpi-respuesta');
-    expect(kpiRespuesta.textContent).toContain('Primera respuesta (mediana)');
-    expect(kpiRespuesta.textContent).toContain('8,5 min');
-    expect(kpiRespuesta.textContent).toContain('Promedio: 14,2 min');
-    expect(kpiRespuesta.textContent).toContain(
-      '8 de 10 respondidas (n insuficiente para el porcentaje)',
-    );
+    // Mes en curso: del 1 de noviembre (05:00 UTC) al final del día 4.
+    expect(espia.mock.calls.some((c) => c[0]?.desde === '2026-11-01T05:00:00.000Z')).toBe(true);
+    // Periodo anterior del mismo largo (4 días): del 28 de octubre al 1 de noviembre.
+    expect(espia.mock.calls.some((c) => c[0]?.desde === '2026-10-28T05:00:00.000Z')).toBe(true);
 
-    const kpiCotizaciones = screen.getByTestId('kpi-cotizaciones');
-    expect(kpiCotizaciones.textContent).toContain(
-      '2 aceptadas de 3 enviadas en el periodo (4 creadas)',
-    );
-
-    const kpiOportunidades = screen.getByTestId('kpi-oportunidades');
-    expect(kpiOportunidades.textContent).toContain(
-      '5 creadas en el periodo (2 ganadas · 1 perdidas · 2 abiertas)',
-    );
+    fireEvent.change(screen.getByLabelText('Periodo'), { target: { value: 'trimestre' } });
+    await waitFor(() => {
+      expect(espia.mock.calls.some((c) => c[0]?.desde === '2026-08-07T05:00:00.000Z')).toBe(true);
+    });
   });
 
-  it('usa la zona horaria de la agencia (GET /agencia/ajustes) para los limites y el subtitulo', async () => {
+  it('usa la zona horaria de la agencia (GET /agencia/ajustes) para los límites y el subtítulo', async () => {
     vi.spyOn(authApi, 'obtenerSesionActualApi').mockResolvedValue(SESION_ASESOR);
     vi.spyOn(reportesApi, 'obtenerZonaHorariaAgenciaApi').mockResolvedValue('Europe/Madrid');
     const espia = vi
       .spyOn(reportesApi, 'obtenerResumenDeReportesApi')
-      .mockResolvedValue(fixtureDosMonedas(false));
+      .mockResolvedValue(fixtureDosMonedas(false, 'PROPIO'));
 
     render(<ReportesPage ahora={() => new Date('2026-11-04T15:00:00.000Z')} />);
-    await screen.findByTestId('kpi-ventas');
-    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'este_mes' } });
+    await screen.findByTestId('mis-numeros');
 
-    await waitFor(() => {
-      expect(espia.mock.calls.some((c) => c[0]?.desde === '2026-10-31T23:00:00.000Z')).toBe(true);
-    });
+    expect(espia.mock.calls.some((c) => c[0]?.desde === '2026-10-31T23:00:00.000Z')).toBe(true);
     expect(screen.getByText(/zona horaria: Europe\/Madrid/)).toBeDefined();
-    expect(screen.queryByText(/hora de Colombia/)).toBeNull();
   });
 
   it('si la zona de la agencia no se puede leer, usa America/Bogota sin romper', async () => {
     vi.spyOn(authApi, 'obtenerSesionActualApi').mockResolvedValue(SESION_ASESOR);
     vi.spyOn(reportesApi, 'obtenerZonaHorariaAgenciaApi').mockResolvedValue(null);
     vi.spyOn(reportesApi, 'obtenerResumenDeReportesApi').mockResolvedValue(
-      fixtureDosMonedas(false),
+      fixtureDosMonedas(false, 'PROPIO'),
     );
-
     render(<ReportesPage />);
-    await screen.findByTestId('kpi-ventas');
+    await screen.findByTestId('mis-numeros');
     expect(screen.getByText(/zona horaria: America\/Bogota/)).toBeDefined();
   });
 
-  it('muestra alerta de sin permiso ante error 403 de la API', async () => {
+  it('403 de la API: aviso de administración, sin nombrar permisos, y el título sigue', async () => {
     vi.spyOn(authApi, 'obtenerSesionActualApi').mockResolvedValue(SESION_ASESOR);
     vi.spyOn(reportesApi, 'obtenerResumenDeReportesApi').mockRejectedValue(
       new reportesApi.ErrorReportesApi('SIN_PERMISO', 'No tienes permiso.', 403),
@@ -316,11 +287,18 @@ describe('ReportesPage - Permisos, dos monedas y GET /api/v1/reportes/resumen (T
     render(<ReportesPage />);
 
     const alerta = await screen.findByTestId('reportes-sin-permiso');
-    expect(alerta).toBeDefined();
     expect(alerta.textContent).toContain('Esta vista es de administración');
-    // Explica el porqué y no nombra el permiso (ADR-0035: la llave cambiará en T-342).
-    expect(alerta.textContent).not.toMatch(/ver_todas|permiso/i);
-    // El menú «Reportes» sigue visible (D3): la pantalla conserva su título y su encabezado.
-    expect(screen.getByRole('heading', { level: 1, name: 'Reportes' })).toBeDefined();
+    expect(alerta.textContent).not.toMatch(/ver_todas|ver_agencia|permiso/i);
+    expect(screen.getByRole('heading', { level: 1 })).toBeDefined();
+  });
+
+  it('error de red: mensaje y «Reintentar»', async () => {
+    vi.spyOn(authApi, 'obtenerSesionActualApi').mockResolvedValue(SESION_ASESOR);
+    vi.spyOn(reportesApi, 'obtenerResumenDeReportesApi').mockRejectedValue(
+      new reportesApi.ErrorReportesApi('ERROR_CONEXION', 'No fue posible conectar.'),
+    );
+    render(<ReportesPage />);
+    expect(await screen.findByTestId('reportes-error')).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Reintentar' })).toBeDefined();
   });
 });

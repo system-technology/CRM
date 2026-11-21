@@ -50,6 +50,11 @@ export interface EntradaDeNavegacion {
    */
   enMenu: boolean;
   detalleAPantallaCompletaEnMovil?: boolean;
+  /**
+   * Una sola entrada, dos títulos (ADR-0035 §5): quien NO tiene `permiso` ve esta etiqueta en lugar
+   * de `etiqueta`. Solo titula; la vista la decide la respuesta de la API, no esta tabla.
+   */
+  variantePropia?: { permiso: Permiso; etiqueta: string; etiquetaCorta?: string };
 }
 
 /** Orden = orden del menú objetivo (ADR-0032 §3). */
@@ -147,7 +152,9 @@ export const NAVEGACION: readonly EntradaDeNavegacion[] = [
   },
   {
     id: 'reportes',
-    etiqueta: 'Reportes',
+    etiqueta: 'Reportes de la agencia',
+    etiquetaCorta: 'Reportes',
+    variantePropia: { permiso: 'reportes.ver_agencia', etiqueta: 'Mis números' },
     descripcion: 'Métricas comerciales y cumplimiento de meta',
     ruta: '/reportes',
     icono: CONFIGURACION_MODULOS.reportes.icono,
@@ -225,6 +232,25 @@ export function entradasDeHojaMas(): readonly EntradaDeNavegacion[] {
 /** Etiqueta con la que sale una entrada en la barra móvil. */
 export function etiquetaDeBarra(entrada: EntradaDeNavegacion): string {
   return entrada.etiquetaCorta ?? entrada.etiqueta;
+}
+
+/**
+ * La entrada tal como la ve quien mira: sin el permiso de su `variantePropia` lleva el título
+ * propio («Mis números»). Sin sesión (carga, demostración) se queda la etiqueta general, porque
+ * no se afirma nada de quien aún no se conoce.
+ */
+export function entradaParaUsuario(
+  entrada: EntradaDeNavegacion,
+  tiene: ((permiso: Permiso) => boolean) | null,
+): EntradaDeNavegacion {
+  const v = entrada.variantePropia;
+  if (!v || !tiene || tiene(v.permiso)) return entrada;
+  const { etiquetaCorta: _corta, ...resto } = entrada;
+  return {
+    ...resto,
+    etiqueta: v.etiqueta,
+    ...(v.etiquetaCorta ? { etiquetaCorta: v.etiquetaCorta } : {}),
+  };
 }
 
 const MARCA = 'ViajaPro';
