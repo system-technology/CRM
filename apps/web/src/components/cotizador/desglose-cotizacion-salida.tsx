@@ -23,6 +23,7 @@ import {
   Ship,
   Tag,
 } from 'lucide-react';
+import { TablaDeLineas } from './tabla-de-lineas';
 import { requiereAvisoImpuestoMuelle } from '../../lib/cotizador-logica';
 import { formatearDinero } from '../../lib/api';
 import { formatearFecha } from '../../lib/formato';
@@ -50,11 +51,11 @@ export function DesgloseCotizacionSalida({
           <div>
             <div className="flex items-center gap-2">
               {cotizacion.noches === 0 ? (
-                <span className="rounded-md bg-sky-100 px-2 py-0.5 text-[10px] font-bold text-sky-800 dark:bg-sky-950 dark:text-sky-300">
+                <span className="rounded-md bg-sky-100 px-2 py-0.5 text-xs font-bold text-sky-800 dark:bg-sky-950 dark:text-sky-300">
                   Excursión de 1 día (Pasadía)
                 </span>
               ) : (
-                <span className="bg-acento-100 text-acento-700 dark:bg-acento-950 dark:text-acento-300 rounded-md px-2 py-0.5 text-[10px] font-bold uppercase">
+                <span className="bg-acento-100 text-acento-700 dark:bg-acento-950 dark:text-acento-300 rounded-md px-2 py-0.5 text-xs font-bold uppercase">
                   {cotizacion.deSalidaProgramada ? 'Salida Confirmada' : 'Vigencia Abierta'}
                 </span>
               )}
@@ -92,7 +93,7 @@ export function DesgloseCotizacionSalida({
             {cotizacion.alternativas.some((a) => a.masBarata || a.unidad === 'POR_GRUPO') && (
               <div
                 data-testid="badge-promo-vigente"
-                className="mb-1 flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                className="mb-1 flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
               >
                 <Tag className="h-3 w-3" />
                 <span>Promo vigente disponible</span>
@@ -101,7 +102,7 @@ export function DesgloseCotizacionSalida({
             <div className="cifra mt-1 text-3xl font-black text-neutral-900 dark:text-white">
               {formatearDinero(cotizacion.total)}
             </div>
-            <span className="mt-0.5 text-[10px] text-neutral-500">
+            <span className="mt-0.5 text-xs text-neutral-500">
               El número que el asesor copia y pega en WhatsApp
             </span>
           </div>
@@ -154,74 +155,48 @@ export function DesgloseCotizacionSalida({
           </span>
         </div>
 
-        <div className="overflow-x-auto rounded-xl border border-neutral-100 dark:border-neutral-800">
-          <table className="w-full text-xs">
-            <thead>
-              <tr className="border-b border-neutral-100 bg-neutral-50 text-neutral-500 dark:border-neutral-800 dark:bg-neutral-800/50 dark:text-neutral-400">
-                <th className="px-4 py-2.5 text-left font-medium">Concepto / Tarifa</th>
-                <th className="px-4 py-2.5 text-left font-medium">Modalidad</th>
-                <th className="px-4 py-2.5 text-right font-medium">Cantidad</th>
-                <th className="px-4 py-2.5 text-right font-medium">Precio Unitario</th>
-                <th className="px-4 py-2.5 text-right font-medium">Subtotal Venta</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800/60">
-              {cotizacion.lineas.map((linea) => (
-                <tr
-                  key={linea.tarifaId}
-                  className="hover:bg-neutral-50/50 dark:hover:bg-neutral-800/20"
-                >
-                  <td className="px-4 py-3 font-bold text-neutral-800 dark:text-neutral-200">
-                    {linea.nombre}
-                  </td>
-                  <td className="px-4 py-3 text-neutral-500">
-                    {linea.unidad === 'POR_PERSONA' ? 'Por persona' : 'Por grupo'}
-                  </td>
-                  <td className="cifra px-4 py-3 text-right font-semibold text-neutral-700 dark:text-neutral-300">
-                    {linea.veces}x
-                  </td>
-                  <td className="cifra px-4 py-3 text-right text-neutral-600 dark:text-neutral-400">
-                    {linea.presentacion?.listaTachada && (
-                      <span
-                        data-testid="linea-lista-tachada"
-                        className="mr-1.5 text-[11px] font-semibold text-neutral-400 line-through dark:text-neutral-500"
-                      >
-                        {formatearDinero(linea.presentacion.listaTachada)}
-                      </span>
-                    )}
-                    <span>
-                      {formatearDinero(linea.presentacion?.venta ?? linea.precioUnitario)}
+        <TablaDeLineas
+          testId="desglose-lineas"
+          columnas={[
+            { id: 'concepto', titulo: 'Concepto / Tarifa', esConcepto: true },
+            { id: 'modalidad', titulo: 'Modalidad' },
+            { id: 'cantidad', titulo: 'Cantidad', derecha: true },
+            { id: 'unitario', titulo: 'Precio Unitario', derecha: true },
+            { id: 'subtotal', titulo: 'Subtotal Venta', derecha: true, esSubtotal: true },
+          ]}
+          filas={cotizacion.lineas.map((linea) => ({
+            clave: linea.tarifaId,
+            celdas: {
+              concepto: linea.nombre,
+              modalidad: linea.unidad === 'POR_PERSONA' ? 'Por persona' : 'Por grupo',
+              cantidad: `${linea.veces}x`,
+              unitario: (
+                <>
+                  {linea.presentacion?.listaTachada && (
+                    <span
+                      data-testid="linea-lista-tachada"
+                      className="mr-1.5 text-xs font-semibold text-neutral-500 line-through dark:text-neutral-400"
+                    >
+                      {formatearDinero(linea.presentacion.listaTachada)}
                     </span>
-                    {linea.presentacion?.leyenda === 'PROMO_VENCIDA' && (
-                      <span
-                        data-testid="linea-promo-vencida"
-                        className="ml-1.5 inline-block rounded bg-rose-50 px-1.5 py-0.5 text-[9px] font-bold text-rose-700 dark:bg-rose-950/60 dark:text-rose-300"
-                      >
-                        Promo vencida
-                      </span>
-                    )}
-                  </td>
-                  <td className="cifra px-4 py-3 text-right text-sm font-black text-neutral-900 dark:text-white">
-                    {formatearDinero(linea.total)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-            <tfoot>
-              <tr className="border-t-2 border-neutral-200 bg-neutral-50/80 font-bold dark:border-neutral-700 dark:bg-neutral-800/60">
-                <td
-                  colSpan={4}
-                  className="px-4 py-3 text-right text-neutral-800 dark:text-neutral-200"
-                >
-                  Total Cotización Armada:
-                </td>
-                <td className="cifra text-acento-600 dark:text-acento-400 px-4 py-3 text-right text-base">
-                  {formatearDinero(cotizacion.total)}
-                </td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
+                  )}
+                  <span>{formatearDinero(linea.presentacion?.venta ?? linea.precioUnitario)}</span>
+                  {linea.presentacion?.leyenda === 'PROMO_VENCIDA' && (
+                    <span
+                      data-testid="linea-promo-vencida"
+                      className="ml-1.5 inline-block rounded bg-rose-50 px-1.5 py-0.5 text-xs font-bold text-rose-700 dark:bg-rose-950/60 dark:text-rose-300"
+                    >
+                      Promo vencida
+                    </span>
+                  )}
+                </>
+              ),
+              subtotal: formatearDinero(linea.total),
+            },
+          }))}
+          etiquetaTotal="Total Cotización Armada:"
+          total={formatearDinero(cotizacion.total)}
+        />
 
         {/* Cargos que el viajero paga en destino: aparte y NUNCA dentro del total */}
         {cotizacion.cargosEnDestino && cotizacion.cargosEnDestino.length > 0 && (
@@ -233,11 +208,11 @@ export function DesgloseCotizacionSalida({
               <h3 className="text-xs font-bold text-neutral-800 dark:text-neutral-200">
                 Cargos en destino
               </h3>
-              <span className="rounded-md bg-neutral-200 px-2 py-0.5 text-[10px] font-bold text-neutral-800 dark:bg-neutral-700 dark:text-neutral-100">
+              <span className="rounded-md bg-neutral-200 px-2 py-0.5 text-xs font-bold text-neutral-800 dark:bg-neutral-700 dark:text-neutral-100">
                 No incluido
               </span>
             </div>
-            <p className="mt-1 text-[11px] text-neutral-600 dark:text-neutral-400">
+            <p className="mt-1 text-xs text-neutral-600 dark:text-neutral-400">
               Se pagan en destino y no suman al total de la cotización.
             </p>
             <ul className="mt-2 space-y-1.5">
@@ -249,12 +224,12 @@ export function DesgloseCotizacionSalida({
                   <span className="text-neutral-800 dark:text-neutral-200">
                     {cargo.concepto}
                     {cargo.nota && (
-                      <span className="block text-[11px] text-neutral-500">{cargo.nota}</span>
+                      <span className="block text-xs text-neutral-500">{cargo.nota}</span>
                     )}
                   </span>
                   <span className="cifra shrink-0 text-right font-semibold text-neutral-900 dark:text-white">
                     {cargo.monto ? formatearDinero(cargo.monto) : 'Monto por confirmar'}
-                    <span className="block text-[10px] font-normal text-neutral-500">
+                    <span className="block text-xs font-normal text-neutral-500">
                       {cargo.unidad === 'POR_PERSONA' ? 'por persona' : 'por grupo'}
                     </span>
                   </span>
@@ -271,7 +246,7 @@ export function DesgloseCotizacionSalida({
               <h3 className="text-acento-950 dark:text-acento-200 text-xs font-bold">
                 ¿Deseas registrar esta cotización para el cliente?
               </h3>
-              <p className="text-acento-700 dark:text-acento-400 mt-0.5 text-[11px]">
+              <p className="text-acento-700 dark:text-acento-400 mt-0.5 text-xs">
                 Guarda la Versión 1 oficial e inmutable. Podrás modificarla después generando nuevas
                 versiones sin alterar el histórico.
               </p>
@@ -317,12 +292,12 @@ export function DesgloseCotizacionSalida({
                       {alt.nombre}
                     </span>
                     {alt.masBarata && (
-                      <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                      <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
                         Opción más económica
                       </span>
                     )}
                   </div>
-                  <span className="mt-0.5 block text-[11px] text-neutral-500">
+                  <span className="mt-0.5 block text-xs text-neutral-500">
                     Cubre {alt.cubrePasajeros} persona(s) ({alt.veces}x)
                   </span>
                 </div>
@@ -331,7 +306,7 @@ export function DesgloseCotizacionSalida({
                   <span className="cifra text-base font-extrabold text-neutral-900 dark:text-white">
                     {formatearDinero(alt.total)}
                   </span>
-                  <span className="block text-[10px] text-neutral-400">Total tarifa grupo</span>
+                  <span className="block text-xs text-neutral-400">Total tarifa grupo</span>
                 </div>
               </div>
             ))}
@@ -358,7 +333,7 @@ export function DesgloseCotizacionSalida({
                   </li>
                 ))}
               </ul>
-              <span className="mt-2 block text-[11px] text-neutral-400">
+              <span className="mt-2 block text-xs text-neutral-400">
                 Transparencia de tarifario: se expone el motivo exacto para evitar cálculos externos
                 que descuadren el informe de margen.
               </span>
@@ -373,7 +348,7 @@ export function DesgloseCotizacionSalida({
           <h4 className="text-xs font-bold text-neutral-900 dark:text-white">
             Compartir con el Viajero
           </h4>
-          <p className="text-[11px] text-neutral-500">
+          <p className="text-xs text-neutral-500">
             Genera el mensaje limpio sin exponer netos ni márgenes internos de la agencia
           </p>
         </div>

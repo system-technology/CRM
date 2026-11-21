@@ -108,7 +108,7 @@ export function ModalGuardarCotizacion({
       <div
         ref={contenedorRef}
         onClick={(e) => e.stopPropagation()}
-        className="relative w-full max-w-lg overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-2xl dark:border-neutral-800 dark:bg-neutral-900"
+        className="relative max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-2xl border border-neutral-200 bg-white shadow-2xl dark:border-neutral-800 dark:bg-neutral-900"
       >
         {/* Cabecera */}
         <div className="flex items-center justify-between border-b border-neutral-100 px-6 py-4 dark:border-neutral-800">
@@ -160,7 +160,7 @@ export function ModalGuardarCotizacion({
                   {errorLocal || error?.mensaje || 'Error al guardar la cotización.'}
                 </p>
                 {error?.esErrorAgencia && (
-                  <p className="mt-1 text-[11px] opacity-90">
+                  <p className="mt-1 text-xs opacity-90">
                     Asegúrese de contar con la configuración de tenant activa en .env.
                   </p>
                 )}
@@ -185,7 +185,7 @@ export function ModalGuardarCotizacion({
               onChange={(e) => setTitulo(e.target.value)}
               disabled={guardando}
               placeholder="Ej: Cotización San Andrés — Pareja"
-              className="focus:border-acento-600 focus:ring-acento-600 mt-1.5 w-full rounded-xl border border-neutral-300 bg-white px-3.5 py-2.5 text-xs text-neutral-900 shadow-2xs focus:ring-1 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+              className="focus:border-acento-600 focus:ring-acento-600 mt-1.5 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white px-3.5 py-2.5 text-xs text-neutral-900 shadow-2xs focus:ring-1 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
               required
             />
           </div>
@@ -205,7 +205,7 @@ export function ModalGuardarCotizacion({
                 value={contactoId}
                 onChange={(e) => setContactoId(e.target.value)}
                 disabled={guardando}
-                className="focus:border-acento-600 focus:ring-acento-600 mt-1.5 w-full rounded-xl border border-neutral-300 bg-white px-3.5 py-2.5 text-xs text-neutral-900 shadow-2xs focus:ring-1 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                className="focus:border-acento-600 focus:ring-acento-600 mt-1.5 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white px-3.5 py-2.5 text-xs text-neutral-900 shadow-2xs focus:ring-1 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                 required
               >
                 <option value="">-- Seleccionar contacto registrado --</option>
@@ -223,7 +223,7 @@ export function ModalGuardarCotizacion({
                 onChange={(e) => setContactoId(e.target.value)}
                 disabled={guardando}
                 placeholder="ID UUID del contacto (ej: 00000000-0002-4000-8000-000000000001)"
-                className="focus:border-acento-600 focus:ring-acento-600 mt-1.5 w-full rounded-xl border border-neutral-300 bg-white px-3.5 py-2.5 font-mono text-xs text-neutral-900 shadow-2xs focus:ring-1 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                className="focus:border-acento-600 focus:ring-acento-600 mt-1.5 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white px-3.5 py-2.5 font-mono text-xs text-neutral-900 shadow-2xs focus:ring-1 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                 required
               />
             )}
@@ -243,16 +243,16 @@ export function ModalGuardarCotizacion({
               valor={vigenteHasta}
               onChange={setVigenteHasta}
               disabled={guardando}
-              className="focus:border-acento-600 focus:ring-acento-600 mt-1.5 w-full rounded-xl border border-neutral-300 bg-white px-3.5 py-2.5 text-xs text-neutral-900 shadow-2xs focus:ring-1 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+              className="focus:border-acento-600 focus:ring-acento-600 mt-1.5 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white px-3.5 py-2.5 text-xs text-neutral-900 shadow-2xs focus:ring-1 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
             />
-            <span className="mt-1 block text-[11px] text-neutral-500">
+            <span className="mt-1 block text-xs text-neutral-500">
               Fecha límite hasta la cual se honra este precio al cliente.
             </span>
           </div>
 
           {/* Resumen Comercial de la Versión 1 */}
           <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-3.5 dark:border-neutral-800 dark:bg-neutral-800/40">
-            <span className="text-[11px] font-bold text-neutral-500">
+            <span className="text-xs font-bold text-neutral-500">
               Composición registrada en Versión 1
             </span>
             <div className="mt-2 space-y-1 text-xs">
@@ -284,7 +284,7 @@ export function ModalGuardarCotizacion({
                 </span>
               </div>
             </div>
-            <p className="mt-2 text-[10px] text-neutral-500">
+            <p className="mt-2 text-xs text-neutral-500">
               * El servidor recalculará el importe bajo transacción para garantizar inmutabilidad.
             </p>
           </div>
