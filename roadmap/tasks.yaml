@@ -9646,13 +9646,15 @@ tasks:
     phase: 1
     priority: P2
     effort: S
-    status: backlog
+    status: done
+    done_at: 2026-11-21T10:20:00.000Z
     acceptance:
       - "Un reintento con la misma clave pero la nota editada devuelve 200 con la fila original: la asesora cree que corrigio la nota y no corrigio nada"
       - "O el servidor rechaza el reintento con datos distintos, o lo dice en la respuesta; en silencio no"
     source: "auditoria independiente de #410 (T-331), 2026-11-21"
     created_at: 2026-11-21T09:10:00.000Z
     owner: backend
+    notes: "Integrada como #420 (38c2ee47). Decision: RECHAZAR con 409, no aceptar-y-avisar. mismoContenido compara ahora todo el cuerpo (referencia, nota y motivo ademas del dinero); si algo difiere, 409 CLAVE_DE_IDEMPOTENCIA_REUTILIZADA y no se escribe nada. El reintento IDENTICO sigue devolviendo 200 con la misma fila y sin segunda fila: eso es lo que impide cobrar dos veces y no se toco. Razonado en ADR-0036, que enmienda solo el paso 2 del ADR-0034 4. Auditoria independiente hecha por la madre (es dinero, R13): SIN BLOQUEANTES; verifico que no hay ambiguedad null/undefined/vacio, que el monto sigue en bigint, que la carrera la cierra el indice unico (tenant_id, clave_idempotencia) con ON CONFLICT DO NOTHING mas relectura, y que la clave se compara dentro de la agencia. Las e2e las corrio el CI, no la sesion. Cola que deja: T-522 a T-525."
   - id: T-517
     title: "Web: cobro.avisos no se pinta en ningun sitio"
     type: feature
@@ -9719,3 +9721,56 @@ tasks:
     source: "T-342: al escribir `creado_por` para la atribución de reportes se vio que la columna hermana sigue sin escribirse. No bloquea: ningún reporte la usa"
     created_at: 2026-11-21T22:00:00.000Z
     owner: backend
+  - id: T-522
+    title: "Cobros: en una fila tachada, un reintento con otro texto vuelve a descartar la edicion en silencio"
+    type: fix
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    acceptance:
+      - "Redaccion corregida por la auditoria independiente de #420: la version anterior pedia fijar que el tachado vacia nota y referencia a la vez, y eso YA esta fijado por el CHECK pagos_tachado_sin_texto (migracion 20261121140000, linea 237) y por aislamiento.spec.ts. Aquella tarea sobraba"
+      - "Lo que si queda: mismoContenido se salta nota y referencia cuando nota_tachada_en no es nulo, asi que sobre una fila tachada un reintento con texto distinto responde 200 y descarta la edicion sin avisar. Es exactamente la ceguera que T-516 prohibe, reducida a un caso de operacion manual"
+      - "O la fila tachada tambien responde 409 ante texto distinto, o se documenta por que ahi si es aceptable"
+    source: "auditoria independiente de #420 (T-516), 2026-11-21"
+    created_at: 2026-11-21T09:50:00.000Z
+    owner: backend
+  - id: T-523
+    title: "Cobros: falta e2e por HTTP del reintento con motivo distinto"
+    type: test
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    acceptance:
+      - "El reintento con la misma clave y distinto motivo (AJUSTE, PENALIDAD, REVERSO) solo tiene prueba unitaria; por HTTP, con Zod de por medio, no se prueba"
+      - "Una e2e cubre ese camino como ya se cubren referencia y nota"
+    source: "auditoria independiente de #420 (T-516), 2026-11-21"
+    created_at: 2026-11-21T09:50:00.000Z
+    owner: qa
+  - id: T-524
+    title: "Cobros: un cliente no-web puede recibir 409 por un texto semanticamente igual"
+    type: chore
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    acceptance:
+      - "La comparacion de referencia y nota es exacta tras trim. Un cliente que mande el mismo texto con otra normalizacion Unicode o distinta caja recibira 409 por algo que una persona leeria como identico"
+      - "Hoy no afecta: el unico cliente es la web, que manda el texto tal cual lo tecleo la asesora. Decidir al abrir la API a terceros (normalizar NFC, o documentar que la comparacion es byte a byte)"
+    source: "auditoria independiente de #420 (T-516), 2026-11-21"
+    created_at: 2026-11-21T09:50:00.000Z
+    owner: backend
+  - id: T-525
+    title: "Web: reutilizar una clave en otro archivo da un mensaje que no encaja con la pantalla"
+    type: fix
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    acceptance:
+      - "Si una clave se reutiliza contra un archivo distinto, el 409 llega a una pantalla donde no se registro nada y el mensaje dice «ya se habia registrado», que ahi no es cierto"
+      - "El mensaje distingue el choque de clave dentro del mismo archivo del de otro archivo"
+    source: "auditoria independiente de #420 (T-516), 2026-11-21"
+    created_at: 2026-11-21T09:50:00.000Z
+    owner: frontend
