@@ -253,6 +253,13 @@ Arranca con `main` en **`36bd12f2`** y cero PR abiertos. Tres sesiones en parale
   41 clases de la familia `primary`, que no existe en ninguna paleta, mapeadas a `acento-*` del mismo
   tono. Trae una prueba nueva que exige que toda familia usada sea de Tailwind o de `@theme`.
 
+**El cierre automático no cerró nada en este lote.** Tras integrar #472 y #473 por squash, con ramas
+que nombraban `T-574` y `T-569`, las dos seguian en `ready` y `backlog` en `main` y **no apareció
+ningún PR de cierre**. Las marcó la madre a mano en #474, con la evidencia citada. El traspaso
+anterior avisaba de que ese cierre *compite* con el carril `i`; hoy, sin más, **no se ejecutó**.
+Conviene no dar por hecho ninguna de las dos cosas: **comprobar el `status` en `main` después de
+cada integración**, que es barato, en vez de confiar en que alguien lo cierra.
+
 ### Lote de cierre de la demostración (2026-11-21, madre `…4XshqoadVSoT7orGV`) — CERRADO
 
 Arranca con `main` en **`7a0ac374`** y dos PR abiertos. Termina en **`910c04f0`**, **cero abiertos**.

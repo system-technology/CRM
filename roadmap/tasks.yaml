@@ -12252,8 +12252,9 @@ tasks:
     phase: 1
     priority: P2
     effort: M
-    status: backlog
+    status: done
     acceptance:
+      - "HECHA (PR #473, 2026-11-21): las 41 clases de la familia primary mapeadas a acento-* del mismo\n        tono, sin colores ni familias nuevas. Anade una prueba en contraste-de-tokens.spec.ts que exige\n        que toda familia de color usada exista en Tailwind o en el tema"
       - "bloque-etapas-pipeline.tsx, modal-reasignar.tsx y bandeja/[id]/page.tsx usan 41 clases de una familia
         `primary` que NO existe ni en @theme ni en Tailwind: no emiten una sola linea de CSS"
       - Es EXACTAMENTE el mismo defecto que T-561 arreglo para ok y alerta, pero en una familia que ni
@@ -12347,8 +12348,9 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: ready
+    status: done
     acceptance:
+      - "HECHA (PR #472, 2026-11-21): de 14 P0 abiertas quedan 4 reales. 5 pasaron a done con su\n        simbolo o prueba citada, 5 bajaron de prioridad. La madre verifico tres de las cinco citas\n        contra el codigo antes de integrar y las tres eran exactas"
       - "La reconciliacion de T-563 (PR #463) solo cubrio las P1: de 74 abiertas, 8 ya estaban hechas y 49
         estaban mal priorizadas. Las P0 no se tocaron y hoy hay 14 abiertas: T-079, T-080, T-081, T-093,
         T-120, T-121, T-123, T-126, T-131, T-132, T-133, T-134, T-135 y T-136"
