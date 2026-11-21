@@ -40,7 +40,7 @@ export function MarcoDeTrabajo({ children }: { children: React.ReactNode }) {
         <main
           id="contenido"
           className={`flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto ${
-            reservaBarraInferior ? 'pb-14 md:pb-0' : ''
+            reservaBarraInferior ? 'pb-[calc(3.5rem+env(safe-area-inset-bottom))] md:pb-0' : ''
           }`}
         >
           {conPie ? (

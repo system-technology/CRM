@@ -67,6 +67,9 @@ class Miembros extends PuertoMiembros {
   async darDeBaja(_u?: string, _p?: ReadonlySet<string>): Promise<ResultadoDeBaja> {
     return 'baja';
   }
+  async cambiarApodo(): Promise<'cambiado'> {
+    return 'cambiado';
+  }
 }
 class Identidades extends PuertoIdentidades {
   creadas: unknown[] = [];

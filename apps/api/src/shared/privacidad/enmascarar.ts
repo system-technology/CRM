@@ -22,9 +22,20 @@ const DOCUMENTO = /(pasaporte|passport)(\s*(?:n[úu]mero|no\.?|:|=)?\s*)[A-Z0-9-
 const NACIMIENTO =
   /(nacimiento|birth(?:date)?)(\s*(?:de|:|=)?\s*)(?:\d{4}-\d{2}-\d{2}|\d{2}[/-]\d{2}[/-]\d{4})/gi;
 
-/** Sustituye teléfonos, pasaportes y fechas de nacimiento que aparezcan dentro de un texto libre. */
+// El DETAIL de una violación de unicidad de Postgres: `Key (apodo)=(isabel) already exists`, o
+// `Key (tenant_id, apodo)=(<uuid>, isabel)`. El apodo es dato personal (ADR-0031 §4).
+const DETALLE_DE_APODO = /(Key \([^)]*\bapodo\b[^)]*\)=\()([^)]*)(\))/gi;
+
+/**
+ * Sustituye teléfonos, pasaportes, fechas de nacimiento y apodos (el valor del `Key (apodo)=(...)`
+ * de Postgres) que aparezcan dentro de un texto libre.
+ */
 export function redactarPII(texto: string): string {
   return texto
+    .replace(
+      DETALLE_DE_APODO,
+      (_m, antes: string, _valor: string, cierre: string) => `${antes}[REDACTADO]${cierre}`,
+    )
     .replace(DOCUMENTO, (_m, clave: string, sep: string) => `${clave}${sep}[REDACTADO]`)
     .replace(NACIMIENTO, (_m, clave: string, sep: string) => `${clave}${sep}[REDACTADO]`)
     .replace(TELEFONO, (m) => (m.replace(/\D/g, '').length >= 8 ? enmascararTelefono(m) : m));
