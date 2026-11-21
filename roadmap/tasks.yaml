@@ -10189,3 +10189,19 @@ tasks:
     source: "auditoria independiente de #432 (T-537/T-529), 2026-11-21"
     created_at: 2026-11-21T13:35:00.000Z
     owner: qa
+  - id: T-553
+    title: "Nada valida roadmap/tasks.yaml en el CI: un valor fuera del enum o una segunda in_progress se cuelan sin que nadie lo vea"
+    type: infra
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    human_required: true
+    depends_on: [T-542]
+    acceptance:
+      - "Un check del CI ejecuta node tools/roadmap-mcp/cli.mjs validate en cada PR que toque roadmap/tasks.yaml y falla si hay errores. Hoy solo lo ejecuta cerrar-tarea.yml DESPUES del merge, por eso 18 tareas con type o effort invalidos y 20 in_progress llevaban tiempo rotas sin que ningun PR se pusiera rojo. Rutas protegidas (.github/): lo decide el propietario"
+      - "El validador rechaza tambien las claves duplicadas dentro de una tarea: T-424 las tiene (source y created_at repetidos con el mismo valor) y roadmap.mjs las tolera porque load() usa parseDocument sin mirar doc.errors; un parser estricto rechaza el fichero entero"
+      - "Alternativa si se prefiere no tocar el CI: que cerrar-tarea.mjs deje de exigir una sola in_progress cuando la tarea que cierra es la unica que cambia, de modo que un estado ajeno roto no impida cerrar la propia. Tambien es ruta protegida (scripts/)"
+    source: "hallazgo de T-542: el validador solo corre tras el merge; sesion carril i, 2026-11-21"
+    created_at: 2026-11-21T15:00:00.000Z
+    owner: devops
