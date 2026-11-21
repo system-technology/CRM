@@ -1,6 +1,6 @@
 # ADR-0033 — Número de la agencia en coexistencia o número separado, y chats de proveedores (Ley 1581)
 
-- **Estado:** Propuesto (borrador, 2026-11-21). **No aceptado:** decide el propietario.
+- **Estado:** **Aceptado** (2026-11-21). Decidido por el propietario: **opción B**, **sin historial**, con la exclusión **descartando**.
 - **Fecha:** 2026-11-21
 - **Decide:** Propietario del producto
 - **Consultados:** `investigador` (redacta, con la verificación en Meta del 2026-11-21) y
@@ -119,7 +119,34 @@ poco a poco al nuevo (aviso, enlace `wa.me`, QR en el material).
 
 ## Decisión
 
-**Pendiente del propietario.** No se acepta en este PR.
+**Opción B: coexistencia en el número actual con salvaguardas**, decidida por el propietario el
+2026-11-21. Con las dos precisiones que también decidió:
+
+- **Sin historial.** No se pide el historial de 180 días ni se suscriben `history` ni
+  `smb_app_state_sync`. Es lo que pedía `auditor-seguridad`: pedirlo «por si acaso» va contra la
+  minimización, y la ventana para hacerlo son las primeras 24 h, así que no se pide y punto.
+- **La exclusión descarta, no guarda aparte.** Un chat excluido no deja fila de negocio, ni media,
+  ni `outbox`, ni log. No hay un segundo almacén «con otro régimen» que luego haya que custodiar,
+  auditar y borrar: lo que no entra no hay que protegerlo.
+
+**C (número separado) sigue siendo la salida** si alguna de las condiciones previas falla.
+
+### Condiciones previas, que siguen en pie
+
+Esta decisión **no autoriza por sí sola conectar el número real**. Antes hace falta:
+
+- La lista de exclusión y su filtro en el trabajador, con prueba de punta a punta: un entrante y un
+  eco excluidos no dejan filas de negocio, ni media, ni `outbox`, ni log. **Es T-533 y es trabajo
+  del equipo**, no del propietario.
+- El vínculo número–agencia derivado de la sesión, del canje del `code` y de la comprobación en
+  Graph, nunca del cuerpo de la petición (ya exigido en `04-integraciones` §2.3).
+- JD Tours actualiza su aviso de privacidad y firma el contrato de encargo.
+- El dueño de JD Tours acepta mover sus chats personales fuera del número.
+- La elegibilidad del número confirmada con la prueba real (T-337, que depende del trámite de Tech
+  Provider, T-080).
+
+**Sigue sin decidir (pregunta 4 del borrador):** quién habla con el dueño de JD Tours sobre el aviso
+de privacidad y sus chats personales. Queda en la bandeja del propietario.
 
 **Recomendación de quien redacta (inferencia, no decisión):** **B para el piloto**, con estas
 condiciones previas, y **C como salida** si alguna falla:

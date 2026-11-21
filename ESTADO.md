@@ -179,7 +179,7 @@ Postmark real; las migraciones contra una base de producción (solo corren en el
 | `navegador` como check obligatorio en la protección de `main` (contenido en el commit `27412e7`) | Hoy un PR puede integrarse con `navegador` rojo si cumple los 8 obligatorios | Propietario |
 | Confirmación escrita para que la sesión de cobros trabaje sin supervisión | Hoy trabaja con un PR por tarea | Propietario |
 | Verificación del negocio en Meta / Tech Provider sin iniciar (T-080); falta un mensaje desde un celular | Solo número de prueba y Graph falsa; no hay lanzamiento | Propietario |
-| Decidir ADR-0033 (número de JD Tours: coexistencia con lista de exclusión o número separado; chats de proveedores y Ley 1581). Coexistencia verificada en Meta el 2026-11-21: no pierde la app, Colombia no excluida, pero todo chat individual entra al CRM | Conectar el número real de la agencia piloto (además de T-080) | Propietario |
+| ~~Decidir ADR-0033~~ **DECIDIDO el 2026-11-21: opción B** (coexistencia con salvaguardas), **sin historial** y con la exclusión **descartando**. Lo que ahora bloquea conectar el número real es **T-533** (lista de exclusión y filtro en el trabajador, con prueba de punta a punta), más T-080 y T-337 | Conectar el número real de la agencia piloto | Equipo (T-533) y propietario (T-080, aviso de privacidad, contrato de encargo) |
 | Decidir zod 4 y los ADR-0023 y 0024 | Queda 1 vulnerabilidad alta en producción; el trabajo fiscal no avanza | Propietario |
 | Sin Redis ni trabajador en la máquina del propietario (no hay Docker) | Con `unico` no hace falta Redis; falta el recorrido real en Codespaces | Propietario, `devops` |
 | Tarifario real de la agencia piloto | El catálogo sigue con datos verosímiles | Propietario / agencia |
