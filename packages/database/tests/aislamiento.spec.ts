@@ -10581,6 +10581,54 @@ describe('T-261 — perfiles_de_agencia: aislamiento y verificación solo de la 
     );
     expect(fijadas.rows).toEqual([{ creado_fijado: true, actualizado_fijado: true }]);
   });
+
+  it('P-8 — las fechas son la hora de la sentencia, no la de la transacción: esperar antes de escribir no las antedata (T-375)', async () => {
+    await comoPlataforma(TENANT_C, (c) =>
+      c.query('DELETE FROM perfiles_de_agencia WHERE tenant_id = $1', [TENANT_C]),
+    );
+    // `now()` es la hora de inicio de la transacción. Con él, una transacción que espera 1,2 s y
+    // luego escribe dejaría las fechas 1,2 s antes de la escritura. Con statement_timestamp() la
+    // fecha cae después de ese segundo de espera.
+    const despues = (columna: string) => `${columna} > now() + interval '1 second'`;
+
+    const insertada = await comoTenant(TENANT_C, async (c) => {
+      await c.query('SELECT pg_sleep(1.2)');
+      return c.query(
+        `INSERT INTO perfiles_de_agencia (tenant_id, rnt) VALUES ($1, '48213')
+         RETURNING (${despues('creado_en')}) AS creado_despues,
+                   (${despues('actualizado_en')}) AS actualizado_despues`,
+        [TENANT_C],
+      );
+    });
+    expect(insertada.rows).toEqual([{ creado_despues: true, actualizado_despues: true }]);
+
+    const actualizada = await comoTenant(TENANT_C, async (c) => {
+      await c.query('SELECT pg_sleep(1.2)');
+      return c.query(
+        `UPDATE perfiles_de_agencia SET rnt = '48213' WHERE tenant_id = $1
+         RETURNING (${despues('actualizado_en')}) AS actualizado_despues`,
+        [TENANT_C],
+      );
+    });
+    expect(actualizada.rows).toEqual([{ actualizado_despues: true }]);
+  });
+
+  it('P-9 — la función del disparador tiene exactamente la superficie que se decidió: proconfig solo search_path vacío y ninguna hora de transacción (T-376)', async () => {
+    const { rows } = await admin.query<{
+      proconfig: string[] | null;
+      usa_hora_de_transaccion: boolean;
+    }>(
+      `SELECT p.proconfig,
+              p.prosrc ~* '(^|[^a-z_])(now|clock_timestamp|transaction_timestamp|current_timestamp)([^a-z_]|$)'
+                AS usa_hora_de_transaccion
+         FROM pg_proc p
+        WHERE p.oid = 'public.proteger_verificacion_del_perfil()'::regprocedure`,
+    );
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.proconfig, 'ni un ajuste de más en la función').toHaveLength(1);
+    expect(rows[0]?.proconfig?.[0]).toMatch(/^search_path=(""|)$/);
+    expect(rows[0]?.usa_hora_de_transaccion).toBe(false);
+  });
 });
 
 // =========================================================================================

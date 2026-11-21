@@ -13,7 +13,7 @@ Claude (migración, API y web) y `auditor-seguridad` (revisó #321). **Origen:**
 | #322 | a | `GET/PATCH /api/v1/agencia/ajustes` con `rnt` y `rntVerificado`. Cuerpo del PATCH nuevo, `CambiarAjustesDeAgencia`, estricto: ningún cuerpo puede fijar la verificación. Pruebas unitarias y e2e (aislamiento entre agencias, verificación, upsert). |
 | #324 | b | Bloque del RNT en Configuración con tres estados y aviso de re-verificación; la propuesta lo imprime solo si está verificado; cliente y maqueta al día. |
 
-Este PR (carril `i`) cierra T-261, ajusta T-268, T-285 y T-280, y añade T-306 y T-307.
+Este PR (carril `i`) cierra T-261, ajusta T-268, T-285 y T-280, y añade T-348 (antes T-306) y T-307.
 
 ## Decisiones
 
@@ -31,7 +31,7 @@ Este PR (carril `i`) cierra T-261, ajusta T-268, T-285 y T-280, y añade T-306 y
   (`pg_has_role(current_user, relowner, 'USAGE')`); no confía en nada que el cliente pueda fijar.
 - **Contrato compatible.** `AjustesDeAgencia` gana `rnt` y `rntVerificado` como opcionales, y
   `ActualizarAjustesDeAgencia` queda intacto mientras la web migraba (los PR no mezclan carriles);
-  se retira en T-306.
+  se retira en T-348.
 - **No se ejecutó `auditor-seguridad` en #322 ni en #324.** No traen migración ni acceso nuevo a
   datos; #321 sí tuvo la revisión, y la e2e de #322 prueba el aislamiento.
 
