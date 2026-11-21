@@ -57,7 +57,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         </div>
         {/* Con el marco (`data-marco`) el pie va dentro de su región desplazable: aquí se oculta. */}
         <div className="[body:has([data-marco])_&]:hidden">
-          <PieDePaginaPrivacidad />
+          <PieDePaginaPrivacidad conTema />
         </div>
         <BannerConsentimientoCookies />
       </body>

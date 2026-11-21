@@ -45,4 +45,12 @@ describe('PieDePaginaPrivacidad (T-108) - Enlaces en el pie de página', () => {
     expect(spyEvento).toHaveBeenCalled();
     window.removeEventListener(EVENTO_ABRIR_MODAL_COOKIES, spyEvento);
   });
+
+  it('T-560: el conmutador de tema solo sale si el layout raíz lo pide (pantallas sin marco)', () => {
+    const { unmount } = render(<PieDePaginaPrivacidad />);
+    expect(screen.queryByTestId('conmutador-de-tema')).toBeNull();
+    unmount();
+    render(<PieDePaginaPrivacidad conTema />);
+    expect(screen.getByTestId('conmutador-de-tema')).toBeTruthy();
+  });
 });
