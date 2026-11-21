@@ -1300,3 +1300,51 @@ propietarios, 7 tablas de identidad y tres columnas de texto en `perfiles_de_age
 **Por qué.** La propuesta al viajero debe llevar el RNT (Ley 300 de 1996) y un documento con peso
 legal no puede imprimir el que cualquiera pudo escribir. Lo fijan el cinturón de la migración y
 `aislamiento.spec.ts` (P-1 a P-6).
+
+## Etiquetas de conversación por agencia (T-324, HU-inbox-1, migración `20261121110000_etiquetas_por_agencia`)
+
+```
+  tenants 1──n etiquetas (id, tenant_id, nombre varchar(30), color, orden, auditoría)
+                 UNIQUE (tenant_id, lower(btrim(nombre)))      «Pagado» = «pagado »
+                 UNIQUE (id, tenant_id)                        destino de la FK compuesta
+                 CHECK color IN (gris, azul, turquesa, verde, ambar, naranja, rosa, dorado)
+                 CHECK nombre: 1-30, sin espacios a los lados ni caracteres de control
+                    ▲ (etiqueta_id, tenant_id)  ON DELETE CASCADE
+                    │
+  conversacion_etiquetas  PK (tenant_id, conversacion_id, etiqueta_id)   asignada_en, asignada_por?
+                    │      INDEX (tenant_id, etiqueta_id, conversacion_id)   el filtro de la bandeja
+                    ▼ (conversacion_id, tenant_id)  ON DELETE CASCADE
+  conversaciones (id, tenant_id)          · (asignada_por, tenant_id) → usuarios, NO ACTION
+```
+
+- **A la conversación y solo a ella** (HU-inbox-1 §2): no al archivo (el estado de cobro lo calcula el
+  servidor y no se duplica) ni al contacto (`contactos.etiquetas` sigue como está).
+- **R12: tabla por agencia.** El color, en cambio, es **un CHECK contra la paleta fija** del sistema de
+  diseño: es invariante de accesibilidad (contraste AA, sin rojo), no política de la agencia. No es
+  `enum` de Postgres ni tabla global: ampliar la paleta es ampliar el CHECK (`NOT VALID` + `VALIDATE`),
+  como `roles_permisos_del_catalogo`, sin una excepción nueva en `excepciones_rls`.
+- **Aislamiento (R1).** Las dos tablas llevan `tenant_id`, RLS forzada y la política canónica; las
+  tres foráneas hacia tablas de agencia son **compuestas con el tenant**, así que una asignación no
+  cruza agencias ni con el rol propietario. Solo `viajapro_app` las toca (`privilegios_declarados`):
+  `etiquetas` con SELECT/INSERT/UPDATE/DELETE, `conversacion_etiquetas` sin UPDATE (se pone o se
+  quita). El trabajador del webhook, las altas e identidad, nada.
+- **Borrado físico**, porque la historia lo fija («se quita de todas, no se puede deshacer»): sin PII
+  sensible ni valor contable que conservar, y sin unicidades parciales ni filtros de `eliminado_en` en
+  cada lectura de la bandeja.
+- **Topes en la API, no en la base** (50 por agencia, 10 por conversación): son supuestos de producto
+  que pueden moverse (HU-inbox-1 §7), no invariantes; T-325 los impone con error tipado serializando
+  por agencia/conversación.
+- **Siembra.** La migración da «Pagado» (verde), «Pago pendiente» (ámbar) y «Seguimiento» (azul) a
+  toda agencia existente sin duplicar por nombre normalizado; `sembrarEtiquetas`
+  (`siembra-de-tenant.ts`) lo hace en la demo y en las agencias de prospecto.
+- **Datos actuales.** `conversaciones.etiquetas` (arreglo libre) se **copió** al catálogo de su agencia
+  en gris, con sus asignaciones, normalizado como lo hará la API (control → espacio, recorte, 30
+  caracteres, unión por nombre normalizado). La columna se queda, sin escritor, hasta que T-325 cambie
+  el contrato; entonces una migración la retira.
+- **Permiso `etiquetas.administrar`** (crear, renombrar, recolorear, ordenar, borrar): undécimo del
+  CHECK `roles_permisos_del_catalogo`, concedido al `DUENO` de las agencias existentes y en
+  `ROLES_SEMBRADOS`. Poner y quitar sigue siendo `bandeja.operar`.
+
+**Lo fijan** el cinturón de la migración, `aislamiento.spec.ts` (bloque «T-324», E1 a E7, más los
+literales `PRIVILEGIOS_DECLARADOS` y `COLUMNAS_DE_TEXTO_DECLARADAS`) y `etiquetas-por-agencia.spec.ts`
+(los rellenos, reejecutados sobre agencias «como eran antes»).
