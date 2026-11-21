@@ -1051,7 +1051,7 @@ export default function BandejaConversacionPage() {
                     onClick={() => void manejarTomar()}
                     disabled={asignando || conversacionRetirada || !puedeOperarBandeja}
                     data-testid="boton-tomar"
-                    className="bg-primary-50 text-primary-700 hover:bg-primary-100 dark:bg-primary-950/40 dark:text-primary-300 flex min-h-[44px] min-w-[44px] items-center justify-center gap-1 rounded-md px-2 py-0.5 text-sm font-bold disabled:cursor-not-allowed disabled:opacity-50 md:min-h-[28px] md:min-w-0"
+                    className="bg-acento-50 text-acento-700 hover:bg-acento-100 dark:bg-acento-950/40 dark:text-acento-300 flex min-h-[44px] min-w-[44px] items-center justify-center gap-1 rounded-md px-2 py-0.5 text-sm font-bold disabled:cursor-not-allowed disabled:opacity-50 md:min-h-[28px] md:min-w-0"
                     title={
                       !puedeOperarBandeja
                         ? explicacionFaltaPermiso('bandeja.operar')
