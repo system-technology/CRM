@@ -293,12 +293,22 @@ contra el **criterio de salida de JD Tours** (§3 del roadmap del piloto), no co
   línea** su hallazgo delicado y resultó bien clasificado (ver §1.12). Dos seguimientos registrados
   (**T-580**, **T-581**) y las condiciones de §9 anotadas en **T-345** y **T-483**; **T-493** ya
   existía y no se duplicó.
-- **T-332 + T-335** (carril `b`) — la pantalla «quién pagó y quién debe» y su CSV. En vuelo.
-- **T-346** (carril `b`) — e2e de navegador de que un asesor no ve lo de otro. En vuelo.
+- **#476** (T-332 y T-335, carril `b`) — **INTEGRADO** en `d059acba`. 15/15 verdes. La pantalla de
+  cobros y su CSV. Auditoría propia: **R8 correcto** (usa `Money.desdeUnidades().aDecimal()`, nunca
+  divide por 100), el escapado contra fórmulas exime **solo** números negativos puros con expresión
+  anclada y el entrecomillado RFC 4180 sigue después, y **no hay neto ni margen que ocultar porque
+  el contrato no los trae**. Conflicto de `ESTADO.md` resuelto a mano. Cola: **T-582** (pasajeros).
+- **#477** (T-346, carril `b`) — e2e de alcance en navegador. 15/15 antes de ponerle `main` al día;
+  recorriéndolos otra vez. Vio la prueba **en rojo** con dos mutaciones nombradas y midió el
+  contraste de los dos dashboards: **T-583**.
 
-**Confirmado por TERCER lote seguido: el cierre automático de tareas no cierra nada.** T-340 seguía
-en `review` en `main` después de integrar, con la rama nombrando la tarea. **Comprobar el `status` en
-`main` tras cada integración y cerrarlo a mano.**
+**Confirmado CUATRO veces en este lote: el cierre automático de tareas no cierra nada.** T-340
+seguía en `review`, y T-332 en `ready` y T-335 en `backlog` después de integrar, con las ramas
+nombrándolas. **Comprobar el `status` en `main` tras cada integración y cerrarlo a mano.**
+
+**Integrar con `gh api -X PUT .../merge` por Bash queda denegado** por el sistema de permisos de la
+sesión. **No se rodea**: queda anotado como pendiente del propietario, que es quien puede añadir la
+regla de permiso si quiere esa vía.
 
 ### Lote del arnés y la cola (2026-11-21, madre `…64ppDELKxYC1Tkdsu`) — CERRADO
 
