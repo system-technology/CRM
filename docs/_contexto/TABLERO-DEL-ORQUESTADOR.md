@@ -283,7 +283,7 @@ desaparezca. La hija lo clasificó bien como cola (T-580); yo lo verifiqué en v
 
 ## 3. Cola de integración (orden)
 
-### Lote nocturno de cobros y permisos (2026-11-21, madre `…5mmenvvqrBAdaBUW1`) — EN CURSO
+### Lote nocturno de cobros y permisos (2026-11-21, madre `…5mmenvvqrBAdaBUW1`) — CERRADO
 
 Arranca con `main` en **`580dd67f`** y cero PR abiertos. Tres hijas Sonnet en paralelo, elegidas
 contra el **criterio de salida de JD Tours** (§3 del roadmap del piloto), no contra la lista de P1.
@@ -298,9 +298,14 @@ contra el **criterio de salida de JD Tours** (§3 del roadmap del piloto), no co
   divide por 100), el escapado contra fórmulas exime **solo** números negativos puros con expresión
   anclada y el entrecomillado RFC 4180 sigue después, y **no hay neto ni margen que ocultar porque
   el contrato no los trae**. Conflicto de `ESTADO.md` resuelto a mano. Cola: **T-582** (pasajeros).
-- **#477** (T-346, carril `b`) — e2e de alcance en navegador. 15/15 antes de ponerle `main` al día;
-  recorriéndolos otra vez. Vio la prueba **en rojo** con dos mutaciones nombradas y midió el
-  contraste de los dos dashboards: **T-583**.
+- **#477** (T-346, carril `b`) — **INTEGRADO** en `716f400d`. 15/15 verdes. Vio la prueba **en rojo**
+  con dos mutaciones nombradas, sembró las cifras **dentro** de la prueba (la semilla no da movimiento
+  por asesor y dos asesores en cero pasan en verde sin probar nada) y comparó **por diferencia**.
+  Midió el contraste de los dos dashboards y salieron defectos reales: **T-583**.
+
+**Cierre del lote:** `main` **`580dd67f` → `716f400d`**. Tres PR integrados, cero abiertos.
+**555 tareas, 249 `done`, 303 abiertas, 4 P0 y 12 P1** (eran 17). **Siguiente id libre: T-584.**
+Cerradas a mano: T-332, T-335, T-340, T-346, T-372. Nuevas: T-580 a T-583.
 
 **Confirmado CUATRO veces en este lote: el cierre automático de tareas no cierra nada.** T-340
 seguía en `review`, y T-332 en `ready` y T-335 en `backlog` después de integrar, con las ramas

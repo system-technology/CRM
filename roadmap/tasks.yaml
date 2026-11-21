@@ -8252,7 +8252,7 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: ready
+    status: done
     depends_on:
       - T-343
       - T-344
@@ -8265,7 +8265,7 @@ tasks:
         otro asesor, y el administrador sí"
     source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md, Eje F (decisión del propietario
       2026-11-20)
-    notes: "Reconciliación 2026-11-21: sus dependencias T-343 y T-344 están hechas; pasa a ready."
+    notes: "Reconciliación 2026-11-21: sus dependencias T-343 y T-344 están hechas; pasa a ready. || CERRADA 2026-11-21: PR #477 integrado en main. apps/web/e2e/09-reportes-por-alcance.e2e-spec.ts: una asesora no ve las cifras de su companero ni las de la agencia, la duena si, y pedir a mano el asesorId ajeno responde 403 sin cifras. Las cifras se siembran DENTRO de la prueba porque la semilla no da movimiento por asesor, y se compara por diferencia. Las aserciones se vieron en ROJO antes, mutando la API falsa en dos sentidos; eso prueba que muerden, no que el servidor real sea correcto (de eso responde reportes.e2e-spec.ts). El contraste se midio y salieron defectos reales: T-583. El cierre automatico NO la cerro."
     created_at: 2026-11-20T21:30:00.000Z
     owner: qa
   - id: T-347

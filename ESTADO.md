@@ -13,7 +13,7 @@
 | Última actualización | 2026-11-21, **lote nocturno de cobros y permisos** (PR #475, #476 y #477; [bitácora](docs/_bitacora/2026-11-21-lote-nocturno-cobros-permisos-y-adr.md)) |
 | Actualizado por | Claude, sesión madre `session_01R81Xh5mmenvvqrBAdaBUW1` (hilo al día con los PR #289 a #477) |
 | Fase | **Fase 1 del backlog: «Un CRM mostrable y endurecido»** (M1 del [roadmap v2](docs/08-roadmap/01-roadmap.md)). Sin agencia real todavía. Prioridad vigente: la demo a JD Tours ([`MARCO.md`](docs/_contexto/MARCO.md) §6) |
-| Avance | **246 tareas `done`** en `roadmap/tasks.yaml` (555 en total). «Done» significa integrada en `main`, **no** desplegada ni probada con Meta real. **Quedan 4 P0**, y ninguna es de código: esperan despliegue, al propietario o un recorrido manual. **Aviso: el cierre automático de tareas no cierra nada** (comprobado en tres lotes seguidos), así que toda cifra de avance hay que confirmarla a mano |
+| Avance | **249 tareas `done`** en `roadmap/tasks.yaml` (555 en total; **303 abiertas, 4 P0 y 12 P1**, que eran 17). «Done» significa integrada en `main`, **no** desplegada ni probada con Meta real. **Quedan 4 P0**, y ninguna es de código: esperan despliegue, al propietario o un recorrido manual. **Aviso: el cierre automático de tareas no cierra nada** (comprobado en tres lotes seguidos), así que toda cifra de avance hay que confirmarla a mano |
 | Próximo hito | **El despliegue y la lista de chats de JD Tours, las dos del propietario.** A eso se suma ahora **la muestra de su hoja de reservas**, sin la cual T-334 y T-336 no arrancan (punto 12 de los pendientes). El código que impedía enseñar la demostración ya está en `main`: se puede aceptar una cotización desde la pantalla (T-563), verla con los ojos de un asesor (T-566) y el ingreso dejó de afirmar una conexión que no comprobaba (T-565). Después, la clave de cifrado y la prueba con Meta real (T-080) |
 
 ---
@@ -31,18 +31,18 @@ entrado. Seguimos en local.
 
 ### Cierre del lote nocturno de cobros y permisos (2026-11-21)
 
-`main` arranca en **`580dd67f`** con cero PR abiertos. Tres sesiones en paralelo, elegidas contra el
+`main` arranca en **`580dd67f`** y cierra en **`716f400d`**, con cero PR abiertos al empezar y al terminar. Tres sesiones en paralelo, elegidas contra el
 **criterio de salida de JD Tours** (§3 del roadmap del piloto) y no contra la lista de P1, porque lo
 que el propietario pide es algo que una agencia pueda ver.
 
-- **#475** (T-340) — el **ADR-0035 pasa a Aceptado** con la auditoría de seguridad que le faltaba,
+- **#475** (T-340, integrado) — el **ADR-0035 pasa a Aceptado** con la auditoría de seguridad que le faltaba,
   hecha contra el código. Cierra un agujero de R7: el ADR llevaba días implementado sin estar
   aceptado. Dos seguimientos de cola (T-580, T-581).
-- **#476** (T-332 y T-335) — **la pantalla «quién pagó y quién debe»** con filtros por estado de
+- **#476** (T-332 y T-335, integrado) — **la pantalla «quién pagó y quién debe»** con filtros por estado de
   cobro y **exportación a CSV**. Es el punto 4 del criterio de salida. Sin neto ni margen **por
   construcción**: `FilaDeCobro` no los trae. No muestra pasajeros, declarado y encolado (T-582).
   Detalle: [bitácora](docs/_bitacora/2026-11-21-cobros-pantalla-y-csv.md).
-- **#477** (T-346) — **la prueba en un navegador** de que un asesor no ve las cifras de otro ni las
+- **#477** (T-346, integrado) — **la prueba en un navegador** de que un asesor no ve las cifras de otro ni las
   de la agencia, y de que pedir el `asesorId` ajeno responde 403. Midió además el contraste de los
   dos dashboards y encontró textos por debajo de WCAG AA (T-583).
 
