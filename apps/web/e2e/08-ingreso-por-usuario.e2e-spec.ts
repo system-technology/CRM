@@ -30,6 +30,9 @@ async function sinDesborde(page: Page, donde: string): Promise<void> {
   expect(exceso, `desbordamiento horizontal ${donde}`).toBeLessThanOrEqual(0);
 }
 
+/** El aviso del formulario de ingreso; Next anade otro `role=alert` (el anunciador de rutas). */
+const avisoDeIngreso = (page: Page) => page.getByRole('alert').filter({ hasText: /\S/ });
+
 /** El miembro de la sesion, tal como lo lista la API (no se supone ni su id ni su nombre). */
 async function miembroDeLaSesion(page: Page): Promise<{ id: string; nombre: string }> {
   const res = await page.request.get(`${URL_API}/api/v1/identidad/miembros`);
@@ -67,9 +70,8 @@ async function ingresar(page: Page, identificador: string, clave: string): Promi
   try {
     await expect(page).toHaveURL(/^[^?#]*\/$/, { timeout: 20_000 });
   } catch {
-    const motivo = await page
-      .getByRole('alert')
-      .innerText()
+    const motivo = await avisoDeIngreso(page)
+      .innerText({ timeout: 2_000 })
       .catch(() => '(sin alerta en pantalla)');
     throw new Error(`No se pudo ingresar con «${identificador}». La pantalla dijo: ${motivo}`);
   }
@@ -150,7 +152,7 @@ test('al quitar el usuario ya no entra con el, pero si con el correo', async ({ 
     await otra.locator('#campo-contrasena').fill(credenciales().clave);
     await otra.getByRole('button', { name: /Ingresar a ViajaPro/ }).click();
     await expect(
-      otra.getByRole('alert'),
+      avisoDeIngreso(otra),
       'con el usuario quitado, entrar con el debe mostrar el error de autenticacion',
     ).toContainText('Error de autenticación');
     await expect(otra).toHaveURL(/\/ingresar/);
