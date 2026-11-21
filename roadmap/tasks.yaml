@@ -9454,14 +9454,16 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: backlog
+    status: review
     acceptance:
       - "packages/database/tests/etiquetas-por-agencia.spec.ts falla a veces con etiquetas_tenant_id_fkey (Key (tenant_id)=… is not present in table «tenants») dentro de la siembra de la migración 20261121110000"
       - "packages/database/tests/historial-de-etapas.spec.ts falla a veces con deadlock 40P01 (migración 20261104150000)"
       - "apps/api/src/modules/identity/invitaciones.e2e-spec.ts falló con deadlock detected"
       - "Los tres pasan al relanzar el job: se sospecha una base compartida sin aislamiento entre archivos de prueba. Causa raíz encontrada y arreglada (una base o esquema por archivo, o ejecución serial donde toque), no un reintento"
       - "Cinco ejecuciones seguidas del CI sin rojo por esto. Bloquea la cola de integración: cada PR puede salir rojo por azar"
+      - "Causa raíz (2026-11-21): `turbo run test` lanzaba a la vez las pruebas de `@viajapro/database` y de `@viajapro/api` contra la MISMA base. Las de `database` reejecutan rellenos de migración que recorren TODAS las agencias y reaplican políticas (AccessExclusiveLock); las e2e de `api` crean y borran agencias en otro proceso. Reproducido con un proceso que crea y borra agencias: 5 de 8 corridas de etiquetas-por-agencia.spec.ts fallaron con etiquetas_tenant_id_fkey. Arreglo: apps/api/turbo.json hace que `@viajapro/api#test` espere a `@viajapro/database#test`. Falta el criterio de las cinco ejecuciones seguidas del CI"
     files:
+      - apps/api/turbo.json
       - packages/database/tests/etiquetas-por-agencia.spec.ts
       - packages/database/tests/historial-de-etapas.spec.ts
       - apps/api/src/modules/identity/invitaciones.e2e-spec.ts
