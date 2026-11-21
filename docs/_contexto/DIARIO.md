@@ -566,3 +566,19 @@ Se retira el conmutador Vista Dueño/Asesor; la vista la decide la respuesta de 
 - La web necesita `packages/contracts` y `packages/domain` compilados antes de arrancar.
 - Con `NEXT_PUBLIC_USE_REAL_AUTH=true` el modo demostración no entra: la foto del ingreso exige otra compilación.
 - `/ingresar` afirma «Conectado a la API y PostgreSQL en vivo» solo por la configuración; no comprueba nada.
+
+## 2026-11-21 · El lote que deja la demostración en condiciones de enseñarse
+`main` de `7a0ac374` a `910c04f0`, **siete PR integrados y cero abiertos**. Las tres piezas que impedían enseñar el producto están en `main`: **T-563** (aceptar una cotización desde la pantalla), **T-566** (ver la demostración como un asesor puro) y **T-565** (el ingreso deja de afirmar una conexión que nunca comprobó). Lo más valioso del lote, sin embargo, fue **#463: la reconciliación de las 74 tareas P1**, que dejó **17**. Ocho ya estaban hechas en el código y 49 estaban mal priorizadas. Detalle: [bitácora](../_bitacora/2026-11-21-lote-de-la-tarde-demo-ensenable.md).
+
+**Decisiones**
+- **T-377 sube de P3 a P1**: el arnés de mutaciones de aislamiento **no corre en el CI**. §3.1 no admite recortar en aislamiento entre agencias; una compuerta que no se ejecuta no es una compuerta.
+- **T-574 (P1)**: las **14 tareas P0 abiertas nunca se contrastaron contra el código**; T-131 y T-132 parecen hechas. La reconciliación solo cubrió las P1.
+- **T-566 no deshace T-343.** T-343 retiró el conmutador Dueño/Asesor porque la vista la decide la API y no se finge el alcance en el cliente. El de T-566 vive **solo en modo demostración**, no toca sesión ni API ni `tienePermiso`, y su predicado de permisos **solo quita** entradas del menú. Queda escrito para que no se lea como marcha atrás.
+- **Las tareas se escriben como síntoma, no como diagnóstico** — otra vez. La madre repartió sospechando que T-137, T-139 y T-140 estaban hechas porque sus contratos existen; la sesión midió y las desmintió a medias. **Quien mide es quien diagnostica.**
+
+**Trampas nuevas**
+- **El cierre automático de tareas compite con todo el carril `i`**: provocó un conflicto en #463, tumbó un merge de #464 («Base branch was modified») y dejó #465 detrás dos veces. La ventana segura para tocar `tasks.yaml` es cuando no hay ningún otro PR de carril `i` abierto.
+- Un conflicto de `tasks.yaml` **se devuelve a quien hizo el trabajo**: tomar `origin/main` como base y reaplicar **tarea por tarea**. Concatenar ya entremezcló entradas una vez y el YAML parseaba igual.
+- **Hay criterios de aceptación que cruzan carriles por su cuenta** (T-565 y T-566 pedían tocar `docs/06-manual/` desde una tarea de `apps/web`). Avisar al repartir; el rastro va aparte (T-576).
+- El **sha truncado** de un monitor propio usado en `update-branch` da 422: leerlo entero con `--jq '.head.sha'`.
+- Un monitor que imprime el estado **cada vuelta** inunda de notificaciones: emitir solo al cambiar.
