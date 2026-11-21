@@ -11,12 +11,19 @@ import { describe, expect, it } from 'vitest';
 import { ArchivosController } from '../../modules/booking/interface/archivos.controller.js';
 import { AgenciaAjustesController } from '../../modules/identity/interface/agencia-ajustes.controller.js';
 import { CrmController } from '../../modules/crm/interface/crm.controller.js';
+import { EtiquetasController } from '../../modules/inbox/interface/etiquetas.controller.js';
 import { ConversacionesController } from '../../modules/inbox/interface/conversaciones.controller.js';
 import { NotificacionesController } from '../../modules/notifications/interface/notificaciones.controller.js';
 import { CotizacionesController } from '../../modules/quoting/interface/cotizaciones.controller.js';
 import { CLAVE_PERMISOS_REQUERIDOS } from './permiso.decorator.js';
 
-const MUTACIONES = new Set<number>([RequestMethod.POST, RequestMethod.PUT, RequestMethod.PATCH]);
+const MUTACIONES = new Set<number>([
+  RequestMethod.POST,
+  RequestMethod.PUT,
+  RequestMethod.PATCH,
+  // T-325: quitar una etiqueta es un DELETE; sin esto una ruta de borrado quedaría sin vigilar.
+  RequestMethod.DELETE,
+]);
 
 /**
  * Mutaciones que NO exigen permiso, con su razón. `leida` es el estado de lectura de quien mira:
@@ -27,6 +34,8 @@ const SIN_PERMISO = new Set(['ConversacionesController.leida']);
 const CONTROLADORES: ReadonlyArray<readonly [abstract new (...args: never[]) => object, Permiso]> =
   [
     [ConversacionesController, 'bandeja.operar'],
+    // T-325: las mutaciones del catálogo (la lectura, `GET`, la ve cualquier usuario de la agencia).
+    [EtiquetasController, 'etiquetas.administrar'],
     [CrmController, 'crm.escribir'],
     [CotizacionesController, 'cotizacion.escribir'],
     [AgenciaAjustesController, 'usuarios.administrar'],

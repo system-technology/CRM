@@ -29,6 +29,9 @@ vi.mock('../../../components/configuracion/bloque-conexion-whatsapp', () => ({
 vi.mock('../../../components/configuracion/bloque-politica-precio', () => ({
   BloquePoliticaPrecio: () => <p>bloque-precios</p>,
 }));
+vi.mock('../../../components/configuracion/bloque-etiquetas', () => ({
+  BloqueEtiquetas: () => <p>bloque-etiquetas</p>,
+}));
 
 function conPermisos(permisos: Permiso[]) {
   vi.mocked(auth.obtenerSesionActualApi).mockResolvedValue({
@@ -80,5 +83,38 @@ describe('Configuración: pestañas en ?pestana= (T-318)', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: /Miembros y Roles/ }));
     expect(replace).toHaveBeenLastCalledWith('/configuracion', { scroll: false });
+  });
+
+  it('la pestaña «Etiquetas» solo existe con etiquetas.administrar (T-326)', async () => {
+    render(<ConfiguracionPage />);
+    await screen.findByTestId('tab-contenido-equipo');
+    await waitFor(() => expect(auth.obtenerSesionActualApi).toHaveBeenCalled());
+    expect(screen.queryByTestId('tab-btn-etiquetas')).toBeNull();
+
+    cleanup();
+    conPermisos(['etiquetas.administrar']);
+    render(<ConfiguracionPage />);
+    const pestana = await screen.findByTestId('tab-btn-etiquetas');
+    fireEvent.click(pestana);
+    expect(replace).toHaveBeenLastCalledWith('/configuracion?pestana=etiquetas', {
+      scroll: false,
+    });
+  });
+
+  it('?pestana=etiquetas con el permiso abre la gestión', async () => {
+    conPermisos(['etiquetas.administrar']);
+    busqueda = 'pestana=etiquetas';
+    render(<ConfiguracionPage />);
+    expect(await screen.findByTestId('tab-contenido-etiquetas')).toBeDefined();
+    // El bloque se carga con import dinámico: aparece un instante después que su contenedor.
+    expect(await screen.findByText('bloque-etiquetas')).toBeDefined();
+  });
+
+  it('?pestana=etiquetas sin el permiso cae a la primera y no muestra la gestión', async () => {
+    busqueda = 'pestana=etiquetas';
+    render(<ConfiguracionPage />);
+    expect(await screen.findByTestId('tab-contenido-equipo')).toBeDefined();
+    await waitFor(() => expect(auth.obtenerSesionActualApi).toHaveBeenCalled());
+    expect(screen.queryByText('bloque-etiquetas')).toBeNull();
   });
 });

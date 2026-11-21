@@ -62,7 +62,7 @@ function filaDeResumen(tenantId: string): FilaDeResumen {
     mensajesSinLeer: 0,
     slaVenceEn: null,
     primeraRespuestaEn: null,
-    etiquetas: [],
+    etiquetasAsignadas: [],
     contacto: { nombre: 'Viajera', telefonoE164: '+573001234567' },
     asignadoA: null,
   };

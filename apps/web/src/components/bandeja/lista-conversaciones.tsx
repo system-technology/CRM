@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import {
   type ConversacionResumen,
   EventoBandeja,
@@ -34,6 +34,17 @@ import {
 } from '../../lib/filtros-guardados-logica';
 import { useBandejaAtajos } from '../../lib/atajos-teclado-bandeja';
 import { formatearFecha } from '../../lib/formato';
+import { usePermisos } from '../../lib/permisos';
+import { useEtiquetasDeLaAgencia } from '../../lib/use-catalogo-de-etiquetas';
+import { useFiltroDeEtiquetas } from '../../lib/use-filtro-de-etiquetas';
+import { escucharEtiquetasDeConversacion } from '../../lib/etiquetas-eventos';
+import { hrefConFiltro, soloFiltroDeEtiquetas } from '../../lib/etiquetas-logica';
+import { EtiquetasDeFila } from '../etiquetas/etiquetas-de-fila';
+import {
+  BarraDeFiltroDeEtiquetas,
+  BotonFiltroPorEtiqueta,
+  SinResultadosDelFiltro,
+} from '../etiquetas/filtro-por-etiqueta';
 
 import { TituloDePantalla } from '../comun/titulo-de-pantalla';
 export type DensidadBandeja = 'compacta' | 'comoda';
@@ -51,6 +62,16 @@ export function ListaConversaciones() {
   const pathname = usePathname();
   const { setConversaciones: setConversacionesContexto, setModalAyudaAbierto } = useBandejaAtajos();
   const indiceDeViajes = useViajesBandeja();
+
+  // Etiquetas (T-326): el filtro vive en la URL; el catálogo se comparte con el chat.
+  const { puedeAdministrarEtiquetas } = usePermisos();
+  const catalogoDeEtiquetas = useEtiquetasDeLaAgencia();
+  const filtroEtiquetas = useFiltroDeEtiquetas(catalogoDeEtiquetas);
+  const idsDeEtiquetas = filtroEtiquetas.ids;
+  const modoDeEtiquetas = filtroEtiquetas.modo;
+  const parametrosDeUrl = useSearchParams();
+  // Al abrir un chat y al volver, el filtro viaja en la URL: volver atrás lo conserva.
+  const consultaDelFiltro = soloFiltroDeEtiquetas(parametrosDeUrl ?? new URLSearchParams());
 
   // Filtros persistidos en localStorage con opción de limpiar (T-103)
   const {
@@ -116,6 +137,7 @@ export function ListaConversaciones() {
       const res = await inboxApi.consultarBandeja({
         filtro,
         buscar: buscarDebounced,
+        ...(idsDeEtiquetas.length > 0 ? { etiquetas: idsDeEtiquetas, modo: modoDeEtiquetas } : {}),
         limite: 30,
       });
       setPagina(res);
@@ -130,11 +152,25 @@ export function ListaConversaciones() {
     } finally {
       setCargando(false);
     }
-  }, [filtro, buscarDebounced, esDemo]);
+  }, [filtro, buscarDebounced, esDemo, idsDeEtiquetas, modoDeEtiquetas]);
 
   useEffect(() => {
     void cargarInicial();
   }, [cargarInicial]);
+
+  // El chat puso o quitó una etiqueta: la fila cambia al instante, sin esperar al servidor.
+  useEffect(
+    () =>
+      escucharEtiquetasDeConversacion((conversacionId, etiquetas) => {
+        const aplicar = (c: ConversacionResumen) =>
+          c.id === conversacionId ? { ...c, etiquetas: [...etiquetas] } : c;
+        setConversaciones((prev) => prev.map(aplicar));
+        if (bufferConversacionesRef.current) {
+          bufferConversacionesRef.current = bufferConversacionesRef.current.map(aplicar);
+        }
+      }),
+    [],
+  );
 
   // Aplicar reorden diferido al hacer clic en el banner o salir del área
   const aplicarReordenDiferido = useCallback(() => {
@@ -203,6 +239,7 @@ export function ListaConversaciones() {
       const res = await inboxApi.consultarBandeja({
         filtro,
         buscar: buscarDebounced,
+        ...(idsDeEtiquetas.length > 0 ? { etiquetas: idsDeEtiquetas, modo: modoDeEtiquetas } : {}),
         cursor: pagina.pageInfo.nextCursor,
         limite: 30,
       });
@@ -299,18 +336,27 @@ export function ListaConversaciones() {
           </button>
         </div>
 
-        {/* Buscador */}
-        <div className="relative">
-          <Search className="absolute top-2.5 left-2.5 h-3.5 w-3.5 text-neutral-400" />
-          <input
-            ref={busquedaInputRef}
-            type="search"
-            value={buscar}
-            onChange={(e) => setBuscar(e.target.value)}
-            placeholder="Buscar por nombre o teléfono... (/)"
-            className="focus:border-acento-600 focus:ring-acento-600/30 w-full rounded-lg border border-neutral-200 bg-neutral-50 py-2 pr-3 pl-8 text-xs text-neutral-900 placeholder-neutral-400 focus:bg-white focus:ring-2 focus:outline-none md:py-1.5 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+        {/* Buscador y filtro por etiqueta (T-326) */}
+        <div className="flex items-center gap-2">
+          <div className="relative min-w-0 flex-1">
+            <Search className="absolute top-2.5 left-2.5 h-3.5 w-3.5 text-neutral-400" />
+            <input
+              ref={busquedaInputRef}
+              type="search"
+              value={buscar}
+              onChange={(e) => setBuscar(e.target.value)}
+              placeholder="Buscar por nombre o teléfono... (/)"
+              className="focus:border-acento-600 focus:ring-acento-600/30 w-full rounded-lg border border-neutral-200 bg-neutral-50 py-2 pr-3 pl-8 text-xs text-neutral-900 placeholder-neutral-400 focus:bg-white focus:ring-2 focus:outline-none md:py-1.5 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+            />
+          </div>
+          <BotonFiltroPorEtiqueta
+            filtro={filtroEtiquetas}
+            catalogo={catalogoDeEtiquetas}
+            puedeAdministrar={puedeAdministrarEtiquetas}
           />
         </div>
+
+        <BarraDeFiltroDeEtiquetas filtro={filtroEtiquetas} catalogo={catalogoDeEtiquetas} />
 
         {/* Chips de Filtro con objetivo táctil >=44px en móvil y opción de limpiar */}
         <div className="flex flex-wrap items-center justify-between gap-1" role="tablist">
@@ -385,6 +431,8 @@ export function ListaConversaciones() {
               <div key={i} className="esqueleto-brillo rounded-lg p-3">
                 <div className="h-4 w-3/4 rounded bg-transparent"></div>
                 <div className="mt-2 h-3 w-1/2 rounded bg-transparent"></div>
+                {/* Tercera línea: la de los chips de etiqueta */}
+                <div className="mt-2 h-3 w-1/3 rounded bg-transparent"></div>
               </div>
             ))}
           </div>
@@ -399,6 +447,8 @@ export function ListaConversaciones() {
               Reintentar
             </button>
           </div>
+        ) : conversaciones.length === 0 && idsDeEtiquetas.length > 0 ? (
+          <SinResultadosDelFiltro filtro={filtroEtiquetas} />
         ) : conversaciones.length === 0 ? (
           <div className="p-8 text-center text-xs text-neutral-500">
             <p className="font-semibold text-neutral-700 dark:text-neutral-300">
@@ -423,7 +473,7 @@ export function ListaConversaciones() {
               return (
                 <Link
                   key={conv.id}
-                  href={`/bandeja/${conv.id}`}
+                  href={hrefConFiltro(`/bandeja/${conv.id}`, consultaDelFiltro)}
                   ref={(el) => {
                     itemRefs.current[idx] = el;
                   }}
@@ -472,6 +522,8 @@ export function ListaConversaciones() {
                       <p className="mt-0.5 truncate text-[11px] text-neutral-500 dark:text-neutral-400">
                         {conv.ultimoMensajeTexto || 'Sin mensajes'}
                       </p>
+
+                      <EtiquetasDeFila etiquetas={conv.etiquetas} />
 
                       <div className="mt-1.5 flex flex-wrap items-center gap-1 text-[10px]">
                         {conv.mensajesSinLeer > 0 && (
