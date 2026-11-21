@@ -2,8 +2,8 @@
 
 **Medición.** Barrido de `apps/web` y `packages/ui` por clases de color cuya familia no está ni en
 `@theme` ni en Tailwind. Resultado: una sola familia, `primary`, con **41 usos** (el número de la tarea
-era exacto) en tres archivos: `bloque-etapas-pipeline.tsx` (4 clases), `modal-reasignar.tsx` (33) y
-`bandeja/[id]/page.tsx` (4). Ninguna otra familia inexistente.
+era exacto) en tres archivos: `bloque-etapas-pipeline.tsx` (6 clases), `modal-reasignar.tsx` (30) y
+`bandeja/[id]/page.tsx` (5). Ninguna otra familia inexistente.
 
 **Decisión.** `primary` → `acento`, tono por tono, sin inventar colores ni añadir una familia nueva:
 `acento` ya declara la escala completa (50–950) y es el color de acción del resto de la web. Los usos
