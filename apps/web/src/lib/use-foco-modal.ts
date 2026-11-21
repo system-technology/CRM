@@ -60,6 +60,10 @@ export function useFocoModal<T extends HTMLElement = HTMLDivElement>({
 
     if (contenedor) {
       timerFoco = setTimeout(() => {
+        // Si la persona (o una prueba) ya puso el foco dentro, no se lo quitamos: mover el foco
+        // a media escritura mandaba las teclas siguientes al boton «Cerrar» y el campo conservaba
+        // su valor viejo (T-548).
+        if (contenedor.contains(document.activeElement)) return;
         if (elementoInicialRef?.current) {
           elementoInicialRef.current.focus();
         } else {
