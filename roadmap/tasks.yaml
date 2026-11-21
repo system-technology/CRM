@@ -7151,7 +7151,7 @@ tasks:
     phase: 1
     priority: P0
     effort: M
-    status: backlog
+    status: ready
     depends_on: [T-327]
     acceptance:
       - "Define el contexto payments mínimo: pago, saldo, estados de cobro, R8 (unidad mínima), R5 (idempotencia), permiso propio, historial inmutable, relación con el archivo de viaje y con la TRM"
@@ -7159,6 +7159,7 @@ tasks:
     source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md (2026-11-20)
     created_at: 2026-11-20T19:00:00.000Z
     owner: arquitecto
+    notes: "ADR-0034 redactado en el PR de esta tarea (estado Propuesto). Antes de aceptarlo: auditor-seguridad sin recortar vueltas (dinero y aislamiento) y experto-turismo sobre los estados y la fecha límite. Su cola es T-419 a T-424."
   - id: T-329
     title: 'C2: migración de pagos del viajero (insert-only, historial inmutable, RLS) y su permiso'
     type: feature
@@ -8352,4 +8353,82 @@ tasks:
       - "Un endpoint devuelve cuántas conversaciones tiene cada etiqueta, solo con las que el usuario puede ver, para «Está en 14 conversaciones» (HU-inbox-1 §3 y §4.6); sin datos de otra agencia, con spec de aislamiento"
     source: "cola de T-325 (2026-11-21), reportada por el agente de backend"
     created_at: 2026-11-21T02:45:00.000Z
+    owner: backend
+  - id: T-419
+    title: "Monto recibido, moneda recibida y TRM congelada en el pago (ADR-0034 §2.2)"
+    type: feature
+    phase: 2
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: [T-330]
+    acceptance:
+      - "Decisión o implementación escrita en un ADR o PR propio; el ADR-0034 no se edita, se enmienda o se supersede"
+    source: "ADR-0034 §2.2: hoy el pago solo se registra en la moneda del archivo; guardar lo recibido en otra moneda con su TRM va en columnas nulas nuevas, sin migrar el libro (cola del ADR de pagos, 2026-11-21)"
+    created_at: 2026-11-21T03:00:00.000Z
+    owner: datos
+  - id: T-420
+    title: "Tabla medios_de_pago por agencia con categoría del catálogo (ADR-0034 §2.3)"
+    type: feature
+    phase: 2
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: [T-330]
+    acceptance:
+      - "Decisión o implementación escrita en un ADR o PR propio; el ADR-0034 no se edita, se enmienda o se supersede"
+    source: "ADR-0034 §2.3: hoy el medio de pago es un catálogo cerrado por CHECK; pasa a tabla por agencia si una segunda agencia lo pide (R12) (cola del ADR de pagos, 2026-11-21)"
+    created_at: 2026-11-21T03:00:00.000Z
+    owner: datos
+  - id: T-421
+    title: "Días de la fecha límite de cobro por defecto como política por agencia (ADR-0034 §3)"
+    type: feature
+    phase: 2
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: [T-330]
+    acceptance:
+      - "Decisión o implementación escrita en un ADR o PR propio; el ADR-0034 no se edita, se enmienda o se supersede"
+    source: "ADR-0034 §3: hoy son 30 días constantes antes de la salida; parametrizar cuando lo pida una segunda agencia (cola del ADR de pagos, 2026-11-21)"
+    created_at: 2026-11-21T03:00:00.000Z
+    owner: analista-producto
+  - id: T-422
+    title: "Historial de cambios de la fecha límite de cobro (hoy solo queda el último autor)"
+    type: feature
+    phase: 2
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: [T-330]
+    acceptance:
+      - "Decisión o implementación escrita en un ADR o PR propio; el ADR-0034 no se edita, se enmienda o se supersede"
+    source: "ADR-0034 §3: plazos_de_cobro es editable y solo guarda el último autor (cola del ADR de pagos, 2026-11-21)"
+    created_at: 2026-11-21T03:00:00.000Z
+    owner: datos
+  - id: T-423
+    title: "Decidir si se cifran nota y referencia de los pagos (ADR-0034, R10)"
+    type: security
+    phase: 2
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: [T-330]
+    acceptance:
+      - "Decisión o implementación escrita en un ADR o PR propio; el ADR-0034 no se edita, se enmienda o se supersede"
+    source: "ADR-0034: son texto libre; hoy no son PII sensible según R10, pero la decisión es de auditor-seguridad (cola del ADR de pagos, 2026-11-21)"
+    created_at: 2026-11-21T03:00:00.000Z
+    owner: auditor-seguridad
+  - id: T-424
+    title: "Primer consumidor de los eventos payments.pago_* : Hoy y la campana (T-333)"
+    type: feature
+    phase: 2
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: [T-330]
+    acceptance:
+      - "Decisión o implementación escrita en un ADR o PR propio; el ADR-0034 no se edita, se enmienda o se supersede"
+    source: "ADR-0034 §7: los eventos se publican sin consumidor en el MVP (cola del ADR de pagos, 2026-11-21)"
+    created_at: 2026-11-21T03:00:00.000Z
     owner: backend
