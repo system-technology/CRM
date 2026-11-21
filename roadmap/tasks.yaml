@@ -7796,7 +7796,7 @@ tasks:
     files:
       - .github/workflows/ci.yml
       - packages/database/tests/aislamiento.spec.ts
-    source: "auditorías de seguridad del PR 1b (#363, cola C3 y hallazgo 5 de la segunda auditoría, 2026-11-21)"
+    source: "auditorías de seguridad del PR 1b (#363, cola C3 y hallazgo 5 de la segunda auditoría, 2026-11-21). Causa real observada en el CI de #363 (2026-11-21): el job test corre pnpm test con todos los paquetes en paralelo contra la misma base (ci.yml) y AP14, que vacía tenants, falló de forma intermitente con «Ciclo de dependencias entre: contactos, cotizaciones, roles, usuarios» (y antes con 40001), mientras aislamiento-tenants, que corre sola, pasaba"
     created_at: 2026-11-21T00:00:00.000Z
     owner: devops
   - id: T-382
