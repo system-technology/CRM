@@ -226,6 +226,35 @@ PR de este lote (#471 carril `a`, #472 carril `i`, #473 carril `b`) la llevaban 
 verde en los tres. T-576 nació diciendo lo contrario y se ha corregido. Avisar a las hijas de que no
 pueden dejar su rastro documental **les hacía quitar trabajo bueno por una regla que no existe**.
 
+## 1.10 La cola marcaba `ready` una tarea que solo puede desbloquear el propietario (2026-11-21, lote nocturno)
+
+**T-334 estaba en `ready` y era falso.** Su primer criterio exige «las columnas de la hoja **real**
+del piloto (muestra sin datos personales)», y esa muestra **no está en el repositorio** (no hay
+ningún `.csv`). El roadmap de JD Tours encabeza sus preguntas abiertas con «**antes de T-327, T-323
+y T-334**», y la última es justo la hoja. Es el **punto 12 de `PENDIENTES-DEL-PROPIETARIO.md`**.
+
+El pendiente **sí** estaba registrado con el propietario. Lo que fallaba era la cola: marcaba lista
+una tarea que depende de él. **Un pendiente bien anotado no sirve de nada si la tarea que lo espera
+figura como disponible**: la siguiente sesión la toma y se estrella, o peor, se inventa las columnas.
+
+Corregido: `T-334` → `blocked`, `T-336` → `blocked` (importar su hoja exige su hoja), y `T-335` →
+`ready` con su dependencia movida de `T-334` a `T-332`, porque lo que hay que exportar es la tabla
+del **criterio de salida §3.4**, no las columnas del propietario.
+
+**Comprobación que conviene repetir cada lote, es barata:** que **ninguna tarea `ready` dependa de
+una `blocked`**. Se hace en diez líneas de Python sobre `tasks.yaml`. Tras esta corrección, las 551
+pasan.
+
+## 1.11 T-372: la sospecha del turno anterior era correcta, y hacía bien en no darla por buena
+
+La madre anterior dejó T-372 en la cola diciendo «**NO lo he verificado: que lo mida quien la tome y
+me desmienta si procede**». Se midió: en la corrida **`44934621499`** (ya en `main`, 18:18 UTC)
+**M17 y M21 salen las dos ROJAS**, que era exactamente su criterio pendiente. T-372 → `done`.
+
+Acertó en el fondo **y** en la forma. Si hubiera escrito «T-372 ya está hecha», habría tenido razón
+por casualidad y nadie habría mirado la corrida. **Marcar la sospecha como sospecha es lo que hizo
+que se midiera.**
+
 ## 2. Reglas operativas que no se olvidan
 
 - **R14:** todo cambio se documenta, lo hecho y lo que viene. Un plan que solo vive en una conversación no existe.

@@ -12474,3 +12474,51 @@ tasks:
     source: "auditoria de la madre sobre el PR #471, 2026-11-21"
     created_at: 2026-11-21T18:10:00.000Z
     owner: datos
+
+  - id: T-580
+    title: "Reportes: la guarda de agencia entera de porAsesor y ventasPorDestino es solo de tipos, sin comprobacion en ejecucion"
+    type: security
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    depends_on:
+      - T-340
+    acceptance:
+      - "HOY NO ES UNA FUGA Y ESTA VERIFICADO (madre del lote nocturno, 2026-11-21): esAgenciaEntera y
+        esAgencia de shared/autorizacion/alcance-de-reporte.ts son funciones con logica en EJECUCION
+        (nivel === AGENCIA && asesorId === null), y en obtener-resumen.use-case.ts un alcance PROPIO deja
+        agenciaEntera === null, asi que porAsesor NUNCA se invoca. La proteccion es real, no solo de tipos"
+      - "Lo que falta es defensa en profundidad: los puertos exigen AlcanceDeAgenciaEntera por TIPO, y los
+        tipos se borran al compilar. Un llamador futuro que no pase por el if del caso de uso no encontraria
+        ninguna barrera en el puerto"
+      - "Remedio propuesto: que cada adaptador de porAsesor y ventasPorDestino afirme en ejecucion que
+        recibe el alcance que su tipo promete, y falle fuerte si no"
+      - "Prueba: llamar al puerto con un alcance PROPIO saltandose el caso de uso y ver que falla. Debe
+        verse en ROJO antes del arreglo"
+    source: "auditoria de seguridad del ADR-0035 (T-340), 2026-11-21"
+    owner: backend
+    notes: "Sale de la auditoria de T-340. Es cola, no bloqueante (CLAUDE.md 3.1): empieza por «el dia que
+      otro llamador aparezca». La madre comprobo la cadena completa linea a linea antes de clasificarla asi."
+
+  - id: T-581
+    title: "Reportes: ningun e2e cubre un rol con reportes.ver_agencia pero SIN conversaciones.ver_todas"
+    type: test
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    depends_on:
+      - T-340
+    acceptance:
+      - "El e2e de dos asesores de reportes.e2e-spec.ts cubre asesor frente a administrador, pero los dos
+        casos llevan los permisos juntos. Un rol MIXTO (ve cifras de toda la agencia pero no las
+        conversaciones de los demas) no se prueba en ningun sitio"
+      - "Es justo la combinacion que un administrador de agencia podria armar a mano con el catalogo de
+        roles, y la que mas facil se cuela: dos permisos que casi siempre viajan juntos"
+      - "Anadir el caso al e2e y comprobar que cada permiso manda sobre SU parte de la respuesta, sin que
+        uno arrastre al otro"
+    source: "auditoria de seguridad del ADR-0035 (T-340), 2026-11-21"
+    owner: qa
+    notes: "Sale de la auditoria de T-340. Cola, no bloqueante."
+
