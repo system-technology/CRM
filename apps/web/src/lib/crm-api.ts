@@ -238,10 +238,11 @@ export type { ResumenTrabajoDelDia };
 
 /**
  * Consulta y agrega métricas clave del trabajo diario para la pantalla de Inicio (T-037).
- * Carga en paralelo contadores de WhatsApp, oportunidades de pipeline y cotizaciones.
+ * Carga en paralelo contadores de WhatsApp, oportunidades de pipeline y el resumen de reportes
+ * (cotizaciones abiertas y saldo por cobrar, contados por el servidor).
  */
 export async function obtenerResumenTrabajoDelDia(): Promise<ResumenTrabajoDelDia> {
-  const [tableroResult, inboxResult, cotizacionesResult] = await Promise.allSettled([
+  const [tableroResult, inboxResult, reportesResult] = await Promise.allSettled([
     obtenerTableroPipeline(),
     (async () => {
       try {
@@ -253,8 +254,13 @@ export async function obtenerResumenTrabajoDelDia(): Promise<ResumenTrabajoDelDi
     })(),
     (async () => {
       try {
-        const { listarCotizacionesApi } = await import('./cotizaciones-api');
-        return await listarCotizacionesApi({ limite: 20 });
+        // T-546: las cotizaciones abiertas y el saldo por cobrar son cifras de HOY que cuenta el
+        // servidor con el alcance de quien consulta; el rango solo es obligatorio en la consulta.
+        const [{ obtenerResumenDeReportesApi }, { rangoDePeriodo }] = await Promise.all([
+          import('./reportes-api'),
+          import('./reportes-periodo'),
+        ]);
+        return await obtenerResumenDeReportesApi(rangoDePeriodo('ultimos_30_dias'));
       } catch {
         return null;
       }
@@ -272,14 +278,14 @@ export async function obtenerResumenTrabajoDelDia(): Promise<ResumenTrabajoDelDi
 
   const tablero = tableroResult.status === 'fulfilled' ? tableroResult.value : null;
   const contadoresInbox = inboxResult.status === 'fulfilled' ? inboxResult.value : null;
-  const cotizaciones = cotizacionesResult.status === 'fulfilled' ? cotizacionesResult.value : null;
+  const resumenDeReportes = reportesResult.status === 'fulfilled' ? reportesResult.value : null;
 
   // Si ninguna fuente respondió, un resumen en ceros mentiría ("no tienes nada"): es un error.
-  if (!tablero && !contadoresInbox && !cotizaciones) {
+  if (!tablero && !contadoresInbox && !resumenDeReportes) {
     throw new Error('Ninguna fuente del resumen del día respondió');
   }
 
-  return calcularResumenTrabajo(contadoresInbox, tablero, cotizaciones);
+  return calcularResumenTrabajo(contadoresInbox, tablero, resumenDeReportes);
 }
 
 /**

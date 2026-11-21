@@ -187,6 +187,95 @@ describe('ReportesPage: la vista la decide la respuesta (T-343, ADR-0035 §5)', 
     expect(espia).toHaveBeenCalled();
   });
 
+  // T-546 / T-538. El servidor cuenta las dos cifras de HOY (T-528); la web solo las pinta.
+  const ABIERTAS = {
+    total: 5,
+    borradores: 2,
+    enviadas: 3,
+    porAntiguedad: { hastaTresDias: 1, deCuatroASiete: 1, masDeSiete: 1 },
+  };
+  const porCobrar = (truncado: boolean) => ({
+    truncado,
+    porMoneda: [
+      {
+        moneda: 'COP' as const,
+        archivos: 3,
+        saldo: { unidades: '4500000', moneda: 'COP' as const },
+      },
+      { moneda: 'USD' as const, archivos: 1, saldo: { unidades: '25000', moneda: 'USD' as const } },
+    ],
+  });
+
+  it('«Mis números» pinta cotizaciones abiertas por antigüedad y el saldo por cobrar, una fila por moneda', async () => {
+    vi.spyOn(authApi, 'obtenerSesionActualApi').mockResolvedValue(SESION_ASESOR);
+    vi.spyOn(reportesApi, 'obtenerResumenDeReportesApi').mockResolvedValue({
+      ...fixtureDosMonedas(false, 'PROPIO'),
+      cotizacionesAbiertas: ABIERTAS,
+      porCobrar: porCobrar(false),
+    });
+    render(<ReportesPage />);
+
+    const abiertas = await screen.findByTestId('mis-numeros-abiertas');
+    expect(abiertas.textContent).toContain('2 borradores');
+    expect(abiertas.textContent).toContain('3 enviadas');
+    const tramos = screen.getByTestId('cotizaciones-por-antiguedad').textContent;
+    expect(tramos).toContain('De 0 a 3 días1');
+    expect(tramos).toContain('Más de 7 días1');
+
+    // R8: COP en pesos (la unidad mínima de COP es el peso) y USD en centavos; nunca sumadas.
+    expect(screen.getByTestId('por-cobrar-COP').textContent).toContain('4.500.000');
+    expect(screen.getByTestId('por-cobrar-COP').textContent).toContain('3 archivos');
+    expect(screen.getByTestId('por-cobrar-USD').textContent).toContain('250,00');
+    expect(screen.getByTestId('por-cobrar-USD').textContent).toContain('1 archivo');
+    // Sin truncado: la cifra es el total.
+    expect(screen.queryByTestId('por-cobrar-truncado')).toBeNull();
+    expect(screen.queryByText(/o más/)).toBeNull();
+  });
+
+  it('T-538: con truncado: true el saldo se enseña como mínimo («o más»), no como total', async () => {
+    vi.spyOn(authApi, 'obtenerSesionActualApi').mockResolvedValue(SESION_ASESOR);
+    vi.spyOn(reportesApi, 'obtenerResumenDeReportesApi').mockResolvedValue({
+      ...fixtureDosMonedas(false, 'PROPIO'),
+      cotizacionesAbiertas: ABIERTAS,
+      porCobrar: porCobrar(true),
+    });
+    render(<ReportesPage />);
+
+    await screen.findByTestId('mis-numeros-por-cobrar');
+    expect(screen.getByTestId('por-cobrar-truncado').textContent).toContain('un mínimo');
+    expect(screen.getByTestId('por-cobrar-minimo-COP').textContent).toBe('o más');
+    expect(screen.getByTestId('por-cobrar-minimo-USD').textContent).toBe('o más');
+    expect(screen.getByTestId('por-cobrar-COP').textContent).toContain('3 o más archivos');
+  });
+
+  it('T-538: truncado con nada por cobrar entre lo revisado no afirma «nada por cobrar»', async () => {
+    vi.spyOn(authApi, 'obtenerSesionActualApi').mockResolvedValue(SESION_ASESOR);
+    vi.spyOn(reportesApi, 'obtenerResumenDeReportesApi').mockResolvedValue({
+      ...fixtureDosMonedas(false, 'PROPIO'),
+      cotizacionesAbiertas: ABIERTAS,
+      porCobrar: { truncado: true, porMoneda: [] },
+    });
+    render(<ReportesPage />);
+
+    const bloque = await screen.findByTestId('por-cobrar-hoy');
+    expect(bloque.textContent).not.toContain('Nada por cobrar');
+    expect(bloque.textContent).toContain('entre los archivos revisados');
+    expect(screen.getByTestId('por-cobrar-truncado')).toBeDefined();
+  });
+
+  it('sin cobro.ver el servidor no manda porCobrar: no hay tarjeta ni ceros que mientan', async () => {
+    vi.spyOn(authApi, 'obtenerSesionActualApi').mockResolvedValue(SESION_ASESOR);
+    vi.spyOn(reportesApi, 'obtenerResumenDeReportesApi').mockResolvedValue({
+      ...fixtureDosMonedas(false, 'PROPIO'),
+      cotizacionesAbiertas: ABIERTAS,
+    });
+    render(<ReportesPage />);
+
+    await screen.findByTestId('mis-numeros-abiertas');
+    expect(screen.queryByTestId('mis-numeros-por-cobrar')).toBeNull();
+    expect(screen.queryByTestId('por-cobrar-hoy')).toBeNull();
+  });
+
   it('n < 20: la fracción «2 de 3», nunca un porcentaje', async () => {
     vi.spyOn(authApi, 'obtenerSesionActualApi').mockResolvedValue(SESION_ASESOR);
     vi.spyOn(reportesApi, 'obtenerResumenDeReportesApi').mockResolvedValue(
