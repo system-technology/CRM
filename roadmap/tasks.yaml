@@ -12115,7 +12115,7 @@ tasks:
     phase: 1
     priority: P2
     effort: M
-    status: backlog
+    status: done
     acceptance:
       - "El usuario de muestra del modo demostracion tiene permisos de dueno: «Reportes de la agencia» sale
         con la comparacion entre asesores y no existe la vista «Mis numeros» de un asesor puro. Hallado al
@@ -12131,6 +12131,11 @@ tasks:
     source: hallazgo de T-562 (manual de usuario), 2026-11-21
     created_at: 2026-11-21T16:00:00.000Z
     owner: frontend
+    started_at: 2026-11-21T17:30:04.617Z
+    done_at: 2026-11-21T17:30:04.617Z
+    evidence: "Mergeado en main por el PR #464 (rama b/T-566-demo-vista-de-asesor) con el CI en verde: format,
+      analyze, tests y los demás checks obligatorios. Cierre automático (.github/workflows/cerrar-tarea.yml)."
+    commit: 643c3b599e45606167618fdc4f0f6ede96fea601
   - id: T-567
     title: "Web: los datos de muestra de la demostracion no cuadran entre pantallas"
     type: bug
