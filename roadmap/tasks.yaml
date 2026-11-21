@@ -9571,7 +9571,8 @@ tasks:
     phase: 1
     priority: P2
     effort: M
-    status: in_progress
+    status: done
+    done_at: 2026-11-21T12:45:00.000Z
     acceptance:
       - "Dentro de apps/api las e2e siguen compartiendo base: una base o esquema por archivo, o ejecucion serial donde toque"
       - "Los deadlocks 40P01 de historial-de-etapas e invitaciones.e2e-spec no se reprodujeron: reproducirlos o cerrar con evidencia"
@@ -9579,7 +9580,7 @@ tasks:
       - "Cinco ejecuciones seguidas del CI sin rojo por esto"
     source: "resto de T-503, #408, 2026-11-21"
     created_at: 2026-11-21T20:00:00.000Z
-    notes: "Segundo PR de T-510 (bitacora 2026-11-21-t510-cierre-de-deadlocks-y-peaje). 40P01 de invitaciones CERRADO CON EVIDENCIA: log del servidor del CI (corrida 44872868317) = TRUNCATE ... CASCADE de aislamiento.spec (database) contra borrarTenants (api), dos paquetes; lo cerro #408. El de historial-de-etapas no tiene log: atribuido por mecanismo, sin demostrar. Cinco corridas: 32 verdes y 0 rojas del job test desde #415. Peaje medido: mediana 210 s antes de #408, 262 s con #408, 328 s con #415; el de #408 esta justificado, el de #415 no tenia evidencia, y este PR retira fileParallelism false de la api como apuesta que valida repetir el job test (si algun rojo es 40P01/FK/colision entre archivos de la api, se vuelve a serie en el mismo PR). Sin verificar en local. Cola: comentario obsoleto en aislamiento.spec ~4435 y vitest.config de database (rutas protegidas); reportes.e2e unicidad sin investigar."
+    notes: "Cerrada con el segundo PR, #427 (7fec8760), integrado por la madre. QUE QUEDO DEMOSTRADO: el 40P01 de invitaciones.e2e-spec tiene log del servidor del CI (corrida 44872868317) con TRUNCATE versiones_cotizacion CASCADE de aislamiento.spec.ts (paquete database) contra SELECT count(*) de borrar-tenants.mjs (limpieza de las e2e de la api): dos paquetes, lo cerro #408. QUE NO: el 40P01 de historial-de-etapas no tiene log y queda atribuido por mecanismo, sin demostrar. La prueba del indice ya no depende del planificador (#415). DECISION: se retira la ejecucion en serie que introdujo #415, que no tenia evidencia y costaba ~65 s de mediana por PR (medianas del job test: 210 s antes de #408, 262 s con #408, 328 s con #415). MATIZ QUE IMPORTA, anotado por la madre: las 32 corridas limpias que cubren el criterio de las cinco se midieron con la configuracion EN SERIE; la configuracion en paralelo que deja este PR lleva n=2 aqui mas n=17 historicos (16 verdes, 1 rojo de fixture propio). Es una apuesta medida, no una certeza. VUELTA ATRAS si vuelve un 40P01: fileParallelism: false en apps/api. Si eso pasa, se abre tarea nueva; no se deja T-510 abierta para siempre."
     owner: qa
   - id: T-511
     title: "Probar el ingreso por apodo a 390 px contra la API real"
@@ -9815,7 +9816,8 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: backlog
+    status: done
+    done_at: 2026-11-21T12:55:00.000Z
     depends_on: [T-342, T-343]
     acceptance:
       - "La rama PROPIO del resumen (o un endpoint hermano con el mismo alcanceDeReporte) trae: cotizaciones abiertas del asesor repartidas por antigüedad, y saldo por cobrar por moneda de sus archivos (ADR-0035 §2: el archivo hereda el asesor de su oportunidad)"
@@ -9824,6 +9826,8 @@ tasks:
     source: "T-343: los criterios «cotizaciones abiertas por antigüedad» y «cobros por cobrar» del asesor no se pueden cumplir en la web sin un dato servido por asesor"
     created_at: 2026-11-21T23:00:00.000Z
     owner: backend
+    notes: "Integrada como #428 (aa38bdf9). El servidor sirve las cotizaciones abiertas y el saldo por cobrar DEL ASESOR; nacio porque T-343 se nego a filtrar listas de agencia en el cliente. AUDITORIA INDEPENDIENTE DE LA MADRE (alcance entre asesores, R13): SIN BLOQUEANTES. El asesorId que llega del cliente pasa siempre por alcanceDeReporte(): sin reportes.ver_agencia es 403, no un recorte en silencio. El acierto es que la firma del puerto no tiene valor por defecto, asi que olvidar el filtro no compila, y olvidarlo era devolver toda la agencia. Verificados R1/R2 (parametrizado dentro de la transaccion con tenant, tenant_id explicito ademas de RLS, sin rol postgres), R4 (la frontera analytics/payments la sostiene una prueba que lee las fuentes) y R8 (entero en unidad minima, monedas agrupadas sin TRM, saldos a favor descartados en vez de restados). El e2e cubre dos agencias y dos asesores con aserciones negativas sobre la respuesta cruda. HALLAZGO QUE CASI BLOQUEA, ahora T-537 (P1): porCobrar se sirve sin exigir cobro.ver mientras las pantallas de cobro si lo exigen, lo que contradice ADR-0035 4. No bloquea porque la madre verifico que NO existe endpoint para componer roles a medida, asi que hoy ninguna agencia puede llegar a ese estado. Resto de la cola: T-538 a T-541."
+
   - id: T-529
     title: "«Sin responsable» en «Hoy»: archivos de viaje sin asesor activo (ADR-0035 §2, H7)"
     type: feature
@@ -9944,3 +9948,86 @@ tasks:
     created_at: 2026-11-21T12:10:00.000Z
     owner: devops
 
+  - id: T-537
+    title: "Reportes: porCobrar se sirve sin exigir cobro.ver, y las pantallas de cobro si lo exigen"
+    type: bug
+    phase: 1
+    priority: P1
+    effort: S
+    status: backlog
+    acceptance:
+      - "reportes.controller.ts no lleva @RequierePermiso('cobro.ver') para porCobrar; payments/interface si lo exige. Hoy no hay diferencia porque DUENO, ASESOR y OPERACIONES tienen cobro.ver, y no existe endpoint para componer roles a medida: por eso es cola y no bloqueante"
+      - "Contradice ADR-0035 4: el alcance de un reporte puede ser mas estrecho que las pantallas, nunca mas amplio"
+      - "Omitir la clave porCobrar cuando falta cobro.ver, con el mismo patron que el PR ya usa para margen, y una prueba que lo fije"
+      - "Hacerlo ANTES de que exista el endpoint de roles a medida (R12): ese dia deja de ser cola"
+    source: "auditoria independiente de #428 (T-528), 2026-11-21"
+    created_at: 2026-11-21T12:40:00.000Z
+    owner: backend
+  - id: T-538
+    title: "Web: el resumen devuelve truncado: true a partir de 500 archivos abiertos y la web no lo presenta"
+    type: feature
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    acceptance:
+      - "Con mas de 500 archivos abiertos el servidor marca truncado: true; la web debe ensenar la cifra como minimo, no como total"
+      - "Complementa a T-492 (pasar el saldo a SQL), que ataca el coste; esto ataca la mentira en pantalla"
+    source: "auditoria independiente de #428 (T-528), 2026-11-21"
+    created_at: 2026-11-21T12:40:00.000Z
+    owner: frontend
+  - id: T-539
+    title: "Reportes: una moneda desconocida en el libro tumba el resumen entero en vez de degradar esa moneda"
+    type: bug
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    acceptance:
+      - "Si travel_files.moneda_iso guarda una moneda fuera de las cuatro habilitadas, MonedaDesconocidaEnElLibroError tumba todo el resumen, incluidas las cifras que no son dinero"
+      - "Degradar solo esa moneda y servir el resto. Hoy es imposible por el flujo de alta: por eso es cola"
+    source: "auditoria independiente de #428 (T-528), 2026-11-21"
+    created_at: 2026-11-21T12:40:00.000Z
+    owner: backend
+  - id: T-540
+    title: "Contratos: cotizacionesAbiertas y porCobrar son optional y la validacion de salida no detecta que falten"
+    type: refactor
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    acceptance:
+      - "Son .optional() por compatibilidad: si el servidor deja de enviarlas, lo cubren las pruebas, no el esquema"
+      - "Al retirar la opcionalidad, hacerlas obligatorias en packages/contracts y comprobar que la validacion de salida lo detecta"
+    source: "auditoria independiente de #428 (T-528), 2026-11-21"
+    created_at: 2026-11-21T12:40:00.000Z
+    owner: backend
+  - id: T-541
+    title: "Auditoria: el acceso a cifras de dinero agregadas no deja rastro"
+    type: audit
+    phase: 2
+    priority: P3
+    effort: M
+    status: backlog
+    acceptance:
+      - "R10 cubre PII de viajeros, no las cifras de dinero agregadas de la agencia"
+      - "Decidir si el acceso a reportes de agencia entra en la bitacora del modulo audit cuando ese modulo exista"
+    source: "auditoria independiente de #428 (T-528), 2026-11-21"
+    created_at: 2026-11-21T12:40:00.000Z
+    owner: arquitecto
+  - id: T-542
+    title: "La automatizacion que marca tareas como hechas lleva rota y nadie se entero"
+    type: infra
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    acceptance:
+      - "El job «Marcar la tarea como hecha» (cerrar-tarea.yml) sale con codigo 1 tras CADA merge: lo verifico la madre en la corrida 44904456823 al integrar #428. No bloquea el PR porque corre despues del merge y no esta entre los 14 checks, por eso llevaba tiempo fallando sin que nadie lo viera"
+      - "Causa 1, mecanica: 18 tareas tienen type o effort fuera del enum de tools/roadmap-mcp/roadmap.mjs (TYPES = security|bug|refactor|test|feature|docs|infra|audit; EFFORTS = S|M|L). Se colaron valores como fix, chore, feature-S. Corregir las 18 y validar el archivo entero"
+      - "Causa 2, de criterio: el validador exige UNA sola tarea in_progress y hay 20, muchas viejas (T-126, T-192, T-213, T-226, T-242..T-257, T-282, T-300, T-372, T-511). Hay que decidir una por una si estan done, dropped o backlog. Esto NO es mecanico y no lo debe hacer la madre: es el trabajo que le toca al dueno-de-producto"
+      - "Mientras esto siga roto, cerrar una tarea es un acto manual: si la madre se olvida, tasks.yaml miente sobre que esta hecho"
+      - "Al terminar, una corrida de cerrar-tarea.yml en verde como evidencia"
+    source: "hallazgo de la madre al integrar #428, 2026-11-21"
+    created_at: 2026-11-21T13:00:00.000Z
+    owner: dueno-de-producto

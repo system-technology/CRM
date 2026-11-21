@@ -10,10 +10,10 @@
 
 | Campo | Valor |
 |---|---|
-| Última actualización | 2026-11-21, cierre del segundo lote (`main` en `44d8673`, PR #408; [bitácora](docs/_bitacora/2026-11-21-segundo-lote-reportes-cobros-y-pruebas.md)) |
-| Actualizado por | Claude, sesión madre (hilo al día con los PR #289 a #401) |
+| Última actualización | 2026-11-21, cierre del **cuarto** lote (`main` en `aa38bdf9`, PR #427 y #428; [bitácora](docs/_bitacora/2026-11-21-cuarto-lote-t510-y-t528.md)) |
+| Actualizado por | Claude, sesión madre `session_01R81Xh5b7wpteu5YpcDpw5p` (hilo al día con los PR #289 a #428) |
 | Fase | **Fase 1 del backlog: «Un CRM mostrable y endurecido»** (M1 del [roadmap v2](docs/08-roadmap/01-roadmap.md)). Sin agencia real todavía. Prioridad vigente: la demo a JD Tours ([`MARCO.md`](docs/_contexto/MARCO.md) §6) |
-| Avance | 178 tareas `done` en `roadmap/tasks.yaml` (405 en total). «Done» significa integrada en `main`, **no** desplegada ni probada con Meta real |
+| Avance | 196 tareas `done` en `roadmap/tasks.yaml` (515 en total). «Done» significa integrada en `main`, **no** desplegada ni probada con Meta real |
 | Próximo hito | Que el propietario cargue la clave de cifrado y decida el despliegue; después, prueba con Meta real (T-080). Del lado del código solo queda cola menor: T-235 y T-226 (c), recifrado por lotes, que solo hace falta cuando haya una clave real que rotar |
 
 ---
@@ -41,6 +41,29 @@ aviso al despertar en el tablero), #416 (**T-505 `done`**: una prueba compara el
 literales a mano), #415 (T-510, e2e de `apps/api` en serie y la prueba del índice sin depender del
 planificador) y #410 (**T-331 `done`**: registrar un pago y ver el saldo en el archivo de viaje).
 Detalle: [bitácora](docs/_bitacora/2026-11-21-tercer-lote-cobros-permisos-y-pruebas.md).
+
+### Cierre del cuarto lote (2026-11-21)
+
+`main` en **`aa38bdf9`**, cero PR abiertos. Dos integrados en serie:
+
+- **#427 — T-510 `done`.** Cierra con evidencia el 40P01 de `invitaciones` (un `TRUNCATE` del paquete
+  `database` contra la limpieza de las e2e de la api: dos paquetes, lo cerró #408) y retira la ejecución
+  en serie que metió #415, que costaba ~65 s de mediana por PR sin evidencia detrás. **El 40P01 de
+  `historial-de-etapas` sigue sin demostrarse: queda atribuido por mecanismo.** Las 32 corridas limpias
+  que cubren el criterio de «cinco seguidas» se midieron **en serie**; la configuración en paralelo que
+  queda lleva n=2. Es una apuesta medida, con vuelta atrás de una línea.
+- **#428 — T-528 `done`.** El servidor sirve las cotizaciones abiertas y el saldo por cobrar **del
+  asesor**. Auditoría independiente de la madre (alcance entre asesores, R13): **sin bloqueantes**. El
+  `asesorId` del cliente pasa siempre por `alcanceDeReporte()` y sin permiso es **403**, no un recorte
+  silencioso; la firma del puerto no tiene valor por defecto, así que olvidar el filtro no compila.
+
+**Cola que deja el lote:** T-537 (P1: el saldo por cobrar se sirve sin exigir `cobro.ver`; no bloquea
+**hoy** porque no existe endpoint para componer roles a medida, y así está verificado), T-538 a T-541.
+
+**Hallazgo de operación, T-542 (P1):** el job «Marcar la tarea como hecha» **falla tras cada merge** y
+no lo veía nadie, porque corre después del merge y no está entre los 14 checks. Dos causas: 18 tareas con
+`type`/`effort` fuera del enum, y 20 tareas `in_progress` cuando el validador exige una. Mientras siga
+roto, cerrar una tarea es un acto manual y `tasks.yaml` miente si alguien se olvida.
 
 **#410 pasó por auditoría de seguridad independiente** por ser dinero en pantalla (R13), y volvió
 con tres bloqueantes, los tres corregidos con prueba de regresión: el saldo a favor se pintaba en
