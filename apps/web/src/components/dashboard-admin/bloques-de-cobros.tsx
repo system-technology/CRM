@@ -29,7 +29,7 @@ export interface DatosDeCobros {
 export function AvisoTruncado({ truncado }: { truncado: boolean }) {
   if (!truncado) return null;
   return (
-    <p className="text-aviso-700 mt-3 text-xs" role="note">
+    <p className="text-aviso-700 mt-3 text-xs dark:text-amber-400" role="note">
       La agencia tiene más archivos abiertos de los que caben en esta vista: las cifras pueden estar
       incompletas.
     </p>
@@ -62,7 +62,7 @@ export function CobrosPorCobrar({ datos }: { datos: DatosDeCobros }) {
                 {formatearDinero(m.porCobrar, { conCodigo: true })}
               </p>
               {BigInt(m.vencido.unidades) > 0n ? (
-                <p className="text-alerta-700 mt-1.5 flex items-start gap-1.5 text-sm font-semibold">
+                <p className="text-alerta-700 dark:text-alerta-400 mt-1.5 flex items-start gap-1.5 text-sm font-semibold">
                   <AlertTriangle aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
                   <span>
                     Vencido: {formatearDinero(m.vencido, { conCodigo: true })} (
@@ -71,7 +71,7 @@ export function CobrosPorCobrar({ datos }: { datos: DatosDeCobros }) {
                 </p>
               ) : null}
               {BigInt(m.porVencer.unidades) > 0n ? (
-                <p className="text-aviso-700 mt-1 flex items-start gap-1.5 text-sm">
+                <p className="text-aviso-700 mt-1 flex items-start gap-1.5 text-sm dark:text-amber-400">
                   <Clock aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
                   <span>
                     Por vencer: {formatearDinero(m.porVencer, { conCodigo: true })} (
@@ -131,14 +131,16 @@ export function SalidasProximas({ datos, hoy }: { datos: DatosDeCobros; hoy: str
             {s.conSaldo ? (
               <p
                 className={`flex shrink-0 items-center gap-1.5 text-sm font-semibold ${
-                  s.urgente ? 'text-aviso-700' : 'text-neutral-800 dark:text-neutral-200'
+                  s.urgente
+                    ? 'text-aviso-700 dark:text-amber-400'
+                    : 'text-neutral-800 dark:text-neutral-200'
                 }`}
               >
                 {s.urgente ? <AlertTriangle aria-hidden="true" className="size-4" /> : null}
                 <span className="cifra">Debe {formatearDinero(s.saldo, { conCodigo: true })}</span>
               </p>
             ) : (
-              <p className="text-ok-700 shrink-0 text-sm">Pagado</p>
+              <p className="text-ok-700 dark:text-ok-400 shrink-0 text-sm">Pagado</p>
             )}
           </li>
         ))}

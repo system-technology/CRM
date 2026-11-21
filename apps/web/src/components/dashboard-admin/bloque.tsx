@@ -113,7 +113,10 @@ export function Bloque<T>({
         ) : carga.estado === 'error' ? (
           <div role="alert" className="flex flex-col items-start gap-2 text-sm">
             <p className="flex items-start gap-2 text-neutral-700 dark:text-neutral-300">
-              <AlertTriangle aria-hidden="true" className="text-aviso-700 mt-0.5 size-4 shrink-0" />
+              <AlertTriangle
+                aria-hidden="true"
+                className="text-aviso-700 mt-0.5 size-4 shrink-0 dark:text-amber-400"
+              />
               {carga.mensaje}
             </p>
             <button
@@ -126,7 +129,10 @@ export function Bloque<T>({
           </div>
         ) : carga.estado === 'sin-permiso' ? (
           <p className="flex items-start gap-2 text-sm text-neutral-700 dark:text-neutral-300">
-            <Lock aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-neutral-500" />
+            <Lock
+              aria-hidden="true"
+              className="mt-0.5 size-4 shrink-0 text-neutral-600 dark:text-neutral-400"
+            />
             {carga.mensaje}
           </p>
         ) : (

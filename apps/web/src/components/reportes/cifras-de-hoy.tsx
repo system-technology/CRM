@@ -39,7 +39,7 @@ export function CotizacionesAbiertasPorAntiguedad({ datos }: { datos: Cotizacion
             <span
               className={`cifra text-xs font-semibold ${
                 t.clave === 'masDeSiete' && t.cantidad > 0
-                  ? 'text-alerta-700'
+                  ? 'text-alerta-700 dark:text-alerta-400'
                   : 'text-neutral-900 dark:text-white'
               }`}
             >
@@ -54,7 +54,11 @@ export function CotizacionesAbiertasPorAntiguedad({ datos }: { datos: Cotizacion
 
 export function SaldoPorCobrarPorMoneda({ datos }: { datos: PorCobrar }) {
   const aviso = datos.truncado ? (
-    <p className="text-aviso-700 mt-2 text-xs" role="note" data-testid="por-cobrar-truncado">
+    <p
+      className="text-aviso-700 mt-2 text-xs dark:text-amber-400"
+      role="note"
+      data-testid="por-cobrar-truncado"
+    >
       {AVISO_POR_COBRAR_TRUNCADO}
     </p>
   ) : null;
@@ -82,14 +86,16 @@ export function SaldoPorCobrarPorMoneda({ datos }: { datos: PorCobrar }) {
                 {formatearDinero(f.saldo)}
                 {datos.truncado && (
                   <span
-                    className="ml-1 text-xs font-semibold text-neutral-600"
+                    className="ml-1 text-xs font-semibold text-neutral-600 dark:text-neutral-400"
                     data-testid={`por-cobrar-minimo-${f.moneda}`}
                   >
                     o más
                   </span>
                 )}
               </span>
-              <span className="text-xs font-semibold text-neutral-600">{f.moneda}</span>
+              <span className="text-xs font-semibold text-neutral-600 dark:text-neutral-400">
+                {f.moneda}
+              </span>
             </div>
             <p className={rotulo}>{textoDeArchivos(f.archivos, datos.truncado)} con saldo</p>
           </li>
