@@ -202,6 +202,17 @@ permanente acaba ignorada, y entonces vuelve a ser lo que T-377 existía para ar
 mutaciones que corren y **un hueco escrito** (T-579) a un rojo que nadie mira. El hueco debe verse en
 el resumen del job, no solo en el informe interno.
 
+**La medición desmintió al diseño, y eso fue lo más útil del día.** El workflow nació con filtro de
+rutas y sin ser obligatorio porque se suponía que el arnés tardaba «minutos». Al correrlo de verdad:
+**43 segundos**, 1m45 el job entero. La sesión lo midió y vino a desdecirse sola. Se le quitó el
+filtro, corre en **todo PR**, y con eso **ya puede ser check obligatorio** en cuanto el propietario lo
+añada a `proteccion-main.json` (T-577). Moraleja para la próxima compuerta: **un comentario que
+justifica una decisión con una medición que nadie tomó congela esa decisión durante meses.**
+
+**Resultado final del arnés:** 17 controles verdes, M1–M21 rojas, **M22 no aplicable**, M23 roja y
+**M24 roja — el entregable de T-377 está demostrado**: la fijación de fechas de `creado_en` y
+`actualizado_en` tiene quien la vigile.
+
 **Y la parte que no se recortó:** M24 se comparó **línea a línea** con la definición viva de
 `proteger_verificacion_del_perfil` (migración `20261120170000`, la de `statement_timestamp`) antes de
 aceptarla. Difiere **solo** en las cuatro asignaciones de fecha y deja intacta la lógica de

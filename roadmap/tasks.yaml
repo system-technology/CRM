@@ -12419,11 +12419,15 @@ tasks:
         prisma/**, nocturno sobre main y a demanda). No es check obligatorio: con filtro de rutas, un
         check obligatorio dejaria sin veredicto a los PR que no lo disparan y los bloquearia para siempre"
       - "Hoy, que salga rojo no impide integrar: lo sostiene la disciplina del integrador, no una compuerta"
-      - "Depende de .github/proteccion-main.json, que es del propietario, y el punto 13 de
-        PENDIENTES-DEL-PROPIETARIO.md avisa de que el fichero difiere del servidor en tres campos y
-        reaplicarlo apagaria los code owners. Medir primero si existe una forma de hacerlo obligatorio
-        sin tocar ese fichero (por ejemplo un job que siempre corra y reporte 'omitido' cuando no aplica)"
-      - "Por que no bloquea: pasamos de cero cobertura a 21 mutaciones ejecutandose de verdad"
+      - "MEDIDO el 2026-11-21, y desmiente la premisa con la que nacio el workflow: el arnes tarda 43
+        segundos y el job entero 1m45, no 'minutos'. El comentario de cabecera decia que en cada PR
+        frenaria la entrega; era falso. Por eso se le quito el filtro de rutas y corre en todo PR"
+      - "Sin filtro de rutas ya puede ser check obligatorio: solo falta anadirlo a la lista de
+        .github/proteccion-main.json, que es del propietario. El punto 13 de
+        PENDIENTES-DEL-PROPIETARIO.md avisa de que ese fichero difiere del servidor en tres campos y
+        reaplicarlo apagaria los code owners, asi que el cambio lo hace el en el servidor, no nosotros"
+      - "Por que no bloquea: pasamos de cero cobertura a 23 mutaciones detectadas y 1 no aplicable,
+        corriendo de verdad en cada PR. Lo unico que falta es que un rojo ademas impida integrar"
     source: "auditoria de la madre sobre el PR #471, 2026-11-21"
     created_at: 2026-11-21T18:10:00.000Z
     owner: devops
