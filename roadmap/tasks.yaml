@@ -9575,7 +9575,7 @@ tasks:
       - "Cinco ejecuciones seguidas del CI sin rojo por esto"
     source: "resto de T-503, #408, 2026-11-21"
     created_at: 2026-11-21T20:00:00.000Z
-    notes: "Hecho en el PR de T-510: e2e de apps/api en serie y prueba del indice sobre la definicion del indice. Integrado como #415 (87981c6b). Medido por la madre, que nadie lo habia medido: la ejecucion en serie sube el job test de 3m11s a 4m26s, un 40% mas en cada PR. SIGUE ABIERTA: deadlocks 40P01 sin reproducir ni cerrar (hipotesis en la bitacora 2026-11-21-t510) y cero de cinco corridas limpias del CI. La prueba del indice ya no comprueba que el planificador lo elija, solo que el indice existe con la forma correcta."
+    notes: "Segundo PR de T-510 (bitacora 2026-11-21-t510-cierre-de-deadlocks-y-peaje). 40P01 de invitaciones CERRADO CON EVIDENCIA: log del servidor del CI (corrida 44872868317) = TRUNCATE ... CASCADE de aislamiento.spec (database) contra borrarTenants (api), dos paquetes; lo cerro #408. El de historial-de-etapas no tiene log: atribuido por mecanismo, sin demostrar. Cinco corridas: 32 verdes y 0 rojas del job test desde #415. Peaje medido: mediana 210 s antes de #408, 262 s con #408, 328 s con #415; el de #408 esta justificado, el de #415 no tenia evidencia, y este PR retira fileParallelism false de la api como apuesta que valida repetir el job test (si algun rojo es 40P01/FK/colision entre archivos de la api, se vuelve a serie en el mismo PR). Sin verificar en local. Cola: comentario obsoleto en aislamiento.spec ~4435 y vitest.config de database (rutas protegidas); reportes.e2e unicidad sin investigar."
     owner: qa
   - id: T-511
     title: "Probar el ingreso por apodo a 390 px contra la API real"

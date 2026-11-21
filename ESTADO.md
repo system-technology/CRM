@@ -58,9 +58,12 @@ nadie la escribía**: atribuir por ella sin rellenarla habría dejado «Mis núm
 los asesores, sin que fallara nada. Se arregla en la misma rama. Su rastro documental viaja en este
 PR de cierre para que #417 quede de carril `a` puro y «Carril y tarea» no pida `override-lane`.
 
-**No verificado:** **T-510 sigue abierta** — su criterio son cinco corridas de CI seguidas sin rojo
-y van **cero**, y los deadlocks 40P01 no se reprodujeron ni se cerraron; un PR todavía puede salir
-rojo por azar. **Ninguna sesión puede levantar Postgres en local** (lo deniega el clasificador), así
+**No verificado:** **T-510 sigue abierta** — el 40P01 de `invitaciones` quedó **cerrado con evidencia**
+(log del servidor en el CI: `TRUNCATE` de `aislamiento.spec` contra la limpieza de la api, dos paquetes; lo cerró
+#408); el de `historial-de-etapas` no tiene log. Desde #415, 32 corridas con el job `test` en verde y 0 en rojo.
+Un PR de T-510 retira la ejecución en serie de la api (apuesta: el job pasó de 210 s a 328 s de mediana, y
+solo los ~50 s de #408 están justificados) y se revierte si algún rojo es 40P01/FK/colisión entre archivos
+de la api; ver `docs/_bitacora/2026-11-21-t510-cierre-de-deadlocks-y-peaje.md`. **Ninguna sesión puede levantar Postgres en local** (lo deniega el clasificador), así
 que todo lo que se diga «contra la API real» lo validó el CI, y lo visual salió de modo
 demostración. Sigue sin desplegarse nada. El ingreso por apodo a 390 px contra la API real sigue
 pendiente (T-511).
