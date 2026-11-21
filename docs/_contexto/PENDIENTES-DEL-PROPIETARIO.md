@@ -6,12 +6,27 @@
 
 Última revisión: 2026-11-21, 14:20 UTC (once PR integrados en el turno; la madre se relevó por contexto).
 
+## 0. AVISO QUE CAMBIA CÓMO SE INTEGRA (2026-11-21, 23:40 UTC)
+
+**Integrar un PR en `main` DESPLIEGA staging y migra la base de Neon.** No es teoría: el workflow
+`deploy-staging.yml` lleva **50 ejecuciones exitosas desde las 11:33 UTC de hoy**, la última con
+`58d78392`. Tiene los secretos puestos, dispara el hook de Render, redespliega Vercel y espera a que
+`/salud/listo` diga `"estado":"ok"`.
+
+**Durante todo el día el hilo decía lo contrario** («`STAGING_DESPLIEGUE=desactivado`», «no hay nada
+desplegado»), así que las sesiones integraban creyendo que solo tocaban una rama. **La del lote de
+esta noche integró ocho PR sin saber que cada uno desplegaba.** No hubo daño —ninguno llevaba
+migraciones— pero la próxima podría llevarlas.
+
+**Lo que esto exige a partir de ahora:** antes de integrar un PR que toque `packages/database`,
+tratarlo como un cambio en producción, no como un merge.
+
 ## Bloquean la presentación al cliente (Ola 0)
 
 | # | Qué | Por qué solo tú | Cómo |
 |---|---|---|---|
 | 1 | **Cargar los secretos de la API en Render** | Son claves; nunca pasan por una sesión | `CAMPOS_SENSIBLES_KEY` (+`_VERSION`, con copia fuera de Render), `BETTER_AUTH_SECRET`, `META_APP_SECRET`, `WHATSAPP_WEBHOOK_VERIFY_TOKEN`, `WEBHOOK_PAYLOAD_KEY` (+`_VERSION`), `CORREO_PAYLOAD_KEY`, `WHATSAPP_DIRECTORY_PEPPER` (+`_VERSION`), `POSTMARK_SERVER_TOKEN`, `POSTMARK_MESSAGE_STREAM`, `MAIL_FROM` |
-| 2 | **Secreto `DIRECT_URL` en GitHub Actions** | Es una cadena de conexión de la base | Sin él no corren las migraciones contra Neon (hoy faltan decenas) |
+| 2 | ~~**Secreto `DIRECT_URL` en GitHub Actions**~~ **YA ESTÁ PUESTO** | — | **Corregido el 2026-11-21 con el registro del CI**: el job `migrar` lo recibe (`DIRECT_URL: ***`) y responde «56 migrations found» y «No pending migrations to apply». No falta ninguna migración; lo de «hoy faltan decenas» era falso |
 | 3 | ~~Proyecto de la web en Vercel~~ **Existe** (`viajapro-staging`, 2026-11-21) | — | Falta que despliegue lo nuevo de `main` y fijar `WEB_PUBLIC_URL`; sin API en Render la web no tiene con qué hablar (Render, sin verificar) |
 | 4 | **Mover el servicio de Render a tu proyecto** y poner `healthCheckPath` en `/salud` | La herramienta no elige proyecto | Panel de Render |
 
