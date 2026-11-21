@@ -1,20 +1,48 @@
-# Triaje de las 20 tareas `in_progress` (T-542, causa 2)
+# TRIAJE DE LAS TAREAS `in_progress`
 
-> **Estado: PROPUESTA. No aplicada.** Lo decide el propietario (cerrar como `done` algo que no lo está
-> convierte el roadmap en ficción). Hecho el 2026-11-21 sobre `main` en `98b303e2` por el agente
-> `dueno-de-producto` (dos instancias, solo lectura) y recogido por la sesión integradora (carril `i`).
+> **APLICADO el 2026-11-21 a las 14:20 UTC por la sesión madre `session_01R81Xh5b7wpteu5YpcDpw5p`**, con
+> **dos enmiendas** sobre lo que proponía la sesión de T-542. El resultado: **cero tareas `in_progress`**,
+> 213 `done`, y la regla del validador en verde.
 
-## Por qué existe
+## Las dos enmiendas de la madre, y por qué
 
-`roadmap/tasks.yaml` tiene **20** tareas `in_progress` y el validador (`tools/roadmap-mcp/roadmap.mjs`,
-`validate`) exige **una sola**. Mientras eso siga así, `scripts/cerrar-tarea.mjs` sale con código 1 al
-cerrar cualquier tarea abierta y el job «Marcar la tarea como hecha» queda en rojo tras cada merge. La
-causa 1 (18 tareas con `type`/`effort` fuera del enum) ya está corregida en este PR; esta es la causa 2.
+**1. T-126 pasa a `backlog`, no a `dropped`.** Se proponía descartarla porque el job `navegador` la
+sustituye. El propio informe reconocía que «tal como está escrita no se cumple: no hay bitácora de
+hallazgos de un recorrido manual». Descartarla perdería justo lo que más le falta a este proyecto: que una
+**persona** recorra el producto antes de enseñárselo a una agencia. Un job de CI comprueba que el flujo no
+se rompe; **no** comprueba que el producto se entienda, ni encuentra lo que nadie pensó en automatizar.
+Queda viva con el alcance reducido a ese recorrido previo a la demostración al piloto.
 
-## Resumen de la propuesta
+**2. T-372 se queda en `backlog`; se rechaza la salida barata.** Se ofrecía cerrarla como `done` moviendo
+su criterio pendiente a T-377. Ese criterio es que **el arnés de mutaciones de aislamiento nunca se ha
+ejecutado**. Mover un criterio de aislamiento no ejecutado a otra tarea es aplazarlo con mejor aspecto.
+`CLAUDE.md` §3.1 dice que el aislamiento es el único sitio donde no se recorta, y ese mismo día ya habían
+aparecido **dos huecos de verificación** por confiar en lecturas (T-547 y el e2e de T-529). Se queda
+abierta hasta que el arnés corra.
 
-| Propuesta | Cuántas | Tareas |
-|---|---|---|
+**Comprobado aparte por la madre:** T-300 (P0, tope de fallos de OTP). La evidencia es exacta — contador
+separado del de envíos, tope de 10 en 24 h, y el controlador bloquea antes de Better Auth devolviendo el
+mismo error, contando el fallo **aunque la cuenta no exista**, que es lo que impide usar la respuesta para
+averiguar qué correos están dados de alta. `done` correcto.
+
+## Lo que apareció al aplicarlo: claves duplicadas que borraban datos en silencio
+
+Al validar el fichero **entero** (incluyendo claves repetidas, que `yaml.safe_load` tolera quedándose con
+la última) salieron tres casos:
+
+- **T-192**: una `notes` duplicada **que introdujo la propia madre** al aplicar el triaje, porque su
+  expresión no casó con las notas previas. Fusionadas en una.
+- **T-424**: `source`, `owner` y `created_at` repetidos con **el mismo valor**. Inofensivo; se quitó la copia.
+- **T-493**: `owner` y `created_at` repetidos con **valores DISTINTOS**. El fichero la tenía asignada a
+  `backend` cuando el título dice «**experto-turismo** valida la atribución de reportes». Es decir, una
+  tarea cuyo sentido entero es criterio de dominio estaba apuntando al agente equivocado, **y no se veía**.
+  Corregido a `experto-turismo`.
+
+**La lección operativa:** validar un YAML con `safe_load` y contar tareas **no** detecta claves duplicadas.
+Hay que comprobarlas a propósito. La raíz —que nada valide `tasks.yaml` en el CI antes del merge— es **T-553**.
+
+## Tabla aplicada
+
 | `done` | 13 | T-242, T-243, T-244, T-248, T-249, T-250, T-251, T-255, T-256, T-257, T-282, T-300, T-511 |
 | `backlog` | 5 | T-213, T-226, T-247, T-254, T-372 |
 | `blocked` | 1 | T-192 (hace falta `blocked_reason`: juicio fiscal del contador; si se prefiere, `backlog`) |

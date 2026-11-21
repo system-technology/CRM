@@ -3095,7 +3095,7 @@ tasks:
     phase: 1
     priority: P0
     effort: M
-    status: in_progress
+    status: backlog
     depends_on: []
     acceptance:
       - "Stack completo local en modo unico contra la base de desarrollo: API, web, correo de prueba"
@@ -3107,6 +3107,8 @@ tasks:
     source: "auditoria de veracidad 2026-11-04 (PR #202)"
     created_at: 2026-11-05T00:44:42.917Z
     started_at: 2026-11-05T20:02:35.079Z
+    notes: "TRIAJE 2026-11-21. La sesion de T-542 propuso DROPPED porque el job navegador la sustituye. La madre lo CAMBIA a backlog. Motivo: el propio informe reconoce que tal como esta escrita no se cumple, porque no hay bitacora de hallazgos de un recorrido manual. Descartarla perderia justo lo que mas le falta al proyecto: que una persona recorra el producto antes de ensenarselo a una agencia. Un job de CI comprueba que el flujo no se rompe; NO comprueba que el producto se entienda, ni encuentra lo que nadie penso en automatizar. ALCANCE REDUCIDO: recorrido manual con bitacora de hallazgos ANTES de la primera demostracion al piloto. AVISO OPERATIVO: una rama cuyo nombre contenga T-126 la cierra sola (cerrar-tarea.yml)."
+
   - id: T-127
     title: Atajos de teclado en la bandeja con ayuda en pantalla
     type: feature
@@ -4564,7 +4566,8 @@ tasks:
     phase: 2
     priority: P2
     effort: M
-    status: in_progress
+    status: blocked
+    blocked_reason: "ADR-0023 en Propuesto: espera el juicio fiscal del contador del propietario"
     depends_on: []
     acceptance:
       - "ADR sobre comision frente a margen"
@@ -4575,7 +4578,8 @@ tasks:
     source: auditoria integral 2026-11-15 (docs/_auditorias/2026-11-15-auditoria-integral.md)
     created_at: 2026-11-15T16:00:00.000Z
     owner: arquitecto
-    notes: "ADR-0023 propuesto en main; falta aceptarlo y corregir el comentario de schema.prisma y el lenguaje ubicuo"
+    notes: "ADR-0023 propuesto en main; falta aceptarlo y corregir el comentario de schema.prisma y el lenguaje ubicuo. TRIAJE 2026-11-21: blocked. Espera el juicio fiscal del contador del propietario: dependencia externa, no falta de trabajo."
+
   - id: T-193
     title: "Dev: pnpm dev construye contracts y domain antes de arrancar (A11)"
     type: infra
@@ -4943,7 +4947,7 @@ tasks:
     phase: 2
     priority: P2
     effort: L
-    status: in_progress
+    status: backlog
     depends_on: []
     acceptance:
       - "Historia y ADR del contexto booking"
@@ -5195,7 +5199,7 @@ tasks:
     phase: 2
     priority: P1
     effort: M
-    status: in_progress
+    status: backlog
     notes: "(a) en #267; (b) arranque que aborta con clave_version sin clave, en este PR; (c) recifrado por lotes en cola"
     depends_on: [T-212]
     acceptance:
@@ -5503,7 +5507,8 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: in_progress
+    status: done
+    done_at: 2026-11-21T14:20:00.000Z
     notes: "Rama feat/booking-api-del-archivo: maquina de estados de la reserva en el dominio, las cinco rutas de ADR-0024 §3.7, contratos en packages/contracts/src/archivos.ts, pruebas unitarias y e2e de aislamiento. Pasa a done al integrarse en main con el e2e booking-archivos en verde en CI (no se pudo correr contra Postgres local). PENDIENTE de datos: los permisos archivo.ver y archivo.operar de ADR-0024 §3.7 no existen en el catalogo (hace falta ampliar el CHECK roles_permisos_del_catalogo y sembrarlos en DUENO, ASESOR y OPERACIONES); mientras tanto las mutaciones exigen cotizacion.escribir y la lectura queda abierta a todo miembro, en una sola constante (PERMISO_PARA_OPERAR_ARCHIVOS)"
     depends_on: [T-241]
     acceptance:
@@ -5521,7 +5526,8 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: in_progress
+    status: done
+    done_at: 2026-11-21T14:20:00.000Z
     notes: "Rama feat/web-reservas: /viajes lee y opera la API real (lista con semaforo y mayorista, detalle con reservas y pasajeros, avance de estado con los campos de cada paso, edicion de pasajeros, cancelacion, errores 409/422 en lenguaje claro). Sin neto si la API lo omite. Demo: lectura de maqueta en forma de contrato, mutaciones rechazadas. Pasa a done al integrarse en main. Cola: T-252"
     depends_on: [T-242]
     acceptance:
@@ -5540,7 +5546,8 @@ tasks:
     phase: 1
     priority: P1
     effort: S
-    status: in_progress
+    status: done
+    done_at: 2026-11-21T14:20:00.000Z
     depends_on: [T-242]
     acceptance:
       - "Alerta antes de cada plazo, por agencia con ejecutarCon + conTenant, sin conPlataforma"
@@ -5598,7 +5605,7 @@ tasks:
     phase: 1
     priority: P2
     effort: S
-    status: in_progress
+    status: backlog
     depends_on: [T-241]
     acceptance:
       - "SET LOCAL lock_timeout antes del advisory lock de numero de file"
@@ -5627,7 +5634,8 @@ tasks:
     phase: 1
     priority: P1
     effort: S
-    status: in_progress
+    status: done
+    done_at: 2026-11-21T14:20:00.000Z
     notes: "Rama feat/booking-api-del-archivo: la lectura (lista, detalle y la respuesta de cada mutacion) omite la clave netoUnidades sin cotizacion.ver_neto_y_margen; prueba con y sin el permiso en operar-archivo.use-case.spec.ts. Pasa a done al integrarse en main"
     depends_on: [T-241]
     acceptance:
@@ -5645,7 +5653,8 @@ tasks:
     phase: 1
     priority: P1
     effort: S
-    status: in_progress
+    status: done
+    done_at: 2026-11-21T14:20:00.000Z
     started_at: 2026-11-17T18:40:00.000Z
     depends_on: [T-242]
     acceptance:
@@ -5668,7 +5677,8 @@ tasks:
     phase: 1
     priority: P2
     effort: S
-    status: in_progress
+    status: done
+    done_at: 2026-11-21T14:20:00.000Z
     depends_on: [T-242]
     acceptance:
       - "Cada cambio de estado de una reserva deja fila inmutable con estado anterior, nuevo, usuario y fecha, con tenant_id y RLS, como el historial de etapas del CRM"
@@ -5685,7 +5695,8 @@ tasks:
     phase: 1
     priority: P2
     effort: S
-    status: in_progress
+    status: done
+    done_at: 2026-11-21T14:20:00.000Z
     depends_on: [T-242]
     acceptance:
       - "Un e2e con un rol sin cotizacion.ver_neto_y_margen comprueba que lista, detalle y mutaciones de /archivos no traen netoUnidades"
@@ -5738,7 +5749,7 @@ tasks:
     phase: 1
     priority: P2
     effort: M
-    status: in_progress
+    status: backlog
     depends_on: [T-244]
     acceptance:
       - "Un consumidor de dominio (despachador de ADR-0024 §1, con entregas_de_eventos) por tipo, con el esquema AvisoDePlazoV1 de contracts; sin importar el modulo booking (R4)"
@@ -5758,7 +5769,8 @@ tasks:
     phase: 1
     priority: P2
     effort: S
-    status: in_progress
+    status: done
+    done_at: 2026-11-21T14:20:00.000Z
     depends_on: [T-254]
     acceptance:
       - "Campana en la cabecera con el contador noLeidas de GET /api/v1/notificaciones y lista desplegable: no leidas primero, cada una con el texto compuesto en la pantalla (tipo, numero de file, plazo en la zona horaria de la agencia, R9) y enlace a Reservas por archivoId"
@@ -5777,7 +5789,8 @@ tasks:
     phase: 1
     priority: P3
     effort: S
-    status: in_progress
+    status: done
+    done_at: 2026-11-21T14:20:00.000Z
     depends_on: [T-254]
     acceptance:
       - "UNIQUE bookings(id, travel_file_id, tenant_id) y una sola FK compuesta desde notificaciones en lugar de las dos separadas; hoy solo lo impide el puerto de booking (sin cruce entre agencias)"
@@ -5793,7 +5806,8 @@ tasks:
     phase: 1
     priority: P3
     effort: S
-    status: in_progress
+    status: done
+    done_at: 2026-11-21T14:20:00.000Z
     depends_on: [T-250, T-251]
     acceptance:
       - "reserva_cambios_estado: INSERT por columnas sin ocurrido_en (o BEFORE INSERT que fuerce now()), como el resto de historiales de solo añadir"
@@ -6608,7 +6622,8 @@ tasks:
     phase: 1
     priority: P2
     effort: M
-    status: in_progress
+    status: done
+    done_at: 2026-11-21T14:20:00.000Z
     depends_on: [T-259]
     acceptance:
       - "Una sola acción primaria (token acento, clase boton-primario); verde solo para WhatsApp, rojo para lo vencido o destructivo, ámbar para lo que está por vencer"
@@ -6649,7 +6664,8 @@ tasks:
     phase: 1
     priority: P0
     effort: S
-    status: in_progress
+    status: done
+    done_at: 2026-11-21T14:20:00.000Z
     acceptance:
       - El 10.º fallo de verificación del código por correo en 24 h bloquea el correo hasta que venza la ventana,
         incluso con el código correcto, con el mismo error CODIGO_INVALIDO (no revela si el correo existe)
@@ -7665,7 +7681,7 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: in_progress
+    status: backlog
     human_required: true
     acceptance:
       - "Migracion con usuarios.apodo, accesos_identidad.apodo y el cuerpo nuevo de sincronizar_acceso_identidad segun el ADR"
@@ -7677,6 +7693,8 @@ tasks:
     source: ADR-0031 (cola, 2026-11-20)
     created_at: 2026-11-20T20:30:00.000Z
     owner: datos
+    notes: "TRIAJE 2026-11-21. Se ofrecio cerrarla como done moviendo su criterio pendiente a T-377. La madre RECHAZA esa salida. El criterio pendiente es que el arnes de mutaciones de aislamiento (M17 y M21) NUNCA SE HA EJECUTADO: no corre en el CI y no hay rastro de que se corriera tras el apodo. Mover un criterio de aislamiento no ejecutado a otra tarea es aplazarlo con mejor aspecto. CLAUDE.md 3.1 dice que el aislamiento es el unico sitio donde no se recorta, y el 2026-11-21 ya aparecieron dos huecos de verificacion por confiar en lecturas (T-547 y el e2e de T-529). Se queda backlog hasta que el arnes corra. Lo hecho si esta en main: migracion 20261120150000, AP1-AP12 en aislamiento.spec.ts."
+
   - id: T-373
     title: "ADR-0031 PR 2 API: identificador, centinela, tope por identidad y PATCH del apodo"
     type: feature
@@ -8458,9 +8476,6 @@ tasks:
     source: "ADR-0034 §7: los eventos se publican sin consumidor en el MVP (cola del ADR de pagos, 2026-11-21)"
     created_at: 2026-11-21T03:00:00.000Z
     owner: backend
-    source: "ADR-0034 §7: los eventos se publican sin consumidor en el MVP (cola del ADR de pagos, 2026-11-21)"
-    created_at: 2026-11-21T03:00:00.000Z
-    owner: backend
   - id: T-490
     title: "Visibilidad por asesor en las pantallas operativas del CRM (tablero, contactos, ficha, archivos, cotizaciones) y asesorId ajeno en POST /crm/oportunidades"
     type: docs
@@ -8512,10 +8527,9 @@ tasks:
     acceptance:
       - "Veredicto escrito sobre ADR-0035 §2; si cambia la atribución, se enmienda el ADR antes de T-342"
     source: "ADR-0035 (consultados pendientes) y catálogo de reportes §8.4"
-    created_at: 2026-11-21T12:00:00.000Z
-    owner: experto-turismo
     created_at: 2026-11-21T03:00:00.000Z
-    owner: backend
+    owner: experto-turismo
+    notes: "2026-11-21: el bloque tenia created_at y owner DUPLICADOS con valores DISTINTOS (experto-turismo y backend). YAML se queda con el ultimo, asi que el fichero la tenia asignada a backend, el agente equivocado, en silencio. El titulo no deja lugar a duda: la valida experto-turismo. Se conserva la fecha mas temprana."
   - id: T-428
     title: "Automatizar la regla R14: un check del CI avisa cuando un PR toca apps/ o packages/ sin tocar docs/ ni roadmap/tasks.yaml"
     type: infra
@@ -9588,7 +9602,8 @@ tasks:
     phase: 1
     priority: P2
     effort: S
-    status: in_progress
+    status: done
+    done_at: 2026-11-21T14:20:00.000Z
     acceptance:
       - "Ingreso con correo o usuario y edicion del usuario de un miembro (#405) verificados a 390 px contra la API real, no simulada; quedo sin verificar al integrar"
     source: "cierre del segundo lote, 2026-11-21"
