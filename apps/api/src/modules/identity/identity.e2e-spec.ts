@@ -33,9 +33,10 @@ import { PrismaClient } from '@prisma/client';
 import type { SesionActual } from '@viajapro/contracts';
 import { hashPassword } from 'better-auth/crypto';
 import { Client } from 'pg';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { AppModule } from '../../app.module.js';
 import { DominioExcepcionFilter } from '../../shared/filtros/dominio-excepcion.filter.js';
+import { claveDeLimite, PREFIJO_DE_FALLOS_DE_INGRESO } from './application/limitador-de-envios.js';
 import { PrismaService } from '../../shared/prisma/prisma.service.js';
 import { ContextoTenant } from '../../shared/tenant/contexto-tenant.js';
 import { hashearTokenDeSesion } from './infrastructure/token-de-sesion.js';
@@ -283,7 +284,28 @@ afterAll(async () => {
 const nombresDeContactos = (r: Respuesta): string[] =>
   (r.json['datos'] as Array<{ nombre: string }>).map((c) => c.nombre);
 
+/**
+ * El tope de fallos por identidad (ADR-0031 §4) dura 15 minutos y esta prueba falla a propósito más
+ * de diez veces con la clave de beto: sin esto, beto quedaría bloqueado para las pruebas siguientes.
+ * Se borran SOLO las filas de las identidades de esta prueba (el identificador es un HMAC).
+ */
+async function olvidarFallosDeIngreso(): Promise<void> {
+  const claves = Object.values(identidadId)
+    .filter((id) => id !== '')
+    .map((id) =>
+      claveDeLimite(
+        process.env['BETTER_AUTH_SECRET'] ?? '',
+        'identidad',
+        id,
+        PREFIJO_DE_FALLOS_DE_INGRESO,
+      ),
+    );
+  await adminPg.query('DELETE FROM verificaciones WHERE identificador = ANY($1)', [claves]);
+}
+
 describe('iniciar sesión', () => {
+  afterEach(olvidarFallosDeIngreso);
+
   it('devuelve la sesión SIN el token, y la cookie es HttpOnly, Secure y SameSite=Lax', async () => {
     const nav = new Navegador();
     const r = await nav.iniciarSesion('beto');

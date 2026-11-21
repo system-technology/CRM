@@ -9,6 +9,7 @@
 |---|---|---|---|
 | 1 | `docs/_contexto/CHECKPOINT.local.md` | Estado vivo, local (ignorado por git) | Tras cada hito, sin PR |
 | 2 | `docs/_contexto/DIARIO.md` | Decisiones y hitos, versionado | Al cerrar un lote, por PR carril `i/` |
+| 2b | `docs/_contexto/TABLERO-DEL-ORQUESTADOR.md` | Estado vivo de la orquestación (sesiones, cola de integración, ids reservados, pendientes), versionado | La sesión madre, tras cada hito y cada despertar; se empuja a su rama y entra con el siguiente PR de docs |
 | 3 | `docs/_contexto/MARCO.md` | Este marco | Solo si cambia la forma de trabajar |
 | 4 | `docs/_contexto/CONTEXTO.md` | Lo estable: quién decide, trampas, integración | Rara vez |
 | 5 | `ESTADO.md`, `roadmap/tasks.yaml`, ADR, `docs/_bitacora/` | Autoridad del proyecto (CLAUDE.md §9) | Por tarea |

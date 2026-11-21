@@ -10,6 +10,7 @@
  */
 
 import { z } from 'zod';
+import { CorreoDeIdentidad } from './apodo.js';
 
 export const PERMISOS = [
   /** Ver la tarifa neta del mayorista y el margen de una cotización. */
@@ -91,13 +92,33 @@ export type ClaveRolSembrado = z.infer<typeof ClaveRolSembrado>;
 // respuesta que lo devolviera le serviría a cualquier script inyectado.
 // =============================================================================
 
-/** Cuerpo de `POST /api/v1/auth/sign-in/email`. */
-export const IniciarSesion = z.object({
-  correo: z.string().trim().email().max(255),
-  // Sin `min`: el largo mínimo se exige al CREAR la contraseña, no al comprobarla. Rechazar
-  // aquí una contraseña corta distinguiría «no cumple el formato» de «es incorrecta».
-  contrasena: z.string().min(1).max(256),
-});
+/**
+ * Cuerpo de `POST /api/v1/auth/sign-in/email` (ADR-0031 §3).
+ *
+ * `identificador` es el correo o el apodo: con `@` es un correo; sin él, un apodo (la API lo
+ * normaliza y, si no cumple el formato, lo trata como uno inexistente: no hay 400 por eso). Durante
+ * una versión la API acepta también la clave `correo`, porque web y API se despliegan por separado
+ * (T-363 la retira). **Si llegan las dos a la vez se rechaza por forma** (400): no revela nada de
+ * ninguna cuenta. Sin ninguna de las dos, también 400.
+ */
+export const IniciarSesion = z
+  .object({
+    identificador: z.string().trim().min(1).max(255).optional(),
+    /** Transición: lo mismo que `identificador`. Se retira una versión después (T-363). */
+    correo: z.string().trim().min(1).max(255).optional(),
+    // Sin `min`: el largo mínimo se exige al CREAR la contraseña, no al comprobarla. Rechazar
+    // aquí una contraseña corta distinguiría «no cumple el formato» de «es incorrecta».
+    contrasena: z.string().min(1).max(256),
+  })
+  .superRefine((c, ctx) => {
+    if ((c.identificador === undefined) === (c.correo === undefined)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Indica el correo o el usuario, uno solo.',
+        path: ['identificador'],
+      });
+    }
+  });
 export type IniciarSesion = z.infer<typeof IniciarSesion>;
 
 /** Una agencia en la que la identidad tiene acceso. Lo justo para el selector. */
@@ -188,7 +209,9 @@ export type CodigoDeErrorDeAcceso = z.infer<typeof CodigoDeErrorDeAcceso>;
 
 /** Cuerpo de `POST /api/v1/identidad/invitaciones`. El rol es de la agencia de quien invita. */
 export const InvitarMiembro = z.object({
-  correo: z.string().trim().toLowerCase().email().max(255),
+  // `CorreoDeIdentidad` rechaza el dominio `.invalid`: es el del correo centinela del ingreso por
+  // apodo y no puede existir como identidad (ADR-0031 §4).
+  correo: CorreoDeIdentidad,
   rolId: z.string().uuid(),
 });
 export type InvitarMiembro = z.infer<typeof InvitarMiembro>;

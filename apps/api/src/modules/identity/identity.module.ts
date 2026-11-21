@@ -17,6 +17,15 @@ import {
   PuertoMiembros,
 } from './domain/puertos-de-miembros.js';
 import { AceptarInvitacionUseCase } from './application/aceptar-invitacion.use-case.js';
+import { CambiarApodoDeMiembroUseCase } from './application/cambiar-apodo-de-miembro.use-case.js';
+import { GuardiaDeApodos } from './application/guardia-de-apodos.js';
+import { IngresoPorIdentificador } from './application/ingreso-por-identificador.js';
+import { TopeDeFallosDeIngreso } from './application/tope-de-fallos-de-ingreso.js';
+import { PuertoApodos, PuertoCatalogoDeApodos } from './domain/puertos-de-apodos.js';
+import { ApodosPrisma } from './infrastructure/apodos.prisma.js';
+import { CatalogoDeApodosPrisma } from './infrastructure/catalogo-de-apodos.prisma.js';
+import { ComprobarApodosAlArrancar } from './infrastructure/comprobar-apodos-al-arrancar.js';
+import { leerSecretoDeAutenticacion } from './infrastructure/crear-auth.js';
 import { DarDeBajaMiembroUseCase } from './application/dar-de-baja-miembro.use-case.js';
 import { ListarMiembrosAsignablesUseCase } from './application/listar-miembros-asignables.use-case.js';
 import { ListarMiembrosUseCase } from './application/listar-miembros.use-case.js';
@@ -31,7 +40,11 @@ import {
 import { ZonaHorariaPrisma } from './infrastructure/zona-horaria.prisma.js';
 import { AgenciasPrisma } from './infrastructure/agencias.prisma.js';
 import { proveedorDeAuth } from './infrastructure/auth.provider.js';
-import { ContadorDeFallosDeCodigo, LimitadorDeEnvios } from './application/limitador-de-envios.js';
+import {
+  ContadorDeFallosDeCodigo,
+  LimitadorDeEnvios,
+  ReservaDeIntentos,
+} from './application/limitador-de-envios.js';
 import { crearLimitadorDeEnvios } from './infrastructure/crear-limitador-de-envios.js';
 import { MembresiasPrisma } from './infrastructure/membresias.prisma.js';
 import { ContadorDeFallosPostgres } from './infrastructure/contador-de-fallos.postgres.js';
@@ -67,12 +80,25 @@ import { AgenciaAjustesController } from './interface/agencia-ajustes.controller
     proveedorDeAuth,
     { provide: LimitadorDeEnvios, useFactory: crearLimitadorDeEnvios },
     { provide: ContadorDeFallosDeCodigo, useClass: ContadorDeFallosPostgres },
+    { provide: ReservaDeIntentos, useExisting: ContadorDeFallosDeCodigo },
     ResolverAcceso,
     ObtenerSesionActual,
     CambiarAgenciaActiva,
     InvitarMiembroUseCase,
     AceptarInvitacionUseCase,
     DarDeBajaMiembroUseCase,
+    CambiarApodoDeMiembroUseCase,
+    GuardiaDeApodos,
+    IngresoPorIdentificador,
+    ComprobarApodosAlArrancar,
+    {
+      provide: TopeDeFallosDeIngreso,
+      useFactory: (contador: ReservaDeIntentos) =>
+        new TopeDeFallosDeIngreso(contador, leerSecretoDeAutenticacion(process.env)),
+      inject: [ReservaDeIntentos],
+    },
+    { provide: PuertoApodos, useClass: ApodosPrisma },
+    { provide: PuertoCatalogoDeApodos, useClass: CatalogoDeApodosPrisma },
     ListarMiembrosUseCase,
     ListarMiembrosAsignablesUseCase,
     AjustesDeAgenciaUseCase,
