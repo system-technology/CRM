@@ -1,6 +1,6 @@
 # ADR-0031 — Ingreso por apodo, además del correo
 
-- **Estado:** Propuesto
+- **Estado:** Aceptado (2026-11-20, tras dos vueltas de `auditor-seguridad` y la aprobación del propietario del PR #351)
 - **Fecha:** 2026-11-20
 - **Decide:** Propietario del producto
 - **Consultados:** `arquitecto` (redacta) y `auditor-seguridad` (primera vuelta hecha: aceptable con
@@ -144,7 +144,7 @@ Postgres (`Key (apodo)=(...)`) no llegue al log.
 
 1. El contrato `IniciarSesion` pasa de `correo` a `identificador` (`string`, 1..255). Durante una
    versión, la API acepta también la clave `correo`, porque web (Vercel) y API (Render) se despliegan
-   por separado (T-311).
+   por separado (T-363).
 2. **Si trae `@`, es correo.** Si no, se normaliza como apodo. Si no cumple el formato, **no se
    responde 400**: se sigue como un apodo inexistente, para no distinguir «mal formado» de
    «incorrecto», igual que ya se hace con la contraseña.
@@ -199,7 +199,7 @@ Postgres (`Key (apodo)=(...)`) no llegue al log.
   centinela tampoco se loguea como si fuera un intento real.
 - **Código de un solo uso:** **sigue siendo solo por correo** (`otp/enviar` y `otp/iniciar-sesion`
   no cambian). Aceptar un apodo ahí permitiría disparar correos a alguien conociendo solo un
-  identificador corto. Queda en la cola (T-308), sin bloquear.
+  identificador corto. Queda en la cola (T-360), sin bloquear.
 - **Excepción de la demo:** el apodo no la amplía. La semilla da apodos sintéticos a sus identidades
   (por ejemplo, `dueno.demo`; `dueno` y `demo` solos están reservados). Cuando se retire la
   contraseña de staging, el apodo seguirá existiendo, pero sin credencial no abre nada, y el fallo
@@ -212,10 +212,10 @@ Postgres (`Key (apodo)=(...)`) no llegue al log.
   unicidad global, quien cree una agencia por autoservicio (ADR-0030) queda como dueño y podría
   **(a)** enumerar los apodos de todo el sistema con `PATCH /miembros/:id/apodo` (el `409` significa
   «existe en alguna agencia», sin límite de intentos) y **(b)** acaparar apodos predecibles
-  (`nombre.apellido`) de personal de otras agencias. Por eso **T-309 (fase 2) debe estar terminada
+  (`nombre.apellido`) de personal de otras agencias. Por eso **T-361 (fase 2) debe estar terminada
   antes de encender `REGISTRO_AUTOSERVICIO_HABILITADO` y antes de dar de alta cualquier segunda
   agencia, también por script.** ADR-0030 está Aceptado y no se edita: esta condición se registra aquí
-  y en la cola (T-312 lo anota en la tabla de precondiciones de ADR-0030 al tocarlo). **No basta con
+  y en la cola (T-364 lo anota en la tabla de precondiciones de ADR-0030 al tocarlo). **No basta con
   un freno solo en el autoservicio:** la segunda agencia también puede nacer **por script**
   (`semilla-agencia-desde-json.ts`, la semilla de la piloto). Por eso la precondición se hace cumplir
   **por construcción, en cualquier camino de alta**, con una comprobación que falla cerrado:
@@ -231,7 +231,7 @@ Postgres (`Key (apodo)=(...)`) no llegue al log.
     error genérico, no con el `409`, y el apodo se trata como inexistente; **(c)** en
     `guardia-de-semilla-agencia.ts` y en `crear_agencia` cuando exista: rechazar una segunda agencia
     mientras el índice sea global.
-  Con (b) la precondición se cumple en cualquier camino de alta, y T-312 queda como lo que es:
+  Con (b) la precondición se cumple en cualquier camino de alta, y T-364 queda como lo que es:
   documentación.
 
 ### 5. Fase 2, sectorización por agencia (descrita, no se construye)
@@ -285,20 +285,23 @@ Ningún dato de negocio depende del apodo.
 
 ## Cola (no bloquea; va a `roadmap/tasks.yaml` con dueño)
 
+> Numeración: estos ids se asignaron primero como T-308 a T-319, que **otras tareas ya usaban**
+> (registro autoservicio, layout). Se renumeraron a T-360 a T-371 y están en `roadmap/tasks.yaml`.
+
 | Id | Pendiente | Dueño |
 |---|---|---|
-| T-308 | Código de un solo uso pedido por apodo (decidir si vale el riesgo de disparar correos) | `backend`, `auditor-seguridad` |
-| T-309 | Fase 2: `/<agencia>/ingreso`, índice por agencia y campo `agencia` en el contrato (§5) | `arquitecto` → `datos`, `backend`, `frontend` |
-| T-310 | Fase 2b: subdominio `<agencia>.viajapro.com` cuando haya dominio propio; cookie solo de su anfitrión | `devops`, `frontend` |
-| T-311 | Retirar la clave `correo` de `IniciarSesion` una versión después del PR 2 | `backend` |
-| T-312 | Anotar en la tabla de precondiciones de ADR-0030 que T-309 va **antes** de encender el autoservicio (ADR-0030 está Aceptado: va como nota de seguimiento, no como edición) | `documentador` |
-| T-313 | Bloqueo por denegación (C1): clave del tope por `(identidad, IP o su /24)`, 10 en 15 min, más un techo por identidad más alto (p. ej. 50 en 24 h) con alerta. La demo, cuyo correo no recibe nada, no tiene recuperación por código | `backend`, `auditor-seguridad` |
-| T-314 | Normalización y reservados (C4): unicidad sobre el apodo sin separadores (`isabel.alvear`, `isabel_alvear` e `isabel-alvear` son hoy tres apodos); ampliar reservados (`support`, `help`, `security`, `seguridad`, `staff`, `equipo`, `contacto`, `facturacion`, prefijo `admin`) | `backend` |
-| T-315 | Apodo en invitaciones (C5): fijarlo al aceptar sin bloquear la aceptación | `backend` |
-| T-316 | `GRANT SELECT` por columnas de `accesos_identidad` para `viajapro_identidad` (C6); contrato de transición: rechazar por forma si llegan `correo` e `identificador` a la vez (C7) | `datos`, `backend` |
-| T-317 | Semilla: apodos sintéticos solo en la local, no en staging (C8) | `datos` |
-| T-318 | `ContadorDeFallosPostgres` barre solo `LIKE 'viajapro:otp-fallos:%'`: pasar el prefijo como parámetro en el PR 2, o las filas `viajapro:ingreso-fallos:` no se purgan y `verificaciones` crece sin límite | `backend` |
-| T-319 | La baja de un miembro debe limpiar `usuarios.apodo` (si no, al reactivarlo vuelve sin que nadie lo decida y el apodo queda ocupado para siempre; también minimización, Ley 1581) | `backend` |
+| T-360 | Código de un solo uso pedido por apodo (decidir si vale el riesgo de disparar correos) | `backend`, `auditor-seguridad` |
+| T-361 | Fase 2: `/<agencia>/ingreso`, índice por agencia y campo `agencia` en el contrato (§5) | `arquitecto` → `datos`, `backend`, `frontend` |
+| T-362 | Fase 2b: subdominio `<agencia>.viajapro.com` cuando haya dominio propio; cookie solo de su anfitrión | `devops`, `frontend` |
+| T-363 | Retirar la clave `correo` de `IniciarSesion` una versión después del PR 2 | `backend` |
+| T-364 | Anotar en la tabla de precondiciones de ADR-0030 que T-361 va **antes** de encender el autoservicio (ADR-0030 está Aceptado: va como nota de seguimiento, no como edición) | `documentador` |
+| T-365 | Bloqueo por denegación (C1): clave del tope por `(identidad, IP o su /24)`, 10 en 15 min, más un techo por identidad más alto (p. ej. 50 en 24 h) con alerta. La demo, cuyo correo no recibe nada, no tiene recuperación por código | `backend`, `auditor-seguridad` |
+| T-366 | Normalización y reservados (C4): unicidad sobre el apodo sin separadores (`isabel.alvear`, `isabel_alvear` e `isabel-alvear` son hoy tres apodos); ampliar reservados (`support`, `help`, `security`, `seguridad`, `staff`, `equipo`, `contacto`, `facturacion`, prefijo `admin`) | `backend` |
+| T-367 | Apodo en invitaciones (C5): fijarlo al aceptar sin bloquear la aceptación | `backend` |
+| T-368 | `GRANT SELECT` por columnas de `accesos_identidad` para `viajapro_identidad` (C6); contrato de transición: rechazar por forma si llegan `correo` e `identificador` a la vez (C7) | `datos`, `backend` |
+| T-369 | Semilla: apodos sintéticos solo en la local, no en staging (C8) | `datos` |
+| T-370 | `ContadorDeFallosPostgres` barre solo `LIKE 'viajapro:otp-fallos:%'`: pasar el prefijo como parámetro en el PR 2, o las filas `viajapro:ingreso-fallos:` no se purgan y `verificaciones` crece sin límite | `backend` |
+| T-371 | La baja de un miembro debe limpiar `usuarios.apodo` (si no, al reactivarlo vuelve sin que nadie lo decida y el apodo queda ocupado para siempre; también minimización, Ley 1581) | `backend` |
 | — | El límite por IP de Better Auth, a Redis: ya es **T-301**, no se duplica | `backend` |
 
 ## Auditoría de seguridad (primera vuelta, 2026-11-20)
@@ -308,7 +311,7 @@ disparador no incluía `apodo` en `UPDATE OF` y su `ON CONFLICT` sin columnas ab
 (§1); **B2** el atajo del tope por identidad permitía saber si un apodo existe y a qué correo
 corresponde (§4); **B3** la unicidad global choca con el autoservicio de ADR-0030, que ya está
 Aceptado (§4, precondición dura); **B4** `usuarios.administrar` no basta para fijar el apodo de otro
-(§2). Cola: C1 a C9 repartidos en T-313 a T-319 y en el PR 2. Verificado contra la etiqueta v1.7.22
+(§2). Cola: C1 a C9 repartidos en T-365 a T-371 y en el PR 2. Verificado contra la etiqueta v1.7.22
 de Better Auth en GitHub (no contra el paquete instalado): con correo inexistente hace un hash
 ficticio. **Segunda vuelta (2026-11-20): aceptable con cambios menores**, ya incorporados: N1 el disparador
 conserva `DELETE`; N2 el plan del PR 1 no pide privilegios nuevos; N3 la precondición de B3 se hace
@@ -319,7 +322,7 @@ aislamiento nuevas van en el PR 1, que lleva su propia auditoría antes de integ
 
 ## Cuándo revisar esta decisión
 
-- Al arrancar la segunda agencia real: se ejecuta T-309 **antes** de darle de alta, no después (y
+- Al arrancar la segunda agencia real: se ejecuta T-361 **antes** de darle de alta, no después (y
   antes de encender el autoservicio: ver la precondición dura en §4).
 - Si se exige MFA o SSO, porque el modelo de identificadores se revisa junto con el de credenciales.
 - Si la auditoría del disparador concluye que `accesos_identidad` no debe asumir un segundo uso.

@@ -180,12 +180,26 @@ pantalla, ve lo de toda la agencia.
   ocultarlo por `usuarios.administrar`.
 - **Supuesto [S]:** qué reportes concretos ve cada nivel lo define T-339 con el dueño de JD Tours.
 
-### D4. Barra inferior en móvil — **Confirmada por el propietario (2026-11-20): Hoy · Conversaciones · Archivos · Buscar · Más**
+### D4. Barra inferior en móvil — **Confirmada con la variante B por el propietario (2026-11-20): Hoy · Conversaciones · Cotizar · Archivos de viaje · Más, con una lupa fija en la cabecera**
 
-- **Por qué:** en el celular se responde y se consulta (quién pagó, cuándo vence), no se arma un paquete
-  completo [S]. Oportunidades, Cotizaciones y Cotizar quedan en «Más» y en la conversación, a ≤ 2 toques.
-- **Supuesto [S]:** se confirma con el uso móvil real de JD Tours; si cotizan desde el teléfono,
-  «Cotizar» sustituye a «Archivos».
+> La primera versión de D4 (Hoy · Conversaciones · Archivos · Buscar · Más) suponía que en el celular
+> no se cotiza. El propietario lo **descartó**: «sí, se cotiza desde el teléfono; incluso hoy por hoy todo
+> lo hacen desde WhatsApp Business». La asesora y el dueño de JD Tours trabajan **todo el flujo desde el
+> celular** (responder, cotizar, enviar, etiquetar, ver quién pagó): el supuesto [S] quedó **resuelto**.
+> Entre la opción A (Hoy · Conversaciones · Cotizar · Buscar · Más, con «Archivos de viaje» en «Más») y
+> la B propuesta por `diseno-ux`, el propietario eligió **la B** («B»).
+
+- **Barra inferior (móvil):** Hoy · Conversaciones · **Cotizar** · **Archivos de viaje** · Más.
+- **Lupa fija en la cabecera de cada pantalla**, montada **una sola vez en el marco compartido**, que
+  abre la misma búsqueda (paleta) que ya existe; «Buscar» no ocupa pestaña. Así los vencimientos y «quién
+  pagó» siguen a un toque (principio 3).
+- **«Más»** abre una hoja con el resto de los módulos y la campana (a ≤ 2 toques).
+- **Calidad táctil:** objetivos de al menos 44 px en la barra, la lupa y la hoja «Más»; etiquetas
+  legibles (no de 9 px); contraste AA; foco visible. Contadores en «Hoy» (vencimientos) y
+  «Conversaciones» (no leídos).
+- **Criterio (T-320, T-321: críticas para el piloto):** una cotización **completa** se hace a **390 px
+  sin desplazamiento lateral**: elegir paquete, fecha y ocupación, ver el total, guardar y «Enviar en
+  esta conversación» por el canal y volver al chat. T-320 se verifica con capturas a 390 y 1440 px.
 
 ### Menú resultante (escritorio)
 
@@ -201,7 +215,7 @@ Se cierran con las preguntas del roadmap §4; ninguno bloquea la navegación (Fa
 - [S] Cobra por **archivo**, no por pasajero, y con pagos libres, no con cuotas fechadas.
 - [S] Registra los pagos la asesora que lleva el archivo.
 - [S] Moneda principal COP; algunos archivos en USD. Cada pago, con su moneda (R8).
-- [S] Desde el móvil no cotizan (D4). (El supuesto sobre reportes de D3 ya no aplica: los reportes van por niveles de acceso.)
+- (D3 y D4 dejaron de ser supuestos: los reportes van por niveles de acceso y, según el propietario, se cotiza desde el móvil.)
 
 ## Pendiente fuera de este documento
 
