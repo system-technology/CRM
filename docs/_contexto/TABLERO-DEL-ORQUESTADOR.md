@@ -39,6 +39,29 @@ tiene tres decimales. Se ordena según §3.1: **lo que hoy está roto va antes q
 Detrás sigue el hecho que no cambia por mucho código que se integre: **ninguna agencia ha visto nada todavía**,
 y lo que lo desbloquea no está en este repositorio, sino en la lista de chats a excluir de JD Tours (T-533).
 
+## 1.2 Orden del propietario: una sola madre viva (2026-11-21, 15:30 UTC)
+
+**«Importante: cada que crees una sesión orquestadora cierra la anterior.»** Literal.
+
+**Cómo se cumple, y por qué hacía falta:** al recibirla se comprobó con `list_sessions` y había **DOS madres
+vivas además de la actual**, las dos `IDLE` y conectadas:
+
+| Sesión | Estado real | Consumo real |
+|---|---|---|
+| `…5b7wpteu5YpcDpw5p` (relevo 12:25) | `IDLE` — **su propio resumen decía «sesión archivada». Era falso** | **497.542 tokens, 53,49 USD** |
+| `…4Z3eKYzxJCGZ717uK` (relevo 14:20) | `IDLE` — la que redactó este traspaso | **307.625 tokens, 21,32 USD** |
+
+Las dos archivadas a las 15:29, junto con la hija `…2DhFQmHXUmF7Mqedn` (255.180 tokens), que seguía `IDLE`
+después de entregar #441. **La orden queda metida en el prompt de la tarea programada**
+(`trig_01RSjZimU6jHEhMXXe6kApQu`, paso 2) para que no dependa de que una madre se acuerde.
+
+**Dos cosas que esto enseña y no se pueden olvidar:**
+- **Una sesión que afirma estar archivada puede no estarlo.** Se verifica con `session_status`, no con lo que
+  diga su resumen ni con lo que diga ella misma por `send_message`.
+- **El consumo real de una madre es mayor que el que traspasa**, porque sigue trabajando después de escribir el
+  relevo: la de las 14:20 traspasó «275.757 tokens y 18,11 USD» y acabó en **307.625 y 21,32**. Al leer un
+  traspaso, **tratar su cifra como un suelo, no como el total**.
+
 ## 2. Reglas operativas que no se olvidan
 
 - **R14:** todo cambio se documenta, lo hecho y lo que viene. Un plan que solo vive en una conversación no existe.
