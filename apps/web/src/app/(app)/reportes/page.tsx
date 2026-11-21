@@ -40,9 +40,9 @@ const PERIODOS: RangoPeriodo[] = ['este_mes', 'ultimos_30_dias', 'trimestre', 'a
 
 const tarjetaClase =
   'rounded-xl border border-neutral-200 bg-white p-4 shadow-xs dark:border-neutral-800 dark:bg-neutral-900';
-const etiquetaClase = 'text-xs font-medium text-neutral-500 dark:text-neutral-400';
+const etiquetaClase = 'text-xs font-medium text-neutral-600 dark:text-neutral-400';
 const cifraGrandeClase = 'cifra mt-2 text-2xl font-extrabold text-neutral-900 dark:text-white';
-const pieClase = 'mt-1 text-[11px] text-neutral-400 dark:text-neutral-500';
+const pieClase = 'mt-1 text-[11px] text-neutral-600 dark:text-neutral-400';
 
 function formatearFechaCorta(instanteIso: string, zona: string): string {
   const ts = Date.parse(instanteIso);
@@ -177,7 +177,7 @@ function ReportesContenido({ ahora }: ReportesPageProps) {
                   className="text-xl font-bold text-neutral-900 dark:text-white"
                 />
               </div>
-              <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+              <p className="mt-1 text-xs text-neutral-600 dark:text-neutral-400">
                 {vista
                   ? `Del ${formatearFechaCorta(vista.periodo.desde, zona)} al ${formatearFechaCorta(
                       new Date(Date.parse(vista.periodo.hasta) - 1).toISOString(),
@@ -212,7 +212,7 @@ function ReportesContenido({ ahora }: ReportesPageProps) {
 
               {/* Selector de Período */}
               <div className="flex min-h-[44px] items-center gap-1.5 rounded-lg border border-neutral-300 bg-white px-3 py-2 text-xs dark:border-neutral-700 dark:bg-neutral-800">
-                <Calendar className="h-4 w-4 text-neutral-400" />
+                <Calendar className="h-4 w-4 text-neutral-600 dark:text-neutral-400" />
                 <label htmlFor="reportes-periodo" className="sr-only">
                   Periodo
                 </label>
@@ -317,7 +317,7 @@ function ReportesListo({ vista, diasAnteriores }: ReportesListoProps) {
       {sinActividad && (
         <div
           data-testid="reportes-vacio"
-          className="rounded-xl border border-dashed border-neutral-300 p-6 text-center text-xs text-neutral-500 dark:border-neutral-700 dark:text-neutral-400"
+          className="rounded-xl border border-dashed border-neutral-300 p-6 text-center text-xs text-neutral-600 dark:border-neutral-700 dark:text-neutral-400"
         >
           Todavía no hay actividad registrada en este periodo. Cuando haya cotizaciones,
           oportunidades o conversaciones, aparecerán aquí.
@@ -339,9 +339,11 @@ function ReportesListo({ vista, diasAnteriores }: ReportesListoProps) {
                     <span className="cifra text-xl font-extrabold text-neutral-900 dark:text-white">
                       {formatearDinero(f.ventas)}
                     </span>
-                    <span className="text-[11px] font-semibold text-neutral-500">{f.moneda}</span>
+                    <span className="text-[11px] font-semibold text-neutral-600 dark:text-neutral-400">
+                      {f.moneda}
+                    </span>
                   </div>
-                  <div className="flex items-center justify-between text-[11px] text-neutral-400">
+                  <div className="flex items-center justify-between text-[11px] text-neutral-600 dark:text-neutral-400">
                     <span>
                       {f.cotizacionesAceptadas}{' '}
                       {f.cotizacionesAceptadas === 1
@@ -351,7 +353,9 @@ function ReportesListo({ vista, diasAnteriores }: ReportesListoProps) {
                     {f.variacionPorcentaje !== null ? (
                       <span
                         className={`flex items-center gap-0.5 font-bold ${
-                          f.variacionPorcentaje >= 0 ? 'text-emerald-700' : 'text-rose-700'
+                          f.variacionPorcentaje >= 0
+                            ? 'text-emerald-700 dark:text-emerald-400'
+                            : 'text-rose-700 dark:text-rose-400'
                         }`}
                       >
                         {f.variacionPorcentaje >= 0 ? (
@@ -429,7 +433,7 @@ function ReportesListo({ vista, diasAnteriores }: ReportesListoProps) {
             <span className="text-xs font-bold text-emerald-800 dark:text-emerald-300">
               Margen cotizado (venta − costo neto)
             </span>
-            <span className="text-[11px] font-medium text-emerald-700/80 dark:text-emerald-400">
+            <span className="text-[11px] font-medium text-emerald-700 dark:text-emerald-400">
               Sobre cotizaciones aceptadas, con el neto del tarifario; no son ventas cobradas.
             </span>
           </div>
@@ -498,7 +502,7 @@ function ReportesListo({ vista, diasAnteriores }: ReportesListoProps) {
             <h2 className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">
               Estado actual de las oportunidades creadas en el periodo
             </h2>
-            <span className="text-[11px] text-neutral-400">
+            <span className="text-[11px] text-neutral-600 dark:text-neutral-400">
               {vista.oportunidades.creadas} oportunidades en el periodo
             </span>
           </div>

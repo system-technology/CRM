@@ -38,9 +38,9 @@ type Estado =
 
 const tarjeta =
   'rounded-xl border border-neutral-200 bg-white p-4 shadow-xs dark:border-neutral-800 dark:bg-neutral-900';
-const etiqueta = 'text-xs font-medium text-neutral-500 dark:text-neutral-400';
+const etiqueta = 'text-xs font-medium text-neutral-600 dark:text-neutral-400';
 const cifraGrande = 'cifra mt-2 text-2xl font-extrabold text-neutral-900 dark:text-white';
-const pie = 'mt-1 text-[11px] text-neutral-400 dark:text-neutral-500';
+const pie = 'mt-1 text-[11px] text-neutral-600 dark:text-neutral-400';
 
 function fechaCorta(instante: number): string {
   return formatearFecha(instante);
@@ -151,7 +151,7 @@ export function ReportesReales({ periodo, esDueno, puedeVerNetoYMargen, ahora }:
 
   return (
     <div className="space-y-6" data-testid="reportes-reales">
-      <p className="text-xs text-neutral-500 dark:text-neutral-400">
+      <p className="text-xs text-neutral-600 dark:text-neutral-400">
         Del {fechaCorta(Date.parse(resumen.periodo.desde))} al {fechaCorta(hasta)} (hora de
         Colombia).
       </p>
@@ -159,7 +159,7 @@ export function ReportesReales({ periodo, esDueno, puedeVerNetoYMargen, ahora }:
       {sinActividad && (
         <div
           data-testid="reportes-vacio"
-          className="rounded-xl border border-dashed border-neutral-300 p-6 text-center text-xs text-neutral-500 dark:border-neutral-700 dark:text-neutral-400"
+          className="rounded-xl border border-dashed border-neutral-300 p-6 text-center text-xs text-neutral-600 dark:border-neutral-700 dark:text-neutral-400"
         >
           Todavía no hay actividad registrada en este periodo. Cuando haya cotizaciones,
           oportunidades o conversaciones, aparecerán aquí.
@@ -180,14 +180,18 @@ export function ReportesReales({ periodo, esDueno, puedeVerNetoYMargen, ahora }:
                     <span className="cifra text-xl font-extrabold text-neutral-900 dark:text-white">
                       {formatearDinero(f.ventas)}
                     </span>
-                    <span className="text-[11px] font-semibold text-neutral-500">{f.moneda}</span>
+                    <span className="text-[11px] font-semibold text-neutral-600 dark:text-neutral-400">
+                      {f.moneda}
+                    </span>
                   </div>
-                  <div className="flex items-center justify-between text-[11px] text-neutral-400">
+                  <div className="flex items-center justify-between text-[11px] text-neutral-600 dark:text-neutral-400">
                     <span>{f.cotizacionesAceptadas} cotizaciones aceptadas</span>
                     {f.variacionPorcentaje !== null ? (
                       <span
                         className={`flex items-center gap-0.5 font-bold ${
-                          f.variacionPorcentaje >= 0 ? 'text-emerald-700' : 'text-rose-700'
+                          f.variacionPorcentaje >= 0
+                            ? 'text-emerald-700 dark:text-emerald-400'
+                            : 'text-rose-700 dark:text-rose-400'
                         }`}
                       >
                         {f.variacionPorcentaje >= 0 ? (
@@ -283,7 +287,7 @@ export function ReportesReales({ periodo, esDueno, puedeVerNetoYMargen, ahora }:
                       </span>
                     </span>
                     {f.confidencial.cotizacionesSinNeto > 0 && (
-                      <span className="text-[11px] text-neutral-500">
+                      <span className="text-[11px] text-neutral-600 dark:text-neutral-400">
                         {f.confidencial.cotizacionesSinNeto} cotizaciones sin neto conocido
                       </span>
                     )}
@@ -302,7 +306,9 @@ export function ReportesReales({ periodo, esDueno, puedeVerNetoYMargen, ahora }:
           </h2>
           <div className="mt-4 space-y-3">
             {oportunidades.porEtapa.length === 0 ? (
-              <div className="py-6 text-center text-xs text-neutral-400">{TEXTO_SIN_DATOS}</div>
+              <div className="py-6 text-center text-xs text-neutral-600 dark:text-neutral-400">
+                {TEXTO_SIN_DATOS}
+              </div>
             ) : (
               oportunidades.porEtapa.map((e) => (
                 <div key={e.etapaId}>
@@ -328,12 +334,14 @@ export function ReportesReales({ periodo, esDueno, puedeVerNetoYMargen, ahora }:
           <h2 className="text-sm font-bold text-neutral-900 dark:text-white">
             Foto actual del pipeline
           </h2>
-          <p className="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400">
+          <p className="mt-0.5 text-xs text-neutral-600 dark:text-neutral-400">
             Oportunidades abiertas hoy por etapa; no depende del periodo elegido.
           </p>
           <div className="mt-4 space-y-2">
             {!tablero || tablero.columnas.length === 0 ? (
-              <div className="py-6 text-center text-xs text-neutral-400">{TEXTO_SIN_DATOS}</div>
+              <div className="py-6 text-center text-xs text-neutral-600 dark:text-neutral-400">
+                {TEXTO_SIN_DATOS}
+              </div>
             ) : (
               tablero.columnas.map((c) => (
                 <div
@@ -353,7 +361,7 @@ export function ReportesReales({ periodo, esDueno, puedeVerNetoYMargen, ahora }:
 
       <section
         data-testid="reportes-pendientes-api"
-        className="rounded-xl border border-dashed border-neutral-300 p-4 text-xs text-neutral-500 dark:border-neutral-700 dark:text-neutral-400"
+        className="rounded-xl border border-dashed border-neutral-300 p-4 text-xs text-neutral-600 dark:border-neutral-700 dark:text-neutral-400"
       >
         Ventas por destino y rendimiento por asesor: Aún sin datos. La API todavía no los entrega
         por periodo.

@@ -38,9 +38,9 @@ export function Variacion({ variacion, contra }: { variacion: number | null; con
   const Icono = sentido === 'sube' ? TrendingUp : sentido === 'baja' ? TrendingDown : Minus;
   const color =
     sentido === 'sube'
-      ? 'text-ok-700'
+      ? 'text-ok-700 dark:text-ok-400'
       : sentido === 'baja'
-        ? 'text-aviso-700'
+        ? 'text-aviso-700 dark:text-amber-400'
         : 'text-neutral-600 dark:text-neutral-400';
   return (
     <p className={`mt-1 flex flex-wrap items-center gap-x-1.5 text-xs ${color}`}>
@@ -274,9 +274,9 @@ export function TiemposDeRespuesta({ datos }: { datos: ParDeResumenes }) {
   const Icono = dif.sentido === 'baja' ? TrendingDown : dif.sentido === 'sube' ? TrendingUp : Minus;
   const color =
     dif.sentido === 'baja'
-      ? 'text-ok-700'
+      ? 'text-ok-700 dark:text-ok-400'
       : dif.sentido === 'sube'
-        ? 'text-aviso-700'
+        ? 'text-aviso-700 dark:text-amber-400'
         : 'text-neutral-600 dark:text-neutral-400';
   const sinResponder = r.sinResponder ?? r.conversacionesNuevas - r.conversacionesRespondidas;
 
@@ -317,7 +317,9 @@ export function TiemposDeRespuesta({ datos }: { datos: ParDeResumenes }) {
         </div>
         <div>
           <dt className={etiqueta}>Sin responder</dt>
-          <dd className={`cifra mt-0.5 font-semibold ${sinResponder > 0 ? 'text-aviso-700' : ''}`}>
+          <dd
+            className={`cifra mt-0.5 font-semibold ${sinResponder > 0 ? 'text-aviso-700 dark:text-amber-400' : ''}`}
+          >
             {sinResponder}
           </dd>
         </div>

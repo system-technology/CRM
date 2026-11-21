@@ -42,14 +42,14 @@ const valor = 'cifra text-right text-sm font-semibold text-neutral-900 dark:text
 
 function Variacion({ porcentaje }: { porcentaje: number | null }) {
   if (porcentaje === null) {
-    return <span className="text-xs text-neutral-500">Sin comparación</span>;
+    return <span className="text-xs text-neutral-600 dark:text-neutral-400">Sin comparación</span>;
   }
   const sube = porcentaje >= 0;
   const Icono = sube ? TrendingUp : TrendingDown;
   return (
     <span
       className={`inline-flex items-center gap-1 text-xs font-semibold ${
-        sube ? 'text-ok-700' : 'text-alerta-700'
+        sube ? 'text-ok-700 dark:text-ok-400' : 'text-alerta-700 dark:text-alerta-400'
       }`}
     >
       <Icono className="h-3.5 w-3.5" aria-hidden="true" />
@@ -102,7 +102,7 @@ export function MisNumeros({ vista, diasAnteriores, seguimientos }: Props) {
             <div className={fila}>
               <dt className={rotulo}>Seguimientos vencidos</dt>
               <dd
-                className={`${valor} ${seguimientos.vencidos > 0 ? 'text-alerta-700 dark:text-alerta-600' : ''}`}
+                className={`${valor} ${seguimientos.vencidos > 0 ? 'text-alerta-700 dark:text-alerta-400' : ''}`}
                 data-testid="mn-seguimientos-vencidos"
               >
                 {seguimientos.vencidos > 0 && (
@@ -137,7 +137,7 @@ export function MisNumeros({ vista, diasAnteriores, seguimientos }: Props) {
           <h2 id="mn-abiertas" className={titulo}>
             Mis cotizaciones abiertas hoy
           </h2>
-          <p className="mb-2 text-xs text-neutral-500">
+          <p className="mb-2 text-xs text-neutral-600 dark:text-neutral-400">
             Es el estado de hoy, no del periodo: borradores y enviadas que aún esperan respuesta.
           </p>
           <CotizacionesAbiertasPorAntiguedad datos={vista.cotizacionesAbiertas} />
@@ -159,7 +159,7 @@ export function MisNumeros({ vista, diasAnteriores, seguimientos }: Props) {
           <h2 id="mn-por-cobrar" className={titulo}>
             Por cobrar hoy
           </h2>
-          <p className="mb-2 text-xs text-neutral-500">
+          <p className="mb-2 text-xs text-neutral-600 dark:text-neutral-400">
             Saldo de tus archivos de viaje abiertos, por moneda.
           </p>
           <SaldoPorCobrarPorMoneda datos={vista.porCobrar} />
@@ -186,7 +186,9 @@ export function MisNumeros({ vista, diasAnteriores, seguimientos }: Props) {
                   <span className="cifra text-xl font-extrabold text-neutral-900 dark:text-white">
                     {formatearDinero(f.ventas)}
                   </span>
-                  <span className="text-xs font-semibold text-neutral-600">{f.moneda}</span>
+                  <span className="text-xs font-semibold text-neutral-600 dark:text-neutral-400">
+                    {f.moneda}
+                  </span>
                 </div>
                 <div className="mt-0.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-0.5">
                   <span className="text-xs text-neutral-600 dark:text-neutral-400">
@@ -201,7 +203,7 @@ export function MisNumeros({ vista, diasAnteriores, seguimientos }: Props) {
                 {f.confidencial && (
                   <p
                     data-testid={`mn-margen-${f.moneda}`}
-                    className="mt-1 text-xs text-neutral-600"
+                    className="mt-1 text-xs text-neutral-600 dark:text-neutral-400"
                   >
                     Margen de tus cotizaciones:{' '}
                     <strong className="text-neutral-900 dark:text-white">
@@ -218,7 +220,10 @@ export function MisNumeros({ vista, diasAnteriores, seguimientos }: Props) {
           </ul>
         )}
         {cotizaciones.aceptadasSinFecha > 0 && (
-          <p className="mt-2 text-xs text-neutral-600" data-testid="mn-sin-fecha">
+          <p
+            className="mt-2 text-xs text-neutral-600 dark:text-neutral-400"
+            data-testid="mn-sin-fecha"
+          >
             {plural(
               cotizaciones.aceptadasSinFecha,
               'cotización aceptada no tiene fecha de aceptación y no entra en el periodo',
@@ -228,7 +233,7 @@ export function MisNumeros({ vista, diasAnteriores, seguimientos }: Props) {
           </p>
         )}
         {diasAnteriores !== null && (
-          <p className="mt-2 text-xs text-neutral-500">
+          <p className="mt-2 text-xs text-neutral-600 dark:text-neutral-400">
             Comparado con los {diasAnteriores} días anteriores.
           </p>
         )}
