@@ -436,14 +436,64 @@ describe('RegistrarMovimientoUseCase', () => {
       });
     });
 
-    it('una nota distinta no cambia el contenido que cuenta (ADR-0034 §4 paso 2)', async () => {
+    // T-516: antes esto respondía 200 con la fila original y se tragaba la corrección. La asesora
+    // creía haber arreglado la nota y no había arreglado nada — y deshacerlo es del dueño.
+    it('la misma clave con otra NOTA: 409, nada nuevo y la nota original intacta', async () => {
       const cuerpo = pago({ nota: 'primera' });
       await como(PERMISOS_ASESOR, () => registro.registrar(F1, cuerpo));
       await expect(
         como(PERMISOS_ASESOR, () =>
           registro.registrar(F1, { ...cuerpo, nota: 'corregida' } as RegistrarMovimiento),
         ),
-      ).resolves.toMatchObject({ creado: false });
+      ).rejects.toBeInstanceOf(ClaveDeIdempotenciaReutilizadaError);
+      expect(repo.movimientos).toHaveLength(1);
+      expect(repo.movimientos[0]?.nota).toBe('primera');
+    });
+
+    it('la misma clave con otra REFERENCIA: 409 y nada nuevo', async () => {
+      const cuerpo = pago({ referencia: 'TRX-1' });
+      await como(PERMISOS_ASESOR, () => registro.registrar(F1, cuerpo));
+      await expect(
+        como(PERMISOS_ASESOR, () =>
+          registro.registrar(F1, { ...cuerpo, referencia: 'TRX-2' } as RegistrarMovimiento),
+        ),
+      ).rejects.toBeInstanceOf(ClaveDeIdempotenciaReutilizadaError);
+      expect(repo.movimientos).toHaveLength(1);
+      expect(repo.movimientos[0]?.referencia).toBe('TRX-1');
+    });
+
+    it('la misma clave QUITANDO la nota que traía: 409', async () => {
+      const cuerpo = pago({ nota: 'primera' });
+      await como(PERMISOS_ASESOR, () => registro.registrar(F1, cuerpo));
+      const sinNota = { ...cuerpo, nota: undefined } as unknown as RegistrarMovimiento;
+      await expect(
+        como(PERMISOS_ASESOR, () => registro.registrar(F1, sinNota)),
+      ).rejects.toBeInstanceOf(ClaveDeIdempotenciaReutilizadaError);
+      expect(repo.movimientos).toHaveLength(1);
+    });
+
+    it('el reintento con la MISMA nota y referencia sigue siendo el mismo: 200, una sola fila', async () => {
+      const cuerpo = pago({ nota: 'abono de la señora', referencia: 'TRX-1' });
+      const primero = await como(PERMISOS_ASESOR, () => registro.registrar(F1, cuerpo));
+      const segundo = await como(PERMISOS_ASESOR, () => registro.registrar(F1, cuerpo));
+      expect(segundo.creado).toBe(false);
+      expect(segundo.resultado.movimiento.id).toBe(primero.resultado.movimiento.id);
+      expect(repo.movimientos).toHaveLength(1);
+    });
+
+    it('la misma clave con otro MOTIVO en un AJUSTE: 409 y nada nuevo', async () => {
+      const cuerpo: RegistrarMovimiento = {
+        tipo: 'AJUSTE',
+        claveIdempotencia: uuid(),
+        monto: { unidades: '-50000', moneda: 'COP' },
+        motivo: 'Descuento',
+      };
+      await como(PERMISOS_DUENO, () => registro.registrar(F1, cuerpo));
+      await expect(
+        como(PERMISOS_DUENO, () => registro.registrar(F1, { ...cuerpo, motivo: 'Cortesía' })),
+      ).rejects.toBeInstanceOf(ClaveDeIdempotenciaReutilizadaError);
+      expect(repo.movimientos).toHaveLength(1);
+      expect(repo.movimientos[0]?.motivo).toBe('Descuento');
     });
 
     for (const [campo, cambio] of [
@@ -736,6 +786,26 @@ describe('RegistrarMovimientoUseCase', () => {
         como(PERMISOS_DUENO, () => registro.reversar(F1, p2.resultado.movimiento.id, cuerpo)),
       ).rejects.toBeInstanceOf(ClaveDeIdempotenciaReutilizadaError);
       expect(repo.movimientos.filter((m) => m.tipo === 'REVERSO')).toHaveLength(1);
+    });
+
+    // T-516: el motivo es lo único que el dueño escribe en un reverso; cambiarlo es otro contenido.
+    it('la misma clave de reverso con otro MOTIVO: 409 y el motivo original intacto', async () => {
+      const p1 = await como(PERMISOS_DUENO, () =>
+        registro.registrar(F1, pago({ monto: { unidades: '100', moneda: 'COP' } })),
+      );
+      const cuerpo = reversoCuerpo();
+      await como(PERMISOS_DUENO, () => registro.reversar(F1, p1.resultado.movimiento.id, cuerpo));
+      await expect(
+        como(PERMISOS_DUENO, () =>
+          registro.reversar(F1, p1.resultado.movimiento.id, {
+            ...cuerpo,
+            motivo: 'Otro motivo distinto',
+          }),
+        ),
+      ).rejects.toBeInstanceOf(ClaveDeIdempotenciaReutilizadaError);
+      const reversos = repo.movimientos.filter((m) => m.tipo === 'REVERSO');
+      expect(reversos).toHaveLength(1);
+      expect(reversos[0]?.motivo).toBe('Registrado por error');
     });
   });
 
