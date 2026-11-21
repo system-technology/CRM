@@ -1348,3 +1348,72 @@ legal no puede imprimir el que cualquiera pudo escribir. Lo fijan el cinturón d
 **Lo fijan** el cinturón de la migración, `aislamiento.spec.ts` (bloque «T-324», E1 a E7, más los
 literales `PRIVILEGIOS_DECLARADOS` y `COLUMNAS_DE_TEXTO_DECLARADAS`) y `etiquetas-por-agencia.spec.ts`
 (los rellenos, reejecutados sobre agencias «como eran antes»).
+
+## Libro de cobro del viajero: `pagos`, `plazos_de_cobro` y `parametros_de_cobro` (T-329, ADR-0034, migración `20261121140000_pagos_del_viajero_libro_de_cobro`)
+
+```
+  tenants 1──n pagos (id, tenant_id, travel_file_id, tipo, monto_unidades bigint, moneda_iso,
+                      pagado_el, medio, pagador_id?, referencia?, nota?, nota_tachada_en?, motivo?,
+                      reverso_de_id?, clave_idempotencia, registrado_por, registrado_en)
+                 UNIQUE (tenant_id, clave_idempotencia)               R5
+                 UNIQUE parcial (tenant_id, reverso_de_id)            un reverso por movimiento
+                    │ (travel_file_id, tenant_id, moneda_iso) → travel_files       NO ACTION
+                    │ (reverso_de_id, tenant_id, travel_file_id, monto_unidades, moneda_iso) → pagos
+                    │ (pagador_id, tenant_id) → contactos · (registrado_por, tenant_id) → usuarios
+  tenants 1──n plazos_de_cobro (id, tenant_id, travel_file_id, vence_el date, motivo?, registrado_por, registrado_en)
+  tenants 1──1 parametros_de_cobro (tenant_id PK, dias_plazo_de_cobro 0..365, actualizado_por, actualizado_en)
+  travel_files   UNIQUE (id, tenant_id, moneda_iso)  ·  BEFORE UPDATE travel_files_venta_inmutable
+```
+
+- **Es un libro, no un saldo.** Una fila por movimiento. El enum `tipo_movimiento_de_cobro` (`PAGO`,
+  `DEVOLUCION`, `REVERSO`, `AJUSTE`, `PENALIDAD`) es invariante del dominio, no política de agencia
+  (R12). El saldo y el estado de cobro **no son columnas**: los calcula `payments` al leer.
+- **Dinero (R8).** `monto_unidades` es `bigint` en la unidad mínima de la moneda del archivo (en COP,
+  el peso). CHECK: valor absoluto entre 1 y 10¹⁵ − 1; negativo solo en `AJUSTE` (descuento) y en el
+  `REVERSO` que copia un descuento. `pagado_el` y `medio` solo en `PAGO` y `DEVOLUCION`; `pagador_id`
+  solo en `PAGO`; `motivo` obligatorio en `AJUSTE`, `PENALIDAD` y `REVERSO`; `reverso_de_id` solo y
+  siempre en `REVERSO`. `medio` es catálogo cerrado por CHECK (ocho valores).
+- **Foráneas compuestas con el tenant.** Un movimiento no puede apuntar al archivo, al contacto
+  pagador ni al usuario de otra agencia aunque se conozca el id, ni estar en otra moneda que la del
+  archivo. El reverso queda atado por cinco columnas al mismo archivo, agencia, monto y moneda que el
+  original. Por eso `travel_files` gana la clave `UNIQUE (id, tenant_id, moneda_iso)`: ninguna fila
+  existente puede violarla, porque `id` ya es único.
+- **Aislamiento (R1).** Las tres tablas con `tenant_id NOT NULL`, RLS habilitada y **forzada** por
+  `aplicar_aislamiento_tenant`, ninguna en `excepciones_rls`.
+- **Privilegios, solo `viajapro_app`** (`privilegios_declarados`): `pagos` y `plazos_de_cobro`
+  `{SELECT,INSERT}`; `parametros_de_cobro` `{SELECT,INSERT,UPDATE}`. `viajapro_webhook`,
+  `viajapro_altas` y `viajapro_identidad`, nada; nadie tiene `TRUNCATE`.
+- **Disparadores** (los tres `SECURITY INVOKER`, `SET search_path = ''`, `REVOKE ALL … FROM PUBLIC`;
+  ninguna función `SECURITY DEFINER` nueva):
+  - `pagos_validar_alta` (`BEFORE INSERT`): un reverso no reversa a otro reverso (con candado
+    consultivo por archivo, para que valga en carrera) y `registrado_en` es la hora de la sentencia,
+    no la que mande el cliente.
+  - `pagos_inmutables` (`BEFORE UPDATE OR DELETE`) y `pagos_sin_truncate` (`BEFORE TRUNCATE`): nadie
+    edita ni borra el libro. Dos salidas, solo para el **dueño de la tabla** y declaradas en la
+    transacción: la purga de una agencia (`viajapro.purga_de_tenants`) y el tachado de `nota` y
+    `referencia` (`viajapro.tachado_de_notas`), que solo admite poner ambas en nulo y fijar
+    `nota_tachada_en`. El tachado es procedimiento de operación, no ruta de la API.
+  - `travel_files_venta_inmutable` (`BEFORE UPDATE`): `id`, `tenant_id`, `venta_unidades` y
+    `moneda_iso` del archivo no cambian nunca, tampoco para el dueño. Lo que cambie el total va al
+    libro como `AJUSTE`. Un `UPDATE` de `estado` sigue funcionando.
+- **Por qué privilegio y disparador en `pagos`:** es dinero. El privilegio frena a la API; el
+  disparador frena al dueño y sobrevive a una migración futura que amplíe privilegios por error.
+  `plazos_de_cobro` se queda solo con el privilegio, como `reserva_cambios_estado`.
+- **`tenants.id` es inmutable por diseño.** La cascada `ON UPDATE` de una agencia chocaría con los
+  disparadores; se decidió no abrirles excepción (PUNTO B del encabezado de la migración).
+- **Permisos** `cobro.ver`, `cobro.registrar` y `cobro.corregir`: del once al catorce en el CHECK
+  `roles_permisos_del_catalogo`. Siembra con separación de funciones: `DUENO` los tres, `ASESOR`
+  ver y registrar, `OPERACIONES` solo ver (supuesto del ADR, sin verificar con el dueño).
+- **Sin datos de tarjeta.** `nota`, `referencia` y `motivo` van en claro bajo RLS, no son PII
+  sensible según R10, y nunca salen a logs, outbox ni auditoría (lo cuida la API, T-330).
+- **Sin fila, rige 30.** `parametros_de_cobro` no se siembra ni se toca en `crear_agencia`.
+
+**Lo que la base no garantiza y queda a la API (T-330, en curso):** que un reintento con la misma
+clave traiga el mismo contenido; el tipo permitido según el estado del archivo; que `pagado_el` no
+sea futuro; que lo pagado y el total no queden negativos; el filtro Luhn sobre `nota` y `referencia`; y
+quién puede qué.
+
+**Lo fijan** el cinturón de la migración y el bloque «T-329» de `aislamiento.spec.ts`. Ambos solo
+corren en el CI (job `aislamiento-tenants`): la migración no se ejecutó contra una base local.
+Reversible con otra migración mientras no haya movimientos reales; después, el libro no se borra: se
+supersede ADR-0034.

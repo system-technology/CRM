@@ -7057,7 +7057,7 @@ tasks:
     phase: 1
     priority: P1
     effort: S
-    status: backlog
+    status: done
     depends_on: [T-315]
     acceptance:
       - "La campana y la suma de sus pestañas coinciden y sus avisos apuntan a archivos que existen"
@@ -7065,6 +7065,8 @@ tasks:
     source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md (2026-11-20)
     created_at: 2026-11-20T19:00:00.000Z
     owner: frontend
+    done_at: 2026-11-21T04:10:00.000Z
+    evidence: "Integrada en main por el PR #385 (912f412) con los 14 checks en verde, incluido navegador. La campana (distintivo, encabezado y pestañas) sale de una sola función, resumirNotificaciones, y «Todas» es la suma de las demás; los avisos a /viajes?id= se validan contra listarArchivos y solo se ocultan cuando el archivo no existe con certeza (lista completa y recarga confirmada); «Ir a ingresar» con ?redirigir= validado en not-found, error y el error de la guardia con la API caída (solo cambia la rama estado==='error' de guarda-sesion.tsx; el ciclo y rutas-publicas.ts no se tocan). auditor-seguridad (una pasada) sin bloqueantes; su hallazgo funcional se corrigió en el mismo PR; la sesión madre leyó el diff de la guardia. VISTO en Chrome emulado a 390, 768, 820, 1024, 1180 y 1440 de ancho: desborde horizontal 0, distintivo = suma de pestañas, botones de salida de 44 px o más. SIN ver en navegador: el error global (error.tsx; solo su prueba unitaria) y el comportamiento con la API real y sesión válida; tablet solo con emulación. Cola: T-429 a T-435."
   - id: T-323
     title: 'B0: diseño y alcance de las etiquetas de la agencia en la bandeja'
     type: docs
@@ -7119,7 +7121,7 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: backlog
+    status: done
     depends_on: [T-325, T-315]
     acceptance:
       - "Se ve, se pone y se quita desde el chat; se filtra la bandeja; colores con contraste suficiente y texto además de color"
@@ -7128,6 +7130,8 @@ tasks:
     source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md (2026-11-20)
     created_at: 2026-11-20T19:00:00.000Z
     owner: frontend
+    done_at: 2026-11-21T03:35:00.000Z
+    evidence: "Integrada en main por el PR #381 (4fc1152) con los 14 checks en verde, incluido navegador, que corre el e2e 06-etiquetas contra la API real (escritorio y 390×844; crea sus propios datos). Chips con nombre, icono y color en la lista y el chat; poner y quitar desde el chat (hoja inferior en móvil, popover en escritorio) optimista, idempotente y con avisos accionables (sin conexión, tope de 10, etiqueta borrada por otra persona, sin acceso); filtro por etiqueta en la URL (?etiquetas=&modo=, UUID validado); Configuración → «Etiquetas» solo con etiquetas.administrar; demo coherente con la API. La primera pasada del CI falló por una prueba de Configuración con una carrera de import dinámico, corregida. SIN verificar: eventos en vivo entre asesores y «etiqueta borrada por otra persona» (solo con mocks); contraste AA medido por cálculo, no sobre captura. Cola: T-418, T-425 a T-427."
   - id: T-327
     title: 'C0: historia de usuario y alcance mínimo de los cobros del viajero; preguntas al dueño'
     type: docs
@@ -7151,7 +7155,7 @@ tasks:
     phase: 1
     priority: P0
     effort: M
-    status: ready
+    status: done
     depends_on: [T-327]
     acceptance:
       - "Define el contexto payments mínimo: pago, saldo, estados de cobro, R8 (unidad mínima), R5 (idempotencia), permiso propio, historial inmutable, relación con el archivo de viaje y con la TRM"
@@ -7159,14 +7163,15 @@ tasks:
     source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md (2026-11-20)
     created_at: 2026-11-20T19:00:00.000Z
     owner: arquitecto
-    notes: "ADR-0034 redactado en el PR de esta tarea (estado Propuesto). Antes de aceptarlo: auditor-seguridad sin recortar vueltas (dinero y aislamiento) y experto-turismo sobre los estados y la fecha límite. Su cola es T-419 a T-424."
+    notes: "Integrada en #378 (ADR-0034, estado Propuesto). Auditoría de seguridad y de turismo aplicadas en una vuelta. Su cola es T-419 a T-424. Falta aceptar el ADR: lo decide el propietario con las preguntas del roadmap 08 §4."
+
   - id: T-329
     title: 'C2: migración de pagos del viajero (insert-only, historial inmutable, RLS) y su permiso'
     type: feature
     phase: 1
     priority: P1
     effort: M
-    status: backlog
+    status: done
     depends_on: [T-328]
     acceptance:
       - "Tabla con tenant_id y RLS; sin UPDATE ni DELETE para los roles de aplicación; permiso nuevo sembrado por rol"
@@ -7174,6 +7179,8 @@ tasks:
     source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md (2026-11-20)
     created_at: 2026-11-20T19:00:00.000Z
     owner: datos
+    notes: "Integrada en #382 (migración 20261121140000, 13 pruebas de aislamiento, permisos cobro.ver, cobro.registrar y cobro.corregir). Auditoría de seguridad: integrable, sin bloqueantes; aislamiento-tenants verde sobre 06ca56d. PUNTO B: tenants.id es inmutable por diseño, sin excepción en el disparador de travel_files. Su cola es T-330 (reglas de la API) y T-472 a T-479."
+
   - id: T-330
     title: 'C3: API para registrar un pago y leer el saldo del archivo (idempotente)'
     type: feature
@@ -7188,6 +7195,7 @@ tasks:
     source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md (2026-11-20)
     created_at: 2026-11-20T19:00:00.000Z
     owner: backend
+    notes: "Reglas que la base NO cubre y que la API de T-330 debe imponer, cada una con su e2e (auditoría de T-329 y ADR-0034): el tipo de movimiento según el estado del archivo (PAGO y AJUSTE solo con el archivo ABIERTO, PENALIDAD solo CANCELADO); devolución y reverso sin dejar lo pagado en negativo; registrado_por tomado de la sesión; un reintento idempotente con el mismo contenido responde 200 y con distinto contenido 409; la carrera entre registrar un pago y cancelar el archivo (los candados de cobro y de booking son distintos); registrado_en nunca del cliente en plazos_de_cobro, con orden por (registrado_en, id); sumas leídas como bigint, nunca Number; permisos cobro.* (ASESOR solo registra PAGO; el resto es cobro.corregir, que solo siembra DUENO); filtro Luhn sobre nota y referencia; pagado_el no futuro; que la penalidad no supere lo pagado."
   - id: T-331
     title: 'C4: registrar un pago y ver el saldo en el archivo de viaje'
     type: feature
@@ -7749,6 +7757,7 @@ tasks:
     source: "auditoría de seguridad de T-307 (cola, 2026-11-20): M22 y M23 prueban T-261, ninguna mutación cubre T-307, y el script no corre en el CI"
     created_at: 2026-11-21T00:00:00.000Z
     owner: qa
+    notes: "Ampliada con T-329: añadir al script las mutaciones de la migración de pagos (quitar el disparador de inmutabilidad de pagos, el de travel_files_venta_inmutable, GRANT UPDATE o DELETE sobre pagos a viajapro_app, GRANT UPDATE sobre la columna tenants.id, DISABLE TRIGGER) y comprobar que cada una pone en rojo su prueba."
   - id: T-378
     title: "Permitir en .claude/settings.json los comandos habituales de solo lectura para que las sesiones desatendidas no se detengan"
     type: infra
@@ -8435,6 +8444,9 @@ tasks:
     source: "ADR-0034 §7: los eventos se publican sin consumidor en el MVP (cola del ADR de pagos, 2026-11-21)"
     created_at: 2026-11-21T03:00:00.000Z
     owner: backend
+    source: "ADR-0034 §7: los eventos se publican sin consumidor en el MVP (cola del ADR de pagos, 2026-11-21)"
+    created_at: 2026-11-21T03:00:00.000Z
+    owner: backend
   - id: T-490
     title: "Visibilidad por asesor en las pantallas operativas del CRM (tablero, contactos, ficha, archivos, cotizaciones) y asesorId ajeno en POST /crm/oportunidades"
     type: docs
@@ -8487,3 +8499,821 @@ tasks:
     source: "ADR-0035 (consultados pendientes) y catálogo de reportes §8.4"
     created_at: 2026-11-21T12:00:00.000Z
     owner: experto-turismo
+    created_at: 2026-11-21T03:00:00.000Z
+    owner: backend
+  - id: T-428
+    title: "Automatizar la regla R14: un check del CI avisa cuando un PR toca apps/ o packages/ sin tocar docs/ ni roadmap/tasks.yaml"
+    type: infra
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    depends_on: [T-322]
+    acceptance:
+      - "Un job del CI comenta o marca en amarillo (no bloquea al principio) cuando un PR que cambia apps/ o packages/ no cambia docs/ ni roadmap/tasks.yaml, con la lista de lo que falta (hecho, siguiente, ADR si hay decisión estructural)"
+      - "Exenciones explícitas y escritas (PR solo de dependencias, de formato, de revertir); la prueba del check cubre un PR con y sin documentación"
+      - "Ruta protegida (.github/, scripts/): auditor-seguridad y aprobación de la sesión madre antes de integrar"
+    source: "regla R14 del propietario (2026-11-21), pedida por la sesión madre"
+    created_at: 2026-11-21T04:10:00.000Z
+    owner: devops
+  - id: T-429
+    title: "Decidir si /LOGIN en mayúsculas cuenta como ruta de acceso"
+    type: bug
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: [T-322]
+    acceptance:
+      - "esRutaDeAcceso decide por escrito si ignora mayúsculas y minúsculas; con la decisión, spec que cubre /LOGIN y /Ingresar como destino de redirigir"
+    source: "cola de T-322 (2026-11-21), BAJO (auditoría)"
+    created_at: 2026-11-21T04:10:00.000Z
+    owner: frontend
+  - id: T-430
+    title: "Pruebas del enlace «Ir a ingresar»: vectores %2f%2f, U+2215 y ancho completo, y el recorrido href → sanitizarRutaRedireccion"
+    type: test
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: [T-322]
+    acceptance:
+      - "errores-sistema.spec.ts gana los vectores %2f%2f, U+2215 y barra de ancho completo, y una prueba que va del href generado hasta sanitizarRutaRedireccion de formulario-ingreso.tsx y comprueba que el origen resultante es el propio"
+    source: "cola de T-322 (2026-11-21), BAJO (auditoría)"
+    created_at: 2026-11-21T04:10:00.000Z
+    owner: qa
+  - id: T-431
+    title: "La campana avisa cuando hay más avisos de los que muestra (límite de 50)"
+    type: feature
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: [T-322]
+    acceptance:
+      - "Con más de 50 avisos la campana muestra «50+» o «Ver todos» en lugar de contar solo los visibles; la cifra del servidor noLeidas deja de ignorarse o se explica por qué"
+    source: "cola de T-322 (2026-11-21)"
+    created_at: 2026-11-21T04:10:00.000Z
+    owner: frontend
+  - id: T-432
+    title: "Validar también los avisos que apuntan a /cotizaciones/ y /bandeja/ y unificar mock-viajes con mock-archivos"
+    type: bug
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: [T-322]
+    acceptance:
+      - "Las notificaciones de demo que apuntan a una cotización o una conversación que no existe se validan como ya se validan las de archivos, o se corrigen sus ids"
+      - "mock-viajes y mock-archivos dejan de ser dos fuentes: una sola lista de archivos de demo para Archivos de viaje, campana y paleta"
+    source: "cola de T-322 (2026-11-21)"
+    created_at: 2026-11-21T04:10:00.000Z
+    owner: frontend
+  - id: T-433
+    title: "El panel de la campana cumple 44 px táctiles y no recorta «Operativas» en celular, tablet y escritorio"
+    type: bug
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    depends_on: [T-322]
+    acceptance:
+      - "Las pestañas del panel (23 px de alto hoy) y sus botones de acción (36 px) miden 44 px o más; la tira de pestañas no recorta «Operativas» (mide 622 px y el panel deja 510; en celular 364): wrap, panel más ancho en tablet o selector, según decida diseño"
+      - "Capturas a 390, 768-1180 en ambas orientaciones y 1440; se coordina con la sesión de rediseño de interfaz porque el panel es compartido"
+    source: "cola de T-322 (2026-11-21): defecto medido por el agente en 6 anchos"
+    created_at: 2026-11-21T04:10:00.000Z
+    owner: diseno-ux
+  - id: T-434
+    title: "La vista de error de la guardia se centra, con marco y foco, en tablet y escritorio"
+    type: feature
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: [T-322]
+    acceptance:
+      - "El estado «No pudimos verificar tu sesión» queda centrado y con altura propia en tablet y escritorio, con el mismo texto y las dos salidas; sin tocar el ciclo de verificación de GuardaSesion (ADR-0032)"
+      - "Se ve en navegador el error global (error.tsx), que no se pudo forzar en T-322"
+    source: "cola de T-322 (2026-11-21)"
+    created_at: 2026-11-21T04:10:00.000Z
+    owner: diseno-ux
+  - id: T-435
+    title: "Foco de los botones del panel de la campana con anillo de color y contraste medido"
+    type: bug
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: [T-322]
+    acceptance:
+      - "El foco de los botones de acción del panel usa el anillo de foco del sistema en lugar de un contorno sólido de 2 px, con contraste medido en claro y oscuro"
+    source: "cola de T-322 (2026-11-21)"
+    created_at: 2026-11-21T04:10:00.000Z
+    owner: frontend
+  - id: T-480
+    title: "Reportes de cobros: saldo por cobrar por asesor y moneda, cobrado en el periodo por medio de pago y correcciones"
+    type: feature
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    depends_on: [T-330, T-342]
+    acceptance:
+      - "Tres reportes de cobros definidos y construidos con el alcance propio o de agencia que impone el servidor (T-342); el estado de pago es del archivo de viaje (ADR-0034) y las funciones puras del saldo viven en packages/domain"
+      - "Dinero en enteros con su moneda ISO-4217 (R8), sin mezclar monedas en una cifra"
+    source: "aportes de la sesión de cobros a T-339 (2026-11-21); docs/08-roadmap/11-reportes-por-nivel-catalogo.md §9"
+    created_at: 2026-11-21T04:10:00.000Z
+    owner: analista-datos
+  - id: T-481
+    title: "Ventas por mayorista a partir de bookings.mayorista_nombre y decisión sobre lo que queda de T-149"
+    type: feature
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: [T-339]
+    acceptance:
+      - "El reporte de ventas por mayorista se define con su fórmula y fuente (bookings.mayorista_nombre) y se decide por escrito qué queda de T-149"
+    source: "aportes de la sesión de cobros a T-339 (2026-11-21)"
+    created_at: 2026-11-21T04:10:00.000Z
+    owner: analista-datos
+  - id: T-482
+    title: "Re-basar T-148 (salidas próximas) sobre travel_files"
+    type: refactor
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: [T-339]
+    acceptance:
+      - "La definición de salidas próximas deja de depender de bookings y usa travel_files, con el mismo alcance por nivel que el resto de reportes"
+    source: "aportes de la sesión de cobros a T-339 (2026-11-21)"
+    created_at: 2026-11-21T04:10:00.000Z
+    owner: analista-datos
+  - id: T-483
+    title: "Exportar CSV en el servidor, con permiso y auditoría, cuando lleve datos personales"
+    type: security
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    depends_on: [T-345]
+    acceptance:
+      - "Hoy los CSV se generan en el navegador y el servidor no registra que alguien exportó; una exportación con nombres o teléfonos se hace en el servidor con permiso y registro del actor, sin el contenido (R10)"
+      - "Solo con alcance de agencia (pregunta 13 del catálogo de reportes por nivel)"
+    source: "aportes de la sesión de cobros a T-339 (2026-11-21)"
+    created_at: 2026-11-21T04:10:00.000Z
+    owner: backend
+  - id: T-484
+    title: "Cerrar por rol y con dueño los hallazgos H4 a H8 del catálogo de reportes por nivel"
+    type: security
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    depends_on: [T-339]
+    acceptance:
+      - "GET /crm/tablero, /crm/contactos y /crm/contactos/:id/ficha devuelven datos de toda la agencia a cualquier miembro y POST /crm/oportunidades acepta el asesorId de cualquier asesor de la agencia: se decide en T-340 qué ve y qué asigna cada nivel y se parte la corrección en tareas con auditor-seguridad"
+      - "H5 (tasks.yaml desfasado en T-131, T-132 y parte de T-136) se resuelve con evidencia de commit o archivo y dueño dueno-de-producto"
+    source: "catálogo de reportes por nivel §6 y revisión del cierre H1/H2 (2026-11-21)"
+    created_at: 2026-11-21T04:10:00.000Z
+    owner: dueno-de-producto
+  - id: T-485
+    title: "Web: «Esta vista es de administración» en Reportes y seguimientos propios tras el cierre H1/H2"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: S
+    status: backlog
+    depends_on: [T-322]
+    acceptance:
+      - "lib/reportes-api.ts traduce el 403 PERMISO_DENEGADO de /reportes/resumen a «Esta vista es de administración» (reportes/page.tsx:121 y 123, reportes-reales.tsx:66 y 69, reportes-permisos.spec.tsx); el menú Reportes sigue visible a todos (D3)"
+      - "Seguimientos y ficha del contacto muestran solo lo del asesor sin ver_todas, con el texto que lo explique; verificado a 390, tablet y 1440 px; PR web mínimo tras la ventana de diseño"
+    source: "cierre provisional H1/H2 (PR #395, 2026-11-21)"
+    created_at: 2026-11-21T04:10:00.000Z
+    owner: frontend
+  - id: T-425
+    title: "Decidir y construir «Archivar» y la vista «Archivadas» de la bandeja"
+    type: feature
+    phase: 1
+    priority: P3
+    effort: M
+    status: backlog
+    depends_on: [T-326]
+    acceptance:
+      - "El dueño de producto decide por escrito si «Archivar» entra y con qué reglas (las etiquetas se conservan al archivar, HU-inbox-1); si entra, «Filtro sin resultados» ofrece «Buscar en Archivadas»"
+      - "Con la decisión, historia y tarea de frontend y backend con criterios de aceptación"
+    source: "cola de T-326 (2026-11-21): la HU lo deja abierto"
+    created_at: 2026-11-21T03:35:00.000Z
+    owner: dueno-de-producto
+  - id: T-426
+    title: "A 1440 px el botón de densidad de la cabecera de la lista de conversaciones no se corta"
+    type: bug
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: [T-326]
+    acceptance:
+      - "En la columna de 320 px de la lista, el botón «Cómoda» cabe entera o se acorta con su nombre accesible completo; captura a 1440×900 que lo muestre"
+      - "Ya ocurría antes de T-326"
+    source: "cola de T-326 (2026-11-21)"
+    created_at: 2026-11-21T03:35:00.000Z
+    owner: frontend
+  - id: T-427
+    title: "Documentar las etiquetas: atajo e en la ayuda, entrada de bitácora y «Etiqueta» en el lenguaje ubicuo"
+    type: docs
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: [T-326]
+    acceptance:
+      - "La ayuda de atajos y la bitácora recogen el atajo e (poner o quitar etiqueta); «Etiqueta» (Label) queda confirmada en docs/01-producto/02-lenguaje-ubicuo.md"
+      - "Se anota la decisión de que la hoja de etiquetas en móvil es modal y cubre la barra inferior mientras está abierta"
+    source: "cola de T-326 (2026-11-21)"
+    created_at: 2026-11-21T03:35:00.000Z
+    owner: documentador
+  - id: T-472
+    title: "Guardia de arranque del trabajador y de identidad con pagos, plazos_de_cobro y parametros_de_cobro"
+    type: security
+    phase: 2
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: [T-330]
+    acceptance:
+      - "Decisión o implementación escrita en un PR propio; el ADR-0034 no se edita, se enmienda o se supersede, y una migración aplicada no se edita"
+    source: "Desviación 4 de T-329: el ADR-0034 pide que la guardia de arranque incluya las tres tablas; esa guardia no existe en el repositorio (solo TABLAS_DE_NEGOCIO_VEDADAS_A_IDENTIDAD, del rol de identidad) (cola, 2026-11-21)"
+    created_at: 2026-11-21T04:00:00.000Z
+    owner: backend
+  - id: T-473
+    title: "Decidir si las foráneas de las tablas de agencia hacia tenants pasan a ON UPDATE RESTRICT"
+    type: refactor
+    phase: 2
+    priority: P3
+    effort: S
+    status: ready
+    depends_on: [T-329]
+    acceptance:
+      - "Decisión o implementación escrita en un PR propio; el ADR-0034 no se edita, se enmienda o se supersede, y una migración aplicada no se edita"
+    source: "PUNTO B de T-329: tenants.id es inmutable por diseño pero las foráneas dicen ON UPDATE CASCADE; que el esquema diga lo mismo que el diseño (cola, 2026-11-21)"
+    created_at: 2026-11-21T04:00:00.000Z
+    owner: datos
+  - id: T-474
+    title: "Añadir cobro.ver, cobro.registrar y cobro.corregir a semilla-agencia-aislamiento.spec.ts"
+    type: test
+    phase: 2
+    priority: P3
+    effort: S
+    status: ready
+    depends_on: [T-329]
+    acceptance:
+      - "Decisión o implementación escrita en un PR propio; el ADR-0034 no se edita, se enmienda o se supersede, y una migración aplicada no se edita"
+    source: "auditoría de T-329 (cola, 2026-11-21): la semilla de pruebas de aislamiento no conoce los permisos de cobro (cola, 2026-11-21)"
+    created_at: 2026-11-21T04:00:00.000Z
+    owner: qa
+  - id: T-475
+    title: "Documentación de los pagos: modelo de datos, lenguaje ubicuo y contextos delimitados"
+    type: docs
+    phase: 2
+    priority: P3
+    effort: S
+    status: ready
+    depends_on: [T-329]
+    acceptance:
+      - "Decisión o implementación escrita en un PR propio; el ADR-0034 no se edita, se enmienda o se supersede, y una migración aplicada no se edita"
+    source: "ADR-0034 y T-329: faltan las tablas pagos, plazos_de_cobro y parametros_de_cobro en 03-modelo-de-datos.md; los términos Devolución, Reverso, Estado de cobro, Fecha límite de cobro, Saldo, Saldo a favor y Ajuste del total en el lenguaje ubicuo (con la aclaración de Abono); y en 02-contextos-delimitados.md el contexto payments publica PaymentRecorded y PaymentReversed y lee el archivo por puerto (cola, 2026-11-21)"
+    created_at: 2026-11-21T04:00:00.000Z
+    owner: documentador
+  - id: T-476
+    title: "Endurecimiento menor de la migración de pagos: tipos con pg_catalog, relleno de permisos con roles duplicados y ENABLE ALWAYS TRIGGER"
+    type: security
+    phase: 2
+    priority: P3
+    effort: S
+    status: ready
+    depends_on: [T-329]
+    acceptance:
+      - "Decisión o implementación escrita en un PR propio; el ADR-0034 no se edita, se enmienda o se supersede, y una migración aplicada no se edita"
+    source: "auditoría de seguridad de T-329 (cola, 2026-11-21): tipos sin calificar con pg_catalog en pagos_validar_alta y pagos_inmutables (::text y boolean); el relleno de permisos aborta si hay roles sembrados con duplicados; opcional, ENABLE ALWAYS TRIGGER en los disparadores de pagos frente a session_replication_role. Una migración NUEVA: la 20261121140000 ya está aplicada (cola, 2026-11-21)"
+    created_at: 2026-11-21T04:00:00.000Z
+    owner: datos
+  - id: T-477
+    title: "La purga declarada de pagos permite borrar movimientos sueltos de esa agencia: documentarlo o exigir que el tenant ya no exista"
+    type: security
+    phase: 2
+    priority: P3
+    effort: S
+    status: ready
+    depends_on: [T-329]
+    acceptance:
+      - "Decisión o implementación escrita en un PR propio; el ADR-0034 no se edita, se enmienda o se supersede, y una migración aplicada no se edita"
+    source: "auditoría de seguridad de T-329 (cola, 2026-11-21): la salida de purga de pagos_inmutables autoriza al dueño a borrar filas de la agencia declarada aunque la agencia exista (cola, 2026-11-21)"
+    created_at: 2026-11-21T04:00:00.000Z
+    owner: datos
+  - id: T-478
+    title: "Casos de aislamiento explícitos en parametros_de_cobro y afinar P-B de la migración de pagos"
+    type: test
+    phase: 2
+    priority: P3
+    effort: S
+    status: ready
+    depends_on: [T-329]
+    acceptance:
+      - "Decisión o implementación escrita en un PR propio; el ADR-0034 no se edita, se enmienda o se supersede, y una migración aplicada no se edita"
+    source: "auditoría de seguridad de T-329 (cola, 2026-11-21): faltan UPDATE ajeno igual a 0 filas, SET tenant_id a otra agencia rechazado y upsert con el tenant de otra agencia; la segunda mitad de P-B acepta cualquier código de error; y el orden de COLUMNAS_DE_TEXTO_DECLARADAS (cola, 2026-11-21)"
+    created_at: 2026-11-21T04:00:00.000Z
+    owner: qa
+  - id: T-479
+    title: "Ley 1581 y pagador_id: un contacto pagador no se puede borrar (NO ACTION); diseñarlo con la supresión del titular"
+    type: security
+    phase: 2
+    priority: P3
+    effort: M
+    status: ready
+    depends_on: [T-329]
+    acceptance:
+      - "Decisión o implementación escrita en un PR propio; el ADR-0034 no se edita, se enmienda o se supersede, y una migración aplicada no se edita"
+    source: "auditoría de seguridad de T-329 (cola, 2026-11-21): la foránea pagador_id con NO ACTION impide borrar a un contacto que figure como pagador, y el derecho de supresión del titular exige poder atenderlo sin romper el libro contable inmutable (cola, 2026-11-21)"
+    created_at: 2026-11-21T04:00:00.000Z
+    owner: arquitecto
+  - id: T-440
+    title: "Diseño O1.0a: marco responsivo de tres modos (celular, tablet con riel con etiquetas, escritorio con menú lateral expandido), regla de altura, zonas seguras y dvh"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on: [T-441]
+    acceptance:
+      - "Celular < 768 px: barra inferior; tablet 768–1279: riel con icono y etiqueta, sin barra inferior; escritorio ≥ 1280: menú lateral expandido y colapsable por preferencia"
+      - "Con altura ≤ 480 px (celular horizontal) todos los módulos son alcanzables y la bandeja usa una columna"
+      - "viewport-fit y env(safe-area-inset-*) en las barras fijas; 100dvh en las alturas de ventana (ingreso, 404, error, imprimible incluidos)"
+      - "Espera a que entre el PR #385, que toca barra-modulos.tsx"
+      - "Capturas antes y después en celular (390), tablet (768, 820, 1024, 1180; vertical y horizontal) y escritorio (1280, 1440, 1920); lo no probado (WebKit, Firefox, teclado en pantalla) consta como «sin verificar»"
+      - "PR sin auto-merge, job navegador verde, pnpm typecheck y pnpm lint; el mismo PR deja su entrada en la bitácora y actualiza la documentación de diseño que toque (R14)"
+    source: "docs/_auditorias/2026-11-21-auditoria-visual-y-ux.md y docs/08-roadmap/10-roadmap-diseno-ui-ux.md (sesión de diseño, 2026-11-21)"
+    created_at: 2026-11-21T04:30:00.000Z
+    owner: frontend
+  - id: T-441
+    title: "Diseño O1.0b: utilidades de puntero (objetivo ≥ 44 px con pointer-coarse, densidad con pointer-fine) y revisión de los controles menores de 44 px"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: S
+    status: backlog
+    acceptance:
+      - "Una utilidad única de objetivo táctil basada en las variantes pointer-coarse y pointer-fine de Tailwind v4, sin dependencias nuevas"
+      - "Con dedo, ningún control de la bandeja, la conversación, Contactos, Hoy ni Catálogo mide menos de 44 px (medición con script, antes y después)"
+      - "Capturas antes y después en celular (390), tablet (768, 820, 1024, 1180; vertical y horizontal) y escritorio (1280, 1440, 1920); lo no probado (WebKit, Firefox, teclado en pantalla) consta como «sin verificar»"
+      - "PR sin auto-merge, job navegador verde, pnpm typecheck y pnpm lint; el mismo PR deja su entrada en la bitácora y actualiza la documentación de diseño que toque (R14)"
+    source: "docs/_auditorias/2026-11-21-auditoria-visual-y-ux.md y docs/08-roadmap/10-roadmap-diseno-ui-ux.md (sesión de diseño, 2026-11-21)"
+    created_at: 2026-11-21T04:30:00.000Z
+    owner: frontend
+  - id: T-442
+    title: "Diseño O1.0c: bandeja adaptable (lista de 300, 320 o 340 px según el modo, controles sin recorte, columna de mensajes de hasta 720 px, sin relleno inferior en el hilo móvil)"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on: [T-440]
+    acceptance:
+      - "El botón «Cómoda» y los demás controles de la lista no se cortan en ningún ancho"
+      - "En tablet vertical (768 y 820) el hilo mide al menos 440 px o la bandeja pasa a una columna con flecha de volver"
+      - "La columna de mensajes a 1920 px no pasa de unos 720 px y está centrada"
+      - "El pie del hilo móvil no lleva el relleno de 96 px pensado para la barra inferior"
+      - "Capturas antes y después en celular (390), tablet (768, 820, 1024, 1180; vertical y horizontal) y escritorio (1280, 1440, 1920); lo no probado (WebKit, Firefox, teclado en pantalla) consta como «sin verificar»"
+      - "PR sin auto-merge, job navegador verde, pnpm typecheck y pnpm lint; el mismo PR deja su entrada en la bitácora y actualiza la documentación de diseño que toque (R14)"
+    source: "docs/_auditorias/2026-11-21-auditoria-visual-y-ux.md y docs/08-roadmap/10-roadmap-diseno-ui-ux.md (sesión de diseño, 2026-11-21)"
+    created_at: 2026-11-21T04:30:00.000Z
+    owner: frontend
+  - id: T-443
+    title: "Diseño O1.1: tokens semánticos de plazo, estado y canal, escala tipográfica con piso de 12 px, cifras tabulares y anillo de foco único"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    acceptance:
+      - "Tokens plazo-vencido, plazo-hoy, plazo-proximo, plazo-ok, canal-whatsapp y demo en @theme, con nombres de dominio"
+      - "Ningún texto informativo por debajo de 12 px (11 px solo para la insignia de contador); font-variant-numeric: tabular-nums en importes, totales y contadores"
+      - "Un anillo de foco único, visible con teclado"
+      - "Contraste AA medido con herramienta para los grises y las insignias permitidas, con la lista escrita en la documentación de diseño"
+      - "PR sin auto-merge, job navegador verde, pnpm typecheck y pnpm lint; el mismo PR deja su entrada en la bitácora y actualiza la documentación de diseño que toque (R14)"
+    source: "docs/_auditorias/2026-11-21-auditoria-visual-y-ux.md y docs/08-roadmap/10-roadmap-diseno-ui-ux.md (sesión de diseño, 2026-11-21)"
+    created_at: 2026-11-21T04:30:00.000Z
+    owner: frontend
+  - id: T-444
+    title: "Diseño O1.2: componentes LineaDeViaje e InsigniaDePlazo con una escala de plazos de cuatro estados"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on: [T-443]
+    acceptance:
+      - "LineaDeViaje muestra destino · fechas · pasajeros y el plazo más próximo, igual en bandeja, oportunidad, conversación, cotización, archivo de viaje y Hoy"
+      - "InsigniaDePlazo usa texto, icono y token (vencido, hoy, próximo, en plazo); nunca solo color"
+      - "Pruebas unitarias de ambos componentes en components/comun"
+      - "PR sin auto-merge, job navegador verde, pnpm typecheck y pnpm lint; el mismo PR deja su entrada en la bitácora y actualiza la documentación de diseño que toque (R14)"
+    source: "docs/_auditorias/2026-11-21-auditoria-visual-y-ux.md y docs/08-roadmap/10-roadmap-diseno-ui-ux.md (sesión de diseño, 2026-11-21)"
+    created_at: 2026-11-21T04:30:00.000Z
+    owner: frontend
+  - id: T-445
+    title: "Diseño O1.3: formateador único de fecha y de dinero visible, y prueba que bloquea fechas ISO y colores crudos nuevos"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: S
+    status: backlog
+    depends_on: [T-443]
+    acceptance:
+      - "Un solo formato de fecha en presentación (20 dic 2026; en campos, dd/mm/aaaa)"
+      - "Una prueba falla si un componente nuevo usa emerald, amber, rose o red directos, o un hex suelto, con una lista de excepciones que solo puede bajar"
+      - "PR sin auto-merge, job navegador verde, pnpm typecheck y pnpm lint; el mismo PR deja su entrada en la bitácora y actualiza la documentación de diseño que toque (R14)"
+    source: "docs/_auditorias/2026-11-21-auditoria-visual-y-ux.md y docs/08-roadmap/10-roadmap-diseno-ui-ux.md (sesión de diseño, 2026-11-21)"
+    created_at: 2026-11-21T04:30:00.000Z
+    owner: frontend
+  - id: T-446
+    title: "Diseño O1.4: aviso de cookies compacto y un solo distintivo «Demo» en el marco"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: S
+    status: backlog
+    acceptance:
+      - "El aviso de cookies ocupa como máximo el 25 % de la altura en celular y no tapa la barra inferior"
+      - "El texto legal completo sigue en /cookies; la redacción la valida quien lleve T-093"
+      - "Un solo indicador «Demo» en el marco; fuera de las cabeceras de pantalla"
+      - "Capturas antes y después en celular (390), tablet (768, 820, 1024, 1180; vertical y horizontal) y escritorio (1280, 1440, 1920); lo no probado (WebKit, Firefox, teclado en pantalla) consta como «sin verificar»"
+      - "PR sin auto-merge, job navegador verde, pnpm typecheck y pnpm lint; el mismo PR deja su entrada en la bitácora y actualiza la documentación de diseño que toque (R14)"
+    source: "docs/_auditorias/2026-11-21-auditoria-visual-y-ux.md y docs/08-roadmap/10-roadmap-diseno-ui-ux.md (sesión de diseño, 2026-11-21)"
+    created_at: 2026-11-21T04:30:00.000Z
+    owner: frontend
+  - id: T-447
+    title: "Diseño O1.5: modo de demostración para forzar los estados cargando, error y vacío por pantalla"
+    type: feature
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    acceptance:
+      - "Un parámetro solo disponible en demostración fuerza cargando, error o vacío en cada pantalla, para capturar los estados antes y después de cada PR"
+      - "PR sin auto-merge, job navegador verde, pnpm typecheck y pnpm lint; el mismo PR deja su entrada en la bitácora y actualiza la documentación de diseño que toque (R14)"
+    source: "docs/_auditorias/2026-11-21-auditoria-visual-y-ux.md y docs/08-roadmap/10-roadmap-diseno-ui-ux.md (sesión de diseño, 2026-11-21)"
+    created_at: 2026-11-21T04:30:00.000Z
+    owner: frontend
+  - id: T-448
+    title: "Diseño O1.6: documentación del sistema de diseño (tokens, componentes, escala tipográfica, puntos de quiebre, reglas por familia de dispositivo)"
+    type: docs
+    phase: 1
+    priority: P1
+    effort: S
+    status: backlog
+    depends_on: [T-443]
+    acceptance:
+      - "Un documento de diseño en docs/01-producto/ con los tokens, los componentes de components/comun, la escala tipográfica, los puntos de quiebre y las reglas de celular, tablet y escritorio"
+      - "Se actualiza en cada PR de las olas (R14) o en el PR de cierre de la ola"
+    source: "docs/_auditorias/2026-11-21-auditoria-visual-y-ux.md y docs/08-roadmap/10-roadmap-diseno-ui-ux.md (sesión de diseño, 2026-11-21)"
+    created_at: 2026-11-21T04:30:00.000Z
+    owner: documentador
+  - id: T-449
+    title: "Diseño O2.1: conversación en celular y tablet (cabecera de 56 px, ventana en una línea, menú de asignación, etiquetas en una fila, una sola acción principal)"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on: [T-440, T-444]
+    acceptance:
+      - "Cabecera de una fila sin repetir nombre y teléfono; Tomar, Soltar y Reasignar en un menú"
+      - "Con la ventana abierta manda el redactor y Cotizar es secundaria; con la ventana cerrada la primaria es reabrir con plantilla"
+      - "Capturas antes y después en celular (390), tablet (768, 820, 1024, 1180; vertical y horizontal) y escritorio (1280, 1440, 1920); lo no probado (WebKit, Firefox, teclado en pantalla) consta como «sin verificar»"
+      - "PR sin auto-merge, job navegador verde, pnpm typecheck y pnpm lint; el mismo PR deja su entrada en la bitácora y actualiza la documentación de diseño que toque (R14)"
+    source: "docs/_auditorias/2026-11-21-auditoria-visual-y-ux.md y docs/08-roadmap/10-roadmap-diseno-ui-ux.md (sesión de diseño, 2026-11-21)"
+    created_at: 2026-11-21T04:30:00.000Z
+    owner: frontend
+  - id: T-450
+    title: "Diseño O2.2: bandeja en celular y tablet (controles en una fila, lupa de la cabecera, contadores con texto)"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on: [T-442, T-444]
+    acceptance:
+      - "Como máximo el 25 % de la altura son controles antes de la primera conversación a 390 px"
+      - "Contadores con texto («Ventana 34 min», «Responder en 11 h»); «Ventana cerrada» sin el verde de WhatsApp"
+      - "Capturas antes y después en celular (390), tablet (768, 820, 1024, 1180; vertical y horizontal) y escritorio (1280, 1440, 1920); lo no probado (WebKit, Firefox, teclado en pantalla) consta como «sin verificar»"
+      - "PR sin auto-merge, job navegador verde, pnpm typecheck y pnpm lint; el mismo PR deja su entrada en la bitácora y actualiza la documentación de diseño que toque (R14)"
+    source: "docs/_auditorias/2026-11-21-auditoria-visual-y-ux.md y docs/08-roadmap/10-roadmap-diseno-ui-ux.md (sesión de diseño, 2026-11-21)"
+    created_at: 2026-11-21T04:30:00.000Z
+    owner: frontend
+  - id: T-451
+    title: "Diseño O2.3: detalle de cotización en celular y tablet (cabecera de una fila y barra de acción fija con una sola acción principal)"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on: [T-444]
+    acceptance:
+      - "«Enviar por WhatsApp» es la única acción primaria y está siempre visible; Modificar, Duplicar, Comparar, Imprimir y Abrir en la app van en un menú"
+      - "Total y vencimiento en la primera pantalla a 390 px"
+      - "Capturas antes y después en celular (390), tablet (768, 820, 1024, 1180; vertical y horizontal) y escritorio (1280, 1440, 1920); lo no probado (WebKit, Firefox, teclado en pantalla) consta como «sin verificar»"
+      - "PR sin auto-merge, job navegador verde, pnpm typecheck y pnpm lint; el mismo PR deja su entrada en la bitácora y actualiza la documentación de diseño que toque (R14)"
+    source: "docs/_auditorias/2026-11-21-auditoria-visual-y-ux.md y docs/08-roadmap/10-roadmap-diseno-ui-ux.md (sesión de diseño, 2026-11-21)"
+    created_at: 2026-11-21T04:30:00.000Z
+    owner: frontend
+  - id: T-452
+    title: "Diseño O2.4: cotizador (selector de salidas, línea «cotizando para…», total fijo); la lógica es de la sesión del roadmap (T-321)"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on: [T-444, T-321]
+    acceptance:
+      - "Presentación de las salidas del paquete con fecha, cupo o estado y precio «desde»; solo si T-321 expone los datos"
+      - "Total y acción de guardar fijos en celular, tablet y escritorio"
+      - "Capturas antes y después en celular (390), tablet (768, 820, 1024, 1180; vertical y horizontal) y escritorio (1280, 1440, 1920); lo no probado (WebKit, Firefox, teclado en pantalla) consta como «sin verificar»"
+      - "PR sin auto-merge, job navegador verde, pnpm typecheck y pnpm lint; el mismo PR deja su entrada en la bitácora y actualiza la documentación de diseño que toque (R14)"
+    source: "docs/_auditorias/2026-11-21-auditoria-visual-y-ux.md y docs/08-roadmap/10-roadmap-diseno-ui-ux.md (sesión de diseño, 2026-11-21)"
+    created_at: 2026-11-21T04:30:00.000Z
+    owner: frontend
+  - id: T-453
+    title: "Diseño O2.5: archivo de viaje (detalle) con acción principal única, plazos con InsigniaDePlazo y enlaces a chat y cotización"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on: [T-444]
+    acceptance:
+      - "Una acción principal por estado del archivo; el resto en un menú"
+      - "Plazos con la escala de cuatro estados"
+      - "Capturas antes y después en celular (390), tablet (768, 820, 1024, 1180; vertical y horizontal) y escritorio (1280, 1440, 1920); lo no probado (WebKit, Firefox, teclado en pantalla) consta como «sin verificar»"
+      - "PR sin auto-merge, job navegador verde, pnpm typecheck y pnpm lint; el mismo PR deja su entrada en la bitácora y actualiza la documentación de diseño que toque (R14)"
+    source: "docs/_auditorias/2026-11-21-auditoria-visual-y-ux.md y docs/08-roadmap/10-roadmap-diseno-ui-ux.md (sesión de diseño, 2026-11-21)"
+    created_at: 2026-11-21T04:30:00.000Z
+    owner: frontend
+  - id: T-454
+    title: "Diseño O2.6: Hoy como lista de trabajo ordenada por vencimiento, con una tira de cifras"
+    type: feature
+    phase: 1
+    priority: P1
+    effort: M
+    status: backlog
+    depends_on: [T-444]
+    acceptance:
+      - "Los seguimientos, time limits y chats vencidos aparecen en la primera pantalla a 390 px"
+      - "Sin tarjeta de catálogo, sin accesos rápidos duplicados del menú"
+      - "Capturas antes y después en celular (390), tablet (768, 820, 1024, 1180; vertical y horizontal) y escritorio (1280, 1440, 1920); lo no probado (WebKit, Firefox, teclado en pantalla) consta como «sin verificar»"
+      - "PR sin auto-merge, job navegador verde, pnpm typecheck y pnpm lint; el mismo PR deja su entrada en la bitácora y actualiza la documentación de diseño que toque (R14)"
+    source: "docs/_auditorias/2026-11-21-auditoria-visual-y-ux.md y docs/08-roadmap/10-roadmap-diseno-ui-ux.md (sesión de diseño, 2026-11-21)"
+    created_at: 2026-11-21T04:30:00.000Z
+    owner: frontend
+  - id: T-455
+    title: "Diseño O3.1: menú lateral de escritorio expandido con etiqueta y contador"
+    type: feature
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    depends_on: [T-440]
+    acceptance:
+      - "Con etiqueta al lado, contador y estado activo en acento con aria-current; sin anillo dorado"
+      - "Capturas antes y después en celular (390), tablet (768, 820, 1024, 1180; vertical y horizontal) y escritorio (1280, 1440, 1920); lo no probado (WebKit, Firefox, teclado en pantalla) consta como «sin verificar»"
+      - "PR sin auto-merge, job navegador verde, pnpm typecheck y pnpm lint; el mismo PR deja su entrada en la bitácora y actualiza la documentación de diseño que toque (R14)"
+    source: "docs/_auditorias/2026-11-21-auditoria-visual-y-ux.md y docs/08-roadmap/10-roadmap-diseno-ui-ux.md (sesión de diseño, 2026-11-21)"
+    created_at: 2026-11-21T04:30:00.000Z
+    owner: frontend
+  - id: T-456
+    title: "Diseño O3.2: Hoy en tablet y escritorio"
+    type: feature
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    depends_on: [T-454]
+    acceptance:
+      - "La lista de trabajo y la tira de cifras usan el ancho de tablet y de escritorio sin tarjetas de una cifra"
+      - "Capturas antes y después en celular (390), tablet (768, 820, 1024, 1180; vertical y horizontal) y escritorio (1280, 1440, 1920); lo no probado (WebKit, Firefox, teclado en pantalla) consta como «sin verificar»"
+      - "PR sin auto-merge, job navegador verde, pnpm typecheck y pnpm lint; el mismo PR deja su entrada en la bitácora y actualiza la documentación de diseño que toque (R14)"
+    source: "docs/_auditorias/2026-11-21-auditoria-visual-y-ux.md y docs/08-roadmap/10-roadmap-diseno-ui-ux.md (sesión de diseño, 2026-11-21)"
+    created_at: 2026-11-21T04:30:00.000Z
+    owner: frontend
+  - id: T-457
+    title: "Diseño O3.3: conversación en tablet y escritorio con una sola acción «Cotizar» y LineaDeViaje en el panel «Solicitud de viaje»"
+    type: feature
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    depends_on: [T-449]
+    acceptance:
+      - "La acción Cotizar aparece una sola vez por estado; ficha como cajón en tablet y fija desde 1280"
+      - "Capturas antes y después en celular (390), tablet (768, 820, 1024, 1180; vertical y horizontal) y escritorio (1280, 1440, 1920); lo no probado (WebKit, Firefox, teclado en pantalla) consta como «sin verificar»"
+      - "PR sin auto-merge, job navegador verde, pnpm typecheck y pnpm lint; el mismo PR deja su entrada en la bitácora y actualiza la documentación de diseño que toque (R14)"
+    source: "docs/_auditorias/2026-11-21-auditoria-visual-y-ux.md y docs/08-roadmap/10-roadmap-diseno-ui-ux.md (sesión de diseño, 2026-11-21)"
+    created_at: 2026-11-21T04:30:00.000Z
+    owner: frontend
+  - id: T-458
+    title: "Diseño O3.4: archivos de viaje en tablet y escritorio con densidad de tabla; la tabla y sus datos son de la sesión del roadmap (T-334)"
+    type: feature
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    depends_on: [T-453, T-334]
+    acceptance:
+      - "Presentación densa de lista y detalle; solo después de acordar el reparto con la sesión del roadmap"
+      - "Capturas antes y después en celular (390), tablet (768, 820, 1024, 1180; vertical y horizontal) y escritorio (1280, 1440, 1920); lo no probado (WebKit, Firefox, teclado en pantalla) consta como «sin verificar»"
+      - "PR sin auto-merge, job navegador verde, pnpm typecheck y pnpm lint; el mismo PR deja su entrada en la bitácora y actualiza la documentación de diseño que toque (R14)"
+    source: "docs/_auditorias/2026-11-21-auditoria-visual-y-ux.md y docs/08-roadmap/10-roadmap-diseno-ui-ux.md (sesión de diseño, 2026-11-21)"
+    created_at: 2026-11-21T04:30:00.000Z
+    owner: frontend
+  - id: T-459
+    title: "Diseño O3.5: cotizador y detalle de cotización a ancho de tablet y escritorio"
+    type: feature
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    depends_on: [T-452, T-451]
+    acceptance:
+      - "Total fijo y acción junto al total; el espacio sobrante se aprovecha sin tarjetas vacías"
+      - "Capturas antes y después en celular (390), tablet (768, 820, 1024, 1180; vertical y horizontal) y escritorio (1280, 1440, 1920); lo no probado (WebKit, Firefox, teclado en pantalla) consta como «sin verificar»"
+      - "PR sin auto-merge, job navegador verde, pnpm typecheck y pnpm lint; el mismo PR deja su entrada en la bitácora y actualiza la documentación de diseño que toque (R14)"
+    source: "docs/_auditorias/2026-11-21-auditoria-visual-y-ux.md y docs/08-roadmap/10-roadmap-diseno-ui-ux.md (sesión de diseño, 2026-11-21)"
+    created_at: 2026-11-21T04:30:00.000Z
+    owner: frontend
+  - id: T-460
+    title: "Diseño O4.1: Oportunidades con selector de etapa y tarjeta compacta en celular; kanban desde tablet"
+    type: feature
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    depends_on: [T-444]
+    acceptance:
+      - "Más de dos tarjetas visibles por pantalla a 390 px"
+      - "Capturas antes y después en celular (390), tablet (768, 820, 1024, 1180; vertical y horizontal) y escritorio (1280, 1440, 1920); lo no probado (WebKit, Firefox, teclado en pantalla) consta como «sin verificar»"
+      - "PR sin auto-merge, job navegador verde, pnpm typecheck y pnpm lint; el mismo PR deja su entrada en la bitácora y actualiza la documentación de diseño que toque (R14)"
+    source: "docs/_auditorias/2026-11-21-auditoria-visual-y-ux.md y docs/08-roadmap/10-roadmap-diseno-ui-ux.md (sesión de diseño, 2026-11-21)"
+    created_at: 2026-11-21T04:30:00.000Z
+    owner: frontend
+  - id: T-461
+    title: "Diseño O4.2: Contactos como lista en celular y cabecera de una fila"
+    type: feature
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    depends_on: [T-441]
+    acceptance:
+      - "Sin tabla con desplazamiento interno en celular; fila de dos líneas con nombre y próximo viaje o teléfono"
+      - "Capturas antes y después en celular (390), tablet (768, 820, 1024, 1180; vertical y horizontal) y escritorio (1280, 1440, 1920); lo no probado (WebKit, Firefox, teclado en pantalla) consta como «sin verificar»"
+      - "PR sin auto-merge, job navegador verde, pnpm typecheck y pnpm lint; el mismo PR deja su entrada en la bitácora y actualiza la documentación de diseño que toque (R14)"
+    source: "docs/_auditorias/2026-11-21-auditoria-visual-y-ux.md y docs/08-roadmap/10-roadmap-diseno-ui-ux.md (sesión de diseño, 2026-11-21)"
+    created_at: 2026-11-21T04:30:00.000Z
+    owner: frontend
+  - id: T-462
+    title: "Diseño O4.3: ficha de contacto (acción principal «Abrir WhatsApp», viajes con LineaDeViaje, avatar con fondo)"
+    type: feature
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: [T-444]
+    acceptance:
+      - "Una acción primaria; las cifras llevan a una lista"
+      - "Capturas antes y después en celular (390), tablet (768, 820, 1024, 1180; vertical y horizontal) y escritorio (1280, 1440, 1920); lo no probado (WebKit, Firefox, teclado en pantalla) consta como «sin verificar»"
+      - "PR sin auto-merge, job navegador verde, pnpm typecheck y pnpm lint; el mismo PR deja su entrada en la bitácora y actualiza la documentación de diseño que toque (R14)"
+    source: "docs/_auditorias/2026-11-21-auditoria-visual-y-ux.md y docs/08-roadmap/10-roadmap-diseno-ui-ux.md (sesión de diseño, 2026-11-21)"
+    created_at: 2026-11-21T04:30:00.000Z
+    owner: frontend
+  - id: T-463
+    title: "Diseño O4.4: Catálogo con filtros en una fila, fecha en formato único y tarjeta con LineaDeViaje"
+    type: feature
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: [T-445]
+    acceptance:
+      - "Sin fecha ISO; filtros en una fila en celular"
+      - "Capturas antes y después en celular (390), tablet (768, 820, 1024, 1180; vertical y horizontal) y escritorio (1280, 1440, 1920); lo no probado (WebKit, Firefox, teclado en pantalla) consta como «sin verificar»"
+      - "PR sin auto-merge, job navegador verde, pnpm typecheck y pnpm lint; el mismo PR deja su entrada en la bitácora y actualiza la documentación de diseño que toque (R14)"
+    source: "docs/_auditorias/2026-11-21-auditoria-visual-y-ux.md y docs/08-roadmap/10-roadmap-diseno-ui-ux.md (sesión de diseño, 2026-11-21)"
+    created_at: 2026-11-21T04:30:00.000Z
+    owner: frontend
+  - id: T-464
+    title: "Diseño O4.5: Seguimientos sin miga «CRM» y con pestañas que muestran el conteo"
+    type: feature
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    acceptance:
+      - "Sin tarjetas de una cifra; pestañas Vencidos, Hoy, Próximos y Hechos con su conteo en una sola fila"
+      - "Capturas antes y después en celular (390), tablet (768, 820, 1024, 1180; vertical y horizontal) y escritorio (1280, 1440, 1920); lo no probado (WebKit, Firefox, teclado en pantalla) consta como «sin verificar»"
+      - "PR sin auto-merge, job navegador verde, pnpm typecheck y pnpm lint; el mismo PR deja su entrada en la bitácora y actualiza la documentación de diseño que toque (R14)"
+    source: "docs/_auditorias/2026-11-21-auditoria-visual-y-ux.md y docs/08-roadmap/10-roadmap-diseno-ui-ux.md (sesión de diseño, 2026-11-21)"
+    created_at: 2026-11-21T04:30:00.000Z
+    owner: frontend
+  - id: T-465
+    title: "Diseño O4.6: Reportes (redacción de «n insuficiente» y tira de cifras)"
+    type: feature
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    acceptance:
+      - "«Aún pocas cotizaciones para dar un porcentaje» con el conteo como dato; el criterio del servidor no cambia"
+      - "Capturas antes y después en celular (390), tablet (768, 820, 1024, 1180; vertical y horizontal) y escritorio (1280, 1440, 1920); lo no probado (WebKit, Firefox, teclado en pantalla) consta como «sin verificar»"
+      - "PR sin auto-merge, job navegador verde, pnpm typecheck y pnpm lint; el mismo PR deja su entrada en la bitácora y actualiza la documentación de diseño que toque (R14)"
+    source: "docs/_auditorias/2026-11-21-auditoria-visual-y-ux.md y docs/08-roadmap/10-roadmap-diseno-ui-ux.md (sesión de diseño, 2026-11-21)"
+    created_at: 2026-11-21T04:30:00.000Z
+    owner: frontend
+  - id: T-466
+    title: "Diseño O4.7: Configuración (tira de contadores y un solo distintivo)"
+    type: feature
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    acceptance:
+      - "Contadores en una línea; sin distintivo repetido"
+      - "Capturas antes y después en celular (390), tablet (768, 820, 1024, 1180; vertical y horizontal) y escritorio (1280, 1440, 1920); lo no probado (WebKit, Firefox, teclado en pantalla) consta como «sin verificar»"
+      - "PR sin auto-merge, job navegador verde, pnpm typecheck y pnpm lint; el mismo PR deja su entrada en la bitácora y actualiza la documentación de diseño que toque (R14)"
+    source: "docs/_auditorias/2026-11-21-auditoria-visual-y-ux.md y docs/08-roadmap/10-roadmap-diseno-ui-ux.md (sesión de diseño, 2026-11-21)"
+    created_at: 2026-11-21T04:30:00.000Z
+    owner: frontend
+  - id: T-467
+    title: "Diseño O4.8: ingreso, 404, error y páginas legales; después de #362 y #385"
+    type: feature
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: [T-446]
+    acceptance:
+      - "Ingreso con dvh y sin jerga técnica; 404 y error con salida clara"
+      - "Capturas antes y después en celular (390), tablet (768, 820, 1024, 1180; vertical y horizontal) y escritorio (1280, 1440, 1920); lo no probado (WebKit, Firefox, teclado en pantalla) consta como «sin verificar»"
+      - "PR sin auto-merge, job navegador verde, pnpm typecheck y pnpm lint; el mismo PR deja su entrada en la bitácora y actualiza la documentación de diseño que toque (R14)"
+    source: "docs/_auditorias/2026-11-21-auditoria-visual-y-ux.md y docs/08-roadmap/10-roadmap-diseno-ui-ux.md (sesión de diseño, 2026-11-21)"
+    created_at: 2026-11-21T04:30:00.000Z
+    owner: frontend
+  - id: T-468
+    title: "Diseño O4.9: pasada de texto (mayúscula de oración, títulos y H1 coherentes con el menú)"
+    type: feature
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    acceptance:
+      - "Sin mayúsculas de título en botones, campos y pestañas; el H1 y el title de cada ruta coinciden con el ítem del menú"
+      - "PR sin auto-merge, job navegador verde, pnpm typecheck y pnpm lint; el mismo PR deja su entrada en la bitácora y actualiza la documentación de diseño que toque (R14)"
+    source: "docs/_auditorias/2026-11-21-auditoria-visual-y-ux.md y docs/08-roadmap/10-roadmap-diseno-ui-ux.md (sesión de diseño, 2026-11-21)"
+    created_at: 2026-11-21T04:30:00.000Z
+    owner: frontend
+  - id: T-469
+    title: "Diseño O5: propuesta al viajero y su versión imprimible (portada, itinerario, incluye y no incluye, RNT)"
+    type: feature
+    phase: 1
+    priority: P3
+    effort: L
+    status: backlog
+    acceptance:
+      - "Pieza que el viajero reenvía por WhatsApp; dividir antes de empezar. Bloqueada hasta que el propietario fije nombre comercial, marca y logo"
+    source: "docs/_auditorias/2026-11-21-auditoria-visual-y-ux.md y docs/08-roadmap/10-roadmap-diseno-ui-ux.md (sesión de diseño, 2026-11-21)"
+    created_at: 2026-11-21T04:30:00.000Z
+    owner: diseno-ux
+  - id: T-470
+    title: "Diseño cola: recorrer el foco de teclado en bandeja, cotizador y archivos de viaje"
+    type: test
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    acceptance:
+      - "Cada outline-none tiene un anillo propio; recorrido con teclado documentado"
+    source: "docs/_auditorias/2026-11-21-auditoria-visual-y-ux.md y docs/08-roadmap/10-roadmap-diseno-ui-ux.md (sesión de diseño, 2026-11-21)"
+    created_at: 2026-11-21T04:30:00.000Z
+    owner: qa
+  - id: T-471
+    title: "Diseño cola: pasada manual en iPhone, iPad, Firefox y Edge (Safari, zonas seguras, teclado en pantalla, dvh)"
+    type: test
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    depends_on: [T-440]
+    acceptance:
+      - "Lista de lo que se comprobó y de lo que sigue «sin verificar»; hoy solo hay Chromium en el entorno de la sesión de diseño"
+    source: "docs/_auditorias/2026-11-21-auditoria-visual-y-ux.md y docs/08-roadmap/10-roadmap-diseno-ui-ux.md (sesión de diseño, 2026-11-21)"
+    created_at: 2026-11-21T04:30:00.000Z
+    owner: qa

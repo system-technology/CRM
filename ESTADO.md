@@ -66,8 +66,9 @@ entrado. Seguimos en local.
 | **El RNT de la agencia** (T-261, ADR-0030 §3.3): tabla `perfiles_de_agencia` con RLS y un disparador que niega por defecto la verificación; la agencia lo escribe en Configuración y la propuesta al viajero lo imprime **solo si está verificado**. **Hoy nadie lo verifica sin SQL a mano** (T-280); con la API real la propuesta sale sin RNT hasta que el propietario marque la agencia piloto | PR #321 (migración, aprobada por el propietario), #322 y #324; P-1…P-6 de `aislamiento.spec.ts`, `agencia-ajustes.e2e-spec.ts`, `page.rnt.spec.tsx`; [bitácora](docs/_bitacora/2026-11-20-rnt-de-la-agencia.md). Supuesto sin verificar: el RNT son solo dígitos, de 1 a 10 |
 | Servidores MCP del proyecto (`.mcp.json`): 21st.dev, Neon, Render y Vercel, con la clave leída del entorno | PR #305 y #310; la sesión de despliegue confirmó que los cuatro conectan |
 | `docs/` reorganizada sin romper nada: comprobador de enlaces con línea base (job `enlaces-de-documentacion`, en modo aviso, fuera de los 8 obligatorios), `_auditoria` fusionada en `_auditorias`, la carpeta de traspaso movida a `docs/_traspasos/`, índice con los huérfanos | PR #316 a #319 (T-302) |
+| **Libro de cobro del viajero, solo la base (T-328, T-329; [ADR-0034](docs/03-adr/0034-pagos-del-viajero-mvp-de-registro-manual.md), Propuesto):** tablas `pagos` (solo crece), `plazos_de_cobro` y `parametros_de_cobro` con RLS forzada, disparadores de inmutabilidad y del total del archivo, permisos `cobro.ver`, `cobro.registrar` y `cobro.corregir`. **Sin API ni pantalla: nadie puede registrar un pago todavía** (T-330 en curso) | PR #378 (ADR) y #382 (migración `20261121140000`); CI 15/15 y `aislamiento-tenants` en verde. [Modelo de datos](docs/02-arquitectura/03-modelo-de-datos.md) |
 
-El repositorio tiene 54 migraciones. Cifras de pruebas: no se midieron en esta sesión y no se repiten.
+El repositorio tiene 55 migraciones. Cifras de pruebas: no se midieron en esta sesión y no se repiten.
 
 **Defecto real que halló la suite:** la bandeja nunca ofrecía cotizaciones para enviar con la API real,
 porque la ficha de CRM las trae vacías (R4). Ahora la bandeja las pide a `quoting`. Antes, la suite
@@ -92,6 +93,7 @@ Postmark real; las migraciones contra una base de producción (solo corren en el
 | Operación antes del piloto: respaldo, costo y rotación de claves, **propuestas sin ensayar** | [`docs/06-operacion/`](docs/06-operacion/) |
 | Políticas de seguridad: borrador sin aprobar | [`docs/05-seguridad/00-indice-de-politicas.md`](docs/05-seguridad/00-indice-de-politicas.md) |
 | ADR-0023 (fiscal): propuesto. Las fuentes de la DIAN del 0023 **no están verificadas** | [`docs/03-adr/`](docs/03-adr/) |
+| **Cobros del viajero:** la API de T-330 (dominio puro, contratos, módulo `payments`, rutas, idempotencia, eventos) está **en curso y sin integrar**; después T-331 (pantalla de archivo), T-332 (vista «quién pagó y quién debe») y T-333 («Hoy» y campana avisan cobros vencidos), en ese orden | [Roadmap JD Tours, eje C](docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md); [bitácora](docs/_bitacora/2026-11-21-t330-dominio-y-api-de-cobros.md) |
 
 ### Lo que NO existe
 

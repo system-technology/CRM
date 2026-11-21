@@ -113,6 +113,46 @@ quién debe». Antes de diseñar hay que cerrar las preguntas al dueño (ver §4
 | T-332 | C5: vista «quién pagó y quién debe» (Al día, Saldo pendiente, Vencido) | `frontend` | T-331 |
 | T-333 | C6: «Hoy» y la campana avisan los cobros vencidos; estado de pago visible en la bandeja | `backend`, `frontend` | T-332, T-317 |
 
+#### Estado y orden (2026-11-21)
+
+**Hecho, en `main`:**
+
+- **T-327** — historia [HU-payments-1](../01-producto/03-historias/HU-payments-1.md), con un supuesto explícito por cada pregunta al dueño (PR #335).
+- **T-328** — [ADR-0034](../03-adr/0034-pagos-del-viajero-mvp-de-registro-manual.md), estado Propuesto (PR #378).
+- **T-329** — migración `20261121140000_pagos_del_viajero_libro_de_cobro`: tablas `pagos`, `plazos_de_cobro` y `parametros_de_cobro`, disparadores, permisos `cobro.*` (PR #382). CI 15/15 y `aislamiento-tenants` en verde.
+
+**En curso: T-330** (`backend`; dominio puro, contratos, módulo `payments`, puerto hacia `booking`,
+rutas, idempotencia y eventos). Reglas que debe cumplir, todas del ADR:
+
+- El tipo permitido depende del estado del archivo: `PAGO` y `AJUSTE` en `ABIERTO`, `PENALIDAD` en `CANCELADO`.
+- Lo pagado no queda negativo (una devolución o el reverso de un pago no lo permiten) ni el total de un archivo abierto.
+- `registrado_por` sale de la sesión y `registrado_en` nunca del cliente; el contrato descarta saldo, estado y autor si llegan.
+- Idempotencia: misma `claveIdempotencia` y mismo contenido, `200` con la fila existente; contenido distinto, `409`.
+- Carrera registrar-cancelar: un `PAGO` que llega mientras se cancela el archivo no puede quedar registrado sobre un archivo ya `CANCELADO`. El ADR fija el candado por archivo (§4); el mecanismo exacto lo decide T-330 y se prueba en el CI.
+- Las sumas se leen como `bigint`, nunca `Number`.
+- Permisos: `cobro.registrar` solo para `PAGO`; `cobro.corregir` para el resto, el plazo y los días por defecto; `cobro.ver` para leer.
+- Luhn: se rechaza una `referencia` o `nota` con 13 a 19 dígitos que pasen Luhn, sin repetir el valor.
+
+**Orden y dependencias** (de `roadmap/tasks.yaml`): T-330 → **T-331** (pantalla de archivo; además
+depende de T-316) → **T-332** (vista «quién pagó y quién debe») → **T-333** («Hoy» y campana; además
+depende de T-317). Ninguna pantalla empieza antes de que T-330 esté integrada. La cola del ADR
+(medios por agencia, TRM por pago, cifrado de nota y referencia, primer consumidor de los eventos)
+cuelga de T-330 y no bloquea.
+
+**Criterio para las pantallas.** El propietario aclaró que el CRM se usa desde celular, tablet y
+escritorio. T-331 y T-332 se verifican en **las tres familias de ancho**, no solo en el celular:
+390 px, tablet y 1440 px, sin desplazamiento lateral.
+
+**Sin verificar.**
+
+- Los e2e contra Postgres real y la carrera registrar-cancelar solo se validan en el CI; nada de T-330 se ejecutó contra una base local.
+- Los siete supuestos de HU-payments-1 y del ADR siguen sin respuesta del dueño (abajo). El más delicado: que `OPERACIONES` solo vea cobros y que una penalidad no supere lo pagado.
+- El plazo legal de conservación del soporte contable, con el contador.
+- La meta de rendimiento de la vista (2.000 archivos, 10.000 pagos, p95 < 500 ms) se mide en T-332.
+
+**Preguntas abiertas para el dueño:** las siete de «Cobros, tras ADR-0034» en §4. Una respuesta que
+contradiga un supuesto reabre el ADR (se enmienda o se supersede, no se edita).
+
 ### Eje D — Archivos de viaje como reemplazo de su hoja
 
 | Tarea | Paso | Dueño | Depende de |
