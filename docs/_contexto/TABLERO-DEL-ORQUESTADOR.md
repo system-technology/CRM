@@ -9,19 +9,22 @@
 > carril `i/`. El hook `contexto-persistente.mjs` inyecta **el más reciente** entre el del checkout y el de la
 > rama `claude/repository-status-d4ug6p`. Si el tablero contradice a `gh`/`git`, manda la realidad.
 
-Última actualización: **2026-11-21, 14:20 UTC**, por la madre `session_01R81Xh5b7wpteu5YpcDpw5p`, **que se releva aquí**. `main` en **`898ba390`**. **ONCE PR integrados** en el turno (#427, #428, #430, #429, #433, #434, #432, #435, #436, #437, #438). **Cero PR abiertos.**
+Última actualización: **2026-11-21, 15:15 UTC**, por la madre `session_01R81Xh5a2iFmSzSLVN6VcXy`. `main` en **`ef44c75e`**. Relevo recibido a las 15:05 UTC de `session_01R81Xh5b7wpteu5YpcDpw5p` (**275.757 tokens y 18,11 USD**, el doble del tope). **Un PR abierto: #446** (T-555, carril `b`).
 
 
 ## 1. Quién es quién
 
 - **Propietario:** Alfavear (español). Autorización literal: «tú tienes autorización mía para aprobar y destrabar los temas pendientes como si fuera yo»; «tú como sesión principal tienes toda mi autorización para aprobar los PRs y destrabar todo lo que nos bloquea». El 2026-11-21 añadió: **modo desatendido, avanzar en todos los frentes**.
 - **No alcanza:** paneles de Neon, Render, Vercel o 21st.dev; claves y secretos; `override-lane` y la configuración de GitHub; WhatsApp real; trámites (Meta, abogado, contador, pasarela); redesplegar la demo sin su confirmación; borrar ramas ajenas.
-- **Sesión madre** (orquestadora): **`session_01R81Xh3ygCnt8wYfALeA6yY`** (Opus, esfuerzo alto), desde las 08:50 UTC del 2026-11-21. La anterior, `session_01R81Xh45hbFQHivoDJ8cbJQ`, se relevó por contexto (400 mil tokens, ~48 USD).
-- **El despertar de las 2 h ya apunta bien.** Tarea programada **`trig_01H8nNZUwV2DdTA2fnJzQkVh`** (`15 */2 * * *`), creada por la madre anterior el 2026-11-21 a las 09:53 UTC apuntando a la madre actual; la suya, `trig_016u2cLZTGLRrJvkZWgJpqpG`, quedó borrada. **Verificado con `list_triggers`**, no de palabra. Quedó así porque a la madre nueva el clasificador le deniega `create_trigger`: si vuelve a haber relevo, **la madre saliente crea la tarea de la entrante antes de retirarse**.
-- **Sesión madre ACTUAL: `session_01R81Xh5b7wpteu5YpcDpw5p`** (Opus, esfuerzo alto), desde las 12:25 UTC del 2026-11-21. La saliente, `session_01R81Xh3ygCnt8wYfALeA6yY`, llegó a 688 mil tokens y 122 USD.
-- **Sesión madre: SE RELEVÓ a las 14:20 UTC.** La saliente, `session_01R81Xh5b7wpteu5YpcDpw5p`, llegó a **450 mil tokens y 47 USD** — **el triple del tope de 150 mil**. Motivo exacto, para que no se repita: **comprobó el consumo de todas las hijas en cada vuelta y el suyo propio solo una vez, al arrancar, cuando marcaba 0.** El despertar de las dos horas trae ese paso el quinto; conviene hacerlo **el primero**.
-- **El despertar propio FUNCIONA, verificado:** `trig_01Cq7TrGZ9uGFc9uAmqQEDtr` disparó a las **14:15:28 UTC** directo en la madre, sin relevo en dos saltos. Era su primera vez.
-- **Sesión hija viva (1), y está BLOQUEADA:** `session_01R81Xh6LKjb37fMwSBRg2YL` — **T-531 y T-532** (carril `a`, reportes por asesor y por destino, **solo servidor**). **Lleva parada desde las 13:49 esperando un permiso de Bash que solo contesta el propietario en esa conversación.** No es un fallo suyo.
+- **Sesión madre ACTUAL: `session_01R81Xh5a2iFmSzSLVN6VcXy`** (Opus, esfuerzo alto), desde las **15:08 UTC** del 2026-11-21. Es la **cuarta** madre del día. Las tres anteriores se pasaron del tope de 150 mil: `…3ygCnt8wYfALeA6yY` con 688 mil y 122 USD, `…45hbFQHivoDJ8cbJQ` con 400 mil, y `…5b7wpteu5YpcDpw5p` con **275.757 tokens y 18,11 USD**.
+- **El despertar apunta bien y es ÚNICO: `trig_01RSjZimU6jHEhMXXe6kApQu`** (`47 */2 * * *`), creado por la madre saliente apuntando **directo** a la entrante. **Verificado con `list_triggers` a las 15:09 UTC:** una sola tarea programada, y su `persistent_session_id` es el de la madre actual. Sin relevo en dos saltos.
+- **El traspaso traía un id de tarea programada que NO existe** (`trig_01W27QjMm5BD8aFm1EJ6wa17`): la madre entrante iba a borrarlo. Es la **tercera vez** que el traspaso entre madres trae un id inventado. **No se borra ni se cita un id sin verlo antes en `list_triggers`.**
+- **Sobre el medidor de consumo propio.** La madre saliente avisó de que un `0` al arrancar significa «todavía no hay dato», no «el instrumento está roto». **Confirmado aquí, y matizado:** `external_metadata.context_usage.used_tokens` marcó **`0` en dos lecturas separadas** (15:08 y 15:12 UTC), con trabajo real en medio. Así que **tampoco es solo retraso de un instante**. Se anota como **«sin dato todavía»** y se sigue midiendo en cada vuelta; no se construye ninguna teoría sobre esa lectura ni se usa para decidir que queda margen. `rate_limit_info` sí traía dato (`seven_day`, `allowed_warning`): es otra cosa, no el consumo de contexto.
+- **Sesiones hijas (2):**
+  - `session_01R81Xh4VsA5hAVxGfnhUVR7` — carril `b`, **T-555** (la mitad web de T-531/T-532). **Entregó: PR #446**, 8 archivos, todo en `apps/web`.
+  - `session_01R81Xh4pS7W4NfJkngVJGg1` — carril `a`, **T-549**, repartida a las 15:10 UTC. Encargo acotado: el filtro de «sin responsable» **antes** del tope de filas, **por puerto y sin JOIN entre contextos (R4)**, con orden explícita de **parar y avisar** si exigiera ADR o migración.
+  - `session_01R81Xh2DhFQmHXUmF7Mqedn` — carril `a`, ociosa desde que entregó #441. **No se reutilizó**: una sesión nueva con `source_url` sale más barata que una con el contexto viejo encima.
+  - `session_01R81Xh6LKjb37fMwSBRg2YL` — **MUERTA**, no se rescata. Su trabajo se rehízo.
   - Coexistencia WhatsApp `session_01R81Xh2TUy9RCrR6RV4oAze`: **la abrió el propietario, no se le dan órdenes**.
 - **Archivadas tras entregar:** arquitectura (T-340, ADR-0035 → #397), roadmap, cobros, diseño anterior, despliegue.
 
@@ -37,6 +40,24 @@
 - **Subagentes:** nunca dos Opus a la vez (el límite de 5 h de la cuenta los mata con HTTP 429 y **no se reanudan**). Todo subagente que vaya a commitear trabaja en un `git worktree` aparte: el working tree es compartido.
 
 ## 3. Cola de integración (orden)
+
+### Lote de la tarde (2026-11-21, madre `…5a2iFmSzSLVN6VcXy`) — ABIERTO
+
+Arranca con `main` en **`ef44c75e`** y **un PR abierto, #446**.
+
+- **#446** (`b/T-555-web-por-asesor-y-destinos`) — T-555, carril `b` limpio (los 8 archivos en `apps/web`).
+  **Auditoría propia del código, no del informe (R13, toca dinero):**
+  - `destinosVendidos` **no suma nada entre monedas**: agrupa por destino y deja una fila por moneda tal
+    como la sirve el servidor. El ranking es por `aceptadas`, que es un **conteo**, no dinero (R8 respetado).
+  - En pantalla, cada moneda va en su línea con `formatearDinero(..., { conCodigo: true })`, el formateador
+    compartido que divide por `10 ** decimales` **según la moneda** (en COP no divide). No repite T-543.
+  - `filasDeAsesores` deja de hacer una consulta por asesor: las cifras llegan ya contadas en `porAsesor`.
+    Desaparece `MAXIMO_ASESORES_COMPARADOS` (12) y con él el tope silencioso de la comparación.
+  - **Hallazgo, no bloqueante:** el cambio **elimina el `.slice(0, maximo)`** de los destinos, que es
+    exactamente **T-557** (ya en la cola como P3). Y la clave de agrupación es `f.destino` **sin `trim()` ni
+    normalizar**, aunque el nombre que se pinta sí va con `trim()`: dos filas con el mismo nombre visible si
+    el servidor manda `"Cartagena"` y `"Cartagena "`. Es cosmético y cae dentro de T-557. **Cola, no bloquea** (§3.1).
+  - **Sin bloqueantes.** Rama puesta al día a las 15:14 UTC con `update-branch`.
 
 ### Lote de mediodía (2026-11-21, madre `…DpwSp`) — CERRADO
 
@@ -200,6 +221,15 @@ Bandeja completa en [`PENDIENTES-DEL-PROPIETARIO.md`](PENDIENTES-DEL-PROPIETARIO
 - **El traspaso entre madres puede traer ids inventados.** El de la tarea programada venía mal el 2026-11-21. Comprobar
   con `list_triggers` y no heredar un id de memoria.
 - Un 23505 de un disparador puede llegar como P2002 sin restricción. `issue_write` con `labels` reemplaza etiquetas.
+
+- **El check `Carril y tarea` NO falla si el PR no menciona ninguna `T-xxx`: solo emite un `::warning::`**
+  (verificado el 2026-11-21 leyendo `.github/workflows/ownership.yml`). Lo que sí falla es el carril. Por eso
+  **un PR de documentación que solo registra tareas puede ir en una rama sin ningún id** — es la forma limpia de
+  no cerrar ninguna en falso, mejor que buscarle un id prestado.
+- **`update-branch` de GitHub es seguro para `convencion-de-commits`.** Su commit se llama `Merge branch 'main'
+  into …`, y `commitlint.config.cjs` **no desactiva `defaultIgnores`**, que ignora los mensajes que empiezan por
+  `Merge `. Verificado el 2026-11-21 antes de usarlo. Lo que sí lo tumba es un merge escrito a mano con `merge:`
+  como tipo (en minúscula no entra en `defaultIgnores`): ahí va `chore:`.
 
 ## 8. Sin verificar (heredado)
 
