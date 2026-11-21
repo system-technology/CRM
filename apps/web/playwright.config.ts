@@ -60,6 +60,7 @@ export default defineConfig({
         '**/04-nombres.e2e-spec.ts',
         '**/05-movil.e2e-spec.ts',
         '**/06-etiquetas.e2e-spec.ts',
+        '**/07-cobros.e2e-spec.ts',
       ],
       dependencies: ['ingreso'],
       use: {

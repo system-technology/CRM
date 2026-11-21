@@ -33,6 +33,11 @@ export const PERMISO_REPORTES_VER_AGENCIA: Permiso = 'reportes.ver_agencia';
 export const PERMISO_ARCHIVO_VER: Permiso = 'archivo.ver';
 export const PERMISO_ARCHIVO_OPERAR: Permiso = 'archivo.operar';
 
+/** Permisos del cobro al viajero (ADR-0034 §6, T-330/T-331). `corregir` es del dueño. */
+export const PERMISO_COBRO_VER: Permiso = 'cobro.ver';
+export const PERMISO_COBRO_REGISTRAR: Permiso = 'cobro.registrar';
+export const PERMISO_COBRO_CORREGIR: Permiso = 'cobro.corregir';
+
 /** Permisos de mutación introducidos en T-089 */
 export const PERMISOS_MUTACION_T089: readonly Permiso[] = [
   PERMISO_BANDEJA_OPERAR,
