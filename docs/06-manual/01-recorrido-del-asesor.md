@@ -31,7 +31,7 @@ navegador. Las demás capturas de este manual se tomaron con el aviso ya resuelt
 
 - El recuadro verde de arriba del formulario («Modo de Producción… Conectado a la API») **solo
   refleja cómo está configurada la aplicación; no comprueba que el servidor esté respondiendo**. En
-  la captura sale así aunque se tomó sin ninguna API.
+  la captura sale así aunque se tomó sin ninguna API (T-565).
 - Tu sesión se cierra sola tras un rato sin actividad; la pantalla te lo avisa y vuelves a ingresar.
 - Verás cada agencia por separado: **nunca** aparecen conversaciones, contactos ni cotizaciones de otra
   agencia.

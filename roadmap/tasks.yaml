@@ -11718,3 +11718,23 @@ tasks:
     source: "hallazgo de T-562 (manual de usuario), 2026-11-21"
     created_at: 2026-11-21T15:50:00.000Z
     owner: frontend
+  - id: T-565
+    title: "Web: el cartel «Modo de Produccion» del ingreso afirma una conexion que no comprueba y habla en tecnico"
+    type: bug
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    acceptance:
+      - "formulario-ingreso.tsx muestra «Modo de Produccion (API Real) — Conectado a la API y PostgreSQL en vivo»
+        cuando esReal es verdadero, y esReal = authApi.usaAuthReal() es una bandera de configuracion, no una
+        comprobacion de conectividad. En una captura tomada sin ninguna API la pantalla decia «conectado». Hallado
+        al documentar el recorrido del asesor (T-562), verificado en el codigo por la sesion madre"
+      - "Dos caras, y la tarea recoge las dos: o se comprueba de verdad la conexion, o el texto deja de afirmarla"
+      - "En cualquier caso, el texto se reescribe en lenguaje de agencia, sin nombrar PostgreSQL ni «API»: es la
+        primera pantalla que ve el dueno de una agencia de viajes y un resto de desarrollo le resta confianza"
+      - "Al cerrarla, quitar la nota sobre el recuadro verde del paso 1 de docs/06-manual/01-recorrido-del-asesor.md y
+        volver a tomar asesor-01-ingreso con docs/06-manual/capturas.mjs --ingreso"
+    source: "hallazgo de T-562 (manual de usuario), 2026-11-21"
+    created_at: 2026-11-21T15:55:00.000Z
+    owner: frontend
