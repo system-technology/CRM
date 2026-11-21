@@ -9580,11 +9580,12 @@ tasks:
     phase: 1
     priority: P2
     effort: S
-    status: backlog
+    status: in_progress
     acceptance:
       - "Ingreso con correo o usuario y edicion del usuario de un miembro (#405) verificados a 390 px contra la API real, no simulada; quedo sin verificar al integrar"
     source: "cierre del segundo lote, 2026-11-21"
     created_at: 2026-11-21T20:00:00.000Z
+    notes: "Prueba escrita (apps/web/e2e/08-ingreso-por-usuario.e2e-spec.ts); verificacion pendiente del job navegador del CI del PR. No se corrio en local."
     owner: frontend
   - id: T-512
     title: "Ingreso con correo o usuario (apodo) de punta a punta"
@@ -9774,3 +9775,30 @@ tasks:
     source: "auditoria independiente de #420 (T-516), 2026-11-21"
     created_at: 2026-11-21T09:50:00.000Z
     owner: frontend
+  - id: T-526
+    title: "Subir LIMITE_TASA_POR_TENANT en el job navegador del CI (hoy 600/min)"
+    type: chore
+    phase: 1
+    priority: P3
+    effort: XS
+    status: backlog
+    acceptance:
+      - "El job navegador fija LIMITE_TASA_POR_TENANT junto a LIMITE_TASA_POR_IP (5000); sin eso, la suite agota los 600/min de la agencia demo y las pantallas ultimas dan «Demasiadas peticiones» (429). Ruta protegida (.github/): espera al propietario"
+    source: "T-511: la lista de miembros dio 429 en la corrida del CI; la prueba lo tolera pulsando «Reintentar»"
+    created_at: 2026-11-21T22:00:00.000Z
+    owner: devops
+  - id: T-527
+    title: "ADR-0035 §1 promete validar el asesorId de alcance AGENCIA y el codigo lo devuelve tal cual"
+    type: chore
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    acceptance:
+      - "ADR-0035 §1 dice que el asesorId pedido en alcance AGENCIA va «validado contra la agencia»; alcance-de-reporte.ts lo devuelve sin validar. Hoy es inocuo: RLS mas el filtro por tenant_id dan cero filas, y la e2e lo fija como comportamiento esperado"
+      - "O se valida que el asesor pertenece a la agencia, o se corrige la frase del ADR. Lo que no puede quedarse es un ADR que promete mas de lo que el codigo hace"
+      - "Relacionado, de la misma auditoria: los adaptadores ramifican por alcance.asesorId === null en vez de por alcance.nivel, asi que el unico guardian de que PROPIO nunca quede sin predicado es el tipo; y VentasDeUnaMoneda no es strict() con neto y margen opcionales, asi que la validacion de salida no atraparia una fuga de margen"
+    source: "auditoria independiente de #417 (T-342), 2026-11-21"
+    created_at: 2026-11-21T10:30:00.000Z
+    owner: backend
+
