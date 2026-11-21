@@ -17,6 +17,7 @@ import { formatearDinero } from '../../lib/formato';
 import type { VistaReporteResumen } from '../../lib/reportes-logica';
 import { formatearPorcentajeReporte, TEXTO_SIN_DATOS } from '../../lib/reportes-logica';
 import { plural } from '../../lib/mis-numeros-logica';
+import { CotizacionesAbiertasPorAntiguedad, SaldoPorCobrarPorMoneda } from './cifras-de-hoy';
 
 export interface SeguimientosDelAsesor {
   vencidos: number;
@@ -124,6 +125,44 @@ export function MisNumeros({ vista, diasAnteriores, seguimientos }: Props) {
           >
             Abrir mis seguimientos
           </Link>
+        </section>
+      )}
+
+      {vista.cotizacionesAbiertas && (
+        <section
+          aria-labelledby="mn-abiertas"
+          data-testid="mis-numeros-abiertas"
+          className={tarjeta}
+        >
+          <h2 id="mn-abiertas" className={titulo}>
+            Mis cotizaciones abiertas hoy
+          </h2>
+          <p className="mb-2 text-xs text-neutral-500">
+            Es el estado de hoy, no del periodo: borradores y enviadas que aún esperan respuesta.
+          </p>
+          <CotizacionesAbiertasPorAntiguedad datos={vista.cotizacionesAbiertas} />
+          <Link
+            href="/cotizaciones"
+            className="text-acento-700 dark:text-acento-400 mt-2 inline-flex min-h-[44px] items-center text-xs font-semibold hover:underline"
+          >
+            Abrir mis cotizaciones
+          </Link>
+        </section>
+      )}
+
+      {vista.porCobrar && (
+        <section
+          aria-labelledby="mn-por-cobrar"
+          data-testid="mis-numeros-por-cobrar"
+          className={tarjeta}
+        >
+          <h2 id="mn-por-cobrar" className={titulo}>
+            Por cobrar hoy
+          </h2>
+          <p className="mb-2 text-xs text-neutral-500">
+            Saldo de tus archivos de viaje abiertos, por moneda.
+          </p>
+          <SaldoPorCobrarPorMoneda datos={vista.porCobrar} />
         </section>
       )}
 

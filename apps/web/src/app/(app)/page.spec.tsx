@@ -45,9 +45,14 @@ const RESUMEN_MOCK: crmApi.ResumenTrabajoDelDia = {
     enNegociacion: 1,
     ganadas: 4,
   },
-  cotizacionesAbiertas: 2,
-  cotizacionesAbiertasTruncado: false,
-  enviadasPorAntiguedad: { hastaTresDias: 1, deCuatroASiete: 0, masDeSiete: 1 },
+  cotizacionesAbiertas: {
+    total: 2,
+    borradores: 0,
+    enviadas: 2,
+    porAntiguedad: { hastaTresDias: 1, deCuatroASiete: 0, masDeSiete: 1 },
+  },
+  porCobrar: null,
+  alcanceDeCifras: 'PROPIO',
   totalVentasEstimadasCop: '24000000',
   estaVacio: false,
 };
@@ -144,7 +149,10 @@ describe('InicioPage (T-020 & T-037) - Inicio del asesor con datos reales y pend
     const tarjetaCotiz = screen.getByTestId('tarjeta-cotizaciones-vencer');
     expect(tarjetaCotiz).toBeDefined();
     expect(tarjetaCotiz.getAttribute('href')).toBe('/cotizaciones');
-    expect(within(tarjetaCotiz).getByText('2')).toBeDefined();
+    expect(within(tarjetaCotiz).getByTestId('cotizaciones-abiertas-hoy')).toBeDefined();
+    expect(within(tarjetaCotiz).getByText('Solo tus cotizaciones.')).toBeDefined();
+    // Sin `porCobrar` (sin cobro.ver) la tarjeta no existe: ni en cero ni vacía.
+    expect(screen.queryByTestId('tarjeta-por-cobrar')).toBeNull();
 
     // Tarjeta 4: Catálogo de excursiones
     const tarjetaCat = screen.getByTestId('tarjeta-catalogo-turismo');
@@ -153,15 +161,64 @@ describe('InicioPage (T-020 & T-037) - Inicio del asesor con datos reales y pend
     expect(within(tarjetaCat).getByText(/Pasadías & Tours/i)).toBeDefined();
   });
 
+  it('T-546/T-538: «Por cobrar» sale en Hoy por moneda y, con truncado, como mínimo y no como total', async () => {
+    vi.spyOn(crmApi, 'obtenerResumenTrabajoDelDia').mockResolvedValue({
+      ...RESUMEN_MOCK,
+      alcanceDeCifras: 'AGENCIA',
+      porCobrar: {
+        truncado: true,
+        porMoneda: [
+          { moneda: 'COP', archivos: 7, saldo: { unidades: '12000000', moneda: 'COP' } },
+          { moneda: 'USD', archivos: 2, saldo: { unidades: '90000', moneda: 'USD' } },
+        ],
+      },
+    });
+    vi.spyOn(crmApi, 'obtenerPendientesDelDiaApi').mockResolvedValue({
+      fecha: '2026-10-27',
+      vencidos: [],
+      deHoy: [],
+    });
+
+    render(<InicioPage />);
+
+    const tarjeta = await screen.findByTestId('tarjeta-por-cobrar');
+    expect(within(tarjeta).getByTestId('por-cobrar-COP').textContent).toContain('12.000.000');
+    expect(within(tarjeta).getByTestId('por-cobrar-USD').textContent).toContain('900,00');
+    expect(within(tarjeta).getByTestId('por-cobrar-minimo-COP').textContent).toBe('o más');
+    expect(within(tarjeta).getByTestId('por-cobrar-truncado')).toBeDefined();
+    expect(within(tarjeta).getByText('Archivos abiertos de toda la agencia.')).toBeDefined();
+  });
+
+  it('T-546: si las cotizaciones abiertas no llegaron, Hoy lo dice y no pinta un cero', async () => {
+    vi.spyOn(crmApi, 'obtenerResumenTrabajoDelDia').mockResolvedValue({
+      ...RESUMEN_MOCK,
+      cotizacionesAbiertas: null,
+      alcanceDeCifras: null,
+    });
+    vi.spyOn(crmApi, 'obtenerPendientesDelDiaApi').mockResolvedValue({
+      fecha: '2026-10-27',
+      vencidos: [],
+      deHoy: [],
+    });
+
+    render(<InicioPage />);
+
+    expect(await screen.findByTestId('cotizaciones-abiertas-no-disponible')).toBeDefined();
+    expect(screen.queryByTestId('cotizaciones-abiertas-hoy')).toBeNull();
+  });
+
   it('4. Muestra banner de bienvenida amigable cuando la agencia no tiene actividad todavía (estado vacío)', async () => {
     vi.spyOn(crmApi, 'obtenerResumenTrabajoDelDia').mockResolvedValue({
       ...RESUMEN_MOCK,
       conversacionesPendientes: 0,
       conversacionesSinAsignar: 0,
       oportunidadesActivas: 0,
-      cotizacionesAbiertas: 0,
-      cotizacionesAbiertasTruncado: false,
-      enviadasPorAntiguedad: { hastaTresDias: 0, deCuatroASiete: 0, masDeSiete: 0 },
+      cotizacionesAbiertas: {
+        total: 0,
+        borradores: 0,
+        enviadas: 0,
+        porAntiguedad: { hastaTresDias: 0, deCuatroASiete: 0, masDeSiete: 0 },
+      },
       oportunidadesPorEtapa: { nuevoLead: 0, enCotizacion: 0, enNegociacion: 0, ganadas: 0 },
       estaVacio: true,
     });
