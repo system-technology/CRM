@@ -126,7 +126,7 @@ export class RegistrarMovimientoUseCase {
       if (!insertada) {
         // La red del ADR: no debería dispararse tras el candado. Si pasó, se vuelve al paso 2.
         const otra = await ops.buscarPorClave(entrada.claveIdempotencia);
-        if (!otra) throw new FalloDeEscrituraDelLibroError(null);
+        if (!otra) throw new FalloDeEscrituraDelLibroError('ON_CONFLICT_SIN_FILA', null);
         return { fila: igualOConflicto(otra, candidato), creado: false };
       }
       await ops.escribirEvento(

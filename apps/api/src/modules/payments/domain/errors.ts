@@ -10,15 +10,20 @@ import { DomainError, EstadoInvalidoError, InvariantError, ProhibidoError } from
 
 export class ArchivoDeCobroNoEncontradoError extends DomainError {
   readonly code = 'ARCHIVO_NO_ENCONTRADO';
-  constructor(readonly archivoId: string) {
-    super(`No hay un archivo de viaje ${archivoId} en esta agencia`);
+  constructor(readonly archivoId?: string) {
+    super(`No hay un archivo de viaje ${archivoId ?? ''} en esta agencia`.replace('  ', ' '));
   }
 }
 
 export class MovimientoDeCobroNoEncontradoError extends DomainError {
   readonly code = 'MOVIMIENTO_DE_COBRO_NO_ENCONTRADO';
-  constructor(readonly pagoId: string) {
-    super(`No hay un movimiento de cobro ${pagoId} en ese archivo de esta agencia`);
+  constructor(readonly pagoId?: string) {
+    super(
+      `No hay un movimiento de cobro ${pagoId ?? ''} en ese archivo de esta agencia`.replace(
+        '  ',
+        ' ',
+      ),
+    );
   }
 }
 
@@ -138,13 +143,19 @@ export class MovimientoRechazadoPorLaBaseError extends InvariantError {
 }
 
 /**
- * Fallo de la base que no se sabe traducir. Lleva SOLO el código de Postgres: el mensaje original
- * de un `23514` trae «Failing row contains (…)» con la nota y la referencia.
+ * Fallo de la base que no se sabe traducir. Lleva SOLO la clase y el código de Postgres: el mensaje
+ * original de un `23514` trae «Failing row contains (…)» con la nota y la referencia. No es un
+ * `DomainError`: llega al filtro global como lo inesperado que es (500), igual que
+ * `FalloDeEscrituraDeEtiquetas`.
  */
-export class FalloDeEscrituraDelLibroError extends DomainError {
+export class FalloDeEscrituraDelLibroError extends Error {
   readonly code = 'FALLO_DE_ESCRITURA_DEL_LIBRO';
-  constructor(readonly codigoPg: string | null) {
-    super(`No se pudo escribir en el libro de cobro (código ${codigoPg ?? 'desconocido'})`);
+  constructor(
+    clase: string,
+    readonly codigoPg: string | null,
+  ) {
+    super(`Falló una escritura del libro de cobro (${clase}${codigoPg ? ` ${codigoPg}` : ''}).`);
+    this.name = 'FalloDeEscrituraDelLibroError';
   }
 }
 

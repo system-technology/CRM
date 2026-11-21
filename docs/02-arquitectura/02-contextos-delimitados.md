@@ -130,12 +130,26 @@ vencido es un cupo perdido y una venta caída.
 
 ### `payments` — dinero de los viajeros
 
-**Posee:** planes de pago, cuotas, transacciones, conciliación, cuentas por pagar a proveedores.
+**Posee:** el libro de cobro del archivo (pagos, devoluciones, ajustes del total, penalidades y
+reversos), el plazo de cobro y, más adelante, planes de pago, cuotas, conciliación y cuentas por pagar
+a proveedores.
 
-**Lenguaje:** Payment, Installment, PaymentPlan, Reconciliation, SupplierPayable.
+**Lenguaje:** Payment, Refund, Reversal, TotalAdjustment, Penalty, CollectionStatus,
+collectionDueDate. Reservados para después: Installment, PaymentPlan, Reconciliation, SupplierPayable.
 
-**Publica:** `PaymentReceived`, `PaymentFailed`, `InstallmentOverdue`.
-**Consume:** `TravelFileConfirmed`.
+**Publica:** `PaymentRecorded` (`payments.pago_registrado`) y `PaymentReversed`
+(`payments.pago_reversado`), por outbox, con solo ids. Sin consumidor en el MVP; el primero será
+«Hoy» y la campana (T-333). `PaymentReceived` queda **reservado** para la confirmación de una
+pasarela (futuro); `PaymentFailed` e `InstallmentOverdue` siguen sin construir.
+**Consume:** nada por eventos. Lee el archivo de viaje por un **puerto que declara `payments`**
+(`PuertoArchivoParaCobro`, implementado del lado de `booking`) y nunca ve neto ni margen. `booking` no
+se entera de los cobros: el estado de cobro lo calcula `payments` al leer.
+
+**Estado (2026-11-21).** Existen las tablas (T-329, migración `20261121140000`; ver el
+[modelo de datos](03-modelo-de-datos.md)). **En curso, aún sin integrar:** el módulo, el dominio puro,
+los contratos, el puerto y las rutas (T-330). Decisión: [ADR-0034](../03-adr/0034-pagos-del-viajero-mvp-de-registro-manual.md)
+(Propuesto). El flujo `TravelFileConfirmed` → `payments` y `PaymentReceived` → `booking` del mapa de
+arriba **no se usa** en el MVP.
 
 Separado de `identity` a propósito: una cosa es lo que el **viajero** le paga a la agencia, y otra
 lo que la **agencia** nos paga a nosotros. Mezclarlos produce un modelo que nadie entiende en seis
