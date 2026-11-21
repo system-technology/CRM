@@ -65,7 +65,7 @@ export function ModalEnviarCotizacion({
         } catch (errEstado) {
           console.warn('[bandeja] El mensaje salió, pero no se pudo marcar ENVIADA:', errEstado);
           setAvisoEstado(
-            'El mensaje salió, pero la cotización sigue como Borrador. Márcala como Enviada desde su detalle.',
+            'El mensaje salió, pero la cotización sigue como Borrador. Vuelve a enviarla desde esta conversación: el mensaje no se duplica y se reintenta el cambio de estado.',
           );
           cierre = 4000;
         }
