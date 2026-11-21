@@ -8086,7 +8086,7 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: review
+    status: done
     depends_on:
       - T-339
     acceptance:
@@ -8101,7 +8101,7 @@ tasks:
     owner: arquitecto
     notes: "ADR-0035 (Propuesto) en la rama i/T-340-adr-niveles-reportes. Pasa a done cuando se integre en main ||
       Reconciliación 2026-11-21: sigue en review. Un ADR que ya se implementó sin estar Aceptado es un agujero
-      de proceso (R7)."
+      de proceso (R7). || CERRADA 2026-11-21 por la madre del lote nocturno: PR #475 integrado en main. El ADR-0035 pasa a Aceptado con la auditoria de su seccion 9 recorrida punto por punto contra el codigo. OJO: el cierre automatico de tareas NO la cerro pese a que la rama la nombraba; tercer lote seguido. Comprobar siempre el status en main despues de integrar."
   - id: T-341
     title: "F2: permisos de reportes en el catálogo de roles y su sembrado (absorbe T-141)"
     type: feature

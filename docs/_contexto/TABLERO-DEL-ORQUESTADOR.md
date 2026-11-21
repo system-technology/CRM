@@ -255,6 +255,21 @@ Acertó en el fondo **y** en la forma. Si hubiera escrito «T-372 ya está hecha
 por casualidad y nadie habría mirado la corrida. **Marcar la sospecha como sospecha es lo que hizo
 que se midiera.**
 
+## 1.12 Una guarda «solo de tipos» puede estar protegiendo de verdad: mira el sitio de llamada
+
+La hija de T-340 encontró que `porAsesor` y `ventasPorDestino` exigen el alcance de agencia entera
+**por tipo**, y que los tres adaptadores lo reciben como `_alcance` (guion bajo: sin usar). Dicho
+así suena a fuga: los tipos se borran al compilar.
+
+**No lo es, y lo comprobé antes de aceptarlo.** El estrechamiento no viene del tipo sino de
+`esAgenciaEntera`, que es una **función con lógica en ejecución** (`nivel === 'AGENCIA' && asesorId
+=== null`). En `obtener-resumen.use-case.ts` un alcance `PROPIO` deja `agenciaEntera === null` y la
+llamada **no se hace**. La barrera es real; lo que falta es la segunda, en el adaptador.
+
+**La regla:** antes de llamar fuga a una guarda de tipos, **mira el sitio de llamada**. Si el
+estrechamiento sale de un `if` sobre un discriminante, hay comprobación en ejecución aunque el tipo
+desaparezca. La hija lo clasificó bien como cola (T-580); yo lo verifiqué en vez de creerla.
+
 ## 2. Reglas operativas que no se olvidan
 
 - **R14:** todo cambio se documenta, lo hecho y lo que viene. Un plan que solo vive en una conversación no existe.
@@ -267,6 +282,23 @@ que se midiera.**
 - **Subagentes:** nunca dos Opus a la vez (el límite de 5 h de la cuenta los mata con HTTP 429 y **no se reanudan**). Todo subagente que vaya a commitear trabaja en un `git worktree` aparte: el working tree es compartido.
 
 ## 3. Cola de integración (orden)
+
+### Lote nocturno de cobros y permisos (2026-11-21, madre `…5mmenvvqrBAdaBUW1`) — EN CURSO
+
+Arranca con `main` en **`580dd67f`** y cero PR abiertos. Tres hijas Sonnet en paralelo, elegidas
+contra el **criterio de salida de JD Tours** (§3 del roadmap del piloto), no contra la lista de P1.
+
+- **#475** (T-340, carril `i`) — **INTEGRADO** en `7dc17bef`. 15/15 verdes, `mutaciones-aislamiento`
+  incluido. ADR-0035 pasa a **Aceptado**. Auditoría propia antes de integrar: comprobé **línea a
+  línea** su hallazgo delicado y resultó bien clasificado (ver §1.12). Dos seguimientos registrados
+  (**T-580**, **T-581**) y las condiciones de §9 anotadas en **T-345** y **T-483**; **T-493** ya
+  existía y no se duplicó.
+- **T-332 + T-335** (carril `b`) — la pantalla «quién pagó y quién debe» y su CSV. En vuelo.
+- **T-346** (carril `b`) — e2e de navegador de que un asesor no ve lo de otro. En vuelo.
+
+**Confirmado por TERCER lote seguido: el cierre automático de tareas no cierra nada.** T-340 seguía
+en `review` en `main` después de integrar, con la rama nombrando la tarea. **Comprobar el `status` en
+`main` tras cada integración y cerrarlo a mano.**
 
 ### Lote del arnés y la cola (2026-11-21, madre `…64ppDELKxYC1Tkdsu`) — CERRADO
 
