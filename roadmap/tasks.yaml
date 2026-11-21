@@ -12039,7 +12039,7 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: ready
+    status: done
     acceptance:
       - "Hoy, aceptar una cotizacion solo se puede por API: cambiarEstadoCotizacionApi se invoca unicamente
         con 'ENVIADA' desde modal-enviar-cotizacion.tsx; en cotizaciones/page.tsx ACEPTADA solo aparece como
@@ -12061,6 +12061,11 @@ tasks:
       viaje."
     created_at: 2026-11-21T15:50:00.000Z
     owner: frontend
+    started_at: 2026-11-21T17:39:31.040Z
+    done_at: 2026-11-21T17:39:31.041Z
+    evidence: "Mergeado en main por el PR #465 (rama b/T-563-aceptar-cotizacion) con el CI en verde: format,
+      analyze, tests y los demás checks obligatorios. Cierre automático (.github/workflows/cerrar-tarea.yml)."
+    commit: 910c04f06fc4a754a66607f3b00708642c0872b4
   - id: T-564
     title: "Web: no hay forma de corregir un pago (devolver, ajustar o reversar) aunque exista el permiso del dueno"
     type: bug
