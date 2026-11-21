@@ -94,8 +94,9 @@ dos que hacen presentable lo que ya existía. **Ninguna agencia ha visto todaví
 
 ### Cola al cerrar
 
-**564 tareas, 252 `done`, 309 abiertas, 4 P0 y 15 P1.** Cifras **recalculadas sobre el fichero**: las
-escribí primero de memoria y estaban mal. Validaciones en verde: 0 ids duplicados, 0 `ready` con
+**565 tareas, 254 `done`** (contando T-576 y T-593, que cierra el CI al integrar este PR), **308
+abiertas, 4 P0 y 15 P1.** Cifras **recalculadas sobre el fichero dos veces**: las escribí primero de
+memoria y estaban mal, y volvieron a quedarse cortas al integrarse T-576. Validaciones en verde: 0 ids duplicados, 0 `ready` con
 dependencia sin terminar, **0 `blocked` sin motivo** (comprobación nueva, nacida de este lote).
 Encoladas T-585 a T-592. **Siguiente id libre: T-594.**
 
