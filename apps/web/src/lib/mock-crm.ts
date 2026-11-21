@@ -209,11 +209,9 @@ export function obtenerMockFichaDeContacto(identificador: string): FichaDeContac
     contacto?.telefono ??
     conv?.contactoTelefono ??
     `+57300${((hash % 9000000) + 1000000).toString()}`;
-  const etiquetas =
-    contacto?.etiquetas ??
-    (conv?.etiquetas && conv.etiquetas.length > 0
-      ? conv.etiquetas.map((e) => e.nombre)
-      : ['Lead Nuevo']);
+  // Las etiquetas del CONTACTO son atributos duraderos y no las del chat (HU-inbox-1 §2): las de la
+  // conversación (Pagado, Seguimiento…) viven en `ConversacionResumen.etiquetas` y no se copian aquí.
+  const etiquetas = contacto?.etiquetas ?? ['Lead Nuevo'];
   const preferencias =
     contacto?.preferencias ??
     PREFERENCIAS_MOCK_POR_CONTACTO[contactoId] ??

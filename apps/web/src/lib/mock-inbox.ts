@@ -20,6 +20,12 @@ import {
   type EnviarTexto,
   type PaginaBandeja,
 } from '@viajapro/contracts';
+import {
+  ID_ETIQUETA_PAGADO,
+  ID_ETIQUETA_PAGO_PENDIENTE,
+  ID_ETIQUETA_SEGUIMIENTO,
+  etiquetasDeConversacionMock,
+} from './mock-etiquetas';
 
 export const ID_ASESOR_ACTUAL = '00000000-0000-4000-a000-000000000001';
 export const NOMBRE_ASESOR_ACTUAL = 'Asesor Actual';
@@ -87,43 +93,21 @@ const MENSAJES_DEL_VIAJE: Record<number, string> = {
   2: 'Buenas tardes, ¿el paquete a Curazao incluye desayuno? Viajamos dos adultos a comienzos de diciembre.',
 };
 
-const ETIQUETAS_OPCIONES = [
-  ['Cotización', 'Cancún'],
-  ['Punta Cana', 'VIP'],
-  ['Vuelo', 'Urgente'],
-  ['San Andrés'],
-  ['Cartagena', 'Familia'],
-  ['Luna de Miel'],
-  ['Europa'],
-  ['Pendiente Comprobante'],
-];
-
 /**
- * T-325: las etiquetas de una conversación ya no son texto libre sino las de la agencia (id, nombre y
- * color de la paleta). Aquí se arman a partir de nombres, con un id estable por nombre.
+ * Etiquetas de demo por fila (T-326): son las de la agencia de demo (Pagado, Pago pendiente,
+ * Seguimiento; `mock-etiquetas.ts`), las mismas que siembra la API. Muchas filas van sin etiqueta,
+ * como en una bandeja real: la fila no reserva la línea de chips.
  */
-const COLORES_MOCK = [
-  'azul',
-  'verde',
-  'ambar',
-  'turquesa',
-  'rosa',
-  'naranja',
-  'dorado',
-  'gris',
-] as const;
-const IDS_DE_ETIQUETAS_MOCK = new Map<string, string>();
-function etiquetasDeMock(nombres: readonly string[]) {
-  return nombres.map((nombre) => {
-    if (!IDS_DE_ETIQUETAS_MOCK.has(nombre)) IDS_DE_ETIQUETAS_MOCK.set(nombre, nombre);
-    const posicion = [...IDS_DE_ETIQUETAS_MOCK.keys()].indexOf(nombre);
-    return {
-      id: generarUuid(posicion + 1, 3),
-      nombre,
-      color: COLORES_MOCK[posicion % COLORES_MOCK.length] ?? 'gris',
-    };
-  });
-}
+const ETIQUETAS_DEMO_POR_FILA: readonly (readonly string[])[] = [
+  [],
+  [ID_ETIQUETA_PAGO_PENDIENTE],
+  [ID_ETIQUETA_SEGUIMIENTO],
+  [],
+  [ID_ETIQUETA_PAGADO],
+  [ID_ETIQUETA_PAGO_PENDIENTE, ID_ETIQUETA_SEGUIMIENTO],
+  [],
+  [ID_ETIQUETA_SEGUIMIENTO],
+];
 
 function generarUuid(index: number, grupo: number = 1): string {
   const hexIdx = index.toString(16).padStart(12, '0');
@@ -177,7 +161,7 @@ function generar500Conversaciones(): ConversacionResumen[] {
       ultimoMensajeDireccion: 'ENTRANTE',
       mensajesSinLeer: 1,
       slaVenceEn: new Date(ahora + 2 * 3600000).toISOString(),
-      etiquetas: etiquetasDeMock(['PruebaExtrema']),
+      etiquetas: etiquetasDeConversacionMock([ID_ETIQUETA_PAGADO]),
     }),
   );
 
@@ -202,7 +186,11 @@ function generar500Conversaciones(): ConversacionResumen[] {
       ultimoMensajeDireccion: 'ENTRANTE',
       mensajesSinLeer: 2,
       slaVenceEn: new Date(ahora + 30 * 60000).toISOString(),
-      etiquetas: etiquetasDeMock(['VIP', 'NombreLargo']),
+      etiquetas: etiquetasDeConversacionMock([
+        ID_ETIQUETA_PAGADO,
+        ID_ETIQUETA_PAGO_PENDIENTE,
+        ID_ETIQUETA_SEGUIMIENTO,
+      ]),
     }),
   );
 
@@ -261,7 +249,9 @@ function generar500Conversaciones(): ConversacionResumen[] {
         ? MENSAJES_ASESOR[(i - 1) % MENSAJES_ASESOR.length]
         : (MENSAJES_DEL_VIAJE[i] ?? MENSAJES_EJEMPLO[(i - 1) % MENSAJES_EJEMPLO.length])) ||
       'Consulta sobre paquete turístico';
-    const etiquetas = etiquetasDeMock(ETIQUETAS_OPCIONES[i % ETIQUETAS_OPCIONES.length] || []);
+    const etiquetas = etiquetasDeConversacionMock(
+      ETIQUETAS_DEMO_POR_FILA[i % ETIQUETAS_DEMO_POR_FILA.length] ?? [],
+    );
 
     const resumen = {
       id: generarUuid(i, 1),
@@ -300,7 +290,7 @@ export function obtenerContadoresMock(): ContadoresBandeja {
   };
 }
 
-const MOCK_DETALLES = new Map<string, ConversacionDetalle>();
+export const MOCK_DETALLES = new Map<string, ConversacionDetalle>();
 
 function generarDetalleConversacion(resumen: ConversacionResumen): ConversacionDetalle {
   const ahora = Date.now();
@@ -399,6 +389,17 @@ export async function consultarBandejaMock(
 
   if (consulta.estado) {
     filtradas = filtradas.filter((c) => c.estado === consulta.estado);
+  }
+
+  // Etiquetas (T-326): cualquiera de ellas (o) o todas (y), como la API. Un id que no existe no
+  // coincide con nada: devuelve cero filas, no un error.
+  if (consulta.etiquetas && consulta.etiquetas.length > 0) {
+    const pedidas = consulta.etiquetas;
+    const todas = consulta.modo === 'todas';
+    filtradas = filtradas.filter((c) => {
+      const ids = new Set(c.etiquetas.map((e) => e.id));
+      return todas ? pedidas.every((id) => ids.has(id)) : pedidas.some((id) => ids.has(id));
+    });
   }
 
   if (consulta.buscar && consulta.buscar.trim().length > 0) {

@@ -51,6 +51,7 @@ describe('BienvenidaPage — Pantalla de Onboarding de Nueva Agencia (T-105)', (
       puedeAdministrarCatalogo: true,
       puedeAdministrarUsuarios: true,
       puedeAdministrarRoles: true,
+      puedeAdministrarEtiquetas: true,
       evaluarAccion: () => ({ permitido: true, atributosBoton: {} }),
       tienePermiso: () => true,
     });

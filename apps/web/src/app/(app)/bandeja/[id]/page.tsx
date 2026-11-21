@@ -86,6 +86,8 @@ import {
   type RespuestaRapida,
 } from '../../../../lib/respuestas-rapidas-logica';
 import { formatearFecha } from '../../../../lib/formato';
+import { EtiquetasDelChat } from '../../../../components/etiquetas/etiquetas-del-chat';
+import { hrefConFiltro, soloFiltroDeEtiquetas } from '../../../../lib/etiquetas-logica';
 
 // Carga diferida de modales secundarios de la bandeja (T-130)
 const ModalReasignar = dynamic(
@@ -183,6 +185,13 @@ export default function BandejaConversacionPage() {
   const [modalCrearOportunidadAbierto, setModalCrearOportunidadAbierto] = useState(false);
   const [modalEditarContactoAbierto, setModalEditarContactoAbierto] = useState(false);
 
+  // Permisos de sesión para visibilidad, asignación y etiquetas (0c.35, T-118, T-326)
+  const { sesion, puedeVerTodasConversaciones, puedeOperarBandeja, puedeAdministrarEtiquetas } =
+    usePermisos();
+
+  // Selector de etiquetas de la conversación (T-326): lo abre «+ Etiqueta» o el atajo `e`
+  const [etiquetasAbierto, setEtiquetasAbierto] = useState(false);
+
   // Atajos de teclado en la bandeja (T-127 y T-024)
   const { irASiguiente, irAAnterior, modalAyudaAbierto, setModalAyudaAbierto, atajosHabilitados } =
     useBandejaAtajos();
@@ -230,6 +239,9 @@ export default function BandejaConversacionPage() {
       } else if (key === 's' || key === 'S') {
         e.preventDefault();
         setModalCrearOportunidadAbierto(true);
+      } else if (key === 'e' || key === 'E') {
+        e.preventDefault();
+        if (puedeOperarBandeja && !conversacionRetirada) setEtiquetasAbierto(true);
       } else if (key === '?' || (key === '/' && e.shiftKey)) {
         e.preventDefault();
         setModalAyudaAbierto(true);
@@ -254,6 +266,8 @@ export default function BandejaConversacionPage() {
     modalEditarContactoAbierto,
     modalAyudaAbierto,
     atajosHabilitados,
+    puedeOperarBandeja,
+    conversacionRetirada,
     id,
     irASiguiente,
     irAAnterior,
@@ -261,8 +275,7 @@ export default function BandejaConversacionPage() {
   ]);
   const [asignando, setAsignando] = useState(false);
 
-  // Permisos de sesión para visibilidad y asignación (0c.35, T-118)
-  const { sesion, puedeVerTodasConversaciones, puedeOperarBandeja } = usePermisos();
+  // Permisos de sesión: ver arriba, junto a los atajos (T-326 los necesita antes).
   const miUsuarioId = sesion?.acceso?.usuarioId ?? null;
   const permisosAsignacion = calcularPermisosAsignacion(
     detalle,
@@ -479,6 +492,8 @@ export default function BandejaConversacionPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const cotizacionParaEnviar = searchParams.get('enviarCotizacion');
+  // Volver a la lista conserva el filtro por etiqueta que viaja en la URL (T-326).
+  const hrefLista = hrefConFiltro('/bandeja', soloFiltroDeEtiquetas(searchParams));
   const [cotizacionInicialId, setCotizacionInicialId] = useState<string | undefined>(undefined);
   useEffect(() => {
     if (!cotizacionParaEnviar || !detalle) return;
@@ -957,7 +972,7 @@ export default function BandejaConversacionPage() {
         {/* Sin barra inferior en la conversación a pantalla completa: la salida es esta flecha (T-320). */}
         <div className="flex h-14 shrink-0 items-center border-b border-neutral-200 bg-white px-2.5 md:hidden dark:border-neutral-800 dark:bg-neutral-900">
           <Link
-            href="/bandeja"
+            href={hrefLista}
             data-testid="volver-a-conversaciones"
             className="focus-visible:ring-acento-600 flex h-11 min-h-[44px] w-11 min-w-[44px] shrink-0 items-center justify-center rounded-xl text-neutral-600 hover:bg-neutral-100 focus-visible:ring-2 focus-visible:outline-none dark:text-neutral-300 dark:hover:bg-neutral-800"
             title="Volver a lista de conversaciones"
@@ -988,7 +1003,7 @@ export default function BandejaConversacionPage() {
           <MigasDePan
             elementos={[
               { etiqueta: 'Hoy', href: '/' },
-              { etiqueta: 'Bandeja', href: '/bandeja' },
+              { etiqueta: 'Bandeja', href: hrefLista },
               { etiqueta: detalle.contactoNombre || detalle.contactoTelefono || 'Conversación' },
             ]}
           />
@@ -999,7 +1014,7 @@ export default function BandejaConversacionPage() {
           <div className="flex min-w-0 flex-1 items-center gap-2">
             {/* Botón volver a lista (móvil) */}
             <Link
-              href="/bandeja"
+              href={hrefLista}
               className="flex h-11 min-h-[44px] w-11 min-w-[44px] shrink-0 items-center justify-center rounded-xl text-neutral-500 hover:bg-neutral-100 md:hidden dark:hover:bg-neutral-800"
               title="Volver a lista de conversaciones"
               aria-label="Volver a lista de conversaciones"
@@ -1110,6 +1125,18 @@ export default function BandejaConversacionPage() {
             </button>
           </div>
         </header>
+
+        {/* Etiquetas de la conversación: poner y quitar con un toque (T-326, HU-inbox-1 §4.2) */}
+        <EtiquetasDelChat
+          conversacionId={detalle.id}
+          etiquetas={detalle.etiquetas}
+          alCambiar={(etiquetas) => setDetalle((prev) => (prev ? { ...prev, etiquetas } : prev))}
+          puedeOperar={puedeOperarBandeja}
+          puedeAdministrar={puedeAdministrarEtiquetas}
+          deshabilitado={conversacionRetirada}
+          abierto={etiquetasAbierto}
+          alCambiarAbierto={setEtiquetasAbierto}
+        />
 
         {/* Aviso de conversación retirada sin perder borrador (0c.35) */}
         {conversacionRetirada && (
