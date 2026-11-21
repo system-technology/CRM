@@ -115,7 +115,7 @@ function tabla(c: Conteos): string {
     `| Agencias | ${c.agencias} |`,
     `| Agencia demo presente | ${c.agenciaDemo ? 'sí' : 'no'} |`,
     `| Identidades | ${c.identidades} |`,
-    `| Usuarios | ${c.usuarios} |`,
+    `| Usuarios de la agencia demo | ${c.usuarios} |`,
     `| Credenciales (contraseñas) | ${c.credenciales} |`,
   ].join('\n');
 }

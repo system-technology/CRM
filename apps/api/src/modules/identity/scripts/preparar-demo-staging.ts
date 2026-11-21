@@ -52,14 +52,20 @@ function anfitrionDeLaBase(): string {
 }
 
 async function contar(): Promise<Conteos> {
-  const [agencias, demo, identidades, usuarios, credenciales] = await Promise.all([
+  // `usuarios` lleva `tenant_id`: se cuenta solo dentro de la agencia demo, nunca «todo lo que se
+  // vea» (R1). Es equivalente para el diagnóstico: la guardia exige que no haya otras agencias,
+  // así que todos los usuarios de la base serían de la demo. Sin demo, no hay usuarios que contar.
+  const demo = await prisma.tenant.findUnique({
+    where: { slug: SLUG_DE_LA_AGENCIA_DEMO },
+    select: { id: true },
+  });
+  const [agencias, identidades, usuarios, credenciales] = await Promise.all([
     prisma.tenant.count(),
-    prisma.tenant.count({ where: { slug: SLUG_DE_LA_AGENCIA_DEMO } }),
     prisma.identidad.count(),
-    prisma.usuario.count(),
+    demo ? prisma.usuario.count({ where: { tenantId: demo.id } }) : Promise.resolve(0),
     prisma.credencial.count(),
   ]);
-  return { agencias, agenciaDemo: demo > 0, identidades, usuarios, credenciales };
+  return { agencias, agenciaDemo: demo !== null, identidades, usuarios, credenciales };
 }
 
 function leerCredencialesDelEntorno(): { correo: string; contrasena: string } {
