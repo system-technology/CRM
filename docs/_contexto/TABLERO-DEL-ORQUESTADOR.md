@@ -76,9 +76,20 @@ La bandeja completa y al día está en [`PENDIENTES-DEL-PROPIETARIO.md`](PENDIEN
 - **El CRM se usa desde celular, tablet y navegador de escritorio** (aclarado por el propietario).
 - **Despliegue vivo vs. código:** `ESTADO.md` es la fuente de qué es real y qué es maqueta.
 
-## 7. Modelo por sesión (propuesta, 2026-11-21 04:40 UTC)
+## 7. Modelo y relevo de sesiones (decidido por el propietario, 2026-11-21 04:50 UTC)
 
-- **Verificado hoy:** las cuatro sesiones de trabajo sirven con Sonnet 5.5; cobros y despliegue se crearon con Opus 5.5 y alguien las cambió a Sonnet dentro de la sesión (no la madre). Las tres con datos de uso reportan el límite de cinco horas en estado de aviso. **Sin verificar:** cómo se reparte ese límite entre modelos.
-- **Lo que controla la madre:** el modelo de los subagentes que lanza (parámetro `model`) y el modelo y esfuerzo de las sesiones **nuevas** al crearlas. **No** puede cambiar el modelo de una sesión ya en marcha (solo `/model` dentro de ella, o archivar y recrear).
-- **Regla desde ahora para las auditorías de la madre:** Opus para dinero, autenticación y aislamiento entre agencias; Sonnet para lo demás; Haiku para comprobaciones mecánicas (enlaces, ids repetidos, estado de CI).
-- **Propuesta por rol (pendiente de que el propietario la apruebe y fije el esfuerzo):** cobros y diseño de sistema, Opus; roadmap (docs, cierres, CI), Sonnet; despliegue, Sonnet con esfuerzo bajo; orquestación, el modelo actual. El esfuerzo solo se fija cuando el propietario dice el nivel.
+- **Decisión del propietario:** el gasto en tokens es excesivo; archivar las sesiones de trabajo y relanzarlas con modelo y esfuerzo óptimos, y crear skills que eviten el desperdicio. **No** se toca la sesión de coexistencia (la abrió él).
+- **Diagnóstico (`get_session`, verificado):** el coste está en contextos de 300 a 700 mil tokens releídos en cada turno (270 a 550 millones de tokens de lectura de caché por sesión; coste acumulado ~99 USD roadmap, ~70 cobros, ~70 despliegue). Las cuatro corrían con Sonnet 5.5.
+- **Skills nuevos** (`.claude/skills/`): `ahorro-de-tokens`, `modelo-y-esfuerzo` (matriz por tipo de tarea) y `relevo-de-sesion` (traspaso, archivar y relanzar). Entran en `main` con el PR #388.
+- **Relevo en curso:** cada sesión termina su unidad atómica, manda un traspaso de ≤25 líneas y responde «listo para archivar»; la madre verifica, archiva y relanza con contexto limpio.
+
+| Sesión | Unidad que termina antes | Relanzar como |
+|---|---|---|
+| Cobros | arreglo de B1 + C1/C2 + pruebas de #393 | Opus, esfuerzo alto (dinero) |
+| Roadmap | cierre provisional H1/H2 de reportes (rama `a/`) | Sonnet, esfuerzo medio |
+| Diseño | T-440 en rama empujada; #391 intacto | Sonnet, esfuerzo alto |
+| Despliegue | commit de prueba de #358 | Sonnet, esfuerzo medio |
+
+- **Auditorías de la madre (subagentes):** Opus para dinero, autenticación y aislamiento; Sonnet para lo demás; Haiku o un script para lo mecánico.
+- **Pendiente:** relanzar la propia orquestación con contexto limpio (esta sesión es la más grande): crear una sesión nueva con el tablero, apuntar la tarea programada a ella (crear una tarea nueva y borrar la vieja) y retirar esta. Se hace después de los cuatro relevos y con aviso al propietario.
+- **Sesiones relanzadas:** (se llena al relanzar: rol, id, modelo, esfuerzo).
