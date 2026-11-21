@@ -16,6 +16,8 @@ export interface MiembroEquipo {
   nombre: string;
   email: string;
   telefono: string;
+  /** Apodo de ingreso (solo demo). */
+  apodo?: string | null;
   rol: RolMiembro;
   estado: EstadoMiembro;
   fechaIngreso: string;

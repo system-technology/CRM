@@ -12,7 +12,7 @@ test.describe('sin sesion', () => {
   test('la pantalla de ingreso es la de la API real, no la maqueta', async ({ page }) => {
     await page.goto('/ingresar');
     await expect(page.getByText('Modo de Producción (API Real)')).toBeVisible();
-    await expect(page.locator('#campo-correo')).toBeVisible();
+    await expect(page.locator('#campo-identificador')).toBeVisible();
   });
 
   test('una ruta protegida sin sesion lleva a /ingresar y no muestra datos', async ({ page }) => {
@@ -24,7 +24,7 @@ test.describe('sin sesion', () => {
   test('una clave equivocada muestra el error y no abre sesion', async ({ page }) => {
     const { correo } = credenciales();
     await page.goto('/ingresar');
-    await page.locator('#campo-correo').fill(correo);
+    await page.locator('#campo-identificador').fill(correo);
     await page.locator('#campo-contrasena').fill('clave-equivocada-0000');
     await page.getByRole('button', { name: /Ingresar a ViajaPro/ }).click();
     await expect(page.getByText('Error de autenticación')).toBeVisible();
@@ -35,7 +35,7 @@ test.describe('sin sesion', () => {
 test('ingresa con el usuario sembrado y cae en Hoy', async ({ page }) => {
   const { correo, clave } = credenciales();
   await page.goto('/ingresar');
-  await page.locator('#campo-correo').fill(correo);
+  await page.locator('#campo-identificador').fill(correo);
   await page.locator('#campo-contrasena').fill(clave);
   await page.getByRole('button', { name: /Ingresar a ViajaPro/ }).click();
 

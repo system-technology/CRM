@@ -8,6 +8,7 @@ import {
   ErrorMiembrosApi,
   inicialesDeNombre,
   miembroDesdeApi,
+  cambiarApodoMiembroApi,
 } from './equipo-api';
 
 describe('equipo-api (T-027)', () => {
@@ -120,6 +121,7 @@ describe('equipo-api (T-027)', () => {
       id: ID,
       nombre: 'Laura Restrepo',
       correo: 'laura@agencia.co',
+      apodo: null,
       rol: { id: ROL, clave: null, nombre: 'Coordinadora de grupos' },
       estado: 'ACTIVO',
       creadoEn: '2026-10-01T15:00:00.000Z',
@@ -220,12 +222,69 @@ describe('equipo-api (T-027)', () => {
         id: '01932000-0000-7000-8000-0000000000a2',
         nombre: 'Z',
         correo: 'z@x.co',
+        apodo: 'zeta',
         rol: { id: '01932000-0000-7000-8000-0000000000c2', clave: 'ASESOR', nombre: 'Asesor' },
         estado: 'INACTIVO',
         creadoEn: '2026-01-01T00:00:00.000Z',
         ultimoAccesoEn: null,
       });
       expect(m.estado).toBe('INACTIVO');
+      expect(m.apodo).toBe('zeta');
     });
+  });
+});
+
+describe('cambiarApodoMiembroApi (ADR-0031)', () => {
+  const ID = '01932000-0000-7000-8000-0000000000b1';
+
+  beforeEach(() => {
+    localStorage.clear();
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('envia PATCH con el apodo normalizado por el contrato', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response('{"ok":true}', { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+    await cambiarApodoMiembroApi(ID, '  IAlvear ');
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toMatch(new RegExp(`/api/v1/identidad/miembros/${ID}/apodo$`));
+    expect(init.method).toBe('PATCH');
+    expect(init.body).toBe('{"apodo":"ialvear"}');
+  });
+
+  it('un apodo vacio se envia como null', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response('{"ok":true}', { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+    await cambiarApodoMiembroApi(ID, ' ');
+    expect((fetchMock.mock.calls[0] as [string, RequestInit])[1].body).toBe('{"apodo":null}');
+  });
+
+  it('rechaza en cliente un apodo mal formado sin llamar a la API', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    await expect(cambiarApodoMiembroApi(ID, 'ñandú')).rejects.toMatchObject({
+      codigo: 'APODO_INVALIDO',
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('409 APODO_NO_DISPONIBLE da un mensaje claro que no repite el apodo', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValue(
+          new Response(
+            JSON.stringify({ error: { code: 'APODO_NO_DISPONIBLE', message: 'x', trazaId: 't' } }),
+            { status: 409 },
+          ),
+        ),
+    );
+    const error = await cambiarApodoMiembroApi(ID, 'ocupado').catch((e: Error) => e);
+    expect(error).toMatchObject({ codigo: 'APODO_NO_DISPONIBLE', estado: 409 });
+    expect((error as Error).message).toMatch(/ya está en uso/);
+    expect((error as Error).message).not.toContain('ocupado');
   });
 });
