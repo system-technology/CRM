@@ -45,13 +45,35 @@ export interface FiltroDeArchivos {
   limite: number;
 }
 
+/**
+ * Qué archivos entran, por la oportunidad de la que cuelgan (T-549). Es un filtro de `booking`
+ * sobre SU propia columna `travel_files.oportunidad_id`: la lista de oportunidades la decide quien
+ * llama, con lo que le respondieron los puertos de `crm` y de `identity`. Así «sin responsable» se
+ * filtra ANTES del `LIMIT` sin que `booking` haga JOIN con tablas de otro contexto (R4).
+ */
+export interface RestriccionDeOportunidades {
+  /** Entran los archivos cuya oportunidad esté aquí. Lista vacía: ninguno por esta vía. */
+  oportunidades: readonly string[];
+  /** Si además entran los archivos que no vienen de ninguna oportunidad. */
+  incluirSinOportunidad: boolean;
+}
+
 export abstract class RepositorioDeOperacionDeArchivos {
   /**
    * Archivos con sus reservas, SIN pasajeros (la lista no los necesita). Vienen YA ordenados por el
    * plazo vigente más próximo (sin plazo, al final, por número) y el límite se aplica DESPUÉS de
-   * ordenar (T-251).
+   * ordenar (T-251) y DESPUÉS de `restriccion`, si viene (T-549).
    */
-  abstract listar(filtro: FiltroDeArchivos): Promise<Archivo[]>;
+  abstract listar(
+    filtro: FiltroDeArchivos,
+    restriccion?: RestriccionDeOportunidades,
+  ): Promise<Archivo[]>;
+  /**
+   * Los `oportunidad_id` distintos y no nulos de los archivos ABIERTOS de la agencia (T-549). Sin
+   * límite y sin filas: son los ids que hay que preguntar fuera para saber qué está huérfano, y
+   * preguntarlos sobre una ventana recortada era justo el defecto.
+   */
+  abstract oportunidadesDeArchivosAbiertos(): Promise<string[]>;
   /** Un archivo con reservas y pasajeros; `null` si no existe en esta agencia. */
   abstract leer(archivoId: string): Promise<Archivo | null>;
   /** Cambios de estado de las reservas del archivo, del más antiguo al más reciente (T-250). */

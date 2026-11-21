@@ -49,6 +49,8 @@ import { DominioExcepcionFilter } from '../../shared/filtros/dominio-excepcion.f
 const idDeTenant = (): string => `01932000-0000-7000-8000-${randomBytes(6).toString('hex')}`;
 const TENANT_A = idDeTenant();
 const TENANT_B = idDeTenant();
+/** T-549: agencia propia, para que el orden de urgencia de A no dependa de esta prueba. */
+const TENANT_C = idDeTenant();
 
 // Fechas RELATIVAS A HOY (T-251): con fechas fijas, la vigencia de la tarifa y los plazos caducan el
 // día que el calendario las alcanza y la prueba se pone en rojo sin que nada haya cambiado.
@@ -71,7 +73,7 @@ let app: INestApplication;
 let base: string;
 let admin: PrismaClient;
 let adminPg: Client;
-const agencias = {} as Record<'A' | 'B', Agencia>;
+const agencias = {} as Record<'A' | 'B' | 'C', Agencia>;
 
 /** Miembros de A con sesión real (T-249). */
 type Miembro = 'operaciones' | 'soloVer' | 'sinArchivo' | 'conNeto';
@@ -317,6 +319,7 @@ beforeAll(async () => {
 
   agencias.A = await crearAgencia(TENANT_A, 'A');
   agencias.B = await crearAgencia(TENANT_B, 'B');
+  agencias.C = await crearAgencia(TENANT_C, 'C');
   for (const m of MIEMBROS) await crearMiembro(m, TENANT_A);
 
   Logger.overrideLogger(false);
@@ -341,7 +344,7 @@ afterAll(async () => {
         borrarTenants: Limpiador;
       };
       await adminPg.query('BEGIN');
-      await modulo.borrarTenants(adminPg, [TENANT_A, TENANT_B]);
+      await modulo.borrarTenants(adminPg, [TENANT_A, TENANT_B, TENANT_C]);
       await adminPg.query('COMMIT');
       await adminPg.query('DELETE FROM identidades WHERE id = ANY($1::uuid[])', [
         [...Object.values(agencias).map((a) => a.identidad), ...identidadesDeMiembros],
@@ -835,12 +838,134 @@ describe('archivos sin responsable (T-529)', () => {
     expect(JSON.stringify(vistaDeA.json)).not.toContain(huerfanoDeB.paqueteNombre);
   }, 60_000);
 
-  it('el límite acota la ventana y lo dice: `truncado` no se inventa', async () => {
+  it('el límite acota la lista y lo dice: `truncado` no se inventa', async () => {
+    // Sin tope apretado no se marca nada: los archivos de A caben enteros (T-549, `truncado` se
+    // cuenta sobre los huérfanos, no sobre las filas miradas).
+    const todos = await comoMiembro('operaciones', 'GET', RUTA);
+    expect(todos.estado).toBe(200);
+    const completa = ListaDeArchivosSinResponsable.parse(todos.json);
+    expect(completa.truncado).toBe(false);
+    // La premisa del resto: en A hay más de un huérfano (los archivos de las demás pruebas de
+    // este archivo nacen sin oportunidad), así que con el tope en uno sobra alguno de verdad.
+    expect(completa.datos.length).toBeGreaterThan(1);
+
     const uno = await comoMiembro('operaciones', 'GET', `${RUTA}?limite=1`);
     expect(uno.estado).toBe(200);
     const lista = ListaDeArchivosSinResponsable.parse(uno.json);
-    expect(lista.datos.length).toBeLessThanOrEqual(1);
+    expect(lista.datos).toHaveLength(1);
     expect(lista.truncado).toBe(true);
+  });
+});
+
+/**
+ * T-549: el filtro de «sin responsable» se aplica ANTES del tope de filas.
+ *
+ * **Por qué en su propia agencia (C).** El archivo con responsable se confirma con el plazo más
+ * próximo de la agencia para que encabece el orden de urgencia; dejarlo en A cambiaría el orden
+ * que afirman las demás pruebas de este archivo.
+ *
+ * **El montaje reproduce el defecto**: delante va un archivo que SÍ tiene responsable, y detrás
+ * los dos huérfanos. Con el filtro aplicado después del recorte, la ventana se la comía el
+ * primero y el huérfano no salía nunca —con `limite=1` la respuesta era una lista vacía marcada
+ * `truncado`, que la web pintaba como «0 sin responsable»—.
+ */
+describe('sin responsable: el filtro va antes del tope (T-549)', () => {
+  const RUTA = '/api/v1/archivos/sin-responsable';
+  /** Antes de la salida y antes que cualquier otro plazo de la agencia C. */
+  const PLAZO_MAS_PROXIMO = `${fechaIso(enDias(hoyUtc, 1))}T06:00:00.000Z`;
+  let huerfanoViejo: ResumenDeArchivo;
+  let huerfanoNuevo: ResumenDeArchivo;
+  let conResponsable: ResumenDeArchivo;
+
+  beforeAll(async () => {
+    huerfanoViejo = await archivoNuevo(agencias.C);
+    huerfanoNuevo = await archivoNuevo(agencias.C);
+    conResponsable = await archivoNuevo(agencias.C);
+
+    // Un asesor de verdad elegible: activo y con `archivo.operar`. El usuario que crea la agencia
+    // tiene el rol ASESOR, que no lo lleva, y serviría de poco: seguiría siendo huérfano.
+    const rol = await admin.rol.create({
+      data: {
+        tenantId: TENANT_C,
+        nombre: 'Operaciones C',
+        permisos: ['archivo.ver', 'archivo.operar'],
+      },
+    });
+    const identidad = await admin.identidad.create({
+      data: {
+        correo: `fixture-aislamiento-arch-c-resp-${randomBytes(3).toString('hex')}@fixture-identidad.test`,
+        nombre: 'Responsable C',
+      },
+    });
+    identidadesDeMiembros.push(identidad.id);
+    const responsable = await admin.usuario.create({
+      data: {
+        tenantId: TENANT_C,
+        identidadId: identidad.id,
+        rolId: rol.id,
+        correo: identidad.correo,
+        nombre: identidad.nombre,
+      },
+    });
+
+    const etapa = await admin.etapaPipeline.create({
+      data: { tenantId: TENANT_C, nombre: 'Nueva C', orden: 1, probabilidad: 10 },
+    });
+    const oportunidad = await admin.oportunidad.create({
+      data: {
+        tenantId: TENANT_C,
+        contactoId: agencias.C.contacto,
+        etapaId: etapa.id,
+        titulo: 'Oportunidad con asesor',
+        asesorId: responsable.id,
+      },
+    });
+    await admin.travelFile.update({
+      where: { id: conResponsable.id },
+      data: { oportunidadId: oportunidad.id },
+    });
+
+    // Y se le pone el plazo más próximo de la agencia, para que encabece la lista de urgencia.
+    const reserva = conResponsable.reservas[0]?.id ?? '';
+    expect(reserva).not.toBe('');
+    const ruta = `/api/v1/archivos/${conResponsable.id}/reservas/${reserva}`;
+    expect((await http(agencias.C, 'PUT', ruta, { estado: 'SOLICITADA' })).estado).toBe(200);
+    expect(
+      (await http(agencias.C, 'PUT', ruta, { estado: 'CONFIRMADA', timeLimit: PLAZO_MAS_PROXIMO }))
+        .estado,
+    ).toBe(200);
+  }, 180_000);
+
+  it('el archivo con responsable encabeza la lista de urgencia (el montaje no es vacuo)', async () => {
+    const r = await http(agencias.C, 'GET', '/api/v1/archivos?limite=1');
+    expect(r.estado).toBe(200);
+    expect(ListaDeArchivos.parse(r.json).datos.map((a) => a.id)).toEqual([conResponsable.id]);
+  });
+
+  it('con el tope en 1, el huérfano sale igual: no se lo come el archivo con dueño', async () => {
+    const r = await http(agencias.C, 'GET', `${RUTA}?limite=1`);
+    expect(r.estado).toBe(200);
+    const lista = ListaDeArchivosSinResponsable.parse(r.json);
+    // El más urgente de los DOS huérfanos: sin plazo, el de número mayor va primero (T-257).
+    expect(lista.datos.map((d) => d.archivo.id)).toEqual([huerfanoNuevo.id]);
+    // Y sobra uno de verdad: hay dos huérfanos y el tope es uno.
+    expect(lista.truncado).toBe(true);
+  });
+
+  it('con el tope en 2 caben los dos huérfanos y `truncado` no se marca: la cifra es el total', async () => {
+    const r = await http(agencias.C, 'GET', `${RUTA}?limite=2`);
+    expect(r.estado).toBe(200);
+    const lista = ListaDeArchivosSinResponsable.parse(r.json);
+    expect(lista.datos.map((d) => d.archivo.id)).toEqual([huerfanoNuevo.id, huerfanoViejo.id]);
+    expect(lista.datos.every((d) => d.motivo === 'SIN_OPORTUNIDAD')).toBe(true);
+    expect(lista.truncado).toBe(false);
+  });
+
+  it('el archivo cuyo asesor responde no aparece por ningún rincón de la respuesta', async () => {
+    const r = await http(agencias.C, 'GET', RUTA);
+    expect(r.estado).toBe(200);
+    expect(ListaDeArchivosSinResponsable.parse(r.json).truncado).toBe(false);
+    expect(JSON.stringify(r.json)).not.toContain(conResponsable.id);
   });
 });
 
