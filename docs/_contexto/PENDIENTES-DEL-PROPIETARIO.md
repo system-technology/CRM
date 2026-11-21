@@ -76,3 +76,41 @@ para que deje de mentir; si manda el archivo, hay que reaplicarlo **sin perder l
 
 **Mientras tanto:** la protección del servidor sigue en pie y `main` no está desprotegido. Lo que
 está roto es que el archivo versionado ya no describe lo que hay.
+
+## 19. LA CADENA DE SESIONES ORQUESTADORAS SE AGOTÓ (bloquea el modo desatendido)
+
+**Qué pasa, verificado el 2026-11-21 a las 19:12 UTC contra el error real de la herramienta:** esta
+sesión madre está en **profundidad de linaje 8 de 8**. Cada madre nace de la anterior, y el relevo
+que se viene haciendo desde hace siete turnos ha consumido el último escalón. El error es literal:
+
+> «this session is at lineage depth 8 (limit 8), so it cannot start sessions, or create, fire or
+> re-arm routines and reminders. **No user or organization setting changes this limit.**»
+
+**Qué deja de funcionar:**
+
+1. **No puedo crear sesiones hijas.** La forma de trabajar de siete turnos —la madre reparte, las
+   hijas construyen— ya no está disponible desde aquí.
+2. **No puedo crear la madre siguiente.** El relevo que cierra cada lote no se puede ejecutar.
+3. **No puedo crear ni rearmar la tarea programada.** La que existe
+   («Despertar de orquestacion desatendida de ViajaPro», cada 2 h) apunta a una sesión que **ya está
+   archivada**, así que **sus despertares no llegan a ninguna sesión viva**. El modo desatendido está
+   parado de hecho, no solo en teoría.
+
+**Qué hace falta de usted, y es una sola cosa:** **abrir una sesión nueva de ViajaPro desde la raíz**
+(no como relevo de ésta ni de ninguna otra), con el prompt de orquestadora, y apuntar la tarea
+programada a esa sesión. Una sesión creada desde cero vuelve a tener profundidad 1 y la cadena
+dispone otra vez de los ocho escalones.
+
+**Para que no vuelva a pasar:** el problema no es el límite, es que cada relevo gastaba un escalón.
+Conviene que las madres futuras **nazcan desde la raíz** en lugar de crearse unas a otras, o que el
+relevo se haga cada varios lotes en vez de cada lote.
+
+**Qué sí pude hacer mientras tanto, para que el turno no se perdiera:** trabajar con **subagentes en
+proceso** (la herramienta `Agent` que `CLAUDE.md` §8 ya contempla), que **no** cuentan contra el
+límite de linaje. Cada uno en su propio árbol de trabajo. No pueden abrir PR —no llevan las
+herramientas de GitHub—, así que empujan su rama y la madre abre e integra. **Es más lento y más caro
+en contexto que una sesión hija, y no sobrevive al cierre de esta sesión**, pero entrega.
+
+**Además, denegado por el clasificador en este turno:** `mcp__claude-code-remote__create_trigger`
+(«Destructive or Unwanted Actions»), antes incluso de toparse con el límite de linaje. Si quiere que
+una madre pueda rearmar su propio despertar, hace falta una regla de permiso para esa herramienta.
