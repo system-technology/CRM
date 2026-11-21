@@ -141,6 +141,16 @@ test('«Más» abre la hoja con los demás módulos, cada uno a dos toques o men
 test('/bandeja/inexistente tiene salida: flecha de volver de 44 px, sin barra inferior ni lupa', async ({
   page,
 }) => {
+  // El estado de error de la conversación vuelca el error crudo a `console.error` por diseño
+  // (estados-ui-logica, 0c.30) y el vigilante lo contaría como defecto de la página: se silencia
+  // solo esa línea, no el resto de la consola.
+  await page.addInitScript(() => {
+    const original = console.error.bind(console);
+    console.error = (...argumentos: unknown[]) => {
+      if (String(argumentos[0]).startsWith('[ErrorSistema')) return;
+      original(...argumentos);
+    };
+  });
   await page.goto('/bandeja/inexistente');
   const volver = page.getByTestId('volver-a-conversaciones');
   await expect(volver).toBeVisible({ timeout: 20_000 });
