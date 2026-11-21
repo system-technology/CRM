@@ -56,10 +56,10 @@ base real y pasó las 13 pruebas de T-329, incluido el caso concurrente de dos c
   `registrado_por` de la sesión, idempotencia con contenido igual, carrera registrar-cancelar, `registrado_en`
   nunca del cliente, sumas como `bigint`, Luhn, y las demás de su nota.
 - **T-377** gana las mutaciones de T-329.
-- Nuevas: **T-425** guardia de arranque con las tres tablas, **T-426** `ON UPDATE RESTRICT` hacia `tenants`,
-  **T-427** `cobro.*` en la semilla de aislamiento, **T-428** documentación (modelo de datos, lenguaje ubicuo,
-  contextos), **T-429** endurecimiento menor de la migración, **T-430** purga declarada, **T-431** casos de
-  aislamiento de `parametros_de_cobro` y P-B, **T-432** Ley 1581 y `pagador_id`.
+- Nuevas: **T-472** guardia de arranque con las tres tablas, **T-473** `ON UPDATE RESTRICT` hacia `tenants`,
+  **T-474** `cobro.*` en la semilla de aislamiento, **T-475** documentación (modelo de datos, lenguaje ubicuo,
+  contextos), **T-476** endurecimiento menor de la migración, **T-477** purga declarada, **T-478** casos de
+  aislamiento de `parametros_de_cobro` y P-B, **T-479** Ley 1581 y `pagador_id`.
 - La unión temporal `ClaveConEtiqueta` de `permisos.ts` se quita en un PR web aparte.
 
 `ESTADO.md` dice ahora 55 migraciones (decía 54; contadas en `packages/database/prisma/migrations`).
