@@ -11421,7 +11421,7 @@ tasks:
     phase: 1
     priority: P2
     effort: M
-    status: backlog
+    status: done
     acceptance:
       - "GET /api/v1/archivos/sin-responsable lee una ventana y filtra DESPUES: un archivo huerfano por debajo
         de la ventana no sale. La respuesta lleva truncado, pero la cifra es un minimo"
@@ -11431,6 +11431,12 @@ tasks:
     source: aviso de la sesion de T-537/T-529, 2026-11-21
     created_at: 2026-11-21T13:35:00.000Z
     owner: backend
+    started_at: 2026-11-21T15:53:51.210Z
+    done_at: 2026-11-21T15:53:51.210Z
+    evidence: "Mergeado en main por el PR #451 (rama a/T-549-sin-responsable-filtro-antes-del-tope) con el CI en
+      verde: format, analyze, tests y los demás checks obligatorios. Cierre automático
+      (.github/workflows/cerrar-tarea.yml)."
+    commit: 2f3170f1aa205d80794bbea3f0a8b5c86ee99bb3
   - id: T-550
     title: "Web: parsearMontoAUnidades lee la fraccion con \\d{1,2}, asi que una moneda de 3 decimales se leeria
       como miles"
