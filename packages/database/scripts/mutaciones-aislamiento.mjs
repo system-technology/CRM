@@ -104,6 +104,60 @@ async function definicionSana(cliente) {
   return definicionSincronizar;
 }
 
+/** La definición sana de `proteger_verificacion_del_perfil`, leída del catálogo una vez (M24). */
+let definicionPerfiles;
+async function definicionSanaPerfiles(cliente) {
+  if (!definicionPerfiles) {
+    const { rows } = await cliente.query(
+      "SELECT pg_get_functiondef('public.proteger_verificacion_del_perfil()'::regprocedure) AS def",
+    );
+    definicionPerfiles = rows[0].def;
+  }
+  return definicionPerfiles;
+}
+
+/**
+ * El cuerpo de `proteger_verificacion_del_perfil` tal como lo dejó T-268 (20261120140000): la
+ * lógica de verificación íntegra, SIN fijar `creado_en` ni `actualizado_en` (eso lo añadió T-307).
+ */
+const PERFILES_COMO_EN_T268 = `
+CREATE OR REPLACE FUNCTION public.proteger_verificacion_del_perfil()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = ''
+AS $$
+DECLARE
+  v_plataforma boolean;
+  v_dato_cambiado boolean;
+BEGIN
+  v_plataforma := pg_catalog.pg_has_role(
+    current_user,
+    (SELECT c.relowner FROM pg_catalog.pg_class c WHERE c.oid = TG_RELID),
+    'USAGE'
+  );
+  IF TG_OP = 'INSERT' THEN
+    IF NOT v_plataforma THEN
+      NEW.verificado_en := NULL;
+    END IF;
+    RETURN NEW;
+  END IF;
+  v_dato_cambiado := NEW.rnt IS DISTINCT FROM OLD.rnt
+                  OR NEW.nit IS DISTINCT FROM OLD.nit
+                  OR NEW.digito_verificacion IS DISTINCT FROM OLD.digito_verificacion;
+  IF NOT v_plataforma THEN
+    IF v_dato_cambiado THEN
+      NEW.verificado_en := NULL;
+    ELSE
+      NEW.verificado_en := OLD.verificado_en;
+    END IF;
+  ELSIF v_dato_cambiado
+        AND NEW.verificado_en IS NOT DISTINCT FROM OLD.verificado_en THEN
+    NEW.verificado_en := NULL;
+  END IF;
+  RETURN NEW;
+END;
+$$`;
+
 /**
  * Quita los codigos de color ANSI de la salida de vitest.
  *
@@ -340,6 +394,19 @@ const MUTACIONES = [
     sql: `ALTER TABLE perfiles_de_agencia DISABLE TRIGGER perfiles_de_agencia_proteger_verificacion`,
     prueba: 'T-261',
     restaurar: `ALTER TABLE perfiles_de_agencia ENABLE TRIGGER perfiles_de_agencia_proteger_verificacion`,
+  },
+  // --- perfiles_de_agencia (T-307): las fechas de auditoría las fija el disparador ---
+  {
+    // Vuelve a la función de T-268 (verificación intacta, fechas libres). P-7 es la prueba que
+    // cubre T-307: si no se pusiera en rojo, la fijación de fechas no tendría quien la vigile.
+    nombre:
+      'M24 — proteger_verificacion_del_perfil como en T-268: viajapro_app falsea creado_en y actualizado_en',
+    sql: async (cliente) => {
+      await definicionSanaPerfiles(cliente);
+      await cliente.query(PERFILES_COMO_EN_T268);
+    },
+    prueba: 'P-7',
+    restaurar: async (cliente) => cliente.query(await definicionSanaPerfiles(cliente)),
   },
 ];
 
