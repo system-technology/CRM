@@ -25,3 +25,29 @@ for (const { ruta, etiqueta } of RUTAS) {
     await expect(page).toHaveTitle(`${etiqueta} · ViajaPro`);
   });
 }
+
+/**
+ * T-317: «Hoy», «Cotizaciones» y «Seguimientos» están en el menú lateral, a un clic desde `/`. Solo
+ * rutas ligeras (ver arriba el límite de la API).
+ */
+test('desde Hoy se llega a Seguimientos y a Cotizaciones en un clic desde el menú', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/');
+  const lateral = page.getByTestId('sidebar-escritorio');
+  await expect(lateral).toBeVisible({ timeout: 20_000 });
+  await expect(lateral.getByRole('link', { name: /^Hoy/ })).toHaveAttribute('aria-current', 'page');
+
+  await lateral.getByRole('link', { name: /^Seguimientos/ }).click();
+  await expect(page).toHaveURL(/\/seguimientos$/);
+  await expect(
+    page.getByRole('heading', { level: 1, name: 'Seguimientos', exact: true }),
+  ).toBeVisible();
+
+  await lateral.getByRole('link', { name: 'Cotizaciones', exact: true }).click();
+  await expect(page).toHaveURL(/\/cotizaciones$/);
+  await expect(
+    page.getByRole('heading', { level: 1, name: 'Cotizaciones', exact: true }),
+  ).toBeVisible();
+});
