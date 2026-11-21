@@ -230,7 +230,8 @@ export const MiembroDeAgencia = z.object({
   nombre: z.string(),
   correo: z.string(),
   /** Apodo de ingreso (ADR-0031), solo para quien administra usuarios. `null` si no tiene. */
-  apodo: z.string().nullable(),
+  // Opcional de forma transitoria, hasta que la web lo consuma (retrocompatibilidad, T-362).
+  apodo: z.string().nullable().optional(),
   rol: z.object({
     id: z.string().uuid(),
     clave: z.string().nullable(),
