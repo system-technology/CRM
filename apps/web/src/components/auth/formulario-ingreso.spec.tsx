@@ -49,6 +49,32 @@ describe('FormularioIngreso (0c.29)', () => {
     ).toBe('Ingresar con código de 6 dígitos por correo');
   });
 
+  describe('cartel de modo (T-565)', () => {
+    afterEach(() => {
+      vi.unstubAllEnvs();
+    });
+
+    it('con el ingreso real no afirma ninguna conexión ni habla en técnico', () => {
+      // La bandera solo dice a qué modo se compiló la web; no comprueba que haya servicio.
+      vi.stubEnv('NEXT_PUBLIC_USE_REAL_AUTH', 'true');
+      const { container } = render(<FormularioIngreso />);
+
+      const texto = container.textContent ?? '';
+      expect(texto).not.toMatch(/conectad|en vivo|postgres|API real|producci[oó]n/i);
+      expect(screen.queryByTestId('cartel-de-modo')).toBeNull();
+    });
+
+    it('en demostración lo dice, en lenguaje de agencia', () => {
+      vi.stubEnv('NEXT_PUBLIC_USE_REAL_AUTH', 'false');
+      render(<FormularioIngreso />);
+
+      const cartel = screen.getByTestId('cartel-de-modo');
+      expect(cartel.textContent).toContain('Modo demostración');
+      expect(cartel.textContent).toContain('datos de ejemplo');
+      expect(cartel.textContent).not.toMatch(/postgres|\bAPI\b/i);
+    });
+  });
+
   it('permite alternar la visibilidad de la contraseña con botón accesible', () => {
     render(<FormularioIngreso />);
 
