@@ -29,7 +29,7 @@
  */
 import 'reflect-metadata';
 
-import { randomBytes } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { type INestApplication, Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
@@ -318,9 +318,15 @@ beforeAll(async () => {
     });
   await oportunidad(TENANT_A, a.contacto, etapasA.nueva.id, usuarioId.valentinaA);
   await oportunidad(TENANT_A, a.contacto, etapasA.nueva.id, usuarioId.valentinaA);
-  await oportunidad(TENANT_A, a.contacto, etapasA.ganada.id, usuarioId.valentinaA);
-  await oportunidad(TENANT_A, a.contacto, etapasA.perdida.id, usuarioId.betoA);
-  await oportunidad(TENANT_B, b.contacto, etapaB.id, usuarioId.duenoB);
+  // Estas tres se guardan: de ellas heredan su asesor los archivos de viaje (ADR-0035 §2).
+  const opDeValentina = await oportunidad(
+    TENANT_A,
+    a.contacto,
+    etapasA.ganada.id,
+    usuarioId.valentinaA,
+  );
+  const opDeBeto = await oportunidad(TENANT_A, a.contacto, etapasA.perdida.id, usuarioId.betoA);
+  const opDeB = await oportunidad(TENANT_B, b.contacto, etapaB.id, usuarioId.duenoB);
 
   // Tres conversaciones en A. El viajero escribió hace una hora; Valentina respondió a los 10
   // minutos, Beto a los 20, y una queda sin responder asignada a Valentina.
@@ -408,7 +414,56 @@ beforeAll(async () => {
   await cotizar(TENANT_A, a, 'valentinaA', 1, 'ENVIADA');
   await cotizar(TENANT_A, a, 'valentinaA', 1, 'BORRADOR');
   aceptadaDeBeto = await cotizar(TENANT_A, a, 'betoA', 1, 'ACEPTADA');
-  await cotizar(TENANT_B, b, 'duenoB', 1, 'ACEPTADA');
+  const aceptadaDeB = await cotizar(TENANT_B, b, 'duenoB', 1, 'ACEPTADA');
+
+  // T-528: cotizaciones ENVIADAS que siguen esperando, con antigüedades distintas. Se envían hoy
+  // y se retrasa `enviada_en` FUERA del rango del reporte: así cambian los tramos de «hoy» sin
+  // tocar la cohorte de `enviadas` del periodo, que se cuenta por `enviada_en`.
+  const envejecer = async (cot: CotizacionGuardada, dias: number) => {
+    await admin.cotizacion.update({
+      where: { id: cot.id },
+      data: { enviadaEn: new Date(Date.now() - dias * 24 * 3600_000) },
+    });
+  };
+  await envejecer(await cotizar(TENANT_A, a, 'valentinaA', 3, 'ENVIADA'), 5);
+  await envejecer(await cotizar(TENANT_A, a, 'valentinaA', 4, 'ENVIADA'), 20);
+  await envejecer(await cotizar(TENANT_A, a, 'betoA', 2, 'ENVIADA'), 10);
+
+  // T-528: los archivos de viaje los abre el consumidor del evento de venta, no esta prueba. Se
+  // espera a que existan y se les pone su oportunidad, que es de donde sale el asesor (§2).
+  const esperarArchivo = async (tenantId: string, cotizacionId: string) => {
+    for (let i = 0; i < 300; i++) {
+      const f = await admin.travelFile.findFirst({ where: { tenantId, cotizacionId } });
+      if (f) return f;
+      await new Promise((r) => setTimeout(r, 100));
+    }
+    throw new Error(`El archivo de la cotización ${cotizacionId} no se abrió a tiempo`);
+  };
+  const archivoDe = async (tenantId: string, cot: CotizacionGuardada, oportunidadId: string) => {
+    const f = await esperarArchivo(tenantId, cot.id);
+    // `oportunidad_id` es de las pocas columnas que el archivo admite actualizar (la venta y la
+    // moneda son inmutables por disparador).
+    return admin.travelFile.update({ where: { id: f.id }, data: { oportunidadId } });
+  };
+  const archivoDeValentina = await archivoDe(TENANT_A, aceptadaDeValentina, opDeValentina.id);
+  await archivoDe(TENANT_A, aceptadaDeBeto, opDeBeto.id);
+  await archivoDe(TENANT_B, aceptadaDeB, opDeB.id);
+
+  // Un pago parcial en el archivo de Valentina: su saldo deja de ser la venta y se ve que el
+  // agregado usa las funciones de saldo, no la columna de venta.
+  await admin.payment.create({
+    data: {
+      tenantId: TENANT_A,
+      travelFileId: archivoDeValentina.id,
+      tipo: 'PAGO',
+      montoUnidades: 400_000n,
+      monedaIso: archivoDeValentina.monedaIso,
+      pagadoEl: new Date('2026-11-20T00:00:00.000Z'),
+      medio: 'TRANSFERENCIA',
+      claveIdempotencia: randomUUID(),
+      registradoPorId: usuarioId.valentinaA,
+    },
+  });
 
   for (const quien of QUIENES) cookies[quien] = await iniciarSesion(quien);
 });
@@ -443,7 +498,8 @@ describe('alcance de agencia', () => {
     expect(r.json.asesorId).toBeNull();
 
     expect(r.json.cotizaciones).toEqual({
-      creadas: 4,
+      // 7 creadas hoy; solo 3 con `enviada_en` dentro del rango (T-528 envejeció tres).
+      creadas: 7,
       enviadas: 3,
       aceptadas: 2,
       tasaAceptacion: 66.7,
@@ -491,7 +547,7 @@ describe('alcance de agencia', () => {
     expect(r.json.alcance).toBe('AGENCIA');
     expect(r.json.asesorId).toBe(usuarioId.betoA);
     expect(r.json.cotizaciones).toEqual({
-      creadas: 1,
+      creadas: 2,
       enviadas: 1,
       aceptadas: 1,
       tasaAceptacion: 100,
@@ -529,7 +585,7 @@ describe('alcance propio: un asesor no ve lo del otro (T-342)', () => {
     expect(r.json.asesorId).toBe(usuarioId.valentinaA);
 
     expect(r.json.cotizaciones).toEqual({
-      creadas: 3,
+      creadas: 5,
       enviadas: 2,
       aceptadas: 1,
       tasaAceptacion: 50,
@@ -702,5 +758,128 @@ describe('entre agencias y bordes', () => {
 
     const anonimo = await reporte(null);
     expect(anonimo.estado).toBe(401);
+  });
+});
+
+/**
+ * T-528: las dos cifras de HOY. Son las que la web no podía pintar con honestidad, porque
+ * `/cotizaciones` y `/cobros` no traen asesor y devuelven toda la agencia (T-490): filtrarlas en
+ * el cliente habría sido que la web decida el alcance, que ADR-0035 §5 prohíbe.
+ *
+ * El escenario, todo dentro de la agencia A:
+ *   · Valentina — 1 borrador, 3 enviadas abiertas (0, 5 y 20 días) y un archivo de 2.400.000 COP
+ *     con 400.000 pagados: saldo 2.000.000.
+ *   · Beto      — 1 enviada abierta (10 días) y un archivo de 1.200.000 COP sin pagos.
+ *   · Agencia   — la suma de los dos: 5 abiertas y 3.200.000 por cobrar.
+ *   · Agencia B — un archivo de 2.100.000 COP que no debe aparecer en ninguna cifra de A.
+ *
+ * Cada aserción es de igualdad exacta a propósito: si alguien quitara el filtro de asesor, el
+ * asesor vería las cifras de la agencia y la prueba fallaría, que es justo lo que se le pide.
+ */
+describe('cotizaciones abiertas y por cobrar, con el mismo alcance (T-528)', () => {
+  const COP = (unidades: string) => ({ unidades, moneda: 'COP' });
+
+  it('la agencia ve las de los dos asesores, repartidas por antigüedad', async () => {
+    const r = await reporte('duenoA');
+    expect(r.estado).toBe(200);
+    expect(r.json.cotizacionesAbiertas).toEqual({
+      total: 5,
+      borradores: 1,
+      enviadas: 4,
+      porAntiguedad: { hastaTresDias: 1, deCuatroASiete: 1, masDeSiete: 2 },
+    });
+    expect(r.json.porCobrar).toEqual({
+      porMoneda: [{ moneda: 'COP', archivos: 2, saldo: COP('3200000') }],
+      truncado: false,
+    });
+  });
+
+  it('Valentina ve SOLO lo suyo: ni una cotización ni un peso de Beto', async () => {
+    const r = await reporte('valentinaA');
+    expect(r.json.alcance).toBe('PROPIO');
+    expect(r.json.cotizacionesAbiertas).toEqual({
+      total: 4,
+      borradores: 1,
+      enviadas: 3,
+      porAntiguedad: { hastaTresDias: 1, deCuatroASiete: 1, masDeSiete: 1 },
+    });
+    // 2.400.000 vendidos − 400.000 pagados: el saldo sale de las funciones de `packages/domain`,
+    // no de la columna de venta.
+    expect(r.json.porCobrar).toEqual({
+      porMoneda: [{ moneda: 'COP', archivos: 1, saldo: COP('2000000') }],
+      truncado: false,
+    });
+    // Ni el saldo de Beto, ni el total de la agencia, ni el de la otra agencia.
+    expect(r.texto).not.toContain('1200000');
+    expect(r.texto).not.toContain('3200000');
+    expect(r.texto).not.toContain('2100000');
+  });
+
+  it('Beto ve SOLO lo suyo, y no deduce el total de la agencia', async () => {
+    const r = await reporte('betoA');
+    expect(r.json.alcance).toBe('PROPIO');
+    expect(r.json.cotizacionesAbiertas).toEqual({
+      total: 1,
+      borradores: 0,
+      enviadas: 1,
+      porAntiguedad: { hastaTresDias: 0, deCuatroASiete: 0, masDeSiete: 1 },
+    });
+    expect(r.json.porCobrar).toEqual({
+      porMoneda: [{ moneda: 'COP', archivos: 1, saldo: COP('1200000') }],
+      truncado: false,
+    });
+    expect(r.texto).not.toContain('2000000');
+    expect(r.texto).not.toContain('3200000');
+  });
+
+  it('con reportes.ver_agencia y filtro de asesor se ve lo mismo que ve ese asesor', async () => {
+    const comoDuena = await reporte('duenoA', { ...RANGO, asesorId: usuarioId.betoA });
+    const comoEl = await reporte('betoA');
+    expect(comoDuena.json.cotizacionesAbiertas).toEqual(comoEl.json.cotizacionesAbiertas);
+    expect(comoDuena.json.porCobrar).toEqual(comoEl.json.porCobrar);
+  });
+
+  it('el archivo hereda el asesor de su OPORTUNIDAD, no de quien cotizó (ADR-0035 §2)', async () => {
+    // El archivo de Valentina está en la oportunidad de Valentina: si la atribución se tomara de
+    // otra columna, el reparto entre los dos asesores no daría 2.000.000 y 1.200.000.
+    const suyos = await reporte('valentinaA');
+    const deBeto = await reporte('betoA');
+    const agencia = await reporte('duenoA');
+    const saldo = (r: typeof suyos) => r.json.porCobrar?.porMoneda[0]?.saldo.unidades;
+    expect(saldo(suyos)).toBe('2000000');
+    expect(saldo(deBeto)).toBe('1200000');
+    expect(saldo(agencia)).toBe('3200000');
+  });
+
+  it('otra agencia no aporta ni una fila: B ve lo suyo y A nunca lo ve', async () => {
+    const b = await reporte('duenoB');
+    expect(b.json.porCobrar).toEqual({
+      porMoneda: [{ moneda: 'COP', archivos: 1, saldo: COP('2100000') }],
+      truncado: false,
+    });
+    expect(b.json.cotizacionesAbiertas?.total).toBe(0);
+    expect(b.texto).not.toContain('3200000');
+    expect(b.texto).not.toContain('2000000');
+
+    const a = await reporte('duenoA');
+    expect(a.texto).not.toContain('2100000');
+  });
+
+  it('son cifras de HOY: no cambian con el periodo, aunque el periodo esté vacío', async () => {
+    const delMes = await reporte('valentinaA');
+    const antiguo = await reporte('valentinaA', {
+      desde: new Date(Date.now() - 300 * 24 * 3600_000).toISOString(),
+      hasta: new Date(Date.now() - 200 * 24 * 3600_000).toISOString(),
+    });
+    expect(antiguo.json.cotizaciones.creadas).toBe(0);
+    expect(antiguo.json.cotizacionesAbiertas).toEqual(delMes.json.cotizacionesAbiertas);
+    expect(antiguo.json.porCobrar).toEqual(delMes.json.porCobrar);
+  });
+
+  it('un asesorId de la otra agencia no trae cifras de nadie', async () => {
+    const r = await reporte('duenoA', { ...RANGO, asesorId: usuarioId.duenoB });
+    expect(r.estado).toBe(200);
+    expect(r.json.porCobrar).toEqual({ porMoneda: [], truncado: false });
+    expect(r.json.cotizacionesAbiertas?.total).toBe(0);
   });
 });

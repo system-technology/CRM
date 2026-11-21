@@ -296,7 +296,12 @@ export class RepositorioDeCobrosPrisma extends RepositorioDeCobros {
     const { tenantId } = ContextoTenant.obtener();
     return this.prisma.conTenant(async (tx) => {
       // Una fila de más que el tope: así se sabe si hubo recorte.
-      const leidos = await this.archivos.listarAbiertos(tx, tenantId, { limite: tope + 1 });
+      // `deAsesor: null`: la pantalla de cobros muestra la agencia entera a cualquier miembro
+      // (T-490, fuera de T-528). El filtro por asesor lo usa solo el puerto de reportes.
+      const leidos = await this.archivos.listarAbiertos(tx, tenantId, {
+        limite: tope + 1,
+        deAsesor: null,
+      });
       const archivos = leidos.slice(0, tope);
       const ids = archivos.map((a) => a.id);
       const sumas = await sumasVigentesPorArchivo(tx, tenantId, ids);

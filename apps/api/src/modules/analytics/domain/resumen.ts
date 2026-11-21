@@ -5,9 +5,18 @@
  * Todo lo que es una razón devuelve `null` cuando no hay base (denominador 0): «0 %» afirmaría
  * que se midió y salió cero.
  */
-import type { ResumenDeReportesPorAlcance, VentasDeUnaMoneda } from '@viajapro/contracts';
+import type {
+  CotizacionesAbiertas,
+  PorCobrar,
+  ResumenDeReportesPorAlcance,
+  SaldoPorCobrarDeUnaMoneda,
+  VentasDeUnaMoneda,
+} from '@viajapro/contracts';
+import { type CodigoMoneda, pagadoNeto, saldoDelArchivo, totalDelArchivo } from '@viajapro/domain';
 import type { AlcanceDeReporte } from '../../../shared/autorizacion/alcance-de-reporte.js';
 import type {
+  CobrosAgregados,
+  CotizacionesAbiertasAgregadas,
   CotizacionesAgregadas,
   EtapaConOportunidades,
   RangoDeReporte,
@@ -62,14 +71,59 @@ export function ventasDeUnaMoneda(v: VentaAgregada): VentasDeUnaMoneda {
   return fila;
 }
 
+/** Las cotizaciones vivas de hoy, tal cual las cuenta la base: aquí solo se suma el total. */
+export function cotizacionesAbiertas(a: CotizacionesAbiertasAgregadas): CotizacionesAbiertas {
+  return {
+    total: a.borradores + a.enviadas,
+    borradores: a.borradores,
+    enviadas: a.enviadas,
+    porAntiguedad: {
+      hastaTresDias: a.hastaTresDias,
+      deCuatroASiete: a.deCuatroASiete,
+      masDeSiete: a.masDeSiete,
+    },
+  };
+}
+
+/**
+ * El saldo por cobrar, agrupado por moneda. **La fórmula no se reescribe aquí**: sale de las
+ * funciones puras de `packages/domain` (`cobro.ts`), archivo por archivo (ADR-0035 §4).
+ *
+ * Solo suman los saldos POSITIVOS: un archivo con saldo a favor del viajero no reduce lo que
+ * deben los demás, y restarlo haría parecer cobrado lo que no lo está. Las monedas no se mezclan
+ * ni se convierten con TRM (R8).
+ */
+export function porCobrarPorMoneda(cobros: CobrosAgregados): PorCobrar {
+  const porMoneda = new Map<CodigoMoneda, { archivos: number; saldo: bigint }>();
+  for (const a of cobros.archivos) {
+    const total = totalDelArchivo(a.estado, a.ventaUnidades, a.sumas, a.moneda);
+    const saldo = saldoDelArchivo(total, pagadoNeto(a.sumas, a.moneda));
+    if (saldo.unidades <= 0n) continue;
+    const acumulado = porMoneda.get(a.moneda) ?? { archivos: 0, saldo: 0n };
+    acumulado.archivos += 1;
+    acumulado.saldo += saldo.unidades;
+    porMoneda.set(a.moneda, acumulado);
+  }
+  const filas: SaldoPorCobrarDeUnaMoneda[] = [...porMoneda.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([moneda, v]) => ({
+      moneda,
+      archivos: v.archivos,
+      saldo: dinero(v.saldo, moneda),
+    }));
+  return { porMoneda: filas, truncado: cobros.truncado };
+}
+
 export function armarResumen(entrada: {
   alcance: AlcanceDeReporte;
   rango: RangoDeReporte;
   cotizaciones: CotizacionesAgregadas;
   etapas: EtapaConOportunidades[];
   respuesta: RespuestaAgregada;
+  abiertas: CotizacionesAbiertasAgregadas;
+  cobros: CobrosAgregados;
 }): ResumenDeReportesPorAlcance {
-  const { alcance, rango, cotizaciones: c, etapas, respuesta } = entrada;
+  const { alcance, rango, cotizaciones: c, etapas, respuesta, abiertas, cobros } = entrada;
 
   const porEtapa = etapas.slice().sort((a, b) => a.orden - b.orden);
   const suma = (f: (e: EtapaConOportunidades) => boolean): number =>
@@ -118,6 +172,10 @@ export function armarResumen(entrada: {
         respuesta.conversacionesNuevas,
       ),
     },
+    // T-528. Las dos son de HOY, no del periodo, y las componen las mismas filas que el alcance
+    // decide para el resto: con `PROPIO`, solo las del asesor de la sesión.
+    cotizacionesAbiertas: cotizacionesAbiertas(abiertas),
+    porCobrar: porCobrarPorMoneda(cobros),
   };
 
   return alcance.nivel === 'PROPIO'

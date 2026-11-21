@@ -184,3 +184,14 @@ export class SumaIlegibleError extends InvariantError {
     super('Una suma del libro de cobro no llegó como entero exacto');
   }
 }
+
+/**
+ * `travel_files.moneda_iso` es un `CHAR(3)` y el contrato admite cuatro monedas. Se valida en vez
+ * de forzar el tipo: un `as CodigoMoneda` dejaría pasar una fila con `'XXX'` hasta la pantalla.
+ */
+export class MonedaDesconocidaEnElLibroError extends InvariantError {
+  readonly code = 'MONEDA_DESCONOCIDA';
+  constructor(readonly iso: string) {
+    super(`'${iso}' no es una moneda habilitada, y viene de un archivo guardado en la base`);
+  }
+}

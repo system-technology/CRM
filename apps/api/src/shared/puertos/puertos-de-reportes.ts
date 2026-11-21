@@ -14,7 +14,7 @@
  * nuevo no compila sin él. Cada adaptador traduce el alcance a la columna con la que atribuye sus
  * filas (§2): `cotizaciones.creado_por`, `oportunidades.asesor_id`, `mensajes.autor_id`.
  */
-import type { CodigoMoneda } from '@viajapro/domain';
+import type { CodigoMoneda, SumasDeCobro } from '@viajapro/domain';
 import type { AlcanceDeReporte } from '../autorizacion/alcance-de-reporte.js';
 
 export interface RangoDeReporte {
@@ -50,6 +50,21 @@ export interface CotizacionesAgregadas {
   ventasPorMoneda: VentaAgregada[];
 }
 
+/**
+ * Cotizaciones vivas HOY (T-528), no del rango: una foto del trabajo que espera respuesta. Los
+ * tramos cuentan solo las ENVIADAS, por días completos desde `enviada_en`.
+ */
+export interface CotizacionesAbiertasAgregadas {
+  borradores: number;
+  enviadas: number;
+  /** De las ENVIADAS con `enviada_en`: hasta 3 días completos esperando. */
+  hastaTresDias: number;
+  /** De 4 a 7. */
+  deCuatroASiete: number;
+  /** Más de 7. */
+  masDeSiete: number;
+}
+
 /** Lo que `analytics` le pide a `quoting`. */
 export abstract class PuertoCotizacionesParaReportes {
   abstract resumir(
@@ -58,6 +73,16 @@ export abstract class PuertoCotizacionesParaReportes {
     alcance: AlcanceDeReporte,
     incluirMargen: boolean,
   ): Promise<CotizacionesAgregadas>;
+
+  /**
+   * Sin rango a propósito: es el estado de HOY. `ahora` entra como argumento y no se lee el reloj
+   * en la consulta, para que la prueba fije el instante (R9: el cálculo es en UTC).
+   */
+  abstract abiertas(
+    tenantId: string,
+    alcance: AlcanceDeReporte,
+    ahora: Date,
+  ): Promise<CotizacionesAbiertasAgregadas>;
 }
 
 export interface EtapaConOportunidades {
@@ -96,4 +121,47 @@ export abstract class PuertoRespuestaParaReportes {
     rango: RangoDeReporte,
     alcance: AlcanceDeReporte,
   ): Promise<RespuestaAgregada>;
+}
+
+/**
+ * Tope de archivos abiertos que se leen de una vez para el saldo por cobrar (ADR-0035 §4: el
+ * cálculo es archivo por archivo con las funciones puras de `packages/domain` mientras una agencia
+ * tenga hasta 500 archivos abiertos). Pasado el tope, la respuesta viene marcada `truncado` y la
+ * cifra se presenta como un mínimo; moverlo a SQL es T-492, con su prueba de contrato.
+ */
+export const TOPE_DE_ARCHIVOS_PARA_COBRAR = 500;
+
+/**
+ * Un archivo abierto con lo justo para calcular su saldo. **Es la excepción declarada a «nunca
+ * filas»** de este archivo: la fórmula del saldo no se duplica en SQL (ADR-0035 §4, T-492), así
+ * que el agregado por moneda lo hace `analytics` con `packages/domain`.
+ *
+ * Nada de PII ni de neto: ni contacto, ni pasajeros, ni costo del mayorista (R10, §6).
+ */
+export interface ArchivoPorCobrar {
+  moneda: CodigoMoneda;
+  estado: 'ABIERTO' | 'CANCELADO';
+  /** R8: unidad mínima de `moneda`. */
+  ventaUnidades: bigint;
+  /** Sumas de los movimientos VIGENTES del archivo. */
+  sumas: SumasDeCobro;
+}
+
+export interface CobrosAgregados {
+  archivos: ArchivoPorCobrar[];
+  /** Había más archivos abiertos que el tope: lo que se devuelve es un mínimo. */
+  truncado: boolean;
+}
+
+/**
+ * Lo que `analytics` le pide a `payments` (T-528). El archivo es «propio» del asesor ACTUAL de su
+ * oportunidad (ADR-0035 §2: `travel_files.oportunidad_id` → `oportunidades.asesor_id`), así que un
+ * archivo sin oportunidad o sin asesor no entra en ningún reporte propio y sí en el de agencia.
+ */
+export abstract class PuertoCobrosParaReportes {
+  abstract porCobrar(
+    tenantId: string,
+    alcance: AlcanceDeReporte,
+    tope: number,
+  ): Promise<CobrosAgregados>;
 }

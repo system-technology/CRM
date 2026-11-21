@@ -65,13 +65,25 @@ export class ArchivoParaCobroDeBooking extends PuertoArchivoParaCobro {
     return this.aArchivo(tx, tenantId, f);
   }
 
+  /**
+   * `deAsesor` filtra por el asesor ACTUAL de la oportunidad del archivo (ADR-0035 §2). Es una
+   * relación de Prisma y no SQL crudo: el `JOIN` lo genera por la foránea compuesta, que incluye
+   * `tenant_id`, y la guardia de consultas sin filtro sigue viéndolo. Un archivo sin oportunidad
+   * —o con una sin asesor— no casa con ningún id: no es «propio» de nadie (§2.2).
+   */
   async listarAbiertos(
     tx: ClienteTenant,
     tenantId: string,
-    filtros: { limite: number },
+    filtros: { limite: number; deAsesor: string | null },
   ): Promise<ArchivoParaCobro[]> {
     const filas = await tx.travelFile.findMany({
-      where: { tenantId, estado: 'ABIERTO' },
+      where: {
+        tenantId,
+        estado: 'ABIERTO',
+        ...(filtros.deAsesor === null
+          ? {}
+          : { oportunidad: { is: { tenantId, asesorId: filtros.deAsesor } } }),
+      },
       select: SELECCION,
       orderBy: [{ fechaSalida: 'asc' }, { numero: 'asc' }],
       take: filtros.limite,
