@@ -33,6 +33,11 @@ export const ROLES_SEMBRADOS = [
       // T-324 (HU-inbox-1 §3): solo el dueño gestiona el catálogo de etiquetas; las asesoras
       // ponen y quitan con `bandeja.operar`. La agencia puede dárselo a ASESOR.
       'etiquetas.administrar',
+      // T-329 (ADR-0034 §6): los tres de cobro. `cobro.corregir` (devolución, ajuste, penalidad,
+      // reverso y plazos) solo aquí: quien registra un pago no lo compensa.
+      'cobro.ver',
+      'cobro.registrar',
+      'cobro.corregir',
     ],
   },
   {
@@ -40,12 +45,15 @@ export const ROLES_SEMBRADOS = [
     nombre: 'Asesor',
     // T-089: el Asesor atiende la bandeja, escribe en el CRM y cotiza. T-249: y opera los
     // archivos de viaje que nacen de sus cotizaciones (ADR-0024 §3.7).
+    // T-329 (ADR-0034 §6): ve el cobro y registra pagos; no los compensa (sin `cobro.corregir`).
     permisos: [
       'bandeja.operar',
       'crm.escribir',
       'cotizacion.escribir',
       'archivo.ver',
       'archivo.operar',
+      'cobro.ver',
+      'cobro.registrar',
     ],
   },
   {
@@ -53,8 +61,15 @@ export const ROLES_SEMBRADOS = [
     nombre: 'Operaciones',
     // ADR-0017 D2: Operaciones mantiene el catálogo; el Asesor no. T-089: sin `bandeja.operar`,
     // `crm.escribir` ni `cotizacion.escribir`. T-249 (ADR-0024 §3.7): sí opera los archivos de
-    // viaje, que es confirmar con el proveedor y pagarle.
-    permisos: ['conversaciones.ver_todas', 'catalogo.administrar', 'archivo.ver', 'archivo.operar'],
+    // viaje, que es confirmar con el proveedor y pagarle. T-329 (ADR-0034 §6, supuesto sin
+    // verificar): solo ve el cobro.
+    permisos: [
+      'conversaciones.ver_todas',
+      'catalogo.administrar',
+      'archivo.ver',
+      'archivo.operar',
+      'cobro.ver',
+    ],
   },
 ] as const;
 
