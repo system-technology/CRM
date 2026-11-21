@@ -9616,26 +9616,32 @@ tasks:
     phase: 1
     priority: P2
     effort: S
-    status: backlog
+    status: done
+    done_at: 2026-11-21T13:50:00.000Z
     acceptance:
       - "apps/web/src/lib/formato.ts:79 decide los decimales con `moneda === 'COP' ? 0 : 2`, una segunda fuente de verdad frente a MONEDAS de packages/domain (R8). Hoy coinciden; se rompen el dia que entre una moneda de 3 decimales"
       - "El formateo toma los decimales de MONEDAS, y una prueba falla si las dos tablas dejan de coincidir"
     source: "auditoria independiente de #410 (T-331), 2026-11-21"
     created_at: 2026-11-21T09:10:00.000Z
     owner: frontend
+    notes: "Integrada como #429 (c9a581a4). decimalesDeMoneda en formato.ts lee MONEDAS de @viajapro/domain y sustituye los dos moneda === COP ? 0 : 2; decimalesDe y admiteCentavos de cobros-logica delegan en esa misma funcion. La prueba es de las que valen: recorre MONEDAS entera contra Money.aDecimal y ADEMAS anade KWD (3 decimales) durante su ejecucion, porque con la tabla actual (0/2/2/2) un recorrido a secas no distinguiria una tabla propia COP?0:2. La sesion verifico que esa prueba se pone ROJA si formato.ts recupera su tabla: se la ha visto fallar, que es lo que convierte una prueba en evidencia. Revisado por la madre por ser dinero en pantalla (R13). Dos notas que el PR no decia: con monedas DESCONOCIDAS el valor por defecto de decimalesDe pasa de 0 a 2 (sin efecto hoy: el dominio habilita cuatro y la UI no deja elegir otra), y de paso se corrige una incoherencia latente, que formato.ts comparaba moneda sin normalizar en un camino y con toUpperCase en otro. Quedan vivas otras dos tablas: T-543 y T-544."
+
   - id: T-521
     title: "Web: un monto tecleado en formato de EE. UU. se interpreta como es-CO y falla por mil"
     type: feature
     phase: 1
     priority: P2
     effort: S
-    status: backlog
+    status: done
+    done_at: 2026-11-21T13:50:00.000Z
     acceptance:
       - "aUnidadesMinimas acepta `1.250` en USD como mil doscientos cincuenta: es coherente con la regla es-CO, pero quien teclee a la americana registra un pago 1000 veces mayor"
       - "Mitigacion acordada: eco en vivo bajo el campo con el importe ya normalizado, para que la asesora vea lo que va a registrar antes de pulsar"
     source: "auditoria independiente de #410 (T-331), 2026-11-21"
     created_at: 2026-11-21T09:10:00.000Z
     owner: frontend
+    notes: "Integrada como #429 (c9a581a4). Eco en vivo bajo «Cuanto pago» con el importe ya normalizado, en region aria-live, y sin eco mientras la cifra no sea valida. NO cambia la regla de interpretacion (1.250 en es-CO sigue siendo mil doscientos cincuenta): la hace visible antes de pulsar, que era la mitigacion acordada por producto. El eco es aUnidadesMinimas pasado por formatearDinero, es decir exactamente lo que se envia formateado como lo pinta el historial: lo que la asesora lee es, por construccion, lo que se registra. No hay aqui una conversion propia, que habria sido repetir el pecado de R8 que arregla T-520."
+
   - id: T-515
     title: "Web: mock-cobros.ts entra al bundle de produccion por import estatico"
     type: chore
