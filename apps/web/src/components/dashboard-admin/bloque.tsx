@@ -27,6 +27,8 @@ interface ErrorConEstado {
 export function useCarga<T>(
   cargar: (senal: AbortSignal) => Promise<T>,
   clave: string,
+  /** `false`: no se pide nada (el bloque que lo usa no se muestra). */
+  activo = true,
 ): [Carga<T>, () => void] {
   const [carga, setCarga] = useState<Carga<T>>({ estado: 'cargando' });
   const [intento, setIntento] = useState(0);
@@ -34,6 +36,7 @@ export function useCarga<T>(
   cargarRef.current = cargar;
 
   useEffect(() => {
+    if (!activo) return;
     const control = new AbortController();
     setCarga({ estado: 'cargando' });
     cargarRef
@@ -58,7 +61,7 @@ export function useCarga<T>(
         });
       });
     return () => control.abort();
-  }, [clave, intento]);
+  }, [clave, intento, activo]);
 
   const reintentar = useCallback(() => setIntento((n) => n + 1), []);
   return [carga, reintentar];

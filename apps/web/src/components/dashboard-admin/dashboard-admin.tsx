@@ -32,7 +32,15 @@ import {
 import { ComparacionDeAsesores } from './comparacion-de-asesores';
 import { CobrosPorCobrar, DestinosAbiertos, SalidasProximas } from './bloques-de-cobros';
 
+export type BloqueDeAdmin =
+  'ventas' | 'embudo' | 'respuesta' | 'asesores' | 'cobros' | 'salidas' | 'destinos';
+
 export interface DashboardAdminProps {
+  /**
+   * Qué bloques se muestran; por defecto todos. Un bloque que no se muestra no pide sus datos.
+   * Sirve para montarlo junto a una vista que ya trae ventas, embudo y respuesta, sin repetirlos.
+   */
+  bloques?: readonly BloqueDeAdmin[];
   /** Por defecto, el mes calendario en curso (ADR-0035 pregunta 7). */
   periodo?: PeriodoDeReporte;
   /** Zona IANA de la agencia (R9). */
@@ -51,7 +59,11 @@ export function DashboardAdmin({
   periodo = 'este_mes',
   zona = ZONA_HORARIA_COLOMBIA,
   ahora: ahoraProp,
+  bloques,
 }: DashboardAdminProps) {
+  const ver = (id: BloqueDeAdmin): boolean => !bloques || bloques.includes(id);
+  const verResumen = ver('ventas') || ver('embudo') || ver('respuesta');
+  const verCobros = ver('cobros') || ver('salidas') || ver('destinos');
   const [ahoraInicial] = useState(() => new Date());
   const ahora = ahoraProp ?? ahoraInicial;
   const clave = `${periodo}|${zona}|${ahora.toISOString().slice(0, 10)}`;
@@ -60,38 +72,48 @@ export function DashboardAdmin({
   const previo = useMemo(() => rangoAnterior(rango), [rango]);
   const hoy = hoyEnZona(ahora, zona);
 
-  const [resumen, reintentarResumen] = useCarga<ParDeResumenes>(async (senal) => {
-    const [actual, anterior] = await Promise.all([
-      obtenerResumenDeAgenciaApi(rango, undefined, senal),
-      previo
-        ? obtenerResumenDeAgenciaApi(previo, undefined, senal).catch((err: unknown) => {
-            if (err instanceof DOMException && err.name === 'AbortError') throw err;
-            // El periodo anterior es un adorno de la comparación: sin él se dice «sin base».
-            return null;
-          })
-        : Promise.resolve(null),
-    ]);
-    return {
-      actual,
-      anterior,
-      etiquetaAnterior: previo ? rotuloDeRango(previo.desde, previo.hasta, zona) : '',
-    };
-  }, clave);
+  const [resumen, reintentarResumen] = useCarga<ParDeResumenes>(
+    async (senal) => {
+      const [actual, anterior] = await Promise.all([
+        obtenerResumenDeAgenciaApi(rango, undefined, senal),
+        previo
+          ? obtenerResumenDeAgenciaApi(previo, undefined, senal).catch((err: unknown) => {
+              if (err instanceof DOMException && err.name === 'AbortError') throw err;
+              // El periodo anterior es un adorno de la comparación: sin él se dice «sin base».
+              return null;
+            })
+          : Promise.resolve(null),
+      ]);
+      return {
+        actual,
+        anterior,
+        etiquetaAnterior: previo ? rotuloDeRango(previo.desde, previo.hasta, zona) : '',
+      };
+    },
+    clave,
+    verResumen,
+  );
 
-  const [asesores, reintentarAsesores] = useCarga(async (senal) => {
-    const { filas, recortado } = await obtenerResumenesDeAsesoresApi(rango, senal);
-    return { filas: filasDeAsesores(filas), recortado };
-  }, clave);
+  const [asesores, reintentarAsesores] = useCarga(
+    async (senal) => {
+      const { filas, recortado } = await obtenerResumenesDeAsesoresApi(rango, senal);
+      return { filas: filasDeAsesores(filas), recortado };
+    },
+    clave,
+    ver('asesores'),
+  );
 
   const [cobros, reintentarCobros] = useCarga(
     async (senal) => obtenerVistaDeCobrosApi(ahora, senal),
     clave,
+    verCobros,
   );
 
   // El servidor contestó «solo lo tuyo» (o 403): esta pantalla no es para quien la pide.
   if (
-    resumen.estado === 'sin-permiso' ||
-    (resumen.estado === 'error' && resumen.codigo === 'ALCANCE_PROPIO')
+    verResumen &&
+    (resumen.estado === 'sin-permiso' ||
+      (resumen.estado === 'error' && resumen.codigo === 'ALCANCE_PROPIO'))
   ) {
     return (
       <div
@@ -111,88 +133,104 @@ export function DashboardAdmin({
 
   return (
     <div data-testid="dashboard-administracion" className="space-y-3">
-      <p className="text-xs text-neutral-700 dark:text-neutral-300" data-testid="rotulo-periodo">
-        {rotuloDeRango(rango.desde, rango.hasta, zona)}
-        {previo ? ` · comparado con ${rotuloDeRango(previo.desde, previo.hasta, zona)}` : ''}
-      </p>
+      {verResumen && (
+        <p className="text-xs text-neutral-700 dark:text-neutral-300" data-testid="rotulo-periodo">
+          {rotuloDeRango(rango.desde, rango.hasta, zona)}
+          {previo ? ` · comparado con ${rotuloDeRango(previo.desde, previo.hasta, zona)}` : ''}
+        </p>
+      )}
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-        <Bloque
-          id="ventas"
-          titulo="Ventas cerradas por moneda"
-          nota="Cotizaciones que pasaron a Aceptada en el periodo. Cada moneda va aparte."
-          carga={resumen}
-          reintentar={reintentarResumen}
-          className="order-3 lg:order-1 lg:col-span-12"
-        >
-          {(d) => <VentasPorMoneda datos={d} />}
-        </Bloque>
+        {ver('ventas') && (
+          <Bloque
+            id="ventas"
+            titulo="Ventas cerradas por moneda"
+            nota="Cotizaciones que pasaron a Aceptada en el periodo. Cada moneda va aparte."
+            carga={resumen}
+            reintentar={reintentarResumen}
+            className="order-3 lg:order-1 lg:col-span-12"
+          >
+            {(d) => <VentasPorMoneda datos={d} />}
+          </Bloque>
+        )}
 
-        <Bloque
-          id="embudo"
-          titulo="Embudo y cotizaciones"
-          nota="Oportunidades creadas en el periodo, en la etapa en que están hoy."
-          carga={resumen}
-          reintentar={reintentarResumen}
-          className="order-4 lg:order-2 lg:col-span-7"
-        >
-          {(d) => <EmbudoYCotizaciones datos={d} />}
-        </Bloque>
+        {ver('embudo') && (
+          <Bloque
+            id="embudo"
+            titulo="Embudo y cotizaciones"
+            nota="Oportunidades creadas en el periodo, en la etapa en que están hoy."
+            carga={resumen}
+            reintentar={reintentarResumen}
+            className="order-4 lg:order-2 lg:col-span-7"
+          >
+            {(d) => <EmbudoYCotizaciones datos={d} />}
+          </Bloque>
+        )}
 
-        <Bloque
-          id="respuesta"
-          titulo="Tiempos de respuesta"
-          nota="Desde el primer mensaje del viajero hasta la primera respuesta."
-          carga={resumen}
-          reintentar={reintentarResumen}
-          className="order-5 lg:order-3 lg:col-span-5"
-        >
-          {(d) => <TiemposDeRespuesta datos={d} />}
-        </Bloque>
+        {ver('respuesta') && (
+          <Bloque
+            id="respuesta"
+            titulo="Tiempos de respuesta"
+            nota="Desde el primer mensaje del viajero hasta la primera respuesta."
+            carga={resumen}
+            reintentar={reintentarResumen}
+            className="order-5 lg:order-3 lg:col-span-5"
+          >
+            {(d) => <TiemposDeRespuesta datos={d} />}
+          </Bloque>
+        )}
 
-        <Bloque
-          id="asesores"
-          titulo="Comparación entre asesores"
-          nota="Ordenados por ventas cerradas en el periodo."
-          carga={asesores}
-          reintentar={reintentarAsesores}
-          className="order-6 lg:order-4 lg:col-span-12"
-        >
-          {(d) => <ComparacionDeAsesores filas={d.filas} recortado={d.recortado} />}
-        </Bloque>
+        {ver('asesores') && (
+          <Bloque
+            id="asesores"
+            titulo="Comparación entre asesores"
+            nota="Ordenados por ventas cerradas en el periodo."
+            carga={asesores}
+            reintentar={reintentarAsesores}
+            className="order-6 lg:order-4 lg:col-span-12"
+          >
+            {(d) => <ComparacionDeAsesores filas={d.filas} recortado={d.recortado} />}
+          </Bloque>
+        )}
 
-        <Bloque
-          id="cobros"
-          titulo="Por cobrar"
-          nota="Saldo de los archivos abiertos, hoy."
-          carga={cobros}
-          reintentar={reintentarCobros}
-          className="order-1 lg:order-5 lg:col-span-5"
-        >
-          {(d) => <CobrosPorCobrar datos={d} />}
-        </Bloque>
+        {ver('cobros') && (
+          <Bloque
+            id="cobros"
+            titulo="Por cobrar"
+            nota="Saldo de los archivos abiertos, hoy."
+            carga={cobros}
+            reintentar={reintentarCobros}
+            className="order-1 lg:order-5 lg:col-span-5"
+          >
+            {(d) => <CobrosPorCobrar datos={d} />}
+          </Bloque>
+        )}
 
-        <Bloque
-          id="salidas"
-          titulo="Salen pronto"
-          nota="Archivos abiertos con salida en los próximos 30 días."
-          carga={cobros}
-          reintentar={reintentarCobros}
-          className="order-2 lg:order-6 lg:col-span-7"
-        >
-          {(d) => <SalidasProximas datos={d} hoy={hoy} />}
-        </Bloque>
+        {ver('salidas') && (
+          <Bloque
+            id="salidas"
+            titulo="Salen pronto"
+            nota="Archivos abiertos con salida en los próximos 30 días."
+            carga={cobros}
+            reintentar={reintentarCobros}
+            className="order-2 lg:order-6 lg:col-span-7"
+          >
+            {(d) => <SalidasProximas datos={d} hoy={hoy} />}
+          </Bloque>
+        )}
 
-        <Bloque
-          id="destinos"
-          titulo="Destinos de los archivos abiertos"
-          nota="Lo vendido en lo que sigue abierto; no son las ventas del periodo."
-          carga={cobros}
-          reintentar={reintentarCobros}
-          className="order-7 lg:order-7 lg:col-span-12"
-        >
-          {(d) => <DestinosAbiertos datos={d} />}
-        </Bloque>
+        {ver('destinos') && (
+          <Bloque
+            id="destinos"
+            titulo="Destinos de los archivos abiertos"
+            nota="Lo vendido en lo que sigue abierto; no son las ventas del periodo."
+            carga={cobros}
+            reintentar={reintentarCobros}
+            className="order-7 lg:order-7 lg:col-span-12"
+          >
+            {(d) => <DestinosAbiertos datos={d} />}
+          </Bloque>
+        )}
       </div>
     </div>
   );

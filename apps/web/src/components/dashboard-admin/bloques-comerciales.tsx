@@ -58,7 +58,7 @@ function TarjetaDeMoneda({ fila, contra }: { fila: FilaDeVentasComparada; contra
   return (
     <li
       className="min-w-0 rounded-lg border border-neutral-200 p-3 dark:border-neutral-800"
-      data-testid={`ventas-${fila.moneda}`}
+      data-testid={`admin-ventas-${fila.moneda}`}
     >
       <p className={etiqueta}>Ventas en {fila.moneda}</p>
       <p className={`${cifra} mt-1 break-words`}>

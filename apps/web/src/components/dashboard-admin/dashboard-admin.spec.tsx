@@ -60,7 +60,7 @@ afterEach(cleanup);
 describe('DashboardAdmin', () => {
   it('pinta todos los bloques con datos y rotula el periodo en la zona de la agencia', async () => {
     montar();
-    expect(await screen.findByTestId('ventas-COP')).toBeTruthy();
+    expect(await screen.findByTestId('admin-ventas-COP')).toBeTruthy();
     expect(screen.getByTestId('rotulo-periodo').textContent).toMatch(/comparado con/);
     for (const id of [
       'ventas',
@@ -74,15 +74,15 @@ describe('DashboardAdmin', () => {
       expect(screen.getByTestId(`bloque-${id}`)).toBeTruthy();
     }
     // Dinero siempre por moneda: hay COP y USD, cada uno en su tarjeta, sin un total.
-    expect(screen.getByTestId('ventas-USD')).toBeTruthy();
+    expect(screen.getByTestId('admin-ventas-USD')).toBeTruthy();
     expect(screen.queryByText(/total general/i)).toBeNull();
     // Comparación entre periodos.
-    expect(within(screen.getByTestId('ventas-COP')).getByText(/frente a/)).toBeTruthy();
+    expect(within(screen.getByTestId('admin-ventas-COP')).getByText(/frente a/)).toBeTruthy();
   });
 
   it('sin la clave de margen en la respuesta no hay margen en ninguna parte', async () => {
     montar();
-    await screen.findByTestId('ventas-COP');
+    await screen.findByTestId('admin-ventas-COP');
     expect(screen.queryByText(/^Margen$/)).toBeNull();
     expect(screen.queryByLabelText(/Margen en/)).toBeNull();
   });
@@ -92,7 +92,7 @@ describe('DashboardAdmin', () => {
       Promise.resolve(conMargen(crearResumenDeAgenciaDemo(rango, asesorId))),
     );
     montar();
-    await screen.findByTestId('ventas-COP');
+    await screen.findByTestId('admin-ventas-COP');
     expect(screen.getByLabelText('Margen en COP')).toBeTruthy();
   });
 
@@ -114,7 +114,7 @@ describe('DashboardAdmin', () => {
       ),
     );
     montar();
-    await screen.findByTestId('ventas-COP');
+    await screen.findByTestId('admin-ventas-COP');
     await waitFor(() =>
       expect(
         within(screen.getByTestId('bloque-cobros')).getByText(/no tiene permiso/i),
@@ -123,7 +123,7 @@ describe('DashboardAdmin', () => {
     expect(
       within(screen.getByTestId('bloque-cobros')).queryByRole('button', { name: 'Reintentar' }),
     ).toBeNull();
-    expect(screen.getByTestId('ventas-COP')).toBeTruthy();
+    expect(screen.getByTestId('admin-ventas-COP')).toBeTruthy();
   });
 
   it('un error de red muestra «Reintentar» y reintenta solo ese bloque', async () => {
@@ -159,7 +159,7 @@ describe('DashboardAdmin', () => {
 
   it('no pinta datos personales de viajeros: sin teléfonos ni documentos', async () => {
     montar();
-    await screen.findByTestId('ventas-COP');
+    await screen.findByTestId('admin-ventas-COP');
     await screen.findAllByTestId('salida-proxima');
     const texto = document.body.textContent ?? '';
     expect(texto).not.toMatch(/\+57\s?3\d{2}/);
@@ -169,7 +169,7 @@ describe('DashboardAdmin', () => {
   it('pide el periodo anterior del mismo largo para comparar', async () => {
     const espia = vi.spyOn(api, 'obtenerResumenDeAgenciaApi');
     montar();
-    await screen.findByTestId('ventas-COP');
+    await screen.findByTestId('admin-ventas-COP');
     const rangos = espia.mock.calls.filter(([, asesor]) => asesor === undefined).map(([r]) => r);
     expect(rangos).toHaveLength(2);
     const [actual, anterior] = rangos as [
@@ -180,5 +180,22 @@ describe('DashboardAdmin', () => {
     expect(Date.parse(anterior.hasta) - Date.parse(anterior.desde)).toBe(
       Date.parse(actual.hasta) - Date.parse(actual.desde),
     );
+  });
+
+  it('con `bloques` solo pinta esos y no pide los datos de los demás', async () => {
+    const resumen = vi.spyOn(api, 'obtenerResumenDeAgenciaApi');
+    const cobros = vi.spyOn(api, 'obtenerVistaDeCobrosApi');
+    render(
+      <DashboardAdmin ahora={AHORA} zona="America/Bogota" bloques={['asesores', 'salidas']} />,
+    );
+    await screen.findByTestId('tabla-asesores');
+    await screen.findAllByTestId('salida-proxima');
+    expect(screen.queryByTestId('bloque-ventas')).toBeNull();
+    expect(screen.queryByTestId('bloque-embudo')).toBeNull();
+    expect(screen.queryByTestId('bloque-cobros')).toBeNull();
+    expect(screen.queryByTestId('rotulo-periodo')).toBeNull();
+    // Los cobros se piden (alimentan «salidas»); el resumen de agencia, no.
+    expect(cobros).toHaveBeenCalledTimes(1);
+    expect(resumen).not.toHaveBeenCalled();
   });
 });
