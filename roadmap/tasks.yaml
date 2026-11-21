@@ -9560,7 +9560,7 @@ tasks:
     phase: 1
     priority: P2
     effort: M
-    status: backlog
+    status: in_progress
     acceptance:
       - "Dentro de apps/api las e2e siguen compartiendo base: una base o esquema por archivo, o ejecucion serial donde toque"
       - "Los deadlocks 40P01 de historial-de-etapas e invitaciones.e2e-spec no se reprodujeron: reproducirlos o cerrar con evidencia"
@@ -9568,6 +9568,7 @@ tasks:
       - "Cinco ejecuciones seguidas del CI sin rojo por esto"
     source: "resto de T-503, #408, 2026-11-21"
     created_at: 2026-11-21T20:00:00.000Z
+    notes: "Hecho en el PR de T-510: e2e de apps/api en serie y prueba del indice sobre la definicion del indice. Quedan: deadlocks 40P01 sin reproducir (hipotesis en la bitacora 2026-11-21-t510) y las cinco corridas limpias del CI."
     owner: qa
   - id: T-511
     title: "Probar el ingreso por apodo a 390 px contra la API real"
