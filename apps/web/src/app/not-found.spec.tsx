@@ -29,6 +29,10 @@ describe('NotFound 404 (T-109)', () => {
     const linkCatalogo = screen.getByTestId('enlace-rapido-catalogo');
     expect(linkCatalogo.getAttribute('href')).toBe('/catalogo');
 
+    const linkIngreso = screen.getByTestId('enlace-ir-a-ingresar');
+    expect(linkIngreso.getAttribute('href')).toBe('/ingresar');
+    expect(linkIngreso.textContent).toBe('Ir a ingresar');
+
     const linkPipeline = screen.getByTestId('enlace-rapido-pipeline');
     expect(linkPipeline.getAttribute('href')).toBe('/pipeline');
   });

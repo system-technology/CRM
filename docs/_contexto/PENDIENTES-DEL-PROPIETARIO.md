@@ -4,7 +4,7 @@
 > [`../08-roadmap/09-roadmap-maestro-y-operacion-desatendida.md`](../08-roadmap/09-roadmap-maestro-y-operacion-desatendida.md) §3.2).
 > Se ordena por **lo que más bloquea**. Una línea tachada es una que ya se resolvió. Aquí **no hay secretos**: solo nombres.
 
-Última revisión: 2026-11-21.
+Última revisión: 2026-11-21 (02:30 UTC).
 
 ## Bloquean la presentación al cliente (Ola 0)
 
@@ -23,6 +23,7 @@
 | 6 | **Etiqueta `override-lane`** en los PR de ingreso por apodo (#358, #362) que mezclan carriles, o aceptar el rojo de «Carril y tarea» | La pones tú en GitHub (el PR → Labels → `override-lane`). El sistema de permisos de la sesión madre **me lo denegó dos veces, aun con tu autorización en el chat**: es una regla de la herramienta. Alternativa: añadir una regla de permiso de Bash para esa llamada en tu configuración |
 | 7 | **Contestar el permiso de Bash** pendiente en la sesión de despliegue (agente del PR 1b) | Solo se contesta en esa sesión |
 | 8 | **Poner las sesiones en modo Auto** (menú junto al cuadro de texto) | Sin eso se detienen en cada permiso y el trabajo desatendido no avanza |
+| 8b | **Decir si la sesión del punto 8 (cobros) puede trabajar sin supervisión** | Esa sesión no aceptó mi orden de autonomía sin tu confirmación escrita en su propia conversación (pidió A, B o C). Hoy trabaja bajo la A: un PR por tarea, sin auto-merge, con auditoría de seguridad antes de integrar (T-328 a T-330). Para la B, escríbele en esa sesión que sí |
 | 9 | **Red del entorno en la nube**: añadir `developers.facebook.com` (o ampliar el nivel de red) | Menú del entorno → Edit → Network access |
 
 ## Decisiones de producto y de negocio

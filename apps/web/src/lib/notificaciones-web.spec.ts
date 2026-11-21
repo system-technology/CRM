@@ -10,6 +10,11 @@ import {
   marcarNotificacionLeida,
   marcarTodasNotificacionesLeidas,
   descartarNotificacion,
+  resumirNotificaciones,
+  archivoIdDeHref,
+  soloConArchivoExistente,
+  archivosDesconocidos,
+  type NotificacionWeb,
 } from './notificaciones-web';
 import { TITULOS_SEGUROS_NOTIFICACION } from './preferencias-notificaciones';
 import type { EventoBandeja, PendientesDelDia } from '@viajapro/contracts';
@@ -225,6 +230,85 @@ describe('Pruebas Unitarias de Notificaciones Web (notificaciones-web.ts)', () =
       expect(resultado.length).toBe(1);
       expect(resultado[0]?.id).toBe(n2.id);
       expect(lista.length).toBe(2); // Inmutable
+    });
+  });
+
+  describe('la campana cuenta lo que suman sus pestañas (T-322)', () => {
+    const de = (tipo: NotificacionWeb['tipo'], leida: boolean, href = '/seguimientos') =>
+      ({
+        ...crearNotificacionSeguimientoVencido('x'),
+        id: `${tipo}-${Math.random()}`,
+        tipo,
+        leida,
+        href,
+      }) satisfies NotificacionWeb;
+
+    it('el total es la suma de las pestañas y solo cuenta lo pendiente', () => {
+      const lista = [
+        de('aviso_plazo', false),
+        de('aviso_plazo', true),
+        de('mensaje_nuevo', false),
+        de('seguimiento_vencido', false),
+        de('cotizacion_por_vencer', false),
+        de('alerta_operativa', true),
+      ];
+      const r = resumirNotificaciones(lista);
+      expect(r.total).toBe(4);
+      expect(r.porTipo).toEqual({
+        aviso_plazo: 1,
+        mensaje_nuevo: 1,
+        seguimiento_vencido: 1,
+        cotizacion_por_vencer: 1,
+        alerta_operativa: 0,
+      });
+      expect(Object.values(r.porTipo).reduce((a, b) => a + b, 0)).toBe(r.total);
+      expect(r.total).toBe(contarNotificacionesNoLeidas(lista));
+    });
+
+    it('una lista vacía suma cero', () => {
+      expect(resumirNotificaciones([]).total).toBe(0);
+    });
+
+    it('archivoIdDeHref lee el id de /viajes?id= y nada más', () => {
+      expect(archivoIdDeHref('/viajes?id=abc-1')).toBe('abc-1');
+      expect(archivoIdDeHref('/viajes?x=1&id=abc-1')).toBe('abc-1');
+      expect(archivoIdDeHref('/viajes')).toBeNull();
+      expect(archivoIdDeHref('/bandeja/abc')).toBeNull();
+      expect(archivoIdDeHref('/viajes?id=%E0%A4%A')).toBeNull();
+    });
+
+    it('los avisos a un archivo que no existe se quitan; los demás pasan', () => {
+      const existe = de('aviso_plazo', false, '/viajes?id=existe');
+      const fantasma = de('aviso_plazo', false, '/viajes?id=fantasma');
+      const verificados = new Set(['fantasma']);
+      const otro = de('mensaje_nuevo', false, '/bandeja/cualquiera');
+      const ids = new Set(['existe']);
+      const visibles = soloConArchivoExistente([existe, fantasma, otro], ids, verificados);
+      expect(visibles).toEqual([existe, otro]);
+      expect(resumirNotificaciones(visibles).total).toBe(2);
+    });
+
+    it('un id sin verificar se muestra aunque no esté en la lista; solo el verificado se oculta', () => {
+      const dudoso = de('aviso_plazo', false, '/viajes?id=dudoso');
+      const ids = new Set(['existe']);
+      expect(soloConArchivoExistente([dudoso], ids)).toEqual([dudoso]);
+      expect(archivosDesconocidos([dudoso], ids)).toEqual(['dudoso']);
+      expect(soloConArchivoExistente([dudoso], ids, new Set(['dudoso']))).toEqual([]);
+      expect(archivosDesconocidos([dudoso], ids, new Set(['dudoso']))).toEqual([]);
+    });
+
+    it('si la lista de archivos no se pudo leer (null) no se esconde nada', () => {
+      const lista = [de('aviso_plazo', false, '/viajes?id=fantasma')];
+      expect(soloConArchivoExistente(lista, null)).toEqual(lista);
+    });
+
+    it('con pendientes reales sin vencidos no se inventa un seguimiento vencido', () => {
+      const notifs = generarNotificacionesIniciales({
+        fecha: '2026-10-28',
+        vencidos: [],
+        deHoy: [],
+      });
+      expect(notifs.some((n) => n.tipo === 'seguimiento_vencido')).toBe(false);
     });
   });
 });
