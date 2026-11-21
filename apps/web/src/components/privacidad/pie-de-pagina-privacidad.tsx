@@ -4,8 +4,13 @@ import React from 'react';
 import Link from 'next/link';
 import { Cookie, Shield } from 'lucide-react';
 import { dispararAperturaModalCookies } from '../../lib/privacidad-cookies';
+import { ConmutadorDeTema } from '../comun/conmutador-de-tema';
 
-export function PieDePaginaPrivacidad() {
+/**
+ * `conTema` añade el conmutador de tema: solo lo pide el layout raíz, que pinta este pie en las
+ * pantallas SIN marco (T-560). Dentro del marco el tema se cambia desde el menú de perfil.
+ */
+export function PieDePaginaPrivacidad({ conTema = false }: { conTema?: boolean } = {}) {
   return (
     <footer
       data-testid="pie-de-pagina-privacidad"
@@ -66,6 +71,8 @@ export function PieDePaginaPrivacidad() {
             <span>Preferencias de cookies</span>
           </button>
         </nav>
+
+        {conTema && <ConmutadorDeTema />}
       </div>
     </footer>
   );

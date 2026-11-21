@@ -11421,7 +11421,7 @@ tasks:
     phase: 1
     priority: P2
     effort: M
-    status: backlog
+    status: done
     acceptance:
       - "GET /api/v1/archivos/sin-responsable lee una ventana y filtra DESPUES: un archivo huerfano por debajo
         de la ventana no sale. La respuesta lleva truncado, pero la cifra es un minimo"
@@ -11431,6 +11431,12 @@ tasks:
     source: aviso de la sesion de T-537/T-529, 2026-11-21
     created_at: 2026-11-21T13:35:00.000Z
     owner: backend
+    started_at: 2026-11-21T15:53:51.210Z
+    done_at: 2026-11-21T15:53:51.210Z
+    evidence: "Mergeado en main por el PR #451 (rama a/T-549-sin-responsable-filtro-antes-del-tope) con el CI en
+      verde: format, analyze, tests y los demás checks obligatorios. Cierre automático
+      (.github/workflows/cerrar-tarea.yml)."
+    commit: 2f3170f1aa205d80794bbea3f0a8b5c86ee99bb3
   - id: T-550
     title: "Web: parsearMontoAUnidades lee la fraccion con \\d{1,2}, asi que una moneda de 3 decimales se leeria
       como miles"
@@ -11621,9 +11627,9 @@ tasks:
     title: "Web: falta el conmutador de tema en las pantallas publicas, y el anti-FOUC no tiene pruebas de comportamiento"
     type: bug
     phase: 1
-    priority: P3
-    effort: S
-    status: backlog
+    priority: P2
+    effort: M
+    status: done
     acceptance:
       - "CORRECCION 2026-11-21: el diagnostico original de esta tarea, escrito por la madre orquestadora, era
         FALSO en dos de sus tres puntos. Lo desmintio la sesion de carril b, que PARO antes de escribir codigo y
@@ -11650,13 +11656,18 @@ tasks:
     source: "revision visual del propietario 2026-11-21; diagnostico corregido por la sesion de carril b el mismo dia"
     created_at: 2026-11-21T15:40:00.000Z
     owner: frontend
+    started_at: 2026-11-21T16:17:52.037Z
+    done_at: 2026-11-21T16:17:52.038Z
+    evidence: "Mergeado en main por el PR #457 (rama b/T-560-tema-en-el-arranque) con el CI en verde: format,
+      analyze, tests y los demás checks obligatorios. Cierre automático (.github/workflows/cerrar-tarea.yml)."
+    commit: d8f9ee6ebb1037b1d8c238ed851a5bfa0debf2d9
   - id: T-561
     title: "Web: contrastes por debajo del umbral legible en la barra lateral y en las pantallas de trabajo"
     type: bug
     phase: 1
     priority: P2
     effort: M
-    status: backlog
+    status: done
     acceptance:
       - "El propietario lo reporto mirando la app el 2026-11-21: «el toque de contraste negro hace que se
         pierdan un poco los textos», y al preguntarle senalo la barra lateral, las pantallas de trabajo y el
@@ -11687,6 +11698,11 @@ tasks:
     source: revision visual del propietario, 2026-11-21
     created_at: 2026-11-21T15:42:00.000Z
     owner: frontend
+    started_at: 2026-11-21T16:07:13.511Z
+    done_at: 2026-11-21T16:07:13.511Z
+    evidence: "Mergeado en main por el PR #454 (rama b/T-561-contrastes-medidos) con el CI en verde: format,
+      analyze, tests y los demás checks obligatorios. Cierre automático (.github/workflows/cerrar-tarea.yml)."
+    commit: e5bfcc29886a4fc17b62cd66e4924cc044745714
   - id: T-562
     title: Manual de usuario funcional de lo que ya existe, con capturas, para ensenarlo a una agencia
     type: docs
@@ -11769,3 +11785,41 @@ tasks:
     source: "inventariado por la sesion de T-561 al entregar #454, 2026-11-21"
     created_at: 2026-11-21T16:05:00.000Z
     owner: diseno-ux
+  - id: T-572
+    title: "Web: no se encuentra donde se cambia el tema, aunque el conmutador exista en tres sitios"
+    type: bug
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    acceptance:
+      - "ORIGEN: el propietario pregunto el 2026-11-21 si se podian manejar los modos claro y oscuro SIN SABER
+        que el conmutador ya existia. Hicieron falta un manual, una sesion midiendo y DOS correcciones de la
+        orquestadora para establecer donde esta. Si no lo encuentra quien conoce el producto, una agencia tampoco"
+      - "Lo verificado en pantalla: en las paginas publicas esta en el pie, abajo a la derecha, con tres botones
+        (sol, luna, pantalla). Dentro de la aplicacion es el boton de abajo del menu lateral, junto a la campana,
+        y NO es un selector de tres opciones sino uno que ROTA Sistema -> Claro -> Oscuro -> Sistema"
+      - "Un control que rota sin decir que hace ni en que estado esta es el problema: no se descubre, y quien lo
+        pulsa no sabe si acaba de elegir «oscuro» o «lo que diga el sistema»"
+      - "Existe ademas SelectorTemaDensidad, un selector completo montado en barra-modulos.tsx:1038, pero NADIE
+        ha confirmado en pantalla como se llega a el. Averiguarlo es parte de la tarea"
+      - "No se pide rediseno: se pide que se encuentre y que diga en que estado esta. Etiqueta visible, titulo al
+        pasar por encima, o el selector de tres opciones en vez del que rota"
+    source: "revision visual del propietario y hallazgos del manual (T-562), 2026-11-21"
+    created_at: 2026-11-21T16:25:00.000Z
+    owner: diseno-ux
+  - id: T-573
+    title: "Web: MarcoDeTrabajo fija sus colores a mano en vez de usar los tokens"
+    type: refactor
+    phase: 2
+    priority: P3
+    effort: S
+    status: backlog
+    acceptance:
+      - "marco-de-trabajo.tsx fija bg-neutral-50 y dark:bg-neutral-950 en lugar de los tokens de globals.css"
+      - "Es el mismo patron que T-571 (colores a mano) y T-570 (paletas de fabrica), pero en el marco que envuelve
+        TODAS las pantallas privadas, asi que es el sitio donde mas se nota"
+      - "Lo dejo dicho la sesion de T-560 al entregar #457; no lo toco porque se cruzaba con T-561"
+    source: "aviso de la sesion de T-560 al entregar #457, 2026-11-21"
+    created_at: 2026-11-21T16:25:00.000Z
+    owner: frontend
