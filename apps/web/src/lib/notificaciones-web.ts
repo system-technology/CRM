@@ -160,12 +160,14 @@ export function generarNotificacionesIniciales(
   );
 
   // 2. Seguimientos vencidos si existen
-  if (pendientes?.vencidos && pendientes.vencidos.length > 0) {
+  if (pendientes) {
+    // Con datos de pendientes, la campana dice lo mismo que Hoy y Seguimientos: si no hay
+    // vencidos, no se inventa uno.
     for (const s of pendientes.vencidos) {
       resultado.push(crearNotificacionSeguimientoVencido(s.id, s.descripcion));
     }
   } else {
-    // Al menos 1 seguimiento de demostración
+    // Sin datos todavía (arranque en demostración): un seguimiento de ejemplo
     resultado.push(
       crearNotificacionSeguimientoVencido('01932000-0000-7000-8000-000000000099', 'LLAMADA'),
     );
@@ -191,6 +193,65 @@ export function generarNotificacionesIniciales(
  */
 export function contarNotificacionesNoLeidas(notificaciones: NotificacionWeb[]): number {
   return notificaciones.filter((n) => !n.leida).length;
+}
+
+export type PendientesPorTipo = Record<TipoNotificacionWeb, number>;
+
+export interface ResumenDeNotificaciones {
+  /** No leídas de toda la lista: la cifra de la campana y de «Todas». */
+  total: number;
+  /** No leídas por pestaña. Su suma es `total` por construcción: no hay otra fuente. */
+  porTipo: PendientesPorTipo;
+}
+
+/**
+ * Única cuenta de la campana (T-322): el distintivo, el encabezado del desplegable y cada pestaña
+ * salen de aquí, así que no pueden divergir. Cuenta lo pendiente (no leído), que es lo que la
+ * asesora debe atender.
+ */
+export function resumirNotificaciones(notificaciones: NotificacionWeb[]): ResumenDeNotificaciones {
+  const porTipo: PendientesPorTipo = {
+    mensaje_nuevo: 0,
+    seguimiento_vencido: 0,
+    cotizacion_por_vencer: 0,
+    alerta_operativa: 0,
+    aviso_plazo: 0,
+  };
+  let total = 0;
+  for (const n of notificaciones) {
+    if (n.leida) continue;
+    porTipo[n.tipo] += 1;
+    total += 1;
+  }
+  return { total, porTipo };
+}
+
+/** Id del archivo de viaje al que apunta un `href` de la forma `/viajes?id=<id>`; `null` si no es de archivo. */
+export function archivoIdDeHref(href: string): string | null {
+  const m = /^\/viajes\?(?:[^#]*&)?id=([^&#]+)/.exec(href);
+  if (!m?.[1]) return null;
+  try {
+    return decodeURIComponent(m[1]);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Deja solo las notificaciones cuyo archivo de viaje existe en `idsExistentes` (la lista de
+ * `listarArchivos`, la misma fuente de /viajes). Las que no apuntan a un archivo pasan intactas.
+ * Con `idsExistentes === null` (la lista no se pudo leer) no se filtra: no se sabe, y esconder
+ * avisos reales de plazo sería peor que mostrarlos.
+ */
+export function soloConArchivoExistente(
+  notificaciones: NotificacionWeb[],
+  idsExistentes: ReadonlySet<string> | null,
+): NotificacionWeb[] {
+  if (!idsExistentes) return notificaciones;
+  return notificaciones.filter((n) => {
+    const id = archivoIdDeHref(n.href);
+    return id === null || idsExistentes.has(id);
+  });
 }
 
 /**

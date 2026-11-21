@@ -39,7 +39,9 @@ import {
   generarNotificacionesIniciales,
   crearNotificacionSeguimientoVencido,
   procesarEventoSocketNotificacion,
-  contarNotificacionesNoLeidas,
+  archivoIdDeHref,
+  resumirNotificaciones,
+  soloConArchivoExistente,
   marcarNotificacionLeida,
   marcarTodasNotificacionesLeidas,
   descartarNotificacion,
@@ -55,6 +57,7 @@ import { obtenerAjustesAgenciaApi } from '../../lib/agencia-api';
 import { estaUsandoApiReal } from '../../lib/crm-api';
 import { zonaOPorDefecto } from '../../lib/archivos-logica';
 import { obtenerPendientesDelDiaApi } from '../../lib/crm-api';
+import { listarArchivos } from '../../lib/archivos-api';
 import { useContadoresDeMenu } from '../../lib/use-contadores-de-menu';
 import { nombreAccesibleConContador } from '../../lib/inicio-logica';
 import { tienePermiso, usePermisos } from '../../lib/permisos';
@@ -130,6 +133,8 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
     esModoDemo() ? generarNotificacionesIniciales(null, undefined, generarAlertasOperativas()) : [],
   );
   const avisos = useAvisosDePlazo(esDemo);
+  // Ids de los archivos de viaje que existen (misma fuente que /viajes). `null` = aún no se sabe.
+  const [idsArchivos, setIdsArchivos] = useState<ReadonlySet<string> | null>(null);
   // Zona horaria de la agencia (R9) para componer el plazo de cada aviso.
   const [zonaAgencia, setZonaAgencia] = useState<string>(zonaOPorDefecto(null));
   const [menuSesionAbierto, setMenuSesionAbierto] = useState(false);
@@ -196,12 +201,17 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
               generarAlertasOperativas(),
             );
             const idsNuevas = new Set(nuevas.map((n) => n.id));
-            const previasSinDuplicados = prev.filter((p) => !idsNuevas.has(p.id));
+            // Los seguimientos vencidos son los de `pendientes`: el de arranque ya no aplica.
+            const previasSinDuplicados = prev.filter(
+              (p) => !idsNuevas.has(p.id) && p.tipo !== 'seguimiento_vencido',
+            );
             return [...previasSinDuplicados, ...nuevas];
           });
         }
       })
-      .catch(() => null);
+      .catch((err: unknown) => {
+        console.warn('[campana] Sin seguimientos vencidos para avisar:', err);
+      });
 
     // 2. Suscribirse a eventos Socket.IO en tiempo real (T-110)
     const desuscribir =
@@ -230,6 +240,26 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
       activo = false;
     };
   }, [esDemo]);
+
+  // Los avisos y alertas que apuntan a un archivo (`/viajes?id=`) solo valen si ese archivo existe.
+  const hayEnlacesAArchivos =
+    notificaciones.some((n) => archivoIdDeHref(n.href) !== null) ||
+    (avisos.estado.tipo === 'listo' && avisos.estado.lista.datos.length > 0);
+  useEffect(() => {
+    if (!hayEnlacesAArchivos) return;
+    let vigente = true;
+    listarArchivos('TODOS')
+      .then((lista) => {
+        if (vigente) setIdsArchivos(new Set(lista.map((a) => a.id)));
+      })
+      .catch((err: unknown) => {
+        // Sin la lista no se sabe qué existe: no se esconde nada (ver soloConArchivoExistente).
+        console.warn('[campana] Sin lista de archivos para validar los avisos:', err);
+      });
+    return () => {
+      vigente = false;
+    };
+  }, [hayEnlacesAArchivos, esDemo]);
 
   const abrirPanelNotificaciones = () => {
     setPanelNotifAbierto(true);
@@ -327,10 +357,13 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
     avisos.estado.tipo === 'listo'
       ? avisos.estado.lista.datos.map((n) => adaptarAvisoANotificacionWeb(n, zonaAgencia))
       : [];
-  const notificacionesConAvisos = [...avisosWeb, ...notificaciones];
-  // `noLeidas` del servidor cuenta todas las del usuario, no solo las de la página.
-  const noLeidasDeAvisos = avisos.estado.tipo === 'listo' ? avisos.estado.lista.noLeidas : 0;
-  const conteoNoLeidas = contarNotificacionesNoLeidas(notificaciones) + noLeidasDeAvisos;
+  // Una sola lista y una sola cuenta (T-322): la campana, el encabezado del desplegable y sus
+  // pestañas leen `resumirNotificaciones` de esta misma lista, ya sin avisos de archivos que no existen.
+  const notificacionesConAvisos = soloConArchivoExistente(
+    [...avisosWeb, ...notificaciones],
+    idsArchivos,
+  );
+  const conteoNoLeidas = resumirNotificaciones(notificacionesConAvisos).total;
 
   const nombreUsuario = sesion?.identidad?.nombre ?? (esDemo ? 'Asesor ViajaPro' : 'Tu cuenta');
   const correoUsuario = sesion?.identidad?.correo ?? (esDemo ? 'asesor@viajapro.com' : '');

@@ -178,6 +178,18 @@ export function construirUrlRedireccionIngreso(
 }
 
 /**
+ * Enlace «Ir a ingresar» para las pantallas de error (API caída, 404, fallo inesperado): lleva a
+ * /ingresar conservando, solo si es una ruta interna segura, a dónde quería ir el asesor. No
+ * afirma que la sesión expiró (no se sabe), así que no lleva `motivo`. Nunca es un redirect
+ * abierto: lo que no pasa `rutaInternaSegura` o es una ruta de acceso se descarta.
+ */
+export function construirUrlSalidaAIngreso(rutaActual?: string | null): string {
+  const ruta = rutaInternaSegura(rutaActual);
+  if (!ruta || esRutaDeAcceso(ruta) || ruta === '/') return RUTA_INGRESO;
+  return `${RUTA_INGRESO}?redirigir=${encodeURIComponent(ruta)}`;
+}
+
+/**
  * Extrae una ruta de destino segura desde el parámetro 'redirigir'.
  */
 export function sanitizarRutaRedireccion(

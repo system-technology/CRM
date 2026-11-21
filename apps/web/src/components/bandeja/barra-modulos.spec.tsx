@@ -4,6 +4,8 @@ import React from 'react';
 import { BarraModulos, calcularIniciales } from './barra-modulos';
 import * as authApi from '../../lib/auth-api';
 import * as crmApi from '../../lib/crm-api';
+import * as avisosApi from '../../lib/avisos-plazo-api';
+import * as archivosApi from '../../lib/archivos-api';
 import { pedirAperturaDeBusquedaGlobal } from '../../lib/busqueda-global-evento';
 import type { SesionActual } from '@viajapro/contracts';
 
@@ -375,6 +377,50 @@ describe('BarraModulos y Selector de Sesión (ADR-0011)', () => {
       fireEvent.click(botonCampana);
 
       expect(screen.getByRole('dialog', { name: /Panel de Notificaciones/i })).toBeDefined();
+    });
+
+    it('la campana cuenta lo que suman sus pestañas y no avisa de archivos que no existen (T-322)', async () => {
+      const aviso = (n: number, archivoId: string) => ({
+        id: `01932000-0000-7000-8000-0000000a000${n}`,
+        tipo: 'TIME_LIMIT_PROXIMO' as const,
+        archivoId,
+        reservaId: `01932000-0000-7000-8000-0000000c000${n}`,
+        archivoNumero: 1040 + n,
+        venceEn: new Date(Date.now() + 3_600_000).toISOString(),
+        leidaEn: null,
+        creadaEn: new Date().toISOString(),
+      });
+      vi.spyOn(crmApi, 'obtenerPendientesDelDiaApi').mockResolvedValue({
+        fecha: '2026-10-27',
+        vencidos: [],
+        deHoy: [],
+      });
+      vi.spyOn(avisosApi, 'listarAvisos').mockResolvedValue({
+        datos: [aviso(1, 'archivo-existe'), aviso(2, 'archivo-fantasma')],
+        noLeidas: 2,
+      });
+      vi.spyOn(archivosApi, 'listarArchivos').mockResolvedValue([
+        { id: 'archivo-existe' } as never,
+      ]);
+      render(<BarraModulos sesionInicial={SESION_ASESOR} />);
+
+      const contador = await screen.findByTestId('contador-campana');
+      // La campana ya espera a que la lista de archivos descarte el aviso fantasma.
+      await waitFor(() => expect(archivosApi.listarArchivos).toHaveBeenCalled());
+      fireEvent.click(screen.getByRole('button', { name: /Alertas operativas/i }));
+      await waitFor(() => expect(screen.queryByTestId(/^notificacion-aviso-.*a0002$/)).toBeNull());
+
+      const n = (id: string) =>
+        Number(/\((\d+)\)/.exec(screen.getByTestId(id).textContent ?? '')?.[1]);
+      const suma = ['plazos', 'mensajes', 'seguimientos', 'cotizaciones', 'operativas']
+        .map((t) => n(`filtro-${t}`))
+        .reduce((x, y) => x + y, 0);
+      expect(n('filtro-plazos')).toBe(1);
+      expect(n('filtro-todas')).toBe(suma);
+      expect(Number(contador.textContent)).toBe(suma);
+      expect(
+        screen.getByTestId('notificacion-aviso-01932000-0000-7000-8000-0000000a0001'),
+      ).toBeTruthy();
     });
 
     it('abre el panel de notificaciones desde el diálogo de perfil', () => {

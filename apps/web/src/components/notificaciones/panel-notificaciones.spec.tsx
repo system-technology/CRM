@@ -2,7 +2,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import React from 'react';
 import { PanelNotificaciones } from './panel-notificaciones';
-import type { NotificacionWeb } from '../../lib/notificaciones-web';
+import {
+  crearNotificacionSeguimientoVencido,
+  type NotificacionWeb,
+} from '../../lib/notificaciones-web';
 import * as prefLib from '../../lib/preferencias-notificaciones';
 
 const mockPush = vi.fn();
@@ -281,5 +284,32 @@ describe('Componente PanelNotificaciones (T-110)', () => {
 
     fireEvent.keyDown(window, { key: 'Escape' });
     expect(alCerrarMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('el encabezado y «Todas» cuentan lo pendiente y suman las demás pestañas (T-322)', () => {
+    const base = crearNotificacionSeguimientoVencido('s1');
+    const lista = [
+      { ...base, id: 'a', tipo: 'aviso_plazo' as const, leida: false },
+      { ...base, id: 'b', tipo: 'aviso_plazo' as const, leida: true },
+      { ...base, id: 'c', tipo: 'mensaje_nuevo' as const, leida: false },
+      { ...base, id: 'd', tipo: 'seguimiento_vencido' as const, leida: false },
+    ];
+    render(
+      <PanelNotificaciones
+        abierto
+        alCerrar={vi.fn()}
+        notificaciones={lista}
+        alMarcarLeida={vi.fn()}
+        alMarcarTodasLeidas={vi.fn()}
+      />,
+    );
+    const n = (id: string) =>
+      Number(/\((\d+)\)/.exec(screen.getByTestId(id).textContent ?? '')?.[1]);
+    const suma = ['plazos', 'mensajes', 'seguimientos', 'cotizaciones', 'operativas']
+      .map((t) => n(`filtro-${t}`))
+      .reduce((a, b) => a + b, 0);
+    expect(n('filtro-todas')).toBe(3);
+    expect(suma).toBe(3);
+    expect(screen.getByText('3 pendiente(s) de atención')).toBeTruthy();
   });
 });
