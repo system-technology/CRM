@@ -196,6 +196,19 @@ navegador**:
 - Reportes: ¿qué mira cada asesor para saber cómo va?, ¿qué quiere ver él como administrador?, ¿cuántos asesores tiene? (Respondido: todos trabajan desde el celular; hoy lo hacen todo desde WhatsApp Business.)
 - Su hoja: **cuántas reservas** y **qué columnas**. Pedir una **muestra sin nombres ni teléfonos** (R10).
 
+**Cobros, tras ADR-0034 (T-328).** Mientras no respondan, rigen los supuestos de
+[HU-payments-1](../01-producto/03-historias/HU-payments-1.md) y de
+[ADR-0034](../03-adr/0034-pagos-del-viajero-mvp-de-registro-manual.md):
+
+1. ¿**Cuotas** con fechas o **pagos libres** con una sola fecha límite de cobro?
+2. ¿Cobra alguna vez **en otra moneda** (USD, por ejemplo), o todo en pesos?
+3. ¿**Quién registra** los pagos: el asesor, una persona de administración o usted?
+4. ¿**Guarda comprobantes** (número de transacción, foto, PDF)?
+5. ¿Pide **anticipo y saldo**? ¿Cuánto de anticipo y cuántos días antes de la salida vence el saldo?
+6. ¿Retiene una **penalidad** cuando el cliente cancela? ¿Cómo la calcula?
+7. ¿Un mismo pago cubre **varios archivos** (dos viajes de la misma familia) o lo pagan **varios
+   pasajeros** por separado?
+
 ## 5. Riesgos y qué no se hace
 
 - **Los dos audios son de un solo cliente.** Antes de generalizar, `experto-turismo` valida que el modelo
