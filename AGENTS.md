@@ -13,7 +13,7 @@
 ## 1. Antes de tocar nada
 
 1. Lee **`ESTADO.md`** — dónde estamos, qué sigue, qué está bloqueado. Es obligatorio.
-2. Lee **`CLAUDE.md`** — las trece reglas completas y el mapa del sistema.
+2. Lee **`CLAUDE.md`** — las catorce reglas completas y el mapa del sistema.
 3. Si la tarea toca arquitectura, lee el ADR correspondiente en `docs/03-adr/`.
 4. Si la tarea toca dominio, lee `docs/01-producto/02-lenguaje-ubicuo.md`.
 
@@ -35,7 +35,7 @@ El repositorio es público y `main` tiene protección de servidor.
 Stack: TypeScript estricto · NestJS · Next.js · PostgreSQL + Prisma · Redis + BullMQ ·
 monorepo pnpm + Turborepo.
 
-## 3. Las trece reglas que no se rompen
+## 3. Las catorce reglas que no se rompen
 
 | # | Regla |
 |---|---|
@@ -52,6 +52,7 @@ monorepo pnpm + Turborepo.
 | R11 | **En `main` solo entra lo que supera un PR con los 8 checks del CI y la rama al día** (auto-merge o `integrador`); nadie empuja directo. Las rutas protegidas esperan al propietario. Todo el trabajo va en ramas |
 | R12 | **Se parametriza la política de negocio; nunca los invariantes del dominio.** Lo que cada agencia define distinto es tabla por tenant, no `enum` |
 | R13 | **Una sola vuelta de revisión, salvo en aislamiento entre tenants.** Lo que no se corrige en esa vuelta va a la cola (`roadmap/tasks.yaml`) con dueño, no bloquea |
+| R14 | **Todo cambio se documenta, lo hecho y lo que se va a hacer.** Cada PR deja su rastro en la documentación versionada, en el mismo PR (o, como tarde, en el PR de cierre del lote): lo que se hizo, en `ESTADO.md`, `docs/_contexto/DIARIO.md` y `docs/_bitacora/`; lo que se va a hacer, en `roadmap/tasks.yaml` y en la hoja de ruta o el paso a paso que corresponda (`docs/08-roadmap/`); cada decisión estructural, en un ADR (R7); y cada cambio de comportamiento, en la doc de su tema (lenguaje ubicuo, runbook, seguridad). Un plan, una hoja de ruta o un paso a paso que solo existe en una conversación o en el `CHECKPOINT.local.md` **no existe**. Un cambio sin su rastro no está terminado. | Hay muchas sesiones y la memoria de una conversación muere al compactar. Lo que no está escrito se pierde, se contradice o se repite. Ver §9. |
 
 ## 4. Git — esto es lo que más se incumple
 
