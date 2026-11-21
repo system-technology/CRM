@@ -12394,8 +12394,11 @@ tasks:
     status: ready
     acceptance:
       - "T-565 quito el cartel que afirmaba «Conectado a la API y PostgreSQL en vivo» y T-566 anadio la vista
-        de asesor en la demostracion. Los dos entregaron en carril b, asi que el rastro en docs/ quedo fuera:
-        un PR que mezclara apps/web con docs/ lo rechaza el check «Carril y tarea»"
+        de asesor en la demostracion. Los dos entregaron en carril b y el rastro en docs/ quedo fuera"
+      - "CORRECCION (2026-11-21): esta tarea nacio diciendo que un PR que mezclara apps/web con docs/ lo
+        rechaza el check «Carril y tarea». Es FALSO y esta verificado: los PR #471 (carril a), #472
+        (carril i) y #473 (carril b) llevaban bitacora en docs/ y el check paso en verde en los tres.
+        La tarea sigue siendo necesaria por el contenido del manual, no por una regla de carriles"
       - Quitar del paso 1 de docs/06-manual/01-recorrido-del-asesor.md la nota sobre el recuadro verde, y del
         paso 11 la advertencia de que «Mis numeros» hubo que capturarla con el filtro «Mios» del dueno
       - Volver a tomar asesor-01-ingreso y asesor-11-mis-numeros con docs/06-manual/capturas.mjs; regenera
@@ -12404,3 +12407,62 @@ tasks:
     source: criterios de T-565 y T-566 que cruzaban de carril, 2026-11-21
     created_at: 2026-11-21T17:10:00.000Z
     owner: documentador
+  - id: T-577
+    title: "Aislamiento: el arnes de mutaciones corre en el CI pero su rojo no impide integrar"
+    type: infra
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    acceptance:
+      - "T-377 puso mutaciones-aislamiento.mjs a correr en el CI (workflow propio, en PR que tocan
+        prisma/**, nocturno sobre main y a demanda). No es check obligatorio: con filtro de rutas, un
+        check obligatorio dejaria sin veredicto a los PR que no lo disparan y los bloquearia para siempre"
+      - "Hoy, que salga rojo no impide integrar: lo sostiene la disciplina del integrador, no una compuerta"
+      - "Depende de .github/proteccion-main.json, que es del propietario, y el punto 13 de
+        PENDIENTES-DEL-PROPIETARIO.md avisa de que el fichero difiere del servidor en tres campos y
+        reaplicarlo apagaria los code owners. Medir primero si existe una forma de hacerlo obligatorio
+        sin tocar ese fichero (por ejemplo un job que siempre corra y reporte 'omitido' cuando no aplica)"
+      - "Por que no bloquea: pasamos de cero cobertura a 21 mutaciones ejecutandose de verdad"
+    source: "auditoria de la madre sobre el PR #471, 2026-11-21"
+    created_at: 2026-11-21T18:10:00.000Z
+    owner: devops
+  - id: T-578
+    title: "Aislamiento: si el arnes falla de madrugada sobre main, no se entera nadie"
+    type: infra
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    acceptance:
+      - "El workflow de T-377 corre cada noche a las 06:17 UTC sobre main. Si sale rojo, hoy no avisa a
+        ningun sitio: hay que entrar a Actions a mirarlo"
+      - "Un rojo que nadie lee es el mismo problema que T-377 arreglo, un piso mas arriba"
+      - "Decidir el canal con el propietario antes de montarlo; puede exigir un secreto, y los secretos
+        son suyos"
+    source: "auditoria de la madre sobre el PR #471, 2026-11-21"
+    created_at: 2026-11-21T18:10:00.000Z
+    owner: devops
+  - id: T-579
+    title: "Aislamiento: en el CI el dueno de perfiles_de_agencia ya es miembro de viajapro_app y M22 no se ejecuta"
+    type: test
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    acceptance:
+      - "M22 muta haciendo GRANT <dueno de perfiles_de_agencia> TO viajapro_app. En el CI el dueno es
+        viajapro y YA es miembro de viajapro_app, asi que el GRANT crea una pertenencia circular y
+        PostgreSQL lo rechaza con 0LP01 (AddRoleMems). Reventaba el arnes entero: ver la bitacora
+        docs/_bitacora/2026-11-21-mutaciones-de-aislamiento-en-ci.md"
+      - "T-377 lo dejo declarado NO APLICABLE para que no tumbe la corrida. Consecuencia honesta: en el
+        unico entorno donde el arnes corre, M22 nunca se ejecuta y el riesgo que cubria (que viajapro_app
+        pase por la plataforma) se queda sin mutacion propia"
+      - "Averiguar de donde sale esa pertenencia y si produccion tendra la misma topologia de roles. Si no
+        la tiene, el arnes esta demostrando cosas sobre el CI y no sobre produccion, y eso vale para las
+        23 mutaciones restantes, no solo para M22"
+      - "Un rol intermedio no sirve: app -> X -> dueno -> app sigue cerrando el ciclo. Medir antes de
+        proponer el remedio"
+    source: "auditoria de la madre sobre el PR #471, 2026-11-21"
+    created_at: 2026-11-21T18:10:00.000Z
+    owner: datos
