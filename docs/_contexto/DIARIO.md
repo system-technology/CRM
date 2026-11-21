@@ -490,3 +490,11 @@ Verificado (gh/git):
 
 ## 2026-11-21 · T-343: la web lee `alcance`
 Se retira el conmutador Vista Dueño/Asesor; la vista la decide la respuesta de la API. «Mis números» (390 px, tarjetas) para quien solo ve lo suyo. Decisión: **no se filtran listas de agencia en el cliente** para fingir «lo tuyo»; cotizaciones abiertas y cobros por cobrar del asesor quedan para la API (T-528). Detalle: [bitácora](../_bitacora/2026-11-21-mis-numeros-y-retirada-del-conmutador.md).
+
+## 2026-11-21 · T-562: manual de usuario con capturas
+`docs/06-manual/`: recorrido del asesor, recorrido del dueño, lo que no cubre y cómo regenerar las capturas. 15 imágenes que genera `docs/06-manual/capturas.mjs` de una pasada, contra `next build` + `next start` (no `dev`). Todo en modo demostración. Al documentar el recorrido completo aparecieron defectos reales: la web no puede aceptar una cotización (T-563, P1) ni corregir un pago (T-564), y salieron T-565 a T-568 (cartel del ingreso, demo sin vista de asesor, datos de muestra incoherentes, campos personalizados sin cifrado). Capturas regeneradas tras T-561 y T-560. Se corrigió `docs/01-producto/04-flujos-criticos.md` paso 7, que decía «Existe».
+
+**Trampas nuevas**
+- La web necesita `packages/contracts` y `packages/domain` compilados antes de arrancar.
+- Con `NEXT_PUBLIC_USE_REAL_AUTH=true` el modo demostración no entra: la foto del ingreso exige otra compilación.
+- `/ingresar` afirma «Conectado a la API y PostgreSQL en vivo» solo por la configuración; no comprueba nada.
