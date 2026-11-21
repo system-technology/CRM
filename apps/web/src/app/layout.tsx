@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import { headers } from 'next/headers';
 import './globals.css';
@@ -16,6 +16,16 @@ export const dynamic = 'force-dynamic';
 export const metadata: Metadata = {
   title: 'ViajaPro',
   description: 'CRM para agencias de turismo. Convierte conversaciones en viajes reales.',
+};
+
+// Zonas seguras (notch y barra de inicio): `viewport-fit=cover` deja que el contenido llegue al borde y
+// las barras fijas reservan `env(safe-area-inset-*)`. `interactive-widget=resizes-content` hace que, con
+// el teclado en pantalla abierto, la ventana se reduzca y el campo de escritura no quede tapado.
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+  interactiveWidget: 'resizes-content',
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
@@ -40,7 +50,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           dangerouslySetInnerHTML={{ __html: SCRIPT_ANTI_FOUC }}
         />
       </head>
-      <body className="flex min-h-screen flex-col">
+      <body className="flex min-h-dvh flex-col">
         <AvisoSinConexion />
         <div className="flex-1">
           <GuardaSesion>{children}</GuardaSesion>

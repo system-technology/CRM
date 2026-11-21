@@ -60,7 +60,7 @@ export function BarraInferiorMovil({
   return (
     <nav
       aria-label="Navegación móvil inferior"
-      className="fixed right-0 bottom-0 left-0 z-40 flex h-14 items-stretch justify-around border-t border-neutral-200 bg-white/95 px-0 shadow-lg backdrop-blur-md md:hidden dark:border-neutral-800 dark:bg-neutral-900/95"
+      className="fixed right-0 bottom-0 left-0 z-40 flex h-[calc(3.5rem+env(safe-area-inset-bottom))] items-stretch justify-around border-t border-neutral-200 bg-white/95 px-0 pr-[env(safe-area-inset-right)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] shadow-lg backdrop-blur-md md:hidden dark:border-neutral-800 dark:bg-neutral-900/95"
     >
       {elementos.map((elemento) => {
         if (elemento.tipo === 'accion') {

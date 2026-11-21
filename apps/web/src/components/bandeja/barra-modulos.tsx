@@ -72,6 +72,7 @@ import {
   entradasDelMenu,
   esDetalleMovilDeBandeja,
   esVisiblePara,
+  etiquetaDeBarra,
   moduloActivo,
   type IdDeModulo,
 } from '../../lib/navegacion';
@@ -178,8 +179,16 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
       const sistemaOscuro = consultarPreferenciaSistemaOscuro();
       setEsOscuroEfectivo(resolverTemaEfectivo(prefs.tema, sistemaOscuro) === 'dark');
 
+      // Preferencia guardada manda; sin ella, el menú parte expandido en escritorio (>= 1280 px) y
+      // como riel con etiquetas en tablet (ADR-0032, T-440).
       const expandidaGuardada = localStorage.getItem('viajapro_sidebar_expandida');
       if (expandidaGuardada === 'true') {
+        setBarraExpandida(true);
+      } else if (
+        expandidaGuardada === null &&
+        typeof window.matchMedia === 'function' &&
+        window.matchMedia('(min-width: 1280px)').matches
+      ) {
         setBarraExpandida(true);
       }
     }
@@ -436,8 +445,11 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
     <>
       {/* 1. Barra Lateral de Escritorio (>=768px, expandible/contraíble) */}
       <aside
-        className={`hidden h-full shrink-0 flex-col justify-between border-r border-neutral-200 bg-white py-3 transition-[width] duration-300 ease-in-out select-none motion-reduce:transition-none md:flex dark:border-neutral-800 dark:bg-neutral-900 ${
-          barraExpandida ? 'w-60 px-3' : 'w-14 items-center px-1'
+        className={`hidden h-full shrink-0 flex-col justify-between gap-3 overflow-x-hidden overflow-y-auto border-r border-neutral-200 bg-white py-3 transition-[width] duration-300 ease-in-out select-none motion-reduce:transition-none md:flex dark:border-neutral-800 dark:bg-neutral-900 ${
+          barraExpandida
+            ? 'w-60 px-3'
+            : // Riel con etiquetas (tablet y cualquier dispositivo táctil); solo icono con ratón en escritorio.
+              'w-24 items-center px-1 [@media(pointer:fine)_and_(min-width:1280px)]:w-14'
         }`}
         aria-label="Barra de módulos lateral"
         data-testid="sidebar-escritorio"
@@ -626,12 +638,12 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
                   aria-current={m.id === idActivo ? 'page' : undefined}
                   className={`focus-visible:ring-acento-600 relative flex items-center rounded-xl transition-all duration-200 focus-visible:ring-2 focus-visible:outline-none ${
                     barraExpandida
-                      ? `h-10 w-full gap-2.5 px-2.5 ${
+                      ? `objetivo h-10 w-full gap-2.5 px-2.5 ${
                           m.id === idActivo
                             ? 'border-l-4 border-[#c9a24b] bg-sky-50 font-semibold text-sky-950 shadow-2xs dark:bg-sky-950/60 dark:text-sky-100'
                             : 'text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200'
                         }`
-                      : `h-11 min-h-[44px] w-11 min-w-[44px] justify-center ${
+                      : `min-h-[44px] w-full flex-col justify-center gap-0.5 py-1.5 [@media(pointer:fine)_and_(min-width:1280px)]:h-11 [@media(pointer:fine)_and_(min-width:1280px)]:w-11 [@media(pointer:fine)_and_(min-width:1280px)]:min-w-[44px] [@media(pointer:fine)_and_(min-width:1280px)]:py-0 ${
                           m.id === idActivo
                             ? 'bg-sky-50 font-semibold text-sky-700 shadow-xs ring-2 ring-[#c9a24b] dark:bg-sky-950/60 dark:text-sky-300'
                             : 'text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200'
@@ -651,7 +663,17 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
                   >
                     <Icon className="h-4.5 w-4.5" />
                   </div>
-                  {barraExpandida && <span className="truncate text-xs">{m.etiqueta}</span>}
+                  {barraExpandida ? (
+                    <span className="truncate text-xs">{m.etiqueta}</span>
+                  ) : (
+                    <span
+                      aria-hidden="true"
+                      data-testid={`etiqueta-riel-${m.id}`}
+                      className="block w-full truncate text-center text-xs leading-tight [@media(pointer:fine)_and_(min-width:1280px)]:hidden"
+                    >
+                      {etiquetaDeBarra(m)}
+                    </span>
+                  )}
                   {cifra > 0 && (
                     <span
                       aria-hidden="true"
