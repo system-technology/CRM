@@ -340,12 +340,20 @@ beforeAll(async () => {
       numeroE164: `+57301${Math.floor(Math.random() * 9e6 + 1e6)}`,
     },
   });
+  // Una conversación por contacto: son únicas por (tenant, canal, contacto).
   const conversacionDe = async (asignadoAId: string, minutos: number | null) => {
+    const viajero = await admin.contacto.create({
+      data: {
+        tenantId: TENANT_A,
+        telefonoE164: `+57302${Math.floor(Math.random() * 9e6 + 1e6)}`,
+        nombre: `Viajero conversación ${randomBytes(2).toString('hex')}`,
+      },
+    });
     const conv = await admin.conversacion.create({
       data: {
         tenantId: TENANT_A,
         canalId: canal.id,
-        contactoId: a.contacto,
+        contactoId: viajero.id,
         asignadoAId,
         ultimoMensajeClienteEn: hace1h,
         ...(minutos === null
