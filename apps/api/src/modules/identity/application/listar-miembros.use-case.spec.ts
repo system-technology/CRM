@@ -12,6 +12,7 @@ const MIEMBRO: MiembroDeAgencia = {
   id: '01932000-0000-7000-8000-0000000000b1',
   nombre: 'Ana',
   correo: 'ana@agencia.test',
+  apodo: null,
   rol: { id: '01932000-0000-7000-8000-0000000000c1', clave: 'DUENO', nombre: 'Dueño' },
   estado: 'ACTIVO',
   creadoEn: '2026-11-01T10:00:00.000Z',
