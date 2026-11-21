@@ -7,6 +7,7 @@
 import { Logger, type Provider } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { origenesDeConfianzaDeLaWeb } from '../../../shared/red/origen.js';
+import { urlPublicaDeLaApi } from '../../../shared/red/urls-publicas.js';
 import { PuertoColaDeCorreo } from '../../../shared/puertos/puerto-de-correo.js';
 import { type AuthDeViajaPro, crearAuth, leerSecretoDeAutenticacion } from './crear-auth.js';
 import { PrismaIdentidadService } from './prisma-identidad.service.js';
@@ -22,8 +23,7 @@ export const proveedorDeAuth: Provider = {
     crearAuth({
       prisma,
       secreto: leerSecretoDeAutenticacion(process.env),
-      baseUrl:
-        process.env['API_PUBLIC_URL'] ?? `http://localhost:${process.env['API_PORT'] ?? '3333'}`,
+      baseUrl: urlPublicaDeLaApi(process.env),
       origenesDeConfianza: origenesDeConfianza(process.env),
       // Encola (R5), sin esperar al envío. Clave aleatoria: cada petición es un código distinto.
       enviarCodigo: (destino, codigo) =>
