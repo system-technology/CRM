@@ -53,27 +53,41 @@
 (contradice ADR-0035 §4). Es cola y no bloqueante **porque se verificó que no existe endpoint para componer roles a medida**;
 el día que exista, deja de ser cola. No es una suposición: se comprobó.
 
-### T-542 (P1) — una compuerta que lleva tiempo sin correr
+### T-542 (P1) — RESUELTA: la compuerta de cierre vuelve a correr
 
-El job «Marcar la tarea como hecha» **falla tras cada merge** (verificado en la corrida 44904456823). No bloquea el PR
-porque corre después del merge y no está entre los 14 checks: por eso llevaba tiempo roto sin que nadie lo viera.
-Dos causas distintas: **18 tareas** con `type`/`effort` fuera del enum (mecánico), y **20 tareas `in_progress`** cuando el
-validador exige una (no mecánico: hay que decidir una por una, y es del `dueno-de-producto`, no de la madre).
-**Mientras siga roto, cerrar una tarea es manual y `tasks.yaml` miente si alguien se olvida.**
+**Cerrada el 2026-11-21 por la madre «…717uK», a mano y tras verificarla**, no por el cierre automático.
+Causa 1 (18 tareas con `type`/`effort` fuera del enum) la arregló **#437**; causa 2 (las 20 `in_progress`) la aplicó **#438**.
+**Verificado sobre `main` 898ba390** con un parseo línea a línea: **527 tareas, cero `in_progress`, cero claves duplicadas,
+cero tareas sin `status`.** La evidencia que pedía el criterio: la corrida de cerrar-tarea.yml sobre la rama
+«i/T-554-triaje-aplicado» (14:16:23Z) salió **en verde**, la primera tras **cuatro fallos seguidos** (ramas de T-537,
+T-549, T-548 y T-542).
 
-**Ids usados hoy por la madre:** T-537..T-553. **Siguiente libre: T-554.**
+**Residuo que dejaron esos cuatro fallos:** T-542 y T-548 estaban integradas y seguían en `backlog`. **Las cierra este PR.**
+**T-549 no se cierra:** su rama era un PR de *docs* que solo la registraba; su bug (el filtro aplicado tras el `LIMIT`)
+sigue abierto y la tarea sigue en `backlog`, que es lo correcto.
 
-**De lo nuevo, lo que no puede esperar: T-543 (P1).** `formatearDeltaDinero` pinta **cien veces de más** en toda moneda con decimales, porque formatea unidades mínimas sin dividir. En COP acierta por casualidad. Lo avisó la sesión de T-520/T-521 y **lo verificó la madre leyendo el fuente**. Es el error de R8 que ya llegó a pantalla una vez.
+**La raíz que queda es T-553:** nada valida `roadmap/tasks.yaml` en el CI **antes** del merge, así que la próxima rotura
+se descubrirá igual de tarde. Pide `.github/`, ruta protegida del propietario.
 
-**`main` en `e7c80045`: TRECE PR integrados el 2026-11-21**, todos en serie y a mano con squash: #414, #416 (T-505), #415 (T-510 sigue abierta), #410 (T-331), #417 (T-342), #418, #420 (T-516), #421 (ADR-0036), #419 (T-511), #422 (T-343), #424 (ADR-0033 aceptado), #423 (T-344 y su enganche) y #425 (T-535).
+### Turno de la madre «…717uK» (2026-11-21, desde 14:20 UTC)
 
-**STAGING VIVO Y AUTOMÁTICO.** `DEPLOY STAGING → success`: migraciones + Render + sonda `/salud/listo` + Vercel. **Cada merge a `main` con CI verde lo repite solo.** Lo destrabaron los tres secretos del Environment `staging` que puso el propietario, más conectar el proyecto de Vercel al repositorio (sin eso no existe el deploy hook; `vercel.json` ya trae `deploymentEnabled: false`). **Render y Vercel no se pueden tocar desde las sesiones** (`unauthorized` y credencial rechazada): no hace falta, el workflow basta.
+- **#439** (`47fb844e`) integrado: relevo de la madre saliente y cierre de la tarde en el diario. Solo documentación.
+  Sus tres checks «cancelados» **se clasificaron, no se normalizaron**: entró un commit nuevo en la rama a las 14:19:37 y
+  `concurrency: cancel-in-progress: true` mató el run del sha anterior. Ni prueba frágil ni fallo real: superado.
+- **Los tres carriles estaban libres y se repartió primero.** La sesión de T-531/T-532 estaba muerta, no solo parada:
+  worker desconectado, bloqueada desde las 13:49 en un permiso de Bash, y **sin publicar nada** (su rama no existía en el
+  remoto, así que la tarea se relanzó entera).
+  - Carril `a` — sesión `01R81Xh2DhFQmHXUmF7Mqedn`: **T-531 y T-532, solo servidor.**
+  - Carril `b` — sesión `01R81Xh4VsA5hAVxGfnhUVR7`: **T-546 y T-538.**
+- **T-555 abierta en este PR** (carril `b`, `frontend`): la mitad web de T-531 y T-532, que son solo servidor. Era la tarea
+  que el traspaso dejaba «pendiente de abrir».
 
-Lo último que entró: #404 a #409 (detalle en la [bitácora](../_bitacora/2026-11-21-segundo-lote-reportes-cobros-y-pruebas.md)). #402 y #362 se cerraron por sustitución.
+**Ids: T-554 está QUEMADA** — la madre saliente la usó como nombre de rama sin crear nunca la tarea. **T-555 se crea en este
+PR. El siguiente libre es T-556**; `git fetch` antes de numerar.
 
-**Ids de tarea ya usados:** T-515..T-521 (cola de la auditoría de #410, en este PR).
-
-**Antes:** T-425..T-435, T-440..T-479, T-480..T-485, T-490..T-493 T-494..T-504 y T-505..T-512 (T-512 registra el ingreso por apodo; cola de la auditoría de #407 y restos de T-503 y #405, este PR). **El siguiente libre es T-537**; `git fetch` antes de numerar.
+**La tarea programada de esta madre es `trig_01W27QjMm5BD8aFm1EJ6wa17`** (cada dos horas, directa a ella), verificado con
+`list_triggers`: hay **una sola**. El id que traía el traspaso (`trig_01F1R2kVjmxMzpMWc9QKYbNd`) **era falso**. Comprobar,
+no heredar.
 
 ### Integrado en este turno (2026-11-21)
 
@@ -81,6 +95,17 @@ Lo último que entró: #404 a #409 (detalle en la [bitácora](../_bitacora/2026-
 - **#358** (`ea017f7`): ingreso por apodo, tope por identificador y apodo de miembros. **Auditoría independiente: sin bloqueantes.** El arreglo de la carrera (reservar antes de comprobar, dos sentencias en autocommit) falla cerrado y la prueba de 25 peticiones en paralelo **discrimina** el arreglo; el caso mixto ya estaba. El apodo es global en esta fase y lo contiene `guardia-de-apodos.ts` (consulta viva, falla cerrado) más el aborto al arrancar. Cola: T-361 (índice por `(tenant_acceso_id, apodo)`), aserción tautológica en `apodo-ingreso.e2e-spec.ts:505`, `tenant.count()` por intento sin caché, reserva no liberada si Better Auth da 5xx, sesiones huérfanas en Better Auth.
 
 ## 4. Pendientes del orquestador (prometido y no hecho)
+
+**Turno de la madre «…717uK» (2026-11-21, 14:20 UTC):**
+
+1. **Recoger lo que entreguen las dos sesiones vivas** (T-531/T-532 en `a`, T-546/T-538 en `b`) y auditar de forma
+   independiente lo que toque dinero: las dos lo tocan (ventas por moneda, saldo por cobrar). Ahí no se recorta (R13).
+2. **Al entrar T-531 y T-532, repartir T-555** (su mitad web) al carril `b`.
+3. **T-553 sigue abierta** y necesita `.github/`: va a la bandeja del propietario, no se rodea.
+4. **T-549 sigue en `backlog` a propósito.** Nadie la ha trabajado: el PR que llevaba su id en la rama solo la registraba.
+5. **La sesión muerta de T-531/T-532 dejó un permiso de Bash pendiente** en la conversación del propietario. Ya no sirve
+   para nada: su trabajo se relanzó entero en otra sesión. Puede denegarlo sin pensárselo.
+
 
 **Al relevarse la madre el 2026-11-21 a las 12:20 UTC:**
 
@@ -142,6 +167,16 @@ Bandeja completa en [`PENDIENTES-DEL-PROPIETARIO.md`](PENDIENTES-DEL-PROPIETARIO
 - El clasificador deniega `git push --force-with-lease` (así nació #399): para corregir el asunto de un commit ya empujado, recrear la rama y abrir otro PR. No hay atajo.
 - Pide siempre el mensaje de error completo de `tsc` antes de dar por buena una causa.
 - Una sesión hija sin `source_url` nace sin repositorio.
+- **Bautizar una rama con el id de una tarea que solo se está REGISTRANDO la cierra en falso.** cerrar-tarea.yml mira
+  únicamente el nombre de la rama, nunca el título, y marca esa tarea como hecha. Pasó con T-549: un PR de documentación
+  que solo la anotaba iba en una rama con su id, y solo se libró porque el validador estaba roto y abortó el cierre.
+  **Para un PR de docs que registra tareas sin hacerlas, usar en la rama el id de la tarea que ESE PR sí completa**, o
+  ninguno.
+- **Un check «cancelled» no es un fallo, pero tampoco es verde: hay que clasificarlo.** Lo más frecuente aquí es
+  `concurrency: cancel-in-progress: true` matando el run de un sha al empujar otro commit a la misma rama. Se confirma
+  mirando si hay un run posterior en la rama con otro sha, no suponiéndolo.
+- **El traspaso entre madres puede traer ids inventados.** El de la tarea programada venía mal el 2026-11-21. Comprobar
+  con `list_triggers` y no heredar un id de memoria.
 - Un 23505 de un disparador puede llegar como P2002 sin restricción. `issue_write` con `labels` reemplaza etiquetas.
 
 ## 8. Sin verificar (heredado)
