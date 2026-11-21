@@ -330,6 +330,21 @@ export const ParametrosDeCobro = z.object({
 });
 export type ParametrosDeCobro = z.infer<typeof ParametrosDeCobro>;
 
+/**
+ * Cuántos viajan en el archivo (T-582). **Solo cifras, ningún nombre**: la vista de cobros la lee
+ * quien tenga `cobro.ver` (también OPERACIONES) y acaba en un CSV exportable, mientras que los
+ * nombres y edades de los pasajeros exigen `archivo.ver` (ADR-0024 §3.7) y son dato personal
+ * (R10). Es la composición vendida del archivo, que `booking` obliga a cuadrar con su lista.
+ */
+export const PasajerosDeLaFilaDeCobro = z.object({
+  adultos: z.number().int().min(0),
+  ninos: z.number().int().min(0),
+  infantes: z.number().int().min(0),
+  /** `adultos + ninos + infantes`. */
+  total: z.number().int().min(0),
+});
+export type PasajerosDeLaFilaDeCobro = z.infer<typeof PasajerosDeLaFilaDeCobro>;
+
 /** Una fila de la vista «quién pagó y quién debe»: un archivo abierto. */
 export const FilaDeCobro = z.object({
   archivoId: Id,
@@ -337,6 +352,11 @@ export const FilaDeCobro = z.object({
   contactoId: Id,
   destino: z.string(),
   fechaSalida: FechaViaje,
+  /**
+   * Opcional en el esquema para que la web existente compile y las respuestas anteriores sigan
+   * siendo válidas; la API la envía siempre. El carril `b` (columna y CSV) puede volverla obligatoria.
+   */
+  pasajeros: PasajerosDeLaFilaDeCobro.optional(),
   total: Dinero,
   pagado: Dinero,
   saldo: Dinero,

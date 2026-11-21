@@ -479,6 +479,20 @@ describe('registrar un pago y leer el saldo (T-330)', () => {
       expect(r.texto).not.toMatch(/neto|margen/i);
     }
   });
+
+  it('la vista trae el recuento de pasajeros de cada archivo y ningún nombre (R10, T-582)', async () => {
+    const r = await comoMiembro('soloVer', 'GET', '/api/v1/cobros');
+    expect(r.estado).toBe(200);
+    const vista = VistaDeCobros.parse(r.json);
+    expect(vista.datos.length).toBeGreaterThan(0);
+    for (const f of vista.datos) {
+      expect(f.pasajeros).toBeDefined();
+      expect(f.pasajeros?.total).toBe(
+        (f.pasajeros?.adultos ?? 0) + (f.pasajeros?.ninos ?? 0) + (f.pasajeros?.infantes ?? 0),
+      );
+    }
+    expect(r.texto).not.toMatch(/"nombre"/);
+  });
 });
 
 describe('idempotencia (R5)', () => {
