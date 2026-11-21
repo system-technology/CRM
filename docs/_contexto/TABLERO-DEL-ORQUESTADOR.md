@@ -80,10 +80,21 @@ No hace falta construir el modo oscuro: hace falta **aplicarlo bien y que se lea
   WCAG 2.1 AA) y lo que cierra la tarea es **una prueba que falle si un token baja del umbral**. Límite dado:
   **la identidad no se toca**; se ajusta la luminancia, no la familia de color, y si hiciera falta cambiar el
   azul de acento, la sesión para y pregunta, porque eso es decisión de marca del propietario.
-- **T-560 (P2, encolada)** — el tema **no se aplica en el arranque** (`layout.tsx` no lee la preferencia ni pone
-  la clase: primera pintura siempre clara, con parpadeo) y el conmutador **solo está montado en
-  `barra-modulos.tsx`**, así que desde el ingreso no se puede cambiar. Se reparte al liberarse el carril `b`:
-  no conviene una tercera sesión pisando `apps/web`.
+- **T-560 — OJO, su diagnóstico original era FALSO y lo escribió la madre.** Decía que el tema no se aplica al
+  arrancar y que no se respeta `prefers-color-scheme`: **las dos cosas son falsas**. `layout.tsx` ya inyecta
+  `SCRIPT_ANTI_FOUC` en `<head>` con el nonce de la CSP, y el tema por defecto es `system`. Lo desmintió la
+  sesión de carril `b`, que **paró antes de escribir código** y lo midió en un navegador con la CSP real y la
+  hidratación abortada. El conmutador tampoco está «solo en la bandeja»: `MarcoDeTrabajo` monta `BarraModulos`
+  en **todo** el grupo `(app)` (avatar en escritorio, hoja «Más» en móvil). **Lo único que falta de verdad** es
+  el conmutador en las pantallas **públicas** y unas pruebas de comportamiento del anti-FOUC.
+  - **Cómo nació el error, porque importa más que el error:** un `grep` de `localStorage|classList` **limitado a
+    `layout.tsx`** no encontró nada, y eso se escribió como un hecho. El script vive en otro archivo y entra como
+    constante importada. **No encontrar algo con un grep estrecho no demuestra que no exista.** Antes de afirmar
+    una ausencia en el roadmap, buscar por el nombre del símbolo en todo `apps/web`, no por la implementación
+    donde uno supone que está.
+  - **Descubribilidad, el hallazgo que sí vale:** el propietario preguntó si se podían manejar ambos modos **sin
+    saber que el conmutador ya existe**. Si no lo encuentra quien conoce el producto, una agencia tampoco.
+
 - **Inventariado, sin tocar:** la portada de ingreso usa colores **fijos fuera de los tokens**
   (`#FDE68A`, `#C9A24B`, `bg-black/25` en `formulario-ingreso.tsx`), así que se ve igual en los dos modos. Es
   estética de marca, no un defecto de contraste: lo decide el propietario.
@@ -103,6 +114,31 @@ Quiere **un manual funcional de lo que ya existe, con fotos**, para poder enseñ
 
 **Hay dos sesiones en el carril `i`** (esta y la del relevo): tocan archivos distintos, pero el segundo PR quedará
 `behind` y habrá que ponerlo al día. Contar con esa vuelta.
+
+## 1.5 DOS premisas falsas seguidas, las dos escritas por la madre (2026-11-21)
+
+**Es un patrón, no mala suerte, y por eso está aquí y no enterrado en una tarea.** Las dos tareas que la madre
+redactó a partir de la revisión visual del propietario tenían el diagnóstico equivocado:
+
+| Tarea | Lo que la madre afirmó | Lo que resultó ser |
+|---|---|---|
+| **T-560** | «El tema no se aplica al arrancar; no se respeta `prefers-color-scheme`» | **Falso.** El anti-FOUC existe e inyecta con nonce; el tema por defecto es `system` |
+| **T-561** | «Hay tokens por debajo del umbral de contraste; ajustar luminancia» | **Falso.** Los 19 pares reales cumplen AA. El fallo era **14 tonos usados sin declarar**, que en Tailwind v4 no emiten CSS: la clase era inerte y en oscuro sobrevivía el color de claro, dejando un **botón destructivo a 2,34:1** |
+
+**La causa común:** la madre miró el código por encima (un `grep` estrecho, una lectura de `globals.css`) y
+escribió su hipótesis **como si fuera un diagnóstico**, en el roadmap, que es una de las cuatro fuentes de verdad.
+Las dos sesiones hijas lo midieron de verdad —una con el navegador y la CSP real, otra compilando el CSS con la
+Tailwind instalada— y las dos la desmintieron.
+
+**Lo que hay que hacer distinto, y es barato:** cuando el propietario reporta algo que se ve, **la tarea se
+escribe como SÍNTOMA y pregunta, no como diagnóstico**. «El propietario ve que los textos se pierden en la barra
+lateral y en las pantallas de trabajo; medir los contrastes reales y averiguar por qué» habría llevado al mismo
+sitio sin afirmar nada falso. El diagnóstico lo pone quien mide, no quien reparte.
+
+**Lo que SÍ funcionó, y hay que conservar:** pedir en cada encargo que **vean fallar la prueba** y que **declaren
+si alguna pasó en verde con el fallo puesto**. Es lo que hizo que las dos pararan en vez de implementar una
+premisa falsa, y lo que destapó el 2,34:1. Una de ellas declaró **tres** pruebas suyas que habrían entregado algo
+falso, incluida una que fallaba **por el motivo equivocado** y escondía justo el número que importaba.
 
 ## 2. Reglas operativas que no se olvidan
 
@@ -318,6 +354,12 @@ Bandeja completa en [`PENDIENTES-DEL-PROPIETARIO.md`](PENDIENTES-DEL-PROPIETARIO
 
 - **Una sesión bloqueada en un permiso NO está muerta: está esperando, y su carril sigue ocupado.** `connection_status: disconnected` y `status_bucket: BLOCKED` dicen **dónde está**, no si va a seguir. Comprobar que no ha publicado nada **tampoco basta**. Antes de repartir su tarea a otra: **archivarla** (así no revive) **o esperarla**. Verificado el 2026-11-21 por el camino caro: se reasignó T-531/T-532 dándola por muerta, la sesión revivió, la implementó entera y abrió un PR duplicado.
 - **El medidor de consumo sí funciona MIRANDO A LAS HIJAS, aunque la madre no vea el suyo en caliente.** `get_session` de una hija trae `context_usage.used_tokens` y `usage.cost_usd` reales (verificado: 226.328 tokens y 1,22 USD en una Sonnet). Así que el consumo de la flota **se puede vigilar**; lo que no se ve en el momento es el propio. No confundir las dos cosas, y no dejar de mirar el propio por eso.
+
+- **Un hex en el cuerpo de un commit rompe `convencion-de-commits`.** commitlint lee `#abc123` como referencia a
+  incidencia (`#` es prefijo de issue) y dispara `footer-leading-blank` aunque la línea en blanco antes de los
+  trailers esté bien puesta. Escribir los colores por el nombre del token. Verificado por la sesión de T-561.
+- **`mergeable_state: unstable` NO significa rojo.** Puede ser simplemente que falte un check por terminar.
+  Se clasifica mirando los `check-runs`, igual que un `cancelled`: ni se da por verde ni se da por rojo.
 
 ## 8. Sin verificar (heredado)
 
