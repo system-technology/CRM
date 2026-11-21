@@ -66,6 +66,53 @@ describe('GuardaSesion (T-126)', () => {
     expect(screen.queryByText('contenido')).toBeNull();
   });
 
+  describe('salida desde el error de sesión (T-322)', () => {
+    const caida = () =>
+      vi.spyOn(authApi, 'obtenerSesionActualApi').mockRejectedValue(new Error('API caída'));
+
+    it('con la API caída ofrece «Ir a ingresar» hacia la ruta pedida, además de Reintentar', async () => {
+      ruta = '/pipeline';
+      caida();
+      render(<GuardaSesion>contenido</GuardaSesion>);
+      const enlace = await screen.findByTestId('guarda-sesion-ir-a-ingresar');
+      expect(enlace.textContent).toBe('Ir a ingresar');
+      expect(enlace.getAttribute('href')).toBe('/ingresar?redirigir=%2Fpipeline');
+      expect(screen.getByRole('button', { name: 'Reintentar' })).toBeTruthy();
+      expect(replace).not.toHaveBeenCalled();
+    });
+
+    it('en una ruta que no existe (404) también hay salida', async () => {
+      ruta = '/esta-ruta-no-existe';
+      caida();
+      render(<GuardaSesion>contenido</GuardaSesion>);
+      const enlace = await screen.findByTestId('guarda-sesion-ir-a-ingresar');
+      expect(enlace.getAttribute('href')).toBe('/ingresar?redirigir=%2Festa-ruta-no-existe');
+    });
+
+    it('en la raíz no añade redirigir', async () => {
+      ruta = '/';
+      caida();
+      render(<GuardaSesion>contenido</GuardaSesion>);
+      expect((await screen.findByTestId('guarda-sesion-ir-a-ingresar')).getAttribute('href')).toBe(
+        '/ingresar',
+      );
+    });
+
+    it.each(['//evil.com', '/\\evil.com', '/.//evil.com'])(
+      'nunca es un redirect abierto: %s se descarta',
+      async (hostil) => {
+        ruta = hostil;
+        caida();
+        render(<GuardaSesion>contenido</GuardaSesion>);
+        const href = (await screen.findByTestId('guarda-sesion-ir-a-ingresar')).getAttribute(
+          'href',
+        );
+        expect(href).toBe('/ingresar');
+        expect(href).not.toContain('evil');
+      },
+    );
+  });
+
   it('las rutas públicas no consultan la sesión', () => {
     ruta = '/ingresar';
     const espia = vi.spyOn(authApi, 'obtenerSesionActualApi');

@@ -1,8 +1,10 @@
 'use client';
 
 import React, { useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { AuthApiError, obtenerSesionActualApi, usaAuthReal } from '../../lib/auth-api';
+import { construirUrlSalidaAIngreso } from '../../lib/errores-sistema';
 import { destinoDeIngreso, esRutaPublica } from '../../lib/rutas-publicas';
 
 type Estado = 'verificando' | 'autenticado' | 'redirigiendo' | 'error';
@@ -50,15 +52,24 @@ export function GuardaSesion({ children }: { children: React.ReactNode }) {
       <div role="alert" data-testid="guarda-sesion-error" className="mx-auto max-w-md p-6">
         <p className="font-semibold">No pudimos verificar tu sesión</p>
         <p className="mt-1 text-sm text-neutral-600">
-          El servidor no respondió. Revisa tu conexión e inténtalo de nuevo.
+          El servidor no respondió. Revisa tu conexión y reintenta, o ve a ingresar de nuevo.
         </p>
-        <button
-          type="button"
-          onClick={() => void verificar()}
-          className="mt-3 min-h-[44px] rounded-md bg-neutral-900 px-4 text-sm font-semibold text-white"
-        >
-          Reintentar
-        </button>
+        <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+          <button
+            type="button"
+            onClick={() => void verificar()}
+            className="min-h-[44px] rounded-md bg-neutral-900 px-4 text-sm font-semibold text-white focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 focus-visible:outline-none"
+          >
+            Reintentar
+          </button>
+          <Link
+            href={construirUrlSalidaAIngreso(pathname)}
+            data-testid="guarda-sesion-ir-a-ingresar"
+            className="inline-flex min-h-[44px] items-center justify-center rounded-md border border-neutral-300 px-4 text-sm font-semibold text-neutral-800 focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 focus-visible:outline-none"
+          >
+            Ir a ingresar
+          </Link>
+        </div>
       </div>
     );
   }
