@@ -9576,11 +9576,12 @@ tasks:
     phase: 1
     priority: P2
     effort: S
-    status: backlog
+    status: in_progress
     acceptance:
       - "Ingreso con correo o usuario y edicion del usuario de un miembro (#405) verificados a 390 px contra la API real, no simulada; quedo sin verificar al integrar"
     source: "cierre del segundo lote, 2026-11-21"
     created_at: 2026-11-21T20:00:00.000Z
+    notes: "Prueba escrita (apps/web/e2e/08-ingreso-por-usuario.e2e-spec.ts); verificacion pendiente del job navegador del CI del PR. No se corrio en local."
     owner: frontend
   - id: T-512
     title: "Ingreso con correo o usuario (apodo) de punta a punta"
