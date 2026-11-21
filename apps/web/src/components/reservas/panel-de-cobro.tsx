@@ -12,7 +12,9 @@ import {
   ETIQUETA_TIPO_DE_MOVIMIENTO,
   TONO_ESTADO_DE_COBRO,
   esSobrepagoSinConfirmar,
+  fraseDeSaldo,
   mensajeDeErrorDeCobro,
+  saldoEnPantalla,
 } from '../../lib/cobros-logica';
 import { formatearDinero, formatearFecha } from '../../lib/formato';
 import {
@@ -88,6 +90,16 @@ export function PanelDeCobro({ archivoId, numero, zona }: PanelDeCobroProps) {
   const [sobrepago, setSobrepago] = useState(false);
   const [confirmacion, setConfirmacion] = useState<string | null>(null);
 
+  /**
+   * La clave de idempotencia del pago que se está intentando (R5). Vive **aquí**, no en el
+   * diálogo: si viviera en el diálogo, cerrarlo y volver a abrirlo daría una clave nueva y el
+   * reintento de un pago que el servidor ya guardó —pero cuya respuesta se perdió— cobraría dos
+   * veces. Y el asesor no puede deshacerlo: reversar es de `cobro.corregir` (ADR-0034 §6).
+   *
+   * Solo se renueva tras un alta confirmada: a partir de ahí el siguiente ya es otro pago.
+   */
+  const [claveDelIntento, setClaveDelIntento] = useState(() => crypto.randomUUID());
+
   useEffect(() => {
     if (cargandoPermisos || !puedeVer) return;
     let activo = true;
@@ -102,6 +114,23 @@ export function PanelDeCobro({ archivoId, numero, zona }: PanelDeCobroProps) {
     };
   }, [archivoId, cargandoPermisos, puedeVer, intento]);
 
+  /**
+   * Relectura del cobro después de un envío fallido: el pago pudo quedar guardado aunque la
+   * respuesta se perdiera, y la pantalla no debe seguir afirmando un saldo viejo. No desmonta el
+   * diálogo (el estado sigue siendo «listo»), así que lo escrito y el error siguen a la vista.
+   */
+  const releerTrasFallo = async () => {
+    try {
+      setEstado({ tipo: 'listo', cobro: await obtenerCobroDelArchivo(archivoId) });
+    } catch (e) {
+      // No se traga: se añade a lo que la asesora ya está leyendo.
+      setErrorDialogo(
+        (previo) =>
+          `${previo ?? ''} Tampoco se pudo releer el saldo: ${mensajeDeErrorDeCobro(e)} Revisa el historial antes de reintentar.`,
+      );
+    }
+  };
+
   const enviar = async (pago: RegistrarPago) => {
     setEnviando(true);
     setErrorDialogo(null);
@@ -109,14 +138,18 @@ export function PanelDeCobro({ archivoId, numero, zona }: PanelDeCobroProps) {
       const resultado = await registrarPago(archivoId, pago);
       // El saldo que se pinta es el que devuelve el servidor, no una resta local.
       setEstado({ tipo: 'listo', cobro: resultado.cobro });
+      // El pago quedó: el siguiente que se registre es otro pago, con otra clave.
+      setClaveDelIntento(crypto.randomUUID());
       setAbierto(false);
       setSobrepago(false);
       setConfirmacion(
-        `Pago registrado por ${formatearDinero(resultado.movimiento.monto)}. Falta por cobrar ${formatearDinero(resultado.cobro.saldo)}.`,
+        `Pago registrado por ${formatearDinero(resultado.movimiento.monto)}. ${fraseDeSaldo(resultado.cobro)}`,
       );
     } catch (e) {
       setSobrepago(esSobrepagoSinConfirmar(e));
       setErrorDialogo(mensajeDeErrorDeCobro(e));
+      // La clave NO cambia: reintentar este mismo pago no puede cobrar dos veces.
+      await releerTrasFallo();
     } finally {
       setEnviando(false);
     }
@@ -192,11 +225,10 @@ export function PanelDeCobro({ archivoId, numero, zona }: PanelDeCobroProps) {
         <>
           <dl className="grid grid-cols-2 gap-x-3 gap-y-2">
             <div className="col-span-2">
+              {/* El signo del saldo se dice con palabras, no con un «−» delante del importe. */}
               <Cifra
-                etiqueta={
-                  estado.cobro.situacion === 'SALDO_A_FAVOR' ? 'Saldo a favor' : 'Falta por cobrar'
-                }
-                valor={formatearDinero(estado.cobro.saldo)}
+                etiqueta={saldoEnPantalla(estado.cobro).etiqueta}
+                valor={formatearDinero(saldoEnPantalla(estado.cobro).dinero)}
                 destacada
               />
             </div>
@@ -298,6 +330,7 @@ export function PanelDeCobro({ archivoId, numero, zona }: PanelDeCobroProps) {
       {abierto && estado.tipo === 'listo' && (
         <DialogoRegistrarPago
           numero={numero}
+          claveIdempotencia={claveDelIntento}
           moneda={estado.cobro.moneda}
           saldo={estado.cobro.saldo}
           zona={zona}

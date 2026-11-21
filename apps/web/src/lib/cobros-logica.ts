@@ -14,11 +14,14 @@
 import { MONEDAS, Money, type CodigoMoneda } from '@viajapro/domain';
 import {
   MONTO_MAXIMO_DE_COBRO,
+  type CobroDelArchivo,
+  type Dinero,
   type EstadoDeCobro,
   type MedioDePago,
   type SituacionDelSaldo,
   type TipoDeMovimientoDeCobro,
 } from '@viajapro/contracts';
+import { formatearDinero } from './formato';
 
 /* ---------- Etiquetas (lenguaje ubicuo, §9 del ADR-0034) ---------- */
 
@@ -76,6 +79,42 @@ export const CLASE_TONO: Record<TonoDeCobro, string> = {
   alerta: 'bg-alerta-50 text-alerta-700 dark:bg-alerta-600/15 dark:text-alerta-600',
   neutro: 'bg-neutral-100 text-neutral-800 dark:bg-neutral-800 dark:text-neutral-200',
 };
+
+/* ---------- El saldo, que llega CON SIGNO ---------- */
+
+/**
+ * El mismo importe sin signo, por manipulación de texto: el dinero no pasa por coma flotante (R8).
+ */
+export function sinSigno(dinero: Dinero): Dinero {
+  return dinero.unidades.startsWith('-')
+    ? { ...dinero, unidades: dinero.unidades.slice(1) }
+    : dinero;
+}
+
+type SaldoYSituacion = Pick<CobroDelArchivo, 'saldo' | 'situacion'>;
+
+/**
+ * Cómo se enseña el saldo.
+ *
+ * El dominio lo devuelve con signo (`packages/domain/src/cobro.ts`: «positivo = el viajero debe;
+ * negativo = saldo a favor»). En pantalla ese signo se convierte en **palabras**, nunca en un
+ * «Saldo a favor −$ 100.000», que se lee como una deuda con el signo al revés. El importe que se
+ * pinta va siempre en positivo y es la etiqueta la que dice de qué lado está el dinero.
+ */
+export function saldoEnPantalla(cobro: SaldoYSituacion): { etiqueta: string; dinero: Dinero } {
+  return cobro.situacion === 'SALDO_A_FAVOR'
+    ? { etiqueta: 'Saldo a favor', dinero: sinSigno(cobro.saldo) }
+    : { etiqueta: 'Falta por cobrar', dinero: cobro.saldo };
+}
+
+/** La frase que cierra la confirmación de un pago. Nunca «Falta por cobrar» un importe negativo. */
+export function fraseDeSaldo(cobro: SaldoYSituacion): string {
+  if (cobro.situacion === 'SALDO_A_FAVOR') {
+    return `Queda saldo a favor de ${formatearDinero(sinSigno(cobro.saldo))}.`;
+  }
+  if (cobro.situacion === 'PAGADO') return 'El archivo queda pagado.';
+  return `Falta por cobrar ${formatearDinero(cobro.saldo)}.`;
+}
 
 /* ---------- El monto que escribe la asesora ---------- */
 

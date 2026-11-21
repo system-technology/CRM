@@ -54,15 +54,21 @@ describe('PanelDeCobro', () => {
       expect(filas[1]!.textContent).toContain('Transferencia');
     });
 
-    it('con saldo a favor cambia la etiqueta del saldo en vez de pintar un negativo sin explicar', async () => {
+    it('con saldo a favor enseña el importe EN POSITIVO: el signo se dice con palabras', async () => {
       const aFavor: CobroDelArchivo = {
         ...CON_PAGOS,
         situacion: 'SALDO_A_FAVOR',
+        // El dominio devuelve el saldo con signo: negativo = saldo a favor.
         saldo: { unidades: '-100000', moneda: 'COP' },
       };
       obtenerCobroDelArchivo.mockResolvedValue(aFavor);
       pintar();
       expect(await screen.findByText('Saldo a favor')).toBeTruthy();
+      // Lo que falla si se pasa el saldo crudo a formatearDinero: «Saldo a favor −$ 100.000»,
+      // que se lee como una deuda con el signo al revés.
+      expect(screen.getByText('$ 100.000')).toBeTruthy();
+      expect(screen.getByTestId('panel-de-cobro').textContent).not.toMatch(/[-−]\s*\$/);
+      expect(screen.queryByText('Falta por cobrar')).toBeNull();
     });
   });
 
@@ -190,6 +196,64 @@ describe('PanelDeCobro', () => {
       expect(cuerpo['medio']).toBe('TRANSFERENCIA');
       expect(cuerpo['pagadoEl']).toMatch(/^\d{4}-\d{2}-\d{2}$/);
       expect(cuerpo['claveIdempotencia']).toMatch(/^[0-9a-f-]{36}$/);
+    });
+
+    it('tras un fallo de red, reintentar NO cobra dos veces aunque se cierre el diálogo', async () => {
+      // El POST llegó y se guardó; la respuesta se perdió. La asesora ve un error de conexión.
+      registrarPago.mockRejectedValueOnce({ code: 'ERROR_CONEXION', status: 0 });
+      pintar();
+      fireEvent.click(await abrirYLlenar('500.000'));
+      expect((await screen.findByTestId('error-registrar-pago')).textContent).toContain(
+        'No se pudo conectar',
+      );
+
+      // Cierra el diálogo —convencida de que no se guardó— y vuelve a registrar el mismo pago.
+      fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Volver' }));
+      registrarPago.mockResolvedValue({
+        movimiento: { ...CON_PAGOS.movimientos[0]!, monto: { unidades: '500000', moneda: 'COP' } },
+        cobro: CON_PAGOS,
+      });
+      fireEvent.click(await abrirYLlenar('500.000'));
+
+      await waitFor(() => expect(registrarPago).toHaveBeenCalledTimes(2));
+      const primera = registrarPago.mock.calls[0]![1] as Record<string, unknown>;
+      const segunda = registrarPago.mock.calls[1]![1] as Record<string, unknown>;
+      // Misma clave ⇒ el servidor devuelve la fila que ya existe en vez de crear otra (R5).
+      // El asesor no podría deshacerlo: reversar es de `cobro.corregir` (ADR-0034 §6).
+      expect(segunda['claveIdempotencia']).toBe(primera['claveIdempotencia']);
+    });
+
+    it('tras un alta confirmada, el siguiente pago lleva una clave NUEVA', async () => {
+      registrarPago.mockResolvedValue({
+        movimiento: { ...CON_PAGOS.movimientos[0]!, monto: { unidades: '500000', moneda: 'COP' } },
+        cobro: CON_PAGOS,
+      });
+      pintar();
+      fireEvent.click(await abrirYLlenar('500.000'));
+      await screen.findByTestId('pago-registrado');
+      fireEvent.click(await abrirYLlenar('300.000'));
+
+      await waitFor(() => expect(registrarPago).toHaveBeenCalledTimes(2));
+      const primera = registrarPago.mock.calls[0]![1] as Record<string, unknown>;
+      const segunda = registrarPago.mock.calls[1]![1] as Record<string, unknown>;
+      expect(segunda['claveIdempotencia']).not.toBe(primera['claveIdempotencia']);
+    });
+
+    it('tras un fallo relee el cobro, para no dejar en pantalla un saldo que ya cambió', async () => {
+      registrarPago.mockRejectedValueOnce({ code: 'ERROR_CONEXION', status: 0 });
+      obtenerCobroDelArchivo.mockResolvedValueOnce(CON_PAGOS).mockResolvedValue({
+        ...CON_PAGOS,
+        pagado: { unidades: '4000000', moneda: 'COP' },
+        saldo: { unidades: '2200000', moneda: 'COP' },
+      });
+      pintar();
+      fireEvent.click(await abrirYLlenar('500.000'));
+
+      // Se pidió otra vez: el pago pudo haberse guardado aunque la respuesta se perdiera.
+      await waitFor(() => expect(obtenerCobroDelArchivo).toHaveBeenCalledTimes(2));
+      // Y el diálogo sigue abierto, con el error a la vista y lo escrito sin perderse.
+      expect(screen.getByRole('dialog')).toBeTruthy();
+      expect(screen.getByTestId('error-registrar-pago')).toBeTruthy();
     });
 
     it('un monto mal escrito ni siquiera llega a la API', async () => {

@@ -15,6 +15,12 @@ import { CampoFecha } from '../comun/campo-fecha';
 
 interface DialogoRegistrarPagoProps {
   numero: number;
+  /**
+   * La clave de idempotencia del intento, que **pone el panel** y sobrevive a cerrar y reabrir
+   * este diálogo (R5). Generarla aquí haría que reabrir diera una clave nueva y que el reintento
+   * de un pago ya guardado cobrara dos veces.
+   */
+  claveIdempotencia: string;
   moneda: Dinero['moneda'];
   /** Lo que falta por cobrar cuando se abre el diálogo: contexto, no un valor que se envíe. */
   saldo: Dinero;
@@ -44,6 +50,7 @@ const CAMPO =
  */
 export function DialogoRegistrarPago({
   numero,
+  claveIdempotencia,
   moneda,
   saldo,
   zona,
@@ -63,11 +70,6 @@ export function DialogoRegistrarPago({
   const [error, setError] = useState<string | null>(null);
   const contenedorRef = useFocoModal<HTMLDivElement>({ abierto: true, alCerrar: onCerrar });
 
-  /**
-   * Una sola clave por intento de pago, estable entre reintentos (R5): si la red se corta después
-   * de que el servidor guardó, reintentar devuelve la misma fila en lugar de cobrar dos veces.
-   */
-  const [claveIdempotencia] = useState(() => crypto.randomUUID());
   const id = useId();
 
   const registrar = (e: React.FormEvent) => {
@@ -220,7 +222,8 @@ export function DialogoRegistrarPago({
               onChange={(e) => setNota(e.target.value)}
             />
             <p className="mt-1 text-[11px] text-neutral-600 dark:text-neutral-400">
-              No escribas números de tarjeta: no se guardan.
+              No escribas números de tarjeta: quedan guardados en el historial y no se pueden
+              borrar.
             </p>
           </div>
 

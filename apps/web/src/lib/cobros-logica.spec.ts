@@ -8,8 +8,11 @@ import {
   admiteCentavos,
   decimalesDe,
   esSobrepagoSinConfirmar,
+  fraseDeSaldo,
   hoyEnLaAgencia,
   mensajeDeErrorDeCobro,
+  saldoEnPantalla,
+  sinSigno,
 } from './cobros-logica';
 import { formatearDinero } from './formato';
 
@@ -108,6 +111,60 @@ describe('aUnidadesMinimas — la cifra que escribe la asesora', () => {
         ok: true,
         unidades: '999999999999999',
       });
+    });
+  });
+});
+
+describe('el saldo llega con signo y en pantalla se dice con palabras', () => {
+  it('saldo a favor: importe en positivo y etiqueta que explica de quién es el dinero', () => {
+    const r = saldoEnPantalla({
+      situacion: 'SALDO_A_FAVOR',
+      saldo: { unidades: '-100000', moneda: 'COP' },
+    });
+    expect(r.etiqueta).toBe('Saldo a favor');
+    expect(r.dinero.unidades).toBe('100000');
+    expect(formatearDinero(r.dinero)).not.toContain('-');
+  });
+
+  it('deuda normal: el importe se deja tal cual', () => {
+    const r = saldoEnPantalla({
+      situacion: 'PARCIAL',
+      saldo: { unidades: '2700000', moneda: 'COP' },
+    });
+    expect(r.etiqueta).toBe('Falta por cobrar');
+    expect(r.dinero.unidades).toBe('2700000');
+  });
+
+  it('sinSigno no toca lo positivo ni pasa por coma flotante', () => {
+    expect(sinSigno({ unidades: '999999999999999', moneda: 'COP' }).unidades).toBe(
+      '999999999999999',
+    );
+    expect(sinSigno({ unidades: '-999999999999999', moneda: 'COP' }).unidades).toBe(
+      '999999999999999',
+    );
+  });
+
+  describe('la frase que cierra la confirmación', () => {
+    it('nunca dice «Falta por cobrar» un importe negativo', () => {
+      const frase = fraseDeSaldo({
+        situacion: 'SALDO_A_FAVOR',
+        saldo: { unidades: '-100000', moneda: 'COP' },
+      });
+      expect(frase).toContain('saldo a favor');
+      expect(frase).toContain('$ 100.000');
+      expect(frase).not.toContain('Falta por cobrar');
+      expect(frase).not.toMatch(/[-−]\s*\$/);
+    });
+
+    it('un archivo saldado lo dice, en vez de «Falta por cobrar $ 0»', () => {
+      const frase = fraseDeSaldo({ situacion: 'PAGADO', saldo: { unidades: '0', moneda: 'COP' } });
+      expect(frase).toBe('El archivo queda pagado.');
+    });
+
+    it('con saldo pendiente dice cuánto falta', () => {
+      expect(
+        fraseDeSaldo({ situacion: 'PARCIAL', saldo: { unidades: '2700000', moneda: 'COP' } }),
+      ).toBe('Falta por cobrar $ 2.700.000.');
     });
   });
 });
