@@ -29,6 +29,7 @@ vi.mock('../../../lib/crm-api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../../lib/crm-api')>();
   return {
     ...actual,
+    obtenerFichaDeContacto: vi.fn(),
     listarContactos: vi.fn().mockResolvedValue({
       datos: [
         {
@@ -47,6 +48,7 @@ vi.mock('../../../lib/crm-api', async (importOriginal) => {
   };
 });
 
+import { listarContactos, obtenerFichaDeContacto } from '../../../lib/crm-api';
 import CotizadorPage from './page';
 
 describe('Cotizador con contexto del chat y un solo total (T-321)', () => {
@@ -65,6 +67,59 @@ describe('Cotizador con contexto del chat y un solo total (T-321)', () => {
       );
     });
     expect(screen.getByTestId('volver-al-chat').getAttribute('href')).toBe('/bandeja/conv-77');
+  });
+
+  it('si el contacto no viene en la primera página del listado, pide su ficha y lo deja elegible', async () => {
+    vi.mocked(listarContactos).mockResolvedValueOnce({
+      datos: [],
+      pageInfo: { nextCursor: null, hasMore: true },
+    });
+    vi.mocked(obtenerFichaDeContacto).mockResolvedValue({
+      contacto: {
+        id: CONTACTO_ID,
+        nombre: 'Andrea Gómez',
+        telefono: '+573001112233',
+        correo: null,
+        etiquetas: [],
+        preferencias: 'no debe salir de la ficha',
+        consentimientos: ['TRANSACCIONAL'],
+        creadoEn: '2026-10-01T00:00:00.000Z',
+        ultimoContactoEn: null,
+      },
+      oportunidadActual: null,
+      cotizaciones: [],
+      archivosDeViajeIds: [],
+      notasInternas: [],
+    });
+
+    render(<CotizadorPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('contexto-texto').textContent).toBe(
+        'Cotizando para Andrea Gómez · desde la conversación',
+      );
+    });
+    expect(obtenerFichaDeContacto).toHaveBeenCalledWith(CONTACTO_ID);
+    // Y al guardar, ese contacto está elegido (la lista no lo traía).
+    const guardar = await screen.findByRole('button', { name: 'Guardar cotización' });
+    await waitFor(() => expect((guardar as HTMLButtonElement).disabled).toBe(false));
+    act(() => {
+      fireEvent.click(guardar);
+    });
+    const dialogo = await screen.findByRole('dialog', { name: 'Guardar Cotización Oficial' });
+    await waitFor(() => {
+      expect(within(dialogo).getByLabelText<HTMLSelectElement>(/Contacto del viajero/).value).toBe(
+        CONTACTO_ID,
+      );
+    });
+  });
+
+  it('con el contacto en el listado no pide su ficha (una lectura auditada menos)', async () => {
+    render(<CotizadorPage />);
+    await waitFor(() => {
+      expect(screen.getByTestId('contexto-texto').textContent).toContain('Felipe Morales');
+    });
+    expect(obtenerFichaDeContacto).not.toHaveBeenCalled();
   });
 
   it('sin contexto en la URL no pinta la banda', async () => {

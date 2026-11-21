@@ -22,12 +22,13 @@ import {
   acomodacionesParaElSelector,
   requiereAvisoImpuestoMuelle,
 } from '../../../lib/cotizador-logica';
-import type {
-  Acomodacion,
+import {
+  ContactoDeLista as EsquemaContactoDeLista,
+  type ContactoDeLista,
+  type Acomodacion,
   CotizacionCalculada,
   CotizacionDeSalida,
   SalidaPublicada,
-  ContactoDeLista,
 } from '@viajapro/contracts';
 import { formatearDinero } from '../../../lib/api';
 import { DistintivoDatosDemo } from '../../../components/comun/distintivo-datos-demo';
@@ -68,7 +69,7 @@ import {
   type OpcionDeSalidaDePaquete,
   CatalogoApiError,
 } from '../../../lib/catalogo-api';
-import { listarContactos } from '../../../lib/crm-api';
+import { listarContactos, obtenerFichaDeContacto } from '../../../lib/crm-api';
 import { guardarCotizacionApi } from '../../../lib/cotizaciones-api';
 import {
   armarCuerpoGuardarCotizacion,
@@ -155,6 +156,10 @@ function ContenidoCotizador() {
   const [contactosDisponibles, setContactosDisponibles] = useState<ContactoDeLista[]>([]);
   const [contactoIdInicial, setContactoIdInicial] = useState<string>('');
   const [contactosCargados, setContactosCargados] = useState(false);
+  // El contacto de la URL cuando no viene en la primera página del listado (con cientos de
+  // contactos casi nunca viene): se pide su ficha, solo entonces.
+  const [contactoFueraDeLista, setContactoFueraDeLista] = useState<ContactoDeLista | null>(null);
+  const [fichaResuelta, setFichaResuelta] = useState(false);
   const [modalGuardarAbierto, setModalGuardarAbierto] = useState(false);
   const [guardandoCotizacion, setGuardandoCotizacion] = useState(false);
   const [errorGuardar, setErrorGuardar] = useState<{
@@ -165,10 +170,47 @@ function ContenidoCotizador() {
 
   const { puedeEscribirCotizacion } = usePermisos();
 
+  // Los contactos que se pueden elegir al guardar: el de la URL siempre está, venga o no en la lista.
+  const contactosParaElegir = useMemo(
+    () =>
+      contactoFueraDeLista && !contactosDisponibles.some((c) => c.id === contactoFueraDeLista.id)
+        ? [contactoFueraDeLista, ...contactosDisponibles]
+        : contactosDisponibles,
+    [contactoFueraDeLista, contactosDisponibles],
+  );
+
   // Para quién se cotiza: solo si la URL trae el contacto (no se adivina por el primero de la lista).
-  const nombreDelContexto = contactoParam
-    ? (contactosDisponibles.find((c) => c.id === contactoParam)?.nombre ?? null)
+  const contactoDelContexto = contactoParam
+    ? (contactosParaElegir.find((c) => c.id === contactoParam) ?? null)
     : null;
+  const nombreDelContexto = contactoDelContexto
+    ? (contactoDelContexto.nombre ?? contactoDelContexto.telefono)
+    : null;
+  const contactoEnLista = contactosDisponibles.some((c) => c.id === contactoParam);
+  const resolviendoContacto =
+    Boolean(contactoParam) && !nombreDelContexto && !(contactosCargados && fichaResuelta);
+
+  useEffect(() => {
+    if (!contactoParam || !contactosCargados) return;
+    if (contactoEnLista) {
+      setFichaResuelta(true);
+      return;
+    }
+    let vigente = true;
+    obtenerFichaDeContacto(contactoParam)
+      .then((ficha) => {
+        if (vigente) setContactoFueraDeLista(EsquemaContactoDeLista.parse(ficha.contacto));
+      })
+      .catch((err: unknown) => {
+        console.warn('No se pudo leer el contacto de la cotización:', err);
+      })
+      .finally(() => {
+        if (vigente) setFichaResuelta(true);
+      });
+    return () => {
+      vigente = false;
+    };
+  }, [contactoParam, contactosCargados, contactoEnLista]);
 
   // Opciones de salida del producto (turno, modalidad; ADR-0017 §3.1). Con opciones activas la
   // API exige `opcionDeSalidaId`: el asesor elige antes de cotizar y no se adivina por él.
@@ -526,7 +568,7 @@ function ContenidoCotizador() {
                 <h1 className="text-xl font-black text-neutral-900 dark:text-white">
                   Cotizador Comercial
                 </h1>
-                <p className="text-xs text-neutral-500">
+                <p className="text-sm text-neutral-500">
                   Cotización oficial por composición de grupo y tarifario vigente
                 </p>
               </div>
@@ -536,7 +578,7 @@ function ContenidoCotizador() {
               <DistintivoDatosDemo />
               <Link
                 href="/catalogo"
-                className="flex min-h-[44px] items-center gap-1.5 rounded-xl border border-neutral-200 bg-white px-3 py-2 text-xs font-semibold text-neutral-700 hover:bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300"
+                className="flex min-h-[44px] items-center gap-1.5 rounded-xl border border-neutral-200 bg-white px-3 py-2 text-sm font-semibold text-neutral-700 hover:bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300"
               >
                 <Compass className="h-4 w-4" />
                 <span>Ver Salidas en Catálogo</span>
@@ -547,7 +589,7 @@ function ContenidoCotizador() {
           {/* Para quién se cotiza y desde qué chat, con la salida de vuelta al chat */}
           <BandaDeContexto
             nombre={nombreDelContexto}
-            cargandoNombre={Boolean(contactoParam) && !contactosCargados}
+            cargandoNombre={resolviendoContacto}
             conversacionId={conversacionParam}
           />
 
@@ -583,7 +625,7 @@ function ContenidoCotizador() {
                 {/* Sidebar de Parámetros (4 col) */}
                 <aside className="lg:col-span-4">
                   <div className="min-w-0 space-y-4 rounded-2xl border border-neutral-200 bg-white p-3.5 shadow-xs sm:p-5 dark:border-neutral-800 dark:bg-neutral-900">
-                    <h2 className="text-xs font-bold text-neutral-500">
+                    <h2 className="text-sm font-bold text-neutral-500">
                       Parámetros de la cotización
                     </h2>
 
@@ -591,7 +633,7 @@ function ContenidoCotizador() {
                     <div>
                       <label
                         htmlFor="select-paquete-cotizador"
-                        className="block text-xs font-semibold text-neutral-700 dark:text-neutral-300"
+                        className="block text-sm font-semibold text-neutral-700 dark:text-neutral-300"
                       >
                         Paquete Turístico
                       </label>
@@ -602,7 +644,7 @@ function ContenidoCotizador() {
                         data-origen={usarReal ? 'api' : 'maqueta'}
                         value={paqueteId}
                         onChange={(e) => setPaqueteId(e.target.value)}
-                        className="focus:border-acento-600 focus-visible:ring-acento-600 mt-1.5 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white p-2.5 text-xs text-neutral-900 shadow-2xs focus-visible:ring-2 focus-visible:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                        className="focus:border-acento-600 focus-visible:ring-acento-600 mt-1.5 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white p-2.5 text-sm text-neutral-900 shadow-2xs focus-visible:ring-2 focus-visible:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                       >
                         {paquetesDisponibles.map((p) => (
                           <option key={p.id} value={p.id}>
@@ -617,7 +659,7 @@ function ContenidoCotizador() {
                       <p
                         role="alert"
                         data-testid="error-opciones-salida"
-                        className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-800"
+                        className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800"
                       >
                         No se pudieron cargar las opciones de salida del producto: {errorOpciones}{' '}
                         Vuelve a elegir el paquete o recarga la página.
@@ -627,7 +669,7 @@ function ContenidoCotizador() {
                       <div data-testid="selector-opcion-salida">
                         <label
                           htmlFor="select-opcion-salida-cotizador"
-                          className="block text-xs font-semibold text-neutral-700 dark:text-neutral-300"
+                          className="block text-sm font-semibold text-neutral-700 dark:text-neutral-300"
                         >
                           Opción de salida
                         </label>
@@ -638,7 +680,7 @@ function ContenidoCotizador() {
                           required
                           aria-invalid={faltaOpcion}
                           aria-describedby={faltaOpcion ? 'aviso-elegir-opcion' : undefined}
-                          className="focus:border-acento-600 focus-visible:ring-acento-600 mt-1.5 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white p-2.5 text-xs text-neutral-900 shadow-2xs focus-visible:ring-2 focus-visible:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                          className="focus:border-acento-600 focus-visible:ring-acento-600 mt-1.5 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white p-2.5 text-sm text-neutral-900 shadow-2xs focus-visible:ring-2 focus-visible:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                         >
                           <option value="">Elige una opción…</option>
                           {opcionesActivas.map((o) => (
@@ -653,7 +695,7 @@ function ContenidoCotizador() {
                             id="aviso-elegir-opcion"
                             role="alert"
                             data-testid="aviso-elegir-opcion"
-                            className="mt-1.5 text-xs font-medium text-amber-700 dark:text-amber-400"
+                            className="mt-1.5 text-sm font-medium text-amber-700 dark:text-amber-400"
                           >
                             Elige una opción de salida para ver el precio.
                           </p>
@@ -666,14 +708,14 @@ function ContenidoCotizador() {
                       <div className="flex items-center justify-between">
                         <label
                           htmlFor="input-fecha-cotizador"
-                          className="block text-xs font-semibold text-neutral-700 dark:text-neutral-300"
+                          className="block text-sm font-semibold text-neutral-700 dark:text-neutral-300"
                         >
                           {paqueteSeleccionado?.noches === 0
                             ? 'Fecha de la Excursión'
                             : 'Fecha de Salida'}
                         </label>
                         {paqueteSeleccionado?.noches === 0 && (
-                          <span className="rounded-md bg-sky-100 px-1.5 py-0.5 text-xs font-bold text-sky-800 dark:bg-sky-950 dark:text-sky-300">
+                          <span className="rounded-md bg-sky-100 px-1.5 py-0.5 text-sm font-bold text-sky-800 dark:bg-sky-950 dark:text-sky-300">
                             Pasadía (1 día)
                           </span>
                         )}
@@ -685,11 +727,11 @@ function ContenidoCotizador() {
                           fechaElegida.current = true;
                           setFecha(iso);
                         }}
-                        className="focus:border-acento-600 focus-visible:ring-acento-600 mt-1.5 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white p-2.5 text-xs text-neutral-900 shadow-2xs focus-visible:ring-2 focus-visible:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                        className="focus:border-acento-600 focus-visible:ring-acento-600 mt-1.5 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white p-2.5 text-sm text-neutral-900 shadow-2xs focus-visible:ring-2 focus-visible:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                       />
                       {fechasDelPaquete.length > 0 && (
                         <div className="mt-2">
-                          <span className="text-xs font-medium text-neutral-600 dark:text-neutral-400">
+                          <span className="text-sm font-medium text-neutral-600 dark:text-neutral-400">
                             Salidas programadas:
                           </span>
                           <div className="mt-1 flex flex-wrap gap-1">
@@ -699,7 +741,7 @@ function ContenidoCotizador() {
                                 type="button"
                                 onClick={() => setFecha(f)}
                                 aria-label={`Seleccionar salida programada ${f}`}
-                                className={`focus-visible:ring-acento-600 flex min-h-[44px] items-center rounded-lg px-3 py-2 text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:outline-hidden ${
+                                className={`focus-visible:ring-acento-600 flex min-h-[44px] items-center rounded-lg px-3 py-2 text-sm font-semibold transition-colors focus-visible:ring-2 focus-visible:outline-hidden ${
                                   fecha === f
                                     ? 'bg-acento-700 text-white'
                                     : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-300'
@@ -716,18 +758,18 @@ function ContenidoCotizador() {
                     {/* Eje 3 de ADR-0009: Composicion de Pasajeros */}
                     <div className="border-t border-neutral-100 pt-4 dark:border-neutral-800">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">
+                        <span className="text-sm font-semibold text-neutral-700 dark:text-neutral-300">
                           Composición del Grupo
                         </span>
                         {!pideComposicion && (
-                          <span className="rounded bg-amber-100 px-1.5 py-0.5 text-xs font-bold text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                          <span className="rounded bg-amber-100 px-1.5 py-0.5 text-sm font-bold text-amber-800 dark:bg-amber-950 dark:text-amber-300">
                             Tarifa fija por salida
                           </span>
                         )}
                       </div>
 
                       {!pideComposicion ? (
-                        <p className="mt-2 text-xs text-neutral-500">
+                        <p className="mt-2 text-sm text-neutral-500">
                           El tarifario vigente para este paquete no desglosa por persona; aplica
                           tarifa global de salida.
                         </p>
@@ -740,10 +782,10 @@ function ContenidoCotizador() {
                           {/* Adultos */}
                           <div className="flex items-center justify-between">
                             <div>
-                              <span className="text-xs font-medium text-neutral-700 dark:text-neutral-300">
+                              <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
                                 Adultos
                               </span>
-                              <span className="block text-xs text-neutral-500 dark:text-neutral-400">
+                              <span className="block text-sm text-neutral-500 dark:text-neutral-400">
                                 12 años o más
                               </span>
                             </div>
@@ -778,10 +820,10 @@ function ContenidoCotizador() {
                           {/* Niños */}
                           <div className="flex items-center justify-between">
                             <div>
-                              <span className="text-xs font-medium text-neutral-700 dark:text-neutral-300">
+                              <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
                                 Niños
                               </span>
-                              <span className="block text-xs text-neutral-500 dark:text-neutral-400">
+                              <span className="block text-sm text-neutral-500 dark:text-neutral-400">
                                 2 a 11 años
                               </span>
                             </div>
@@ -816,10 +858,10 @@ function ContenidoCotizador() {
                           {/* Infantes */}
                           <div className="flex items-center justify-between">
                             <div>
-                              <span className="text-xs font-medium text-neutral-700 dark:text-neutral-300">
+                              <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
                                 Infantes
                               </span>
-                              <span className="block text-xs text-neutral-500 dark:text-neutral-400">
+                              <span className="block text-sm text-neutral-500 dark:text-neutral-400">
                                 Menores de 2 años
                               </span>
                             </div>
@@ -872,7 +914,7 @@ function ContenidoCotizador() {
                       <div className="border-t border-neutral-100 pt-4 dark:border-neutral-800">
                         <label
                           htmlFor="select-acomodacion-mock"
-                          className="block text-xs font-semibold text-neutral-700 dark:text-neutral-300"
+                          className="block text-sm font-semibold text-neutral-700 dark:text-neutral-300"
                         >
                           Acomodación
                         </label>
@@ -881,7 +923,7 @@ function ContenidoCotizador() {
                           aria-label="Acomodación"
                           value={acomodacionMock}
                           onChange={(e) => setAcomodacionMock(e.target.value as Acomodacion | '')}
-                          className="focus:border-acento-600 focus-visible:ring-acento-600 mt-1.5 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white p-2.5 text-xs text-neutral-900 shadow-2xs focus-visible:ring-2 focus-visible:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                          className="focus:border-acento-600 focus-visible:ring-acento-600 mt-1.5 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white p-2.5 text-sm text-neutral-900 shadow-2xs focus-visible:ring-2 focus-visible:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                         >
                           <option value="">Sugerida automáticamente</option>
                           {/* Modo maqueta: las cuatro, porque el catálogo simulado no las declara. */}
@@ -899,7 +941,7 @@ function ContenidoCotizador() {
                       <div className="border-t border-neutral-100 pt-4 dark:border-neutral-800">
                         <label
                           htmlFor="select-acomodacion"
-                          className="block text-xs font-semibold text-neutral-700 dark:text-neutral-300"
+                          className="block text-sm font-semibold text-neutral-700 dark:text-neutral-300"
                         >
                           Acomodación
                         </label>
@@ -908,7 +950,7 @@ function ContenidoCotizador() {
                           aria-label="Acomodación"
                           value={acomodacionReal}
                           onChange={(e) => setAcomodacionReal(e.target.value as Acomodacion | '')}
-                          className="focus:border-acento-600 focus-visible:ring-acento-600 mt-1.5 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white p-2.5 text-xs text-neutral-900 shadow-2xs focus-visible:ring-2 focus-visible:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                          className="focus:border-acento-600 focus-visible:ring-acento-600 mt-1.5 min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white p-2.5 text-sm text-neutral-900 shadow-2xs focus-visible:ring-2 focus-visible:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                         >
                           <option value="">Elige una acomodación</option>
                           {acomodacionesOfrecidas.map((a) => (
@@ -926,7 +968,7 @@ function ContenidoCotizador() {
                         <button
                           type="button"
                           onClick={() => alternarDemo()}
-                          className="focus-visible:ring-acento-600 flex min-h-[44px] w-full items-center justify-center rounded-xl p-2.5 text-center text-xs font-semibold text-neutral-600 hover:text-neutral-900 focus-visible:ring-2 focus-visible:outline-hidden dark:text-neutral-400 dark:hover:text-neutral-200"
+                          className="focus-visible:ring-acento-600 flex min-h-[44px] w-full items-center justify-center rounded-xl p-2.5 text-center text-sm font-semibold text-neutral-600 hover:text-neutral-900 focus-visible:ring-2 focus-visible:outline-hidden dark:text-neutral-400 dark:hover:text-neutral-200"
                         >
                           Modo: {usarReal ? 'Conectado a API real' : 'Modo demostración (simulado)'}{' '}
                           (Alternar)
@@ -981,10 +1023,10 @@ function ContenidoCotizador() {
                                 ? 'Error en datos de tarifario (Vigencias solapadas)'
                                 : 'No se pudo generar la cotización'}
                           </h3>
-                          <p className="mt-1 text-xs">{errorMensaje.mensaje}</p>
+                          <p className="mt-1 text-sm">{errorMensaje.mensaje}</p>
                           {fechasDelPaquete.length > 0 && (
                             <div className="mt-3">
-                              <span className="text-xs font-semibold">
+                              <span className="text-sm font-semibold">
                                 Fechas con salida confirmada para este paquete:
                               </span>
                               <div className="mt-1.5 flex flex-wrap gap-1.5">
@@ -993,7 +1035,7 @@ function ContenidoCotizador() {
                                     key={f}
                                     type="button"
                                     onClick={() => setFecha(f)}
-                                    className="rounded bg-white px-2.5 py-1 text-xs font-bold text-neutral-800 shadow-xs hover:bg-neutral-100 dark:bg-neutral-800 dark:text-white"
+                                    className="rounded bg-white px-2.5 py-1 text-sm font-bold text-neutral-800 shadow-xs hover:bg-neutral-100 dark:bg-neutral-800 dark:text-white"
                                   >
                                     {f}
                                   </button>
@@ -1023,15 +1065,15 @@ function ContenidoCotizador() {
                           <div>
                             <div className="flex items-center gap-2">
                               {paqueteSeleccionado?.noches === 0 ? (
-                                <span className="rounded-md bg-sky-100 px-2 py-0.5 text-xs font-bold text-sky-800 dark:bg-sky-950 dark:text-sky-300">
+                                <span className="rounded-md bg-sky-100 px-2 py-0.5 text-sm font-bold text-sky-800 dark:bg-sky-950 dark:text-sky-300">
                                   Excursión de 1 día (Pasadía)
                                 </span>
                               ) : (
-                                <span className="bg-acento-100 text-acento-700 dark:bg-acento-950 dark:text-acento-300 rounded-md px-2 py-0.5 text-xs font-bold">
+                                <span className="bg-acento-100 text-acento-700 dark:bg-acento-950 dark:text-acento-300 rounded-md px-2 py-0.5 text-sm font-bold">
                                   Cotización de demostración
                                 </span>
                               )}
-                              <span className="text-xs text-neutral-400">
+                              <span className="text-sm text-neutral-400">
                                 Fecha: {formatearFecha(fecha)}
                               </span>
                             </div>
@@ -1040,7 +1082,7 @@ function ContenidoCotizador() {
                               {cotizacionMock.paqueteNombre}
                             </h2>
 
-                            <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-neutral-600 dark:text-neutral-400">
+                            <div className="mt-1 flex flex-wrap items-center gap-3 text-sm text-neutral-600 dark:text-neutral-400">
                               <span>📍 {cotizacionMock.destino}</span>
                               <span>
                                 👥 {adultos + ninos + infantes} pasajero(s) ({adultos} adt
@@ -1051,13 +1093,13 @@ function ContenidoCotizador() {
                           </div>
 
                           <div className="flex flex-col items-start sm:items-end">
-                            <span className="text-xs font-bold text-neutral-500">
+                            <span className="text-sm font-bold text-neutral-500">
                               Total de venta sugerido
                             </span>
                             <div className="cifra mt-1 text-3xl font-black text-neutral-900 dark:text-white">
                               {formatearDinero(cotizacionMock.totalVenta)}
                             </div>
-                            <span className="mt-0.5 text-xs text-neutral-500">
+                            <span className="mt-0.5 text-sm text-neutral-500">
                               Tarifa calculada por persona en COP
                             </span>
                           </div>
@@ -1071,7 +1113,7 @@ function ContenidoCotizador() {
                           <div
                             data-testid="aviso-impuesto-muelle"
                             role="note"
-                            className="mt-4 flex items-start gap-3 rounded-xl border border-amber-300 bg-amber-50/90 p-3.5 text-xs text-amber-900 shadow-2xs dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-200"
+                            className="mt-4 flex items-start gap-3 rounded-xl border border-amber-300 bg-amber-50/90 p-3.5 text-sm text-amber-900 shadow-2xs dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-200"
                           >
                             <Ship className="mt-0.5 h-4 w-4 shrink-0 text-amber-700 dark:text-amber-400" />
                             <div>
@@ -1089,7 +1131,7 @@ function ContenidoCotizador() {
                           <div
                             data-testid="aviso-plazas-sin-usar"
                             role="note"
-                            className="mt-4 flex items-start gap-3 rounded-xl border border-amber-300 bg-amber-50/90 p-3.5 text-xs text-amber-900 shadow-2xs dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-200"
+                            className="mt-4 flex items-start gap-3 rounded-xl border border-amber-300 bg-amber-50/90 p-3.5 text-sm text-amber-900 shadow-2xs dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-200"
                           >
                             <Users className="mt-0.5 h-4 w-4 shrink-0 text-amber-700 dark:text-amber-400" />
                             <div>
@@ -1141,7 +1183,7 @@ function ContenidoCotizador() {
                           <button
                             type="button"
                             onClick={copiarPropuestaWhatsApp}
-                            className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white shadow-xs transition-colors hover:bg-emerald-700 sm:w-auto"
+                            className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white shadow-xs transition-colors hover:bg-emerald-700 sm:w-auto"
                           >
                             {copiado ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                             <span>
@@ -1181,7 +1223,7 @@ function ContenidoCotizador() {
           error={errorGuardar}
           tituloSugerido={tituloSugerido}
           contactoIdInicial={contactoIdInicial}
-          contactosDisponibles={contactosDisponibles}
+          contactosDisponibles={contactosParaElegir}
           paqueteNombre={paqueteSeleccionado?.nombre || 'Paquete Turístico'}
           fechaSalida={fecha}
           adultos={adultos}
