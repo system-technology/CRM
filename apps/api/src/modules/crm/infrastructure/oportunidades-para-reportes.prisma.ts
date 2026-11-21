@@ -102,7 +102,7 @@ export class OportunidadesParaReportesPrisma extends PuertoOportunidadesParaRepo
         };
         const etapa = banderas.get(c.etapaId);
         fila.creadas += c._count._all;
-        if (etapa?.esGanada) fila.ganadas += c._count._all;
+        if (etapa?.esPerdida) fila.ganadas += c._count._all;
         if (etapa?.esPerdida) fila.perdidas += c._count._all;
         porAsesor.set(c.asesorId, fila);
       }
