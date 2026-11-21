@@ -4,7 +4,7 @@
 > [`../08-roadmap/09-roadmap-maestro-y-operacion-desatendida.md`](../08-roadmap/09-roadmap-maestro-y-operacion-desatendida.md) §3.2).
 > Se ordena por **lo que más bloquea**. Una línea tachada es una que ya se resolvió. Aquí **no hay secretos**: solo nombres.
 
-Última revisión: 2026-11-21 (cierre del segundo lote).
+Última revisión: 2026-11-21, 13:30 UTC (lote de mediodía: #427, #428, #429, #430, #433, #434 integrados).
 
 ## Bloquean la presentación al cliente (Ola 0)
 
@@ -26,8 +26,9 @@
 | 8b | **Decir si la sesión del punto 8 (cobros) puede trabajar sin supervisión** | Esa sesión no aceptó mi orden de autonomía sin tu confirmación escrita en su propia conversación (pidió A, B o C). Hoy trabaja bajo la A: un PR por tarea, sin auto-merge, con auditoría de seguridad antes de integrar (T-328 a T-330). Para la B, escríbele en esa sesión que sí |
 | 8c | **Las sesiones no pueden levantar Postgres en local**: el clasificador del modo automático lo deniega | Por eso «probado en navegador» significa casi siempre «contra API simulada». Limita toda verificación de pantalla (ejemplo: T-511). Si quieres verificación real, permite esa llamada o corre la prueba tú |
 | 8d | **El clasificador también deniega `git push --force-with-lease`** | Para corregir el asunto de un commit ya empujado hay que recrear la rama y abrir otro PR (pasó dos veces la madrugada del 2026-11-21). Solo tú puedes permitirlo en la configuración |
+| **9** | **Borrar la rama `a/T-529-mutacion-aislamiento`** (commit `d4f32ede`). **Lleva el filtro de `tenant_id` retirado a propósito**, de un experimento que pedí yo para medir el aislamiento. No tiene PR y `main` está protegida, así que **no puede entrar sola**, y el asunto del commit dice «MUTACION DESECHABLE, no integrar». Pero es un repositorio público y no debería quedarse ahí. **Ni la sesión hija ni yo podemos borrarla:** el proxy deniega los borrados con `403 Write access to this GitHub API path is not permitted through this proxy`, tanto por `git push origin :rama` como por `DELETE /git/refs`. No lo rodeé. | Desde tu terminal: `git push origin :a/T-529-mutacion-aislamiento`, o en GitHub → Branches → borrar |
 | 8e | **Sigue pendiente**: redesplegar con el `main` actual (solo con tu confirmación) y regenerar la clave de la demo | La clave se perdió al archivarse la sesión de despliegue; se regenera resembrando. Los puntos 1, 2 y 5 siguen igual |
-| ~~8f~~ | ~~El despertar automático apuntaba a la sesión madre equivocada~~ | **RESUELTO el 2026-11-21 a las 09:53 UTC, sin que tuvieras que hacer nada.** La madre saliente creó `trig_01H8nNZUwV2DdTA2fnJzQkVh` apuntando a la entrante y borró la suya; verificado con `list_triggers`. Lo que queda como aprendizaje, no como pendiente: **a la sesión madre el clasificador le deniega `create_trigger`**, así que en cada relevo **la saliente debe crear la tarea de la entrante antes de retirarse**. Si prefieres que la madre pueda hacerlo sola, añade una regla de permiso para `mcp__claude-code-remote__create_trigger` |
+| ~~8f~~ | ~~El despertar automático apuntaba a la sesión madre equivocada~~ | **RESUELTO, y con una corrección importante.** Lo que decía esta línea —que «a la sesión madre el clasificador le deniega `create_trigger`»— **es FALSO**: la madre `session_01R81Xh5b7wpteu5YpcDpw5p` creó la suya sin problema el 2026-11-21 a las 12:25 (`trig_01Cq7TrGZ9uGFc9uAmqQEDtr`, directa a ella). Lo que había antes era un relevo en dos saltos que despertaba a la madre saliente de 688 mil tokens solo para reenviar un mensaje. **Ya no hace falta que la saliente cree la tarea de la entrante: que cada madre cree la suya.** Verificado con `list_triggers`: queda una sola. No tienes que hacer nada |
 | 9 | **Red del entorno en la nube**: añadir `developers.facebook.com` (o ampliar el nivel de red) | Menú del entorno → Edit → Network access |
 
 ## Decisiones de producto y de negocio

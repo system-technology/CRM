@@ -9840,7 +9840,8 @@ tasks:
     phase: 1
     priority: P2
     effort: S
-    status: backlog
+    status: done
+    done_at: 2026-11-21T13:50:00.000Z
     depends_on: [T-342]
     acceptance:
       - "Un endpoint devuelve los archivos sin oportunidad, o con asesor inactivo o sin archivo.operar, para quien tenga archivo.operar; misma regla que destinatariosDelAviso"
@@ -9848,6 +9849,8 @@ tasks:
     source: "ADR-0035 §2 y §5; T-343 no lo pudo pintar por falta de endpoint"
     created_at: 2026-11-21T23:00:00.000Z
     owner: backend
+    notes: "Integrada como #432 (d755ea69). GET /api/v1/archivos/sin-responsable con archivo.ver + archivo.operar, declarado ANTES de :id (si no, se lo tragaria como id). Motivos SIN_OPORTUNIDAD, SIN_ASESOR y ASESOR_NO_ELEGIBLE, sin distinguir baja de perdida de permiso, a proposito, para no filtrar el estado de la cuenta de un companero. Regla extraida de destinatariosDelAviso (T-254) a booking/domain; booking pregunta a crm e identity POR PUERTOS (R4), sin JOIN entre contextos. Sin migracion. AISLAMIENTO: tras la auditoria la madre pidio UNA vuelta mas, solo por esto, porque el e2e no cruzaba agencias (CLAUDE.md 3.1: el aislamiento es el unico sitio donde no se recorta). Ahora es simetrico y NO PUEDE PASAR EN VACIO: cada agencia afirma que SI ve su propio huerfano antes de afirmar que no ve el ajeno, asi que una lista vacia, un 403 tragado o una ventana recortada rompen la primera mitad. MUTACION MEDIDA: con el filtro de tenant_id retirado, test salio VERDE. No es que la prueba no discrimine: es que RLS SOLA sigue cubriendo la ruta. Se derriba una capa y la otra aguanta (R2, defensa en profundidad), y ahora esta MEDIDO en vez de leido. Lo que NO demuestra: que la asercion cace una fuga, porque no hubo fuga que cazar. Cola: T-549 (el filtro va despues del LIMIT, la cifra es un minimo) y T-551."
+
   - id: T-530
     title: "Paleta de comandos y bloque «Rendimiento comercial» de «Hoy» hablan de «equipo» ante un asesor que solo ve lo suyo"
     type: chore
@@ -9960,7 +9963,8 @@ tasks:
     phase: 1
     priority: P1
     effort: S
-    status: backlog
+    status: done
+    done_at: 2026-11-21T13:50:00.000Z
     acceptance:
       - "reportes.controller.ts no lleva @RequierePermiso('cobro.ver') para porCobrar; payments/interface si lo exige. Hoy no hay diferencia porque DUENO, ASESOR y OPERACIONES tienen cobro.ver, y no existe endpoint para componer roles a medida: por eso es cola y no bloqueante"
       - "Contradice ADR-0035 4: el alcance de un reporte puede ser mas estrecho que las pantallas, nunca mas amplio"
@@ -9969,6 +9973,8 @@ tasks:
     source: "auditoria independiente de #428 (T-528), 2026-11-21"
     created_at: 2026-11-21T12:40:00.000Z
     owner: backend
+    notes: "Integrada como #432 (d755ea69). porCobrar se OMITE sin cobro.ver, con el patron del margen: el puerto NI SE INVOCA, asi que el dato nunca se lee de la base, y armarResumen no construye la clave. Ni cero, ni null, ni error. AUDITORIA INDEPENDIENTE DE LA MADRE: sin bloqueantes. Lo que mas se miro, porque habria sido lo peor que podia traer el PR, es si el cambio de fixture aflojaba alguna prueba: NO. Antes del PR cobro.ver no aparecia en el fichero, ninguna asercion dependia de su ausencia, las de #428 siguen con los mismos valores, y la discriminacion SE ANADE con un rol que tiene reportes.ver_agencia pero no cobro.ver. Tambien se comprobo que la excepcion LECTURAS_CON_MAS no afloja el guard: es getAllAndMerge, que SUMA clase y metodo, asi que la ruta exige archivo.ver Y archivo.operar. El contrato sigue .optional(): T-540 intacto."
+
   - id: T-538
     title: "Web: el resumen devuelve truncado: true a partir de 500 archivos abiertos y la web no lo presenta"
     type: feature
@@ -10114,7 +10120,7 @@ tasks:
     title: "La e2e «al quitar el usuario ya no entra con el» es fragil y rompe el job navegador al azar"
     type: test
     phase: 1
-    priority: P2
+    priority: P1
     effort: S
     status: backlog
     acceptance:
@@ -10123,6 +10129,63 @@ tasks:
       - "Hipotesis a comprobar antes de tocar la prueba: tras quitar el apodo, la tabla de miembros no revalida (cache de TanStack Query sin invalidar, o la respuesta llega antes de que el servidor confirme). Si es eso, el defecto esta en la WEB y la prueba tiene razon en fallar: arreglar la web, no la espera"
       - "NO se arregla subiendo el timeout ni reintentando: eso esconde una revalidacion que puede estar rota tambien para una persona"
       - "Mientras siga asi, cada PR tiene una probabilidad de salir rojo por azar, y un rojo que se lee como ruido es como se normaliza un fallo real"
+      - "SUBIDA A P1 el 2026-11-21: la sesion de T-537/T-529 la vio fallar en 2 de 3 pasadas del dia, y en una rama que no toca ese flujo. No es una prueba que falle de vez en cuando: falla casi la mitad de las veces"
     source: "verificado por la madre al integrar #429, 2026-11-21"
     created_at: 2026-11-21T13:40:00.000Z
+    owner: qa
+  - id: T-549
+    title: "Sin responsable: el filtro se aplica despues del LIMIT, asi que la cifra es un minimo y no un total"
+    type: bug
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    acceptance:
+      - "GET /api/v1/archivos/sin-responsable lee una ventana y filtra DESPUES: un archivo huerfano por debajo de la ventana no sale. La respuesta lleva truncado, pero la cifra es un minimo"
+      - "Llevarlo a SQL exigiria que booking hiciera JOIN con tablas de crm e identity, lo que rompe R4: hay que resolverlo por puerto o por vista, no por JOIN directo"
+      - "Hermana de T-492. Mientras tanto, la web NO puede presentar esa cifra como total (ver T-546 y T-538)"
+    source: "aviso de la sesion de T-537/T-529, 2026-11-21"
+    created_at: 2026-11-21T13:35:00.000Z
+    owner: backend
+  - id: T-550
+    title: "Web: parsearMontoAUnidades lee la fraccion con \\d{1,2}, asi que una moneda de 3 decimales se leeria como miles"
+    type: bug
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    acceptance:
+      - "apps/web/src/lib/dinero-entrada.ts: la fraccion se reconoce con \\d{1,2}$, asi que en una moneda de 3 decimales «12,505» se leeria como doce mil quinientos cinco, no como 12,505"
+      - "Hoy NO afecta: ninguna moneda habilitada tiene 3 decimales. Es el mismo «el dia que...» que motivo T-520"
+      - "El limite debe salir de decimalesDeMoneda, no de un literal, y la prueba de KWD debe cubrir tambien el parseo"
+    source: "aviso de la sesion de T-543/T-544, 2026-11-21"
+    created_at: 2026-11-21T13:35:00.000Z
+    owner: frontend
+  - id: T-551
+    title: "Sin responsable: la e2e solo ejerce SIN_OPORTUNIDAD y una asercion es casi tautologica"
+    type: test
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    acceptance:
+      - "El e2e solo cubre el motivo SIN_OPORTUNIDAD; SIN_ASESOR y ASESOR_NO_ELEGIBLE solo viven en unitarias con dobles"
+      - "La asercion lista.datos.every(d => d.archivo.oportunidadId === null) es casi tautologica hoy porque los archivos del fixture nacen sin oportunidad, y se volvera FALSA por contagio en cuanto alguien anada al fixture un archivo con oportunidad"
+      - "Cubrir los tres motivos y hacer la asercion independiente del resto del fichero"
+    source: "auditoria independiente de #432 (T-537/T-529), 2026-11-21"
+    created_at: 2026-11-21T13:35:00.000Z
+    owner: qa
+  - id: T-552
+    title: "Reportes: que cada cifra de dinero tenga su compuerta, comprobado por recorrido y no a mano"
+    type: test
+    phase: 2
+    priority: P3
+    effort: S
+    status: backlog
+    acceptance:
+      - "Hoy las compuertas de dinero del resumen son dos casos cableados a mano: margen (cotizacion.ver_neto_y_margen) y porCobrar (cobro.ver, T-537)"
+      - "Una prueba que recorra todas las cifras de dinero del resumen y afirme que cada una tiene su permiso, para que una cifra nueva sin compuerta rompa el CI en vez de pasar inadvertida"
+      - "Se vuelve urgente el dia que exista el endpoint de componer roles a medida (R12): ese dia T-537 deja de ser el unico caso posible"
+    source: "auditoria independiente de #432 (T-537/T-529), 2026-11-21"
+    created_at: 2026-11-21T13:35:00.000Z
     owner: qa
