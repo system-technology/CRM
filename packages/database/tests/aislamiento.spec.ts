@@ -25,6 +25,10 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 // @ts-expect-error — módulo JS sin tipos, compartido con `scripts/limpiar-fixtures.mjs`.
 import { borrarTenants } from '../scripts/borrar-tenants.mjs';
+import {
+  CONSULTA_DEL_INDICE_DE_APODOS,
+  elIndiceDeApodosEsGlobal,
+} from '../prisma/guardia-de-semilla-agencia.js';
 
 // SIN `??` hacia DATABASE_URL, y eso es media compuerta.
 //
@@ -11015,5 +11019,368 @@ describe('ADR-0031 (T-372) — apodo de ingreso: usuarios.apodo y su reflejo en 
     const enB = await nuevaIdentidad('ap12-b');
     await crearUsuario(TENANT_B, enB, 'ap12-b', ap('ap12'));
     expect(await resuelve(ap('ap12'))).toEqual([{ identidad: enB, tenant: TENANT_B }]);
+  });
+});
+
+// =========================================================================================
+// ADR-0031 §4, PR 1b — la guarda de UNA sola agencia mientras el índice de apodos sea global
+//
+// Precondición dura (auditoría de seguridad, B3; compuerta del PR 2, C1): con `UNIQUE (apodo)`
+// global, una segunda agencia podría enumerar y acaparar los apodos de la primera. `crear_agencia`
+// (migración 20261120160000) falla cerrada con VPR05 si el índice es global y `tenants` ya tiene
+// una fila. El índice se lee del CATÁLOGO y se compara por columnas; la guarda se apaga sola con el
+// índice por agencia de la fase 2.
+//
+// La base de pruebas tiene siempre agencias (los fixtures) y el índice global, así que todo lo que
+// necesita otro estado —cero agencias o un índice simulado— corre en UNA transacción del
+// propietario que se deshace: el índice real nunca cambia fuera de ella. Dentro, el alta se hace
+// como `viajapro_app` (SET LOCAL ROLE, como R-9).
+// =========================================================================================
+
+describe('ADR-0031 §4 (PR 1b) — crear_agencia no da de alta una segunda agencia con el índice de apodos global', () => {
+  const MENSAJE_VPR05 = 'registro_cerrado: el alta de agencias no está disponible';
+  const identidades: string[] = [];
+  const codigos: Buffer[] = [];
+
+  interface Intento {
+    readonly id?: string | undefined;
+    readonly contexto?: string | undefined;
+    readonly code?: string | undefined;
+    readonly message?: string | undefined;
+  }
+
+  /** Identidad y código de acceso NUEVOS (como la plataforma, rol propietario) y los argumentos. */
+  async function prepararAlta(c: Client, sufijo: string): Promise<unknown[]> {
+    const identidad = randomUUID();
+    const hmac = randomBytes(32);
+    const hash = randomBytes(32);
+    await c.query(
+      `INSERT INTO identidades (id, correo, nombre, correo_verificado, actualizado_en)
+       VALUES ($1, $2, 'Fixture guarda', true, now())`,
+      [identidad, `fixture-aislamiento-${MARCA}-guarda-${sufijo}@prueba.test`],
+    );
+    await c.query(
+      `INSERT INTO codigos_de_acceso_al_registro (hash, correo_hmac, expira_en, nota)
+       VALUES ($1, $2, now() + interval '1 day', 'fixture-aislamiento')`,
+      [hash, hmac],
+    );
+    identidades.push(identidad);
+    codigos.push(hash);
+    return [
+      `Agencia guarda ${sufijo}`,
+      `fixture-aislamiento-${MARCA}-g-${sufijo}`,
+      'CO',
+      'COP',
+      'America/Bogota',
+      identidad,
+      14,
+      'encargo-de-prueba-1',
+      hash,
+      hmac,
+    ];
+  }
+
+  /** Lo que toda transacción de estas pruebas necesita: la moneda y un tope que no estorbe. */
+  async function prepararTransaccion(c: Client): Promise<void> {
+    await c.query(
+      `INSERT INTO monedas (codigo_iso, nombre, decimales) VALUES ('COP', 'Peso colombiano', 0)
+       ON CONFLICT (codigo_iso) DO NOTHING`,
+    );
+    await c.query('UPDATE parametros_del_registro SET tope_por_hora = 1000');
+  }
+
+  /**
+   * Un alta como `viajapro_app`, dentro de la transacción del propietario y en su propio
+   * SAVEPOINT: si falla, el ROLLBACK TO deshace también el SET LOCAL ROLE y la transacción sigue
+   * viva. Si sale bien, el alta queda (hasta el ROLLBACK final) y el rol vuelve al propietario.
+   */
+  async function intentarAlta(c: Client, argumentos: unknown[]): Promise<Intento> {
+    await c.query('SAVEPOINT intento_de_alta');
+    try {
+      await c.query('SET LOCAL ROLE "viajapro_app"');
+      await c.query("SELECT set_config('app.current_tenant', '', true)");
+      const { rows } = await c.query(SQL_CREAR_AGENCIA, argumentos);
+      const { rows: ctx } = await c.query(
+        "SELECT current_setting('app.current_tenant', true) AS contexto",
+      );
+      await c.query('RESET ROLE');
+      await c.query('RELEASE SAVEPOINT intento_de_alta');
+      return { id: rows[0]?.id as string, contexto: ctx[0]?.contexto as string };
+    } catch (error) {
+      await c.query('ROLLBACK TO SAVEPOINT intento_de_alta');
+      await c.query('RELEASE SAVEPOINT intento_de_alta');
+      const e = error as { code?: string; message?: string };
+      return { code: e.code, message: e.message };
+    }
+  }
+
+  /** La detección en TypeScript (la de la semilla) sobre el catálogo que ve esta conexión. */
+  async function deteccionDeLaSemilla(c: Client): Promise<boolean> {
+    const { rows } = await c.query(CONSULTA_DEL_INDICE_DE_APODOS);
+    return elIndiceDeApodosEsGlobal(rows[0]);
+  }
+
+  async function enTransaccionRevertida(fn: () => Promise<void>, inicio = 'BEGIN'): Promise<void> {
+    await admin.query(inicio);
+    try {
+      await fn();
+    } finally {
+      await admin.query('ROLLBACK');
+    }
+  }
+
+  afterAll(async () => {
+    // Solo AP13 confirma filas (una identidad y un código); el resto murió con su transacción.
+    await admin.query('DELETE FROM codigos_de_acceso_al_registro WHERE hash = ANY($1::bytea[])', [
+      codigos,
+    ]);
+    await admin.query('DELETE FROM identidades WHERE id = ANY($1::uuid[])', [identidades]);
+  }, 60_000);
+
+  it('AP13 — con el índice global y agencias ya existentes, crear_agencia rechaza la nueva con VPR05 genérico, sin consumir el código ni crear nada', async () => {
+    const { rows: hay } = await admin.query('SELECT count(*)::int AS n FROM tenants');
+    expect(hay[0]?.n, 'los fixtures son agencias existentes').toBeGreaterThan(0);
+    expect(await deteccionDeLaSemilla(admin), 'el índice de 20261120150000 es global').toBe(true);
+
+    // Identidad y código CONFIRMADOS, y el alta por la conexión real de viajapro_app.
+    const confirmarAlta = async (): Promise<unknown[]> => {
+      await admin.query('BEGIN');
+      try {
+        await prepararTransaccion(admin);
+        const preparada = await prepararAlta(admin, 'ap13');
+        await admin.query('COMMIT');
+        return preparada;
+      } catch (error) {
+        await admin.query('ROLLBACK');
+        throw error;
+      }
+    };
+    const argumentos = await confirmarAlta();
+    const identidad = argumentos[5] as string;
+    const hash = argumentos[8] as Buffer;
+
+    let rechazo: { code?: string; message?: string; detail?: string; hint?: string } = {};
+    await app.query('BEGIN');
+    try {
+      await app.query(SQL_CREAR_AGENCIA, argumentos);
+    } catch (error) {
+      rechazo = error as typeof rechazo;
+    } finally {
+      await app.query('ROLLBACK');
+    }
+    expect(rechazo.code, 'la segunda agencia con el índice global').toBe('VPR05');
+    // Genérico: ni slugs, ni ids, ni conteos de las agencias que ya existen.
+    expect(rechazo.message).toBe(MENSAJE_VPR05);
+    expect(rechazo.detail).toBeUndefined();
+    expect(rechazo.hint).toBeUndefined();
+
+    const { rows: uso } = await admin.query(
+      'SELECT usado_en, usado_por_identidad_id FROM codigos_de_acceso_al_registro WHERE hash = $1',
+      [hash],
+    );
+    expect(uso, 'el código sigue sin usar').toEqual([
+      { usado_en: null, usado_por_identidad_id: null },
+    ]);
+    const { rows: creadas } = await admin.query(
+      'SELECT id FROM tenants WHERE creado_por_identidad_id = $1',
+      [identidad],
+    );
+    expect(creadas).toEqual([]);
+  });
+
+  it('AP14 — sin agencias, crear_agencia crea la primera como hasta hoy (S1 incluido) y la segunda da VPR05; bajo REPEATABLE READ, cerrada', async () => {
+    const borrarTodas = async (): Promise<void> => {
+      const { rows } = await admin.query('SELECT id FROM tenants');
+      await borrarTenants(
+        admin,
+        rows.map((r) => r.id as string),
+      );
+      const { rows: quedan } = await admin.query('SELECT count(*)::int AS n FROM tenants');
+      expect(quedan[0]?.n, 'tenants vacía dentro de la transacción').toBe(0);
+    };
+
+    await enTransaccionRevertida(async () => {
+      await prepararTransaccion(admin);
+      await borrarTodas();
+      expect(await deteccionDeLaSemilla(admin), 'el índice sigue global').toBe(true);
+
+      const primera = await intentarAlta(admin, await prepararAlta(admin, 'ap14-1'));
+      expect(primera.code, `la primera agencia: ${primera.message ?? ''}`).toBeUndefined();
+      expect(primera.id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
+      expect(primera.contexto, 'S1: el contexto queda en la agencia nueva').toBe(primera.id);
+      const { rows: una } = await admin.query(
+        `SELECT count(*)::int AS n,
+                bool_and(estado::text = 'EN_PRUEBA' AND origen_del_alta::text = 'AUTOSERVICIO') AS como_siempre
+           FROM tenants`,
+      );
+      expect(una).toEqual([{ n: 1, como_siempre: true }]);
+
+      const argumentos = await prepararAlta(admin, 'ap14-2');
+      const segunda = await intentarAlta(admin, argumentos);
+      expect(segunda).toEqual({ code: 'VPR05', message: MENSAJE_VPR05 });
+      const { rows: sigue } = await admin.query(
+        'SELECT usado_en FROM codigos_de_acceso_al_registro WHERE hash = $1',
+        [argumentos[8]],
+      );
+      expect(sigue, 'el VPR05 revierte el consumo del código').toEqual([{ usado_en: null }]);
+      const { rows: unaSola } = await admin.query('SELECT count(*)::int AS n FROM tenants');
+      expect(unaSola[0]?.n).toBe(1);
+    });
+
+    // REPEATABLE READ: la instantánea sería la del principio de la transacción y dos altas
+    // simultáneas podrían ver «cero agencias» las dos. Con la guarda activa, cerrada.
+    await enTransaccionRevertida(async () => {
+      await prepararTransaccion(admin);
+      await borrarTodas();
+      const intento = await intentarAlta(admin, await prepararAlta(admin, 'ap14-rr'));
+      expect(intento).toEqual({ code: 'VPR05', message: MENSAJE_VPR05 });
+    }, 'BEGIN ISOLATION LEVEL REPEATABLE READ');
+  }, 120_000);
+
+  it('AP15 — la detección es por catálogo y por columnas: verdadera con UNIQUE (apodo), falsa con el índice por agencia simulado, y verdadera ante expresión, parcial, INCLUDE, exclusión o columna ausente', async () => {
+    await enTransaccionRevertida(async () => {
+      await prepararTransaccion(admin);
+
+      // El índice real: global. La guarda y la semilla coinciden.
+      expect(await deteccionDeLaSemilla(admin)).toBe(true);
+      expect(await intentarAlta(admin, await prepararAlta(admin, 'ap15-real'))).toEqual({
+        code: 'VPR05',
+        message: MENSAJE_VPR05,
+      });
+
+      // La fase 2, simulada: el índice por agencia, y con el NOMBRE del global (se compara por
+      // columnas). Con agencias existentes, la guarda se apaga sola y el alta sale.
+      await admin.query('DROP INDEX public.accesos_identidad_apodo_key');
+      await admin.query(
+        'CREATE UNIQUE INDEX accesos_identidad_apodo_key ON public.accesos_identidad (tenant_acceso_id, apodo)',
+      );
+      expect(await deteccionDeLaSemilla(admin), 'fase 2 simulada').toBe(false);
+      const conFaseDos = await intentarAlta(admin, await prepararAlta(admin, 'ap15-f2'));
+      expect(conFaseDos.code, `alta con la fase 2: ${conFaseDos.message ?? ''}`).toBeUndefined();
+      expect(conFaseDos.contexto).toBe(conFaseDos.id);
+
+      // Encima de la fase 2, cada variante en su SAVEPOINT. `global` = la guarda vuelve a cerrar.
+      const variantes: ReadonlyArray<readonly [string, string, boolean]> = [
+        [
+          'UNIQUE (apodo) con nombre de índice por agencia',
+          'CREATE UNIQUE INDEX accesos_identidad_tenant_acceso_id_apodo_key ON public.accesos_identidad (apodo)',
+          true,
+        ],
+        [
+          'UNIQUE (apodo) INCLUDE (tenant_acceso_id)',
+          'CREATE UNIQUE INDEX fixture_guarda_include ON public.accesos_identidad (apodo) INCLUDE (tenant_acceso_id)',
+          true,
+        ],
+        [
+          'UNIQUE de expresión sobre apodo',
+          'CREATE UNIQUE INDEX fixture_guarda_expresion ON public.accesos_identidad ((lower(apodo)))',
+          true,
+        ],
+        [
+          'parcial por agencia sobre apodo',
+          'CREATE UNIQUE INDEX fixture_guarda_parcial ON public.accesos_identidad (tenant_acceso_id, apodo) WHERE apodo IS NOT NULL',
+          true,
+        ],
+        [
+          'parcial cuyo predicado nombra apodo',
+          'CREATE INDEX fixture_guarda_predicado ON public.accesos_identidad (tenant_acceso_id) WHERE apodo IS NOT NULL',
+          true,
+        ],
+        [
+          'exclusión (apodo WITH =)',
+          'ALTER TABLE public.accesos_identidad ADD CONSTRAINT fixture_guarda_exclusion EXCLUDE USING btree (apodo WITH =)',
+          true,
+        ],
+        ['columna apodo ausente', 'ALTER TABLE public.accesos_identidad DROP COLUMN apodo', true],
+        [
+          'índice NO único y no parcial sobre apodo',
+          'CREATE INDEX fixture_guarda_busqueda ON public.accesos_identidad (apodo)',
+          false,
+        ],
+      ];
+      for (const [i, [caso, ddl, global]] of variantes.entries()) {
+        await admin.query('SAVEPOINT variante');
+        try {
+          await admin.query(ddl);
+          expect(await deteccionDeLaSemilla(admin), `semilla: ${caso}`).toBe(global);
+          const intento = await intentarAlta(admin, await prepararAlta(admin, `ap15-v${i}`));
+          if (global) {
+            expect(intento, `crear_agencia: ${caso}`).toEqual({
+              code: 'VPR05',
+              message: MENSAJE_VPR05,
+            });
+          } else {
+            expect(
+              intento.code,
+              `crear_agencia: ${caso}: ${intento.message ?? ''}`,
+            ).toBeUndefined();
+            expect(intento.contexto).toBe(intento.id);
+          }
+        } finally {
+          await admin.query('ROLLBACK TO SAVEPOINT variante');
+          await admin.query('RELEASE SAVEPOINT variante');
+        }
+      }
+    });
+
+    // Y fuera de la transacción, el índice real no se movió: sigue siendo UNIQUE (apodo).
+    expect(await deteccionDeLaSemilla(admin)).toBe(true);
+    const { rows } = await admin.query(
+      `SELECT array_agg(a.attname::text ORDER BY k.n) AS columnas
+         FROM pg_index i
+         CROSS JOIN LATERAL unnest(i.indkey::int2[]) WITH ORDINALITY AS k(attnum, n)
+         JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = k.attnum
+        WHERE i.indexrelid = 'public.accesos_identidad_apodo_key'::regclass`,
+    );
+    expect(rows).toEqual([{ columnas: ['apodo'] }]);
+  }, 120_000);
+
+  it('AP16 — crear_agencia conserva firma, dueño, SECURITY DEFINER, search_path vacío y ACL, y la guarda va entre el tope (VPR02) y el INSERT', async () => {
+    const { rows } = await admin.query(
+      `SELECT p.proowner::regrole::text AS dueno, p.prosecdef, p.proconfig, p.provolatile,
+              p.proisstrict, pg_get_function_identity_arguments(p.oid) AS argumentos,
+              pg_get_function_result(p.oid) AS resultado,
+              has_function_privilege('public', p.oid, 'EXECUTE') AS publico,
+              (SELECT array_agg(x.grantee::regrole::text || ':' || x.privilege_type
+                                ORDER BY x.grantee::regrole::text)
+                 FROM aclexplode(p.proacl) x WHERE x.grantee <> p.proowner) AS concedidos,
+              p.prosrc AS fuente
+         FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+        WHERE n.nspname = 'public' AND p.proname = 'crear_agencia'`,
+    );
+    expect(rows).toHaveLength(1);
+    const { fuente, ...atributos } = rows[0] as Record<string, unknown> & { fuente: string };
+    expect(atributos).toEqual({
+      dueno: 'viajapro_registro',
+      prosecdef: true,
+      proconfig: ['search_path=""'],
+      provolatile: 'v',
+      proisstrict: false,
+      argumentos:
+        'p_nombre text, p_slug_base text, p_pais_iso text, p_moneda_iso text, p_zona_horaria text, p_identidad_id uuid, p_dias_de_prueba integer, p_version_encargo text, p_hash_codigo_de_acceso bytea, p_correo_hmac bytea',
+      resultado: 'uuid',
+      publico: false,
+      concedidos: ['viajapro_app:EXECUTE'],
+    });
+    for (const rol of await rolesAVigilar(admin)) {
+      if (rol === 'viajapro_app') continue;
+      const { rows: puede } = await admin.query(
+        `SELECT has_function_privilege($1, 'public.crear_agencia(text, text, text, text, text, uuid, integer, text, bytea, bytea)', 'EXECUTE') AS si`,
+        [rol],
+      );
+      expect(puede[0]?.si, `${rol} puede ejecutar crear_agencia`).toBe(false);
+    }
+
+    const pos = (aguja: string): number => fuente.indexOf(aguja);
+    expect(pos("ERRCODE = 'VPR02'")).toBeGreaterThan(-1);
+    expect(pos("ERRCODE = 'VPR02'")).toBeLessThan(pos('[guarda-apodos]'));
+    expect(pos('[guarda-apodos]')).toBeLessThan(pos("ERRCODE = 'VPR05'"));
+    expect(pos("ERRCODE = 'VPR05'")).toBeLessThan(pos('[/guarda-apodos]'));
+    expect(pos('[/guarda-apodos]')).toBeLessThan(pos('INSERT INTO public.tenants'));
+    // Por catálogo y calificado, nunca por nombre de índice ni con to_regclass (que abriría).
+    expect(fuente).toContain('pg_catalog.pg_index');
+    expect(fuente).toContain("'public.accesos_identidad'::pg_catalog.regclass");
+    expect(fuente).not.toMatch(/to_regclass|indexrelid|relname/);
+    expect(fuente).toMatch(/pg_advisory_xact_lock\(c_espacio_de_la_guarda, 0\)/);
   });
 });
