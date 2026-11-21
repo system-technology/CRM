@@ -34,24 +34,55 @@ function montar() {
   return render(<DashboardAdmin ahora={AHORA} zona="America/Bogota" />);
 }
 
+const RANGO_DEMO = { desde: '2026-11-01T05:00:00.000Z', hasta: '2026-11-22T05:00:00.000Z' };
+
+/** Lo que el servidor devuelve para la agencia: con `porAsesor` y `ventasPorDestino` (T-531, T-532). */
+function conDesglose(r: ReturnType<typeof crearResumenDeAgenciaDemo>) {
+  const v = crearResumenDeAgenciaDemo(RANGO_DEMO, 'a1');
+  const { porEtapa: _porEtapa, ...oportunidades } = v.oportunidades;
+  return {
+    ...r,
+    porAsesor: [
+      {
+        asesorId: 'a1',
+        cotizaciones: v.cotizaciones,
+        ventasPorMoneda: v.ventasPorMoneda,
+        oportunidades,
+        respuesta: v.respuesta,
+      },
+    ],
+    ventasPorDestino: [
+      {
+        destino: 'Cartagena',
+        moneda: 'COP' as const,
+        cotizacionesAceptadas: 2,
+        ventas: { moneda: 'COP' as const, unidades: '12000000' },
+      },
+      {
+        destino: 'Cartagena',
+        moneda: 'USD' as const,
+        cotizacionesAceptadas: 1,
+        ventas: { moneda: 'USD' as const, unidades: '384000' },
+      },
+      {
+        destino: 'Miami',
+        moneda: 'USD' as const,
+        cotizacionesAceptadas: 1,
+        ventas: { moneda: 'USD' as const, unidades: '500000' },
+      },
+    ],
+  };
+}
+
 beforeEach(() => {
   vi.restoreAllMocks();
   vi.spyOn(api, 'obtenerResumenDeAgenciaApi').mockImplementation((rango, asesorId) =>
-    Promise.resolve(crearResumenDeAgenciaDemo(rango, asesorId)),
+    Promise.resolve(conDesglose(crearResumenDeAgenciaDemo(rango, asesorId))),
   );
-  vi.spyOn(api, 'obtenerResumenesDeAsesoresApi').mockResolvedValue({
-    filas: [
-      {
-        miembro: { id: 'a1', nombre: 'Valentina Rojas' },
-        resumen: crearResumenDeAgenciaDemo(
-          { desde: '2026-11-01T05:00:00.000Z', hasta: '2026-11-22T05:00:00.000Z' },
-          'a1',
-        ),
-      },
-      { miembro: { id: 'a2', nombre: 'Beto Gómez' }, resumen: null },
-    ],
-    recortado: false,
-  });
+  vi.spyOn(api, 'obtenerEquipoParaCompararApi').mockResolvedValue([
+    { id: 'a1', nombre: 'Valentina Rojas', activo: true },
+    { id: 'a2', nombre: 'Beto Gómez', activo: true },
+  ]);
   vi.spyOn(api, 'obtenerVistaDeCobrosApi').mockResolvedValue(crearVistaDeCobrosDemo(AHORA));
 });
 
@@ -140,11 +171,69 @@ describe('DashboardAdmin', () => {
     expect(cobros).toHaveBeenCalledTimes(2);
   });
 
-  it('el asesor que no se pudo leer sale como «No disponible», no como ceros', async () => {
+  it('el asesor sin actividad sale completado con el equipo, no ausente ni con ceros', async () => {
     montar();
     const tabla = await screen.findByTestId('tabla-asesores');
-    expect(within(tabla).getAllByText(/No disponible/).length).toBeGreaterThan(0);
     expect(within(tabla).getByText('Valentina Rojas')).toBeTruthy();
+    // Beto no viene en `porAsesor` (no tuvo nada en el periodo): sale «Sin actividad».
+    const filaBeto = within(tabla).getByText('Beto Gómez').closest('tr');
+    expect(filaBeto?.textContent).toContain('Sin actividad en el periodo');
+  });
+
+  it('nunca pide el resumen una vez por asesor (T-555): todas las consultas son de la agencia', async () => {
+    const espia = vi.spyOn(api, 'obtenerResumenDeAgenciaApi');
+    montar();
+    await screen.findByTestId('tabla-asesores');
+    expect(espia.mock.calls.length).toBeGreaterThan(0);
+    expect(espia.mock.calls.every(([, asesorId]) => asesorId === undefined)).toBe(true);
+  });
+
+  it('con 15 asesores se listan los 15: ya no hay tope de 12 ni aviso de recorte', async () => {
+    const ids = Array.from({ length: 15 }, (_, i) => `x${i + 1}`);
+    vi.spyOn(api, 'obtenerEquipoParaCompararApi').mockResolvedValue(
+      ids.map((id) => ({ id, nombre: `Asesor ${id}`, activo: true })),
+    );
+    vi.spyOn(api, 'obtenerResumenDeAgenciaApi').mockImplementation((rango, asesorId) => {
+      const base = conDesglose(crearResumenDeAgenciaDemo(rango, asesorId));
+      const [plantilla] = base.porAsesor;
+      return Promise.resolve({
+        ...base,
+        porAsesor: ids.map((id) => ({ ...plantilla!, asesorId: id })),
+      });
+    });
+    montar();
+    const tabla = await screen.findByTestId('tabla-asesores');
+    expect(within(tabla).getAllByTestId('fila-asesor')).toHaveLength(15);
+    expect(screen.queryByText(/primeros 12/)).toBeNull();
+  });
+
+  it('Destinos son las ventas del periodo: una fila por moneda, sin sumar COP con USD (R8)', async () => {
+    montar();
+    const bloque = await screen.findByTestId('bloque-destinos');
+    await within(bloque).findAllByTestId('destino-vendido');
+    expect(within(bloque).getByRole('heading', { name: 'Ventas por destino' })).toBeTruthy();
+    expect(bloque.textContent).not.toMatch(/archivos abiertos/i);
+    const destinos = within(bloque).getAllByTestId('destino-vendido');
+    expect(destinos.map((d) => d.textContent)).toEqual([
+      expect.stringContaining('Cartagena'),
+      expect.stringContaining('Miami'),
+    ]);
+    // Cartagena: COP en pesos (unidad mínima de COP) y USD en centavos, cada uno en su línea.
+    const cartagena = destinos[0]!;
+    expect(within(cartagena).getByTestId('destino-vendido-COP').textContent).toContain(
+      '12.000.000',
+    );
+    expect(within(cartagena).getByTestId('destino-vendido-USD').textContent).toContain('3.840,00');
+    expect(within(cartagena).getByText(/3 cotizaciones aceptadas/)).toBeTruthy();
+  });
+
+  it('si el servidor no manda ventasPorDestino ni porAsesor, lo dice en vez de pintar «sin ventas»', async () => {
+    vi.spyOn(api, 'obtenerResumenDeAgenciaApi').mockImplementation((rango, asesorId) =>
+      Promise.resolve(crearResumenDeAgenciaDemo(rango, asesorId)),
+    );
+    montar();
+    expect(await screen.findByTestId('destinos-no-disponible')).toBeTruthy();
+    expect(await screen.findByTestId('asesores-no-disponible')).toBeTruthy();
   });
 
   it('en la lista de salidas el archivo enlaza a su ficha y la urgente lleva texto, no solo color', async () => {
@@ -194,8 +283,10 @@ describe('DashboardAdmin', () => {
     expect(screen.queryByTestId('bloque-embudo')).toBeNull();
     expect(screen.queryByTestId('bloque-cobros')).toBeNull();
     expect(screen.queryByTestId('rotulo-periodo')).toBeNull();
-    // Los cobros se piden (alimentan «salidas»); el resumen de agencia, no.
+    // Los cobros se piden (alimentan «salidas»). «Asesores» sale del resumen de la agencia: UNA
+    // consulta (la del periodo; no hay comparación, así que no se pide el anterior).
     expect(cobros).toHaveBeenCalledTimes(1);
-    expect(resumen).not.toHaveBeenCalled();
+    expect(resumen).toHaveBeenCalledTimes(1);
+    expect(resumen.mock.calls[0]?.[1]).toBeUndefined();
   });
 });

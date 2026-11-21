@@ -9,7 +9,6 @@
  * un total de dinero obligaría a sumar monedas (R8).
  */
 import React from 'react';
-import { AlertTriangle } from 'lucide-react';
 import { formatearDinero } from '../../lib/formato';
 import type { FilaDeAsesor } from '../../lib/dashboard-admin-logica';
 import { formatearMinutosReporte } from '../../lib/reportes-logica';
@@ -27,24 +26,20 @@ function Monedas({ lista }: { lista: FilaDeAsesor['ventas'] }) {
   );
 }
 
-function NoDisponible() {
-  return (
-    <span className="text-aviso-700 flex items-center gap-1.5 text-sm">
-      <AlertTriangle aria-hidden="true" className="size-4 shrink-0" />
-      No disponible: no se pudo leer a este asesor
-    </span>
-  );
-}
-
 const TEXTO_SIN_ACTIVIDAD = 'Sin actividad en el periodo';
 
-export function ComparacionDeAsesores({
-  filas,
-  recortado,
-}: {
-  filas: FilaDeAsesor[];
-  recortado: boolean;
-}) {
+export function ComparacionDeAsesores({ filas }: { filas: FilaDeAsesor[] | null }) {
+  // `null`: el servidor no mandó `porAsesor` (un servidor anterior). No es «sin asesores».
+  if (filas === null) {
+    return (
+      <p
+        data-testid="asesores-no-disponible"
+        className="text-sm text-neutral-700 dark:text-neutral-300"
+      >
+        El servidor no envió la comparación entre asesores. Vuelve a intentarlo en un momento.
+      </p>
+    );
+  }
   if (filas.length === 0) {
     return (
       <p className="text-sm text-neutral-700 dark:text-neutral-300">
@@ -90,67 +85,56 @@ export function ComparacionDeAsesores({
             </tr>
           </thead>
           <tbody>
-            {filas.map((f) =>
-              f.noDisponible ? (
-                <tr key={f.id} className="border-b border-neutral-100 dark:border-neutral-800">
-                  <th scope="row" className="py-2.5 pr-3 font-medium">
-                    {f.nombre}
-                  </th>
-                  <td colSpan={hayMargen ? 6 : 5} className="px-3 py-2.5">
-                    <NoDisponible />
-                  </td>
-                </tr>
-              ) : (
-                <tr
-                  key={f.id}
-                  data-testid="fila-asesor"
-                  className={`border-b border-neutral-100 align-top dark:border-neutral-800 ${
-                    f.sinActividad ? 'text-neutral-600 dark:text-neutral-400' : ''
-                  }`}
+            {filas.map((f) => (
+              <tr
+                key={f.id}
+                data-testid="fila-asesor"
+                className={`border-b border-neutral-100 align-top dark:border-neutral-800 ${
+                  f.sinActividad ? 'text-neutral-600 dark:text-neutral-400' : ''
+                }`}
+              >
+                <th
+                  scope="row"
+                  className="py-2.5 pr-3 font-medium text-neutral-900 dark:text-white"
                 >
-                  <th
-                    scope="row"
-                    className="py-2.5 pr-3 font-medium text-neutral-900 dark:text-white"
-                  >
-                    {f.nombre}
-                  </th>
-                  {f.sinActividad ? (
-                    <td colSpan={hayMargen ? 6 : 5} className="px-3 py-2.5">
-                      {TEXTO_SIN_ACTIVIDAD}
+                  {f.nombre}
+                </th>
+                {f.sinActividad ? (
+                  <td colSpan={hayMargen ? 6 : 5} className="px-3 py-2.5">
+                    {TEXTO_SIN_ACTIVIDAD}
+                  </td>
+                ) : (
+                  <>
+                    <td className="cifra px-3 py-2.5 text-right font-semibold">
+                      {f.ventasCerradas}
                     </td>
-                  ) : (
-                    <>
-                      <td className="cifra px-3 py-2.5 text-right font-semibold">
-                        {f.ventasCerradas}
-                      </td>
+                    <td className="px-3 py-2.5">
+                      <Monedas lista={f.ventas} />
+                    </td>
+                    {hayMargen ? (
                       <td className="px-3 py-2.5">
-                        <Monedas lista={f.ventas} />
+                        <Monedas lista={f.margenes} />
                       </td>
-                      {hayMargen ? (
-                        <td className="px-3 py-2.5">
-                          <Monedas lista={f.margenes} />
-                        </td>
-                      ) : null}
-                      <td className="px-3 py-2.5">
-                        <span className="cifra">{f.aceptacion.texto}</span>
-                        {f.aceptacion.esPorcentaje ? (
-                          <span className="block text-xs text-neutral-600 dark:text-neutral-400">
-                            {f.aceptacion.fraccion}
-                          </span>
-                        ) : null}
-                      </td>
-                      <td className="cifra px-3 py-2.5">{f.conversion.texto}</td>
-                      <td className="py-2.5 pl-3">
-                        <span className="cifra">{formatearMinutosReporte(f.medianaMinutos)}</span>
+                    ) : null}
+                    <td className="px-3 py-2.5">
+                      <span className="cifra">{f.aceptacion.texto}</span>
+                      {f.aceptacion.esPorcentaje ? (
                         <span className="block text-xs text-neutral-600 dark:text-neutral-400">
-                          {f.respondidas.fraccion} respondidas
+                          {f.aceptacion.fraccion}
                         </span>
-                      </td>
-                    </>
-                  )}
-                </tr>
-              ),
-            )}
+                      ) : null}
+                    </td>
+                    <td className="cifra px-3 py-2.5">{f.conversion.texto}</td>
+                    <td className="py-2.5 pl-3">
+                      <span className="cifra">{formatearMinutosReporte(f.medianaMinutos)}</span>
+                      <span className="block text-xs text-neutral-600 dark:text-neutral-400">
+                        {f.respondidas.fraccion} respondidas
+                      </span>
+                    </td>
+                  </>
+                )}
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
@@ -163,11 +147,7 @@ export function ComparacionDeAsesores({
             className="rounded-lg border border-neutral-200 p-3 dark:border-neutral-800"
           >
             <p className="font-medium text-neutral-900 dark:text-white">{f.nombre}</p>
-            {f.noDisponible ? (
-              <p className="mt-1">
-                <NoDisponible />
-              </p>
-            ) : f.sinActividad ? (
+            {f.sinActividad ? (
               <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
                 {TEXTO_SIN_ACTIVIDAD}
               </p>
@@ -215,12 +195,6 @@ export function ComparacionDeAsesores({
           </li>
         ))}
       </ul>
-
-      {recortado ? (
-        <p className="mt-3 text-xs text-neutral-600 dark:text-neutral-400">
-          Se comparan los primeros 12 asesores activos.
-        </p>
-      ) : null}
     </div>
   );
 }
