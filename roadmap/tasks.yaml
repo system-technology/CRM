@@ -6951,7 +6951,7 @@ tasks:
     phase: 1
     priority: P0
     effort: M
-    status: backlog
+    status: done
     depends_on: [T-315]
     acceptance:
       - "lib/navegacion.ts con id, etiqueta, ruta, icono, grupo, permiso y prefijos activos; todo lo demás lee de ella"
@@ -6959,13 +6959,15 @@ tasks:
     source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md (2026-11-20)
     created_at: 2026-11-20T19:00:00.000Z
     owner: frontend
+    done_at: 2026-11-21T01:25:00.000Z
+    evidence: "Integrada en main en dos partes con los 14 checks en verde: #337 (b69ffe6, tabla lib/navegacion.ts, spec y comandos de la paleta derivados) y #348 (3f5af1c, menú, H1 y título de pestaña desde la tabla; «Archivos de viaje» en lugar de «Reservas»; «Reportes» visible para todos; permiso como lista «cualquiera de»). #348 se integró con dos e2e rotos que arregló #349; desde entonces los PR de apps/web esperan `navegador` en verde."
   - id: T-317
     title: 'N3: «Hoy», Cotizaciones y Seguimientos en el menú y la paleta; destino tras ingresar'
     type: feature
     phase: 1
     priority: P0
     effort: M
-    status: backlog
+    status: done
     depends_on: [T-316, T-313]
     acceptance:
       - "Desde / se llega a Seguimientos y a Cotizaciones en un clic; «Hoy» con contador visible desde cualquier pantalla"
@@ -6973,6 +6975,8 @@ tasks:
     source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md (2026-11-20)
     created_at: 2026-11-20T19:00:00.000Z
     owner: frontend
+    done_at: 2026-11-21T01:25:00.000Z
+    evidence: "Integrada en main por el PR #359 (975e77c) con los 14 checks en verde, incluido navegador. «Hoy» y «Seguimientos» en el menú lateral con contadores (Hoy = seguimientos de hoy + vencidos; Seguimientos = vencidos), destino tras ingresar = «Hoy» (`/`) respetando ?redirigir=, logo a `/`. Cola: los plazos de menos de 24 h no entran en el contador de Hoy (Inicio no consume esa fuente) y hay una llamada duplicada a pendientes-del-dia (menú y campana): se resuelve con la cifra única (T-391)."
   - id: T-318
     title: 'N5: la URL como estado (Atrás vuelve; ?id en Catálogo, ?op en Pipeline, ?pestana= en Configuración y ficha)'
     type: feature
@@ -7007,7 +7011,7 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: backlog
+    status: done
     depends_on: [T-316]
     acceptance:
       - "CRÍTICA para el piloto (el asesor y el dueño trabajan todo el flujo desde el celular). Decisión del propietario (2026-11-20, variante B de diseno-ux): barra inferior Hoy · Conversaciones · Cotizar · Archivos de viaje · Más, con una LUPA FIJA en la cabecera de cada pantalla que abre la búsqueda (Buscar no ocupa pestaña)"
@@ -7018,13 +7022,15 @@ tasks:
     source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md (2026-11-20)
     created_at: 2026-11-20T19:00:00.000Z
     owner: frontend
+    done_at: 2026-11-21T01:25:00.000Z
+    evidence: "Integrada en main por el PR #368 (0373ec2) con los 14 checks en verde, incluido navegador (verificado también en main). Barra inferior Hoy · Conversaciones · Cotizar · Archivos de viaje · Más (78×55 px, etiquetas de 11 px), lupa fija de 44×44 en la cabecera móvil montada una vez en el marco, hoja «Más» con módulos, campana, perfil y enlaces legales, flecha de volver en el error de la conversación. Cola: T-389 (contador de no leídos) y T-390 (banner de cookies sobre la barra; esqueleto de la conversación sin flecha)."
   - id: T-321
     title: 'N7: contexto en el cotizador (para quién y desde qué chat) y un solo total'
     type: feature
     phase: 1
     priority: P1
     effort: M
-    status: backlog
+    status: done
     depends_on: [T-316]
     acceptance:
       - "«Cotizando para …· desde la conversación» con volver al chat; tras guardar, la acción principal es «Enviar por WhatsApp»"
@@ -7039,6 +7045,8 @@ tasks:
     source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md (2026-11-20)
     created_at: 2026-11-20T19:00:00.000Z
     owner: frontend
+    done_at: 2026-11-21T01:25:00.000Z
+    evidence: "Integrada en main por el PR #369 (c2318ee) con los 14 checks en verde, incluido navegador; auditoría de seguridad de una pasada sin bloqueantes de seguridad (un bloqueante de texto corregido). Contexto «Cotizando para… · volver al chat», «Cotizar» de 1 toque en el compositor, barra fija con total y «Guardar», «Enviar en esta conversación» por el canal (de 7 a 5 toques), desglose apilable a 390 px, total coherente en la demo. SIN verificar con la API real: totales, envío, POST /cotizaciones/:id/estado BORRADOR→ENVIADA y la búsqueda de conversación por teléfono del e2e nuevo. Cola de la auditoría: T-386 a T-388 y T-392."
   - id: T-322
     title: 'N8: la campana cuenta lo que suman sus pestañas; el error de sesión ofrece «Ir a ingresar»'
     type: feature
@@ -7059,7 +7067,7 @@ tasks:
     phase: 1
     priority: P1
     effort: S
-    status: ready
+    status: done
     depends_on: []
     acceptance:
       - "Decide a qué se asignan (conversación, archivo o ambos), colores, sembrado de «Pagado», «Pago pendiente» y «Seguimiento», y la relación con Contacto.etiquetas"
@@ -7067,6 +7075,8 @@ tasks:
     source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md (2026-11-20)
     created_at: 2026-11-20T19:00:00.000Z
     owner: analista-producto
+    done_at: 2026-11-21T01:25:00.000Z
+    evidence: "Integrada en main por el PR #366 (ac0d66d): docs/01-producto/03-historias/HU-inbox-1.md. Decisión: las etiquetas se asignan solo a la conversación (no al archivo ni al contacto); tablas por agencia `etiquetas` y `conversacion_etiquetas`; permiso propuesto `etiquetas.administrar`. Siguen T-324 (datos, protegida), T-325 y T-326."
   - id: T-324
     title: 'B1: migración de etiquetas por agencia y su asignación (RLS, R1)'
     type: feature
@@ -7404,7 +7414,7 @@ tasks:
     phase: 1
     priority: P1
     effort: S
-    status: backlog
+    status: done
     depends_on: []
     acceptance:
       - "Hoy la acción abre https://api.whatsapp.com/send (otra pestaña, número que no es el de la Cloud API de la agencia) y marca la cotización ENVIADA en el acto, se haya enviado o no; al volver al chat no hay rastro (components/cotizaciones/modal-enviar-whatsapp-cotizacion.tsx:89-94): estado falso"
@@ -7415,7 +7425,8 @@ tasks:
     source: revisión a 390 px del cotizador (diseno-ux, 2026-11-20); la sesión coordinadora lo pide como bug de cola P1
     created_at: 2026-11-20T22:00:00.000Z
     owner: frontend
-
+    done_at: 2026-11-21T01:25:00.000Z
+    evidence: "Integrada en main por el PR #369 (c2318ee): la cotización solo pasa a ENVIADA tras el envío por el canal desde la web y la salida a api.whatsapp.com/send queda como acción secundaria que no cambia el estado. Matiz que dejó la auditoría: ENVIADA significa «encolado», no «salió por el canal»; se resuelve en el servidor con T-386."
   - id: T-360
     title: "Codigo de un solo uso pedido por apodo (decidir si vale el riesgo)"
     type: security
@@ -7863,4 +7874,102 @@ tasks:
       - apps/api/src/modules/identity
     source: "auditorías de seguridad del PR 1b (#363, cola C5 y hallazgo 7 de la segunda auditoría, 2026-11-21): staging ya tiene la demo, así que crear_agencia da VPR05 hasta T-361 y la API todavía no lo traduce"
     created_at: 2026-11-21T00:00:00.000Z
+    owner: backend
+  - id: T-386
+    title: "El estado ENVIADA de una cotización lo fija el servidor, no la web, y solo cuando el mensaje salió"
+    type: bug
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    depends_on: [T-321]
+    acceptance:
+      - "Hoy el endpoint de envío responde 201 con el mensaje en PENDIENTE y el evento en el outbox, y la web pide después POST /cotizaciones/:id/estado a ENVIADA: si el envío falla luego en Meta (token inválido, número sin WhatsApp, ventana cerrada entre el encolado y el envío) la cotización queda ENVIADA con el mensaje FALLIDO"
+      - "La transición BORRADOR→ENVIADA ocurre en el servidor (en la misma transacción del encolado, o al recibir el estado `sent` del mensaje) y la web deja de pedirla; el reintento del envío es idempotente (R5)"
+      - "Spec de la transición y de aislamiento: una cotización de otra agencia no cambia; según la decisión de diseño que se diga en el PR, un mensaje FALLIDO no deja la cotización ENVIADA"
+    source: "auditoría de seguridad de T-321 (2026-11-21), hallazgo MEDIO"
+    created_at: 2026-11-21T01:25:00.000Z
+    owner: backend
+  - id: T-387
+    title: "Validar como UUID los parámetros de la URL del cotizador y del detalle, y codificar los enlaces"
+    type: refactor
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: [T-321]
+    acceptance:
+      - "contactoId, conversacion y enviarCotizacion se validan con el esquema de id de @viajapro/contracts antes de usarse en una llamada a la API o en una ruta (crm-api.ts, cotizaciones/[id]/page.tsx, enlaces-viaje-logica.ts); uno inválido se ignora"
+      - "encodeURIComponent en los enlaces que interpolan ids; spec que falla con un parámetro tipo `../../inbox`"
+    source: "auditoría de seguridad de T-321 (2026-11-21), hallazgo BAJO"
+    created_at: 2026-11-21T01:25:00.000Z
+    owner: frontend
+  - id: T-388
+    title: "Lectura ligera del contacto para el cotizador (minimización de datos, R10)"
+    type: refactor
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: [T-321]
+    acceptance:
+      - "GET que devuelve solo id y nombre del contacto, con su permiso y el aislamiento por agencia, para que el cotizador no descargue la ficha completa (notas internas, cotizaciones, archivos de viaje) solo para pintar un nombre"
+      - "El cotizador la usa en lugar de la ficha completa"
+    source: "auditoría de seguridad de T-321 (2026-11-21), hallazgo BAJO"
+    created_at: 2026-11-21T01:25:00.000Z
+    owner: backend
+  - id: T-389
+    title: "Contador de conversaciones sin leer en la barra inferior y el menú (dato compartido por el marco)"
+    type: feature
+    phase: 1
+    priority: P3
+    effort: M
+    status: backlog
+    depends_on: [T-320]
+    acceptance:
+      - "El número de no leídos vive en un store o endpoint compartido que el marco consume, sin una llamada nueva por pantalla, y se muestra como contador de «Conversaciones» en el menú lateral y en la barra móvil"
+      - "Un 0 no se muestra; si la carga falla no se pinta cifra; el contador forma parte del nombre accesible del enlace"
+    source: "revisión de T-320 (2026-11-21): hoy el estado de no leídos solo existe dentro del layout de /bandeja"
+    created_at: 2026-11-21T01:25:00.000Z
+    owner: frontend
+  - id: T-390
+    title: "En móvil el banner de cookies no tapa la barra inferior, y la carga de la conversación tiene salida"
+    type: bug
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: [T-320]
+    acceptance:
+      - "En la primera visita el banner de consentimiento de cookies no deja tapada la barra inferior móvil ni reduce el marco de forma que el contenido quede bajo la barra de acción (observado a 390 px)"
+      - "El esqueleto de carga de /bandeja/[id] tiene flecha de volver de 44 px, como ya tiene su estado de error"
+    source: "revisión de T-320 y T-321 (2026-11-21)"
+    created_at: 2026-11-21T01:25:00.000Z
+    owner: frontend
+  - id: T-391
+    title: "Una sola cifra de pendientes del día para Hoy, el menú y la campana (sin llamada duplicada ni catch vacío)"
+    type: refactor
+    phase: 1
+    priority: P3
+    effort: M
+    status: backlog
+    depends_on: [T-322]
+    acceptance:
+      - "Hoy, el contador del menú y la campana leen la misma fuente y el mismo cálculo (seguimientos de hoy, vencidos y plazos de menos de 24 h); una sola llamada a pendientes-del-dia al montar el marco"
+      - "use-contadores-de-menu.ts deja de tragarse el error con un catch vacío (CLAUDE.md §6): lo registra de forma tipada y conserva la última cifra buena"
+    source: "cola de T-317 (2026-11-21)"
+    created_at: 2026-11-21T01:25:00.000Z
+    owner: frontend
+  - id: T-392
+    title: "La versión que se marca enviada es la que se mandó, no la última creada"
+    type: bug
+    phase: 1
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: [T-386]
+    acceptance:
+      - "version_enviada guarda el número de la versión que el chat envió y no max(numero) (cotizaciones.use-case.ts): si alguien añade una versión entre el envío y la transición, el historial no registra una versión que el cliente no recibió"
+    source: "auditoría de seguridad de T-321 (2026-11-21), hallazgo BAJO"
+    created_at: 2026-11-21T01:25:00.000Z
     owner: backend
