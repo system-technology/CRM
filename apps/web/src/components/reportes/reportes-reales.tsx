@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useCallback, useEffect, useState } from 'react';
-import { AlertTriangle, Lock, TrendingDown, TrendingUp } from 'lucide-react';
+import { AlertTriangle, TrendingDown, TrendingUp } from 'lucide-react';
 import type { ResumenDeReportes, TableroPipeline } from '@viajapro/contracts';
+import { AvisoReportesDeAdministracion } from '../comun/aviso-de-alcance';
 import { EsqueletoReportes } from '../comun/esqueletos';
 import { formatearDinero, formatearFecha } from '../../lib/formato';
 import { obtenerTableroPipeline } from '../../lib/crm-api';
@@ -110,19 +111,7 @@ export function ReportesReales({ periodo, esDueno, puedeVerNetoYMargen, ahora }:
   if (estado.tipo === 'cargando') return <EsqueletoReportes />;
 
   if (estado.tipo === 'sin-permiso') {
-    return (
-      <div
-        role="alert"
-        data-testid="reportes-sin-permiso"
-        className={`${tarjeta} mx-auto flex max-w-md flex-col items-center gap-1 text-center text-xs`}
-      >
-        <Lock className="h-5 w-5 text-neutral-400" />
-        <p className="font-semibold text-neutral-800 dark:text-neutral-100">
-          No tienes permiso para ver los reportes.
-        </p>
-        <p className="text-neutral-500">Pide a un Dueño de la agencia que te habilite el acceso.</p>
-      </div>
-    );
+    return <AvisoReportesDeAdministracion />;
   }
 
   if (estado.tipo === 'error') {

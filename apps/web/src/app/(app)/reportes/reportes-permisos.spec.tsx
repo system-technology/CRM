@@ -317,6 +317,10 @@ describe('ReportesPage - Permisos, dos monedas y GET /api/v1/reportes/resumen (T
 
     const alerta = await screen.findByTestId('reportes-sin-permiso');
     expect(alerta).toBeDefined();
-    expect(alerta.textContent).toContain('No tienes permiso para ver los reportes');
+    expect(alerta.textContent).toContain('Esta vista es de administración');
+    // Explica el porqué y no nombra el permiso (ADR-0035: la llave cambiará en T-342).
+    expect(alerta.textContent).not.toMatch(/ver_todas|permiso/i);
+    // El menú «Reportes» sigue visible (D3): la pantalla conserva su título y su encabezado.
+    expect(screen.getByRole('heading', { level: 1, name: 'Reportes' })).toBeDefined();
   });
 });

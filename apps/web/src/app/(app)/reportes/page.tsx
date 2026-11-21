@@ -6,11 +6,11 @@ import {
   AlertTriangle,
   BarChart3,
   Calendar,
-  Lock,
   Printer,
   TrendingDown,
   TrendingUp,
 } from 'lucide-react';
+import { AvisoReportesDeAdministracion } from '../../../components/comun/aviso-de-alcance';
 import { EsqueletoReportes } from '../../../components/comun/esqueletos';
 import { formatearDinero, ZONA_HORARIA_COLOMBIA, formatearFecha } from '../../../lib/formato';
 import { usePermisos } from '../../../lib/permisos';
@@ -246,19 +246,7 @@ function ReportesContenido({ ahora }: ReportesPageProps) {
           {estado.tipo === 'cargando' ? (
             <EsqueletoReportes />
           ) : estado.tipo === 'sin-permiso' ? (
-            <div
-              role="alert"
-              data-testid="reportes-sin-permiso"
-              className={`${tarjetaClase} mx-auto flex max-w-md flex-col items-center gap-1 text-center text-xs`}
-            >
-              <Lock className="h-5 w-5 text-neutral-400" />
-              <p className="font-semibold text-neutral-800 dark:text-neutral-100">
-                No tienes permiso para ver los reportes.
-              </p>
-              <p className="text-neutral-500">
-                Pide a un Dueño de la agencia que te habilite el acceso.
-              </p>
-            </div>
+            <AvisoReportesDeAdministracion />
           ) : estado.tipo === 'error' ? (
             <div
               role="alert"

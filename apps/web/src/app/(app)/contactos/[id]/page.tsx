@@ -49,6 +49,8 @@ import {
   construirMensajeErrorAccionable,
 } from '../../../../lib/estados-ui-logica';
 import { usePermisos, explicacionFaltaPermiso } from '../../../../lib/permisos';
+import { alcanceDeVista, TEXTO_SOLO_LO_PROPIO } from '../../../../lib/alcance-de-vista';
+import { AvisoSoloLoPropio } from '../../../../components/comun/aviso-de-alcance';
 import {
   ArrowLeft,
   MessageSquare,
@@ -133,7 +135,8 @@ function Contacto360Contenido({ params: paramsPromise }: Contacto360PageProps) {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const { puedeEscribirCrm } = usePermisos();
+  const { puedeEscribirCrm, sesion } = usePermisos();
+  const soloLoPropio = alcanceDeVista(sesion) === 'PROPIO';
 
   // Pestaña activa: vive en `?pestana=` (T-318). `replace`: cambiar de pestaña no es navegar;
   // Atrás sale de la ficha en vez de recorrer las pestañas visitadas.
@@ -782,6 +785,13 @@ function Contacto360Contenido({ params: paramsPromise }: Contacto360PageProps) {
                   <span>Nuevo Seguimiento</span>
                 </button>
               </div>
+
+              {soloLoPropio && (
+                <AvisoSoloLoPropio
+                  testId="aviso-solo-lo-propio"
+                  texto={TEXTO_SOLO_LO_PROPIO.fichaContacto}
+                />
+              )}
 
               {seguimientos.length > 0 ? (
                 <div className="space-y-2.5">
