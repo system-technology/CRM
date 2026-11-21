@@ -6379,6 +6379,7 @@ tasks:
     source: auditoría de seguridad de ADR-0030, primera vuelta, bloqueante 3 (2026-11-20)
     created_at: 2026-11-20T23:30:00.000Z
     owner: investigador
+    notes: "Avance 2026-11-21 (sin cerrar): en las páginas de Meta leídas NO está documentado operar la WABA de otro negocio con su token de usuario de sistema sin ser Tech Provider. Lo documentado: Embedded Signup + token de negocio (solo Tech Provider/Solution Partner) o compartir la WABA con un portafolio verificado (Business Suite, sin API); el acceso avanzado exige verificación del negocio; App Review ~24 h de media; plazo de la verificación no documentado. Ver §7 de docs/_investigacion/2026-11-20-coexistencia-whatsapp-business-app.md. Falta la cita literal que pide el criterio y el plan B."
   - id: T-280
     title: "Comandos de plataforma del registro: generar código de acceso, marcar NIT/RNT verificado y cambiar el tope
       global (ADR-0030 §3.2, §3.3, §3.8)"
@@ -7267,13 +7268,15 @@ tasks:
     source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md (2026-11-20)
     created_at: 2026-11-20T19:00:00.000Z
     owner: investigador
+    blocked_reason: "La prueba con el número real exige el trámite de Tech Provider (T-080), que solo puede hacer el propietario"
+    notes: "Primer criterio CUMPLIDO el 2026-11-21: lectura directa de Meta (Colombia no excluida, requisitos, ~14 días de inactividad, ecos smb_message_echoes, etiquetas NO se sincronizan, sin exclusión de chats documentada, 1.000 servicio gratis/número/mes; cifras COP sin leer) en docs/_investigacion/2026-11-20-coexistencia-whatsapp-business-app.md. Segundo criterio PENDIENTE: prueba con el número real, exige T-080. Sigue blocked por eso."
   - id: T-338
     title: 'E2: ADR de coexistencia y del tratamiento de los chats de proveedores (Ley 1581)'
     type: docs
     phase: 1
     priority: P2
     effort: M
-    status: backlog
+    status: review
     depends_on: [T-337]
     acceptance:
       - "Decide coexistencia con aviso de privacidad o un número separado para el CRM; toca ADR-0002"
@@ -7281,6 +7284,7 @@ tasks:
     source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md (2026-11-20)
     created_at: 2026-11-20T19:00:00.000Z
     owner: arquitecto
+    notes: "Borrador ADR-0033 (Propuesto) con la vuelta de auditor-seguridad, 2026-11-21. Falta la decisión del propietario."
   - id: T-339
     title: "F0: qué ve cada nivel (catálogo de reportes por rol), qué va en «Hoy» y qué en Reportes, móvil primero"
     type: docs
@@ -7720,3 +7724,33 @@ tasks:
     source: "auditoría de seguridad de T-307 (cola, 2026-11-20): M22 y M23 prueban T-261, ninguna mutación cubre T-307, y el script no corre en el CI"
     created_at: 2026-11-21T00:00:00.000Z
     owner: qa
+  - id: T-378
+    title: "Permitir en .claude/settings.json los comandos habituales de solo lectura para que las sesiones desatendidas no se detengan"
+    type: infra
+    phase: 1
+    priority: P1
+    effort: S
+    status: ready
+    depends_on: []
+    acceptance:
+      - "Se ejecuta la skill fewer-permission-prompts sobre las transcripciones y se propone una lista de permisos de solo lectura (git, gh api GET, grep, ls, node de los scripts del repositorio)"
+      - "La lista no incluye escrituras, red hacia hosts nuevos ni comandos destructivos; la aprueba el propietario (ruta protegida .claude/)"
+    source: docs/08-roadmap/09-roadmap-maestro-y-operacion-desatendida.md (2026-11-21)
+    created_at: 2026-11-21T00:30:00.000Z
+    owner: devops
+    notes: "Hoy una sesión que pide un permiso y nadie contesta se queda detenida (la de despliegue lleva horas). Las sesiones de trabajo además deben ir en modo Auto, que elige el propietario."
+  - id: T-379
+    title: "Auditoría integral al cerrar cada ola del roadmap maestro"
+    type: audit
+    phase: 1
+    priority: P2
+    effort: M
+    status: ready
+    depends_on: []
+    acceptance:
+      - "Al cerrar una ola se ejecuta la skill auditoria-integral (seguridad, aislamiento, calidad, deuda, cumplimiento, veracidad de la documentación) y se registra el informe en docs/_auditorias/"
+      - "Lo bloqueante se corrige antes de empezar la ola siguiente; lo demás va a la cola con dueño (R13)"
+    source: docs/08-roadmap/09-roadmap-maestro-y-operacion-desatendida.md (2026-11-21)
+    created_at: 2026-11-21T00:30:00.000Z
+    owner: auditor-seguridad
+    notes: "Recurrente: una vez por ola (Ola 0 a Ola 4 del roadmap maestro)."

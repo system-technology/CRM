@@ -4,10 +4,6 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
-  MessageSquare,
-  Kanban,
-  FileText,
-  Briefcase,
   Sun,
   Moon,
   Laptop,
@@ -26,6 +22,9 @@ import type { SesionActual } from '@viajapro/contracts';
 import { ModalBusquedaGlobal } from '../busqueda/modal-busqueda-global';
 import { PanelNotificaciones } from '../notificaciones/panel-notificaciones';
 import { SelectorTemaDensidad } from '../comun/selector-tema-densidad';
+import { BarraInferiorMovil } from '../comun/barra-inferior-movil';
+import { HojaMas } from '../comun/hoja-mas';
+import { EVENTO_ABRIR_BUSQUEDA_GLOBAL } from '../../lib/busqueda-global-evento';
 import {
   type ModoTema,
   type DensidadVisual,
@@ -56,6 +55,8 @@ import { obtenerAjustesAgenciaApi } from '../../lib/agencia-api';
 import { estaUsandoApiReal } from '../../lib/crm-api';
 import { zonaOPorDefecto } from '../../lib/archivos-logica';
 import { obtenerPendientesDelDiaApi } from '../../lib/crm-api';
+import { useContadoresDeMenu } from '../../lib/use-contadores-de-menu';
+import { nombreAccesibleConContador } from '../../lib/inicio-logica';
 import { tienePermiso, usePermisos } from '../../lib/permisos';
 import { useModoDemo, esModoDemo } from '../../lib/modo-demo';
 import { cambiarAgenciaActivaApi, cerrarSesionApi } from '../../lib/auth-api';
@@ -63,8 +64,7 @@ import { inboxSocketManager } from '../../lib/inbox-socket';
 import { useFocoModal } from '../../lib/use-foco-modal';
 import { fijarZonaAgencia } from '../../lib/formato';
 import {
-  ACCIONES,
-  entradaDe,
+  entradasDeHojaMas,
   entradasDelMenu,
   esDetalleMovilDeBandeja,
   esVisiblePara,
@@ -72,7 +72,7 @@ import {
   type IdDeModulo,
 } from '../../lib/navegacion';
 
-/** Color e icono suave por módulo (iconos-modulos); «Hoy» y «Seguimientos» aún no están en el menú. */
+/** Color e icono suave por módulo (iconos-modulos) del menú lateral expandido. */
 const CLAVE_DE_COLOR: Partial<Record<IdDeModulo, ModuloViajaPro>> = {
   conversaciones: 'bandeja',
   oportunidades: 'pipeline',
@@ -123,6 +123,7 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
   const [esOscuroEfectivo, setEsOscuroEfectivo] = useState(false);
   const [barraExpandida, setBarraExpandida] = useState(false);
   const [busquedaAbierta, setBusquedaAbierta] = useState(false);
+  const [masAbierta, setMasAbierta] = useState(false);
   const [panelNotifAbierto, setPanelNotifAbierto] = useState(false);
   // Fuera del modo demostración la campana parte vacía: solo muestra lo que llega de la API.
   const [notificaciones, setNotificaciones] = useState<NotificacionWeb[]>(() =>
@@ -143,6 +144,19 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
 
   const esDetalleMovil = esDetalleMovilDeBandeja(pathname);
   const idActivo = moduloActivo(pathname)?.id ?? null;
+  const contadoresMenu = useContadoresDeMenu(pathname);
+
+  // Navegar (un enlace de la hoja, la barra o el botón atrás) cierra la hoja «Más».
+  useEffect(() => {
+    setMasAbierta(false);
+  }, [pathname]);
+
+  // La lupa fija de la cabecera móvil (marco) pide abrir esta misma paleta.
+  useEffect(() => {
+    const abrir = () => setBusquedaAbierta(true);
+    window.addEventListener(EVENTO_ABRIR_BUSQUEDA_GLOBAL, abrir);
+    return () => window.removeEventListener(EVENTO_ABRIR_BUSQUEDA_GLOBAL, abrir);
+  }, []);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -330,7 +344,9 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
   const modulos = entradasDelMenu().filter(
     (m) => !sesion || esVisiblePara(m, (permiso) => tienePermiso(sesion, permiso)),
   );
-  const accionCotizar = ACCIONES.find((a) => a.id === 'cotizar');
+  const modulosDeLaHoja = entradasDeHojaMas().filter(
+    (m) => !sesion || esVisiblePara(m, (permiso) => tienePermiso(sesion, permiso)),
+  );
 
   return (
     <>
@@ -349,7 +365,7 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
           {barraExpandida ? (
             <div className="flex w-full items-center justify-between px-1">
               <Link
-                href="/bandeja"
+                href="/"
                 title="ViajaPro — CRM Turístico"
                 className="focus-visible:ring-acento-600 flex items-center gap-2.5 overflow-hidden rounded-xl focus-visible:ring-2 focus-visible:outline-none"
               >
@@ -380,7 +396,7 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
           ) : (
             <div className="flex w-full flex-col items-center space-y-2">
               <Link
-                href="/bandeja"
+                href="/"
                 title="ViajaPro — CRM Turístico"
                 className="bg-acento-700 focus-visible:ring-acento-600 flex h-11 min-h-[44px] w-11 min-w-[44px] items-center justify-center rounded-xl text-white shadow-sm transition-transform hover:scale-105 focus-visible:ring-2 focus-visible:outline-none"
               >
@@ -494,15 +510,37 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
               const Icon = m.icono;
               const claveColor = CLAVE_DE_COLOR[m.id];
               const config = claveColor ? CONFIGURACION_MODULOS[claveColor] : undefined;
+              const nombre =
+                m.id === 'hoy'
+                  ? nombreAccesibleConContador(
+                      m.etiqueta,
+                      contadoresMenu?.hoy ?? 0,
+                      'pendiente',
+                      'pendientes',
+                    )
+                  : m.id === 'seguimientos'
+                    ? nombreAccesibleConContador(
+                        m.etiqueta,
+                        contadoresMenu?.seguimientosVencidos ?? 0,
+                        'vencido',
+                        'vencidos',
+                      )
+                    : m.etiqueta;
+              const cifra =
+                m.id === 'hoy'
+                  ? (contadoresMenu?.hoy ?? 0)
+                  : m.id === 'seguimientos'
+                    ? (contadoresMenu?.seguimientosVencidos ?? 0)
+                    : 0;
 
               return (
                 <Link
                   key={m.id}
                   href={m.ruta}
-                  title={m.etiqueta}
-                  aria-label={m.etiqueta}
+                  title={nombre}
+                  aria-label={nombre}
                   aria-current={m.id === idActivo ? 'page' : undefined}
-                  className={`focus-visible:ring-acento-600 flex items-center rounded-xl transition-all duration-200 focus-visible:ring-2 focus-visible:outline-none ${
+                  className={`focus-visible:ring-acento-600 relative flex items-center rounded-xl transition-all duration-200 focus-visible:ring-2 focus-visible:outline-none ${
                     barraExpandida
                       ? `h-10 w-full gap-2.5 px-2.5 ${
                           m.id === idActivo
@@ -518,14 +556,29 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
                 >
                   <div
                     className={
-                      barraExpandida && config
-                        ? `flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${config.claseBgSuave} ${config.claseTexto}`
+                      barraExpandida
+                        ? `flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${
+                            config
+                              ? `${config.claseBgSuave} ${config.claseTexto}`
+                              : 'bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300'
+                          }`
                         : 'shrink-0'
                     }
                   >
                     <Icon className="h-4.5 w-4.5" />
                   </div>
                   {barraExpandida && <span className="truncate text-xs">{m.etiqueta}</span>}
+                  {cifra > 0 && (
+                    <span
+                      aria-hidden="true"
+                      data-testid={`contador-menu-${m.id}`}
+                      className={`flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] leading-none font-bold text-white ${
+                        barraExpandida ? 'ml-auto' : 'absolute -top-0.5 -right-0.5'
+                      }`}
+                    >
+                      {cifra > 99 ? '99+' : cifra}
+                    </span>
+                  )}
                 </Link>
               );
             })}
@@ -688,112 +741,37 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
         </div>
       </aside>
 
-      {/* 2. Barra de Navegación Inferior Móvil (<768px, WCAG 2.5.5 Touch Target >= 44px) */}
+      {/* 2. Barra inferior móvil (<768px): Hoy · Conversaciones · Cotizar · Archivos · Más (T-320) */}
       {!esDetalleMovil && (
-        <nav
-          aria-label="Navegación móvil inferior"
-          className="fixed right-0 bottom-0 left-0 z-40 flex h-14 items-center justify-around border-t border-neutral-200 bg-white/95 px-2 shadow-lg backdrop-blur-md md:hidden dark:border-neutral-800 dark:bg-neutral-900/95"
-        >
-          {/* Composición de la barra: T-320 (N4). Aquí solo las etiquetas salen de la tabla. */}
-          <Link
-            href="/bandeja"
-            title={entradaDe('conversaciones').etiqueta}
-            aria-label={entradaDe('conversaciones').etiqueta}
-            aria-current={idActivo === 'conversaciones' ? 'page' : undefined}
-            className={
-              'focus-visible:ring-acento-600 flex min-h-[44px] min-w-[44px] flex-col items-center justify-center rounded-xl transition-colors focus-visible:ring-2 focus-visible:outline-none ' +
-              (idActivo === 'conversaciones'
-                ? 'bg-acento-50 text-acento-700 dark:bg-acento-950/60 dark:text-acento-400 font-semibold'
-                : 'text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800')
-            }
-          >
-            <MessageSquare className="h-5 w-5" />
-            <span className="text-[9px] leading-tight font-medium">
-              {entradaDe('conversaciones').etiqueta}
-            </span>
-          </Link>
+        <BarraInferiorMovil
+          idActivo={idActivo}
+          pathname={pathname}
+          contadorHoy={contadoresMenu?.hoy ?? null}
+          masAbierta={masAbierta}
+          alAbrirMas={() => setMasAbierta(true)}
+        />
+      )}
 
-          <Link
-            href="/pipeline"
-            title={entradaDe('oportunidades').etiqueta}
-            aria-label={entradaDe('oportunidades').etiqueta}
-            aria-current={idActivo === 'oportunidades' ? 'page' : undefined}
-            className={
-              'focus-visible:ring-acento-600 flex min-h-[44px] min-w-[44px] flex-col items-center justify-center rounded-xl transition-colors focus-visible:ring-2 focus-visible:outline-none ' +
-              (idActivo === 'oportunidades'
-                ? 'bg-acento-50 text-acento-700 dark:bg-acento-950/60 dark:text-acento-400 font-semibold'
-                : 'text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800')
-            }
-          >
-            <Kanban className="h-5 w-5" />
-            <span className="text-[9px] leading-tight font-medium">
-              {entradaDe('oportunidades').etiqueta}
-            </span>
-          </Link>
-
-          <Link
-            href="/cotizador"
-            title={accionCotizar?.etiqueta ?? 'Cotizar'}
-            aria-label={accionCotizar?.etiqueta ?? 'Cotizar'}
-            aria-current={idActivo === 'cotizaciones' ? 'page' : undefined}
-            className={
-              'focus-visible:ring-acento-600 flex min-h-[44px] min-w-[44px] flex-col items-center justify-center rounded-xl transition-colors focus-visible:ring-2 focus-visible:outline-none ' +
-              (idActivo === 'cotizaciones'
-                ? 'bg-acento-50 text-acento-700 dark:bg-acento-950/60 dark:text-acento-400 font-semibold'
-                : 'text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800')
-            }
-          >
-            <FileText className="h-5 w-5" />
-            <span className="text-[9px] leading-tight font-medium">
-              {accionCotizar?.etiqueta ?? 'Cotizar'}
-            </span>
-          </Link>
-
-          <Link
-            href="/viajes"
-            title={entradaDe('archivos').etiquetaCorta ?? entradaDe('archivos').etiqueta}
-            aria-label={entradaDe('archivos').etiquetaCorta ?? entradaDe('archivos').etiqueta}
-            aria-current={idActivo === 'archivos' ? 'page' : undefined}
-            className={
-              'focus-visible:ring-acento-600 flex min-h-[44px] min-w-[44px] flex-col items-center justify-center rounded-xl transition-colors focus-visible:ring-2 focus-visible:outline-none ' +
-              (idActivo === 'archivos'
-                ? 'bg-acento-50 text-acento-700 dark:bg-acento-950/60 dark:text-acento-400 font-semibold'
-                : 'text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800')
-            }
-          >
-            <Briefcase className="h-5 w-5" />
-            <span className="text-[9px] leading-tight font-medium">
-              {entradaDe('archivos').etiquetaCorta ?? entradaDe('archivos').etiqueta}
-            </span>
-          </Link>
-
-          {/* Buscador / Más */}
-          <button
-            type="button"
-            onClick={() => setBusquedaAbierta(true)}
-            title="Buscar o abrir menú (Cmd+K)"
-            aria-label="Buscar o abrir menú global"
-            className="focus-visible:ring-acento-600 flex min-h-[44px] min-w-[44px] flex-col items-center justify-center rounded-xl text-neutral-500 transition-colors hover:bg-neutral-100 focus-visible:ring-2 focus-visible:outline-none dark:text-neutral-400 dark:hover:bg-neutral-800"
-          >
-            <Search className="h-5 w-5" />
-            <span className="text-[9px] leading-tight font-medium">Buscar</span>
-          </button>
-
-          {/* Perfil Móvil */}
-          <button
-            type="button"
-            onClick={() => setMenuSesionAbierto(true)}
-            title={'Perfil y sesión (' + nombreUsuario + ')'}
-            aria-label={'Perfil y sesión (' + nombreUsuario + ')'}
-            data-testid="boton-perfil-movil"
-            className="focus-visible:ring-acento-600 flex min-h-[44px] min-w-[44px] flex-col items-center justify-center rounded-xl text-neutral-500 transition-colors hover:bg-neutral-100 focus-visible:ring-2 focus-visible:outline-none dark:text-neutral-400 dark:hover:bg-neutral-800"
-          >
-            <div className="relative flex h-5 w-5 items-center justify-center rounded-full bg-neutral-200 text-[10px] font-bold text-neutral-700 dark:bg-neutral-700 dark:text-neutral-200">
-              {iniciales}
-            </div>
-            <span className="text-[9px] leading-tight font-medium">Perfil</span>
-          </button>
-        </nav>
+      {/* Hoja «Más»: el resto de módulos, la campana y el perfil. */}
+      {!esDetalleMovil && (
+        <HojaMas
+          abierta={masAbierta}
+          alCerrar={() => setMasAbierta(false)}
+          modulos={modulosDeLaHoja}
+          idActivo={idActivo}
+          seguimientosVencidos={contadoresMenu?.seguimientosVencidos ?? null}
+          noLeidas={conteoNoLeidas}
+          nombreUsuario={nombreUsuario}
+          iniciales={iniciales}
+          alAbrirNotificaciones={() => {
+            setMasAbierta(false);
+            abrirPanelNotificaciones();
+          }}
+          alAbrirPerfil={() => {
+            setMasAbierta(false);
+            setMenuSesionAbierto(true);
+          }}
+        />
       )}
 
       {/* Popover / Menú Desplegable de Sesión y Agencia Activa (ADR-0011) */}

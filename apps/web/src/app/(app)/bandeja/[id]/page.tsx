@@ -953,8 +953,25 @@ export default function BandejaConversacionPage() {
       'BANDEJA_CONVERSACION',
     );
     return (
-      <div className="flex h-full w-full items-center justify-center p-6">
-        <AvisoErrorAccionable error={errorDetallado} onReintentar={() => void cargarHistorial()} />
+      <div className="flex h-full w-full flex-col">
+        {/* Sin barra inferior en la conversación a pantalla completa: la salida es esta flecha (T-320). */}
+        <div className="flex h-14 shrink-0 items-center border-b border-neutral-200 bg-white px-2.5 md:hidden dark:border-neutral-800 dark:bg-neutral-900">
+          <Link
+            href="/bandeja"
+            data-testid="volver-a-conversaciones"
+            className="focus-visible:ring-acento-600 flex h-11 min-h-[44px] w-11 min-w-[44px] shrink-0 items-center justify-center rounded-xl text-neutral-600 hover:bg-neutral-100 focus-visible:ring-2 focus-visible:outline-none dark:text-neutral-300 dark:hover:bg-neutral-800"
+            title="Volver a lista de conversaciones"
+            aria-label="Volver a lista de conversaciones"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Link>
+        </div>
+        <div className="flex min-h-0 flex-1 items-center justify-center overflow-y-auto p-6">
+          <AvisoErrorAccionable
+            error={errorDetallado}
+            onReintentar={() => void cargarHistorial()}
+          />
+        </div>
       </div>
     );
   }
@@ -970,7 +987,7 @@ export default function BandejaConversacionPage() {
         <div className="hidden border-b border-neutral-100 bg-neutral-50/50 px-4 py-1 sm:block dark:border-neutral-800/60 dark:bg-neutral-950/40">
           <MigasDePan
             elementos={[
-              { etiqueta: 'Inicio', href: '/' },
+              { etiqueta: 'Hoy', href: '/' },
               { etiqueta: 'Bandeja', href: '/bandeja' },
               { etiqueta: detalle.contactoNombre || detalle.contactoTelefono || 'Conversación' },
             ]}

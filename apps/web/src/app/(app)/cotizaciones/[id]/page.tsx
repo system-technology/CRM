@@ -318,7 +318,7 @@ _Quedo muy atento a cualquier consulta para confirmar tu reserva._`;
           <div className="flex flex-wrap items-center justify-between gap-3">
             <MigasDePan
               elementos={[
-                { etiqueta: 'Inicio', href: '/' },
+                { etiqueta: 'Hoy', href: '/' },
                 { etiqueta: 'Cotizaciones', href: '/cotizaciones' },
                 {
                   etiqueta: cotizacion?.titulo

@@ -123,6 +123,7 @@ Postmark real; las migraciones contra una base de producción (solo corren en el
 | `CAMPOS_SENSIBLES_KEY` y `_VERSION=1` sin cargar en Render, y sin copia guardada de la clave | Sin ella el cifrado no puede usarse desplegado; perder la clave pierde los datos | Propietario |
 | `STAGING_DESPLIEGUE=desactivado`. Neon `viajapro-staging` existe con 32 de 47 migraciones aplicadas y faltan 3 roles; **no existe** servicio en Render ni proyecto en Vercel. La sesión de despliegue espera tus decisiones: qué contraseñas de rol carga quién, `API_TRUST_PROXY` y los secretos que solo cargas tú | No hay nada que enseñar fuera de local | Propietario |
 | Verificación del negocio en Meta / Tech Provider sin iniciar (T-080); falta un mensaje desde un celular | Solo número de prueba y Graph falsa; no hay lanzamiento | Propietario |
+| Decidir ADR-0033 (número de JD Tours: coexistencia con lista de exclusión o número separado; chats de proveedores y Ley 1581). Coexistencia verificada en Meta el 2026-11-21: no pierde la app, Colombia no excluida, pero todo chat individual entra al CRM | Conectar el número real de la agencia piloto (además de T-080) | Propietario |
 | Decidir zod 4 y los ADR-0023 y 0024 | Queda 1 vulnerabilidad alta en producción; el trabajo fiscal no avanza | Propietario |
 | Sin Redis ni trabajador en la máquina del propietario (no hay Docker) | Con `unico` no hace falta Redis; falta el recorrido real en Codespaces | Propietario, `devops` |
 | Tarifario real de la agencia piloto | El catálogo sigue con datos verosímiles | Propietario / agencia |

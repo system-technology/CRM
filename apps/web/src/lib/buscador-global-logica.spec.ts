@@ -41,7 +41,9 @@ describe('Pruebas Unitarias del Buscador Global Omnicanal (buscador-global-logic
       }
     });
 
-    it('«cotizaciones» y «seguimientos» devuelven su módulo', () => {
+    it('«hoy», «cotizaciones» y «seguimientos» devuelven su módulo', () => {
+      const hoy = buscarEnIndiceGlobal('hoy');
+      expect(hoy.acciones.some((i) => i.titulo === 'Hoy' && i.href === '/')).toBe(true);
       const cot = buscarEnIndiceGlobal('cotizaciones');
       expect(
         cot.acciones.some((i) => i.titulo === 'Cotizaciones' && i.href === '/cotizaciones'),
