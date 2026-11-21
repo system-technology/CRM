@@ -12,6 +12,71 @@
 
 ---
 
+## 2026-11-21 (lote nocturno) — La cola daba por lista una tarea que solo desbloquea el propietario
+
+**Verificado** con `gh` y `git` en el mismo turno; cada PR con sus **15 checks** comprobados a mano
+antes del merge (`mutaciones-aislamiento` incluido, que aún no es obligatorio en el servidor).
+`main`: `580dd67f` → **`d059acba`**. Madre `…5mmenvvqrBAdaBUW1`.
+
+**Cómo se eligió el lote.** No contra la lista de P1, sino contra el **criterio de salida de JD
+Tours** (§3 del roadmap del piloto), que es la única lista del repositorio que mide lo que el
+propietario pide cuando dice «que lleguen agencias».
+
+- **#475 — T-340.** El **ADR-0035 pasa de «Propuesto» a «Aceptado»** con la auditoría de seguridad
+  que le faltaba, recorrida punto por punto **contra el código**. Cierra un agujero de R7: llevaba
+  días implementado (T-341 a T-343) sin que nadie lo revisara. Queda escrito en el propio ADR que lo
+  revisó **una sesión de Claude leyendo código, no el agente `auditor-seguridad` ni una persona**, y
+  que el propietario puede reabrirlo. Cola derivada: T-580, T-581, y las condiciones de §9 anotadas
+  en T-345 y T-483.
+- **#476 — T-332 y T-335.** La pantalla **«quién pagó y quién debe»** con los cuatro filtros de
+  estado de cobro y **exportación a CSV**: el punto 4 del criterio de salida. **Es lo único de este
+  lote que una agencia puede ver.**
+- **#477 — T-346.** La prueba **en un navegador** de que un asesor no ve las cifras de otro ni las
+  de la agencia, y de que pedir el `asesorId` ajeno responde **403**.
+
+### Lo que este lote corrigió de la propia cola
+
+**`T-334` figuraba como `ready` y era falso.** Su primer criterio exige las columnas de la **hoja
+real del piloto**, que no está en el repositorio; el roadmap encabeza sus preguntas abiertas con
+«antes de T-327, T-323 y **T-334**» y la última es justo esa hoja. Es el **punto 12 de los
+pendientes del propietario**. El pendiente estaba bien anotado: **lo que mentía era la cola**.
+`T-334` y `T-336` pasan a `blocked`; `T-335` se reapunta a `T-332`.
+
+De ahí sale una comprobación barata que conviene repetir cada lote: **que ninguna tarea `ready`
+dependa de una `blocked`**.
+
+**`T-372` se cierra medida.** La madre anterior la dejó diciendo «no lo he verificado: que lo mida
+quien la tome». Se midió: en la corrida `44934621499` **M17 y M21 salieron las dos rojas**, su
+criterio exacto. Acertó en el fondo y en la forma: **marcar la sospecha como sospecha es lo que hizo
+que alguien la midiera.**
+
+### Tres cosas aprendidas que no son del producto
+
+1. **Antes de llamar fuga a una guarda de tipos, mira el sitio de llamada.** Una hija reportó que
+   `porAsesor` solo estaba protegido «por tipos» y que los adaptadores ignoran el parámetro. Suena a
+   fuga; no lo es: el estrechamiento sale de `esAgenciaEntera`, que decide **en ejecución**. Bien
+   clasificado como cola (T-580). Fiarse del informe en cualquiera de los dos sentidos habría errado.
+2. **El cierre automático de tareas no cierra nada**, por cuarta vez consecutiva: T-340, T-332 y
+   T-335 seguían abiertas en `main` después de integrar, con las ramas nombrándolas. Hay que mirar
+   el `status` y cerrarlo a mano.
+3. **Una herramienta que no se ha visto fallar no mide nada.** Lo encontró sola la sesión de T-346:
+   su medidor de contraste dio «0 hallazgos» por no entender los colores `oklch()` de Tailwind. Lo
+   detectó, lo arregló y escribió que *«un medidor que devuelve cero sin haberse visto fallar es la
+   misma cobertura falsa que la de las pruebas de aislamiento»*. Con el medidor arreglado aparecieron
+   los defectos reales (T-583).
+
+### Supuesto, no verificado
+
+- Que la pantalla de cobros se ve bien con datos de volumen: las capturas son de la demostración.
+- Que el 403 del `asesorId` ajeno se comporta igual contra Postgres real: eso lo corre el CI, no la
+  sesión. El rojo que sí se vio fue contra una API falsa mutada.
+
+### Lo que NO hizo este lote
+
+**Acercar una agencia.** Tres de las cuatro piezas son verdad del proceso y confianza. El cuello de
+botella sigue siendo del propietario: el despliegue, la lista de chats de JD Tours y —nuevo— **la
+muestra de su hoja de reservas**.
+
 ## 2026-11-21 (lote de la tarde-noche) — El manual destapa lo que ninguna prueba verde enseñaba
 
 **Verificado** con `gh` y `git` en el mismo turno, cada PR con sus 14 checks comprobados **a mano** antes del

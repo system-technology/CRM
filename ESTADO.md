@@ -10,11 +10,11 @@
 
 | Campo | Valor |
 |---|---|
-| Última actualización | 2026-11-21, cierre del lote que **deja la demostración en condiciones de enseñarse** (`main` en `910c04f0`, PR #461, #460, #463, #466, #462, #464 y #465; [bitácora](docs/_bitacora/2026-11-21-lote-de-la-tarde-demo-ensenable.md)) |
-| Actualizado por | Claude, sesión madre `session_01R81Xh4XshqoadVSoT7orGV` (hilo al día con los PR #289 a #469) |
+| Última actualización | 2026-11-21, **lote nocturno de cobros y permisos** (PR #475, #476 y #477; [bitácora](docs/_bitacora/2026-11-21-lote-nocturno-cobros-permisos-y-adr.md)) |
+| Actualizado por | Claude, sesión madre `session_01R81Xh5mmenvvqrBAdaBUW1` (hilo al día con los PR #289 a #477) |
 | Fase | **Fase 1 del backlog: «Un CRM mostrable y endurecido»** (M1 del [roadmap v2](docs/08-roadmap/01-roadmap.md)). Sin agencia real todavía. Prioridad vigente: la demo a JD Tours ([`MARCO.md`](docs/_contexto/MARCO.md) §6) |
-| Avance | **235 tareas `done`** en `roadmap/tasks.yaml` (548 en total). «Done» significa integrada en `main`, **no** desplegada ni probada con Meta real. **Las P1 abiertas pasaron de 74 a 17** tras contrastarlas contra el código (PR #463): ocho ya estaban hechas y 49 estaban mal priorizadas. **Las 14 P0 abiertas siguen sin contrastar (T-574)** |
-| Próximo hito | **El despliegue y la lista de chats de JD Tours, las dos del propietario.** El código que impedía enseñar la demostración ya está en `main`: se puede aceptar una cotización desde la pantalla (T-563), verla con los ojos de un asesor (T-566) y el ingreso dejó de afirmar una conexión que no comprobaba (T-565). Después, la clave de cifrado y la prueba con Meta real (T-080) |
+| Avance | **249 tareas `done`** en `roadmap/tasks.yaml` (555 en total; **303 abiertas, 4 P0 y 12 P1**, que eran 17). «Done» significa integrada en `main`, **no** desplegada ni probada con Meta real. **Quedan 4 P0**, y ninguna es de código: esperan despliegue, al propietario o un recorrido manual. **Aviso: el cierre automático de tareas no cierra nada** (comprobado en tres lotes seguidos), así que toda cifra de avance hay que confirmarla a mano |
+| Próximo hito | **El despliegue y la lista de chats de JD Tours, las dos del propietario.** A eso se suma ahora **la muestra de su hoja de reservas**, sin la cual T-334 y T-336 no arrancan (punto 12 de los pendientes). El código que impedía enseñar la demostración ya está en `main`: se puede aceptar una cotización desde la pantalla (T-563), verla con los ojos de un asesor (T-566) y el ingreso dejó de afirmar una conexión que no comprobaba (T-565). Después, la clave de cifrado y la prueba con Meta real (T-080) |
 
 ---
 
@@ -29,11 +29,29 @@ y su [plan](docs/08-roadmap/02-plan-correccion-auditoria-2026-11-15.md). Entrada
 API es falsa y no hay nada desplegado.** Ninguna agencia lo ha visto ni un mensaje de celular real ha
 entrado. Seguimos en local.
 
-### Pantalla «Cobros» y CSV (T-332, T-335) — en PR, carril `b`
+### Cierre del lote nocturno de cobros y permisos (2026-11-21)
 
-`/cobros`: total, pagado y saldo por archivo, filtro por los cuatro estados de cobro y exportación a CSV
-(`exportarCobrosCSV`; los números ya no pasan por el escapado de fórmulas). Los e2e los corre el CI.
-Falta en el contrato `FilaDeCobro`: pasajeros. Detalle: [bitácora](docs/_bitacora/2026-11-21-cobros-pantalla-y-csv.md).
+`main` arranca en **`580dd67f`** y cierra en **`716f400d`**, con cero PR abiertos al empezar y al terminar. Tres sesiones en paralelo, elegidas contra el
+**criterio de salida de JD Tours** (§3 del roadmap del piloto) y no contra la lista de P1, porque lo
+que el propietario pide es algo que una agencia pueda ver.
+
+- **#475** (T-340, integrado) — el **ADR-0035 pasa a Aceptado** con la auditoría de seguridad que le faltaba,
+  hecha contra el código. Cierra un agujero de R7: el ADR llevaba días implementado sin estar
+  aceptado. Dos seguimientos de cola (T-580, T-581).
+- **#476** (T-332 y T-335, integrado) — **la pantalla «quién pagó y quién debe»** con filtros por estado de
+  cobro y **exportación a CSV**. Es el punto 4 del criterio de salida. Sin neto ni margen **por
+  construcción**: `FilaDeCobro` no los trae. No muestra pasajeros, declarado y encolado (T-582).
+  Detalle: [bitácora](docs/_bitacora/2026-11-21-cobros-pantalla-y-csv.md).
+- **#477** (T-346, integrado) — **la prueba en un navegador** de que un asesor no ve las cifras de otro ni las
+  de la agencia, y de que pedir el `asesorId` ajeno responde 403. Midió además el contraste de los
+  dos dashboards y encontró textos por debajo de WCAG AA (T-583).
+
+**Lo que este lote NO hizo:** acercar una agencia. Solo la pantalla de cobros es enseñable; el resto
+es confianza y verdad del proceso. El cuello de botella sigue siendo del propietario.
+
+**Corregido en la cola:** `T-334` y `T-336` pasan a `blocked` (dependen de la hoja del piloto, que
+no está en el repositorio), `T-335` se reapunta a `T-332`, y **`T-372` se cierra con la medición**
+del arnés: M17 y M21 salieron rojas en la corrida `44934621499`.
 
 ### Cierre del lote de la madrugada (2026-11-21)
 

@@ -226,6 +226,50 @@ PR de este lote (#471 carril `a`, #472 carril `i`, #473 carril `b`) la llevaban 
 verde en los tres. T-576 nació diciendo lo contrario y se ha corregido. Avisar a las hijas de que no
 pueden dejar su rastro documental **les hacía quitar trabajo bueno por una regla que no existe**.
 
+## 1.10 La cola marcaba `ready` una tarea que solo puede desbloquear el propietario (2026-11-21, lote nocturno)
+
+**T-334 estaba en `ready` y era falso.** Su primer criterio exige «las columnas de la hoja **real**
+del piloto (muestra sin datos personales)», y esa muestra **no está en el repositorio** (no hay
+ningún `.csv`). El roadmap de JD Tours encabeza sus preguntas abiertas con «**antes de T-327, T-323
+y T-334**», y la última es justo la hoja. Es el **punto 12 de `PENDIENTES-DEL-PROPIETARIO.md`**.
+
+El pendiente **sí** estaba registrado con el propietario. Lo que fallaba era la cola: marcaba lista
+una tarea que depende de él. **Un pendiente bien anotado no sirve de nada si la tarea que lo espera
+figura como disponible**: la siguiente sesión la toma y se estrella, o peor, se inventa las columnas.
+
+Corregido: `T-334` → `blocked`, `T-336` → `blocked` (importar su hoja exige su hoja), y `T-335` →
+`ready` con su dependencia movida de `T-334` a `T-332`, porque lo que hay que exportar es la tabla
+del **criterio de salida §3.4**, no las columnas del propietario.
+
+**Comprobación que conviene repetir cada lote, es barata:** que **ninguna tarea `ready` dependa de
+una `blocked`**. Se hace en diez líneas de Python sobre `tasks.yaml`. Tras esta corrección, las 551
+pasan.
+
+## 1.11 T-372: la sospecha del turno anterior era correcta, y hacía bien en no darla por buena
+
+La madre anterior dejó T-372 en la cola diciendo «**NO lo he verificado: que lo mida quien la tome y
+me desmienta si procede**». Se midió: en la corrida **`44934621499`** (ya en `main`, 18:18 UTC)
+**M17 y M21 salen las dos ROJAS**, que era exactamente su criterio pendiente. T-372 → `done`.
+
+Acertó en el fondo **y** en la forma. Si hubiera escrito «T-372 ya está hecha», habría tenido razón
+por casualidad y nadie habría mirado la corrida. **Marcar la sospecha como sospecha es lo que hizo
+que se midiera.**
+
+## 1.12 Una guarda «solo de tipos» puede estar protegiendo de verdad: mira el sitio de llamada
+
+La hija de T-340 encontró que `porAsesor` y `ventasPorDestino` exigen el alcance de agencia entera
+**por tipo**, y que los tres adaptadores lo reciben como `_alcance` (guion bajo: sin usar). Dicho
+así suena a fuga: los tipos se borran al compilar.
+
+**No lo es, y lo comprobé antes de aceptarlo.** El estrechamiento no viene del tipo sino de
+`esAgenciaEntera`, que es una **función con lógica en ejecución** (`nivel === 'AGENCIA' && asesorId
+=== null`). En `obtener-resumen.use-case.ts` un alcance `PROPIO` deja `agenciaEntera === null` y la
+llamada **no se hace**. La barrera es real; lo que falta es la segunda, en el adaptador.
+
+**La regla:** antes de llamar fuga a una guarda de tipos, **mira el sitio de llamada**. Si el
+estrechamiento sale de un `if` sobre un discriminante, hay comprobación en ejecución aunque el tipo
+desaparezca. La hija lo clasificó bien como cola (T-580); yo lo verifiqué en vez de creerla.
+
 ## 2. Reglas operativas que no se olvidan
 
 - **R14:** todo cambio se documenta, lo hecho y lo que viene. Un plan que solo vive en una conversación no existe.
@@ -238,6 +282,38 @@ pueden dejar su rastro documental **les hacía quitar trabajo bueno por una regl
 - **Subagentes:** nunca dos Opus a la vez (el límite de 5 h de la cuenta los mata con HTTP 429 y **no se reanudan**). Todo subagente que vaya a commitear trabaja en un `git worktree` aparte: el working tree es compartido.
 
 ## 3. Cola de integración (orden)
+
+### Lote nocturno de cobros y permisos (2026-11-21, madre `…5mmenvvqrBAdaBUW1`) — CERRADO
+
+Arranca con `main` en **`580dd67f`** y cero PR abiertos. Tres hijas Sonnet en paralelo, elegidas
+contra el **criterio de salida de JD Tours** (§3 del roadmap del piloto), no contra la lista de P1.
+
+- **#475** (T-340, carril `i`) — **INTEGRADO** en `7dc17bef`. 15/15 verdes, `mutaciones-aislamiento`
+  incluido. ADR-0035 pasa a **Aceptado**. Auditoría propia antes de integrar: comprobé **línea a
+  línea** su hallazgo delicado y resultó bien clasificado (ver §1.12). Dos seguimientos registrados
+  (**T-580**, **T-581**) y las condiciones de §9 anotadas en **T-345** y **T-483**; **T-493** ya
+  existía y no se duplicó.
+- **#476** (T-332 y T-335, carril `b`) — **INTEGRADO** en `d059acba`. 15/15 verdes. La pantalla de
+  cobros y su CSV. Auditoría propia: **R8 correcto** (usa `Money.desdeUnidades().aDecimal()`, nunca
+  divide por 100), el escapado contra fórmulas exime **solo** números negativos puros con expresión
+  anclada y el entrecomillado RFC 4180 sigue después, y **no hay neto ni margen que ocultar porque
+  el contrato no los trae**. Conflicto de `ESTADO.md` resuelto a mano. Cola: **T-582** (pasajeros).
+- **#477** (T-346, carril `b`) — **INTEGRADO** en `716f400d`. 15/15 verdes. Vio la prueba **en rojo**
+  con dos mutaciones nombradas, sembró las cifras **dentro** de la prueba (la semilla no da movimiento
+  por asesor y dos asesores en cero pasan en verde sin probar nada) y comparó **por diferencia**.
+  Midió el contraste de los dos dashboards y salieron defectos reales: **T-583**.
+
+**Cierre del lote:** `main` **`580dd67f` → `716f400d`**. Tres PR integrados, cero abiertos.
+**555 tareas, 249 `done`, 303 abiertas, 4 P0 y 12 P1** (eran 17). **Siguiente id libre: T-584.**
+Cerradas a mano: T-332, T-335, T-340, T-346, T-372. Nuevas: T-580 a T-583.
+
+**Confirmado CUATRO veces en este lote: el cierre automático de tareas no cierra nada.** T-340
+seguía en `review`, y T-332 en `ready` y T-335 en `backlog` después de integrar, con las ramas
+nombrándolas. **Comprobar el `status` en `main` tras cada integración y cerrarlo a mano.**
+
+**Integrar con `gh api -X PUT .../merge` por Bash queda denegado** por el sistema de permisos de la
+sesión. **No se rodea**: queda anotado como pendiente del propietario, que es quien puede añadir la
+regla de permiso si quiere esa vía.
 
 ### Lote del arnés y la cola (2026-11-21, madre `…64ppDELKxYC1Tkdsu`) — CERRADO
 

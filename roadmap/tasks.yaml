@@ -7921,7 +7921,7 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: ready
+    status: done
     depends_on:
       - T-331
     acceptance:
@@ -7932,7 +7932,7 @@ tasks:
         ABIERTO/CANCELADO)"
       - "e2e: registrar un pago cambia el saldo y el filtro"
     source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md (2026-11-20)
-    notes: "Reconciliación 2026-11-21: T-331 está hecha; pasa a ready."
+    notes: "Reconciliación 2026-11-21: T-331 está hecha; pasa a ready. || CERRADA 2026-11-21: PR #476 integrado en main. La pantalla (app)/cobros con los cuatro filtros de estado de cobro, entrada en el menu, e2e y capturas a 390 y 1440. SALVEDAD DECLARADA: no muestra pasajeros porque FilaDeCobro no los trae; eso es T-582 y no esta en el criterio de salida del piloto. El cierre automatico NO la cerro: seguia en ready en main despues de integrar."
     created_at: 2026-11-20T19:00:00.000Z
     owner: frontend
   - id: T-333
@@ -7958,7 +7958,7 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: ready
+    status: blocked
     depends_on:
       - T-316
       - T-327
@@ -7967,7 +7967,7 @@ tasks:
       - Se ve a 1440 y a 390 px; estados vacío y error
     source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md (2026-11-20)
     notes: "Reconciliación 2026-11-21: intacta (/viajes solo filtra por estado ABIERTO/CANCELADO y no tiene las
-      columnas de la hoja); sus dependencias T-316 y T-327 están hechas, pasa a ready."
+      columnas de la hoja); sus dependencias T-316 y T-327 están hechas, pasa a ready. || CORRECCION 2026-11-21 (madre del lote nocturno): estaba marcada ready y es FALSO. Su primer criterio exige las columnas de la hoja REAL del piloto y esa muestra NO existe en el repositorio (buscado: ningun .csv). El propio roadmap pone las preguntas al dueno ANTES de T-334 y la ultima es su hoja: cuantas reservas y que columnas, muestra sin nombres ni telefonos (R10). Es el punto 12 de PENDIENTES-DEL-PROPIETARIO. Pasa a blocked: la desbloquea el propietario, no una sesion de codigo."
     created_at: 2026-11-20T19:00:00.000Z
     owner: frontend
   - id: T-335
@@ -7976,15 +7976,15 @@ tasks:
     phase: 1
     priority: P1
     effort: S
-    status: backlog
+    status: done
     depends_on:
-      - T-334
+      - T-332
     acceptance:
       - El CSV trae lo que el usuario ve; sin neto ni margen para quien no tenga cotizacion.ver_neto_y_margen
       - Escapado de celdas contra inyección de fórmulas
     source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md (2026-11-20)
     notes: "Confirmada P1: no hay exportación CSV de archivos de viaje (apps/web/src/lib/exportar-csv.ts existe
-      pero no lo usa /viajes); es del criterio de salida de JD Tours."
+      pero no lo usa /viajes); es del criterio de salida de JD Tours. || CORRECCION 2026-11-21: su dependencia pasa de T-334 a T-332. Lo que hay que exportar es la tabla con total, pagado y saldo del criterio de salida (§3 punto 4), que la entrega T-332; NO hacen falta las columnas de la hoja del propietario, que son lo que bloquea a T-334. Se entrega junto a T-332 en el mismo PR. || CERRADA 2026-11-21: PR #476 integrado en main, junto a T-332. exportarCobrosCSV en apps/web/src/lib/exportar-csv.ts. Auditado por la madre: los importes salen de Money.desdeUnidades().aDecimal(), sin dividir a mano por 100 (R8: en COP la unidad minima es el peso); el escapado contra inyeccion de formulas solo exime numeros negativos puros con expresion anclada, y el entrecomillado RFC 4180 sigue corriendo despues; y no hay neto ni margen que ocultar porque el contrato no los trae. El cierre automatico NO la cerro: seguia en backlog en main."
     created_at: 2026-11-20T19:00:00.000Z
     owner: backend
   - id: T-336
@@ -7993,7 +7993,7 @@ tasks:
     phase: 1
     priority: P1
     effort: L
-    status: backlog
+    status: blocked
     depends_on:
       - T-334
       - T-327
@@ -8002,7 +8002,7 @@ tasks:
         datos personales en los logs (R10)
       - "Auditoría de seguridad: importa datos de personas dentro de una sola agencia y no cruza agencias"
     source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md (2026-11-20)
-    notes: "Confirmada P1: no existe importación de la hoja; es del criterio de salida de JD Tours."
+    notes: "Confirmada P1: no existe importación de la hoja; es del criterio de salida de JD Tours. || CORRECCION 2026-11-21: pasa a blocked por la misma razon que T-334. Importar la hoja del piloto exige la hoja del piloto."
     created_at: 2026-11-20T19:00:00.000Z
     owner: backend
   - id: T-337
@@ -8086,7 +8086,7 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: review
+    status: done
     depends_on:
       - T-339
     acceptance:
@@ -8101,7 +8101,7 @@ tasks:
     owner: arquitecto
     notes: "ADR-0035 (Propuesto) en la rama i/T-340-adr-niveles-reportes. Pasa a done cuando se integre en main ||
       Reconciliación 2026-11-21: sigue en review. Un ADR que ya se implementó sin estar Aceptado es un agujero
-      de proceso (R7)."
+      de proceso (R7). || CERRADA 2026-11-21 por la madre del lote nocturno: PR #475 integrado en main. El ADR-0035 pasa a Aceptado con la auditoria de su seccion 9 recorrida punto por punto contra el codigo. OJO: el cierre automatico de tareas NO la cerro pese a que la rama la nombraba; tercer lote seguido. Comprobar siempre el status en main despues de integrar."
   - id: T-341
     title: "F2: permisos de reportes en el catálogo de roles y su sembrado (absorbe T-141)"
     type: feature
@@ -8244,6 +8244,7 @@ tasks:
       2026-11-20)
     created_at: 2026-11-20T21:30:00.000Z
     owner: frontend
+    notes: "CONDICION DEL ADR-0035 §9 (auditoria de T-340, 2026-11-21): al construir esta tarea hay que cumplir §9.4 el margen en el CSV solo con cotizacion.ver_neto_y_margen; §9.7 las filas de detalle respetan visibilidadDe; y §9.8 escapado de formulas, sin datos personales ni telefonos, solo con reportes.ver_agencia, y decidido EN EL SERVIDOR. La auditoria marco estos tres puntos como «no aplica hoy» precisamente porque la exportacion aun no existe: dejan de no aplicar en el momento en que esta tarea se construya."
   - id: T-346
     title: "F7: revisión móvil de los dos dashboards y e2e de navegador de permisos entre asesores (el e2e de API
       y la medida de 390 px de /reportes ya existen)"
@@ -8251,7 +8252,7 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: ready
+    status: done
     depends_on:
       - T-343
       - T-344
@@ -8264,7 +8265,7 @@ tasks:
         otro asesor, y el administrador sí"
     source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md, Eje F (decisión del propietario
       2026-11-20)
-    notes: "Reconciliación 2026-11-21: sus dependencias T-343 y T-344 están hechas; pasa a ready."
+    notes: "Reconciliación 2026-11-21: sus dependencias T-343 y T-344 están hechas; pasa a ready. || CERRADA 2026-11-21: PR #477 integrado en main. apps/web/e2e/09-reportes-por-alcance.e2e-spec.ts: una asesora no ve las cifras de su companero ni las de la agencia, la duena si, y pedir a mano el asesorId ajeno responde 403 sin cifras. Las cifras se siembran DENTRO de la prueba porque la semilla no da movimiento por asesor, y se compara por diferencia. Las aserciones se vieron en ROJO antes, mutando la API falsa en dos sentidos; eso prueba que muerden, no que el servidor real sea correcto (de eso responde reportes.e2e-spec.ts). El contraste se midio y salieron defectos reales: T-583. El cierre automatico NO la cerro."
     created_at: 2026-11-20T21:30:00.000Z
     owner: qa
   - id: T-347
@@ -8525,7 +8526,7 @@ tasks:
     phase: 1
     priority: P1
     effort: M
-    status: backlog
+    status: done
     human_required: true
     acceptance:
       - "Ya existe: migración 20261120150000_apodo_de_ingreso (usuarios.apodo, accesos_identidad.apodo,
@@ -8547,7 +8548,7 @@ tasks:
       verificacion por confiar en lecturas (T-547 y el e2e de T-529). Se queda backlog hasta que el arnes
       corra. Lo hecho si esta en main: migracion 20261120150000, AP1-AP12 en aislamiento.spec.ts. ||
       Reconciliación 2026-11-21: se mantiene la decisión del triaje de la madre (no cerrarla moviendo el
-      criterio a T-377). Solo se estrecha el texto a lo que falta."
+      criterio a T-377). Solo se estrecha el texto a lo que falta. || MEDIDA Y CERRADA 2026-11-21 por la madre del lote nocturno. El arnes YA se ejecuta en todo PR desde T-377. En la corrida 44934621499 (rama i/tablero-y-seguimientos-del-arnes, ya integrada en main, 18:18 UTC) M17 (el disparador NO borra el par OLD al cambiar identidad_id o tenant_id) y M21 (el disparador sin la rama del apodo: un cambio de apodo no llega al indice) salieron las dos ROJAS, que es exactamente el criterio que faltaba. Resumen de esa corrida: 23 mutaciones detectadas, 1 no aplicable. Rastro en la bitacora del lote."
   - id: T-373
     title: "ADR-0031 PR 2 API: identificador, centinela, tope por identidad y PATCH del apodo"
     type: feature
@@ -9793,6 +9794,7 @@ tasks:
     source: aportes de la sesión de cobros a T-339 (2026-11-21)
     created_at: 2026-11-21T04:10:00.000Z
     owner: backend
+    notes: "CONDICION DEL ADR-0035 §9 (auditoria de T-340, 2026-11-21): al construir esta tarea hay que cumplir §9.4 el margen en el CSV solo con cotizacion.ver_neto_y_margen; §9.7 las filas de detalle respetan visibilidadDe; y §9.8 escapado de formulas, sin datos personales ni telefonos, solo con reportes.ver_agencia, y decidido EN EL SERVIDOR. La auditoria marco estos tres puntos como «no aplica hoy» precisamente porque la exportacion aun no existe: dejan de no aplicar en el momento en que esta tarea se construya."
   - id: T-484
     title: Cerrar por rol y con dueño los hallazgos H4 a H8 del catálogo de reportes por nivel
     type: security
@@ -12474,3 +12476,105 @@ tasks:
     source: "auditoria de la madre sobre el PR #471, 2026-11-21"
     created_at: 2026-11-21T18:10:00.000Z
     owner: datos
+
+  - id: T-580
+    title: "Reportes: la guarda de agencia entera de porAsesor y ventasPorDestino es solo de tipos, sin comprobacion en ejecucion"
+    type: security
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    depends_on:
+      - T-340
+    acceptance:
+      - "HOY NO ES UNA FUGA Y ESTA VERIFICADO (madre del lote nocturno, 2026-11-21): esAgenciaEntera y
+        esAgencia de shared/autorizacion/alcance-de-reporte.ts son funciones con logica en EJECUCION
+        (nivel === AGENCIA && asesorId === null), y en obtener-resumen.use-case.ts un alcance PROPIO deja
+        agenciaEntera === null, asi que porAsesor NUNCA se invoca. La proteccion es real, no solo de tipos"
+      - "Lo que falta es defensa en profundidad: los puertos exigen AlcanceDeAgenciaEntera por TIPO, y los
+        tipos se borran al compilar. Un llamador futuro que no pase por el if del caso de uso no encontraria
+        ninguna barrera en el puerto"
+      - "Remedio propuesto: que cada adaptador de porAsesor y ventasPorDestino afirme en ejecucion que
+        recibe el alcance que su tipo promete, y falle fuerte si no"
+      - "Prueba: llamar al puerto con un alcance PROPIO saltandose el caso de uso y ver que falla. Debe
+        verse en ROJO antes del arreglo"
+    source: "auditoria de seguridad del ADR-0035 (T-340), 2026-11-21"
+    owner: backend
+    notes: "Sale de la auditoria de T-340. Es cola, no bloqueante (CLAUDE.md 3.1): empieza por «el dia que
+      otro llamador aparezca». La madre comprobo la cadena completa linea a linea antes de clasificarla asi. || PRECISADO 2026-11-21 con la hija de T-340: los tres adaptadores reciben el parametro como _alcance (guion bajo = deliberadamente sin usar) y la consulta solo filtra por tenantId. Son oportunidades-para-reportes.prisma.ts:74 (crm), cotizaciones-para-reportes.prisma.ts:189 (quoting) y respuesta-para-reportes.prisma.ts:143 (inbox). Ahi es donde iria la asercion en ejecucion."
+
+  - id: T-581
+    title: "Reportes: ningun e2e cubre un rol con reportes.ver_agencia pero SIN conversaciones.ver_todas"
+    type: test
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    depends_on:
+      - T-340
+    acceptance:
+      - "El e2e de dos asesores de reportes.e2e-spec.ts cubre asesor frente a administrador, pero los dos
+        casos llevan los permisos juntos. Un rol MIXTO (ve cifras de toda la agencia pero no las
+        conversaciones de los demas) no se prueba en ningun sitio"
+      - "Es justo la combinacion que un administrador de agencia podria armar a mano con el catalogo de
+        roles, y la que mas facil se cuela: dos permisos que casi siempre viajan juntos"
+      - "Anadir el caso al e2e y comprobar que cada permiso manda sobre SU parte de la respuesta, sin que
+        uno arrastre al otro"
+    source: "auditoria de seguridad del ADR-0035 (T-340), 2026-11-21"
+    owner: qa
+    notes: "Sale de la auditoria de T-340. Cola, no bloqueante."
+
+  - id: T-582
+    title: "Cobros: la tabla no muestra pasajeros porque FilaDeCobro no los trae; ampliar el contrato y la API"
+    type: feature
+    phase: 1
+    priority: P2
+    effort: M
+    status: backlog
+    depends_on:
+      - T-332
+    acceptance:
+      - "T-332 pedia la lista «con pasajeros» y se entrego sin ellos, DECLARADO por quien la hizo:
+        FilaDeCobro (packages/contracts/src/cobros.ts) lleva archivoId, numero, contactoId, destino,
+        fechaSalida, total, pagado, saldo, situacion, estadoDeCobro y fechaLimite. Ni pasajeros ni
+        nombre del contacto. La pantalla muestra file, destino y salida"
+      - "NO es bloqueante y esta razonado: el criterio de salida del piloto (roadmap JD Tours seccion 3
+        punto 4) pide total, pagado y saldo por archivo, el filtro de saldo pendiente y el CSV. Los
+        pasajeros no estan en ese criterio"
+      - "Ampliar el contrato y el endpoint de cobros (carril a) para traer el numero de pasajeros o sus
+        nombres, y despues la columna en la pantalla y en el CSV (carril b)"
+      - "R10: si se traen NOMBRES de viajeros y no solo el recuento, es dato personal: ni en registros ni
+        en el CSV sin pensar quien puede verlo"
+    source: "entrega de T-332, declarado por la sesion que la construyo (2026-11-21)"
+    owner: backend
+    notes: "La sesion de T-332 encontro el limite y NO amplio el contrato por su cuenta porque no era su
+      carril. Era lo correcto: se registra aqui en vez de colarse un cambio de API en un PR de frontend."
+
+  - id: T-583
+    title: "Reportes: textos por debajo de WCAG AA en los dos dashboards, sobre todo en modo oscuro"
+    type: bug
+    phase: 1
+    priority: P2
+    effort: S
+    status: ready
+    depends_on:
+      - T-346
+    acceptance:
+      - "MEDIDO en T-346 con el contraste calculado de cada texto visible (AA pide 4,5:1 para texto
+        pequeno). Administracion en modo claro: los pies de las tarjetas de ReportesListo
+        (text-neutral-400, 11 px) dan 2,58:1 — «Variacion contra los...», «Aceptadas / enviadas...»,
+        cohortes, «p90:», «Aun sin datos»"
+      - "Modo oscuro, Ana y administracion: pies en 3,78:1; «COP», «USD» y «o mas» de «Por cobrar hoy»
+        en 2,29:1; «Subio», «Debe», «Por vencer:» y «Vencido:» en 2,77:1, con colores de modo claro
+        SIN variante dark:"
+      - "En los dos modos: la linea legal «Tratamiento de datos personales...» del marco, 2,45:1 en claro"
+      - "Arreglar y volver a medir con el mismo medidor. El medidor tiene que verse fallar antes: su
+        primer pase dio 0 hallazgos en claro por no entender los colores oklch() de Tailwind"
+    source: "medicion de contraste de T-346 (2026-11-21)"
+    owner: frontend
+    notes: "Son defectos PREEXISTENTES de los dashboards de T-343 y T-344, no los introduce T-346: esa
+      tarea pedia MIRAR el contraste y lo miro. Cola y no bloqueante (CLAUDE.md 3.1), pero el propietario
+      quiere ensenar estas pantallas desde el celular, asi que no conviene que duerma mucho."
+
+
+
