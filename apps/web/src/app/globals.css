@@ -75,6 +75,31 @@
   --color-dorado-600: #ab8635;
 
   /*
+   * Estado y plazo con significado único (T-443, auditoría visual 2026-11-21 A1). Cada uno son dos
+   * tokens, fondo y texto, y cada par mide >= 4,5:1 (AA); lo vigila tokens-de-estado.spec.ts leyendo
+   * este archivo. Se usan SIEMPRE con texto e icono, nunca solo color. Reglas:
+   *  - vencido y hoy son rojo (lo que ya pasó o vence hoy); próximo es ámbar; en plazo es verde.
+   *  - canal-whatsapp es solo de WhatsApp (enviar, ventana abierta): nunca «pagado», «ok» ni «cerrada».
+   *  - demo es el único distintivo de datos de demostración.
+   * En oscuro se redefinen en `.dark`, más abajo.
+   */
+  --color-plazo-vencido-fondo: #fef2f2;
+  --color-plazo-vencido-texto: #b91c1c;
+  --color-plazo-hoy-fondo: #fee2e2;
+  --color-plazo-hoy-texto: #b91c1c;
+  --color-plazo-proximo-fondo: #fffbeb;
+  --color-plazo-proximo-texto: #b45309;
+  --color-plazo-ok-fondo: #f0fdf4;
+  --color-plazo-ok-texto: #15803d;
+  --color-canal-whatsapp-fondo: #ecfdf5;
+  --color-canal-whatsapp-texto: #047857;
+  --color-demo-fondo: #fef3c7;
+  --color-demo-texto: #92400e;
+
+  /* Texto mínimo: 11 px solo para el contador de una insignia; el texto informativo parte de 12 px (`text-sm`). */
+  --text-micro: 0.6875rem;
+
+  /*
    * Etiquetas de conversación (T-326, HU-inbox-1 §3): 8 colores de la paleta fija, sin rojo (reservado
    * a lo vencido y destructivo). Cada color son tres tokens: fondo claro, texto oscuro del mismo tono
    * y punto. Cada par fondo/texto mide >= 4,5:1 (AA); lo vigila etiquetas-paleta.spec.ts leyendo este
@@ -132,6 +157,20 @@
 .dark {
   color-scheme: dark;
 
+  /* Estado y plazo en oscuro (>= 4,5:1; ver tokens-de-estado.spec.ts). */
+  --color-plazo-vencido-fondo: #450a0a;
+  --color-plazo-vencido-texto: #fecaca;
+  --color-plazo-hoy-fondo: #7f1d1d;
+  --color-plazo-hoy-texto: #fecaca;
+  --color-plazo-proximo-fondo: #451a03;
+  --color-plazo-proximo-texto: #fde68a;
+  --color-plazo-ok-fondo: #052e16;
+  --color-plazo-ok-texto: #bbf7d0;
+  --color-canal-whatsapp-fondo: #022c22;
+  --color-canal-whatsapp-texto: #a7f3d0;
+  --color-demo-fondo: #451a03;
+  --color-demo-texto: #fde68a;
+
   /* Etiquetas de conversación en oscuro: fondo profundo, texto claro, punto más vivo (>= 4,5:1). */
   --color-etiqueta-gris-fondo: #262626;
   --color-etiqueta-gris-texto: #d4d4d4;
@@ -181,7 +220,25 @@ body {
   font-feature-settings: 'tnum';
 }
 
-/* Foco accesible de alto contraste */
+/**
+ * Objetivo táctil (T-441, auditoría visual 2026-11-21 D4): con dedo (`pointer: coarse`) un control mide
+ * al menos 44 px; con ratón conserva su densidad. Se aplica al control, no al contenedor:
+ * `class="objetivo ..."`. Equivale a `pointer-coarse:min-h-11 pointer-coarse:min-w-11`.
+ */
+@utility objetivo {
+  @media (pointer: coarse) {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+/* Texto de contador de insignia: el único texto informativo permitido por debajo de 12 px. */
+@utility texto-micro {
+  font-size: var(--text-micro);
+  line-height: 1.25;
+}
+
+/* Foco accesible de alto contraste: un único anillo para toda la aplicación (T-443). */
 *:focus-visible {
   outline: 2px solid var(--color-acento-600);
   outline-offset: 2px;
