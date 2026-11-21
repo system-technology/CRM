@@ -437,3 +437,32 @@ T-339 (este doc) ─► T-340 ADR ─► T-341 permiso ─► T-342 alcance en s
 - **`n` pequeño por asesor.** Con 3 a 6 asesores y unas 40 conversaciones al día cada una
   ([`03-personas.md`](../00-vision/03-personas.md) §1, cifra de arquetipo), M9 tiene `n` suficiente al
   mes; M8 por asesor, casi nunca: por eso la fracción y no el porcentaje.
+
+## 9. Aportes de la sesión de cobros (fundidos desde un borrador duplicado)
+
+La sesión de cobros escribió en paralelo un borrador del mismo entregable (cerrado como duplicado; su
+texto vive en la rama `i/T-339-reportes-por-nivel`, commit `da094f3`). Lo que traía de más, con su
+estado:
+
+1. **[V, por esa sesión] La exportación de hoy no deja rastro.** Los CSV actuales se generan en el
+   navegador: el servidor no sabe que alguien exportó. Una exportación con datos personales (nombres,
+   teléfonos) debe hacerse en el servidor, con permiso y auditoría (R10). Entra en T-345.
+2. **[P] Tablet vertical a 768 px.** Con el menú lateral de 56 o 240 px quedan unos 528 px útiles: la
+   tablet vertical se diseña como «celular ancho», no como escritorio pequeño. Complementa §5.4.
+3. **Preguntas adicionales para el propietario** (sin valor por defecto escrito; responden al
+   diseño de los dashboards): ¿qué mira cada asesor al empezar el día?; ¿qué tres cifras quiere el
+   dueño en el celular?; ¿qué exporta hoy a su hoja, cada cuánto, para quién y desde qué dispositivo?;
+   ¿otro asesor necesita ver el saldo de un archivo cuando el titular falta?; ¿compara meses o tiene
+   metas de venta?; ¿alguna lista con nombres o teléfonos sale de la agencia?
+4. **Tareas nuevas propuestas** (registradas en `roadmap/tasks.yaml`): reportes de cobros (saldo por
+   cobrar por asesor y moneda, cobrado en el periodo por medio de pago, correcciones; depende de T-330 y
+   T-342); ventas por mayorista a partir de `bookings.mayorista_nombre` y decidir qué queda de T-149;
+   re-basar T-148 (salidas próximas) sobre `travel_files`.
+5. **[V, ADR-0034] Precisión sobre cobros para M6 y M18.** El estado de pago es del archivo de viaje; el
+   libro tiene AJUSTE y PENALIDAD (total = venta + ajustes vigentes si está abierto; suma de penalidades
+   vigentes si está cancelado) y la situación POR_VENCER (0 a 7 días). `cobro.ver` está sembrado al
+   ASESOR con alcance de toda la agencia: el ADR-0034 §6 deja «que el asesor vea solo lo suyo» a
+   T-339 y T-340, con la atribución del archivo por `oportunidad.asesor_id` (un archivo sin
+   oportunidad no aparece en el «propio» de nadie, §1). Las funciones puras del saldo viven en
+   `packages/domain` (cobro.ts, en el PR de T-330 de esa sesión) y se citan en el ADR de T-340 para el
+   saldo agregado.
