@@ -9,7 +9,7 @@
 > toque y se empuja a la rama `claude/repository-status-d4ug6p`; entra en `main` con el siguiente PR de docs
 > del lote. Si el tablero contradice a `gh`/`git`, manda la realidad y se corrige el tablero.
 
-Última actualización: 2026-11-21 04:15 UTC (hora de la máquina). `main` en `4f1883a`.
+Última actualización: 2026-11-21 04:25 UTC (hora de la máquina). `main` en `4f1883a`.
 
 ## 1. Quién es quién
 
@@ -43,10 +43,11 @@ Ventana web abierta a **diseño** hasta 05:00 UTC.
 | # | PR | Qué | Estado verificado | Falta |
 |---|---|---|---|---|
 | 1 | #391 | Diseño Ola 1: tokens de estado y plazo, utilidades de puntero | Abierto; 04:15 UTC: 3 checks en verde y el resto en curso o en cola | 14/14 con `navegador`, rama al día; integrar a mano |
-| 2 | #358 | Ingreso por apodo, API | **No integrable:** mi auditoría halló una carrera en el tope de fallos | Arreglo (reservar antes de comprobar o candado) + e2e de 20 ingresos en paralelo; luego repaso del diff y 15/15 |
+| 2 | #358 | Ingreso por apodo, API | **No integrable:** mi auditoría halló una carrera en el tope de fallos. Cabeza nueva `64311d5` (sin confirmar que sea el arreglo; preguntado a la sesión de despliegue) | Arreglo (reservar antes de comprobar o candado) + e2e de 20 ingresos en paralelo; luego repaso del diff y 15/15 |
+| 2b | #393 | T-330: dominio puro y API de cobros (pagos) | Abierto, ~4.000 líneas; CI en curso. **Mi auditoría de seguridad completa (dinero + aislamiento) lanzada a las 04:20 UTC** | Veredicto, 15/15 con `aislamiento-tenants` y los e2e contra Postgres; integrar a mano (ruta de dinero) |
 | 3 | #362 | Ingreso por apodo, web | `override-lane` aplicado por el propietario | Después de #358 y de traerle `main` |
 | 4 | #388 | Regla R14 + cierre del lote de la ola 0 + este tablero | Abierto; toca `CLAUDE.md`, `AGENTS.md` y `.github/` | Integro yo, CI verde |
-| 5 | #384, #389, #386, #390, #392, #377 | Docs: cola de etiquetas, diseño, cierre de pagos, docs de cobros, reportes por nivel (T-339), bandeja | Abiertos, sin auto-merge | En ese orden; resolver `ESTADO.md` y `tasks.yaml` en cada uno |
+| 5 | #384, #389, #386, #390, #392, #377 | Docs: cola de etiquetas, diseño, cierre de pagos, docs de cobros, reportes por nivel (T-339), bandeja | Abiertos, sin auto-merge. #389 tiene `enlaces-de-documentacion` en rojo (se lo pedí a diseño) | En ese orden; resolver `ESTADO.md` y `tasks.yaml` en cada uno |
 
 **Ramas remotas sin uso que borra el propietario si quiere** (el proxy corta el borrado desde las sesiones): `b/T-000-auditoria-visual-y-ux`, `b/T-443-tokens-y-puntero`. **Numeración de docs:** el de reportes pasa a `11-reportes-por-nivel-catalogo.md` (el `10-` es el de diseño).
 
