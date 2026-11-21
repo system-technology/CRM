@@ -78,6 +78,9 @@ function rechazarEnDemo(): never {
   );
 }
 
+/** Tope de filas de `listarArchivos`: una lista con tantas filas puede estar truncada. */
+export const LIMITE_LISTA_ARCHIVOS = 500;
+
 /** `GET /api/v1/archivos` — por defecto los abiertos, ordenados por el plazo más próximo. */
 export async function listarArchivos(
   estado: ListarArchivos['estado'] = 'ABIERTO',
@@ -87,7 +90,9 @@ export async function listarArchivos(
       resumenDe,
     );
   }
-  const json = await pedirArchivos(`/api/v1/archivos?estado=${estado}&limite=500`);
+  const json = await pedirArchivos(
+    `/api/v1/archivos?estado=${estado}&limite=${LIMITE_LISTA_ARCHIVOS}`,
+  );
   return EsquemaListaDeArchivos.parse(json).datos;
 }
 

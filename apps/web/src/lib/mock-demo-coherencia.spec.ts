@@ -75,6 +75,13 @@ describe('Datos de demostración coherentes entre pantallas', () => {
     expect(dif).toBeLessThan(5_000);
   });
 
+  it('todo aviso de la campana apunta a un archivo que existe en Reservas (T-322)', () => {
+    const existentes = new Map(MOCK_DETALLES_ARCHIVOS.map((a) => [a.id, a.numero]));
+    for (const aviso of crearAvisosDemo(Date.now())) {
+      expect(existentes.get(aviso.archivoId)).toBe(aviso.archivoNumero);
+    }
+  });
+
   it('una cotización ENVIADA no tiene la vigencia ni la salida en el pasado', () => {
     const hoy = new Date().toISOString().slice(0, 10);
     for (const c of MOCK_COTIZACIONES_INICIALES.filter((x) => x.estado === 'ENVIADA')) {

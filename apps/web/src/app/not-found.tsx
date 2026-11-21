@@ -54,6 +54,18 @@ export default function NotFound() {
           </Link>
         </div>
 
+        {/* Salida sin sesión: la 404 pública (p. ej. bajo /terminos) no deja al asesor sin camino. */}
+        <p className="text-xs text-neutral-600 dark:text-neutral-400">
+          ¿Tu sesión se cerró?{' '}
+          <Link
+            href="/ingresar"
+            data-testid="enlace-ir-a-ingresar"
+            className="inline-flex min-h-[44px] items-center font-semibold text-sky-700 underline focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:outline-none dark:text-sky-400"
+          >
+            Ir a ingresar
+          </Link>
+        </p>
+
         {/* Accesos Rápidos de Navegación Turística */}
         <div className="border-t border-neutral-200 pt-6 dark:border-neutral-800">
           <p className="text-xs font-semibold text-neutral-500 dark:text-neutral-400">

@@ -5,6 +5,7 @@ import {
   esErrorSesionExpirada,
   esErrorNoEncontrado,
   construirUrlRedireccionIngreso,
+  construirUrlSalidaAIngreso,
   sanitizarRutaRedireccion,
 } from './errores-sistema';
 
@@ -143,6 +144,33 @@ describe('errores-sistema (T-109)', () => {
         expect(construirUrlRedireccionIngreso(r)).toBe('/ingresar?motivo=sesion_expirada');
       }
       expect(sanitizarRutaRedireccion('/login-historial')).toBe('/login-historial');
+    });
+  });
+
+  describe('construirUrlSalidaAIngreso (T-322)', () => {
+    it('conserva una ruta interna segura, con su consulta, y no afirma que la sesión expiró', () => {
+      expect(construirUrlSalidaAIngreso('/viajes?id=abc')).toBe(
+        '/ingresar?redirigir=%2Fviajes%3Fid%3Dabc',
+      );
+    });
+
+    it('sin ruta, en la raíz o en una ruta de acceso va a /ingresar a secas', () => {
+      expect(construirUrlSalidaAIngreso()).toBe('/ingresar');
+      expect(construirUrlSalidaAIngreso(null)).toBe('/ingresar');
+      expect(construirUrlSalidaAIngreso('/')).toBe('/ingresar');
+      expect(construirUrlSalidaAIngreso('/login')).toBe('/ingresar');
+      expect(construirUrlSalidaAIngreso('/ingresar?redirigir=/x')).toBe('/ingresar');
+    });
+
+    it.each([
+      '//evil.com',
+      'https://evil.com',
+      '/\\evil.com',
+      '/\t/evil.com',
+      '/.//evil.com',
+      'javascript:alert(1)',
+    ])('descarta el destino hostil %s', (hostil) => {
+      expect(construirUrlSalidaAIngreso(hostil)).toBe('/ingresar');
     });
   });
 
