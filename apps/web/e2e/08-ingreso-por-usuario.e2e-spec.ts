@@ -139,13 +139,18 @@ test('al quitar el usuario ya no entra con el, pero si con el correo', async ({ 
   try {
     await expect(editar).toBeVisible({ timeout: 30_000 });
   } catch {
-    // Dice POR QUE: si la sesion guardada murio al ingresar en otro contexto, la URL sera /ingresar.
+    // Dice POR QUE: URL, avisos de la lista y los miembros que si se pintaron.
     const texto = await page
       .locator('body')
       .innerText({ timeout: 2_000 })
       .catch(() => '(sin cuerpo)');
+    const desde = Math.max(0, texto.indexOf('Total Usuarios'));
+    const avisos = await page
+      .locator('[data-testid="equipo-error"], [data-testid="equipo-sin-permiso"]')
+      .allInnerTexts();
+    const botones = await page.getByRole('button', { name: /^Editar usuario de/ }).count();
     throw new Error(
-      `No aparecio «Editar usuario de ${miembroNombre}». URL: ${page.url()}. Pantalla: ${texto.slice(0, 300).replace(/\s+/g, ' ')}`,
+      `No aparecio «Editar usuario de ${miembroNombre}». URL: ${page.url()}. Botones «Editar usuario»: ${botones}. Avisos de la lista: ${JSON.stringify(avisos)}. Miembros en pantalla: ${texto.slice(desde, desde + 1200).replace(/\s+/g, ' ')}`,
     );
   }
   await editar.click();
