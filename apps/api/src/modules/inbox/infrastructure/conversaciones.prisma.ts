@@ -81,11 +81,11 @@ import {
 const MENSAJES_DEL_DETALLE = 50;
 
 /** El predicado de la agencia + la visibilidad del miembro. El punto de entrada de toda consulta. */
-function ambito(tenantId: string, v: Visibilidad): Prisma.ConversacionWhereInput {
+export function ambito(tenantId: string, v: Visibilidad): Prisma.ConversacionWhereInput {
   return { AND: [{ tenantId, eliminadoEn: null }, filtroDeVisibilidad(v)] };
 }
 
-function unaConversacion(
+export function unaConversacion(
   tenantId: string,
   v: Visibilidad,
   id: string,
@@ -97,7 +97,7 @@ function esUnicidadViolada(error: unknown): boolean {
   return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002';
 }
 
-async function escribirEvento(
+export async function escribirEvento(
   tx: ClienteTenant,
   e: {
     tenantId: string;
@@ -168,6 +168,20 @@ export class ConversacionesPrisma extends PuertoConversaciones {
         }
       : {};
 
+    // Las etiquetas de la agencia (T-325). Con `tenantId` dentro del predicado además de RLS. Un id
+    // que no existe o es de otra agencia no es un error: no empareja ninguna fila.
+    const idsDeEtiquetas = c.etiquetas ?? [];
+    const porEtiqueta: Prisma.ConversacionWhereInput =
+      idsDeEtiquetas.length === 0
+        ? {}
+        : c.modo === 'todas'
+          ? {
+              AND: idsDeEtiquetas.map((etiquetaId) => ({
+                etiquetasAsignadas: { some: { tenantId, etiquetaId } },
+              })),
+            }
+          : { etiquetasAsignadas: { some: { tenantId, etiquetaId: { in: idsDeEtiquetas } } } };
+
     const desdeElCursor: Prisma.ConversacionWhereInput =
       cursor === null
         ? {}
@@ -188,6 +202,7 @@ export class ConversacionesPrisma extends PuertoConversaciones {
             ambito(tenantId, v),
             pestana,
             busqueda,
+            porEtiqueta,
             c.estado ? { estado: c.estado } : {},
             desdeElCursor,
           ],

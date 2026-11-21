@@ -8,6 +8,7 @@ import * as crmApi from '../../../lib/crm-api';
 import { obtenerMockFichaDeContacto } from '../../../lib/mock-crm';
 import { BandejaAtajosContext, fijarAtajosHabilitados } from '../../../lib/atajos-teclado-bandeja';
 import type { ConversacionDetalle, SesionActual } from '@viajapro/contracts';
+import { etiquetasApi } from '../../../lib/etiquetas-api';
 
 const CONV_1_ID = '00000000-0000-4000-8000-000000000801';
 const CONV_2_ID = '00000000-0000-4000-8000-000000000802';
@@ -92,6 +93,14 @@ describe('Atajos de teclado en la bandeja (T-127)', () => {
     vi.spyOn(crmApi, 'obtenerFichaDeContacto').mockResolvedValue(
       obtenerMockFichaDeContacto('cnt-801'),
     );
+    vi.spyOn(etiquetasApi, 'listar').mockResolvedValue([
+      {
+        id: '00000000-0004-4000-8000-000000000001',
+        nombre: 'Pagado',
+        color: 'verde',
+        orden: 0,
+      },
+    ]);
   });
 
   const renderConContexto = (overrideProps: Partial<any> = {}) => {
@@ -238,5 +247,55 @@ describe('Atajos de teclado en la bandeja (T-127)', () => {
 
     fireEvent.keyDown(window, { key: 'c' });
     expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('9. La tecla "e" abre el selector de etiquetas (T-326) y Esc lo cierra', async () => {
+    renderConContexto();
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(screen.queryByTestId('selector-de-etiquetas')).toBeNull();
+    fireEvent.keyDown(window, { key: 'e' });
+    const selector = await screen.findByTestId('selector-de-etiquetas');
+    expect(selector.getAttribute('aria-label')).toBe('Etiquetas');
+    await screen.findByRole('menuitemcheckbox', { name: /Pagado/ });
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+    await waitFor(() => expect(screen.queryByTestId('selector-de-etiquetas')).toBeNull());
+  });
+
+  it('10. La tecla "e" no abre nada mientras se escribe en el compositor ni con atajos desactivados', async () => {
+    const { unmount } = renderConContexto();
+    await act(async () => {
+      await Promise.resolve();
+    });
+    const textarea = screen.getByPlaceholderText(/Escribe tu respuesta a cliente/i);
+    textarea.focus();
+    fireEvent.keyDown(textarea, { key: 'e' });
+    expect(screen.queryByTestId('selector-de-etiquetas')).toBeNull();
+    unmount();
+
+    renderConContexto({ atajosHabilitados: false });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    fireEvent.keyDown(window, { key: 'e' });
+    expect(screen.queryByTestId('selector-de-etiquetas')).toBeNull();
+  });
+
+  it('11. Sin el permiso «Operar bandeja» la tecla "e" no abre el selector', async () => {
+    vi.spyOn(authApi, 'obtenerSesionActualApi').mockResolvedValue({
+      ...SESION_ASESOR,
+      acceso: { ...SESION_ASESOR.acceso!, rol: 'Operaciones', permisos: ['crm.escribir'] },
+    });
+    renderConContexto();
+    await act(async () => {
+      await Promise.resolve();
+    });
+    fireEvent.keyDown(window, { key: 'e' });
+    expect(screen.queryByTestId('selector-de-etiquetas')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Agregar etiqueta' })).toBeNull();
   });
 });

@@ -9,6 +9,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   Inject,
@@ -41,6 +42,7 @@ import {
 import { RequierePermiso } from '../../../shared/autorizacion/permiso.decorator.js';
 import { ZodValidationPipe } from '../../../shared/validacion/zod-validation.pipe.js';
 import { ActuarEnConversacionUseCase } from '../application/actuar-en-conversacion.js';
+import { EtiquetarConversacionUseCase } from '../application/etiquetar-conversacion.js';
 import { ConsultarBandejaUseCase } from '../application/consultar-bandeja.js';
 import { EnviarCotizacionPorWhatsapp } from '../application/enviar-cotizacion-por-whatsapp.js';
 
@@ -51,6 +53,7 @@ export class ConversacionesController {
     @Inject(ActuarEnConversacionUseCase) private readonly actuar: ActuarEnConversacionUseCase,
     @Inject(EnviarCotizacionPorWhatsapp)
     private readonly enviarCotizacionPorWhatsapp: EnviarCotizacionPorWhatsapp,
+    @Inject(EtiquetarConversacionUseCase) private readonly etiquetar: EtiquetarConversacionUseCase,
   ) {}
 
   @Get()
@@ -158,5 +161,30 @@ export class ConversacionesController {
     @Body(new ZodValidationPipe(AsignarConversacionCuerpo)) cuerpo: AsignarConversacionCuerpo,
   ): Promise<ConversacionResumen> {
     return this.actuar.asignar(id, cuerpo);
+  }
+
+  /**
+   * Poner una etiqueta (T-325). `PUT` porque fija un hecho —«esta conversación tiene esta
+   * etiqueta»— y repetirlo no cambia nada (R5). Devuelve la fila actualizada. `404` si la
+   * conversación no se ve o la etiqueta no es de esta agencia; `422 TOPE_DE_ETIQUETAS_DE_LA_CONVERSACION`
+   * solo si la etiqueta es nueva para la conversación.
+   */
+  @RequierePermiso('bandeja.operar')
+  @Put(':id/etiquetas/:etiquetaId')
+  ponerEtiqueta(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('etiquetaId', ParseUUIDPipe) etiquetaId: string,
+  ): Promise<ConversacionResumen> {
+    return this.etiquetar.poner(id, etiquetaId);
+  }
+
+  /** Quitar una etiqueta. Idempotente: si no estaba puesta, responde igual. */
+  @RequierePermiso('bandeja.operar')
+  @Delete(':id/etiquetas/:etiquetaId')
+  quitarEtiqueta(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('etiquetaId', ParseUUIDPipe) etiquetaId: string,
+  ): Promise<ConversacionResumen> {
+    return this.etiquetar.quitar(id, etiquetaId);
   }
 }
