@@ -9,7 +9,7 @@
 > carril `i/`. El hook `contexto-persistente.mjs` inyecta **el más reciente** entre el del checkout y el de la
 > rama `claude/repository-status-d4ug6p`. Si el tablero contradice a `gh`/`git`, manda la realidad.
 
-Última actualización: **2026-11-21, 09:15 UTC**, cierre del tercer lote. `main` en **`e16f5499`**. **Cero PR abiertos.**
+Última actualización: **2026-11-21, 12:20 UTC**, relevo de la madre por contexto (688 mil tokens, 122 USD). `main` en **`e7c80045`**. **Un PR abierto: #426** (este).
 
 
 ## 1. Quién es quién
@@ -18,10 +18,10 @@
 - **No alcanza:** paneles de Neon, Render, Vercel o 21st.dev; claves y secretos; `override-lane` y la configuración de GitHub; WhatsApp real; trámites (Meta, abogado, contador, pasarela); redesplegar la demo sin su confirmación; borrar ramas ajenas.
 - **Sesión madre** (orquestadora): **`session_01R81Xh3ygCnt8wYfALeA6yY`** (Opus, esfuerzo alto), desde las 08:50 UTC del 2026-11-21. La anterior, `session_01R81Xh45hbFQHivoDJ8cbJQ`, se relevó por contexto (400 mil tokens, ~48 USD).
 - **El despertar de las 2 h ya apunta bien.** Tarea programada **`trig_01H8nNZUwV2DdTA2fnJzQkVh`** (`15 */2 * * *`), creada por la madre anterior el 2026-11-21 a las 09:53 UTC apuntando a la madre actual; la suya, `trig_016u2cLZTGLRrJvkZWgJpqpG`, quedó borrada. **Verificado con `list_triggers`**, no de palabra. Quedó así porque a la madre nueva el clasificador le deniega `create_trigger`: si vuelve a haber relevo, **la madre saliente crea la tarea de la entrante antes de retirarse**.
-- **Sesiones vivas tras el tercer lote:**
-  - `session_01R81Xh2Mp9wjvR7gCGBq6Hy` — **T-342**, alcance de reportes impuesto por el servidor (Opus alto; es autorización, no se recortan vueltas). Única en marcha.
-  - `session_01R81Xh45ka1iCdkTRwDfH1k` (T-331) entregó y **se archiva**: llegó a 318 mil tokens. `…2b5dGTvt5ts5Xj12s` (T-505) y `…3U8x4WLRoij6qTX6s` (T-510) también entregaron.
-  - **La ventana web queda libre.** Siguiente en pedirla: T-511, y después T-343 y T-344, que dependen de que entre T-342.
+- **Sesión madre:** se relevó a las 12:20 UTC. La saliente era `session_01R81Xh3ygCnt8wYfALeA6yY`.
+- **Sesiones vivas, repartidas a las 12:01 UTC:**
+  - `session_01R81Xh5CyC21JcvzAQYqDbP` — **T-528**, el resumen propio sirve las cifras del asesor (Opus alto). **Lleva auditoría independiente de la madre antes de integrar: es alcance entre asesores.**
+  - `session_01R81Xh2wqYiANqJPC5JnvyK` — **T-510**, cerrar los deadlocks 40P01 y las cinco corridas limpias (Sonnet alto).
   - Coexistencia WhatsApp `session_01R81Xh2TUy9RCrR6RV4oAze`: **la abrió el propietario, no se le dan órdenes**.
 - **Archivadas tras entregar:** arquitectura (T-340, ADR-0035 → #397), roadmap, cobros, diseño anterior, despliegue.
 
@@ -38,13 +38,15 @@
 
 ## 3. Cola de integración (orden)
 
-**Cola de integración vacía.** `main` en `e16f5499`. En este turno entraron, en serie y a mano con squash: **#414** (relevo y aviso al despertar), **#416** (T-505 `done`), **#415** (T-510, sigue `in_progress`) y **#410** (T-331 `done`, con auditoría independiente y tres bloqueantes corregidos). Detalle en la [bitácora del tercer lote](../_bitacora/2026-11-21-tercer-lote-cobros-permisos-y-pruebas.md).
+**`main` en `e7c80045`: TRECE PR integrados el 2026-11-21**, todos en serie y a mano con squash: #414, #416 (T-505), #415 (T-510 sigue abierta), #410 (T-331), #417 (T-342), #418, #420 (T-516), #421 (ADR-0036), #419 (T-511), #422 (T-343), #424 (ADR-0033 aceptado), #423 (T-344 y su enganche) y #425 (T-535).
+
+**STAGING VIVO Y AUTOMÁTICO.** `DEPLOY STAGING → success`: migraciones + Render + sonda `/salud/listo` + Vercel. **Cada merge a `main` con CI verde lo repite solo.** Lo destrabaron los tres secretos del Environment `staging` que puso el propietario, más conectar el proyecto de Vercel al repositorio (sin eso no existe el deploy hook; `vercel.json` ya trae `deploymentEnabled: false`). **Render y Vercel no se pueden tocar desde las sesiones** (`unauthorized` y credencial rechazada): no hace falta, el workflow basta.
 
 Lo último que entró: #404 a #409 (detalle en la [bitácora](../_bitacora/2026-11-21-segundo-lote-reportes-cobros-y-pruebas.md)). #402 y #362 se cerraron por sustitución.
 
 **Ids de tarea ya usados:** T-515..T-521 (cola de la auditoría de #410, en este PR).
 
-**Antes:** T-425..T-435, T-440..T-479, T-480..T-485, T-490..T-493 T-494..T-504 y T-505..T-512 (T-512 registra el ingreso por apodo; cola de la auditoría de #407 y restos de T-503 y #405, este PR). **El siguiente libre es T-522**; `git fetch` antes de numerar.
+**Antes:** T-425..T-435, T-440..T-479, T-480..T-485, T-490..T-493 T-494..T-504 y T-505..T-512 (T-512 registra el ingreso por apodo; cola de la auditoría de #407 y restos de T-503 y #405, este PR). **El siguiente libre es T-537**; `git fetch` antes de numerar.
 
 ### Integrado en este turno (2026-11-21)
 
@@ -52,6 +54,19 @@ Lo último que entró: #404 a #409 (detalle en la [bitácora](../_bitacora/2026-
 - **#358** (`ea017f7`): ingreso por apodo, tope por identificador y apodo de miembros. **Auditoría independiente: sin bloqueantes.** El arreglo de la carrera (reservar antes de comprobar, dos sentencias en autocommit) falla cerrado y la prueba de 25 peticiones en paralelo **discrimina** el arreglo; el caso mixto ya estaba. El apodo es global en esta fase y lo contiene `guardia-de-apodos.ts` (consulta viva, falla cerrado) más el aborto al arrancar. Cola: T-361 (índice por `(tenant_acceso_id, apodo)`), aserción tautológica en `apodo-ingreso.e2e-spec.ts:505`, `tenant.count()` por intento sin caché, reserva no liberada si Better Auth da 5xx, sesiones huérfanas en Better Auth.
 
 ## 4. Pendientes del orquestador (prometido y no hecho)
+
+**Al relevarse la madre el 2026-11-21 a las 12:20 UTC:**
+
+1. **Integrar #426** (este PR) y después lo que entreguen T-528 y T-510.
+2. **T-528 lleva auditoría independiente** con `auditor-seguridad` antes de integrar: lo que devuelva a un asesor con alcance `PROPIO` no puede traer una fila de otro.
+3. **T-533 (`ready`) bloquea conectar el número real** de JD Tours: lista de exclusión y filtro en el trabajador con prueba de punta a punta. **Espera que el propietario traiga de JD Tours la lista de chats a excluir.**
+4. **Resembrar staging** para recuperar la clave de la demo: lo corre **el propietario** desde su terminal. La madre no toca credenciales.
+5. **T-536**: el job `navegador` imprime `BETTER_AUTH_SECRET` en un log público. **No es una fuga** (nace y muere en el job), pero no se enmascara porque no es un secreto registrado. `.github/` es ruta protegida.
+6. **Cola sin repartir:** T-515, T-517..T-527, T-529..T-532, T-534. La ventana web está **libre**.
+
+**Lección de coste, de la madre saliente:** llegó a **688 mil tokens y 122 USD** por no relevarse a los 150 mil, y por hacer ella arreglos de código que debió delegar (persiguió por CI un `any` de su propia prueba con la flota parada). **Comprobar `context_usage` propio en cada vuelta, no solo el de las hijas.**
+
+
 
 - **El tope de 150 mil tokens por sesión no se cumple solo.** Ninguna sesión recibe aviso de su propio consumo: la hija de T-331 terminó en **318 mil** y ~25 USD sin enterarse, y lo hizo notar ella. **La madre tiene que consultar `get_session` → `context_usage` en cada vuelta del ciclo** y archivar al pasarse. Es paso del ciclo, no buena intención.
 - **Siguiente trabajo:** T-511 (web, ventana libre), T-343 y T-344 tras T-342, y la cola nueva T-515..T-521 de la auditoría de cobros.
