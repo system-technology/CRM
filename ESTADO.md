@@ -100,6 +100,7 @@ Postmark real; las migraciones contra una base de producción (solo corren en el
 | Operación antes del piloto: respaldo, costo y rotación de claves, **propuestas sin ensayar** | [`docs/06-operacion/`](docs/06-operacion/) |
 | Políticas de seguridad: borrador sin aprobar | [`docs/05-seguridad/00-indice-de-politicas.md`](docs/05-seguridad/00-indice-de-politicas.md) |
 | ADR-0023 (fiscal): propuesto. Las fuentes de la DIAN del 0023 **no están verificadas** | [`docs/03-adr/`](docs/03-adr/) |
+| **Reportes por nivel de acceso (ADR-0035):** el permiso `reportes.ver_agencia` existe en el catálogo y lo tiene el rol `DUENO` de cada agencia (T-341), pero **nadie lo lee todavía**: el alcance en los endpoints es T-342. Hasta entonces el resumen sigue con el gate provisional de #395 (`conversaciones.ver_todas`) | PR de T-341; [ADR-0035](docs/03-adr/0035-niveles-de-acceso-a-reportes.md) §3 y §4; [modelo de datos](docs/02-arquitectura/03-modelo-de-datos.md) |
 | **Cobros del viajero:** la API de T-330 (dominio puro, contratos, módulo `payments`, rutas, idempotencia, eventos) está **en curso y sin integrar**; después T-331 (pantalla de archivo), T-332 (vista «quién pagó y quién debe») y T-333 («Hoy» y campana avisan cobros vencidos), en ese orden | [Roadmap JD Tours, eje C](docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md); [bitácora](docs/_bitacora/2026-11-21-t330-dominio-y-api-de-cobros.md) |
 
 ### Lo que NO existe
@@ -124,7 +125,7 @@ Postmark real; las migraciones contra una base de producción (solo corren en el
 |---|---|---|
 | Frontend (`apps/web`, `packages/ui`, `packages/sdk`) | Agente `frontend` (Claude) | Suite de navegador, vista previa del envío, UI de motivos de pérdida |
 | Backend (`apps/api`) | Agentes `backend`, `whatsapp` | Cola menor: T-235 (prueba de arquitectura del arranque), T-226 (c) |
-| Datos | Agente `datos` | 40 migraciones en `main` |
+| Datos | Agente `datos` | 40 migraciones en `main`; T-341 (permiso `reportes.ver_agencia`) en revisión |
 | Integración y documentación | `integrador`, `documentador` | Hilo, ADR, bitácora, `docs/06-operacion/` |
 | Diseño y experiencia de usuario | Sesión de diseño (Claude) | Auditoría visual y responsiva (celular, tablet y escritorio) y plan de rediseño; Fase 2 con OK del orquestador |
 | Cobros del viajero | Sesión de cobros (Claude) | T-330, API de pagos, con auditoría de seguridad antes de integrar |
