@@ -75,3 +75,10 @@ La bandeja completa y al día está en [`PENDIENTES-DEL-PROPIETARIO.md`](PENDIEN
 - **ADR-0034 (pagos):** integrado como Propuesto y tratado como aceptado; `cobro.corregir` solo para el dueño; el asesor solo registra el pago.
 - **El CRM se usa desde celular, tablet y navegador de escritorio** (aclarado por el propietario).
 - **Despliegue vivo vs. código:** `ESTADO.md` es la fuente de qué es real y qué es maqueta.
+
+## 7. Modelo por sesión (propuesta, 2026-11-21 04:40 UTC)
+
+- **Verificado hoy:** las cuatro sesiones de trabajo sirven con Sonnet 5.5; cobros y despliegue se crearon con Opus 5.5 y alguien las cambió a Sonnet dentro de la sesión (no la madre). Las tres con datos de uso reportan el límite de cinco horas en estado de aviso. **Sin verificar:** cómo se reparte ese límite entre modelos.
+- **Lo que controla la madre:** el modelo de los subagentes que lanza (parámetro `model`) y el modelo y esfuerzo de las sesiones **nuevas** al crearlas. **No** puede cambiar el modelo de una sesión ya en marcha (solo `/model` dentro de ella, o archivar y recrear).
+- **Regla desde ahora para las auditorías de la madre:** Opus para dinero, autenticación y aislamiento entre agencias; Sonnet para lo demás; Haiku para comprobaciones mecánicas (enlaces, ids repetidos, estado de CI).
+- **Propuesta por rol (pendiente de que el propietario la apruebe y fije el esfuerzo):** cobros y diseño de sistema, Opus; roadmap (docs, cierres, CI), Sonnet; despliegue, Sonnet con esfuerzo bajo; orquestación, el modelo actual. El esfuerzo solo se fija cuando el propietario dice el nivel.
