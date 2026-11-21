@@ -7384,7 +7384,7 @@ tasks:
     phase: 1
     priority: P1
     effort: L
-    status: backlog
+    status: review
     depends_on: [T-342, T-317]
     acceptance:
       - "Sus pendientes de atención, cotizaciones abiertas por antigüedad, seguimientos vencidos, cierres del mes y cobros por cobrar, en «Hoy» y en Reportes"
@@ -7393,6 +7393,7 @@ tasks:
     source: docs/08-roadmap/08-roadmap-jd-tours-reservas-cobros-y-navegacion.md, Eje F (decisión del propietario 2026-11-20)
     created_at: 2026-11-20T21:30:00.000Z
     owner: frontend
+    notes: "Rama feat/web-dashboard-del-asesor. HECHO: se retira el conmutador Vista Dueño/Asesor; la vista la decide `alcance` de la respuesta (PROPIO pinta «Mis números», AGENCIA el reporte de agencia con «Toda la agencia / Míos»); una sola entrada de menú titulada «Mis números» o «Reportes de la agencia» según reportes.ver_agencia (solo titula); periodo por defecto mes calendario en la zona de la agencia con comparación; fracción «2 de 6» bajo n=20; dinero por moneda; «Mis números» a 390 px en tarjetas con estados vacío, cargando y error; seguimientos vencidos y de hoy con asesorId=yo; «Hoy»: la tarjeta «Cotizaciones por vencer» medía otra cosa (borrador+enviadas entre las 20 últimas) y ahora dice «Cotizaciones abiertas» con las enviadas por antigüedad. NO HECHO, por falta de dato servido: cotizaciones abiertas y cobros por cobrar DEL ASESOR (T-528), bloque «Sin responsable» de ADR-0035 §2 (T-529), filtro de asesor con nombre (T-344)."
   - id: T-344
     title: "F5: dashboard de administración robusto"
     type: feature
@@ -9710,6 +9711,7 @@ tasks:
     source: "T-342: el carril de API no toca apps/web, así que las dos claves nuevas entraron opcionales de forma transitoria para no romper la compilación de la web"
     created_at: 2026-11-21T22:00:00.000Z
     owner: frontend
+    notes: "Hecho en la rama de T-343: la web lee `alcance`; ResumenDeReportes es la unión discriminada y desaparece el objeto permisivo. `ResumenDeReportesPorAlcance` queda como alias de exportación del mismo esquema porque apps/api lo importa (renombrarlo allí es del carril de API, no cambia el contrato)."
   - id: T-514
     title: "cotizaciones.actualizado_por no se escribe nunca"
     type: chore
@@ -9802,12 +9804,51 @@ tasks:
     source: "auditoria independiente de #417 (T-342), 2026-11-21"
     created_at: 2026-11-21T10:30:00.000Z
     owner: backend
+  - id: T-528
+    title: "Resumen propio: cotizaciones abiertas por antigüedad y cobros por cobrar del asesor, servidos por la API"
   - id: T-533
     title: "Lista de exclusion de chats y filtro en el trabajador, antes de conectar el numero real"
     type: feature
     phase: 1
     priority: P1
     effort: M
+    status: backlog
+    depends_on: [T-342, T-343]
+    acceptance:
+      - "La rama PROPIO del resumen (o un endpoint hermano con el mismo alcanceDeReporte) trae: cotizaciones abiertas del asesor repartidas por antigüedad, y saldo por cobrar por moneda de sus archivos (ADR-0035 §2: el archivo hereda el asesor de su oportunidad)"
+      - "La web las pinta en «Mis números» y en «Hoy» sin filtrar listas de agencia en el cliente: hoy /cotizaciones y /cobros no traen asesor y muestran toda la agencia (T-490), así que la web no puede decir «las tuyas» con honestidad"
+      - "e2e con dos asesores: cada uno ve solo lo suyo"
+    source: "T-343: los criterios «cotizaciones abiertas por antigüedad» y «cobros por cobrar» del asesor no se pueden cumplir en la web sin un dato servido por asesor"
+    created_at: 2026-11-21T23:00:00.000Z
+    owner: backend
+  - id: T-529
+    title: "«Sin responsable» en «Hoy»: archivos de viaje sin asesor activo (ADR-0035 §2, H7)"
+    type: feature
+    phase: 1
+    priority: P2
+    effort: S
+    status: backlog
+    depends_on: [T-342]
+    acceptance:
+      - "Un endpoint devuelve los archivos sin oportunidad, o con asesor inactivo o sin archivo.operar, para quien tenga archivo.operar; misma regla que destinatariosDelAviso"
+      - "«Hoy» pinta el bloque aparte «Sin responsable» (hoy no existe en la web ni hay endpoint)"
+    source: "ADR-0035 §2 y §5; T-343 no lo pudo pintar por falta de endpoint"
+    created_at: 2026-11-21T23:00:00.000Z
+    owner: backend
+  - id: T-530
+    title: "Paleta de comandos y bloque «Rendimiento comercial» de «Hoy» hablan de «equipo» ante un asesor que solo ve lo suyo"
+    type: chore
+    phase: 2
+    priority: P3
+    effort: S
+    status: backlog
+    depends_on: [T-343]
+    acceptance:
+      - "La paleta de comandos usa entradaParaUsuario (título «Mis números» sin reportes.ver_agencia)"
+      - "El bloque «Rendimiento comercial y cierres» de «Hoy» no promete «la tasa de respuesta del equipo» a quien ve «Mis números»"
+    source: "T-343: lo que no entró en el alcance de la entrega"
+    created_at: 2026-11-21T23:00:00.000Z
+    owner: frontend
     status: ready
     depends_on: [T-338]
     acceptance:

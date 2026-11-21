@@ -40,6 +40,8 @@ describe('ConsultarResumenDeReportes', () => {
 
 describe('ResumenDeReportes', () => {
   const sinMargen = {
+    alcance: 'AGENCIA' as const,
+    asesorId: null,
     periodo: base,
     cotizaciones: { creadas: 1, enviadas: 1, aceptadas: 1, tasaAceptacion: 100 },
     ventasPorMoneda: [
@@ -75,5 +77,10 @@ describe('ResumenDeReportes', () => {
     };
     const r = ResumenDeReportes.parse({ ...sinMargen, ventasPorMoneda: [fila] });
     expect(r.ventasPorMoneda[0]?.margen?.unidades).toBe('200000');
+  });
+
+  it('una respuesta sin `alcance` ya no es válida: la vista la decide la respuesta (T-513)', () => {
+    const { alcance: _a, asesorId: _i, ...sinAlcance } = sinMargen;
+    expect(ResumenDeReportes.safeParse(sinAlcance).success).toBe(false);
   });
 });

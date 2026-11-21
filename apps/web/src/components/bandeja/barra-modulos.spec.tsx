@@ -193,7 +193,7 @@ describe('BarraModulos y Selector de Sesión (ADR-0011)', () => {
         'Seguimientos',
         'Contactos',
         'Catálogo',
-        'Reportes',
+        'Mis números',
         'Privacidad',
         'Términos',
         'Cookies',

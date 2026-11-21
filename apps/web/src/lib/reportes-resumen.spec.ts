@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ResumenDeReportes } from '@viajapro/contracts';
+import { ResumenDeReportes, type ResumenDeAgencia } from '@viajapro/contracts';
 import {
   prepararResumen,
   TEXTO_SIN_DATOS,
@@ -10,8 +10,10 @@ import {
 
 const ETAPA = '01932000-0000-7000-8000-0000000000e1';
 
-function resumen(extra: Partial<ResumenDeReportes> = {}): ResumenDeReportes {
+function resumen(extra: Partial<ResumenDeAgencia> = {}): ResumenDeReportes {
   return {
+    alcance: 'AGENCIA' as const,
+    asesorId: null,
     periodo: { desde: '2026-11-01T05:00:00.000Z', hasta: '2026-11-04T05:00:00.000Z' },
     cotizaciones: { creadas: 0, enviadas: 0, aceptadas: 0, tasaAceptacion: null },
     ventasPorMoneda: [],

@@ -368,15 +368,28 @@ export default function InicioPage() {
                         </span>
                       </div>
                       <h3 className="mt-3 text-xs font-semibold text-neutral-600 dark:text-neutral-400">
-                        Cotizaciones por vencer
+                        Cotizaciones abiertas
                       </h3>
                       <p className="cifra mt-1 text-2xl font-black text-amber-950 dark:text-amber-100">
-                        {resumen.cotizacionesPorVencer}
+                        {resumen.cotizacionesAbiertas}
+                        {resumen.cotizacionesAbiertasTruncado && (
+                          <span className="ml-1 text-xs font-semibold text-neutral-600">o más</span>
+                        )}
                       </p>
                     </div>
                     <div className="mt-3 border-t border-amber-100 pt-2.5 dark:border-amber-900/40">
-                      <p className="text-xs text-neutral-600 dark:text-neutral-400">
-                        Seguimiento requerido y bloqueo de cupos
+                      <p
+                        data-testid="cotizaciones-por-antiguedad"
+                        className="text-xs text-neutral-600 dark:text-neutral-400"
+                      >
+                        Enviadas sin respuesta: {resumen.enviadasPorAntiguedad.hastaTresDias} de 0 a
+                        3 días · {resumen.enviadasPorAntiguedad.deCuatroASiete} de 4 a 7 ·{' '}
+                        <strong className="text-alerta-700 font-semibold">
+                          {resumen.enviadasPorAntiguedad.masDeSiete} de más de 7
+                        </strong>
+                      </p>
+                      <p className="mt-1 text-[11px] text-neutral-500">
+                        Incluye las cotizaciones de toda la agencia.
                       </p>
                     </div>
                   </Link>

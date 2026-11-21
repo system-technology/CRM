@@ -18,7 +18,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { CONFIGURACION_MODULOS, type ModuloViajaPro } from '../comun/iconos-modulos';
-import type { SesionActual } from '@viajapro/contracts';
+import type { Permiso, SesionActual } from '@viajapro/contracts';
 import { ModalBusquedaGlobal } from '../busqueda/modal-busqueda-global';
 import { PanelNotificaciones } from '../notificaciones/panel-notificaciones';
 import { SelectorTemaDensidad } from '../comun/selector-tema-densidad';
@@ -69,6 +69,7 @@ import { useFocoModal } from '../../lib/use-foco-modal';
 import { fijarZonaAgencia } from '../../lib/formato';
 import {
   entradasDeHojaMas,
+  entradaParaUsuario,
   entradasDelMenu,
   esDetalleMovilDeBandeja,
   esVisiblePara,
@@ -434,12 +435,13 @@ export function BarraModulos({ sesionInicial }: BarraModulosProps = {}) {
   const nombreAgenciaActiva = agenciaActiva?.nombre ?? 'ViajaPro';
 
   // Solo oculta: la autorización real es de la API. Sin sesión (carga o demostración) se muestra todo.
-  const modulos = entradasDelMenu().filter(
-    (m) => !sesion || esVisiblePara(m, (permiso) => tienePermiso(sesion, permiso)),
-  );
-  const modulosDeLaHoja = entradasDeHojaMas().filter(
-    (m) => !sesion || esVisiblePara(m, (permiso) => tienePermiso(sesion, permiso)),
-  );
+  const tieneElPermiso = sesion ? (permiso: Permiso) => tienePermiso(sesion, permiso) : null;
+  const modulos = entradasDelMenu()
+    .filter((m) => !tieneElPermiso || esVisiblePara(m, tieneElPermiso))
+    .map((m) => entradaParaUsuario(m, tieneElPermiso));
+  const modulosDeLaHoja = entradasDeHojaMas()
+    .filter((m) => !tieneElPermiso || esVisiblePara(m, tieneElPermiso))
+    .map((m) => entradaParaUsuario(m, tieneElPermiso));
 
   return (
     <>

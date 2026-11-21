@@ -8,33 +8,50 @@ import type { RangoDeInstantes } from './reportes-periodo';
 
 const DIA_MS = 86_400_000;
 
-export function crearResumenDeReportesDemo(rango: RangoDeInstantes): ResumenDeReportes {
+const ASESOR_DEMO = '01932000-0000-7000-8000-0000000a0001';
+
+export function crearResumenDeReportesDemo(
+  rango: RangoDeInstantes & { asesorId?: string | undefined },
+  alcance: 'PROPIO' | 'AGENCIA' = 'AGENCIA',
+): ResumenDeReportes {
   const dias = Math.max(
     1,
     Math.round((Date.parse(rango.hasta) - Date.parse(rango.desde)) / DIA_MS),
   );
   // Escala con la longitud del periodo para que cambiar de periodo se note, sin salir de lo verosímil.
   const k = Math.max(1, Math.round(dias / 30));
-  const enviadas = 14 * k;
-  const aceptadas = 5 * k;
-  const ganadas = 5 * k;
-  const perdidas = 3 * k;
-  const creadas = 22 * k;
-  const nuevas = 61 * k;
-  const respondidas = 57 * k;
+  // Un asesor ve «lo suyo»: una fracción de lo que suma la agencia, sin ranking ni totales ajenos.
+  const f = alcance === 'PROPIO' || rango.asesorId === 'yo' ? 0.4 : 1;
+  const e = (n: number) => Math.max(1, Math.round(n * f));
+  const enviadas = e(14 * k);
+  const aceptadas = e(5 * k);
+  const ganadas = e(5 * k);
+  const perdidas = e(3 * k);
+  const creadas = e(22 * k);
+  const nuevas = e(61 * k);
+  const respondidas = e(57 * k);
 
   const etapas = [
-    { nombre: 'Oportunidad nueva', orden: 1, esGanada: false, esPerdida: false, cantidad: 6 * k },
-    { nombre: 'En cotización', orden: 2, esGanada: false, esPerdida: false, cantidad: 5 * k },
-    { nombre: 'En negociación', orden: 3, esGanada: false, esPerdida: false, cantidad: 3 * k },
+    {
+      nombre: 'Oportunidad nueva',
+      orden: 1,
+      esGanada: false,
+      esPerdida: false,
+      cantidad: e(6 * k),
+    },
+    { nombre: 'En cotización', orden: 2, esGanada: false, esPerdida: false, cantidad: e(5 * k) },
+    { nombre: 'En negociación', orden: 3, esGanada: false, esPerdida: false, cantidad: e(3 * k) },
     { nombre: 'Ganada', orden: 4, esGanada: true, esPerdida: false, cantidad: ganadas },
     { nombre: 'Perdida', orden: 5, esGanada: false, esPerdida: true, cantidad: perdidas },
   ];
 
   return ResumenDeReportes.parse({
+    ...(alcance === 'PROPIO'
+      ? { alcance: 'PROPIO', asesorId: ASESOR_DEMO }
+      : { alcance: 'AGENCIA', asesorId: rango.asesorId === 'yo' ? ASESOR_DEMO : null }),
     periodo: { desde: rango.desde, hasta: rango.hasta },
     cotizaciones: {
-      creadas: 19 * k,
+      creadas: e(19 * k),
       enviadas,
       aceptadas,
       tasaAceptacion: Math.round((aceptadas / enviadas) * 1000) / 10,
