@@ -36,6 +36,8 @@
 
 | **12** | **Cuatro ramas publicadas con bugs puestos A PROPOSITO.** Las creo la sesion de T-531/T-532 para *ver fallar* sus pruebas, que es justo lo que le pedi: a/T-531-532-mutacion-descartable, a/T-531-532-mut-mediana, a/T-531-532-mut-aceptadas y a/T-531-532-mut-ganadas. **Ninguna debe integrarse jamas.** No las puede borrar ni ella (`git push --delete` devuelve 403) ni yo (el clasificador me denego el borrado por REST, y no lo rodee). No hay PR abierto para ninguna y `main` esta protegido, asi que el riesgo real es bajo; pero el repositorio es **publico** y conviene que no se queden ahi. | Borralas tu desde GitHub |
 
+| **12b** | **Tres ramas sueltas mas, sin bugs pero huerfanas**, que tampoco puede borrar nadie desde aqui (403 por `push`, clasificador por REST): `a/T-531-532-reportes-por-asesor-y-destino` (su PR #447 se cerro sin integrar, era duplicado de #441), `i/T-538-cierre-del-lote` e `i/T-542-cierre-verificado`. Ningun PR abierto apunta a ellas y `main` esta protegido: **el riesgo es cosmetico**, pero el repositorio es publico. | Borralas tu desde GitHub, junto con las del punto 12 |
+
 ## Decisiones de producto y de negocio
 
 | # | Qué | Contexto |
