@@ -7724,3 +7724,113 @@ tasks:
     source: "auditoría de seguridad de T-307 (cola, 2026-11-20): M22 y M23 prueban T-261, ninguna mutación cubre T-307, y el script no corre en el CI"
     created_at: 2026-11-21T00:00:00.000Z
     owner: qa
+  - id: T-378
+    title: "Guardar la semilla de la demo (seed.ts) con la regla de una sola agencia del ADR-0031"
+    type: security
+    phase: 2
+    priority: P2
+    effort: S
+    status: ready
+    human_required: true
+    depends_on: []
+    acceptance:
+      - "seed.ts aplica decidirSiSePuedeSembrarLaAgencia y la guarda de base remota antes de crear agencia-demo"
+      - "La comprobación de la semilla toma el mismo candado (7410103, 0) o queda escrito por qué no hace falta en un script local"
+      - "Una prueba cubre el caso: índice de apodos global y ya existe otra agencia, la siembra se niega"
+    files:
+      - packages/database/prisma/seed.ts
+      - packages/database/prisma/guardia-de-semilla-agencia.ts
+    source: "auditorías de seguridad del PR 1b (#363, cola C2 y hallazgos 1 y 8 de la segunda auditoría, 2026-11-21): seed.ts:61 crea agencia-demo sin la guarda de ADR-0031 §4"
+    created_at: 2026-11-21T00:00:00.000Z
+    owner: datos
+  - id: T-379
+    title: "Endurecer el cinturón de crear_agencia (usado_en IS NULL) y restaurar la R-7 original con la fase 2"
+    type: security
+    phase: 2
+    priority: P2
+    effort: M
+    status: ready
+    human_required: true
+    depends_on: []
+    acceptance:
+      - "El cinturón de una migración nueva exige que el cuerpo de crear_agencia lleve c.usado_en IS NULL dentro del WHERE del UPDATE de codigos_de_acceso_al_registro"
+      - "Cuando T-361 apague la guarda se restauran, con COMMIT real, la R-7 original (dos altas con el mismo código: una agencia y VPR04) y la de dos primeras altas sobre tenants vacía (una sola)"
+      - "Una mutación del arnés quita la condición usado_en IS NULL y la prueba correspondiente se pone en rojo"
+    files:
+      - packages/database/prisma/migrations
+      - packages/database/tests/aislamiento.spec.ts
+      - packages/database/scripts/mutaciones-aislamiento.mjs
+    source: "auditorías de seguridad del PR 1b (#363, cola C1 y hallazgo 3 de la segunda auditoría, 2026-11-21): la R-7 reformulada ya no detecta consumir un código dos veces tras un COMMIT"
+    created_at: 2026-11-21T00:00:00.000Z
+    owner: datos
+  - id: T-380
+    title: "Pruebas de la guarda de agencias: rama activa en R-10, conexión real de viajapro_app y AP14 sin superusuario"
+    type: test
+    phase: 2
+    priority: P3
+    effort: M
+    status: ready
+    human_required: false
+    depends_on: []
+    acceptance:
+      - "Una variante de R-10 corre con la guarda activa y tenants vaciada, para ejercitar la rama activa"
+      - "Las pruebas R-3, R-4, R-6, R-9 y R-10 reescritas se contrastan con la conexión real de viajapro_app (con sus ajustes de nivel de rol), o queda escrito por qué la sesión del propietario con SET LOCAL ROLE es equivalente"
+      - "AP14 no exige superusuario: sin él se omite con motivo escrito en vez de fallar con 40001"
+    files:
+      - packages/database/tests/aislamiento.spec.ts
+    source: "auditorías de seguridad del PR 1b (#363, cola C4 y hallazgos 2 y 4 de la segunda auditoría, 2026-11-21)"
+    created_at: 2026-11-21T00:00:00.000Z
+    owner: qa
+  - id: T-381
+    title: "Garantizar que la suite de aislamiento no corra en paralelo contra la misma base (ACCESS EXCLUSIVE)"
+    type: devops
+    phase: 2
+    priority: P3
+    effort: S
+    status: ready
+    human_required: true
+    depends_on: []
+    acceptance:
+      - "Queda escrito, con evidencia del ci.yml, que aislamiento.spec.ts no comparte base con los e2e de la API"
+      - "Una nota junto a conFaseDosSimulada y AP15 avisa de que toman ACCESS EXCLUSIVE sobre accesos_identidad y que paralelizar el job contra la misma base los bloquea"
+    files:
+      - .github/workflows/ci.yml
+      - packages/database/tests/aislamiento.spec.ts
+    source: "auditorías de seguridad del PR 1b (#363, cola C3 y hallazgo 5 de la segunda auditoría, 2026-11-21)"
+    created_at: 2026-11-21T00:00:00.000Z
+    owner: devops
+  - id: T-382
+    title: "Documentar el candado público (7410103, 0) de la guarda de agencias"
+    type: security
+    phase: 2
+    priority: P3
+    effort: S
+    status: ready
+    human_required: true
+    depends_on: []
+    acceptance:
+      - "El ADR-0031 o la documentación de seguridad anota que cualquier rol puede tomar el candado (7410103, 0) y frenar las altas de agencia mientras lo sostenga"
+      - "Queda decidido si se acepta el riesgo (la guarda se apaga con T-361) o se mitiga"
+    files:
+      - docs/05-seguridad
+    source: "segunda auditoría de seguridad del PR 1b (#363, 2026-11-21): el candado de la guarda es un advisory lock público"
+    created_at: 2026-11-21T00:00:00.000Z
+    owner: datos
+  - id: T-383
+    title: "Traducir VPR05 de crear_agencia a un 503 genérico en la API"
+    type: feature
+    phase: 2
+    priority: P2
+    effort: S
+    status: backlog
+    human_required: false
+    depends_on: [T-373]
+    acceptance:
+      - "Cuando la API llame a crear_agencia y reciba VPR05, responde un 503 con código estable y mensaje genérico, sin reenviar el mensaje de Postgres"
+      - "Una prueba cubre el caso con la guarda activa (índice global y una agencia ya existente)"
+      - "El código de ADR-0030 usa registroAutoservicioHabilitado() para decidir si el autoservicio está disponible"
+    files:
+      - apps/api/src/modules/identity
+    source: "auditorías de seguridad del PR 1b (#363, cola C5 y hallazgo 7 de la segunda auditoría, 2026-11-21): staging ya tiene la demo, así que crear_agencia da VPR05 hasta T-361 y la API todavía no lo traduce"
+    created_at: 2026-11-21T00:00:00.000Z
+    owner: backend
