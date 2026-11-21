@@ -189,8 +189,8 @@ Puntos de quiebre usados [M, `grep`]: `sm` 448 veces, `md` 151, `lg` 59, `xl` 14
 |---|---|---|
 | `oceano-800` | `#0f2b4c` | Texto fuerte, barra lateral, cabeceras oscuras |
 | `acento-600` | `#2563eb` | **La** acción principal de la pantalla, enlaces, ítem activo |
-| `plazo-hoy` (aviso-700) | `#b45309` | Vence hoy o mañana; siempre con icono y texto |
-| `plazo-vencido` (alerta-700) | `#b91c1c` | Vencido; nada más es rojo, salvo destructivo |
+| `plazo-proximo` (aviso-700) | `#b45309` | Vence en los próximos días (ámbar); siempre con icono y texto |
+| `plazo-vencido` y `plazo-hoy` (alerta-700) | `#b91c1c` | Vencido o vence hoy (rojo, según `diseno-web`); nada más es rojo, salvo destructivo. *Corrección de 2026-11-21:* la primera redacción ponía «hoy» en ámbar; manda la regla de la skill |
 | `canal-whatsapp` | verde actual de la bandeja | **Solo** WhatsApp (enviar, ventana abierta). Nunca «pagado», «ok» ni «cerrada» |
 | `ok-700` | `#15803d` | Confirmado, pagado (con texto) |
 

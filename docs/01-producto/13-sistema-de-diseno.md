@@ -4,7 +4,7 @@
 
 ## 1. Tokens de estado, plazo y canal (T-443)
 
-Cada estado son dos tokens, `fondo` y `texto`, con contraste ≥ 4,5:1 (AA) en claro y en oscuro; lo vigila `apps/web/src/lib/tokens-de-estado.spec.ts`. Se usan **siempre con texto e icono**, nunca solo color.
+Cada estado son dos tokens, `fondo` y `texto`, con contraste ≥ 4,5:1 (AA) en claro y en oscuro; lo vigila la prueba `tokens-de-estado` (llega con el PR #391). Se usan **siempre con texto e icono**, nunca solo color.
 
 | Token (`--color-…`) | Cuándo | Texto de ejemplo |
 |---|---|---|
@@ -29,8 +29,16 @@ Reglas: rojo es solo para lo vencido o lo que vence hoy; ámbar para lo próximo
 ## 3. Escala tipográfica y puntos de quiebre
 
 - Familia: **Inter** (`--font-sans`). Escala: `text-xs` 11 · `text-sm` 12 · `text-base` 13 · `text-lg` 15 · `text-xl` 18 · `text-2xl` 22 · `text-3xl` 28 px. **Piso de 12 px** para texto informativo: `text-xs` y `text-[9|10|11px]` se reemplazan por `text-sm` pantalla a pantalla (la auditoría contó 442 usos de 9 a 11 px y 1.018 de `text-xs`); no se cambió el valor de `text-xs` de golpe para no mover todas las pantallas a la vez.
-- Puntos de quiebre: los de Tailwind v4 (640 · 768 · 1024 · 1280 · 1536). Reglas por familia de dispositivo (celular < 768, tablet 768–1279, escritorio ≥ 1280), altura ≤ 480 px y tipo de puntero: ver la [hoja de ruta de diseño](../08-roadmap/10-roadmap-diseno-ui-ux.md) §1. Esta sección se completa con T-440.
+- Puntos de quiebre: los de Tailwind v4 (640 · 768 · 1024 · 1280 · 1536). Tres modos (T-440, ADR-0032):
+
+| Modo | Ancho | Navegación | Detalle |
+|---|---|---|---|
+| Celular | < 768 px | Cabecera de 44 px con la lupa + barra inferior de 56 px + hoja «Más» | La barra y el `main` reservan `env(safe-area-inset-bottom)`; `viewport-fit=cover` |
+| Tablet | 768 – 1279 px | **Riel de 96 px con icono y etiqueta** (la etiqueta corta de `lib/navegacion.ts`) | Táctil por defecto; el riel desplaza si falta altura (celular horizontal) |
+| Escritorio | ≥ 1280 px | **Menú lateral expandido de 240 px** por defecto | Con ratón (`pointer: fine`) y la preferencia «contraer» queda solo el icono (56 px) con tooltip. La preferencia guardada en `viajapro_sidebar_expandida` manda sobre el ancho |
+
+  Reglas ortogonales: `objetivo` y `pointer-coarse` para el tamaño táctil; alto de ventana con `dvh`; `interactive-widget=resizes-content` para que el teclado en pantalla reduzca la ventana. Quedan para después: regla de altura ≤ 480 px en la bandeja y columna de mensajes ≤ 720 px (T-442).
 
 ## 4. Pendiente de documentar
 
-Componentes de `apps/web/src/components/comun/` (`LineaDeViaje` e `InsigniaDePlazo` nacen en T-444), formateadores de fecha y dinero (T-445), marco responsivo (T-440).
+Componentes de `apps/web/src/components/comun/` (`LineaDeViaje` e `InsigniaDePlazo` nacen en T-444), formateadores de fecha y dinero (T-445), bandeja adaptable (T-442).
