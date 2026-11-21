@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, within, act } from '@testing-library/react';
 import React from 'react';
 import { BarraModulos, calcularIniciales } from './barra-modulos';
@@ -253,6 +253,59 @@ describe('BarraModulos y Selector de Sesión (ADR-0011)', () => {
       expect(within(sidebar).getByText('Viajes El Sol')).toBeDefined();
 
       localStorage.removeItem('viajapro_sidebar_expandida');
+    });
+
+    describe('Modos por tamaño de pantalla (T-440)', () => {
+      const simularAncho = (esEscritorio: boolean) => {
+        vi.stubGlobal(
+          'matchMedia',
+          vi.fn((consulta: string) => ({
+            matches: consulta.includes('min-width: 1280px') ? esEscritorio : false,
+            media: consulta,
+            addEventListener: vi.fn(),
+            removeEventListener: vi.fn(),
+            addListener: vi.fn(),
+            removeListener: vi.fn(),
+            onchange: null,
+            dispatchEvent: vi.fn(),
+          })),
+        );
+      };
+
+      afterEach(() => {
+        vi.unstubAllGlobals();
+        localStorage.removeItem('viajapro_sidebar_expandida');
+      });
+
+      it('en escritorio (>= 1280 px) y sin preferencia guardada parte expandida', async () => {
+        simularAncho(true);
+        localStorage.removeItem('viajapro_sidebar_expandida');
+        render(<BarraModulos sesionInicial={SESION_ASESOR} />);
+        const sidebar = screen.getByTestId('sidebar-escritorio');
+        await waitFor(() => expect(sidebar.getAttribute('data-expandida')).toBe('true'));
+      });
+
+      it('en tablet (< 1280 px) y sin preferencia guardada parte como riel con etiquetas', () => {
+        simularAncho(false);
+        localStorage.removeItem('viajapro_sidebar_expandida');
+        render(<BarraModulos sesionInicial={SESION_ASESOR} />);
+        const sidebar = screen.getByTestId('sidebar-escritorio');
+        expect(sidebar.getAttribute('data-expandida')).toBe('false');
+        expect(within(sidebar).getByTestId('etiqueta-riel-conversaciones').textContent).toBe(
+          'Conversaciones',
+        );
+        // Con etiqueta corta de la tabla única de navegación, igual que la barra móvil.
+        expect(within(sidebar).getByTestId('etiqueta-riel-archivos').textContent).toBe('Archivos');
+      });
+
+      it('la preferencia guardada manda sobre el ancho: «contraída» se respeta en escritorio', () => {
+        simularAncho(true);
+        localStorage.setItem('viajapro_sidebar_expandida', 'false');
+        render(<BarraModulos sesionInicial={SESION_ASESOR} />);
+        expect(screen.getByTestId('sidebar-escritorio').getAttribute('data-expandida')).toBe(
+          'false',
+        );
+      });
     });
   });
 
