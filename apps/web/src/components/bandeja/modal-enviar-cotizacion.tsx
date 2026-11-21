@@ -101,7 +101,7 @@ export function ModalEnviarCotizacion({
               >
                 Enviar cotización por WhatsApp
               </h2>
-              <p className="text-xs text-neutral-500 sm:text-xs dark:text-neutral-400">
+              <p className="text-sm text-neutral-500 sm:text-sm dark:text-neutral-400">
                 {contactoNombre ? `${contactoNombre} · ` : ''}
                 {contactoTelefono}
               </p>
@@ -124,12 +124,12 @@ export function ModalEnviarCotizacion({
           {!ventanaAbierta && (
             <div
               data-testid="alerta-ventana-cerrada-cotizacion"
-              className="flex items-start gap-2.5 rounded-xl border border-amber-300 bg-amber-50/90 p-3 text-xs text-amber-900 dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-200"
+              className="flex items-start gap-2.5 rounded-xl border border-amber-300 bg-amber-50/90 p-3 text-sm text-amber-900 dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-200"
             >
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
               <div>
                 <p className="font-semibold">Ventana de 24 horas cerrada</p>
-                <p className="mt-0.5 text-xs leading-relaxed text-amber-800 dark:text-amber-300">
+                <p className="mt-0.5 text-sm leading-relaxed text-amber-800 dark:text-amber-300">
                   El cliente no ha escrito recientemente. WhatsApp requiere una plantilla aprobada
                   (HSM) para reabrir la ventana antes de enviar texto libre o cotizaciones.
                 </p>
@@ -141,12 +141,12 @@ export function ModalEnviarCotizacion({
           <div>
             <label
               htmlFor="selector-cotizacion-conversacion"
-              className="block text-xs font-semibold text-neutral-700 dark:text-neutral-300"
+              className="block text-sm font-semibold text-neutral-700 dark:text-neutral-300"
             >
               Selecciona una cotización guardada
             </label>
             {cotizaciones.length === 0 ? (
-              <div className="mt-2 rounded-xl border border-dashed border-neutral-300 bg-neutral-50 p-4 text-center text-xs text-neutral-500 dark:border-neutral-700 dark:bg-neutral-800/40 dark:text-neutral-400">
+              <div className="mt-2 rounded-xl border border-dashed border-neutral-300 bg-neutral-50 p-4 text-center text-sm text-neutral-500 dark:border-neutral-700 dark:bg-neutral-800/40 dark:text-neutral-400">
                 No hay cotizaciones guardadas para este contacto. Ve al Cotizador para generar una.
               </div>
             ) : (
@@ -156,7 +156,7 @@ export function ModalEnviarCotizacion({
                 value={cotizacionSeleccionadaId}
                 onChange={(e) => setCotizacionSeleccionadaId(e.target.value)}
                 disabled={estadoEnvio === 'enviando'}
-                className="mt-1.5 flex min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-xs font-medium text-neutral-900 shadow-2xs focus:border-emerald-500 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+                className="mt-1.5 flex min-h-[44px] w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm font-medium text-neutral-900 shadow-2xs focus:border-emerald-500 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
               >
                 {cotizaciones.map((cot) => (
                   <option key={cot.id} value={cot.id}>
@@ -171,13 +171,13 @@ export function ModalEnviarCotizacion({
           {/* Resumen de lo que se enviará. El texto exacto lo arma el servidor (sin neto ni margen). */}
           {cotizacionActual && (
             <div className="space-y-1.5">
-              <span className="flex items-center gap-1.5 text-xs font-semibold text-neutral-700 dark:text-neutral-300">
+              <span className="flex items-center gap-1.5 text-sm font-semibold text-neutral-700 dark:text-neutral-300">
                 <Sparkles className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
                 Resumen de lo que se enviará
               </span>
               <div
                 data-testid="vista-previa-texto-cotizacion"
-                className="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-3.5 text-xs text-neutral-800 shadow-2xs dark:border-emerald-900/40 dark:bg-emerald-950/20 dark:text-neutral-200"
+                className="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-3.5 text-sm text-neutral-800 shadow-2xs dark:border-emerald-900/40 dark:bg-emerald-950/20 dark:text-neutral-200"
               >
                 <p className="font-semibold">
                   {cotizacionActual.titulo} (v{cotizacionActual.version})
@@ -191,7 +191,7 @@ export function ModalEnviarCotizacion({
                     Vigente hasta: {formatearFecha(cotizacionActual.vigenteHasta)}
                   </p>
                 )}
-                <p className="mt-2 text-xs text-neutral-600 dark:text-neutral-400">
+                <p className="mt-2 text-sm text-neutral-600 dark:text-neutral-400">
                   El viajero recibirá el texto de la cotización sin neto ni margen.
                 </p>
               </div>
@@ -203,13 +203,13 @@ export function ModalEnviarCotizacion({
             <div
               data-testid="alerta-error-envio-cotizacion"
               role="alert"
-              className="flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-800 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300"
+              className="flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300"
             >
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-600 dark:text-red-400" />
               <div className="min-w-0 flex-1">
                 <p className="font-semibold">{errorDetalle.titulo}</p>
-                <p className="mt-0.5 text-xs leading-relaxed">{errorDetalle.mensaje}</p>
-                <p className="mt-1 text-xs font-medium text-red-700 dark:text-red-300">
+                <p className="mt-0.5 text-sm leading-relaxed">{errorDetalle.mensaje}</p>
+                <p className="mt-1 text-sm font-medium text-red-700 dark:text-red-300">
                   💡 {errorDetalle.accionSugerida}
                 </p>
               </div>
@@ -221,7 +221,7 @@ export function ModalEnviarCotizacion({
             <div
               data-testid="alerta-exito-envio-cotizacion"
               role="status"
-              className="flex items-center gap-2.5 rounded-xl border border-emerald-300 bg-emerald-50 p-3 text-xs font-semibold text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200"
+              className="flex items-center gap-2.5 rounded-xl border border-emerald-300 bg-emerald-50 p-3 text-sm font-semibold text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200"
             >
               <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
               <span>¡Cotización enviada con éxito por WhatsApp!</span>
@@ -231,7 +231,7 @@ export function ModalEnviarCotizacion({
             <p
               role="status"
               data-testid="aviso-estado-cotizacion"
-              className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900"
+              className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900"
             >
               {avisoEstado}
             </p>
@@ -244,7 +244,7 @@ export function ModalEnviarCotizacion({
             type="button"
             onClick={onCerrar}
             disabled={estadoEnvio === 'enviando'}
-            className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl border border-neutral-300 bg-white px-4 py-2.5 text-xs font-semibold text-neutral-700 shadow-2xs transition-colors hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
+            className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl border border-neutral-300 bg-white px-4 py-2.5 text-sm font-semibold text-neutral-700 shadow-2xs transition-colors hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
           >
             Cancelar
           </button>
@@ -253,7 +253,7 @@ export function ModalEnviarCotizacion({
             data-testid="boton-confirmar-enviar-cotizacion"
             onClick={() => void manejarEnvio()}
             disabled={!cotizacionActual || estadoEnvio === 'enviando' || estadoEnvio === 'enviado'}
-            className="flex min-h-[44px] min-w-[44px] items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-xs font-bold text-white shadow-sm transition-all hover:bg-emerald-700 active:scale-98 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-emerald-600 dark:hover:bg-emerald-500"
+            className="flex min-h-[44px] min-w-[44px] items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm transition-all hover:bg-emerald-700 active:scale-98 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-emerald-600 dark:hover:bg-emerald-500"
           >
             {estadoEnvio === 'enviando' ? (
               <>

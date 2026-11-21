@@ -32,7 +32,7 @@ export function BarraDeAccionCotizador({
       className="sticky bottom-16 z-30 flex items-center justify-between gap-3 rounded-2xl border border-neutral-200 bg-white/95 p-2.5 pl-4 shadow-lg backdrop-blur-md md:bottom-4 dark:border-neutral-700 dark:bg-neutral-900/95"
     >
       <div className="min-w-0">
-        <span className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400">
+        <span className="block text-sm font-semibold text-neutral-600 dark:text-neutral-400">
           Total{detalle ? ` · ${detalle}` : ''}
         </span>
         {total === null ? (

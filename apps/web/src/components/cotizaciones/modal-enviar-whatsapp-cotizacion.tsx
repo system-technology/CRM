@@ -94,7 +94,7 @@ export function ModalEnviarWhatsAppCotizacion({
                   Abrir en la app de WhatsApp
                 </h2>
               </div>
-              <p className="text-xs text-neutral-500 dark:text-neutral-400">
+              <p className="text-sm text-neutral-500 dark:text-neutral-400">
                 Propuesta comercial sin neto ni margen. Sale por tu WhatsApp, fuera del canal de la
                 agencia.
               </p>
@@ -106,14 +106,14 @@ export function ModalEnviarWhatsAppCotizacion({
             onClick={alCerrar}
             data-testid="btn-cerrar-modal-whatsapp"
             aria-label="Cerrar modal"
-            className="flex h-11 w-11 items-center justify-center rounded-2xl text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
         {/* Cuerpo del Modal */}
-        <div className="flex-1 space-y-5 overflow-y-auto p-6 text-xs">
+        <div className="flex-1 space-y-5 overflow-y-auto p-6 text-sm">
           {/* 1. Selector de Versión si hay más de una */}
           {cotizacion.versiones.length > 1 && (
             <div>
@@ -128,7 +128,7 @@ export function ModalEnviarWhatsAppCotizacion({
                       key={v.id}
                       type="button"
                       onClick={() => setVersionSeleccionada(v.numero)}
-                      className={`flex min-h-[44px] items-center gap-2 rounded-xl px-3.5 py-2 text-xs font-semibold transition-all ${
+                      className={`flex min-h-[44px] items-center gap-2 rounded-xl px-3.5 py-2 text-sm font-semibold transition-all ${
                         activa
                           ? 'bg-neutral-900 text-white shadow-xs dark:bg-white dark:text-neutral-900'
                           : 'border border-neutral-200 bg-neutral-50 text-neutral-700 hover:bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-800 dark:text-neutral-300'
@@ -146,14 +146,14 @@ export function ModalEnviarWhatsAppCotizacion({
           {/* 2. Destinatario y Teléfono */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="rounded-2xl border border-neutral-200 bg-neutral-50/60 p-3.5 dark:border-neutral-800 dark:bg-neutral-800/40">
-              <span className="flex items-center gap-1.5 text-xs font-semibold text-neutral-500">
+              <span className="flex items-center gap-1.5 text-sm font-semibold text-neutral-500">
                 <User className="h-3.5 w-3.5 text-neutral-400" />
                 Viajero Destinatario
               </span>
               <p className="mt-1 font-bold text-neutral-900 dark:text-white">
                 {contacto?.nombre || 'Contacto no registrado'}
               </p>
-              <span className="text-xs text-neutral-400">
+              <span className="text-sm text-neutral-400">
                 {contacto?.correo || 'Sin correo asociado'}
               </span>
             </div>
@@ -161,7 +161,7 @@ export function ModalEnviarWhatsAppCotizacion({
             <div className="rounded-2xl border border-neutral-200 bg-neutral-50/60 p-3.5 dark:border-neutral-800 dark:bg-neutral-800/40">
               <label
                 htmlFor="input-telefono-whatsapp"
-                className="flex items-center gap-1.5 text-xs font-semibold text-neutral-500"
+                className="flex items-center gap-1.5 text-sm font-semibold text-neutral-500"
               >
                 <Phone className="h-3.5 w-3.5 text-neutral-400" />
                 Número de WhatsApp (E.164)
@@ -172,10 +172,10 @@ export function ModalEnviarWhatsAppCotizacion({
                 value={telefono}
                 onChange={(e) => setTelefono(e.target.value)}
                 placeholder="+57 300 123 4567"
-                className="mt-1 min-h-[44px] w-full rounded-xl border border-neutral-200 bg-white px-3 py-1.5 font-mono text-xs text-neutral-900 focus:border-emerald-500 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+                className="mt-1 min-h-[44px] w-full rounded-xl border border-neutral-200 bg-white px-3 py-1.5 font-mono text-sm text-neutral-900 focus:border-emerald-500 focus:outline-hidden dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
               />
               {!telefonoValido && (
-                <p role="status" className="mt-1 text-xs text-amber-700 dark:text-amber-400">
+                <p role="status" className="mt-1 text-sm text-amber-700 dark:text-amber-400">
                   Escribe el número de WhatsApp para abrir la app.
                 </p>
               )}
@@ -191,7 +191,7 @@ export function ModalEnviarWhatsAppCotizacion({
               <button
                 type="button"
                 onClick={handleCopiarMensaje}
-                className="inline-flex min-h-[44px] items-center gap-1 text-xs font-semibold text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white"
+                className="inline-flex min-h-[44px] items-center gap-1 text-sm font-semibold text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white"
               >
                 {copiado ? (
                   <Check className="h-3.5 w-3.5 text-emerald-600" />
@@ -204,7 +204,7 @@ export function ModalEnviarWhatsAppCotizacion({
 
             <div
               data-testid="vista-previa-mensaje-whatsapp"
-              className="mt-2 max-h-56 overflow-y-auto rounded-2xl border border-emerald-100 bg-emerald-50/30 p-4 font-mono text-xs leading-relaxed whitespace-pre-line text-neutral-800 select-all dark:border-emerald-950 dark:bg-emerald-950/20 dark:text-neutral-200"
+              className="mt-2 max-h-56 overflow-y-auto rounded-2xl border border-emerald-100 bg-emerald-50/30 p-4 font-mono text-sm leading-relaxed whitespace-pre-line text-neutral-800 select-all dark:border-emerald-950 dark:bg-emerald-950/20 dark:text-neutral-200"
             >
               {mensajeWhatsApp}
             </div>
@@ -213,7 +213,7 @@ export function ModalEnviarWhatsAppCotizacion({
           {/* 4. Qué NO hace esta salida */}
           <div
             data-testid="aviso-fuera-del-canal"
-            className="flex items-start gap-3 rounded-2xl bg-neutral-50 p-4 text-xs text-neutral-700 dark:bg-neutral-800/60 dark:text-neutral-300"
+            className="flex items-start gap-3 rounded-2xl bg-neutral-50 p-4 text-sm text-neutral-700 dark:bg-neutral-800/60 dark:text-neutral-300"
           >
             <Info className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
             <div>
@@ -228,7 +228,7 @@ export function ModalEnviarWhatsAppCotizacion({
           <button
             type="button"
             onClick={alCerrar}
-            className="flex min-h-[44px] items-center justify-center rounded-xl border border-neutral-300 bg-white px-4 py-2 text-xs font-semibold text-neutral-700 hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300"
+            className="flex min-h-[44px] items-center justify-center rounded-xl border border-neutral-300 bg-white px-4 py-2 text-sm font-semibold text-neutral-700 hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300"
           >
             Cerrar
           </button>
@@ -238,7 +238,7 @@ export function ModalEnviarWhatsAppCotizacion({
             onClick={handleAbrirWhatsApp}
             disabled={!telefonoValido}
             data-testid="btn-abrir-whatsapp-directo"
-            className="flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-emerald-300 bg-emerald-50 px-5 py-2.5 text-xs font-bold text-emerald-800 transition-colors hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+            className="flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-emerald-300 bg-emerald-50 px-5 py-2.5 text-sm font-bold text-emerald-800 transition-colors hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
           >
             <span>Abrir en la app de WhatsApp</span>
             <ExternalLink className="h-3.5 w-3.5 opacity-75" />

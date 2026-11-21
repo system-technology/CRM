@@ -44,7 +44,7 @@ export function TablaDeLineas({
       data-testid={testId}
       className="rounded-xl border border-neutral-100 md:overflow-x-auto dark:border-neutral-800"
     >
-      <table className="block w-full text-xs md:table">
+      <table className="block w-full text-sm md:table">
         <thead className="hidden md:table-header-group">
           <tr className="border-b border-neutral-100 bg-neutral-50 text-neutral-500 dark:border-neutral-800 dark:bg-neutral-800/50 dark:text-neutral-400">
             {columnas.map((c) => (
