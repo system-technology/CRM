@@ -12,6 +12,32 @@
 
 ---
 
+## 2026-11-21 (cierre de la tarde) — Un foco que robaba teclas, una compuerta reparada y el relevo de la madre
+
+**Verificado** (`gh`/`git`, mismo turno): `main` de `d755ea69` a **`898ba390`**. Integrados: **#436** (T-548), **#437** (T-542 parcial) y **#438** (el triaje aplicado). **Once PR en todo el turno.** Abierto solo **#439**, este relevo.
+
+**El hallazgo de la tarde empezó como un check en rojo que parecía ruido.** Una e2e de ingreso fallaba **2 de cada 3 veces**. La lectura cómoda era «prueba frágil, súbele el timeout». El encargo que se dio fue otro: *averigua por qué la fila nunca se revalida*, con una hipótesis de la madre —la caché— escrita encima.
+
+**La hipótesis era falsa, y la sesión lo demostró en vez de obedecerla.** Se bajó el `trace.zip` de una corrida fallida: la lista **sí** se recargaba. Lo que fallaba es que el `PATCH` enviaba el apodo **viejo**, y el servidor guardaba lo que le llegaba. La causa: `useFocoModal` mueve el foco al primer enfocable 30 ms después de abrir **aunque el foco ya esté dentro**, y ahí el primero es el botón «Cerrar». Borrar un campo es seleccionar y pulsar Suprimir; si el temporizador cae en medio, **el Suprimir se lo come el botón**.
+
+**Para una persona es el mismo defecto:** quien abra ese diálogo y empiece a escribir enseguida **pierde lo que escribe**. Llevaba meses así. Arreglo de cuatro líneas, dos pruebas que fallan sin él (comprobado con `stash`) y el job en verde **3 de 3** sobre el mismo sha — porque con algo que falla 2 de 3, una sola pasada verde no demuestra nada.
+
+**T-542, la compuerta que marcaba tareas como hechas, tenía dos averías con el mismo síntoma.** Se separaron a propósito: la mecánica (18 tareas con `type`/`effort` fuera del enum) se arregló; la de criterio (20 tareas `in_progress`) se **propuso y no se aplicó**, porque cerrar como hecha una tarea que no lo está convierte el roadmap en ficción. La sesión confirmó, además, que **con solo la mitad mecánica el job seguía rojo** — justo lo que hacía falta para no cantar victoria.
+
+**Al aplicar el triaje apareció lo que nadie veía.** Validar el fichero **entero, incluyendo claves repetidas** (que `yaml.safe_load` tolera quedándose con la última) destapó que **T-493 tenía `owner` duplicado con valores distintos**: el fichero la asignaba a `backend` cuando su título dice «**experto-turismo** valida la atribución de reportes». Una tarea cuyo sentido entero es criterio de dominio **apuntaba al agente equivocado, en silencio**. Y una de las duplicadas **la introdujo la propia madre** al aplicar el triaje; solo se vio porque esta vez se buscó a propósito.
+
+**Dos enmiendas al triaje, ambas por el mismo motivo.** T-126 no se descarta: un job de CI comprueba que el flujo no se rompe, **no** que el producto se entienda, y el recorrido manual antes de la demo al piloto es justo lo que falta. T-372 no se cierra moviendo a otra tarea su criterio pendiente, que es que **el arnés de mutaciones de aislamiento nunca se ha ejecutado**.
+
+**El relevo, y por qué importa más que cualquiera de los PR.** La madre llegó a **450 mil tokens y 47 USD**, el triple del tope. Vigiló el consumo de las siete sesiones hijas en cada vuelta y **el suyo una sola vez, al arrancar, cuando marcaba 0**. La anterior llegó a 688 mil por lo mismo: **dos de dos**. En el despertar de la madre entrante ese paso deja de ser el quinto y pasa a ser **el primero**, con las dos cifras al lado.
+
+**Verificado y ya no supuesto:** el despertar propio funciona. `trig_01Cq7TrGZ9uGFc9uAmqQEDtr` disparó a las **14:15:28 UTC** directo en la madre, sin el relevo en dos saltos.
+
+**Supuesto** (no verificado): que el job «Marcar la tarea como hecha» pase a verde ahora que `in_progress` está en cero. **Hay que comprobarlo en el primer merge**; si sigue rojo, hay una tercera causa que nadie ha visto.
+
+**Lo que queda al propietario:** la lista de chats de JD Tours (sin ella **T-533 no arranca y no se conecta el número real**), borrar la rama de mutación, y **contestar el permiso de Bash que tiene parada a la sesión de T-531/T-532 desde las 13:49**.
+
+---
+
 ## 2026-11-21 (cierre del lote de mediodía) — Dinero mal pintado, una compuerta de permisos y una mutación que midió el aislamiento
 
 **Corrige y completa la entrada de abajo**, que se quedó corta: decía «integrados #427 y #428, abierto #430», y después entraron cuatro más.
